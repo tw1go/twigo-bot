@@ -20,4 +20,5 @@ export const banterLines = [
   'ᵈᶦ ᵖᵃʳᶦⁿ ˢʸᵃ ⁿᵃᵐᵃᵐᵃᵗᵃʸ',
   'haha baleeeew!',
   'meron na namang tumalong?',
+  'pamana'
 ];

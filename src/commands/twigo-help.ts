@@ -35,7 +35,7 @@ export const twigoHelp: Command = {
           name: '⏰ Automatic',
           value: [
             '☀️ **Daily 7:00 AM** — morning greeting, joke/trivia, and holiday countdown',
-            '⛏️ **Mine Wars** — alerts at 11:55, 2:55, 5:55, 8:55 and at the start (12, 3, 6, 9)',
+            '⛏️ **Mine Wars** — alerts at 11:55 AM & 8:55 PM and at the start (12 PM & 9 PM)',
             '⚔️ **Ancient Battlefield (Sat)** — admin check at 12:30, sign-up poll until 6 PM, pings at 7:45 & 8 PM',
             '-# Click 🔔 on a Mine Wars message to get or stop Mine Wars pings.',
           ].join('\n'),

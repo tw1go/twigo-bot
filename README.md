@@ -19,8 +19,8 @@ Admins can run any step manually with `/twigo abf:<ask|close|remind|start>` (use
 
 ## Mine Wars (every day)
 
-Posts in `MINE_WARS_CHANNEL_ID` at 11:55 AM, 2:55 PM, 5:55 PM, 8:55 PM ("starting in 5 minutes")
-and at 12:00 PM, 3:00 PM, 6:00 PM, 9:00 PM ("ongoing now"). Times live in `src/minewars/schedule.ts`.
+Posts in `MINE_WARS_CHANNEL_ID` at 11:55 AM and 8:55 PM ("starting in 5 minutes")
+and at 12:00 PM and 9:00 PM ("ongoing now"). Times live in `src/minewars/schedule.ts`.
 Each message pings `MINE_WARS_ROLE_ID` and has a 🔔 button that toggles the role for whoever clicks it.
 `/twigo mw:panel` posts a standalone opt-in message (pin it). Test with `/twigo mw:<warning|start|panel>`.
 The bot needs **Manage Roles**, and its own role must sit **above** the Mine Wars role.
