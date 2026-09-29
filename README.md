@@ -31,6 +31,10 @@ Posts in `GREETINGS_CHANNEL_ID`: a greeting line plus a random joke, sweet messa
 Edit the lists in `src/greetings/content.ts`. Items don't repeat until each list is used up.
 Test with `/twigo greet:send`.
 
+## Fun
+
+`/diss user:@someone` — anyone can post a playful roast (30s cooldown per user). Edit the lines in `src/commands/diss.ts`.
+
 ## Setup
 
 1. Create an application at https://discord.com/developers/applications, add a Bot, copy its token.
