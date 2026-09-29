@@ -1,0 +1,37 @@
+# twigo bot — Terms of Service
+
+_Last updated: September 29, 2026_
+
+These terms apply to your use of the twigo Discord bot ("the bot", "we"). By using the bot or being a member of a server where it runs, you agree to these terms. If you don't agree, don't use the bot.
+
+## What the bot does
+
+The bot posts scheduled reminders, event polls, participant lists, and daily greetings, and lets members opt in to notification roles. Features may be added, changed, or removed at any time.
+
+## Your responsibilities
+
+- Follow [Discord's Terms of Service](https://discord.com/terms) and [Community Guidelines](https://discord.com/guidelines).
+- Don't abuse, spam, or try to break the bot, and don't use it to harass others.
+- Don't try to exploit bugs or gain access to anything you aren't meant to have.
+
+We may block anyone who breaks these rules from using the bot.
+
+## No guarantees
+
+The bot is provided free and "as is". We try to keep it running, but we don't promise it will always be available, on time, or free of errors. Reminders, polls, or messages may be late, missed, or wrong. Don't rely on the bot for anything important.
+
+## Limitation of liability
+
+To the fullest extent the law allows, we aren't responsible for any loss or damage from using, or being unable to use, the bot.
+
+## Privacy
+
+How the bot handles data is explained in the [Privacy Policy](PRIVACY.md).
+
+## Changes
+
+We may update these terms. Changes are published here with a new "Last updated" date. Continuing to use the bot means you accept the updated terms.
+
+## Contact
+
+Questions: open an issue at <https://github.com/tw1go/twigo-bot/issues>, or message the bot owner in the server.

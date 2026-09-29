@@ -1,0 +1,47 @@
+# twigo bot — Privacy Policy
+
+_Last updated: September 29, 2026_
+
+This policy explains what information the twigo Discord bot ("the bot", "we") collects, why, and how it is handled. By using the bot or being a member of a server where it runs, you agree to this policy.
+
+## What the bot collects
+
+The bot only handles the minimum it needs to work.
+
+| Data | When | Why | Stored? |
+|---|---|---|---|
+| Your Discord user ID | You vote in an event poll | To list participants and ping them before the event | Yes, see below |
+| Your Discord user ID and roles | You click a bot button or use a bot command | To check permissions and give or remove a role you asked for | No, only used at that moment |
+| Message and poll IDs | The bot posts an event poll or question | To find its own messages again later | Yes, see below |
+
+The bot does **not** read or store the content of your messages, your direct messages, your email, your IP address, or any other personal information. It does not use the Message Content intent.
+
+## How long data is kept
+
+- **Event participants:** the user IDs of people who voted "Yes" in an event poll are saved in a small file on the bot's server. The file only holds the most recent event and is overwritten by the next one.
+- **Roles:** when you use the opt-in button, the bot gives or removes a Discord role. The role itself lives on Discord, not with the bot. You can remove it at any time by clicking the button again.
+- **Logs:** the server keeps technical error logs for troubleshooting. These are rotated automatically and are not used for anything else.
+
+## How data is used and shared
+
+Data is used only to run the bot's features in the server where you use it. We do **not** sell, rent, or share your data with anyone, and we do not use it for advertising or tracking.
+
+The bot runs on a cloud server and communicates with Discord. Your use of Discord itself is covered by [Discord's Privacy Policy](https://discord.com/privacy).
+
+## Your choices
+
+- Don't vote in event polls if you don't want your user ID saved for an event.
+- Click the opt-in button again to remove a notification role.
+- Ask for your data to be deleted, and we will remove any saved user IDs of yours.
+
+## Children
+
+Discord requires users to be at least 13 years old (or older where local law requires). The bot is not intended for anyone under that age.
+
+## Changes
+
+We may update this policy. Changes are published here with a new "Last updated" date.
+
+## Contact
+
+Questions or deletion requests: open an issue at <https://github.com/tw1go/twigo-bot/issues>, or message the bot owner in the server.
