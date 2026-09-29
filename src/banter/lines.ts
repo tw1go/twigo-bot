@@ -20,5 +20,7 @@ export const banterLines = [
   'ᵈᶦ ᵖᵃʳᶦⁿ ˢʸᵃ ⁿᵃᵐᵃᵐᵃᵗᵃʸ',
   'haha baleeeew!',
   'meron na namang tumalong?',
-  'pamana'
+  'pamana',
+  'bat ka galet?',
+  'alam mo mas masakit? pag may makita kang karton at plastic ng jollibee sa basurahan at di ko binigyan'
 ];
