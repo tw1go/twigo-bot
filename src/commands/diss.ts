@@ -64,11 +64,6 @@ const disses = [
   '{u} thinks the enemy nexus is a vacation spot. 🏖️',
 ];
 
-const selfDisses = [
-  'Roasting yourself? Respect. But the bot has already done it for you: you picked yourself. 💀',
-  'Self-diss unlocked. Honestly, no notes. 🪞',
-];
-
 const botComebacks = [
   'Nice try. I run 24/7 on a free server and I still have better uptime than you. 😎',
   'You tried to diss the bot. The bot is not impressed. 🤖',
@@ -79,6 +74,5 @@ export const diss = shoutoutCommand({
   description: 'Playfully roast someone',
   userDescription: 'Who to roast',
   lines: disses,
-  selfLines: selfDisses,
   botLines: botComebacks,
 });

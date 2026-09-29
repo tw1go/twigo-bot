@@ -44,11 +44,6 @@ const praises = [
   '{u} is a legend. The good kind. 📜',
 ];
 
-const selfPraises = [
-  'Self-love is important. You\'re doing amazing, sweetie. 💅',
-  'Praising yourself? Confidence level: MAX. We love to see it. 📈',
-];
-
 const botPraises = [
   'Aww, thank you! I\'ll keep being on time, 24/7. 🥹🤖',
   'You praised the bot. The bot is blushing in binary. 01100010 🤖💖',
@@ -59,6 +54,5 @@ export const praise = shoutoutCommand({
   description: 'Hype someone up',
   userDescription: 'Who to praise',
   lines: praises,
-  selfLines: selfPraises,
   botLines: botPraises,
 });

@@ -2,14 +2,13 @@ import { MessageFlags, SlashCommandBuilder } from 'discord.js';
 import type { Command } from '../types.js';
 import { balance, spend } from '../credits/store.js';
 
-// Shared by /diss and /praise: pick a line for @user. Costs 1 credit (see /get-credits); self/bot targets are free.
+// Shared by /diss and /praise: pick a line for @user. Costs 1 credit (see /get-credits); targeting yourself or the bot is free.
 // Lines use {u} for the target's mention.
 interface ShoutoutOptions {
   name: string;
   description: string;
   userDescription: string;
   lines: string[];
-  selfLines: string[];
   botLines: string[];
 }
 
@@ -42,7 +41,7 @@ export function shoutoutCommand(opts: ShoutoutOptions): Command {
       const target = interaction.options.getUser('user', true);
       let content: string;
       if (target.id === interaction.client.user.id) content = `${interaction.user} ${pick(opts.botLines)}`;
-      else if (target.id === interaction.user.id) content = `${interaction.user} ${pick(opts.selfLines)}`;
+      else if (target.id === interaction.user.id) content = next().replace('{u}', `${target}`);
       else {
         if (!spend(interaction.user.id)) {
           await interaction.reply({
@@ -55,7 +54,7 @@ export function shoutoutCommand(opts: ShoutoutOptions): Command {
         content = `${next().replace('{u}', `${target}`)}\n-# ${interaction.user.username} has ${left} credit${left === 1 ? '' : 's'} left`;
       }
 
-      await interaction.reply({ content, allowedMentions: { users: [target.id, interaction.user.id] } });
+      await interaction.reply({ content, allowedMentions: { users: [...new Set([target.id, interaction.user.id])] } });
     },
   };
 }
