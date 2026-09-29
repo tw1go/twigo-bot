@@ -25,6 +25,12 @@ Each message pings `MINE_WARS_ROLE_ID` and has a 🔔 button that toggles the ro
 `/twigo mw:panel` posts a standalone opt-in message (pin it). Test with `/twigo mw:<warning|start|panel>`.
 The bot needs **Manage Roles**, and its own role must sit **above** the Mine Wars role.
 
+## Morning greeting (every day, 7:00 AM)
+
+Posts in `GREETINGS_CHANNEL_ID`: a greeting line plus a random joke, sweet message or trivia fact.
+Edit the lists in `src/greetings/content.ts`. Items don't repeat until each list is used up.
+Test with `/twigo greet:send`.
+
 ## Setup
 
 1. Create an application at https://discord.com/developers/applications, add a Bot, copy its token.

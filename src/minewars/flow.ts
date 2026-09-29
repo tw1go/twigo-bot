@@ -21,12 +21,12 @@ const toggleRow = () =>
       .setStyle(ButtonStyle.Primary),
   );
 
-async function send(client: Client, content: string, pingRole: boolean): Promise<void> {
+async function send(client: Client, content: string, pingRole: boolean, withButton = true): Promise<void> {
   const channel = await client.channels.fetch(config.mineWarsChannelId);
   if (!channel?.isSendable()) throw new Error(`Channel ${config.mineWarsChannelId} not found or not sendable`);
   await channel.send({
     content: pingRole ? `<@&${config.mineWarsRoleId}> ${content}` : content,
-    components: [toggleRow()],
+    components: withButton ? [toggleRow()] : [],
     allowedMentions: { roles: pingRole ? [config.mineWarsRoleId] : [] },
   });
 }
@@ -36,7 +36,7 @@ export async function warnMineWars(client: Client): Promise<void> {
 }
 
 export async function startMineWars(client: Client): Promise<void> {
-  await send(client, `⛏️ **${MINE_WARS_NAME}** is ongoing now!\n\n${OPT_IN_QUESTION}`, true);
+  await send(client, `⛏️ **${MINE_WARS_NAME}** is ongoing now!`, true, false);
 }
 
 /** Standalone opt-in message (e.g. to pin in the channel). */

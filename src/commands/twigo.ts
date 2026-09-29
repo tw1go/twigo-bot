@@ -2,6 +2,7 @@ import { MessageFlags, PermissionFlagsBits, SlashCommandBuilder, type Client } f
 import type { Command } from '../types.js';
 import { askAdmin, closePoll, remindParticipants, startMatch } from '../match/flow.js';
 import { postRolePanel, startMineWars, warnMineWars } from '../minewars/flow.js';
+import { sendGreeting } from '../greetings/flow.js';
 
 // Manually trigger each scheduled step — for testing or if something was missed.
 const abfSteps: Record<string, (c: Client) => Promise<void>> = {
@@ -42,18 +43,27 @@ export const twigo: Command = {
           { name: 'ongoing now', value: 'start' },
           { name: 'post the "get pinged" button', value: 'panel' },
         ),
+    )
+    .addStringOption((o) =>
+      o
+        .setName('greet')
+        .setDescription('Morning greeting: send one now')
+        .addChoices({ name: 'send now', value: 'send' }),
     ),
   async execute(interaction) {
     const abf = interaction.options.getString('abf');
     const mw = interaction.options.getString('mw');
-    if (!abf === !mw) {
-      await interaction.reply({ content: 'Pick exactly one: `abf:` or `mw:`.', flags: MessageFlags.Ephemeral });
+    const greet = interaction.options.getString('greet');
+    const picked = [abf && `abf:${abf}`, mw && `mw:${mw}`, greet && 'greet:send'].filter(Boolean);
+    if (picked.length !== 1) {
+      await interaction.reply({ content: 'Pick exactly one: `abf:`, `mw:` or `greet:`.', flags: MessageFlags.Ephemeral });
       return;
     }
 
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     if (abf) await abfSteps[abf](interaction.client);
-    else await mwSteps[mw!](interaction.client);
-    await interaction.editReply(abf ? `Ran abf:${abf}` : `Ran mw:${mw}`);
+    else if (mw) await mwSteps[mw](interaction.client);
+    else await sendGreeting(interaction.client);
+    await interaction.editReply(`Ran ${picked[0]}`);
   },
 };

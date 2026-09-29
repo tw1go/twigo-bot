@@ -23,4 +23,5 @@ export const config = {
   matchChannelId: required('MATCH_CHANNEL_ID'),
   mineWarsChannelId: required('MINE_WARS_CHANNEL_ID'),
   mineWarsRoleId: required('MINE_WARS_ROLE_ID'),
+  greetingsChannelId: required('GREETINGS_CHANNEL_ID'),
 };
