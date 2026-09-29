@@ -4,12 +4,11 @@ export const greetings = [
   'Gising na ba ang mga tanod?',
   'Oh, ronda na mga tanod!',
   'Nagpapatrol na ba ang ating mga huwarang tanod?',
-  'Magandang umaga, mga ka-tanod!',
-  'Rise and shine, barangay!',
+  'Magandang umaga, mga tanod!',
+  'Rise and shine, tanod!',
   'Kape muna bago ronda! ☕',
-  'Good morning, mga idol! Bangon na!',
+  'Good morning, mga tanod! Bangon na!',
   'Tanod check! Sino na ang gising?',
-  'Umaga na! Tara, simulan na natin ang araw!',
   'Good morning! Huwag kalimutang mag-almusal bago mag-patrol!',
 ];
 

@@ -1,7 +1,9 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import type { Client } from 'discord.js';
 import { config } from '../config.js';
+import { today } from '../match/state.js';
 import { categories, greetings, type Category } from './content.js';
+import { holidayCountdown } from './countdown.js';
 
 // Shuffle bags: each list is used fully before any item repeats. Persisted across restarts.
 type Bags = Record<string, number[]>;
@@ -46,7 +48,7 @@ export async function sendGreeting(client: Client): Promise<void> {
   const channel = await client.channels.fetch(config.greetingsChannelId);
   if (!channel?.isSendable()) throw new Error(`Channel ${config.greetingsChannelId} not found or not sendable`);
   await channel.send({
-    content: `☀️ **${greeting}**\n\n**${title}**\n${body}`,
+    content: `☀️ **${greeting}**\n\n**${title}**\n${body}\n\n${holidayCountdown(today())}`,
     allowedMentions: { parse: [] },
   });
 }
