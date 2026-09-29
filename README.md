@@ -35,6 +35,7 @@ Test with `/twigo greet:send`.
 
 A few times a day (every 2–6 hours, 9 AM–11 PM) the bot says a random line in `BANTER_CHANNEL_ID`.
 Edit the lines in `src/banter/lines.ts`. Admins can trigger one with `/twigo banter:send`.
+Lines never repeat until every line has been used, even across restarts (progress is saved in `data/rotation.json`).
 
 ## Fun
 

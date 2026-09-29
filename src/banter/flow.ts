@@ -1,6 +1,7 @@
 import type { Client } from 'discord.js';
 import { config } from '../config.js';
 import { banterLines } from './lines.js';
+import { shuffleBag } from '../shuffle-bag.js';
 
 // Posts a random line at random times: every MIN–MAX hours, only during active hours (config.timezone).
 const MIN_GAP_MS = 2 * 3_600_000;
@@ -8,17 +9,7 @@ const MAX_GAP_MS = 6 * 3_600_000;
 const ACTIVE_FROM_HOUR = 9; // 9 AM
 const ACTIVE_UNTIL_HOUR = 23; // 11 PM
 
-let bag: string[] = [];
-function nextLine(): string {
-  if (bag.length === 0) {
-    bag = [...banterLines];
-    for (let i = bag.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [bag[i], bag[j]] = [bag[j], bag[i]];
-    }
-  }
-  return bag.pop()!;
-}
+const nextLine = shuffleBag('banter', banterLines);
 
 function hourNow(): number {
   return Number(new Intl.DateTimeFormat('en-US', { timeZone: config.timezone, hour: 'numeric', hourCycle: 'h23' }).format(new Date()));

@@ -2,30 +2,16 @@ import { MessageFlags, SlashCommandBuilder } from 'discord.js';
 import type { Command } from '../types.js';
 import { balance, spend } from '../credits/store.js';
 import { botComebacks, botPraises, disses, praises } from '../judge/lines.js';
+import { shuffleBag } from '../shuffle-bag.js';
 
 // /diss always roasts, /praise always praises, /judge flips a coin. All share the same line rotation.
 // Costs 1 credit (see /get-credits); targeting yourself or the bot is free.
 
 const pick = (a: string[]) => a[Math.floor(Math.random() * a.length)];
 
-/** Every line is used once before any repeats. */
-function shuffleBag(items: string[]): () => string {
-  let bag: string[] = [];
-  return () => {
-    if (bag.length === 0) {
-      bag = [...items];
-      for (let i = bag.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [bag[i], bag[j]] = [bag[j], bag[i]];
-      }
-    }
-    return bag.pop()!;
-  };
-}
-
 const verdicts = {
-  roast: { header: '🔥 **ROASTED**', next: shuffleBag(disses), botLines: botComebacks },
-  praise: { header: '💖 **PRAISED**', next: shuffleBag(praises), botLines: botPraises },
+  roast: { header: '🔥 **ROASTED**', next: shuffleBag('disses', disses), botLines: botComebacks },
+  praise: { header: '💖 **PRAISED**', next: shuffleBag('praises', praises), botLines: botPraises },
 };
 
 type Mode = keyof typeof verdicts | 'random';
