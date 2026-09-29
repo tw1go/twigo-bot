@@ -18,5 +18,6 @@ export const banterLines = [
   'MAMAAAAAA!!!!',
   'hei bugrit',
   'ᵈᶦ ᵖᵃʳᶦⁿ ˢʸᵃ ⁿᵃᵐᵃᵐᵃᵗᵃʸ',
-  'haha baleeeew!'
+  'haha baleeeew!',
+  'meron na namang tumalong?',
 ];
