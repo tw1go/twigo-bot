@@ -3,7 +3,7 @@ export const banterLines = [
   'aka poknat',
   'junwuu igit',
   'biiiikoooo kalabasa',
-  'gising ba ang diablo?',
+  'gising na ba ang diablo?',
   'wheelchair ni pittu may turbo',
   'edi wow',
   'oh, bat di ka nagdunk?',
@@ -12,4 +12,10 @@ export const banterLines = [
   'scel kalbo',
   'paa ni ogiwts',
   'agnas',
+  'amats amats',
+  'galeng mo ser',
+  'ya penge barya',
+  'MAMAAAAAA!!!!',
+  'hei bugrit',
+  'ᵈᶦ ᵖᵃʳᶦⁿ ˢʸᵃ ⁿᵃᵐᵃᵐᵃᵗᵃʸ'
 ];
