@@ -1,0 +1,16 @@
+[Unit]
+Description=twigo Discord bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=twigo
+WorkingDirectory=/opt/twigo-bot
+ExecStart=/usr/bin/node dist/index.js
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target

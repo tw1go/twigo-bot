@@ -1,0 +1,24 @@
+import { Client, Events, GatewayIntentBits } from 'discord.js';
+import { config } from './config.js';
+import { onInteractionCreate } from './events/interactionCreate.js';
+import { startScheduler } from './scheduler.js';
+
+const client = new Client({
+  intents: [GatewayIntentBits.Guilds],
+});
+
+client.once(Events.ClientReady, (c) => {
+  console.log(`Logged in as ${c.user.tag}`);
+  startScheduler(c);
+});
+
+client.on(Events.InteractionCreate, onInteractionCreate);
+
+const shutdown = async () => {
+  await client.destroy();
+  process.exit(0);
+};
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
+
+await client.login(config.token);
