@@ -4,6 +4,7 @@ import { askAdmin, closePoll, remindParticipants, startMatch } from '../match/fl
 import { postRolePanel, startMineWars, warnMineWars } from '../minewars/flow.js';
 import { sendGreeting } from '../greetings/flow.js';
 import { reset, resetAll } from '../credits/store.js';
+import { sendBanter } from '../banter/flow.js';
 
 // Manually trigger each scheduled step — for testing or if something was missed.
 const abfSteps: Record<string, (c: Client) => Promise<void>> = {
@@ -51,25 +52,32 @@ export const twigo: Command = {
         .setDescription('Morning greeting: send one now')
         .addChoices({ name: 'send now', value: 'send' }),
     )
+    .addStringOption((o) =>
+      o
+        .setName('banter')
+        .setDescription('Random chat: say a random line now')
+        .addChoices({ name: 'say something now', value: 'send' }),
+    )
     .addUserOption((o) =>
-      o.setName('reset-credits').setDescription('Reset one member\'s /diss & /praise credits (they can claim again)'),
+      o.setName('reset-credits').setDescription('Reset one member\'s /diss, /praise & /judge credits (they can claim again)'),
     )
     .addStringOption((o) =>
       o
         .setName('reset-all-credits')
-        .setDescription('Reset EVERYONE\'s /diss & /praise credits')
+        .setDescription('Reset EVERYONE\'s /diss, /praise & /judge credits')
         .addChoices({ name: 'yes, reset everyone', value: 'yes' }),
     ),
   async execute(interaction) {
     const abf = interaction.options.getString('abf');
     const mw = interaction.options.getString('mw');
     const greet = interaction.options.getString('greet');
+    const banter = interaction.options.getString('banter');
     const resetUser = interaction.options.getUser('reset-credits');
     const resetEveryone = interaction.options.getString('reset-all-credits');
-    const picked = [abf, mw, greet, resetUser, resetEveryone].filter(Boolean);
+    const picked = [abf, mw, greet, banter, resetUser, resetEveryone].filter(Boolean);
     if (picked.length !== 1) {
       await interaction.reply({
-        content: 'Pick exactly one option: `abf:`, `mw:`, `greet:`, `reset-credits:` or `reset-all-credits:`.',
+        content: 'Pick exactly one option: `abf:`, `mw:`, `greet:`, `banter:`, `reset-credits:` or `reset-all-credits:`.',
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -96,7 +104,8 @@ export const twigo: Command = {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     if (abf) await abfSteps[abf](interaction.client);
     else if (mw) await mwSteps[mw](interaction.client);
-    else await sendGreeting(interaction.client);
-    await interaction.editReply(`Ran ${abf ? `abf:${abf}` : mw ? `mw:${mw}` : 'greet:send'}`);
+    else if (greet) await sendGreeting(interaction.client);
+    else await sendBanter(interaction.client);
+    await interaction.editReply(`Ran ${abf ? `abf:${abf}` : mw ? `mw:${mw}` : greet ? 'greet:send' : 'banter:send'}`);
   },
 };

@@ -1,28 +1,28 @@
 # twigo bot — Terms of Service
 
-_Last updated: September 29, 2026 (added credits, /diss and /praise)_
+_Last updated: September 29, 2026 (added credits, /diss, /praise and /judge)_
 
 These terms apply to your use of the twigo Discord bot ("the bot", "we"). By using the bot or being a member of a server where it runs, you agree to these terms. If you don't agree, don't use the bot.
 
 ## What the bot does
 
-The bot posts scheduled reminders, event polls, participant lists, and daily greetings, lets members opt in to notification roles, and offers fun commands (`/diss` and `/praise`) that use daily credits. Features may be added, changed, or removed at any time.
+The bot posts scheduled reminders, event polls, participant lists, daily greetings, and occasional random chat messages, lets members opt in to notification roles, and offers fun commands (`/diss`, `/praise`, and `/judge`, which randomly roasts or praises someone) that use daily credits. Features may be added, changed, or removed at any time.
 
 ## Credits
 
-- Credits are claimed with `/get-credits` and spent on `/diss` and `/praise`.
+- Credits are claimed with `/get-credits` and spent on `/diss`, `/praise`, and `/judge`.
 - Credits are just for fun. They have **no money value**, can't be bought, sold, or traded, and can't be exchanged for anything.
 - Server admins and moderators can reset anyone's credits at any time, for any reason.
 - Credits may be lost if the bot's data is reset or the bot shuts down.
 
 ## Fun commands
 
-`/diss` and `/praise` are meant to be lighthearted. Don't use them to bully, harass, or target anyone. If someone asks you to stop, stop. Admins and moderators may reset your credits or block you from using the bot if you misuse them.
+`/diss`, `/praise`, and `/judge` are meant to be lighthearted. Don't use them to bully, harass, or target anyone. If someone asks you to stop, stop. Admins and moderators may reset your credits or block you from using the bot if you misuse them.
 
 ## Your responsibilities
 
 - Follow [Discord's Terms of Service](https://discord.com/terms) and [Community Guidelines](https://discord.com/guidelines).
-- Don't abuse, spam, or try to break the bot, and don't use it to harass others, including through `/diss`.
+- Don't abuse, spam, or try to break the bot, and don't use it to harass others, including through `/diss` or `/judge`.
 - Don't try to exploit bugs or gain access to anything you aren't meant to have.
 
 We may block anyone who breaks these rules from using the bot.

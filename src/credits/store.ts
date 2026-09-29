@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { today } from '../time.js';
 
-// Credits for /diss and /praise. Claim DAILY_CREDITS once per day (config.timezone); unused credits carry over.
+// Credits for /diss, /praise and /judge. Claim DAILY_CREDITS once per day (config.timezone); unused credits carry over.
 export const DAILY_CREDITS = 5;
 
 interface Account {

@@ -1,6 +1,6 @@
 # twigo bot — Privacy Policy
 
-_Last updated: September 29, 2026 (added credits, /diss and /praise)_
+_Last updated: September 29, 2026 (added credits, /diss, /praise and /judge)_
 
 This policy explains what information the twigo Discord bot ("the bot", "we") collects, why, and how it is handled. By using the bot or being a member of a server where it runs, you agree to this policy.
 
@@ -13,8 +13,8 @@ The bot only handles the minimum it needs to work.
 | Your Discord user ID | You vote in an event poll | To list participants and ping them before the event | Yes, see below |
 | Your Discord user ID and roles | You click a bot button or use a bot command | To check permissions and give or remove a role you asked for | No, only used at that moment |
 | Message and poll IDs | The bot posts an event poll or question | To find its own messages again later | Yes, see below |
-| Your Discord user ID, credit balance, and last claim date | You use `/get-credits`, `/diss`, or `/praise` | To give daily credits and track how many you have left | Yes, see below |
-| The user you pick in `/diss` or `/praise` | You use one of those commands | To mention them in the bot's reply | No, only used at that moment |
+| Your Discord user ID, credit balance, and last claim date | You use `/get-credits`, `/diss`, `/praise`, or `/judge` | To give daily credits and track how many you have left | Yes, see below |
+| The user you pick in `/diss`, `/praise`, or `/judge` | You use one of those commands | To mention them in the bot's reply | No, only used at that moment |
 
 The bot does **not** read or store the content of your messages, your direct messages, your email, your IP address, or any other personal information. It does not use the Message Content intent.
 
@@ -35,7 +35,7 @@ The bot runs on a cloud server and communicates with Discord. Your use of Discor
 
 - Don't vote in event polls if you don't want your user ID saved for an event.
 - Click the opt-in button again to remove a notification role.
-- Don't use `/get-credits`, `/diss`, or `/praise` if you don't want a credit balance saved.
+- Don't use `/get-credits`, `/diss`, `/praise`, or `/judge` if you don't want a credit balance saved.
 - Ask for your data to be deleted, and we will remove any saved user IDs and credit data of yours.
 
 ## Children

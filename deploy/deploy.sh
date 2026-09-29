@@ -4,7 +4,7 @@ set -euo pipefail
 TARGET="${1:?usage: deploy/deploy.sh user@host}"
 cd "$(dirname "$0")/.."
 
-npm run build
+rm -rf dist && npm run build
 rsync -az --delete \
   --exclude node_modules --exclude data --exclude .git --exclude src \
   --rsync-path="sudo rsync" \

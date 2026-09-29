@@ -31,12 +31,20 @@ Posts in `GREETINGS_CHANNEL_ID`: a greeting line plus a random joke, sweet messa
 Edit the lists in `src/greetings/content.ts`. Items don't repeat until each list is used up.
 Test with `/twigo greet:send`.
 
+## Random chat
+
+A few times a day (every 2–6 hours, 9 AM–11 PM) the bot says a random line in `BANTER_CHANNEL_ID`.
+Edit the lines in `src/banter/lines.ts`. Admins can trigger one with `/twigo banter:send`.
+
 ## Fun
 
-`/diss user:@someone` and `/praise user:@someone` — anyone can roast or hype someone up (lines don't repeat until all are used).
+`/twigo-help` lists all commands (admin commands are only shown to admins/mods).
+
+`/diss`, `/praise` and `/judge` (`user:@someone`, or empty for yourself) — roast, praise, or let the Tanod pick at random.
+Lines don't repeat until all are used, across all three commands.
 Each use costs 1 credit; `/get-credits` gives 5 per day (resets at midnight in `TIMEZONE`, unused credits carry over).
 Targeting yourself or the bot is free. Balances are saved in `data/credits.json`.
-Admins/mods: `/twigo reset-credits:@user` or `/twigo reset-all-credits:yes` (balance → 0, can claim again). Edit the lines in `src/commands/diss.ts` and `src/commands/praise.ts`.
+Admins/mods: `/twigo reset-credits:@user` or `/twigo reset-all-credits:yes` (balance → 0, can claim again). Edit the lines in `src/judge/lines.ts`.
 
 ## Setup
 
