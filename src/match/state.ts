@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { config } from '../config.js';
+import { today } from '../time.js';
 
 // Persisted so a restart mid-Saturday doesn't lose the poll/participants.
 export type MatchStatus = 'asked' | 'skipped' | 'polling' | 'closed';
@@ -15,9 +15,7 @@ export interface MatchState {
 const DIR = 'data';
 const FILE = `${DIR}/match-state.json`;
 
-export function today(): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: config.timezone }).format(new Date());
-}
+export { today };
 
 /** Returns today's state, or undefined if nothing has happened today. */
 export function loadToday(): MatchState | undefined {

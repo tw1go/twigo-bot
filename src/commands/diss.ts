@@ -1,5 +1,4 @@
-import { MessageFlags, SlashCommandBuilder } from 'discord.js';
-import type { Command } from '../types.js';
+import { shoutoutCommand } from './shoutout.js';
 
 // {u} is replaced with the target's mention. Keep these playful — no looks, family, or identity.
 const disses = [
@@ -23,6 +22,46 @@ const disses = [
   '{u} is the human version of a participation trophy. 🏅',
   '{u}, you\'re not useless — you can always serve as a bad example. 📚',
   '{u} studies the meta and still picks wrong. 📖',
+  '{u}, you\'re the reason the enemy team has a highlight reel. 🎬',
+  '{u} thinks "strategy" is a type of snack. 🍿',
+  '{u}, your aim is so bad even the walls feel safe. 🧱',
+  '{u} got lost in the lobby. The lobby. 🧭',
+  '{u}, you\'re not a noob — noobs at least improve. 🐣',
+  '{u} rage quits in single player. 😤',
+  '{u}, your gameplay could be used as a sleep aid. 🛌',
+  '{u} reads patch notes and still gets surprised. 📝',
+  '{u}, even autocorrect gave up on you. ⌨️',
+  '{u} brings snacks to the match and contributes nothing else. 🍪',
+  '{u}, you\'re like a software update: nobody asked for you and you take forever. 🔄',
+  '{u} is on a winning streak — of losses. 🏳️',
+  '{u}, your battle cry is just "wait for me." 🏃',
+  '{u} calls it "tactical feeding." We call it feeding. 🍽️',
+  '{u}, your teammates pray before every match you join. 🙏',
+  '{u} has 99 problems and positioning is all of them. 📍',
+  '{u}, you\'re the plot twist nobody wanted. 🌀',
+  '{u} would get outplayed by a door. 🚪',
+  '{u}, the minimap has more awareness than you. 🗺️',
+  '{u} thinks cooldowns are a suggestion. ⏲️',
+  '{u}, you have the timing of a jeepney with no schedule. 🚙',
+  '{u} shows up to Ancient Battlefield just to sightsee. 📸',
+  '{u}, you\'re so slow, the loading screen waits for YOU. 🐌',
+  '{u} is the reason we can\'t have nice things. 🧸',
+  '{u}, your game sense is on airplane mode. ✈️',
+  '{u} practices every day and somehow gets worse. 📉',
+  '{u}, you\'re the Wi-Fi signal in the bathroom: weak and unreliable. 🚽📶',
+  '{u} counters themselves. Impressive, honestly. 🔃',
+  '{u}, you\'re a limited edition — limited skill. 🏷️',
+  '{u} thinks "support" means emotional support only. 🫂',
+  '{u}, you peaked in the character select screen. 🧍',
+  '{u} gets carried so often they should pay a delivery fee. 📦',
+  '{u}, even your excuses have lag. 🐢',
+  '{u} got a participation award and still lost it. 🏆',
+  '{u}, you\'re like a phone at 1%: dramatic and about to die. 🔋',
+  '{u} brings a map to a respawn point. 🧭',
+  '{u}, the tutorial called — it wants a rematch. 📞',
+  '{u} is a legend. A cautionary one. 📜',
+  '{u}, you move like you\'re buffering in real life. ⏯️',
+  '{u} thinks the enemy nexus is a vacation spot. 🏖️',
 ];
 
 const selfDisses = [
@@ -35,32 +74,11 @@ const botComebacks = [
   'You tried to diss the bot. The bot is not impressed. 🤖',
 ];
 
-const COOLDOWN_MS = 30_000;
-const lastUsed = new Map<string, number>();
-const pick = (a: string[]) => a[Math.floor(Math.random() * a.length)];
-
-export const diss: Command = {
-  data: new SlashCommandBuilder()
-    .setName('diss')
-    .setDescription('Playfully roast someone')
-    .addUserOption((o) => o.setName('user').setDescription('Who to roast').setRequired(true)),
-  async execute(interaction) {
-    const wait = (lastUsed.get(interaction.user.id) ?? 0) + COOLDOWN_MS - Date.now();
-    if (wait > 0) {
-      await interaction.reply({
-        content: `Cool down! You can diss again in ${Math.ceil(wait / 1000)}s. 🧊`,
-        flags: MessageFlags.Ephemeral,
-      });
-      return;
-    }
-    lastUsed.set(interaction.user.id, Date.now());
-
-    const target = interaction.options.getUser('user', true);
-    let content: string;
-    if (target.id === interaction.client.user.id) content = `${interaction.user} ${pick(botComebacks)}`;
-    else if (target.id === interaction.user.id) content = `${interaction.user} ${pick(selfDisses)}`;
-    else content = pick(disses).replace('{u}', `${target}`);
-
-    await interaction.reply({ content, allowedMentions: { users: [target.id, interaction.user.id] } });
-  },
-};
+export const diss = shoutoutCommand({
+  name: 'diss',
+  description: 'Playfully roast someone',
+  userDescription: 'Who to roast',
+  lines: disses,
+  selfLines: selfDisses,
+  botLines: botComebacks,
+});

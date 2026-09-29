@@ -3,6 +3,7 @@ import type { Command } from '../types.js';
 import { askAdmin, closePoll, remindParticipants, startMatch } from '../match/flow.js';
 import { postRolePanel, startMineWars, warnMineWars } from '../minewars/flow.js';
 import { sendGreeting } from '../greetings/flow.js';
+import { reset, resetAll } from '../credits/store.js';
 
 // Manually trigger each scheduled step — for testing or if something was missed.
 const abfSteps: Record<string, (c: Client) => Promise<void>> = {
@@ -49,14 +50,46 @@ export const twigo: Command = {
         .setName('greet')
         .setDescription('Morning greeting: send one now')
         .addChoices({ name: 'send now', value: 'send' }),
+    )
+    .addUserOption((o) =>
+      o.setName('reset-credits').setDescription('Reset one member\'s /diss & /praise credits (they can claim again)'),
+    )
+    .addStringOption((o) =>
+      o
+        .setName('reset-all-credits')
+        .setDescription('Reset EVERYONE\'s /diss & /praise credits')
+        .addChoices({ name: 'yes, reset everyone', value: 'yes' }),
     ),
   async execute(interaction) {
     const abf = interaction.options.getString('abf');
     const mw = interaction.options.getString('mw');
     const greet = interaction.options.getString('greet');
-    const picked = [abf && `abf:${abf}`, mw && `mw:${mw}`, greet && 'greet:send'].filter(Boolean);
+    const resetUser = interaction.options.getUser('reset-credits');
+    const resetEveryone = interaction.options.getString('reset-all-credits');
+    const picked = [abf, mw, greet, resetUser, resetEveryone].filter(Boolean);
     if (picked.length !== 1) {
-      await interaction.reply({ content: 'Pick exactly one: `abf:`, `mw:` or `greet:`.', flags: MessageFlags.Ephemeral });
+      await interaction.reply({
+        content: 'Pick exactly one option: `abf:`, `mw:`, `greet:`, `reset-credits:` or `reset-all-credits:`.',
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    if (resetUser) {
+      const previous = reset(resetUser.id);
+      await interaction.reply({
+        content: `🔄 Reset ${resetUser}'s credits (had ${previous}). They can claim again with /get-credits.`,
+        flags: MessageFlags.Ephemeral,
+        allowedMentions: { parse: [] },
+      });
+      return;
+    }
+    if (resetEveryone) {
+      const count = resetAll();
+      await interaction.reply({
+        content: `🔄 Reset credits for ${count} member(s). Everyone can claim again with /get-credits.`,
+        flags: MessageFlags.Ephemeral,
+      });
       return;
     }
 
@@ -64,6 +97,6 @@ export const twigo: Command = {
     if (abf) await abfSteps[abf](interaction.client);
     else if (mw) await mwSteps[mw](interaction.client);
     else await sendGreeting(interaction.client);
-    await interaction.editReply(`Ran ${picked[0]}`);
+    await interaction.editReply(`Ran ${abf ? `abf:${abf}` : mw ? `mw:${mw}` : 'greet:send'}`);
   },
 };

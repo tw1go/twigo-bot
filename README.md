@@ -33,7 +33,10 @@ Test with `/twigo greet:send`.
 
 ## Fun
 
-`/diss user:@someone` — anyone can post a playful roast (30s cooldown per user). Edit the lines in `src/commands/diss.ts`.
+`/diss user:@someone` and `/praise user:@someone` — anyone can roast or hype someone up (lines don't repeat until all are used).
+Each use costs 1 credit; `/get-credits` gives 5 per day (resets at midnight in `TIMEZONE`, unused credits carry over).
+Self and bot targets are free. Balances are saved in `data/credits.json`.
+Admins/mods: `/twigo reset-credits:@user` or `/twigo reset-all-credits:yes` (balance → 0, can claim again). Edit the lines in `src/commands/diss.ts` and `src/commands/praise.ts`.
 
 ## Setup
 

@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import type { Client } from 'discord.js';
 import { config } from '../config.js';
-import { today } from '../match/state.js';
+import { today } from '../time.js';
 import { categories, greetings, type Category } from './content.js';
 import { holidayCountdown } from './countdown.js';
 
