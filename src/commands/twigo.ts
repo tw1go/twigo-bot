@@ -6,6 +6,8 @@ import { sendGreeting } from '../greetings/flow.js';
 import { reset, resetAll } from '../credits/store.js';
 import { sendBanter } from '../banter/flow.js';
 import { openAnnounceModal } from '../announce/flow.js';
+import { startPatrol } from '../games/patrol.js';
+import { drawJackpot } from '../games/jackpot.js';
 
 // Manually trigger each scheduled step — for testing or if something was missed.
 const abfSteps: Record<string, (c: Client) => Promise<void>> = {
@@ -59,6 +61,12 @@ export const twigo: Command = {
         .setDescription('Random chat: say a random line now')
         .addChoices({ name: 'say something now', value: 'send' }),
     )
+    .addStringOption((o) =>
+      o
+        .setName('game')
+        .setDescription('Games: start one now')
+        .addChoices({ name: 'start a Tanod Patrol', value: 'patrol' }, { name: 'draw the jackpot now', value: 'jackpot' }),
+    )
     .addUserOption((o) =>
       o.setName('reset-credits').setDescription('Reset one member\'s /diss, /praise & /judge credits (they can claim again)'),
     )
@@ -82,14 +90,15 @@ export const twigo: Command = {
     const mw = interaction.options.getString('mw');
     const greet = interaction.options.getString('greet');
     const banter = interaction.options.getString('banter');
+    const game = interaction.options.getString('game');
     const resetUser = interaction.options.getUser('reset-credits');
     const resetEveryone = interaction.options.getString('reset-all-credits');
     const announce = interaction.options.getChannel('announce');
     const announcePing = interaction.options.getBoolean('announce-ping');
-    const picked = [abf, mw, greet, banter, resetUser, resetEveryone, announce].filter(Boolean);
+    const picked = [abf, mw, greet, banter, game, resetUser, resetEveryone, announce].filter(Boolean);
     if (picked.length !== 1) {
       await interaction.reply({
-        content: 'Pick exactly one option: `abf:`, `mw:`, `greet:`, `banter:`, `announce:`, `reset-credits:` or `reset-all-credits:`.',
+        content: 'Pick exactly one option: `abf:`, `mw:`, `greet:`, `banter:`, `game:`, `announce:`, `reset-credits:` or `reset-all-credits:`.',
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -126,7 +135,9 @@ export const twigo: Command = {
     if (abf) await abfSteps[abf](interaction.client);
     else if (mw) await mwSteps[mw](interaction.client);
     else if (greet) await sendGreeting(interaction.client);
-    else await sendBanter(interaction.client);
-    await interaction.editReply(`Ran ${abf ? `abf:${abf}` : mw ? `mw:${mw}` : greet ? 'greet:send' : 'banter:send'}`);
+    else if (banter) await sendBanter(interaction.client);
+    else if (game === 'patrol') await startPatrol(interaction.client);
+    else await drawJackpot(interaction.client);
+    await interaction.editReply(`Ran ${abf ? `abf:${abf}` : mw ? `mw:${mw}` : greet ? 'greet:send' : banter ? 'banter:send' : `game:${game}`}`);
   },
 };

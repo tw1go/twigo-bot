@@ -1,0 +1,50 @@
+import { MessageFlags, SlashCommandBuilder } from 'discord.js';
+import type { Command } from '../types.js';
+import { add, balance, take } from '../credits/store.js';
+import { blockIfJailed, jail } from '../games/jail.js';
+
+// Coin flip: 45% win (double), 45% lose, 10% the Tanod busts you — lose the bet and 5 minutes in jail.
+const WIN_CHANCE = 0.45;
+const BUST_CHANCE = 0.1;
+const BUST_JAIL_MINUTES = 5;
+const COOLDOWN_MS = 10_000;
+const lastUsed = new Map<string, number>();
+
+export const gamble: Command = {
+  data: new SlashCommandBuilder()
+    .setName('gamble')
+    .setDescription('Bet your credits on a coin flip 🎲')
+    .addIntegerOption((o) => o.setName('amount').setDescription('How many credits to bet').setRequired(true).setMinValue(1)),
+  async execute(interaction) {
+    if (await blockIfJailed(interaction)) return;
+    const wait = (lastUsed.get(interaction.user.id) ?? 0) + COOLDOWN_MS - Date.now();
+    if (wait > 0) {
+      await interaction.reply({ content: `Easy there! Try again in ${Math.ceil(wait / 1000)}s. 🧊`, flags: MessageFlags.Ephemeral });
+      return;
+    }
+
+    const bet = interaction.options.getInteger('amount', true);
+    const have = balance(interaction.user.id);
+    if (bet > have) {
+      await interaction.reply({ content: `You only have **${have}** credit(s). 🪙 Use /get-credits or hang out in voice to earn more.`, flags: MessageFlags.Ephemeral });
+      return;
+    }
+    lastUsed.set(interaction.user.id, Date.now());
+
+    const roll = Math.random();
+    let content: string;
+    if (roll < BUST_CHANCE) {
+      take(interaction.user.id, bet);
+      await jail(interaction.user.id, BUST_JAIL_MINUTES, 'Caught gambling');
+      content = `🚨 **BUSTED!** The Tanod caught ${interaction.user} gambling! **${bet}** credit(s) confiscated and **${BUST_JAIL_MINUTES} minutes** in jail. 🚔`;
+    } else if (roll < BUST_CHANCE + WIN_CHANCE) {
+      add(interaction.user.id, bet);
+      content = `🎲 ${interaction.user} bet **${bet}** and **WON**! +${bet} credits 🤑`;
+    } else {
+      take(interaction.user.id, bet);
+      content = `🎲 ${interaction.user} bet **${bet}** and **lost** it all. 💸`;
+    }
+    content += `\n-# Balance: ${balance(interaction.user.id)} credit(s)`;
+    await interaction.reply({ content, allowedMentions: { parse: [] } });
+  },
+};

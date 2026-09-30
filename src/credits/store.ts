@@ -10,6 +10,8 @@ interface Account {
   balance: number;
   lastClaim?: string; // YYYY-MM-DD
   voiceMinutes?: number; // progress toward the next voice credit
+  voiceTotalMinutes?: number; // lifetime voice minutes, for /leaderboard
+  lastSteal?: number; // ms timestamp of last /nakaw attempt
 }
 
 const DIR = 'data';
@@ -71,6 +73,7 @@ export function addVoiceMinute(userIds: string[]): string[] {
   for (const id of userIds) {
     const account = (accounts[id] ??= { balance: 0 });
     account.voiceMinutes = (account.voiceMinutes ?? 0) + 1;
+    account.voiceTotalMinutes = (account.voiceTotalMinutes ?? 0) + 1;
     if (account.voiceMinutes >= VOICE_MINUTES_PER_CREDIT) {
       account.voiceMinutes -= VOICE_MINUTES_PER_CREDIT;
       account.balance += 1;
@@ -79,4 +82,47 @@ export function addVoiceMinute(userIds: string[]): string[] {
   }
   if (userIds.length) save();
   return earned;
+}
+
+/** Adds `amount` credits. Returns the new balance. */
+export function add(userId: string, amount: number): number {
+  const account = (accounts[userId] ??= { balance: 0 });
+  account.balance += amount;
+  save();
+  return account.balance;
+}
+
+/** Takes up to `amount` credits (never below 0). Returns how many were actually taken. */
+export function take(userId: string, amount: number): number {
+  const account = accounts[userId];
+  if (!account) return 0;
+  const taken = Math.min(amount, account.balance);
+  account.balance -= taken;
+  save();
+  return taken;
+}
+
+export function lastSteal(userId: string): number {
+  return accounts[userId]?.lastSteal ?? 0;
+}
+
+export function markSteal(userId: string): void {
+  (accounts[userId] ??= { balance: 0 }).lastSteal = Date.now();
+  save();
+}
+
+export function topBalances(limit: number): [string, number][] {
+  return Object.entries(accounts)
+    .filter(([, a]) => a.balance > 0)
+    .sort(([, a], [, b]) => b.balance - a.balance)
+    .slice(0, limit)
+    .map(([id, a]) => [id, a.balance]);
+}
+
+export function topVoice(limit: number): [string, number][] {
+  return Object.entries(accounts)
+    .filter(([, a]) => (a.voiceTotalMinutes ?? 0) > 0)
+    .sort(([, a], [, b]) => (b.voiceTotalMinutes ?? 0) - (a.voiceTotalMinutes ?? 0))
+    .slice(0, limit)
+    .map(([id, a]) => [id, a.voiceTotalMinutes ?? 0]);
 }

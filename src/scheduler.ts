@@ -6,6 +6,7 @@ import { askAdmin, closePoll, remindParticipants, startMatch } from './match/flo
 import { schedule as mineWars } from './minewars/schedule.js';
 import { startMineWars, warnMineWars } from './minewars/flow.js';
 import { sendGreeting } from './greetings/flow.js';
+import { drawJackpot } from './games/jackpot.js';
 
 export function startScheduler(client: Client): Cron[] {
   const job = (name: string, pattern: string, fn: (c: Client) => Promise<void>) =>
@@ -25,6 +26,7 @@ export function startScheduler(client: Client): Cron[] {
     job('mw:warning', mineWars.warning, warnMineWars),
     job('mw:start', mineWars.start, startMineWars),
     job('greeting', '0 7 * * *', sendGreeting), // daily 7:00 AM
+    job('jackpot', '0 22 * * *', drawJackpot), // daily 10:00 PM
   ];
   for (const j of jobs) console.log(`[scheduler] ${j.name} next run: ${j.nextRun()?.toString()}`);
   return jobs;

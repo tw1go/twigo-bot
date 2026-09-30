@@ -25,4 +25,6 @@ export const config = {
   mineWarsRoleId: required('MINE_WARS_ROLE_ID'),
   greetingsChannelId: required('GREETINGS_CHANNEL_ID'),
   banterChannelId: required('BANTER_CHANNEL_ID'),
+  gamesChannelId: required('GAMES_CHANNEL_ID'),
+  jailRoleId: required('JAIL_ROLE_ID'),
 };

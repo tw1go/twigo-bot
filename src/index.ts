@@ -4,6 +4,8 @@ import { onInteractionCreate } from './events/interactionCreate.js';
 import { startScheduler } from './scheduler.js';
 import { startBanter } from './banter/flow.js';
 import { startVoiceCredits } from './credits/voice.js';
+import { startJailWatcher } from './games/jail.js';
+import { startPatrolScheduler } from './games/patrol.js';
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates],
@@ -14,6 +16,8 @@ client.once(Events.ClientReady, (c) => {
   startScheduler(c);
   startBanter(c);
   startVoiceCredits(c);
+  startJailWatcher(c);
+  startPatrolScheduler(c);
 });
 
 client.on(Events.InteractionCreate, onInteractionCreate);

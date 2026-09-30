@@ -25,6 +25,17 @@ export const twigoHelp: Command = {
           ].join('\n'),
         },
         {
+          name: '🎰 Games',
+          value: [
+            '`/gamble amount` — coin flip: double or nothing (watch out for the Tanod 🚨)',
+            '`/steal @someone` — try to steal 1–3 credits (get caught = fine + jail)',
+            '`/jackpot tickets` — 1 credit per ticket, winner takes the pot at 10 PM',
+            '`/leaderboard` — richest members and top voice chatters',
+            '`/jail` — see who is in jail 🚔',
+            '🚨 **Tanod Patrol** — random roll call; first 3 to click win 3/2/1 credits',
+          ].join('\n'),
+        },
+        {
           name: '🪙 Credits',
           value: [
             `\`/get-credits\` — claim ${DAILY_CREDITS} credits once a day`,
@@ -53,6 +64,8 @@ export const twigoHelp: Command = {
           '`greet:send` — post a morning greeting now',
           '`banter:send` — make the Tanod say a random line now',
           '`announce:#channel` (+ `announce-ping:True` for @everyone) — post an announcement as the bot',
+          '`game:<patrol|jackpot>` — start a Tanod Patrol or draw the jackpot now',
+          '`/jail @user minutes reason` — jail someone (`minutes:0` releases)',
           '`reset-credits:@user` / `reset-all-credits:yes` — reset credits',
         ].join('\n'),
       });

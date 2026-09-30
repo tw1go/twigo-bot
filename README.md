@@ -54,6 +54,21 @@ Each use on someone else costs 1 credit. Ways to get credits:
 Targeting yourself or the bot is free. Balances are saved in `data/credits.json`.
 Admins/mods: `/twigo reset-credits:@user` or `/twigo reset-all-credits:yes` (balance → 0, can claim again). Edit the lines in `src/judge/lines.ts`.
 
+## Games
+
+All in `GAMES_CHANNEL_ID` / wherever the command is used. Jailed members can't play.
+
+- `/gamble amount` — 45% win (double), 45% lose, 10% busted by the Tanod (lose bet + 5 min jail). 10s cooldown.
+- `/steal @user` — 35% steal 1–3 credits; otherwise pay the target a 2-credit fine + 5 min jail. 1 hour cooldown;
+  you need 2+ credits and the target needs 3+.
+- `/jackpot tickets:N` — 1 credit per ticket, max 5 per person per day. Draw daily at 10 PM, weighted by tickets;
+  fewer than 2 players = refund. `/twigo game:jackpot` draws now.
+- `/leaderboard` — top 10 by credits and by voice time.
+- **Tanod Patrol** — every 3–6 hours (10 AM–10 PM) a roll call with a button; first 3 get 3/2/1 credits,
+  and if 4+ answer the slowest gets 2 min in jail. `/twigo game:patrol` starts one now.
+- `/jail` — lists who's jailed. Admins: `/jail user:@x minutes:N reason:...` (`minutes:0` releases).
+  Jailed members get `JAIL_ROLE_ID` (cosmetic only — it doesn't restrict chatting). Jail times survive restarts.
+
 ## Setup
 
 1. Create an application at https://discord.com/developers/applications, add a Bot, copy its token.
