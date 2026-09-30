@@ -22,7 +22,7 @@ The bot posts scheduled reminders, event polls, participant lists, daily greetin
 
 ## Rewards
 
-- Credits can be redeemed with `/redeem` for the rewards listed there (currently Crystal of Atlan passes). Rewards are given by the server owner, by hand, as a free gift.
+- Credits can be redeemed with `/redeem` for the rewards listed there: a **Bakod (Fence)** that blocks `/steal` against you for a few days (applied instantly by the bot), and Crystal of Atlan passes. Passes are given by the server owner, by hand, as a free gift.
 - Redeemed credits are removed right away. The owner will try to deliver the reward, but may take time, and may refuse or reverse a redemption if credits were gained by cheating, bugs, alternate accounts, or breaking these terms.
 - Rewards, prices, and availability can change or end at any time.
 - Rewards are not provided, sponsored, or endorsed by Discord or by the publisher of Crystal of Atlan.

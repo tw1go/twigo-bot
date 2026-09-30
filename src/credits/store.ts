@@ -13,6 +13,7 @@ interface Account {
   voiceTotalMinutes?: number; // lifetime voice minutes, for /leaderboard
   lastSteal?: number; // ms timestamp of last /steal attempt
   lastActive?: string; // YYYY-MM-DD of last message, voice time, or bot use
+  fenceUntil?: number; // ms timestamp — /steal is blocked until then (Bakod)
 }
 
 const DIR = 'data';
@@ -162,4 +163,19 @@ export function decayInactive(): [string, number, number][] {
   }
   save();
   return charged;
+}
+
+/** Returns when the member's Bakod (fence) ends, if they have one. */
+export function fencedUntil(userId: string): number | null {
+  const until = accounts[userId]?.fenceUntil ?? 0;
+  return until > Date.now() ? until : null;
+}
+
+/** Adds fence time, capped at maxMs from now. Returns the new end time. */
+export function addFence(userId: string, ms: number, maxMs: number): number {
+  const account = (accounts[userId] ??= { balance: 0 });
+  const start = Math.max(account.fenceUntil ?? 0, Date.now());
+  account.fenceUntil = Math.min(start + ms, Date.now() + maxMs);
+  save();
+  return account.fenceUntil;
 }

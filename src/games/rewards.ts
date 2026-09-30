@@ -5,13 +5,19 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 // Phantasium ~3.5 months, Basic ~5 months, Advanced ~7.5 months.
 export const GAME_NAME = 'Crystal of Atlan';
 
+// kind 'pass' = delivered by hand (owner is pinged); 'fence' = applied instantly by the bot.
 export const rewards = [
-  { id: 'phantasium', name: 'Phantasium Pass', cost: 1_500, emoji: '🎟️' },
-  { id: 'basic-bp', name: 'Basic Battle Pass', cost: 2_100, emoji: '⚔️' },
-  { id: 'advanced-bp', name: 'Advanced Battle Pass', cost: 3_200, emoji: '👑' },
+  { id: 'bakod', name: 'Bakod (Fence)', cost: 5, emoji: '🧱', kind: 'fence' },
+  { id: 'phantasium', name: 'Phantasium Pass', cost: 1_500, emoji: '🎟️', kind: 'pass' },
+  { id: 'basic-bp', name: 'Basic Battle Pass', cost: 2_100, emoji: '⚔️', kind: 'pass' },
+  { id: 'advanced-bp', name: 'Advanced Battle Pass', cost: 3_200, emoji: '👑', kind: 'pass' },
 ] as const;
 
 export type RewardId = (typeof rewards)[number]['id'];
+
+// Bakod (Fence): blocks /steal against you. Buying again adds more time, up to FENCE_MAX_DAYS.
+export const FENCE_DAYS = 3;
+export const FENCE_MAX_DAYS = 7;
 
 interface Redemption {
   userId: string;

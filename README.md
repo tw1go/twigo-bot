@@ -73,7 +73,8 @@ All in `GAMES_CHANNEL_ID` / wherever the command is used. Jailed members can't p
 
 ## Rewards
 
-`/redeem` lists rewards (Crystal of Atlan passes); `/redeem reward:<name>` deducts the credits and pings `REWARD_OWNER_ID`, who delivers it manually.
+`/redeem` lists rewards. **🧱 Bakod (Fence)** — 5 credits, blocks `/steal` against you for 3 days (stacks up to 7), applied instantly.
+Crystal of Atlan passes: `/redeem reward:<name>` deducts the credits and pings `REWARD_OWNER_ID`, who delivers it manually.
 Rewards and prices are in `src/games/rewards.ts`. Redemptions are logged in `data/redemptions.json`.
 
 ## Setup

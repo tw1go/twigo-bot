@@ -1,15 +1,15 @@
 import { EmbedBuilder, MessageFlags, SlashCommandBuilder } from 'discord.js';
 import type { Command } from '../types.js';
 import { config } from '../config.js';
-import { balance, take } from '../credits/store.js';
-import { GAME_NAME, recordRedemption, rewards } from '../games/rewards.js';
+import { addFence, balance, fencedUntil, take } from '../credits/store.js';
+import { FENCE_DAYS, FENCE_MAX_DAYS, GAME_NAME, recordRedemption, rewards } from '../games/rewards.js';
 
 const fmt = (n: number) => n.toLocaleString('en-US');
 
 export const redeem: Command = {
   data: new SlashCommandBuilder()
     .setName('redeem')
-    .setDescription(`Trade your credits for ${GAME_NAME} passes 🎁 (leave empty to see the list)`)
+    .setDescription(`Trade credits for a Bakod or ${GAME_NAME} passes 🎁 (leave empty to see the list)`)
     .addStringOption((o) =>
       o
         .setName('reward')
@@ -23,11 +23,14 @@ export const redeem: Command = {
     if (!choice) {
       const embed = new EmbedBuilder()
         .setColor(0x9b59b6)
-        .setTitle(`🎁 Rewards — ${GAME_NAME}`)
+        .setTitle('🎁 Rewards')
         .setDescription(
           rewards
-            .map((r) => `${r.emoji} **${r.name}** — ${fmt(r.cost)} credits ${have >= r.cost ? '✅' : `(${fmt(r.cost - have)} to go)`}`)
-            .join('\n'),
+            .map((r) => {
+              const note = r.kind === 'fence' ? ` — blocks /steal for ${FENCE_DAYS} days` : ` — ${GAME_NAME}`;
+              return `${r.emoji} **${r.name}**${note} · **${fmt(r.cost)}** credits ${have >= r.cost ? '✅' : `(${fmt(r.cost - have)} to go)`}`;
+            })
+            .join('\n') + (fencedUntil(interaction.user.id) ? `\n\n🧱 Your Bakod is up until <t:${Math.floor(fencedUntil(interaction.user.id)! / 1000)}:f>.` : ''),
         )
         .setFooter({ text: `You have ${fmt(have)} credits. Use /redeem reward:<name> to redeem.` });
       await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
@@ -39,6 +42,24 @@ export const redeem: Command = {
       await interaction.reply({
         content: `You need **${fmt(reward.cost)}** credits for the ${reward.emoji} **${reward.name}**, but you have **${fmt(have)}**. Keep grinding! 💪`,
         flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    if (reward.kind === 'fence') {
+      const current = fencedUntil(interaction.user.id);
+      if (current && current - Date.now() > (FENCE_MAX_DAYS - FENCE_DAYS) * 86_400_000) {
+        await interaction.reply({
+          content: `🧱 Your Bakod already lasts until <t:${Math.floor(current / 1000)}:f> — the max is ${FENCE_MAX_DAYS} days. Come back later!`,
+          flags: MessageFlags.Ephemeral,
+        });
+        return;
+      }
+      take(interaction.user.id, reward.cost);
+      const until = addFence(interaction.user.id, FENCE_DAYS * 86_400_000, FENCE_MAX_DAYS * 86_400_000);
+      await interaction.reply({
+        content: `🧱 ${interaction.user} built a **Bakod**! Nobody can steal from them until <t:${Math.floor(until / 1000)}:f>. 🛡️`,
+        allowedMentions: { parse: [] },
       });
       return;
     }

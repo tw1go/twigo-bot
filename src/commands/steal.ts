@@ -1,6 +1,6 @@
 import { MessageFlags, SlashCommandBuilder } from 'discord.js';
 import type { Command } from '../types.js';
-import { add, balance, lastSteal, markSteal, take } from '../credits/store.js';
+import { add, balance, fencedUntil, lastSteal, markSteal, take } from '../credits/store.js';
 import { blockIfJailed, jail } from '../games/jail.js';
 
 // 35% chance to steal 1–3 credits. Otherwise the Tanod catches you: pay a fine to your target and go to jail.
@@ -23,6 +23,9 @@ export const steal: Command = {
 
     if (target.id === thief.id) return void (await reply("You can't rob yourself. 🤔"));
     if (target.bot) return void (await reply('The Tanod bot is not afraid of you. 🤖'));
+
+    const fence = fencedUntil(target.id);
+    if (fence) return void (await reply(`🧱 ${target} has a **Bakod**! You can't steal from them until <t:${Math.floor(fence / 1000)}:f>.`));
 
     const wait = lastSteal(thief.id) + COOLDOWN_MS - Date.now();
     if (wait > 0) return void (await reply(`You're laying low. Try again <t:${Math.floor((Date.now() + wait) / 1000)}:R>. 🕶️`));
