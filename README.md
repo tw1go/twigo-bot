@@ -56,7 +56,7 @@ Boost counts come from the system channel's "just boosted" messages (Discord doe
 existing boosters were counted and paid once on first start. Fix a count with `/gift boosts`. See `src/games/boosts.ts`.
 **Give:** `/give user amount` — any member can send Kowens, max 20 per week (resets Monday).
 **Mine Wars payout:** `/gift minewars` opens a panel to pick attendance (+2) and Top 10 (3 total) for the most recent 9 PM Mine Wars,
-then pays everyone and posts a summary. A per-night ledger (`data/minewars-payouts.json`) prevents double payouts.
+then pays everyone and posts a summary (names listed, no pings). A per-night ledger (`data/minewars-payouts.json`) prevents double payouts.
 **Gifter:** `/gift kowens user amount [reason]` (negative removes) — only `REWARD_OWNER_ID` can use it.
 
 Targeting yourself or the bot is free. `/balance [user]` shows Kowens, rank, today's progress and next reward (only visible to you).

@@ -172,7 +172,7 @@ export async function handlePayoutInteraction(interaction: UserSelectMenuInterac
   const channel = await interaction.client.channels.fetch(config.gamesChannelId);
   let link = '';
   if (channel?.isSendable()) {
-    const msg = await channel.send({ content: lines.join('\n'), allowedMentions: { users: payouts.map((p) => p.id) } });
+    const msg = await channel.send({ content: lines.join('\n'), allowedMentions: { parse: [] } }); // names shown, nobody pinged
     link = `\n${msg.url}`;
   }
   await interaction.update({ content: `✅ Paid **${payouts.length}** member(s), **${total} ${kowen(total)}** in total.${link}`, components: [] });
