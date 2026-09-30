@@ -68,12 +68,51 @@ export async function drawJackpot(client: Client): Promise<void> {
     return;
   }
 
-  let pick = Math.random() * total;
-  const [winner] = entries.find(([, n]) => (pick -= n) < 0) ?? entries[entries.length - 1];
+  // Pick and pay first, so a restart mid-animation can't lose the pot.
+  const pickWeighted = () => {
+    let pick = Math.random() * total;
+    return (entries.find(([, n]) => (pick -= n) < 0) ?? entries[entries.length - 1])[0];
+  };
+  const winner = pickWeighted();
   add(winner, total);
   saveLast({ at: Date.now(), winner, pot: total, players: entries.length });
-  await channel.send({
-    content: `🎰 **JACKPOT!** <@${winner}> wins the pot of **${total} ${kowen(total)}** from ${entries.length} players! 🤑🎉`,
-    allowedMentions: { users: [winner] },
-  });
+
+  // Slot-machine reveal: edit one message through weighted random names, slowing down, landing on the winner.
+  // Edits stay ~1s+ apart to respect Discord's rate limits, and edits never ping anyone.
+  const guild = 'guild' in channel ? channel.guild : null;
+  const names = new Map<string, string>();
+  for (const [id] of entries) {
+    const member = await guild?.members.fetch(id).catch(() => null);
+    names.set(id, member?.displayName ?? (await client.users.fetch(id).catch(() => null))?.displayName ?? 'someone');
+  }
+  const header = `🎰 **Drawing the jackpot…** 🪙 **${total} ${kowen(total)}** · ${entries.length} players`;
+  const frame = (name: string, mark = '🎟️') => `${header}\n\n## ${mark} ${name} ${mark}`;
+
+  const message = await channel.send({ content: frame('❔ ❔ ❔', '🎲'), allowedMentions: { parse: [] } });
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  const delays = [1000, 1000, 1100, 1200, 1400, 1700, 2100];
+  let previous = '';
+  try {
+    for (const delay of delays) {
+      await sleep(delay);
+      let id = pickWeighted();
+      if (entries.length > 1) for (let tries = 0; id === previous && tries < 5; tries++) id = pickWeighted(); // keep it visibly moving
+      previous = id;
+      await message.edit({ content: frame(names.get(id)!), allowedMentions: { parse: [] } });
+    }
+    await sleep(2500);
+  } catch (err) {
+    console.error('[jackpot] animation failed:', err); // the winner is already paid; just reveal
+  }
+
+  await message
+    .edit({
+      content: `🎉 **JACKPOT!** 🎉\n\n## 🏆 <@${winner}> 🏆\nwins the pot of **${total} ${kowen(total)}** from ${entries.length} players! 🤑`,
+      allowedMentions: { parse: [] },
+    })
+    .catch((err) => console.error('[jackpot] reveal failed:', err));
+  // Edits don't notify, so tell the winner with one small ping.
+  await message
+    .reply({ content: `🎊 Congrats <@${winner}>, you won the jackpot! Check \`/balance\` 🪙`, allowedMentions: { users: [winner] } })
+    .catch(() => {});
 }
