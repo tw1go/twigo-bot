@@ -6,9 +6,11 @@ import { startBanter } from './banter/flow.js';
 import { startVoiceCredits } from './credits/voice.js';
 import { startJailWatcher } from './games/jail.js';
 import { startPatrolScheduler } from './games/patrol.js';
+import { touch } from './credits/store.js';
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates],
+  // GuildMessages only tells us someone posted (for inactivity); we don't have or need Message Content.
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.GuildMessages],
 });
 
 client.once(Events.ClientReady, (c) => {
@@ -21,6 +23,9 @@ client.once(Events.ClientReady, (c) => {
 });
 
 client.on(Events.InteractionCreate, onInteractionCreate);
+client.on(Events.MessageCreate, (message) => {
+  if (!message.author.bot) touch(message.author.id);
+});
 
 const shutdown = async () => {
   await client.destroy();

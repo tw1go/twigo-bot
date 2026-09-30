@@ -1,6 +1,6 @@
 # twigo bot — Terms of Service
 
-_Last updated: September 30, 2026 (added rewards)_
+_Last updated: September 30, 2026 (added inactivity decay)_
 
 These terms apply to your use of the twigo Discord bot ("the bot", "we"). By using the bot or being a member of a server where it runs, you agree to these terms. If you don't agree, don't use the bot.
 
@@ -17,14 +17,15 @@ The bot posts scheduled reminders, event polls, participant lists, daily greetin
 - `/gamble`, `/steal`, and `/jackpot` use credits only. You can't bet or lose real money.
 - The "jail" is a joke: it gives a role and blocks the bot's games for a few minutes. Admins and moderators decide who gets jailed and released.
 - Server admins and moderators can reset anyone's credits at any time, for any reason.
+- **Inactive members lose credits.** If you don't chat, join voice, or use the bot for more than 3 days, you lose 1% of your credits on the next day, 2% the day after, and so on, up to 10% per day (at least 1 credit a day). Any activity stops it.
 - Credits may be lost if the bot's data is reset or the bot shuts down. Lost credits aren't refunded.
 
 ## Rewards
 
-- Credits can be redeemed with `/redeem` for the rewards listed there (for example game passes). Rewards are given by the server owner, by hand, as a free gift.
+- Credits can be redeemed with `/redeem` for the rewards listed there (currently Crystal of Atlan passes). Rewards are given by the server owner, by hand, as a free gift.
 - Redeemed credits are removed right away. The owner will try to deliver the reward, but may take time, and may refuse or reverse a redemption if credits were gained by cheating, bugs, alternate accounts, or breaking these terms.
 - Rewards, prices, and availability can change or end at any time.
-- Rewards are not provided by Discord or by the game's publisher.
+- Rewards are not provided, sponsored, or endorsed by Discord or by the publisher of Crystal of Atlan.
 
 ## Fun commands
 

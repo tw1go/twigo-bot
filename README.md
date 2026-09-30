@@ -52,6 +52,8 @@ Each use on someone else costs 1 credit. Ways to get credits:
 - Voice chat — 1 per 15 minutes (needs 2+ people in the channel, not deafened, not the AFK channel; see `src/credits/voice.ts`)
 
 Targeting yourself or the bot is free. Balances are saved in `data/credits.json`.
+**Inactivity decay** (daily 12:05 AM): after 3 days with no message, voice time or bot use, members lose 1%, then 2%, … up to 10%/day
+(min 1 credit). Activity is tracked by date only (`GuildMessages` intent, no message content). Tune in `src/credits/store.ts`.
 Admins/mods: `/twigo reset-credits:@user` or `/twigo reset-all-credits:yes` (balance → 0, can claim again). Edit the lines in `src/judge/lines.ts`.
 
 ## Games
@@ -71,7 +73,7 @@ All in `GAMES_CHANNEL_ID` / wherever the command is used. Jailed members can't p
 
 ## Rewards
 
-`/redeem` lists rewards; `/redeem reward:<name>` deducts the credits and pings `REWARD_OWNER_ID`, who delivers it manually.
+`/redeem` lists rewards (Crystal of Atlan passes); `/redeem reward:<name>` deducts the credits and pings `REWARD_OWNER_ID`, who delivers it manually.
 Rewards and prices are in `src/games/rewards.ts`. Redemptions are logged in `data/redemptions.json`.
 
 ## Setup

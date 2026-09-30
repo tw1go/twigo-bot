@@ -1,6 +1,6 @@
 # twigo bot — Privacy Policy
 
-_Last updated: September 30, 2026 (added rewards)_
+_Last updated: September 30, 2026 (added inactivity decay)_
 
 This policy explains what information the twigo Discord bot ("the bot", "we") collects, why, and how it is handled. By using the bot or being a member of a server where it runs, you agree to this policy.
 
@@ -15,6 +15,7 @@ The bot only handles the minimum it needs to work.
 | Message and poll IDs | The bot posts an event poll or question | To find its own messages again later | Yes, see below |
 | Your Discord user ID, credit balance, and last claim date | You use `/get-credits`, `/diss`, `/praise`, or `/judge` | To give daily credits and track how many you have left | Yes, see below |
 | Whether you are in a voice channel, and if you're deafened | Every minute, while you're in voice | To give 1 credit per 15 minutes in voice chat | Only a running count of minutes toward your next credit — not which channel, who you were with, or when |
+| The date you were last active (sent a message, were in voice, or used the bot) | Whenever you're active | To take credits from inactive members | Only the date — never message content |
 | Your redemptions (reward, cost, and time) | You use `/redeem` | So the owner can deliver your reward and check it later | Yes |
 | Your jackpot tickets | You use `/jackpot` | To run the nightly draw | Until the draw, then deleted |
 | Jail status, release time, and reason | You're jailed by an admin or a game | To give and remove the jail role on time | Until you're released |
@@ -22,7 +23,7 @@ The bot only handles the minimum it needs to work.
 | Your lifetime voice minutes | You're counted for voice credits | To show the `/leaderboard` | Yes, with your credits |
 | The user you pick in `/diss`, `/praise`, `/judge`, or `/steal` | You use one of those commands | To mention them in the bot's reply | No, only used at that moment |
 
-The bot does **not** listen to, record, or store any voice audio. It does **not** read or store the content of your messages, your direct messages, your email, your IP address, or any other personal information. It does not use the Message Content intent.
+The bot does **not** listen to, record, or store any voice audio. It does **not** read or store the content of your messages, your direct messages, your email, your IP address, or any other personal information. It does not use the Message Content intent: when you send a message, the bot only notes the date you were active.
 
 ## How long data is kept
 

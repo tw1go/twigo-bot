@@ -2,14 +2,14 @@ import { EmbedBuilder, MessageFlags, SlashCommandBuilder } from 'discord.js';
 import type { Command } from '../types.js';
 import { config } from '../config.js';
 import { balance, take } from '../credits/store.js';
-import { recordRedemption, rewards } from '../games/rewards.js';
+import { GAME_NAME, recordRedemption, rewards } from '../games/rewards.js';
 
 const fmt = (n: number) => n.toLocaleString('en-US');
 
 export const redeem: Command = {
   data: new SlashCommandBuilder()
     .setName('redeem')
-    .setDescription('Trade your credits for rewards 🎁 (leave empty to see the list)')
+    .setDescription(`Trade your credits for ${GAME_NAME} passes 🎁 (leave empty to see the list)`)
     .addStringOption((o) =>
       o
         .setName('reward')
@@ -23,7 +23,7 @@ export const redeem: Command = {
     if (!choice) {
       const embed = new EmbedBuilder()
         .setColor(0x9b59b6)
-        .setTitle('🎁 Rewards')
+        .setTitle(`🎁 Rewards — ${GAME_NAME}`)
         .setDescription(
           rewards
             .map((r) => `${r.emoji} **${r.name}** — ${fmt(r.cost)} credits ${have >= r.cost ? '✅' : `(${fmt(r.cost - have)} to go)`}`)
@@ -48,7 +48,7 @@ export const redeem: Command = {
     console.log(`[redeem] ${interaction.user.id} redeemed ${reward.id} for ${reward.cost}`);
     await interaction.reply({
       content:
-        `🎉 ${interaction.user} redeemed the ${reward.emoji} **${reward.name}** for **${fmt(reward.cost)}** credits!\n` +
+        `🎉 ${interaction.user} redeemed the ${reward.emoji} **${GAME_NAME} ${reward.name}** for **${fmt(reward.cost)}** credits!\n` +
         `<@${config.rewardOwnerId}> — please send it over. 🫡`,
       allowedMentions: { users: [config.rewardOwnerId] },
     });

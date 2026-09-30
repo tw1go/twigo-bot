@@ -4,6 +4,7 @@ import { BUTTON_NO, BUTTON_YES, handleAnswer } from '../match/flow.js';
 import { BUTTON_TOGGLE_ROLE, handleToggleRole } from '../minewars/flow.js';
 import { handleAnnounceModal, isAnnounceModal } from '../announce/flow.js';
 import { BUTTON_PATROL, handlePatrolButton } from '../games/patrol.js';
+import { touch } from '../credits/store.js';
 
 const buttonHandlers: Record<string, (i: ButtonInteraction) => Promise<void>> = {
   [BUTTON_YES]: handleAnswer,
@@ -13,6 +14,8 @@ const buttonHandlers: Record<string, (i: ButtonInteraction) => Promise<void>> = 
 };
 
 export async function onInteractionCreate(interaction: Interaction) {
+  touch(interaction.user.id);
+
   if (interaction.isButton()) {
     const handler = buttonHandlers[interaction.customId];
     if (!handler) return;
