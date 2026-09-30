@@ -59,6 +59,7 @@ export const ITEMS: Item[] = [
   item('hypercrade-wheels', "Hypercrade's Hot Wheels", '🏎️', 4, 'rare', true),
   item('hei-battery', "Hei's 20% Battery", '🪫', 5, 'epic', true),
   item('nami-plate', "Nami's Silver Plate", '🍽️', 6, 'epic', true),
+  item('scel-burrito', "Scel's Burrito", '🌯', 6, 'epic', true),
   item('jord-fork', 'Fork of Jord', '🍴', 7, 'epic', true),
   item('nyaru-cardboard', "Nyaru's Cardboard", '📦', 7, 'epic', true),
   item('ushiik-keycaps', "ushiik's Keycaps", '⌨️', 7, 'epic', true),
