@@ -23,5 +23,6 @@ export const banterLines = [
   'pamana',
   'bat ka galet?',
   'alam mo mas masakit? pag may makita kang karton at plastic ng jollibee sa basurahan at di ka binigyan',
-  'tara egg heist, booooi!'
+  'tara egg heist, booooi!',
+  'walang kanen buseeeeng?!'
 ];
