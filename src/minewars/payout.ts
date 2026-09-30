@@ -168,7 +168,7 @@ export async function handlePayoutInteraction(interaction: UserSelectMenuInterac
     `**⛏️ Mine Wars rewards — ${nightLabel(session.night)}, 9 PM · ${MW_SERVER}** 🪙`,
     tops.length ? `\n🏆 **Top 10**\n${tops.map((p) => `<@${p.id}> +${p.amount}`).join(' · ')}` : '',
     attendees.length ? `\n✅ **Attendance**\n${attendees.map((p) => `<@${p.id}> +${p.amount}`).join(' · ')}` : '',
-    `\n-# Salamat sa pagsali! Only Mine Wars in the ${MW_SERVER} server counts. Check your Kowens with /balance.`,
+    `\n-# Thank you for joining! Only Mine Wars in the ${MW_SERVER} server counts. Check your Kowens with /balance.`,
   ].filter(Boolean);
 
   const channel = await interaction.client.channels.fetch(config.gamesChannelId);
