@@ -1,9 +1,50 @@
-import { MessageFlags, SlashCommandBuilder } from 'discord.js';
+import { EmbedBuilder, MessageFlags, SlashCommandBuilder } from 'discord.js';
+import { Cron } from 'croner';
+import { config } from '../config.js';
 import type { Command } from '../types.js';
 import { balance, take } from '../credits/store.js';
 import { blockIfJailed } from '../games/jail.js';
-import { DRAW_LABEL, MAX_TICKETS, addTickets, players, pot, ticketsOf } from '../games/jackpot.js';
+import { DRAW_LABEL, MAX_TICKETS, addTickets, entries, lastDraw, players, pot, ticketsOf } from '../games/jackpot.js';
 import { kowen } from '../kowens.js';
+
+/** The /jackpot check: pot, who's in, your odds, countdown and last winner. */
+function statusCard(userId: string): EmbedBuilder {
+  const total = pot();
+  const mine = ticketsOf(userId);
+  const next = new Cron('0 22 * * *', { timezone: config.timezone }).nextRun()!;
+  const ts = Math.floor(next.getTime() / 1000);
+  const list = entries();
+
+  const embed = new EmbedBuilder()
+    .setColor(0xf1c40f)
+    .setTitle('🎰 Tonight\'s Jackpot')
+    .setDescription(`## 🪙 ${total} ${kowen(total)} in the pot\nDraw at <t:${ts}:t> (<t:${ts}:R>)`)
+    .addFields(
+      {
+        name: `🎟️ Players (${list.length})`,
+        value: list.length
+          ? list.map(([id, n]) => `<@${id}> — ${n} ticket${n === 1 ? '' : 's'} (${Math.round((n / total) * 100)}%)`).join('\n')
+          : '_Nobody yet — be the first!_',
+      },
+      {
+        name: '🍀 Your chance',
+        value: mine
+          ? `**${mine}** of **${total}** tickets = **${Math.round((mine / total) * 100)}%**${list.length < 2 ? '\n-# Needs at least 2 players, or everyone is refunded.' : ''}`
+          : `You're not in yet. \`/jackpot tickets:1\` to join (max ${MAX_TICKETS}).`,
+      },
+    );
+
+  const prev = lastDraw();
+  if (prev) {
+    embed.addFields({
+      name: '🏆 Last draw',
+      value: prev.winner
+        ? `<@${prev.winner}> won **${prev.pot} ${kowen(prev.pot)}** from ${prev.players} players (<t:${Math.floor(prev.at / 1000)}:d>)`
+        : `Only 1 player joined, so it was refunded (<t:${Math.floor(prev.at / 1000)}:d>)`,
+    });
+  }
+  return embed;
+}
 
 export const jackpot: Command = {
   data: new SlashCommandBuilder()
@@ -17,7 +58,7 @@ export const jackpot: Command = {
       `🎰 Pot: **${pot()}** ${kowen(pot())} from **${players()}** player(s). You have **${ticketsOf(interaction.user.id)}** ticket(s). Draw at **${DRAW_LABEL}** tonight.`;
     const count = interaction.options.getInteger('tickets');
     if (!count) {
-      await interaction.reply({ content: status(), flags: MessageFlags.Ephemeral });
+      await interaction.reply({ embeds: [statusCard(interaction.user.id)], flags: MessageFlags.Ephemeral });
       return;
     }
     if (await blockIfJailed(interaction)) return;

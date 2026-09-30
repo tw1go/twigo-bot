@@ -30,7 +30,7 @@ export const twigoHelp: Command = {
           value: [
             '`/gamble amount` — coin flip: double or nothing (watch out for the Tanod 🚨)',
             '`/steal @someone` — try to steal 1–3 Kowens (get caught = fine + jail)',
-            '`/jackpot tickets` — 1 Kowen per ticket, winner takes the pot at 10 PM',
+            '`/jackpot` — see the pot, players, your odds & last winner · `/jackpot tickets` — buy (1 Kowen each, draw at 10 PM)',
             '`/leaderboard` — richest members and top voice chatters',
             '`/jail` — see who is in jail 🚔',
             '🚨 **Tanod Patrol** — random roll call; first 3 to click win 3/2/1 Kowens',
