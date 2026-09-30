@@ -72,7 +72,7 @@ Admins/mods: `/twigo reset-kowens:@user` or `/twigo reset-all-kowens:yes` (balan
 All in `GAMES_CHANNEL_ID` / wherever the command is used. Jailed members can't play.
 
 - `/gamble amount` — 45% win (double), 45% lose, 10% busted by the Tanod (lose bet + 5 min jail). 10s cooldown.
-- `/steal @user` — 35% steal 1–3 Kowens; otherwise pay the target a 2-Kowens fine + 5 min jail. 1 hour cooldown;
+- `/steal @user` — 35% steal 2–5% of the target's Kowens (min 1–3, max 50); otherwise pay them a fine of half that (min 2) + 5 min jail. 1 hour cooldown;
   you need 2+ Kowens and the target needs 3+.
 - `/jackpot tickets:N` — 1 Kowen per ticket, max 5 per person per day. Draw daily at 10 PM, weighted by tickets;
   fewer than 2 players = refund. `/twigo game:jackpot` draws now.
