@@ -43,8 +43,8 @@ export const dig: Command = {
 
     const lines = [
       big
-        ? `🚨✨ **${r.label.toUpperCase()} FIND!** ✨🚨\n${interaction.user} dug up **${found.emoji} ${found.name}**! (${r.emoji} ${r.label} · worth **${found.value}** ${kowen(found.value)})`
-        : `⛏️ ${interaction.user} dug up **${found.emoji} ${found.name}**!\n${r.emoji} ${r.label} · worth **${found.value}** ${kowen(found.value)}`,
+        ? `🚨✨ **${r.label.toUpperCase()} FIND!** ✨🚨\n${interaction.user} dug up…\n# ${found.emoji} ${found.name}\n${r.emoji} **${r.label}** · worth **${found.value}** ${kowen(found.value)}`
+        : `⛏️ ${interaction.user} dug up…\n## ${found.emoji} ${found.name}\n${r.emoji} ${r.label} · worth **${found.value}** ${kowen(found.value)}`,
       `-# ${left} dig${left === 1 ? '' : 's'} left today · 🪓 ${shovel} use${shovel === 1 ? '' : 's'} left on your shovel${shovel === 0 ? ' — it broke!' : ''} · 🎒 ${itemCount(id)}/${slots}`,
     ];
     // "Digging…" animation, then the reveal. The find is already saved, so a failed edit can't lose it.
