@@ -4,12 +4,12 @@ import {
   INACTIVE_GRACE_DAYS,
   VOICE_DAILY_CAP,
   VOICE_MINUTES_PER_CREDIT,
-  WEEKLY_GIVE_LIMIT,
+  DAILY_GIVE_LIMIT,
   balance,
   claimedToday,
   daysInactive,
   fencedUntil,
-  givenThisWeek,
+  givenToday,
   rankOf,
   voiceCreditsToday,
   voiceProgress,
@@ -54,7 +54,7 @@ export const balanceCommand: Command = {
           value: [
             `📅 Daily claim: ${claimedToday(id) ? '✅ claimed' : '❌ not yet — `/get-credits`'}`,
             `🎙️ Voice: **${voiceCreditsToday(id)}/${VOICE_DAILY_CAP}** ${kowen(VOICE_DAILY_CAP)} · ${voiceProgress(id)}/${VOICE_MINUTES_PER_CREDIT} min to the next`,
-            `🎁 Give: **${WEEKLY_GIVE_LIMIT - givenThisWeek(id)}/${WEEKLY_GIVE_LIMIT}** ${kowen(WEEKLY_GIVE_LIMIT)} left to give this week (resets Monday)`,
+            `🎁 Give: **${DAILY_GIVE_LIMIT - givenToday(id)}/${DAILY_GIVE_LIMIT}** ${kowen(DAILY_GIVE_LIMIT)} left to give today (resets at midnight)`,
           ].join('\n'),
         },
         {

@@ -56,7 +56,7 @@ Boost counts come from the system channel's "just boosted" messages (Discord doe
 existing boosters were counted and paid once on first start. Fix a count with `/gift boosts`. See `src/games/boosts.ts`.
 **Quests:** `/request task reward` posts a quest (1–100 Kowens, held in escrow, max 3 active). Buttons: Accept (pings the
 requester), Complete (requester pays the accepter), Give up (reopens), Cancel (refunds). Saved in `data/quests.json`.
-**Give:** `/give user amount` — any member can send Kowens, max 20 per week (resets Monday).
+**Give:** `/give user amount` — any member can send Kowens, max 20 per day (resets at midnight).
 **Mine Wars payout:** `/gift minewars` opens a panel to pick attendance (+2) and Top 10 (3 total) for the most recent 9 PM Mine Wars (Institute Walkway 07 server only),
 then pays everyone and posts a summary (names listed, no pings). A per-night ledger (`data/minewars-payouts.json`) prevents double payouts.
 **Gifter:** `/gift kowens user amount [reason]` (negative removes) — only `REWARD_OWNER_ID` can use it.

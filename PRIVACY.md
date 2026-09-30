@@ -25,7 +25,7 @@ The bot only handles the minimum it needs to work.
 | Jail status, release time, and reason | You're jailed by an admin or a game | To give and remove the jail role on time | Until you're released |
 | Time of your last `/steal` | You use `/steal` | To enforce the cooldown | Yes, with your Kowens |
 | Your lifetime voice minutes | You're counted for voice Kowens | To show the `/leaderboard` | Yes, with your Kowens |
-| How many Kowens you gave this week | You use `/give` | To enforce the weekly limit | Yes, with your Kowens (resets weekly) |
+| How many Kowens you gave today | You use `/give` | To enforce the daily limit | Yes, with your Kowens (resets daily) |
 | Mine Wars rewards you received each night | The gifter pays out a 9 PM Mine Wars | So nobody is paid twice for the same night | Yes |
 | When your Bakod (fence) ends | You redeem a Bakod | To block `/steal` against you | Yes, with your Kowens |
 | How many room finds you claimed today | You use `/claim` | To enforce the daily limit | Yes (today's count only) |

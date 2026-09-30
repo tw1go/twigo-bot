@@ -1,15 +1,15 @@
 import { MessageFlags, SlashCommandBuilder } from 'discord.js';
 import type { Command } from '../types.js';
-import { WEEKLY_GIVE_LIMIT, balance, give as giveKowens, givenThisWeek } from '../credits/store.js';
+import { DAILY_GIVE_LIMIT, balance, give as giveKowens, givenToday } from '../credits/store.js';
 import { kowen } from '../kowens.js';
 
 export const give: Command = {
   data: new SlashCommandBuilder()
     .setName('give')
-    .setDescription(`Give Kowens to a friend 🪙 (max ${WEEKLY_GIVE_LIMIT}/week) · 🌐 Everyone sees`)
+    .setDescription(`Give Kowens to a friend 🪙 (max ${DAILY_GIVE_LIMIT}/day) · 🌐 Everyone sees`)
     .addUserOption((o) => o.setName('user').setDescription('Who to give to').setRequired(true))
     .addIntegerOption((o) =>
-      o.setName('amount').setDescription(`How many Kowens (max ${WEEKLY_GIVE_LIMIT} per week)`).setRequired(true).setMinValue(1).setMaxValue(WEEKLY_GIVE_LIMIT),
+      o.setName('amount').setDescription(`How many Kowens (max ${DAILY_GIVE_LIMIT} per day)`).setRequired(true).setMinValue(1).setMaxValue(DAILY_GIVE_LIMIT),
     ),
   async execute(interaction) {
     const from = interaction.user;
@@ -22,19 +22,19 @@ export const give: Command = {
 
     const result = giveKowens(from.id, to.id, amount);
     if (!result.ok) {
-      const left = WEEKLY_GIVE_LIMIT - givenThisWeek(from.id);
+      const left = DAILY_GIVE_LIMIT - givenToday(from.id);
       return void (await reply(
         result.reason === 'balance'
           ? `You only have **${balance(from.id)}** ${kowen(balance(from.id))}. 🪙`
           : left > 0
-            ? `You can only give **${left}** more Kowens this week (limit ${WEEKLY_GIVE_LIMIT}, resets Monday). 📅`
-            : `You've used your **${WEEKLY_GIVE_LIMIT}** ${kowen(WEEKLY_GIVE_LIMIT)} gifting limit this week. It resets Monday. 📅`,
+            ? `You can only give **${left}** more Kowens today (limit ${DAILY_GIVE_LIMIT}, resets at midnight). 📅`
+            : `You've used your **${DAILY_GIVE_LIMIT}** ${kowen(DAILY_GIVE_LIMIT)} gifting limit today. It resets at midnight. 🌙`,
       ));
     }
 
-    const left = WEEKLY_GIVE_LIMIT - givenThisWeek(from.id);
+    const left = DAILY_GIVE_LIMIT - givenToday(from.id);
     await interaction.reply({
-      content: `🎁 ${from} gave **${amount}** ${kowen(amount)} to ${to}! 🪙\n-# ${from.username} can give ${left} more this week.`,
+      content: `🎁 ${from} gave **${amount}** ${kowen(amount)} to ${to}! 🪙\n-# ${from.username} can give ${left} more today.`,
       allowedMentions: { users: [to.id] },
     });
   },

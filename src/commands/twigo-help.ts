@@ -42,7 +42,7 @@ export const twigoHelp: Command = {
           name: '🪙 Kowens',
           value: [
             `\`/get-kowens\` — claim ${DAILY_CREDITS} ${kowen(DAILY_CREDITS)} once a day`,
-            '`/give @someone amount` — give a friend Kowens (max 20 per week, resets Monday)',
+            '`/give @someone amount` — give a friend Kowens (max 20 per day, resets at midnight)',
             '`/request task reward` — post a quest; the reward is held until you mark it complete 📜',
             '`/balance` — your Kowens, today\'s progress and next reward (`user:` to check someone else)',
             '`/status` — Bakod, jail, cooldowns & daily limits (`user:` to check someone else)',

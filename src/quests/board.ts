@@ -14,7 +14,7 @@ import { kowen } from '../kowens.js';
 
 // Quest board: /request posts a task with a Kowens reward held in escrow. Someone accepts (the requester is
 // pinged), then the requester marks it complete and the reward goes to them. Cancel refunds; give up reopens it.
-export const MAX_REWARD = 100; // caps how much can move per quest (/give is limited to 20/week)
+export const MAX_REWARD = 100; // caps how much can move per quest (/give is limited to 20/day)
 export const MAX_ACTIVE = 3;
 const PREFIX = 'quest:';
 
