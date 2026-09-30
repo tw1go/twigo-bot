@@ -4,6 +4,7 @@ import { config } from '../config.js';
 import { addFence, balance, fencedUntil, take } from '../credits/store.js';
 import { FENCE_DAYS, FENCE_MAX_DAYS, GAME_NAME, recordRedemption, rewards } from '../games/rewards.js';
 import { kowen } from '../kowens.js';
+import { SHOVEL_USES, addShovel } from '../dig/store.js';
 
 const fmt = (n: number) => n.toLocaleString('en-US');
 
@@ -28,7 +29,7 @@ export const redeem: Command = {
         .setDescription(
           rewards
             .map((r) => {
-              const note = r.kind === 'fence' ? ` — blocks /steal for ${FENCE_DAYS} days` : ` — ${GAME_NAME}`;
+              const note = r.kind === 'fence' ? ` — blocks /steal for ${FENCE_DAYS} days` : r.kind === 'shovel' ? ` — ${SHOVEL_USES} uses of /dig` : ` — ${GAME_NAME}`;
               return `${r.emoji} **${r.name}**${note} · **${fmt(r.cost)}** ${kowen(r.cost)} ${have >= r.cost ? '✅' : `(${fmt(r.cost - have)} to go)`}`;
             })
             .join('\n') + (fencedUntil(interaction.user.id) ? `\n\n🧱 Your Bakod is up until <t:${Math.floor(fencedUntil(interaction.user.id)! / 1000)}:f>.` : ''),
@@ -43,6 +44,16 @@ export const redeem: Command = {
       await interaction.reply({
         content: `You need **${fmt(reward.cost)}** ${kowen(reward.cost)} for the ${reward.emoji} **${reward.name}**, but you have **${fmt(have)}**. Keep grinding! 💪`,
         flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    if (reward.kind === 'shovel') {
+      take(interaction.user.id, reward.cost);
+      const uses = addShovel(interaction.user.id);
+      await interaction.reply({
+        content: `🪓 ${interaction.user} bought a **Shovel**! Time to \`/dig\` for treasure ⛏️\n-# ${uses} dig${uses === 1 ? '' : 's'} on your shovel.`,
+        allowedMentions: { parse: [] },
       });
       return;
     }

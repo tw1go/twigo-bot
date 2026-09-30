@@ -25,6 +25,11 @@ The bot posts scheduled reminders, event polls, participant lists, daily greetin
 - **Inactive members lose Kowens.** If you don't chat, join voice, or use the bot for more than 3 days, you lose 1% of your Kowens on the next day, 2% the day after, and so on, up to 10% per day (at least 1 Kowen a day). Any activity stops it.
 - Kowens may be lost if the bot's data is reset or the bot shuts down. Lost Kowens aren't refunded.
 
+## Digging & items
+
+- A **Shovel** from `/redeem` lets you `/dig` up items, which you can keep or `/sell` for Kowens.
+- Items, like Kowens, have **no value outside the bot**. Item names, rarities, drop chances, and sell prices may change at any time.
+
 ## Rewards
 
 - Kowens can be redeemed with `/redeem` for the rewards listed there: a **Bakod (Fence)** that blocks `/steal` against you for a few days (applied instantly by the bot), and Crystal of Atlan passes. Passes are given by the server owner, by hand, as a free gift.

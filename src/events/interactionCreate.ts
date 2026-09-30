@@ -56,6 +56,11 @@ export async function onInteractionCreate(interaction: Interaction) {
     return;
   }
 
+  if (interaction.isAutocomplete()) {
+    await commands.get(interaction.commandName)?.autocomplete?.(interaction).catch((err) => console.error('Autocomplete failed:', err));
+    return;
+  }
+
   if (!interaction.isChatInputCommand()) return;
 
   const command = commands.get(interaction.commandName);

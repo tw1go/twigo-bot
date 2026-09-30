@@ -5,9 +5,10 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 // saving from zero: Phantasium ~3.5 months, Basic ~5 months, Advanced ~7.5 months.
 export const GAME_NAME = 'Crystal of Atlan';
 
-// kind 'pass' = delivered by hand (owner is pinged); 'fence' = applied instantly by the bot.
+// kind 'pass' = delivered by hand (owner is pinged); 'fence' / 'shovel' = applied instantly by the bot.
 export const rewards = [
   { id: 'bakod', name: 'Bakod (Fence)', cost: 5, emoji: '🧱', kind: 'fence' },
+  { id: 'shovel', name: 'Shovel', cost: 2, emoji: '🪓', kind: 'shovel' },
   { id: 'phantasium', name: 'Phantasium Pass', cost: 1_700, emoji: '🎟️', kind: 'pass' },
   { id: 'basic-bp', name: 'Basic Battle Pass', cost: 2_450, emoji: '⚔️', kind: 'pass' },
   { id: 'advanced-bp', name: 'Advanced Battle Pass', cost: 3_650, emoji: '👑', kind: 'pass' },
