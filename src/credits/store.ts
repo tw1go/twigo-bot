@@ -5,6 +5,7 @@ import { daysBetween, today } from '../time.js';
 // Voice chat also earns 1 credit per VOICE_MINUTES_PER_CREDIT minutes (see voice.ts).
 export const DAILY_CREDITS = 5;
 export const VOICE_MINUTES_PER_CREDIT = 15;
+export const VOICE_DAILY_CAP = 12; // max voice credits per day (= 3 hours), stops AFK farming
 
 interface Account {
   balance: number;
@@ -14,6 +15,8 @@ interface Account {
   lastSteal?: number; // ms timestamp of last /steal attempt
   lastActive?: string; // YYYY-MM-DD of last message, voice time, or bot use
   fenceUntil?: number; // ms timestamp — /steal is blocked until then (Bakod)
+  voiceCreditsDay?: string; // YYYY-MM-DD that voiceCreditsToday counts
+  voiceCreditsToday?: number;
 }
 
 const DIR = 'data';
@@ -65,21 +68,35 @@ export function resetAll(): number {
   return count;
 }
 
+/** Voice credits earned today (resets at midnight). */
+export function voiceCreditsToday(userId: string): number {
+  const account = accounts[userId];
+  return account?.voiceCreditsDay === today() ? (account.voiceCreditsToday ?? 0) : 0;
+}
+
 /** Minutes of voice time banked toward the next credit. */
 export function voiceProgress(userId: string): number {
   return accounts[userId]?.voiceMinutes ?? 0;
 }
 
-/** Adds one voice minute to each user; awards a credit every VOICE_MINUTES_PER_CREDIT. Returns who earned one. */
+/** Adds one voice minute to each user; awards a credit every VOICE_MINUTES_PER_CREDIT, up to VOICE_DAILY_CAP a day.
+ *  Returns who earned one. Time past the cap still counts for /leaderboard and activity. */
 export function addVoiceMinute(userIds: string[]): string[] {
   const earned: string[] = [];
+  const day = today();
   for (const id of userIds) {
     const account = (accounts[id] ??= { balance: 0 });
-    account.voiceMinutes = (account.voiceMinutes ?? 0) + 1;
     account.voiceTotalMinutes = (account.voiceTotalMinutes ?? 0) + 1;
-    account.lastActive = today();
+    account.lastActive = day;
+    if (account.voiceCreditsDay !== day) {
+      account.voiceCreditsDay = day;
+      account.voiceCreditsToday = 0;
+    }
+    if ((account.voiceCreditsToday ?? 0) >= VOICE_DAILY_CAP) continue;
+    account.voiceMinutes = (account.voiceMinutes ?? 0) + 1;
     if (account.voiceMinutes >= VOICE_MINUTES_PER_CREDIT) {
       account.voiceMinutes -= VOICE_MINUTES_PER_CREDIT;
+      account.voiceCreditsToday = (account.voiceCreditsToday ?? 0) + 1;
       account.balance += 1;
       earned.push(id);
     }

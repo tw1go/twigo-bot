@@ -49,7 +49,7 @@ Lines never repeat until every line has been used, even across restarts (progres
 Lines don't repeat until all are used, across all three commands.
 Each use on someone else costs 1 credit. Ways to get credits:
 - `/get-credits` — 5 per day (resets at midnight in `TIMEZONE`; unused credits carry over)
-- Voice chat — 1 per 15 minutes (needs 2+ people in the channel, not deafened, not the AFK channel; see `src/credits/voice.ts`)
+- Voice chat — 1 per 15 minutes, **max 12 per day** (needs 2+ people in the channel, not deafened, not the AFK channel; see `src/credits/voice.ts`)
 
 Targeting yourself or the bot is free. Balances are saved in `data/credits.json`.
 **Inactivity decay** (daily 12:05 AM): after 3 days with no message, voice time or bot use, members lose 1%, then 2%, … up to 10%/day

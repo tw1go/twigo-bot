@@ -40,7 +40,7 @@ export const twigoHelp: Command = {
           value: [
             `\`/get-credits\` — claim ${DAILY_CREDITS} credits once a day`,
             '`/redeem` — 🧱 Bakod (block /steal for 3 days, 5 credits) or Crystal of Atlan passes 🎁',
-            '🎙️ Earn **1 credit per 15 min** in voice chat (with at least 1 other person, not deafened, not in AFK)',
+            '🎙️ Earn **1 credit per 15 min** in voice chat, **max 12 a day** (with at least 1 other person, not deafened, not in AFK)',
             '-# Each /diss, /praise or /judge on someone else costs 1 credit. Unused credits carry over.',
             '-# ⚠️ Inactive for 3+ days? You lose a growing % of credits each day until you\'re back.',
           ].join('\n'),

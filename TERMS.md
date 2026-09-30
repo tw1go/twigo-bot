@@ -10,7 +10,7 @@ The bot posts scheduled reminders, event polls, participant lists, daily greetin
 
 ## Credits
 
-- Credits are claimed with `/get-credits`, earned by spending time in voice chat (1 credit per 15 minutes, with at least one other person, not deafened, not in the AFK channel) or in Tanod Patrol, and spent on `/diss`, `/praise`, `/judge`, the games, and `/redeem`.
+- Credits are claimed with `/get-credits`, earned by spending time in voice chat (1 credit per 15 minutes, up to 12 per day, with at least one other person, not deafened, not in the AFK channel) or in Tanod Patrol, and spent on `/diss`, `/praise`, `/judge`, the games, and `/redeem`.
 - Don't try to farm voice credits, for example with alternate accounts or by idling. Admins and moderators may reset credits earned this way.
 - **No purchase is ever needed.** Credits can't be bought, and you never pay real money to earn credits or play the bot's games.
 - Credits can't be sold, traded, or transferred between members, except through the bot's own games.
