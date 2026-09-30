@@ -13,11 +13,12 @@ import { config } from '../config.js';
 import { add } from '../credits/store.js';
 import { kowen } from '../kowens.js';
 
-// Gifter panel for the 9 PM Mine Wars payout: pick who attended and who made the Top 10, then confirm.
+// Gifter panel for the 9 PM Mine Wars payout (Institute Walkway 07 server only): pick who attended and who made the Top 10, then confirm.
 // Attendance = ATTEND_REWARD, Top 10 = TOP_REWARD total. A ledger per night prevents double payouts and
 // lets a later run upgrade someone from attendance to Top 10 (only the difference is paid).
 export const ATTEND_REWARD = 2;
 export const TOP_REWARD = 3;
+export const MW_SERVER = 'Institute Walkway 07';
 const PREFIX = 'mwpay:';
 const SESSION_MS = 14 * 60_000; // Discord interaction tokens last 15 minutes
 
@@ -72,6 +73,7 @@ function render(sessionId: string, s: Session) {
 
   const content = [
     `## ⛏️ Mine Wars payout — ${nightLabel(s.night)}, 9 PM`,
+    `-# ${MW_SERVER} server only`,
     `✅ Attended: **${s.attended.size}** selected (+${ATTEND_REWARD} each)`,
     `🏆 Top 10: **${s.top.size}** selected (${TOP_REWARD} total each — counts as attended)`,
     `🪙 Paying **${payouts.length}** member(s), **${total} ${kowen(total)}** in total`,
@@ -163,10 +165,10 @@ export async function handlePayoutInteraction(interaction: UserSelectMenuInterac
   const tops = payouts.filter((p) => p.top);
   const attendees = payouts.filter((p) => !p.top);
   const lines = [
-    `**⛏️ Mine Wars rewards — ${nightLabel(session.night)}, 9 PM** 🪙`,
+    `**⛏️ Mine Wars rewards — ${nightLabel(session.night)}, 9 PM · ${MW_SERVER}** 🪙`,
     tops.length ? `\n🏆 **Top 10**\n${tops.map((p) => `<@${p.id}> +${p.amount}`).join(' · ')}` : '',
     attendees.length ? `\n✅ **Attendance**\n${attendees.map((p) => `<@${p.id}> +${p.amount}`).join(' · ')}` : '',
-    `\n-# Salamat sa pagsali! Check your Kowens with /balance.`,
+    `\n-# Salamat sa pagsali! Only Mine Wars in the ${MW_SERVER} server counts. Check your Kowens with /balance.`,
   ].filter(Boolean);
 
   const channel = await interaction.client.channels.fetch(config.gamesChannelId);
