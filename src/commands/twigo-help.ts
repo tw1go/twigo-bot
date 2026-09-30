@@ -2,6 +2,7 @@ import { EmbedBuilder, MessageFlags, PermissionFlagsBits, SlashCommandBuilder } 
 import type { Command } from '../types.js';
 import { config } from '../config.js';
 import { DAILY_CREDITS } from '../credits/store.js';
+import { kowen } from '../kowens.js';
 
 export const twigoHelp: Command = {
   data: new SlashCommandBuilder().setName('twigo-help').setDescription('List everything the Tanod can do'),
@@ -29,7 +30,7 @@ export const twigoHelp: Command = {
           value: [
             '`/gamble amount` — coin flip: double or nothing (watch out for the Tanod 🚨)',
             '`/steal @someone` — try to steal 1–3 Kowens (get caught = fine + jail)',
-            '`/jackpot tickets` — 1 Kowens per ticket, winner takes the pot at 10 PM',
+            '`/jackpot tickets` — 1 Kowen per ticket, winner takes the pot at 10 PM',
             '`/leaderboard` — richest members and top voice chatters',
             '`/jail` — see who is in jail 🚔',
             '🚨 **Tanod Patrol** — random roll call; first 3 to click win 3/2/1 Kowens',
@@ -38,13 +39,13 @@ export const twigoHelp: Command = {
         {
           name: '🪙 Kowens',
           value: [
-            `\`/get-kowens\` — claim ${DAILY_CREDITS} Kowens once a day`,
+            `\`/get-kowens\` — claim ${DAILY_CREDITS} ${kowen(DAILY_CREDITS)} once a day`,
             '`/give @someone amount` — give a friend Kowens (max 20 per week, resets Monday)',
             '`/balance` — your Kowens, today\'s progress and next reward (`user:` to check someone else)',
             '`/redeem` — 🧱 Bakod (block /steal for 3 days, 5 Kowens) or Crystal of Atlan passes 🎁',
             '💎 **Boost the server**: +20 Kowens per boost, and 20 × your boosts every month while boosting',
-            '🎙️ Earn **1 Kowens per 15 min** in voice chat, **max 12 a day** (with at least 1 other person, not deafened, not in AFK)',
-            '-# Each /diss, /praise or /judge on someone else costs 1 Kowens. Unused Kowens carry over.',
+            '🎙️ Earn **1 Kowen per 15 min** in voice chat, **max 12 a day** (with at least 1 other person, not deafened, not in AFK)',
+            '-# Each /diss, /praise or /judge on someone else costs 1 Kowen. Unused Kowens carry over.',
             '-# ⚠️ Inactive for 3+ days? You lose a growing % of Kowens each day until you\'re back.',
           ].join('\n'),
         },

@@ -3,6 +3,7 @@ import type { Command } from '../types.js';
 import { config } from '../config.js';
 import { add, balance, take } from '../credits/store.js';
 import { BOOST_CREDITS, boostCount, setBoostCount } from '../games/boosts.js';
+import { kowen } from '../kowens.js';
 
 // Only the gifter (REWARD_OWNER_ID) can use this. Hidden from non-admins by default.
 export const gift: Command = {
@@ -41,7 +42,7 @@ export const gift: Command = {
       setBoostCount(target.id, count);
       await interaction.reply({
         content: count
-          ? `💎 ${target} is set to **${count}** boost(s) → **${BOOST_CREDITS * count}** Kowens every month.`
+          ? `💎 ${target} is set to **${count}** boost(s) → **${BOOST_CREDITS * count}** ${kowen(BOOST_CREDITS * count)} every month.`
           : `💎 Removed ${target} from monthly booster rewards.`,
         flags: MessageFlags.Ephemeral,
         allowedMentions: { parse: [] },
@@ -58,7 +59,7 @@ export const gift: Command = {
     if (amount < 0) {
       const removed = take(target.id, -amount);
       await interaction.reply({
-        content: `➖ Removed **${removed}** Kowens from ${target}. They now have **${balance(target.id)}**.${reason ? ` _${reason}_` : ''}`,
+        content: `➖ Removed **${removed}** ${kowen(removed)} from ${target}. They now have **${balance(target.id)}**.${reason ? ` _${reason}_` : ''}`,
         flags: MessageFlags.Ephemeral,
         allowedMentions: { parse: [] },
       });
@@ -67,7 +68,7 @@ export const gift: Command = {
     const now = add(target.id, amount);
     console.log(`[gift] ${target.id} +${amount}${reason ? ` (${reason})` : ''}`);
     await interaction.reply({
-      content: `🎁 ${target} received **${amount.toLocaleString('en-US')}** Kowens from the gifter!${reason ? ` _${reason}_` : ''}\n-# They now have ${now.toLocaleString('en-US')} Kowens.`,
+      content: `🎁 ${target} received **${amount.toLocaleString('en-US')}** ${kowen(amount)} from the gifter!${reason ? ` _${reason}_` : ''}\n-# They now have ${now.toLocaleString('en-US')} ${kowen(now)}.`,
       allowedMentions: { users: [target.id] },
     });
   },

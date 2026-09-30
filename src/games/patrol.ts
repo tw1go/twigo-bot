@@ -10,6 +10,7 @@ import {
 import { config } from '../config.js';
 import { add } from '../credits/store.js';
 import { blockIfJailed, jail } from './jail.js';
+import { kowen } from '../kowens.js';
 
 // Tanod Patrol: at random times the Tanod calls roll. First 3 to click win 3/2/1 credits.
 // If 4+ people answer, the slowest gets 2 minutes in jail. Nobody answers → everyone was asleep.
@@ -76,7 +77,7 @@ export async function handlePatrolButton(interaction: ButtonInteraction): Promis
   const place = active.answered.length;
   if (place <= REWARDS.length) {
     add(interaction.user.id, REWARDS[place - 1]);
-    await interaction.reply({ content: `🫡 You're #${place}! +${REWARDS[place - 1]} Kowens.`, flags: MessageFlags.Ephemeral });
+    await interaction.reply({ content: `🫡 You're #${place}! +${REWARDS[place - 1]} ${kowen(REWARDS[place - 1])}.`, flags: MessageFlags.Ephemeral });
   } else {
     await interaction.reply({ content: `🫡 You're #${place} — too slow for Kowens. Don't be the last one...`, flags: MessageFlags.Ephemeral });
   }

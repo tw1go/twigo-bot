@@ -1,6 +1,7 @@
 import { MessageFlags, SlashCommandBuilder } from 'discord.js';
 import type { Command } from '../types.js';
 import { WEEKLY_GIVE_LIMIT, balance, give as giveKowens, givenThisWeek } from '../credits/store.js';
+import { kowen } from '../kowens.js';
 
 export const give: Command = {
   data: new SlashCommandBuilder()
@@ -24,16 +25,16 @@ export const give: Command = {
       const left = WEEKLY_GIVE_LIMIT - givenThisWeek(from.id);
       return void (await reply(
         result.reason === 'balance'
-          ? `You only have **${balance(from.id)}** Kowens. 🪙`
+          ? `You only have **${balance(from.id)}** ${kowen(balance(from.id))}. 🪙`
           : left > 0
             ? `You can only give **${left}** more Kowens this week (limit ${WEEKLY_GIVE_LIMIT}, resets Monday). 📅`
-            : `You've used your **${WEEKLY_GIVE_LIMIT}** Kowens gifting limit this week. It resets Monday. 📅`,
+            : `You've used your **${WEEKLY_GIVE_LIMIT}** ${kowen(WEEKLY_GIVE_LIMIT)} gifting limit this week. It resets Monday. 📅`,
       ));
     }
 
     const left = WEEKLY_GIVE_LIMIT - givenThisWeek(from.id);
     await interaction.reply({
-      content: `🎁 ${from} gave **${amount}** Kowens to ${to}! 🪙\n-# ${from.username} can give ${left} more this week.`,
+      content: `🎁 ${from} gave **${amount}** ${kowen(amount)} to ${to}! 🪙\n-# ${from.username} can give ${left} more this week.`,
       allowedMentions: { users: [to.id] },
     });
   },

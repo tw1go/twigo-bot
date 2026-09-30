@@ -1,6 +1,7 @@
 import { EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import type { Command } from '../types.js';
 import { topBalances, topVoice } from '../credits/store.js';
+import { kowen } from '../kowens.js';
 
 const medal = (i: number) => ['🥇', '🥈', '🥉'][i] ?? `**${i + 1}.**`;
 const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)}h ${min % 60}m` : `${min}m`);
@@ -16,7 +17,7 @@ export const leaderboard: Command = {
       .addFields(
         {
           name: '💰 Richest',
-          value: rich.map(([id, n], i) => `${medal(i)} <@${id}> — ${n} Kowens`).join('\n') || '_Nobody has Kowens yet._',
+          value: rich.map(([id, n], i) => `${medal(i)} <@${id}> — ${n} ${kowen(n)}`).join('\n') || '_Nobody has Kowens yet._',
           inline: true,
         },
         {

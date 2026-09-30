@@ -4,10 +4,12 @@ import {
   INACTIVE_GRACE_DAYS,
   VOICE_DAILY_CAP,
   VOICE_MINUTES_PER_CREDIT,
+  WEEKLY_GIVE_LIMIT,
   balance,
   claimedToday,
   daysInactive,
   fencedUntil,
+  givenThisWeek,
   rankOf,
   voiceCreditsToday,
   voiceProgress,
@@ -15,6 +17,7 @@ import {
 import { jailedUntil } from '../games/jail.js';
 import { ticketsOf } from '../games/jackpot.js';
 import { rewards } from '../games/rewards.js';
+import { kowen } from '../kowens.js';
 
 const fmt = (n: number) => n.toLocaleString('en-US');
 const ts = (ms: number) => `<t:${Math.floor(ms / 1000)}:f>`;
@@ -44,13 +47,14 @@ export const balanceCommand: Command = {
     const embed = new EmbedBuilder()
       .setColor(0x2ecc71)
       .setAuthor({ name: `${target.displayName}'s balance`, iconURL: target.displayAvatarURL() })
-      .setDescription(`## 🪙 ${fmt(have)} Kowens${rank ? `\n-# #${rank} on the leaderboard` : ''}`)
+      .setDescription(`## 🪙 ${fmt(have)} ${kowen(have)}${rank ? `\n-# #${rank} on the leaderboard` : ''}`)
       .addFields(
         {
           name: 'Today',
           value: [
             `📅 Daily claim: ${claimedToday(id) ? '✅ claimed' : '❌ not yet — `/get-credits`'}`,
-            `🎙️ Voice: **${voiceCreditsToday(id)}/${VOICE_DAILY_CAP}** Kowens · ${voiceProgress(id)}/${VOICE_MINUTES_PER_CREDIT} min to the next`,
+            `🎙️ Voice: **${voiceCreditsToday(id)}/${VOICE_DAILY_CAP}** ${kowen(VOICE_DAILY_CAP)} · ${voiceProgress(id)}/${VOICE_MINUTES_PER_CREDIT} min to the next`,
+            `🎁 Give: **${WEEKLY_GIVE_LIMIT - givenThisWeek(id)}/${WEEKLY_GIVE_LIMIT}** ${kowen(WEEKLY_GIVE_LIMIT)} left to give this week (resets Monday)`,
           ].join('\n'),
         },
         {

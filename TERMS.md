@@ -12,7 +12,7 @@ The bot posts scheduled reminders, event polls, participant lists, daily greetin
 
 **Kowens** (🪙) are the server's coins — the Filipino way of saying "coins." They used to be called credits.
 
-- Kowens are claimed with `/get-kowens`, earned by spending time in voice chat (1 Kowens per 15 minutes, up to 12 per day, with at least one other person, not deafened, not in the AFK channel) or in Tanod Patrol, and spent on `/diss`, `/praise`, `/judge`, the games, and `/redeem`.
+- Kowens are claimed with `/get-kowens`, earned by spending time in voice chat (1 Kowen per 15 minutes, up to 12 per day, with at least one other person, not deafened, not in the AFK channel) or in Tanod Patrol, and spent on `/diss`, `/praise`, `/judge`, the games, and `/redeem`.
 - **Server boosters** get 20 Kowens per boost when they boost, and 20 Kowens per active boost on the 1st of every month while they keep boosting. Boosting is optional and never required to earn Kowens or rewards.
 - The server owner may gift or remove Kowens at their discretion.
 - Don't try to farm voice Kowens, for example with alternate accounts or by idling. Admins and moderators may reset Kowens earned this way.
@@ -21,7 +21,7 @@ The bot posts scheduled reminders, event polls, participant lists, daily greetin
 - `/gamble`, `/steal`, and `/jackpot` use Kowens only. You can't bet or lose real money.
 - The "jail" is a joke: it gives a role and blocks the bot's games for a few minutes. Admins and moderators decide who gets jailed and released.
 - Server admins and moderators can reset anyone's Kowens at any time, for any reason.
-- **Inactive members lose Kowens.** If you don't chat, join voice, or use the bot for more than 3 days, you lose 1% of your Kowens on the next day, 2% the day after, and so on, up to 10% per day (at least 1 Kowens a day). Any activity stops it.
+- **Inactive members lose Kowens.** If you don't chat, join voice, or use the bot for more than 3 days, you lose 1% of your Kowens on the next day, 2% the day after, and so on, up to 10% per day (at least 1 Kowen a day). Any activity stops it.
 - Kowens may be lost if the bot's data is reset or the bot shuts down. Lost Kowens aren't refunded.
 
 ## Rewards

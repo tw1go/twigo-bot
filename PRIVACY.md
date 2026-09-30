@@ -14,7 +14,7 @@ The bot only handles the minimum it needs to work.
 | Your Discord user ID and roles | You click a bot button or use a bot command | To check permissions and give or remove a role you asked for | No, only used at that moment |
 | Message and poll IDs | The bot posts an event poll or question | To find its own messages again later | Yes, see below |
 | Your Discord user ID, Kowens balance, and last claim date | You use `/get-kowens`, `/diss`, `/praise`, or `/judge` | To give daily Kowens and track how many you have left | Yes, see below |
-| Whether you are in a voice channel, and if you're deafened | Every minute, while you're in voice | To give 1 Kowens per 15 minutes in voice chat | Only a running count of minutes toward your next Kowens — not which channel, who you were with, or when |
+| Whether you are in a voice channel, and if you're deafened | Every minute, while you're in voice | To give 1 Kowen per 15 minutes in voice chat | Only a running count of minutes toward your next Kowens — not which channel, who you were with, or when |
 | The date you were last active (sent a message, were in voice, or used the bot) | Whenever you're active | To take Kowens from inactive members | Only the date — never message content |
 | Your redemptions (reward, cost, and time) | You use `/redeem` | So the owner can deliver your reward and check it later | Yes |
 | Whether you boost the server, since when, and how many boosts | You boost the server | To give booster Kowens every month | Until you stop boosting |

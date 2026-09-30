@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { MessageType, type Client, type Guild, type Message } from 'discord.js';
 import { config } from '../config.js';
 import { add } from '../credits/store.js';
+import { kowen } from '../kowens.js';
 
 // Server boost rewards: BOOST_CREDITS per boost right away, then BOOST_CREDITS × boost count on the 1st of every month
 // while they keep boosting. Discord doesn't give bots per-member boost counts, so we count the "just boosted"
@@ -85,7 +86,7 @@ export async function onBoostMessage(message: Message): Promise<void> {
     await channel.send({
       content:
         `💎 **${message.author} just boosted the server!** Salamat po! 🫡\n` +
-        `🪙 You've been credited **+${BOOST_CREDITS} Kowens**, and you'll get **${BOOST_CREDITS * count}** every month while you keep boosting ` +
+        `🪙 You've been credited **+${BOOST_CREDITS} ${kowen(BOOST_CREDITS)}**, and you'll get **${BOOST_CREDITS * count}** every month while you keep boosting ` +
         `(${count} boost${count === 1 ? '' : 's'}).`,
       allowedMentions: { users: [message.author.id] },
     });

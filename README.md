@@ -47,7 +47,7 @@ Lines never repeat until every line has been used, even across restarts (progres
 
 `/diss`, `/praise` and `/judge` (`user:@someone`, or empty for yourself) — roast, praise, or let the Tanod pick at random.
 Lines don't repeat until all are used, across all three commands.
-Each use on someone else costs 1 Kowens. Ways to get Kowens:
+Each use on someone else costs 1 Kowen. Ways to get Kowens:
 - `/get-kowens` — 5 per day (resets at midnight in `TIMEZONE`; unused Kowens carry over)
 - Voice chat — 1 per 15 minutes, **max 12 per day** (needs 2+ people in the channel, not deafened, not the AFK channel; see `src/credits/voice.ts`)
 
@@ -60,7 +60,7 @@ existing boosters were counted and paid once on first start. Fix a count with `/
 Targeting yourself or the bot is free. `/balance [user]` shows Kowens, rank, today's progress and next reward (only visible to you).
 Balances are saved in `data/credits.json`.
 **Inactivity decay** (daily 12:05 AM): after 3 days with no message, voice time or bot use, members lose 1%, then 2%, … up to 10%/day
-(min 1 Kowens). Activity is tracked by date only (`GuildMessages` intent, no message content). Tune in `src/credits/store.ts`.
+(min 1 Kowen). Activity is tracked by date only (`GuildMessages` intent, no message content). Tune in `src/credits/store.ts`.
 Admins/mods: `/twigo reset-kowens:@user` or `/twigo reset-all-kowens:yes` (balance → 0, can claim again). Edit the lines in `src/judge/lines.ts`.
 
 ## Games
@@ -70,7 +70,7 @@ All in `GAMES_CHANNEL_ID` / wherever the command is used. Jailed members can't p
 - `/gamble amount` — 45% win (double), 45% lose, 10% busted by the Tanod (lose bet + 5 min jail). 10s cooldown.
 - `/steal @user` — 35% steal 1–3 Kowens; otherwise pay the target a 2-Kowens fine + 5 min jail. 1 hour cooldown;
   you need 2+ Kowens and the target needs 3+.
-- `/jackpot tickets:N` — 1 Kowens per ticket, max 5 per person per day. Draw daily at 10 PM, weighted by tickets;
+- `/jackpot tickets:N` — 1 Kowen per ticket, max 5 per person per day. Draw daily at 10 PM, weighted by tickets;
   fewer than 2 players = refund. `/twigo game:jackpot` draws now.
 - `/leaderboard` — top 10 by Kowens and by voice time.
 - **Tanod Patrol** — every 3–6 hours (10 AM–10 PM) a roll call with a button; first 3 get 3/2/1 Kowens,

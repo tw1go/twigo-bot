@@ -3,6 +3,7 @@ import type { Command } from '../types.js';
 import { config } from '../config.js';
 import { addFence, balance, fencedUntil, take } from '../credits/store.js';
 import { FENCE_DAYS, FENCE_MAX_DAYS, GAME_NAME, recordRedemption, rewards } from '../games/rewards.js';
+import { kowen } from '../kowens.js';
 
 const fmt = (n: number) => n.toLocaleString('en-US');
 
@@ -14,7 +15,7 @@ export const redeem: Command = {
       o
         .setName('reward')
         .setDescription('What to redeem')
-        .addChoices(...rewards.map((r) => ({ name: `${r.name} — ${fmt(r.cost)} Kowens`, value: r.id }))),
+        .addChoices(...rewards.map((r) => ({ name: `${r.name} — ${fmt(r.cost)} ${kowen(r.cost)}`, value: r.id }))),
     ),
   async execute(interaction) {
     const have = balance(interaction.user.id);
@@ -28,11 +29,11 @@ export const redeem: Command = {
           rewards
             .map((r) => {
               const note = r.kind === 'fence' ? ` — blocks /steal for ${FENCE_DAYS} days` : ` — ${GAME_NAME}`;
-              return `${r.emoji} **${r.name}**${note} · **${fmt(r.cost)}** Kowens ${have >= r.cost ? '✅' : `(${fmt(r.cost - have)} to go)`}`;
+              return `${r.emoji} **${r.name}**${note} · **${fmt(r.cost)}** ${kowen(r.cost)} ${have >= r.cost ? '✅' : `(${fmt(r.cost - have)} to go)`}`;
             })
             .join('\n') + (fencedUntil(interaction.user.id) ? `\n\n🧱 Your Bakod is up until <t:${Math.floor(fencedUntil(interaction.user.id)! / 1000)}:f>.` : ''),
         )
-        .setFooter({ text: `You have ${fmt(have)} Kowens. Use /redeem reward:<name> to redeem.` });
+        .setFooter({ text: `You have ${fmt(have)} ${kowen(have)}. Use /redeem reward:<name> to redeem.` });
       await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
       return;
     }
@@ -40,7 +41,7 @@ export const redeem: Command = {
     const reward = rewards.find((r) => r.id === choice)!;
     if (have < reward.cost) {
       await interaction.reply({
-        content: `You need **${fmt(reward.cost)}** Kowens for the ${reward.emoji} **${reward.name}**, but you have **${fmt(have)}**. Keep grinding! 💪`,
+        content: `You need **${fmt(reward.cost)}** ${kowen(reward.cost)} for the ${reward.emoji} **${reward.name}**, but you have **${fmt(have)}**. Keep grinding! 💪`,
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -69,7 +70,7 @@ export const redeem: Command = {
     console.log(`[redeem] ${interaction.user.id} redeemed ${reward.id} for ${reward.cost}`);
     await interaction.reply({
       content:
-        `🎉 ${interaction.user} redeemed the ${reward.emoji} **${GAME_NAME} ${reward.name}** for **${fmt(reward.cost)}** Kowens!\n` +
+        `🎉 ${interaction.user} redeemed the ${reward.emoji} **${GAME_NAME} ${reward.name}** for **${fmt(reward.cost)}** ${kowen(reward.cost)}!\n` +
         `<@${config.rewardOwnerId}> — please send it over. 🫡`,
       allowedMentions: { users: [config.rewardOwnerId] },
     });

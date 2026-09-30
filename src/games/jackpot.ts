@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import type { Client } from 'discord.js';
 import { config } from '../config.js';
 import { add } from '../credits/store.js';
+import { kowen } from '../kowens.js';
 
 // Daily jackpot: tickets cost 1 credit each (up to MAX_TICKETS per person). At draw time a random ticket wins
 // the whole pot. Needs at least 2 players, otherwise everyone is refunded.
@@ -42,7 +43,7 @@ export async function drawJackpot(client: Client): Promise<void> {
     const [[id, n]] = entries;
     add(id, n);
     await channel.send({
-      content: `🎰 **Jackpot draw:** only <@${id}> joined tonight, so their **${n}** Kowens were refunded. Bring friends tomorrow!`,
+      content: `🎰 **Jackpot draw:** only <@${id}> joined tonight, so their **${n}** ${kowen(n)} ${n === 1 ? 'was' : 'were'} refunded. Bring friends tomorrow!`,
       allowedMentions: { parse: [] },
     });
     return;
@@ -52,7 +53,7 @@ export async function drawJackpot(client: Client): Promise<void> {
   const [winner] = entries.find(([, n]) => (pick -= n) < 0) ?? entries[entries.length - 1];
   add(winner, total);
   await channel.send({
-    content: `🎰 **JACKPOT!** <@${winner}> wins the pot of **${total} Kowens** from ${entries.length} players! 🤑🎉`,
+    content: `🎰 **JACKPOT!** <@${winner}> wins the pot of **${total} ${kowen(total)}** from ${entries.length} players! 🤑🎉`,
     allowedMentions: { users: [winner] },
   });
 }

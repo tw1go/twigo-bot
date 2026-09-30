@@ -25,7 +25,7 @@ export function startVoiceCredits(client: Client): void {
   setInterval(() => {
     try {
       const earned = addVoiceMinute(activeVoiceUsers(client));
-      if (earned.length) console.log(`[voice] +1 Kowens: ${earned.length} member(s)`);
+      if (earned.length) console.log(`[voice] +1 Kowen: ${earned.length} member(s)`);
     } catch (err) {
       console.error('[voice] tick failed:', err);
     }
