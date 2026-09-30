@@ -2,6 +2,7 @@ import { MessageFlags, type ButtonInteraction, type Interaction } from 'discord.
 import { commands } from '../commands/index.js';
 import { BUTTON_NO, BUTTON_YES, handleAnswer } from '../match/flow.js';
 import { BUTTON_TOGGLE_ROLE, handleToggleRole } from '../minewars/flow.js';
+import { handleAnnounceModal, isAnnounceModal } from '../announce/flow.js';
 
 const buttonHandlers: Record<string, (i: ButtonInteraction) => Promise<void>> = {
   [BUTTON_YES]: handleAnswer,
@@ -18,6 +19,19 @@ export async function onInteractionCreate(interaction: Interaction) {
     } catch (err) {
       console.error(`Error handling button ${interaction.customId}:`, err);
       const payload = { content: 'Something went wrong.', flags: MessageFlags.Ephemeral } as const;
+      if (interaction.replied || interaction.deferred) await interaction.followUp(payload);
+      else await interaction.reply(payload);
+    }
+    return;
+  }
+
+  if (interaction.isModalSubmit()) {
+    if (!isAnnounceModal(interaction.customId)) return;
+    try {
+      await handleAnnounceModal(interaction);
+    } catch (err) {
+      console.error('Error posting announcement:', err);
+      const payload = { content: 'Something went wrong posting that.', flags: MessageFlags.Ephemeral } as const;
       if (interaction.replied || interaction.deferred) await interaction.followUp(payload);
       else await interaction.reply(payload);
     }

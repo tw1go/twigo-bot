@@ -52,6 +52,7 @@ export const twigoHelp: Command = {
           '`mw:<warning|start|panel>` — send a Mine Wars message or the 🔔 opt-in panel',
           '`greet:send` — post a morning greeting now',
           '`banter:send` — make the Tanod say a random line now',
+          '`announce:#channel` (+ `announce-ping:True` for @everyone) — post an announcement as the bot',
           '`reset-credits:@user` / `reset-all-credits:yes` — reset credits',
         ].join('\n'),
       });

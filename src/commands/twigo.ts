@@ -1,10 +1,11 @@
-import { MessageFlags, PermissionFlagsBits, SlashCommandBuilder, type Client } from 'discord.js';
+import { ChannelType, MessageFlags, PermissionFlagsBits, SlashCommandBuilder, type Client } from 'discord.js';
 import type { Command } from '../types.js';
 import { askAdmin, closePoll, remindParticipants, startMatch } from '../match/flow.js';
 import { postRolePanel, startMineWars, warnMineWars } from '../minewars/flow.js';
 import { sendGreeting } from '../greetings/flow.js';
 import { reset, resetAll } from '../credits/store.js';
 import { sendBanter } from '../banter/flow.js';
+import { openAnnounceModal } from '../announce/flow.js';
 
 // Manually trigger each scheduled step — for testing or if something was missed.
 const abfSteps: Record<string, (c: Client) => Promise<void>> = {
@@ -66,6 +67,15 @@ export const twigo: Command = {
         .setName('reset-all-credits')
         .setDescription('Reset EVERYONE\'s /diss, /praise & /judge credits')
         .addChoices({ name: 'yes, reset everyone', value: 'yes' }),
+    )
+    .addChannelOption((o) =>
+      o
+        .setName('announce')
+        .setDescription('Post an announcement as the bot in this channel (opens a text box)')
+        .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement),
+    )
+    .addBooleanOption((o) =>
+      o.setName('announce-ping').setDescription('With announce: ping @everyone (default: no ping)'),
     ),
   async execute(interaction) {
     const abf = interaction.options.getString('abf');
@@ -74,12 +84,23 @@ export const twigo: Command = {
     const banter = interaction.options.getString('banter');
     const resetUser = interaction.options.getUser('reset-credits');
     const resetEveryone = interaction.options.getString('reset-all-credits');
-    const picked = [abf, mw, greet, banter, resetUser, resetEveryone].filter(Boolean);
+    const announce = interaction.options.getChannel('announce');
+    const announcePing = interaction.options.getBoolean('announce-ping');
+    const picked = [abf, mw, greet, banter, resetUser, resetEveryone, announce].filter(Boolean);
     if (picked.length !== 1) {
       await interaction.reply({
-        content: 'Pick exactly one option: `abf:`, `mw:`, `greet:`, `banter:`, `reset-credits:` or `reset-all-credits:`.',
+        content: 'Pick exactly one option: `abf:`, `mw:`, `greet:`, `banter:`, `announce:`, `reset-credits:` or `reset-all-credits:`.',
         flags: MessageFlags.Ephemeral,
       });
+      return;
+    }
+
+    if (announcePing !== null && !announce) {
+      await interaction.reply({ content: '`announce-ping:` only works together with `announce:`.', flags: MessageFlags.Ephemeral });
+      return;
+    }
+    if (announce) {
+      await openAnnounceModal(interaction, announce.id, announcePing === true);
       return;
     }
 

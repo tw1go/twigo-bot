@@ -31,6 +31,10 @@ Posts in `GREETINGS_CHANNEL_ID`: a greeting line plus a random joke, sweet messa
 Edit the lists in `src/greetings/content.ts`. Items don't repeat until each list is used up.
 Test with `/twigo greet:send`.
 
+## Announcements
+
+`/twigo announce:#channel` opens a text box and posts your message as the bot. Add `announce-ping:True` to ping @everyone.
+
 ## Random chat
 
 A few times a day (every 2–6 hours, 9 AM–11 PM) the bot says a random line in `BANTER_CHANNEL_ID`.
