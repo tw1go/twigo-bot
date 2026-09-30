@@ -29,7 +29,7 @@ export const twigoHelp: Command = {
           name: '🎰 Games',
           value: [
             '`/gamble amount` — coin flip: double or nothing (watch out for the Tanod 🚨)',
-            '`/steal @someone` — try to steal 1–3 Kowens (get caught = fine + jail)',
+            '`/steal @someone` — try to steal 1–3 Kowens (get caught = fine + jail). 🗝️ Master Key: 50% to break a Bakod',
             '`/jackpot` — see the pot, players, your odds & last winner · `/jackpot tickets` — buy (1 Kowen each, draw at 10 PM)',
             '`/leaderboard` — richest members and top voice chatters',
             '⛏️ `/dig` — dig for treasure (🪓 Shovel from `/redeem`: 3 digs each, up to 3 shovels & 9 digs a day) · `/inventory` · `/sell`',

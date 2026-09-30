@@ -19,6 +19,7 @@ interface Bag {
   shovelDay?: string; // YYYY-MM-DD that shovelsToday counts
   shovelsToday?: number;
   bags?: string[]; // bag reward ids owned (each adds slots)
+  keys?: number; // Master Keys (see /steal)
   items: Record<string, number>; // itemId -> count
 }
 
@@ -100,3 +101,21 @@ export const itemCount = (userId: string) => Object.values(bags[userId]?.items ?
 
 /** Inventory capacity: BASE_SLOTS + BAG_SLOTS for each bag owned, capped at MAX_SLOTS. */
 export const capacity = (userId: string) => Math.min(MAX_SLOTS, BASE_SLOTS + ownedBags(userId).length * BAG_SLOTS);
+
+export const masterKeys = (userId: string) => bags[userId]?.keys ?? 0;
+
+export function addMasterKey(userId: string): number {
+  const b = bag(userId);
+  b.keys = (b.keys ?? 0) + 1;
+  save();
+  return b.keys;
+}
+
+/** Uses one Master Key. Returns false if they had none. */
+export function useMasterKey(userId: string): boolean {
+  const b = bags[userId];
+  if (!b?.keys) return false;
+  b.keys -= 1;
+  save();
+  return true;
+}

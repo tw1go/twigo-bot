@@ -4,7 +4,7 @@ import { config } from '../config.js';
 import { addFence, balance, fencedUntil, take } from '../credits/store.js';
 import { BAG_SLOTS, FENCE_DAYS, FENCE_MAX_DAYS, GAME_NAME, recordRedemption, rewards } from '../games/rewards.js';
 import { kowen } from '../kowens.js';
-import { SHOVELS_PER_DAY, SHOVEL_USES, addBag, addShovel, capacity, ownedBags, shovelsBoughtToday } from '../dig/store.js';
+import { SHOVELS_PER_DAY, SHOVEL_USES, addBag, addMasterKey, addShovel, capacity, ownedBags, shovelsBoughtToday } from '../dig/store.js';
 
 const fmt = (n: number) => n.toLocaleString('en-US');
 
@@ -29,7 +29,7 @@ export const redeem: Command = {
         .setDescription(
           rewards
             .map((r) => {
-              const note = r.kind === 'fence' ? ` — blocks /steal for ${FENCE_DAYS} days` : r.kind === 'shovel' ? ` — ${SHOVEL_USES} digs, up to ${SHOVELS_PER_DAY} a day` : r.kind === 'bag' ? ` — +${BAG_SLOTS} inventory slots${ownedBags(interaction.user.id).includes(r.id) ? ' (owned ✅)' : ''}` : ` — ${GAME_NAME}`;
+              const note = r.kind === 'fence' ? ` — blocks /steal for ${FENCE_DAYS} days` : r.kind === 'shovel' ? ` — ${SHOVEL_USES} digs, up to ${SHOVELS_PER_DAY} a day` : r.kind === 'key' ? ' — 50% chance to break through a Bakod on /steal' : r.kind === 'bag' ? ` — +${BAG_SLOTS} inventory slots${ownedBags(interaction.user.id).includes(r.id) ? ' (owned ✅)' : ''}` : ` — ${GAME_NAME}`;
               return `${r.emoji} **${r.name}**${note} · **${fmt(r.cost)}** ${kowen(r.cost)} ${have >= r.cost ? '✅' : `(${fmt(r.cost - have)} to go)`}`;
             })
             .join('\n') + (fencedUntil(interaction.user.id) ? `\n\n🧱 Your Bakod is up until <t:${Math.floor(fencedUntil(interaction.user.id)! / 1000)}:f>.` : ''),
@@ -48,6 +48,16 @@ export const redeem: Command = {
       await interaction.reply({
         content: `You need **${fmt(reward.cost)}** ${kowen(reward.cost)} for the ${reward.emoji} **${reward.name}**, but you have **${fmt(have)}**. Keep grinding! 💪`,
         flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    if (reward.kind === 'key') {
+      take(interaction.user.id, reward.cost);
+      const keys = addMasterKey(interaction.user.id);
+      await interaction.reply({
+        content: `🗝️ ${interaction.user} bought a **Master Key**… no Bakod is safe now 👀\n-# You have ${keys} key${keys === 1 ? '' : 's'}. It's only used when you /steal from someone with a Bakod (50% to break in).`,
+        allowedMentions: { parse: [] },
       });
       return;
     }

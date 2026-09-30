@@ -5,11 +5,12 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 // saving from zero: Phantasium ~3.5 months, Basic ~5 months, Advanced ~7.5 months.
 export const GAME_NAME = 'Crystal of Atlan';
 
-// kind 'pass' = delivered by hand (owner is pinged); 'fence' / 'shovel' / 'bag' = applied instantly by the bot.
+// kind 'pass' = delivered by hand (owner is pinged); 'fence' / 'shovel' / 'bag' / 'key' = applied instantly by the bot.
 // Bags add BAG_SLOTS inventory slots each (10 base + 5 bags × 8 = 50 max); each bag can be bought once.
 export const rewards = [
   { id: 'bakod', name: 'Bakod (Fence)', cost: 5, emoji: '🧱', kind: 'fence' },
   { id: 'shovel', name: 'Shovel', cost: 2, emoji: '🪓', kind: 'shovel' },
+  { id: 'master-key', name: 'Master Key', cost: 5, emoji: '🗝️', kind: 'key' },
   { id: 'bag-supot', name: 'Supot (Plastic Bag)', cost: 5, emoji: '🛍️', kind: 'bag' },
   { id: 'bag-bayong', name: 'Bayong', cost: 10, emoji: '🧺', kind: 'bag' },
   { id: 'bag-backpack', name: 'School Backpack', cost: 20, emoji: '🎒', kind: 'bag' },

@@ -104,7 +104,8 @@ Balikbayan Box 35, Lola's Bottomless Bag 50) add +8 each, once each, up to 50. `
 
 ## Rewards
 
-`/redeem` lists rewards. **🧱 Bakod (Fence)** — 5 Kowens, blocks `/steal` against you for 1.5 days (stacks up to 7), applied instantly.
+`/redeem` lists rewards. **🗝️ Master Key** — 5 Kowens; on `/steal` against a Bakod, 50% it breaks in (then the normal
+steal roll), 50% it snaps. Only used up against a Bakod. **🧱 Bakod (Fence)** — 5 Kowens, blocks `/steal` against you for 1.5 days (stacks up to 7), applied instantly.
 Crystal of Atlan passes: `/redeem reward:<name>` deducts the Kowens and pings `REWARD_OWNER_ID`, who delivers it manually.
 Rewards and prices are in `src/games/rewards.ts`. Redemptions are logged in `data/redemptions.json`.
 
