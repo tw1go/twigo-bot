@@ -1,6 +1,6 @@
 # twigo bot — Privacy Policy
 
-_Last updated: September 30, 2026 (added inactivity decay)_
+_Last updated: September 30, 2026 (added booster rewards)_
 
 This policy explains what information the twigo Discord bot ("the bot", "we") collects, why, and how it is handled. By using the bot or being a member of a server where it runs, you agree to this policy.
 
@@ -17,6 +17,7 @@ The bot only handles the minimum it needs to work.
 | Whether you are in a voice channel, and if you're deafened | Every minute, while you're in voice | To give 1 credit per 15 minutes in voice chat | Only a running count of minutes toward your next credit — not which channel, who you were with, or when |
 | The date you were last active (sent a message, were in voice, or used the bot) | Whenever you're active | To take credits from inactive members | Only the date — never message content |
 | Your redemptions (reward, cost, and time) | You use `/redeem` | So the owner can deliver your reward and check it later | Yes |
+| Whether you boost the server, since when, and how many boosts | You boost the server | To give booster credits every month | Until you stop boosting |
 | Your jackpot tickets | You use `/jackpot` | To run the nightly draw | Until the draw, then deleted |
 | Jail status, release time, and reason | You're jailed by an admin or a game | To give and remove the jail role on time | Until you're released |
 | Time of your last `/steal` | You use `/steal` | To enforce the cooldown | Yes, with your credits |

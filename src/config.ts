@@ -28,4 +28,5 @@ export const config = {
   gamesChannelId: required('GAMES_CHANNEL_ID'),
   jailRoleId: required('JAIL_ROLE_ID'),
   rewardOwnerId: required('REWARD_OWNER_ID'),
+  boostChannelId: required('BOOST_CHANNEL_ID'),
 };

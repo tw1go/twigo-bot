@@ -51,7 +51,13 @@ Each use on someone else costs 1 credit. Ways to get credits:
 - `/get-credits` — 5 per day (resets at midnight in `TIMEZONE`; unused credits carry over)
 - Voice chat — 1 per 15 minutes, **max 12 per day** (needs 2+ people in the channel, not deafened, not the AFK channel; see `src/credits/voice.ts`)
 
-Targeting yourself or the bot is free. Balances are saved in `data/credits.json`.
+**Boosts:** +20 credits per boost right away, then 20 × boost count on the 1st of every month while boosting.
+Boost counts come from the system channel's "just boosted" messages (Discord doesn't expose per-member counts);
+existing boosters were counted and paid once on first start. Fix a count with `/gift boosts`. See `src/games/boosts.ts`.
+**Gifter:** `/gift credits user amount [reason]` (negative removes) — only `REWARD_OWNER_ID` can use it.
+
+Targeting yourself or the bot is free. `/balance [user]` shows credits, rank, today's progress and next reward (only visible to you).
+Balances are saved in `data/credits.json`.
 **Inactivity decay** (daily 12:05 AM): after 3 days with no message, voice time or bot use, members lose 1%, then 2%, … up to 10%/day
 (min 1 credit). Activity is tracked by date only (`GuildMessages` intent, no message content). Tune in `src/credits/store.ts`.
 Admins/mods: `/twigo reset-credits:@user` or `/twigo reset-all-credits:yes` (balance → 0, can claim again). Edit the lines in `src/judge/lines.ts`.

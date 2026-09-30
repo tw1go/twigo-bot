@@ -196,3 +196,19 @@ export function addFence(userId: string, ms: number, maxMs: number): number {
   save();
   return account.fenceUntil;
 }
+
+export function claimedToday(userId: string): boolean {
+  return accounts[userId]?.lastClaim === today();
+}
+
+/** Days since the member was last active, or null if unknown. */
+export function daysInactive(userId: string): number | null {
+  const last = accounts[userId]?.lastActive;
+  return last ? daysBetween(last, today()) : null;
+}
+
+/** 1-based rank by balance among members with credits, or null if they have none. */
+export function rankOf(userId: string): number | null {
+  if (balance(userId) <= 0) return null;
+  return Object.values(accounts).filter((a) => a.balance > balance(userId)).length + 1;
+}
