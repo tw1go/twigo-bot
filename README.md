@@ -100,7 +100,7 @@ or Everything / All Junk & Common) turns them into Kowens. Items and odds live i
 
 ## Rewards
 
-`/redeem` lists rewards. **🧱 Bakod (Fence)** — 5 Kowens, blocks `/steal` against you for 3 days (stacks up to 7), applied instantly.
+`/redeem` lists rewards. **🧱 Bakod (Fence)** — 5 Kowens, blocks `/steal` against you for 1.5 days (stacks up to 7), applied instantly.
 Crystal of Atlan passes: `/redeem reward:<name>` deducts the Kowens and pings `REWARD_OWNER_ID`, who delivers it manually.
 Rewards and prices are in `src/games/rewards.ts`. Redemptions are logged in `data/redemptions.json`.
 

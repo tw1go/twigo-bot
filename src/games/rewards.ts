@@ -17,7 +17,7 @@ export const rewards = [
 export type RewardId = (typeof rewards)[number]['id'];
 
 // Bakod (Fence): blocks /steal against you. Buying again adds more time, up to FENCE_MAX_DAYS.
-export const FENCE_DAYS = 3;
+export const FENCE_DAYS = 1.5; // nerfed from 3 on 2026-09-30; existing fences kept their end times
 export const FENCE_MAX_DAYS = 7;
 
 interface Redemption {

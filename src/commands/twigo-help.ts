@@ -43,7 +43,7 @@ export const twigoHelp: Command = {
             `\`/get-kowens\` — claim ${DAILY_CREDITS} ${kowen(DAILY_CREDITS)} once a day`,
             '`/give @someone amount` — give a friend Kowens (max 20 per week, resets Monday)',
             '`/balance` — your Kowens, today\'s progress and next reward (`user:` to check someone else)',
-            '`/redeem` — 🧱 Bakod (block /steal for 3 days, 5 Kowens) or Crystal of Atlan passes 🎁',
+            '`/redeem` — 🧱 Bakod (block /steal for 1.5 days, 5 Kowens) or Crystal of Atlan passes 🎁',
             '`/claim code` — found a Kowen in [twigo\'s room](https://tw1go.github.io)? Claim it here (3 a day)',
             '💎 **Boost the server**: +20 Kowens per boost, and 20 × your boosts every month while boosting',
             '🎙️ Earn **1 Kowen per 15 min** in voice chat, **max 12 a day** (with at least 1 other person, not deafened, not in AFK)',
