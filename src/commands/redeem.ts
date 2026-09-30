@@ -7,6 +7,7 @@ import { kowen } from '../kowens.js';
 import { SHOVELS_PER_DAY, SHOVEL_USES, addBag, addMasterKey, addShovel, capacity, ownedBags, shovelsBoughtToday } from '../dig/store.js';
 
 const fmt = (n: number) => n.toLocaleString('en-US');
+const MAX_KEYS_AT_ONCE = 10;
 
 export const redeem: Command = {
   data: new SlashCommandBuilder()
@@ -17,6 +18,9 @@ export const redeem: Command = {
         .setName('reward')
         .setDescription('What to redeem')
         .addChoices(...rewards.map((r) => ({ name: `${r.name} — ${fmt(r.cost)} ${kowen(r.cost)}`, value: r.id }))),
+    )
+    .addIntegerOption((o) =>
+      o.setName('quantity').setDescription(`How many (Shovels: up to ${SHOVELS_PER_DAY}/day · Master Keys: up to ${MAX_KEYS_AT_ONCE})`).setMinValue(1).setMaxValue(MAX_KEYS_AT_ONCE),
     ),
   async execute(interaction) {
     const have = balance(interaction.user.id);
@@ -40,23 +44,57 @@ export const redeem: Command = {
     }
 
     const reward = rewards.find((r) => r.id === choice)!;
+    const asked = interaction.options.getInteger('quantity') ?? 1;
+    const stackable = reward.kind === 'shovel' || reward.kind === 'key';
+    if (asked > 1 && !stackable) {
+      await interaction.reply({ content: `Quantity only works for the 🪓 **Shovel** and 🗝️ **Master Key**. The ${reward.emoji} **${reward.name}** is one at a time.`, flags: MessageFlags.Ephemeral });
+      return;
+    }
     if (reward.kind === 'bag' && ownedBags(interaction.user.id).includes(reward.id)) {
       await interaction.reply({ content: `You already have the ${reward.emoji} **${reward.name}**. Each bag can only be bought once. 🎒`, flags: MessageFlags.Ephemeral });
       return;
     }
-    if (have < reward.cost) {
+
+    // How many can actually be bought: Shovels are limited per day.
+    let quantity = asked;
+    if (reward.kind === 'shovel') {
+      const left = SHOVELS_PER_DAY - shovelsBoughtToday(interaction.user.id);
+      if (left <= 0) {
+        await interaction.reply({ content: `🪓 You already bought **${SHOVELS_PER_DAY}** Shovels today. The hardware store opens again tomorrow! 🌙`, flags: MessageFlags.Ephemeral });
+        return;
+      }
+      quantity = Math.min(asked, left);
+    }
+    const total = reward.cost * quantity;
+    if (have < total) {
+      const canAfford = Math.floor(have / reward.cost);
       await interaction.reply({
-        content: `You need **${fmt(reward.cost)}** ${kowen(reward.cost)} for the ${reward.emoji} **${reward.name}**, but you have **${fmt(have)}**. Keep grinding! 💪`,
+        content:
+          `You need **${fmt(total)}** ${kowen(total)} for ${quantity > 1 ? `${quantity}× ` : 'the '}${reward.emoji} **${reward.name}**, but you have **${fmt(have)}**.` +
+          (stackable && canAfford > 0 ? ` You can afford **${canAfford}**.` : ' Keep grinding! 💪'),
         flags: MessageFlags.Ephemeral,
       });
       return;
     }
 
     if (reward.kind === 'key') {
-      take(interaction.user.id, reward.cost);
-      const keys = addMasterKey(interaction.user.id);
+      take(interaction.user.id, total);
+      let keys = 0;
+      for (let i = 0; i < quantity; i++) keys = addMasterKey(interaction.user.id);
       await interaction.reply({
-        content: `🗝️ ${interaction.user} bought a **Master Key**… no Bakod is safe now 👀\n-# You have ${keys} key${keys === 1 ? '' : 's'}. It's only used when you /steal from someone with a Bakod (50% to break in).`,
+        content: `🗝️ ${interaction.user} bought ${quantity > 1 ? `**${quantity} Master Keys**` : 'a **Master Key**'}… no Bakod is safe now 👀\n-# You have ${keys} key${keys === 1 ? '' : 's'}. A key is only used when you /steal from someone with a Bakod (50% to break in).`,
+        allowedMentions: { parse: [] },
+      });
+      return;
+    }
+
+    if (reward.kind === 'shovel') {
+      take(interaction.user.id, total);
+      let uses = 0;
+      for (let i = 0; i < quantity; i++) uses = addShovel(interaction.user.id);
+      const capped = quantity < asked ? ` (you asked for ${asked}, but only ${quantity} more ${quantity === 1 ? 'was' : 'were'} available today)` : '';
+      await interaction.reply({
+        content: `🪓 ${interaction.user} bought ${quantity > 1 ? `**${quantity} Shovels**` : 'a **Shovel**'}${capped}! Time to \`/dig\` for treasure ⛏️\n-# ${uses} dig${uses === 1 ? '' : 's'} on your shovel · ${SHOVELS_PER_DAY - shovelsBoughtToday(interaction.user.id)} more shovel(s) available today.`,
         allowedMentions: { parse: [] },
       });
       return;
@@ -73,19 +111,6 @@ export const redeem: Command = {
       return;
     }
 
-    if (reward.kind === 'shovel') {
-      if (shovelsBoughtToday(interaction.user.id) >= SHOVELS_PER_DAY) {
-        await interaction.reply({ content: `🪓 You already bought **${SHOVELS_PER_DAY}** Shovels today. The hardware store opens again tomorrow! 🌙`, flags: MessageFlags.Ephemeral });
-        return;
-      }
-      take(interaction.user.id, reward.cost);
-      const uses = addShovel(interaction.user.id);
-      await interaction.reply({
-        content: `🪓 ${interaction.user} bought a **Shovel**! Time to \`/dig\` for treasure ⛏️\n-# ${uses} dig${uses === 1 ? '' : 's'} on your shovel · ${SHOVELS_PER_DAY - shovelsBoughtToday(interaction.user.id)} more shovel(s) available today.`,
-        allowedMentions: { parse: [] },
-      });
-      return;
-    }
 
     if (reward.kind === 'fence') {
       const current = fencedUntil(interaction.user.id);
