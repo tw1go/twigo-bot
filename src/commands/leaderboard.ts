@@ -16,7 +16,7 @@ export const leaderboard: Command = {
       .addFields(
         {
           name: '💰 Richest',
-          value: rich.map(([id, n], i) => `${medal(i)} <@${id}> — ${n} credit${n === 1 ? '' : 's'}`).join('\n') || '_Nobody has credits yet._',
+          value: rich.map(([id, n], i) => `${medal(i)} <@${id}> — ${n} Kowens`).join('\n') || '_Nobody has Kowens yet._',
           inline: true,
         },
         {
@@ -25,7 +25,7 @@ export const leaderboard: Command = {
           inline: true,
         },
       )
-      .setFooter({ text: 'Voice time counts since voice credits were added.' });
+      .setFooter({ text: 'Voice time counts since voice rewards were added.' });
     await interaction.reply({ embeds: [embed] }); // mentions in embeds never ping
   },
 };

@@ -68,12 +68,12 @@ export const twigo: Command = {
         .addChoices({ name: 'start a Tanod Patrol', value: 'patrol' }, { name: 'draw the jackpot now', value: 'jackpot' }),
     )
     .addUserOption((o) =>
-      o.setName('reset-credits').setDescription('Reset one member\'s /diss, /praise & /judge credits (they can claim again)'),
+      o.setName('reset-kowens').setDescription('Reset one member\'s /diss, /praise & /judge Kowens (they can claim again)'),
     )
     .addStringOption((o) =>
       o
-        .setName('reset-all-credits')
-        .setDescription('Reset EVERYONE\'s /diss, /praise & /judge credits')
+        .setName('reset-all-kowens')
+        .setDescription('Reset EVERYONE\'s /diss, /praise & /judge Kowens')
         .addChoices({ name: 'yes, reset everyone', value: 'yes' }),
     )
     .addChannelOption((o) =>
@@ -91,14 +91,14 @@ export const twigo: Command = {
     const greet = interaction.options.getString('greet');
     const banter = interaction.options.getString('banter');
     const game = interaction.options.getString('game');
-    const resetUser = interaction.options.getUser('reset-credits');
-    const resetEveryone = interaction.options.getString('reset-all-credits');
+    const resetUser = interaction.options.getUser('reset-kowens');
+    const resetEveryone = interaction.options.getString('reset-all-kowens');
     const announce = interaction.options.getChannel('announce');
     const announcePing = interaction.options.getBoolean('announce-ping');
     const picked = [abf, mw, greet, banter, game, resetUser, resetEveryone, announce].filter(Boolean);
     if (picked.length !== 1) {
       await interaction.reply({
-        content: 'Pick exactly one option: `abf:`, `mw:`, `greet:`, `banter:`, `game:`, `announce:`, `reset-credits:` or `reset-all-credits:`.',
+        content: 'Pick exactly one option: `abf:`, `mw:`, `greet:`, `banter:`, `game:`, `announce:`, `reset-kowens:` or `reset-all-kowens:`.',
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -116,7 +116,7 @@ export const twigo: Command = {
     if (resetUser) {
       const previous = reset(resetUser.id);
       await interaction.reply({
-        content: `🔄 Reset ${resetUser}'s credits (had ${previous}). They can claim again with /get-credits.`,
+        content: `🔄 Reset ${resetUser}'s Kowens (had ${previous}). They can claim again with /get-kowens.`,
         flags: MessageFlags.Ephemeral,
         allowedMentions: { parse: [] },
       });
@@ -125,7 +125,7 @@ export const twigo: Command = {
     if (resetEveryone) {
       const count = resetAll();
       await interaction.reply({
-        content: `🔄 Reset credits for ${count} member(s). Everyone can claim again with /get-credits.`,
+        content: `🔄 Reset Kowens for ${count} member(s). Everyone can claim again with /get-kowens.`,
         flags: MessageFlags.Ephemeral,
       });
       return;

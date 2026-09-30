@@ -34,14 +34,14 @@ function verdictCommand(name: string, description: string, mode: Mode): Command 
       else {
         if (!spend(interaction.user.id)) {
           await interaction.reply({
-            content: `You're out of credits! 🪙 Use /get-credits to claim your daily credits.`,
+            content: `You're out of Kowens! 🪙 Use /get-kowens to claim your daily Kowens.`,
             flags: MessageFlags.Ephemeral,
           });
           return;
         }
         const left = balance(interaction.user.id);
         line = verdict.next().replace('{u}', `${target}`);
-        footer = `\n-# ${interaction.user.username} has ${left} credit${left === 1 ? '' : 's'} left`;
+        footer = `\n-# ${interaction.user.username} has ${left} Kowens left`;
       }
 
       const header = mode === 'random' ? `🎲 The Tanod has judged ${target}...\n${verdict.header}\n` : '';

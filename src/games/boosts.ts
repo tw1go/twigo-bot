@@ -85,7 +85,7 @@ export async function onBoostMessage(message: Message): Promise<void> {
     await channel.send({
       content:
         `💎 **${message.author} just boosted the server!** Salamat po! 🫡\n` +
-        `🪙 You've been credited **+${BOOST_CREDITS} credits**, and you'll get **${BOOST_CREDITS * count}** every month while you keep boosting ` +
+        `🪙 You've been credited **+${BOOST_CREDITS} Kowens**, and you'll get **${BOOST_CREDITS * count}** every month while you keep boosting ` +
         `(${count} boost${count === 1 ? '' : 's'}).`,
       allowedMentions: { users: [message.author.id] },
     });

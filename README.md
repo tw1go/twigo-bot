@@ -47,40 +47,40 @@ Lines never repeat until every line has been used, even across restarts (progres
 
 `/diss`, `/praise` and `/judge` (`user:@someone`, or empty for yourself) — roast, praise, or let the Tanod pick at random.
 Lines don't repeat until all are used, across all three commands.
-Each use on someone else costs 1 credit. Ways to get credits:
-- `/get-credits` — 5 per day (resets at midnight in `TIMEZONE`; unused credits carry over)
+Each use on someone else costs 1 Kowens. Ways to get Kowens:
+- `/get-kowens` — 5 per day (resets at midnight in `TIMEZONE`; unused Kowens carry over)
 - Voice chat — 1 per 15 minutes, **max 12 per day** (needs 2+ people in the channel, not deafened, not the AFK channel; see `src/credits/voice.ts`)
 
-**Boosts:** +20 credits per boost right away, then 20 × boost count on the 1st of every month while boosting.
+**Boosts:** +20 Kowens per boost right away, then 20 × boost count on the 1st of every month while boosting.
 Boost counts come from the system channel's "just boosted" messages (Discord doesn't expose per-member counts);
 existing boosters were counted and paid once on first start. Fix a count with `/gift boosts`. See `src/games/boosts.ts`.
-**Gifter:** `/gift credits user amount [reason]` (negative removes) — only `REWARD_OWNER_ID` can use it.
+**Gifter:** `/gift kowens user amount [reason]` (negative removes) — only `REWARD_OWNER_ID` can use it.
 
-Targeting yourself or the bot is free. `/balance [user]` shows credits, rank, today's progress and next reward (only visible to you).
+Targeting yourself or the bot is free. `/balance [user]` shows Kowens, rank, today's progress and next reward (only visible to you).
 Balances are saved in `data/credits.json`.
 **Inactivity decay** (daily 12:05 AM): after 3 days with no message, voice time or bot use, members lose 1%, then 2%, … up to 10%/day
-(min 1 credit). Activity is tracked by date only (`GuildMessages` intent, no message content). Tune in `src/credits/store.ts`.
-Admins/mods: `/twigo reset-credits:@user` or `/twigo reset-all-credits:yes` (balance → 0, can claim again). Edit the lines in `src/judge/lines.ts`.
+(min 1 Kowens). Activity is tracked by date only (`GuildMessages` intent, no message content). Tune in `src/credits/store.ts`.
+Admins/mods: `/twigo reset-kowens:@user` or `/twigo reset-all-kowens:yes` (balance → 0, can claim again). Edit the lines in `src/judge/lines.ts`.
 
 ## Games
 
 All in `GAMES_CHANNEL_ID` / wherever the command is used. Jailed members can't play.
 
 - `/gamble amount` — 45% win (double), 45% lose, 10% busted by the Tanod (lose bet + 5 min jail). 10s cooldown.
-- `/steal @user` — 35% steal 1–3 credits; otherwise pay the target a 2-credit fine + 5 min jail. 1 hour cooldown;
-  you need 2+ credits and the target needs 3+.
-- `/jackpot tickets:N` — 1 credit per ticket, max 5 per person per day. Draw daily at 10 PM, weighted by tickets;
+- `/steal @user` — 35% steal 1–3 Kowens; otherwise pay the target a 2-Kowens fine + 5 min jail. 1 hour cooldown;
+  you need 2+ Kowens and the target needs 3+.
+- `/jackpot tickets:N` — 1 Kowens per ticket, max 5 per person per day. Draw daily at 10 PM, weighted by tickets;
   fewer than 2 players = refund. `/twigo game:jackpot` draws now.
-- `/leaderboard` — top 10 by credits and by voice time.
-- **Tanod Patrol** — every 3–6 hours (10 AM–10 PM) a roll call with a button; first 3 get 3/2/1 credits,
+- `/leaderboard` — top 10 by Kowens and by voice time.
+- **Tanod Patrol** — every 3–6 hours (10 AM–10 PM) a roll call with a button; first 3 get 3/2/1 Kowens,
   and if 4+ answer the slowest gets 2 min in jail. `/twigo game:patrol` starts one now.
 - `/jail` — lists who's jailed. Admins: `/jail user:@x minutes:N reason:...` (`minutes:0` releases).
   Jailed members get `JAIL_ROLE_ID` (cosmetic only — it doesn't restrict chatting). Jail times survive restarts.
 
 ## Rewards
 
-`/redeem` lists rewards. **🧱 Bakod (Fence)** — 5 credits, blocks `/steal` against you for 3 days (stacks up to 7), applied instantly.
-Crystal of Atlan passes: `/redeem reward:<name>` deducts the credits and pings `REWARD_OWNER_ID`, who delivers it manually.
+`/redeem` lists rewards. **🧱 Bakod (Fence)** — 5 Kowens, blocks `/steal` against you for 3 days (stacks up to 7), applied instantly.
+Crystal of Atlan passes: `/redeem reward:<name>` deducts the Kowens and pings `REWARD_OWNER_ID`, who delivers it manually.
 Rewards and prices are in `src/games/rewards.ts`. Redemptions are logged in `data/redemptions.json`.
 
 ## Setup

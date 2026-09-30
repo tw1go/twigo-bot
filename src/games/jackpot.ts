@@ -42,7 +42,7 @@ export async function drawJackpot(client: Client): Promise<void> {
     const [[id, n]] = entries;
     add(id, n);
     await channel.send({
-      content: `🎰 **Jackpot draw:** only <@${id}> joined tonight, so their **${n}** credit(s) were refunded. Bring friends tomorrow!`,
+      content: `🎰 **Jackpot draw:** only <@${id}> joined tonight, so their **${n}** Kowens were refunded. Bring friends tomorrow!`,
       allowedMentions: { parse: [] },
     });
     return;
@@ -52,7 +52,7 @@ export async function drawJackpot(client: Client): Promise<void> {
   const [winner] = entries.find(([, n]) => (pick -= n) < 0) ?? entries[entries.length - 1];
   add(winner, total);
   await channel.send({
-    content: `🎰 **JACKPOT!** <@${winner}> wins the pot of **${total} credits** from ${entries.length} players! 🤑🎉`,
+    content: `🎰 **JACKPOT!** <@${winner}> wins the pot of **${total} Kowens** from ${entries.length} players! 🤑🎉`,
     allowedMentions: { users: [winner] },
   });
 }

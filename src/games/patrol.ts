@@ -35,7 +35,7 @@ export async function startPatrol(client: Client): Promise<void> {
   if (!channel?.isSendable()) throw new Error(`Channel ${config.gamesChannelId} not found or not sendable`);
 
   const message = await channel.send({
-    content: '🚨 **TANOD PATROL!** Who is awake? First 3 to answer get **3 / 2 / 1** credits! You have 60 seconds. ⏱️',
+    content: '🚨 **TANOD PATROL!** Who is awake? First 3 to answer get **3 / 2 / 1** Kowens! You have 60 seconds. ⏱️',
     components: [row()],
   });
   active = { message, answered: [] };
@@ -76,9 +76,9 @@ export async function handlePatrolButton(interaction: ButtonInteraction): Promis
   const place = active.answered.length;
   if (place <= REWARDS.length) {
     add(interaction.user.id, REWARDS[place - 1]);
-    await interaction.reply({ content: `🫡 You're #${place}! +${REWARDS[place - 1]} credit(s).`, flags: MessageFlags.Ephemeral });
+    await interaction.reply({ content: `🫡 You're #${place}! +${REWARDS[place - 1]} Kowens.`, flags: MessageFlags.Ephemeral });
   } else {
-    await interaction.reply({ content: `🫡 You're #${place} — too slow for credits. Don't be the last one...`, flags: MessageFlags.Ephemeral });
+    await interaction.reply({ content: `🫡 You're #${place} — too slow for Kowens. Don't be the last one...`, flags: MessageFlags.Ephemeral });
   }
 }
 

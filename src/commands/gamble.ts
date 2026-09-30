@@ -13,8 +13,8 @@ const lastUsed = new Map<string, number>();
 export const gamble: Command = {
   data: new SlashCommandBuilder()
     .setName('gamble')
-    .setDescription('Bet your credits on a coin flip 🎲')
-    .addIntegerOption((o) => o.setName('amount').setDescription('How many credits to bet').setRequired(true).setMinValue(1)),
+    .setDescription('Bet your Kowens on a coin flip 🎲')
+    .addIntegerOption((o) => o.setName('amount').setDescription('How many Kowens to bet').setRequired(true).setMinValue(1)),
   async execute(interaction) {
     if (await blockIfJailed(interaction)) return;
     const wait = (lastUsed.get(interaction.user.id) ?? 0) + COOLDOWN_MS - Date.now();
@@ -26,7 +26,7 @@ export const gamble: Command = {
     const bet = interaction.options.getInteger('amount', true);
     const have = balance(interaction.user.id);
     if (bet > have) {
-      await interaction.reply({ content: `You only have **${have}** credit(s). 🪙 Use /get-credits or hang out in voice to earn more.`, flags: MessageFlags.Ephemeral });
+      await interaction.reply({ content: `You only have **${have}** Kowens. 🪙 Use /get-kowens or hang out in voice to earn more.`, flags: MessageFlags.Ephemeral });
       return;
     }
     lastUsed.set(interaction.user.id, Date.now());
@@ -36,15 +36,15 @@ export const gamble: Command = {
     if (roll < BUST_CHANCE) {
       take(interaction.user.id, bet);
       await jail(interaction.user.id, BUST_JAIL_MINUTES, 'Caught gambling');
-      content = `🚨 **BUSTED!** The Tanod caught ${interaction.user} gambling! **${bet}** credit(s) confiscated and **${BUST_JAIL_MINUTES} minutes** in jail. 🚔`;
+      content = `🚨 **BUSTED!** The Tanod caught ${interaction.user} gambling! **${bet}** Kowens confiscated and **${BUST_JAIL_MINUTES} minutes** in jail. 🚔`;
     } else if (roll < BUST_CHANCE + WIN_CHANCE) {
       add(interaction.user.id, bet);
-      content = `🎲 ${interaction.user} bet **${bet}** and **WON**! +${bet} credits 🤑`;
+      content = `🎲 ${interaction.user} bet **${bet}** and **WON**! +${bet} Kowens 🤑`;
     } else {
       take(interaction.user.id, bet);
       content = `🎲 ${interaction.user} bet **${bet}** and **lost** it all. 💸`;
     }
-    content += `\n-# Balance: ${balance(interaction.user.id)} credit(s)`;
+    content += `\n-# Balance: ${balance(interaction.user.id)} Kowens`;
     await interaction.reply({ content, allowedMentions: { parse: [] } });
   },
 };

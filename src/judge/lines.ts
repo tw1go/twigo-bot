@@ -370,7 +370,7 @@ export const praises = [
   '{u}, your aim is laser-guided. 🎯',
   '{u} is the best teammate this side of the internet. 🌐',
   '{u}, you make the tough calls and they work. ✅',
-  '{u} deserves all the credits in the world. 🪙',
+  '{u} deserves all the Kowens in the world. 🪙',
   '{u}, you\'re basically the team\'s lucky charm. 🍀',
   '{u} can read the game like a favorite book. 📖',
   '{u}, your gameplay makes the Tanod proud. 🫡',

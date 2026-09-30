@@ -13,20 +13,20 @@ import {
 
 export const getCredits: Command = {
   data: new SlashCommandBuilder()
-    .setName('get-credits')
-    .setDescription(`Claim your ${DAILY_CREDITS} daily credits for /diss, /praise and /judge`),
+    .setName('get-kowens')
+    .setDescription(`Claim your ${DAILY_CREDITS} daily Kowens 🪙`),
   async execute(interaction) {
     const newBalance = claim(interaction.user.id);
     const vc = voiceProgress(interaction.user.id);
     const vcToday = voiceCreditsToday(interaction.user.id);
     const content =
       (newBalance === null
-        ? `You already claimed today. You have **${balance(interaction.user.id)}** credit(s). Come back tomorrow! 🕛`
-        : `🪙 +${DAILY_CREDITS} credits! You now have **${newBalance}**. Use them on /diss, /praise or /judge.`) +
+        ? `You already claimed today. You have **${balance(interaction.user.id)}** Kowens. Come back tomorrow! 🕛`
+        : `🪙 +${DAILY_CREDITS} Kowens! You now have **${newBalance}**. Spend them on /judge, games or /redeem.`) +
       (vcToday >= VOICE_DAILY_CAP
-        ? `\n🎙️ Voice chat: **${vcToday}/${VOICE_DAILY_CAP}** credits today — daily max reached! More tomorrow. 🌙`
-        : `\n🎙️ Voice chat: **${vcToday}/${VOICE_DAILY_CAP}** credits today · **${vc}/${VOICE_MINUTES_PER_CREDIT} min** toward the next one.`) +
-      `\n-# ⚠️ Inactive for more than ${INACTIVE_GRACE_DAYS} days? You start losing credits each day. Chat, join voice or use the bot to stay safe.`;
+        ? `\n🎙️ Voice chat: **${vcToday}/${VOICE_DAILY_CAP}** Kowens today — daily max reached! More tomorrow. 🌙`
+        : `\n🎙️ Voice chat: **${vcToday}/${VOICE_DAILY_CAP}** Kowens today · **${vc}/${VOICE_MINUTES_PER_CREDIT} min** toward the next one.`) +
+      `\n-# ⚠️ Inactive for more than ${INACTIVE_GRACE_DAYS} days? You start losing Kowens each day. Chat, join voice or use the bot to stay safe.`;
     await interaction.reply({ content, flags: MessageFlags.Ephemeral });
   },
 };

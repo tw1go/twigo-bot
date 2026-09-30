@@ -7,13 +7,13 @@ import { DRAW_LABEL, MAX_TICKETS, addTickets, players, pot, ticketsOf } from '..
 export const jackpot: Command = {
   data: new SlashCommandBuilder()
     .setName('jackpot')
-    .setDescription(`Buy jackpot tickets (1 credit each) — winner takes the pot at ${DRAW_LABEL} 🎰`)
+    .setDescription(`Buy jackpot tickets (1 Kowens each) — winner takes the pot at ${DRAW_LABEL} 🎰`)
     .addIntegerOption((o) =>
       o.setName('tickets').setDescription(`How many tickets to buy (max ${MAX_TICKETS} per day). Leave empty to check the pot.`).setMinValue(1).setMaxValue(MAX_TICKETS),
     ),
   async execute(interaction) {
     const status = () =>
-      `🎰 Pot: **${pot()}** credit(s) from **${players()}** player(s). You have **${ticketsOf(interaction.user.id)}** ticket(s). Draw at **${DRAW_LABEL}** tonight.`;
+      `🎰 Pot: **${pot()}** Kowens from **${players()}** player(s). You have **${ticketsOf(interaction.user.id)}** ticket(s). Draw at **${DRAW_LABEL}** tonight.`;
     const count = interaction.options.getInteger('tickets');
     if (!count) {
       await interaction.reply({ content: status(), flags: MessageFlags.Ephemeral });
@@ -28,14 +28,14 @@ export const jackpot: Command = {
     }
     const buy = Math.min(count, room);
     if (balance(interaction.user.id) < buy) {
-      await interaction.reply({ content: `You need **${buy}** credit(s) but have **${balance(interaction.user.id)}**. 🪙`, flags: MessageFlags.Ephemeral });
+      await interaction.reply({ content: `You need **${buy}** Kowens but have **${balance(interaction.user.id)}**. 🪙`, flags: MessageFlags.Ephemeral });
       return;
     }
 
     take(interaction.user.id, buy);
     addTickets(interaction.user.id, buy);
     await interaction.reply({
-      content: `🎟️ ${interaction.user} bought **${buy}** jackpot ticket(s)! The pot is now **${pot()}** credits. Draw at **${DRAW_LABEL}**.`,
+      content: `🎟️ ${interaction.user} bought **${buy}** jackpot ticket(s)! The pot is now **${pot()}** Kowens. Draw at **${DRAW_LABEL}**.`,
       allowedMentions: { parse: [] },
     });
   },

@@ -13,7 +13,7 @@ const COOLDOWN_MS = 60 * 60_000;
 export const steal: Command = {
   data: new SlashCommandBuilder()
     .setName('steal')
-    .setDescription('Try to steal credits from someone 🥷 (risky!)')
+    .setDescription('Try to steal Kowens from someone 🥷 (risky!)')
     .addUserOption((o) => o.setName('user').setDescription('Who to rob').setRequired(true)),
   async execute(interaction) {
     if (await blockIfJailed(interaction)) return;
@@ -29,9 +29,9 @@ export const steal: Command = {
 
     const wait = lastSteal(thief.id) + COOLDOWN_MS - Date.now();
     if (wait > 0) return void (await reply(`You're laying low. Try again <t:${Math.floor((Date.now() + wait) / 1000)}:R>. 🕶️`));
-    if (balance(thief.id) < FINE) return void (await reply(`You need at least **${FINE}** credits to try (in case you get caught). 🪙`));
+    if (balance(thief.id) < FINE) return void (await reply(`You need at least **${FINE}** Kowens to try (in case you get caught). 🪙`));
     if (balance(target.id) < MIN_TARGET_BALANCE) {
-      return void (await reply(`${target} only has ${balance(target.id)} credit(s). Pick on someone richer. 💸`));
+      return void (await reply(`${target} only has ${balance(target.id)} Kowens. Pick on someone richer. 💸`));
     }
 
     markSteal(thief.id);
@@ -39,12 +39,12 @@ export const steal: Command = {
     if (Math.random() < SUCCESS_CHANCE) {
       const amount = take(target.id, 1 + Math.floor(Math.random() * 3));
       add(thief.id, amount);
-      content = `🥷 ${thief} sneaked into ${target}'s house and stole **${amount}** credit(s)! 💰`;
+      content = `🥷 ${thief} sneaked into ${target}'s house and stole **${amount}** Kowens! 💰`;
     } else {
       const fine = take(thief.id, FINE);
       add(target.id, fine);
       await jail(thief.id, FAIL_JAIL_MINUTES, `Caught stealing from ${target.username}`);
-      content = `🚨 **CAUGHT!** The Tanod caught ${thief} trying to rob ${target}! ${thief} pays ${target} a **${fine}**-credit fine and spends **${FAIL_JAIL_MINUTES} minutes** in jail. 🚔`;
+      content = `🚨 **CAUGHT!** The Tanod caught ${thief} trying to rob ${target}! ${thief} pays ${target} a fine of **${fine}** Kowens and spends **${FAIL_JAIL_MINUTES} minutes** in jail. 🚔`;
     }
     await interaction.reply({ content, allowedMentions: { users: [thief.id, target.id] } });
   },

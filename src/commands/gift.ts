@@ -8,12 +8,12 @@ import { BOOST_CREDITS, boostCount, setBoostCount } from '../games/boosts.js';
 export const gift: Command = {
   data: new SlashCommandBuilder()
     .setName('gift')
-    .setDescription('Gifter only: give credits or fix boost counts 🎁')
+    .setDescription('Gifter only: give Kowens or fix boost counts 🎁')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addSubcommand((s) =>
       s
-        .setName('credits')
-        .setDescription('Give credits to a member (negative amount removes)')
+        .setName('kowens')
+        .setDescription('Give Kowens to a member (negative amount removes)')
         .addUserOption((o) => o.setName('user').setDescription('Who').setRequired(true))
         .addIntegerOption((o) => o.setName('amount').setDescription('How many (e.g. 50, or -20 to remove)').setRequired(true).setMinValue(-100_000).setMaxValue(100_000))
         .addStringOption((o) => o.setName('reason').setDescription('Why (shown in the message)').setMaxLength(100)),
@@ -32,7 +32,7 @@ export const gift: Command = {
     }
     const target = interaction.options.getUser('user', true);
     if (target.bot) {
-      await interaction.reply({ content: "Bots don't need credits. 🤖", flags: MessageFlags.Ephemeral });
+      await interaction.reply({ content: "Bots don't need Kowens. 🤖", flags: MessageFlags.Ephemeral });
       return;
     }
 
@@ -41,7 +41,7 @@ export const gift: Command = {
       setBoostCount(target.id, count);
       await interaction.reply({
         content: count
-          ? `💎 ${target} is set to **${count}** boost(s) → **${BOOST_CREDITS * count}** credits every month.`
+          ? `💎 ${target} is set to **${count}** boost(s) → **${BOOST_CREDITS * count}** Kowens every month.`
           : `💎 Removed ${target} from monthly booster rewards.`,
         flags: MessageFlags.Ephemeral,
         allowedMentions: { parse: [] },
@@ -58,7 +58,7 @@ export const gift: Command = {
     if (amount < 0) {
       const removed = take(target.id, -amount);
       await interaction.reply({
-        content: `➖ Removed **${removed}** credit(s) from ${target}. They now have **${balance(target.id)}**.${reason ? ` _${reason}_` : ''}`,
+        content: `➖ Removed **${removed}** Kowens from ${target}. They now have **${balance(target.id)}**.${reason ? ` _${reason}_` : ''}`,
         flags: MessageFlags.Ephemeral,
         allowedMentions: { parse: [] },
       });
@@ -67,7 +67,7 @@ export const gift: Command = {
     const now = add(target.id, amount);
     console.log(`[gift] ${target.id} +${amount}${reason ? ` (${reason})` : ''}`);
     await interaction.reply({
-      content: `🎁 ${target} received **${amount.toLocaleString('en-US')}** credits from the gifter!${reason ? ` _${reason}_` : ''}\n-# They now have ${now.toLocaleString('en-US')} credits.`,
+      content: `🎁 ${target} received **${amount.toLocaleString('en-US')}** Kowens from the gifter!${reason ? ` _${reason}_` : ''}\n-# They now have ${now.toLocaleString('en-US')} Kowens.`,
       allowedMentions: { users: [target.id] },
     });
   },

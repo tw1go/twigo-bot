@@ -22,7 +22,7 @@ const ts = (ms: number) => `<t:${Math.floor(ms / 1000)}:f>`;
 export const balanceCommand: Command = {
   data: new SlashCommandBuilder()
     .setName('balance')
-    .setDescription('Check your credits (or someone else\'s) 🪙')
+    .setDescription('Check your Kowens (or someone else\'s) 🪙')
     .addUserOption((o) => o.setName('user').setDescription('Whose balance to check (default: you)')),
   async execute(interaction) {
     const target = interaction.options.getUser('user') ?? interaction.user;
@@ -39,18 +39,18 @@ export const balanceCommand: Command = {
     const tickets = ticketsOf(id);
     if (tickets) status.push(`🎟️ ${tickets} jackpot ticket(s) for tonight`);
     const idle = daysInactive(id);
-    if (idle !== null && idle > INACTIVE_GRACE_DAYS) status.push(`⚠️ Inactive ${idle} days — losing credits daily!`);
+    if (idle !== null && idle > INACTIVE_GRACE_DAYS) status.push(`⚠️ Inactive ${idle} days — losing Kowens daily!`);
 
     const embed = new EmbedBuilder()
       .setColor(0x2ecc71)
       .setAuthor({ name: `${target.displayName}'s balance`, iconURL: target.displayAvatarURL() })
-      .setDescription(`## 🪙 ${fmt(have)} credit${have === 1 ? '' : 's'}${rank ? `\n-# #${rank} on the leaderboard` : ''}`)
+      .setDescription(`## 🪙 ${fmt(have)} Kowens${rank ? `\n-# #${rank} on the leaderboard` : ''}`)
       .addFields(
         {
           name: 'Today',
           value: [
             `📅 Daily claim: ${claimedToday(id) ? '✅ claimed' : '❌ not yet — `/get-credits`'}`,
-            `🎙️ Voice: **${voiceCreditsToday(id)}/${VOICE_DAILY_CAP}** credits · ${voiceProgress(id)}/${VOICE_MINUTES_PER_CREDIT} min to the next`,
+            `🎙️ Voice: **${voiceCreditsToday(id)}/${VOICE_DAILY_CAP}** Kowens · ${voiceProgress(id)}/${VOICE_MINUTES_PER_CREDIT} min to the next`,
           ].join('\n'),
         },
         {
