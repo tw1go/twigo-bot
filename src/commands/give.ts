@@ -6,7 +6,7 @@ import { kowen } from '../kowens.js';
 export const give: Command = {
   data: new SlashCommandBuilder()
     .setName('give')
-    .setDescription(`Give some of your Kowens to a friend 🪙 (max ${WEEKLY_GIVE_LIMIT} per week)`)
+    .setDescription(`Give Kowens to a friend 🪙 (max ${WEEKLY_GIVE_LIMIT}/week) · 🌐 Everyone sees`)
     .addUserOption((o) => o.setName('user').setDescription('Who to give to').setRequired(true))
     .addIntegerOption((o) =>
       o.setName('amount').setDescription(`How many Kowens (max ${WEEKLY_GIVE_LIMIT} per week)`).setRequired(true).setMinValue(1).setMaxValue(WEEKLY_GIVE_LIMIT),

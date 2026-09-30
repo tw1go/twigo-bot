@@ -10,12 +10,12 @@ import { kowen } from '../kowens.js';
 export const gift: Command = {
   data: new SlashCommandBuilder()
     .setName('gift')
-    .setDescription('Gifter only: give Kowens or fix boost counts 🎁')
+    .setDescription('Gifter only: gifts, boosts & Mine Wars payouts 🎁')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addSubcommand((s) =>
       s
         .setName('kowens')
-        .setDescription('Give Kowens to a member (negative amount removes)')
+        .setDescription('Give Kowens (negative removes) · 🌐 gifts public · 🔒 removals private')
         .addUserOption((o) => o.setName('user').setDescription('Who').setRequired(true))
         .addIntegerOption((o) => o.setName('amount').setDescription('How many (e.g. 50, or -20 to remove)').setRequired(true).setMinValue(-100_000).setMaxValue(100_000))
         .addStringOption((o) => o.setName('reason').setDescription('Why (shown in the message)').setMaxLength(100)),
@@ -23,12 +23,12 @@ export const gift: Command = {
     .addSubcommand((s) =>
       s
         .setName('boosts')
-        .setDescription(`Set a member's boost count (monthly reward = ${BOOST_CREDITS} × count; 0 removes)`)
+        .setDescription(`Set a boost count (monthly = ${BOOST_CREDITS} × count; 0 removes) · 🔒 Only you see`)
         .addUserOption((o) => o.setName('user').setDescription('Who').setRequired(true))
         .addIntegerOption((o) => o.setName('count').setDescription('Number of active boosts').setRequired(true).setMinValue(0).setMaxValue(50)),
     )
     .addSubcommand((s) =>
-      s.setName('minewars').setDescription(`Pay the 9 PM Mine Wars: pick attendance (+${ATTEND_REWARD}) and Top 10 (${TOP_REWARD} total)`),
+      s.setName('minewars').setDescription(`Pay 9 PM Mine Wars: attendance +${ATTEND_REWARD}, Top 10 ${TOP_REWARD} · 🔒 panel · 🌐 summary`),
     ),
   async execute(interaction) {
     if (interaction.user.id !== config.rewardOwnerId) {

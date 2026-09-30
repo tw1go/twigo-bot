@@ -25,7 +25,7 @@ const ts = (ms: number) => `<t:${Math.floor(ms / 1000)}:f>`;
 export const balanceCommand: Command = {
   data: new SlashCommandBuilder()
     .setName('balance')
-    .setDescription('Check your Kowens (or someone else\'s) 🪙')
+    .setDescription('Check your Kowens (or someone else\'s) 🪙 · 🔒 Only you see')
     .addUserOption((o) => o.setName('user').setDescription('Whose balance to check (default: you)')),
   async execute(interaction) {
     const target = interaction.options.getUser('user') ?? interaction.user;

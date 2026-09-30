@@ -14,7 +14,7 @@ const lastUsed = new Map<string, number>();
 export const gamble: Command = {
   data: new SlashCommandBuilder()
     .setName('gamble')
-    .setDescription('Bet your Kowens on a coin flip 🎲')
+    .setDescription('Bet your Kowens on a coin flip 🎲 · 🌐 Everyone sees')
     .addIntegerOption((o) => o.setName('amount').setDescription('How many Kowens to bet').setRequired(true).setMinValue(1)),
   async execute(interaction) {
     if (await blockIfJailed(interaction)) return;

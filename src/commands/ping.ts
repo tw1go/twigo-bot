@@ -2,7 +2,7 @@ import { SlashCommandBuilder } from 'discord.js';
 import type { Command } from '../types.js';
 
 export const ping: Command = {
-  data: new SlashCommandBuilder().setName('ping').setDescription('Check bot latency'),
+  data: new SlashCommandBuilder().setName('ping').setDescription('Check if the Tanod is awake 🏓 · 🌐 Everyone sees'),
   async execute(interaction) {
     const sent = await interaction.reply({ content: 'Pinging…', withResponse: true });
     const roundtrip = sent.resource!.message!.createdTimestamp - interaction.createdTimestamp;

@@ -10,7 +10,7 @@ const fmt = (n: number) => n.toLocaleString('en-US');
 export const redeem: Command = {
   data: new SlashCommandBuilder()
     .setName('redeem')
-    .setDescription(`Trade Kowens for a Bakod or ${GAME_NAME} passes 🎁 (leave empty to see the list)`)
+    .setDescription(`Trade Kowens for a Bakod or ${GAME_NAME} passes 🎁 · 🔒 list · 🌐 redeeming`)
     .addStringOption((o) =>
       o
         .setName('reward')

@@ -1,6 +1,7 @@
 import { Collection } from 'discord.js';
 import type { Command } from '../types.js';
 import { balanceCommand } from './balance.js';
+import { claim } from './claim.js';
 import { gamble } from './gamble.js';
 import { getCredits } from './get-credits.js';
 import { gift } from './gift.js';
@@ -16,6 +17,6 @@ import { twigo } from './twigo.js';
 import { twigoHelp } from './twigo-help.js';
 
 // Register new commands here.
-const all: Command[] = [ping, twigo, twigoHelp, diss, praise, judge, getCredits, balanceCommand, gamble, steal, jackpot, leaderboard, jail, redeem, gift, give];
+const all: Command[] = [ping, twigo, twigoHelp, diss, praise, judge, getCredits, balanceCommand, gamble, steal, jackpot, leaderboard, jail, redeem, gift, give, claim];
 
 export const commands = new Collection<string, Command>(all.map((c) => [c.data.name, c]));

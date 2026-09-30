@@ -26,7 +26,7 @@ const mwSteps: Record<string, (c: Client) => Promise<void>> = {
 export const twigo: Command = {
   data: new SlashCommandBuilder()
     .setName('twigo')
-    .setDescription('Twigo bot commands')
+    .setDescription('Admin tools 🛠️ · 🔒 Only you see the reply')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addStringOption((o) =>
       o

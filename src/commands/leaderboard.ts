@@ -7,7 +7,7 @@ const medal = (i: number) => ['🥇', '🥈', '🥉'][i] ?? `**${i + 1}.**`;
 const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)}h ${min % 60}m` : `${min}m`);
 
 export const leaderboard: Command = {
-  data: new SlashCommandBuilder().setName('leaderboard').setDescription('Richest members and top voice chatters 🏆'),
+  data: new SlashCommandBuilder().setName('leaderboard').setDescription('Richest members and top voice chatters 🏆 · 🌐 Everyone sees'),
   async execute(interaction) {
     const rich = topBalances(10);
     const voice = topVoice(10);

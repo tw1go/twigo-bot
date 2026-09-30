@@ -1,4 +1,4 @@
-import { Client, Events, GatewayIntentBits } from 'discord.js';
+import { Client, Events, GatewayIntentBits, Partials } from 'discord.js';
 import { config } from './config.js';
 import { onInteractionCreate } from './events/interactionCreate.js';
 import { startScheduler } from './scheduler.js';
@@ -8,10 +8,14 @@ import { startJailWatcher } from './games/jail.js';
 import { startPatrolScheduler } from './games/patrol.js';
 import { touch } from './credits/store.js';
 import { initBoosters, onBoostMessage } from './games/boosts.js';
+import { catchUpEggs, onEggReaction } from './games/easter-egg.js';
+import { startWebServer } from './web/server.js';
 
 const client = new Client({
   // GuildMessages only tells us someone posted (for inactivity); we don't have or need Message Content.
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.GuildMessages],
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildMessageReactions],
+  // Partials let us see reactions on messages sent before the bot started (the easter egg).
+  partials: [Partials.Message, Partials.Reaction, Partials.User],
 });
 
 client.once(Events.ClientReady, (c) => {
@@ -21,10 +25,15 @@ client.once(Events.ClientReady, (c) => {
   startVoiceCredits(c);
   startJailWatcher(c);
   startPatrolScheduler(c);
+  startWebServer(c);
   initBoosters(c).catch((err) => console.error('[boosts] init failed:', err));
+  catchUpEggs(c).catch((err) => console.error('[easter-egg] catch-up failed:', err));
 });
 
 client.on(Events.InteractionCreate, onInteractionCreate);
+client.on(Events.MessageReactionAdd, (reaction, user) => {
+  onEggReaction(reaction, user).catch((err) => console.error('[easter-egg] failed:', err));
+});
 client.on(Events.MessageCreate, (message) => {
   if (!message.author.bot) touch(message.author.id);
   onBoostMessage(message).catch((err) => console.error('[boosts] failed:', err));

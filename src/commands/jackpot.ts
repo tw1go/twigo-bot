@@ -8,7 +8,7 @@ import { kowen } from '../kowens.js';
 export const jackpot: Command = {
   data: new SlashCommandBuilder()
     .setName('jackpot')
-    .setDescription(`Buy jackpot tickets (1 Kowen each) — winner takes the pot at ${DRAW_LABEL} 🎰`)
+    .setDescription(`Jackpot tickets, 1 Kowen each, drawn at ${DRAW_LABEL} 🎰 · 🔒 checking · 🌐 buying`)
     .addIntegerOption((o) =>
       o.setName('tickets').setDescription(`How many tickets to buy (max ${MAX_TICKETS} per day). Leave empty to check the pot.`).setMinValue(1).setMaxValue(MAX_TICKETS),
     ),

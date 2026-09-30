@@ -18,6 +18,7 @@ The bot only handles the minimum it needs to work.
 | The date you were last active (sent a message, were in voice, or used the bot) | Whenever you're active | To take Kowens from inactive members | Only the date — never message content |
 | Your redemptions (reward, cost, and time) | You use `/redeem` | So the owner can deliver your reward and check it later | Yes |
 | Whether you boost the server, since when, and how many boosts | You boost the server | To give booster Kowens every month | Until you stop boosting |
+| Whether you've claimed a one-time reaction reward | You react to certain bot messages | So each reward is only given once | Yes |
 | Your jackpot tickets | You use `/jackpot` | To run the nightly draw | Until the draw, then deleted |
 | Jail status, release time, and reason | You're jailed by an admin or a game | To give and remove the jail role on time | Until you're released |
 | Time of your last `/steal` | You use `/steal` | To enforce the cooldown | Yes, with your Kowens |

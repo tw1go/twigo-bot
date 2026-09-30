@@ -80,6 +80,17 @@ All in `GAMES_CHANNEL_ID` / wherever the command is used. Jailed members can't p
 - `/jail` — lists who's jailed. Admins: `/jail user:@x minutes:N reason:...` (`minutes:0` releases).
   Jailed members get `JAIL_ROLE_ID` (cosmetic only — it doesn't restrict chatting). Jail times survive restarts.
 
+## Kowens in twigo's room
+
+Clicking the characters at <https://tw1go.github.io> has a 10% chance to find a Kowen — 50% for Fairy Cha herself, and 25% for anyone clicked while she is in the room. The bot rolls it
+(`POST /find`), never the browser, and hands back a one-time code valid for 15 minutes. `/claim code` in
+Discord spends it, credits 1 Kowen (max 3 claims per member per day), and announces it in `GENERAL_CHANNEL_ID`,
+pinging `REWARD_OWNER_ID` and the finder. The room also shows the Kowen leaderboard (`GET /leaderboard`).
+Tune the odds and caps in `src/web/finds.ts`; codes live in `data/room-finds.json`.
+
+The API (`src/web/server.ts`) listens on `127.0.0.1:WEB_PORT` only. Caddy puts HTTPS in front of it —
+see **Room API (HTTPS)** under Hosting.
+
 ## Rewards
 
 `/redeem` lists rewards. **🧱 Bakod (Fence)** — 5 Kowens, blocks `/steal` against you for 3 days (stacks up to 7), applied instantly.
@@ -109,6 +120,18 @@ Runs as a systemd service (`twigo-bot`) from `/opt/twigo-bot`, auto-restarts on 
 - Restart: `ssh ubuntu@SERVER 'sudo systemctl restart twigo-bot'`
 
 Don't run `npm run dev` locally while the server is up — two copies will post everything twice.
+
+### Room API (HTTPS)
+
+The site is HTTPS, so browsers only let it call an HTTPS address. Caddy provides one, with a free DuckDNS name:
+
+1. Get a name at <https://www.duckdns.org> (e.g. `twigo-bot.duckdns.org`) and point it at the server's public IP.
+2. Open TCP **80** and **443**: Oracle console → VCN → Security List → Ingress rules (0.0.0.0/0).
+   `deploy/web-setup.sh` opens them in the server's own iptables too.
+3. `ssh ubuntu@SERVER 'sudo bash -s' < deploy/web-setup.sh twigo-bot.duckdns.org` — installs Caddy, which fetches
+   the certificate and proxies to the bot.
+4. Set `WEB_PORT=8787` (and `GENERAL_CHANNEL_ID`) in `.env`, deploy, and `npm run deploy-commands` for `/claim`.
+5. Check: `curl https://twigo-bot.duckdns.org/health` → `ok`.
 
 ## Adding a command
 

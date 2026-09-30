@@ -48,7 +48,7 @@ function markReleasedWhenDone(message: Message, userId: string, header: string):
 export const jail: Command = {
   data: new SlashCommandBuilder()
     .setName('jail')
-    .setDescription('See who is in jail, or (admins) jail/release someone 🚔')
+    .setDescription('See who is in jail, or (admins) jail/release someone 🚔 · 🌐 Everyone sees')
     .addUserOption((o) => o.setName('user').setDescription('Admins: who to jail or release'))
     .addIntegerOption((o) =>
       o.setName('minutes').setDescription('Admins: how long (default 5, 0 = release)').setMinValue(0).setMaxValue(1440),

@@ -14,7 +14,7 @@ const COOLDOWN_MS = 60 * 60_000;
 export const steal: Command = {
   data: new SlashCommandBuilder()
     .setName('steal')
-    .setDescription('Try to steal Kowens from someone 🥷 (risky!)')
+    .setDescription('Try to steal Kowens from someone 🥷 (risky!) · 🌐 Everyone sees')
     .addUserOption((o) => o.setName('user').setDescription('Who to rob').setRequired(true)),
   async execute(interaction) {
     if (await blockIfJailed(interaction)) return;

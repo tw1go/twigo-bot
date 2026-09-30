@@ -15,7 +15,7 @@ import { kowen } from '../kowens.js';
 export const getCredits: Command = {
   data: new SlashCommandBuilder()
     .setName('get-kowens')
-    .setDescription(`Claim your ${DAILY_CREDITS} daily Kowens 🪙`),
+    .setDescription(`Claim your ${DAILY_CREDITS} daily Kowens 🪙 · 🔒 Only you see`),
   async execute(interaction) {
     const newBalance = claim(interaction.user.id);
     const vc = voiceProgress(interaction.user.id);

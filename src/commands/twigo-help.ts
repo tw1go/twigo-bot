@@ -5,7 +5,7 @@ import { DAILY_CREDITS } from '../credits/store.js';
 import { kowen } from '../kowens.js';
 
 export const twigoHelp: Command = {
-  data: new SlashCommandBuilder().setName('twigo-help').setDescription('List everything the Tanod can do'),
+  data: new SlashCommandBuilder().setName('twigo-help').setDescription('List everything the Tanod can do · 🔒 Only you see'),
   async execute(interaction) {
     const isAdmin =
       interaction.inCachedGuild() &&
@@ -43,6 +43,7 @@ export const twigoHelp: Command = {
             '`/give @someone amount` — give a friend Kowens (max 20 per week, resets Monday)',
             '`/balance` — your Kowens, today\'s progress and next reward (`user:` to check someone else)',
             '`/redeem` — 🧱 Bakod (block /steal for 3 days, 5 Kowens) or Crystal of Atlan passes 🎁',
+            '`/claim code` — found a Kowen in [twigo\'s room](https://tw1go.github.io)? Claim it here (3 a day)',
             '💎 **Boost the server**: +20 Kowens per boost, and 20 × your boosts every month while boosting',
             '🎙️ Earn **1 Kowen per 15 min** in voice chat, **max 12 a day** (with at least 1 other person, not deafened, not in AFK)',
             '-# Each /diss, /praise or /judge on someone else costs 1 Kowen. Unused Kowens carry over.',

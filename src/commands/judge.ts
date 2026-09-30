@@ -55,6 +55,6 @@ function verdictCommand(name: string, description: string, mode: Mode): Command 
   };
 }
 
-export const diss = verdictCommand('diss', 'Playfully roast someone 🔥', 'roast');
-export const praise = verdictCommand('praise', 'Hype someone up 💖', 'praise');
-export const judge = verdictCommand('judge', 'Let the Tanod decide: roast or praise? 🎲', 'random');
+export const diss = verdictCommand('diss', 'Playfully roast someone 🔥 · 🌐 Everyone sees', 'roast');
+export const praise = verdictCommand('praise', 'Hype someone up 💖 · 🌐 Everyone sees', 'praise');
+export const judge = verdictCommand('judge', 'Let the Tanod decide: roast or praise? 🎲 · 🌐 Everyone sees', 'random');
