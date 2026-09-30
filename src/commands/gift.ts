@@ -3,6 +3,7 @@ import type { Command } from '../types.js';
 import { config } from '../config.js';
 import { add, balance, take } from '../credits/store.js';
 import { BOOST_CREDITS, boostCount, setBoostCount } from '../games/boosts.js';
+import { ATTEND_REWARD, TOP_REWARD, openPayoutPanel } from '../minewars/payout.js';
 import { kowen } from '../kowens.js';
 
 // Only the gifter (REWARD_OWNER_ID) can use this. Hidden from non-admins by default.
@@ -25,12 +26,20 @@ export const gift: Command = {
         .setDescription(`Set a member's boost count (monthly reward = ${BOOST_CREDITS} × count; 0 removes)`)
         .addUserOption((o) => o.setName('user').setDescription('Who').setRequired(true))
         .addIntegerOption((o) => o.setName('count').setDescription('Number of active boosts').setRequired(true).setMinValue(0).setMaxValue(50)),
+    )
+    .addSubcommand((s) =>
+      s.setName('minewars').setDescription(`Pay the 9 PM Mine Wars: pick attendance (+${ATTEND_REWARD}) and Top 10 (${TOP_REWARD} total)`),
     ),
   async execute(interaction) {
     if (interaction.user.id !== config.rewardOwnerId) {
       await interaction.reply({ content: 'Only the gifter can use this. 🎁', flags: MessageFlags.Ephemeral });
       return;
     }
+    if (interaction.options.getSubcommand() === 'minewars') {
+      await openPayoutPanel(interaction);
+      return;
+    }
+
     const target = interaction.options.getUser('user', true);
     if (target.bot) {
       await interaction.reply({ content: "Bots don't need Kowens. 🤖", flags: MessageFlags.Ephemeral });

@@ -5,6 +5,7 @@ import { BUTTON_TOGGLE_ROLE, handleToggleRole } from '../minewars/flow.js';
 import { handleAnnounceModal, isAnnounceModal } from '../announce/flow.js';
 import { BUTTON_PATROL, handlePatrolButton } from '../games/patrol.js';
 import { touch } from '../credits/store.js';
+import { handlePayoutInteraction, isPayoutInteraction } from '../minewars/payout.js';
 
 const buttonHandlers: Record<string, (i: ButtonInteraction) => Promise<void>> = {
   [BUTTON_YES]: handleAnswer,
@@ -15,6 +16,18 @@ const buttonHandlers: Record<string, (i: ButtonInteraction) => Promise<void>> = 
 
 export async function onInteractionCreate(interaction: Interaction) {
   touch(interaction.user.id);
+
+  if ((interaction.isButton() || interaction.isUserSelectMenu()) && isPayoutInteraction(interaction.customId)) {
+    try {
+      await handlePayoutInteraction(interaction);
+    } catch (err) {
+      console.error('Error in Mine Wars payout panel:', err);
+      const payload = { content: 'Something went wrong with the payout panel.', flags: MessageFlags.Ephemeral } as const;
+      if (interaction.replied || interaction.deferred) await interaction.followUp(payload);
+      else await interaction.reply(payload);
+    }
+    return;
+  }
 
   if (interaction.isButton()) {
     const handler = buttonHandlers[interaction.customId];
