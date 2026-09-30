@@ -1,6 +1,6 @@
 # twigo bot — Privacy Policy
 
-_Last updated: September 30, 2026 (added credit games)_
+_Last updated: September 30, 2026 (added rewards)_
 
 This policy explains what information the twigo Discord bot ("the bot", "we") collects, why, and how it is handled. By using the bot or being a member of a server where it runs, you agree to this policy.
 
@@ -15,6 +15,7 @@ The bot only handles the minimum it needs to work.
 | Message and poll IDs | The bot posts an event poll or question | To find its own messages again later | Yes, see below |
 | Your Discord user ID, credit balance, and last claim date | You use `/get-credits`, `/diss`, `/praise`, or `/judge` | To give daily credits and track how many you have left | Yes, see below |
 | Whether you are in a voice channel, and if you're deafened | Every minute, while you're in voice | To give 1 credit per 15 minutes in voice chat | Only a running count of minutes toward your next credit — not which channel, who you were with, or when |
+| Your redemptions (reward, cost, and time) | You use `/redeem` | So the owner can deliver your reward and check it later | Yes |
 | Your jackpot tickets | You use `/jackpot` | To run the nightly draw | Until the draw, then deleted |
 | Jail status, release time, and reason | You're jailed by an admin or a game | To give and remove the jail role on time | Until you're released |
 | Time of your last `/steal` | You use `/steal` | To enforce the cooldown | Yes, with your credits |

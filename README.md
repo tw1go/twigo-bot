@@ -69,6 +69,11 @@ All in `GAMES_CHANNEL_ID` / wherever the command is used. Jailed members can't p
 - `/jail` — lists who's jailed. Admins: `/jail user:@x minutes:N reason:...` (`minutes:0` releases).
   Jailed members get `JAIL_ROLE_ID` (cosmetic only — it doesn't restrict chatting). Jail times survive restarts.
 
+## Rewards
+
+`/redeem` lists rewards; `/redeem reward:<name>` deducts the credits and pings `REWARD_OWNER_ID`, who delivers it manually.
+Rewards and prices are in `src/games/rewards.ts`. Redemptions are logged in `data/redemptions.json`.
+
 ## Setup
 
 1. Create an application at https://discord.com/developers/applications, add a Bot, copy its token.

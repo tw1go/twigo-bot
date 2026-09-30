@@ -1,6 +1,6 @@
 # twigo bot — Terms of Service
 
-_Last updated: September 30, 2026 (added credit games)_
+_Last updated: September 30, 2026 (added rewards)_
 
 These terms apply to your use of the twigo Discord bot ("the bot", "we"). By using the bot or being a member of a server where it runs, you agree to these terms. If you don't agree, don't use the bot.
 
@@ -10,13 +10,21 @@ The bot posts scheduled reminders, event polls, participant lists, daily greetin
 
 ## Credits
 
-- Credits are claimed with `/get-credits`, earned by spending time in voice chat (1 credit per 15 minutes, with at least one other person, not deafened, not in the AFK channel), and spent on `/diss`, `/praise`, and `/judge`.
+- Credits are claimed with `/get-credits`, earned by spending time in voice chat (1 credit per 15 minutes, with at least one other person, not deafened, not in the AFK channel) or in Tanod Patrol, and spent on `/diss`, `/praise`, `/judge`, the games, and `/redeem`.
 - Don't try to farm voice credits, for example with alternate accounts or by idling. Admins and moderators may reset credits earned this way.
-- Credits are just for fun. They have **no money value**, can't be bought, sold, or traded, and can't be exchanged for anything.
-- `/gamble`, `/steal`, and `/jackpot` are games of chance for **pretend credits only**. No real money, prizes, or anything of value is involved, and none can be won or lost.
+- **No purchase is ever needed.** Credits can't be bought, and you never pay real money to earn credits or play the bot's games.
+- Credits can't be sold, traded, or transferred between members, except through the bot's own games.
+- `/gamble`, `/steal`, and `/jackpot` use credits only. You can't bet or lose real money.
 - The "jail" is a joke: it gives a role and blocks the bot's games for a few minutes. Admins and moderators decide who gets jailed and released.
 - Server admins and moderators can reset anyone's credits at any time, for any reason.
-- Credits may be lost if the bot's data is reset or the bot shuts down.
+- Credits may be lost if the bot's data is reset or the bot shuts down. Lost credits aren't refunded.
+
+## Rewards
+
+- Credits can be redeemed with `/redeem` for the rewards listed there (for example game passes). Rewards are given by the server owner, by hand, as a free gift.
+- Redeemed credits are removed right away. The owner will try to deliver the reward, but may take time, and may refuse or reverse a redemption if credits were gained by cheating, bugs, alternate accounts, or breaking these terms.
+- Rewards, prices, and availability can change or end at any time.
+- Rewards are not provided by Discord or by the game's publisher.
 
 ## Fun commands
 

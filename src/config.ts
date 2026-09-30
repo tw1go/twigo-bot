@@ -27,4 +27,5 @@ export const config = {
   banterChannelId: required('BANTER_CHANNEL_ID'),
   gamesChannelId: required('GAMES_CHANNEL_ID'),
   jailRoleId: required('JAIL_ROLE_ID'),
+  rewardOwnerId: required('REWARD_OWNER_ID'),
 };
