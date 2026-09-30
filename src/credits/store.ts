@@ -2,11 +2,14 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { today } from '../time.js';
 
 // Credits for /diss, /praise and /judge. Claim DAILY_CREDITS once per day (config.timezone); unused credits carry over.
+// Voice chat also earns 1 credit per VOICE_MINUTES_PER_CREDIT minutes (see voice.ts).
 export const DAILY_CREDITS = 5;
+export const VOICE_MINUTES_PER_CREDIT = 15;
 
 interface Account {
   balance: number;
   lastClaim?: string; // YYYY-MM-DD
+  voiceMinutes?: number; // progress toward the next voice credit
 }
 
 const DIR = 'data';
@@ -55,4 +58,25 @@ export function resetAll(): number {
   accounts = {};
   save();
   return count;
+}
+
+/** Minutes of voice time banked toward the next credit. */
+export function voiceProgress(userId: string): number {
+  return accounts[userId]?.voiceMinutes ?? 0;
+}
+
+/** Adds one voice minute to each user; awards a credit every VOICE_MINUTES_PER_CREDIT. Returns who earned one. */
+export function addVoiceMinute(userIds: string[]): string[] {
+  const earned: string[] = [];
+  for (const id of userIds) {
+    const account = (accounts[id] ??= { balance: 0 });
+    account.voiceMinutes = (account.voiceMinutes ?? 0) + 1;
+    if (account.voiceMinutes >= VOICE_MINUTES_PER_CREDIT) {
+      account.voiceMinutes -= VOICE_MINUTES_PER_CREDIT;
+      account.balance += 1;
+      earned.push(id);
+    }
+  }
+  if (userIds.length) save();
+  return earned;
 }

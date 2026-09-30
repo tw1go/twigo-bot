@@ -1,6 +1,6 @@
 # twigo bot — Privacy Policy
 
-_Last updated: September 29, 2026 (added credits, /diss, /praise and /judge)_
+_Last updated: September 30, 2026 (added voice chat credits)_
 
 This policy explains what information the twigo Discord bot ("the bot", "we") collects, why, and how it is handled. By using the bot or being a member of a server where it runs, you agree to this policy.
 
@@ -14,14 +14,15 @@ The bot only handles the minimum it needs to work.
 | Your Discord user ID and roles | You click a bot button or use a bot command | To check permissions and give or remove a role you asked for | No, only used at that moment |
 | Message and poll IDs | The bot posts an event poll or question | To find its own messages again later | Yes, see below |
 | Your Discord user ID, credit balance, and last claim date | You use `/get-credits`, `/diss`, `/praise`, or `/judge` | To give daily credits and track how many you have left | Yes, see below |
+| Whether you are in a voice channel, and if you're deafened | Every minute, while you're in voice | To give 1 credit per 15 minutes in voice chat | Only a running count of minutes toward your next credit — not which channel, who you were with, or when |
 | The user you pick in `/diss`, `/praise`, or `/judge` | You use one of those commands | To mention them in the bot's reply | No, only used at that moment |
 
-The bot does **not** read or store the content of your messages, your direct messages, your email, your IP address, or any other personal information. It does not use the Message Content intent.
+The bot does **not** listen to, record, or store any voice audio. It does **not** read or store the content of your messages, your direct messages, your email, your IP address, or any other personal information. It does not use the Message Content intent.
 
 ## How long data is kept
 
 - **Event participants:** the user IDs of people who voted "Yes" in an event poll are saved in a small file on the bot's server. The file only holds the most recent event and is overwritten by the next one.
-- **Credits:** your user ID, credit balance, and the date you last claimed are saved on the bot's server for as long as the bot runs. Admins and moderators can reset them at any time, and you can ask for them to be deleted.
+- **Credits:** your user ID, credit balance, the date you last claimed, and your voice minutes toward the next credit are saved on the bot's server for as long as the bot runs. Admins and moderators can reset them at any time, and you can ask for them to be deleted.
 - **Roles:** when you use the opt-in button, the bot gives or removes a Discord role. The role itself lives on Discord, not with the bot. You can remove it at any time by clicking the button again.
 - **Logs:** the server keeps technical error logs for troubleshooting. These are rotated automatically and are not used for anything else.
 

@@ -1,6 +1,6 @@
 # twigo bot — Terms of Service
 
-_Last updated: September 29, 2026 (added credits, /diss, /praise and /judge)_
+_Last updated: September 30, 2026 (added voice chat credits)_
 
 These terms apply to your use of the twigo Discord bot ("the bot", "we"). By using the bot or being a member of a server where it runs, you agree to these terms. If you don't agree, don't use the bot.
 
@@ -10,7 +10,8 @@ The bot posts scheduled reminders, event polls, participant lists, daily greetin
 
 ## Credits
 
-- Credits are claimed with `/get-credits` and spent on `/diss`, `/praise`, and `/judge`.
+- Credits are claimed with `/get-credits`, earned by spending time in voice chat (1 credit per 15 minutes, with at least one other person, not deafened, not in the AFK channel), and spent on `/diss`, `/praise`, and `/judge`.
+- Don't try to farm voice credits, for example with alternate accounts or by idling. Admins and moderators may reset credits earned this way.
 - Credits are just for fun. They have **no money value**, can't be bought, sold, or traded, and can't be exchanged for anything.
 - Server admins and moderators can reset anyone's credits at any time, for any reason.
 - Credits may be lost if the bot's data is reset or the bot shuts down.

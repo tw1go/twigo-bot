@@ -28,6 +28,7 @@ export const twigoHelp: Command = {
           name: '🪙 Credits',
           value: [
             `\`/get-credits\` — claim ${DAILY_CREDITS} credits once a day`,
+            '🎙️ Earn **1 credit per 15 min** in voice chat (with at least 1 other person, not deafened, not in AFK)',
             '-# Each /diss, /praise or /judge on someone else costs 1 credit. Unused credits carry over.',
           ].join('\n'),
         },

@@ -43,7 +43,10 @@ Lines never repeat until every line has been used, even across restarts (progres
 
 `/diss`, `/praise` and `/judge` (`user:@someone`, or empty for yourself) — roast, praise, or let the Tanod pick at random.
 Lines don't repeat until all are used, across all three commands.
-Each use costs 1 credit; `/get-credits` gives 5 per day (resets at midnight in `TIMEZONE`, unused credits carry over).
+Each use on someone else costs 1 credit. Ways to get credits:
+- `/get-credits` — 5 per day (resets at midnight in `TIMEZONE`; unused credits carry over)
+- Voice chat — 1 per 15 minutes (needs 2+ people in the channel, not deafened, not the AFK channel; see `src/credits/voice.ts`)
+
 Targeting yourself or the bot is free. Balances are saved in `data/credits.json`.
 Admins/mods: `/twigo reset-credits:@user` or `/twigo reset-all-credits:yes` (balance → 0, can claim again). Edit the lines in `src/judge/lines.ts`.
 
