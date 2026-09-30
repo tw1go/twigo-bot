@@ -96,8 +96,8 @@ see **Room API (HTTPS)** under Hosting.
 ## Digging
 
 `/redeem reward:Shovel` (2 Kowens, 3 digs, up to 3 shovels a day) → `/dig` up to 9 times a day. Each dig rolls a rarity
-(Junk 70% · Common 22% · Uncommon 5% · Rare 2% · Epic 0.75% · Mythical 0.2% · Legendary 0.05%), then an item
-(cheaper items much more likely). ~0.6 Kowens per dig on average (3 shovels = 6 Kowens for ~5.6 back, a small sink). `/inventory` shows your finds; `/sell` (autocomplete,
+(Junk 60% · Common 32% · Uncommon 5% · Rare 2% · Epic 0.75% · Mythical 0.2% · Legendary 0.05%), then an item
+(cheaper items much more likely). ~0.75 Kowens per dig on average (a shovel returns ~2.3 for its 2 Kowens). `/inventory` shows your finds; `/sell` (autocomplete,
 or Everything / All Junk & Common) turns them into Kowens. Items and odds live in `src/dig/items.ts`.
 Inventory holds 10 items (every copy counts); 5 bags in `/redeem` (Supot 5, Bayong 10, School Backpack 20,
 Balikbayan Box 35, Lola's Bottomless Bag 50) add +8 each, once each, up to 50. `/dig` is blocked while the bag is full.

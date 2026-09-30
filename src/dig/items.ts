@@ -13,11 +13,11 @@ export const RARITY: Record<Rarity, { label: string; emoji: string }> = {
   legendary: { label: 'Legendary', emoji: '🟡' },
 };
 
-/** Chance of each rarity per dig (sums to 1). Tuned so a dig is worth ~0.6 Kowens on average: mostly junk
- *  and laughs, with the value in rare finds. At 3 digs/day that's only ~+1.3 Kowens/day after the shovel. */
+/** Chance of each rarity per dig (sums to 1). Tuned so a dig is worth ~0.75 Kowens on average: mostly junk
+ *  and cheap commons, with the value in rare finds. A shovel (2 Kowens, 3 digs) returns ~2.2 on average. */
 export const RARITY_CHANCE: Record<Rarity, number> = {
-  junk: 0.7,
-  common: 0.22,
+  junk: 0.6,
+  common: 0.32,
   uncommon: 0.05,
   rare: 0.02,
   epic: 0.0075,
