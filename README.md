@@ -54,6 +54,7 @@ Each use on someone else costs 1 Kowens. Ways to get Kowens:
 **Boosts:** +20 Kowens per boost right away, then 20 × boost count on the 1st of every month while boosting.
 Boost counts come from the system channel's "just boosted" messages (Discord doesn't expose per-member counts);
 existing boosters were counted and paid once on first start. Fix a count with `/gift boosts`. See `src/games/boosts.ts`.
+**Give:** `/give user amount` — any member can send Kowens, max 20 per week (resets Monday).
 **Gifter:** `/gift kowens user amount [reason]` (negative removes) — only `REWARD_OWNER_ID` can use it.
 
 Targeting yourself or the bot is free. `/balance [user]` shows Kowens, rank, today's progress and next reward (only visible to you).

@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { daysBetween, today } from '../time.js';
+import { daysBetween, today, weekStart } from '../time.js';
 
 // Credits for /diss, /praise and /judge. Claim DAILY_CREDITS once per day (config.timezone); unused credits carry over.
 // Voice chat also earns 1 credit per VOICE_MINUTES_PER_CREDIT minutes (see voice.ts).
@@ -17,6 +17,8 @@ interface Account {
   fenceUntil?: number; // ms timestamp — /steal is blocked until then (Bakod)
   voiceCreditsDay?: string; // YYYY-MM-DD that voiceCreditsToday counts
   voiceCreditsToday?: number;
+  giveWeek?: string; // Monday of the week giveSentThisWeek counts
+  giveSentThisWeek?: number;
 }
 
 const DIR = 'data';
@@ -211,4 +213,27 @@ export function daysInactive(userId: string): number | null {
 export function rankOf(userId: string): number | null {
   if (balance(userId) <= 0) return null;
   return Object.values(accounts).filter((a) => a.balance > balance(userId)).length + 1;
+}
+
+// Member-to-member gifting (/give): each member can send up to WEEKLY_GIVE_LIMIT per week (resets Monday).
+export const WEEKLY_GIVE_LIMIT = 20;
+
+/** Kowens this member has already given this week. */
+export function givenThisWeek(userId: string): number {
+  const account = accounts[userId];
+  return account?.giveWeek === weekStart() ? (account.giveSentThisWeek ?? 0) : 0;
+}
+
+/** Moves Kowens between members, respecting balance and the weekly limit. */
+export function give(fromId: string, toId: string, amount: number): { ok: true } | { ok: false; reason: 'balance' | 'limit' } {
+  if (balance(fromId) < amount) return { ok: false, reason: 'balance' };
+  if (givenThisWeek(fromId) + amount > WEEKLY_GIVE_LIMIT) return { ok: false, reason: 'limit' };
+  const from = accounts[fromId];
+  const week = weekStart();
+  from.giveSentThisWeek = givenThisWeek(fromId) + amount;
+  from.giveWeek = week;
+  from.balance -= amount;
+  (accounts[toId] ??= { balance: 0 }).balance += amount;
+  save();
+  return { ok: true };
 }

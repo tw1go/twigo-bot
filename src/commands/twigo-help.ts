@@ -39,6 +39,7 @@ export const twigoHelp: Command = {
           name: '🪙 Kowens',
           value: [
             `\`/get-kowens\` — claim ${DAILY_CREDITS} Kowens once a day`,
+            '`/give @someone amount` — give a friend Kowens (max 20 per week, resets Monday)',
             '`/balance` — your Kowens, today\'s progress and next reward (`user:` to check someone else)',
             '`/redeem` — 🧱 Bakod (block /steal for 3 days, 5 Kowens) or Crystal of Atlan passes 🎁',
             '💎 **Boost the server**: +20 Kowens per boost, and 20 × your boosts every month while boosting',

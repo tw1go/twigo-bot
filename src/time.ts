@@ -13,3 +13,13 @@ export function daysBetween(a: string, b: string): number {
   };
   return Math.round((toUtc(b) - toUtc(a)) / 86_400_000);
 }
+
+/** The Monday (YYYY-MM-DD) of the current week in config.timezone — weekly limits reset then. */
+export function weekStart(): string {
+  const d = today();
+  const [y, m, day] = d.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, day));
+  const sinceMonday = (date.getUTCDay() + 6) % 7;
+  date.setUTCDate(date.getUTCDate() - sinceMonday);
+  return date.toISOString().slice(0, 10);
+}

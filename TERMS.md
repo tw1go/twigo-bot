@@ -17,7 +17,7 @@ The bot posts scheduled reminders, event polls, participant lists, daily greetin
 - The server owner may gift or remove Kowens at their discretion.
 - Don't try to farm voice Kowens, for example with alternate accounts or by idling. Admins and moderators may reset Kowens earned this way.
 - **No purchase is ever needed.** Kowens can't be bought, and you never pay real money to earn Kowens or play the bot's games.
-- Kowens can't be sold, traded, or transferred between members, except through the bot's own games.
+- Kowens can't be sold or traded for anything outside the bot. You can give Kowens to other members with `/give` (up to 20 per week), and they move between members through the bot's games. Using `/give` to move Kowens from alternate accounts counts as cheating.
 - `/gamble`, `/steal`, and `/jackpot` use Kowens only. You can't bet or lose real money.
 - The "jail" is a joke: it gives a role and blocks the bot's games for a few minutes. Admins and moderators decide who gets jailed and released.
 - Server admins and moderators can reset anyone's Kowens at any time, for any reason.
