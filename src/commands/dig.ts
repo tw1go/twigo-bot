@@ -38,7 +38,29 @@ export const dig: Command = {
         : `⛏️ ${interaction.user} dug up **${found.emoji} ${found.name}**!\n${r.emoji} ${r.label} · worth **${found.value}** ${kowen(found.value)}`,
       `-# ${left} dig${left === 1 ? '' : 's'} left today · 🪓 ${shovel} use${shovel === 1 ? '' : 's'} left on your shovel${shovel === 0 ? ' — it broke!' : ''}`,
     ];
-    await interaction.reply({ content: lines.join('\n'), allowedMentions: { parse: [] } });
+    // "Digging…" animation, then the reveal. The find is already saved, so a failed edit can't lose it.
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    const digging = (bar: string) => `⛏️ ${interaction.user} is digging… ${bar}`;
+    const frames = ['🟫', '🟫🟫', '🟫🟫🟫'];
+    const suspense: Partial<Record<typeof found.rarity, string[]>> = {
+      rare: [`${r.emoji} Something is glowing…`],
+      epic: [`${r.emoji} Something is glowing…`, `${r.emoji}${r.emoji} It's getting brighter…`],
+      mythical: [`${r.emoji} Something is glowing…`, `${r.emoji}${r.emoji} The ground is shaking…`, `${r.emoji}${r.emoji}${r.emoji} !!!`],
+      legendary: [`${r.emoji} Something is glowing…`, `${r.emoji}${r.emoji} The ground is shaking…`, `${r.emoji}${r.emoji}${r.emoji} WAIT WHAT…`, '✨✨✨✨✨'],
+    };
+    const steps = [...frames.map(digging), ...(suspense[found.rarity] ?? []).map((t) => `${digging('🟫🟫🟫')}\n${t}`)];
+
+    await interaction.reply({ content: steps[0], allowedMentions: { parse: [] } });
+    try {
+      for (const step of steps.slice(1)) {
+        await sleep(900);
+        await interaction.editReply({ content: step, allowedMentions: { parse: [] } });
+      }
+      await sleep(big ? 1500 : 900);
+    } catch (err) {
+      console.error('[dig] animation failed:', err);
+    }
+    await interaction.editReply({ content: lines.join('\n'), allowedMentions: { parse: [] } }).catch((err) => console.error('[dig] reveal failed:', err));
 
     // Legendary finds are shouted in general too.
     if (found.rarity === 'legendary' && interaction.channelId !== config.gamesChannelId) {
