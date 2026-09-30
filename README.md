@@ -61,6 +61,7 @@ requester), Complete (requester pays the accepter), Give up (reopens), Cancel (r
 then pays everyone and posts a summary (names listed, no pings). A per-night ledger (`data/minewars-payouts.json`) prevents double payouts.
 **Gifter:** `/gift kowens user amount [reason]` (negative removes) — only `REWARD_OWNER_ID` can use it.
 
+`/status [user]` shows Bakod, jail, steal cooldown, Master Keys, digs/shovels, bag space, quests and inactivity (private).
 Targeting yourself or the bot is free. `/balance [user]` shows Kowens, rank, today's progress and next reward (only visible to you).
 Balances are saved in `data/credits.json`.
 **Inactivity decay** (daily 12:05 AM): after 3 days with no message, voice time or bot use, members lose 1%, then 2%, … up to 10%/day

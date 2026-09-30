@@ -18,7 +18,8 @@ const MIN_FINE = 2;
 const FINE = MIN_FINE; // you need at least this much to try
 const FAIL_JAIL_MINUTES = 5;
 const MIN_TARGET_BALANCE = 3; // don't pick on people who are nearly broke
-const COOLDOWN_MS = 60 * 60_000;
+export const STEAL_COOLDOWN_MS = 60 * 60_000;
+const COOLDOWN_MS = STEAL_COOLDOWN_MS;
 
 /** How much this attempt goes for: a slice of the target's Kowens, never below 1–3 or above MAX_STEAL. */
 function attemptAmount(targetBalance: number): number {

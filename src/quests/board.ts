@@ -39,7 +39,8 @@ function save(): void {
   writeFileSync(FILE, JSON.stringify(quests, null, 2));
 }
 
-const activeCount = (userId: string) =>
+/** Quests this member posted that are still open or in progress. */
+export const activeCount = (userId: string) =>
   Object.values(quests).filter((q) => q.requester === userId && (q.status === 'open' || q.status === 'accepted')).length;
 
 function card(q: Quest) {
@@ -73,6 +74,9 @@ function card(q: Quest) {
     );
   return { embeds: [embed], components: row.components.length ? [row] : [] };
 }
+
+/** Quests this member accepted and is still working on. */
+export const acceptedCount = (userId: string) => Object.values(quests).filter((q) => q.acceptedBy === userId && q.status === 'accepted').length;
 
 export async function createQuest(interaction: ChatInputCommandInteraction): Promise<void> {
   const task = interaction.options.getString('task', true).trim();
