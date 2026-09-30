@@ -2,15 +2,16 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { today } from '../time.js';
 import { ITEM_BY_ID } from './items.js';
 
-// Shovels, daily digs and inventories. A shovel bought in /redeem adds SHOVEL_USES digs.
+// Shovels, daily digs and inventories. A shovel bought in /redeem adds SHOVEL_USES digs; one purchase per day.
 export const SHOVEL_COST = 2;
-export const SHOVEL_USES = 10;
+export const SHOVEL_USES = 3;
 export const DIGS_PER_DAY = 3;
 
 interface Bag {
   shovel: number; // digs left on your shovel(s)
   digDay?: string; // YYYY-MM-DD that digsToday counts
   digsToday?: number;
+  shovelDay?: string; // YYYY-MM-DD of the last shovel purchase
   items: Record<string, number>; // itemId -> count
 }
 
@@ -32,9 +33,12 @@ export function digsToday(userId: string): number {
   return b?.digDay === today() ? (b.digsToday ?? 0) : 0;
 }
 
+export const boughtShovelToday = (userId: string) => bags[userId]?.shovelDay === today();
+
 export function addShovel(userId: string): number {
   const b = bag(userId);
   b.shovel += SHOVEL_USES;
+  b.shovelDay = today();
   save();
   return b.shovel;
 }

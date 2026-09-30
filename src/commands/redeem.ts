@@ -4,7 +4,7 @@ import { config } from '../config.js';
 import { addFence, balance, fencedUntil, take } from '../credits/store.js';
 import { FENCE_DAYS, FENCE_MAX_DAYS, GAME_NAME, recordRedemption, rewards } from '../games/rewards.js';
 import { kowen } from '../kowens.js';
-import { SHOVEL_USES, addShovel } from '../dig/store.js';
+import { SHOVEL_USES, addShovel, boughtShovelToday } from '../dig/store.js';
 
 const fmt = (n: number) => n.toLocaleString('en-US');
 
@@ -29,7 +29,7 @@ export const redeem: Command = {
         .setDescription(
           rewards
             .map((r) => {
-              const note = r.kind === 'fence' ? ` — blocks /steal for ${FENCE_DAYS} days` : r.kind === 'shovel' ? ` — ${SHOVEL_USES} uses of /dig` : ` — ${GAME_NAME}`;
+              const note = r.kind === 'fence' ? ` — blocks /steal for ${FENCE_DAYS} days` : r.kind === 'shovel' ? ` — ${SHOVEL_USES} digs, 1 per day` : ` — ${GAME_NAME}`;
               return `${r.emoji} **${r.name}**${note} · **${fmt(r.cost)}** ${kowen(r.cost)} ${have >= r.cost ? '✅' : `(${fmt(r.cost - have)} to go)`}`;
             })
             .join('\n') + (fencedUntil(interaction.user.id) ? `\n\n🧱 Your Bakod is up until <t:${Math.floor(fencedUntil(interaction.user.id)! / 1000)}:f>.` : ''),
@@ -49,6 +49,10 @@ export const redeem: Command = {
     }
 
     if (reward.kind === 'shovel') {
+      if (boughtShovelToday(interaction.user.id)) {
+        await interaction.reply({ content: '🪓 You already bought a Shovel today. The hardware store opens again tomorrow! 🌙', flags: MessageFlags.Ephemeral });
+        return;
+      }
       take(interaction.user.id, reward.cost);
       const uses = addShovel(interaction.user.id);
       await interaction.reply({
