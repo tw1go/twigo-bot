@@ -24,7 +24,7 @@ export const dig: Command = {
 
     if (shovelUses(id) <= 0) {
       await interaction.reply({
-        content: `You need a 🪓 **Shovel** to dig! Get one with \`/redeem reward:Shovel\` (${SHOVEL_COST} ${kowen(SHOVEL_COST)}).`,
+        content: `You need a 🪏 **Shovel** to dig! Get one with \`/redeem reward:Shovel\` (${SHOVEL_COST} ${kowen(SHOVEL_COST)}).`,
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -45,7 +45,7 @@ export const dig: Command = {
       big
         ? `🚨✨ **${r.label.toUpperCase()} FIND!** ✨🚨\n${interaction.user} dug up…\n# ${found.emoji} ${found.name}\n${r.emoji} **${r.label}** · worth **${found.value}** ${kowen(found.value)}`
         : `⛏️ ${interaction.user} dug up…\n## ${found.emoji} ${found.name}\n${r.emoji} ${r.label} · worth **${found.value}** ${kowen(found.value)}`,
-      `-# ${left} dig${left === 1 ? '' : 's'} left today · 🪓 ${shovel} use${shovel === 1 ? '' : 's'} left on your shovel${shovel === 0 ? ' — it broke!' : ''} · 🎒 ${itemCount(id)}/${slots}`,
+      `-# ${left} dig${left === 1 ? '' : 's'} left today · 🪏 ${shovel} use${shovel === 1 ? '' : 's'} left on your shovel${shovel === 0 ? ' — it broke!' : ''} · 🎒 ${itemCount(id)}/${slots}`,
     ];
     // "Digging…" animation, then the reveal. The find is already saved, so a failed edit can't lose it.
     const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));

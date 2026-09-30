@@ -47,7 +47,7 @@ export const redeem: Command = {
     const asked = interaction.options.getInteger('quantity') ?? 1;
     const stackable = reward.kind === 'shovel' || reward.kind === 'key';
     if (asked > 1 && !stackable) {
-      await interaction.reply({ content: `Quantity only works for the 🪓 **Shovel** and 🗝️ **Master Key**. The ${reward.emoji} **${reward.name}** is one at a time.`, flags: MessageFlags.Ephemeral });
+      await interaction.reply({ content: `Quantity only works for the 🪏 **Shovel** and 🗝️ **Master Key**. The ${reward.emoji} **${reward.name}** is one at a time.`, flags: MessageFlags.Ephemeral });
       return;
     }
     if (reward.kind === 'bag' && ownedBags(interaction.user.id).includes(reward.id)) {
@@ -60,7 +60,7 @@ export const redeem: Command = {
     if (reward.kind === 'shovel') {
       const left = SHOVELS_PER_DAY - shovelsBoughtToday(interaction.user.id);
       if (left <= 0) {
-        await interaction.reply({ content: `🪓 You already bought **${SHOVELS_PER_DAY}** Shovels today. The hardware store opens again tomorrow! 🌙`, flags: MessageFlags.Ephemeral });
+        await interaction.reply({ content: `🪏 You already bought **${SHOVELS_PER_DAY}** Shovels today. The hardware store opens again tomorrow! 🌙`, flags: MessageFlags.Ephemeral });
         return;
       }
       quantity = Math.min(asked, left);
@@ -94,7 +94,7 @@ export const redeem: Command = {
       for (let i = 0; i < quantity; i++) uses = addShovel(interaction.user.id);
       const capped = quantity < asked ? ` (you asked for ${asked}, but only ${quantity} more ${quantity === 1 ? 'was' : 'were'} available today)` : '';
       await interaction.reply({
-        content: `🪓 ${interaction.user} bought ${quantity > 1 ? `**${quantity} Shovels**` : 'a **Shovel**'}${capped}! Time to \`/dig\` for treasure ⛏️\n-# ${uses} dig${uses === 1 ? '' : 's'} on your shovel · ${SHOVELS_PER_DAY - shovelsBoughtToday(interaction.user.id)} more shovel(s) available today.`,
+        content: `🪏 ${interaction.user} bought ${quantity > 1 ? `**${quantity} Shovels**` : 'a **Shovel**'}${capped}! Time to \`/dig\` for treasure ⛏️\n-# ${uses} dig${uses === 1 ? '' : 's'} on your shovel · ${SHOVELS_PER_DAY - shovelsBoughtToday(interaction.user.id)} more shovel(s) available today.`,
         allowedMentions: { parse: [] },
       });
       return;

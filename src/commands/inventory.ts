@@ -19,7 +19,7 @@ export const inventory: Command = {
       .setAuthor({ name: `${target.displayName}'s inventory`, iconURL: target.displayAvatarURL() || undefined })
       .setDescription(
         `🎒 Slots: **${itemCount(target.id)}/${capacity(target.id)}**${capacity(target.id) < MAX_SLOTS ? ' (bigger bags in `/redeem`)' : ' (max!)'}\n` +
-          `🪓 Shovel: **${shovelUses(target.id)}** use(s) left · ⛏️ Digs today: **${digsToday(target.id)}/${DIGS_PER_DAY}** · 🗝️ Master Keys: **${masterKeys(target.id)}**\n` +
+          `🪏 Shovel: **${shovelUses(target.id)}** use(s) left · ⛏️ Digs today: **${digsToday(target.id)}/${DIGS_PER_DAY}** · 🗝️ Master Keys: **${masterKeys(target.id)}**\n` +
           `💰 Total worth: **${worth} ${kowen(worth)}**`,
       );
 
@@ -30,7 +30,7 @@ export const inventory: Command = {
       const value = group.map(({ item, n }) => `${item.emoji} ${item.name}${n > 1 ? ` ×${n}` : ''} · ${item.value} each`).join('\n');
       embed.addFields({ name: `${r.emoji} ${r.label}`, value: value.length > 1024 ? value.slice(0, 1000) + '\n…' : value });
     }
-    if (!owned.length) embed.addFields({ name: 'Empty', value: '_Nothing yet. Grab a 🪓 Shovel from `/redeem` and `/dig`!_' });
+    if (!owned.length) embed.addFields({ name: 'Empty', value: '_Nothing yet. Grab a 🪏 Shovel from `/redeem` and `/dig`!_' });
     embed.setFooter({ text: 'Sell items with /sell' });
 
     await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
