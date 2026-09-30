@@ -32,7 +32,7 @@ export const twigoHelp: Command = {
             '`/steal @someone` — try to steal 1–3 Kowens (get caught = fine + jail)',
             '`/jackpot` — see the pot, players, your odds & last winner · `/jackpot tickets` — buy (1 Kowen each, draw at 10 PM)',
             '`/leaderboard` — richest members and top voice chatters',
-            '⛏️ `/dig` — dig for treasure (needs a 🪓 Shovel from `/redeem`, 3 digs a day) · `/inventory` · `/sell`',
+            '⛏️ `/dig` — dig for treasure (🪓 Shovel from `/redeem`: 3 digs each, up to 3 shovels & 9 digs a day) · `/inventory` · `/sell`',
             '🎒 Inventory holds **10** items — buy bags in `/redeem` for +8 each, up to **50**',
             '`/jail` — see who is in jail 🚔',
             '🚨 **Tanod Patrol** — random roll call; first 3 to click win 3/2/1 Kowens',

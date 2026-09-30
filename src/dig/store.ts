@@ -3,10 +3,11 @@ import { today } from '../time.js';
 import { ITEM_BY_ID } from './items.js';
 import { BAG_SLOTS } from '../games/rewards.js';
 
-// Shovels, daily digs and inventories. A shovel bought in /redeem adds SHOVEL_USES digs; one purchase per day.
+// Shovels, daily digs and inventories. A shovel bought in /redeem adds SHOVEL_USES digs; up to SHOVELS_PER_DAY a day.
 export const SHOVEL_COST = 2;
 export const SHOVEL_USES = 3;
-export const DIGS_PER_DAY = 3;
+export const SHOVELS_PER_DAY = 3;
+export const DIGS_PER_DAY = SHOVEL_USES * SHOVELS_PER_DAY; // 9
 // Inventory limit counts every item (stacks included). Bags from /redeem add slots, up to MAX_SLOTS.
 export const BASE_SLOTS = 10;
 export const MAX_SLOTS = 50;
@@ -15,7 +16,8 @@ interface Bag {
   shovel: number; // digs left on your shovel(s)
   digDay?: string; // YYYY-MM-DD that digsToday counts
   digsToday?: number;
-  shovelDay?: string; // YYYY-MM-DD of the last shovel purchase
+  shovelDay?: string; // YYYY-MM-DD that shovelsToday counts
+  shovelsToday?: number;
   bags?: string[]; // bag reward ids owned (each adds slots)
   items: Record<string, number>; // itemId -> count
 }
@@ -38,11 +40,17 @@ export function digsToday(userId: string): number {
   return b?.digDay === today() ? (b.digsToday ?? 0) : 0;
 }
 
-export const boughtShovelToday = (userId: string) => bags[userId]?.shovelDay === today();
+/** Shovels bought today (resets at midnight). */
+export function shovelsBoughtToday(userId: string): number {
+  const b = bags[userId];
+  if (b?.shovelDay !== today()) return 0;
+  return b.shovelsToday ?? 1; // older records only knew "bought today"
+}
 
 export function addShovel(userId: string): number {
   const b = bag(userId);
   b.shovel += SHOVEL_USES;
+  b.shovelsToday = shovelsBoughtToday(userId) + 1;
   b.shovelDay = today();
   save();
   return b.shovel;
