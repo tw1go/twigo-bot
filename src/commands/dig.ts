@@ -4,7 +4,7 @@ import { config } from '../config.js';
 import { blockIfJailed } from '../games/jail.js';
 import { kowen } from '../kowens.js';
 import { RARITY, rollItem } from '../dig/items.js';
-import { DIGS_PER_DAY, SHOVEL_COST, digsToday, recordDig, shovelUses } from '../dig/store.js';
+import { DIGS_PER_DAY, SHOVEL_COST, capacity, digsToday, itemCount, recordDig, shovelUses } from '../dig/store.js';
 
 export const dig: Command = {
   data: new SlashCommandBuilder()
@@ -13,6 +13,15 @@ export const dig: Command = {
   async execute(interaction) {
     if (await blockIfJailed(interaction)) return;
     const id = interaction.user.id;
+    const slots = capacity(id);
+    if (itemCount(id) >= slots) {
+      await interaction.reply({
+        content: `🎒 Your bag is full (**${itemCount(id)}/${slots}**)! \`/sell\` something, or get a bigger bag in \`/redeem\`.`,
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
     if (shovelUses(id) <= 0) {
       await interaction.reply({
         content: `You need a 🪓 **Shovel** to dig! Get one with \`/redeem reward:Shovel\` (${SHOVEL_COST} ${kowen(SHOVEL_COST)}).`,
@@ -36,7 +45,7 @@ export const dig: Command = {
       big
         ? `🚨✨ **${r.label.toUpperCase()} FIND!** ✨🚨\n${interaction.user} dug up **${found.emoji} ${found.name}**! (${r.emoji} ${r.label} · worth **${found.value}** ${kowen(found.value)})`
         : `⛏️ ${interaction.user} dug up **${found.emoji} ${found.name}**!\n${r.emoji} ${r.label} · worth **${found.value}** ${kowen(found.value)}`,
-      `-# ${left} dig${left === 1 ? '' : 's'} left today · 🪓 ${shovel} use${shovel === 1 ? '' : 's'} left on your shovel${shovel === 0 ? ' — it broke!' : ''}`,
+      `-# ${left} dig${left === 1 ? '' : 's'} left today · 🪓 ${shovel} use${shovel === 1 ? '' : 's'} left on your shovel${shovel === 0 ? ' — it broke!' : ''} · 🎒 ${itemCount(id)}/${slots}`,
     ];
     // "Digging…" animation, then the reveal. The find is already saved, so a failed edit can't lose it.
     const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));

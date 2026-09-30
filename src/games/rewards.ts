@@ -5,10 +5,16 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 // saving from zero: Phantasium ~3.5 months, Basic ~5 months, Advanced ~7.5 months.
 export const GAME_NAME = 'Crystal of Atlan';
 
-// kind 'pass' = delivered by hand (owner is pinged); 'fence' / 'shovel' = applied instantly by the bot.
+// kind 'pass' = delivered by hand (owner is pinged); 'fence' / 'shovel' / 'bag' = applied instantly by the bot.
+// Bags add BAG_SLOTS inventory slots each (10 base + 5 bags × 8 = 50 max); each bag can be bought once.
 export const rewards = [
   { id: 'bakod', name: 'Bakod (Fence)', cost: 5, emoji: '🧱', kind: 'fence' },
   { id: 'shovel', name: 'Shovel', cost: 2, emoji: '🪓', kind: 'shovel' },
+  { id: 'bag-supot', name: 'Supot (Plastic Bag)', cost: 5, emoji: '🛍️', kind: 'bag' },
+  { id: 'bag-bayong', name: 'Bayong', cost: 10, emoji: '🧺', kind: 'bag' },
+  { id: 'bag-backpack', name: 'School Backpack', cost: 20, emoji: '🎒', kind: 'bag' },
+  { id: 'bag-balikbayan', name: 'Balikbayan Box', cost: 35, emoji: '🧳', kind: 'bag' },
+  { id: 'bag-lola', name: "Lola's Bottomless Bag", cost: 50, emoji: '👜', kind: 'bag' },
   { id: 'phantasium', name: 'Phantasium Pass', cost: 1_700, emoji: '🎟️', kind: 'pass' },
   { id: 'basic-bp', name: 'Basic Battle Pass', cost: 2_450, emoji: '⚔️', kind: 'pass' },
   { id: 'advanced-bp', name: 'Advanced Battle Pass', cost: 3_650, emoji: '👑', kind: 'pass' },
@@ -17,6 +23,8 @@ export const rewards = [
 export type RewardId = (typeof rewards)[number]['id'];
 
 // Bakod (Fence): blocks /steal against you. Buying again adds more time, up to FENCE_MAX_DAYS.
+export const BAG_SLOTS = 8;
+
 export const FENCE_DAYS = 1.5; // nerfed from 3 on 2026-09-30; existing fences kept their end times
 export const FENCE_MAX_DAYS = 7;
 

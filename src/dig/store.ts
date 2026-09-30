@@ -1,17 +1,22 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { today } from '../time.js';
 import { ITEM_BY_ID } from './items.js';
+import { BAG_SLOTS } from '../games/rewards.js';
 
 // Shovels, daily digs and inventories. A shovel bought in /redeem adds SHOVEL_USES digs; one purchase per day.
 export const SHOVEL_COST = 2;
 export const SHOVEL_USES = 3;
 export const DIGS_PER_DAY = 3;
+// Inventory limit counts every item (stacks included). Bags from /redeem add slots, up to MAX_SLOTS.
+export const BASE_SLOTS = 10;
+export const MAX_SLOTS = 50;
 
 interface Bag {
   shovel: number; // digs left on your shovel(s)
   digDay?: string; // YYYY-MM-DD that digsToday counts
   digsToday?: number;
   shovelDay?: string; // YYYY-MM-DD of the last shovel purchase
+  bags?: string[]; // bag reward ids owned (each adds slots)
   items: Record<string, number>; // itemId -> count
 }
 
@@ -73,3 +78,17 @@ export function removeItems(userId: string, itemId: string, count: number): numb
   save();
   return removed;
 }
+
+export const ownedBags = (userId: string) => bags[userId]?.bags ?? [];
+
+export function addBag(userId: string, bagId: string): void {
+  const b = bag(userId);
+  b.bags = [...new Set([...(b.bags ?? []), bagId])];
+  save();
+}
+
+/** Items held, counting every copy. */
+export const itemCount = (userId: string) => Object.values(bags[userId]?.items ?? {}).reduce((a, b) => a + b, 0);
+
+/** Inventory capacity: BASE_SLOTS + BAG_SLOTS for each bag owned, capped at MAX_SLOTS. */
+export const capacity = (userId: string) => Math.min(MAX_SLOTS, BASE_SLOTS + ownedBags(userId).length * BAG_SLOTS);

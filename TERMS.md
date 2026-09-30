@@ -28,6 +28,7 @@ The bot posts scheduled reminders, event polls, participant lists, daily greetin
 ## Digging & items
 
 - A **Shovel** from `/redeem` lets you `/dig` up items, which you can keep or `/sell` for Kowens.
+- Your inventory holds a limited number of items. Bags from `/redeem` add more space.
 - Items, like Kowens, have **no value outside the bot**. Item names, rarities, drop chances, and sell prices may change at any time.
 
 ## Rewards

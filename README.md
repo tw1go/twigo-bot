@@ -97,6 +97,8 @@ see **Room API (HTTPS)** under Hosting.
 (Junk 70% · Common 22% · Uncommon 5% · Rare 2% · Epic 0.75% · Mythical 0.2% · Legendary 0.05%), then an item
 (cheaper items much more likely). ~0.6 Kowens per dig on average. `/inventory` shows your finds; `/sell` (autocomplete,
 or Everything / All Junk & Common) turns them into Kowens. Items and odds live in `src/dig/items.ts`.
+Inventory holds 10 items (every copy counts); 5 bags in `/redeem` (Supot 5, Bayong 10, School Backpack 20,
+Balikbayan Box 35, Lola's Bottomless Bag 50) add +8 each, once each, up to 50. `/dig` is blocked while the bag is full.
 
 ## Rewards
 
