@@ -15,11 +15,12 @@ import { sell } from './sell.js';
 import { leaderboard } from './leaderboard.js';
 import { ping } from './ping.js';
 import { redeem } from './redeem.js';
+import { request } from './request.js';
 import { steal } from './steal.js';
 import { twigo } from './twigo.js';
 import { twigoHelp } from './twigo-help.js';
 
 // Register new commands here.
-const all: Command[] = [ping, twigo, twigoHelp, diss, praise, judge, getCredits, balanceCommand, gamble, steal, jackpot, leaderboard, jail, redeem, gift, give, dig, inventory, sell, claim];
+const all: Command[] = [ping, twigo, twigoHelp, diss, praise, judge, getCredits, balanceCommand, gamble, steal, jackpot, leaderboard, jail, redeem, gift, give, dig, inventory, sell, request, claim];
 
 export const commands = new Collection<string, Command>(all.map((c) => [c.data.name, c]));
