@@ -1,6 +1,6 @@
 # twigo bot — Terms of Service
 
-_Last updated: September 30, 2026 (Kowens renamed to Kowens)_
+_Last updated: September 30, 2026 (credits renamed to Kowens)_
 
 These terms apply to your use of the twigo Discord bot ("the bot", "we"). By using the bot or being a member of a server where it runs, you agree to these terms. If you don't agree, don't use the bot.
 
@@ -13,6 +13,7 @@ The bot posts scheduled reminders, event polls, participant lists, daily greetin
 **Kowens** (🪙) are the server's coins — the Filipino way of saying "coins." They used to be called credits.
 
 - Kowens are claimed with `/get-kowens`, earned by spending time in voice chat (1 Kowen per 15 minutes, up to 12 per day, with at least one other person, not deafened, not in the AFK channel) or in Tanod Patrol, and spent on `/diss`, `/praise`, `/judge`, the games, and `/redeem`.
+- Kowens can also be found in [twigo's room](https://tw1go.github.io) and redeemed with `/claim` (up to 3 a day). Using scripts or bots to click for you counts as cheating.
 - **Server boosters** get 20 Kowens per boost when they boost, and 20 Kowens per active boost on the 1st of every month while they keep boosting. Boosting is optional and never required to earn Kowens or rewards.
 - The server owner may gift or remove Kowens at their discretion.
 - Don't try to farm voice Kowens, for example with alternate accounts or by idling. Admins and moderators may reset Kowens earned this way.

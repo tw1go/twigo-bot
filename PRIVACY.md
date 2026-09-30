@@ -1,6 +1,6 @@
 # twigo bot — Privacy Policy
 
-_Last updated: September 30, 2026 (Kowens renamed to Kowens)_
+_Last updated: September 30, 2026 (added twigo's room website)_
 
 This policy explains what information the twigo Discord bot ("the bot", "we") collects, why, and how it is handled. By using the bot or being a member of a server where it runs, you agree to this policy.
 
@@ -23,9 +23,13 @@ The bot only handles the minimum it needs to work.
 | Jail status, release time, and reason | You're jailed by an admin or a game | To give and remove the jail role on time | Until you're released |
 | Time of your last `/steal` | You use `/steal` | To enforce the cooldown | Yes, with your Kowens |
 | Your lifetime voice minutes | You're counted for voice Kowens | To show the `/leaderboard` | Yes, with your Kowens |
+| How many Kowens you gave this week | You use `/give` | To enforce the weekly limit | Yes, with your Kowens (resets weekly) |
+| Mine Wars rewards you received each night | The gifter pays out a 9 PM Mine Wars | So nobody is paid twice for the same night | Yes |
+| When your Bakod (fence) ends | You redeem a Bakod | To block `/steal` against you | Yes, with your Kowens |
+| How many room finds you claimed today | You use `/claim` | To enforce the daily limit | Yes (today's count only) |
 | The user you pick in `/diss`, `/praise`, `/judge`, or `/steal` | You use one of those commands | To mention them in the bot's reply | No, only used at that moment |
 
-The bot does **not** listen to, record, or store any voice audio. It does **not** read or store the content of your messages, your direct messages, your email, your IP address, or any other personal information. It does not use the Message Content intent: when you send a message, the bot only notes the date you were active.
+The bot does **not** listen to, record, or store any voice audio. It does **not** read or store the content of your messages, your direct messages, your email, or any other personal information. It never sees your IP address through Discord (see *twigo's room* below for the website). It does not use the Message Content intent: when you send a message, the bot only notes the date you were active.
 
 ## How long data is kept
 
@@ -33,6 +37,15 @@ The bot does **not** listen to, record, or store any voice audio. It does **not*
 - **Kowens:** your user ID, Kowens balance, the date you last claimed, and your voice minutes toward the next Kowens are saved on the bot's server for as long as the bot runs. Admins and moderators can reset them at any time, and you can ask for them to be deleted.
 - **Roles:** when you use the opt-in button, the bot gives or removes a Discord role. The role itself lives on Discord, not with the bot. You can remove it at any time by clicking the button again.
 - **Logs:** the server keeps technical error logs for troubleshooting. These are rotated automatically and are not used for anything else.
+
+## twigo's room (website)
+
+The bot also powers [twigo's room](https://tw1go.github.io), a small website, through a web API at `twigo-bot.duckdns.org`.
+
+- **Public leaderboard.** The site shows the **top 10 members by Kowens**, including their **server display name, avatar, and Kowens balance**. This is visible to **anyone on the internet**, not only server members.
+- **Finding Kowens.** When you click a character on the site, the API decides whether you found a Kowen and, if so, gives you a one-time code (valid 15 minutes) to redeem with `/claim` in Discord. The code itself doesn't identify you. You connect it to your account only by running `/claim`.
+- **Your IP address.** To stop spam, the API briefly uses your **IP address** to limit how often you can click and how many codes you can get per day. This is kept **in memory only**. It is never written to disk and is forgotten when the bot restarts or the day changes.
+- **No tracking.** The API sets no cookies and keeps no access logs. The website itself is hosted on GitHub Pages, which is covered by [GitHub's Privacy Statement](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement).
 
 ## How data is used and shared
 
