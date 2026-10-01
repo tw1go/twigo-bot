@@ -3,6 +3,7 @@ import type { Command } from '../types.js';
 import { balance, spend } from '../credits/store.js';
 import { botComebacks, botPraises, disses, praises } from '../judge/lines.js';
 import { shuffleBag } from '../shuffle-bag.js';
+import { onPraiseBot } from '../games/secrets.js';
 import { kowen } from '../kowens.js';
 
 // /diss always roasts, /praise always praises, /judge flips a coin. All share the same line rotation.
@@ -30,7 +31,11 @@ function verdictCommand(name: string, description: string, mode: Mode): Command 
 
       let line: string;
       let footer = '';
-      if (target.id === interaction.client.user.id) line = `${interaction.user} ${pick(verdict.botLines)}`;
+      if (target.id === interaction.client.user.id) {
+        line = `${interaction.user} ${pick(verdict.botLines)}`;
+        const bonus = kind === 'praise' ? onPraiseBot(interaction.user.id) : null; // 🤫
+        if (bonus) footer = `\n${bonus}`;
+      }
       else if (target.id === interaction.user.id) line = verdict.next().replace('{u}', `${target}`);
       else {
         if (!spend(interaction.user.id)) {

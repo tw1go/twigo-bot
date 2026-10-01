@@ -8,6 +8,7 @@ import { touch } from '../credits/store.js';
 import { handlePayoutInteraction, isPayoutInteraction } from '../minewars/payout.js';
 import { handleQuestButton, isQuestButton } from '../quests/board.js';
 import { handleRaceButton, handleRaceModal, isRaceButton, isRaceModal } from '../games/race.js';
+import { handleWishButton, isWishButton } from '../games/secrets.js';
 
 const buttonHandlers: Record<string, (i: ButtonInteraction) => Promise<void>> = {
   [BUTTON_YES]: handleAnswer,
@@ -41,6 +42,11 @@ export async function onInteractionCreate(interaction: Interaction) {
       if (interaction.replied || interaction.deferred) await interaction.followUp(payload);
       else await interaction.reply(payload);
     }
+    return;
+  }
+
+  if (interaction.isButton() && isWishButton(interaction.customId)) {
+    await handleWishButton(interaction).catch((err) => console.error('Wish failed:', err));
     return;
   }
 

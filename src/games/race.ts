@@ -41,6 +41,7 @@ const RACE_MS = 30_000;
 const FRAME_MS = 3_000;
 export const PAYOUT = 4;
 export const MAX_BET = 100;
+const PHOTO_FINISH_CHANCE = 0.03; // 🤫 two Mosangs tie; both sets of backers win
 const TRACK = 14;
 const PREFIX = 'race:';
 const MODAL = 'racebet:';
@@ -179,6 +180,8 @@ async function runRace(message: Message): Promise<void> {
   const r = race;
   if (!r) return;
   const winner = Math.floor(Math.random() * LANES);
+  const tie = Math.random() < PHOTO_FINISH_CHANCE ? (winner + 1 + Math.floor(Math.random() * (LANES - 1))) % LANES : -1;
+  const isWinner = (lane: number) => lane === winner || lane === tie;
   const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
   // Positions: everyone jostles forward; the winner crosses on the last frame and the rest fall just short.
@@ -188,17 +191,17 @@ async function runRace(message: Message): Promise<void> {
   for (let f = 1; f <= frames; f++) {
     await sleep(FRAME_MS);
     for (let lane = 0; lane < LANES; lane++) {
-      const target = f === frames ? (lane === winner ? TRACK : TRACK - 1 - Math.floor(Math.random() * 3)) : (TRACK * f) / frames;
+      const target = f === frames ? (isWinner(lane) ? TRACK : TRACK - 1 - Math.floor(Math.random() * 3)) : (TRACK * f) / frames;
       const jitter = f === frames ? 0 : (Math.random() - 0.5) * 3;
-      pos[lane] = Math.max(pos[lane], Math.min(lane === winner || f === frames ? target : TRACK - 1, target + jitter));
+      pos[lane] = Math.max(pos[lane], Math.min(isWinner(lane) || f === frames ? target : TRACK - 1, target + jitter));
     }
-    const title = f === frames ? '🏁 FINISH!' : ['🗣️ Neck and neck!', '👀 "Ay, may balita ako!"', '💨 Kumakaripas!', '📢 Who will tell it first?!'][f % 4];
+    const title = f === frames ? (tie >= 0 ? '📸 PHOTO FINISH?!' : '🏁 FINISH!') : ['🗣️ Neck and neck!', '👀 "Ay, may balita ako!"', '💨 Kumakaripas!', '📢 Who will tell it first?!'][f % 4];
     await message.edit({ embeds: [trackFrame(r, pos, title)], allowedMentions: { parse: [] } }).catch(() => {});
   }
 
   // Pay out
   const w = mosang(r, winner);
-  const winners = Object.entries(r.bets).filter(([, b]) => b.lane === winner);
+  const winners = Object.entries(r.bets).filter(([, b]) => isWinner(b.lane));
   for (const [id, b] of winners) add(id, b.amount * PAYOUT);
   const bettors = Object.keys(r.bets).length;
   race = null;
@@ -206,13 +209,15 @@ async function runRace(message: Message): Promise<void> {
 
   const results = new EmbedBuilder()
     .setColor(0x2ecc71)
-    .setTitle(`🏆 ${w.emoji} ${w.name} wins!`)
+    .setTitle(tie >= 0 ? `📸 PHOTO FINISH! ${w.emoji} ${w.name} & ${mosang(r, tie).emoji} ${mosang(r, tie).name} tie!` : `🏆 ${w.emoji} ${w.name} wins!`)
     .setDescription(
-      `${w.emoji} **${w.name}** (*${w.line}*) got the chismis there first! 🗣️\n\n` +
+      (tie >= 0
+        ? `They told the chismis at the **exact same time**! 🗣️🗣️ Backers of **both** win!\n\n`
+        : `${w.emoji} **${w.name}** (*${w.line}*) got the chismis there first! 🗣️\n\n`) +
         (winners.length
           ? `**Winners** (${PAYOUT}× bet):\n${winners.map(([id, b]) => `<@${id}> +${b.amount * PAYOUT} ${kowen(b.amount * PAYOUT)}`).join('\n')}`
           : bettors
-            ? `Nobody bet on ${w.name}. The Tanod keeps all ${bettors} bet${bettors === 1 ? '' : 's'} 💸`
+            ? `Nobody bet on ${tie >= 0 ? 'either of them' : w.name}. The Tanod keeps all ${bettors} bet${bettors === 1 ? '' : 's'} 💸`
             : 'Nobody placed a bet. Just for the chismis 😂'),
     );
   await message.reply({ embeds: [results], allowedMentions: { parse: [] } }).catch((e) => console.error('[race] results failed:', e));

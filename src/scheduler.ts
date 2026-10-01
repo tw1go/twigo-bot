@@ -9,6 +9,7 @@ import { sendGreeting } from './greetings/flow.js';
 import { drawJackpot } from './games/jackpot.js';
 import { runDecay } from './credits/decay.js';
 import { monthlyBoostPayout } from './games/boosts.js';
+import { maybeMakeAWish } from './games/secrets.js';
 
 export function startScheduler(client: Client): Cron[] {
   const job = (name: string, pattern: string, fn: (c: Client) => Promise<void>) =>
@@ -31,7 +32,8 @@ export function startScheduler(client: Client): Cron[] {
     job('jackpot', '0 22 * * *', drawJackpot), // daily 10:00 PM
     job('decay', '5 0 * * *', runDecay), // daily 12:05 AM — inactive members lose credits
     job('boosts', '0 12 1 * *', monthlyBoostPayout), // 1st of the month, 12:00 PM — booster credits
+    job('wish', '11 11,23 * * *', maybeMakeAWish), // 🤫 sometimes, at 11:11 AM/PM
   ];
-  for (const j of jobs) console.log(`[scheduler] ${j.name} next run: ${j.nextRun()?.toString()}`);
+  for (const j of jobs.filter((x) => x.name !== 'wish')) console.log(`[scheduler] ${j.name} next run: ${j.nextRun()?.toString()}`);
   return jobs;
 }

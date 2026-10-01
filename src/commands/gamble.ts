@@ -8,6 +8,7 @@ import { config } from '../config.js';
 // Coin flip: 45% win (double). Otherwise you lose the bet — and sometimes the Tanod busts you (5 minutes in jail).
 // The bust chance depends on where you gamble: low in the gambling channel, high anywhere else.
 const WIN_CHANCE = 0.45;
+const SIXTY_SEVEN_BONUS = 7; // 🤫 win a bet of exactly 67 → +7 extra
 export const BUST_CHANCE_IN_CHANNEL = 0.03;
 export const BUST_CHANCE_ELSEWHERE = 0.2;
 const BUST_JAIL_MINUTES = 5;
@@ -44,8 +45,9 @@ export const gamble: Command = {
       await jail(interaction.user.id, BUST_JAIL_MINUTES, 'Caught gambling');
       content = `🚨 **BUSTED!** The Tanod caught ${interaction.user} gambling! **${bet}** ${kowen(bet)} confiscated and **${BUST_JAIL_MINUTES} minutes** in jail. 🚔`;
     } else if (roll < bustChance + WIN_CHANCE) {
-      add(interaction.user.id, bet);
+      add(interaction.user.id, bet + (bet === 67 ? SIXTY_SEVEN_BONUS : 0)); // 🤫 6-7
       content = `🎲 ${interaction.user} bet **${bet}** and **WON**! +${bet} ${kowen(bet)} 🤑`;
+      if (bet === 67) content += `\n6️⃣7️⃣!! **+${SIXTY_SEVEN_BONUS}** bonus 🫲🫱`;
     } else {
       take(interaction.user.id, bet);
       content = `🎲 ${interaction.user} bet **${bet}** and **lost** it all. 💸`;

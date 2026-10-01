@@ -23,7 +23,10 @@ const MAX_GAP_MS = 6 * 3_600_000;
 const ACTIVE_FROM_HOUR = 10; // 10 AM
 const ACTIVE_UNTIL_HOUR = 22; // 10 PM
 
-let active: { message: Message; answered: string[] } | null = null;
+let active: { message: Message; answered: string[]; startedAt: number } | null = null;
+
+/** The patrol currently taking answers, if any (for the 🫡 salute egg). */
+export const activePatrol = () => (active ? { messageId: active.message.id, startedAt: active.startedAt } : null);
 
 const row = (disabled = false) =>
   new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -39,7 +42,7 @@ export async function startPatrol(client: Client): Promise<void> {
     content: '🚨 **TANOD PATROL!** Who is awake? First 3 to answer get **3 / 2 / 1** Kowens! You have 60 seconds. ⏱️',
     components: [row()],
   });
-  active = { message, answered: [] };
+  active = { message, answered: [], startedAt: Date.now() };
   setTimeout(() => void endPatrol().catch((e) => console.error('[patrol] end failed:', e)), WINDOW_MS);
 }
 

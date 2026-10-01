@@ -3,7 +3,8 @@ import type { Client } from 'discord.js';
 import { config } from '../config.js';
 import { today } from '../time.js';
 import { categories, greetings, type Category } from './content.js';
-import { holidayCountdown } from './countdown.js';
+import { SIXTY_SEVEN, daysToChristmas, holidayCountdown } from './countdown.js';
+import { setEgg67Message } from '../games/egg67.js';
 
 // Shuffle bags: each list is used fully before any item repeats. Persisted across restarts.
 type Bags = Record<string, number[]>;
@@ -47,8 +48,9 @@ export async function sendGreeting(client: Client): Promise<void> {
 
   const channel = await client.channels.fetch(config.greetingsChannelId);
   if (!channel?.isSendable()) throw new Error(`Channel ${config.greetingsChannelId} not found or not sendable`);
-  await channel.send({
+  const message = await channel.send({
     content: `☀️ **${greeting}**\n\n**${title}**\n${body}\n\n${holidayCountdown(today())}`,
     allowedMentions: { parse: [] },
   });
+  if (daysToChristmas(today()) === SIXTY_SEVEN) setEgg67Message(message.id); // 🤫
 }

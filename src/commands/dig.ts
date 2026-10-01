@@ -39,7 +39,7 @@ export const dig: Command = {
     const r = RARITY[found.rarity];
     const left = DIGS_PER_DAY - digsToday(id);
     const shovel = shovelUses(id);
-    const big = found.rarity === 'mythical' || found.rarity === 'legendary';
+    const big = found.rarity === 'mythical' || found.rarity === 'legendary' || found.rarity === 'secret';
 
     const lines = [
       big
@@ -56,6 +56,7 @@ export const dig: Command = {
       epic: [`${r.emoji} Something is glowing…`, `${r.emoji}${r.emoji} It's getting brighter…`],
       mythical: [`${r.emoji} Something is glowing…`, `${r.emoji}${r.emoji} The ground is shaking…`, `${r.emoji}${r.emoji}${r.emoji} !!!`],
       legendary: [`${r.emoji} Something is glowing…`, `${r.emoji}${r.emoji} The ground is shaking…`, `${r.emoji}${r.emoji}${r.emoji} WAIT WHAT…`, '✨✨✨✨✨'],
+      secret: ['🌟 …', '🌟🌟 This isn\'t on any list…', '🌟🌟🌟 THE TANOD DIDN\'T KNOW THIS EXISTED', '✨🌟✨🌟✨🌟✨'],
     };
     const steps = [...frames.map(digging), ...(suspense[found.rarity] ?? []).map((t) => `${digging('🟫🟫🟫')}\n${t}`)];
 
@@ -72,7 +73,7 @@ export const dig: Command = {
     await interaction.editReply({ content: lines.join('\n'), allowedMentions: { parse: [] } }).catch((err) => console.error('[dig] reveal failed:', err));
 
     // Legendary finds are shouted in general too.
-    if (found.rarity === 'legendary' && interaction.channelId !== config.gamesChannelId) {
+    if ((found.rarity === 'legendary' || found.rarity === 'secret') && interaction.channelId !== config.gamesChannelId) {
       const channel = await interaction.client.channels.fetch(config.gamesChannelId).catch(() => null);
       if (channel?.isSendable()) {
         await channel.send({ content: `🟡🏆 ${interaction.user} just dug up **${found.emoji} ${found.name}**!! 🏆🟡`, allowedMentions: { parse: [] } }).catch(() => {});

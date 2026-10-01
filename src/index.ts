@@ -10,6 +10,8 @@ import { touch } from './credits/store.js';
 import { initBoosters, onBoostMessage } from './games/boosts.js';
 import { catchUpEggs, onEggReaction } from './games/easter-egg.js';
 import { refundInterruptedRace } from './games/race.js';
+import { onEgg67Reaction } from './games/egg67.js';
+import { onSaluteReaction } from './games/secrets.js';
 import { startWebServer } from './web/server.js';
 
 const client = new Client({
@@ -35,6 +37,8 @@ client.once(Events.ClientReady, (c) => {
 client.on(Events.InteractionCreate, onInteractionCreate);
 client.on(Events.MessageReactionAdd, (reaction, user) => {
   onEggReaction(reaction, user).catch((err) => console.error('[easter-egg] failed:', err));
+  onEgg67Reaction(reaction, user).catch((err) => console.error('[egg67] failed:', err));
+  onSaluteReaction(reaction, user).catch((err) => console.error('[salute] failed:', err));
 });
 client.on(Events.MessageCreate, (message) => {
   if (!message.author.bot) touch(message.author.id);

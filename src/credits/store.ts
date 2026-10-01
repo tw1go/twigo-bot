@@ -4,6 +4,8 @@ import { daysBetween, today } from '../time.js';
 // Credits for /diss, /praise and /judge. Claim DAILY_CREDITS once per day (config.timezone); unused credits carry over.
 // Voice chat also earns 1 credit per VOICE_MINUTES_PER_CREDIT minutes (see voice.ts).
 export const DAILY_CREDITS = 5;
+/** 🤫 Double on Christmas Day. */
+export const dailyAmount = () => (today().slice(5) === '12-25' ? DAILY_CREDITS * 2 : DAILY_CREDITS);
 export const VOICE_MINUTES_PER_CREDIT = 15;
 export const VOICE_DAILY_CAP = 12; // max voice credits per day (= 3 hours), stops AFK farming
 
@@ -38,7 +40,7 @@ export function balance(userId: string): number {
 export function claim(userId: string): number | null {
   const account = (accounts[userId] ??= { balance: 0 });
   if (account.lastClaim === today()) return null;
-  account.balance += DAILY_CREDITS;
+  account.balance += dailyAmount();
   account.lastClaim = today();
   account.lastActive = today();
   save();

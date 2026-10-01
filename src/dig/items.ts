@@ -1,7 +1,7 @@
 // Everything /dig can turn up. `value` is what /sell pays, in Kowens.
 // A dig first rolls a rarity (RARITY_CHANCE), then an item of that rarity — cheaper items come up much more often.
 
-export type Rarity = 'junk' | 'common' | 'uncommon' | 'rare' | 'epic' | 'mythical' | 'legendary';
+export type Rarity = 'junk' | 'common' | 'uncommon' | 'rare' | 'epic' | 'mythical' | 'legendary' | 'secret';
 
 export const RARITY: Record<Rarity, { label: string; emoji: string }> = {
   junk: { label: 'Junk', emoji: '⚫' },
@@ -11,6 +11,7 @@ export const RARITY: Record<Rarity, { label: string; emoji: string }> = {
   epic: { label: 'Epic', emoji: '🟣' },
   mythical: { label: 'Mythical', emoji: '🟠' },
   legendary: { label: 'Legendary', emoji: '🟡' },
+  secret: { label: 'Secret', emoji: '🌟' },
 };
 
 /** Chance of each rarity per dig (sums to 1). Tuned so a dig is worth ~0.75 Kowens on average: mostly junk
@@ -23,9 +24,10 @@ export const RARITY_CHANCE: Record<Rarity, number> = {
   epic: 0.0075,
   mythical: 0.002,
   legendary: 0.0005,
+  secret: 0, // 🤫 rolled separately (SECRET_CHANCE), never listed
 };
 
-export const RARITY_ORDER: Rarity[] = ['legendary', 'mythical', 'epic', 'rare', 'uncommon', 'common', 'junk'];
+export const RARITY_ORDER: Rarity[] = ['secret', 'legendary', 'mythical', 'epic', 'rare', 'uncommon', 'common', 'junk'];
 
 export interface Item {
   id: string;
@@ -67,6 +69,8 @@ export const ITEMS: Item[] = [
   item('aka-poknat', "Aka's Poknat", '✨', 10, 'mythical', true),
   item('troyangs-frog', "Troyangs' Golden Frog", '🐸', 20, 'mythical', true),
   item('twigo-treasure', "twigo's Hidden Treasure", '💰', 50, 'legendary', true),
+  // 🤫 Never listed anywhere. 1 in 10,000 digs.
+  item('twigo-tsinelas', "twigo's Lost Tsinelas (Signed)", '🩴', 100, 'secret', true),
 
   // ── Junk: the ground's leftovers ──
   item('rock', 'Rock', '🪨', 0, 'junk'),
@@ -129,7 +133,10 @@ export const ITEMS: Item[] = [
 export const ITEM_BY_ID = new Map(ITEMS.map((i) => [i.id, i]));
 
 /** Rolls one dig: a rarity by RARITY_CHANCE, then an item weighted toward cheaper ones. */
+export const SECRET_CHANCE = 0.0001;
+
 export function rollItem(random = Math.random): Item {
+  if (random() < SECRET_CHANCE) return ITEM_BY_ID.get('twigo-tsinelas')!; // 🤫
   let r = random();
   let rarity: Rarity = 'junk';
   for (const [key, chance] of Object.entries(RARITY_CHANCE) as [Rarity, number][]) {

@@ -8,6 +8,7 @@ import { kowen } from '../kowens.js';
 // the whole pot. Needs at least 2 players, otherwise everyone is refunded.
 export const MAX_TICKETS = 5;
 export const DRAW_LABEL = '10:00 PM';
+const UNDERDOG_BONUS = 10;
 
 const DIR = 'data';
 const FILE = `${DIR}/jackpot.json`;
@@ -75,6 +76,9 @@ export async function drawJackpot(client: Client): Promise<void> {
   };
   const winner = pickWeighted();
   add(winner, total);
+  // 🤫 Lucky Underdog: won with a single ticket against 3+ players.
+  const underdog = (entries.find(([id]) => id === winner)?.[1] ?? 0) === 1 && entries.length >= 3;
+  if (underdog) add(winner, UNDERDOG_BONUS);
   saveLast({ at: Date.now(), winner, pot: total, players: entries.length });
 
   // Slot-machine reveal: edit one message through weighted random names, slowing down, landing on the winner.
@@ -107,7 +111,8 @@ export async function drawJackpot(client: Client): Promise<void> {
 
   await message
     .edit({
-      content: `🎉 **JACKPOT!** 🎉\n\n## 🏆 <@${winner}> 🏆\nwins the pot of **${total} ${kowen(total)}** from ${entries.length} players! 🤑`,
+      content: `🎉 **JACKPOT!** 🎉\n\n## 🏆 <@${winner}> 🏆\nwins the pot of **${total} ${kowen(total)}** from ${entries.length} players! 🤑` +
+        (underdog ? `\n🍀 **LUCKY UNDERDOG!** Won with just **1 ticket**, so here's **+${UNDERDOG_BONUS}** bonus!` : ''),
       allowedMentions: { parse: [] },
     })
     .catch((err) => console.error('[jackpot] reveal failed:', err));
