@@ -63,7 +63,7 @@ export const status: Command = {
           name: '📜 Activity',
           value: [
             `📜 Quests: **${activeCount(id)}/${MAX_ACTIVE}** posted · **${acceptedCount(id)}** accepted`,
-            `🎟️ Jackpot tickets tonight: **${ticketsOf(id)}**`,
+            `🎟️ Jackpot tickets (next draw): **${ticketsOf(id)}**`,
             boosts ? `💎 Boosting: **${boosts}** boost${boosts === 1 ? '' : 's'}` : '',
             idle !== null && idle > INACTIVE_GRACE_DAYS ? `⚠️ **Inactive ${idle} days** — losing Kowens daily!` : '🟢 Active — no inactivity loss',
           ]

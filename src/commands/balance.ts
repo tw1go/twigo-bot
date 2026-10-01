@@ -40,7 +40,7 @@ export const balanceCommand: Command = {
     const jail = jailedUntil(id);
     if (jail) status.push(`🚔 In jail until ${ts(jail)}`);
     const tickets = ticketsOf(id);
-    if (tickets) status.push(`🎟️ ${tickets} jackpot ticket(s) for tonight`);
+    if (tickets) status.push(`🎟️ ${tickets} jackpot ticket(s) for the next draw`);
     const idle = daysInactive(id);
     if (idle !== null && idle > INACTIVE_GRACE_DAYS) status.push(`⚠️ Inactive ${idle} days — losing Kowens daily!`);
 

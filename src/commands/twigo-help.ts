@@ -31,7 +31,7 @@ export const twigoHelp: Command = {
             '`/gamble amount` — coin flip: double or nothing. Busted 3% in 🎰 the gambling channel, 20% anywhere else 🚨',
             '`/steal @someone` — steal 2–5% of their Kowens (max 50); caught = fine of half + jail. 🗝️ Master Key: 50% to break a Bakod',
             '`/race` — 🏁 Mosang race (gambling channel only): 2 min to bet on 1 of 5 Mosangs, winner pays 4×',
-            '`/jackpot` — see the pot, players, your odds & last winner · `/jackpot tickets` — buy (1 Kowen each, draw at 10 PM)',
+            '`/jackpot` — see the pot, players, your odds & last winner · `/jackpot tickets` — buy (1 Kowen each, draws at 10 AM & 10 PM)',
             '`/leaderboard` — richest members and top voice chatters',
             '⛏️ `/dig` — dig for treasure (🪏 Shovel from `/redeem`: 3 digs each, up to 3 shovels & 9 digs a day) · `/inventory` · `/sell`',
             '🎒 Inventory holds **10** items — buy bags in `/redeem` for +8 each, up to **50**',

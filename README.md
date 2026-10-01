@@ -76,7 +76,7 @@ All in `GAMES_CHANNEL_ID` / wherever the command is used. Jailed members can't p
   `GAMBLING_CHANNEL_ID`, 20% anywhere else. 10s cooldown.
 - `/steal @user` — 35% steal 2–5% of the target's Kowens (min 1–3, max 50); otherwise pay them a fine of half that (min 2) + 5 min jail. 1 hour cooldown;
   you need 2+ Kowens and the target needs 3+.
-- `/jackpot tickets:N` — 1 Kowen per ticket, max 5 per person per day. Draw daily at 10 PM, weighted by tickets;
+- `/jackpot tickets:N` — 1 Kowen per ticket, max 5 per person per draw. Drawn twice a day (10 AM & 10 PM), weighted by tickets;
   fewer than 2 players = refund. `/twigo game:jackpot` draws now.
 - `/race` — Mosang race, only in `GAMBLING_CHANNEL_ID`: 5 of 10 Mosangs (`src/games/race.ts`), 2 min betting via buttons + modal (1–100, one bet each),
   30 s animated race, winner's backers get 4× (equal odds, so a small sink). Interrupted races refund on startup.

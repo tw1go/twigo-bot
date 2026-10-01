@@ -1,23 +1,21 @@
 import { EmbedBuilder, MessageFlags, SlashCommandBuilder } from 'discord.js';
-import { Cron } from 'croner';
-import { config } from '../config.js';
 import type { Command } from '../types.js';
 import { balance, take } from '../credits/store.js';
 import { blockIfJailed } from '../games/jail.js';
-import { DRAW_LABEL, MAX_TICKETS, addTickets, entries, lastDraw, players, pot, ticketsOf } from '../games/jackpot.js';
+import { DRAW_LABEL, MAX_TICKETS, addTickets, entries, lastDraw, nextDraw, players, pot, ticketsOf } from '../games/jackpot.js';
 import { kowen } from '../kowens.js';
 
 /** The /jackpot check: pot, who's in, your odds, countdown and last winner. */
 function statusCard(userId: string): EmbedBuilder {
   const total = pot();
   const mine = ticketsOf(userId);
-  const next = new Cron('0 22 * * *', { timezone: config.timezone }).nextRun()!;
+  const next = nextDraw();
   const ts = Math.floor(next.getTime() / 1000);
   const list = entries();
 
   const embed = new EmbedBuilder()
     .setColor(0xf1c40f)
-    .setTitle('🎰 Tonight\'s Jackpot')
+    .setTitle('🎰 Next Jackpot')
     .setDescription(`## 🪙 ${total} ${kowen(total)} in the pot\nDraw at <t:${ts}:t> (<t:${ts}:R>)`)
     .addFields(
       {
@@ -51,11 +49,11 @@ export const jackpot: Command = {
     .setName('jackpot')
     .setDescription(`Jackpot tickets, 1 Kowen each, drawn at ${DRAW_LABEL} 🎰 · 🔒 checking · 🌐 buying`)
     .addIntegerOption((o) =>
-      o.setName('tickets').setDescription(`How many tickets to buy (max ${MAX_TICKETS} per day). Leave empty to check the pot.`).setMinValue(1).setMaxValue(MAX_TICKETS),
+      o.setName('tickets').setDescription(`How many tickets to buy (max ${MAX_TICKETS} per draw). Leave empty to check the pot.`).setMinValue(1).setMaxValue(MAX_TICKETS),
     ),
   async execute(interaction) {
     const status = () =>
-      `🎰 Pot: **${pot()}** ${kowen(pot())} from **${players()}** player(s). You have **${ticketsOf(interaction.user.id)}** ticket(s). Draw at **${DRAW_LABEL}** tonight.`;
+      `🎰 Pot: **${pot()}** ${kowen(pot())} from **${players()}** player(s). You have **${ticketsOf(interaction.user.id)}** ticket(s). Next draw <t:${Math.floor(nextDraw().getTime() / 1000)}:R>.`;
     const count = interaction.options.getInteger('tickets');
     if (!count) {
       await interaction.reply({ embeds: [statusCard(interaction.user.id)], flags: MessageFlags.Ephemeral });
@@ -77,7 +75,7 @@ export const jackpot: Command = {
     take(interaction.user.id, buy);
     addTickets(interaction.user.id, buy);
     await interaction.reply({
-      content: `🎟️ ${interaction.user} bought **${buy}** jackpot ticket(s)! The pot is now **${pot()}** ${kowen(pot())}. Draw at **${DRAW_LABEL}**.`,
+      content: `🎟️ ${interaction.user} bought **${buy}** jackpot ticket(s)! The pot is now **${pot()}** ${kowen(pot())}. Next draw <t:${Math.floor(nextDraw().getTime() / 1000)}:R>.`,
       allowedMentions: { parse: [] },
     });
   },

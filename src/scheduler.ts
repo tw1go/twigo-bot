@@ -6,7 +6,7 @@ import { askAdmin, closePoll, remindParticipants, startMatch } from './match/flo
 import { schedule as mineWars } from './minewars/schedule.js';
 import { startMineWars, warnMineWars } from './minewars/flow.js';
 import { sendGreeting } from './greetings/flow.js';
-import { drawJackpot } from './games/jackpot.js';
+import { DRAW_CRON, drawJackpot } from './games/jackpot.js';
 import { runDecay } from './credits/decay.js';
 import { monthlyBoostPayout } from './games/boosts.js';
 import { maybeMakeAWish } from './games/secrets.js';
@@ -29,7 +29,7 @@ export function startScheduler(client: Client): Cron[] {
     job('mw:warning', mineWars.warning, warnMineWars),
     job('mw:start', mineWars.start, startMineWars),
     job('greeting', '0 7 * * *', sendGreeting), // daily 7:00 AM
-    job('jackpot', '0 22 * * *', drawJackpot), // daily 10:00 PM
+    job('jackpot', DRAW_CRON, drawJackpot), // 10:00 AM and 10:00 PM
     job('decay', '5 0 * * *', runDecay), // daily 12:05 AM — inactive members lose credits
     job('boosts', '0 12 1 * *', monthlyBoostPayout), // 1st of the month, 12:00 PM — booster credits
     job('wish', '11 11,23 * * *', maybeMakeAWish), // 🤫 sometimes, at 11:11 AM/PM

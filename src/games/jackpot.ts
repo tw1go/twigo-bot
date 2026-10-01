@@ -1,13 +1,18 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import type { Client } from 'discord.js';
+import { Cron } from 'croner';
 import { config } from '../config.js';
 import { add } from '../credits/store.js';
 import { kowen } from '../kowens.js';
 
-// Daily jackpot: tickets cost 1 Kowen each (up to MAX_TICKETS per person). At draw time a random ticket wins
+// Jackpot, drawn twice a day: tickets cost 1 Kowen each (up to MAX_TICKETS per person per draw). At draw time a random ticket wins
 // the whole pot. Needs at least 2 players, otherwise everyone is refunded.
 export const MAX_TICKETS = 5;
-export const DRAW_LABEL = '10:00 PM';
+export const DRAW_LABEL = '10 AM & 10 PM';
+/** Draws happen at 10 AM and 10 PM (config.timezone). */
+export const DRAW_CRON = '0 10,22 * * *';
+/** When the next draw happens. */
+export const nextDraw = () => new Cron(DRAW_CRON, { timezone: config.timezone }).nextRun()!;
 const UNDERDOG_BONUS = 10;
 
 const DIR = 'data';
@@ -22,7 +27,7 @@ function save(): void {
 export const ticketsOf = (userId: string) => tickets[userId] ?? 0;
 export const pot = () => Object.values(tickets).reduce((a, b) => a + b, 0);
 export const players = () => Object.keys(tickets).length;
-/** Everyone in tonight's draw, most tickets first. */
+/** Everyone in the next draw, most tickets first. */
 export const entries = () => Object.entries(tickets).sort(([, a], [, b]) => b - a);
 
 // The last draw, for the /jackpot status card.
@@ -63,7 +68,7 @@ export async function drawJackpot(client: Client): Promise<void> {
     add(id, n);
     saveLast({ at: Date.now(), winner: null, pot: total, players: 1 });
     await channel.send({
-      content: `🎰 **Jackpot draw:** only <@${id}> joined tonight, so their **${n}** ${kowen(n)} ${n === 1 ? 'was' : 'were'} refunded. Bring friends tomorrow!`,
+      content: `🎰 **Jackpot draw:** only <@${id}> joined this draw, so their **${n}** ${kowen(n)} ${n === 1 ? 'was' : 'were'} refunded. Bring friends next time!`,
       allowedMentions: { parse: [] },
     });
     return;
