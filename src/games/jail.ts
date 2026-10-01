@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { MessageFlags, type ChatInputCommandInteraction, type ButtonInteraction, type Client } from 'discord.js';
 import { config } from '../config.js';
+import { balance } from '../credits/store.js';
 
 // Jail: jailed members get the jail role and can't play /gamble, /steal, /jackpot or Tanod Patrol.
 // Jail times are saved so a restart doesn't free anyone early.
@@ -8,7 +9,19 @@ import { config } from '../config.js';
 interface JailEntry {
   until: number; // ms timestamp
   reason: string;
+  noBail?: boolean; // set for admin /jail — those sentences must be served in full
 }
+
+// Bail (/bail): BAIL_PERCENT of the jailed member's Kowens, between MIN_BAIL and MAX_BAIL. The Kowens are removed.
+export const BAIL_PERCENT = 0.05;
+export const MIN_BAIL = 3;
+export const MAX_BAIL = 100;
+
+/** Bail for a jailed member, based on their own balance (so a broke friend can't pay a cheap one). */
+export const bailFor = (userId: string) => Math.min(MAX_BAIL, Math.max(MIN_BAIL, Math.ceil(balance(userId) * BAIL_PERCENT)));
+
+/** False if they're not jailed, or were jailed by an admin. */
+export const canBail = (userId: string) => !!jailedUntil(userId) && !jailed[userId]?.noBail;
 
 const DIR = 'data';
 const FILE = `${DIR}/jail.json`;
@@ -35,9 +48,11 @@ export function jailedUntil(userId: string): number | null {
   return entry && entry.until > Date.now() ? entry.until : null;
 }
 
-export async function jail(userId: string, minutes: number, reason: string): Promise<number> {
-  const until = Math.max(jailedUntil(userId) ?? 0, Date.now()) + minutes * 60_000;
-  jailed[userId] = { until, reason };
+export async function jail(userId: string, minutes: number, reason: string, bailable = true): Promise<number> {
+  const current = jailedUntil(userId) ? jailed[userId] : undefined;
+  const until = Math.max(current?.until ?? 0, Date.now()) + minutes * 60_000;
+  // Once an admin sentence is involved, the whole stay is no-bail.
+  jailed[userId] = { until, reason, ...((!bailable || current?.noBail) && { noBail: true }) };
   save();
   await setRole(userId, true);
   return until;
@@ -60,7 +75,8 @@ export async function blockIfJailed(interaction: ChatInputCommandInteraction | B
   const until = jailedUntil(interaction.user.id);
   if (!until) return false;
   await interaction.reply({
-    content: `🚔 You're in jail until <t:${Math.floor(until / 1000)}:t> (<t:${Math.floor(until / 1000)}:R>).`,
+    content: `🚔 You're in jail until <t:${Math.floor(until / 1000)}:t> (<t:${Math.floor(until / 1000)}:R>).` +
+      (canBail(interaction.user.id) ? `\n-# Can't wait? \`/bail\` costs ${bailFor(interaction.user.id)} Kowens.` : ''),
     flags: MessageFlags.Ephemeral,
   });
   return true;

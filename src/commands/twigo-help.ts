@@ -28,13 +28,15 @@ export const twigoHelp: Command = {
         {
           name: '🎰 Games',
           value: [
-            '`/gamble amount` — coin flip: double or nothing (watch out for the Tanod 🚨)',
+            '`/gamble amount` — coin flip: double or nothing. Busted 3% in 🎰 the gambling channel, 20% anywhere else 🚨',
             '`/steal @someone` — steal 2–5% of their Kowens (max 50); caught = fine of half + jail. 🗝️ Master Key: 50% to break a Bakod',
+            '`/race` — 🏁 Mosang race (gambling channel only): 2 min to bet on 1 of 5 Mosangs, winner pays 4×',
             '`/jackpot` — see the pot, players, your odds & last winner · `/jackpot tickets` — buy (1 Kowen each, draw at 10 PM)',
             '`/leaderboard` — richest members and top voice chatters',
             '⛏️ `/dig` — dig for treasure (🪏 Shovel from `/redeem`: 3 digs each, up to 3 shovels & 9 digs a day) · `/inventory` · `/sell`',
             '🎒 Inventory holds **10** items — buy bags in `/redeem` for +8 each, up to **50**',
             '`/jail` — see who is in jail 🚔',
+            '`/bail [user]` — pay to get out early (5% of the jailed person\'s Kowens, 3–100; not for admin jails)',
             '🚨 **Tanod Patrol** — random roll call; first 3 to click win 3/2/1 Kowens',
           ].join('\n'),
         },

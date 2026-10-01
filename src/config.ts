@@ -28,6 +28,8 @@ export const config = {
   gamesChannelId: required('GAMES_CHANNEL_ID'),
   jailRoleId: required('JAIL_ROLE_ID'),
   rewardOwnerId: required('REWARD_OWNER_ID'),
+  // Gambling here has a much lower chance of getting busted by the Tanod.
+  gamblingChannelId: required('GAMBLING_CHANNEL_ID'),
   boostChannelId: required('BOOST_CHANNEL_ID'),
   easterEggChannelId: required('EASTER_EGG_CHANNEL_ID'),
   easterEggMessageId: required('EASTER_EGG_MESSAGE_ID'),

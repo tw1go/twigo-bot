@@ -7,6 +7,7 @@ import { BUTTON_PATROL, handlePatrolButton } from '../games/patrol.js';
 import { touch } from '../credits/store.js';
 import { handlePayoutInteraction, isPayoutInteraction } from '../minewars/payout.js';
 import { handleQuestButton, isQuestButton } from '../quests/board.js';
+import { handleRaceButton, handleRaceModal, isRaceButton, isRaceModal } from '../games/race.js';
 
 const buttonHandlers: Record<string, (i: ButtonInteraction) => Promise<void>> = {
   [BUTTON_YES]: handleAnswer,
@@ -24,6 +25,19 @@ export async function onInteractionCreate(interaction: Interaction) {
     } catch (err) {
       console.error('Error in Mine Wars payout panel:', err);
       const payload = { content: 'Something went wrong with the payout panel.', flags: MessageFlags.Ephemeral } as const;
+      if (interaction.replied || interaction.deferred) await interaction.followUp(payload);
+      else await interaction.reply(payload);
+    }
+    return;
+  }
+
+  if ((interaction.isButton() && isRaceButton(interaction.customId)) || (interaction.isModalSubmit() && isRaceModal(interaction.customId))) {
+    try {
+      if (interaction.isButton()) await handleRaceButton(interaction);
+      else if (interaction.isModalSubmit()) await handleRaceModal(interaction);
+    } catch (err) {
+      console.error('Error in Mosang race:', err);
+      const payload = { content: 'Something went wrong with the race.', flags: MessageFlags.Ephemeral } as const;
       if (interaction.replied || interaction.deferred) await interaction.followUp(payload);
       else await interaction.reply(payload);
     }

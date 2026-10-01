@@ -9,6 +9,7 @@ import { startPatrolScheduler } from './games/patrol.js';
 import { touch } from './credits/store.js';
 import { initBoosters, onBoostMessage } from './games/boosts.js';
 import { catchUpEggs, onEggReaction } from './games/easter-egg.js';
+import { refundInterruptedRace } from './games/race.js';
 import { startWebServer } from './web/server.js';
 
 const client = new Client({
@@ -28,6 +29,7 @@ client.once(Events.ClientReady, (c) => {
   startWebServer(c);
   initBoosters(c).catch((err) => console.error('[boosts] init failed:', err));
   catchUpEggs(c).catch((err) => console.error('[easter-egg] catch-up failed:', err));
+  refundInterruptedRace(c).catch((err) => console.error('[race] refund failed:', err));
 });
 
 client.on(Events.InteractionCreate, onInteractionCreate);

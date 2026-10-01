@@ -1,7 +1,8 @@
 import { EmbedBuilder, MessageFlags, SlashCommandBuilder } from 'discord.js';
 import type { Command } from '../types.js';
 import { INACTIVE_GRACE_DAYS, DAILY_GIVE_LIMIT, daysInactive, fencedUntil, givenToday, lastSteal } from '../credits/store.js';
-import { jailList, jailedUntil } from '../games/jail.js';
+import { bailFor, canBail, jailList, jailedUntil } from '../games/jail.js';
+import { kowen } from '../kowens.js';
 import { ticketsOf } from '../games/jackpot.js';
 import { boostCount } from '../games/boosts.js';
 import { DIGS_PER_DAY, SHOVELS_PER_DAY, capacity, digsToday, itemCount, masterKeys, shovelUses, shovelsBoughtToday } from '../dig/store.js';
@@ -40,7 +41,9 @@ export const status: Command = {
         },
         {
           name: '🚔 Jail',
-          value: jail ? `**Jailed** until ${at(jail)}${jailReason ? `\n-# ${jailReason}` : ''}` : '✅ Free',
+          value: jail
+            ? `**Jailed** until ${at(jail)}${jailReason ? `\n-# ${jailReason}` : ''}\n${canBail(id) ? `💸 Bail: **${bailFor(id)}** ${kowen(bailFor(id))} — \`/bail\`` : '🔒 No bail (admin sentence)'}`
+            : '✅ Free',
         },
         {
           name: '⏱️ Cooldowns',

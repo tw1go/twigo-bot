@@ -72,14 +72,19 @@ Admins/mods: `/twigo reset-kowens:@user` or `/twigo reset-all-kowens:yes` (balan
 
 All in `GAMES_CHANNEL_ID` / wherever the command is used. Jailed members can't play.
 
-- `/gamble amount` — 45% win (double), 45% lose, 10% busted by the Tanod (lose bet + 5 min jail). 10s cooldown.
+- `/gamble amount` — 45% win (double); otherwise lose. Busted by the Tanod (lose bet + 5 min jail) 3% of the time in
+  `GAMBLING_CHANNEL_ID`, 20% anywhere else. 10s cooldown.
 - `/steal @user` — 35% steal 2–5% of the target's Kowens (min 1–3, max 50); otherwise pay them a fine of half that (min 2) + 5 min jail. 1 hour cooldown;
   you need 2+ Kowens and the target needs 3+.
 - `/jackpot tickets:N` — 1 Kowen per ticket, max 5 per person per day. Draw daily at 10 PM, weighted by tickets;
   fewer than 2 players = refund. `/twigo game:jackpot` draws now.
+- `/race` — Mosang race, only in `GAMBLING_CHANNEL_ID`: 5 of 10 Mosangs (`src/games/race.ts`), 2 min betting via buttons + modal (1–100, one bet each),
+  30 s animated race, winner's backers get 4× (equal odds, so a small sink). Interrupted races refund on startup.
 - `/leaderboard` — top 10 by Kowens and by voice time.
 - **Tanod Patrol** — every 3–6 hours (10 AM–10 PM) a roll call with a button; first 3 get 3/2/1 Kowens,
   and if 4+ answer the slowest gets 2 min in jail. `/twigo game:patrol` starts one now.
+- `/bail [user]` — pay to release yourself or a friend early: 5% of the jailed member's Kowens (min 3, max 100), removed
+  from the payer. Admin `/jail` sentences can't be bailed.
 - `/jail` — lists who's jailed. Admins: `/jail user:@x minutes:N reason:...` (`minutes:0` releases).
   Jailed members get `JAIL_ROLE_ID` (cosmetic only — it doesn't restrict chatting). Jail times survive restarts.
 

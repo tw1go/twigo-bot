@@ -20,8 +20,9 @@ The bot posts scheduled reminders, event polls, participant lists, daily greetin
 - **No purchase is ever needed.** Kowens can't be bought, and you never pay real money to earn Kowens or play the bot's games.
 - **Quests** (`/request`): the reward is taken from you when you post and held until you mark the quest complete (paid to whoever accepted) or cancel it (refunded). Quests are between members. The bot doesn't check whether the task was really done, so only mark it complete when you're happy.
 - Kowens can't be sold or traded for anything outside the bot. You can give Kowens to other members with `/give` (up to 20 per day), and they move between members through the bot's games. Using `/give` to move Kowens from alternate accounts counts as cheating.
-- `/gamble`, `/steal`, and `/jackpot` use Kowens only. You can't bet or lose real money.
+- `/gamble`, `/steal`, `/jackpot`, and `/race` use Kowens only. You can't bet or lose real money.
 - The "jail" is a joke: it gives a role and blocks the bot's games for a few minutes. Admins and moderators decide who gets jailed and released.
+- **Bail** (`/bail`) releases game jail early for a fee based on the jailed member's Kowens. The fee is removed, not paid to anyone. Jail from admins or moderators can't be bailed.
 - Server admins and moderators can reset anyone's Kowens at any time, for any reason.
 - **Inactive members lose Kowens.** If you don't chat, join voice, or use the bot for more than 3 days, you lose 1% of your Kowens on the next day, 2% the day after, and so on, up to 10% per day (at least 1 Kowen a day). Any activity stops it.
 - Kowens may be lost if the bot's data is reset or the bot shuts down. Lost Kowens aren't refunded.

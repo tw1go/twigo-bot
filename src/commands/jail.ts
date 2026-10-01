@@ -1,7 +1,8 @@
 import { EmbedBuilder, MessageFlags, PermissionFlagsBits, SlashCommandBuilder, type Message } from 'discord.js';
 import type { Command } from '../types.js';
 import { config } from '../config.js';
-import { jail as jailUser, jailList, jailedUntil, release } from '../games/jail.js';
+import { bailFor, jail as jailUser, jailList, jailedUntil, release } from '../games/jail.js';
+import { kowen } from '../kowens.js';
 
 // Discord's relative timestamps keep counting up ("5 seconds ago") after they pass, so these messages are
 // edited when someone's time is up.
@@ -15,7 +16,7 @@ function jailListEmbed(): { embed: EmbedBuilder; nextRelease: number | null } {
     .setTitle('🚔 Jail')
     .setDescription(
       list.length
-        ? list.map(([id, e]) => `<@${id}> — out at <t:${unix(e.until)}:t> (<t:${unix(e.until)}:R>) · _${e.reason}_`).join('\n')
+        ? list.map(([id, e]) => `<@${id}> — out at <t:${unix(e.until)}:t> (<t:${unix(e.until)}:R>) · _${e.reason}_ · ${e.noBail ? '🔒 no bail' : `💸 bail ${bailFor(id)} ${kowen(bailFor(id))}`}`).join('\n')
         : '_The jail is empty. Everyone is behaving... for now._',
     );
   return { embed, nextRelease: list.length ? Math.min(...list.map(([, e]) => e.until)) : null };
@@ -88,7 +89,7 @@ export const jail: Command = {
     }
 
     const reason = interaction.options.getString('reason') ?? 'Orders from the Tanod';
-    const until = await jailUser(target.id, minutes, reason);
+    const until = await jailUser(target.id, minutes, reason, false); // admin jail: no bail
     const header = `🚔 ${target} has been thrown in jail for **${minutes} minute(s)**! _${reason}_`;
     const res = await interaction.reply({
       content: `${header}\n-# Out at <t:${unix(until)}:t> (<t:${unix(until)}:R>)`,

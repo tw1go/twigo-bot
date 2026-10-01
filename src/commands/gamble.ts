@@ -3,10 +3,13 @@ import type { Command } from '../types.js';
 import { add, balance, take } from '../credits/store.js';
 import { blockIfJailed, jail } from '../games/jail.js';
 import { kowen } from '../kowens.js';
+import { config } from '../config.js';
 
-// Coin flip: 45% win (double), 45% lose, 10% the Tanod busts you — lose the bet and 5 minutes in jail.
+// Coin flip: 45% win (double). Otherwise you lose the bet — and sometimes the Tanod busts you (5 minutes in jail).
+// The bust chance depends on where you gamble: low in the gambling channel, high anywhere else.
 const WIN_CHANCE = 0.45;
-const BUST_CHANCE = 0.1;
+export const BUST_CHANCE_IN_CHANNEL = 0.03;
+export const BUST_CHANCE_ELSEWHERE = 0.2;
 const BUST_JAIL_MINUTES = 5;
 const COOLDOWN_MS = 10_000;
 const lastUsed = new Map<string, number>();
@@ -14,7 +17,7 @@ const lastUsed = new Map<string, number>();
 export const gamble: Command = {
   data: new SlashCommandBuilder()
     .setName('gamble')
-    .setDescription('Bet your Kowens on a coin flip 🎲 · 🌐 Everyone sees')
+    .setDescription('Bet your Kowens on a coin flip 🎲 (safest in the gambling channel) · 🌐 Everyone sees')
     .addIntegerOption((o) => o.setName('amount').setDescription('How many Kowens to bet').setRequired(true).setMinValue(1)),
   async execute(interaction) {
     if (await blockIfJailed(interaction)) return;
@@ -32,13 +35,15 @@ export const gamble: Command = {
     }
     lastUsed.set(interaction.user.id, Date.now());
 
+    const inChannel = interaction.channelId === config.gamblingChannelId;
+    const bustChance = inChannel ? BUST_CHANCE_IN_CHANNEL : BUST_CHANCE_ELSEWHERE;
     const roll = Math.random();
     let content: string;
-    if (roll < BUST_CHANCE) {
+    if (roll < bustChance) {
       take(interaction.user.id, bet);
       await jail(interaction.user.id, BUST_JAIL_MINUTES, 'Caught gambling');
       content = `🚨 **BUSTED!** The Tanod caught ${interaction.user} gambling! **${bet}** ${kowen(bet)} confiscated and **${BUST_JAIL_MINUTES} minutes** in jail. 🚔`;
-    } else if (roll < BUST_CHANCE + WIN_CHANCE) {
+    } else if (roll < bustChance + WIN_CHANCE) {
       add(interaction.user.id, bet);
       content = `🎲 ${interaction.user} bet **${bet}** and **WON**! +${bet} ${kowen(bet)} 🤑`;
     } else {
@@ -46,6 +51,7 @@ export const gamble: Command = {
       content = `🎲 ${interaction.user} bet **${bet}** and **lost** it all. 💸`;
     }
     content += `\n-# Balance: ${balance(interaction.user.id)} ${kowen(balance(interaction.user.id))}`;
+    if (!inChannel) content += ` · 👀 The Tanod patrols here. Gamble in <#${config.gamblingChannelId}> to lower your risk.`;
     await interaction.reply({ content, allowedMentions: { parse: [] } });
   },
 };
