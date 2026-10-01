@@ -44,19 +44,15 @@ export const claim: Command = {
       flags: MessageFlags.Ephemeral,
     });
 
-    // Announced in general: the finder and the owner are pinged, nobody else. The claim has already
-    // succeeded, so a failed announcement is only logged, never shown to the member as an error.
-    const channel = await interaction.client.channels.fetch(config.generalChannelId).catch(() => null);
+    // Announced in the gambling channel; only the finder is mentioned. The claim has already succeeded,
+    // so a failed announcement is only logged, never shown to the member as an error.
+    const channel = await interaction.client.channels.fetch(config.gamblingChannelId).catch(() => null);
     if (channel?.isSendable()) {
       const who = WHO[result.character] ?? 'someone';
-      const self = interaction.user.id === config.rewardOwnerId;
       await channel
         .send({
-          content: self
-            ? `🪙 ${interaction.user} found a Kowen in twigo's room, thanks to **${who}**! (+${result.reward})`
-            : `🪙 <@${config.rewardOwnerId}> — ${interaction.user} found a Kowen in twigo's room, thanks to **${who}**! (+${result.reward})`,
-          // Discord rejects duplicate IDs here.
-          allowedMentions: { users: [...new Set([config.rewardOwnerId, interaction.user.id])] },
+          content: `🪙 ${interaction.user} found a Kowen in twigo's room, thanks to **${who}**! (+${result.reward})`,
+          allowedMentions: { users: [interaction.user.id] },
         })
         .catch((err) => console.error('[claim] announcement failed:', err));
     }

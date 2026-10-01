@@ -34,7 +34,6 @@ export const config = {
   easterEggChannelId: required('EASTER_EGG_CHANNEL_ID'),
   easterEggMessageId: required('EASTER_EGG_MESSAGE_ID'),
   // Room finds (/claim) are announced here; falls back to the games channel.
-  generalChannelId: process.env.GENERAL_CHANNEL_ID || required('GAMES_CHANNEL_ID'),
   // Local port for the room API (src/web/server.ts). Empty = API off.
   webPort: Number(process.env.WEB_PORT) || 0,
 };

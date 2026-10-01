@@ -92,8 +92,8 @@ All in `GAMES_CHANNEL_ID` / wherever the command is used. Jailed members can't p
 
 Clicking the characters at <https://tw1go.github.io> has a 10% chance to find a Kowen — 50% for Fairy Cha herself, and 25% for anyone clicked while she is in the room. The bot rolls it
 (`POST /find`), never the browser, and hands back a one-time code valid for 15 minutes. `/claim code` in
-Discord spends it, credits 1 Kowen (max 3 claims per member per day), and announces it in `GENERAL_CHANNEL_ID`,
-pinging `REWARD_OWNER_ID` and the finder. The room also shows the Kowen leaderboard (`GET /leaderboard`).
+Discord spends it, credits 1 Kowen (max 3 claims per member per day), and announces it in `GAMBLING_CHANNEL_ID`
+(only the finder is mentioned). The room also shows the Kowen leaderboard (`GET /leaderboard`).
 Tune the odds and caps in `src/web/finds.ts`; codes live in `data/room-finds.json`.
 
 The API (`src/web/server.ts`) listens on `127.0.0.1:WEB_PORT` only. Caddy puts HTTPS in front of it —
@@ -148,7 +148,7 @@ The site is HTTPS, so browsers only let it call an HTTPS address. Caddy provides
    `deploy/web-setup.sh` opens them in the server's own iptables too.
 3. `ssh ubuntu@SERVER 'sudo bash -s' < deploy/web-setup.sh twigo-bot.duckdns.org` — installs Caddy, which fetches
    the certificate and proxies to the bot.
-4. Set `WEB_PORT=8787` (and `GENERAL_CHANNEL_ID`) in `.env`, deploy, and `npm run deploy-commands` for `/claim`.
+4. Set `WEB_PORT=8787` in `.env`, deploy, and `npm run deploy-commands` for `/claim`.
 5. Check: `curl https://twigo-bot.duckdns.org/health` → `ok`.
 
 ## Adding a command
