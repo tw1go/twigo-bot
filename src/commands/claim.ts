@@ -44,9 +44,9 @@ export const claim: Command = {
       flags: MessageFlags.Ephemeral,
     });
 
-    // Announced in the gambling channel; only the finder is mentioned. The claim has already succeeded,
+    // Announced in the room-finds channel; only the finder is mentioned. The claim has already succeeded,
     // so a failed announcement is only logged, never shown to the member as an error.
-    const channel = await interaction.client.channels.fetch(config.gamblingChannelId).catch(() => null);
+    const channel = await interaction.client.channels.fetch(config.roomFindsChannelId).catch(() => null);
     if (channel?.isSendable()) {
       const who = WHO[result.character] ?? 'someone';
       await channel

@@ -30,6 +30,8 @@ export const config = {
   rewardOwnerId: required('REWARD_OWNER_ID'),
   // Gambling here has a much lower chance of getting busted by the Tanod.
   gamblingChannelId: required('GAMBLING_CHANNEL_ID'),
+  // Where twigo's room finds (/claim) are announced.
+  roomFindsChannelId: required('ROOM_FINDS_CHANNEL_ID'),
   boostChannelId: required('BOOST_CHANNEL_ID'),
   easterEggChannelId: required('EASTER_EGG_CHANNEL_ID'),
   easterEggMessageId: required('EASTER_EGG_MESSAGE_ID'),
