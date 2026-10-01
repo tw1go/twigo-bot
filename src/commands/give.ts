@@ -2,6 +2,7 @@ import { MessageFlags, SlashCommandBuilder } from 'discord.js';
 import type { Command } from '../types.js';
 import { DAILY_GIVE_LIMIT, balance, give as giveKowens, givenToday } from '../credits/store.js';
 import { kowen } from '../kowens.js';
+import { debtOf } from '../loans/loans.js';
 
 export const give: Command = {
   data: new SlashCommandBuilder()
@@ -19,6 +20,7 @@ export const give: Command = {
 
     if (to.id === from.id) return void (await reply("You can't give Kowens to yourself. 🤔"));
     if (to.bot) return void (await reply("Bots don't need Kowens. 🤖"));
+    if (debtOf(from.id)) return void (await reply("💳 You can't give Kowens while you have a loan. Pay it off first with `/loan pay`."));
 
     const result = giveKowens(from.id, to.id, amount);
     if (!result.ok) {

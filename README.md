@@ -54,6 +54,11 @@ Each use on someone else costs 1 Kowen. Ways to get Kowens:
 **Boosts:** +20 Kowens per boost right away, then 20 × boost count on the 1st of every month while boosting.
 Boost counts come from the system channel's "just boosted" messages (Discord doesn't expose per-member counts);
 existing boosters were counted and paid once on first start. Fix a count with `/gift boosts`. See `src/games/boosts.ts`.
+**Loans:** `/loan take amount` (Tanod Bank; limit 20, +10 per on-time repayment, max 100) · `/loan offer user amount`
+(member loan, max 50, max 3 out, Accept/Decline buttons) · `/loan pay [amount]` · `/loan status`. Owed = +10%, due in 3 days.
+While owing, 50% of earnings are garnished to the lender (bank repayments are removed), and passes, `/give` and quests are
+blocked. Overdue: +10% of the loan per day with a public "text message" from the lender in general; 3 days overdue =
+default (balance seized, 1 h no-bail utang jail, 30-day blacklist). Checked hourly. See `src/loans/loans.ts`.
 **Quests:** `/request task reward` posts a quest (1–100 Kowens, held in escrow, max 3 active). Buttons: Accept (pings the
 requester), Complete (requester pays the accepter), Give up (reopens), Cancel (refunds). Saved in `data/quests.json`.
 **Give:** `/give user amount` — any member can send Kowens, max 20 per day (resets at midnight).

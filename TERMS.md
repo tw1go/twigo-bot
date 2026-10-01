@@ -33,6 +33,13 @@ The bot posts scheduled reminders, event polls, participant lists, daily greetin
 - Your inventory holds a limited number of items. Bags from `/redeem` add more space.
 - Items, like Kowens, have **no value outside the bot**. Item names, rarities, drop chances, and sell prices may change at any time.
 
+## Loans
+
+- You can borrow Kowens from the **Tanod Bank** or from another member with `/loan`. You owe the amount **plus 10%**, due in **3 days**.
+- While you owe, **half of the Kowens you earn** go to your lender automatically, and you can't redeem passes, use `/give`, or post quests.
+- Late loans get a fee each day and a public reminder "text message" in the server. After 3 days overdue, the loan **defaults**: your balance is taken toward the debt, you get a short jail stay (no bail), and you can't borrow from the bank for 30 days.
+- Loans between members are between those members. The Tanod doesn't guarantee they'll be repaid beyond the rules above.
+
 ## Rewards
 
 - Kowens can be redeemed with `/redeem` for the rewards listed there: a **Bakod (Fence)** that blocks `/steal` against you for a while (a thief with a **Master Key** has a 50% chance to get past it), and Crystal of Atlan passes. Passes are given by the server owner, by hand, as a free gift.

@@ -8,6 +8,7 @@ import { boostCount } from '../games/boosts.js';
 import { DIGS_PER_DAY, SHOVELS_PER_DAY, capacity, digsToday, itemCount, masterKeys, shovelUses, shovelsBoughtToday } from '../dig/store.js';
 import { MAX_ACTIVE, acceptedCount, activeCount } from '../quests/board.js';
 import { STEAL_COOLDOWN_MS } from './steal.js';
+import { BANK, debtOf } from '../loans/loans.js';
 
 // Protections, cooldowns and daily limits in one place. /balance is for Kowens.
 const at = (ms: number) => `<t:${Math.floor(ms / 1000)}:f> (<t:${Math.floor(ms / 1000)}:R>)`;
@@ -27,6 +28,7 @@ export const status: Command = {
     const stealReady = lastSteal(id) + STEAL_COOLDOWN_MS;
     const idle = daysInactive(id);
     const boosts = boostCount(id);
+    const debt = debtOf(id);
 
     const embed = new EmbedBuilder()
       .setColor(jail ? 0x7f8c8d : 0x3498db)
@@ -62,6 +64,9 @@ export const status: Command = {
         {
           name: '📜 Activity',
           value: [
+            debt
+              ? `💳 Loan: owes **${debt.owed}** ${kowen(debt.owed)} to ${debt.lender === BANK ? 'the Tanod Bank' : `<@${debt.lender}>`}${debt.status === 'defaulted' ? ' · ⛔ defaulted' : ` · due <t:${Math.floor(debt.due / 1000)}:R>`}`
+              : '💳 Loan: none',
             `📜 Quests: **${activeCount(id)}/${MAX_ACTIVE}** posted · **${acceptedCount(id)}** accepted`,
             `🎟️ Jackpot tickets (next draw): **${ticketsOf(id)}**`,
             boosts ? `💎 Boosting: **${boosts}** boost${boosts === 1 ? '' : 's'}` : '',

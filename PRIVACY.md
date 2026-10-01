@@ -22,6 +22,7 @@ The bot only handles the minimum it needs to work.
 | Your inventory (items, shovel uses, digs today) | You use `/redeem`, `/dig`, or `/sell` | To run digging and selling | Yes, until you sell items |
 | Your quests (task text, reward, who accepted, status) | You use `/request` or a quest button | To hold and pay quest rewards | Yes |
 | Your bet in the current Mosang race | You bet with `/race` | To pay out or refund the race | Until the race ends |
+| Your loans (lender, borrower, amounts, due date, status), repayment history, and any blacklist | You use `/loan` | To run loans, garnishing and defaults | Yes |
 | Your jackpot tickets | You use `/jackpot` | To run the next draw (10 AM or 10 PM) | Until the draw, then deleted |
 | Jail status, release time, and reason | You're jailed by an admin or a game | To give and remove the jail role on time | Until you're released |
 | Time of your last `/steal` | You use `/steal` | To enforce the cooldown | Yes, with your Kowens |

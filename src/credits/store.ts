@@ -109,12 +109,19 @@ export function addVoiceMinute(userIds: string[]): string[] {
   return earned;
 }
 
-/** Adds `amount` credits. Returns the new balance. */
-export function add(userId: string, amount: number): number {
+// Loans (see loans/loans.ts) register a garnish hook: while a member owes, part of what they earn goes to the
+// lender. It runs after the Kowens land, so the hook can take its share with take().
+type GarnishHook = (userId: string, earned: number) => void;
+let garnishHook: GarnishHook | null = null;
+export const setGarnishHook = (hook: GarnishHook) => (garnishHook = hook);
+
+/** Adds `amount` Kowens. Returns the new balance. Pass { garnish: false } for loan payouts themselves. */
+export function add(userId: string, amount: number, opts: { garnish?: boolean } = {}): number {
   const account = (accounts[userId] ??= { balance: 0 });
   account.balance += amount;
   save();
-  return account.balance;
+  if (amount > 0 && opts.garnish !== false) garnishHook?.(userId, amount);
+  return accounts[userId].balance;
 }
 
 /** Takes up to `amount` credits (never below 0). Returns how many were actually taken. */
@@ -236,5 +243,6 @@ export function give(fromId: string, toId: string, amount: number): { ok: true }
   from.balance -= amount;
   (accounts[toId] ??= { balance: 0 }).balance += amount;
   save();
+  garnishHook?.(toId, amount); // gifts to someone in debt help pay it off
   return { ok: true };
 }

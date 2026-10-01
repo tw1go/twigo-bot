@@ -11,6 +11,7 @@ import {
 } from 'discord.js';
 import { add, balance, take } from '../credits/store.js';
 import { kowen } from '../kowens.js';
+import { debtOf } from '../loans/loans.js';
 
 // Quest board: /request posts a task with a Kowens reward held in escrow. Someone accepts (the requester is
 // pinged), then the requester marks it complete and the reward goes to them. Cancel refunds; give up reopens it.
@@ -84,6 +85,7 @@ export async function createQuest(interaction: ChatInputCommandInteraction): Pro
   const me = interaction.user.id;
   const reply = (content: string) => interaction.reply({ content, flags: MessageFlags.Ephemeral });
 
+  if (debtOf(me)) return void (await reply("💳 You can't post quests while you have a loan. Pay it off first with `/loan pay`."));
   if (activeCount(me) >= MAX_ACTIVE) return void (await reply(`You already have **${MAX_ACTIVE}** active quests. Finish or cancel one first. 📜`));
   if (balance(me) < reward) return void (await reply(`You need **${reward}** ${kowen(reward)} for that reward, but you have **${balance(me)}**. 🪙`));
   if (!interaction.channel?.isSendable()) return void (await reply("I can't post here. Try another channel."));

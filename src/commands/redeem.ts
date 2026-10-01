@@ -4,6 +4,7 @@ import { config } from '../config.js';
 import { addFence, balance, fencedUntil, take } from '../credits/store.js';
 import { BAG_SLOTS, FENCE_DAYS, FENCE_MAX_DAYS, GAME_NAME, recordRedemption, rewards } from '../games/rewards.js';
 import { kowen } from '../kowens.js';
+import { debtOf } from '../loans/loans.js';
 import { SHOVELS_PER_DAY, SHOVEL_USES, addBag, addMasterKey, addShovel, capacity, ownedBags, shovelsBoughtToday } from '../dig/store.js';
 
 const fmt = (n: number) => n.toLocaleString('en-US');
@@ -48,6 +49,10 @@ export const redeem: Command = {
     const stackable = reward.kind === 'shovel' || reward.kind === 'key';
     if (asked > 1 && !stackable) {
       await interaction.reply({ content: `Quantity only works for the 🪏 **Shovel** and 🗝️ **Master Key**. The ${reward.emoji} **${reward.name}** is one at a time.`, flags: MessageFlags.Ephemeral });
+      return;
+    }
+    if (reward.kind === 'pass' && debtOf(interaction.user.id)) {
+      await interaction.reply({ content: "💳 You can't redeem passes while you have a loan. Pay it off first with `/loan pay`.", flags: MessageFlags.Ephemeral });
       return;
     }
     if (reward.kind === 'bag' && ownedBags(interaction.user.id).includes(reward.id)) {
