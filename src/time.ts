@@ -13,3 +13,17 @@ export function daysBetween(a: string, b: string): number {
   };
   return Math.round((toUtc(b) - toUtc(a)) / 86_400_000);
 }
+
+/** The Monday (YYYY-MM-DD, config.timezone) of the week `date` falls in (default: today). */
+export function weekStart(date = today()): string {
+  const [y, m, d] = date.split('-').map(Number);
+  const utc = new Date(Date.UTC(y, m - 1, d));
+  utc.setUTCDate(utc.getUTCDate() - ((utc.getUTCDay() + 6) % 7));
+  return utc.toISOString().slice(0, 10);
+}
+
+/** `date` (YYYY-MM-DD) moved by `days`. */
+export function addDays(date: string, days: number): string {
+  const [y, m, d] = date.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+}

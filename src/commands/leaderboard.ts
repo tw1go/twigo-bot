@@ -1,6 +1,8 @@
 import { EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import type { Command } from '../types.js';
-import { topBalances, topVoice } from '../credits/store.js';
+import { topBalances, topVoice, topVoiceWeek } from '../credits/store.js';
+import { weekStart } from '../time.js';
+import { WEEKLY_VC_REWARDS, WEEKLY_VC_START } from '../games/voice-weekly.js';
 import { kowen } from '../kowens.js';
 
 const medal = (i: number) => ['🥇', '🥈', '🥉'][i] ?? `**${i + 1}.**`;
@@ -11,6 +13,8 @@ export const leaderboard: Command = {
   async execute(interaction) {
     const rich = topBalances(10);
     const voice = topVoice(10);
+    const week = topVoiceWeek(weekStart(), 10);
+    const started = weekStart() >= WEEKLY_VC_START;
     const embed = new EmbedBuilder()
       .setColor(0xf1c40f)
       .setTitle('🏆 Leaderboard')
@@ -21,12 +25,18 @@ export const leaderboard: Command = {
           inline: true,
         },
         {
-          name: '🎙️ Voice chat',
+          name: '🎙️ Voice (all time)',
           value: voice.map(([id, m], i) => `${medal(i)} <@${id}> — ${hours(m)}`).join('\n') || '_No voice time yet._',
           inline: true,
         },
+        {
+          name: '🎙️ This week',
+          value: started
+            ? week.map(([id, m], i) => `${medal(i)} <@${id}> — ${hours(m)} · +${WEEKLY_VC_REWARDS[i]}`).join('\n') || '_Nobody in voice yet this week._'
+            : `_Weekly rewards start ${WEEKLY_VC_START}._`,
+        },
       )
-      .setFooter({ text: 'Voice time counts since voice rewards were added.' });
+      .setFooter({ text: 'Weekly voice rewards: 50 · 30 · 20 · 10 (4th–10th), paid Mondays 12 PM.' });
     await interaction.reply({ embeds: [embed] }); // mentions in embeds never ping
   },
 };

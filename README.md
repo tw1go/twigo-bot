@@ -85,6 +85,9 @@ All in `GAMES_CHANNEL_ID` / wherever the command is used. Jailed members can't p
   fewer than 2 players = refund. `/twigo game:jackpot` draws now.
 - `/race` — Mosang race, only in `GAMBLING_CHANNEL_ID`: 5 of 10 Mosangs (`src/games/race.ts`), 2 min betting via buttons + modal (1–100, one bet each),
   30 s animated race, winner's backers get 4× (equal odds, so a small sink). Interrupted races refund on startup.
+- **Weekly voice rewards** (`src/games/voice-weekly.ts`): every Monday 12 PM, last week's top 10 by eligible voice
+  minutes (no daily cap) get 50 · 30 · 20 · 10×7 Kowens. Weeks run Monday–Sunday; the first counted week starts 2026-10-05.
+- `/flex item` — show off an inventory item publicly (autocomplete, 60 s cooldown).
 - `/leaderboard` — top 10 by Kowens and by voice time.
 - **Tanod Patrol** — every 3–6 hours (10 AM–10 PM) a roll call with a button; first 3 get 3/2/1 Kowens,
   and if 4+ answer the slowest gets 2 min in jail. `/twigo game:patrol` starts one now.

@@ -51,13 +51,14 @@ export const twigoHelp: Command = {
         ]),
         ...section('⛏️ Digging', [
           '`/dig` — dig for treasure (🪏 Shovel from `/redeem`: 3 digs each, up to 3 shovels & 9 digs a day)',
-          '`/inventory` — your finds · `/sell` — turn them into Kowens',
+          '`/inventory` — your finds · `/sell` — turn them into Kowens · `/flex` — show off an item 💪',
           '🍀 Every **60th dig on the server** is a **Lucky Dig**: guaranteed Epic or better!',
           '🎒 Inventory holds **10** items — buy bags in `/redeem` for +8 each, up to **50**',
         ]),
         ...section('🪙 Earn Kowens', [
           `\`/get-kowens\` — claim ${DAILY_CREDITS} ${kowen(DAILY_CREDITS)} once a day`,
           '🎙️ **1 Kowen per 15 min** in voice chat, **max 12 a day** (with 1+ other person, not deafened, not AFK)',
+          '🏆 **Weekly voice rewards** (Mondays 12 PM): top 10 get 50 · 30 · 20 · 10 Kowens (`/leaderboard`)',
           '💎 **Boost the server**: +20 Kowens per boost, and 20 × your boosts every month while boosting',
           '`/claim code` — found a Kowen in [twigo\'s room](https://tw1go.github.io)? Claim it here (3 a day)',
           '-# ⚠️ Inactive for 3+ days? You lose a growing % of Kowens each day until you\'re back.',

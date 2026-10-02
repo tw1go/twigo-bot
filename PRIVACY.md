@@ -26,7 +26,7 @@ The bot only handles the minimum it needs to work.
 | Your jackpot tickets | You use `/jackpot` | To run the next draw (10 AM or 10 PM) | Until the draw, then deleted |
 | Jail status, release time, and reason | You're jailed by an admin or a game | To give and remove the jail role on time | Until you're released |
 | Time of your last `/steal` | You use `/steal` | To enforce the cooldown | Yes, with your Kowens |
-| Your lifetime voice minutes | You're counted for voice Kowens | To show the `/leaderboard` | Yes, with your Kowens |
+| Your lifetime and this week's voice minutes | You're counted for voice Kowens | To show the `/leaderboard` and pay weekly voice rewards | Yes, with your Kowens (the weekly count resets every Monday) |
 | How many Kowens you gave today | You use `/give` | To enforce the daily limit | Yes, with your Kowens (resets daily) |
 | Mine Wars rewards you received each night | The gifter pays out a 9 PM Mine Wars | So nobody is paid twice for the same night | Yes |
 | When your Bakod (fence) ends | You redeem a Bakod | To block `/steal` against you | Yes, with your Kowens |

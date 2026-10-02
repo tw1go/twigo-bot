@@ -14,6 +14,7 @@ The bot posts scheduled reminders, event polls, participant lists, daily greetin
 
 - Kowens are claimed with `/get-kowens`, earned by spending time in voice chat (1 Kowen per 15 minutes, up to 12 per day, with at least one other person, not deafened, not in the AFK channel) or in Tanod Patrol, and spent on `/diss`, `/praise`, `/judge`, the games, and `/redeem`.
 - Kowens can also be found in [twigo's room](https://tw1go.github.io) and redeemed with `/claim` (up to 3 a day). Using scripts or bots to click for you counts as cheating.
+- **Weekly voice rewards:** every Monday, the 10 members with the most voice time the week before get Kowens (50 · 30 · 20 · 10). Voice time counts under the same rules as voice Kowens. Farming it (idling, alt accounts) can get rewards reversed.
 - **Server boosters** get 20 Kowens per boost when they boost, and 20 Kowens per active boost on the 1st of every month while they keep boosting. Boosting is optional and never required to earn Kowens or rewards.
 - The server owner may gift or remove Kowens at their discretion.
 - Don't try to farm voice Kowens, for example with alternate accounts or by idling. Admins and moderators may reset Kowens earned this way.

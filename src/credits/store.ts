@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { daysBetween, today } from '../time.js';
+import { daysBetween, today, weekStart } from '../time.js';
 
 // Credits for /diss, /praise and /judge. Claim DAILY_CREDITS once per day (config.timezone); unused credits carry over.
 // Voice chat also earns 1 credit per VOICE_MINUTES_PER_CREDIT minutes (see voice.ts).
@@ -19,6 +19,8 @@ interface Account {
   fenceUntil?: number; // ms timestamp — /steal is blocked until then (Bakod)
   voiceCreditsDay?: string; // YYYY-MM-DD that voiceCreditsToday counts
   voiceCreditsToday?: number;
+  voiceWeek?: string; // Monday of the week voiceWeekMinutes counts
+  voiceWeekMinutes?: number; // eligible voice minutes this week (for the weekly rewards)
   giveDay?: string; // YYYY-MM-DD that giveSentToday counts
   giveSentToday?: number;
 }
@@ -96,6 +98,13 @@ export function addVoiceMinute(userIds: string[]): string[] {
       account.voiceCreditsDay = day;
       account.voiceCreditsToday = 0;
     }
+    // Weekly ranking counts every eligible voice minute (no daily cap — only the Kowen earnings are capped).
+    const week = weekStart(day);
+    if (account.voiceWeek !== week) {
+      account.voiceWeek = week;
+      account.voiceWeekMinutes = 0;
+    }
+    account.voiceWeekMinutes = (account.voiceWeekMinutes ?? 0) + 1;
     if ((account.voiceCreditsToday ?? 0) >= VOICE_DAILY_CAP) continue;
     account.voiceMinutes = (account.voiceMinutes ?? 0) + 1;
     if (account.voiceMinutes >= VOICE_MINUTES_PER_CREDIT) {
@@ -245,4 +254,13 @@ export function give(fromId: string, toId: string, amount: number): { ok: true }
   save();
   garnishHook?.(toId, amount); // gifts to someone in debt help pay it off
   return { ok: true };
+}
+
+/** Top members by eligible voice minutes in the week starting `week` (a Monday, YYYY-MM-DD). */
+export function topVoiceWeek(week: string, limit: number): [string, number][] {
+  return Object.entries(accounts)
+    .filter(([, a]) => a.voiceWeek === week && (a.voiceWeekMinutes ?? 0) > 0)
+    .sort(([, a], [, b]) => (b.voiceWeekMinutes ?? 0) - (a.voiceWeekMinutes ?? 0))
+    .slice(0, limit)
+    .map(([id, a]) => [id, a.voiceWeekMinutes ?? 0]);
 }
