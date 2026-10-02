@@ -1,26 +1,17 @@
 {
-  "name": "twigo-bot",
-  "version": "0.1.0",
+  "name": "mikazuki",
   "private": true,
   "type": "module",
-  "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "build": "tsc",
-    "start": "node dist/index.js",
-    "deploy-commands": "tsx src/deploy-commands.ts",
-    "typecheck": "tsc --noEmit"
-  },
+  "workspaces": [
+    "packages/*"
+  ],
   "engines": {
-    "node": ">=22"
+    "node": ">=22.12"
   },
-  "dependencies": {
-    "croner": "^10.0.1",
-    "discord.js": "^14.27.0",
-    "dotenv": "^18.0.4"
-  },
-  "devDependencies": {
-    "@types/node": "^26.6.3",
-    "tsx": "^4.23.15",
-    "typescript": "^7.0.2"
+  "scripts": {
+    "dev:bot": "npm run dev -w @mikazuki/bot",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "deploy-commands": "npm run deploy-commands -w @mikazuki/bot"
   }
 }
