@@ -3,8 +3,8 @@ import type { Command } from '../types.js';
 import { config } from '../config.js';
 import { blockIfJailed } from '../games/jail.js';
 import { kowen } from '../kowens.js';
-import { RARITY, rollItem } from '../dig/items.js';
-import { DIGS_PER_DAY, SHOVEL_COST, capacity, digsToday, itemCount, recordDig, shovelUses } from '../dig/store.js';
+import { RARITY, rollItem, rollLucky } from '../dig/items.js';
+import { DIGS_PER_DAY, LUCKY_EVERY, SHOVEL_COST, capacity, countServerDig, digsToday, itemCount, recordDig, serverDigProgress, shovelUses } from '../dig/store.js';
 
 export const dig: Command = {
   data: new SlashCommandBuilder()
@@ -34,18 +34,23 @@ export const dig: Command = {
       return;
     }
 
-    const found = rollItem();
+    const lucky = countServerDig(); // 🍀 every LUCKY_EVERY-th dig on the server is Epic or better
+    const rolled = rollItem();
+    // The lucky dig never downgrades a secret find.
+    const found = lucky && rolled.rarity !== 'secret' ? rollLucky() : rolled;
     recordDig(id, found.id);
     const r = RARITY[found.rarity];
     const left = DIGS_PER_DAY - digsToday(id);
     const shovel = shovelUses(id);
     const big = found.rarity === 'mythical' || found.rarity === 'legendary' || found.rarity === 'secret';
+    const luckyBanner = lucky ? `🍀✨ **LUCKY DIG!** You hit the server's ${LUCKY_EVERY}th dig, so it's guaranteed Epic or better!\n` : '';
 
     const lines = [
-      big
+      luckyBanner +
+      (big
         ? `🚨✨ **${r.label.toUpperCase()} FIND!** ✨🚨\n${interaction.user} dug up…\n# ${found.emoji} ${found.name}\n${r.emoji} **${r.label}** · worth **${found.value}** ${kowen(found.value)}`
-        : `⛏️ ${interaction.user} dug up…\n## ${found.emoji} ${found.name}\n${r.emoji} ${r.label} · worth **${found.value}** ${kowen(found.value)}`,
-      `-# ${left} dig${left === 1 ? '' : 's'} left today · 🪏 ${shovel} use${shovel === 1 ? '' : 's'} left on your shovel${shovel === 0 ? ' — it broke!' : ''} · 🎒 ${itemCount(id)}/${slots}`,
+        : `⛏️ ${interaction.user} dug up…\n## ${found.emoji} ${found.name}\n${r.emoji} ${r.label} · worth **${found.value}** ${kowen(found.value)}`),
+      `-# ${left} dig${left === 1 ? '' : 's'} left today · 🪏 ${shovel} use${shovel === 1 ? '' : 's'} left on your shovel${shovel === 0 ? ' — it broke!' : ''} · 🎒 ${itemCount(id)}/${slots} · 🍀 Lucky dig: ${serverDigProgress()}/${LUCKY_EVERY}`,
     ];
     // "Digging…" animation, then the reveal. The find is already saved, so a failed edit can't lose it.
     const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -58,7 +63,11 @@ export const dig: Command = {
       legendary: [`${r.emoji} Something is glowing…`, `${r.emoji}${r.emoji} The ground is shaking…`, `${r.emoji}${r.emoji}${r.emoji} WAIT WHAT…`, '✨✨✨✨✨'],
       secret: ['🌟 …', '🌟🌟 This isn\'t on any list…', '🌟🌟🌟 THE TANOD DIDN\'T KNOW THIS EXISTED', '✨🌟✨🌟✨🌟✨'],
     };
-    const steps = [...frames.map(digging), ...(suspense[found.rarity] ?? []).map((t) => `${digging('🟫🟫🟫')}\n${t}`)];
+    const steps = [
+      ...frames.map(digging),
+      ...(lucky ? [`${digging('🟫🟫🟫')}\n🍀 Wait… this is the server's ${LUCKY_EVERY}th dig!`] : []),
+      ...(suspense[found.rarity] ?? []).map((t) => `${digging('🟫🟫🟫')}\n${t}`),
+    ];
 
     await interaction.reply({ content: steps[0], allowedMentions: { parse: [] } });
     try {

@@ -119,3 +119,21 @@ export function useMasterKey(userId: string): boolean {
   save();
   return true;
 }
+
+// Server-wide lucky dig: every LUCKY_EVERY-th dig by anyone is guaranteed Epic or better.
+export const LUCKY_EVERY = 60;
+const LUCKY_FILE = `${DIR}/lucky-dig.json`;
+let luckyCount: number = existsSync(LUCKY_FILE) ? JSON.parse(readFileSync(LUCKY_FILE, 'utf8')).count ?? 0 : 0;
+
+/** Counts a dig. Returns true if this one is the lucky dig (and resets the counter). */
+export function countServerDig(): boolean {
+  luckyCount += 1;
+  const lucky = luckyCount >= LUCKY_EVERY;
+  if (lucky) luckyCount = 0;
+  mkdirSync(DIR, { recursive: true });
+  writeFileSync(LUCKY_FILE, JSON.stringify({ count: luckyCount }));
+  return lucky;
+}
+
+/** Digs so far toward the next lucky dig. */
+export const serverDigProgress = () => luckyCount;

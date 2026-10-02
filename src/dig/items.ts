@@ -145,8 +145,25 @@ export function rollItem(random = Math.random): Item {
       break;
     }
   }
+  return rollOfRarity(rarity, random);
+}
+
+/** An item of the given rarity, cheaper ones more likely. */
+export function rollOfRarity(rarity: Rarity, random = Math.random): Item {
   const pool = ITEMS.filter((i) => i.rarity === rarity);
   const weight = (i: Item) => 1 / (i.value + 1) ** 2;
   let w = random() * pool.reduce((n, i) => n + weight(i), 0);
   return pool.find((i) => (w -= weight(i)) < 0) ?? pool[pool.length - 1];
+}
+
+/** The server-wide lucky dig (every LUCKY_EVERY digs) is guaranteed Epic or better. */
+export const LUCKY_ODDS: [Rarity, number][] = [
+  ['epic', 0.75],
+  ['mythical', 0.2],
+  ['legendary', 0.05],
+];
+export function rollLucky(random = Math.random): Item {
+  let r = random();
+  const rarity = LUCKY_ODDS.find(([, chance]) => (r -= chance) < 0)?.[0] ?? 'epic';
+  return rollOfRarity(rarity, random);
 }

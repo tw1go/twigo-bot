@@ -52,6 +52,7 @@ export const twigoHelp: Command = {
         ...section('⛏️ Digging', [
           '`/dig` — dig for treasure (🪏 Shovel from `/redeem`: 3 digs each, up to 3 shovels & 9 digs a day)',
           '`/inventory` — your finds · `/sell` — turn them into Kowens',
+          '🍀 Every **60th dig on the server** is a **Lucky Dig**: guaranteed Epic or better!',
           '🎒 Inventory holds **10** items — buy bags in `/redeem` for +8 each, up to **50**',
         ]),
         ...section('🪙 Earn Kowens', [
