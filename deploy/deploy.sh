@@ -23,7 +23,8 @@ rsync -az --delete \
   ./ "$TARGET:/opt/twigo-bot/"
 
 # The web game, as static files for Caddy.
-rsync -az --delete --rsync-path="sudo rsync" packages/game/dist/ "$TARGET:/opt/twigo-bot/web/play/"
+# rsync only creates one missing folder level, so make sure web/play exists first.
+rsync -az --delete --rsync-path="sudo mkdir -p /opt/twigo-bot/web/play && sudo rsync" packages/game/dist/ "$TARGET:/opt/twigo-bot/web/play/"
 
 ssh "$TARGET" 'set -e
   cd /opt/twigo-bot
