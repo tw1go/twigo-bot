@@ -23,6 +23,8 @@ The bot only handles the minimum it needs to work.
 | Your quests (task text, reward, who accepted, status) | You use `/request` or a quest button | To hold and pay quest rewards | Yes |
 | Your bet in the current Mosang race | You bet with `/race` | To pay out or refund the race | Until the race ends |
 | Your loans (lender, borrower, amounts, due date, status), repayment history, and any blacklist | You use `/loan` | To run loans, garnishing and defaults | Yes |
+| Whether you own a Vault and how many Kowens are in it | You use `/redeem` or `/vault` | To store and protect your Kowens | Yes, with your Kowens |
+| Your potions, active potion effects, and which Marites hints you've heard | You use `/redeem` or `/potion` | To run potion effects | Yes |
 | Your jackpot tickets | You use `/jackpot` | To run the next draw (10 AM or 10 PM) | Until the draw, then deleted |
 | Jail status, release time, and reason | You're jailed by an admin or a game | To give and remove the jail role on time | Until you're released |
 | Time of your last `/steal` | You use `/steal` | To enforce the cooldown | Yes, with your Kowens |

@@ -45,6 +45,8 @@ The bot posts scheduled reminders, event polls, participant lists, daily greetin
 
 - Kowens can be redeemed with `/redeem` for the rewards listed there: a **Bakod (Fence)** that blocks `/steal` against you for a while (a thief with a **Master Key** has a 50% chance to get past it), and Crystal of Atlan passes. Passes are given by the server owner, by hand, as a free gift.
 - Redeemed Kowens are removed right away. The owner will try to deliver the reward, but may take time, and may refuse or reverse a redemption if Kowens were gained by cheating, bugs, alternate accounts, or breaking these terms.
+- **Potions** from `/redeem` give short effects (for example rusting someone's Bakod or hiding your gambling from the Tanod). Effects and prices may change.
+- A **Vault** keeps up to 30% of your Kowens safe from `/steal` and bail. Inactivity loss and loan defaults can still take from it.
 - Rewards, prices, and availability can change or end at any time.
 - Rewards are not provided, sponsored, or endorsed by Discord or by the publisher of Crystal of Atlan.
 

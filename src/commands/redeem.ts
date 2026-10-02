@@ -5,6 +5,8 @@ import { addFence, balance, fencedUntil, take } from '../credits/store.js';
 import { BAG_SLOTS, FENCE_DAYS, FENCE_MAX_DAYS, GAME_NAME, recordRedemption, rewards } from '../games/rewards.js';
 import { kowen } from '../kowens.js';
 import { debtOf } from '../loans/loans.js';
+import { giveVault, hasVault } from '../credits/store.js';
+import { POTIONS, addPotions, hintsLeft, type PotionId } from '../potions/potions.js';
 import { SHOVELS_PER_DAY, SHOVEL_USES, addBag, addMasterKey, addShovel, capacity, ownedBags, shovelsBoughtToday } from '../dig/store.js';
 
 const fmt = (n: number) => n.toLocaleString('en-US');
@@ -34,7 +36,7 @@ export const redeem: Command = {
         .setDescription(
           rewards
             .map((r) => {
-              const note = r.kind === 'fence' ? ` — blocks /steal for ${FENCE_DAYS} days` : r.kind === 'shovel' ? ` — ${SHOVEL_USES} digs, up to ${SHOVELS_PER_DAY} a day` : r.kind === 'key' ? ' — 50% chance to break through a Bakod on /steal' : r.kind === 'bag' ? ` — +${BAG_SLOTS} inventory slots${ownedBags(interaction.user.id).includes(r.id) ? ' (owned ✅)' : ''}` : ` — ${GAME_NAME}`;
+              const note = r.kind === 'fence' ? ` — blocks /steal for ${FENCE_DAYS} days` : r.kind === 'shovel' ? ` — ${SHOVEL_USES} digs, up to ${SHOVELS_PER_DAY} a day` : r.kind === 'key' ? ' — 50% chance to break through a Bakod on /steal' : r.kind === 'vault' ? ` — store up to 30% of your Kowens, safe from /steal & bail${hasVault(interaction.user.id) ? ' (owned ✅)' : ''}` : r.kind === 'potion' ? ` — ${POTIONS[r.id.replace('potion-', '') as PotionId].effect}` : r.kind === 'bag' ? ` — +${BAG_SLOTS} inventory slots${ownedBags(interaction.user.id).includes(r.id) ? ' (owned ✅)' : ''}` : ` — ${GAME_NAME}`;
               return `${r.emoji} **${r.name}**${note} · **${fmt(r.cost)}** ${kowen(r.cost)} ${have >= r.cost ? '✅' : `(${fmt(r.cost - have)} to go)`}`;
             })
             .join('\n') + (fencedUntil(interaction.user.id) ? `\n\n🧱 Your Bakod is up until <t:${Math.floor(fencedUntil(interaction.user.id)! / 1000)}:f>.` : ''),
@@ -46,13 +48,17 @@ export const redeem: Command = {
 
     const reward = rewards.find((r) => r.id === choice)!;
     const asked = interaction.options.getInteger('quantity') ?? 1;
-    const stackable = reward.kind === 'shovel' || reward.kind === 'key';
+    const stackable = reward.kind === 'shovel' || reward.kind === 'key' || reward.kind === 'potion';
     if (asked > 1 && !stackable) {
-      await interaction.reply({ content: `Quantity only works for the 🪏 **Shovel** and 🗝️ **Master Key**. The ${reward.emoji} **${reward.name}** is one at a time.`, flags: MessageFlags.Ephemeral });
+      await interaction.reply({ content: `Quantity only works for the 🪏 **Shovel**, 🗝️ **Master Key** and 🧪 potions. The ${reward.emoji} **${reward.name}** is one at a time.`, flags: MessageFlags.Ephemeral });
       return;
     }
     if (reward.kind === 'pass' && debtOf(interaction.user.id)) {
       await interaction.reply({ content: "💳 You can't redeem passes while you have a loan. Pay it off first with `/loan pay`.", flags: MessageFlags.Ephemeral });
+      return;
+    }
+    if (reward.kind === 'vault' && hasVault(interaction.user.id)) {
+      await interaction.reply({ content: 'You already have a 🔐 **Vault**. Use `/vault` to store Kowens. 🪙', flags: MessageFlags.Ephemeral });
       return;
     }
     if (reward.kind === 'bag' && ownedBags(interaction.user.id).includes(reward.id)) {
@@ -78,6 +84,31 @@ export const redeem: Command = {
           `You need **${fmt(total)}** ${kowen(total)} for ${quantity > 1 ? `${quantity}× ` : 'the '}${reward.emoji} **${reward.name}**, but you have **${fmt(have)}**.` +
           (stackable && canAfford > 0 ? ` You can afford **${canAfford}**.` : ' Keep grinding! 💪'),
         flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    if (reward.kind === 'potion') {
+      const pid = reward.id.replace('potion-', '') as PotionId;
+      if (pid === 'marites' && hintsLeft(interaction.user.id) <= 0) {
+        await interaction.reply({ content: "🍵 Aling Marites has already told you everything she knows. 🤐", flags: MessageFlags.Ephemeral });
+        return;
+      }
+      take(interaction.user.id, total);
+      const have = addPotions(interaction.user.id, pid, quantity);
+      await interaction.reply({
+        content: `${reward.emoji} ${interaction.user} bought ${quantity > 1 ? `**${quantity}× ${reward.name}**` : `a **${reward.name}**`}!\n-# ${POTIONS[pid].effect}. Use it with \`/potion use\` (you have ${have}).`,
+        allowedMentions: { parse: [] },
+      });
+      return;
+    }
+
+    if (reward.kind === 'vault') {
+      take(interaction.user.id, reward.cost);
+      giveVault(interaction.user.id);
+      await interaction.reply({
+        content: `🔐 ${interaction.user} bought a **Vault**! Kowens inside are safe from thieves 🥷 and don't raise your bail 💸\n-# Store up to 30% of your Kowens with \`/vault deposit\`.`,
+        allowedMentions: { parse: [] },
       });
       return;
     }

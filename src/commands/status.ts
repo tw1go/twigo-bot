@@ -9,6 +9,7 @@ import { DIGS_PER_DAY, SHOVELS_PER_DAY, capacity, digsToday, itemCount, masterKe
 import { MAX_ACTIVE, acceptedCount, activeCount } from '../quests/board.js';
 import { STEAL_COOLDOWN_MS } from './steal.js';
 import { BANK, debtOf } from '../loans/loans.js';
+import { swerteLeft, tagoUntil } from '../potions/potions.js';
 
 // Protections, cooldowns and daily limits in one place. /balance is for Kowens.
 const at = (ms: number) => `<t:${Math.floor(ms / 1000)}:f> (<t:${Math.floor(ms / 1000)}:R>)`;
@@ -39,6 +40,8 @@ export const status: Command = {
           value: [
             fence ? `🧱 **Bakod up** until ${at(fence)}` : '🧱 No Bakod — open to `/steal`',
             `🗝️ Master Keys: **${masterKeys(id)}**`,
+            ...(tagoUntil(id) ? [`🫥 Tago Tonic: hidden from the Tanod ${at(tagoUntil(id)!)}`] : []),
+            ...(swerteLeft(id) ? [`🍀 Swerte Elixir: **${swerteLeft(id)}** lucky dig(s) left`] : []),
           ].join('\n'),
         },
         {

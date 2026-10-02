@@ -64,8 +64,10 @@ export const twigoHelp: Command = {
           '-# ⚠️ Inactive for 3+ days? You lose a growing % of Kowens each day until you\'re back.',
         ]),
         ...section('💳 Spend & manage', [
-          '`/redeem` — 🧱 Bakod, 🪏 Shovel, 🗝️ Master Key, 🎒 bags, or Crystal of Atlan passes 🎁',
+          '`/redeem` — 🧱 Bakod, 🪏 Shovel, 🗝️ Master Key, 🔐 Vault, 🧪 potions, 🎒 bags, or Crystal of Atlan passes 🎁',
+          '`/potion use|list` — 🧪 Kalawang (rust a Bakod) · 🫥 Tago (no busts 30 min) · 🍀 Swerte (better digs) · 🍵 Marites (hints)',
           '`/give @someone amount` — give a friend Kowens (max 20 per day)',
+          '`/vault deposit|withdraw|view` — 🔐 store up to 30% of your Kowens, safe from /steal & bail (Vault from `/redeem`, 50)',
           '`/request task reward` — post a quest; the reward is held until you mark it complete 📜',
           '`/loan take|offer|pay|status` — borrow from the 🏦 Tanod Bank or a friend (+10%, due in 3 days)',
           '`/balance` — your Kowens & next reward · `/status` — Bakod, jail, loan, cooldowns & limits (`user:` for someone else)',

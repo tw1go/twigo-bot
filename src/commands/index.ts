@@ -17,15 +17,17 @@ import { sell } from './sell.js';
 import { leaderboard } from './leaderboard.js';
 import { loan } from './loan.js';
 import { ping } from './ping.js';
+import { potion } from './potion.js';
 import { race } from './race.js';
 import { redeem } from './redeem.js';
 import { request } from './request.js';
 import { status } from './status.js';
 import { steal } from './steal.js';
 import { twigo } from './twigo.js';
+import { vault } from './vault.js';
 import { twigoHelp } from './twigo-help.js';
 
 // Register new commands here.
-const all: Command[] = [ping, twigo, twigoHelp, diss, praise, judge, getCredits, balanceCommand, gamble, steal, jackpot, leaderboard, jail, redeem, gift, give, dig, inventory, sell, request, status, bail, race, loan, flex, claim];
+const all: Command[] = [ping, twigo, twigoHelp, diss, praise, judge, getCredits, balanceCommand, gamble, steal, jackpot, leaderboard, jail, redeem, gift, give, dig, inventory, sell, request, status, bail, race, loan, flex, vault, potion, claim];
 
 export const commands = new Collection<string, Command>(all.map((c) => [c.data.name, c]));

@@ -4,6 +4,7 @@ import { add, balance, take } from '../credits/store.js';
 import { blockIfJailed, jail } from '../games/jail.js';
 import { kowen } from '../kowens.js';
 import { config } from '../config.js';
+import { tagoUntil } from '../potions/potions.js';
 
 // Coin flip: 45% win (double). Otherwise you lose the bet — and sometimes the Tanod busts you (5 minutes in jail).
 // The bust chance depends on where you gamble: low in the gambling channel, high anywhere else.
@@ -37,7 +38,8 @@ export const gamble: Command = {
     lastUsed.set(interaction.user.id, Date.now());
 
     const inChannel = interaction.channelId === config.gamblingChannelId;
-    const bustChance = inChannel ? BUST_CHANCE_IN_CHANNEL : BUST_CHANCE_ELSEWHERE;
+    const hidden = !!tagoUntil(interaction.user.id); // 🫥 Tago Tonic: the Tanod can't see you
+    const bustChance = hidden ? 0 : inChannel ? BUST_CHANCE_IN_CHANNEL : BUST_CHANCE_ELSEWHERE;
     const roll = Math.random();
     let content: string;
     if (roll < bustChance) {
@@ -53,7 +55,8 @@ export const gamble: Command = {
       content = `🎲 ${interaction.user} bet **${bet}** and **lost** it all. 💸`;
     }
     content += `\n-# Balance: ${balance(interaction.user.id)} ${kowen(balance(interaction.user.id))}`;
-    if (!inChannel) content += ` · 👀 The Tanod patrols here. Gamble in <#${config.gamblingChannelId}> to lower your risk.`;
+    if (hidden) content += ' · 🫥 Tago Tonic active (the Tanod can\'t see you)';
+    else if (!inChannel) content += ` · 👀 The Tanod patrols here. Gamble in <#${config.gamblingChannelId}> to lower your risk.`;
     await interaction.reply({ content, allowedMentions: { parse: [] } });
   },
 };

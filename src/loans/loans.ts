@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { EmbedBuilder, type Client } from 'discord.js';
 import { config } from '../config.js';
-import { add, balance, setGarnishHook, take } from '../credits/store.js';
+import { add, balance, setGarnishHook, take, takeFromVault } from '../credits/store.js';
 import { jail } from '../games/jail.js';
 import { kowen } from '../kowens.js';
 
@@ -165,7 +165,9 @@ export async function processLoans(client: Client): Promise<void> {
       loan.status = 'defaulted';
       save();
       const owedAtDefault = loan.owed;
-      const seized = take(loan.borrower, Math.min(balance(loan.borrower), loan.owed));
+      // The vault doesn't protect from defaults: wallet first, then the vault.
+      const fromWallet = take(loan.borrower, Math.min(balance(loan.borrower), loan.owed));
+      const seized = fromWallet + takeFromVault(loan.borrower, loan.owed - fromWallet);
       applyPayment(loan, seized);
       await jail(loan.borrower, UTANG_JAIL_MINUTES, 'Utang (defaulted on a loan)', false);
       state.blacklistUntil[loan.borrower] = now + BLACKLIST_DAYS * DAY_MS;

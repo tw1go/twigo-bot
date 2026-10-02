@@ -4,6 +4,7 @@ import { config } from '../config.js';
 import { blockIfJailed } from '../games/jail.js';
 import { kowen } from '../kowens.js';
 import { RARITY, rollItem, rollLucky } from '../dig/items.js';
+import { useSwerteDig } from '../potions/potions.js';
 import { DIGS_PER_DAY, LUCKY_EVERY, SHOVEL_COST, capacity, countServerDig, digsToday, itemCount, recordDig, serverDigProgress, shovelUses } from '../dig/store.js';
 
 export const dig: Command = {
@@ -35,7 +36,9 @@ export const dig: Command = {
     }
 
     const lucky = countServerDig(); // 🍀 every LUCKY_EVERY-th dig on the server is Epic or better
-    const rolled = rollItem();
+    const swerte = useSwerteDig(id); // 🍀 Swerte Elixir: junk gets one reroll
+    const first = rollItem();
+    const rolled = swerte && first.rarity === 'junk' ? rollItem() : first;
     // The lucky dig never downgrades a secret find.
     const found = lucky && rolled.rarity !== 'secret' ? rollLucky() : rolled;
     recordDig(id, found.id);

@@ -6,6 +6,8 @@ import {
   VOICE_MINUTES_PER_CREDIT,
   DAILY_GIVE_LIMIT,
   balance,
+  hasVault,
+  vaultBalance,
   claimedToday,
   daysInactive,
   fencedUntil,
@@ -47,7 +49,11 @@ export const balanceCommand: Command = {
     const embed = new EmbedBuilder()
       .setColor(0x2ecc71)
       .setAuthor({ name: `${target.displayName}'s balance`, iconURL: target.displayAvatarURL() })
-      .setDescription(`## 🪙 ${fmt(have)} ${kowen(have)}${rank ? `\n-# #${rank} on the leaderboard` : ''}`)
+      .setDescription(
+        `## 🪙 ${fmt(have)} ${kowen(have)}` +
+          (hasVault(id) ? `\n🔐 Vault: **${fmt(vaultBalance(id))}** · total **${fmt(have + vaultBalance(id))}**` : '') +
+          (rank ? `\n-# #${rank} on the leaderboard` : ''),
+      )
       .addFields(
         {
           name: 'Today',

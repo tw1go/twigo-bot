@@ -119,7 +119,11 @@ Balikbayan Box 35, Lola's Bottomless Bag 50) add +8 each, once each, up to 50. `
 
 ## Rewards
 
-`/redeem` lists rewards. **🗝️ Master Key** — 5 Kowens; on `/steal` against a Bakod, 50% it breaks in (then the normal
+`/redeem` lists rewards. **🧪 Potions** (`src/potions/potions.ts`, used with `/potion use|list`): 🧪 Kalawang 8 (halves a target's
+Bakod time) · 🫥 Tago Tonic 6 (30 min of 0% gamble bust) · 🍀 Swerte Elixir 5 (next 3 digs reroll junk once) · 🍵 Marites Tea 3
+(an Easter egg hint you haven't heard). **🔐 Vault** — 50 Kowens, once; `/vault deposit|withdraw|view` stores up to 30% of your total
+Kowens, safe from `/steal` and bail. Withdrawals must take at least 70% of what's inside. Inactivity decay and loan defaults
+still reach it (wallet first). The leaderboard and `/balance` count wallet + vault. **🗝️ Master Key** — 5 Kowens; on `/steal` against a Bakod, 50% it breaks in (then the normal
 steal roll), 50% it snaps. Only used up against a Bakod. **🧱 Bakod (Fence)** — 5 Kowens, blocks `/steal` against you for 1.5 days (stacks up to 7), applied instantly.
 Crystal of Atlan passes: `/redeem reward:<name>` deducts the Kowens and pings `REWARD_OWNER_ID`, who delivers it manually.
 Rewards and prices are in `src/games/rewards.ts`. Redemptions are logged in `data/redemptions.json`.

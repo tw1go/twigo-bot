@@ -20,6 +20,8 @@ interface Account {
   voiceCreditsDay?: string; // YYYY-MM-DD that voiceCreditsToday counts
   voiceCreditsToday?: number;
   voiceWeek?: string; // Monday of the week voiceWeekMinutes counts
+  hasVault?: boolean; // bought the Vault in /redeem
+  vault?: number; // Kowens stored in the vault (safe from /steal and bail)
   voiceWeekMinutes?: number; // eligible voice minutes this week (for the weekly rewards)
   giveDay?: string; // YYYY-MM-DD that giveSentToday counts
   giveSentToday?: number;
@@ -152,12 +154,15 @@ export function markSteal(userId: string): void {
   save();
 }
 
+const totalOf = (a: Account) => a.balance + (a.vault ?? 0);
+
+/** Richest members by total Kowens (wallet + vault). */
 export function topBalances(limit: number): [string, number][] {
   return Object.entries(accounts)
-    .filter(([, a]) => a.balance > 0)
-    .sort(([, a], [, b]) => b.balance - a.balance)
+    .filter(([, a]) => totalOf(a) > 0)
+    .sort(([, a], [, b]) => totalOf(b) - totalOf(a))
     .slice(0, limit)
-    .map(([id, a]) => [id, a.balance]);
+    .map(([id, a]) => [id, totalOf(a)]);
 }
 
 export function topVoice(limit: number): [string, number][] {
@@ -190,12 +195,16 @@ export function decayInactive(): [string, number, number][] {
       account.lastActive = now; // existing accounts start their clock today
       continue;
     }
-    if (account.balance <= 0) continue;
+    const total = account.balance + (account.vault ?? 0);
+    if (total <= 0) continue;
     const idle = daysBetween(account.lastActive, now);
     if (idle <= INACTIVE_GRACE_DAYS) continue;
     const percent = Math.min(idle - INACTIVE_GRACE_DAYS, DECAY_MAX_PERCENT);
-    const lost = Math.min(account.balance, Math.max(1, Math.floor((account.balance * percent) / 100)));
-    account.balance -= lost;
+    const lost = Math.min(total, Math.max(1, Math.floor((total * percent) / 100)));
+    // The vault doesn't protect from inactivity: take from the wallet first, then the vault.
+    const fromWallet = Math.min(account.balance, lost);
+    account.balance -= fromWallet;
+    account.vault = (account.vault ?? 0) - (lost - fromWallet);
     charged.push([id, lost, idle]);
   }
   save();
@@ -206,6 +215,15 @@ export function decayInactive(): [string, number, number][] {
 export function fencedUntil(userId: string): number | null {
   const until = accounts[userId]?.fenceUntil ?? 0;
   return until > Date.now() ? until : null;
+}
+
+/** 🧪 Kalawang Potion: cuts the remaining Bakod time in half. Returns the new end time, or null if none. */
+export function halveFence(userId: string): number | null {
+  const until = fencedUntil(userId);
+  if (!until) return null;
+  accounts[userId].fenceUntil = Date.now() + Math.floor((until - Date.now()) / 2);
+  save();
+  return accounts[userId].fenceUntil!;
 }
 
 /** Adds fence time, capped at maxMs from now. Returns the new end time. */
@@ -229,8 +247,9 @@ export function daysInactive(userId: string): number | null {
 
 /** 1-based rank by balance among members with credits, or null if they have none. */
 export function rankOf(userId: string): number | null {
-  if (balance(userId) <= 0) return null;
-  return Object.values(accounts).filter((a) => a.balance > balance(userId)).length + 1;
+  const mine = totalKowens(userId);
+  if (mine <= 0) return null;
+  return Object.values(accounts).filter((a) => totalOf(a) > mine).length + 1;
 }
 
 // Member-to-member gifting (/give): each member can send up to DAILY_GIVE_LIMIT per day (resets at midnight).
@@ -263,4 +282,61 @@ export function topVoiceWeek(week: string, limit: number): [string, number][] {
     .sort(([, a], [, b]) => (b.voiceWeekMinutes ?? 0) - (a.voiceWeekMinutes ?? 0))
     .slice(0, limit)
     .map(([id, a]) => [id, a.voiceWeekMinutes ?? 0]);
+}
+
+// 🔐 Vault: stores up to VAULT_CAP of your total Kowens, safe from /steal and bail (which only see the wallet).
+// Withdrawals must take at least VAULT_MIN_WITHDRAW of what's inside. Inactivity decay and loan seizure still reach it.
+export const VAULT_PRICE = 50;
+export const VAULT_CAP = 0.3;
+export const VAULT_MIN_WITHDRAW = 0.7;
+
+export const hasVault = (userId: string) => !!accounts[userId]?.hasVault;
+export const vaultBalance = (userId: string) => accounts[userId]?.vault ?? 0;
+/** Wallet + vault. */
+export const totalKowens = (userId: string) => balance(userId) + vaultBalance(userId);
+/** Most the vault can hold right now (30% of everything you own). */
+export const vaultCapacity = (userId: string) => Math.floor(totalKowens(userId) * VAULT_CAP);
+/** Smallest allowed withdrawal (70% of what's inside, at least 1). */
+export const vaultMinWithdraw = (userId: string) => Math.max(1, Math.ceil(vaultBalance(userId) * VAULT_MIN_WITHDRAW));
+
+export function giveVault(userId: string): void {
+  (accounts[userId] ??= { balance: 0 }).hasVault = true;
+  save();
+}
+
+/** Moves wallet → vault. */
+export function vaultDeposit(userId: string, amount: number): { ok: true } | { ok: false; reason: 'none' | 'balance' | 'cap'; room?: number } {
+  const a = accounts[userId];
+  if (!a?.hasVault) return { ok: false, reason: 'none' };
+  if (a.balance < amount) return { ok: false, reason: 'balance' };
+  const room = vaultCapacity(userId) - (a.vault ?? 0);
+  if (amount > room) return { ok: false, reason: 'cap', room: Math.max(0, room) };
+  a.balance -= amount;
+  a.vault = (a.vault ?? 0) + amount;
+  save();
+  return { ok: true };
+}
+
+/** Moves vault → wallet (no garnish: it was already yours). */
+export function vaultWithdraw(userId: string, amount: number): { ok: true } | { ok: false; reason: 'none' | 'empty' | 'min' | 'max' } {
+  const a = accounts[userId];
+  if (!a?.hasVault) return { ok: false, reason: 'none' };
+  const inside = a.vault ?? 0;
+  if (inside <= 0) return { ok: false, reason: 'empty' };
+  if (amount > inside) return { ok: false, reason: 'max' };
+  if (amount < vaultMinWithdraw(userId)) return { ok: false, reason: 'min' };
+  a.vault = inside - amount;
+  a.balance += amount;
+  save();
+  return { ok: true };
+}
+
+/** Takes from the vault (for loan default seizure). Returns what was taken. */
+export function takeFromVault(userId: string, amount: number): number {
+  const a = accounts[userId];
+  if (!a?.vault) return 0;
+  const taken = Math.min(a.vault, amount);
+  a.vault -= taken;
+  save();
+  return taken;
 }
