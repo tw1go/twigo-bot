@@ -1,6 +1,28 @@
-# twigo-bot
+# Mikazuki
 
-Discord bot built with discord.js v14 + TypeScript.
+The Mikazuki server's Discord bot (twigo, "the Tanod") and its upcoming web town, in one npm-workspaces monorepo.
+
+```
+packages/bot/      Discord bot — discord.js v14 + TypeScript (@mikazuki/bot)
+packages/game/     web town at /play — Vite + Phaser 4 + TypeScript (@mikazuki/game)
+packages/shared/   types shared by bot and game, e.g. the room API responses (@mikazuki/shared)
+deploy/            server scripts: deploy.sh, systemd unit, Caddyfile
+.env, data/        bot secrets and live state (untracked; see "Where state lives")
+TERMS.md, PRIVACY.md   public docs linked from the Discord Developer Portal — keep them at the root
+```
+
+Node **≥ 22.12** (see `.nvmrc`). From the root:
+
+| Command | What it does |
+|---|---|
+| `npm install` | installs every workspace |
+| `npm run build` | builds shared → bot → game |
+| `npm run typecheck` | typechecks every workspace |
+| `npm run dev:game` | game dev server at http://localhost:5173/play/ |
+| `npm run dev:bot` | ⛔ refuses unless `ALLOW_LOCAL_BOT=1` — the live bot runs on the server |
+| `npm run deploy-commands` | registers the bot's slash commands |
+
+Bot code lives in `packages/bot/src/`; paths like `src/...` below are relative to `packages/bot/`.
 
 ## What it does — Ancient Battlefield (every Saturday)
 
@@ -131,39 +153,53 @@ Rewards and prices are in `src/games/rewards.ts`. Redemptions are logged in `dat
 ## Setup
 
 1. Create an application at https://discord.com/developers/applications, add a Bot, copy its token.
-2. `cp .env.example .env` and fill everything in (right-click → Copy ID with Developer Mode on for role/channel IDs).
+2. `cp .env.example .env` (at the repo root) and fill everything in (right-click → Copy ID with Developer Mode on for role/channel IDs).
 3. Invite the bot: OAuth2 → URL Generator → scopes `bot` + `applications.commands`, permissions:
    View Channels, Send Messages, Send Polls, Read Message History.
    The admin role must be **mentionable** (Server Settings → Roles), or give the bot "Mention @everyone, @here, and All Roles".
 4. `npm install`
 5. `npm run deploy-commands` — registers slash commands (re-run when commands change).
-6. `npm run dev` — runs with auto-reload.
+6. Running the bot locally: only when the server's bot is stopped, or with a separate test bot token —
+   `ALLOW_LOCAL_BOT=1 npm run dev:bot`. Without the flag it refuses, so it can't double-post by accident.
 
-Production: `npm run build && npm start`. The bot must run 24/7 for the schedule to fire.
+## Where state lives
+
+The bot reads its secrets from `.env` and keeps all live state (Kowens, jail, jackpot, quests, loans…) as JSON
+in `data/`. Both are resolved by `packages/bot/src/paths.ts`, not by the working directory:
+
+- `DATA_DIR` env var, else `<repo root>/data`
+- `ENV_FILE` env var, else `<repo root>/.env`
+- `<repo root>` = `TWIGO_ROOT` env var, else the nearest folder up from the working directory whose `package.json`
+  has `"workspaces"`
+
+So `npm run …` from the root or from `packages/bot` both use the root `.env` and `data/`. On the server, systemd
+sets `DATA_DIR=/opt/twigo-bot/data` and `ENV_FILE=/opt/twigo-bot/.env` explicitly.
 
 ## Hosting (Oracle Cloud Always Free, Ubuntu 24.04)
 
-Runs as a systemd service (`twigo-bot`) from `/opt/twigo-bot`, auto-restarts on crash and reboot.
+The server holds the monorepo root at `/opt/twigo-bot`. The bot runs as the systemd service `twigo-bot`
+(`node packages/bot/dist/index.js`, working directory `/opt/twigo-bot`), auto-restarting on crash and reboot.
+Caddy serves the web game from `/opt/twigo-bot/web/play` at `/play` and proxies everything else to the room API.
 
 - First-time server setup: `ssh ubuntu@SERVER 'sudo bash -s' < deploy/server-setup.sh`
-- Deploy changes (builds locally, uploads code + `.env`, restarts): `./deploy/deploy.sh ubuntu@SERVER`
+- Deploy (builds locally, uploads the bot + `.env` + the game's static files, restarts the bot):
+  `./deploy/deploy.sh ubuntu@SERVER`. `data/` on the server is never touched.
 - Logs: `ssh ubuntu@SERVER 'sudo journalctl -u twigo-bot -f'`
 - Restart: `ssh ubuntu@SERVER 'sudo systemctl restart twigo-bot'`
 
-Don't run `npm run dev` locally while the server is up — two copies will post everything twice.
+### Room API and the web game (HTTPS)
 
-### Room API (HTTPS)
-
-The site is HTTPS, so browsers only let it call an HTTPS address. Caddy provides one, with a free DuckDNS name:
+The playroom site is HTTPS, so browsers only let it call an HTTPS address. Caddy provides one, with a free DuckDNS name:
 
 1. Get a name at <https://www.duckdns.org> (e.g. `twigo-bot.duckdns.org`) and point it at the server's public IP.
 2. Open TCP **80** and **443**: Oracle console → VCN → Security List → Ingress rules (0.0.0.0/0).
    `deploy/web-setup.sh` opens them in the server's own iptables too.
 3. `ssh ubuntu@SERVER 'sudo bash -s' < deploy/web-setup.sh twigo-bot.duckdns.org` — installs Caddy, which fetches
-   the certificate and proxies to the bot.
+   the certificate, serves `/play`, and proxies everything else to the bot. `deploy/Caddyfile` is the same config.
 4. Set `WEB_PORT=8787` in `.env`, deploy, and `npm run deploy-commands` for `/claim`.
-5. Check: `curl https://twigo-bot.duckdns.org/health` → `ok`.
+5. Check: `curl https://twigo-bot.duckdns.org/health` → `ok`, and open `https://twigo-bot.duckdns.org/play/`.
 
 ## Adding a command
 
-Create `src/commands/<name>.ts` exporting a `Command`, then add it to the list in `src/commands/index.ts`.
+Create `packages/bot/src/commands/<name>.ts` exporting a `Command`, then add it to the list in
+`packages/bot/src/commands/index.ts`, and run `npm run deploy-commands`.

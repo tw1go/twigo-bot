@@ -1,16 +1,20 @@
 [Unit]
-Description=twigo Discord bot
+Description=Mikazuki bot (twigo)
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
 User=twigo
+# The monorepo root. The bot's state (data/) and secrets (.env) live here, exactly where they always have.
 WorkingDirectory=/opt/twigo-bot
-ExecStart=/usr/bin/node dist/index.js
+ExecStart=/usr/bin/node packages/bot/dist/index.js
+# Explicit paths (see packages/bot/src/paths.ts) so state never depends on the working directory.
+Environment=DATA_DIR=/opt/twigo-bot/data
+Environment=ENV_FILE=/opt/twigo-bot/.env
+Environment=NODE_ENV=production
 Restart=always
 RestartSec=5
-Environment=NODE_ENV=production
 
 [Install]
 WantedBy=multi-user.target

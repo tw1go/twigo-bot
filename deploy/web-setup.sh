@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One-time: HTTPS for the room API. Run on the server as root:
+# One-time: HTTPS for the room API and the web game (/play). Run on the server as root:
 #   ssh ubuntu@SERVER 'sudo bash -s' < deploy/web-setup.sh your-name.duckdns.org
 set -euo pipefail
 DOMAIN="${1:?usage: web-setup.sh your-name.duckdns.org}"
@@ -24,10 +24,26 @@ for p in 80 443; do
 done
 if command -v netfilter-persistent >/dev/null; then netfilter-persistent save; fi
 
-# Caddy fetches and renews the certificate itself; the bot stays on localhost.
+# Caddy fetches and renews the certificate itself; the bot stays on localhost. The game is served at /play.
+# (deploy/Caddyfile is the same config for twigo-bot.duckdns.org; keep the two in sync.)
+mkdir -p /opt/twigo-bot/web/play
 cat > /etc/caddy/Caddyfile <<CADDY
 $DOMAIN {
-	reverse_proxy 127.0.0.1:$PORT
+	encode zstd gzip
+
+	redir /play /play/ 308
+	handle_path /play/* {
+		root * /opt/twigo-bot/web/play
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		header /index.html Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+
+	handle {
+		reverse_proxy 127.0.0.1:$PORT
+	}
 }
 CADDY
 systemctl enable caddy

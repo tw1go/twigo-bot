@@ -1,0 +1,21 @@
+# Caddy config for the Mikazuki server. Replace twigo-bot.duckdns.org if the domain changes.
+#   /play/*  → the web game's static files (built by deploy.sh into /opt/twigo-bot/web/play)
+#   anything else → the bot's room API on 127.0.0.1:8787 (GET /leaderboard, POST /find, GET /health)
+twigo-bot.duckdns.org {
+	encode zstd gzip
+
+	redir /play /play/ 308
+	handle_path /play/* {
+		root * /opt/twigo-bot/web/play
+		# Hashed assets can be cached forever; index.html must always be fresh.
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		header /index.html Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+
+	handle {
+		reverse_proxy 127.0.0.1:8787
+	}
+}
