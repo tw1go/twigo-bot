@@ -7,7 +7,7 @@ import { jail } from '../games/jail.js';
 import { kowen } from '../kowens.js';
 
 // 🏦 Loans. The Tanod Bank or another member lends Kowens; the borrower owes the loan + INTEREST, due in DUE_DAYS.
-// While owing, GARNISH of everything they earn goes to the lender automatically. Overdue loans add a late fee each
+// Once a loan is OVERDUE, GARNISH of everything they earn goes to the lender automatically. Overdue loans add a late fee each
 // day (with a threatening public "text message" in general), and after DEFAULT_AFTER_DAYS overdue the borrower defaults: their balance is
 // seized toward the debt, they get utang jail (no bail) and a blacklist. Bank repayments are removed from the economy.
 export const INTEREST = 0.1;
@@ -102,10 +102,13 @@ export function payLoan(userId: string, amount?: number): { paid: number; loan: 
   return { paid, loan };
 }
 
-// Garnish: part of every earning goes to the lender while in debt.
+/** Past the due date (or defaulted): only then are earnings garnished. */
+export const isOverdue = (loan: Loan) => loan.status === 'defaulted' || Date.now() > loan.due;
+
+// Garnish: once overdue, part of every earning goes to the lender. Before the due date, borrowers keep what they earn.
 setGarnishHook((userId, earned) => {
   const loan = debtOf(userId);
-  if (!loan) return;
+  if (!loan || !isOverdue(loan)) return;
   const share = Math.min(loan.owed, Math.max(1, Math.floor(earned * GARNISH)));
   applyPayment(loan, take(userId, share));
 });

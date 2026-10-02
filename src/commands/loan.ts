@@ -11,6 +11,7 @@ import {
   P2P_MAX,
   P2P_MAX_OUT,
   bankLimit,
+  isOverdue,
   blacklistedUntil,
   createLoan,
   createOffer,
@@ -66,7 +67,7 @@ export const loan: Command = {
       if (amount > limit) return void (await reply(`The Tanod Bank will lend you up to **${limit}** ${kowen(limit)} right now. Repay loans on time to raise it. 📈`));
       const l = createLoan(BANK, me, amount);
       await interaction.reply({
-        content: `🏦 ${interaction.user} borrowed **${amount}** ${kowen(amount)} from the **Tanod Bank**!\n-# Owes **${l.owed}** (+${pct(INTEREST)}) by ${ts(l.due, 'f')}. ${pct(GARNISH)} of their earnings go to the bank until it's paid.`,
+        content: `🏦 ${interaction.user} borrowed **${amount}** ${kowen(amount)} from the **Tanod Bank**!\n-# Owes **${l.owed}** (+${pct(INTEREST)}) by ${ts(l.due, 'f')}. If it's late, ${pct(GARNISH)} of their earnings go to the bank until it's paid.`,
         allowedMentions: { parse: [] },
       });
       return;
@@ -90,7 +91,7 @@ export const loan: Command = {
         new ButtonBuilder().setCustomId(`${PREFIX}${id}:decline`).setLabel('Decline').setStyle(ButtonStyle.Secondary),
       );
       await interaction.reply({
-        content: `💸 ${target}, ${interaction.user} is offering you a loan of **${amount}** ${kowen(amount)}!\n-# You'd owe **${owed}** (+${pct(INTEREST)}) in ${DUE_DAYS} days, and ${pct(GARNISH)} of your earnings go to them until it's paid. Offer expires ${ts(Date.now() + OFFER_MS)}.`,
+        content: `💸 ${target}, ${interaction.user} is offering you a loan of **${amount}** ${kowen(amount)}!\n-# You'd owe **${owed}** (+${pct(INTEREST)}) in ${DUE_DAYS} days, and if you're late, ${pct(GARNISH)} of your earnings go to them until it's paid. Offer expires ${ts(Date.now() + OFFER_MS)}.`,
         components: [row],
         allowedMentions: { users: [target.id] },
       });
@@ -121,7 +122,9 @@ export const loan: Command = {
           value: debt
             ? `**${debt.owed}** ${kowen(debt.owed)} to ${debt.lender === BANK ? '🏦 the Tanod Bank' : `<@${debt.lender}>`}\n` +
               (debt.status === 'defaulted' ? '⛔ **Defaulted.** Earnings are still garnished until it\'s paid' : `Due ${ts(debt.due, 'f')} (${ts(debt.due)})`) +
-              `\n-# ${pct(GARNISH)} of your earnings go to your lender until it's paid · \`/loan pay\` to pay faster`
+              (isOverdue(debt)
+                ? `\n-# ⚠️ Overdue: ${pct(GARNISH)} of your earnings go to your lender until it's paid · \`/loan pay\` to clear it`
+                : `\n-# Pay before it's due and nothing is taken from your earnings · \`/loan pay\``)
             : '✅ Nothing',
         },
         {
