@@ -35,7 +35,7 @@ Bot code lives in `packages/bot/src/`; paths like `src/...` below are relative t
 | 8:00 PM | Pings every participant: time to ready up and brawl |
 
 If no admin answers by 6:00 PM, the day is skipped. Times live in `src/match/schedule.ts`.
-Progress is saved to `data/match-state.json`, so a restart mid-Saturday is safe.
+Progress is saved in the database (`match-state.json` document), so a restart mid-Saturday is safe.
 
 Admins can run any step manually with `/twigo abf:<ask|close|remind|start>` (useful for testing any day).
 
@@ -61,7 +61,7 @@ Test with `/twigo greet:send`.
 
 A few times a day (every 2–6 hours, 9 AM–11 PM) the bot says a random line in `BANTER_CHANNEL_ID`.
 Edit the lines in `src/banter/lines.ts`. Admins can trigger one with `/twigo banter:send`.
-Lines never repeat until every line has been used, even across restarts (progress is saved in `data/rotation.json`).
+Lines never repeat until every line has been used, even across restarts (progress is saved in the database).
 
 ## Fun
 
@@ -82,15 +82,15 @@ Once overdue, 50% of earnings are garnished to the lender (bank repayments are r
 and quests are blocked. Overdue: +10% of the loan per day with a public "text message" from the lender in general; 3 days overdue =
 default (balance seized, 1 h no-bail utang jail, 30-day blacklist). Checked hourly. See `src/loans/loans.ts`.
 **Quests:** `/request task reward` posts a quest (1–100 Kowens, held in escrow, max 3 active). Buttons: Accept (pings the
-requester), Complete (requester pays the accepter), Give up (reopens), Cancel (refunds). Saved in `data/quests.json`.
+requester), Complete (requester pays the accepter), Give up (reopens), Cancel (refunds). Saved in the database.
 **Give:** `/give user amount` — any member can send Kowens, max 20 per day (resets at midnight).
 **Mine Wars payout:** `/gift minewars` opens a panel to pick attendance (+2) and Top 10 (3 total) for the most recent 9 PM Mine Wars (Institute Walkway 07 server only),
-then pays everyone and posts a summary (names listed, no pings). A per-night ledger (`data/minewars-payouts.json`) prevents double payouts.
+then pays everyone and posts a summary (names listed, no pings). A per-night ledger in the database prevents double payouts.
 **Gifter:** `/gift kowens user amount [reason]` (negative removes) — only `REWARD_OWNER_ID` can use it.
 
 `/status [user]` shows Bakod, jail, steal cooldown, Master Keys, digs/shovels, bag space, quests and inactivity (private).
 Targeting yourself or the bot is free. `/balance [user]` shows Kowens, rank, today's progress and next reward (only visible to you).
-Balances are saved in `data/credits.json`.
+Balances are saved in the `accounts` table of `data/mikazuki.db`.
 **Inactivity decay** (daily 12:05 AM): after 3 days with no message, voice time or bot use, members lose 1%, then 2%, … up to 10%/day
 (min 1 Kowen). Activity is tracked by date only (`GuildMessages` intent, no message content). Tune in `src/credits/store.ts`.
 Admins/mods: `/twigo reset-kowens:@user` or `/twigo reset-all-kowens:yes` (balance → 0, can claim again). Edit the lines in `src/judge/lines.ts`.
@@ -124,7 +124,7 @@ Clicking the characters at <https://tw1go.github.io> has a 10% chance to find a 
 (`POST /find`), never the browser, and hands back a one-time code valid for 15 minutes. `/claim code` in
 Discord spends it, credits 1 Kowen (max 3 claims per member per day), and announces it in `ROOM_FINDS_CHANNEL_ID`
 (only the finder is mentioned). The room also shows the Kowen leaderboard (`GET /leaderboard`).
-Tune the odds and caps in `src/web/finds.ts`; codes live in `data/room-finds.json`.
+Tune the odds and caps in `src/web/finds.ts`; codes are saved in the database.
 
 The API (`src/web/server.ts`) listens on `127.0.0.1:WEB_PORT` only. Caddy puts HTTPS in front of it —
 see **Room API (HTTPS)** under Hosting.
@@ -135,7 +135,7 @@ see **Room API (HTTPS)** under Hosting.
 (Junk 60% · Common 32% · Uncommon 5% · Rare 2% · Epic 0.75% · Mythical 0.2% · Legendary 0.05%), then an item
 (cheaper items much more likely). ~0.75 Kowens per dig on average (a shovel returns ~2.3 for its 2 Kowens). `/inventory` shows your finds; `/sell` (autocomplete,
 or Everything / All Junk & Common) turns them into Kowens. Items and odds live in `src/dig/items.ts`.
-🍀 Lucky dig: every 60th dig server-wide is guaranteed Epic 75% / Mythical 20% / Legendary 5% (`data/lucky-dig.json`).
+🍀 Lucky dig: every 60th dig server-wide is guaranteed Epic 75% / Mythical 20% / Legendary 5%.
 Inventory holds 10 items (every copy counts); 5 bags in `/redeem` (Supot 5, Bayong 10, School Backpack 20,
 Balikbayan Box 35, Lola's Bottomless Bag 50) add +8 each, once each, up to 50. `/dig` is blocked while the bag is full.
 
@@ -148,7 +148,7 @@ Kowens, safe from `/steal` and bail. Withdrawals must take at least 70% of what'
 still reach it (wallet first). The leaderboard and `/balance` count wallet + vault. **🗝️ Master Key** — 5 Kowens; on `/steal` against a Bakod, 50% it breaks in (then the normal
 steal roll), 50% it snaps. Only used up against a Bakod. **🧱 Bakod (Fence)** — 5 Kowens, blocks `/steal` against you for 1.5 days (stacks up to 7), applied instantly.
 Crystal of Atlan passes: `/redeem reward:<name>` deducts the Kowens and pings `REWARD_OWNER_ID`, who delivers it manually.
-Rewards and prices are in `src/games/rewards.ts`. Redemptions are logged in `data/redemptions.json`.
+Rewards and prices are in `src/games/rewards.ts`. Redemptions are logged in the database.
 
 ## Setup
 
@@ -164,8 +164,20 @@ Rewards and prices are in `src/games/rewards.ts`. Redemptions are logged in `dat
 
 ## Where state lives
 
-The bot reads its secrets from `.env` and keeps all live state (Kowens, jail, jackpot, quests, loans…) as JSON
-in `data/`. Both are resolved by `packages/bot/src/paths.ts`, not by the working directory:
+The bot reads its secrets from `.env` and keeps all live state (Kowens, jail, jackpot, quests, loans…) in one
+SQLite database, `data/mikazuki.db` (`packages/bot/src/db/db.ts`):
+
+- Tables for the economy core: `accounts` (Kowens, vault, daily limits), `dig_state` + `inventory_items`,
+  `loans` + `loan_credit`.
+- Every other store is one JSON document in the `kv` table, keyed by its old file name (e.g. `jail.json`).
+- `data/backups/mikazuki-YYYY-MM-DD.db`: a nightly backup at 3:30 AM. The last 7 are kept.
+- `data/legacy-json/`: the old JSON files. On the first start with the database, they were imported in one
+  transaction and moved here (kept for rollback, never read again).
+- Schema changes are versioned migrations in `db.ts` (`PRAGMA user_version`).
+
+Open it with any SQLite viewer. On the server, copy a backup rather than the live file, which is in WAL mode.
+
+`DATA_DIR` and `.env` are resolved by `packages/bot/src/paths.ts`, not by the working directory:
 
 - `DATA_DIR` env var, else `<repo root>/data`
 - `ENV_FILE` env var, else `<repo root>/.env`

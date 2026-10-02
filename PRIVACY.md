@@ -1,6 +1,6 @@
 # twigo bot — Privacy Policy
 
-_Last updated: September 30, 2026 (added twigo's room website)_
+_Last updated: October 2, 2026 (saved data moved to a database, with nightly backups)_
 
 This policy explains what information the twigo Discord bot ("the bot", "we") collects, why, and how it is handled. By using the bot or being a member of a server where it runs, you agree to this policy.
 
@@ -39,9 +39,10 @@ The bot does **not** listen to, record, or store any voice audio. It does **not*
 
 ## How long data is kept
 
-- **Event participants:** the user IDs of people who voted "Yes" in an event poll are saved in a small file on the bot's server. The file only holds the most recent event and is overwritten by the next one.
+- **Event participants:** the user IDs of people who voted "Yes" in an event poll are saved on the bot's server. The file only holds the most recent event and is overwritten by the next one.
 - **Kowens:** your user ID, Kowens balance, the date you last claimed, and your voice minutes toward the next Kowens are saved on the bot's server for as long as the bot runs. Admins and moderators can reset them at any time, and you can ask for them to be deleted.
 - **Roles:** when you use the opt-in button, the bot gives or removes a Discord role. The role itself lives on Discord, not with the bot. You can remove it at any time by clicking the button again.
+- **Storage and backups:** everything the bot saves is kept in one database on the bot's server. A copy is made every night and the last 7 are kept, so anything deleted is gone from the backups within 7 days.
 - **Logs:** the server keeps technical error logs for troubleshooting. These are rotated automatically and are not used for anything else.
 
 ## twigo's room (website)
