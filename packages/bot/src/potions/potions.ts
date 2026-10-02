@@ -1,6 +1,5 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { kvLoad, kvSave } from '../db/db.js';
 import { hasFound, type EggKey } from '../games/found.js';
-import { DATA_DIR } from '../paths.js';
 
 // 🧪 Potions: bought in /redeem, used with /potion use. Counts and active effects live in data/potions.json.
 export const POTIONS = {
@@ -35,12 +34,10 @@ interface UserPotions {
   swerteDigs?: number;
   hintsHeard?: number[];
 }
-const DIR = DATA_DIR;
-const FILE = `${DIR}/potions.json`;
-const state: Record<string, UserPotions> = existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : {};
+const KEY = 'potions.json'; // kv key (its old file name)
+const state: Record<string, UserPotions> = kvLoad(KEY, {});
 function save(): void {
-  mkdirSync(DIR, { recursive: true });
-  writeFileSync(FILE, JSON.stringify(state));
+  kvSave(KEY, state);
 }
 const of = (userId: string) => (state[userId] ??= { have: {} });
 

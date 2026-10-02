@@ -1,8 +1,7 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { kvLoad, kvSave } from '../db/db.js';
 import { MessageFlags, type ChatInputCommandInteraction, type ButtonInteraction, type Client } from 'discord.js';
 import { config } from '../config.js';
 import { balance } from '../credits/store.js';
-import { DATA_DIR } from '../paths.js';
 
 // Jail: jailed members get the jail role and can't play /gamble, /steal, /jackpot or Tanod Patrol.
 // Jail times are saved so a restart doesn't free anyone early.
@@ -24,13 +23,11 @@ export const bailFor = (userId: string) => Math.min(MAX_BAIL, Math.max(MIN_BAIL,
 /** False if they're not jailed, or were jailed by an admin. */
 export const canBail = (userId: string) => !!jailedUntil(userId) && !jailed[userId]?.noBail;
 
-const DIR = DATA_DIR;
-const FILE = `${DIR}/jail.json`;
-let jailed: Record<string, JailEntry> = existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : {};
+const KEY = 'jail.json'; // kv key (its old file name)
+let jailed: Record<string, JailEntry> = kvLoad(KEY, {});
 
 function save(): void {
-  mkdirSync(DIR, { recursive: true });
-  writeFileSync(FILE, JSON.stringify(jailed));
+  kvSave(KEY, jailed);
 }
 
 let client: Client | undefined;

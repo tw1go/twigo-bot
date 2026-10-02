@@ -1,5 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { DATA_DIR } from './paths.js';
+import { kvLoad, kvSave } from './db/db.js';
 
 // Persistent "no repeat" rotation: every line is used once before any repeats, the last line of a round
 // is never the first of the next, and progress survives restarts. Lines added mid-round join the round.
@@ -9,13 +8,11 @@ interface BagState {
   used: string[];
 }
 
-const DIR = DATA_DIR;
-const FILE = `${DIR}/rotation.json`;
-let state: Record<string, BagState> = existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : {};
+const KEY = 'rotation.json'; // kv key (its old file name)
+let state: Record<string, BagState> = kvLoad(KEY, {});
 
 function save(): void {
-  mkdirSync(DIR, { recursive: true });
-  writeFileSync(FILE, JSON.stringify(state));
+  kvSave(KEY, state);
 }
 
 function shuffle<T>(a: T[]): T[] {

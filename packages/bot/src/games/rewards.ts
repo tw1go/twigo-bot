@@ -1,5 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { DATA_DIR } from '../paths.js';
+import { kvLoad, kvSave } from '../db/db.js';
 
 // Credit rewards (Crystal of Atlan passes). Redeeming deducts credits and pings the reward owner, who delivers it manually.
 // Priced for an active member (~16 Kowens/day: daily claim + ~2h voice + some patrols + nightly Mine Wars),
@@ -42,12 +41,10 @@ interface Redemption {
   at: string; // ISO timestamp
 }
 
-const DIR = DATA_DIR;
-const FILE = `${DIR}/redemptions.json`;
-const log: Redemption[] = existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : [];
+const KEY = 'redemptions.json'; // kv key (its old file name)
+const log: Redemption[] = kvLoad(KEY, []);
 
 export function recordRedemption(userId: string, reward: RewardId, cost: number): void {
   log.push({ userId, reward, cost, at: new Date().toISOString() });
-  mkdirSync(DIR, { recursive: true });
-  writeFileSync(FILE, JSON.stringify(log, null, 2));
+  kvSave(KEY, log);
 }

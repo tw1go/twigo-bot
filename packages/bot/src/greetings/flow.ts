@@ -1,24 +1,21 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { kvLoad, kvSave } from '../db/db.js';
 import type { Client } from 'discord.js';
 import { config } from '../config.js';
 import { today } from '../time.js';
 import { categories, greetings, type Category } from './content.js';
 import { SIXTY_SEVEN, daysToChristmas, holidayCountdown } from './countdown.js';
 import { setEgg67Message } from '../games/egg67.js';
-import { DATA_DIR } from '../paths.js';
 
 // Shuffle bags: each list is used fully before any item repeats. Persisted across restarts.
 type Bags = Record<string, number[]>;
-const DIR = DATA_DIR;
-const FILE = `${DIR}/greetings-state.json`;
+const KEY = 'greetings-state.json'; // kv key (its old file name)
 
 function loadBags(): Bags {
-  return existsSync(FILE) ? (JSON.parse(readFileSync(FILE, 'utf8')) as Bags) : {};
+  return kvLoad<Bags>(KEY, {});
 }
 
 function saveBags(bags: Bags): void {
-  mkdirSync(DIR, { recursive: true });
-  writeFileSync(FILE, JSON.stringify(bags));
+  kvSave(KEY, bags);
 }
 
 function shuffled(n: number): number[] {

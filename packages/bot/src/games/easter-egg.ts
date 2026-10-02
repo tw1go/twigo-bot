@@ -1,22 +1,19 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { kvLoad, kvSave } from '../db/db.js';
 import { markFound } from './found.js';
 import type { Client, MessageReaction, PartialMessageReaction, PartialUser, User } from 'discord.js';
 import { config } from '../config.js';
 import { add } from '../credits/store.js';
 import { kowen } from '../kowens.js';
-import { DATA_DIR } from '../paths.js';
 
 // 🥚 Easter egg: react to a secret message once for a one-time reward. Announced in general (only the finder
 // is pinged), without saying where the egg is.
 export const EGG_REWARD = 5;
 
-const DIR = DATA_DIR;
-const FILE = `${DIR}/easter-eggs.json`;
-let found: Record<string, string[]> = existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : {}; // messageId -> userIds
+const KEY = 'easter-eggs.json'; // kv key (its old file name)
+let found: Record<string, string[]> = kvLoad(KEY, {}); // messageId -> userIds
 
 function save(): void {
-  mkdirSync(DIR, { recursive: true });
-  writeFileSync(FILE, JSON.stringify(found, null, 2));
+  kvSave(KEY, found);
 }
 
 async function reward(user: User): Promise<void> {

@@ -1,11 +1,10 @@
 import { randomBytes } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { db } from '../db/db.js';
 import { EmbedBuilder, type Client } from 'discord.js';
 import { config } from '../config.js';
 import { add, balance, setGarnishHook, take, takeFromVault } from '../credits/store.js';
 import { jail } from '../games/jail.js';
 import { kowen } from '../kowens.js';
-import { DATA_DIR } from '../paths.js';
 
 // 🏦 Loans. The Tanod Bank or another member lends Kowens; the borrower owes the loan + INTEREST, due in DUE_DAYS.
 // Once a loan is OVERDUE, GARNISH of everything they earn goes to the lender automatically. Overdue loans add a late fee each
@@ -43,12 +42,35 @@ interface State {
   onTime: Record<string, number>; // userId -> loans repaid on time
   blacklistUntil: Record<string, number>;
 }
-const DIR = DATA_DIR;
-const FILE = `${DIR}/loans.json`;
-const state: State = existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : { loans: {}, onTime: {}, blacklistUntil: {} };
+// Loans live in `loans`, repayment history and blacklists in `loan_credit` (see db/db.ts). Cached in memory; every
+// save() writes the whole set in one transaction.
+type LoanRow = { id: string; lender: string; borrower: string; principal: number; owed: number; created: number; due: number; late_days: number; status: Loan['status'] };
+const state: State = { loans: {}, onTime: {}, blacklistUntil: {} };
+for (const r of db.prepare<[], LoanRow>('SELECT * FROM loans').all()) {
+  state.loans[r.id] = { id: r.id, lender: r.lender, borrower: r.borrower, principal: r.principal, owed: r.owed, created: r.created, due: r.due, lateDays: r.late_days, status: r.status };
+}
+for (const r of db.prepare<[], { user_id: string; on_time: number; blacklist_until: number | null }>('SELECT * FROM loan_credit').all()) {
+  if (r.on_time) state.onTime[r.user_id] = r.on_time;
+  if (r.blacklist_until !== null) state.blacklistUntil[r.user_id] = r.blacklist_until;
+}
+
+const upsertLoan = db.prepare(`INSERT INTO loans (id, lender, borrower, principal, owed, created, due, late_days, status)
+  VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET owed = excluded.owed, due = excluded.due,
+  late_days = excluded.late_days, status = excluded.status`);
+const clearCredit = db.prepare('DELETE FROM loan_credit');
+const insertCredit = db.prepare('INSERT INTO loan_credit (user_id, on_time, blacklist_until) VALUES (?,?,?)');
+
+const writeAll = db.transaction(() => {
+  for (const l of Object.values(state.loans)) {
+    upsertLoan.run(l.id, l.lender, l.borrower, l.principal, l.owed, l.created, l.due, l.lateDays, l.status);
+  }
+  clearCredit.run();
+  const ids = new Set([...Object.keys(state.onTime), ...Object.keys(state.blacklistUntil)]);
+  for (const id of ids) insertCredit.run(id, state.onTime[id] ?? 0, state.blacklistUntil[id] ?? null);
+});
+
 function save(): void {
-  mkdirSync(DIR, { recursive: true });
-  writeFileSync(FILE, JSON.stringify(state, null, 2));
+  writeAll();
 }
 
 /** The borrower's open debt (active, or defaulted but not yet paid off). */

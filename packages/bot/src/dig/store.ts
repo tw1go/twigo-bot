@@ -1,8 +1,7 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { db, kvLoad, kvSave } from '../db/db.js';
 import { today } from '../time.js';
 import { ITEM_BY_ID } from './items.js';
 import { BAG_SLOTS } from '../games/rewards.js';
-import { DATA_DIR } from '../paths.js';
 
 // Shovels, daily digs and inventories. A shovel bought in /redeem adds SHOVEL_USES digs; up to SHOVELS_PER_DAY a day.
 export const SHOVEL_COST = 2;
@@ -24,13 +23,54 @@ interface Bag {
   items: Record<string, number>; // itemId -> count
 }
 
-const DIR = DATA_DIR;
-const FILE = `${DIR}/inventory.json`;
-const bags: Record<string, Bag> = existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : {};
+// Dig state lives in `dig_state` (one row per member) and items in `inventory_items` (see db/db.ts). Cached in
+// memory; every save() writes the whole set in one transaction.
+interface DigRow {
+  user_id: string;
+  shovel: number;
+  dig_day: string | null;
+  digs_today: number | null;
+  shovel_day: string | null;
+  shovels_today: number | null;
+  keys: number | null;
+  bags: string | null;
+}
+const opt = <T>(v: T | null): T | undefined => (v === null ? undefined : v);
+const bags: Record<string, Bag> = {};
+for (const r of db.prepare<[], DigRow>('SELECT * FROM dig_state').all()) {
+  bags[r.user_id] = {
+    shovel: r.shovel,
+    digDay: opt(r.dig_day),
+    digsToday: opt(r.digs_today),
+    shovelDay: opt(r.shovel_day),
+    shovelsToday: opt(r.shovels_today),
+    keys: opt(r.keys),
+    bags: r.bags ? (JSON.parse(r.bags) as string[]) : undefined,
+    items: {},
+  };
+}
+for (const r of db.prepare<[], { user_id: string; item_id: string; count: number }>('SELECT * FROM inventory_items').all()) {
+  (bags[r.user_id] ??= { shovel: 0, items: {} }).items[r.item_id] = r.count;
+}
+
+const upsertDig = db.prepare(`INSERT INTO dig_state (user_id, shovel, dig_day, digs_today, shovel_day, shovels_today, keys, bags)
+  VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET shovel = excluded.shovel, dig_day = excluded.dig_day,
+  digs_today = excluded.digs_today, shovel_day = excluded.shovel_day, shovels_today = excluded.shovels_today,
+  keys = excluded.keys, bags = excluded.bags`);
+const clearItems = db.prepare('DELETE FROM inventory_items WHERE user_id = ?');
+const insertItem = db.prepare('INSERT INTO inventory_items (user_id, item_id, count) VALUES (?,?,?)');
+
+const writeAll = db.transaction(() => {
+  for (const [id, b] of Object.entries(bags)) {
+    upsertDig.run(id, b.shovel, b.digDay ?? null, b.digsToday ?? null, b.shovelDay ?? null, b.shovelsToday ?? null,
+      b.keys ?? null, b.bags ? JSON.stringify(b.bags) : null);
+    clearItems.run(id);
+    for (const [itemId, count] of Object.entries(b.items)) if (count > 0) insertItem.run(id, itemId, count);
+  }
+});
 
 function save(): void {
-  mkdirSync(DIR, { recursive: true });
-  writeFileSync(FILE, JSON.stringify(bags));
+  writeAll();
 }
 
 const bag = (userId: string) => (bags[userId] ??= { shovel: 0, items: {} });
@@ -123,16 +163,14 @@ export function useMasterKey(userId: string): boolean {
 
 // Server-wide lucky dig: every LUCKY_EVERY-th dig by anyone is guaranteed Epic or better.
 export const LUCKY_EVERY = 60;
-const LUCKY_FILE = `${DIR}/lucky-dig.json`;
-let luckyCount: number = existsSync(LUCKY_FILE) ? JSON.parse(readFileSync(LUCKY_FILE, 'utf8')).count ?? 0 : 0;
+let luckyCount: number = kvLoad<{ count?: number }>('lucky-dig.json', {}).count ?? 0;
 
 /** Counts a dig. Returns true if this one is the lucky dig (and resets the counter). */
 export function countServerDig(): boolean {
   luckyCount += 1;
   const lucky = luckyCount >= LUCKY_EVERY;
   if (lucky) luckyCount = 0;
-  mkdirSync(DIR, { recursive: true });
-  writeFileSync(LUCKY_FILE, JSON.stringify({ count: luckyCount }));
+  kvSave('lucky-dig.json', { count: luckyCount });
   return lucky;
 }
 

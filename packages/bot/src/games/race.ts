@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { markFound } from './found.js';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { kvLoad, kvSave } from '../db/db.js';
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -20,7 +20,6 @@ import { add, balance, take } from '../credits/store.js';
 import { kowen } from '../kowens.js';
 import { jailedUntil } from './jail.js';
 import { config } from '../config.js';
-import { DATA_DIR } from '../paths.js';
 
 // 🏁 Mosang race: /race picks 5 of 10 Mosangs, opens BETTING_MS of betting (one bet per member), then a RACE_MS
 // animated race. Bets on the winner pay PAYOUT× — each Mosang has a 1-in-5 chance, so the race is a small Kowen sink.
@@ -58,12 +57,10 @@ interface Race {
   messageId?: string;
 }
 
-const DIR = DATA_DIR;
-const FILE = `${DIR}/race.json`;
-let race: Race | null = existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : null;
+const KEY = 'race.json'; // kv key (its old file name)
+let race: Race | null = kvLoad(KEY, null);
 function save(): void {
-  mkdirSync(DIR, { recursive: true });
-  writeFileSync(FILE, JSON.stringify(race));
+  kvSave(KEY, race);
 }
 
 const mosang = (r: Race, lane: number) => MOSANGS[r.runners[lane]];

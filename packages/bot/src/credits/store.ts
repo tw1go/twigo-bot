@@ -1,6 +1,5 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { db } from '../db/db.js';
 import { daysBetween, today, weekStart } from '../time.js';
-import { DATA_DIR } from '../paths.js';
 
 // Credits for /diss, /praise and /judge. Claim DAILY_CREDITS once per day (config.timezone); unused credits carry over.
 // Voice chat also earns 1 credit per VOICE_MINUTES_PER_CREDIT minutes (see voice.ts).
@@ -28,13 +27,74 @@ interface Account {
   giveSentToday?: number;
 }
 
-const DIR = DATA_DIR;
-const FILE = `${DIR}/credits.json`;
-let accounts: Record<string, Account> = existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : {};
+// Accounts live in the `accounts` table (see db/db.ts). They're cached in memory (the bot is the only writer) and
+// every save() writes the whole set in one transaction — the same "all or nothing" snapshot as the old JSON file,
+// but crash-safe. Phase 2 can switch hot paths to per-row updates.
+interface AccountRow {
+  user_id: string;
+  balance: number;
+  last_claim: string | null;
+  voice_minutes: number | null;
+  voice_total_minutes: number | null;
+  last_steal: number | null;
+  last_active: string | null;
+  fence_until: number | null;
+  voice_credits_day: string | null;
+  voice_credits_today: number | null;
+  voice_week: string | null;
+  voice_week_minutes: number | null;
+  has_vault: number | null;
+  vault: number | null;
+  give_day: string | null;
+  give_sent_today: number | null;
+}
+const opt = <T>(v: T | null): T | undefined => (v === null ? undefined : v);
+const fromRow = (r: AccountRow): Account => ({
+  balance: r.balance,
+  lastClaim: opt(r.last_claim),
+  voiceMinutes: opt(r.voice_minutes),
+  voiceTotalMinutes: opt(r.voice_total_minutes),
+  lastSteal: opt(r.last_steal),
+  lastActive: opt(r.last_active),
+  fenceUntil: opt(r.fence_until),
+  voiceCreditsDay: opt(r.voice_credits_day),
+  voiceCreditsToday: opt(r.voice_credits_today),
+  voiceWeek: opt(r.voice_week),
+  voiceWeekMinutes: opt(r.voice_week_minutes),
+  hasVault: r.has_vault ? true : undefined,
+  vault: opt(r.vault),
+  giveDay: opt(r.give_day),
+  giveSentToday: opt(r.give_sent_today),
+});
+
+let accounts: Record<string, Account> = Object.fromEntries(
+  db.prepare<[], AccountRow>('SELECT * FROM accounts').all().map((r) => [r.user_id, fromRow(r)]),
+);
+let persisted = new Set(Object.keys(accounts));
+
+const upsertAccount = db.prepare(`INSERT INTO accounts (user_id, balance, last_claim, voice_minutes, voice_total_minutes,
+  last_steal, last_active, fence_until, voice_credits_day, voice_credits_today, voice_week, voice_week_minutes, has_vault,
+  vault, give_day, give_sent_today) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+  ON CONFLICT(user_id) DO UPDATE SET balance = excluded.balance, last_claim = excluded.last_claim,
+  voice_minutes = excluded.voice_minutes, voice_total_minutes = excluded.voice_total_minutes, last_steal = excluded.last_steal,
+  last_active = excluded.last_active, fence_until = excluded.fence_until, voice_credits_day = excluded.voice_credits_day,
+  voice_credits_today = excluded.voice_credits_today, voice_week = excluded.voice_week,
+  voice_week_minutes = excluded.voice_week_minutes, has_vault = excluded.has_vault, vault = excluded.vault,
+  give_day = excluded.give_day, give_sent_today = excluded.give_sent_today`);
+const deleteAccount = db.prepare('DELETE FROM accounts WHERE user_id = ?');
+
+const writeAll = db.transaction(() => {
+  for (const [id, a] of Object.entries(accounts)) {
+    upsertAccount.run(id, a.balance, a.lastClaim ?? null, a.voiceMinutes ?? null, a.voiceTotalMinutes ?? null, a.lastSteal ?? null,
+      a.lastActive ?? null, a.fenceUntil ?? null, a.voiceCreditsDay ?? null, a.voiceCreditsToday ?? null, a.voiceWeek ?? null,
+      a.voiceWeekMinutes ?? null, a.hasVault ? 1 : null, a.vault ?? null, a.giveDay ?? null, a.giveSentToday ?? null);
+  }
+  for (const id of persisted) if (!(id in accounts)) deleteAccount.run(id); // /twigo reset-kowens
+  persisted = new Set(Object.keys(accounts));
+});
 
 function save(): void {
-  mkdirSync(DIR, { recursive: true });
-  writeFileSync(FILE, JSON.stringify(accounts));
+  writeAll();
 }
 
 export function balance(userId: string): number {

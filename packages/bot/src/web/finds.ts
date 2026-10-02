@@ -1,8 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import type { FindResult } from '@mikazuki/shared';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { kvLoad, kvSave } from '../db/db.js';
 import { today } from '../time.js';
-import { DATA_DIR } from '../paths.js';
 
 // 🪙 Kowens found in twigo's room (tw1go.github.io).
 //
@@ -50,13 +49,11 @@ interface State {
   claims: Record<string, { day: string; count: number }>;
 }
 
-const DIR = DATA_DIR;
-const FILE = `${DIR}/room-finds.json`;
-const state: State = existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : { codes: {}, claims: {} };
+const KEY = 'room-finds.json'; // kv key (its old file name)
+const state: State = kvLoad(KEY, { codes: {}, claims: {} });
 
 function save(): void {
-  mkdirSync(DIR, { recursive: true });
-  writeFileSync(FILE, JSON.stringify(state));
+  kvSave(KEY, state);
 }
 
 // Kept in memory only: losing these on a restart just resets the limits.

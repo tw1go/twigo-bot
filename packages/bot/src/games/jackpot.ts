@@ -1,11 +1,10 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { kvLoad, kvSave } from '../db/db.js';
 import { markFound } from './found.js';
 import type { Client } from 'discord.js';
 import { Cron } from 'croner';
 import { config } from '../config.js';
 import { add } from '../credits/store.js';
 import { kowen } from '../kowens.js';
-import { DATA_DIR } from '../paths.js';
 
 // Jackpot, drawn twice a day: tickets cost 1 Kowen each (up to MAX_TICKETS per person per draw). At draw time a random ticket wins
 // the whole pot. Needs at least 2 players, otherwise everyone is refunded.
@@ -17,13 +16,11 @@ export const DRAW_CRON = '0 10,22 * * *';
 export const nextDraw = () => new Cron(DRAW_CRON, { timezone: config.timezone }).nextRun()!;
 const UNDERDOG_BONUS = 10;
 
-const DIR = DATA_DIR;
-const FILE = `${DIR}/jackpot.json`;
-let tickets: Record<string, number> = existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : {};
+const KEY = 'jackpot.json'; // kv key (its old file name)
+let tickets: Record<string, number> = kvLoad(KEY, {});
 
 function save(): void {
-  mkdirSync(DIR, { recursive: true });
-  writeFileSync(FILE, JSON.stringify(tickets));
+  kvSave(KEY, tickets);
 }
 
 export const ticketsOf = (userId: string) => tickets[userId] ?? 0;
@@ -39,13 +36,12 @@ export interface LastDraw {
   pot: number;
   players: number;
 }
-const LAST_FILE = `${DIR}/jackpot-last.json`;
-let last: LastDraw | null = existsSync(LAST_FILE) ? JSON.parse(readFileSync(LAST_FILE, 'utf8')) : null;
+const LAST_KEY = 'jackpot-last.json'; // kv key (its old file name)
+let last: LastDraw | null = kvLoad(LAST_KEY, null);
 export const lastDraw = () => last;
 function saveLast(draw: LastDraw): void {
   last = draw;
-  mkdirSync(DIR, { recursive: true });
-  writeFileSync(LAST_FILE, JSON.stringify(draw));
+  kvSave(LAST_KEY, draw);
 }
 
 /** Records bought tickets (caller has already taken the credits). */

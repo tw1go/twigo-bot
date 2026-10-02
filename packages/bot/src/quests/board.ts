@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { kvLoad, kvSave } from '../db/db.js';
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -12,7 +12,6 @@ import {
 import { add, balance, take } from '../credits/store.js';
 import { kowen } from '../kowens.js';
 import { debtOf } from '../loans/loans.js';
-import { DATA_DIR } from '../paths.js';
 
 // Quest board: /request posts a task with a Kowens reward held in escrow. Someone accepts (the requester is
 // pinged), then the requester marks it complete and the reward goes to them. Cancel refunds; give up reopens it.
@@ -33,12 +32,10 @@ interface Quest {
   created: number;
 }
 
-const DIR = DATA_DIR;
-const FILE = `${DIR}/quests.json`;
-const quests: Record<string, Quest> = existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : {};
+const KEY = 'quests.json'; // kv key (its old file name)
+const quests: Record<string, Quest> = kvLoad(KEY, {});
 function save(): void {
-  mkdirSync(DIR, { recursive: true });
-  writeFileSync(FILE, JSON.stringify(quests, null, 2));
+  kvSave(KEY, quests);
 }
 
 /** Quests this member posted that are still open or in progress. */

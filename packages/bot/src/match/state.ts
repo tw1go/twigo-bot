@@ -1,6 +1,5 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { kvLoad, kvSave } from '../db/db.js';
 import { today } from '../time.js';
-import { DATA_DIR } from '../paths.js';
 
 // Persisted so a restart mid-Saturday doesn't lose the poll/participants.
 export type MatchStatus = 'asked' | 'skipped' | 'polling' | 'closed';
@@ -13,19 +12,16 @@ export interface MatchState {
   participantIds: string[];
 }
 
-const DIR = DATA_DIR;
-const FILE = `${DIR}/match-state.json`;
+const KEY = 'match-state.json'; // kv key (its old file name)
 
 export { today };
 
 /** Returns today's state, or undefined if nothing has happened today. */
 export function loadToday(): MatchState | undefined {
-  if (!existsSync(FILE)) return undefined;
-  const state = JSON.parse(readFileSync(FILE, 'utf8')) as MatchState;
-  return state.date === today() ? state : undefined;
+  const state = kvLoad<MatchState | null>(KEY, null);
+  return state?.date === today() ? state : undefined;
 }
 
 export function save(state: MatchState): void {
-  mkdirSync(DIR, { recursive: true });
-  writeFileSync(FILE, JSON.stringify(state, null, 2));
+  kvSave(KEY, state);
 }

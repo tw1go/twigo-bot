@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { markFound } from './found.js';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { kvLoad, kvSave } from '../db/db.js';
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -18,21 +18,18 @@ import { add } from '../credits/store.js';
 import { kowen } from '../kowens.js';
 import { today } from '../time.js';
 import { activePatrol } from './patrol.js';
-import { DATA_DIR } from '../paths.js';
 
-// 🤫 Small Easter eggs that aren't announced anywhere. Counters live in data/secrets.json.
+// 🤫 Small Easter eggs that aren't announced anywhere. Counters live in the 'secrets.json' kv document.
 
 interface State {
   praiseBot: Record<string, number>; // lifetime /praise-the-bot count
   praiseRewarded: string[];
   salute: Record<string, string>; // userId -> YYYY-MM-DD of their last patrol salute reward
 }
-const DIR = DATA_DIR;
-const FILE = `${DIR}/secrets.json`;
-const state: State = existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : { praiseBot: {}, praiseRewarded: [], salute: {} };
+const KEY = 'secrets.json'; // kv key (its old file name)
+const state: State = kvLoad(KEY, { praiseBot: {}, praiseRewarded: [], salute: {} });
 function save(): void {
-  mkdirSync(DIR, { recursive: true });
-  writeFileSync(FILE, JSON.stringify(state));
+  kvSave(KEY, state);
 }
 
 async function announce(client: Client, content: string, userId: string): Promise<void> {

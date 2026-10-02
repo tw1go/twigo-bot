@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { kvLoad, kvSave } from '../db/db.js';
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -12,7 +12,6 @@ import {
 import { config } from '../config.js';
 import { add } from '../credits/store.js';
 import { kowen } from '../kowens.js';
-import { DATA_DIR } from '../paths.js';
 
 // Gifter panel for the 9 PM Mine Wars payout (Institute Walkway 07 server only): pick who attended and who made the Top 10, then confirm.
 // Attendance = ATTEND_REWARD, Top 10 = TOP_REWARD total. A ledger per night prevents double payouts and
@@ -23,13 +22,11 @@ export const MW_SERVER = 'Institute Walkway 07';
 const PREFIX = 'mwpay:';
 const SESSION_MS = 14 * 60_000; // Discord interaction tokens last 15 minutes
 
-const DIR = DATA_DIR;
-const FILE = `${DIR}/minewars-payouts.json`;
-let ledger: Record<string, Record<string, number>> = existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : {};
+const KEY = 'minewars-payouts.json'; // kv key (its old file name)
+let ledger: Record<string, Record<string, number>> = kvLoad(KEY, {});
 
 function saveLedger(): void {
-  mkdirSync(DIR, { recursive: true });
-  writeFileSync(FILE, JSON.stringify(ledger, null, 2));
+  kvSave(KEY, ledger);
 }
 
 /** The date (YYYY-MM-DD, config.timezone) of the most recent 9 PM Mine Wars. */
