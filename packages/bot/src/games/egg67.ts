@@ -4,6 +4,7 @@ import type { MessageReaction, PartialMessageReaction, PartialUser, User } from 
 import { config } from '../config.js';
 import { add } from '../credits/store.js';
 import { kowen } from '../kowens.js';
+import { DATA_DIR } from '../paths.js';
 
 // 🤫 6-7 Easter egg: on the morning 67 days remain until Christmas, the greeting says "6️⃣7️⃣!". Reacting to that
 // greeting with BOTH 6️⃣ and 7️⃣ gives EGG67_REWARD once per member. Not announced in patch notes.
@@ -15,7 +16,7 @@ interface State {
   messageId?: string;
   rewarded: string[];
 }
-const DIR = 'data';
+const DIR = DATA_DIR;
 const FILE = `${DIR}/egg67.json`;
 let state: State = existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : { rewarded: [] };
 function save(): void {

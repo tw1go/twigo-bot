@@ -20,6 +20,7 @@ import { add, balance, take } from '../credits/store.js';
 import { kowen } from '../kowens.js';
 import { jailedUntil } from './jail.js';
 import { config } from '../config.js';
+import { DATA_DIR } from '../paths.js';
 
 // 🏁 Mosang race: /race picks 5 of 10 Mosangs, opens BETTING_MS of betting (one bet per member), then a RACE_MS
 // animated race. Bets on the winner pay PAYOUT× — each Mosang has a 1-in-5 chance, so the race is a small Kowen sink.
@@ -57,7 +58,7 @@ interface Race {
   messageId?: string;
 }
 
-const DIR = 'data';
+const DIR = DATA_DIR;
 const FILE = `${DIR}/race.json`;
 let race: Race | null = existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : null;
 function save(): void {

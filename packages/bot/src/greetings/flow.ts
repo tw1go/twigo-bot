@@ -5,10 +5,11 @@ import { today } from '../time.js';
 import { categories, greetings, type Category } from './content.js';
 import { SIXTY_SEVEN, daysToChristmas, holidayCountdown } from './countdown.js';
 import { setEgg67Message } from '../games/egg67.js';
+import { DATA_DIR } from '../paths.js';
 
 // Shuffle bags: each list is used fully before any item repeats. Persisted across restarts.
 type Bags = Record<string, number[]>;
-const DIR = 'data';
+const DIR = DATA_DIR;
 const FILE = `${DIR}/greetings-state.json`;
 
 function loadBags(): Bags {

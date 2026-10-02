@@ -12,6 +12,7 @@ import {
 import { add, balance, take } from '../credits/store.js';
 import { kowen } from '../kowens.js';
 import { debtOf } from '../loans/loans.js';
+import { DATA_DIR } from '../paths.js';
 
 // Quest board: /request posts a task with a Kowens reward held in escrow. Someone accepts (the requester is
 // pinged), then the requester marks it complete and the reward goes to them. Cancel refunds; give up reopens it.
@@ -32,7 +33,7 @@ interface Quest {
   created: number;
 }
 
-const DIR = 'data';
+const DIR = DATA_DIR;
 const FILE = `${DIR}/quests.json`;
 const quests: Record<string, Quest> = existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : {};
 function save(): void {

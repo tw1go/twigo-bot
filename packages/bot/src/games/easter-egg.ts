@@ -4,12 +4,13 @@ import type { Client, MessageReaction, PartialMessageReaction, PartialUser, User
 import { config } from '../config.js';
 import { add } from '../credits/store.js';
 import { kowen } from '../kowens.js';
+import { DATA_DIR } from '../paths.js';
 
 // 🥚 Easter egg: react to a secret message once for a one-time reward. Announced in general (only the finder
 // is pinged), without saying where the egg is.
 export const EGG_REWARD = 5;
 
-const DIR = 'data';
+const DIR = DATA_DIR;
 const FILE = `${DIR}/easter-eggs.json`;
 let found: Record<string, string[]> = existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : {}; // messageId -> userIds
 

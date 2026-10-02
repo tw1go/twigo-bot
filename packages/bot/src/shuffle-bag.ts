@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { DATA_DIR } from './paths.js';
 
 // Persistent "no repeat" rotation: every line is used once before any repeats, the last line of a round
 // is never the first of the next, and progress survives restarts. Lines added mid-round join the round.
@@ -8,7 +9,7 @@ interface BagState {
   used: string[];
 }
 
-const DIR = 'data';
+const DIR = DATA_DIR;
 const FILE = `${DIR}/rotation.json`;
 let state: Record<string, BagState> = existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : {};
 

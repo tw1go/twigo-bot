@@ -12,6 +12,7 @@ import {
 import { config } from '../config.js';
 import { add } from '../credits/store.js';
 import { kowen } from '../kowens.js';
+import { DATA_DIR } from '../paths.js';
 
 // Gifter panel for the 9 PM Mine Wars payout (Institute Walkway 07 server only): pick who attended and who made the Top 10, then confirm.
 // Attendance = ATTEND_REWARD, Top 10 = TOP_REWARD total. A ledger per night prevents double payouts and
@@ -22,7 +23,7 @@ export const MW_SERVER = 'Institute Walkway 07';
 const PREFIX = 'mwpay:';
 const SESSION_MS = 14 * 60_000; // Discord interaction tokens last 15 minutes
 
-const DIR = 'data';
+const DIR = DATA_DIR;
 const FILE = `${DIR}/minewars-payouts.json`;
 let ledger: Record<string, Record<string, number>> = existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : {};
 

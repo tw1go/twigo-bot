@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { today } from '../time.js';
+import { DATA_DIR } from '../paths.js';
 
 // 🪙 Kowens found in twigo's room (tw1go.github.io).
 //
@@ -48,7 +49,7 @@ interface State {
   claims: Record<string, { day: string; count: number }>;
 }
 
-const DIR = 'data';
+const DIR = DATA_DIR;
 const FILE = `${DIR}/room-finds.json`;
 const state: State = existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : { codes: {}, claims: {} };
 

@@ -1,10 +1,11 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { DATA_DIR } from '../paths.js';
 
 // Which Easter eggs each member has found, so Marites Tea never hints at one they already know.
 export type EggKey =
   | 'note' | '67' | 'wish' | 'secret-item' | '67-bet' | 'underdog' | 'photo-finish' | 'salute' | 'praise-bot' | 'christmas';
 
-const DIR = 'data';
+const DIR = DATA_DIR;
 const FILE = `${DIR}/found.json`;
 const found: Record<string, EggKey[]> = existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : {};
 const save = () => {

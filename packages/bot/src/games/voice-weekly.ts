@@ -4,13 +4,14 @@ import { config } from '../config.js';
 import { add, topVoiceWeek } from '../credits/store.js';
 import { kowen } from '../kowens.js';
 import { addDays, weekStart } from '../time.js';
+import { DATA_DIR } from '../paths.js';
 
 // 🎙️ Weekly voice chat rewards: every Monday, last week's top 10 (by eligible voice minutes) get Kowens.
 export const WEEKLY_VC_REWARDS = [50, 30, 20, 10, 10, 10, 10, 10, 10, 10];
 /** The first week that counts. Its rewards are paid the Monday after. */
 export const WEEKLY_VC_START = '2026-10-05';
 
-const DIR = 'data';
+const DIR = DATA_DIR;
 const FILE = `${DIR}/voice-weekly.json`;
 const paidWeeks: string[] = existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : [];
 

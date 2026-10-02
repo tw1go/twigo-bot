@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { DATA_DIR } from '../paths.js';
 
 // Credit rewards (Crystal of Atlan passes). Redeeming deducts credits and pings the reward owner, who delivers it manually.
 // Priced for an active member (~16 Kowens/day: daily claim + ~2h voice + some patrols + nightly Mine Wars),
@@ -41,7 +42,7 @@ interface Redemption {
   at: string; // ISO timestamp
 }
 
-const DIR = 'data';
+const DIR = DATA_DIR;
 const FILE = `${DIR}/redemptions.json`;
 const log: Redemption[] = existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : [];
 

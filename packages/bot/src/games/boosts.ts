@@ -3,6 +3,7 @@ import { MessageType, type Client, type Guild, type Message } from 'discord.js';
 import { config } from '../config.js';
 import { add } from '../credits/store.js';
 import { kowen } from '../kowens.js';
+import { DATA_DIR } from '../paths.js';
 
 // Server boost rewards: BOOST_CREDITS per boost right away, then BOOST_CREDITS × boost count on the 1st of every month
 // while they keep boosting. Discord doesn't give bots per-member boost counts, so we count the "just boosted"
@@ -19,7 +20,7 @@ interface BoostState {
   boosters: Record<string, Booster>;
 }
 
-const DIR = 'data';
+const DIR = DATA_DIR;
 const FILE = `${DIR}/boosts.json`;
 let state: BoostState = existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : { initialized: false, boosters: {} };
 

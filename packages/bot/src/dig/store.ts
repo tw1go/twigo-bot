@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { today } from '../time.js';
 import { ITEM_BY_ID } from './items.js';
 import { BAG_SLOTS } from '../games/rewards.js';
+import { DATA_DIR } from '../paths.js';
 
 // Shovels, daily digs and inventories. A shovel bought in /redeem adds SHOVEL_USES digs; up to SHOVELS_PER_DAY a day.
 export const SHOVEL_COST = 2;
@@ -23,7 +24,7 @@ interface Bag {
   items: Record<string, number>; // itemId -> count
 }
 
-const DIR = 'data';
+const DIR = DATA_DIR;
 const FILE = `${DIR}/inventory.json`;
 const bags: Record<string, Bag> = existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : {};
 

@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { today } from '../time.js';
+import { DATA_DIR } from '../paths.js';
 
 // Persisted so a restart mid-Saturday doesn't lose the poll/participants.
 export type MatchStatus = 'asked' | 'skipped' | 'polling' | 'closed';
@@ -12,7 +13,7 @@ export interface MatchState {
   participantIds: string[];
 }
 
-const DIR = 'data';
+const DIR = DATA_DIR;
 const FILE = `${DIR}/match-state.json`;
 
 export { today };

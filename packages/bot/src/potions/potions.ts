@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { hasFound, type EggKey } from '../games/found.js';
+import { DATA_DIR } from '../paths.js';
 
 // 🧪 Potions: bought in /redeem, used with /potion use. Counts and active effects live in data/potions.json.
 export const POTIONS = {
@@ -34,7 +35,7 @@ interface UserPotions {
   swerteDigs?: number;
   hintsHeard?: number[];
 }
-const DIR = 'data';
+const DIR = DATA_DIR;
 const FILE = `${DIR}/potions.json`;
 const state: Record<string, UserPotions> = existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : {};
 function save(): void {

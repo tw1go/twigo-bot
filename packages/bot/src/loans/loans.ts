@@ -5,6 +5,7 @@ import { config } from '../config.js';
 import { add, balance, setGarnishHook, take, takeFromVault } from '../credits/store.js';
 import { jail } from '../games/jail.js';
 import { kowen } from '../kowens.js';
+import { DATA_DIR } from '../paths.js';
 
 // 🏦 Loans. The Tanod Bank or another member lends Kowens; the borrower owes the loan + INTEREST, due in DUE_DAYS.
 // Once a loan is OVERDUE, GARNISH of everything they earn goes to the lender automatically. Overdue loans add a late fee each
@@ -42,7 +43,7 @@ interface State {
   onTime: Record<string, number>; // userId -> loans repaid on time
   blacklistUntil: Record<string, number>;
 }
-const DIR = 'data';
+const DIR = DATA_DIR;
 const FILE = `${DIR}/loans.json`;
 const state: State = existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : { loans: {}, onTime: {}, blacklistUntil: {} };
 function save(): void {

@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { daysBetween, today, weekStart } from '../time.js';
+import { DATA_DIR } from '../paths.js';
 
 // Credits for /diss, /praise and /judge. Claim DAILY_CREDITS once per day (config.timezone); unused credits carry over.
 // Voice chat also earns 1 credit per VOICE_MINUTES_PER_CREDIT minutes (see voice.ts).
@@ -27,7 +28,7 @@ interface Account {
   giveSentToday?: number;
 }
 
-const DIR = 'data';
+const DIR = DATA_DIR;
 const FILE = `${DIR}/credits.json`;
 let accounts: Record<string, Account> = existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : {};
 

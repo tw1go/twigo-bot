@@ -18,6 +18,7 @@ import { add } from '../credits/store.js';
 import { kowen } from '../kowens.js';
 import { today } from '../time.js';
 import { activePatrol } from './patrol.js';
+import { DATA_DIR } from '../paths.js';
 
 // 🤫 Small Easter eggs that aren't announced anywhere. Counters live in data/secrets.json.
 
@@ -26,7 +27,7 @@ interface State {
   praiseRewarded: string[];
   salute: Record<string, string>; // userId -> YYYY-MM-DD of their last patrol salute reward
 }
-const DIR = 'data';
+const DIR = DATA_DIR;
 const FILE = `${DIR}/secrets.json`;
 const state: State = existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : { praiseBot: {}, praiseRewarded: [], salute: {} };
 function save(): void {
