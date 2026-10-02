@@ -1,4 +1,5 @@
 import { MessageFlags, SlashCommandBuilder } from 'discord.js';
+import { markFound } from '../games/found.js';
 import type { Command } from '../types.js';
 import { add, balance, take } from '../credits/store.js';
 import { blockIfJailed, jail } from '../games/jail.js';
@@ -48,6 +49,7 @@ export const gamble: Command = {
       content = `🚨 **BUSTED!** The Tanod caught ${interaction.user} gambling! **${bet}** ${kowen(bet)} confiscated and **${BUST_JAIL_MINUTES} minutes** in jail. 🚔`;
     } else if (roll < bustChance + WIN_CHANCE) {
       add(interaction.user.id, bet + (bet === 67 ? SIXTY_SEVEN_BONUS : 0)); // 🤫 6-7
+      if (bet === 67) markFound(interaction.user.id, '67-bet');
       content = `🎲 ${interaction.user} bet **${bet}** and **WON**! +${bet} ${kowen(bet)} 🤑`;
       if (bet === 67) content += `\n6️⃣7️⃣!! **+${SIXTY_SEVEN_BONUS}** bonus 🫲🫱`;
     } else {

@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { markFound } from './found.js';
 import type { MessageReaction, PartialMessageReaction, PartialUser, User } from 'discord.js';
 import { config } from '../config.js';
 import { add } from '../credits/store.js';
@@ -45,6 +46,7 @@ export async function onEgg67Reaction(reaction: MessageReaction | PartialMessage
   state.rewarded.push(user.id);
   save();
   add(user.id, EGG67_REWARD);
+  markFound(user.id, '67');
   console.log(`[egg67] ${user.id} found it (+${EGG67_REWARD})`);
   const channel = await user.client.channels.fetch(config.gamesChannelId).catch(() => null);
   if (channel?.isSendable()) {

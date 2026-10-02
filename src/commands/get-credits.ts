@@ -1,4 +1,5 @@
 import { MessageFlags, SlashCommandBuilder } from 'discord.js';
+import { markFound } from '../games/found.js';
 import type { Command } from '../types.js';
 import {
   DAILY_CREDITS,
@@ -19,6 +20,7 @@ export const getCredits: Command = {
     .setDescription(`Claim your ${DAILY_CREDITS} daily Kowens 🪙 · 🔒 Only you see`),
   async execute(interaction) {
     const newBalance = claim(interaction.user.id);
+    if (newBalance !== null && dailyAmount() > DAILY_CREDITS) markFound(interaction.user.id, 'christmas');
     const vc = voiceProgress(interaction.user.id);
     const vcToday = voiceCreditsToday(interaction.user.id);
     const content =

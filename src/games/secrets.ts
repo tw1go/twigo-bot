@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { markFound } from './found.js';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import {
   ActionRowBuilder,
@@ -52,6 +53,7 @@ export function onPraiseBot(userId: string): string | null {
   state.praiseRewarded.push(userId);
   save();
   add(userId, PRAISE_BOT_REWARD);
+  markFound(userId, 'praise-bot');
   return `🥹🤖 You've praised me **${PRAISE_BOT_GOAL} times**… the Tanod is touched. Here's **+${PRAISE_BOT_REWARD} ${kowen(PRAISE_BOT_REWARD)}**, you sweetheart 💖`;
 }
 
@@ -66,6 +68,7 @@ export async function onSaluteReaction(reaction: MessageReaction | PartialMessag
   state.salute[user.id] = today();
   save();
   add(user.id, 1);
+  markFound(user.id, 'salute');
   const message = reaction.message.partial ? await reaction.message.fetch() : reaction.message;
   await message.reply({ content: `🫡 ${user} saluted the Tanod! **+1 Kowen**`, allowedMentions: { users: [user.id] } }).catch(() => {});
 }
@@ -105,6 +108,7 @@ export async function handleWishButton(interaction: ButtonInteraction): Promise<
   }
   wish.claimedBy = interaction.user.id;
   add(interaction.user.id, WISH_REWARD);
+  markFound(interaction.user.id, 'wish');
   await interaction.update({ content: `🌠 ${interaction.user} made a wish at **11:11**! +${WISH_REWARD} ${kowen(WISH_REWARD)} ✨\n-# Sana matupad 🙏`, components: [], allowedMentions: { users: [interaction.user.id] } });
 }
 

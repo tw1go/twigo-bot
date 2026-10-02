@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { markFound } from './found.js';
 import type { Client } from 'discord.js';
 import { Cron } from 'croner';
 import { config } from '../config.js';
@@ -83,7 +84,10 @@ export async function drawJackpot(client: Client): Promise<void> {
   add(winner, total);
   // 🤫 Lucky Underdog: won with a single ticket against 3+ players.
   const underdog = (entries.find(([id]) => id === winner)?.[1] ?? 0) === 1 && entries.length >= 3;
-  if (underdog) add(winner, UNDERDOG_BONUS);
+  if (underdog) {
+    add(winner, UNDERDOG_BONUS);
+    markFound(winner, 'underdog');
+  }
   saveLast({ at: Date.now(), winner, pot: total, players: entries.length });
 
   // Slot-machine reveal: edit one message through weighted random names, slowing down, landing on the winner.

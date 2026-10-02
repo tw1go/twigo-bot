@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { markFound } from './found.js';
 import type { Client, MessageReaction, PartialMessageReaction, PartialUser, User } from 'discord.js';
 import { config } from '../config.js';
 import { add } from '../credits/store.js';
@@ -23,6 +24,7 @@ async function reward(user: User): Promise<void> {
   list.push(user.id);
   save();
   add(user.id, EGG_REWARD);
+  markFound(user.id, 'note');
   console.log(`[easter-egg] ${user.id} found it (+${EGG_REWARD})`);
   const channel = await user.client.channels.fetch(config.gamesChannelId).catch(() => null);
   if (channel?.isSendable()) {

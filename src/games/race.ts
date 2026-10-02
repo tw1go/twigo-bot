@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { markFound } from './found.js';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import {
   ActionRowBuilder,
@@ -202,7 +203,10 @@ async function runRace(message: Message): Promise<void> {
   // Pay out
   const w = mosang(r, winner);
   const winners = Object.entries(r.bets).filter(([, b]) => isWinner(b.lane));
-  for (const [id, b] of winners) add(id, b.amount * PAYOUT);
+  for (const [id, b] of winners) {
+    add(id, b.amount * PAYOUT);
+    if (tie >= 0) markFound(id, 'photo-finish');
+  }
   const bettors = Object.keys(r.bets).length;
   race = null;
   save();

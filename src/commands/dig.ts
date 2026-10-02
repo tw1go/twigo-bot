@@ -1,4 +1,5 @@
 import { MessageFlags, SlashCommandBuilder } from 'discord.js';
+import { markFound } from '../games/found.js';
 import type { Command } from '../types.js';
 import { config } from '../config.js';
 import { blockIfJailed } from '../games/jail.js';
@@ -42,6 +43,7 @@ export const dig: Command = {
     // The lucky dig never downgrades a secret find.
     const found = lucky && rolled.rarity !== 'secret' ? rollLucky() : rolled;
     recordDig(id, found.id);
+    if (found.rarity === 'secret') markFound(id, 'secret-item');
     const r = RARITY[found.rarity];
     const left = DIGS_PER_DAY - digsToday(id);
     const shovel = shovelUses(id);

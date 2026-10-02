@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { hasFound, type EggKey } from '../games/found.js';
 
 // 🧪 Potions: bought in /redeem, used with /potion use. Counts and active effects live in data/potions.json.
 export const POTIONS = {
@@ -13,18 +14,18 @@ export const POTION_IDS = Object.keys(POTIONS) as PotionId[];
 export const TAGO_MINUTES = 30;
 export const SWERTE_DIGS = 3;
 
-// 🍵 One hint per Easter egg. Each cup gives a hint the drinker hasn't heard yet.
-export const MARITES_HINTS = [
-  'Narinig ko… the Tanod has a soft spot for people who actually *read* his notes in the outpost. React and see. 💛',
-  "Psst… sixty-seven days before Pasko, the morning greeting gets weird. Two numbers. React with both. 6️⃣7️⃣",
-  'Every night and every morning at **11:11**, sometimes the Tanod lets you make a wish. Be fast. 🌠',
-  "Sabi nila, there's something buried that's NOT on any dig list. One in ten thousand. Signed by someone important. 🩴",
-  'Bet exactly the most meme-able number in the gambling den… and win. The Tanod adds a little extra. 🎰',
-  'The jackpot loves an underdog. Win it with just **one** ticket against a crowd. 🍀',
-  'Sometimes two Mosangs reach the chismis at the exact same time. Both sets of bettors get paid. 📸',
-  'When the Tanod Patrol calls roll, salute him fast. 🫡 Within the first few seconds. He notices.',
-  "The Tanod is a bot with feelings. Praise him enough times… and he'll get emotional. 🤖💖",
-  'On Pasko itself, your daily Kowens hit different. 🎄',
+// 🍵 One hint per Easter egg. Each cup gives a hint about an egg the drinker hasn't found and hasn't heard about yet.
+export const MARITES_HINTS: { key: EggKey; text: string }[] = [
+  { key: 'note', text: 'Narinig ko… the Tanod has a soft spot for people who actually *read* his notes in the outpost. React and see. 💛' },
+  { key: '67', text: 'Psst… sixty-seven days before Pasko, the morning greeting gets weird. Two numbers. React with both. 6️⃣7️⃣' },
+  { key: 'wish', text: 'Every night and every morning at **11:11**, sometimes the Tanod lets you make a wish. Be fast. 🌠' },
+  { key: 'secret-item', text: "Sabi nila, there's something buried that's NOT on any dig list. One in ten thousand. Signed by someone important. 🩴" },
+  { key: '67-bet', text: 'Bet exactly the most meme-able number in the gambling den… and win. The Tanod adds a little extra. 🎰' },
+  { key: 'underdog', text: 'The jackpot loves an underdog. Win it with just **one** ticket against a crowd. 🍀' },
+  { key: 'photo-finish', text: 'Sometimes two Mosangs reach the chismis at the exact same time. Both sets of bettors get paid. 📸' },
+  { key: 'salute', text: 'When the Tanod Patrol calls roll, salute him fast. 🫡 Within the first few seconds. He notices.' },
+  { key: 'praise-bot', text: "The Tanod is a bot with feelings. Praise him enough times… and he'll get emotional. 🤖💖" },
+  { key: 'christmas', text: 'On Pasko itself, your daily Kowens hit different. 🎄' },
 ];
 
 interface UserPotions {
@@ -86,15 +87,20 @@ export function useSwerteDig(userId: string): boolean {
   return true;
 }
 
-/** A Marites hint the member hasn't heard yet, or null when they've heard them all. */
+/** Hint indexes this member could still get: not heard yet, and about an egg they haven't found. */
+const freshHints = (userId: string) => {
+  const heard = new Set(state[userId]?.hintsHeard ?? []);
+  return MARITES_HINTS.map((h, i) => ({ h, i })).filter(({ h, i }) => !heard.has(i) && !hasFound(userId, h.key)).map(({ i }) => i);
+};
+
+/** A fresh Marites hint, or null when there's nothing new to tell them. */
 export function nextHint(userId: string): string | null {
-  const u = of(userId);
-  const heard = new Set(u.hintsHeard ?? []);
-  const fresh = MARITES_HINTS.map((_, i) => i).filter((i) => !heard.has(i));
+  const fresh = freshHints(userId);
   if (!fresh.length) return null;
   const pick = fresh[Math.floor(Math.random() * fresh.length)];
-  u.hintsHeard = [...heard, pick];
+  const u = of(userId);
+  u.hintsHeard = [...(u.hintsHeard ?? []), pick];
   save();
-  return MARITES_HINTS[pick];
+  return MARITES_HINTS[pick].text;
 }
-export const hintsLeft = (userId: string) => MARITES_HINTS.length - (state[userId]?.hintsHeard?.length ?? 0);
+export const hintsLeft = (userId: string) => freshHints(userId).length;
