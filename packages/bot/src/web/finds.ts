@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import type { FindResult } from '@mikazuki/shared';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { today } from '../time.js';
 import { DATA_DIR } from '../paths.js';
@@ -76,9 +77,8 @@ function prune(): void {
   for (const [code, entry] of Object.entries(state.codes)) if (entry.expires < now) delete state.codes[code];
 }
 
-export type RollResult =
-  | { found: false; reason?: 'slow-down' | 'limit' }
-  | { found: true; code: string; expires: number; reward: number };
+/** The result of a room click — see FindResult in @mikazuki/shared. */
+export type RollResult = FindResult;
 
 /** A character was clicked in the room. Decides, here, whether it found a Kowen. */
 export function roll(ip: string, character: string, fairyAround = false): RollResult {

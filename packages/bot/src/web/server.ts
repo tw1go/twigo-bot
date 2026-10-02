@@ -1,4 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import type { LeaderboardResponse, LeaderboardRow } from '@mikazuki/shared';
 import type { Client } from 'discord.js';
 import { config } from '../config.js';
 import { topBalances } from '../credits/store.js';
@@ -62,10 +63,10 @@ async function leaderboard(client: Client): Promise<string> {
   const rows = await Promise.all(
     top.map(async ([id, kowens], i) => {
       const { name, avatar } = await profile(client, id);
-      return { rank: i + 1, name, avatar, kowens };
+      return { rank: i + 1, name, avatar, kowens } satisfies LeaderboardRow;
     }),
   );
-  const body = JSON.stringify({ updated: Date.now(), rows });
+  const body = JSON.stringify({ updated: Date.now(), rows } satisfies LeaderboardResponse);
   board = { at: Date.now(), body };
   return body;
 }
