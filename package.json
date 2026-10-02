@@ -10,7 +10,8 @@
   },
   "scripts": {
     "dev:bot": "npm run dev -w @mikazuki/bot",
-    "build": "npm run build --workspaces --if-present",
+    "dev:game": "npm run dev -w @mikazuki/game",
+    "build": "npm run build -w @mikazuki/shared && npm run build -w @mikazuki/bot && npm run build -w @mikazuki/game",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "deploy-commands": "npm run deploy-commands -w @mikazuki/bot"
   }
