@@ -12,6 +12,7 @@ import { monthlyBoostPayout } from './games/boosts.js';
 import { maybeMakeAWish } from './games/secrets.js';
 import { processLoans } from './loans/loans.js';
 import { payWeeklyVoice } from './games/voice-weekly.js';
+import { backupDatabase } from './db/db.js';
 
 export function startScheduler(client: Client): Cron[] {
   const job = (name: string, pattern: string, fn: (c: Client) => Promise<void>) =>
@@ -37,6 +38,7 @@ export function startScheduler(client: Client): Cron[] {
     job('wish', '11 11,23 * * *', maybeMakeAWish), // 🤫 sometimes, at 11:11 AM/PM
     job('loans', '5 * * * *', processLoans), // hourly: late fees, SMS, defaults
     job('voice-weekly', '0 12 * * 1', payWeeklyVoice), // Mondays 12:00 PM — last week's top 10 in voice
+    job('backup', '30 3 * * *', backupDatabase), // daily 3:30 AM — snapshot of mikazuki.db, last 7 kept
   ];
   for (const j of jobs.filter((x) => x.name !== 'wish')) console.log(`[scheduler] ${j.name} next run: ${j.nextRun()?.toString()}`);
   return jobs;

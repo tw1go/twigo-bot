@@ -14,6 +14,7 @@ import { onEgg67Reaction } from './games/egg67.js';
 import { onSaluteReaction } from './games/secrets.js';
 import { backfillFound } from './games/found.js';
 import { startWebServer } from './web/server.js';
+import { closeDatabase } from './db/db.js';
 
 const client = new Client({
   // GuildMessages only tells us someone posted (for inactivity); we don't have or need Message Content.
@@ -49,6 +50,7 @@ client.on(Events.MessageCreate, (message) => {
 
 const shutdown = async () => {
   await client.destroy();
+  closeDatabase(); // flush the WAL so mikazuki.db is complete on its own
   process.exit(0);
 };
 process.on('SIGINT', shutdown);
