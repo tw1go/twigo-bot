@@ -11,6 +11,7 @@ import { today } from '../time.js';
 //  • v2, per-member stores: quests, minewars_payouts, room_find_codes/claims, potion_stock/effects, secret_progress,
 //    jail, redemptions, jackpot_tickets, eggs_found, easter_egg_finds, boosters.
 //  • v3, web game logins: sessions.
+//  • v4, web game pre-registration: preregistrations.
 //  • kv: small singleton documents keyed by their old file name (e.g. 'race.json', 'rotation.json').
 // Stores cache their state in memory (the bot is the only writer) and save through db/sync.ts, which writes only
 // the rows that changed.
@@ -175,6 +176,14 @@ const MIGRATIONS: string[] = [
     expires     INTEGER NOT NULL   -- ms
   );
   CREATE INDEX sessions_user ON sessions (user_id);
+  `,
+  /* v4: pre-registration for the web game (src/prereg/prereg.ts); launch time is meta 'game_launched' */ `
+  CREATE TABLE preregistrations (
+    user_id     TEXT PRIMARY KEY,
+    registered  INTEGER NOT NULL,  -- ms
+    source      TEXT NOT NULL CHECK (source IN ('discord', 'web')),
+    rewarded    INTEGER            -- ms the launch reward was paid; NULL = not yet
+  );
   `,
 ];
 

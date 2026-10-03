@@ -1,4 +1,5 @@
 import { EmbedBuilder, MessageFlags, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
+import { LAUNCH_REWARD } from '../prereg/prereg.js';
 import type { Command } from '../types.js';
 import { config } from '../config.js';
 import { DAILY_CREDITS } from '../credits/store.js';
@@ -61,6 +62,7 @@ export const twigoHelp: Command = {
           '🏆 **Weekly voice rewards** (Mondays 12 PM): top 10 get 50 · 30 · 20 · 10 Kowens (`/leaderboard`)',
           '💎 **Boost the server**: +20 Kowens per boost, and 20 × your boosts every month while boosting',
           '`/claim code` — found a Kowen in [twigo\'s room](https://tw1go.github.io)? Claim it here (3 a day)',
+          `\`/preregister\` — 🎮 sign up for the Mikazuki web game: +${LAUNCH_REWARD} Kowens when it launches`,
           '-# ⚠️ Inactive for 3+ days? You lose a growing % of Kowens each day until you\'re back.',
         ]),
         ...section('💳 Spend & manage', [
@@ -93,6 +95,7 @@ export const twigoHelp: Command = {
           '`game:<patrol|jackpot>` — start a Tanod Patrol or draw the jackpot now',
           '`/jail @user minutes reason` — jail someone (`minutes:0` releases)',
           '`/gift kowens|everyone|boosts|minewars` — gifter only: give/remove Kowens (one member or everyone who has used the bot), fix a boost count, or pay the 9 PM Mine Wars',
+          '`/gift prereg-panel|launch` — gifter only: post the web game pre-registration panel; at launch, pay every pre-registered member and close sign-ups',
           '`reset-kowens:@user` / `reset-all-kowens:yes` — reset Kowens',
         ]),
       );

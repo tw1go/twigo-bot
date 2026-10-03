@@ -5,6 +5,7 @@ import { accountIds, add, balance, take } from '../credits/store.js';
 import { BOOST_CREDITS, boostCount, setBoostCount } from '../games/boosts.js';
 import { ATTEND_REWARD, TOP_REWARD, openPayoutPanel } from '../minewars/payout.js';
 import { kowen } from '../kowens.js';
+import { LAUNCH_REWARD, launchPayout, launched, preregPanel } from '../prereg/prereg.js';
 
 // Only the gifter (REWARD_OWNER_ID) can use this. Hidden from non-admins by default.
 export const gift: Command = {
@@ -34,6 +35,13 @@ export const gift: Command = {
         .addIntegerOption((o) => o.setName('amount').setDescription('How many each').setRequired(true).setMinValue(1).setMaxValue(1000))
         .addStringOption((o) => o.setName('reason').setDescription('Why (shown in the message)').setMaxLength(100)),
     )
+    .addSubcommand((s) => s.setName('prereg-panel').setDescription('Post the web game pre-registration panel here · 🌐 button for everyone'))
+    .addSubcommand((s) =>
+      s
+        .setName('launch')
+        .setDescription(`Web game launch: pay every pre-registered member ${LAUNCH_REWARD} Kowens and close sign-ups · 🌐`)
+        .addBooleanOption((o) => o.setName('confirm').setDescription('True = pay everyone now and close pre-registration').setRequired(true)),
+    )
     .addSubcommand((s) =>
       s.setName('minewars').setDescription(`Pay 9 PM Mine Wars: attendance +${ATTEND_REWARD}, Top 10 ${TOP_REWARD} · 🔒 panel · 🌐 summary`),
     ),
@@ -44,6 +52,30 @@ export const gift: Command = {
     }
     if (interaction.options.getSubcommand() === 'minewars') {
       await openPayoutPanel(interaction);
+      return;
+    }
+    if (interaction.options.getSubcommand() === 'prereg-panel') {
+      if (launched()) {
+        await interaction.reply({ content: 'The game has already launched, so pre-registration is closed.', flags: MessageFlags.Ephemeral });
+        return;
+      }
+      await interaction.reply({ ...preregPanel(), allowedMentions: { parse: [] } });
+      return;
+    }
+    if (interaction.options.getSubcommand() === 'launch') {
+      if (!interaction.options.getBoolean('confirm', true)) {
+        await interaction.reply({ content: 'Launch cancelled: nothing was paid.', flags: MessageFlags.Ephemeral });
+        return;
+      }
+      const { paid, total } = launchPayout();
+      if (!paid) {
+        await interaction.reply({ content: `Pre-registration is closed. Nobody left to pay (${total} pre-registered, all paid).`, flags: MessageFlags.Ephemeral });
+        return;
+      }
+      await interaction.reply({
+        content: `🚀 **The Mikazuki web game is live!**\n🎁 ${paid} pre-registered ${paid === 1 ? 'member' : 'members'} received **${LAUNCH_REWARD}** ${kowen(LAUNCH_REWARD)} each. Thank you for waiting! 🎮${config.publicUrl ? `\nPlay: ${config.publicUrl}/play/` : ''}`,
+        allowedMentions: { parse: [] },
+      });
       return;
     }
     if (interaction.options.getSubcommand() === 'everyone') {

@@ -10,12 +10,14 @@ import { handleQuestButton, isQuestButton } from '../quests/board.js';
 import { handleRaceButton, handleRaceModal, isRaceButton, isRaceModal } from '../games/race.js';
 import { handleWishButton, isWishButton } from '../games/secrets.js';
 import { handleLoanButton, isLoanButton } from '../commands/loan.js';
+import { BUTTON_PREREG, handlePreregButton } from '../prereg/prereg.js';
 
 const buttonHandlers: Record<string, (i: ButtonInteraction) => Promise<void>> = {
   [BUTTON_YES]: handleAnswer,
   [BUTTON_NO]: handleAnswer,
   [BUTTON_TOGGLE_ROLE]: handleToggleRole,
   [BUTTON_PATROL]: handlePatrolButton,
+  [BUTTON_PREREG]: handlePreregButton,
 };
 
 export async function onInteractionCreate(interaction: Interaction) {

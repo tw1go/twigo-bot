@@ -26,8 +26,9 @@ import { steal } from './steal.js';
 import { twigo } from './twigo.js';
 import { vault } from './vault.js';
 import { twigoHelp } from './twigo-help.js';
+import { preregisterCommand } from './preregister.js';
 
 // Register new commands here.
-const all: Command[] = [ping, twigo, twigoHelp, diss, praise, judge, getCredits, balanceCommand, gamble, steal, jackpot, leaderboard, jail, redeem, gift, give, dig, inventory, sell, request, status, bail, race, loan, flex, vault, potion, claim];
+const all: Command[] = [ping, twigo, twigoHelp, diss, praise, judge, getCredits, balanceCommand, gamble, steal, jackpot, leaderboard, jail, redeem, gift, give, dig, inventory, sell, request, status, bail, race, loan, flex, vault, potion, claim, preregisterCommand];
 
 export const commands = new Collection<string, Command>(all.map((c) => [c.data.name, c]));
