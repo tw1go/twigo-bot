@@ -17,6 +17,8 @@ export interface CreatorHooks {
   apply: (o: Outfit) => Promise<void>;
   /** The composited idle sheet for a built look, facing `dir`. */
   sheet: (o: Outfit, dir: Dir) => CanvasImageSource | null;
+  /** Rows of empty cell above a built look's head (the name plate sits just over it). */
+  head: (o: Outfit) => number;
   /** Saves the nickname and look, then enters the town. */
   save: (o: Outfit, nickname: string) => Promise<'ok' | 'taken' | 'invalid' | 'error'>;
   /** The game's pixel frame (a nine-slice image) for the box, if the manifest has one. */
@@ -100,6 +102,7 @@ export function mountCreator(C: CharacterDefs, hooks: CreatorHooks): void {
       applying = hooks.apply(o).then(() => {
         if (sameLook(o, draft)) {
           shown = o;
+          stage.style.setProperty('--head', String(hooks.head(o)));
           root.classList.remove('cr-busy');
         }
       });

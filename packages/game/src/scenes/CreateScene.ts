@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { queueTown } from '../assets/queue';
 import type { Manifest, TownMap } from '../assets/types';
-import { assetProblems, loadOutfit, sheetKey } from '../characters/doll';
+import { assetProblems, headTop, loadOutfit, sheetKey } from '../characters/doll';
 import { saveOutfit, startingOutfit } from '../characters/looks';
 import { saveNickname, suggestNickname } from '../characters/nickname';
 import type { MeResult } from '../session';
@@ -48,6 +48,7 @@ export class CreateScene extends Phaser.Scene {
         const key = sheetKey(o, 'idle', dir);
         return this.textures.exists(key) ? (this.textures.get(key).getSourceImage() as HTMLCanvasElement) : null;
       },
+      head: (o) => headTop(this, o),
       save: async (o, nickname) => {
         const nick = await saveNickname(nickname);
         if (nick !== 'ok') return nick;

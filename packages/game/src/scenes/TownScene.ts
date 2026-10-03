@@ -151,7 +151,9 @@ export class TownScene extends Phaser.Scene {
       const name = BUILDINGS[b.id]?.name;
       if (name) this.buildingLabels.set(b.id, new BuildingLabel(this, name, b.top.x));
     }
-    if (this.me?.status === 'ok') this.player.setNameplate(this.me.me.nickname, this.me.me.title);
+    // Members show their nickname and title; without a login (login off, or the dev server) it's "Guest".
+    const member = this.me?.status === 'ok' ? this.me.me : null;
+    this.player.setNameplate(member?.nickname ?? 'Guest', member?.title ?? 'Townfolk');
     exposeDebug(this);
     if (assetProblems.size) console.warn('[town] asset problems:\n' + [...assetProblems].join('\n'));
   }
@@ -382,11 +384,12 @@ export class TownScene extends Phaser.Scene {
     this.showBuildingName();
   }
 
-  /** The hovered building's name over its roof (above its alert, if it has one). */
+  /** A building's name shows over its roof while it's hovered or the player is at its door (above the alert). */
   private showBuildingName(): void {
     for (const [id, label] of this.buildingLabels) {
-      const b = this.hovered?.id === id ? this.hovered : null;
-      const alert = b && this.alertFor === b ? this.buildingAlert : null;
+      const atDoor = this.alertFor?.id === id ? this.alertFor : null;
+      const b = atDoor ?? (this.hovered?.id === id ? this.hovered : null);
+      const alert = atDoor ? this.buildingAlert : null;
       label.show(!b ? null : alert ? alert.y - alert.height - 1 : b.top.y - 2);
     }
   }

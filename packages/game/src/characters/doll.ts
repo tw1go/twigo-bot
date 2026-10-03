@@ -228,6 +228,29 @@ export function buildOutfit(scene: Phaser.Scene, C: CharacterDefs, o: Outfit): v
   }
 }
 
+const heads = new Map<string, number>();
+
+/** Where an outfit's head (or hat) starts in its cell: the first row with a visible pixel in the idle sheet facing
+ *  south, over all frames. Name plates sit just above it. */
+export function headTop(scene: Phaser.Scene, o: Outfit): number {
+  const key = sheetKey(o, 'idle', 's');
+  const cached = heads.get(key);
+  if (cached !== undefined) return cached;
+  const data = pixels(scene, key);
+  let top = 0;
+  if (data) {
+    top = data.height;
+    for (let i = 3; i < data.data.length; i += 4) {
+      if (data.data[i]) {
+        top = Math.floor((i - 3) / 4 / data.width);
+        break;
+      }
+    }
+  }
+  heads.set(key, top === (data?.height ?? 0) ? 0 : top);
+  return heads.get(key)!;
+}
+
 /** Loads any layers an outfit still needs (with the scene's loader), then builds it. */
 export function loadOutfit(scene: Phaser.Scene, C: CharacterDefs, o: Outfit): Promise<void> {
   const missing = outfitFiles(C, o).filter((f) => !scene.textures.exists(f));

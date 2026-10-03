@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import type { CharacterDefs, Dir, Manifest } from '../assets/types';
 import { CHARACTER_BIAS } from '../world/depth';
 import type { Tile } from '../world/grid';
-import { type Outfit, sheetKey } from './doll';
+import { type Outfit, headTop, sheetKey } from './doll';
 import { Nameplate } from '../ui/labels';
 
 // A walking paper doll. Position is in tile space (tile centre = col + 0.5); the sprite's feet anchor sits on it.
@@ -26,6 +26,7 @@ export class Character {
   private alert: Phaser.GameObjects.Sprite | null = null;
   private tag: Nameplate | null = null;
   private zoom = 1;
+  private head = 0; // rows of empty cell above the head (headTop)
   private col: number; // tile-space position of the feet (tile centre = integer + 0.5)
   private row: number;
   private path: Tile[] = [];
@@ -55,6 +56,7 @@ export class Character {
     this.sprite = scene.add.sprite(0, 0, sheetKey(outfit, 'idle', 's'), 0).setOrigin(C.anchor[0] / C.cell[0], C.anchor[1] / C.cell[1]);
     const sh = M.fx.shadow;
     this.shadow = sh?.file ? scene.add.image(0, 0, sh.file).setOrigin((sh.anchor?.[0] ?? 0) / (sh.size?.[0] ?? 1), (sh.anchor?.[1] ?? 0) / (sh.size?.[1] ?? 1)) : null;
+    this.head = headTop(scene, outfit);
     this.play('idle');
     this.sync();
   }
@@ -205,6 +207,7 @@ export class Character {
   /** Switch to another (already built) look, keeping position, facing and animation. */
   setOutfit(o: Outfit): void {
     this.outfit = o;
+    this.head = headTop(this.scene, o);
     const anim = this.anim;
     this.sprite.anims.stop();
     this.play(anim);
@@ -252,10 +255,10 @@ export class Character {
     const depth = this.sittingAt?.depth ?? (this.depthFn ? this.depthFn(t.col, t.row, feet, this.sprite.getBounds(this.boundsCache)) : feet);
     this.sprite.setDepth(depth);
     this.shadow?.setPosition(Math.round(x), Math.round(y)).setDepth(depth - 0.2);
-    // The plate sits 4 px above the cell (manifest ui.nameplate); an alert goes above the plate.
-    const cellTop = Math.round(y) - this.M.characters.anchor[1];
-    this.tag?.place(Math.round(x), cellTop - 4);
-    const alertY = this.tag ? cellTop - 4 - this.tag.height - 1 : Math.round(y) - this.M.characters.cell[1] - 2;
+    // The plate sits just over the head (2 px above its first visible row); an alert goes above the plate.
+    const plateBottom = Math.round(y) - this.M.characters.anchor[1] + this.head - 2;
+    this.tag?.place(Math.round(x), plateBottom);
+    const alertY = this.tag ? plateBottom - this.tag.height - 1 : Math.round(y) - this.M.characters.cell[1] - 2;
     this.alert?.setPosition(Math.round(x), alertY).setDepth(depth + 0.1);
   }
 
