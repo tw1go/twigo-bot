@@ -41,6 +41,10 @@ export const config = {
   // Room finds (/claim) are announced here; falls back to the games channel.
   // Local port for the room API (src/web/server.ts). Empty = API off.
   webPort: Number(process.env.WEB_PORT) || 0,
+  // Discord login for the web game (src/web/auth.ts): the app's OAuth2 client secret and the public HTTPS address
+  // the game is served from (redirect URI = <WEB_PUBLIC_URL>/auth/callback). Both empty = login off.
+  clientSecret: process.env.DISCORD_CLIENT_SECRET || undefined,
+  publicUrl: (process.env.WEB_PUBLIC_URL || '').replace(/\/+$/, '') || undefined,
   // Write-only Object Storage URL for off-server backup copies (src/db/offsite.ts). Empty = local backups only.
   backupUploadUrl: process.env.BACKUP_UPLOAD_URL || undefined,
 };

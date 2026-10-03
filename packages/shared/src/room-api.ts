@@ -21,3 +21,28 @@ export interface LeaderboardResponse {
 export type FindResult =
   | { found: false; reason?: 'slow-down' | 'limit' }
   | { found: true; code: string; expires: number; reward: number };
+
+/** One stack of dug-up items in `GET /me`. */
+export interface MeItem {
+  id: string;
+  name: string;
+  emoji: string;
+  rarity: string;
+  count: number;
+}
+
+/** `GET /me` — the member logged in to the web game (401 when not logged in). */
+export interface MeResponse {
+  /** Discord user ID. */
+  id: string;
+  /** Server nickname, or Discord display name. */
+  name: string;
+  /** Avatar URL (64px PNG), or '' if unknown. */
+  avatar: string;
+  /** Wallet Kowens (not counting the vault). */
+  kowens: number;
+  vault: number;
+  /** Rank by total Kowens, or null with none. */
+  rank: number | null;
+  items: MeItem[];
+}

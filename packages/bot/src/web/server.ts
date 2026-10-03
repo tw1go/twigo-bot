@@ -1,8 +1,11 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import type { LeaderboardResponse, LeaderboardRow } from '@mikazuki/shared';
+import type { LeaderboardResponse, LeaderboardRow, MeResponse } from '@mikazuki/shared';
 import type { Client } from 'discord.js';
 import { config } from '../config.js';
-import { topBalances } from '../credits/store.js';
+import { balance, rankOf, topBalances, vaultBalance } from '../credits/store.js';
+import { inventory } from '../dig/store.js';
+import { ITEM_BY_ID } from '../dig/items.js';
+import { callback, clearSessionCookie, endSessions, isMember, login, loginEnabled, logout, sessionUser } from './auth.js';
 import { roll } from './finds.js';
 
 // A tiny HTTP API for twigo's room (tw1go.github.io). Read-only apart from
@@ -16,6 +19,9 @@ import { roll } from './finds.js';
 //   GET  /leaderboard   top 10 by Kowens, with display names and avatars
 //   POST /find          { character, fairy? } -> { found, code?, expires? }
 //   GET  /health        "ok"
+//
+// Web game (/play, same origin, so no CORS): Discord login (see auth.ts) and
+//   GET  /me            the logged-in member: name, avatar, Kowens, items (401 if not logged in)
 
 const ALLOWED_ORIGINS = new Set([
   'https://tw1go.github.io',
@@ -95,10 +101,29 @@ function readBody(req: IncomingMessage): Promise<string> {
   });
 }
 
-function send(res: ServerResponse, status: number, body: string, type = 'application/json'): void {
-  res.writeHead(status, { 'Content-Type': type, 'Cache-Control': 'no-store' });
+function send(res: ServerResponse, status: number, body: string, type = 'application/json', headers: Record<string, string> = {}): void {
+  res.writeHead(status, { 'Content-Type': type, 'Cache-Control': 'no-store', ...headers });
   res.end(body);
 }
+
+async function me(client: Client, req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const userId = sessionUser(req);
+  if (!userId) return send(res, 401, '{"error":"not logged in"}');
+  if (!(await isMember(client, userId))) {
+    endSessions(userId); // left the server
+    return send(res, 401, '{"error":"not logged in"}', 'application/json', { 'Set-Cookie': clearSessionCookie() });
+  }
+  const { name, avatar } = await profile(client, userId);
+  const items = inventory(userId).map(([id, count]) => {
+    const item = ITEM_BY_ID.get(id)!;
+    return { id, name: item.name, emoji: item.emoji, rarity: item.rarity, count };
+  });
+  const body: MeResponse = { id: userId, name, avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items };
+  send(res, 200, JSON.stringify(body));
+}
+
+/** Logout must come from the game's own page (SameSite=Lax already keeps other sites' POSTs cookie-less). */
+const fromGame = (req: IncomingMessage) => !!config.publicUrl && req.headers.origin === config.publicUrl;
 
 export function startWebServer(client: Client): void {
   const port = config.webPort;
@@ -116,11 +141,19 @@ export function startWebServer(client: Client): void {
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     }
 
-    const path = (req.url ?? '/').split('?')[0];
+    const url = new URL(req.url ?? '/', 'http://localhost');
+    const path = url.pathname;
     try {
       if (req.method === 'OPTIONS') return void res.writeHead(204).end();
       if (req.method === 'GET' && path === '/health') return send(res, 200, 'ok', 'text/plain');
       if (req.method === 'GET' && path === '/leaderboard') return send(res, 200, await leaderboard(client));
+      if (path.startsWith('/auth/') || path === '/me') {
+        if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
+        if (req.method === 'GET' && path === '/auth/login') return login(res);
+        if (req.method === 'GET' && path === '/auth/callback') return await callback(client, req, res, url.searchParams);
+        if (req.method === 'POST' && path === '/auth/logout') return fromGame(req) ? logout(req, res) : send(res, 403, '{"error":"forbidden"}');
+        if (req.method === 'GET' && path === '/me') return await me(client, req, res);
+      }
       if (req.method === 'POST' && path === '/find') {
         // Only the room may roll: without an allowed Origin there is no find.
         if (!origin || !ALLOWED_ORIGINS.has(origin)) return send(res, 403, '{"found":false}');

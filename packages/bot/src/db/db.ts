@@ -10,6 +10,7 @@ import { today } from '../time.js';
 //  • v1, the economy core: accounts (Kowens & limits), dig_state + inventory_items, loans + loan_credit.
 //  • v2, per-member stores: quests, minewars_payouts, room_find_codes/claims, potion_stock/effects, secret_progress,
 //    jail, redemptions, jackpot_tickets, eggs_found, easter_egg_finds, boosters.
+//  • v3, web game logins: sessions.
 //  • kv: small singleton documents keyed by their old file name (e.g. 'race.json', 'rotation.json').
 // Stores cache their state in memory (the bot is the only writer) and save through db/sync.ts, which writes only
 // the rows that changed.
@@ -165,6 +166,15 @@ const MIGRATIONS: string[] = [
     count    INTEGER NOT NULL,
     since    TEXT NOT NULL      -- ISO; a new value means a new boosting session
   );
+  `,
+  /* v3: web game logins (src/web/auth.ts) */ `
+  CREATE TABLE sessions (
+    token_hash  TEXT PRIMARY KEY,  -- SHA-256 of the cookie's token; the token itself is never stored
+    user_id     TEXT NOT NULL,
+    created     INTEGER NOT NULL,  -- ms
+    expires     INTEGER NOT NULL   -- ms
+  );
+  CREATE INDEX sessions_user ON sessions (user_id);
   `,
 ];
 
