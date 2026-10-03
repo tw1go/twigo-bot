@@ -53,13 +53,13 @@
       #login .lg-discord:hover { background: #4752c4; }
       #login .lg-problem { margin-top: 12px; color: #f7768e; }
       #login .lg-hint { margin-top: 14px; color: #565f89; font-size: 13px; }
-      #creator { --z: 6; position: fixed; inset: 0; z-index: 1; overflow: auto; display: flex; flex-direction: column; align-items: center; padding: 64px 16px 24px; box-sizing: border-box; background: #000; color: #c0caf5; font: 14px/1.4 system-ui, sans-serif; }
-      #creator .cr-head, #creator .cr-panel { width: min(960px, 100%); }
-      #creator h1 { margin: 0 0 4px; font-size: 24px; color: #fff; }
+      #creator { --z: 6; position: fixed; inset: 0; z-index: 1; display: flex; align-items: center; justify-content: center; padding: 72px 16px 24px; box-sizing: border-box; background: #000; color: #c0caf5; font: 14px/1.4 system-ui, sans-serif; }
+      #creator .cr-box { display: flex; flex-direction: column; width: min(960px, 100%); height: min(680px, 100%); border: 1px solid #3b4261; border-radius: 14px; background: #0d0e14; overflow: hidden; }
+      #creator .cr-head { padding: 18px 20px 14px; border-bottom: 1px solid #24283b; }
+      #creator h1 { margin: 0 0 4px; font-size: 22px; color: #fff; }
       #creator .cr-head p { margin: 0; color: #a9b1d6; }
-      #creator .cr-panel { display: grid; grid-template-columns: minmax(240px, 340px) 1fr; gap: 16px; margin-top: 16px; align-items: start; }
-      #creator .cr-preview, #creator .cr-side { border: 1px solid #3b4261; border-radius: 12px; background: #0d0e14; box-sizing: border-box; }
-      #creator .cr-preview { position: sticky; top: 0; display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 28px 16px 20px; }
+      #creator .cr-panel { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(240px, 340px) 1fr; }
+      #creator .cr-preview { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 20px 16px; border-right: 1px solid #24283b; }
       #creator .cr-stage { position: relative; width: calc(32px * var(--z)); height: calc(48px * var(--z)); }
       #creator .cr-doll { position: relative; width: 100%; height: 100%; image-rendering: pixelated; transition: opacity 0.15s; }
       #creator.cr-busy .cr-doll { opacity: 0.55; }
@@ -67,7 +67,8 @@
       #creator .cr-turns { display: flex; gap: 12px; }
       #creator .cr-turn { width: 44px; height: 44px; border: 1px solid #3b4261; border-radius: 50%; background: #1a1b26; color: #e6e9f2; font-size: 16px; cursor: pointer; }
       #creator .cr-turn:hover { border-color: #7aa2f7; }
-      #creator .cr-side { padding: 16px; }
+      #creator .cr-side { display: flex; flex-direction: column; min-height: 0; }
+      #creator .cr-settings { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 20px 4px; }
       #creator .cr-section { margin-bottom: 16px; }
       #creator h2 { margin: 0 0 8px; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #7aa2f7; }
       #creator .cr-items, #creator .cr-swatches { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -75,24 +76,30 @@
       #creator .cr-item { padding: 6px 12px; border: 1px solid #3b4261; border-radius: 999px; background: #1a1b26; color: #c0caf5; font: inherit; cursor: pointer; }
       #creator .cr-item:hover { border-color: #7aa2f7; }
       #creator .cr-item[aria-checked='true'] { border-color: #7aa2f7; background: #7aa2f7; color: #000; font-weight: 600; }
-      #creator .cr-swatches { gap: 8px; }
+      #creator .cr-swatches { gap: 8px; padding: 4px; margin: -4px; }
       #creator .cr-swatch { width: 30px; height: 30px; padding: 0; border: 0; border-radius: 8px; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12); }
       #creator .cr-swatch:hover { transform: scale(1.08); }
       #creator .cr-swatch[aria-checked='true'] { box-shadow: 0 0 0 2px #000, 0 0 0 4px #fff; }
-      #creator .cr-sub { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
-      #creator .cr-sub-label { width: 44px; flex: none; color: #a9b1d6; font-size: 12px; }
-      #creator .cr-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 14px; border-top: 1px solid #24283b; }
+      #creator .cr-sub { display: flex; align-items: flex-start; gap: 10px; margin-top: 8px; }
+      #creator .cr-sub-label { width: 44px; flex: none; line-height: 30px; color: #a9b1d6; font-size: 12px; }
+      #creator .cr-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px; border-top: 1px solid #24283b; }
       #creator .cr-actions button { padding: 10px 16px; border-radius: 8px; font: inherit; font-weight: 600; cursor: pointer; }
       #creator .cr-random { border: 1px solid #565f89; background: none; color: #c0caf5; }
       #creator .cr-save { border: 0; background: #9ece6a; color: #1a1b26; }
       #creator .cr-save:hover { background: #b5e48c; }
       #creator .cr-actions button:disabled { opacity: 0.6; cursor: wait; }
-      #creator .cr-note { margin-top: 8px; color: #f7768e; text-align: right; }
+      #creator .cr-note { padding: 0 20px 12px; color: #f7768e; text-align: right; }
       #creator .cr-note:empty { display: none; }
       @media (max-width: 720px) {
-        #creator { --z: 4; padding-top: 124px; } /* below the login card and pre-registration line */
-        #creator .cr-panel { grid-template-columns: 1fr; }
-        #creator .cr-preview { position: static; padding: 16px; }
+        #creator { --z: 3; padding: 124px 8px 8px; } /* below the login card and pre-registration line */
+        #creator .cr-box { height: 100%; }
+        #creator .cr-head { padding: 12px 14px 10px; }
+        #creator .cr-panel { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+        #creator .cr-preview { flex-direction: row; gap: 12px; padding: 12px; border-right: 0; border-bottom: 1px solid #24283b; }
+        #creator .cr-preview .cr-turns { display: contents; }
+        #creator .cr-preview .cr-turn:first-child { order: -1; }
+        #creator .cr-settings { padding: 12px 14px 4px; }
+        #creator .cr-actions { padding: 10px 14px; }
       }
     </style>
   </head>

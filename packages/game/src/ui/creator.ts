@@ -2,8 +2,8 @@ import type { CharacterDefs, Dir } from '../assets/types';
 import { type Outfit, randomOutfit } from '../characters/doll';
 import { choices } from '../characters/looks';
 
-// 🧍 The character creator, before a member's first visit to the town: the character on the left (idle, turned
-// with the arrows), the choices on the right. Colours are picked by swatch, not by name. DOM text only.
+// 🧍 The character creator, before a member's first visit to the town: one box with the character on the left
+// (idle, turned with the arrows) and the choices on the right (scrolling, Save underneath). Colours are picked by swatch, not by name. DOM text only.
 
 export interface CreatorHooks {
   name: string;
@@ -42,7 +42,7 @@ export function mountCreator(C: CharacterDefs, hooks: CreatorHooks): void {
   root.setAttribute('aria-label', 'Create your character');
 
   // ── the character ──
-  const box = el('div', 'cr-preview');
+  const look = el('div', 'cr-preview');
   const doll = el('canvas', 'cr-doll');
   doll.width = cw;
   doll.height = ch;
@@ -60,7 +60,7 @@ export function mountCreator(C: CharacterDefs, hooks: CreatorHooks): void {
   turns.append(left, right);
   const stage = el('div', 'cr-stage');
   stage.append(el('div', 'cr-shadow'), doll);
-  box.append(stage, turns);
+  look.append(stage, turns);
 
   let frame = 0;
   const draw = (t: number) => {
@@ -196,8 +196,10 @@ export function mountCreator(C: CharacterDefs, hooks: CreatorHooks): void {
   const side = el('div', 'cr-side');
   side.append(settings, actions, note);
   const panel = el('div', 'cr-panel');
-  panel.append(box, side);
-  root.append(head, panel);
+  panel.append(look, side);
+  const box = el('div', 'cr-box');
+  box.append(head, panel);
+  root.append(box);
   document.body.append(root);
 
   // ←/→ turn the character too.
