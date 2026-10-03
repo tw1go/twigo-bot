@@ -5,6 +5,7 @@ import { Character } from '../characters/character';
 import { type Outfit, assetProblems, buildOutfit, loadOutfit, outfitFiles } from '../characters/doll';
 import { startingOutfit } from '../characters/looks';
 import type { MeResult } from '../session';
+import { cursor } from '../ui/cursor';
 import { BuildingLabel } from '../ui/labels';
 import { screenToTile, tileToScreen } from '../iso';
 import { toast } from '../ui/toast';
@@ -165,6 +166,9 @@ export class TownScene extends Phaser.Scene {
       this.labelZoom = zoom;
       this.player.setZoom(zoom);
       for (const l of this.buildingLabels.values()) l.setZoom(zoom);
+      // The game's cursor at the same whole-number zoom as the world (the hand over buildings).
+      this.input.setDefaultCursor(cursor('pointer', zoom));
+      for (const b of this.objects.buildings) if (b.sprite.input) b.sprite.input.cursor = cursor('hand', zoom);
     }
     this.ground.tick(time);
     this.player.update(delta);
@@ -214,7 +218,7 @@ export class TownScene extends Phaser.Scene {
 
   private setupInput(): void {
     for (const b of this.objects.buildings) {
-      b.sprite.setInteractive({ pixelPerfect: true, useHandCursor: true });
+      b.sprite.setInteractive({ pixelPerfect: true, cursor: cursor('hand', this.cameras.main.zoom) });
       // The name shows while the building is hovered.
       b.sprite.on(Phaser.Input.Events.GAMEOBJECT_POINTER_OVER, () => {
         this.hovered = b;
