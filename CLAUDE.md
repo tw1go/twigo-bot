@@ -55,6 +55,9 @@ State is one SQLite database, `data/mikazuki.db` (better-sqlite3, WAL), schema i
   copy images only.
 - Depth: front corner of the footprint, plus a correction against big footprints (`WorldObjects.sortAgainstBig`);
   the arena uses back/front layers. Ground is baked into canvas chunks; off-screen sprites are culled.
+- Builds pack the loose images into sheets (`scripts/packs.ts`: one per character item, one per top folder) and
+  cut them back into per-path textures at load (`src/assets/packs.ts`); dev loads loose files. Add art as loose
+  images only.
 - Characters are paper dolls composited per outfit (`characters/doll.ts`), saved per account (`PUT /outfit`).
 - The town is held behind `?preview` until launch (`src/preview.ts`); `/play/` shows a coming-soon page.
 - Movement: click-to-move (A* on `blocked`), WASD/arrows (screen directions), E/Space to enter or sit.

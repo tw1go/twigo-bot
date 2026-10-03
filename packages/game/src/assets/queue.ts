@@ -1,15 +1,19 @@
 import type Phaser from 'phaser';
+import { packed, queuePacked } from './packs';
 import type { Manifest, PropDef, TownMap } from './types';
 
 // Queues every image the town needs, keyed by its path under assets/. Sheets (water, swaying grass, the fountain,
-// animated effects) load as spritesheets with the frame size from the manifest.
+// animated effects) load as spritesheets with the frame size from the manifest. In a build most of them come out of
+// a few packed sheets (assets/packs.ts).
 
 export function queueImage(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Textures.TextureManager, file: string): void {
-  if (!textures.exists(file)) load.image(file, file);
+  if (packed(file)) queuePacked(load, textures, file);
+  else if (!textures.exists(file)) load.image(file, file);
 }
 
 function queueSheet(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Textures.TextureManager, file: string, w: number, h: number): void {
-  if (!textures.exists(file)) load.spritesheet(file, file, { frameWidth: w, frameHeight: h });
+  if (packed(file)) queuePacked(load, textures, file, [w, h]);
+  else if (!textures.exists(file)) load.spritesheet(file, file, { frameWidth: w, frameHeight: h });
 }
 
 export function queueTown(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Textures.TextureManager, M: Manifest, map: TownMap): void {

@@ -1,9 +1,11 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
+import { packs } from './scripts/packs.ts';
 
 // Served from https://<domain>/play/ (Caddy serves the built files; the room API stays at the domain root).
 export default defineConfig({
   base: '/play/',
+  plugins: [packs()],
   resolve: {
     // Use the shared package's TypeScript source directly (no build step needed in dev).
     alias: { '@mikazuki/shared': fileURLToPath(new URL('../shared/src/index.ts', import.meta.url)) },

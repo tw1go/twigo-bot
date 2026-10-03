@@ -91,7 +91,7 @@ export class TownScene extends Phaser.Scene {
     this.showLoading();
   }
 
-  /** A loading bar while the town's art downloads (the first visit fetches a few hundred small images). */
+  /** A loading bar while the town's art downloads (a build fetches a dozen packed sheets; dev, a few hundred loose images). */
   private showLoading(): void {
     const { width, height } = this.scale;
     const w = Math.min(320, width - 64);
