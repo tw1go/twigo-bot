@@ -45,4 +45,21 @@ export interface MeResponse {
   /** Rank by total Kowens, or null with none. */
   rank: number | null;
   items: MeItem[];
+  /** Signed up for the launch reward (see `/prereg`). */
+  preregistered: boolean;
+}
+
+/** `GET /prereg` — public pre-registration status for the web game. */
+export interface PreregStatus {
+  /** False once the game has launched. */
+  open: boolean;
+  count: number;
+  /** Kowens each pre-registered member gets at launch. */
+  reward: number;
+}
+
+/** `POST /prereg` (logged in) — sign up. */
+export interface PreregResponse {
+  result: 'joined' | 'already' | 'closed';
+  count: number;
 }

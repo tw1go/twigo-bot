@@ -1,4 +1,4 @@
-import type { MeResponse } from '@mikazuki/shared';
+import type { MeResponse, PreregResponse, PreregStatus } from '@mikazuki/shared';
 
 // The login corner of the web game. The room API is on the same origin (the game is served at /play/), so the
 // session cookie rides along with plain relative requests. Built with DOM nodes and textContent only: names come
@@ -24,18 +24,48 @@ export async function startHud(root: HTMLElement): Promise<void> {
   const problem = PROBLEMS[params.get('login') ?? ''];
   if (params.has('login')) history.replaceState(null, '', location.pathname);
 
-  const res = await fetch('/me', { credentials: 'same-origin' }).catch(() => null);
+  const [res, prereg] = await Promise.all([
+    fetch('/me', { credentials: 'same-origin' }).catch(() => null),
+    fetch('/prereg')
+      .then((r) => (r.ok ? (r.json() as Promise<PreregStatus>) : null))
+      .catch(() => null),
+  ]);
   root.replaceChildren();
-  if (res?.ok) return renderMember(root, (await res.json()) as MeResponse);
+  if (res?.ok) return renderMember(root, (await res.json()) as MeResponse, prereg);
   if (res && res.status !== 401) return; // login is off on this server (or it's down): show nothing
 
   const button = el('a', 'hud-login', 'Log in with Discord');
   button.href = '/auth/login';
   root.append(button);
   if (problem) root.append(el('div', 'hud-note', problem));
+  if (prereg?.open) root.append(el('div', 'hud-prereg-note', `🎮 Log in to pre-register: +${prereg.reward} Kowens at launch · ${prereg.count} signed up`));
 }
 
-function renderMember(root: HTMLElement, me: MeResponse): void {
+/** The pre-registration line under the member card. */
+function renderPrereg(root: HTMLElement, me: MeResponse, prereg: PreregStatus | null): void {
+  if (!prereg?.open) return;
+  const box = el('div', 'hud-prereg');
+  if (me.preregistered) {
+    box.append(el('span', 'hud-prereg-done', `✅ Pre-registered: +${prereg.reward} Kowens at launch`));
+  } else {
+    const join = el('button', 'hud-prereg-join', `🎮 Pre-register · +${prereg.reward} Kowens at launch`);
+    join.addEventListener('click', async () => {
+      join.disabled = true;
+      const r = await fetch('/prereg', { method: 'POST', credentials: 'same-origin' }).catch(() => null);
+      const body = r?.ok ? ((await r.json()) as PreregResponse) : null;
+      if (body && body.result !== 'closed') {
+        box.replaceChildren(el('span', 'hud-prereg-done', `✅ Pre-registered! +${prereg.reward} Kowens at launch · ${body.count} signed up`));
+      } else {
+        join.disabled = false;
+        box.append(el('div', 'hud-note', body?.result === 'closed' ? 'Pre-registration has closed.' : "Couldn't pre-register. Try again?"));
+      }
+    });
+    box.append(join);
+  }
+  root.append(box);
+}
+
+function renderMember(root: HTMLElement, me: MeResponse, prereg: PreregStatus | null): void {
   const card = el('div', 'hud-card');
   if (me.avatar) {
     const img = el('img', 'hud-avatar');
@@ -58,4 +88,5 @@ function renderMember(root: HTMLElement, me: MeResponse): void {
   });
   card.append(out);
   root.append(card);
+  renderPrereg(root, me, prereg);
 }

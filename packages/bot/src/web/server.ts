@@ -1,10 +1,11 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import type { LeaderboardResponse, LeaderboardRow, MeResponse } from '@mikazuki/shared';
+import type { LeaderboardResponse, LeaderboardRow, MeResponse, PreregResponse, PreregStatus } from '@mikazuki/shared';
 import type { Client } from 'discord.js';
 import { config } from '../config.js';
 import { balance, rankOf, topBalances, vaultBalance } from '../credits/store.js';
 import { inventory } from '../dig/store.js';
 import { ITEM_BY_ID } from '../dig/items.js';
+import { LAUNCH_REWARD, isPreregistered, launched, preregCount, preregister } from '../prereg/prereg.js';
 import { callback, clearSessionCookie, endSessions, isMember, login, loginEnabled, logout, sessionUser } from './auth.js';
 import { roll } from './finds.js';
 
@@ -22,6 +23,8 @@ import { roll } from './finds.js';
 //
 // Web game (/play, same origin, so no CORS): Discord login (see auth.ts) and
 //   GET  /me            the logged-in member: name, avatar, Kowens, items (401 if not logged in)
+//   GET  /prereg        pre-registration status: open, count, reward (public)
+//   POST /prereg        pre-register the logged-in member (from the game's page only)
 
 const ALLOWED_ORIGINS = new Set([
   'https://tw1go.github.io',
@@ -118,11 +121,11 @@ async function me(client: Client, req: IncomingMessage, res: ServerResponse): Pr
     const item = ITEM_BY_ID.get(id)!;
     return { id, name: item.name, emoji: item.emoji, rarity: item.rarity, count };
   });
-  const body: MeResponse = { id: userId, name, avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items };
+  const body: MeResponse = { id: userId, name, avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items, preregistered: isPreregistered(userId) };
   send(res, 200, JSON.stringify(body));
 }
 
-/** Logout must come from the game's own page (SameSite=Lax already keeps other sites' POSTs cookie-less). */
+/** Logout and pre-registration must come from the game's own page (SameSite=Lax already keeps other sites' POSTs cookie-less). */
 const fromGame = (req: IncomingMessage) => !!config.publicUrl && req.headers.origin === config.publicUrl;
 
 export function startWebServer(client: Client): void {
@@ -147,6 +150,17 @@ export function startWebServer(client: Client): void {
       if (req.method === 'OPTIONS') return void res.writeHead(204).end();
       if (req.method === 'GET' && path === '/health') return send(res, 200, 'ok', 'text/plain');
       if (req.method === 'GET' && path === '/leaderboard') return send(res, 200, await leaderboard(client));
+      if (req.method === 'GET' && path === '/prereg') {
+        return send(res, 200, JSON.stringify({ open: !launched(), count: preregCount(), reward: LAUNCH_REWARD } satisfies PreregStatus));
+      }
+      if (req.method === 'POST' && path === '/prereg') {
+        if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
+        if (!fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
+        const userId = sessionUser(req);
+        if (!userId) return send(res, 401, '{"error":"not logged in"}');
+        const result = preregister(userId, 'web');
+        return send(res, 200, JSON.stringify({ result, count: preregCount() } satisfies PreregResponse));
+      }
       if (path.startsWith('/auth/') || path === '/me') {
         if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
         if (req.method === 'GET' && path === '/auth/login') return login(res);
