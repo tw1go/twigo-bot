@@ -104,11 +104,16 @@ export class TownScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setScrollFactor(0);
     frame.lineStyle(1, 0x565f89).strokeRect(x - 1, y - 1, w + 2, 10);
-    this.load.on(Phaser.Loader.Events.PROGRESS, (p: number) => {
+    const progress = (p: number) => {
       bar.clear().fillStyle(0x9ece6a).fillRect(x, y, Math.round(w * p), 8);
       text.setText(`Loading Mikazuki town… ${this.load.totalComplete}/${this.load.totalToLoad}`);
+    };
+    this.load.on(Phaser.Loader.Events.PROGRESS, progress);
+    // Only for the first load: later ones (a new outfit's layers) would update a destroyed bar.
+    this.load.once(Phaser.Loader.Events.COMPLETE, () => {
+      this.load.off(Phaser.Loader.Events.PROGRESS, progress);
+      [frame, bar, text].forEach((g) => g.destroy());
     });
-    this.load.once(Phaser.Loader.Events.COMPLETE, () => [frame, bar, text].forEach((g) => g.destroy()));
   }
 
   create(): void {
