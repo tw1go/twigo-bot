@@ -220,6 +220,13 @@ The playroom site is HTTPS, so browsers only let it call an HTTPS address. Caddy
 4. Set `WEB_PORT=8787` in `.env`, deploy, and `npm run deploy-commands` for `/claim`.
 5. Check: `curl https://twigo-bot.duckdns.org/health` → `ok`, and open `https://twigo-bot.duckdns.org/play/`.
 
+#### Pre-registration (launch reward)
+
+Members sign up with `/preregister`, the button on the panel posted by `/gift prereg-panel`, or the 🎮 button in the
+game once logged in (`POST /prereg`; `GET /prereg` gives the public count). At launch the gifter runs
+`/gift launch confirm:True`: every registrant gets 50 Kowens once (wallet, no loan garnish) and sign-ups close.
+Code: `packages/bot/src/prereg/prereg.ts`; data: the `preregistrations` table (schema v4).
+
 #### Discord login for the web game
 
 `/play` has a "Log in with Discord" button (`packages/game/src/hud.ts`) that shows the member's name, avatar,
