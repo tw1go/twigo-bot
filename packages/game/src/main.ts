@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { TownScene } from './scenes/TownScene';
+import { startHud } from './hud';
 
 new Phaser.Game({
   type: Phaser.AUTO,
@@ -10,3 +11,5 @@ new Phaser.Game({
   scale: { mode: Phaser.Scale.RESIZE, width: window.innerWidth, height: window.innerHeight },
   scene: [TownScene],
 });
+
+void startHud(document.getElementById('hud')!);
