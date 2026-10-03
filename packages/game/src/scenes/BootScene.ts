@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import type { Manifest, TownMap } from '../assets/types';
+import { type MeResult, loadMe } from '../session';
 
 // Loads the two source-of-truth files, then hands over to the town, which queues every image they name.
 export class BootScene extends Phaser.Scene {
@@ -17,6 +18,10 @@ export class BootScene extends Phaser.Scene {
     const manifest = this.cache.json.get('manifest') as Manifest;
     const town = this.cache.json.get('town') as TownMap;
     const debug = new URLSearchParams(location.search).get('debug');
-    this.scene.start(debug === 'wardrobe' ? 'wardrobe' : 'town', { manifest, town });
+    // Wait briefly for the login, so a saved look is on the player from the first frame.
+    const timeout = new Promise<null>((r) => setTimeout(() => r(null), 2500));
+    void Promise.race([loadMe(), timeout]).then((me: MeResult | null) => {
+      this.scene.start(debug === 'wardrobe' ? 'wardrobe' : 'town', { manifest, town, me });
+    });
   }
 }

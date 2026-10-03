@@ -2,7 +2,10 @@ import Phaser from 'phaser';
 import { queueImage, queueTown } from '../assets/queue';
 import type { Dir, Manifest, TownMap } from '../assets/types';
 import { Character } from '../characters/character';
-import { type Outfit, assetProblems, buildOutfit, outfitFiles, randomOutfit } from '../characters/doll';
+import { type Outfit, assetProblems, buildOutfit, outfitFiles } from '../characters/doll';
+import { saveOutfit, startingOutfit } from '../characters/looks';
+import type { MeResult } from '../session';
+import { mountWardrobe } from '../ui/wardrobe';
 import { screenToTile, tileToScreen } from '../iso';
 import { toast } from '../ui/toast';
 import { minutesNow, setTimeSource, skyAt } from '../world/daynight';
@@ -10,7 +13,6 @@ import { Culler } from '../world/cull';
 import { type Tile, WalkGrid } from '../world/grid';
 import { Ground } from '../world/ground';
 import { type Bench, type Building, WorldObjects, characterDepth } from '../world/objects';
-import { rng } from '../world/rng';
 
 // The playable town: ground, buildings, props and the player, all placed from manifest.json + maps/town.json.
 // Click (or tap) to walk; click a building to walk to its door; click a bench to sit.
@@ -72,10 +74,13 @@ export class TownScene extends Phaser.Scene {
     super('town');
   }
 
-  init(data: { manifest: Manifest; town: TownMap }): void {
+  private me: MeResult | null = null;
+
+  init(data: { manifest: Manifest; town: TownMap; me: MeResult | null }): void {
     this.M = data.manifest;
     this.map = data.town;
-    this.outfit = randomOutfit(this.M.characters, rng(outfitSeed()));
+    this.me = data.me;
+    this.outfit = startingOutfit(this.M.characters, data.me);
   }
 
   preload(): void {
@@ -107,6 +112,12 @@ export class TownScene extends Phaser.Scene {
     this.culler.update(this.cameras.main.worldView);
     this.setupInput();
     this.updateSky(true);
+    mountWardrobe(this.M.characters, {
+      current: () => ({ ...this.outfit }),
+      apply: (o) => this.setOutfit(o),
+      save: (o) => saveOutfit(o, this.me?.status === 'ok'),
+      loggedIn: () => this.me?.status === 'ok',
+    });
     exposeDebug(this);
     if (assetProblems.size) console.warn('[town] asset problems:\n' + [...assetProblems].join('\n'));
   }
@@ -370,25 +381,22 @@ export class TownScene extends Phaser.Scene {
     this.updateSky(true);
   }
 
-  debugOutfit(o: Partial<Outfit>): void {
-    const tile = this.player.tile;
-    const next = { ...this.outfit, ...o };
-    const missing = outfitFiles(this.M.characters, next).filter((f) => !this.textures.exists(f));
-    const done = () => {
-      buildOutfit(this, this.M.characters, next);
-      this.outfit = next;
-      this.player.destroy();
-      const fresh = new Character(this, this.M, next, tile);
-      fresh.depthFn = this.player.depthFn;
-      fresh.onArrive = this.player.onArrive;
-      fresh.onSpawn = this.player.onSpawn;
-      this.player = fresh;
-      this.updateSky(true);
-    };
-    if (!missing.length) return done();
-    for (const f of missing) queueImage(this.load, this.textures, f);
-    this.load.once(Phaser.Loader.Events.COMPLETE, done);
-    this.load.start();
+  /** Dress the player in a look, loading any layers it needs first. */
+  setOutfit(o: Outfit): Promise<void> {
+    const missing = outfitFiles(this.M.characters, o).filter((f) => !this.textures.exists(f));
+    return new Promise((resolve) => {
+      const done = () => {
+        buildOutfit(this, this.M.characters, o);
+        this.outfit = o;
+        this.player.setOutfit(o);
+        if (this.tint >= 0) this.player.sprite.setTint(this.tint);
+        resolve();
+      };
+      if (!missing.length) return done();
+      for (const f of missing) queueImage(this.load, this.textures, f);
+      this.load.once(Phaser.Loader.Events.COMPLETE, done);
+      this.load.start();
+    });
   }
 
   get debugPlayer(): Character {
@@ -403,28 +411,13 @@ export class TownScene extends Phaser.Scene {
 /** True while the user is typing into a page input, so movement keys stay with the input. */
 function typing(): boolean {
   const el = document.activeElement as HTMLElement | null;
-  return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
+  return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
 }
 
 /** Whole-number zoom that shows a comfortable slice of town for the window size. */
 function defaultZoomIndex(w: number, h: number): number {
   const z = Math.max(1, Math.min(4, Math.floor(Math.min(w / 480, h / 360))));
   return ZOOMS.indexOf(z);
-}
-
-/** A stable random look per browser until outfits are saved on the server. */
-function outfitSeed(): number {
-  const param = new URLSearchParams(location.search).get('outfit');
-  if (param) return Number(param) >>> 0;
-  try {
-    const saved = localStorage.getItem('mk_outfit_seed');
-    if (saved) return Number(saved) >>> 0;
-    const seed = Math.floor(Math.random() * 2 ** 31);
-    localStorage.setItem('mk_outfit_seed', String(seed));
-    return seed;
-  } catch {
-    return Math.floor(Math.random() * 2 ** 31);
-  }
 }
 
 /** ?time=HH:MM pins the clock (testing the night cycle). */
@@ -451,7 +444,7 @@ function exposeDebug(scene: TownScene): void {
       if (b) scene.goToBuilding(b);
     },
     time: (hhmm: string | null) => scene.debugSetTime(hhmm),
-    outfit: (o: Partial<Outfit>) => scene.debugOutfit(o),
+    outfit: (o: Partial<Outfit>) => scene.setOutfit({ ...scene.debugState().outfit, ...o }),
     emote: (a: 'wave' | 'cheer') => scene.debugPlayer.emote(a),
     /** Fixed view for screenshots: zoom and centre on a world point (follow off), or follow again. */
     view: (zoom?: number, x?: number, y?: number) => {

@@ -1,4 +1,5 @@
 import type { MeResponse, PreregResponse, PreregStatus } from '@mikazuki/shared';
+import { loadMe } from './session';
 
 // The login corner of the web game. The room API is on the same origin (the game is served at /play/), so the
 // session cookie rides along with plain relative requests. Built with DOM nodes and textContent only: names come
@@ -24,15 +25,15 @@ export async function startHud(root: HTMLElement): Promise<void> {
   const problem = PROBLEMS[params.get('login') ?? ''];
   if (params.has('login')) history.replaceState(null, '', location.pathname);
 
-  const [res, prereg] = await Promise.all([
-    fetch('/me', { credentials: 'same-origin' }).catch(() => null),
+  const [me, prereg] = await Promise.all([
+    loadMe(),
     fetch('/prereg')
       .then((r) => (r.ok ? (r.json() as Promise<PreregStatus>) : null))
       .catch(() => null),
   ]);
   root.replaceChildren();
-  if (res?.ok) return renderMember(root, (await res.json()) as MeResponse, prereg);
-  if (res && res.status !== 401) return; // login is off on this server (or it's down): show nothing
+  if (me.status === 'ok') return renderMember(root, me.me, prereg);
+  if (me.status === 'off') return; // login is off on this server (or it's down): show nothing
 
   const button = el('a', 'hud-login', 'Log in with Discord');
   button.href = '/auth/login';

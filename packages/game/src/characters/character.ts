@@ -43,7 +43,7 @@ export class Character {
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly M: Manifest,
-    private readonly outfit: Outfit,
+    private outfit: Outfit,
     start: Tile,
   ) {
     const C: CharacterDefs = M.characters;
@@ -182,6 +182,14 @@ export class Character {
     this.stepFrom = this.tile;
     this.path.push(next);
     return true;
+  }
+
+  /** Switch to another (already built) look, keeping position, facing and animation. */
+  setOutfit(o: Outfit): void {
+    this.outfit = o;
+    const anim = this.anim;
+    this.sprite.anims.stop();
+    this.play(anim);
   }
 
   /** Drops the rest of a click path, keeping only the step in progress (a movement key takes over). */
