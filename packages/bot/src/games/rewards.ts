@@ -1,4 +1,4 @@
-import { kvLoad, kvSave } from '../db/db.js';
+import { db } from '../db/db.js';
 
 // Credit rewards (Crystal of Atlan passes). Redeeming deducts credits and pings the reward owner, who delivers it manually.
 // Priced for an active member (~16 Kowens/day: daily claim + ~2h voice + some patrols + nightly Mine Wars),
@@ -34,17 +34,9 @@ export const BAG_SLOTS = 8;
 export const FENCE_DAYS = 1.5; // nerfed from 3 on 2026-09-30; existing fences kept their end times
 export const FENCE_MAX_DAYS = 7;
 
-interface Redemption {
-  userId: string;
-  reward: RewardId;
-  cost: number;
-  at: string; // ISO timestamp
-}
-
-const KEY = 'redemptions.json'; // kv key (its old file name)
-const log: Redemption[] = kvLoad(KEY, []);
+// Every redemption is appended to the `redemptions` table.
+const insert = db.prepare('INSERT INTO redemptions (user_id, reward, cost, at) VALUES (?, ?, ?, ?)');
 
 export function recordRedemption(userId: string, reward: RewardId, cost: number): void {
-  log.push({ userId, reward, cost, at: new Date().toISOString() });
-  kvSave(KEY, log);
+  insert.run(userId, reward, cost, new Date().toISOString());
 }

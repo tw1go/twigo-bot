@@ -1,4 +1,5 @@
 import { kvLoad, kvSave } from '../db/db.js';
+import { tableSync } from '../db/sync.js';
 import { MessageType, type Client, type Guild, type Message } from 'discord.js';
 import { config } from '../config.js';
 import { add } from '../credits/store.js';
@@ -19,11 +20,17 @@ interface BoostState {
   boosters: Record<string, Booster>;
 }
 
-const KEY = 'boosts.json'; // kv key (its old file name)
-let state: BoostState = kvLoad(KEY, { initialized: false, boosters: {} });
+// Boosters live in the `boosters` table; whether existing boosters were counted is a kv flag.
+const INIT_KEY = 'boosts-initialized';
+const table = tableSync<{ user_id: string; count: number; since: string }>('boosters', ['user_id'], ['count', 'since']);
+const state: BoostState = {
+  initialized: kvLoad(INIT_KEY, false),
+  boosters: Object.fromEntries(table.load().map((r) => [r.user_id, { count: r.count, since: r.since }])),
+};
 
 function save(): void {
-  kvSave(KEY, state);
+  table.save(Object.entries(state.boosters).map(([user_id, b]) => ({ user_id, count: b.count, since: b.since })));
+  if (state.initialized) kvSave(INIT_KEY, true);
 }
 
 const guildOf = (client: Client) => client.guilds.cache.get(config.guildId ?? '') ?? client.guilds.cache.first();

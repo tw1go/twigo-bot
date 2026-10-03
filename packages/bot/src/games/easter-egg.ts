@@ -1,4 +1,4 @@
-import { kvLoad, kvSave } from '../db/db.js';
+import { tableSync } from '../db/sync.js';
 import { markFound } from './found.js';
 import type { Client, MessageReaction, PartialMessageReaction, PartialUser, User } from 'discord.js';
 import { config } from '../config.js';
@@ -9,11 +9,13 @@ import { kowen } from '../kowens.js';
 // is pinged), without saying where the egg is.
 export const EGG_REWARD = 5;
 
-const KEY = 'easter-eggs.json'; // kv key (its old file name)
-let found: Record<string, string[]> = kvLoad(KEY, {}); // messageId -> userIds
+// Finders live in `easter_egg_finds`.
+const table = tableSync<{ message_id: string; user_id: string }>('easter_egg_finds', ['message_id', 'user_id'], []);
+const found: Record<string, string[]> = {}; // messageId -> userIds
+for (const r of table.load()) (found[r.message_id] ??= []).push(r.user_id);
 
 function save(): void {
-  kvSave(KEY, found);
+  table.save(Object.entries(found).flatMap(([message_id, ids]) => ids.map((user_id) => ({ message_id, user_id }))));
 }
 
 async function reward(user: User): Promise<void> {

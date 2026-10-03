@@ -1,4 +1,4 @@
-import { kvLoad, kvSave } from '../db/db.js';
+import { tableSync } from '../db/sync.js';
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -22,11 +22,13 @@ export const MW_SERVER = 'Institute Walkway 07';
 const PREFIX = 'mwpay:';
 const SESSION_MS = 14 * 60_000; // Discord interaction tokens last 15 minutes
 
-const KEY = 'minewars-payouts.json'; // kv key (its old file name)
-let ledger: Record<string, Record<string, number>> = kvLoad(KEY, {});
+// The ledger lives in `minewars_payouts` (one row per member per night).
+const table = tableSync<{ night: string; user_id: string; amount: number }>('minewars_payouts', ['night', 'user_id'], ['amount']);
+const ledger: Record<string, Record<string, number>> = {};
+for (const r of table.load()) (ledger[r.night] ??= {})[r.user_id] = r.amount;
 
 function saveLedger(): void {
-  kvSave(KEY, ledger);
+  table.save(Object.entries(ledger).flatMap(([night, paid]) => Object.entries(paid).map(([user_id, amount]) => ({ night, user_id, amount }))));
 }
 
 /** The date (YYYY-MM-DD, config.timezone) of the most recent 9 PM Mine Wars. */

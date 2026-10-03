@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { markFound } from './found.js';
-import { kvLoad, kvSave } from '../db/db.js';
+import { tableSync } from '../db/sync.js';
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -19,17 +19,25 @@ import { kowen } from '../kowens.js';
 import { today } from '../time.js';
 import { activePatrol } from './patrol.js';
 
-// 🤫 Small Easter eggs that aren't announced anywhere. Counters live in the 'secrets.json' kv document.
+// 🤫 Small Easter eggs that aren't announced anywhere. Counters live in the `secret_progress` table.
 
 interface State {
   praiseBot: Record<string, number>; // lifetime /praise-the-bot count
   praiseRewarded: string[];
   salute: Record<string, string>; // userId -> YYYY-MM-DD of their last patrol salute reward
 }
-const KEY = 'secrets.json'; // kv key (its old file name)
-const state: State = kvLoad(KEY, { praiseBot: {}, praiseRewarded: [], salute: {} });
+type ProgressRow = { user_id: string; praise_bot: number | null; praise_rewarded: number | null; salute_day: string | null };
+const table = tableSync<ProgressRow>('secret_progress', ['user_id'], ['praise_bot', 'praise_rewarded', 'salute_day']);
+const state: State = { praiseBot: {}, praiseRewarded: [], salute: {} };
+for (const r of table.load()) {
+  if (r.praise_bot !== null) state.praiseBot[r.user_id] = r.praise_bot;
+  if (r.praise_rewarded) state.praiseRewarded.push(r.user_id);
+  if (r.salute_day !== null) state.salute[r.user_id] = r.salute_day;
+}
 function save(): void {
-  kvSave(KEY, state);
+  const ids = new Set([...Object.keys(state.praiseBot), ...state.praiseRewarded, ...Object.keys(state.salute)]);
+  table.save([...ids].map((id): ProgressRow => ({ user_id: id, praise_bot: state.praiseBot[id] ?? null,
+    praise_rewarded: state.praiseRewarded.includes(id) ? 1 : null, salute_day: state.salute[id] ?? null })));
 }
 
 async function announce(client: Client, content: string, userId: string): Promise<void> {

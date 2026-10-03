@@ -1,4 +1,4 @@
-import { kvLoad, kvSave } from '../db/db.js';
+import { tableSync } from '../db/sync.js';
 import { MessageFlags, type ChatInputCommandInteraction, type ButtonInteraction, type Client } from 'discord.js';
 import { config } from '../config.js';
 import { balance } from '../credits/store.js';
@@ -23,11 +23,14 @@ export const bailFor = (userId: string) => Math.min(MAX_BAIL, Math.max(MIN_BAIL,
 /** False if they're not jailed, or were jailed by an admin. */
 export const canBail = (userId: string) => !!jailedUntil(userId) && !jailed[userId]?.noBail;
 
-const KEY = 'jail.json'; // kv key (its old file name)
-let jailed: Record<string, JailEntry> = kvLoad(KEY, {});
+// Sentences live in the `jail` table.
+const table = tableSync<{ user_id: string; until: number; reason: string; no_bail: number | null }>('jail', ['user_id'], ['until', 'reason', 'no_bail']);
+let jailed: Record<string, JailEntry> = Object.fromEntries(
+  table.load().map((r): [string, JailEntry] => [r.user_id, { until: r.until, reason: r.reason, ...(r.no_bail ? { noBail: true } : {}) }]),
+);
 
 function save(): void {
-  kvSave(KEY, jailed);
+  table.save(Object.entries(jailed).map(([user_id, e]) => ({ user_id, until: e.until, reason: e.reason, no_bail: e.noBail ? 1 : null })));
 }
 
 let client: Client | undefined;

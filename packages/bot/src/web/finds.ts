@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import type { FindResult } from '@mikazuki/shared';
-import { kvLoad, kvSave } from '../db/db.js';
+import { saveTogether, tableSync } from '../db/sync.js';
 import { today } from '../time.js';
 
 // 🪙 Kowens found in twigo's room (tw1go.github.io).
@@ -49,11 +49,19 @@ interface State {
   claims: Record<string, { day: string; count: number }>;
 }
 
-const KEY = 'room-finds.json'; // kv key (its old file name)
-const state: State = kvLoad(KEY, { codes: {}, claims: {} });
+// Codes live in `room_find_codes`, daily claim counts in `room_find_claims`.
+const codeTable = tableSync<{ code: string; character: string; expires: number }>('room_find_codes', ['code'], ['character', 'expires']);
+const claimTable = tableSync<{ user_id: string; day: string; count: number }>('room_find_claims', ['user_id'], ['day', 'count']);
+const state: State = {
+  codes: Object.fromEntries(codeTable.load().map((r) => [r.code, { character: r.character, expires: r.expires }])),
+  claims: Object.fromEntries(claimTable.load().map((r) => [r.user_id, { day: r.day, count: r.count }])),
+};
 
 function save(): void {
-  kvSave(KEY, state);
+  saveTogether(
+    [codeTable, Object.entries(state.codes).map(([code, c]) => ({ code, character: c.character, expires: c.expires }))],
+    [claimTable, Object.entries(state.claims).map(([user_id, c]) => ({ user_id, day: c.day, count: c.count }))],
+  );
 }
 
 // Kept in memory only: losing these on a restart just resets the limits.

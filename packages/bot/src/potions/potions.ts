@@ -1,4 +1,4 @@
-import { kvLoad, kvSave } from '../db/db.js';
+import { saveTogether, tableSync } from '../db/sync.js';
 import { hasFound, type EggKey } from '../games/found.js';
 
 // 🧪 Potions: bought in /redeem, used with /potion use. Counts and active effects live in data/potions.json.
@@ -34,10 +34,27 @@ interface UserPotions {
   swerteDigs?: number;
   hintsHeard?: number[];
 }
-const KEY = 'potions.json'; // kv key (its old file name)
-const state: Record<string, UserPotions> = kvLoad(KEY, {});
+// Potions owned live in `potion_stock`, active effects and heard hints in `potion_effects`.
+type EffectRow = { user_id: string; tago_until: number | null; swerte_digs: number | null; hints_heard: string | null };
+const stockTable = tableSync<{ user_id: string; potion_id: string; count: number }>('potion_stock', ['user_id', 'potion_id'], ['count']);
+const effectTable = tableSync<EffectRow>('potion_effects', ['user_id'], ['tago_until', 'swerte_digs', 'hints_heard']);
+const state: Record<string, UserPotions> = {};
+for (const r of stockTable.load()) (state[r.user_id] ??= { have: {} }).have[r.potion_id as PotionId] = r.count;
+for (const r of effectTable.load()) {
+  const u = (state[r.user_id] ??= { have: {} });
+  if (r.tago_until !== null) u.tagoUntil = r.tago_until;
+  if (r.swerte_digs !== null) u.swerteDigs = r.swerte_digs;
+  if (r.hints_heard !== null) u.hintsHeard = JSON.parse(r.hints_heard) as number[];
+}
 function save(): void {
-  kvSave(KEY, state);
+  const all = Object.entries(state);
+  saveTogether(
+    [stockTable, all.flatMap(([user_id, u]) => Object.entries(u.have).filter(([, n]) => (n ?? 0) > 0).map(([potion_id, count]) => ({ user_id, potion_id, count })))],
+    [effectTable, all
+      .filter(([, u]) => u.tagoUntil !== undefined || u.swerteDigs !== undefined || u.hintsHeard !== undefined)
+      .map(([user_id, u]): EffectRow => ({ user_id, tago_until: u.tagoUntil ?? null, swerte_digs: u.swerteDigs ?? null,
+        hints_heard: u.hintsHeard ? JSON.stringify(u.hintsHeard) : null }))],
+  );
 }
 const of = (userId: string) => (state[userId] ??= { have: {} });
 

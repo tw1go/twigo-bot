@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { kvLoad, kvSave } from '../db/db.js';
+import { tableSync } from '../db/sync.js';
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -32,10 +32,17 @@ interface Quest {
   created: number;
 }
 
-const KEY = 'quests.json'; // kv key (its old file name)
-const quests: Record<string, Quest> = kvLoad(KEY, {});
+// Quests live in the `quests` table; save() writes just the rows that changed (db/sync.ts).
+type QuestRow = { id: string; requester: string; task: string; reward: number; status: Status; accepted_by: string | null; channel_id: string; message_id: string | null; created: number };
+const table = tableSync<QuestRow>('quests', ['id'], ['requester', 'task', 'reward', 'status', 'accepted_by', 'channel_id', 'message_id', 'created']);
+const quests: Record<string, Quest> = Object.fromEntries(
+  table.load().map((r): [string, Quest] => [r.id, { id: r.id, requester: r.requester, task: r.task, reward: r.reward, status: r.status,
+    ...(r.accepted_by !== null && { acceptedBy: r.accepted_by }), channelId: r.channel_id,
+    ...(r.message_id !== null && { messageId: r.message_id }), created: r.created }]),
+);
 function save(): void {
-  kvSave(KEY, quests);
+  table.save(Object.values(quests).map((q) => ({ id: q.id, requester: q.requester, task: q.task, reward: q.reward, status: q.status,
+    accepted_by: q.acceptedBy ?? null, channel_id: q.channelId, message_id: q.messageId ?? null, created: q.created })));
 }
 
 /** Quests this member posted that are still open or in progress. */

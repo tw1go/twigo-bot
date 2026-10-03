@@ -1,4 +1,5 @@
 import { kvLoad, kvSave } from '../db/db.js';
+import { tableSync } from '../db/sync.js';
 import { markFound } from './found.js';
 import type { Client } from 'discord.js';
 import { Cron } from 'croner';
@@ -16,11 +17,12 @@ export const DRAW_CRON = '0 10,22 * * *';
 export const nextDraw = () => new Cron(DRAW_CRON, { timezone: config.timezone }).nextRun()!;
 const UNDERDOG_BONUS = 10;
 
-const KEY = 'jackpot.json'; // kv key (its old file name)
-let tickets: Record<string, number> = kvLoad(KEY, {});
+// Tickets for the next draw live in `jackpot_tickets`; the last draw is a kv document.
+const table = tableSync<{ user_id: string; tickets: number }>('jackpot_tickets', ['user_id'], ['tickets']);
+let tickets: Record<string, number> = Object.fromEntries(table.load().map((r) => [r.user_id, r.tickets]));
 
 function save(): void {
-  kvSave(KEY, tickets);
+  table.save(Object.entries(tickets).filter(([, n]) => n > 0).map(([user_id, n]) => ({ user_id, tickets: n })));
 }
 
 export const ticketsOf = (userId: string) => tickets[userId] ?? 0;
