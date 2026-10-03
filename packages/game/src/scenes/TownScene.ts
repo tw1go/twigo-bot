@@ -31,6 +31,15 @@ const DOOR_LABELS: Record<string, string> = {
   'jackpot-booth': '🎟️ Jackpot booth',
 };
 
+/** Keyboard walking: screen direction → grid step (col runs screen right-down, row runs screen left-down). */
+const DIR_STEP: Record<Dir, [number, number]> = {
+  n: [-1, -1], s: [1, 1], e: [1, -1], w: [-1, 1],
+  ne: [0, -1], nw: [-1, 0], se: [1, 0], sw: [0, 1],
+};
+const DIR_FOR_KEYS: Record<string, Dir> = {
+  '0,-1': 'n', '0,1': 's', '1,0': 'e', '-1,0': 'w', '1,-1': 'ne', '-1,-1': 'nw', '1,1': 'se', '-1,1': 'sw',
+};
+
 /** The tile a player stands on to sit on a bench facing `faces`. */
 const benchApproach = (b: Bench): Tile =>
   ({ se: { col: b.col + 1, row: b.row }, sw: { col: b.col, row: b.row + 1 }, ne: { col: b.col, row: b.row - 1 }, nw: { col: b.col - 1, row: b.row } })[
@@ -53,6 +62,9 @@ export class TownScene extends Phaser.Scene {
   private nextSkyCheck = 0;
   private culler!: Culler;
   private lampsOn = false;
+  private keys!: Record<'up' | 'down' | 'left' | 'right' | 'w' | 'a' | 's' | 'd' | 'e' | 'space', Phaser.Input.Keyboard.Key>;
+  /** Whether the current walk is keyboard-driven (doors then wait for E instead of entering on arrival). */
+  private byKeys = false;
   /** The camera glides after the player (off while debugging a fixed view). */
   follow = true;
 
@@ -85,6 +97,7 @@ export class TownScene extends Phaser.Scene {
     this.player = new Character(this, this.M, this.outfit, { col: sc, row: sr });
     this.player.depthFn = (c, r, d, b) => characterDepth(this.objects, c, r, d, b);
     this.player.onArrive = (tile) => this.arrived(tile);
+    this.player.nextStep = () => this.keyStep();
     this.player.onSpawn = (obj) => this.tint >= 0 && obj.setTint(this.tint);
 
     this.setupCamera();
@@ -157,6 +170,24 @@ export class TownScene extends Phaser.Scene {
       this.goToTile({ col, row });
     });
 
+    // WASD / arrow keys walk in screen directions; E or Space enters a door or sits on a bench.
+    // No key capture, so typing in page inputs (chat, later) is never swallowed.
+    const kb = this.input.keyboard!;
+    const K = Phaser.Input.Keyboard.KeyCodes;
+    this.keys = {
+      up: kb.addKey(K.UP, false), down: kb.addKey(K.DOWN, false), left: kb.addKey(K.LEFT, false), right: kb.addKey(K.RIGHT, false),
+      w: kb.addKey(K.W, false), a: kb.addKey(K.A, false), s: kb.addKey(K.S, false), d: kb.addKey(K.D, false),
+      e: kb.addKey(K.E, false), space: kb.addKey(K.SPACE, false),
+    };
+    kb.on('keydown', (e: KeyboardEvent) => {
+      if (typing()) return;
+      if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(e.key.toLowerCase())) {
+        this.pending = null;
+        this.player.cancelPath(); // the keys take over from a click path
+      }
+      if (e.key.toLowerCase() === 'e' || e.key === ' ') this.interact();
+    });
+
     // Wheel zooms in whole steps only (1×–4×), keeping pixels crisp.
     this.input.on(Phaser.Input.Events.POINTER_WHEEL, (_p: unknown, _o: unknown, _dx: number, dy: number) => {
       this.zoomIndex = Phaser.Math.Clamp(this.zoomIndex + (dy < 0 ? 1 : -1), 0, ZOOMS.length - 1);
@@ -164,9 +195,56 @@ export class TownScene extends Phaser.Scene {
     });
   }
 
+  /** The screen direction held on the keyboard, if any. */
+  private heldDir(): Dir | null {
+    if (typing()) return null;
+    const k = this.keys;
+    const h = (k.d.isDown || k.right.isDown ? 1 : 0) - (k.a.isDown || k.left.isDown ? 1 : 0);
+    const v = (k.s.isDown || k.down.isDown ? 1 : 0) - (k.w.isDown || k.up.isDown ? 1 : 0);
+    return DIR_FOR_KEYS[`${h},${v}`] ?? null;
+  }
+
+  /**
+   * Next tile for keyboard walking. Up/down/left/right are diagonal grid steps: when one is blocked, slide along
+   * the wall through either of its two halves. Pressing into a wall just turns the player.
+   */
+  private keyStep(): Tile | null {
+    const dir = this.heldDir();
+    if (!dir) return null;
+    const from = this.player.tile;
+    const [dc, dr] = DIR_STEP[dir];
+    const tries: [number, number][] = [[dc, dr]];
+    if (dc && dr) tries.push([dc, 0], [0, dr]);
+    for (const [c, r] of tries) {
+      const to = { col: from.col + c, row: from.row + r };
+      if (this.grid.canStep(from, to)) {
+        if (!this.byKeys) this.setBuildingAlert(null);
+        this.byKeys = true;
+        this.pending = null;
+        return to;
+      }
+    }
+    this.player.face(dir);
+    return null;
+  }
+
+  /** E / Space: enter the door you're standing at, or sit on the bench you're in front of. */
+  private interact(): void {
+    if (this.player.isSitting) return this.player.standUp();
+    const t = this.player.tile;
+    const building = this.doorAt.get(`${t.col},${t.row}`);
+    if (building) return this.enter(building);
+    const bench = this.objects.benches.find((b) => {
+      const spot = benchApproach(b);
+      return spot.col === t.col && spot.row === t.row;
+    });
+    if (bench) this.player.sit({ col: bench.col, row: bench.row }, bench.faces, bench.depth);
+  }
+
   /** Walk to a tile; a bench means sit on it; a blocked tile means the nearest reachable one. */
   goToTile(target: Tile): void {
     this.pending = null;
+    this.byKeys = false;
     const bench = this.objects.benches.find((b) => b.col === target.col && b.row === target.row);
     if (bench) {
       const spot = benchApproach(bench);
@@ -181,6 +259,7 @@ export class TownScene extends Phaser.Scene {
   /** Walk to the closest of a building's door tiles. */
   goToBuilding(b: Building): void {
     this.pending = null;
+    this.byKeys = false;
     const from = this.player.tile;
     const paths = b.doors.map(([col, row]) => this.grid.findPath(from, { col, row })).filter((p): p is Tile[] => !!p);
     paths.sort((a, z) => a.length - z.length);
@@ -206,7 +285,10 @@ export class TownScene extends Phaser.Scene {
     }
     const building = this.doorAt.get(`${tile.col},${tile.row}`);
     this.setBuildingAlert(building ?? null);
-    if (building) this.enter(building);
+    if (!building) return;
+    if (!this.byKeys) return this.enter(building); // clicked the building: go in
+    // Walked here with the keys: wait for E, so walking past a door never throws you inside.
+    toast(`${DOOR_LABELS[building.id] ?? "🏠 twigo's room"} · press E to enter`);
   }
 
   /** Door hook: twigo's house goes back to twigo's room; the others are stubs for now. */
@@ -316,6 +398,12 @@ export class TownScene extends Phaser.Scene {
   get debugWorld() {
     return { objects: this.objects, grid: this.grid, map: this.map, tileToScreen };
   }
+}
+
+/** True while the user is typing into a page input, so movement keys stay with the input. */
+function typing(): boolean {
+  const el = document.activeElement as HTMLElement | null;
+  return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
 }
 
 /** Whole-number zoom that shows a comfortable slice of town for the window size. */

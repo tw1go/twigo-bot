@@ -37,6 +37,8 @@ export class Character {
   depthFn: ((col: number, row: number, depth: number, bounds: Phaser.Geom.Rectangle) => number) | null = null;
   /** Called once the character stops on its destination tile. */
   onArrive: ((tile: Tile) => void) | null = null;
+  /** Supplies the next tile while a movement key is held (keyboard walking), or null to stop. */
+  nextStep: (() => Tile | null) | null = null;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -80,7 +82,10 @@ export class Character {
     this.col = tile.col + 0.5;
     this.row = tile.row + 0.5;
     this.dir = faces;
-    this.sittingAt = { depth: benchDepth + CHARACTER_BIAS };
+    // Facing the camera (se/sw), the sitter is in front of the bench. Facing away (ne/nw), the backrest is
+    // nearer the camera than the sitter, so the bench draws over them.
+    const away = faces === 'ne' || faces === 'nw';
+    this.sittingAt = { depth: benchDepth + (away ? -CHARACTER_BIAS : CHARACTER_BIAS) };
     this.play('sit');
     this.sync();
   }
@@ -128,9 +133,10 @@ export class Character {
   }
 
   update(deltaMs: number): void {
+    if (!this.path.length) this.takeNextStep();
     if (this.path.length) {
       let budget = (SPEED * deltaMs) / 1000;
-      while (budget > 0 && this.path.length) {
+      while (budget > 0 && (this.path.length || this.takeNextStep())) {
         const next = this.path[0];
         const tx = next.col + 0.5;
         const ty = next.row + 0.5;
@@ -166,6 +172,28 @@ export class Character {
     if (!frame || !first) return;
     if (frame.index !== this.lastWalkFrame && frame === first) this.dust();
     this.lastWalkFrame = frame.index;
+  }
+
+  /** Keyboard walking: queue the next tile from the held direction (at a tile centre, so steps chain smoothly). */
+  private takeNextStep(): boolean {
+    const next = this.nextStep?.();
+    if (!next) return false;
+    this.standUp();
+    this.stepFrom = this.tile;
+    this.path.push(next);
+    return true;
+  }
+
+  /** Drops the rest of a click path, keeping only the step in progress (a movement key takes over). */
+  cancelPath(): void {
+    this.path = this.path.slice(0, 1);
+  }
+
+  /** Turn on the spot (a movement key pressed against a wall). */
+  face(dir: Dir): void {
+    if (this.path.length || this.sittingAt || this.dir === dir) return;
+    this.dir = dir;
+    this.play('idle');
   }
 
   private arrive(): void {
