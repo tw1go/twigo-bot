@@ -88,6 +88,27 @@ export class TownScene extends Phaser.Scene {
     queueTown(this.load, this.textures, this.M, this.map);
     for (const f of outfitFiles(this.M.characters, this.outfit)) queueImage(this.load, this.textures, f);
     this.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR, (file: Phaser.Loader.File) => assetProblems.add(`failed to load ${file.src}`));
+    this.showLoading();
+  }
+
+  /** A loading bar while the town's art downloads (the first visit fetches a few hundred small images). */
+  private showLoading(): void {
+    const { width, height } = this.scale;
+    const w = Math.min(320, width - 64);
+    const x = Math.round((width - w) / 2);
+    const y = Math.round(height / 2);
+    const frame = this.add.graphics().setScrollFactor(0);
+    const bar = this.add.graphics().setScrollFactor(0);
+    const text = this.add
+      .text(width / 2, y - 18, 'Loading Mikazuki town…', { fontFamily: 'system-ui, sans-serif', fontSize: '14px', color: '#c0caf5' })
+      .setOrigin(0.5)
+      .setScrollFactor(0);
+    frame.lineStyle(1, 0x565f89).strokeRect(x - 1, y - 1, w + 2, 10);
+    this.load.on(Phaser.Loader.Events.PROGRESS, (p: number) => {
+      bar.clear().fillStyle(0x9ece6a).fillRect(x, y, Math.round(w * p), 8);
+      text.setText(`Loading Mikazuki town… ${this.load.totalComplete}/${this.load.totalToLoad}`);
+    });
+    this.load.once(Phaser.Loader.Events.COMPLETE, () => [frame, bar, text].forEach((g) => g.destroy()));
   }
 
   create(): void {

@@ -7,6 +7,7 @@ import { previewEnabled, showComingSoon } from './preview';
 
 // The town is held behind ?preview until launch (see preview.ts); everyone else gets the coming-soon page.
 // (?debug tools only work together with preview.)
+document.getElementById('boot-msg')?.remove(); // shown by the page itself until this script arrives
 if (previewEnabled()) startGame();
 else showComingSoon(document.getElementById('game')!);
 
