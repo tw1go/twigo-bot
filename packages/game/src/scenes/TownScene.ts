@@ -8,6 +8,7 @@ import type { MeResult } from '../session';
 import { cursor } from '../ui/cursor';
 import { BuildingLabel } from '../ui/labels';
 import { TownLink } from '../net/town';
+import { showElsewhere } from '../ui/elsewhere';
 import { OtherPlayers } from '../world/others';
 import { fakeLogin } from '../session';
 import { screenToTile, tileToScreen } from '../iso';
@@ -215,7 +216,7 @@ export class TownScene extends Phaser.Scene {
     };
     link.onTakenOver = () => {
       this.others.clear();
-      toast('The town is open in another tab, so this one is offline.', 6000);
+      showElsewhere(() => link.reconnect());
     };
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => link.close());
   }

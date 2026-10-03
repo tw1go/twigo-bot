@@ -2,7 +2,7 @@ import type { TownClientMessage, TownServerMessage } from '@mikazuki/shared';
 import { fakeLogin, fakeName } from '../session';
 
 // The live town connection (WebSocket /ws; the bot side is packages/bot/src/web/town.ts). Reconnects after a drop
-// (1 s, 2 s, 4 s … up to 30 s), except when the same member opened the town in another tab.
+// (1 s, 2 s, 4 s … up to 30 s), except when the same member opened the town in another tab (see reconnect).
 
 const OPENED_ELSEWHERE = 4000;
 
@@ -20,6 +20,13 @@ export class TownLink {
 
   send(m: TownClientMessage): void {
     if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(m));
+  }
+
+  /** Connects again after another tab took over (which then takes over from that one). */
+  reconnect(): void {
+    this.stopped = false;
+    this.retry = 0;
+    this.connect();
   }
 
   close(): void {
