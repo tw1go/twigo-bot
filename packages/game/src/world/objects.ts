@@ -1,11 +1,17 @@
 import Phaser from 'phaser';
-import type { Dir, Manifest, MapObject, PropDef, TownMap, Vec2 } from '../assets/types';
+import type { BuildingDef, Dir, Manifest, MapObject, PropDef, TownMap, Vec2 } from '../assets/types';
+import { assetProblems } from '../characters/doll';
 import { tileToScreen } from '../iso';
-import { GLOW_DEPTH, GROUND_SHADOW_DEPTH, frontDepth } from './depth';
+import { CHARACTER_BIAS, GLOW_DEPTH, GROUND_SHADOW_DEPTH, frontDepth } from './depth';
 
 // Everything that stands on the ground: buildings, props, trees (with their ground shadow and tufts), the fence,
 // lamps (+ night glow) and looping effects. Each object's manifest anchor sits on the top corner of its tile
 // (col, row); flipped objects mirror the anchor (x → width − x).
+//
+// Depth: the front corner of the footprint, (col + cols + row + rows) × 8. That alone goes wrong beside big
+// footprints (someone standing at a 3×3 building's SW wall has a smaller front corner than the building), so
+// anything overlapping a big object on screen is also checked with the footprint rule: entirely past its far
+// col/row → in front; entirely before its col/row → behind. See BigObject / sortAgainstBig.
 
 /** Buildings that get a looping coin sparkle. */
 const SPARKLE_BUILDINGS = ['jackpot-booth', 'bank', 'rewards-shop'];
@@ -13,7 +19,7 @@ const SPARKLE_BUILDINGS = ['jackpot-booth', 'bank', 'rewards-shop'];
 export interface Building {
   id: string;
   obj: MapObject;
-  sprite: Phaser.GameObjects.Image;
+  sprite: Phaser.GameObjects.Image; // the clickable image (the arena's front layer)
   depth: number;
   doors: Vec2[]; // [col, row]
 }
@@ -30,19 +36,26 @@ export interface Lamp {
   glow: Phaser.GameObjects.Image;
 }
 
-/** A walkable tile strictly inside a building's footprint (the arena floor): characters there draw over it. */
-export interface Interior {
-  building: Building;
-  depth: number;
+/** A footprint bigger than one tile, for the in-front/behind check. */
+interface BigObject {
+  col: number;
+  row: number;
+  cols: number;
+  rows: number;
+  back: number; // depth of its rear-most layer (= front for single images)
+  front: number; // depth of its front-most layer
+  bounds: Phaser.Geom.Rectangle;
 }
 
 export class WorldObjects {
   /** Every world sprite except lamp glows, for the day/night tint. */
   readonly sprites: Phaser.GameObjects.Image[] = [];
+  /** Sprites that can be hidden while off screen (everything except glows). */
+  readonly cullable: Phaser.GameObjects.Image[] = [];
   readonly buildings: Building[] = [];
   readonly benches: Bench[] = [];
   readonly lamps: Lamp[] = [];
-  private readonly interiors = new Map<string, Interior>();
+  private readonly big: BigObject[] = [];
   private lampsOn = false;
 
   constructor(
@@ -50,33 +63,37 @@ export class WorldObjects {
     private readonly M: Manifest,
     private readonly map: TownMap,
   ) {
-    for (const o of map.objects) {
+    // Big objects first, so smaller ones can be sorted against them.
+    const isBig = (o: MapObject) => o.footprint[0] * o.footprint[1] > 1;
+    const ordered = [...map.objects.filter(isBig), ...map.objects.filter((o) => !isBig(o))];
+    for (const o of ordered) {
       if (o.kind === 'building') this.addBuilding(o);
       else this.addProp(o);
     }
     this.addFence();
   }
 
-  /** The interior entry for a walkable tile inside a building (e.g. the arena's sand floor), if any. */
-  interiorAt(col: number, row: number): Interior | undefined {
-    return this.interiors.get(`${col},${row}`);
+  private track<T extends Phaser.GameObjects.Image>(img: T): T {
+    this.sprites.push(img);
+    this.cullable.push(img);
+    return img;
   }
 
   /** Places an image so the pixel `anchor` lands on the top corner of tile (col, row). */
   private place(key: string, col: number, row: number, anchor: Vec2, flip = false, frame?: number): Phaser.GameObjects.Image {
     const top = tileToScreen(col, row);
+    if (!this.scene.textures.exists(key)) assetProblems.add(`texture not loaded: ${key}`);
     const img = this.scene.add.image(top.x, top.y, key, frame);
     // Pixel anchors are measured on the real image (frame) size.
     const w = img.frame.width;
     const h = img.frame.height;
     img.setOrigin((flip ? w - anchor[0] : anchor[0]) / w, anchor[1] / h).setFlipX(flip);
-    this.sprites.push(img);
-    return img;
+    return this.track(img);
   }
 
   /**
-   * Sort depth: the front corner of the footprint. When only part of the footprint is solid (the notice board's
-   * back row), sort by the front-most blocked tile, so someone standing on the open part is drawn in front.
+   * Front-corner depth. When only part of the footprint is solid (the notice board's back row), sort by the
+   * front-most blocked tile, so someone standing on the open part is drawn in front.
    */
   private depthFor(o: MapObject): number {
     const [fc, fr] = o.footprint;
@@ -88,35 +105,53 @@ export class WorldObjects {
         else anyOpen = true;
       }
     }
-    return anyOpen && best >= 0 ? best : frontDepth(o.col, o.row, fc, fr);
+    // A partly-open footprint that isn't hollow (hollow ones — the arena — use layers instead).
+    return anyOpen && best >= 0 && o.footprint[0] <= 2 ? best : frontDepth(o.col, o.row, fc, fr);
+  }
+
+  /**
+   * Corrects a depth for something with footprint (col, row, cols × rows) and screen bounds, against every big
+   * object it overlaps on screen.
+   */
+  sortAgainstBig(col: number, row: number, cols: number, rows: number, depth: number, bounds: Phaser.Geom.Rectangle, bias = 0.25): number {
+    let d = depth;
+    for (const b of this.big) {
+      if (b.col === col && b.row === row && b.cols === cols && b.rows === rows) continue; // itself
+      if (!Phaser.Geom.Rectangle.Overlaps(b.bounds, bounds)) continue;
+      if (col >= b.col + b.cols || row >= b.row + b.rows) d = Math.max(d, b.front + bias); // in front
+      else if (col + cols <= b.col || row + rows <= b.row) d = Math.min(d, b.back - bias); // behind
+      else if (b.back !== b.front) d = Math.min(Math.max(d, b.back + bias), b.front - bias); // inside a hollow one
+    }
+    return d;
   }
 
   private addBuilding(o: MapObject): void {
-    const def = this.M.buildings[o.id];
+    const def: BuildingDef & { layers?: { back?: string; front?: string } } = this.M.buildings[o.id];
     if (!def) return console.warn(`[town] unknown building ${o.id}`);
-    const sprite = this.place(def.file, o.col, o.row, def.footprintTopCorner, o.flip);
-    const depth = this.depthFor(o);
-    sprite.setDepth(depth);
+    const [fc, fr] = o.footprint;
+    const front = this.depthFor(o);
+    let sprite: Phaser.GameObjects.Image;
+    let back = front;
+    if (def.layers?.back && def.layers.front) {
+      // Hollow building (the arena): the back layer at the footprint's top corner, the front layer at the front
+      // corner, so players on the sand go behind the front rim.
+      back = (o.col + o.row) * 8;
+      this.place(def.layers.back, o.col, o.row, def.footprintTopCorner, o.flip).setDepth(back);
+      sprite = this.place(def.layers.front, o.col, o.row, def.footprintTopCorner, o.flip).setDepth(front);
+    } else {
+      sprite = this.place(def.file, o.col, o.row, def.footprintTopCorner, o.flip).setDepth(front);
+    }
+    this.big.push({ col: o.col, row: o.row, cols: fc, rows: fr, back, front, bounds: sprite.getBounds(new Phaser.Geom.Rectangle()) });
     const raw = this.map.doors[o.id];
     const doors: Vec2[] = !raw ? [] : Array.isArray(raw[0]) ? (raw as Vec2[]) : [raw as Vec2];
-    const building: Building = { id: o.id, obj: o, sprite, depth, doors };
-    this.buildings.push(building);
-    // Walkable tiles strictly inside the footprint (the arena's sand floor).
-    const [fc, fr] = o.footprint;
-    for (let dc = 1; dc < fc - 1; dc++) {
-      for (let dr = 1; dr < fr - 1; dr++) {
-        const c = o.col + dc;
-        const r = o.row + dr;
-        if (!this.map.blocked[r]?.[c]) this.interiors.set(`${c},${r}`, { building, depth });
-      }
-    }
-    if (SPARKLE_BUILDINGS.includes(o.id)) this.sparkle(sprite, depth);
+    this.buildings.push({ id: o.id, obj: o, sprite, depth: front, doors });
+    if (SPARKLE_BUILDINGS.includes(o.id)) this.sparkle(sprite, front);
   }
 
   private addProp(o: MapObject): void {
     const def = this.M.props[o.id] as PropDef | undefined;
     if (!def?.file) return console.warn(`[town] unknown prop ${o.id}`);
-    const depth = this.depthFor(o);
+    const [fc, fr] = o.footprint;
     let sprite: Phaser.GameObjects.Image;
     if (o.animated && def.animation) {
       // Looping animation in place of the still (same anchor and footprint).
@@ -134,24 +169,22 @@ export class WorldObjects {
         });
       }
       s.play(key);
-      this.sprites.push(s);
-      sprite = s;
+      sprite = this.track(s);
     } else {
       sprite = this.place(def.file, o.col, o.row, def.anchor, o.flip);
     }
+    const base = this.depthFor(o);
+    const bounds = sprite.getBounds(new Phaser.Geom.Rectangle());
+    const big = fc * fr > 1;
+    const depth = big ? base : this.sortAgainstBig(o.col, o.row, fc, fr, base, bounds);
     sprite.setDepth(depth);
+    if (big) this.big.push({ col: o.col, row: o.row, cols: fc, rows: fr, back: depth, front: depth, bounds });
 
     // Trees: a shadow on the ground under the trunk, and a tufts strip just in front of the trunk base.
     const centre = tileToScreen(o.col, o.row);
     centre.y += 8; // trunk tile centre
-    if (o.shadow) {
-      const shadow = this.scene.add.image(centre.x + (o.flip ? -5 : 5), centre.y + 1, o.shadow).setDepth(GROUND_SHADOW_DEPTH);
-      this.sprites.push(shadow);
-    }
-    if (o.tufts) {
-      const tufts = this.scene.add.image(centre.x - 10, centre.y - 5, o.tufts).setOrigin(0, 0).setDepth(depth + 0.01);
-      this.sprites.push(tufts);
-    }
+    if (o.shadow) this.track(this.scene.add.image(centre.x + (o.flip ? -5 : 5), centre.y + 1, o.shadow).setDepth(GROUND_SHADOW_DEPTH));
+    if (o.tufts) this.track(this.scene.add.image(centre.x - 10, centre.y - 5, o.tufts).setOrigin(0, 0).setDepth(depth + 0.01));
 
     if (def.faces) this.benches.push({ col: o.col, row: o.row, faces: def.faces.toLowerCase() as Dir, depth });
     if (o.id === 'lamp-off' || o.id === 'lamp-on') this.addLamp(sprite);
@@ -170,15 +203,14 @@ export class WorldObjects {
     this.lamps.push({ sprite, glow });
   }
 
-  /** Dusk to dawn: lamp-on + glow; by day: lamp-off. */
+  /** Dusk to dawn: lamp-on + glow (only for lamps on screen); by day: lamp-off. */
   setLamps(on: boolean): void {
-    if (on === this.lampsOn) return;
-    this.lampsOn = on;
-    const key = (on ? this.M.props['lamp-on'] : this.M.props['lamp-off']).file;
-    for (const l of this.lamps) {
-      l.sprite.setTexture(key);
-      l.glow.setVisible(on);
+    if (on !== this.lampsOn) {
+      this.lampsOn = on;
+      const key = (on ? this.M.props['lamp-on'] : this.M.props['lamp-off']).file;
+      for (const l of this.lamps) l.sprite.setTexture(key);
     }
+    for (const l of this.lamps) l.glow.setVisible(on && l.sprite.visible);
   }
 
   private sparkle(sprite: Phaser.GameObjects.Image, depth: number): void {
@@ -191,7 +223,7 @@ export class WorldObjects {
     const b = sprite.getBounds();
     const s = this.scene.add.sprite(Math.round(b.centerX), Math.round(b.top - 2), fx.file).setDepth(depth + 0.1);
     s.play(key);
-    this.sprites.push(s);
+    this.track(s);
   }
 
   /**
@@ -204,11 +236,14 @@ export class WorldObjects {
     const corners = new Map<string, number>(); // tile top-corner points as "col,row"
     const bump = (c: number, r: number) => corners.set(`${c},${r}`, (corners.get(`${c},${r}`) ?? 0) + 1);
     const fenceDepth = (c: number, r: number) => (c + r) * 8 + 8.75; // after characters behind, before characters on it
+    const put = (key: string, c: number, r: number) => {
+      const top = tileToScreen(c, r);
+      const img = this.scene.add.image(top.x, top.y + 8, key);
+      img.setOrigin(F.anchor[0] / F.size[0], F.anchor[1] / F.size[1]).setDepth(fenceDepth(c, r));
+      this.track(img);
+    };
     for (const f of this.map.fence) {
-      const top = tileToScreen(f.col, f.row);
-      const img = this.scene.add.image(top.x, top.y + 8, f.edge === 'nw' ? F.nw : F.ne);
-      img.setOrigin(F.anchor[0] / F.size[0], F.anchor[1] / F.size[1]).setDepth(fenceDepth(f.col, f.row));
-      this.sprites.push(img);
+      put(f.edge === 'nw' ? F.nw : F.ne, f.col, f.row);
       bump(f.col, f.row); // both edges start at the tile's top corner
       if (f.edge === 'nw') bump(f.col, f.row + 1); // …and end at its left corner (= top corner of the tile below-left)
       else bump(f.col + 1, f.row); // …or at its right corner
@@ -216,13 +251,14 @@ export class WorldObjects {
     for (const [key, n] of corners) {
       if (n !== 1) continue;
       const [c, r] = key.split(',').map(Number);
-      const top = tileToScreen(c, r);
-      const post = this.scene.add.image(top.x, top.y + 8, F.post);
-      post.setOrigin(F.anchor[0] / F.size[0], F.anchor[1] / F.size[1]).setDepth(fenceDepth(c, r));
-      this.sprites.push(post);
+      put(F.post, c, r);
     }
   }
 }
+
+/** A character's depth: the front corner of its tile, corrected against big objects it overlaps. */
+export const characterDepth = (objects: WorldObjects, col: number, row: number, feetDepth: number, bounds: Phaser.Geom.Rectangle) =>
+  objects.sortAgainstBig(col, row, 1, 1, feetDepth, bounds, CHARACTER_BIAS);
 
 let lanternCache: { x: number; y: number } | null = null;
 

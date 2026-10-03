@@ -7,7 +7,7 @@ import { type Outfit, sheetKey } from './doll';
 // A walking paper doll. Position is in tile space (tile centre = col + 0.5); the sprite's feet anchor sits on it.
 // Depth is the front corner of the tile the feet are on, refreshed every frame.
 
-const SPEED = 3.2; // tiles per second
+const SPEED = 4; // tiles per second
 
 /** Facing for one grid step: col runs screen right-down, row runs screen left-down. */
 export function dirForStep(dc: number, dr: number): Dir {
@@ -30,8 +30,9 @@ export class Character {
   private anim = 'idle';
   private sittingAt: { depth: number } | null = null;
   private lastWalkFrame = -1;
-  /** Depth override while standing inside a building (the arena floor). */
-  depthOverride: ((col: number, row: number) => number | undefined) | null = null;
+  private readonly boundsCache = new Phaser.Geom.Rectangle();
+  /** Corrects the feet depth against big objects (set by the scene; see WorldObjects.sortAgainstBig). */
+  depthFn: ((col: number, row: number, depth: number, bounds: Phaser.Geom.Rectangle) => number) | null = null;
   /** Called once the character stops on its destination tile. */
   onArrive: ((tile: Tile) => void) | null = null;
 
@@ -188,8 +189,10 @@ export class Character {
     const x = (this.col - this.row) * 16;
     const y = (this.col + this.row) * 8;
     const t = this.tile;
-    const depth = this.sittingAt?.depth ?? this.depthOverride?.(t.col, t.row) ?? (this.col + this.row + 1) * 8 + CHARACTER_BIAS;
-    this.sprite.setPosition(Math.round(x), Math.round(y)).setDepth(depth);
+    this.sprite.setPosition(Math.round(x), Math.round(y));
+    const feet = (this.col + this.row + 1) * 8 + CHARACTER_BIAS;
+    const depth = this.sittingAt?.depth ?? (this.depthFn ? this.depthFn(t.col, t.row, feet, this.sprite.getBounds(this.boundsCache)) : feet);
+    this.sprite.setDepth(depth);
     this.shadow?.setPosition(Math.round(x), Math.round(y)).setDepth(depth - 0.2);
     this.alert?.setPosition(Math.round(x), Math.round(y) - this.M.characters.cell[1] - 2).setDepth(depth + 0.1);
   }
