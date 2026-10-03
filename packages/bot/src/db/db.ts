@@ -12,6 +12,7 @@ import { today } from '../time.js';
 //    jail, redemptions, jackpot_tickets, eggs_found, easter_egg_finds, boosters.
 //  • v3, web game logins: sessions.
 //  • v4, web game pre-registration: preregistrations.
+//  • v5, web game character looks: outfits.
 //  • kv: small singleton documents keyed by their old file name (e.g. 'race.json', 'rotation.json').
 // Stores cache their state in memory (the bot is the only writer) and save through db/sync.ts, which writes only
 // the rows that changed.
@@ -183,6 +184,13 @@ const MIGRATIONS: string[] = [
     registered  INTEGER NOT NULL,  -- ms
     source      TEXT NOT NULL CHECK (source IN ('discord', 'web')),
     rewarded    INTEGER            -- ms the launch reward was paid; NULL = not yet
+  );
+  `,
+  /* v5: each member's character look in the web game (PUT /outfit) */ `
+  CREATE TABLE outfits (
+    user_id  TEXT PRIMARY KEY,
+    outfit   TEXT NOT NULL,     -- JSON: wardrobe item and colour names (see web/outfit.ts)
+    updated  INTEGER NOT NULL   -- ms
   );
   `,
 ];

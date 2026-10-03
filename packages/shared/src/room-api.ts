@@ -31,6 +31,28 @@ export interface MeItem {
   count: number;
 }
 
+/**
+ * A character's look: wardrobe item and colour names from the game's manifest (characters.wardrobe,
+ * colourPresets, skinTones). Saved per member with `PUT /outfit`.
+ */
+export interface OutfitData {
+  skin: string;
+  hair: string;
+  hairColour: string;
+  top: string;
+  topColour: string;
+  topTrim: string;
+  bottom: string;
+  bottomColour: string;
+  bottomTrim: string;
+  shoes: string;
+  shoesColour: string;
+  glasses?: string;
+  glassesColour?: string;
+  hat?: string;
+  hatColour?: string;
+}
+
 /** `GET /me` — the member logged in to the web game (401 when not logged in). */
 export interface MeResponse {
   /** Discord user ID. */
@@ -47,6 +69,8 @@ export interface MeResponse {
   items: MeItem[];
   /** Signed up for the launch reward (see `/prereg`). */
   preregistered: boolean;
+  /** Their saved character look, or null if they haven't made one. */
+  outfit: OutfitData | null;
 }
 
 /** `GET /prereg` — public pre-registration status for the web game. */

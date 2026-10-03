@@ -5,6 +5,7 @@ import { config } from '../config.js';
 import { balance, rankOf, topBalances, vaultBalance } from '../credits/store.js';
 import { inventory } from '../dig/store.js';
 import { ITEM_BY_ID } from '../dig/items.js';
+import { getOutfit, parseOutfit, saveOutfit } from './outfit.js';
 import { LAUNCH_REWARD, isPreregistered, launched, preregCount, preregister } from '../prereg/prereg.js';
 import { callback, clearSessionCookie, endSessions, isMember, login, loginEnabled, logout, sessionUser } from './auth.js';
 import { roll } from './finds.js';
@@ -25,6 +26,7 @@ import { roll } from './finds.js';
 //   GET  /me            the logged-in member: name, avatar, Kowens, items (401 if not logged in)
 //   GET  /prereg        pre-registration status: open, count, reward (public)
 //   POST /prereg        pre-register the logged-in member (from the game's page only)
+//   PUT  /outfit        save the logged-in member's character look (from the game's page only)
 
 const ALLOWED_ORIGINS = new Set([
   'https://tw1go.github.io',
@@ -121,7 +123,7 @@ async function me(client: Client, req: IncomingMessage, res: ServerResponse): Pr
     const item = ITEM_BY_ID.get(id)!;
     return { id, name: item.name, emoji: item.emoji, rarity: item.rarity, count };
   });
-  const body: MeResponse = { id: userId, name, avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items, preregistered: isPreregistered(userId) };
+  const body: MeResponse = { id: userId, name, avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items, preregistered: isPreregistered(userId), outfit: getOutfit(userId) };
   send(res, 200, JSON.stringify(body));
 }
 
@@ -160,6 +162,22 @@ export function startWebServer(client: Client): void {
         if (!userId) return send(res, 401, '{"error":"not logged in"}');
         const result = preregister(userId, 'web');
         return send(res, 200, JSON.stringify({ result, count: preregCount() } satisfies PreregResponse));
+      }
+      if (req.method === 'PUT' && path === '/outfit') {
+        if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
+        if (!fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
+        const userId = sessionUser(req);
+        if (!userId) return send(res, 401, '{"error":"not logged in"}');
+        let body: unknown = null;
+        try {
+          body = JSON.parse((await readBody(req)) || 'null');
+        } catch {
+          // invalid JSON → rejected below
+        }
+        const outfit = parseOutfit(body);
+        if (!outfit) return send(res, 400, '{"error":"invalid outfit"}');
+        saveOutfit(userId, outfit);
+        return send(res, 200, '{"ok":true}');
       }
       if (path.startsWith('/auth/') || path === '/me') {
         if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
