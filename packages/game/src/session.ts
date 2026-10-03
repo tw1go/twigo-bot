@@ -12,6 +12,11 @@ export function fakeLogin(): string | null {
   return fake === 'anon' || fake === 'new' || fake === 'saved' ? fake : null;
 }
 
+/** Dev only: the fake member's name (?as=Name lets two browsers be two people). */
+export function fakeName(): string {
+  return new URLSearchParams(location.search).get('as')?.slice(0, 16) || 'Dev tester';
+}
+
 function fakeMe(fake: string): MeResult {
   if (fake === 'anon') return { status: 'anon' };
   let outfit: MeResponse['outfit'] = null;
@@ -20,7 +25,7 @@ function fakeMe(fake: string): MeResult {
   } catch {
     // no saved look: the creator shows
   }
-  return { status: 'ok', me: { id: '0', name: 'Dev tester', avatar: '', kowens: 0, vault: 0, rank: null, items: [], preregistered: false, outfit, nickname: fake === 'saved' ? 'Dev tester' : null, title: 'Townfolk' } };
+  return { status: 'ok', me: { id: '0', name: fakeName(), avatar: '', kowens: 0, vault: 0, rank: null, items: [], preregistered: false, outfit, nickname: fake === 'saved' ? fakeName() : null, title: 'Townfolk' } };
 }
 
 export function loadMe(refresh = false): Promise<MeResult> {

@@ -43,6 +43,9 @@ export class Character {
   onArrive: ((tile: Tile) => void) | null = null;
   /** Supplies the next tile while a movement key is held (keyboard walking), or null to stop. */
   nextStep: (() => Tile | null) | null = null;
+  /** Called as each step to a neighbouring tile begins (the town tells the server). */
+  onStep: ((to: Tile) => void) | null = null;
+  private announced: Tile | null = null;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -80,6 +83,11 @@ export class Character {
     return { col: Math.floor(this.col), row: Math.floor(this.row) };
   }
 
+  /** Standing still (no steps left to walk). */
+  get isIdle(): boolean {
+    return !this.path.length;
+  }
+
   get isSitting(): boolean {
     return !!this.sittingAt;
   }
@@ -114,6 +122,14 @@ export class Character {
     if (!this.sittingAt) return;
     this.sittingAt = null;
     this.play('idle');
+  }
+
+  /** Another player's step, from the server: walked after any still queued. Too far behind, it jumps there. */
+  queueStep(tile: Tile): void {
+    this.standUp();
+    if (this.path.length >= 4) return this.place(tile);
+    if (!this.path.length) this.stepFrom = this.tile;
+    this.path.push(tile);
   }
 
   /** Teleport (spawn, debug). */
@@ -164,6 +180,10 @@ export class Character {
         const dy = ty - this.row;
         const dist = Math.hypot(dx, dy);
         if (next.col !== this.stepFrom.col || next.row !== this.stepFrom.row) this.dir = dirForStep(next.col - this.stepFrom.col, next.row - this.stepFrom.row);
+        if (next !== this.announced) {
+          this.announced = next;
+          this.onStep?.(next);
+        }
         if (dist <= budget) {
           this.col = tx;
           this.row = ty;

@@ -7,6 +7,7 @@ import { inventory } from '../dig/store.js';
 import { ITEM_BY_ID } from '../dig/items.js';
 import { getNickname, parseNickname, setNickname } from './nickname.js';
 import { titleOf } from './titles.js';
+import { attachTown, loadTownMap } from './town.js';
 import { getOutfit, parseOutfit, saveOutfit } from './outfit.js';
 import { LAUNCH_REWARD, isPreregistered, launched, preregCount, preregister } from '../prereg/prereg.js';
 import { callback, clearSessionCookie, endSessions, isMember, login, loginEnabled, logout, sessionUser } from './auth.js';
@@ -30,6 +31,7 @@ import { roll } from './finds.js';
 //   POST /prereg        pre-register the logged-in member (from the game's page only)
 //   PUT  /outfit        save the logged-in member's character look (from the game's page only)
 //   PUT  /nickname      { nickname } -> 200 { nickname } | 400 invalid | 409 taken (from the game's page only)
+//   WS   /ws            the live town: who else is there and where (see town.ts; from the game's page only)
 
 const ALLOWED_ORIGINS = new Set([
   'https://tw1go.github.io',
@@ -220,6 +222,25 @@ export function startWebServer(client: Client): void {
       send(res, 500, '{"error":"failed"}');
     }
   });
+
+  // The live town (/ws): logged-in members who've made a character, from the game's own page.
+  try {
+    attachTown(server, {
+      map: loadTownMap(),
+      authenticate: async (req) => {
+        if (!loginEnabled() || !fromGame(req)) return null;
+        const userId = sessionUser(req);
+        return userId && (await isMember(client, userId)) ? userId : null;
+      },
+      profile: (userId) => {
+        const nickname = getNickname(userId);
+        const outfit = getOutfit(userId);
+        return nickname && outfit ? { nickname, outfit, title: titleOf(userId) } : null;
+      },
+    });
+  } catch (err) {
+    console.error('[web] town disabled, map not loaded:', err);
+  }
 
   server.listen(port, '127.0.0.1', () => console.log(`[web] room API on 127.0.0.1:${port}`));
 }

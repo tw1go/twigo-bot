@@ -7,6 +7,9 @@ import { startingOutfit } from '../characters/looks';
 import type { MeResult } from '../session';
 import { cursor } from '../ui/cursor';
 import { BuildingLabel } from '../ui/labels';
+import { TownLink } from '../net/town';
+import { OtherPlayers } from '../world/others';
+import { fakeLogin } from '../session';
 import { screenToTile, tileToScreen } from '../iso';
 import { toast } from '../ui/toast';
 import { LABEL_DEPTH } from '../world/depth';
@@ -82,6 +85,10 @@ export class TownScene extends Phaser.Scene {
   private me: MeResult | null = null;
   private readonly buildingLabels = new Map<string, BuildingLabel>();
   private hovered: Building | null = null;
+  private others!: OtherPlayers;
+  private link: TownLink | null = null;
+  /** What the server last heard about the player (face / sit / stand are sent when these change). */
+  private sent = { dir: '' as string, sit: false };
   private alertFor: Building | null = null;
   private labelZoom = 0;
 
@@ -140,6 +147,7 @@ export class TownScene extends Phaser.Scene {
     this.player.onArrive = (tile) => this.arrived(tile);
     this.player.nextStep = () => this.keyStep();
     this.player.onSpawn = (obj) => this.tint >= 0 && obj.setTint(this.tint);
+    this.others = new OtherPlayers(this, this.M, this.objects, (obj) => this.tint >= 0 && obj.setTint(this.tint));
 
     this.setupCamera();
     // Only what the camera can see is drawn and animated.
@@ -155,6 +163,7 @@ export class TownScene extends Phaser.Scene {
     // Members show their nickname and title; without a login (login off, or the dev server) it's "Guest".
     const member = this.me?.status === 'ok' ? this.me.me : null;
     this.player.setNameplate(member?.nickname ?? 'Guest', member?.title ?? 'Townfolk');
+    if (member || fakeLogin()) this.connect();
     exposeDebug(this);
     if (assetProblems.size) console.warn('[town] asset problems:\n' + [...assetProblems].join('\n'));
   }
@@ -165,6 +174,7 @@ export class TownScene extends Phaser.Scene {
       // Text is drawn at the zoom it's seen at, so it stays sharp.
       this.labelZoom = zoom;
       this.player.setZoom(zoom);
+      this.others.setZoom(zoom);
       for (const l of this.buildingLabels.values()) l.setZoom(zoom);
       // The game's cursor at the same whole-number zoom as the world (the hand over buildings).
       this.input.setDefaultCursor(cursor('pointer', zoom));
@@ -172,12 +182,59 @@ export class TownScene extends Phaser.Scene {
     }
     this.ground.tick(time);
     this.player.update(delta);
+    this.others.update(delta);
+    this.tellServer();
     if (this.follow) this.followPlayer();
     this.culler.update(this.cameras.main.worldView);
     this.objects.setLamps(this.lampsOn); // glows follow their lamp's visibility
     if (time >= this.nextSkyCheck) {
       this.nextSkyCheck = time + 1000;
       this.updateSky(false);
+    }
+  }
+
+  // ── Other players ──
+
+  /** Joins the live town: others appear, and the player's steps, turns and seats are passed on. */
+  private connect(): void {
+    const link = new TownLink();
+    this.link = link;
+    this.player.onStep = (to) => {
+      link.send({ t: 'step', col: to.col, row: to.row });
+      this.sent = { dir: this.player.facing, sit: false };
+    };
+    link.onMessage = (m) => {
+      if (m.t === 'snap') return this.player.place({ col: m.col, row: m.row });
+      if (m.t === 'welcome') {
+        // After a reconnect, stay where you are rather than back at the spawn point.
+        const t = this.player.tile;
+        link.send({ t: 'here', col: t.col, row: t.row, dir: this.player.facing });
+        this.sent = { dir: this.player.facing, sit: false };
+      }
+      this.others.handle(m);
+    };
+    link.onTakenOver = () => {
+      this.others.clear();
+      toast('The town is open in another tab, so this one is offline.', 6000);
+    };
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => link.close());
+  }
+
+  /** Turning on the spot, sitting down and standing up (steps go out as they start; see connect). */
+  private tellServer(): void {
+    const link = this.link;
+    if (!link) return;
+    const p = this.player;
+    if (p.isSitting && !this.sent.sit) {
+      const t = p.tile;
+      link.send({ t: 'sit', col: t.col, row: t.row, dir: p.facing });
+      this.sent = { dir: p.facing, sit: true };
+    } else if (!p.isSitting && this.sent.sit) {
+      link.send({ t: 'stand' });
+      this.sent.sit = false;
+    } else if (!p.isSitting && p.facing !== this.sent.dir && p.isIdle) {
+      link.send({ t: 'face', dir: p.facing });
+      this.sent.dir = p.facing;
     }
   }
 
@@ -406,7 +463,7 @@ export class TownScene extends Phaser.Scene {
     this.objects.setLamps(sky.lampsOn);
     if (!force && sky.tint === this.tint) return;
     this.tint = sky.tint;
-    const all = [...this.ground.sprites, ...this.objects.sprites, ...this.player.tintables];
+    const all = [...this.ground.sprites, ...this.objects.sprites, ...this.player.tintables, ...this.others.tintables];
     for (const s of all) s.setTint(sky.tint);
   }
 

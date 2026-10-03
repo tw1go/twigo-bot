@@ -237,7 +237,11 @@ token's SHA-256 is stored). Routes: `GET /auth/login`, `GET /auth/callback`, `PO
 The town itself opens on a login screen (`ui/login.ts`); a member's first visit then goes through the character
 creator (`ui/creator.ts`: a nickname, saved with `PUT /nickname`, unique ignoring case and `space _ - .`; and a
 look, saved with `PUT /outfit`) while the town loads in the background. Under the nickname is the member's title
-(`<Townfolk>` by default; `web/titles.ts`, earned titles in the `titles` table — rewards to come). With login off, everyone
+(`<Townfolk>` by default; `web/titles.ts`, earned titles in the `titles` table — rewards to come).
+
+In town, logged-in members see each other live over a WebSocket at `/ws` (`packages/bot/src/web/town.ts`, messages
+in `packages/shared/src/town.ts`). The bot checks every step (on the map, not blocked, next to the last one, at walking
+speed) and keeps nothing once you leave. With login off, everyone
 goes straight in with a look saved in the browser.
 
 1. Developer Portal → your app → OAuth2 → Redirects: add `https://twigo-bot.duckdns.org/auth/callback`.
