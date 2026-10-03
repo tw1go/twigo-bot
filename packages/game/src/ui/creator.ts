@@ -1,21 +1,26 @@
 import type { CharacterDefs, Dir } from '../assets/types';
 import { type Outfit, randomOutfit } from '../characters/doll';
 import { choices } from '../characters/looks';
+import { NICKNAME_RULE, parseNickname } from '../characters/nickname';
 
 // 🧍 The character creator, before a member's first visit to the town: one box with the character on the left
 // (idle, turned with the arrows) and the choices on the right (scrolling, Save underneath). Colours are picked by swatch, not by name. DOM text only.
 
 export interface CreatorHooks {
   name: string;
+  /** Starting nickname: their saved one, or a suggestion from their Discord name ('' if none fits). */
+  nickname: string;
   initial: Outfit;
   /** Loads and builds a look (resolves once its sheets exist). */
   apply: (o: Outfit) => Promise<void>;
   /** The composited idle sheet for a built look, facing `dir`. */
   sheet: (o: Outfit, dir: Dir) => CanvasImageSource | null;
-  /** Saves the look and enters the town; false if saving failed. */
-  save: (o: Outfit) => Promise<boolean>;
+  /** Saves the nickname and look, then enters the town. */
+  save: (o: Outfit, nickname: string) => Promise<'ok' | 'taken' | 'invalid' | 'error'>;
   /** The game's pixel frame (a nine-slice image) for the box, if the manifest has one. */
   frame: { url: string; slice: number } | null;
+  /** The player's own name plate (a three-slice image), if the manifest has one. */
+  plate: { url: string; slice: number; height: number } | null;
 }
 
 /** "tshirt" → "Tshirt", "longsleeve" → "Longsleeve". */
@@ -60,8 +65,15 @@ export function mountCreator(C: CharacterDefs, hooks: CreatorHooks): void {
   right.addEventListener('click', () => turn(1));
   const turns = el('div', 'cr-turns');
   turns.append(left, right);
+  // The name plate, as in town: above the character's cell, at the character's scale.
+  const plate = el('div', 'cr-plate');
+  if (hooks.plate) {
+    plate.style.setProperty('--plate', `url("${hooks.plate.url}")`);
+    plate.style.setProperty('--plate-slice', String(hooks.plate.slice));
+    plate.style.setProperty('--plate-h', String(hooks.plate.height));
+  }
   const stage = el('div', 'cr-stage');
-  stage.append(el('div', 'cr-shadow'), doll);
+  stage.append(el('div', 'cr-shadow'), doll, plate);
   look.append(stage, turns);
 
   let frame = 0;
@@ -90,13 +102,41 @@ export function mountCreator(C: CharacterDefs, hooks: CreatorHooks): void {
     }, 60);
   };
 
+  // ── the nickname (outside the choices, which are rebuilt on every pick) ──
+  const nickInput = el('input', 'cr-nick');
+  nickInput.id = 'cr-nick';
+  nickInput.maxLength = 16;
+  nickInput.autocomplete = 'off';
+  nickInput.spellcheck = false;
+  nickInput.value = hooks.nickname;
+  nickInput.placeholder = 'Your name in town';
+  const nickNote = el('div', 'cr-nick-note', NICKNAME_RULE);
+  nickNote.id = 'cr-nick-note';
+  nickInput.setAttribute('aria-describedby', nickNote.id);
+  const nickLabel = el('label', undefined, 'Nickname');
+  nickLabel.htmlFor = nickInput.id;
+  const nickHead = el('h2');
+  nickHead.append(nickLabel);
+  const nickSection = el('section', 'cr-section');
+  nickSection.append(nickHead, nickInput, nickNote);
+  const showNick = (problem?: string) => {
+    plate.textContent = nickInput.value.trim();
+    plate.hidden = !plate.textContent;
+    nickNote.textContent = problem ?? NICKNAME_RULE;
+    nickNote.classList.toggle('cr-bad', !!problem);
+    nickInput.setAttribute('aria-invalid', String(!!problem));
+  };
+  nickInput.addEventListener('input', () => showNick());
+  showNick();
+
   // ── the choices ──
   const settings = el('div', 'cr-settings');
+  const choicesBox = el('div', 'cr-choices');
   const set = (key: keyof Outfit, value: string | undefined) => {
     (draft as unknown as Record<string, string | undefined>)[key] = value;
     const focused = (document.activeElement as HTMLElement | null)?.dataset.pick;
     render();
-    if (focused) settings.querySelector<HTMLElement>(`[data-pick="${CSS.escape(focused)}"]`)?.focus();
+    if (focused) choicesBox.querySelector<HTMLElement>(`[data-pick="${CSS.escape(focused)}"]`)?.focus();
     preview();
   };
 
@@ -157,7 +197,16 @@ export function mountCreator(C: CharacterDefs, hooks: CreatorHooks): void {
     preview();
   });
   const save = el('button', 'cr-save', 'Save & enter town');
+  const badNick = (problem: string) => {
+    showNick(problem);
+    nickInput.focus();
+    settings.scrollTop = 0;
+  };
   save.addEventListener('click', async () => {
+    const nickname = parseNickname(nickInput.value);
+    if (!nickname) return badNick(nickInput.value.trim() ? `Not quite: ${NICKNAME_RULE}.` : 'Pick a nickname first.');
+    nickInput.value = nickname;
+    showNick();
     save.disabled = random.disabled = true;
     save.textContent = 'Entering town…';
     note.textContent = '';
@@ -165,7 +214,8 @@ export function mountCreator(C: CharacterDefs, hooks: CreatorHooks): void {
     const o = { ...draft };
     await applying;
     await hooks.apply(o);
-    if (await hooks.save(o)) {
+    const result = await hooks.save(o, nickname);
+    if (result === 'ok') {
       cancelAnimationFrame(frame);
       document.removeEventListener('keydown', keys);
       root.remove();
@@ -173,14 +223,16 @@ export function mountCreator(C: CharacterDefs, hooks: CreatorHooks): void {
     }
     save.disabled = random.disabled = false;
     save.textContent = 'Save & enter town';
-    note.textContent = "Couldn't save your look. Try again?";
+    if (result === 'taken') badNick('Someone already goes by that name. Try another?');
+    else if (result === 'invalid') badNick(`Not quite: ${NICKNAME_RULE}.`);
+    else note.textContent = "Couldn't save. Try again?";
   });
   const actions = el('div', 'cr-actions');
   actions.append(random, save);
 
   const render = () => {
     const scroll = settings.scrollTop;
-    settings.replaceChildren(
+    choicesBox.replaceChildren(
       section('Skin', swatches('skin', C.skinTones as Record<string, string[]>, c.skin, 'Skin tone')),
       section('Hair', items('hair', c.hair), colours('hairColour', 'Hair colour')),
       section('Top', items('top', c.top), sub('Colour', colours('topColour', 'Top colour')), sub('Trim', colours('topTrim', 'Top trim'))),
@@ -191,10 +243,11 @@ export function mountCreator(C: CharacterDefs, hooks: CreatorHooks): void {
     );
     settings.scrollTop = scroll;
   };
+  settings.append(nickSection, choicesBox);
   render();
 
   const head = el('header', 'cr-head');
-  head.append(el('h1', undefined, 'Create your character'), el('p', undefined, `Welcome, ${hooks.name}! Pick a look. You can change it any time from the wardrobe in town.`));
+  head.append(el('h1', undefined, 'Create your character'), el('p', undefined, `Welcome, ${hooks.name}! Pick a nickname and a look. You can change your look any time from the wardrobe in town.`));
   const side = el('div', 'cr-side');
   side.append(settings, actions, note);
   const panel = el('div', 'cr-panel');
@@ -209,8 +262,9 @@ export function mountCreator(C: CharacterDefs, hooks: CreatorHooks): void {
   root.append(box);
   document.body.append(root);
 
-  // ←/→ turn the character too.
+  // ←/→ turn the character too (not while typing the nickname).
   const keys = (e: KeyboardEvent) => {
+    if (e.target === nickInput) return;
     if (e.key === 'ArrowLeft') turn(-1);
     else if (e.key === 'ArrowRight') turn(1);
   };

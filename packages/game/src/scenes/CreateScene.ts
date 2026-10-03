@@ -3,10 +3,11 @@ import { queueTown } from '../assets/queue';
 import type { Manifest, TownMap } from '../assets/types';
 import { assetProblems, loadOutfit, sheetKey } from '../characters/doll';
 import { saveOutfit, startingOutfit } from '../characters/looks';
+import { saveNickname, suggestNickname } from '../characters/nickname';
 import type { MeResult } from '../session';
 import { mountCreator } from '../ui/creator';
 
-// A logged-in member with no saved look picks one first (ui/creator.ts draws it from the sheets built here).
+// A logged-in member with no saved look or nickname picks them first (ui/creator.ts draws it from the sheets built here).
 // Meanwhile the town's art loads in the background (TownPreloadScene), so saving goes straight into the town.
 
 interface Data {
@@ -32,22 +33,28 @@ export class CreateScene extends Phaser.Scene {
     const { manifest, me } = this.args;
     const C = manifest.characters;
     const frame = manifest.ui.inventory?.itemFrame;
+    const plate = manifest.ui.nameplate;
+    const asset = (file: string) => `${import.meta.env.BASE_URL}assets/${file}`;
     const townLoaded = new Promise<void>((done) => this.scene.launch('town-preload', { ...this.args, done }));
     mountCreator(C, {
       name: me.me.name,
-      frame: frame ? { url: `${import.meta.env.BASE_URL}assets/${frame.file}`, slice: frame.nineSlice } : null,
+      nickname: me.me.nickname ?? suggestNickname(me.me.name),
+      frame: frame ? { url: asset(frame.file), slice: frame.nineSlice } : null,
+      plate: plate ? { url: asset(plate.self), slice: plate.threeSlice, height: plate.height } : null,
       initial: startingOutfit(C, me),
       apply: (o) => loadOutfit(this, C, o),
       sheet: (o, dir) => {
         const key = sheetKey(o, 'idle', dir);
         return this.textures.exists(key) ? (this.textures.get(key).getSourceImage() as HTMLCanvasElement) : null;
       },
-      save: async (o) => {
-        if ((await saveOutfit(o, true)) !== 'account') return false;
+      save: async (o, nickname) => {
+        const nick = await saveNickname(nickname);
+        if (nick !== 'ok') return nick;
+        if ((await saveOutfit(o, true)) !== 'account') return 'error';
         await townLoaded;
         this.scene.stop('town-preload');
-        this.scene.start('town', { ...this.args, me: { ...me, me: { ...me.me, outfit: o } } });
-        return true;
+        this.scene.start('town', { ...this.args, me: { ...me, me: { ...me.me, outfit: o, nickname } } });
+        return 'ok';
       },
     });
   }

@@ -13,6 +13,7 @@ import { today } from '../time.js';
 //  • v3, web game logins: sessions.
 //  • v4, web game pre-registration: preregistrations.
 //  • v5, web game character looks: outfits.
+//  • v6, web game nicknames: nicknames.
 //  • kv: small singleton documents keyed by their old file name (e.g. 'race.json', 'rotation.json').
 // Stores cache their state in memory (the bot is the only writer) and save through db/sync.ts, which writes only
 // the rows that changed.
@@ -191,6 +192,14 @@ const MIGRATIONS: string[] = [
     user_id  TEXT PRIMARY KEY,
     outfit   TEXT NOT NULL,     -- JSON: wardrobe item and colour names (see web/outfit.ts)
     updated  INTEGER NOT NULL   -- ms
+  );
+  `,
+  /* v6: each member's nickname in the web game (PUT /nickname), unique once folded (see web/nickname.ts) */ `
+  CREATE TABLE nicknames (
+    user_id   TEXT PRIMARY KEY,
+    nickname  TEXT NOT NULL,
+    folded    TEXT NOT NULL UNIQUE,  -- lowercase, without space _ - .
+    updated   INTEGER NOT NULL       -- ms
   );
   `,
 ];

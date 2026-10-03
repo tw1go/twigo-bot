@@ -5,8 +5,8 @@ export type MeResult = { status: 'ok'; me: MeResponse } | { status: 'anon' } | {
 
 let cached: Promise<MeResult> | null = null;
 
-/** Dev only (no local bot needed): ?me=anon | new (logged in, no look yet) | saved (logged in, the look saved in
- *  this browser). Saving a look then stays in this browser. */
+/** Dev only (no local bot needed): ?me=anon | new (logged in, no look or nickname yet) | saved (logged in, the look
+ *  saved in this browser). Saving a look then stays in this browser. */
 export function fakeLogin(): string | null {
   const fake = import.meta.env.DEV ? new URLSearchParams(location.search).get('me') : null;
   return fake === 'anon' || fake === 'new' || fake === 'saved' ? fake : null;
@@ -20,7 +20,7 @@ function fakeMe(fake: string): MeResult {
   } catch {
     // no saved look: the creator shows
   }
-  return { status: 'ok', me: { id: '0', name: 'Dev tester', avatar: '', kowens: 0, vault: 0, rank: null, items: [], preregistered: false, outfit } };
+  return { status: 'ok', me: { id: '0', name: 'Dev tester', avatar: '', kowens: 0, vault: 0, rank: null, items: [], preregistered: false, outfit, nickname: fake === 'saved' ? 'Dev tester' : null } };
 }
 
 export function loadMe(refresh = false): Promise<MeResult> {

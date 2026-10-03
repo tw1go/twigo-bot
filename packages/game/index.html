@@ -70,6 +70,15 @@
       #creator .cr-doll { position: relative; width: 100%; height: 100%; image-rendering: pixelated; transition: opacity 0.15s; }
       #creator.cr-busy .cr-doll { opacity: 0.55; }
       #creator .cr-shadow { position: absolute; left: 50%; top: calc(47px * var(--z)); width: calc(18px * var(--z)); height: calc(5px * var(--z)); transform: translate(-50%, -50%); border-radius: 50%; background: rgba(124, 42, 232, 0.22); }
+      #creator .cr-stage { margin-top: calc(13px * var(--z)); }
+      /* The own name plate (three-slice): 4 art px above the cell, at the character's scale. */
+      #creator .cr-plate { position: absolute; left: 50%; bottom: calc(100% + 4px * var(--z)); transform: translateX(-50%); box-sizing: border-box; height: calc(var(--plate-h, 9) * 1px * var(--z)); padding: 0 2px; border-style: solid; border-width: 0 calc(var(--plate-slice, 4) * 1px * var(--z)); border-image-source: var(--plate); border-image-slice: 0 var(--plate-slice, 4) fill; border-image-width: 0 calc(var(--plate-slice, 4) * 1px * var(--z)); border-image-repeat: stretch; image-rendering: pixelated; background: none; color: #A3E635; font-size: calc(4.5px * var(--z)); line-height: calc(var(--plate-h, 9) * 1px * var(--z)); white-space: nowrap; }
+      #creator .cr-plate[hidden] { display: none; }
+      #creator .cr-nick { width: min(100%, 320px); box-sizing: border-box; padding: 9px 12px; border: 2px solid #3D4256; border-radius: 2px; background: #1E1B3A; color: #fff; font: inherit; font-size: 16px; }
+      #creator .cr-nick:focus { outline: none; border-color: #B794F6; }
+      #creator .cr-nick[aria-invalid='true'] { border-color: #F7768E; }
+      #creator .cr-nick-note { margin-top: 8px; color: #7A8099; font-size: 13px; }
+      #creator .cr-nick-note.cr-bad { color: #F7768E; }
       #creator .cr-turns { display: flex; gap: 12px; }
       #creator .cr-turn { width: 42px; height: 42px; border: 3px solid #7C2AE8; border-radius: 0; background: #1E1B3A; color: #E6E9F2; font-size: 15px; cursor: pointer; }
       #creator .cr-turn:hover { border-color: #B794F6; }
@@ -77,7 +86,7 @@
       #creator .cr-settings { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 16px 4px; scrollbar-color: #5B21B6 transparent; }
       #creator .cr-section { padding: 18px 0; }
       #creator .cr-section:first-child { padding-top: 4px; }
-      #creator .cr-section + .cr-section { border-top: 2px solid #1E1B3A; }
+      #creator .cr-section + .cr-section, #creator .cr-choices > .cr-section:first-child { padding-top: 18px; border-top: 2px solid #1E1B3A; }
       #creator h2 { margin: 0 0 12px; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #B794F6; }
       #creator .cr-items, #creator .cr-swatches { display: flex; flex-wrap: wrap; gap: 8px; }
       #creator .cr-items + .cr-swatches, #creator .cr-items + .cr-sub { margin-top: 16px; }

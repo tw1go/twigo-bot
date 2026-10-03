@@ -38,6 +38,7 @@ export interface Manifest {
   fx: Record<string, FxDef>;
   ui: Record<string, { file?: string; size?: Vec2; frames?: number | string[] | Record<string, number>; fps?: number; anchor?: Vec2 }> & {
     inventory?: { itemFrame?: { file: string; nineSlice: number } };
+    nameplate?: { file: string; self: string; threeSlice: number; height: number };
   };
 }
 

@@ -71,6 +71,8 @@ export interface MeResponse {
   preregistered: boolean;
   /** Their saved character look, or null if they haven't made one. */
   outfit: OutfitData | null;
+  /** Their nickname in the web game (`PUT /nickname`), or null if they haven't picked one. */
+  nickname: string | null;
 }
 
 /** `GET /prereg` — public pre-registration status for the web game. */

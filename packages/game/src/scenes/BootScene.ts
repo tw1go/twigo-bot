@@ -3,8 +3,8 @@ import type { Manifest, TownMap } from '../assets/types';
 import { type MeResult, loadMe, loginProblem } from '../session';
 import { showLogin } from '../ui/login';
 
-// Loads the two source-of-truth files, then: not logged in → the login screen; logged in without a saved look →
-// the character creator; otherwise the town (which queues every image they name). If login is off on the server
+// Loads the two source-of-truth files, then: not logged in → the login screen; logged in without a saved look or
+// nickname → the character creator; otherwise the town (which queues every image they name). If login is off on the server
 // (or the API is down), everyone goes straight to the town with a look saved in this browser.
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -26,7 +26,7 @@ export class BootScene extends Phaser.Scene {
     void Promise.race([loadMe(), timeout]).then((me: MeResult | null) => {
       if (debug === 'wardrobe') return this.scene.start('wardrobe', { manifest });
       if (me?.status === 'anon') return showLogin(loginProblem());
-      if (me?.status === 'ok' && !me.me.outfit) return this.scene.start('create', { manifest, town, me });
+      if (me?.status === 'ok' && (!me.me.outfit || !me.me.nickname)) return this.scene.start('create', { manifest, town, me });
       this.scene.start('town', { manifest, town, me });
     });
   }
