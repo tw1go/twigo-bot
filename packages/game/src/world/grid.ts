@@ -9,6 +9,9 @@ export interface Tile {
   row: number;
 }
 
+/** A* gives up after expanding this many tiles (a 72×72 town has 5,184). */
+const SEARCH_CAP = 12_000;
+
 const STEPS: [number, number][] = [
   [1, 0], [-1, 0], [0, 1], [0, -1],
   [1, 1], [1, -1], [-1, 1], [-1, -1],
@@ -113,11 +116,13 @@ export class WalkGrid {
     const goal = idx(to.col, to.row);
     g[start] = 0;
     push(h(from.col, from.row), start);
+    let expanded = 0;
     while (heap.length) {
       const [, cur] = pop();
       if (cur === goal) break;
       if (closed[cur]) continue;
       closed[cur] = 1;
+      if (++expanded > SEARCH_CAP) return null;
       const c = cur % this.cols;
       const r = (cur - c) / this.cols;
       for (const [dc, dr] of STEPS) {
@@ -143,24 +148,45 @@ export class WalkGrid {
     return path.reverse();
   }
 
-  /** The walkable tile closest to `target` that can be reached from `from` (for clicks on blocked tiles). */
+  /** Every tile reachable from `from` (one flood fill; 1 = reachable). */
+  reachableFrom(from: Tile): Uint8Array {
+    const seen = new Uint8Array(this.cols * this.rows);
+    if (!this.walkable(from.col, from.row)) return seen;
+    const queue = [from];
+    seen[from.row * this.cols + from.col] = 1;
+    for (let i = 0; i < queue.length; i++) {
+      const t = queue[i];
+      for (const [dc, dr] of STEPS) {
+        const n = { col: t.col + dc, row: t.row + dr };
+        if (!this.inBounds(n.col, n.row) || seen[n.row * this.cols + n.col] || !this.canStep(t, n)) continue;
+        seen[n.row * this.cols + n.col] = 1;
+        queue.push(n);
+      }
+    }
+    return seen;
+  }
+
+  /** The reachable tile closest to `target` (for clicks on blocked tiles), searching outward ring by ring. */
   nearestReachable(from: Tile, target: Tile): Tile | null {
-    let best: Tile | null = null;
-    let bestD = Infinity;
-    for (let radius = 0; radius < Math.max(this.cols, this.rows) && !best; radius++) {
+    const reach = this.reachableFrom(from);
+    for (let radius = 0; radius < Math.max(this.cols, this.rows); radius++) {
+      let best: Tile | null = null;
+      let bestD = Infinity;
       for (let dc = -radius; dc <= radius; dc++) {
         for (let dr = -radius; dr <= radius; dr++) {
           if (Math.max(Math.abs(dc), Math.abs(dr)) !== radius) continue;
-          const t = { col: target.col + dc, row: target.row + dr };
-          if (!this.walkable(t.col, t.row)) continue;
+          const c = target.col + dc;
+          const r = target.row + dr;
+          if (!this.inBounds(c, r) || !reach[r * this.cols + c]) continue;
           const d = Math.hypot(dc, dr);
-          if (d < bestD && this.findPath(from, t)) {
-            best = t;
+          if (d < bestD) {
+            best = { col: c, row: r };
             bestD = d;
           }
         }
       }
+      if (best) return best;
     }
-    return best;
+    return null;
   }
 }

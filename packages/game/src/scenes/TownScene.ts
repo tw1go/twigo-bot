@@ -6,10 +6,10 @@ import { type Outfit, assetProblems, buildOutfit, outfitFiles, randomOutfit } fr
 import { screenToTile, tileToScreen } from '../iso';
 import { toast } from '../ui/toast';
 import { minutesNow, setTimeSource, skyAt } from '../world/daynight';
-import { CHARACTER_BIAS } from '../world/depth';
+import { Culler } from '../world/cull';
 import { type Tile, WalkGrid } from '../world/grid';
 import { Ground } from '../world/ground';
-import { type Bench, type Building, WorldObjects } from '../world/objects';
+import { type Bench, type Building, WorldObjects, characterDepth } from '../world/objects';
 import { rng } from '../world/rng';
 
 // The playable town: ground, buildings, props and the player, all placed from manifest.json + maps/town.json.
@@ -51,6 +51,8 @@ export class TownScene extends Phaser.Scene {
   private zoomIndex = 1;
   private tint = -1;
   private nextSkyCheck = 0;
+  private culler!: Culler;
+  private lampsOn = false;
   /** The camera glides after the player (off while debugging a fixed view). */
   follow = true;
 
@@ -81,14 +83,15 @@ export class TownScene extends Phaser.Scene {
 
     const [sc, sr] = this.map.spawn;
     this.player = new Character(this, this.M, this.outfit, { col: sc, row: sr });
-    this.player.depthOverride = (c, r) => {
-      const inside = this.objects.interiorAt(c, r);
-      return inside ? inside.depth + CHARACTER_BIAS : undefined;
-    };
+    this.player.depthFn = (c, r, d, b) => characterDepth(this.objects, c, r, d, b);
     this.player.onArrive = (tile) => this.arrived(tile);
     this.player.onSpawn = (obj) => this.tint >= 0 && obj.setTint(this.tint);
 
     this.setupCamera();
+    // Only what the camera can see is drawn and animated.
+    this.culler = new Culler([...this.ground.cullable, ...this.objects.cullable]);
+    this.culler.onShow = (img) => this.ground.refresh(img);
+    this.culler.update(this.cameras.main.worldView);
     this.setupInput();
     this.updateSky(true);
     exposeDebug(this);
@@ -99,6 +102,8 @@ export class TownScene extends Phaser.Scene {
     this.ground.tick(time);
     this.player.update(delta);
     if (this.follow) this.followPlayer();
+    this.culler.update(this.cameras.main.worldView);
+    this.objects.setLamps(this.lampsOn); // glows follow their lamp's visibility
     if (time >= this.nextSkyCheck) {
       this.nextSkyCheck = time + 1000;
       this.updateSky(false);
@@ -234,6 +239,7 @@ export class TownScene extends Phaser.Scene {
 
   private updateSky(force: boolean): void {
     const sky = skyAt(minutesNow());
+    this.lampsOn = sky.lampsOn;
     this.objects.setLamps(sky.lampsOn);
     if (!force && sky.tint === this.tint) return;
     this.tint = sky.tint;
@@ -257,6 +263,9 @@ export class TownScene extends Phaser.Scene {
       scroll: { x: this.cameras.main.scrollX, y: this.cameras.main.scrollY },
       outfit: this.outfit,
       problems: [...assetProblems],
+      fps: Math.round(this.game.loop.actualFps),
+      drawn: this.culler.visibleCount,
+      objects: this.children.list.length,
     };
   }
 
@@ -288,7 +297,7 @@ export class TownScene extends Phaser.Scene {
       this.outfit = next;
       this.player.destroy();
       const fresh = new Character(this, this.M, next, tile);
-      fresh.depthOverride = this.player.depthOverride;
+      fresh.depthFn = this.player.depthFn;
       fresh.onArrive = this.player.onArrive;
       fresh.onSpawn = this.player.onSpawn;
       this.player = fresh;
