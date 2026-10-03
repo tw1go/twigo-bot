@@ -26,6 +26,8 @@ export class Character {
   private col: number; // tile-space position of the feet (tile centre = integer + 0.5)
   private row: number;
   private path: Tile[] = [];
+  /** The tile the current step started from: facing comes from the whole step, not the distance left. */
+  private stepFrom: Tile = { col: 0, row: 0 };
   private dir: Dir = 's';
   private anim = 'idle';
   private sittingAt: { depth: number } | null = null;
@@ -68,6 +70,7 @@ export class Character {
   walk(path: Tile[]): void {
     this.standUp();
     this.path = path.slice(path.length && path[0].col === this.tile.col && path[0].row === this.tile.row ? 1 : 0);
+    this.stepFrom = this.tile;
     if (!this.path.length) this.arrive();
   }
 
@@ -134,11 +137,12 @@ export class Character {
         const dx = tx - this.col;
         const dy = ty - this.row;
         const dist = Math.hypot(dx, dy);
-        this.dir = dirForStep(Math.round(dx), Math.round(dy));
+        if (next.col !== this.stepFrom.col || next.row !== this.stepFrom.row) this.dir = dirForStep(next.col - this.stepFrom.col, next.row - this.stepFrom.row);
         if (dist <= budget) {
           this.col = tx;
           this.row = ty;
           budget -= dist;
+          this.stepFrom = next;
           this.path.shift();
         } else {
           this.col += (dx / dist) * budget;
