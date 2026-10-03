@@ -101,7 +101,7 @@ export class TownScene extends Phaser.Scene {
     const frame = this.add.graphics().setScrollFactor(0);
     const bar = this.add.graphics().setScrollFactor(0);
     const text = this.add
-      .text(width / 2, y - 18, 'Loading Mikazuki town…', { fontFamily: 'system-ui, sans-serif', fontSize: '14px', color: '#c0caf5' })
+      .text(width / 2, y - 18, 'Loading Mikazuki town…', { fontFamily: "'Pixelify Sans', system-ui, sans-serif", fontSize: '14px', color: '#c0caf5' })
       .setOrigin(0.5)
       .setScrollFactor(0);
     frame.lineStyle(1, 0x565f89).strokeRect(x - 1, y - 1, w + 2, 10);
