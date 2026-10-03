@@ -41,4 +41,6 @@ export const config = {
   // Room finds (/claim) are announced here; falls back to the games channel.
   // Local port for the room API (src/web/server.ts). Empty = API off.
   webPort: Number(process.env.WEB_PORT) || 0,
+  // Write-only Object Storage URL for off-server backup copies (src/db/offsite.ts). Empty = local backups only.
+  backupUploadUrl: process.env.BACKUP_UPLOAD_URL || undefined,
 };

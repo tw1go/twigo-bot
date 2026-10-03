@@ -176,6 +176,10 @@ SQLite database, `data/mikazuki.db` (`packages/bot/src/db/db.ts`):
   `kv` table, keyed by their old file name (e.g. `race.json`).
 - Stores keep their state in memory and save through `db/sync.ts`, which writes only the rows that changed.
 - `data/backups/mikazuki-YYYY-MM-DD.db`: a nightly backup at 3:30 AM. The last 7 are kept.
+  With `BACKUP_UPLOAD_URL` set, each one is also gzipped and uploaded off-server (`src/db/offsite.ts`) to an Oracle
+  Object Storage bucket through a write-only pre-authenticated request. Set the bucket's lifecycle rule to delete
+  objects after 30 days. To restore: download a `.gz` in the Oracle console, `gunzip` it, stop the bot, and copy it
+  over `data/mikazuki.db` (removing `mikazuki.db-wal` and `-shm`).
 - `data/legacy-json/`: the old JSON files. On the first start with the database, they were imported in one
   transaction and moved here (kept for rollback, never read again).
 - Schema changes are versioned migrations in `db.ts` (`PRAGMA user_version`).

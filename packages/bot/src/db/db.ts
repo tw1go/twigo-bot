@@ -342,13 +342,16 @@ function moveKvToTables(): void {
 
 // ── Nightly backups (scheduled in scheduler.ts) ──
 export const BACKUP_KEEP = 7;
-export async function backupDatabase(): Promise<void> {
+/** Saves today's backup and prunes old ones; returns the backup's path. */
+export async function backupDatabase(): Promise<string> {
   const dir = join(DATA_DIR, 'backups');
   mkdirSync(dir, { recursive: true });
-  await db.backup(join(dir, `mikazuki-${today()}.db`)); // server-timezone date
+  const file = join(dir, `mikazuki-${today()}.db`); // server-timezone date
+  await db.backup(file);
   const old = readdirSync(dir).filter((f) => /^mikazuki-\d{4}-\d{2}-\d{2}\.db$/.test(f)).sort().slice(0, -BACKUP_KEEP);
   for (const f of old) unlinkSync(join(dir, f));
   console.log(`[db] backup saved (keeping the last ${BACKUP_KEEP})`);
+  return file;
 }
 
 /** Flushes the WAL and closes the database (on shutdown). */
