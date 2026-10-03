@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
+import { BootScene } from './scenes/BootScene';
 import { TownScene } from './scenes/TownScene';
+import { WardrobeScene } from './scenes/WardrobeScene';
 import { startHud } from './hud';
 
 new Phaser.Game({
@@ -9,7 +11,7 @@ new Phaser.Game({
   pixelArt: true, // nearest-neighbour scaling, no smoothing
   roundPixels: true, // snap to whole pixels so sprites never blur between pixels
   scale: { mode: Phaser.Scale.RESIZE, width: window.innerWidth, height: window.innerHeight },
-  scene: [TownScene],
+  scene: [BootScene, TownScene, WardrobeScene],
 });
 
 void startHud(document.getElementById('hud')!);
