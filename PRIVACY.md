@@ -1,6 +1,6 @@
 # twigo bot — Privacy Policy
 
-_Last updated: October 2, 2026 (saved data moved to a database, with nightly backups)_
+_Last updated: October 3, 2026 (Discord login for the web game; off-server backups)_
 
 This policy explains what information the twigo Discord bot ("the bot", "we") collects, why, and how it is handled. By using the bot or being a member of a server where it runs, you agree to this policy.
 
@@ -42,7 +42,8 @@ The bot does **not** listen to, record, or store any voice audio. It does **not*
 - **Event participants:** the user IDs of people who voted "Yes" in an event poll are saved on the bot's server. The file only holds the most recent event and is overwritten by the next one.
 - **Kowens:** your user ID, Kowens balance, the date you last claimed, and your voice minutes toward the next Kowens are saved on the bot's server for as long as the bot runs. Admins and moderators can reset them at any time, and you can ask for them to be deleted.
 - **Roles:** when you use the opt-in button, the bot gives or removes a Discord role. The role itself lives on Discord, not with the bot. You can remove it at any time by clicking the button again.
-- **Storage and backups:** everything the bot saves is kept in one database on the bot's server. A copy is made every night and the last 7 are kept, so anything deleted is gone from the backups within 7 days.
+- **Storage and backups:** everything the bot saves is kept in one database on the bot's server. A copy is made every night. The last 7 are kept on the server, and copies are also stored in a private Oracle Cloud storage bucket for 30 days. Anything deleted is gone from all backups within 30 days.
+- **Web game logins:** a login lasts 30 days, or until you log out or leave the server. Expired logins are deleted.
 - **Logs:** the server keeps technical error logs for troubleshooting. These are rotated automatically and are not used for anything else.
 
 ## twigo's room (website)
@@ -52,7 +53,9 @@ The bot also powers [twigo's room](https://tw1go.github.io), a small website, th
 - **Public leaderboard.** The site shows the **top 10 members by Kowens**, including their **server display name, avatar, and Kowens balance**. This is visible to **anyone on the internet**, not only server members.
 - **Finding Kowens.** When you click a character on the site, the API decides whether you found a Kowen and, if so, gives you a one-time code (valid 15 minutes) to redeem with `/claim` in Discord. The code itself doesn't identify you. You connect it to your account only by running `/claim`.
 - **Your IP address.** To stop spam, the API briefly uses your **IP address** to limit how often you can click and how many codes you can get per day. This is kept **in memory only**. It is never written to disk and is forgotten when the bot restarts or the day changes.
-- **No tracking.** The API sets no cookies and keeps no access logs. The website itself is hosted on GitHub Pages, which is covered by [GitHub's Privacy Statement](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement).
+- **Logging in (the web game at `/play`).** You can log in with Discord to see your own Kowens and items in the game. The login asks Discord only for your basic profile (the `identify` permission): your user ID, username, and avatar. Not your email, your servers, or your messages. We use it once to see who you are, then revoke the access Discord gave us. Only members of the Mikazuki server can log in.
+- **The login cookie.** Logging in sets one cookie, `mk_session`, holding a random code that keeps you logged in. It is first-party, can't be read by scripts on the page, and is only ever sent over HTTPS. The server stores only a scrambled (hashed) form of it, together with your user ID and when it expires. During login a second cookie (`mk_oauth_state`) protects the login itself and is deleted within 10 minutes.
+- **No tracking.** Apart from the login cookies above, the API sets no cookies and keeps no access logs. The website itself is hosted on GitHub Pages, which is covered by [GitHub's Privacy Statement](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement).
 
 ## How data is used and shared
 
@@ -65,6 +68,7 @@ The bot runs on a cloud server and communicates with Discord. Your use of Discor
 - Don't vote in event polls if you don't want your user ID saved for an event.
 - Click the opt-in button again to remove a notification role.
 - Don't use `/get-kowens`, `/diss`, `/praise`, or `/judge` if you don't want a Kowens balance saved.
+- Log out of the web game at any time, which deletes your login from the server.
 - Ask for your data to be deleted, and we will remove any saved user IDs and Kowens data of yours.
 
 ## Children

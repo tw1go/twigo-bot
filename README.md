@@ -220,6 +220,18 @@ The playroom site is HTTPS, so browsers only let it call an HTTPS address. Caddy
 4. Set `WEB_PORT=8787` in `.env`, deploy, and `npm run deploy-commands` for `/claim`.
 5. Check: `curl https://twigo-bot.duckdns.org/health` → `ok`, and open `https://twigo-bot.duckdns.org/play/`.
 
+#### Discord login for the web game
+
+`/play` has a "Log in with Discord" button (`packages/game/src/hud.ts`) that shows the member's name, avatar,
+Kowens and items. The bot side is `packages/bot/src/web/auth.ts`: OAuth2 with the `identify` scope only, members of
+the server only, Discord's token revoked right after use, and 30-day sessions in the `sessions` table (only the
+token's SHA-256 is stored). Routes: `GET /auth/login`, `GET /auth/callback`, `POST /auth/logout`, `GET /me`.
+
+1. Developer Portal → your app → OAuth2 → Redirects: add `https://twigo-bot.duckdns.org/auth/callback`.
+2. Copy the client secret (Reset Secret if needed) into `.env` as `DISCORD_CLIENT_SECRET`, and set
+   `WEB_PUBLIC_URL=https://twigo-bot.duckdns.org`. Never commit or share the secret.
+3. Deploy. Without both values the login routes answer 404 and the game simply shows no login button.
+
 ## Adding a command
 
 Create `packages/bot/src/commands/<name>.ts` exporting a `Command`, then add it to the list in
