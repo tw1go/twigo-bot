@@ -1,4 +1,5 @@
-import { db, kvLoad, kvSave } from '../db/db.js';
+import { kvLoad, kvSave } from '../db/db.js';
+import { saveTogether, tableSync } from '../db/sync.js';
 import { today } from '../time.js';
 import { ITEM_BY_ID } from './items.js';
 import { BAG_SLOTS } from '../games/rewards.js';
@@ -24,8 +25,8 @@ interface Bag {
 }
 
 // Dig state lives in `dig_state` (one row per member) and items in `inventory_items` (see db/db.ts). Cached in
-// memory; every save() writes the whole set in one transaction.
-interface DigRow {
+// memory; save() writes just the rows that changed (db/sync.ts).
+type DigRow = {
   user_id: string;
   shovel: number;
   dig_day: string | null;
@@ -33,11 +34,15 @@ interface DigRow {
   shovel_day: string | null;
   shovels_today: number | null;
   keys: number | null;
-  bags: string | null;
-}
+  bags: string | null; // JSON array
+};
+type ItemRow = { user_id: string; item_id: string; count: number };
 const opt = <T>(v: T | null): T | undefined => (v === null ? undefined : v);
+const digTable = tableSync<DigRow>('dig_state', ['user_id'], ['shovel', 'dig_day', 'digs_today', 'shovel_day', 'shovels_today', 'keys', 'bags']);
+const itemTable = tableSync<ItemRow>('inventory_items', ['user_id', 'item_id'], ['count']);
+
 const bags: Record<string, Bag> = {};
-for (const r of db.prepare<[], DigRow>('SELECT * FROM dig_state').all()) {
+for (const r of digTable.load()) {
   bags[r.user_id] = {
     shovel: r.shovel,
     digDay: opt(r.dig_day),
@@ -49,28 +54,15 @@ for (const r of db.prepare<[], DigRow>('SELECT * FROM dig_state').all()) {
     items: {},
   };
 }
-for (const r of db.prepare<[], { user_id: string; item_id: string; count: number }>('SELECT * FROM inventory_items').all()) {
-  (bags[r.user_id] ??= { shovel: 0, items: {} }).items[r.item_id] = r.count;
-}
-
-const upsertDig = db.prepare(`INSERT INTO dig_state (user_id, shovel, dig_day, digs_today, shovel_day, shovels_today, keys, bags)
-  VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET shovel = excluded.shovel, dig_day = excluded.dig_day,
-  digs_today = excluded.digs_today, shovel_day = excluded.shovel_day, shovels_today = excluded.shovels_today,
-  keys = excluded.keys, bags = excluded.bags`);
-const clearItems = db.prepare('DELETE FROM inventory_items WHERE user_id = ?');
-const insertItem = db.prepare('INSERT INTO inventory_items (user_id, item_id, count) VALUES (?,?,?)');
-
-const writeAll = db.transaction(() => {
-  for (const [id, b] of Object.entries(bags)) {
-    upsertDig.run(id, b.shovel, b.digDay ?? null, b.digsToday ?? null, b.shovelDay ?? null, b.shovelsToday ?? null,
-      b.keys ?? null, b.bags ? JSON.stringify(b.bags) : null);
-    clearItems.run(id);
-    for (const [itemId, count] of Object.entries(b.items)) if (count > 0) insertItem.run(id, itemId, count);
-  }
-});
+for (const r of itemTable.load()) (bags[r.user_id] ??= { shovel: 0, items: {} }).items[r.item_id] = r.count;
 
 function save(): void {
-  writeAll();
+  const all = Object.entries(bags);
+  saveTogether(
+    [digTable, all.map(([id, b]): DigRow => ({ user_id: id, shovel: b.shovel, dig_day: b.digDay ?? null, digs_today: b.digsToday ?? null,
+      shovel_day: b.shovelDay ?? null, shovels_today: b.shovelsToday ?? null, keys: b.keys ?? null, bags: b.bags ? JSON.stringify(b.bags) : null }))],
+    [itemTable, all.flatMap(([id, b]) => Object.entries(b.items).filter(([, n]) => n > 0).map(([item, count]): ItemRow => ({ user_id: id, item_id: item, count })))],
+  );
 }
 
 const bag = (userId: string) => (bags[userId] ??= { shovel: 0, items: {} });

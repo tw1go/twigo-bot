@@ -1,4 +1,4 @@
-import { db } from '../db/db.js';
+import { tableSync } from '../db/sync.js';
 import { daysBetween, today, weekStart } from '../time.js';
 
 // Credits for /diss, /praise and /judge. Claim DAILY_CREDITS once per day (config.timezone); unused credits carry over.
@@ -27,10 +27,9 @@ interface Account {
   giveSentToday?: number;
 }
 
-// Accounts live in the `accounts` table (see db/db.ts). They're cached in memory (the bot is the only writer) and
-// every save() writes the whole set in one transaction — the same "all or nothing" snapshot as the old JSON file,
-// but crash-safe. Phase 2 can switch hot paths to per-row updates.
-interface AccountRow {
+// Accounts live in the `accounts` table (see db/db.ts). They're cached in memory (the bot is the only writer);
+// save() writes just the rows that changed (db/sync.ts).
+type AccountRow = {
   user_id: string;
   balance: number;
   last_claim: string | null;
@@ -47,7 +46,7 @@ interface AccountRow {
   vault: number | null;
   give_day: string | null;
   give_sent_today: number | null;
-}
+};
 const opt = <T>(v: T | null): T | undefined => (v === null ? undefined : v);
 const fromRow = (r: AccountRow): Account => ({
   balance: r.balance,
@@ -67,34 +66,21 @@ const fromRow = (r: AccountRow): Account => ({
   giveSentToday: opt(r.give_sent_today),
 });
 
-let accounts: Record<string, Account> = Object.fromEntries(
-  db.prepare<[], AccountRow>('SELECT * FROM accounts').all().map((r) => [r.user_id, fromRow(r)]),
-);
-let persisted = new Set(Object.keys(accounts));
+const table = tableSync<AccountRow>('accounts', ['user_id'], ['balance', 'last_claim', 'voice_minutes', 'voice_total_minutes',
+  'last_steal', 'last_active', 'fence_until', 'voice_credits_day', 'voice_credits_today', 'voice_week', 'voice_week_minutes',
+  'has_vault', 'vault', 'give_day', 'give_sent_today']);
+let accounts: Record<string, Account> = Object.fromEntries(table.load().map((r) => [r.user_id, fromRow(r)]));
 
-const upsertAccount = db.prepare(`INSERT INTO accounts (user_id, balance, last_claim, voice_minutes, voice_total_minutes,
-  last_steal, last_active, fence_until, voice_credits_day, voice_credits_today, voice_week, voice_week_minutes, has_vault,
-  vault, give_day, give_sent_today) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-  ON CONFLICT(user_id) DO UPDATE SET balance = excluded.balance, last_claim = excluded.last_claim,
-  voice_minutes = excluded.voice_minutes, voice_total_minutes = excluded.voice_total_minutes, last_steal = excluded.last_steal,
-  last_active = excluded.last_active, fence_until = excluded.fence_until, voice_credits_day = excluded.voice_credits_day,
-  voice_credits_today = excluded.voice_credits_today, voice_week = excluded.voice_week,
-  voice_week_minutes = excluded.voice_week_minutes, has_vault = excluded.has_vault, vault = excluded.vault,
-  give_day = excluded.give_day, give_sent_today = excluded.give_sent_today`);
-const deleteAccount = db.prepare('DELETE FROM accounts WHERE user_id = ?');
-
-const writeAll = db.transaction(() => {
-  for (const [id, a] of Object.entries(accounts)) {
-    upsertAccount.run(id, a.balance, a.lastClaim ?? null, a.voiceMinutes ?? null, a.voiceTotalMinutes ?? null, a.lastSteal ?? null,
-      a.lastActive ?? null, a.fenceUntil ?? null, a.voiceCreditsDay ?? null, a.voiceCreditsToday ?? null, a.voiceWeek ?? null,
-      a.voiceWeekMinutes ?? null, a.hasVault ? 1 : null, a.vault ?? null, a.giveDay ?? null, a.giveSentToday ?? null);
-  }
-  for (const id of persisted) if (!(id in accounts)) deleteAccount.run(id); // /twigo reset-kowens
-  persisted = new Set(Object.keys(accounts));
+const toRow = (id: string, a: Account): AccountRow => ({
+  user_id: id, balance: a.balance, last_claim: a.lastClaim ?? null, voice_minutes: a.voiceMinutes ?? null,
+  voice_total_minutes: a.voiceTotalMinutes ?? null, last_steal: a.lastSteal ?? null, last_active: a.lastActive ?? null,
+  fence_until: a.fenceUntil ?? null, voice_credits_day: a.voiceCreditsDay ?? null, voice_credits_today: a.voiceCreditsToday ?? null,
+  voice_week: a.voiceWeek ?? null, voice_week_minutes: a.voiceWeekMinutes ?? null, has_vault: a.hasVault ? 1 : null,
+  vault: a.vault ?? null, give_day: a.giveDay ?? null, give_sent_today: a.giveSentToday ?? null,
 });
 
 function save(): void {
-  writeAll();
+  table.save(Object.entries(accounts).map(([id, a]) => toRow(id, a))); // writes only the accounts that changed
 }
 
 export function balance(userId: string): number {

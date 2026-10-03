@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { db } from '../db/db.js';
+import { saveTogether, tableSync } from '../db/sync.js';
 import { EmbedBuilder, type Client } from 'discord.js';
 import { config } from '../config.js';
 import { add, balance, setGarnishHook, take, takeFromVault } from '../credits/store.js';
@@ -42,35 +42,29 @@ interface State {
   onTime: Record<string, number>; // userId -> loans repaid on time
   blacklistUntil: Record<string, number>;
 }
-// Loans live in `loans`, repayment history and blacklists in `loan_credit` (see db/db.ts). Cached in memory; every
-// save() writes the whole set in one transaction.
+// Loans live in `loans`, repayment history and blacklists in `loan_credit` (see db/db.ts). Cached in memory;
+// save() writes just the rows that changed (db/sync.ts).
 type LoanRow = { id: string; lender: string; borrower: string; principal: number; owed: number; created: number; due: number; late_days: number; status: Loan['status'] };
+type CreditRow = { user_id: string; on_time: number; blacklist_until: number | null };
+const loanTable = tableSync<LoanRow>('loans', ['id'], ['lender', 'borrower', 'principal', 'owed', 'created', 'due', 'late_days', 'status']);
+const creditTable = tableSync<CreditRow>('loan_credit', ['user_id'], ['on_time', 'blacklist_until']);
+
 const state: State = { loans: {}, onTime: {}, blacklistUntil: {} };
-for (const r of db.prepare<[], LoanRow>('SELECT * FROM loans').all()) {
+for (const r of loanTable.load()) {
   state.loans[r.id] = { id: r.id, lender: r.lender, borrower: r.borrower, principal: r.principal, owed: r.owed, created: r.created, due: r.due, lateDays: r.late_days, status: r.status };
 }
-for (const r of db.prepare<[], { user_id: string; on_time: number; blacklist_until: number | null }>('SELECT * FROM loan_credit').all()) {
+for (const r of creditTable.load()) {
   if (r.on_time) state.onTime[r.user_id] = r.on_time;
   if (r.blacklist_until !== null) state.blacklistUntil[r.user_id] = r.blacklist_until;
 }
 
-const upsertLoan = db.prepare(`INSERT INTO loans (id, lender, borrower, principal, owed, created, due, late_days, status)
-  VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET owed = excluded.owed, due = excluded.due,
-  late_days = excluded.late_days, status = excluded.status`);
-const clearCredit = db.prepare('DELETE FROM loan_credit');
-const insertCredit = db.prepare('INSERT INTO loan_credit (user_id, on_time, blacklist_until) VALUES (?,?,?)');
-
-const writeAll = db.transaction(() => {
-  for (const l of Object.values(state.loans)) {
-    upsertLoan.run(l.id, l.lender, l.borrower, l.principal, l.owed, l.created, l.due, l.lateDays, l.status);
-  }
-  clearCredit.run();
-  const ids = new Set([...Object.keys(state.onTime), ...Object.keys(state.blacklistUntil)]);
-  for (const id of ids) insertCredit.run(id, state.onTime[id] ?? 0, state.blacklistUntil[id] ?? null);
-});
-
 function save(): void {
-  writeAll();
+  const credited = new Set([...Object.keys(state.onTime), ...Object.keys(state.blacklistUntil)]);
+  saveTogether(
+    [loanTable, Object.values(state.loans).map((l): LoanRow => ({ id: l.id, lender: l.lender, borrower: l.borrower, principal: l.principal,
+      owed: l.owed, created: l.created, due: l.due, late_days: l.lateDays, status: l.status }))],
+    [creditTable, [...credited].map((id): CreditRow => ({ user_id: id, on_time: state.onTime[id] ?? 0, blacklist_until: state.blacklistUntil[id] ?? null }))],
+  );
 }
 
 /** The borrower's open debt (active, or defaulted but not yet paid off). */
