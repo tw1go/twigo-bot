@@ -13,3 +13,22 @@ export function loadMe(refresh = false): Promise<MeResult> {
   }
   return cached;
 }
+
+const PROBLEMS: Record<string, string> = {
+  'not-member': 'Only members of the Mikazuki server can log in.',
+  failed: "Couldn't log in. Try again?",
+};
+let problem: string | null | undefined;
+
+/** ?login=… comes back from a failed or cancelled login: read once, then tidied out of the address bar. */
+export function loginProblem(): string | null {
+  if (problem === undefined) {
+    const url = new URL(location.href);
+    problem = PROBLEMS[url.searchParams.get('login') ?? ''] ?? null;
+    if (url.searchParams.has('login')) {
+      url.searchParams.delete('login');
+      history.replaceState(null, '', url.pathname + url.search);
+    }
+  }
+  return problem;
+}

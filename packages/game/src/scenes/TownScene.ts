@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { queueImage, queueTown } from '../assets/queue';
 import type { Dir, Manifest, TownMap } from '../assets/types';
 import { Character } from '../characters/character';
-import { type Outfit, assetProblems, buildOutfit, outfitFiles } from '../characters/doll';
+import { type Outfit, assetProblems, buildOutfit, loadOutfit, outfitFiles } from '../characters/doll';
 import { saveOutfit, startingOutfit } from '../characters/looks';
 import type { MeResult } from '../session';
 import { mountWardrobe } from '../ui/wardrobe';
@@ -88,7 +88,8 @@ export class TownScene extends Phaser.Scene {
     queueTown(this.load, this.textures, this.M, this.map);
     for (const f of outfitFiles(this.M.characters, this.outfit)) queueImage(this.load, this.textures, f);
     this.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR, (file: Phaser.Loader.File) => assetProblems.add(`failed to load ${file.src}`));
-    this.showLoading();
+    // (After the character creator the town has usually loaded in the background already.)
+    if (this.load.list.size) this.showLoading();
   }
 
   /** A loading bar while the town's art downloads (a build fetches a dozen packed sheets; dev, a few hundred loose images). */
@@ -409,19 +410,10 @@ export class TownScene extends Phaser.Scene {
 
   /** Dress the player in a look, loading any layers it needs first. */
   setOutfit(o: Outfit): Promise<void> {
-    const missing = outfitFiles(this.M.characters, o).filter((f) => !this.textures.exists(f));
-    return new Promise((resolve) => {
-      const done = () => {
-        buildOutfit(this, this.M.characters, o);
-        this.outfit = o;
-        this.player.setOutfit(o);
-        if (this.tint >= 0) this.player.sprite.setTint(this.tint);
-        resolve();
-      };
-      if (!missing.length) return done();
-      for (const f of missing) queueImage(this.load, this.textures, f);
-      this.load.once(Phaser.Loader.Events.COMPLETE, done);
-      this.load.start();
+    return loadOutfit(this, this.M.characters, o).then(() => {
+      this.outfit = o;
+      this.player.setOutfit(o);
+      if (this.tint >= 0) this.player.sprite.setTint(this.tint);
     });
   }
 

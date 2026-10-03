@@ -234,10 +234,14 @@ Kowens and items. The bot side is `packages/bot/src/web/auth.ts`: OAuth2 with th
 the server only, Discord's token revoked right after use, and 30-day sessions in the `sessions` table (only the
 token's SHA-256 is stored). Routes: `GET /auth/login`, `GET /auth/callback`, `POST /auth/logout`, `GET /me`.
 
+The town itself opens on a login screen (`ui/login.ts`); a member's first visit then goes through the character
+creator (`ui/creator.ts`, saved with `PUT /outfit`) while the town loads in the background. With login off, everyone
+goes straight in with a look saved in the browser.
+
 1. Developer Portal → your app → OAuth2 → Redirects: add `https://twigo-bot.duckdns.org/auth/callback`.
 2. Copy the client secret (Reset Secret if needed) into `.env` as `DISCORD_CLIENT_SECRET`, and set
    `WEB_PUBLIC_URL=https://twigo-bot.duckdns.org`. Never commit or share the secret.
-3. Deploy. Without both values the login routes answer 404 and the game simply shows no login button.
+3. Deploy. Without both values the login routes answer 404 and the game shows no login (screen or button).
 
 ## Adding a command
 

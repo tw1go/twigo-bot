@@ -60,6 +60,8 @@ State is one SQLite database, `data/mikazuki.db` (better-sqlite3, WAL), schema i
   images only.
 - Characters are paper dolls composited per outfit (`characters/doll.ts`), saved per account (`PUT /outfit`).
 - The town is held behind `?preview` until launch (`src/preview.ts`); `/play/` shows a coming-soon page.
+- Flow (`BootScene`): not logged in → login screen; logged in without a saved look → character creator
+  (`CreateScene` + `ui/creator.ts`, town preloads meanwhile); else the town. Login off → straight to the town.
 - Movement: click-to-move (A* on `blocked`), WASD/arrows (screen directions), E/Space to enter or sit.
 - Checking work: run the dev server and drive headless Chrome over the DevTools protocol (screenshots +
   `window.__town` debug API: `state()`, `teleport()`, `walk()`, `time()`, `view()`, `outfit()`). Use

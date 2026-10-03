@@ -8,7 +8,7 @@
       html, body { margin: 0; height: 100%; background: #1a1b26; overflow: hidden; }
       #game { width: 100%; height: 100%; }
       canvas { image-rendering: pixelated; }
-      #hud { position: fixed; top: 12px; right: 12px; font: 13px/1.35 system-ui, sans-serif; color: #c0caf5; z-index: 1; }
+      #hud { position: fixed; top: 12px; right: 12px; font: 13px/1.35 system-ui, sans-serif; color: #c0caf5; z-index: 2; }
       .hud-login { display: inline-block; padding: 8px 14px; border-radius: 8px; background: #5865f2; color: #fff; text-decoration: none; font-weight: 600; }
       .hud-login:hover { background: #4752c4; }
       .hud-note { margin-top: 6px; max-width: 220px; color: #f7768e; }
@@ -45,6 +45,55 @@
       #toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 12px); padding: 8px 14px; border-radius: 8px; background: rgba(36, 40, 59, 0.94); border: 1px solid #3b4261; color: #e6e9f2; font: 14px/1.3 system-ui, sans-serif; opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s; z-index: 2; }
       #toast.show { opacity: 1; transform: translate(-50%, 0); }
       .hud-prereg-note { margin-top: 6px; max-width: 240px; color: #a9b1d6; }
+      #login { position: fixed; inset: 0; z-index: 3; display: flex; align-items: center; justify-content: center; padding: 16px; background: #000; color: #c0caf5; font: 15px/1.5 system-ui, sans-serif; text-align: center; }
+      #login .lg-card { max-width: 360px; }
+      #login h1 { margin: 0 0 6px; font-size: 32px; color: #fff; }
+      #login p { margin: 0; }
+      #login .lg-discord { display: inline-block; margin-top: 22px; padding: 12px 22px; border-radius: 10px; background: #5865f2; color: #fff; text-decoration: none; font-weight: 600; font-size: 16px; }
+      #login .lg-discord:hover { background: #4752c4; }
+      #login .lg-problem { margin-top: 12px; color: #f7768e; }
+      #login .lg-hint { margin-top: 14px; color: #565f89; font-size: 13px; }
+      #creator { --z: 6; position: fixed; inset: 0; z-index: 1; overflow: auto; display: flex; flex-direction: column; align-items: center; padding: 64px 16px 24px; box-sizing: border-box; background: #000; color: #c0caf5; font: 14px/1.4 system-ui, sans-serif; }
+      #creator .cr-head, #creator .cr-panel { width: min(960px, 100%); }
+      #creator h1 { margin: 0 0 4px; font-size: 24px; color: #fff; }
+      #creator .cr-head p { margin: 0; color: #a9b1d6; }
+      #creator .cr-panel { display: grid; grid-template-columns: minmax(240px, 340px) 1fr; gap: 16px; margin-top: 16px; align-items: start; }
+      #creator .cr-preview, #creator .cr-side { border: 1px solid #3b4261; border-radius: 12px; background: #0d0e14; box-sizing: border-box; }
+      #creator .cr-preview { position: sticky; top: 0; display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 28px 16px 20px; }
+      #creator .cr-stage { position: relative; width: calc(32px * var(--z)); height: calc(48px * var(--z)); }
+      #creator .cr-doll { position: relative; width: 100%; height: 100%; image-rendering: pixelated; transition: opacity 0.15s; }
+      #creator.cr-busy .cr-doll { opacity: 0.55; }
+      #creator .cr-shadow { position: absolute; left: 50%; top: calc(47px * var(--z)); width: calc(18px * var(--z)); height: calc(5px * var(--z)); transform: translate(-50%, -50%); border-radius: 50%; background: rgba(122, 162, 247, 0.12); }
+      #creator .cr-turns { display: flex; gap: 12px; }
+      #creator .cr-turn { width: 44px; height: 44px; border: 1px solid #3b4261; border-radius: 50%; background: #1a1b26; color: #e6e9f2; font-size: 16px; cursor: pointer; }
+      #creator .cr-turn:hover { border-color: #7aa2f7; }
+      #creator .cr-side { padding: 16px; }
+      #creator .cr-section { margin-bottom: 16px; }
+      #creator h2 { margin: 0 0 8px; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #7aa2f7; }
+      #creator .cr-items, #creator .cr-swatches { display: flex; flex-wrap: wrap; gap: 6px; }
+      #creator .cr-items + .cr-swatches, #creator .cr-items + .cr-sub { margin-top: 10px; }
+      #creator .cr-item { padding: 6px 12px; border: 1px solid #3b4261; border-radius: 999px; background: #1a1b26; color: #c0caf5; font: inherit; cursor: pointer; }
+      #creator .cr-item:hover { border-color: #7aa2f7; }
+      #creator .cr-item[aria-checked='true'] { border-color: #7aa2f7; background: #7aa2f7; color: #000; font-weight: 600; }
+      #creator .cr-swatches { gap: 8px; }
+      #creator .cr-swatch { width: 30px; height: 30px; padding: 0; border: 0; border-radius: 8px; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12); }
+      #creator .cr-swatch:hover { transform: scale(1.08); }
+      #creator .cr-swatch[aria-checked='true'] { box-shadow: 0 0 0 2px #000, 0 0 0 4px #fff; }
+      #creator .cr-sub { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+      #creator .cr-sub-label { width: 44px; flex: none; color: #a9b1d6; font-size: 12px; }
+      #creator .cr-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 14px; border-top: 1px solid #24283b; }
+      #creator .cr-actions button { padding: 10px 16px; border-radius: 8px; font: inherit; font-weight: 600; cursor: pointer; }
+      #creator .cr-random { border: 1px solid #565f89; background: none; color: #c0caf5; }
+      #creator .cr-save { border: 0; background: #9ece6a; color: #1a1b26; }
+      #creator .cr-save:hover { background: #b5e48c; }
+      #creator .cr-actions button:disabled { opacity: 0.6; cursor: wait; }
+      #creator .cr-note { margin-top: 8px; color: #f7768e; text-align: right; }
+      #creator .cr-note:empty { display: none; }
+      @media (max-width: 720px) {
+        #creator { --z: 4; padding-top: 124px; } /* below the login card and pre-registration line */
+        #creator .cr-panel { grid-template-columns: 1fr; }
+        #creator .cr-preview { position: static; padding: 16px; }
+      }
     </style>
   </head>
   <body>

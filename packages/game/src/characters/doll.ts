@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { queueImage } from '../assets/queue';
 import type { CharacterDefs, Dir } from '../assets/types';
 
 // Paper-doll characters. Each layer (body, face, shoes, bottom, top, hair, glasses, hat — manifest drawOrder) is a
@@ -225,6 +226,21 @@ export function buildOutfit(scene: Phaser.Scene, C: CharacterDefs, o: Outfit): v
       });
     }
   }
+}
+
+/** Loads any layers an outfit still needs (with the scene's loader), then builds it. */
+export function loadOutfit(scene: Phaser.Scene, C: CharacterDefs, o: Outfit): Promise<void> {
+  const missing = outfitFiles(C, o).filter((f) => !scene.textures.exists(f));
+  return new Promise((resolve) => {
+    const done = () => {
+      buildOutfit(scene, C, o);
+      resolve();
+    };
+    if (!missing.length) return done();
+    for (const f of missing) queueImage(scene.load, scene.textures, f);
+    scene.load.once(Phaser.Loader.Events.COMPLETE, done);
+    scene.load.start();
+  });
 }
 
 /** A starter outfit: seeded, so the same seed always dresses the same way. */
