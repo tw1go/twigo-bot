@@ -1,9 +1,8 @@
 import Phaser from 'phaser';
-import type { Manifest } from '../assets/types';
-import { assetProblems } from '../characters/doll';
+import type { TitleData } from '@mikazuki/shared';
 import { LABEL_DEPTH } from '../world/depth';
 
-// Text in the town: a character's name plate with their <Title> under it, and building names. Drawn over the
+// Text in the town: a character's name with their <Title> under it, and building names. Drawn over the
 // world (never tinted at night) in Pixelify Sans. Zoomed out, they keep at least MIN_SCALE screen pixels per art
 // pixel (whole numbers, so the plate stays crisp), and the text is rendered at that scale so it stays sharp.
 
@@ -16,35 +15,53 @@ const scaleFor = (zoom: number) => ({ scale: Math.max(zoom, MIN_SCALE) / zoom, r
 const text = (scene: Phaser.Scene, s: string, size: number, color: string, extra: Phaser.Types.GameObjects.Text.TextStyle = {}) =>
   scene.add.text(0, 0, s, { fontFamily: UI_FONT, fontSize: `${size}px`, color, ...extra });
 
-/** The manifest's name plate (three-slice, own name in lime) with the title under it. */
-export class Nameplate {
+/** A title's text colour: its own, or white under a shifting rainbow tint for 'prismatic'. */
+const PRISMATIC = 'prismatic';
+
+/** HSV (s, v in 0–1) → 0xRRGGBB. */
+function hsv(h: number, s: number, v: number): number {
+  const f = (n: number) => {
+    const k = (n + h / 60) % 6;
+    return Math.round((v - v * s * Math.max(0, Math.min(k, 4 - k, 1))) * 255);
+  };
+  return (f(5) << 16) | (f(3) << 8) | f(1);
+}
+
+/** A character's name in white with their <Title> under it in the title's colour. */
+export class NameTag {
   private readonly box: Phaser.GameObjects.Container;
   private readonly texts: Phaser.GameObjects.Text[];
   private readonly baseHeight: number;
+  private readonly tick: (() => void) | null = null;
 
-  constructor(scene: Phaser.Scene, M: Manifest, nickname: string, title: string, self = true) {
-    const P = M.ui.nameplate;
-    const plateH = P?.height ?? 9;
-    const name = text(scene, nickname, 5, self ? '#A3E635' : '#E6E9F2').setOrigin(0.5, 0.5);
-    const sub = text(scene, `<${title}>`, 4, '#B794F6').setOrigin(0.5, 0);
+  constructor(
+    private readonly scene: Phaser.Scene,
+    nickname: string,
+    title: TitleData,
+  ) {
+    const outline = { stroke: '#1E1B3A', strokeThickness: 2 };
+    const name = text(scene, nickname, 6, '#FFFFFF', outline).setOrigin(0.5, 0);
+    const prismatic = title.color === PRISMATIC;
+    const sub = text(scene, `<${title.name}>`, 4, prismatic ? '#FFFFFF' : title.color, outline).setOrigin(0.5, 0);
     // Local coordinates: the bottom centre of the stack is (0, 0).
-    const titleY = -Math.ceil(sub.height);
-    const plateY = titleY - 1 - plateH;
-    sub.setPosition(0, titleY);
-    name.setPosition(0, plateY + plateH / 2);
-    const parts: Phaser.GameObjects.GameObject[] = [];
-    const key = P && (self ? P.self : P.file);
-    if (key && scene.textures.exists(key)) {
-      const w = Math.max(P.threeSlice * 2 + 1, Math.ceil(name.width) + 6);
-      parts.push(scene.add.nineslice(0, plateY, key, undefined, w, plateH, P.threeSlice, P.threeSlice, 0, 0).setOrigin(0.5, 0));
-    } else assetProblems.add(`name plate not loaded: ${key ?? 'manifest ui.nameplate'}`);
-    parts.push(name, sub);
+    const subH = Math.ceil(sub.height);
+    const nameH = Math.ceil(name.height);
+    sub.setY(-subH);
+    name.setY(-subH - nameH + 1);
     this.texts = [name, sub];
-    this.baseHeight = -plateY;
-    this.box = scene.add.container(0, 0, parts).setDepth(LABEL_DEPTH);
+    this.baseHeight = subH + nameH - 1;
+    this.box = scene.add.container(0, 0, [name, sub]).setDepth(LABEL_DEPTH);
+    if (prismatic) {
+      // A rainbow drifting across the title, one hue per corner.
+      this.tick = () => {
+        const h = (scene.time.now / 12) % 360;
+        sub.setTint(hsv(h, 0.45, 1), hsv(h + 70, 0.45, 1), hsv(h + 30, 0.45, 1), hsv(h + 100, 0.45, 1));
+      };
+      scene.events.on(Phaser.Scenes.Events.UPDATE, this.tick);
+    }
   }
 
-  /** Height of the whole stack (plate + title), in world units. */
+  /** Height of the whole stack (name + title), in world units. */
   get height(): number {
     return Math.ceil(this.baseHeight * this.box.scale);
   }
@@ -61,6 +78,7 @@ export class Nameplate {
   }
 
   destroy(): void {
+    if (this.tick) this.scene.events.off(Phaser.Scenes.Events.UPDATE, this.tick);
     this.box.destroy();
   }
 }

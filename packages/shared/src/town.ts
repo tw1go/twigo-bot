@@ -1,14 +1,14 @@
 // The town's live connection (WebSocket at /ws, logged-in members only): who else is in town and where.
 // JSON messages, one per frame. Players are identified by a random id per connection, never their Discord ID.
 
-import type { OutfitData } from './room-api.js';
+import type { OutfitData, TitleData } from './room-api.js';
 
 export type TownDir = 's' | 'se' | 'e' | 'ne' | 'n' | 'nw' | 'w' | 'sw';
 
 export interface TownPlayer {
   id: string;
   nickname: string;
-  title: string;
+  title: TitleData;
   outfit: OutfitData;
   col: number;
   row: number;

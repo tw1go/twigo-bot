@@ -60,7 +60,8 @@ State is one SQLite database, `data/mikazuki.db` (better-sqlite3, WAL), schema i
   images only.
 - Characters are paper dolls composited per outfit (`characters/doll.ts`), saved per account (`PUT /outfit`).
   The look is picked in the creator only (the in-town wardrobe button was removed).
-- Town text (`ui/labels.ts`): the player's name plate + `<Title>`, and building names that fade up on hover. Drawn
+- Town text (`ui/labels.ts`): each character's white name + `<Title>` in the title's colour ('prismatic' = drifting
+  rainbow; list in the bot's `web/titles.ts`), and building names that fade up on hover. Drawn
   over everything, never at less than 3 screen px per art px. Zoom is 2×–4×.
 - The town is held behind `?preview` until launch (`src/preview.ts`); `/play/` shows a coming-soon page.
 - Flow (`BootScene`): not logged in → login screen; logged in without a saved look or nickname → character creator

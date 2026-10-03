@@ -2,6 +2,7 @@ import type { CharacterDefs, Dir } from '../assets/types';
 import { type Outfit, randomOutfit } from '../characters/doll';
 import { choices } from '../characters/looks';
 import { NICKNAME_RULE, parseNickname } from '../characters/nickname';
+import type { TitleData } from '@mikazuki/shared';
 
 // 🧍 The character creator, before a member's first visit to the town: one box with the character on the left
 // (idle, turned with the arrows) and the choices on the right (scrolling, Save underneath). Colours are picked by swatch, not by name. DOM text only.
@@ -10,8 +11,8 @@ export interface CreatorHooks {
   name: string;
   /** Starting nickname: their saved one, or a suggestion from their Discord name ('' if none fits). */
   nickname: string;
-  /** Their title, shown under the nickname as <Title>. */
-  title: string;
+  /** Their title, shown under the nickname as <Title>, in its colour. */
+  title: TitleData;
   initial: Outfit;
   /** Loads and builds a look (resolves once its sheets exist). */
   apply: (o: Outfit) => Promise<void>;
@@ -23,8 +24,6 @@ export interface CreatorHooks {
   save: (o: Outfit, nickname: string) => Promise<'ok' | 'taken' | 'invalid' | 'error'>;
   /** The game's pixel frame (a nine-slice image) for the box, if the manifest has one. */
   frame: { url: string; slice: number } | null;
-  /** The player's own name plate (a three-slice image), if the manifest has one. */
-  plate: { url: string; slice: number; height: number } | null;
 }
 
 /** "tshirt" → "Tshirt", "longsleeve" → "Longsleeve". */
@@ -69,15 +68,13 @@ export function mountCreator(C: CharacterDefs, hooks: CreatorHooks): void {
   right.addEventListener('click', () => turn(1));
   const turns = el('div', 'cr-turns');
   turns.append(left, right);
-  // The name plate, as in town: above the character's cell, at the character's scale, with the title under it.
-  const plate = el('div', 'cr-plate');
-  if (hooks.plate) {
-    plate.style.setProperty('--plate', `url("${hooks.plate.url}")`);
-    plate.style.setProperty('--plate-slice', String(hooks.plate.slice));
-    plate.style.setProperty('--plate-h', String(hooks.plate.height));
-  }
+  // Name and title, as in town: just over the head, at the character's scale.
+  const plate = el('div', 'cr-name');
+  const titleEl = el('div', 'cr-title', `<${hooks.title.name}>`);
+  if (hooks.title.color === 'prismatic') titleEl.classList.add('cr-prismatic');
+  else titleEl.style.color = hooks.title.color;
   const tag = el('div', 'cr-tag');
-  tag.append(plate, el('div', 'cr-title', `<${hooks.title}>`));
+  tag.append(plate, titleEl);
   const stage = el('div', 'cr-stage');
   stage.append(el('div', 'cr-shadow'), doll, tag);
   look.append(stage, turns);

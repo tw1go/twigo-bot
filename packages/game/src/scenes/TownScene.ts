@@ -23,7 +23,9 @@ import { type Bench, type Building, WorldObjects, characterDepth } from '../worl
 // The playable town: ground, buildings, props and the player, all placed from manifest.json + maps/town.json.
 // Click (or tap) to walk; click a building to walk to its door; click a bench to sit.
 
-const ZOOMS = [2, 3, 4]; // whole steps only; 1× showed too much of the town at once
+const ZOOMS = [2, 3, 4];
+/** Everyone's title until they're given another (the bot's web/titles.ts has the list). */
+const TOWNFOLK = { name: 'Townfolk', color: '#B794F6' }; // whole steps only; 1× showed too much of the town at once
 const TWIGO_ROOM_URL = 'https://tw1go.github.io';
 
 /** Each building's name (shown over it) and emoji (door messages). twigo's house leads back to twigo's room; the
@@ -163,7 +165,7 @@ export class TownScene extends Phaser.Scene {
     }
     // Members show their nickname and title; without a login (login off, or the dev server) it's "Guest".
     const member = this.me?.status === 'ok' ? this.me.me : null;
-    this.player.setNameplate(member?.nickname ?? 'Guest', member?.title ?? 'Townfolk');
+    this.player.setNameTag(member?.nickname ?? 'Guest', member?.title ?? TOWNFOLK);
     if (member || fakeLogin()) this.connect();
     exposeDebug(this);
     if (assetProblems.size) console.warn('[town] asset problems:\n' + [...assetProblems].join('\n'));

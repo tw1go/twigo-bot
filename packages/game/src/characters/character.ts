@@ -3,7 +3,8 @@ import type { CharacterDefs, Dir, Manifest } from '../assets/types';
 import { CHARACTER_BIAS } from '../world/depth';
 import type { Tile } from '../world/grid';
 import { type Outfit, headTop, sheetKey } from './doll';
-import { Nameplate } from '../ui/labels';
+import type { TitleData } from '@mikazuki/shared';
+import { NameTag } from '../ui/labels';
 
 // A walking paper doll. Position is in tile space (tile centre = col + 0.5); the sprite's feet anchor sits on it.
 // Depth is the front corner of the tile the feet are on, refreshed every frame.
@@ -24,7 +25,7 @@ export class Character {
   readonly sprite: Phaser.GameObjects.Sprite;
   private readonly shadow: Phaser.GameObjects.Image | null;
   private alert: Phaser.GameObjects.Sprite | null = null;
-  private tag: Nameplate | null = null;
+  private tag: NameTag | null = null;
   private zoom = 1;
   private head = 0; // rows of empty cell above the head (headTop)
   private col: number; // tile-space position of the feet (tile centre = integer + 0.5)
@@ -64,15 +65,15 @@ export class Character {
     this.sync();
   }
 
-  /** Name plate and <Title> over the head (null removes it). */
-  setNameplate(nickname: string | null, title: string, self = true): void {
+  /** Name and <Title> over the head (null removes them). */
+  setNameTag(nickname: string | null, title: TitleData): void {
     this.tag?.destroy();
-    this.tag = nickname ? new Nameplate(this.scene, this.M, nickname, title, self) : null;
+    this.tag = nickname ? new NameTag(this.scene, nickname, title) : null;
     this.tag?.setZoom(this.zoom);
     this.sync();
   }
 
-  /** Sizes the name plate for the camera zoom. */
+  /** Sizes the name tag for the camera zoom. */
   setZoom(zoom: number): void {
     this.zoom = zoom;
     this.tag?.setZoom(zoom);
@@ -275,7 +276,7 @@ export class Character {
     const depth = this.sittingAt?.depth ?? (this.depthFn ? this.depthFn(t.col, t.row, feet, this.sprite.getBounds(this.boundsCache)) : feet);
     this.sprite.setDepth(depth);
     this.shadow?.setPosition(Math.round(x), Math.round(y)).setDepth(depth - 0.2);
-    // The plate sits just over the head (2 px above its first visible row); an alert goes above the plate.
+    // The name sits just over the head (2 px above its first visible row); an alert goes above it.
     const plateBottom = Math.round(y) - this.M.characters.anchor[1] + this.head - 2;
     this.tag?.place(Math.round(x), plateBottom);
     const alertY = this.tag ? plateBottom - this.tag.height - 1 : Math.round(y) - this.M.characters.cell[1] - 2;

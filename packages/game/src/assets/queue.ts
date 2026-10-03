@@ -50,10 +50,6 @@ export function queueTown(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Tex
   const F = M.props.fence;
   if (F) [F.nw, F.ne, F.post].forEach(img);
 
-  // Name plates (the player's own, and everyone else's).
-  const P = M.ui.nameplate;
-  if (P) [P.file, P.self].forEach(img);
-
   for (const fx of Object.values(M.fx)) {
     if (!fx.file) continue;
     if (fx.frame) queueSheet(load, textures, fx.file, fx.frame[0], fx.frame[1]);

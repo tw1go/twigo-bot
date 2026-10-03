@@ -6,12 +6,13 @@ import { BOOST_CREDITS, boostCount, setBoostCount } from '../games/boosts.js';
 import { ATTEND_REWARD, TOP_REWARD, openPayoutPanel } from '../minewars/payout.js';
 import { kowen } from '../kowens.js';
 import { LAUNCH_REWARD, launchPayout, launched, preregPanel } from '../prereg/prereg.js';
+import { TITLES, giveTitle } from '../web/titles.js';
 
 // Only the gifter (REWARD_OWNER_ID) can use this. Hidden from non-admins by default.
 export const gift: Command = {
   data: new SlashCommandBuilder()
     .setName('gift')
-    .setDescription('Gifter only: gifts, boosts & Mine Wars payouts 🎁')
+    .setDescription('Gifter only: gifts, boosts, titles & Mine Wars payouts 🎁')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addSubcommand((s) =>
       s
@@ -41,6 +42,19 @@ export const gift: Command = {
         .setName('launch')
         .setDescription(`Web game launch: pay every pre-registered member ${LAUNCH_REWARD} Kowens and close sign-ups · 🌐`)
         .addBooleanOption((o) => o.setName('confirm').setDescription('True = pay everyone now and close pre-registration').setRequired(true)),
+    )
+    .addSubcommand((s) =>
+      s
+        .setName('title')
+        .setDescription('Give someone a web game title (shown under their name) · 🔒')
+        .addUserOption((o) => o.setName('user').setDescription('Who').setRequired(true))
+        .addStringOption((o) =>
+          o
+            .setName('title')
+            .setDescription('Which title (Townfolk = back to the default)')
+            .setRequired(true)
+            .addChoices(...Object.entries(TITLES).map(([value, t]) => ({ name: t.name, value }))),
+        ),
     )
     .addSubcommand((s) =>
       s.setName('minewars').setDescription(`Pay 9 PM Mine Wars: attendance +${ATTEND_REWARD}, Top 10 ${TOP_REWARD} · 🔒 panel · 🌐 summary`),
@@ -95,6 +109,23 @@ export const gift: Command = {
     const target = interaction.options.getUser('user', true);
     if (target.bot) {
       await interaction.reply({ content: "Bots don't need Kowens. 🤖", flags: MessageFlags.Ephemeral });
+      return;
+    }
+
+    if (interaction.options.getSubcommand() === 'title') {
+      const id = interaction.options.getString('title', true);
+      const title = TITLES[id];
+      if (!title) {
+        await interaction.reply({ content: 'Unknown title.', flags: MessageFlags.Ephemeral });
+        return;
+      }
+      giveTitle(target.id, id);
+      console.log(`[gift] ${target.id} title ${id}`);
+      await interaction.reply({
+        content: `🏷️ ${target} now shows **<${title.name}>** in the web game (from their next visit to the town).`,
+        flags: MessageFlags.Ephemeral,
+        allowedMentions: { parse: [] },
+      });
       return;
     }
 

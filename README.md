@@ -87,6 +87,7 @@ requester), Complete (requester pays the accepter), Give up (reopens), Cancel (r
 **Mine Wars payout:** `/gift minewars` opens a panel to pick attendance (+2) and Top 10 (3 total) for the most recent 9 PM Mine Wars (Institute Walkway 07 server only),
 then pays everyone and posts a summary (names listed, no pings). A per-night ledger in the database prevents double payouts.
 **Gifter:** `/gift kowens user amount [reason]` (negative removes) — only `REWARD_OWNER_ID` can use it.
+`/gift title user title` gives a web game title (equipped; Townfolk puts them back to the default).
 
 `/status [user]` shows Bakod, jail, steal cooldown, Master Keys, digs/shovels, bag space, quests and inactivity (private).
 Targeting yourself or the bot is free. `/balance [user]` shows Kowens, rank, today's progress and next reward (only visible to you).
@@ -237,7 +238,8 @@ token's SHA-256 is stored). Routes: `GET /auth/login`, `GET /auth/callback`, `PO
 The town itself opens on a login screen (`ui/login.ts`); a member's first visit then goes through the character
 creator (`ui/creator.ts`: a nickname, saved with `PUT /nickname`, unique ignoring case and `space _ - .`; and a
 look, saved with `PUT /outfit`) while the town loads in the background. Under the nickname is the member's title
-(`<Townfolk>` by default; `web/titles.ts`, earned titles in the `titles` table — rewards to come).
+(`<Townfolk>` by default; the list and colours are in `web/titles.ts`, given with `/gift title`, stored in the `titles`
+table).
 
 In town, logged-in members see each other live over a WebSocket at `/ws` (`packages/bot/src/web/town.ts`, messages
 in `packages/shared/src/town.ts`). The bot checks every step (on the map, not blocked, next to the last one, at walking

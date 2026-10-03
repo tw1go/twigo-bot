@@ -25,7 +25,7 @@ function fakeMe(fake: string): MeResult {
   } catch {
     // no saved look: the creator shows
   }
-  return { status: 'ok', me: { id: '0', name: fakeName(), avatar: '', kowens: 0, vault: 0, rank: null, items: [], preregistered: false, outfit, nickname: fake === 'saved' ? fakeName() : null, title: 'Townfolk' } };
+  return { status: 'ok', me: { id: '0', name: fakeName(), avatar: '', kowens: 0, vault: 0, rank: null, items: [], preregistered: false, outfit, nickname: fake === 'saved' ? fakeName() : null, title: { name: 'Townfolk', color: '#B794F6' } } };
 }
 
 export function loadMe(refresh = false): Promise<MeResult> {

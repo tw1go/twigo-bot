@@ -33,7 +33,6 @@ export class CreateScene extends Phaser.Scene {
     const { manifest, me } = this.args;
     const C = manifest.characters;
     const frame = manifest.ui.inventory?.itemFrame;
-    const plate = manifest.ui.nameplate;
     const asset = (file: string) => `${import.meta.env.BASE_URL}assets/${file}`;
     const townLoaded = new Promise<void>((done) => this.scene.launch('town-preload', { ...this.args, done }));
     mountCreator(C, {
@@ -41,7 +40,6 @@ export class CreateScene extends Phaser.Scene {
       nickname: me.me.nickname ?? suggestNickname(me.me.name),
       title: me.me.title,
       frame: frame ? { url: asset(frame.file), slice: frame.nineSlice } : null,
-      plate: plate ? { url: asset(plate.self), slice: plate.threeSlice, height: plate.height } : null,
       initial: startingOutfit(C, me),
       apply: (o) => loadOutfit(this, C, o),
       sheet: (o, dir) => {

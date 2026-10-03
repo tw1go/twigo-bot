@@ -7,7 +7,7 @@ import { sanitize } from '../characters/looks';
 import { type WorldObjects, characterDepth } from './objects';
 import { rng } from './rng';
 
-// Everyone else in town, as the server reports them (net/town.ts): a paper doll each, with a white name plate,
+// Everyone else in town, as the server reports them (net/town.ts): a paper doll each, with their name and title,
 // walking the steps the server passes on. A character appears once its look has loaded; messages that arrive
 // before that just update where it should be.
 
@@ -97,7 +97,7 @@ export class OtherPlayers {
       char.onSpawn = (obj) => this.onSpawn(obj);
       char.place({ col: s.col, row: s.row }, s.dir);
       if (s.sit) this.seat(char, s);
-      char.setNameplate(s.nickname, s.title, false);
+      char.setNameTag(s.nickname, s.title);
       char.setZoom(this.zoom);
       for (const t of char.tintables) this.onSpawn(t);
       o.char = char;

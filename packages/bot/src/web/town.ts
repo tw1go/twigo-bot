@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import type { IncomingMessage, Server } from 'node:http';
 import type { Duplex } from 'node:stream';
 import { WebSocket, WebSocketServer } from 'ws';
-import type { OutfitData, TownClientMessage, TownDir, TownPlayer, TownServerMessage } from '@mikazuki/shared';
+import type { OutfitData, TitleData, TownClientMessage, TownDir, TownPlayer, TownServerMessage } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
 // messages). The server keeps everyone's tile and checks each step — on the map, not blocked, next to the last
@@ -25,7 +25,7 @@ export interface TownMap {
 
 export interface TownProfile {
   nickname: string;
-  title: string;
+  title: TitleData;
   outfit: OutfitData;
 }
 
