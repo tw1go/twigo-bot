@@ -1,0 +1,254 @@
+import Phaser from 'phaser';
+import type { CharacterDefs, Dir } from '../assets/types';
+
+// Paper-doll characters. Each layer (body, face, shoes, bottom, top, hair, glasses, hat — manifest drawOrder) is a
+// sheet of 32×48 frames with zero offset. For an outfit we recolour every layer's grey key ramps, clip the hair
+// under beanies and caps, and composite the layers into one sheet per (animation, direction), so a character is a
+// single sprite: cheap to draw and simple to depth-sort.
+
+export interface Outfit {
+  skin: string; // skinTones key
+  hair: string;
+  hairColour: string; // colourPresets key
+  top: string;
+  topColour: string;
+  topTrim: string;
+  bottom: string;
+  bottomColour: string;
+  bottomTrim: string;
+  shoes: string;
+  shoesColour: string; // shoes are all on the TRIM ramp
+  glasses?: string;
+  glassesColour?: string;
+  hat?: string;
+  hatColour?: string;
+}
+
+export const ANIMS = ['rot', 'walk', 'idle', 'sit', 'wave', 'cheer'] as const;
+export type Anim = (typeof ANIMS)[number];
+
+const hex = (s: string) => parseInt(s.replace('#', ''), 16);
+
+export const dirsFor = (C: CharacterDefs, anim: string): Dir[] => C.animations[anim]?.directions ?? C.directions;
+const hasFace = (C: CharacterDefs, dir: Dir) => C.layers.face.directions.includes(dir);
+
+/** The hair style actually drawn: buns become crop under a clipping hat (wardrobe.hatHairFallback). */
+export function hairDrawn(C: CharacterDefs, o: Outfit): string {
+  const clips = !!(o.hat && C.wardrobe.hatClips[o.hat]);
+  return clips ? (C.wardrobe.hatHairFallback[o.hair] ?? o.hair) : o.hair;
+}
+
+interface LayerFile {
+  layer: string;
+  file: string;
+  clip?: string; // hat clip mask, for the hair layer
+}
+
+/** The files drawn for one (anim, dir), in draw order. */
+export function layerFiles(C: CharacterDefs, o: Outfit, anim: string, dir: Dir): LayerFile[] {
+  const W = C.wardrobe;
+  const fill = (pattern: string, vars: Record<string, string>) => pattern.replace(/\{(\w+)\}/g, (_, k: string) => vars[k] ?? `{${k}}`);
+  const slot = (s: string, item: string) => fill(W.pattern, { slot: s, item, anim, dir });
+  const clips = !!(o.hat && W.hatClips[o.hat]);
+  const out: LayerFile[] = [];
+  for (const layer of C.drawOrder) {
+    switch (layer) {
+      case 'body':
+        out.push({ layer, file: fill(C.layers.body, { anim, dir }) });
+        break;
+      case 'face':
+        if (hasFace(C, dir)) out.push({ layer, file: fill(C.layers.face.pattern, { anim, dir }) });
+        break;
+      case 'shoes':
+        out.push({ layer, file: slot('shoes', o.shoes) });
+        break;
+      case 'bottom':
+        out.push({ layer, file: slot('bottom', o.bottom) });
+        break;
+      case 'top':
+        out.push({ layer, file: slot('top', o.top) });
+        break;
+      case 'hair':
+        out.push({
+          layer,
+          file: fill(W.hairPattern, { item: hairDrawn(C, o), anim, dir }),
+          clip: clips ? fill(W.hatClipPattern, { item: o.hat!, anim, dir }) : undefined,
+        });
+        break;
+      case 'glasses':
+        if (o.glasses && hasFace(C, dir)) out.push({ layer, file: slot('glasses', o.glasses) });
+        break;
+      case 'hat':
+        if (o.hat) out.push({ layer, file: fill(W.hatPattern, { item: o.hat, anim, dir }) });
+        break;
+    }
+  }
+  return out;
+}
+
+/** Every image an outfit needs, for the loader. */
+export function outfitFiles(C: CharacterDefs, o: Outfit): string[] {
+  const files = new Set<string>();
+  for (const anim of ANIMS) {
+    for (const dir of dirsFor(C, anim)) {
+      for (const l of layerFiles(C, o, anim, dir)) {
+        files.add(l.file);
+        if (l.clip) files.add(l.clip);
+      }
+    }
+  }
+  return [...files];
+}
+
+/** Colour swaps for one layer: grey key → outfit colour (exact matches only; the outline is never swapped). */
+function swapsFor(C: CharacterDefs, o: Outfit, layer: string): Map<number, number> {
+  const m = new Map<number, number>();
+  const ramp = (keys: string[], to: string[] | undefined) => {
+    if (!to) return;
+    keys.forEach((k, i) => {
+      if (to[i]) m.set(hex(k), hex(to[i]));
+    });
+  };
+  const preset = (name?: string) => (name ? C.colourPresets[name] : undefined);
+  const K = C.colourKeys;
+  switch (layer) {
+    case 'body':
+      ramp(K.skin, C.skinTones[o.skin]);
+      break;
+    case 'face':
+      ramp(K.skin, C.skinTones[o.skin]); // the mouth uses a skin key on purpose
+      for (const [from, to] of Object.entries(C.skinTones.faceTweak?.[o.skin] ?? {})) m.set(hex(from), hex(to));
+      break;
+    case 'hair':
+      ramp(K.hair, preset(o.hairColour));
+      break;
+    case 'top':
+      ramp(K.clothMain, preset(o.topColour));
+      ramp(K.clothTrim, preset(o.topTrim));
+      break;
+    case 'bottom':
+      ramp(K.clothMain, preset(o.bottomColour));
+      ramp(K.clothTrim, preset(o.bottomTrim));
+      break;
+    case 'shoes':
+      ramp(K.clothTrim, preset(o.shoesColour));
+      break;
+    case 'glasses':
+      ramp(K.clothMain, preset(o.glassesColour));
+      break;
+    case 'hat':
+      ramp(K.clothMain, preset(o.hatColour));
+      break;
+  }
+  return m;
+}
+
+function pixels(scene: Phaser.Scene, key: string): ImageData | null {
+  if (!scene.textures.exists(key)) return null;
+  const img = scene.textures.get(key).getSourceImage() as HTMLImageElement;
+  const c = document.createElement('canvas');
+  c.width = img.width;
+  c.height = img.height;
+  const ctx = c.getContext('2d', { willReadFrequently: true })!;
+  ctx.drawImage(img, 0, 0);
+  return ctx.getImageData(0, 0, img.width, img.height);
+}
+
+export const outfitKey = (o: Outfit) =>
+  'doll:' +
+  [o.skin, o.hair, o.hairColour, o.top, o.topColour, o.topTrim, o.bottom, o.bottomColour, o.bottomTrim, o.shoes, o.shoesColour, o.glasses ?? '-', o.glassesColour ?? '-', o.hat ?? '-', o.hatColour ?? '-'].join('.');
+
+/** Texture / animation key for one composited sheet. */
+export const sheetKey = (o: Outfit, anim: string, dir: Dir) => `${outfitKey(o)}:${anim}:${dir}`;
+
+/** Problems found while compositing (missing layers, mismatched sheet sizes), for the asset report. */
+export const assetProblems = new Set<string>();
+
+/**
+ * Builds the composited sheets and animations for an outfit (once per outfit). All layer images must already be
+ * loaded (see outfitFiles).
+ */
+export function buildOutfit(scene: Phaser.Scene, C: CharacterDefs, o: Outfit): void {
+  const [cw, ch] = C.cell;
+  for (const anim of ANIMS) {
+    const spec = C.animations[anim];
+    if (!spec) continue;
+    for (const dir of dirsFor(C, anim)) {
+      const key = sheetKey(o, anim, dir);
+      if (scene.textures.exists(key)) continue;
+      const width = spec.frames * cw;
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = ch;
+      const ctx = canvas.getContext('2d')!;
+      for (const l of layerFiles(C, o, anim, dir)) {
+        const data = pixels(scene, l.file);
+        if (!data) {
+          assetProblems.add(`missing layer ${l.file}`);
+          continue;
+        }
+        if (data.width !== width || data.height !== ch) assetProblems.add(`${l.file} is ${data.width}×${data.height}, expected ${width}×${ch}`);
+        const swaps = swapsFor(C, o, l.layer);
+        const d = data.data;
+        for (let i = 0; i < d.length; i += 4) {
+          if (!d[i + 3]) continue;
+          const to = swaps.get((d[i] << 16) | (d[i + 1] << 8) | d[i + 2]);
+          if (to !== undefined) {
+            d[i] = to >> 16;
+            d[i + 1] = (to >> 8) & 255;
+            d[i + 2] = to & 255;
+          }
+        }
+        if (l.clip) {
+          // Hide the hair wherever the hat's clip mask is white.
+          const mask = pixels(scene, l.clip);
+          if (!mask) assetProblems.add(`missing hat clip ${l.clip}`);
+          else {
+            if (mask.width !== data.width || mask.height !== data.height) assetProblems.add(`${l.clip} does not match ${l.file}`);
+            const md = mask.data;
+            for (let i = 0; i < d.length && i < md.length; i += 4) if (md[i + 3] && md[i] > 127 && md[i + 1] > 127 && md[i + 2] > 127) d[i + 3] = 0;
+          }
+        }
+        const layer = document.createElement('canvas');
+        layer.width = data.width;
+        layer.height = data.height;
+        layer.getContext('2d')!.putImageData(data, 0, 0);
+        ctx.drawImage(layer, 0, 0);
+      }
+      const tex = scene.textures.addCanvas(key, canvas)!;
+      for (let f = 0; f < spec.frames; f++) tex.add(f, 0, f * cw, 0, cw, ch);
+      scene.anims.create({
+        key,
+        frames: Array.from({ length: spec.frames }, (_, f) => ({ key, frame: f })),
+        frameRate: spec.fps || 1,
+        repeat: spec.loop ? -1 : 0,
+      });
+    }
+  }
+}
+
+/** A starter outfit: seeded, so the same seed always dresses the same way. */
+export function randomOutfit(C: CharacterDefs, random: () => number): Outfit {
+  const W = C.wardrobe;
+  const any = <T>(xs: T[]) => xs[Math.floor(random() * xs.length)];
+  const presets = Object.keys(C.colourPresets).filter((k) => k !== 'note');
+  const naturalHair = presets.filter((p) => ['brown', 'stone', 'gold', 'cream'].includes(p));
+  const hat = random() < 0.35 ? any(W.hats) : undefined;
+  return {
+    skin: any(Object.keys(C.skinTones).filter((k) => k !== 'keys' && k !== 'faceTweak')),
+    hair: any(W.hair),
+    hairColour: any(naturalHair.length ? naturalHair : presets),
+    top: any(W.top),
+    topColour: any(presets),
+    topTrim: any(presets),
+    bottom: any(W.bottom),
+    bottomColour: any(presets),
+    bottomTrim: any(presets),
+    shoes: any(W.shoes),
+    shoesColour: any(presets),
+    glasses: random() < 0.25 ? any(W.glasses) : undefined,
+    glassesColour: 'stone',
+    hat,
+    hatColour: hat ? any(presets) : undefined,
+  };
+}
