@@ -3,7 +3,8 @@
 // The colour holds at each stop and fades over FADE_MINUTES between them. Each fade is centred between the end of
 // one stop and the start of the next, so every stop below is fully reached during its stated time:
 //
-//   Night 19:00–05:00  #5B5F9E      Dawn 06:30  #D9C3E8
+//   Night 19:00–05:00  #959BD2      Dawn 06:30  #D9C3E8
+//   (night was #5B5F9E; brightened on 3 Oct because the art is already dark: ~70% of day brightness, not ~45%)
 //   Day   08:00–16:30  #FFFFFF      Dusk 17:30  #F2C9A5
 //
 // The time source is swappable (setTimeSource) so a server clock can drive it later; ?time=HH:MM overrides it for
@@ -25,7 +26,7 @@ const m = (hhmm: string) => {
 
 // In order through the day, starting from night (which wraps past midnight).
 const STOPS: Stop[] = [
-  { name: 'night', from: m('19:00'), to: m('05:00') + 1440, colour: 0x5b5f9e },
+  { name: 'night', from: m('19:00'), to: m('05:00') + 1440, colour: 0x959bd2 },
   { name: 'dawn', from: m('06:30') + 1440, to: m('06:30') + 1440, colour: 0xd9c3e8 },
   { name: 'day', from: m('08:00') + 1440, to: m('16:30') + 1440, colour: 0xffffff },
   { name: 'dusk', from: m('17:30') + 1440, to: m('17:30') + 1440, colour: 0xf2c9a5 },
