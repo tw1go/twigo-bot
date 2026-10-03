@@ -236,7 +236,8 @@ token's SHA-256 is stored). Routes: `GET /auth/login`, `GET /auth/callback`, `PO
 
 The town itself opens on a login screen (`ui/login.ts`); a member's first visit then goes through the character
 creator (`ui/creator.ts`: a nickname, saved with `PUT /nickname`, unique ignoring case and `space _ - .`; and a
-look, saved with `PUT /outfit`) while the town loads in the background. With login off, everyone
+look, saved with `PUT /outfit`) while the town loads in the background. Under the nickname is the member's title
+(`<Townfolk>` by default; `web/titles.ts`, earned titles in the `titles` table — rewards to come). With login off, everyone
 goes straight in with a look saved in the browser.
 
 1. Developer Portal → your app → OAuth2 → Redirects: add `https://twigo-bot.duckdns.org/auth/callback`.

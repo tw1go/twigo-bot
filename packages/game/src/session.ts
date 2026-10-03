@@ -20,7 +20,7 @@ function fakeMe(fake: string): MeResult {
   } catch {
     // no saved look: the creator shows
   }
-  return { status: 'ok', me: { id: '0', name: 'Dev tester', avatar: '', kowens: 0, vault: 0, rank: null, items: [], preregistered: false, outfit, nickname: fake === 'saved' ? 'Dev tester' : null } };
+  return { status: 'ok', me: { id: '0', name: 'Dev tester', avatar: '', kowens: 0, vault: 0, rank: null, items: [], preregistered: false, outfit, nickname: fake === 'saved' ? 'Dev tester' : null, title: 'Townfolk' } };
 }
 
 export function loadMe(refresh = false): Promise<MeResult> {

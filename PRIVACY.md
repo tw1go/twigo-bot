@@ -1,6 +1,6 @@
 # twigo bot — Privacy Policy
 
-_Last updated: October 4, 2026 (web game nicknames)_
+_Last updated: October 4, 2026 (web game nicknames and titles)_
 
 This policy explains what information the twigo Discord bot ("the bot", "we") collects, why, and how it is handled. By using the bot or being a member of a server where it runs, you agree to this policy.
 
@@ -56,6 +56,7 @@ The bot also powers [twigo's room](https://tw1go.github.io), a small website, th
 - **Logging in (the web game at `/play`).** You can log in with Discord to see your own Kowens and items in the game. The login asks Discord only for your basic profile (the `identify` permission): your user ID, username, and avatar. Not your email, your servers, or your messages. We use it once to see who you are, then revoke the access Discord gave us. Only members of the Mikazuki server can log in.
 - **Pre-registration.** If you pre-register for the web game (with `/preregister`, the pre-register button, or in the game), we save your user ID, when you signed up, where (Discord or the game), and when your launch reward was paid. It's used only to pay that reward once.
 - **Your nickname in the game.** When you create your character, you pick a nickname. We store it with your user ID so the game can show it, and so no two members share one (this check ignores capital letters, spaces, `_`, `-` and `.`). Other players will see it in the game.
+- **Your title in the game.** Everyone starts as a Townfolk. If you earn another title as a reward, we store your user ID with the titles you've earned, when, and which one you show under your nickname.
 - **Your character's look.** If you save a look in the game's wardrobe while logged in, we store your user ID with the names of the items and colours you picked, so your character looks the same on any device. Without logging in, the look is kept only in your browser.
 - **The login cookie.** Logging in sets one cookie, `mk_session`, holding a random code that keeps you logged in. It is first-party, can't be read by scripts on the page, and is only ever sent over HTTPS. The server stores only a scrambled (hashed) form of it, together with your user ID and when it expires. During login a second cookie (`mk_oauth_state`) protects the login itself and is deleted within 10 minutes.
 - **No tracking.** Apart from the login cookies above, the API sets no cookies and keeps no access logs. The website itself is hosted on GitHub Pages, which is covered by [GitHub's Privacy Statement](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement).

@@ -10,6 +10,8 @@ export interface CreatorHooks {
   name: string;
   /** Starting nickname: their saved one, or a suggestion from their Discord name ('' if none fits). */
   nickname: string;
+  /** Their title, shown under the nickname as <Title>. */
+  title: string;
   initial: Outfit;
   /** Loads and builds a look (resolves once its sheets exist). */
   apply: (o: Outfit) => Promise<void>;
@@ -65,15 +67,17 @@ export function mountCreator(C: CharacterDefs, hooks: CreatorHooks): void {
   right.addEventListener('click', () => turn(1));
   const turns = el('div', 'cr-turns');
   turns.append(left, right);
-  // The name plate, as in town: above the character's cell, at the character's scale.
+  // The name plate, as in town: above the character's cell, at the character's scale, with the title under it.
   const plate = el('div', 'cr-plate');
   if (hooks.plate) {
     plate.style.setProperty('--plate', `url("${hooks.plate.url}")`);
     plate.style.setProperty('--plate-slice', String(hooks.plate.slice));
     plate.style.setProperty('--plate-h', String(hooks.plate.height));
   }
+  const tag = el('div', 'cr-tag');
+  tag.append(plate, el('div', 'cr-title', `<${hooks.title}>`));
   const stage = el('div', 'cr-stage');
-  stage.append(el('div', 'cr-shadow'), doll, plate);
+  stage.append(el('div', 'cr-shadow'), doll, tag);
   look.append(stage, turns);
 
   let frame = 0;

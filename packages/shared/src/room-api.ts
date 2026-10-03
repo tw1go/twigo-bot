@@ -73,6 +73,8 @@ export interface MeResponse {
   outfit: OutfitData | null;
   /** Their nickname in the web game (`PUT /nickname`), or null if they haven't picked one. */
   nickname: string | null;
+  /** Their title, shown under the nickname as <Title> ("Townfolk" by default; more are earned as rewards). */
+  title: string;
 }
 
 /** `GET /prereg` — public pre-registration status for the web game. */

@@ -13,7 +13,7 @@ import { today } from '../time.js';
 //  • v3, web game logins: sessions.
 //  • v4, web game pre-registration: preregistrations.
 //  • v5, web game character looks: outfits.
-//  • v6, web game nicknames: nicknames.
+//  • v6, web game nicknames and titles: nicknames, titles.
 //  • kv: small singleton documents keyed by their old file name (e.g. 'race.json', 'rotation.json').
 // Stores cache their state in memory (the bot is the only writer) and save through db/sync.ts, which writes only
 // the rows that changed.
@@ -194,12 +194,20 @@ const MIGRATIONS: string[] = [
     updated  INTEGER NOT NULL   -- ms
   );
   `,
-  /* v6: each member's nickname in the web game (PUT /nickname), unique once folded (see web/nickname.ts) */ `
+  /* v6: each member's nickname in the web game (PUT /nickname), unique once folded (see web/nickname.ts), and titles */ `
   CREATE TABLE nicknames (
     user_id   TEXT PRIMARY KEY,
     nickname  TEXT NOT NULL,
     folded    TEXT NOT NULL UNIQUE,  -- lowercase, without space _ - .
     updated   INTEGER NOT NULL       -- ms
+  );
+  -- titles earned as rewards (web/titles.ts); Townfolk, everyone's default, isn't stored
+  CREATE TABLE titles (
+    user_id   TEXT NOT NULL,
+    title     TEXT NOT NULL,     -- id in web/titles.ts
+    earned    INTEGER NOT NULL,  -- ms
+    equipped  INTEGER NOT NULL DEFAULT 0 CHECK (equipped IN (0, 1)),
+    PRIMARY KEY (user_id, title)
   );
   `,
 ];

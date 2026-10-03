@@ -39,6 +39,7 @@ export class CreateScene extends Phaser.Scene {
     mountCreator(C, {
       name: me.me.name,
       nickname: me.me.nickname ?? suggestNickname(me.me.name),
+      title: me.me.title,
       frame: frame ? { url: asset(frame.file), slice: frame.nineSlice } : null,
       plate: plate ? { url: asset(plate.self), slice: plate.threeSlice, height: plate.height } : null,
       initial: startingOutfit(C, me),
