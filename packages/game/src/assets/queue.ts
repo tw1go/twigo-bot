@@ -25,8 +25,10 @@ export function queueTown(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Tex
 
   for (const o of map.objects) {
     if (o.kind === 'building') {
-      const b = M.buildings[o.id];
-      if (b) img(b.file);
+      const b = M.buildings[o.id] as Manifest['buildings'][string] & { layers?: { back?: string; front?: string } };
+      // Hollow buildings (the arena) are drawn from their back and front layers instead of the full image.
+      if (b?.layers?.back && b.layers.front) [b.layers.back, b.layers.front].forEach(img);
+      else if (b) img(b.file);
     } else {
       const p = M.props[o.id] as PropDef | undefined;
       if (p?.file) img(p.file);
