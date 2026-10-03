@@ -2,7 +2,7 @@ import type { OutfitData } from '@mikazuki/shared';
 import type { CharacterDefs } from '../assets/types';
 import { rng } from '../world/rng';
 import { type Outfit, randomOutfit } from './doll';
-import type { MeResult } from '../session';
+import { type MeResult, fakeLogin } from '../session';
 
 // Which look the player starts with, and the choices the wardrobe offers — all from the manifest.
 
@@ -101,6 +101,7 @@ export function startingOutfit(C: CharacterDefs, me: MeResult | null): Outfit {
 /** Saves the look: on the account when logged in (and always in this browser). */
 export async function saveOutfit(o: Outfit, loggedIn: boolean): Promise<'account' | 'browser' | 'error'> {
   saveLocal(o);
+  if (fakeLogin()) return 'account'; // dev: no room API to save to
   if (!loggedIn) return 'browser';
   const res = await fetch('/outfit', {
     method: 'PUT',
