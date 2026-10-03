@@ -1,0 +1,17 @@
+file,cell_w,cell_h,frames,fps,loop,anchor_x,anchor_y,notes
+ui-tile-highlight.png,32,16,2,4,yes,16,8,lime outline; frame 2 brighter
+ui-cursor.png,12,12,2,0,no,0,0,cell 0 pointer (hotspot 0;0) · cell 1 hand for clickable things (hotspot 4;0)
+ui-speech-bubble.png,15,15,1,0,no,0,0,9-slice: 6 px corners; ink fill + violet border; text drawn by the game
+ui-speech-tail.png,7,5,1,0,no,3,0,centre under the bubble; its top row overlaps the bubble's bottom border
+ui-nameplate.png,9,9,1,0,no,0,0,3-slice pill: 4 px caps + 1 px stretch; sits 4 px above the cell; other players
+ui-nameplate-self.png,9,9,1,0,no,0,0,same with a lime border for your own name
+ui-chat-window.png,24,24,1,0,no,0,0,9-slice: 8 px corners
+ui-scroll-track.png,5,5,1,0,no,0,0,3-slice vertical: 2 px caps + 1 px stretch
+ui-scroll-thumb.png,5,7,1,0,no,0,0,3-slice vertical: 2 px caps + stretch the middle
+ui-input-box.png,14,14,1,0,no,0,0,9-slice: 4 px corners; 14 px tall
+ui-input-box-focus.png,14,14,1,0,no,0,0,same with a lime border while typing
+ui-status-dots.png,5,5,5,0,no,2,2,cells: online · idle · busy · offline · in jail
+ui-emotes.png,12,12,7,0,no,6,12,cells: heart · laugh · ! · ? · Kowen · zzz · angry; shown above the name plate
+ui-inventory-slot.png,20,20,1,0,no,0,0,9-slice: 4 px corners; recessed ink slot
+ui-inventory-slot-selected.png,20,20,1,0,no,0,0,same with a lime border
+ui-item-frame.png,24,24,1,0,no,0,0,9-slice: 6 px corners; violet frame with gold rivets for the shop and item tooltips

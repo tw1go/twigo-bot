@@ -1,0 +1,1783 @@
+{
+  "basePath": "/play/assets/",
+  "notes": "Mikazuki style-test assets (locked 3 Oct 2026). Pixel art: render with nearest-neighbour and whole-number zoom only.",
+  "tiles": {
+    "projection": "2:1 isometric, 32x16 base tile (see src/iso.ts)",
+    "sheets": "tiles/_sheets.csv",
+    "grass": {
+      "files": [
+        "tiles/tile-grass-1.png",
+        "tiles/tile-grass-2.png",
+        "tiles/tile-grass-3.png",
+        "tiles/tile-grass-4.png",
+        "tiles/tile-grass-tall-1.png",
+        "tiles/tile-grass-tall-2.png",
+        "tiles/tile-grass-flowers-1.png",
+        "tiles/tile-grass-flowers-2.png"
+      ],
+      "size": [
+        32,
+        32
+      ],
+      "diamondRows": "bottom 16 rows",
+      "anchor": [
+        16,
+        24
+      ],
+      "anchorMeaning": "diamond centre",
+      "mix": {
+        "plain": 0.68,
+        "tall": 0.2,
+        "flowers": 0.12
+      },
+      "animated": {
+        "tall-1": {
+          "file": "tiles/tile-grass-tall-1-sway.png",
+          "replaces": "tiles/tile-grass-tall-1.png",
+          "frames": 4,
+          "frameSize": [
+            32,
+            32
+          ],
+          "fps": 4,
+          "loop": true
+        },
+        "tall-2": {
+          "file": "tiles/tile-grass-tall-2-sway.png",
+          "replaces": "tiles/tile-grass-tall-2.png",
+          "frames": 4,
+          "frameSize": [
+            32,
+            32
+          ],
+          "fps": 4,
+          "loop": true
+        },
+        "flowers-1": {
+          "file": "tiles/tile-grass-flowers-1-sway.png",
+          "replaces": "tiles/tile-grass-flowers-1.png",
+          "frames": 4,
+          "frameSize": [
+            32,
+            32
+          ],
+          "fps": 4,
+          "loop": true
+        },
+        "flowers-2": {
+          "file": "tiles/tile-grass-flowers-2-sway.png",
+          "replaces": "tiles/tile-grass-flowers-2.png",
+          "frames": 4,
+          "frameSize": [
+            32,
+            32
+          ],
+          "fps": 4,
+          "loop": true
+        }
+      },
+      "animatedNote": "Only tall-grass and flower tiles sway; plain grass stays still. Draw the -sway sheet in place of the still tile and start each tile at frame (col+row) % 4 so a soft wind wave rolls across the meadow.",
+      "litter": {
+        "files": [
+          "tiles/tile-grass-litter-1.png",
+          "tiles/tile-grass-litter-2.png"
+        ],
+        "size": [
+          32,
+          32
+        ],
+        "anchor": [
+          16,
+          24
+        ],
+        "note": "darker grass with fallen leaves; used where maps/town.json groundStyle says \"litter\" (under thick groves)"
+      },
+      "mixes": {
+        "default": {
+          "plain": 0.68,
+          "tall": 0.2,
+          "flowers": 0.12
+        },
+        "lush": {
+          "plain": 0.3,
+          "tall": 0.55,
+          "flowers": 0.15
+        },
+        "litter": {
+          "litter": 0.7,
+          "tall": 0.3
+        },
+        "files": {
+          "plain": [
+            "tiles/tile-grass-1.png",
+            "tiles/tile-grass-2.png",
+            "tiles/tile-grass-3.png",
+            "tiles/tile-grass-4.png"
+          ],
+          "tall": [
+            "tiles/tile-grass-tall-1.png",
+            "tiles/tile-grass-tall-2.png"
+          ],
+          "flowers": [
+            "tiles/tile-grass-flowers-1.png",
+            "tiles/tile-grass-flowers-2.png"
+          ],
+          "litter": [
+            "tiles/tile-grass-litter-1.png",
+            "tiles/tile-grass-litter-2.png"
+          ]
+        },
+        "rule": "each grass tile uses the mix named by maps/town.json groundStyle (\"\" = default); pick the category by weight, then a file at random (seeded)"
+      }
+    },
+    "path": {
+      "files": [
+        "tiles/tile-path-1.png",
+        "tiles/tile-path-2.png",
+        "tiles/tile-path-3.png",
+        "tiles/tile-path-4.png"
+      ],
+      "size": [
+        32,
+        16
+      ],
+      "anchor": [
+        16,
+        8
+      ],
+      "anchorMeaning": "diamond centre"
+    },
+    "plaza": {
+      "files": [
+        "tiles/tile-plaza-1.png",
+        "tiles/tile-plaza-2.png",
+        "tiles/tile-plaza-3.png",
+        "tiles/tile-plaza-4.png"
+      ],
+      "size": [
+        32,
+        16
+      ],
+      "anchor": [
+        16,
+        8
+      ],
+      "mix": {
+        "tile-plaza-1": 0.6,
+        "others": 0.4
+      }
+    },
+    "water": {
+      "file": "tiles/tile-water.png",
+      "size": [
+        32,
+        16
+      ],
+      "frames": 4,
+      "fps": 4,
+      "loop": true,
+      "anchor": [
+        16,
+        8
+      ],
+      "overlays": {
+        "rule": "draw tile-water, then for every land neighbour draw the matching overlay on top. Edges use the 4 side neighbours; a corner overlay only when that diagonal is land and both sides next to it are water.",
+        "edge-nw": {
+          "file": "tiles/tile-water-edge-nw.png",
+          "land": [
+            -1,
+            0
+          ]
+        },
+        "edge-ne": {
+          "file": "tiles/tile-water-edge-ne.png",
+          "land": [
+            0,
+            -1
+          ]
+        },
+        "edge-se": {
+          "file": "tiles/tile-water-edge-se.png",
+          "land": [
+            1,
+            0
+          ]
+        },
+        "edge-sw": {
+          "file": "tiles/tile-water-edge-sw.png",
+          "land": [
+            0,
+            1
+          ]
+        },
+        "corner-n": {
+          "file": "tiles/tile-water-corner-n.png",
+          "land": [
+            -1,
+            -1
+          ]
+        },
+        "corner-e": {
+          "file": "tiles/tile-water-corner-e.png",
+          "land": [
+            1,
+            -1
+          ]
+        },
+        "corner-s": {
+          "file": "tiles/tile-water-corner-s.png",
+          "land": [
+            1,
+            1
+          ]
+        },
+        "corner-w": {
+          "file": "tiles/tile-water-corner-w.png",
+          "land": [
+            -1,
+            1
+          ]
+        },
+        "offsetsAre": "[dCol, dRow]"
+      },
+      "walkable": false,
+      "variants": [
+        "tiles/tile-water.png",
+        "tiles/tile-water-2.png",
+        "tiles/tile-water-3.png",
+        "tiles/tile-water-4.png"
+      ],
+      "variantNote": "4 variants x 4 frames (128x16 sheets, 32x16 frames). Pick a variant per tile at random (seeded) so the river does not show a grid; all tiles share one frame clock so the ripples flow together. Ripples stay inside the diamond, so any variants can sit side by side."
+    }
+  },
+  "buildings": {
+    "jackpot-booth": {
+      "file": "buildings/building-jackpot-booth.png",
+      "altNoBase": "buildings/building-jackpot-booth-nobase.png",
+      "size": [
+        112,
+        128
+      ],
+      "footprint": [
+        3,
+        3
+      ],
+      "footprintTopCorner": [
+        56,
+        80
+      ],
+      "footprintBottomCorner": [
+        56,
+        128
+      ],
+      "collision": "block the centre tile and the 4 tiles beside it (a plus shape); the 4 corner tiles of the base stay walkable",
+      "note": "tall version (3 Oct), redrawn to human scale"
+    },
+    "twigos-house": {
+      "file": "buildings/building-twigos-house.png",
+      "size": [
+        120,
+        120
+      ],
+      "footprint": [
+        3,
+        3
+      ],
+      "footprintTopCorner": [
+        60,
+        72
+      ],
+      "footprintBottomCorner": [
+        60,
+        120
+      ],
+      "collision": "block all 3x3 tiles",
+      "interaction": "the door is on the SE gable end. If the house's top (back) tile is (col,row), the tile in front of the door is (col+3,row+1); stepping onto it returns the player to twigo's room",
+      "note": "tall version (3 Oct): 42 px walls, door about head height"
+    },
+    "notice-board": {
+      "file": "buildings/building-notice-board.png",
+      "size": [
+        80,
+        80
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "footprintTopCorner": [
+        40,
+        48
+      ],
+      "footprintBottomCorner": [
+        40,
+        80
+      ],
+      "collision": "block the 2 tiles under the posts (the back row of the 2x2)",
+      "interaction": "stand in front and press to open notices; text comes from the game, not the sprite"
+    },
+    "leaderboard-monument": {
+      "file": "buildings/building-leaderboard-monument.png",
+      "size": [
+        80,
+        104
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "footprintTopCorner": [
+        40,
+        72
+      ],
+      "footprintBottomCorner": [
+        40,
+        104
+      ],
+      "collision": "block all 2x2",
+      "interaction": "show the top-3 names as game text on the gold plaque area or in a popup"
+    },
+    "rewards-shop": {
+      "file": "buildings/building-rewards-shop.png",
+      "size": [
+        120,
+        120
+      ],
+      "footprint": [
+        3,
+        3
+      ],
+      "footprintTopCorner": [
+        60,
+        72
+      ],
+      "footprintBottomCorner": [
+        60,
+        120
+      ],
+      "collision": "block all 3x3",
+      "interaction": "door on the SE face: the tile in front is (col+3,row+1) from the top tile; opens the rewards shop"
+    },
+    "bank": {
+      "file": "buildings/building-bank.png",
+      "size": [
+        136,
+        136
+      ],
+      "footprint": [
+        3,
+        3
+      ],
+      "footprintTopCorner": [
+        68,
+        79
+      ],
+      "footprintBottomCorner": [
+        68,
+        127
+      ],
+      "collision": "block all 3x3",
+      "interaction": "door at the top of the steps on the SW face: the tile in front is (col+1,row+3); opens the bank"
+    },
+    "tanod-outpost": {
+      "file": "buildings/building-tanod-outpost.png",
+      "size": [
+        136,
+        136
+      ],
+      "footprint": [
+        4,
+        3
+      ],
+      "footprintTopCorner": [
+        60,
+        80
+      ],
+      "footprintBottomCorner": [
+        76,
+        136
+      ],
+      "collision": "block all 4x3 (4 tiles along the right edge, 3 along the left)",
+      "interaction": "door on the SW face, left side: the tile in front is (col+0,row+3); the blank white sign is for game text like TANOD; jailed players stand by the barred windows with fx-jail-bars"
+    },
+    "casino": {
+      "file": "buildings/building-casino.png",
+      "size": [
+        160,
+        160
+      ],
+      "footprint": [
+        4,
+        4
+      ],
+      "footprintTopCorner": [
+        80,
+        96
+      ],
+      "footprintBottomCorner": [
+        80,
+        160
+      ],
+      "collision": "block all 4x4",
+      "interaction": "entrance under the canopy on the SW face: the tile in front is (col+1..2,row+4); the blank neon marquee is for game text"
+    },
+    "mine-entrance": {
+      "file": "buildings/building-mine-entrance.png",
+      "size": [
+        112,
+        112
+      ],
+      "footprint": [
+        3,
+        3
+      ],
+      "footprintTopCorner": [
+        57,
+        64
+      ],
+      "footprintBottomCorner": [
+        57,
+        112
+      ],
+      "collision": "block all 3x3",
+      "interaction": "tunnel mouth on the SW face: the tile in front is (col+1,row+3)"
+    },
+    "arena": {
+      "file": "buildings/building-arena.png",
+      "size": [
+        208,
+        184
+      ],
+      "footprint": [
+        6,
+        6
+      ],
+      "footprintTopCorner": [
+        104,
+        88
+      ],
+      "footprintBottomCorner": [
+        104,
+        184
+      ],
+      "collision": "block the outer ring of the 6x6; the sand floor inside can be walkable for fights",
+      "interaction": "gate on the SW face wall: the tile in front is (col+2..3,row+6)",
+      "layers": {
+        "back": "buildings/building-arena-back.png",
+        "front": "buildings/building-arena-front.png",
+        "rule": "same canvas and anchor as the full image. Draw \"back\" (stands, inner walls, sand floor) at the depth of the footprint top corner so everyone on the sand is in front of it; draw \"front\" (the two front walls, front tower, base plinth) at the normal front-corner depth so players on the sand go behind its rim. back + front together equal building-arena.png exactly."
+      }
+    }
+  },
+  "characters": {
+    "cell": [
+      32,
+      48
+    ],
+    "anchor": [
+      16,
+      47
+    ],
+    "anchorMeaning": "feet: bottom row, between columns 15 and 16",
+    "directions": [
+      "s",
+      "se",
+      "e",
+      "ne",
+      "n",
+      "nw",
+      "w",
+      "sw"
+    ],
+    "mirroring": "w, sw, nw are already baked as mirrors of e, se, ne (files exist for all 8)",
+    "animations": {
+      "rot": {
+        "frames": 1,
+        "fps": 0,
+        "loop": false
+      },
+      "walk": {
+        "frames": 8,
+        "fps": 12,
+        "loop": true
+      },
+      "idle": {
+        "frames": 6,
+        "fps": 6,
+        "loop": true,
+        "note": "breathing 0,1,2,3,2,1 with a blink at the top"
+      },
+      "sit": {
+        "frames": 4,
+        "fps": 4,
+        "loop": true,
+        "directions": [
+          "se",
+          "sw",
+          "ne",
+          "nw"
+        ],
+        "note": "seated hold with a 1 px breath; diagonals only, for benches. Play it directly (no sit-down transition); stand up by switching to idle"
+      },
+      "wave": {
+        "frames": 8,
+        "fps": 10,
+        "loop": false,
+        "directions": [
+          "s",
+          "se",
+          "e",
+          "ne",
+          "n",
+          "nw",
+          "w",
+          "sw"
+        ],
+        "note": "plays once (0.8 s), then back to idle. E is the same art as SE, W the same as SW"
+      },
+      "cheer": {
+        "frames": 8,
+        "fps": 10,
+        "loop": false,
+        "directions": [
+          "s",
+          "se",
+          "e",
+          "ne",
+          "n",
+          "nw",
+          "w",
+          "sw"
+        ],
+        "note": "happy hop with arms up; play once alongside an emote icon, then back to idle. E is the same art as SE, W the same as SW. The feet leave the ground during the hop, but the cell anchor stays fixed"
+      }
+    },
+    "drawOrder": [
+      "body",
+      "face",
+      "shoes",
+      "bottom",
+      "top",
+      "hair",
+      "glasses",
+      "hat"
+    ],
+    "layers": {
+      "body": "characters/body/{anim}/char-body-{anim}-{dir}.png",
+      "face": {
+        "pattern": "characters/layers/face/char-face-default-{anim}-{dir}.png",
+        "directions": [
+          "s",
+          "se",
+          "e",
+          "sw",
+          "w"
+        ],
+        "note": "no face layer for n, ne, nw (back views)"
+      },
+      "hair": {
+        "pattern": "characters/layers/hair/char-hair-{style}-{anim}-{dir}.png",
+        "styles": [
+          "fluffy"
+        ]
+      },
+      "top": {
+        "pattern": "characters/layers/top/char-top-{item}-{anim}-{dir}.png",
+        "items": [
+          "tshirt"
+        ]
+      },
+      "bottom": {
+        "pattern": "characters/layers/bottom/char-bottom-{item}-{anim}-{dir}.png",
+        "items": [
+          "shorts"
+        ]
+      },
+      "shoes": {
+        "pattern": "characters/layers/shoes/char-shoes-{item}-{anim}-{dir}.png",
+        "items": [
+          "sneakers"
+        ]
+      }
+    },
+    "sheetLayout": "frames left to right in one row, 32x48 each; every layer matches the body sheet exactly (zero offset)",
+    "colourKeys": {
+      "comment": "grey key ramps, palette-swapped at runtime (light to dark)",
+      "skin": [
+        "#F2C9A5",
+        "#D9A07A",
+        "#B07050",
+        "#7A4535"
+      ],
+      "hair": [
+        "#E8E8E8",
+        "#B4B4B4",
+        "#7C7C7C",
+        "#4A4A4A"
+      ],
+      "clothMain": [
+        "#DCDCF0",
+        "#A8A8C8",
+        "#74749A",
+        "#48486A"
+      ],
+      "clothTrim": [
+        "#F0E0C8",
+        "#C0A888",
+        "#8A7258"
+      ],
+      "sole": [
+        "#FBEEE9"
+      ],
+      "outline": "#1E1B3A (never swapped)"
+    },
+    "wardrobe": {
+      "top": [
+        "tshirt",
+        "longsleeve",
+        "striped",
+        "jacket",
+        "tunic",
+        "polo"
+      ],
+      "bottom": [
+        "shorts",
+        "pants",
+        "cargo",
+        "skirt"
+      ],
+      "shoes": [
+        "sneakers",
+        "boots",
+        "hightops"
+      ],
+      "pattern": "characters/layers/{slot}/char-{slot}-{item}-{anim}-{dir}.png",
+      "anims": [
+        "rot",
+        "walk",
+        "idle",
+        "sit",
+        "wave",
+        "cheer"
+      ],
+      "keys": "MAIN ramp (DCDCF0,A8A8C8,74749A,48486A) = the item's main colour; TRIM ramp (F0E0C8,C0A888,8A7258) = its accent (stripes, jacket inner shirt, polo collar, cargo pockets, all shoe colours); FBEEE9 = sneaker sole (never swapped)",
+      "glasses": [
+        "round",
+        "shades"
+      ],
+      "glassesNote": "glasses layers exist for s, se, e, sw, w (all anims with a face). Back views (n, ne, nw) draw no glasses. Frame colour is on the MAIN ramp (48486A/74749A), so it can be recoloured",
+      "hair": [
+        "fluffy",
+        "crop",
+        "long",
+        "buns",
+        "ponytail",
+        "mohawk",
+        "sidepart"
+      ],
+      "hairNote": "All 8 dirs, all anims (rot, walk, idle, sit, wave, cheer). Hair ramp keys E8E8E8,B4B4B4,7C7C7C,4A4A4A; navy outline 1E1B3A. long and ponytail already sit behind the body below the neck in side views. mohawk leaves the sides bald by design.",
+      "hairPattern": "characters/layers/hair/char-hair-{item}-{anim}-{dir}.png",
+      "hats": [
+        "beanie",
+        "cap",
+        "ribbon"
+      ],
+      "hatPattern": "characters/layers/hat/char-hat-{item}-{anim}-{dir}.png",
+      "hatClipPattern": "characters/layers/hat/char-hatclip-{item}-{anim}-{dir}.png",
+      "hatNote": "Hats are recoloured on the MAIN ramp (DCDCF0,A8A8C8,74749A,48486A). beanie and cap ship a clip mask per frame: white pixels = hide the hair layer there (erase hair under the hat) before drawing the hat. ribbon has no clip mask and hides no hair. When a clipping hat is worn with 'buns', draw 'crop' instead (hatHairFallback).",
+      "hatHairFallback": {
+        "buns": "crop"
+      },
+      "hatClips": {
+        "beanie": true,
+        "cap": true,
+        "ribbon": false
+      }
+    },
+    "colourPresets": {
+      "violet": [
+        "B794F6",
+        "7C2AE8",
+        "5B21B6",
+        "4C1D95"
+      ],
+      "magenta": [
+        "F0ABFC",
+        "D946EF",
+        "A21CAF",
+        "86198F"
+      ],
+      "green": [
+        "A3E635",
+        "22C55E",
+        "2D5240",
+        "1F3A2E"
+      ],
+      "blue": [
+        "5B8FD1",
+        "2E5E99",
+        "1D3F6E",
+        "13284A"
+      ],
+      "gold": [
+        "FCDA4A",
+        "F8BF27",
+        "BA7F05",
+        "7A4A01"
+      ],
+      "stone": [
+        "7A8099",
+        "565C75",
+        "3D4256",
+        "2A2D3E"
+      ],
+      "cream": [
+        "E6E9F2",
+        "B4B4C8",
+        "7A8099",
+        "3D4256"
+      ],
+      "brown": [
+        "A57548",
+        "7E5533",
+        "5C3A24",
+        "3A2418"
+      ],
+      "note": "swap MAIN (4 colours) with any preset; for TRIM use its first 3 colours"
+    },
+    "skinTones": {
+      "light": [
+        "F2C9A5",
+        "D9A07A",
+        "B07050",
+        "7A4535"
+      ],
+      "tan": [
+        "E3AE82",
+        "C68A5E",
+        "965A38",
+        "603620"
+      ],
+      "brown": [
+        "C08055",
+        "A0663E",
+        "744428",
+        "4C2A1A"
+      ],
+      "deep": [
+        "96623F",
+        "7A4B2E",
+        "58331F",
+        "3A2014"
+      ],
+      "keys": "swap the 4 skin keys on the body AND face layers (the mouth uses a skin key on purpose)",
+      "faceTweak": {
+        "deep": {
+          "7E5533": "3A2418",
+          "3A2418": "1E1B3A"
+        },
+        "note": "darken brows and lashes on the deep tone so they stay readable"
+      }
+    }
+  },
+  "palette": {
+    "gpl": "palette/mikazuki.gpl",
+    "png": "palette/mikazuki-palette.png"
+  },
+  "todo": [],
+  "props": {
+    "fence": {
+      "nw": "props/prop-fence-nw.png",
+      "ne": "props/prop-fence-ne.png",
+      "post": "props/prop-fence-post.png",
+      "size": [
+        32,
+        32
+      ],
+      "anchor": [
+        16,
+        24
+      ],
+      "rule": "fence-nw sits on the tile's top-left edge, fence-ne on its top-right edge (both back edges, so draw before characters on that tile). To fence a front edge, use the neighbour tile's back edge. Cap the open end of a run with fence-post on the next tile along. Block movement across the fenced edge, not the tile.",
+      "aka": "Bakod",
+      "use": "optional world prop: place it anywhere to frame yards, gardens or the town edge; nothing depends on it yet"
+    },
+    "tree-violet-1": {
+      "file": "props/prop-tree-violet-1.png",
+      "size": [
+        97,
+        104
+      ],
+      "anchor": [
+        46,
+        94
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        1,
+        1
+      ],
+      "collision": "trunk tile"
+    },
+    "tree-violet-2": {
+      "file": "props/prop-tree-violet-2.png",
+      "size": [
+        95,
+        101
+      ],
+      "anchor": [
+        46,
+        91
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        1,
+        1
+      ],
+      "collision": "trunk tile"
+    },
+    "tree-violet-3": {
+      "file": "props/prop-tree-violet-3.png",
+      "size": [
+        88,
+        97
+      ],
+      "anchor": [
+        43,
+        87
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        1,
+        1
+      ],
+      "collision": "trunk tile"
+    },
+    "tree-violet-4": {
+      "file": "props/prop-tree-violet-4.png",
+      "size": [
+        93,
+        100
+      ],
+      "anchor": [
+        45,
+        90
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        1,
+        1
+      ],
+      "collision": "trunk tile"
+    },
+    "fountain-arches": {
+      "file": "props/prop-fountain-arches.png",
+      "size": [
+        112,
+        104
+      ],
+      "anchor": [
+        56,
+        40
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        3,
+        3
+      ],
+      "collision": "footprint",
+      "animation": {
+        "file": "props/prop-fountain-arches-anim.png",
+        "frames": 25,
+        "frameSize": [
+          112,
+          104
+        ],
+        "fps": 12,
+        "loop": true,
+        "note": "same anchor and footprint as the still; stone is identical in every frame, only the water moves"
+      }
+    },
+    "tree-green-1": {
+      "file": "props/prop-tree-green-1.png",
+      "size": [
+        98,
+        111
+      ],
+      "anchor": [
+        45,
+        102
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        1,
+        1
+      ],
+      "collision": "trunk tile"
+    },
+    "tree-green-2": {
+      "file": "props/prop-tree-green-2.png",
+      "size": [
+        79,
+        103
+      ],
+      "anchor": [
+        33,
+        94
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        1,
+        1
+      ],
+      "collision": "trunk tile"
+    },
+    "tree-green-3": {
+      "file": "props/prop-tree-green-3.png",
+      "size": [
+        98,
+        110
+      ],
+      "anchor": [
+        46,
+        101
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        1,
+        1
+      ],
+      "collision": "trunk tile"
+    },
+    "tree-green-4": {
+      "file": "props/prop-tree-green-4.png",
+      "size": [
+        106,
+        103
+      ],
+      "anchor": [
+        50,
+        94
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        1,
+        1
+      ],
+      "collision": "trunk tile"
+    },
+    "tree-green-5": {
+      "file": "props/prop-tree-green-5.png",
+      "size": [
+        101,
+        110
+      ],
+      "anchor": [
+        46,
+        101
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        1,
+        1
+      ],
+      "collision": "trunk tile"
+    },
+    "tree-green-6": {
+      "file": "props/prop-tree-green-6.png",
+      "size": [
+        52,
+        115
+      ],
+      "anchor": [
+        26,
+        106
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        1,
+        1
+      ],
+      "collision": "trunk tile"
+    },
+    "tree-green-7": {
+      "file": "props/prop-tree-green-7.png",
+      "size": [
+        99,
+        111
+      ],
+      "anchor": [
+        43,
+        102
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        1,
+        1
+      ],
+      "collision": "trunk tile"
+    },
+    "tree-green-8": {
+      "file": "props/prop-tree-green-8.png",
+      "size": [
+        108,
+        99
+      ],
+      "anchor": [
+        48,
+        90
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        1,
+        1
+      ],
+      "collision": "trunk tile"
+    },
+    "tree-green-planter-1": {
+      "file": "props/prop-tree-green-planter-1.png",
+      "size": [
+        85,
+        119
+      ],
+      "anchor": [
+        42,
+        67
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        3,
+        3
+      ],
+      "collision": "footprint"
+    },
+    "tree-green-planter-2": {
+      "file": "props/prop-tree-green-planter-2.png",
+      "size": [
+        111,
+        108
+      ],
+      "anchor": [
+        52,
+        60
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        3,
+        3
+      ],
+      "collision": "footprint"
+    },
+    "tree-green-planter-3": {
+      "file": "props/prop-tree-green-planter-3.png",
+      "size": [
+        89,
+        104
+      ],
+      "anchor": [
+        44,
+        54
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        3,
+        3
+      ],
+      "collision": "footprint"
+    },
+    "tree-green-planter-4": {
+      "file": "props/prop-tree-green-planter-4.png",
+      "size": [
+        89,
+        110
+      ],
+      "anchor": [
+        44,
+        57
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        3,
+        3
+      ],
+      "collision": "footprint"
+    },
+    "tree-green-planter-5": {
+      "file": "props/prop-tree-green-planter-5.png",
+      "size": [
+        87,
+        116
+      ],
+      "anchor": [
+        42,
+        78
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        2,
+        2
+      ],
+      "collision": "footprint"
+    },
+    "tree-green-planter-6": {
+      "file": "props/prop-tree-green-planter-6.png",
+      "size": [
+        94,
+        111
+      ],
+      "anchor": [
+        48,
+        74
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        2,
+        2
+      ],
+      "collision": "footprint"
+    },
+    "tree-green-planter-7": {
+      "file": "props/prop-tree-green-planter-7.png",
+      "size": [
+        76,
+        116
+      ],
+      "anchor": [
+        38,
+        76
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        2,
+        2
+      ],
+      "collision": "footprint"
+    },
+    "tree-green-planter-8": {
+      "file": "props/prop-tree-green-planter-8.png",
+      "size": [
+        78,
+        111
+      ],
+      "anchor": [
+        38,
+        74
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        2,
+        2
+      ],
+      "collision": "footprint"
+    },
+    "crate": {
+      "file": "props/prop-crate.png",
+      "size": [
+        27,
+        27
+      ],
+      "anchor": [
+        13,
+        11
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        1,
+        1
+      ],
+      "collision": "footprint"
+    },
+    "crate-stack": {
+      "file": "props/prop-crate-stack.png",
+      "size": [
+        41,
+        43
+      ],
+      "anchor": [
+        20,
+        19
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        2,
+        2
+      ],
+      "collision": "footprint"
+    },
+    "lamp-on": {
+      "file": "props/prop-lamp-on.png",
+      "size": [
+        23,
+        64
+      ],
+      "anchor": [
+        11,
+        53
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        1,
+        1
+      ],
+      "collision": "footprint",
+      "glow": {
+        "file": "fx/fx-lamp-glow.png",
+        "offset": "centre the glow on the lantern; draw it with ADD blend at night"
+      }
+    },
+    "lamp-off": {
+      "file": "props/prop-lamp-off.png",
+      "size": [
+        23,
+        64
+      ],
+      "anchor": [
+        11,
+        53
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        1,
+        1
+      ],
+      "collision": "footprint"
+    },
+    "sign-board": {
+      "file": "props/prop-sign-board.png",
+      "size": [
+        25,
+        38
+      ],
+      "anchor": [
+        12,
+        27
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        1,
+        1
+      ],
+      "collision": "footprint"
+    },
+    "sign-arrow": {
+      "file": "props/prop-sign-arrow.png",
+      "size": [
+        28,
+        34
+      ],
+      "anchor": [
+        14,
+        23
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        1,
+        1
+      ],
+      "collision": "footprint"
+    },
+    "bench-sw": {
+      "file": "props/prop-bench-sw.png",
+      "size": [
+        33,
+        30
+      ],
+      "anchor": [
+        16,
+        14
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        1,
+        1
+      ],
+      "faces": "SW",
+      "collision": "footprint"
+    },
+    "bench-se": {
+      "file": "props/prop-bench-se.png",
+      "size": [
+        33,
+        30
+      ],
+      "anchor": [
+        16,
+        14
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        1,
+        1
+      ],
+      "faces": "SE",
+      "collision": "footprint"
+    },
+    "bench-ne": {
+      "file": "props/prop-bench-ne.png",
+      "size": [
+        33,
+        30
+      ],
+      "anchor": [
+        16,
+        14
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        1,
+        1
+      ],
+      "faces": "NE",
+      "collision": "footprint"
+    },
+    "bench-nw": {
+      "file": "props/prop-bench-nw.png",
+      "size": [
+        33,
+        30
+      ],
+      "anchor": [
+        16,
+        14
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        1,
+        1
+      ],
+      "faces": "NW",
+      "collision": "footprint"
+    },
+    "tree-tufts": {
+      "files": [
+        "props/prop-tree-tufts-1.png",
+        "props/prop-tree-tufts-2.png",
+        "props/prop-tree-tufts-3.png",
+        "props/prop-tree-tufts-4.png"
+      ],
+      "size": [
+        20,
+        8
+      ],
+      "note": "grass and soil strip drawn just in front of a tree trunk base; see maps/town.json treeGrounding"
+    },
+    "bush-m-2": {
+      "file": "props/prop-bush-m-2.png",
+      "size": [
+        26,
+        16
+      ],
+      "anchor": [
+        13,
+        5
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "anchorMeaning": "top corner of the tile it stands on",
+      "collision": "footprint",
+      "decor": true
+    },
+    "bush-m-1": {
+      "file": "props/prop-bush-m-1.png",
+      "size": [
+        26,
+        16
+      ],
+      "anchor": [
+        13,
+        5
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "anchorMeaning": "top corner of the tile it stands on",
+      "collision": "footprint",
+      "decor": true
+    },
+    "bush-l-2": {
+      "file": "props/prop-bush-l-2.png",
+      "size": [
+        34,
+        19
+      ],
+      "anchor": [
+        17,
+        8
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "anchorMeaning": "top corner of the tile it stands on",
+      "collision": "footprint",
+      "decor": true
+    },
+    "bush-l-1": {
+      "file": "props/prop-bush-l-1.png",
+      "size": [
+        34,
+        19
+      ],
+      "anchor": [
+        17,
+        8
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "anchorMeaning": "top corner of the tile it stands on",
+      "collision": "footprint",
+      "decor": true
+    },
+    "bush-s-1": {
+      "file": "props/prop-bush-s-1.png",
+      "size": [
+        19,
+        13
+      ],
+      "anchor": [
+        9,
+        2
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "anchorMeaning": "top corner of the tile it stands on",
+      "collision": "footprint",
+      "decor": true
+    },
+    "bush-s-2": {
+      "file": "props/prop-bush-s-2.png",
+      "size": [
+        20,
+        13
+      ],
+      "anchor": [
+        10,
+        2
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "anchorMeaning": "top corner of the tile it stands on",
+      "collision": "footprint",
+      "decor": true
+    },
+    "fern-2": {
+      "file": "props/prop-fern-2.png",
+      "size": [
+        24,
+        16
+      ],
+      "anchor": [
+        12,
+        4
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "anchorMeaning": "top corner of the tile it stands on",
+      "collision": "none",
+      "decor": true
+    },
+    "fern-1": {
+      "file": "props/prop-fern-1.png",
+      "size": [
+        24,
+        16
+      ],
+      "anchor": [
+        12,
+        4
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "anchorMeaning": "top corner of the tile it stands on",
+      "collision": "none",
+      "decor": true
+    },
+    "rock-s-2": {
+      "file": "props/prop-rock-s-2.png",
+      "size": [
+        11,
+        8
+      ],
+      "anchor": [
+        5,
+        -3
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "anchorMeaning": "top corner of the tile it stands on",
+      "collision": "none",
+      "decor": true
+    },
+    "rock-s-1": {
+      "file": "props/prop-rock-s-1.png",
+      "size": [
+        10,
+        8
+      ],
+      "anchor": [
+        5,
+        -3
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "anchorMeaning": "top corner of the tile it stands on",
+      "collision": "none",
+      "decor": true
+    },
+    "rock-m-1": {
+      "file": "props/prop-rock-m-1.png",
+      "size": [
+        16,
+        12
+      ],
+      "anchor": [
+        8,
+        1
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "anchorMeaning": "top corner of the tile it stands on",
+      "collision": "footprint",
+      "decor": true
+    },
+    "rock-m-2": {
+      "file": "props/prop-rock-m-2.png",
+      "size": [
+        16,
+        12
+      ],
+      "anchor": [
+        8,
+        1
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "anchorMeaning": "top corner of the tile it stands on",
+      "collision": "footprint",
+      "decor": true
+    },
+    "rocks-cluster": {
+      "file": "props/prop-rocks-cluster.png",
+      "size": [
+        26,
+        14
+      ],
+      "anchor": [
+        13,
+        3
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "anchorMeaning": "top corner of the tile it stands on",
+      "collision": "footprint",
+      "decor": true
+    }
+  },
+  "fx": {
+    "shadow": {
+      "file": "fx/fx-shadow.png",
+      "size": [
+        14,
+        5
+      ],
+      "anchor": [
+        7,
+        2
+      ],
+      "rule": "draw under every character, centred on the feet anchor"
+    },
+    "jailBars": {
+      "file": "fx/fx-jail-bars.png",
+      "size": [
+        32,
+        48
+      ],
+      "anchor": [
+        16,
+        47
+      ],
+      "rule": "draw on top of a jailed player's layers in the same cell"
+    },
+    "coin-sparkle": {
+      "file": "fx/fx-coin-sparkle.png",
+      "frame": [
+        12,
+        12
+      ],
+      "frames": 4,
+      "fps": 10
+    },
+    "footstep-dust": {
+      "file": "fx/fx-footstep-dust.png",
+      "frame": [
+        12,
+        8
+      ],
+      "frames": 3,
+      "fps": 12,
+      "note": "spawn at the feet every other walk step, play once"
+    },
+    "alert": {
+      "file": "fx/fx-alert.png",
+      "frame": [
+        12,
+        16
+      ],
+      "frames": 2,
+      "fps": 4,
+      "note": "loop above a building or player head"
+    },
+    "lamp-glow": {
+      "file": "fx/fx-lamp-glow.png",
+      "size": [
+        40,
+        24
+      ],
+      "note": "soft 0-70 alpha, ADD blend"
+    },
+    "tree-shadow": {
+      "files": [
+        "fx/fx-tree-shadow-48.png",
+        "fx/fx-tree-shadow-64.png",
+        "fx/fx-tree-shadow-80.png"
+      ],
+      "note": "flat 40% navy ellipse under tree canopies; the map says which size each tree uses"
+    }
+  },
+  "ui": {
+    "tileHighlight": {
+      "file": "ui/ui-tile-highlight.png",
+      "size": [
+        32,
+        16
+      ],
+      "frames": 2,
+      "fps": 4,
+      "anchor": [
+        16,
+        8
+      ]
+    },
+    "cursor": {
+      "file": "ui/ui-cursor.png",
+      "size": [
+        12,
+        12
+      ],
+      "frames": {
+        "pointer": 0,
+        "hand": 1
+      },
+      "hotspot": {
+        "pointer": [
+          0,
+          0
+        ],
+        "hand": [
+          4,
+          0
+        ]
+      },
+      "rule": "use as a CSS cursor scaled by the same whole-number zoom, or draw it in the scene"
+    },
+    "speechBubble": {
+      "file": "ui/ui-speech-bubble.png",
+      "nineSlice": 6,
+      "tail": "ui/ui-speech-tail.png",
+      "tailAnchor": [
+        3,
+        0
+      ],
+      "rule": "stretch to the text, sit above the name plate, centre the tail under it; text in Minecraft.ttf #E6E9F2"
+    },
+    "nameplate": {
+      "file": "ui/ui-nameplate.png",
+      "self": "ui/ui-nameplate-self.png",
+      "threeSlice": 4,
+      "height": 9,
+      "rule": "stretch to the name; draw 4 px above the top of the character cell; own name text in lime #A3E635, others #E6E9F2"
+    },
+    "chatWindow": {
+      "file": "ui/ui-chat-window.png",
+      "nineSlice": 8,
+      "scrollTrack": {
+        "file": "ui/ui-scroll-track.png",
+        "threeSlice": 2
+      },
+      "scrollThumb": {
+        "file": "ui/ui-scroll-thumb.png",
+        "threeSlice": 2
+      },
+      "input": {
+        "file": "ui/ui-input-box.png",
+        "focus": "ui/ui-input-box-focus.png",
+        "nineSlice": 4,
+        "height": 14
+      }
+    },
+    "statusDots": {
+      "file": "ui/ui-status-dots.png",
+      "size": [
+        5,
+        5
+      ],
+      "frames": [
+        "online",
+        "idle",
+        "busy",
+        "offline",
+        "jailed"
+      ]
+    },
+    "emotes": {
+      "file": "ui/ui-emotes.png",
+      "size": [
+        12,
+        12
+      ],
+      "frames": [
+        "heart",
+        "laugh",
+        "exclaim",
+        "question",
+        "kowen",
+        "sleep",
+        "angry"
+      ],
+      "rule": "pop above the name plate for about 2 s"
+    },
+    "inventory": {
+      "slot": "ui/ui-inventory-slot.png",
+      "selected": "ui/ui-inventory-slot-selected.png",
+      "nineSlice": 4,
+      "itemFrame": {
+        "file": "ui/ui-item-frame.png",
+        "nineSlice": 6
+      }
+    }
+  },
+  "notes_ui": "All UI is drawn at 1x and scaled by the same whole-number zoom as the world. Text is never baked in: draw it with Minecraft.ttf."
+}

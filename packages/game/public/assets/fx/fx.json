@@ -1,0 +1,39 @@
+{
+ "coin-sparkle": {
+  "file": "fx/fx-coin-sparkle.png",
+  "frame": [
+   12,
+   12
+  ],
+  "frames": 4,
+  "fps": 10
+ },
+ "footstep-dust": {
+  "file": "fx/fx-footstep-dust.png",
+  "frame": [
+   12,
+   8
+  ],
+  "frames": 3,
+  "fps": 12,
+  "note": "spawn at the feet every other walk step, play once"
+ },
+ "alert": {
+  "file": "fx/fx-alert.png",
+  "frame": [
+   12,
+   16
+  ],
+  "frames": 2,
+  "fps": 4,
+  "note": "loop above a building or player head"
+ },
+ "lamp-glow": {
+  "file": "fx/fx-lamp-glow.png",
+  "size": [
+   40,
+   24
+  ],
+  "note": "soft 0-70 alpha, ADD blend"
+ }
+}

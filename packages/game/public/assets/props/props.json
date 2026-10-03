@@ -1,0 +1,475 @@
+{
+ "tree-violet-1": {
+  "file": "props/prop-tree-violet-1.png",
+  "size": [
+   97,
+   104
+  ],
+  "anchor": [
+   46,
+   94
+  ],
+  "footprint": [
+   1,
+   1
+  ]
+ },
+ "tree-violet-2": {
+  "file": "props/prop-tree-violet-2.png",
+  "size": [
+   95,
+   101
+  ],
+  "anchor": [
+   46,
+   91
+  ],
+  "footprint": [
+   1,
+   1
+  ]
+ },
+ "tree-violet-3": {
+  "file": "props/prop-tree-violet-3.png",
+  "size": [
+   88,
+   97
+  ],
+  "anchor": [
+   43,
+   87
+  ],
+  "footprint": [
+   1,
+   1
+  ]
+ },
+ "tree-violet-4": {
+  "file": "props/prop-tree-violet-4.png",
+  "size": [
+   93,
+   100
+  ],
+  "anchor": [
+   45,
+   90
+  ],
+  "footprint": [
+   1,
+   1
+  ]
+ },
+ "fountain-arches": {
+  "file": "props/prop-fountain-arches.png",
+  "size": [
+   112,
+   104
+  ],
+  "anchor": [
+   56,
+   40
+  ],
+  "footprint": [
+   3,
+   3
+  ]
+ },
+ "tree-green-1": {
+  "file": "props/prop-tree-green-1.png",
+  "size": [
+   98,
+   111
+  ],
+  "anchor": [
+   45,
+   102
+  ],
+  "footprint": [
+   1,
+   1
+  ]
+ },
+ "tree-green-2": {
+  "file": "props/prop-tree-green-2.png",
+  "size": [
+   79,
+   103
+  ],
+  "anchor": [
+   33,
+   94
+  ],
+  "footprint": [
+   1,
+   1
+  ]
+ },
+ "tree-green-3": {
+  "file": "props/prop-tree-green-3.png",
+  "size": [
+   98,
+   110
+  ],
+  "anchor": [
+   46,
+   101
+  ],
+  "footprint": [
+   1,
+   1
+  ]
+ },
+ "tree-green-4": {
+  "file": "props/prop-tree-green-4.png",
+  "size": [
+   106,
+   103
+  ],
+  "anchor": [
+   50,
+   94
+  ],
+  "footprint": [
+   1,
+   1
+  ]
+ },
+ "tree-green-5": {
+  "file": "props/prop-tree-green-5.png",
+  "size": [
+   101,
+   110
+  ],
+  "anchor": [
+   46,
+   101
+  ],
+  "footprint": [
+   1,
+   1
+  ]
+ },
+ "tree-green-6": {
+  "file": "props/prop-tree-green-6.png",
+  "size": [
+   52,
+   115
+  ],
+  "anchor": [
+   26,
+   106
+  ],
+  "footprint": [
+   1,
+   1
+  ]
+ },
+ "tree-green-7": {
+  "file": "props/prop-tree-green-7.png",
+  "size": [
+   99,
+   111
+  ],
+  "anchor": [
+   43,
+   102
+  ],
+  "footprint": [
+   1,
+   1
+  ]
+ },
+ "tree-green-8": {
+  "file": "props/prop-tree-green-8.png",
+  "size": [
+   108,
+   99
+  ],
+  "anchor": [
+   48,
+   90
+  ],
+  "footprint": [
+   1,
+   1
+  ]
+ },
+ "tree-green-planter-1": {
+  "file": "props/prop-tree-green-planter-1.png",
+  "size": [
+   85,
+   119
+  ],
+  "anchor": [
+   42,
+   67
+  ],
+  "footprint": [
+   3,
+   3
+  ]
+ },
+ "tree-green-planter-2": {
+  "file": "props/prop-tree-green-planter-2.png",
+  "size": [
+   111,
+   108
+  ],
+  "anchor": [
+   52,
+   60
+  ],
+  "footprint": [
+   3,
+   3
+  ]
+ },
+ "tree-green-planter-3": {
+  "file": "props/prop-tree-green-planter-3.png",
+  "size": [
+   89,
+   104
+  ],
+  "anchor": [
+   44,
+   54
+  ],
+  "footprint": [
+   3,
+   3
+  ]
+ },
+ "tree-green-planter-4": {
+  "file": "props/prop-tree-green-planter-4.png",
+  "size": [
+   89,
+   110
+  ],
+  "anchor": [
+   44,
+   57
+  ],
+  "footprint": [
+   3,
+   3
+  ]
+ },
+ "tree-green-planter-5": {
+  "file": "props/prop-tree-green-planter-5.png",
+  "size": [
+   87,
+   116
+  ],
+  "anchor": [
+   42,
+   78
+  ],
+  "footprint": [
+   2,
+   2
+  ]
+ },
+ "tree-green-planter-6": {
+  "file": "props/prop-tree-green-planter-6.png",
+  "size": [
+   94,
+   111
+  ],
+  "anchor": [
+   48,
+   74
+  ],
+  "footprint": [
+   2,
+   2
+  ]
+ },
+ "tree-green-planter-7": {
+  "file": "props/prop-tree-green-planter-7.png",
+  "size": [
+   76,
+   116
+  ],
+  "anchor": [
+   38,
+   76
+  ],
+  "footprint": [
+   2,
+   2
+  ]
+ },
+ "tree-green-planter-8": {
+  "file": "props/prop-tree-green-planter-8.png",
+  "size": [
+   78,
+   111
+  ],
+  "anchor": [
+   38,
+   74
+  ],
+  "footprint": [
+   2,
+   2
+  ]
+ },
+ "crate": {
+  "file": "props/prop-crate.png",
+  "size": [
+   27,
+   27
+  ],
+  "anchor": [
+   13,
+   11
+  ],
+  "footprint": [
+   1,
+   1
+  ]
+ },
+ "crate-stack": {
+  "file": "props/prop-crate-stack.png",
+  "size": [
+   41,
+   43
+  ],
+  "anchor": [
+   20,
+   19
+  ],
+  "footprint": [
+   2,
+   2
+  ]
+ },
+ "lamp-on": {
+  "file": "props/prop-lamp-on.png",
+  "size": [
+   23,
+   64
+  ],
+  "anchor": [
+   11,
+   53
+  ],
+  "footprint": [
+   1,
+   1
+  ],
+  "glow": {
+   "file": "fx/fx-lamp-glow.png",
+   "offset": "centre the glow on the lantern; draw it with ADD blend at night"
+  }
+ },
+ "lamp-off": {
+  "file": "props/prop-lamp-off.png",
+  "size": [
+   23,
+   64
+  ],
+  "anchor": [
+   11,
+   53
+  ],
+  "footprint": [
+   1,
+   1
+  ]
+ },
+ "sign-board": {
+  "file": "props/prop-sign-board.png",
+  "size": [
+   25,
+   38
+  ],
+  "anchor": [
+   12,
+   27
+  ],
+  "footprint": [
+   1,
+   1
+  ]
+ },
+ "sign-arrow": {
+  "file": "props/prop-sign-arrow.png",
+  "size": [
+   28,
+   34
+  ],
+  "anchor": [
+   14,
+   23
+  ],
+  "footprint": [
+   1,
+   1
+  ]
+ },
+ "bench-sw": {
+  "file": "props/prop-bench-sw.png",
+  "size": [
+   33,
+   30
+  ],
+  "anchor": [
+   16,
+   14
+  ],
+  "footprint": [
+   1,
+   1
+  ],
+  "faces": "SW"
+ },
+ "bench-se": {
+  "file": "props/prop-bench-se.png",
+  "size": [
+   33,
+   30
+  ],
+  "anchor": [
+   16,
+   14
+  ],
+  "footprint": [
+   1,
+   1
+  ],
+  "faces": "SE"
+ },
+ "bench-ne": {
+  "file": "props/prop-bench-ne.png",
+  "size": [
+   33,
+   30
+  ],
+  "anchor": [
+   16,
+   14
+  ],
+  "footprint": [
+   1,
+   1
+  ],
+  "faces": "NE"
+ },
+ "bench-nw": {
+  "file": "props/prop-bench-nw.png",
+  "size": [
+   33,
+   30
+  ],
+  "anchor": [
+   16,
+   14
+  ],
+  "footprint": [
+   1,
+   1
+  ],
+  "faces": "NW"
+ }
+}

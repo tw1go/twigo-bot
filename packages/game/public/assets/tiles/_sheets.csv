@@ -1,0 +1,26 @@
+file,cell_w,cell_h,frames,fps,loop,anchor_x,anchor_y,notes
+tile-grass-1.png,32,32,1,0,no,16,24,plain; anchor = diamond centre
+tile-grass-2.png,32,32,1,0,no,16,24,plain
+tile-grass-3.png,32,32,1,0,no,16,24,plain
+tile-grass-4.png,32,32,1,0,no,16,24,plain
+tile-grass-tall-1.png,32,32,1,0,no,16,24,tall strands; blades rise above the diamond
+tile-grass-tall-2.png,32,32,1,0,no,16,24,tall strands
+tile-grass-flowers-1.png,32,32,1,0,no,16,24,daisies
+tile-grass-flowers-2.png,32,32,1,0,no,16,24,daisies
+tile-path-1.png,32,16,1,0,no,16,8,cobblestone
+tile-path-2.png,32,16,1,0,no,16,8,cobblestone
+tile-path-3.png,32,16,1,0,no,16,8,cobblestone
+tile-path-4.png,32,16,1,0,no,16,8,cobblestone
+tile-plaza-1.png,32,16,1,0,no,16,8,plain slab
+tile-plaza-2.png,32,16,1,0,no,16,8,hairline crack
+tile-plaza-3.png,32,16,1,0,no,16,8,chipped corner
+tile-plaza-4.png,32,16,1,0,no,16,8,moss in the grout
+tile-water.png,32,16,4,4,yes,16,8,animated ripples; edges and corners are overlays drawn on top
+tile-water-edge-nw.png,32,16,1,0,no,16,8,overlay; land on the NW side (col-1): dark wall face
+tile-water-edge-ne.png,32,16,1,0,no,16,8,overlay; land on the NE side (row-1): mid wall face
+tile-water-edge-se.png,32,16,1,0,no,16,8,overlay; land on the SE side (col+1): stone lip
+tile-water-edge-sw.png,32,16,1,0,no,16,8,overlay; land on the SW side (row+1): stone lip
+tile-water-corner-n.png,32,16,1,0,no,16,8,overlay; land only at the top corner (col-1 row-1)
+tile-water-corner-e.png,32,16,1,0,no,16,8,overlay; land only at the right corner (col+1 row-1)
+tile-water-corner-s.png,32,16,1,0,no,16,8,overlay; land only at the bottom corner (col+1 row+1)
+tile-water-corner-w.png,32,16,1,0,no,16,8,overlay; land only at the left corner (col-1 row+1)

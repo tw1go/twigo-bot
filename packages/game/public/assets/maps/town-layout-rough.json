@@ -1,0 +1,742 @@
+{
+ "size": [
+  36,
+  36
+ ],
+ "buildings": {
+  "mine-entrance": {
+   "tile": [
+    17,
+    2
+   ],
+   "footprint": [
+    3,
+    3
+   ]
+  },
+  "notice-board": {
+   "tile": [
+    14,
+    10
+   ],
+   "footprint": [
+    2,
+    2
+   ]
+  },
+  "leaderboard-monument": {
+   "tile": [
+    22,
+    10
+   ],
+   "footprint": [
+    2,
+    2
+   ]
+  },
+  "jackpot-booth": {
+   "tile": [
+    9,
+    13
+   ],
+   "footprint": [
+    3,
+    3
+   ]
+  },
+  "arena": {
+   "tile": [
+    2,
+    21
+   ],
+   "footprint": [
+    6,
+    6
+   ]
+  },
+  "rewards-shop": {
+   "tile": [
+    25,
+    13
+   ],
+   "footprint": [
+    3,
+    3
+   ]
+  },
+  "bank": {
+   "tile": [
+    30,
+    13
+   ],
+   "footprint": [
+    3,
+    3
+   ]
+  },
+  "casino": {
+   "tile": [
+    26,
+    21
+   ],
+   "footprint": [
+    4,
+    4
+   ]
+  },
+  "twigos-house": {
+   "tile": [
+    13,
+    27
+   ],
+   "footprint": [
+    3,
+    3
+   ]
+  },
+  "tanod-outpost": {
+   "tile": [
+    22,
+    27
+   ],
+   "footprint": [
+    4,
+    3
+   ]
+  },
+  "fountain-arches": {
+   "tile": [
+    17,
+    17
+   ],
+   "footprint": [
+    3,
+    3
+   ]
+  }
+ },
+ "props": [
+  {
+   "prop": "lamp-on",
+   "tile": [
+    17,
+    7
+   ]
+  },
+  {
+   "prop": "lamp-on",
+   "tile": [
+    20,
+    7
+   ]
+  },
+  {
+   "prop": "lamp-on",
+   "tile": [
+    17,
+    11
+   ]
+  },
+  {
+   "prop": "lamp-on",
+   "tile": [
+    20,
+    11
+   ]
+  },
+  {
+   "prop": "lamp-on",
+   "tile": [
+    17,
+    26
+   ]
+  },
+  {
+   "prop": "lamp-on",
+   "tile": [
+    20,
+    26
+   ]
+  },
+  {
+   "prop": "lamp-on",
+   "tile": [
+    17,
+    30
+   ]
+  },
+  {
+   "prop": "lamp-on",
+   "tile": [
+    20,
+    30
+   ]
+  },
+  {
+   "prop": "lamp-on",
+   "tile": [
+    4,
+    17
+   ]
+  },
+  {
+   "prop": "lamp-on",
+   "tile": [
+    4,
+    20
+   ]
+  },
+  {
+   "prop": "lamp-on",
+   "tile": [
+    8,
+    17
+   ]
+  },
+  {
+   "prop": "lamp-on",
+   "tile": [
+    8,
+    20
+   ]
+  },
+  {
+   "prop": "lamp-on",
+   "tile": [
+    12,
+    17
+   ]
+  },
+  {
+   "prop": "lamp-on",
+   "tile": [
+    12,
+    20
+   ]
+  },
+  {
+   "prop": "lamp-on",
+   "tile": [
+    26,
+    17
+   ]
+  },
+  {
+   "prop": "lamp-on",
+   "tile": [
+    26,
+    20
+   ]
+  },
+  {
+   "prop": "lamp-on",
+   "tile": [
+    30,
+    17
+   ]
+  },
+  {
+   "prop": "lamp-on",
+   "tile": [
+    30,
+    20
+   ]
+  },
+  {
+   "prop": "bench-sw",
+   "tile": [
+    15,
+    14
+   ]
+  },
+  {
+   "prop": "bench-sw",
+   "tile": [
+    22,
+    14
+   ]
+  },
+  {
+   "prop": "bench-ne",
+   "tile": [
+    15,
+    23
+   ]
+  },
+  {
+   "prop": "bench-ne",
+   "tile": [
+    22,
+    23
+   ]
+  },
+  {
+   "prop": "bench-se",
+   "tile": [
+    14,
+    16
+   ]
+  },
+  {
+   "prop": "bench-nw",
+   "tile": [
+    23,
+    21
+   ]
+  },
+  {
+   "prop": "crate",
+   "tile": [
+    16,
+    3
+   ]
+  },
+  {
+   "prop": "crate",
+   "tile": [
+    21,
+    4
+   ]
+  },
+  {
+   "prop": "crate",
+   "tile": [
+    21,
+    2
+   ]
+  },
+  {
+   "prop": "crate-stack",
+   "tile": [
+    28,
+    16
+   ]
+  },
+  {
+   "prop": "crate",
+   "tile": [
+    29,
+    12
+   ]
+  },
+  {
+   "prop": "sign-arrow",
+   "tile": [
+    20,
+    24
+   ]
+  },
+  {
+   "prop": "sign-board",
+   "tile": [
+    13,
+    21
+   ]
+  },
+  {
+   "prop": "sign-arrow",
+   "tile": [
+    24,
+    17
+   ]
+  },
+  {
+   "prop": "tree-green-4",
+   "tile": [
+    10,
+    3
+   ]
+  },
+  {
+   "prop": "tree-green-6",
+   "tile": [
+    10,
+    8
+   ]
+  },
+  {
+   "prop": "tree-violet-3",
+   "tile": [
+    10,
+    2
+   ]
+  },
+  {
+   "prop": "tree-violet-2",
+   "tile": [
+    1,
+    8
+   ]
+  },
+  {
+   "prop": "tree-green-5",
+   "tile": [
+    9,
+    4
+   ]
+  },
+  {
+   "prop": "tree-green-4",
+   "tile": [
+    12,
+    8
+   ]
+  },
+  {
+   "prop": "tree-violet-1",
+   "tile": [
+    9,
+    8
+   ]
+  },
+  {
+   "prop": "tree-green-7",
+   "tile": [
+    11,
+    3
+   ]
+  },
+  {
+   "prop": "tree-green-4",
+   "tile": [
+    11,
+    3
+   ]
+  },
+  {
+   "prop": "tree-violet-1",
+   "tile": [
+    7,
+    1
+   ]
+  },
+  {
+   "prop": "tree-violet-3",
+   "tile": [
+    2,
+    3
+   ]
+  },
+  {
+   "prop": "tree-violet-2",
+   "tile": [
+    1,
+    5
+   ]
+  },
+  {
+   "prop": "tree-green-1",
+   "tile": [
+    5,
+    8
+   ]
+  },
+  {
+   "prop": "tree-violet-2",
+   "tile": [
+    12,
+    7
+   ]
+  },
+  {
+   "prop": "tree-violet-4",
+   "tile": [
+    29,
+    7
+   ]
+  },
+  {
+   "prop": "tree-violet-4",
+   "tile": [
+    32,
+    8
+   ]
+  },
+  {
+   "prop": "tree-green-3",
+   "tile": [
+    28,
+    2
+   ]
+  },
+  {
+   "prop": "tree-green-1",
+   "tile": [
+    25,
+    8
+   ]
+  },
+  {
+   "prop": "tree-green-4",
+   "tile": [
+    27,
+    7
+   ]
+  },
+  {
+   "prop": "tree-violet-3",
+   "tile": [
+    27,
+    7
+   ]
+  },
+  {
+   "prop": "tree-violet-1",
+   "tile": [
+    29,
+    6
+   ]
+  },
+  {
+   "prop": "tree-violet-1",
+   "tile": [
+    32,
+    7
+   ]
+  },
+  {
+   "prop": "tree-violet-2",
+   "tile": [
+    26,
+    6
+   ]
+  },
+  {
+   "prop": "tree-violet-3",
+   "tile": [
+    23,
+    5
+   ]
+  },
+  {
+   "prop": "tree-violet-2",
+   "tile": [
+    33,
+    3
+   ]
+  },
+  {
+   "prop": "tree-violet-4",
+   "tile": [
+    28,
+    9
+   ]
+  },
+  {
+   "prop": "tree-green-2",
+   "tile": [
+    29,
+    32
+   ]
+  },
+  {
+   "prop": "tree-green-5",
+   "tile": [
+    30,
+    27
+   ]
+  },
+  {
+   "prop": "tree-green-2",
+   "tile": [
+    33,
+    33
+   ]
+  },
+  {
+   "prop": "tree-green-8",
+   "tile": [
+    27,
+    29
+   ]
+  },
+  {
+   "prop": "tree-green-2",
+   "tile": [
+    32,
+    28
+   ]
+  },
+  {
+   "prop": "tree-green-1",
+   "tile": [
+    30,
+    30
+   ]
+  },
+  {
+   "prop": "tree-green-7",
+   "tile": [
+    27,
+    27
+   ]
+  },
+  {
+   "prop": "tree-green-1",
+   "tile": [
+    32,
+    32
+   ]
+  },
+  {
+   "prop": "tree-violet-2",
+   "tile": [
+    6,
+    32
+   ]
+  },
+  {
+   "prop": "tree-green-5",
+   "tile": [
+    9,
+    29
+   ]
+  },
+  {
+   "prop": "tree-green-1",
+   "tile": [
+    5,
+    28
+   ]
+  },
+  {
+   "prop": "tree-green-2",
+   "tile": [
+    2,
+    32
+   ]
+  },
+  {
+   "prop": "tree-violet-1",
+   "tile": [
+    1,
+    29
+   ]
+  },
+  {
+   "prop": "tree-green-7",
+   "tile": [
+    5,
+    32
+   ]
+  },
+  {
+   "prop": "tree-green-5",
+   "tile": [
+    3,
+    33
+   ]
+  },
+  {
+   "prop": "tree-green-1",
+   "tile": [
+    6,
+    30
+   ]
+  },
+  {
+   "prop": "tree-green-planter-7",
+   "tile": [
+    14,
+    13
+   ]
+  },
+  {
+   "prop": "tree-green-planter-6",
+   "tile": [
+    23,
+    13
+   ]
+  },
+  {
+   "prop": "tree-green-planter-8",
+   "tile": [
+    14,
+    24
+   ]
+  },
+  {
+   "prop": "tree-green-planter-8",
+   "tile": [
+    23,
+    24
+   ]
+  }
+ ],
+ "zones": {
+  "plaza": [
+   14,
+   14,
+   10,
+   10
+  ],
+  "road-n": [
+   18,
+   5,
+   2,
+   9
+  ],
+  "road-s": [
+   18,
+   24,
+   2,
+   10
+  ],
+  "road-e": [
+   24,
+   18,
+   10,
+   2
+  ],
+  "road-w": [
+   1,
+   18,
+   13,
+   2
+  ],
+  "water-s": [
+   0,
+   34,
+   36,
+   2
+  ],
+  "water-e": [
+   34,
+   0,
+   2,
+   34
+  ],
+  "bridge": [
+   18,
+   34,
+   2,
+   2
+  ]
+ },
+ "spawn": [
+  18,
+  26
+ ],
+ "fence": {
+  "west": [
+   [
+    0,
+    0
+   ],
+   [
+    0,
+    33
+   ]
+  ],
+  "north": [
+   [
+    0,
+    0
+   ],
+   [
+    33,
+    0
+   ]
+  ]
+ }
+}
