@@ -1,0 +1,63 @@
+# Mikazuki (twigo-bot) — notes for Claude
+
+This repo is **public**. Private details (server address, channel and user IDs, current state) live in
+`CLAUDE.local.md`, which is git-ignored. Read both before starting.
+
+## What this is
+
+npm-workspaces monorepo (Node ≥ 22.12, TypeScript):
+
+- `packages/bot` (`@mikazuki/bot`) — discord.js v14 bot for the Mikazuki server: Kowens economy, games, loans,
+  digging, quests, events/reminders, plus a small HTTP "room API" (`src/web/`) behind Caddy.
+- `packages/game` (`@mikazuki/game`) — Phaser 4 + Vite web town served at `/play/`.
+- `packages/shared` (`@mikazuki/shared`) — types shared by both (room API responses, outfits). Types only.
+
+State is one SQLite database, `data/mikazuki.db` (better-sqlite3, WAL), schema in `packages/bot/src/db/db.ts`
+(versioned migrations via `PRAGMA user_version`). Stores keep state in memory and save through
+`db/sync.ts` (writes only changed rows). Nightly backups to `data/backups/` (+ off-server upload).
+
+## Commands
+
+- `npm run typecheck` · `npm run build` (shared → bot → game)
+- `npm run dev:game` — Vite dev server (`/play/?preview`, `?time=21:00`, `?outfit=N`, `?debug=wardrobe`)
+- `npm run deploy-commands` — register slash commands (needs `.env`; run with `DATA_DIR` pointed at a temp dir
+  so it doesn't create a local database)
+- `./deploy/deploy.sh <ssh-target>` — builds, uploads, restarts the bot (see `CLAUDE.local.md`)
+
+## Hard rules
+
+- **Never run the bot locally while the server bot is up** (`dev:bot`/`start` refuse unless `ALLOW_LOCAL_BOT=1`).
+- **Secrets:** `.env` holds the bot token, OAuth secret and backup upload URL. Never print, commit or paste its
+  values; check them with scripts that print yes/no only. `deploy.sh` uploads the *local* `.env`.
+- **Data:** `data/` on the server is live state; deploys never touch it. Back up before risky changes.
+- **Never edit the live database directly while the bot runs** (it caches state in memory and would overwrite
+  you). Use bot commands (`/gift …`) or stop the bot first.
+- Don't merge, push, deploy or post in Discord unless the user asked for it in this conversation.
+- Report asset problems instead of working around them (the game must stay data-driven from the manifest).
+
+## Conventions
+
+- Small, ordered commits on a feature branch, fast-forward merged into `main`. End commit messages with the
+  `Co-Authored-By` line Claude Code provides. Commits show as `tw1go` via local git config.
+- Big pushes (art) need `git -c http.postBuffer=157286400 push`.
+- Write code like the surrounding code: comment density, naming, small helpers. User-facing bot text says
+  "Kowens" ("Kowen" for 1).
+- Bot changes that affect members: update `/twigo-help` (`commands/twigo-help.ts`), `PRIVACY.md` when data
+  handling changes, and the README.
+- Messages to Discord: no pings by default (`allowedMentions: { parse: [] }`); de-duplicate user IDs in
+  `allowedMentions.users`.
+
+## The web game (`packages/game`)
+
+- Source of truth: `public/assets/manifest.json` and `public/assets/maps/town.json` (72×72). Don't hard-code
+  sizes, anchors or positions. Pixel anchors are measured on the real image size.
+  `manifest.json` only exists here (not in the separate `mikazuki-assets` art folder) — when copying art over,
+  copy images only.
+- Depth: front corner of the footprint, plus a correction against big footprints (`WorldObjects.sortAgainstBig`);
+  the arena uses back/front layers. Ground is baked into canvas chunks; off-screen sprites are culled.
+- Characters are paper dolls composited per outfit (`characters/doll.ts`), saved per account (`PUT /outfit`).
+- The town is held behind `?preview` until launch (`src/preview.ts`); `/play/` shows a coming-soon page.
+- Movement: click-to-move (A* on `blocked`), WASD/arrows (screen directions), E/Space to enter or sit.
+- Checking work: run the dev server and drive headless Chrome over the DevTools protocol (screenshots +
+  `window.__town` debug API: `state()`, `teleport()`, `walk()`, `time()`, `view()`, `outfit()`). Use
+  `--use-angle=metal` for real frame rates; SwiftShader under-reports.
