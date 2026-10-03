@@ -38,6 +38,14 @@ ssh "$TARGET" 'set -e
     sudo -u twigo npm ci --omit=dev --no-audit --no-fund -w @mikazuki/bot
     sha256sum package-lock.json | sudo -u twigo tee .deps-installed >/dev/null
   fi
+  # Caddy: install deploy/Caddyfile when it changed (validated first; the old one is kept as Caddyfile.bak).
+  if ! sudo cmp -s deploy/Caddyfile /etc/caddy/Caddyfile; then
+    caddy validate --config deploy/Caddyfile --adapter caddyfile >/dev/null 2>&1
+    sudo cp /etc/caddy/Caddyfile /etc/caddy/Caddyfile.bak
+    sudo cp deploy/Caddyfile /etc/caddy/Caddyfile
+    sudo systemctl reload caddy
+    echo "Caddyfile updated"
+  fi
   sudo cp deploy/twigo-bot.service /etc/systemd/system/twigo-bot.service
   sudo systemctl daemon-reload
   sudo systemctl enable twigo-bot
