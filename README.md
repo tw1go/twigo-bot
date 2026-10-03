@@ -35,7 +35,7 @@ Bot code lives in `packages/bot/src/`; paths like `src/...` below are relative t
 | 8:00 PM | Pings every participant: time to ready up and brawl |
 
 If no admin answers by 6:00 PM, the day is skipped. Times live in `src/match/schedule.ts`.
-Progress is saved in the database (`match-state.json` document), so a restart mid-Saturday is safe.
+Progress is saved in the database, so a restart mid-Saturday is safe.
 
 Admins can run any step manually with `/twigo abf:<ask|close|remind|start>` (useful for testing any day).
 
@@ -169,7 +169,12 @@ SQLite database, `data/mikazuki.db` (`packages/bot/src/db/db.ts`):
 
 - Tables for the economy core: `accounts` (Kowens, vault, daily limits), `dig_state` + `inventory_items`,
   `loans` + `loan_credit`.
-- Every other store is one JSON document in the `kv` table, keyed by its old file name (e.g. `jail.json`).
+- Tables for per-member state: `quests`, `minewars_payouts`, `room_find_codes` / `room_find_claims`,
+  `potion_stock` / `potion_effects`, `secret_progress`, `jail`, `redemptions`, `jackpot_tickets`, `eggs_found`,
+  `easter_egg_finds`, `boosters`.
+- Small singletons (shuffle-bag rotations, the current race, the last jackpot draw…) are JSON documents in the
+  `kv` table, keyed by their old file name (e.g. `race.json`).
+- Stores keep their state in memory and save through `db/sync.ts`, which writes only the rows that changed.
 - `data/backups/mikazuki-YYYY-MM-DD.db`: a nightly backup at 3:30 AM. The last 7 are kept.
 - `data/legacy-json/`: the old JSON files. On the first start with the database, they were imported in one
   transaction and moved here (kept for rollback, never read again).
