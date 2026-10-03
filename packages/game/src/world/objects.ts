@@ -22,6 +22,7 @@ export interface Building {
   sprite: Phaser.GameObjects.Image; // the clickable image (the arena's front layer)
   depth: number;
   doors: Vec2[]; // [col, row]
+  top: { x: number; y: number }; // centre top: the image's centre, its highest visible pixel (both layers if hollow)
 }
 
 export interface Bench {
@@ -132,19 +133,25 @@ export class WorldObjects {
     const front = this.depthFor(o);
     let sprite: Phaser.GameObjects.Image;
     let back = front;
+    let extent: Phaser.Geom.Rectangle;
+    let roof: number;
     if (def.layers?.back && def.layers.front) {
       // Hollow building (the arena): the back layer at the footprint's top corner, the front layer at the front
       // corner, so players on the sand go behind the front rim.
       back = (o.col + o.row) * 8;
-      this.place(def.layers.back, o.col, o.row, def.footprintTopCorner, o.flip).setDepth(back);
+      const rear = this.place(def.layers.back, o.col, o.row, def.footprintTopCorner, o.flip).setDepth(back);
       sprite = this.place(def.layers.front, o.col, o.row, def.footprintTopCorner, o.flip).setDepth(front);
+      extent = Phaser.Geom.Rectangle.Union(rear.getBounds(), sprite.getBounds());
+      roof = Math.min(visibleTop(this.scene, rear), visibleTop(this.scene, sprite));
     } else {
       sprite = this.place(def.file, o.col, o.row, def.footprintTopCorner, o.flip).setDepth(front);
+      extent = sprite.getBounds();
+      roof = visibleTop(this.scene, sprite);
     }
     this.big.push({ col: o.col, row: o.row, cols: fc, rows: fr, back, front, bounds: sprite.getBounds(new Phaser.Geom.Rectangle()) });
     const raw = this.map.doors[o.id];
     const doors: Vec2[] = !raw ? [] : Array.isArray(raw[0]) ? (raw as Vec2[]) : [raw as Vec2];
-    this.buildings.push({ id: o.id, obj: o, sprite, depth: front, doors });
+    this.buildings.push({ id: o.id, obj: o, sprite, depth: front, doors, top: { x: extent.centerX, y: roof } });
     if (SPARKLE_BUILDINGS.includes(o.id)) this.sparkle(sprite, front);
   }
 
@@ -260,6 +267,25 @@ export class WorldObjects {
 export const characterDepth = (objects: WorldObjects, col: number, row: number, feetDepth: number, bounds: Phaser.Geom.Rectangle) =>
   objects.sortAgainstBig(col, row, 1, 1, feetDepth, bounds, CHARACTER_BIAS);
 
+function readPixels(scene: Phaser.Scene, key: string): ImageData {
+  const img = scene.textures.get(key).getSourceImage() as HTMLImageElement;
+  const canvas = document.createElement('canvas');
+  canvas.width = img.width;
+  canvas.height = img.height;
+  const ctx = canvas.getContext('2d')!;
+  ctx.drawImage(img, 0, 0);
+  return ctx.getImageData(0, 0, img.width, img.height);
+}
+
+/** Screen y of an image's first row with any visible pixel (the roof, not the empty space above it). */
+function visibleTop(scene: Phaser.Scene, img: Phaser.GameObjects.Image): number {
+  const d = readPixels(scene, img.texture.key);
+  for (let y = 0; y < d.height; y++) {
+    for (let x = 0; x < d.width; x++) if (d.data[(y * d.width + x) * 4 + 3]) return img.getBounds().top + y;
+  }
+  return img.getBounds().top;
+}
+
 let lanternCache: { x: number; y: number } | null = null;
 
 /** Offset from a lamp's anchor point to the centre of its lantern (pixels that differ between lamp-on and lamp-off). */
@@ -267,17 +293,8 @@ function lanternOffset(scene: Phaser.Scene, M: Manifest): { x: number; y: number
   if (lanternCache) return lanternCache;
   const on = M.props['lamp-on'] as PropDef;
   const off = M.props['lamp-off'] as PropDef;
-  const read = (key: string) => {
-    const img = scene.textures.get(key).getSourceImage() as HTMLImageElement;
-    const canvas = document.createElement('canvas');
-    canvas.width = img.width;
-    canvas.height = img.height;
-    const ctx = canvas.getContext('2d')!;
-    ctx.drawImage(img, 0, 0);
-    return ctx.getImageData(0, 0, img.width, img.height);
-  };
-  const a = read(on.file);
-  const b = read(off.file);
+  const a = readPixels(scene, on.file);
+  const b = readPixels(scene, off.file);
   let sx = 0;
   let sy = 0;
   let n = 0;

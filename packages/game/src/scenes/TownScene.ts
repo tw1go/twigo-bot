@@ -3,11 +3,12 @@ import { queueImage, queueTown } from '../assets/queue';
 import type { Dir, Manifest, TownMap } from '../assets/types';
 import { Character } from '../characters/character';
 import { type Outfit, assetProblems, buildOutfit, loadOutfit, outfitFiles } from '../characters/doll';
-import { saveOutfit, startingOutfit } from '../characters/looks';
+import { startingOutfit } from '../characters/looks';
 import type { MeResult } from '../session';
-import { mountWardrobe } from '../ui/wardrobe';
+import { BuildingLabel } from '../ui/labels';
 import { screenToTile, tileToScreen } from '../iso';
 import { toast } from '../ui/toast';
+import { LABEL_DEPTH } from '../world/depth';
 import { minutesNow, setTimeSource, skyAt } from '../world/daynight';
 import { Culler } from '../world/cull';
 import { type Tile, WalkGrid } from '../world/grid';
@@ -17,21 +18,24 @@ import { type Bench, type Building, WorldObjects, characterDepth } from '../worl
 // The playable town: ground, buildings, props and the player, all placed from manifest.json + maps/town.json.
 // Click (or tap) to walk; click a building to walk to its door; click a bench to sit.
 
-const ZOOMS = [1, 2, 3, 4];
+const ZOOMS = [2, 3, 4]; // whole steps only; 1× showed too much of the town at once
 const TWIGO_ROOM_URL = 'https://tw1go.github.io';
 
-/** What a door does. twigo's house leads back to twigo's room; the rest are hooks to fill in later. */
-const DOOR_LABELS: Record<string, string> = {
-  'rewards-shop': '🎁 Rewards shop',
-  bank: '🏦 Bank',
-  casino: '🎰 Casino',
-  'mine-entrance': '⛏️ Mine',
-  'tanod-outpost': '🚔 Tanod outpost',
-  arena: '⚔️ Arena',
-  'notice-board': '📜 Notice board',
-  'leaderboard-monument': '🏆 Leaderboard',
-  'jackpot-booth': '🎟️ Jackpot booth',
+/** Each building's name (shown over it) and emoji (door messages). twigo's house leads back to twigo's room; the
+ *  other doors are hooks to fill in later. */
+const BUILDINGS: Record<string, { emoji: string; name: string }> = {
+  'rewards-shop': { emoji: '🎁', name: 'Rewards shop' },
+  bank: { emoji: '🏦', name: 'Bank' },
+  casino: { emoji: '🎰', name: 'Casino' },
+  'mine-entrance': { emoji: '⛏️', name: 'Mine' },
+  'tanod-outpost': { emoji: '🚔', name: 'Tanod outpost' },
+  arena: { emoji: '⚔️', name: 'Arena' },
+  'notice-board': { emoji: '📜', name: 'Notice board' },
+  'leaderboard-monument': { emoji: '🏆', name: 'Leaderboard' },
+  'jackpot-booth': { emoji: '🎟️', name: 'Jackpot booth' },
+  'twigos-house': { emoji: '🏠', name: "twigo's house" },
 };
+const doorLabel = (id: string) => (id === 'twigos-house' ? "🏠 twigo's room" : BUILDINGS[id] ? `${BUILDINGS[id].emoji} ${BUILDINGS[id].name}` : id);
 
 /** Keyboard walking: screen direction → grid step (col runs screen right-down, row runs screen left-down). */
 const DIR_STEP: Record<Dir, [number, number]> = {
@@ -75,6 +79,10 @@ export class TownScene extends Phaser.Scene {
   }
 
   private me: MeResult | null = null;
+  private readonly buildingLabels = new Map<string, BuildingLabel>();
+  private hovered: Building | null = null;
+  private alertFor: Building | null = null;
+  private labelZoom = 0;
 
   init(data: { manifest: Manifest; town: TownMap; me: MeResult | null }): void {
     this.M = data.manifest;
@@ -139,17 +147,23 @@ export class TownScene extends Phaser.Scene {
     this.culler.update(this.cameras.main.worldView);
     this.setupInput();
     this.updateSky(true);
-    mountWardrobe(this.M.characters, {
-      current: () => ({ ...this.outfit }),
-      apply: (o) => this.setOutfit(o),
-      save: (o) => saveOutfit(o, this.me?.status === 'ok'),
-      loggedIn: () => this.me?.status === 'ok',
-    });
+    for (const b of this.objects.buildings) {
+      const name = BUILDINGS[b.id]?.name;
+      if (name) this.buildingLabels.set(b.id, new BuildingLabel(this, name, b.top.x));
+    }
+    if (this.me?.status === 'ok') this.player.setNameplate(this.me.me.nickname, this.me.me.title);
     exposeDebug(this);
     if (assetProblems.size) console.warn('[town] asset problems:\n' + [...assetProblems].join('\n'));
   }
 
   update(time: number, delta: number): void {
+    const zoom = this.cameras.main.zoom;
+    if (zoom !== this.labelZoom) {
+      // Text is drawn at the zoom it's seen at, so it stays sharp.
+      this.labelZoom = zoom;
+      this.player.setZoom(zoom);
+      for (const l of this.buildingLabels.values()) l.setZoom(zoom);
+    }
     this.ground.tick(time);
     this.player.update(delta);
     if (this.follow) this.followPlayer();
@@ -197,7 +211,18 @@ export class TownScene extends Phaser.Scene {
   // ── Input ──
 
   private setupInput(): void {
-    for (const b of this.objects.buildings) b.sprite.setInteractive({ pixelPerfect: true, useHandCursor: true });
+    for (const b of this.objects.buildings) {
+      b.sprite.setInteractive({ pixelPerfect: true, useHandCursor: true });
+      // The name shows while the building is hovered.
+      b.sprite.on(Phaser.Input.Events.GAMEOBJECT_POINTER_OVER, () => {
+        this.hovered = b;
+        this.showBuildingName();
+      });
+      b.sprite.on(Phaser.Input.Events.GAMEOBJECT_POINTER_OUT, () => {
+        if (this.hovered === b) this.hovered = null;
+        this.showBuildingName();
+      });
+    }
 
     this.input.on(Phaser.Input.Events.POINTER_UP, (p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
       if (p.getDistance() > 8) return; // a drag, not a click
@@ -326,7 +351,7 @@ export class TownScene extends Phaser.Scene {
     if (!building) return;
     if (!this.byKeys) return this.enter(building); // clicked the building: go in
     // Walked here with the keys: wait for E, so walking past a door never throws you inside.
-    toast(`${DOOR_LABELS[building.id] ?? "🏠 twigo's room"} · press E to enter`);
+    toast(`${doorLabel(building.id)} · press E to enter`);
   }
 
   /** Door hook: twigo's house goes back to twigo's room; the others are stubs for now. */
@@ -337,22 +362,33 @@ export class TownScene extends Phaser.Scene {
       this.time.delayedCall(700, () => location.assign(TWIGO_ROOM_URL));
       return;
     }
-    toast(`${DOOR_LABELS[b.id] ?? b.id}: coming soon`);
+    toast(`${doorLabel(b.id)}: coming soon`);
   }
 
   /** fx-alert over a building while the player stands at its door. */
   private setBuildingAlert(b: Building | null): void {
     this.buildingAlert?.destroy();
     this.buildingAlert = null;
+    this.alertFor = null;
     const fx = this.M.fx.alert;
-    if (!b || !fx?.file) return;
+    if (!b || !fx?.file) return this.showBuildingName();
     const key = `anim:${fx.file}`;
     if (!this.anims.exists(key)) {
       this.anims.create({ key, frames: this.anims.generateFrameNumbers(fx.file, { start: 0, end: (fx.frames ?? 1) - 1 }), frameRate: fx.fps ?? 4, repeat: -1 });
     }
-    const top = b.sprite.getBounds();
-    this.buildingAlert = this.add.sprite(Math.round(top.centerX), Math.round(top.top - 2), fx.file).setOrigin(0.5, 1).setDepth(b.depth + 0.2);
+    this.buildingAlert = this.add.sprite(Math.round(b.top.x), Math.round(b.top.y - 2), fx.file).setOrigin(0.5, 1).setDepth(LABEL_DEPTH);
     this.buildingAlert.play(key);
+    this.alertFor = b;
+    this.showBuildingName();
+  }
+
+  /** The hovered building's name over its roof (above its alert, if it has one). */
+  private showBuildingName(): void {
+    for (const [id, label] of this.buildingLabels) {
+      const b = this.hovered?.id === id ? this.hovered : null;
+      const alert = b && this.alertFor === b ? this.buildingAlert : null;
+      label.show(!b ? null : alert ? alert.y - alert.height - 1 : b.top.y - 2);
+    }
   }
 
   // ── Day / night ──
@@ -434,7 +470,7 @@ function typing(): boolean {
 
 /** Whole-number zoom that shows a comfortable slice of town for the window size. */
 function defaultZoomIndex(w: number, h: number): number {
-  const z = Math.max(1, Math.min(4, Math.floor(Math.min(w / 480, h / 360))));
+  const z = Math.max(ZOOMS[0], Math.min(ZOOMS[ZOOMS.length - 1], Math.floor(Math.min(w / 480, h / 360))));
   return ZOOMS.indexOf(z);
 }
 

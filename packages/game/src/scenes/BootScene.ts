@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import type { Manifest, TownMap } from '../assets/types';
-import { type MeResult, loadMe, loginProblem } from '../session';
+import { loadMe, loginProblem } from '../session';
 import { showLogin } from '../ui/login';
 
 // Loads the two source-of-truth files, then: not logged in → the login screen; logged in without a saved look or
@@ -23,7 +23,9 @@ export class BootScene extends Phaser.Scene {
     const debug = new URLSearchParams(location.search).get('debug');
     // Wait briefly for the login, so a saved look is on the player from the first frame.
     const timeout = new Promise<null>((r) => setTimeout(() => r(null), 2500));
-    void Promise.race([loadMe(), timeout]).then((me: MeResult | null) => {
+    // ...and for the UI font, so the town's name plates are drawn in it (not the fallback) from the start.
+    const font = Promise.race([document.fonts.load('10px "Pixelify Sans"').catch(() => null), new Promise((r) => setTimeout(r, 2500))]);
+    void Promise.all([Promise.race([loadMe(), timeout]), font]).then(([me]) => {
       if (debug === 'wardrobe') return this.scene.start('wardrobe', { manifest });
       if (me?.status === 'anon') return showLogin(loginProblem());
       if (me?.status === 'ok' && (!me.me.outfit || !me.me.nickname)) return this.scene.start('create', { manifest, town, me });

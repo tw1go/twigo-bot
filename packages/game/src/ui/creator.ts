@@ -251,7 +251,7 @@ export function mountCreator(C: CharacterDefs, hooks: CreatorHooks): void {
   render();
 
   const head = el('header', 'cr-head');
-  head.append(el('h1', undefined, 'Create your character'), el('p', undefined, `Welcome, ${hooks.name}! Pick a nickname and a look. You can change your look any time from the wardrobe in town.`));
+  head.append(el('h1', undefined, 'Create your character'), el('p', undefined, `Welcome, ${hooks.name}! Pick a nickname and a look for the town.`));
   const side = el('div', 'cr-side');
   side.append(settings, actions, note);
   const panel = el('div', 'cr-panel');

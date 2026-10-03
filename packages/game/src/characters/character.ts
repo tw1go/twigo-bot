@@ -3,6 +3,7 @@ import type { CharacterDefs, Dir, Manifest } from '../assets/types';
 import { CHARACTER_BIAS } from '../world/depth';
 import type { Tile } from '../world/grid';
 import { type Outfit, sheetKey } from './doll';
+import { Nameplate } from '../ui/labels';
 
 // A walking paper doll. Position is in tile space (tile centre = col + 0.5); the sprite's feet anchor sits on it.
 // Depth is the front corner of the tile the feet are on, refreshed every frame.
@@ -23,6 +24,8 @@ export class Character {
   readonly sprite: Phaser.GameObjects.Sprite;
   private readonly shadow: Phaser.GameObjects.Image | null;
   private alert: Phaser.GameObjects.Sprite | null = null;
+  private tag: Nameplate | null = null;
+  private zoom = 1;
   private col: number; // tile-space position of the feet (tile centre = integer + 0.5)
   private row: number;
   private path: Tile[] = [];
@@ -53,6 +56,21 @@ export class Character {
     const sh = M.fx.shadow;
     this.shadow = sh?.file ? scene.add.image(0, 0, sh.file).setOrigin((sh.anchor?.[0] ?? 0) / (sh.size?.[0] ?? 1), (sh.anchor?.[1] ?? 0) / (sh.size?.[1] ?? 1)) : null;
     this.play('idle');
+    this.sync();
+  }
+
+  /** Name plate and <Title> over the head (null removes it). */
+  setNameplate(nickname: string | null, title: string, self = true): void {
+    this.tag?.destroy();
+    this.tag = nickname ? new Nameplate(this.scene, this.M, nickname, title, self) : null;
+    this.tag?.setZoom(this.zoom);
+    this.sync();
+  }
+
+  /** Sizes the name plate for the camera zoom. */
+  setZoom(zoom: number): void {
+    this.zoom = zoom;
+    this.tag?.setZoom(zoom);
     this.sync();
   }
 
@@ -234,7 +252,11 @@ export class Character {
     const depth = this.sittingAt?.depth ?? (this.depthFn ? this.depthFn(t.col, t.row, feet, this.sprite.getBounds(this.boundsCache)) : feet);
     this.sprite.setDepth(depth);
     this.shadow?.setPosition(Math.round(x), Math.round(y)).setDepth(depth - 0.2);
-    this.alert?.setPosition(Math.round(x), Math.round(y) - this.M.characters.cell[1] - 2).setDepth(depth + 0.1);
+    // The plate sits 4 px above the cell (manifest ui.nameplate); an alert goes above the plate.
+    const cellTop = Math.round(y) - this.M.characters.anchor[1];
+    this.tag?.place(Math.round(x), cellTop - 4);
+    const alertY = this.tag ? cellTop - 4 - this.tag.height - 1 : Math.round(y) - this.M.characters.cell[1] - 2;
+    this.alert?.setPosition(Math.round(x), alertY).setDepth(depth + 0.1);
   }
 
   private dust(): void {
@@ -254,6 +276,7 @@ export class Character {
     this.sprite.destroy();
     this.shadow?.destroy();
     this.alert?.destroy();
+    this.tag?.destroy();
   }
 
   /** Lets the scene tint effects spawned later (night). */
