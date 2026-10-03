@@ -14,6 +14,8 @@ export interface CreatorHooks {
   sheet: (o: Outfit, dir: Dir) => CanvasImageSource | null;
   /** Saves the look and enters the town; false if saving failed. */
   save: (o: Outfit) => Promise<boolean>;
+  /** The game's pixel frame (a nine-slice image) for the box, if the manifest has one. */
+  frame: { url: string; slice: number } | null;
 }
 
 /** "tshirt" → "Tshirt", "longsleeve" → "Longsleeve". */
@@ -198,6 +200,11 @@ export function mountCreator(C: CharacterDefs, hooks: CreatorHooks): void {
   const panel = el('div', 'cr-panel');
   panel.append(look, side);
   const box = el('div', 'cr-box');
+  if (hooks.frame) {
+    box.classList.add('cr-framed');
+    box.style.setProperty('--frame', `url("${hooks.frame.url}")`);
+    box.style.setProperty('--slice', String(hooks.frame.slice));
+  }
   box.append(head, panel);
   root.append(box);
   document.body.append(root);

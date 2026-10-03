@@ -36,7 +36,9 @@ export interface Manifest {
   props: Record<string, PropDef> & { fence: FenceDef; 'tree-tufts': { files: string[]; size: Vec2 } };
   characters: CharacterDefs;
   fx: Record<string, FxDef>;
-  ui: Record<string, { file?: string; size?: Vec2; frames?: number | string[] | Record<string, number>; fps?: number; anchor?: Vec2 }>;
+  ui: Record<string, { file?: string; size?: Vec2; frames?: number | string[] | Record<string, number>; fps?: number; anchor?: Vec2 }> & {
+    inventory?: { itemFrame?: { file: string; nineSlice: number } };
+  };
 }
 
 export interface BuildingDef {
