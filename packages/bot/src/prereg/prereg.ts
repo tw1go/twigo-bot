@@ -73,5 +73,9 @@ export function preregPanel() {
 export async function handlePreregButton(interaction: ButtonInteraction): Promise<void> {
   const result = preregister(interaction.user.id, 'discord');
   await interaction.reply({ content: preregReply(result), flags: MessageFlags.Ephemeral });
-  if (result === 'joined') await interaction.message.edit(preregPanel()).catch(() => {}); // refresh the count
+  if (result !== 'joined') return;
+  // Refresh the count line, keeping the rest of the message (the panel, or an announcement with this button).
+  const COUNT = /-# \d+ pre-registered so far/;
+  const content = interaction.message.content;
+  if (COUNT.test(content)) await interaction.message.edit({ content: content.replace(COUNT, `-# ${preregCount()} pre-registered so far`) }).catch(() => {});
 }
