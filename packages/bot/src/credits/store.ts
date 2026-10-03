@@ -83,6 +83,9 @@ function save(): void {
   table.save(Object.entries(accounts).map(([id, a]) => toRow(id, a))); // writes only the accounts that changed
 }
 
+/** Everyone with a Kowens account, i.e. everyone who has used the bot. */
+export const accountIds = () => Object.keys(accounts);
+
 export function balance(userId: string): number {
   return accounts[userId]?.balance ?? 0;
 }

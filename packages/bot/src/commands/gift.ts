@@ -1,7 +1,7 @@
 import { MessageFlags, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
 import type { Command } from '../types.js';
 import { config } from '../config.js';
-import { add, balance, take } from '../credits/store.js';
+import { accountIds, add, balance, take } from '../credits/store.js';
 import { BOOST_CREDITS, boostCount, setBoostCount } from '../games/boosts.js';
 import { ATTEND_REWARD, TOP_REWARD, openPayoutPanel } from '../minewars/payout.js';
 import { kowen } from '../kowens.js';
@@ -28,6 +28,13 @@ export const gift: Command = {
         .addIntegerOption((o) => o.setName('count').setDescription('Number of active boosts').setRequired(true).setMinValue(0).setMaxValue(50)),
     )
     .addSubcommand((s) =>
+      s
+        .setName('everyone')
+        .setDescription('Give Kowens to everyone who has used the bot (e.g. compensation) · 🌐 no pings')
+        .addIntegerOption((o) => o.setName('amount').setDescription('How many each').setRequired(true).setMinValue(1).setMaxValue(1000))
+        .addStringOption((o) => o.setName('reason').setDescription('Why (shown in the message)').setMaxLength(100)),
+    )
+    .addSubcommand((s) =>
       s.setName('minewars').setDescription(`Pay 9 PM Mine Wars: attendance +${ATTEND_REWARD}, Top 10 ${TOP_REWARD} · 🔒 panel · 🌐 summary`),
     ),
   async execute(interaction) {
@@ -37,6 +44,19 @@ export const gift: Command = {
     }
     if (interaction.options.getSubcommand() === 'minewars') {
       await openPayoutPanel(interaction);
+      return;
+    }
+    if (interaction.options.getSubcommand() === 'everyone') {
+      const amount = interaction.options.getInteger('amount', true);
+      const reason = interaction.options.getString('reason');
+      // Straight into wallets: a gift isn't income, so loans don't garnish it.
+      const ids = accountIds();
+      for (const id of ids) add(id, amount, { garnish: false });
+      console.log(`[gift] everyone (${ids.length}) +${amount}${reason ? ` (${reason})` : ''}`);
+      await interaction.reply({
+        content: `🎁 **Everyone who has used the bot** (${ids.length} members) received **${amount.toLocaleString('en-US')}** ${kowen(amount)} from the gifter!${reason ? ` _${reason}_` : ''}\n-# Check yours with /balance.`,
+        allowedMentions: { parse: [] },
+      });
       return;
     }
 

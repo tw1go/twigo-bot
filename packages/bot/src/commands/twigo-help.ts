@@ -92,7 +92,7 @@ export const twigoHelp: Command = {
           '`announce:#channel` (+ `announce-ping:True` for @everyone) — post an announcement as the bot',
           '`game:<patrol|jackpot>` — start a Tanod Patrol or draw the jackpot now',
           '`/jail @user minutes reason` — jail someone (`minutes:0` releases)',
-          '`/gift kowens|boosts|minewars` — gifter only: give/remove Kowens, fix a boost count, or pay the 9 PM Mine Wars',
+          '`/gift kowens|everyone|boosts|minewars` — gifter only: give/remove Kowens (one member or everyone who has used the bot), fix a boost count, or pay the 9 PM Mine Wars',
           '`reset-kowens:@user` / `reset-all-kowens:yes` — reset Kowens',
         ]),
       );
