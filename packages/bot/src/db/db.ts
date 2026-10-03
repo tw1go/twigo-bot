@@ -6,10 +6,13 @@ import { today } from '../time.js';
 
 // 🗄️ The bot's state lives in one SQLite database: DATA_DIR/mikazuki.db (WAL mode).
 //
-// Phase 1 (this file):
-//  • The economy core has real tables: accounts (Kowens & limits), dig_state + inventory_items, loans + loan_credit.
-//  • Every other store keeps its old JSON shape as one document in the `kv` table, keyed by its old file name
-//    (e.g. 'jail.json'). They're transactional and backed up with everything else; phase 2 can give them tables.
+// Tables (schema in MIGRATIONS below):
+//  • v1, the economy core: accounts (Kowens & limits), dig_state + inventory_items, loans + loan_credit.
+//  • v2, per-member stores: quests, minewars_payouts, room_find_codes/claims, potion_stock/effects, secret_progress,
+//    jail, redemptions, jackpot_tickets, eggs_found, easter_egg_finds, boosters.
+//  • kv: small singleton documents keyed by their old file name (e.g. 'race.json', 'rotation.json').
+// Stores cache their state in memory (the bot is the only writer) and save through db/sync.ts, which writes only
+// the rows that changed.
 //
 // On the first start after the switch, legacy JSON files in DATA_DIR are imported in ONE transaction (all or
 // nothing), then moved to DATA_DIR/legacy-json/ — never deleted — so rolling back is possible.
@@ -83,6 +86,86 @@ const MIGRATIONS: string[] = [
     blacklist_until  INTEGER
   );
   `,
+  /* v2: per-member stores get tables (their kv documents are moved by moveKvToTables) */ `
+  CREATE TABLE quests (
+    id           TEXT PRIMARY KEY,
+    requester    TEXT NOT NULL,
+    task         TEXT NOT NULL,
+    reward       INTEGER NOT NULL,
+    status       TEXT NOT NULL CHECK (status IN ('open', 'accepted', 'done', 'cancelled')),
+    accepted_by  TEXT,
+    channel_id   TEXT NOT NULL,
+    message_id   TEXT,
+    created      INTEGER NOT NULL
+  );
+  CREATE TABLE minewars_payouts (
+    night    TEXT NOT NULL,   -- YYYY-MM-DD
+    user_id  TEXT NOT NULL,
+    amount   INTEGER NOT NULL,
+    PRIMARY KEY (night, user_id)
+  );
+  CREATE TABLE room_find_codes (
+    code       TEXT PRIMARY KEY,
+    character  TEXT NOT NULL,
+    expires    INTEGER NOT NULL  -- ms
+  );
+  CREATE TABLE room_find_claims (
+    user_id  TEXT PRIMARY KEY,
+    day      TEXT NOT NULL,
+    count    INTEGER NOT NULL
+  );
+  CREATE TABLE potion_stock (
+    user_id    TEXT NOT NULL,
+    potion_id  TEXT NOT NULL,
+    count      INTEGER NOT NULL CHECK (count > 0),
+    PRIMARY KEY (user_id, potion_id)
+  );
+  CREATE TABLE potion_effects (
+    user_id      TEXT PRIMARY KEY,
+    tago_until   INTEGER,  -- ms
+    swerte_digs  INTEGER,
+    hints_heard  TEXT      -- JSON array of Marites Tea hint indexes
+  );
+  CREATE TABLE secret_progress (
+    user_id          TEXT PRIMARY KEY,
+    praise_bot       INTEGER,  -- lifetime praises of the bot
+    praise_rewarded  INTEGER,  -- 1 once rewarded
+    salute_day       TEXT      -- last patrol salute reward, YYYY-MM-DD
+  );
+  CREATE TABLE jail (
+    user_id  TEXT PRIMARY KEY,
+    until    INTEGER NOT NULL,  -- ms
+    reason   TEXT NOT NULL,
+    no_bail  INTEGER            -- 1 for admin /jail
+  );
+  CREATE TABLE redemptions (
+    id       INTEGER PRIMARY KEY,
+    user_id  TEXT NOT NULL,
+    reward   TEXT NOT NULL,
+    cost     INTEGER NOT NULL,
+    at       TEXT NOT NULL      -- ISO timestamp
+  );
+  CREATE INDEX redemptions_user ON redemptions (user_id);
+  CREATE TABLE jackpot_tickets (
+    user_id  TEXT PRIMARY KEY,
+    tickets  INTEGER NOT NULL CHECK (tickets > 0)
+  );
+  CREATE TABLE eggs_found (
+    user_id  TEXT NOT NULL,
+    egg      TEXT NOT NULL,
+    PRIMARY KEY (user_id, egg)
+  );
+  CREATE TABLE easter_egg_finds (
+    message_id  TEXT NOT NULL,
+    user_id     TEXT NOT NULL,
+    PRIMARY KEY (message_id, user_id)
+  );
+  CREATE TABLE boosters (
+    user_id  TEXT PRIMARY KEY,
+    count    INTEGER NOT NULL,
+    since    TEXT NOT NULL      -- ISO; a new value means a new boosting session
+  );
+  `,
 ];
 
 function migrate(): void {
@@ -98,7 +181,7 @@ function migrate(): void {
 
 migrate(); // tables must exist before the statements below are prepared
 
-// ── Key/value documents (phase-1 stores) ──
+// ── Key/value documents (small singleton stores) ──
 const kvGetStmt = db.prepare<[string], { value: string }>('SELECT value FROM kv WHERE key = ?');
 const kvSetStmt = db.prepare('INSERT INTO kv (key, value, updated) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated = excluded.updated');
 
@@ -180,6 +263,83 @@ function importLegacyJson(): void {
   console.log(`[db] imported legacy JSON: ${JSON.stringify(counts)} — originals moved to data/legacy-json/`);
 }
 
+// ── kv documents → v2 tables ──
+// Runs on every start, after the legacy import: any kv document of a store that now has tables is moved into
+// them and deleted, in one transaction. Covers both an existing v1 database and a fresh import from JSON.
+function moveKvToTables(): void {
+  const moved: string[] = [];
+  db.transaction(() => {
+    const take = <T>(key: string, fn: (doc: T) => void) => {
+      const row = kvGetStmt.get(key);
+      if (!row) return;
+      fn(JSON.parse(row.value) as T);
+      db.prepare('DELETE FROM kv WHERE key = ?').run(key);
+      moved.push(key);
+    };
+    const insert = (sql: string) => db.prepare(sql);
+
+    take<Record<string, Record<string, unknown>>>('quests.json', (doc) => {
+      const q = insert('INSERT INTO quests (id, requester, task, reward, status, accepted_by, channel_id, message_id, created) VALUES (?,?,?,?,?,?,?,?,?)');
+      for (const x of Object.values(doc)) {
+        q.run(x.id, x.requester, x.task, x.reward, x.status, s(x.acceptedBy), x.channelId, s(x.messageId), x.created);
+      }
+    });
+    take<Record<string, Record<string, number>>>('minewars-payouts.json', (doc) => {
+      const p = insert('INSERT INTO minewars_payouts (night, user_id, amount) VALUES (?,?,?)');
+      for (const [night, paid] of Object.entries(doc)) for (const [id, amount] of Object.entries(paid)) p.run(night, id, amount);
+    });
+    take<{ codes?: Record<string, { character: string; expires: number }>; claims?: Record<string, { day: string; count: number }> }>('room-finds.json', (doc) => {
+      const c = insert('INSERT INTO room_find_codes (code, character, expires) VALUES (?,?,?)');
+      for (const [code, e] of Object.entries(doc.codes ?? {})) c.run(code, e.character, e.expires);
+      const cl = insert('INSERT INTO room_find_claims (user_id, day, count) VALUES (?,?,?)');
+      for (const [id, e] of Object.entries(doc.claims ?? {})) cl.run(id, e.day, e.count);
+    });
+    take<Record<string, { have?: Record<string, number>; tagoUntil?: number; swerteDigs?: number; hintsHeard?: number[] }>>('potions.json', (doc) => {
+      const st = insert('INSERT INTO potion_stock (user_id, potion_id, count) VALUES (?,?,?)');
+      const ef = insert('INSERT INTO potion_effects (user_id, tago_until, swerte_digs, hints_heard) VALUES (?,?,?,?)');
+      for (const [id, u] of Object.entries(doc)) {
+        for (const [potion, count] of Object.entries(u.have ?? {})) if (count > 0) st.run(id, potion, count);
+        if (u.tagoUntil !== undefined || u.swerteDigs !== undefined || u.hintsHeard !== undefined) {
+          ef.run(id, n(u.tagoUntil), n(u.swerteDigs), u.hintsHeard ? JSON.stringify(u.hintsHeard) : null);
+        }
+      }
+    });
+    take<{ praiseBot?: Record<string, number>; praiseRewarded?: string[]; salute?: Record<string, string> }>('secrets.json', (doc) => {
+      const sp = insert(`INSERT INTO secret_progress (user_id, praise_bot, praise_rewarded, salute_day) VALUES (?,?,?,?)`);
+      const ids = new Set([...Object.keys(doc.praiseBot ?? {}), ...(doc.praiseRewarded ?? []), ...Object.keys(doc.salute ?? {})]);
+      for (const id of ids) {
+        sp.run(id, n(doc.praiseBot?.[id]), doc.praiseRewarded?.includes(id) ? 1 : null, s(doc.salute?.[id]));
+      }
+    });
+    take<Record<string, { until: number; reason: string; noBail?: boolean }>>('jail.json', (doc) => {
+      const j = insert('INSERT INTO jail (user_id, until, reason, no_bail) VALUES (?,?,?,?)');
+      for (const [id, e] of Object.entries(doc)) j.run(id, e.until, e.reason, e.noBail ? 1 : null);
+    });
+    take<{ userId: string; reward: string; cost: number; at: string }[]>('redemptions.json', (doc) => {
+      const r = insert('INSERT INTO redemptions (user_id, reward, cost, at) VALUES (?,?,?,?)');
+      for (const x of doc) r.run(x.userId, x.reward, x.cost, x.at);
+    });
+    take<Record<string, number>>('jackpot.json', (doc) => {
+      const t = insert('INSERT INTO jackpot_tickets (user_id, tickets) VALUES (?,?)');
+      for (const [id, count] of Object.entries(doc)) if (count > 0) t.run(id, count);
+    });
+    take<Record<string, string[]>>('found.json', (doc) => {
+      const f = insert('INSERT OR IGNORE INTO eggs_found (user_id, egg) VALUES (?,?)');
+      for (const [id, eggs] of Object.entries(doc)) for (const egg of eggs) f.run(id, egg);
+    });
+    take<Record<string, string[]>>('easter-eggs.json', (doc) => {
+      const f = insert('INSERT OR IGNORE INTO easter_egg_finds (message_id, user_id) VALUES (?,?)');
+      for (const [msg, ids] of Object.entries(doc)) for (const id of ids) f.run(msg, id);
+    });
+    take<{ initialized?: boolean; boosters?: Record<string, { count: number; since: string }> }>('boosts.json', (doc) => {
+      const b = insert('INSERT INTO boosters (user_id, count, since) VALUES (?,?,?)');
+      for (const [id, x] of Object.entries(doc.boosters ?? {})) b.run(id, x.count, x.since);
+      if (doc.initialized) kvSave('boosts-initialized', true);
+    });
+  })();
+  if (moved.length) console.log(`[db] moved kv documents into tables: ${moved.join(', ')}`);
+}
+
 // ── Nightly backups (scheduled in scheduler.ts) ──
 export const BACKUP_KEEP = 7;
 export async function backupDatabase(): Promise<void> {
@@ -199,3 +359,4 @@ export function closeDatabase(): void {
 }
 
 importLegacyJson();
+moveKvToTables();
