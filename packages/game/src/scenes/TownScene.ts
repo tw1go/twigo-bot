@@ -18,7 +18,7 @@ import { OtherPlayers } from '../world/others';
 import { fakeLogin } from '../session';
 import { screenToTile, tileToScreen } from '../iso';
 import { toast } from '../ui/toast';
-import { LABEL_DEPTH } from '../world/depth';
+import { GROUND_SHADOW_DEPTH, LABEL_DEPTH } from '../world/depth';
 import { minutesNow, setTimeSource, skyAt } from '../world/daynight';
 import { Culler } from '../world/cull';
 import { type Tile, WalkGrid } from '../world/grid';
@@ -101,6 +101,7 @@ export class TownScene extends Phaser.Scene {
   private me: MeResult | null = null;
   private readonly buildingLabels = new Map<string, BuildingLabel>();
   private hovered: Building | null = null;
+  private marker: Phaser.GameObjects.Sprite | null = null;
   private others!: OtherPlayers;
   private link: TownLink | null = null;
   /** What the server last heard about the player (face / sit / stand are sent when these change). */
@@ -534,13 +535,30 @@ export class TownScene extends Phaser.Scene {
     if (this.walkTo(spot)) this.pending = { sit: bench };
   }
 
-  /** Just walk there (a blocked tile: the nearest reachable one). */
+  /** Just walk there (a blocked tile: the nearest reachable one), with the click marker on where you're going. */
   private moveTo(target: Tile): void {
     this.pending = null;
     this.byKeys = false;
-    if (this.grid.walkable(target.col, target.row)) return void this.walkTo(target);
-    const near = this.grid.nearestReachable(this.player.tile, target);
-    if (near) this.walkTo(near);
+    const to = this.grid.walkable(target.col, target.row) ? target : this.grid.nearestReachable(this.player.tile, target);
+    if (to && this.walkTo(to)) this.clickMarker(to);
+  }
+
+  /** fx click-marker, played once on the tile you're walking to (one at a time, on the ground under everyone). */
+  private clickMarker(tile: Tile): void {
+    const fx = this.M.fx['click-marker'];
+    if (!fx?.file || !this.textures.exists(fx.file)) return;
+    const key = `anim:${fx.file}`;
+    if (!this.anims.exists(key)) {
+      this.anims.create({ key, frames: this.anims.generateFrameNumbers(fx.file, { start: 0, end: (fx.frames ?? 1) - 1 }), frameRate: fx.fps ?? 12, repeat: 0 });
+    }
+    this.marker?.destroy();
+    const top = tileToScreen(tile.col, tile.row);
+    const [w, h] = fx.frame ?? [32, 32];
+    const [ax, ay] = fx.anchor ?? [w / 2, h / 2];
+    const marker = this.add.sprite(top.x, top.y + 8, fx.file).setOrigin(ax / w, ay / h).setDepth(GROUND_SHADOW_DEPTH + 1); // the tile's centre
+    if (this.tint >= 0) marker.setTint(this.tint);
+    marker.play(key).once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => marker.destroy());
+    this.marker = marker;
   }
 
   /** Walk to the closest of a building's door tiles. */

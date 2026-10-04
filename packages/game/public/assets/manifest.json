@@ -1650,6 +1650,21 @@
       "fps": 4,
       "note": "loop above a building or player head"
     },
+    "click-marker": {
+      "file": "fx/fx-click-marker.png",
+      "frame": [
+        32,
+        32
+      ],
+      "frames": 9,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        16,
+        16
+      ],
+      "note": "right-click/tap move target: centre on the clicked tile, play once"
+    },
     "lamp-glow": {
       "file": "fx/fx-lamp-glow.png",
       "size": [
