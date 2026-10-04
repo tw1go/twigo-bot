@@ -315,6 +315,7 @@ export class TownScene extends Phaser.Scene {
     const chat = new ChatBox((text) => link.send({ t: 'say', text }), emotePicker(sheet, emote));
     const member = this.me?.status === 'ok' ? this.me.me : null;
     let myId = '';
+    let arrived = false;
     this.player.onStep = (to) => {
       link.send({ t: 'step', col: to.col, row: to.row });
       this.sent = { dir: this.player.facing, sit: false };
@@ -339,6 +340,15 @@ export class TownScene extends Phaser.Scene {
       if (m.t === 'welcome') {
         myId = m.you;
         chat.history(m.recent ?? [], member?.nickname ?? null);
+        // Arriving: go to the free tile the server picked (so people don't land on each other), unless you've
+        // already walked off or this is a reconnect, in which case you stay where you are ('here' below).
+        const [sc, sr] = this.map.spawn;
+        const at = this.player.tile;
+        if (!arrived && m.spawn && at.col === sc && at.row === sr && this.player.isIdle) {
+          this.player.place({ col: m.spawn[0], row: m.spawn[1] });
+          this.cameras.main.centerOn(this.player.sprite.x, this.player.sprite.y - 24);
+        }
+        arrived = true;
         chat.system(`Welcome to Mikazuki town${member ? `, ${member.nickname}` : ''}! Be kind and respectful in chat: everyone here is a neighbour.`);
         // After a reconnect, stay where you are rather than back at the spawn point.
         const t = this.player.tile;

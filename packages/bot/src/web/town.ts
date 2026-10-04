@@ -21,6 +21,8 @@ const EMOTE_BURST = 3;
 const STEPS_PER_SECOND = 6;
 const STEP_BURST = 6;
 const HEARTBEAT_MS = 30_000;
+/** Arrivals spread over the free tiles this far (in tiles, each way) around the map's spawn point. */
+const SPAWN_SPREAD = 3;
 /** Chat: up to 120 characters; a burst of 3, then one every 2 s. */
 const SAY_MAX = 120;
 const SAYS_PER_SECOND = 0.5;
@@ -186,6 +188,23 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     }
   };
 
+  /** A walkable tile near the spawn point that nobody's standing on (any walkable one if they're all taken). */
+  const arrival = (): [number, number] => {
+    const [sc, sr] = map.spawn;
+    const taken = new Set([...conns.values()].map((o) => `${o.player.col},${o.player.row}`));
+    const free: [number, number][] = [];
+    const open: [number, number][] = [];
+    for (let r = sr - SPAWN_SPREAD; r <= sr + SPAWN_SPREAD; r++) {
+      for (let c = sc - SPAWN_SPREAD; c <= sc + SPAWN_SPREAD; c++) {
+        if (!inside(c, r) || !walkable(c, r)) continue;
+        open.push([c, r]);
+        if (!taken.has(`${c},${r}`)) free.push([c, r]);
+      }
+    }
+    const pool = free.length ? free : open.length ? open : [map.spawn];
+    return pool[Math.floor(Math.random() * pool.length)];
+  };
+
   const join = (ws: WebSocket, userId: string, profile: TownProfile) => {
     // A second tab takes over: the first one is told and closed.
     const old = conns.get(userId);
@@ -194,10 +213,10 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       others(old, { t: 'leave', id: old.player.id });
       old.ws.close(4000, 'opened elsewhere');
     }
-    const [col, row] = map.spawn;
+    const [col, row] = arrival();
     const player: TownPlayer = { id: randomBytes(6).toString('hex'), ...profile, col, row, dir: 's', sit: false };
     const c: Conn = { ws, userId, player, tokens: STEP_BURST, refilled: Date.now(), says: SAY_BURST, saidAt: Date.now(), emotes: EMOTE_BURST, emotedAt: Date.now(), alive: true, fresh: true };
-    send(c, { t: 'welcome', you: player.id, players: [...conns.values()].map((o) => o.player), recent });
+    send(c, { t: 'welcome', you: player.id, players: [...conns.values()].map((o) => o.player), recent, spawn: [col, row] });
     conns.set(userId, c);
     others(c, { t: 'join', player });
 
