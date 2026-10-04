@@ -100,6 +100,45 @@ export interface MeDig {
   shovelUses: number;
 }
 
+/** POST /town/dig: a dig from the town's Mine. On success the find also arrives as the digger's feed line (which
+ *  plays the dig panel); either way, the digger's dig status afterwards. */
+export interface TownDigResponse {
+  ok: boolean;
+  /** Why not (shown in the Mine's pop-up), or what was found. */
+  message: string;
+  dig: MeDig;
+  item?: { id: string; name: string; rarity: string; value: number };
+}
+
+/** GET /town/inventory: the bag — every item one slot (dug-up items, Master Keys, potions), the slots unlocked (bags
+ *  add more) out of the most there can be, and the wallet. */
+export interface TownInventoryResponse {
+  items: TownBagItem[];
+  /** Slots unlocked now, the most a bag can have, and how many are used. */
+  slots: number;
+  maxSlots: number;
+  used: number;
+  kowens: number;
+}
+
+export interface TownBagItem {
+  /** The dig item's id, 'master-key', or the potion's reward id ('potion-tago', …). Also its art: manifest items[id]. */
+  id: string;
+  name: string;
+  emoji: string;
+  rarity: string;
+  /** What /sell pays for one (0 for keys and potions). */
+  value: number;
+  count: number;
+  kind: 'dig' | 'key' | 'potion';
+  /** Dug-up items can be sold and flexed; keys and potions say how they're used. */
+  sellable: boolean;
+  about?: string;
+}
+
+/** POST /town/sell { id, quantity } and /town/flex { id } → the bag afterwards, whether it worked, and what to say. */
+export type TownBagActionResponse = TownInventoryResponse & { ok: boolean; message: string };
+
 /** `GET /town/leaderboard` (logged in, may play): the top 10 by Kowens, as the town knows them. */
 export interface TownLeaderboardResponse {
   rows: TownLeaderboardRow[];

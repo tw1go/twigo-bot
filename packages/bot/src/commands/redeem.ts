@@ -69,6 +69,8 @@ export const redeem: Command = {
           ));
         case 'marites':
           return void (await deny('🍵 Aling Marites has already told you everything she knows. 🤐'));
+        case 'bag-full':
+          return void (await deny(`🎒 Your bag only has room for **${result.free}** more (Master Keys and potions take a slot each). \`/sell\` something, or get a bigger bag in \`/redeem\`.`));
         case 'fence-max':
           return void (await deny(`🧱 Your Bakod already lasts until <t:${Math.floor(result.until / 1000)}:f> — the max is ${FENCE_MAX_DAYS} days. Come back later!`));
       }

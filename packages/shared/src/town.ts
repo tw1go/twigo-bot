@@ -50,6 +50,11 @@ export interface TownSystemLine {
   text: string;
   /** Colour key: a dig's rarity, win / lose / bust, jackpot, shop, or gift. */
   tone: string;
+  /** Dig lines: what was found (the dig item's id), and who dug it — their town player id, only while they're in
+   *  town (never a Discord id), so the digger's game can play the dig panel. Older games ignore both. */
+  itemId?: string;
+  itemName?: string;
+  playerId?: string;
 }
 
 /** A banner across the top of the town: a jackpot win, or a notice from the owner (maintenance and such). */
@@ -85,6 +90,8 @@ export type TownServerMessage =
   | { t: 'verdict'; id: string; kind: 'roast' | 'praise'; judged: boolean; text: string }
   /** Someone was jailed or released (you too: `id` is yours). */
   | { t: 'jailed'; id: string; on: boolean }
+  /** Someone flexed an item from their bag (`id` says it; to everyone, them included). */
+  | { t: 'flex'; id: string; itemId: string; itemName: string; rarity: string }
   /** Someone gave you Kowens (from the town's player menu). */
   | { t: 'gift'; from: string; amount: number }
   /** Someone emoted (not sent back to the one who did it: they show it right away). */

@@ -3,7 +3,8 @@ import type { Command } from '../types.js';
 import { kowen } from '../kowens.js';
 import { POTIONS, ownedPotions } from '../potions/potions.js';
 import { ITEM_BY_ID, RARITY, RARITY_ORDER } from '../dig/items.js';
-import { DIGS_PER_DAY, MAX_SLOTS, capacity, digsToday, inventory as itemsOf, itemCount, masterKeys, shovelUses } from '../dig/store.js';
+import { DIGS_PER_DAY, MAX_SLOTS, capacity, digsToday, inventory as itemsOf, masterKeys, shovelUses } from '../dig/store.js';
+import { usedSlots } from '../dig/bag.js';
 
 export const inventory: Command = {
   data: new SlashCommandBuilder()
@@ -19,7 +20,7 @@ export const inventory: Command = {
       .setColor(0x8e6e53)
       .setAuthor({ name: `${target.displayName}'s inventory`, iconURL: target.displayAvatarURL() || undefined })
       .setDescription(
-        `🎒 Slots: **${itemCount(target.id)}/${capacity(target.id)}**${capacity(target.id) < MAX_SLOTS ? ' (bigger bags in `/redeem`)' : ' (max!)'}\n` +
+        `🎒 Slots: **${usedSlots(target.id)}/${capacity(target.id)}** (keys and potions take a slot each)${capacity(target.id) < MAX_SLOTS ? ' (bigger bags in `/redeem`)' : ' (max!)'}\n` +
           `🪏 Shovel: **${shovelUses(target.id)}** use(s) left · ⛏️ Digs today: **${digsToday(target.id)}/${DIGS_PER_DAY}** · 🗝️ Master Keys: **${masterKeys(target.id)}**\n` +
           `💰 Total worth: **${worth} ${kowen(worth)}**` +
           (ownedPotions(target.id).length ? `\n🧪 Potions: ${ownedPotions(target.id).map(([pid, n]) => `${POTIONS[pid].emoji}×${n}`).join(' ')} · \`/potion use\`` : ''),

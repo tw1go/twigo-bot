@@ -5,7 +5,8 @@ import { bailFor, canBail, jailList, jailedUntil } from '../games/jail.js';
 import { kowen } from '../kowens.js';
 import { ticketsOf } from '../games/jackpot.js';
 import { boostCount } from '../games/boosts.js';
-import { DIGS_PER_DAY, SHOVELS_PER_DAY, capacity, digsToday, itemCount, masterKeys, shovelUses, shovelsBoughtToday } from '../dig/store.js';
+import { DIGS_PER_DAY, SHOVELS_PER_DAY, capacity, digsToday, masterKeys, shovelUses, shovelsBoughtToday } from '../dig/store.js';
+import { usedSlots } from '../dig/bag.js';
 import { MAX_ACTIVE, acceptedCount, activeCount } from '../quests/board.js';
 import { STEAL_COOLDOWN_MS } from './steal.js';
 import { BANK, debtOf } from '../loans/loans.js';
@@ -61,7 +62,7 @@ export const status: Command = {
           name: '⛏️ Digging',
           value: [
             `🪏 Shovel: **${shovelUses(id)}** dig(s) left · bought **${shovelsBoughtToday(id)}/${SHOVELS_PER_DAY}** today`,
-            `⛏️ Digs today: **${digsToday(id)}/${DIGS_PER_DAY}** · 🎒 Bag: **${itemCount(id)}/${capacity(id)}**`,
+            `⛏️ Digs today: **${digsToday(id)}/${DIGS_PER_DAY}** · 🎒 Bag: **${usedSlots(id)}/${capacity(id)}**`,
           ].join('\n'),
         },
         {

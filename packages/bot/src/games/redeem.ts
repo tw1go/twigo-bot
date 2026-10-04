@@ -7,6 +7,7 @@ import { debtOf } from '../loans/loans.js';
 import { POTIONS, addPotions, hintsLeft, type PotionId } from '../potions/potions.js';
 import { FENCE_DAYS, FENCE_MAX_DAYS, GAME_NAME, recordRedemption, rewards } from './rewards.js';
 import { feed } from '../web/town-feed.js';
+import { freeSlots } from '../dig/bag.js';
 
 // 🎁 Redeeming a reward, shared by /redeem and the town's rewards shop: every check, then the purchase. Each caller
 // words the outcome its own way (Discord markdown, or plain town text).
@@ -22,6 +23,7 @@ export type RedeemResult =
   | { ok: false; reward: Reward; reason: 'quantity' | 'loan' | 'owned' | 'shovels-today' | 'marites' }
   | { ok: false; reward: Reward; reason: 'kowens'; quantity: number; total: number; have: number; canAfford: number }
   | { ok: false; reward: Reward; reason: 'fence-max'; until: number }
+  | { ok: false; reward: Reward; reason: 'bag-full'; free: number }
   | {
       ok: true;
       reward: Reward;
@@ -56,6 +58,8 @@ export function redeemReward(userId: string, reward: Reward, asked: number): Red
     if (left <= 0) return { ok: false, reward, reason: 'shovels-today' };
     quantity = Math.min(asked, left);
   }
+  // Master Keys and potions are held in the bag: one slot each.
+  if ((reward.kind === 'key' || reward.kind === 'potion') && freeSlots(userId) < quantity) return { ok: false, reward, reason: 'bag-full', free: freeSlots(userId) };
   const total = reward.cost * quantity;
   if (have < total) return { ok: false, reward, reason: 'kowens', quantity, total, have, canAfford: Math.floor(have / reward.cost) };
 

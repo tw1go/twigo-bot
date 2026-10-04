@@ -8,7 +8,8 @@
     "build": "tsc",
     "start": "node scripts/local-guard.mjs && node dist/index.js",
     "deploy-commands": "tsx src/deploy-commands.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test 'src/**/*.test.ts'"
   },
   "engines": {
     "node": ">=22.12"

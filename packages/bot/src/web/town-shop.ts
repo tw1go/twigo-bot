@@ -8,6 +8,7 @@ import { type Reward, owns, potionEffect, redeemFeed, redeemPost, redeemReward, 
 import { kowen } from '../kowens.js';
 import { debtOf } from '../loans/loans.js';
 import { potionCount, type PotionId } from '../potions/potions.js';
+import { freeSlots } from '../dig/bag.js';
 
 // 🎁 The town's rewards shop (GET/POST /town/shop): what /redeem sells, bought with the same checks
 // (games/redeem.ts). Each purchase is posted in the games channel just like /redeem's (passes ping the reward
@@ -35,7 +36,8 @@ function about(r: Reward): string {
 export function townShop(userId: string): TownShopResponse {
   const items = rewards.map((r): TownShopItem => {
     const owned = owns(userId, r);
-    const max = owned ? 0 : r.kind === 'shovel' ? shovelsLeftToday(userId) : stackable(r) ? MAX_AT_ONCE : 1;
+    // Keys and potions also need room in the bag.
+    const max = owned ? 0 : r.kind === 'shovel' ? shovelsLeftToday(userId) : r.kind === 'key' || r.kind === 'potion' ? Math.min(MAX_AT_ONCE, freeSlots(userId)) : stackable(r) ? MAX_AT_ONCE : 1;
     const have = r.kind === 'potion' ? potionCount(userId, r.id.replace('potion-', '') as PotionId) : r.kind === 'key' ? masterKeys(userId) : undefined;
     return { id: r.id, name: r.name, cost: r.cost, kind: r.kind, about: about(r), max, ...(owned ? { owned } : {}), ...(have !== undefined ? { have } : {}) };
   });
@@ -58,6 +60,8 @@ export async function buyFromShop(client: Client, userId: string, id: string, qu
           return `You need ${kowens(result.total)} but have ${kowens(result.have)}.` +
             (stackable(reward) && result.canAfford > 0 ? ` You can afford ${result.canAfford}.` : '');
         case 'marites': return 'Aling Marites has already told you everything she knows.';
+        case 'bag-full':
+          return result.free ? `Your bag only has room for ${result.free} more. Sell something, or get a bigger bag.` : 'Your bag is full. Sell something, or get a bigger bag.';
         case 'fence-max':
           return `Your Bakod already lasts until ${new Date(result.until).toLocaleString('en-US', { timeZone: config.timezone, dateStyle: 'medium', timeStyle: 'short' })}: the most is ${FENCE_MAX_DAYS} days.`;
       }

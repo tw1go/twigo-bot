@@ -1,13 +1,12 @@
 import { MessageFlags, SlashCommandBuilder } from 'discord.js';
-import { markFound } from '../games/found.js';
 import type { Command } from '../types.js';
 import { config } from '../config.js';
 import { blockIfJailed } from '../games/jail.js';
 import { kowen } from '../kowens.js';
-import { RARITY, rollItem, rollLucky } from '../dig/items.js';
+import { RARITY } from '../dig/items.js';
+import { digFor, digReveal, isBigFind } from '../dig/dig.js';
 import { feed, townName } from '../web/town-feed.js';
-import { useSwerteDig } from '../potions/potions.js';
-import { DIGS_PER_DAY, LUCKY_EVERY, SHOVEL_COST, capacity, countServerDig, digsToday, itemCount, recordDig, serverDigProgress, shovelUses } from '../dig/store.js';
+import { DIGS_PER_DAY, LUCKY_EVERY, SHOVEL_COST } from '../dig/store.js';
 
 export const dig: Command = {
   data: new SlashCommandBuilder()
@@ -16,48 +15,22 @@ export const dig: Command = {
   async execute(interaction) {
     if (await blockIfJailed(interaction)) return;
     const id = interaction.user.id;
-    const slots = capacity(id);
-    if (itemCount(id) >= slots) {
+    const result = digFor(id);
+    if (!result.ok) {
+      if (result.reason === 'jailed') return; // blockIfJailed already answered
       await interaction.reply({
-        content: `🎒 Your bag is full (**${itemCount(id)}/${slots}**)! \`/sell\` something, or get a bigger bag in \`/redeem\`.`,
+        content:
+          result.reason === 'bag-full' ? `🎒 Your bag is full (**${result.items}/${result.slots}**)! \`/sell\` something, or get a bigger bag in \`/redeem\`.`
+          : result.reason === 'no-shovel' ? `You need a 🪏 **Shovel** to dig! Get one with \`/redeem reward:Shovel\` (${SHOVEL_COST} ${kowen(SHOVEL_COST)}).`
+          : `You've dug **${DIGS_PER_DAY}** times today. Your arms need a rest! Come back tomorrow. 💪🌙`,
         flags: MessageFlags.Ephemeral,
       });
       return;
     }
-
-    if (shovelUses(id) <= 0) {
-      await interaction.reply({
-        content: `You need a 🪏 **Shovel** to dig! Get one with \`/redeem reward:Shovel\` (${SHOVEL_COST} ${kowen(SHOVEL_COST)}).`,
-        flags: MessageFlags.Ephemeral,
-      });
-      return;
-    }
-    if (digsToday(id) >= DIGS_PER_DAY) {
-      await interaction.reply({ content: `You've dug **${DIGS_PER_DAY}** times today. Your arms need a rest! Come back tomorrow. 💪🌙`, flags: MessageFlags.Ephemeral });
-      return;
-    }
-
-    const lucky = countServerDig(); // 🍀 every LUCKY_EVERY-th dig on the server is Epic or better
-    const swerte = useSwerteDig(id); // 🍀 Swerte Elixir: junk gets one reroll
-    const first = rollItem();
-    const rolled = swerte && first.rarity === 'junk' ? rollItem() : first;
-    // The lucky dig never downgrades a secret find.
-    const found = lucky && rolled.rarity !== 'secret' ? rollLucky() : rolled;
-    recordDig(id, found.id);
-    if (found.rarity === 'secret') markFound(id, 'secret-item');
+    const { item: found, lucky } = result;
     const r = RARITY[found.rarity];
-    const left = DIGS_PER_DAY - digsToday(id);
-    const shovel = shovelUses(id);
-    const big = found.rarity === 'mythical' || found.rarity === 'legendary' || found.rarity === 'secret';
-    const luckyBanner = lucky ? `🍀✨ **LUCKY DIG!** You hit the server's ${LUCKY_EVERY}th dig, so it's guaranteed Epic or better!\n` : '';
-
-    const lines = [
-      luckyBanner +
-      (big
-        ? `🚨✨ **${r.label.toUpperCase()} FIND!** ✨🚨\n${interaction.user} dug up…\n# ${found.emoji} ${found.name}\n${r.emoji} **${r.label}** · worth **${found.value}** ${kowen(found.value)}`
-        : `⛏️ ${interaction.user} dug up…\n## ${found.emoji} ${found.name}\n${r.emoji} ${r.label} · worth **${found.value}** ${kowen(found.value)}`),
-      `-# ${left} dig${left === 1 ? '' : 's'} left today · 🪏 ${shovel} use${shovel === 1 ? '' : 's'} left on your shovel${shovel === 0 ? ' — it broke!' : ''} · 🎒 ${itemCount(id)}/${slots} · 🍀 Lucky dig: ${serverDigProgress()}/${LUCKY_EVERY}`,
-    ];
+    const big = isBigFind(found);
+    const reveal = digReveal(`${interaction.user}`, result);
     // "Digging…" animation, then the reveal. The find is already saved, so a failed edit can't lose it.
     const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
     const digging = (bar: string) => `⛏️ ${interaction.user} is digging… ${bar}`;
@@ -85,9 +58,9 @@ export const dig: Command = {
     } catch (err) {
       console.error('[dig] animation failed:', err);
     }
-    await interaction.editReply({ content: lines.join('\n'), allowedMentions: { parse: [] } }).catch((err) => console.error('[dig] reveal failed:', err));
+    await interaction.editReply({ content: reveal, allowedMentions: { parse: [] } }).catch((err) => console.error('[dig] reveal failed:', err));
     // The web town's system feed, once revealed here (so it doesn't spoil the suspense).
-    feed('dig', `${townName(interaction.user)} dug up ${found.name} (${r.label})`, found.rarity);
+    feed('dig', `${townName(interaction.user)} dug up ${found.name} (${r.label})`, found.rarity, { userId: id, itemId: found.id, itemName: found.name });
 
     // Legendary finds are shouted in general too.
     if ((found.rarity === 'legendary' || found.rarity === 'secret') && interaction.channelId !== config.gamesChannelId) {

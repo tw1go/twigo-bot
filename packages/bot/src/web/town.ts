@@ -81,8 +81,9 @@ export const KICKED = 4001;
 export interface Town {
   /** A message from the town's Discord channel: to everyone in town, with a Discord mark. */
   fromDiscord(name: string, text: string): void;
-  /** A line for the system feed (digs, bets): to everyone in town, and kept for people arriving. */
-  system(line: TownSystemLine): void;
+  /** A line for the system feed (digs, bets): to everyone in town, and kept for people arriving. `userId` (a dig's
+   *  digger) becomes their town player id on the live line, if they're here. */
+  system(line: TownSystemLine, userId?: string): void;
   /** A banner for everyone in town; a notice is also shown to people arriving in the next 30 minutes. */
   announce(a: TownAnnouncement): void;
   /** Removes a member from the town now (they're kept out by moderation.kickedUntil). */
@@ -93,6 +94,8 @@ export interface Town {
   gifted(userId: string, from: string, amount: number): void;
   /** A member was jailed or released: everyone in town sees it under their name (them included). */
   setJailed(userId: string, on: boolean): void;
+  /** A member (if in town) flexed an item from their bag: to everyone, them included (chat line + bubble). */
+  flexed(userId: string, item: { id: string; name: string; rarity: string }): void;
   /** A member (if in town) says a diss, praise or judge line: to everyone, the speaker included. */
   verdict(userId: string, kind: 'roast' | 'praise', judged: boolean, text: string): void;
 }
@@ -302,10 +305,11 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       remember({ name: who, text, discord: true });
       everyone({ t: 'say-discord', name: who, text });
     },
-    system(line) {
+    system(line, userId) {
       systemLines.push(line);
       if (systemLines.length > SYSTEM_RECENT) systemLines.shift();
-      everyone({ t: 'system', line });
+      const playerId = userId ? conns.get(userId)?.player.id : undefined;
+      everyone({ t: 'system', line: playerId ? { ...line, playerId } : line });
     },
     kick(userId, until) {
       const c = conns.get(userId);
@@ -328,6 +332,10 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       if (!c || !!c.player.jailed === on) return;
       c.player.jailed = on || undefined;
       everyone({ t: 'jailed', id: c.player.id, on });
+    },
+    flexed(userId, item) {
+      const c = conns.get(userId);
+      if (c) everyone({ t: 'flex', id: c.player.id, itemId: item.id, itemName: item.name, rarity: item.rarity });
     },
     verdict(userId, kind, judged, text) {
       const c = conns.get(userId);

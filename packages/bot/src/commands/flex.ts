@@ -1,7 +1,7 @@
 import { EmbedBuilder, MessageFlags, SlashCommandBuilder } from 'discord.js';
 import type { Command } from '../types.js';
 import { kowen } from '../kowens.js';
-import { ITEM_BY_ID, RARITY, type Rarity } from '../dig/items.js';
+import { ITEM_BY_ID, type Item, RARITY, type Rarity } from '../dig/items.js';
 import { inventory } from '../dig/store.js';
 
 // 💪 Show off an item from your inventory.
@@ -112,6 +112,21 @@ const LINES: Record<Rarity, string[]> = {
 const COOLDOWN_MS = 60_000;
 const lastFlex = new Map<string, number>();
 
+/** How long until the member may flex again (ms; 0 = now). Shared with the town's inventory. */
+export const flexWait = (userId: string) => Math.max(0, (lastFlex.get(userId) ?? 0) + COOLDOWN_MS - Date.now());
+export const markFlex = (userId: string) => void lastFlex.set(userId, Date.now());
+
+/** The flex card: the item, its rarity and worth, how many they own, and a line for its rarity. */
+export function flexEmbed(name: string, avatar: string | undefined, item: Item, owned: number): EmbedBuilder {
+  const r = RARITY[item.rarity];
+  const lines = LINES[item.rarity];
+  return new EmbedBuilder()
+    .setColor(COLORS[item.rarity])
+    .setAuthor({ name: `${name} is flexing 💪`, iconURL: avatar })
+    .setDescription(`# ${item.emoji} ${item.name}\n${r.emoji} **${r.label}** · worth **${item.value}** ${kowen(item.value)}${owned > 1 ? ` · owns **×${owned}**` : ''}\n\n*${lines[Math.floor(Math.random() * lines.length)]}*`)
+    .setFooter({ text: 'Dig your own with /dig ⛏️' });
+}
+
 export const flex: Command = {
   data: new SlashCommandBuilder()
     .setName('flex')
@@ -139,20 +154,14 @@ export const flex: Command = {
       await interaction.reply({ content: "You don't have that item. Check `/inventory`. 🎒", flags: MessageFlags.Ephemeral });
       return;
     }
-    const wait = (lastFlex.get(me.id) ?? 0) + COOLDOWN_MS - Date.now();
+    const wait = flexWait(me.id);
     if (wait > 0) {
       await interaction.reply({ content: `Easy, show-off 😂 Flex again in ${Math.ceil(wait / 1000)}s.`, flags: MessageFlags.Ephemeral });
       return;
     }
-    lastFlex.set(me.id, Date.now());
+    markFlex(me.id);
 
-    const r = RARITY[item.rarity];
-    const lines = LINES[item.rarity];
-    const embed = new EmbedBuilder()
-      .setColor(COLORS[item.rarity])
-      .setAuthor({ name: `${me.displayName} is flexing 💪`, iconURL: me.displayAvatarURL() || undefined })
-      .setDescription(`# ${item.emoji} ${item.name}\n${r.emoji} **${r.label}** · worth **${item.value}** ${kowen(item.value)}${owned > 1 ? ` · owns **×${owned}**` : ''}\n\n*${lines[Math.floor(Math.random() * lines.length)]}*`)
-      .setFooter({ text: 'Dig your own with /dig ⛏️' });
+    const embed = flexEmbed(me.displayName, me.displayAvatarURL() || undefined, item, owned);
     await interaction.reply({ embeds: [embed] });
   },
 };

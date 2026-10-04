@@ -1,5 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import type { LeaderboardResponse, LeaderboardRow, MeResponse, PresenceStatus, PreregResponse, PreregStatus, TownJackpotBuyResponse, TownJackpotResponse, TownLeaderboardResponse } from '@mikazuki/shared';
+import type { LeaderboardResponse, LeaderboardRow, MeDig, MeResponse, PresenceStatus, PreregResponse, PreregStatus, TownJackpotBuyResponse, TownJackpotResponse, TownLeaderboardResponse } from '@mikazuki/shared';
 import { GatewayIntentBits, type Client } from 'discord.js';
 import { config } from '../config.js';
 import { balance, rankOf, topBalances, totalKowens, vaultBalance } from '../credits/store.js';
@@ -17,6 +17,8 @@ import { buyFromShop, townShop } from './town-shop.js';
 import { type PlayerDeps, giveInTown, playerInfo, verdictInTown } from './town-player.js';
 import type { Town } from './town.js';
 import { bailFromTown, townOutpost } from './town-outpost.js';
+import { digInTown } from './town-mine.js';
+import { flexInTown, sellInTown, townInventory } from './town-bag.js';
 import { boardAction, townBoard } from './town-board.js';
 import { kowen } from '../kowens.js';
 import { filterText, kickedUntil, mutedUntil } from './town-mod.js';
@@ -57,6 +59,10 @@ import { roll } from './finds.js';
 //   POST /town/bail     { id } bail someone out (yourself or a friend), /bail's rules (from the game's page only; may play)
 //   GET  /town/board    the notice board: open and in-progress quests (may play)
 //   POST /town/board    { action: post|accept|giveup|complete|cancel, id? | task + reward } (from the game's page only; may play)
+//   GET  /town/inventory  the bag: dug-up items, Master Keys and potions, slots, wallet (may play)
+//   POST /town/sell     { id, quantity } sell a dug-up item, /sell's prices (from the game's page only; may play)
+//   POST /town/flex     { id } flex a dug-up item in the games channel, /flex's cooldown (from the game's page only; may play)
+//   POST /town/dig      dig at the Mine (/dig's rules; from the game's page only; may play)
 //   POST /title/seen    the game showed the member their new title (from the game's page only)
 //   WS   /ws            the live town: who else is there and where (see town.ts; from the game's page only)
 
@@ -154,6 +160,18 @@ async function statusOf(client: Client, userId: string): Promise<PresenceStatus>
   return status === 'dnd' ? 'busy' : status === 'idle' ? 'idle' : status === 'online' ? 'online' : 'offline';
 }
 
+/** Digs left today and on the shovel, and shovels left to buy (for /me and the Mine). */
+function digStatus(userId: string): MeDig {
+  return {
+    shovel: shovelUses(userId),
+    digsLeft: Math.max(0, DIGS_PER_DAY - digsToday(userId)),
+    digsPerDay: DIGS_PER_DAY,
+    shovelsLeft: Math.max(0, SHOVELS_PER_DAY - shovelsBoughtToday(userId)),
+    shovelCost: SHOVEL_COST,
+    shovelUses: SHOVEL_USES,
+  };
+}
+
 async function me(client: Client, req: IncomingMessage, res: ServerResponse): Promise<void> {
   const userId = sessionUser(req);
   if (!userId) return send(res, 401, '{"error":"not logged in"}');
@@ -167,14 +185,7 @@ async function me(client: Client, req: IncomingMessage, res: ServerResponse): Pr
     return { id, name: item.name, emoji: item.emoji, rarity: item.rarity, count };
   });
   const body: MeResponse = { id: userId, name, avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items, preregistered: isPreregistered(userId), outfit: getOutfit(userId), nickname: getNickname(userId), title: titleOf(userId), newTitle: titleIsNew(userId), canPlay: await canPlay(client, userId), status: await statusOf(client, userId),
-    dig: {
-      shovel: shovelUses(userId),
-      digsLeft: Math.max(0, DIGS_PER_DAY - digsToday(userId)),
-      digsPerDay: DIGS_PER_DAY,
-      shovelsLeft: Math.max(0, SHOVELS_PER_DAY - shovelsBoughtToday(userId)),
-      shovelCost: SHOVEL_COST,
-      shovelUses: SHOVEL_USES,
-    } };
+    dig: digStatus(userId) };
   send(res, 200, JSON.stringify(body));
 }
 
@@ -445,6 +456,37 @@ export function startWebServer(client: Client): void {
           return send(res, 400, '{"error":"invalid quest"}');
         }
         return send(res, 200, JSON.stringify(await boardAction(client, userId, { action, id, task, reward }, names)));
+      }
+      if ((req.method === 'GET' && path === '/town/inventory') || (req.method === 'POST' && (path === '/town/sell' || path === '/town/flex'))) {
+        if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
+        if (req.method === 'POST' && !fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
+        const userId = sessionUser(req);
+        if (!userId) return send(res, 401, '{"error":"not logged in"}');
+        let body: { id?: unknown; quantity?: unknown } | null = null;
+        if (req.method === 'POST') {
+          try {
+            body = JSON.parse((await readBody(req)) || 'null');
+          } catch {
+            // invalid JSON → rejected below
+          }
+        }
+        if (!(await canPlay(client, userId))) return send(res, 403, '{"error":"testers only for now"}');
+        if (req.method === 'GET') return send(res, 200, JSON.stringify(townInventory(userId)));
+        if (typeof body?.id !== 'string') return send(res, 400, '{"error":"invalid item"}');
+        if (path === '/town/flex') {
+          return send(res, 200, JSON.stringify(await flexInTown(client, userId, body.id, (id) => nameOf(client, id), (uid, item) => town?.flexed(uid, item))));
+        }
+        const quantity = body.quantity ?? 1;
+        if (typeof quantity !== 'number' || !Number.isInteger(quantity) || quantity < 1 || quantity > 1000) return send(res, 400, '{"error":"invalid quantity"}');
+        return send(res, 200, JSON.stringify(sellInTown(userId, body.id, quantity)));
+      }
+      if (req.method === 'POST' && path === '/town/dig') {
+        if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
+        if (!fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
+        const userId = sessionUser(req);
+        if (!userId) return send(res, 401, '{"error":"not logged in"}');
+        if (!(await canPlay(client, userId))) return send(res, 403, '{"error":"testers only for now"}');
+        return send(res, 200, JSON.stringify(await digInTown(client, userId, await nameOf(client, userId), digStatus)));
       }
       if (req.method === 'POST' && path === '/title/seen') {
         if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
