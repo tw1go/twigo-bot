@@ -261,22 +261,14 @@ export class TownScene extends Phaser.Scene {
     });
   }
 
-  /** Rewards to show on arriving: a title that's new since this browser last saw you (and, in dev, ?reward=). */
+  /** Rewards to show on arriving: a title the bot says is new to you (shown once, on whichever device comes
+   *  first; the bot is told when it's been seen). In dev, ?reward= shows a demo. */
   private announceRewards(): void {
     const member = this.me?.status === 'ok' ? this.me.me : null;
-    if (member) {
-      const key = `mk_seen_title:${member.id}`;
-      let seen: string | null = null;
-      try {
-        seen = localStorage.getItem(key);
-        localStorage.setItem(key, member.title.name);
-      } catch {
-        // private mode: no announcement
-      }
-      // Only a change from a title we've seen before (not the first visit, not back to Townfolk).
-      if (seen !== null && seen !== member.title.name && member.title.name !== TOWNFOLK.name) {
-        void showReward({ title: 'New title!', graphic: { kind: 'title', title: member.title }, message: `Congratulations! You are now known as <${member.title.name}>.` });
-      }
+    if (member?.newTitle) {
+      void showReward({ title: 'New title!', graphic: { kind: 'title', title: member.title }, message: `Congratulations! You are now known as <${member.title.name}>.` }).then(() =>
+        fetch('/title/seen', { method: 'POST', credentials: 'same-origin' }).catch(() => null),
+      );
     }
     if (import.meta.env.DEV) {
       const demo = new URLSearchParams(location.search).get('reward');

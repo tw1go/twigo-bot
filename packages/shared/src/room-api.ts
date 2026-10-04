@@ -75,6 +75,8 @@ export interface MeResponse {
   nickname: string | null;
   /** Their title, shown under the nickname as <Title> (Townfolk by default; others are given or earned). */
   title: TitleData;
+  /** The title is new to them: the game shows it in a reward pop-up, then calls `POST /title/seen`. */
+  newTitle: boolean;
   /** Digging today (see /dig and /redeem reward:Shovel). */
   dig: MeDig;
   /** Their Discord status, shown on the avatar (not sent yet: needs the Presence intent; dev fakes it). */

@@ -3,7 +3,8 @@ import { db } from '../db/db.js';
 
 // Titles: shown under a member's name in the web game, as <Title>, in the title's colour ('prismatic' = a shifting
 // rainbow). Everyone is a Townfolk to begin with (that one isn't stored); others are given with /gift title (and
-// later earned as rewards) and land in the titles table, one of them equipped.
+// later earned as rewards) and land in the titles table, one of them equipped. A new title is announced once in
+// the game (announced = when), whichever device the member uses first.
 
 export const TITLES: Record<string, TitleData> = {
   townfolk: { name: 'Townfolk', color: '#B794F6' },
@@ -12,7 +13,8 @@ export const TITLES: Record<string, TitleData> = {
 };
 export const DEFAULT_TITLE = 'townfolk';
 
-const equippedStmt = db.prepare<[string], { title: string }>('SELECT title FROM titles WHERE user_id = ? AND equipped = 1');
+const equippedStmt = db.prepare<[string], { title: string; announced: number | null }>('SELECT title, announced FROM titles WHERE user_id = ? AND equipped = 1');
+const announceStmt = db.prepare('UPDATE titles SET announced = ? WHERE user_id = ? AND equipped = 1 AND announced IS NULL');
 const unequipStmt = db.prepare('UPDATE titles SET equipped = 0 WHERE user_id = ?');
 const grantStmt = db.prepare(
   'INSERT INTO titles (user_id, title, earned, equipped) VALUES (?, ?, ?, 1) ON CONFLICT(user_id, title) DO UPDATE SET equipped = 1',
@@ -22,6 +24,17 @@ const grantStmt = db.prepare(
 export function titleOf(userId: string): TitleData {
   const id = equippedStmt.get(userId)?.title;
   return TITLES[id ?? DEFAULT_TITLE] ?? TITLES[DEFAULT_TITLE];
+}
+
+/** True when the member's equipped title hasn't been shown to them yet (the game's reward pop-up). */
+export function titleIsNew(userId: string): boolean {
+  const row = equippedStmt.get(userId);
+  return !!row && row.announced === null && !!TITLES[row.title];
+}
+
+/** The game showed them their new title: don't announce it again (on any device). */
+export function titleSeen(userId: string): void {
+  announceStmt.run(Date.now(), userId);
 }
 
 /** Gives a member a title and equips it; the default title just unequips theirs (earned ones are kept). */
