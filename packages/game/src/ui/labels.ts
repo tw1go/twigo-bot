@@ -141,8 +141,42 @@ export interface BubbleArt {
   tailAnchor: [number, number];
 }
 
-/** How wide (world pixels) a bubble's text may get before it wraps. */
+/** How wide (world pixels) a bubble's text may get before it wraps, and the room around the text. */
 const BUBBLE_WRAP = 96;
+const BUBBLE_PAD_X = 5;
+const BUBBLE_PAD_Y = 4;
+/** The bubble's inside, and the text on it. */
+const BUBBLE_FILL = '#F8F7FF';
+const BUBBLE_TEXT = '#1E1B3A';
+
+/** The bubble art with its dark fill (the colour at the box's centre) repainted light; made once per scene. */
+export function lightBubble(scene: Phaser.Scene, art: BubbleArt): BubbleArt {
+  const repaint = (key: string, fillAt: [number, number] | null): string => {
+    const out = `${key}#light`;
+    if (scene.textures.exists(out)) return out;
+    const src = scene.textures.get(key).getSourceImage() as HTMLImageElement;
+    const c = document.createElement('canvas');
+    c.width = src.width;
+    c.height = src.height;
+    const ctx = c.getContext('2d')!;
+    ctx.drawImage(src, 0, 0);
+    const data = ctx.getImageData(0, 0, c.width, c.height);
+    const d = data.data;
+    const [fx, fy] = fillAt ?? [Math.floor(c.width / 2), Math.floor(c.height / 2)];
+    const at = (fy * c.width + fx) * 4;
+    const fill = [d[at], d[at + 1], d[at + 2]];
+    const to = Phaser.Display.Color.HexStringToColor(BUBBLE_FILL);
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] && d[i] === fill[0] && d[i + 1] === fill[1] && d[i + 2] === fill[2]) [d[i], d[i + 1], d[i + 2]] = [to.red, to.green, to.blue];
+    }
+    ctx.putImageData(data, 0, 0);
+    scene.textures.addCanvas(out, c);
+    return out;
+  };
+  // The tail's fill shows at its top middle pixel (that row joins the box).
+  const tailWidth = (scene.textures.get(art.tail).getSourceImage() as HTMLImageElement).width;
+  return { ...art, file: repaint(art.file, null), tail: repaint(art.tail, [Math.floor(tailWidth / 2), 0]) };
+}
 
 /** Someone's words in a bubble over their head: the bubble art stretched to the text, its tail pointing down. */
 export class SpeechBubble {
@@ -152,19 +186,18 @@ export class SpeechBubble {
 
   constructor(scene: Phaser.Scene, art: BubbleArt, text: string) {
     this.words = scene.add
-      .text(0, 0, text, { fontFamily: UI_FONT, fontSize: '5px', color: '#E6E9F2', align: 'center', wordWrap: { width: BUBBLE_WRAP } })
+      .text(0, 0, text, { fontFamily: UI_FONT, fontSize: '5px', color: BUBBLE_TEXT, align: 'center', wordWrap: { width: BUBBLE_WRAP } })
       .setOrigin(0.5, 0);
     const tail = scene.textures.get(art.tail).getSourceImage() as HTMLImageElement;
-    const pad = 3;
-    const w = Math.max(art.slice * 2 + 1, Math.ceil(this.words.width) + pad * 2);
-    const h = Math.max(art.slice * 2 + 1, Math.ceil(this.words.height) + pad * 2 - 1);
+    const w = Math.max(art.slice * 2 + 1, Math.ceil(this.words.width) + BUBBLE_PAD_X * 2);
+    const h = Math.max(art.slice * 2 + 1, Math.ceil(this.words.height) + BUBBLE_PAD_Y * 2);
     // Local coordinates: the tail's tip is (0, 0); the box sits on top of the tail (one shared outline row).
     const boxBottom = -tail.height + 1;
     const parts: Phaser.GameObjects.GameObject[] = [
       scene.add.nineslice(0, boxBottom, art.file, undefined, w, h, art.slice, art.slice, art.slice, art.slice).setOrigin(0.5, 1),
       scene.add.image(0, -tail.height, art.tail).setOrigin(art.tailAnchor[0] / tail.width, 0),
     ];
-    this.words.setY(boxBottom - h + pad - 1);
+    this.words.setY(boxBottom - h + BUBBLE_PAD_Y);
     parts.push(this.words);
     this.baseHeight = h + tail.height - 1;
     this.box = scene.add.container(0, 0, parts).setDepth(LABEL_DEPTH + 1);

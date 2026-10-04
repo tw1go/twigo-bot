@@ -12,7 +12,7 @@ import { TownLink } from '../net/town';
 import { showElsewhere } from '../ui/elsewhere';
 import { mountTownHud } from '../ui/townhud';
 import { ChatBox } from '../ui/chat';
-import type { BubbleArt } from '../ui/labels';
+import { type BubbleArt, lightBubble } from '../ui/labels';
 import { type Reward, setRewardArt, showReward } from '../ui/reward';
 import { OtherPlayers } from '../world/others';
 import { fakeLogin } from '../session';
@@ -291,7 +291,7 @@ export class TownScene extends Phaser.Scene {
     const link = new TownLink();
     this.link = link;
     const B = this.M.ui.speechBubble;
-    const bubbles: BubbleArt | null = B && this.textures.exists(B.file) ? { file: B.file, slice: B.nineSlice, tail: B.tail, tailAnchor: B.tailAnchor } : null;
+    const bubbles: BubbleArt | null = B && this.textures.exists(B.file) ? lightBubble(this, { file: B.file, slice: B.nineSlice, tail: B.tail, tailAnchor: B.tailAnchor }) : null;
     this.others.bubbleArt = bubbles;
     const chat = new ChatBox((text) => link.send({ t: 'say', text }));
     const member = this.me?.status === 'ok' ? this.me.me : null;
