@@ -163,9 +163,10 @@
       #reward .rw-card { position: relative; width: min(340px, calc(100vw - 32px)); box-sizing: border-box; padding: 22px 22px 20px; border: 3px solid #7C2AE8; background: #fff; color: #1E1B3A; text-align: center; animation: rw-pop 0.32s cubic-bezier(0.2, 1.4, 0.4, 1); }
       /* The game's item frame (its fill painted white, see ui/reward.ts) as the border. */
       #reward .rw-framed { --px: 4; border-style: solid; border-width: calc(var(--slice) * var(--px) * 1px); border-image-source: var(--frame); border-image-slice: var(--slice) fill; border-image-width: calc(var(--slice) * var(--px) * 1px); border-image-repeat: round; image-rendering: pixelated; padding: 6px 8px 4px; background: none; }
-      #reward .rw-title { margin: 0 0 12px; font-size: 22px; color: #5B21B6; letter-spacing: 0.02em; }
+      #reward .rw-title { margin: 0 0 12px; font-size: 22px; color: #5B21B6; letter-spacing: 0.06em; text-transform: uppercase; }
       #reward .rw-graphic { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 4px 0 14px; }
-      #reward .rw-new-title { padding: 10px 16px; background: #111827; font-size: 22px; font-weight: 600; }
+      /* The title in its colour with a black outline (a filter, so it works on the prismatic rainbow too). */
+      #reward .rw-new-title { font-size: 26px; font-weight: 700; filter: drop-shadow(2px 0 0 #000) drop-shadow(-2px 0 0 #000) drop-shadow(0 2px 0 #000) drop-shadow(0 -2px 0 #000); }
       #reward .rw-coin { display: block; image-rendering: pixelated; background-repeat: no-repeat; }
       #reward .rw-amount { font-size: 22px; font-weight: 700; color: #BA7F05; }
       #reward .rw-image { max-width: 128px; max-height: 128px; image-rendering: pixelated; }
