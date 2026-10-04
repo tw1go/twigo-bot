@@ -18,8 +18,11 @@ export class TownLink {
     this.connect();
   }
 
-  send(m: TownClientMessage): void {
-    if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(m));
+  /** Sends if connected; false if not. */
+  send(m: TownClientMessage): boolean {
+    if (this.ws?.readyState !== WebSocket.OPEN) return false;
+    this.ws.send(JSON.stringify(m));
+    return true;
   }
 
   /** Connects again after another tab took over (which then takes over from that one). */

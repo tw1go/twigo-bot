@@ -132,3 +132,64 @@ export class BuildingLabel {
     this.text.setScale(scale).setResolution(resolution);
   }
 }
+
+/** The speech bubble art (manifest ui.speechBubble): a nine-slice box and a tail under it. */
+export interface BubbleArt {
+  file: string;
+  slice: number;
+  tail: string;
+  tailAnchor: [number, number];
+}
+
+/** How wide (world pixels) a bubble's text may get before it wraps. */
+const BUBBLE_WRAP = 96;
+
+/** Someone's words in a bubble over their head: the bubble art stretched to the text, its tail pointing down. */
+export class SpeechBubble {
+  private readonly box: Phaser.GameObjects.Container;
+  private readonly words: Phaser.GameObjects.Text;
+  private readonly baseHeight: number;
+
+  constructor(scene: Phaser.Scene, art: BubbleArt, text: string) {
+    this.words = scene.add
+      .text(0, 0, text, { fontFamily: UI_FONT, fontSize: '5px', color: '#E6E9F2', align: 'center', wordWrap: { width: BUBBLE_WRAP } })
+      .setOrigin(0.5, 0);
+    const tail = scene.textures.get(art.tail).getSourceImage() as HTMLImageElement;
+    const pad = 3;
+    const w = Math.max(art.slice * 2 + 1, Math.ceil(this.words.width) + pad * 2);
+    const h = Math.max(art.slice * 2 + 1, Math.ceil(this.words.height) + pad * 2 - 1);
+    // Local coordinates: the tail's tip is (0, 0); the box sits on top of the tail (one shared outline row).
+    const boxBottom = -tail.height + 1;
+    const parts: Phaser.GameObjects.GameObject[] = [
+      scene.add.nineslice(0, boxBottom, art.file, undefined, w, h, art.slice, art.slice, art.slice, art.slice).setOrigin(0.5, 1),
+      scene.add.image(0, -tail.height, art.tail).setOrigin(art.tailAnchor[0] / tail.width, 0),
+    ];
+    this.words.setY(boxBottom - h + pad - 1);
+    parts.push(this.words);
+    this.baseHeight = h + tail.height - 1;
+    this.box = scene.add.container(0, 0, parts).setDepth(LABEL_DEPTH + 1);
+  }
+
+  get height(): number {
+    return Math.ceil(this.baseHeight * this.box.scale);
+  }
+
+  place(x: number, bottom: number): void {
+    this.box.setPosition(x, bottom);
+  }
+
+  setZoom(zoom: number): void {
+    const { scale, resolution } = scaleFor(zoom);
+    this.box.setScale(scale);
+    this.words.setResolution(resolution);
+  }
+
+  /** Fades out, then is gone. */
+  fade(scene: Phaser.Scene, done: () => void): void {
+    scene.tweens.add({ targets: this.box, alpha: 0, duration: 400, onComplete: () => (this.destroy(), done()) });
+  }
+
+  destroy(): void {
+    this.box.destroy();
+  }
+}

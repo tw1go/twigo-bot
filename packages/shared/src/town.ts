@@ -24,7 +24,9 @@ export type TownClientMessage =
   | { t: 'step'; col: number; row: number }
   | { t: 'face'; dir: TownDir }
   | { t: 'sit'; col: number; row: number; dir: TownDir }
-  | { t: 'stand' };
+  | { t: 'stand' }
+  /** Say something (1–120 characters after tidying; a few at once, then about one every 2 s). */
+  | { t: 'say'; text: string };
 
 /** Server → browser. */
 export type TownServerMessage =
@@ -36,4 +38,8 @@ export type TownServerMessage =
   | { t: 'sit'; id: string; col: number; row: number; dir: TownDir }
   | { t: 'stand'; id: string }
   /** Your last step was refused: you're really at (col, row). */
-  | { t: 'snap'; col: number; row: number };
+  | { t: 'snap'; col: number; row: number }
+  /** Someone said something (you too: your own words come back this way). */
+  | { t: 'say'; id: string; text: string }
+  /** Your message wasn't sent: too fast, or empty / too long once tidied. */
+  | { t: 'say-refused'; reason: 'slow' | 'invalid' };

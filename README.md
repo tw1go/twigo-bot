@@ -243,7 +243,8 @@ table).
 
 In town, logged-in members see each other live over a WebSocket at `/ws` (`packages/bot/src/web/town.ts`, messages
 in `packages/shared/src/town.ts`). The bot checks every step (on the map, not blocked, next to the last one, at walking
-speed) and keeps nothing once you leave. With login off, everyone
+speed) and keeps nothing once you leave. Chat goes the same way (`say`: tidied, up to 120 characters, rate-limited,
+never saved) and shows as speech bubbles and in the chat box (`packages/game/src/ui/chat.ts`). With login off, everyone
 goes straight in with a look saved in the browser.
 
 1. Developer Portal → your app → OAuth2 → Redirects: add `https://twigo-bot.duckdns.org/auth/callback`.

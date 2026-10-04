@@ -4,6 +4,7 @@ import type { Manifest } from '../assets/types';
 import { Character } from '../characters/character';
 import { loadOutfit, randomOutfit } from '../characters/doll';
 import { sanitize } from '../characters/looks';
+import type { BubbleArt } from '../ui/labels';
 import { type WorldObjects, characterDepth } from './objects';
 import { rng } from './rng';
 
@@ -19,6 +20,8 @@ interface Other {
 export class OtherPlayers {
   private readonly all = new Map<string, Other>();
   private zoom = 1;
+  /** The speech bubble art, for what others say. */
+  bubbleArt: BubbleArt | null = null;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -40,7 +43,7 @@ export class OtherPlayers {
       case 'leave':
         return this.remove(m.id);
     }
-    if (m.t === 'snap') return;
+    if (m.t === 'snap' || m.t === 'say-refused') return;
     const o = this.all.get(m.id);
     if (!o) return;
     const s = o.state;
@@ -58,7 +61,15 @@ export class OtherPlayers {
       case 'stand':
         s.sit = false;
         return o.char?.standUp();
+      case 'say':
+        if (this.bubbleArt) o.char?.say(m.text, this.bubbleArt);
+        return;
     }
+  }
+
+  /** Someone's nickname (for the chat log), if they're here. */
+  nameOf(id: string): string | null {
+    return this.all.get(id)?.state.nickname ?? null;
   }
 
   update(deltaMs: number): void {

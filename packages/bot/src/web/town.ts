@@ -7,7 +7,8 @@ import type { OutfitData, TitleData, TownClientMessage, TownDir, TownPlayer, Tow
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
 // messages). The server keeps everyone's tile and checks each step — on the map, not blocked, next to the last
-// one, no faster than walking — and passes it on to everyone else. Nothing here is saved: leave and you're gone.
+// one, no faster than walking — and passes it on to everyone else; chat goes to everyone, tidied and rate-limited.
+// Nothing here is saved (positions or chat): leave and you're gone.
 // One connection per member (a second tab takes over). Login and profiles come from the caller (server.ts), so
 // this file has no Discord in it.
 
@@ -16,6 +17,17 @@ const DIRS = new Set<TownDir>(['s', 'se', 'e', 'ne', 'n', 'nw', 'w', 'sw']);
 const STEPS_PER_SECOND = 6;
 const STEP_BURST = 6;
 const HEARTBEAT_MS = 30_000;
+/** Chat: up to 120 characters; a burst of 3, then one every 2 s. */
+const SAY_MAX = 120;
+const SAYS_PER_SECOND = 0.5;
+const SAY_BURST = 3;
+
+/** A chat message tidied up: no control characters, single spaces, trimmed; null if empty or too long. */
+function tidy(text: unknown): string | null {
+  if (typeof text !== 'string') return null;
+  const t = text.replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2066-\u2069]/g, ' ').replace(/\s+/g, ' ').trim();
+  return t && [...t].length <= SAY_MAX ? t : null;
+}
 
 export interface TownMap {
   size: [number, number]; // [cols, rows]
@@ -58,6 +70,8 @@ interface Conn {
   player: TownPlayer;
   tokens: number;
   refilled: number;
+  says: number;
+  saidAt: number;
   alive: boolean;
   /** Still at the spawn point, so 'here' is accepted (once). */
   fresh: boolean;
@@ -67,14 +81,15 @@ export function attachTown(server: Server, opts: TownOptions): void {
   const { map } = opts;
   const [cols, rows] = map.size;
   const conns = new Map<string, Conn>(); // by member
-  const wss = new WebSocketServer({ noServer: true, maxPayload: 512 });
+  const wss = new WebSocketServer({ noServer: true, maxPayload: 1024 });
 
   const send = (c: Conn, m: TownServerMessage) => c.ws.readyState === WebSocket.OPEN && c.ws.send(JSON.stringify(m));
   /** To everyone but `c` (the message is turned into text once). */
-  const others = (c: Conn, m: TownServerMessage) => {
+  const others = (c: Conn | null, m: TownServerMessage) => {
     const text = JSON.stringify(m);
     for (const o of conns.values()) if (o !== c && o.ws.readyState === WebSocket.OPEN) o.ws.send(text);
   };
+  const everyone = (m: TownServerMessage) => others(null, m);
   const inside = (col: unknown, row: unknown): col is number =>
     Number.isInteger(col) && Number.isInteger(row) && (col as number) >= 0 && (row as number) >= 0 && (col as number) < cols && (row as number) < rows;
   const walkable = (col: number, row: number) => !map.blocked[row]?.[col];
@@ -121,6 +136,17 @@ export function attachTown(server: Server, opts: TownOptions): void {
         if (!p.sit) return;
         p.sit = false;
         return others(c, { t: 'stand', id: p.id });
+      case 'say': {
+        const text = tidy(m.text);
+        if (!text) return send(c, { t: 'say-refused', reason: 'invalid' });
+        const now = Date.now();
+        c.says = Math.min(SAY_BURST, c.says + ((now - c.saidAt) / 1000) * SAYS_PER_SECOND);
+        c.saidAt = now;
+        if (c.says < 1) return send(c, { t: 'say-refused', reason: 'slow' });
+        c.says -= 1;
+        // To everyone, the speaker included (their own words come back this way). Not saved anywhere.
+        return everyone({ t: 'say', id: p.id, text });
+      }
     }
   };
 
@@ -134,7 +160,7 @@ export function attachTown(server: Server, opts: TownOptions): void {
     }
     const [col, row] = map.spawn;
     const player: TownPlayer = { id: randomBytes(6).toString('hex'), ...profile, col, row, dir: 's', sit: false };
-    const c: Conn = { ws, userId, player, tokens: STEP_BURST, refilled: Date.now(), alive: true, fresh: true };
+    const c: Conn = { ws, userId, player, tokens: STEP_BURST, refilled: Date.now(), says: SAY_BURST, saidAt: Date.now(), alive: true, fresh: true };
     send(c, { t: 'welcome', you: player.id, players: [...conns.values()].map((o) => o.player) });
     conns.set(userId, c);
     others(c, { t: 'join', player });

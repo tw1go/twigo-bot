@@ -4,7 +4,7 @@ import { CHARACTER_BIAS } from '../world/depth';
 import type { Tile } from '../world/grid';
 import { type Outfit, headTop, sheetKey } from './doll';
 import type { TitleData } from '@mikazuki/shared';
-import { NameTag } from '../ui/labels';
+import { type BubbleArt, NameTag, SpeechBubble } from '../ui/labels';
 
 // A walking paper doll. Position is in tile space (tile centre = col + 0.5); the sprite's feet anchor sits on it.
 // Depth is the front corner of the tile the feet are on, refreshed every frame.
@@ -26,6 +26,8 @@ export class Character {
   private readonly shadow: Phaser.GameObjects.Image | null;
   private alert: Phaser.GameObjects.Sprite | null = null;
   private tag: NameTag | null = null;
+  private bubble: SpeechBubble | null = null;
+  private bubbleTimer: Phaser.Time.TimerEvent | null = null;
   private zoom = 1;
   private head = 0; // rows of empty cell above the head (headTop)
   private col: number; // tile-space position of the feet (tile centre = integer + 0.5)
@@ -73,11 +75,27 @@ export class Character {
     this.sync();
   }
 
-  /** Sizes the name tag for the camera zoom. */
+  /** Sizes the name tag (and any speech bubble) for the camera zoom. */
   setZoom(zoom: number): void {
     this.zoom = zoom;
     this.tag?.setZoom(zoom);
+    this.bubble?.setZoom(zoom);
     this.sync();
+  }
+
+  /** Says something: a bubble over the name for a few seconds (longer for longer messages). A new one replaces it. */
+  say(text: string, art: BubbleArt): void {
+    this.bubbleTimer?.remove();
+    this.bubble?.destroy();
+    const bubble = new SpeechBubble(this.scene, art, text);
+    bubble.setZoom(this.zoom);
+    this.bubble = bubble;
+    this.sync();
+    this.bubbleTimer = this.scene.time.delayedCall(4000 + text.length * 60, () => {
+      bubble.fade(this.scene, () => {
+        if (this.bubble === bubble) this.bubble = null;
+      });
+    });
   }
 
   get tile(): Tile {
@@ -280,6 +298,7 @@ export class Character {
     const plateBottom = Math.round(y) - this.M.characters.anchor[1] + this.head - 2;
     this.tag?.place(Math.round(x), plateBottom);
     const alertY = this.tag ? plateBottom - this.tag.height - 1 : Math.round(y) - this.M.characters.cell[1] - 2;
+    this.bubble?.place(Math.round(x), alertY);
     this.alert?.setPosition(Math.round(x), alertY).setDepth(depth + 0.1);
   }
 
@@ -301,6 +320,8 @@ export class Character {
     this.shadow?.destroy();
     this.alert?.destroy();
     this.tag?.destroy();
+    this.bubbleTimer?.remove();
+    this.bubble?.destroy();
   }
 
   /** Lets the scene tint effects spawned later (night). */

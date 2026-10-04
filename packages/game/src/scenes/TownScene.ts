@@ -11,6 +11,8 @@ import { LOADING_LINES } from '../ui/loading-lines';
 import { TownLink } from '../net/town';
 import { showElsewhere } from '../ui/elsewhere';
 import { mountTownHud } from '../ui/townhud';
+import { ChatBox } from '../ui/chat';
+import type { BubbleArt } from '../ui/labels';
 import { type Reward, setRewardArt, showReward } from '../ui/reward';
 import { OtherPlayers } from '../world/others';
 import { fakeLogin } from '../session';
@@ -284,17 +286,41 @@ export class TownScene extends Phaser.Scene {
 
   // ── Other players ──
 
-  /** Joins the live town: others appear, and the player's steps, turns and seats are passed on. */
+  /** Joins the live town: others appear, the player's steps, turns and seats are passed on, and the chat opens. */
   private connect(): void {
     const link = new TownLink();
     this.link = link;
+    const asset = (file: string) => `${import.meta.env.BASE_URL}assets/${file}`;
+    const B = this.M.ui.speechBubble;
+    const bubbles: BubbleArt | null = B && this.textures.exists(B.file) ? { file: B.file, slice: B.nineSlice, tail: B.tail, tailAnchor: B.tailAnchor } : null;
+    this.others.bubbleArt = bubbles;
+    const W = this.M.ui.chatWindow;
+    const chat = new ChatBox(
+      {
+        window: W ? { url: asset(W.file), slice: W.nineSlice } : null,
+        input: W?.input ? { url: asset(W.input.file), focus: asset(W.input.focus), slice: W.input.nineSlice } : null,
+      },
+      (text) => link.send({ t: 'say', text }),
+    );
+    const member = this.me?.status === 'ok' ? this.me.me : null;
+    let myId = '';
     this.player.onStep = (to) => {
       link.send({ t: 'step', col: to.col, row: to.row });
       this.sent = { dir: this.player.facing, sit: false };
     };
     link.onMessage = (m) => {
       if (m.t === 'snap') return this.player.place({ col: m.col, row: m.row });
+      if (m.t === 'say-refused') return chat.notice(m.reason === 'slow' ? "You're chatting a bit fast. Wait a moment." : "That message can't be sent.");
+      if (m.t === 'say') {
+        // Your own words come back from the server like everyone else's, so you see what they see.
+        if (m.id === myId) {
+          if (bubbles) this.player.say(m.text, bubbles);
+          return chat.add(member?.nickname ?? 'You', m.text, true);
+        }
+        chat.add(this.others.nameOf(m.id) ?? 'Someone', m.text);
+      }
       if (m.t === 'welcome') {
+        myId = m.you;
         // After a reconnect, stay where you are rather than back at the spawn point.
         const t = this.player.tile;
         link.send({ t: 'here', col: t.col, row: t.row, dir: this.player.facing });
