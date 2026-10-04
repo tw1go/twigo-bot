@@ -10,6 +10,7 @@ export const TITLES: Record<string, TitleData> = {
   townfolk: { name: 'Townfolk', color: '#B794F6' },
   'game-master': { name: 'Game Master', color: 'prismatic' },
   fairy: { name: 'She was a Fairy', color: '#F0ABFC' },
+  'low-battery': { name: '20% Battery Life', color: '#F8BF27' },
 };
 export const DEFAULT_TITLE = 'townfolk';
 
