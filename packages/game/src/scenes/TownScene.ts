@@ -21,6 +21,7 @@ import { type BubbleArt, lightBubble } from '../ui/labels';
 import { type Reward, setRewardArt, showReward } from '../ui/reward';
 import { showMovementTutorial } from '../ui/tutorial';
 import { type Figure, showLeaderboard } from '../ui/leaderboard';
+import { showJackpot } from '../ui/jackpot';
 import { OtherPlayers } from '../world/others';
 import { fakeLogin } from '../session';
 import { screenToTile, tileToScreen } from '../iso';
@@ -747,6 +748,7 @@ export class TownScene extends Phaser.Scene {
       return;
     }
     if (b.id === 'leaderboard-monument') return showLeaderboard((o) => this.podiumFigure(o));
+    if (b.id === 'jackpot-booth') return showJackpot();
     toast(`${doorLabel(b.id)}: coming soon`);
   }
 

@@ -1,9 +1,10 @@
 import { EmbedBuilder, MessageFlags, SlashCommandBuilder } from 'discord.js';
 import type { Command } from '../types.js';
-import { balance, take } from '../credits/store.js';
+import { balance } from '../credits/store.js';
 import { blockIfJailed } from '../games/jail.js';
-import { DRAW_LABEL, MAX_TICKETS, addTickets, entries, lastDraw, nextDraw, players, pot, ticketsOf } from '../games/jackpot.js';
+import { DRAW_LABEL, MAX_TICKETS, buyTickets, entries, lastDraw, nextDraw, players, pot, ticketWord, ticketsOf } from '../games/jackpot.js';
 import { kowen } from '../kowens.js';
+import { feed, townName } from '../web/town-feed.js';
 
 /** The /jackpot check: pot, who's in, your odds, countdown and last winner. */
 function statusCard(userId: string): EmbedBuilder {
@@ -61,19 +62,18 @@ export const jackpot: Command = {
     }
     if (await blockIfJailed(interaction)) return;
 
-    const room = MAX_TICKETS - ticketsOf(interaction.user.id);
-    if (room <= 0) {
-      await interaction.reply({ content: `You already have the max of ${MAX_TICKETS} tickets. 🍀\n${status()}`, flags: MessageFlags.Ephemeral });
+    const result = buyTickets(interaction.user.id, count);
+    if ('refused' in result) {
+      await interaction.reply({
+        content: result.refused === 'max'
+          ? `You already have the max of ${MAX_TICKETS} tickets. 🍀\n${status()}`
+          : `You need **${result.need}** ${kowen(result.need)} but have **${balance(interaction.user.id)}**. 🪙`,
+        flags: MessageFlags.Ephemeral,
+      });
       return;
     }
-    const buy = Math.min(count, room);
-    if (balance(interaction.user.id) < buy) {
-      await interaction.reply({ content: `You need **${buy}** ${kowen(buy)} but have **${balance(interaction.user.id)}**. 🪙`, flags: MessageFlags.Ephemeral });
-      return;
-    }
-
-    take(interaction.user.id, buy);
-    addTickets(interaction.user.id, buy);
+    const buy = result.bought;
+    feed('jackpot', `${townName(interaction.user)} bought ${ticketWord(buy)} · the pot is ${pot()} ${kowen(pot())}`, 'jackpot');
     await interaction.reply({
       content: `🎟️ ${interaction.user} bought **${buy}** jackpot ticket(s)! The pot is now **${pot()}** ${kowen(pot())}. Next draw <t:${Math.floor(nextDraw().getTime() / 1000)}:R>.`,
       allowedMentions: { parse: [] },

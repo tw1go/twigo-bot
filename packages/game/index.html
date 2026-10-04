@@ -289,6 +289,7 @@
       #system-feed [data-tone='win'] { color: #A3E635; }
       #system-feed [data-tone='lose'] { color: #F7768E; }
       #system-feed [data-tone='bust'] { color: #F59E0B; }
+      #system-feed [data-tone='jackpot'] { color: #F8BF27; }
       @media (max-width: 760px) { #system-feed { display: none; } }
       /* Who's online (ui/online.ts), beside the chat input next to the emote button. */
       #chat .ch-tools { display: flex; gap: 6px; }
@@ -338,6 +339,39 @@
       #reward .lb-foot { min-height: 18px; margin-bottom: 14px; font-size: 13px; font-weight: 600; color: #5B21B6; }
       #reward .lb-foot:empty { display: none; }
       /* The podium: the top 3 standing on their steps (1st in the middle, tallest). */
+      /* Jackpot booth (ui/jackpot.ts) */
+      #reward .rw-card:has(.jp-body) { width: min(380px, calc(100vw - 32px)); }
+      #reward .jp-body { margin-bottom: 14px; }
+      #reward .jp-pot { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 2px 0 2px; }
+      #reward .jp-amount { font-size: 26px; font-weight: 700; color: #BA7F05; }
+      #reward .jp-in { align-self: flex-end; padding-bottom: 5px; font-size: 13px; color: #7A8099; }
+      #reward .jp-draw { margin-bottom: 12px; font-size: 13px; font-weight: 600; color: #5B21B6; }
+      #reward .jp-tickets { display: flex; justify-content: center; gap: 14px; margin-bottom: 6px; }
+      #reward .jp-ticket { position: relative; width: 34px; height: 20px; box-sizing: border-box; border: 2px dashed #C9C2E3; border-radius: 2px; }
+      #reward .jp-owned { border: 2px solid #1E1B3A; background: #FCDA4A; box-shadow: inset 0 2px 0 #FFF59A, inset 0 -2px 0 #D99A0B; }
+      #reward .jp-owned::before, #reward .jp-owned::after { content: ''; position: absolute; top: 50%; width: 6px; height: 6px; margin-top: -3px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 2px #1E1B3A; }
+      #reward .jp-owned::before { left: -5px; }
+      #reward .jp-owned::after { right: -5px; }
+      #reward .jp-chance { margin-bottom: 10px; font-size: 13px; color: #3D4256; }
+      #reward .jp-buy { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+      #reward .jp-button { display: flex; flex-direction: column; align-items: center; min-width: 120px; padding: 6px 14px 7px; border: 3px solid #1E1B3A; border-radius: 0; background: #FCDA4A; color: #1E1B3A; font: inherit; font-weight: 700; box-shadow: inset 0 2px 0 #FFF59A, inset 0 -3px 0 #D99A0B, 0 4px 0 #1E1B3A; transition: transform 0.06s, box-shadow 0.06s; }
+      #reward .jp-button small { font-size: 11px; font-weight: 600; color: #7A4A01; }
+      #reward .jp-button:hover { background: #FDE68A; }
+      #reward .jp-button:active { transform: translateY(3px); box-shadow: inset 0 2px 0 #FFF59A, inset 0 -2px 0 #D99A0B, 0 1px 0 #1E1B3A; }
+      #reward .jp-button:disabled { opacity: 0.5; transform: none; }
+      #reward .jp-full { font-size: 13px; font-weight: 600; color: #5A8A5E; }
+      #reward .jp-note { min-height: 18px; margin: 8px 0 4px; font-size: 13px; font-weight: 600; color: #5B21B6; }
+      #reward .jp-players { max-height: min(150px, 22vh); overflow-y: auto; padding-top: 8px; border-top: 2px solid #E2DDF3; text-align: left; font-size: 13px; color: #3D4256; }
+      #reward .jp-heading { margin-bottom: 4px; font-weight: 700; color: #5B21B6; }
+      #reward .jp-row { display: flex; justify-content: space-between; gap: 10px; padding: 2px 8px; }
+      #reward .jp-row:nth-child(odd) { background: #F5F3FF; }
+      #reward .jp-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: #1E1B3A; }
+      #reward .jp-count { flex: none; color: #BA7F05; font-weight: 600; }
+      #reward .jp-me { box-shadow: inset 0 0 0 2px #A3E635; }
+      #reward .jp-empty { color: #7A8099; }
+      #reward .jp-last { margin-top: 8px; font-size: 12px; color: #3D4256; }
+      #reward .jp-last:empty { display: none; }
+      #reward .jp-rules { margin-top: 4px; font-size: 11px; color: #7A8099; }
       #reward .lb-podium { display: flex; justify-content: center; align-items: flex-end; gap: 6px; margin: 4px 0 12px; }
       #reward .lb-spot { display: flex; flex-direction: column; align-items: center; width: 108px; }
       #reward .lb-spot-name { max-width: 104px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 700; color: #1E1B3A; }

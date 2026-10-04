@@ -165,6 +165,7 @@ export function mountTownHud(o: TownHudOptions): void {
     };
     show(o.me);
     setInterval(() => void refresh(), REFRESH_MS);
+    window.addEventListener('mk-wallet', () => void refresh()); // something in town spent or paid Kowens
     row.append(right);
   }
 

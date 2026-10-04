@@ -4,7 +4,7 @@ import { markFound } from './found.js';
 import type { Client } from 'discord.js';
 import { Cron } from 'croner';
 import { config } from '../config.js';
-import { add } from '../credits/store.js';
+import { add, balance, take } from '../credits/store.js';
 import { kowen } from '../kowens.js';
 import { announce, townName } from '../web/town-feed.js';
 
@@ -26,6 +26,8 @@ function save(): void {
   table.save(Object.entries(tickets).filter(([, n]) => n > 0).map(([user_id, n]) => ({ user_id, tickets: n })));
 }
 
+/** "1 jackpot ticket", "3 jackpot tickets". */
+export const ticketWord = (n: number) => `${n} jackpot ticket${n === 1 ? '' : 's'}`;
 export const ticketsOf = (userId: string) => tickets[userId] ?? 0;
 export const pot = () => Object.values(tickets).reduce((a, b) => a + b, 0);
 export const players = () => Object.keys(tickets).length;
@@ -51,6 +53,17 @@ function saveLast(draw: LastDraw): void {
 export function addTickets(userId: string, count: number): void {
   tickets[userId] = ticketsOf(userId) + count;
   save();
+}
+
+/** Buys up to `count` tickets (as many as fit under the max), paying 1 Kowen each. The caller checks jail. */
+export function buyTickets(userId: string, count: number): { bought: number } | { refused: 'max' | 'kowens'; need: number } {
+  const room = MAX_TICKETS - ticketsOf(userId);
+  if (room <= 0) return { refused: 'max', need: 0 };
+  const buy = Math.min(count, room);
+  if (balance(userId) < buy) return { refused: 'kowens', need: buy };
+  take(userId, buy);
+  addTickets(userId, buy);
+  return { bought: buy };
 }
 
 export async function drawJackpot(client: Client): Promise<void> {

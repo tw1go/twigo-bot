@@ -37,12 +37,27 @@ export interface Popup {
   body: HTMLElement[];
   button: string;
   celebrate: boolean;
+  /** The casino lights without the rays (the jackpot booth). */
+  lights?: boolean;
   /** Played as it opens (default: the soft click, like any panel). */
   sound?: Sfx;
 }
 
 const queue: { popup: Popup; done: () => void }[] = [];
 let showing = false;
+
+/** The Kowen coin as a CSS sprite at `z`× (empty without the art). */
+export function coinIcon(z: number): HTMLElement {
+  const coin = el('span', 'rw-coin');
+  const c = art.coin;
+  if (c) {
+    coin.style.backgroundImage = `url("${c.url}")`;
+    coin.style.backgroundSize = `${c.size * c.frames * z}px ${c.size * z}px`;
+    coin.style.backgroundPosition = `-${c.frame * c.size * z}px 0`;
+    coin.style.width = coin.style.height = `${c.size * z}px`;
+  }
+  return coin;
+}
 
 export function setRewardArt(a: RewardArt): void {
   art = a;
@@ -122,7 +137,7 @@ function next(): void {
   }
 
   const button = el('button', 'rw-ok', popup.button);
-  if (popup.celebrate) {
+  if (popup.celebrate || popup.lights) {
     // Casino lights in their own marquee box over the top edge, every other one lit, swapping.
     const lights = el('div', 'rw-lights');
     lights.setAttribute('aria-hidden', 'true');
@@ -166,16 +181,7 @@ function graphic(g: RewardGraphic): HTMLElement {
     panel.append(t);
     box.append(panel);
   } else if (g.kind === 'kowens') {
-    const coin = el('span', 'rw-coin');
-    const c = art.coin;
-    if (c) {
-      const z = 5;
-      coin.style.backgroundImage = `url("${c.url}")`;
-      coin.style.backgroundSize = `${c.size * c.frames * z}px ${c.size * z}px`;
-      coin.style.backgroundPosition = `-${c.frame * c.size * z}px 0`;
-      coin.style.width = coin.style.height = `${c.size * z}px`;
-    }
-    box.append(coin, el('div', 'rw-amount', `+${g.amount.toLocaleString()} ${g.amount === 1 ? 'Kowen' : 'Kowens'}`));
+    box.append(coinIcon(5), el('div', 'rw-amount', `+${g.amount.toLocaleString()} ${g.amount === 1 ? 'Kowen' : 'Kowens'}`));
   } else {
     const img = el('img', 'rw-image');
     img.src = g.url;

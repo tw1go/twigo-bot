@@ -1,5 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import type { LeaderboardResponse, LeaderboardRow, MeResponse, PreregResponse, PreregStatus, TownLeaderboardResponse } from '@mikazuki/shared';
+import type { LeaderboardResponse, LeaderboardRow, MeResponse, PreregResponse, PreregStatus, TownJackpotBuyResponse, TownJackpotResponse, TownLeaderboardResponse } from '@mikazuki/shared';
 import type { Client } from 'discord.js';
 import { config } from '../config.js';
 import { balance, rankOf, topBalances, totalKowens, vaultBalance } from '../credits/store.js';
@@ -9,7 +9,10 @@ import { getNickname, parseNickname, setNickname } from './nickname.js';
 import { titleIsNew, titleOf, titleSeen } from './titles.js';
 import { attachTown, loadTownMap } from './town.js';
 import { bridgeTownChat } from './town-chat.js';
-import { connectTownFeed } from './town-feed.js';
+import { connectTownFeed, feed } from './town-feed.js';
+import { MAX_TICKETS, buyTickets, entries, lastDraw, nextDraw, pot, ticketWord, ticketsOf } from '../games/jackpot.js';
+import { jailedUntil } from '../games/jail.js';
+import { kowen } from '../kowens.js';
 import { filterText, kickedUntil, mutedUntil } from './town-mod.js';
 import { getOutfit, parseOutfit, saveOutfit } from './outfit.js';
 import { LAUNCH_REWARD, isPreregistered, launched, preregCount, preregister } from '../prereg/prereg.js';
@@ -35,6 +38,8 @@ import { roll } from './finds.js';
 //   PUT  /outfit        save the logged-in member's character look (from the game's page only)
 //   PUT  /nickname      { nickname } -> 200 { nickname } | 400 invalid | 409 taken (from the game's page only)
 //   GET  /town/leaderboard  top 10 by Kowens with town nicknames and titles, and the viewer's rank (may play)
+//   GET  /town/jackpot  the jackpot booth: pot, players, the viewer's tickets, next and last draw (may play)
+//   POST /town/jackpot  { tickets } buy jackpot tickets (from the game's page only; may play)
 //   POST /title/seen    the game showed the member their new title (from the game's page only)
 //   WS   /ws            the live town: who else is there and where (see town.ts; from the game's page only)
 
@@ -160,6 +165,54 @@ async function townLeaderboard(client: Client, userId: string): Promise<TownLead
   return { rows, me: { rank: rankOf(userId), kowens: totalKowens(userId) } };
 }
 
+/** A member's name in the town: their nickname, else their Discord name. */
+const nameOf = async (client: Client, id: string) => getNickname(id) ?? (await profile(client, id)).name;
+
+/** The jackpot booth as the viewer sees it. */
+async function townJackpot(client: Client, userId: string): Promise<TownJackpotResponse> {
+  const prev = lastDraw();
+  return {
+    pot: pot(),
+    max: MAX_TICKETS,
+    minPlayers: 2,
+    nextDraw: nextDraw().getTime(),
+    players: await Promise.all(
+      entries().map(async ([id, tickets]) => ({ name: await nameOf(client, id), tickets, ...(id === userId ? { me: true } : {}) })),
+    ),
+    mine: ticketsOf(userId),
+    kowens: balance(userId),
+    jailedUntil: jailedUntil(userId),
+    last: prev && {
+      at: prev.at,
+      winner: prev.winner && (await nameOf(client, prev.winner)),
+      pot: prev.pot,
+      players: prev.players,
+      ...(prev.winner === userId ? { me: true } : {}),
+    },
+  };
+}
+
+/** Buys jackpot tickets from the town: tells the town's feed and the games channel, like /jackpot does. */
+async function buyFromTown(client: Client, userId: string, count: number): Promise<TownJackpotBuyResponse> {
+  if (jailedUntil(userId)) return { ...(await townJackpot(client, userId)), refused: 'jailed' };
+  const result = buyTickets(userId, count);
+  const booth = await townJackpot(client, userId);
+  if ('refused' in result) return { ...booth, refused: result.refused };
+  const name = await nameOf(client, userId);
+  const total = pot();
+  feed('jackpot', `${name} bought ${ticketWord(result.bought)} · the pot is ${total} ${kowen(total)}`, 'jackpot');
+  const channel = await client.channels.fetch(config.gamesChannelId).catch(() => null);
+  if (channel?.isSendable()) {
+    await channel
+      .send({
+        content: `🎟️ <@${userId}> bought **${result.bought}** jackpot ticket(s) in the town! The pot is now **${total}** ${kowen(total)}. Next draw <t:${Math.floor(booth.nextDraw / 1000)}:R>.`,
+        allowedMentions: { parse: [] },
+      })
+      .catch((err) => console.error('[web] jackpot post failed:', err));
+  }
+  return { ...booth, bought: result.bought };
+}
+
 /** Logout and pre-registration must come from the game's own page (SameSite=Lax already keeps other sites' POSTs cookie-less). */
 const fromGame = (req: IncomingMessage) => !!config.publicUrl && req.headers.origin === config.publicUrl;
 
@@ -219,6 +272,27 @@ export function startWebServer(client: Client): void {
         if (!userId) return send(res, 401, '{"error":"not logged in"}');
         if (!(await canPlay(client, userId))) return send(res, 403, '{"error":"testers only for now"}');
         return send(res, 200, JSON.stringify(await townLeaderboard(client, userId)));
+      }
+      if (path === '/town/jackpot' && (req.method === 'GET' || req.method === 'POST')) {
+        if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
+        if (req.method === 'POST' && !fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
+        const userId = sessionUser(req);
+        if (!userId) return send(res, 401, '{"error":"not logged in"}');
+        let body: { tickets?: unknown } | null = null;
+        if (req.method === 'POST') {
+          try {
+            body = JSON.parse((await readBody(req)) || 'null');
+          } catch {
+            // invalid JSON → rejected below
+          }
+        }
+        if (!(await canPlay(client, userId))) return send(res, 403, '{"error":"testers only for now"}');
+        if (req.method === 'GET') return send(res, 200, JSON.stringify(await townJackpot(client, userId)));
+        const count = body?.tickets;
+        if (typeof count !== 'number' || !Number.isInteger(count) || count < 1 || count > MAX_TICKETS) {
+          return send(res, 400, '{"error":"invalid tickets"}');
+        }
+        return send(res, 200, JSON.stringify(await buyFromTown(client, userId, count)));
       }
       if (req.method === 'POST' && path === '/title/seen') {
         if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');

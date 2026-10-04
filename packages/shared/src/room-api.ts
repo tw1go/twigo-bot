@@ -119,6 +119,30 @@ export interface TownLeaderboardRow {
   outfit?: OutfitData | null;
 }
 
+/** The jackpot booth: the next draw's pot and players, the viewer's tickets, and the last draw. */
+export interface TownJackpotResponse {
+  /** Kowens in the pot (1 per ticket). */
+  pot: number;
+  /** The most tickets one member may hold per draw. */
+  max: number;
+  /** Fewer players than this and everyone is refunded. */
+  minPlayers: number;
+  /** When the next draw happens (ms). */
+  nextDraw: number;
+  /** Everyone in the next draw, most tickets first (town nicknames). */
+  players: { name: string; tickets: number; me?: boolean }[];
+  /** The viewer's tickets and wallet. */
+  mine: number;
+  kowens: number;
+  /** When the viewer gets out of jail (ms), if they're in it: no tickets till then. */
+  jailedUntil: number | null;
+  last: { at: number; winner: string | null; pot: number; players: number; me?: boolean } | null;
+}
+
+/** POST /town/jackpot { tickets } → the booth afterwards, and what happened. */
+export type TownJackpotBuyResponse = TownJackpotResponse &
+  ({ bought: number } | { refused: 'max' | 'kowens' | 'jailed' });
+
 /** A title: its name, and its colour ('#RRGGBB', or 'prismatic' for a shifting rainbow). */
 export interface TitleData {
   name: string;
