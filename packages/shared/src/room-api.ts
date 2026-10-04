@@ -100,6 +100,25 @@ export interface MeDig {
   shovelUses: number;
 }
 
+/** `GET /town/leaderboard` (logged in, may play): the top 10 by Kowens, as the town knows them. */
+export interface TownLeaderboardResponse {
+  rows: TownLeaderboardRow[];
+  /** The viewer: their rank (null with no Kowens) and Kowens (wallet + vault). */
+  me: { rank: number | null; kowens: number };
+}
+
+export interface TownLeaderboardRow {
+  rank: number;
+  /** Their town nickname, or their Discord name. */
+  name: string;
+  title: TitleData;
+  kowens: number;
+  /** This row is the viewer. */
+  me?: boolean;
+  /** Their character's look (top 3 only, for the podium; null if they haven't made one). */
+  outfit?: OutfitData | null;
+}
+
 /** A title: its name, and its colour ('#RRGGBB', or 'prismatic' for a shifting rainbow). */
 export interface TitleData {
   name: string;

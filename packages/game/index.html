@@ -313,6 +313,33 @@
       @keyframes an-in { from { transform: translate(-50%, -20px); opacity: 0; } }
       @media (max-width: 560px) { .announce { top: 76px; } }
       @media (prefers-reduced-motion: reduce) { .announce, .an-bulb { animation: none; } }
+      /* The leaderboard (ui/leaderboard.ts), in the reward box. */
+      #reward .rw-card:has(.lb-list) { width: min(420px, calc(100vw - 32px)); }
+      #reward .lb-sub { margin: -6px 0 10px; font-size: 13px; color: #7A8099; }
+      #reward .lb-list { max-height: min(240px, 32vh); overflow-y: auto; margin-bottom: 8px; text-align: left; font-size: 14px; color: #3D4256; }
+      #reward .lb-row { display: flex; align-items: center; gap: 10px; padding: 3px 8px; border-radius: 2px; }
+      #reward .lb-row:nth-child(even) { background: #F5F3FF; }
+      #reward .lb-rank { width: 32px; flex: none; font-weight: 700; color: #7A8099; }
+      #reward .lb-who { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 6px; }
+      #reward .lb-name { font-weight: 600; color: #1E1B3A; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      #reward .lb-title { font-size: 12px; filter: drop-shadow(1px 0 0 #1E1B3A) drop-shadow(-1px 0 0 #1E1B3A) drop-shadow(0 1px 0 #1E1B3A) drop-shadow(0 -1px 0 #1E1B3A); }
+      #reward .lb-kowens { font-weight: 700; color: #BA7F05; }
+      #reward .lb-gold .lb-rank { color: #D99A0B; }
+      #reward .lb-silver .lb-rank { color: #7A8099; }
+      #reward .lb-bronze .lb-rank { color: #A57548; }
+      #reward .lb-gold { background: #FFF7D6 !important; }
+      #reward .lb-me { box-shadow: inset 0 0 0 2px #A3E635; }
+      #reward .lb-foot { min-height: 18px; margin-bottom: 14px; font-size: 13px; font-weight: 600; color: #5B21B6; }
+      #reward .lb-foot:empty { display: none; }
+      /* The podium: the top 3 standing on their steps (1st in the middle, tallest). */
+      #reward .lb-podium { display: flex; justify-content: center; align-items: flex-end; gap: 6px; margin: 4px 0 12px; }
+      #reward .lb-spot { display: flex; flex-direction: column; align-items: center; width: 108px; }
+      #reward .lb-spot-name { max-width: 104px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 700; color: #1E1B3A; }
+      #reward .lb-figure { display: block; width: 96px; height: 144px; margin-top: -22px; margin-bottom: -6px; image-rendering: pixelated; }
+      #reward .lb-step { width: 100%; display: flex; align-items: flex-start; justify-content: center; padding-top: 6px; box-sizing: border-box; border: 3px solid #1E1B3A; font-size: 20px; font-weight: 700; box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.5); }
+      #reward .lb-spot-1 .lb-step { height: 56px; background: #FCDA4A; color: #7A4A01; }
+      #reward .lb-spot-2 .lb-step { height: 40px; background: #D7D9E6; color: #3D4256; }
+      #reward .lb-spot-3 .lb-step { height: 28px; background: #E0A671; color: #5C3A24; }
     </style>
   </head>
   <body>

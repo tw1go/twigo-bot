@@ -1,8 +1,8 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import type { LeaderboardResponse, LeaderboardRow, MeResponse, PreregResponse, PreregStatus } from '@mikazuki/shared';
+import type { LeaderboardResponse, LeaderboardRow, MeResponse, PreregResponse, PreregStatus, TownLeaderboardResponse } from '@mikazuki/shared';
 import type { Client } from 'discord.js';
 import { config } from '../config.js';
-import { balance, rankOf, topBalances, vaultBalance } from '../credits/store.js';
+import { balance, rankOf, topBalances, totalKowens, vaultBalance } from '../credits/store.js';
 import { DIGS_PER_DAY, SHOVEL_COST, SHOVEL_USES, SHOVELS_PER_DAY, digsToday, inventory, shovelUses, shovelsBoughtToday } from '../dig/store.js';
 import { ITEM_BY_ID } from '../dig/items.js';
 import { getNickname, parseNickname, setNickname } from './nickname.js';
@@ -34,6 +34,7 @@ import { roll } from './finds.js';
 //   POST /prereg        pre-register the logged-in member (from the game's page only)
 //   PUT  /outfit        save the logged-in member's character look (from the game's page only)
 //   PUT  /nickname      { nickname } -> 200 { nickname } | 400 invalid | 409 taken (from the game's page only)
+//   GET  /town/leaderboard  top 10 by Kowens with town nicknames and titles, and the viewer's rank (may play)
 //   POST /title/seen    the game showed the member their new title (from the game's page only)
 //   WS   /ws            the live town: who else is there and where (see town.ts; from the game's page only)
 
@@ -144,6 +145,21 @@ async function me(client: Client, req: IncomingMessage, res: ServerResponse): Pr
   send(res, 200, JSON.stringify(body));
 }
 
+/** The town's leaderboard: the top 10 by total Kowens with town nicknames and titles, and the viewer's own rank. */
+async function townLeaderboard(client: Client, userId: string): Promise<TownLeaderboardResponse> {
+  const rows = await Promise.all(
+    topBalances(10).map(async ([id, kowens], i) => ({
+      rank: i + 1,
+      name: getNickname(id) ?? (await profile(client, id)).name,
+      title: titleOf(id),
+      kowens,
+      ...(id === userId ? { me: true } : {}),
+      ...(i < 3 ? { outfit: getOutfit(id) } : {}), // the podium shows the top 3's characters
+    })),
+  );
+  return { rows, me: { rank: rankOf(userId), kowens: totalKowens(userId) } };
+}
+
 /** Logout and pre-registration must come from the game's own page (SameSite=Lax already keeps other sites' POSTs cookie-less). */
 const fromGame = (req: IncomingMessage) => !!config.publicUrl && req.headers.origin === config.publicUrl;
 
@@ -196,6 +212,13 @@ export function startWebServer(client: Client): void {
         if (!outfit) return send(res, 400, '{"error":"invalid outfit"}');
         saveOutfit(userId, outfit);
         return send(res, 200, '{"ok":true}');
+      }
+      if (req.method === 'GET' && path === '/town/leaderboard') {
+        if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
+        const userId = sessionUser(req);
+        if (!userId) return send(res, 401, '{"error":"not logged in"}');
+        if (!(await canPlay(client, userId))) return send(res, 403, '{"error":"testers only for now"}');
+        return send(res, 200, JSON.stringify(await townLeaderboard(client, userId)));
       }
       if (req.method === 'POST' && path === '/title/seen') {
         if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');

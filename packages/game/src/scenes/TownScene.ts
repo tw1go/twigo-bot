@@ -2,8 +2,8 @@ import Phaser from 'phaser';
 import { queueImage, queueTown } from '../assets/queue';
 import type { Dir, Manifest, TownMap } from '../assets/types';
 import { Character } from '../characters/character';
-import { type Outfit, assetProblems, buildOutfit, headPortrait, loadOutfit, outfitFiles } from '../characters/doll';
-import { startingOutfit } from '../characters/looks';
+import { type Outfit, assetProblems, buildOutfit, headPortrait, loadOutfit, outfitFiles, randomOutfit, sheetKey } from '../characters/doll';
+import { sanitize, startingOutfit } from '../characters/looks';
 import type { MeResult } from '../session';
 import { cursor } from '../ui/cursor';
 import { BuildingLabel, UI_FONT } from '../ui/labels';
@@ -16,10 +16,11 @@ import { SystemFeed } from '../ui/system-feed';
 import { announce } from '../ui/announce';
 import { OnlineList } from '../ui/online';
 import { EMOTE_KEYS, emotePicker } from '../ui/emotes';
-import type { TownEmote } from '@mikazuki/shared';
+import type { OutfitData, TownEmote } from '@mikazuki/shared';
 import { type BubbleArt, lightBubble } from '../ui/labels';
 import { type Reward, setRewardArt, showReward } from '../ui/reward';
 import { showMovementTutorial } from '../ui/tutorial';
+import { type Figure, showLeaderboard } from '../ui/leaderboard';
 import { OtherPlayers } from '../world/others';
 import { fakeLogin } from '../session';
 import { screenToTile, tileToScreen } from '../iso';
@@ -27,6 +28,7 @@ import { toast } from '../ui/toast';
 import { GROUND_SHADOW_DEPTH, LABEL_DEPTH } from '../world/depth';
 import { minutesNow, setTimeSource, skyAt } from '../world/daynight';
 import { Culler } from '../world/cull';
+import { rng } from '../world/rng';
 import { type Tile, WalkGrid } from '../world/grid';
 import { Ground } from '../world/ground';
 import { type Bench, type Building, WorldObjects, characterDepth } from '../world/objects';
@@ -308,6 +310,18 @@ export class TownScene extends Phaser.Scene {
       if (demo === 'kowens') void showReward({ title: 'Reward', graphic: { kind: 'kowens', amount: 50 }, message: 'Congratulations! 50 Kowens are yours.' });
       if (demo === 'title') void showReward({ title: 'New title!', graphic: { kind: 'title', title: { name: 'Game Master', color: 'prismatic' } }, message: 'Congratulations! You are now known as <Game Master>.' });
     }
+  }
+
+  /** A character for the leaderboard podium: their look idling (built like any player's), or a base look as the
+   *  silhouette for someone without a character. */
+  private async podiumFigure(o: OutfitData | null): Promise<Figure | null> {
+    const C = this.M.characters;
+    const look = sanitize(C, o, randomOutfit(C, rng(o ? Math.floor(Math.random() * 2 ** 31) : 7)));
+    await loadOutfit(this, C, look);
+    const key = sheetKey(look, 'idle', 's');
+    if (!this.textures.exists(key)) return null;
+    const idle = C.animations.idle;
+    return { sheet: this.textures.get(key).getSourceImage() as HTMLCanvasElement, frames: idle.frames, fps: idle.fps || 1, cell: C.cell, mystery: !o };
   }
 
   /** Debug: show a reward pop-up. */
@@ -731,6 +745,7 @@ export class TownScene extends Phaser.Scene {
       this.time.delayedCall(700, () => location.assign(TWIGO_ROOM_URL));
       return;
     }
+    if (b.id === 'leaderboard-monument') return showLeaderboard((o) => this.podiumFigure(o));
     toast(`${doorLabel(b.id)}: coming soon`);
   }
 
