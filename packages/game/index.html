@@ -386,6 +386,27 @@
       /* The podium: the top 3 standing on their steps (1st in the middle, tallest). */
       /* Notice board (ui/board.ts; tabs share the bank's .bk-tabs): quests as paper notes pinned on cork. Fixed size. */
       #reward .rw-card:has(.nb-body) { width: min(520px, calc(100vw - 32px)); }
+      /* The notice board is a wooden sign: planks in a dark timber frame, standing on two posts that run to the
+         bottom of the screen (instead of the white pop-up). */
+      #reward .rw-card.rw-card:has(.nb-body) { border: 10px solid #4A2C14; border-image: none; padding: 16px 18px 16px; color: #3D2A14;
+        background-color: #8B5A2B;
+        background-image:
+          repeating-linear-gradient(180deg, transparent 0 40px, rgba(40, 20, 5, 0.55) 40px 42px, rgba(255, 220, 160, 0.12) 42px 43px),
+          repeating-linear-gradient(90deg, rgba(60, 30, 8, 0.10) 0 2px, transparent 2px 9px, rgba(255, 210, 150, 0.06) 9px 11px, transparent 11px 23px),
+          linear-gradient(180deg, #9A6534, #7E5028);
+        box-shadow: inset 0 0 0 3px #6B4423, inset 0 0 22px rgba(30, 15, 3, 0.5), 0 6px 0 #2B1A0B; }
+      #reward .rw-card:has(.nb-body)::before, #reward .rw-card:has(.nb-body)::after { content: ''; position: absolute; z-index: -1; top: calc(100% + 6px); width: 26px; height: 100vh; background: linear-gradient(90deg, #4A2C14, #8B5A2B 35%, #9A6534 55%, #6B4423 80%, #3B2310); box-shadow: 0 0 0 3px #2B1A0B; }
+      #reward:has(.nb-body) { align-items: flex-start; padding-top: max(16px, 4vh); } /* higher up, so the posts show */
+      #reward .nb-body .nb-panel { height: min(380px, 44vh); }
+      #reward .rw-card:has(.nb-body)::before { left: 14%; }
+      #reward .rw-card:has(.nb-body)::after { right: 14%; }
+      #reward .rw-card:has(.nb-body) .rw-title { margin-bottom: 12px; font-size: 26px; color: #FDE68A; text-shadow: 0 2px 0 #3B2310, 2px 0 0 #3B2310, -2px 0 0 #3B2310, 0 -2px 0 #3B2310, 0 4px 0 rgba(20, 10, 2, 0.5); }
+      #reward .nb-body .bk-tabs { border-bottom-color: #3B2310; }
+      #reward .nb-body .bk-tab { border-color: #3B2310; background: #C69C6D; color: #3B2310; }
+      #reward .nb-body .bk-tab:hover { background: #D8B58A; }
+      #reward .nb-body .bk-tab[aria-selected='true'] { background: #3B2310; color: #FDE68A; box-shadow: inset 0 2px 0 #6B4423; }
+      #reward .nb-body .nb-note { color: #FDE68A; text-shadow: 0 1px 0 #3B2310; }
+      #reward .nb-body .nb-note.bk-refused { color: #FECACA; }
       #reward .nb-body { margin-bottom: 14px; text-align: left; font-size: 14px; color: #3D4256; }
       #reward .nb-panel { height: min(400px, 52vh); overflow-x: hidden; overflow-y: auto; }
       #reward .nb-note { height: 36px; min-height: 0; margin-top: 6px; overflow: hidden; }
