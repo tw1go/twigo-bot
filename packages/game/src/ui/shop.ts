@@ -1,12 +1,14 @@
 import type { TownShopBuyResponse, TownShopItem, TownShopResponse } from '@mikazuki/shared';
 import { playSound } from '../audio/sound';
 import { fakeLogin } from '../session';
+import { itemArt } from './item-art';
 import { coinIcon, el, showPopup } from './reward';
 
 // 🎁 The rewards shop (left click the shop): what /redeem sells, in the reward box with tabs (Items, Potions, Bags,
 // Passes). Each tab is a grid of the item art with prices; picking one shows what it does, a quantity for the ones
 // that stack, and a Buy button (passes ask again first: they're expensive and sent by hand). Buying goes through
-// the bot (POST /town/shop) with /redeem's checks. Item art: manifest `items`, by reward id.
+// the bot (POST /town/shop) with /redeem's checks. Item art: manifest `items` by reward id (ui/item-art.ts), in the
+// common rarity frame.
 
 const plural = (n: number, one: string, many: string) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
 const kowens = (n: number) => plural(n, 'Kowen', 'Kowens');
@@ -38,8 +40,7 @@ async function buy(id: string, quantity: number): Promise<TownShopBuyResponse | 
   return res?.ok ? ((await res.json()) as TownShopBuyResponse) : null;
 }
 
-/** `art(id)`: the item's picture URL (manifest items), or null. */
-export function showShop(art: (id: string) => { url: string; size: [number, number] } | null): void {
+export function showShop(): void {
   const wallet = el('div', 'sh-wallet');
   const bar = el('div', 'bk-tabs sh-tabs');
   bar.setAttribute('role', 'tablist');
@@ -59,14 +60,10 @@ export function showShop(art: (id: string) => { url: string; size: [number, numb
   let busy = false;
 
   const picture = (id: string, scale: number) => {
-    const a = art(id);
-    if (!a) return el('span', 'sh-art sh-missing', '?');
-    const img = el('img', 'sh-art');
-    img.src = a.url;
-    img.alt = '';
-    img.width = a.size[0] * scale;
-    img.height = a.size[1] * scale;
-    return img;
+    const art = itemArt(id, 'common', 'showcase', scale);
+    if (!art) return el('span', 'sh-art sh-missing', '?');
+    art.classList.add('sh-art');
+    return art;
   };
 
   const tabs = new Map<Tab, HTMLButtonElement>();
@@ -95,7 +92,7 @@ export function showShop(art: (id: string) => { url: string; size: [number, numb
   /** Why an item can't be bought right now (null = it can). */
   const blocked = (s: TownShopResponse, it: TownShopItem): string | null => {
     if (it.owned) return it.kind === 'vault' ? 'You have a vault. Use it at the bank.' : 'You have this bag.';
-    if (it.max === 0) return it.kind === 'shovel' ? 'No more shovels today. More tomorrow!' : 'Not available right now.';
+    if (it.max === 0) return it.kind === 'shovel' ? 'No more shovels today. More tomorrow!' : it.kind === 'key' || it.kind === 'potion' ? 'Your bag is full.' : 'Not available right now.';
     if (it.kind === 'pass' && s.inDebt) return 'Pay off your loan at the bank first.';
     if (s.kowens < it.cost) return `You need ${kowens(it.cost - s.kowens)} more.`;
     return null;

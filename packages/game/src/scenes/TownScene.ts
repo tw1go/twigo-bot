@@ -27,11 +27,15 @@ import { showOutpost } from '../ui/outpost';
 import { showBoard } from '../ui/board';
 import { showShop } from '../ui/shop';
 import { TargetBox } from '../ui/target';
+import { RARITY_TEXT, isRarity, setItemArt } from '../ui/item-art';
+import { playDig, setDigPanelArt } from '../ui/dig-panel';
+import { showMine } from '../ui/mine';
+import { Inventory } from '../ui/inventory';
 import { OtherPlayers } from '../world/others';
 import { fakeLogin } from '../session';
 import { screenToTile, tileToScreen } from '../iso';
 import { toast } from '../ui/toast';
-import { GROUND_SHADOW_DEPTH, LABEL_DEPTH } from '../world/depth';
+import { GROUND_SHADOW_DEPTH, LABEL_DEPTH, frontDepth } from '../world/depth';
 import { minutesNow, setTimeSource, skyAt } from '../world/daynight';
 import { Culler } from '../world/cull';
 import { rng } from '../world/rng';
@@ -238,7 +242,8 @@ export class TownScene extends Phaser.Scene {
     }
     // Members show their nickname and title; without a login (login off, or the dev server) it's "Guest".
     const member = this.me?.status === 'ok' ? this.me.me : null;
-    this.player.setNameTag(member?.nickname ?? 'Guest', member?.title ?? TOWNFOLK, member?.status === 'jailed');
+    this.player.setNameTag(member?.nickname ?? 'Guest', member?.title ?? TOWNFOLK);
+    this.player.setJailed(member?.status === 'jailed');
     this.mountHud();
     startTownSound(this, this.fountainTile());
     if (member || fakeLogin()) this.connect();
@@ -286,6 +291,9 @@ export class TownScene extends Phaser.Scene {
     const kowen = Array.isArray(emotes?.frames) ? emotes.frames.indexOf('kowen') : -1;
     const coin = emotes?.file && kowen >= 0 && Array.isArray(emotes.frames) ? { url: asset(emotes.file), frame: kowen, size: emotes.size?.[0] ?? 12, frames: emotes.frames.length } : null;
     setRewardArt({ frame: frame ? { url: asset(frame.file), slice: frame.nineSlice } : null, coin });
+    setItemArt(this.M.items, asset(''));
+    const D = this.M.ui.digPanel;
+    setDigPanelArt(D && this.textures.exists(D.file) ? { url: asset(D.file), size: D.size, frames: D.frames, fps: D.fps, hole: D.hole, itemFrom: D.itemFrom } : null);
     mountTownHud({
       me: member,
       name: member?.nickname ?? 'Guest',
@@ -371,7 +379,19 @@ export class TownScene extends Phaser.Scene {
     this.others.onChange();
     const tools = document.createElement('div');
     tools.className = 'ch-tools';
+    // Members get the bag (inventory) button.
+    const bagIcon = this.M.ui.inventoryIcon;
+    const inv = this.M.ui.inventory;
+    const url = (file: string) => `${import.meta.env.BASE_URL}assets/${file}`;
+    const bag = member
+      ? new Inventory(
+          bagIcon ? url(bagIcon.file) : null,
+          inv?.itemFrame ? { url: url(inv.itemFrame.file), slice: inv.itemFrame.nineSlice } : null,
+          inv?.slot && inv.selected && inv.nineSlice ? { url: url(inv.slot), picked: url(inv.selected), slice: inv.nineSlice } : null,
+        )
+      : null;
     tools.append(online.el, emotePicker(sheet, emote));
+    if (bag) document.body.append(bag.button); // its own button, just right of the chat box
     const chat = new ChatBox((text) => link.send({ t: 'say', text }), tools);
     const feed = new SystemFeed();
     let myId = '';
@@ -413,12 +433,26 @@ export class TownScene extends Phaser.Scene {
       }
       if (m.t === 'system') {
         if (m.line.kind === 'gamble') playSound('chip');
+        // A dig: yours plays the dig panel; someone else's puffs dust at the Mine's door.
+        if (m.line.kind === 'dig' && m.line.itemId) {
+          if (myId && m.line.playerId === myId) playDig({ itemId: m.line.itemId, name: m.line.itemName ?? m.line.itemId, rarity: m.line.tone });
+          else this.mineDust();
+        }
         return feed.add(m.line);
       }
       if (m.t === 'announce') return announce(m.announcement);
       if (m.t === 'verdict') return verdict(m.id, m.kind, m.judged, m.text);
+      if (m.t === 'flex') {
+        // A flex from someone's bag (maybe yours): they show it off in a bubble, and the chat says so.
+        const mine = m.id === myId;
+        const char = mine ? this.player : this.others.charOf(m.id);
+        if (char && bubbles) char.say(`Check out my ${m.itemName}!`, bubbles);
+        chat.flex(mine ? (member?.nickname ?? 'You') : (this.others.nameOf(m.id) ?? 'Someone'), m.itemName, m.rarity, RARITY_TEXT[isRarity(m.rarity) ? m.rarity : 'common']);
+        if (!mine) playSound('chat');
+        return;
+      }
       if (m.t === 'jailed' && m.id === myId) {
-        this.player.setNameTag(member?.nickname ?? 'Guest', member?.title ?? TOWNFOLK, m.on);
+        this.player.setJailed(m.on);
         window.dispatchEvent(new Event('mk-wallet')); // the HUD (its status dot shows jail too)
         return;
       }
@@ -739,6 +773,26 @@ export class TownScene extends Phaser.Scene {
     this.marker = marker;
   }
 
+  /** fx dig-dust on the Mine entrance's door: someone else dug (three loops, then gone). */
+  private mineDust(): void {
+    const fx = this.M.fx['dig-dust'];
+    const mine = this.objects.buildings.find((b) => b.id === 'mine-entrance');
+    const door = mine?.doors[0];
+    if (!fx?.file || !door || !this.textures.exists(fx.file)) return;
+    const key = `anim:${fx.file}`;
+    if (!this.anims.exists(key)) {
+      this.anims.create({ key, frames: this.anims.generateFrameNumbers(fx.file, { start: 0, end: (fx.frames ?? 1) - 1 }), frameRate: fx.fps ?? 10, repeat: 2 });
+    }
+    const [col, row] = door;
+    const top = tileToScreen(col, row);
+    const [w, h] = fx.frame ?? [32, 32];
+    const [ax, ay] = fx.anchor ?? [w / 2, h - 1];
+    const dust = this.add.sprite(top.x, top.y + 8, fx.file).setOrigin(ax / w, ay / h); // the tile's centre
+    dust.setDepth(characterDepth(this.objects, col, row, frontDepth(col, row, 1, 1), dust.getBounds()));
+    if (this.tint >= 0) dust.setTint(this.tint);
+    dust.play(key).once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => dust.destroy());
+  }
+
   /** Walk to the closest of a building's door tiles. */
   goToBuilding(b: Building): void {
     this.pending = null;
@@ -788,10 +842,8 @@ export class TownScene extends Phaser.Scene {
     if (b.id === 'bank') return showBank();
     if (b.id === 'tanod-outpost') return showOutpost();
     if (b.id === 'notice-board') return showBoard();
-    if (b.id === 'rewards-shop') {
-      const items = this.M.items ?? {};
-      return showShop((id) => (items[id] ? { url: `${import.meta.env.BASE_URL}assets/${items[id].file}`, size: items[id].size } : null));
-    }
+    if (b.id === 'rewards-shop') return showShop();
+    if (b.id === 'mine-entrance') return showMine();
     toast(`${doorLabel(b.id)}: coming soon`);
   }
 

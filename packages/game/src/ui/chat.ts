@@ -123,6 +123,23 @@ export class ChatBox {
     this.push(line);
   }
 
+  /** A flex from someone's bag: who, a "flexed" tag, and the item in its rarity's colour. */
+  flex(name: string, itemName: string, rarity: string, colour: string): void {
+    const line = document.createElement('div');
+    line.className = 'ch-line';
+    const who = document.createElement('b');
+    who.className = 'ch-name';
+    who.textContent = `${name} `;
+    const tag = document.createElement('span');
+    tag.className = 'ch-verdict ch-flex';
+    tag.textContent = 'flexed';
+    const item = document.createElement('b');
+    item.style.color = colour;
+    item.textContent = ` ${itemName}`;
+    line.append(who, tag, item, document.createTextNode(` (${rarity[0].toUpperCase()}${rarity.slice(1)})`));
+    this.push(line);
+  }
+
   /** The conversation so far (as the server remembers it), replacing what's in the log. */
   history(lines: { name: string; text: string; discord?: boolean }[], myName: string | null): void {
     this.log.replaceChildren();

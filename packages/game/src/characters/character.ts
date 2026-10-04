@@ -25,6 +25,8 @@ export class Character {
   readonly sprite: Phaser.GameObjects.Sprite;
   private readonly shadow: Phaser.GameObjects.Image | null;
   private alert: Phaser.GameObjects.Sprite | null = null;
+  /** fx jailBars over the character while they're in jail. */
+  private bars: Phaser.GameObjects.Sprite | null = null;
   private tag: NameTag | null = null;
   private bubble: SpeechBubble | null = null;
   private bubbleTimer: Phaser.Time.TimerEvent | null = null;
@@ -68,11 +70,27 @@ export class Character {
     this.sync();
   }
 
-  /** Name and <Title> over the head, with "Jailed" while in jail (null removes them). */
-  setNameTag(nickname: string | null, title: TitleData, jailed = false): void {
+  /** Name and <Title> over the head (null removes them). */
+  setNameTag(nickname: string | null, title: TitleData): void {
     this.tag?.destroy();
-    this.tag = nickname ? new NameTag(this.scene, nickname, title, jailed) : null;
+    this.tag = nickname ? new NameTag(this.scene, nickname, title) : null;
     this.tag?.setZoom(this.zoom);
+    this.sync();
+  }
+
+  /** Jail bars over the character (manifest fx jailBars, in the same cell, on top of their layers), or off. */
+  setJailed(on: boolean): void {
+    if (!on) {
+      this.bars?.destroy();
+      this.bars = null;
+      return;
+    }
+    const fx = this.M.fx.jailBars;
+    if (this.bars || !fx?.file || !this.scene.textures.exists(fx.file)) return;
+    const [w, h] = fx.size ?? this.M.characters.cell;
+    const [ax, ay] = fx.anchor ?? this.M.characters.anchor;
+    this.bars = this.scene.add.sprite(0, 0, fx.file).setOrigin(ax / w, ay / h);
+    this.onSpawn?.(this.bars); // tinted with the world at night
     this.sync();
   }
 
@@ -307,6 +325,7 @@ export class Character {
     const depth = this.sittingAt?.depth ?? (this.depthFn ? this.depthFn(t.col, t.row, feet, this.sprite.getBounds(this.boundsCache)) : feet);
     this.sprite.setDepth(depth);
     this.shadow?.setPosition(Math.round(x), Math.round(y)).setDepth(depth - 0.2);
+    this.bars?.setPosition(Math.round(x), Math.round(y)).setDepth(depth + 0.05);
     // The name sits just over the head (2 px above its first visible row); an alert goes above it.
     const plateBottom = Math.round(y) - this.M.characters.anchor[1] + this.head - 2;
     this.tag?.place(Math.round(x), plateBottom);
@@ -333,6 +352,7 @@ export class Character {
     this.sprite.destroy();
     this.shadow?.destroy();
     this.alert?.destroy();
+    this.bars?.destroy();
     this.tag?.destroy();
     this.bubbleTimer?.remove();
     this.bubble?.destroy();
@@ -344,6 +364,6 @@ export class Character {
 
   /** Sprites to tint with the world. */
   get tintables(): Phaser.GameObjects.Components.Tint[] {
-    return [this.sprite, ...(this.shadow ? [this.shadow] : [])];
+    return [this.sprite, ...(this.shadow ? [this.shadow] : []), ...(this.bars ? [this.bars] : [])];
   }
 }

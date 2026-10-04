@@ -56,6 +56,15 @@ export function queueTown(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Tex
   const E = M.ui.emotes;
   if (E?.file && E.size) queueSheet(load, textures, E.file, E.size[0], E.size[1]);
 
+  // The Mine's dig panel, and the item art (shown in pop-ups and the dig panel).
+  const D = M.ui.digPanel;
+  if (D) queueSheet(load, textures, D.file, D.size[0], D.size[1]);
+  for (const a of Object.values(M.items ?? {})) {
+    if (a.icon) img(a.icon);
+    if (a.showcase) img(a.showcase);
+    if (a.anim) queueSheet(load, textures, a.anim.file, a.anim.frame[0], a.anim.frame[1]);
+  }
+
   for (const fx of Object.values(M.fx)) {
     if (!fx.file) continue;
     if (fx.frame) queueSheet(load, textures, fx.file, fx.frame[0], fx.frame[1]);

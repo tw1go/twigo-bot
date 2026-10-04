@@ -127,13 +127,28 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
 - Tanod outpost (`ui/outpost.ts`, left click the outpost), tabs Jail (you, who's in, bail yourself or a friend: `/bail`'s
   rules via `payBail` in `games/jail.ts`) and Patrol (the rules, and whether roll is being called now). Bot `GET
   /town/outpost`, `POST /town/bail` (`web/town-outpost.ts`; jailed members get a per-startup hashed id, never their
-  Discord id). Jailed players show "JAILED" under their name (`TownPlayer.jailed`, `jailed` messages from `jail()` /
+  Discord id). Jailed players get the jail bars art over them (fx `jailBars`, `Character.setJailed`; `TownPlayer.jailed`, `jailed` messages from `jail()` /
   `release()` via `townJailed`); jail blocks diss/praise/judge in town. Dev: `&status=jailed`, `/__jail?name=Bob&on=1`.
 - Notice board (`ui/board.ts`, left click the board): `/request` quests as notes on cork (Accept, Give up, Complete =
   pay, Cancel = refund; complete/cancel ask twice) and a Post a quest tab. Bot `GET/POST /town/board`
   (`web/town-board.ts`); Discord's buttons and the town share `questAction` / `cantPost` / `addQuest` in
   `quests/board.ts`. Town-posted quests get their card in the games channel; town actions edit the card and post the
   same reply under it. Tasks from town pass the town's word filter. Dev: a pretend board.
+- Item art (`ui/item-art.ts`): manifest `items` maps an item id (dig items, `/redeem` rewards) to `icon` (16 px, rows),
+  `showcase` (32 px, pop-ups) and `anim` (a looping 32 px sheet); files in `assets/ui/items/` as `item-<id>.png`,
+  `item-<id>@32.png`, `item-<id>@32-anim.png`. Drawn in a rarity frame (1 px border + glow; legendary/secret shimmer) at
+  whole-number scales; ids without art keep their emoji/text. Shop items use the common frame.
+- Mine + dig panel (`ui/mine.ts`, `ui/dig-panel.ts`): left click the mine → digs left, shovel uses, Dig (`POST /town/dig`,
+  bot `web/town-mine.ts`). `/dig` and the Mine share `digFor` in `dig/dig.ts` (tested: `npm test`, `dig/dig.test.ts`).
+  Dig feed lines carry `itemId`/`itemName` and the digger's town `playerId` (the town swaps the Discord id for it):
+  your own plays the dig panel (manifest `ui.digPanel`; falls back to the reward pop-up), others' puff `fx dig-dust` at
+  the Mine door. Dev: `&find=karaoke-mic`, `/__system?kind=dig&itemId=…&itemName=…&as=Name`.
+- Inventory (`ui/inventory.ts`): a bag button beside the chat input (manifest `ui.inventoryIcon`) opens the bag on the
+  right: 5 × 10 slots in the inventory slot art, one per item (dug-up items, Master Keys, potions: the bag counts them
+  all, `dig/bag.ts` `usedSlots`), unlocked = `capacity`, the rest marked X; dug-up items offer Flex / Sell, keys and
+  potions say how they're used; tabs All / Dug up / Misc; item slots bordered in their rarity's colour; B toggles it;
+  Kowens at the bottom. Bot `GET /town/inventory`, `POST /town/sell`, `POST /town/flex`
+  (`web/town-bag.ts`; flex shares `flexEmbed` and the cooldown with `/flex`). Dev: a pretend bag (`&slots=18`).
 - Moderation (`/town mute|unmute|kick|filter`, mods/admins; bot `web/town-mod.ts`, kv 'town-moderation'): mutes block
   town chat, kicks close the socket (4001, back-at time) and refuse rejoining, blocked words become *** (whole words,
   repeated letters). Actions are logged in the admin channel. The word list lives only in the database.

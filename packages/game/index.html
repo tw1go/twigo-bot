@@ -266,6 +266,51 @@
       #chat .ch-row .ch-input { flex: 1; min-width: 0; }
       /* Emote picker (ui/emotes.ts): a button beside the input, a row of icons above it. */
       #chat .em-wrap { position: relative; }
+      /* The bag button: its own framed button just right of the chat box (top right, under Settings, on phones). */
+      #bag-button { position: fixed; z-index: 2; bottom: 12px; left: calc(12px + min(460px, 100vw - 24px) + 10px); display: flex; align-items: center; justify-content: center; width: 56px; height: 56px; box-sizing: border-box; padding: 0; border: 2px solid #7C2AE8; background: #111827; }
+      #bag-button.iv-framed-button { --px: 2; border-style: solid; border-width: calc(var(--slice) * var(--px) * 1px); border-image-source: var(--frame); border-image-slice: var(--slice) fill; border-image-width: calc(var(--slice) * var(--px) * 1px); border-image-repeat: round; image-rendering: pixelated; background: none; }
+      #bag-button:hover .iv-icon, #bag-button[aria-expanded='true'] .iv-icon { transform: translateY(-2px); filter: brightness(1.2); }
+      #bag-button .iv-icon { display: block; width: 32px; height: 32px; image-rendering: pixelated; }
+      @media (max-width: 760px) { #bag-button { left: auto; right: 12px; bottom: auto; top: 64px; width: 48px; height: 48px; } }
+      /* The inventory (ui/inventory.ts): the bag on the right, in the item frame; 5 × 10 slots (the slot art, 2×),
+         locked ones marked with an X; the picked item's Flex / Sell; Kowens at the bottom. */
+      #inventory { position: fixed; right: 12px; top: 72px; z-index: 3; display: flex; flex-direction: column; gap: 10px; width: 420px; max-width: calc(100vw - 24px); max-height: calc(100vh - 96px); box-sizing: border-box; padding: 12px 14px 14px; border: 2px solid #7C2AE8; background: rgba(17, 24, 39, 0.96); color: #c0caf5; font: 15px/1.35 var(--ui-font); }
+      #inventory[hidden] { display: none; }
+      #inventory.iv-framed { --px: 2; border-style: solid; border-width: calc(var(--slice) * var(--px) * 1px); border-image-source: var(--frame); border-image-slice: var(--slice) fill; border-image-width: calc(var(--slice) * var(--px) * 1px); border-image-repeat: round; image-rendering: pixelated; background: none; padding: 2px 4px 4px; }
+      #inventory .iv-head { flex: none; display: flex; align-items: center; gap: 8px; }
+      #inventory .iv-title { font-size: 22px; font-weight: 700; color: #fff; }
+      #inventory .iv-slots { padding: 0 8px; border: 2px solid #3D4256; font-size: 14px; font-weight: 700; color: #A9B1D6; }
+      #inventory .iv-slots.iv-full { border-color: #F7768E; color: #F7768E; }
+      #inventory .iv-close { margin-left: auto; width: 32px; height: 32px; padding: 0; border: 0; background: none; color: #7A8099; font: 26px/1 var(--ui-font); }
+      #inventory .iv-close:hover { color: #fff; }
+      #inventory .iv-grid { position: relative; flex: 1 1 auto; display: grid; grid-template-columns: repeat(var(--cols, 5), 72px); grid-auto-rows: 72px; gap: 3px; justify-content: center; align-content: start; overflow-y: auto; min-height: 150px; }
+      #inventory .iv-cell { position: relative; display: flex; align-items: center; justify-content: center; width: 72px; height: 72px; box-sizing: border-box; padding: 0; border-style: solid; border-width: 12px; border-image: var(--slot) var(--slot-slice, 4) fill / 12px round; background: none; image-rendering: pixelated; font: inherit; }
+      #inventory button.iv-cell:hover { filter: brightness(1.25); }
+      #inventory .iv-item { outline: 3px solid var(--rarity, #7A8099); outline-offset: -3px; } /* the item's rarity */
+      #inventory .iv-picked { border-image-source: var(--slot-picked); outline-color: #A3E635; }
+      #inventory .iv-tabs { flex: none; display: flex; gap: 4px; border-bottom: 3px solid #1E1B3A; }
+      #inventory .iv-tab { flex: 1; padding: 6px 8px 5px; border: 2px solid #3D4256; border-bottom: 0; border-radius: 0; background: #1E1B3A; color: #A9B1D6; font: inherit; font-size: 14px; font-weight: 700; }
+      #inventory .iv-tab:hover { color: #fff; }
+      #inventory .iv-tab[aria-selected='true'] { border-color: #7C2AE8; background: #7C2AE8; color: #fff; box-shadow: inset 0 2px 0 #A78BFA; }
+      #inventory .iv-cell .it-frame { margin: -12px; }
+      #inventory .iv-locked::after { content: ''; position: absolute; inset: 0; margin: auto; width: 30px; height: 30px; background: var(--px-lock) 0 0 / 30px 30px; image-rendering: pixelated; opacity: 0.9; }
+      #inventory .iv-emoji { font-size: 30px; line-height: 1; }
+      #inventory .iv-empty-note { position: absolute; left: 0; right: 0; top: 14px; text-align: center; font-size: 14px; color: #A9B1D6; pointer-events: none; }
+      #inventory .iv-detail { flex: none; min-height: 80px; padding: 10px 6px 0; border-top: 2px solid #1E1B3A; }
+      #inventory .iv-name { font-size: 21px; font-weight: 700; }
+      #inventory .iv-meta, #inventory .iv-hint { font-size: 14px; color: #A9B1D6; }
+      #inventory .iv-about { margin-top: 6px; font-size: 14px; color: #c0caf5; }
+      #inventory .iv-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+      #inventory .iv-act { padding: 6px 14px; border: 3px solid #1E1B3A; border-radius: 0; font: inherit; font-size: 15px; font-weight: 700; color: #1E1B3A; box-shadow: 0 3px 0 #0B0A1A; }
+      #inventory .iv-act:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 #0B0A1A; }
+      #inventory .iv-act:disabled { opacity: 0.5; }
+      #inventory .iv-flex { background: #B794F6; }
+      #inventory .iv-sell { background: #FCDA4A; }
+      #inventory .iv-note { margin-top: 8px; font-size: 14px; font-weight: 600; color: #A3E635; }
+      #inventory .iv-note.iv-bad { color: #F7768E; }
+      #inventory .iv-wallet { flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 6px 0; border-top: 2px solid #1E1B3A; font-size: 15px; color: #A9B1D6; }
+      #inventory .iv-wallet b { font-size: 24px; color: #F8BF27; }
+      @media (max-width: 760px) { #inventory { top: 132px; right: 8px; max-height: calc(100vh - 150px); } #inventory .iv-grid { grid-template-columns: repeat(var(--cols, 5), minmax(0, 60px)); grid-auto-rows: 60px; } #inventory .iv-cell { width: 100%; height: 60px; } }
       #chat .em-open { height: 100%; min-width: 38px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 4px; background: rgba(0, 0, 0, 0.35); padding: 0 6px; }
       #chat .em-open:hover, #chat .em-open[aria-expanded='true'] { background: rgba(0, 0, 0, 0.55); box-shadow: 0 0 0 1px rgba(183, 148, 246, 0.6); }
       #chat .em-palette { position: absolute; right: 0; bottom: calc(100% + 8px); display: flex; gap: 4px; padding: 6px; border-radius: 6px; background: rgba(10, 12, 24, 0.85); }
@@ -348,6 +393,7 @@
       @media (max-width: 760px) { #target { top: 64px; } }
       #chat .ch-verdict { padding: 0 4px; border-radius: 2px; font-size: 12px; font-weight: 700; }
       #chat .ch-roast { background: rgba(247, 118, 142, 0.25); color: #F7768E; }
+      #chat .ch-flex { background: rgba(248, 191, 39, 0.2); color: #F8BF27; }
       #chat .ch-praise { background: rgba(240, 171, 252, 0.2); color: #F0ABFC; }
       /* Banners (ui/announce.ts): floating top centre, below the HUD; jackpot gold with casino lights, notices amber. */
       .announce { position: fixed; top: 88px; left: 50%; z-index: 4; width: min(520px, calc(100vw - 32px)); box-sizing: border-box; padding: 14px 40px 14px 18px; background: rgba(17, 24, 39, 0.94); color: #E6E9F2; font: 15px/1.35 var(--ui-font); text-align: center; box-shadow: 0 4px 0 #1E1B3A; transform: translateX(-50%); animation: an-in 0.4s cubic-bezier(0.2, 1.4, 0.4, 1); }
@@ -384,6 +430,64 @@
       #reward .lb-foot { min-height: 18px; margin-bottom: 14px; font-size: 13px; font-weight: 600; color: #5B21B6; }
       #reward .lb-foot:empty { display: none; }
       /* The podium: the top 3 standing on their steps (1st in the middle, tallest). */
+      /* Item art (ui/item-art.ts): a picture in its rarity frame, crisp pixels; legendary and secret frames shimmer. */
+      .it-frame { position: relative; display: inline-block; flex: none; vertical-align: middle; background-repeat: no-repeat; background-position: 0 0; image-rendering: pixelated; }
+      .it-pic { position: absolute; background-repeat: no-repeat; background-position: 0 0; image-rendering: pixelated; }
+      .it-anim { animation-name: it-anim; animation-iteration-count: infinite; }
+      @keyframes it-anim { to { background-position: var(--strip) 0; } }
+      .it-shimmer { animation: it-shimmer 0.8s steps(1) infinite; }
+      @keyframes it-shimmer { 50% { background-position: calc(-1 * var(--cell)) 0; } }
+      @media (prefers-reduced-motion: reduce) { .it-anim, .it-shimmer { animation: none; } }
+      #reward .rw-item-name { font-size: 20px; font-weight: 700; filter: drop-shadow(1px 0 0 #1E1B3A) drop-shadow(-1px 0 0 #1E1B3A) drop-shadow(0 1px 0 #1E1B3A) drop-shadow(0 -1px 0 #1E1B3A); }
+      /* The dig panel (ui/dig-panel.ts): over the dimmed town (and any pop-up), the dig played once at a whole-number
+         scale; the find rises out of the hole; the name and rarity show under it once the dig is done. */
+      #dig-panel { position: fixed; inset: 0; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: rgba(4, 4, 12, 0.6); font: 15px/1.3 var(--ui-font); animation: rw-dim 0.2s ease-out; }
+      #dig-panel.dp-out { opacity: 0; transition: opacity 0.18s; }
+      body:has(#dig-panel) #reward { visibility: hidden; } /* the Mine's pop-up steps aside while the dig plays */
+      #dig-panel .dp-box { position: relative; }
+      #dig-panel .dp-sheet { position: absolute; inset: 0; background-repeat: no-repeat; background-position: 0 0; image-rendering: pixelated; }
+      #dig-panel .dp-find { position: absolute; opacity: 0; transform: translateY(0); transition-property: transform; transition-timing-function: steps(4); }
+      #dig-panel .dp-find.dp-up { opacity: 1; transform: translateY(var(--rise)); }
+      #dig-panel .dp-shake { animation: dp-shake 0.24s steps(1) 1; }
+      @keyframes dp-shake { 0% { transform: translate(var(--shake), 0); } 25% { transform: translate(calc(-1 * var(--shake)), var(--shake)); } 50% { transform: translate(var(--shake), calc(-1 * var(--shake))); } 75% { transform: translate(calc(-1 * var(--shake)), 0); } 100% { transform: none; } }
+      #dig-panel .dp-label { min-height: 84px; text-align: center; opacity: 0; }
+      #dig-panel .dp-label.dp-shown { opacity: 1; }
+      #dig-panel .dp-head { font-size: 18px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #FFFFFF; text-shadow: 0 2px 0 #1E1B3A, 2px 0 0 #1E1B3A, -2px 0 0 #1E1B3A; }
+      #dig-panel .dp-name { font-size: 34px; line-height: 1.2; font-weight: 700; text-shadow: 0 3px 0 #1E1B3A, 3px 0 0 #1E1B3A, -3px 0 0 #1E1B3A, 0 -3px 0 #1E1B3A, 0 6px 0 rgba(0, 0, 0, 0.5); }
+      #dig-panel .dp-rarity { font-size: 17px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; text-shadow: 0 2px 0 #1E1B3A; }
+      @media (prefers-reduced-motion: reduce) { #dig-panel .dp-shake { animation: none; } #dig-panel .dp-find { transition: none; } }
+      /* The Mine (ui/mine.ts). */
+      #reward .rw-card:has(.mn-body) { width: min(340px, calc(100vw - 32px)); }
+      /* The Mine is stone instead of the white pop-up: pixel stone blocks (ui/pixel-tiles.ts, scaled 3×) in a dark rock
+         frame, with hard steps for shadows and a chiselled title. */
+      #reward .rw-card.rw-card:has(.mn-body) { border: 9px solid #23252F; border-image: none; padding: 16px 18px; color: #E6E9F2; background: #6B6F80 var(--px-stone) 0 0 / 144px 96px; image-rendering: pixelated; box-shadow: inset 0 0 0 3px #4A4D5E, inset 0 0 0 6px #33364A, 0 0 0 3px #0E0F16, 0 9px 0 3px #0E0F16; }
+      #reward .rw-card:has(.mn-body) .rw-title { font-size: 26px; color: #E6E9F2; text-shadow: 0 -3px 0 #2E3040, 0 3px 0 #A9ADBD, 3px 3px 0 #2E3040, -3px 3px 0 #2E3040, 0 6px 0 #1A1B24; }
+      #reward .mn-body .mn-stat { border: 3px solid #2E3040; border-radius: 0; background: rgba(30, 31, 43, 0.82); color: #A9ADBD; box-shadow: inset 3px 3px 0 #15161F, 0 3px 0 #8A8EA0; }
+      #reward .mn-body .mn-stat b { color: #FDE68A; text-shadow: 0 2px 0 #15161F; }
+      #reward .mn-body .mn-find { box-shadow: 0 0 0 3px #15161F, 0 6px 0 3px #15161F; }
+      #reward .mn-body .mn-note { color: #FDE68A; text-shadow: 0 2px 0 #15161F; }
+      #reward .mn-body .mn-note.bk-refused { color: #FECACA; }
+      #reward .mn-body .mn-hint { padding: 6px 8px; background: rgba(30, 31, 43, 0.72); color: #C7CAD6; box-shadow: inset 0 0 0 3px #2E3040; }
+      #reward .mn-body { margin-bottom: 14px; }
+      #reward .mn-stats { display: flex; gap: 10px; margin-bottom: 14px; }
+      #reward .mn-stat { flex: 1; display: flex; flex-direction: column; padding: 8px; border: 2px solid #E2DDF3; border-radius: 2px; background: #F5F3FF; font-size: 12px; color: #7A8099; }
+      #reward .mn-stat b { font-size: 22px; color: #5B21B6; }
+      #reward .mn-dig { min-width: 140px; padding: 9px 22px 11px; border: 3px solid #1E1B3A; border-radius: 0; background: #E0A671; color: #1E1B3A; font: inherit; font-size: 17px; font-weight: 700; box-shadow: inset 0 3px 0 #F3C79B, inset 0 -4px 0 #8A5A30, 0 4px 0 #1E1B3A; }
+      #reward .mn-dig:hover:not(:disabled) { background: #EBB687; }
+      #reward .mn-dig:active:not(:disabled) { transform: translateY(3px); box-shadow: inset 0 3px 0 #F3C79B, inset 0 -2px 0 #8A5A30, 0 1px 0 #1E1B3A; }
+      #reward .mn-dig:disabled { opacity: 0.6; }
+      #reward .mn-note { min-height: 20px; margin-top: 8px; }
+      #reward .mn-found:empty { display: none; }
+      #reward .mn-find { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; padding: 10px 12px; border: 3px solid var(--rarity); background: #1E1B3A; text-align: left; box-shadow: 0 4px 0 #0B0A1A; animation: mn-pop 0.3s cubic-bezier(0.2, 1.4, 0.4, 1); }
+      #reward .mn-find-text { min-width: 0; }
+      #reward .mn-find-head { font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #E6E9F2; }
+      #reward .mn-find-name { font-size: 22px; font-weight: 700; line-height: 1.15; overflow-wrap: anywhere; }
+      #reward .mn-junk .mn-find-name { color: #9AA1B8 !important; }
+      #reward .mn-epic .mn-find-name { color: #B794F6 !important; }
+      #reward .mn-find-meta { margin-top: 2px; font-size: 13px; color: #A9B1D6; }
+      @keyframes mn-pop { from { transform: scale(0.85); opacity: 0; } }
+      @media (prefers-reduced-motion: reduce) { #reward .mn-find { animation: none; } }
+      #reward .mn-hint { margin: 4px 0 0; font-size: 12px; color: #7A8099; }
       /* Notice board (ui/board.ts; tabs share the bank's .bk-tabs): a wooden sign on two posts with quests pinned on cork,
          all pixel art: the wood, posts, cork and pins are small tiles drawn in code (ui/pixel-tiles.ts) and scaled 3×
          with crisp pixels; shadows are hard steps, never blurs. Fixed size. */

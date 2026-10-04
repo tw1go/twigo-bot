@@ -36,15 +36,19 @@ export interface Manifest {
   props: Record<string, PropDef> & { fence: FenceDef; 'tree-tufts': { files: string[]; size: Vec2 } };
   characters: CharacterDefs;
   fx: Record<string, FxDef>;
-  /** Item icons by id: rewards shop (/redeem ids) and dug-up items. */
-  items?: Record<string, { file: string; size: Vec2 }>;
+  /** Item art by id (dig items and /redeem rewards), only for the ids that have art. */
+  items?: Record<string, ItemArtDef>;
   ui: Record<string, { file?: string; size?: Vec2; frames?: number | string[] | Record<string, number>; fps?: number; anchor?: Vec2 }> & {
-    inventory?: { itemFrame?: { file: string; nineSlice: number } };
+    inventory?: { slot?: string; selected?: string; nineSlice?: number; itemFrame?: { file: string; nineSlice: number } };
     nameplate?: { file: string; self: string; threeSlice: number; height: number };
     speechBubble?: { file: string; nineSlice: number; tail: string; tailAnchor: Vec2 };
     chatWindow?: { file: string; nineSlice: number; input?: { file: string; focus: string; nineSlice: number } };
     shovelIcon?: { file: string; size: Vec2 };
+    /** The inventory button's bag, beside the chat input. */
+    inventoryIcon?: { file: string; size: Vec2 };
     loadingMoon?: { file: string; size: Vec2; frames: number; fps: number; loopFrames?: Vec2; anchor: Vec2 };
+    /** The Mine's dig: played once; the find rises from `hole` (its bottom centre) from cell `itemFrom`. */
+    digPanel?: { file: string; size: Vec2; frames: number; fps: number; loop: boolean; anchor: Vec2; hole: Vec2; itemFrom: number };
   };
 }
 
@@ -76,6 +80,14 @@ export interface FenceDef {
   post: string;
   size: Vec2;
   anchor: Vec2;
+}
+
+/** An item's art: a 16x16 icon for small rows, a 32x32 showcase for pop-ups, and a looping 32x32 sheet that replaces
+ *  the showcase where there is one. Any may be missing. */
+export interface ItemArtDef {
+  icon?: string;
+  showcase?: string;
+  anim?: { file: string; frame: Vec2; frames: number; fps: number; loop: boolean };
 }
 
 export interface FxDef {

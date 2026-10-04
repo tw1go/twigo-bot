@@ -1,6 +1,7 @@
 import type { TitleData } from '@mikazuki/shared';
 import { isColour, visible } from '../util/pixels';
 import { type Sfx, playSound } from '../audio/sound';
+import { type Rarity, RARITY_COLOUR, itemArt } from './item-art';
 
 // 🎁 The reward pop-up: the town dims, golden rays turn slowly behind a white box in the game's pixel frame, and
 // the box shows what you got — a title, Kowens, or a picture — with a congratulations line and a cheerful button.
@@ -9,7 +10,9 @@ import { type Sfx, playSound } from '../audio/sound';
 export type RewardGraphic =
   | { kind: 'title'; title: TitleData }
   | { kind: 'kowens'; amount: number }
-  | { kind: 'image'; url: string; alt: string };
+  | { kind: 'image'; url: string; alt: string }
+  /** An item (a dig find): its 32 px picture in its rarity frame, or its name where it has no art. */
+  | { kind: 'item'; id: string; name: string; rarity: Rarity };
 
 export interface Reward {
   title: string;
@@ -182,6 +185,12 @@ function graphic(g: RewardGraphic): HTMLElement {
     box.append(panel);
   } else if (g.kind === 'kowens') {
     box.append(coinIcon(5), el('div', 'rw-amount', `+${g.amount.toLocaleString()} ${g.amount === 1 ? 'Kowen' : 'Kowens'}`));
+  } else if (g.kind === 'item') {
+    const pic = itemArt(g.id, g.rarity, 'showcase', 3);
+    const name = el('div', 'rw-item-name', g.name);
+    name.style.color = RARITY_COLOUR[g.rarity];
+    if (pic) box.append(pic);
+    box.append(name);
   } else {
     const img = el('img', 'rw-image');
     img.src = g.url;

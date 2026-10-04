@@ -1,5 +1,5 @@
 // Small pixel-art tiles drawn in code for page panels that have no art of their own (the notice board's wood, posts,
-// cork and pins). Each is a few dozen pixels, repeated as a CSS background and scaled up with crisp pixels, so it
+// cork and pins; the Mine's stone). Each is a few dozen pixels, repeated as a CSS background and scaled up with crisp pixels, so it
 // matches the town's art. Seeded, so they look the same every time.
 
 /** A tiny seeded random (mulberry32). */
@@ -84,8 +84,53 @@ export const pinTile = (base: string, light: string, dark: string) =>
     rows.forEach((row, y) => [...row].forEach((ch, x) => ch !== '.' && px(x, y, ch === 'l' ? light : ch === 'b' ? base : dark)));
   }, 1);
 
+/** Stone blocks: two staggered rows of blocks with dark mortar, lit top-left edges, speckles and a crack; 48 × 32. */
+export const stoneTile = () =>
+  tile(48, 32, (px, rnd) => {
+    const shades = ['#6B6F80', '#636778', '#727689', '#5E6273'];
+    const rows = [
+      { y: 0, xs: [0, 20, 36] },
+      { y: 16, xs: [10, 28, 44] },
+    ];
+    for (const r of rows) {
+      const xs = r.xs;
+      for (let b = 0; b < xs.length; b++) {
+        const x0 = xs[b];
+        const x1 = (b + 1 < xs.length ? xs[b + 1] : xs[0] + 48) - 1; // wraps around the tile
+        const base = shades[Math.floor(rnd() * shades.length)];
+        for (let y = r.y; y < r.y + 16; y++) {
+          for (let x = x0; x <= x1; x++) {
+            const mortar = y === r.y + 15 || x === x1;
+            const lit = y === r.y || x === x0;
+            const n = rnd();
+            px(x, y, mortar ? '#2E3040' : lit ? '#8A8EA0' : n < 0.08 ? '#555869' : n < 0.14 ? '#7C8093' : base);
+          }
+        }
+        // A crack in some blocks.
+        if (rnd() < 0.5) {
+          let cx = x0 + 3 + Math.floor(rnd() * Math.max(1, x1 - x0 - 6));
+          for (let y = r.y + 3; y < r.y + 10; y++) {
+            px(cx, y, '#3F4253');
+            cx += rnd() < 0.5 ? 1 : 0;
+          }
+        }
+      }
+    }
+  }, 5);
+
+/** A locked slot's X, 10 × 10. */
+export const lockTile = () =>
+  tile(10, 10, (px) => {
+    for (let i = 1; i < 9; i++) {
+      px(i, i, '#5A5F78');
+      px(9 - i, i, '#5A5F78');
+      px(i + 1 > 8 ? i : i + 1, i, '#3D4256'); // a darker edge, so it reads as carved
+    }
+  }, 2);
+
 let made = false;
-/** Puts the tiles on the page as CSS variables (--px-wood, --px-post, --px-cork, --px-pin-red/green/blue), once. */
+/** Puts the tiles on the page as CSS variables (--px-wood, --px-post, --px-cork, --px-stone, --px-pin-red/green/blue),
+ *  once. */
 export function installPixelTiles(): void {
   if (made) return;
   made = true;
@@ -93,6 +138,8 @@ export function installPixelTiles(): void {
   root.setProperty('--px-wood', `url("${woodTile()}")`);
   root.setProperty('--px-post', `url("${postTile()}")`);
   root.setProperty('--px-cork', `url("${corkTile()}")`);
+  root.setProperty('--px-stone', `url("${stoneTile()}")`);
+  root.setProperty('--px-lock', `url("${lockTile()}")`);
   root.setProperty('--px-pin-red', `url("${pinTile('#DC2626', '#FCA5A5', '#7F1D1D')}")`);
   root.setProperty('--px-pin-green', `url("${pinTile('#16A34A', '#BBF7D0', '#14532D')}")`);
   root.setProperty('--px-pin-blue', `url("${pinTile('#0284C7', '#BAE6FD', '#0C4A6E')}")`);
