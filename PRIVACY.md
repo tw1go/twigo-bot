@@ -1,6 +1,6 @@
 # twigo bot — Privacy Policy
 
-_Last updated: October 4, 2026 (web game nicknames and titles; seeing other players and chatting in the town)_
+_Last updated: October 4, 2026 (web game nicknames and titles; seeing other players and chatting in the town; your status dot; the town's shops)_
 
 This policy explains what information the twigo Discord bot ("the bot", "we") collects, why, and how it is handled. By using the bot or being a member of a server where it runs, you agree to this policy.
 
@@ -58,7 +58,8 @@ The bot also powers [twigo's room](https://tw1go.github.io), a small website, th
 - **Your nickname in the game.** When you create your character, you pick a nickname. We store it with your user ID so the game can show it, and so no two members share one (this check ignores capital letters, spaces, `_`, `-` and `.`). Other players will see it in the game.
 - **Being in the town with others.** While you're in the town, the other logged-in members there see your character: your nickname, title, look, and where you walk or sit. The server keeps this only while you're connected and never saves it; other players get a random ID for you, never your Discord ID.
 - **Chatting in the town.** What you type in the town's chat is shown to the logged-in members there (in the chat box and as a speech bubble over your character) and posted, with your town nickname, in the server's town-chat Discord channel. Messages written in that channel are shown in the town's chat with your town nickname (or Discord name). The bot keeps the last 20 lines in memory so people arriving can catch up; nothing is saved to disk, and a restart clears them. Anything posted in Discord stays there like any other Discord message.
-- **Around-the-server feed in the town.** When you `/dig`, `/gamble` or win the jackpot in Discord, the result (for example "Moon dug up a Golden Crown" or "Moon won 20 Kowens gambling") is also shown to the members in the web town, with your town nickname if you have one. The bot keeps the last 10 lines in memory only.
+- **Your status in the town.** The dot on your own profile in the town shows whether you're online, idle or on do not disturb in Discord (or jailed). The bot reads your Discord status from Discord when the game asks for it and never saves it; only you see your dot.
+- **Around-the-server feed in the town.** When you `/dig`, `/gamble`, buy jackpot tickets or redeem rewards (in Discord or the town), or win the jackpot, the result (for example "Moon dug up a Golden Crown" or "Moon won 20 Kowens gambling") is also shown to the members in the web town, with your town nickname if you have one. The bot keeps the last 10 lines in memory only.
 - **Town moderation.** If a moderator mutes you in the town's chat or removes you from the town, we store your user ID, until when, and the reason they gave, and delete it when it runs out. Moderators also keep a list of blocked words for town chat. Each action is noted in the server's admin channel.
 - **Your title in the game.** Everyone starts as a Townfolk. If you earn another title as a reward, we store your user ID with the titles you've earned, when, which one you show under your nickname, and when the game showed you a new one (so it's announced only once).
 - **Your character's look.** If you save a look in the game's character creator while logged in, we store your user ID with the names of the items and colours you picked, so your character looks the same on any device. Without logging in, the look is kept only in your browser.
