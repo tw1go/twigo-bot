@@ -18,12 +18,24 @@ type NameOf = (id: string) => Promise<string>;
 const MAX_TASK = 300;
 const kowens = (n: number) => `${n.toLocaleString('en-US')} ${kowen(n)}`;
 
+/** A task as the town shows it: Discord's mention codes (from /request) turned into names — @Name for people (town
+ *  nickname or Discord name), and plain @role, #channel and :emoji: for the rest — so ids never reach the page. */
+async function readable(task: string, nameOf: NameOf): Promise<string> {
+  const ids = [...new Set([...task.matchAll(/<@!?(\d+)>/g)].map((m) => m[1]))];
+  const names = new Map(await Promise.all(ids.map(async (id) => [id, await nameOf(id)] as const)));
+  return task
+    .replace(/<@!?(\d+)>/g, (_, id: string) => `@${names.get(id) ?? 'someone'}`)
+    .replace(/<@&\d+>/g, '@role')
+    .replace(/<#\d+>/g, '#channel')
+    .replace(/<a?:(\w+):\d+>/g, ':$1:');
+}
+
 export async function townBoard(viewer: string, nameOf: NameOf): Promise<TownBoardResponse> {
   return {
     quests: await Promise.all(
       liveQuests().map(async (q) => ({
         id: q.id,
-        task: q.task,
+        task: await readable(q.task, nameOf),
         reward: q.reward,
         status: q.status as 'open' | 'accepted',
         by: await nameOf(q.requester),
