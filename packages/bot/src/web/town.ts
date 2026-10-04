@@ -51,6 +51,8 @@ export interface TownOptions {
   /** Their nickname, title and look; null if they haven't made a character yet. */
   profile: (userId: string) => TownProfile | null;
   map: TownMap;
+  /** Leave upgrades to other paths alone (the game's dev server shares its HTTP server with Vite's own socket). */
+  shared?: boolean;
   /** Someone said something in town (the Discord bridge passes it on). */
   onSay?: (userId: string, nickname: string, text: string) => void;
 }
@@ -202,7 +204,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   };
 
   server.on('upgrade', (req: IncomingMessage, socket: Duplex, head: Buffer) => {
-    if (new URL(req.url ?? '/', 'http://localhost').pathname !== '/ws') return void socket.destroy();
+    if (new URL(req.url ?? '/', 'http://localhost').pathname !== '/ws') return void (opts.shared || socket.destroy());
     void (async () => {
       const userId = await opts.authenticate(req).catch(() => null);
       const profile = userId ? opts.profile(userId) : null;

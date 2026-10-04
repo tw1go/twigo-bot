@@ -14,7 +14,10 @@ export class TownLink {
   /** The connection is gone for good (another tab took over). */
   onTakenOver: () => void = () => {};
 
-  constructor() {
+  constructor(
+    /** Dev only: the fake member's look, for the dev server's town (scripts/dev-town.ts). */
+    private readonly devLook: unknown = null,
+  ) {
     this.connect();
   }
 
@@ -38,7 +41,7 @@ export class TownLink {
   }
 
   private connect(): void {
-    const ws = new WebSocket(townUrl());
+    const ws = new WebSocket(townUrl(this.devLook));
     this.ws = ws;
     ws.onopen = () => (this.retry = 0);
     ws.onmessage = (e) => {
@@ -57,10 +60,13 @@ export class TownLink {
   }
 }
 
-/** /ws on this site (in dev, the fake login's name rides along for the local test server). */
-function townUrl(): string {
+/** /ws on this site (in dev, the fake login's name and look ride along for the dev server's town). */
+function townUrl(look: unknown): string {
   const url = new URL('/ws', location.href);
   url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  if (fakeLogin()) url.searchParams.set('dev', fakeName());
+  if (fakeLogin()) {
+    url.searchParams.set('dev', fakeName());
+    if (look) url.searchParams.set('look', JSON.stringify(look));
+  }
   return url.toString();
 }

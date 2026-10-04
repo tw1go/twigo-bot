@@ -288,7 +288,7 @@ export class TownScene extends Phaser.Scene {
 
   /** Joins the live town: others appear, the player's steps, turns and seats are passed on, and the chat opens. */
   private connect(): void {
-    const link = new TownLink();
+    const link = new TownLink(this.outfit);
     this.link = link;
     const B = this.M.ui.speechBubble;
     const bubbles: BubbleArt | null = B && this.textures.exists(B.file) ? lightBubble(this, { file: B.file, slice: B.nineSlice, tail: B.tail, tailAnchor: B.tailAnchor }) : null;
