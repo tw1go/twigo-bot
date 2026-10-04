@@ -11,6 +11,7 @@ export const TITLES: Record<string, TitleData> = {
   'game-master': { name: 'Game Master', color: 'prismatic' },
   fairy: { name: 'She was a Fairy', color: '#F0ABFC' },
   'low-battery': { name: '20% Battery Life', color: '#F8BF27' },
+  'thank-kyuuu': { name: 'Thank Kyuuu', color: '#5B8FD1' },
 };
 export const DEFAULT_TITLE = 'townfolk';
 
