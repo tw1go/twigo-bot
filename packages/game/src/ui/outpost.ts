@@ -5,7 +5,7 @@ import { el, showPopup } from './reward';
 
 // 🚔 The Tanod outpost (left click the outpost), in the reward box with two tabs. Jail: whether you're in, who else
 // is, until when and why, and bail (yours or a friend's: /bail's price and rules, POST /town/bail). Patrol: how Tanod
-// Patrol works, and whether the Tanod is calling roll in Discord right now.
+// Patrol works (as a notice pinned up at the outpost), and whether the Tanod is calling roll in Discord right now.
 
 const plural = (n: number, one: string, many: string) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
 const kowens = (n: number) => plural(n, 'Kowen', 'Kowens');
@@ -88,13 +88,22 @@ export function showOutpost(): void {
     if (!d) return;
     if (tab === 'patrol') {
       const p = d.patrol;
-      panel.replaceChildren(
-        ...(p.active ? [el('div', 'op-alert', 'The Tanod is calling roll in Discord right now! Answer in the games channel.')] : []),
-        el('p', 'op-text', `At random times between ${hour(p.fromHour)} and ${hour(p.untilHour)} (every ${p.minGapHours}–${p.maxGapHours} hours), the Tanod calls roll in Discord. You have ${p.windowSeconds} seconds to answer.`),
-        el('p', 'op-text', `The first three to answer get ${p.rewards.join(' · ')} Kowens.`),
-        el('p', 'op-text', `If ${p.rewards.length + 1} or more answer, the slowest spends ${plural(p.slowpokeMinutes, 'minute', 'minutes')} in jail.`),
-        el('p', 'op-text op-dim', "Nobody can answer from jail. If nobody answers at all, the Tanod decides the town was asleep."),
+      const poster = el('div', 'op-poster');
+      const rules = el('ol', 'op-poster-rules');
+      for (const text of [
+        `At random times between ${hour(p.fromHour)} and ${hour(p.untilHour)}, about every ${p.minGapHours}–${p.maxGapHours} hours, the Tanod calls roll in Discord.`,
+        `Answer within ${p.windowSeconds} seconds. The first three get ${p.rewards.join(' · ')} Kowens.`,
+        `If ${p.rewards.length + 1} or more answer, the slowest spends ${plural(p.slowpokeMinutes, 'minute', 'minutes')} in jail.`,
+        'Nobody answers from jail. If nobody answers at all, the town was asleep.',
+      ]) rules.append(el('li', undefined, text));
+      poster.append(
+        el('div', 'op-poster-kicker', 'Notice to all residents'),
+        el('div', 'op-poster-title', 'Tanod Patrol'),
+        ...(p.active ? [el('div', 'op-poster-live', 'Roll call now! Answer in Discord.')] : []),
+        rules,
+        el('div', 'op-poster-stamp', 'By order of the Tanod'),
       );
+      panel.replaceChildren(poster);
       return;
     }
 
