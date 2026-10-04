@@ -1,0 +1,40 @@
+// What the loading screen says under the bar while the town's art downloads: a witty line or a bit of trivia,
+// picked at random and changed every few seconds. Add freely; keep each one short enough for two lines on a phone,
+// and keep the trivia true.
+
+export const LOADING_LINES: string[] = [
+  // The town getting ready
+  'Polishing the cobblestones…',
+  'Teaching the lamps to switch on at sunset…',
+  'Asking the fountain to keep it down…',
+  'Counting the Kowens. Twice. Just to be sure.',
+  'Convincing the Tanod you are not a suspect…',
+  'Herding fireflies into the meadow…',
+  'Sharpening shovels for the next dig…',
+  'Waking up the Game Master…',
+  'Hanging the crescent moon. Carefully.',
+  'Untangling everyone’s hair…',
+  'Hiding Kowens in suspicious places…',
+  'Reminding the casino that the house always wins…',
+  'Watering the purple trees (yes, they are meant to be purple)…',
+  'Brushing pixel dust off the benches…',
+  'Rolling out the paths, one tile at a time…',
+
+  // Trivia
+  'Mikazuki (三日月) means “third-day moon”: the thin crescent you see about three days after the new moon.',
+  'The Moon drifts about 3.8 cm farther from Earth every year.',
+  'A day on Venus is longer than its year: 243 Earth days to spin once, 225 to go around the Sun.',
+  'Octopuses have three hearts and blue blood.',
+  'Bananas are berries. Strawberries are not.',
+  'Sharks are older than trees: about 450 million years versus about 385.',
+  'Cleopatra lived closer in time to the Moon landing than to the building of the Great Pyramid.',
+  'Wombats make cube-shaped poop.',
+  'The Eiffel Tower grows about 15 cm taller in summer, as its iron expands in the heat.',
+  'Sunlight takes about 8 minutes to reach Earth, so you always see the Sun as it was 8 minutes ago.',
+  'The Philippines has more than 7,600 islands.',
+  'A teaspoon of neutron star would weigh around a billion tonnes.',
+  'There are more possible games of chess than atoms in the observable universe.',
+  'Honey never really spoils: jars found in ancient Egyptian tombs were still edible.',
+  'Astronauts on the Moon left footprints that could last millions of years: there is no wind to blow them away.',
+  'Only one side of the Moon ever faces Earth: it spins exactly once each time it goes around us.',
+];

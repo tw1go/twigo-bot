@@ -29,6 +29,7 @@ export class CreateScene extends Phaser.Scene {
 
   create(): void {
     this.cameras.main.setBackgroundColor('#000000');
+    document.getElementById('hud')?.removeAttribute('hidden'); // your name and Log out, over the creator
     this.load.setPath(`${import.meta.env.BASE_URL}assets/`);
     const { manifest, me } = this.args;
     const C = manifest.characters;

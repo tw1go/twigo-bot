@@ -6,7 +6,8 @@ import { type Outfit, assetProblems, buildOutfit, headPortrait, loadOutfit, outf
 import { startingOutfit } from '../characters/looks';
 import type { MeResult } from '../session';
 import { cursor } from '../ui/cursor';
-import { BuildingLabel } from '../ui/labels';
+import { BuildingLabel, UI_FONT } from '../ui/labels';
+import { LOADING_LINES } from '../ui/loading-lines';
 import { TownLink } from '../net/town';
 import { showElsewhere } from '../ui/elsewhere';
 import { mountTownHud } from '../ui/townhud';
@@ -112,6 +113,8 @@ export class TownScene extends Phaser.Scene {
   }
 
   preload(): void {
+    // (The page's login corner is hidden: the loading screen is just the moon and the bar; the town's HUD follows.)
+    document.getElementById('hud')?.setAttribute('hidden', '');
     this.load.setPath(`${import.meta.env.BASE_URL}assets/`);
     queueTown(this.load, this.textures, this.M, this.map);
     for (const f of outfitFiles(this.M.characters, this.outfit)) queueImage(this.load, this.textures, f);
@@ -120,28 +123,56 @@ export class TownScene extends Phaser.Scene {
     if (this.load.list.size) this.showLoading();
   }
 
-  /** A loading bar while the town's art downloads (a build fetches a dozen packed sheets; dev, a few hundred loose images). */
+  /** While the town's art downloads: the loading moon over a bar, and a witty line or some trivia under it that
+   *  changes every few seconds. No file counts. */
   private showLoading(): void {
     const { width, height } = this.scale;
+    const scale = width >= 960 && height >= 600 ? 3 : 2; // whole-number pixels, like the town's zoom
     const w = Math.min(320, width - 64);
     const x = Math.round((width - w) / 2);
-    const y = Math.round(height / 2);
+    const y = Math.round(height / 2 + 24);
+    const parts: Phaser.GameObjects.GameObject[] = [];
+
+    const m = this.M.ui.loadingMoon;
+    if (m && this.textures.exists(m.file)) {
+      const [from, to] = m.loopFrames ?? [0, m.frames - 1];
+      const key = `anim:${m.file}`;
+      if (!this.anims.exists(key)) {
+        // Forwards, then back again (rewinding), so the loop never jumps.
+        this.anims.create({ key, frames: this.anims.generateFrameNumbers(m.file, { start: from, end: to }), frameRate: m.fps, repeat: -1, yoyo: true });
+      }
+      const moon = this.add.sprite(width / 2, y - 12, m.file, from).setOrigin(m.anchor[0] / m.size[0], m.anchor[1] / m.size[1]);
+      parts.push(moon.setScale(scale).setScrollFactor(0).play(key));
+    }
+
     const frame = this.add.graphics().setScrollFactor(0);
+    frame.lineStyle(2, 0x7c2ae8).strokeRect(x - 2, y - 2, w + 4, 12);
     const bar = this.add.graphics().setScrollFactor(0);
-    const text = this.add
-      .text(width / 2, y - 18, 'Loading Mikazuki town…', { fontFamily: "'Pixelify Sans', system-ui, sans-serif", fontSize: '14px', color: '#c0caf5' })
-      .setOrigin(0.5)
+    const line = this.add
+      .text(width / 2, y + 28, '', { fontFamily: UI_FONT, fontSize: '15px', color: '#a9b1d6', align: 'center', wordWrap: { width: Math.min(440, width - 48) } })
+      .setOrigin(0.5, 0)
       .setScrollFactor(0);
-    frame.lineStyle(1, 0x565f89).strokeRect(x - 1, y - 1, w + 2, 10);
-    const progress = (p: number) => {
-      bar.clear().fillStyle(0x9ece6a).fillRect(x, y, Math.round(w * p), 8);
-      text.setText(`Loading Mikazuki town… ${this.load.totalComplete}/${this.load.totalToLoad}`);
+    parts.push(frame, bar, line);
+
+    // A line at random, then the next one after a while (never the same twice in a row).
+    let last = -1;
+    const next = () => {
+      let i = Math.floor(Math.random() * LOADING_LINES.length);
+      if (i === last) i = (i + 1) % LOADING_LINES.length;
+      last = i;
+      line.setText(LOADING_LINES[i]).setAlpha(0);
+      this.tweens.add({ targets: line, alpha: 1, duration: 300 });
     };
+    next();
+    const rotate = this.time.addEvent({ delay: 4500, loop: true, callback: next });
+
+    const progress = (p: number) => bar.clear().fillStyle(0xa3e635).fillRect(x, y, Math.round(w * p), 8);
     this.load.on(Phaser.Loader.Events.PROGRESS, progress);
     // Only for the first load: later ones (a new outfit's layers) would update a destroyed bar.
     this.load.once(Phaser.Loader.Events.COMPLETE, () => {
       this.load.off(Phaser.Loader.Events.PROGRESS, progress);
-      [frame, bar, text].forEach((g) => g.destroy());
+      rotate.remove();
+      parts.forEach((g) => g.destroy());
     });
   }
 

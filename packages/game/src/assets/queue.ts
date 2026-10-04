@@ -11,7 +11,7 @@ export function queueImage(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Te
   else if (!textures.exists(file)) load.image(file, file);
 }
 
-function queueSheet(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Textures.TextureManager, file: string, w: number, h: number): void {
+export function queueSheet(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Textures.TextureManager, file: string, w: number, h: number): void {
   if (packed(file)) queuePacked(load, textures, file, [w, h]);
   else if (!textures.exists(file)) load.spritesheet(file, file, { frameWidth: w, frameHeight: h });
 }

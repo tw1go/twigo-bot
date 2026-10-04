@@ -15,6 +15,8 @@ else showComingSoon(document.getElementById('game')!);
 void startHud(document.getElementById('hud')!);
 
 function startGame(): void {
+  // The login corner stays out of the way while the game starts (the creator shows it; the town has its own HUD).
+  document.getElementById('hud')?.setAttribute('hidden', '');
   new Phaser.Game({
     type: Phaser.AUTO,
     parent: 'game',

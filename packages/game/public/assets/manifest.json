@@ -1777,6 +1777,25 @@
         "file": "ui/ui-item-frame.png",
         "nineSlice": 6
       }
+    },
+    "loadingMoon": {
+      "file": "ui/ui-loading-moon.png",
+      "size": [
+        64,
+        64
+      ],
+      "frames": 18,
+      "fps": 8,
+      "loop": true,
+      "loopFrames": [
+        2,
+        17
+      ],
+      "anchor": [
+        32,
+        63
+      ],
+      "note": "play above the loading bar; cell 0 is blank and cell 1 is a lead-in, so loop cells 2-17 (16 frames) to avoid a blink"
     }
   },
   "notes_ui": "All UI is drawn at 1x and scaled by the same whole-number zoom as the world. Text is never baked in: draw it with Minecraft.ttf."

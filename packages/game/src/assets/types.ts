@@ -39,6 +39,7 @@ export interface Manifest {
   ui: Record<string, { file?: string; size?: Vec2; frames?: number | string[] | Record<string, number>; fps?: number; anchor?: Vec2 }> & {
     inventory?: { itemFrame?: { file: string; nineSlice: number } };
     nameplate?: { file: string; self: string; threeSlice: number; height: number };
+    loadingMoon?: { file: string; size: Vec2; frames: number; fps: number; loopFrames?: Vec2; anchor: Vec2 };
   };
 }
 
