@@ -1680,6 +1680,21 @@
         "fx/fx-tree-shadow-80.png"
       ],
       "note": "flat 40% navy ellipse under tree canopies; the map says which size each tree uses"
+    },
+    "dig-dust": {
+      "file": "fx/fx-dig-dust.png",
+      "frame": [
+        32,
+        32
+      ],
+      "frames": 17,
+      "fps": 10,
+      "loop": true,
+      "anchor": [
+        16,
+        26
+      ],
+      "note": "someone else dug: a dirt puff at the Mine entrance door, three loops"
     }
   },
   "ui": {
@@ -1827,494 +1842,322 @@
         32
       ],
       "note": "the Settings button's gear (HUD, top left)"
+    },
+    "digPanel": {
+      "file": "ui/ui-dig-panel.png",
+      "size": [
+        128,
+        128
+      ],
+      "frames": 8,
+      "fps": 10,
+      "loop": false,
+      "anchor": [
+        64,
+        64
+      ],
+      "hole": [
+        64,
+        80
+      ],
+      "itemFrom": 5,
+      "note": "the Mine dig: a shovel digging a mound, played once (cell 7 held); the find rises 8 px from the hole (its bottom centre at hole) from cell itemFrom"
+    },
+    "inventoryIcon": {
+      "file": "ui/ui-bag.png",
+      "size": [
+        32,
+        32
+      ],
+      "note": "the inventory button beside the chat input (opens the bag on the right)"
     }
   },
   "notes_ui": "All UI is drawn at 1x and scaled by the same whole-number zoom as the world. Text is never baked in: draw it with Minecraft.ttf.",
   "items": {
     "advanced-bp": {
-      "file": "items/item-advanced-bp.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-advanced-bp@32.png"
     },
     "aka-poknat": {
-      "file": "items/item-aka-poknat.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-aka-poknat@32.png"
     },
     "bag-backpack": {
-      "file": "items/item-bag-backpack.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-bag-backpack@32.png"
     },
     "bag-balikbayan": {
-      "file": "items/item-bag-balikbayan.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-bag-balikbayan@32.png"
     },
     "bag-bayong": {
-      "file": "items/item-bag-bayong.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-bag-bayong@32.png"
     },
     "bag-lola": {
-      "file": "items/item-bag-lola.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-bag-lola@32.png"
     },
     "bag-supot": {
-      "file": "items/item-bag-supot.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-bag-supot@32.png"
     },
     "bakod": {
-      "file": "items/item-bakod.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-bakod@32.png"
+    },
+    "barong": {
+      "showcase": "ui/items/item-barong@32.png"
     },
     "basic-bp": {
-      "file": "items/item-basic-bp.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-basic-bp@32.png"
     },
     "bbq-stick": {
-      "file": "items/item-bbq-stick.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-bbq-stick@32.png"
+    },
+    "blurry-dvd": {
+      "showcase": "ui/items/item-blurry-dvd@32.png"
     },
     "bottle": {
-      "file": "items/item-bottle.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-bottle@32.png"
     },
     "bottle-cap": {
-      "file": "items/item-bottle-cap.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-bottle-cap@32.png"
     },
     "broken-tsinelas": {
-      "file": "items/item-broken-tsinelas.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-broken-tsinelas@32.png"
     },
     "brother-j-letter": {
-      "file": "items/item-brother-j-letter.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-brother-j-letter@32.png"
     },
     "chair-leg": {
-      "file": "items/item-chair-leg.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-chair-leg@32.png"
     },
     "charlene-lipstick": {
-      "file": "items/item-charlene-lipstick.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-charlene-lipstick@32.png"
     },
     "chewed-gum": {
-      "file": "items/item-chewed-gum.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-chewed-gum@32.png"
     },
     "crossword": {
-      "file": "items/item-crossword.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-crossword@32.png"
+    },
+    "crushed-parol": {
+      "showcase": "ui/items/item-crushed-parol@32.png"
     },
     "deflated-balloon": {
-      "file": "items/item-deflated-balloon.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-deflated-balloon@32.png"
     },
     "dirt": {
-      "file": "items/item-dirt.png",
-      "size": [
-        32,
-        32
-      ]
-    },
-    "earring": {
-      "file": "items/item-earring.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-dirt@32.png"
     },
     "empty-sachet": {
-      "file": "items/item-empty-sachet.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-empty-sachet@32.png"
     },
     "expired-load": {
-      "file": "items/item-expired-load.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-expired-load@32.png"
+    },
+    "fan-blade": {
+      "showcase": "ui/items/item-fan-blade@32.png"
     },
     "fig-boxers": {
-      "file": "items/item-fig-boxers.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-fig-boxers@32.png"
     },
     "guitar-string": {
-      "file": "items/item-guitar-string.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-guitar-string@32.png"
     },
     "half-pencil": {
-      "file": "items/item-half-pencil.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-half-pencil@32.png"
+    },
+    "hard-hat": {
+      "showcase": "ui/items/item-hard-hat@32.png"
     },
     "hei-battery": {
-      "file": "items/item-hei-battery.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-hei-battery@32.png"
     },
     "holen": {
-      "file": "items/item-holen.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-holen@32.png"
     },
     "hypercrade-wheels": {
-      "file": "items/item-hypercrade-wheels.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-hypercrade-wheels@32.png"
+    },
+    "jeepney-sign": {
+      "showcase": "ui/items/item-jeepney-sign@32.png"
     },
     "jord-fork": {
-      "file": "items/item-jord-fork.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-jord-fork@32.png"
     },
     "junwuu-socks": {
-      "file": "items/item-junwuu-socks.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-junwuu-socks@32.png"
     },
     "kalamansi": {
-      "file": "items/item-kalamansi.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-kalamansi@32.png"
+    },
+    "karaoke-mic": {
+      "showcase": "ui/items/item-karaoke-mic@32.png"
     },
     "kei-cup": {
-      "file": "items/item-kei-cup.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-kei-cup@32.png"
     },
     "ketchup-packet": {
-      "file": "items/item-ketchup-packet.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-ketchup-packet@32.png"
     },
     "kyuu-letter": {
-      "file": "items/item-kyuu-letter.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-kyuu-letter@32.png"
     },
     "losing-lotto": {
-      "file": "items/item-losing-lotto.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-losing-lotto@32.png"
     },
     "master-key": {
-      "file": "items/item-master-key.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-master-key@32.png"
     },
     "mikko-kalabasa": {
-      "file": "items/item-mikko-kalabasa.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-mikko-kalabasa@32.png"
     },
     "mystery-bone": {
-      "file": "items/item-mystery-bone.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-mystery-bone@32.png"
     },
     "nami-plate": {
-      "file": "items/item-nami-plate.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-nami-plate@32.png"
+    },
+    "nokia-3310": {
+      "showcase": "ui/items/item-nokia-3310@32.png"
     },
     "nyaru-cardboard": {
-      "file": "items/item-nyaru-cardboard.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-nyaru-cardboard@32.png"
+    },
+    "pancit-canton": {
+      "showcase": "ui/items/item-pancit-canton@32.png"
     },
     "pandesal": {
-      "file": "items/item-pandesal.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-pandesal@32.png"
     },
     "phantasium": {
-      "file": "items/item-phantasium.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-phantasium@32.png"
     },
     "piso": {
-      "file": "items/item-piso.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-piso@32.png"
     },
     "pittu-book": {
-      "file": "items/item-pittu-book.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-pittu-book@32.png"
     },
     "plastic": {
-      "file": "items/item-plastic.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-plastic@32.png"
+    },
+    "pogs": {
+      "showcase": "ui/items/item-pogs@32.png"
     },
     "potion-kalawang": {
-      "file": "items/item-potion-kalawang.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-potion-kalawang@32.png"
     },
     "potion-marites": {
-      "file": "items/item-potion-marites.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-potion-marites@32.png"
     },
     "potion-swerte": {
-      "file": "items/item-potion-swerte.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-potion-swerte@32.png"
     },
     "potion-tago": {
-      "file": "items/item-potion-tago.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-potion-tago@32.png"
     },
     "rock": {
-      "file": "items/item-rock.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-rock@32.png"
     },
     "rubber-band": {
-      "file": "items/item-rubber-band.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-rubber-band@32.png"
     },
     "rusty-nail": {
-      "file": "items/item-rusty-nail.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-rusty-nail@32.png"
+    },
+    "sardines": {
+      "showcase": "ui/items/item-sardines@32.png"
     },
     "scel-burrito": {
-      "file": "items/item-scel-burrito.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-scel-burrito@32.png"
     },
     "scrappy-milk": {
-      "file": "items/item-scrappy-milk.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-scrappy-milk@32.png"
     },
     "shovel": {
-      "file": "ui/ui-shovel.png",
-      "size": [
-        32,
-        32
-      ],
-      "note": "same art as ui.shovelIcon"
+      "showcase": "ui/ui-shovel.png"
+    },
+    "skyflakes": {
+      "showcase": "ui/items/item-skyflakes@32.png"
+    },
+    "snake-stick": {
+      "showcase": "ui/items/item-snake-stick@32.png"
     },
     "soggy-wrapper": {
-      "file": "items/item-soggy-wrapper.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-soggy-wrapper@32.png"
     },
     "spoon": {
-      "file": "items/item-spoon.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-spoon@32.png"
     },
     "tabo": {
-      "file": "items/item-tabo.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-tabo@32.png"
+    },
+    "tamiya": {
+      "showcase": "ui/items/item-tamiya@32.png"
     },
     "tangled-earphones": {
-      "file": "items/item-tangled-earphones.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-tangled-earphones@32.png"
     },
     "tex-card": {
-      "file": "items/item-tex-card.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-tex-card@32.png"
+    },
+    "tito-shades": {
+      "showcase": "ui/items/item-tito-shades@32.png"
     },
     "trot-shelf": {
-      "file": "items/item-trot-shelf.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-trot-shelf@32.png"
     },
     "troyangs-frog": {
-      "file": "items/item-troyangs-frog.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-troyangs-frog@32.png"
     },
     "tupperware-lid": {
-      "file": "items/item-tupperware-lid.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-tupperware-lid@32.png"
+    },
+    "tv-remote": {
+      "showcase": "ui/items/item-tv-remote@32.png"
     },
     "twigo-treasure": {
-      "file": "items/item-twigo-treasure.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-twigo-treasure@32.png",
+      "anim": {
+        "file": "ui/items/item-twigo-treasure@32-anim.png",
+        "frame": [
+          32,
+          32
+        ],
+        "frames": 17,
+        "fps": 6,
+        "loop": true
+      }
     },
     "twigo-tsinelas": {
-      "file": "items/item-twigo-tsinelas.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-twigo-tsinelas@32.png",
+      "anim": {
+        "file": "ui/items/item-twigo-tsinelas@32-anim.png",
+        "frame": [
+          32,
+          32
+        ],
+        "frames": 15,
+        "fps": 6,
+        "loop": true
+      }
+    },
+    "usb-drive": {
+      "showcase": "ui/items/item-usb-drive@32.png"
     },
     "ushiik-keycaps": {
-      "file": "items/item-ushiik-keycaps.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-ushiik-keycaps@32.png"
     },
     "vault": {
-      "file": "items/item-vault.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-vault@32.png"
+    },
+    "walis-handle": {
+      "showcase": "ui/items/item-walis-handle@32.png"
+    },
+    "walis-tingting": {
+      "showcase": "ui/items/item-walis-tingting@32.png"
     },
     "wet-mystery-sock": {
-      "file": "items/item-wet-mystery-sock.png",
-      "size": [
-        32,
-        32
-      ]
+      "showcase": "ui/items/item-wet-mystery-sock@32.png"
+    },
+    "windup-robot": {
+      "showcase": "ui/items/item-windup-robot@32.png"
     }
   },
-  "notes_items": "Item icons (32x32): the rewards shop (keys are /redeem's reward ids) and dug-up items (keys are the dig item ids). DOM art: shown at whole-number scale with image-rendering: pixelated."
+  "notes_items": "Item art by id (dig items in the bot's dig/items.ts, rewards in games/rewards.ts): icon = 16x16 for small rows, showcase = 32x32 for pop-ups, anim = a 32x32 looping sheet shown instead of the showcase where there is one. Ids without art are simply absent (the game shows the emoji/name). Draw at whole-number scales with nearest-neighbour."
 }
