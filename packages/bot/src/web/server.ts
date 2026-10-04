@@ -10,6 +10,7 @@ import { titleIsNew, titleOf, titleSeen } from './titles.js';
 import { attachTown, loadTownMap } from './town.js';
 import { bridgeTownChat } from './town-chat.js';
 import { connectTownFeed } from './town-feed.js';
+import { filterText, kickedUntil, mutedUntil } from './town-mod.js';
 import { getOutfit, parseOutfit, saveOutfit } from './outfit.js';
 import { LAUNCH_REWARD, isPreregistered, launched, preregCount, preregister } from '../prereg/prereg.js';
 import { callback, canPlay, clearSessionCookie, endSessions, isMember, login, loginEnabled, logout, sessionUser } from './auth.js';
@@ -249,6 +250,7 @@ export function startWebServer(client: Client): void {
     let toDiscord: (userId: string, nickname: string, text: string) => void = () => {};
     const town = attachTown(server, {
       onSay: (userId, nickname, text) => toDiscord(userId, nickname, text),
+      moderation: { mutedUntil, kickedUntil, filter: filterText },
       map: loadTownMap(),
       authenticate: async (req) => {
         if (!loginEnabled() || !fromGame(req)) return null;

@@ -9,7 +9,7 @@ import { cursor } from '../ui/cursor';
 import { BuildingLabel, UI_FONT } from '../ui/labels';
 import { LOADING_LINES } from '../ui/loading-lines';
 import { TownLink } from '../net/town';
-import { showElsewhere } from '../ui/elsewhere';
+import { showElsewhere, showKicked } from '../ui/elsewhere';
 import { mountTownHud } from '../ui/townhud';
 import { ChatBox } from '../ui/chat';
 import { SystemFeed } from '../ui/system-feed';
@@ -342,7 +342,13 @@ export class TownScene extends Phaser.Scene {
     link.onMessage = (m) => {
       if (m.t === 'snap') return this.player.place({ col: m.col, row: m.row });
       if (m.t === 'seat-taken') return toast("Someone's already sitting there.");
-      if (m.t === 'say-refused') return chat.notice(m.reason === 'slow' ? "You're chatting a bit fast. Wait a moment." : "That message can't be sent.");
+      if (m.t === 'say-refused') {
+        if (m.reason === 'muted') {
+          const left = Math.max(1, Math.ceil(((m.until ?? Date.now()) - Date.now()) / 60_000));
+          return chat.notice(`You're muted in town chat for about ${left} more minute${left === 1 ? '' : 's'}.`);
+        }
+        return chat.notice(m.reason === 'slow' ? "You're chatting a bit fast. Wait a moment." : "That message can't be sent.");
+      }
       if (m.t === 'say') {
         // Your own words come back from the server like everyone else's, so you see what they see.
         if (m.id === myId) {
@@ -380,6 +386,10 @@ export class TownScene extends Phaser.Scene {
         this.sent = { dir: this.player.facing, sit: false };
       }
       this.others.handle(m);
+    };
+    link.onKicked = (until) => {
+      this.others.clear();
+      showKicked(until);
     };
     link.onTakenOver = () => {
       this.others.clear();

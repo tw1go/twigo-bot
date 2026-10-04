@@ -98,6 +98,7 @@ export const twigoHelp: Command = {
           '`/gift prereg-panel|launch` — gifter only: post the web game pre-registration panel; at launch, pay every pre-registered member and close sign-ups',
           '`/gift title` — gifter only: give a member a web game title (shown under their name in the town)',
           '`/notice` — gifter only: a banner for everyone in the web town (e.g. maintenance)',
+          '`/town mute|unmute|kick|filter` — mods: moderate the web town (mute in town chat, kick for a while, blocked words)',
           '`reset-kowens:@user` / `reset-all-kowens:yes` — reset Kowens',
         ]),
       );

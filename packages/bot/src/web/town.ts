@@ -65,7 +65,16 @@ export interface TownOptions {
   shared?: boolean;
   /** Someone said something in town (the Discord bridge passes it on). */
   onSay?: (userId: string, nickname: string, text: string) => void;
+  /** Chat moderation (web/town-mod.ts in the bot; none in the game's dev server). */
+  moderation?: {
+    mutedUntil(userId: string): number | null;
+    kickedUntil(userId: string): number | null;
+    filter(text: string): string;
+  };
 }
+
+/** Close code for a moderator's kick (the reason is when they may come back, in ms). */
+export const KICKED = 4001;
 
 /** What the rest of the bot can do with the town. */
 export interface Town {
@@ -75,6 +84,8 @@ export interface Town {
   system(line: TownSystemLine): void;
   /** A banner for everyone in town; a notice is also shown to people arriving in the next 30 minutes. */
   announce(a: TownAnnouncement): void;
+  /** Removes a member from the town now (they're kept out by moderation.kickedUntil). */
+  kick(userId: string, until: number): boolean;
 }
 
 /** The game's map (packages/game/public/assets/maps/town.json), from the monorepo next to the bot. */
@@ -190,8 +201,11 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         return others(c, { t: 'emote', id: p.id, emote: m.emote });
       }
       case 'say': {
-        const text = tidy(m.text);
-        if (!text) return send(c, { t: 'say-refused', reason: 'invalid' });
+        const muted = opts.moderation?.mutedUntil(c.userId);
+        if (muted) return send(c, { t: 'say-refused', reason: 'muted', until: muted });
+        const tidied = tidy(m.text);
+        if (!tidied) return send(c, { t: 'say-refused', reason: 'invalid' });
+        const text = opts.moderation ? opts.moderation.filter(tidied) : tidied;
         const now = Date.now();
         c.says = Math.min(SAY_BURST, c.says + ((now - c.saidAt) / 1000) * SAYS_PER_SECOND);
         c.saidAt = now;
@@ -223,6 +237,9 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   };
 
   const join = (ws: WebSocket, userId: string, profile: TownProfile) => {
+    // Kicked by a moderator: told when they may come back, and closed.
+    const kicked = opts.moderation?.kickedUntil(userId);
+    if (kicked) return ws.close(KICKED, String(kicked));
     // A second tab takes over: the first one is told and closed.
     const old = conns.get(userId);
     if (old) {
@@ -269,7 +286,8 @@ export function attachTown(server: Server, opts: TownOptions): Town {
 
   const town: Town = {
     fromDiscord(name, raw) {
-      const text = tidy(raw.length > DISCORD_MAX ? `${[...raw].slice(0, DISCORD_MAX - 1).join('')}…` : raw, DISCORD_MAX);
+      const tidied = tidy(raw.length > DISCORD_MAX ? `${[...raw].slice(0, DISCORD_MAX - 1).join('')}…` : raw, DISCORD_MAX);
+      const text = tidied && opts.moderation ? opts.moderation.filter(tidied) : tidied;
       const who = tidy(name, 32);
       if (!text || !who) return;
       remember({ name: who, text, discord: true });
@@ -279,6 +297,14 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       systemLines.push(line);
       if (systemLines.length > SYSTEM_RECENT) systemLines.shift();
       everyone({ t: 'system', line });
+    },
+    kick(userId, until) {
+      const c = conns.get(userId);
+      if (!c) return false;
+      conns.delete(userId);
+      others(c, { t: 'leave', id: c.player.id });
+      c.ws.close(KICKED, String(until));
+      return true;
     },
     announce(a) {
       if (a.kind === 'notice') notice = { a, until: Date.now() + NOTICE_MS };

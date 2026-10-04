@@ -1,5 +1,6 @@
 // The town's live connection (WebSocket at /ws, logged-in members only): who else is in town and where.
 // JSON messages, one per frame. Players are identified by a random id per connection, never their Discord ID.
+// A moderator's kick closes the socket with code 4001 and the time (ms) they may come back as the reason.
 
 import type { OutfitData, TitleData } from './room-api.js';
 
@@ -82,5 +83,5 @@ export type TownServerMessage =
   | { t: 'emote'; id: string; emote: TownEmote }
   /** Someone said something in the town's Discord channel (shown with a Discord mark, no bubble). */
   | { t: 'say-discord'; name: string; text: string }
-  /** Your message wasn't sent: too fast, or empty / too long once tidied. */
-  | { t: 'say-refused'; reason: 'slow' | 'invalid' };
+  /** Your message wasn't sent: too fast, empty / too long once tidied, or you're muted (until when, ms). */
+  | { t: 'say-refused'; reason: 'slow' | 'invalid' | 'muted'; until?: number };

@@ -88,6 +88,8 @@ requester), Complete (requester pays the accepter), Give up (reopens), Cancel (r
 then pays everyone and posts a summary (names listed, no pings). A per-night ledger in the database prevents double payouts.
 **Gifter:** `/gift kowens user amount [reason]` (negative removes) — only `REWARD_OWNER_ID` can use it.
 `/gift title user title` gives a web game title (equipped; Townfolk puts them back to the default).
+`/town mute|unmute|kick|filter` (mods and admins) moderates the web town: mute someone in town chat, kick them out of
+the town for a while, manage blocked words (shown as ***); each action is noted in the admin channel.
 `/notice message [title]` shows a banner to everyone in the web town (e.g. maintenance; arrivals see it for 30 min).
 
 `/status [user]` shows Bakod, jail, steal cooldown, Master Keys, digs/shovels, bag space, quests and inactivity (private).

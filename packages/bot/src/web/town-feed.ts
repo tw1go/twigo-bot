@@ -23,3 +23,8 @@ export function feed(kind: TownSystemLine['kind'], text: string, tone: string): 
 export function announce(a: TownAnnouncement): void {
   town?.announce(a);
 }
+
+/** Removes a member from the town right now, if they're in it (moderation keeps them out until `until`). */
+export function kickFromTown(userId: string, until: number): boolean {
+  return town?.kick(userId, until) ?? false;
+}

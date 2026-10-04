@@ -97,6 +97,9 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   rarity / win / lose / bust; last 10 kept in memory. Dev: `/__system?kind=dig&tone=rare&text=…`.
 - Banners (`ui/announce.ts`, top centre): jackpot wins (bot `games/jackpot.ts` → `announce`, gold with casino lights) and
   `/notice` (amber; e.g. maintenance; shown to arrivals for 30 min). Dev: `/__announce?kind=jackpot|notice&title=&text=`.
+- Moderation (`/town mute|unmute|kick|filter`, mods/admins; bot `web/town-mod.ts`, kv 'town-moderation'): mutes block
+  town chat, kicks close the socket (4001, back-at time) and refuse rejoining, blocked words become *** (whole words,
+  repeated letters). Actions are logged in the admin channel. The word list lives only in the database.
 - Multiplayer: `net/town.ts` (client, reconnects) ↔ bot `web/town.ts` (WebSocket `/ws`, no Discord code in it, so it
   can run alone for tests); `world/others.ts` draws everyone else. Dev: the dev server runs the town itself (`scripts/dev-town.ts`: the bot's `web/town.ts`,
   fake login), so two windows `?preview&as=Alice` / `?preview&as=Bob` see and chat with each other;

@@ -5,6 +5,7 @@ import { fakeLogin, fakeName } from '../session';
 // (1 s, 2 s, 4 s … up to 30 s), except when the same member opened the town in another tab (see reconnect).
 
 const OPENED_ELSEWHERE = 4000;
+const KICKED = 4001; // the reason is when they may come back (ms)
 
 export class TownLink {
   private ws: WebSocket | null = null;
@@ -13,6 +14,8 @@ export class TownLink {
   onMessage: (m: TownServerMessage) => void = () => {};
   /** The connection is gone for good (another tab took over). */
   onTakenOver: () => void = () => {};
+  /** A moderator removed you from the town, until then (ms). */
+  onKicked: (until: number) => void = () => {};
 
   constructor(
     /** Dev only: the fake member's look, for the dev server's town (scripts/dev-town.ts). */
@@ -54,6 +57,7 @@ export class TownLink {
     ws.onclose = (e) => {
       if (this.ws !== ws || this.stopped) return;
       if (e.code === OPENED_ELSEWHERE) return this.onTakenOver();
+      if (e.code === KICKED) return this.onKicked(Number(e.reason) || Date.now() + 15 * 60_000);
       const wait = Math.min(30_000, 1000 * 2 ** this.retry++);
       setTimeout(() => this.connect(), wait);
     };

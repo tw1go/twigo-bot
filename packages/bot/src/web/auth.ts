@@ -63,8 +63,8 @@ export async function isMember(client: Client, userId: string): Promise<boolean>
   return !!(guild && (await guild.members.fetch(userId).catch(() => null)));
 }
 
-/** Discord permissions that count as a mod or an admin (for the web town before launch). */
-const STAFF = [PermissionFlagsBits.Administrator, PermissionFlagsBits.ManageGuild, PermissionFlagsBits.ModerateMembers, PermissionFlagsBits.ManageMessages];
+/** Discord permissions that count as a mod or an admin (the web town before launch; /town moderation). */
+export const STAFF = [PermissionFlagsBits.Administrator, PermissionFlagsBits.ManageGuild, PermissionFlagsBits.ModerateMembers, PermissionFlagsBits.ManageMessages];
 
 /**
  * Whether a member may play the web town. Before launch: the tester role (GAME_TESTER_ROLE_ID), mods, admins and
