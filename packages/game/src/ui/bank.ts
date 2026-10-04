@@ -3,8 +3,9 @@ import { playSound } from '../audio/sound';
 import { fakeLogin } from '../session';
 import { coinIcon, el, showPopup } from './reward';
 
-// 🏦 The bank (left click the bank): your wallet and vault side by side, moving Kowens in and out of the vault, and
-// loans — what you owe and paying it back, or borrowing from the Tanod Bank — in the reward box. Every action goes
+// 🏦 The bank (left click the bank), in the reward box with three tabs: Main (wallet and vault side by side, and a
+// summary that links to the other tabs), Vault (store and take out) and Loan (what you owe and paying it back, or
+// borrowing from the Tanod Bank, and loans you gave). Every action goes
 // through the bot (POST /town/bank) with the same rules as /vault and /loan. Lending to members stays in Discord.
 
 const plural = (n: number, one: string, many: string) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
@@ -62,14 +63,53 @@ const amountOf = (input: HTMLInputElement) => {
   return Number.isInteger(n) && n >= 1 ? n : null;
 };
 
+type Tab = 'main' | 'vault' | 'loan';
+const TABS: [Tab, string][] = [['main', 'Main'], ['vault', 'Vault'], ['loan', 'Loan']];
+
 export function showBank(): void {
-  const cards = el('div', 'bk-cards');
-  const vault = el('section', 'bk-section');
-  const loan = el('section', 'bk-section');
+  const main = el('section', 'bk-panel');
+  const vault = el('section', 'bk-panel');
+  const loan = el('section', 'bk-panel');
+  const panels: Record<Tab, HTMLElement> = { main, vault, loan };
   const note = el('div', 'bk-note', 'Loading…');
   note.setAttribute('role', 'status');
+
+  // The tabs (arrow keys move between them).
+  const bar = el('div', 'bk-tabs');
+  bar.setAttribute('role', 'tablist');
+  const tabs = new Map<Tab, HTMLButtonElement>();
+  let current: Tab = 'main';
+  const show = (tab: Tab, focus = false) => {
+    current = tab;
+    for (const [t, b] of tabs) {
+      const on = t === tab;
+      b.setAttribute('aria-selected', String(on));
+      b.tabIndex = on ? 0 : -1;
+      panels[t].hidden = !on;
+    }
+    if (focus) tabs.get(tab)!.focus();
+  };
+  for (const [tab, label] of TABS) {
+    const b = el('button', 'bk-tab', label);
+    b.setAttribute('role', 'tab');
+    b.id = `bk-tab-${tab}`;
+    panels[tab].setAttribute('role', 'tabpanel');
+    panels[tab].setAttribute('aria-labelledby', b.id);
+    b.addEventListener('click', () => {
+      if (current !== tab) note.textContent = '';
+      show(tab);
+    });
+    b.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      const i = TABS.findIndex(([t]) => t === current);
+      show(TABS[(i + (e.key === 'ArrowRight' ? 1 : TABS.length - 1)) % TABS.length][0], true);
+    });
+    tabs.set(tab, b);
+    bar.append(b);
+  }
+  show('main');
   const wrap = el('div', 'bk-body');
-  wrap.append(cards, vault, loan, note);
+  wrap.append(bar, main, vault, loan, note);
 
   let busy = false;
   const tell = (message: string) => {
@@ -103,7 +143,7 @@ export function showBank(): void {
   };
 
   const render = (b: TownBankResponse) => {
-    // Wallet and vault.
+    // Main: wallet and vault, and a summary line per tab.
     const card = (label: string, amount: string, sub: string, icon: HTMLElement | null) => {
       const c = el('div', 'bk-card');
       const line = el('div', 'bk-card-amount');
@@ -112,15 +152,35 @@ export function showBank(): void {
       c.append(el('div', 'bk-card-label', label), line, el('div', 'bk-card-sub', sub));
       return c;
     };
-    cards.replaceChildren(
+    const cards = el('div', 'bk-cards');
+    cards.append(
       card('Wallet', b.wallet.toLocaleString(), 'Spend, bet, pay', coinIcon(2)),
       b.vault
         ? card('Vault', b.vault.inside.toLocaleString(), 'Safe from /steal', coinIcon(2))
         : card('Vault', '—', 'Not bought yet', null),
     );
+    const link = (tab: Tab, label: string, text: string, late = false) => {
+      const row = el('button', `bk-link${late ? ' bk-late' : ''}`);
+      row.append(el('b', undefined, label), el('span', undefined, text), el('span', 'bk-arrow', '›'));
+      row.addEventListener('click', () => show(tab, true));
+      return row;
+    };
+    const l = b.loan;
+    main.replaceChildren(
+      cards,
+      link('vault', 'Vault', b.vault ? `${kowens(Math.max(0, b.vault.capacity - b.vault.inside))} more fits` : 'Get one to keep Kowens safe'),
+      link('loan', 'Loan',
+        l ? `You owe ${kowens(l.owed)} · ${l.defaulted ? 'defaulted' : l.overdue ? 'overdue' : `due in ${timeLeft(l.due)}`}`
+        : b.bank.blacklistedUntil ? "The Tanod Bank won't lend to you for now"
+        : `No loan · you can borrow up to ${kowens(b.bank.limit)}`,
+        !!l?.overdue),
+      ...(b.lent.length ? [link('loan', 'Lent', `${plural(b.lent.length, 'loan', 'loans')} out to members`)] : []),
+    );
 
-    // The vault.
-    vault.replaceChildren(el('h3', 'bk-heading', 'Vault'));
+    // Vault.
+    const inside = el('p', 'bk-text');
+    inside.append('In your vault: ', el('b', undefined, kowens(b.vault?.inside ?? 0)), ` · wallet: ${kowens(b.wallet)}`);
+    vault.replaceChildren();
     if (!b.vault) {
       vault.append(el('p', 'bk-text', `Kowens in a vault are safe from /steal and don't count for bail. Get one with /redeem reward:Vault in Discord (${kowens(b.vaultPrice)}).`));
     } else {
@@ -135,16 +195,16 @@ export function showBank(): void {
       row.append(amount, button('Store', () => go('deposit')), button('Take out', () => go('withdraw'), 'bk-plain'));
       const room = Math.max(0, v.capacity - v.inside);
       vault.append(
+        inside,
         row,
         el('p', 'bk-hint', `${kowens(room)} more fits (up to ${pct(b.vaultCap)} of all you own)` +
           (v.inside ? ` · take out at least ${v.minWithdraw.toLocaleString()} (${pct(b.vaultMinWithdraw)} of what's inside)` : '')),
       );
     }
 
-    // Loans.
-    loan.replaceChildren(el('h3', 'bk-heading', 'Loan'));
-    if (b.loan) {
-      const l = b.loan;
+    // Loan.
+    loan.replaceChildren();
+    if (l) {
       const owe = el('p', `bk-text${l.overdue ? ' bk-late' : ''}`);
       owe.append('You owe ', el('b', undefined, kowens(l.owed)), ` to ${l.lender === 'Tanod Bank' ? 'the Tanod Bank' : l.lender} · `,
         l.defaulted ? 'defaulted: earnings are garnished until it\'s paid'
@@ -183,7 +243,7 @@ export function showBank(): void {
     }
     if (b.lent.length) {
       const list = el('div', 'bk-lent');
-      list.append(el('div', 'bk-lent-title', 'You lent'));
+      list.append(el('div', 'bk-lent-title', 'You lent (offer loans with /loan offer in Discord)'));
       for (const l of b.lent) {
         list.append(el('div', 'bk-lent-row', `${l.name} owes ${kowens(l.owed)} · ${l.defaulted ? 'defaulted' : Date.now() > l.due ? 'overdue' : `due in ${timeLeft(l.due)}`}`));
       }

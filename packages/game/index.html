@@ -343,13 +343,22 @@
       #reward .rw-card:has(.bk-body) { width: min(400px, calc(100vw - 32px)); }
       #reward .bk-body { margin-bottom: 14px; text-align: left; }
       #reward .bk-busy { opacity: 0.7; pointer-events: none; }
-      #reward .bk-cards { display: flex; gap: 10px; margin-bottom: 4px; }
+      #reward .bk-cards { display: flex; gap: 10px; margin-bottom: 6px; }
       #reward .bk-card { flex: 1; min-width: 0; padding: 8px 10px; border: 2px solid #E2DDF3; border-radius: 2px; background: #F5F3FF; }
       #reward .bk-card-label { font-size: 12px; font-weight: 700; color: #5B21B6; text-transform: uppercase; letter-spacing: 0.06em; }
       #reward .bk-card-amount { display: flex; align-items: center; gap: 6px; margin: 2px 0; font-size: 22px; font-weight: 700; color: #BA7F05; }
       #reward .bk-card-sub { font-size: 12px; color: #7A8099; }
-      #reward .bk-section { padding: 10px 0 4px; border-bottom: 2px solid #E2DDF3; }
-      #reward .bk-heading { margin: 0 0 6px; font-size: 15px; color: #5B21B6; }
+      #reward .bk-tabs { display: flex; gap: 4px; margin-bottom: 12px; border-bottom: 3px solid #1E1B3A; }
+      #reward .bk-tab { flex: 1; padding: 6px 8px 5px; border: 2px solid #1E1B3A; border-bottom: 0; border-radius: 0; background: #E2DDF3; color: #5B21B6; font: inherit; font-size: 14px; font-weight: 700; }
+      #reward .bk-tab:hover { background: #EDE9FE; }
+      #reward .bk-tab[aria-selected='true'] { background: #7C2AE8; color: #fff; box-shadow: inset 0 2px 0 #A78BFA; }
+      #reward .bk-tab:focus-visible { outline: 2px solid #F8BF27; outline-offset: -4px; }
+      #reward .bk-panel { min-height: 196px; } /* Main's height, so the box (and the tabs) stay put when switching */
+      #reward .bk-link { display: flex; align-items: baseline; gap: 8px; width: 100%; margin-top: 6px; padding: 8px 10px; border: 2px solid #E2DDF3; border-radius: 2px; background: #fff; color: #3D4256; font: inherit; font-size: 13px; text-align: left; }
+      #reward .bk-link:hover { border-color: #7C2AE8; background: #F5F3FF; }
+      #reward .bk-link b { min-width: 44px; color: #5B21B6; }
+      #reward .bk-link.bk-late span { color: #B91C1C; }
+      #reward .bk-arrow { margin-left: auto; font-weight: 700; color: #7C2AE8; }
       #reward .bk-text { margin: 0 0 8px; font-size: 13px; color: #3D4256; }
       #reward .bk-text b { color: #BA7F05; }
       #reward .bk-late { color: #B91C1C; }
