@@ -96,7 +96,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   fake login), so two windows `?preview&as=Alice` / `?preview&as=Bob` see and chat with each other;
   `/__discord?name=&text=` fakes a #town-chat line and town lines print in the dev server's terminal. Dev: with no bot behind the dev server, plain `?preview` acts as `?me=saved`; `?me=anon|new&as=Alice` fakes a member (test values: `&kowens=` `&shovels=` `&digs=` `&status=online|idle|busy|offline|jailed`); to test,
   run only the compiled `web/town.js` on 127.0.0.1:8787 with a fake `authenticate` (never the whole bot).
-- Movement: right-click-to-move (tap on touch screens; A* on `blocked`), WASD/arrows (screen directions), E/Space to enter or sit.
+- Movement: right-click-to-move (tap on touch screens; A* on `blocked`), WASD/arrows (screen directions; from a
+  standstill a tap only turns, holding walks), E/Space to enter or sit.
 - Checking work: run the dev server and drive headless Chrome over the DevTools protocol (screenshots +
   `window.__town` debug API: `state()`, `teleport()`, `walk()`, `time()`, `view()`, `outfit()`). Use
   `--use-angle=metal` for real frame rates; SwiftShader under-reports.

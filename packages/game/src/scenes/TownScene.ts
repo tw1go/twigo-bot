@@ -36,6 +36,8 @@ const ZOOMS = [2, 3, 4];
  *  middle zoom. */
 const INTRO_ZOOM = 8;
 const INTRO_MS = 1600;
+/** From a standstill, a direction key held shorter than this only turns the player. */
+const TURN_HOLD_MS = 150;
 const FADE_MS = 1100;
 
 /** Everyone's title until they're given another (the bot's web/titles.ts has the list). */
@@ -105,6 +107,10 @@ export class TownScene extends Phaser.Scene {
   private readonly buildingLabels = new Map<string, BuildingLabel>();
   private hovered: Building | null = null;
   private marker: Phaser.GameObjects.Sprite | null = null;
+  /** Keyboard walking: the held direction, since when, and whether the keys have us walking already. */
+  private keyDir: Dir | null = null;
+  private keySince = 0;
+  private keyWalking = false;
   /** Plays an emote and tells the server (set once connected). */
   private emoteKeys: ((e: TownEmote) => void) | null = null;
   private others!: OtherPlayers;
@@ -528,7 +534,22 @@ export class TownScene extends Phaser.Scene {
    */
   private keyStep(): Tile | null {
     const dir = this.heldDir();
-    if (!dir) return null;
+    if (!dir) {
+      this.keyWalking = false;
+      this.keyDir = null;
+      return null;
+    }
+    // From a standstill, a tap only turns you; holding the key (TURN_HOLD_MS) walks. Already walking with the
+    // keys, a new direction just carries on.
+    const now = this.time.now;
+    if (dir !== this.keyDir) {
+      this.keyDir = dir;
+      this.keySince = now;
+    }
+    if (!this.keyWalking && now - this.keySince < TURN_HOLD_MS) {
+      this.player.face(dir);
+      return null;
+    }
     const from = this.player.tile;
     const [dc, dr] = DIR_STEP[dir];
     const tries: [number, number][] = [[dc, dr]];
@@ -538,6 +559,7 @@ export class TownScene extends Phaser.Scene {
       if (this.grid.canStep(from, to)) {
         if (!this.byKeys) this.setBuildingAlert(null);
         this.byKeys = true;
+        this.keyWalking = true;
         this.pending = null;
         return to;
       }
