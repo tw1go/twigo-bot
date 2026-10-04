@@ -53,6 +53,7 @@ export interface TownProfile {
   nickname: string;
   title: TitleData;
   outfit: OutfitData;
+  jailed?: boolean;
 }
 
 export interface TownOptions {
@@ -90,6 +91,8 @@ export interface Town {
   memberOf(playerId: string): string | null;
   /** Tells a member, if they're in town, that someone gave them Kowens. */
   gifted(userId: string, from: string, amount: number): void;
+  /** A member was jailed or released: everyone in town sees it under their name (them included). */
+  setJailed(userId: string, on: boolean): void;
   /** A member (if in town) says a diss, praise or judge line: to everyone, the speaker included. */
   verdict(userId: string, kind: 'roast' | 'praise', judged: boolean, text: string): void;
 }
@@ -319,6 +322,12 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     gifted(userId, from, amount) {
       const c = conns.get(userId);
       if (c) send(c, { t: 'gift', from, amount });
+    },
+    setJailed(userId, on) {
+      const c = conns.get(userId);
+      if (!c || !!c.player.jailed === on) return;
+      c.player.jailed = on || undefined;
+      everyone({ t: 'jailed', id: c.player.id, on });
     },
     verdict(userId, kind, judged, text) {
       const c = conns.get(userId);

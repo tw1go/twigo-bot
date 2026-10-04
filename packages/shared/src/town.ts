@@ -16,6 +16,8 @@ export interface TownPlayer {
   dir: TownDir;
   /** Sitting on the bench at (col, row). */
   sit: boolean;
+  /** In jail (shown under their name). */
+  jailed?: boolean;
 }
 
 /** Browser → server. A step is to a neighbouring tile; the server checks it (walkable, adjacent, walking speed). */
@@ -44,7 +46,7 @@ export interface TownChatLine {
 
 /** A line in the town's system feed: something that happened around the server (a dig, a bet). */
 export interface TownSystemLine {
-  kind: 'dig' | 'gamble' | 'jackpot' | 'shop' | 'gift';
+  kind: 'dig' | 'gamble' | 'jackpot' | 'shop' | 'gift' | 'jail';
   text: string;
   /** Colour key: a dig's rarity, win / lose / bust, jackpot, shop, or gift. */
   tone: string;
@@ -81,6 +83,8 @@ export type TownServerMessage =
   | { t: 'system'; line: TownSystemLine }
   /** Someone dissed, praised or judged someone (the player menu): `id` says the line (the target's name is in it). */
   | { t: 'verdict'; id: string; kind: 'roast' | 'praise'; judged: boolean; text: string }
+  /** Someone was jailed or released (you too: `id` is yours). */
+  | { t: 'jailed'; id: string; on: boolean }
   /** Someone gave you Kowens (from the town's player menu). */
   | { t: 'gift'; from: string; amount: number }
   /** Someone emoted (not sent back to the one who did it: they show it right away). */

@@ -220,6 +220,31 @@ export type TownVerdictMode = 'diss' | 'praise' | 'judge';
 /** POST /town/give { to, amount } and /town/verdict → whether it worked, what to tell the sender, and the player afterwards. */
 export type TownGiveResponse = { ok: boolean; message: string; player: TownPlayerInfo | null };
 
+/** The Tanod outpost: who's in jail (bail them out like /bail) and how Tanod Patrol works. */
+export interface TownOutpostResponse {
+  /** Everyone in jail, soonest out first. `id` is for bailing them out (not their Discord id). */
+  jailed: { id: string; name: string; until: number; reason: string; bail: number | null; me?: boolean }[];
+  /** The viewer's wallet (bail is paid from it). */
+  wallet: number;
+  /** Bail: this share of the jailed member's Kowens, between min and max. */
+  bail: { percent: number; min: number; max: number };
+  patrol: {
+    /** Calling roll in Discord right now. */
+    active: boolean;
+    rewards: number[];
+    windowSeconds: number;
+    slowpokeMinutes: number;
+    /** Patrols only between these hours, every minGap–maxGap hours. */
+    fromHour: number;
+    untilHour: number;
+    minGapHours: number;
+    maxGapHours: number;
+  };
+}
+
+/** POST /town/bail { id } → the outpost afterwards, whether it worked, and what to tell the payer. */
+export type TownBailResponse = TownOutpostResponse & { ok: boolean; message: string };
+
 /** A title: its name, and its colour ('#RRGGBB', or 'prismatic' for a shifting rainbow). */
 export interface TitleData {
   name: string;

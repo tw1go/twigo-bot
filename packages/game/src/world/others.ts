@@ -68,6 +68,9 @@ export class OtherPlayers {
       case 'say':
         if (this.bubbleArt) o.char?.say(m.text, this.bubbleArt);
         return;
+      case 'jailed':
+        s.jailed = m.on || undefined;
+        return o.char?.setNameTag(s.nickname, s.title, m.on);
     }
   }
 
@@ -146,7 +149,7 @@ export class OtherPlayers {
       char.onSpawn = (obj) => this.onSpawn(obj);
       char.place({ col: s.col, row: s.row }, s.dir);
       if (s.sit) this.seat(char, s);
-      char.setNameTag(s.nickname, s.title);
+      char.setNameTag(s.nickname, s.title, !!s.jailed);
       char.sprite.setInteractive({ pixelPerfect: true, cursor: this.cursorCss });
       char.setZoom(this.zoom);
       for (const t of char.tintables) this.onSpawn(t);

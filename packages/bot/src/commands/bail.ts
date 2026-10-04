@@ -1,7 +1,7 @@
 import { MessageFlags, SlashCommandBuilder } from 'discord.js';
 import type { Command } from '../types.js';
-import { balance, take } from '../credits/store.js';
-import { bailFor, canBail, jailedUntil, release } from '../games/jail.js';
+import { balance } from '../credits/store.js';
+import { payBail } from '../games/jail.js';
 import { kowen } from '../kowens.js';
 
 export const bail: Command = {
@@ -15,18 +15,16 @@ export const bail: Command = {
     const self = target.id === payer.id;
     const reply = (content: string) => interaction.reply({ content, flags: MessageFlags.Ephemeral });
 
-    if (!jailedUntil(target.id)) return void (await reply(self ? "You're not in jail. ✅" : `${target} isn't in jail. ✅`));
-    if (!canBail(target.id)) {
-      return void (await reply(`🔒 ${self ? 'Your' : `${target}'s`} sentence came from the Tanod (admins). No bail. It has to be served in full.`));
+    const result = await payBail(payer.id, target.id);
+    if (!result.ok) {
+      const cost = result.cost;
+      return void (await reply(
+        result.reason === 'free' ? (self ? "You're not in jail. ✅" : `${target} isn't in jail. ✅`)
+        : result.reason === 'no-bail' ? `🔒 ${self ? 'Your' : `${target}'s`} sentence came from the Tanod (admins). No bail. It has to be served in full.`
+        : `Bail for ${self ? 'you' : target} is **${cost}** ${kowen(cost)}, but you only have **${balance(payer.id)}**. 💸`,
+      ));
     }
-
-    const cost = bailFor(target.id); // based on the jailed member's own balance
-    if (balance(payer.id) < cost) {
-      return void (await reply(`Bail for ${self ? 'you' : target} is **${cost}** ${kowen(cost)}, but you only have **${balance(payer.id)}**. 💸`));
-    }
-
-    take(payer.id, cost);
-    await release(target.id);
+    const cost = result.cost;
     await interaction.reply({
       content: self
         ? `💸🔓 ${payer} paid **${cost}** ${kowen(cost)} bail and walked out of jail. Freedom! 🕊️`

@@ -15,13 +15,13 @@ import { kowen } from '../kowens.js';
 // Tanod Patrol: at random times the Tanod calls roll. First 3 to click win 3/2/1 credits.
 // If 4+ people answer, the slowest gets 2 minutes in jail. Nobody answers → everyone was asleep.
 export const BUTTON_PATROL = 'patrol:here';
-const REWARDS = [3, 2, 1];
-const WINDOW_MS = 60_000;
-const SLOWPOKE_JAIL_MINUTES = 2;
-const MIN_GAP_MS = 3 * 3_600_000;
-const MAX_GAP_MS = 6 * 3_600_000;
-const ACTIVE_FROM_HOUR = 10; // 10 AM
-const ACTIVE_UNTIL_HOUR = 22; // 10 PM
+export const REWARDS = [3, 2, 1];
+export const WINDOW_MS = 60_000;
+export const SLOWPOKE_JAIL_MINUTES = 2;
+export const MIN_GAP_MS = 3 * 3_600_000;
+export const MAX_GAP_MS = 6 * 3_600_000;
+export const ACTIVE_FROM_HOUR = 10; // 10 AM
+export const ACTIVE_UNTIL_HOUR = 22; // 10 PM
 
 let active: { message: Message; answered: string[]; startedAt: number } | null = null;
 

@@ -10,6 +10,7 @@ import { attachTown } from '../../bot/src/web/town.ts';
 //   GET /__discord?name=Kuya%20Ben&text=hi   a message as if from the town's Discord channel
 //   GET /__system?kind=dig&tone=rare&text=…   a system feed line (kind dig|gamble|jackpot; tone: rarity, win, lose, bust, jackpot)
 //   GET /__announce?kind=jackpot|notice&title=…&text=…   a banner at the top
+//   GET /__jail?name=Bob&on=1   shows Bob as jailed (on=0: released) to everyone in town
 // What's said in town is printed here instead of going to Discord.
 
 export function devTown(): Plugin {
@@ -48,6 +49,11 @@ export function devTown(): Plugin {
         const kind = q.get('kind');
         town.system({ kind: kind === 'gamble' || kind === 'jackpot' ? kind : 'dig', text: q.get('text') ?? '', tone: q.get('tone') ?? 'common' });
         res.end('sent to the system feed\n');
+      });
+      server.middlewares.use('/__jail', (req, res) => {
+        const q = new URL(req.url ?? '/', 'http://localhost').searchParams;
+        town.setJailed(q.get('name') ?? '', q.get('on') !== '0');
+        res.end('jail updated in town\n');
       });
       server.middlewares.use('/__discord', (req, res) => {
         const q = new URL(req.url ?? '/', 'http://localhost').searchParams;

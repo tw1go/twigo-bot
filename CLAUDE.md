@@ -124,6 +124,11 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   /town/give`, `POST /town/verdict` (`web/town-player.ts`): players are looked up by their town id via
   `Town.memberOf` (Discord ids never reach the page). Gifts post in the games channel and pop up for the receiver
   (`gift`); verdicts post in the town chat channel, pinging the target. Dev fakes the numbers and verdicts locally.
+- Tanod outpost (`ui/outpost.ts`, left click the outpost), tabs Jail (you, who's in, bail yourself or a friend: `/bail`'s
+  rules via `payBail` in `games/jail.ts`) and Patrol (the rules, and whether roll is being called now). Bot `GET
+  /town/outpost`, `POST /town/bail` (`web/town-outpost.ts`; jailed members get a per-startup hashed id, never their
+  Discord id). Jailed players show "JAILED" under their name (`TownPlayer.jailed`, `jailed` messages from `jail()` /
+  `release()` via `townJailed`); jail blocks diss/praise/judge in town. Dev: `&status=jailed`, `/__jail?name=Bob&on=1`.
 - Moderation (`/town mute|unmute|kick|filter`, mods/admins; bot `web/town-mod.ts`, kv 'town-moderation'): mutes block
   town chat, kicks close the socket (4001, back-at time) and refuse rejoining, blocked words become *** (whole words,
   repeated letters). Actions are logged in the admin channel. The word list lives only in the database.

@@ -23,6 +23,7 @@ import { showMovementTutorial } from '../ui/tutorial';
 import { type Figure, showLeaderboard } from '../ui/leaderboard';
 import { showJackpot } from '../ui/jackpot';
 import { showBank } from '../ui/bank';
+import { showOutpost } from '../ui/outpost';
 import { showShop } from '../ui/shop';
 import { TargetBox } from '../ui/target';
 import { OtherPlayers } from '../world/others';
@@ -236,7 +237,7 @@ export class TownScene extends Phaser.Scene {
     }
     // Members show their nickname and title; without a login (login off, or the dev server) it's "Guest".
     const member = this.me?.status === 'ok' ? this.me.me : null;
-    this.player.setNameTag(member?.nickname ?? 'Guest', member?.title ?? TOWNFOLK);
+    this.player.setNameTag(member?.nickname ?? 'Guest', member?.title ?? TOWNFOLK, member?.status === 'jailed');
     this.mountHud();
     startTownSound(this, this.fountainTile());
     if (member || fakeLogin()) this.connect();
@@ -415,6 +416,11 @@ export class TownScene extends Phaser.Scene {
       }
       if (m.t === 'announce') return announce(m.announcement);
       if (m.t === 'verdict') return verdict(m.id, m.kind, m.judged, m.text);
+      if (m.t === 'jailed' && m.id === myId) {
+        this.player.setNameTag(member?.nickname ?? 'Guest', member?.title ?? TOWNFOLK, m.on);
+        window.dispatchEvent(new Event('mk-wallet')); // the HUD (its status dot shows jail too)
+        return;
+      }
       if (m.t === 'gift') {
         window.dispatchEvent(new Event('mk-wallet')); // the HUD's Kowens
         return void showReward({ title: 'Gift', graphic: { kind: 'kowens', amount: m.amount }, message: `${m.from} gave you ${m.amount} ${m.amount === 1 ? 'Kowen' : 'Kowens'}!` });
@@ -779,6 +785,7 @@ export class TownScene extends Phaser.Scene {
     if (b.id === 'leaderboard-monument') return showLeaderboard((o) => this.podiumFigure(o));
     if (b.id === 'jackpot-booth') return showJackpot();
     if (b.id === 'bank') return showBank();
+    if (b.id === 'tanod-outpost') return showOutpost();
     if (b.id === 'rewards-shop') {
       const items = this.M.items ?? {};
       return showShop((id) => (items[id] ? { url: `${import.meta.env.BASE_URL}assets/${items[id].file}`, size: items[id].size } : null));

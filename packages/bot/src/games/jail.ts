@@ -1,7 +1,8 @@
 import { tableSync } from '../db/sync.js';
 import { MessageFlags, type ChatInputCommandInteraction, type ButtonInteraction, type Client } from 'discord.js';
 import { config } from '../config.js';
-import { balance } from '../credits/store.js';
+import { balance, take } from '../credits/store.js';
+import { townJailed } from '../web/town-feed.js';
 
 // Jail: jailed members get the jail role and can't play /gamble, /steal, /jackpot or Tanod Patrol.
 // Jail times are saved so a restart doesn't free anyone early.
@@ -55,6 +56,7 @@ export async function jail(userId: string, minutes: number, reason: string, bail
   // Once an admin sentence is involved, the whole stay is no-bail.
   jailed[userId] = { until, reason, ...((!bailable || current?.noBail) && { noBail: true }) };
   save();
+  townJailed(userId, true);
   await setRole(userId, true);
   return until;
 }
@@ -63,8 +65,20 @@ export async function release(userId: string): Promise<boolean> {
   if (!jailed[userId]) return false;
   delete jailed[userId];
   save();
+  townJailed(userId, false);
   await setRole(userId, false);
   return true;
+}
+
+/** Pays someone's bail (yours or a friend's), as /bail and the town's outpost do: their price, paid by `payer`. */
+export async function payBail(payer: string, target: string): Promise<{ ok: true; cost: number } | { ok: false; reason: 'free' | 'no-bail' | 'kowens'; cost: number }> {
+  const cost = bailFor(target); // based on the jailed member's own balance
+  if (!jailedUntil(target)) return { ok: false, reason: 'free', cost };
+  if (!canBail(target)) return { ok: false, reason: 'no-bail', cost };
+  if (balance(payer) < cost) return { ok: false, reason: 'kowens', cost };
+  take(payer, cost);
+  await release(target);
+  return { ok: true, cost };
 }
 
 export function jailList(): [string, JailEntry][] {

@@ -68,10 +68,10 @@ export class Character {
     this.sync();
   }
 
-  /** Name and <Title> over the head (null removes them). */
-  setNameTag(nickname: string | null, title: TitleData): void {
+  /** Name and <Title> over the head, with "Jailed" while in jail (null removes them). */
+  setNameTag(nickname: string | null, title: TitleData, jailed = false): void {
     this.tag?.destroy();
-    this.tag = nickname ? new NameTag(this.scene, nickname, title) : null;
+    this.tag = nickname ? new NameTag(this.scene, nickname, title, jailed) : null;
     this.tag?.setZoom(this.zoom);
     this.sync();
   }
