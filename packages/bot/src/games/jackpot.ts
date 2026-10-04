@@ -6,6 +6,7 @@ import { Cron } from 'croner';
 import { config } from '../config.js';
 import { add } from '../credits/store.js';
 import { kowen } from '../kowens.js';
+import { announce, townName } from '../web/town-feed.js';
 
 // Jackpot, drawn twice a day: tickets cost 1 Kowen each (up to MAX_TICKETS per person per draw). At draw time a random ticket wins
 // the whole pot. Needs at least 2 players, otherwise everyone is refunded.
@@ -124,6 +125,13 @@ export async function drawJackpot(client: Client): Promise<void> {
       allowedMentions: { parse: [] },
     })
     .catch((err) => console.error('[jackpot] reveal failed:', err));
+  // The web town gets a banner too.
+  const user = await client.users.fetch(winner).catch(() => null);
+  announce({
+    kind: 'jackpot',
+    title: 'Jackpot!',
+    text: `${user ? townName(user) : 'Someone'} won the pot of ${total} ${kowen(total)} from ${entries.length} players${underdog ? ', with just 1 ticket' : ''}!`,
+  });
   // Edits don't notify, so tell the winner with one small ping.
   await message
     .reply({ content: `🎊 Congrats <@${winner}>, you won the jackpot! Check \`/balance\` 🪙`, allowedMentions: { users: [winner] } })

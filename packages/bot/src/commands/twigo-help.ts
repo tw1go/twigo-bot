@@ -97,6 +97,7 @@ export const twigoHelp: Command = {
           '`/gift kowens|everyone|boosts|minewars` — gifter only: give/remove Kowens (one member or everyone who has used the bot), fix a boost count, or pay the 9 PM Mine Wars',
           '`/gift prereg-panel|launch` — gifter only: post the web game pre-registration panel; at launch, pay every pre-registered member and close sign-ups',
           '`/gift title` — gifter only: give a member a web game title (shown under their name in the town)',
+          '`/gift notice` — gifter only: a banner for everyone in the web town (e.g. maintenance)',
           '`reset-kowens:@user` / `reset-all-kowens:yes` — reset Kowens',
         ]),
       );

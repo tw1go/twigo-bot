@@ -49,10 +49,19 @@ export interface TownSystemLine {
   tone: string;
 }
 
+/** A banner across the top of the town: a jackpot win, or a notice from the owner (maintenance and such). */
+export interface TownAnnouncement {
+  kind: 'jackpot' | 'notice';
+  title: string;
+  text: string;
+}
+
 /** Server → browser. */
 export type TownServerMessage =
   /** `spawn`: where you arrive (a free tile near the town's spawn point), unless you're already somewhere (a reconnect). */
-  | { t: 'welcome'; you: string; players: TownPlayer[]; recent: TownChatLine[]; system: TownSystemLine[]; spawn: [number, number] }
+  | { t: 'welcome'; you: string; players: TownPlayer[]; recent: TownChatLine[]; system: TownSystemLine[]; spawn: [number, number];
+      /** The owner's latest notice, while it's still current (30 minutes). */
+      notice?: TownAnnouncement }
   | { t: 'join'; player: TownPlayer }
   | { t: 'leave'; id: string }
   | { t: 'step'; id: string; col: number; row: number }
@@ -65,6 +74,8 @@ export type TownServerMessage =
   | { t: 'seat-taken' }
   /** Someone said something (you too: your own words come back this way). */
   | { t: 'say'; id: string; text: string }
+  /** A banner for everyone in town. */
+  | { t: 'announce'; announcement: TownAnnouncement }
   /** Something happened around the server (the system feed). */
   | { t: 'system'; line: TownSystemLine }
   /** Someone emoted (not sent back to the one who did it: they show it right away). */

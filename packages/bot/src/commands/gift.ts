@@ -7,12 +7,13 @@ import { ATTEND_REWARD, TOP_REWARD, openPayoutPanel } from '../minewars/payout.j
 import { kowen } from '../kowens.js';
 import { LAUNCH_REWARD, launchPayout, launched, preregPanel } from '../prereg/prereg.js';
 import { TITLES, giveTitle } from '../web/titles.js';
+import { announce } from '../web/town-feed.js';
 
 // Only the gifter (REWARD_OWNER_ID) can use this. Hidden from non-admins by default.
 export const gift: Command = {
   data: new SlashCommandBuilder()
     .setName('gift')
-    .setDescription('Gifter only: gifts, boosts, titles & Mine Wars payouts 🎁')
+    .setDescription('Gifter only: gifts, boosts, titles, town notices & Mine Wars payouts 🎁')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addSubcommand((s) =>
       s
@@ -57,6 +58,13 @@ export const gift: Command = {
         ),
     )
     .addSubcommand((s) =>
+      s
+        .setName('notice')
+        .setDescription('A banner for everyone in the web town (e.g. maintenance) · shown to new arrivals for 30 min · 🔒')
+        .addStringOption((o) => o.setName('message').setDescription('What it says').setRequired(true).setMaxLength(200))
+        .addStringOption((o) => o.setName('title').setDescription('The heading (default: Notice)').setMaxLength(40)),
+    )
+    .addSubcommand((s) =>
       s.setName('minewars').setDescription(`Pay 9 PM Mine Wars: attendance +${ATTEND_REWARD}, Top 10 ${TOP_REWARD} · 🔒 panel · 🌐 summary`),
     ),
   async execute(interaction) {
@@ -90,6 +98,14 @@ export const gift: Command = {
         content: `🚀 **The Mikazuki web game is live!**\n🎁 ${paid} pre-registered ${paid === 1 ? 'member' : 'members'} received **${LAUNCH_REWARD}** ${kowen(LAUNCH_REWARD)} each. Thank you for waiting! 🎮${config.publicUrl ? `\nPlay: ${config.publicUrl}/play/` : ''}`,
         allowedMentions: { parse: [] },
       });
+      return;
+    }
+    if (interaction.options.getSubcommand() === 'notice') {
+      const text = interaction.options.getString('message', true);
+      const title = interaction.options.getString('title') ?? 'Notice';
+      announce({ kind: 'notice', title, text });
+      console.log(`[gift] town notice: ${title}: ${text}`);
+      await interaction.reply({ content: `📣 Shown in the web town: **${title}**: ${text}\n-# People arriving in the next 30 minutes see it too.`, flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } });
       return;
     }
     if (interaction.options.getSubcommand() === 'everyone') {

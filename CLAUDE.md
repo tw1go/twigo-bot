@@ -95,6 +95,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
 - System feed (`ui/system-feed.ts`, bottom right, hidden ≤760 px): digs and bets from the Discord commands (bot
   `web/town-feed.ts` `feed()`, called in `commands/dig.ts` after the reveal and `commands/gamble.ts`), coloured by
   rarity / win / lose / bust; last 10 kept in memory. Dev: `/__system?kind=dig&tone=rare&text=…`.
+- Banners (`ui/announce.ts`, top centre): jackpot wins (bot `games/jackpot.ts` → `announce`, gold with casino lights) and
+  `/gift notice` (amber; e.g. maintenance; shown to arrivals for 30 min). Dev: `/__announce?kind=jackpot|notice&title=&text=`.
 - Multiplayer: `net/town.ts` (client, reconnects) ↔ bot `web/town.ts` (WebSocket `/ws`, no Discord code in it, so it
   can run alone for tests); `world/others.ts` draws everyone else. Dev: the dev server runs the town itself (`scripts/dev-town.ts`: the bot's `web/town.ts`,
   fake login), so two windows `?preview&as=Alice` / `?preview&as=Bob` see and chat with each other;

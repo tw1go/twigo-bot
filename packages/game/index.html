@@ -281,6 +281,22 @@
       #chat .on-me { color: #A3E635; }
       #chat .on-name { color: #fff; }
       #chat .on-ptitle { font-size: 12px; white-space: nowrap; }
+      /* Banners (ui/announce.ts): floating top centre, below the HUD; jackpot gold with casino lights, notices amber. */
+      .announce { position: fixed; top: 88px; left: 50%; z-index: 4; width: min(520px, calc(100vw - 32px)); box-sizing: border-box; padding: 14px 40px 14px 18px; background: rgba(17, 24, 39, 0.94); color: #E6E9F2; font: 15px/1.35 var(--ui-font); text-align: center; box-shadow: 0 4px 0 #1E1B3A; transform: translateX(-50%); animation: an-in 0.4s cubic-bezier(0.2, 1.4, 0.4, 1); }
+      .announce.an-out { opacity: 0; transform: translate(-50%, -12px); transition: opacity 0.3s, transform 0.3s; }
+      .announce .an-title { margin-bottom: 4px; font-size: 18px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+      .announce .an-close { position: absolute; top: 6px; right: 8px; width: 26px; height: 26px; border: 0; background: none; color: #7A8099; font: 18px/1 var(--ui-font); }
+      .announce .an-close:hover { color: #fff; }
+      .an-jackpot { border: 3px solid #F8BF27; padding-top: 22px; }
+      .an-jackpot .an-title { color: #FCDA4A; }
+      .an-notice { border: 3px solid #F59E0B; }
+      .an-notice .an-title { color: #F59E0B; }
+      .an-lights { position: absolute; top: -9px; left: 14px; right: 14px; display: flex; justify-content: space-between; }
+      .an-bulb { width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 0 2px #1E1B3A; background: radial-gradient(circle at 35% 30%, #FFFDF2 0 14%, #EFE3B4 32%, #CDB878 70%, #9C8748 100%); animation: rw-blink 1s steps(1) infinite; }
+      .an-odd { animation-delay: -0.5s; }
+      @keyframes an-in { from { transform: translate(-50%, -20px); opacity: 0; } }
+      @media (max-width: 560px) { .announce { top: 76px; } }
+      @media (prefers-reduced-motion: reduce) { .announce, .an-bulb { animation: none; } }
     </style>
   </head>
   <body>
