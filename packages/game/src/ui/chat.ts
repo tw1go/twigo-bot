@@ -56,8 +56,16 @@ export class ChatBox {
     if (tools) row.append(tools);
     this.root.append(this.log, row);
     document.body.append(this.root);
-    // Clicking the log opens the chat too.
+    // Clicking the log opens the chat too; pressing anywhere outside the box closes it (the town's canvas stops the
+    // browser doing that by itself, as Phaser cancels the default of presses on it).
     this.log.addEventListener('click', () => this.input.focus());
+    document.addEventListener(
+      'pointerdown',
+      (e) => {
+        if (document.activeElement === this.input && !this.root.contains(e.target as Node)) this.input.blur();
+      },
+      true,
+    );
     // Quiet for a while → faded; a message, a hover or typing → back to full.
     this.root.addEventListener('mouseenter', () => this.wake());
     this.root.addEventListener('mouseleave', () => this.wake());

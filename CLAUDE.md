@@ -85,7 +85,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
 - Reward pop-up (`ui/reward.ts`, `showReward`): dimmed town, turning rays, white box in the item frame (its fill
   repainted white). Shown once per new title, on whichever device comes first (`/me` newTitle → `POST
   /title/seen`; `titles.announced`, schema v7); dev demo `?reward=kowens|title`, debug `__town.reward({...})`.
-- Chat (`ui/chat.ts` + `SpeechBubble` in `ui/labels.ts`): Enter to type, Enter sends and stays open, empty Enter/Esc closes; the bot's `say` (tidied, ≤120 chars,
+- Chat (`ui/chat.ts` + `SpeechBubble` in `ui/labels.ts`): Enter to type, Enter sends and stays open, empty Enter/Esc or a click outside closes; the bot's `say` (tidied, ≤120 chars,
   burst 3 then 1 per 2 s, never saved) comes back to everyone, the speaker included. Linked to a Discord channel
   (`TOWN_CHAT_CHANNEL_ID`, bot `web/town-chat.ts`, needs the Message Content intent): Discord lines show with the
   Discord mark. The box is a fixed see-through panel that fades to 0.2 after 15 s quiet.
