@@ -2,8 +2,8 @@ import { playSound, setSound, soundSettings } from '../audio/sound';
 import { el, popupFrame } from './reward';
 
 // ⚙️ The settings box (from the Settings button under your profile): centred over the dimmed town, white in the
-// game's pixel frame like the reward pop-up. Audio (master volume, mute, music and its credit) and, for members,
-// logging out. Closes with ×, Escape or a click outside. Its buttons make the soft button click (audio/sound.ts),
+// game's pixel frame like the reward pop-up. Audio (music and sound-effect volumes, mute), for members logging
+// out, and a Credits page for the music, sounds and font. Closes with ×, Escape or a click outside. Its buttons make the soft button click (audio/sound.ts),
 // like every other button. DOM text only.
 
 export function showSettings(o: { loggedIn: boolean; onClose?: () => void }): void {
@@ -22,8 +22,27 @@ export function showSettings(o: { loggedIn: boolean; onClose?: () => void }): vo
   }
   const x = el('button', 'st-close', '×');
   x.setAttribute('aria-label', 'Close');
-  card.append(x, el('h2', 'st-title', 'Settings'), audio());
-  if (o.loggedIn) card.append(account());
+  const title = el('h2', 'st-title', 'Settings');
+  const main = el('div');
+  main.append(audio());
+  if (o.loggedIn) main.append(account());
+  const back = el('button', 'st-button', 'Back');
+  const creditsPage = el('div');
+  creditsPage.hidden = true;
+  creditsPage.append(credits(), back);
+  const more = el('section', 'st-section');
+  const open = el('button', 'st-button', 'Credits');
+  more.append(open);
+  main.append(more);
+  const page = (showCredits: boolean) => {
+    main.hidden = showCredits;
+    creditsPage.hidden = !showCredits;
+    title.textContent = showCredits ? 'Credits' : 'Settings';
+    (showCredits ? back : open).focus();
+  };
+  open.addEventListener('click', () => page(true));
+  back.addEventListener('click', () => page(false));
+  card.append(x, title, main, creditsPage);
   root.append(card);
   document.body.append(root);
   x.focus();
@@ -43,49 +62,77 @@ export function showSettings(o: { loggedIn: boolean; onClose?: () => void }): vo
   document.addEventListener('keydown', keys);
 }
 
-/** Master volume, mute and music (saved in this browser), and the music's credit. */
+/** Music and sound-effect volumes and mute (saved in this browser). */
 function audio(): HTMLElement {
   const section = el('section', 'st-section');
   const s = soundSettings();
-  const volume = el('input', 'st-volume');
-  volume.type = 'range';
-  volume.min = '0';
-  volume.max = '100';
-  volume.value = String(Math.round(s.volume * 100));
-  volume.setAttribute('aria-label', 'Volume');
-  volume.addEventListener('input', () => setSound({ volume: Number(volume.value) / 100 }));
-  volume.addEventListener('change', () => playSound('click')); // once let go, at the new volume
-  const row = el('label', 'st-row');
-  row.append(el('span', 'st-label', 'Volume'), volume);
-
-  const check = (label: string, on: boolean, change: (on: boolean) => void) => {
-    const line = el('label', 'st-row st-check');
-    const box = el('input');
-    box.type = 'checkbox';
-    box.checked = on;
-    box.addEventListener('change', () => {
-      change(box.checked);
-      playSound('click');
-    });
-    line.append(box, el('span', undefined, label));
-    return line;
+  const slider = (label: string, value: number, change: (value: number) => void) => {
+    const input = el('input', 'st-volume');
+    input.type = 'range';
+    input.min = '0';
+    input.max = '100';
+    input.value = String(Math.round(value * 100));
+    input.setAttribute('aria-label', label);
+    input.addEventListener('input', () => change(Number(input.value) / 100));
+    const row = el('label', 'st-row');
+    row.append(el('span', 'st-label', label), input);
+    return { row, input };
   };
+  const music = slider('Music', s.music, (music) => setSound({ music }));
+  const sfx = slider('Sounds', s.sfx, (sfx) => setSound({ sfx }));
+  sfx.input.addEventListener('change', () => playSound('click')); // once let go, at the new volume
 
-  const credit = el('p', 'st-note');
-  const link = el('a', undefined, '"happy tune" by syncopika');
-  link.href = 'https://opengameart.org/content/happy-tune';
-  link.target = '_blank';
-  link.rel = 'noopener';
-  credit.append('Music: ', link, ' (CC-BY 3.0). Sounds: Kenney, Wolfgang_ and rubberduck (CC0).');
+  const mute = el('label', 'st-row st-check');
+  const box = el('input');
+  box.type = 'checkbox';
+  box.checked = s.muted;
+  box.addEventListener('change', () => {
+    setSound({ muted: box.checked });
+    playSound('click');
+  });
+  mute.append(box, el('span', undefined, 'Mute all'));
 
-  section.append(
-    el('h3', 'st-heading', 'Audio'),
-    row,
-    check('Mute', s.muted, (muted) => setSound({ muted })),
-    check('Music', s.music, (music) => setSound({ music })),
-    credit,
-  );
+  section.append(el('h3', 'st-heading', 'Audio'), music.row, sfx.row, mute);
   return section;
+}
+
+/** Who made the music, sounds and font (assets/audio/CREDITS.md and the font's licence have the details). */
+const CREDITS: { heading: string; lines: [string, string, string?][] }[] = [
+  { heading: 'Music', lines: [['"happy tune" by syncopika', 'CC-BY 3.0', 'https://opengameart.org/content/happy-tune']] },
+  {
+    heading: 'Sounds',
+    lines: [
+      ['Interface, RPG and Casino sounds by Kenney', 'CC0', 'https://kenney.nl'],
+      ['Crickets by Wolfgang_ (notice: Ted Kerr)', 'CC0'],
+      ['Fountain by rubberduck, "30 CC0 SFX Loops"', 'CC0'],
+    ],
+  },
+  {
+    heading: 'Font',
+    lines: [['Pixelify Sans by The Pixelify Sans Project Authors', 'SIL OFL 1.1', 'https://github.com/eifetx/Pixelify-Sans']],
+  },
+];
+
+function credits(): HTMLElement {
+  const box = el('div');
+  for (const { heading, lines } of CREDITS) {
+    const section = el('section', 'st-section');
+    section.append(el('h3', 'st-heading', heading));
+    for (const [what, licence, url] of lines) {
+      const line = el('p', 'st-credit');
+      if (url) {
+        const link = el('a', undefined, what);
+        link.href = url;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        line.append(link);
+      } else line.append(what);
+      line.append(el('span', 'st-licence', ` · ${licence}`));
+      section.append(line);
+    }
+    box.append(section);
+  }
+  return box;
 }
 
 function account(): HTMLElement {
