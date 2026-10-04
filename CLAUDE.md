@@ -94,8 +94,9 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
 - Sound (`audio/sound.ts`, files + credits in `public/assets/audio/`, not in the manifest): crickets that come and go,
   the fountain louder near the plaza, music off by default (loaded only when switched on), soft one-shots (emote,
   chat from others, door, casino card/chip, coin, button click, error); nothing plays before the first click/key.
-  Settings box (`ui/settings.ts`, gear button under the profile, manifest `ui.settingsIcon`): volume, mute, music
-  (saved in localStorage `mk_sound`) and log out. Keep sounds soft: no sharp clicks.
+  Settings box (`ui/settings.ts`, gear button top right, manifest `ui.settingsIcon`): Music and Sounds volumes
+  (music 0 = off) and Mute all (saved in localStorage `mk_sound`), log out, and a Credits page (keep it in step with
+  `public/assets/audio/CREDITS.md` and the font's licence). Keep sounds soft: no sharp clicks.
 - Emotes (`ui/emotes.ts` picker beside the chat input, keys 1–8; `EmotePop` in `ui/labels.ts`): the art's emote
   icons over the head for ~2 s (laugh also cheers, wave waves); `emote` goes to the others, rate-limited.
 - System feed (`ui/system-feed.ts`, bottom right, hidden ≤760 px): digs and bets from the Discord commands (bot
