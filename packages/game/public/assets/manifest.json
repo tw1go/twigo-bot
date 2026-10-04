@@ -1829,5 +1829,492 @@
       "note": "the Settings button's gear (HUD, top left)"
     }
   },
-  "notes_ui": "All UI is drawn at 1x and scaled by the same whole-number zoom as the world. Text is never baked in: draw it with Minecraft.ttf."
+  "notes_ui": "All UI is drawn at 1x and scaled by the same whole-number zoom as the world. Text is never baked in: draw it with Minecraft.ttf.",
+  "items": {
+    "advanced-bp": {
+      "file": "items/item-advanced-bp.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "aka-poknat": {
+      "file": "items/item-aka-poknat.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "bag-backpack": {
+      "file": "items/item-bag-backpack.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "bag-balikbayan": {
+      "file": "items/item-bag-balikbayan.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "bag-bayong": {
+      "file": "items/item-bag-bayong.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "bag-lola": {
+      "file": "items/item-bag-lola.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "bag-supot": {
+      "file": "items/item-bag-supot.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "bakod": {
+      "file": "items/item-bakod.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "basic-bp": {
+      "file": "items/item-basic-bp.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "bbq-stick": {
+      "file": "items/item-bbq-stick.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "bottle": {
+      "file": "items/item-bottle.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "bottle-cap": {
+      "file": "items/item-bottle-cap.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "broken-tsinelas": {
+      "file": "items/item-broken-tsinelas.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "brother-j-letter": {
+      "file": "items/item-brother-j-letter.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "chair-leg": {
+      "file": "items/item-chair-leg.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "charlene-lipstick": {
+      "file": "items/item-charlene-lipstick.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "chewed-gum": {
+      "file": "items/item-chewed-gum.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "crossword": {
+      "file": "items/item-crossword.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "deflated-balloon": {
+      "file": "items/item-deflated-balloon.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "dirt": {
+      "file": "items/item-dirt.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "earring": {
+      "file": "items/item-earring.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "empty-sachet": {
+      "file": "items/item-empty-sachet.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "expired-load": {
+      "file": "items/item-expired-load.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "fig-boxers": {
+      "file": "items/item-fig-boxers.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "guitar-string": {
+      "file": "items/item-guitar-string.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "half-pencil": {
+      "file": "items/item-half-pencil.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "hei-battery": {
+      "file": "items/item-hei-battery.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "holen": {
+      "file": "items/item-holen.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "hypercrade-wheels": {
+      "file": "items/item-hypercrade-wheels.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "jord-fork": {
+      "file": "items/item-jord-fork.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "junwuu-socks": {
+      "file": "items/item-junwuu-socks.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "kalamansi": {
+      "file": "items/item-kalamansi.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "kei-cup": {
+      "file": "items/item-kei-cup.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "ketchup-packet": {
+      "file": "items/item-ketchup-packet.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "kyuu-letter": {
+      "file": "items/item-kyuu-letter.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "losing-lotto": {
+      "file": "items/item-losing-lotto.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "master-key": {
+      "file": "items/item-master-key.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "mikko-kalabasa": {
+      "file": "items/item-mikko-kalabasa.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "mystery-bone": {
+      "file": "items/item-mystery-bone.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "nami-plate": {
+      "file": "items/item-nami-plate.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "nyaru-cardboard": {
+      "file": "items/item-nyaru-cardboard.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "pandesal": {
+      "file": "items/item-pandesal.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "phantasium": {
+      "file": "items/item-phantasium.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "piso": {
+      "file": "items/item-piso.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "pittu-book": {
+      "file": "items/item-pittu-book.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "plastic": {
+      "file": "items/item-plastic.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "potion-kalawang": {
+      "file": "items/item-potion-kalawang.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "potion-marites": {
+      "file": "items/item-potion-marites.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "potion-swerte": {
+      "file": "items/item-potion-swerte.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "potion-tago": {
+      "file": "items/item-potion-tago.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "rock": {
+      "file": "items/item-rock.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "rubber-band": {
+      "file": "items/item-rubber-band.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "rusty-nail": {
+      "file": "items/item-rusty-nail.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "scel-burrito": {
+      "file": "items/item-scel-burrito.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "scrappy-milk": {
+      "file": "items/item-scrappy-milk.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "shovel": {
+      "file": "ui/ui-shovel.png",
+      "size": [
+        32,
+        32
+      ],
+      "note": "same art as ui.shovelIcon"
+    },
+    "soggy-wrapper": {
+      "file": "items/item-soggy-wrapper.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "spoon": {
+      "file": "items/item-spoon.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "tabo": {
+      "file": "items/item-tabo.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "tangled-earphones": {
+      "file": "items/item-tangled-earphones.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "tex-card": {
+      "file": "items/item-tex-card.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "trot-shelf": {
+      "file": "items/item-trot-shelf.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "troyangs-frog": {
+      "file": "items/item-troyangs-frog.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "tupperware-lid": {
+      "file": "items/item-tupperware-lid.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "twigo-treasure": {
+      "file": "items/item-twigo-treasure.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "twigo-tsinelas": {
+      "file": "items/item-twigo-tsinelas.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "ushiik-keycaps": {
+      "file": "items/item-ushiik-keycaps.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "vault": {
+      "file": "items/item-vault.png",
+      "size": [
+        32,
+        32
+      ]
+    },
+    "wet-mystery-sock": {
+      "file": "items/item-wet-mystery-sock.png",
+      "size": [
+        32,
+        32
+      ]
+    }
+  },
+  "notes_items": "Item icons (32x32): the rewards shop (keys are /redeem's reward ids) and dug-up items (keys are the dig item ids). DOM art: shown at whole-number scale with image-rendering: pixelated."
 }

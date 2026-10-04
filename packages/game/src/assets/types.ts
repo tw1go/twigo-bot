@@ -36,6 +36,8 @@ export interface Manifest {
   props: Record<string, PropDef> & { fence: FenceDef; 'tree-tufts': { files: string[]; size: Vec2 } };
   characters: CharacterDefs;
   fx: Record<string, FxDef>;
+  /** Item icons by id: rewards shop (/redeem ids) and dug-up items. */
+  items?: Record<string, { file: string; size: Vec2 }>;
   ui: Record<string, { file?: string; size?: Vec2; frames?: number | string[] | Record<string, number>; fps?: number; anchor?: Vec2 }> & {
     inventory?: { itemFrame?: { file: string; nineSlice: number } };
     nameplate?: { file: string; self: string; threeSlice: number; height: number };
