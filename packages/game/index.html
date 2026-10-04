@@ -268,6 +268,19 @@
       #system-feed [data-tone='lose'] { color: #F7768E; }
       #system-feed [data-tone='bust'] { color: #F59E0B; }
       @media (max-width: 760px) { #system-feed { display: none; } }
+      /* Who's online (ui/online.ts), beside the chat input next to the emote button. */
+      #chat .ch-tools { display: flex; gap: 6px; }
+      #chat .on-wrap { position: relative; }
+      #chat .on-open { height: 100%; display: flex; align-items: center; gap: 6px; padding: 0 9px; border: 0; border-radius: 4px; background: rgba(0, 0, 0, 0.35); color: #E6E9F2; font: inherit; font-size: 13px; white-space: nowrap; }
+      #chat .on-open:hover, #chat .on-open[aria-expanded='true'] { background: rgba(0, 0, 0, 0.55); box-shadow: 0 0 0 1px rgba(183, 148, 246, 0.6); }
+      #chat .on-dot { display: block; flex: none; width: 10px; height: 10px; image-rendering: pixelated; background-repeat: no-repeat; }
+      #chat .on-list { position: absolute; right: 0; bottom: calc(100% + 8px); min-width: 220px; max-height: 260px; overflow-y: auto; padding: 8px 10px; border-radius: 6px; background: rgba(10, 12, 24, 0.9); }
+      #chat .on-list[hidden] { display: none; }
+      #chat .on-title { margin-bottom: 6px; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: #B794F6; }
+      #chat .on-row { display: flex; justify-content: space-between; gap: 12px; margin: 4px 0; font-size: 14px; }
+      #chat .on-me { color: #A3E635; }
+      #chat .on-name { color: #fff; }
+      #chat .on-ptitle { font-size: 12px; white-space: nowrap; }
     </style>
   </head>
   <body>

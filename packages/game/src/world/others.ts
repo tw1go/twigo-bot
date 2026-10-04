@@ -22,6 +22,8 @@ export class OtherPlayers {
   private zoom = 1;
   /** The speech bubble art, for what others say. */
   bubbleArt: BubbleArt | null = null;
+  /** Called when someone arrives or leaves (the online list). */
+  onChange: () => void = () => {};
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -105,10 +107,16 @@ export class OtherPlayers {
     for (const id of [...this.all.keys()]) this.remove(id);
   }
 
+  /** Everyone here, as the server reported them. */
+  get players(): TownPlayer[] {
+    return [...this.all.values()].map((o) => o.state);
+  }
+
   private add(p: TownPlayer): void {
     const C = this.M.characters;
     const o: Other = { state: { ...p }, char: null };
     this.all.set(p.id, o);
+    this.onChange();
     // Unknown items (an older or newer wardrobe) fall back to a look seeded by their id.
     const look = sanitize(C, p.outfit, randomOutfit(C, rng(parseInt(p.id.slice(0, 8), 16) || 1)));
     void loadOutfit(this.scene, C, look).then(() => {
@@ -128,7 +136,7 @@ export class OtherPlayers {
 
   private remove(id: string): void {
     this.all.get(id)?.char?.destroy();
-    this.all.delete(id);
+    if (this.all.delete(id)) this.onChange();
   }
 
   /** Sit on the bench at the player's tile (or just stand there if there's none). */

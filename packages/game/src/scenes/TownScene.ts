@@ -13,6 +13,7 @@ import { showElsewhere } from '../ui/elsewhere';
 import { mountTownHud } from '../ui/townhud';
 import { ChatBox } from '../ui/chat';
 import { SystemFeed } from '../ui/system-feed';
+import { OnlineList } from '../ui/online';
 import { EMOTE_KEYS, emotePicker } from '../ui/emotes';
 import type { TownEmote } from '@mikazuki/shared';
 import { type BubbleArt, lightBubble } from '../ui/labels';
@@ -319,9 +320,18 @@ export class TownScene extends Phaser.Scene {
       link.send({ t: 'emote', emote: e });
     };
     this.emoteKeys = emote;
-    const chat = new ChatBox((text) => link.send({ t: 'say', text }), emotePicker(sheet, emote));
-    const feed = new SystemFeed();
     const member = this.me?.status === 'ok' ? this.me.me : null;
+    // Beside the chat input: who's online, and the emote picker.
+    const D = this.M.ui.statusDots;
+    const online = new OnlineList(D?.file && Array.isArray(D.frames) ? { url: `${import.meta.env.BASE_URL}assets/${D.file}`, size: D.size?.[0] ?? 5, frame: Math.max(0, D.frames.indexOf('online')), frames: D.frames.length } : null);
+    const me = { name: member?.nickname ?? 'Guest', title: member?.title ?? TOWNFOLK, me: true };
+    this.others.onChange = () => online.update([me, ...this.others.players.map((p) => ({ name: p.nickname, title: p.title }))]);
+    this.others.onChange();
+    const tools = document.createElement('div');
+    tools.className = 'ch-tools';
+    tools.append(online.el, emotePicker(sheet, emote));
+    const chat = new ChatBox((text) => link.send({ t: 'say', text }), tools);
+    const feed = new SystemFeed();
     let myId = '';
     let arrived = false;
     this.player.onStep = (to) => {
