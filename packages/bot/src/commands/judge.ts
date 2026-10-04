@@ -16,7 +16,14 @@ const verdicts = {
   praise: { header: '💖 **PRAISED**', next: shuffleBag('praises', praises), botLines: botPraises },
 };
 
-type Mode = keyof typeof verdicts | 'random';
+export type Mode = keyof typeof verdicts | 'random';
+
+/** A verdict from the shared rotation (also the town's player menu): the kind, its header, and the line with {u}
+ *  where the target goes. */
+export function drawVerdict(mode: Mode): { kind: keyof typeof verdicts; header: string; line: string } {
+  const kind = mode === 'random' ? (Math.random() < 0.5 ? 'roast' : 'praise') : mode;
+  return { kind, header: verdicts[kind].header, line: verdicts[kind].next() };
+}
 
 function verdictCommand(name: string, description: string, mode: Mode): Command {
   return {

@@ -14,6 +14,8 @@ import { MAX_TICKETS, buyTickets, entries, lastDraw, nextDraw, pot, ticketWord, 
 import { jailedUntil } from '../games/jail.js';
 import { bankAction, townBank } from './town-bank.js';
 import { buyFromShop, townShop } from './town-shop.js';
+import { type PlayerDeps, giveInTown, playerInfo, verdictInTown } from './town-player.js';
+import type { Town } from './town.js';
 import { kowen } from '../kowens.js';
 import { filterText, kickedUntil, mutedUntil } from './town-mod.js';
 import { getOutfit, parseOutfit, saveOutfit } from './outfit.js';
@@ -46,6 +48,9 @@ import { roll } from './finds.js';
 //   POST /town/bank     { action: deposit|withdraw|borrow|repay, amount? } (from the game's page only; may play)
 //   GET  /town/shop     the rewards shop: what /redeem sells, as the viewer sees it (may play)
 //   POST /town/shop     { id, quantity } redeem a reward (from the game's page only; may play)
+//   GET  /town/player?id=  another player in town (by town id): /balance and /status for them (may play)
+//   POST /town/give     { to, amount } give Kowens to a player in town (from the game's page only; may play)
+//   POST /town/verdict  { to, mode: diss|praise|judge } on a player in town, 1 Kowen (from the game's page only; may play)
 //   POST /title/seen    the game showed the member their new title (from the game's page only)
 //   WS   /ws            the live town: who else is there and where (see town.ts; from the game's page only)
 
@@ -240,6 +245,14 @@ export function startWebServer(client: Client): void {
     return;
   }
 
+  let town: Town | null = null; // set once the town is attached, below
+  const playerDeps: PlayerDeps = {
+    nameOf: (id) => nameOf(client, id),
+    statusOf: (id) => statusOf(client, id),
+    gifted: (userId, from, amount) => town?.gifted(userId, from, amount),
+    verdict: (userId, kind, judged, text) => town?.verdict(userId, kind, judged, text),
+  };
+
   const server = createServer(async (req, res) => {
     const origin = req.headers.origin;
     if (origin && ALLOWED_ORIGINS.has(origin)) {
@@ -357,6 +370,33 @@ export function startWebServer(client: Client): void {
         }
         return send(res, 200, JSON.stringify(await buyFromShop(client, userId, id, quantity, await nameOf(client, userId))));
       }
+      if ((req.method === 'GET' && path === '/town/player') || (req.method === 'POST' && (path === '/town/give' || path === '/town/verdict'))) {
+        if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
+        if (req.method === 'POST' && !fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
+        const userId = sessionUser(req);
+        if (!userId) return send(res, 401, '{"error":"not logged in"}');
+        let body: { to?: unknown; amount?: unknown; mode?: unknown } | null = null;
+        if (req.method === 'POST') {
+          try {
+            body = JSON.parse((await readBody(req)) || 'null');
+          } catch {
+            // invalid JSON → rejected below
+          }
+        }
+        if (!(await canPlay(client, userId))) return send(res, 403, '{"error":"testers only for now"}');
+        const playerId = req.method === 'GET' ? url.searchParams.get('id') : body?.to;
+        const target = typeof playerId === 'string' ? town?.memberOf(playerId) : null;
+        if (!target) return send(res, 404, '{"error":"not in town"}');
+        if (req.method === 'GET') return send(res, 200, JSON.stringify(await playerInfo(userId, target, playerDeps)));
+        if (path === '/town/verdict') {
+          const mode = body?.mode;
+          if (mode !== 'diss' && mode !== 'praise' && mode !== 'judge') return send(res, 400, '{"error":"invalid mode"}');
+          return send(res, 200, JSON.stringify(await verdictInTown(client, userId, target, mode, playerDeps)));
+        }
+        const amount = body?.amount;
+        if (typeof amount !== 'number' || !Number.isInteger(amount) || amount < 1 || amount > 1_000_000) return send(res, 400, '{"error":"invalid amount"}');
+        return send(res, 200, JSON.stringify(await giveInTown(client, userId, target, amount, playerDeps)));
+      }
       if (req.method === 'POST' && path === '/title/seen') {
         if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
         if (!fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
@@ -408,7 +448,7 @@ export function startWebServer(client: Client): void {
   // The live town (/ws): logged-in members who've made a character, from the game's own page.
   try {
     let toDiscord: (userId: string, nickname: string, text: string) => void = () => {};
-    const town = attachTown(server, {
+    town = attachTown(server, {
       onSay: (userId, nickname, text) => toDiscord(userId, nickname, text),
       moderation: { mutedUntil, kickedUntil, filter: filterText },
       map: loadTownMap(),

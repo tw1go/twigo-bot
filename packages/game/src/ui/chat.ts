@@ -109,6 +109,20 @@ export class ChatBox {
     this.push(line);
   }
 
+  /** A diss, praise or judge from the player menu: who said it, a coloured tag, and the line. */
+  verdict(name: string, kind: 'roast' | 'praise', judged: boolean, text: string): void {
+    const line = document.createElement('div');
+    line.className = 'ch-line';
+    const who = document.createElement('b');
+    who.className = 'ch-name';
+    who.textContent = `${name} `;
+    const tag = document.createElement('span');
+    tag.className = `ch-verdict ch-${kind}`;
+    tag.textContent = judged ? `judged: ${kind === 'roast' ? 'roast' : 'praise'}` : kind === 'roast' ? 'dissed' : 'praised';
+    line.append(who, tag, document.createTextNode(` ${text}`));
+    this.push(line);
+  }
+
   /** The conversation so far (as the server remembers it), replacing what's in the log. */
   history(lines: { name: string; text: string; discord?: boolean }[], myName: string | null): void {
     this.log.replaceChildren();

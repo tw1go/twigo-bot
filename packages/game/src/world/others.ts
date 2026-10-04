@@ -24,6 +24,8 @@ export class OtherPlayers {
   bubbleArt: BubbleArt | null = null;
   /** Called when someone arrives or leaves (the online list). */
   onChange: () => void = () => {};
+  /** The CSS cursor over a character (left click picks them). */
+  private cursorCss = 'pointer';
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -45,7 +47,7 @@ export class OtherPlayers {
       case 'leave':
         return this.remove(m.id);
     }
-    if (m.t === 'snap' || m.t === 'say-refused' || m.t === 'say-discord' || m.t === 'emote' || m.t === 'system' || m.t === 'seat-taken' || m.t === 'announce') return;
+    if (m.t === 'snap' || m.t === 'say-refused' || m.t === 'say-discord' || m.t === 'emote' || m.t === 'system' || m.t === 'seat-taken' || m.t === 'announce' || m.t === 'gift') return;
     const o = this.all.get(m.id);
     if (!o) return;
     const s = o.state;
@@ -78,6 +80,23 @@ export class OtherPlayers {
   /** Someone's character, once drawn. */
   charOf(id: string): Character | null {
     return this.all.get(id)?.char ?? null;
+  }
+
+  /** The player whose character is among `over` (what the pointer is over), if any. */
+  pick(over: Phaser.GameObjects.GameObject[]): TownPlayer | null {
+    for (const o of this.all.values()) if (o.char && over.includes(o.char.sprite)) return o.state;
+    return null;
+  }
+
+  /** Whether someone is still here. */
+  has(id: string): boolean {
+    return this.all.has(id);
+  }
+
+  /** The cursor over characters (it's scaled with the zoom). */
+  set cursor(css: string) {
+    this.cursorCss = css;
+    for (const o of this.all.values()) if (o.char?.sprite.input) o.char.sprite.input.cursor = css;
   }
 
   /** Someone's nickname (for the chat log), if they're here. */
@@ -128,6 +147,7 @@ export class OtherPlayers {
       char.place({ col: s.col, row: s.row }, s.dir);
       if (s.sit) this.seat(char, s);
       char.setNameTag(s.nickname, s.title);
+      char.sprite.setInteractive({ pixelPerfect: true, cursor: this.cursorCss });
       char.setZoom(this.zoom);
       for (const t of char.tintables) this.onSpawn(t);
       o.char = char;

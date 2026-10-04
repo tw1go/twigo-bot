@@ -194,6 +194,32 @@ export interface TownShopItem {
 /** POST /town/shop { id, quantity } → the shop afterwards, whether it worked, and what to tell the member. */
 export type TownShopBuyResponse = TownShopResponse & { ok: boolean; message: string };
 
+/** GET /town/player?id= : another player in town, as /balance and /status show them, and what the viewer can give. */
+export interface TownPlayerInfo {
+  name: string;
+  title: TitleData;
+  status: PresenceStatus;
+  wallet: number;
+  /** Null without a vault. */
+  vault: number | null;
+  rank: number | null;
+  bakodUntil: number | null;
+  jailedUntil: number | null;
+  /** What they owe on a loan, if anything. */
+  loan: number | null;
+  jackpotTickets: number;
+  /** Days without activity, once they're losing Kowens for it. */
+  inactiveDays: number | null;
+  /** The viewer's gifting: how many more Kowens they can give today, of the daily limit, and their wallet. */
+  give: { left: number; limit: number; wallet: number; inDebt: boolean };
+}
+
+/** POST /town/verdict { to, mode }: /diss, /praise or /judge on a player in town (1 Kowen). */
+export type TownVerdictMode = 'diss' | 'praise' | 'judge';
+
+/** POST /town/give { to, amount } and /town/verdict → whether it worked, what to tell the sender, and the player afterwards. */
+export type TownGiveResponse = { ok: boolean; message: string; player: TownPlayerInfo | null };
+
 /** A title: its name, and its colour ('#RRGGBB', or 'prismatic' for a shifting rainbow). */
 export interface TitleData {
   name: string;

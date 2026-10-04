@@ -24,6 +24,7 @@ import { type Figure, showLeaderboard } from '../ui/leaderboard';
 import { showJackpot } from '../ui/jackpot';
 import { showBank } from '../ui/bank';
 import { showShop } from '../ui/shop';
+import { TargetBox } from '../ui/target';
 import { OtherPlayers } from '../world/others';
 import { fakeLogin } from '../session';
 import { screenToTile, tileToScreen } from '../iso';
@@ -124,6 +125,8 @@ export class TownScene extends Phaser.Scene {
   private emoteKeys: ((e: TownEmote) => void) | null = null;
   private others!: OtherPlayers;
   private link: TownLink | null = null;
+  /** The picked player's box and menu (members only). */
+  private target: TargetBox | null = null;
   /** What the server last heard about the player (face / sit / stand are sent when these change). */
   private sent = { dir: '' as string, sit: false };
   private alertFor: Building | null = null;
@@ -268,6 +271,7 @@ export class TownScene extends Phaser.Scene {
     for (const l of this.buildingLabels.values()) l.setZoom(zoom);
     this.input.setDefaultCursor(cursor('pointer', zoom));
     for (const b of [...this.objects.buildings, ...this.objects.benches]) if (b.sprite.input) b.sprite.input.cursor = cursor('hand', zoom);
+    this.others.cursor = cursor('hand', zoom);
   }
 
   /** The town's HUD: your head and name top left (in the game's frame), Kowens and shovels top right. */
@@ -354,7 +358,14 @@ export class TownScene extends Phaser.Scene {
     const D = this.M.ui.statusDots;
     const online = new OnlineList(D?.file && Array.isArray(D.frames) ? { url: `${import.meta.env.BASE_URL}assets/${D.file}`, size: D.size?.[0] ?? 5, frame: Math.max(0, D.frames.indexOf('online')), frames: D.frames.length } : null);
     const me = { name: member?.nickname ?? 'Guest', title: member?.title ?? TOWNFOLK, me: true };
-    this.others.onChange = () => online.update([me, ...this.others.players.map((p) => ({ name: p.nickname, title: p.title }))]);
+    // Members can pick other players (left click) for the player menu: give Kowens, balance, status, diss/praise/judge.
+    const itemFrame = this.M.ui.inventory?.itemFrame;
+    const frame = itemFrame ? { url: `${import.meta.env.BASE_URL}assets/${itemFrame.file}`, slice: itemFrame.nineSlice } : null;
+    if (member) this.target = new TargetBox(frame, (kind, judged, text) => verdict(myId, kind, judged, text));
+    this.others.onChange = () => {
+      online.update([me, ...this.others.players.map((p) => ({ name: p.nickname, title: p.title }))]);
+      this.target?.check((id) => this.others.has(id));
+    };
     this.others.onChange();
     const tools = document.createElement('div');
     tools.className = 'ch-tools';
@@ -363,6 +374,14 @@ export class TownScene extends Phaser.Scene {
     const feed = new SystemFeed();
     let myId = '';
     let arrived = false;
+    /** Someone (maybe you) says a diss, praise or judge line: a speech bubble and a tagged line in the chat. */
+    const verdict = (id: string, kind: 'roast' | 'praise', judged: boolean, text: string) => {
+      const mine = id === myId;
+      const char = mine ? this.player : this.others.charOf(id);
+      if (char && bubbles) char.say(text, bubbles);
+      chat.verdict(mine ? (member?.nickname ?? 'You') : (this.others.nameOf(id) ?? 'Someone'), kind, judged, text);
+      if (!mine) playSound('chat');
+    };
     this.player.onStep = (to) => {
       link.send({ t: 'step', col: to.col, row: to.row });
       this.sent = { dir: this.player.facing, sit: false };
@@ -395,6 +414,11 @@ export class TownScene extends Phaser.Scene {
         return feed.add(m.line);
       }
       if (m.t === 'announce') return announce(m.announcement);
+      if (m.t === 'verdict') return verdict(m.id, m.kind, m.judged, m.text);
+      if (m.t === 'gift') {
+        window.dispatchEvent(new Event('mk-wallet')); // the HUD's Kowens
+        return void showReward({ title: 'Gift', graphic: { kind: 'kowens', amount: m.amount }, message: `${m.from} gave you ${m.amount} ${m.amount === 1 ? 'Kowen' : 'Kowens'}!` });
+      }
       if (m.t === 'emote') {
         const char = this.others.charOf(m.id);
         if (char) this.playEmote(char, m.emote);
@@ -542,6 +566,9 @@ export class TownScene extends Phaser.Scene {
     this.input.mouse?.disableContextMenu();
     this.input.on(Phaser.Input.Events.POINTER_UP, (p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
       if (p.getDistance() > 8) return; // a drag, not a click
+      // Someone else's character: left click (or a tap) picks them for the player menu.
+      const other = this.others.pick(over);
+      if (other && this.target && (p.wasTouch || p.leftButtonReleased())) return this.target.select(other);
       const building = this.objects.buildings.find((b) => over.includes(b.sprite));
       const world = this.cameras.main.getWorldPoint(p.x, p.y);
       const { col, row } = screenToTile(world.x, world.y);

@@ -44,9 +44,9 @@ export interface TownChatLine {
 
 /** A line in the town's system feed: something that happened around the server (a dig, a bet). */
 export interface TownSystemLine {
-  kind: 'dig' | 'gamble' | 'jackpot' | 'shop';
+  kind: 'dig' | 'gamble' | 'jackpot' | 'shop' | 'gift';
   text: string;
-  /** Colour key: a dig's rarity, win / lose / bust, jackpot, or shop. */
+  /** Colour key: a dig's rarity, win / lose / bust, jackpot, shop, or gift. */
   tone: string;
 }
 
@@ -79,6 +79,10 @@ export type TownServerMessage =
   | { t: 'announce'; announcement: TownAnnouncement }
   /** Something happened around the server (the system feed). */
   | { t: 'system'; line: TownSystemLine }
+  /** Someone dissed, praised or judged someone (the player menu): `id` says the line (the target's name is in it). */
+  | { t: 'verdict'; id: string; kind: 'roast' | 'praise'; judged: boolean; text: string }
+  /** Someone gave you Kowens (from the town's player menu). */
+  | { t: 'gift'; from: string; amount: number }
   /** Someone emoted (not sent back to the one who did it: they show it right away). */
   | { t: 'emote'; id: string; emote: TownEmote }
   /** Someone said something in the town's Discord channel (shown with a Discord mark, no bubble). */

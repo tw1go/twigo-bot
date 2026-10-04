@@ -118,6 +118,12 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   a second press to confirm passes. Bot `GET/POST /town/shop` (`web/town-shop.ts`); `/redeem` and the shop share
   `games/redeem.ts` (checks + purchase, the public Discord post `redeemPost`, the feed line). Passes ping the reward
   owner like `/redeem`. Dev: a pretend shop.
+- Player menu (`ui/target.ts`): left click (or tap) someone → their name in a long box top centre; clicking it opens
+  Give Kowens (/give rules), Balance, Status (as /balance and /status) and Diss / Praise / Judge (/diss etc. lines,
+  1 Kowen, 5 s cooldown; the sender says it as a bubble + tagged chat line). Bot `GET /town/player?id=`, `POST
+  /town/give`, `POST /town/verdict` (`web/town-player.ts`): players are looked up by their town id via
+  `Town.memberOf` (Discord ids never reach the page). Gifts post in the games channel and pop up for the receiver
+  (`gift`); verdicts post in the town chat channel, pinging the target. Dev fakes the numbers and verdicts locally.
 - Moderation (`/town mute|unmute|kick|filter`, mods/admins; bot `web/town-mod.ts`, kv 'town-moderation'): mutes block
   town chat, kicks close the socket (4001, back-at time) and refuse rejoining, blocked words become *** (whole words,
   repeated letters). Actions are logged in the admin channel. The word list lives only in the database.

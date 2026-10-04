@@ -86,6 +86,12 @@ export interface Town {
   announce(a: TownAnnouncement): void;
   /** Removes a member from the town now (they're kept out by moderation.kickedUntil). */
   kick(userId: string, until: number): boolean;
+  /** The member behind a town player id, if they're here (ids are random per visit: Discord ids never reach the page). */
+  memberOf(playerId: string): string | null;
+  /** Tells a member, if they're in town, that someone gave them Kowens. */
+  gifted(userId: string, from: string, amount: number): void;
+  /** A member (if in town) says a diss, praise or judge line: to everyone, the speaker included. */
+  verdict(userId: string, kind: 'roast' | 'praise', judged: boolean, text: string): void;
 }
 
 /** The game's map (packages/game/public/assets/maps/town.json), from the monorepo next to the bot. */
@@ -305,6 +311,18 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       others(c, { t: 'leave', id: c.player.id });
       c.ws.close(KICKED, String(until));
       return true;
+    },
+    memberOf(playerId) {
+      for (const c of conns.values()) if (c.player.id === playerId) return c.userId;
+      return null;
+    },
+    gifted(userId, from, amount) {
+      const c = conns.get(userId);
+      if (c) send(c, { t: 'gift', from, amount });
+    },
+    verdict(userId, kind, judged, text) {
+      const c = conns.get(userId);
+      if (c) everyone({ t: 'verdict', id: c.player.id, kind, judged, text });
     },
     announce(a) {
       if (a.kind === 'notice') notice = { a, until: Date.now() + NOTICE_MS };
