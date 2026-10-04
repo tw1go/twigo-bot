@@ -27,3 +27,25 @@ export function showLogin(problem: string | null): void {
   root.append(card);
   document.body.append(root);
 }
+
+/** Logged in, but the town is only open to testers for now (the bot decides: /me canPlay). */
+export function showTestersOnly(name: string): void {
+  const root = document.createElement('div');
+  root.id = 'login';
+  const card = document.createElement('div');
+  card.className = 'lg-card';
+  const title = document.createElement('h1');
+  title.textContent = 'Almost there';
+  const line = document.createElement('p');
+  line.textContent = `Hi ${name}! Mikazuki town is open to testers for now. You'll be able to come in at launch.`;
+  const out = document.createElement('button');
+  out.className = 'lg-out';
+  out.textContent = 'Log out';
+  out.addEventListener('click', async () => {
+    await fetch('/auth/logout', { method: 'POST', credentials: 'same-origin' }).catch(() => null);
+    location.reload();
+  });
+  card.append(title, line, out);
+  root.append(card);
+  document.body.append(root);
+}

@@ -45,6 +45,8 @@ export const config = {
   // the game is served from (redirect URI = <WEB_PUBLIC_URL>/auth/callback). Both empty = login off.
   clientSecret: process.env.DISCORD_CLIENT_SECRET || undefined,
   publicUrl: (process.env.WEB_PUBLIC_URL || '').replace(/\/+$/, '') || undefined,
+  /** Before launch, only members with this role (and mods/admins) may play the web town. */
+  gameTesterRoleId: process.env.GAME_TESTER_ROLE_ID || undefined,
   /** The Discord channel linked to the web town's chat (optional; needs the Message Content intent). */
   townChatChannelId: process.env.TOWN_CHAT_CHANNEL_ID || undefined,
   // Write-only Object Storage URL for off-server backup copies (src/db/offsite.ts). Empty = local backups only.

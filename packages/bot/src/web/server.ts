@@ -11,7 +11,7 @@ import { attachTown, loadTownMap } from './town.js';
 import { bridgeTownChat } from './town-chat.js';
 import { getOutfit, parseOutfit, saveOutfit } from './outfit.js';
 import { LAUNCH_REWARD, isPreregistered, launched, preregCount, preregister } from '../prereg/prereg.js';
-import { callback, clearSessionCookie, endSessions, isMember, login, loginEnabled, logout, sessionUser } from './auth.js';
+import { callback, canPlay, clearSessionCookie, endSessions, isMember, login, loginEnabled, logout, sessionUser } from './auth.js';
 import { roll } from './finds.js';
 
 // A tiny HTTP API for twigo's room (tw1go.github.io). Read-only apart from
@@ -27,7 +27,7 @@ import { roll } from './finds.js';
 //   GET  /health        "ok"
 //
 // Web game (/play, same origin, so no CORS): Discord login (see auth.ts) and
-//   GET  /me            the logged-in member: name, avatar, Kowens, items (401 if not logged in)
+//   GET  /me            the logged-in member: name, avatar, Kowens, items, canPlay (401 if not logged in)
 //   GET  /prereg        pre-registration status: open, count, reward (public)
 //   POST /prereg        pre-register the logged-in member (from the game's page only)
 //   PUT  /outfit        save the logged-in member's character look (from the game's page only)
@@ -130,7 +130,7 @@ async function me(client: Client, req: IncomingMessage, res: ServerResponse): Pr
     const item = ITEM_BY_ID.get(id)!;
     return { id, name: item.name, emoji: item.emoji, rarity: item.rarity, count };
   });
-  const body: MeResponse = { id: userId, name, avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items, preregistered: isPreregistered(userId), outfit: getOutfit(userId), nickname: getNickname(userId), title: titleOf(userId), newTitle: titleIsNew(userId),
+  const body: MeResponse = { id: userId, name, avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items, preregistered: isPreregistered(userId), outfit: getOutfit(userId), nickname: getNickname(userId), title: titleOf(userId), newTitle: titleIsNew(userId), canPlay: await canPlay(client, userId),
     dig: {
       shovel: shovelUses(userId),
       digsLeft: Math.max(0, DIGS_PER_DAY - digsToday(userId)),
@@ -189,6 +189,7 @@ export function startWebServer(client: Client): void {
         } catch {
           // invalid JSON → rejected below
         }
+        if (!(await canPlay(client, userId))) return send(res, 403, '{"error":"testers only for now"}');
         const outfit = parseOutfit(body);
         if (!outfit) return send(res, 400, '{"error":"invalid outfit"}');
         saveOutfit(userId, outfit);
@@ -213,6 +214,7 @@ export function startWebServer(client: Client): void {
         } catch {
           // invalid JSON → rejected below
         }
+        if (!(await canPlay(client, userId))) return send(res, 403, '{"error":"testers only for now"}');
         const nickname = parseNickname(body?.nickname);
         if (!nickname) return send(res, 400, '{"error":"invalid nickname"}');
         if (setNickname(userId, nickname) === 'taken') return send(res, 409, '{"error":"taken"}');
@@ -250,7 +252,7 @@ export function startWebServer(client: Client): void {
       authenticate: async (req) => {
         if (!loginEnabled() || !fromGame(req)) return null;
         const userId = sessionUser(req);
-        return userId && (await isMember(client, userId)) ? userId : null;
+        return userId && (await canPlay(client, userId)) ? userId : null; // members who may play (testers before launch)
       },
       profile: (userId) => {
         const nickname = getNickname(userId);

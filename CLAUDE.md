@@ -63,7 +63,9 @@ State is one SQLite database, `data/mikazuki.db` (better-sqlite3, WAL), schema i
 - Town text (`ui/labels.ts`): each character's white name + `<Title>` in the title's colour ('prismatic' = drifting
   rainbow; list in the bot's `web/titles.ts`), and building names that fade up on hover. Drawn
   over everything, never at less than 3 screen px per art px. Zoom is 2×–4×.
-- The town is held behind `?preview` until launch (`src/preview.ts`); `/play/` shows a coming-soon page.
+- The town is held behind `?preview` until launch (`src/preview.ts`); `/play/` shows a coming-soon page. Even with
+  `?preview`, only testers may play before launch (the bot's `canPlay`: tester role, mods, admins, owner; `/me`
+  canPlay, enforced on `/ws`, `/outfit`, `/nickname`). Dev: `?canplay=0` shows the testers-only screen.
 - Flow (`BootScene`): not logged in → login screen; logged in without a saved look or nickname → character creator
   (`CreateScene` + `ui/creator.ts`, town preloads meanwhile); else the town. Login off → straight to the town as a
   guest. Dev: `?me=anon|new|saved` fakes the login (and stands in when no bot answers /me).
