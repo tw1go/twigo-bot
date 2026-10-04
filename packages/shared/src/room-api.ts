@@ -143,6 +143,28 @@ export interface TownJackpotResponse {
 export type TownJackpotBuyResponse = TownJackpotResponse &
   ({ bought: number } | { refused: 'max' | 'kowens' | 'jailed' });
 
+/** The bank: wallet, vault and loans as the viewer sees them. */
+export interface TownBankResponse {
+  wallet: number;
+  /** Null without a vault (bought with /redeem in Discord for `vaultPrice`). */
+  vault: { inside: number; capacity: number; minWithdraw: number } | null;
+  vaultPrice: number;
+  /** The vault holds up to this share of everything you own; withdrawals take at least this share of what's inside. */
+  vaultCap: number;
+  vaultMinWithdraw: number;
+  /** What the viewer owes, if anything ('Tanod Bank' or the lender's name). */
+  loan: { owed: number; lender: string; due: number; overdue: boolean; defaulted: boolean } | null;
+  /** The Tanod Bank: how much it will lend the viewer (0 when blacklisted), and its terms. */
+  bank: { limit: number; blacklistedUntil: number | null; interest: number; dueDays: number; garnish: number };
+  /** Loans the viewer gave other members. */
+  lent: { name: string; owed: number; due: number; defaulted: boolean }[];
+}
+
+export type TownBankAction = 'deposit' | 'withdraw' | 'borrow' | 'repay';
+
+/** POST /town/bank { action, amount } → the bank afterwards, whether it worked, and what to tell the member. */
+export type TownBankActionResponse = TownBankResponse & { ok: boolean; message: string };
+
 /** A title: its name, and its colour ('#RRGGBB', or 'prismatic' for a shifting rainbow). */
 export interface TitleData {
   name: string;

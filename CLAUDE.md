@@ -109,6 +109,10 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
 - Jackpot booth (`ui/jackpot.ts`, left click the booth): pot, countdown, your tickets (buy 1 or the rest, 1 Kowen each,
   max per draw), chance, players, last draw; bot `GET/POST /town/jackpot` shares `buyTickets` with `/jackpot` and posts
   town buys to the feed and the games channel. Dev uses a pretend booth.
+- Bank (`ui/bank.ts`, left click the bank): wallet and vault cards, vault store/take out, loan pay / pay all or borrow
+  from the Tanod Bank, loans you gave; bot `GET/POST /town/bank` (`web/town-bank.ts`, same stores and rules as `/vault`
+  and `/loan`; town borrowing is posted in the games channel). Lending to members stays in Discord. Dev: a pretend
+  bank (`&vault=0`, `&loan=1`).
 - Moderation (`/town mute|unmute|kick|filter`, mods/admins; bot `web/town-mod.ts`, kv 'town-moderation'): mutes block
   town chat, kicks close the socket (4001, back-at time) and refuse rejoining, blocked words become *** (whole words,
   repeated letters). Actions are logged in the admin channel. The word list lives only in the database.
