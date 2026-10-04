@@ -76,15 +76,17 @@ export function mountTownHud(o: TownHudOptions): void {
   }
   const face = el('span', 'th-avatar');
   if (o.avatar) face.append(roundAvatar(o.avatar));
-  const status: PresenceStatus | undefined = o.me?.status;
-  if (status && o.dots && o.dots.names.includes(status)) {
-    // The status dot sits on the ring's lower right, at the avatar's pixel scale.
-    const dot = el('span', 'th-status');
+  // The status dot sits on the ring's lower right, at the avatar's pixel scale (updated with the counters).
+  const dot = el('span', 'th-status');
+  const setStatus = (status: PresenceStatus | undefined) => {
+    dot.hidden = !status || !o.dots?.names.includes(status);
+    if (dot.hidden || !o.dots || !status) return;
     spriteStyle(dot, { ...o.dots, frame: o.dots.names.indexOf(status) }, 2);
     dot.title = status === 'busy' ? 'Do not disturb' : status[0].toUpperCase() + status.slice(1);
     dot.setAttribute('aria-label', dot.title);
-    face.append(dot);
-  }
+  };
+  setStatus(o.me?.status);
+  face.append(dot);
   profile.append(face, el('span', 'th-name', o.name));
   const settings = el('button', 'th-settings');
   if (o.gear) {
@@ -154,6 +156,7 @@ export function mountTownHud(o: TownHudOptions): void {
     const show = (me: MeResponse) => {
       if (shown !== null && me.kowens > shown) playSound('coin'); // Kowens came in since the last look
       shown = me.kowens;
+      setStatus(me.status);
       kowens.textContent = me.kowens.toLocaleString();
       kowens.title = plural(me.kowens, 'Kowen', 'Kowens');
       shovels.textContent = String(me.dig.shovel);

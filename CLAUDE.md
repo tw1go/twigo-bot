@@ -77,8 +77,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   (`CreateScene` + `ui/creator.ts`, town preloads meanwhile); else the town. Login off → straight to the town as a
   guest. Dev: `?me=anon|new|saved` fakes the login (and stands in when no bot answers /me).
 - Town HUD (`ui/townhud.ts`, replaces the page's login corner in town): your character's head (`headPortrait`) and
-  name top left in the item frame (round pixel avatar + status dot; real Discord status needs the Presence intent,
-  so `/me` doesn't send it yet), with Kowens and shovels beside it (they wrap below on phones); Settings top right;
+  name top left in the item frame (round pixel avatar + status dot from `/me` status: jailed, else the Discord status when the Presence
+  intent is on in the Developer Portal — the bot checks at startup and only asks for it then — else online), with Kowens and shovels beside it (they wrap below on phones); Settings top right;
   Kowens/shovels have "+" info (from `/me`: `kowens`, `dig`). The
   shovel icon is `ui-shovel.png` (manifest ui.shovelIcon).
 - Movement tutorial (`ui/tutorial.ts`, in the reward box via `showPopup`): shown when a member walks into town

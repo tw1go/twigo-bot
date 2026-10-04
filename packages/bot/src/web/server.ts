@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import type { LeaderboardResponse, LeaderboardRow, MeResponse, PreregResponse, PreregStatus, TownJackpotBuyResponse, TownJackpotResponse, TownLeaderboardResponse } from '@mikazuki/shared';
-import type { Client } from 'discord.js';
+import type { LeaderboardResponse, LeaderboardRow, MeResponse, PresenceStatus, PreregResponse, PreregStatus, TownJackpotBuyResponse, TownJackpotResponse, TownLeaderboardResponse } from '@mikazuki/shared';
+import { GatewayIntentBits, type Client } from 'discord.js';
 import { config } from '../config.js';
 import { balance, rankOf, topBalances, totalKowens, vaultBalance } from '../credits/store.js';
 import { DIGS_PER_DAY, SHOVEL_COST, SHOVEL_USES, SHOVELS_PER_DAY, digsToday, inventory, shovelUses, shovelsBoughtToday } from '../dig/store.js';
@@ -132,6 +132,17 @@ function send(res: ServerResponse, status: number, body: string, type = 'applica
   res.end(body);
 }
 
+/** The member's dot in the town: jailed, else their Discord status (needs the Presence intent; Discord leaves
+ *  offline and invisible members out). Without the intent: online, as they're in the town right now. */
+async function statusOf(client: Client, userId: string): Promise<PresenceStatus> {
+  if (jailedUntil(userId)) return 'jailed';
+  if (!client.options.intents.has(GatewayIntentBits.GuildPresences)) return 'online';
+  const channel = await client.channels.fetch(config.gamesChannelId).catch(() => null);
+  const guild = channel && 'guild' in channel ? channel.guild : null;
+  const status = guild?.presences.cache.get(userId)?.status;
+  return status === 'dnd' ? 'busy' : status === 'idle' ? 'idle' : status === 'online' ? 'online' : 'offline';
+}
+
 async function me(client: Client, req: IncomingMessage, res: ServerResponse): Promise<void> {
   const userId = sessionUser(req);
   if (!userId) return send(res, 401, '{"error":"not logged in"}');
@@ -144,7 +155,7 @@ async function me(client: Client, req: IncomingMessage, res: ServerResponse): Pr
     const item = ITEM_BY_ID.get(id)!;
     return { id, name: item.name, emoji: item.emoji, rarity: item.rarity, count };
   });
-  const body: MeResponse = { id: userId, name, avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items, preregistered: isPreregistered(userId), outfit: getOutfit(userId), nickname: getNickname(userId), title: titleOf(userId), newTitle: titleIsNew(userId), canPlay: await canPlay(client, userId),
+  const body: MeResponse = { id: userId, name, avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items, preregistered: isPreregistered(userId), outfit: getOutfit(userId), nickname: getNickname(userId), title: titleOf(userId), newTitle: titleIsNew(userId), canPlay: await canPlay(client, userId), status: await statusOf(client, userId),
     dig: {
       shovel: shovelUses(userId),
       digsLeft: Math.max(0, DIGS_PER_DAY - digsToday(userId)),

@@ -16,15 +16,26 @@ import { backfillFound } from './games/found.js';
 import { startWebServer } from './web/server.js';
 import { closeDatabase } from './db/db.js';
 
+/** Whether the Presence intent is on in the Developer Portal: asking for it while it's off stops the login. */
+async function presenceAllowed(): Promise<boolean> {
+  const res = await fetch('https://discord.com/api/v10/applications/@me', { headers: { Authorization: `Bot ${config.token}` } }).catch(() => null);
+  const flags = res?.ok ? (((await res.json()) as { flags?: number }).flags ?? 0) : 0;
+  return (flags & ((1 << 12) | (1 << 13))) !== 0; // GATEWAY_PRESENCE or GATEWAY_PRESENCE_LIMITED
+}
+const presences = await presenceAllowed();
+console.log(`[presence] Discord status ${presences ? 'on' : 'off (turn on the Presence intent to show it in the town)'}`);
+
 const client = new Client({
   // GuildMessages tells us someone posted (for inactivity). Message Content is only asked for when the town chat is
   // linked to a channel (TOWN_CHAT_CHANNEL_ID), to read what's said there; it must be on in the Developer Portal.
+  // Presences (members' Discord status, for the town's profile dot) only when that intent is on there too.
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.GuildMessageReactions,
     ...(config.townChatChannelId ? [GatewayIntentBits.MessageContent] : []),
+    ...(presences ? [GatewayIntentBits.GuildPresences] : []),
   ],
   // Partials let us see reactions on messages sent before the bot started (the easter egg).
   partials: [Partials.Message, Partials.Reaction, Partials.User],
