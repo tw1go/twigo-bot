@@ -28,9 +28,17 @@ export type TownClientMessage =
   /** Say something (1–120 characters after tidying; a few at once, then about one every 2 s). */
   | { t: 'say'; text: string };
 
+/** A line of the town chat, as kept for people arriving (the last few, in memory only). */
+export interface TownChatLine {
+  name: string;
+  text: string;
+  /** Said in the town's Discord channel rather than in town. */
+  discord?: boolean;
+}
+
 /** Server → browser. */
 export type TownServerMessage =
-  | { t: 'welcome'; you: string; players: TownPlayer[] }
+  | { t: 'welcome'; you: string; players: TownPlayer[]; recent: TownChatLine[] }
   | { t: 'join'; player: TownPlayer }
   | { t: 'leave'; id: string }
   | { t: 'step'; id: string; col: number; row: number }
@@ -41,5 +49,7 @@ export type TownServerMessage =
   | { t: 'snap'; col: number; row: number }
   /** Someone said something (you too: your own words come back this way). */
   | { t: 'say'; id: string; text: string }
+  /** Someone said something in the town's Discord channel (shown with a Discord mark, no bubble). */
+  | { t: 'say-discord'; name: string; text: string }
   /** Your message wasn't sent: too fast, or empty / too long once tidied. */
   | { t: 'say-refused'; reason: 'slow' | 'invalid' };

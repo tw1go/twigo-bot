@@ -244,7 +244,13 @@ table).
 In town, logged-in members see each other live over a WebSocket at `/ws` (`packages/bot/src/web/town.ts`, messages
 in `packages/shared/src/town.ts`). The bot checks every step (on the map, not blocked, next to the last one, at walking
 speed) and keeps nothing once you leave. Chat goes the same way (`say`: tidied, up to 120 characters, rate-limited,
-never saved) and shows as speech bubbles and in the chat box (`packages/game/src/ui/chat.ts`). With login off, everyone
+never saved) and shows as speech bubbles and in the chat box (`packages/game/src/ui/chat.ts`).
+
+**Town chat ↔ Discord** (`packages/bot/src/web/town-chat.ts`): set `TOWN_CHAT_CHANNEL_ID` and town messages are
+posted in that channel as **Nickname**: message (no pings, no link previews), while messages there show in the
+town's chat with a Discord mark. The last 20 lines are kept in memory for people arriving. Setup: Developer Portal
+→ Bot → switch on **Message Content Intent** first, then set the channel ID and deploy (the bot only asks for that
+intent when the channel is set). With login off, everyone
 goes straight in with a look saved in the browser.
 
 1. Developer Portal → your app → OAuth2 → Redirects: add `https://twigo-bot.duckdns.org/auth/callback`.

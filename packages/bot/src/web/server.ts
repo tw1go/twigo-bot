@@ -8,6 +8,7 @@ import { ITEM_BY_ID } from '../dig/items.js';
 import { getNickname, parseNickname, setNickname } from './nickname.js';
 import { titleIsNew, titleOf, titleSeen } from './titles.js';
 import { attachTown, loadTownMap } from './town.js';
+import { bridgeTownChat } from './town-chat.js';
 import { getOutfit, parseOutfit, saveOutfit } from './outfit.js';
 import { LAUNCH_REWARD, isPreregistered, launched, preregCount, preregister } from '../prereg/prereg.js';
 import { callback, clearSessionCookie, endSessions, isMember, login, loginEnabled, logout, sessionUser } from './auth.js';
@@ -242,7 +243,9 @@ export function startWebServer(client: Client): void {
 
   // The live town (/ws): logged-in members who've made a character, from the game's own page.
   try {
-    attachTown(server, {
+    let toDiscord: (userId: string, nickname: string, text: string) => void = () => {};
+    const town = attachTown(server, {
+      onSay: (userId, nickname, text) => toDiscord(userId, nickname, text),
       map: loadTownMap(),
       authenticate: async (req) => {
         if (!loginEnabled() || !fromGame(req)) return null;
@@ -255,6 +258,7 @@ export function startWebServer(client: Client): void {
         return nickname && outfit ? { nickname, outfit, title: titleOf(userId) } : null;
       },
     });
+    toDiscord = bridgeTownChat(client, town);
   } catch (err) {
     console.error('[web] town disabled, map not loaded:', err);
   }

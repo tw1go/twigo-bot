@@ -290,18 +290,10 @@ export class TownScene extends Phaser.Scene {
   private connect(): void {
     const link = new TownLink();
     this.link = link;
-    const asset = (file: string) => `${import.meta.env.BASE_URL}assets/${file}`;
     const B = this.M.ui.speechBubble;
     const bubbles: BubbleArt | null = B && this.textures.exists(B.file) ? { file: B.file, slice: B.nineSlice, tail: B.tail, tailAnchor: B.tailAnchor } : null;
     this.others.bubbleArt = bubbles;
-    const W = this.M.ui.chatWindow;
-    const chat = new ChatBox(
-      {
-        window: W ? { url: asset(W.file), slice: W.nineSlice } : null,
-        input: W?.input ? { url: asset(W.input.file), focus: asset(W.input.focus), slice: W.input.nineSlice } : null,
-      },
-      (text) => link.send({ t: 'say', text }),
-    );
+    const chat = new ChatBox((text) => link.send({ t: 'say', text }));
     const member = this.me?.status === 'ok' ? this.me.me : null;
     let myId = '';
     this.player.onStep = (to) => {
@@ -315,12 +307,15 @@ export class TownScene extends Phaser.Scene {
         // Your own words come back from the server like everyone else's, so you see what they see.
         if (m.id === myId) {
           if (bubbles) this.player.say(m.text, bubbles);
-          return chat.add(member?.nickname ?? 'You', m.text, true);
+          return chat.add(member?.nickname ?? 'You', m.text, 'me');
         }
         chat.add(this.others.nameOf(m.id) ?? 'Someone', m.text);
       }
+      if (m.t === 'say-discord') return chat.add(m.name, m.text, 'discord');
       if (m.t === 'welcome') {
         myId = m.you;
+        chat.history(m.recent ?? [], member?.nickname ?? null);
+        chat.system(`Welcome to Mikazuki town${member ? `, ${member.nickname}` : ''}! Be kind and respectful in chat: everyone here is a neighbour.`);
         // After a reconnect, stay where you are rather than back at the spawn point.
         const t = this.player.tile;
         link.send({ t: 'here', col: t.col, row: t.row, dir: this.player.facing });

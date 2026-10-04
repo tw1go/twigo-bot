@@ -75,7 +75,9 @@ State is one SQLite database, `data/mikazuki.db` (better-sqlite3, WAL), schema i
   repainted white). Shown once per new title, on whichever device comes first (`/me` newTitle → `POST
   /title/seen`; `titles.announced`, schema v7); dev demo `?reward=kowens|title`, debug `__town.reward({...})`.
 - Chat (`ui/chat.ts` + `SpeechBubble` in `ui/labels.ts`): Enter to type, Enter sends; the bot's `say` (tidied, ≤120 chars,
-  burst 3 then 1 per 2 s, never saved) comes back to everyone, the speaker included.
+  burst 3 then 1 per 2 s, never saved) comes back to everyone, the speaker included. Linked to a Discord channel
+  (`TOWN_CHAT_CHANNEL_ID`, bot `web/town-chat.ts`, needs the Message Content intent): Discord lines show with the
+  Discord mark. The box is a fixed see-through panel that fades to 0.2 after 15 s quiet.
 - Multiplayer: `net/town.ts` (client, reconnects) ↔ bot `web/town.ts` (WebSocket `/ws`, no Discord code in it, so it
   can run alone for tests); `world/others.ts` draws everyone else. Dev: with no bot behind the dev server, plain `?preview` acts as `?me=saved`; `?me=anon|new&as=Alice` fakes a member (test values: `&kowens=` `&shovels=` `&digs=` `&status=online|idle|busy|offline|jailed`); to test,
   run only the compiled `web/town.js` on 127.0.0.1:8787 with a fake `authenticate` (never the whole bot).

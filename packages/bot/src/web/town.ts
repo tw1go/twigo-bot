@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import type { IncomingMessage, Server } from 'node:http';
 import type { Duplex } from 'node:stream';
 import { WebSocket, WebSocketServer } from 'ws';
-import type { OutfitData, TitleData, TownClientMessage, TownDir, TownPlayer, TownServerMessage } from '@mikazuki/shared';
+import type { OutfitData, TitleData, TownChatLine, TownClientMessage, TownDir, TownPlayer, TownServerMessage } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
 // messages). The server keeps everyone's tile and checks each step — on the map, not blocked, next to the last
@@ -21,12 +21,16 @@ const HEARTBEAT_MS = 30_000;
 const SAY_MAX = 120;
 const SAYS_PER_SECOND = 0.5;
 const SAY_BURST = 3;
+/** Lines kept for people arriving (in memory only, gone on restart). */
+const RECENT = 20;
+/** Messages from the Discord channel can be longer, up to this. */
+const DISCORD_MAX = 200;
 
 /** A chat message tidied up: no control characters, single spaces, trimmed; null if empty or too long. */
-function tidy(text: unknown): string | null {
+function tidy(text: unknown, max = SAY_MAX): string | null {
   if (typeof text !== 'string') return null;
   const t = text.replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2066-\u2069]/g, ' ').replace(/\s+/g, ' ').trim();
-  return t && [...t].length <= SAY_MAX ? t : null;
+  return t && [...t].length <= max ? t : null;
 }
 
 export interface TownMap {
@@ -47,6 +51,14 @@ export interface TownOptions {
   /** Their nickname, title and look; null if they haven't made a character yet. */
   profile: (userId: string) => TownProfile | null;
   map: TownMap;
+  /** Someone said something in town (the Discord bridge passes it on). */
+  onSay?: (userId: string, nickname: string, text: string) => void;
+}
+
+/** What the rest of the bot can do with the town. */
+export interface Town {
+  /** A message from the town's Discord channel: to everyone in town, with a Discord mark. */
+  fromDiscord(name: string, text: string): void;
 }
 
 /** The game's map (packages/game/public/assets/maps/town.json), from the monorepo next to the bot. */
@@ -77,10 +89,15 @@ interface Conn {
   fresh: boolean;
 }
 
-export function attachTown(server: Server, opts: TownOptions): void {
+export function attachTown(server: Server, opts: TownOptions): Town {
   const { map } = opts;
   const [cols, rows] = map.size;
   const conns = new Map<string, Conn>(); // by member
+  const recent: TownChatLine[] = [];
+  const remember = (line: TownChatLine) => {
+    recent.push(line);
+    if (recent.length > RECENT) recent.shift();
+  };
   const wss = new WebSocketServer({ noServer: true, maxPayload: 1024 });
 
   const send = (c: Conn, m: TownServerMessage) => c.ws.readyState === WebSocket.OPEN && c.ws.send(JSON.stringify(m));
@@ -144,7 +161,9 @@ export function attachTown(server: Server, opts: TownOptions): void {
         c.saidAt = now;
         if (c.says < 1) return send(c, { t: 'say-refused', reason: 'slow' });
         c.says -= 1;
-        // To everyone, the speaker included (their own words come back this way). Not saved anywhere.
+        // To everyone, the speaker included (their own words come back this way), and on to Discord. Not saved.
+        remember({ name: p.nickname, text });
+        opts.onSay?.(c.userId, p.nickname, text);
         return everyone({ t: 'say', id: p.id, text });
       }
     }
@@ -161,7 +180,7 @@ export function attachTown(server: Server, opts: TownOptions): void {
     const [col, row] = map.spawn;
     const player: TownPlayer = { id: randomBytes(6).toString('hex'), ...profile, col, row, dir: 's', sit: false };
     const c: Conn = { ws, userId, player, tokens: STEP_BURST, refilled: Date.now(), says: SAY_BURST, saidAt: Date.now(), alive: true, fresh: true };
-    send(c, { t: 'welcome', you: player.id, players: [...conns.values()].map((o) => o.player) });
+    send(c, { t: 'welcome', you: player.id, players: [...conns.values()].map((o) => o.player), recent });
     conns.set(userId, c);
     others(c, { t: 'join', player });
 
@@ -195,6 +214,16 @@ export function attachTown(server: Server, opts: TownOptions): void {
     })();
   });
 
+  const town: Town = {
+    fromDiscord(name, raw) {
+      const text = tidy(raw.length > DISCORD_MAX ? `${[...raw].slice(0, DISCORD_MAX - 1).join('')}…` : raw, DISCORD_MAX);
+      const who = tidy(name, 32);
+      if (!text || !who) return;
+      remember({ name: who, text, discord: true });
+      everyone({ t: 'say-discord', name: who, text });
+    },
+  };
+
   // Drop connections that stopped answering pings (closed laptops, lost Wi-Fi).
   setInterval(() => {
     for (const c of conns.values()) {
@@ -206,4 +235,5 @@ export function attachTown(server: Server, opts: TownOptions): void {
       c.ws.ping();
     }
   }, HEARTBEAT_MS).unref();
+  return town;
 }

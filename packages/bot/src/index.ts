@@ -17,8 +17,15 @@ import { startWebServer } from './web/server.js';
 import { closeDatabase } from './db/db.js';
 
 const client = new Client({
-  // GuildMessages only tells us someone posted (for inactivity); we don't have or need Message Content.
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildMessageReactions],
+  // GuildMessages tells us someone posted (for inactivity). Message Content is only asked for when the town chat is
+  // linked to a channel (TOWN_CHAT_CHANNEL_ID), to read what's said there; it must be on in the Developer Portal.
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildMessageReactions,
+    ...(config.townChatChannelId ? [GatewayIntentBits.MessageContent] : []),
+  ],
   // Partials let us see reactions on messages sent before the bot started (the easter egg).
   partials: [Partials.Message, Partials.Reaction, Partials.User],
 });

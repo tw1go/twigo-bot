@@ -189,20 +189,23 @@
       @keyframes rw-pop { from { transform: scale(0.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
       @keyframes rw-dim { from { background: rgba(4, 4, 12, 0); } }
       @media (prefers-reduced-motion: reduce) { #reward .rw-rays, #reward .rw-card, #reward, #reward .rw-bulb { animation: none; } #reward .rw-bulb { background: radial-gradient(circle at 35% 30%, #FFFFFF 0 16%, #FFF59A 32%, #FCDA4A 66%, #D99A0B 100%); } }
-      #chat { position: fixed; left: 12px; bottom: 12px; z-index: 2; width: min(340px, calc(100vw - 24px)); font: 14px/1.35 var(--ui-font); color: #E6E9F2; }
-      /* The game's chat window (nine-slice, 2×) around the log. */
-      #chat .ch-log { max-height: 150px; overflow-y: auto; margin-bottom: 6px; padding: 8px 10px; background: rgba(17, 24, 39, 0.92); border: 2px solid #5B21B6; scrollbar-width: thin; scrollbar-color: #7C2AE8 transparent; }
-      #chat .ch-log[hidden] { display: none; }
-      #chat .ch-framed { --px: 2; border-style: solid; border-width: calc(var(--slice) * var(--px) * 1px); border-image-source: var(--frame); border-image-slice: var(--slice) fill; border-image-width: calc(var(--slice) * var(--px) * 1px); border-image-repeat: round; image-rendering: pixelated; background: none; padding: 0 2px; }
+      /* One see-through box for the log and the input, no borders, always the same size (the log scrolls). */
+      #chat { position: fixed; left: 12px; bottom: 12px; z-index: 2; width: min(460px, calc(100vw - 24px)); box-sizing: border-box; padding: 8px; border-radius: 6px; background: rgba(10, 12, 24, 0.5); font: 14px/1.35 var(--ui-font); color: #E6E9F2; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6); }
+      #chat { transition: opacity 0.6s; }
+      #chat.ch-idle { opacity: 0.2; } /* 15 s without a message (ui/chat.ts) */
+      /* Lines stack from the bottom up, even when there are only a few (the first one takes the spare space above). */
+      #chat .ch-log { display: flex; flex-direction: column; height: 210px; overflow-y: auto; margin-bottom: 6px; padding: 0 2px; scrollbar-width: thin; scrollbar-color: rgba(183, 148, 246, 0.6) transparent; }
       #chat .ch-line { margin: 2px 0; overflow-wrap: anywhere; }
+      #chat .ch-line:first-child { margin-top: auto; }
+      #chat .ch-system { color: #C4B5FD; }
       #chat .ch-name { color: #fff; }
       #chat .ch-me { color: #A3E635; }
+      #chat .ch-discord { width: 14px; height: 14px; margin-right: 4px; vertical-align: -2px; fill: #7984F5; }
       #chat .ch-notice { color: #F59E0B; font-size: 13px; }
-      #chat .ch-input { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 2px solid #3D4256; background: #1E1B3A; color: #fff; font: inherit; outline: none; }
-      #chat .ch-input::placeholder { color: #7A8099; }
-      #chat .ch-framed-input { --px: 2; border-style: solid; border-width: calc(var(--slice) * var(--px) * 1px); border-image-source: var(--frame); border-image-slice: var(--slice) fill; border-image-width: calc(var(--slice) * var(--px) * 1px); border-image-repeat: stretch; image-rendering: pixelated; background: none; padding: 2px 4px; }
-      #chat .ch-framed-input:focus { border-image-source: var(--frame-focus); }
-      @media (max-width: 560px) { #chat { bottom: 64px; width: min(280px, calc(100vw - 24px)); } #chat .ch-log { max-height: 96px; } }
+      #chat .ch-input { width: 100%; box-sizing: border-box; padding: 7px 9px; border: 0; border-radius: 4px; background: rgba(0, 0, 0, 0.35); color: #fff; font: inherit; outline: none; }
+      #chat .ch-input::placeholder { color: rgba(230, 233, 242, 0.55); }
+      #chat .ch-input:focus { background: rgba(0, 0, 0, 0.55); box-shadow: 0 0 0 1px rgba(183, 148, 246, 0.6); }
+      @media (max-width: 560px) { #chat { bottom: 64px; width: min(320px, calc(100vw - 24px)); } #chat .ch-log { height: 120px; } }
     </style>
   </head>
   <body>
