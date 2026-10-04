@@ -11,6 +11,7 @@ import { LOADING_LINES } from '../ui/loading-lines';
 import { TownLink } from '../net/town';
 import { showElsewhere } from '../ui/elsewhere';
 import { mountTownHud } from '../ui/townhud';
+import { type Reward, setRewardArt, showReward } from '../ui/reward';
 import { OtherPlayers } from '../world/others';
 import { fakeLogin } from '../session';
 import { screenToTile, tileToScreen } from '../iso';
@@ -209,6 +210,7 @@ export class TownScene extends Phaser.Scene {
     this.mountHud();
     if (member || fakeLogin()) this.connect();
     this.zoomIntro(); // last, once the names, labels and building cursors exist
+    this.time.delayedCall(1800, () => this.announceRewards()); // once the arrival has settled
     exposeDebug(this);
     if (assetProblems.size) console.warn('[town] asset problems:\n' + [...assetProblems].join('\n'));
   }
@@ -247,14 +249,45 @@ export class TownScene extends Phaser.Scene {
     const emotes = this.M.ui.emotes;
     const dots = this.M.ui.statusDots;
     const kowen = Array.isArray(emotes?.frames) ? emotes.frames.indexOf('kowen') : -1;
+    const coin = emotes?.file && kowen >= 0 && Array.isArray(emotes.frames) ? { url: asset(emotes.file), frame: kowen, size: emotes.size?.[0] ?? 12, frames: emotes.frames.length } : null;
+    setRewardArt({ frame: frame ? { url: asset(frame.file), slice: frame.nineSlice } : null, coin });
     mountTownHud({
       me: member,
       name: member?.nickname ?? 'Guest',
       avatar: headPortrait(this, this.M.characters, this.outfit),
       frame: frame ? { url: asset(frame.file), slice: frame.nineSlice } : null,
-      coin: emotes?.file && kowen >= 0 && Array.isArray(emotes.frames) ? { url: asset(emotes.file), frame: kowen, size: emotes.size?.[0] ?? 12, frames: emotes.frames.length } : null,
+      coin,
       dots: dots?.file && Array.isArray(dots.frames) ? { url: asset(dots.file), frame: 0, size: dots.size?.[0] ?? 5, frames: dots.frames.length, names: dots.frames } : null,
     });
+  }
+
+  /** Rewards to show on arriving: a title that's new since this browser last saw you (and, in dev, ?reward=). */
+  private announceRewards(): void {
+    const member = this.me?.status === 'ok' ? this.me.me : null;
+    if (member) {
+      const key = `mk_seen_title:${member.id}`;
+      let seen: string | null = null;
+      try {
+        seen = localStorage.getItem(key);
+        localStorage.setItem(key, member.title.name);
+      } catch {
+        // private mode: no announcement
+      }
+      // Only a change from a title we've seen before (not the first visit, not back to Townfolk).
+      if (seen !== null && seen !== member.title.name && member.title.name !== TOWNFOLK.name) {
+        void showReward({ title: 'New title!', graphic: { kind: 'title', title: member.title }, message: `Congratulations! You are now known as <${member.title.name}>.` });
+      }
+    }
+    if (import.meta.env.DEV) {
+      const demo = new URLSearchParams(location.search).get('reward');
+      if (demo === 'kowens') void showReward({ title: 'Reward', graphic: { kind: 'kowens', amount: 50 }, message: 'Congratulations! 50 Kowens are yours.' });
+      if (demo === 'title') void showReward({ title: 'New title!', graphic: { kind: 'title', title: { name: 'Game Master', color: 'prismatic' } }, message: 'Congratulations! You are now known as <Game Master>.' });
+    }
+  }
+
+  /** Debug: show a reward pop-up. */
+  debugReward(r: Reward): Promise<void> {
+    return showReward(r);
   }
 
   // ── Other players ──
@@ -679,6 +712,7 @@ function exposeDebug(scene: TownScene): void {
     time: (hhmm: string | null) => scene.debugSetTime(hhmm),
     outfit: (o: Partial<Outfit>) => scene.setOutfit({ ...scene.debugState().outfit, ...o }),
     emote: (a: 'wave' | 'cheer') => scene.debugPlayer.emote(a),
+    reward: (r: Reward) => scene.debugReward(r),
     /** Fixed view for screenshots: zoom and centre on a world point (follow off), or follow again. */
     view: (zoom?: number, x?: number, y?: number) => {
       const cam = scene.cameras.main;

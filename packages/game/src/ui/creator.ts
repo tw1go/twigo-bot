@@ -71,7 +71,7 @@ export function mountCreator(C: CharacterDefs, hooks: CreatorHooks): void {
   // Name and title, as in town: just over the head, at the character's scale.
   const plate = el('div', 'cr-name');
   const titleEl = el('div', 'cr-title', `<${hooks.title.name}>`);
-  if (hooks.title.color === 'prismatic') titleEl.classList.add('cr-prismatic');
+  if (hooks.title.color === 'prismatic') titleEl.classList.add('prismatic');
   else titleEl.style.color = hooks.title.color;
   const tag = el('div', 'cr-tag');
   tag.append(plate, titleEl);

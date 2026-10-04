@@ -71,6 +71,9 @@ State is one SQLite database, `data/mikazuki.db` (better-sqlite3, WAL), schema i
   name top left in the item frame (round pixel avatar + status dot; real Discord status needs the Presence intent,
   so `/me` doesn't send it yet); Kowens and shovels top right with "+" info (from `/me`: `kowens`, `dig`). The
   shovel icon is the 🪏 emoji until there's art for it.
+- Reward pop-up (`ui/reward.ts`, `showReward`): dimmed town, turning rays, white box in the item frame (its fill
+  repainted white). Shown for a title that's new since this browser last saw you; dev demo `?reward=kowens|title`,
+  debug `__town.reward({...})`.
 - Multiplayer: `net/town.ts` (client, reconnects) ↔ bot `web/town.ts` (WebSocket `/ws`, no Discord code in it, so it
   can run alone for tests); `world/others.ts` draws everyone else. Dev: with no bot behind the dev server, plain `?preview` acts as `?me=saved`; `?me=anon|new&as=Alice` fakes a member (test values: `&kowens=` `&shovels=` `&digs=` `&status=online|idle|busy|offline|jailed`); to test,
   run only the compiled `web/town.js` on 127.0.0.1:8787 with a fake `authenticate` (never the whole bot).

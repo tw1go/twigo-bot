@@ -67,9 +67,9 @@
       #creator .cr-name { color: #fff; font-size: calc(6px * var(--z)); line-height: calc(7px * var(--z)); text-shadow: 0 0 2px #1E1B3A, 0 0 2px #1E1B3A, 0 0 2px #1E1B3A; }
       #creator .cr-name:empty { display: none; }
       #creator .cr-title { color: #B794F6; font-size: calc(4px * var(--z)); line-height: calc(5px * var(--z)); text-shadow: 0 0 2px #1E1B3A; }
-      /* 'prismatic' titles: a rainbow drifting through the text. */
-      #creator .cr-prismatic { background: linear-gradient(90deg, #ff9ad5, #ffd36e, #a6f39a, #7fd8ff, #c7a6ff, #ff9ad5) 0 0 / 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none; animation: cr-prism 3s linear infinite; }
-      @keyframes cr-prism { to { background-position: -200% 0; } }
+      /* 'prismatic' titles: a rainbow drifting through the text (creator, reward pop-up). */
+      .prismatic { background: linear-gradient(90deg, #ff9ad5, #ffd36e, #a6f39a, #7fd8ff, #c7a6ff, #ff9ad5) 0 0 / 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none; animation: prism 3s linear infinite; }
+      @keyframes prism { to { background-position: -200% 0; } }
       #creator .cr-nick { width: min(100%, 320px); box-sizing: border-box; padding: 9px 12px; border: 2px solid #3D4256; border-radius: 2px; background: #1E1B3A; color: #fff; font: inherit; font-size: 16px; }
       #creator .cr-nick:focus { outline: none; border-color: #B794F6; }
       #creator .cr-nick[aria-invalid='true'] { border-color: #F7768E; }
@@ -155,6 +155,27 @@
         #town-hud .th-right { top: auto; bottom: 12px; }
         #town-hud .th-right .th-pop { top: auto; bottom: calc(100% + 8px); }
       }
+      #reward { position: fixed; inset: 0; z-index: 4; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(4, 4, 12, 0.72); font: 15px/1.4 var(--ui-font); animation: rw-dim 0.2s ease-out; }
+      #reward.rw-out { opacity: 0; transition: opacity 0.18s; }
+      #reward .rw-stage { position: relative; display: flex; align-items: center; justify-content: center; }
+      /* Golden rays turning slowly behind the box, fading out from the middle. */
+      #reward .rw-rays { position: absolute; left: 50%; top: 50%; width: 150vmax; height: 150vmax; margin: -75vmax 0 0 -75vmax; pointer-events: none; background: repeating-conic-gradient(rgba(252, 218, 74, 0.32) 0deg 9deg, transparent 9deg 22.5deg); -webkit-mask: radial-gradient(circle, #000 6%, transparent 32%); mask: radial-gradient(circle, #000 6%, transparent 32%); animation: rw-spin 24s linear infinite; }
+      #reward .rw-card { position: relative; width: min(340px, calc(100vw - 32px)); box-sizing: border-box; padding: 22px 22px 20px; border: 3px solid #7C2AE8; background: #fff; color: #1E1B3A; text-align: center; animation: rw-pop 0.32s cubic-bezier(0.2, 1.4, 0.4, 1); }
+      /* The game's item frame (its fill painted white, see ui/reward.ts) as the border. */
+      #reward .rw-framed { --px: 3; border-style: solid; border-width: calc(var(--slice) * var(--px) * 1px); border-image-source: var(--frame); border-image-slice: var(--slice) fill; border-image-width: calc(var(--slice) * var(--px) * 1px); border-image-repeat: round; image-rendering: pixelated; padding: 6px 8px 4px; background: none; }
+      #reward .rw-title { margin: 0 0 12px; font-size: 22px; color: #5B21B6; letter-spacing: 0.02em; }
+      #reward .rw-graphic { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 4px 0 14px; }
+      #reward .rw-new-title { padding: 10px 16px; background: #111827; font-size: 22px; font-weight: 600; }
+      #reward .rw-coin { display: block; image-rendering: pixelated; background-repeat: no-repeat; }
+      #reward .rw-amount { font-size: 22px; font-weight: 700; color: #BA7F05; }
+      #reward .rw-image { max-width: 128px; max-height: 128px; image-rendering: pixelated; }
+      #reward .rw-message { margin: 0 0 16px; color: #3D4256; }
+      #reward .rw-ok { min-width: 120px; padding: 10px 20px; border: 2px solid #5B8F1E; border-radius: 2px; background: #A3E635; color: #1E1B3A; font: inherit; font-size: 16px; font-weight: 700; }
+      #reward .rw-ok:hover { background: #D9F99D; }
+      @keyframes rw-spin { to { transform: rotate(360deg); } }
+      @keyframes rw-pop { from { transform: scale(0.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+      @keyframes rw-dim { from { background: rgba(4, 4, 12, 0); } }
+      @media (prefers-reduced-motion: reduce) { #reward .rw-rays, #reward .rw-card, #reward { animation: none; } }
     </style>
   </head>
   <body>
