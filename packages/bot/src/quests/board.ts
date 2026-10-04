@@ -84,84 +84,118 @@ function card(q: Quest) {
 /** Quests this member accepted and is still working on. */
 export const acceptedCount = (userId: string) => Object.values(quests).filter((q) => q.acceptedBy === userId && q.status === 'accepted').length;
 
+/** Why a member can't post a quest with this reward right now (null = they can). */
+export function cantPost(me: string, reward: number): 'loan' | 'max' | 'kowens' | null {
+  if (debtOf(me)) return 'loan';
+  if (activeCount(me) >= MAX_ACTIVE) return 'max';
+  if (balance(me) < reward) return 'kowens';
+  return null;
+}
+
+/** Posts a quest (the caller has checked cantPost): takes the reward into escrow. */
+export function addQuest(me: string, task: string, reward: number, channelId: string): Quest {
+  take(me, reward); // escrow
+  const q: Quest = { id: randomBytes(4).toString('hex'), requester: me, task, reward, status: 'open', channelId, created: Date.now() };
+  quests[q.id] = q;
+  save();
+  return q;
+}
+
 export async function createQuest(interaction: ChatInputCommandInteraction): Promise<void> {
   const task = interaction.options.getString('task', true).trim();
   const reward = interaction.options.getInteger('reward', true);
   const me = interaction.user.id;
   const reply = (content: string) => interaction.reply({ content, flags: MessageFlags.Ephemeral });
 
-  if (debtOf(me)) return void (await reply("💳 You can't post quests while you have a loan. Pay it off first with `/loan pay`."));
-  if (activeCount(me) >= MAX_ACTIVE) return void (await reply(`You already have **${MAX_ACTIVE}** active quests. Finish or cancel one first. 📜`));
-  if (balance(me) < reward) return void (await reply(`You need **${reward}** ${kowen(reward)} for that reward, but you have **${balance(me)}**. 🪙`));
+  const why = cantPost(me, reward);
+  if (why === 'loan') return void (await reply("💳 You can't post quests while you have a loan. Pay it off first with `/loan pay`."));
+  if (why === 'max') return void (await reply(`You already have **${MAX_ACTIVE}** active quests. Finish or cancel one first. 📜`));
+  if (why === 'kowens') return void (await reply(`You need **${reward}** ${kowen(reward)} for that reward, but you have **${balance(me)}**. 🪙`));
   if (!interaction.channel?.isSendable()) return void (await reply("I can't post here. Try another channel."));
 
-  take(me, reward); // escrow
-  const q: Quest = { id: randomBytes(4).toString('hex'), requester: me, task, reward, status: 'open', channelId: interaction.channelId, created: Date.now() };
-  quests[q.id] = q;
-  save();
+  const q = addQuest(me, task, reward, interaction.channelId);
   const res = await interaction.reply({ ...card(q), allowedMentions: { parse: [] }, withResponse: true });
   q.messageId = res.resource?.message?.id;
   save();
 }
 
-export const isQuestButton = (customId: string) => customId.startsWith(PREFIX);
+export type QuestAction = 'accept' | 'giveup' | 'complete' | 'cancel';
+export type QuestRefusal = 'closed' | 'taken' | 'own' | 'not-helper' | 'not-requester' | 'not-accepted';
 
-export async function handleQuestButton(interaction: ButtonInteraction): Promise<void> {
-  const [id, action] = interaction.customId.slice(PREFIX.length).split(':');
+/** Accept, give up, complete or cancel a quest (Discord's buttons and the town's notice board). On success: the
+ *  quest, and the reply to post under its card (who to ping), if any. */
+export function questAction(id: string, me: string, action: QuestAction):
+  { ok: false; reason: QuestRefusal } | { ok: true; quest: Quest; notice?: { content: string; users: string[] } } {
   const q = quests[id];
-  const me = interaction.user.id;
-  const deny = (content: string) => interaction.reply({ content, flags: MessageFlags.Ephemeral });
-  if (!q || q.status === 'done' || q.status === 'cancelled') return void (await deny('This quest is already closed. 📜'));
+  if (!q || q.status === 'done' || q.status === 'cancelled') return { ok: false, reason: 'closed' };
 
   if (action === 'accept') {
-    if (q.status !== 'open') return void (await deny('Someone already accepted this quest. ⚔️'));
-    if (me === q.requester) return void (await deny("You can't accept your own quest. 😅"));
+    if (q.status !== 'open') return { ok: false, reason: 'taken' };
+    if (me === q.requester) return { ok: false, reason: 'own' };
     q.status = 'accepted';
     q.acceptedBy = me;
     save();
-    await interaction.update({ ...card(q), allowedMentions: { parse: [] } });
-    await interaction.message
-      .reply({ content: `⚔️ <@${q.requester}>, ${interaction.user} accepted your quest!`, allowedMentions: { users: [q.requester] } })
-      .catch(() => {});
-    return;
+    return { ok: true, quest: q, notice: { content: `⚔️ <@${q.requester}>, <@${me}> accepted your quest!`, users: [q.requester] } };
   }
 
   if (action === 'giveup') {
-    if (me !== q.acceptedBy) return void (await deny('Only the person who accepted can give up. 🏳️'));
+    if (me !== q.acceptedBy) return { ok: false, reason: 'not-helper' };
     q.status = 'open';
     q.acceptedBy = undefined;
     save();
-    await interaction.update({ ...card(q), allowedMentions: { parse: [] } });
-    await interaction.message
-      .reply({ content: `🏳️ <@${q.requester}>, ${interaction.user} gave up your quest. It's open again.`, allowedMentions: { users: [q.requester] } })
-      .catch(() => {});
-    return;
+    return { ok: true, quest: q, notice: { content: `🏳️ <@${q.requester}>, <@${me}> gave up your quest. It's open again.`, users: [q.requester] } };
   }
 
-  if (me !== q.requester) return void (await deny('Only the person who posted the quest can do that. 📜'));
+  if (me !== q.requester) return { ok: false, reason: 'not-requester' };
 
   if (action === 'complete') {
-    if (q.status !== 'accepted' || !q.acceptedBy) return void (await deny('Nobody has accepted this quest yet.'));
+    if (q.status !== 'accepted' || !q.acceptedBy) return { ok: false, reason: 'not-accepted' };
     q.status = 'done';
     save();
     add(q.acceptedBy, q.reward);
-    await interaction.update({ ...card(q), allowedMentions: { parse: [] } });
-    await interaction.message
-      .reply({ content: `✅ <@${q.acceptedBy}>, quest complete! You earned **${q.reward} ${kowen(q.reward)}** 🪙`, allowedMentions: { users: [q.acceptedBy] } })
-      .catch(() => {});
-    return;
+    return { ok: true, quest: q, notice: { content: `✅ <@${q.acceptedBy}>, quest complete! You earned **${q.reward} ${kowen(q.reward)}** 🪙`, users: [q.acceptedBy] } };
   }
 
-  if (action === 'cancel') {
-    const helper = q.acceptedBy;
-    q.status = 'cancelled';
-    save();
-    add(q.requester, q.reward); // refund
-    await interaction.update({ ...card(q), allowedMentions: { parse: [] } });
-    if (helper) {
-      await interaction.message
-        .reply({ content: `❌ <@${helper}>, this quest was cancelled by the requester.`, allowedMentions: { users: [helper] } })
-        .catch(() => {});
-    }
-  }
+  // cancel
+  const helper = q.acceptedBy;
+  q.status = 'cancelled';
+  save();
+  add(q.requester, q.reward); // refund
+  return { ok: true, quest: q, ...(helper ? { notice: { content: `❌ <@${helper}>, this quest was cancelled by the requester.`, users: [helper] } } : {}) };
+}
+
+/** Quests still open or in progress, newest first. */
+export const liveQuests = () =>
+  Object.values(quests).filter((q) => q.status === 'open' || q.status === 'accepted').sort((a, b) => b.created - a.created);
+
+/** A quest's card for a channel (posting from the town). */
+export const questCard = (q: Quest) => ({ ...card(q), allowedMentions: { parse: [] } });
+
+/** Remembers where a quest's card was posted. */
+export function setQuestMessage(q: Quest, channelId: string, messageId: string): void {
+  q.channelId = channelId;
+  q.messageId = messageId;
+  save();
+}
+
+export type { Quest };
+
+export const isQuestButton = (customId: string) => customId.startsWith(PREFIX);
+
+const REFUSED: Record<QuestRefusal, string> = {
+  closed: 'This quest is already closed. 📜',
+  taken: 'Someone already accepted this quest. ⚔️',
+  own: "You can't accept your own quest. 😅",
+  'not-helper': 'Only the person who accepted can give up. 🏳️',
+  'not-requester': 'Only the person who posted the quest can do that. 📜',
+  'not-accepted': 'Nobody has accepted this quest yet.',
+};
+
+export async function handleQuestButton(interaction: ButtonInteraction): Promise<void> {
+  const [id, action] = interaction.customId.slice(PREFIX.length).split(':');
+  const result = questAction(id, interaction.user.id, action as QuestAction);
+  if (!result.ok) return void (await interaction.reply({ content: REFUSED[result.reason], flags: MessageFlags.Ephemeral }));
+  await interaction.update({ ...card(result.quest), allowedMentions: { parse: [] } });
+  const n = result.notice;
+  if (n) await interaction.message.reply({ content: n.content, allowedMentions: { users: n.users } }).catch(() => {});
 }

@@ -17,6 +17,7 @@ import { buyFromShop, townShop } from './town-shop.js';
 import { type PlayerDeps, giveInTown, playerInfo, verdictInTown } from './town-player.js';
 import type { Town } from './town.js';
 import { bailFromTown, townOutpost } from './town-outpost.js';
+import { boardAction, townBoard } from './town-board.js';
 import { kowen } from '../kowens.js';
 import { filterText, kickedUntil, mutedUntil } from './town-mod.js';
 import { getOutfit, parseOutfit, saveOutfit } from './outfit.js';
@@ -54,6 +55,8 @@ import { roll } from './finds.js';
 //   POST /town/verdict  { to, mode: diss|praise|judge } on a player in town, 1 Kowen (from the game's page only; may play)
 //   GET  /town/outpost  the Tanod outpost: who's in jail and how Tanod Patrol works (may play)
 //   POST /town/bail     { id } bail someone out (yourself or a friend), /bail's rules (from the game's page only; may play)
+//   GET  /town/board    the notice board: open and in-progress quests (may play)
+//   POST /town/board    { action: post|accept|giveup|complete|cancel, id? | task + reward } (from the game's page only; may play)
 //   POST /title/seen    the game showed the member their new title (from the game's page only)
 //   WS   /ws            the live town: who else is there and where (see town.ts; from the game's page only)
 
@@ -418,6 +421,30 @@ export function startWebServer(client: Client): void {
         if (req.method === 'GET') return send(res, 200, JSON.stringify(await townOutpost(userId, names)));
         if (typeof body?.id !== 'string') return send(res, 400, '{"error":"invalid id"}');
         return send(res, 200, JSON.stringify(await bailFromTown(client, userId, body.id, names)));
+      }
+      if (path === '/town/board' && (req.method === 'GET' || req.method === 'POST')) {
+        if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
+        if (req.method === 'POST' && !fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
+        const userId = sessionUser(req);
+        if (!userId) return send(res, 401, '{"error":"not logged in"}');
+        let body: { action?: unknown; id?: unknown; task?: unknown; reward?: unknown } | null = null;
+        if (req.method === 'POST') {
+          try {
+            body = JSON.parse((await readBody(req)) || 'null');
+          } catch {
+            // invalid JSON → rejected below
+          }
+        }
+        if (!(await canPlay(client, userId))) return send(res, 403, '{"error":"testers only for now"}');
+        const names = (id: string) => nameOf(client, id);
+        if (req.method === 'GET') return send(res, 200, JSON.stringify(await townBoard(userId, names)));
+        const action = body?.action;
+        if (action !== 'post' && action !== 'accept' && action !== 'giveup' && action !== 'complete' && action !== 'cancel') return send(res, 400, '{"error":"invalid action"}');
+        const { id, task, reward } = body ?? {};
+        if ((id !== undefined && typeof id !== 'string') || (task !== undefined && typeof task !== 'string') || (reward !== undefined && typeof reward !== 'number')) {
+          return send(res, 400, '{"error":"invalid quest"}');
+        }
+        return send(res, 200, JSON.stringify(await boardAction(client, userId, { action, id, task, reward }, names)));
       }
       if (req.method === 'POST' && path === '/title/seen') {
         if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');

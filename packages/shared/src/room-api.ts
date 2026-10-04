@@ -245,6 +245,36 @@ export interface TownOutpostResponse {
 /** POST /town/bail { id } → the outpost afterwards, whether it worked, and what to tell the payer. */
 export type TownBailResponse = TownOutpostResponse & { ok: boolean; message: string };
 
+/** The notice board: open and in-progress quests (/request), and whether the viewer can post one. */
+export interface TownBoardResponse {
+  quests: TownQuest[];
+  maxReward: number;
+  maxActive: number;
+  /** The viewer's quests still open or in progress, their wallet (the reward is held from it), and a loan blocks posting. */
+  myActive: number;
+  wallet: number;
+  inDebt: boolean;
+}
+
+export interface TownQuest {
+  id: string;
+  task: string;
+  reward: number;
+  status: 'open' | 'accepted';
+  /** Who posted it, and who's on it (town nicknames). */
+  by: string;
+  helper: string | null;
+  /** The viewer posted it / accepted it. */
+  mine?: boolean;
+  helping?: boolean;
+  created: number;
+}
+
+export type TownBoardAction = 'post' | 'accept' | 'giveup' | 'complete' | 'cancel';
+
+/** POST /town/board { action, id? | task + reward } → the board afterwards, whether it worked, and what to say. */
+export type TownBoardActionResponse = TownBoardResponse & { ok: boolean; message: string };
+
 /** A title: its name, and its colour ('#RRGGBB', or 'prismatic' for a shifting rainbow). */
 export interface TitleData {
   name: string;

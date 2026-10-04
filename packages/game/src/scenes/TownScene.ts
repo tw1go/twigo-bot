@@ -24,6 +24,7 @@ import { type Figure, showLeaderboard } from '../ui/leaderboard';
 import { showJackpot } from '../ui/jackpot';
 import { showBank } from '../ui/bank';
 import { showOutpost } from '../ui/outpost';
+import { showBoard } from '../ui/board';
 import { showShop } from '../ui/shop';
 import { TargetBox } from '../ui/target';
 import { OtherPlayers } from '../world/others';
@@ -786,6 +787,7 @@ export class TownScene extends Phaser.Scene {
     if (b.id === 'jackpot-booth') return showJackpot();
     if (b.id === 'bank') return showBank();
     if (b.id === 'tanod-outpost') return showOutpost();
+    if (b.id === 'notice-board') return showBoard();
     if (b.id === 'rewards-shop') {
       const items = this.M.items ?? {};
       return showShop((id) => (items[id] ? { url: `${import.meta.env.BASE_URL}assets/${items[id].file}`, size: items[id].size } : null));

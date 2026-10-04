@@ -46,7 +46,7 @@ export interface TownChatLine {
 
 /** A line in the town's system feed: something that happened around the server (a dig, a bet). */
 export interface TownSystemLine {
-  kind: 'dig' | 'gamble' | 'jackpot' | 'shop' | 'gift' | 'jail';
+  kind: 'dig' | 'gamble' | 'jackpot' | 'shop' | 'gift' | 'jail' | 'quest';
   text: string;
   /** Colour key: a dig's rarity, win / lose / bust, jackpot, shop, or gift. */
   tone: string;

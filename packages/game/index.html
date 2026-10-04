@@ -293,6 +293,8 @@
       #system-feed [data-tone='shop'] { color: #C4B5FD; }
       #system-feed [data-tone='gift'] { color: #F0ABFC; }
       #system-feed [data-tone='bail'] { color: #7DD3FC; }
+      #system-feed [data-tone='quest'] { color: #FDE68A; }
+      #system-feed [data-tone='quest-done'] { color: #A3E635; }
       @media (max-width: 760px) { #system-feed { display: none; } }
       /* Who's online (ui/online.ts), beside the chat input next to the emote button. */
       #chat .ch-tools { display: flex; gap: 6px; }
@@ -382,6 +384,45 @@
       #reward .lb-foot { min-height: 18px; margin-bottom: 14px; font-size: 13px; font-weight: 600; color: #5B21B6; }
       #reward .lb-foot:empty { display: none; }
       /* The podium: the top 3 standing on their steps (1st in the middle, tallest). */
+      /* Notice board (ui/board.ts; tabs share the bank's .bk-tabs): quests as paper notes pinned on cork. Fixed size. */
+      #reward .rw-card:has(.nb-body) { width: min(520px, calc(100vw - 32px)); }
+      #reward .nb-body { margin-bottom: 14px; text-align: left; font-size: 14px; color: #3D4256; }
+      #reward .nb-panel { height: min(400px, 52vh); overflow-x: hidden; overflow-y: auto; }
+      #reward .nb-note { height: 36px; min-height: 0; margin-top: 6px; overflow: hidden; }
+      #reward .nb-cork { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; align-content: start; min-height: 100%; box-sizing: border-box; padding: 16px 14px; border: 4px solid #6B4423; background-color: #B07C4F; background-image: radial-gradient(rgba(80, 45, 15, 0.35) 1px, transparent 1.5px), radial-gradient(rgba(255, 230, 190, 0.25) 1px, transparent 1.5px); background-size: 7px 7px, 11px 11px; background-position: 0 0, 3px 5px; box-shadow: inset 0 0 18px rgba(50, 25, 5, 0.45); }
+      #reward .nb-empty { grid-column: 1 / -1; align-self: center; padding: 30px 0; text-align: center; font-weight: 700; color: #FFF6D5; text-shadow: 0 2px 0 rgba(50, 25, 5, 0.6); }
+      #reward .nb-quest { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 14px 12px 10px; background: var(--paper, #FFF6D5); box-shadow: 0 3px 0 rgba(50, 25, 5, 0.35), 0 6px 10px rgba(50, 25, 5, 0.25); transform: rotate(var(--tilt, 0deg)); color: #3D2A14; }
+      #reward .nb-quest::before { content: ''; position: absolute; top: -6px; left: 50%; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #FCA5A5 0 20%, #DC2626 45%, #7F1D1D 100%); box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3); }
+      #reward .nb-mine::before { background: radial-gradient(circle at 35% 30%, #BBF7D0 0 20%, #16A34A 45%, #14532D 100%); }
+      #reward .nb-helping::before { background: radial-gradient(circle at 35% 30%, #BAE6FD 0 20%, #0284C7 45%, #0C4A6E 100%); }
+      #reward .nb-head { display: flex; align-items: center; justify-content: space-between; }
+      #reward .nb-prize { display: flex; align-items: center; gap: 4px; font-size: 16px; font-weight: 700; color: #A16207; }
+      #reward .nb-state { padding: 0 6px; border: 2px solid currentColor; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+      #reward .nb-open { color: #15803D; }
+      #reward .nb-accepted { color: #B45309; }
+      #reward .nb-text { margin: 0; font-size: 14px; line-height: 1.35; overflow-wrap: anywhere; }
+      #reward .nb-who { font-size: 12px; color: #7A6A55; }
+      #reward .nb-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+      #reward .nb-acts:empty { display: none; }
+      #reward .nb-act { padding: 4px 10px; border: 2px solid #1E1B3A; border-radius: 0; font: inherit; font-size: 12px; font-weight: 700; color: #1E1B3A; box-shadow: 0 2px 0 #1E1B3A; }
+      #reward .nb-take { background: #A3E635; }
+      #reward .nb-pay { background: #FCDA4A; }
+      #reward .nb-plain { background: #fff; }
+      #reward .nb-sure { background: #F7768E; }
+      #reward .nb-act:disabled { opacity: 0.5; }
+      #reward .nb-form { position: relative; margin: 10px 6px 6px; padding: 18px 16px 12px; background: #FFF6D5; box-shadow: 0 3px 0 rgba(50, 25, 5, 0.3), inset 0 0 14px rgba(160, 110, 40, 0.15); transform: rotate(-0.6deg); }
+      #reward .nb-form::before { content: ''; position: absolute; top: -6px; left: 50%; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #FCA5A5 0 20%, #DC2626 45%, #7F1D1D 100%); }
+      #reward .nb-form-title { margin-bottom: 8px; font-size: 20px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; text-align: center; color: #7F1D1D; }
+      #reward .nb-task { display: block; width: 100%; box-sizing: border-box; padding: 8px; border: 2px solid #C9A86A; border-radius: 0; background: rgba(255, 255, 255, 0.7); color: #3D2A14; font: inherit; resize: none; }
+      #reward .nb-task:focus, #reward .nb-reward:focus { outline: none; border-color: #7C2AE8; }
+      #reward .nb-count { display: block; margin-top: 2px; font-size: 11px; text-align: right; color: #7A6A55; }
+      #reward .nb-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
+      #reward .nb-label { display: flex; align-items: center; gap: 8px; font-weight: 700; color: #3D2A14; }
+      #reward .nb-reward { width: 90px; padding: 6px 8px; border: 2px solid #C9A86A; border-radius: 0; background: #fff; color: #1E1B3A; font: inherit; font-weight: 700; -moz-appearance: textfield; }
+      #reward .nb-reward::-webkit-inner-spin-button, #reward .nb-reward::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+      #reward .nb-post { padding: 7px 14px; border: 2px solid #1E1B3A; border-radius: 0; background: #FCDA4A; color: #1E1B3A; font: inherit; font-weight: 700; box-shadow: inset 0 2px 0 #FFF59A, inset 0 -3px 0 #D99A0B, 0 3px 0 #1E1B3A; }
+      #reward .nb-post:disabled { opacity: 0.5; }
+      #reward .nb-hint { margin: 10px 0 0; font-size: 12px; color: #7A6A55; }
       /* Tanod outpost (ui/outpost.ts; tabs share the bank's .bk-tabs). A fixed size, like the shop. */
       #reward .rw-card:has(.op-body) { width: min(420px, calc(100vw - 32px)); }
       #reward .op-body { margin-bottom: 14px; text-align: left; font-size: 14px; color: #3D4256; }

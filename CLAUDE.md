@@ -129,6 +129,11 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   /town/outpost`, `POST /town/bail` (`web/town-outpost.ts`; jailed members get a per-startup hashed id, never their
   Discord id). Jailed players show "JAILED" under their name (`TownPlayer.jailed`, `jailed` messages from `jail()` /
   `release()` via `townJailed`); jail blocks diss/praise/judge in town. Dev: `&status=jailed`, `/__jail?name=Bob&on=1`.
+- Notice board (`ui/board.ts`, left click the board): `/request` quests as notes on cork (Accept, Give up, Complete =
+  pay, Cancel = refund; complete/cancel ask twice) and a Post a quest tab. Bot `GET/POST /town/board`
+  (`web/town-board.ts`); Discord's buttons and the town share `questAction` / `cantPost` / `addQuest` in
+  `quests/board.ts`. Town-posted quests get their card in the games channel; town actions edit the card and post the
+  same reply under it. Tasks from town pass the town's word filter. Dev: a pretend board.
 - Moderation (`/town mute|unmute|kick|filter`, mods/admins; bot `web/town-mod.ts`, kv 'town-moderation'): mutes block
   town chat, kicks close the socket (4001, back-at time) and refuse rejoining, blocked words become *** (whole words,
   repeated letters). Actions are logged in the admin channel. The word list lives only in the database.
