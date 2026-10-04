@@ -75,6 +75,20 @@ export interface MeResponse {
   nickname: string | null;
   /** Their title, shown under the nickname as <Title> (Townfolk by default; others are given or earned). */
   title: TitleData;
+  /** Digging today (see /dig and /redeem reward:Shovel). */
+  dig: MeDig;
+}
+
+export interface MeDig {
+  /** Digs left on their shovel(s). */
+  shovel: number;
+  /** Digs left today (the daily cap minus today's digs). */
+  digsLeft: number;
+  digsPerDay: number;
+  /** Shovels they can still buy today, and what one costs and gives. */
+  shovelsLeft: number;
+  shovelCost: number;
+  shovelUses: number;
 }
 
 /** A title: its name, and its colour ('#RRGGBB', or 'prismatic' for a shifting rainbow). */

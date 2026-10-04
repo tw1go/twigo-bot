@@ -251,6 +251,21 @@ export function headTop(scene: Phaser.Scene, o: Outfit): number {
   return heads.get(key)!;
 }
 
+/** The look's head as a small square picture (idle, facing south, first frame), for avatars. */
+export function headPortrait(scene: Phaser.Scene, C: CharacterDefs, o: Outfit, size = 24): HTMLCanvasElement | null {
+  const key = sheetKey(o, 'idle', 's');
+  if (!scene.textures.exists(key)) return null;
+  const src = scene.textures.get(key).getSourceImage() as HTMLCanvasElement;
+  const [cw, ch] = C.cell;
+  const top = Math.max(0, headTop(scene, o) - 1);
+  const h = Math.min(size, ch - top);
+  const c = document.createElement('canvas');
+  c.width = size;
+  c.height = size;
+  c.getContext('2d')!.drawImage(src, Math.round((cw - size) / 2), top, size, h, 0, 0, size, h);
+  return c;
+}
+
 /** Loads any layers an outfit still needs (with the scene's loader), then builds it. */
 export function loadOutfit(scene: Phaser.Scene, C: CharacterDefs, o: Outfit): Promise<void> {
   const missing = outfitFiles(C, o).filter((f) => !scene.textures.exists(f));

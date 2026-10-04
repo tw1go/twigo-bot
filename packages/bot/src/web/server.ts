@@ -3,7 +3,7 @@ import type { LeaderboardResponse, LeaderboardRow, MeResponse, PreregResponse, P
 import type { Client } from 'discord.js';
 import { config } from '../config.js';
 import { balance, rankOf, topBalances, vaultBalance } from '../credits/store.js';
-import { inventory } from '../dig/store.js';
+import { DIGS_PER_DAY, SHOVEL_COST, SHOVEL_USES, SHOVELS_PER_DAY, digsToday, inventory, shovelUses, shovelsBoughtToday } from '../dig/store.js';
 import { ITEM_BY_ID } from '../dig/items.js';
 import { getNickname, parseNickname, setNickname } from './nickname.js';
 import { titleOf } from './titles.js';
@@ -128,7 +128,15 @@ async function me(client: Client, req: IncomingMessage, res: ServerResponse): Pr
     const item = ITEM_BY_ID.get(id)!;
     return { id, name: item.name, emoji: item.emoji, rarity: item.rarity, count };
   });
-  const body: MeResponse = { id: userId, name, avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items, preregistered: isPreregistered(userId), outfit: getOutfit(userId), nickname: getNickname(userId), title: titleOf(userId) };
+  const body: MeResponse = { id: userId, name, avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items, preregistered: isPreregistered(userId), outfit: getOutfit(userId), nickname: getNickname(userId), title: titleOf(userId),
+    dig: {
+      shovel: shovelUses(userId),
+      digsLeft: Math.max(0, DIGS_PER_DAY - digsToday(userId)),
+      digsPerDay: DIGS_PER_DAY,
+      shovelsLeft: Math.max(0, SHOVELS_PER_DAY - shovelsBoughtToday(userId)),
+      shovelCost: SHOVEL_COST,
+      shovelUses: SHOVEL_USES,
+    } };
   send(res, 200, JSON.stringify(body));
 }
 

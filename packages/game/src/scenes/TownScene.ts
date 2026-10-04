@@ -2,13 +2,14 @@ import Phaser from 'phaser';
 import { queueImage, queueTown } from '../assets/queue';
 import type { Dir, Manifest, TownMap } from '../assets/types';
 import { Character } from '../characters/character';
-import { type Outfit, assetProblems, buildOutfit, loadOutfit, outfitFiles } from '../characters/doll';
+import { type Outfit, assetProblems, buildOutfit, headPortrait, loadOutfit, outfitFiles } from '../characters/doll';
 import { startingOutfit } from '../characters/looks';
 import type { MeResult } from '../session';
 import { cursor } from '../ui/cursor';
 import { BuildingLabel } from '../ui/labels';
 import { TownLink } from '../net/town';
 import { showElsewhere } from '../ui/elsewhere';
+import { mountTownHud } from '../ui/townhud';
 import { OtherPlayers } from '../world/others';
 import { fakeLogin } from '../session';
 import { screenToTile, tileToScreen } from '../iso';
@@ -174,6 +175,7 @@ export class TownScene extends Phaser.Scene {
     // Members show their nickname and title; without a login (login off, or the dev server) it's "Guest".
     const member = this.me?.status === 'ok' ? this.me.me : null;
     this.player.setNameTag(member?.nickname ?? 'Guest', member?.title ?? TOWNFOLK);
+    this.mountHud();
     if (member || fakeLogin()) this.connect();
     this.zoomIntro(); // last, once the names, labels and building cursors exist
     exposeDebug(this);
@@ -204,6 +206,22 @@ export class TownScene extends Phaser.Scene {
     for (const l of this.buildingLabels.values()) l.setZoom(zoom);
     this.input.setDefaultCursor(cursor('pointer', zoom));
     for (const b of this.objects.buildings) if (b.sprite.input) b.sprite.input.cursor = cursor('hand', zoom);
+  }
+
+  /** The town's HUD: your head and name top left (in the game's frame), Kowens and shovels top right. */
+  private mountHud(): void {
+    const member = this.me?.status === 'ok' ? this.me.me : null;
+    const asset = (file: string) => `${import.meta.env.BASE_URL}assets/${file}`;
+    const frame = this.M.ui.inventory?.itemFrame;
+    const emotes = this.M.ui.emotes;
+    const kowen = Array.isArray(emotes?.frames) ? emotes.frames.indexOf('kowen') : -1;
+    mountTownHud({
+      me: member,
+      name: member?.nickname ?? 'Guest',
+      avatar: headPortrait(this, this.M.characters, this.outfit),
+      frame: frame ? { url: asset(frame.file), slice: frame.nineSlice } : null,
+      coin: emotes?.file && kowen >= 0 && Array.isArray(emotes.frames) ? { url: asset(emotes.file), frame: kowen, size: emotes.size?.[0] ?? 12, frames: emotes.frames.length } : null,
+    });
   }
 
   // ── Other players ──

@@ -67,6 +67,9 @@ State is one SQLite database, `data/mikazuki.db` (better-sqlite3, WAL), schema i
 - Flow (`BootScene`): not logged in → login screen; logged in without a saved look or nickname → character creator
   (`CreateScene` + `ui/creator.ts`, town preloads meanwhile); else the town. Login off (or no local bot: the dev
   server's `/me` is 502) → straight to the town. Dev: `?me=anon|new|saved` fakes the login.
+- Town HUD (`ui/townhud.ts`, replaces the page's login corner in town): your character's head (`headPortrait`) and
+  name top left in the item frame; Kowens and shovels top right with "+" info (from `/me`: `kowens`, `dig`). The
+  shovel icon is the 🪏 emoji until there's art for it.
 - Multiplayer: `net/town.ts` (client, reconnects) ↔ bot `web/town.ts` (WebSocket `/ws`, no Discord code in it, so it
   can run alone for tests); `world/others.ts` draws everyone else. Dev: `?me=new&as=Alice` fakes a member; to test,
   run only the compiled `web/town.js` on 127.0.0.1:8787 with a fake `authenticate` (never the whole bot).

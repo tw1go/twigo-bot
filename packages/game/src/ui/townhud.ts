@@ -1,0 +1,165 @@
+import type { MeDig, MeResponse, PreregStatus } from '@mikazuki/shared';
+import { renderPrereg } from '../hud';
+import { loadMe } from '../session';
+
+// The town's HUD (replaces the page's login corner while you're in town): your character's head and name top left,
+// in the game's pixel frame; Kowens and shovels top right, each with a "+" that explains how to get more. DOM text
+// only. The numbers refresh every minute and whenever a "+" is opened.
+
+export interface TownHudOptions {
+  /** The member, or null for a guest (then only the name shows). */
+  me: MeResponse | null;
+  name: string;
+  avatar: HTMLCanvasElement | null;
+  /** The game's item frame (nine-slice) for the profile box. */
+  frame: { url: string; slice: number } | null;
+  /** The Kowen coin: a frame of the emote sheet. */
+  coin: { url: string; frame: number; size: number; frames: number } | null;
+}
+
+const REFRESH_MS = 60_000;
+const plural = (n: number, one: string, many: string) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
+
+function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+/** How to get Kowens (the bot's /twigo-help "Earn Kowens" is the full list; keep these in step with it). */
+const EARN = [
+  ['/get-kowens', '5 Kowens once a day'],
+  ['🎙️ Voice chat', '1 Kowen per 15 min, up to 12 a day (with someone else, not deafened)'],
+  ['🏆 Weekly voice top 10', '50 · 30 · 20 · 10 Kowens, Mondays 12 PM'],
+  ['💎 Boost the server', '+20 per boost, and 20 × your boosts every month'],
+  ['⛏️ /dig', 'find items, then /sell them'],
+  ["/claim", "Kowens found in twigo's room (3 a day)"],
+];
+
+export function mountTownHud(o: TownHudOptions): void {
+  document.getElementById('hud')?.setAttribute('hidden', ''); // the page's login corner
+  document.getElementById('town-hud')?.remove();
+  const root = el('div');
+  root.id = 'town-hud';
+
+  // ── profile (top left) ──
+  const profile = el('button', 'th-profile');
+  profile.setAttribute('aria-label', `${o.name}: menu`);
+  if (o.frame) {
+    profile.classList.add('th-framed');
+    profile.style.setProperty('--frame', `url("${o.frame.url}")`);
+    profile.style.setProperty('--slice', String(o.frame.slice));
+  }
+  const face = el('span', 'th-avatar');
+  if (o.avatar) face.append(o.avatar);
+  profile.append(face, el('span', 'th-name', o.name));
+  const menu = el('div', 'th-menu th-pop');
+  menu.hidden = true;
+  const left = el('div', 'th-left');
+  left.append(profile, menu);
+  root.append(left);
+
+  if (o.me) {
+    const out = el('button', 'th-logout', 'Log out');
+    out.addEventListener('click', async () => {
+      await fetch('/auth/logout', { method: 'POST', credentials: 'same-origin' }).catch(() => null);
+      location.reload();
+    });
+    menu.append(el('div', 'th-menu-who', o.me.name), out);
+    profile.addEventListener('click', () => toggle(menu));
+    void fetch('/prereg')
+      .then((r) => (r.ok ? (r.json() as Promise<PreregStatus>) : null))
+      .catch(() => null)
+      .then((prereg) => o.me && renderPrereg(left, o.me, prereg));
+  } else profile.disabled = true;
+
+  // ── Kowens and shovels (top right) ──
+  if (o.me) {
+    const right = el('div', 'th-right');
+    const coin = el('span', 'th-coin');
+    if (o.coin) {
+      const z = 2;
+      coin.style.backgroundImage = `url("${o.coin.url}")`;
+      coin.style.backgroundSize = `${o.coin.size * o.coin.frames * z}px ${o.coin.size * z}px`;
+      coin.style.backgroundPosition = `-${o.coin.frame * o.coin.size * z}px 0`;
+    } else coin.textContent = '🪙';
+    const kowens = el('span', 'th-count');
+    const shovels = el('span', 'th-count');
+    const earn = el('div', 'th-pop th-earn');
+    const dig = el('div', 'th-pop th-dig');
+    earn.hidden = dig.hidden = true;
+
+    const counter = (icon: HTMLElement, count: HTMLElement, label: string, pop: HTMLElement) => {
+      const box = el('div', 'th-counter');
+      const plus = el('button', 'th-plus', '+');
+      plus.setAttribute('aria-label', label);
+      plus.setAttribute('aria-expanded', 'false');
+      plus.addEventListener('click', () => {
+        toggle(pop, plus);
+        if (!pop.hidden) void refresh();
+      });
+      box.append(icon, count, plus, pop);
+      return box;
+    };
+    right.append(
+      counter(coin, kowens, 'How to get Kowens', earn),
+      counter(el('span', 'th-shovel', '🪏'), shovels, 'Digs left', dig),
+    );
+    root.append(right);
+
+    earn.append(el('div', 'th-pop-title', '🪙 How to get Kowens'));
+    for (const [what, how] of EARN) {
+      const row = el('div', 'th-row');
+      row.append(el('b', undefined, what), el('span', undefined, ` ${how}`));
+      earn.append(row);
+    }
+    earn.append(el('div', 'th-pop-note', 'Commands are used in the Discord server.'));
+
+    const show = (me: MeResponse) => {
+      kowens.textContent = me.kowens.toLocaleString();
+      kowens.title = plural(me.kowens, 'Kowen', 'Kowens');
+      shovels.textContent = String(me.dig.shovel);
+      renderDig(dig, me.dig);
+    };
+    const refresh = async () => {
+      const me = await loadMe(true);
+      if (me.status === 'ok') show(me.me);
+    };
+    show(o.me);
+    setInterval(() => void refresh(), REFRESH_MS);
+  }
+
+  // Popovers close on Escape or a click elsewhere.
+  document.addEventListener('click', (e) => {
+    for (const pop of root.querySelectorAll<HTMLElement>('.th-pop')) {
+      if (!pop.hidden && !pop.parentElement!.contains(e.target as Node)) close(pop);
+    }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') for (const pop of root.querySelectorAll<HTMLElement>('.th-pop')) close(pop);
+  });
+  document.body.append(root);
+}
+
+function renderDig(pop: HTMLElement, d: MeDig): void {
+  pop.replaceChildren(
+    el('div', 'th-pop-title', '🪏 Digging'),
+    el('div', 'th-row', `${plural(d.shovel, 'dig', 'digs')} left on your shovel`),
+    el('div', 'th-row', `${d.digsLeft} of ${d.digsPerDay} digs left today`),
+    el('div', 'th-row', d.shovelsLeft ? `${plural(d.shovelsLeft, 'more shovel', 'more shovels')} to buy today` : 'No more shovels to buy today'),
+    el('div', 'th-pop-note', `Dig with /dig · buy a shovel with /redeem reward:Shovel (${plural(d.shovelCost, 'Kowen', 'Kowens')}, ${d.shovelUses} digs)`),
+  );
+}
+
+function toggle(pop: HTMLElement, button?: HTMLElement): void {
+  if (pop.hidden) {
+    pop.hidden = false;
+    button?.setAttribute('aria-expanded', 'true');
+  } else close(pop);
+}
+
+function close(pop: HTMLElement): void {
+  pop.hidden = true;
+  pop.parentElement?.querySelector('.th-plus')?.setAttribute('aria-expanded', 'false');
+}

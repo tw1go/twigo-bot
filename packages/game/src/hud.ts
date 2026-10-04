@@ -33,8 +33,8 @@ export async function startHud(root: HTMLElement): Promise<void> {
   if (prereg?.open) root.append(el('div', 'hud-prereg-note', `🎮 Log in to pre-register: +${prereg.reward} Kowens at launch · ${prereg.count} signed up`));
 }
 
-/** The pre-registration line under the member card. */
-function renderPrereg(root: HTMLElement, me: MeResponse, prereg: PreregStatus | null): void {
+/** The pre-registration line under the member card (the town's HUD shows it too). */
+export function renderPrereg(root: HTMLElement, me: MeResponse, prereg: PreregStatus | null): void {
   if (!prereg?.open) return;
   const box = el('div', 'hud-prereg');
   if (me.preregistered) {
