@@ -1812,6 +1812,14 @@
       ],
       "note": "play above the loading bar; cell 0 is blank and cell 1 is a lead-in, so loop cells 2-17 (16 frames) to avoid a blink"
     },
+    "shovelIcon": {
+      "file": "ui/ui-shovel.png",
+      "size": [
+        32,
+        32
+      ],
+      "note": "the shovel counter in the HUD (digs left on your shovel)"
+    },
     "settingsIcon": {
       "file": "ui/ui-gear.png",
       "size": [

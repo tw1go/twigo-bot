@@ -80,7 +80,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   name top left in the item frame (round pixel avatar + status dot; real Discord status needs the Presence intent,
   so `/me` doesn't send it yet), with Kowens and shovels beside it (they wrap below on phones); Settings top right;
   Kowens/shovels have "+" info (from `/me`: `kowens`, `dig`). The
-  shovel icon is the 🪏 emoji until there's art for it.
+  shovel icon is `ui-shovel.png` (manifest ui.shovelIcon).
 - Movement tutorial (`ui/tutorial.ts`, in the reward box via `showPopup`): shown when a member walks into town
   straight from the creator (their first visit). Dev: `?tutorial=1`.
 - Reward pop-up (`ui/reward.ts`, `showReward`): dimmed town, turning rays, white box in the item frame (its fill

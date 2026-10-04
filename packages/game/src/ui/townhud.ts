@@ -19,6 +19,8 @@ export interface TownHudOptions {
   coin: Sprite | null;
   /** The status dots (manifest ui.statusDots), by status. */
   dots: (Sprite & { names: string[] }) | null;
+  /** The shovel counter's icon (manifest ui.shovelIcon). */
+  shovel: string | null;
   /** The Settings button's gear (manifest ui.settingsIcon). */
   gear: string | null;
 }
@@ -137,7 +139,7 @@ export function mountTownHud(o: TownHudOptions): void {
     };
     right.append(
       counter(coin, kowens, 'How to get Kowens', earn),
-      counter(el('span', 'th-shovel', '🪏'), shovels, 'Digs left', dig),
+      counter(shovelIcon(o.shovel), shovels, 'Digs left', dig),
     );
 
     earn.append(el('div', 'th-pop-title', 'How to get Kowens'));
@@ -237,4 +239,13 @@ function roundAvatar(head: HTMLCanvasElement): HTMLCanvasElement {
   const m = Math.floor(mid);
   for (const [x, y] of [[m, 1], [size - 2, m], [m, size - 2], [1, m]]) px(x, y, '#F8BF27');
   return c;
+}
+
+/** The shovel counter's icon: the art, or a fallback if it's missing. */
+function shovelIcon(url: string | null): HTMLElement {
+  if (!url) return el('span', 'th-shovel', '🪏');
+  const img = el('img', 'th-shovel-img');
+  img.src = url;
+  img.alt = '';
+  return img;
 }

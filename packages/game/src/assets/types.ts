@@ -41,6 +41,7 @@ export interface Manifest {
     nameplate?: { file: string; self: string; threeSlice: number; height: number };
     speechBubble?: { file: string; nineSlice: number; tail: string; tailAnchor: Vec2 };
     chatWindow?: { file: string; nineSlice: number; input?: { file: string; focus: string; nineSlice: number } };
+    shovelIcon?: { file: string; size: Vec2 };
     loadingMoon?: { file: string; size: Vec2; frames: number; fps: number; loopFrames?: Vec2; anchor: Vec2 };
   };
 }
