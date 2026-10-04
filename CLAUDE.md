@@ -65,14 +65,14 @@ State is one SQLite database, `data/mikazuki.db` (better-sqlite3, WAL), schema i
   over everything, never at less than 3 screen px per art px. Zoom is 2×–4×.
 - The town is held behind `?preview` until launch (`src/preview.ts`); `/play/` shows a coming-soon page.
 - Flow (`BootScene`): not logged in → login screen; logged in without a saved look or nickname → character creator
-  (`CreateScene` + `ui/creator.ts`, town preloads meanwhile); else the town. Login off (or no local bot: the dev
-  server's `/me` is 502) → straight to the town. Dev: `?me=anon|new|saved` fakes the login.
+  (`CreateScene` + `ui/creator.ts`, town preloads meanwhile); else the town. Login off → straight to the town as a
+  guest. Dev: `?me=anon|new|saved` fakes the login (and stands in when no bot answers /me).
 - Town HUD (`ui/townhud.ts`, replaces the page's login corner in town): your character's head (`headPortrait`) and
   name top left in the item frame (round pixel avatar + status dot; real Discord status needs the Presence intent,
   so `/me` doesn't send it yet); Kowens and shovels top right with "+" info (from `/me`: `kowens`, `dig`). The
   shovel icon is the 🪏 emoji until there's art for it.
 - Multiplayer: `net/town.ts` (client, reconnects) ↔ bot `web/town.ts` (WebSocket `/ws`, no Discord code in it, so it
-  can run alone for tests); `world/others.ts` draws everyone else. Dev: `?me=new&as=Alice` fakes a member (test values: `&kowens=` `&shovels=` `&digs=` `&status=online|idle|busy|offline|jailed`); to test,
+  can run alone for tests); `world/others.ts` draws everyone else. Dev: with no bot behind the dev server, plain `?preview` acts as `?me=saved`; `?me=anon|new&as=Alice` fakes a member (test values: `&kowens=` `&shovels=` `&digs=` `&status=online|idle|busy|offline|jailed`); to test,
   run only the compiled `web/town.js` on 127.0.0.1:8787 with a fake `authenticate` (never the whole bot).
 - Movement: click-to-move (A* on `blocked`), WASD/arrows (screen directions), E/Space to enter or sit.
 - Checking work: run the dev server and drive headless Chrome over the DevTools protocol (screenshots +

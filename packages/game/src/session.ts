@@ -6,11 +6,16 @@ export type MeResult = { status: 'ok'; me: MeResponse } | { status: 'anon' } | {
 let cached: Promise<MeResult> | null = null;
 
 /** Dev only (no local bot needed): ?me=anon | new (logged in, no look or nickname yet) | saved (logged in, the look
- *  saved in this browser). Saving a look then stays in this browser. Test values: ?kowens= ?shovels= ?digs= ?status=. */
+ *  saved in this browser; also what dev falls back to when no bot answers /me). Saving a look then stays in this
+ *  browser. Test values: ?kowens= ?shovels= ?digs= ?status=. */
 export function fakeLogin(): string | null {
   const fake = import.meta.env.DEV ? new URLSearchParams(location.search).get('me') : null;
-  return fake === 'anon' || fake === 'new' || fake === 'saved' ? fake : null;
+  if (fake === 'anon' || fake === 'new' || fake === 'saved') return fake;
+  return noBot ? 'saved' : null;
 }
+
+/** Dev only: no bot answered /me (the usual dev setup), so the fake login stands in as ?me=saved. */
+let noBot = false;
 
 /** Dev only: a number from the address (?kowens=500), or `fallback`. */
 const devNumber = (key: string, fallback: number) => {
@@ -48,7 +53,12 @@ export function loadMe(refresh = false): Promise<MeResult> {
   if (!cached || refresh) {
     cached = fetch('/me', { credentials: 'same-origin' })
       .then(async (r): Promise<MeResult> => (r.ok ? { status: 'ok', me: (await r.json()) as MeResponse } : r.status === 401 ? { status: 'anon' } : { status: 'off' }))
-      .catch((): MeResult => ({ status: 'off' }));
+      .catch((): MeResult => ({ status: 'off' }))
+      .then((me) => {
+        if (me.status !== 'off' || !import.meta.env.DEV) return me;
+        noBot = true;
+        return fakeMe('saved');
+      });
   }
   return cached;
 }
