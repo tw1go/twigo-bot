@@ -74,7 +74,7 @@ State is one SQLite database, `data/mikazuki.db` (better-sqlite3, WAL), schema i
 - Multiplayer: `net/town.ts` (client, reconnects) ↔ bot `web/town.ts` (WebSocket `/ws`, no Discord code in it, so it
   can run alone for tests); `world/others.ts` draws everyone else. Dev: with no bot behind the dev server, plain `?preview` acts as `?me=saved`; `?me=anon|new&as=Alice` fakes a member (test values: `&kowens=` `&shovels=` `&digs=` `&status=online|idle|busy|offline|jailed`); to test,
   run only the compiled `web/town.js` on 127.0.0.1:8787 with a fake `authenticate` (never the whole bot).
-- Movement: click-to-move (A* on `blocked`), WASD/arrows (screen directions), E/Space to enter or sit.
+- Movement: right-click-to-move (tap on touch screens; A* on `blocked`), WASD/arrows (screen directions), E/Space to enter or sit.
 - Checking work: run the dev server and drive headless Chrome over the DevTools protocol (screenshots +
   `window.__town` debug API: `state()`, `teleport()`, `walk()`, `time()`, `view()`, `outfit()`). Use
   `--use-angle=metal` for real frame rates; SwiftShader under-reports.

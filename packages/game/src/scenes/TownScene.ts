@@ -23,7 +23,7 @@ import { Ground } from '../world/ground';
 import { type Bench, type Building, WorldObjects, characterDepth } from '../world/objects';
 
 // The playable town: ground, buildings, props and the player, all placed from manifest.json + maps/town.json.
-// Click (or tap) to walk; click a building to walk to its door; click a bench to sit.
+// Right click to walk; left click a building to walk to its door, or a bench to sit (a tap does all of these).
 
 const ZOOMS = [2, 3, 4];
 /** Arriving in town, the camera fades in from black, starting this close on the player and easing out to the
@@ -236,7 +236,7 @@ export class TownScene extends Phaser.Scene {
     this.others.setZoom(zoom);
     for (const l of this.buildingLabels.values()) l.setZoom(zoom);
     this.input.setDefaultCursor(cursor('pointer', zoom));
-    for (const b of this.objects.buildings) if (b.sprite.input) b.sprite.input.cursor = cursor('hand', zoom);
+    for (const b of [...this.objects.buildings, ...this.objects.benches]) if (b.sprite.input) b.sprite.input.cursor = cursor('hand', zoom);
   }
 
   /** The town's HUD: your head and name top left (in the game's frame), Kowens and shovels top right. */
@@ -362,6 +362,8 @@ export class TownScene extends Phaser.Scene {
   // ── Input ──
 
   private setupInput(): void {
+    // Benches are left-clickable too (sit), so they get the hand cursor.
+    for (const b of this.objects.benches) b.sprite.setInteractive({ pixelPerfect: true, cursor: cursor('hand', this.cameras.main.zoom) });
     for (const b of this.objects.buildings) {
       b.sprite.setInteractive({ pixelPerfect: true, cursor: cursor('hand', this.cameras.main.zoom) });
       // The name shows while the building is hovered.
@@ -375,13 +377,22 @@ export class TownScene extends Phaser.Scene {
       });
     }
 
+    // Left click uses things (a building's door, a bench); right click only walks. A tap on a touch screen does
+    // both, as there's no right button.
+    this.input.mouse?.disableContextMenu();
     this.input.on(Phaser.Input.Events.POINTER_UP, (p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
       if (p.getDistance() > 8) return; // a drag, not a click
       const building = this.objects.buildings.find((b) => over.includes(b.sprite));
-      if (building) return this.goToBuilding(building);
       const world = this.cameras.main.getWorldPoint(p.x, p.y);
       const { col, row } = screenToTile(world.x, world.y);
-      this.goToTile({ col, row });
+      const bench = this.objects.benches.find((b) => over.includes(b.sprite)) ?? this.benchAt({ col, row });
+      if (p.wasTouch) {
+        if (building) return this.goToBuilding(building);
+        return this.goToTile({ col, row });
+      }
+      if (p.rightButtonReleased()) return this.moveTo({ col, row });
+      if (building) return this.goToBuilding(building);
+      if (bench) return this.goToBench(bench);
     });
 
     // WASD / arrow keys walk in screen directions; E or Space enters a door or sits on a bench.
@@ -458,14 +469,29 @@ export class TownScene extends Phaser.Scene {
 
   /** Walk to a tile; a bench means sit on it; a blocked tile means the nearest reachable one. */
   goToTile(target: Tile): void {
+    const bench = this.benchAt(target);
+    if (bench) return this.goToBench(bench);
+    this.moveTo(target);
+  }
+
+  private benchAt(t: Tile): Bench | undefined {
+    return this.objects.benches.find((b) => b.col === t.col && b.row === t.row);
+  }
+
+  /** Walk up to a bench and sit on it (straight away if you're already in front of it). */
+  private goToBench(bench: Bench): void {
     this.pending = null;
     this.byKeys = false;
-    const bench = this.objects.benches.find((b) => b.col === target.col && b.row === target.row);
-    if (bench) {
-      const spot = benchApproach(bench);
-      if (this.walkTo(spot)) this.pending = { sit: bench };
-      return;
-    }
+    const spot = benchApproach(bench);
+    const here = this.player.tile;
+    if (here.col === spot.col && here.row === spot.row) return this.player.sit({ col: bench.col, row: bench.row }, bench.faces, bench.depth);
+    if (this.walkTo(spot)) this.pending = { sit: bench };
+  }
+
+  /** Just walk there (a blocked tile: the nearest reachable one). */
+  private moveTo(target: Tile): void {
+    this.pending = null;
+    this.byKeys = false;
     if (this.grid.walkable(target.col, target.row)) return void this.walkTo(target);
     const near = this.grid.nearestReachable(this.player.tile, target);
     if (near) this.walkTo(near);
