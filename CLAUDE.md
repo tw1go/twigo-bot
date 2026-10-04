@@ -24,6 +24,13 @@ State is one SQLite database, `data/mikazuki.db` (better-sqlite3, WAL), schema i
   so it doesn't create a local database)
 - `./deploy/deploy.sh <ssh-target>` — builds, uploads, restarts the bot (see `CLAUDE.local.md`)
 
+## Versions
+
+Each game build is `v<major.minor from packages/game/package.json>.<commits on main>` (e.g. v0.1.154; a trailing
+`+` means it was built with uncommitted changes). It shows faintly bottom right; the build also writes
+`/play/version.json`, which open games check every minute to offer "New version available · Reload now"
+(`scripts/version.ts`, `src/ui/version.ts`). Deploy from a clean, committed `main`.
+
 ## Hard rules
 
 - **Never run the bot locally while the server bot is up** (`dev:bot`/`start` refuse unless `ALLOW_LOCAL_BOT=1`).

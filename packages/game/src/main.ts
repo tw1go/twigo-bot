@@ -5,6 +5,7 @@ import { TownScene } from './scenes/TownScene';
 import { WardrobeScene } from './scenes/WardrobeScene';
 import { startHud } from './hud';
 import { previewEnabled, showComingSoon } from './preview';
+import { showVersion } from './ui/version';
 
 // The town is held behind ?preview until launch (see preview.ts); everyone else gets the coming-soon page.
 // (?debug tools only work together with preview.)
@@ -13,6 +14,7 @@ if (previewEnabled()) startGame();
 else showComingSoon(document.getElementById('game')!);
 
 void startHud(document.getElementById('hud')!);
+showVersion();
 
 function startGame(): void {
   // The login corner stays out of the way while the game starts (the creator shows it; the town has its own HUD).

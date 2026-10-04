@@ -231,6 +231,15 @@
       @keyframes tu-click { 0% { fill: #A3E635; } 50% { fill: #E2DDF3; } }
       @media (max-width: 420px) { #reward .tu-boxes { flex-direction: column; } }
       @media (prefers-reduced-motion: reduce) { #reward .tu-key, #reward .tu-lit { animation: none; } #reward .tu-lit { fill: #A3E635; } }
+      /* The version (ui/version.ts): faint, bottom right; and the new-version notice, top centre. */
+      #version { position: fixed; right: 8px; bottom: 4px; z-index: 6; color: #E6E9F2; opacity: 0.4; font: 11px/1 var(--ui-font); pointer-events: auto; }
+      #new-version { position: fixed; top: 12px; left: 50%; z-index: 5; display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 14px; border: 2px solid #7C2AE8; background: #111827; color: #E6E9F2; font: 14px/1.2 var(--ui-font); box-shadow: 0 4px 0 #1E1B3A; transform: translateX(-50%); animation: nv-in 0.35s cubic-bezier(0.2, 1.4, 0.4, 1); }
+      #new-version .nv-reload { padding: 6px 12px; border: 2px solid #1E1B3A; border-radius: 0; background: #A3E635; color: #1E1B3A; font: inherit; font-weight: 700; box-shadow: inset 0 2px 0 #D9F99D, inset 0 -3px 0 #5A8A5E; }
+      #new-version .nv-reload:hover { background: #B5EE5A; }
+      #new-version .nv-close { width: 28px; height: 28px; border: 0; background: none; color: #7A8099; font: 18px/1 var(--ui-font); }
+      #new-version .nv-close:hover { color: #fff; }
+      @keyframes nv-in { from { transform: translate(-50%, -24px); opacity: 0; } }
+      @media (max-width: 560px) { #town-hud .th-right { bottom: 20px; } #chat { bottom: 72px; } }
     </style>
   </head>
   <body>
