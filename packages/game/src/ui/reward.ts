@@ -24,7 +24,15 @@ interface RewardArt {
 const CHEERS = ['Great!', 'Nice!', 'Awesome!', 'Sweet!', 'Yay!', 'Woohoo!', 'Amazing!', 'Lovely!'];
 
 let art: RewardArt = { frame: null, coin: null };
-const queue: { reward: Reward; done: () => void }[] = [];
+/** A pop-up in the reward box: a heading, content, and a button; rewards add the rays and casino lights. */
+export interface Popup {
+  title: string;
+  body: HTMLElement[];
+  button: string;
+  celebrate: boolean;
+}
+
+const queue: { popup: Popup; done: () => void }[] = [];
 let showing = false;
 
 export function setRewardArt(a: RewardArt): void {
@@ -59,13 +67,23 @@ async function whiteFrame(url: string): Promise<string | null> {
 
 /** Shows a reward (after any already showing); resolves when it's dismissed. */
 export function showReward(reward: Reward): Promise<void> {
+  return showPopup({
+    title: reward.title,
+    body: [graphic(reward.graphic), el('p', 'rw-message', reward.message)],
+    button: CHEERS[Math.floor(Math.random() * CHEERS.length)],
+    celebrate: true,
+  });
+}
+
+/** Shows a pop-up in the reward box (after any already showing); resolves when it's dismissed. */
+export function showPopup(popup: Popup): Promise<void> {
   return new Promise((done) => {
-    queue.push({ reward, done });
+    queue.push({ popup, done });
     if (!showing) next();
   });
 }
 
-function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
+export function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag);
   if (className) node.className = className;
   if (text !== undefined) node.textContent = text;
@@ -76,13 +94,13 @@ function next(): void {
   const item = queue.shift();
   showing = !!item;
   if (!item) return;
-  const { reward, done } = item;
+  const { popup, done } = item;
 
   const root = el('div');
   root.id = 'reward';
   root.setAttribute('role', 'dialog');
   root.setAttribute('aria-modal', 'true');
-  root.setAttribute('aria-label', reward.title);
+  root.setAttribute('aria-label', popup.title);
   const stage = el('div', 'rw-stage');
   const rays = el('div', 'rw-rays');
   rays.setAttribute('aria-hidden', 'true');
@@ -93,13 +111,17 @@ function next(): void {
     card.style.setProperty('--slice', String(art.frame.slice));
   }
 
-  const button = el('button', 'rw-ok', CHEERS[Math.floor(Math.random() * CHEERS.length)]);
-  // Casino lights in their own marquee box over the top edge, every other one lit, swapping.
-  const lights = el('div', 'rw-lights');
-  lights.setAttribute('aria-hidden', 'true');
-  for (let i = 0; i < 9; i++) lights.append(el('span', i % 2 ? 'rw-bulb rw-odd' : 'rw-bulb'));
-  card.append(lights, el('h2', 'rw-title', reward.title), graphic(reward.graphic), el('p', 'rw-message', reward.message), button);
-  stage.append(rays, card);
+  const button = el('button', 'rw-ok', popup.button);
+  if (popup.celebrate) {
+    // Casino lights in their own marquee box over the top edge, every other one lit, swapping.
+    const lights = el('div', 'rw-lights');
+    lights.setAttribute('aria-hidden', 'true');
+    for (let i = 0; i < 9; i++) lights.append(el('span', i % 2 ? 'rw-bulb rw-odd' : 'rw-bulb'));
+    card.append(lights);
+  }
+  card.append(el('h2', 'rw-title', popup.title), ...popup.body, button);
+  if (popup.celebrate) stage.append(rays);
+  stage.append(card);
   root.append(stage);
   document.body.append(root);
   button.focus();

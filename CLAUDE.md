@@ -73,6 +73,8 @@ State is one SQLite database, `data/mikazuki.db` (better-sqlite3, WAL), schema i
   name top left in the item frame (round pixel avatar + status dot; real Discord status needs the Presence intent,
   so `/me` doesn't send it yet); Kowens and shovels top right with "+" info (from `/me`: `kowens`, `dig`). The
   shovel icon is the 🪏 emoji until there's art for it.
+- Movement tutorial (`ui/tutorial.ts`, in the reward box via `showPopup`): shown when a member walks into town
+  straight from the creator (their first visit). Dev: `?tutorial=1`.
 - Reward pop-up (`ui/reward.ts`, `showReward`): dimmed town, turning rays, white box in the item frame (its fill
   repainted white). Shown once per new title, on whichever device comes first (`/me` newTitle → `POST
   /title/seen`; `titles.announced`, schema v7); dev demo `?reward=kowens|title`, debug `__town.reward({...})`.

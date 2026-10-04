@@ -208,6 +208,29 @@
       #chat .ch-input::placeholder { color: rgba(230, 233, 242, 0.55); }
       #chat .ch-input:focus { background: rgba(0, 0, 0, 0.55); box-shadow: 0 0 0 1px rgba(183, 148, 246, 0.6); }
       @media (max-width: 560px) { #chat { bottom: 64px; width: min(320px, calc(100vw - 24px)); } #chat .ch-log { height: 120px; } }
+      /* The movement tutorial (ui/tutorial.ts), in the reward box: two boxes side by side. */
+      #reward .tu-boxes { display: flex; gap: 12px; margin: 4px 0 14px; }
+      #reward .tu-box { flex: 1; padding: 12px 8px 10px; border: 2px solid #E2DDF3; border-radius: 2px; background: #F5F3FF; }
+      #reward .tu-art { display: flex; align-items: center; justify-content: center; height: 74px; }
+      #reward .tu-box-title { margin-top: 8px; font-size: 16px; font-weight: 700; color: #5B21B6; }
+      #reward .tu-box-text { margin-top: 4px; font-size: 13px; color: #3D4256; }
+      #reward .tu-tip { margin: 0 0 16px; font-size: 13px; color: #3D4256; }
+      #reward .tu-keys { display: grid; grid-template-columns: repeat(3, 30px); grid-template-rows: repeat(2, 30px); gap: 4px; }
+      #reward .tu-key { display: flex; align-items: center; justify-content: center; border: 2px solid #1E1B3A; background: #fff; color: #1E1B3A; font-weight: 700; font-size: 14px; box-shadow: inset 0 -3px 0 #C9C2E3; animation: tu-press 2.4s steps(1) infinite; }
+      #reward .tu-key-w { grid-column: 2; grid-row: 1; }
+      #reward .tu-key-a { grid-column: 1; grid-row: 2; }
+      #reward .tu-key-s { grid-column: 2; grid-row: 2; }
+      #reward .tu-key-d { grid-column: 3; grid-row: 2; }
+      @keyframes tu-press { 0% { background: #A3E635; box-shadow: inset 0 2px 0 #5A8A5E; transform: translateY(2px); } 25% { background: #fff; box-shadow: inset 0 -3px 0 #C9C2E3; transform: none; } }
+      #reward .tu-mouse { width: 48px; height: 72px; shape-rendering: crispEdges; }
+      #reward .tu-ink { fill: #1E1B3A; }
+      #reward .tu-body { fill: #fff; }
+      #reward .tu-btn { fill: #E2DDF3; }
+      #reward .tu-wheel { fill: #7A8099; }
+      #reward .tu-lit { animation: tu-click 1.2s steps(1) infinite; }
+      @keyframes tu-click { 0% { fill: #A3E635; } 50% { fill: #E2DDF3; } }
+      @media (max-width: 420px) { #reward .tu-boxes { flex-direction: column; } }
+      @media (prefers-reduced-motion: reduce) { #reward .tu-key, #reward .tu-lit { animation: none; } #reward .tu-lit { fill: #A3E635; } }
     </style>
   </head>
   <body>

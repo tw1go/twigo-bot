@@ -54,7 +54,7 @@ export class CreateScene extends Phaser.Scene {
         if ((await saveOutfit(o, true)) !== 'account') return 'error';
         await townLoaded;
         this.scene.stop('town-preload');
-        this.scene.start('town', { ...this.args, me: { ...me, me: { ...me.me, outfit: o, nickname } } });
+        this.scene.start('town', { ...this.args, me: { ...me, me: { ...me.me, outfit: o, nickname } }, firstVisit: true });
         return 'ok';
       },
     });

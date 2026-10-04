@@ -14,6 +14,7 @@ import { mountTownHud } from '../ui/townhud';
 import { ChatBox } from '../ui/chat';
 import { type BubbleArt, lightBubble } from '../ui/labels';
 import { type Reward, setRewardArt, showReward } from '../ui/reward';
+import { showMovementTutorial } from '../ui/tutorial';
 import { OtherPlayers } from '../world/others';
 import { fakeLogin } from '../session';
 import { screenToTile, tileToScreen } from '../iso';
@@ -109,7 +110,11 @@ export class TownScene extends Phaser.Scene {
   private alertFor: Building | null = null;
   private labelZoom = 0;
 
-  init(data: { manifest: Manifest; town: TownMap; me: MeResult | null }): void {
+  /** Straight from the character creator: a member's first time in town (the movement tutorial shows). */
+  private firstVisit = false;
+
+  init(data: { manifest: Manifest; town: TownMap; me: MeResult | null; firstVisit?: boolean }): void {
+    this.firstVisit = !!data.firstVisit;
     this.M = data.manifest;
     this.map = data.town;
     this.me = data.me;
@@ -264,9 +269,11 @@ export class TownScene extends Phaser.Scene {
     });
   }
 
-  /** Rewards to show on arriving: a title the bot says is new to you (shown once, on whichever device comes
+  /** On arriving: the movement tutorial on a first visit, then rewards — a title the bot says is new to you (shown once, on whichever device comes
    *  first; the bot is told when it's been seen). In dev, ?reward= shows a demo. */
   private announceRewards(): void {
+    // First time in town: how to move (before any reward). Dev: ?tutorial=1.
+    if (this.firstVisit || (import.meta.env.DEV && new URLSearchParams(location.search).has('tutorial'))) void showMovementTutorial();
     const member = this.me?.status === 'ok' ? this.me.me : null;
     if (member?.newTitle) {
       void showReward({ title: 'New title!', graphic: { kind: 'title', title: member.title }, message: `Congratulations! You are now known as <${member.title.name}>.` }).then(() =>
