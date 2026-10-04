@@ -12,6 +12,8 @@ import { TownLink } from '../net/town';
 import { showElsewhere } from '../ui/elsewhere';
 import { mountTownHud } from '../ui/townhud';
 import { ChatBox } from '../ui/chat';
+import { EMOTE_KEYS, emotePicker } from '../ui/emotes';
+import type { TownEmote } from '@mikazuki/shared';
 import { type BubbleArt, lightBubble } from '../ui/labels';
 import { type Reward, setRewardArt, showReward } from '../ui/reward';
 import { showMovementTutorial } from '../ui/tutorial';
@@ -103,6 +105,8 @@ export class TownScene extends Phaser.Scene {
   private readonly buildingLabels = new Map<string, BuildingLabel>();
   private hovered: Building | null = null;
   private marker: Phaser.GameObjects.Sprite | null = null;
+  /** Plays an emote and tells the server (set once connected). */
+  private emoteKeys: ((e: TownEmote) => void) | null = null;
   private others!: OtherPlayers;
   private link: TownLink | null = null;
   /** What the server last heard about the player (face / sit / stand are sent when these change). */
@@ -301,7 +305,14 @@ export class TownScene extends Phaser.Scene {
     const B = this.M.ui.speechBubble;
     const bubbles: BubbleArt | null = B && this.textures.exists(B.file) ? lightBubble(this, { file: B.file, slice: B.nineSlice, tail: B.tail, tailAnchor: B.tailAnchor }) : null;
     this.others.bubbleArt = bubbles;
-    const chat = new ChatBox((text) => link.send({ t: 'say', text }));
+    const E = this.M.ui.emotes;
+    const sheet = E?.file && Array.isArray(E.frames) ? { url: `${import.meta.env.BASE_URL}assets/${E.file}`, size: E.size?.[0] ?? 12, names: E.frames } : null;
+    const emote = (e: TownEmote) => {
+      this.playEmote(this.player, e); // right away here; the others see it via the server
+      link.send({ t: 'emote', emote: e });
+    };
+    this.emoteKeys = emote;
+    const chat = new ChatBox((text) => link.send({ t: 'say', text }), emotePicker(sheet, emote));
     const member = this.me?.status === 'ok' ? this.me.me : null;
     let myId = '';
     this.player.onStep = (to) => {
@@ -320,6 +331,11 @@ export class TownScene extends Phaser.Scene {
         chat.add(this.others.nameOf(m.id) ?? 'Someone', m.text);
       }
       if (m.t === 'say-discord') return chat.add(m.name, m.text, 'discord');
+      if (m.t === 'emote') {
+        const char = this.others.charOf(m.id);
+        if (char) this.playEmote(char, m.emote);
+        return;
+      }
       if (m.t === 'welcome') {
         myId = m.you;
         chat.history(m.recent ?? [], member?.nickname ?? null);
@@ -336,6 +352,15 @@ export class TownScene extends Phaser.Scene {
       showElsewhere(() => link.reconnect());
     };
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => link.close());
+  }
+
+  /** An emote on a character: its icon over the head, and for laugh and wave, the cheer or wave animation too. */
+  private playEmote(char: Character, e: TownEmote): void {
+    const E = this.M.ui.emotes;
+    const frame = Array.isArray(E?.frames) ? E.frames.indexOf(e) : -1;
+    if (E?.file && frame >= 0 && this.textures.exists(E.file)) char.showEmote(E.file, frame);
+    if (e === 'laugh') char.emote('cheer');
+    if (e === 'wave') char.emote('wave');
   }
 
   /** Turning on the spot, sitting down and standing up (steps go out as they start; see connect). */
@@ -465,6 +490,9 @@ export class TownScene extends Phaser.Scene {
         this.player.cancelPath(); // the keys take over from a click path
       }
       if (e.key.toLowerCase() === 'e' || e.key === ' ') this.interact();
+      // 1–8: emotes (the picker beside the chat shows which is which).
+      const n = Number(e.key);
+      if (Number.isInteger(n) && n >= 1 && n <= EMOTE_KEYS.length) this.emoteKeys?.(EMOTE_KEYS[n - 1]);
     });
 
     // Wheel zooms in whole steps only (1×–4×), keeping pixels crisp.

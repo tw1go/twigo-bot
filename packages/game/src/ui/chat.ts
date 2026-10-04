@@ -34,6 +34,8 @@ export class ChatBox {
   constructor(
     /** Sends a message; false if it couldn't go (not connected). */
     private readonly send: (text: string) => boolean,
+    /** Extra controls beside the input (the emote picker). */
+    tools: HTMLElement | null = null,
   ) {
     this.root = document.createElement('div');
     this.root.id = 'chat';
@@ -48,7 +50,11 @@ export class ChatBox {
     this.input.setAttribute('aria-label', 'Chat message');
     this.input.autocomplete = 'off';
     this.input.enterKeyHint = 'send';
-    this.root.append(this.log, this.input);
+    const row = document.createElement('div');
+    row.className = 'ch-row';
+    row.append(this.input);
+    if (tools) row.append(tools);
+    this.root.append(this.log, row);
     document.body.append(this.root);
     // Quiet for a while → faded; a message, a hover or typing → back to full.
     this.root.addEventListener('mouseenter', () => this.wake());

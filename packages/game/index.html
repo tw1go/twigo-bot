@@ -240,6 +240,19 @@
       #new-version .nv-close:hover { color: #fff; }
       @keyframes nv-in { from { transform: translate(-50%, -24px); opacity: 0; } }
       @media (max-width: 560px) { #town-hud .th-right { bottom: 20px; } #chat { bottom: 72px; } }
+      #chat .ch-row { display: flex; gap: 6px; align-items: stretch; }
+      #chat .ch-row .ch-input { flex: 1; min-width: 0; }
+      /* Emote picker (ui/emotes.ts): a button beside the input, a row of icons above it. */
+      #chat .em-wrap { position: relative; }
+      #chat .em-open { height: 100%; min-width: 38px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 4px; background: rgba(0, 0, 0, 0.35); padding: 0 6px; }
+      #chat .em-open:hover, #chat .em-open[aria-expanded='true'] { background: rgba(0, 0, 0, 0.55); box-shadow: 0 0 0 1px rgba(183, 148, 246, 0.6); }
+      #chat .em-palette { position: absolute; right: 0; bottom: calc(100% + 8px); display: flex; gap: 4px; padding: 6px; border-radius: 6px; background: rgba(10, 12, 24, 0.85); }
+      #chat .em-palette[hidden] { display: none; }
+      #chat .em-item { position: relative; display: flex; align-items: center; justify-content: center; min-width: 36px; height: 36px; padding: 0 4px; border: 0; border-radius: 4px; background: rgba(255, 255, 255, 0.06); color: #E6E9F2; font: inherit; font-size: 12px; }
+      #chat .em-item:hover { background: rgba(183, 148, 246, 0.28); }
+      #chat .em-icon { display: block; image-rendering: pixelated; background-repeat: no-repeat; }
+      #chat .em-key { position: absolute; right: 2px; bottom: 0; font-size: 10px; color: rgba(230, 233, 242, 0.6); }
+      #chat .em-wave { font-size: 12px; }
     </style>
   </head>
   <body>

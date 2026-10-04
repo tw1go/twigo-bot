@@ -89,6 +89,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   burst 3 then 1 per 2 s, never saved) comes back to everyone, the speaker included. Linked to a Discord channel
   (`TOWN_CHAT_CHANNEL_ID`, bot `web/town-chat.ts`, needs the Message Content intent): Discord lines show with the
   Discord mark. The box is a fixed see-through panel that fades to 0.2 after 15 s quiet.
+- Emotes (`ui/emotes.ts` picker beside the chat input, keys 1–8; `EmotePop` in `ui/labels.ts`): the art's emote
+  icons over the head for ~2 s (laugh also cheers, wave waves); `emote` goes to the others, rate-limited.
 - Multiplayer: `net/town.ts` (client, reconnects) ↔ bot `web/town.ts` (WebSocket `/ws`, no Discord code in it, so it
   can run alone for tests); `world/others.ts` draws everyone else. Dev: the dev server runs the town itself (`scripts/dev-town.ts`: the bot's `web/town.ts`,
   fake login), so two windows `?preview&as=Alice` / `?preview&as=Bob` see and chat with each other;

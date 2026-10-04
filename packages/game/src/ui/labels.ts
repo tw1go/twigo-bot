@@ -226,3 +226,41 @@ export class SpeechBubble {
     this.box.destroy();
   }
 }
+
+/** An emote icon popping up over someone's head: it bounces in, holds for a moment, then floats up and fades. */
+export class EmotePop {
+  private readonly box: Phaser.GameObjects.Container;
+  private readonly icon: Phaser.GameObjects.Image;
+  private zoomScale = 1;
+
+  constructor(
+    private readonly scene: Phaser.Scene,
+    sheet: string,
+    frame: number,
+    done: () => void,
+  ) {
+    this.icon = scene.add.image(0, 0, sheet, frame).setOrigin(0.5, 1);
+    this.box = scene.add.container(0, 0, [this.icon]).setDepth(LABEL_DEPTH + 2);
+    this.icon.setScale(0.3);
+    scene.tweens.add({ targets: this.icon, scale: 1, duration: 260, ease: 'Back.easeOut' });
+    scene.tweens.add({ targets: this.icon, y: -4, alpha: 0, delay: 1700, duration: 400, onComplete: () => (this.box.destroy(), done()) });
+  }
+
+  get height(): number {
+    return Math.ceil(this.icon.height * this.zoomScale);
+  }
+
+  place(x: number, bottom: number): void {
+    this.box.setPosition(x, bottom);
+  }
+
+  setZoom(zoom: number): void {
+    this.zoomScale = scaleFor(zoom).scale;
+    this.box.setScale(this.zoomScale);
+  }
+
+  destroy(): void {
+    this.scene.tweens.killTweensOf(this.icon);
+    this.box.destroy();
+  }
+}

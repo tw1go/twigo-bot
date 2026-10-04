@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import type { IncomingMessage, Server } from 'node:http';
 import type { Duplex } from 'node:stream';
 import { WebSocket, WebSocketServer } from 'ws';
-import type { OutfitData, TitleData, TownChatLine, TownClientMessage, TownDir, TownPlayer, TownServerMessage } from '@mikazuki/shared';
+import type { OutfitData, TitleData, TownChatLine, TownClientMessage, TownDir, TownEmote, TownPlayer, TownServerMessage } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
 // messages). The server keeps everyone's tile and checks each step — on the map, not blocked, next to the last
@@ -13,6 +13,10 @@ import type { OutfitData, TitleData, TownChatLine, TownClientMessage, TownDir, T
 // this file has no Discord in it.
 
 const DIRS = new Set<TownDir>(['s', 'se', 'e', 'ne', 'n', 'nw', 'w', 'sw']);
+const EMOTES = new Set<TownEmote>(['heart', 'laugh', 'exclaim', 'question', 'kowen', 'sleep', 'angry', 'wave']);
+/** Emotes: a burst of 3, then one a second. */
+const EMOTES_PER_SECOND = 1;
+const EMOTE_BURST = 3;
 /** Walking is 4 tiles a second; allow a little more, in bursts (messages bunch up on a bad connection). */
 const STEPS_PER_SECOND = 6;
 const STEP_BURST = 6;
@@ -86,6 +90,8 @@ interface Conn {
   refilled: number;
   says: number;
   saidAt: number;
+  emotes: number;
+  emotedAt: number;
   alive: boolean;
   /** Still at the spawn point, so 'here' is accepted (once). */
   fresh: boolean;
@@ -155,6 +161,15 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         if (!p.sit) return;
         p.sit = false;
         return others(c, { t: 'stand', id: p.id });
+      case 'emote': {
+        if (!EMOTES.has(m.emote)) return;
+        const now = Date.now();
+        c.emotes = Math.min(EMOTE_BURST, c.emotes + ((now - c.emotedAt) / 1000) * EMOTES_PER_SECOND);
+        c.emotedAt = now;
+        if (c.emotes < 1) return;
+        c.emotes -= 1;
+        return others(c, { t: 'emote', id: p.id, emote: m.emote });
+      }
       case 'say': {
         const text = tidy(m.text);
         if (!text) return send(c, { t: 'say-refused', reason: 'invalid' });
@@ -181,7 +196,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     }
     const [col, row] = map.spawn;
     const player: TownPlayer = { id: randomBytes(6).toString('hex'), ...profile, col, row, dir: 's', sit: false };
-    const c: Conn = { ws, userId, player, tokens: STEP_BURST, refilled: Date.now(), says: SAY_BURST, saidAt: Date.now(), alive: true, fresh: true };
+    const c: Conn = { ws, userId, player, tokens: STEP_BURST, refilled: Date.now(), says: SAY_BURST, saidAt: Date.now(), emotes: EMOTE_BURST, emotedAt: Date.now(), alive: true, fresh: true };
     send(c, { t: 'welcome', you: player.id, players: [...conns.values()].map((o) => o.player), recent });
     conns.set(userId, c);
     others(c, { t: 'join', player });

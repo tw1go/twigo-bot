@@ -26,7 +26,12 @@ export type TownClientMessage =
   | { t: 'sit'; col: number; row: number; dir: TownDir }
   | { t: 'stand' }
   /** Say something (1–120 characters after tidying; a few at once, then about one every 2 s). */
-  | { t: 'say'; text: string };
+  | { t: 'say'; text: string }
+  /** An emote over your head (one of TOWN_EMOTES). */
+  | { t: 'emote'; emote: TownEmote };
+
+/** Emotes: the icons in the art's emote sheet (ui.emotes), plus a wave. */
+export type TownEmote = 'heart' | 'laugh' | 'exclaim' | 'question' | 'kowen' | 'sleep' | 'angry' | 'wave';
 
 /** A line of the town chat, as kept for people arriving (the last few, in memory only). */
 export interface TownChatLine {
@@ -49,6 +54,8 @@ export type TownServerMessage =
   | { t: 'snap'; col: number; row: number }
   /** Someone said something (you too: your own words come back this way). */
   | { t: 'say'; id: string; text: string }
+  /** Someone emoted (not sent back to the one who did it: they show it right away). */
+  | { t: 'emote'; id: string; emote: TownEmote }
   /** Someone said something in the town's Discord channel (shown with a Discord mark, no bubble). */
   | { t: 'say-discord'; name: string; text: string }
   /** Your message wasn't sent: too fast, or empty / too long once tidied. */

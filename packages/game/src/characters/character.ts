@@ -4,7 +4,7 @@ import { CHARACTER_BIAS } from '../world/depth';
 import type { Tile } from '../world/grid';
 import { type Outfit, headTop, sheetKey } from './doll';
 import type { TitleData } from '@mikazuki/shared';
-import { type BubbleArt, NameTag, SpeechBubble } from '../ui/labels';
+import { type BubbleArt, EmotePop, NameTag, SpeechBubble } from '../ui/labels';
 
 // A walking paper doll. Position is in tile space (tile centre = col + 0.5); the sprite's feet anchor sits on it.
 // Depth is the front corner of the tile the feet are on, refreshed every frame.
@@ -28,6 +28,7 @@ export class Character {
   private tag: NameTag | null = null;
   private bubble: SpeechBubble | null = null;
   private bubbleTimer: Phaser.Time.TimerEvent | null = null;
+  private pop: EmotePop | null = null;
   private zoom = 1;
   private head = 0; // rows of empty cell above the head (headTop)
   private col: number; // tile-space position of the feet (tile centre = integer + 0.5)
@@ -80,6 +81,18 @@ export class Character {
     this.zoom = zoom;
     this.tag?.setZoom(zoom);
     this.bubble?.setZoom(zoom);
+    this.pop?.setZoom(zoom);
+    this.sync();
+  }
+
+  /** An emote icon over the head (above any speech bubble) for about 2 s; a new one replaces it. */
+  showEmote(sheet: string, frame: number): void {
+    this.pop?.destroy();
+    const pop = new EmotePop(this.scene, sheet, frame, () => {
+      if (this.pop === pop) this.pop = null;
+    });
+    pop.setZoom(this.zoom);
+    this.pop = pop;
     this.sync();
   }
 
@@ -299,6 +312,7 @@ export class Character {
     this.tag?.place(Math.round(x), plateBottom);
     const alertY = this.tag ? plateBottom - this.tag.height - 1 : Math.round(y) - this.M.characters.cell[1] - 2;
     this.bubble?.place(Math.round(x), alertY);
+    this.pop?.place(Math.round(x), alertY - (this.bubble ? this.bubble.height + 1 : 0));
     this.alert?.setPosition(Math.round(x), alertY).setDepth(depth + 0.1);
   }
 
@@ -322,6 +336,7 @@ export class Character {
     this.tag?.destroy();
     this.bubbleTimer?.remove();
     this.bubble?.destroy();
+    this.pop?.destroy();
   }
 
   /** Lets the scene tint effects spawned later (night). */

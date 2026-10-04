@@ -43,7 +43,7 @@ export class OtherPlayers {
       case 'leave':
         return this.remove(m.id);
     }
-    if (m.t === 'snap' || m.t === 'say-refused' || m.t === 'say-discord') return;
+    if (m.t === 'snap' || m.t === 'say-refused' || m.t === 'say-discord' || m.t === 'emote') return;
     const o = this.all.get(m.id);
     if (!o) return;
     const s = o.state;
@@ -65,6 +65,11 @@ export class OtherPlayers {
         if (this.bubbleArt) o.char?.say(m.text, this.bubbleArt);
         return;
     }
+  }
+
+  /** Someone's character, once drawn. */
+  charOf(id: string): Character | null {
+    return this.all.get(id)?.char ?? null;
   }
 
   /** Someone's nickname (for the chat log), if they're here. */
