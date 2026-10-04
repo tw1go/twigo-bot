@@ -94,10 +94,10 @@ function next(): void {
   }
 
   const button = el('button', 'rw-ok', CHEERS[Math.floor(Math.random() * CHEERS.length)]);
-  // Casino lights along the top of the frame, every other one lit, swapping.
+  // Casino lights in their own marquee box over the top edge, every other one lit, swapping.
   const lights = el('div', 'rw-lights');
   lights.setAttribute('aria-hidden', 'true');
-  for (let i = 0; i < 11; i++) lights.append(el('span', i % 2 ? 'rw-bulb rw-odd' : 'rw-bulb'));
+  for (let i = 0; i < 9; i++) lights.append(el('span', i % 2 ? 'rw-bulb rw-odd' : 'rw-bulb'));
   card.append(lights, el('h2', 'rw-title', reward.title), graphic(reward.graphic), el('p', 'rw-message', reward.message), button);
   stage.append(rays, card);
   root.append(stage);

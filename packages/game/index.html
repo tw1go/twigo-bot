@@ -175,15 +175,20 @@
       #reward .rw-ok { position: relative; min-width: 130px; padding: 10px 22px 12px; border: 3px solid #1E1B3A; border-radius: 0; background: #A3E635; color: #1E1B3A; font: inherit; font-size: 17px; font-weight: 700; box-shadow: inset 0 3px 0 #D9F99D, inset 0 -4px 0 #5A8A5E, 0 5px 0 #1E1B3A; transform: translateY(0); transition: transform 0.06s, box-shadow 0.06s; }
       #reward .rw-ok:hover { background: #B5EE5A; }
       #reward .rw-ok:active { transform: translateY(4px); box-shadow: inset 0 3px 0 #D9F99D, inset 0 -2px 0 #5A8A5E, 0 1px 0 #1E1B3A; }
-      /* Casino lights on the frame's top edge: square pixel bulbs, alternate ones lit, swapping twice a second. */
-      #reward .rw-lights { position: absolute; top: -16px; left: 4px; right: 4px; display: flex; justify-content: space-between; pointer-events: none; }
-      #reward .rw-bulb { width: 8px; height: 8px; background: #7A4A01; box-shadow: 0 0 0 2px #1E1B3A; animation: rw-blink 1s steps(1) infinite; }
+      /* Casino lights on the frame's top edge: round bulbs shaded like glass (a highlight top left), alternate ones
+         lit, swapping twice a second. Unlit bulbs are pale glass, not dark. */
+      /* Their own marquee box: a dark strip with a violet border, straddling the top edge of the frame. */
+      #reward .rw-lights { position: absolute; top: calc(-1 * var(--slice, 0) * var(--px, 1) * 1px - 17px); left: 6%; right: 6%; display: flex; justify-content: space-between; padding: 8px 10px; background: #111827; border: 3px solid #7C2AE8; box-shadow: 0 0 0 2px #1E1B3A, 0 3px 0 2px #1E1B3A; pointer-events: none; }
+      #reward .rw-bulb { width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 0 2px #1E1B3A; background: radial-gradient(circle at 35% 30%, #FFFDF2 0 14%, #EFE3B4 32%, #CDB878 70%, #9C8748 100%); animation: rw-blink 1s steps(1) infinite; }
       #reward .rw-odd { animation-delay: -0.5s; }
-      @keyframes rw-blink { 0% { background: #FCFC64; box-shadow: 0 0 0 2px #1E1B3A, 0 0 8px 2px rgba(252, 218, 74, 0.85); } 50% { background: #7A4A01; box-shadow: 0 0 0 2px #1E1B3A; } }
+      @keyframes rw-blink {
+        0% { background: radial-gradient(circle at 35% 30%, #FFFFFF 0 16%, #FFF59A 32%, #FCDA4A 66%, #D99A0B 100%); box-shadow: 0 0 0 2px #1E1B3A, 0 0 10px 3px rgba(252, 218, 74, 0.8); }
+        50% { background: radial-gradient(circle at 35% 30%, #FFFDF2 0 14%, #EFE3B4 32%, #CDB878 70%, #9C8748 100%); box-shadow: 0 0 0 2px #1E1B3A; }
+      }
       @keyframes rw-spin { to { transform: rotate(360deg); } }
       @keyframes rw-pop { from { transform: scale(0.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
       @keyframes rw-dim { from { background: rgba(4, 4, 12, 0); } }
-      @media (prefers-reduced-motion: reduce) { #reward .rw-rays, #reward .rw-card, #reward, #reward .rw-bulb { animation: none; } #reward .rw-bulb { background: #FCDA4A; } }
+      @media (prefers-reduced-motion: reduce) { #reward .rw-rays, #reward .rw-card, #reward, #reward .rw-bulb { animation: none; } #reward .rw-bulb { background: radial-gradient(circle at 35% 30%, #FFFFFF 0 16%, #FFF59A 32%, #FCDA4A 66%, #D99A0B 100%); } }
     </style>
   </head>
   <body>
