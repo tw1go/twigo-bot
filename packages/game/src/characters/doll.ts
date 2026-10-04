@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { queueImage } from '../assets/queue';
 import type { CharacterDefs, Dir } from '../assets/types';
+import { isColour, visible } from '../util/pixels';
 
 // Paper-doll characters. Each layer (body, face, shoes, bottom, top, hair, glasses, hat — manifest drawOrder) is a
 // sheet of 32×48 frames with zero offset. For an outfit we recolour every layer's grey key ramps, clip the hair
@@ -101,6 +102,14 @@ export function outfitFiles(C: CharacterDefs, o: Outfit): string[] {
   return [...files];
 }
 
+/** The swap for the pixel at i: its grey key's new colour (give or take a nudge; see util/pixels), if any. */
+function swapAt(swaps: Map<number, number>, d: Uint8ClampedArray, i: number): number | undefined {
+  const exact = swaps.get((d[i] << 16) | (d[i + 1] << 8) | d[i + 2]);
+  if (exact !== undefined) return exact;
+  for (const [key, to] of swaps) if (isColour(d, i, key >> 16, (key >> 8) & 255, key & 255)) return to;
+  return undefined;
+}
+
 /** Colour swaps for one layer: grey key → outfit colour (exact matches only; the outline is never swapped). */
 function swapsFor(C: CharacterDefs, o: Outfit, layer: string): Map<number, number> {
   const m = new Map<number, number>();
@@ -192,8 +201,8 @@ export function buildOutfit(scene: Phaser.Scene, C: CharacterDefs, o: Outfit): v
         const swaps = swapsFor(C, o, l.layer);
         const d = data.data;
         for (let i = 0; i < d.length; i += 4) {
-          if (!d[i + 3]) continue;
-          const to = swaps.get((d[i] << 16) | (d[i + 1] << 8) | d[i + 2]);
+          if (!visible(d[i + 3])) continue;
+          const to = swapAt(swaps, d, i);
           if (to !== undefined) {
             d[i] = to >> 16;
             d[i + 1] = (to >> 8) & 255;
@@ -207,7 +216,7 @@ export function buildOutfit(scene: Phaser.Scene, C: CharacterDefs, o: Outfit): v
           else {
             if (mask.width !== data.width || mask.height !== data.height) assetProblems.add(`${l.clip} does not match ${l.file}`);
             const md = mask.data;
-            for (let i = 0; i < d.length && i < md.length; i += 4) if (md[i + 3] && md[i] > 127 && md[i + 1] > 127 && md[i + 2] > 127) d[i + 3] = 0;
+            for (let i = 0; i < d.length && i < md.length; i += 4) if (visible(md[i + 3]) && md[i] > 127 && md[i + 1] > 127 && md[i + 2] > 127) d[i + 3] = 0;
           }
         }
         const layer = document.createElement('canvas');
@@ -241,7 +250,7 @@ export function headTop(scene: Phaser.Scene, o: Outfit): number {
   if (data) {
     top = data.height;
     for (let i = 3; i < data.data.length; i += 4) {
-      if (data.data[i]) {
+      if (visible(data.data[i])) {
         top = Math.floor((i - 3) / 4 / data.width);
         break;
       }

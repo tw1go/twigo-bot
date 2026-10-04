@@ -3,6 +3,7 @@ import type { BuildingDef, Dir, Manifest, MapObject, PropDef, TownMap, Vec2 } fr
 import { assetProblems } from '../characters/doll';
 import { tileToScreen } from '../iso';
 import { CHARACTER_BIAS, GLOW_DEPTH, GROUND_SHADOW_DEPTH, frontDepth } from './depth';
+import { differs, visible } from '../util/pixels';
 
 // Everything that stands on the ground: buildings, props, trees (with their ground shadow and tufts), the fence,
 // lamps (+ night glow) and looping effects. Each object's manifest anchor sits on the top corner of its tile
@@ -282,7 +283,7 @@ function readPixels(scene: Phaser.Scene, key: string): ImageData {
 function visibleTop(scene: Phaser.Scene, img: Phaser.GameObjects.Image): number {
   const d = readPixels(scene, img.texture.key);
   for (let y = 0; y < d.height; y++) {
-    for (let x = 0; x < d.width; x++) if (d.data[(y * d.width + x) * 4 + 3]) return img.getBounds().top + y;
+    for (let x = 0; x < d.width; x++) if (visible(d.data[(y * d.width + x) * 4 + 3])) return img.getBounds().top + y;
   }
   return img.getBounds().top;
 }
@@ -302,7 +303,7 @@ function lanternOffset(scene: Phaser.Scene, M: Manifest): { x: number; y: number
   for (let y = 0; y < a.height; y++) {
     for (let x = 0; x < a.width; x++) {
       const i = (y * a.width + x) * 4;
-      if (a.data[i] !== b.data[i] || a.data[i + 1] !== b.data[i + 1] || a.data[i + 2] !== b.data[i + 2] || a.data[i + 3] !== b.data[i + 3]) {
+      if (differs(a.data, b.data, i)) {
         sx += x + 0.5;
         sy += y + 0.5;
         n++;

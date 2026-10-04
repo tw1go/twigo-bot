@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { TitleData } from '@mikazuki/shared';
 import { LABEL_DEPTH } from '../world/depth';
+import { isColour, visible } from '../util/pixels';
 
 // Text in the town: a character's name with their <Title> under it, and building names. Drawn over the
 // world (never tinted at night) in Pixelify Sans. Zoomed out, they keep at least MIN_SCALE screen pixels per art
@@ -167,7 +168,7 @@ export function lightBubble(scene: Phaser.Scene, art: BubbleArt): BubbleArt {
     const fill = [d[at], d[at + 1], d[at + 2]];
     const to = Phaser.Display.Color.HexStringToColor(BUBBLE_FILL);
     for (let i = 0; i < d.length; i += 4) {
-      if (d[i + 3] && d[i] === fill[0] && d[i + 1] === fill[1] && d[i + 2] === fill[2]) [d[i], d[i + 1], d[i + 2]] = [to.red, to.green, to.blue];
+      if (visible(d[i + 3]) && isColour(d, i, fill[0], fill[1], fill[2])) [d[i], d[i + 1], d[i + 2]] = [to.red, to.green, to.blue];
     }
     ctx.putImageData(data, 0, 0);
     scene.textures.addCanvas(out, c);

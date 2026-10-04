@@ -1,4 +1,5 @@
 import type { TitleData } from '@mikazuki/shared';
+import { isColour, visible } from '../util/pixels';
 
 // 🎁 The reward pop-up: the town dims, golden rays turn slowly behind a white box in the game's pixel frame, and
 // the box shows what you got — a title, Kowens, or a picture — with a congratulations line and a cheerful button.
@@ -59,7 +60,7 @@ async function whiteFrame(url: string): Promise<string | null> {
   const mid = (Math.floor(c.height / 2) * c.width + Math.floor(c.width / 2)) * 4;
   const [r, g, b] = [d[mid], d[mid + 1], d[mid + 2]];
   for (let i = 0; i < d.length; i += 4) {
-    if (d[i + 3] && d[i] === r && d[i + 1] === g && d[i + 2] === b) d[i] = d[i + 1] = d[i + 2] = 255;
+    if (visible(d[i + 3]) && isColour(d, i, r, g, b)) d[i] = d[i + 1] = d[i + 2] = 255;
   }
   ctx.putImageData(data, 0, 0);
   return c.toDataURL();
