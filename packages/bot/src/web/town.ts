@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import type { IncomingMessage, Server } from 'node:http';
 import type { Duplex } from 'node:stream';
 import { WebSocket, WebSocketServer } from 'ws';
-import type { OutfitData, TitleData, TownChatLine, TownClientMessage, TownDir, TownEmote, TownPlayer, TownServerMessage } from '@mikazuki/shared';
+import type { OutfitData, TitleData, TownChatLine, TownClientMessage, TownDir, TownEmote, TownPlayer, TownServerMessage, TownSystemLine } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
 // messages). The server keeps everyone's tile and checks each step — on the map, not blocked, next to the last
@@ -29,6 +29,8 @@ const SAYS_PER_SECOND = 0.5;
 const SAY_BURST = 3;
 /** Lines kept for people arriving (in memory only, gone on restart). */
 const RECENT = 20;
+/** System feed lines kept for people arriving (in memory only). */
+const SYSTEM_RECENT = 10;
 /** Messages from the Discord channel can be longer, up to this. */
 const DISCORD_MAX = 200;
 
@@ -67,6 +69,8 @@ export interface TownOptions {
 export interface Town {
   /** A message from the town's Discord channel: to everyone in town, with a Discord mark. */
   fromDiscord(name: string, text: string): void;
+  /** A line for the system feed (digs, bets): to everyone in town, and kept for people arriving. */
+  system(line: TownSystemLine): void;
 }
 
 /** The game's map (packages/game/public/assets/maps/town.json), from the monorepo next to the bot. */
@@ -108,6 +112,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     recent.push(line);
     if (recent.length > RECENT) recent.shift();
   };
+  const systemLines: TownSystemLine[] = [];
   const wss = new WebSocketServer({ noServer: true, maxPayload: 1024 });
 
   const send = (c: Conn, m: TownServerMessage) => c.ws.readyState === WebSocket.OPEN && c.ws.send(JSON.stringify(m));
@@ -216,7 +221,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     const [col, row] = arrival();
     const player: TownPlayer = { id: randomBytes(6).toString('hex'), ...profile, col, row, dir: 's', sit: false };
     const c: Conn = { ws, userId, player, tokens: STEP_BURST, refilled: Date.now(), says: SAY_BURST, saidAt: Date.now(), emotes: EMOTE_BURST, emotedAt: Date.now(), alive: true, fresh: true };
-    send(c, { t: 'welcome', you: player.id, players: [...conns.values()].map((o) => o.player), recent, spawn: [col, row] });
+    send(c, { t: 'welcome', you: player.id, players: [...conns.values()].map((o) => o.player), recent, system: systemLines, spawn: [col, row] });
     conns.set(userId, c);
     others(c, { t: 'join', player });
 
@@ -257,6 +262,11 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       if (!text || !who) return;
       remember({ name: who, text, discord: true });
       everyone({ t: 'say-discord', name: who, text });
+    },
+    system(line) {
+      systemLines.push(line);
+      if (systemLines.length > SYSTEM_RECENT) systemLines.shift();
+      everyone({ t: 'system', line });
     },
   };
 

@@ -5,6 +5,7 @@ import { config } from '../config.js';
 import { blockIfJailed } from '../games/jail.js';
 import { kowen } from '../kowens.js';
 import { RARITY, rollItem, rollLucky } from '../dig/items.js';
+import { feed, townName } from '../web/town-feed.js';
 import { useSwerteDig } from '../potions/potions.js';
 import { DIGS_PER_DAY, LUCKY_EVERY, SHOVEL_COST, capacity, countServerDig, digsToday, itemCount, recordDig, serverDigProgress, shovelUses } from '../dig/store.js';
 
@@ -85,6 +86,8 @@ export const dig: Command = {
       console.error('[dig] animation failed:', err);
     }
     await interaction.editReply({ content: lines.join('\n'), allowedMentions: { parse: [] } }).catch((err) => console.error('[dig] reveal failed:', err));
+    // The web town's system feed, once revealed here (so it doesn't spoil the suspense).
+    feed('dig', `${townName(interaction.user)} dug up ${found.name} (${r.label})`, found.rarity);
 
     // Legendary finds are shouted in general too.
     if ((found.rarity === 'legendary' || found.rarity === 'secret') && interaction.channelId !== config.gamesChannelId) {

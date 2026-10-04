@@ -12,6 +12,7 @@ import { TownLink } from '../net/town';
 import { showElsewhere } from '../ui/elsewhere';
 import { mountTownHud } from '../ui/townhud';
 import { ChatBox } from '../ui/chat';
+import { SystemFeed } from '../ui/system-feed';
 import { EMOTE_KEYS, emotePicker } from '../ui/emotes';
 import type { TownEmote } from '@mikazuki/shared';
 import { type BubbleArt, lightBubble } from '../ui/labels';
@@ -319,6 +320,7 @@ export class TownScene extends Phaser.Scene {
     };
     this.emoteKeys = emote;
     const chat = new ChatBox((text) => link.send({ t: 'say', text }), emotePicker(sheet, emote));
+    const feed = new SystemFeed();
     const member = this.me?.status === 'ok' ? this.me.me : null;
     let myId = '';
     let arrived = false;
@@ -338,6 +340,7 @@ export class TownScene extends Phaser.Scene {
         chat.add(this.others.nameOf(m.id) ?? 'Someone', m.text);
       }
       if (m.t === 'say-discord') return chat.add(m.name, m.text, 'discord');
+      if (m.t === 'system') return feed.add(m.line);
       if (m.t === 'emote') {
         const char = this.others.charOf(m.id);
         if (char) this.playEmote(char, m.emote);
@@ -346,6 +349,7 @@ export class TownScene extends Phaser.Scene {
       if (m.t === 'welcome') {
         myId = m.you;
         chat.history(m.recent ?? [], member?.nickname ?? null);
+        feed.history(m.system ?? []);
         // Arriving: go to the free tile the server picked (so people don't land on each other), unless you've
         // already walked off or this is a reconnect, in which case you stay where you are ('here' below).
         const [sc, sr] = this.map.spawn;

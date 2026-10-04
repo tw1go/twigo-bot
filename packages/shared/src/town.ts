@@ -41,10 +41,18 @@ export interface TownChatLine {
   discord?: boolean;
 }
 
+/** A line in the town's system feed: something that happened around the server (a dig, a bet). */
+export interface TownSystemLine {
+  kind: 'dig' | 'gamble';
+  text: string;
+  /** Colour key: a dig's rarity, or win / lose / bust. */
+  tone: string;
+}
+
 /** Server → browser. */
 export type TownServerMessage =
   /** `spawn`: where you arrive (a free tile near the town's spawn point), unless you're already somewhere (a reconnect). */
-  | { t: 'welcome'; you: string; players: TownPlayer[]; recent: TownChatLine[]; spawn: [number, number] }
+  | { t: 'welcome'; you: string; players: TownPlayer[]; recent: TownChatLine[]; system: TownSystemLine[]; spawn: [number, number] }
   | { t: 'join'; player: TownPlayer }
   | { t: 'leave'; id: string }
   | { t: 'step'; id: string; col: number; row: number }
@@ -55,6 +63,8 @@ export type TownServerMessage =
   | { t: 'snap'; col: number; row: number }
   /** Someone said something (you too: your own words come back this way). */
   | { t: 'say'; id: string; text: string }
+  /** Something happened around the server (the system feed). */
+  | { t: 'system'; line: TownSystemLine }
   /** Someone emoted (not sent back to the one who did it: they show it right away). */
   | { t: 'emote'; id: string; emote: TownEmote }
   /** Someone said something in the town's Discord channel (shown with a Discord mark, no bubble). */

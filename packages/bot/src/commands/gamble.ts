@@ -6,6 +6,7 @@ import { blockIfJailed, jail } from '../games/jail.js';
 import { kowen } from '../kowens.js';
 import { config } from '../config.js';
 import { tagoUntil } from '../potions/potions.js';
+import { feed, townName } from '../web/town-feed.js';
 
 // Coin flip: 45% win (double). Otherwise you lose the bet — and sometimes the Tanod busts you (5 minutes in jail).
 // The bust chance depends on where you gamble: low in the gambling channel, high anywhere else.
@@ -47,14 +48,17 @@ export const gamble: Command = {
       take(interaction.user.id, bet);
       await jail(interaction.user.id, BUST_JAIL_MINUTES, 'Caught gambling');
       content = `🚨 **BUSTED!** The Tanod caught ${interaction.user} gambling! **${bet}** ${kowen(bet)} confiscated and **${BUST_JAIL_MINUTES} minutes** in jail. 🚔`;
+      feed('gamble', `The Tanod caught ${townName(interaction.user)} gambling ${bet} ${kowen(bet)}: off to jail`, 'bust');
     } else if (roll < bustChance + WIN_CHANCE) {
       add(interaction.user.id, bet + (bet === 67 ? SIXTY_SEVEN_BONUS : 0)); // 🤫 6-7
       if (bet === 67) markFound(interaction.user.id, '67-bet');
       content = `🎲 ${interaction.user} bet **${bet}** and **WON**! +${bet} ${kowen(bet)} 🤑`;
       if (bet === 67) content += `\n6️⃣7️⃣!! **+${SIXTY_SEVEN_BONUS}** bonus 🫲🫱`;
+      feed('gamble', `${townName(interaction.user)} won ${bet} ${kowen(bet)} gambling`, 'win');
     } else {
       take(interaction.user.id, bet);
       content = `🎲 ${interaction.user} bet **${bet}** and **lost** it all. 💸`;
+      feed('gamble', `${townName(interaction.user)} lost ${bet} ${kowen(bet)} gambling`, 'lose');
     }
     content += `\n-# Balance: ${balance(interaction.user.id)} ${kowen(balance(interaction.user.id))}`;
     if (hidden) content += ' · 🫥 Tago Tonic active (the Tanod can\'t see you)';

@@ -9,6 +9,7 @@ import { getNickname, parseNickname, setNickname } from './nickname.js';
 import { titleIsNew, titleOf, titleSeen } from './titles.js';
 import { attachTown, loadTownMap } from './town.js';
 import { bridgeTownChat } from './town-chat.js';
+import { connectTownFeed } from './town-feed.js';
 import { getOutfit, parseOutfit, saveOutfit } from './outfit.js';
 import { LAUNCH_REWARD, isPreregistered, launched, preregCount, preregister } from '../prereg/prereg.js';
 import { callback, canPlay, clearSessionCookie, endSessions, isMember, login, loginEnabled, logout, sessionUser } from './auth.js';
@@ -261,6 +262,7 @@ export function startWebServer(client: Client): void {
       },
     });
     toDiscord = bridgeTownChat(client, town);
+    connectTownFeed(town);
   } catch (err) {
     console.error('[web] town disabled, map not loaded:', err);
   }

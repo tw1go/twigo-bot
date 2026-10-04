@@ -253,6 +253,21 @@
       #chat .em-icon { display: block; image-rendering: pixelated; background-repeat: no-repeat; }
       #chat .em-key { position: absolute; right: 2px; bottom: 0; font-size: 10px; color: rgba(230, 233, 242, 0.6); }
       #chat .em-wave { font-size: 12px; }
+      /* The system feed (ui/system-feed.ts): bottom right, the chat's see-through look, coloured by result. */
+      #system-feed { position: fixed; right: 12px; bottom: 22px; z-index: 2; display: flex; flex-direction: column; width: min(340px, calc(100vw - 24px)); height: 150px; overflow-y: auto; box-sizing: border-box; padding: 8px 10px; border-radius: 6px; background: rgba(10, 12, 24, 0.5); color: #E6E9F2; font: 13px/1.35 var(--ui-font); text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6); transition: opacity 0.6s; scrollbar-width: thin; scrollbar-color: rgba(183, 148, 246, 0.6) transparent; }
+      #system-feed.sf-idle { opacity: 0.2; }
+      #system-feed .sf-line { margin: 2px 0; overflow-wrap: anywhere; }
+      #system-feed .sf-line:first-child { margin-top: auto; }
+      #system-feed [data-tone='junk'] { color: #7A8099; }
+      #system-feed [data-tone='uncommon'] { color: #22C55E; }
+      #system-feed [data-tone='rare'] { color: #5B8FD1; }
+      #system-feed [data-tone='epic'] { color: #B794F6; }
+      #system-feed [data-tone='mythical'] { color: #F59E0B; }
+      #system-feed [data-tone='legendary'] { color: #F8BF27; }
+      #system-feed [data-tone='win'] { color: #A3E635; }
+      #system-feed [data-tone='lose'] { color: #F7768E; }
+      #system-feed [data-tone='bust'] { color: #F59E0B; }
+      @media (max-width: 760px) { #system-feed { display: none; } }
     </style>
   </head>
   <body>

@@ -8,6 +8,7 @@ import { attachTown } from '../../bot/src/web/town.ts';
 // without the bot. It is the bot's own web/town.ts with a fake login: the game's fake member (?as=Name) says who
 // they are and what they look like in the address. Open two windows (?as=Alice, ?as=Bob) to be two people.
 //   GET /__discord?name=Kuya%20Ben&text=hi   a message as if from the town's Discord channel
+//   GET /__system?kind=dig&tone=rare&text=…   a system feed line (kind dig|gamble; tone: rarity, win, lose, bust)
 // What's said in town is printed here instead of going to Discord.
 
 export function devTown(): Plugin {
@@ -35,6 +36,11 @@ export function devTown(): Plugin {
         },
         profile: (name) => ({ nickname: name, title: { name: 'Townfolk', color: '#B794F6' }, outfit: looks.get(name) ?? ({} as OutfitData) }),
         onSay: (_id, nickname, text) => server.config.logger.info(`[town chat → Discord] ${nickname}: ${text}`, { timestamp: true }),
+      });
+      server.middlewares.use('/__system', (req, res) => {
+        const q = new URL(req.url ?? '/', 'http://localhost').searchParams;
+        town.system({ kind: q.get('kind') === 'gamble' ? 'gamble' : 'dig', text: q.get('text') ?? '', tone: q.get('tone') ?? 'common' });
+        res.end('sent to the system feed\n');
       });
       server.middlewares.use('/__discord', (req, res) => {
         const q = new URL(req.url ?? '/', 'http://localhost').searchParams;
