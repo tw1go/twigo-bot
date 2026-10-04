@@ -12,6 +12,7 @@ export const TITLES: Record<string, TitleData> = {
   fairy: { name: 'She was a Fairy', color: '#F0ABFC' },
   'low-battery': { name: '20% Battery Life', color: '#F8BF27' },
   'thank-kyuuu': { name: 'Thank Kyuuu', color: '#F8BF27' },
+  junwuurat: { name: 'junwuurat', color: '#F8BF27' },
 };
 export const DEFAULT_TITLE = 'townfolk';
 
