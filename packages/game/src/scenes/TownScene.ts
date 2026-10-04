@@ -24,9 +24,11 @@ import { type Bench, type Building, WorldObjects, characterDepth } from '../worl
 // Click (or tap) to walk; click a building to walk to its door; click a bench to sit.
 
 const ZOOMS = [2, 3, 4];
-/** Arriving in town, the camera starts this close on the player and eases out to the middle zoom. */
+/** Arriving in town, the camera fades in from black, starting this close on the player and easing out to the
+ *  middle zoom. */
 const INTRO_ZOOM = 8;
 const INTRO_MS = 1600;
+const FADE_MS = 1100;
 
 /** Everyone's title until they're given another (the bot's web/titles.ts has the list). */
 const TOWNFOLK = { name: 'Townfolk', color: '#B794F6' }; // whole steps only; 1× showed too much of the town at once
@@ -264,7 +266,8 @@ export class TownScene extends Phaser.Scene {
     cam.centerOn(this.player.sprite.x, this.player.sprite.y);
   }
 
-  /** Arriving: start close on the player and ease out to the chosen zoom (skipped with reduced motion). */
+  /** Arriving: fade in from black, starting close on the player and easing out to the chosen zoom (skipped with
+   *  reduced motion). */
   private zoomIntro(): void {
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const cam = this.cameras.main;
@@ -273,6 +276,7 @@ export class TownScene extends Phaser.Scene {
     this.sizeForZoom(ZOOMS[this.zoomIndex]); // labels and cursor as they'll be when it lands
     cam.setZoom(INTRO_ZOOM);
     centre();
+    cam.fadeIn(FADE_MS, 0, 0, 0);
     this.intro = this.tweens.add({
       targets: cam,
       zoom: ZOOMS[this.zoomIndex],
