@@ -61,6 +61,8 @@ export type TownServerMessage =
   | { t: 'stand'; id: string }
   /** Your last step was refused: you're really at (col, row). */
   | { t: 'snap'; col: number; row: number }
+  /** That bench is taken (followed by a snap back to where you stood). */
+  | { t: 'seat-taken' }
   /** Someone said something (you too: your own words come back this way). */
   | { t: 'say'; id: string; text: string }
   /** Something happened around the server (the system feed). */

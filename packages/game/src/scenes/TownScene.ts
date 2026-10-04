@@ -330,6 +330,7 @@ export class TownScene extends Phaser.Scene {
     };
     link.onMessage = (m) => {
       if (m.t === 'snap') return this.player.place({ col: m.col, row: m.row });
+      if (m.t === 'seat-taken') return toast("Someone's already sitting there.");
       if (m.t === 'say-refused') return chat.notice(m.reason === 'slow' ? "You're chatting a bit fast. Wait a moment." : "That message can't be sent.");
       if (m.t === 'say') {
         // Your own words come back from the server like everyone else's, so you see what they see.
@@ -582,7 +583,7 @@ export class TownScene extends Phaser.Scene {
       const spot = benchApproach(b);
       return spot.col === t.col && spot.row === t.row;
     });
-    if (bench) this.player.sit({ col: bench.col, row: bench.row }, bench.faces, bench.depth);
+    if (bench) this.sitOn(bench);
   }
 
   /** Walk to a tile; a bench means sit on it; a blocked tile means the nearest reachable one. */
@@ -596,14 +597,21 @@ export class TownScene extends Phaser.Scene {
     return this.objects.benches.find((b) => b.col === t.col && b.row === t.row);
   }
 
-  /** Walk up to a bench and sit on it (straight away if you're already in front of it). */
+  /** Walk up to a bench and sit on it (straight away if you're already in front of it) — unless it's taken. */
   private goToBench(bench: Bench): void {
     this.pending = null;
     this.byKeys = false;
+    if (this.others.seatTaken(bench.col, bench.row)) return toast("Someone's already sitting there.");
     const spot = benchApproach(bench);
     const here = this.player.tile;
-    if (here.col === spot.col && here.row === spot.row) return this.player.sit({ col: bench.col, row: bench.row }, bench.faces, bench.depth);
+    if (here.col === spot.col && here.row === spot.row) return this.sitOn(bench);
     if (this.walkTo(spot)) this.pending = { sit: bench };
+  }
+
+  /** Sit down, if nobody beat you to it (the server checks too: 'seat-taken'). */
+  private sitOn(bench: Bench): void {
+    if (this.others.seatTaken(bench.col, bench.row)) return toast("Someone's already sitting there.");
+    this.player.sit({ col: bench.col, row: bench.row }, bench.faces, bench.depth);
   }
 
   /** Just walk there (a blocked tile: the nearest reachable one), with the click marker on where you're going. */
@@ -656,7 +664,7 @@ export class TownScene extends Phaser.Scene {
     if (this.pending?.sit) {
       const b = this.pending.sit;
       this.pending = null;
-      this.player.sit({ col: b.col, row: b.row }, b.faces, b.depth);
+      this.sitOn(b); // someone may have sat down while we walked over
       return;
     }
     const building = this.doorAt.get(`${tile.col},${tile.row}`);

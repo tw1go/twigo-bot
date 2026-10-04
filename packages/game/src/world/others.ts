@@ -43,7 +43,7 @@ export class OtherPlayers {
       case 'leave':
         return this.remove(m.id);
     }
-    if (m.t === 'snap' || m.t === 'say-refused' || m.t === 'say-discord' || m.t === 'emote' || m.t === 'system') return;
+    if (m.t === 'snap' || m.t === 'say-refused' || m.t === 'say-discord' || m.t === 'emote' || m.t === 'system' || m.t === 'seat-taken') return;
     const o = this.all.get(m.id);
     if (!o) return;
     const s = o.state;
@@ -65,6 +65,12 @@ export class OtherPlayers {
         if (this.bubbleArt) o.char?.say(m.text, this.bubbleArt);
         return;
     }
+  }
+
+  /** Someone else is sitting on the bench at (col, row). */
+  seatTaken(col: number, row: number): boolean {
+    for (const o of this.all.values()) if (o.state.sit && o.state.col === col && o.state.row === row) return true;
+    return false;
   }
 
   /** Someone's character, once drawn. */

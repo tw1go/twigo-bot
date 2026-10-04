@@ -161,6 +161,13 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         // Benches are blocked tiles next to where you stand.
         const near = inside(m.col, m.row) && Math.abs((m.col as number) - p.col) <= 1 && Math.abs((m.row as number) - p.row) <= 1;
         if (!near || !DIRS.has(m.dir) || !spend(c)) return send(c, { t: 'snap', col: p.col, row: p.row });
+        // One person per bench.
+        for (const o of conns.values()) {
+          if (o !== c && o.player.sit && o.player.col === m.col && o.player.row === m.row) {
+            send(c, { t: 'seat-taken' });
+            return send(c, { t: 'snap', col: p.col, row: p.row });
+          }
+        }
         Object.assign(p, { col: m.col, row: m.row, dir: m.dir, sit: true });
         return others(c, { t: 'sit', id: p.id, col: p.col, row: p.row, dir: p.dir });
       }
