@@ -165,6 +165,35 @@ export type TownBankAction = 'deposit' | 'withdraw' | 'borrow' | 'repay';
 /** POST /town/bank { action, amount } → the bank afterwards, whether it worked, and what to tell the member. */
 export type TownBankActionResponse = TownBankResponse & { ok: boolean; message: string };
 
+/** The rewards shop: what /redeem sells, as the viewer sees it. */
+export interface TownShopResponse {
+  kowens: number;
+  items: TownShopItem[];
+  /** The viewer's Bakod lasts until (ms), if up. */
+  fenceUntil: number | null;
+  /** Passes can't be redeemed with a loan. */
+  inDebt: boolean;
+}
+
+export interface TownShopItem {
+  /** The reward's id (/redeem's), also its art: manifest items[id]. */
+  id: string;
+  name: string;
+  cost: number;
+  kind: 'fence' | 'shovel' | 'key' | 'vault' | 'potion' | 'bag' | 'pass';
+  /** What it does. */
+  about: string;
+  /** Most that can be bought at once now (0 = none today, e.g. shovels). */
+  max: number;
+  /** A one-time reward the viewer already has. */
+  owned?: boolean;
+  /** How many the viewer has (potions, Master Keys). */
+  have?: number;
+}
+
+/** POST /town/shop { id, quantity } → the shop afterwards, whether it worked, and what to tell the member. */
+export type TownShopBuyResponse = TownShopResponse & { ok: boolean; message: string };
+
 /** A title: its name, and its colour ('#RRGGBB', or 'prismatic' for a shifting rainbow). */
 export interface TitleData {
   name: string;

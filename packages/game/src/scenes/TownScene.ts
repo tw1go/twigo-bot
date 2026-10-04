@@ -23,6 +23,7 @@ import { showMovementTutorial } from '../ui/tutorial';
 import { type Figure, showLeaderboard } from '../ui/leaderboard';
 import { showJackpot } from '../ui/jackpot';
 import { showBank } from '../ui/bank';
+import { showShop } from '../ui/shop';
 import { OtherPlayers } from '../world/others';
 import { fakeLogin } from '../session';
 import { screenToTile, tileToScreen } from '../iso';
@@ -751,6 +752,10 @@ export class TownScene extends Phaser.Scene {
     if (b.id === 'leaderboard-monument') return showLeaderboard((o) => this.podiumFigure(o));
     if (b.id === 'jackpot-booth') return showJackpot();
     if (b.id === 'bank') return showBank();
+    if (b.id === 'rewards-shop') {
+      const items = this.M.items ?? {};
+      return showShop((id) => (items[id] ? { url: `${import.meta.env.BASE_URL}assets/${items[id].file}`, size: items[id].size } : null));
+    }
     toast(`${doorLabel(b.id)}: coming soon`);
   }
 

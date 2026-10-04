@@ -113,6 +113,11 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   tabs), Vault (store/take out), Loan (pay / pay all, or borrow from the Tanod Bank; loans you gave); bot `GET/POST /town/bank` (`web/town-bank.ts`, same stores and rules as `/vault`
   and `/loan`; town borrowing is posted in the games channel). Lending to members stays in Discord. Dev: a pretend
   bank (`&vault=0`, `&loan=1`).
+- Rewards shop (`ui/shop.ts`, left click the shop): what `/redeem` sells, tabs Items / Potions / Bags / Passes, a grid
+  of item art (manifest `items`, keyed by reward id; dug-up items there too) with a quantity stepper for stackables and
+  a second press to confirm passes. Bot `GET/POST /town/shop` (`web/town-shop.ts`); `/redeem` and the shop share
+  `games/redeem.ts` (checks + purchase, the public Discord post `redeemPost`, the feed line). Passes ping the reward
+  owner like `/redeem`. Dev: a pretend shop.
 - Moderation (`/town mute|unmute|kick|filter`, mods/admins; bot `web/town-mod.ts`, kv 'town-moderation'): mutes block
   town chat, kicks close the socket (4001, back-at time) and refuse rejoining, blocked words become *** (whole words,
   repeated letters). Actions are logged in the admin channel. The word list lives only in the database.

@@ -13,6 +13,7 @@ import { connectTownFeed, feed } from './town-feed.js';
 import { MAX_TICKETS, buyTickets, entries, lastDraw, nextDraw, pot, ticketWord, ticketsOf } from '../games/jackpot.js';
 import { jailedUntil } from '../games/jail.js';
 import { bankAction, townBank } from './town-bank.js';
+import { buyFromShop, townShop } from './town-shop.js';
 import { kowen } from '../kowens.js';
 import { filterText, kickedUntil, mutedUntil } from './town-mod.js';
 import { getOutfit, parseOutfit, saveOutfit } from './outfit.js';
@@ -43,6 +44,8 @@ import { roll } from './finds.js';
 //   POST /town/jackpot  { tickets } buy jackpot tickets (from the game's page only; may play)
 //   GET  /town/bank     wallet, vault and loans (may play)
 //   POST /town/bank     { action: deposit|withdraw|borrow|repay, amount? } (from the game's page only; may play)
+//   GET  /town/shop     the rewards shop: what /redeem sells, as the viewer sees it (may play)
+//   POST /town/shop     { id, quantity } redeem a reward (from the game's page only; may play)
 //   POST /title/seen    the game showed the member their new title (from the game's page only)
 //   WS   /ws            the live town: who else is there and where (see town.ts; from the game's page only)
 
@@ -320,6 +323,28 @@ export function startWebServer(client: Client): void {
           return send(res, 400, '{"error":"invalid amount"}');
         }
         return send(res, 200, JSON.stringify(await bankAction(client, userId, action, amount, names)));
+      }
+      if (path === '/town/shop' && (req.method === 'GET' || req.method === 'POST')) {
+        if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
+        if (req.method === 'POST' && !fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
+        const userId = sessionUser(req);
+        if (!userId) return send(res, 401, '{"error":"not logged in"}');
+        let body: { id?: unknown; quantity?: unknown } | null = null;
+        if (req.method === 'POST') {
+          try {
+            body = JSON.parse((await readBody(req)) || 'null');
+          } catch {
+            // invalid JSON → rejected below
+          }
+        }
+        if (!(await canPlay(client, userId))) return send(res, 403, '{"error":"testers only for now"}');
+        if (req.method === 'GET') return send(res, 200, JSON.stringify(townShop(userId)));
+        const id = body?.id;
+        const quantity = body?.quantity ?? 1;
+        if (typeof id !== 'string' || typeof quantity !== 'number' || !Number.isInteger(quantity) || quantity < 1 || quantity > 10) {
+          return send(res, 400, '{"error":"invalid purchase"}');
+        }
+        return send(res, 200, JSON.stringify(await buyFromShop(client, userId, id, quantity, await nameOf(client, userId))));
       }
       if (req.method === 'POST' && path === '/title/seen') {
         if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');

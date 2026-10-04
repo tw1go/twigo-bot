@@ -290,6 +290,7 @@
       #system-feed [data-tone='lose'] { color: #F7768E; }
       #system-feed [data-tone='bust'] { color: #F59E0B; }
       #system-feed [data-tone='jackpot'] { color: #F8BF27; }
+      #system-feed [data-tone='shop'] { color: #C4B5FD; }
       @media (max-width: 760px) { #system-feed { display: none; } }
       /* Who's online (ui/online.ts), beside the chat input next to the emote button. */
       #chat .ch-tools { display: flex; gap: 6px; }
@@ -339,6 +340,39 @@
       #reward .lb-foot { min-height: 18px; margin-bottom: 14px; font-size: 13px; font-weight: 600; color: #5B21B6; }
       #reward .lb-foot:empty { display: none; }
       /* The podium: the top 3 standing on their steps (1st in the middle, tallest). */
+      /* Rewards shop (ui/shop.ts; tabs share the bank's .bk-tabs) */
+      #reward .rw-card:has(.sh-body) { width: min(460px, calc(100vw - 32px)); }
+      #reward .sh-body { margin-bottom: 14px; text-align: left; }
+      #reward .sh-wallet { display: flex; align-items: center; justify-content: center; gap: 6px; margin: -4px 0 10px; font-size: 14px; color: #3D4256; }
+      #reward .sh-wallet b { color: #BA7F05; }
+      #reward .sh-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; min-height: 250px; align-content: start; } /* two rows on every tab, so the tabs stay put */
+      #reward .sh-card { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px 6px; border: 2px solid #E2DDF3; border-radius: 2px; background: #F5F3FF; color: #1E1B3A; font: inherit; }
+      #reward .sh-card:hover { border-color: #A78BFA; }
+      #reward .sh-picked { border-color: #7C2AE8; background: #fff; box-shadow: 0 0 0 2px #C4B5FD; }
+      #reward .sh-dim .sh-art { opacity: 0.45; }
+      #reward .sh-art { display: block; image-rendering: pixelated; }
+      #reward .sh-missing { width: 64px; height: 64px; line-height: 64px; text-align: center; font-weight: 700; color: #7A8099; }
+      #reward .sh-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; min-height: 2.6em; font-size: 12px; font-weight: 600; line-height: 1.3; text-align: center; overflow-wrap: anywhere; }
+      #reward .sh-price { display: flex; align-items: center; gap: 3px; font-size: 13px; font-weight: 700; color: #BA7F05; }
+      #reward .sh-badge { position: absolute; top: 4px; right: 4px; padding: 0 4px; border: 2px solid #1E1B3A; background: #A3E635; font-size: 10px; font-weight: 700; line-height: 14px; color: #1E1B3A; }
+      #reward .sh-have { background: #FCDA4A; }
+      #reward .sh-detail { min-height: 132px; margin-top: 12px; padding-top: 10px; border-top: 2px solid #E2DDF3; }
+      #reward .sh-detail-head { display: flex; gap: 12px; align-items: flex-start; }
+      #reward .sh-detail-name { font-size: 16px; font-weight: 700; color: #5B21B6; }
+      #reward .sh-about { margin-top: 2px; font-size: 13px; color: #3D4256; }
+      #reward .sh-up { color: #5A8A5E; }
+      #reward .sh-buy-row { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 10px; }
+      #reward .sh-qty { display: flex; align-items: center; border: 2px solid #1E1B3A; }
+      #reward .sh-step { width: 30px; height: 30px; padding: 0; border: 0; border-radius: 0; background: #E2DDF3; color: #1E1B3A; font: 700 18px/1 var(--ui-font); }
+      #reward .sh-step:hover:not(:disabled) { background: #C4B5FD; }
+      #reward .sh-step:disabled { opacity: 0.4; }
+      #reward .sh-count { min-width: 32px; text-align: center; font-weight: 700; }
+      #reward .sh-buy { padding: 7px 14px; border: 2px solid #1E1B3A; border-radius: 0; background: #FCDA4A; color: #1E1B3A; font: inherit; font-size: 14px; font-weight: 700; box-shadow: inset 0 2px 0 #FFF59A, inset 0 -3px 0 #D99A0B, 0 3px 0 #1E1B3A; transition: transform 0.06s, box-shadow 0.06s; }
+      #reward .sh-buy:hover:not(:disabled) { background: #FDE68A; }
+      #reward .sh-buy:active:not(:disabled) { transform: translateY(2px); box-shadow: inset 0 2px 0 #FFF59A, inset 0 -2px 0 #D99A0B, 0 1px 0 #1E1B3A; }
+      #reward .sh-buy:disabled { background: #F5F3FF; color: #7A8099; box-shadow: none; border-color: #E2DDF3; }
+      #reward .bk-note.sh-ask { color: #5B21B6; }
+      #reward .sh-confirm { background: #F7768E; box-shadow: inset 0 2px 0 #FDA4AF, inset 0 -3px 0 #BE123C, 0 3px 0 #1E1B3A; }
       /* Bank (ui/bank.ts) */
       #reward .rw-card:has(.bk-body) { width: min(400px, calc(100vw - 32px)); }
       #reward .bk-body { margin-bottom: 14px; text-align: left; }
