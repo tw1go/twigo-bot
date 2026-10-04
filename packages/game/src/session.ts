@@ -1,4 +1,4 @@
-import type { MeResponse } from '@mikazuki/shared';
+import type { MeResponse, PresenceStatus } from '@mikazuki/shared';
 
 // One /me request shared by the HUD and the game. "anon" = not logged in; "off" = login disabled or API down.
 export type MeResult = { status: 'ok'; me: MeResponse } | { status: 'anon' } | { status: 'off' };
@@ -6,15 +6,27 @@ export type MeResult = { status: 'ok'; me: MeResponse } | { status: 'anon' } | {
 let cached: Promise<MeResult> | null = null;
 
 /** Dev only (no local bot needed): ?me=anon | new (logged in, no look or nickname yet) | saved (logged in, the look
- *  saved in this browser). Saving a look then stays in this browser. */
+ *  saved in this browser). Saving a look then stays in this browser. Test values: ?kowens= ?shovels= ?digs= ?status=. */
 export function fakeLogin(): string | null {
   const fake = import.meta.env.DEV ? new URLSearchParams(location.search).get('me') : null;
   return fake === 'anon' || fake === 'new' || fake === 'saved' ? fake : null;
 }
 
+/** Dev only: a number from the address (?kowens=500), or `fallback`. */
+const devNumber = (key: string, fallback: number) => {
+  const n = Number(new URLSearchParams(location.search).get(key));
+  return Number.isFinite(n) && new URLSearchParams(location.search).has(key) ? Math.max(0, Math.floor(n)) : fallback;
+};
+
 /** Dev only: the fake member's name (?as=Name lets two browsers be two people). */
 export function fakeName(): string {
   return new URLSearchParams(location.search).get('as')?.slice(0, 16) || 'Dev tester';
+}
+
+/** Dev only: ?status=online|idle|busy|offline|jailed (online by default). */
+function fakeStatus(): PresenceStatus {
+  const s = new URLSearchParams(location.search).get('status');
+  return s === 'idle' || s === 'busy' || s === 'offline' || s === 'jailed' ? s : 'online';
 }
 
 function fakeMe(fake: string): MeResult {
@@ -25,8 +37,9 @@ function fakeMe(fake: string): MeResult {
   } catch {
     // no saved look: the creator shows
   }
-  return { status: 'ok', me: { id: '0', name: fakeName(), avatar: '', kowens: 120, vault: 0, rank: null, items: [], preregistered: false, outfit, nickname: fake === 'saved' ? fakeName() : null, title: { name: 'Townfolk', color: '#B794F6' },
-      dig: { shovel: 3, digsLeft: 6, digsPerDay: 9, shovelsLeft: 2, shovelCost: 2, shovelUses: 3 } } };
+  return { status: 'ok', me: { id: '0', name: fakeName(), avatar: '', kowens: devNumber('kowens', 1250), vault: 0, rank: null, items: [], preregistered: false, outfit, nickname: fake === 'saved' ? fakeName() : null, title: { name: 'Townfolk', color: '#B794F6' },
+      dig: { shovel: devNumber('shovels', 6), digsLeft: devNumber('digs', 7), digsPerDay: 9, shovelsLeft: 2, shovelCost: 2, shovelUses: 3 },
+      status: fakeStatus() } };
 }
 
 export function loadMe(refresh = false): Promise<MeResult> {

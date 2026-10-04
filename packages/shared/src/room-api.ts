@@ -77,7 +77,12 @@ export interface MeResponse {
   title: TitleData;
   /** Digging today (see /dig and /redeem reward:Shovel). */
   dig: MeDig;
+  /** Their Discord status, shown on the avatar (not sent yet: needs the Presence intent; dev fakes it). */
+  status?: PresenceStatus;
 }
+
+/** The status dots in the art (manifest ui.statusDots). */
+export type PresenceStatus = 'online' | 'idle' | 'busy' | 'offline' | 'jailed';
 
 export interface MeDig {
   /** Digs left on their shovel(s). */

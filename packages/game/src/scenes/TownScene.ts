@@ -214,6 +214,7 @@ export class TownScene extends Phaser.Scene {
     const asset = (file: string) => `${import.meta.env.BASE_URL}assets/${file}`;
     const frame = this.M.ui.inventory?.itemFrame;
     const emotes = this.M.ui.emotes;
+    const dots = this.M.ui.statusDots;
     const kowen = Array.isArray(emotes?.frames) ? emotes.frames.indexOf('kowen') : -1;
     mountTownHud({
       me: member,
@@ -221,6 +222,7 @@ export class TownScene extends Phaser.Scene {
       avatar: headPortrait(this, this.M.characters, this.outfit),
       frame: frame ? { url: asset(frame.file), slice: frame.nineSlice } : null,
       coin: emotes?.file && kowen >= 0 && Array.isArray(emotes.frames) ? { url: asset(emotes.file), frame: kowen, size: emotes.size?.[0] ?? 12, frames: emotes.frames.length } : null,
+      dots: dots?.file && Array.isArray(dots.frames) ? { url: asset(dots.file), frame: 0, size: dots.size?.[0] ?? 5, frames: dots.frames.length, names: dots.frames } : null,
     });
   }
 

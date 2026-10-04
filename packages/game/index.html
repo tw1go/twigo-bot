@@ -127,8 +127,9 @@
       /* The game's item frame as the profile's pixel border, at 2×. */
       #town-hud .th-framed { --px: 2; border-style: solid; border-width: calc(var(--slice) * var(--px) * 1px); border-image-source: var(--frame); border-image-slice: var(--slice) fill; border-image-width: calc(var(--slice) * var(--px) * 1px); border-image-repeat: round; image-rendering: pixelated; background: none; padding: 0 6px 0 0; }
       #town-hud .th-profile:disabled { cursor: var(--cur-pointer, default); }
-      #town-hud .th-avatar { width: 48px; height: 48px; flex: none; background: #1E1B3A; }
-      #town-hud .th-avatar canvas { width: 48px; height: 48px; image-rendering: pixelated; display: block; }
+      #town-hud .th-avatar { position: relative; width: 60px; height: 60px; flex: none; }
+      #town-hud .th-status { position: absolute; right: 2px; bottom: 2px; image-rendering: pixelated; background-repeat: no-repeat; }
+      #town-hud .th-avatar canvas { width: 60px; height: 60px; image-rendering: pixelated; display: block; }
       #town-hud .th-name { font-size: 17px; font-weight: 600; color: #fff; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       #town-hud .th-right { position: fixed; top: 12px; right: 12px; z-index: 2; display: flex; gap: 8px; }
       #town-hud .th-counter { display: flex; align-items: center; gap: 6px; padding: 4px 4px 4px 8px; border: 2px solid #7C2AE8; background: #111827; }
@@ -150,7 +151,7 @@
       #town-hud .hud-prereg { margin-top: 8px; text-align: left; font-size: 13px; }
       @media (max-width: 560px) {
         #town-hud .th-name { max-width: 110px; font-size: 15px; }
-        #town-hud .th-avatar, #town-hud .th-avatar canvas { width: 36px; height: 36px; }
+        #town-hud .th-avatar, #town-hud .th-avatar canvas { width: 45px; height: 45px; }
         #town-hud .th-right { top: auto; bottom: 12px; }
         #town-hud .th-right .th-pop { top: auto; bottom: calc(100% + 8px); }
       }

@@ -1,4 +1,4 @@
-import type { MeDig, MeResponse, PreregStatus } from '@mikazuki/shared';
+import type { MeDig, MeResponse, PresenceStatus, PreregStatus } from '@mikazuki/shared';
 import { renderPrereg } from '../hud';
 import { loadMe } from '../session';
 
@@ -14,7 +14,25 @@ export interface TownHudOptions {
   /** The game's item frame (nine-slice) for the profile box. */
   frame: { url: string; slice: number } | null;
   /** The Kowen coin: a frame of the emote sheet. */
-  coin: { url: string; frame: number; size: number; frames: number } | null;
+  coin: Sprite | null;
+  /** The status dots (manifest ui.statusDots), by status. */
+  dots: (Sprite & { names: string[] }) | null;
+}
+
+/** One frame of a strip of square frames. */
+interface Sprite {
+  url: string;
+  frame: number;
+  size: number;
+  frames: number;
+}
+
+/** A frame of a sprite strip as a CSS background, at a whole-number scale. */
+function spriteStyle(node: HTMLElement, s: Sprite, scale: number): void {
+  node.style.backgroundImage = `url("${s.url}")`;
+  node.style.backgroundSize = `${s.size * s.frames * scale}px ${s.size * scale}px`;
+  node.style.backgroundPosition = `-${s.frame * s.size * scale}px 0`;
+  node.style.width = node.style.height = `${s.size * scale}px`;
 }
 
 const REFRESH_MS = 60_000;
@@ -52,7 +70,16 @@ export function mountTownHud(o: TownHudOptions): void {
     profile.style.setProperty('--slice', String(o.frame.slice));
   }
   const face = el('span', 'th-avatar');
-  if (o.avatar) face.append(o.avatar);
+  if (o.avatar) face.append(roundAvatar(o.avatar));
+  const status: PresenceStatus | undefined = o.me?.status;
+  if (status && o.dots && o.dots.names.includes(status)) {
+    // The status dot sits on the ring's lower right, at the avatar's pixel scale.
+    const dot = el('span', 'th-status');
+    spriteStyle(dot, { ...o.dots, frame: o.dots.names.indexOf(status) }, 2);
+    dot.title = status === 'busy' ? 'Do not disturb' : status[0].toUpperCase() + status.slice(1);
+    dot.setAttribute('aria-label', dot.title);
+    face.append(dot);
+  }
   profile.append(face, el('span', 'th-name', o.name));
   const menu = el('div', 'th-menu th-pop');
   menu.hidden = true;
@@ -78,12 +105,8 @@ export function mountTownHud(o: TownHudOptions): void {
   if (o.me) {
     const right = el('div', 'th-right');
     const coin = el('span', 'th-coin');
-    if (o.coin) {
-      const z = 2;
-      coin.style.backgroundImage = `url("${o.coin.url}")`;
-      coin.style.backgroundSize = `${o.coin.size * o.coin.frames * z}px ${o.coin.size * z}px`;
-      coin.style.backgroundPosition = `-${o.coin.frame * o.coin.size * z}px 0`;
-    } else coin.textContent = '🪙';
+    if (o.coin) spriteStyle(coin, o.coin, 2);
+    else coin.textContent = '🪙';
     const kowens = el('span', 'th-count');
     const shovels = el('span', 'th-count');
     const earn = el('div', 'th-pop th-earn');
@@ -162,4 +185,43 @@ function toggle(pop: HTMLElement, button?: HTMLElement): void {
 function close(pop: HTMLElement): void {
   pop.hidden = true;
   pop.parentElement?.querySelector('.th-plus')?.setAttribute('aria-expanded', 'false');
+}
+
+/** The head in a pixel circle: a dark slot, a violet ring with gold studs at the four points, and a dark outline
+ *  (the item frame's colours), drawn pixel by pixel so it scales crisply. */
+function roundAvatar(head: HTMLCanvasElement): HTMLCanvasElement {
+  const size = head.width + 6; // 3 px around the head: slot edge, ring, outline
+  const c = document.createElement('canvas');
+  c.width = size;
+  c.height = size;
+  const ctx = c.getContext('2d')!;
+  const mid = size / 2;
+  const r = size / 2;
+  const at = (x: number, y: number) => Math.hypot(x + 0.5 - mid, y + 0.5 - mid);
+  const px = (x: number, y: number, color: string) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, 1, 1);
+  };
+  // The slot, then the head clipped to it.
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) if (at(x, y) < r - 2) px(x, y, '#1E1B3A');
+  const inner = document.createElement('canvas');
+  inner.width = inner.height = size;
+  const ictx = inner.getContext('2d')!;
+  ictx.drawImage(head, 3, 4);
+  const img = ictx.getImageData(0, 0, size, size);
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) if (at(x, y) >= r - 2) img.data[(y * size + x) * 4 + 3] = 0;
+  ictx.putImageData(img, 0, 0);
+  ctx.drawImage(inner, 0, 0);
+  // Ring and outline.
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const d = at(x, y);
+      if (d >= r - 2 && d < r - 1) px(x, y, '#7C2AE8');
+      else if (d >= r - 1 && d < r) px(x, y, '#1E1B3A');
+    }
+  }
+  // Gold studs at north, east, south and west.
+  const m = Math.floor(mid);
+  for (const [x, y] of [[m, 1], [size - 2, m], [m, size - 2], [1, m]]) px(x, y, '#F8BF27');
+  return c;
 }
