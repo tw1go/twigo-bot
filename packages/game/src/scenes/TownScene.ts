@@ -24,6 +24,10 @@ import { type Bench, type Building, WorldObjects, characterDepth } from '../worl
 // Click (or tap) to walk; click a building to walk to its door; click a bench to sit.
 
 const ZOOMS = [2, 3, 4];
+/** Arriving in town, the camera starts this close on the player and eases out to the middle zoom. */
+const INTRO_ZOOM = 8;
+const INTRO_MS = 1600;
+
 /** Everyone's title until they're given another (the bot's web/titles.ts has the list). */
 const TOWNFOLK = { name: 'Townfolk', color: '#B794F6' }; // whole steps only; 1× showed too much of the town at once
 const TWIGO_ROOM_URL = 'https://tw1go.github.io';
@@ -71,6 +75,8 @@ export class TownScene extends Phaser.Scene {
   private pending: { sit: Bench } | null = null;
   private buildingAlert: Phaser.GameObjects.Sprite | null = null;
   private zoomIndex = 1;
+  /** The arrival zoom-out while it runs (follow and label sizing wait for it). */
+  private intro: Phaser.Tweens.Tween | null = null;
   private tint = -1;
   private nextSkyCheck = 0;
   private culler!: Culler;
@@ -167,33 +173,35 @@ export class TownScene extends Phaser.Scene {
     const member = this.me?.status === 'ok' ? this.me.me : null;
     this.player.setNameTag(member?.nickname ?? 'Guest', member?.title ?? TOWNFOLK);
     if (member || fakeLogin()) this.connect();
+    this.zoomIntro(); // last, once the names, labels and building cursors exist
     exposeDebug(this);
     if (assetProblems.size) console.warn('[town] asset problems:\n' + [...assetProblems].join('\n'));
   }
 
   update(time: number, delta: number): void {
     const zoom = this.cameras.main.zoom;
-    if (zoom !== this.labelZoom) {
-      // Text is drawn at the zoom it's seen at, so it stays sharp.
-      this.labelZoom = zoom;
-      this.player.setZoom(zoom);
-      this.others.setZoom(zoom);
-      for (const l of this.buildingLabels.values()) l.setZoom(zoom);
-      // The game's cursor at the same whole-number zoom as the world (the hand over buildings).
-      this.input.setDefaultCursor(cursor('pointer', zoom));
-      for (const b of this.objects.buildings) if (b.sprite.input) b.sprite.input.cursor = cursor('hand', zoom);
-    }
+    if (zoom !== this.labelZoom && !this.intro) this.sizeForZoom(zoom);
     this.ground.tick(time);
     this.player.update(delta);
     this.others.update(delta);
     this.tellServer();
-    if (this.follow) this.followPlayer();
+    if (this.follow && !this.intro) this.followPlayer();
     this.culler.update(this.cameras.main.worldView);
     this.objects.setLamps(this.lampsOn); // glows follow their lamp's visibility
     if (time >= this.nextSkyCheck) {
       this.nextSkyCheck = time + 1000;
       this.updateSky(false);
     }
+  }
+
+  /** Text is drawn at the zoom it's seen at, so it stays sharp; the cursor is scaled like the world. */
+  private sizeForZoom(zoom: number): void {
+    this.labelZoom = zoom;
+    this.player.setZoom(zoom);
+    this.others.setZoom(zoom);
+    for (const l of this.buildingLabels.values()) l.setZoom(zoom);
+    this.input.setDefaultCursor(cursor('pointer', zoom));
+    for (const b of this.objects.buildings) if (b.sprite.input) b.sprite.input.cursor = cursor('hand', zoom);
   }
 
   // ── Other players ──
@@ -254,6 +262,28 @@ export class TownScene extends Phaser.Scene {
     this.zoomIndex = defaultZoomIndex(this.scale.width, this.scale.height);
     cam.setZoom(ZOOMS[this.zoomIndex]);
     cam.centerOn(this.player.sprite.x, this.player.sprite.y);
+  }
+
+  /** Arriving: start close on the player and ease out to the chosen zoom (skipped with reduced motion). */
+  private zoomIntro(): void {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const cam = this.cameras.main;
+    const p = this.player.sprite;
+    const centre = () => cam.centerOn(p.x, p.y - 24); // the body, not the feet
+    this.sizeForZoom(ZOOMS[this.zoomIndex]); // labels and cursor as they'll be when it lands
+    cam.setZoom(INTRO_ZOOM);
+    centre();
+    this.intro = this.tweens.add({
+      targets: cam,
+      zoom: ZOOMS[this.zoomIndex],
+      duration: INTRO_MS,
+      ease: 'Cubic.easeInOut',
+      onUpdate: centre,
+      onComplete: () => {
+        this.intro = null;
+        cam.setZoom(ZOOMS[this.zoomIndex]); // land exactly on the whole-number zoom
+      },
+    });
   }
 
   /**
@@ -319,6 +349,7 @@ export class TownScene extends Phaser.Scene {
 
     // Wheel zooms in whole steps only (1×–4×), keeping pixels crisp.
     this.input.on(Phaser.Input.Events.POINTER_WHEEL, (_p: unknown, _o: unknown, _dx: number, dy: number) => {
+      this.intro?.complete(); // the wheel takes over from the arrival zoom
       this.zoomIndex = Phaser.Math.Clamp(this.zoomIndex + (dy < 0 ? 1 : -1), 0, ZOOMS.length - 1);
       this.cameras.main.setZoom(ZOOMS[this.zoomIndex]);
     });
@@ -537,8 +568,8 @@ function typing(): boolean {
 
 /** Whole-number zoom that shows a comfortable slice of town for the window size. */
 function defaultZoomIndex(w: number, h: number): number {
-  const z = Math.max(ZOOMS[0], Math.min(ZOOMS[ZOOMS.length - 1], Math.floor(Math.min(w / 480, h / 360))));
-  return ZOOMS.indexOf(z);
+  // The middle step (3×) when at least ~320×200 world pixels still fit; 2× on phones and small windows.
+  return ZOOMS.indexOf(w >= 960 && h >= 600 ? 3 : 2);
 }
 
 /** ?time=HH:MM pins the clock (testing the night cycle). */
