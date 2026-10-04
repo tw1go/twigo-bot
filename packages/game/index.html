@@ -384,64 +384,56 @@
       #reward .lb-foot { min-height: 18px; margin-bottom: 14px; font-size: 13px; font-weight: 600; color: #5B21B6; }
       #reward .lb-foot:empty { display: none; }
       /* The podium: the top 3 standing on their steps (1st in the middle, tallest). */
-      /* Notice board (ui/board.ts; tabs share the bank's .bk-tabs): quests as paper notes pinned on cork. Fixed size. */
-      #reward .rw-card:has(.nb-body) { width: min(520px, calc(100vw - 32px)); }
-      /* The notice board is a wooden sign: planks in a dark timber frame, standing on two posts that run to the
-         bottom of the screen (instead of the white pop-up). */
-      #reward .rw-card.rw-card:has(.nb-body) { border: 10px solid #4A2C14; border-image: none; padding: 16px 18px 16px; color: #3D2A14;
-        background-color: #8B5A2B;
-        background-image:
-          repeating-linear-gradient(180deg, transparent 0 40px, rgba(40, 20, 5, 0.55) 40px 42px, rgba(255, 220, 160, 0.12) 42px 43px),
-          repeating-linear-gradient(90deg, rgba(60, 30, 8, 0.10) 0 2px, transparent 2px 9px, rgba(255, 210, 150, 0.06) 9px 11px, transparent 11px 23px),
-          linear-gradient(180deg, #9A6534, #7E5028);
-        box-shadow: inset 0 0 0 3px #6B4423, inset 0 0 22px rgba(30, 15, 3, 0.5), 0 6px 0 #2B1A0B; }
-      #reward .rw-card:has(.nb-body)::before, #reward .rw-card:has(.nb-body)::after { content: ''; position: absolute; z-index: -1; top: calc(100% + 6px); width: 26px; height: 100vh; background: linear-gradient(90deg, #4A2C14, #8B5A2B 35%, #9A6534 55%, #6B4423 80%, #3B2310); box-shadow: 0 0 0 3px #2B1A0B; }
+      /* Notice board (ui/board.ts; tabs share the bank's .bk-tabs): a wooden sign on two posts with quests pinned on cork,
+         all pixel art: the wood, posts, cork and pins are small tiles drawn in code (ui/pixel-tiles.ts) and scaled 3×
+         with crisp pixels; shadows are hard steps, never blurs. Fixed size. */
       #reward:has(.nb-body) { align-items: flex-start; padding-top: max(16px, 4vh); } /* higher up, so the posts show */
-      #reward .nb-body .nb-panel { height: min(380px, 44vh); }
+      #reward .rw-card.rw-card:has(.nb-body) { width: min(520px, calc(100vw - 32px)); border: 9px solid #3B2310; border-image: none; padding: 16px 18px; color: #3D2A14; background: #8E5A2C var(--px-wood) 0 0 / 192px 78px; image-rendering: pixelated; box-shadow: inset 0 0 0 3px #6B4423, inset 0 0 0 6px #4A2C14, 0 0 0 3px #1E1208, 0 9px 0 3px #1E1208; }
+      #reward .rw-card:has(.nb-body)::before, #reward .rw-card:has(.nb-body)::after { content: ''; position: absolute; z-index: -1; top: calc(100% + 6px); width: 24px; height: 100vh; background: var(--px-post) 0 0 / 24px 48px; image-rendering: pixelated; box-shadow: 0 0 0 3px #1E1208; }
       #reward .rw-card:has(.nb-body)::before { left: 14%; }
       #reward .rw-card:has(.nb-body)::after { right: 14%; }
-      #reward .rw-card:has(.nb-body) .rw-title { margin-bottom: 12px; font-size: 26px; color: #FDE68A; text-shadow: 0 2px 0 #3B2310, 2px 0 0 #3B2310, -2px 0 0 #3B2310, 0 -2px 0 #3B2310, 0 4px 0 rgba(20, 10, 2, 0.5); }
-      #reward .nb-body .bk-tabs { border-bottom-color: #3B2310; }
-      #reward .nb-body .bk-tab { border-color: #3B2310; background: #C69C6D; color: #3B2310; }
-      #reward .nb-body .bk-tab:hover { background: #D8B58A; }
-      #reward .nb-body .bk-tab[aria-selected='true'] { background: #3B2310; color: #FDE68A; box-shadow: inset 0 2px 0 #6B4423; }
-      #reward .nb-body .nb-note { color: #FDE68A; text-shadow: 0 1px 0 #3B2310; }
-      #reward .nb-body .nb-note.bk-refused { color: #FECACA; }
+      #reward .rw-card:has(.nb-body) .rw-title { margin-bottom: 12px; font-size: 26px; color: #FDE68A; text-shadow: 0 3px 0 #3B2310, 3px 0 0 #3B2310, -3px 0 0 #3B2310, 0 -3px 0 #3B2310, 3px 3px 0 #3B2310, -3px 3px 0 #3B2310, 0 6px 0 #1E1208; }
       #reward .nb-body { margin-bottom: 14px; text-align: left; font-size: 14px; color: #3D4256; }
-      #reward .nb-panel { height: min(400px, 52vh); overflow-x: hidden; overflow-y: auto; }
-      #reward .nb-note { height: 36px; min-height: 0; margin-top: 6px; overflow: hidden; }
-      #reward .nb-cork { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; align-content: start; min-height: 100%; box-sizing: border-box; padding: 16px 14px; border: 4px solid #6B4423; background-color: #B07C4F; background-image: radial-gradient(rgba(80, 45, 15, 0.35) 1px, transparent 1.5px), radial-gradient(rgba(255, 230, 190, 0.25) 1px, transparent 1.5px); background-size: 7px 7px, 11px 11px; background-position: 0 0, 3px 5px; box-shadow: inset 0 0 18px rgba(50, 25, 5, 0.45); }
-      #reward .nb-empty { grid-column: 1 / -1; align-self: center; padding: 30px 0; text-align: center; font-weight: 700; color: #FFF6D5; text-shadow: 0 2px 0 rgba(50, 25, 5, 0.6); }
-      #reward .nb-quest { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 14px 12px 10px; background: var(--paper, #FFF6D5); box-shadow: 0 3px 0 rgba(50, 25, 5, 0.35), 0 6px 10px rgba(50, 25, 5, 0.25); transform: rotate(var(--tilt, 0deg)); color: #3D2A14; }
-      #reward .nb-quest::before { content: ''; position: absolute; top: -6px; left: 50%; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #FCA5A5 0 20%, #DC2626 45%, #7F1D1D 100%); box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3); }
-      #reward .nb-mine::before { background: radial-gradient(circle at 35% 30%, #BBF7D0 0 20%, #16A34A 45%, #14532D 100%); }
-      #reward .nb-helping::before { background: radial-gradient(circle at 35% 30%, #BAE6FD 0 20%, #0284C7 45%, #0C4A6E 100%); }
+      #reward .nb-body .bk-tabs { border-bottom-color: #3B2310; }
+      #reward .nb-body .bk-tab { border-color: #3B2310; background: #C69C6D; color: #3B2310; box-shadow: inset 0 3px 0 #D8B58A; }
+      #reward .nb-body .bk-tab:hover { background: #D8B58A; }
+      #reward .nb-body .bk-tab[aria-selected='true'] { background: #3B2310; color: #FDE68A; box-shadow: inset 0 3px 0 #5C3A1E; }
+      #reward .nb-panel { height: min(380px, 44vh); overflow-x: hidden; overflow-y: auto; }
+      #reward .nb-note { height: 36px; min-height: 0; margin-top: 6px; overflow: hidden; color: #FDE68A; text-shadow: 0 2px 0 #3B2310; }
+      #reward .nb-note.bk-refused { color: #FECACA; }
+      #reward .nb-cork { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; align-content: start; min-height: 100%; box-sizing: border-box; padding: 18px 15px 15px; border: 6px solid #4A2C14; background: #B07C4F var(--px-cork) 0 0 / 48px 48px; image-rendering: pixelated; box-shadow: inset 0 0 0 3px #6B4423, inset 6px 6px 0 0 rgba(30, 18, 8, 0.35); }
+      #reward .nb-empty { grid-column: 1 / -1; align-self: center; padding: 30px 0; text-align: center; font-weight: 700; color: #FFF6D5; text-shadow: 0 3px 0 #3B2310; }
+      #reward .nb-quest { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 15px 12px 10px; background: var(--paper, #FFF6D5); box-shadow: 0 0 0 3px #C9A86A, 6px 6px 0 3px rgba(30, 18, 8, 0.45); color: #3D2A14; }
+      #reward .nb-quest:nth-child(even) { margin-top: 9px; } /* staggered, like notes pinned by hand */
+      #reward .nb-quest::before, #reward .nb-form::before { content: ''; position: absolute; top: -6px; left: 50%; width: 15px; height: 15px; margin-left: -7px; background: var(--px-pin-red) 0 0 / 15px 15px; image-rendering: pixelated; }
+      #reward .nb-mine::before { background-image: var(--px-pin-green); }
+      #reward .nb-helping::before { background-image: var(--px-pin-blue); }
       #reward .nb-head { display: flex; align-items: center; justify-content: space-between; }
       #reward .nb-prize { display: flex; align-items: center; gap: 4px; font-size: 16px; font-weight: 700; color: #A16207; }
-      #reward .nb-state { padding: 0 6px; border: 2px solid currentColor; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+      #reward .nb-state { padding: 0 6px; border: 3px solid currentColor; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
       #reward .nb-open { color: #15803D; }
       #reward .nb-accepted { color: #B45309; }
       #reward .nb-text { margin: 0; font-size: 14px; line-height: 1.35; overflow-wrap: anywhere; }
       #reward .nb-who { font-size: 12px; color: #7A6A55; }
       #reward .nb-acts { display: flex; gap: 6px; flex-wrap: wrap; }
       #reward .nb-acts:empty { display: none; }
-      #reward .nb-act { padding: 4px 10px; border: 2px solid #1E1B3A; border-radius: 0; font: inherit; font-size: 12px; font-weight: 700; color: #1E1B3A; box-shadow: 0 2px 0 #1E1B3A; }
+      #reward .nb-act { padding: 4px 10px; border: 3px solid #1E1B3A; border-radius: 0; font: inherit; font-size: 12px; font-weight: 700; color: #1E1B3A; box-shadow: 0 3px 0 #1E1B3A; }
+      #reward .nb-act:active:not(:disabled) { transform: translateY(3px); box-shadow: none; }
       #reward .nb-take { background: #A3E635; }
       #reward .nb-pay { background: #FCDA4A; }
       #reward .nb-plain { background: #fff; }
       #reward .nb-sure { background: #F7768E; }
       #reward .nb-act:disabled { opacity: 0.5; }
-      #reward .nb-form { position: relative; margin: 10px 6px 6px; padding: 18px 16px 12px; background: #FFF6D5; box-shadow: 0 3px 0 rgba(50, 25, 5, 0.3), inset 0 0 14px rgba(160, 110, 40, 0.15); transform: rotate(-0.6deg); }
-      #reward .nb-form::before { content: ''; position: absolute; top: -6px; left: 50%; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #FCA5A5 0 20%, #DC2626 45%, #7F1D1D 100%); }
+      #reward .nb-form { position: relative; margin: 12px 9px 9px; padding: 18px 16px 12px; background: #FFF6D5; box-shadow: 0 0 0 3px #C9A86A, 6px 6px 0 3px rgba(30, 18, 8, 0.45); }
       #reward .nb-form-title { margin-bottom: 8px; font-size: 20px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; text-align: center; color: #7F1D1D; }
-      #reward .nb-task { display: block; width: 100%; box-sizing: border-box; padding: 8px; border: 2px solid #C9A86A; border-radius: 0; background: rgba(255, 255, 255, 0.7); color: #3D2A14; font: inherit; resize: none; }
+      #reward .nb-task { display: block; width: 100%; box-sizing: border-box; padding: 8px; border: 3px solid #C9A86A; border-radius: 0; background: #FFFBEB; color: #3D2A14; font: inherit; resize: none; }
       #reward .nb-task:focus, #reward .nb-reward:focus { outline: none; border-color: #7C2AE8; }
       #reward .nb-count { display: block; margin-top: 2px; font-size: 11px; text-align: right; color: #7A6A55; }
       #reward .nb-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
       #reward .nb-label { display: flex; align-items: center; gap: 8px; font-weight: 700; color: #3D2A14; }
-      #reward .nb-reward { width: 90px; padding: 6px 8px; border: 2px solid #C9A86A; border-radius: 0; background: #fff; color: #1E1B3A; font: inherit; font-weight: 700; -moz-appearance: textfield; }
+      #reward .nb-reward { width: 90px; padding: 6px 8px; border: 3px solid #C9A86A; border-radius: 0; background: #fff; color: #1E1B3A; font: inherit; font-weight: 700; -moz-appearance: textfield; }
       #reward .nb-reward::-webkit-inner-spin-button, #reward .nb-reward::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-      #reward .nb-post { padding: 7px 14px; border: 2px solid #1E1B3A; border-radius: 0; background: #FCDA4A; color: #1E1B3A; font: inherit; font-weight: 700; box-shadow: inset 0 2px 0 #FFF59A, inset 0 -3px 0 #D99A0B, 0 3px 0 #1E1B3A; }
+      #reward .nb-post { padding: 7px 14px; border: 3px solid #1E1B3A; border-radius: 0; background: #FCDA4A; color: #1E1B3A; font: inherit; font-weight: 700; box-shadow: inset 0 3px 0 #FFF59A, inset 0 -3px 0 #D99A0B, 0 3px 0 #1E1B3A; }
       #reward .nb-post:disabled { opacity: 0.5; }
       #reward .nb-hint { margin: 10px 0 0; font-size: 12px; color: #7A6A55; }
       /* Tanod outpost (ui/outpost.ts; tabs share the bank's .bk-tabs). A fixed size, like the shop. */

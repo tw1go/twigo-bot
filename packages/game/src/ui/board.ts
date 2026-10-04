@@ -1,13 +1,14 @@
 import type { TownBoardAction, TownBoardActionResponse, TownBoardResponse, TownQuest } from '@mikazuki/shared';
 import { playSound } from '../audio/sound';
 import { fakeLogin, fakeName } from '../session';
+import { installPixelTiles } from './pixel-tiles';
 import { coinIcon, el, showPopup } from './reward';
 
-// 📜 The notice board (left click the board), in the reward box with two tabs. Quests: /request's quests as notes
-// pinned on cork — the task, the reward, who posted it and who's on it — with Accept, Give up, Complete (pays the
-// reward) and Cancel (refunds it) for whoever may use them; completing and cancelling ask twice. Post a quest: a task
-// and a reward, held by the Tanod until it's done. Everything goes through the bot (POST /town/board), which keeps
-// the quest's card in Discord in step.
+// 📜 The notice board (left click the board): a wooden sign on two posts (pixel art drawn in code: ui/pixel-tiles.ts)
+// with two tabs. Quests: /request's quests as notes pinned on cork — the task, the reward, who posted it and who's on
+// it — with Accept, Give up, Complete (pays the reward) and Cancel (refunds it) for whoever may use them; completing
+// and cancelling ask twice. Post a quest: a task and a reward, held by the Tanod until it's done. Everything goes
+// through the bot (POST /town/board), which keeps the quest's card in Discord in step.
 
 const plural = (n: number, one: string, many: string) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
 const kowens = (n: number) => plural(n, 'Kowen', 'Kowens');
@@ -53,6 +54,7 @@ function keepKeys(field: HTMLElement, onEnter?: () => void): void {
 }
 
 export function showBoard(): void {
+  installPixelTiles();
   const bar = el('div', 'bk-tabs');
   bar.setAttribute('role', 'tablist');
   const panel = el('div', 'nb-panel');
@@ -147,11 +149,10 @@ export function showBoard(): void {
     return b;
   };
 
-  const questNote = (q: TownQuest, i: number) => {
+  const questNote = (q: TownQuest) => {
     const n = el('div', `nb-quest${q.mine ? ' nb-mine' : ''}${q.helping ? ' nb-helping' : ''}`);
     const hue = [...q.id].reduce((a, c) => a + c.charCodeAt(0), 0);
     n.style.setProperty('--paper', PAPERS[hue % PAPERS.length]);
-    n.style.setProperty('--tilt', `${((hue % 5) - 2) * 0.6 + (i % 2 ? 0.4 : -0.4)}deg`);
     const head = el('div', 'nb-head');
     const prize = el('span', 'nb-prize');
     prize.append(coinIcon(1), q.reward.toLocaleString());
@@ -178,7 +179,7 @@ export function showBoard(): void {
     if (tab === 'quests') {
       const cork = el('div', 'nb-cork');
       if (!d.quests.length) cork.append(el('div', 'nb-empty', 'No quests up. Post one!'));
-      d.quests.forEach((q, i) => cork.append(questNote(q, i)));
+      for (const q of d.quests) cork.append(questNote(q));
       panel.replaceChildren(cork);
       return;
     }
