@@ -132,7 +132,9 @@
       #town-hud .th-status { position: absolute; right: 2px; bottom: 2px; image-rendering: pixelated; background-repeat: no-repeat; }
       #town-hud .th-avatar canvas { width: 60px; height: 60px; image-rendering: pixelated; display: block; }
       #town-hud .th-name { font-size: 17px; font-weight: 600; color: #fff; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      #town-hud .th-right { position: fixed; top: 12px; right: 12px; z-index: 2; display: flex; gap: 8px; }
+      #town-hud .th-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; max-width: calc(100vw - 88px); } /* wraps under the profile on narrow screens, clear of Settings */
+      #town-hud .th-counters { position: relative; display: flex; gap: 8px; } /* the + pop-ups are placed against this */
+      #town-hud .th-corner { position: fixed; top: 12px; right: 12px; z-index: 2; }
       #town-hud .th-counter { display: flex; align-items: center; gap: 6px; padding: 4px 4px 4px 8px; border: 2px solid #7C2AE8; background: #111827; }
       #town-hud .th-coin { width: 24px; height: 24px; image-rendering: pixelated; background-repeat: no-repeat; font-size: 18px; line-height: 24px; text-align: center; }
       #town-hud .th-shovel { width: 24px; height: 24px; font-size: 18px; line-height: 24px; text-align: center; }
@@ -141,12 +143,13 @@
       #town-hud .th-plus:hover, #town-hud .th-plus[aria-expanded='true'] { background: #D9F99D; }
       #town-hud .th-pop { position: absolute; top: calc(100% + 8px); right: 0; width: min(300px, calc(100vw - 24px)); padding: 12px 14px; border: 2px solid #7C2AE8; background: #111827; color: #c0caf5; font-size: 14px; line-height: 1.4; box-sizing: border-box; }
       #town-hud .th-left .th-pop { left: 0; right: auto; width: auto; min-width: 160px; }
+      #town-hud .th-counters .th-pop { left: 0; right: auto; width: min(300px, calc(100vw - 24px)); }
       #town-hud .th-pop[hidden] { display: none; }
       #town-hud .th-pop-title { margin-bottom: 8px; font-size: 15px; font-weight: 700; color: #fff; }
       #town-hud .th-row { margin: 5px 0; }
       #town-hud .th-row b { color: #A3E635; font-weight: 600; }
       #town-hud .th-pop-note { margin-top: 10px; color: #7A8099; font-size: 13px; }
-      #town-hud .th-settings { display: block; margin-top: 8px; padding: 4px; border: 2px solid #7C2AE8; border-radius: 2px; background: #111827; color: #E6E9F2; font: inherit; font-size: 22px; line-height: 32px; min-width: 44px; }
+      #town-hud .th-settings { display: block; padding: 4px; border: 2px solid #7C2AE8; border-radius: 2px; background: #111827; color: #E6E9F2; font: inherit; font-size: 22px; line-height: 32px; min-width: 44px; }
       #town-hud .th-gear { display: block; width: 32px; height: 32px; image-rendering: pixelated; }
       #town-hud .th-settings:hover { border-color: #B794F6; background: #1E1B3A; }
       #settings { position: fixed; inset: 0; z-index: 4; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(4, 4, 12, 0.6); font: 15px/1.4 var(--ui-font); }
@@ -170,8 +173,6 @@
       @media (max-width: 560px) {
         #town-hud .th-name { max-width: 110px; font-size: 15px; }
         #town-hud .th-avatar, #town-hud .th-avatar canvas { width: 45px; height: 45px; }
-        #town-hud .th-right { top: auto; bottom: 12px; }
-        #town-hud .th-right .th-pop { top: auto; bottom: calc(100% + 8px); }
       }
       #reward { position: fixed; inset: 0; z-index: 4; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(4, 4, 12, 0.72); font: 15px/1.4 var(--ui-font); animation: rw-dim 0.2s ease-out; }
       #reward.rw-out { opacity: 0; transition: opacity 0.18s; }
@@ -255,7 +256,7 @@
       #new-version .nv-close { width: 28px; height: 28px; border: 0; background: none; color: #7A8099; font: 18px/1 var(--ui-font); }
       #new-version .nv-close:hover { color: #fff; }
       @keyframes nv-in { from { transform: translate(-50%, -24px); opacity: 0; } }
-      @media (max-width: 560px) { #town-hud .th-right { bottom: 20px; } #chat { bottom: 72px; } }
+      @media (max-width: 560px) { #chat { bottom: 22px; } }
       #chat .ch-row { display: flex; gap: 6px; align-items: stretch; }
       #chat .ch-row .ch-input { flex: 1; min-width: 0; }
       /* Emote picker (ui/emotes.ts): a button beside the input, a row of icons above it. */

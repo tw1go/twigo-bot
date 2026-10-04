@@ -95,9 +95,14 @@ export function mountTownHud(o: TownHudOptions): void {
   settings.setAttribute('aria-haspopup', 'dialog');
   settings.title = 'Settings';
   settings.addEventListener('click', () => showSettings({ loggedIn: !!o.me, onClose: () => settings.focus() }));
+  // Top left: the profile with the Kowens and shovel counters beside it; top right: Settings.
   const left = el('div', 'th-left');
-  left.append(profile, settings);
-  root.append(left);
+  const row = el('div', 'th-row');
+  row.append(profile);
+  left.append(row);
+  const corner = el('div', 'th-corner');
+  corner.append(settings);
+  root.append(left, corner);
 
   if (o.me) {
     void fetch('/prereg')
@@ -106,9 +111,9 @@ export function mountTownHud(o: TownHudOptions): void {
       .then((prereg) => o.me && renderPrereg(left, o.me, prereg));
   }
 
-  // ── Kowens and shovels (top right) ──
+  // ── Kowens and shovels (beside the profile) ──
   if (o.me) {
-    const right = el('div', 'th-right');
+    const right = el('div', 'th-counters');
     const coin = el('span', 'th-coin');
     if (o.coin) spriteStyle(coin, o.coin, 2);
     else coin.textContent = '🪙';
@@ -158,7 +163,7 @@ export function mountTownHud(o: TownHudOptions): void {
     };
     show(o.me);
     setInterval(() => void refresh(), REFRESH_MS);
-    root.append(right);
+    row.append(right);
   }
 
   // Popovers close on Escape or a click elsewhere.

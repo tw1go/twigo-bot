@@ -78,7 +78,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   guest. Dev: `?me=anon|new|saved` fakes the login (and stands in when no bot answers /me).
 - Town HUD (`ui/townhud.ts`, replaces the page's login corner in town): your character's head (`headPortrait`) and
   name top left in the item frame (round pixel avatar + status dot; real Discord status needs the Presence intent,
-  so `/me` doesn't send it yet); Kowens and shovels top right with "+" info (from `/me`: `kowens`, `dig`). The
+  so `/me` doesn't send it yet), with Kowens and shovels beside it (they wrap below on phones); Settings top right;
+  Kowens/shovels have "+" info (from `/me`: `kowens`, `dig`). The
   shovel icon is the 🪏 emoji until there's art for it.
 - Movement tutorial (`ui/tutorial.ts`, in the reward box via `showPopup`): shown when a member walks into town
   straight from the creator (their first visit). Dev: `?tutorial=1`.
