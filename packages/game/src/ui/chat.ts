@@ -1,5 +1,5 @@
 // 💬 The town's chat box (bottom left): one see-through box with the last messages and names (Discord's mark for
-// people chatting from the linked Discord channel) and the input under them. Enter opens the input, Enter sends (and goes back to walking), Esc closes it. Messages go to everyone in
+// people chatting from the linked Discord channel) and the input under them. Enter opens the input, Enter sends (and keeps it open), an empty Enter or Esc closes it. Messages go to everyone in
 // town as speech bubbles too (TownScene). DOM text only: names and messages are never parsed as HTML.
 
 
@@ -56,6 +56,8 @@ export class ChatBox {
     if (tools) row.append(tools);
     this.root.append(this.log, row);
     document.body.append(this.root);
+    // Clicking the log opens the chat too.
+    this.log.addEventListener('click', () => this.input.focus());
     // Quiet for a while → faded; a message, a hover or typing → back to full.
     this.root.addEventListener('mouseenter', () => this.wake());
     this.root.addEventListener('mouseleave', () => this.wake());
@@ -67,9 +69,10 @@ export class ChatBox {
       if (e.key === 'Enter') {
         e.preventDefault();
         const text = this.input.value.trim();
-        if (text && !this.send(text)) this.notice('Chat is offline right now.');
         this.input.value = '';
-        this.input.blur();
+        // Sending keeps the chat open for the next message (so its letters never walk you); an empty Enter closes it.
+        if (!text) return this.input.blur();
+        if (!this.send(text)) this.notice('Chat is offline right now.');
       } else if (e.key === 'Escape') {
         this.input.blur();
       }
