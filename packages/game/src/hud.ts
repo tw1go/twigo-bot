@@ -30,7 +30,7 @@ export async function startHud(root: HTMLElement): Promise<void> {
   button.href = '/auth/login';
   root.append(button);
   if (problem) root.append(el('div', 'hud-note', problem));
-  if (prereg?.open) root.append(el('div', 'hud-prereg-note', `🎮 Log in to pre-register: +${prereg.reward} Kowens at launch · ${prereg.count} signed up`));
+  if (prereg?.open) root.append(el('div', 'hud-prereg-note', `Log in to pre-register: +${prereg.reward} Kowens at launch · ${prereg.count} signed up`));
 }
 
 /** The pre-registration line under the member card (the town's HUD shows it too). */
@@ -38,15 +38,15 @@ export function renderPrereg(root: HTMLElement, me: MeResponse, prereg: PreregSt
   if (!prereg?.open) return;
   const box = el('div', 'hud-prereg');
   if (me.preregistered) {
-    box.append(el('span', 'hud-prereg-done', `✅ Pre-registered: +${prereg.reward} Kowens at launch`));
+    box.append(el('span', 'hud-prereg-done', `Pre-registered: +${prereg.reward} Kowens at launch`));
   } else {
-    const join = el('button', 'hud-prereg-join', `🎮 Pre-register · +${prereg.reward} Kowens at launch`);
+    const join = el('button', 'hud-prereg-join', `Pre-register · +${prereg.reward} Kowens at launch`);
     join.addEventListener('click', async () => {
       join.disabled = true;
       const r = await fetch('/prereg', { method: 'POST', credentials: 'same-origin' }).catch(() => null);
       const body = r?.ok ? ((await r.json()) as PreregResponse) : null;
       if (body && body.result !== 'closed') {
-        box.replaceChildren(el('span', 'hud-prereg-done', `✅ Pre-registered! +${prereg.reward} Kowens at launch · ${body.count} signed up`));
+        box.replaceChildren(el('span', 'hud-prereg-done', `Pre-registered! +${prereg.reward} Kowens at launch · ${body.count} signed up`));
       } else {
         join.disabled = false;
         box.append(el('div', 'hud-note', body?.result === 'closed' ? 'Pre-registration has closed.' : "Couldn't pre-register. Try again?"));
@@ -67,10 +67,10 @@ function renderMember(root: HTMLElement, me: MeResponse, prereg: PreregStatus | 
   }
   const info = el('div', 'hud-info');
   info.append(el('div', 'hud-name', me.name));
-  const purse = `🪙 ${plural(me.kowens)}` + (me.vault ? ` · 🔒 ${me.vault}` : '') + (me.rank ? ` · #${me.rank}` : '');
+  const purse = plural(me.kowens) + (me.vault ? ` · vault ${me.vault}` : '') + (me.rank ? ` · #${me.rank}` : '');
   info.append(el('div', 'hud-kowens', purse));
   const items = me.items.reduce((n, i) => n + i.count, 0);
-  if (items) info.append(el('div', 'hud-items', `🎒 ${items} item${items === 1 ? '' : 's'}`));
+  if (items) info.append(el('div', 'hud-items', `${items} item${items === 1 ? '' : 's'}`));
   card.append(info);
 
   const out = el('button', 'hud-logout', 'Log out');

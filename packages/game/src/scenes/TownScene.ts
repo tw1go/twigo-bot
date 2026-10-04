@@ -35,21 +35,21 @@ const FADE_MS = 1100;
 const TOWNFOLK = { name: 'Townfolk', color: '#B794F6' }; // whole steps only; 1× showed too much of the town at once
 const TWIGO_ROOM_URL = 'https://tw1go.github.io';
 
-/** Each building's name (shown over it) and emoji (door messages). twigo's house leads back to twigo's room; the
- *  other doors are hooks to fill in later. */
-const BUILDINGS: Record<string, { emoji: string; name: string }> = {
-  'rewards-shop': { emoji: '🎁', name: 'Rewards shop' },
-  bank: { emoji: '🏦', name: 'Bank' },
-  casino: { emoji: '🎰', name: 'Casino' },
-  'mine-entrance': { emoji: '⛏️', name: 'Mine' },
-  'tanod-outpost': { emoji: '🚔', name: 'Tanod outpost' },
-  arena: { emoji: '⚔️', name: 'Arena' },
-  'notice-board': { emoji: '📜', name: 'Notice board' },
-  'leaderboard-monument': { emoji: '🏆', name: 'Leaderboard' },
-  'jackpot-booth': { emoji: '🎟️', name: 'Jackpot booth' },
-  'twigos-house': { emoji: '🏠', name: "twigo's house" },
+/** Each building's name (shown over it and in door messages). twigo's house leads back to twigo's room; the other
+ *  doors are hooks to fill in later. */
+const BUILDINGS: Record<string, string> = {
+  'rewards-shop': 'Rewards shop',
+  bank: 'Bank',
+  casino: 'Casino',
+  'mine-entrance': 'Mine',
+  'tanod-outpost': 'Tanod outpost',
+  arena: 'Arena',
+  'notice-board': 'Notice board',
+  'leaderboard-monument': 'Leaderboard',
+  'jackpot-booth': 'Jackpot booth',
+  'twigos-house': "twigo's house",
 };
-const doorLabel = (id: string) => (id === 'twigos-house' ? "🏠 twigo's room" : BUILDINGS[id] ? `${BUILDINGS[id].emoji} ${BUILDINGS[id].name}` : id);
+const doorLabel = (id: string) => (id === 'twigos-house' ? "twigo's room" : (BUILDINGS[id] ?? id));
 
 /** Keyboard walking: screen direction → grid step (col runs screen right-down, row runs screen left-down). */
 const DIR_STEP: Record<Dir, [number, number]> = {
@@ -169,7 +169,7 @@ export class TownScene extends Phaser.Scene {
     this.setupInput();
     this.updateSky(true);
     for (const b of this.objects.buildings) {
-      const name = BUILDINGS[b.id]?.name;
+      const name = BUILDINGS[b.id];
       if (name) this.buildingLabels.set(b.id, new BuildingLabel(this, name, b.top.x));
     }
     // Members show their nickname and title; without a login (login off, or the dev server) it's "Guest".
@@ -479,7 +479,7 @@ export class TownScene extends Phaser.Scene {
   private enter(b: Building): void {
     this.events.emit('door', b.id);
     if (b.id === 'twigos-house') {
-      toast("🏠 Back to twigo's room…");
+      toast("Back to twigo's room…");
       this.time.delayedCall(700, () => location.assign(TWIGO_ROOM_URL));
       return;
     }

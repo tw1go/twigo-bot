@@ -7,7 +7,7 @@ export function showLogin(problem: string | null): void {
   const card = document.createElement('div');
   card.className = 'lg-card';
   const title = document.createElement('h1');
-  title.textContent = '🌙 Mikazuki';
+  title.textContent = 'Mikazuki';
   const line = document.createElement('p');
   line.textContent = 'A little town for the Mikazuki Discord server.';
   const button = document.createElement('a');

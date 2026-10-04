@@ -19,7 +19,7 @@ export function showComingSoon(root: HTMLElement): void {
   const card = document.createElement('div');
   card.id = 'coming-soon';
   const title = document.createElement('h1');
-  title.textContent = '🏘️ Mikazuki town';
+  title.textContent = 'Mikazuki town';
   const line = document.createElement('p');
   line.textContent = 'twigo is cooking up something. A little world of our own, right in your browser, is coming soon.';
   const hint = document.createElement('p');

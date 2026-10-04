@@ -192,7 +192,7 @@ export function mountCreator(C: CharacterDefs, hooks: CreatorHooks): void {
   };
 
   const note = el('div', 'cr-note');
-  const random = el('button', 'cr-random', '🎲 Random');
+  const random = el('button', 'cr-random', 'Random');
   random.addEventListener('click', () => {
     draft = randomOutfit(C, Math.random);
     draft.glassesColour ??= c.colours[0];

@@ -48,10 +48,10 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, t
 /** How to get Kowens (the bot's /twigo-help "Earn Kowens" is the full list; keep these in step with it). */
 const EARN = [
   ['/get-kowens', '5 Kowens once a day'],
-  ['🎙️ Voice chat', '1 Kowen per 15 min, up to 12 a day (with someone else, not deafened)'],
-  ['🏆 Weekly voice top 10', '50 · 30 · 20 · 10 Kowens, Mondays 12 PM'],
-  ['💎 Boost the server', '+20 per boost, and 20 × your boosts every month'],
-  ['⛏️ /dig', 'find items, then /sell them'],
+  ['Voice chat', '1 Kowen per 15 min, up to 12 a day (with someone else, not deafened)'],
+  ['Weekly voice top 10', '50 · 30 · 20 · 10 Kowens, Mondays 12 PM'],
+  ['Boost the server', '+20 per boost, and 20 × your boosts every month'],
+  ['/dig', 'find items, then /sell them'],
   ["/claim", "Kowens found in twigo's room (3 a day)"],
 ];
 
@@ -131,7 +131,7 @@ export function mountTownHud(o: TownHudOptions): void {
     );
     root.append(right);
 
-    earn.append(el('div', 'th-pop-title', '🪙 How to get Kowens'));
+    earn.append(el('div', 'th-pop-title', 'How to get Kowens'));
     for (const [what, how] of EARN) {
       const row = el('div', 'th-row');
       row.append(el('b', undefined, what), el('span', undefined, ` ${how}`));
@@ -167,7 +167,7 @@ export function mountTownHud(o: TownHudOptions): void {
 
 function renderDig(pop: HTMLElement, d: MeDig): void {
   pop.replaceChildren(
-    el('div', 'th-pop-title', '🪏 Digging'),
+    el('div', 'th-pop-title', 'Digging'),
     el('div', 'th-row', `${plural(d.shovel, 'dig', 'digs')} left on your shovel`),
     el('div', 'th-row', `${d.digsLeft} of ${d.digsPerDay} digs left today`),
     el('div', 'th-row', d.shovelsLeft ? `${plural(d.shovelsLeft, 'more shovel', 'more shovels')} to buy today` : 'No more shovels to buy today'),
