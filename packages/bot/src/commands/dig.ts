@@ -62,9 +62,9 @@ export const dig: Command = {
     // The web town's system feed, once revealed here (so it doesn't spoil the suspense).
     feed('dig', `${townName(interaction.user)} dug up ${found.name} (${r.label})`, found.rarity, { userId: id, itemId: found.id, itemName: found.name });
 
-    // Legendary finds are shouted in general too.
-    if ((found.rarity === 'legendary' || found.rarity === 'secret') && interaction.channelId !== config.gamesChannelId) {
-      const channel = await interaction.client.channels.fetch(config.gamesChannelId).catch(() => null);
+    // Legendary finds are shouted in the dig channel too (unless this is it).
+    if ((found.rarity === 'legendary' || found.rarity === 'secret') && interaction.channelId !== config.digChannelId) {
+      const channel = await interaction.client.channels.fetch(config.digChannelId).catch(() => null);
       if (channel?.isSendable()) {
         await channel.send({ content: `🟡🏆 ${interaction.user} just dug up **${found.emoji} ${found.name}**!! 🏆🟡`, allowedMentions: { parse: [] } }).catch(() => {});
       }

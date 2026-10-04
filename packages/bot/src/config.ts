@@ -29,6 +29,8 @@ export const config = {
   greetingsChannelId: required('GREETINGS_CHANNEL_ID'),
   banterChannelId: required('BANTER_CHANNEL_ID'),
   gamesChannelId: required('GAMES_CHANNEL_ID'),
+  // Where the bot posts about digs (the town's dig reveals, big /dig finds); the games channel if not set.
+  digChannelId: process.env.DIG_CHANNEL_ID || required('GAMES_CHANNEL_ID'),
   jailRoleId: required('JAIL_ROLE_ID'),
   rewardOwnerId: required('REWARD_OWNER_ID'),
   // Gambling here has a much lower chance of getting busted by the Tanod.

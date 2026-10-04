@@ -8,8 +8,8 @@ import { kowen } from '../kowens.js';
 import { feed } from './town-feed.js';
 
 // ⛏️ The town's Mine (POST /town/dig): one dig with /dig's rules (dig/dig.ts). The find goes to the town's feed like
-// /dig's (the digger's own game plays the dig panel from it) and the reveal is posted in the games channel, as /dig
-// shows it in Discord.
+// /dig's (the digger's own game plays the dig panel from it) and the reveal is posted in the dig channel
+// (DIG_CHANNEL_ID), as /dig shows it in Discord.
 
 const clock = (ms: number) => new Date(ms).toLocaleTimeString('en-US', { timeZone: config.timezone, hour: 'numeric', minute: '2-digit' });
 
@@ -26,7 +26,7 @@ export async function digInTown(client: Client, userId: string, name: string, st
   const found = result.item;
   const r = RARITY[found.rarity];
   feed('dig', `${name} dug up ${found.name} (${r.label})`, found.rarity, { userId, itemId: found.id, itemName: found.name });
-  const channel = await client.channels.fetch(config.gamesChannelId).catch(() => null);
+  const channel = await client.channels.fetch(config.digChannelId).catch(() => null);
   if (channel?.isSendable()) {
     await channel
       .send({ content: `${digReveal(`<@${userId}>`, result)}\n-# dug in the town`, allowedMentions: { parse: [] } })
