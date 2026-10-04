@@ -16,6 +16,7 @@ export const TITLES: Record<string, TitleData> = {
   'licensed-overthinker': { name: 'Licensed Overthinker', color: '#F8BF27' },
   'specimen-3': { name: 'Specimen #3', color: '#F8BF27' },
   kalbo: { name: 'Kalbo', color: '#F8BF27' },
+  'holder-of-the-fork': { name: 'Holder of the Fork', color: '#F8BF27' },
 };
 export const DEFAULT_TITLE = 'townfolk';
 
