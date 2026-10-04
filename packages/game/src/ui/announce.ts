@@ -1,4 +1,5 @@
 import type { TownAnnouncement } from '@mikazuki/shared';
+import { playJackpot, playSound } from '../audio/sound';
 
 // 📣 Banners floating top centre, below the HUD: a jackpot win (gold, with casino lights) or the owner's notice
 // (amber; e.g. maintenance). One at a time, queued; each slides in, stays a while (or until ×), and slides out.
@@ -42,6 +43,8 @@ function next(): void {
   close.textContent = '×';
   box.append(title, text, close);
   document.body.append(box);
+  if (a.kind === 'jackpot') playJackpot();
+  else playSound('click');
 
   let gone = false;
   const leave = () => {

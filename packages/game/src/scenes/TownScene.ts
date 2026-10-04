@@ -30,6 +30,7 @@ import { Culler } from '../world/cull';
 import { type Tile, WalkGrid } from '../world/grid';
 import { Ground } from '../world/ground';
 import { type Bench, type Building, WorldObjects, characterDepth } from '../world/objects';
+import { hearFrom, playSound, startTownSound } from '../audio/sound';
 
 // The playable town: ground, buildings, props and the player, all placed from manifest.json + maps/town.json.
 // Right click to walk; left click a building to walk to its door, or a bench to sit (a tap does all of these).
@@ -229,6 +230,7 @@ export class TownScene extends Phaser.Scene {
     const member = this.me?.status === 'ok' ? this.me.me : null;
     this.player.setNameTag(member?.nickname ?? 'Guest', member?.title ?? TOWNFOLK);
     this.mountHud();
+    startTownSound(this, this.fountainTile());
     if (member || fakeLogin()) this.connect();
     this.zoomIntro(); // last, once the names, labels and building cursors exist
     this.time.delayedCall(1800, () => this.announceRewards()); // once the arrival has settled
@@ -242,6 +244,7 @@ export class TownScene extends Phaser.Scene {
     this.ground.tick(time);
     this.player.update(delta);
     this.others.update(delta);
+    hearFrom(this.player.tile);
     this.tellServer();
     if (this.follow && !this.intro) this.followPlayer();
     this.culler.update(this.cameras.main.worldView);
@@ -279,7 +282,14 @@ export class TownScene extends Phaser.Scene {
       frame: frame ? { url: asset(frame.file), slice: frame.nineSlice } : null,
       coin,
       dots: dots?.file && Array.isArray(dots.frames) ? { url: asset(dots.file), frame: 0, size: dots.size?.[0] ?? 5, frames: dots.frames.length, names: dots.frames } : null,
+      gear: this.M.ui.settingsIcon?.file ? asset(this.M.ui.settingsIcon.file) : null,
     });
+  }
+
+  /** The middle of the plaza fountain (the map's fountain prop), where its water sound is loudest. */
+  private fountainTile(): Tile | null {
+    const f = this.map.objects.find((o) => o.kind === 'prop' && o.id.startsWith('fountain'));
+    return f ? { col: f.col + (f.footprint[0] - 1) / 2, row: f.row + (f.footprint[1] - 1) / 2 } : null;
   }
 
   /** On arriving: the movement tutorial on a first visit, then rewards — a title the bot says is new to you (shown once, on whichever device comes
@@ -341,7 +351,7 @@ export class TownScene extends Phaser.Scene {
     };
     link.onMessage = (m) => {
       if (m.t === 'snap') return this.player.place({ col: m.col, row: m.row });
-      if (m.t === 'seat-taken') return toast("Someone's already sitting there.");
+      if (m.t === 'seat-taken') return this.seatTaken();
       if (m.t === 'say-refused') {
         if (m.reason === 'muted') {
           const left = Math.max(1, Math.ceil(((m.until ?? Date.now()) - Date.now()) / 60_000));
@@ -353,12 +363,19 @@ export class TownScene extends Phaser.Scene {
         // Your own words come back from the server like everyone else's, so you see what they see.
         if (m.id === myId) {
           if (bubbles) this.player.say(m.text, bubbles);
-          return chat.add(member?.nickname ?? 'You', m.text, 'me');
+          return chat.add(member?.nickname ?? 'You', m.text, 'me'); // (your own words make no sound)
         }
         chat.add(this.others.nameOf(m.id) ?? 'Someone', m.text);
+        playSound('chat');
       }
-      if (m.t === 'say-discord') return chat.add(m.name, m.text, 'discord');
-      if (m.t === 'system') return feed.add(m.line);
+      if (m.t === 'say-discord') {
+        playSound('chat');
+        return chat.add(m.name, m.text, 'discord');
+      }
+      if (m.t === 'system') {
+        if (m.line.kind === 'gamble') playSound('chip');
+        return feed.add(m.line);
+      }
       if (m.t === 'announce') return announce(m.announcement);
       if (m.t === 'emote') {
         const char = this.others.charOf(m.id);
@@ -388,6 +405,7 @@ export class TownScene extends Phaser.Scene {
       this.others.handle(m);
     };
     link.onKicked = (until) => {
+      playSound('error');
       this.others.clear();
       showKicked(until);
     };
@@ -403,6 +421,7 @@ export class TownScene extends Phaser.Scene {
     const E = this.M.ui.emotes;
     const frame = Array.isArray(E?.frames) ? E.frames.indexOf(e) : -1;
     if (E?.file && frame >= 0 && this.textures.exists(E.file)) char.showEmote(E.file, frame);
+    playSound('emote');
     if (e === 'laugh') char.emote('cheer');
     if (e === 'wave') char.emote('wave');
   }
@@ -624,7 +643,7 @@ export class TownScene extends Phaser.Scene {
   private goToBench(bench: Bench): void {
     this.pending = null;
     this.byKeys = false;
-    if (this.others.seatTaken(bench.col, bench.row)) return toast("Someone's already sitting there.");
+    if (this.others.seatTaken(bench.col, bench.row)) return this.seatTaken();
     const spot = benchApproach(bench);
     const here = this.player.tile;
     if (here.col === spot.col && here.row === spot.row) return this.sitOn(bench);
@@ -633,8 +652,13 @@ export class TownScene extends Phaser.Scene {
 
   /** Sit down, if nobody beat you to it (the server checks too: 'seat-taken'). */
   private sitOn(bench: Bench): void {
-    if (this.others.seatTaken(bench.col, bench.row)) return toast("Someone's already sitting there.");
+    if (this.others.seatTaken(bench.col, bench.row)) return this.seatTaken();
     this.player.sit({ col: bench.col, row: bench.row }, bench.faces, bench.depth);
+  }
+
+  private seatTaken(): void {
+    playSound('error');
+    toast("Someone's already sitting there.");
   }
 
   /** Just walk there (a blocked tile: the nearest reachable one), with the click marker on where you're going. */
@@ -701,6 +725,7 @@ export class TownScene extends Phaser.Scene {
   /** Door hook: twigo's house goes back to twigo's room; the others are stubs for now. */
   private enter(b: Building): void {
     this.events.emit('door', b.id);
+    playSound(b.id === 'casino' || b.id === 'jackpot-booth' ? 'card' : 'door');
     if (b.id === 'twigos-house') {
       toast("Back to twigo's room…");
       this.time.delayedCall(700, () => location.assign(TWIGO_ROOM_URL));
@@ -807,8 +832,9 @@ export class TownScene extends Phaser.Scene {
   }
 }
 
-/** True while the user is typing into a page input, so movement keys stay with the input. */
+/** True while the user is typing into a page input (or the settings box is open), so movement keys stay with the page. */
 function typing(): boolean {
+  if (document.getElementById('settings')) return true;
   const el = document.activeElement as HTMLElement | null;
   return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
 }

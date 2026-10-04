@@ -1,5 +1,6 @@
 import type { TitleData } from '@mikazuki/shared';
 import { isColour, visible } from '../util/pixels';
+import { type Sfx, playSound } from '../audio/sound';
 
 // 🎁 The reward pop-up: the town dims, golden rays turn slowly behind a white box in the game's pixel frame, and
 // the box shows what you got — a title, Kowens, or a picture — with a congratulations line and a cheerful button.
@@ -25,12 +26,19 @@ interface RewardArt {
 const CHEERS = ['Great!', 'Nice!', 'Awesome!', 'Sweet!', 'Yay!', 'Woohoo!', 'Amazing!', 'Lovely!'];
 
 let art: RewardArt = { frame: null, coin: null };
+/** The item frame repainted white (once ready), for other white boxes (settings). */
+export function popupFrame(): RewardArt['frame'] {
+  return art.frame;
+}
+
 /** A pop-up in the reward box: a heading, content, and a button; rewards add the rays and casino lights. */
 export interface Popup {
   title: string;
   body: HTMLElement[];
   button: string;
   celebrate: boolean;
+  /** Played as it opens (default: the soft click, like any panel). */
+  sound?: Sfx;
 }
 
 const queue: { popup: Popup; done: () => void }[] = [];
@@ -73,6 +81,7 @@ export function showReward(reward: Reward): Promise<void> {
     body: [graphic(reward.graphic), el('p', 'rw-message', reward.message)],
     button: CHEERS[Math.floor(Math.random() * CHEERS.length)],
     celebrate: true,
+    sound: reward.graphic.kind === 'kowens' ? 'coin' : 'click',
   });
 }
 
@@ -125,6 +134,7 @@ function next(): void {
   stage.append(card);
   root.append(stage);
   document.body.append(root);
+  playSound(popup.sound ?? 'click');
   button.focus();
 
   const close = () => {

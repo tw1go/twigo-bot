@@ -1,10 +1,12 @@
 import type { MeDig, MeResponse, PresenceStatus, PreregStatus } from '@mikazuki/shared';
 import { renderPrereg } from '../hud';
 import { loadMe } from '../session';
+import { playSound } from '../audio/sound';
+import { showSettings } from './settings';
 
 // The town's HUD (replaces the page's login corner while you're in town): your character's head and name top left,
-// in the game's pixel frame; Kowens and shovels top right, each with a "+" that explains how to get more. DOM text
-// only. The numbers refresh every minute and whenever a "+" is opened.
+// in the game's pixel frame with the Settings button under them; Kowens and shovels top right, each with a "+" that
+// explains how to get more. DOM text only. The numbers refresh every minute and whenever a "+" is opened.
 
 export interface TownHudOptions {
   /** The member, or null for a guest (then only the name shows). */
@@ -17,6 +19,8 @@ export interface TownHudOptions {
   coin: Sprite | null;
   /** The status dots (manifest ui.statusDots), by status. */
   dots: (Sprite & { names: string[] }) | null;
+  /** The Settings button's gear (manifest ui.settingsIcon). */
+  gear: string | null;
 }
 
 /** One frame of a strip of square frames. */
@@ -62,8 +66,7 @@ export function mountTownHud(o: TownHudOptions): void {
   root.id = 'town-hud';
 
   // ── profile (top left) ──
-  const profile = el('button', 'th-profile');
-  profile.setAttribute('aria-label', `${o.name}: menu`);
+  const profile = el('div', 'th-profile');
   if (o.frame) {
     profile.classList.add('th-framed');
     profile.style.setProperty('--frame', `url("${o.frame.url}")`);
@@ -81,25 +84,27 @@ export function mountTownHud(o: TownHudOptions): void {
     face.append(dot);
   }
   profile.append(face, el('span', 'th-name', o.name));
-  const menu = el('div', 'th-menu th-pop');
-  menu.hidden = true;
+  const settings = el('button', 'th-settings');
+  if (o.gear) {
+    const gear = el('img', 'th-gear');
+    gear.src = o.gear;
+    gear.alt = '';
+    settings.append(gear);
+  } else settings.textContent = '⚙';
+  settings.setAttribute('aria-label', 'Settings');
+  settings.setAttribute('aria-haspopup', 'dialog');
+  settings.title = 'Settings';
+  settings.addEventListener('click', () => showSettings({ loggedIn: !!o.me, onClose: () => settings.focus() }));
   const left = el('div', 'th-left');
-  left.append(profile, menu);
+  left.append(profile, settings);
   root.append(left);
 
   if (o.me) {
-    const out = el('button', 'th-logout', 'Log out');
-    out.addEventListener('click', async () => {
-      await fetch('/auth/logout', { method: 'POST', credentials: 'same-origin' }).catch(() => null);
-      location.reload();
-    });
-    menu.append(el('div', 'th-menu-who', o.me.name), out);
-    profile.addEventListener('click', () => toggle(menu));
     void fetch('/prereg')
       .then((r) => (r.ok ? (r.json() as Promise<PreregStatus>) : null))
       .catch(() => null)
       .then((prereg) => o.me && renderPrereg(left, o.me, prereg));
-  } else profile.disabled = true;
+  }
 
   // ── Kowens and shovels (top right) ──
   if (o.me) {
@@ -129,7 +134,6 @@ export function mountTownHud(o: TownHudOptions): void {
       counter(coin, kowens, 'How to get Kowens', earn),
       counter(el('span', 'th-shovel', '🪏'), shovels, 'Digs left', dig),
     );
-    root.append(right);
 
     earn.append(el('div', 'th-pop-title', 'How to get Kowens'));
     for (const [what, how] of EARN) {
@@ -139,7 +143,10 @@ export function mountTownHud(o: TownHudOptions): void {
     }
     earn.append(el('div', 'th-pop-note', 'Commands are used in the Discord server.'));
 
+    let shown: number | null = null;
     const show = (me: MeResponse) => {
+      if (shown !== null && me.kowens > shown) playSound('coin'); // Kowens came in since the last look
+      shown = me.kowens;
       kowens.textContent = me.kowens.toLocaleString();
       kowens.title = plural(me.kowens, 'Kowen', 'Kowens');
       shovels.textContent = String(me.dig.shovel);
@@ -151,6 +158,7 @@ export function mountTownHud(o: TownHudOptions): void {
     };
     show(o.me);
     setInterval(() => void refresh(), REFRESH_MS);
+    root.append(right);
   }
 
   // Popovers close on Escape or a click elsewhere.

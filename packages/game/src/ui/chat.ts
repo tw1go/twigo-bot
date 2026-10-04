@@ -1,3 +1,5 @@
+import { playSound } from '../audio/sound';
+
 // 💬 The town's chat box (bottom left): one see-through box with the last messages and names (Discord's mark for
 // people chatting from the linked Discord channel) and the input under them. Enter opens the input, Enter sends (and keeps it open), an empty Enter or Esc closes it. Messages go to everyone in
 // town as speech bubbles too (TownScene). DOM text only: names and messages are never parsed as HTML.
@@ -89,7 +91,7 @@ export class ChatBox {
     // Enter anywhere else opens the chat (unless another box or dialog has the focus).
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Enter' || e.defaultPrevented || document.activeElement !== document.body) return;
-      if (document.getElementById('reward') || document.getElementById('elsewhere')) return;
+      if (document.getElementById('reward') || document.getElementById('elsewhere') || document.getElementById('settings')) return;
       e.preventDefault();
       this.input.focus();
     });
@@ -115,6 +117,7 @@ export class ChatBox {
 
   /** A note from the game (refused, offline…). */
   notice(text: string): void {
+    playSound('error');
     const line = document.createElement('div');
     line.className = 'ch-line ch-notice';
     line.textContent = text;

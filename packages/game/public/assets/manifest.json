@@ -1811,6 +1811,14 @@
         63
       ],
       "note": "play above the loading bar; cell 0 is blank and cell 1 is a lead-in, so loop cells 2-17 (16 frames) to avoid a blink"
+    },
+    "settingsIcon": {
+      "file": "ui/ui-gear.png",
+      "size": [
+        32,
+        32
+      ],
+      "note": "the Settings button's gear (HUD, top left)"
     }
   },
   "notes_ui": "All UI is drawn at 1x and scaled by the same whole-number zoom as the world. Text is never baked in: draw it with Minecraft.ttf."
