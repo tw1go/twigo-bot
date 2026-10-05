@@ -43,6 +43,7 @@ import { Culler } from '../world/cull';
 import { rng } from '../world/rng';
 import { type Tile, WalkGrid } from '../world/grid';
 import { Ground } from '../world/ground';
+import { outskirts } from '../world/outskirts';
 import { type Bench, type Building, WorldObjects, characterDepth } from '../world/objects';
 import { enterCasinoSound, hearFrom, leaveCasinoSound, playSound, startTownSound } from '../audio/sound';
 
@@ -226,8 +227,12 @@ export class TownScene extends Phaser.Scene {
   create(): void {
     applyTimeOverride();
     buildOutfit(this, this.M.characters, this.outfit);
-    this.ground = new Ground(this, this.M, this.map);
     this.objects = new WorldObjects(this, this.M, this.map);
+    // The forest around the town fills what the camera can see past the map, without widening that view.
+    const bounds = this.townBounds();
+    const forest = outskirts(this.M, this.map, bounds);
+    this.ground = new Ground(this, this.M, this.map, forest.tiles);
+    this.objects.addOutskirts(forest.objects);
     this.grid = new WalkGrid(this.map);
     for (const b of this.objects.buildings) for (const [c, r] of b.doors) this.doorAt.set(`${c},${r}`, b);
 
@@ -239,7 +244,7 @@ export class TownScene extends Phaser.Scene {
     this.player.onSpawn = (obj) => this.tint >= 0 && obj.setTint(this.tint);
     this.others = new OtherPlayers(this, this.M, this.objects, (obj) => this.tint >= 0 && obj.setTint(this.tint));
 
-    this.setupCamera();
+    this.setupCamera(bounds);
     // Only what the camera can see is drawn and animated.
     this.culler = new Culler([...this.ground.cullable, ...this.objects.cullable]);
     this.culler.onShow = (img) => this.ground.refresh(img);
@@ -558,12 +563,16 @@ export class TownScene extends Phaser.Scene {
 
   // ── Camera ──
 
-  private setupCamera(): void {
-    const cam = this.cameras.main;
+  /** The town's pixel extent: the tile diamond, grown to include anything that sticks out (tall trees, roofs). */
+  private townBounds(): Phaser.Geom.Rectangle {
     const [cols, rows] = this.map.size;
-    // The town's pixel extent: the tile diamond, grown to include anything that sticks out (tall trees, roofs).
     const bounds = new Phaser.Geom.Rectangle(-rows * 16, 0, (cols + rows) * 16, (cols + rows) * 8);
     for (const s of this.objects.sprites) Phaser.Geom.Rectangle.Union(bounds, s.getBounds(), bounds);
+    return bounds;
+  }
+
+  private setupCamera(bounds: Phaser.Geom.Rectangle): void {
+    const cam = this.cameras.main;
     cam.setBounds(Math.floor(bounds.x), Math.floor(bounds.y), Math.ceil(bounds.width), Math.ceil(bounds.height));
     cam.roundPixels = true;
     this.zoomIndex = defaultZoomIndex(this.scale.width, this.scale.height);

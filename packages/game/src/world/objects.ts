@@ -76,6 +76,11 @@ export class WorldObjects {
     this.addFence();
   }
 
+  /** The outskirts' trees and undergrowth (world/outskirts.ts), after the town's own objects. */
+  addOutskirts(objects: MapObject[]): void {
+    for (const o of objects) this.addProp(o);
+  }
+
   private track<T extends Phaser.GameObjects.Image>(img: T): T {
     this.sprites.push(img);
     this.cullable.push(img);

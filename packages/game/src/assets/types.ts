@@ -163,4 +163,17 @@ export interface TownMap {
   spawn: Vec2; // [col, row]
   blocked: number[][]; // [row][col], 1 = blocked
   doors: Record<string, Vec2 | Vec2[]>; // [col, row] or several
+  outskirts?: Outskirts;
+}
+
+/** The forest drawn around the town (world/outskirts.ts). */
+export interface Outskirts {
+  ground: string; // grass mix under the trees
+  meadow: string; // grass mix within `clear` of an edge
+  clear: Record<'nw' | 'ne' | 'se' | 'sw', number>; // tiles beyond each edge kept free of trees
+  water: [number, number, number, number][]; // [col0, row0, col1, row1] rectangles of river outside the map
+  trees: Record<string, string>; // tree prop id → its shadow
+  treeChance: number; // per 2 × 2 cell
+  undergrowth: string[]; // prop ids
+  undergrowthChance: number; // per tile
 }
