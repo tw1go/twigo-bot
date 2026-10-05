@@ -49,6 +49,9 @@ export const config = {
   publicUrl: (process.env.WEB_PUBLIC_URL || '').replace(/\/+$/, '') || undefined,
   /** Before launch, only members with this role (and mods/admins) may play the web town. */
   gameTesterRoleId: process.env.GAME_TESTER_ROLE_ID || undefined,
+  /** The town's news board (GET /town/news) lists the latest posts in these (optional). */
+  announcementsChannelId: process.env.ANNOUNCEMENTS_CHANNEL_ID || undefined,
+  patchNotesChannelId: process.env.PATCH_NOTES_CHANNEL_ID || undefined,
   /** The Discord channel linked to the web town's chat (optional; needs the Message Content intent). */
   townChatChannelId: process.env.TOWN_CHAT_CHANNEL_ID || undefined,
   // Write-only Object Storage URL for off-server backup copies (src/db/offsite.ts). Empty = local backups only.

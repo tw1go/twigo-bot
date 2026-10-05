@@ -156,6 +156,21 @@ export interface TownGambleResponse {
   bustChance: number;
 }
 
+/** `GET /town/news` (logged in, may play): the latest posts in the announcements and patch notes channels, newest
+ *  first (empty lists when a channel isn't set). */
+export interface TownNewsResponse {
+  announcements: TownNewsPost[];
+  patchNotes: TownNewsPost[];
+}
+
+export interface TownNewsPost {
+  /** When it was posted (ms). */
+  at: number;
+  title: string;
+  /** Discord markdown, with mentions, custom emoji and timestamps already turned into plain text. */
+  body: string;
+}
+
 /** `GET /town/leaderboard` (logged in, may play): the top 10 by Kowens, as the town knows them. */
 export interface TownLeaderboardResponse {
   rows: TownLeaderboardRow[];

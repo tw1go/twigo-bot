@@ -21,6 +21,7 @@ import { digInTown } from './town-mine.js';
 import { gambleInTown } from './town-casino.js';
 import { flexInTown, sellInTown, townInventory } from './town-bag.js';
 import { boardAction, townBoard } from './town-board.js';
+import { townNews } from './town-news.js';
 import { kowen } from '../kowens.js';
 import { filterText, kickedUntil, mutedUntil } from './town-mod.js';
 import { getOutfit, parseOutfit, saveOutfit } from './outfit.js';
@@ -47,6 +48,7 @@ import { roll } from './finds.js';
 //   PUT  /outfit        save the logged-in member's character look (from the game's page only)
 //   PUT  /nickname      { nickname } -> 200 { nickname } | 400 invalid | 409 taken (from the game's page only)
 //   GET  /town/leaderboard  top 10 by Kowens with town nicknames and titles, and the viewer's rank (may play)
+//   GET  /town/news     the latest announcements and patch notes from Discord (may play)
 //   GET  /town/jackpot  the jackpot booth: pot, players, the viewer's tickets, next and last draw (may play)
 //   POST /town/jackpot  { tickets } buy jackpot tickets (from the game's page only; may play)
 //   GET  /town/bank     wallet, vault and loans (may play)
@@ -321,6 +323,13 @@ export function startWebServer(client: Client): void {
         if (!userId) return send(res, 401, '{"error":"not logged in"}');
         if (!(await canPlay(client, userId))) return send(res, 403, '{"error":"testers only for now"}');
         return send(res, 200, JSON.stringify(await townLeaderboard(client, userId)));
+      }
+      if (req.method === 'GET' && path === '/town/news') {
+        if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
+        const userId = sessionUser(req);
+        if (!userId) return send(res, 401, '{"error":"not logged in"}');
+        if (!(await canPlay(client, userId))) return send(res, 403, '{"error":"testers only for now"}');
+        return send(res, 200, JSON.stringify(await townNews(client)));
       }
       if (path === '/town/jackpot' && (req.method === 'GET' || req.method === 'POST')) {
         if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');

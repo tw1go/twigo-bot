@@ -257,6 +257,10 @@ in `packages/shared/src/town.ts`). The bot checks every step (on the map, not bl
 speed) and keeps nothing once you leave. Chat goes the same way (`say`: tidied, up to 120 characters, rate-limited,
 never saved) and shows as speech bubbles and in the chat box (`packages/game/src/ui/chat.ts`).
 
+**News** (`packages/bot/src/web/town-news.ts`): the megaphone beside Settings lists the latest posts from
+`ANNOUNCEMENTS_CHANNEL_ID` and `PATCH_NOTES_CHANNEL_ID` (`GET /town/news`, read from Discord and kept for 2 minutes;
+either can be left empty).
+
 **Town chat ↔ Discord** (`packages/bot/src/web/town-chat.ts`): set `TOWN_CHAT_CHANNEL_ID` and town messages are
 posted in that channel as **Nickname**: message (no pings, no link previews), while messages there show in the
 town's chat with a Discord mark. The last 20 lines are kept in memory for people arriving. Setup: Developer Portal

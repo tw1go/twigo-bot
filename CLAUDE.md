@@ -111,6 +111,11 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   rarity / win / lose / bust; last 10 kept in memory. Dev: `/__system?kind=dig&tone=rare&text=…`.
 - Banners (`ui/announce.ts`, top centre): jackpot wins (bot `games/jackpot.ts` → `announce`, gold with casino lights) and
   `/notice` (amber; e.g. maintenance; shown to arrivals for 30 min). Dev: `/__announce?kind=jackpot|notice&title=&text=`.
+- News (`ui/news.ts`, the megaphone beside Settings, manifest `ui.newsIcon`; toggles): tabs Announcements / Patch notes,
+  the latest posts from `ANNOUNCEMENTS_CHANNEL_ID` / `PATCH_NOTES_CHANNEL_ID` (bot `GET /town/news`, `web/town-news.ts`,
+  cached 2 min; mentions/emoji/timestamps made plain text there, so no Discord ids reach the page), Discord markdown drawn
+  as DOM, newest open. A dot on the button while there's a post newer than the last seen (localStorage `mk_news_seen`).
+  Dev: pretend news.
 - Leaderboard monument (`ui/leaderboard.ts`, left click the monument): top 10 by Kowens from `GET /town/leaderboard`
   (logged in, may play; town nicknames, titles) with the top 3 idling on a podium ("?" silhouette without a character).
 - Jackpot booth (`ui/jackpot.ts`, left click the booth): pot, countdown, your tickets (buy 1 or the rest, 1 Kowen each,
