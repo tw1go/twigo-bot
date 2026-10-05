@@ -91,6 +91,9 @@ then pays everyone and posts a summary (names listed, no pings). A per-night led
 **Gifter:** `/gift kowens user amount [reason]` (negative removes) — only `REWARD_OWNER_ID` can use it.
 `/gift title user title` gives a web game title (equipped; Townfolk puts them back to the default).
 `/gift dig-reset user` sets a member's daily dig and shovel-purchase counters back to 0 (their shovel's uses and finds stay).
+`/gift item item [quantity] (user | everyone:True)` gives an item (shovels, Master Keys, megaphones, potions, or any dug-up
+item; autocomplete) straight into the bag, ignoring daily shovel limits and bag space; members in the web town get a
+pop-up with its picture (`src/items/gift.ts`).
 `/town mute|unmute|kick|filter` (mods and admins) moderates the web town: mute someone in town chat, kick them out of
 the town for a while, manage blocked words (shown as ***); each action is noted in the admin channel.
 `/notice message [title]` shows a banner to everyone in the web town (e.g. maintenance; arrivals see it for 30 min).

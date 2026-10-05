@@ -136,6 +136,8 @@ export type TownServerMessage =
   | { t: 'flex'; id: string; itemId: string; itemName: string; rarity: string }
   /** Someone gave you Kowens (from the town's player menu). */
   | { t: 'gift'; from: string; amount: number }
+  /** The gifter gave them an item (/gift item): a pop-up with its picture. */
+  | { t: 'gift-item'; from: string; item: { id: string; name: string; rarity: string }; quantity: number }
   /** Your Kowens changed (anywhere: a command, voice rewards, a draw…): the HUD reloads them. */
   | { t: 'wallet' }
   /** Someone emoted (not sent back to the one who did it: they show it right away). */

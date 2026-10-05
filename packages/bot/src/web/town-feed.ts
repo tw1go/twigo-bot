@@ -37,6 +37,11 @@ export function townGift(userId: string, from: string, amount: number): void {
   town?.gifted(userId, from, amount);
 }
 
+/** The gifter gave a member an item: a pop-up, if they're in the web town. */
+export function townGiftItem(userId: string, from: string, item: { id: string; name: string; rarity: string }, quantity: number): void {
+  town?.giftedItem(userId, from, item, quantity);
+}
+
 /** Shows a member as jailed (or not) in the town, if they're in it. */
 export function townJailed(userId: string, on: boolean): void {
   town?.setJailed(userId, on);

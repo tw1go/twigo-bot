@@ -116,6 +116,21 @@ export function recordDig(userId: string, itemId: string): void {
   save();
 }
 
+/** Puts `n` of an item in their bag without digging (the gifter's /gift item). */
+export function addItems(userId: string, itemId: string, n: number): void {
+  const b = bag(userId);
+  b.items[itemId] = (b.items[itemId] ?? 0) + n;
+  save();
+}
+
+/** Adds shovel uses without counting as shovels bought today (the gifter's /gift item). */
+export function addShovelUses(userId: string, uses: number): number {
+  const b = bag(userId);
+  b.shovel += uses;
+  save();
+  return b.shovel;
+}
+
 /** [itemId, count] for everything the member owns. */
 export function inventory(userId: string): [string, number][] {
   return Object.entries(bags[userId]?.items ?? {}).filter(([id, n]) => n > 0 && ITEM_BY_ID.has(id));

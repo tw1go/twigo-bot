@@ -16,6 +16,7 @@ import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
 //   GET /__jail?name=Bob&on=1   shows Bob as jailed (on=0: released) to everyone in town
 //   GET /__flex?as=Bob&itemId=rock&itemName=Rock&rarity=junk   Bob flexes an item (chat line + bubble)
 //   GET /__gift?as=Alice&amount=50   Alice gets the gift pop-up (as from /gift kowens); &wallet=1: only her HUD's Kowens reload
+//   GET /__gift?as=Alice&item=megaphone&name=Megaphone&qty=3   Alice gets the item gift pop-up (as from /gift item)
 // What's said in town is printed here instead of going to Discord.
 
 export function devTown(): Plugin {
@@ -91,6 +92,7 @@ export function devTown(): Plugin {
         const q = new URL(req.url ?? '/', 'http://localhost').searchParams;
         const who = q.get('as') ?? '';
         if (q.has('wallet')) town.wallet(who);
+        else if (q.has('item')) town.giftedItem(who, 'The gifter', { id: q.get('item')!, name: q.get('name') ?? q.get('item')!, rarity: q.get('rarity') ?? 'common' }, Number(q.get('qty') ?? 1));
         else town.gifted(who, 'The gifter', Number(q.get('amount') ?? 50));
         res.end('sent\n');
       });

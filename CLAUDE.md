@@ -96,7 +96,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   intent is on in the Developer Portal — the bot checks at startup and only asks for it then — else online), with Kowens and shovels beside it (they wrap below on phones); Settings top right;
   Kowens/shovels have "+" info (from `/me`: `kowens`, `dig`). The
   shovel icon is `ui-shovel.png` (manifest ui.shovelIcon). The Kowens follow every balance change, wherever it came from:
-  the credits store's `setWalletHook` → town `wallet` message → the HUD reloads. `/gift kowens` and `/gift everyone` also show
+  the credits store's `setWalletHook` → town `wallet` message → the HUD reloads. `/gift item` (an item to someone or everyone, `items/gift.ts`) shows the item gift pop-up (`gift-item`; dev
+  `/__gift?as=Name&item=megaphone&name=Megaphone&qty=3`). `/gift kowens` and `/gift everyone` also show
   the gift pop-up in town (`townGift`). Every open pop-up showing Kowens follows them too (`followWallet` in
   `ui/reward.ts`: bank, jackpot, shop, outpost, board, Mine; the casino and the player menu have their own listener; the bag
   already did), not mid-action. Dev: `/__gift?as=Name&amount=50` (or `&wallet=1`).

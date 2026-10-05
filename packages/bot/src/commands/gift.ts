@@ -3,18 +3,20 @@ import type { Command } from '../types.js';
 import { config } from '../config.js';
 import { accountIds, add, balance, take } from '../credits/store.js';
 import { BOOST_CREDITS, boostCount, setBoostCount } from '../games/boosts.js';
-import { DIGS_PER_DAY, SHOVELS_PER_DAY, resetDigCounters } from '../dig/store.js';
+import { DIGS_PER_DAY, SHOVELS_PER_DAY, SHOVEL_USES, capacity, resetDigCounters } from '../dig/store.js';
+import { usedSlots } from '../dig/bag.js';
+import { GIFTABLE, giftableById } from '../items/gift.js';
 import { ATTEND_REWARD, TOP_REWARD, openPayoutPanel } from '../minewars/payout.js';
 import { kowen } from '../kowens.js';
 import { LAUNCH_REWARD, launchPayout, launched, preregPanel } from '../prereg/prereg.js';
 import { TITLES, giveTitle } from '../web/titles.js';
-import { townGift } from '../web/town-feed.js';
+import { townGift, townGiftItem } from '../web/town-feed.js';
 
 // Only the gifter (REWARD_OWNER_ID) can use this. Hidden from non-admins by default.
 export const gift: Command = {
   data: new SlashCommandBuilder()
     .setName('gift')
-    .setDescription('Gifter only: gifts, boosts, titles & Mine Wars payouts 🎁')
+    .setDescription('Gifter only: gifts, items, boosts, titles & Mine Wars payouts 🎁')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addSubcommand((s) =>
       s
@@ -23,6 +25,15 @@ export const gift: Command = {
         .addUserOption((o) => o.setName('user').setDescription('Who').setRequired(true))
         .addIntegerOption((o) => o.setName('amount').setDescription('How many (e.g. 50, or -20 to remove)').setRequired(true).setMinValue(-100_000).setMaxValue(100_000))
         .addStringOption((o) => o.setName('reason').setDescription('Why (shown in the message)').setMaxLength(100)),
+    )
+    .addSubcommand((s) =>
+      s
+        .setName('item')
+        .setDescription('Give an item (shop items or dug-up finds) to someone or everyone · pops up in the web town')
+        .addStringOption((o) => o.setName('item').setDescription('Which item').setRequired(true).setAutocomplete(true))
+        .addIntegerOption((o) => o.setName('quantity').setDescription('How many each (default 1)').setMinValue(1).setMaxValue(100))
+        .addUserOption((o) => o.setName('user').setDescription('Who (or use everyone)'))
+        .addBooleanOption((o) => o.setName('everyone').setDescription('True = everyone who has used the bot')),
     )
     .addSubcommand((s) =>
       s
@@ -67,6 +78,14 @@ export const gift: Command = {
     .addSubcommand((s) =>
       s.setName('minewars').setDescription(`Pay 9 PM Mine Wars: attendance +${ATTEND_REWARD}, Top 10 ${TOP_REWARD} · 🔒 panel · 🌐 summary`),
     ),
+  async autocomplete(interaction) {
+    const typed = interaction.options.getFocused().toLowerCase();
+    await interaction.respond(
+      GIFTABLE.filter((g) => g.name.toLowerCase().includes(typed) || g.id.includes(typed))
+        .slice(0, 25)
+        .map((g) => ({ name: `${g.emoji} ${g.name} (${g.rarity})`.slice(0, 100), value: g.id })),
+    );
+  },
   async execute(interaction) {
     if (interaction.user.id !== config.rewardOwnerId) {
       await interaction.reply({ content: 'Only the gifter can use this. 🎁', flags: MessageFlags.Ephemeral });
@@ -97,6 +116,41 @@ export const gift: Command = {
       await interaction.reply({
         content: `🚀 **The Mikazuki web game is live!**\n🎁 ${paid} pre-registered ${paid === 1 ? 'member' : 'members'} received **${LAUNCH_REWARD}** ${kowen(LAUNCH_REWARD)} each. Thank you for waiting! 🎮${config.publicUrl ? `\nPlay: ${config.publicUrl}/play/` : ''}`,
         allowedMentions: { parse: [] },
+      });
+      return;
+    }
+    if (interaction.options.getSubcommand() === 'item') {
+      const it = giftableById.get(interaction.options.getString('item', true));
+      const quantity = interaction.options.getInteger('quantity') ?? 1;
+      const user = interaction.options.getUser('user');
+      const all = interaction.options.getBoolean('everyone') ?? false;
+      if (!it) {
+        await interaction.reply({ content: 'Pick an item from the list.', flags: MessageFlags.Ephemeral });
+        return;
+      }
+      if (all === !!user) {
+        await interaction.reply({ content: 'Choose either a `user` or `everyone:True` (not both).', flags: MessageFlags.Ephemeral });
+        return;
+      }
+      if (user?.bot) {
+        await interaction.reply({ content: "Bots don't need items. 🤖", flags: MessageFlags.Ephemeral });
+        return;
+      }
+      const ids = user ? [user.id] : accountIds();
+      const shown = { id: it.id, name: it.name, rarity: it.rarity };
+      for (const id of ids) {
+        it.give(id, quantity);
+        townGiftItem(id, 'The gifter', shown, quantity); // a pop-up for those in the web town
+      }
+      const over = ids.filter((id) => usedSlots(id) > capacity(id)).length;
+      const what = `**${quantity > 1 ? `${quantity}× ` : ''}${it.emoji} ${it.name}**`;
+      console.log(`[gift] item ${it.id} ×${quantity} → ${user ? user.id : `everyone (${ids.length})`}`);
+      await interaction.reply({
+        content:
+          (user ? `🎁 ${user} received ${what} from the gifter!` : `🎁 **Everyone who has used the bot** (${ids.length} members) received ${what} from the gifter!`) +
+          (it.id === 'shovel' ? `\n-# Each shovel is ${SHOVEL_USES} digs.` : '') +
+          (over ? `\n-# ${user ? 'Their bag is' : `${over} bag${over === 1 ? ' is' : 's are'}`} now over capacity: no digging until they sell something.` : ''),
+        allowedMentions: user ? { users: [user.id] } : { parse: [] },
       });
       return;
     }

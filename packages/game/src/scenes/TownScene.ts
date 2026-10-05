@@ -554,6 +554,12 @@ export class TownScene extends Phaser.Scene {
         window.dispatchEvent(new Event('mk-wallet')); // the HUD's Kowens
         return void showReward({ title: 'Gift', graphic: { kind: 'kowens', amount: m.amount }, message: `${m.from} gave you ${m.amount} ${m.amount === 1 ? 'Kowen' : 'Kowens'}!` });
       }
+      if (m.t === 'gift-item') {
+        window.dispatchEvent(new Event('mk-wallet')); // the HUD (a gifted shovel) and an open bag
+        const rarity = isRarity(m.item.rarity) ? m.item.rarity : 'common';
+        const what = m.quantity > 1 ? `${m.quantity}× ${m.item.name}` : `a ${m.item.name}`;
+        return void showReward({ title: 'Gift', graphic: { kind: 'item', id: m.item.id, name: m.item.name, rarity }, message: `${m.from} gave you ${what}!` });
+      }
       if (m.t === 'emote') {
         const char = this.others.charOf(m.id);
         if (char) this.playEmote(char, m.emote);
