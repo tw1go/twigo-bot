@@ -6,7 +6,7 @@ The Mikazuki server's Discord bot (twigo, "the Tanod") and its upcoming web town
 packages/bot/      Discord bot — discord.js v14 + TypeScript (@mikazuki/bot)
 packages/game/     web town at /play — Vite + Phaser 4 + TypeScript (@mikazuki/game)
 packages/shared/   types shared by bot and game, e.g. the room API responses (@mikazuki/shared)
-deploy/            server scripts: deploy.sh, systemd unit, Caddyfile
+deploy/            server scripts: deploy.sh, push-env.sh, systemd unit, Caddyfile (deploys run from .github/workflows)
 .env, data/        bot secrets and live state (untracked; see "Where state lives")
 TERMS.md, PRIVACY.md   public docs linked from the Discord Developer Portal — keep them at the root
 ```
@@ -210,8 +210,14 @@ The server holds the monorepo root at `/opt/twigo-bot`. The bot runs as the syst
 Caddy serves the web game from `/opt/twigo-bot/web/play` at `/play` and proxies everything else to the room API.
 
 - First-time server setup: `ssh ubuntu@SERVER 'sudo bash -s' < deploy/server-setup.sh`
-- Deploy (builds locally, uploads the bot + `.env` + the game's static files, restarts the bot):
-  `./deploy/deploy.sh ubuntu@SERVER`. `data/` on the server is never touched.
+- Deploy: **push to `main`** (work happens on `dev`; `dev` → `main` deploys). GitHub Actions
+  (`.github/workflows/deploy.yml`) typechecks, tests and builds, then runs `deploy/deploy.sh`: an online backup of the
+  database (`data/backups/pre-deploy-<commit>.db`, last 5 kept), upload, restart, slash commands registered on the server,
+  and a check that the bot logged in and `/health` answers. It can also be run by hand from the Actions tab.
+  Secrets: `DEPLOY_TARGET` (user@host), `DEPLOY_SSH_KEY` (a deploy-only key), `DEPLOY_KNOWN_HOSTS`.
+- By hand (fallback): `./deploy/deploy.sh ubuntu@SERVER`, the same steps from your machine.
+- `.env` lives on the server and deploys never touch it. To change a setting, edit your local `.env` and run
+  `./deploy/push-env.sh ubuntu@SERVER` (keeps the old one as `.env.bak-<time>`, restarts the bot).
 - Logs: `ssh ubuntu@SERVER 'sudo journalctl -u twigo-bot -f'`
 - Restart: `ssh ubuntu@SERVER 'sudo systemctl restart twigo-bot'`
 

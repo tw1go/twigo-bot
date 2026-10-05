@@ -1,0 +1,65 @@
+# Deploy to the server on every push to main (work happens on dev; dev → main deploys). Also runnable by hand from
+# the Actions tab (Run workflow). Typecheck, tests and build must pass first; deploy/deploy.sh then backs up the
+# database, uploads, restarts the bot, registers the slash commands and checks the bot came up.
+#
+# Secrets (Settings → Secrets and variables → Actions): DEPLOY_TARGET (user@host), DEPLOY_SSH_KEY (a key only for
+# deploying), DEPLOY_KNOWN_HOSTS (the server's host key line). The bot's .env never leaves the server.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One deploy at a time; a newer push waits for the running one instead of cancelling it halfway.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Check and deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the game's version counts the commits
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Deploy
+        env:
+          DEPLOY_TARGET: ${{ secrets.DEPLOY_TARGET }}
+        run: ./deploy/deploy.sh "$DEPLOY_TARGET"
+
+      - name: Check the site
+        run: |
+          curl -sf --retry 5 --retry-delay 3 https://twigo.dev/health
+          echo
+          curl -sf https://twigo.dev/play/version.json

@@ -22,7 +22,9 @@ State is one SQLite database, `data/mikazuki.db` (better-sqlite3, WAL), schema i
 - `npm run dev:game` — Vite dev server (`/play/`, `?time=21:00`, `?outfit=N`, `?debug=wardrobe`)
 - `npm run deploy-commands` — register slash commands (needs `.env`; run with `DATA_DIR` pointed at a temp dir
   so it doesn't create a local database)
-- `./deploy/deploy.sh <ssh-target>` — builds, uploads, restarts the bot (see `CLAUDE.local.md`)
+- Deploys: pushing `main` deploys (GitHub Actions, `.github/workflows/deploy.yml` → `deploy/deploy.sh`: backup, upload,
+  restart, slash commands, health check). `./deploy/deploy.sh <ssh-target>` is the by-hand fallback; `.env` lives on the
+  server only (`./deploy/push-env.sh <ssh-target>` replaces it on purpose). See `CLAUDE.local.md`.
 
 ## Versions
 
@@ -39,12 +41,14 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
 - **Data:** `data/` on the server is live state; deploys never touch it. Back up before risky changes.
 - **Never edit the live database directly while the bot runs** (it caches state in memory and would overwrite
   you). Use bot commands (`/gift …`) or stop the bot first.
-- Don't merge, push, deploy or post in Discord unless the user asked for it in this conversation.
+- Don't merge, push, deploy or post in Discord unless the user asked for it in this conversation. **Pushing `main` is
+  deploying** (the pipeline runs on every push to main).
 - Report asset problems instead of working around them (the game must stay data-driven from the manifest).
 
 ## Conventions
 
-- Small, ordered commits on a feature branch, fast-forward merged into `main`. End commit messages with the
+- Work on `dev` (or a feature branch off `dev`), small ordered commits; "merge and deploy" = fast-forward `main` to
+  `dev` and push `main` (that deploys), then watch the Deploy run. End commit messages with the
   `Co-Authored-By` line Claude Code provides. Commits show as `tw1go` via local git config.
 - Big pushes (art) need `git -c http.postBuffer=157286400 push`.
 - Write code like the surrounding code: comment density, naming, small helpers. User-facing bot text says
