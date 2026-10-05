@@ -13,7 +13,7 @@ import { today } from '../time.js';
 //  • v3, web game logins: sessions.
 //  • v4, web game pre-registration: preregistrations.
 //  • v5, web game character looks: outfits.
-//  • v6, web game nicknames and titles: nicknames, titles. v7: titles.announced.
+//  • v6, web game nicknames and titles: nicknames, titles. v7: titles.announced. v8: titles.opened.
 //  • kv: small singleton documents keyed by their old file name (e.g. 'race.json', 'rotation.json').
 // Stores cache their state in memory (the bot is the only writer) and save through db/sync.ts, which writes only
 // the rows that changed.
@@ -212,6 +212,11 @@ const MIGRATIONS: string[] = [
   `,
   /* v7: when the game showed a member their new title (the reward pop-up); NULL = not shown yet */ `
   ALTER TABLE titles ADD COLUMN announced INTEGER;
+  `,
+  /* v8: when the member first clicked the title at the Parlor; NULL = it still has its NEW tag (titles from before count
+     as seen) */ `
+  ALTER TABLE titles ADD COLUMN opened INTEGER;
+  UPDATE titles SET opened = earned;
   `,
 ];
 

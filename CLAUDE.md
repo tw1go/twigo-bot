@@ -58,7 +58,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
 - CMS (`packages/bot/src/web/cms.ts`, page `packages/bot/cms/`, plain DOM, no build): at `CMS_PATH` (secret, in `.env`;
   never write its value in the repo), gifter + `CMS_USER_IDS` only, Discord login (`/auth/login?next=cms`). Edits town
   news posts, titles, shop prices/on sale (kv `town-posts`, `titles`, `shop` over the code's defaults) and players' Kowens
-  and titles; logs each change in the admin channel. Content that moves into the CMS keeps its code values as defaults.
+  and titles; logs each change in the bot's log only (never posted in Discord). Content that moves into the CMS keeps its code values as defaults.
 - Messages to Discord: no pings by default (`allowedMentions: { parse: [] }`); de-duplicate user IDs in
   `allowedMentions.users`.
 
@@ -179,6 +179,11 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   `GET/POST /town/parlor` (`web/town-parlor.ts`, tested; `LOOK_COST`); `PUT /outfit` only works in the creator (no look or
   nickname yet). Changes reach everyone through the town's `look` message (`Town.restyle`; `world/others.ts`, and
   `TownScene.restyle` for you: name tag, HUD head). Dev: a pretend parlor that restyles you in the dev town (`/__look`).
+- Titles: per member in the `titles` table (`announced` = the reward pop-up was shown, `opened` = clicked at the Parlor,
+  else a NEW tag; schema v8). `<Richest Among All>` (`richest`, `auto`) always belongs to the leaderboard's #1 (wallet +
+  vault; `web/richest.ts`, kv 'richest', tested): checked 2 s after any Kowens change and at startup; the first time ever
+  it's the pop-up (`new-title` message live, or `/me` newTitle), not worn automatically; losing #1 drops it (wearers show
+  Townfolk). Automatic titles can't be given (/gift title, CMS) or removed. Dev: `/__title?as=Alice`.
 - Player menu (`ui/target.ts`): left click (or tap) someone → their name in a long box top centre (or click their name
   in the chat: the box opens right beside it with the menu open, `selectAt`; a click elsewhere closes it; no ×: a click
   outside the box closes it too, a drag to peek doesn't); clicking it opens

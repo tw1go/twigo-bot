@@ -35,6 +35,8 @@ export interface ParlorTitle extends TitleData {
   worn: boolean;
   /** What it's for (the CMS writes these), shown on hover. */
   description?: string;
+  /** Not clicked yet at the Parlor: a NEW tag until it is. */
+  isNew?: boolean;
 }
 
 /** What the Parlor's server says after a change. */
@@ -52,6 +54,8 @@ export interface ParlorHooks {
   titles: ParlorTitle[];
   buyLook: (o: Outfit) => Promise<ParlorResult>;
   wearTitle: (id: string) => Promise<ParlorResult>;
+  /** A NEW title was clicked: its tag goes (here at once, and on the server). */
+  openedTitle: (id: string) => void;
   onClose: () => void;
 }
 
@@ -342,12 +346,19 @@ export function mountCreator(C: CharacterDefs, hooks: CreatorHooks): void {
         const name = el('span', `cr-title-name${t.color === 'prismatic' ? ' prismatic' : ''}`, `<${t.name}>`);
         if (t.color !== 'prismatic') name.style.color = t.color;
         b.append(name, el('span', 'cr-title-about', t.description || ' '));
-        if (t.worn) b.append(el('span', 'cr-worn', 'showing'));
+        const tags = el('span', 'cr-tags');
+        if (t.isNew) tags.append(el('span', 'cr-new', 'new'));
+        if (t.worn) tags.append(el('span', 'cr-worn', 'showing'));
+        if (tags.childElementCount) b.append(tags);
         b.addEventListener('pointerenter', () => hint(b, t));
         b.addEventListener('pointerleave', () => hint(null));
         b.addEventListener('focus', () => hint(b, t));
         b.addEventListener('blur', () => hint(null));
         b.addEventListener('click', () => {
+          if (t.isNew) {
+            t.isNew = false;
+            parlor?.openedTitle(t.id);
+          }
           picked = t.id;
           showTitle(t);
           drawTitles();

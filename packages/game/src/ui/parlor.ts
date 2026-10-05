@@ -34,7 +34,9 @@ async function load(): Promise<TownParlorResponse | null> {
   return res?.ok ? ((await res.json()) as TownParlorResponse) : null;
 }
 
-async function post(body: { action: 'look'; outfit: OutfitData } | { action: 'title'; id: string }, name: string): Promise<ParlorResult> {
+type Change = { action: 'look'; outfit: OutfitData } | { action: 'title' | 'opened'; id: string };
+
+async function post(body: Change, name: string): Promise<ParlorResult> {
   if (fakeLogin()) return result(fakeAction(body, name));
   const res = await fetch('/town/parlor', {
     method: 'POST',
@@ -87,6 +89,7 @@ export async function showParlor(o: ParlorOptions): Promise<void> {
         if (r.ok && title) o.restyled(null, title);
         return r;
       },
+      openedTitle: (id) => void post({ action: 'opened', id }, o.nickname).catch(() => {}),
       onClose: () => {
         open = false;
         o.onClose();
@@ -105,12 +108,17 @@ const fake: TownParlorResponse = {
     { id: 'townfolk', name: 'Townfolk', color: '#B794F6', worn: true, description: 'Everyone starts here: a neighbour in Mikazuki town.' },
     { id: 'game-master', name: 'Game Master', color: 'prismatic', worn: false, description: 'Runs the town. Given by the gifter only.' },
     { id: 'kalbo', name: 'Kalbo', color: '#F8BF27', worn: false },
+    { id: 'richest', name: 'Richest Among All', color: '#FFD54A', worn: false, isNew: true, description: 'Held by whoever has the most Kowens (wallet + vault). Lose the top spot, lose the title.' },
     { id: 'licensed-overthinker', name: 'Licensed Overthinker', color: '#F8BF27', worn: false, description: 'Thought about it for three days, then thought about it some more.' },
   ],
 };
 
-function fakeAction(body: { action: 'look'; outfit: OutfitData } | { action: 'title'; id: string }, name: string): TownParlorActionResponse {
+function fakeAction(body: Change, name: string): TownParlorActionResponse {
   const done = (ok: boolean, message: string) => ({ ...structuredClone(fake), ok, message });
+  if (body.action === 'opened') {
+    for (const t of fake.titles) if (t.id === body.id) delete t.isNew;
+    return done(true, '');
+  }
   if (body.action === 'look') {
     if (fake.kowens < fake.lookCost) return done(false, `A new look is ${fake.lookCost} Kowens, and you have ${fake.kowens}.`);
     fake.kowens -= fake.lookCost;

@@ -275,7 +275,9 @@ never saved) and shows as speech bubbles and in the chat box (`packages/game/src
 **Parlor** (`packages/game/src/ui/parlor.ts`, bot `packages/bot/src/web/town-parlor.ts`): the building beside the
 rewards shop. Your character on the left; on the right an Appearance tab (the creator's choices, a new look costs 3
 Kowens) and a Title tab (the titles you have as cards, their description on hover; showing another is free). Everyone in
-town sees the change at once. After the character creator, a look can only be changed here (`PUT /outfit` is creator-only).
+town sees the change at once. Titles not clicked yet carry a NEW tag. **<Richest Among All>** goes by itself to whoever is
+#1 on the leaderboard (`packages/bot/src/web/richest.ts`), with the new-title pop-up the first time; it passes on when
+someone overtakes them. After the character creator, a look can only be changed here (`PUT /outfit` is creator-only).
 
 **News** (`packages/bot/src/web/town-news.ts`): the megaphone beside Settings lists the latest posts from
 `ANNOUNCEMENTS_CHANNEL_ID` and `PATCH_NOTES_CHANNEL_ID` (`GET /town/news`, read from Discord and kept for 2 minutes;
@@ -290,7 +292,7 @@ you still log in with Discord, and only the gifter (`REWARD_OWNER_ID`) and `CMS_
 **Shop** (change a reward's price or take it off sale, for the town shop and `/redeem` alike), **Players** (find
 someone by nickname or Discord ID, see their wallet, vault, bag, jail/mute status; give or take Kowens, give a title).
 Changes are saved in the database (kv `town-posts`, `titles`, `shop`; the code's values are the defaults), apply at
-once, and are logged in the admin channel. Titles show on a player from their next visit to town.
+once, and are noted in the bot's log (not in Discord). Titles show on a player from their next visit to town.
 
 **Town chat ↔ Discord** (`packages/bot/src/web/town-chat.ts`): set `TOWN_CHAT_CHANNEL_ID` and town messages are
 posted in that channel as **Nickname**: message (no pings, no link previews), while messages there show in the

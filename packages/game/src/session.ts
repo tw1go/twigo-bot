@@ -43,7 +43,7 @@ function fakeMe(fake: string): MeResult {
     // no saved look: the creator shows
   }
   return { status: 'ok', me: { id: '0', name: fakeName(), avatar: '', kowens: devNumber('kowens', 1250), vault: 0, rank: null, items: [], preregistered: false, outfit, nickname: fake === 'saved' ? fakeName() : null, title: { name: 'Townfolk', color: '#B794F6' },
-      newTitle: false,
+      newTitle: null,
       dig: { shovel: devNumber('shovels', 6), digsLeft: devNumber('digs', 7), digsPerDay: 9, shovelsLeft: 2, shovelCost: 2, shovelUses: 3, lucky: devNumber('lucky', 57), luckyEvery: 60 },
       status: fakeStatus() } };
 }

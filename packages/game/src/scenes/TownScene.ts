@@ -386,11 +386,7 @@ export class TownScene extends Phaser.Scene {
     // First time in town: how to move (before any reward). Dev: ?tutorial=1.
     if (this.firstVisit || (import.meta.env.DEV && new URLSearchParams(location.search).has('tutorial'))) void showMovementTutorial();
     const member = this.me?.status === 'ok' ? this.me.me : null;
-    if (member?.newTitle) {
-      void showReward({ title: 'New title!', graphic: { kind: 'title', title: member.title }, message: `Congratulations! You are now known as <${member.title.name}>.` }).then(() =>
-        fetch('/title/seen', { method: 'POST', credentials: 'same-origin' }).catch(() => null),
-      );
-    }
+    if (member?.newTitle) showNewTitle(member.newTitle.id, member.newTitle, member.title);
     if (import.meta.env.DEV) {
       const demo = new URLSearchParams(location.search).get('reward');
       if (demo === 'kowens') void showReward({ title: 'Reward', graphic: { kind: 'kowens', amount: 50 }, message: 'Congratulations! 50 Kowens are yours.' });
@@ -544,6 +540,7 @@ export class TownScene extends Phaser.Scene {
         if (!mine) playSound('chat');
         return;
       }
+      if (m.t === 'new-title') return showNewTitle(m.id, m.title, member?.title ?? TOWNFOLK);
       if (m.t === 'look' && m.id === myId) return void this.restyle(sanitize(this.M.characters, m.outfit, this.outfit), m.title);
       if (m.t === 'jailed' && m.id === myId) {
         this.player.setJailed(m.on);
@@ -1297,6 +1294,16 @@ function typing(): boolean {
   if (document.getElementById('settings') || document.getElementById('creator') || document.body.classList.contains('town-locked')) return true;
   const el = document.activeElement as HTMLElement | null;
   return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
+}
+
+/** A title that's new to you, in the reward pop-up (once: the bot is told when it's been seen). One you're already
+ *  wearing (given with /gift title) says so; one you've won (the richest) points to the Parlor. */
+function showNewTitle(id: string, title: TitleData, wearing: TitleData): void {
+  const worn = wearing.name === title.name && wearing.color === title.color;
+  const message = worn ? `Congratulations! You are now known as <${title.name}>.` : `Congratulations! <${title.name}> is yours. Show it under your name at the Parlor.`;
+  void showReward({ title: 'New title!', graphic: { kind: 'title', title }, message }).then(() =>
+    fakeLogin() ? null : fetch('/title/seen', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }).catch(() => null),
+  );
 }
 
 /** The same look, whatever order its fields are in. */

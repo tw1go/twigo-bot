@@ -11,7 +11,7 @@ import { jailedUntil } from '../games/jail.js';
 import { kowen } from '../kowens.js';
 import { isCmsUser, sessionUser } from './auth.js';
 import { getNickname } from './nickname.js';
-import { DEFAULT_TITLE, DESCRIPTION_MAX, TITLES, giveTitle, isTitleColor, removeTitle, setTitle, titleHolders, titleIdOf } from './titles.js';
+import { DEFAULT_TITLE, DESCRIPTION_MAX, TITLES, autoHolder, giveTitle, isTitleColor, removeTitle, setTitle, titleHolders, titleIdOf } from './titles.js';
 import { townGift } from './town-feed.js';
 import { kickedUntil, mutedUntil } from './town-mod.js';
 import { forgetNews } from './town-news.js';
@@ -21,7 +21,7 @@ import type { Town } from './town.js';
 // 🛠️ The CMS: a page for the gifter (and CMS_USER_IDS) to run the game's content without a deploy or a slash command:
 // the town's own news posts, titles (make, change, give), the rewards shop's prices and what's on sale, and players
 // (look someone up, give or take Kowens). It lives at CMS_PATH, a path nobody can guess; anyone else (logged out
-// visitors get a login button, other members a plain 404) sees nothing. Every change is logged in the admin channel.
+// visitors get a login button, other members a plain 404) sees nothing. Every change goes in the bot's log (not Discord).
 //
 //   GET  <path>/                 the page, packages/bot/cms/index.html (its script: <path>/app.js)
 //   GET  <path>/api/me           who's logged in (401 → the page shows the login button)
@@ -80,13 +80,9 @@ function readJson(req: IncomingMessage): Promise<Record<string, unknown> | null>
   });
 }
 
-/** Tells the admin channel what was changed, and by whom (no pings). */
-async function log(client: Client, who: string, what: string): Promise<void> {
+/** Notes what was changed, and by whom, in the bot's log (journalctl; never posted in Discord). */
+async function log(_client: Client, who: string, what: string): Promise<void> {
   console.log(`[cms] ${who}: ${what}`);
-  const channel = await client.channels.fetch(config.adminChannelId).catch(() => null);
-  if (channel?.isSendable()) {
-    await channel.send({ content: `🛠️ **CMS** · ${who}: ${what}`, allowedMentions: { parse: [] } }).catch((err) => console.error('[cms] log failed:', err));
-  }
 }
 
 const nameStmt = db.prepare<[string], { user_id: string; nickname: string }>("SELECT user_id, nickname FROM nicknames WHERE nickname LIKE ? ESCAPE '\\' ORDER BY nickname LIMIT 25");
@@ -120,9 +116,11 @@ async function player(id: string, deps: CmsDeps) {
   };
 }
 
+const nameOrId = (id: string | null) => id && (getNickname(id) ?? id);
+
 const titleList = () => {
   const holders = titleHolders();
-  return Object.entries(TITLES).map(([id, t]) => ({ id, ...t, holders: holders[id] ?? 0, fixed: id === DEFAULT_TITLE }));
+  return Object.entries(TITLES).map(([id, t]) => ({ id, ...t, holders: holders[id] ?? 0, fixed: id === DEFAULT_TITLE || !!t.auto, ...(t.auto ? { holder: nameOrId(autoHolder(id)) } : {}) }));
 };
 
 const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
@@ -210,7 +208,7 @@ export async function cms(client: Client, req: IncomingMessage, res: ServerRespo
     case 'POST /api/titles/delete': {
       const id = str(body!.id);
       const title = TITLES[id];
-      if (!title || !removeTitle(id)) return bad(id === DEFAULT_TITLE ? 'Townfolk stays: it is everyone’s default.' : 'No such title.');
+      if (!title || !removeTitle(id)) return bad(id === DEFAULT_TITLE ? 'Townfolk stays: it is everyone’s default.' : title?.auto ? 'Automatic titles stay.' : 'No such title.');
       await log(client, who, `removed the title **<${title.name}>** (anyone wearing it shows Townfolk)`);
       return send(res, 200, { titles: titleList(), descriptionMax: DESCRIPTION_MAX });
     }
@@ -261,6 +259,7 @@ export async function cms(client: Client, req: IncomingMessage, res: ServerRespo
       const title = str(body!.title);
       if (!known(id)) return send(res, 404, '{"error":"No such player."}');
       if (!TITLES[title]) return bad('No such title.');
+      if (TITLES[title].auto) return bad('That title is automatic: nobody gives it by hand.');
       giveTitle(id, title);
       await log(client, who, `gave **${getNickname(id) ?? (await deps.discordName(id))}** the title **<${TITLES[title].name}>**`);
       return send(res, 200, { player: await player(id, deps) });

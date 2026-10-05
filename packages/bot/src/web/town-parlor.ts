@@ -2,11 +2,12 @@ import type { OutfitData, TownParlorActionResponse, TownParlorResponse } from '@
 import { balance, take } from '../credits/store.js';
 import { kowen } from '../kowens.js';
 import { getOutfit, parseOutfit, saveOutfit } from './outfit.js';
-import { TITLES, ownedTitles, titleIdOf, titleOf, wearTitle } from './titles.js';
+import { TITLES, openTitle, ownedTitles, titleIdOf, titleOf, wearTitle } from './titles.js';
 
 // 💇 The Parlor (GET/POST /town/parlor): a new look for LOOK_COST Kowens, or another of your titles to show (free).
 // Everyone in town sees the change at once (Town.restyle, through `restyled`). The creator's first look is free
-// (PUT /outfit, only until the member has a look and a nickname); every look after that is changed here.
+// (PUT /outfit, only until the member has a look and a nickname); every look after that is changed here. A title stays
+// NEW until it's clicked here ('opened').
 
 export const LOOK_COST = 3;
 
@@ -16,9 +17,9 @@ export function townParlor(userId: string): TownParlorResponse {
     kowens: balance(userId),
     lookCost: LOOK_COST,
     outfit: getOutfit(userId),
-    titles: ownedTitles(userId).map((id) => {
+    titles: ownedTitles(userId).map(({ id, isNew }) => {
       const { name, color, description } = TITLES[id];
-      return { id, name, color, ...(description ? { description } : {}), worn: id === worn };
+      return { id, name, color, ...(description ? { description } : {}), worn: id === worn, ...(isNew ? { isNew } : {}) };
     }),
   };
 }
@@ -42,6 +43,11 @@ export function parlorAction(
     saveOutfit(userId, outfit);
     restyled(userId, outfit);
     return done(true, `New look! (−${LOOK_COST} ${kowen(LOOK_COST)})`);
+  }
+  if (body.action === 'opened') {
+    if (typeof body.id !== 'string') return null;
+    openTitle(userId, body.id);
+    return done(true, '');
   }
   if (body.action === 'title') {
     if (typeof body.id !== 'string') return null;

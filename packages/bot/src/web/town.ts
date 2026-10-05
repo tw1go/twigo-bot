@@ -110,6 +110,8 @@ export interface Town {
   stay(userId: string, stay: TownStayInfo): void;
   /** A member was jailed or released: everyone in town sees it under their name (them included). */
   setJailed(userId: string, on: boolean): void;
+  /** A member has a new title: the reward pop-up, if they're in town. */
+  newTitle(userId: string, id: string, title: TitleData): void;
   /** A member changed their look or title at the Parlor: everyone in town sees it (them included). */
   restyle(userId: string, outfit: OutfitData, title: TitleData): void;
   /** A member (if in town) flexed an item from their bag: to everyone, them included (chat line + bubble). */
@@ -388,6 +390,10 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     stay(userId, stay) {
       const c = conns.get(userId);
       if (c) send(c, { t: 'stay', stay });
+    },
+    newTitle(userId, id, title) {
+      const c = conns.get(userId);
+      if (c) send(c, { t: 'new-title', id, title });
     },
     restyle(userId, outfit, title) {
       const c = conns.get(userId);

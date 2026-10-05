@@ -76,8 +76,9 @@ export interface MeResponse {
   nickname: string | null;
   /** Their title, shown under the nickname as <Title> (Townfolk by default; others are given or earned). */
   title: TitleData;
-  /** The title is new to them: the game shows it in a reward pop-up, then calls `POST /title/seen`. */
-  newTitle: boolean;
+  /** A title that's new to them (given, or won like <Richest Among All>): the game shows it in a reward pop-up, then
+   *  calls `POST /title/seen { id }`. Null when there's none. */
+  newTitle: (TitleData & { id: string }) | null;
   /** Digging today (see /dig and /redeem reward:Shovel). */
   dig: MeDig;
   /** Their Discord status, shown on the avatar (not sent yet: needs the Presence intent; dev fakes it). */
@@ -281,10 +282,11 @@ export interface TownParlorResponse {
   lookCost: number;
   outfit: OutfitData | null;
   /** The titles the member has (Townfolk first, always), the one shown marked, with what each is for. */
-  titles: (TitleData & { id: string; worn: boolean; description?: string })[];
+  titles: (TitleData & { id: string; worn: boolean; description?: string; isNew?: boolean })[];
 }
 
-/** POST /town/parlor { action: 'look', outfit } | { action: 'title', id } → the parlor afterwards, and what happened. */
+/** POST /town/parlor { action: 'look', outfit } | { action: 'title', id } | { action: 'opened', id } (a title clicked: its
+ *  NEW tag goes) → the parlor afterwards, and what happened. */
 export type TownParlorActionResponse = TownParlorResponse & { ok: boolean; message: string };
 
 /** GET /town/player?id= : another player in town, as /balance and /status show them, and what the viewer can give. */

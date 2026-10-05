@@ -6,7 +6,8 @@ import { balance, rankOf, setWalletHook, topBalances, totalKowens, vaultBalance 
 import { DIGS_PER_DAY, digsToday, inventory, LUCKY_EVERY, serverDigProgress, SHOVEL_COST, SHOVEL_USES, SHOVELS_PER_DAY, shovelsBoughtToday, shovelUses } from '../dig/store.js';
 import { ITEM_BY_ID } from '../dig/items.js';
 import { getNickname, parseNickname, setNickname } from './nickname.js';
-import { titleIsNew, titleOf, titleSeen } from './titles.js';
+import { RICHEST, TITLES, newTitle, titleOf, titleSeen } from './titles.js';
+import { checkRichest } from './richest.js';
 import { attachTown, loadTownMap } from './town.js';
 import { bridgeTownChat } from './town-chat.js';
 import { connectTownFeed, feed } from './town-feed.js';
@@ -74,7 +75,7 @@ import { type CmsDeps, cms } from './cms.js';
 //   GET  /town/parlor   the Parlor: the viewer's look, Kowens, and the titles they have (members)
 //   POST /town/parlor   { action: look, outfit } (3 Kowens) | { action: title, id } (free) (from the game's page only; members)
 //   POST /town/dig      dig at the Mine (/dig's rules; from the game's page only; members)
-//   POST /title/seen    the game showed the member their new title (from the game's page only)
+//   POST /title/seen    { id? } the game showed the member their new title (from the game's page only)
 //   CMS_PATH/*          the CMS, for the gifter (see cms.ts)
 //   WS   /ws            the live town: who else is there and where (see town.ts; from the game's page only)
 
@@ -198,7 +199,7 @@ async function me(client: Client, req: IncomingMessage, res: ServerResponse): Pr
     const item = ITEM_BY_ID.get(id)!;
     return { id, name: item.name, emoji: item.emoji, rarity: item.rarity, count };
   });
-  const body: MeResponse = { id: userId, name, avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items, preregistered: isPreregistered(userId), outfit: getOutfit(userId), nickname: getNickname(userId), title: titleOf(userId), newTitle: titleIsNew(userId), status: await statusOf(client, userId),
+  const body: MeResponse = { id: userId, name, avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items, preregistered: isPreregistered(userId), outfit: getOutfit(userId), nickname: getNickname(userId), title: titleOf(userId), newTitle: newTitle(userId), status: await statusOf(client, userId),
     dig: digStatus(userId) };
   send(res, 200, JSON.stringify(body));
 }
@@ -574,7 +575,13 @@ export function startWebServer(client: Client): void {
         if (!fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
         const userId = sessionUser(req);
         if (!userId) return send(res, 401, '{"error":"not logged in"}');
-        titleSeen(userId);
+        let body: { id?: unknown } | null = null;
+        try {
+          body = JSON.parse((await readBody(req)) || 'null');
+        } catch {
+          // no body (an older game): all of them
+        }
+        titleSeen(userId, typeof body?.id === 'string' ? body.id : undefined);
         return send(res, 200, '{"ok":true}');
       }
       if (req.method === 'PUT' && path === '/nickname') {
@@ -641,7 +648,24 @@ export function startWebServer(client: Client): void {
     toDiscord = bridgeTownChat(client, town);
     connectTownFeed(town);
     const live = town;
-    setWalletHook((userId) => live.wallet(userId)); // the HUD's Kowens follow any change, wherever it came from
+    // <Richest Among All> follows the leaderboard's #1: the winner's pop-up (the first time) and both name tags.
+    const richest = () => {
+      const change = checkRichest();
+      if (!change) return;
+      for (const id of [change.won?.userId, change.lost]) {
+        const outfit = id && getOutfit(id);
+        if (id && outfit) live.restyle(id, outfit, titleOf(id));
+      }
+      if (change.won?.first) live.newTitle(change.won.userId, RICHEST, { name: TITLES[RICHEST].name, color: TITLES[RICHEST].color });
+      console.log(`[richest] ${change.won?.userId ?? 'nobody'} took it${change.lost ? ` from ${change.lost}` : ''}`);
+    };
+    let richestSoon: ReturnType<typeof setTimeout> | undefined;
+    setWalletHook((userId) => {
+      live.wallet(userId); // the HUD's Kowens follow any change, wherever it came from
+      clearTimeout(richestSoon);
+      richestSoon = setTimeout(richest, 2_000);
+    });
+    richest();
     // Staying in town pays: a minute for everyone here, and a pop-up for whoever now has a Kowen to claim.
     setInterval(() => {
       for (const id of stayMinute(live.here())) live.stay(id, stayInfo(id));

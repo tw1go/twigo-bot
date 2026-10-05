@@ -178,7 +178,7 @@ async function titles() {
   function draw() {
     table.replaceChildren(...all.map((t) => h('tr', null,
       h('td', null, chip(t), h('div', { class: 'hint' }, t.description || 'No description')),
-      h('td', null, h('span', { class: 'tag' }, t.id)),
+      h('td', null, h('span', { class: 'tag' }, t.id), t.auto ? h('div', { class: 'hint' }, `automatic · ${t.holder ? `held by ${t.holder}` : 'nobody yet'}`) : null),
       h('td', { class: 'num' }, fmt(t.holders)),
       h('td', { class: 'num' },
         h('button', { class: 'btn', onclick: () => edit(t) }, 'Edit'), ' ',
@@ -313,7 +313,7 @@ async function players(selected) {
     const until = (ms) => (ms ? `until ${when(ms)}` : 'no');
     const amount = h('input', { type: 'number', step: 1, placeholder: '50 (or -50 to take)' });
     const reason = h('input', { maxlength: 100, placeholder: 'Reason (optional, for the log)' });
-    const pick = h('select', null, ...all.map((t) => h('option', { value: t.id }, t.name)));
+    const pick = h('select', null, ...all.filter((t) => !t.auto).map((t) => h('option', { value: t.id }, t.name)));
     pick.value = p.title;
 
     detail.replaceChildren(

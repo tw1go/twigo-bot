@@ -66,7 +66,7 @@ export const gift: Command = {
             .setName('title')
             .setDescription('Which title (Townfolk = back to the default)')
             .setRequired(true)
-            .addChoices(...Object.entries(TITLES).map(([value, t]) => ({ name: t.name, value }))),
+            .addChoices(...Object.entries(TITLES).filter(([, t]) => !t.auto).map(([value, t]) => ({ name: t.name, value }))),
         ),
     )
     .addSubcommand((s) =>
@@ -180,7 +180,7 @@ export const gift: Command = {
     if (interaction.options.getSubcommand() === 'title') {
       const id = interaction.options.getString('title', true);
       const title = TITLES[id];
-      if (!title) {
+      if (!title || title.auto) {
         await interaction.reply({ content: 'Unknown title.', flags: MessageFlags.Ephemeral });
         return;
       }
