@@ -270,17 +270,15 @@ function startCasinoMusic(): void {
     return;
   }
   casinoMusic ??= s.sound.add(CASINO.key, { loop: true, volume: 0 });
-  s.tweens.killTweensOf(casinoMusic);
-  if (!casinoMusic.isPlaying) casinoMusic.play();
-  s.tweens.add({ targets: casinoMusic, volume: casinoVolume(), duration: MUSIC_FADE_MS });
+  playSilent(casinoMusic);
+  fade(s, casinoMusic, casinoVolume(), MUSIC_FADE_MS);
 }
 
 function stopCasinoMusic(): void {
   const s = scene;
   const m = casinoMusic;
   if (!s || !m?.isPlaying) return;
-  s.tweens.killTweensOf(m);
-  s.tweens.add({ targets: m, volume: 0, duration: MUSIC_FADE_MS / 2, onComplete: () => m.stop() });
+  fade(s, m, 0, MUSIC_FADE_MS / 2, () => m.stop());
 }
 
 /** The arena's match music: on from the VS screen (a ~400 ms fade in, loading it the first time), off at the end of
@@ -302,17 +300,15 @@ function startArenaMusic(): void {
     return;
   }
   arenaMusic ??= s.sound.add(ARENA.key, { loop: true, volume: 0 });
-  s.tweens.killTweensOf(arenaMusic);
-  if (!arenaMusic.isPlaying) arenaMusic.play();
-  s.tweens.add({ targets: arenaMusic, volume: ARENA.volume * settings.music, duration: ARENA.inMs });
+  playSilent(arenaMusic);
+  fade(s, arenaMusic, ARENA.volume * settings.music, ARENA.inMs);
 }
 
 function stopArenaMusic(): void {
   const s = scene;
   const m = arenaMusic;
   if (!s || !m?.isPlaying) return;
-  s.tweens.killTweensOf(m);
-  s.tweens.add({ targets: m, volume: 0, duration: ARENA.outMs, onComplete: () => m.stop() });
+  fade(s, m, 0, ARENA.outMs, () => m.stop());
 }
 
 /** Mute, and the volumes on what's already playing (a music fade-in in progress jumps to the new volume). */
@@ -322,21 +318,54 @@ function applySettings(): void {
   s.sound.mute = settings.muted;
   setVolume(crickets, cricketsVolume());
   setVolume(fountain, fountainLevel());
-  if (music?.isPlaying && settings.music > 0 && !indoors) {
-    s.tweens.killTweensOf(music);
-    setVolume(music, musicVolume());
-  }
-  if (casinoMusic?.isPlaying && settings.music > 0 && indoors) {
-    s.tweens.killTweensOf(casinoMusic);
-    setVolume(casinoMusic, casinoVolume());
-  }
-  if (arenaMusic?.isPlaying && settings.music > 0 && arenaOn) {
-    s.tweens.killTweensOf(arenaMusic);
-    setVolume(arenaMusic, ARENA.volume * settings.music);
-  }
+  if (music?.isPlaying && settings.music > 0 && !indoors) setLevel(music, musicVolume());
+  if (casinoMusic?.isPlaying && settings.music > 0 && indoors) setLevel(casinoMusic, casinoVolume());
+  if (arenaMusic?.isPlaying && settings.music > 0 && arenaOn) setLevel(arenaMusic, ARENA.volume * settings.music);
 }
 
 const musicVolume = () => MUSIC.volume * settings.music;
+
+// ── Music fades ──
+// Phaser reads a sound's `volume` back from its Web Audio gain node, which only catches up once the audio thread has
+// run: a new node reads 1 (full volume) for a moment. A tween on `volume` could start from there, so music blasted out
+// at full volume and then dropped. Fades tween a plain number from the level last set here instead.
+
+const levels = new WeakMap<Phaser.Sound.BaseSound, number>();
+const fades = new WeakMap<Phaser.Sound.BaseSound, Phaser.Tweens.Tween>();
+
+/** Sets a track's volume now (stopping any fade on it). */
+function setLevel(m: Phaser.Sound.BaseSound, v: number): void {
+  fades.get(m)?.remove();
+  fades.delete(m);
+  levels.set(m, v);
+  setVolume(m, v);
+}
+
+/** Fades a track from where it is to `to`; `done` once there. */
+function fade(s: Phaser.Scene, m: Phaser.Sound.BaseSound, to: number, ms: number, done?: () => void): void {
+  const at = { v: levels.get(m) ?? 0 };
+  setLevel(m, at.v); // stops the fade before
+  fades.set(m, s.tweens.add({
+    targets: at,
+    v: to,
+    duration: ms,
+    onUpdate: () => {
+      levels.set(m, at.v);
+      setVolume(m, at.v);
+    },
+    onComplete: () => {
+      fades.delete(m);
+      done?.();
+    },
+  }));
+}
+
+/** Starts a stopped track at silence (a fade brings it up). */
+function playSilent(m: Phaser.Sound.BaseSound): void {
+  if (m.isPlaying) return;
+  setLevel(m, 0);
+  m.play();
+}
 
 /** Music fades in, loading it first the first time (it's the biggest file, so only for those who want it). */
 function startMusic(): void {
@@ -344,8 +373,7 @@ function startMusic(): void {
   if (!s || indoors) return;
   if (music?.isPlaying) {
     // Turned back up while fading out: fade back in instead of stopping.
-    s.tweens.killTweensOf(music);
-    s.tweens.add({ targets: music, volume: musicVolume(), duration: MUSIC_FADE_MS / 3 });
+    fade(s, music, musicVolume(), MUSIC_FADE_MS / 3);
     return;
   }
   if (!s.cache.audio.exists(MUSIC.key)) {
@@ -356,15 +384,13 @@ function startMusic(): void {
     return;
   }
   music ??= s.sound.add(MUSIC.key, { loop: true, volume: 0 });
-  s.tweens.killTweensOf(music); // a fade-out still running would stop it again
-  music.play();
-  s.tweens.add({ targets: music, volume: musicVolume(), duration: MUSIC_FADE_MS });
+  playSilent(music);
+  fade(s, music, musicVolume(), MUSIC_FADE_MS);
 }
 
 function stopMusic(): void {
   const s = scene;
   const m = music;
   if (!s || !m?.isPlaying) return;
-  s.tweens.killTweensOf(m);
-  s.tweens.add({ targets: m, volume: 0, duration: MUSIC_FADE_MS / 3, onComplete: () => m.stop() });
+  fade(s, m, 0, MUSIC_FADE_MS / 3, () => m.stop());
 }
