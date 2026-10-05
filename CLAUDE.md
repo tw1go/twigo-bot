@@ -191,7 +191,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   run only the compiled `web/town.js` on 127.0.0.1:8787 with a fake `authenticate` (never the whole bot).
 - Movement: right-click-to-move (tap on touch screens; A* on `blocked`), WASD/arrows (screen directions; from a
   standstill a tap only turns, holding walks), E/Space to enter or sit. Left-click/touch drag on the map peeks around
-  (rubber band up to ~240 screen px, follow paused) and snaps back on release (`setupPeek`; drags are never clicks).
+  (rubber band up to ~320 screen px, follow paused) and snaps back on release (`setupPeek`; drags are never clicks).
 - Checking work: run the dev server and drive headless Chrome over the DevTools protocol (screenshots +
   `window.__town` debug API: `state()`, `teleport()`, `walk()`, `time()`, `view()`, `outfit()`). Use
   `--use-angle=metal` for real frame rates; SwiftShader under-reports.

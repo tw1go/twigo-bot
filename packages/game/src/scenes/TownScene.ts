@@ -59,7 +59,7 @@ const INTRO_MS = 1600;
 const TURN_HOLD_MS = 150;
 const FADE_MS = 1100;
 /** Dragging the map peeks around: it gives with resistance up to about this far (screen px), then snaps back. */
-const PEEK_PX = 240;
+const PEEK_PX = 320;
 const PEEK_BACK_MS = 220;
 
 /** Everyone's title until they're given another (the bot's web/titles.ts has the list). */
