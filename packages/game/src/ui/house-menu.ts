@@ -1,11 +1,13 @@
 import type { HoodHouse, TownHoodActionResponse, TownHoodResponse } from '@mikazuki/shared';
 import { playSound } from '../audio/sound';
 import { el, showPopup } from './reward';
+import { toast } from './toast';
 
 // 🏠 A house in the neighbourhood, clicked (left click, or E at its door), in the reward box: whose it is and their
 // title, then what you can do. Someone else's: Steal (/steal's odds; caught = a fine and jail), and on a house with a
 // Bakod (the fence round it) only a Master Key gets in, or a Kalawang Potion rusts half the Bakod away. Your own: a new
-// look (the house creator). The bot decides everything (POST /town/hood); a bust closes this and the Tanod plays.
+// look (the house creator). The bot decides everything (POST /town/hood); what happened shows as a toast under the
+// box, and a bust closes it and the Tanod plays.
 
 export interface HouseMenuHooks {
   house: HoodHouse;
@@ -29,9 +31,9 @@ export function showHouseMenu(h: HouseMenuHooks): void {
   else title.style.color = house.title.color;
   const status = el('p', 'hm-status');
   const buttons = el('div', 'hm-actions');
-  const note = el('p', 'hm-note');
-  note.setAttribute('role', 'status');
   let busy = false;
+  /** What happened, under the box (toasts read out on their own: ui/toast.ts). */
+  const say = (text: string, tone: 'bad' | 'good' | null) => toast(text, 4500, tone);
   const close = () => document.querySelector<HTMLButtonElement>('#reward .rw-ok')?.click();
 
   const button = (text: string, onClick: () => void, disabled = false, kind = '') => {
@@ -73,18 +75,17 @@ export function showHouseMenu(h: HouseMenuHooks): void {
     const r = await h.act(action);
     busy = false;
     if (!r) {
-      note.textContent = "Couldn't reach the house. Try again?";
+      say("Couldn't reach the house. Try again?", 'bad');
       playSound('error');
       return render();
     }
     me = r.me;
     fenced = r.houses.find((x) => x.lot === house.lot)?.fenced ?? fenced;
-    note.textContent = r.message;
-    note.className = `hm-note ${r.ok ? (r.stole ? 'hm-good' : '') : 'hm-bad'}`;
     if (r.busted) {
       close();
       return h.busted(r.message);
     }
+    say(r.message, r.stole ? 'good' : r.ok ? null : 'bad');
     playSound(r.stole ? 'coin' : r.ok ? 'click' : 'error');
     if (r.stole) window.dispatchEvent(new Event('mk-wallet')); // the HUD's Kowens
     render();
@@ -93,13 +94,14 @@ export function showHouseMenu(h: HouseMenuHooks): void {
   render();
   // A Bakod and nothing to get past it with: say what to buy.
   if (!house.mine && fenced && me.keys < 1 && me.kalawang < 1) {
-    note.textContent = 'This house has a Bakod. Please purchase a Master Key or a Kalawang Potion at the rewards shop.';
-    note.className = 'hm-note hm-bad';
-    setTimeout(() => playSound('error'), 200); // after the pop-up's own open sound
+    setTimeout(() => {
+      say('This house has a Bakod. Please purchase a Master Key or a Kalawang Potion at the rewards shop.', 'bad');
+      playSound('error');
+    }, 200); // after the pop-up's own open sound
   }
   void showPopup({
     title: house.mine ? 'Your house' : `${house.owner}'s house`,
-    body: [title, status, buttons, note],
+    body: [title, status, buttons],
     button: 'Close',
     celebrate: false,
     sound: 'door',

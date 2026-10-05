@@ -39,8 +39,10 @@
       .hud-prereg-join:disabled { opacity: 0.6; cursor: wait; }
       .hud-prereg-done { display: inline-block; padding: 6px 10px; border-radius: 8px; background: rgba(158, 206, 106, 0.15); color: #9ece6a; }
       #boot-msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #a9b1d6; font: 14px var(--ui-font); }
-      #toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 12px); padding: 8px 14px; border-radius: 8px; background: rgba(36, 40, 59, 0.94); border: 1px solid #3b4261; color: #e6e9f2; font: 14px/1.3 var(--ui-font); opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s; z-index: 2; }
+      #toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 12px); padding: 8px 14px; border-radius: 8px; background: rgba(36, 40, 59, 0.94); border: 1px solid #3b4261; color: #e6e9f2; font: 14px/1.3 var(--ui-font); opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s; z-index: 6; max-width: min(440px, calc(100vw - 32px)); box-sizing: border-box; text-align: center; } /* over pop-ups (their notices), under the Tanod's bust */
       #toast.show { opacity: 1; transform: translate(-50%, 0); }
+      #toast.toast-bad { border: 2px solid #F7768E; }
+      #toast.toast-good { border: 2px solid #A3E635; }
       .hud-prereg-note { margin-top: 6px; max-width: 240px; color: #a9b1d6; }
       #login { position: fixed; inset: 0; z-index: 3; display: flex; align-items: center; justify-content: center; padding: 16px; background: #000; color: #c0caf5; font: 15px/1.5 var(--ui-font); text-align: center; }
       #login .lg-card { max-width: 360px; }
@@ -708,10 +710,6 @@
       #reward .hm-steal { background: #F7768E; }
       #reward .hm-steal:hover:not(:disabled) { background: #FB9AAD; }
       #reward .hm-btn:disabled { opacity: 0.5; box-shadow: none; transform: translateY(3px); }
-      #reward .hm-note { min-height: 1.3em; margin: 0 0 14px; color: #3D4256; font-size: 14px; }
-      #reward .hm-note:empty { display: none; }
-      #reward .hm-good { color: #15803D; font-weight: 700; }
-      #reward .hm-bad { color: #B91C1C; }
       /* The house creator: the character creator's box with a house in it. */
       #creator .cr-house-art { image-rendering: pixelated; }
       /* A house robbery gone wrong (ui/casino.ts playBusted): the casino's raid on its own, over the town. */
