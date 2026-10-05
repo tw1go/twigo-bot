@@ -1673,6 +1673,34 @@
       ],
       "note": "soft 0-70 alpha, ADD blend"
     },
+    "firefly": {
+      "file": "fx/fx-firefly.png",
+      "frame": [
+        5,
+        5
+      ],
+      "frames": 3,
+      "fps": 5,
+      "anchor": [
+        2,
+        2
+      ],
+      "note": "night only: a spark that glows (ADD blend), frames played back and forth; drifts and blinks near trees and bushes"
+    },
+    "moth": {
+      "file": "fx/fx-moth.png",
+      "frame": [
+        5,
+        4
+      ],
+      "frames": 2,
+      "fps": 14,
+      "anchor": [
+        2,
+        2
+      ],
+      "note": "night only: wings up / down, circling some lit lamps' lanterns"
+    },
     "tree-shadow": {
       "files": [
         "fx/fx-tree-shadow-48.png",

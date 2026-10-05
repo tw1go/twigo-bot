@@ -44,6 +44,7 @@ import { rng } from '../world/rng';
 import { type Tile, WalkGrid } from '../world/grid';
 import { Ground } from '../world/ground';
 import { outskirts } from '../world/outskirts';
+import { NightLife } from '../world/night-life';
 import { type Bench, type Building, WorldObjects, characterDepth } from '../world/objects';
 import { enterCasinoSound, hearFrom, leaveCasinoSound, playSound, startTownSound } from '../audio/sound';
 
@@ -122,6 +123,7 @@ export class TownScene extends Phaser.Scene {
   private tint = -1;
   private nextSkyCheck = 0;
   private culler!: Culler;
+  private nightLife!: NightLife;
   private lampsOn = false;
   private keys!: Record<'up' | 'down' | 'left' | 'right' | 'w' | 'a' | 's' | 'd' | 'e' | 'space', Phaser.Input.Keyboard.Key>;
   /** Whether the current walk is keyboard-driven (doors then wait for E instead of entering on arrival). */
@@ -238,6 +240,7 @@ export class TownScene extends Phaser.Scene {
     const forest = outskirts(this.M, this.map, bounds);
     this.ground = new Ground(this, this.M, this.map, forest.tiles);
     this.objects.addOutskirts(forest.objects);
+    this.nightLife = new NightLife(this, this.M, this.map, this.objects.lamps);
     this.grid = new WalkGrid(this.map);
     for (const b of this.objects.buildings) for (const [c, r] of b.doors) this.doorAt.set(`${c},${r}`, b);
 
@@ -284,6 +287,7 @@ export class TownScene extends Phaser.Scene {
     if (this.follow && !this.intro && !this.inside && !this.peek) this.followPlayer();
     this.culler.update(this.cameras.main.worldView);
     this.objects.setLamps(this.lampsOn); // glows follow their lamp's visibility
+    this.nightLife.update(time, this.lampsOn, this.cameras.main.worldView); // fireflies and moths, from dusk to dawn
     if (time >= this.nextSkyCheck) {
       this.nextSkyCheck = time + 1000;
       this.updateSky(false);
