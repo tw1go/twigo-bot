@@ -189,7 +189,11 @@ export function openCasino(leave: () => void): void {
 
   let busy = false;
   let jailed = false;
-  const lock = () => (kara.disabled = krus.disabled = busy || jailed);
+  const lock = () => {
+    kara.disabled = krus.disabled = busy || jailed;
+    // While a bet is out, the town's HUD keeps its Kowens still (TownScene skips 'wallet'): the coin tells first.
+    document.body.classList.toggle('cz-betting', busy);
+  };
   const say = (text: string, tone: '' | 'good' | 'bad' | 'bust' = '') => {
     result.textContent = text;
     result.className = `cz-result${tone ? ` cz-${tone}` : ''}`;
@@ -224,8 +228,8 @@ export function openCasino(leave: () => void): void {
       playSound('error');
       return say("Couldn't reach the table. Try again in a moment.", 'bad');
     }
-    showWallet(res.kowens);
     if (!res.ok) {
+      showWallet(res.kowens);
       busy = false;
       lock();
       playSound('error');
@@ -233,6 +237,7 @@ export function openCasino(leave: () => void): void {
     }
     if (res.outcome === 'bust') {
       jailed = true;
+      showWallet(res.kowens);
       await raid(res.message);
       busy = false;
       lock();
@@ -253,6 +258,7 @@ export function openCasino(leave: () => void): void {
     playSound('flip-land');
     lastFace = landed;
     restFace(landed);
+    showWallet(res.kowens); // only now: the wallet would give the result away mid-flip
     if (res.outcome === 'win') {
       if (art.burst) {
         burst.classList.add('cz-on');
@@ -313,6 +319,7 @@ export function openCasino(leave: () => void): void {
 /** Removes the casino screen (the town has faded to navy over it first). */
 export function closeCasino(): void {
   open?.close();
+  document.body.classList.remove('cz-betting');
 }
 
 // ── Dev: a pretend table (no bot behind the dev server). &bust=1 / &win=1 / &lose=1 force the outcome. ──

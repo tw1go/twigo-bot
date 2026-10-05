@@ -521,7 +521,8 @@ export class TownScene extends Phaser.Scene {
         window.dispatchEvent(new Event('mk-wallet')); // the HUD (its status dot shows jail too)
         return;
       }
-      if (m.t === 'wallet') return void window.dispatchEvent(new Event('mk-wallet')); // Kowens changed elsewhere (Discord…)
+      // Kowens changed elsewhere (Discord…). Not mid-bet at the casino: its coin lands first, then it reloads the HUD.
+      if (m.t === 'wallet') return void (document.body.classList.contains('cz-betting') || window.dispatchEvent(new Event('mk-wallet')));
       if (m.t === 'gift') {
         window.dispatchEvent(new Event('mk-wallet')); // the HUD's Kowens
         return void showReward({ title: 'Gift', graphic: { kind: 'kowens', amount: m.amount }, message: `${m.from} gave you ${m.amount} ${m.amount === 1 ? 'Kowen' : 'Kowens'}!` });
