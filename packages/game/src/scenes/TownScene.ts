@@ -423,6 +423,15 @@ export class TownScene extends Phaser.Scene {
     tools.append(online.el, emotePicker(sheet, emote));
     if (bag) document.body.append(bag.button); // its own button, just right of the chat box
     const chat = new ChatBox((text) => link.send({ t: 'say', text }), tools);
+    // Members can click someone's name in the chat: the player menu opens beside it (if they're still in town).
+    const target = this.target;
+    if (target) {
+      chat.onName = ({ id, name }, anchor) => {
+        const p = this.others.players.find((o) => (id ? o.id === id : o.nickname === name));
+        if (p) target.selectAt(p, anchor);
+        else chat.notice(`${name} isn't in town right now.`);
+      };
+    }
     const feed = new SystemFeed();
     let myId = '';
     let arrived = false;
@@ -431,7 +440,7 @@ export class TownScene extends Phaser.Scene {
       const mine = id === myId;
       const char = mine ? this.player : this.others.charOf(id);
       if (char && bubbles) char.say(text, bubbles);
-      chat.verdict(mine ? (member?.nickname ?? 'You') : (this.others.nameOf(id) ?? 'Someone'), kind, judged, text);
+      chat.verdict(mine ? (member?.nickname ?? 'You') : (this.others.nameOf(id) ?? 'Someone'), kind, judged, text, mine ? undefined : id);
       if (!mine) playSound('chat');
     };
     this.player.onStep = (to) => {
@@ -454,7 +463,7 @@ export class TownScene extends Phaser.Scene {
           if (bubbles) this.player.say(m.text, bubbles);
           return chat.add(member?.nickname ?? 'You', m.text, 'me'); // (your own words make no sound)
         }
-        chat.add(this.others.nameOf(m.id) ?? 'Someone', m.text);
+        chat.add(this.others.nameOf(m.id) ?? 'Someone', m.text, 'town', m.id);
         playSound('chat');
       }
       if (m.t === 'say-discord') {
@@ -483,7 +492,7 @@ export class TownScene extends Phaser.Scene {
         const mine = m.id === myId;
         const char = mine ? this.player : this.others.charOf(m.id);
         if (char && bubbles) char.say(`Check out my ${m.itemName}!`, bubbles);
-        chat.flex(mine ? (member?.nickname ?? 'You') : (this.others.nameOf(m.id) ?? 'Someone'), m.itemName, m.rarity, RARITY_TEXT[isRarity(m.rarity) ? m.rarity : 'common']);
+        chat.flex(mine ? (member?.nickname ?? 'You') : (this.others.nameOf(m.id) ?? 'Someone'), m.itemName, m.rarity, RARITY_TEXT[isRarity(m.rarity) ? m.rarity : 'common'], mine ? undefined : m.id);
         if (!mine) playSound('chat');
         return;
       }

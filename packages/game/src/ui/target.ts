@@ -6,7 +6,8 @@ import { coinIcon } from './reward';
 // 👤 The picked player (left click someone in town): their name in a long box at the top of the screen. Clicking the
 // box opens a menu — Give Kowens, Balance, Status — each read from the bot by the player's town id (GET /town/player;
 // giving: POST /town/give, /give's rules), and Diss / Praise / Judge (POST /town/verdict, 1 Kowen like the commands:
-// you say the line in town). The box goes when they leave, on Escape or with its ×. DOM text only.
+// you say the line in town). The box goes when they leave, on Escape or with its ×. Clicking a name in the chat opens
+// the same box and menu right beside that name instead (selectAt); a click anywhere else closes it. DOM text only.
 
 type View = 'give' | 'balance' | 'status';
 const VIEWS: [View, string][] = [['give', 'Give Kowens'], ['balance', 'Balance'], ['status', 'Status']];
@@ -57,6 +58,8 @@ export class TargetBox {
   private view: View | null = null;
   private info: TownPlayerInfo | null = null;
   private busy = false;
+  /** Opened from a name in the chat: placed beside it. */
+  private beside: HTMLElement | null = null;
 
   /** `frame`: the item frame (nine-slice) the box is drawn in, like the profile. `devVerdict` plays a verdict in
    *  the dev town (no bot to broadcast it). */
@@ -74,7 +77,7 @@ export class TargetBox {
     this.box.setAttribute('aria-haspopup', 'menu');
     this.box.setAttribute('aria-expanded', 'false');
     this.box.append(this.name, el('span', 'tg-caret', '▾'));
-    this.box.addEventListener('click', () => this.toggleMenu());
+    this.box.addEventListener('click', () => (this.beside ? this.clear() : this.toggleMenu()));
     const close = el('button', 'tg-close', '×');
     close.setAttribute('aria-label', 'Stop looking at them');
     close.addEventListener('click', () => this.clear());
@@ -98,13 +101,48 @@ export class TargetBox {
 
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape' || this.root.hidden) return;
-      if (!this.menu.hidden) this.closeMenu();
+      if (!this.menu.hidden && !this.beside) this.closeMenu();
       else this.clear();
     });
+    // Beside a chat name, a press anywhere else closes it (another name moves it instead).
+    document.addEventListener(
+      'pointerdown',
+      (e) => {
+        const t = e.target as Element;
+        if (this.beside && !this.root.contains(t) && !t.closest?.('.ch-click')) this.clear();
+      },
+      true,
+    );
+    // The menu's size changes as its numbers load: keep it beside the name.
+    new ResizeObserver(() => this.place()).observe(this.root);
+  }
+
+  /** Someone picked from their name in the chat: the box with the menu open, right beside that name. */
+  selectAt(p: TownPlayer, anchor: HTMLElement): void {
+    this.select(p);
+    this.beside = anchor;
+    this.root.classList.add('tg-beside');
+    if (this.menu.hidden) this.toggleMenu();
+    this.place();
+  }
+
+  /** Beside the chat name: to its right (kept on screen), the bottom level with the name, growing upwards. */
+  private place(): void {
+    const a = this.beside;
+    if (!a || this.root.hidden) return;
+    if (!a.isConnected) return this.clear(); // the line scrolled out of the log
+    const r = a.getBoundingClientRect();
+    const w = this.root.offsetWidth;
+    const h = this.root.offsetHeight;
+    const left = Math.max(8, Math.min(r.right + 8, innerWidth - w - 8));
+    const top = Math.max(8, Math.min(r.bottom - h, innerHeight - h - 8));
+    this.root.style.left = `${left}px`;
+    this.root.style.top = `${top}px`;
   }
 
   /** Shows someone in the box (the menu stays closed until the box is clicked). */
   select(p: TownPlayer): void {
+    this.unplace();
     if (this.target?.id === p.id) return void (this.root.hidden = false);
     this.target = p;
     this.info = null;
@@ -115,10 +153,19 @@ export class TargetBox {
   }
 
   clear(): void {
+    this.unplace();
     this.target = null;
     this.info = null;
     this.root.hidden = true;
     this.closeMenu();
+  }
+
+  /** Back to the top of the screen. */
+  private unplace(): void {
+    if (!this.beside) return;
+    this.beside = null;
+    this.root.classList.remove('tg-beside');
+    this.root.style.left = this.root.style.top = '';
   }
 
   /** Drops them if they left (call when the town's players change). */

@@ -109,46 +109,67 @@ export class ChatBox {
     });
   }
 
-  /** A message in the log (from Discord: with Discord's mark before the name). */
-  add(name: string, text: string, from: 'me' | 'town' | 'discord' = 'town'): void {
+  /** Someone's name in the log was clicked: their town id when the line has it (else just the name), and the name
+   *  itself (the player menu opens beside it). Set by the town for members. */
+  onName: ((who: { id?: string; name: string }, anchor: HTMLElement) => void) | null = null;
+
+  /** A name in the log, then `after`. Someone else in town (`clickable`) gets a button for the player menu. */
+  private speaker(name: string, after: string, className: string, clickable: boolean, id?: string): Node[] {
+    const who = document.createElement('b');
+    who.className = className;
+    who.textContent = name;
+    if (clickable && this.onName) {
+      who.classList.add('ch-click');
+      who.tabIndex = 0;
+      who.setAttribute('role', 'button');
+      who.title = `${name}: open the menu`;
+      const open = (e: Event) => {
+        e.stopPropagation(); // not the log's own click, which opens the chat
+        this.onName?.({ id, name }, who);
+      };
+      who.addEventListener('click', open);
+      who.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        open(e);
+      });
+    }
+    return [who, document.createTextNode(after)];
+  }
+
+  /** A message in the log (from Discord: with Discord's mark before the name). `id`: the speaker's town id. */
+  add(name: string, text: string, from: 'me' | 'town' | 'discord' = 'town', id?: string): void {
     const line = document.createElement('div');
     line.className = 'ch-line';
     if (from === 'discord') line.append(discordMark());
-    const who = document.createElement('b');
-    who.className = from === 'me' ? 'ch-me' : 'ch-name';
-    who.textContent = `${name}: `;
-    line.append(who, document.createTextNode(text));
+    line.append(...this.speaker(name, ': ', from === 'me' ? 'ch-me' : 'ch-name', from === 'town', id), text);
     this.push(line);
   }
 
-  /** A diss, praise or judge from the player menu: who said it, a coloured tag, and the line. */
-  verdict(name: string, kind: 'roast' | 'praise', judged: boolean, text: string): void {
+  /** A diss, praise or judge from the player menu: who said it, a coloured tag, and the line. `id`: theirs, when it's
+   *  someone else. */
+  verdict(name: string, kind: 'roast' | 'praise', judged: boolean, text: string, id?: string): void {
     const line = document.createElement('div');
     line.className = 'ch-line';
-    const who = document.createElement('b');
-    who.className = 'ch-name';
-    who.textContent = `${name} `;
     const tag = document.createElement('span');
     tag.className = `ch-verdict ch-${kind}`;
     tag.textContent = judged ? `judged: ${kind === 'roast' ? 'roast' : 'praise'}` : kind === 'roast' ? 'dissed' : 'praised';
-    line.append(who, tag, document.createTextNode(` ${text}`));
+    line.append(...this.speaker(name, ' ', 'ch-name', !!id, id), tag, ` ${text}`);
     this.push(line);
   }
 
-  /** A flex from someone's bag: who, a "flexed" tag, and the item in its rarity's colour. */
-  flex(name: string, itemName: string, rarity: string, colour: string): void {
+  /** A flex from someone's bag: who, a "flexed" tag, and the item in its rarity's colour. `id`: theirs, when it's
+   *  someone else. */
+  flex(name: string, itemName: string, rarity: string, colour: string, id?: string): void {
     const line = document.createElement('div');
     line.className = 'ch-line';
-    const who = document.createElement('b');
-    who.className = 'ch-name';
-    who.textContent = `${name} `;
     const tag = document.createElement('span');
     tag.className = 'ch-verdict ch-flex';
     tag.textContent = 'flexed';
     const item = document.createElement('b');
     item.style.color = colour;
     item.textContent = ` ${itemName}`;
-    line.append(who, tag, item, document.createTextNode(` (${rarity[0].toUpperCase()}${rarity.slice(1)})`));
+    line.append(...this.speaker(name, ' ', 'ch-name', !!id, id), tag, item, ` (${rarity[0].toUpperCase()}${rarity.slice(1)})`);
     this.push(line);
   }
 
