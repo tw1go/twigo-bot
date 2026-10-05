@@ -3,12 +3,15 @@ import { readFileSync } from 'node:fs';
 import type { IncomingMessage, Server } from 'node:http';
 import type { Duplex } from 'node:stream';
 import { WebSocket, WebSocketServer } from 'ws';
+import { Arena, type ArenaBets, type ArenaSeat, arenaLine } from './town-arena.js';
 import type { OutfitData, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownPlayer, TownServerMessage, TownSystemLine } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
 // messages). The server keeps everyone's tile and checks each step — on the map, not blocked, next to the last
 // one, no faster than walking — and passes it on to everyone else; chat goes to everyone, tidied and rate-limited.
 // Nothing here is saved (positions or chat): leave and you're gone.
+// The Arena's jack en poy against another player is played here too (town-arena.ts decides it; the messages are
+// arena-*).
 // One connection per member (a second tab takes over). Login and profiles come from the caller (server.ts), so
 // this file has no Discord in it.
 
@@ -57,6 +60,8 @@ export interface TownProfile {
 }
 
 export interface TownOptions {
+  /** The Arena's bets (Kowens): where stakes are held and paid; without it, matches have no bets. */
+  arenaBets?: ArenaBets;
   /** The member behind an upgrade request, or null to refuse it. */
   authenticate: (req: IncomingMessage) => Promise<string | null>;
   /** Their nickname, title and look; null if they haven't made a character yet. */
@@ -130,6 +135,8 @@ interface Conn {
   alive: boolean;
   /** Still at the spawn point, so 'here' is accepted (once). */
   fresh: boolean;
+  /** This connection as the Arena sees it (made on first use). */
+  seat?: ArenaSeat;
 }
 
 export function attachTown(server: Server, opts: TownOptions): Town {
@@ -144,6 +151,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   const systemLines: TownSystemLine[] = [];
   let notice: { a: TownAnnouncement; until: number } | null = null;
   const wss = new WebSocketServer({ noServer: true, maxPayload: 1024 });
+  const arena = new Arena(undefined, undefined, opts.arenaBets ?? null, (r) => postSystem({ kind: 'arena', text: arenaLine(r, Math.random()), tone: r.bot === 'loser' ? 'win' : 'lose' })); // mocking the loser (in the loss colour; beating the bot in the win colour)
 
   const send = (c: Conn, m: TownServerMessage) => c.ws.readyState === WebSocket.OPEN && c.ws.send(JSON.stringify(m));
   /** To everyone but `c` (the message is turned into text once). */
@@ -155,6 +163,14 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   const inside = (col: unknown, row: unknown): col is number =>
     Number.isInteger(col) && Number.isInteger(row) && (col as number) >= 0 && (row as number) >= 0 && (col as number) < cols && (row as number) < rows;
   const walkable = (col: number, row: number) => !map.blocked[row]?.[col];
+
+  /** A system feed line: to everyone in town, and kept for people arriving (`userId`: tagged with their town id). */
+  const postSystem = (line: TownSystemLine, userId?: string) => {
+    systemLines.push(line);
+    if (systemLines.length > SYSTEM_RECENT) systemLines.shift();
+    const playerId = userId ? conns.get(userId)?.player.id : undefined;
+    everyone({ t: 'system', line: playerId ? { ...line, playerId } : line });
+  };
 
   /** Token bucket: true if this message may go through. */
   const spend = (c: Conn) => {
@@ -214,6 +230,24 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         c.emotes -= 1;
         return others(c, { t: 'emote', id: p.id, emote: m.emote });
       }
+      case 'arena-queue':
+        if (p.jailed) return; // no games from jail
+        c.seat ??= { key: c.userId, player: p, send: (msg) => send(c, msg) };
+        return arena.join(c.seat, m.bet);
+      case 'arena-bot':
+        if (p.jailed) return;
+        c.seat ??= { key: c.userId, player: p, send: (msg) => send(c, msg) };
+        return arena.playBot(c.seat, m.bet);
+      case 'arena-cancel':
+        return arena.cancel(c.userId);
+      case 'arena-pick':
+        return arena.pick(c.userId, m.hand);
+      case 'arena-rematch':
+        return arena.rematch(c.userId, m.bet);
+      case 'arena-decline':
+        return arena.decline(c.userId);
+      case 'arena-leave':
+        return arena.leave(c.userId);
       case 'say': {
         const muted = opts.moderation?.mutedUntil(c.userId);
         if (muted) return send(c, { t: 'say-refused', reason: 'muted', until: muted });
@@ -258,6 +292,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     const old = conns.get(userId);
     if (old) {
       conns.delete(userId);
+      arena.leave(userId);
       others(old, { t: 'leave', id: old.player.id });
       old.ws.close(4000, 'opened elsewhere');
     }
@@ -281,6 +316,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     ws.on('close', () => {
       if (conns.get(userId) !== c) return; // already replaced by a newer tab
       conns.delete(userId);
+      arena.leave(userId); // mid-match, the other player wins
       others(c, { t: 'leave', id: player.id });
     });
   };
@@ -307,16 +343,12 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       remember({ name: who, text, discord: true });
       everyone({ t: 'say-discord', name: who, text });
     },
-    system(line, userId) {
-      systemLines.push(line);
-      if (systemLines.length > SYSTEM_RECENT) systemLines.shift();
-      const playerId = userId ? conns.get(userId)?.player.id : undefined;
-      everyone({ t: 'system', line: playerId ? { ...line, playerId } : line });
-    },
+    system: postSystem,
     kick(userId, until) {
       const c = conns.get(userId);
       if (!c) return false;
       conns.delete(userId);
+      arena.leave(userId);
       others(c, { t: 'leave', id: c.player.id });
       c.ws.close(KICKED, String(until));
       return true;

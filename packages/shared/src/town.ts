@@ -31,7 +31,41 @@ export type TownClientMessage =
   /** Say something (1–120 characters after tidying; a few at once, then about one every 2 s). */
   | { t: 'say'; text: string }
   /** An emote over your head (one of TOWN_EMOTES). */
-  | { t: 'emote'; emote: TownEmote };
+  | { t: 'emote'; emote: TownEmote }
+  /** The Arena's jack en poy against another player (bot web/town-arena.ts): join the queue (with an optional bet in
+   *  Kowens), leave it, pick a hand for the open round, ask for a rematch or accept one (with a bet), decline one, leave
+   *  the match. The stake is the smaller of the two bets. */
+  | { t: 'arena-queue'; bet?: number }
+  /** A match against the bot, played on the server (so it can be bet on). */
+  | { t: 'arena-bot'; bet?: number }
+  | { t: 'arena-cancel' }
+  | { t: 'arena-pick'; hand: ArenaHand }
+  | { t: 'arena-rematch'; bet?: number }
+  | { t: 'arena-decline' }
+  | { t: 'arena-leave' };
+
+/** Jack en poy: bato (rock) beats gunting (scissors), gunting beats papel (paper), papel beats bato. */
+export type ArenaHand = 'bato' | 'papel' | 'gunting';
+
+/** Server → browser, during an Arena match (everything is "you" and "them", as the player sees it). */
+export type ArenaServerMessage =
+  /** In the queue, waiting for someone. */
+  | { t: 'arena-queued' }
+  /** Matched (or a rematch both accepted): who against, first to `firstTo` round wins, and the stake each put in (Kowens,
+   *  0 for none; the winner gets both). */
+  | { t: 'arena-start'; opponent: Pick<TownPlayer, 'id' | 'nickname' | 'title' | 'outfit'> & { bot?: boolean }; firstTo: number; rematch: boolean; stake: number }
+  /** A round opens: pick within `ms` (a random hand is picked for you after that). */
+  | { t: 'arena-round'; round: number; ms: number }
+  /** Both hands, shown together. `random` says whose hand was picked for them (time ran out); `over` ends the match. */
+  | { t: 'arena-reveal'; you: ArenaHand; them: ArenaHand; result: 'win' | 'lose' | 'draw'; score: [number, number]; random: [boolean, boolean]; over?: 'you' | 'them' }
+  /** The other player left: mid-match, you win (and the stake); after it, no rematch. */
+  | { t: 'arena-left'; youWin: boolean }
+  /** You asked for a rematch; waiting for the other player. */
+  | { t: 'arena-rematch-wait' }
+  /** The other player asks for a rematch, betting `bet` (accept with arena-rematch, or arena-decline). */
+  | { t: 'arena-rematch-ask'; bet: number }
+  /** They said no to your rematch. */
+  | { t: 'arena-rematch-declined' };
 
 /** Emotes: the icons in the art's emote sheet (ui.emotes), plus a wave. */
 export type TownEmote = 'heart' | 'laugh' | 'exclaim' | 'question' | 'kowen' | 'sleep' | 'angry' | 'wave';
@@ -46,7 +80,7 @@ export interface TownChatLine {
 
 /** A line in the town's system feed: something that happened around the server (a dig, a bet). */
 export interface TownSystemLine {
-  kind: 'dig' | 'gamble' | 'jackpot' | 'shop' | 'gift' | 'jail' | 'quest';
+  kind: 'dig' | 'gamble' | 'jackpot' | 'shop' | 'gift' | 'jail' | 'quest' | 'arena';
   text: string;
   /** Colour key: a dig's rarity, win / lose / bust, jackpot, shop, or gift. */
   tone: string;
@@ -104,4 +138,5 @@ export type TownServerMessage =
   /** Someone said something in the town's Discord channel (shown with a Discord mark, no bubble). */
   | { t: 'say-discord'; name: string; text: string }
   /** Your message wasn't sent: too fast, empty / too long once tidied, or you're muted (until when, ms). */
-  | { t: 'say-refused'; reason: 'slow' | 'invalid' | 'muted'; until?: number };
+  | { t: 'say-refused'; reason: 'slow' | 'invalid' | 'muted'; until?: number }
+  | ArenaServerMessage;
