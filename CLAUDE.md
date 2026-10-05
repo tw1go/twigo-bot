@@ -19,7 +19,7 @@ State is one SQLite database, `data/mikazuki.db` (better-sqlite3, WAL), schema i
 ## Commands
 
 - `npm run typecheck` · `npm run build` (shared → bot → game)
-- `npm run dev:game` — Vite dev server (`/play/?preview`, `?time=21:00`, `?outfit=N`, `?debug=wardrobe`)
+- `npm run dev:game` — Vite dev server (`/play/`, `?time=21:00`, `?outfit=N`, `?debug=wardrobe`)
 - `npm run deploy-commands` — register slash commands (needs `.env`; run with `DATA_DIR` pointed at a temp dir
   so it doesn't create a local database)
 - `./deploy/deploy.sh <ssh-target>` — builds, uploads, restarts the bot (see `CLAUDE.local.md`)
@@ -73,9 +73,9 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
 - Town text (`ui/labels.ts`): each character's white name + `<Title>` in the title's colour ('prismatic' = drifting
   rainbow; list in the bot's `web/titles.ts`), and building names that fade up on hover. Drawn
   over everything, never at less than 3 screen px per art px. Zoom is 2×–4×.
-- The town is held behind `?preview` until launch (`src/preview.ts`); `/play/` shows a coming-soon page. Even with
-  `?preview`, only testers may play before launch (the bot's `canPlay`: tester role, mods, admins, owner; `/me`
-  canPlay, enforced on `/ws`, `/outfit`, `/nickname`). Dev: `?canplay=0` shows the testers-only screen.
+- Open beta: `/play/` is the town for every member of the Mikazuki server (no `?preview` gate, no testers-only rule).
+  Only members can log in (the OAuth callback checks; `isMember` in the bot's `web/auth.ts`, also on `/me`, `/ws` and
+  the town's routes). `/gift launch` (pre-registration reward) hasn't been run.
 - Flow (`BootScene`): not logged in → login screen; logged in without a saved look or nickname → character creator
   (`CreateScene` + `ui/creator.ts`, town preloads meanwhile); else the town. Login off → straight to the town as a
   guest. Dev: `?me=anon|new|saved` fakes the login (and stands in when no bot answers /me).
@@ -180,8 +180,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   repeated letters). Actions are logged in the admin channel. The word list lives only in the database.
 - Multiplayer: `net/town.ts` (client, reconnects) ↔ bot `web/town.ts` (WebSocket `/ws`, no Discord code in it, so it
   can run alone for tests); `world/others.ts` draws everyone else. Dev: the dev server runs the town itself (`scripts/dev-town.ts`: the bot's `web/town.ts`,
-  fake login), so two windows `?preview&as=Alice` / `?preview&as=Bob` see and chat with each other;
-  `/__discord?name=&text=` fakes a #town-chat line and town lines print in the dev server's terminal. Dev: with no bot behind the dev server, plain `?preview` acts as `?me=saved`; `?me=anon|new&as=Alice` fakes a member (test values: `&kowens=` `&shovels=` `&digs=` `&status=online|idle|busy|offline|jailed`); to test,
+  fake login), so two windows `?as=Alice` / `?as=Bob` see and chat with each other;
+  `/__discord?name=&text=` fakes a #town-chat line and town lines print in the dev server's terminal. Dev: with no bot behind the dev server, plain `/play/` acts as `?me=saved`; `?me=anon|new&as=Alice` fakes a member (test values: `&kowens=` `&shovels=` `&digs=` `&status=online|idle|busy|offline|jailed`); to test,
   run only the compiled `web/town.js` on 127.0.0.1:8787 with a fake `authenticate` (never the whole bot).
 - Movement: right-click-to-move (tap on touch screens; A* on `blocked`), WASD/arrows (screen directions; from a
   standstill a tap only turns, holding walks), E/Space to enter or sit.

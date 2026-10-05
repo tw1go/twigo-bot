@@ -80,8 +80,6 @@ export interface MeResponse {
   newTitle: boolean;
   /** Digging today (see /dig and /redeem reward:Shovel). */
   dig: MeDig;
-  /** May play the web town (before launch: testers, mods and admins; after launch: everyone). */
-  canPlay: boolean;
   /** Their Discord status, shown on the avatar (not sent yet: needs the Presence intent; dev fakes it). */
   status?: PresenceStatus;
 }

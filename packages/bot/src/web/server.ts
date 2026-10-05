@@ -26,7 +26,7 @@ import { kowen } from '../kowens.js';
 import { filterText, kickedUntil, mutedUntil } from './town-mod.js';
 import { getOutfit, parseOutfit, saveOutfit } from './outfit.js';
 import { LAUNCH_REWARD, isPreregistered, launched, preregCount, preregister } from '../prereg/prereg.js';
-import { callback, canPlay, clearSessionCookie, endSessions, isMember, login, loginEnabled, logout, sessionUser } from './auth.js';
+import { callback, clearSessionCookie, endSessions, isMember, login, loginEnabled, logout, sessionUser } from './auth.js';
 import { roll } from './finds.js';
 
 // A tiny HTTP API for twigo's room (tw1go.github.io). Read-only apart from
@@ -42,31 +42,31 @@ import { roll } from './finds.js';
 //   GET  /health        "ok"
 //
 // Web game (/play, same origin, so no CORS): Discord login (see auth.ts) and
-//   GET  /me            the logged-in member: name, avatar, Kowens, items, canPlay (401 if not logged in)
+//   GET  /me            the logged-in member: name, avatar, Kowens, items (401 if not logged in or not in the server)
 //   GET  /prereg        pre-registration status: open, count, reward (public)
 //   POST /prereg        pre-register the logged-in member (from the game's page only)
 //   PUT  /outfit        save the logged-in member's character look (from the game's page only)
 //   PUT  /nickname      { nickname } -> 200 { nickname } | 400 invalid | 409 taken (from the game's page only)
-//   GET  /town/leaderboard  top 10 by Kowens with town nicknames and titles, and the viewer's rank (may play)
-//   GET  /town/news     the latest announcements and patch notes from Discord (may play)
-//   GET  /town/jackpot  the jackpot booth: pot, players, the viewer's tickets, next and last draw (may play)
-//   POST /town/jackpot  { tickets } buy jackpot tickets (from the game's page only; may play)
-//   GET  /town/bank     wallet, vault and loans (may play)
-//   POST /town/bank     { action: deposit|withdraw|borrow|repay, amount? } (from the game's page only; may play)
-//   GET  /town/shop     the rewards shop: what /redeem sells, as the viewer sees it (may play)
-//   POST /town/shop     { id, quantity } redeem a reward (from the game's page only; may play)
-//   GET  /town/player?id=  another player in town (by town id): /balance and /status for them (may play)
-//   POST /town/give     { to, amount } give Kowens to a player in town (from the game's page only; may play)
-//   POST /town/verdict  { to, mode: diss|praise|judge } on a player in town, 1 Kowen (from the game's page only; may play)
-//   GET  /town/outpost  the Tanod outpost: who's in jail and how Tanod Patrol works (may play)
-//   POST /town/bail     { id } bail someone out (yourself or a friend), /bail's rules (from the game's page only; may play)
-//   GET  /town/board    the notice board: open and in-progress quests (may play)
-//   POST /town/board    { action: post|accept|giveup|complete|cancel, id? | task + reward } (from the game's page only; may play)
-//   GET  /town/inventory  the bag: dug-up items, Master Keys and potions, slots, wallet (may play)
-//   POST /town/sell     { id, quantity } sell a dug-up item, /sell's prices (from the game's page only; may play)
-//   POST /town/flex     { id } flex a dug-up item in the games channel, /flex's cooldown (from the game's page only; may play)
-//   POST /town/gamble   { bet, call: kara|krus } Kara y Krus at the Casino, /gamble's odds (from the game's page only; may play)
-//   POST /town/dig      dig at the Mine (/dig's rules; from the game's page only; may play)
+//   GET  /town/leaderboard  top 10 by Kowens with town nicknames and titles, and the viewer's rank (members)
+//   GET  /town/news     the latest announcements and patch notes from Discord (members)
+//   GET  /town/jackpot  the jackpot booth: pot, players, the viewer's tickets, next and last draw (members)
+//   POST /town/jackpot  { tickets } buy jackpot tickets (from the game's page only; members)
+//   GET  /town/bank     wallet, vault and loans (members)
+//   POST /town/bank     { action: deposit|withdraw|borrow|repay, amount? } (from the game's page only; members)
+//   GET  /town/shop     the rewards shop: what /redeem sells, as the viewer sees it (members)
+//   POST /town/shop     { id, quantity } redeem a reward (from the game's page only; members)
+//   GET  /town/player?id=  another player in town (by town id): /balance and /status for them (members)
+//   POST /town/give     { to, amount } give Kowens to a player in town (from the game's page only; members)
+//   POST /town/verdict  { to, mode: diss|praise|judge } on a player in town, 1 Kowen (from the game's page only; members)
+//   GET  /town/outpost  the Tanod outpost: who's in jail and how Tanod Patrol works (members)
+//   POST /town/bail     { id } bail someone out (yourself or a friend), /bail's rules (from the game's page only; members)
+//   GET  /town/board    the notice board: open and in-progress quests (members)
+//   POST /town/board    { action: post|accept|giveup|complete|cancel, id? | task + reward } (from the game's page only; members)
+//   GET  /town/inventory  the bag: dug-up items, Master Keys and potions, slots, wallet (members)
+//   POST /town/sell     { id, quantity } sell a dug-up item, /sell's prices (from the game's page only; members)
+//   POST /town/flex     { id } flex a dug-up item in the games channel, /flex's cooldown (from the game's page only; members)
+//   POST /town/gamble   { bet, call: kara|krus } Kara y Krus at the Casino, /gamble's odds (from the game's page only; members)
+//   POST /town/dig      dig at the Mine (/dig's rules; from the game's page only; members)
 //   POST /title/seen    the game showed the member their new title (from the game's page only)
 //   WS   /ws            the live town: who else is there and where (see town.ts; from the game's page only)
 
@@ -188,7 +188,7 @@ async function me(client: Client, req: IncomingMessage, res: ServerResponse): Pr
     const item = ITEM_BY_ID.get(id)!;
     return { id, name: item.name, emoji: item.emoji, rarity: item.rarity, count };
   });
-  const body: MeResponse = { id: userId, name, avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items, preregistered: isPreregistered(userId), outfit: getOutfit(userId), nickname: getNickname(userId), title: titleOf(userId), newTitle: titleIsNew(userId), canPlay: await canPlay(client, userId), status: await statusOf(client, userId),
+  const body: MeResponse = { id: userId, name, avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items, preregistered: isPreregistered(userId), outfit: getOutfit(userId), nickname: getNickname(userId), title: titleOf(userId), newTitle: titleIsNew(userId), status: await statusOf(client, userId),
     dig: digStatus(userId) };
   send(res, 200, JSON.stringify(body));
 }
@@ -311,7 +311,7 @@ export function startWebServer(client: Client): void {
         } catch {
           // invalid JSON → rejected below
         }
-        if (!(await canPlay(client, userId))) return send(res, 403, '{"error":"testers only for now"}');
+        if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
         const outfit = parseOutfit(body);
         if (!outfit) return send(res, 400, '{"error":"invalid outfit"}');
         saveOutfit(userId, outfit);
@@ -321,14 +321,14 @@ export function startWebServer(client: Client): void {
         if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
         const userId = sessionUser(req);
         if (!userId) return send(res, 401, '{"error":"not logged in"}');
-        if (!(await canPlay(client, userId))) return send(res, 403, '{"error":"testers only for now"}');
+        if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
         return send(res, 200, JSON.stringify(await townLeaderboard(client, userId)));
       }
       if (req.method === 'GET' && path === '/town/news') {
         if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
         const userId = sessionUser(req);
         if (!userId) return send(res, 401, '{"error":"not logged in"}');
-        if (!(await canPlay(client, userId))) return send(res, 403, '{"error":"testers only for now"}');
+        if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
         return send(res, 200, JSON.stringify(await townNews(client)));
       }
       if (path === '/town/jackpot' && (req.method === 'GET' || req.method === 'POST')) {
@@ -344,7 +344,7 @@ export function startWebServer(client: Client): void {
             // invalid JSON → rejected below
           }
         }
-        if (!(await canPlay(client, userId))) return send(res, 403, '{"error":"testers only for now"}');
+        if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
         if (req.method === 'GET') return send(res, 200, JSON.stringify(await townJackpot(client, userId)));
         const count = body?.tickets;
         if (typeof count !== 'number' || !Number.isInteger(count) || count < 1 || count > MAX_TICKETS) {
@@ -365,7 +365,7 @@ export function startWebServer(client: Client): void {
             // invalid JSON → rejected below
           }
         }
-        if (!(await canPlay(client, userId))) return send(res, 403, '{"error":"testers only for now"}');
+        if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
         const names = (id: string) => nameOf(client, id);
         if (req.method === 'GET') return send(res, 200, JSON.stringify(await townBank(userId, names)));
         const action = body?.action;
@@ -389,7 +389,7 @@ export function startWebServer(client: Client): void {
             // invalid JSON → rejected below
           }
         }
-        if (!(await canPlay(client, userId))) return send(res, 403, '{"error":"testers only for now"}');
+        if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
         if (req.method === 'GET') return send(res, 200, JSON.stringify(townShop(userId)));
         const id = body?.id;
         const quantity = body?.quantity ?? 1;
@@ -411,7 +411,7 @@ export function startWebServer(client: Client): void {
             // invalid JSON → rejected below
           }
         }
-        if (!(await canPlay(client, userId))) return send(res, 403, '{"error":"testers only for now"}');
+        if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
         const playerId = req.method === 'GET' ? url.searchParams.get('id') : body?.to;
         const target = typeof playerId === 'string' ? town?.memberOf(playerId) : null;
         if (!target) return send(res, 404, '{"error":"not in town"}');
@@ -438,7 +438,7 @@ export function startWebServer(client: Client): void {
             // invalid JSON → rejected below
           }
         }
-        if (!(await canPlay(client, userId))) return send(res, 403, '{"error":"testers only for now"}');
+        if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
         const names = (id: string) => nameOf(client, id);
         if (req.method === 'GET') return send(res, 200, JSON.stringify(await townOutpost(userId, names)));
         if (typeof body?.id !== 'string') return send(res, 400, '{"error":"invalid id"}');
@@ -457,7 +457,7 @@ export function startWebServer(client: Client): void {
             // invalid JSON → rejected below
           }
         }
-        if (!(await canPlay(client, userId))) return send(res, 403, '{"error":"testers only for now"}');
+        if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
         const names = (id: string) => nameOf(client, id);
         if (req.method === 'GET') return send(res, 200, JSON.stringify(await townBoard(userId, names)));
         const action = body?.action;
@@ -481,7 +481,7 @@ export function startWebServer(client: Client): void {
             // invalid JSON → rejected below
           }
         }
-        if (!(await canPlay(client, userId))) return send(res, 403, '{"error":"testers only for now"}');
+        if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
         if (req.method === 'GET') return send(res, 200, JSON.stringify(townInventory(userId)));
         if (typeof body?.id !== 'string') return send(res, 400, '{"error":"invalid item"}');
         if (path === '/town/flex') {
@@ -502,7 +502,7 @@ export function startWebServer(client: Client): void {
         } catch {
           // invalid JSON → rejected below
         }
-        if (!(await canPlay(client, userId))) return send(res, 403, '{"error":"testers only for now"}');
+        if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
         const bet = body?.bet;
         const call = body?.call;
         if (typeof bet !== 'number' || !Number.isInteger(bet) || bet < 1 || bet > 1_000_000 || (call !== 'kara' && call !== 'krus')) {
@@ -515,7 +515,7 @@ export function startWebServer(client: Client): void {
         if (!fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
         const userId = sessionUser(req);
         if (!userId) return send(res, 401, '{"error":"not logged in"}');
-        if (!(await canPlay(client, userId))) return send(res, 403, '{"error":"testers only for now"}');
+        if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
         return send(res, 200, JSON.stringify(await digInTown(client, userId, await nameOf(client, userId), digStatus)));
       }
       if (req.method === 'POST' && path === '/title/seen') {
@@ -537,7 +537,7 @@ export function startWebServer(client: Client): void {
         } catch {
           // invalid JSON → rejected below
         }
-        if (!(await canPlay(client, userId))) return send(res, 403, '{"error":"testers only for now"}');
+        if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
         const nickname = parseNickname(body?.nickname);
         if (!nickname) return send(res, 400, '{"error":"invalid nickname"}');
         if (setNickname(userId, nickname) === 'taken') return send(res, 409, '{"error":"taken"}');
@@ -576,7 +576,7 @@ export function startWebServer(client: Client): void {
       authenticate: async (req) => {
         if (!loginEnabled() || !fromGame(req)) return null;
         const userId = sessionUser(req);
-        return userId && (await canPlay(client, userId)) ? userId : null; // members who may play (testers before launch)
+        return userId && (await isMember(client, userId)) ? userId : null; // members of the server
       },
       profile: (userId) => {
         const nickname = getNickname(userId);

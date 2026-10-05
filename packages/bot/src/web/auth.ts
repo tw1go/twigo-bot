@@ -3,7 +3,6 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { type Client, PermissionFlagsBits } from 'discord.js';
 import { config } from '../config.js';
 import { db } from '../db/db.js';
-import { launched } from '../prereg/prereg.js';
 
 // Discord login for the web game (/play), over OAuth2 with the `identify` scope only (no email, no server list).
 // Discord's access token is used once to learn who is logging in, then revoked. The browser gets a random session
@@ -57,27 +56,15 @@ function redirect(res: ServerResponse, location: string, cookies: string[] = [])
 
 const sameText = (a: string, b: string) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 
-/** Whether this Discord user is in the server. Single-member fetches don't need the privileged members intent. */
+/** Whether this Discord user is in the server: everyone in it may play the web town. Single-member fetches don't need
+ *  the privileged members intent. */
 export async function isMember(client: Client, userId: string): Promise<boolean> {
   const guild = client.guilds.cache.get(config.guildId ?? '') ?? client.guilds.cache.first();
   return !!(guild && (await guild.members.fetch(userId).catch(() => null)));
 }
 
-/** Discord permissions that count as a mod or an admin (the web town before launch; /town moderation). */
+/** Discord permissions that count as a mod or an admin (/town moderation). */
 export const STAFF = [PermissionFlagsBits.Administrator, PermissionFlagsBits.ManageGuild, PermissionFlagsBits.ModerateMembers, PermissionFlagsBits.ManageMessages];
-
-/**
- * Whether a member may play the web town. Before launch: the tester role (GAME_TESTER_ROLE_ID), mods, admins and
- * the owner. After launch (/gift launch): everyone in the server.
- */
-export async function canPlay(client: Client, userId: string): Promise<boolean> {
-  if (launched() || userId === config.rewardOwnerId) return true;
-  const guild = client.guilds.cache.get(config.guildId ?? '') ?? client.guilds.cache.first();
-  const member = guild ? await guild.members.fetch(userId).catch(() => null) : null;
-  if (!member) return false;
-  if (config.gameTesterRoleId && member.roles.cache.has(config.gameTesterRoleId)) return true;
-  return STAFF.some((p) => member.permissions.has(p));
-}
 
 /** The logged-in member's ID, or null. */
 export function sessionUser(req: IncomingMessage): string | null {

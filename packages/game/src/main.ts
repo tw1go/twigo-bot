@@ -4,14 +4,11 @@ import { CreateScene, TownPreloadScene } from './scenes/CreateScene';
 import { TownScene } from './scenes/TownScene';
 import { WardrobeScene } from './scenes/WardrobeScene';
 import { startHud } from './hud';
-import { previewEnabled, showComingSoon } from './preview';
 import { showVersion } from './ui/version';
 
-// The town is held behind ?preview until launch (see preview.ts); everyone else gets the coming-soon page.
-// (?debug tools only work together with preview.)
+// The town, open to every member of the Mikazuki server (the bot checks; ?preview from before is simply ignored).
 document.getElementById('boot-msg')?.remove(); // shown by the page itself until this script arrives
-if (previewEnabled()) startGame();
-else showComingSoon(document.getElementById('game')!);
+startGame();
 
 void startHud(document.getElementById('hud')!);
 showVersion();

@@ -242,9 +242,9 @@ Kowens and items. The bot side is `packages/bot/src/web/auth.ts`: OAuth2 with th
 the server only, Discord's token revoked right after use, and 30-day sessions in the `sessions` table (only the
 token's SHA-256 is stored). Routes: `GET /auth/login`, `GET /auth/callback`, `POST /auth/logout`, `GET /me`.
 
-Before launch only testers may play: members with the `GAME_TESTER_ROLE_ID` role, mods (Manage Messages or Timeout
-Members), admins and the owner (`canPlay` in `web/auth.ts`). Others who log in see a "testers only" screen, and `/ws`,
-`PUT /outfit` and `PUT /nickname` refuse them. After `/gift launch` everyone may.
+Every member of the Mikazuki server may play (the open beta; `isMember` in `web/auth.ts`): logging in refuses anyone
+else, a session ends when they leave the server, and `/ws` and the town's routes check membership too. `/gift launch`
+(the launch reward for pre-registrations) is separate.
 
 The town itself opens on a login screen (`ui/login.ts`); a member's first visit then goes through the character
 creator (`ui/creator.ts`: a nickname, saved with `PUT /nickname`, unique ignoring case and `space _ - .`; and a
