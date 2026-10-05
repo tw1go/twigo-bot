@@ -92,7 +92,9 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   name top left in the item frame (round pixel avatar + status dot from `/me` status: jailed, else the Discord status when the Presence
   intent is on in the Developer Portal — the bot checks at startup and only asks for it then — else online), with Kowens and shovels beside it (they wrap below on phones); Settings top right;
   Kowens/shovels have "+" info (from `/me`: `kowens`, `dig`). The
-  shovel icon is `ui-shovel.png` (manifest ui.shovelIcon).
+  shovel icon is `ui-shovel.png` (manifest ui.shovelIcon). The Kowens follow every balance change, wherever it came from:
+  the credits store's `setWalletHook` → town `wallet` message → the HUD reloads. `/gift kowens` and `/gift everyone` also show
+  the gift pop-up in town (`townGift`). Dev: `/__gift?as=Name&amount=50` (or `&wallet=1`).
 - Minimap (`ui/minimap.ts`, top right in the HUD's `.th-map` slot, the jackpot counter left of it, News and Settings in a row
   under it; on phones the bag button goes under them): the town's isometric diamond, its ground and buildings from
   town.json, drawn once; green dots

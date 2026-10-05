@@ -8,6 +8,7 @@ import { ATTEND_REWARD, TOP_REWARD, openPayoutPanel } from '../minewars/payout.j
 import { kowen } from '../kowens.js';
 import { LAUNCH_REWARD, launchPayout, launched, preregPanel } from '../prereg/prereg.js';
 import { TITLES, giveTitle } from '../web/titles.js';
+import { townGift } from '../web/town-feed.js';
 
 // Only the gifter (REWARD_OWNER_ID) can use this. Hidden from non-admins by default.
 export const gift: Command = {
@@ -104,7 +105,10 @@ export const gift: Command = {
       const reason = interaction.options.getString('reason');
       // Straight into wallets: a gift isn't income, so loans don't garnish it.
       const ids = accountIds();
-      for (const id of ids) add(id, amount, { garnish: false });
+      for (const id of ids) {
+        add(id, amount, { garnish: false });
+        townGift(id, 'The gifter', amount); // a pop-up for those in the web town
+      }
       console.log(`[gift] everyone (${ids.length}) +${amount}${reason ? ` (${reason})` : ''}`);
       await interaction.reply({
         content: `🎁 **Everyone who has used the bot** (${ids.length} members) received **${amount.toLocaleString('en-US')}** ${kowen(amount)} from the gifter!${reason ? ` _${reason}_` : ''}\n-# Check yours with /balance.`,
@@ -176,6 +180,7 @@ export const gift: Command = {
       return;
     }
     const now = add(target.id, amount);
+    townGift(target.id, 'The gifter', amount); // the gift pop-up, if they're in the web town
     console.log(`[gift] ${target.id} +${amount}${reason ? ` (${reason})` : ''}`);
     await interaction.reply({
       content: `🎁 ${target} received **${amount.toLocaleString('en-US')}** ${kowen(amount)} from the gifter!${reason ? ` _${reason}_` : ''}\n-# They now have ${now.toLocaleString('en-US')} ${kowen(now)}.`,

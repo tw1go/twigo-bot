@@ -521,6 +521,7 @@ export class TownScene extends Phaser.Scene {
         window.dispatchEvent(new Event('mk-wallet')); // the HUD (its status dot shows jail too)
         return;
       }
+      if (m.t === 'wallet') return void window.dispatchEvent(new Event('mk-wallet')); // Kowens changed elsewhere (Discord…)
       if (m.t === 'gift') {
         window.dispatchEvent(new Event('mk-wallet')); // the HUD's Kowens
         return void showReward({ title: 'Gift', graphic: { kind: 'kowens', amount: m.amount }, message: `${m.from} gave you ${m.amount} ${m.amount === 1 ? 'Kowen' : 'Kowens'}!` });

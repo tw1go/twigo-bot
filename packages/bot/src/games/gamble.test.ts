@@ -85,3 +85,15 @@ test('a bust puts 70% of the bet (rounded down) into the jackpot pot', async () 
   assert.equal(raidMoney(), before + 10);
   assert.equal(pot(), raidMoney()); // no tickets yet: the pot is the raid money
 });
+
+test('balance changes reach the wallet hook once each (the web town reloads that HUD)', async () => {
+  const { setWalletHook } = await import('../credits/store.js');
+  const seen: string[] = [];
+  setWalletHook((id) => seen.push(id));
+  add('hud', 5);
+  add('hud', 0); // nothing changed: no call
+  await gambleFor('hud', 1, 'safe').catch(() => null);
+  assert.equal(seen[0], 'hud');
+  assert.ok(seen.every((id) => id === 'hud'));
+  assert.ok(seen.length >= 1 && seen.length <= 2);
+});

@@ -14,6 +14,7 @@ import { attachTown } from '../../bot/src/web/town.ts';
 //   GET /__announce?kind=jackpot|notice&title=…&text=…   a banner at the top
 //   GET /__jail?name=Bob&on=1   shows Bob as jailed (on=0: released) to everyone in town
 //   GET /__flex?as=Bob&itemId=rock&itemName=Rock&rarity=junk   Bob flexes an item (chat line + bubble)
+//   GET /__gift?as=Alice&amount=50   Alice gets the gift pop-up (as from /gift kowens); &wallet=1: only her HUD's Kowens reload
 // What's said in town is printed here instead of going to Discord.
 
 export function devTown(): Plugin {
@@ -62,6 +63,13 @@ export function devTown(): Plugin {
           q.get('as') ?? undefined,
         );
         res.end('sent to the system feed\n');
+      });
+      server.middlewares.use('/__gift', (req, res) => {
+        const q = new URL(req.url ?? '/', 'http://localhost').searchParams;
+        const who = q.get('as') ?? '';
+        if (q.has('wallet')) town.wallet(who);
+        else town.gifted(who, 'The gifter', Number(q.get('amount') ?? 50));
+        res.end('sent\n');
       });
       server.middlewares.use('/__jail', (req, res) => {
         const q = new URL(req.url ?? '/', 'http://localhost').searchParams;

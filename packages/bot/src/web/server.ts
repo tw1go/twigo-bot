@@ -2,7 +2,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import type { LeaderboardResponse, LeaderboardRow, MeDig, MeResponse, PresenceStatus, PreregResponse, PreregStatus, TownJackpotBuyResponse, TownJackpotResponse, TownLeaderboardResponse } from '@mikazuki/shared';
 import { GatewayIntentBits, type Client } from 'discord.js';
 import { config } from '../config.js';
-import { balance, rankOf, topBalances, totalKowens, vaultBalance } from '../credits/store.js';
+import { balance, rankOf, setWalletHook, topBalances, totalKowens, vaultBalance } from '../credits/store.js';
 import { DIGS_PER_DAY, SHOVEL_COST, SHOVEL_USES, SHOVELS_PER_DAY, digsToday, inventory, shovelUses, shovelsBoughtToday } from '../dig/store.js';
 import { ITEM_BY_ID } from '../dig/items.js';
 import { getNickname, parseNickname, setNickname } from './nickname.js';
@@ -587,6 +587,8 @@ export function startWebServer(client: Client): void {
     });
     toDiscord = bridgeTownChat(client, town);
     connectTownFeed(town);
+    const live = town;
+    setWalletHook((userId) => live.wallet(userId)); // the HUD's Kowens follow any change, wherever it came from
   } catch (err) {
     console.error('[web] town disabled, map not loaded:', err);
   }

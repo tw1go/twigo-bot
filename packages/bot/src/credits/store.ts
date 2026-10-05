@@ -79,8 +79,20 @@ const toRow = (id: string, a: Account): AccountRow => ({
   vault: a.vault ?? null, give_day: a.giveDay ?? null, give_sent_today: a.giveSentToday ?? null,
 });
 
+// Whose Kowens (wallet or vault) changed since the last save: told to the web town, so the HUD stays right whatever
+// moved them (a command, voice rewards, a draw…). The town only passes it on to members who are in it.
+const shown = new Map(Object.entries(accounts).map(([id, a]) => [id, `${a.balance}|${a.vault ?? 0}`]));
+let walletHook: ((userId: string) => void) | null = null;
+export const setWalletHook = (hook: (userId: string) => void) => (walletHook = hook);
+
 function save(): void {
   table.save(Object.entries(accounts).map(([id, a]) => toRow(id, a))); // writes only the accounts that changed
+  for (const [id, a] of Object.entries(accounts)) {
+    const now = `${a.balance}|${a.vault ?? 0}`;
+    if (shown.get(id) === now) continue;
+    shown.set(id, now);
+    walletHook?.(id);
+  }
 }
 
 /** Everyone with a Kowens account, i.e. everyone who has used the bot. */

@@ -92,6 +92,8 @@ export interface Town {
   memberOf(playerId: string): string | null;
   /** Tells a member, if they're in town, that someone gave them Kowens. */
   gifted(userId: string, from: string, amount: number): void;
+  /** Tells a member, if they're in town, that their Kowens changed (the HUD reloads them). */
+  wallet(userId: string): void;
   /** A member was jailed or released: everyone in town sees it under their name (them included). */
   setJailed(userId: string, on: boolean): void;
   /** A member (if in town) flexed an item from their bag: to everyone, them included (chat line + bubble). */
@@ -326,6 +328,10 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     gifted(userId, from, amount) {
       const c = conns.get(userId);
       if (c) send(c, { t: 'gift', from, amount });
+    },
+    wallet(userId) {
+      const c = conns.get(userId);
+      if (c) send(c, { t: 'wallet' });
     },
     setJailed(userId, on) {
       const c = conns.get(userId);

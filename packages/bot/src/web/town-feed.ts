@@ -32,6 +32,11 @@ export function announce(a: TownAnnouncement): void {
   town?.announce(a);
 }
 
+/** A gift pop-up for a member in town (Kowens from `from`), e.g. /gift kowens. */
+export function townGift(userId: string, from: string, amount: number): void {
+  town?.gifted(userId, from, amount);
+}
+
 /** Shows a member as jailed (or not) in the town, if they're in it. */
 export function townJailed(userId: string, on: boolean): void {
   town?.setJailed(userId, on);
