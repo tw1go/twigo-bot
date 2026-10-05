@@ -65,6 +65,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
 - Night life (`world/night-life.ts`, while the lamps are on, fading in/out): fireflies (fx `firefly`, ADD, ~140 seeded
   near trees/bushes/ferns, drifting and blinking) and moths (fx `moth`, 1–2 round half the lamps' lanterns, over the glow
   on the near side). Only those on screen are drawn; not night-tinted. The art is tiny and drawn in the palette.
+  A seeded 20% of lamps are faulty (`WorldObjects.setLamps(on, time)`): at night, every 10–45 s, a flicker or a 3–20 s
+  blackout that sputters back; daylight resets them.
 - Outskirts (`world/outskirts.ts`, town.json `outskirts`): a seeded forest fills what the camera can see past the map
   (grass, the river carried on outward, trees with shadows and tufts, undergrowth). Not walkable and not part of the
   camera bounds; `clear` strips beyond each edge (wider on the river sides) keep trees from hiding players.

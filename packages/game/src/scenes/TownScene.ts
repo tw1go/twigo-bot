@@ -286,7 +286,7 @@ export class TownScene extends Phaser.Scene {
     this.tellServer();
     if (this.follow && !this.intro && !this.inside && !this.peek) this.followPlayer();
     this.culler.update(this.cameras.main.worldView);
-    this.objects.setLamps(this.lampsOn); // glows follow their lamp's visibility
+    this.objects.setLamps(this.lampsOn, time); // glows follow their lamp's visibility; faulty lamps act up
     this.nightLife.update(time, this.lampsOn, this.cameras.main.worldView); // fireflies and moths, from dusk to dawn
     if (time >= this.nextSkyCheck) {
       this.nextSkyCheck = time + 1000;

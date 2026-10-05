@@ -4,6 +4,7 @@ import { assetProblems } from '../characters/doll';
 import { tileToScreen } from '../iso';
 import { CHARACTER_BIAS, GLOW_DEPTH, GROUND_SHADOW_DEPTH, frontDepth } from './depth';
 import { differs, visible } from '../util/pixels';
+import { hash, rng } from './rng';
 
 // Everything that stands on the ground: buildings, props, trees (with their ground shadow and tufts), the fence,
 // lamps (+ night glow) and looping effects. Each object's manifest anchor sits on the top corner of its tile
@@ -37,7 +38,28 @@ export interface Bench {
 export interface Lamp {
   sprite: Phaser.GameObjects.Image;
   glow: Phaser.GameObjects.Image;
+  /** Whether it shows lamp-on (with its glow) right now. */
+  lit: boolean;
+  /** An unreliable lamp (some are): now and then it flickers, or goes out for a while. */
+  faulty?: Fault;
 }
+
+/** A faulty lamp's next trouble, and the trouble it's in. */
+interface Fault {
+  next: number; // when the next trouble starts (ms, scene time; 0 = not planned yet)
+  mode: 'flicker' | 'out' | null;
+  until: number;
+  toggleAt: number;
+  dark: boolean;
+}
+
+/** Share of lamps that are faulty (seeded by position), and how they misbehave at night. */
+const FAULTY_LAMPS = 0.2;
+const FAULT_EVERY: Vec2 = [10_000, 45_000]; // ms between troubles
+const FLICKER_MS: Vec2 = [400, 1300];
+const OUT_MS: Vec2 = [3_000, 20_000];
+const OUT_CHANCE = 0.3; // of a trouble being a blackout rather than a flicker
+const between = ([a, b]: Vec2) => a + Math.random() * (b - a);
 
 /** A footprint bigger than one tile, for the in-front/behind check. */
 interface BigObject {
@@ -59,7 +81,6 @@ export class WorldObjects {
   readonly benches: Bench[] = [];
   readonly lamps: Lamp[] = [];
   private readonly big: BigObject[] = [];
-  private lampsOn = false;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -214,17 +235,56 @@ export class WorldObjects {
       .setBlendMode(Phaser.BlendModes.ADD)
       .setDepth(GLOW_DEPTH)
       .setVisible(false);
-    this.lamps.push({ sprite, glow });
+    const faulty = rng(hash(Math.round(sprite.x), Math.round(sprite.y), 41))() < FAULTY_LAMPS;
+    this.lamps.push({ sprite, glow, lit: false, ...(faulty ? { faulty: { next: 0, mode: null, until: 0, toggleAt: 0, dark: false } } : {}) });
   }
 
-  /** Dusk to dawn: lamp-on + glow (only for lamps on screen); by day: lamp-off. */
-  setLamps(on: boolean): void {
-    if (on !== this.lampsOn) {
-      this.lampsOn = on;
-      const key = (on ? this.M.props['lamp-on'] : this.M.props['lamp-off']).file;
-      for (const l of this.lamps) l.sprite.setTexture(key);
+  /** Dusk to dawn: lamp-on + glow (only for lamps on screen); by day: lamp-off. With the scene's `time` (each frame),
+   *  faulty lamps act up at night. */
+  setLamps(on: boolean, time?: number): void {
+    const onKey = this.M.props['lamp-on'].file;
+    const offKey = this.M.props['lamp-off'].file;
+    for (const l of this.lamps) {
+      const f = l.faulty;
+      if (f) {
+        if (on && time !== undefined) this.fault(f, time);
+        else if (!on) Object.assign(f, { next: 0, mode: null, dark: false }); // daylight fixes everything
+      }
+      const lit = on && !f?.dark;
+      if (lit !== l.lit) {
+        l.lit = lit;
+        l.sprite.setTexture(lit ? onKey : offKey);
+      }
+      l.glow.setVisible(lit && l.sprite.visible);
     }
-    for (const l of this.lamps) l.glow.setVisible(on && l.sprite.visible);
+  }
+
+  /** A faulty lamp's night: fine for a while, then a flicker (rapid on/off) or a blackout that sputters back on. */
+  private fault(f: Fault, time: number): void {
+    if (!f.next) f.next = time + between(FAULT_EVERY);
+    if (!f.mode) {
+      if (time < f.next) return;
+      const out = Math.random() < OUT_CHANCE;
+      f.mode = out ? 'out' : 'flicker';
+      f.until = time + between(out ? OUT_MS : FLICKER_MS);
+      f.toggleAt = time;
+    }
+    if (time >= f.until) {
+      if (f.mode === 'out') {
+        f.mode = 'flicker'; // coming back: a short sputter first
+        f.until = time + between([300, 800]);
+      } else {
+        f.mode = null;
+        f.dark = false;
+        f.next = time + between(FAULT_EVERY);
+      }
+      return;
+    }
+    if (f.mode === 'out') f.dark = true;
+    else if (time >= f.toggleAt) {
+      f.dark = !f.dark;
+      f.toggleAt = time + 40 + Math.random() * (f.dark ? 90 : 160); // dark blinks shorter than lit ones
+    }
   }
 
   private sparkle(sprite: Phaser.GameObjects.Image, depth: number): void {
