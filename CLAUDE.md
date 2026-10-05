@@ -149,6 +149,14 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   potions say how they're used; tabs All / Dug up / Misc; item slots bordered in their rarity's colour; B toggles it;
   Kowens at the bottom. Bot `GET /town/inventory`, `POST /town/sell`, `POST /town/flex`
   (`web/town-bag.ts`; flex shares `flexEmbed` and the cooldown with `/flex`). Dev: a pretend bag (`&slots=18`).
+- Casino (`ui/casino.ts`, left click the casino): Kara y Krus at a felt table under the casino lights — bet chips, call
+  Kara or Krus, the peso flips; a raid shows the Tanod ("Huli ka!") with a red/blue flash. Bot `POST /town/gamble`
+  (`web/town-casino.ts`); `/gamble` and the Casino share `gambleFor` (`games/gamble.ts`, tested), the Casino at the
+  gambling channel's low raid chance; town bets post in the gambling channel. Bet feed lines carry the gambler's town
+  `playerId` and `amount`: a win of 50+ bursts coins over them (fx `coin-burst`, else `coin-sparkle`), a bust shows a
+  siren (fx `siren`, else `alert`) — `Character.flash()`. Art is optional (manifest ui `coinFlip`, `coinFaces`
+  [kara, krus], `tanodBust`, `casinoFelt`; fx `coin-burst`, `siren`): without it the coin and felt are drawn in code
+  (`ui/pixel-tiles.ts`). Dev: `&win=1` / `&lose=1` / `&bust=1`; `/__system?kind=gamble&tone=win&amount=60&as=Name`.
 - Moderation (`/town mute|unmute|kick|filter`, mods/admins; bot `web/town-mod.ts`, kv 'town-moderation'): mutes block
   town chat, kicks close the socket (4001, back-at time) and refuse rejoining, blocked words become *** (whole words,
   repeated letters). Actions are logged in the admin channel. The word list lives only in the database.

@@ -15,10 +15,16 @@ export function connectTownFeed(t: Town): void {
 /** Someone's name as the town knows them. */
 export const townName = (user: User): string => getNickname(user.id) ?? user.globalName ?? user.username;
 
-/** A line for the town's system feed. Digs also say what was found and who dug it (the town turns the Discord id
- *  into the digger's town player id). */
-export function feed(kind: TownSystemLine['kind'], text: string, tone: string, dig?: { userId: string; itemId: string; itemName: string }): void {
-  town?.system({ kind, text, tone, ...(dig ? { itemId: dig.itemId, itemName: dig.itemName } : {}) }, dig?.userId);
+/** A line for the town's system feed. Digs and bets can also say who (the town turns the Discord id into their town
+ *  player id), what was found, and how much was bet. */
+export function feed(
+  kind: TownSystemLine['kind'],
+  text: string,
+  tone: string,
+  who?: { userId: string; itemId?: string; itemName?: string; amount?: number },
+): void {
+  const extra = { ...(who?.itemId ? { itemId: who.itemId, itemName: who.itemName ?? who.itemId } : {}), ...(who?.amount !== undefined ? { amount: who.amount } : {}) };
+  town?.system({ kind, text, tone, ...extra }, who?.userId);
 }
 
 /** A banner across the top of the town (jackpot wins, the owner's notices). */

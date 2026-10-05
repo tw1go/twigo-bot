@@ -9,7 +9,8 @@ import { attachTown } from '../../bot/src/web/town.ts';
 // they are and what they look like in the address. Open two windows (?as=Alice, ?as=Bob) to be two people.
 //   GET /__discord?name=Kuya%20Ben&text=hi   a message as if from the town's Discord channel
 //   GET /__system?kind=dig&tone=rare&text=…   a system feed line (kind dig|gamble|jackpot; tone: rarity, win, lose, bust, jackpot);
-//       a dig can add &itemId=rock&itemName=Rock&as=Alice (Alice's game then plays the dig panel)
+//       a dig can add &itemId=rock&itemName=Rock&as=Alice (Alice's game then plays the dig panel); a bet can add
+//       &as=Alice&amount=60 (kind=gamble, tone=win: coins burst over Alice; tone=bust: a siren)
 //   GET /__announce?kind=jackpot|notice&title=…&text=…   a banner at the top
 //   GET /__jail?name=Bob&on=1   shows Bob as jailed (on=0: released) to everyone in town
 //   GET /__flex?as=Bob&itemId=rock&itemName=Rock&rarity=junk   Bob flexes an item (chat line + bubble)
@@ -51,7 +52,13 @@ export function devTown(): Plugin {
         const kind = q.get('kind');
         const itemId = q.get('itemId');
         town.system(
-          { kind: kind === 'gamble' || kind === 'jackpot' ? kind : 'dig', text: q.get('text') ?? '', tone: q.get('tone') ?? 'common', ...(itemId ? { itemId, itemName: q.get('itemName') ?? itemId } : {}) },
+          {
+            kind: kind === 'gamble' || kind === 'jackpot' ? kind : 'dig',
+            text: q.get('text') ?? '',
+            tone: q.get('tone') ?? 'common',
+            ...(itemId ? { itemId, itemName: q.get('itemName') ?? itemId } : {}),
+            ...(q.get('amount') ? { amount: Number(q.get('amount')) } : {}),
+          },
           q.get('as') ?? undefined,
         );
         res.end('sent to the system feed\n');

@@ -44,6 +44,11 @@ export interface Manifest {
     speechBubble?: { file: string; nineSlice: number; tail: string; tailAnchor: Vec2 };
     chatWindow?: { file: string; nineSlice: number; input?: { file: string; focus: string; nineSlice: number } };
     shovelIcon?: { file: string; size: Vec2 };
+    /** The Casino's Kara y Krus (all optional: the game draws stand-ins without them). */
+    coinFlip?: { file: string; size: Vec2; frames: number; fps: number };
+    coinFaces?: { file: string; size: Vec2; frames: string[] };
+    tanodBust?: { file: string; size: Vec2; frames: number; fps: number; anchor: Vec2 };
+    casinoFelt?: { file: string; nineSlice: number };
     /** The inventory button's bag, beside the chat input. */
     inventoryIcon?: { file: string; size: Vec2 };
     loadingMoon?: { file: string; size: Vec2; frames: number; fps: number; loopFrames?: Vec2; anchor: Vec2 };

@@ -31,6 +31,7 @@ import { RARITY_TEXT, isRarity, setItemArt } from '../ui/item-art';
 import { playDig, setDigPanelArt } from '../ui/dig-panel';
 import { showMine } from '../ui/mine';
 import { Inventory } from '../ui/inventory';
+import { setCasinoArt, showCasino } from '../ui/casino';
 import { OtherPlayers } from '../world/others';
 import { fakeLogin } from '../session';
 import { screenToTile, tileToScreen } from '../iso';
@@ -74,6 +75,8 @@ const BUILDINGS: Record<string, string> = {
   'jackpot-booth': 'Jackpot booth',
   'twigos-house': "twigo's house",
 };
+/** A win at least this big bursts coins over the winner in town. */
+const BIG_WIN = 50;
 const doorLabel = (id: string) => (id === 'twigos-house' ? "twigo's room" : (BUILDINGS[id] ?? id));
 
 /** Keyboard walking: screen direction → grid step (col runs screen right-down, row runs screen left-down). */
@@ -294,6 +297,14 @@ export class TownScene extends Phaser.Scene {
     setItemArt(this.M.items, asset(''));
     const D = this.M.ui.digPanel;
     setDigPanelArt(D && this.textures.exists(D.file) ? { url: asset(D.file), size: D.size, frames: D.frames, fps: D.fps, hole: D.hole, itemFrom: D.itemFrom } : null);
+    // Kara y Krus: whichever casino art exists (the table draws stand-ins for the rest).
+    const U = this.M.ui;
+    setCasinoArt({
+      ...(U.coinFlip ? { coinFlip: { url: asset(U.coinFlip.file), size: U.coinFlip.size, frames: U.coinFlip.frames, fps: U.coinFlip.fps } } : {}),
+      ...(U.coinFaces ? { coinFaces: { url: asset(U.coinFaces.file), size: U.coinFaces.size, frames: U.coinFaces.frames } } : {}),
+      ...(U.tanodBust ? { tanodBust: { url: asset(U.tanodBust.file), size: U.tanodBust.size, frames: U.tanodBust.frames, fps: U.tanodBust.fps } } : {}),
+      ...(U.casinoFelt ? { felt: { url: asset(U.casinoFelt.file), slice: U.casinoFelt.nineSlice } } : {}),
+    });
     mountTownHud({
       me: member,
       name: member?.nickname ?? 'Guest',
@@ -433,6 +444,12 @@ export class TownScene extends Phaser.Scene {
       }
       if (m.t === 'system') {
         if (m.line.kind === 'gamble') playSound('chip');
+        // A bet: a big win bursts coins over the winner; a bust puts a siren over them (stand-ins until the art exists).
+        if (m.line.kind === 'gamble' && m.line.playerId) {
+          const char = m.line.playerId === myId ? this.player : this.others.charOf(m.line.playerId);
+          if (m.line.tone === 'win' && (m.line.amount ?? 0) >= BIG_WIN) char?.flash('coin-burst', 'coin-sparkle', 3);
+          if (m.line.tone === 'bust') char?.flash('siren', 'alert', 8);
+        }
         // A dig: yours plays the dig panel; someone else's puffs dust at the Mine's door.
         if (m.line.kind === 'dig' && m.line.itemId) {
           if (myId && m.line.playerId === myId) playDig({ itemId: m.line.itemId, name: m.line.itemName ?? m.line.itemId, rarity: m.line.tone });
@@ -844,6 +861,7 @@ export class TownScene extends Phaser.Scene {
     if (b.id === 'notice-board') return showBoard();
     if (b.id === 'rewards-shop') return showShop();
     if (b.id === 'mine-entrance') return showMine();
+    if (b.id === 'casino') return showCasino();
     toast(`${doorLabel(b.id)}: coming soon`);
   }
 

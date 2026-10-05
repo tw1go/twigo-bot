@@ -1,22 +1,14 @@
 import { MessageFlags, SlashCommandBuilder } from 'discord.js';
-import { markFound } from '../games/found.js';
 import type { Command } from '../types.js';
-import { add, balance, take } from '../credits/store.js';
-import { blockIfJailed, jail } from '../games/jail.js';
+import { blockIfJailed } from '../games/jail.js';
+import { BUST_JAIL_MINUTES, SIXTY_SEVEN_BONUS, gambleFor } from '../games/gamble.js';
 import { kowen } from '../kowens.js';
 import { config } from '../config.js';
-import { tagoUntil } from '../potions/potions.js';
 import { feed, townName } from '../web/town-feed.js';
 
 // Coin flip: 45% win (double). Otherwise you lose the bet — and sometimes the Tanod busts you (5 minutes in jail).
-// The bust chance depends on where you gamble: low in the gambling channel, high anywhere else.
-const WIN_CHANCE = 0.45;
-const SIXTY_SEVEN_BONUS = 7; // 🤫 win a bet of exactly 67 → +7 extra
-export const BUST_CHANCE_IN_CHANNEL = 0.03;
-export const BUST_CHANCE_ELSEWHERE = 0.2;
-const BUST_JAIL_MINUTES = 5;
-const COOLDOWN_MS = 10_000;
-const lastUsed = new Map<string, number>();
+// The bust chance depends on where you gamble: low in the gambling channel, high anywhere else. The rules live in
+// games/gamble.ts, shared with the town's Casino.
 
 export const gamble: Command = {
   data: new SlashCommandBuilder()
@@ -25,43 +17,35 @@ export const gamble: Command = {
     .addIntegerOption((o) => o.setName('amount').setDescription('How many Kowens to bet').setRequired(true).setMinValue(1)),
   async execute(interaction) {
     if (await blockIfJailed(interaction)) return;
-    const wait = (lastUsed.get(interaction.user.id) ?? 0) + COOLDOWN_MS - Date.now();
-    if (wait > 0) {
-      await interaction.reply({ content: `Easy there! Try again in ${Math.ceil(wait / 1000)}s. 🧊`, flags: MessageFlags.Ephemeral });
-      return;
-    }
-
     const bet = interaction.options.getInteger('amount', true);
-    const have = balance(interaction.user.id);
-    if (bet > have) {
-      await interaction.reply({ content: `You only have **${have}** ${kowen(have)}. 🪙 Use /get-kowens or hang out in voice to earn more.`, flags: MessageFlags.Ephemeral });
+    const inChannel = interaction.channelId === config.gamblingChannelId;
+    const result = await gambleFor(interaction.user.id, bet, inChannel ? 'safe' : 'elsewhere');
+    if (!result.ok) {
+      if (result.reason === 'jailed') return; // blockIfJailed already answered
+      await interaction.reply({
+        content: result.reason === 'cooldown'
+          ? `Easy there! Try again in ${Math.ceil(result.waitMs / 1000)}s. 🧊`
+          : `You only have **${result.have}** ${kowen(result.have)}. 🪙 Use /get-kowens or hang out in voice to earn more.`,
+        flags: MessageFlags.Ephemeral,
+      });
       return;
     }
-    lastUsed.set(interaction.user.id, Date.now());
 
-    const inChannel = interaction.channelId === config.gamblingChannelId;
-    const hidden = !!tagoUntil(interaction.user.id); // 🫥 Tago Tonic: the Tanod can't see you
-    const bustChance = hidden ? 0 : inChannel ? BUST_CHANCE_IN_CHANNEL : BUST_CHANCE_ELSEWHERE;
-    const roll = Math.random();
     let content: string;
-    if (roll < bustChance) {
-      take(interaction.user.id, bet);
-      await jail(interaction.user.id, BUST_JAIL_MINUTES, 'Caught gambling');
+    const who = interaction.user.id;
+    if (result.outcome === 'bust') {
       content = `🚨 **BUSTED!** The Tanod caught ${interaction.user} gambling! **${bet}** ${kowen(bet)} confiscated and **${BUST_JAIL_MINUTES} minutes** in jail. 🚔`;
-      feed('gamble', `The Tanod caught ${townName(interaction.user)} gambling ${bet} ${kowen(bet)}: off to jail`, 'bust');
-    } else if (roll < bustChance + WIN_CHANCE) {
-      add(interaction.user.id, bet + (bet === 67 ? SIXTY_SEVEN_BONUS : 0)); // 🤫 6-7
-      if (bet === 67) markFound(interaction.user.id, '67-bet');
+      feed('gamble', `The Tanod caught ${townName(interaction.user)} gambling ${bet} ${kowen(bet)}: off to jail`, 'bust', { userId: who, amount: bet });
+    } else if (result.outcome === 'win') {
       content = `🎲 ${interaction.user} bet **${bet}** and **WON**! +${bet} ${kowen(bet)} 🤑`;
-      if (bet === 67) content += `\n6️⃣7️⃣!! **+${SIXTY_SEVEN_BONUS}** bonus 🫲🫱`;
-      feed('gamble', `${townName(interaction.user)} won ${bet} ${kowen(bet)} gambling`, 'win');
+      if (result.bonus) content += `\n6️⃣7️⃣!! **+${SIXTY_SEVEN_BONUS}** bonus 🫲🫱`;
+      feed('gamble', `${townName(interaction.user)} won ${bet} ${kowen(bet)} gambling`, 'win', { userId: who, amount: bet });
     } else {
-      take(interaction.user.id, bet);
       content = `🎲 ${interaction.user} bet **${bet}** and **lost** it all. 💸`;
-      feed('gamble', `${townName(interaction.user)} lost ${bet} ${kowen(bet)} gambling`, 'lose');
+      feed('gamble', `${townName(interaction.user)} lost ${bet} ${kowen(bet)} gambling`, 'lose', { userId: who, amount: bet });
     }
-    content += `\n-# Balance: ${balance(interaction.user.id)} ${kowen(balance(interaction.user.id))}`;
-    if (hidden) content += ' · 🫥 Tago Tonic active (the Tanod can\'t see you)';
+    content += `\n-# Balance: ${result.balance} ${kowen(result.balance)}`;
+    if (result.hidden) content += ' · 🫥 Tago Tonic active (the Tanod can\'t see you)';
     else if (!inChannel) content += ` · 👀 The Tanod patrols here. Gamble in <#${config.gamblingChannelId}> to lower your risk.`;
     await interaction.reply({ content, allowedMentions: { parse: [] } });
   },

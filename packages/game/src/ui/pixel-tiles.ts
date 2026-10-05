@@ -128,6 +128,33 @@ export const lockTile = () =>
     }
   }, 2);
 
+/** Green casino felt with a fine weave; 16 × 16. */
+export const feltTile = () =>
+  tile(16, 16, (px, rnd) => {
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+      const n = rnd();
+      px(x, y, (x + y) % 4 === 0 ? '#1D6B45' : n < 0.12 ? '#1A6040' : n < 0.2 ? '#24804F' : '#1F7349');
+    }
+  }, 9);
+
+/** A peso coin, 16 × 16, face up: 'kara' (a profile head) or 'krus' (a cross) in relief — the stand-in until the
+ *  coin art arrives. */
+export const coinTile = (face: 'kara' | 'krus') =>
+  tile(16, 16, (px) => {
+    const mid = 7.5;
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+      const d = Math.hypot(x - mid, y - mid);
+      if (d > 7.6) continue;
+      const lit = x + y < 12;
+      px(x, y, d > 6.6 ? '#1E1B3A' : d > 5.6 ? (lit ? '#FDE68A' : '#BA7F05') : lit ? '#FCDA4A' : '#F8BF27');
+    }
+    const relief = '#BA7F05';
+    const shape = face === 'krus'
+      ? ['....##....', '....##....', '##########', '##########', '....##....', '....##....', '....##....', '....##....']
+      : ['...###....', '..#####...', '..######..', '..#####...', '...####...', '....##....', '...####...', '..######..'];
+    shape.forEach((row, y) => [...row].forEach((c, x) => c === '#' && px(x + 3, y + 4, relief)));
+  }, 1);
+
 let made = false;
 /** Puts the tiles on the page as CSS variables (--px-wood, --px-post, --px-cork, --px-stone, --px-pin-red/green/blue),
  *  once. */
@@ -140,6 +167,9 @@ export function installPixelTiles(): void {
   root.setProperty('--px-cork', `url("${corkTile()}")`);
   root.setProperty('--px-stone', `url("${stoneTile()}")`);
   root.setProperty('--px-lock', `url("${lockTile()}")`);
+  root.setProperty('--px-felt', `url("${feltTile()}")`);
+  root.setProperty('--px-coin-kara', `url("${coinTile('kara')}")`);
+  root.setProperty('--px-coin-krus', `url("${coinTile('krus')}")`);
   root.setProperty('--px-pin-red', `url("${pinTile('#DC2626', '#FCA5A5', '#7F1D1D')}")`);
   root.setProperty('--px-pin-green', `url("${pinTile('#16A34A', '#BBF7D0', '#14532D')}")`);
   root.setProperty('--px-pin-blue', `url("${pinTile('#0284C7', '#BAE6FD', '#0C4A6E')}")`);

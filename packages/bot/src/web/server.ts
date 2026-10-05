@@ -18,6 +18,7 @@ import { type PlayerDeps, giveInTown, playerInfo, verdictInTown } from './town-p
 import type { Town } from './town.js';
 import { bailFromTown, townOutpost } from './town-outpost.js';
 import { digInTown } from './town-mine.js';
+import { gambleInTown } from './town-casino.js';
 import { flexInTown, sellInTown, townInventory } from './town-bag.js';
 import { boardAction, townBoard } from './town-board.js';
 import { kowen } from '../kowens.js';
@@ -62,6 +63,7 @@ import { roll } from './finds.js';
 //   GET  /town/inventory  the bag: dug-up items, Master Keys and potions, slots, wallet (may play)
 //   POST /town/sell     { id, quantity } sell a dug-up item, /sell's prices (from the game's page only; may play)
 //   POST /town/flex     { id } flex a dug-up item in the games channel, /flex's cooldown (from the game's page only; may play)
+//   POST /town/gamble   { bet, call: kara|krus } Kara y Krus at the Casino, /gamble's odds (from the game's page only; may play)
 //   POST /town/dig      dig at the Mine (/dig's rules; from the game's page only; may play)
 //   POST /title/seen    the game showed the member their new title (from the game's page only)
 //   WS   /ws            the live town: who else is there and where (see town.ts; from the game's page only)
@@ -479,6 +481,25 @@ export function startWebServer(client: Client): void {
         const quantity = body.quantity ?? 1;
         if (typeof quantity !== 'number' || !Number.isInteger(quantity) || quantity < 1 || quantity > 1000) return send(res, 400, '{"error":"invalid quantity"}');
         return send(res, 200, JSON.stringify(sellInTown(userId, body.id, quantity)));
+      }
+      if (req.method === 'POST' && path === '/town/gamble') {
+        if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
+        if (!fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
+        const userId = sessionUser(req);
+        if (!userId) return send(res, 401, '{"error":"not logged in"}');
+        let body: { bet?: unknown; call?: unknown } | null = null;
+        try {
+          body = JSON.parse((await readBody(req)) || 'null');
+        } catch {
+          // invalid JSON → rejected below
+        }
+        if (!(await canPlay(client, userId))) return send(res, 403, '{"error":"testers only for now"}');
+        const bet = body?.bet;
+        const call = body?.call;
+        if (typeof bet !== 'number' || !Number.isInteger(bet) || bet < 1 || bet > 1_000_000 || (call !== 'kara' && call !== 'krus')) {
+          return send(res, 400, '{"error":"invalid bet"}');
+        }
+        return send(res, 200, JSON.stringify(await gambleInTown(client, userId, await nameOf(client, userId), bet, call)));
       }
       if (req.method === 'POST' && path === '/town/dig') {
         if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');

@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import type { CharacterDefs, Dir, Manifest } from '../assets/types';
-import { CHARACTER_BIAS } from '../world/depth';
+import { CHARACTER_BIAS, LABEL_DEPTH } from '../world/depth';
 import type { Tile } from '../world/grid';
 import { type Outfit, headTop, sheetKey } from './doll';
 import type { TitleData } from '@mikazuki/shared';
@@ -25,6 +25,8 @@ export class Character {
   readonly sprite: Phaser.GameObjects.Sprite;
   private readonly shadow: Phaser.GameObjects.Image | null;
   private alert: Phaser.GameObjects.Sprite | null = null;
+  /** A one-off effect over the head (a big win's coin burst, a bust's siren), drawn over the world. */
+  private overhead: Phaser.GameObjects.Sprite | null = null;
   /** fx jailBars over the character while they're in jail. */
   private bars: Phaser.GameObjects.Sprite | null = null;
   private tag: NameTag | null = null;
@@ -218,6 +220,25 @@ export class Character {
     this.sync();
   }
 
+  /** Plays an fx over the head `times` times (the manifest's `name`, else `fallback`), then removes it; a new one
+   *  replaces it. Not tinted at night: these are light. */
+  flash(name: string, fallback: string, times: number): void {
+    const fx = this.M.fx[name]?.file ? this.M.fx[name] : this.M.fx[fallback];
+    if (!fx?.file || !this.scene.textures.exists(fx.file)) return;
+    const key = `anim:${fx.file}:x${times}`;
+    if (!this.scene.anims.exists(key)) {
+      this.scene.anims.create({ key, frames: this.scene.anims.generateFrameNumbers(fx.file, { start: 0, end: (fx.frames ?? 1) - 1 }), frameRate: fx.fps ?? 8, repeat: times - 1 });
+    }
+    this.overhead?.destroy();
+    const sprite = this.scene.add.sprite(0, 0, fx.file).setOrigin(0.5, 1).setDepth(LABEL_DEPTH - 1);
+    sprite.play(key).once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
+      sprite.destroy();
+      if (this.overhead === sprite) this.overhead = null;
+    });
+    this.overhead = sprite;
+    this.sync();
+  }
+
   update(deltaMs: number): void {
     if (!this.path.length) this.takeNextStep();
     if (this.path.length) {
@@ -333,6 +354,7 @@ export class Character {
     this.bubble?.place(Math.round(x), alertY);
     this.pop?.place(Math.round(x), alertY - (this.bubble ? this.bubble.height + 1 : 0));
     this.alert?.setPosition(Math.round(x), alertY).setDepth(depth + 0.1);
+    this.overhead?.setPosition(Math.round(x), alertY - (this.bubble ? this.bubble.height + 1 : 0));
   }
 
   private dust(): void {
@@ -353,6 +375,7 @@ export class Character {
     this.shadow?.destroy();
     this.alert?.destroy();
     this.bars?.destroy();
+    this.overhead?.destroy();
     this.tag?.destroy();
     this.bubbleTimer?.remove();
     this.bubble?.destroy();

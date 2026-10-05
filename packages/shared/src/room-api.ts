@@ -139,6 +139,22 @@ export interface TownBagItem {
 /** POST /town/sell { id, quantity } and /town/flex { id } → the bag afterwards, whether it worked, and what to say. */
 export type TownBagActionResponse = TownInventoryResponse & { ok: boolean; message: string };
 
+/** POST /town/gamble { bet, call }: Kara y Krus at the Casino (/gamble's odds, the gambling channel's bust chance). */
+export type TownCoinSide = 'kara' | 'krus';
+export interface TownGambleResponse {
+  ok: boolean;
+  /** What happened, or why it couldn't (too soon, not enough Kowens, in jail). */
+  message: string;
+  outcome?: 'win' | 'lose' | 'bust';
+  /** The side the coin landed on (a bust never lands: the Tanod takes it). */
+  landed?: TownCoinSide;
+  bet?: number;
+  /** The wallet afterwards, the chance to win and of a raid (for the table's rules line). */
+  kowens: number;
+  winChance: number;
+  bustChance: number;
+}
+
 /** `GET /town/leaderboard` (logged in, may play): the top 10 by Kowens, as the town knows them. */
 export interface TownLeaderboardResponse {
   rows: TownLeaderboardRow[];

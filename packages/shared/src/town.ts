@@ -50,11 +50,14 @@ export interface TownSystemLine {
   text: string;
   /** Colour key: a dig's rarity, win / lose / bust, jackpot, shop, or gift. */
   tone: string;
-  /** Dig lines: what was found (the dig item's id), and who dug it — their town player id, only while they're in
-   *  town (never a Discord id), so the digger's game can play the dig panel. Older games ignore both. */
+  /** Dig and bet lines: what was found (the dig item's id), and who dug or bet — their town player id, only while
+   *  they're in town (never a Discord id), so the town can play the dig panel or the bet's effects. Older games ignore
+   *  them. */
   itemId?: string;
   itemName?: string;
   playerId?: string;
+  /** Bet lines: how much was bet (big wins burst coins over the winner in town). */
+  amount?: number;
 }
 
 /** A banner across the top of the town: a jackpot win, or a notice from the owner (maintenance and such). */

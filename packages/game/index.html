@@ -488,6 +488,53 @@
       @keyframes mn-pop { from { transform: scale(0.85); opacity: 0; } }
       @media (prefers-reduced-motion: reduce) { #reward .mn-find { animation: none; } }
       #reward .mn-hint { margin: 4px 0 0; font-size: 12px; color: #7A8099; }
+      /* The Casino's Kara y Krus (ui/casino.ts): a felt table in a wood rim (pixel tiles drawn in code, or the
+         ui.casinoFelt 9-slice), the peso flipping in an arc, and the Tanod's raid flashing red and blue. */
+      #reward .rw-card.rw-card:has(.cs-body) { width: min(400px, calc(100vw - 32px)); border: 9px solid #3A2418; border-image: none; padding: 18px 18px 16px; color: #E6E9F2; background: #1F7349 var(--px-felt) 0 0 / 48px 48px; image-rendering: pixelated; box-shadow: inset 0 0 0 3px #6B4423, inset 0 0 0 6px #8E5A2C, inset 0 9px 0 6px rgba(10, 30, 18, 0.35), 0 0 0 3px #1E1208, 0 9px 0 3px #1E1208; }
+      #reward .rw-card.cs-felt-art:has(.cs-body) { border-style: solid; border-width: calc(var(--felt-slice) * 3px); border-image: var(--felt) var(--felt-slice) fill / calc(var(--felt-slice) * 3px) round; background: none; box-shadow: 0 9px 0 0 #1E1208; }
+      #reward .rw-card:has(.cs-body) .rw-title { font-size: 26px; color: #FDE68A; text-shadow: 0 3px 0 #0E3B24, 3px 0 0 #0E3B24, -3px 0 0 #0E3B24, 0 -3px 0 #0E3B24, 0 6px 0 rgba(0, 0, 0, 0.4); }
+      #reward .cs-body { margin-bottom: 14px; }
+      #reward .cs-stage { position: relative; display: flex; align-items: flex-end; justify-content: center; height: 150px; margin-bottom: 6px; overflow: hidden; }
+      #reward .cs-coin { margin-bottom: 18px; background-repeat: no-repeat; image-rendering: pixelated; }
+      #reward .cs-flying { animation: cs-arc 1.1s cubic-bezier(0.3, 0, 0.7, 1) both; }
+      @keyframes cs-arc { 0% { transform: translateY(0); } 50% { transform: translateY(-78px); } 100% { transform: translateY(0); } }
+      #reward .cs-spin { animation: cs-arc 1.1s cubic-bezier(0.3, 0, 0.7, 1) both, cs-spin 0.28s steps(4) infinite; }
+      @keyframes cs-spin { 0% { scale: 1 1; } 25% { scale: 1 0.5; } 50% { scale: 1 0.1; } 75% { scale: 1 0.5; } 100% { scale: 1 1; } }
+      #reward .cs-won { animation: cs-pop 0.35s steps(3) 1; filter: drop-shadow(0 0 6px #FCFC64); }
+      @keyframes cs-pop { 50% { transform: translateY(-9px); } }
+      #reward .cs-lost { filter: grayscale(0.5) brightness(0.85); }
+      #reward .cs-taken { opacity: 0; transition: opacity 0.2s steps(2); }
+      #reward .cs-raid { animation: cs-raid 0.5s steps(1) 4; }
+      @keyframes cs-raid { 0% { box-shadow: inset 0 0 0 999px rgba(220, 38, 38, 0.35); } 50% { box-shadow: inset 0 0 0 999px rgba(37, 99, 235, 0.35); } }
+      #reward .cs-tanod { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 6px; animation: cs-up 0.3s steps(3) both; }
+      @keyframes cs-up { from { transform: translateY(60px); } }
+      #reward .cs-tanod-art { background-repeat: no-repeat; image-rendering: pixelated; }
+      #reward .cs-huli { padding: 2px 12px; border: 3px solid #1E1B3A; background: #F7768E; color: #1E1B3A; font-size: 24px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; box-shadow: 0 4px 0 #1E1B3A; }
+      #reward .cs-result { min-height: 44px; font-size: 17px; font-weight: 700; color: #E6E9F2; text-shadow: 0 2px 0 #0E3B24; }
+      #reward .cs-good { color: #FDE68A; }
+      #reward .cs-bad { color: #FECACA; }
+      #reward .cs-bust { color: #FCA5A5; }
+      #reward .cs-bet-row { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; margin: 6px 0 12px; }
+      #reward .cs-bet-label { display: flex; align-items: center; gap: 6px; font-weight: 700; color: #FDE68A; }
+      #reward .cs-bet { width: 70px; padding: 5px 6px; border: 3px solid #0E3B24; border-radius: 0; background: #0E3B24; color: #fff; font: inherit; font-weight: 700; text-align: center; -moz-appearance: textfield; }
+      #reward .cs-bet::-webkit-inner-spin-button, #reward .cs-bet::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+      #reward .cs-bet:focus { outline: none; border-color: #FDE68A; }
+      #reward .cs-chips { display: flex; gap: 4px; }
+      #reward .cs-chip { width: 34px; height: 34px; padding: 0; border: 3px dashed #F8F3E6; border-radius: 50%; background: #B91C1C; color: #fff; font: inherit; font-size: 12px; font-weight: 700; box-shadow: 0 0 0 2px #1E1B3A, 0 3px 0 2px #1E1B3A; }
+      #reward .cs-chip:nth-child(2) { background: #2563EB; }
+      #reward .cs-chip:nth-child(3) { background: #16A34A; }
+      #reward .cs-chip:nth-child(4) { background: #1E1B3A; }
+      #reward .cs-chip:nth-child(5) { background: #7C2AE8; }
+      #reward .cs-chip:active { transform: translateY(2px); }
+      #reward .cs-calls { display: flex; justify-content: center; gap: 12px; }
+      #reward .cs-call { min-width: 120px; padding: 9px 18px 11px; border: 3px solid #1E1B3A; border-radius: 0; background: #FCDA4A; color: #1E1B3A; font: inherit; font-size: 19px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; box-shadow: inset 0 3px 0 #FFF59A, inset 0 -4px 0 #D99A0B, 0 4px 0 #1E1B3A; }
+      #reward .cs-call:hover:not(:disabled) { background: #FDE68A; }
+      #reward .cs-call:active:not(:disabled) { transform: translateY(3px); box-shadow: inset 0 3px 0 #FFF59A, inset 0 -2px 0 #D99A0B, 0 1px 0 #1E1B3A; }
+      #reward .cs-call:disabled { opacity: 0.5; }
+      #reward .cs-wallet { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 12px; color: #E6E9F2; }
+      #reward .cs-wallet b { font-size: 18px; color: #FDE68A; }
+      #reward .cs-rules { margin-top: 6px; font-size: 12px; color: #BFE3CD; }
+      @media (prefers-reduced-motion: reduce) { #reward .cs-flying, #reward .cs-spin, #reward .cs-raid, #reward .cs-tanod, #reward .cs-won { animation: none; } }
       /* Notice board (ui/board.ts; tabs share the bank's .bk-tabs): a wooden sign on two posts with quests pinned on cork,
          all pixel art: the wood, posts, cork and pins are small tiles drawn in code (ui/pixel-tiles.ts) and scaled 3×
          with crisp pixels; shadows are hard steps, never blurs. Fixed size. */
