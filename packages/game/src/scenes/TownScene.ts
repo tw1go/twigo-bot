@@ -331,6 +331,7 @@ export class TownScene extends Phaser.Scene {
       dots: dots?.file && Array.isArray(dots.frames) ? { url: asset(dots.file), frame: 0, size: dots.size?.[0] ?? 5, frames: dots.frames.length, names: dots.frames } : null,
       shovel: this.M.ui.shovelIcon?.file ? asset(this.M.ui.shovelIcon.file) : null,
       gear: this.M.ui.settingsIcon?.file ? asset(this.M.ui.settingsIcon.file) : null,
+      megaphone: this.M.ui.newsIcon?.file ? asset(this.M.ui.newsIcon.file) : null,
     });
   }
 

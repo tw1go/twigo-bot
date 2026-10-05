@@ -154,6 +154,10 @@
       #town-hud .th-settings { display: block; padding: 4px; border: 2px solid #7C2AE8; border-radius: 2px; background: #111827; color: #E6E9F2; font: inherit; font-size: 22px; line-height: 32px; min-width: 44px; }
       #town-hud .th-gear { display: block; width: 32px; height: 32px; image-rendering: pixelated; }
       #town-hud .th-settings:hover { border-color: #B794F6; background: #1E1B3A; }
+      #town-hud .th-corner { display: flex; gap: 8px; }
+      #town-hud .th-news { position: relative; }
+      #town-hud .th-news-dot { position: absolute; top: -5px; right: -5px; width: 12px; height: 12px; border: 2px solid #111827; border-radius: 50%; background: #F43F5E; }
+      body:has(#reward .nw-body) #town-hud .th-corner { z-index: 5; } /* over the dimmed town, so the megaphone closes it again */
       #settings { position: fixed; inset: 0; z-index: 4; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(4, 4, 12, 0.6); font: 15px/1.4 var(--ui-font); }
       #settings .st-card { position: relative; width: min(340px, calc(100vw - 32px)); box-sizing: border-box; padding: 20px 22px; border: 3px solid #7C2AE8; background: #fff; color: #1E1B3A; }
       #settings .st-framed { --px: 4; border-style: solid; border-width: calc(var(--slice) * var(--px) * 1px); border-image-source: var(--frame); border-image-slice: var(--slice) fill; border-image-width: calc(var(--slice) * var(--px) * 1px); border-image-repeat: round; image-rendering: pixelated; padding: 6px 8px 4px; background: none; }
@@ -630,6 +634,31 @@
       #reward .nb-post { padding: 7px 14px; border: 3px solid #1E1B3A; border-radius: 0; background: #FCDA4A; color: #1E1B3A; font: inherit; font-weight: 700; box-shadow: inset 0 3px 0 #FFF59A, inset 0 -3px 0 #D99A0B, 0 3px 0 #1E1B3A; }
       #reward .nb-post:disabled { opacity: 0.5; }
       #reward .nb-hint { margin: 10px 0 0; font-size: 12px; color: #7A6A55; }
+      /* News (ui/news.ts; tabs share the bank's .bk-tabs): announcements and patch notes from Discord, each a fold-out
+         post (the newest open). A fixed size, like the outpost. */
+      #reward .rw-card:has(.nw-body) { width: min(460px, calc(100vw - 32px)); }
+      #reward .nw-body { margin-bottom: 14px; text-align: left; font-size: 14px; color: #3D4256; }
+      #reward .nw-panel { height: min(420px, 55vh); overflow-x: hidden; overflow-y: auto; overflow-wrap: anywhere; }
+      #reward .nw-note { height: 22px; min-height: 0; margin-top: 6px; overflow: hidden; }
+      #reward .nw-post { margin-bottom: 8px; border: 2px solid #E2DDF3; border-radius: 2px; background: #FBFAFF; }
+      #reward .nw-post[open] { border-color: #C4B5FD; background: #fff; }
+      #reward .nw-head { display: flex; align-items: baseline; gap: 10px; padding: 8px 10px; cursor: pointer; list-style: none; }
+      #reward .nw-head::-webkit-details-marker { display: none; }
+      #reward .nw-head::before { content: '▸'; color: #7C2AE8; }
+      #reward .nw-post[open] .nw-head::before { content: '▾'; }
+      #reward .nw-head:hover .nw-title { color: #7C2AE8; }
+      #reward .nw-title { flex: 1; font-weight: 700; color: #1E1B3A; }
+      #reward .nw-date { flex: none; font-size: 12px; color: #7A8099; }
+      #reward .nw-text { padding: 0 12px 10px 28px; line-height: 1.45; }
+      #reward .nw-gap { height: 8px; }
+      #reward .nw-small { font-size: 12px; color: #7A8099; }
+      #reward .nw-h { margin: 4px 0 2px; font-weight: 700; color: #5B21B6; }
+      #reward .nw-h1 { font-size: 18px; }
+      #reward .nw-h2 { font-size: 16px; }
+      #reward .nw-quote { padding-left: 8px; border-left: 3px solid #C4B5FD; color: #5B5F75; }
+      #reward .nw-code { padding: 0 4px; border-radius: 2px; background: #EDE9FE; font: 13px/1.3 ui-monospace, Menlo, monospace; color: #5B21B6; }
+      #reward .nw-link { color: #6D28D9; }
+      @media (max-width: 560px) { #reward .nw-panel { height: min(420px, 46vh); } } /* clear of the HUD's top buttons */
       /* Tanod outpost (ui/outpost.ts; tabs share the bank's .bk-tabs). A fixed size, like the shop. */
       #reward .rw-card:has(.op-body) { width: min(420px, calc(100vw - 32px)); }
       #reward .op-body { margin-bottom: 14px; text-align: left; font-size: 14px; color: #3D4256; }

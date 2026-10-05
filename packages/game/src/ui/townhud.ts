@@ -1,7 +1,8 @@
 import type { MeDig, MeResponse, PresenceStatus, PreregStatus } from '@mikazuki/shared';
 import { renderPrereg } from '../hud';
-import { loadMe } from '../session';
+import { fakeLogin, loadMe } from '../session';
 import { playSound } from '../audio/sound';
+import { hasUnread, loadNews, showNews } from './news';
 import { showSettings } from './settings';
 
 // The town's HUD (replaces the page's login corner while you're in town): your character's head and name top left,
@@ -23,6 +24,8 @@ export interface TownHudOptions {
   shovel: string | null;
   /** The Settings button's gear (manifest ui.settingsIcon). */
   gear: string | null;
+  /** The news button's megaphone (manifest ui.newsIcon). */
+  megaphone: string | null;
 }
 
 /** One frame of a strip of square frames. */
@@ -99,13 +102,29 @@ export function mountTownHud(o: TownHudOptions): void {
   settings.setAttribute('aria-haspopup', 'dialog');
   settings.title = 'Settings';
   settings.addEventListener('click', () => showSettings({ loggedIn: !!o.me, onClose: () => settings.focus() }));
-  // Top left: the profile with the Kowens and shovel counters beside it; top right: Settings.
+  // News (announcements and patch notes), with a dot while there's something new.
+  const news = el('button', 'th-settings th-news');
+  if (o.megaphone) {
+    const icon = el('img', 'th-gear');
+    icon.src = o.megaphone;
+    icon.alt = '';
+    news.append(icon);
+  } else news.textContent = '📣';
+  const unread = el('span', 'th-news-dot');
+  unread.hidden = true;
+  news.append(unread);
+  news.setAttribute('aria-label', 'News');
+  news.setAttribute('aria-haspopup', 'dialog');
+  news.title = 'News';
+  news.addEventListener('click', () => showNews({ onSeen: () => (unread.hidden = true) }));
+  if (o.me || fakeLogin()) void loadNews().then((n) => (unread.hidden = !n || !hasUnread(n)));
+  // Top left: the profile with the Kowens and shovel counters beside it; top right: News and Settings.
   const left = el('div', 'th-left');
   const row = el('div', 'th-row');
   row.append(profile);
   left.append(row);
   const corner = el('div', 'th-corner');
-  corner.append(settings);
+  corner.append(news, settings);
   root.append(left, corner);
 
   if (o.me) {

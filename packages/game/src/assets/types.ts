@@ -44,6 +44,8 @@ export interface Manifest {
     speechBubble?: { file: string; nineSlice: number; tail: string; tailAnchor: Vec2 };
     chatWindow?: { file: string; nineSlice: number; input?: { file: string; focus: string; nineSlice: number } };
     shovelIcon?: { file: string; size: Vec2 };
+    /** The news button's megaphone, beside Settings. */
+    newsIcon?: { file: string; size: Vec2 };
     /** The Casino's Kara y Krus: the flip for the side the coin lands on (each ending on that face, the coin at rest).
      *  The siren and coin burst are fx (siren, coin-burst). */
     coinFlip?: { sides: Record<'kara' | 'krus', string>; size: Vec2; frames: number; fps: number; anchor: Vec2 };

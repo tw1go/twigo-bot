@@ -1873,6 +1873,14 @@
       ],
       "note": "the Settings button's gear (HUD, top left)"
     },
+    "newsIcon": {
+      "file": "ui/ui-megaphone.png",
+      "size": [
+        32,
+        32
+      ],
+      "note": "the news button's megaphone (HUD, beside Settings): announcements and patch notes"
+    },
     "digPanel": {
       "file": "ui/ui-dig-panel.png",
       "size": [
