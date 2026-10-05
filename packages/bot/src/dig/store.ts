@@ -90,6 +90,18 @@ export function addShovel(userId: string): number {
   return b.shovel;
 }
 
+/** Today's dig and shovel counters back to 0 (the gifter's /gift dig-reset): they can dig and buy shovels again
+ *  today. Shovel uses and items stay. Returns what the counters were. */
+export function resetDigCounters(userId: string): { digs: number; shovels: number } {
+  const was = { digs: digsToday(userId), shovels: shovelsBoughtToday(userId) };
+  const b = bag(userId);
+  const day = today();
+  b.digDay = b.shovelDay = day;
+  b.digsToday = b.shovelsToday = 0;
+  save();
+  return was;
+}
+
 /** Uses one dig (shovel + daily count) and stores the find. Caller checks limits first. */
 export function recordDig(userId: string, itemId: string): void {
   const b = bag(userId);

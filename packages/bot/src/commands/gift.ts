@@ -3,6 +3,7 @@ import type { Command } from '../types.js';
 import { config } from '../config.js';
 import { accountIds, add, balance, take } from '../credits/store.js';
 import { BOOST_CREDITS, boostCount, setBoostCount } from '../games/boosts.js';
+import { DIGS_PER_DAY, SHOVELS_PER_DAY, resetDigCounters } from '../dig/store.js';
 import { ATTEND_REWARD, TOP_REWARD, openPayoutPanel } from '../minewars/payout.js';
 import { kowen } from '../kowens.js';
 import { LAUNCH_REWARD, launchPayout, launched, preregPanel } from '../prereg/prereg.js';
@@ -55,6 +56,12 @@ export const gift: Command = {
             .setRequired(true)
             .addChoices(...Object.entries(TITLES).map(([value, t]) => ({ name: t.name, value }))),
         ),
+    )
+    .addSubcommand((s) =>
+      s
+        .setName('dig-reset')
+        .setDescription(`Reset someone's daily dig (${DIGS_PER_DAY}) and shovel (${SHOVELS_PER_DAY}) counters, so they can go again today · 🔒`)
+        .addUserOption((o) => o.setName('user').setDescription('Who').setRequired(true)),
     )
     .addSubcommand((s) =>
       s.setName('minewars').setDescription(`Pay 9 PM Mine Wars: attendance +${ATTEND_REWARD}, Top 10 ${TOP_REWARD} · 🔒 panel · 🌐 summary`),
@@ -123,6 +130,17 @@ export const gift: Command = {
       console.log(`[gift] ${target.id} title ${id}`);
       await interaction.reply({
         content: `🏷️ ${target} now shows **<${title.name}>** in the web game (from their next visit to the town).`,
+        flags: MessageFlags.Ephemeral,
+        allowedMentions: { parse: [] },
+      });
+      return;
+    }
+
+    if (interaction.options.getSubcommand() === 'dig-reset') {
+      const was = resetDigCounters(target.id);
+      console.log(`[gift] ${target.id} dig-reset (was ${was.digs} digs, ${was.shovels} shovels)`);
+      await interaction.reply({
+        content: `⛏️ Reset ${target}'s counters for today: **${was.digs}/${DIGS_PER_DAY}** digs and **${was.shovels}/${SHOVELS_PER_DAY}** shovels bought → **0**. They can dig and buy shovels again today. 🪏\n-# Their shovel's uses and their finds are unchanged.`,
         flags: MessageFlags.Ephemeral,
         allowedMentions: { parse: [] },
       });

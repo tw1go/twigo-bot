@@ -83,3 +83,17 @@ test('Master Keys and potions take bag slots: a bag of keys stops digging, and k
   assert.equal(refused.ok, false);
   assert.equal(!refused.ok && refused.reason, 'bag-full');
 });
+
+test('/gift dig-reset: the daily dig and shovel counters go back to 0', async () => {
+  const { digsToday, resetDigCounters, shovelsBoughtToday } = await import('./store.js');
+  addShovel('reset');
+  for (let i = 0; i < DIGS_PER_DAY; i++) {
+    if (shovelUses('reset') <= 0) addShovel('reset');
+    recordDig('reset', 'rock');
+  }
+  addShovel('reset'); // uses left on the shovel, but no digs left today
+  assert.equal(digFor('reset').ok === false && (digFor('reset') as { reason: string }).reason, 'no-digs');
+  const was = resetDigCounters('reset');
+  assert.deepEqual([was.digs, digsToday('reset'), shovelsBoughtToday('reset')], [DIGS_PER_DAY, 0, 0]);
+  assert.ok(digFor('reset').ok); // digging again today
+});
