@@ -84,7 +84,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   cut them back into per-path textures at load (`src/assets/packs.ts`); dev loads loose files. Add art as loose
   images only.
 - Characters are paper dolls composited per outfit (`characters/doll.ts`), saved per account (`PUT /outfit`).
-  The look is picked in the creator only (the in-town wardrobe button was removed).
+  The look is picked in the creator (free, once), then changed at the Parlor (3 Kowens; the wardrobe button is gone).
 - Numbers are Jersey 10 (`assets/font/Jersey_10`, OFL): an `@font-face 'Mk Numbers'` limited to the digits (unicode-range
   U+0030-0039) first in every font stack (`--ui-font`, `UI_FONT`, the arena's `FONT`, the leaderboard canvas), so only
   digits switch; BootScene waits for it with Pixelify Sans.
