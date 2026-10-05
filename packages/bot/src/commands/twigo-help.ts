@@ -62,6 +62,7 @@ export const twigoHelp: Command = {
           '🏆 **Weekly voice rewards** (Mondays 12 PM): top 10 get 50 · 30 · 20 · 10 Kowens (`/leaderboard`)',
           '💎 **Boost the server**: +20 Kowens per boost, and 20 × your boosts every month while boosting',
           '`/claim code` — found a Kowen in [twigo\'s room](https://tw1go.github.io)? Claim it here (3 a day)',
+          '`/play-web` — 🌙 open Mikazuki town, the web game (everyone in the server can play)',
           `\`/preregister\` — 🎮 sign up for the Mikazuki web game: +${LAUNCH_REWARD} Kowens when it launches`,
           '-# ⚠️ Inactive for 3+ days? You lose a growing % of Kowens each day until you\'re back.',
         ]),
