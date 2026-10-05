@@ -74,7 +74,8 @@ export function hoodMap(houses: number, fenced: Set<number> = new Set()): HoodMa
     const id = `house-${lot}`;
     objects.push({ kind: 'building', id, col, row, footprint: [HOUSE, HOUSE] });
     for (let r = row; r < row + HOUSE; r++) for (let c = col; c < col + HOUSE; c++) block(c, r);
-    doors[id] = [col + HOUSE, row + 1];
+    // The door's tile, or with a Bakod the street just outside the fence in front of it (fences block walking).
+    doors[id] = fenced.has(lot) ? [col + HOUSE + 1, row + 1] : [col + HOUSE, row + 1];
     if (fenced.has(lot)) {
       // Round the yard, a tile out from the house (the door inside): west and east sides on tiles' nw edges, north and
       // south on their ne edges.

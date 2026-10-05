@@ -91,6 +91,12 @@ export function showHouseMenu(h: HouseMenuHooks): void {
   };
 
   render();
+  // A Bakod and nothing to get past it with: say what to buy.
+  if (!house.mine && fenced && me.keys < 1 && me.kalawang < 1) {
+    note.textContent = 'This house has a Bakod. Please purchase a Master Key or a Kalawang Potion at the rewards shop.';
+    note.className = 'hm-note hm-bad';
+    setTimeout(() => playSound('error'), 200); // after the pop-up's own open sound
+  }
   void showPopup({
     title: house.mine ? 'Your house' : `${house.owner}'s house`,
     body: [title, status, buttons, note],

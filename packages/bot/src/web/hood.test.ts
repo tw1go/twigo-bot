@@ -24,16 +24,22 @@ const names = async (id: string) => `name-${id}`;
 const client = { channels: { fetch: async () => null } } as never;
 const look = { style: 'cottage', colours: { walls: 'cream', roof: 'moss' } };
 
-/** Every walkable tile reachable from the first exit tile. */
+/** Every walkable tile reachable from the first exit tile, fences blocking (as in the game: an nw edge sits between
+ *  a tile and the one at col − 1, an ne edge between it and the one at row − 1). */
 function reachable(m: ReturnType<typeof hoodMap>): Set<string> {
+  const wall = new Set<string>();
+  for (const f of m.fence) {
+    const [oc, or] = f.edge === 'nw' ? [f.col - 1, f.row] : [f.col, f.row - 1];
+    wall.add(`${f.col},${f.row}|${oc},${or}`).add(`${oc},${or}|${f.col},${f.row}`);
+  }
   const seen = new Set<string>();
-  const todo = [m.exit[0]];
+  const todo: [number, number, string][] = [[...m.exit[0], '']];
   while (todo.length) {
-    const [c, r] = todo.pop()!;
+    const [c, r, from] = todo.pop()!;
     const k = `${c},${r}`;
-    if (seen.has(k) || c < 0 || r < 0 || c >= m.size[0] || r >= m.size[1] || m.blocked[r][c]) continue;
+    if (seen.has(k) || c < 0 || r < 0 || c >= m.size[0] || r >= m.size[1] || m.blocked[r][c] || (from && wall.has(`${from}|${k}`))) continue;
     seen.add(k);
-    todo.push([c + 1, r], [c - 1, r], [c, r + 1], [c, r - 1]);
+    todo.push([c + 1, r, k], [c - 1, r, k], [c, r + 1, k], [c, r - 1, k]);
   }
   return seen;
 }
@@ -42,7 +48,7 @@ test('lots go 5, 4, 5, 4 down the bands, the map grows with the houses, and ever
   assert.deepEqual([0, 4, 5, 8, 9, 13, 14].map((l) => lotTile(l).band), [0, 0, 1, 1, 2, 2, 3]);
   assert.equal(lotTile(5).row - lotTile(0).row, 2); // the band of 4 sits half a lot along
   const small = hoodMap(1);
-  const big = hoodMap(12);
+  const big = hoodMap(12, new Set([0, 5, 11])); // some behind a Bakod
   assert.ok(big.size[0] > small.size[0]);
   assert.equal(big.objects.filter((o) => o.kind === 'building').length, 12);
   const open = reachable(big);
@@ -69,6 +75,7 @@ test('a Bakod fences the house: stealing needs a Master Key, a Kalawang Potion h
   const h = await townHood('b', names);
   assert.equal(h.houses[0].fenced, true);
   assert.equal(h.map.fence.length, 20); // round the yard: 5 a side
+  assert.deepEqual(h.map.doors['house-0'], [2 + 3 + 1, 5 + 1]); // reached from the street, outside the fence
   assert.equal((await hoodAction(client, 'b', 'steal', 0, names)).ok, false); // the fence
   assert.equal((await hoodAction(client, 'b', 'key', 0, names)).ok, false); // no key
   addPotions('b', 'kalawang', 1);
