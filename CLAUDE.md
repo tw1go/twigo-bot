@@ -113,7 +113,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   `/notice` (amber; e.g. maintenance; shown to arrivals for 30 min). Dev: `/__announce?kind=jackpot|notice&title=&text=`.
 - News (`ui/news.ts`, the megaphone beside Settings, manifest `ui.newsIcon`; toggles): tabs Announcements / Patch notes,
   the latest posts from `ANNOUNCEMENTS_CHANNEL_ID` / `PATCH_NOTES_CHANNEL_ID` (bot `GET /town/news`, `web/town-news.ts`,
-  cached 2 min; mentions/emoji/timestamps made plain text there, so no Discord ids reach the page), Discord markdown drawn
+  cached 2 min; mentions/emoji/timestamps made plain text there, so no Discord ids reach the page; town-only announcements
+  are in `web/town-posts.ts`, never posted in Discord), Discord markdown drawn
   as DOM, newest open. A dot on the button while there's a post newer than the last seen (localStorage `mk_news_seen`).
   Dev: pretend news.
 - Leaderboard monument (`ui/leaderboard.ts`, left click the monument): top 10 by Kowens from `GET /town/leaderboard`
