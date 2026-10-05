@@ -14,7 +14,7 @@ export const SIXTY_SEVEN_BONUS = 7; // 🤫 win a bet of exactly 67 → +7 extra
 export const BUST_CHANCE_IN_CHANNEL = 0.03;
 export const BUST_CHANCE_ELSEWHERE = 0.2;
 export const BUST_JAIL_MINUTES = 5;
-const COOLDOWN_MS = 10_000;
+const COOLDOWN_MS = 3_000;
 const lastUsed = new Map<string, number>();
 
 /** Where the bet is placed: the gambling channel or the town's Casino (low bust chance), or anywhere else. */
