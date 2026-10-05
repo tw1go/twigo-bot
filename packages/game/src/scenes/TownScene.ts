@@ -45,6 +45,7 @@ import { type Tile, WalkGrid } from '../world/grid';
 import { Ground } from '../world/ground';
 import { outskirts } from '../world/outskirts';
 import { NightLife } from '../world/night-life';
+import { Minimap } from '../ui/minimap';
 import { type Bench, type Building, WorldObjects, characterDepth } from '../world/objects';
 import { enterCasinoSound, hearFrom, leaveCasinoSound, playSound, startTownSound } from '../audio/sound';
 
@@ -124,6 +125,8 @@ export class TownScene extends Phaser.Scene {
   private nextSkyCheck = 0;
   private culler!: Culler;
   private nightLife!: NightLife;
+  private minimap: Minimap | null = null;
+  private nextMinimap = 0;
   private lampsOn = false;
   private keys!: Record<'up' | 'down' | 'left' | 'right' | 'w' | 'a' | 's' | 'd' | 'e' | 'space', Phaser.Input.Keyboard.Key>;
   /** Whether the current walk is keyboard-driven (doors then wait for E instead of entering on arrival). */
@@ -270,6 +273,7 @@ export class TownScene extends Phaser.Scene {
     this.player.setNameTag(member?.nickname ?? 'Guest', member?.title ?? TOWNFOLK);
     this.player.setJailed(member?.status === 'jailed');
     this.mountHud();
+    this.minimap = new Minimap(this.map); // in the HUD's corner, above its buttons
     startTownSound(this, this.fountainTile());
     if (member || fakeLogin()) this.connect();
     this.zoomIntro(); // last, once the names, labels and building cursors exist
@@ -290,6 +294,11 @@ export class TownScene extends Phaser.Scene {
     this.culler.update(this.cameras.main.worldView);
     this.objects.setLamps(this.lampsOn, time); // glows follow their lamp's visibility; faulty lamps act up
     this.nightLife.update(time, this.lampsOn, this.cameras.main.worldView); // fireflies and moths, from dusk to dawn
+    if (this.minimap && time >= this.nextMinimap) {
+      this.nextMinimap = time + 250;
+      const v = this.cameras.main.worldView;
+      this.minimap.draw({ me: this.player.tile, others: this.others.players, camera: { x: v.x, y: v.y, width: v.width, height: v.height } });
+    }
     if (time >= this.nextSkyCheck) {
       this.nextSkyCheck = time + 1000;
       this.updateSky(false);

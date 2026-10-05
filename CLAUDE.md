@@ -93,6 +93,9 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   intent is on in the Developer Portal — the bot checks at startup and only asks for it then — else online), with Kowens and shovels beside it (they wrap below on phones); Settings top right;
   Kowens/shovels have "+" info (from `/me`: `kowens`, `dig`). The
   shovel icon is `ui-shovel.png` (manifest ui.shovelIcon).
+- Minimap (`ui/minimap.ts`, top right in the HUD's `.th-map` slot; the jackpot counter, News and Settings sit in a row under
+  it; on phones the bag button goes under them): the town's ground and buildings from town.json, drawn once; green dots
+  for everyone else, gold for you, a faint box for the camera's view; redrawn every 250 ms. Hidden in the casino.
 - Movement tutorial (`ui/tutorial.ts`, in the reward box via `showPopup`): shown when a member walks into town
   straight from the creator (their first visit). Dev: `?tutorial=1`.
 - Reward pop-up (`ui/reward.ts`, `showReward`): dimmed town, turning rays, white box in the item frame (its fill

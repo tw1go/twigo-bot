@@ -153,7 +153,11 @@
       #town-hud .th-settings { display: block; padding: 4px; border: 2px solid #7C2AE8; border-radius: 2px; background: #111827; color: #E6E9F2; font: inherit; font-size: 22px; line-height: 32px; min-width: 44px; }
       #town-hud .th-gear { display: block; width: 32px; height: 32px; image-rendering: pixelated; }
       #town-hud .th-settings:hover { border-color: #B794F6; background: #1E1B3A; }
-      #town-hud .th-corner { display: flex; align-items: flex-start; gap: 8px; }
+      #town-hud .th-corner { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+      #town-hud .th-buttons { display: flex; align-items: flex-start; gap: 8px; }
+      /* The minimap (ui/minimap.ts), top right above the buttons. */
+      #minimap { display: block; padding: 4px; border: 2px solid #7C2AE8; background: rgba(17, 24, 39, 0.82); image-rendering: pixelated; }
+      body.town-locked #minimap { visibility: hidden; } /* not in the casino */
       #town-hud .th-news { position: relative; }
       #town-hud .th-news-dot { position: absolute; top: -5px; right: -5px; width: 12px; height: 12px; border: 2px solid #111827; border-radius: 50%; background: #F43F5E; }
       /* The jackpot counter (ui/jackpot-timer.ts): a little event board left of News, casino lights on top; gold and
@@ -302,7 +306,7 @@
       #bag-button.iv-framed-button { --px: 2; border-style: solid; border-width: calc(var(--slice) * var(--px) * 1px); border-image-source: var(--frame); border-image-slice: var(--slice) fill; border-image-width: calc(var(--slice) * var(--px) * 1px); border-image-repeat: round; image-rendering: pixelated; background: none; }
       #bag-button:hover .iv-icon, #bag-button[aria-expanded='true'] .iv-icon { transform: translateY(-2px); filter: brightness(1.2); }
       #bag-button .iv-icon { display: block; width: 32px; height: 32px; image-rendering: pixelated; }
-      @media (max-width: 760px) { #bag-button { left: auto; right: 12px; bottom: auto; top: 64px; width: 48px; height: 48px; } }
+      @media (max-width: 760px) { #bag-button { left: auto; right: 12px; bottom: auto; top: 148px; width: 48px; height: 48px; } } /* under the minimap and the buttons */
       /* The inventory (ui/inventory.ts): the bag on the right, in the item frame; 5 × 10 slots (the slot art, 2×),
          locked ones marked with an X; the picked item's Flex / Sell; Kowens at the bottom. */
       #inventory { position: fixed; right: 12px; top: 72px; z-index: 3; display: flex; flex-direction: column; gap: 10px; width: 420px; max-width: calc(100vw - 24px); max-height: calc(100vh - 96px); box-sizing: border-box; padding: 12px 14px 14px; border: 2px solid #7C2AE8; background: rgba(17, 24, 39, 0.96); color: #c0caf5; font: 15px/1.35 var(--ui-font); }

@@ -126,8 +126,11 @@ export function mountTownHud(o: TownHudOptions): void {
   const row = el('div', 'th-row');
   row.append(profile);
   left.append(row);
+  // Top right: the minimap (ui/minimap.ts fills the slot), and under it the jackpot counter, News and Settings.
   const corner = el('div', 'th-corner');
-  corner.append(news, settings);
+  const buttons = el('div', 'th-buttons');
+  buttons.append(news, settings);
+  corner.append(el('div', 'th-map'), buttons);
   root.append(left, corner);
 
   if (o.me || fakeLogin()) {
@@ -145,7 +148,7 @@ export function mountTownHud(o: TownHudOptions): void {
     // Beside News on wide screens; on phones under the Kowens and shovels, where there's room for the whole board.
     const timer = jackpotTimer(icon);
     const phone = matchMedia('(max-width: 560px)');
-    const place = () => (phone.matches ? left.insertBefore(timer, row.nextSibling) : corner.prepend(timer));
+    const place = () => (phone.matches ? left.insertBefore(timer, row.nextSibling) : buttons.prepend(timer));
     phone.addEventListener('change', place);
     place();
   }
