@@ -10,6 +10,11 @@ twigo.dev {
 
 	redir / /play/ 308
 	redir /play /play/ 308
+	# The tab icon at the root too (asked for by browsers on pages that don't link one, e.g. /health).
+	handle /favicon.ico {
+		root * /opt/twigo-bot/web/play
+		file_server
+	}
 	handle_path /play/* {
 		root * /opt/twigo-bot/web/play
 		# Only files whose names carry a content hash (Vite's bundle, the packed art sheets) are cached for good.
