@@ -7,7 +7,7 @@ import { isColour, visible } from '../util/pixels';
 // world (never tinted at night) in Pixelify Sans. Zoomed out, they keep at least MIN_SCALE screen pixels per art
 // pixel (whole numbers, so the plate stays crisp), and the text is rendered at that scale so it stays sharp.
 
-export const UI_FONT = "'Pixelify Sans', system-ui, sans-serif";
+export const UI_FONT = "'Mk Numbers', 'Pixelify Sans', system-ui, sans-serif"; // digits in Jersey 10 (index.html)
 const MIN_SCALE = 3;
 
 /** Scale for a label (in world units) and its text resolution at a camera zoom. */

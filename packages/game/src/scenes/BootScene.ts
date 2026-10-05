@@ -25,8 +25,9 @@ export class BootScene extends Phaser.Scene {
     const debug = new URLSearchParams(location.search).get('debug');
     // Wait briefly for the login, so a saved look is on the player from the first frame.
     const timeout = new Promise<null>((r) => setTimeout(() => r(null), 2500));
-    // ...and for the UI font and the cursor art, so the town's name plates and cursor are right from the start.
-    const font = Promise.race([document.fonts.load('10px "Pixelify Sans"').catch(() => null), new Promise((r) => setTimeout(r, 2500))]);
+    // ...and for the UI fonts (the digits' too) and the cursor art, so the town's name plates and cursor are right from the start.
+    const fonts = Promise.all([document.fonts.load('10px "Pixelify Sans"'), document.fonts.load('10px "Mk Numbers"', '0123456789')]).catch(() => null);
+    const font = Promise.race([fonts, new Promise((r) => setTimeout(r, 2500))]);
     const cursors = Promise.race([loadCursors(manifest), new Promise((r) => setTimeout(r, 2500))]);
     // ...and for the loading moon, so it's there above the bar while the town's art downloads.
     const moon = new Promise<void>((done) => {

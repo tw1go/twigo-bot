@@ -11,7 +11,9 @@
     <style>
       /* Pixelify Sans (SIL OFL 1.1, assets/font/Pixelify_Sans/OFL.txt): one variable file for every weight. */
       @font-face { font-family: 'Pixelify Sans'; src: url('/play/assets/font/Pixelify_Sans/PixelifySans-VariableFont_wght.ttf') format('truetype'); font-weight: 400 700; font-display: swap; }
-      :root { --ui-font: 'Pixelify Sans', system-ui, sans-serif; }
+      /* Numbers in Jersey 10: only the digits come from it (unicode-range), the rest stays Pixelify Sans. */
+      @font-face { font-family: 'Mk Numbers'; src: url('/play/assets/font/Jersey_10/Jersey10-Regular.ttf') format('truetype'); font-weight: 400 700; font-display: swap; unicode-range: U+0030-0039; }
+      :root { --ui-font: 'Mk Numbers', 'Pixelify Sans', system-ui, sans-serif; }
       /* The game's cursor (ui/cursor.ts sets these): the pointer everywhere, the hand on links and buttons. */
       body { cursor: var(--cur-pointer, auto); }
       a, button { cursor: var(--cur-hand, pointer); }

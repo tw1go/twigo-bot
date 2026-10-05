@@ -49,7 +49,7 @@ type Tone = keyof typeof TONE;
 
 /** The VS band's least share of the screen's height (it grows to hold the close-up dolls). */
 const BAND = 0.3;
-const FONT = '"Pixelify Sans", system-ui, sans-serif';
+const FONT = '"Mk Numbers", "Pixelify Sans", system-ui, sans-serif'; // digits in Jersey 10
 const SPEED = 600; // px/s on screen, the speed lines in the intro (a quarter of it during rounds)
 const LABEL: Record<ArenaHand, string> = { bato: 'Bato', papel: 'Papel', gunting: 'Gunting' };
 const FRAME: Record<ArenaHand, number> = { bato: 0, papel: 1, gunting: 2 };

@@ -67,7 +67,7 @@ function podium(rows: TownLeaderboardRow[], figure: (o: OutfitData | null) => Pr
           ctx.fillRect(0, 0, cw, ch);
           ctx.globalCompositeOperation = 'source-over';
           ctx.fillStyle = '#5B21B6';
-          ctx.font = 'bold 16px "Pixelify Sans", sans-serif';
+          ctx.font = 'bold 16px "Mk Numbers", "Pixelify Sans", sans-serif';
           ctx.textAlign = 'center';
           ctx.fillText('?', cw / 2, ch * 0.62);
         }
