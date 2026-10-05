@@ -272,6 +272,11 @@ in `packages/shared/src/town.ts`). The bot checks every step (on the map, not bl
 speed) and keeps nothing once you leave. Chat goes the same way (`say`: tidied, up to 120 characters, rate-limited,
 never saved) and shows as speech bubbles and in the chat box (`packages/game/src/ui/chat.ts`).
 
+**Parlor** (`packages/game/src/ui/parlor.ts`, bot `packages/bot/src/web/town-parlor.ts`): the building beside the
+rewards shop. Your character on the left; on the right an Appearance tab (the creator's choices, a new look costs 3
+Kowens) and a Title tab (the titles you have as cards, their description on hover; showing another is free). Everyone in
+town sees the change at once. After the character creator, a look can only be changed here (`PUT /outfit` is creator-only).
+
 **News** (`packages/bot/src/web/town-news.ts`): the megaphone beside Settings lists the latest posts from
 `ANNOUNCEMENTS_CHANNEL_ID` and `PATCH_NOTES_CHANNEL_ID` (`GET /town/news`, read from Discord and kept for 2 minutes;
 either can be left empty), plus town-only posts written in the CMS (`web/town-posts.ts`).
@@ -281,7 +286,7 @@ either can be left empty), plus town-only posts written in the CMS (`web/town-po
 A small admin site served by the bot (`packages/bot/src/web/cms.ts`, page in `packages/bot/cms/`) at `CMS_PATH`, a
 path on the game's address nobody can guess (`/cms-` + `openssl rand -hex 16`; empty = off). The path only hides it:
 you still log in with Discord, and only the gifter (`REWARD_OWNER_ID`) and `CMS_USER_IDS` get in (anyone else gets a
-404). Tabs: **Town news** (write, edit, delete the town-only News posts), **Titles** (make, recolour, rename, remove),
+404). Tabs: **Town news** (write, edit, delete the town-only News posts), **Titles** (make, recolour, rename, describe, remove),
 **Shop** (change a reward's price or take it off sale, for the town shop and `/redeem` alike), **Players** (find
 someone by nickname or Discord ID, see their wallet, vault, bag, jail/mute status; give or take Kowens, give a title).
 Changes are saved in the database (kv `town-posts`, `titles`, `shop`; the code's values are the defaults), apply at

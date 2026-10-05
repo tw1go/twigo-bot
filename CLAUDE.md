@@ -172,6 +172,13 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   a second press to confirm passes. Bot `GET/POST /town/shop` (`web/town-shop.ts`); `/redeem` and the shop share
   `games/redeem.ts` (checks + purchase, the public Discord post `redeemPost`, the feed line). Passes ping the reward
   owner like `/redeem`. Dev: a pretend shop.
+- Parlor (`ui/parlor.ts`, left click the parlor, north of the rewards shop; door (34,9)): the creator's box over the dimmed
+  town (`mountCreator` with `parlor` hooks: no nickname; ×/Escape/click outside closes), the character on the left, tabs on
+  the right: Appearance (the creator's choices; "Save look · 3 Kowens" only once it differs) and Title (your titles as
+  2-column cards with their CMS description; hover/focus floats it in `.cr-info`; showing another is free). Bot
+  `GET/POST /town/parlor` (`web/town-parlor.ts`, tested; `LOOK_COST`); `PUT /outfit` only works in the creator (no look or
+  nickname yet). Changes reach everyone through the town's `look` message (`Town.restyle`; `world/others.ts`, and
+  `TownScene.restyle` for you: name tag, HUD head). Dev: a pretend parlor that restyles you in the dev town (`/__look`).
 - Player menu (`ui/target.ts`): left click (or tap) someone → their name in a long box top centre (or click their name
   in the chat: the box opens right beside it with the menu open, `selectAt`; a click elsewhere closes it; no ×: a click
   outside the box closes it too, a drag to peek doesn't); clicking it opens
