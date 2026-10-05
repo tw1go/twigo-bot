@@ -5,7 +5,7 @@ import { addFence, balance, fencedUntil, giveVault, hasVault, take } from '../cr
 import { SHOVELS_PER_DAY, addBag, addMasterKey, addShovel, capacity, ownedBags, shovelsBoughtToday } from '../dig/store.js';
 import { debtOf } from '../loans/loans.js';
 import { POTIONS, addPotions, hintsLeft, type PotionId } from '../potions/potions.js';
-import { FENCE_DAYS, FENCE_MAX_DAYS, GAME_NAME, recordRedemption, rewards } from './rewards.js';
+import { FENCE_DAYS, FENCE_MAX_DAYS, GAME_NAME, type Reward, recordRedemption } from './rewards.js';
 import { feed } from '../web/town-feed.js';
 import { freeSlots } from '../dig/bag.js';
 import { addMegaphones, megaphones } from '../items/megaphone.js';
@@ -13,7 +13,7 @@ import { addMegaphones, megaphones } from '../items/megaphone.js';
 // 🎁 Redeeming a reward, shared by /redeem and the town's rewards shop: every check, then the purchase. Each caller
 // words the outcome its own way (Discord markdown, or plain town text).
 
-export type Reward = (typeof rewards)[number];
+export type { Reward };
 
 /** Rewards that can be bought several at a time. */
 export const stackable = (r: Reward) => r.kind === 'shovel' || r.kind === 'key' || r.kind === 'potion' || r.kind === 'megaphone';

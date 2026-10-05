@@ -1,4 +1,4 @@
-import { db } from '../db/db.js';
+import { db, kvLoad, kvSave } from '../db/db.js';
 
 // Credit rewards (Crystal of Atlan passes). Redeeming deducts credits and pings the reward owner, who delivers it manually.
 // Priced for an active member (~16 Kowens/day: daily claim + ~2h voice + some patrols + nightly Mine Wars),
@@ -7,7 +7,8 @@ export const GAME_NAME = 'Crystal of Atlan';
 
 // kind 'pass' = delivered by hand (owner is pinged); 'fence' / 'shovel' / 'bag' / 'key' / 'vault' / 'potion' / 'megaphone' = applied instantly by the bot.
 // Bags add BAG_SLOTS inventory slots each (10 base + 5 bags × 8 = 50 max); each bag can be bought once.
-export const rewards = [
+// These are the defaults: the CMS can change a price or take a reward off sale (kv 'shop', see setShopEntry).
+const CATALOGUE = [
   { id: 'bakod', name: 'Bakod (Fence)', cost: 5, emoji: '🧱', kind: 'fence' },
   { id: 'shovel', name: 'Shovel', cost: 2, emoji: '🪏', kind: 'shovel' },
   { id: 'master-key', name: 'Master Key', cost: 5, emoji: '🗝️', kind: 'key' },
@@ -27,7 +28,46 @@ export const rewards = [
   { id: 'advanced-bp', name: 'Advanced Battle Pass', cost: 3_650, emoji: '👑', kind: 'pass' },
 ] as const;
 
-export type RewardId = (typeof rewards)[number]['id'];
+export type RewardId = (typeof CATALOGUE)[number]['id'];
+export interface Reward {
+  id: RewardId;
+  name: string;
+  cost: number;
+  emoji: string;
+  kind: (typeof CATALOGUE)[number]['kind'];
+}
+
+/** The CMS's changes to the catalogue: a price, or off sale. */
+export interface ShopEntry {
+  cost?: number;
+  off?: boolean;
+}
+
+const SHOP_KEY = 'shop';
+const shop = kvLoad<Record<string, ShopEntry>>(SHOP_KEY, {});
+
+/** What's for sale now, at today's prices (refilled in place, so every importer sees changes). */
+export const rewards: Reward[] = [];
+
+function refill(): void {
+  rewards.splice(0, rewards.length, ...CATALOGUE.filter((r) => !shop[r.id]?.off).map((r) => ({ ...r, cost: shop[r.id]?.cost ?? r.cost })));
+}
+refill();
+
+/** Every reward with its default price and the CMS's changes, for the CMS. */
+export const shopCatalogue = () => CATALOGUE.map((r) => ({ id: r.id, name: r.name, emoji: r.emoji, kind: r.kind, defaultCost: r.cost, cost: shop[r.id]?.cost ?? r.cost, off: !!shop[r.id]?.off }));
+
+/** Changes a reward's price (null = back to the default) and whether it's for sale. False for an unknown reward. */
+export function setShopEntry(id: string, cost: number | null, off: boolean): boolean {
+  const r = CATALOGUE.find((x) => x.id === id);
+  if (!r) return false;
+  const entry: ShopEntry = { ...(cost !== null && cost !== r.cost ? { cost } : {}), ...(off ? { off } : {}) };
+  if (Object.keys(entry).length) shop[id] = entry;
+  else delete shop[id];
+  kvSave(SHOP_KEY, shop);
+  refill();
+  return true;
+}
 
 // Bakod (Fence): blocks /steal against you. Buying again adds more time, up to FENCE_MAX_DAYS.
 export const BAG_SLOTS = 8;

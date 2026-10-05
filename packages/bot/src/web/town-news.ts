@@ -1,13 +1,13 @@
 import type { Client, Guild, Message } from 'discord.js';
 import type { TownNewsPost, TownNewsResponse } from '@mikazuki/shared';
 import { config } from '../config.js';
-import { TOWN_POSTS } from './town-posts.js';
+import { townPosts } from './town-posts.js';
 
 // 📣 The town's news board (GET /town/news): the latest posts in the announcements and patch notes channels, read
 // from Discord and kept for a couple of minutes. Each post's first line, when it's bold, is its title (patch notes
 // drop their "🩹 Patch Notes —" prefix: they're in their own tab). Mentions, custom emoji and timestamps become plain
 // text here, so no Discord ids reach the page. Embeds (the outpost guide) follow the text: title, description, fields.
-// Town-only announcements (web/town-posts.ts) join the Discord ones.
+// Town-only announcements (web/town-posts.ts, written in the CMS) join the Discord ones.
 
 const LIMIT = 15;
 const CACHE_MS = 2 * 60_000;
@@ -16,9 +16,14 @@ let cached: { at: number; news: TownNewsResponse } | null = null;
 export async function townNews(client: Client): Promise<TownNewsResponse> {
   if (cached && Date.now() - cached.at < CACHE_MS) return cached.news;
   const [announcements, patchNotes] = await Promise.all([posts(client, config.announcementsChannelId), posts(client, config.patchNotesChannelId)]);
-  const news = { announcements: [...TOWN_POSTS, ...announcements].sort((a, b) => b.at - a.at), patchNotes: patchNotes.map((p) => ({ ...p, title: p.title.replace(/^🩹\s*Patch Notes\s*[—–-]\s*/u, '') })) };
+  const news = { announcements: [...townPosts().map(({ at, title, body }) => ({ at, title, body })), ...announcements].sort((a, b) => b.at - a.at), patchNotes: patchNotes.map((p) => ({ ...p, title: p.title.replace(/^🩹\s*Patch Notes\s*[—–-]\s*/u, '') })) };
   cached = { at: Date.now(), news };
   return news;
+}
+
+/** Forgets the cached news, so the next look includes the CMS's changes. */
+export function forgetNews(): void {
+  cached = null;
 }
 
 async function posts(client: Client, channelId: string | undefined): Promise<TownNewsPost[]> {

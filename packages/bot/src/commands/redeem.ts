@@ -1,7 +1,7 @@
 import { EmbedBuilder, MessageFlags, SlashCommandBuilder } from 'discord.js';
 import type { Command } from '../types.js';
 import { balance, fencedUntil, hasVault } from '../credits/store.js';
-import { BAG_SLOTS, FENCE_DAYS, FENCE_MAX_DAYS, GAME_NAME, rewards } from '../games/rewards.js';
+import { BAG_SLOTS, FENCE_DAYS, FENCE_MAX_DAYS, GAME_NAME, rewards, shopCatalogue } from '../games/rewards.js';
 import { redeemFeed, redeemPost, redeemReward, stackable } from '../games/redeem.js';
 import { townName } from '../web/town-feed.js';
 import { kowen } from '../kowens.js';
@@ -19,7 +19,8 @@ export const redeem: Command = {
       o
         .setName('reward')
         .setDescription('What to redeem')
-        .addChoices(...rewards.map((r) => ({ name: `${r.name} — ${fmt(r.cost)} ${kowen(r.cost)}`, value: r.id }))),
+        // No prices here: these are registered once, and the CMS can change prices (the list shows today's).
+        .addChoices(...shopCatalogue().map((r) => ({ name: r.name, value: r.id }))),
     )
     .addIntegerOption((o) =>
       o.setName('quantity').setDescription(`How many (Shovels: up to ${SHOVELS_PER_DAY}/day · Master Keys: up to ${MAX_KEYS_AT_ONCE})`).setMinValue(1).setMaxValue(MAX_KEYS_AT_ONCE),
@@ -45,7 +46,11 @@ export const redeem: Command = {
       return;
     }
 
-    const reward = rewards.find((r) => r.id === choice)!;
+    const reward = rewards.find((r) => r.id === choice);
+    if (!reward) {
+      await interaction.reply({ content: "That reward isn't for sale right now. See `/redeem` for what is.", flags: MessageFlags.Ephemeral });
+      return;
+    }
     const asked = interaction.options.getInteger('quantity') ?? 1;
     const result = redeemReward(interaction.user.id, reward, asked);
     const deny = (content: string) => interaction.reply({ content, flags: MessageFlags.Ephemeral });

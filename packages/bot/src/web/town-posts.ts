@@ -1,9 +1,17 @@
+import { randomBytes } from 'node:crypto';
 import type { TownNewsPost } from '@mikazuki/shared';
+import { kvLoad, kvSave } from '../db/db.js';
 
 // 📣 Announcements for the web town only (never posted in Discord): listed in the town's News with the Discord ones
-// (web/town-news.ts), newest first. Same markdown as Discord. `at` is fixed, so the News dot shows once per post.
+// (web/town-news.ts), newest first. Same markdown as Discord. `at` is kept when a post is edited, so the News dot
+// shows once per post. Written in the CMS and kept in the database (kv 'town-posts'); the first start seeds it with
+// the post below.
 
-export const TOWN_POSTS: TownNewsPost[] = [
+export interface TownPost extends TownNewsPost {
+  id: string;
+}
+
+const SEED: TownNewsPost[] = [
   {
     at: Date.UTC(2026, 9, 5, 8, 30), // 2026-10-05
     title: '🌙 Welcome to the Mikazuki close beta!',
@@ -26,3 +34,41 @@ export const TOWN_POSTS: TownNewsPost[] = [
     ].join('\n'),
   },
 ];
+
+const KEY = 'town-posts';
+const posts = kvLoad<TownPost[]>(KEY, SEED.map((p) => ({ id: newId(), ...p })));
+const save = () => kvSave(KEY, posts);
+save(); // the seed, the first time
+
+function newId(): string {
+  return randomBytes(6).toString('hex');
+}
+
+export const TITLE_MAX = 120;
+export const BODY_MAX = 4000;
+
+/** The town-only posts, newest first. */
+export const townPosts = (): TownPost[] => [...posts].sort((a, b) => b.at - a.at);
+
+/** Adds a post dated now; `id` given = changes that post (keeping its date unless `bump`). False if it's gone. */
+export function savePost(id: string | null, title: string, body: string, bump = false): TownPost | null {
+  if (!id) {
+    const post = { id: newId(), at: Date.now(), title, body };
+    posts.push(post);
+    save();
+    return post;
+  }
+  const post = posts.find((p) => p.id === id);
+  if (!post) return null;
+  Object.assign(post, { title, body }, bump ? { at: Date.now() } : {});
+  save();
+  return post;
+}
+
+export function deletePost(id: string): boolean {
+  const i = posts.findIndex((p) => p.id === id);
+  if (i < 0) return false;
+  posts.splice(i, 1);
+  save();
+  return true;
+}
