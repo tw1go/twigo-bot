@@ -46,6 +46,9 @@ export interface Popup {
   sound?: Sfx;
   /** A look of its own instead of the item frame (`rw-<theme>` on the card; the arena's stone slab). */
   theme?: 'arena';
+  /** A small × in the top-right corner instead of the button at the bottom (`button` is its label for screen readers);
+   *  a click outside the box closes it as well. */
+  closeX?: boolean;
 }
 
 const queue: { popup: Popup; done: () => void }[] = [];
@@ -151,7 +154,8 @@ function next(): void {
     card.style.setProperty('--slice', String(art.frame.slice));
   }
 
-  const button = el('button', 'rw-ok', popup.button);
+  const button = popup.closeX ? el('button', 'rw-x', '×') : el('button', 'rw-ok', popup.button);
+  if (popup.closeX) button.setAttribute('aria-label', popup.button);
   if (popup.celebrate || popup.lights) {
     // Casino lights in their own marquee box over the top edge, every other one lit, swapping.
     const lights = el('div', 'rw-lights');
@@ -159,7 +163,7 @@ function next(): void {
     for (let i = 0; i < 9; i++) lights.append(el('span', i % 2 ? 'rw-bulb rw-odd' : 'rw-bulb'));
     card.append(lights);
   }
-  card.append(el('h2', 'rw-title', popup.title), ...popup.body, button);
+  card.append(...(popup.closeX ? [button] : []), el('h2', 'rw-title', popup.title), ...popup.body, ...(popup.closeX ? [] : [button]));
   if (popup.celebrate) stage.append(rays);
   stage.append(card);
   root.append(stage);
@@ -184,6 +188,8 @@ function next(): void {
   };
   button.addEventListener('click', close);
   document.addEventListener('keydown', keys);
+  // With the corner ×, a click on the dimmed town outside the box closes it too.
+  if (popup.closeX) root.addEventListener('pointerdown', (e) => !card.contains(e.target as Node) && close());
 }
 
 function graphic(g: RewardGraphic): HTMLElement {

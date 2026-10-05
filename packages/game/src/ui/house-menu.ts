@@ -33,7 +33,7 @@ export function showHouseMenu(h: HouseMenuHooks): void {
   let busy = false;
   /** What happened, under the box (toasts read out on their own: ui/toast.ts). */
   const say = (text: string, tone: 'bad' | 'good' | null) => toast(text, 4500, tone);
-  const close = () => document.querySelector<HTMLButtonElement>('#reward .rw-ok')?.click();
+  const close = () => document.querySelector<HTMLButtonElement>('#reward .rw-x')?.click();
 
   const button = (text: string, onClick: () => void, disabled = false, kind = '') => {
     const b = el('button', `hm-btn${kind ? ` hm-${kind}` : ''}`, text);
@@ -107,6 +107,7 @@ export function showHouseMenu(h: HouseMenuHooks): void {
     title: house.mine ? 'Your house' : `${house.owner}'s house`,
     body: [title, buttons],
     button: 'Close',
+    closeX: true,
     celebrate: false,
     sound: 'door',
   });

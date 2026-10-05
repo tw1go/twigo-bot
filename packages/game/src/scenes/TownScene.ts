@@ -1218,7 +1218,7 @@ export class TownScene extends Phaser.Scene {
 
   /** A match found while walking around town (an open pop-up closes; in the casino: out of it first). */
   private async matched(b: Building, channel: PlayerChannel, bet: number): Promise<void> {
-    document.querySelector<HTMLButtonElement>('#reward .rw-ok')?.click();
+    document.querySelector<HTMLButtonElement>('#reward .rw-ok, #reward .rw-x')?.click();
     if (this.inside) await this.leaveRoom();
     this.enterArena(b, channel, bet);
   }
