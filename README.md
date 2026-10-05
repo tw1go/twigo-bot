@@ -279,6 +279,13 @@ town sees the change at once. Titles not clicked yet carry a NEW tag. **<Richest
 #1 on the leaderboard (`packages/bot/src/web/richest.ts`), with the new-title pop-up the first time; it passes on when
 someone overtakes them. After the character creator, a look can only be changed here (`PUT /outfit` is creator-only).
 
+**Neighbourhood** (`?area=hood`; bot `packages/bot/src/web/hood.ts`, layout `hood-map.ts`; game `ui/house-creator.ts`,
+`ui/house-menu.ts`): over the bridge at the end of the town's east road. Every member builds one house, free (five types,
+coloured part by part; a new look later is 3 Kowens), on the next lot: rows of 5 and 4 houses along streets, the
+neighbourhood growing as houses are built. Members there see each other live (the town's /ws, room `hood`). Clicking
+someone's house robs it with `/steal`'s rules (`games/steal.ts`, shared); a house with a Bakod is fenced in and only a
+Master Key gets in (50% it snaps), or a Kalawang Potion halves the Bakod. Caught = the Tanod's bust, a fine and jail.
+
 **News** (`packages/bot/src/web/town-news.ts`): the megaphone beside Settings lists the latest posts from
 `ANNOUNCEMENTS_CHANNEL_ID` and `PATCH_NOTES_CHANNEL_ID` (`GET /town/news`, read from Discord and kept for 2 minutes;
 either can be left empty), plus town-only posts written in the CMS (`web/town-posts.ts`).

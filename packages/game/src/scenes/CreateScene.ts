@@ -6,6 +6,9 @@ import { saveOutfit, startingOutfit } from '../characters/looks';
 import { saveNickname, suggestNickname } from '../characters/nickname';
 import type { MeResult } from '../session';
 import { mountCreator } from '../ui/creator';
+import { loadHouseArt } from '../houses/art';
+import { currentArea } from '../net/hood';
+import { bootHood } from './HouseScene';
 
 // A logged-in member with no saved look or nickname picks them first (ui/creator.ts draws it from the sheets built here).
 // Meanwhile the town's art loads in the background (TownPreloadScene), so saving goes straight into the town.
@@ -54,7 +57,10 @@ export class CreateScene extends Phaser.Scene {
         if ((await saveOutfit(o, true)) !== 'account') return 'error';
         await townLoaded;
         this.scene.stop('town-preload');
-        this.scene.start('town', { ...this.args, me: { ...me, me: { ...me.me, outfit: o, nickname } }, firstVisit: true });
+        const next = { ...this.args, me: { ...me, me: { ...me.me, outfit: o, nickname } }, firstVisit: true };
+        // On the way to the neighbourhood (?area=hood): on there (a house first), else the town.
+        if (currentArea() === 'hood' && (await bootHood(this, next, await loadHouseArt(this.args.manifest)))) return 'ok';
+        this.scene.start('town', next);
         return 'ok';
       },
     });

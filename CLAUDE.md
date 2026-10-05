@@ -188,6 +188,19 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   vault; `web/richest.ts`, kv 'richest', tested): checked 2 s after any Kowens change and at startup; the first time ever
   it's the pop-up (`new-title` message live, or `/me` newTitle), not worn automatically; losing #1 drops it (wearers show
   Townfolk). Automatic titles can't be given (/gift title, CMS) or removed. Dev: `/__title?as=Alice`.
+- Neighbourhood (`?area=hood`, a page of its own: BootScene → `scenes/HouseScene.ts` (build a house first, free:
+  `ui/house-creator.ts`, the creator's box) → TownScene with the bot's generated map (`net/hood.ts` `hoodTownMap`; the
+  town's forest, no river). Bot `web/hood-map.ts` (pure, tested: bands of 5 and 4 houses down the map, each facing east onto
+  its street, a main street across the top whose west end goes back to town; grows with the houses; a Bakod = a fence round
+  the yard), `web/hood.ts` (schema v9 `houses`; GET /town/hood, POST /town/house (a new look 3 Kowens), POST /town/hood
+  steal|key|kalawang with `/steal`'s rules from `games/steal.ts`, posted in the games channel + feed kind 'steal'). The live
+  server has rooms (`?room=hood` on /ws): walking and who you see per room, chat and the rest global. Houses: manifest
+  `houses` → buildings/houses/parts.json + swatches.json, layers recoloured per slot and stacked into a canvas texture per
+  house (`houses/art.ts`; rule in the manifest note). House menu `ui/house-menu.ts`; a bust plays `playBusted`
+  (`ui/casino.ts`, the casino's Tanod + siren over the town). Town side: the bridge over the river at the east road's end
+  (town.json `bridge`, deck drawn in `world/bridge.ts`, railings = fence pieces), `gates.hood` tiles and an always-on
+  "Neighbourhood →" sign (TownScene `gateSigns`); walking onto a gate reloads the page in the other area. Dev: the dev
+  server answers the hood routes with pretend neighbours (Mara has a Bakod); `&steal=win|bust|snap`.
 - Player menu (`ui/target.ts`): left click (or tap) someone → their name in a long box top centre (or click their name
   in the chat: the box opens right beside it with the menu open, `selectAt`; a click elsewhere closes it; no ×: a click
   outside the box closes it too, a drag to peek doesn't); clicking it opens

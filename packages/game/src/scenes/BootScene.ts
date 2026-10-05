@@ -4,9 +4,13 @@ import { queueSheet } from '../assets/queue';
 import { loadMe, loginProblem } from '../session';
 import { loadCursors } from '../ui/cursor';
 import { showLogin } from '../ui/login';
+import { loadHouseArt } from '../houses/art';
+import { currentArea } from '../net/hood';
+import { bootHood } from './HouseScene';
 
 // Loads the two source-of-truth files, then: not logged in → the login screen; logged in without a saved look or
-// nickname → the character creator; otherwise the town (which queues every image they name). If login is off on the server
+// nickname → the character creator; otherwise the town (which queues every image they name), or with ?area=hood the
+// neighbourhood (after building a house, the first time: scenes/HouseScene.ts). If login is off on the server
 // (or the API is down), everyone goes straight to the town with a look saved in this browser.
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -41,6 +45,11 @@ export class BootScene extends Phaser.Scene {
       if (debug === 'wardrobe') return this.scene.start('wardrobe', { manifest });
       if (me?.status === 'anon') return showLogin(loginProblem());
       if (me?.status === 'ok' && (!me.me.outfit || !me.me.nickname)) return this.scene.start('create', { manifest, town, me });
+      // ?area=hood: the neighbourhood (members only; the town if it can't be reached).
+      if (currentArea() === 'hood' && me?.status === 'ok') {
+        void loadHouseArt(manifest).then(async (art) => (await bootHood(this, { manifest, town, me }, art)) || this.scene.start('town', { manifest, town, me }));
+        return;
+      }
       this.scene.start('town', { manifest, town, me });
     });
   }

@@ -41,6 +41,21 @@ export function queueTown(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Tex
     if (o.shadow) img(o.shadow);
     if (o.tufts) img(o.tufts);
   }
+  // The forest round the map (world/outskirts.ts): its trees, their shadows and tufts, and the undergrowth (the town's
+  // own objects happen to use them all; the neighbourhood's may not).
+  const O = map.outskirts;
+  if (O) {
+    for (const [id, shadow] of Object.entries(O.trees)) {
+      const p = M.props[id] as PropDef | undefined;
+      if (p?.file) img(p.file);
+      img(shadow);
+    }
+    for (const id of O.undergrowth) {
+      const p = M.props[id] as PropDef | undefined;
+      if (p?.file) img(p.file);
+    }
+    for (const f of (M.props['tree-tufts'] as { files?: string[] } | undefined)?.files ?? []) img(f);
+  }
   // Day/night swaps lamp-off for lamp-on; both are needed to find the lantern.
   const on = M.props['lamp-on'] as PropDef | undefined;
   const off = M.props['lamp-off'] as PropDef | undefined;

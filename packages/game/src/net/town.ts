@@ -20,6 +20,8 @@ export class TownLink {
   constructor(
     /** Dev only: the fake member's look, for the dev server's town (scripts/dev-town.ts). */
     private readonly devLook: unknown = null,
+    /** The room on the server: the town, or the neighbourhood ('hood'). */
+    private readonly room: 'town' | 'hood' = 'town',
   ) {
     this.connect();
   }
@@ -44,7 +46,7 @@ export class TownLink {
   }
 
   private connect(): void {
-    const ws = new WebSocket(townUrl(this.devLook));
+    const ws = new WebSocket(townUrl(this.devLook, this.room));
     this.ws = ws;
     ws.onopen = () => (this.retry = 0);
     ws.onmessage = (e) => {
@@ -65,9 +67,10 @@ export class TownLink {
 }
 
 /** /ws on this site (in dev, the fake login's name and look ride along for the dev server's town). */
-function townUrl(look: unknown): string {
+function townUrl(look: unknown, room: string): string {
   const url = new URL('/ws', location.href);
   url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  if (room !== 'town') url.searchParams.set('room', room);
   if (fakeLogin()) {
     url.searchParams.set('dev', fakeName());
     if (look) url.searchParams.set('look', JSON.stringify(look));

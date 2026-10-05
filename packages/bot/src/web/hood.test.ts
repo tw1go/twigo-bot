@@ -68,7 +68,7 @@ test('a Bakod fences the house: stealing needs a Master Key, a Kalawang Potion h
   addFence('a', 60 * 60_000, 7 * 86_400_000);
   const h = await townHood('b', names);
   assert.equal(h.houses[0].fenced, true);
-  assert.equal(h.map.fence.length, 12); // 3 a side
+  assert.equal(h.map.fence.length, 20); // round the yard: 5 a side
   assert.equal((await hoodAction(client, 'b', 'steal', 0, names)).ok, false); // the fence
   assert.equal((await hoodAction(client, 'b', 'key', 0, names)).ok, false); // no key
   addPotions('b', 'kalawang', 1);

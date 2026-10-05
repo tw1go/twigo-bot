@@ -5,7 +5,8 @@ import type { HoodMap, HoodObject } from '@mikazuki/shared';
 // the next, 5, 4… Every house's door is on its SE face (the art's), so each band faces east onto its own street; a
 // main street across the top joins them all, and its west end is the way back to town.
 //
-//   cols: [entrance 2] then per band [house 3][yard 1 (the doors)][street 3][back 1]
+//   cols: [entrance 2] then per band [house 3][yard 1 (the doors)][street 3][back 1 (bushes)]
+// A house with a Bakod has a fence round its yard.
 //   rows: [grass 1][main street 3][grass 1] then the lots, 5 rows each (3 for the house, 2 between)
 
 const HOUSE = 3;
@@ -37,13 +38,8 @@ function bandsFor(houses: number): number {
   return Math.max(MIN_BANDS, bands);
 }
 
-/** Trees for the back strips, styled as the town's (shadow and tufts). */
-const TREES: { id: string; shadow: string; tufts: string }[] = [
-  { id: 'tree-green-2', shadow: 'fx/fx-tree-shadow-64.png', tufts: 'props/prop-tree-tufts-2.png' },
-  { id: 'tree-green-6', shadow: 'fx/fx-tree-shadow-48.png', tufts: 'props/prop-tree-tufts-3.png' },
-  { id: 'tree-green-4', shadow: 'fx/fx-tree-shadow-80.png', tufts: 'props/prop-tree-tufts-3.png' },
-  { id: 'tree-green-1', shadow: 'fx/fx-tree-shadow-80.png', tufts: 'props/prop-tree-tufts-1.png' },
-];
+/** Bushes for the back strips (low, so they never hide the next band's houses behind them; the town's own). */
+const BUSHES = ['bush-l-1', 'bush-m-2', 'bush-l-2', 'bush-m-1', 'bush-s-2'];
 
 /** The map for `houses` houses (lots 0…houses-1 are built); `fenced` lots get a fence round them. */
 export function hoodMap(houses: number, fenced: Set<number> = new Set()): HoodMap {
@@ -61,16 +57,14 @@ export function hoodMap(houses: number, fenced: Set<number> = new Set()): HoodMa
   for (let b = 0; b < bands; b++) {
     const bx = ENTRANCE + b * BAND;
     for (let r = MAIN[0]; r < rows - 1; r++) for (let c = bx + HOUSE + 1; c < bx + HOUSE + 4; c++) ground[r][c] = 'path';
-    // A lamp in the yard after each lot, and a tree in the back strip every other lot.
+    // A lamp in the yard after each lot, and bushes along the back strip.
     for (let i = 0; i < capacity(b); i++) {
       const { row } = lotTile(lotOf(b, i));
       objects.push({ kind: 'prop', id: 'lamp-off', col: bx + HOUSE, row: row + HOUSE, footprint: [1, 1] });
       block(bx + HOUSE, row + HOUSE);
-      if (i % 2 === b % 2) {
-        const t = TREES[(b * 5 + i) % TREES.length];
-        const tr = row + 1;
-        objects.push({ kind: 'prop', id: t.id, col: bx + BAND - 1, row: tr, footprint: [1, 1], shadow: t.shadow, tufts: t.tufts, ...((b + i) % 3 ? {} : { flip: true }) });
-        block(bx + BAND - 1, tr);
+      for (const dr of [0, 2]) {
+        objects.push({ kind: 'prop', id: BUSHES[(b * 7 + i * 2 + dr) % BUSHES.length], col: bx + BAND - 1, row: row + dr, footprint: [1, 1], decor: true, walkable: false });
+        block(bx + BAND - 1, row + dr);
       }
     }
   }
@@ -82,9 +76,11 @@ export function hoodMap(houses: number, fenced: Set<number> = new Set()): HoodMa
     for (let r = row; r < row + HOUSE; r++) for (let c = col; c < col + HOUSE; c++) block(c, r);
     doors[id] = [col + HOUSE, row + 1];
     if (fenced.has(lot)) {
-      // Round the base: west and east sides on tiles' nw edges, north and south on their ne edges.
-      for (let r = row; r < row + HOUSE; r++) fence.push({ col, row: r, edge: 'nw' }, { col: col + HOUSE, row: r, edge: 'nw' });
-      for (let c = col; c < col + HOUSE; c++) fence.push({ col: c, row, edge: 'ne' }, { col: c, row: row + HOUSE, edge: 'ne' });
+      // Round the yard, a tile out from the house (the door inside): west and east sides on tiles' nw edges, north and
+      // south on their ne edges.
+      const [c0, r0, c1, r1] = [col - 1, row - 1, col + HOUSE + 1, row + HOUSE + 1];
+      for (let r = r0; r < r1; r++) fence.push({ col: c0, row: r, edge: 'nw' }, { col: c1, row: r, edge: 'nw' });
+      for (let c = c0; c < c1; c++) fence.push({ col: c, row: r0, edge: 'ne' }, { col: c, row: r1, edge: 'ne' });
     }
   }
 

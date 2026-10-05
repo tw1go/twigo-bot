@@ -38,6 +38,8 @@ export interface Manifest {
   fx: Record<string, FxDef>;
   /** Item art by id (dig items and /redeem rewards), only for the ids that have art. */
   items?: Record<string, ItemArtDef>;
+  /** Players' houses in the neighbourhood (houses/art.ts): layered and recoloured per slot. */
+  houses?: { parts: string; swatches: string; size: Vec2; footprint: Vec2; footprintTopCorner: Vec2; footprintBottomCorner: Vec2 };
   ui: Record<string, { file?: string; size?: Vec2; frames?: number | string[] | Record<string, number>; fps?: number; anchor?: Vec2 }> & {
     inventory?: { slot?: string; selected?: string; nineSlice?: number; itemFrame?: { file: string; nineSlice: number } };
     nameplate?: { file: string; self: string; threeSlice: number; height: number };
@@ -176,6 +178,10 @@ export interface TownMap {
   blocked: number[][]; // [row][col], 1 = blocked
   doors: Record<string, Vec2 | Vec2[]>; // [col, row] or several
   outskirts?: Outskirts;
+  /** Tiles over the river the game draws a bridge on (world/bridge.ts). */
+  bridge?: Vec2[];
+  /** Walking onto these tiles goes to another area: 'hood' (the neighbourhood) or 'town'. */
+  gates?: Partial<Record<'hood' | 'town', Vec2[]>>;
 }
 
 /** The forest drawn around the town (world/outskirts.ts). */

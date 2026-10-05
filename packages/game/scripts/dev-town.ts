@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { OutfitData } from '@mikazuki/shared';
+import type { HoodHouse, HouseLook, OutfitData, TownHoodActionResponse, TownHoodResponse } from '@mikazuki/shared';
+import type { IncomingMessage, ServerResponse } from 'node:http';
+import { hoodMap } from '../../bot/src/web/hood-map.ts';
 import type { Plugin } from 'vite';
 import { attachTown } from '../../bot/src/web/town.ts';
 import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
@@ -19,6 +21,9 @@ import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
 //   GET /__gift?as=Alice&item=megaphone&name=Megaphone&qty=3   Alice gets the item gift pop-up (as from /gift item)
 //   GET /__title?as=Alice&id=richest&name=Richest%20Among%20All&color=%23FFD54A   Alice gets the new-title pop-up
 //   GET /__look?as=Alice&look={…}&title=Kalbo&color=%23F8BF27   Alice's new look / title (the pretend Parlor calls it)
+//   The neighbourhood (?area=hood): GET /town/hood, POST /town/house, POST /town/hood answered here with pretend
+//   neighbours (one with a Bakod) and your house (by ?as=, from the page's address); &steal=win|bust|snap decides a
+//   steal (else it's random). Its room on the town server uses the bot's own layout (web/hood-map.ts).
 // What's said in town is printed here instead of going to Discord.
 
 export function devTown(): Plugin {
@@ -51,8 +56,92 @@ export function devTown(): Plugin {
         },
         paySolo: (who, stake, won) => void (won && move(who, stake * 2)),
       };
+      // ── The pretend neighbourhood ──
+      const neighbours: { name: string; style: string; colours: Record<string, string>; fenced: boolean }[] = [
+        { name: 'Kiko', style: 'kubo', colours: {}, fenced: false },
+        { name: 'Mara', style: 'cottage', colours: { walls: 'rose', roof: 'berry' }, fenced: true },
+        { name: 'Tess', style: 'townhouse', colours: {}, fenced: false },
+        { name: 'Jun', style: 'modern', colours: { walls: 'sun', trim: 'harbour' }, fenced: false },
+        { name: 'Lola', style: 'aframe', colours: { roof: 'moss' }, fenced: false },
+        { name: 'Ben', style: 'cottage', colours: { walls: 'harbour', roof: 'white' }, fenced: false },
+      ];
+      const houses: (HoodHouse & { name: string })[] = neighbours.map((h, lot) => ({ ...h, lot, owner: h.name, title: { name: 'Townfolk', color: '#B794F6' } }));
+      const me = { keys: 1, kalawang: 1, kowens: 50, stealAt: 0 };
+      const asOf = (req: IncomingMessage) => {
+        try {
+          return new URL(req.headers.referer ?? '').searchParams;
+        } catch {
+          return new URLSearchParams();
+        }
+      };
+      const hood = (who: string): TownHoodResponse => {
+        const mine = houses.find((h) => h.name === who);
+        return {
+          map: hoodMap(houses.length, new Set(houses.filter((h) => h.fenced).map((h) => h.lot))),
+          houses: houses.map(({ name, ...h }) => ({ ...h, ...(name === who ? { mine: true } : {}) })),
+          me: { house: mine ? { style: mine.style, colours: mine.colours } : null, kowens: me.kowens, keys: me.keys, kalawang: me.kalawang, stealAt: me.stealAt > Date.now() ? me.stealAt : null, jailed: false, repaintCost: 3 },
+        };
+      };
+      const reply = (res: ServerResponse, body: unknown) => {
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify(body));
+      };
+      const readJson = (req: IncomingMessage) => new Promise<Record<string, unknown>>((done) => {
+        let data = '';
+        req.on('data', (c: Buffer) => (data += c));
+        req.on('end', () => {
+          try {
+            done(JSON.parse(data || '{}'));
+          } catch {
+            done({});
+          }
+        });
+      });
+      server.middlewares.use('/town/house', async (req, res, next) => {
+        if (req.method !== 'POST') return next();
+        const who = asOf(req).get('as') ?? 'Dev tester';
+        const look = (await readJson(req)) as unknown as HouseLook;
+        const mine = houses.find((h) => h.name === who);
+        let message = 'Your house is built! Welcome to the neighbourhood.';
+        if (mine) {
+          me.kowens -= 3;
+          Object.assign(mine, { style: look.style, colours: look.colours });
+          message = 'Your house has a new look! (−3 Kowens)';
+        } else houses.push({ name: who, lot: houses.length, owner: who, title: { name: 'Townfolk', color: '#B794F6' }, style: look.style, colours: look.colours, fenced: false });
+        server.config.logger.info(`[hood] ${who}: ${mine ? 'new look' : 'built a house'} (${look.style})`, { timestamp: true });
+        reply(res, { ...hood(who), ok: true, message } satisfies TownHoodActionResponse);
+      });
+      server.middlewares.use('/town/hood', async (req, res) => {
+        const q = asOf(req);
+        const who = q.get('as') ?? 'Dev tester';
+        if (req.method !== 'POST') return reply(res, hood(who));
+        const { action, lot } = (await readJson(req)) as { action: string; lot: number };
+        const house = houses.find((h) => h.lot === lot)!;
+        const done = (ok: boolean, message: string, extra = {}) => reply(res, { ...hood(who), ok, message, ...extra } satisfies TownHoodActionResponse);
+        if (action === 'kalawang') {
+          if (me.kalawang < 1) return done(false, 'You have no Kalawang Potion.');
+          me.kalawang--;
+          return done(true, `Half of ${house.owner}'s Bakod rusted away.`);
+        }
+        if (house.fenced && action !== 'key') return done(false, `${house.owner}'s house has a Bakod. Use a Master Key to get past it.`);
+        if (action === 'key') me.keys--;
+        me.stealAt = Date.now() + 60 * 60_000;
+        const roll = q.get('steal') ?? (['win', 'bust', 'snap'] as const)[Math.floor(Math.random() * 3)];
+        server.config.logger.info(`[hood] ${who} → ${house.owner}'s house: ${roll}`, { timestamp: true });
+        if (action === 'key' && roll === 'snap') return done(true, 'Your Master Key snapped! The Bakod holds.');
+        if (roll === 'bust') return done(true, `Huli ka! You pay ${house.owner} a fine of 2 Kowens and spend 5 minutes in jail.`, { busted: true });
+        me.kowens += 4;
+        return done(true, 'You got away with 4 Kowens!', { stole: 4 });
+      });
+
       const town = attachTown(httpServer as Parameters<typeof attachTown>[0], {
         map: { size: json.size, spawn: json.spawn, blocked: json.blocked },
+        rooms: {
+          hood: () => {
+            const m = hoodMap(houses.length);
+            return { size: m.size, spawn: m.spawn, blocked: m.blocked };
+          },
+        },
         shared: true,
         arenaBets,
         authenticate: async (req) => {

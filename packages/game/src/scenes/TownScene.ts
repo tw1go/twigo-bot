@@ -12,6 +12,12 @@ import { TownLink } from '../net/town';
 import { showElsewhere, showKicked } from '../ui/elsewhere';
 import { mountTownHud, setHudAvatar } from '../ui/townhud';
 import { showParlor } from '../ui/parlor';
+import { type HouseArt, composeHouse, houseFiles, houseStyles, tidyLook } from '../houses/art';
+import { areaUrl, hoodAction, saveHouse } from '../net/hood';
+import { showHouseMenu } from '../ui/house-menu';
+import { mountHouseCreator } from '../ui/house-creator';
+import { playBusted } from '../ui/casino';
+import { drawBridge } from '../world/bridge';
 import { ChatBox } from '../ui/chat';
 import { StayReward } from '../ui/stay';
 import { MegaphoneBanner } from '../ui/megaphone';
@@ -19,7 +25,7 @@ import { SystemFeed } from '../ui/system-feed';
 import { announce } from '../ui/announce';
 import { OnlineList } from '../ui/online';
 import { EMOTE_KEYS, emotePicker } from '../ui/emotes';
-import type { ArenaServerMessage, OutfitData, TitleData, TownClientMessage, TownEmote, TownServerMessage } from '@mikazuki/shared';
+import type { ArenaServerMessage, HoodHouse, OutfitData, TitleData, TownClientMessage, TownEmote, TownHoodResponse, TownServerMessage } from '@mikazuki/shared';
 import { type BubbleArt, lightBubble } from '../ui/labels';
 import { type Reward, setRewardArt, showReward } from '../ui/reward';
 import { showMovementTutorial } from '../ui/tutorial';
@@ -176,12 +182,24 @@ export class TownScene extends Phaser.Scene {
 
   /** Straight from the character creator: a member's first time in town (the movement tutorial shows). */
   private firstVisit = false;
+  /** In the neighbourhood (?area=hood): its houses, and the art they're drawn from. */
+  private hood: TownHoodResponse | null = null;
+  private art: HouseArt | null = null;
+  /** Gate tiles (town.json / the neighbourhood's `gates`): walking onto one goes to that area. */
+  private gateAt = new Map<string, 'hood' | 'town'>();
+  private bridge: Phaser.GameObjects.Image | null = null;
+  /** The gates' signs (always shown, unlike the buildings' names). */
+  private readonly gateLabels: BuildingLabel[] = [];
+  /** Each house's texture, redrawn after a new look (the key changes so the sprite picks it up). */
+  private houseKeys = 0;
 
-  init(data: { manifest: Manifest; town: TownMap; me: MeResult | null; firstVisit?: boolean }): void {
+  init(data: { manifest: Manifest; town: TownMap; me: MeResult | null; firstVisit?: boolean; hood?: TownHoodResponse; art?: HouseArt }): void {
     this.firstVisit = !!data.firstVisit;
     this.M = data.manifest;
     this.map = data.town;
     this.me = data.me;
+    this.hood = data.hood ?? null;
+    this.art = data.art ?? null;
     this.outfit = startingOutfit(this.M.characters, data.me);
   }
 
@@ -189,6 +207,8 @@ export class TownScene extends Phaser.Scene {
     // (The page's login corner is hidden: the loading screen is just the moon and the bar; the town's HUD follows.)
     document.getElementById('hud')?.setAttribute('hidden', '');
     this.load.setPath(`${import.meta.env.BASE_URL}assets/`);
+    // The neighbourhood's houses are drawn from their layers (composited in create).
+    if (this.hood && this.art) for (const st of houseStyles(this.art)) for (const f of houseFiles(this.art, st)) queueImage(this.load, this.textures, f);
     queueTown(this.load, this.textures, this.M, this.map);
     for (const f of outfitFiles(this.M.characters, this.outfit)) queueImage(this.load, this.textures, f);
     this.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR, (file: Phaser.Loader.File) => assetProblems.add(`failed to load ${file.src}`));
@@ -252,7 +272,10 @@ export class TownScene extends Phaser.Scene {
   create(): void {
     applyTimeOverride();
     buildOutfit(this, this.M.characters, this.outfit);
+    if (this.hood) this.addHouses();
     this.objects = new WorldObjects(this, this.M, this.map);
+    if (this.map.bridge) this.bridge = drawBridge(this, this.map.bridge);
+    for (const [to, tiles] of Object.entries(this.map.gates ?? {}) as ['hood' | 'town', [number, number][]][]) for (const [c, r] of tiles) this.gateAt.set(`${c},${r}`, to);
     // The forest around the town fills what the camera can see past the map, without widening that view.
     const bounds = this.townBounds();
     const forest = outskirts(this.M, this.map, bounds);
@@ -278,9 +301,11 @@ export class TownScene extends Phaser.Scene {
     this.setupInput();
     this.updateSky(true);
     for (const b of this.objects.buildings) {
-      const name = BUILDINGS[b.id];
+      const house = this.houseFor(b.id);
+      const name = house ? (house.mine ? 'Your house' : `${house.owner}'s house`) : BUILDINGS[b.id];
       if (name) this.buildingLabels.set(b.id, new BuildingLabel(this, name, b.top.x));
     }
+    this.gateSigns();
     // Members show their nickname and title; without a login (login off, or the dev server) it's "Guest".
     const member = this.me?.status === 'ok' ? this.me.me : null;
     this.player.setNameTag(member?.nickname ?? 'Guest', member?.title ?? TOWNFOLK);
@@ -328,7 +353,7 @@ export class TownScene extends Phaser.Scene {
     this.labelZoom = zoom;
     this.player.setZoom(zoom);
     this.others.setZoom(zoom);
-    for (const l of this.buildingLabels.values()) l.setZoom(zoom);
+    for (const l of [...this.buildingLabels.values(), ...this.gateLabels]) l.setZoom(zoom);
     this.input.setDefaultCursor(cursor('pointer', zoom));
     for (const b of [...this.objects.buildings.flatMap((x) => x.parts), ...this.objects.benches.map((x) => x.sprite)]) if (b.input) b.input.cursor = cursor('hand', zoom);
     this.others.cursor = cursor('hand', zoom);
@@ -415,7 +440,7 @@ export class TownScene extends Phaser.Scene {
 
   /** Joins the live town: others appear, the player's steps, turns and seats are passed on, and the chat opens. */
   private connect(): void {
-    const link = new TownLink(this.outfit);
+    const link = new TownLink(this.outfit, this.hood ? 'hood' : 'town');
     this.link = link;
     const B = this.M.ui.speechBubble;
     const bubbles: BubbleArt | null = B && this.textures.exists(B.file) ? lightBubble(this, { file: B.file, slice: B.nineSlice, tail: B.tail, tailAnchor: B.tailAnchor }) : null;
@@ -500,7 +525,7 @@ export class TownScene extends Phaser.Scene {
       }
       if (m.t === 'say') {
         // Your own words come back from the server like everyone else's, so you see what they see.
-        const name = m.id === myId ? (member?.nickname ?? 'You') : (this.others.nameOf(m.id) ?? 'Someone');
+        const name = m.id === myId ? (member?.nickname ?? 'You') : (this.others.nameOf(m.id) ?? m.name ?? 'Someone');
         if (m.megaphone) megaphone.show(name, m.text);
         if (m.id === myId) {
           if (bubbles) this.player.say(m.text, bubbles);
@@ -977,6 +1002,8 @@ export class TownScene extends Phaser.Scene {
   }
 
   private arrived(tile: Tile): void {
+    const gate = this.gateAt.get(`${tile.col},${tile.row}`);
+    if (gate) return this.travel(gate);
     if (this.pending?.sit) {
       const b = this.pending.sit;
       this.pending = null;
@@ -1007,11 +1034,118 @@ export class TownScene extends Phaser.Scene {
     if (b.id === 'notice-board') return showBoard();
     if (b.id === 'rewards-shop') return showShop();
     if (b.id === 'parlor') return this.openParlor();
+    const house = this.houseFor(b.id);
+    if (house) return this.openHouse(house);
     if (b.id === 'mine-entrance') return showMine();
     if (b.id === 'casino') return void this.enterCasino(b);
     if (b.id === 'arena') return this.openArena(b);
     toast(`${doorLabel(b.id)}: coming soon`);
   }
+
+  // ── The neighbourhood: houses, gates ──
+
+  /** Each house drawn in its look as a texture, and a building of its own in the manifest (this scene's copy). */
+  private addHouses(): void {
+    const art = this.art;
+    const H = this.M.houses;
+    if (!art || !H || !this.hood) return;
+    const buildings = { ...this.M.buildings };
+    for (const house of this.hood.houses) {
+      const key = this.houseTexture(house);
+      if (key) buildings[`house-${house.lot}`] = { file: key, size: H.size, footprint: H.footprint, footprintTopCorner: H.footprintTopCorner, footprintBottomCorner: H.footprintBottomCorner } as Manifest['buildings'][string];
+    }
+    this.M = { ...this.M, buildings };
+  }
+
+  /** A house's look as a new texture (null if its art isn't loaded). */
+  private houseTexture(house: HoodHouse): string | null {
+    const canvas = this.art && composeHouse(this, this.art, tidyLook(this.art, house));
+    if (!canvas) return null;
+    const key = `house:${house.lot}:${this.houseKeys++}`;
+    this.textures.addCanvas(key, canvas);
+    return key;
+  }
+
+  private houseFor(buildingId: string): HoodHouse | null {
+    if (!this.hood || !buildingId.startsWith('house-')) return null;
+    const lot = Number(buildingId.slice(6));
+    return this.hood.houses.find((h) => h.lot === lot) ?? null;
+  }
+
+  private openHouse(house: HoodHouse): void {
+    const hood = this.hood!;
+    showHouseMenu({
+      house,
+      me: hood.me,
+      act: async (action) => {
+        const r = await hoodAction(action, house.lot);
+        if (r) this.hood = r;
+        return r;
+      },
+      repaint: () => this.repaintHouse(house),
+      busted: (message) => void playBusted(message),
+    });
+  }
+
+  /** Your house, a new look (the house creator over the town); its sprite is redrawn when it's saved. */
+  private repaintHouse(house: HoodHouse): void {
+    const art = this.art;
+    if (!art || !this.hood) return;
+    const frame = this.M.ui.inventory?.itemFrame;
+    mountHouseCreator({
+      art,
+      initial: house,
+      cost: this.hood.me.repaintCost,
+      kowens: this.hood.me.kowens,
+      frame: frame ? { url: `${import.meta.env.BASE_URL}assets/${frame.file}`, slice: frame.nineSlice } : null,
+      draw: (look) => composeHouse(this, art, look),
+      save: async (look) => {
+        const r = await saveHouse(look);
+        if (!r) return { ok: false, message: "Couldn't save. Try again?" };
+        this.hood = r;
+        if (r.ok) {
+          playSound('coin');
+          window.dispatchEvent(new Event('mk-wallet'));
+          const now = r.houses.find((h) => h.lot === house.lot);
+          const key = now && this.houseTexture(now);
+          const b = this.objects.buildings.find((x) => x.id === `house-${house.lot}`);
+          if (key && b) b.sprite.setTexture(key);
+        }
+        return r;
+      },
+      onClose: () => {},
+    });
+  }
+
+  /** A clickable sign over each gate: "Neighbourhood" at the bridge, "Back to town" at the neighbourhood's exit. */
+  private gateSigns(): void {
+    for (const to of ['hood', 'town'] as const) {
+      const tiles = this.map.gates?.[to];
+      if (!tiles?.length) continue;
+      const [c, r] = tiles[Math.floor(tiles.length / 2)];
+      const at = tileToScreen(c, r);
+      const sign = new BuildingLabel(this, to === 'hood' ? 'Neighbourhood →' : '← Back to town', at.x);
+      this.gateLabels.push(sign);
+      sign.setZoom(this.cameras.main.zoom);
+      sign.show(at.y - 6);
+      sign.text.setInteractive({ cursor: 'pointer' }).on('pointerdown', (p: Phaser.Input.Pointer) => {
+        if (!p.leftButtonDown()) return;
+        p.event.stopPropagation();
+        this.goToTile({ col: c, row: r });
+      });
+    }
+  }
+
+  /** Off to the other area: a fade, then that page (the town's art is cached, so it's quick). */
+  private travel(to: 'hood' | 'town'): void {
+    if (this.travelling) return;
+    this.travelling = true;
+    playSound('door');
+    toast(to === 'hood' ? 'To the neighbourhood…' : 'Back to town…');
+    this.cameras.main.fadeOut(400, 0, 0, 0);
+    this.time.delayedCall(420, () => location.assign(areaUrl(to)));
+  }
+  private travelling = false;
 
   // ── The Parlor: a new look (Kowens) or another of your titles ──
 
@@ -1226,7 +1360,7 @@ export class TownScene extends Phaser.Scene {
     this.objects.setLamps(sky.lampsOn);
     if (!force && sky.tint === this.tint) return;
     this.tint = sky.tint;
-    const all = [...this.ground.sprites, ...this.objects.sprites, ...this.player.tintables, ...this.others.tintables];
+    const all = [...this.ground.sprites, ...this.objects.sprites, ...this.player.tintables, ...this.others.tintables, ...(this.bridge ? [this.bridge] : [])];
     for (const s of all) s.setTint(sky.tint);
   }
 

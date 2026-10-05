@@ -1,0 +1,367 @@
+{
+ "keys": {
+  "main": [
+   "#DCDCF0",
+   "#A8A8C8",
+   "#74749A",
+   "#48486A"
+  ],
+  "trim": [
+   "#F0E0C8",
+   "#C0A888",
+   "#8A7258"
+  ],
+  "stone": [
+   "#7A8099",
+   "#565C75",
+   "#3D4256",
+   "#2A2D3E"
+  ],
+  "glow": [
+   "#FFC46B",
+   "#F59E0B",
+   "#C2410C"
+  ],
+  "leaf": [
+   "#5A8A5E",
+   "#3E6B4F",
+   "#2D5240",
+   "#1F3A2E"
+  ]
+ },
+ "flowerKey": "#F0ABFC",
+ "houses": {
+  "kubo": {
+   "outline": "#3A2418",
+   "trimSlot": "stilts",
+   "layers": [
+    {
+     "order": "00",
+     "file": "kubo/building-house-kubo-00-base.png",
+     "slot": "base"
+    },
+    {
+     "order": "10",
+     "file": "kubo/building-house-kubo-10-stilts.png",
+     "slot": "stilts"
+    },
+    {
+     "order": "20",
+     "file": "kubo/building-house-kubo-20-walls.png",
+     "slot": "walls"
+    },
+    {
+     "order": "30",
+     "file": "kubo/building-house-kubo-30-windows.png",
+     "slot": "windows"
+    },
+    {
+     "order": "35",
+     "file": "kubo/building-house-kubo-35-shutter.png",
+     "slot": "shutter"
+    },
+    {
+     "order": "40",
+     "file": "kubo/building-house-kubo-40-door.png",
+     "slot": "door"
+    },
+    {
+     "order": "45",
+     "file": "kubo/building-house-kubo-45-stairs.png",
+     "slot": "stairs"
+    },
+    {
+     "order": "60",
+     "file": "kubo/building-house-kubo-60-roof.png",
+     "slot": "roof"
+    }
+   ],
+   "slots": [
+    "base",
+    "door",
+    "roof",
+    "shutter",
+    "stairs",
+    "stilts",
+    "walls",
+    "windows"
+   ],
+   "default": {
+    "base": "stone",
+    "stilts": "walnut",
+    "walls": "oak",
+    "windows": "amber",
+    "shutter": "oak",
+    "door": "walnut",
+    "stairs": "walnut",
+    "roof": "straw"
+   }
+  },
+  "cottage": {
+   "outline": "#1E1B3A",
+   "trimSlot": "trim",
+   "layers": [
+    {
+     "order": "00",
+     "file": "cottage/building-house-cottage-00-base.png",
+     "slot": "base"
+    },
+    {
+     "order": "10",
+     "file": "cottage/building-house-cottage-10-walls.png",
+     "slot": "walls"
+    },
+    {
+     "order": "20",
+     "file": "cottage/building-house-cottage-20-trim.png",
+     "slot": "trim"
+    },
+    {
+     "order": "30",
+     "file": "cottage/building-house-cottage-30-windows.png",
+     "slot": "windows"
+    },
+    {
+     "order": "40",
+     "file": "cottage/building-house-cottage-40-door.png",
+     "slot": "door"
+    },
+    {
+     "order": "45",
+     "file": "cottage/building-house-cottage-45-step.png",
+     "slot": "step"
+    },
+    {
+     "order": "50",
+     "file": "cottage/building-house-cottage-50-flowerbox.png",
+     "slot": "flowerbox"
+    },
+    {
+     "order": "60",
+     "file": "cottage/building-house-cottage-60-roof.png",
+     "slot": "roof"
+    },
+    {
+     "order": "65",
+     "file": "cottage/building-house-cottage-65-chimney.png",
+     "slot": "chimney"
+    }
+   ],
+   "slots": [
+    "base",
+    "chimney",
+    "door",
+    "flowerbox",
+    "plants",
+    "roof",
+    "step",
+    "trim",
+    "walls",
+    "windows"
+   ],
+   "default": {
+    "base": "stone",
+    "walls": "cream",
+    "trim": "walnut",
+    "windows": "amber",
+    "door": "lime",
+    "step": "stone",
+    "flowerbox": "oak",
+    "plants": "green",
+    "roof": "moss",
+    "chimney": "stone"
+   }
+  },
+  "townhouse": {
+   "outline": "#1E1B3A",
+   "trimSlot": "trim",
+   "layers": [
+    {
+     "order": "00",
+     "file": "townhouse/building-house-townhouse-00-base.png",
+     "slot": "base"
+    },
+    {
+     "order": "10",
+     "file": "townhouse/building-house-townhouse-10-walls.png",
+     "slot": "walls"
+    },
+    {
+     "order": "20",
+     "file": "townhouse/building-house-townhouse-20-trim.png",
+     "slot": "trim"
+    },
+    {
+     "order": "30",
+     "file": "townhouse/building-house-townhouse-30-windows.png",
+     "slot": "windows"
+    },
+    {
+     "order": "40",
+     "file": "townhouse/building-house-townhouse-40-door.png",
+     "slot": "door"
+    },
+    {
+     "order": "50",
+     "file": "townhouse/building-house-townhouse-50-balcony.png",
+     "slot": "balcony"
+    },
+    {
+     "order": "60",
+     "file": "townhouse/building-house-townhouse-60-roof.png",
+     "slot": "roof"
+    }
+   ],
+   "slots": [
+    "balcony",
+    "base",
+    "door",
+    "roof",
+    "trim",
+    "walls",
+    "windows"
+   ],
+   "default": {
+    "base": "stone",
+    "walls": "harbour",
+    "trim": "white",
+    "windows": "amber",
+    "door": "straw",
+    "balcony": "white",
+    "roof": "charcoal"
+   }
+  },
+  "modern": {
+   "outline": "#1E1B3A",
+   "trimSlot": "trim",
+   "layers": [
+    {
+     "order": "00",
+     "file": "modern/building-house-modern-00-base.png",
+     "slot": "base"
+    },
+    {
+     "order": "10",
+     "file": "modern/building-house-modern-10-walls.png",
+     "slot": "walls"
+    },
+    {
+     "order": "15",
+     "file": "modern/building-house-modern-15-terrace.png",
+     "slot": "terrace"
+    },
+    {
+     "order": "20",
+     "file": "modern/building-house-modern-20-upper.png",
+     "slot": "upper"
+    },
+    {
+     "order": "25",
+     "file": "modern/building-house-modern-25-roof.png",
+     "slot": "roof"
+    },
+    {
+     "order": "30",
+     "file": "modern/building-house-modern-30-windows.png",
+     "slot": "windows"
+    },
+    {
+     "order": "40",
+     "file": "modern/building-house-modern-40-door.png",
+     "slot": "door"
+    },
+    {
+     "order": "50",
+     "file": "modern/building-house-modern-50-trim.png",
+     "slot": "trim"
+    },
+    {
+     "order": "55",
+     "file": "modern/building-house-modern-55-planter.png",
+     "slot": "planter"
+    }
+   ],
+   "slots": [
+    "base",
+    "door",
+    "planter",
+    "plants",
+    "roof",
+    "terrace",
+    "trim",
+    "upper",
+    "walls",
+    "windows"
+   ],
+   "default": {
+    "base": "stone",
+    "walls": "white",
+    "terrace": "stone",
+    "upper": "white",
+    "roof": "stone",
+    "windows": "amber",
+    "door": "berry",
+    "trim": "berry",
+    "planter": "charcoal",
+    "plants": "green"
+   }
+  },
+  "aframe": {
+   "outline": "#1E1B3A",
+   "trimSlot": "deck",
+   "layers": [
+    {
+     "order": "00",
+     "file": "aframe/building-house-aframe-00-base.png",
+     "slot": "base"
+    },
+    {
+     "order": "05",
+     "file": "aframe/building-house-aframe-05-roof.png",
+     "slot": "roof"
+    },
+    {
+     "order": "10",
+     "file": "aframe/building-house-aframe-10-walls.png",
+     "slot": "walls"
+    },
+    {
+     "order": "20",
+     "file": "aframe/building-house-aframe-20-deck.png",
+     "slot": "deck"
+    },
+    {
+     "order": "30",
+     "file": "aframe/building-house-aframe-30-windows.png",
+     "slot": "windows"
+    },
+    {
+     "order": "40",
+     "file": "aframe/building-house-aframe-40-door.png",
+     "slot": "door"
+    },
+    {
+     "order": "60",
+     "file": "aframe/building-house-aframe-60-roof-front.png",
+     "slot": "roof"
+    }
+   ],
+   "slots": [
+    "base",
+    "deck",
+    "door",
+    "roof",
+    "walls",
+    "windows"
+   ],
+   "default": {
+    "base": "stone",
+    "roof": "grape",
+    "walls": "oak",
+    "deck": "oak",
+    "windows": "amber",
+    "door": "oak"
+   }
+  }
+ }
+}

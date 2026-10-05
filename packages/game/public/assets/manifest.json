@@ -2401,5 +2401,28 @@
       "showcase": "ui/items/item-windup-robot@32.png"
     }
   },
-  "notes_items": "Item art by id (dig items in the bot's dig/items.ts, rewards in games/rewards.ts): icon = 16x16 for small rows, showcase = 32x32 for pop-ups, anim = a 32x32 looping sheet shown instead of the showcase where there is one. Ids without art are simply absent (the game shows the emoji/name). Draw at whole-number scales with nearest-neighbour."
+  "notes_items": "Item art by id (dig items in the bot's dig/items.ts, rewards in games/rewards.ts): icon = 16x16 for small rows, showcase = 32x32 for pop-ups, anim = a 32x32 looping sheet shown instead of the showcase where there is one. Ids without art are simply absent (the game shows the emoji/name). Draw at whole-number scales with nearest-neighbour.",
+  "houses": {
+    "parts": "buildings/houses/parts.json",
+    "swatches": "buildings/houses/swatches.json",
+    "size": [
+      112,
+      136
+    ],
+    "footprint": [
+      3,
+      3
+    ],
+    "footprintTopCorner": [
+      56,
+      84
+    ],
+    "footprintBottomCorner": [
+      56,
+      132
+    ],
+    "collision": "block all 3x3",
+    "interaction": "door on the SE face: the tile in front is (col+3,row+1) from the top tile",
+    "note": "Players' houses in the neighbourhood (6 Oct): five types (parts.json: layers bottom to top, one slot each), recoloured per slot from swatches.json. Layers are drawn in key colours (parts.json keys): each layer's own family (main, stone or trim, whichever it has most of) takes its slot's swatch (main/stone shade for shade, trim's three onto the swatch's last three), glow takes the windows swatch, leaf/flower the plants swatch, trim in other layers the house's trimSlot swatch; the door knob (#F8BF27) and outlines stay."
+  }
 }

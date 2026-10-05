@@ -347,3 +347,31 @@ function fakeGamble(bet: number, call: TownCoinSide): TownGambleResponse {
   fakeState.kowens += outcome === 'win' ? bet : -bet;
   return { ok: true, outcome, landed, bet, message: outcome === 'win' ? `${side(call)}! You won ${kowens(bet)}.` : `${side(landed)}. You lost ${kowens(bet)}.`, kowens: fakeState.kowens, ...odds };
 }
+
+/** The Tanod's raid on its own, over the town (a house robbery gone wrong): he rises at the bottom centre with the
+ *  siren over his head while the screen flashes red/blue, holds a moment, then it's gone (the jail takes over). */
+export async function playBusted(message: string): Promise<void> {
+  const root = el('div');
+  root.id = 'busted';
+  root.setAttribute('role', 'alert');
+  const flash = el('div', 'bz-flash');
+  const raid = el('div', 'bz-raid');
+  const siren = el('div', 'bz-siren');
+  const tanod = el('div', 'bz-tanod');
+  const say = el('div', 'bz-say', message);
+  raid.append(siren, tanod);
+  root.append(flash, raid, say);
+  document.body.append(root);
+  const scale = tableScale();
+  requestAnimationFrame(() => root.classList.add('bz-on'));
+  const stopSiren = art.siren ? play(siren, art.siren, scale * 2, true).stop : () => {};
+  playSound('busted');
+  if (art.tanod) await play(tanod, art.tanod, scale * 2, false).done;
+  else tanod.textContent = 'Huli ka!';
+  root.classList.add('bz-flashing');
+  await wait(RAID_HOLD_MS);
+  stopSiren();
+  root.classList.add('bz-out');
+  await wait(300);
+  root.remove();
+}

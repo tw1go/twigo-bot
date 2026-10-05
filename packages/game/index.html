@@ -699,6 +699,32 @@
         #casino-screen .cz-table { padding-bottom: 76px; }
         #casino-screen .cz-rules { position: absolute; left: 70px; right: 8px; bottom: 8px; max-width: none; font-size: 12px; text-align: left; }
       }
+      /* A house in the neighbourhood (ui/house-menu.ts), in the reward box. */
+      #reward .hm-title { margin: -6px 0 10px; font-size: 17px; font-weight: 700; filter: drop-shadow(1px 0 0 #1E1B3A) drop-shadow(-1px 0 0 #1E1B3A) drop-shadow(0 1px 0 #1E1B3A) drop-shadow(0 -1px 0 #1E1B3A); }
+      #reward .hm-status { margin: 0 0 14px; color: #3D4256; font-size: 14px; }
+      #reward .hm-actions { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+      #reward .hm-btn { padding: 9px 14px; border: 3px solid #1E1B3A; border-radius: 0; background: #EDE9FE; color: #1E1B3A; font: inherit; font-weight: 700; box-shadow: 0 3px 0 #1E1B3A; }
+      #reward .hm-btn:hover:not(:disabled) { background: #DDD6FE; }
+      #reward .hm-steal { background: #F7768E; }
+      #reward .hm-steal:hover:not(:disabled) { background: #FB9AAD; }
+      #reward .hm-btn:disabled { opacity: 0.5; box-shadow: none; transform: translateY(3px); }
+      #reward .hm-note { min-height: 1.3em; margin: 0 0 14px; color: #3D4256; font-size: 14px; }
+      #reward .hm-note:empty { display: none; }
+      #reward .hm-good { color: #15803D; font-weight: 700; }
+      #reward .hm-bad { color: #B91C1C; }
+      /* The house creator: the character creator's box with a house in it. */
+      #creator .cr-house-art { image-rendering: pixelated; }
+      /* A house robbery gone wrong (ui/casino.ts playBusted): the casino's raid on its own, over the town. */
+      #busted { position: fixed; inset: 0; z-index: 9; pointer-events: none; font: 15px/1.3 var(--ui-font); transition: opacity 0.3s; }
+      #busted.bz-out { opacity: 0; }
+      #busted .bz-flash { position: absolute; inset: 0; visibility: hidden; }
+      #busted.bz-flashing .bz-flash { visibility: visible; animation: cz-flash 0.8s steps(1) infinite; }
+      #busted .bz-raid { position: absolute; left: 50%; bottom: 0; display: flex; flex-direction: column; align-items: center; transform: translate(-50%, 100%); }
+      #busted.bz-on .bz-raid { transform: translate(-50%, 0); transition: transform 0.35s steps(5); }
+      #busted .bz-siren, #busted .bz-tanod { background-repeat: no-repeat; image-rendering: pixelated; }
+      #busted .bz-tanod { font-size: 36px; font-weight: 700; color: #F7768E; }
+      #busted .bz-say { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); max-width: calc(100vw - 32px); padding: 8px 16px; border: 3px solid #1E1B3A; background: #F7768E; color: #1E1B3A; font-size: 20px; font-weight: 700; text-align: center; box-shadow: 0 4px 0 #1E1B3A; }
+      @media (prefers-reduced-motion: reduce) { #busted.bz-on .bz-raid { transition: none; } #busted.bz-flashing .bz-flash { animation: none; background: rgba(220, 38, 38, 0.12); } }
       @media (prefers-reduced-motion: reduce) { #casino-screen .cz-flying { animation: none; } #casino-screen.cz-raiding .cz-raid { transition: none; } #casino-screen.cz-flashing .cz-flash { animation: none; background: rgba(220, 38, 38, 0.12); } }
       /* Notice board (ui/board.ts; tabs share the bank's .bk-tabs): a wooden sign on two posts with quests pinned on cork,
          all pixel art: the wood, posts, cork and pins are small tiles drawn in code (ui/pixel-tiles.ts) and scaled 3×

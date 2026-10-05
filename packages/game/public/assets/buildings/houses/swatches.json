@@ -1,0 +1,281 @@
+{
+ "solid": {
+  "lavender": [
+   "#DCDCF0",
+   "#A8A8C8",
+   "#74749A",
+   "#48486A"
+  ],
+  "cream": [
+   "#F0E0C8",
+   "#F0E0C8",
+   "#C0A888",
+   "#8A7258"
+  ],
+  "white": [
+   "#E6E9F2",
+   "#E8E8E8",
+   "#B4B4B4",
+   "#7C7C7C"
+  ],
+  "charcoal": [
+   "#7C7C7C",
+   "#4A4A4A",
+   "#3D4256",
+   "#2A2D3E"
+  ],
+  "stone": [
+   "#7A8099",
+   "#565C75",
+   "#3D4256",
+   "#2A2D3E"
+  ],
+  "oak": [
+   "#C0A888",
+   "#A57548",
+   "#7E5533",
+   "#5C3A24"
+  ],
+  "walnut": [
+   "#A57548",
+   "#7E5533",
+   "#5C3A24",
+   "#3A2418"
+  ],
+  "straw": [
+   "#F8BF27",
+   "#BA7F05",
+   "#7A4A01",
+   "#623701"
+  ],
+  "sun": [
+   "#FCFC64",
+   "#FCDA4A",
+   "#F8BF27",
+   "#BA7F05"
+  ],
+  "clay": [
+   "#FFC46B",
+   "#F59E0B",
+   "#C2410C",
+   "#7A4535"
+  ],
+  "rose": [
+   "#F2C9A5",
+   "#D9A07A",
+   "#B07050",
+   "#7A4535"
+  ],
+  "moss": [
+   "#5A8A5E",
+   "#3E6B4F",
+   "#2D5240",
+   "#1F3A2E"
+  ],
+  "lime": [
+   "#D9F99D",
+   "#A3E635",
+   "#22C55E",
+   "#2D5240"
+  ],
+  "harbour": [
+   "#5B8FD1",
+   "#2E5E99",
+   "#1D3F6E",
+   "#13284A"
+  ],
+  "grape": [
+   "#B794F6",
+   "#7C2AE8",
+   "#5B21B6",
+   "#4C1D95"
+  ],
+  "berry": [
+   "#F0ABFC",
+   "#D946EF",
+   "#A21CAF",
+   "#86198F"
+  ]
+ },
+ "glow": {
+  "amber": [
+   "#FFC46B",
+   "#F59E0B",
+   "#C2410C"
+  ],
+  "candle": [
+   "#FCFC64",
+   "#FCDA4A",
+   "#BA7F05"
+  ],
+  "neon": [
+   "#F0ABFC",
+   "#D946EF",
+   "#86198F"
+  ],
+  "moon": [
+   "#B794F6",
+   "#7C2AE8",
+   "#4C1D95"
+  ],
+  "sea": [
+   "#5B8FD1",
+   "#2E5E99",
+   "#13284A"
+  ],
+  "firefly": [
+   "#D9F99D",
+   "#A3E635",
+   "#2D5240"
+  ]
+ },
+ "plants": {
+  "green": {
+   "leaf": [
+    "#5A8A5E",
+    "#3E6B4F",
+    "#2D5240",
+    "#1F3A2E"
+   ],
+   "flower": "#F0ABFC"
+  },
+  "spring": {
+   "leaf": [
+    "#D9F99D",
+    "#A3E635",
+    "#22C55E",
+    "#2D5240"
+   ],
+   "flower": "#F8BF27"
+  },
+  "autumn": {
+   "leaf": [
+    "#F8BF27",
+    "#BA7F05",
+    "#7A4A01",
+    "#623701"
+   ],
+   "flower": "#C2410C"
+  },
+  "lilac": {
+   "leaf": [
+    "#5A8A5E",
+    "#3E6B4F",
+    "#2D5240",
+    "#1F3A2E"
+   ],
+   "flower": "#B794F6"
+  }
+ },
+ "combos": [
+  {
+   "name": "Sakura",
+   "walls": "white",
+   "roof": "berry",
+   "door": "rose",
+   "trim": "rose",
+   "windows": "neon",
+   "upper": "rose",
+   "terrace": "berry",
+   "stilts": "rose",
+   "shutter": "rose",
+   "stairs": "rose",
+   "deck": "rose",
+   "balcony": "berry",
+   "flowerbox": "rose",
+   "plants": "lilac",
+   "chimney": "charcoal",
+   "base": "stone"
+  },
+  {
+   "name": "Seaside",
+   "walls": "harbour",
+   "roof": "white",
+   "door": "sun",
+   "trim": "white",
+   "windows": "sea",
+   "upper": "white",
+   "terrace": "harbour",
+   "stilts": "white",
+   "shutter": "harbour",
+   "stairs": "white",
+   "deck": "white",
+   "balcony": "white",
+   "flowerbox": "white",
+   "plants": "spring",
+   "base": "stone"
+  },
+  {
+   "name": "Forest",
+   "walls": "walnut",
+   "roof": "moss",
+   "door": "lime",
+   "trim": "oak",
+   "windows": "firefly",
+   "upper": "moss",
+   "terrace": "walnut",
+   "stilts": "walnut",
+   "shutter": "moss",
+   "stairs": "walnut",
+   "deck": "walnut",
+   "balcony": "oak",
+   "flowerbox": "walnut",
+   "plants": "spring",
+   "base": "charcoal"
+  },
+  {
+   "name": "Harvest",
+   "walls": "cream",
+   "roof": "clay",
+   "door": "walnut",
+   "trim": "walnut",
+   "windows": "candle",
+   "upper": "clay",
+   "terrace": "walnut",
+   "stilts": "walnut",
+   "shutter": "clay",
+   "stairs": "walnut",
+   "deck": "walnut",
+   "balcony": "walnut",
+   "flowerbox": "clay",
+   "plants": "autumn",
+   "base": "stone"
+  },
+  {
+   "name": "Midnight",
+   "walls": "charcoal",
+   "roof": "grape",
+   "door": "berry",
+   "trim": "lavender",
+   "windows": "moon",
+   "upper": "grape",
+   "terrace": "charcoal",
+   "stilts": "charcoal",
+   "shutter": "grape",
+   "stairs": "charcoal",
+   "deck": "charcoal",
+   "balcony": "lavender",
+   "flowerbox": "charcoal",
+   "plants": "lilac",
+   "base": "charcoal"
+  },
+  {
+   "name": "Sunny",
+   "walls": "sun",
+   "roof": "harbour",
+   "door": "berry",
+   "trim": "white",
+   "windows": "amber",
+   "upper": "harbour",
+   "terrace": "white",
+   "stilts": "white",
+   "shutter": "harbour",
+   "stairs": "white",
+   "deck": "white",
+   "balcony": "white",
+   "flowerbox": "white",
+   "plants": "green",
+   "base": "stone"
+  }
+ ]
+}
