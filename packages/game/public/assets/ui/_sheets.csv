@@ -22,3 +22,5 @@ ui-dig-panel.png,128,128,8,10,no,64,64,the Mine dig: shovel digging a mound; pla
 items/item-twigo-treasure@32-anim.png,32,32,17,6,yes,16,16,item showcase animation (sparkle)
 items/item-twigo-tsinelas@32-anim.png,32,32,15,6,yes,16,16,item showcase animation
 ui-bag.png,32,32,1,0,no,0,0,the inventory button beside the chat input
+ui-tanod-bust.png,48,48,6,10,no,24,47,the Tanod raid: slides up from the bottom-left; plays once and holds the last cell
+ui-casino-felt.png,24,24,1,0,no,0,0,9-slice: 7 px wood rim around the felt

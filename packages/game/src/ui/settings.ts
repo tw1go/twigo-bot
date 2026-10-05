@@ -98,13 +98,21 @@ function audio(): HTMLElement {
 
 /** Who made the music, sounds and font (assets/audio/CREDITS.md and the font's licence have the details). */
 const CREDITS: { heading: string; lines: [string, string, string?][] }[] = [
-  { heading: 'Music', lines: [['"happy tune" by syncopika', 'CC-BY 3.0', 'https://opengameart.org/content/happy-tune']] },
+  {
+    heading: 'Music',
+    lines: [
+      ['"happy tune" by syncopika', 'CC-BY 3.0', 'https://opengameart.org/content/happy-tune'],
+      ['"Buy Something!" (casino) by Cleyton Kauffman', 'CC0', 'https://opengameart.org/content/shop-theme'],
+    ],
+  },
   {
     heading: 'Sounds',
     lines: [
       ['Interface, RPG and Casino sounds by Kenney', 'CC0', 'https://kenney.nl'],
       ['Crickets by Wolfgang_ (notice: Ted Kerr)', 'CC0'],
       ['Fountain by rubberduck, "30 CC0 SFX Loops"', 'CC0'],
+      ['Tanod\'s whistle: "Whistles" by dklon', 'CC-BY 3.0', 'https://opengameart.org/node/121038'],
+      ['"Coin Drop" by Vinrax', 'CC0', 'https://opengameart.org/content/coin-drop'],
     ],
   },
   {

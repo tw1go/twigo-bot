@@ -2,3 +2,7 @@ file,cell_w,cell_h,frames,fps,loop,anchor_x,anchor_y,notes
 fx-shadow.png,14,5,1,0,no,7,2,flat navy at 40% alpha; centre it on the character's feet anchor
 fx-jail-bars.png,32,48,1,0,no,16,47,drawn over a jailed character in the same 32x48 cell (feet anchor)
 fx-dig-dust.png,32,32,17,10,yes,16,26,dirt puff at the Mine door when someone else digs; three loops
+fx-coin-flip.png,32,32,10,12,no,16,16,Kara y Krus: the peso flips and lands on Kara (the last cell is Kara at rest)
+fx-coin-flip-krus.png,32,32,10,12,no,16,16,Kara y Krus: the peso flips and lands on Krus (the last cell is Krus at rest)
+fx-siren.png,16,16,4,8,yes,8,15,the Tanod raid siren (table corners; over a busted player)
+fx-coin-burst.png,48,48,10,12,no,24,47,a win: over the coin and over a big winner in town; once

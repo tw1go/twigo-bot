@@ -4,12 +4,15 @@ import Phaser from 'phaser';
 // sounds for emotes, chat, doors, bets, coins and the UI, and music that's off until switched on. Built on
 // Phaser's sound manager, which holds every sound until the first click, tap or key (browsers require one).
 // The music and sound-effect volumes and mute are saved in this browser. Files and credits: assets/audio/.
+// Inside the casino the town goes quiet (no town music, crickets or fountain) and the casino's own music plays.
 
-export type Sfx = 'emote' | 'chat' | 'door' | 'card' | 'chip' | 'coin' | 'click' | 'error';
+export type Sfx =
+  | 'emote' | 'chat' | 'door' | 'card' | 'chip' | 'coin' | 'click' | 'error'
+  | 'flip-spin' | 'flip-land' | 'casino-win' | 'casino-lose' | 'busted';
 
-/** Each sound's file (under assets/audio/, as .ogg with an .m4a fallback) and volume (0–1, before the player's
- *  sound-effects volume, which also covers the crickets and the fountain). */
-const SFX: Record<Sfx, { file: string; volume: number }> = {
+/** Each sound's file (under assets/audio/, as .ogg with an .m4a fallback unless `formats` says otherwise) and volume
+ *  (0–1, before the player's sound-effects volume, which also covers the crickets and the fountain). */
+const SFX: Record<Sfx, { file: string; volume: number; formats?: string[] }> = {
   emote: { file: 'sfx/emote', volume: 0.12 }, // a soft drop (louder in the file than the old pluck)
   chat: { file: 'ui/chat', volume: 0.12 },
   door: { file: 'sfx/door', volume: 0.15 },
@@ -18,10 +21,17 @@ const SFX: Record<Sfx, { file: string; volume: number }> = {
   coin: { file: 'sfx/coin', volume: 0.2 },
   click: { file: 'ui/click', volume: 0.08 }, // a soft, rounded button press; louder in the file than the old click
   error: { file: 'ui/error', volume: 0.15 },
+  // Kara y Krus: a tick while the coin spins (repeated), the coin landing, a win, a loss, and the Tanod's whistle.
+  'flip-spin': { file: 'sfx/casino-flip-spin', volume: 0.06 },
+  'flip-land': { file: 'sfx/casino-flip-land', volume: 0.18 },
+  'casino-win': { file: 'sfx/casino-win', volume: 0.16 },
+  'casino-lose': { file: 'sfx/casino-lose', volume: 0.14 },
+  busted: { file: 'sfx/casino-busted', volume: 0.16, formats: ['m4a'] }, // no .ogg of the whistle
 };
 const CRICKETS = { key: 'amb:crickets', urls: ['audio/ambient/crickets.mp3'], volume: 0.15 };
 const FOUNTAIN = { key: 'amb:fountain', urls: ['audio/ambient/fountain.ogg', 'audio/ambient/fountain.m4a'], volume: 0.1 };
 const MUSIC = { key: 'music:happy-tune', urls: ['audio/music/happy-tune.ogg', 'audio/music/happy-tune.m4a'], volume: 0.12 };
+const CASINO = { key: 'music:casino', urls: ['audio/music/casino-shop-theme.ogg', 'audio/music/casino-shop-theme.m4a'], volume: 0.09 };
 const JACKPOT = { volume: 0.25, times: 3, gapMs: 260 };
 
 /** The same sound again sooner than this is dropped (a burst of emotes or bets stays one sound). */
@@ -55,6 +65,9 @@ let fountainAt: { col: number; row: number } | null = null;
 let fountainVolume = 0;
 let music: Phaser.Sound.BaseSound | null = null;
 let crickets: Phaser.Sound.BaseSound | null = null;
+/** In the casino: the town's music and ambience are quiet, and the casino's music plays. */
+let indoors = false;
+let casinoMusic: Phaser.Sound.BaseSound | null = null;
 /** The crickets' come-and-go level (0–1), tweened; their volume is this × CRICKETS.volume × the sfx volume. */
 const cricketsLevel = { value: 1 };
 
@@ -89,14 +102,14 @@ export function startTownSound(s: Phaser.Scene, fountainTile: { col: number; row
   applySettings();
   const load = s.load;
   load.setPath(`${import.meta.env.BASE_URL}assets/`);
-  for (const [name, { file }] of Object.entries(SFX)) load.audio(`sfx:${name}`, [`audio/${file}.ogg`, `audio/${file}.m4a`]);
+  for (const [name, { file, formats = ['ogg', 'm4a'] }] of Object.entries(SFX)) load.audio(`sfx:${name}`, formats.map((f) => `audio/${file}.${f}`));
   load.audio(CRICKETS.key, CRICKETS.urls);
   if (fountainTile) load.audio(FOUNTAIN.key, FOUNTAIN.urls);
   load.once(Phaser.Loader.Events.COMPLETE, () => whenUnlocked(startAmbience));
   load.start();
   s.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
     s.sound.stopAll();
-    fountain = music = crickets = scene = null;
+    fountain = music = crickets = casinoMusic = scene = null;
   });
   installButtonSounds();
 }
@@ -119,13 +132,14 @@ function startAmbience(): void {
     cricketsComeAndGo(s, true);
   }
   if (s.cache.audio.exists(FOUNTAIN.key)) {
-    fountain = s.sound.add(FOUNTAIN.key, { loop: true, volume: fountainVolume * settings.sfx });
+    fountain = s.sound.add(FOUNTAIN.key, { loop: true, volume: fountainLevel() });
     fountain.play();
   }
   if (settings.music > 0) startMusic();
 }
 
-const cricketsVolume = () => CRICKETS.volume * cricketsLevel.value * settings.sfx;
+const cricketsVolume = () => (indoors ? 0 : CRICKETS.volume * cricketsLevel.value * settings.sfx);
+const fountainLevel = () => (indoors ? 0 : fountainVolume * settings.sfx);
 const setVolume = (sound: Phaser.Sound.BaseSound | null, volume: number) =>
   (sound as Phaser.Sound.WebAudioSound | null)?.setVolume(volume);
 
@@ -151,7 +165,7 @@ export function hearFrom(tile: { col: number; row: number }): void {
   const target = FOUNTAIN.volume * Phaser.Math.Clamp(1 - d / FOUNTAIN_REACH, 0, 1) ** 2;
   if (Math.abs(target - fountainVolume) < 0.0005) return;
   fountainVolume += (target - fountainVolume) * 0.08;
-  setVolume(fountain, fountainVolume * settings.sfx);
+  setVolume(fountain, fountainLevel());
 }
 
 /** A short sound (dropped while sound is locked, muted or turned down to 0, or if the same one just played). */
@@ -192,8 +206,54 @@ export function setSound(change: Partial<SoundSettings>): void {
   settings = { ...settings, ...change };
   saveSettings();
   applySettings();
-  if (settings.music > 0 && !(musicWas > 0)) whenUnlocked(startMusic);
-  else if (settings.music === 0 && musicWas > 0) stopMusic();
+  // Music switched on or off: the town's, or the casino's while inside.
+  if (settings.music > 0 && !(musicWas > 0)) whenUnlocked(indoors ? startCasinoMusic : startMusic);
+  else if (settings.music === 0 && musicWas > 0) (indoors ? stopCasinoMusic : stopMusic)();
+}
+
+/** Into the casino: the town's music fades out, the crickets and fountain go quiet, the casino's music fades in. */
+export function enterCasinoSound(): void {
+  indoors = true;
+  stopMusic();
+  setVolume(crickets, cricketsVolume());
+  setVolume(fountain, fountainLevel());
+  if (settings.music > 0) whenUnlocked(startCasinoMusic);
+}
+
+/** Out of the casino: its music fades out, and the town's music and ambience come back. */
+export function leaveCasinoSound(): void {
+  indoors = false;
+  stopCasinoMusic();
+  setVolume(crickets, cricketsVolume());
+  setVolume(fountain, fountainLevel());
+  if (settings.music > 0) whenUnlocked(startMusic);
+}
+
+const casinoVolume = () => CASINO.volume * settings.music;
+
+/** The casino's music fades in, loading it the first time (only for those with music on). */
+function startCasinoMusic(): void {
+  const s = scene;
+  if (!s || !indoors) return;
+  if (!s.cache.audio.exists(CASINO.key)) {
+    s.load.setPath(`${import.meta.env.BASE_URL}assets/`);
+    s.load.audio(CASINO.key, CASINO.urls);
+    s.load.once(`filecomplete-audio-${CASINO.key}`, () => indoors && settings.music > 0 && startCasinoMusic());
+    s.load.start();
+    return;
+  }
+  casinoMusic ??= s.sound.add(CASINO.key, { loop: true, volume: 0 });
+  s.tweens.killTweensOf(casinoMusic);
+  if (!casinoMusic.isPlaying) casinoMusic.play();
+  s.tweens.add({ targets: casinoMusic, volume: casinoVolume(), duration: MUSIC_FADE_MS });
+}
+
+function stopCasinoMusic(): void {
+  const s = scene;
+  const m = casinoMusic;
+  if (!s || !m?.isPlaying) return;
+  s.tweens.killTweensOf(m);
+  s.tweens.add({ targets: m, volume: 0, duration: MUSIC_FADE_MS / 2, onComplete: () => m.stop() });
 }
 
 /** Mute, and the volumes on what's already playing (a music fade-in in progress jumps to the new volume). */
@@ -202,10 +262,14 @@ function applySettings(): void {
   if (!s) return;
   s.sound.mute = settings.muted;
   setVolume(crickets, cricketsVolume());
-  setVolume(fountain, fountainVolume * settings.sfx);
-  if (music?.isPlaying && settings.music > 0) {
+  setVolume(fountain, fountainLevel());
+  if (music?.isPlaying && settings.music > 0 && !indoors) {
     s.tweens.killTweensOf(music);
     setVolume(music, musicVolume());
+  }
+  if (casinoMusic?.isPlaying && settings.music > 0 && indoors) {
+    s.tweens.killTweensOf(casinoMusic);
+    setVolume(casinoMusic, casinoVolume());
   }
 }
 
@@ -214,7 +278,7 @@ const musicVolume = () => MUSIC.volume * settings.music;
 /** Music fades in, loading it first the first time (it's the biggest file, so only for those who want it). */
 function startMusic(): void {
   const s = scene;
-  if (!s) return;
+  if (!s || indoors) return;
   if (music?.isPlaying) {
     // Turned back up while fading out: fade back in instead of stopping.
     s.tweens.killTweensOf(music);
@@ -224,7 +288,7 @@ function startMusic(): void {
   if (!s.cache.audio.exists(MUSIC.key)) {
     s.load.setPath(`${import.meta.env.BASE_URL}assets/`);
     s.load.audio(MUSIC.key, MUSIC.urls);
-    s.load.once(`filecomplete-audio-${MUSIC.key}`, () => settings.music > 0 && startMusic());
+    s.load.once(`filecomplete-audio-${MUSIC.key}`, () => settings.music > 0 && !indoors && startMusic());
     s.load.start();
     return;
   }
