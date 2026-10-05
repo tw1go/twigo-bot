@@ -345,6 +345,10 @@
       #inventory .iv-count { position: absolute; right: -6px; bottom: -6px; color: #fff; font-size: 17px; line-height: 1; font-weight: 700; text-shadow: 1px 0 #1E1B3A, -1px 0 #1E1B3A, 0 1px #1E1B3A, 0 -1px #1E1B3A; pointer-events: none; } /* a stacked item's count (megaphones) */
       #inventory .iv-picked { border-image-source: var(--slot-picked); outline-color: #A3E635; }
       #inventory .iv-tabs { flex: none; display: flex; gap: 4px; border-bottom: 3px solid #1E1B3A; }
+      /* Select mode (ui/inventory.ts): every click adds or removes a slot. */
+      #inventory .iv-multi { margin-left: auto; margin-right: 8px; padding: 3px 10px 4px; border: 2px solid #3D4256; border-radius: 0; background: #1E1B3A; color: #A9B1D6; font: inherit; font-size: 13px; font-weight: 700; }
+      #inventory .iv-multi:hover { color: #fff; }
+      #inventory .iv-multi[aria-pressed='true'] { border-color: #7C2AE8; background: #7C2AE8; color: #fff; }
       #inventory .iv-tab { flex: 1; padding: 6px 8px 5px; border: 2px solid #3D4256; border-bottom: 0; border-radius: 0; background: #1E1B3A; color: #A9B1D6; font: inherit; font-size: 14px; font-weight: 700; }
       #inventory .iv-tab:hover { color: #fff; }
       #inventory .iv-tab[aria-selected='true'] { border-color: #7C2AE8; background: #7C2AE8; color: #fff; box-shadow: inset 0 2px 0 #A78BFA; }
@@ -360,6 +364,7 @@
       #inventory .iv-act { padding: 6px 14px; border: 3px solid #1E1B3A; border-radius: 0; font: inherit; font-size: 15px; font-weight: 700; color: #1E1B3A; box-shadow: 0 3px 0 #0B0A1A; }
       #inventory .iv-act:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 #0B0A1A; }
       #inventory .iv-act:disabled { opacity: 0.5; }
+      #inventory .iv-clear { background: #E2DDF3; }
       #inventory .iv-flex { background: #B794F6; }
       #inventory .iv-sell { background: #FCDA4A; }
       #inventory .iv-note { margin-top: 8px; font-size: 14px; font-weight: 600; color: #A3E635; }

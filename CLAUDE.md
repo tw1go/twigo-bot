@@ -200,7 +200,9 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
 - Inventory (`ui/inventory.ts`): a bag button beside the chat input (manifest `ui.inventoryIcon`) opens the bag on the
   right: 5 × 10 slots in the inventory slot art, one per item (dug-up items, Master Keys, potions: the bag counts them
   all, `dig/bag.ts` `usedSlots`), unlocked = `capacity`, the rest marked X; dug-up items offer Flex / Sell, keys and
-  potions say how they're used; tabs All / Dug up / Misc; item slots bordered in their rarity's colour; B toggles it;
+  potions say how they're used; multi-select (Ctrl/⌘/Shift-click, or the Select toggle for every click; Select all on the tab):
+  the count, what the sellable ones bring and Sell selected (`POST /town/sell { items: [{ id, quantity }] }`,
+  `sellManyInTown`); tabs All / Dug up / Misc; item slots bordered in their rarity's colour; B toggles it;
   Kowens at the bottom. Bot `GET /town/inventory`, `POST /town/sell`, `POST /town/flex`
   (`web/town-bag.ts`; flex shares `flexEmbed` and the cooldown with `/flex`). Dev: a pretend bag (`&slots=18`).
 - Casino: left click the casino → `TownScene.enterCasino` locks the town (body.town-locked: no input; bag, player

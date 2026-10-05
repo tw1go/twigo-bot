@@ -10,6 +10,9 @@ import { coinIcon } from './reward';
 // each — dug-up items, Master Keys and potions, as the bot counts them — and the rest are marked with an X. Tabs show
 // all of it, the dug-up items, or the misc (keys and potions); each item's slot is bordered in its rarity's colour. Picking a
 // dug-up item offers Flex (/flex, in the games channel) and Sell (/sell's price); keys and potions say how they're used.
+// Several slots can be picked at once: Ctrl/⌘/Shift-click adds or removes one, or the Select toggle (top) makes every
+// click do that (phones); then the details show how many, what the sellable ones are worth, and Sell selected (one
+// POST /town/sell with all of them), or Select all on the tab.
 // Your Kowens are at the bottom. Everything comes from the bot (GET /town/inventory, POST /town/sell and /town/flex).
 
 const COLS = 5;
@@ -40,8 +43,10 @@ async function load(): Promise<TownInventoryResponse | null> {
   return res?.ok ? ((await res.json()) as TownInventoryResponse) : null;
 }
 
-async function post(path: '/town/sell' | '/town/flex', body: object): Promise<TownBagActionResponse | null> {
-  if (fakeLogin()) return fakeAction(path, body as { id: string; quantity?: number });
+type ActBody = { id: string; quantity?: number } | { items: { id: string; quantity: number }[] };
+
+async function post(path: '/town/sell' | '/town/flex', body: ActBody): Promise<TownBagActionResponse | null> {
+  if (fakeLogin()) return fakeAction(path, body);
   const res = await fetch(path, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => null);
   return res?.ok ? ((await res.json()) as TownBagActionResponse) : null;
 }
@@ -57,8 +62,11 @@ export class Inventory {
   private readonly slots = el('span', 'iv-slots');
   private readonly wallet = el('div', 'iv-wallet');
   private data: TownInventoryResponse | null = null;
-  /** The picked slot (only that slot lights up), and the item that was in it. */
-  private picked: { slot: number; id: string } | null = null;
+  /** The picked slots (they light up), and the item that was in each. */
+  private picked: { slot: number; id: string }[] = [];
+  /** Select mode: every click adds or removes a slot (else Ctrl/⌘/Shift-click does). */
+  private multi = false;
+  private readonly multiButton = el('button', 'iv-multi', 'Select');
   private busy = false;
   private message: { text: string; ok: boolean } | null = null;
 
@@ -101,7 +109,16 @@ export class Inventory {
     const close = el('button', 'iv-close', '×');
     close.setAttribute('aria-label', 'Close the inventory');
     close.addEventListener('click', () => this.toggle(false));
-    head.append(el('span', 'iv-title', 'Inventory'), this.slots, close);
+    this.multiButton.setAttribute('aria-pressed', 'false');
+    this.multiButton.title = 'Pick several items (or Ctrl/⌘/Shift-click)';
+    this.multiButton.addEventListener('click', () => {
+      this.multi = !this.multi;
+      this.multiButton.setAttribute('aria-pressed', String(this.multi));
+      if (!this.multi && this.picked.length > 1) this.picked = [];
+      this.message = null;
+      this.render();
+    });
+    head.append(el('span', 'iv-title', 'Inventory'), this.slots, this.multiButton, close);
     this.tabs.setAttribute('role', 'tablist');
     for (const [t, label] of TABS) {
       const b = el('button', 'iv-tab', label);
@@ -109,7 +126,7 @@ export class Inventory {
       b.dataset.tab = t;
       b.addEventListener('click', () => {
         this.tab = t;
-        this.picked = null;
+        this.picked = [];
         this.message = null;
         this.render();
       });
@@ -169,11 +186,15 @@ export class Inventory {
     const units = d.items.filter((it) => inTab(this.tab, it)).flatMap((it) => Array.from({ length: it.stacked ? 1 : it.count }, () => it));
     const free = Math.max(0, d.slots - d.used);
     const open = units.length + free;
-    // After a sale the slot may hold something else: keep the pick only if the same item is still there.
-    if (this.picked && units[this.picked.slot]?.id !== this.picked.id) {
-      const again = units.findIndex((it) => it.id === this.picked!.id);
-      this.picked = again >= 0 ? { slot: again, id: this.picked.id } : null;
+    // After a change a slot may hold something else: keep each pick only if the same item is still there (else another
+    // slot of it that isn't picked yet).
+    const kept: { slot: number; id: string }[] = [];
+    for (const p of this.picked) {
+      const taken = (i: number) => kept.some((k) => k.slot === i);
+      const slot = units[p.slot]?.id === p.id && !taken(p.slot) ? p.slot : units.findIndex((it, i) => it.id === p.id && !taken(i));
+      if (slot >= 0) kept.push({ slot, id: p.id });
     }
+    this.picked = kept;
     const cells: HTMLElement[] = [];
     for (let i = 0; i < Math.max(d.maxSlots - (d.used - units.length), units.length); i++) {
       const it = units[i];
@@ -189,15 +210,17 @@ export class Inventory {
       }
       const rarity: Rarity = isRarity(it.rarity) ? it.rarity : 'common';
       const slot = i;
-      const cell = el('button', `iv-cell iv-item${this.picked?.slot === slot ? ' iv-picked' : ''}`);
+      const cell = el('button', `iv-cell iv-item${this.picked.some((p) => p.slot === slot) ? ' iv-picked' : ''}`);
       cell.style.setProperty('--rarity', RARITY_COLOUR[rarity]);
       cell.setAttribute('aria-label', `${it.name} (${LABEL[rarity]})`);
       cell.title = it.name;
       const art = itemArt(it.id, rarity, 'showcase', 2, true);
       cell.append(art ?? el('span', 'iv-emoji', it.emoji));
       if (it.stacked) cell.append(el('span', 'iv-count', String(it.count)));
-      cell.addEventListener('click', () => {
-        this.picked = this.picked?.slot === slot ? null : { slot, id: it.id };
+      cell.addEventListener('click', (e) => {
+        const on = this.picked.some((p) => p.slot === slot);
+        if (this.multi || e.ctrlKey || e.metaKey || e.shiftKey) this.picked = on ? this.picked.filter((p) => p.slot !== slot) : [...this.picked, { slot, id: it.id }];
+        else this.picked = on && this.picked.length === 1 ? [] : [{ slot, id: it.id }];
         this.message = null;
         this.render();
       });
@@ -210,16 +233,58 @@ export class Inventory {
       this.grid.append(el('div', 'iv-empty-note', empty));
     }
 
-    this.renderDetail(this.picked ? (d.items.find((it) => it.id === this.picked!.id) ?? null) : null);
+    if (this.picked.length > 1) this.renderMany(d);
+    else this.renderDetail(this.picked.length ? (d.items.find((it) => it.id === this.picked[0].id) ?? null) : null, units);
     this.wallet.replaceChildren(coinIcon(2), el('b', undefined, d.kowens.toLocaleString()), el('span', undefined, d.kowens === 1 ? 'Kowen' : 'Kowens'));
   }
 
-  /** The picked item: what it is, and Flex / Sell for dug-up items. */
-  private renderDetail(it: TownBagItem | null): void {
-    const note = this.message ? el('div', `iv-note${this.message.ok ? '' : ' iv-bad'}`, this.message.text) : null;
+  private action(text: string, cls: string, run: () => void): HTMLButtonElement {
+    const b = el('button', `iv-act ${cls}`, text);
+    b.disabled = this.busy;
+    b.addEventListener('click', run);
+    return b;
+  }
+
+  private note(): HTMLElement | null {
+    return this.message ? el('div', `iv-note${this.message.ok ? '' : ' iv-bad'}`, this.message.text) : null;
+  }
+
+  /** Several picked: how many, what the sellable ones bring, Sell selected and Clear. */
+  private renderMany(d: TownInventoryResponse): void {
+    const counts = new Map<string, number>();
+    for (const p of this.picked) counts.set(p.id, (counts.get(p.id) ?? 0) + 1);
+    const sell = [...counts].flatMap(([id, n]) => {
+      const it = d.items.find((x) => x.id === id);
+      return it?.sellable ? [{ id, quantity: n, value: it.value * n }] : [];
+    });
+    const total = sell.reduce((s, x) => s + x.value, 0);
+    const sellable = sell.reduce((s, x) => s + x.quantity, 0);
+    const skipped = this.picked.length - sellable;
+    const row = el('div', 'iv-actions');
+    const sellButton = this.action(`Sell selected · ${total}`, 'iv-sell', () => void this.act('/town/sell', { items: sell.map(({ id, quantity }) => ({ id, quantity })) }));
+    sellButton.disabled ||= !sellable;
+    row.append(sellButton, this.action('Clear', 'iv-clear', () => ((this.picked = []), (this.message = null), this.render())));
+    const meta = `${sellable ? `${sellable} to sell for ${kowens(total)}` : 'Nothing here can be sold'}${skipped ? ` · ${skipped} kept (keys, potions, megaphones)` : ''}`;
+    this.detail.replaceChildren(...[el('div', 'iv-name', `${this.picked.length} items selected`), el('div', 'iv-meta', meta), row, this.note()].filter((x): x is HTMLElement => !!x));
+  }
+
+  /** The picked item: what it is, and Flex / Sell for dug-up items. With nothing picked, a hint (and in Select mode,
+   *  Select all for the tab's sellable items). */
+  private renderDetail(it: TownBagItem | null, units: TownBagItem[] = []): void {
+    const note = this.note();
     if (!it) {
-      const hint = this.tab === 'misc' ? 'Pick an item to see how it\'s used.' : 'Pick an item to sell or flex it.';
-      this.detail.replaceChildren(...(note ? [note] : [el('div', 'iv-hint', hint)]));
+      const hint = this.multi ? 'Click items to select them.' : this.tab === 'misc' ? 'Pick an item to see how it\'s used.' : 'Pick an item to sell or flex it (Ctrl/Shift-click or Select for several).';
+      const parts: HTMLElement[] = note ? [note] : [el('div', 'iv-hint', hint)];
+      if (this.multi && units.some((u) => u.sellable)) {
+        const row = el('div', 'iv-actions');
+        row.append(this.action('Select all', 'iv-clear', () => {
+          this.picked = units.flatMap((u, slot) => (u.sellable ? [{ slot, id: u.id }] : []));
+          this.message = null;
+          this.render();
+        }));
+        parts.push(row);
+      }
+      this.detail.replaceChildren(...parts);
       return;
     }
     const rarity: Rarity = isRarity(it.rarity) ? it.rarity : 'common';
@@ -231,12 +296,7 @@ export class Inventory {
     const parts: HTMLElement[] = [name, el('div', 'iv-meta', meta)];
     if (it.sellable) {
       const row = el('div', 'iv-actions');
-      const button = (text: string, cls: string, run: () => void) => {
-        const b = el('button', `iv-act ${cls}`, text);
-        b.disabled = this.busy;
-        b.addEventListener('click', run);
-        return b;
-      };
+      const button = (text: string, cls: string, run: () => void) => this.action(text, cls, run);
       row.append(
         button('Flex', 'iv-flex', () => void this.act('/town/flex', { id: it.id })),
         button(`Sell 1 · ${it.value}`, 'iv-sell', () => void this.act('/town/sell', { id: it.id, quantity: 1 })),
@@ -248,7 +308,7 @@ export class Inventory {
     this.detail.replaceChildren(...parts);
   }
 
-  private async act(path: '/town/sell' | '/town/flex', body: { id: string; quantity?: number }): Promise<void> {
+  private async act(path: '/town/sell' | '/town/flex', body: ActBody): Promise<void> {
     if (this.busy) return;
     this.busy = true;
     this.render();
@@ -260,6 +320,7 @@ export class Inventory {
       return this.render();
     }
     this.data = res;
+    if (res.ok && 'items' in body) this.picked = []; // sold the lot
     this.message = { text: res.message, ok: res.ok };
     playSound(res.ok ? (path === '/town/sell' ? 'coin' : 'click') : 'error');
     if (res.ok && path === '/town/sell') window.dispatchEvent(new Event('mk-wallet')); // the HUD's Kowens
@@ -290,9 +351,25 @@ const fake: TownInventoryResponse = {
 };
 fake.used = fake.items.reduce((n, it) => n + (it.stacked ? 1 : it.count), 0);
 
-function fakeAction(path: string, body: { id: string; quantity?: number }): TownBagActionResponse {
-  const it = fake.items.find((x) => x.id === body.id);
+function fakeAction(path: string, body: ActBody): TownBagActionResponse {
   const done = (ok: boolean, message: string) => ({ ...structuredClone(fake), ok, message });
+  if ('items' in body) {
+    let sold = 0;
+    let earned = 0;
+    for (const { id, quantity } of body.items) {
+      const it = fake.items.find((x) => x.id === id);
+      if (!it) continue;
+      const n = Math.min(quantity, it.count);
+      it.count -= n;
+      sold += n;
+      earned += n * it.value;
+    }
+    fake.items = fake.items.filter((x) => x.count > 0);
+    fake.used -= sold;
+    fake.kowens += earned;
+    return done(sold > 0, sold ? `Sold ${sold} items for ${kowens(earned)}.` : "You don't have those items.");
+  }
+  const it = fake.items.find((x) => x.id === body.id);
   if (!it) return done(false, "You don't have that item.");
   if (path === '/town/flex') {
     // Through the dev town, so the chat line and bubble come back as they do live.

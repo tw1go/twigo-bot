@@ -143,7 +143,8 @@ export interface TownBagItem {
   about?: string;
 }
 
-/** POST /town/sell { id, quantity } and /town/flex { id } → the bag afterwards, whether it worked, and what to say. */
+/** POST /town/sell { id, quantity } (or { items: [{ id, quantity }] }) and /town/flex { id } → the bag afterwards, whether
+ *  it worked, and what to say. */
 export type TownBagActionResponse = TownInventoryResponse & { ok: boolean; message: string };
 
 /** POST /town/gamble { bet, call }: Kara y Krus at the Casino (/gamble's odds, the gambling channel's bust chance). */

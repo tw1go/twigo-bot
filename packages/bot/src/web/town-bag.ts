@@ -49,6 +49,23 @@ export function sellInTown(userId: string, id: string, quantity: number): TownBa
   return { ...townInventory(userId), ok: true, message: `Sold ${sold > 1 ? `${sold}× ` : ''}${item.name} for ${kowens(earned)}.` };
 }
 
+/** Sells several dug-up items at once (the bag's multi-select): each `{ id, quantity }` as sellInTown, in one go. */
+export function sellManyInTown(userId: string, picks: { id: string; quantity: number }[]): TownBagActionResponse {
+  let sold = 0;
+  let earned = 0;
+  for (const { id, quantity } of picks) {
+    const item = ITEM_BY_ID.get(id);
+    const have = inventory(userId).find(([itemId]) => itemId === id)?.[1] ?? 0;
+    if (!item || !have) continue;
+    const n = removeItems(userId, id, Math.min(quantity, have));
+    sold += n;
+    earned += n * item.value;
+  }
+  if (!sold) return { ...townInventory(userId), ok: false, message: "You don't have those items." };
+  add(userId, earned);
+  return { ...townInventory(userId), ok: true, message: `Sold ${sold} item${sold === 1 ? '' : 's'} for ${kowens(earned)}.` };
+}
+
 /** Flexes a dug-up item: /flex's card in the games channel, and the flexer says it in the town's chat. */
 export async function flexInTown(
   client: Client,

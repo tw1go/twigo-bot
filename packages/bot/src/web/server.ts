@@ -19,7 +19,7 @@ import type { Town } from './town.js';
 import { bailFromTown, townOutpost } from './town-outpost.js';
 import { digInTown } from './town-mine.js';
 import { gambleInTown } from './town-casino.js';
-import { flexInTown, sellInTown, townInventory } from './town-bag.js';
+import { flexInTown, sellInTown, sellManyInTown, townInventory } from './town-bag.js';
 import { boardAction, townBoard } from './town-board.js';
 import { townNews } from './town-news.js';
 import { useMegaphone } from '../items/megaphone.js';
@@ -66,7 +66,7 @@ import { roll } from './finds.js';
 //   GET  /town/board    the notice board: open and in-progress quests (members)
 //   POST /town/board    { action: post|accept|giveup|complete|cancel, id? | task + reward } (from the game's page only; members)
 //   GET  /town/inventory  the bag: dug-up items, Master Keys and potions, slots, wallet (members)
-//   POST /town/sell     { id, quantity } sell a dug-up item, /sell's prices (from the game's page only; members)
+//   POST /town/sell     { id, quantity } (or { items: [{ id, quantity }] }) sell dug-up items, /sell's prices (from the game's page only; members)
 //   POST /town/flex     { id } flex a dug-up item in the games channel, /flex's cooldown (from the game's page only; members)
 //   POST /town/gamble   { bet, call: kara|krus } Kara y Krus at the Casino, /gamble's odds (from the game's page only; members)
 //   POST /town/dig      dig at the Mine (/dig's rules; from the game's page only; members)
@@ -479,7 +479,7 @@ export function startWebServer(client: Client): void {
         if (req.method === 'POST' && !fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
         const userId = sessionUser(req);
         if (!userId) return send(res, 401, '{"error":"not logged in"}');
-        let body: { id?: unknown; quantity?: unknown } | null = null;
+        let body: { id?: unknown; quantity?: unknown; items?: unknown } | null = null;
         if (req.method === 'POST') {
           try {
             body = JSON.parse((await readBody(req)) || 'null');
@@ -489,6 +489,13 @@ export function startWebServer(client: Client): void {
         }
         if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
         if (req.method === 'GET') return send(res, 200, JSON.stringify(townInventory(userId)));
+        // Several at once (the bag's multi-select): { items: [{ id, quantity }] }.
+        if (path === '/town/sell' && Array.isArray(body?.items)) {
+          const picks = body.items as { id?: unknown; quantity?: unknown }[];
+          const ok = picks.length >= 1 && picks.length <= 100 && picks.every((p) => typeof p?.id === 'string' && Number.isInteger(p.quantity) && (p.quantity as number) >= 1 && (p.quantity as number) <= 1000);
+          if (!ok) return send(res, 400, '{"error":"invalid items"}');
+          return send(res, 200, JSON.stringify(sellManyInTown(userId, picks as { id: string; quantity: number }[])));
+        }
         if (typeof body?.id !== 'string') return send(res, 400, '{"error":"invalid item"}');
         if (path === '/town/flex') {
           return send(res, 200, JSON.stringify(await flexInTown(client, userId, body.id, (id) => nameOf(client, id), (uid, item) => town?.flexed(uid, item))));
