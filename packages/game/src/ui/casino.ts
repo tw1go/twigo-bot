@@ -290,9 +290,14 @@ export function openCasino(leave: () => void): void {
   };
   document.addEventListener('keydown', keys, true);
   leaveButton.addEventListener('click', () => leave());
+  // Kowens changed elsewhere (Discord: a /steal, a /give…): the table's wallet follows, unless a bet is out (the coin
+  // lands first, then it shows the new amount itself).
+  const onWallet = () => !busy && void loadMe(true).then((me) => me.status === 'ok' && !busy && showWallet(me.me.kowens));
+  window.addEventListener('mk-wallet', onWallet);
 
   open = {
     close: () => {
+      window.removeEventListener('mk-wallet', onWallet);
       document.removeEventListener('keydown', keys, true);
       window.removeEventListener('resize', resize);
       root.remove();

@@ -1,7 +1,7 @@
 import type { TownBailResponse, TownOutpostResponse } from '@mikazuki/shared';
 import { playSound } from '../audio/sound';
 import { fakeLogin, fakeName } from '../session';
-import { el, showPopup } from './reward';
+import { el, followWallet, showPopup } from './reward';
 
 // 🚔 The Tanod outpost (left click the outpost), in the reward box with two tabs. Jail: whether you're in, who else
 // is, until when and why, and bail (yours or a friend's: /bail's price and rules, POST /town/bail). Patrol: how Tanod
@@ -155,7 +155,8 @@ export function showOutpost(): void {
     if (res.ok) window.dispatchEvent(new Event('mk-wallet')); // the HUD's Kowens
   };
 
-  void showPopup({ title: 'Tanod outpost', body: [wrap], button: 'Close', celebrate: false, sound: 'door' });
+  const closed = showPopup({ title: 'Tanod outpost', body: [wrap], button: 'Close', celebrate: false, sound: 'door' });
+  followWallet(closed, () => !busy && void load().then((d) => d && !busy && ((data = d), render())));
   void load().then((d) => {
     if (!d) return void (note.textContent = "Couldn't load the outpost. Try again in a moment.");
     data = d;

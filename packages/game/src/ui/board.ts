@@ -2,7 +2,7 @@ import type { TownBoardAction, TownBoardActionResponse, TownBoardResponse, TownQ
 import { playSound } from '../audio/sound';
 import { fakeLogin, fakeName } from '../session';
 import { installPixelTiles } from './pixel-tiles';
-import { coinIcon, el, showPopup } from './reward';
+import { coinIcon, el, followWallet, showPopup } from './reward';
 
 // 📜 The notice board (left click the board): a wooden sign on two posts (pixel art drawn in code: ui/pixel-tiles.ts)
 // with two tabs. Quests: /request's quests as notes pinned on cork — the task, the reward, who posted it and who's on
@@ -221,7 +221,8 @@ export function showBoard(): void {
   keepKeys(task);
   keepKeys(reward, () => (panel.querySelector('.nb-post') as HTMLButtonElement | null)?.click());
 
-  void showPopup({ title: 'Notice board', body: [wrap], button: 'Close', celebrate: false, sound: 'click' });
+  const closed = showPopup({ title: 'Notice board', body: [wrap], button: 'Close', celebrate: false, sound: 'click' });
+  followWallet(closed, () => !busy && void load().then((d) => d && !busy && ((data = d), render())));
   void load().then((d) => {
     if (!d) return void (note.textContent = "Couldn't load the board. Try again in a moment.");
     data = d;

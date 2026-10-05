@@ -111,6 +111,15 @@ export function showPopup(popup: Popup): Promise<void> {
   });
 }
 
+/**
+ * Keeps an open pop-up's Kowens right: calls `refresh` whenever they change ('mk-wallet': something in town, or
+ * anything in Discord — the bot tells the town), until the pop-up closes (`closed`, from showPopup).
+ */
+export function followWallet(closed: Promise<void>, refresh: () => void): void {
+  window.addEventListener('mk-wallet', refresh);
+  void closed.then(() => window.removeEventListener('mk-wallet', refresh));
+}
+
 export function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag);
   if (className) node.className = className;

@@ -1,7 +1,7 @@
 import type { TownBankAction, TownBankActionResponse, TownBankResponse } from '@mikazuki/shared';
 import { playSound } from '../audio/sound';
 import { fakeLogin } from '../session';
-import { coinIcon, el, showPopup } from './reward';
+import { coinIcon, el, followWallet, showPopup } from './reward';
 
 // 🏦 The bank (left click the bank), in the reward box with three tabs: Main (wallet and vault side by side, and a
 // summary that links to the other tabs), Vault (store and take out) and Loan (what you owe and paying it back, or
@@ -251,7 +251,8 @@ export function showBank(): void {
     }
   };
 
-  void showPopup({ title: 'Bank', body: [wrap], button: 'Close', celebrate: false, sound: 'door' });
+  const closed = showPopup({ title: 'Bank', body: [wrap], button: 'Close', celebrate: false, sound: 'door' });
+  followWallet(closed, () => !busy && void load().then((b) => b && !busy && render(b)));
   void load().then((b) => {
     if (!b) return void (note.textContent = "Couldn't load the bank. Try again in a moment.");
     note.textContent = '';

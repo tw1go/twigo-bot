@@ -3,7 +3,7 @@ import { playSound } from '../audio/sound';
 import { fakeLogin, fakeName, loadMe } from '../session';
 import { type Rarity, RARITY_COLOUR, isRarity, itemArt } from './item-art';
 import { installPixelTiles } from './pixel-tiles';
-import { el, showPopup } from './reward';
+import { el, followWallet, showPopup } from './reward';
 
 // ⛏️ The Mine (left click the mine entrance), in the reward box dressed as stone (pixel tiles: ui/pixel-tiles.ts): digs left today and uses left on your shovel, and a
 // Dig button (POST /town/dig, /dig's rules). A find comes back as your feed line, which plays the dig panel over this
@@ -84,7 +84,8 @@ export function showMine(): void {
     window.dispatchEvent(new Event('mk-wallet')); // the HUD's shovel counter
   });
 
-  void showPopup({ title: 'Mine', body: [wrap], button: 'Close', celebrate: false, sound: 'door' });
+  const closed = showPopup({ title: 'Mine', body: [wrap], button: 'Close', celebrate: false, sound: 'door' });
+  followWallet(closed, () => !busy && void loadMe(true).then((me) => me.status === 'ok' && !busy && render(me.me.dig)));
   void loadMe(true).then((me) => {
     if (me.status === 'ok') render(me.me.dig);
     else say('Log in to dig.', false);

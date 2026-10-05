@@ -113,6 +113,12 @@ export class TargetBox {
       },
       true,
     );
+    // Your Kowens changed (in town or in Discord): an open menu reloads its numbers (what you can give), unless you're
+    // typing an amount or a gift is on its way.
+    window.addEventListener('mk-wallet', () => {
+      if (this.menu.hidden || !this.target || this.busy || this.panel.contains(document.activeElement)) return;
+      this.show(this.view ?? 'give');
+    });
     // The menu's size changes as its numbers load: keep it beside the name.
     new ResizeObserver(() => this.place()).observe(this.root);
   }

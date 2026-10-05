@@ -94,7 +94,9 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   Kowens/shovels have "+" info (from `/me`: `kowens`, `dig`). The
   shovel icon is `ui-shovel.png` (manifest ui.shovelIcon). The Kowens follow every balance change, wherever it came from:
   the credits store's `setWalletHook` → town `wallet` message → the HUD reloads. `/gift kowens` and `/gift everyone` also show
-  the gift pop-up in town (`townGift`). Dev: `/__gift?as=Name&amount=50` (or `&wallet=1`).
+  the gift pop-up in town (`townGift`). Every open pop-up showing Kowens follows them too (`followWallet` in
+  `ui/reward.ts`: bank, jackpot, shop, outpost, board, Mine; the casino and the player menu have their own listener; the bag
+  already did), not mid-action. Dev: `/__gift?as=Name&amount=50` (or `&wallet=1`).
 - Minimap (`ui/minimap.ts`, top right in the HUD's `.th-map` slot, the jackpot counter left of it, News and Settings in a row
   under it; on phones the bag button goes under them): the town's isometric diamond, its ground and buildings from
   town.json, drawn once; green dots

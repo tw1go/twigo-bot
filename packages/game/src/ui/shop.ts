@@ -2,7 +2,7 @@ import type { TownShopBuyResponse, TownShopItem, TownShopResponse } from '@mikaz
 import { playSound } from '../audio/sound';
 import { fakeLogin } from '../session';
 import { itemArt } from './item-art';
-import { coinIcon, el, showPopup } from './reward';
+import { coinIcon, el, followWallet, showPopup } from './reward';
 
 // 🎁 The rewards shop (left click the shop): what /redeem sells, in the reward box with tabs (Items, Potions, Bags,
 // Passes). Each tab is a grid of the item art with prices; picking one shows what it does, a quantity for the ones
@@ -205,7 +205,8 @@ export function showShop(): void {
     if (res.ok) window.dispatchEvent(new Event('mk-wallet')); // the HUD's Kowens (and shovels)
   };
 
-  void showPopup({ title: 'Rewards shop', body: [wrap], button: 'Close', celebrate: false, sound: 'door' });
+  const closed = showPopup({ title: 'Rewards shop', body: [wrap], button: 'Close', celebrate: false, sound: 'door' });
+  followWallet(closed, () => !busy && void load().then((s) => s && !busy && ((shop = s), render())));
   void load().then((s) => {
     if (!s) return void (note.textContent = "Couldn't load the shop. Try again in a moment.");
     shop = s;

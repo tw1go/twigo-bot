@@ -1,7 +1,7 @@
 import type { TownJackpotBuyResponse, TownJackpotResponse } from '@mikazuki/shared';
 import { playSound } from '../audio/sound';
 import { fakeLogin, fakeName } from '../session';
-import { coinIcon, el, showPopup } from './reward';
+import { coinIcon, el, followWallet, showPopup } from './reward';
 
 // 🎰 The jackpot booth (left click the booth): the next draw's pot with a countdown, your tickets (1 Kowen each, up
 // to the max) with buttons to buy more, your chance, who's in, and the last draw — in the reward box with its casino
@@ -140,7 +140,8 @@ export function showJackpot(): void {
   const body = [pot, draw, slots, chance, buttons, note, list, last, rules];
   const wrap = el('div', 'jp-body');
   wrap.append(...body);
-  void showPopup({ title: 'Jackpot', body: [wrap], button: 'Close', celebrate: false, lights: true, sound: 'card' });
+  const closed = showPopup({ title: 'Jackpot', body: [wrap], button: 'Close', celebrate: false, lights: true, sound: 'card' });
+  followWallet(closed, () => !busy && void loadJackpot().then((j) => j && !busy && render(j)));
 
   // The countdown ticks; when the draw comes the booth reloads (the pot starts over).
   let drawn = false;
