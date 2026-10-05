@@ -1,12 +1,14 @@
 import { el } from './reward';
 
-// 📢 A megaphone message (`/m` in the chat; bot items/megaphone.ts) runs across everyone's screen: a sky-blue strip in
-// the upper part of the screen with the speaker's megaphone, name and words sliding from the right edge off the left.
-// One at a time (the next waits its turn). Reduced motion: it stands still in the middle for a few seconds. DOM text
-// only (never parsed as HTML); clicks go through it.
+// 📢 A megaphone message (`/m` in the chat; bot items/megaphone.ts) shows to everyone in the middle of the upper part of
+// the screen: the megaphone's art, the speaker's name and their words in sky blue (outlined, no box), fading in, held a
+// few seconds (longer for longer messages), fading out. One at a time (the next waits its turn). DOM text only (never
+// parsed as HTML); clicks go through it.
 
-const SPEED = 160; // screen px a second
-const STILL_MS = 6000;
+const HOLD_MS = 5000;
+const PER_CHAR_MS = 40; // a long message stays a little longer…
+const MAX_MS = 9000; // …up to this
+const FADE_MS = 300;
 
 type Shout = { name: string; text: string };
 
@@ -45,16 +47,11 @@ export class MegaphoneBanner {
     line.append(mark, el('b', 'mg-name', s.name), el('span', 'mg-text', s.text));
     this.root.replaceChildren(line);
     this.root.hidden = false;
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      line.classList.add('mg-still');
-      setTimeout(() => this.next(), STILL_MS);
-      return;
-    }
-    // From just off the right edge to just off the left, at a steady speed whatever the length.
-    const W = window.innerWidth;
-    const width = line.getBoundingClientRect().width;
-    const ms = ((W + width) / SPEED) * 1000;
-    const run = line.animate([{ transform: `translateX(${W}px)` }, { transform: `translateX(${-width}px)` }], { duration: ms, easing: 'linear', fill: 'forwards' });
-    run.onfinish = () => this.next();
+    const hold = Math.min(MAX_MS, HOLD_MS + s.text.length * PER_CHAR_MS);
+    const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    line.animate([{ opacity: 0, transform: still ? 'none' : 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: FADE_MS, easing: 'ease-out' });
+    setTimeout(() => {
+      line.animate([{ opacity: 1 }, { opacity: 0 }], { duration: FADE_MS, fill: 'forwards' }).onfinish = () => this.next();
+    }, hold);
   }
 }

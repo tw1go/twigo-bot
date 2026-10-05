@@ -195,7 +195,7 @@ export class Inventory {
       cell.title = it.name;
       const art = itemArt(it.id, rarity, 'showcase', 2, true);
       cell.append(art ?? el('span', 'iv-emoji', it.emoji));
-      if (it.stacked) cell.append(el('span', 'iv-count', `×${it.count}`));
+      if (it.stacked) cell.append(el('span', 'iv-count', String(it.count)));
       cell.addEventListener('click', () => {
         this.picked = this.picked?.slot === slot ? null : { slot, id: it.id };
         this.message = null;
