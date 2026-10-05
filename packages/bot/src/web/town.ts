@@ -14,6 +14,9 @@ import type { OutfitData, TitleData, TownAnnouncement, TownChatLine, TownClientM
 // arena-*).
 // One connection per member (a second tab takes over). Login and profiles come from the caller (server.ts), so
 // this file has no Discord in it.
+// Rooms: the town, and others the caller adds (the neighbourhood), picked with ?room= on the socket's address (going
+// from one to the other is a new connection). Walking, benches and who you see are per room; chat, the system feed,
+// banners and everything about a member (gifts, looks, jail) reach everyone.
 
 const DIRS = new Set<TownDir>(['s', 'se', 'e', 'ne', 'n', 'nw', 'w', 'sw']);
 const EMOTES = new Set<TownEmote>(['heart', 'laugh', 'exclaim', 'question', 'kowen', 'sleep', 'angry', 'wave']);
@@ -67,6 +70,8 @@ export interface TownOptions {
   /** Their nickname, title and look; null if they haven't made a character yet. */
   profile: (userId: string) => TownProfile | null;
   map: TownMap;
+  /** Other rooms by name (e.g. 'hood'), each with its map (asked for again on each arrival, so it can grow). */
+  rooms?: Record<string, () => TownMap>;
   /** Leave upgrades to other paths alone (the game's dev server shares its HTTP server with Vite's own socket). */
   shared?: boolean;
   /** Someone said something in town (the Discord bridge passes it on). */
@@ -138,6 +143,8 @@ function dirForStep(dc: number, dr: number): TownDir {
 interface Conn {
   ws: WebSocket;
   userId: string;
+  /** 'town', or one of TownOptions.rooms. */
+  room: string;
   player: TownPlayer;
   tokens: number;
   refilled: number;
@@ -167,15 +174,20 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   const arena = new Arena(undefined, undefined, opts.arenaBets ?? null, (r) => postSystem({ kind: 'arena', text: arenaLine(r, Math.random()), tone: r.bot === 'loser' ? 'win' : 'lose' })); // mocking the loser (in the loss colour; beating the bot in the win colour)
 
   const send = (c: Conn, m: TownServerMessage) => c.ws.readyState === WebSocket.OPEN && c.ws.send(JSON.stringify(m));
-  /** To everyone but `c` (the message is turned into text once). */
-  const others = (c: Conn | null, m: TownServerMessage) => {
+  /** To everyone in `c`'s room but `c` (the message is turned into text once). */
+  const others = (c: Conn, m: TownServerMessage) => {
     const text = JSON.stringify(m);
-    for (const o of conns.values()) if (o !== c && o.ws.readyState === WebSocket.OPEN) o.ws.send(text);
+    for (const o of conns.values()) if (o !== c && o.room === c.room && o.ws.readyState === WebSocket.OPEN) o.ws.send(text);
   };
-  const everyone = (m: TownServerMessage) => others(null, m);
-  const inside = (col: unknown, row: unknown): col is number =>
-    Number.isInteger(col) && Number.isInteger(row) && (col as number) >= 0 && (row as number) >= 0 && (col as number) < cols && (row as number) < rows;
-  const walkable = (col: number, row: number) => !map.blocked[row]?.[col];
+  /** To everyone, in every room. */
+  const everyone = (m: TownServerMessage) => {
+    const text = JSON.stringify(m);
+    for (const o of conns.values()) if (o.ws.readyState === WebSocket.OPEN) o.ws.send(text);
+  };
+  const mapOf = (room: string): TownMap => (room === 'town' ? map : opts.rooms?.[room]?.() ?? map);
+  const inside = (m: TownMap, col: unknown, row: unknown): col is number =>
+    Number.isInteger(col) && Number.isInteger(row) && (col as number) >= 0 && (row as number) >= 0 && (col as number) < m.size[0] && (row as number) < m.size[1];
+  const walkable = (m: TownMap, col: number, row: number) => !m.blocked[row]?.[col];
 
   /** A system feed line: to everyone in town, and kept for people arriving (`userId`: tagged with their town id). */
   const postSystem = (line: TownSystemLine, userId?: string) => {
@@ -197,17 +209,20 @@ export function attachTown(server: Server, opts: TownOptions): Town {
 
   const handle = (c: Conn, m: TownClientMessage) => {
     const p = c.player;
+    const here = mapOf(c.room);
+    const inside_ = (col: unknown, row: unknown): col is number => inside(here, col, row);
+    const walkable_ = (col: number, row: number) => walkable(here, col, row);
     const fresh = c.fresh;
     c.fresh = false;
     switch (m.t) {
       case 'here':
-        if (!fresh || !inside(m.col, m.row) || !walkable(m.col, m.row) || !DIRS.has(m.dir)) return send(c, { t: 'snap', col: p.col, row: p.row });
+        if (!fresh || !inside_(m.col, m.row) || !walkable_(m.col, m.row) || !DIRS.has(m.dir)) return send(c, { t: 'snap', col: p.col, row: p.row });
         Object.assign(p, { col: m.col, row: m.row, dir: m.dir });
         return others(c, { t: 'join', player: p }); // seen at the spawn point so far: show them where they are
       case 'step': {
         const dc = (m.col as number) - p.col;
         const dr = (m.row as number) - p.row;
-        const ok = inside(m.col, m.row) && walkable(m.col, m.row) && Math.abs(dc) <= 1 && Math.abs(dr) <= 1 && (dc || dr) && spend(c);
+        const ok = inside_(m.col, m.row) && walkable_(m.col, m.row) && Math.abs(dc) <= 1 && Math.abs(dr) <= 1 && (dc || dr) && spend(c);
         if (!ok) return send(c, { t: 'snap', col: p.col, row: p.row });
         Object.assign(p, { col: m.col, row: m.row, dir: dirForStep(dc, dr), sit: false });
         return others(c, { t: 'step', id: p.id, col: p.col, row: p.row });
@@ -218,11 +233,11 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         return others(c, { t: 'face', id: p.id, dir: p.dir });
       case 'sit': {
         // Benches are blocked tiles next to where you stand.
-        const near = inside(m.col, m.row) && Math.abs((m.col as number) - p.col) <= 1 && Math.abs((m.row as number) - p.row) <= 1;
+        const near = inside_(m.col, m.row) && Math.abs((m.col as number) - p.col) <= 1 && Math.abs((m.row as number) - p.row) <= 1;
         if (!near || !DIRS.has(m.dir) || !spend(c)) return send(c, { t: 'snap', col: p.col, row: p.row });
         // One person per bench.
         for (const o of conns.values()) {
-          if (o !== c && o.player.sit && o.player.col === m.col && o.player.row === m.row) {
+          if (o !== c && o.room === c.room && o.player.sit && o.player.col === m.col && o.player.row === m.row) {
             send(c, { t: 'seat-taken' });
             return send(c, { t: 'snap', col: p.col, row: p.row });
           }
@@ -277,29 +292,30 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         // To everyone, the speaker included (their own words come back this way), and on to Discord. Not saved.
         remember({ name: p.nickname, text, ...(megaphone ? { megaphone } : {}) });
         opts.onSay?.(c.userId, p.nickname, text, megaphone);
-        return everyone({ t: 'say', id: p.id, text, ...(megaphone ? { megaphone } : {}) });
+        return everyone({ t: 'say', id: p.id, name: p.nickname, text, ...(megaphone ? { megaphone } : {}) });
       }
     }
   };
 
-  /** A walkable tile near the spawn point that nobody's standing on (any walkable one if they're all taken). */
-  const arrival = (): [number, number] => {
-    const [sc, sr] = map.spawn;
-    const taken = new Set([...conns.values()].map((o) => `${o.player.col},${o.player.row}`));
+  /** A walkable tile near the room's spawn point that nobody's standing on (any walkable one if they're all taken). */
+  const arrival = (room: string): [number, number] => {
+    const m = mapOf(room);
+    const [sc, sr] = m.spawn;
+    const taken = new Set([...conns.values()].filter((o) => o.room === room).map((o) => `${o.player.col},${o.player.row}`));
     const free: [number, number][] = [];
     const open: [number, number][] = [];
     for (let r = sr - SPAWN_SPREAD; r <= sr + SPAWN_SPREAD; r++) {
       for (let c = sc - SPAWN_SPREAD; c <= sc + SPAWN_SPREAD; c++) {
-        if (!inside(c, r) || !walkable(c, r)) continue;
+        if (!inside(m, c, r) || !walkable(m, c, r)) continue;
         open.push([c, r]);
         if (!taken.has(`${c},${r}`)) free.push([c, r]);
       }
     }
-    const pool = free.length ? free : open.length ? open : [map.spawn];
+    const pool = free.length ? free : open.length ? open : [m.spawn];
     return pool[Math.floor(Math.random() * pool.length)];
   };
 
-  const join = (ws: WebSocket, userId: string, profile: TownProfile) => {
+  const join = (ws: WebSocket, userId: string, profile: TownProfile, room: string) => {
     // Kicked by a moderator: told when they may come back, and closed.
     const kicked = opts.moderation?.kickedUntil(userId);
     if (kicked) return ws.close(KICKED, String(kicked));
@@ -311,10 +327,10 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       others(old, { t: 'leave', id: old.player.id });
       old.ws.close(4000, 'opened elsewhere');
     }
-    const [col, row] = arrival();
+    const [col, row] = arrival(room);
     const player: TownPlayer = { id: randomBytes(6).toString('hex'), ...profile, col, row, dir: 's', sit: false };
-    const c: Conn = { ws, userId, player, tokens: STEP_BURST, refilled: Date.now(), says: SAY_BURST, saidAt: Date.now(), emotes: EMOTE_BURST, emotedAt: Date.now(), alive: true, fresh: true };
-    send(c, { t: 'welcome', you: player.id, players: [...conns.values()].map((o) => o.player), recent, system: systemLines, spawn: [col, row], notice: notice && notice.until > Date.now() ? notice.a : undefined });
+    const c: Conn = { ws, userId, room, player, tokens: STEP_BURST, refilled: Date.now(), says: SAY_BURST, saidAt: Date.now(), emotes: EMOTE_BURST, emotedAt: Date.now(), alive: true, fresh: true };
+    send(c, { t: 'welcome', you: player.id, players: [...conns.values()].filter((o) => o.room === room).map((o) => o.player), recent, system: systemLines, spawn: [col, row], notice: notice && notice.until > Date.now() ? notice.a : undefined });
     conns.set(userId, c);
     others(c, { t: 'join', player });
 
@@ -337,7 +353,10 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   };
 
   server.on('upgrade', (req: IncomingMessage, socket: Duplex, head: Buffer) => {
-    if (new URL(req.url ?? '/', 'http://localhost').pathname !== '/ws') return void (opts.shared || socket.destroy());
+    const url = new URL(req.url ?? '/', 'http://localhost');
+    if (url.pathname !== '/ws') return void (opts.shared || socket.destroy());
+    const room = url.searchParams.get('room') ?? 'town';
+    if (room !== 'town' && !opts.rooms?.[room]) return void socket.destroy();
     void (async () => {
       const userId = await opts.authenticate(req).catch(() => null);
       const profile = userId ? opts.profile(userId) : null;
@@ -345,7 +364,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         socket.end('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n');
         return;
       }
-      wss.handleUpgrade(req, socket, head, (ws) => join(ws, userId, profile));
+      wss.handleUpgrade(req, socket, head, (ws) => join(ws, userId, profile, room));
     })();
   });
 

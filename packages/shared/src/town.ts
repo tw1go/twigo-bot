@@ -83,7 +83,7 @@ export interface TownChatLine {
 
 /** A line in the town's system feed: something that happened around the server (a dig, a bet). */
 export interface TownSystemLine {
-  kind: 'dig' | 'gamble' | 'jackpot' | 'shop' | 'gift' | 'jail' | 'quest' | 'arena';
+  kind: 'dig' | 'gamble' | 'jackpot' | 'shop' | 'gift' | 'jail' | 'quest' | 'arena' | 'steal';
   text: string;
   /** Colour key: a dig's rarity, win / lose / bust, jackpot, shop, or gift. */
   tone: string;
@@ -121,7 +121,7 @@ export type TownServerMessage =
   /** That bench is taken (followed by a snap back to where you stood). */
   | { t: 'seat-taken' }
   /** Someone said something (you too: your own words come back this way). */
-  | { t: 'say'; id: string; text: string; megaphone?: boolean }
+  | { t: 'say'; id: string; text: string; megaphone?: boolean; /** The speaker's nickname (they may be in another room). */ name?: string }
   /** A banner for everyone in town. */
   | { t: 'announce'; announcement: TownAnnouncement }
   /** Something happened around the server (the system feed). */

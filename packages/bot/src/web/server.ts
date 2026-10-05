@@ -21,6 +21,7 @@ import { bailFromTown, townOutpost } from './town-outpost.js';
 import { digInTown } from './town-mine.js';
 import { gambleInTown } from './town-casino.js';
 import { parlorAction, townParlor } from './town-parlor.js';
+import { hoodAction, hoodTownMap, parseHouseLook, saveHouse, townHood } from './hood.js';
 import { flexInTown, sellInTown, sellManyInTown, townInventory } from './town-bag.js';
 import { boardAction, townBoard } from './town-board.js';
 import { townNews } from './town-news.js';
@@ -72,6 +73,9 @@ import { type CmsDeps, cms } from './cms.js';
 //   POST /town/sell     { id, quantity } (or { items: [{ id, quantity }] }) sell dug-up items, /sell's prices (from the game's page only; members)
 //   POST /town/flex     { id } flex a dug-up item in the games channel, /flex's cooldown (from the game's page only; members)
 //   POST /town/gamble   { bet, call: kara|krus } Kara y Krus at the Casino, /gamble's odds (from the game's page only; members)
+//   GET  /town/hood     the neighbourhood: its map, everyone's houses, the viewer's keys, potions and steal cooldown (members)
+//   POST /town/house    { style, colours } build your house (free) or give it a new look (from the game's page only; members)
+//   POST /town/hood     { action: steal|key|kalawang, lot } rob a house (/steal's rules) or rust its Bakod (from the game's page only; members)
 //   GET  /town/parlor   the Parlor: the viewer's look, Kowens, and the titles they have (members)
 //   POST /town/parlor   { action: look, outfit } (3 Kowens) | { action: title, id } (free) (from the game's page only; members)
 //   GET  /town/stay     staying in town (a Kowen every 15 min, claimed) and voice chat today (members); POST claims one
@@ -517,6 +521,34 @@ export function startWebServer(client: Client): void {
         if (typeof quantity !== 'number' || !Number.isInteger(quantity) || quantity < 1 || quantity > 1000) return send(res, 400, '{"error":"invalid quantity"}');
         return send(res, 200, JSON.stringify(sellInTown(userId, body.id, quantity)));
       }
+      if ((req.method === 'GET' && path === '/town/hood') || (req.method === 'POST' && (path === '/town/hood' || path === '/town/house'))) {
+        if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
+        if (req.method === 'POST' && !fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
+        const userId = sessionUser(req);
+        if (!userId) return send(res, 401, '{"error":"not logged in"}');
+        let body: { action?: unknown; lot?: unknown } | null = null;
+        if (req.method === 'POST') {
+          try {
+            body = JSON.parse((await readBody(req)) || 'null');
+          } catch {
+            // invalid JSON → rejected below
+          }
+        }
+        if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
+        const names = (id: string) => nameOf(client, id);
+        if (req.method === 'GET') return send(res, 200, JSON.stringify(await townHood(userId, names)));
+        if (path === '/town/house') {
+          const look = parseHouseLook(body);
+          if (!look) return send(res, 400, '{"error":"invalid house"}');
+          return send(res, 200, JSON.stringify(await saveHouse(userId, look, names)));
+        }
+        const action = body?.action;
+        const lot = body?.lot;
+        if ((action !== 'steal' && action !== 'key' && action !== 'kalawang') || typeof lot !== 'number' || !Number.isInteger(lot) || lot < 0) {
+          return send(res, 400, '{"error":"invalid action"}');
+        }
+        return send(res, 200, JSON.stringify(await hoodAction(client, userId, action, lot, names)));
+      }
       if (path === '/town/parlor' && (req.method === 'GET' || req.method === 'POST')) {
         if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
         if (req.method === 'POST' && !fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
@@ -636,6 +668,7 @@ export function startWebServer(client: Client): void {
       megaphone: useMegaphone,
       moderation: { mutedUntil, kickedUntil, filter: filterText },
       map: loadTownMap(),
+      rooms: { hood: hoodTownMap },
       authenticate: async (req) => {
         if (!loginEnabled() || !fromGame(req)) return null;
         const userId = sessionUser(req);

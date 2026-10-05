@@ -14,6 +14,7 @@ import { today } from '../time.js';
 //  • v4, web game pre-registration: preregistrations.
 //  • v5, web game character looks: outfits.
 //  • v6, web game nicknames and titles: nicknames, titles. v7: titles.announced. v8: titles.opened.
+//  • v9, the neighbourhood: houses.
 //  • kv: small singleton documents keyed by their old file name (e.g. 'race.json', 'rotation.json').
 // Stores cache their state in memory (the bot is the only writer) and save through db/sync.ts, which writes only
 // the rows that changed.
@@ -217,6 +218,15 @@ const MIGRATIONS: string[] = [
      as seen) */ `
   ALTER TABLE titles ADD COLUMN opened INTEGER;
   UPDATE titles SET opened = earned;
+  `,
+  /* v9: houses in the neighbourhood (web/hood.ts): one per member, on a lot numbered in the order they were built */ `
+  CREATE TABLE houses (
+    user_id TEXT PRIMARY KEY,
+    lot     INTEGER NOT NULL UNIQUE,
+    style   TEXT NOT NULL,     -- the house type (buildings/houses/parts.json in the game)
+    look    TEXT NOT NULL,     -- JSON: slot -> swatch name
+    built   INTEGER NOT NULL   -- ms
+  );
   `,
 ];
 

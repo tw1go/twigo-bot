@@ -289,6 +289,74 @@ export interface TownParlorResponse {
  *  NEW tag goes) → the parlor afterwards, and what happened. */
 export type TownParlorActionResponse = TownParlorResponse & { ok: boolean; message: string };
 
+// ── The neighbourhood (GET /town/hood): members' houses on a map the bot lays out (rows of 5, 4, 5, 4… houses along
+// streets, growing with the houses built). ──
+
+/** A thing on the neighbourhood's map (as in the town's town.json). */
+export interface HoodObject {
+  kind: 'building' | 'prop';
+  id: string;
+  col: number;
+  row: number;
+  footprint: [number, number];
+  flip?: boolean;
+  shadow?: string;
+  tufts?: string;
+  decor?: boolean;
+  walkable?: boolean;
+}
+
+export interface HoodMap {
+  size: [number, number];
+  spawn: [number, number];
+  /** [row][col]: grass, path or plaza. */
+  ground: string[][];
+  /** [row][col], 1 = blocked. */
+  blocked: number[][];
+  objects: HoodObject[];
+  /** Each house's door tile (object id `house-<lot>`). */
+  doors: Record<string, [number, number]>;
+  /** Fences around houses with a Bakod (tile back edges, as town.json's fence). */
+  fence: { col: number; row: number; edge: 'nw' | 'ne' }[];
+  /** Walking onto these goes back to town. */
+  exit: [number, number][];
+}
+
+/** A house: its look (a house type and a swatch per slot, from the game's buildings/houses/), and whose it is. */
+export interface HouseLook {
+  style: string;
+  colours: Record<string, string>;
+}
+
+export interface HoodHouse extends HouseLook {
+  lot: number;
+  owner: string;
+  title: TitleData;
+  /** A Bakod: a fence round it, open only to a Master Key. */
+  fenced: boolean;
+  mine?: boolean;
+}
+
+export interface TownHoodResponse {
+  map: HoodMap;
+  houses: HoodHouse[];
+  me: {
+    house: HouseLook | null;
+    kowens: number;
+    keys: number;
+    kalawang: number;
+    /** When you may steal again (ms), or null now. */
+    stealAt: number | null;
+    jailed: boolean;
+    /** What changing your house's look costs (the first one is free). */
+    repaintCost: number;
+  };
+}
+
+/** POST /town/house { style, colours } (build or repaint) and POST /town/hood { action: steal | key | kalawang, lot }:
+ *  the neighbourhood afterwards, and what happened. `busted`: caught by the Tanod (the game plays the bust, then jail). */
+export type TownHoodActionResponse = TownHoodResponse & { ok: boolean; message: string; busted?: boolean; stole?: number };
+
 /** GET /town/player?id= : another player in town, as /balance and /status show them, and what the viewer can give. */
 export interface TownPlayerInfo {
   name: string;
