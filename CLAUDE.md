@@ -55,6 +55,10 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   "Kowens" ("Kowen" for 1).
 - Bot changes that affect members: update `/twigo-help` (`commands/twigo-help.ts`), `PRIVACY.md` when data
   handling changes, and the README.
+- CMS (`packages/bot/src/web/cms.ts`, page `packages/bot/cms/`, plain DOM, no build): at `CMS_PATH` (secret, in `.env`;
+  never write its value in the repo), gifter + `CMS_USER_IDS` only, Discord login (`/auth/login?next=cms`). Edits town
+  news posts, titles, shop prices/on sale (kv `town-posts`, `titles`, `shop` over the code's defaults) and players' Kowens
+  and titles; logs each change in the admin channel. Content that moves into the CMS keeps its code values as defaults.
 - Messages to Discord: no pings by default (`allowedMentions: { parse: [] }`); de-duplicate user IDs in
   `allowedMentions.users`.
 

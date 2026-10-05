@@ -9,7 +9,7 @@ import { db } from '../db/db.js';
 // token in an httpOnly cookie; the database keeps only its SHA-256, so a copy of the database can't log anyone in.
 // Only members of the server can log in, and a session ends if they leave.
 //
-//   GET  /auth/login     -> Discord's consent screen
+//   GET  /auth/login     -> Discord's consent screen (?next=cms: back to the CMS afterwards)
 //   GET  /auth/callback  -> checks state, exchanges the code, checks membership, sets the session cookie
 //   POST /auth/logout    -> ends the session
 // (GET /me is in server.ts.)
@@ -17,6 +17,7 @@ import { db } from '../db/db.js';
 const DISCORD_API = 'https://discord.com/api/v10';
 const SESSION_COOKIE = 'mk_session';
 const STATE_COOKIE = 'mk_oauth_state';
+const NEXT_COOKIE = 'mk_oauth_next'; // 'cms': back to the CMS after logging in, not the game
 const SESSION_MS = 30 * 86_400_000;
 const STATE_SECONDS = 10 * 60;
 export const GAME_PATH = '/play/';
@@ -78,7 +79,10 @@ export function endSessions(userId: string): void {
   deleteUserSessions.run(userId);
 }
 
-export function login(res: ServerResponse): void {
+/** Whether this member may use the CMS: the gifter and CMS_USER_IDS. */
+export const isCmsUser = (userId: string) => userId === config.rewardOwnerId || config.cmsUserIds.includes(userId);
+
+export function login(res: ServerResponse, next?: string | null): void {
   const state = randomBytes(16).toString('hex');
   const url = new URL('https://discord.com/oauth2/authorize');
   url.search = new URLSearchParams({
@@ -89,12 +93,15 @@ export function login(res: ServerResponse): void {
     state,
     prompt: 'none', // skip the consent screen for members who already allowed it
   }).toString();
-  redirect(res, url.toString(), [setCookie(STATE_COOKIE, state, STATE_SECONDS, '/auth')]);
+  const cookies = [setCookie(STATE_COOKIE, state, STATE_SECONDS, '/auth')];
+  if (next === 'cms' && config.cmsPath) cookies.push(setCookie(NEXT_COOKIE, 'cms', STATE_SECONDS, '/auth'));
+  redirect(res, url.toString(), cookies);
 }
 
 export async function callback(client: Client, req: IncomingMessage, res: ServerResponse, query: URLSearchParams): Promise<void> {
-  const clearState = setCookie(STATE_COOKIE, '', 0, '/auth');
-  const back = (problem: 'cancelled' | 'failed' | 'not-member') => redirect(res, `${GAME_PATH}?login=${problem}`, [clearState]);
+  const clearState = [setCookie(STATE_COOKIE, '', 0, '/auth'), setCookie(NEXT_COOKIE, '', 0, '/auth')];
+  const home = readCookies(req)[NEXT_COOKIE] === 'cms' && config.cmsPath ? `${config.cmsPath}/` : GAME_PATH;
+  const back = (problem: 'cancelled' | 'failed' | 'not-member') => redirect(res, `${home}?login=${problem}`, clearState);
 
   if (query.get('error')) return back('cancelled'); // they pressed Cancel on Discord's screen
   const state = query.get('state') ?? '';
@@ -137,7 +144,7 @@ export async function callback(client: Client, req: IncomingMessage, res: Server
   pruneSessions.run(now);
   insertSession.run(sha256(token), id, now, now + SESSION_MS);
   console.log(`[auth] ${id} logged in to the web game`);
-  redirect(res, GAME_PATH, [clearState, setCookie(SESSION_COOKIE, token, SESSION_MS / 1000)]);
+  redirect(res, home, [...clearState, setCookie(SESSION_COOKIE, token, SESSION_MS / 1000)]);
 }
 
 export function logout(req: IncomingMessage, res: ServerResponse): void {

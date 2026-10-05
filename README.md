@@ -264,8 +264,8 @@ else, a session ends when they leave the server, and `/ws` and the town's routes
 The town itself opens on a login screen (`ui/login.ts`); a member's first visit then goes through the character
 creator (`ui/creator.ts`: a nickname, saved with `PUT /nickname`, unique ignoring case and `space _ - .`; and a
 look, saved with `PUT /outfit`) while the town loads in the background. Under the nickname is the member's title
-(`<Townfolk>` by default; the list and colours are in `web/titles.ts`, given with `/gift title`, stored in the `titles`
-table).
+(`<Townfolk>` by default; the built-in list and colours are in `web/titles.ts`, given with `/gift title` or in the
+CMS, stored in the `titles` table; the CMS can add, change and remove titles).
 
 In town, logged-in members see each other live over a WebSocket at `/ws` (`packages/bot/src/web/town.ts`, messages
 in `packages/shared/src/town.ts`). The bot checks every step (on the map, not blocked, next to the last one, at walking
@@ -274,7 +274,18 @@ never saved) and shows as speech bubbles and in the chat box (`packages/game/src
 
 **News** (`packages/bot/src/web/town-news.ts`): the megaphone beside Settings lists the latest posts from
 `ANNOUNCEMENTS_CHANNEL_ID` and `PATCH_NOTES_CHANNEL_ID` (`GET /town/news`, read from Discord and kept for 2 minutes;
-either can be left empty).
+either can be left empty), plus town-only posts written in the CMS (`web/town-posts.ts`).
+
+#### CMS
+
+A small admin site served by the bot (`packages/bot/src/web/cms.ts`, page in `packages/bot/cms/`) at `CMS_PATH`, a
+path on the game's address nobody can guess (`/cms-` + `openssl rand -hex 16`; empty = off). The path only hides it:
+you still log in with Discord, and only the gifter (`REWARD_OWNER_ID`) and `CMS_USER_IDS` get in (anyone else gets a
+404). Tabs: **Town news** (write, edit, delete the town-only News posts), **Titles** (make, recolour, rename, remove),
+**Shop** (change a reward's price or take it off sale, for the town shop and `/redeem` alike), **Players** (find
+someone by nickname or Discord ID, see their wallet, vault, bag, jail/mute status; give or take Kowens, give a title).
+Changes are saved in the database (kv `town-posts`, `titles`, `shop`; the code's values are the defaults), apply at
+once, and are logged in the admin channel. Titles show on a player from their next visit to town.
 
 **Town chat ↔ Discord** (`packages/bot/src/web/town-chat.ts`): set `TOWN_CHAT_CHANNEL_ID` and town messages are
 posted in that channel as **Nickname**: message (no pings, no link previews), while messages there show in the

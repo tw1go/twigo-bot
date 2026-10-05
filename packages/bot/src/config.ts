@@ -16,6 +16,15 @@ try {
   throw new Error(`Invalid TIMEZONE: ${timezone} (use an IANA name like Asia/Manila)`);
 }
 
+/** The CMS's path: a slash and at least 20 letters, digits, - or _, so it can't be guessed. Anything else = off. */
+function cmsPath(): string | undefined {
+  const path = (process.env.CMS_PATH || '').replace(/\/+$/, '');
+  if (!path) return undefined;
+  if (/^\/[A-Za-z0-9_-]{20,}$/.test(path)) return path;
+  console.warn('[config] CMS_PATH must be / and 20+ letters, digits, - or _ (e.g. /cms-<openssl rand -hex 16>): CMS off');
+  return undefined;
+}
+
 export const config = {
   token: required('DISCORD_TOKEN'),
   clientId: required('DISCORD_CLIENT_ID'),
@@ -52,6 +61,10 @@ export const config = {
   patchNotesChannelId: process.env.PATCH_NOTES_CHANNEL_ID || undefined,
   /** The Discord channel linked to the web town's chat (optional; needs the Message Content intent). */
   townChatChannelId: process.env.TOWN_CHAT_CHANNEL_ID || undefined,
+  // The CMS (src/web/cms.ts) at this hard-to-guess path on the web game's address. Empty = CMS off. Only the gifter
+  // (REWARD_OWNER_ID) and CMS_USER_IDS (comma-separated Discord IDs) may use it, logged in with Discord.
+  cmsPath: cmsPath(),
+  cmsUserIds: (process.env.CMS_USER_IDS || '').split(',').map((id) => id.trim()).filter(Boolean),
   // Write-only Object Storage URL for off-server backup copies (src/db/offsite.ts). Empty = local backups only.
   backupUploadUrl: process.env.BACKUP_UPLOAD_URL || undefined,
 };

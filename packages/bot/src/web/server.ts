@@ -31,6 +31,7 @@ import { getOutfit, parseOutfit, saveOutfit } from './outfit.js';
 import { LAUNCH_REWARD, isPreregistered, launched, preregCount, preregister } from '../prereg/prereg.js';
 import { callback, clearSessionCookie, endSessions, isMember, login, loginEnabled, logout, sessionUser } from './auth.js';
 import { roll } from './finds.js';
+import { type CmsDeps, cms } from './cms.js';
 
 // A tiny HTTP API for twigo's room (tw1go.github.io). Read-only apart from
 // the find roll, which only ever hands out a claim code — Kowens are
@@ -71,6 +72,7 @@ import { roll } from './finds.js';
 //   POST /town/gamble   { bet, call: kara|krus } Kara y Krus at the Casino, /gamble's odds (from the game's page only; members)
 //   POST /town/dig      dig at the Mine (/dig's rules; from the game's page only; members)
 //   POST /title/seen    the game showed the member their new title (from the game's page only)
+//   CMS_PATH/*          the CMS, for the gifter (see cms.ts)
 //   WS   /ws            the live town: who else is there and where (see town.ts; from the game's page only)
 
 const ALLOWED_ORIGINS = new Set([
@@ -279,6 +281,9 @@ export function startWebServer(client: Client): void {
     gifted: (userId, from, amount) => town?.gifted(userId, from, amount),
     verdict: (userId, kind, judged, text) => town?.verdict(userId, kind, judged, text),
   };
+  const cmsDeps: CmsDeps = { town: () => town, discordName: async (id) => (await profile(client, id)).name };
+  const cmsPath = loginEnabled() ? config.cmsPath : undefined;
+  if (cmsPath) console.log('[web] CMS on');
 
   const server = createServer(async (req, res) => {
     const origin = req.headers.origin;
@@ -292,6 +297,7 @@ export function startWebServer(client: Client): void {
     const url = new URL(req.url ?? '/', 'http://localhost');
     const path = url.pathname;
     try {
+      if (cmsPath && (path === cmsPath || path.startsWith(`${cmsPath}/`))) return await cms(client, req, res, url, cmsDeps);
       if (req.method === 'OPTIONS') return void res.writeHead(204).end();
       if (req.method === 'GET' && path === '/health') return send(res, 200, 'ok', 'text/plain');
       if (req.method === 'GET' && path === '/leaderboard') return send(res, 200, await leaderboard(client));
@@ -566,7 +572,7 @@ export function startWebServer(client: Client): void {
       }
       if (path.startsWith('/auth/') || path === '/me') {
         if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
-        if (req.method === 'GET' && path === '/auth/login') return login(res);
+        if (req.method === 'GET' && path === '/auth/login') return login(res, url.searchParams.get('next'));
         if (req.method === 'GET' && path === '/auth/callback') return await callback(client, req, res, url.searchParams);
         if (req.method === 'POST' && path === '/auth/logout') return fromGame(req) ? logout(req, res) : send(res, 403, '{"error":"forbidden"}');
         if (req.method === 'GET' && path === '/me') return await me(client, req, res);

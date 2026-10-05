@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Mikazuki CMS</title>
+<!-- The Mikazuki CMS (served by the bot at CMS_PATH, see src/web/cms.ts). The script is app.js beside it. -->
+<style>
+  :root {
+    --bg: #f5f5f8; --panel: #ffffff; --line: #e3e3ea; --text: #1d1d27; --muted: #6b6b7b; --accent: #6d4fd8;
+    --accent-ink: #ffffff; --ok: #1f8a4c; --bad: #c0392b; --soft: #efeaff; --shadow: 0 1px 2px rgb(0 0 0 / 6%);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12121a; --panel: #1b1b26; --line: #2c2c3a; --text: #ececf3; --muted: #9a9aad; --accent: #a58bff;
+      --accent-ink: #14121f; --ok: #4cc47e; --bad: #ff6b5e; --soft: #2a2442; --shadow: none;
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, -apple-system, 'Segoe UI', sans-serif; }
+  button, input, textarea, select { font: inherit; color: inherit; }
+  [hidden] { display: none !important; }
+
+  .layout { display: grid; grid-template-columns: 200px 1fr; min-height: 100vh; }
+  nav { background: var(--panel); border-right: 1px solid var(--line); padding: 18px 12px; display: flex; flex-direction: column; gap: 2px; }
+  .brand { font-weight: 700; font-size: 16px; padding: 0 10px 14px; }
+  .brand small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
+  nav a { padding: 8px 10px; border-radius: 8px; color: var(--text); text-decoration: none; }
+  nav a:hover { background: var(--soft); }
+  nav a.on { background: var(--accent); color: var(--accent-ink); }
+  nav .me { margin-top: auto; padding: 10px; color: var(--muted); font-size: 12px; }
+  main { padding: 24px 28px; max-width: 1080px; width: 100%; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .lead { color: var(--muted); margin: 0 0 18px; }
+
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; box-shadow: var(--shadow); }
+  .stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
+  .stat .n { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stat .l { color: var(--muted); font-size: 12px; }
+
+  .split { display: grid; grid-template-columns: 300px 1fr; gap: 16px; align-items: start; }
+  .list { display: flex; flex-direction: column; gap: 4px; max-height: 70vh; overflow: auto; }
+  .row { display: block; width: 100%; text-align: left; background: none; border: 1px solid transparent; border-radius: 8px; padding: 8px 10px; cursor: pointer; }
+  .row:hover { background: var(--soft); }
+  .row.on { border-color: var(--accent); background: var(--soft); }
+  .row .sub { color: var(--muted); font-size: 12px; }
+
+  label { display: block; font-size: 12px; color: var(--muted); margin: 12px 0 4px; }
+  input:not([type=checkbox]):not([type=color]), textarea, select {
+    width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
+  }
+  input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  textarea { min-height: 260px; resize: vertical; font-family: ui-monospace, Menlo, monospace; font-size: 13px; }
+  .hint { color: var(--muted); font-size: 12px; margin-top: 4px; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; align-items: center; }
+  .btn { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 7px 14px; cursor: pointer; }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+  .btn.danger { color: var(--bad); }
+  .btn.danger:hover { border-color: var(--bad); }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .spacer { flex: 1; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12px; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  td { padding: 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  tr:last-child td { border-bottom: 0; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td input[type=number] { width: 110px; text-align: right; }
+  tr.off td:not(:last-child) { opacity: .5; }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 99px; background: var(--soft); color: var(--muted); }
+  .tag.changed { color: var(--accent); }
+
+  .title-chip { font-weight: 600; }
+  .prismatic { background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bff95, #6bc5ff, #c56bff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .color-row { display: flex; gap: 8px; align-items: center; }
+  .color-row input[type=color] { width: 44px; height: 36px; padding: 2px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+
+  .kv { display: grid; grid-template-columns: 130px 1fr; gap: 6px 12px; margin: 8px 0 4px; }
+  .kv dt { color: var(--muted); }
+  .kv dd { margin: 0; font-variant-numeric: tabular-nums; }
+  .sections { display: grid; gap: 16px; }
+  h2 { font-size: 15px; margin: 0 0 4px; }
+
+  .preview { border: 1px dashed var(--line); border-radius: 8px; padding: 12px; margin-top: 12px; background: var(--bg); white-space: normal; }
+  .preview h3 { margin: 0 0 8px; font-size: 15px; }
+  .preview .small { font-size: 12px; color: var(--muted); }
+  .preview code { background: var(--soft); padding: 0 4px; border-radius: 4px; }
+
+  .login { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
+  .login .card { max-width: 360px; text-align: center; padding: 28px; }
+  .login a.btn { display: inline-block; text-decoration: none; margin-top: 12px; }
+  .err { color: var(--bad); }
+
+  #toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 9px 16px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: calc(100vw - 32px); }
+  #toast.show { opacity: 1; }
+  #toast.bad { background: var(--bad); color: #fff; }
+
+  @media (max-width: 760px) {
+    .layout { grid-template-columns: 1fr; }
+    nav { flex-direction: row; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--line); padding: 10px 12px; }
+    .brand { width: 100%; padding: 0 4px 6px; }
+    nav .me { display: none; }
+    main { padding: 16px; }
+    .split { grid-template-columns: 1fr; }
+    .list { max-height: 260px; }
+    .table-wrap { overflow-x: auto; }
+  }
+</style>
+</head>
+<body>
+<div id="login" class="login" hidden>
+  <div class="card">
+    <h1>Mikazuki CMS</h1>
+    <p class="lead">Log in with Discord to continue.</p>
+    <p id="login-error" class="err" hidden></p>
+    <a class="btn primary" href="/auth/login?next=cms">Log in with Discord</a>
+  </div>
+</div>
+
+<div id="app" class="layout" hidden>
+  <nav>
+    <div class="brand">Mikazuki<small>CMS</small></div>
+    <a href="#overview" data-tab="overview">Overview</a>
+    <a href="#news" data-tab="news">Town news</a>
+    <a href="#titles" data-tab="titles">Titles</a>
+    <a href="#shop" data-tab="shop">Shop</a>
+    <a href="#players" data-tab="players">Players</a>
+    <div class="me" id="me"></div>
+  </nav>
+  <main id="main"></main>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,268 @@
+import { readFileSync } from 'node:fs';
+import type { IncomingMessage, ServerResponse } from 'node:http';
+import type { Client } from 'discord.js';
+import { config } from '../config.js';
+import { db } from '../db/db.js';
+import { accountIds, add, balance, rankOf, take, totalKowens, vaultBalance } from '../credits/store.js';
+import { inventory } from '../dig/store.js';
+import { setShopEntry, shopCatalogue } from '../games/rewards.js';
+import { pot } from '../games/jackpot.js';
+import { jailedUntil } from '../games/jail.js';
+import { kowen } from '../kowens.js';
+import { isCmsUser, sessionUser } from './auth.js';
+import { getNickname } from './nickname.js';
+import { DEFAULT_TITLE, TITLES, giveTitle, isTitleColor, removeTitle, setTitle, titleHolders, titleIdOf } from './titles.js';
+import { townGift } from './town-feed.js';
+import { kickedUntil, mutedUntil } from './town-mod.js';
+import { forgetNews } from './town-news.js';
+import { BODY_MAX, TITLE_MAX, deletePost, savePost, townPosts } from './town-posts.js';
+import type { Town } from './town.js';
+
+// 🛠️ The CMS: a page for the gifter (and CMS_USER_IDS) to run the game's content without a deploy or a slash command:
+// the town's own news posts, titles (make, change, give), the rewards shop's prices and what's on sale, and players
+// (look someone up, give or take Kowens). It lives at CMS_PATH, a path nobody can guess; anyone else (logged out
+// visitors get a login button, other members a plain 404) sees nothing. Every change is logged in the admin channel.
+//
+//   GET  <path>/                 the page, packages/bot/cms/index.html (its script: <path>/app.js)
+//   GET  <path>/api/me           who's logged in (401 → the page shows the login button)
+//   GET  <path>/api/overview     members, Kowens, who's in town, the jackpot
+//   GET  <path>/api/posts        POST { id?, title, body, bump? } · POST /api/posts/delete { id }
+//   GET  <path>/api/titles       POST { id, name, color } · POST /api/titles/delete { id }
+//   GET  <path>/api/shop         POST { id, cost: number | null, off }
+//   GET  <path>/api/players?q=   nickname or Discord ID; empty = the richest
+//   GET  <path>/api/player?id=   POST /api/player/kowens { id, amount, reason? } · POST /api/player/title { id, title }
+
+export interface CmsDeps {
+  town: () => Town | null;
+  /** A member's Discord name. */
+  discordName: (userId: string) => Promise<string>;
+}
+
+/** The page and its script (packages/bot/cms/, beside src/ and dist/), read once. */
+const files = new Map<string, string>();
+const file = (name: string) => files.get(name) ?? files.set(name, readFileSync(new URL(`../../cms/${name}`, import.meta.url), 'utf8')).get(name)!;
+
+const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const SNOWFLAKE = /^\d{17,20}$/;
+
+function send(res: ServerResponse, status: number, body: unknown, type = 'application/json'): void {
+  res.writeHead(status, {
+    'Content-Type': type,
+    'Cache-Control': 'no-store',
+    // The path is the secret: never sent on as a referrer, never indexed, never framed.
+    'Referrer-Policy': 'no-referrer',
+    'X-Robots-Tag': 'noindex, nofollow',
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'Content-Security-Policy': "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+  });
+  res.end(typeof body === 'string' ? body : JSON.stringify(body));
+}
+
+const notFound = (res: ServerResponse) => send(res, 404, '{"error":"not found"}');
+
+function readJson(req: IncomingMessage): Promise<Record<string, unknown> | null> {
+  return new Promise((resolve) => {
+    let data = '';
+    req.on('data', (chunk: Buffer) => {
+      data += chunk;
+      if (data.length > 16_384) req.destroy(); // a post is at most BODY_MAX characters
+    });
+    req.on('end', () => {
+      try {
+        const body = JSON.parse(data || 'null');
+        resolve(body && typeof body === 'object' && !Array.isArray(body) ? body : null);
+      } catch {
+        resolve(null);
+      }
+    });
+    req.on('error', () => resolve(null));
+  });
+}
+
+/** Tells the admin channel what was changed, and by whom (no pings). */
+async function log(client: Client, who: string, what: string): Promise<void> {
+  console.log(`[cms] ${who}: ${what}`);
+  const channel = await client.channels.fetch(config.adminChannelId).catch(() => null);
+  if (channel?.isSendable()) {
+    await channel.send({ content: `🛠️ **CMS** · ${who}: ${what}`, allowedMentions: { parse: [] } }).catch((err) => console.error('[cms] log failed:', err));
+  }
+}
+
+const nameStmt = db.prepare<[string], { user_id: string; nickname: string }>("SELECT user_id, nickname FROM nicknames WHERE nickname LIKE ? ESCAPE '\\' ORDER BY nickname LIMIT 25");
+
+/** Players by nickname (or one Discord ID); with nothing typed, the 25 with the most Kowens. */
+function findPlayers(q: string): { id: string; nickname: string | null; kowens: number }[] {
+  const row = (id: string) => ({ id, nickname: getNickname(id), kowens: totalKowens(id) });
+  if (!q) return accountIds().map(row).sort((a, b) => b.kowens - a.kowens).slice(0, 25);
+  if (SNOWFLAKE.test(q)) return accountIds().includes(q) || getNickname(q) ? [row(q)] : [];
+  return nameStmt.all(`%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`).map((r) => row(r.user_id));
+}
+
+const known = (id: string) => SNOWFLAKE.test(id) && (accountIds().includes(id) || !!getNickname(id));
+
+async function player(id: string, deps: CmsDeps) {
+  const items = inventory(id);
+  return {
+    id,
+    discordName: await deps.discordName(id),
+    nickname: getNickname(id),
+    kowens: balance(id),
+    vault: vaultBalance(id),
+    rank: rankOf(id),
+    title: titleIdOf(id),
+    items: items.reduce((n, [, count]) => n + count, 0),
+    kinds: items.length,
+    jailedUntil: jailedUntil(id),
+    mutedUntil: mutedUntil(id),
+    kickedUntil: kickedUntil(id),
+    inTown: !!deps.town()?.here().includes(id),
+  };
+}
+
+const titleList = () => {
+  const holders = titleHolders();
+  return Object.entries(TITLES).map(([id, t]) => ({ id, ...t, holders: holders[id] ?? 0, fixed: id === DEFAULT_TITLE }));
+};
+
+const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+
+/** Handles a request under CMS_PATH (the server checks the path first). */
+export async function cms(client: Client, req: IncomingMessage, res: ServerResponse, url: URL, deps: CmsDeps): Promise<void> {
+  const base = config.cmsPath!;
+  const sub = url.pathname.slice(base.length) || '/';
+  if (sub === '/' && url.pathname === base) {
+    res.writeHead(308, { Location: `${base}/`, 'Referrer-Policy': 'no-referrer' }); // relative links need the slash
+    return void res.end();
+  }
+
+  const userId = sessionUser(req);
+  // Logged-out visitors get the page (it shows the login button); other members, nothing at all.
+  if (userId && !isCmsUser(userId)) return notFound(res);
+  if (req.method === 'GET' && sub === '/') return send(res, 200, file('index.html'), 'text/html; charset=utf-8');
+  if (req.method === 'GET' && sub === '/app.js') return send(res, 200, file('app.js'), 'text/javascript; charset=utf-8');
+  if (!sub.startsWith('/api/')) return notFound(res);
+  if (!userId) return send(res, 401, '{"error":"not logged in"}');
+  // Changes only from the CMS's own page (the cookie is SameSite=Lax as well).
+  if (req.method === 'POST' && req.headers.origin !== config.publicUrl) return send(res, 403, '{"error":"forbidden"}');
+  if (req.method !== 'GET' && req.method !== 'POST') return notFound(res);
+
+  const who = await deps.discordName(userId);
+  const body = req.method === 'POST' ? await readJson(req) : null;
+  if (req.method === 'POST' && !body) return send(res, 400, '{"error":"invalid JSON"}');
+  const bad = (error: string) => send(res, 400, { error });
+  const route = `${req.method} ${sub}`;
+
+  switch (route) {
+    case 'GET /api/me':
+      return send(res, 200, { id: userId, name: who, nickname: getNickname(userId) });
+
+    case 'GET /api/overview': {
+      const ids = accountIds();
+      return send(res, 200, {
+        members: ids.length,
+        kowens: ids.reduce((n, id) => n + totalKowens(id), 0),
+        inTown: deps.town()?.here().length ?? 0,
+        pot: pot(),
+        posts: townPosts().length,
+        titles: Object.keys(TITLES).length,
+        offSale: shopCatalogue().filter((r) => r.off).length,
+      });
+    }
+
+    case 'GET /api/posts':
+      return send(res, 200, { posts: townPosts(), titleMax: TITLE_MAX, bodyMax: BODY_MAX });
+    case 'POST /api/posts': {
+      const id = body!.id === undefined || body!.id === null ? null : str(body!.id);
+      const title = str(body!.title);
+      const text = typeof body!.body === 'string' ? body!.body.replace(/\r\n/g, '\n').trim() : '';
+      if (!title || title.length > TITLE_MAX) return bad(`The title needs 1–${TITLE_MAX} characters.`);
+      if (!text || text.length > BODY_MAX) return bad(`The post needs 1–${BODY_MAX} characters.`);
+      const post = savePost(id, title, text, body!.bump === true);
+      if (!post) return send(res, 404, '{"error":"That post is gone."}');
+      forgetNews();
+      await log(client, who, `${id ? 'edited' : 'posted'} the town news post **${title}**${body!.bump === true ? ' (shown as new)' : ''}`);
+      return send(res, 200, { post });
+    }
+    case 'POST /api/posts/delete': {
+      const post = townPosts().find((p) => p.id === str(body!.id));
+      if (!post || !deletePost(post.id)) return send(res, 404, '{"error":"That post is gone."}');
+      forgetNews();
+      await log(client, who, `deleted the town news post **${post.title}**`);
+      return send(res, 200, { ok: true });
+    }
+
+    case 'GET /api/titles':
+      return send(res, 200, { titles: titleList() });
+    case 'POST /api/titles': {
+      const id = str(body!.id);
+      const name = str(body!.name);
+      if (!SLUG.test(id) || id.length > 40) return bad('The id is lowercase letters, digits and dashes (e.g. lucky-digger).');
+      if (!name || name.length > 32) return bad('The name needs 1–32 characters.');
+      if (!isTitleColor(body!.color)) return bad('The colour is #RRGGBB or prismatic.');
+      const was = TITLES[id];
+      setTitle(id, { name, color: body!.color });
+      await log(client, who, `${was ? 'changed' : 'made'} the title **<${name}>** (${body!.color})`);
+      return send(res, 200, { titles: titleList() });
+    }
+    case 'POST /api/titles/delete': {
+      const id = str(body!.id);
+      const title = TITLES[id];
+      if (!title || !removeTitle(id)) return bad(id === DEFAULT_TITLE ? 'Townfolk stays: it is everyone’s default.' : 'No such title.');
+      await log(client, who, `removed the title **<${title.name}>** (anyone wearing it shows Townfolk)`);
+      return send(res, 200, { titles: titleList() });
+    }
+
+    case 'GET /api/shop':
+      return send(res, 200, { rewards: shopCatalogue() });
+    case 'POST /api/shop': {
+      const id = str(body!.id);
+      const cost = body!.cost;
+      if (cost !== null && (typeof cost !== 'number' || !Number.isInteger(cost) || cost < 1 || cost > 1_000_000)) return bad('The price is a whole number, 1 to 1,000,000.');
+      const before = shopCatalogue().find((r) => r.id === id);
+      if (!before || !setShopEntry(id, cost, body!.off === true)) return bad('No such reward.');
+      const after = shopCatalogue().find((r) => r.id === id)!;
+      const changes = [
+        before.cost !== after.cost && `price ${before.cost} → ${after.cost} ${kowen(after.cost)}`,
+        before.off !== after.off && (after.off ? 'taken off sale' : 'back on sale'),
+      ].filter(Boolean);
+      if (changes.length) await log(client, who, `shop: ${after.emoji} **${after.name}** ${changes.join(', ')}`);
+      return send(res, 200, { rewards: shopCatalogue() });
+    }
+
+    case 'GET /api/players':
+      return send(res, 200, { players: findPlayers(str(url.searchParams.get('q')).slice(0, 32)) });
+    case 'GET /api/player': {
+      const id = str(url.searchParams.get('id'));
+      if (!known(id)) return send(res, 404, '{"error":"No such player."}');
+      return send(res, 200, { player: await player(id, deps), titles: titleList() });
+    }
+    case 'POST /api/player/kowens': {
+      const id = str(body!.id);
+      const amount = body!.amount;
+      const reason = str(body!.reason).slice(0, 100);
+      if (!known(id)) return send(res, 404, '{"error":"No such player."}');
+      if (typeof amount !== 'number' || !Number.isInteger(amount) || amount === 0 || Math.abs(amount) > 1_000_000) return bad('The amount is a whole number, not 0 (minus takes Kowens away).');
+      const name = getNickname(id) ?? (await deps.discordName(id));
+      if (amount > 0) {
+        add(id, amount); // like /gift kowens
+        townGift(id, 'The gifter', amount); // the gift pop-up, if they're in the web town
+        await log(client, who, `gave **${name}** ${amount.toLocaleString('en-US')} ${kowen(amount)}${reason ? ` (${reason})` : ''}`);
+      } else {
+        const taken = take(id, -amount);
+        await log(client, who, `took ${taken.toLocaleString('en-US')} ${kowen(taken)} from **${name}**${reason ? ` (${reason})` : ''}`);
+      }
+      return send(res, 200, { player: await player(id, deps) });
+    }
+    case 'POST /api/player/title': {
+      const id = str(body!.id);
+      const title = str(body!.title);
+      if (!known(id)) return send(res, 404, '{"error":"No such player."}');
+      if (!TITLES[title]) return bad('No such title.');
+      giveTitle(id, title);
+      await log(client, who, `gave **${getNickname(id) ?? (await deps.discordName(id))}** the title **<${TITLES[title].name}>**`);
+      return send(res, 200, { player: await player(id, deps) });
+    }
+  }
+  return notFound(res);
+}
