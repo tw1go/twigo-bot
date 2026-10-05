@@ -2,7 +2,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import type { LeaderboardResponse, LeaderboardRow, MeDig, MeResponse, PresenceStatus, PreregResponse, PreregStatus, TownJackpotBuyResponse, TownJackpotResponse, TownLeaderboardResponse } from '@mikazuki/shared';
 import { GatewayIntentBits, type Client } from 'discord.js';
 import { config } from '../config.js';
-import { balance, rankOf, setWalletHook, topBalances, totalKowens, vaultBalance } from '../credits/store.js';
+import { VOICE_DAILY_CAP, VOICE_MINUTES_PER_CREDIT, balance, rankOf, setWalletHook, topBalances, totalKowens, vaultBalance, voiceCreditsToday, voiceProgress } from '../credits/store.js';
 import { DIGS_PER_DAY, digsToday, inventory, LUCKY_EVERY, serverDigProgress, SHOVEL_COST, SHOVEL_USES, SHOVELS_PER_DAY, shovelsBoughtToday, shovelUses } from '../dig/store.js';
 import { ITEM_BY_ID } from '../dig/items.js';
 import { getNickname, parseNickname, setNickname } from './nickname.js';
@@ -74,6 +74,7 @@ import { type CmsDeps, cms } from './cms.js';
 //   POST /town/gamble   { bet, call: kara|krus } Kara y Krus at the Casino, /gamble's odds (from the game's page only; members)
 //   GET  /town/parlor   the Parlor: the viewer's look, Kowens, and the titles they have (members)
 //   POST /town/parlor   { action: look, outfit } (3 Kowens) | { action: title, id } (free) (from the game's page only; members)
+//   GET  /town/stay     staying in town (a Kowen every 15 min, claimed) and voice chat today (members); POST claims one
 //   POST /town/dig      dig at the Mine (/dig's rules; from the game's page only; members)
 //   POST /title/seen    { id? } the game showed the member their new title (from the game's page only)
 //   CMS_PATH/*          the CMS, for the gifter (see cms.ts)
@@ -560,7 +561,8 @@ export function startWebServer(client: Client): void {
         const userId = sessionUser(req);
         if (!userId) return send(res, 401, '{"error":"not logged in"}');
         if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
-        return send(res, 200, JSON.stringify(req.method === 'GET' ? stayInfo(userId) : claimStay(userId)));
+        const voice = { earned: voiceCreditsToday(userId), max: VOICE_DAILY_CAP, minutes: voiceProgress(userId), every: VOICE_MINUTES_PER_CREDIT };
+        return send(res, 200, JSON.stringify(req.method === 'GET' ? { ...stayInfo(userId), voice } : claimStay(userId)));
       }
       if (req.method === 'POST' && path === '/town/dig') {
         if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');

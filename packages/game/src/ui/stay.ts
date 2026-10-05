@@ -6,12 +6,13 @@ import { coinIcon, el } from './reward';
 // ⏳ Staying in town pays (bot web/town-stay.ts): a Kowen to claim every 15 minutes in town, up to 20 a day. Above the
 // system feed (bottom right; on phones above the bottom edge): a faint line counting down to the next one, and when
 // one is ready, a little pop-up to claim it (the count to the next starts once it's claimed). The server counts the
-// time and says when one is ready (`stay` message); the minutes shown between are counted here. Dev: pretend, with
-// &stay=ready to start with one ready.
+// time and says when one is ready (`stay` message); the minutes shown between are counted here. Under it, the Kowens
+// voice chat in Discord can still pay today (GET /town/stay's `voice`, fetched again every minute). Dev: pretend, with
+// &stay=ready to start with one ready, &voice=N for N voice Kowens already earned.
 
 const TICK_MS = 60_000;
 
-const pretend: TownStayInfo = { ready: false, minutes: 14, every: 15, claimed: 3, max: 20 };
+const pretend: TownStayInfo = { ready: false, minutes: 14, every: 15, claimed: 3, max: 20, voice: { earned: Number(new URLSearchParams(location.search).get('voice') ?? 5), max: 12, minutes: 7, every: 15 } };
 
 async function load(): Promise<TownStayInfo | null> {
   if (fakeLogin()) return { ...pretend, ready: new URLSearchParams(location.search).get('stay') === 'ready' };
@@ -35,11 +36,13 @@ export class StayReward {
     this.root.hidden = true;
     document.body.append(this.root);
     // A minute here is a minute counted there (the server says when one is ready; this is only the countdown shown).
+    // Voice time is counted in Discord, so that's asked again each minute.
     setInterval(() => {
       const s = this.info;
-      if (!s || s.ready || s.claimed >= s.max) return;
-      s.minutes = Math.min(s.every - 1, s.minutes + 1);
+      if (!s) return;
+      if (!s.ready && s.claimed < s.max) s.minutes = Math.min(s.every - 1, s.minutes + 1);
       this.render();
+      if (!fakeLogin()) void load().then((fresh) => fresh && this.info && !this.info.ready && this.set(fresh));
     }, TICK_MS);
     void load().then((s) => s && this.set(s));
     // Dev: the pretend one is ready a minute in.
@@ -49,7 +52,8 @@ export class StayReward {
   /** From the server: where it stands (a Kowen ready pops up). */
   set(s: TownStayInfo): void {
     const was = this.info?.ready;
-    this.info = s;
+    this.info = { ...s, voice: s.voice ?? this.info?.voice }; // `stay` messages don't carry the voice numbers
+    s = this.info;
     this.render();
     if (s.ready && !was) playSound('coin', 0.5);
   }
@@ -63,7 +67,7 @@ export class StayReward {
     if (!s.ready) {
       const left = s.every - s.minutes;
       const text = s.claimed >= s.max ? 'All of today’s stay Kowens claimed. Back tomorrow!' : `Staying in town: next Kowen in ${left <= 1 ? 'under a minute' : `${left} min`}`;
-      this.root.replaceChildren(el('span', 'st-clock', '⏳'), el('span', 'st-text', text), today);
+      this.root.replaceChildren(el('span', 'st-clock', '⏳'), el('span', 'st-text', text), today, ...this.voiceLine());
       this.root.title = 'A Kowen for every 15 minutes in town, up to 20 a day';
       return;
     }
@@ -71,8 +75,23 @@ export class StayReward {
     button.addEventListener('click', () => void this.claim(button));
     const words = el('span', 'st-words');
     words.append(el('b', undefined, '+1 Kowen'), el('span', undefined, `for staying ${s.every} minutes`));
-    this.root.replaceChildren(coinIcon(2), words, today, button);
+    this.root.replaceChildren(coinIcon(2), words, today, button, ...this.voiceLine());
     this.root.title = '';
+  }
+
+  /** How many voice chat Kowens are left today, and the minutes in voice to the next. */
+  private voiceLine(): HTMLElement[] {
+    const v = this.info?.voice;
+    if (!v) return [];
+    const left = Math.max(0, v.max - v.earned);
+    const line = el('div', 'st-voice');
+    line.title = `Voice chat in Discord: 1 Kowen per ${v.every} min (with someone else, not deafened), up to ${v.max} a day`;
+    line.append(
+      el('span', 'st-clock', '🎙️'),
+      el('span', 'st-text', left ? `Voice chat: ${left} ${left === 1 ? 'Kowen' : 'Kowens'} left today · next after ${v.every - v.minutes} min in voice` : 'Voice chat: all of today’s Kowens earned. Back tomorrow!'),
+      el('span', 'st-today', `${v.earned}/${v.max} today`),
+    );
+    return [line];
   }
 
   private async claim(button: HTMLButtonElement): Promise<void> {

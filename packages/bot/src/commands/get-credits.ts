@@ -29,7 +29,7 @@ export const getCredits: Command = {
         : `🪙 +${dailyAmount()} ${kowen(dailyAmount())}!${dailyAmount() > DAILY_CREDITS ? ' 🎄 **Merry Christmas — double Kowens today!**' : ''} You now have **${newBalance}**. Spend them on /judge, games or /redeem.`) +
       (vcToday >= VOICE_DAILY_CAP
         ? `\n🎙️ Voice chat: **${vcToday}/${VOICE_DAILY_CAP}** ${kowen(VOICE_DAILY_CAP)} today — daily max reached! More tomorrow. 🌙`
-        : `\n🎙️ Voice chat: **${vcToday}/${VOICE_DAILY_CAP}** ${kowen(VOICE_DAILY_CAP)} today · **${vc}/${VOICE_MINUTES_PER_CREDIT} min** toward the next one.`) +
+        : `\n🎙️ Voice chat: **${vcToday}/${VOICE_DAILY_CAP}** ${kowen(VOICE_DAILY_CAP)} today (**${VOICE_DAILY_CAP - vcToday}** left) · **${vc}/${VOICE_MINUTES_PER_CREDIT} min** toward the next one.`) +
       `\n-# ⚠️ Inactive for more than ${INACTIVE_GRACE_DAYS} days? You start losing Kowens each day. Chat, join voice or use the bot to stay safe.`;
     await interaction.reply({ content, flags: MessageFlags.Ephemeral });
   },

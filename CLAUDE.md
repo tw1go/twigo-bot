@@ -113,7 +113,9 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   town, max 20 a day (bot `web/town-stay.ts`, kv 'town-stay', tested; the web server counts a minute for everyone in
   town (`Town.here()`) every 60 s and sends `stay` when one is ready). Ready → a gold-edged pop-up with Claim (`POST
   /town/stay`); the count to the next waits until it's claimed; between, a faint "next Kowen in N min · n/20 today"
-  line. Dev: pretend (ready a minute in; `&stay=ready`).
+  line. Under it, voice chat: the Kowens Discord voice can still pay today ("N Kowens left today · next after M min in
+  voice", n/12; GET /town/stay's `voice`, fetched again each minute). Dev: pretend (ready a minute in; `&stay=ready`;
+  `&voice=N` earned).
 - Movement tutorial (`ui/tutorial.ts`, in the reward box via `showPopup`): shown when a member walks into town
   straight from the creator (their first visit). Dev: `?tutorial=1`.
 - Reward pop-up (`ui/reward.ts`, `showReward`): dimmed town, turning rays, white box in the item frame (its fill
