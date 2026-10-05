@@ -25,3 +25,8 @@ ui-bag.png,32,32,1,0,no,0,0,the inventory button beside the chat input
 ui-tanod-bust.png,48,48,6,10,no,24,47,the Tanod raid: slides up from the bottom-left; plays once and holds the last cell
 ui-casino-felt.png,24,24,1,0,no,0,0,9-slice: 7 px wood rim around the felt
 ui-megaphone.png,32,32,1,0,no,0,0,the news button's megaphone (HUD beside Settings)
+ui-jnp-hands.png,32,32,3,0,no,0,0,jack en poy hands: bato/papel/gunting (recoloured)
+ui-vs.png,72,44,4,12,no,36,22,VS: plain + glint
+ui-jnp-pips.png,8,8,3,0,no,0,0,round pips: empty/you/opponent
+ui-arena-modes.png,24,24,2,0,no,0,0,arena menu: vs bot / vs player
+ui-rain.png,32,32,9,8,yes,16,27,arena loss: rain cloud over the loser's head (manifest fx lose-cloud)

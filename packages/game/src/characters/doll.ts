@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { queueImage } from '../assets/queue';
-import type { CharacterDefs, Dir } from '../assets/types';
+import type { CharacterDefs, Dir, Vec2 } from '../assets/types';
 import { isColour, visible } from '../util/pixels';
 
 // Paper-doll characters. Each layer (body, face, shoes, bottom, top, hair, glasses, hat — manifest drawOrder) is a
@@ -235,6 +235,36 @@ export function buildOutfit(scene: Phaser.Scene, C: CharacterDefs, o: Outfit): v
       });
     }
   }
+}
+
+/**
+ * A copy of a sheet in someone's colours: skin keys → their skin ramp, cloth-main keys → their top's colour (the
+ * jack en poy hands: a hand and its cuff). Frames are cut like the source (`frame` px square). Made once per look.
+ */
+export function recolourSheet(scene: Phaser.Scene, C: CharacterDefs, o: Outfit, src: string, frame: Vec2): string | null {
+  const key = `${src}:${outfitKey(o)}`;
+  if (scene.textures.exists(key)) return key;
+  const data = pixels(scene, src);
+  if (!data) return null;
+  const swaps = new Map([...swapsFor(C, o, 'body'), ...swapsFor(C, o, 'top')]);
+  const d = data.data;
+  for (let i = 0; i < d.length; i += 4) {
+    if (!visible(d[i + 3])) continue;
+    const to = swapAt(swaps, d, i);
+    if (to !== undefined) {
+      d[i] = to >> 16;
+      d[i + 1] = (to >> 8) & 255;
+      d[i + 2] = to & 255;
+    }
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = data.width;
+  canvas.height = data.height;
+  canvas.getContext('2d')!.putImageData(data, 0, 0);
+  const tex = scene.textures.addCanvas(key, canvas)!;
+  const [fw, fh] = frame;
+  for (let f = 0; f * fw < data.width; f++) tex.add(f, 0, f * fw, 0, fw, fh);
+  return key;
 }
 
 const heads = new Map<string, number>();

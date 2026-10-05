@@ -1,0 +1,12 @@
+file,cell_w,cell_h,frames,fps,loop,anchor_x,anchor_y,notes
+bg-vs-speedlines.png,256,144,1,0,no,0,0,arena VS screen: speed lines on transparent; one tile squished to the VS band's height; whole-number scale sideways; tiles sideways
+bg-arena-viewer-1.png,32,32,9,8,yes,16,30,arena spectator 1: cheering loop (front-facing; feet on row 30)
+bg-arena-viewer-2.png,32,32,9,8,yes,16,30,arena spectator 2: cheering loop (front-facing; feet on row 30)
+bg-arena-viewer-3.png,32,32,9,8,yes,16,30,arena spectator 3: cheering loop (front-facing; feet on row 30)
+bg-arena-viewer-4.png,32,32,9,8,yes,16,30,arena spectator 4: cheering loop (front-facing; feet on row 30)
+bg-arena-viewer-5.png,32,32,9,8,yes,16,30,arena spectator 5: cheering loop (front-facing; feet on row 30)
+bg-arena-viewer-6.png,32,32,9,8,yes,16,30,arena spectator 6: cheering loop (front-facing; feet on row 30)
+bg-arena-viewer-7.png,32,32,9,8,yes,16,30,arena spectator 7: cheering loop (front-facing; feet on row 30)
+bg-arena-viewer-8.png,32,32,9,8,yes,16,30,arena spectator 8: cheering loop (front-facing; feet on row 30)
+bg-arena-viewer-9.png,32,32,9,8,yes,16,30,arena spectator 9: cheering loop (front-facing; feet on row 30)
+bg-arena-viewer-10.png,32,32,9,8,yes,16,30,arena spectator 10: cheering loop (front-facing; feet on row 30)

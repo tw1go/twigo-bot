@@ -198,6 +198,45 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   in `games/jackpot.ts`, kv 'jackpot-raid', paid with the pot to the next winner, rolling over when nobody wins; the odds
   count tickets only). Bet feed lines carry the gambler's town `playerId` and `amount`: a win of 50+ bursts coins over them in town,
   a bust shows the siren (`Character.flash()`). Dev: `&win=1` / `&lose=1` / `&bust=1`.
+- Arena (jack en poy; click the Arena or E at its door → `arena/menu.ts` in the reward box, its own look: Popup `theme:
+  'arena'` = `.rw-arena`, a stone slab in bronze trim with rivets, torch glow, a blood-red title banner, iron mode plates, a
+  crimson Retreat; CSS only): Vs Bot, or Vs Player (the
+  queue; needs the town's connection, not from jail): the menu closes into a matchmaking bar (`arena/queue.ts`, top
+  centre, above the Chat button on phones: "Matchmaking in progress…", time waited, × leaves the queue) and the player
+  walks around town meanwhile; a match found closes any open pop-up (and leaves the casino) and goes in. Both go in with the casino's walk-in (`TownScene.enterRoom`, shared
+  with the casino; the player stays at the door for everyone) to `scenes/ArenaScene.ts`, a Phaser scene over the town:
+  inside the arena (a dark bowl, a sand platform ringed by spectators with both players on
+  it, side by side on every screen; bowl and platform drawn in the palette as pixel art; spectators from ui.arenaViewers, ten 9-frame
+  cheering loops, in three darkening rings well back from the platform (just wide enough for both players, who stand
+  only as far apart as their hands reach): the far half behind it at half the dolls' zoom, the near half in front one
+  step bigger as flat dark silhouettes (seen from behind) clear of the names and pips; four faint spotlight beams, each ending in a pool of light on the platform, sweep
+  across the platform (ADD, under the near crowd and the players); each spectator on its own
+  frame and pace, faster for a moment on a clash or the win), both paper dolls (6×, 4× on small
+  screens; the hands as big, reaching forward from each player's front and clashing between them; in the VS intro
+  they're a close-up, 10× / 7×, the band tall enough to cover them, the VS 6× / 4×; they shrink onto the platform as
+  it folds), a white speed-line band across the middle (~30% of the height; bg-vs-speedlines, one tile squished to the band's height so its thick top and bottom lines show, a whole-number scale sideways, scrolling in from both sides) for the VS slam that folds away after it, rounds (three hands, keys 1–3, 10 s timer, "Jack… en… poy!" reveal, first to 2, draws
+  replay; "Jack / en / poy!" big and gold; each result on a navy plate bordered lime / magenta / gold for win / loss /
+  draw, popping in, `shout`), the winner cheers/hops under confetti, the loser shakes their head and sits under a rain cloud (fx lose-cloud = ui/ui-rain.png, 9×32×32, a size smaller than the doll); Rematch /
+  Leave in a panel under the players' names (phones: along the bottom; top-right Leave, Escape). Its buttons are a DOM bar
+  (`#arena-ui`). The screen only speaks the arena protocol (`arena/channel.ts`): logged in, both Vs Player and Vs Bot
+  go through the town's connection, decided by the bot (`web/town-arena.ts`, tested: hands hidden until both pick, a
+  random hand after 10 s, leaving gives the other the win; `arena-bot` = the server's bot, a random hand each round,
+  an everyday name, always takes a rematch); guests and dev's `&rounds=` play the bot locally (`BotChannel`, no bets).
+  The opponent's look is random when they have none (the bot never does), with the robot icon for the bot. Hands are
+  recoloured per player with the doll's palette swap (`recolourSheet`). Bets (logged in, 1–100, every match is for Kowens; `betField` in the
+  menu and the end panel): vs a player the stake is the smaller bet (no more than both have), held at the start
+  (kv 'arena-held', refunded at bot start if unfinished), the winner gets both (a walk-out forfeits); vs the bot a win
+  pays the stake back doubled, a loss keeps it (`web/town-arena-bets.ts`). Every finished match (and a walk-out after
+  round 1) goes to the system feed as kind 'arena' with a gently mocking line about the loser (`arenaLine`, a few
+  variants each for players, losing to the bot, beating it, fleeing; tone lose, or win for beating the bot). The stake shows top
+  centre ("Playing for N Kowens"), the end says what was won or lost. Rematch vs a player asks the other (`arena-rematch-ask`
+  with the asker's bet: Accept with your own bet / Decline → `arena-rematch-declined`). The dev town bets against
+  pretend wallets (100 each, logged in the dev server's terminal). The Discord bot has no jack en poy. Sounds: arena-whoosh (VS screen), arena-slam, arena-reveal; reused Kenney ticks
+  (tick_001 = sfx `flip-spin`: the three bobs climbing 1.00/1.06/1.12, the timer's last 3 s at 0.9), confirmation_003 /
+  error_003 (`casino-win` / `casino-lose`) for the match, the click (back_002) at 0.15 on every arena button; the
+  arena-battle music (`arenaMusicOn`: in ~400 ms at the VS screen, out ~500 ms at the end and on leaving, back for a
+  rematch); town music and crickets pause (`enterArenaSound`). Reduced motion keeps every sound. Dev: `?arena=bot&rounds=win,lose,draw` (forced bot rounds), `?arena=menu`; two windows
+  `?as=Alice` / `?as=Bob` for Vs Player.
 - Moderation (`/town mute|unmute|kick|filter`, mods/admins; bot `web/town-mod.ts`, kv 'town-moderation'): mutes block
   town chat, kicks close the socket (4001, back-at time) and refuse rejoining, blocked words become *** (whole words,
   repeated letters). Actions are logged in the admin channel. The word list lives only in the database.

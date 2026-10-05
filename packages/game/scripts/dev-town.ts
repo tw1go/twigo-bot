@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import type { OutfitData } from '@mikazuki/shared';
 import type { Plugin } from 'vite';
 import { attachTown } from '../../bot/src/web/town.ts';
+import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
 
 // Dev only: the town's live server (/ws) inside the game's dev server, so chat and other players can be tried
 // without the bot. It is the bot's own web/town.ts with a fake login: the game's fake member (?as=Name) says who
@@ -26,9 +27,31 @@ export function devTown(): Plugin {
       if (!httpServer) return;
       const json = JSON.parse(readFileSync(join(server.config.publicDir, 'assets/maps/town.json'), 'utf8'));
       const looks = new Map<string, OutfitData>();
+      // Arena bets against pretend wallets (100 Kowens each, in memory; the HUD's Kowens don't follow them).
+      const wallets = new Map<string, number>();
+      const wallet = (who: string) => wallets.get(who) ?? 100;
+      const move = (who: string, by: number) => {
+        wallets.set(who, wallet(who) + by);
+        server.config.logger.info(`[arena bets] ${who} ${by >= 0 ? '+' : ''}${by} → ${wallet(who)}`, { timestamp: true });
+      };
+      const arenaBets: ArenaBets = {
+        hold: (a, b, want) => {
+          const stake = Math.min(want, wallet(a), wallet(b));
+          if (stake > 0) [a, b].forEach((x) => move(x, -stake));
+          return Math.max(0, stake);
+        },
+        pay: (winner, _loser, stake) => move(winner, stake * 2),
+        holdSolo: (who, want) => {
+          const stake = Math.min(want, wallet(who));
+          if (stake > 0) move(who, -stake);
+          return Math.max(0, stake);
+        },
+        paySolo: (who, stake, won) => void (won && move(who, stake * 2)),
+      };
       const town = attachTown(httpServer as Parameters<typeof attachTown>[0], {
         map: { size: json.size, spawn: json.spawn, blocked: json.blocked },
         shared: true,
+        arenaBets,
         authenticate: async (req) => {
           const q = new URL(req.url ?? '/', 'http://localhost').searchParams;
           const name = q.get('dev')?.slice(0, 16);

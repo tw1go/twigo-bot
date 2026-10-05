@@ -1,5 +1,5 @@
 import type Phaser from 'phaser';
-import type { TownPlayer, TownServerMessage } from '@mikazuki/shared';
+import type { ArenaServerMessage, TownPlayer, TownServerMessage } from '@mikazuki/shared';
 import type { Manifest } from '../assets/types';
 import { Character } from '../characters/character';
 import { loadOutfit, randomOutfit } from '../characters/doll';
@@ -16,6 +16,9 @@ interface Other {
   state: TownPlayer;
   char: Character | null;
 }
+
+/** The Arena's messages are the arena's business (ui/arena-net.ts), not the town's players'. */
+const isArena = (m: TownServerMessage): m is ArenaServerMessage => m.t.startsWith('arena-');
 
 export class OtherPlayers {
   private readonly all = new Map<string, Other>();
@@ -47,7 +50,7 @@ export class OtherPlayers {
       case 'leave':
         return this.remove(m.id);
     }
-    if (m.t === 'snap' || m.t === 'say-refused' || m.t === 'say-discord' || m.t === 'emote' || m.t === 'system' || m.t === 'seat-taken' || m.t === 'announce' || m.t === 'gift' || m.t === 'wallet') return;
+    if (m.t === 'snap' || m.t === 'say-refused' || m.t === 'say-discord' || m.t === 'emote' || m.t === 'system' || m.t === 'seat-taken' || m.t === 'announce' || m.t === 'gift' || m.t === 'wallet' || isArena(m)) return;
     const o = this.all.get(m.id);
     if (!o) return;
     const s = o.state;

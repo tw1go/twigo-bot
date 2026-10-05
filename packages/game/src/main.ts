@@ -3,6 +3,7 @@ import { BootScene } from './scenes/BootScene';
 import { CreateScene, TownPreloadScene } from './scenes/CreateScene';
 import { TownScene } from './scenes/TownScene';
 import { WardrobeScene } from './scenes/WardrobeScene';
+import { ArenaScene } from './scenes/ArenaScene';
 import { startHud } from './hud';
 import { showVersion } from './ui/version';
 
@@ -23,6 +24,6 @@ function startGame(): void {
     pixelArt: true, // nearest-neighbour scaling, no smoothing
     roundPixels: true, // snap to whole pixels so sprites never blur between pixels
     scale: { mode: Phaser.Scale.RESIZE, width: window.innerWidth, height: window.innerHeight },
-    scene: [BootScene, TownScene, WardrobeScene, CreateScene, TownPreloadScene],
+    scene: [BootScene, TownScene, WardrobeScene, CreateScene, TownPreloadScene, ArenaScene], // the arena last: drawn over the town
   });
 }

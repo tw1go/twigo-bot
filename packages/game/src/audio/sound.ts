@@ -8,7 +8,8 @@ import Phaser from 'phaser';
 
 export type Sfx =
   | 'emote' | 'chat' | 'door' | 'card' | 'chip' | 'coin' | 'click' | 'error'
-  | 'flip-spin' | 'flip-land' | 'casino-win' | 'casino-lose' | 'busted';
+  | 'flip-spin' | 'flip-land' | 'casino-win' | 'casino-lose' | 'busted'
+  | 'arena-whoosh' | 'arena-slam' | 'arena-reveal';
 
 /** Each sound's file (under assets/audio/, as .ogg with an .m4a fallback unless `formats` says otherwise) and volume
  *  (0–1, before the player's sound-effects volume, which also covers the crickets and the fountain). */
@@ -27,11 +28,16 @@ const SFX: Record<Sfx, { file: string; volume: number; formats?: string[] }> = {
   'casino-win': { file: 'sfx/casino-win', volume: 0.16 },
   'casino-lose': { file: 'sfx/casino-lose', volume: 0.14 },
   busted: { file: 'sfx/casino-busted', volume: 0.16, formats: ['m4a'] }, // no .ogg of the whistle
+  // The arena's jack en poy: the VS screen arriving, the VS slam, the hands' reveal (its other sounds reuse these).
+  'arena-whoosh': { file: 'sfx/arena-whoosh', volume: 0.12 },
+  'arena-slam': { file: 'sfx/arena-slam', volume: 0.15 },
+  'arena-reveal': { file: 'sfx/arena-reveal', volume: 0.15 },
 };
 const CRICKETS = { key: 'amb:crickets', urls: ['audio/ambient/crickets.mp3'], volume: 0.15 };
 const FOUNTAIN = { key: 'amb:fountain', urls: ['audio/ambient/fountain.ogg', 'audio/ambient/fountain.m4a'], volume: 0.1 };
 const MUSIC = { key: 'music:happy-tune', urls: ['audio/music/happy-tune.ogg', 'audio/music/happy-tune.m4a'], volume: 0.12 };
 const CASINO = { key: 'music:casino', urls: ['audio/music/casino-shop-theme.ogg', 'audio/music/casino-shop-theme.m4a'], volume: 0.09 };
+const ARENA = { key: 'music:arena', urls: ['audio/music/arena-battle.ogg', 'audio/music/arena-battle.m4a'], volume: 0.09, inMs: 400, outMs: 500 };
 const JACKPOT = { volume: 0.25, times: 3, gapMs: 260 };
 
 /** The same sound again sooner than this is dropped (a burst of emotes or bets stays one sound). */
@@ -65,9 +71,13 @@ let fountainAt: { col: number; row: number } | null = null;
 let fountainVolume = 0;
 let music: Phaser.Sound.BaseSound | null = null;
 let crickets: Phaser.Sound.BaseSound | null = null;
-/** In the casino: the town's music and ambience are quiet, and the casino's music plays. */
+/** In the casino or the arena: the town's music and ambience are quiet; in the casino its own music plays. */
 let indoors = false;
+let indoorMusic = false;
 let casinoMusic: Phaser.Sound.BaseSound | null = null;
+let arenaMusic: Phaser.Sound.BaseSound | null = null;
+/** The arena's match is on (from the VS screen to the end): its music plays (if music is on). */
+let arenaOn = false;
 /** The crickets' come-and-go level (0–1), tweened; their volume is this × CRICKETS.volume × the sfx volume. */
 const cricketsLevel = { value: 1 };
 
@@ -168,14 +178,15 @@ export function hearFrom(tile: { col: number; row: number }): void {
   setVolume(fountain, fountainLevel());
 }
 
-/** A short sound (dropped while sound is locked, muted or turned down to 0, or if the same one just played). */
-export function playSound(name: Sfx, volume = SFX[name].volume): void {
+/** A short sound (dropped while sound is locked, muted or turned down to 0, or if the same one just played).
+ *  `pitch`: cents up or down (e.g. -300, a little lower), on top of the usual small random detune. */
+export function playSound(name: Sfx, volume = SFX[name].volume, pitch = 0): void {
   const s = scene;
   if (!s || s.sound.locked || settings.muted || settings.sfx === 0 || !s.cache.audio.exists(`sfx:${name}`)) return;
   const now = performance.now();
   if (now - (lastPlayed.get(name) ?? -Infinity) < THROTTLE_MS) return;
   lastPlayed.set(name, now);
-  s.sound.play(`sfx:${name}`, { volume: volume * settings.sfx, detune: Phaser.Math.Between(-DETUNE, DETUNE) });
+  s.sound.play(`sfx:${name}`, { volume: volume * settings.sfx, detune: pitch + Phaser.Math.Between(-DETUNE, DETUNE) });
 }
 
 /** A jackpot: the coin, a few times, gently spaced (no jingle). */
@@ -191,7 +202,7 @@ function installButtonSounds(): void {
   document.addEventListener('click', (e) => {
     const b = (e.target as Element | null)?.closest?.('button');
     if (!b || b.disabled || b.closest('.em-palette')) return;
-    playSound('click');
+    playSound('click', b.closest('#arena-ui, #reward:has(.am-body)') ? 0.15 : SFX.click.volume); // the arena's buttons a bit louder
   });
 }
 
@@ -207,23 +218,39 @@ export function setSound(change: Partial<SoundSettings>): void {
   saveSettings();
   applySettings();
   // Music switched on or off: the town's, or the casino's while inside.
-  if (settings.music > 0 && !(musicWas > 0)) whenUnlocked(indoors ? startCasinoMusic : startMusic);
-  else if (settings.music === 0 && musicWas > 0) (indoors ? stopCasinoMusic : stopMusic)();
+  if (settings.music > 0 && !(musicWas > 0)) whenUnlocked(indoors ? () => (indoorMusic ? startCasinoMusic() : arenaOn && startArenaMusic()) : startMusic);
+  else if (settings.music === 0 && musicWas > 0) {
+    if (!indoors) stopMusic();
+    stopCasinoMusic();
+    stopArenaMusic();
+  }
 }
 
 /** Into the casino: the town's music fades out, the crickets and fountain go quiet, the casino's music fades in. */
 export function enterCasinoSound(): void {
   indoors = true;
+  indoorMusic = true;
   stopMusic();
   setVolume(crickets, cricketsVolume());
   setVolume(fountain, fountainLevel());
   if (settings.music > 0) whenUnlocked(startCasinoMusic);
 }
 
-/** Out of the casino: its music fades out, and the town's music and ambience come back. */
+/** Into the arena: the town's music fades out and the crickets and fountain go quiet (no music of its own). */
+export function enterArenaSound(): void {
+  indoors = true;
+  indoorMusic = false;
+  stopMusic();
+  setVolume(crickets, cricketsVolume());
+  setVolume(fountain, fountainLevel());
+}
+
+/** Out of the casino or the arena: its music fades out, and the town's music and ambience come back. */
 export function leaveCasinoSound(): void {
   indoors = false;
+  arenaOn = false;
   stopCasinoMusic();
+  stopArenaMusic();
   setVolume(crickets, cricketsVolume());
   setVolume(fountain, fountainLevel());
   if (settings.music > 0) whenUnlocked(startMusic);
@@ -256,6 +283,38 @@ function stopCasinoMusic(): void {
   s.tweens.add({ targets: m, volume: 0, duration: MUSIC_FADE_MS / 2, onComplete: () => m.stop() });
 }
 
+/** The arena's match music: on from the VS screen (a ~400 ms fade in, loading it the first time), off at the end of
+ *  a match and on leaving (~500 ms out); back on for a rematch. Only with music on. */
+export function arenaMusicOn(on: boolean): void {
+  arenaOn = on;
+  if (on && settings.music > 0) whenUnlocked(startArenaMusic);
+  else if (!on) stopArenaMusic();
+}
+
+function startArenaMusic(): void {
+  const s = scene;
+  if (!s || !arenaOn) return;
+  if (!s.cache.audio.exists(ARENA.key)) {
+    s.load.setPath(`${import.meta.env.BASE_URL}assets/`);
+    s.load.audio(ARENA.key, ARENA.urls);
+    s.load.once(`filecomplete-audio-${ARENA.key}`, () => arenaOn && settings.music > 0 && startArenaMusic());
+    s.load.start();
+    return;
+  }
+  arenaMusic ??= s.sound.add(ARENA.key, { loop: true, volume: 0 });
+  s.tweens.killTweensOf(arenaMusic);
+  if (!arenaMusic.isPlaying) arenaMusic.play();
+  s.tweens.add({ targets: arenaMusic, volume: ARENA.volume * settings.music, duration: ARENA.inMs });
+}
+
+function stopArenaMusic(): void {
+  const s = scene;
+  const m = arenaMusic;
+  if (!s || !m?.isPlaying) return;
+  s.tweens.killTweensOf(m);
+  s.tweens.add({ targets: m, volume: 0, duration: ARENA.outMs, onComplete: () => m.stop() });
+}
+
 /** Mute, and the volumes on what's already playing (a music fade-in in progress jumps to the new volume). */
 function applySettings(): void {
   const s = scene;
@@ -270,6 +329,10 @@ function applySettings(): void {
   if (casinoMusic?.isPlaying && settings.music > 0 && indoors) {
     s.tweens.killTweensOf(casinoMusic);
     setVolume(casinoMusic, casinoVolume());
+  }
+  if (arenaMusic?.isPlaying && settings.music > 0 && arenaOn) {
+    s.tweens.killTweensOf(arenaMusic);
+    setVolume(arenaMusic, ARENA.volume * settings.music);
   }
 }
 

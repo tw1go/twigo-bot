@@ -432,6 +432,14 @@
       #chat .ch-roast { background: rgba(247, 118, 142, 0.25); color: #F7768E; }
       #chat .ch-flex { background: rgba(248, 191, 39, 0.2); color: #F8BF27; }
       #chat .ch-praise { background: rgba(240, 171, 252, 0.2); color: #F0ABFC; }
+      /* The arena's matchmaking bar (arena/queue.ts): top centre while waiting for a Vs Player match; the town stays
+         playable under it. On phones (the HUD fills the top) it sits above the Chat button instead. */
+      #arena-queue { position: fixed; top: 16px; left: 50%; z-index: 6; display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 14px; border: 3px solid #1E1B3A; background: #F5F3FF; color: #1E1B3A; font: 15px/1.2 var(--ui-font); font-weight: 700; box-shadow: 0 4px 0 #1E1B3A; transform: translateX(-50%); white-space: nowrap; }
+      #arena-queue .aq-dot { width: 10px; height: 10px; background: #A3E635; box-shadow: 0 0 0 2px #1E1B3A; animation: rw-blink 1s steps(1) infinite; }
+      #arena-queue .aq-time { min-width: 36px; color: #5B5F75; font-variant-numeric: tabular-nums; }
+      #arena-queue .aq-close { width: 28px; height: 28px; padding: 0; border: 3px solid #1E1B3A; border-radius: 0; background: #E2DDF3; color: #1E1B3A; font: inherit; font-size: 18px; line-height: 1; }
+      #arena-queue .aq-close:hover { background: #FECACA; }
+      @media (max-width: 760px) { #arena-queue { top: auto; bottom: 72px; font-size: 14px; } }
       /* Banners (ui/announce.ts): floating top centre, below the HUD; jackpot gold with casino lights, notices amber. */
       .announce { position: fixed; top: 88px; left: 50%; z-index: 4; width: min(520px, calc(100vw - 32px)); box-sizing: border-box; padding: 14px 40px 14px 18px; background: rgba(17, 24, 39, 0.94); color: #E6E9F2; font: 15px/1.35 var(--ui-font); text-align: center; box-shadow: 0 4px 0 #1E1B3A; transform: translateX(-50%); animation: an-in 0.4s cubic-bezier(0.2, 1.4, 0.4, 1); }
       .announce.an-out { opacity: 0; transform: translate(-50%, -12px); transition: opacity 0.3s, transform 0.3s; }
@@ -683,6 +691,102 @@
       #reward .nw-code { padding: 0 4px; border-radius: 2px; background: #EDE9FE; font: 13px/1.3 ui-monospace, Menlo, monospace; color: #5B21B6; }
       #reward .nw-link { color: #6D28D9; }
       @media (max-width: 560px) { #reward .nw-panel { height: min(420px, 46vh); } } /* clear of the HUD's top buttons */
+      /* The Arena's menu (arena/menu.ts), in the reward box: two big modes, or the queue's wait. */
+      /* The Arena's menu (arena/menu.ts, Popup theme 'arena'): a dark stone slab in bronze trim with corner rivets under a
+         flickering torch glow, a blood-red banner for the title, iron plates for the modes, a crimson Retreat. */
+      #reward:has(.am-body) { background: radial-gradient(ellipse at center, rgba(70, 14, 8, 0.72), rgba(6, 3, 3, 0.9) 70%); }
+      #reward .rw-card.rw-arena { width: min(480px, calc(100vw - 32px)); padding: 26px 22px 22px; border: 4px solid #120C09; color: #F5E6C8;
+        background:
+          radial-gradient(circle at 12px 12px, #E2B866 0 3px, #6B4A2E 3px 5px, transparent 5px),
+          radial-gradient(circle at calc(100% - 12px) 12px, #E2B866 0 3px, #6B4A2E 3px 5px, transparent 5px),
+          radial-gradient(circle at 12px calc(100% - 12px), #E2B866 0 3px, #6B4A2E 3px 5px, transparent 5px),
+          radial-gradient(circle at calc(100% - 12px) calc(100% - 12px), #E2B866 0 3px, #6B4A2E 3px 5px, transparent 5px),
+          repeating-linear-gradient(0deg, transparent 0 22px, rgba(0, 0, 0, 0.35) 22px 24px),
+          repeating-linear-gradient(90deg, transparent 0 46px, rgba(0, 0, 0, 0.28) 46px 48px),
+          linear-gradient(#3A2A20, #241812);
+        box-shadow: inset 0 0 0 3px #8A5F34, inset 0 0 0 5px #120C09, inset 0 0 40px rgba(0, 0, 0, 0.6), 0 6px 0 #120C09, 0 0 48px rgba(255, 110, 30, 0.28);
+        animation: rw-pop 0.32s cubic-bezier(0.2, 1.4, 0.4, 1), am-torch 2.6s steps(1) infinite 0.32s; }
+      @keyframes am-torch { 0%, 100% { box-shadow: inset 0 0 0 3px #8A5F34, inset 0 0 0 5px #120C09, inset 0 0 40px rgba(0, 0, 0, 0.6), 0 6px 0 #120C09, 0 0 48px rgba(255, 110, 30, 0.28); } 30% { box-shadow: inset 0 0 0 3px #8A5F34, inset 0 0 0 5px #120C09, inset 0 0 40px rgba(0, 0, 0, 0.6), 0 6px 0 #120C09, 0 0 56px rgba(255, 140, 40, 0.36); } 55% { box-shadow: inset 0 0 0 3px #8A5F34, inset 0 0 0 5px #120C09, inset 0 0 40px rgba(0, 0, 0, 0.6), 0 6px 0 #120C09, 0 0 40px rgba(230, 80, 20, 0.22); } }
+      #reward .rw-arena .rw-title { position: relative; display: inline-block; margin: 0 0 6px; padding: 6px 34px 8px; background: #8E1B1B; color: #FCDA4A; font-size: 30px; letter-spacing: 0.2em; text-shadow: 3px 3px 0 #120C09; box-shadow: inset 0 3px 0 #C0392B, inset 0 -4px 0 #5C0F0F, 0 0 0 3px #120C09, 0 5px 0 3px #120C09; clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 50%, 100% 100%, 0 100%, 14px 50%); }
+      #reward .rw-arena .am-tag { margin: 8px 0 16px; font-size: 18px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #E2B866; text-shadow: 2px 2px 0 #120C09; }
+      #reward .rw-arena .am-mode { border-color: #120C09; background: linear-gradient(#5A606C, #343842); color: #F5E6C8; box-shadow: inset 0 3px 0 #7D8492, inset 0 -4px 0 #22252C, 0 4px 0 #120C09; }
+      #reward .rw-arena .am-mode:hover:not(:disabled) { background: linear-gradient(#6A707C, #3E434E); box-shadow: inset 0 3px 0 #7D8492, inset 0 -4px 0 #22252C, 0 4px 0 #120C09, 0 0 0 3px #E8572A; }
+      #reward .rw-arena .am-mode:active:not(:disabled) { box-shadow: inset 0 3px 0 #7D8492, inset 0 -2px 0 #22252C, 0 1px 0 #120C09; }
+      #reward .rw-arena .am-label { color: #FCDA4A; text-transform: uppercase; letter-spacing: 0.06em; text-shadow: 2px 2px 0 #120C09; }
+      #reward .rw-arena .am-hint { color: #D8C6A6; }
+      #reward .rw-arena .am-waiting { color: #FCDA4A; text-shadow: 2px 2px 0 #120C09; }
+      #reward .rw-arena .am-rules { color: #B8A78E; }
+      #reward .rw-arena .bet-field { color: #F5E6C8; }
+      #reward .rw-arena .bet-field .bet-unit { color: #D8C6A6; }
+      #reward .rw-arena .bet-field .bet-input { border-color: #120C09; background: #1A120E; color: #FCDA4A; box-shadow: inset 0 0 0 2px #6B4A2E; }
+      #reward .rw-arena .bet-field .bet-step { border-color: #120C09; background: #C98A3A; color: #120C09; box-shadow: inset 0 2px 0 #E2B866, 0 3px 0 #120C09; }
+      #reward .rw-arena .rw-ok { border-color: #120C09; background: #B3261E; color: #FFF1D6; text-transform: uppercase; letter-spacing: 0.08em; text-shadow: 2px 2px 0 #5C0F0F; box-shadow: inset 0 3px 0 #E0533F, inset 0 -4px 0 #6E1410, 0 5px 0 #120C09; }
+      #reward .rw-arena .rw-ok:hover { background: #C8302A; }
+      #reward .rw-arena .rw-ok:active { box-shadow: inset 0 3px 0 #E0533F, inset 0 -2px 0 #6E1410, 0 1px 0 #120C09; }
+      @media (prefers-reduced-motion: reduce) { #reward .rw-card.rw-arena { animation: none; } }
+      #reward .am-body { margin-bottom: 14px; }
+      #reward .am-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      #reward .am-modes[hidden] { display: none; }
+      #reward .am-mode { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 8px 10px; border: 3px solid #1E1B3A; border-radius: 0; background: #F5F3FF; color: #1E1B3A; font: inherit; box-shadow: 0 4px 0 #1E1B3A; }
+      #reward .am-mode:hover:not(:disabled) { background: #EDE9FE; }
+      #reward .am-mode:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 #1E1B3A; }
+      #reward .am-mode:disabled { opacity: 0.55; }
+      #reward .am-icon { width: 48px; height: 48px; background-repeat: no-repeat; image-rendering: pixelated; }
+      #reward .am-label { font-size: 17px; font-weight: 700; }
+      #reward .am-hint { font-size: 12px; color: #5B5F75; }
+      #reward .am-waiting { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 18px 0; font-size: 17px; font-weight: 700; color: #5B21B6; }
+      #reward .am-waiting[hidden] { display: none; }
+      #reward .am-dots { animation: rw-blink 1s steps(1) infinite; }
+      #reward .am-rules { margin: 12px 0 0; font-size: 12px; color: #7A8099; }
+      #reward .am-body .bet-field { margin-bottom: 12px; }
+      /* A bet (arena/menu.ts betField): − [n] + Kowens. In the arena's menu and its end panel. */
+      .bet-field { display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 700; color: #1E1B3A; }
+      .bet-field[hidden] { display: none; }
+      .bet-field .bet-label { margin-right: 4px; }
+      .bet-field .bet-unit { margin-left: 2px; font-size: 13px; color: #5B5F75; }
+      .bet-field .bet-step { width: 32px; height: 32px; padding: 0; border: 3px solid #1E1B3A; border-radius: 0; background: #FCDA4A; color: #1E1B3A; font: inherit; font-size: 18px; line-height: 1; box-shadow: 0 3px 0 #1E1B3A; }
+      .bet-field .bet-step:active { transform: translateY(2px); box-shadow: 0 1px 0 #1E1B3A; }
+      .bet-field .bet-input { width: 64px; height: 32px; padding: 0 4px; border: 3px solid #1E1B3A; border-radius: 0; background: #fff; color: #1E1B3A; font: inherit; font-size: 17px; text-align: center; -moz-appearance: textfield; }
+      .bet-field .bet-input:focus, .bet-field .bet-input:focus-visible { outline: none; }
+      /* The arena's screens: no text selection (a double-tap or drag shouldn't highlight); the bet stays typeable. */
+      #reward .rw-arena, #arena-ui { -webkit-user-select: none; user-select: none; }
+      #reward .rw-arena .bet-input, #arena-ui .bet-input { -webkit-user-select: text; user-select: text; }
+      .bet-field .bet-input::-webkit-inner-spin-button, .bet-field .bet-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+      /* The arena's match (scenes/ArenaScene.ts draws it; this is its bar): the timer and three hands along the bottom,
+         a status line over them, Rematch / Leave at the end, and a small Leave top right. Under the town's HUD. */
+      #arena-ui { position: fixed; inset: auto 0 0 0; z-index: 7; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 0 12px 24px; pointer-events: none; font: 15px/1.3 var(--ui-font); color: #1E1B3A; }
+      #arena-ui > * { pointer-events: auto; }
+      #arena-ui [hidden] { display: none !important; }
+      #arena-ui .ar-note { min-height: 20px; padding: 2px 10px; background: rgba(255, 255, 255, 0.85); font-weight: 700; text-align: center; pointer-events: none; }
+      #arena-ui .ar-note:empty { visibility: hidden; }
+      #arena-ui .ar-bar { display: flex; flex-direction: column; gap: 10px; width: min(336px, 100%); } /* centred, and clear of the chat (472 px) at 1280 */
+      #arena-ui .ar-timer { height: 10px; border: 3px solid #1E1B3A; background: #fff; }
+      #arena-ui .ar-timer-fill { height: 100%; background: #A3E635; transform-origin: left center; }
+      #arena-ui .ar-picks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+      #arena-ui .ar-pick { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px 10px; border: 3px solid #1E1B3A; border-radius: 0; background: #FCDA4A; color: #1E1B3A; font: inherit; font-size: 16px; font-weight: 700; box-shadow: inset 0 3px 0 #FFF59A, inset 0 -5px 0 #D99A0B, 0 5px 0 #1E1B3A; }
+      #arena-ui .ar-pick:hover:not(:disabled) { background: #FDE68A; }
+      #arena-ui .ar-pick:active:not(:disabled) { transform: translateY(3px); box-shadow: inset 0 3px 0 #FFF59A, inset 0 -2px 0 #D99A0B, 0 2px 0 #1E1B3A; }
+      #arena-ui .ar-pick:disabled { opacity: 0.45; }
+      #arena-ui .ar-pick.ar-chosen { opacity: 1; background: #A3E635; box-shadow: inset 0 3px 0 #D9F99D, inset 0 -5px 0 #5A8A5E, 0 5px 0 #1E1B3A; }
+      #arena-ui .ar-hand { width: 64px; height: 64px; background-repeat: no-repeat; image-rendering: pixelated; }
+      #arena-ui .ar-key { position: absolute; top: 4px; right: 6px; font: inherit; font-size: 12px; opacity: 0.6; }
+      /* The end panel sits in the middle, just under the players' names (they stand at 58% of the height; ArenaScene
+         spot); on phones, along the bottom. */
+      #arena-ui .ar-end { position: fixed; top: calc(58% + 68px); left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 14px 16px 18px; border: 3px solid #1E1B3A; background: rgba(255, 255, 255, 0.92); box-shadow: 0 5px 0 #1E1B3A; }
+      #arena-ui .ar-end-buttons { display: flex; gap: 12px; }
+      #arena-ui .ar-ask { max-width: 300px; font-weight: 700; text-align: center; color: #5B21B6; }
+      #arena-ui .ar-stake { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); padding: 4px 14px; border: 3px solid #1E1B3A; background: #FCDA4A; font-weight: 700; box-shadow: 0 4px 0 #1E1B3A; pointer-events: none; }
+      #arena-ui .ar-button { min-width: 130px; padding: 10px 22px 12px; border: 3px solid #1E1B3A; border-radius: 0; background: #A3E635; color: #1E1B3A; font: inherit; font-size: 17px; font-weight: 700; box-shadow: inset 0 3px 0 #D9F99D, inset 0 -4px 0 #5A8A5E, 0 5px 0 #1E1B3A; }
+      #arena-ui .ar-button.ar-leave { background: #E2DDF3; box-shadow: 0 5px 0 #1E1B3A; }
+      #arena-ui .ar-quit { position: fixed; top: 64px; right: 12px; padding: 6px 16px; border: 3px solid #1E1B3A; border-radius: 0; background: #E2DDF3; color: #1E1B3A; font: inherit; font-weight: 700; box-shadow: 0 4px 0 #1E1B3A; }
+      @media (max-width: 760px) {
+        #arena-ui { padding-bottom: 64px; gap: 8px; } /* above the Chat button */
+        #arena-ui .ar-pick { min-width: 0; gap: 0; padding: 2px 2px 7px; font-size: 13px; }
+        #arena-ui .ar-key { display: none; } /* no keyboard */
+        #arena-ui .ar-end { position: static; transform: none; padding: 10px 12px 14px; }
+        #arena-ui .ar-end .ar-button { min-width: 0; padding: 8px 16px 10px; }
+        #arena-ui .ar-stake { top: 148px; } /* under the HUD's Kowens row */
+      }
       /* Tanod outpost (ui/outpost.ts; tabs share the bank's .bk-tabs). A fixed size, like the shop. */
       #reward .rw-card:has(.op-body) { width: min(420px, calc(100vw - 32px)); }
       #reward .op-body { margin-bottom: 14px; text-align: left; font-size: 14px; color: #3D4256; }

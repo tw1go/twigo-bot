@@ -46,6 +46,14 @@ export interface Manifest {
     shovelIcon?: { file: string; size: Vec2 };
     /** The news button's megaphone, beside Settings. */
     newsIcon?: { file: string; size: Vec2 };
+    /** The Arena's jack en poy (scenes/ArenaScene.ts): hands, VS, round pips, menu icons, speed lines. */
+    jnpHands?: { file: string; size: Vec2; frames: number };
+    vs?: { file: string; size: Vec2; frames: number; fps: number };
+    jnpPips?: { file: string; size: Vec2; frames: number };
+    arenaModes?: { file: string; size: Vec2; frames: number };
+    vsSpeedlines?: { file: string; size: Vec2 };
+    /** The arena's spectators: one cheering loop per file (front-facing, feet at `anchor`). */
+    arenaViewers?: { files: string[]; size: Vec2; frames: number; fps: number; anchor: Vec2 };
     /** The jackpot counter's icon (top right; optional: the Kowen coin stands in). */
     jackpotIcon?: { file: string; size: Vec2 };
     /** The Casino's Kara y Krus: the flip for the side the coin lands on (each ending on that face, the coin at rest).

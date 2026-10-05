@@ -56,6 +56,12 @@ export function queueTown(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Tex
   const E = M.ui.emotes;
   if (E?.file && E.size) queueSheet(load, textures, E.file, E.size[0], E.size[1]);
 
+  // The Arena's jack en poy: hands, VS, pips, the menu's icons (sheets) and the speed lines.
+  for (const s of [M.ui.jnpHands, M.ui.vs, M.ui.jnpPips, M.ui.arenaModes]) if (s) queueSheet(load, textures, s.file, s.size[0], s.size[1]);
+  if (M.ui.vsSpeedlines) img(M.ui.vsSpeedlines.file);
+  const V = M.ui.arenaViewers;
+  if (V) for (const f of V.files) queueSheet(load, textures, f, V.size[0], V.size[1]);
+
   // The Mine's dig panel, and the item art (shown in pop-ups and the dig panel).
   const D = M.ui.digPanel;
   if (D) queueSheet(load, textures, D.file, D.size[0], D.size[1]);

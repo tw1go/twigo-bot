@@ -26,6 +26,11 @@ macOS `afconvert`) for browsers that can't play Ogg; the game loads the `.ogg` f
   - Casino Audio — `sfx/card` (card-slide-4), `sfx/chip` (chip-lay-2)
   - Interface Sounds (Kara y Krus) — `sfx/casino-win` (confirmation_003), `sfx/casino-lose` (error_003),
     `sfx/casino-flip-spin` (tick_001, repeated while the coin spins)
+  - Arena (jack en poy) — `sfx/arena-whoosh` (RPG Audio cloth3), `sfx/arena-slam` (Impact Sounds
+    impactSoft_medium_000), `sfx/arena-reveal` (Interface Sounds drop_003)
 - `music/casino-shop-theme.*` — "Buy Something!" from "Shop Theme" by Cleyton Kauffman, CC0,
   https://opengameart.org/content/shop-theme (the casino's music; the `.m4a` is an AAC copy of the mp3)
 - `sfx/casino-flip-land.*` — "Coin Drop" by Vinrax, CC0, https://opengameart.org/content/coin-drop (the coin landing)
+- `music/arena-battle.*` — "8-bit Battle Loop" by Wolfgang_ (Theodore Kerr), CC0,
+  https://opengameart.org/content/8-bit-battle-loop (the arena's match music; renamed from `8BitBattleLoop.ogg`, the
+  `.m4a` an AAC copy; a 26.65 s loop)

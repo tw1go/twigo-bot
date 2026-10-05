@@ -1753,6 +1753,46 @@
         47
       ],
       "note": "a win: over the coin at the table, and over a big winner in town; plays once"
+    },
+    "jnp-clash": {
+      "file": "fx/fx-jnp-clash.png",
+      "frame": [
+        48,
+        48
+      ],
+      "frames": 6,
+      "fps": 15,
+      "loop": false,
+      "anchor": [
+        24,
+        24
+      ],
+      "note": "comic burst (the VS slam, the hands' reveal), plays once, centred"
+    },
+    "confetti": {
+      "file": "fx/fx-confetti.png",
+      "frame": [
+        6,
+        6
+      ],
+      "frames": 8,
+      "fps": 8,
+      "note": "confetti: 0-1 violet, 2-3 magenta, 4-5 lime, 6-7 gold; each piece flutters between its pair"
+    },
+    "lose-cloud": {
+      "file": "ui/ui-rain.png",
+      "frame": [
+        32,
+        32
+      ],
+      "frames": 9,
+      "fps": 8,
+      "loop": true,
+      "anchor": [
+        16,
+        27
+      ],
+      "note": "the arena's loser: a rain cloud over their head, drops falling (9 frames, loops; anchor = the drops' bottom, middle)"
     }
   },
   "ui": {
@@ -1977,6 +2017,76 @@
         16
       ],
       "note": "Kara y Krus: the flip for the side the coin lands on; each sheet ends on its face, and that last cell is the coin at rest (Kara's before the first flip)"
+    },
+    "jnpHands": {
+      "file": "ui/ui-jnp-hands.png",
+      "size": [
+        32,
+        32
+      ],
+      "frames": 3,
+      "note": "jack en poy hands: 0 bato, 1 papel, 2 gunting; points right, the sleeve runs off the left edge (flip X for the opponent). Skin keys + cloth-main keys (cuff), recoloured per player like the paper doll"
+    },
+    "vs": {
+      "file": "ui/ui-vs.png",
+      "size": [
+        72,
+        44
+      ],
+      "frames": 4,
+      "fps": 12,
+      "note": "the arena's VS: frame 0 plain, 1-3 a glint sweep played once, then back to 0"
+    },
+    "vsSpeedlines": {
+      "file": "bg/bg-vs-speedlines.png",
+      "size": [
+        256,
+        144
+      ],
+      "note": "speed lines on transparent (the arena's VS screen, on white): one tile squished to the VS band's height (thick lines top and bottom), a whole-number scale sideways; tiles and scrolls sideways"
+    },
+    "arenaViewers": {
+      "files": [
+        "bg/bg-arena-viewer-1.png",
+        "bg/bg-arena-viewer-2.png",
+        "bg/bg-arena-viewer-3.png",
+        "bg/bg-arena-viewer-4.png",
+        "bg/bg-arena-viewer-5.png",
+        "bg/bg-arena-viewer-6.png",
+        "bg/bg-arena-viewer-7.png",
+        "bg/bg-arena-viewer-8.png",
+        "bg/bg-arena-viewer-9.png",
+        "bg/bg-arena-viewer-10.png"
+      ],
+      "size": [
+        32,
+        32
+      ],
+      "frames": 9,
+      "fps": 8,
+      "anchor": [
+        16,
+        30
+      ],
+      "note": "arena spectators: ten front-facing cheering loops (9 frames); the stands and the front row of the arena screen"
+    },
+    "jnpPips": {
+      "file": "ui/ui-jnp-pips.png",
+      "size": [
+        8,
+        8
+      ],
+      "frames": 3,
+      "note": "round pips: 0 empty, 1 lime (you), 2 magenta (opponent)"
+    },
+    "arenaModes": {
+      "file": "ui/ui-arena-modes.png",
+      "size": [
+        24,
+        24
+      ],
+      "frames": 2,
+      "note": "the arena menu's icons: 0 Vs Bot, 1 Vs Player"
     }
   },
   "notes_ui": "All UI is drawn at 1x and scaled by the same whole-number zoom as the world. Text is never baked in: draw it with Minecraft.ttf.",

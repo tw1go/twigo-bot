@@ -16,7 +16,7 @@ import { SystemFeed } from '../ui/system-feed';
 import { announce } from '../ui/announce';
 import { OnlineList } from '../ui/online';
 import { EMOTE_KEYS, emotePicker } from '../ui/emotes';
-import type { OutfitData, TownEmote } from '@mikazuki/shared';
+import type { ArenaServerMessage, OutfitData, TownClientMessage, TownEmote, TownServerMessage } from '@mikazuki/shared';
 import { type BubbleArt, lightBubble } from '../ui/labels';
 import { type Reward, setRewardArt, showReward } from '../ui/reward';
 import { showMovementTutorial } from '../ui/tutorial';
@@ -45,9 +45,13 @@ import { type Tile, WalkGrid } from '../world/grid';
 import { Ground } from '../world/ground';
 import { outskirts } from '../world/outskirts';
 import { NightLife } from '../world/night-life';
+import { type ArenaChannel, BotChannel, PlayerChannel } from '../arena/channel';
+import { showArenaMenu } from '../arena/menu';
+import { stopQueue } from '../arena/queue';
+import type { ArenaData } from './ArenaScene';
 import { Minimap } from '../ui/minimap';
 import { type Bench, type Building, WorldObjects, characterDepth } from '../world/objects';
-import { enterCasinoSound, hearFrom, leaveCasinoSound, playSound, startTownSound } from '../audio/sound';
+import { enterArenaSound, enterCasinoSound, hearFrom, leaveCasinoSound, playSound, startTownSound } from '../audio/sound';
 
 // The playable town: ground, buildings, props and the player, all placed from manifest.json + maps/town.json.
 // Right click to walk; left click a building to walk to its door, or a bench to sit (a tap does all of these).
@@ -84,6 +88,11 @@ const BUILDINGS: Record<string, string> = {
 };
 /** Walking into (and out of) the casino: the camera's pan and zoom. */
 const ENTER_MS = 700;
+/** The server's Arena messages (a jack en poy match against another player). */
+const isArena = (m: TownServerMessage): m is ArenaServerMessage => m.t.startsWith('arena-');
+/** Dev: &rounds=win,lose,draw,win decides the bot's rounds in order. */
+const devRounds = () =>
+  (new URLSearchParams(location.search).get('rounds') ?? '').split(',').filter((r): r is 'win' | 'lose' | 'draw' => r === 'win' || r === 'lose' || r === 'draw');
 const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /** A win at least this big bursts coins over the winner in town. */
@@ -279,6 +288,11 @@ export class TownScene extends Phaser.Scene {
     this.zoomIntro(); // last, once the names, labels and building cursors exist
     this.time.delayedCall(1800, () => this.announceRewards()); // once the arrival has settled
     exposeDebug(this);
+    // Dev: ?arena=bot goes straight into a match against the bot (with &rounds=win,lose,draw… deciding the rounds);
+    // ?arena=menu opens the arena's menu.
+    const arenaFlag = new URLSearchParams(location.search).get('arena');
+    const arenaB = this.objects.buildings.find((b) => b.id === 'arena');
+    if (arenaFlag && arenaB) this.time.delayedCall(2600, () => (arenaFlag === 'bot' ? this.enterArena(arenaB, new BotChannel(this.M.characters, Date.now(), devRounds())) : this.openArena(arenaB)));
     if (assetProblems.size) console.warn('[town] asset problems:\n' + [...assetProblems].join('\n'));
   }
 
@@ -312,7 +326,7 @@ export class TownScene extends Phaser.Scene {
     this.others.setZoom(zoom);
     for (const l of this.buildingLabels.values()) l.setZoom(zoom);
     this.input.setDefaultCursor(cursor('pointer', zoom));
-    for (const b of [...this.objects.buildings, ...this.objects.benches]) if (b.sprite.input) b.sprite.input.cursor = cursor('hand', zoom);
+    for (const b of [...this.objects.buildings.flatMap((x) => x.parts), ...this.objects.benches.map((x) => x.sprite)]) if (b.input) b.input.cursor = cursor('hand', zoom);
     this.others.cursor = cursor('hand', zoom);
   }
 
@@ -468,6 +482,7 @@ export class TownScene extends Phaser.Scene {
       this.sent = { dir: this.player.facing, sit: false };
     };
     link.onMessage = (m) => {
+      if (isArena(m)) return void this.arenaChannel?.push(m); // a jack en poy match (or the queue for one)
       if (m.t === 'snap') return this.player.place({ col: m.col, row: m.row });
       if (m.t === 'seat-taken') return this.seatTaken();
       if (m.t === 'say-refused') {
@@ -711,16 +726,21 @@ export class TownScene extends Phaser.Scene {
     // Benches are left-clickable too (sit), so they get the hand cursor.
     for (const b of this.objects.benches) b.sprite.setInteractive({ pixelPerfect: true, cursor: cursor('hand', this.cameras.main.zoom) });
     for (const b of this.objects.buildings) {
-      b.sprite.setInteractive({ pixelPerfect: true, cursor: cursor('hand', this.cameras.main.zoom) });
-      // The name shows while the building is hovered.
-      b.sprite.on(Phaser.Input.Events.GAMEOBJECT_POINTER_OVER, () => {
-        this.hovered = b;
-        this.showBuildingName();
-      });
-      b.sprite.on(Phaser.Input.Events.GAMEOBJECT_POINTER_OUT, () => {
-        if (this.hovered === b) this.hovered = null;
-        this.showBuildingName();
-      });
+      // Every layer is clickable (the arena's back half too); the name shows while any of them is hovered.
+      let over = 0;
+      for (const part of b.parts) {
+        part.setInteractive({ pixelPerfect: true, cursor: cursor('hand', this.cameras.main.zoom) });
+        part.on(Phaser.Input.Events.GAMEOBJECT_POINTER_OVER, () => {
+          over += 1;
+          this.hovered = b;
+          this.showBuildingName();
+        });
+        part.on(Phaser.Input.Events.GAMEOBJECT_POINTER_OUT, () => {
+          over = Math.max(0, over - 1);
+          if (!over && this.hovered === b) this.hovered = null;
+          this.showBuildingName();
+        });
+      }
     }
 
     // Left click uses things (a building's door, a bench); right click only walks. A tap on a touch screen does
@@ -735,7 +755,7 @@ export class TownScene extends Phaser.Scene {
       // Someone else's character: left click (or a tap) picks them for the player menu.
       const other = this.others.pick(over);
       if (other && this.target && (p.wasTouch || p.leftButtonReleased())) return this.target.select(other);
-      const building = this.objects.buildings.find((b) => over.includes(b.sprite));
+      const building = this.objects.buildings.find((b) => b.parts.some((part) => over.includes(part)));
       const world = this.cameras.main.getWorldPoint(p.x, p.y);
       const { col, row } = screenToTile(world.x, world.y);
       const bench = this.objects.benches.find((b) => over.includes(b.sprite)) ?? this.benchAt({ col, row });
@@ -970,7 +990,73 @@ export class TownScene extends Phaser.Scene {
     if (b.id === 'rewards-shop') return showShop();
     if (b.id === 'mine-entrance') return showMine();
     if (b.id === 'casino') return void this.enterCasino(b);
+    if (b.id === 'arena') return this.openArena(b);
     toast(`${doorLabel(b.id)}: coming soon`);
+  }
+
+  // ── The arena: jack en poy ──
+
+  /** A match on the server (or the queue for one): its arena-* messages go here. */
+  private arenaChannel: PlayerChannel | null = null;
+
+  /** The arena's menu: Vs Bot, or Vs Player (needs the town's connection; not from jail). */
+  private openArena(b: Building): void {
+    const modes = this.M.ui.arenaModes;
+    const member = this.me?.status === 'ok' ? this.me.me : null;
+    showArenaMenu({
+      icons: modes ? { url: `${import.meta.env.BASE_URL}assets/${modes.file}`, size: modes.size[0] } : null,
+      noPlayer: !this.link ? 'Log in to play others' : member?.status === 'jailed' ? 'Not from jail' : null,
+      canBet: !!this.link && member?.status !== 'jailed',
+      bot: (bet) => {
+        // Logged in (and not jailed): the server plays the bot, so it can be bet on. Else (and dev's &rounds=) here.
+        if (!this.link || member?.status === 'jailed' || devRounds().length) {
+          this.enterArena(b, new BotChannel(this.M.characters, Date.now(), devRounds()));
+          return null;
+        }
+        return this.arenaServer({ t: 'arena-bot', bet });
+      },
+      queue: (bet) => this.arenaServer({ t: 'arena-queue', bet }),
+      onMatched: (channel, bet) => void this.matched(b, channel, bet),
+    });
+  }
+
+  /** A match found while walking around town (an open pop-up closes; in the casino: out of it first). */
+  private async matched(b: Building, channel: PlayerChannel, bet: number): Promise<void> {
+    document.querySelector<HTMLButtonElement>('#reward .rw-ok')?.click();
+    if (this.inside) await this.leaveRoom();
+    this.enterArena(b, channel, bet);
+  }
+
+  /** Starts a match on the server (Vs Player's queue, or the server's bot); its arena-* messages go to the channel. */
+  private arenaServer(m: Extract<TownClientMessage, { t: 'arena-queue' | 'arena-bot' }>): PlayerChannel | null {
+    if (!this.link) return null;
+    const channel = new PlayerChannel(this.link);
+    this.arenaChannel = channel;
+    this.link.send(m);
+    return channel;
+  }
+
+  /** Into the arena's match screen (scenes/ArenaScene.ts), the casino's way in; others see you at the arena's door. */
+  private enterArena(b: Building, channel: ArenaChannel, bet = 0): void {
+    stopQueue();
+    const member = this.me?.status === 'ok' ? this.me.me : null;
+    const data: ArenaData = {
+      M: this.M,
+      me: { nickname: member?.nickname ?? 'Guest', title: member?.title ?? TOWNFOLK, outfit: this.outfit },
+      channel,
+      bet,
+      zoom: ZOOMS[this.zoomIndex],
+      leave: () => void this.leaveRoom(),
+    };
+    void this.enterRoom(b, {
+      sound: enterArenaSound,
+      open: () => this.scene.launch('arena', data),
+      close: () => {
+        this.scene.stop('arena');
+        if (this.arenaChannel === channel) this.arenaChannel = null;
+        if (channel instanceof BotChannel) channel.stop();
+      },
+    });
   }
 
   // ── The casino: walking in and out ──
@@ -979,15 +1065,22 @@ export class TownScene extends Phaser.Scene {
    *  canopy, from town.json) while it zooms in (2.5× the current zoom, Sine.easeInOut, 700 ms) and fades out (camera
    *  fade, navy); then the navy veil covers the page and the casino screen fades in from it, with its music. With
    *  reduced motion: a plain 250 ms fade. The player stays at the door, seen by everyone. */
-  private async enterCasino(b: Building): Promise<void> {
+  private enterCasino(b: Building): Promise<void> {
+    return this.enterRoom(b, { sound: enterCasinoSound, open: () => openCasino(() => void this.leaveRoom()), close: closeCasino });
+  }
+
+  /** Into a building's own screen (the casino, the arena): the same walk in for both. */
+  private room: { close: () => void } | null = null;
+  private async enterRoom(b: Building, r: { sound: () => void; open: () => void; close: () => void }): Promise<void> {
     if (this.inside) return;
+    this.room = { close: r.close };
     const cam = this.cameras.main;
     this.intro?.complete();
     this.inside = { zoom: cam.zoom };
     this.lockTown(true);
     const [col, row] = b.doors[0] ?? [this.player.tile.col, this.player.tile.row];
     const door = tileToScreen(col, row);
-    enterCasinoSound();
+    r.sound();
     if (reducedMotion()) await fadeNavy(1, 250);
     else {
       cam.pan(door.x, door.y + 8 - 24, ENTER_MS, 'Sine.easeInOut', true); // the door, at body height
@@ -996,21 +1089,22 @@ export class TownScene extends Phaser.Scene {
       await new Promise((r) => cam.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, r));
       await fadeNavy(1, 150); // the page too (the HUD that stays over the casino)
     }
-    openCasino(() => void this.leaveCasino());
+    r.open();
     await fadeNavy(0, reducedMotion() ? 250 : 300);
   }
 
   /** Out of the casino: fade to navy, back to the town at the zoomed-in door, then zoom out to the player as they
    *  were (whole-number zoom again) while the navy lifts; input and the HUD come back. */
   private leaving = false;
-  private async leaveCasino(): Promise<void> {
+  private async leaveRoom(): Promise<void> {
     if (!this.inside || this.leaving) return;
     this.leaving = true;
     const cam = this.cameras.main;
     const zoom = this.inside.zoom;
     const p = this.player.sprite;
     await fadeNavy(1, reducedMotion() ? 250 : 300);
-    closeCasino();
+    this.room?.close();
+    this.room = null;
     leaveCasinoSound();
     if (reducedMotion()) {
       cam.resetFX();

@@ -44,6 +44,8 @@ export interface Popup {
   lights?: boolean;
   /** Played as it opens (default: the soft click, like any panel). */
   sound?: Sfx;
+  /** A look of its own instead of the item frame (`rw-<theme>` on the card; the arena's stone slab). */
+  theme?: 'arena';
 }
 
 const queue: { popup: Popup; done: () => void }[] = [];
@@ -142,7 +144,8 @@ function next(): void {
   const rays = el('div', 'rw-rays');
   rays.setAttribute('aria-hidden', 'true');
   const card = el('div', 'rw-card');
-  if (art.frame) {
+  if (popup.theme) card.classList.add(`rw-${popup.theme}`);
+  else if (art.frame) {
     card.classList.add('rw-framed');
     card.style.setProperty('--frame', `url("${art.frame.url}")`);
     card.style.setProperty('--slice', String(art.frame.slice));

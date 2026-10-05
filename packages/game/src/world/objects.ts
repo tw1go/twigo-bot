@@ -21,7 +21,9 @@ const SPARKLE_BUILDINGS = ['jackpot-booth', 'bank', 'rewards-shop'];
 export interface Building {
   id: string;
   obj: MapObject;
-  sprite: Phaser.GameObjects.Image; // the clickable image (the arena's front layer)
+  sprite: Phaser.GameObjects.Image; // its image (the arena's front layer)
+  /** Every image of it that can be clicked (the arena: its back and front layers). */
+  parts: Phaser.GameObjects.Image[];
   depth: number;
   doors: Vec2[]; // [col, row]
   top: { x: number; y: number }; // centre top: the image's centre, its highest visible pixel (both layers if hollow)
@@ -160,6 +162,7 @@ export class WorldObjects {
     const [fc, fr] = o.footprint;
     const front = this.depthFor(o);
     let sprite: Phaser.GameObjects.Image;
+    let parts: Phaser.GameObjects.Image[];
     let back = front;
     let extent: Phaser.Geom.Rectangle;
     let roof: number;
@@ -169,17 +172,19 @@ export class WorldObjects {
       back = (o.col + o.row) * 8;
       const rear = this.place(def.layers.back, o.col, o.row, def.footprintTopCorner, o.flip).setDepth(back);
       sprite = this.place(def.layers.front, o.col, o.row, def.footprintTopCorner, o.flip).setDepth(front);
+      parts = [rear, sprite];
       extent = Phaser.Geom.Rectangle.Union(rear.getBounds(), sprite.getBounds());
       roof = Math.min(visibleTop(this.scene, rear), visibleTop(this.scene, sprite));
     } else {
       sprite = this.place(def.file, o.col, o.row, def.footprintTopCorner, o.flip).setDepth(front);
+      parts = [sprite];
       extent = sprite.getBounds();
       roof = visibleTop(this.scene, sprite);
     }
     this.big.push({ col: o.col, row: o.row, cols: fc, rows: fr, back, front, bounds: sprite.getBounds(new Phaser.Geom.Rectangle()) });
     const raw = this.map.doors[o.id];
     const doors: Vec2[] = !raw ? [] : Array.isArray(raw[0]) ? (raw as Vec2[]) : [raw as Vec2];
-    this.buildings.push({ id: o.id, obj: o, sprite, depth: front, doors, top: { x: extent.centerX, y: roof } });
+    this.buildings.push({ id: o.id, obj: o, sprite, parts, depth: front, doors, top: { x: extent.centerX, y: roof } });
     if (SPARKLE_BUILDINGS.includes(o.id)) this.sparkle(sprite, front);
   }
 
