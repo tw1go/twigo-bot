@@ -94,7 +94,7 @@ export function showLeaderboard(figure: (o: OutfitData | null) => Promise<Figure
     list.replaceChildren(...data.rows.map(row));
     if (!data.rows.length) list.textContent = 'Nobody has Kowens yet.';
     const inTop = data.rows.some((r) => r.me);
-    foot.textContent = inTop ? '' : data.me.rank ? `You: #${data.me.rank} · ${data.me.kowens.toLocaleString()} Kowens` : 'You: no Kowens yet. /get-kowens in Discord!';
+    foot.textContent = inTop ? '' : data.me.rank ? `You: #${data.me.rank} · ${data.me.kowens.toLocaleString()} ${data.me.kowens === 1 ? 'Kowen' : 'Kowens'}` : 'You: no Kowens yet. /get-kowens in Discord!';
   });
 }
 

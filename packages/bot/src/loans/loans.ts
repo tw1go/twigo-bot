@@ -151,7 +151,9 @@ const memberSms = [
   'Reminder lang po! {owed} Kowens. Sasabihin ko kay Aling Marites kung hindi ka magbabayad. 🗣️ — {lender}',
   'I told the Tanod. The Tanod told the Mosangs. The Mosangs told EVERYONE. Pay {owed} Kowens. — {lender}',
 ];
-const fill = (t: string, loan: Loan, lenderName: string) => t.replaceAll('{owed}', String(loan.owed)).replaceAll('{lender}', lenderName);
+// "{owed} Kowens" reads "1 Kowen" when one is left.
+const fill = (t: string, loan: Loan, lenderName: string) =>
+  t.replaceAll('{owed} Kowens', `${loan.owed} ${kowen(loan.owed)}`).replaceAll('{owed}', String(loan.owed)).replaceAll('{lender}', lenderName);
 
 /** Posts a public "text message" from the lender to the borrower in general, styled like a phone notification. */
 async function sms(client: Client, loan: Loan, title: string): Promise<void> {
