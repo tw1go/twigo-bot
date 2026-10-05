@@ -119,9 +119,9 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   Dev: pretend news.
 - Leaderboard monument (`ui/leaderboard.ts`, left click the monument): top 10 by Kowens from `GET /town/leaderboard`
   (logged in, may play; town nicknames, titles) with the top 3 idling on a podium ("?" silhouette without a character).
-- Jackpot counter (`ui/jackpot-timer.ts`, top right left of News): pot + countdown to the next draw under small casino
-  lights (`GET /town/jackpot` every minute and after `mk-wallet`; gold pulse in the last 10 min; phones: countdown
-  only); click opens the booth. Icon: manifest `ui.jackpotIcon` if added, else the Kowen coin.
+- Jackpot counter (`ui/jackpot-timer.ts`, "Jackpot draw", top right left of News; on phones under the Kowens and
+  shovels): pot + countdown with seconds to the next draw under small casino lights (`GET /town/jackpot` every minute
+  and after `mk-wallet`; gold pulse in the last 10 min); click opens the booth. Icon: manifest `ui.jackpotIcon` if added, else the Kowen coin.
 - Jackpot booth (`ui/jackpot.ts`, left click the booth): pot, countdown, your tickets (buy 1 or the rest, 1 Kowen each,
   max per draw), chance, players, last draw; bot `GET/POST /town/jackpot` shares `buyTickets` with `/jackpot` and posts
   town buys to the feed and the games channel. Dev uses a pretend booth.

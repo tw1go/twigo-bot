@@ -127,6 +127,9 @@ export function mountTownHud(o: TownHudOptions): void {
   row.append(profile);
   left.append(row);
   const corner = el('div', 'th-corner');
+  corner.append(news, settings);
+  root.append(left, corner);
+
   if (o.me || fakeLogin()) {
     // The jackpot counter, left of News: the jackpot icon, else the Kowen coin.
     let icon: HTMLElement;
@@ -139,10 +142,13 @@ export function mountTownHud(o: TownHudOptions): void {
       if (o.coin) spriteStyle(icon, o.coin, 2);
       else icon.textContent = '🪙';
     }
-    corner.append(jackpotTimer(icon));
+    // Beside News on wide screens; on phones under the Kowens and shovels, where there's room for the whole board.
+    const timer = jackpotTimer(icon);
+    const phone = matchMedia('(max-width: 560px)');
+    const place = () => (phone.matches ? left.insertBefore(timer, row.nextSibling) : corner.prepend(timer));
+    phone.addEventListener('change', place);
+    place();
   }
-  corner.append(news, settings);
-  root.append(left, corner);
 
   if (o.me) {
     void fetch('/prereg')

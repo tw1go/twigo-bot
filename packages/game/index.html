@@ -157,7 +157,7 @@
       #town-hud .th-news { position: relative; }
       #town-hud .th-news-dot { position: absolute; top: -5px; right: -5px; width: 12px; height: 12px; border: 2px solid #111827; border-radius: 50%; background: #F43F5E; }
       /* The jackpot counter (ui/jackpot-timer.ts): a little event board left of News, casino lights on top; gold and
-         pulsing in the last 10 minutes. Phones show only the countdown. */
+         pulsing in the last 10 minutes. */
       #town-hud .th-jackpot { position: relative; display: grid; grid-template-columns: auto auto; align-items: center; column-gap: 12px; min-width: 150px; height: 64px; box-sizing: border-box; padding: 12px 14px 6px; border: 2px solid #B45309; border-radius: 2px; background: #111827; color: #E6E9F2; font: inherit; text-align: left; }
       #town-hud .th-jackpot:hover { border-color: #F8BF27; background: #1E1B3A; }
       #town-hud .jt-lights { position: absolute; top: -6px; left: 10px; right: 10px; display: flex; justify-content: space-between; }
@@ -171,11 +171,7 @@
       #town-hud .jt-soon { border-color: #F8BF27; animation: jt-pulse 1s ease-in-out infinite; }
       #town-hud .jt-soon .jt-time { color: #FDE68A; }
       @keyframes jt-pulse { 50% { box-shadow: 0 0 10px 2px rgba(248, 191, 39, 0.55); } }
-      @media (max-width: 560px) {
-        #town-hud .th-jackpot { grid-template-columns: auto; min-width: 0; height: 52px; padding: 10px 10px 4px; }
-        #town-hud .jt-time { font-size: 17px; }
-        #town-hud .jt-pot-row { display: none; }
-      }
+      #town-hud .th-left .th-jackpot { margin-top: 12px; } /* phones: under the Kowens and shovels (ui/townhud.ts moves it) */
       @media (prefers-reduced-motion: reduce) { #town-hud .jt-bulb, #town-hud .jt-soon { animation: none; } }
       body:has(#reward .nw-body) #town-hud .th-corner { z-index: 5; } /* over the dimmed town, so the megaphone closes it again */
       #settings { position: fixed; inset: 0; z-index: 4; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(4, 4, 12, 0.6); font: 15px/1.4 var(--ui-font); }
