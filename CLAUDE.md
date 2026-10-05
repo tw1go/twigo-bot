@@ -118,7 +118,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   and the shop's Items tab; all of them share one bag slot (`TownBagItem.stacked`, the count in the slot's corner)): the chat has
   two channels, General (white) and Megaphone (sky blue #7DD3FC), shown by the tag before the input (click switches);
   `/m msg` / `/g msg` say it there and stay on it, `/m` or `/g` alone switch. `say` with `megaphone: true` uses one
-  (`TownOptions.megaphone`; none → say-refused 'megaphone'; free on the dev server): the line is sky blue with 📢, shows to
+  (`TownOptions.megaphone`; none → say-refused 'megaphone'; free on the dev server): the line is sky blue in the chat, shows to
   everyone centred in the upper part of the screen (no box, outlined text, under the HUD's buttons and panels; fades in,
   held 5–9 s by length, fades out; one at a time), and goes to Discord with 📢. Art: manifest items.megaphone (item-megaphone2 of the
   art folder; item-megaphone1 there is empty).

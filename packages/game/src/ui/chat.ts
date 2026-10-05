@@ -166,18 +166,12 @@ export class ChatBox {
     return [who, document.createTextNode(after)];
   }
 
-  /** A message in the log (from Discord: with Discord's mark before the name; through a megaphone: sky blue, tagged).
+  /** A message in the log (from Discord: with Discord's mark before the name; through a megaphone: sky blue).
    *  `id`: the speaker's town id. */
   add(name: string, text: string, from: 'me' | 'town' | 'discord' = 'town', id?: string, megaphone = false): void {
     const line = document.createElement('div');
     line.className = megaphone ? 'ch-line ch-mega' : 'ch-line';
-    if (megaphone) {
-      const tag = document.createElement('span');
-      tag.className = 'ch-mega-tag';
-      tag.textContent = '📢';
-      tag.title = 'Megaphone';
-      line.append(tag);
-    }
+    if (megaphone) line.title = 'Megaphone';
     if (from === 'discord') line.append(discordMark());
     line.append(...this.speaker(name, ': ', from === 'me' ? 'ch-me' : 'ch-name', from === 'town', id), text);
     this.push(line);
