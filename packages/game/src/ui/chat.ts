@@ -121,7 +121,7 @@ export class ChatBox {
     // Enter anywhere else opens the chat (unless another box or dialog has the focus).
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Enter' || e.defaultPrevented || document.activeElement !== document.body) return;
-      if (document.getElementById('reward') || document.getElementById('elsewhere') || document.getElementById('settings')) return;
+      if (document.getElementById('reward') || document.getElementById('elsewhere') || document.getElementById('settings') || document.getElementById('creator')) return;
       e.preventDefault();
       this.setOpen(true);
       this.input.focus();

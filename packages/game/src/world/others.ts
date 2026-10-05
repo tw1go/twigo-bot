@@ -74,6 +74,18 @@ export class OtherPlayers {
       case 'jailed':
         s.jailed = m.on || undefined;
         return o.char?.setJailed(m.on);
+      case 'look': {
+        // A new look or title from the Parlor: the new layers load first, then they change in place.
+        Object.assign(s, { outfit: m.outfit, title: m.title });
+        const C = this.M.characters;
+        const look = sanitize(C, m.outfit, randomOutfit(C, rng(parseInt(m.id.slice(0, 8), 16) || 1)));
+        void loadOutfit(this.scene, C, look).then(() => {
+          if (this.all.get(m.id) !== o || o.state.outfit !== m.outfit) return; // left, or changed again meanwhile
+          o.char?.setOutfit(look);
+          o.char?.setNameTag(s.nickname, s.title);
+        });
+        return;
+      }
     }
   }
 

@@ -67,6 +67,11 @@ const EARN = [
   ["/claim", "Kowens found in twigo's room (3 a day)"],
 ];
 
+let setAvatar: (head: HTMLCanvasElement) => void = () => {};
+
+/** Your character's head in the profile box, after a new look (the Parlor). */
+export const setHudAvatar = (head: HTMLCanvasElement | null) => head && setAvatar(head);
+
 export function mountTownHud(o: TownHudOptions): void {
   document.getElementById('hud')?.setAttribute('hidden', ''); // the page's login corner
   document.getElementById('town-hud')?.remove();
@@ -82,6 +87,7 @@ export function mountTownHud(o: TownHudOptions): void {
   }
   const face = el('span', 'th-avatar');
   if (o.avatar) face.append(roundAvatar(o.avatar));
+  setAvatar = (head) => face.querySelector('canvas')?.replaceWith(roundAvatar(head));
   // The status dot sits on the ring's lower right, at the avatar's pixel scale (updated with the counters).
   const dot = el('span', 'th-status');
   const setStatus = (status: PresenceStatus | undefined) => {

@@ -358,6 +358,28 @@
       "collision": "block all 3x3",
       "interaction": "door on the SE face: the tile in front is (col+3,row+1) from the top tile; opens the rewards shop"
     },
+    "parlor": {
+      "file": "buildings/building-parlor.png",
+      "size": [
+        120,
+        120
+      ],
+      "footprint": [
+        3,
+        3
+      ],
+      "footprintTopCorner": [
+        60,
+        72
+      ],
+      "footprintBottomCorner": [
+        60,
+        120
+      ],
+      "collision": "block all 3x3",
+      "interaction": "door on the SE face (a gap in the railing): the tile in front is (col+3,row+1) from the top tile; opens the Parlor (change your look and the title you show)",
+      "note": "added 6 Oct; same size and footprint as the rewards shop; the blank sign has no text"
+    },
     "bank": {
       "file": "buildings/building-bank.png",
       "size": [

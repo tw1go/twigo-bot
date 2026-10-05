@@ -6,6 +6,8 @@ import type { TitleData } from '@mikazuki/shared';
 
 // 🧍 The character creator, before a member's first visit to the town: one box with the character on the left
 // (idle, turned with the arrows) and the choices on the right (scrolling, Save underneath). Colours are picked by swatch, not by name. DOM text only.
+// 💇 The same box is the Parlor in town (`hooks.parlor`): no nickname, two tabs on the right (Appearance: the same
+// choices, a new look for a few Kowens; Title: which of your titles to show, free), and a way out (×, Escape).
 
 export interface CreatorHooks {
   name: string;
@@ -20,10 +22,37 @@ export interface CreatorHooks {
   sheet: (o: Outfit, dir: Dir) => CanvasImageSource | null;
   /** Rows of empty cell above a built look's head (the name plate sits just over it). */
   head: (o: Outfit) => number;
-  /** Saves the nickname and look, then enters the town. */
-  save: (o: Outfit, nickname: string) => Promise<'ok' | 'taken' | 'invalid' | 'error'>;
+  /** Saves the nickname and look, then enters the town (the creator). */
+  save?: (o: Outfit, nickname: string) => Promise<'ok' | 'taken' | 'invalid' | 'error'>;
+  /** The Parlor instead of the creator. */
+  parlor?: ParlorHooks;
   /** The game's pixel frame (a nine-slice image) for the box, if the manifest has one. */
   frame: { url: string; slice: number } | null;
+}
+
+export interface ParlorTitle extends TitleData {
+  id: string;
+  worn: boolean;
+  /** What it's for (the CMS writes these), shown on hover. */
+  description?: string;
+}
+
+/** What the Parlor's server says after a change. */
+export interface ParlorResult {
+  ok: boolean;
+  message: string;
+  kowens: number;
+  titles: ParlorTitle[];
+}
+
+export interface ParlorHooks {
+  kowens: number;
+  /** Kowens a new look costs. */
+  cost: number;
+  titles: ParlorTitle[];
+  buyLook: (o: Outfit) => Promise<ParlorResult>;
+  wearTitle: (id: string) => Promise<ParlorResult>;
+  onClose: () => void;
 }
 
 /** "tshirt" → "Tshirt", "longsleeve" → "Longsleeve". */
@@ -37,6 +66,7 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, t
 }
 
 export function mountCreator(C: CharacterDefs, hooks: CreatorHooks): void {
+  const parlor = hooks.parlor;
   const c = choices(C);
   const [cw, ch] = C.cell;
   const idle = C.animations.idle;
@@ -49,7 +79,8 @@ export function mountCreator(C: CharacterDefs, hooks: CreatorHooks): void {
   const root = el('div');
   root.id = 'creator';
   root.setAttribute('role', 'dialog');
-  root.setAttribute('aria-label', 'Create your character');
+  root.setAttribute('aria-label', parlor ? 'Parlor' : 'Create your character');
+  if (parlor) root.classList.add('cr-parlor');
 
   // ── the character ──
   const look = el('div', 'cr-preview');
@@ -70,9 +101,13 @@ export function mountCreator(C: CharacterDefs, hooks: CreatorHooks): void {
   turns.append(left, right);
   // Name and title, as in town: just over the head, at the character's scale.
   const plate = el('div', 'cr-name');
-  const titleEl = el('div', 'cr-title', `<${hooks.title.name}>`);
-  if (hooks.title.color === 'prismatic') titleEl.classList.add('prismatic');
-  else titleEl.style.color = hooks.title.color;
+  const titleEl = el('div', 'cr-title');
+  const showTitle = (t: TitleData) => {
+    titleEl.textContent = `<${t.name}>`;
+    titleEl.classList.toggle('prismatic', t.color === 'prismatic');
+    titleEl.style.color = t.color === 'prismatic' ? '' : t.color;
+  };
+  showTitle(hooks.title);
   const tag = el('div', 'cr-tag');
   tag.append(plate, titleEl);
   const stage = el('div', 'cr-stage');
@@ -132,6 +167,7 @@ export function mountCreator(C: CharacterDefs, hooks: CreatorHooks): void {
   };
   nickInput.addEventListener('input', () => showNick());
   showNick();
+  if (parlor) nickInput.readOnly = true; // the nickname is shown, not changed, at the Parlor
 
   // ── the choices ──
   const settings = el('div', 'cr-settings');
@@ -142,6 +178,7 @@ export function mountCreator(C: CharacterDefs, hooks: CreatorHooks): void {
     render();
     if (focused) choicesBox.querySelector<HTMLElement>(`[data-pick="${CSS.escape(focused)}"]`)?.focus();
     preview();
+    refreshParlor();
   };
 
   /** Pills for the items ("None" first for glasses and hats). */
@@ -199,6 +236,7 @@ export function mountCreator(C: CharacterDefs, hooks: CreatorHooks): void {
     draft.hatColour ??= c.colours[0];
     render();
     preview();
+    refreshParlor();
   });
   const save = el('button', 'cr-save', 'Save & enter town');
   const badNick = (problem: string) => {
@@ -206,7 +244,7 @@ export function mountCreator(C: CharacterDefs, hooks: CreatorHooks): void {
     nickInput.focus();
     settings.scrollTop = 0;
   };
-  save.addEventListener('click', async () => {
+  if (!parlor) save.addEventListener('click', async () => {
     const nickname = parseNickname(nickInput.value);
     if (!nickname) return badNick(nickInput.value.trim() ? `Not quite: ${NICKNAME_RULE}.` : 'Pick a nickname first.');
     nickInput.value = nickname;
@@ -218,10 +256,10 @@ export function mountCreator(C: CharacterDefs, hooks: CreatorHooks): void {
     const o = { ...draft };
     await applying;
     await hooks.apply(o);
-    const result = await hooks.save(o, nickname);
+    const result = await hooks.save!(o, nickname);
     if (result === 'ok') {
       cancelAnimationFrame(frame);
-      document.removeEventListener('keydown', keys);
+      document.removeEventListener('keydown', keys, true);
       root.remove();
       return;
     }
@@ -233,6 +271,148 @@ export function mountCreator(C: CharacterDefs, hooks: CreatorHooks): void {
   });
   const actions = el('div', 'cr-actions');
   actions.append(random, save);
+
+  // ── the Parlor: tabs, a paid new look, and titles ──
+  let saved: Outfit = { ...draft }; // the look the member has
+  let tab: 'look' | 'title' = 'look';
+  let titles = parlor?.titles ?? [];
+  let picked = titles.find((t) => t.worn)?.id ?? null;
+  let kowens = parlor?.kowens ?? 0;
+  let busy = false;
+  const wallet = el('p', 'cr-wallet');
+  const reset = el('button', 'cr-random', 'Undo changes');
+  const wear = el('button', 'cr-save', 'Show this title');
+  const titleBox = el('div', 'cr-titles');
+  titleBox.setAttribute('role', 'radiogroup');
+  titleBox.setAttribute('aria-label', 'Your titles');
+  const tabBar = el('div', 'cr-tabs');
+  tabBar.setAttribute('role', 'tablist');
+  const tabButtons = (['look', 'title'] as const).map((t) => {
+    const b = el('button', 'cr-tab', t === 'look' ? 'Appearance' : 'Title');
+    b.setAttribute('role', 'tab');
+    b.addEventListener('click', () => {
+      tab = t;
+      note.textContent = '';
+      layout();
+    });
+    return b;
+  });
+  tabBar.append(...tabButtons);
+  const say = (text: string, ok: boolean) => {
+    note.textContent = text;
+    note.classList.toggle('cr-ok', ok);
+  };
+  /** The Parlor's buttons and wallet line, as the draft and title pick stand. */
+  function refreshParlor(): void {
+    if (!parlor) return;
+    const changed = !sameLook(canon(draft), canon(saved));
+    wallet.textContent = `You have ${kowens} ${kowens === 1 ? 'Kowen' : 'Kowens'} · a new look is ${parlor.cost}, titles are free`;
+    save.textContent = busy ? 'Saving…' : `Save look · ${parlor.cost} ${parlor.cost === 1 ? 'Kowen' : 'Kowens'}`;
+    save.disabled = busy || !changed || kowens < parlor.cost;
+    save.title = !changed ? 'Change something first' : kowens < parlor.cost ? 'Not enough Kowens' : '';
+    reset.disabled = busy || !changed;
+    const worn = titles.find((t) => t.worn)?.id;
+    wear.disabled = busy || !picked || picked === worn;
+    wear.textContent = busy ? 'Saving…' : picked && picked === worn ? 'Showing this title' : 'Show this title';
+  }
+  // A title's description floats over its card on hover or keyboard focus (on the box itself, so the scrolling list
+  // never clips it).
+  const info = el('div', 'cr-info');
+  info.setAttribute('role', 'tooltip');
+  info.id = 'cr-info';
+  info.hidden = true;
+  const hint = (b: HTMLElement | null, t?: ParlorTitle) => {
+    if (!b || !t) return void (info.hidden = true);
+    info.replaceChildren(el('strong', undefined, `<${t.name}>`), el('span', undefined, t.description || 'No description yet.'));
+    info.hidden = false;
+    const card = b.getBoundingClientRect();
+    const box = root.getBoundingClientRect();
+    const below = card.bottom + info.offsetHeight + 8 < innerHeight;
+    info.style.left = `${Math.max(8, Math.min(card.left + card.width / 2 - info.offsetWidth / 2, box.width - info.offsetWidth - 8))}px`;
+    info.style.top = `${below ? card.bottom + 6 : card.top - info.offsetHeight - 6}px`;
+  };
+  const drawTitles = () => {
+    hint(null);
+    titleBox.replaceChildren(
+      ...titles.map((t) => {
+        const b = el('button', 'cr-title-pick');
+        b.setAttribute('role', 'radio');
+        b.setAttribute('aria-checked', String(t.id === picked));
+        b.setAttribute('aria-describedby', info.id);
+        const name = el('span', `cr-title-name${t.color === 'prismatic' ? ' prismatic' : ''}`, `<${t.name}>`);
+        if (t.color !== 'prismatic') name.style.color = t.color;
+        b.append(name, el('span', 'cr-title-about', t.description || ' '));
+        if (t.worn) b.append(el('span', 'cr-worn', 'showing'));
+        b.addEventListener('pointerenter', () => hint(b, t));
+        b.addEventListener('pointerleave', () => hint(null));
+        b.addEventListener('focus', () => hint(b, t));
+        b.addEventListener('blur', () => hint(null));
+        b.addEventListener('click', () => {
+          picked = t.id;
+          showTitle(t);
+          drawTitles();
+          refreshParlor();
+        });
+        return b;
+      }),
+    );
+  };
+  const layout = () => {
+    tabButtons.forEach((b, i) => b.setAttribute('aria-selected', String((i === 0) === (tab === 'look'))));
+    hint(null);
+    if (tab === 'look') {
+      settings.replaceChildren(choicesBox);
+      actions.replaceChildren(random, reset, save);
+      showTitle(titles.find((t) => t.worn) ?? hooks.title);
+    } else {
+      drawTitles();
+      settings.replaceChildren(titleBox, el('p', 'cr-nick-note', 'Titles are given for things you do around the server. Showing another is free.'));
+      actions.replaceChildren(wear);
+      const t = titles.find((x) => x.id === picked);
+      if (t) showTitle(t);
+    }
+    settings.scrollTop = 0;
+    refreshParlor();
+  };
+  const after = (r: ParlorResult) => {
+    kowens = r.kowens;
+    titles = r.titles;
+    say(r.message, r.ok);
+  };
+  if (parlor) {
+    reset.addEventListener('click', () => {
+      draft = { ...saved };
+      render();
+      preview();
+      refreshParlor();
+    });
+    save.addEventListener('click', async () => {
+      busy = true;
+      refreshParlor();
+      clearTimeout(pending);
+      const o = { ...draft };
+      await applying;
+      await hooks.apply(o);
+      const r = await parlor.buyLook(canon(o)).catch(() => null);
+      busy = false;
+      if (r) {
+        after(r);
+        if (r.ok) saved = o;
+      } else say("Couldn't save. Try again?", false);
+      refreshParlor();
+    });
+    wear.addEventListener('click', async () => {
+      if (!picked) return;
+      busy = true;
+      refreshParlor();
+      const r = await parlor.wearTitle(picked).catch(() => null);
+      busy = false;
+      if (r) after(r);
+      else say("Couldn't save. Try again?", false);
+      drawTitles();
+      refreshParlor();
+    });
+  }
 
   const render = () => {
     const scroll = settings.scrollTop;
@@ -247,13 +427,18 @@ export function mountCreator(C: CharacterDefs, hooks: CreatorHooks): void {
     );
     settings.scrollTop = scroll;
   };
-  settings.append(nickSection, choicesBox);
+  if (!parlor) settings.append(nickSection, choicesBox);
   render();
 
   const head = el('header', 'cr-head');
-  head.append(el('h1', undefined, 'Create your character'), el('p', undefined, `Welcome, ${hooks.name}! Pick a nickname and a look for the town.`));
+  if (parlor) {
+    const close = el('button', 'cr-close', '×');
+    close.setAttribute('aria-label', 'Close the Parlor');
+    close.addEventListener('click', () => shut());
+    head.append(close, el('h1', undefined, 'Parlor'), wallet);
+  } else head.append(el('h1', undefined, 'Create your character'), el('p', undefined, `Welcome, ${hooks.name}! Pick a nickname and a look for the town.`));
   const side = el('div', 'cr-side');
-  side.append(settings, actions, note);
+  side.append(...(parlor ? [tabBar] : []), settings, actions, note);
   const panel = el('div', 'cr-panel');
   panel.append(look, side);
   const box = el('div', 'cr-box');
@@ -266,15 +451,39 @@ export function mountCreator(C: CharacterDefs, hooks: CreatorHooks): void {
   root.append(box);
   document.body.append(root);
 
-  // ←/→ turn the character too (not while typing the nickname).
+  // ←/→ turn the character too (not while typing the nickname); Escape leaves the Parlor.
   const keys = (e: KeyboardEvent) => {
     if (e.target === nickInput) return;
     if (e.key === 'ArrowLeft') turn(-1);
     else if (e.key === 'ArrowRight') turn(1);
+    else if (e.key === 'Escape' && parlor) shut();
+    else return;
+    e.stopPropagation(); // not the town's keys
   };
-  document.addEventListener('keydown', keys);
+  document.addEventListener('keydown', keys, true);
+  const shut = () => {
+    cancelAnimationFrame(frame);
+    clearTimeout(pending);
+    document.removeEventListener('keydown', keys, true);
+    root.remove();
+    parlor?.onClose();
+  };
 
+  if (parlor) {
+    root.append(info);
+    settings.addEventListener('scroll', () => hint(null));
+    root.addEventListener('pointerdown', (e) => e.target === root && shut()); // a click on the dimmed town outside the box
+    layout();
+  }
   preview();
+}
+
+/** A look without the colour of glasses or a hat it doesn't wear (the creator keeps one ready for when it does). */
+function canon(o: Outfit): Outfit {
+  const out = { ...o };
+  if (!out.glasses) delete out.glassesColour;
+  if (!out.hat) delete out.hatColour;
+  return out;
 }
 
 const sameLook = (a: Outfit, b: Outfit) => (Object.keys({ ...a, ...b }) as (keyof Outfit)[]).every((k) => a[k] === b[k]);

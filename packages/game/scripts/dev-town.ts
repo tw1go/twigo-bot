@@ -17,6 +17,7 @@ import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
 //   GET /__flex?as=Bob&itemId=rock&itemName=Rock&rarity=junk   Bob flexes an item (chat line + bubble)
 //   GET /__gift?as=Alice&amount=50   Alice gets the gift pop-up (as from /gift kowens); &wallet=1: only her HUD's Kowens reload
 //   GET /__gift?as=Alice&item=megaphone&name=Megaphone&qty=3   Alice gets the item gift pop-up (as from /gift item)
+//   GET /__look?as=Alice&look={…}&title=Kalbo&color=%23F8BF27   Alice's new look / title (the pretend Parlor calls it)
 // What's said in town is printed here instead of going to Discord.
 
 export function devTown(): Plugin {
@@ -66,6 +67,17 @@ export function devTown(): Plugin {
         },
         profile: (name) => ({ nickname: name, title: { name: 'Townfolk', color: '#B794F6' }, outfit: looks.get(name) ?? ({} as OutfitData) }),
         onSay: (_id, nickname, text, megaphone) => server.config.logger.info(`[town chat → Discord] ${megaphone ? '📢 ' : ''}${nickname}: ${text}`, { timestamp: true }),
+      });
+      server.middlewares.use('/__look', (req, res) => {
+        const q = new URL(req.url ?? '/', 'http://localhost').searchParams;
+        const name = q.get('as') ?? '';
+        try {
+          if (q.get('look')) looks.set(name, JSON.parse(q.get('look')!));
+        } catch {
+          // keep the look they had
+        }
+        town.restyle(name, looks.get(name) ?? ({} as OutfitData), { name: q.get('title') ?? 'Townfolk', color: q.get('color') ?? '#B794F6' });
+        res.end(`${name} restyled\n`);
       });
       server.middlewares.use('/__announce', (req, res) => {
         const q = new URL(req.url ?? '/', 'http://localhost').searchParams;

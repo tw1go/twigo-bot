@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { queueImage, queueTown } from '../assets/queue';
 import type { Dir, Manifest, TownMap } from '../assets/types';
 import { Character } from '../characters/character';
-import { type Outfit, assetProblems, buildOutfit, headPortrait, loadOutfit, outfitFiles, randomOutfit, sheetKey } from '../characters/doll';
+import { type Outfit, assetProblems, buildOutfit, headPortrait, headTop, loadOutfit, outfitFiles, randomOutfit, sheetKey } from '../characters/doll';
 import { sanitize, startingOutfit } from '../characters/looks';
 import type { MeResult } from '../session';
 import { cursor } from '../ui/cursor';
@@ -10,7 +10,8 @@ import { BuildingLabel, UI_FONT } from '../ui/labels';
 import { LOADING_LINES } from '../ui/loading-lines';
 import { TownLink } from '../net/town';
 import { showElsewhere, showKicked } from '../ui/elsewhere';
-import { mountTownHud } from '../ui/townhud';
+import { mountTownHud, setHudAvatar } from '../ui/townhud';
+import { showParlor } from '../ui/parlor';
 import { ChatBox } from '../ui/chat';
 import { StayReward } from '../ui/stay';
 import { MegaphoneBanner } from '../ui/megaphone';
@@ -18,7 +19,7 @@ import { SystemFeed } from '../ui/system-feed';
 import { announce } from '../ui/announce';
 import { OnlineList } from '../ui/online';
 import { EMOTE_KEYS, emotePicker } from '../ui/emotes';
-import type { ArenaServerMessage, OutfitData, TownClientMessage, TownEmote, TownServerMessage } from '@mikazuki/shared';
+import type { ArenaServerMessage, OutfitData, TitleData, TownClientMessage, TownEmote, TownServerMessage } from '@mikazuki/shared';
 import { type BubbleArt, lightBubble } from '../ui/labels';
 import { type Reward, setRewardArt, showReward } from '../ui/reward';
 import { showMovementTutorial } from '../ui/tutorial';
@@ -78,6 +79,7 @@ const TWIGO_ROOM_URL = 'https://tw1go.github.io';
  *  doors are hooks to fill in later. */
 const BUILDINGS: Record<string, string> = {
   'rewards-shop': 'Rewards shop',
+  parlor: 'Parlor',
   bank: 'Bank',
   casino: 'Casino',
   'mine-entrance': 'Mine',
@@ -542,6 +544,7 @@ export class TownScene extends Phaser.Scene {
         if (!mine) playSound('chat');
         return;
       }
+      if (m.t === 'look' && m.id === myId) return void this.restyle(sanitize(this.M.characters, m.outfit, this.outfit), m.title);
       if (m.t === 'jailed' && m.id === myId) {
         this.player.setJailed(m.on);
         window.dispatchEvent(new Event('mk-wallet')); // the HUD (its status dot shows jail too)
@@ -1006,10 +1009,46 @@ export class TownScene extends Phaser.Scene {
     if (b.id === 'tanod-outpost') return showOutpost();
     if (b.id === 'notice-board') return showBoard();
     if (b.id === 'rewards-shop') return showShop();
+    if (b.id === 'parlor') return this.openParlor();
     if (b.id === 'mine-entrance') return showMine();
     if (b.id === 'casino') return void this.enterCasino(b);
     if (b.id === 'arena') return this.openArena(b);
     toast(`${doorLabel(b.id)}: coming soon`);
+  }
+
+  // ── The Parlor: a new look (Kowens) or another of your titles ──
+
+  private openParlor(): void {
+    const member = this.me?.status === 'ok' ? this.me.me : null;
+    if (!member) return toast('Log in to use the Parlor.');
+    const C = this.M.characters;
+    const frame = this.M.ui.inventory?.itemFrame;
+    void showParlor({
+      C,
+      nickname: member.nickname ?? member.name,
+      title: member.title ?? TOWNFOLK,
+      outfit: this.outfit,
+      frame: frame ? { url: `${import.meta.env.BASE_URL}assets/${frame.file}`, slice: frame.nineSlice } : null,
+      apply: (o) => loadOutfit(this, C, o),
+      sheet: (o, dir) => {
+        const key = sheetKey(o, 'idle', dir);
+        return this.textures.exists(key) ? (this.textures.get(key).getSourceImage() as HTMLCanvasElement) : null;
+      },
+      head: (o) => headTop(this, o),
+      restyled: (o, title) => void this.restyle(o, title),
+      onClose: () => {},
+    });
+  }
+
+  /** Your new look and/or title (the Parlor, or the town's `look` message): on your character, name tag and HUD. */
+  private async restyle(o: Outfit | null, title: TitleData): Promise<void> {
+    const member = this.me?.status === 'ok' ? this.me.me : null;
+    if (member) member.title = title;
+    this.player.setNameTag(member?.nickname ?? 'Guest', title);
+    if (!o || sameOutfit(o, this.outfit)) return;
+    if (member) member.outfit = o;
+    await this.setOutfit(o);
+    setHudAvatar(headPortrait(this, this.M.characters, o));
   }
 
   // ── The arena: jack en poy ──
@@ -1255,10 +1294,13 @@ export class TownScene extends Phaser.Scene {
 
 /** True while the user is typing into a page input (or the settings box is open), so movement keys stay with the page. */
 function typing(): boolean {
-  if (document.getElementById('settings') || document.body.classList.contains('town-locked')) return true;
+  if (document.getElementById('settings') || document.getElementById('creator') || document.body.classList.contains('town-locked')) return true;
   const el = document.activeElement as HTMLElement | null;
   return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
 }
+
+/** The same look, whatever order its fields are in. */
+const sameOutfit = (a: Outfit, b: Outfit) => (Object.keys({ ...a, ...b }) as (keyof Outfit)[]).every((k) => a[k] === b[k]);
 
 /** Whole-number zoom that shows a comfortable slice of town for the window size. */
 function defaultZoomIndex(w: number, h: number): number {
