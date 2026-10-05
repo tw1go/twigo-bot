@@ -126,15 +126,18 @@ export function mountTownHud(o: TownHudOptions): void {
   const row = el('div', 'th-row');
   row.append(profile);
   left.append(row);
-  // Top right: the minimap (ui/minimap.ts fills the slot), and under it the jackpot counter, News and Settings.
+  // Top right: the jackpot counter and the minimap side by side (ui/minimap.ts fills the slot), News and Settings under
+  // the map.
   const corner = el('div', 'th-corner');
+  const top = el('div', 'th-top');
+  top.append(el('div', 'th-map'));
   const buttons = el('div', 'th-buttons');
   buttons.append(news, settings);
-  corner.append(el('div', 'th-map'), buttons);
+  corner.append(top, buttons);
   root.append(left, corner);
 
   if (o.me || fakeLogin()) {
-    // The jackpot counter, left of News: the jackpot icon, else the Kowen coin.
+    // The jackpot counter: the jackpot icon, else the Kowen coin.
     let icon: HTMLElement;
     if (o.ticket) {
       icon = el('img', 'jt-icon');
@@ -145,10 +148,10 @@ export function mountTownHud(o: TownHudOptions): void {
       if (o.coin) spriteStyle(icon, o.coin, 2);
       else icon.textContent = '🪙';
     }
-    // Beside News on wide screens; on phones under the Kowens and shovels, where there's room for the whole board.
+    // Left of the minimap on wide screens; on phones under the Kowens and shovels, where there's room for the whole board.
     const timer = jackpotTimer(icon);
     const phone = matchMedia('(max-width: 560px)');
-    const place = () => (phone.matches ? left.insertBefore(timer, row.nextSibling) : buttons.prepend(timer));
+    const place = () => (phone.matches ? left.insertBefore(timer, row.nextSibling) : top.prepend(timer));
     phone.addEventListener('change', place);
     place();
   }

@@ -93,8 +93,9 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   intent is on in the Developer Portal — the bot checks at startup and only asks for it then — else online), with Kowens and shovels beside it (they wrap below on phones); Settings top right;
   Kowens/shovels have "+" info (from `/me`: `kowens`, `dig`). The
   shovel icon is `ui-shovel.png` (manifest ui.shovelIcon).
-- Minimap (`ui/minimap.ts`, top right in the HUD's `.th-map` slot; the jackpot counter, News and Settings sit in a row under
-  it; on phones the bag button goes under them): the town's ground and buildings from town.json, drawn once; green dots
+- Minimap (`ui/minimap.ts`, top right in the HUD's `.th-map` slot, the jackpot counter left of it, News and Settings in a row
+  under it; on phones the bag button goes under them): the town's isometric diamond, its ground and buildings from
+  town.json, drawn once; green dots
   for everyone else, gold for you, a faint box for the camera's view; redrawn every 250 ms. Hidden in the casino.
 - Movement tutorial (`ui/tutorial.ts`, in the reward box via `showPopup`): shown when a member walks into town
   straight from the creator (their first visit). Dev: `?tutorial=1`.
@@ -131,7 +132,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   Dev: pretend news.
 - Leaderboard monument (`ui/leaderboard.ts`, left click the monument): top 10 by Kowens from `GET /town/leaderboard`
   (logged in, may play; town nicknames, titles) with the top 3 idling on a podium ("?" silhouette without a character).
-- Jackpot counter (`ui/jackpot-timer.ts`, "Jackpot draw", top right left of News; on phones under the Kowens and
+- Jackpot counter (`ui/jackpot-timer.ts`, "Jackpot draw", top right left of the minimap; on phones under the Kowens and
   shovels): pot + countdown with seconds to the next draw under small casino lights (`GET /town/jackpot` every minute
   and after `mk-wallet`; gold pulse in the last 10 min); click opens the booth. Icon: manifest `ui.jackpotIcon` if added, else the Kowen coin.
 - Jackpot booth (`ui/jackpot.ts`, left click the booth): pot, countdown, your tickets (buy 1 or the rest, 1 Kowen each,

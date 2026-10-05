@@ -1,7 +1,7 @@
 import { loadJackpot, showJackpot } from './jackpot';
 import { el } from './reward';
 
-// 🎰 The jackpot counter (top right, beside News and Settings): the pot and the time to the next draw, under a row of
+// 🎰 The jackpot counter (top right, left of the minimap): the pot and the time to the next draw, under a row of
 // casino lights, like a little event board. Gold and pulsing in the last 10 minutes, "Drawing…" at the draw, then the
 // next one. A click opens the booth. The pot is fetched every minute (and after anything that moves Kowens); the
 // countdown ticks every second.
