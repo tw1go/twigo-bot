@@ -152,7 +152,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   `games/redeem.ts` (checks + purchase, the public Discord post `redeemPost`, the feed line). Passes ping the reward
   owner like `/redeem`. Dev: a pretend shop.
 - Player menu (`ui/target.ts`): left click (or tap) someone → their name in a long box top centre (or click their name
-  in the chat: the box opens right beside it with the menu open, `selectAt`; a click elsewhere closes it); clicking it opens
+  in the chat: the box opens right beside it with the menu open, `selectAt`; a click elsewhere closes it; no ×: a click
+  outside the box closes it too, a drag to peek doesn't); clicking it opens
   Give Kowens (/give rules), Balance, Status (as /balance and /status) and Diss / Praise / Judge (/diss etc. lines,
   1 Kowen, 5 s cooldown; the sender says it as a bubble + tagged chat line). Bot `GET /town/player?id=`, `POST
   /town/give`, `POST /town/verdict` (`web/town-player.ts`): players are looked up by their town id via

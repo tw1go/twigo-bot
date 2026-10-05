@@ -6,8 +6,9 @@ import { coinIcon } from './reward';
 // 👤 The picked player (left click someone in town): their name in a long box at the top of the screen. Clicking the
 // box opens a menu — Give Kowens, Balance, Status — each read from the bot by the player's town id (GET /town/player;
 // giving: POST /town/give, /give's rules), and Diss / Praise / Judge (POST /town/verdict, 1 Kowen like the commands:
-// you say the line in town). The box goes when they leave, on Escape or with its ×. Clicking a name in the chat opens
-// the same box and menu right beside that name instead (selectAt); a click anywhere else closes it. DOM text only.
+// you say the line in town). The box goes when they leave, on Escape, or with a click anywhere outside it (a drag to
+// peek doesn't count; clicking someone else picks them instead). Clicking a name in the chat opens the same box and
+// menu right beside that name instead (selectAt); a press anywhere else closes it. DOM text only.
 
 type View = 'give' | 'balance' | 'status';
 const VIEWS: [View, string][] = [['give', 'Give Kowens'], ['balance', 'Balance'], ['status', 'Status']];
@@ -78,9 +79,6 @@ export class TargetBox {
     this.box.setAttribute('aria-expanded', 'false');
     this.box.append(this.name, el('span', 'tg-caret', '▾'));
     this.box.addEventListener('click', () => (this.beside ? this.clear() : this.toggleMenu()));
-    const close = el('button', 'tg-close', '×');
-    close.setAttribute('aria-label', 'Stop looking at them');
-    close.addEventListener('click', () => this.clear());
 
     for (const [v, label] of VIEWS) {
       const b = el('button', 'tg-view', label);
@@ -96,7 +94,7 @@ export class TargetBox {
     }
     this.menu.hidden = true;
     this.menu.append(this.views, this.panel, this.actions);
-    this.root.append(this.box, close, this.menu);
+    this.root.append(this.box, this.menu);
     document.body.append(this.root);
 
     document.addEventListener('keydown', (e) => {
@@ -104,12 +102,25 @@ export class TargetBox {
       if (!this.menu.hidden && !this.beside) this.closeMenu();
       else this.clear();
     });
-    // Beside a chat name, a press anywhere else closes it (another name moves it instead).
+    // Beside a chat name, a press anywhere else closes it (another name moves it instead). At the top, a click outside
+    // it does (a press and release in about the same place: a drag to peek around the map keeps it); clicking someone
+    // in town picks them right after.
+    let down: { x: number; y: number; outside: boolean } | null = null;
+    const outside = (t: Element) => !this.root.hidden && !this.root.contains(t) && !t.closest?.('.ch-click');
     document.addEventListener(
       'pointerdown',
       (e) => {
         const t = e.target as Element;
-        if (this.beside && !this.root.contains(t) && !t.closest?.('.ch-click')) this.clear();
+        if (this.beside && outside(t)) return this.clear();
+        down = { x: e.clientX, y: e.clientY, outside: outside(t) };
+      },
+      true,
+    );
+    document.addEventListener(
+      'pointerup',
+      (e) => {
+        if (down?.outside && !this.beside && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 8) this.clear();
+        down = null;
       },
       true,
     );
