@@ -29,7 +29,6 @@ export function showHouseMenu(h: HouseMenuHooks): void {
   const title = el('div', 'hm-title', `<${house.title.name}>`);
   if (house.title.color === 'prismatic') title.classList.add('prismatic');
   else title.style.color = house.title.color;
-  const status = el('p', 'hm-status');
   const buttons = el('div', 'hm-actions');
   let busy = false;
   /** What happened, under the box (toasts read out on their own: ui/toast.ts). */
@@ -43,9 +42,21 @@ export function showHouseMenu(h: HouseMenuHooks): void {
     return b;
   };
 
+  /** Where things stand (shown under the box as the menu opens). */
+  const status = () => {
+    if (house.mine) return fenced ? '🧱 Your Bakod is up: only a Master Key gets past the fence.' : 'No Bakod: anyone can try to rob you. Get one at the rewards shop.';
+    const wait = me.stealAt && me.stealAt > Date.now() ? minutes(me.stealAt) : 0;
+    return me.jailed
+      ? "You're in jail. No house calls till you're out."
+      : wait
+        ? `You're laying low: you can steal again in ${wait} min.`
+        : fenced
+          ? '🧱 A Bakod fences this house in. Only a Master Key gets past it (50% it snaps), or rust half of it away with a Kalawang Potion.'
+          : 'Steal: 35% to take 2–5% of their Kowens. Caught by the Tanod: you pay them a fine and spend 5 minutes in jail.';
+  };
+
   const render = () => {
     if (house.mine) {
-      status.textContent = fenced ? '🧱 Your Bakod is up: only a Master Key gets past the fence.' : 'No Bakod: anyone can try to rob you. Get one at the rewards shop.';
       buttons.replaceChildren(button(`New look · ${plural(me.repaintCost, 'Kowen', 'Kowens')}`, () => {
         close();
         h.repaint();
@@ -53,13 +64,6 @@ export function showHouseMenu(h: HouseMenuHooks): void {
       return;
     }
     const wait = me.stealAt && me.stealAt > Date.now() ? minutes(me.stealAt) : 0;
-    status.textContent = me.jailed
-      ? "You're in jail. No house calls till you're out."
-      : wait
-        ? `You're laying low: you can steal again in ${wait} min.`
-        : fenced
-          ? '🧱 A Bakod fences this house in. Only a Master Key gets past it (50% it snaps), or rust half of it away with a Kalawang Potion.'
-          : 'Steal: 35% to take 2–5% of their Kowens. Caught by the Tanod: you pay them a fine and spend 5 minutes in jail.';
     const blocked = me.jailed || !!wait;
     const list = [button('Steal', () => void act('steal'), blocked || fenced, 'steal')];
     if (fenced) {
@@ -92,16 +96,16 @@ export function showHouseMenu(h: HouseMenuHooks): void {
   };
 
   render();
-  // A Bakod and nothing to get past it with: say what to buy.
+  // Where things stand, under the box; with a Bakod and nothing to get past it with, what to buy instead.
   if (!house.mine && fenced && me.keys < 1 && me.kalawang < 1) {
     setTimeout(() => {
       say('This house has a Bakod. Please purchase a Master Key or a Kalawang Potion at the rewards shop.', 'bad');
       playSound('error');
     }, 200); // after the pop-up's own open sound
-  }
+  } else say(status(), null);
   void showPopup({
     title: house.mine ? 'Your house' : `${house.owner}'s house`,
-    body: [title, status, buttons],
+    body: [title, buttons],
     button: 'Close',
     celebrate: false,
     sound: 'door',
