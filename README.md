@@ -72,6 +72,8 @@ Lines don't repeat until all are used, across all three commands.
 Each use on someone else costs 1 Kowen. Ways to get Kowens:
 - `/get-kowens` — 5 per day (resets at midnight in `TIMEZONE`; unused Kowens carry over)
 - Voice chat — 1 per 15 minutes, **max 12 per day** (needs 2+ people in the channel, not deafened, not the AFK channel; see `src/credits/voice.ts`)
+- Staying in the web town — 1 per 15 minutes there, **max 20 per day**, each claimed from a pop-up above the town's system
+  feed; the count to the next waits until it's claimed (`src/web/town-stay.ts`)
 
 **Boosts:** +20 Kowens per boost right away, then 20 × boost count on the 1st of every month while boosting.
 Boost counts come from the system channel's "just boosted" messages (Discord doesn't expose per-member counts);

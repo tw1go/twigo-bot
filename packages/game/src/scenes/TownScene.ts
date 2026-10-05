@@ -12,6 +12,7 @@ import { TownLink } from '../net/town';
 import { showElsewhere, showKicked } from '../ui/elsewhere';
 import { mountTownHud } from '../ui/townhud';
 import { ChatBox } from '../ui/chat';
+import { StayReward } from '../ui/stay';
 import { SystemFeed } from '../ui/system-feed';
 import { announce } from '../ui/announce';
 import { OnlineList } from '../ui/online';
@@ -467,6 +468,8 @@ export class TownScene extends Phaser.Scene {
       };
     }
     const feed = new SystemFeed();
+    // Members earn a Kowen for every 15 minutes in town (claimed from a pop-up above the feed).
+    const stay = member ? new StayReward() : null;
     let myId = '';
     let arrived = false;
     /** Someone (maybe you) says a diss, praise or judge line: a speech bubble and a tagged line in the chat. */
@@ -537,6 +540,7 @@ export class TownScene extends Phaser.Scene {
         return;
       }
       // Kowens changed elsewhere (Discord…). Not mid-bet at the casino: its coin lands first, then it reloads the HUD.
+      if (m.t === 'stay') return void stay?.set(m.stay);
       if (m.t === 'wallet') return void (document.body.classList.contains('cz-betting') || window.dispatchEvent(new Event('mk-wallet')));
       if (m.t === 'gift') {
         window.dispatchEvent(new Event('mk-wallet')); // the HUD's Kowens

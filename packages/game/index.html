@@ -377,6 +377,25 @@
       #system-feed [data-tone='quest'] { color: #FDE68A; }
       #system-feed [data-tone='quest-done'] { color: #A3E635; }
       @media (max-width: 760px) { #system-feed { display: none; } }
+      /* Staying in town pays (ui/stay.ts): over the system feed's top edge, a faint countdown; when a Kowen is ready, a
+         small gold-edged pop-up with Claim. On phones (no feed) above the bottom edge. */
+      #stay { position: fixed; right: 12px; bottom: 180px; z-index: 2; display: flex; align-items: center; gap: 8px; box-sizing: border-box; width: min(340px, calc(100vw - 24px)); font: 13px/1.3 var(--ui-font); color: #E6E9F2; -webkit-user-select: none; user-select: none; }
+      #stay[hidden] { display: none; }
+      #stay.st-wait { padding: 4px 10px; border-radius: 6px; background: rgba(10, 12, 24, 0.5); color: #A9B1D6; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6); }
+      #stay .st-text { flex: 1; }
+      #stay .st-today { color: #7A8099; font-size: 12px; white-space: nowrap; }
+      #stay.st-ready { padding: 8px 8px 8px 12px; border: 3px solid #1E1B3A; background: #111827; box-shadow: 0 0 0 2px #F8BF27, 0 4px 0 2px #1E1B3A, 0 0 18px rgba(248, 191, 39, 0.35); animation: st-pop 0.35s cubic-bezier(0.2, 1.4, 0.4, 1); }
+      #stay .st-words { flex: 1; display: flex; flex-direction: column; }
+      #stay .st-words b { color: #F8BF27; font-size: 16px; }
+      #stay .st-words span { color: #A9B1D6; font-size: 12px; }
+      #stay .st-claim { padding: 6px 14px 8px; border: 2px solid #1E1B3A; border-radius: 0; background: #A3E635; color: #1E1B3A; font: inherit; font-size: 14px; font-weight: 700; box-shadow: inset 0 2px 0 #D9F99D, inset 0 -3px 0 #5A8A5E, 0 3px 0 #1E1B3A; animation: st-nudge 1.6s ease-in-out infinite 0.4s; }
+      #stay .st-claim:hover { background: #B5EE5A; }
+      #stay .st-claim:active { transform: translateY(2px); box-shadow: inset 0 2px 0 #D9F99D, inset 0 -2px 0 #5A8A5E, 0 1px 0 #1E1B3A; }
+      #stay .st-claim:disabled { opacity: 0.6; animation: none; }
+      @keyframes st-pop { from { transform: translateY(12px) scale(0.9); opacity: 0; } }
+      @keyframes st-nudge { 0%, 70%, 100% { transform: none; } 80% { transform: translateY(-2px); } 90% { transform: translateY(1px); } }
+      @media (max-width: 760px) { #stay { bottom: 70px; } }
+      @media (prefers-reduced-motion: reduce) { #stay.st-ready, #stay .st-claim { animation: none; } }
       /* Who's online (ui/online.ts), beside the chat input next to the emote button. */
       #chat .ch-tools { display: flex; gap: 6px; }
       #chat .on-wrap { position: relative; }
@@ -538,7 +557,7 @@
       /* Inside, the profile (with Settings), the chat and the system feed stay, over the casino screen; the rest of the
          town's HUD hides. */
       body.town-locked #bag-button, body.town-locked #target, body.town-locked #inventory, body.town-locked .announce, body.town-locked #reward { visibility: hidden; }
-      body.town-locked #town-hud .th-left, body.town-locked #town-hud .th-corner, body.town-locked #chat, body.town-locked #system-feed { z-index: 8; }
+      body.town-locked #town-hud .th-left, body.town-locked #town-hud .th-corner, body.town-locked #chat, body.town-locked #system-feed, body.town-locked #stay { z-index: 8; }
       body.town-locked #settings { z-index: 8; }
       #casino-screen { --s: 3; position: fixed; inset: 0; z-index: 7; display: flex; box-sizing: border-box; padding: 108px calc(var(--s) * 4px) calc(var(--s) * 4px); background: #1E1B3A; font: 15px/1.35 var(--ui-font); color: #E6E9F2; }
       #casino-screen .cz-table { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(var(--s) * 4px); min-height: 0; overflow: hidden; box-sizing: border-box; padding: calc(var(--s) * 6px) calc(var(--s) * 6px) 200px; background: #1F7349; image-rendering: pixelated; }

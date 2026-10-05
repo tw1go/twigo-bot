@@ -123,6 +123,8 @@ export type TownServerMessage =
   | { t: 'announce'; announcement: TownAnnouncement }
   /** Something happened around the server (the system feed). */
   | { t: 'system'; line: TownSystemLine }
+  /** Staying in town: a Kowen is ready to claim (web/town-stay.ts). */
+  | { t: 'stay'; stay: TownStayInfo }
   /** Someone dissed, praised or judged someone (the player menu): `id` says the line (the target's name is in it). */
   | { t: 'verdict'; id: string; kind: 'roast' | 'praise'; judged: boolean; text: string }
   /** Someone was jailed or released (you too: `id` is yours). */
@@ -140,3 +142,15 @@ export type TownServerMessage =
   /** Your message wasn't sent: too fast, empty / too long once tidied, or you're muted (until when, ms). */
   | { t: 'say-refused'; reason: 'slow' | 'invalid' | 'muted'; until?: number }
   | ArenaServerMessage;
+
+/** Staying in the web town pays (bot web/town-stay.ts): a Kowen to claim every `every` minutes in town (`minutes`
+ *  counted toward the next; the count waits while one is `ready`), up to `max` a day. */
+export interface TownStayInfo {
+  ready: boolean;
+  minutes: number;
+  every: number;
+  claimed: number;
+  max: number;
+}
+
+export type TownStayClaim = { ok: true; kowens: number; stay: TownStayInfo } | { ok: false; error: string };

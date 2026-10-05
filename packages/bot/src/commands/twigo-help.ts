@@ -59,6 +59,7 @@ export const twigoHelp: Command = {
         ...section('🪙 Earn Kowens', [
           `\`/get-kowens\` — claim ${DAILY_CREDITS} ${kowen(DAILY_CREDITS)} once a day`,
           '🎙️ **1 Kowen per 15 min** in voice chat, **max 12 a day** (with 1+ other person, not deafened, not AFK)',
+          '🌙 **1 Kowen per 15 min** in the web town, **max 20 a day**: claim each one from the pop-up above the system feed',
           '🏆 **Weekly voice rewards** (Mondays 12 PM): top 10 get 50 · 30 · 20 · 10 Kowens (`/leaderboard`)',
           '💎 **Boost the server**: +20 Kowens per boost, and 20 × your boosts every month while boosting',
           '`/claim code` — found a Kowen in [twigo\'s room](https://tw1go.github.io)? Claim it here (3 a day)',

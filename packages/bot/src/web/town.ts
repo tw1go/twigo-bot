@@ -4,7 +4,7 @@ import type { IncomingMessage, Server } from 'node:http';
 import type { Duplex } from 'node:stream';
 import { WebSocket, WebSocketServer } from 'ws';
 import { Arena, type ArenaBets, type ArenaSeat, arenaLine } from './town-arena.js';
-import type { OutfitData, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownPlayer, TownServerMessage, TownSystemLine } from '@mikazuki/shared';
+import type { OutfitData, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
 // messages). The server keeps everyone's tile and checks each step — on the map, not blocked, next to the last
@@ -99,6 +99,10 @@ export interface Town {
   gifted(userId: string, from: string, amount: number): void;
   /** Tells a member, if they're in town, that their Kowens changed (the HUD reloads them). */
   wallet(userId: string): void;
+  /** The members in town right now. */
+  here(): string[];
+  /** Tells a member, if they're in town, where their stay reward is (a Kowen ready to claim). */
+  stay(userId: string, stay: TownStayInfo): void;
   /** A member was jailed or released: everyone in town sees it under their name (them included). */
   setJailed(userId: string, on: boolean): void;
   /** A member (if in town) flexed an item from their bag: to everyone, them included (chat line + bubble). */
@@ -364,6 +368,13 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     wallet(userId) {
       const c = conns.get(userId);
       if (c) send(c, { t: 'wallet' });
+    },
+    here() {
+      return [...conns.keys()];
+    },
+    stay(userId, stay) {
+      const c = conns.get(userId);
+      if (c) send(c, { t: 'stay', stay });
     },
     setJailed(userId, on) {
       const c = conns.get(userId);

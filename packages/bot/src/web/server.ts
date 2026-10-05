@@ -22,6 +22,7 @@ import { gambleInTown } from './town-casino.js';
 import { flexInTown, sellInTown, townInventory } from './town-bag.js';
 import { boardAction, townBoard } from './town-board.js';
 import { townNews } from './town-news.js';
+import { claimStay, stayInfo, stayMinute } from './town-stay.js';
 import { arenaBets, refundHeldBets } from './town-arena-bets.js';
 import { kowen } from '../kowens.js';
 import { filterText, kickedUntil, mutedUntil } from './town-mod.js';
@@ -512,6 +513,14 @@ export function startWebServer(client: Client): void {
         }
         return send(res, 200, JSON.stringify(await gambleInTown(client, userId, await nameOf(client, userId), bet, call)));
       }
+      if (path === '/town/stay' && (req.method === 'GET' || req.method === 'POST')) {
+        if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
+        if (req.method === 'POST' && !fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
+        const userId = sessionUser(req);
+        if (!userId) return send(res, 401, '{"error":"not logged in"}');
+        if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
+        return send(res, 200, JSON.stringify(req.method === 'GET' ? stayInfo(userId) : claimStay(userId)));
+      }
       if (req.method === 'POST' && path === '/town/dig') {
         if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
         if (!fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
@@ -592,6 +601,10 @@ export function startWebServer(client: Client): void {
     connectTownFeed(town);
     const live = town;
     setWalletHook((userId) => live.wallet(userId)); // the HUD's Kowens follow any change, wherever it came from
+    // Staying in town pays: a minute for everyone here, and a pop-up for whoever now has a Kowen to claim.
+    setInterval(() => {
+      for (const id of stayMinute(live.here())) live.stay(id, stayInfo(id));
+    }, 60_000).unref();
   } catch (err) {
     console.error('[web] town disabled, map not loaded:', err);
   }
