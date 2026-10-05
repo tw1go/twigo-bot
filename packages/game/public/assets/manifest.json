@@ -1695,6 +1695,36 @@
         26
       ],
       "note": "someone else dug: a dirt puff at the Mine entrance door, three loops"
+    },
+    "siren": {
+      "file": "fx/fx-siren.png",
+      "frame": [
+        16,
+        16
+      ],
+      "frames": 4,
+      "fps": 8,
+      "loop": true,
+      "anchor": [
+        8,
+        15
+      ],
+      "note": "the Tanod raid siren: the casino table corners, and over a busted player in town"
+    },
+    "coin-burst": {
+      "file": "fx/fx-coin-burst.png",
+      "frame": [
+        48,
+        48
+      ],
+      "frames": 10,
+      "fps": 12,
+      "loop": false,
+      "anchor": [
+        24,
+        47
+      ],
+      "note": "a win: over the coin at the table, and over a big winner in town; plays once"
     }
   },
   "ui": {
@@ -1870,6 +1900,47 @@
         32
       ],
       "note": "the inventory button beside the chat input (opens the bag on the right)"
+    },
+    "tanodBust": {
+      "file": "ui/ui-tanod-bust.png",
+      "size": [
+        48,
+        48
+      ],
+      "frames": 6,
+      "fps": 10,
+      "anchor": [
+        24,
+        47
+      ],
+      "note": "the Tanod raid: slides up from the table's bottom-left, plays once and holds the last cell"
+    },
+    "casinoFelt": {
+      "file": "ui/ui-casino-felt.png",
+      "size": [
+        24,
+        24
+      ],
+      "nineSlice": 7,
+      "note": "the casino table: 9-slice, 7 px wood rim around the felt"
+    },
+    "coinFlip": {
+      "sides": {
+        "kara": "fx/fx-coin-flip.png",
+        "krus": "fx/fx-coin-flip-krus.png"
+      },
+      "size": [
+        32,
+        32
+      ],
+      "frames": 10,
+      "fps": 12,
+      "loop": false,
+      "anchor": [
+        16,
+        16
+      ],
+      "note": "Kara y Krus: the flip for the side the coin lands on; each sheet ends on its face, and that last cell is the coin at rest (Kara's before the first flip)"
     }
   },
   "notes_ui": "All UI is drawn at 1x and scaled by the same whole-number zoom as the world. Text is never baked in: draw it with Minecraft.ttf.",

@@ -31,7 +31,8 @@ import { RARITY_TEXT, isRarity, setItemArt } from '../ui/item-art';
 import { playDig, setDigPanelArt } from '../ui/dig-panel';
 import { showMine } from '../ui/mine';
 import { Inventory } from '../ui/inventory';
-import { setCasinoArt, showCasino } from '../ui/casino';
+import { closeCasino, openCasino, setCasinoArt } from '../ui/casino';
+import { fadeNavy } from '../ui/fade';
 import { OtherPlayers } from '../world/others';
 import { fakeLogin } from '../session';
 import { screenToTile, tileToScreen } from '../iso';
@@ -43,7 +44,7 @@ import { rng } from '../world/rng';
 import { type Tile, WalkGrid } from '../world/grid';
 import { Ground } from '../world/ground';
 import { type Bench, type Building, WorldObjects, characterDepth } from '../world/objects';
-import { hearFrom, playSound, startTownSound } from '../audio/sound';
+import { enterCasinoSound, hearFrom, leaveCasinoSound, playSound, startTownSound } from '../audio/sound';
 
 // The playable town: ground, buildings, props and the player, all placed from manifest.json + maps/town.json.
 // Right click to walk; left click a building to walk to its door, or a bench to sit (a tap does all of these).
@@ -75,6 +76,10 @@ const BUILDINGS: Record<string, string> = {
   'jackpot-booth': 'Jackpot booth',
   'twigos-house': "twigo's house",
 };
+/** Walking into (and out of) the casino: the camera's pan and zoom. */
+const ENTER_MS = 700;
+const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 /** A win at least this big bursts coins over the winner in town. */
 const BIG_WIN = 50;
 const doorLabel = (id: string) => (id === 'twigos-house' ? "twigo's room" : (BUILDINGS[id] ?? id));
@@ -108,6 +113,8 @@ export class TownScene extends Phaser.Scene {
   private zoomIndex = 1;
   /** The arrival zoom-out while it runs (follow and label sizing wait for it). */
   private intro: Phaser.Tweens.Tween | null = null;
+  /** In the casino (or walking in or out): the town takes no input, the camera doesn't follow, and the HUD hides. */
+  private inside: { zoom: number } | null = null;
   private tint = -1;
   private nextSkyCheck = 0;
   private culler!: Culler;
@@ -258,13 +265,13 @@ export class TownScene extends Phaser.Scene {
 
   update(time: number, delta: number): void {
     const zoom = this.cameras.main.zoom;
-    if (zoom !== this.labelZoom && !this.intro) this.sizeForZoom(zoom);
+    if (zoom !== this.labelZoom && !this.intro && !this.inside) this.sizeForZoom(zoom);
     this.ground.tick(time);
     this.player.update(delta);
     this.others.update(delta);
     hearFrom(this.player.tile);
     this.tellServer();
-    if (this.follow && !this.intro) this.followPlayer();
+    if (this.follow && !this.intro && !this.inside) this.followPlayer();
     this.culler.update(this.cameras.main.worldView);
     this.objects.setLamps(this.lampsOn); // glows follow their lamp's visibility
     if (time >= this.nextSkyCheck) {
@@ -299,10 +306,15 @@ export class TownScene extends Phaser.Scene {
     setDigPanelArt(D && this.textures.exists(D.file) ? { url: asset(D.file), size: D.size, frames: D.frames, fps: D.fps, hole: D.hole, itemFrom: D.itemFrom } : null);
     // Kara y Krus: whichever casino art exists (the table draws stand-ins for the rest).
     const U = this.M.ui;
+    const strip = (fx: { file?: string; frame?: [number, number]; frames?: number; fps?: number } | undefined) =>
+      fx?.file && fx.frame ? { url: asset(fx.file), w: fx.frame[0], h: fx.frame[1], frames: fx.frames ?? 1, fps: fx.fps ?? 10 } : undefined;
+    const F = U.coinFlip;
+    const flip = (file: string) => F && { url: asset(file), w: F.size[0], h: F.size[1], frames: F.frames, fps: F.fps };
     setCasinoArt({
-      ...(U.coinFlip ? { coinFlip: { url: asset(U.coinFlip.file), size: U.coinFlip.size, frames: U.coinFlip.frames, fps: U.coinFlip.fps } } : {}),
-      ...(U.coinFaces ? { coinFaces: { url: asset(U.coinFaces.file), size: U.coinFaces.size, frames: U.coinFaces.frames } } : {}),
-      ...(U.tanodBust ? { tanodBust: { url: asset(U.tanodBust.file), size: U.tanodBust.size, frames: U.tanodBust.frames, fps: U.tanodBust.fps } } : {}),
+      ...(F ? { flips: { kara: flip(F.sides.kara)!, krus: flip(F.sides.krus)! } } : {}),
+      siren: strip(this.M.fx.siren),
+      burst: strip(this.M.fx['coin-burst']),
+      ...(U.tanodBust ? { tanod: { url: asset(U.tanodBust.file), w: U.tanodBust.size[0], h: U.tanodBust.size[1], frames: U.tanodBust.frames, fps: U.tanodBust.fps } } : {}),
       ...(U.casinoFelt ? { felt: { url: asset(U.casinoFelt.file), slice: U.casinoFelt.nineSlice } } : {}),
     });
     mountTownHud({
@@ -861,8 +873,78 @@ export class TownScene extends Phaser.Scene {
     if (b.id === 'notice-board') return showBoard();
     if (b.id === 'rewards-shop') return showShop();
     if (b.id === 'mine-entrance') return showMine();
-    if (b.id === 'casino') return showCasino();
+    if (b.id === 'casino') return void this.enterCasino(b);
     toast(`${doorLabel(b.id)}: coming soon`);
+  }
+
+  // ── The casino: walking in and out ──
+
+  /** Into the casino: input locks, the camera stops following and pans to the casino's door (the tile in front of its
+   *  canopy, from town.json) while it zooms in (2.5× the current zoom, Sine.easeInOut, 700 ms) and fades out (camera
+   *  fade, navy); then the navy veil covers the page and the casino screen fades in from it, with its music. With
+   *  reduced motion: a plain 250 ms fade. The player stays at the door, seen by everyone. */
+  private async enterCasino(b: Building): Promise<void> {
+    if (this.inside) return;
+    const cam = this.cameras.main;
+    this.intro?.complete();
+    this.inside = { zoom: cam.zoom };
+    this.lockTown(true);
+    const [col, row] = b.doors[0] ?? [this.player.tile.col, this.player.tile.row];
+    const door = tileToScreen(col, row);
+    enterCasinoSound();
+    if (reducedMotion()) await fadeNavy(1, 250);
+    else {
+      cam.pan(door.x, door.y + 8 - 24, ENTER_MS, 'Sine.easeInOut', true); // the door, at body height
+      cam.zoomTo(this.inside.zoom * 2.5, ENTER_MS, 'Sine.easeInOut', true);
+      cam.fadeOut(ENTER_MS, 0x1e, 0x1b, 0x3a);
+      await new Promise((r) => cam.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, r));
+      await fadeNavy(1, 150); // the page too (the HUD that stays over the casino)
+    }
+    openCasino(() => void this.leaveCasino());
+    await fadeNavy(0, reducedMotion() ? 250 : 300);
+  }
+
+  /** Out of the casino: fade to navy, back to the town at the zoomed-in door, then zoom out to the player as they
+   *  were (whole-number zoom again) while the navy lifts; input and the HUD come back. */
+  private leaving = false;
+  private async leaveCasino(): Promise<void> {
+    if (!this.inside || this.leaving) return;
+    this.leaving = true;
+    const cam = this.cameras.main;
+    const zoom = this.inside.zoom;
+    const p = this.player.sprite;
+    await fadeNavy(1, reducedMotion() ? 250 : 300);
+    closeCasino();
+    leaveCasinoSound();
+    if (reducedMotion()) {
+      cam.resetFX();
+      cam.setZoom(zoom);
+      cam.centerOn(p.x, p.y - 24);
+      await fadeNavy(0, 250);
+    } else {
+      // The page's veil lifts at once; the town itself fades back in as the camera zooms out to the player.
+      await fadeNavy(0, 0);
+      cam.pan(p.x, p.y - 24, ENTER_MS, 'Sine.easeInOut', true);
+      cam.zoomTo(zoom, ENTER_MS, 'Sine.easeInOut', true);
+      cam.fadeIn(ENTER_MS, 0x1e, 0x1b, 0x3a);
+      await new Promise((r) => cam.once(Phaser.Cameras.Scene2D.Events.FADE_IN_COMPLETE, r));
+      cam.setZoom(zoom); // land exactly on the whole-number zoom
+    }
+    cam.roundPixels = true;
+    this.sizeForZoom(zoom);
+    this.inside = null;
+    this.leaving = false;
+    this.lockTown(false);
+  }
+
+  /** Locks the town (no clicks, keys or wheel; the player stops) and hides the HUD, or undoes it. */
+  private lockTown(on: boolean): void {
+    this.input.enabled = !on;
+    if (on) {
+      this.pending = null;
+      this.player.cancelPath();
+    }
+    document.body.classList.toggle('town-locked', on);
   }
 
   /** fx-alert over a building while the player stands at its door. */
@@ -965,7 +1047,7 @@ export class TownScene extends Phaser.Scene {
 
 /** True while the user is typing into a page input (or the settings box is open), so movement keys stay with the page. */
 function typing(): boolean {
-  if (document.getElementById('settings')) return true;
+  if (document.getElementById('settings') || document.body.classList.contains('town-locked')) return true;
   const el = document.activeElement as HTMLElement | null;
   return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
 }

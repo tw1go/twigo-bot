@@ -2,7 +2,8 @@ import { playSound } from '../audio/sound';
 
 // 💬 The town's chat box (bottom left): one see-through box with the last messages and names (Discord's mark for
 // people chatting from the linked Discord channel) and the input under them. Enter opens the input, Enter sends (and keeps it open), an empty Enter or Esc closes it. Messages go to everyone in
-// town as speech bubbles too (TownScene). DOM text only: names and messages are never parsed as HTML.
+// town as speech bubbles too (TownScene). DOM text only: names and messages are never parsed as HTML. On phones the box
+// folds away behind a chat button (bottom left; a dot when something new arrives while it's closed).
 
 
 const MAX_LINES = 60;
@@ -26,12 +27,16 @@ function discordMark(): SVGSVGElement {
   return svg;
 }
 const MAX_LENGTH = 120;
+/** Phone-sized screens fold the chat away behind its button. */
+const PHONE = '(max-width: 560px)';
 
 export class ChatBox {
   private readonly root: HTMLElement;
   private readonly log: HTMLElement;
   private readonly input: HTMLInputElement;
   private idleTimer: ReturnType<typeof setTimeout> | undefined;
+  /** The phone's chat button (hidden on bigger screens). */
+  private readonly toggle: HTMLButtonElement;
 
   constructor(
     /** Sends a message; false if it couldn't go (not connected). */
@@ -57,7 +62,13 @@ export class ChatBox {
     row.append(this.input);
     if (tools) row.append(tools);
     this.root.append(this.log, row);
-    document.body.append(this.root);
+    this.toggle = document.createElement('button');
+    this.toggle.id = 'chat-toggle';
+    this.toggle.textContent = 'Chat';
+    this.toggle.setAttribute('aria-controls', 'chat');
+    this.toggle.setAttribute('aria-expanded', 'false');
+    this.toggle.addEventListener('click', () => this.setOpen(!document.body.classList.contains('chat-open')));
+    document.body.append(this.root, this.toggle);
     // Clicking the log opens the chat too; pressing anywhere outside the box closes it (the town's canvas stops the
     // browser doing that by itself, as Phaser cancels the default of presses on it).
     this.log.addEventListener('click', () => this.input.focus());
@@ -93,6 +104,7 @@ export class ChatBox {
       if (e.key !== 'Enter' || e.defaultPrevented || document.activeElement !== document.body) return;
       if (document.getElementById('reward') || document.getElementById('elsewhere') || document.getElementById('settings')) return;
       e.preventDefault();
+      this.setOpen(true);
       this.input.focus();
     });
   }
@@ -173,8 +185,20 @@ export class ChatBox {
     }, IDLE_MS);
   }
 
+  /** Phones: shows or folds away the chat (bigger screens always show it). */
+  private setOpen(open: boolean): void {
+    document.body.classList.toggle('chat-open', open);
+    this.toggle.setAttribute('aria-expanded', String(open));
+    if (open) {
+      this.toggle.classList.remove('ch-unread');
+      this.log.scrollTop = this.log.scrollHeight;
+      this.wake();
+    } else if (document.activeElement === this.input) this.input.blur();
+  }
+
   private push(line: HTMLElement): void {
     this.wake();
+    if (matchMedia(PHONE).matches && !document.body.classList.contains('chat-open')) this.toggle.classList.add('ch-unread');
     const atBottom = this.log.scrollTop + this.log.clientHeight >= this.log.scrollHeight - 4;
     this.log.append(line);
     while (this.log.childElementCount > MAX_LINES) this.log.firstElementChild?.remove();

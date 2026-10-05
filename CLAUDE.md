@@ -89,11 +89,15 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
 - Chat (`ui/chat.ts` + `SpeechBubble` in `ui/labels.ts`): Enter to type, Enter sends and stays open, empty Enter/Esc or a click outside closes; the bot's `say` (tidied, ≤120 chars,
   burst 3 then 1 per 2 s, never saved) comes back to everyone, the speaker included. Linked to a Discord channel
   (`TOWN_CHAT_CHANNEL_ID`, bot `web/town-chat.ts`, needs the Message Content intent): Discord lines show with the
-  Discord mark. The box is a fixed see-through panel that fades to 0.2 after 15 s quiet.
+  Discord mark. The box is a fixed see-through panel that fades to 0.2 after 15 s quiet. On phones (≤560 px) it folds away behind a Chat button (bottom
+  left; a dot for new messages; body.chat-open).
 - Online list (`ui/online.ts`): "N online" beside the chat input opens who's in town (you first, titles in colour).
 - Sound (`audio/sound.ts`, files + credits in `public/assets/audio/`, not in the manifest): crickets that come and go,
   the fountain louder near the plaza, music off by default (loaded only when switched on), soft one-shots (emote,
   chat from others, door, casino card/chip, coin, button click, error); nothing plays before the first click/key.
+  Inside the casino (`enterCasinoSound`/`leaveCasinoSound`) the town music, crickets and fountain go quiet and its own
+  music (casino-shop-theme, 0.09 × the music volume) fades in, loaded only then; casino sfx: flip-spin (repeats while
+  the coin spins), flip-land, casino-win (+ coin), casino-lose, busted (.m4a only: `formats`).
   Settings box (`ui/settings.ts`, gear button top right, manifest `ui.settingsIcon`): Music and Sounds volumes
   (music 0 = off) and Mute all (saved in localStorage `mk_sound`), log out, and a Credits page (keep it in step with
   `public/assets/audio/CREDITS.md` and the font's licence). Keep sounds soft: no sharp clicks.
@@ -149,14 +153,19 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   potions say how they're used; tabs All / Dug up / Misc; item slots bordered in their rarity's colour; B toggles it;
   Kowens at the bottom. Bot `GET /town/inventory`, `POST /town/sell`, `POST /town/flex`
   (`web/town-bag.ts`; flex shares `flexEmbed` and the cooldown with `/flex`). Dev: a pretend bag (`&slots=18`).
-- Casino (`ui/casino.ts`, left click the casino): Kara y Krus at a felt table under the casino lights — bet chips, call
-  Kara or Krus, the peso flips; a raid shows the Tanod ("Huli ka!") with a red/blue flash. Bot `POST /town/gamble`
-  (`web/town-casino.ts`); `/gamble` and the Casino share `gambleFor` (`games/gamble.ts`, tested), the Casino at the
-  gambling channel's low raid chance; town bets post in the gambling channel. Bet feed lines carry the gambler's town
-  `playerId` and `amount`: a win of 50+ bursts coins over them (fx `coin-burst`, else `coin-sparkle`), a bust shows a
-  siren (fx `siren`, else `alert`) — `Character.flash()`. Art is optional (manifest ui `coinFlip`, `coinFaces`
-  [kara, krus], `tanodBust`, `casinoFelt`; fx `coin-burst`, `siren`): without it the coin and felt are drawn in code
-  (`ui/pixel-tiles.ts`). Dev: `&win=1` / `&lose=1` / `&bust=1`; `/__system?kind=gamble&tone=win&amount=60&as=Name`.
+- Casino: left click the casino → `TownScene.enterCasino` locks the town (body.town-locked: no input; bag, player
+  menu, banners hide; profile + Settings, chat and system feed stay on top), pans/zooms the camera into the door
+  (2.5×, Sine.easeInOut, 700 ms) with the camera's fadeOut to navy, then a navy veil (`ui/fade.ts`) while it shows the full-screen casino (`ui/casino.ts`,
+  a DOM layer like the other screens; the player stays at the door for everyone). Leave/Escape reverses it
+  (`leaveCasino`, camera fadeIn while it zooms back out; whole-number zoom, roundPixels and follow restored); reduced
+  motion = a plain 250 ms fade. The table: Kara y Krus on the ui.casinoFelt 9-slice (7 px rim) at a whole-number scale
+  (3×, phones 2×) under a row of casino lights; ui.coinFlip.sides picks the flip by the landed side and the coin rests
+  on that sheet's last frame (there's no faces sheet); fx `coin-burst` on a win; a raid raises ui.tanodBust big at the
+  bottom centre with fx `siren` over his head, holds 3 s, flashes the screen faint red/blue, then leaves the casino by
+  itself (the jail flow takes over).
+  Bot `POST /town/gamble` (`web/town-casino.ts`); `/gamble` and the Casino share `gambleFor` (`games/gamble.ts`,
+  tested). Bet feed lines carry the gambler's town `playerId` and `amount`: a win of 50+ bursts coins over them in town,
+  a bust shows the siren (`Character.flash()`). Dev: `&win=1` / `&lose=1` / `&bust=1`.
 - Moderation (`/town mute|unmute|kick|filter`, mods/admins; bot `web/town-mod.ts`, kv 'town-moderation'): mutes block
   town chat, kicks close the socket (4001, back-at time) and refuse rejoining, blocked words become *** (whole words,
   repeated letters). Actions are logged in the admin channel. The word list lives only in the database.

@@ -1,19 +1,34 @@
 import type { TownCoinSide, TownGambleResponse } from '@mikazuki/shared';
 import { playSound } from '../audio/sound';
 import { fakeLogin, loadMe } from '../session';
-import { installPixelTiles } from './pixel-tiles';
-import { coinIcon, el, showPopup } from './reward';
+import { coinIcon } from './reward';
 
-// 🎰 The Casino (left click the casino): Kara y Krus at a felt table under the casino lights. Pick a bet, call Kara or
-// Krus, and the peso flips (POST /town/gamble: /gamble's odds with the gambling channel's low raid chance). It lands
-// on a side and pays or takes the bet — or, now and then, the Tanod pops up mid-flip ("Huli ka!"), the table flashes red
-// and blue, and you're off to jail. The coin, its faces and the Tanod come from the manifest (ui.coinFlip, coinFaces,
-// tanodBust, casinoFelt); until that art exists they're drawn in code (ui/pixel-tiles.ts).
+// 🎰 The casino screen: Kara y Krus on a full-screen felt table under the casino lights (the town scene zooms in to the
+// casino's door and fades out first; see TownScene.enterCasino). The peso sits in the middle; pick a bet, press Kara or
+// Krus, and the coin flips — the flip for the side it lands on (ui.coinFlip.sides), ticking as it spins and clinking
+// as it lands — and rests on that face (the flip's last cell). A win plays the win sound, then the coin's ka-ching, and
+// bursts coins over it (fx coin-burst); a loss is a line of text and a soft sound. A raid (the Tanod busts the round):
+// his whistle, the Tanod rising big at the bottom centre with the siren looping over his head; he holds for 3 s while
+// the screen flashes faint red and blue, then you're taken out of the casino (and the jail takes over).
+// The bets are the bot's (POST /town/gamble: /gamble's odds at the gambling channel's low raid chance). Everything is
+// pixel art at whole-number scales; text is HTML in Pixelify Sans. Your profile (with Settings), the chat and the system
+// feed stay over the table. Leave (or Escape) hands back to the town.
+
+/** A horizontal strip of same-size cells (a sprite sheet) in the page. */
+export interface Strip {
+  url: string;
+  w: number;
+  h: number;
+  frames: number;
+  fps: number;
+}
 
 export interface CasinoArt {
-  coinFlip?: { url: string; size: [number, number]; frames: number; fps: number };
-  coinFaces?: { url: string; size: [number, number]; frames: string[] };
-  tanodBust?: { url: string; size: [number, number]; frames: number; fps: number };
+  /** The flip for each side the coin can land on; each ends on that face, which is the coin at rest. */
+  flips?: Record<TownCoinSide, Strip>;
+  tanod?: Strip;
+  siren?: Strip;
+  burst?: Strip;
   felt?: { url: string; slice: number };
 }
 
@@ -23,10 +38,19 @@ export function setCasinoArt(a: CasinoArt): void {
 }
 
 const CHIPS = [1, 5, 10, 25, 50];
-const FLIP_MS = 1100; // at least this long, so the flip reads even when the bot answers at once
-const COIN_SCALE = 4; // the stand-in coin is 16 px: 64 px on screen
+const RAID_HOLD_MS = 3000; // after the Tanod's animation, the raid holds this long (flashing) before you're taken out
+const SPIN_TICK_MS = 120; // the spin's tick repeats this often while the coin flips
+const BULBS = 15; // the casino lights along the top edge
 const side = (s: TownCoinSide) => (s === 'kara' ? 'Kara' : 'Krus');
+const kowens = (n: number) => `${n.toLocaleString()} ${n === 1 ? 'Kowen' : 'Kowens'}`;
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
 
 async function gamble(bet: number, call: TownCoinSide): Promise<TownGambleResponse | null> {
   if (fakeLogin()) return fakeGamble(bet, call);
@@ -39,192 +63,256 @@ async function gamble(bet: number, call: TownCoinSide): Promise<TownGambleRespon
   return res?.ok ? ((await res.json()) as TownGambleResponse) : null;
 }
 
-/** The coin at rest showing a face: the coin-faces art, else the drawn stand-in. */
-function face(node: HTMLElement, s: TownCoinSide): void {
-  const f = art.coinFaces;
-  const i = f ? f.frames.indexOf(s) : -1;
-  if (f && i >= 0) {
-    const scale = Math.max(1, Math.floor((16 * COIN_SCALE) / f.size[0]));
-    node.style.backgroundImage = `url("${f.url}")`;
-    node.style.backgroundSize = `${f.size[0] * f.frames.length * scale}px ${f.size[1] * scale}px`;
-    node.style.backgroundPosition = `${-i * f.size[0] * scale}px 0`;
-    node.style.width = `${f.size[0] * scale}px`;
-    node.style.height = `${f.size[1] * scale}px`;
-  } else {
-    node.style.backgroundImage = `var(--px-coin-${s})`;
-    node.style.backgroundSize = `${16 * COIN_SCALE}px ${16 * COIN_SCALE}px`;
-    node.style.backgroundPosition = '0 0';
-    node.style.width = node.style.height = `${16 * COIN_SCALE}px`;
-  }
+/** Shows one cell of a strip in `node` at `scale`×. */
+function cell(node: HTMLElement, s: Strip, frame: number, scale: number): void {
+  node.style.backgroundImage = `url("${s.url}")`;
+  node.style.backgroundSize = `${s.w * s.frames * scale}px ${s.h * scale}px`;
+  node.style.backgroundPosition = `${-frame * s.w * scale}px 0`;
+  node.style.width = `${s.w * scale}px`;
+  node.style.height = `${s.h * scale}px`;
 }
 
-/** The coin flipping (until `stop` is called): the flip sheet, else the stand-in squashing between its faces. */
-function flip(node: HTMLElement): () => void {
-  const f = art.coinFlip;
-  node.className = 'cs-coin cs-flying';
-  if (!f) {
-    // The stand-in squashes flat and back (CSS) and shows the other face at each half turn.
-    node.classList.add('cs-spin');
-    face(node, 'kara');
-    let n = 0;
-    const t = setInterval(() => face(node, ++n % 2 ? 'krus' : 'kara'), 140);
-    return () => clearInterval(t);
-  }
-  const scale = Math.max(1, Math.floor((16 * COIN_SCALE) / f.size[0]));
-  node.style.backgroundImage = `url("${f.url}")`;
-  node.style.backgroundSize = `${f.size[0] * f.frames * scale}px ${f.size[1] * scale}px`;
-  node.style.width = `${f.size[0] * scale}px`;
-  node.style.height = `${f.size[1] * scale}px`;
-  let n = 0;
-  const t = setInterval(() => {
-    node.style.backgroundPosition = `${-(n % f.frames) * f.size[0] * scale}px 0`;
-    n++;
-  }, 1000 / f.fps);
-  return () => clearInterval(t);
+/** Plays a strip once (holding its last cell) or looping until stopped. `done` resolves when a once-through ends. */
+function play(node: HTMLElement, s: Strip, scale: number, loop: boolean): { stop: () => void; done: Promise<void> } {
+  let frame = 0;
+  let timer: ReturnType<typeof setInterval> | undefined;
+  cell(node, s, 0, scale);
+  const done = new Promise<void>((resolve) => {
+    timer = setInterval(() => {
+      frame++;
+      if (frame >= s.frames) {
+        if (!loop) {
+          clearInterval(timer);
+          return resolve();
+        }
+        frame = 0;
+      }
+      cell(node, s, frame, scale);
+    }, 1000 / s.fps);
+  });
+  return { stop: () => clearInterval(timer), done };
 }
 
-/** "Huli ka!": the Tanod pops up over the table (the bust art, else a drawn stand-in) while the table flashes. */
-function tanod(stage: HTMLElement): void {
-  const pop = el('div', 'cs-tanod');
-  const t = art.tanodBust;
-  if (t) {
-    const scale = 3;
-    const pic = el('div', 'cs-tanod-art');
-    pic.style.backgroundImage = `url("${t.url}")`;
-    pic.style.backgroundSize = `${t.size[0] * t.frames * scale}px ${t.size[1] * scale}px`;
-    pic.style.width = `${t.size[0] * scale}px`;
-    pic.style.height = `${t.size[1] * scale}px`;
-    let n = 0;
-    const timer = setInterval(() => {
-      pic.style.backgroundPosition = `${-Math.min(n, t.frames - 1) * t.size[0] * scale}px 0`;
-      if (++n >= t.frames) clearInterval(timer); // hold the last frame
-    }, 1000 / t.fps);
-    pop.append(pic);
-  }
-  pop.append(el('div', 'cs-huli', 'Huli ka!'));
-  stage.append(pop);
-}
+/** The table's whole-number scale: 3× where there's room, else 2× (phones). The coin, its flips and the coin burst
+ *  are drawn bigger: 6× on the big table, 3× on phones (room for the chat under it). */
+const tableScale = () => (window.innerWidth >= 900 && window.innerHeight >= 680 ? 3 : 2);
+const coinScale = (table: number) => (table === 3 ? 6 : 3);
 
-export function showCasino(): void {
-  installPixelTiles();
-  const stage = el('div', 'cs-stage');
-  const coin = el('div', 'cs-coin');
-  face(coin, 'kara');
-  stage.append(coin);
-  const result = el('div', 'cs-result', 'Call it: Kara or Krus?');
+let open: { close: () => void } | null = null;
+
+/** Opens the casino screen over the town; `leave` runs when the player leaves (the button or Escape). */
+export function openCasino(leave: () => void): void {
+  if (open) return;
+  const root = el('div');
+  root.id = 'casino-screen';
+  root.setAttribute('role', 'dialog');
+  root.setAttribute('aria-label', 'Kara y Krus');
+  const table = el('div', 'cz-table');
+  if (art.felt) {
+    table.classList.add('cz-felt');
+    table.style.setProperty('--felt', `url("${art.felt.url}")`);
+    table.style.setProperty('--felt-slice', String(art.felt.slice));
+  }
+
+  const head = el('div', 'cz-head');
+  const wallet = el('div', 'cz-wallet');
+  const leaveButton = el('button', 'cz-leave', 'Leave');
+  head.append(el('h1', 'cz-title', 'Kara y Krus'), wallet, leaveButton);
+
+  // The coin on the table, with the win's coin burst over it; Kara and Krus either side (under it when narrow).
+  const stage = el('div', 'cz-stage');
+  const coin = el('div', 'cz-coin');
+  const burst = el('div', 'cz-burst');
+  stage.append(coin, burst);
+  const kara = el('button', 'cz-call cz-kara', 'Kara');
+  const krus = el('button', 'cz-call cz-krus', 'Krus');
+  const row = el('div', 'cz-play');
+  row.append(kara, stage, krus);
+
+  const result = el('div', 'cz-result', 'Call it: Kara or Krus?');
   result.setAttribute('role', 'status');
 
-  const bet = el('input', 'cs-bet');
+  const bet = el('input', 'cz-bet');
   bet.type = 'number';
   bet.min = '1';
   bet.step = '1';
   bet.inputMode = 'numeric';
   bet.value = '5';
   bet.setAttribute('aria-label', 'Your bet in Kowens');
-  bet.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === 'Escape') e.stopPropagation(); // the pop-up closes on them otherwise
-    if (e.key === 'Escape') bet.blur();
-  });
-  const chips = el('div', 'cs-chips');
+  const chips = el('div', 'cz-chips');
   for (const n of CHIPS) {
-    const c = el('button', 'cs-chip', String(n));
+    const c = el('button', 'cz-chip', String(n));
     c.setAttribute('aria-label', `Bet ${n}`);
-    c.addEventListener('click', () => (bet.value = String(n)));
+    c.addEventListener('click', () => {
+      bet.value = String(n);
+      playSound('chip');
+    });
     chips.append(c);
   }
-  const betRow = el('div', 'cs-bet-row');
-  const betLabel = el('label', 'cs-bet-label', 'Bet');
+  const bets = el('div', 'cz-bets');
+  const betLabel = el('label', 'cz-bet-label', 'Bet');
   betLabel.append(bet);
-  betRow.append(betLabel, chips);
+  bets.append(betLabel, chips);
+  const rules = el('div', 'cz-rules', 'Win and your bet doubles (45%). Now and then (3%) the Tanod raids the table: the bet is taken and you spend 5 minutes in jail.');
 
-  const calls = el('div', 'cs-calls');
-  const kara = el('button', 'cs-call', 'Kara');
-  const krus = el('button', 'cs-call', 'Krus');
-  calls.append(kara, krus);
-  const wallet = el('div', 'cs-wallet');
-  const rules = el('div', 'cs-rules', 'Win and your bet doubles (45%). The Tanod raids the table now and then (3%): the bet is taken and you spend 5 minutes in jail.');
+  // The raid: the Tanod rising at the bottom centre of the screen with the siren over his head, and a red/blue flash.
+  const raidBox = el('div', 'cz-raid');
+  const siren = el('div', 'cz-siren');
+  const tanod = el('div', 'cz-tanod');
+  raidBox.append(siren, tanod);
+  const flash = el('div', 'cz-flash');
+
+  // The casino lights along the top edge: every other bulb lit, swapping.
+  const lights = el('div', 'cz-lights');
+  lights.setAttribute('aria-hidden', 'true');
+  for (let i = 0; i < BULBS; i++) lights.append(el('span', i % 2 ? 'cz-bulb cz-odd' : 'cz-bulb'));
+
+  table.append(lights, head, row, result, bets, rules);
+  root.append(table, flash, raidBox);
+  document.body.append(root);
+
+  let scale = tableScale();
+  let lastFace: TownCoinSide = 'kara';
+  const restFace = (s: TownCoinSide) => {
+    const f = art.flips?.[s];
+    if (f) cell(coin, f, f.frames - 1, coinScale(scale)); // each flip ends on its face
+    else coin.textContent = side(s);
+  };
+  const resize = () => {
+    scale = tableScale();
+    root.style.setProperty('--s', String(scale));
+    if (!coin.classList.contains('cz-flying')) restFace(lastFace);
+  };
+  resize();
+  window.addEventListener('resize', resize);
   const showWallet = (n: number) => wallet.replaceChildren(coinIcon(2), el('b', undefined, n.toLocaleString()), el('span', undefined, n === 1 ? ' Kowen' : ' Kowens'));
 
-  const wrap = el('div', 'cs-body');
-  wrap.append(stage, result, betRow, calls, wallet, rules);
-
   let busy = false;
-  const play = async (call: TownCoinSide) => {
-    if (busy) return;
+  let jailed = false;
+  const lock = () => (kara.disabled = krus.disabled = busy || jailed);
+  const say = (text: string, tone: '' | 'good' | 'bad' | 'bust' = '') => {
+    result.textContent = text;
+    result.className = `cz-result${tone ? ` cz-${tone}` : ''}`;
+  };
+
+  const raid = async (message: string) => {
+    const stopSiren = art.siren ? play(siren, art.siren, scale * 2, true).stop : () => {};
+    root.classList.add('cz-raiding');
+    playSound('busted');
+    say(`Busted! ${message}`, 'bust');
+    // He plays once and holds his last frame; then the screen flashes while he stays.
+    if (art.tanod) await play(tanod, art.tanod, scale * 2, false).done;
+    else tanod.textContent = 'Huli ka!';
+    root.classList.add('cz-flashing');
+    await wait(RAID_HOLD_MS);
+    stopSiren();
+    leave(); // off to jail: out of the casino, and the town's jail takes over
+  };
+
+  const call = async (choice: TownCoinSide) => {
+    if (busy || jailed) return;
     const n = Number(bet.value);
-    if (!Number.isInteger(n) || n < 1) {
-      result.textContent = 'Pick a bet first.';
-      result.className = 'cs-result cs-bad';
-      return;
-    }
+    if (!Number.isInteger(n) || n < 1) return say('Pick a bet first.', 'bad');
     busy = true;
-    kara.disabled = krus.disabled = true;
-    stage.querySelector('.cs-tanod')?.remove();
-    stage.classList.remove('cs-raid');
-    result.textContent = `${side(call)}…`;
-    result.className = 'cs-result';
-    playSound('chip');
-    const stop = flip(coin);
-    const [res] = await Promise.all([gamble(n, call), wait(FLIP_MS)]);
-    stop();
-    coin.className = 'cs-coin';
-    busy = false;
-    kara.disabled = krus.disabled = false;
+    lock();
+    burst.classList.remove('cz-on');
+    say(`${side(choice)}…`);
+    const res = await gamble(n, choice);
     if (!res) {
-      face(coin, call);
+      busy = false;
+      lock();
       playSound('error');
-      result.textContent = "Couldn't reach the table. Try again in a moment.";
-      result.className = 'cs-result cs-bad';
-      return;
+      return say("Couldn't reach the table. Try again in a moment.", 'bad');
     }
     showWallet(res.kowens);
     if (!res.ok) {
-      face(coin, call);
+      busy = false;
+      lock();
       playSound('error');
-      result.textContent = res.message;
-      result.className = 'cs-result cs-bad';
-      return;
+      return say(res.message, 'bad');
     }
     if (res.outcome === 'bust') {
-      coin.classList.add('cs-taken');
-      stage.classList.add('cs-raid');
-      tanod(stage);
-      playSound('error');
-      result.textContent = res.message;
-      result.className = 'cs-result cs-bust';
-      kara.disabled = krus.disabled = true; // off to jail
-    } else {
-      face(coin, res.landed ?? call);
-      coin.classList.add(res.outcome === 'win' ? 'cs-won' : 'cs-lost');
-      playSound(res.outcome === 'win' ? 'coin' : 'card');
-      result.textContent = res.message;
-      result.className = `cs-result ${res.outcome === 'win' ? 'cs-good' : 'cs-bad'}`;
+      jailed = true;
+      await raid(res.message);
+      busy = false;
+      lock();
+      window.dispatchEvent(new Event('mk-wallet'));
+      return;
     }
+    // The flip for the side it landed on (ticking while it spins), then that face at rest.
+    const landed = res.landed ?? choice;
+    const flip = art.flips?.[landed];
+    if (flip) {
+      coin.classList.add('cz-flying');
+      playSound('flip-spin');
+      const tick = setInterval(() => playSound('flip-spin'), SPIN_TICK_MS);
+      await play(coin, flip, coinScale(scale), false).done;
+      clearInterval(tick);
+      coin.classList.remove('cz-flying');
+    }
+    playSound('flip-land');
+    lastFace = landed;
+    restFace(landed);
+    if (res.outcome === 'win') {
+      if (art.burst) {
+        burst.classList.add('cz-on');
+        void play(burst, art.burst, coinScale(scale), false).done.then(() => burst.classList.remove('cz-on'));
+      }
+      playSound('casino-win');
+      setTimeout(() => playSound('coin'), 220); // ka-ching
+      say(res.message, 'good');
+    } else {
+      playSound('casino-lose');
+      say(res.message, 'bad');
+    }
+    busy = false;
+    lock();
     window.dispatchEvent(new Event('mk-wallet')); // the HUD's Kowens
   };
-  kara.addEventListener('click', () => void play('kara'));
-  krus.addEventListener('click', () => void play('krus'));
+  kara.addEventListener('click', () => void call('kara'));
+  krus.addEventListener('click', () => void call('krus'));
 
-  void showPopup({ title: 'Kara y Krus', body: [wrap], button: 'Leave', celebrate: false, lights: true, sound: 'card' });
-  if (art.felt) {
-    const card = wrap.closest('.rw-card') as HTMLElement | null;
-    card?.style.setProperty('--felt', `url("${art.felt.url}")`);
-    card?.style.setProperty('--felt-slice', String(art.felt.slice));
-    card?.classList.add('cs-felt-art');
-  }
+  // Escape leaves (and no other Escape handler hears it) — unless it's for the chat or Settings, which stay over the
+  // table; Enter in the bet stays there.
+  const keys = (e: KeyboardEvent) => {
+    const elsewhere = document.getElementById('settings') || (document.activeElement instanceof HTMLInputElement && document.activeElement !== bet);
+    if (e.key === 'Escape' && !elsewhere) {
+      e.preventDefault();
+      e.stopPropagation();
+      leave();
+    } else if (e.key === 'Enter' && document.activeElement === bet) e.stopPropagation();
+  };
+  document.addEventListener('keydown', keys, true);
+  leaveButton.addEventListener('click', () => leave());
+
+  open = {
+    close: () => {
+      document.removeEventListener('keydown', keys, true);
+      window.removeEventListener('resize', resize);
+      root.remove();
+      open = null;
+    },
+  };
+
   void loadMe(true).then((me) => {
-    if (me.status === 'ok') {
-      showWallet(me.me.kowens);
-      if (me.me.status === 'jailed') {
-        kara.disabled = krus.disabled = true;
-        result.textContent = "You're in jail. No gambling till you're out.";
-        result.className = 'cs-result cs-bad';
-      }
-    } else {
-      kara.disabled = krus.disabled = true;
-      result.textContent = 'Log in to play.';
+    if (me.status !== 'ok') {
+      jailed = true;
+      lock();
+      return say('Log in to play.', 'bad');
+    }
+    showWallet(me.me.kowens);
+    if (me.me.status === 'jailed') {
+      jailed = true;
+      lock();
+      say("You're in jail. No gambling till you're out.", 'bad');
     }
   });
+  leaveButton.focus();
+}
+
+/** Removes the casino screen (the town has faded to navy over it first). */
+export function closeCasino(): void {
+  open?.close();
 }
 
 // ── Dev: a pretend table (no bot behind the dev server). &bust=1 / &win=1 / &lose=1 force the outcome. ──
@@ -235,15 +323,15 @@ const fakeState = { kowens: Number(q.get('kowens') ?? 1250), jailed: false };
 function fakeGamble(bet: number, call: TownCoinSide): TownGambleResponse {
   const odds = { winChance: 0.45, bustChance: 0.03 };
   if (fakeState.jailed) return { ok: false, message: "You're in jail. No gambling till you're out.", kowens: fakeState.kowens, ...odds };
-  if (bet > fakeState.kowens) return { ok: false, message: `You only have ${fakeState.kowens} Kowens.`, kowens: fakeState.kowens, ...odds };
+  if (bet > fakeState.kowens) return { ok: false, message: `You only have ${kowens(fakeState.kowens)}.`, kowens: fakeState.kowens, ...odds };
   const r = Math.random();
   const outcome = q.has('bust') ? 'bust' : q.has('win') ? 'win' : q.has('lose') ? 'lose' : r < 0.03 ? 'bust' : r < 0.48 ? 'win' : 'lose';
   if (outcome === 'bust') {
     fakeState.kowens -= bet;
     fakeState.jailed = true;
-    return { ok: true, outcome, bet, message: `The Tanod raided the table: ${bet} Kowens confiscated and 5 minutes in jail.`, kowens: fakeState.kowens, ...odds };
+    return { ok: true, outcome, bet, message: `The Tanod raided the table: ${kowens(bet)} confiscated and 5 minutes in jail.`, kowens: fakeState.kowens, ...odds };
   }
   const landed: TownCoinSide = outcome === 'win' ? call : call === 'kara' ? 'krus' : 'kara';
   fakeState.kowens += outcome === 'win' ? bet : -bet;
-  return { ok: true, outcome, landed, bet, message: outcome === 'win' ? `${side(call)}! You won ${bet} Kowens.` : `${side(landed)}. You lost ${bet} Kowens.`, kowens: fakeState.kowens, ...odds };
+  return { ok: true, outcome, landed, bet, message: outcome === 'win' ? `${side(call)}! You won ${kowens(bet)}.` : `${side(landed)}. You lost ${kowens(bet)}.`, kowens: fakeState.kowens, ...odds };
 }

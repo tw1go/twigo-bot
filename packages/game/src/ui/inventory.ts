@@ -19,6 +19,7 @@ const inTab = (tab: Tab, it: TownBagItem) => tab === 'all' || (tab === 'dug') ==
 
 /** True while a page field has the keyboard (chat, a pop-up's input), so B is a letter there. */
 function typing(): boolean {
+  if (document.body.classList.contains('town-locked')) return true; // in the casino
   const el = document.activeElement as HTMLElement | null;
   return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
 }
