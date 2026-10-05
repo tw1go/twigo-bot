@@ -11,7 +11,7 @@ const plural = (n: number, one: string, many: string) => `${n.toLocaleString()} 
 const kowens = (n: number) => plural(n, 'Kowen', 'Kowens');
 
 /** "2h 05m", "4m 09s", "now". */
-function countdown(ms: number): string {
+export function countdown(ms: number): string {
   if (ms <= 0) return 'now';
   const s = Math.floor(ms / 1000);
   const h = Math.floor(s / 3600);
@@ -22,7 +22,8 @@ function countdown(ms: number): string {
 
 const clock = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
-async function load(): Promise<TownJackpotResponse | null> {
+/** The booth as the viewer sees it (dev: the pretend booth). */
+export async function loadJackpot(): Promise<TownJackpotResponse | null> {
   if (fakeLogin()) return { ...fake };
   const res = await fetch('/town/jackpot', { credentials: 'same-origin' }).catch(() => null);
   return res?.ok ? ((await res.json()) as TownJackpotResponse) : null;
@@ -146,14 +147,14 @@ export function showJackpot(): void {
     tick();
     if (state && !drawn && Date.now() > state.nextDraw + 15_000) {
       drawn = true;
-      void load().then((j) => {
+      void loadJackpot().then((j) => {
         drawn = false;
         if (j && wrap.isConnected) render(j);
       });
     }
   }, 1000);
 
-  void load().then((j) => {
+  void loadJackpot().then((j) => {
     if (j) render(j);
     else draw.textContent = "Couldn't load the jackpot. Try again in a moment.";
   });

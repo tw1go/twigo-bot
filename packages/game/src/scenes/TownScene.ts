@@ -332,6 +332,7 @@ export class TownScene extends Phaser.Scene {
       shovel: this.M.ui.shovelIcon?.file ? asset(this.M.ui.shovelIcon.file) : null,
       gear: this.M.ui.settingsIcon?.file ? asset(this.M.ui.settingsIcon.file) : null,
       megaphone: this.M.ui.newsIcon?.file ? asset(this.M.ui.newsIcon.file) : null,
+      ticket: this.M.ui.jackpotIcon?.file ? asset(this.M.ui.jackpotIcon.file) : null,
     });
   }
 

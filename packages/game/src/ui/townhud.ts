@@ -2,6 +2,7 @@ import type { MeDig, MeResponse, PresenceStatus, PreregStatus } from '@mikazuki/
 import { renderPrereg } from '../hud';
 import { fakeLogin, loadMe } from '../session';
 import { playSound } from '../audio/sound';
+import { jackpotTimer } from './jackpot-timer';
 import { hasUnread, loadNews, showNews } from './news';
 import { showSettings } from './settings';
 
@@ -26,6 +27,8 @@ export interface TownHudOptions {
   gear: string | null;
   /** The news button's megaphone (manifest ui.newsIcon). */
   megaphone: string | null;
+  /** The jackpot counter's icon (manifest ui.jackpotIcon); the Kowen coin without it. */
+  ticket: string | null;
 }
 
 /** One frame of a strip of square frames. */
@@ -118,12 +121,26 @@ export function mountTownHud(o: TownHudOptions): void {
   news.title = 'News';
   news.addEventListener('click', () => showNews({ onSeen: () => (unread.hidden = true) }));
   if (o.me || fakeLogin()) void loadNews().then((n) => (unread.hidden = !n || !hasUnread(n)));
-  // Top left: the profile with the Kowens and shovel counters beside it; top right: News and Settings.
+  // Top left: the profile with the Kowens and shovel counters beside it; top right: the jackpot counter, News and Settings.
   const left = el('div', 'th-left');
   const row = el('div', 'th-row');
   row.append(profile);
   left.append(row);
   const corner = el('div', 'th-corner');
+  if (o.me || fakeLogin()) {
+    // The jackpot counter, left of News: the jackpot icon, else the Kowen coin.
+    let icon: HTMLElement;
+    if (o.ticket) {
+      icon = el('img', 'jt-icon');
+      (icon as HTMLImageElement).src = o.ticket;
+      (icon as HTMLImageElement).alt = '';
+    } else {
+      icon = el('span', 'th-coin jt-icon');
+      if (o.coin) spriteStyle(icon, o.coin, 2);
+      else icon.textContent = '🪙';
+    }
+    corner.append(jackpotTimer(icon));
+  }
   corner.append(news, settings);
   root.append(left, corner);
 

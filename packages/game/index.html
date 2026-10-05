@@ -156,6 +156,26 @@
       #town-hud .th-corner { display: flex; gap: 8px; }
       #town-hud .th-news { position: relative; }
       #town-hud .th-news-dot { position: absolute; top: -5px; right: -5px; width: 12px; height: 12px; border: 2px solid #111827; border-radius: 50%; background: #F43F5E; }
+      /* The jackpot counter (ui/jackpot-timer.ts): a little event board left of News, casino lights on top; gold and
+         pulsing in the last 10 minutes. Phones show only the countdown. */
+      #town-hud .th-jackpot { position: relative; display: grid; grid-template-columns: auto auto; align-items: center; column-gap: 8px; min-width: 96px; height: 44px; box-sizing: border-box; padding: 9px 10px 3px; border: 2px solid #B45309; border-radius: 2px; background: #111827; color: #E6E9F2; font: inherit; text-align: left; }
+      #town-hud .th-jackpot:hover { border-color: #F8BF27; background: #1E1B3A; }
+      #town-hud .jt-lights { position: absolute; top: -5px; left: 8px; right: 8px; display: flex; justify-content: space-between; }
+      #town-hud .jt-bulb { width: 6px; height: 6px; border-radius: 50%; box-shadow: 0 0 0 2px #1E1B3A; background: radial-gradient(circle at 35% 30%, #FFFDF2 0 14%, #EFE3B4 32%, #CDB878 70%, #9C8748 100%); animation: rw-blink 1s steps(1) infinite; }
+      #town-hud .jt-odd { animation-delay: -0.5s; }
+      #town-hud .jt-label { grid-column: 1 / -1; font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #F8BF27; line-height: 1; }
+      #town-hud .jt-row { display: flex; align-items: center; gap: 4px; }
+      #town-hud .jt-icon { flex: none; width: 16px; height: 16px; image-rendering: pixelated; }
+      #town-hud .jt-pot { font-size: 15px; font-weight: 700; color: #FDE68A; line-height: 1.2; }
+      #town-hud .jt-time { font-size: 13px; font-weight: 700; color: #E6E9F2; line-height: 1.2; font-variant-numeric: tabular-nums; }
+      #town-hud .jt-soon { border-color: #F8BF27; animation: jt-pulse 1s ease-in-out infinite; }
+      #town-hud .jt-soon .jt-time { color: #FDE68A; }
+      @keyframes jt-pulse { 50% { box-shadow: 0 0 10px 2px rgba(248, 191, 39, 0.55); } }
+      @media (max-width: 560px) {
+        #town-hud .th-jackpot { grid-template-columns: auto; min-width: 0; }
+        #town-hud .jt-pot-row { display: none; }
+      }
+      @media (prefers-reduced-motion: reduce) { #town-hud .jt-bulb, #town-hud .jt-soon { animation: none; } }
       body:has(#reward .nw-body) #town-hud .th-corner { z-index: 5; } /* over the dimmed town, so the megaphone closes it again */
       #settings { position: fixed; inset: 0; z-index: 4; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(4, 4, 12, 0.6); font: 15px/1.4 var(--ui-font); }
       #settings .st-card { position: relative; width: min(340px, calc(100vw - 32px)); box-sizing: border-box; padding: 20px 22px; border: 3px solid #7C2AE8; background: #fff; color: #1E1B3A; }
