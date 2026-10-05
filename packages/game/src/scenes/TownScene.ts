@@ -58,6 +58,9 @@ const INTRO_MS = 1600;
 /** From a standstill, a direction key held shorter than this only turns the player. */
 const TURN_HOLD_MS = 150;
 const FADE_MS = 1100;
+/** Dragging the map peeks around: it gives with resistance up to about this far (screen px), then snaps back. */
+const PEEK_PX = 100;
+const PEEK_BACK_MS = 220;
 
 /** Everyone's title until they're given another (the bot's web/titles.ts has the list). */
 const TOWNFOLK = { name: 'Townfolk', color: '#B794F6' }; // whole steps only; 1× showed too much of the town at once
@@ -125,6 +128,8 @@ export class TownScene extends Phaser.Scene {
   private byKeys = false;
   /** The camera glides after the player (off while debugging a fixed view). */
   follow = true;
+  /** A drag on the map peeking around (the camera stops following till it has snapped back). */
+  private peek: { x: number; y: number; scrollX: number; scrollY: number; dragging: boolean; back: Phaser.Tweens.Tween | null } | null = null;
 
   constructor() {
     super('town');
@@ -276,7 +281,7 @@ export class TownScene extends Phaser.Scene {
     this.others.update(delta);
     hearFrom(this.player.tile);
     this.tellServer();
-    if (this.follow && !this.intro && !this.inside) this.followPlayer();
+    if (this.follow && !this.intro && !this.inside && !this.peek) this.followPlayer();
     this.culler.update(this.cameras.main.worldView);
     this.objects.setLamps(this.lampsOn); // glows follow their lamp's visibility
     if (time >= this.nextSkyCheck) {
@@ -635,6 +640,56 @@ export class TownScene extends Phaser.Scene {
 
   // ── Input ──
 
+  /**
+   * Click (or touch) and drag the map: the view follows the pointer with growing resistance, never more than PEEK_PX,
+   * and glides back where it was on letting go (instantly with reduced motion). Left button or touch only; a drag is
+   * never a click (POINTER_UP ignores anything that moved more than 8 px).
+   */
+  private setupPeek(): void {
+    const cam = this.cameras.main;
+    const settle = () => {
+      const k = this.peek;
+      if (!k || k.back) return;
+      k.dragging = false;
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        cam.setScroll(k.scrollX, k.scrollY);
+        this.peek = null;
+        return;
+      }
+      k.back = this.tweens.add({
+        targets: cam,
+        scrollX: k.scrollX,
+        scrollY: k.scrollY,
+        duration: PEEK_BACK_MS,
+        ease: 'Cubic.easeOut',
+        onComplete: () => {
+          cam.setScroll(Math.round(k.scrollX), Math.round(k.scrollY));
+          this.peek = null;
+        },
+      });
+    };
+    this.input.on(Phaser.Input.Events.POINTER_DOWN, (p: Phaser.Input.Pointer) => {
+      if (this.peek || this.intro || this.inside || (!p.wasTouch && !p.leftButtonDown())) return;
+      this.peek = { x: p.x, y: p.y, scrollX: cam.scrollX, scrollY: cam.scrollY, dragging: false, back: null };
+    });
+    this.input.on(Phaser.Input.Events.POINTER_MOVE, (p: Phaser.Input.Pointer) => {
+      const k = this.peek;
+      if (!k || k.back || !p.isDown) return;
+      const dx = p.x - k.x;
+      const dy = p.y - k.y;
+      const d = Math.hypot(dx, dy);
+      if (!k.dragging && d <= 8) return; // still a click
+      k.dragging = true;
+      // Rubber band: 1:1 at first, then stiffer, approaching PEEK_PX.
+      const pull = PEEK_PX * (1 - Math.exp(-d / PEEK_PX));
+      const s = d ? pull / d / cam.zoom : 0;
+      cam.setScroll(Math.round(k.scrollX - dx * s), Math.round(k.scrollY - dy * s));
+    });
+    this.input.on(Phaser.Input.Events.POINTER_UP, () => (this.peek?.dragging ? settle() : this.peek && !this.peek.back && (this.peek = null)));
+    this.input.on(Phaser.Input.Events.POINTER_UP_OUTSIDE, settle);
+    this.input.on(Phaser.Input.Events.GAME_OUT, () => this.peek?.dragging && settle());
+  }
+
   private setupInput(): void {
     // Benches are left-clickable too (sit), so they get the hand cursor.
     for (const b of this.objects.benches) b.sprite.setInteractive({ pixelPerfect: true, cursor: cursor('hand', this.cameras.main.zoom) });
@@ -654,6 +709,7 @@ export class TownScene extends Phaser.Scene {
     // Left click uses things (a building's door, a bench); right click only walks. A tap on a touch screen does
     // both, as there's no right button.
     this.input.mouse?.disableContextMenu();
+    this.setupPeek();
     this.input.on(Phaser.Input.Events.POINTER_UP, (p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
       if (p.getDistance() > 8) return; // a drag, not a click
       // Someone else's character: left click (or a tap) picks them for the player menu.
