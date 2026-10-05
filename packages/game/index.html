@@ -705,9 +705,10 @@
       #reward .nb-hint { margin: 10px 0 0; font-size: 12px; color: #7A6A55; }
       /* News (ui/news.ts; tabs share the bank's .bk-tabs): announcements and patch notes from Discord, each a fold-out
          post (the newest open). A fixed size, like the outpost. */
-      #reward .rw-card:has(.nw-body) { width: min(460px, calc(100vw - 32px)); }
+      #reward .rw-card:has(.nw-body) { width: min(640px, calc(100vw - 32px)); }
+      @media (min-width: 761px) { #reward:has(.nw-body) { padding-top: 96px; } } /* wide: clear of the jackpot counter and minimap above */
       #reward .nw-body { margin-bottom: 14px; text-align: left; font-size: 14px; color: #3D4256; }
-      #reward .nw-panel { height: min(420px, 55vh); overflow-x: hidden; overflow-y: auto; overflow-wrap: anywhere; }
+      #reward .nw-panel { height: min(420px, 55vh, calc(100vh - 340px)); overflow-x: hidden; overflow-y: auto; overflow-wrap: anywhere; }
       #reward .nw-note { height: 22px; min-height: 0; margin-top: 6px; overflow: hidden; }
       #reward .nw-post { margin-bottom: 8px; border: 2px solid #E2DDF3; border-radius: 2px; background: #FBFAFF; }
       #reward .nw-post[open] { border-color: #C4B5FD; background: #fff; }
