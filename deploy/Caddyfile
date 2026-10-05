@@ -1,9 +1,14 @@
-# Caddy config for the Mikazuki server. Replace twigo-bot.duckdns.org if the domain changes.
-#   /play/*  → the web game's static files (built by deploy.sh into /opt/twigo-bot/web/play)
-#   anything else → the bot's room API on 127.0.0.1:8787 (GET /leaderboard, POST /find, GET /health)
-twigo-bot.duckdns.org {
+# Caddy config for the Mikazuki server (Caddy gets the HTTPS certificates itself).
+#   twigo.dev            the web game and its API: / → /play/, /play/* → the game's static files (built by deploy.sh
+#                        into /opt/twigo-bot/web/play), anything else → the bot on 127.0.0.1:8787
+#   www.twigo.dev        → twigo.dev
+#   twigo-bot.duckdns.org the old address: the room API that tw1go.github.io calls (GET /leaderboard, POST /find,
+#                        GET /health) stays; everything else (the game, login) moves to twigo.dev, because the bot
+#                        only takes the game's requests from WEB_PUBLIC_URL.
+twigo.dev {
 	encode zstd gzip
 
+	redir / /play/ 308
 	redir /play /play/ 308
 	handle_path /play/* {
 		root * /opt/twigo-bot/web/play
@@ -20,5 +25,21 @@ twigo-bot.duckdns.org {
 
 	handle {
 		reverse_proxy 127.0.0.1:8787
+	}
+}
+
+www.twigo.dev {
+	redir https://twigo.dev{uri} 308
+}
+
+twigo-bot.duckdns.org {
+	encode zstd gzip
+
+	@room path /leaderboard /find /health
+	handle @room {
+		reverse_proxy 127.0.0.1:8787
+	}
+	handle {
+		redir https://twigo.dev{uri} 308
 	}
 }

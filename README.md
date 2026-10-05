@@ -215,15 +215,18 @@ Caddy serves the web game from `/opt/twigo-bot/web/play` at `/play` and proxies 
 
 ### Room API and the web game (HTTPS)
 
-The playroom site is HTTPS, so browsers only let it call an HTTPS address. Caddy provides one, with a free DuckDNS name:
+The playroom site is HTTPS, so browsers only let it call an HTTPS address. Caddy provides one. The game lives at
+**twigo.dev** (DNS at Cloudflare: an `A` record for `twigo.dev` and a `CNAME` `www` → `twigo.dev`, both **DNS only**,
+grey cloud, so Caddy gets its own certificates); the old `twigo-bot.duckdns.org` keeps the room API that
+tw1go.github.io calls and sends everything else to twigo.dev (`deploy/Caddyfile`).
 
-1. Get a name at <https://www.duckdns.org> (e.g. `twigo-bot.duckdns.org`) and point it at the server's public IP.
+1. Point a name at the server's public IP (first set up with a free DuckDNS name, e.g. `twigo-bot.duckdns.org`).
 2. Open TCP **80** and **443**: Oracle console → VCN → Security List → Ingress rules (0.0.0.0/0).
    `deploy/web-setup.sh` opens them in the server's own iptables too.
 3. `ssh ubuntu@SERVER 'sudo bash -s' < deploy/web-setup.sh twigo-bot.duckdns.org` — installs Caddy, which fetches
    the certificate, serves `/play`, and proxies everything else to the bot. `deploy/Caddyfile` is the same config.
 4. Set `WEB_PORT=8787` in `.env`, deploy, and `npm run deploy-commands` for `/claim`.
-5. Check: `curl https://twigo-bot.duckdns.org/health` → `ok`, and open `https://twigo-bot.duckdns.org/play/`.
+5. Check: `curl https://twigo.dev/health` → `ok`, and open `https://twigo.dev/play/`.
 
 #### Pre-registration (launch reward)
 
@@ -261,9 +264,9 @@ town's chat with a Discord mark. The last 20 lines are kept in memory for people
 intent when the channel is set). With login off, everyone
 goes straight in with a look saved in the browser.
 
-1. Developer Portal → your app → OAuth2 → Redirects: add `https://twigo-bot.duckdns.org/auth/callback`.
+1. Developer Portal → your app → OAuth2 → Redirects: add `https://twigo.dev/auth/callback`.
 2. Copy the client secret (Reset Secret if needed) into `.env` as `DISCORD_CLIENT_SECRET`, and set
-   `WEB_PUBLIC_URL=https://twigo-bot.duckdns.org`. Never commit or share the secret.
+   `WEB_PUBLIC_URL=https://twigo.dev`. Never commit or share the secret.
 3. Deploy. Without both values the login routes answer 404 and the game shows no login (screen or button).
 
 ## Adding a command

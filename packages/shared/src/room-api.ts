@@ -1,4 +1,5 @@
-// Response shapes of the twigo's-room API (the bot's src/web/server.ts), served at https://twigo-bot.duckdns.org.
+// Response shapes of the twigo's-room API (the bot's src/web/server.ts), served at https://twigo.dev
+// (and, for the room API, at the old https://twigo-bot.duckdns.org).
 
 /** One row of `GET /leaderboard`. */
 export interface LeaderboardRow {

@@ -25,7 +25,8 @@ done
 if command -v netfilter-persistent >/dev/null; then netfilter-persistent save; fi
 
 # Caddy fetches and renews the certificate itself; the bot stays on localhost. The game is served at /play.
-# (deploy/Caddyfile is the same config for twigo-bot.duckdns.org; keep the two in sync.)
+# (A first setup for one name. The live config is deploy/Caddyfile — twigo.dev, with the old DuckDNS name kept for
+# the room API — which deploy.sh installs whenever it changes.)
 mkdir -p /opt/twigo-bot/web/play
 cat > /etc/caddy/Caddyfile <<CADDY
 $DOMAIN {
