@@ -158,10 +158,10 @@ export async function hoodAction(client: Client, userId: string, action: 'steal'
   const intro = result.key ? `🗝️🔓 <@${userId}> used a **Master Key** to break through <@${owner}>'s Bakod!\n` : '';
   if (result.outcome === 'stole') {
     await post(client, `${intro}🥷 <@${userId}> sneaked into <@${owner}>'s house in the neighbourhood and stole **${result.amount}** ${kowen(result.amount)}! 💰`, pings);
-    feed('steal', `${me} robbed ${them}'s house: ${result.amount} ${kowen(result.amount)}`, 'win', { userId });
+    feed('steal', result.key ? `${me} broke through ${them}'s Bakod with a Master Key and robbed the house: ${result.amount} ${kowen(result.amount)}` : `${me} robbed ${them}'s house: ${result.amount} ${kowen(result.amount)}`, 'win', { userId });
     return done(true, `You got away with ${result.amount} ${kowen(result.amount)}!`, { stole: result.amount });
   }
   await post(client, `${intro}🚨 **CAUGHT!** The Tanod caught <@${userId}> breaking into <@${owner}>'s house! <@${userId}> pays <@${owner}> a fine of **${result.fine}** ${kowen(result.fine)} and spends **${result.minutes} minutes** in jail. 🚔`, pings);
-  feed('steal', `The Tanod caught ${me} breaking into ${them}'s house`, 'bust', { userId });
+  feed('steal', result.key ? `${me} broke through ${them}'s Bakod with a Master Key, but the Tanod caught them` : `The Tanod caught ${me} breaking into ${them}'s house`, 'bust', { userId });
   return done(true, `Huli ka! You pay ${them} a fine of ${result.fine} ${kowen(result.fine)} and spend ${result.minutes} minutes in jail.`, { busted: true });
 }

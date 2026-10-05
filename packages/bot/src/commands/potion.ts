@@ -1,6 +1,7 @@
 import { EmbedBuilder, MessageFlags, SlashCommandBuilder } from 'discord.js';
 import type { Command } from '../types.js';
 import { halveFence, fencedUntil } from '../credits/store.js';
+import { feed, townName } from '../web/town-feed.js';
 import { POTIONS, POTION_IDS, hintsLeft, nextHint, ownedPotions, startSwerte, startTago, swerteLeft, tagoUntil, usePotion, type PotionId } from '../potions/potions.js';
 
 const ts = (ms: number, style = 'R') => `<t:${Math.floor(ms / 1000)}:${style}>`;
@@ -58,6 +59,7 @@ export const potion: Command = {
 
     if (id === 'kalawang') {
       const until = halveFence(target!.id)!;
+      feed('steal', `${townName(me)} rusted ${townName(target!)}'s Bakod with a Kalawang Potion`, 'lose'); // the web town's system feed
       await interaction.reply({
         content: `🧪💥 ${me} threw a **Kalawang Potion** at ${target}'s 🧱 Bakod! Half of it rusted away 🟫\n-# Their Bakod now ends ${ts(until)}.`,
         allowedMentions: { users: [target!.id] },

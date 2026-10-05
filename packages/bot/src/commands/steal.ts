@@ -3,6 +3,7 @@ import type { Command } from '../types.js';
 import { blockIfJailed } from '../games/jail.js';
 import { STEAL_COOLDOWN_MS, STEAL_FINE, stealFrom } from '../games/steal.js';
 import { kowen } from '../kowens.js';
+import { feed, townName } from '../web/town-feed.js';
 
 // /steal: the rules are in games/steal.ts (shared with the neighbourhood's houses). In Discord a Master Key is used
 // by itself on a Bakod.
@@ -37,6 +38,11 @@ export const steal: Command = {
       }
     }
     const mentions = { users: [...new Set([thief.id, target.id])] };
+    // A Master Key used on a Bakod shows in the web town's system feed too.
+    const [me, them] = [townName(thief), townName(target)];
+    if (result.outcome === 'key-snapped') feed('steal', `${me}'s Master Key snapped on ${them}'s Bakod`, 'lose');
+    else if (result.key && result.outcome === 'stole') feed('steal', `${me} broke through ${them}'s Bakod with a Master Key and stole ${result.amount} ${kowen(result.amount)}`, 'win', { userId: thief.id });
+    else if (result.key) feed('steal', `${me} broke through ${them}'s Bakod with a Master Key, but the Tanod caught them`, 'bust', { userId: thief.id });
     if (result.outcome === 'key-snapped') {
       await interaction.reply({ content: `🗝️💥 ${thief} tried a **Master Key** on ${target}'s 🧱 Bakod… and the key **snapped**! The Bakod holds. 🔒`, allowedMentions: mentions });
       return;
