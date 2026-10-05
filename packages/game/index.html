@@ -157,7 +157,8 @@
       #town-hud .th-top, #town-hud .th-buttons { display: flex; align-items: flex-start; gap: 8px; }
       /* The minimap (ui/minimap.ts), top right above the buttons. */
       #minimap { display: block; padding: 4px; border: 2px solid #7C2AE8; background: rgba(17, 24, 39, 0.82); image-rendering: pixelated; }
-      body.town-locked #minimap { visibility: hidden; } /* not in the casino */
+      /* Not in the casino: out of the layout too, so News and Settings go back up top, clear of the casino's Leave. */
+      body.town-locked #minimap, body.town-locked #town-hud .th-jackpot { display: none; }
       #town-hud .th-news { position: relative; }
       #town-hud .th-news-dot { position: absolute; top: -5px; right: -5px; width: 12px; height: 12px; border: 2px solid #111827; border-radius: 50%; background: #F43F5E; }
       /* The jackpot counter (ui/jackpot-timer.ts): a little event board left of News, casino lights on top; gold and
