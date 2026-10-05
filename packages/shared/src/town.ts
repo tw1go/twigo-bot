@@ -130,6 +130,8 @@ export type TownServerMessage =
   | { t: 'stay'; stay: TownStayInfo }
   /** Someone dissed, praised or judged someone (the player menu): `id` says the line (the target's name is in it). */
   | { t: 'verdict'; id: string; kind: 'roast' | 'praise'; judged: boolean; text: string }
+  /** Someone changed their look or title at the Parlor (you too: `id` is yours). */
+  | { t: 'look'; id: string; outfit: OutfitData; title: TitleData }
   /** Someone was jailed or released (you too: `id` is yours). */
   | { t: 'jailed'; id: string; on: boolean }
   /** Someone flexed an item from their bag (`id` says it; to everyone, them included). */

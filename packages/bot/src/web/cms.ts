@@ -11,7 +11,7 @@ import { jailedUntil } from '../games/jail.js';
 import { kowen } from '../kowens.js';
 import { isCmsUser, sessionUser } from './auth.js';
 import { getNickname } from './nickname.js';
-import { DEFAULT_TITLE, TITLES, giveTitle, isTitleColor, removeTitle, setTitle, titleHolders, titleIdOf } from './titles.js';
+import { DEFAULT_TITLE, DESCRIPTION_MAX, TITLES, giveTitle, isTitleColor, removeTitle, setTitle, titleHolders, titleIdOf } from './titles.js';
 import { townGift } from './town-feed.js';
 import { kickedUntil, mutedUntil } from './town-mod.js';
 import { forgetNews } from './town-news.js';
@@ -27,7 +27,7 @@ import type { Town } from './town.js';
 //   GET  <path>/api/me           who's logged in (401 → the page shows the login button)
 //   GET  <path>/api/overview     members, Kowens, who's in town, the jackpot
 //   GET  <path>/api/posts        POST { id?, title, body, bump? } · POST /api/posts/delete { id }
-//   GET  <path>/api/titles       POST { id, name, color } · POST /api/titles/delete { id }
+//   GET  <path>/api/titles       POST { id, name, color, description? } · POST /api/titles/delete { id }
 //   GET  <path>/api/shop         POST { id, cost: number | null, off }
 //   GET  <path>/api/players?q=   nickname or Discord ID; empty = the richest
 //   GET  <path>/api/player?id=   POST /api/player/kowens { id, amount, reason? } · POST /api/player/title { id, title }
@@ -193,24 +193,26 @@ export async function cms(client: Client, req: IncomingMessage, res: ServerRespo
     }
 
     case 'GET /api/titles':
-      return send(res, 200, { titles: titleList() });
+      return send(res, 200, { titles: titleList(), descriptionMax: DESCRIPTION_MAX });
     case 'POST /api/titles': {
       const id = str(body!.id);
       const name = str(body!.name);
       if (!SLUG.test(id) || id.length > 40) return bad('The id is lowercase letters, digits and dashes (e.g. lucky-digger).');
       if (!name || name.length > 32) return bad('The name needs 1–32 characters.');
       if (!isTitleColor(body!.color)) return bad('The colour is #RRGGBB or prismatic.');
+      const description = str(body!.description).replace(/\s+/g, ' ');
+      if (description.length > DESCRIPTION_MAX) return bad(`The description is at most ${DESCRIPTION_MAX} characters.`);
       const was = TITLES[id];
-      setTitle(id, { name, color: body!.color });
-      await log(client, who, `${was ? 'changed' : 'made'} the title **<${name}>** (${body!.color})`);
-      return send(res, 200, { titles: titleList() });
+      setTitle(id, { name, color: body!.color, description });
+      await log(client, who, `${was ? 'changed' : 'made'} the title **<${name}>** (${body!.color})${description ? `: ${description}` : ''}`);
+      return send(res, 200, { titles: titleList(), descriptionMax: DESCRIPTION_MAX });
     }
     case 'POST /api/titles/delete': {
       const id = str(body!.id);
       const title = TITLES[id];
       if (!title || !removeTitle(id)) return bad(id === DEFAULT_TITLE ? 'Townfolk stays: it is everyone’s default.' : 'No such title.');
       await log(client, who, `removed the title **<${title.name}>** (anyone wearing it shows Townfolk)`);
-      return send(res, 200, { titles: titleList() });
+      return send(res, 200, { titles: titleList(), descriptionMax: DESCRIPTION_MAX });
     }
 
     case 'GET /api/shop':

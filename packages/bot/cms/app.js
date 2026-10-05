@@ -170,14 +170,14 @@ const chip = (t) => h('span', { class: `title-chip${t.color === 'prismatic' ? ' 
 
 async function titles() {
   page('Titles', 'Shown under a player’s name in town. Give one to a player under Players (or /gift title for the built-in ones).');
-  let { titles: all } = await api('titles');
+  let { titles: all, descriptionMax } = await api('titles');
   const table = h('tbody');
   const form = h('div', { class: 'card' });
   main().append(h('div', { class: 'sections' }, h('div', { class: 'card table-wrap' }, h('table', null, h('thead', null, h('tr', null, h('th', null, 'Title'), h('th', null, 'Id'), h('th', { class: 'num' }, 'Wearing'), h('th'))), table)), form));
 
   function draw() {
     table.replaceChildren(...all.map((t) => h('tr', null,
-      h('td', null, chip(t)),
+      h('td', null, chip(t), h('div', { class: 'hint' }, t.description || 'No description')),
       h('td', null, h('span', { class: 'tag' }, t.id)),
       h('td', { class: 'num' }, fmt(t.holders)),
       h('td', { class: 'num' },
@@ -199,6 +199,12 @@ async function titles() {
   function edit(t) {
     const id = h('input', { value: t?.id ?? '', placeholder: 'lucky-digger', disabled: !!t });
     const name = h('input', { value: t?.name ?? '', maxlength: 32, placeholder: 'Lucky Digger' });
+    const about = h('textarea', { class: 'short', maxlength: descriptionMax, placeholder: 'Found an Epic-or-better item at the Mine.' });
+    about.value = t?.description ?? '';
+    const aboutCount = h('div', { class: 'hint' });
+    const countAbout = () => (aboutCount.textContent = `Shown when players hover the title at the Parlor. ${about.value.length} / ${descriptionMax}`);
+    about.addEventListener('input', countAbout);
+    countAbout();
     const prismatic = h('input', { type: 'checkbox', checked: t?.color === 'prismatic' });
     const color = h('input', { type: 'color', value: t && t.color !== 'prismatic' ? t.color : '#F8BF27' });
     const sample = h('span');
@@ -216,11 +222,12 @@ async function titles() {
       h('h2', null, t ? `Edit <${t.name}>` : 'New title'),
       h('label', null, 'Name'), name,
       h('label', null, 'Id'), id, h('div', { class: 'hint' }, 'Lowercase letters, digits and dashes. It can’t change later.'),
+      h('label', null, 'Description'), about, aboutCount,
       h('label', null, 'Colour'),
       h('div', { class: 'color-row' }, color, h('label', { style: 'margin:0;display:flex;gap:6px;align-items:center;color:inherit' }, prismatic, 'Prismatic (drifting rainbow)'), h('span', { class: 'spacer' }), sample),
       h('div', { class: 'actions' },
         h('button', { class: 'btn primary', onclick: (e) => act(e.currentTarget, async () => {
-          ({ titles: all } = await api('titles', { id: id.value.trim(), name: name.value, color: prismatic.checked ? 'prismatic' : color.value.toUpperCase() }));
+          ({ titles: all } = await api('titles', { id: id.value.trim(), name: name.value, color: prismatic.checked ? 'prismatic' : color.value.toUpperCase(), description: about.value }));
           toast(t ? 'Saved. Players see it from their next visit to town.' : 'Title made.');
           draw();
           edit(all.find((x) => x.id === id.value.trim()));

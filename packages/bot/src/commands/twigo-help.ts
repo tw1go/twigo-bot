@@ -3,6 +3,7 @@ import { LAUNCH_REWARD } from '../prereg/prereg.js';
 import type { Command } from '../types.js';
 import { config } from '../config.js';
 import { DAILY_CREDITS } from '../credits/store.js';
+import { LOOK_COST } from '../web/town-parlor.js';
 import { kowen } from '../kowens.js';
 
 // Discord rejects an embed field over 1,024 characters (that broke this command once). Sections are built from
@@ -69,6 +70,7 @@ export const twigoHelp: Command = {
         ]),
         ...section('💳 Spend & manage', [
           '`/redeem` — 🧱 Bakod, 🪏 Shovel, 🗝️ Master Key, 📢 Megaphone (`/m message` in the web town\'s chat runs it across everyone\'s screen), 🔐 Vault, 🧪 potions, 🎒 bags, or Crystal of Atlan passes 🎁',
+          `💇 **Parlor** (web town, beside the rewards shop): a new look for **${LOOK_COST}** Kowens, or show another of your titles (free)`,
           '`/potion use|list` — 🧪 Kalawang (rust a Bakod) · 🫥 Tago (no busts 30 min) · 🍀 Swerte (better digs) · 🍵 Marites (hints)',
           '`/give @someone amount` — give a friend Kowens (max 20 per day)',
           '`/vault deposit|withdraw|view` — 🔐 store up to 30% of your Kowens, safe from /steal & bail (Vault from `/redeem`, 50)',

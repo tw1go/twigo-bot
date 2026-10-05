@@ -274,6 +274,19 @@ export interface TownShopItem {
 /** POST /town/shop { id, quantity } → the shop afterwards, whether it worked, and what to tell the member. */
 export type TownShopBuyResponse = TownShopResponse & { ok: boolean; message: string };
 
+/** GET /town/parlor: the Parlor, where members change their look (costs Kowens) and which title they show (free). */
+export interface TownParlorResponse {
+  kowens: number;
+  /** Kowens a new look costs. */
+  lookCost: number;
+  outfit: OutfitData | null;
+  /** The titles the member has (Townfolk first, always), the one shown marked, with what each is for. */
+  titles: (TitleData & { id: string; worn: boolean; description?: string })[];
+}
+
+/** POST /town/parlor { action: 'look', outfit } | { action: 'title', id } → the parlor afterwards, and what happened. */
+export type TownParlorActionResponse = TownParlorResponse & { ok: boolean; message: string };
+
 /** GET /town/player?id= : another player in town, as /balance and /status show them, and what the viewer can give. */
 export interface TownPlayerInfo {
   name: string;

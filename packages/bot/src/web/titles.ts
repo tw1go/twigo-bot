@@ -5,10 +5,17 @@ import { db, kvLoad, kvSave } from '../db/db.js';
 // rainbow). Everyone is a Townfolk to begin with (that one isn't stored); others are given with /gift title (and
 // later earned as rewards) and land in the titles table, one of them equipped. A new title is announced once in
 // the game (announced = when), whichever device the member uses first. The CMS adds, changes and removes titles (kv
-// 'titles': the changes over these built-in ones; null = removed).
+// 'titles': the changes over these built-in ones; null = removed), with a description for each (what it's for, shown
+// at the Parlor; never sent with a player in town).
 
-const BUILT_IN: Record<string, TitleData> = {
-  townfolk: { name: 'Townfolk', color: '#B794F6' },
+export interface TitleDef extends TitleData {
+  description?: string;
+}
+
+export const DESCRIPTION_MAX = 140;
+
+const BUILT_IN: Record<string, TitleDef> = {
+  townfolk: { name: 'Townfolk', color: '#B794F6', description: 'Everyone starts here: a neighbour in Mikazuki town.' },
   'game-master': { name: 'Game Master', color: 'prismatic' },
   fairy: { name: 'She was a Fairy', color: '#F0ABFC' },
   'low-battery': { name: '20% Battery Life', color: '#F8BF27' },
@@ -22,10 +29,10 @@ const BUILT_IN: Record<string, TitleData> = {
 export const DEFAULT_TITLE = 'townfolk';
 
 const TITLES_KEY = 'titles';
-const changes = kvLoad<Record<string, TitleData | null>>(TITLES_KEY, {});
+const changes = kvLoad<Record<string, TitleDef | null>>(TITLES_KEY, {});
 
 /** Every title there is now (refilled in place, so every importer sees changes). */
-export const TITLES: Record<string, TitleData> = {};
+export const TITLES: Record<string, TitleDef> = {};
 
 function refill(): void {
   for (const id of Object.keys(TITLES)) delete TITLES[id];
@@ -37,8 +44,8 @@ refill();
 export const isTitleColor = (c: unknown): c is string => typeof c === 'string' && (c === 'prismatic' || /^#[0-9A-Fa-f]{6}$/.test(c));
 
 /** Adds or changes a title (the CMS). */
-export function setTitle(id: string, title: TitleData): void {
-  changes[id] = { name: title.name, color: title.color };
+export function setTitle(id: string, title: TitleDef): void {
+  changes[id] = { name: title.name, color: title.color, ...(title.description ? { description: title.description } : {}) };
   kvSave(TITLES_KEY, changes);
   refill();
 }
@@ -70,7 +77,8 @@ const grantStmt = db.prepare(
 /** The member's equipped title (Townfolk unless they've equipped another). */
 export function titleOf(userId: string): TitleData {
   const id = equippedStmt.get(userId)?.title;
-  return TITLES[id ?? DEFAULT_TITLE] ?? TITLES[DEFAULT_TITLE];
+  const { name, color } = TITLES[id ?? DEFAULT_TITLE] ?? TITLES[DEFAULT_TITLE];
+  return { name, color }; // the description stays here
 }
 
 /** True when the member's equipped title hasn't been shown to them yet (the game's reward pop-up). */
@@ -88,4 +96,18 @@ export function titleSeen(userId: string): void {
 export const giveTitle = db.transaction((userId: string, title: string): void => {
   unequipStmt.run(userId);
   if (title !== DEFAULT_TITLE) grantStmt.run(userId, title, Date.now());
+});
+
+const ownedStmt = db.prepare<[string], { title: string }>('SELECT title FROM titles WHERE user_id = ? ORDER BY earned, rowid');
+const wearStmt = db.prepare('UPDATE titles SET equipped = 1 WHERE user_id = ? AND title = ?');
+
+/** The titles a member has: Townfolk first, then those given to them (ones the CMS removed are left out). */
+export const ownedTitles = (userId: string): string[] => [DEFAULT_TITLE, ...ownedStmt.all(userId).map((r) => r.title).filter((id) => id !== DEFAULT_TITLE && TITLES[id])];
+
+/** Shows one of the member's own titles (the Parlor). False if they don't have it. */
+export const wearTitle = db.transaction((userId: string, title: string): boolean => {
+  if (!ownedTitles(userId).includes(title)) return false;
+  unequipStmt.run(userId);
+  if (title !== DEFAULT_TITLE) wearStmt.run(userId, title);
+  return true;
 });

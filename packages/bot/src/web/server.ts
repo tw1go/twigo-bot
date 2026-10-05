@@ -19,6 +19,7 @@ import type { Town } from './town.js';
 import { bailFromTown, townOutpost } from './town-outpost.js';
 import { digInTown } from './town-mine.js';
 import { gambleInTown } from './town-casino.js';
+import { parlorAction, townParlor } from './town-parlor.js';
 import { flexInTown, sellInTown, sellManyInTown, townInventory } from './town-bag.js';
 import { boardAction, townBoard } from './town-board.js';
 import { townNews } from './town-news.js';
@@ -49,7 +50,7 @@ import { type CmsDeps, cms } from './cms.js';
 //   GET  /me            the logged-in member: name, avatar, Kowens, items (401 if not logged in or not in the server)
 //   GET  /prereg        pre-registration status: open, count, reward (public)
 //   POST /prereg        pre-register the logged-in member (from the game's page only)
-//   PUT  /outfit        save the logged-in member's character look (from the game's page only)
+//   PUT  /outfit        save the logged-in member's first character look, in the creator (from the game's page only)
 //   PUT  /nickname      { nickname } -> 200 { nickname } | 400 invalid | 409 taken (from the game's page only)
 //   GET  /town/leaderboard  top 10 by Kowens with town nicknames and titles, and the viewer's rank (members)
 //   GET  /town/news     the latest announcements and patch notes from Discord (members)
@@ -70,6 +71,8 @@ import { type CmsDeps, cms } from './cms.js';
 //   POST /town/sell     { id, quantity } (or { items: [{ id, quantity }] }) sell dug-up items, /sell's prices (from the game's page only; members)
 //   POST /town/flex     { id } flex a dug-up item in the games channel, /flex's cooldown (from the game's page only; members)
 //   POST /town/gamble   { bet, call: kara|krus } Kara y Krus at the Casino, /gamble's odds (from the game's page only; members)
+//   GET  /town/parlor   the Parlor: the viewer's look, Kowens, and the titles they have (members)
+//   POST /town/parlor   { action: look, outfit } (3 Kowens) | { action: title, id } (free) (from the game's page only; members)
 //   POST /town/dig      dig at the Mine (/dig's rules; from the game's page only; members)
 //   POST /title/seen    the game showed the member their new title (from the game's page only)
 //   CMS_PATH/*          the CMS, for the gifter (see cms.ts)
@@ -326,6 +329,8 @@ export function startWebServer(client: Client): void {
         if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
         const outfit = parseOutfit(body);
         if (!outfit) return send(res, 400, '{"error":"invalid outfit"}');
+        // Free in the creator only (no look or nickname yet); after that a new look is bought at the Parlor.
+        if (getOutfit(userId) && getNickname(userId)) return send(res, 409, '{"error":"change your look at the Parlor"}');
         saveOutfit(userId, outfit);
         return send(res, 200, '{"ok":true}');
       }
@@ -509,6 +514,25 @@ export function startWebServer(client: Client): void {
         const quantity = body.quantity ?? 1;
         if (typeof quantity !== 'number' || !Number.isInteger(quantity) || quantity < 1 || quantity > 1000) return send(res, 400, '{"error":"invalid quantity"}');
         return send(res, 200, JSON.stringify(sellInTown(userId, body.id, quantity)));
+      }
+      if (path === '/town/parlor' && (req.method === 'GET' || req.method === 'POST')) {
+        if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
+        if (req.method === 'POST' && !fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
+        const userId = sessionUser(req);
+        if (!userId) return send(res, 401, '{"error":"not logged in"}');
+        let body: { action?: unknown; outfit?: unknown; id?: unknown } | null = null;
+        if (req.method === 'POST') {
+          try {
+            body = JSON.parse((await readBody(req)) || 'null');
+          } catch {
+            // invalid JSON → rejected below
+          }
+        }
+        if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
+        if (req.method === 'GET') return send(res, 200, JSON.stringify(townParlor(userId)));
+        const result = body && parlorAction(userId, body, (id, outfit) => town?.restyle(id, outfit, titleOf(id)));
+        if (!result) return send(res, 400, '{"error":"invalid change"}');
+        return send(res, 200, JSON.stringify(result));
       }
       if (req.method === 'POST' && path === '/town/gamble') {
         if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
