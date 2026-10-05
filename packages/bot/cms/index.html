@@ -75,6 +75,11 @@
   tr.off td:not(:last-child) { opacity: .5; }
   .tag { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 99px; background: var(--soft); color: var(--muted); }
   .tag.changed { color: var(--accent); }
+  .row.off { opacity: .55; }
+  .filters { display: flex; gap: 8px; margin-bottom: 10px; }
+  .filters select { width: auto; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+  .check { display: flex; align-items: center; gap: 8px; margin-top: 14px; color: var(--text); font-size: 14px; }
 
   .title-chip { font-weight: 600; }
   .prismatic { background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bff95, #6bc5ff, #c56bff); -webkit-background-clip: text; background-clip: text; color: transparent; }
@@ -102,8 +107,9 @@
   #toast.bad { background: var(--bad); color: #fff; }
 
   @media (max-width: 760px) {
-    .layout { grid-template-columns: 1fr; }
-    nav { flex-direction: row; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--line); padding: 10px 12px; }
+    .layout { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+    nav { flex-direction: row; flex-wrap: wrap; align-content: start; gap: 4px; border-right: 0; border-bottom: 1px solid var(--line); padding: 10px 12px; }
+    nav a { padding: 6px 10px; }
     .brand { width: 100%; padding: 0 4px 6px; }
     nav .me { display: none; }
     main { padding: 16px; }
@@ -130,6 +136,7 @@
     <a href="#news" data-tab="news">Town news</a>
     <a href="#titles" data-tab="titles">Titles</a>
     <a href="#shop" data-tab="shop">Shop</a>
+    <a href="#items" data-tab="items">Dig items</a>
     <a href="#players" data-tab="players">Players</a>
     <div class="me" id="me"></div>
   </nav>

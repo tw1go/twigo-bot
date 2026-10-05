@@ -289,9 +289,11 @@ A small admin site served by the bot (`packages/bot/src/web/cms.ts`, page in `pa
 path on the game's address nobody can guess (`/cms-` + `openssl rand -hex 16`; empty = off). The path only hides it:
 you still log in with Discord, and only the gifter (`REWARD_OWNER_ID`) and `CMS_USER_IDS` get in (anyone else gets a
 404). Tabs: **Town news** (write, edit, delete the town-only News posts), **Titles** (make, recolour, rename, describe, remove),
-**Shop** (change a reward's price or take it off sale, for the town shop and `/redeem` alike), **Players** (find
+**Shop** (change a reward's price or take it off sale, for the town shop and `/redeem` alike), **Dig items** (rename,
+re-emoji, reprice or re-rarity what `/dig` and the Mine turn up, add new items, take items out of the ground; each
+shows its chance per dig and how many are in bags), **Players** (find
 someone by nickname or Discord ID, see their wallet, vault, bag, jail/mute status; give or take Kowens, give a title).
-Changes are saved in the database (kv `town-posts`, `titles`, `shop`; the code's values are the defaults), apply at
+Changes are saved in the database (kv `town-posts`, `titles`, `shop`, `dig-items`; the code's values are the defaults), apply at
 once, and are noted in the bot's log (not in Discord). Titles show on a player from their next visit to town.
 
 **Town chat ↔ Discord** (`packages/bot/src/web/town-chat.ts`): set `TOWN_CHAT_CHANNEL_ID` and town messages are

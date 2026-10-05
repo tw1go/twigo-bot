@@ -1,4 +1,4 @@
-import { ITEMS, RARITY_ORDER } from '../dig/items.js';
+import { ITEMS, RARITY_ORDER, onItemsChange } from '../dig/items.js';
 import { SHOVEL_USES, addItems, addMasterKey, addShovelUses } from '../dig/store.js';
 import { POTIONS, POTION_IDS, addPotions } from '../potions/potions.js';
 import { addMegaphones } from './megaphone.js';
@@ -21,10 +21,17 @@ const shop: Giftable[] = [
   ...POTION_IDS.map((pid): Giftable => ({ id: `potion-${pid}`, name: POTIONS[pid].name, emoji: POTIONS[pid].emoji, rarity: 'common', give: (u, n) => void addPotions(u, pid, n) })),
 ];
 
-const dug: Giftable[] = [...ITEMS]
+const dug = (): Giftable[] => [...ITEMS]
   .sort((a, b) => RARITY_ORDER.indexOf(a.rarity) - RARITY_ORDER.indexOf(b.rarity) || a.name.localeCompare(b.name))
   .map((i) => ({ id: i.id, name: i.name, emoji: i.emoji, rarity: i.rarity, give: (u, n) => addItems(u, i.id, n) }));
 
-/** The shop's items first, then dug-up items (rarest first). */
-export const GIFTABLE: Giftable[] = [...shop, ...dug];
-export const giftableById = new Map(GIFTABLE.map((g) => [g.id, g]));
+/** The shop's items first, then dug-up items (rarest first); kept in step with the CMS's item changes. */
+export const GIFTABLE: Giftable[] = [];
+export const giftableById = new Map<string, Giftable>();
+function refill(): void {
+  GIFTABLE.splice(0, GIFTABLE.length, ...shop, ...dug());
+  giftableById.clear();
+  for (const g of GIFTABLE) giftableById.set(g.id, g);
+}
+refill();
+onItemsChange(refill);

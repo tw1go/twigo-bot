@@ -80,6 +80,7 @@ async function overview() {
       stat(fmt(o.posts), 'town news posts'),
       stat(fmt(o.titles), 'titles'),
       stat(fmt(o.offSale), 'rewards off sale'),
+      stat(fmt(o.digItems), 'dig items in the ground'),
     ),
   );
 }
@@ -279,6 +280,92 @@ async function shop() {
   draw();
 }
 
+// ── Dig items ──
+
+/** "1 in 1,234 digs" for a chance per dig. */
+const odds = (p) => (p > 0 ? `1 in ${fmt(Math.max(1, Math.round(1 / p)))} digs` : 'not dug up');
+
+async function items(selected) {
+  page('Dig items', 'What /dig and the Mine turn up. A dig picks a rarity, then an item of it: the cheaper it sells, the more often it drops. Changes apply at once.');
+  let { items: all, rarities } = await api('items');
+  const label = Object.fromEntries(rarities.map((r) => [r.id, `${r.emoji} ${r.label}`]));
+  const q = h('input', { type: 'search', placeholder: 'Search items' });
+  const only = h('select', null, h('option', { value: '' }, 'All rarities'), ...rarities.map((r) => h('option', { value: r.id }, label[r.id])));
+  const list = h('div', { class: 'list' });
+  const editor = h('div', { class: 'card' });
+  main().append(h('div', { class: 'split' },
+    h('div', { class: 'card' }, h('div', { class: 'actions', style: 'margin:0 0 10px' }, h('button', { class: 'btn primary', onclick: () => edit(null) }, 'New item')), h('div', { class: 'filters' }, q, only), list),
+    editor));
+
+  let current = selected ?? null;
+  function drawList() {
+    const words = q.value.trim().toLowerCase();
+    const shown = all.filter((i) => (!only.value || i.rarity === only.value) && (!words || i.name.toLowerCase().includes(words) || i.id.includes(words)));
+    list.replaceChildren(...(shown.length
+      ? shown.map((i) => h('button', { class: `row${i.id === current ? ' on' : ''}${i.off ? ' off' : ''}`, onclick: () => edit(i) },
+          h('div', null, `${i.emoji} ${i.name}`),
+          h('div', { class: 'sub' }, `${label[i.rarity]} · sells ${fmt(i.value)} · ${i.off ? 'out of the ground' : odds(i.chance)}`)))
+      : [h('p', { class: 'hint' }, 'No items match.')]));
+  }
+  q.addEventListener('input', drawList);
+  only.addEventListener('change', drawList);
+
+  function edit(item) {
+    current = item?.id ?? null;
+    drawList();
+    const id = h('input', { value: item?.id ?? '', placeholder: 'golden-tabo', disabled: !!item });
+    const name = h('input', { value: item?.name ?? '', maxlength: 48, placeholder: 'Golden Tabo' });
+    const emoji = h('input', { value: item?.emoji ?? '', maxlength: 16, placeholder: '🪣' });
+    const value = h('input', { type: 'number', min: 0, max: 100000, step: 1, value: item?.value ?? 1 });
+    const rarity = h('select', null, ...rarities.map((r) => h('option', { value: r.id }, label[r.id])));
+    rarity.value = item?.rarity ?? 'common';
+    const ground = h('input', { type: 'checkbox', checked: !item?.off });
+    if (!item) name.addEventListener('input', () => !id.dataset.touched && (id.value = name.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 32)));
+    id.addEventListener('input', () => (id.dataset.touched = '1'));
+    const d = item?.default;
+    const changed = d && (d.name !== item.name || d.emoji !== item.emoji || d.value !== item.value || d.rarity !== item.rarity);
+
+    const save = (e) => act(e.currentTarget, async () => {
+      const n = Number(value.value);
+      if (!Number.isInteger(n) || n < 0) throw new Error('The sell value is a whole number, 0 or more.');
+      ({ items: all } = await api('items', { id: (item?.id ?? id.value).trim(), name: name.value, emoji: emoji.value, value: n, rarity: rarity.value, off: !ground.checked }));
+      toast(item ? 'Saved.' : 'Item added.');
+      edit(all.find((x) => x.id === (item?.id ?? id.value.trim())) ?? null);
+    });
+    const reset = (e) => {
+      if (!confirm(`Put ${item.name} back to its defaults (${d.emoji} ${d.name}, ${label[d.rarity]}, sells ${d.value})?`)) return;
+      act(e.currentTarget, async () => {
+        ({ items: all } = await api('items', { id: item.id, ...d, off: item.off }));
+        toast('Back to its defaults.');
+        edit(all.find((x) => x.id === item.id));
+      });
+    };
+
+    editor.replaceChildren(h('div', null,
+      h('h2', null, item ? `${item.emoji} ${item.name}` : 'New item'),
+      item
+        ? h('div', { class: 'hint' }, `${item.off ? 'Out of the ground' : odds(item.chance)} · ${fmt(item.held)} in bags${item.custom ? ' · added in the CMS' : ''}`)
+        : h('div', { class: 'hint' }, 'It shows its emoji until art for it is added to the game’s manifest (items, by id).'),
+      h('div', { class: 'grid2' },
+        h('div', null, h('label', null, 'Name'), name),
+        h('div', null, h('label', null, 'Emoji'), emoji),
+        h('div', null, h('label', null, 'Sells for (Kowens)'), value),
+        h('div', null, h('label', null, 'Rarity'), rarity),
+      ),
+      h('label', null, 'Id'), id, h('div', { class: 'hint' }, 'Lowercase letters, digits and dashes. It can’t change later (bags and art use it).'),
+      h('label', { class: 'check' }, ground, 'In the ground (can be dug up)'),
+      h('div', { class: 'hint' }, 'Taken out of the ground, it stops dropping; the ones people already have stay in their bags and still sell.'),
+      d ? h('div', { class: 'hint' }, `Default: ${d.emoji} ${d.name} · ${label[d.rarity]} · sells ${d.value}`) : null,
+      h('div', { class: 'actions' },
+        h('button', { class: 'btn primary', onclick: save }, item ? 'Save' : 'Add item'),
+        changed ? h('button', { class: 'btn', onclick: reset }, 'Reset to default') : null,
+      ),
+    ));
+  }
+
+  edit(all.find((i) => i.id === selected) ?? null);
+}
+
 // ── Players ──
 
 async function players(selected) {
@@ -354,7 +441,7 @@ async function players(selected) {
 
 // ── Tabs ──
 
-const TABS = { overview, news, titles, shop, players };
+const TABS = { overview, news, titles, shop, items, players };
 
 function route() {
   const tab = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'overview';

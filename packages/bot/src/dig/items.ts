@@ -1,5 +1,10 @@
+import { kvLoad, kvSave } from '../db/db.js';
+
 // Everything /dig can turn up. `value` is what /sell pays, in Kowens.
 // A dig first rolls a rarity (RARITY_CHANCE), then an item of that rarity — cheaper items come up much more often.
+// The items below are the defaults: the CMS changes them, adds new ones and takes some out of the ground (kv
+// 'dig-items', see setDigItem). An item out of the ground (`off`) isn't dug up any more, but the ones already found stay
+// in bags and still sell.
 
 export type Rarity = 'junk' | 'common' | 'uncommon' | 'rare' | 'epic' | 'mythical' | 'legendary' | 'secret';
 
@@ -36,6 +41,10 @@ export interface Item {
   value: number;
   rarity: Rarity;
   exclusive?: boolean; // one of the server's own items
+  /** Out of the ground: not dug up any more (the CMS). */
+  off?: boolean;
+  /** Added in the CMS (not one of the items below). */
+  custom?: boolean;
 }
 
 const item = (id: string, name: string, emoji: string, value: number, rarity: Rarity, exclusive = false): Item => ({
@@ -47,7 +56,7 @@ const item = (id: string, name: string, emoji: string, value: number, rarity: Ra
   exclusive,
 });
 
-export const ITEMS: Item[] = [
+const BUILT_IN: Item[] = [
   // ── Exclusive: the barangay's own treasures ──
   item('junwuu-socks', "Junwuu's Socks", '🧦', 1, 'uncommon', true),
   item('kei-cup', "Kei's Specimen Cup", '🧪', 1, 'uncommon', true),
@@ -130,13 +139,77 @@ export const ITEMS: Item[] = [
   item('nokia-3310', 'Nokia 3310 (Indestructible)', '📱', 5, 'common'),
 ];
 
-export const ITEM_BY_ID = new Map(ITEMS.map((i) => [i.id, i]));
+/** The CMS's changes: edits to an item (by id), or a whole new item (`custom`). */
+export type ItemChange = Partial<Omit<Item, 'id'>>;
+
+const KEY = 'dig-items';
+const changes = kvLoad<Record<string, ItemChange>>(KEY, {});
+
+/** Every item there is now, and by id (refilled in place, so every importer sees changes). */
+export const ITEMS: Item[] = [];
+export const ITEM_BY_ID = new Map<string, Item>();
+const listeners: (() => void)[] = [];
+/** Called after every change (e.g. /gift item's list). */
+export const onItemsChange = (fn: () => void) => void listeners.push(fn);
+
+function refill(): void {
+  const builtIn = BUILT_IN.map((i) => ({ ...i, ...changes[i.id], id: i.id }));
+  const added = Object.entries(changes)
+    .filter(([id, c]) => c.custom && !BUILT_IN.some((i) => i.id === id))
+    .map(([id, c]) => ({ id, name: id, emoji: '❔', value: 0, rarity: 'junk' as Rarity, ...c }));
+  ITEMS.splice(0, ITEMS.length, ...builtIn, ...added);
+  ITEM_BY_ID.clear();
+  for (const i of ITEMS) ITEM_BY_ID.set(i.id, i);
+  for (const fn of listeners) fn();
+}
+refill();
+
+export const isBuiltIn = (id: string) => BUILT_IN.some((i) => i.id === id);
+export const defaultItem = (id: string): Item | null => BUILT_IN.find((i) => i.id === id) ?? null;
+
+/** The rarities a dig can land on (chance above 0): each needs at least one item in the ground. */
+const needed = (Object.entries(RARITY_CHANCE) as [Rarity, number][]).filter(([, c]) => c > 0).map(([r]) => r);
+
+/** Changes an item, or adds one (a new id). Why not, if it can't be done. */
+export function setDigItem(id: string, item: Omit<Item, 'id' | 'exclusive' | 'custom'>): 'ok' | 'last-of-rarity' {
+  const was = ITEM_BY_ID.get(id);
+  // Every rarity a dig can land on keeps something to find.
+  if (was && !was.off && (item.off || item.rarity !== was.rarity) && needed.includes(was.rarity) && pool(was.rarity).length === 1) return 'last-of-rarity';
+  const base = defaultItem(id);
+  if (base) {
+    const change: ItemChange = {};
+    for (const k of ['name', 'emoji', 'value', 'rarity'] as const) if (item[k] !== base[k]) (change as Record<string, unknown>)[k] = item[k];
+    if (item.off) change.off = true;
+    if (Object.keys(change).length) changes[id] = change;
+    else delete changes[id];
+  } else changes[id] = { name: item.name, emoji: item.emoji, value: item.value, rarity: item.rarity, ...(item.off ? { off: true } : {}), custom: true };
+  kvSave(KEY, changes);
+  refill();
+  return 'ok';
+}
+
+/** The items of a rarity still in the ground. */
+const pool = (rarity: Rarity) => ITEMS.filter((i) => i.rarity === rarity && !i.off);
+const weight = (i: Item) => 1 / (i.value + 1) ** 2;
 
 /** Rolls one dig: a rarity by RARITY_CHANCE, then an item weighted toward cheaper ones. */
 export const SECRET_CHANCE = 0.0001;
 
+/** Each item's chance on a plain dig (no potion, not the lucky dig), for the CMS. */
+export function itemChances(): Map<string, number> {
+  const out = new Map<string, number>();
+  const secret = pool('secret').length ? SECRET_CHANCE : 0;
+  for (const r of Object.keys(RARITY) as Rarity[]) {
+    const items = pool(r);
+    const total = items.reduce((n, i) => n + weight(i), 0);
+    const chance = r === 'secret' ? secret : (1 - secret) * RARITY_CHANCE[r];
+    for (const i of items) out.set(i.id, (chance * weight(i)) / total);
+  }
+  return out;
+}
+
 export function rollItem(random = Math.random): Item {
-  if (random() < SECRET_CHANCE) return ITEM_BY_ID.get('twigo-tsinelas')!; // 🤫
+  if (random() < SECRET_CHANCE && pool('secret').length) return rollOfRarity('secret', random); // 🤫
   let r = random();
   let rarity: Rarity = 'junk';
   for (const [key, chance] of Object.entries(RARITY_CHANCE) as [Rarity, number][]) {
@@ -150,10 +223,9 @@ export function rollItem(random = Math.random): Item {
 
 /** An item of the given rarity, cheaper ones more likely. */
 export function rollOfRarity(rarity: Rarity, random = Math.random): Item {
-  const pool = ITEMS.filter((i) => i.rarity === rarity);
-  const weight = (i: Item) => 1 / (i.value + 1) ** 2;
-  let w = random() * pool.reduce((n, i) => n + weight(i), 0);
-  return pool.find((i) => (w -= weight(i)) < 0) ?? pool[pool.length - 1];
+  const items = pool(rarity);
+  let w = random() * items.reduce((n, i) => n + weight(i), 0);
+  return items.find((i) => (w -= weight(i)) < 0) ?? items[items.length - 1];
 }
 
 /** The server-wide lucky dig (every LUCKY_EVERY digs) is guaranteed Epic or better. */

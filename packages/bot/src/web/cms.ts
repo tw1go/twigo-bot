@@ -5,6 +5,7 @@ import { config } from '../config.js';
 import { db } from '../db/db.js';
 import { accountIds, add, balance, rankOf, take, totalKowens, vaultBalance } from '../credits/store.js';
 import { inventory } from '../dig/store.js';
+import { ITEM_BY_ID, ITEMS, RARITY, RARITY_ORDER, type Rarity, defaultItem, itemChances, setDigItem } from '../dig/items.js';
 import { setShopEntry, shopCatalogue } from '../games/rewards.js';
 import { pot } from '../games/jackpot.js';
 import { jailedUntil } from '../games/jail.js';
@@ -29,6 +30,7 @@ import type { Town } from './town.js';
 //   GET  <path>/api/posts        POST { id?, title, body, bump? } · POST /api/posts/delete { id }
 //   GET  <path>/api/titles       POST { id, name, color, description? } · POST /api/titles/delete { id }
 //   GET  <path>/api/shop         POST { id, cost: number | null, off }
+//   GET  <path>/api/items        dig items, their odds and how many are in bags · POST { id, name, emoji, value, rarity, off }
 //   GET  <path>/api/players?q=   nickname or Discord ID; empty = the richest
 //   GET  <path>/api/player?id=   POST /api/player/kowens { id, amount, reason? } · POST /api/player/title { id, title }
 
@@ -123,6 +125,24 @@ const titleList = () => {
   return Object.entries(TITLES).map(([id, t]) => ({ id, ...t, holders: holders[id] ?? 0, fixed: id === DEFAULT_TITLE || !!t.auto, ...(t.auto ? { holder: nameOrId(autoHolder(id)) } : {}) }));
 };
 
+/** Dig items as the CMS shows them: current and default values, the chance per dig, copies in bags. */
+function itemList() {
+  const chances = itemChances();
+  const held = new Map<string, number>();
+  for (const id of accountIds()) for (const [item, n] of inventory(id)) held.set(item, (held.get(item) ?? 0) + n);
+  return [...ITEMS]
+    .sort((a, b) => RARITY_ORDER.indexOf(a.rarity) - RARITY_ORDER.indexOf(b.rarity) || a.value - b.value || a.name.localeCompare(b.name))
+    .map((i) => {
+      const base = defaultItem(i.id);
+      return {
+        id: i.id, name: i.name, emoji: i.emoji, value: i.value, rarity: i.rarity, off: !!i.off, custom: !base,
+        default: base && { name: base.name, emoji: base.emoji, value: base.value, rarity: base.rarity },
+        chance: chances.get(i.id) ?? 0, held: held.get(i.id) ?? 0,
+      };
+    });
+}
+const rarities = () => RARITY_ORDER.map((r) => ({ id: r, ...RARITY[r] }));
+
 const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
 
 /** Handles a request under CMS_PATH (the server checks the path first). */
@@ -165,6 +185,7 @@ export async function cms(client: Client, req: IncomingMessage, res: ServerRespo
         posts: townPosts().length,
         titles: Object.keys(TITLES).length,
         offSale: shopCatalogue().filter((r) => r.off).length,
+        digItems: ITEMS.filter((i) => !i.off).length,
       });
     }
 
@@ -228,6 +249,38 @@ export async function cms(client: Client, req: IncomingMessage, res: ServerRespo
       ].filter(Boolean);
       if (changes.length) await log(client, who, `shop: ${after.emoji} **${after.name}** ${changes.join(', ')}`);
       return send(res, 200, { rewards: shopCatalogue() });
+    }
+
+    case 'GET /api/items':
+      return send(res, 200, { items: itemList(), rarities: rarities() });
+    case 'POST /api/items': {
+      const id = str(body!.id);
+      const name = str(body!.name);
+      const emoji = str(body!.emoji);
+      const value = body!.value;
+      const rarity = body!.rarity;
+      const was = ITEM_BY_ID.get(id);
+      if (!was && (!SLUG.test(id) || id.length > 32)) return bad('The id is lowercase letters, digits and dashes (e.g. golden-tabo), up to 32.');
+      if (!name || name.length > 48) return bad('The name needs 1–48 characters.');
+      if (!emoji || [...emoji].length > 8) return bad('Give it an emoji (it shows where the item has no art).');
+      if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > 100_000) return bad('The sell value is a whole number, 0 to 100,000.');
+      if (typeof rarity !== 'string' || !(rarity in RARITY)) return bad('Pick a rarity.');
+      const off = body!.off === true;
+      if (setDigItem(id, { name, emoji, value, rarity: rarity as Rarity, off }) === 'last-of-rarity') {
+        return bad(`It's the last ${RARITY[was!.rarity].label} item in the ground: digs need at least one of each rarity.`);
+      }
+      const now = ITEM_BY_ID.get(id)!;
+      const what = !was
+        ? `added the dig item ${emoji} **${name}** (${RARITY[now.rarity].label}, sells for ${value})${off ? ', not in the ground yet' : ''}`
+        : `changed the dig item ${now.emoji} **${now.name}**: ${[
+            was.name !== now.name && `name ${was.name} → ${now.name}`,
+            was.emoji !== now.emoji && `emoji ${was.emoji} → ${now.emoji}`,
+            was.value !== now.value && `sells for ${was.value} → ${now.value}`,
+            was.rarity !== now.rarity && `${RARITY[was.rarity].label} → ${RARITY[now.rarity].label}`,
+            !!was.off !== !!now.off && (now.off ? 'taken out of the ground' : 'back in the ground'),
+          ].filter(Boolean).join(', ') || 'nothing'}`;
+      await log(client, who, what);
+      return send(res, 200, { items: itemList(), rarities: rarities() });
     }
 
     case 'GET /api/players':
