@@ -63,7 +63,7 @@ export function queueTown(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Tex
   if (off?.file) img(off.file);
   if (on?.glow?.file) img(on.glow.file);
   const F = M.props.fence;
-  if (F) [F.nw, F.ne, F.post].forEach(img);
+  if (F) [F.nw, F.ne, F.post, F.nwRust, F.neRust, F.postRust].forEach((f) => f && img(f));
 
   // Speech bubbles (the box and its tail), and the emote icons.
   const B = M.ui.speechBubble;

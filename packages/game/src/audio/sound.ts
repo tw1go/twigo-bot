@@ -9,7 +9,8 @@ import Phaser from 'phaser';
 export type Sfx =
   | 'emote' | 'chat' | 'door' | 'card' | 'chip' | 'coin' | 'click' | 'error'
   | 'flip-spin' | 'flip-land' | 'casino-win' | 'casino-lose' | 'busted'
-  | 'arena-whoosh' | 'arena-slam' | 'arena-reveal';
+  | 'arena-whoosh' | 'arena-slam' | 'arena-reveal'
+  | 'bakod-throw' | 'bakod-shatter' | 'bakod-key-in' | 'bakod-unlock' | 'bakod-snap';
 
 /** Each sound's file (under assets/audio/, as .ogg with an .m4a fallback unless `formats` says otherwise) and volume
  *  (0–1, before the player's sound-effects volume, which also covers the crickets and the fountain). */
@@ -32,6 +33,13 @@ const SFX: Record<Sfx, { file: string; volume: number; formats?: string[] }> = {
   'arena-whoosh': { file: 'sfx/arena-whoosh', volume: 0.12 },
   'arena-slam': { file: 'sfx/arena-slam', volume: 0.15 },
   'arena-reveal': { file: 'sfx/arena-reveal', volume: 0.15 },
+  // A Bakod in the neighbourhood (ui/bakod-fx.ts): a Kalawang Potion thrown and shattering, a Master Key going into the
+  // padlock, then the lock opening or the key snapping.
+  'bakod-throw': { file: 'sfx/bakod-throw', volume: 0.1 },
+  'bakod-shatter': { file: 'sfx/bakod-shatter', volume: 0.18 },
+  'bakod-key-in': { file: 'sfx/bakod-key-in', volume: 0.14 },
+  'bakod-unlock': { file: 'sfx/bakod-unlock', volume: 0.18 },
+  'bakod-snap': { file: 'sfx/bakod-snap', volume: 0.16 },
 };
 const CRICKETS = { key: 'amb:crickets', urls: ['audio/ambient/crickets.mp3'], volume: 0.15 };
 const FOUNTAIN = { key: 'amb:fountain', urls: ['audio/ambient/fountain.ogg', 'audio/ambient/fountain.m4a'], volume: 0.1 };

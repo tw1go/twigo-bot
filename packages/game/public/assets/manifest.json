@@ -812,6 +812,9 @@
       "nw": "props/prop-fence-nw.png",
       "ne": "props/prop-fence-ne.png",
       "post": "props/prop-fence-post.png",
+      "nwRust": "props/prop-fence-nw-rust.png",
+      "neRust": "props/prop-fence-ne-rust.png",
+      "postRust": "props/prop-fence-post-rust.png",
       "size": [
         32,
         32
@@ -1815,6 +1818,96 @@
         27
       ],
       "note": "the arena's loser: a rain cloud over their head, drops falling (9 frames, loops; anchor = the drops' bottom, middle)"
+    },
+    "kalawang-flight": {
+      "file": "fx/fx-kalawang-flight.png",
+      "frame": [
+        16,
+        16
+      ],
+      "frames": 4,
+      "fps": 12,
+      "loop": true,
+      "anchor": [
+        8,
+        8
+      ],
+      "note": "a Kalawang Potion tumbling through the air: moved along the throw's arc by code (~0.5 s)"
+    },
+    "kalawang-splash": {
+      "file": "fx/fx-kalawang-splash.png",
+      "frame": [
+        48,
+        48
+      ],
+      "frames": 9,
+      "fps": 12,
+      "loop": false,
+      "anchor": [
+        24,
+        44
+      ],
+      "note": "the potion shattering on a Bakod; anchor = the impact point, on the gate's base"
+    },
+    "rust-fizz": {
+      "file": "fx/fx-rust-fizz.png",
+      "frame": [
+        32,
+        32
+      ],
+      "frames": 6,
+      "fps": 8,
+      "loop": true,
+      "anchor": [
+        16,
+        28
+      ],
+      "note": "bubbles over a rusting fence piece (~2 s, then fades) while it cross-fades to its -rust copy and back"
+    },
+    "key-turn": {
+      "file": "fx/fx-key-turn.png",
+      "frame": [
+        32,
+        32
+      ],
+      "frames": 6,
+      "fps": 10,
+      "loop": false,
+      "anchor": [
+        16,
+        30
+      ],
+      "note": "a Master Key into the Bakod's padlock, turning; key-unlock or key-snap carries on from its last frame"
+    },
+    "key-unlock": {
+      "file": "fx/fx-key-unlock.png",
+      "frame": [
+        32,
+        32
+      ],
+      "frames": 7,
+      "fps": 12,
+      "loop": false,
+      "anchor": [
+        16,
+        30
+      ],
+      "note": "the Master Key worked: the shackle pops open with gold sparkles; last frame = the open padlock"
+    },
+    "key-snap": {
+      "file": "fx/fx-key-snap.png",
+      "frame": [
+        32,
+        32
+      ],
+      "frames": 8,
+      "fps": 12,
+      "loop": false,
+      "anchor": [
+        16,
+        30
+      ],
+      "note": "the Master Key snapped: its head falls to the ground, the tip stays in the lock"
     }
   },
   "ui": {

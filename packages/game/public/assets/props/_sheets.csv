@@ -2,3 +2,6 @@ file,cell_w,cell_h,frames,fps,loop,anchor_x,anchor_y,notes
 prop-fence-nw.png,32,32,1,0,no,16,24,runs along the tile's NW (top-left) edge; post at the top corner and the middle
 prop-fence-ne.png,32,32,1,0,no,16,24,runs along the tile's NE (top-right) edge
 prop-fence-post.png,32,32,1,0,no,16,24,single post at the tile's top corner; caps the open end of a run
+prop-fence-nw-rust.png,32,32,1,0,no,16,24,rusted copy of prop-fence-nw (Kalawang Potion); cross-fade over the normal piece
+prop-fence-ne-rust.png,32,32,1,0,no,16,24,rusted copy of prop-fence-ne
+prop-fence-post-rust.png,32,32,1,0,no,16,24,rusted copy of prop-fence-post

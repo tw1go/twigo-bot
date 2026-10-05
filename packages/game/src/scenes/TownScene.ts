@@ -18,6 +18,7 @@ import { showHouseMenu } from '../ui/house-menu';
 import { mountHouseCreator } from '../ui/house-creator';
 import { playBusted } from '../ui/casino';
 import { drawBridge } from '../world/bridge';
+import { playKalawang, playMasterKey } from '../world/bakod-fx';
 import { ChatBox } from '../ui/chat';
 import { StayReward } from '../ui/stay';
 import { MegaphoneBanner } from '../ui/megaphone';
@@ -1092,6 +1093,13 @@ export class TownScene extends Phaser.Scene {
       },
       repaint: () => this.repaintHouse(house),
       busted: (message) => void playBusted(message),
+      effect: (kind) => {
+        const b = this.objects.buildings.find((x) => x.id === `house-${house.lot}`);
+        if (!b) return Promise.resolve();
+        // (Seen here only: the neighbourhood doesn't pass house actions to the others in it.)
+        const at = { scene: this, M: this.M, objects: this.objects, house: { col: b.obj.col, row: b.obj.row }, from: { x: this.player.sprite.x, y: this.player.sprite.y }, tint: this.tint };
+        return kind === 'kalawang' ? playKalawang(at) : playMasterKey(at, kind);
+      },
     });
   }
 

@@ -28,6 +28,10 @@ macOS `afconvert`) for browsers that can't play Ogg; the game loads the `.ogg` f
     `sfx/casino-flip-spin` (tick_001, repeated while the coin spins)
   - Arena (jack en poy) — `sfx/arena-whoosh` (RPG Audio cloth3), `sfx/arena-slam` (Impact Sounds
     impactSoft_medium_000), `sfx/arena-reveal` (Interface Sounds drop_003)
+  - Bakod heist (Kalawang Potion, Master Key), softened and layered: `sfx/bakod-throw` (RPG Audio cloth3, pitched up),
+    `sfx/bakod-shatter` (Impact Sounds impactGlass_light_002 + a fizz synthesised for Mikazuki), `sfx/bakod-key-in`
+    (RPG Audio metalClick), `sfx/bakod-unlock` (RPG Audio metalLatch + Interface Sounds glass_002), `sfx/bakod-snap`
+    (Impact Sounds impactMetal_light_001 + impactTin_medium_000)
 - `music/casino-shop-theme.*` — "Buy Something!" from "Shop Theme" by Cleyton Kauffman, CC0,
   https://opengameart.org/content/shop-theme (the casino's music; the `.m4a` is an AAC copy of the mp3)
 - `sfx/casino-flip-land.*` — "Coin Drop" by Vinrax, CC0, https://opengameart.org/content/coin-drop (the coin landing)

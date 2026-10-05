@@ -29,6 +29,9 @@ export interface Building {
   top: { x: number; y: number }; // centre top: the image's centre, its highest visible pixel (both layers if hollow)
 }
 
+/** A fence piece's key in WorldObjects.fencePieces: `nw:col,row`, `ne:col,row` or `post:col,row`. */
+export type FenceKey = string;
+
 export interface Bench {
   col: number;
   row: number;
@@ -80,6 +83,8 @@ export class WorldObjects {
   /** Sprites that can be hidden while off screen (everything except glows). */
   readonly cullable: Phaser.GameObjects.Image[] = [];
   readonly buildings: Building[] = [];
+  /** Every fence piece drawn, by edge and tile (a Bakod's pieces turn rusty for a moment: ui/bakod-fx.ts). */
+  readonly fencePieces = new Map<FenceKey, Phaser.GameObjects.Image>();
   readonly benches: Bench[] = [];
   readonly lamps: Lamp[] = [];
   private readonly big: BigObject[] = [];
@@ -320,9 +325,10 @@ export class WorldObjects {
       const img = this.scene.add.image(top.x, top.y + 8, key);
       img.setOrigin(F.anchor[0] / F.size[0], F.anchor[1] / F.size[1]).setDepth(fenceDepth(c, r));
       this.track(img);
+      return img;
     };
     for (const f of this.map.fence) {
-      put(f.edge === 'nw' ? F.nw : F.ne, f.col, f.row);
+      this.fencePieces.set(`${f.edge}:${f.col},${f.row}`, put(f.edge === 'nw' ? F.nw : F.ne, f.col, f.row));
       bump(f.col, f.row); // both edges start at the tile's top corner
       if (f.edge === 'nw') bump(f.col, f.row + 1); // …and end at its left corner (= top corner of the tile below-left)
       else bump(f.col + 1, f.row); // …or at its right corner
@@ -330,7 +336,7 @@ export class WorldObjects {
     for (const [key, n] of corners) {
       if (n !== 1) continue;
       const [c, r] = key.split(',').map(Number);
-      put(F.post, c, r);
+      this.fencePieces.set(`post:${c},${r}`, put(F.post, c, r));
     }
   }
 }

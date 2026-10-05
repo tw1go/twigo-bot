@@ -17,6 +17,9 @@ export interface HouseMenuHooks {
   repaint: () => void;
   /** Caught by the Tanod: the bust plays (this closes first). */
   busted: (message: string) => void;
+  /** At the house's Bakod, after the bot's answer: a Kalawang Potion thrown, or the Master Key opening the lock or
+   *  snapping (world/bakod-fx.ts). Resolves when it's played. */
+  effect: (kind: 'kalawang' | 'unlock' | 'snap') => Promise<void>;
 }
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
@@ -42,6 +45,7 @@ export function showHouseMenu(h: HouseMenuHooks): void {
     return b;
   };
 
+  const cooling = () => !!me.stealAt && me.stealAt > Date.now();
   /** Where things stand (shown under the box as the menu opens). */
   const status = () => {
     if (house.mine) return fenced ? '🧱 Your Bakod is up: only a Master Key gets past the fence.' : 'No Bakod: anyone can try to rob you. Get one at the rewards shop.';
@@ -49,7 +53,7 @@ export function showHouseMenu(h: HouseMenuHooks): void {
     return me.jailed
       ? "You're in jail. No house calls till you're out."
       : wait
-        ? `You're laying low: you can steal again in ${wait} min.`
+        ? `You're laying low: you can steal or use a Master Key again in ${wait} min.${fenced ? ' A Kalawang Potion still works.' : ''}`
         : fenced
           ? '🧱 A Bakod fences this house in. Only a Master Key gets past it (50% it snaps), or rust half of it away with a Kalawang Potion.'
           : 'Steal: 35% to take 2–5% of their Kowens. Caught by the Tanod: you pay them a fine and spend 5 minutes in jail.';
@@ -65,9 +69,10 @@ export function showHouseMenu(h: HouseMenuHooks): void {
     }
     const wait = me.stealAt && me.stealAt > Date.now() ? minutes(me.stealAt) : 0;
     const blocked = me.jailed || !!wait;
-    const list = [button('Steal', () => void act('steal'), blocked || fenced, 'steal')];
+    const later = wait && !me.jailed ? ` · ${wait} min` : ''; // the cooldown, on what it blocks
+    const list = [button(`Steal${later}`, () => void act('steal'), blocked || fenced, 'steal')];
     if (fenced) {
-      list.push(button(`Use a Master Key (${me.keys})`, () => void act('key'), blocked || me.keys < 1));
+      list.push(button(`Use a Master Key (${me.keys})${later}`, () => void act('key'), blocked || me.keys < 1));
       list.push(button(`Throw Kalawang (${me.kalawang})`, () => void act('kalawang'), me.jailed || me.kalawang < 1));
     }
     buttons.replaceChildren(...list);
@@ -85,6 +90,18 @@ export function showHouseMenu(h: HouseMenuHooks): void {
     }
     me = r.me;
     fenced = r.houses.find((x) => x.lot === house.lot)?.fenced ?? fenced;
+    // A potion or a key that went in: out of the menu, the Bakod's effect plays, then what happened.
+    if (r.ok && action !== 'steal') {
+      close();
+      await h.effect(action === 'kalawang' ? 'kalawang' : r.busted || r.stole ? 'unlock' : 'snap');
+      if (r.busted) return h.busted(r.message);
+      say(r.message, r.stole ? 'good' : null);
+      if (r.stole) {
+        playSound('coin');
+        window.dispatchEvent(new Event('mk-wallet')); // the HUD's Kowens
+      }
+      return;
+    }
     if (r.busted) {
       close();
       return h.busted(r.message);
@@ -102,7 +119,7 @@ export function showHouseMenu(h: HouseMenuHooks): void {
       say('This house has a Bakod. Please purchase a Master Key or a Kalawang Potion at the rewards shop.', 'bad');
       playSound('error');
     }, 200); // after the pop-up's own open sound
-  } else say(status(), null);
+  } else say(status(), !house.mine && (me.jailed || cooling()) ? 'bad' : null); // laying low or in jail: in red
   void showPopup({
     title: house.mine ? 'Your house' : `${house.owner}'s house`,
     body: [title, buttons],

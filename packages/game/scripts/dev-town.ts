@@ -23,7 +23,9 @@ import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
 //   GET /__look?as=Alice&look={…}&title=Kalbo&color=%23F8BF27   Alice's new look / title (the pretend Parlor calls it)
 //   The neighbourhood (?area=hood): GET /town/hood, POST /town/house, POST /town/hood answered here with pretend
 //   neighbours (one with a Bakod) and your house (by ?as=, from the page's address); &steal=win|bust|snap decides a
-//   steal (else it's random). Its room on the town server uses the bot's own layout (web/hood-map.ts).
+//   steal (else it's random). Each page load refills your Master Keys and Kalawang Potions (3 each, or &keys=N
+//   &kalawang=N) and there's no steal cooldown unless &cooldown=1. Its room on the town server uses the bot's own
+//   layout (web/hood-map.ts).
 // What's said in town is printed here instead of going to Discord.
 
 export function devTown(): Plugin {
@@ -66,7 +68,10 @@ export function devTown(): Plugin {
         { name: 'Ben', style: 'cottage', colours: { walls: 'harbour', roof: 'white' }, fenced: false },
       ];
       const houses: (HoodHouse & { name: string })[] = neighbours.map((h, lot) => ({ ...h, lot, owner: h.name, title: { name: 'Townfolk', color: '#B794F6' } }));
-      const me = { keys: 1, kalawang: 1, kowens: 50, stealAt: 0 };
+      /** Each pretend player's keys, potions and Kowens (by ?as=), refilled on each page load. */
+      const mes = new Map<string, { keys: number; kalawang: number; kowens: number; stealAt: number }>();
+      const meOf = (who: string) => mes.get(who) ?? mes.set(who, { keys: 3, kalawang: 3, kowens: 50, stealAt: 0 }).get(who)!;
+      const count = (q: URLSearchParams, key: string) => (q.has(key) ? Math.max(0, Math.floor(Number(q.get(key))) || 0) : 3);
       const asOf = (req: IncomingMessage) => {
         try {
           return new URL(req.headers.referer ?? '').searchParams;
@@ -75,6 +80,7 @@ export function devTown(): Plugin {
         }
       };
       const hood = (who: string): TownHoodResponse => {
+        const me = meOf(who);
         const mine = houses.find((h) => h.name === who);
         return {
           map: hoodMap(houses.length, new Set(houses.filter((h) => h.fenced).map((h) => h.lot))),
@@ -100,6 +106,7 @@ export function devTown(): Plugin {
       server.middlewares.use('/town/house', async (req, res, next) => {
         if (req.method !== 'POST') return next();
         const who = asOf(req).get('as') ?? 'Dev tester';
+        const me = meOf(who);
         const look = (await readJson(req)) as unknown as HouseLook;
         const mine = houses.find((h) => h.name === who);
         let message = 'Your house is built! Welcome to the neighbourhood.';
@@ -114,23 +121,41 @@ export function devTown(): Plugin {
       server.middlewares.use('/town/hood', async (req, res) => {
         const q = asOf(req);
         const who = q.get('as') ?? 'Dev tester';
-        if (req.method !== 'POST') return reply(res, hood(who));
+        const me = meOf(who);
+        if (req.method !== 'POST') {
+          Object.assign(me, { keys: count(q, 'keys'), kalawang: count(q, 'kalawang'), stealAt: 0 }); // a page load: refilled
+          return reply(res, hood(who));
+        }
         const { action, lot } = (await readJson(req)) as { action: string; lot: number };
         const house = houses.find((h) => h.lot === lot)!;
         const done = (ok: boolean, message: string, extra = {}) => reply(res, { ...hood(who), ok, message, ...extra } satisfies TownHoodActionResponse);
+        // The system feed's line, as the bot's web/hood.ts posts it.
+        const line = (text: string, tone: string) => town.system({ kind: 'steal', text, tone }, who);
         if (action === 'kalawang') {
           if (me.kalawang < 1) return done(false, 'You have no Kalawang Potion.');
           me.kalawang--;
+          line(`${who} rusted ${house.owner}'s Bakod with a Kalawang Potion`, 'lose');
           return done(true, `Half of ${house.owner}'s Bakod rusted away.`);
         }
         if (house.fenced && action !== 'key') return done(false, `${house.owner}'s house has a Bakod. Use a Master Key to get past it.`);
-        if (action === 'key') me.keys--;
-        me.stealAt = Date.now() + 60 * 60_000;
+        if (action === 'key') {
+          if (me.keys < 1) return done(false, 'You have no Master Key.');
+          me.keys--;
+        }
+        if (q.has('cooldown')) me.stealAt = Date.now() + 60 * 60_000;
         const roll = q.get('steal') ?? (['win', 'bust', 'snap'] as const)[Math.floor(Math.random() * 3)];
         server.config.logger.info(`[hood] ${who} → ${house.owner}'s house: ${roll}`, { timestamp: true });
-        if (action === 'key' && roll === 'snap') return done(true, 'Your Master Key snapped! The Bakod holds.');
-        if (roll === 'bust') return done(true, `Huli ka! You pay ${house.owner} a fine of 2 Kowens and spend 5 minutes in jail.`, { busted: true });
+        const key = action === 'key';
+        if (key && roll === 'snap') {
+          line(`${who}'s Master Key snapped on ${house.owner}'s Bakod`, 'lose');
+          return done(true, 'Your Master Key snapped! The Bakod holds.');
+        }
+        if (roll === 'bust') {
+          line(key ? `${who} broke through ${house.owner}'s Bakod with a Master Key, but the Tanod caught them` : `The Tanod caught ${who} breaking into ${house.owner}'s house`, 'bust');
+          return done(true, `Huli ka! You pay ${house.owner} a fine of 2 Kowens and spend 5 minutes in jail.`, { busted: true });
+        }
         me.kowens += 4;
+        line(key ? `${who} broke through ${house.owner}'s Bakod with a Master Key and robbed the house: 4 Kowens` : `${who} robbed ${house.owner}'s house: 4 Kowens`, 'win');
         return done(true, 'You got away with 4 Kowens!', { stole: 4 });
       });
 

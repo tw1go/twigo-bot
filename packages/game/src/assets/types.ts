@@ -94,6 +94,10 @@ export interface PropDef {
 }
 
 export interface FenceDef {
+  /** Rusted copies of the three pieces (same size and anchor): a Bakod hit by a Kalawang Potion. */
+  nwRust?: string;
+  neRust?: string;
+  postRust?: string;
   nw: string;
   ne: string;
   post: string;

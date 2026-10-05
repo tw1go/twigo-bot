@@ -10,3 +10,9 @@ fx-firefly.png,5,5,3,5,yes,2,2,night: spark glow (ADD); played back and forth
 fx-moth.png,5,4,2,14,yes,2,2,night: wings up / down; circles lamp lanterns
 fx-jnp-clash.png,48,48,6,15,no,24,24,arena: comic burst
 fx-confetti.png,6,6,8,8,yes,0,0,arena win: pairs violet/magenta/lime/gold
+fx-kalawang-flight.png,16,16,4,12,yes,8,8,Kalawang Potion tumbling; code moves it along the throw arc (~0.5 s)
+fx-kalawang-splash.png,48,48,9,12,no,24,44,potion shatters on the Bakod; anchor = impact point
+fx-rust-fizz.png,32,32,6,8,yes,16,28,bubbles over a rusting fence piece; play ~2 s then fade while the fence cross-fades to its -rust copy and back
+fx-key-turn.png,32,32,6,10,no,16,30,Master Key into the padlock and turning; both endings continue from frame 6
+fx-key-unlock.png,32,32,7,12,no,16,30,success: shackle pops open + gold sparkles; last frame = open padlock
+fx-key-snap.png,32,32,8,12,no,16,30,failure: key snaps, head falls to the ground, tip stays in the lock
