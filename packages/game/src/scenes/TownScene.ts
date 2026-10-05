@@ -66,6 +66,8 @@ import { enterArenaSound, enterCasinoSound, hearFrom, leaveCasinoSound, playSoun
 // Right click to walk; left click a building to walk to its door, or a bench to sit (a tap does all of these).
 
 const ZOOMS = [2, 3, 4];
+/** A large screen (px): small maps are padded with forest to fill at least this much at the farthest zoom. */
+const BIG_SCREEN = [2560, 1440];
 /** Arriving in town, the camera fades in from black, starting this close on the player and easing out to the
  *  middle zoom. */
 const INTRO_ZOOM = 8;
@@ -659,6 +661,12 @@ export class TownScene extends Phaser.Scene {
     const [cols, rows] = this.map.size;
     const bounds = new Phaser.Geom.Rectangle(-rows * 16, 0, (cols + rows) * 16, (cols + rows) * 8);
     for (const s of this.objects.sprites) Phaser.Geom.Rectangle.Union(bounds, s.getBounds(), bounds);
+    // A small map (the neighbourhood) on a big window: the camera would see past its bounds, where no forest was grown.
+    // Pad them (centred) to the most the camera can show, at the farthest zoom on a large screen.
+    const w = Math.max(this.scale.width, BIG_SCREEN[0]) / ZOOMS[0];
+    const h = Math.max(this.scale.height, BIG_SCREEN[1]) / ZOOMS[0];
+    if (bounds.width < w) bounds.setTo(bounds.centerX - w / 2, bounds.y, w, bounds.height);
+    if (bounds.height < h) bounds.setTo(bounds.x, bounds.centerY - h / 2, bounds.width, h);
     return bounds;
   }
 
