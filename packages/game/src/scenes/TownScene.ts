@@ -130,6 +130,8 @@ export class TownScene extends Phaser.Scene {
   private byKeys = false;
   /** The camera glides after the player (off while debugging a fixed view). */
   follow = true;
+  /** Where the last press started, any button (Phaser's own down/up positions only follow the left button). */
+  private pressAt = { x: 0, y: 0 };
   /** A drag on the map peeking around (the camera stops following till it has snapped back). */
   private peek: { x: number; y: number; scrollX: number; scrollY: number; dragging: boolean; back: Phaser.Tweens.Tween | null } | null = null;
 
@@ -647,7 +649,7 @@ export class TownScene extends Phaser.Scene {
   /**
    * Click (or touch) and drag the map: the view follows the pointer with growing resistance, never more than PEEK_PX,
    * and glides back where it was on letting go (instantly with reduced motion). Left button or touch only; a drag is
-   * never a click (POINTER_UP ignores anything that moved more than 8 px).
+   * never a click (POINTER_UP ignores a press that moved more than 8 px).
    */
   private setupPeek(): void {
     const cam = this.cameras.main;
@@ -714,8 +716,11 @@ export class TownScene extends Phaser.Scene {
     // both, as there's no right button.
     this.input.mouse?.disableContextMenu();
     this.setupPeek();
+    this.input.on(Phaser.Input.Events.POINTER_DOWN, (p: Phaser.Input.Pointer) => (this.pressAt = { x: p.x, y: p.y }));
     this.input.on(Phaser.Input.Events.POINTER_UP, (p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
-      if (p.getDistance() > 8) return; // a drag, not a click
+      // A drag, not a click. (Measured from our own press: p.getDistance() only follows the left button, so after a
+      // left drag every right click looked like a drag.)
+      if (Math.hypot(p.x - this.pressAt.x, p.y - this.pressAt.y) > 8) return;
       // Someone else's character: left click (or a tap) picks them for the player menu.
       const other = this.others.pick(over);
       if (other && this.target && (p.wasTouch || p.leftButtonReleased())) return this.target.select(other);
