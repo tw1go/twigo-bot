@@ -189,7 +189,9 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   `showcase` (32 px, pop-ups) and `anim` (a looping 32 px sheet); files in `assets/ui/items/` as `item-<id>.png`,
   `item-<id>@32.png`, `item-<id>@32-anim.png`. Drawn in a rarity frame (1 px border + glow; legendary/secret shimmer) at
   whole-number scales; ids without art keep their emoji/text. Shop items use the common frame.
-- Mine + dig panel (`ui/mine.ts`, `ui/dig-panel.ts`): left click the mine → digs left, shovel uses, Dig (`POST /town/dig`,
+- Mine + dig panel (`ui/mine.ts`, `ui/dig-panel.ts`): left click the mine → digs left, shovel uses, the lucky dig (dig pity:
+  `MeDig.lucky/luckyEvery`, the server's digs toward its every-60th Epic-or-better dig, as a bar; gold when the next is it;
+  refreshed every 20 s while open; dev `&lucky=58`), Dig (`POST /town/dig`,
   bot `web/town-mine.ts`). `/dig` and the Mine share `digFor` in `dig/dig.ts` (tested: `npm test`, `dig/dig.test.ts`).
   Dig feed lines carry `itemId`/`itemName` and the digger's town `playerId` (the town swaps the Discord id for it):
   your own plays the dig panel (manifest `ui.digPanel`; falls back to the reward pop-up), others' puff `fx dig-dust` at

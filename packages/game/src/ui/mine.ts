@@ -5,7 +5,8 @@ import { type Rarity, RARITY_COLOUR, isRarity, itemArt } from './item-art';
 import { installPixelTiles } from './pixel-tiles';
 import { el, followWallet, showPopup } from './reward';
 
-// ⛏️ The Mine (left click the mine entrance), in the reward box dressed as stone (pixel tiles: ui/pixel-tiles.ts): digs left today and uses left on your shovel, and a
+// ⛏️ The Mine (left click the mine entrance), in the reward box dressed as stone (pixel tiles: ui/pixel-tiles.ts): digs left today and uses left on your shovel,
+// the server's lucky dig (the dig pity: a bar of the server's digs toward the next, which is Epic or better), and a
 // Dig button (POST /town/dig, /dig's rules). A find comes back as your feed line, which plays the dig panel over this
 // pop-up (ui/dig-panel.ts), and then shows here as a card: its picture, name, rarity and worth. A dig that can't
 // happen says why. The pop-up stays open to dig again.
@@ -45,13 +46,28 @@ export function showMine(): void {
   const wrap = el('div', 'mn-body');
   const stats = el('div', 'mn-stats');
   stats.append(digs, shovel);
-  wrap.append(stats, found, button, note, el('p', 'mn-hint', 'Each dig uses your shovel once. Buy shovels at the rewards shop; finds go to your bag (sell them with /sell in Discord).'));
+  const lucky = el('div', 'mn-lucky');
+  wrap.append(stats, lucky, found, button, note, el('p', 'mn-hint', 'Each dig uses your shovel once. Buy shovels at the rewards shop; finds go to your bag (sell them with /sell in Discord).'));
 
   let busy = false;
   const render = (d: MeDig) => {
     const stat = (box: HTMLElement, value: string, label: string) => box.replaceChildren(el('b', undefined, value), el('span', undefined, label));
     stat(digs, `${d.digsLeft}/${d.digsPerDay}`, 'digs left today');
     stat(shovel, String(d.shovel), d.shovel === 1 ? 'use left on your shovel' : 'uses left on your shovel');
+    // The lucky dig: the server's digs so far toward it, as a bar.
+    const left = d.luckyEvery - d.lucky;
+    const bar = el('div', 'mn-lucky-bar');
+    const fill = el('div', 'mn-lucky-fill');
+    fill.style.width = `${Math.min(100, (d.lucky / d.luckyEvery) * 100)}%`;
+    bar.append(fill);
+    const head = el('div', 'mn-lucky-head');
+    head.append(el('b', undefined, '🍀 Lucky dig'), el('span', undefined, `${d.lucky}/${d.luckyEvery}`));
+    lucky.replaceChildren(
+      head,
+      bar,
+      el('div', 'mn-lucky-hint', left <= 1 ? "The server's next dig is lucky: Epic or better!" : `Every ${d.luckyEvery}th dig on the server is Epic or better. ${left} to go.`),
+    );
+    lucky.classList.toggle('mn-lucky-next', left <= 1);
     button.disabled = busy;
   };
   const say = (text: string, ok: boolean) => {
@@ -79,13 +95,17 @@ export function showMine(): void {
       return say(res.message, false);
     }
     // The dig panel plays from the feed line; the find stays here as a card.
-    say('', true);
+    say(res.lucky ? `🍀 Lucky dig! The server's ${res.dig.luckyEvery}th dig: Epic or better.` : '', true);
     showFind(res.item);
     window.dispatchEvent(new Event('mk-wallet')); // the HUD's shovel counter
   });
 
   const closed = showPopup({ title: 'Mine', body: [wrap], button: 'Close', celebrate: false, sound: 'door' });
-  followWallet(closed, () => !busy && void loadMe(true).then((me) => me.status === 'ok' && !busy && render(me.me.dig)));
+  const reload = () => !busy && void loadMe(true).then((me) => me.status === 'ok' && !busy && render(me.me.dig));
+  followWallet(closed, reload);
+  // Others dig too: the lucky dig's bar keeps up while the Mine is open.
+  const ticking = setInterval(reload, 20_000);
+  void closed.then(() => clearInterval(ticking));
   void loadMe(true).then((me) => {
     if (me.status === 'ok') render(me.me.dig);
     else say('Log in to dig.', false);
@@ -104,17 +124,19 @@ const DEV_FINDS: [string, string, string][] = [
   ['barong', 'Barong', 'mythical'],
   ['twigo-treasure', "twigo's Treasure", 'legendary'],
 ];
-const fakeState = { digs: Number(new URLSearchParams(location.search).get('digs') ?? 7), shovel: Number(new URLSearchParams(location.search).get('shovels') ?? 6) };
+const fakeState = { digs: Number(new URLSearchParams(location.search).get('digs') ?? 7), shovel: Number(new URLSearchParams(location.search).get('shovels') ?? 6), lucky: Number(new URLSearchParams(location.search).get('lucky') ?? 57) };
 
 async function fakeDig(): Promise<TownDigResponse> {
-  const d = (): MeDig => ({ shovel: fakeState.shovel, digsLeft: fakeState.digs, digsPerDay: 9, shovelsLeft: 2, shovelCost: 2, shovelUses: 3 });
+  const d = (): MeDig => ({ shovel: fakeState.shovel, digsLeft: fakeState.digs, digsPerDay: 9, shovelsLeft: 2, shovelCost: 2, shovelUses: 3, lucky: fakeState.lucky, luckyEvery: 60 });
   if (fakeState.shovel <= 0) return { ok: false, message: 'You need a shovel to dig. Get one at the rewards shop (2 Kowens).', dig: d() };
   if (fakeState.digs <= 0) return { ok: false, message: "You've dug 9 times today. Your arms need a rest! Come back tomorrow.", dig: d() };
   fakeState.digs--;
   fakeState.shovel--;
+  const lucky = ++fakeState.lucky >= 60;
+  if (lucky) fakeState.lucky = 0;
   const pick = new URLSearchParams(location.search).get('find');
   const [id, name, rarity] = DEV_FINDS.find(([i]) => i === pick) ?? DEV_FINDS[Math.floor(Math.random() * DEV_FINDS.length)];
   const q = new URLSearchParams({ kind: 'dig', tone: rarity, text: `${fakeName()} dug up ${name}`, itemId: id, itemName: name, as: fakeName() });
   await fetch(`/__system?${q}`).catch(() => null);
-  return { ok: true, message: `You dug up ${name}.`, dig: d(), item: { id, name, rarity, value: 1 } };
+  return { ok: true, message: `You dug up ${name}.`, dig: d(), item: { id, name, rarity, value: 1 }, ...(lucky ? { lucky } : {}) };
 }

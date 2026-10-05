@@ -3,7 +3,7 @@ import type { LeaderboardResponse, LeaderboardRow, MeDig, MeResponse, PresenceSt
 import { GatewayIntentBits, type Client } from 'discord.js';
 import { config } from '../config.js';
 import { balance, rankOf, setWalletHook, topBalances, totalKowens, vaultBalance } from '../credits/store.js';
-import { DIGS_PER_DAY, SHOVEL_COST, SHOVEL_USES, SHOVELS_PER_DAY, digsToday, inventory, shovelUses, shovelsBoughtToday } from '../dig/store.js';
+import { DIGS_PER_DAY, digsToday, inventory, LUCKY_EVERY, serverDigProgress, SHOVEL_COST, SHOVEL_USES, SHOVELS_PER_DAY, shovelsBoughtToday, shovelUses } from '../dig/store.js';
 import { ITEM_BY_ID } from '../dig/items.js';
 import { getNickname, parseNickname, setNickname } from './nickname.js';
 import { titleIsNew, titleOf, titleSeen } from './titles.js';
@@ -176,6 +176,8 @@ function digStatus(userId: string): MeDig {
     shovelsLeft: Math.max(0, SHOVELS_PER_DAY - shovelsBoughtToday(userId)),
     shovelCost: SHOVEL_COST,
     shovelUses: SHOVEL_USES,
+    lucky: serverDigProgress(),
+    luckyEvery: LUCKY_EVERY,
   };
 }
 

@@ -97,6 +97,10 @@ export interface MeDig {
   shovelsLeft: number;
   shovelCost: number;
   shovelUses: number;
+  /** The server's lucky dig (dig pity): digs by anyone so far toward the next one, which comes every `luckyEvery` and is
+   *  Epic or better. */
+  lucky: number;
+  luckyEvery: number;
 }
 
 /** POST /town/dig: a dig from the town's Mine. On success the find also arrives as the digger's feed line (which
@@ -107,6 +111,8 @@ export interface TownDigResponse {
   message: string;
   dig: MeDig;
   item?: { id: string; name: string; rarity: string; value: number };
+  /** It was the server's lucky dig. */
+  lucky?: boolean;
 }
 
 /** GET /town/inventory: the bag — every item one slot (dug-up items, Master Keys, potions), the slots unlocked (bags

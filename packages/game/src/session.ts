@@ -7,7 +7,7 @@ let cached: Promise<MeResult> | null = null;
 
 /** Dev only (no local bot needed): ?me=anon | new (logged in, no look or nickname yet) | saved (logged in, the look
  *  saved in this browser; also what dev falls back to when no bot answers /me). Saving a look then stays in this
- *  browser. Test values: ?kowens= ?shovels= ?digs= ?status=. */
+ *  browser. Test values: ?kowens= ?shovels= ?digs= ?status= ?lucky= (the server's digs toward the lucky dig). */
 export function fakeLogin(): string | null {
   const fake = import.meta.env.DEV ? new URLSearchParams(location.search).get('me') : null;
   if (fake === 'anon' || fake === 'new' || fake === 'saved') return fake;
@@ -44,7 +44,7 @@ function fakeMe(fake: string): MeResult {
   }
   return { status: 'ok', me: { id: '0', name: fakeName(), avatar: '', kowens: devNumber('kowens', 1250), vault: 0, rank: null, items: [], preregistered: false, outfit, nickname: fake === 'saved' ? fakeName() : null, title: { name: 'Townfolk', color: '#B794F6' },
       newTitle: false,
-      dig: { shovel: devNumber('shovels', 6), digsLeft: devNumber('digs', 7), digsPerDay: 9, shovelsLeft: 2, shovelCost: 2, shovelUses: 3 },
+      dig: { shovel: devNumber('shovels', 6), digsLeft: devNumber('digs', 7), digsPerDay: 9, shovelsLeft: 2, shovelCost: 2, shovelUses: 3, lucky: devNumber('lucky', 57), luckyEvery: 60 },
       status: fakeStatus() } };
 }
 

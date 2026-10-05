@@ -552,6 +552,17 @@
       #reward .mn-body .mn-hint { padding: 6px 8px; background: rgba(30, 31, 43, 0.72); color: #C7CAD6; box-shadow: inset 0 0 0 3px #2E3040; }
       #reward .mn-body { margin-bottom: 14px; }
       #reward .mn-stats { display: flex; gap: 10px; margin-bottom: 14px; }
+      /* The lucky dig (dig pity): the server's digs toward the next one, a bar on a dark slab; gold and glowing when the next is it. */
+      #reward .mn-lucky { margin-bottom: 14px; padding: 8px 10px 9px; text-align: left; background: rgba(30, 31, 43, 0.82); border: 3px solid #2E3040; box-shadow: inset 3px 3px 0 #15161F, 0 3px 0 #8A8EA0; color: #C7CAD6; font-size: 12px; }
+      #reward .mn-lucky-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+      #reward .mn-lucky-head b { color: #A3E635; font-size: 14px; text-shadow: 0 2px 0 #15161F; }
+      #reward .mn-lucky-head span { color: #FDE68A; font-size: 18px; font-weight: 700; text-shadow: 0 2px 0 #15161F; }
+      #reward .mn-lucky-bar { height: 12px; background: #15161F; box-shadow: inset 0 0 0 2px #0E0F16; }
+      #reward .mn-lucky-fill { height: 100%; background: #22C55E; box-shadow: inset 0 3px 0 #86EFAC, inset 0 -3px 0 #15803D; transition: width 0.4s; }
+      #reward .mn-lucky-hint { margin-top: 6px; }
+      #reward .mn-lucky.mn-lucky-next { box-shadow: inset 3px 3px 0 #15161F, 0 3px 0 #8A8EA0, 0 0 0 2px #F8BF27, 0 0 14px rgba(248, 191, 39, 0.5); }
+      #reward .mn-lucky.mn-lucky-next .mn-lucky-fill { background: #F8BF27; box-shadow: inset 0 3px 0 #FDE68A, inset 0 -3px 0 #B45309; }
+      #reward .mn-lucky.mn-lucky-next .mn-lucky-hint { color: #FDE68A; }
       #reward .mn-stat { flex: 1; display: flex; flex-direction: column; padding: 8px; border: 2px solid #E2DDF3; border-radius: 2px; background: #F5F3FF; font-size: 12px; color: #7A8099; }
       #reward .mn-stat b { font-size: 22px; color: #5B21B6; }
       #reward .mn-dig { min-width: 140px; padding: 9px 22px 11px; border: 3px solid #1E1B3A; border-radius: 0; background: #E0A671; color: #1E1B3A; font: inherit; font-size: 17px; font-weight: 700; box-shadow: inset 0 3px 0 #F3C79B, inset 0 -4px 0 #8A5A30, 0 4px 0 #1E1B3A; }

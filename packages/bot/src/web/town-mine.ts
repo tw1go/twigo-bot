@@ -3,7 +3,7 @@ import type { MeDig, TownDigResponse } from '@mikazuki/shared';
 import { config } from '../config.js';
 import { digFor, digReveal } from '../dig/dig.js';
 import { RARITY } from '../dig/items.js';
-import { DIGS_PER_DAY, SHOVEL_COST } from '../dig/store.js';
+import { DIGS_PER_DAY, LUCKY_EVERY, SHOVEL_COST } from '../dig/store.js';
 import { kowen } from '../kowens.js';
 import { feed } from './town-feed.js';
 
@@ -34,8 +34,9 @@ export async function digInTown(client: Client, userId: string, name: string, st
   }
   return {
     ok: true,
-    message: `You dug up ${found.name} (${r.label}), worth ${found.value} ${kowen(found.value)}.`,
+    message: `${result.lucky ? `Lucky dig! The server's ${LUCKY_EVERY}th dig: ` : ''}You dug up ${found.name} (${r.label}), worth ${found.value} ${kowen(found.value)}.`,
     dig: status(userId),
+    ...(result.lucky ? { lucky: true } : {}),
     item: { id: found.id, name: found.name, rarity: found.rarity, value: found.value },
   };
 }
