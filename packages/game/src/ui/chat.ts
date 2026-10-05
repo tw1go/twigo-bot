@@ -4,6 +4,9 @@ import { playSound } from '../audio/sound';
 // people chatting from the linked Discord channel) and the input under them. Enter opens the input, Enter sends (and keeps it open), an empty Enter or Esc closes it. Messages go to everyone in
 // town as speech bubbles too (TownScene). DOM text only: names and messages are never parsed as HTML. On phones the box
 // folds away behind a chat button (bottom left; a dot when something new arrives while it's closed).
+// Two channels: General (white) and Megaphone (sky blue: uses a megaphone from the bag and runs across everyone's
+// screen). `/m message` and `/g message` say it there and stay on that channel; `/m` or `/g` alone just switch, and the
+// tag before the input shows (and switches) which one you're on.
 
 
 const MAX_LINES = 60;
@@ -32,6 +35,9 @@ const PHONE = '(max-width: 560px)';
 
 export class ChatBox {
   private readonly root: HTMLElement;
+  /** The channel tag before the input: General or Megaphone (click to switch). */
+  private readonly channel: HTMLButtonElement;
+  private megaphone = false;
   private readonly log: HTMLElement;
   private readonly input: HTMLInputElement;
   private idleTimer: ReturnType<typeof setTimeout> | undefined;
@@ -39,8 +45,8 @@ export class ChatBox {
   private readonly toggle: HTMLButtonElement;
 
   constructor(
-    /** Sends a message; false if it couldn't go (not connected). */
-    private readonly send: (text: string) => boolean,
+    /** Sends a message (through a megaphone or not); false if it couldn't go (not connected). */
+    private readonly send: (text: string, megaphone: boolean) => boolean,
     /** Extra controls beside the input (the emote picker). */
     tools: HTMLElement | null = null,
   ) {
@@ -57,9 +63,17 @@ export class ChatBox {
     this.input.setAttribute('aria-label', 'Chat message');
     this.input.autocomplete = 'off';
     this.input.enterKeyHint = 'send';
+    this.channel = document.createElement('button');
+    this.channel.className = 'ch-channel';
+    this.channel.type = 'button';
+    this.channel.addEventListener('click', () => {
+      this.setChannel(!this.megaphone);
+      this.input.focus();
+    });
+    this.setChannel(false);
     const row = document.createElement('div');
     row.className = 'ch-row';
-    row.append(this.input);
+    row.append(this.channel, this.input);
     if (tools) row.append(tools);
     this.root.append(this.log, row);
     this.toggle = document.createElement('button');
@@ -93,7 +107,12 @@ export class ChatBox {
         this.input.value = '';
         // Sending keeps the chat open for the next message (so its letters never walk you); an empty Enter closes it.
         if (!text) return this.input.blur();
-        if (!this.send(text)) this.notice('Chat is offline right now.');
+        // /m and /g pick the channel (and stay on it); alone they only switch.
+        const pick = /^\/([mg])(?:\s+|$)/i.exec(text);
+        if (pick) this.setChannel(pick[1].toLowerCase() === 'm');
+        const said = pick ? text.slice(pick[0].length).trim() : text;
+        if (!said) return;
+        if (!this.send(said, this.megaphone)) this.notice('Chat is offline right now.');
       } else if (e.key === 'Escape') {
         this.input.blur();
       }
@@ -107,6 +126,16 @@ export class ChatBox {
       this.setOpen(true);
       this.input.focus();
     });
+  }
+
+  /** General (white) or Megaphone (sky blue): the tag, the input's colour and its hint. */
+  private setChannel(megaphone: boolean): void {
+    this.megaphone = megaphone;
+    this.channel.textContent = megaphone ? 'Megaphone' : 'General';
+    this.channel.title = megaphone ? 'Megaphone: uses one from your bag and runs across everyone’s screen (/g for general)' : 'General chat (/m for the megaphone)';
+    this.channel.setAttribute('aria-label', `Channel: ${this.channel.textContent}. Switch`);
+    this.root.classList.toggle('ch-mega-mode', megaphone);
+    this.input.placeholder = megaphone ? 'Say it to the whole town' : 'Press Enter to chat';
   }
 
   /** Someone's name in the log was clicked: their town id when the line has it (else just the name), and the name
@@ -137,10 +166,18 @@ export class ChatBox {
     return [who, document.createTextNode(after)];
   }
 
-  /** A message in the log (from Discord: with Discord's mark before the name). `id`: the speaker's town id. */
-  add(name: string, text: string, from: 'me' | 'town' | 'discord' = 'town', id?: string): void {
+  /** A message in the log (from Discord: with Discord's mark before the name; through a megaphone: sky blue, tagged).
+   *  `id`: the speaker's town id. */
+  add(name: string, text: string, from: 'me' | 'town' | 'discord' = 'town', id?: string, megaphone = false): void {
     const line = document.createElement('div');
-    line.className = 'ch-line';
+    line.className = megaphone ? 'ch-line ch-mega' : 'ch-line';
+    if (megaphone) {
+      const tag = document.createElement('span');
+      tag.className = 'ch-mega-tag';
+      tag.textContent = '📢';
+      tag.title = 'Megaphone';
+      line.append(tag);
+    }
     if (from === 'discord') line.append(discordMark());
     line.append(...this.speaker(name, ': ', from === 'me' ? 'ch-me' : 'ch-name', from === 'town', id), text);
     this.push(line);
@@ -174,9 +211,9 @@ export class ChatBox {
   }
 
   /** The conversation so far (as the server remembers it), replacing what's in the log. */
-  history(lines: { name: string; text: string; discord?: boolean }[], myName: string | null): void {
+  history(lines: { name: string; text: string; discord?: boolean; megaphone?: boolean }[], myName: string | null): void {
     this.log.replaceChildren();
-    for (const l of lines) this.add(l.name, l.text, l.discord ? 'discord' : l.name === myName ? 'me' : 'town');
+    for (const l of lines) this.add(l.name, l.text, l.discord ? 'discord' : l.name === myName ? 'me' : 'town', undefined, l.megaphone);
   }
 
   /** A note from the game (refused, offline…). */

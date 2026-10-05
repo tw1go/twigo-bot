@@ -8,6 +8,7 @@ import { ITEM_BY_ID, RARITY_ORDER } from '../dig/items.js';
 import { MAX_SLOTS, capacity, inventory, masterKeys, removeItems } from '../dig/store.js';
 import { kowen } from '../kowens.js';
 import { POTIONS, ownedPotions } from '../potions/potions.js';
+import { megaphones } from '../items/megaphone.js';
 
 // 🎒 The town's inventory (GET /town/inventory, POST /town/sell, POST /town/flex): the bag as the town shows it — every
 // dug-up item, Master Key and potion, one slot each — and selling or flexing a dug-up item with /sell's and /flex's
@@ -25,9 +26,12 @@ export function townInventory(userId: string): TownInventoryResponse {
     .sort((a, b) => RARITY_ORDER.indexOf(a.item.rarity) - RARITY_ORDER.indexOf(b.item.rarity) || b.item.value - a.item.value)
     .map(({ item, count }) => ({ id: item.id, name: item.name, emoji: item.emoji, rarity: item.rarity, value: item.value, count, kind: 'dig', sellable: true }));
   const keys = masterKeys(userId);
+  const megaphoneCount = megaphones(userId);
   const held: TownBagItem[] = [
     ...(keys ? [{ id: 'master-key', name: 'Master Key', emoji: '🗝️', rarity: 'common', value: 0, count: keys, kind: 'key' as const, sellable: false,
       about: '50% chance to break through a Bakod when you /steal. Used only then.' }] : []),
+    ...(megaphoneCount ? [{ id: 'megaphone', name: 'Megaphone', emoji: '📢', rarity: 'common', value: 0, count: megaphoneCount, kind: 'megaphone' as const, sellable: false, stacked: true,
+      about: "Type /m and your message in the town's chat: it runs across everyone's screen in sky blue. One per message." }] : []),
     ...ownedPotions(userId).map(([pid, count]) => ({ id: `potion-${pid}`, name: POTIONS[pid].name, emoji: POTIONS[pid].emoji, rarity: 'common', value: 0, count,
       kind: 'potion' as const, sellable: false, about: `${plain(POTIONS[pid].effect)}. Use it with /potion use in Discord.` })),
   ];

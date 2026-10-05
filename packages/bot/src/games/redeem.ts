@@ -8,6 +8,7 @@ import { POTIONS, addPotions, hintsLeft, type PotionId } from '../potions/potion
 import { FENCE_DAYS, FENCE_MAX_DAYS, GAME_NAME, recordRedemption, rewards } from './rewards.js';
 import { feed } from '../web/town-feed.js';
 import { freeSlots } from '../dig/bag.js';
+import { addMegaphones, megaphones } from '../items/megaphone.js';
 
 // 🎁 Redeeming a reward, shared by /redeem and the town's rewards shop: every check, then the purchase. Each caller
 // words the outcome its own way (Discord markdown, or plain town text).
@@ -15,7 +16,10 @@ import { freeSlots } from '../dig/bag.js';
 export type Reward = (typeof rewards)[number];
 
 /** Rewards that can be bought several at a time. */
-export const stackable = (r: Reward) => r.kind === 'shovel' || r.kind === 'key' || r.kind === 'potion';
+export const stackable = (r: Reward) => r.kind === 'shovel' || r.kind === 'key' || r.kind === 'potion' || r.kind === 'megaphone';
+
+/** Rewards kept in the bag: one slot each (megaphones all share one). */
+export const inBag = (r: Reward) => r.kind === 'key' || r.kind === 'potion' || r.kind === 'megaphone';
 
 const fmt = (n: number) => n.toLocaleString('en-US');
 
@@ -30,9 +34,10 @@ export type RedeemResult =
       quantity: number;
       asked: number;
       total: number;
-      /** What the member has now: potions of that kind, Master Keys, digs on the shovel, inventory slots, Bakod end. */
+      /** What the member has now: potions of that kind, Master Keys, megaphones, digs on the shovel, inventory slots, Bakod end. */
       potions?: number;
       keys?: number;
+      megaphones?: number;
       uses?: number;
       slots?: number;
       fenceUntil?: number;
@@ -58,8 +63,9 @@ export function redeemReward(userId: string, reward: Reward, asked: number): Red
     if (left <= 0) return { ok: false, reward, reason: 'shovels-today' };
     quantity = Math.min(asked, left);
   }
-  // Master Keys and potions are held in the bag: one slot each.
-  if ((reward.kind === 'key' || reward.kind === 'potion') && freeSlots(userId) < quantity) return { ok: false, reward, reason: 'bag-full', free: freeSlots(userId) };
+  // Master Keys and potions are held in the bag, one slot each; megaphones share one slot (needed only for the first).
+  const slots = reward.kind === 'megaphone' ? (megaphones(userId) ? 0 : 1) : quantity;
+  if (inBag(reward) && freeSlots(userId) < slots) return { ok: false, reward, reason: 'bag-full', free: freeSlots(userId) };
   const total = reward.cost * quantity;
   if (have < total) return { ok: false, reward, reason: 'kowens', quantity, total, have, canAfford: Math.floor(have / reward.cost) };
 
@@ -81,6 +87,9 @@ export function redeemReward(userId: string, reward: Reward, asked: number): Red
       for (let i = 0; i < quantity; i++) keys = addMasterKey(userId);
       return { ...done, keys };
     }
+    case 'megaphone':
+      take(userId, total);
+      return { ...done, megaphones: addMegaphones(userId, quantity) };
     case 'shovel': {
       take(userId, total);
       let uses = 0;
@@ -121,6 +130,10 @@ export function redeemPost(userId: string, result: Extract<RedeemResult, { ok: t
     case 'key': {
       const keys = result.keys!;
       return pub(`🗝️ ${who} bought ${quantity > 1 ? `**${quantity} Master Keys**` : 'a **Master Key**'}… no Bakod is safe now 👀\n-# You have ${keys} key${keys === 1 ? '' : 's'}. A key is only used when you /steal from someone with a Bakod (50% to break in).`);
+    }
+    case 'megaphone': {
+      const n = result.megaphones!;
+      return pub(`📢 ${who} bought ${quantity > 1 ? `**${quantity} Megaphones**` : 'a **Megaphone**'}! Time to make some noise in town.\n-# You have ${n}. In the town's chat, \`/m your message\` runs it across everyone's screen.`);
     }
     case 'shovel': {
       const uses = result.uses!;

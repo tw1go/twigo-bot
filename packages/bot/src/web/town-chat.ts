@@ -16,7 +16,7 @@ function plain(message: Message): string {
   return text.trim();
 }
 
-export function bridgeTownChat(client: Client, town: Town): (userId: string, nickname: string, text: string) => void {
+export function bridgeTownChat(client: Client, town: Town): (userId: string, nickname: string, text: string, megaphone: boolean) => void {
   const channelId = config.townChatChannelId;
   if (!channelId) return () => {};
 
@@ -30,14 +30,14 @@ export function bridgeTownChat(client: Client, town: Town): (userId: string, nic
   });
 
   // Town → Discord.
-  const post = async (nickname: string, text: string) => {
+  const post = async (nickname: string, text: string, megaphone: boolean) => {
     const channel = await client.channels.fetch(channelId);
     if (!channel?.isSendable()) return;
     await channel.send({
-      content: `**${escapeMarkdown(nickname)}**: ${escapeMarkdown(text)}`,
+      content: `${megaphone ? '📢 ' : ''}**${escapeMarkdown(nickname)}**: ${escapeMarkdown(text)}`,
       allowedMentions: { parse: [] },
       flags: MessageFlags.SuppressEmbeds,
     });
   };
-  return (_userId, nickname, text) => void post(nickname, text).catch((err) => console.error('[town-chat] could not post to Discord:', err));
+  return (_userId, nickname, text, megaphone) => void post(nickname, text, megaphone).catch((err) => console.error('[town-chat] could not post to Discord:', err));
 }

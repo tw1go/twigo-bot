@@ -29,7 +29,8 @@ export type TownClientMessage =
   | { t: 'sit'; col: number; row: number; dir: TownDir }
   | { t: 'stand' }
   /** Say something (1–120 characters after tidying; a few at once, then about one every 2 s). */
-  | { t: 'say'; text: string }
+  /** `megaphone`: uses one of the sender's megaphones; the line runs across everyone's screen. */
+  | { t: 'say'; text: string; megaphone?: boolean }
   /** An emote over your head (one of TOWN_EMOTES). */
   | { t: 'emote'; emote: TownEmote }
   /** The Arena's jack en poy against another player (bot web/town-arena.ts): join the queue (with an optional bet in
@@ -76,6 +77,8 @@ export interface TownChatLine {
   text: string;
   /** Said in the town's Discord channel rather than in town. */
   discord?: boolean;
+  /** Said through a megaphone. */
+  megaphone?: boolean;
 }
 
 /** A line in the town's system feed: something that happened around the server (a dig, a bet). */
@@ -118,7 +121,7 @@ export type TownServerMessage =
   /** That bench is taken (followed by a snap back to where you stood). */
   | { t: 'seat-taken' }
   /** Someone said something (you too: your own words come back this way). */
-  | { t: 'say'; id: string; text: string }
+  | { t: 'say'; id: string; text: string; megaphone?: boolean }
   /** A banner for everyone in town. */
   | { t: 'announce'; announcement: TownAnnouncement }
   /** Something happened around the server (the system feed). */
@@ -140,7 +143,8 @@ export type TownServerMessage =
   /** Someone said something in the town's Discord channel (shown with a Discord mark, no bubble). */
   | { t: 'say-discord'; name: string; text: string }
   /** Your message wasn't sent: too fast, empty / too long once tidied, or you're muted (until when, ms). */
-  | { t: 'say-refused'; reason: 'slow' | 'invalid' | 'muted'; until?: number }
+  /** 'megaphone': they have none (bought in the shop). */
+  | { t: 'say-refused'; reason: 'slow' | 'invalid' | 'muted' | 'megaphone'; until?: number }
   | ArenaServerMessage;
 
 /** Staying in the web town pays (bot web/town-stay.ts): a Kowen to claim every `every` minutes in town (`minutes`

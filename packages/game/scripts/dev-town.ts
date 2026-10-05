@@ -64,7 +64,7 @@ export function devTown(): Plugin {
           return name;
         },
         profile: (name) => ({ nickname: name, title: { name: 'Townfolk', color: '#B794F6' }, outfit: looks.get(name) ?? ({} as OutfitData) }),
-        onSay: (_id, nickname, text) => server.config.logger.info(`[town chat → Discord] ${nickname}: ${text}`, { timestamp: true }),
+        onSay: (_id, nickname, text, megaphone) => server.config.logger.info(`[town chat → Discord] ${megaphone ? '📢 ' : ''}${nickname}: ${text}`, { timestamp: true }),
       });
       server.middlewares.use('/__announce', (req, res) => {
         const q = new URL(req.url ?? '/', 'http://localhost').searchParams;

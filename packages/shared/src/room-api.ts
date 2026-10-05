@@ -129,7 +129,9 @@ export interface TownBagItem {
   /** What /sell pays for one (0 for keys and potions). */
   value: number;
   count: number;
-  kind: 'dig' | 'key' | 'potion';
+  /** All of them in one slot, with a count (megaphones). */
+  stacked?: boolean;
+  kind: 'dig' | 'key' | 'potion' | 'megaphone';
   /** Dug-up items can be sold and flexed; keys and potions say how they're used. */
   sellable: boolean;
   about?: string;
@@ -251,7 +253,7 @@ export interface TownShopItem {
   id: string;
   name: string;
   cost: number;
-  kind: 'fence' | 'shovel' | 'key' | 'vault' | 'potion' | 'bag' | 'pass';
+  kind: 'fence' | 'shovel' | 'key' | 'vault' | 'potion' | 'bag' | 'pass' | 'megaphone';
   /** What it does. */
   about: string;
   /** Most that can be bought at once now (0 = none today, e.g. shovels). */

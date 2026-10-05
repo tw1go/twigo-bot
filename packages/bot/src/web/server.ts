@@ -22,6 +22,7 @@ import { gambleInTown } from './town-casino.js';
 import { flexInTown, sellInTown, townInventory } from './town-bag.js';
 import { boardAction, townBoard } from './town-board.js';
 import { townNews } from './town-news.js';
+import { useMegaphone } from '../items/megaphone.js';
 import { claimStay, stayInfo, stayMinute } from './town-stay.js';
 import { arenaBets, refundHeldBets } from './town-arena-bets.js';
 import { kowen } from '../kowens.js';
@@ -579,11 +580,12 @@ export function startWebServer(client: Client): void {
 
   // The live town (/ws): logged-in members who've made a character, from the game's own page.
   try {
-    let toDiscord: (userId: string, nickname: string, text: string) => void = () => {};
+    let toDiscord: (userId: string, nickname: string, text: string, megaphone: boolean) => void = () => {};
     refundHeldBets(); // an arena match the bot didn't finish: both get their stake back
     town = attachTown(server, {
       arenaBets: arenaBets(),
-      onSay: (userId, nickname, text) => toDiscord(userId, nickname, text),
+      onSay: (userId, nickname, text, megaphone) => toDiscord(userId, nickname, text, megaphone),
+      megaphone: useMegaphone,
       moderation: { mutedUntil, kickedUntil, filter: filterText },
       map: loadTownMap(),
       authenticate: async (req) => {

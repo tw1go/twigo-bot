@@ -13,6 +13,7 @@ import { showElsewhere, showKicked } from '../ui/elsewhere';
 import { mountTownHud } from '../ui/townhud';
 import { ChatBox } from '../ui/chat';
 import { StayReward } from '../ui/stay';
+import { MegaphoneBanner } from '../ui/megaphone';
 import { SystemFeed } from '../ui/system-feed';
 import { announce } from '../ui/announce';
 import { OnlineList } from '../ui/online';
@@ -457,7 +458,10 @@ export class TownScene extends Phaser.Scene {
       : null;
     tools.append(online.el, emotePicker(sheet, emote));
     if (bag) document.body.append(bag.button); // its own button, just right of the chat box
-    const chat = new ChatBox((text) => link.send({ t: 'say', text }), tools);
+    const chat = new ChatBox((text, megaphone) => link.send({ t: 'say', text, ...(megaphone ? { megaphone } : {}) }), tools);
+    // Megaphone messages run across the screen (with the megaphone's art, if it's there).
+    const megaArt = this.M.items?.megaphone?.showcase;
+    const megaphone = new MegaphoneBanner(megaArt ? `${import.meta.env.BASE_URL}assets/${megaArt}` : null);
     // Members can click someone's name in the chat: the player menu opens beside it (if they're still in town).
     const target = this.target;
     if (target) {
@@ -493,15 +497,19 @@ export class TownScene extends Phaser.Scene {
           const left = Math.max(1, Math.ceil(((m.until ?? Date.now()) - Date.now()) / 60_000));
           return chat.notice(`You're muted in town chat for about ${left} more minute${left === 1 ? '' : 's'}.`);
         }
+        if (m.reason === 'megaphone') return chat.notice('You have no megaphones. Get one at the rewards shop (1 Kowen), or /g for general chat.');
         return chat.notice(m.reason === 'slow' ? "You're chatting a bit fast. Wait a moment." : "That message can't be sent.");
       }
       if (m.t === 'say') {
         // Your own words come back from the server like everyone else's, so you see what they see.
+        const name = m.id === myId ? (member?.nickname ?? 'You') : (this.others.nameOf(m.id) ?? 'Someone');
+        if (m.megaphone) megaphone.show(name, m.text);
         if (m.id === myId) {
           if (bubbles) this.player.say(m.text, bubbles);
-          return chat.add(member?.nickname ?? 'You', m.text, 'me'); // (your own words make no sound)
+          if (m.megaphone) window.dispatchEvent(new Event('mk-wallet')); // one megaphone fewer in the bag
+          return chat.add(name, m.text, 'me', undefined, m.megaphone); // (your own words make no sound)
         }
-        chat.add(this.others.nameOf(m.id) ?? 'Someone', m.text, 'town', m.id);
+        chat.add(name, m.text, 'town', m.id, m.megaphone);
         playSound('chat');
       }
       if (m.t === 'say-discord') {

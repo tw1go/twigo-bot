@@ -114,6 +114,14 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
 - Reward pop-up (`ui/reward.ts`, `showReward`): dimmed town, turning rays, white box in the item frame (its fill
   repainted white). Shown once per new title, on whichever device comes first (`/me` newTitle → `POST
   /title/seen`; `titles.announced`, schema v7); dev demo `?reward=kowens|title`, debug `__town.reward({...})`.
+- Megaphone (`ui/megaphone.ts`; bot `items/megaphone.ts`, kv 'megaphones'; reward kind 'megaphone', 1 Kowen in `/redeem`
+  and the shop's Items tab; all of them share one bag slot (`TownBagItem.stacked`, a ×N count on the slot)): the chat has
+  two channels, General (white) and Megaphone (sky blue #7DD3FC), shown by the tag before the input (click switches);
+  `/m msg` / `/g msg` say it there and stay on it, `/m` or `/g` alone switch. `say` with `megaphone: true` uses one
+  (`TownOptions.megaphone`; none → say-refused 'megaphone'; free on the dev server): the line is sky blue with 📢, runs
+  across everyone's screen (a strip under the HUD's buttons and panels, sliding right to left at 160 px/s, one at a time;
+  still for 6 s with reduced motion), and goes to Discord with 📢. Art: manifest items.megaphone (item-megaphone2 of the
+  art folder; item-megaphone1 there is empty).
 - Chat (`ui/chat.ts` + `SpeechBubble` in `ui/labels.ts`): Enter to type, Enter sends and stays open, empty Enter/Esc or a click outside closes; the bot's `say` (tidied, ≤120 chars,
   burst 3 then 1 per 2 s, never saved) comes back to everyone, the speaker included. Linked to a Discord channel
   (`TOWN_CHAT_CHANNEL_ID`, bot `web/town-chat.ts`, needs the Message Content intent): Discord lines show with the

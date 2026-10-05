@@ -35,7 +35,7 @@ export const redeem: Command = {
         .setDescription(
           rewards
             .map((r) => {
-              const note = r.kind === 'fence' ? ` — blocks /steal for ${FENCE_DAYS} days` : r.kind === 'shovel' ? ` — ${SHOVEL_USES} digs, up to ${SHOVELS_PER_DAY} a day` : r.kind === 'key' ? ' — 50% chance to break through a Bakod on /steal' : r.kind === 'vault' ? ` — store up to 30% of your Kowens, safe from /steal & bail${hasVault(interaction.user.id) ? ' (owned ✅)' : ''}` : r.kind === 'potion' ? ` — ${POTIONS[r.id.replace('potion-', '') as PotionId].effect}` : r.kind === 'bag' ? ` — +${BAG_SLOTS} inventory slots${ownedBags(interaction.user.id).includes(r.id) ? ' (owned ✅)' : ''}` : ` — ${GAME_NAME}`;
+              const note = r.kind === 'fence' ? ` — blocks /steal for ${FENCE_DAYS} days` : r.kind === 'shovel' ? ` — ${SHOVEL_USES} digs, up to ${SHOVELS_PER_DAY} a day` : r.kind === 'key' ? ' — 50% chance to break through a Bakod on /steal' : r.kind === 'megaphone' ? ' — `/m message` in the web town\'s chat: it runs across everyone\'s screen' : r.kind === 'vault' ? ` — store up to 30% of your Kowens, safe from /steal & bail${hasVault(interaction.user.id) ? ' (owned ✅)' : ''}` : r.kind === 'potion' ? ` — ${POTIONS[r.id.replace('potion-', '') as PotionId].effect}` : r.kind === 'bag' ? ` — +${BAG_SLOTS} inventory slots${ownedBags(interaction.user.id).includes(r.id) ? ' (owned ✅)' : ''}` : ` — ${GAME_NAME}`;
               return `${r.emoji} **${r.name}**${note} · **${fmt(r.cost)}** ${kowen(r.cost)} ${have >= r.cost ? '✅' : `(${fmt(r.cost - have)} to go)`}`;
             })
             .join('\n') + (fencedUntil(interaction.user.id) ? `\n\n🧱 Your Bakod is up until <t:${Math.floor(fencedUntil(interaction.user.id)! / 1000)}:f>.` : ''),

@@ -4,7 +4,8 @@ import { config } from '../config.js';
 import { balance, fencedUntil } from '../credits/store.js';
 import { SHOVELS_PER_DAY, SHOVEL_USES, masterKeys } from '../dig/store.js';
 import { BAG_SLOTS, FENCE_DAYS, FENCE_MAX_DAYS, GAME_NAME, rewards } from '../games/rewards.js';
-import { type Reward, owns, potionEffect, redeemFeed, redeemPost, redeemReward, shovelsLeftToday, stackable } from '../games/redeem.js';
+import { type Reward, inBag, owns, potionEffect, redeemFeed, redeemPost, redeemReward, shovelsLeftToday, stackable } from '../games/redeem.js';
+import { megaphones } from '../items/megaphone.js';
 import { kowen } from '../kowens.js';
 import { debtOf } from '../loans/loans.js';
 import { potionCount, type PotionId } from '../potions/potions.js';
@@ -26,6 +27,7 @@ function about(r: Reward): string {
     case 'fence': return `Blocks /steal against you for ${FENCE_DAYS} days. Buy again to add time (up to ${FENCE_MAX_DAYS} days).`;
     case 'shovel': return `${SHOVEL_USES} digs with /dig. Up to ${SHOVELS_PER_DAY} shovels a day.`;
     case 'key': return '50% chance to break through a Bakod when you /steal. Used only then.';
+    case 'megaphone': return "Type /m and your message in the town's chat: it runs across everyone's screen in sky blue. One per message.";
     case 'vault': return 'Store up to 30% of your Kowens, safe from /steal and bail. Use it at the bank.';
     case 'potion': return `${plain(potionEffect(r))}. Use it with /potion use in Discord.`;
     case 'bag': return `+${BAG_SLOTS} inventory slots for what you dig up. Each bag once.`;
@@ -36,9 +38,9 @@ function about(r: Reward): string {
 export function townShop(userId: string): TownShopResponse {
   const items = rewards.map((r): TownShopItem => {
     const owned = owns(userId, r);
-    // Keys and potions also need room in the bag.
-    const max = owned ? 0 : r.kind === 'shovel' ? shovelsLeftToday(userId) : r.kind === 'key' || r.kind === 'potion' ? Math.min(MAX_AT_ONCE, freeSlots(userId)) : stackable(r) ? MAX_AT_ONCE : 1;
-    const have = r.kind === 'potion' ? potionCount(userId, r.id.replace('potion-', '') as PotionId) : r.kind === 'key' ? masterKeys(userId) : undefined;
+    // Keys and potions also need room in the bag, a slot each; megaphones one slot for them all.
+    const max = owned ? 0 : r.kind === 'shovel' ? shovelsLeftToday(userId) : r.kind === 'megaphone' ? (megaphones(userId) || freeSlots(userId) ? MAX_AT_ONCE : 0) : inBag(r) ? Math.min(MAX_AT_ONCE, freeSlots(userId)) : stackable(r) ? MAX_AT_ONCE : 1;
+    const have = r.kind === 'potion' ? potionCount(userId, r.id.replace('potion-', '') as PotionId) : r.kind === 'key' ? masterKeys(userId) : r.kind === 'megaphone' ? megaphones(userId) : undefined;
     return { id: r.id, name: r.name, cost: r.cost, kind: r.kind, about: about(r), max, ...(owned ? { owned } : {}), ...(have !== undefined ? { have } : {}) };
   });
   return { kowens: balance(userId), items, fenceUntil: fencedUntil(userId), inDebt: !!debtOf(userId) };

@@ -255,6 +255,24 @@
       #chat .ch-click:hover, #chat .ch-click:focus-visible { color: #F8BF27; text-decoration: underline; text-underline-offset: 2px; outline: none; }
       #chat .ch-discord { width: 14px; height: 14px; margin-right: 4px; vertical-align: -2px; fill: #7984F5; }
       #chat .ch-notice { color: #F59E0B; font-size: 13px; }
+      /* Megaphone (ui/chat.ts): its lines sky blue with a 📢; the channel tag before the input (General white / Megaphone sky blue). */
+      #chat .ch-mega, #chat .ch-mega .ch-name, #chat .ch-mega .ch-me { color: #7DD3FC; }
+      #chat .ch-mega-tag { margin-right: 4px; }
+      #chat .ch-channel { flex: none; padding: 0 9px; border: 0; border-radius: 4px; background: rgba(0, 0, 0, 0.35); color: #fff; font: inherit; font-size: 12px; font-weight: 700; }
+      #chat .ch-channel:hover { background: rgba(0, 0, 0, 0.55); }
+      #chat.ch-mega-mode .ch-channel { color: #7DD3FC; box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.6); }
+      #chat.ch-mega-mode .ch-input { color: #7DD3FC; }
+      #chat.ch-mega-mode .ch-input:focus { box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.7); }
+      /* A megaphone message running across the screen (ui/megaphone.ts): a sky-blue strip in the upper part, under the HUD's
+         buttons and any open panel; clicks go through. */
+      #megaphone { position: fixed; left: 0; right: 0; top: 204px; z-index: 1; height: 44px; overflow: hidden; pointer-events: none; background: linear-gradient(90deg, transparent, rgba(8, 47, 73, 0.72) 12%, rgba(8, 47, 73, 0.72) 88%, transparent); border-top: 2px solid rgba(125, 211, 252, 0.5); border-bottom: 2px solid rgba(125, 211, 252, 0.5); }
+      #megaphone[hidden] { display: none; }
+      #megaphone .mg-line { position: absolute; left: 0; top: 0; height: 100%; display: flex; align-items: center; gap: 10px; white-space: nowrap; font: 20px/1 var(--ui-font); color: #7DD3FC; text-shadow: 0 2px 0 #082F49; will-change: transform; }
+      #megaphone .mg-line.mg-still { left: 50%; transform: translateX(-50%); }
+      #megaphone .mg-icon { width: 32px; height: 32px; image-rendering: pixelated; font-size: 22px; }
+      #megaphone .mg-name { color: #fff; }
+      #megaphone .mg-name::after { content: ':'; }
+      @media (max-width: 760px) { #megaphone { top: 236px; height: 38px; } #megaphone .mg-line { font-size: 17px; } }
       #chat .ch-input { width: 100%; box-sizing: border-box; padding: 7px 9px; border: 0; border-radius: 4px; background: rgba(0, 0, 0, 0.35); color: #fff; font: inherit; outline: none; }
       #chat .ch-input::placeholder { color: rgba(230, 233, 242, 0.55); }
       #chat .ch-input:focus { background: rgba(0, 0, 0, 0.55); box-shadow: 0 0 0 1px rgba(183, 148, 246, 0.6); }
@@ -325,6 +343,8 @@
       #inventory .iv-cell { position: relative; display: flex; align-items: center; justify-content: center; width: 72px; height: 72px; box-sizing: border-box; padding: 0; border-style: solid; border-width: 12px; border-image: var(--slot) var(--slot-slice, 4) fill / 12px round; background: none; image-rendering: pixelated; font: inherit; }
       #inventory button.iv-cell:hover { filter: brightness(1.25); }
       #inventory .iv-item { outline: 3px solid var(--rarity, #7A8099); outline-offset: -3px; } /* the item's rarity */
+      #inventory .iv-item { position: relative; }
+      #inventory .iv-count { position: absolute; right: 4px; bottom: 2px; color: #fff; font-size: 14px; font-weight: 700; text-shadow: 1px 0 #1E1B3A, -1px 0 #1E1B3A, 0 1px #1E1B3A, 0 -1px #1E1B3A; pointer-events: none; } /* a stacked item's count (megaphones) */
       #inventory .iv-picked { border-image-source: var(--slot-picked); outline-color: #A3E635; }
       #inventory .iv-tabs { flex: none; display: flex; gap: 4px; border-bottom: 3px solid #1E1B3A; }
       #inventory .iv-tab { flex: 1; padding: 6px 8px 5px; border: 2px solid #3D4256; border-bottom: 0; border-radius: 0; background: #1E1B3A; color: #A9B1D6; font: inherit; font-size: 14px; font-weight: 700; }

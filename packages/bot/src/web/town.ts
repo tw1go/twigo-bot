@@ -70,7 +70,10 @@ export interface TownOptions {
   /** Leave upgrades to other paths alone (the game's dev server shares its HTTP server with Vite's own socket). */
   shared?: boolean;
   /** Someone said something in town (the Discord bridge passes it on). */
-  onSay?: (userId: string, nickname: string, text: string) => void;
+  onSay?: (userId: string, nickname: string, text: string, megaphone: boolean) => void;
+  /** Uses one of a member's megaphones (`/m` in the chat): how many are left, or null if they have none. Without it
+   *  (the game's dev server) megaphones are free. */
+  megaphone?: (userId: string) => number | null;
   /** Chat moderation (web/town-mod.ts in the bot; none in the game's dev server). */
   moderation?: {
     mutedUntil(userId: string): number | null;
@@ -262,11 +265,13 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         c.says = Math.min(SAY_BURST, c.says + ((now - c.saidAt) / 1000) * SAYS_PER_SECOND);
         c.saidAt = now;
         if (c.says < 1) return send(c, { t: 'say-refused', reason: 'slow' });
+        const megaphone = m.megaphone === true;
+        if (megaphone && opts.megaphone && opts.megaphone(c.userId) === null) return send(c, { t: 'say-refused', reason: 'megaphone' });
         c.says -= 1;
         // To everyone, the speaker included (their own words come back this way), and on to Discord. Not saved.
-        remember({ name: p.nickname, text });
-        opts.onSay?.(c.userId, p.nickname, text);
-        return everyone({ t: 'say', id: p.id, text });
+        remember({ name: p.nickname, text, ...(megaphone ? { megaphone } : {}) });
+        opts.onSay?.(c.userId, p.nickname, text, megaphone);
+        return everyone({ t: 'say', id: p.id, text, ...(megaphone ? { megaphone } : {}) });
       }
     }
   };

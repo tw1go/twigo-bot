@@ -15,7 +15,7 @@ const kowens = (n: number) => plural(n, 'Kowen', 'Kowens');
 
 type Tab = 'items' | 'potions' | 'bags' | 'passes';
 const TABS: [Tab, string, TownShopItem['kind'][]][] = [
-  ['items', 'Items', ['fence', 'shovel', 'key', 'vault']],
+  ['items', 'Items', ['fence', 'shovel', 'key', 'megaphone', 'vault']],
   ['potions', 'Potions', ['potion']],
   ['bags', 'Bags', ['bag']],
   ['passes', 'Passes', ['pass']],
@@ -92,7 +92,7 @@ export function showShop(): void {
   /** Why an item can't be bought right now (null = it can). */
   const blocked = (s: TownShopResponse, it: TownShopItem): string | null => {
     if (it.owned) return it.kind === 'vault' ? 'You have a vault. Use it at the bank.' : 'You have this bag.';
-    if (it.max === 0) return it.kind === 'shovel' ? 'No more shovels today. More tomorrow!' : it.kind === 'key' || it.kind === 'potion' ? 'Your bag is full.' : 'Not available right now.';
+    if (it.max === 0) return it.kind === 'shovel' ? 'No more shovels today. More tomorrow!' : it.kind === 'key' || it.kind === 'potion' || it.kind === 'megaphone' ? 'Your bag is full.' : 'Not available right now.';
     if (it.kind === 'pass' && s.inDebt) return 'Pay off your loan at the bank first.';
     if (s.kowens < it.cost) return `You need ${kowens(it.cost - s.kowens)} more.`;
     return null;
@@ -225,6 +225,7 @@ const fake: TownShopResponse = {
     { id: 'bakod', name: 'Bakod (Fence)', cost: 5, kind: 'fence', about: 'Blocks /steal against you for 1.5 days. Buy again to add time (up to 7 days).', max: 1 },
     { id: 'shovel', name: 'Shovel', cost: 2, kind: 'shovel', about: '3 digs with /dig. Up to 3 shovels a day.', max: 3 },
     { id: 'master-key', name: 'Master Key', cost: 5, kind: 'key', about: '50% chance to break through a Bakod when you /steal. Used only then.', max: 10, have: 1 },
+    { id: 'megaphone', name: 'Megaphone', cost: 1, kind: 'megaphone', about: "Type /m and your message in the town's chat: it runs across everyone's screen in sky blue. One per message.", max: 10, have: 3 },
     { id: 'vault', name: 'Vault', cost: 50, kind: 'vault', about: 'Store up to 30% of your Kowens, safe from /steal and bail. Use it at the bank.', max: 0, owned: true },
     { id: 'potion-kalawang', name: 'Kalawang Potion', cost: 8, kind: 'potion', about: "Rusts someone's Bakod: cuts its remaining time in half. Use it with /potion use in Discord.", max: 10 },
     { id: 'potion-tago', name: 'Tago Tonic', cost: 6, kind: 'potion', about: "For 30 minutes the Tanod can't see you gamble: 0% bust chance. Use it with /potion use in Discord.", max: 10, have: 2 },
@@ -251,6 +252,6 @@ function fakeBuy(id: string, quantity: number): TownShopBuyResponse {
     it.max = 0;
   }
   if (it.kind === 'shovel') it.max -= quantity;
-  if (it.kind === 'potion' || it.kind === 'key') it.have = (it.have ?? 0) + quantity;
+  if (it.kind === 'potion' || it.kind === 'key' || it.kind === 'megaphone') it.have = (it.have ?? 0) + quantity;
   return { ...structuredClone(fake), ok: true, message: it.kind === 'pass' ? `Redeemed the ${it.name}! The owner has been told and will send it over.` : `Bought ${quantity > 1 ? `${quantity}× ` : ''}${it.name}!` };
 }

@@ -54,7 +54,7 @@ export const twigoHelp: Command = {
           '`/dig` — dig for treasure (🪏 Shovel from `/redeem`: 3 digs each, up to 3 shovels & 9 digs a day)',
           '`/inventory` — your finds · `/sell` — turn them into Kowens · `/flex` — show off an item 💪',
           '🍀 Every **60th dig on the server** is a **Lucky Dig**: guaranteed Epic or better!',
-          '🎒 Inventory holds **10** items (🗝️ Master Keys and 🧪 potions take a slot each too) — buy bags in `/redeem` for +8 each, up to **50**',
+          '🎒 Inventory holds **10** items (🗝️ Master Keys and 🧪 potions take a slot each too, 📢 megaphones share one) — buy bags in `/redeem` for +8 each, up to **50**',
         ]),
         ...section('🪙 Earn Kowens', [
           `\`/get-kowens\` — claim ${DAILY_CREDITS} ${kowen(DAILY_CREDITS)} once a day`,
@@ -68,7 +68,7 @@ export const twigoHelp: Command = {
           '-# ⚠️ Inactive for 3+ days? You lose a growing % of Kowens each day until you\'re back.',
         ]),
         ...section('💳 Spend & manage', [
-          '`/redeem` — 🧱 Bakod, 🪏 Shovel, 🗝️ Master Key, 🔐 Vault, 🧪 potions, 🎒 bags, or Crystal of Atlan passes 🎁',
+          '`/redeem` — 🧱 Bakod, 🪏 Shovel, 🗝️ Master Key, 📢 Megaphone (`/m message` in the web town\'s chat runs it across everyone\'s screen), 🔐 Vault, 🧪 potions, 🎒 bags, or Crystal of Atlan passes 🎁',
           '`/potion use|list` — 🧪 Kalawang (rust a Bakod) · 🫥 Tago (no busts 30 min) · 🍀 Swerte (better digs) · 🍵 Marites (hints)',
           '`/give @someone amount` — give a friend Kowens (max 20 per day)',
           '`/vault deposit|withdraw|view` — 🔐 store up to 30% of your Kowens, safe from /steal & bail (Vault from `/redeem`, 50)',

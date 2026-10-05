@@ -2220,6 +2220,9 @@
     "master-key": {
       "showcase": "ui/items/item-master-key@32.png"
     },
+    "megaphone": {
+      "showcase": "ui/items/item-megaphone@32.png"
+    },
     "mikko-kalabasa": {
       "showcase": "ui/items/item-mikko-kalabasa@32.png"
     },

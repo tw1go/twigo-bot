@@ -159,13 +159,14 @@ export class Inventory {
 
     for (const b of this.tabs.querySelectorAll<HTMLElement>('.iv-tab')) {
       const t = b.dataset.tab as Tab;
-      const n = d.items.filter((it) => inTab(t, it)).reduce((sum, it) => sum + it.count, 0);
+      const n = d.items.filter((it) => inTab(t, it)).reduce((sum, it) => sum + (it.stacked ? 1 : it.count), 0);
       b.textContent = `${TABS.find(([x]) => x === t)![1]} ${n}`;
       b.setAttribute('aria-selected', String(t === this.tab));
     }
 
-    // One slot per item (this tab's), then the free slots, then the locked ones up to the most a bag can have.
-    const units = d.items.filter((it) => inTab(this.tab, it)).flatMap((it) => Array.from({ length: it.count }, () => it));
+    // One slot per item (this tab's; a stacked kind, megaphones, in one with its count), then the free slots, then the
+    // locked ones up to the most a bag can have.
+    const units = d.items.filter((it) => inTab(this.tab, it)).flatMap((it) => Array.from({ length: it.stacked ? 1 : it.count }, () => it));
     const free = Math.max(0, d.slots - d.used);
     const open = units.length + free;
     // After a sale the slot may hold something else: keep the pick only if the same item is still there.
@@ -194,6 +195,7 @@ export class Inventory {
       cell.title = it.name;
       const art = itemArt(it.id, rarity, 'showcase', 2, true);
       cell.append(art ?? el('span', 'iv-emoji', it.emoji));
+      if (it.stacked) cell.append(el('span', 'iv-count', `×${it.count}`));
       cell.addEventListener('click', () => {
         this.picked = this.picked?.slot === slot ? null : { slot, id: it.id };
         this.message = null;
@@ -225,7 +227,7 @@ export class Inventory {
     name.style.color = RARITY_TEXT[rarity];
     const meta = it.sellable
       ? `${LABEL[rarity]} · ${kowens(it.value)} each · you have ${it.count}`
-      : `${it.kind === 'key' ? 'Master Key' : 'Potion'} · you have ${it.count}`;
+      : `${it.kind === 'key' ? 'Master Key' : it.kind === 'megaphone' ? 'Megaphone' : 'Potion'} · you have ${it.count}`;
     const parts: HTMLElement[] = [name, el('div', 'iv-meta', meta)];
     if (it.sellable) {
       const row = el('div', 'iv-actions');
@@ -278,6 +280,7 @@ const fake: TownInventoryResponse = {
     { id: 'bottle-cap', name: 'Bottle Cap', emoji: '🧢', rarity: 'common', value: 1, count: 3, kind: 'dig', sellable: true },
     { id: 'rock', name: 'Rock', emoji: '🪨', rarity: 'junk', value: 0, count: 2, kind: 'dig', sellable: true },
     { id: 'master-key', name: 'Master Key', emoji: '🗝️', rarity: 'common', value: 0, count: 1, kind: 'key', sellable: false, about: '50% chance to break through a Bakod when you /steal. Used only then.' },
+    { id: 'megaphone', name: 'Megaphone', emoji: '📢', rarity: 'common', value: 0, count: 3, kind: 'megaphone', sellable: false, stacked: true, about: "Type /m and your message in the town's chat: it runs across everyone's screen in sky blue. One per message." },
     { id: 'potion-tago', name: 'Tago Tonic', emoji: '🫥', rarity: 'common', value: 0, count: 2, kind: 'potion', sellable: false, about: "For 30 minutes the Tanod can't see you gamble: 0% bust chance. Use it with /potion use in Discord." },
   ],
   slots: Number(q.get('slots') ?? 18),
@@ -285,7 +288,7 @@ const fake: TownInventoryResponse = {
   used: 0,
   kowens: Number(q.get('kowens') ?? 1250),
 };
-fake.used = fake.items.reduce((n, it) => n + it.count, 0);
+fake.used = fake.items.reduce((n, it) => n + (it.stacked ? 1 : it.count), 0);
 
 function fakeAction(path: string, body: { id: string; quantity?: number }): TownBagActionResponse {
   const it = fake.items.find((x) => x.id === body.id);
