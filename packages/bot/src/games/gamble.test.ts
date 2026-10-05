@@ -74,3 +74,14 @@ test('refuses too soon after a bet, and more than the wallet', async () => {
   assert.deepEqual(broke, { ok: false, reason: 'kowens', have: 5 });
   assert.equal(balance('p'), 5);
 });
+
+test('a bust puts 70% of the bet (rounded down) into the jackpot pot', async () => {
+  const { pot, raidMoney } = await import('./jackpot.js');
+  const before = raidMoney();
+  add('r', 100);
+  rolls(0);
+  const r = await gambleFor('r', 15, 'safe');
+  assert.deepEqual(r.ok && [r.outcome, r.toPot, r.balance], ['bust', 10, 85]); // 70% of 15 = 10.5 → 10
+  assert.equal(raidMoney(), before + 10);
+  assert.equal(pot(), raidMoney()); // no tickets yet: the pot is the raid money
+});

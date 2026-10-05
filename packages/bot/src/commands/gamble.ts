@@ -34,7 +34,7 @@ export const gamble: Command = {
     let content: string;
     const who = interaction.user.id;
     if (result.outcome === 'bust') {
-      content = `🚨 **BUSTED!** The Tanod caught ${interaction.user} gambling! **${bet}** ${kowen(bet)} confiscated and **${BUST_JAIL_MINUTES} minutes** in jail. 🚔`;
+      content = `🚨 **BUSTED!** The Tanod caught ${interaction.user} gambling! **${bet}** ${kowen(bet)} confiscated and **${BUST_JAIL_MINUTES} minutes** in jail. 🚔${result.toPot ? `\n-# 🎰 **${result.toPot}** ${kowen(result.toPot)} of it went into the jackpot pot.` : ''}`;
       feed('gamble', `The Tanod caught ${townName(interaction.user)} gambling ${bet} ${kowen(bet)}: off to jail`, 'bust', { userId: who, amount: bet });
     } else if (result.outcome === 'win') {
       content = `🎲 ${interaction.user} bet **${bet}** and **WON**! +${bet} ${kowen(bet)} 🤑`;

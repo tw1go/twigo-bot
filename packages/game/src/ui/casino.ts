@@ -153,7 +153,7 @@ export function openCasino(leave: () => void): void {
   const betLabel = el('label', 'cz-bet-label', 'Bet');
   betLabel.append(bet);
   bets.append(betLabel, chips);
-  const rules = el('div', 'cz-rules', 'Win and your bet doubles (45%). Now and then (3%) the Tanod raids the table: the bet is taken and you spend 5 minutes in jail.');
+  const rules = el('div', 'cz-rules', 'Win and your bet doubles (45%). Now and then (3%) the Tanod raids the table: the bet is taken (70% goes into the jackpot pot) and you spend 5 minutes in jail.');
 
   // The raid: the Tanod rising at the bottom centre of the screen with the siren over his head, and a red/blue flash.
   const raidBox = el('div', 'cz-raid');
@@ -329,7 +329,7 @@ function fakeGamble(bet: number, call: TownCoinSide): TownGambleResponse {
   if (outcome === 'bust') {
     fakeState.kowens -= bet;
     fakeState.jailed = true;
-    return { ok: true, outcome, bet, message: `The Tanod raided the table: ${kowens(bet)} confiscated and 5 minutes in jail.`, kowens: fakeState.kowens, ...odds };
+    return { ok: true, outcome, bet, message: `The Tanod raided the table: ${kowens(bet)} confiscated${Math.floor(bet * 0.7) ? ` (${Math.floor(bet * 0.7)} into the jackpot pot)` : ''} and 5 minutes in jail.`, kowens: fakeState.kowens, ...odds };
   }
   const landed: TownCoinSide = outcome === 'win' ? call : call === 'kara' ? 'krus' : 'kara';
   fakeState.kowens += outcome === 'win' ? bet : -bet;

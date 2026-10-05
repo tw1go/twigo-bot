@@ -10,7 +10,7 @@ import { titleIsNew, titleOf, titleSeen } from './titles.js';
 import { attachTown, loadTownMap } from './town.js';
 import { bridgeTownChat } from './town-chat.js';
 import { connectTownFeed, feed } from './town-feed.js';
-import { MAX_TICKETS, buyTickets, entries, lastDraw, nextDraw, pot, ticketWord, ticketsOf } from '../games/jackpot.js';
+import { MAX_TICKETS, buyTickets, entries, lastDraw, nextDraw, pot, raidMoney, ticketWord, ticketsOf } from '../games/jackpot.js';
 import { jailedUntil } from '../games/jail.js';
 import { bankAction, townBank } from './town-bank.js';
 import { buyFromShop, townShop } from './town-shop.js';
@@ -216,6 +216,7 @@ async function townJackpot(client: Client, userId: string): Promise<TownJackpotR
   const prev = lastDraw();
   return {
     pot: pot(),
+    raid: raidMoney(),
     max: MAX_TICKETS,
     minPlayers: 2,
     nextDraw: nextDraw().getTime(),

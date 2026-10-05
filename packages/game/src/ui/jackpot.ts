@@ -58,13 +58,15 @@ export function showJackpot(): void {
   const render = (j: TownJackpotResponse) => {
     state = j;
     pot.replaceChildren(coinIcon(3), el('span', 'jp-amount', kowens(j.pot)), el('span', 'jp-in', 'in the pot'));
-    rules.textContent = `1 Kowen a ticket · up to ${j.max} each per draw · needs ${j.minPlayers} players or it's refunded`;
+    if (j.raid) pot.append(el('span', 'jp-raid', `🚨 ${kowens(j.raid)} from Tanod raids`));
+    const tickets = j.pot - j.raid; // the odds count tickets only
+    rules.textContent = `1 Kowen a ticket · up to ${j.max} each per draw · needs ${j.minPlayers} players or it's refunded · 70% of every bet the Tanod confiscates goes into the pot`;
 
     slots.replaceChildren();
     for (let i = 0; i < j.max; i++) slots.append(el('span', i < j.mine ? 'jp-ticket jp-owned' : 'jp-ticket'));
     slots.setAttribute('aria-label', `You have ${plural(j.mine, 'ticket', 'tickets')} of ${j.max}`);
     chance.textContent = j.mine
-      ? `Your chance: ${Math.round((j.mine / j.pot) * 100)}% (${j.mine} of ${j.pot} tickets)`
+      ? `Your chance: ${Math.round((j.mine / tickets) * 100)}% (${j.mine} of ${tickets} tickets)`
       : "You're not in this draw yet.";
 
     const room = j.max - j.mine;
@@ -88,7 +90,7 @@ export function showJackpot(): void {
       const row = el('div', `jp-row${p.me ? ' jp-me' : ''}`);
       row.append(
         el('span', 'jp-name', p.me ? `${p.name} (you)` : p.name),
-        el('span', 'jp-count', `${plural(p.tickets, 'ticket', 'tickets')} · ${Math.round((p.tickets / j.pot) * 100)}%`),
+        el('span', 'jp-count', `${plural(p.tickets, 'ticket', 'tickets')} · ${Math.round((p.tickets / (j.pot - j.raid)) * 100)}%`),
       );
       list.append(row);
     }
@@ -163,7 +165,8 @@ export function showJackpot(): void {
 // ── Dev: a pretend booth (no bot behind the dev server) ──
 
 const fake: TownJackpotResponse = {
-  pot: 9,
+  pot: 16,
+  raid: 7,
   max: 5,
   minPlayers: 2,
   nextDraw: Date.now() + 2 * 3600_000 + 5 * 60_000,

@@ -2,13 +2,15 @@ import { EmbedBuilder, MessageFlags, SlashCommandBuilder } from 'discord.js';
 import type { Command } from '../types.js';
 import { balance } from '../credits/store.js';
 import { blockIfJailed } from '../games/jail.js';
-import { DRAW_LABEL, MAX_TICKETS, buyTickets, entries, lastDraw, nextDraw, players, pot, ticketWord, ticketsOf } from '../games/jackpot.js';
+import { DRAW_LABEL, MAX_TICKETS, RAID_SHARE, buyTickets, entries, lastDraw, nextDraw, players, pot, raidMoney, ticketTotal, ticketWord, ticketsOf } from '../games/jackpot.js';
 import { kowen } from '../kowens.js';
 import { feed, townName } from '../web/town-feed.js';
 
 /** The /jackpot check: pot, who's in, your odds, countdown and last winner. */
 function statusCard(userId: string): EmbedBuilder {
   const total = pot();
+  const ticketsIn = ticketTotal(); // the odds count tickets only
+  const raid = raidMoney();
   const mine = ticketsOf(userId);
   const next = nextDraw();
   const ts = Math.floor(next.getTime() / 1000);
@@ -17,18 +19,18 @@ function statusCard(userId: string): EmbedBuilder {
   const embed = new EmbedBuilder()
     .setColor(0xf1c40f)
     .setTitle('🎰 Next Jackpot')
-    .setDescription(`## 🪙 ${total} ${kowen(total)} in the pot\nDraw at <t:${ts}:t> (<t:${ts}:R>)`)
+    .setDescription(`## 🪙 ${total} ${kowen(total)} in the pot\n${raid ? `-# 🚨 ${raid} from Tanod raids (${Math.round(RAID_SHARE * 100)}% of confiscated bets)\n` : ''}Draw at <t:${ts}:t> (<t:${ts}:R>)`)
     .addFields(
       {
         name: `🎟️ Players (${list.length})`,
         value: list.length
-          ? list.map(([id, n]) => `<@${id}> — ${n} ticket${n === 1 ? '' : 's'} (${Math.round((n / total) * 100)}%)`).join('\n')
+          ? list.map(([id, n]) => `<@${id}> — ${n} ticket${n === 1 ? '' : 's'} (${Math.round((n / ticketsIn) * 100)}%)`).join('\n')
           : '_Nobody yet — be the first!_',
       },
       {
         name: '🍀 Your chance',
         value: mine
-          ? `**${mine}** of **${total}** tickets = **${Math.round((mine / total) * 100)}%**${list.length < 2 ? '\n-# Needs at least 2 players, or everyone is refunded.' : ''}`
+          ? `**${mine}** of **${ticketsIn}** tickets = **${Math.round((mine / ticketsIn) * 100)}%**${list.length < 2 ? '\n-# Needs at least 2 players, or everyone is refunded.' : ''}`
           : `You're not in yet. \`/jackpot tickets:1\` to join (max ${MAX_TICKETS}).`,
       },
     );

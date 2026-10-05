@@ -9,7 +9,8 @@ import { kowen } from '../kowens.js';
 import { announce, townName } from '../web/town-feed.js';
 
 // Jackpot, drawn twice a day: tickets cost 1 Kowen each (up to MAX_TICKETS per person per draw). At draw time a random ticket wins
-// the whole pot. Needs at least 2 players, otherwise everyone is refunded.
+// the whole pot. Needs at least 2 players, otherwise everyone is refunded. The pot also holds raid money: RAID_SHARE of
+// every bet the Tanod confiscates (games/gamble.ts). It goes to the next winner, and rolls over when there's no winner.
 export const MAX_TICKETS = 5;
 export const DRAW_LABEL = '10 AM & 10 PM';
 /** Draws happen at 10 AM and 10 PM (config.timezone). */
@@ -17,6 +18,8 @@ export const DRAW_CRON = '0 10,22 * * *';
 /** When the next draw happens. */
 export const nextDraw = () => new Cron(DRAW_CRON, { timezone: config.timezone }).nextRun()!;
 const UNDERDOG_BONUS = 10;
+/** The share of a confiscated bet that goes into the pot (rounded down). */
+export const RAID_SHARE = 0.7;
 
 // Tickets for the next draw live in `jackpot_tickets`; the last draw is a kv document.
 const table = tableSync<{ user_id: string; tickets: number }>('jackpot_tickets', ['user_id'], ['tickets']);
@@ -29,7 +32,25 @@ function save(): void {
 /** "1 jackpot ticket", "3 jackpot tickets". */
 export const ticketWord = (n: number) => `${n} jackpot ticket${n === 1 ? '' : 's'}`;
 export const ticketsOf = (userId: string) => tickets[userId] ?? 0;
-export const pot = () => Object.values(tickets).reduce((a, b) => a + b, 0);
+/** Tickets in the next draw (the odds are counted on these). */
+export const ticketTotal = () => Object.values(tickets).reduce((a, b) => a + b, 0);
+// Raid money waiting in the pot (a kv number).
+const RAID_KEY = 'jackpot-raid';
+let raid: number = kvLoad(RAID_KEY, 0);
+export const raidMoney = () => raid;
+function setRaid(n: number): void {
+  raid = n;
+  kvSave(RAID_KEY, n);
+}
+/** The whole pot: tickets and raid money. */
+export const pot = () => ticketTotal() + raid;
+
+/** Puts RAID_SHARE of a confiscated bet into the pot; returns how much went in. */
+export function addRaidMoney(confiscated: number): number {
+  const share = Math.floor(confiscated * RAID_SHARE);
+  if (share > 0) setRaid(raid + share);
+  return share;
+}
 export const players = () => Object.keys(tickets).length;
 /** Everyone in the next draw, most tickets first. */
 export const entries = () => Object.entries(tickets).sort(([, a], [, b]) => b - a);
@@ -74,13 +95,15 @@ export async function drawJackpot(client: Client): Promise<void> {
   if (!channel?.isSendable()) throw new Error(`Channel ${config.gamesChannelId} not found or not sendable`);
 
   const total = pot();
+  const ticketsIn = ticketTotal();
   tickets = {};
   save();
 
   if (entries.length < 2) {
+    // Refunded; any raid money stays in the pot for the next draw.
     const [[id, n]] = entries;
     add(id, n);
-    saveLast({ at: Date.now(), winner: null, pot: total, players: 1 });
+    saveLast({ at: Date.now(), winner: null, pot: n, players: 1 });
     await channel.send({
       content: `🎰 **Jackpot draw:** only <@${id}> joined this draw, so their **${n}** ${kowen(n)} ${n === 1 ? 'was' : 'were'} refunded. Bring friends next time!`,
       allowedMentions: { parse: [] },
@@ -90,11 +113,12 @@ export async function drawJackpot(client: Client): Promise<void> {
 
   // Pick and pay first, so a restart mid-animation can't lose the pot.
   const pickWeighted = () => {
-    let pick = Math.random() * total;
+    let pick = Math.random() * ticketsIn;
     return (entries.find(([, n]) => (pick -= n) < 0) ?? entries[entries.length - 1])[0];
   };
   const winner = pickWeighted();
   add(winner, total);
+  setRaid(0); // the raid money went with the pot
   // 🤫 Lucky Underdog: won with a single ticket against 3+ players.
   const underdog = (entries.find(([id]) => id === winner)?.[1] ?? 0) === 1 && entries.length >= 3;
   if (underdog) {

@@ -31,8 +31,8 @@ export async function gambleInTown(client: Client, userId: string, name: string,
   let post: string;
   let landed: TownCoinSide | undefined;
   if (result.outcome === 'bust') {
-    message = `The Tanod raided the table: ${k(bet)} confiscated and ${BUST_JAIL_MINUTES} minutes in jail.`;
-    post = `🚨 **BUSTED!** The Tanod raided the town's Casino and caught <@${userId}> gambling! **${bet}** ${kowen(bet)} confiscated and **${BUST_JAIL_MINUTES} minutes** in jail. 🚔`;
+    message = `The Tanod raided the table: ${k(bet)} confiscated${result.toPot ? ` (${result.toPot} into the jackpot pot)` : ''} and ${BUST_JAIL_MINUTES} minutes in jail.`;
+    post = `🚨 **BUSTED!** The Tanod raided the town's Casino and caught <@${userId}> gambling! **${bet}** ${kowen(bet)} confiscated and **${BUST_JAIL_MINUTES} minutes** in jail. 🚔${result.toPot ? `\n-# 🎰 **${result.toPot}** ${kowen(result.toPot)} of it went into the jackpot pot.` : ''}`;
     feed('gamble', `The Tanod caught ${name} gambling ${k(bet)}: off to jail`, 'bust', { userId, amount: bet });
   } else if (result.outcome === 'win') {
     landed = call;

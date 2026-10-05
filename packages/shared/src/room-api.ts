@@ -190,8 +190,10 @@ export interface TownLeaderboardRow {
 
 /** The jackpot booth: the next draw's pot and players, the viewer's tickets, and the last draw. */
 export interface TownJackpotResponse {
-  /** Kowens in the pot (1 per ticket). */
+  /** Kowens in the pot: 1 per ticket, plus `raid`. */
   pot: number;
+  /** Raid money in the pot: 70% of every bet the Tanod confiscated since the last win (the odds count tickets only). */
+  raid: number;
   /** The most tickets one member may hold per draw. */
   max: number;
   /** Fewer players than this and everyone is refunded. */
