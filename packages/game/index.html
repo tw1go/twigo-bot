@@ -481,6 +481,36 @@
       #npc-dialog.nd-framed { padding: 0 6px; }
       /* The portrait stands on the box's top-right corner, its bottom just over the box's edge. */
       #npc-dialog .nd-frame { position: absolute; right: 8px; display: flex; box-sizing: content-box; } /* top and --px: ui/npc-dialog.ts */
+      /* The Mosang race (ui/race-box.ts, ui/race-bet.ts): its box beside the jackpot counter (the same event board), and
+         the bet pop-up: the five runners as cards (portrait, name, bets so far), then the bet. */
+      #town-hud .th-race { grid-template-columns: auto; border-color: #7C2AE8; }
+      #town-hud .th-race:hover { border-color: #B794F6; }
+      #town-hud .th-race .jt-label { color: #C4B5FD; }
+      #town-hud .th-race .rc-line { font-size: 15px; white-space: nowrap; }
+      #town-hud .th-race[hidden] { display: none; }
+      #town-hud .th-left .th-race { margin-top: 12px; }
+      #reward .rw-card:has(.rb-body) { width: min(560px, calc(100vw - 32px)); }
+      #reward .rb-body { margin-bottom: 12px; }
+      #reward .rb-status { margin: 0 0 10px; font-size: 14px; color: #3D4256; }
+      #reward .rb-cards { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 12px; }
+      #reward .rb-card { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 92px; padding: 8px 4px 6px; border: 2px solid #E2DDF3; border-radius: 2px; background: #FBFAFF; color: #1E1B3A; font: inherit; cursor: pointer; }
+      #reward .rb-card:hover:not(:disabled) { border-color: #C4B5FD; background: #F5F3FF; }
+      #reward .rb-card[aria-checked='true'] { border-color: #7C2AE8; background: #EDE9FE; box-shadow: 0 0 0 2px #C4B5FD; }
+      #reward .rb-card:disabled { cursor: default; }
+      #reward .rb-card.rb-mine { border-color: #F8BF27; background: #FEF9E7; }
+      #reward .rb-card.rb-won { border-color: #A3E635; background: #F0FDF4; box-shadow: 0 0 0 2px #A3E635; }
+      #reward .rb-face { display: block; background-repeat: no-repeat; background-position: 0 0; image-rendering: pixelated; }
+      #reward .rb-name { font-size: 14px; font-weight: 700; }
+      #reward .rb-bets { font-size: 11px; color: #7A8099; }
+      #reward .rb-controls { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; }
+      #reward .rb-controls[hidden] { display: none; }
+      #reward .rb-go { padding: 6px 18px 8px; border: 2px solid #1E1B3A; border-radius: 0; background: #A3E635; color: #1E1B3A; font: inherit; font-size: 15px; font-weight: 700; box-shadow: inset 0 2px 0 #D9F99D, inset 0 -3px 0 #5A8A5E, 0 3px 0 #1E1B3A; }
+      #reward .rb-go:disabled { opacity: 0.5; }
+      #reward .rb-note { min-height: 20px; margin: 10px 0 0; font-size: 13px; color: #3D4256; }
+      /* An action on the box's top-left edge (an Aling's "Start a Mosang race"), opposite the portrait. */
+      #npc-dialog .nd-action { position: absolute; left: 8px; top: -40px; padding: 5px 12px 7px; border: 2px solid #1E1B3A; border-radius: 0; background: #F8BF27; color: #1E1B3A; font: inherit; font-size: 14px; font-weight: 700; box-shadow: inset 0 2px 0 #FDE68A, inset 0 -3px 0 #B45309, 0 3px 0 #1E1B3A; cursor: pointer; }
+      #npc-dialog .nd-action:hover { background: #FACC15; }
+      #npc-dialog .nd-action:active { transform: translateY(2px); }
       #npc-dialog .nd-portrait { background-repeat: no-repeat; background-position: 0 0; image-rendering: pixelated; }
       #npc-dialog .nd-words { min-width: 0; }
       #npc-dialog .nd-name { font-size: 16px; font-weight: 700; color: #FFFFFF; line-height: 1.2; }

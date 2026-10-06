@@ -121,6 +121,18 @@ const TOPICS: Topic[] = [
     ].join('\n'),
   },
   {
+    id: 'race',
+    icon: '🏁',
+    label: 'Mosang race',
+    text: [
+      'Talk to any Aling in town and press **Start a Mosang race** (or use `/race` in Discord: it’s the same race).',
+      '• **2 minutes** to bet: click the **Mosang race** box top right, pick a Mosang and bet **1–100** Kowens (one bet per race)',
+      '• Meanwhile the five runners line up at the west end of the main road and warm up',
+      '• They race east to the bridge. Arthritis, asthma, gossip, the GC and the odd fall slow them down 🤭',
+      '• Bet on the winner and you get **4×** your bet. Every Mosang has the same chance',
+    ].join('\n'),
+  },
+  {
     id: 'arena',
     icon: '✊',
     label: 'Arena',

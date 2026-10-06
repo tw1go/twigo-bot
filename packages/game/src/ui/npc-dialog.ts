@@ -22,6 +22,8 @@ export interface NpcTalk {
   voice: number;
   /** The portrait mirrored (the art faces SE; this makes it face SW). */
   mirror: boolean;
+  /** A button on the box's top edge (an Aling's "Start a Mosang race"); pressing it closes the box. */
+  action?: { label: string; run: () => void };
   /** Called once when the box closes (the NPC goes back to what it was doing). */
   onClose: () => void;
 }
@@ -100,6 +102,16 @@ export function openNpcDialog(t: NpcTalk): void {
   more.setAttribute('aria-hidden', 'true');
   words.append(el('div', 'nd-name', t.name), el('div', 'nd-title', t.title), line);
   root.append(frame, words, more);
+  if (t.action) {
+    const { label, run } = t.action;
+    const button = el('button', 'nd-action', label);
+    button.addEventListener('click', (e) => {
+      e.stopPropagation(); // not the box's click (next line / close)
+      close();
+      run();
+    });
+    root.append(button);
+  }
   document.body.append(root);
 
   // ── the line, typed out ──

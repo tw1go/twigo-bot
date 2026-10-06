@@ -247,6 +247,16 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   ±4%, every 3rd letter) and the gossip murmur (ambient/npc-murmur, one loop, `hearGossip`: 0.10 at 1 tile to 0 at 6
   from the nearest gossiping Aling, ducked to 0.03 under a dialog). Plates show the name only. Debug: `__town.npcs()`,
   `__town.talk('marites')`.
+- Mosang race in town (the same race as `/race`: bot `games/race.ts`, one at a time; the script in `games/race-script.ts`,
+  tested: each runner's pace and stops — arthritis, asthma, gossip, phone, fall — the first over the line wins; the
+  Discord card animates from it): any Aling's dialog has "Start a Mosang race" (`action`; she runs) while none is on
+  (`POST /town/race start`); `Town.race` sends the state (`race` messages, also on arrival); the game's store is
+  `net/race.ts` (the bot's clock). Runners (world/npc-life.ts race mode) walk to their lane on the start line
+  (`world/race-track.ts`: west end of the main road → just before the bridge; lines per stop kind; the game's laneAt
+  copy), warm up, then follow the script (pose per frame, a stop's line in a bubble, a fall tips the sprite over); the
+  winner is called in the megaphone banner. Race box beside the jackpot counter (`ui/race-box.ts`), bet pop-up
+  (`ui/race-bet.ts`, `POST /town/race bet`). Dev: a pretend race in the dev server, `&race=fast` (20 s of betting),
+  `__town.race()`.
 - Player menu (`ui/target.ts`): left click (or tap) someone → their name in a long box top centre (or click their name
   in the chat: the box opens right beside it with the menu open, `selectAt`; a click elsewhere closes it; no ×: a click
   outside the box closes it too, a drag to peek doesn't); clicking it opens

@@ -1,5 +1,5 @@
 import { type Client, type User, escapeMarkdown } from 'discord.js';
-import type { TownAnnouncement, TownSystemLine } from '@mikazuki/shared';
+import type { TownAnnouncement, TownRace, TownSystemLine } from '@mikazuki/shared';
 import { config } from '../config.js';
 import { RARITY, type Rarity } from '../dig/items.js';
 import { getNickname } from './nickname.js';
@@ -16,7 +16,7 @@ export function connectTownFeed(t: Town): void {
   town = t;
 }
 
-const ICON: Record<TownSystemLine['kind'], string> = { dig: '⛏️', gamble: '🪙', jackpot: '🎟️', shop: '🎁', gift: '🎁', jail: '🚔', quest: '📜', arena: '⚔️', steal: '🥷' };
+const ICON: Record<TownSystemLine['kind'], string> = { dig: '⛏️', gamble: '🪙', jackpot: '🎟️', shop: '🎁', gift: '🎁', jail: '🚔', quest: '📜', arena: '⚔️', steal: '🥷', race: '🏁' };
 const GATHER_MS = 3000;
 const MAX_POST = 1900;
 let client: Client | null = null;
@@ -75,6 +75,11 @@ export function feed(
 export function announce(a: TownAnnouncement): void {
   town?.announce(a);
   toDiscord(`${a.kind === 'jackpot' ? '🎉' : '📢'} **${escapeMarkdown(a.title)}**${a.text ? ` · ${escapeMarkdown(a.text)}` : ''}`);
+}
+
+/** The Mosang race changed (games/race.ts): everyone in town sees it (null: it's over). */
+export function townRace(state: TownRace | null): void {
+  town?.race(state);
 }
 
 /** A gift pop-up for a member in town (Kowens from `from`), e.g. /gift kowens. */

@@ -1,10 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { HoodHouse, HouseLook, OutfitData, TownHoodActionResponse, TownHoodResponse } from '@mikazuki/shared';
+import type { HoodHouse, HouseLook, OutfitData, TownHoodActionResponse, TownHoodResponse, TownRace, TownRaceResponse } from '@mikazuki/shared';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { doorSpot, hoodMap, lotTile } from '../../bot/src/web/hood-map.ts';
 import type { Plugin } from 'vite';
 import { attachTown } from '../../bot/src/web/town.ts';
+import { LANES, finishMs, raceScript } from '../../bot/src/games/race-script.ts';
 import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
 
 // Dev only: the town's live server (/ws) inside the game's dev server, so chat and other players can be tried
@@ -125,6 +126,70 @@ export function devTown(): Plugin {
         const { name: _name, ...shown } = h;
         town.house(mine ? 'look' : 'built', shown, { col, row, door: doorSpot(h.lot, h.fenced), fence: fences() });
         reply(res, { ...hood(who), ok: true, message } satisfies TownHoodActionResponse);
+      });
+      // ── A pretend Mosang race (the bot's script, games/race-script.ts; bets from the pretend wallets) ──
+      const MOSANG_IDS = ['marites', 'nena', 'puring', 'tessie', 'dolor', 'bebang', 'charing', 'lourdes', 'pacita', 'rosing'];
+      let devRace: { id: string; runners: string[]; closesAt: number; startedBy: string; bets: Map<string, { lane: number; amount: number }>; run?: TownRace['run'] } | null = null;
+      const raceState = (): TownRace | null =>
+        devRace && {
+          id: devRace.id,
+          runners: devRace.runners,
+          closesAt: devRace.closesAt,
+          now: Date.now(),
+          startedBy: devRace.startedBy,
+          bets: devRace.runners.map((_, lane) => {
+            const on = [...devRace!.bets.values()].filter((b) => b.lane === lane);
+            return { count: on.length, pot: on.reduce((n, b) => n + b.amount, 0) };
+          }),
+          ...(devRace.run ? { run: devRace.run } : {}),
+        };
+      const tellRace = () => town.race(raceState());
+      server.middlewares.use('/town/race', async (req, res) => {
+        const q = asOf(req);
+        const who = q.get('as') ?? 'Dev tester';
+        const answer = (extra: { ok?: boolean; message?: string } = {}) =>
+          reply(res, { race: raceState(), mine: devRace?.bets.get(who) ?? null, kowens: wallet(who), maxBet: 100, payout: 4, ...extra } satisfies TownRaceResponse);
+        if (req.method !== 'POST') return answer();
+        const body = (await readJson(req)) as { action?: string; lead?: string; race?: string; lane?: number; amount?: number };
+        if (body.action === 'start') {
+          if (devRace) return answer({ ok: false, message: 'A race is already on!' });
+          const others = MOSANG_IDS.filter((m) => m !== body.lead).sort(() => Math.random() - 0.5);
+          const runners = [...(body.lead && MOSANG_IDS.includes(body.lead) ? [body.lead] : []), ...others].slice(0, LANES).sort(() => Math.random() - 0.5);
+          const betting = q.get('race') === 'fast' ? 20_000 : 2 * 60_000; // &race=fast: 20 s of betting
+          const id = Math.random().toString(16).slice(2, 10);
+          devRace = { id, runners, closesAt: Date.now() + betting, startedBy: who, bets: new Map() };
+          server.config.logger.info(`[race] ${who} started a race: ${runners.join(', ')}`, { timestamp: true });
+          tellRace();
+          setTimeout(() => {
+            if (devRace?.id !== id) return;
+            const s = raceScript(runners.length);
+            devRace.run = { lanes: s.lanes, winner: s.winner, tie: s.tie, endsAt: Date.now() + s.ms };
+            tellRace();
+            setTimeout(() => {
+              if (devRace?.id !== id) return;
+              for (const [p, b] of devRace.bets) if (b.lane === s.winner || b.lane === s.tie) move(p, b.amount * 4);
+              server.config.logger.info(`[race] ${runners[s.winner]} won`, { timestamp: true });
+            }, s.ms);
+            setTimeout(() => {
+              if (devRace?.id !== id) return;
+              devRace = null;
+              tellRace();
+            }, Math.max(...s.lanes.map(finishMs)) + 6_000);
+          }, betting);
+          return answer({ ok: true, message: 'The Mosangs are heading to the starting line! Bets close in 2 minutes.' });
+        }
+        if (body.action === 'bet') {
+          if (!devRace || devRace.id !== body.race || Date.now() >= devRace.closesAt) return answer({ ok: false, message: 'Betting for this race is closed.' });
+          if (devRace.bets.has(who)) return answer({ ok: false, message: 'You already bet on this race.' });
+          const amount = Number(body.amount);
+          if (!Number.isInteger(amount) || amount < 1 || amount > 100) return answer({ ok: false, message: 'Bet 1 to 100 Kowens.' });
+          if (wallet(who) < amount) return answer({ ok: false, message: "You don't have that many Kowens." });
+          move(who, -amount);
+          devRace.bets.set(who, { lane: Number(body.lane), amount });
+          tellRace();
+          return answer({ ok: true, message: `You bet ${amount}! If she wins you get ${amount * 4}.` });
+        }
+        return answer({ ok: false, message: 'Bad request' });
       });
       // A Bakod up or down on someone's pretend house, seen live in the neighbourhood (as the bot's watcher sends it).
       server.middlewares.use('/__bakod', (req, res) => {

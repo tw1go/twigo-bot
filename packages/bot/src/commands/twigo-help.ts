@@ -46,7 +46,7 @@ export const twigoHelp: Command = {
           '`/gamble amount` — coin flip: double or nothing. Busted 3% in 🎰 the gambling channel, 20% anywhere else 🚨 (70% of a busted bet goes into the jackpot)',
           '`/steal @someone` — steal 2–5% of their Kowens (max 50); caught = fine of half + jail. 🗝️ Master Key: 50% to break a Bakod',
           '🏘️ **Neighbourhood** (web town, over the bridge at the east road\'s end): build your house (free), or rob someone\'s house (same rules as `/steal`; a Bakod fences it in: 🗝️ Master Key or 🧪 Kalawang)',
-          '`/race` — 🏁 Mosang race (gambling channel only): 2 min to bet on 1 of 5 Mosangs, winner pays 4×',
+          '`/race` — 🏁 Mosang race (gambling channel only, or from an Aling in the web town, where you watch them run): 2 min to bet on 1 of 5 Mosangs, winner pays 4×',
           '`/jackpot` — pot, players, your odds & last winner · `/jackpot tickets` — buy (1 Kowen each, draws at 10 AM & 10 PM)',
           '`/leaderboard` — richest members and top voice chatters',
           '🚨 **Tanod Patrol** — random roll call; first 3 to click win 3/2/1 Kowens',

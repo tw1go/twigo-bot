@@ -82,8 +82,51 @@ export interface TownChatLine {
 }
 
 /** A line in the town's system feed: something that happened around the server (a dig, a bet). */
+/** A Mosang race's stop: at `at` of the track (0–1) she stops for `ms` (an arthritis attack, a fall…); `line` picks
+ *  what she says (the game's lines for that kind, modulo their count). */
+export interface TownRaceStop {
+  at: number;
+  ms: number;
+  kind: 'arthritis' | 'asthma' | 'gossip' | 'phone' | 'fall';
+  line: number;
+}
+
+/** A Mosang's race: her pace (track lengths a second, between stops) and her stops. */
+export interface TownRaceLane {
+  speed: number;
+  stops: TownRaceStop[];
+}
+
+/** The Mosang race (bot games/race.ts; the same race as Discord's /race), as the town sees it. Times are the bot's
+ *  clock (`now`: the bot's clock as this was sent, so pages can correct for their own). */
+export interface TownRace {
+  id: string;
+  /** The runners' NPC ids (marites, nena…), lane by lane. */
+  runners: string[];
+  /** Betting closes and the race starts. */
+  closesAt: number;
+  now: number;
+  /** Bets so far, lane by lane: how many and how many Kowens. */
+  bets: { count: number; pot: number }[];
+  /** Once it's running: each lane's script, the winner's lane (and a photo finish's second, else -1), when it's won. */
+  run?: { lanes: TownRaceLane[]; winner: number; tie: number; endsAt: number };
+  /** Who started it (a town nickname or Discord name). */
+  startedBy: string;
+}
+
+/** GET/POST /town/race: the race (null: none on), your bet on it, and the rules. */
+export interface TownRaceResponse {
+  race: TownRace | null;
+  mine: { lane: number; amount: number } | null;
+  kowens: number;
+  maxBet: number;
+  payout: number;
+  ok?: boolean;
+  message?: string;
+}
+
 export interface TownSystemLine {
-  kind: 'dig' | 'gamble' | 'jackpot' | 'shop' | 'gift' | 'jail' | 'quest' | 'arena' | 'steal';
+  kind: 'dig' | 'gamble' | 'jackpot' | 'shop' | 'gift' | 'jail' | 'quest' | 'arena' | 'steal' | 'race';
   text: string;
   /** Colour key: a dig's rarity, win / lose / bust, jackpot, shop, or gift. */
   tone: string;
@@ -126,6 +169,8 @@ export type TownServerMessage =
   | { t: 'announce'; announcement: TownAnnouncement }
   /** Something happened around the server (the system feed). */
   | { t: 'system'; line: TownSystemLine }
+  /** The Mosang race changed: opened, a bet, off, won, or over (null). Also sent on arrival while one is on. */
+  | { t: 'race'; race: TownRace | null }
   /** Staying in town: a Kowen is ready to claim (web/town-stay.ts). */
   | { t: 'stay'; stay: TownStayInfo }
   /** Someone dissed, praised or judged someone (the player menu): `id` says the line (the target's name is in it). */

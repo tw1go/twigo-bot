@@ -1,5 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import type { LeaderboardResponse, LeaderboardRow, MeDig, MeResponse, PresenceStatus, PreregResponse, PreregStatus, TownJackpotBuyResponse, TownJackpotResponse, TownLeaderboardResponse } from '@mikazuki/shared';
+import type { LeaderboardResponse, LeaderboardRow, MeDig, MeResponse, PresenceStatus, PreregResponse, PreregStatus, TownJackpotBuyResponse, TownJackpotResponse, TownLeaderboardResponse, TownRaceResponse } from '@mikazuki/shared';
 import { GatewayIntentBits, type Client } from 'discord.js';
 import { config } from '../config.js';
 import { VOICE_DAILY_CAP, VOICE_MINUTES_PER_CREDIT, balance, rankOf, setWalletHook, topBalances, totalKowens, vaultBalance, voiceCreditsToday, voiceProgress } from '../credits/store.js';
@@ -9,6 +9,7 @@ import { getNickname, parseNickname, setNickname } from './nickname.js';
 import { RICHEST, TITLES, newTitle, titleOf, titleSeen } from './titles.js';
 import { welcome, welcomeEveryone, welcomeGift, welcomeSeen } from './welcome.js';
 import { townMemory } from './town-memory.js';
+import { MAX_BET as RACE_MAX_BET, PAYOUT as RACE_PAYOUT, openRaceInTown, placeBet, raceFor } from '../games/race.js';
 import { isTester } from '../games/testers.js';
 import { checkRichest } from './richest.js';
 import { attachTown, loadTownMap } from './town.js';
@@ -83,6 +84,8 @@ import { type CmsDeps, cms } from './cms.js';
 //   POST /town/parlor   { action: look, outfit } (3 Kowens) | { action: title, id } (free) (from the game's page only; members)
 //   GET  /town/stay     staying in town (a Kowen every 15 min, claimed), voice chat and the daily Kowens today (members); POST claims one
 //   POST /town/daily    claim the daily Kowens, as /get-kowens (from the game's page only; members)
+//   GET  /town/race     the Mosang race (the same as /race), your bet on it (members); POST { action: start, lead } or
+//                       { action: bet, race, lane, amount } (from the game's page only)
 //   GET  /town/dig-items  the Mine's tier list: what digs can turn up, by rarity, with the odds (members)
 //   POST /town/dig      dig at the Mine (/dig's rules; from the game's page only; members)
 //   POST /title/seen    { id? } the game showed the member their new title (from the game's page only)
@@ -604,6 +607,34 @@ export function startWebServer(client: Client): void {
         if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
         const voice = { earned: voiceCreditsToday(userId), max: VOICE_DAILY_CAP, minutes: voiceProgress(userId), every: VOICE_MINUTES_PER_CREDIT };
         return send(res, 200, JSON.stringify(req.method === 'GET' ? { ...stayInfo(userId), voice, daily: dailyInfo(userId) } : claimStay(userId)));
+      }
+      if (path === '/town/race' && (req.method === 'GET' || req.method === 'POST')) {
+        if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
+        if (req.method === 'POST' && !fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
+        const userId = sessionUser(req);
+        if (!userId) return send(res, 401, '{"error":"not logged in"}');
+        if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
+        const reply = (extra: { ok?: boolean; message?: string } = {}) =>
+          send(res, 200, JSON.stringify({ ...raceFor(userId), kowens: balance(userId), maxBet: RACE_MAX_BET, payout: RACE_PAYOUT, ...extra } satisfies TownRaceResponse));
+        if (req.method === 'GET') return reply();
+        let body: { action?: unknown; lead?: unknown; race?: unknown; lane?: unknown; amount?: unknown } | null = null;
+        try {
+          body = JSON.parse((await readBody(req)) || 'null');
+        } catch {
+          // invalid JSON → rejected below
+        }
+        if (body?.action === 'start' && typeof body.lead === 'string') {
+          if (jailedUntil(userId)) return reply({ ok: false, message: "You can't start a race from jail." });
+          const r = await openRaceInTown(client, userId, body.lead, (id) => nameOf(client, id));
+          return reply(r.ok ? { ok: true, message: 'The Mosangs are heading to the starting line! Bets close in 2 minutes.' } : { ok: false, message: 'A race is already on!' });
+        }
+        if (body?.action === 'bet' && typeof body.race === 'string') {
+          const r = await placeBet(client, userId, body.race, Number(body.lane), Number(body.amount));
+          if (r.ok) return reply({ ok: true, message: `You bet ${r.amount} ${kowen(r.amount)}! If she wins you get ${r.amount * RACE_PAYOUT}.` });
+          const why = { closed: 'Betting for this race is closed.', jailed: "You can't bet from jail.", already: 'You already bet on this race.', amount: `Bet 1 to ${RACE_MAX_BET} Kowens.`, kowens: "You don't have that many Kowens." }[r.reason];
+          return reply({ ok: false, message: why });
+        }
+        return send(res, 400, '{"error":"bad request"}');
       }
       if (req.method === 'POST' && path === '/town/daily') {
         if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');

@@ -5,6 +5,10 @@ import { Character, SPEED, dirForStep } from '../characters/character';
 import type { Outfit } from '../characters/doll';
 import type { BubbleArt } from '../ui/labels';
 import { openNpcDialog, talkingTo } from '../ui/npc-dialog';
+import { toast } from '../ui/toast';
+import { onRace, race, raceNow, startRace } from '../net/race';
+import { RACE_FINISH, RACE_START, STOP_LINES, WARMUP_LINES, laneAt } from './race-track';
+import type { TownRace, TownRaceStop } from '@mikazuki/shared';
 import { visible } from '../util/pixels';
 import type { Tile, WalkGrid } from './grid';
 import { type WorldObjects, characterDepth } from './objects';
@@ -42,6 +46,8 @@ interface Npc {
   /** An emote is playing until then (nothing turns it meanwhile). */
   busyUntil: number;
   talking: boolean;
+  /** In the Mosang race (world/race-track.ts): her lane, her next warm-up at the line, the stop she's in, cheered. */
+  racing: { lane: number; warmAt: number; stop: TownRaceStop | null; cheered: boolean } | null;
 }
 
 /** How close you must be to talk (further: the scene walks you over first). */
@@ -81,12 +87,18 @@ export interface NpcWorld {
   bubbles: BubbleArt | null;
   /** An asset's URL (for the portrait in the dialog box). */
   asset: (file: string) => string;
+  /** The race is won: the megaphone-style banner (a tie: two names). */
+  announce: (winner: string, tie: string | null) => void;
 }
 
 export class NpcLife {
   private readonly npcs: Npc[] = [];
   private nextGossip: number;
   private bubbleUntil = 0;
+  /** The race the runners are in, and each lane's way from the start line to the finish. */
+  private raceId: string | null = null;
+  private lanes: Tile[][] = [];
+  private announced: string | null = null;
   /** Who's saying the line in the bubble (her murmur plays meanwhile). */
   private bubbleBy: Npc | null = null;
 
@@ -125,11 +137,14 @@ export class NpcLife {
       // Just the name over the head (the characteristic is in the dialog box).
       char.setNameTag(text.name, { name: text.title, color: '#FFFFFF' }, { nameOnly: true });
       char.sprite.setInteractive({ pixelPerfect: true });
-      const npc: Npc = { place, text, char, deck: [], last: null, nextAt: 0, stop: 0, dest: null, busyUntil: 0, talking: false };
+      const npc: Npc = { place, text, char, deck: [], last: null, nextAt: 0, stop: 0, dest: null, busyUntil: 0, talking: false, racing: null };
       npc.nextAt = w.scene.time.now + this.restMs(npc);
       char.onArrive = () => this.arrived(npc);
       this.npcs.push(npc);
     }
+    const off = onRace((r) => this.raceChanged(r));
+    w.scene.events.once(Phaser.Scenes.Events.SHUTDOWN, off);
+    this.raceChanged(race());
   }
 
   /** A tile an NPC may stand on. */
@@ -191,6 +206,10 @@ export class NpcLife {
     const taken = new Set(players.map(key));
     for (const npc of this.npcs) {
       npc.char.update(deltaMs);
+      if (npc.racing) {
+        this.runRace(npc, now);
+        continue;
+      }
       if (npc.talking) continue;
       // Walking somewhere a player has stepped onto: stop (after this step) and pick again later.
       if (npc.dest && taken.has(key(npc.dest))) {
@@ -203,6 +222,115 @@ export class NpcLife {
     }
     this.gossip(now);
     this.murmur(now);
+    this.announceWinner();
+  }
+
+  // ── The Mosang race ──
+
+  /** A race opened, changed or ended: its runners step out of their routines (or back into them, walking home). */
+  private raceChanged(r: TownRace | null): void {
+    if (r?.id === this.raceId) return;
+    for (const npc of this.npcs) {
+      if (!npc.racing) continue;
+      npc.racing = null;
+      npc.char.tip(false);
+      npc.dest = null;
+      const home = { col: npc.place.home[0], row: npc.place.home[1] };
+      const path = this.w.grid.findPath(npc.char.tile, home);
+      if (path) {
+        npc.dest = home;
+        npc.char.walk(path);
+      } else npc.char.place(home);
+    }
+    this.raceId = r?.id ?? null;
+    this.lanes = [];
+    if (!r) return;
+    r.runners.forEach((id, lane) => {
+      const npc = this.npcs.find((n) => n.place.id === id);
+      if (!npc) return;
+      npc.racing = { lane, warmAt: 0, stop: null, cheered: false };
+      npc.dest = null;
+    });
+  }
+
+  /** A lane's tiles, start line to finish (worked out once per race; the same on every page). */
+  private lane(lane: number): Tile[] {
+    if (!this.lanes[lane]) {
+      const [s, f] = [RACE_START[lane % RACE_START.length], RACE_FINISH[lane % RACE_FINISH.length]];
+      const start = { col: s[0], row: s[1] };
+      const finish = { col: f[0], row: f[1] };
+      this.lanes[lane] = this.w.grid.findPath(start, finish) ?? [start, finish];
+    }
+    return this.lanes[lane];
+  }
+
+  /** A runner: to her lane on the start line while the bets come in (warming up there), then the script. */
+  private runRace(npc: Npc, now: number): void {
+    const r = race();
+    const run = npc.racing!;
+    if (!r) return;
+    const path = this.lane(run.lane);
+    const t = raceNow();
+    if (!r.run || t < r.closesAt) {
+      const start = path[0];
+      const at = npc.char.tile;
+      if (at.col !== start.col || at.row !== start.row) {
+        if (npc.char.isIdle && !npc.dest) {
+          const way = this.w.grid.findPath(at, start);
+          if (way) {
+            npc.dest = start;
+            npc.char.walk(way);
+          } else npc.char.place(start, 'se');
+        }
+        return;
+      }
+      npc.dest = null;
+      if (!npc.char.isIdle || now < npc.busyUntil) return;
+      npc.char.face('se');
+      if (now < run.warmAt) return;
+      run.warmAt = now + between([3_000, 7_000]);
+      this.emote(npc, Math.random() < 0.6 ? 'cheer' : 'wave');
+      if (Math.random() < 0.25 && this.w.bubbles) npc.char.say(WARMUP_LINES[Math.floor(Math.random() * WARMUP_LINES.length)], this.w.bubbles);
+      return;
+    }
+    // Off: where the script has her now, along her lane.
+    const lane = r.run.lanes[run.lane];
+    if (!lane) return;
+    const { at, stop } = laneAt(lane, t - r.closesAt);
+    const pos = at * (path.length - 1);
+    const i = Math.min(path.length - 1, Math.floor(pos));
+    const a = path[i];
+    const b = path[Math.min(path.length - 1, i + 1)];
+    const k = pos - i;
+    const dir = a.col !== b.col || a.row !== b.row ? dirForStep(b.col - a.col, b.row - a.row) : 'se';
+    if (stop !== run.stop) {
+      if (run.stop?.kind === 'fall') npc.char.tip(false);
+      run.stop = stop;
+      if (stop) {
+        const lines = STOP_LINES[stop.kind];
+        if (this.w.bubbles) npc.char.say(lines[stop.line % lines.length], this.w.bubbles);
+        if (stop.kind === 'fall') {
+          npc.char.tip(true);
+          npc.char.dust();
+        }
+      }
+    }
+    npc.char.pose(a.col + 0.5 + (b.col - a.col) * k, a.row + 0.5 + (b.row - a.row) * k, dir, !stop && at < 1);
+    // Over the line: the winner cheers once it's called.
+    const won = run.lane === r.run.winner || run.lane === r.run.tie;
+    if (at >= 1 && won && t >= r.run.endsAt && !run.cheered) {
+      run.cheered = true;
+      this.emote(npc, 'cheer');
+    }
+  }
+
+  /** The race is won (on the bot's clock): the banner, once. */
+  private announceWinner(): void {
+    const r = race();
+    if (!r?.run || r.id === this.announced || raceNow() < r.run.endsAt) return;
+    this.announced = r.id;
+    const name = (id: string | undefined) => (id ? (this.npcs.find((n) => n.place.id === id)?.text.name ?? id) : null);
+    this.w.announce(name(r.runners[r.run.winner])!, r.run.tie >= 0 ? name(r.runners[r.run.tie]) : null);
   }
 
   /** The gossip murmur: as loud as the nearest gossiping Aling is near you (gossiping: another Aling within
@@ -269,7 +397,7 @@ export class NpcLife {
   private gossip(now: number): void {
     if (now < this.nextGossip || now < this.bubbleUntil || !this.w.bubbles) return;
     const me = this.players[0];
-    const near = me ? this.npcs.filter((n) => n.place.gossip && !n.talking && dist(n.char.tile, me) <= GOSSIP_RANGE) : [];
+    const near = me ? this.npcs.filter((n) => n.place.gossip && !n.talking && !n.racing && dist(n.char.tile, me) <= GOSSIP_RANGE) : [];
     const npc = near[Math.floor(Math.random() * near.length)];
     if (!npc) {
       this.nextGossip = now + 5_000;
@@ -307,10 +435,14 @@ export class NpcLife {
     const npc = this.npcs.find((n) => n.place.id === id);
     if (!npc) return;
     npc.talking = true;
-    npc.dest = null;
-    npc.char.place(npc.char.tile, toward(npc.char.tile, me) ?? npc.char.facing); // stop where it is
-    this.emote(npc, id === 'tanod' ? 'whistle' : 'wave');
+    if (!npc.racing) {
+      npc.dest = null;
+      npc.char.place(npc.char.tile, toward(npc.char.tile, me) ?? npc.char.facing); // stop where it is
+      this.emote(npc, id === 'tanod' ? 'whistle' : 'wave');
+    }
     openNpcDialog({
+      // Any Aling can start a Mosang race (she runs) while none is on.
+      action: npc.place.gossip && !race() ? { label: '🏁 Start a Mosang race', run: () => void this.startRaceWith(id) } : undefined,
       id,
       name: npc.text.name,
       title: npc.text.title,
@@ -323,6 +455,11 @@ export class NpcLife {
         npc.nextAt = this.w.scene.time.now + this.restMs(npc);
       },
     });
+  }
+
+  private async startRaceWith(id: string): Promise<void> {
+    const r = await startRace(id);
+    toast(r?.message ?? "Couldn't start a race. Try again?", 4000, r?.ok ? 'good' : 'bad');
   }
 
   /** The NPC you're talking to, if any. */

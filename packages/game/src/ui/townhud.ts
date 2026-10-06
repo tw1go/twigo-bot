@@ -3,6 +3,7 @@ import { renderPrereg } from '../hud';
 import { fakeLogin, loadMe } from '../session';
 import { playSound } from '../audio/sound';
 import { jackpotTimer } from './jackpot-timer';
+import { raceBox } from './race-box';
 import { hasUnread, loadNews, showNews } from './news';
 import { showGuide } from './guide';
 import { showSettings } from './settings';
@@ -171,8 +172,15 @@ export function mountTownHud(o: TownHudOptions): void {
     }
     // Left of the minimap on wide screens; on phones under the Kowens and shovels, where there's room for the whole board.
     const timer = jackpotTimer(icon);
+    // The Mosang race's box (only while a race is on) goes beside it: left of it on wide screens, under it on phones.
+    const race = raceBox();
     const phone = matchMedia('(max-width: 560px)');
-    const place = () => (phone.matches ? left.insertBefore(timer, row.nextSibling) : top.prepend(timer));
+    const place = () => {
+      if (phone.matches) left.insertBefore(timer, row.nextSibling);
+      else top.prepend(timer);
+      if (phone.matches) left.insertBefore(race, timer.nextSibling);
+      else top.prepend(race);
+    };
     phone.addEventListener('change', place);
     place();
   }

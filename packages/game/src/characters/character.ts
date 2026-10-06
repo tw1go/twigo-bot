@@ -208,6 +208,26 @@ export class Character {
     this.sync();
   }
 
+  /** Puts the feet at a tile-space point (a scripted move: an NPC racing), facing `dir`, walking or standing. */
+  pose(col: number, row: number, dir: Dir, walking: boolean): void {
+    this.standUp();
+    this.path = [];
+    this.col = col;
+    this.row = row;
+    this.dir = dir;
+    if (walking) {
+      this.play('walk');
+      this.stepDust();
+    } else if (this.anim === 'walk') this.play('idle');
+    this.sync();
+  }
+
+  /** Tipped over on the ground (a fall: there's no fall art, so the sprite lies on its side), or back up. */
+  tip(on: boolean): void {
+    this.sprite.setAngle(on ? (this.dir === 'w' || this.dir === 'sw' || this.dir === 'nw' ? 90 : -90) : 0);
+    if (on) this.play('idle');
+  }
+
   /** Play wave or cheer (an NPC's whistle) once, then go back to idle. */
   emote(anim: 'wave' | 'cheer' | 'whistle'): void {
     if (this.path.length || this.sittingAt) return;
@@ -376,7 +396,8 @@ export class Character {
     this.overhead?.setPosition(Math.round(x), alertY - (this.bubble ? this.bubble.height + 1 : 0));
   }
 
-  private dust(): void {
+  /** A puff of dust at the feet (each step's; a fall's). */
+  dust(): void {
     const fx = this.M.fx['footstep-dust'];
     if (!fx?.file) return;
     const key = `anim:${fx.file}`;

@@ -4,7 +4,7 @@ import type { IncomingMessage, Server } from 'node:http';
 import type { Duplex } from 'node:stream';
 import { WebSocket, WebSocketServer } from 'ws';
 import { Arena, type ArenaBets, type ArenaSeat, arenaLine } from './town-arena.js';
-import type { HoodHouse, HoodMap, OutfitData, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine } from '@mikazuki/shared';
+import type { HoodHouse, HoodMap, OutfitData, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
 // messages). The server keeps everyone's tile and checks each step — on the map, not blocked, next to the last
@@ -126,6 +126,8 @@ export interface Town {
   restyle(userId: string, outfit: OutfitData, title: TitleData): void;
   /** A house built, given a new look, or its Bakod up or down: everyone in the neighbourhood sees it at once (it rises,
    *  puffs into its new look, or its fence goes up or comes down). */
+  /** The Mosang race (games/race.ts) changed: to everyone in town and the neighbourhood, and to arrivals while it's on. */
+  race(state: TownRace | null): void;
   house(change: 'built' | 'look' | 'fence', house: HoodHouse, at: { col: number; row: number; door: [number, number]; fence: HoodMap['fence'] }): void;
   /** A member (if in town) flexed an item from their bag: to everyone, them included (chat line + bubble). */
   flexed(userId: string, item: { id: string; name: string; rarity: string }): void;
@@ -180,6 +182,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     keep();
   };
   let notice: { a: TownAnnouncement; until: number } | null = null;
+  let raceNow: TownRace | null = null;
   const wss = new WebSocketServer({ noServer: true, maxPayload: 1024 });
   const arena = new Arena(undefined, undefined, opts.arenaBets ?? null, (r) => postSystem({ kind: 'arena', text: arenaLine(r, Math.random()), tone: r.bot === 'loser' ? 'win' : 'lose' })); // mocking the loser (in the loss colour; beating the bot in the win colour)
 
@@ -345,6 +348,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     send(c, { t: 'welcome', you: player.id, players: [...conns.values()].filter((o) => o.room === room).map((o) => o.player), recent, system: systemLines, spawn: [col, row], notice: notice && notice.until > Date.now() ? notice.a : undefined });
     conns.set(userId, c);
     others(c, { t: 'join', player });
+    if (raceNow) send(c, { t: 'race', race: { ...raceNow, now: Date.now() } });
 
     ws.on('pong', () => (c.alive = true));
     ws.on('message', (data) => {
@@ -425,6 +429,10 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     newTitle(userId, id, title) {
       const c = conns.get(userId);
       if (c) send(c, { t: 'new-title', id, title });
+    },
+    race(state) {
+      raceNow = state;
+      everyone({ t: 'race', race: state });
     },
     house(change, house, at) {
       const text = JSON.stringify({ t: 'house', change, house, ...at } satisfies TownServerMessage);

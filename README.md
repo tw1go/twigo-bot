@@ -117,7 +117,9 @@ All in `GAMES_CHANNEL_ID` / wherever the command is used. Jailed members can't p
   fewer than 2 players = refund. 70% of every bet the Tanod confiscates (a `/gamble` or Casino bust, rounded down) goes into
   the pot too and is won with it; it rolls over when nobody wins. `/twigo game:jackpot` draws now.
 - `/race` — Mosang race, only in `GAMBLING_CHANNEL_ID`: 5 of 10 Mosangs (`src/games/race.ts`), 2 min betting via buttons + modal (1–100, one bet each),
-  30 s animated race, winner's backers get 4× (equal odds, so a small sink). Interrupted races refund on startup.
+  a scripted race (~30–45 s, animated on the card), winner's backers get 4× (equal odds, so a small sink). Interrupted races refund on startup.
+  The same race can be started from any Aling's dialog box in the web town (she runs), bet on from the town's race box,
+  and watched there: the bot scripts each Mosang's pace and stops (`games/race-script.ts`), the first over the line wins.
 - **Weekly voice rewards** (`src/games/voice-weekly.ts`): every Monday 12 PM, last week's top 10 by eligible voice
   minutes (no daily cap) get 50 · 30 · 20 · 10×7 Kowens. Weeks run Monday–Sunday; the first counted week starts 2026-10-05.
 - `/flex item` — show off an inventory item publicly (autocomplete, 60 s cooldown).

@@ -16,6 +16,8 @@ import { type HouseArt, composeHouse, houseFiles, houseStyles, tidyLook } from '
 import { areaUrl, cameFrom, hoodAction, loadHood, saveHouse } from '../net/hood';
 import { showHouseMenu } from '../ui/house-menu';
 import { closeNpcDialog, setNpcDialogArt } from '../ui/npc-dialog';
+import { race as currentRace, raceNow, setRace } from '../net/race';
+import { setRacePortraits } from '../ui/race-bet';
 import { NpcLife, TALK_LEAVE, TALK_RANGE } from '../world/npc-life';
 import { mountHouseCreator } from '../ui/house-creator';
 import { playBusted } from '../ui/casino';
@@ -538,8 +540,7 @@ export class TownScene extends Phaser.Scene {
     if (bag) document.body.append(bag.button); // its own button, just right of the chat box
     const chat = new ChatBox((text, megaphone) => link.send({ t: 'say', text, ...(megaphone ? { megaphone } : {}) }), tools);
     // Megaphone messages run across the screen (with the megaphone's art, if it's there).
-    const megaArt = this.M.items?.megaphone?.showcase;
-    const megaphone = new MegaphoneBanner(megaArt ? `${import.meta.env.BASE_URL}assets/${megaArt}` : null);
+    const megaphone = this.banner();
     // Members can click someone's name in the chat: the player menu opens beside it (if they're still in town).
     const target = this.target;
     if (target) {
@@ -622,6 +623,7 @@ export class TownScene extends Phaser.Scene {
       }
       if (m.t === 'new-title') return showNewTitle(m.id, m.title, member?.title ?? TOWNFOLK);
       if (m.t === 'house') return this.houseNews(m);
+      if (m.t === 'race') return setRace(m.race);
       if (m.t === 'look' && m.id === myId) return void this.restyle(sanitize(this.M.characters, m.outfit, this.outfit), m.title);
       if (m.t === 'jailed' && m.id === myId) {
         this.player.setJailed(m.on);
@@ -991,10 +993,25 @@ export class TownScene extends Phaser.Scene {
     const bubbles: BubbleArt | null = B && this.textures.exists(B.file) ? lightBubble(this, { file: B.file, slice: B.nineSlice, tail: B.tail, tailAnchor: B.tailAnchor }) : null;
     const box = this.M.ui.chatWindow;
     const frame = this.M.ui.inventory?.itemFrame;
+    const P = this.M.npcs?.portrait;
+    if (P) setRacePortraits((id) => asset(P.file.replace('{id}', id)));
     setNpcDialogArt({ box: box ? { url: asset(box.file), slice: box.nineSlice } : null, frame: frame ? { url: asset(frame.file), slice: frame.nineSlice } : null });
-    const life = new NpcLife({ scene: this, M: this.M, grid: this.grid, objects: this.objects, avoid, onSpawn: (obj) => this.tint >= 0 && obj.setTint(this.tint), bubbles, asset });
+    const announce = (winner: string, tie: string | null) => {
+      this.banner().show('🏁 Mosang race', tie ? `Photo finish! ${winner} and ${tie} win!` : `${winner} wins!`);
+      playSound('casino-win');
+    };
+    const life = new NpcLife({ scene: this, M: this.M, grid: this.grid, objects: this.objects, avoid, onSpawn: (obj) => this.tint >= 0 && obj.setTint(this.tint), bubbles, asset, announce });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => closeNpcDialog());
     return life;
+  }
+
+  private megaphone: MegaphoneBanner | null = null;
+
+  /** The megaphone banner (megaphone messages, the Mosang race's winner): one at a time, made once. */
+  private banner(): MegaphoneBanner {
+    const art = this.M.items?.megaphone?.showcase;
+    this.megaphone ??= new MegaphoneBanner(art ? `${import.meta.env.BASE_URL}assets/${art}` : null);
+    return this.megaphone;
   }
 
   /** Talk to an NPC: close enough, straight away; else walk up to them first (to the tile before theirs). */
@@ -1757,6 +1774,8 @@ function exposeDebug(scene: TownScene): void {
     /** The NPCs' tiles, or talk to one (walking over if needed). */
     npcs: () => scene.debugNpcs?.positions,
     talk: (id: string) => scene.debugTalk(id),
+    /** The Mosang race as this page has it, and the bot's clock. */
+    race: () => ({ race: currentRace(), now: raceNow() }),
     /** Fixed view for screenshots: zoom and centre on a world point (follow off), or follow again. */
     view: (zoom?: number, x?: number, y?: number) => {
       const cam = scene.cameras.main;
