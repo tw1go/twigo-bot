@@ -18,6 +18,7 @@ import { showHouseMenu } from '../ui/house-menu';
 import { closeNpcDialog, setNpcDialogArt } from '../ui/npc-dialog';
 import { race as currentRace, raceNow, setRace } from '../net/race';
 import { setRacePortraits } from '../ui/race-bet';
+import { mosangName } from '../ui/race-box';
 import { NpcLife, TALK_LEAVE, TALK_RANGE } from '../world/npc-life';
 import { mountHouseCreator } from '../ui/house-creator';
 import { playBusted } from '../ui/casino';
@@ -320,6 +321,9 @@ export class TownScene extends Phaser.Scene {
     if (door && !Array.isArray(door[0])) this.player.place({ col: door[0] as number, row: door[1] as number }, 'se');
     this.others = new OtherPlayers(this, this.M, this.objects, (obj) => this.tint >= 0 && obj.setTint(this.tint));
     if (!this.hood) this.npcs = this.makeNpcs();
+    // The race box's bet pop-up shows the runners' portraits wherever you are (the neighbourhood too, which has no NPCs).
+    const P = this.M.npcs?.portrait;
+    if (P) setRacePortraits((id) => `${import.meta.env.BASE_URL}assets/${P.file.replace('{id}', id)}`);
 
     this.setupCamera(bounds);
     // Only what the camera can see is drawn and animated.
@@ -374,6 +378,7 @@ export class TownScene extends Phaser.Scene {
       }
     }
     this.others.update(delta);
+    if (!this.npcs) this.raceWinnerHere();
     if (this.npcs) {
       const me = this.player.tile;
       this.npcs.update(delta, [me, ...this.others.players.map((p) => ({ col: p.col, row: p.row }))]);
@@ -993,8 +998,6 @@ export class TownScene extends Phaser.Scene {
     const bubbles: BubbleArt | null = B && this.textures.exists(B.file) ? lightBubble(this, { file: B.file, slice: B.nineSlice, tail: B.tail, tailAnchor: B.tailAnchor }) : null;
     const box = this.M.ui.chatWindow;
     const frame = this.M.ui.inventory?.itemFrame;
-    const P = this.M.npcs?.portrait;
-    if (P) setRacePortraits((id) => asset(P.file.replace('{id}', id)));
     setNpcDialogArt({ box: box ? { url: asset(box.file), slice: box.nineSlice } : null, frame: frame ? { url: asset(frame.file), slice: frame.nineSlice } : null });
     const announce = (winner: string, tie: string | null) => {
       this.banner().show('🏁 Mosang race', tie ? `Photo finish! ${winner} and ${tie} win!` : `${winner} wins!`);
@@ -1006,6 +1009,18 @@ export class TownScene extends Phaser.Scene {
   }
 
   private megaphone: MegaphoneBanner | null = null;
+  private raceCalled: string | null = null;
+
+  /** Where there are no NPCs (the neighbourhood), the Mosang race's winner is still called in the banner. */
+  private raceWinnerHere(): void {
+    const r = currentRace();
+    if (!r?.run || r.id === this.raceCalled || raceNow() < r.run.endsAt) return;
+    this.raceCalled = r.id;
+    const tie = r.run.tie >= 0 ? mosangName(r.runners[r.run.tie]) : null;
+    const winner = mosangName(r.runners[r.run.winner]);
+    this.banner().show('🏁 Mosang race', tie ? `Photo finish! ${winner} and ${tie} win!` : `${winner} wins!`);
+    playSound('casino-win');
+  }
 
   /** The megaphone banner (megaphone messages, the Mosang race's winner): one at a time, made once. */
   private banner(): MegaphoneBanner {
