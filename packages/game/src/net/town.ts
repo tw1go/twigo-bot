@@ -16,6 +16,8 @@ export class TownLink {
   onTakenOver: () => void = () => {};
   /** A moderator removed you from the town, until then (ms). */
   onKicked: (until: number) => void = () => {};
+  /** Connected (true) or dropped and trying again (false: a bot restart, a network blip). */
+  onStatus: (up: boolean) => void = () => {};
 
   constructor(
     /** Dev only: the fake member's look, for the dev server's town (scripts/dev-town.ts). */
@@ -48,7 +50,10 @@ export class TownLink {
   private connect(): void {
     const ws = new WebSocket(townUrl(this.devLook, this.room));
     this.ws = ws;
-    ws.onopen = () => (this.retry = 0);
+    ws.onopen = () => {
+      this.retry = 0;
+      this.onStatus(true);
+    };
     ws.onmessage = (e) => {
       try {
         this.onMessage(JSON.parse(String(e.data)) as TownServerMessage);
@@ -60,6 +65,7 @@ export class TownLink {
       if (this.ws !== ws || this.stopped) return;
       if (e.code === OPENED_ELSEWHERE) return this.onTakenOver();
       if (e.code === KICKED) return this.onKicked(Number(e.reason) || Date.now() + 15 * 60_000);
+      this.onStatus(false);
       const wait = Math.min(30_000, 1000 * 2 ** this.retry++);
       setTimeout(() => this.connect(), wait);
     };

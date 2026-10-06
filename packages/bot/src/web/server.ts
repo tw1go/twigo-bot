@@ -8,6 +8,7 @@ import { ITEM_BY_ID } from '../dig/items.js';
 import { getNickname, parseNickname, setNickname } from './nickname.js';
 import { RICHEST, TITLES, newTitle, titleOf, titleSeen } from './titles.js';
 import { welcome, welcomeEveryone, welcomeGift, welcomeSeen } from './welcome.js';
+import { townMemory } from './town-memory.js';
 import { isTester } from '../games/testers.js';
 import { checkRichest } from './richest.js';
 import { attachTown, loadTownMap } from './town.js';
@@ -699,6 +700,7 @@ export function startWebServer(client: Client): void {
       onSay: (userId, nickname, text, megaphone) => toDiscord(userId, nickname, text, megaphone),
       megaphone: useMegaphone,
       moderation: { mutedUntil, kickedUntil, filter: filterText },
+      memory: townMemory(),
       map: loadTownMap(),
       rooms: { hood: hoodTownMap },
       authenticate: async (req) => {

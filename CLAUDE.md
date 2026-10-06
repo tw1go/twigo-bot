@@ -140,9 +140,13 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   held 5–9 s by length, fades out; one at a time), and goes to Discord with 📢. Art: manifest items.megaphone (item-megaphone2 of the
   art folder; item-megaphone1 there is empty).
 - Chat (`ui/chat.ts` + `SpeechBubble` in `ui/labels.ts`): Enter to type, Enter sends and stays open, empty Enter/Esc or a click outside closes; the bot's `say` (tidied, ≤120 chars,
-  burst 3 then 1 per 2 s, never saved) comes back to everyone, the speaker included. Linked to a Discord channel
+  burst 3 then 1 per 2 s; only the last 20 lines are kept) comes back to everyone, the speaker included. Linked to a Discord channel
   (`TOWN_CHAT_CHANNEL_ID`, bot `web/town-chat.ts`, needs the Message Content intent): Discord lines show with the
-  Discord mark. The box is a fixed see-through panel that fades to 0.2 after 15 s quiet. On phones (≤560 px) it folds away behind a Chat button (bottom
+  Discord mark. Quiet restarts: the last 20 chat lines are saved in data/town-chat.json (its own file, never in the
+  database or backups; PRIVACY.md says so) and the feed's last lines in kv 'town-feed-recent' (bot `web/town-memory.ts`,
+  tested; `TownOptions.memory`, flushed at shutdown); after a reconnect the page keeps what it shows and only adds what's
+  new (`history(…, more)`), no second welcome line, and a quiet "Reconnecting…" while the link is down (`onStatus`).
+  The box is a fixed see-through panel that fades to 0.2 after 15 s quiet. On phones (≤560 px) it folds away behind a Chat button (bottom
   left; a dot for new messages; body.chat-open).
 - Online list (`ui/online.ts`): "N online" beside the chat input opens who's in town (you first, titles in colour).
 - Sound (`audio/sound.ts`, files + credits in `public/assets/audio/`, not in the manifest): crickets that come and go,

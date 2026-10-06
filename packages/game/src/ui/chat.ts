@@ -33,7 +33,13 @@ const MAX_LENGTH = 120;
 /** Phone-sized screens fold the chat away behind its button. */
 const PHONE = '(max-width: 560px)';
 
+/** Lines remembered for a reconnect (more than the server keeps). */
+const HEARD = 40;
+const heardKey = (name: string, text: string, discord: boolean) => `${discord ? 'd' : 't'}|${name}|${text}`;
+
 export class ChatBox {
+  /** The chat lines shown lately (as the server sends them), so a reconnect only adds what's new. */
+  private readonly heard: string[] = [];
   private readonly root: HTMLElement;
   /** The channel tag before the input: General or Megaphone (click to switch). */
   private readonly channel: HTMLButtonElement;
@@ -169,6 +175,8 @@ export class ChatBox {
   /** A message in the log (from Discord: with Discord's mark before the name; through a megaphone: sky blue).
    *  `id`: the speaker's town id. */
   add(name: string, text: string, from: 'me' | 'town' | 'discord' = 'town', id?: string, megaphone = false): void {
+    this.heard.push(heardKey(name, text, from === 'discord'));
+    if (this.heard.length > HEARD) this.heard.shift();
     const line = document.createElement('div');
     line.className = megaphone ? 'ch-line ch-mega' : 'ch-line';
     if (megaphone) line.title = 'Megaphone';
@@ -205,9 +213,24 @@ export class ChatBox {
   }
 
   /** The conversation so far (as the server remembers it), replacing what's in the log. */
-  history(lines: { name: string; text: string; discord?: boolean; megaphone?: boolean }[], myName: string | null): void {
-    this.log.replaceChildren();
-    for (const l of lines) this.add(l.name, l.text, l.discord ? 'discord' : l.name === myName ? 'me' : 'town', undefined, l.megaphone);
+  /** The server's recent lines as you arrive. After a reconnect (`more`, e.g. the bot restarted) what's shown stays and
+   *  only lines not shown yet are added. */
+  history(lines: { name: string; text: string; discord?: boolean; megaphone?: boolean }[], myName: string | null, more = false): void {
+    if (!more) {
+      this.log.replaceChildren();
+      this.heard.length = 0;
+    }
+    const shown = new Map<string, number>();
+    if (more) for (const k of this.heard) shown.set(k, (shown.get(k) ?? 0) + 1);
+    for (const l of lines) {
+      const k = heardKey(l.name, l.text, !!l.discord);
+      const n = shown.get(k) ?? 0;
+      if (n) {
+        shown.set(k, n - 1);
+        continue;
+      }
+      this.add(l.name, l.text, l.discord ? 'discord' : l.name === myName ? 'me' : 'town', undefined, l.megaphone);
+    }
   }
 
   /** A note from the game (refused, offline…). */

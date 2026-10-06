@@ -633,8 +633,9 @@ export class TownScene extends Phaser.Scene {
       }
       if (m.t === 'welcome') {
         myId = m.you;
-        chat.history(m.recent ?? [], member?.nickname ?? null);
-        feed.history(m.system ?? []);
+        // A reconnect (the bot restarted, a blip): what's on screen stays; only what's new is added.
+        chat.history(m.recent ?? [], member?.nickname ?? null, arrived);
+        feed.history(m.system ?? [], arrived);
         if (m.notice && !arrived) announce(m.notice); // a notice still current when you arrive
         // Arriving: go to the free tile the server picked (so people don't land on each other), unless you've
         // already walked off or this is a reconnect, in which case you stay where you are ('here' below).
@@ -644,8 +645,8 @@ export class TownScene extends Phaser.Scene {
           this.player.place({ col: m.spawn[0], row: m.spawn[1] });
           this.cameras.main.centerOn(this.player.sprite.x, this.player.sprite.y - 24);
         }
+        if (!arrived) chat.system(`Welcome to Mikazuki town${member ? `, ${member.nickname}` : ''}! Be kind and respectful in chat: everyone here is a neighbour.`);
         arrived = true;
-        chat.system(`Welcome to Mikazuki town${member ? `, ${member.nickname}` : ''}! Be kind and respectful in chat: everyone here is a neighbour.`);
         // After a reconnect, stay where you are rather than back at the spawn point.
         const t = this.player.tile;
         link.send({ t: 'here', col: t.col, row: t.row, dir: this.player.facing });
@@ -653,6 +654,7 @@ export class TownScene extends Phaser.Scene {
       }
       this.others.handle(m);
     };
+    link.onStatus = (up) => reconnecting(!up);
     link.onKicked = (until) => {
       playSound('error');
       this.others.clear();
@@ -1617,6 +1619,24 @@ function showNewTitle(id: string, title: TitleData, wearing: TitleData): void {
     fakeLogin() ? null : fetch('/title/seen', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }).catch(() => null),
   );
 }
+
+/** A small "Reconnecting…" at the top while the town's connection is down (shown after a moment, so a blip passes
+ *  unseen); everything on screen stays meanwhile. */
+let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+function reconnecting(on: boolean): void {
+  clearTimeout(reconnectTimer);
+  const note = document.getElementById('reconnecting');
+  if (!on) return void note?.remove();
+  reconnectTimer = setTimeout(() => {
+    if (document.getElementById('reconnecting')) return;
+    const el = document.createElement('div');
+    el.id = 'reconnecting';
+    el.setAttribute('role', 'status');
+    el.textContent = 'Reconnecting…';
+    document.body.append(el);
+  }, RECONNECT_NOTE_MS);
+}
+const RECONNECT_NOTE_MS = 2_000;
 
 /** The welcome gift, in the reward pop-up (once: the bot is told when it's been seen). */
 function showWelcomeGift(amount: number): void {

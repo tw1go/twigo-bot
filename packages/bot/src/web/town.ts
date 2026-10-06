@@ -81,6 +81,9 @@ export interface TownOptions {
   /** Uses one of a member's megaphones (`/m` in the chat): how many are left, or null if they have none. Without it
    *  (the game's dev server) megaphones are free. */
   megaphone?: (userId: string) => number | null;
+  /** What to start with after a restart, and where to keep it (web/town-memory.ts in the bot): the last chat lines and
+   *  the system feed's. Without it they live in memory only. */
+  memory?: { chat: TownChatLine[]; system: TownSystemLine[]; save(chat: TownChatLine[], system: TownSystemLine[]): void };
   /** Chat moderation (web/town-mod.ts in the bot; none in the game's dev server). */
   moderation?: {
     mutedUntil(userId: string): number | null;
@@ -168,12 +171,14 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   const { map } = opts;
   const [cols, rows] = map.size;
   const conns = new Map<string, Conn>(); // by member
-  const recent: TownChatLine[] = [];
+  const recent: TownChatLine[] = (opts.memory?.chat ?? []).slice(-RECENT);
+  const systemLines: TownSystemLine[] = (opts.memory?.system ?? []).slice(-SYSTEM_RECENT);
+  const keep = () => opts.memory?.save(recent, systemLines);
   const remember = (line: TownChatLine) => {
     recent.push(line);
     if (recent.length > RECENT) recent.shift();
+    keep();
   };
-  const systemLines: TownSystemLine[] = [];
   let notice: { a: TownAnnouncement; until: number } | null = null;
   const wss = new WebSocketServer({ noServer: true, maxPayload: 1024 });
   const arena = new Arena(undefined, undefined, opts.arenaBets ?? null, (r) => postSystem({ kind: 'arena', text: arenaLine(r, Math.random()), tone: r.bot === 'loser' ? 'win' : 'lose' })); // mocking the loser (in the loss colour; beating the bot in the win colour)
@@ -198,6 +203,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   const postSystem = (line: TownSystemLine, userId?: string) => {
     systemLines.push(line);
     if (systemLines.length > SYSTEM_RECENT) systemLines.shift();
+    keep();
     const playerId = userId ? conns.get(userId)?.player.id : undefined;
     everyone({ t: 'system', line: playerId ? { ...line, playerId } : line });
   };

@@ -26,6 +26,7 @@ export class SystemFeed {
     const row = document.createElement('div');
     row.className = `sf-line sf-${line.kind}`;
     row.dataset.tone = line.tone;
+    row.dataset.key = `${line.kind}|${line.text}`;
     if (line.tone === 'secret') row.classList.add('prismatic');
     row.textContent = line.text;
     this.root.append(row);
@@ -34,10 +35,21 @@ export class SystemFeed {
     this.wake();
   }
 
-  /** What happened before you arrived (as the server remembers it). */
-  history(lines: TownSystemLine[]): void {
-    this.root.replaceChildren();
-    for (const l of lines) this.add(l);
+  /** What happened before you arrived (as the server remembers it). After a reconnect (`more`) what's shown stays and
+   *  only lines not shown yet are added. */
+  history(lines: TownSystemLine[], more = false): void {
+    if (!more) this.root.replaceChildren();
+    const shown = new Map<string, number>();
+    for (const row of this.root.children) {
+      const k = (row as HTMLElement).dataset.key ?? '';
+      shown.set(k, (shown.get(k) ?? 0) + 1);
+    }
+    for (const l of lines) {
+      const k = `${l.kind}|${l.text}`;
+      const n = shown.get(k) ?? 0;
+      if (n) shown.set(k, n - 1);
+      else this.add(l);
+    }
   }
 
   private wake(): void {
