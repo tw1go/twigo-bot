@@ -23,7 +23,7 @@ import { bailFromTown, townOutpost } from './town-outpost.js';
 import { digInTown, townDigItems } from './town-mine.js';
 import { gambleInTown } from './town-casino.js';
 import { parlorAction, townParlor } from './town-parlor.js';
-import { hoodAction, hoodTownMap, houseOf, parseHouseLook, saveHouse, townHood } from './hood.js';
+import { bakodChanges, hoodAction, hoodTownMap, houseOf, parseHouseLook, saveHouse, townHood } from './hood.js';
 import { flexInTown, sellInTown, sellManyInTown, townInventory } from './town-bag.js';
 import { boardAction, townBoard } from './town-board.js';
 import { townNews } from './town-news.js';
@@ -97,6 +97,8 @@ const ALLOWED_ORIGINS = new Set([
   'http://127.0.0.1:4173',
 ]);
 
+/** How often the neighbourhood's Bakods are looked at (one bought shows within this). */
+const BAKOD_CHECK_MS = 3_000;
 /** Leaderboard responses are reused this long, so a burst of visitors is one lookup. */
 const BOARD_TTL_MS = 30_000;
 /** Names and avatars change rarely; looked up at most this often per member. */
@@ -735,6 +737,14 @@ export function startWebServer(client: Client): void {
     setInterval(() => {
       for (const id of stayMinute(live.here())) live.stay(id, stayInfo(id));
     }, 60_000).unref();
+    // A Bakod bought, run out or rusted away: the neighbourhood sees its fence go up or come down.
+    const names = (id: string) => nameOf(client, id);
+    void bakodChanges(names);
+    setInterval(() => {
+      void bakodChanges(names).then((changes) => {
+        for (const { house, at } of changes) live.house('fence', house, at);
+      });
+    }, BAKOD_CHECK_MS).unref();
   } catch (err) {
     console.error('[web] town disabled, map not loaded:', err);
   }

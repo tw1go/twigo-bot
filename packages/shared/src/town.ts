@@ -2,7 +2,7 @@
 // JSON messages, one per frame. Players are identified by a random id per connection, never their Discord ID.
 // A moderator's kick closes the socket with code 4001 and the time (ms) they may come back as the reason.
 
-import type { HoodHouse, OutfitData, TitleData } from './room-api.js';
+import type { HoodHouse, HoodMap, OutfitData, TitleData } from './room-api.js';
 
 export type TownDir = 's' | 'se' | 'e' | 'ne' | 'n' | 'nw' | 'w' | 'sw';
 
@@ -134,7 +134,9 @@ export type TownServerMessage =
   | { t: 'new-title'; id: string; title: TitleData }
   /** The neighbourhood: someone built a house ('built': it rises on its lot, top tile col/row, door tile) or gave theirs a
    *  new look ('look'). Only to those in the neighbourhood. */
-  | { t: 'house'; change: 'built' | 'look'; house: HoodHouse; col: number; row: number; door: [number, number] }
+  /** A house in the neighbourhood: built, a new look, or its Bakod up or down (`door`: its door spot now, outside the
+   *  fence with a Bakod; `fence`: every Bakod's fence in the neighbourhood now, as HoodMap's). */
+  | { t: 'house'; change: 'built' | 'look' | 'fence'; house: HoodHouse; col: number; row: number; door: [number, number]; fence: HoodMap['fence'] }
   /** Someone changed their look or title at the Parlor (you too: `id` is yours). */
   | { t: 'look'; id: string; outfit: OutfitData; title: TitleData }
   /** Someone was jailed or released (you too: `id` is yours). */

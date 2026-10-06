@@ -27,8 +27,14 @@ export class WalkGrid {
     [this.cols, this.rows] = map.size;
     this.blocked = new Uint8Array(this.cols * this.rows);
     for (let r = 0; r < this.rows; r++) for (let c = 0; c < this.cols; c++) this.blocked[r * this.cols + c] = map.blocked[r][c] ? 1 : 0;
+    this.setFence(map.fence ?? []);
+  }
+
+  /** The fence's edges from now on (all of them: a Bakod went up or came down). */
+  setFence(fence: NonNullable<TownMap['fence']>): void {
+    this.fenced.clear();
     // fence-nw sits on the tile's top-left edge (shared with col − 1), fence-ne on its top-right edge (row − 1).
-    for (const f of map.fence ?? []) {
+    for (const f of fence) {
       const other: Tile = f.edge === 'nw' ? { col: f.col - 1, row: f.row } : { col: f.col, row: f.row - 1 };
       this.fenced.add(`${f.col},${f.row}|${other.col},${other.row}`);
       this.fenced.add(`${other.col},${other.row}|${f.col},${f.row}`);

@@ -318,6 +318,23 @@ export class WorldObjects {
     this.track(s);
   }
 
+  /** The fence drawn again from `fence` (a Bakod went up or came down in the neighbourhood): the old pieces go (`forget`
+   *  them first, e.g. from the culler); returns the new ones (drawn whatever the camera sees). */
+  setFence(fence: NonNullable<TownMap['fence']>, forget: (img: Phaser.GameObjects.Image) => void): Phaser.GameObjects.Image[] {
+    for (const img of this.fencePieces.values()) {
+      forget(img);
+      for (const list of [this.sprites, this.cullable]) {
+        const i = list.indexOf(img);
+        if (i >= 0) list.splice(i, 1);
+      }
+      img.destroy();
+    }
+    this.fencePieces.clear();
+    this.map.fence = fence;
+    this.addFence();
+    return [...this.fencePieces.values()];
+  }
+
   /**
    * Fence pieces on tile back edges (nw = top-left edge, ne = top-right edge), drawn before characters on that
    * tile. Open run ends get a post: a corner point used by only one fence piece.

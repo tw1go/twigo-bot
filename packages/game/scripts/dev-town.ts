@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { HoodHouse, HouseLook, OutfitData, TownHoodActionResponse, TownHoodResponse } from '@mikazuki/shared';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { hoodMap, lotTile } from '../../bot/src/web/hood-map.ts';
+import { doorSpot, hoodMap, lotTile } from '../../bot/src/web/hood-map.ts';
 import type { Plugin } from 'vite';
 import { attachTown } from '../../bot/src/web/town.ts';
 import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
@@ -16,6 +16,7 @@ import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
 //       &as=Alice&amount=60 (kind=gamble, tone=win: coins burst over Alice; tone=bust: a siren)
 //   GET /__announce?kind=jackpot|notice&title=…&text=…   a banner at the top
 //   GET /__jail?name=Bob&on=1   shows Bob as jailed (on=0: released) to everyone in town
+//   GET /__bakod?name=Mara&on=0 takes down (on=1 puts up) a pretend neighbour's Bakod, live in the neighbourhood
 //   GET /__flex?as=Bob&itemId=rock&itemName=Rock&rarity=junk   Bob flexes an item (chat line + bubble)
 //   GET /__gift?as=Alice&amount=50   Alice gets the gift pop-up (as from /gift kowens); &wallet=1: only her HUD's Kowens reload
 //   GET /__gift?as=Alice&item=megaphone&name=Megaphone&qty=3   Alice gets the item gift pop-up (as from /gift item)
@@ -79,6 +80,8 @@ export function devTown(): Plugin {
           return new URLSearchParams();
         }
       };
+      /** Every pretend Bakod's fence, as the bot sends it. */
+      const fences = () => hoodMap(houses.length, new Set(houses.filter((h) => h.fenced).map((h) => h.lot))).fence;
       const hood = (who: string): TownHoodResponse => {
         const me = meOf(who);
         const mine = houses.find((h) => h.name === who);
@@ -120,8 +123,19 @@ export function devTown(): Plugin {
         const h = houses.find((x) => x.name === who)!;
         const { col, row } = lotTile(h.lot);
         const { name: _name, ...shown } = h;
-        town.house(mine ? 'look' : 'built', shown, { col, row, door: h.fenced ? [col + 4, row + 1] : [col + 3, row + 1] });
+        town.house(mine ? 'look' : 'built', shown, { col, row, door: doorSpot(h.lot, h.fenced), fence: fences() });
         reply(res, { ...hood(who), ok: true, message } satisfies TownHoodActionResponse);
+      });
+      // A Bakod up or down on someone's pretend house, seen live in the neighbourhood (as the bot's watcher sends it).
+      server.middlewares.use('/__bakod', (req, res) => {
+        const q = new URL(req.url ?? '/', 'http://localhost').searchParams;
+        const h = houses.find((x) => x.name === q.get('name'));
+        if (!h) return reply(res, { ok: false, error: 'no such house' });
+        h.fenced = q.get('on') !== '0';
+        const { col, row } = lotTile(h.lot);
+        const { name: _name, ...shown } = h;
+        town.house('fence', shown, { col, row, door: doorSpot(h.lot, h.fenced), fence: fences() });
+        reply(res, { ok: true, fenced: h.fenced });
       });
       server.middlewares.use('/town/hood', async (req, res) => {
         const q = asOf(req);

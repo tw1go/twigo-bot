@@ -14,7 +14,7 @@ for (const name of ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'ADMIN_ROLE_ID', 'ADMI
 process.env.TIMEZONE = 'Asia/Manila';
 
 const { hoodMap, lotTile } = await import('./hood-map.js');
-const { REPAINT_COST, hoodAction, saveHouse, townHood } = await import('./hood.js');
+const { REPAINT_COST, bakodChanges, hoodAction, saveHouse, townHood } = await import('./hood.js');
 const { add, addFence, balance, fencedUntil } = await import('../credits/store.js');
 const { addMasterKey } = await import('../dig/store.js');
 const { addPotions, potionCount } = await import('../potions/potions.js');
@@ -96,6 +96,26 @@ test('the neighbourhood hears when a house is built (it rises) or gets a new loo
   await saveHouse('d', { ...look, style: 'aframe' }, names, news);
   const { col, row } = lotTile(2);
   assert.deepEqual(heard, [['built', 2, col, row, [col + 3, row + 1]], ['look', 2, col, row, [col + 3, row + 1]]]);
+});
+
+test('a Bakod going up or down is noticed (the neighbourhood redraws its fence and door spot)', async () => {
+  assert.deepEqual(await bakodChanges(names), []); // the first look only remembers
+  assert.deepEqual(await bakodChanges(names), []);
+  addFence('d', 60 * 60_000, 7 * 86_400_000);
+  const up = await bakodChanges(names);
+  const { col, row } = lotTile(2);
+  assert.deepEqual(up.map((c) => [c.house.lot, c.house.fenced, c.at.door]), [[2, true, [col + 4, row + 1]]]);
+  assert.equal(up[0].at.fence.length, 40); // the neighbourhood's: a's (still up, rusted to half) and d's
+  assert.deepEqual(await bakodChanges(names), []); // told once
+  const real = Date.now;
+  Date.now = () => real() + 8 * 86_400_000; // every Bakod has run out
+  try {
+    const down = await bakodChanges(names);
+    assert.deepEqual(down.map((c) => [c.house.lot, c.house.fenced, c.at.fence.length]).sort(), [[0, false, 0], [2, false, 0]]); // none left
+    assert.deepEqual(down.find((c) => c.house.lot === 2)!.at.door, [col + 3, row + 1]);
+  } finally {
+    Date.now = real;
+  }
 });
 
 test.after(() => {

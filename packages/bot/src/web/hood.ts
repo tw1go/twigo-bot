@@ -1,5 +1,5 @@
 import type { Client } from 'discord.js';
-import type { HoodHouse, HouseLook, TownHoodActionResponse, TownHoodResponse } from '@mikazuki/shared';
+import type { HoodHouse, HoodMap, HouseLook, TownHoodActionResponse, TownHoodResponse } from '@mikazuki/shared';
 import { config } from '../config.js';
 import { db } from '../db/db.js';
 import { balance, fencedUntil, halveFence, take } from '../credits/store.js';
@@ -8,7 +8,7 @@ import { jailedUntil } from '../games/jail.js';
 import { stealCooldown, stealFrom } from '../games/steal.js';
 import { kowen } from '../kowens.js';
 import { potionCount, usePotion } from '../potions/potions.js';
-import { hoodMap, lotTile } from './hood-map.js';
+import { doorSpot, fenceRing, hoodMap, lotTile } from './hood-map.js';
 import { getNickname } from './nickname.js';
 import { titleOf } from './titles.js';
 import { feed } from './town-feed.js';
@@ -95,18 +95,41 @@ export async function townHood(userId: string, names: (id: string) => Promise<st
   };
 }
 
-/** Tells the neighbourhood (those in it now) that a house was built or got a new look. */
-export type HouseNews = (change: 'built' | 'look', house: HoodHouse, at: { col: number; row: number; door: [number, number] }) => void;
+/** Where a house is, for HouseNews: its top tile and its door spot, and every Bakod's fence in the neighbourhood now. */
+export type HouseAt = { col: number; row: number; door: [number, number]; fence: HoodMap['fence'] };
 
-/** The house of `userId` as the neighbourhood shows it (for HouseNews). */
-async function shownHouse(userId: string, names: (id: string) => Promise<string>): Promise<{ house: HoodHouse; at: { col: number; row: number; door: [number, number] } } | null> {
-  const r = mineStmt.get(userId);
-  if (!r) return null;
+/** Every Bakod's fence in the neighbourhood now (neighbouring yards share a line: both are kept, as hood-map does). */
+const allFences = (): HoodMap['fence'] => allStmt.all().filter((r) => fencedUntil(r.user_id)).flatMap((r) => fenceRing(r.lot));
+
+/** Tells the neighbourhood (those in it now) that a house was built, got a new look, or its Bakod went up or down. */
+export type HouseNews = (change: 'built' | 'look' | 'fence', house: HoodHouse, at: HouseAt) => void;
+
+/** A house as the neighbourhood shows it (for HouseNews). */
+async function shown(r: Row, names: (id: string) => Promise<string>): Promise<{ house: HoodHouse; at: HouseAt }> {
   const { col, row } = lotTile(r.lot);
-  const fenced = !!fencedUntil(userId);
-  const house: HoodHouse = { lot: r.lot, owner: getNickname(userId) ?? (await names(userId)), title: titleOf(userId), ...lookOf(r), fenced };
-  // The door spot as hood-map lays it: outside the fence on a house with a Bakod.
-  return { house, at: { col, row, door: fenced ? [col + 4, row + 1] : [col + 3, row + 1] } };
+  const fenced = !!fencedUntil(r.user_id);
+  const house: HoodHouse = { lot: r.lot, owner: getNickname(r.user_id) ?? (await names(r.user_id)), title: titleOf(r.user_id), ...lookOf(r), fenced };
+  return { house, at: { col, row, door: doorSpot(r.lot, fenced), fence: allFences() } };
+}
+
+/** The house of `userId` as the neighbourhood shows it. */
+async function shownHouse(userId: string, names: (id: string) => Promise<string>) {
+  const r = mineStmt.get(userId);
+  return r ? shown(r, names) : null;
+}
+
+/** Lots with a Bakod at the last look (null: not looked yet). */
+let fencedBefore: Set<number> | null = null;
+
+/** Houses whose Bakod went up (bought) or down (ran out, or rusted away) since the last call; the first call only
+ *  looks. The web server calls this every few seconds and tells the neighbourhood. */
+export async function bakodChanges(names: (id: string) => Promise<string>): Promise<{ house: HoodHouse; at: HouseAt }[]> {
+  const rows = allStmt.all();
+  const now = new Set(rows.filter((r) => fencedUntil(r.user_id)).map((r) => r.lot));
+  const before = fencedBefore;
+  fencedBefore = now;
+  if (!before) return [];
+  return Promise.all(rows.filter((r) => now.has(r.lot) !== before.has(r.lot)).map((r) => shown(r, names)));
 }
 
 /** Builds the member's house (free, on the next lot) or gives it a new look (REPAINT_COST Kowens). */

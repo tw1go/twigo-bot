@@ -30,6 +30,15 @@ export class Culler {
     }
   }
 
+  /** Stops handling a sprite (it's about to be destroyed: a Bakod's fence coming down). */
+  forget(s: Phaser.GameObjects.Image): void {
+    for (const list of this.cells.values()) {
+      const i = list.indexOf(s);
+      if (i >= 0) list.splice(i, 1);
+    }
+    this.visible.delete(s);
+  }
+
   get visibleCount(): number {
     return this.visible.size;
   }

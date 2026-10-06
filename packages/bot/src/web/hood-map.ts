@@ -32,6 +32,24 @@ export function lotTile(lot: number): { band: number; col: number; row: number }
   return { band, col, row };
 }
 
+/** The fence round lot `lot`'s yard when it has a Bakod: a tile out from the house (the door inside), west and east
+ *  sides on tiles' nw edges, north and south on their ne edges. */
+export function fenceRing(lot: number): HoodMap['fence'] {
+  const { col, row } = lotTile(lot);
+  const [c0, r0, c1, r1] = [col - 1, row - 1, col + HOUSE + 1, row + HOUSE + 1];
+  const ring: HoodMap['fence'] = [];
+  for (let r = r0; r < r1; r++) ring.push({ col: c0, row: r, edge: 'nw' }, { col: c1, row: r, edge: 'nw' });
+  for (let c = c0; c < c1; c++) ring.push({ col: c, row: r0, edge: 'ne' }, { col: c, row: r1, edge: 'ne' });
+  return ring;
+}
+
+/** Lot `lot`'s door spot: its door's tile, or with a Bakod the street just outside the fence in front of it (fences
+ *  block walking). */
+export function doorSpot(lot: number, fenced: boolean): [number, number] {
+  const { col, row } = lotTile(lot);
+  return fenced ? [col + HOUSE + 1, row + 1] : [col + HOUSE, row + 1];
+}
+
 /** How many bands `houses` houses need. */
 function bandsFor(houses: number): number {
   let bands = 0;
@@ -83,15 +101,8 @@ export function hoodMap(houses: number, fenced: Set<number> = new Set()): HoodMa
     const id = `house-${lot}`;
     objects.push({ kind: 'building', id, col, row, footprint: [HOUSE, HOUSE] });
     for (let r = row; r < row + HOUSE; r++) for (let c = col; c < col + HOUSE; c++) block(c, r);
-    // The door's tile, or with a Bakod the street just outside the fence in front of it (fences block walking).
-    doors[id] = fenced.has(lot) ? [col + HOUSE + 1, row + 1] : [col + HOUSE, row + 1];
-    if (fenced.has(lot)) {
-      // Round the yard, a tile out from the house (the door inside): west and east sides on tiles' nw edges, north and
-      // south on their ne edges.
-      const [c0, r0, c1, r1] = [col - 1, row - 1, col + HOUSE + 1, row + HOUSE + 1];
-      for (let r = r0; r < r1; r++) fence.push({ col: c0, row: r, edge: 'nw' }, { col: c1, row: r, edge: 'nw' });
-      for (let c = c0; c < c1; c++) fence.push({ col: c, row: r0, edge: 'ne' }, { col: c, row: r1, edge: 'ne' });
-    }
+    doors[id] = doorSpot(lot, fenced.has(lot));
+    if (fenced.has(lot)) fence.push(...fenceRing(lot));
   }
 
   return { size: [cols, rows], spawn: [1, MAIN[1]], ground, blocked, objects, doors, fence, exit: MAIN.map((r) => [0, r] as [number, number]) };

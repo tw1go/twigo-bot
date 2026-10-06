@@ -13,7 +13,7 @@ import { showElsewhere, showKicked } from '../ui/elsewhere';
 import { mountTownHud, setHudAvatar } from '../ui/townhud';
 import { showParlor } from '../ui/parlor';
 import { type HouseArt, composeHouse, houseFiles, houseStyles, tidyLook } from '../houses/art';
-import { areaUrl, cameFrom, hoodAction, saveHouse } from '../net/hood';
+import { areaUrl, cameFrom, hoodAction, loadHood, saveHouse } from '../net/hood';
 import { showHouseMenu } from '../ui/house-menu';
 import { mountHouseCreator } from '../ui/house-creator';
 import { playBusted } from '../ui/casino';
@@ -147,6 +147,8 @@ export class TownScene extends Phaser.Scene {
   private tint = -1;
   private nextSkyCheck = 0;
   private culler!: Culler;
+  /** A Bakod went up round the yard you're standing in: its fence blocks walking once you're out (see bakodNews). */
+  private fenceLater: { fence: NonNullable<TownMap['fence']>; yard: [number, number, number, number] } | null = null;
   private nightLife!: NightLife;
   private minimap: Minimap | null = null;
   private nextMinimap = 0;
@@ -355,6 +357,14 @@ export class TownScene extends Phaser.Scene {
     if (zoom !== this.labelZoom && !this.intro && !this.inside) this.sizeForZoom(zoom);
     this.ground.tick(time);
     this.player.update(delta);
+    if (this.fenceLater) {
+      const { col, row } = this.player.tile;
+      const [c0, r0, c1, r1] = this.fenceLater.yard;
+      if (col < c0 || col > c1 || row < r0 || row > r1) {
+        this.grid.setFence(this.fenceLater.fence);
+        this.fenceLater = null;
+      }
+    }
     this.others.update(delta);
     hearFrom(this.player.tile);
     this.tellServer();
@@ -599,6 +609,7 @@ export class TownScene extends Phaser.Scene {
       if (m.t === 'look' && m.id === myId) return void this.restyle(sanitize(this.M.characters, m.outfit, this.outfit), m.title);
       if (m.t === 'jailed' && m.id === myId) {
         this.player.setJailed(m.on);
+        if (this.hood) this.hood.me.jailed = m.on; // the house menu (it asks again when it opens, too)
         window.dispatchEvent(new Event('mk-wallet')); // the HUD (its status dot shows jail too)
         return;
       }
@@ -1073,7 +1084,7 @@ export class TownScene extends Phaser.Scene {
     if (b.id === 'rewards-shop') return showShop();
     if (b.id === 'parlor') return this.openParlor();
     const house = this.houseFor(b.id);
-    if (house) return this.openHouse(house);
+    if (house) return void this.openHouse(house);
     if (b.id === 'mine-entrance') return showMine();
     if (b.id === 'casino') return void this.enterCasino(b);
     if (b.id === 'arena') return this.openArena(b);
@@ -1110,8 +1121,22 @@ export class TownScene extends Phaser.Scene {
     return this.hood.houses.find((h) => h.lot === lot) ?? null;
   }
 
-  private openHouse(house: HoodHouse): void {
+  /** A house, clicked: where you stand now (jail, cooldown, keys and potions) is asked first, so the menu is never
+   *  out of date (a jail term run out, a key bought in Discord). */
+  private async openHouse(clicked: HoodHouse): Promise<void> {
+    if (this.openingHouse) return;
+    this.openingHouse = true;
+    const fresh = await loadHood();
+    this.openingHouse = false;
     const hood = this.hood!;
+    if (fresh) {
+      hood.me = fresh.me;
+      for (const h of fresh.houses) {
+        const known = hood.houses.find((x) => x.lot === h.lot);
+        if (known) known.fenced = h.fenced;
+      }
+    }
+    const house = hood.houses.find((x) => x.lot === clicked.lot) ?? clicked;
     showHouseMenu({
       house,
       me: hood.me,
@@ -1131,6 +1156,8 @@ export class TownScene extends Phaser.Scene {
       },
     });
   }
+
+  private openingHouse = false;
 
   /** Your house, a new look (the house creator over the town); its sprite is redrawn when it's saved. */
   private repaintHouse(house: HoodHouse): void {
@@ -1169,6 +1196,7 @@ export class TownScene extends Phaser.Scene {
 
   /** Someone else's house, live: built (it rises on its lot, if this map already has room for it) or a new look. */
   private houseNews(m: Extract<TownServerMessage, { t: 'house' }>): void {
+    if (m.change === 'fence') return this.bakodNews(m);
     const hood = this.hood;
     const H = this.M.houses;
     if (!hood || !this.art || !H) return;
@@ -1211,6 +1239,38 @@ export class TownScene extends Phaser.Scene {
     sinkHouse(b);
     void riseHouse(this.fx(), b);
     toast(`${m.house.owner} built a house in the neighbourhood!`, 3000);
+  }
+
+  /** A Bakod went up (bought) or came down (ran out, rusted away) on a house here, yours included: the fence is drawn
+   *  again (the bot sends all of the neighbourhood's), with its walking edges and the house's door spot. Standing in
+   *  that yard as it goes up, you can still walk out (its edges block once you're out). */
+  private bakodNews(m: Extract<TownServerMessage, { t: 'house' }>): void {
+    const hood = this.hood;
+    if (!hood) return;
+    const known = hood.houses.find((h) => h.lot === m.house.lot);
+    if (known) known.fenced = m.house.fenced;
+    const pieces = this.objects.setFence(m.fence, (img) => this.culler.forget(img));
+    if (this.tint >= 0) for (const p of pieces) p.setTint(this.tint);
+    const id = `house-${m.house.lot}`;
+    const b = this.objects.buildings.find((x) => x.id === id);
+    if (b) {
+      const old = this.map.doors[id];
+      if (old) this.doorAt.delete(`${old[0]},${old[1]}`);
+      this.map.doors[id] = m.door;
+      this.doorAt.set(`${m.door[0]},${m.door[1]}`, b);
+    }
+    // The yard inside a fence: a tile round the house (hood-map's ring).
+    const H = this.M.houses;
+    const yard: [number, number, number, number] | null = b && H ? [b.obj.col - 1, b.obj.row - 1, b.obj.col + H.footprint[0], b.obj.row + H.footprint[1]] : null;
+    const { col, row } = this.player.tile;
+    const inside = (y: [number, number, number, number]) => col >= y[0] && col <= y[2] && row >= y[1] && row <= y[3];
+    if (m.house.fenced && yard && inside(yard)) this.fenceLater = { fence: m.fence, yard };
+    else if (this.fenceLater && inside(this.fenceLater.yard)) this.fenceLater.fence = m.fence; // still on the way out
+    else {
+      this.grid.setFence(m.fence);
+      this.fenceLater = null;
+    }
+    if (m.house.fenced && !known?.mine) toast(`${m.house.owner} put up a Bakod!`, 3000);
   }
 
   /** A clickable sign over each gate: "Neighbourhood" at the bridge, "Back to town" at the neighbourhood's exit. */
