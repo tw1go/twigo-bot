@@ -85,7 +85,8 @@ export class Ground {
         const file = pick(mixes.files[category] ?? grass.files, tileRandom(c, r, 3));
         const anim = swayFor.get(file);
         if (anim) {
-          const offset = (c + r) % anim.frames; // a wind wave rolls across the meadow
+          // A wind wave rolls across the meadow (wrapped: the forest past the map's edges has negative tiles).
+          const offset = (((c + r) % anim.frames) + anim.frames) % anim.frames;
           const t = { sprite: sprite(anim.file, c, r, anim.frameSize, grass.anchor, 0, offset), offset, frames: anim.frames };
           this.sway.push(t);
           this.clocked.set(t.sprite, { ...t, kind: 'sway' });
