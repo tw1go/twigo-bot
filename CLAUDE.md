@@ -256,7 +256,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   copy), warm up, then follow the script (pose per frame, a stop's line in a bubble); the
   winner is called in the megaphone banner. Arthritis/asthma stops play the Alings' `sit`, falls `fall` (held) then
   `getup` (manifest npcs, Alings only; SE/SW from the PixelLab reference, the rest script-built in mikazuki-assets). Race box beside the jackpot counter (`ui/race-box.ts`), bet pop-up
-  (`ui/race-bet.ts`, `POST /town/race bet`). Dev: a pretend race in the dev server, `&race=fast` (20 s of betting),
+  (`ui/race-bet.ts`, `POST /town/race bet`). Dev: a pretend race in the dev server, `&race=fast` (20 s of betting) or `&race=now` (3 s),
   `__town.race()`.
 - Player menu (`ui/target.ts`): left click (or tap) someone → their name in a long box top centre (or click their name
   in the chat: the box opens right beside it with the menu open, `selectAt`; a click elsewhere closes it; no ×: a click

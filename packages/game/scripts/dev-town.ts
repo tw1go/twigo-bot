@@ -155,7 +155,7 @@ export function devTown(): Plugin {
           if (devRace) return answer({ ok: false, message: 'A race is already on!' });
           const others = MOSANG_IDS.filter((m) => m !== body.lead).sort(() => Math.random() - 0.5);
           const runners = [...(body.lead && MOSANG_IDS.includes(body.lead) ? [body.lead] : []), ...others].slice(0, LANES).sort(() => Math.random() - 0.5);
-          const betting = q.get('race') === 'fast' ? 20_000 : 2 * 60_000; // &race=fast: 20 s of betting
+          const betting = q.get('race') === 'now' ? 3_000 : q.get('race') === 'fast' ? 20_000 : 2 * 60_000; // &race=now: 3 s of betting, &race=fast: 20 s
           const id = Math.random().toString(16).slice(2, 10);
           devRace = { id, runners, closesAt: Date.now() + betting, startedBy: who, bets: new Map() };
           server.config.logger.info(`[race] ${who} started a race: ${runners.join(', ')}`, { timestamp: true });
