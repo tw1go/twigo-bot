@@ -9,7 +9,7 @@ const BUILDING = '#7C2AE8';
 const OTHER = '#22C55E';
 const YOU = '#FCDA4A';
 const OUTLINE = '#111827';
-const PHONE = '(max-width: 760px)';
+const PHONE = '(max-width: 760px), (max-height: 500px)';
 
 export interface MinimapView {
   me: { col: number; row: number };

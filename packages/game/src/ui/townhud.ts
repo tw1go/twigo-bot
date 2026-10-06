@@ -174,7 +174,7 @@ export function mountTownHud(o: TownHudOptions): void {
     const timer = jackpotTimer(icon);
     // The Mosang race's box (only while a race is on) goes beside it: left of it on wide screens, under it on phones.
     const race = raceBox();
-    const phone = matchMedia('(max-width: 560px)');
+    const phone = matchMedia('(max-width: 560px), (max-height: 500px)');
     const place = () => {
       if (phone.matches) left.insertBefore(timer, row.nextSibling);
       else top.prepend(timer);

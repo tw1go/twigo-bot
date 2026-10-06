@@ -31,7 +31,7 @@ function discordMark(): SVGSVGElement {
 }
 const MAX_LENGTH = 120;
 /** Phone-sized screens fold the chat away behind its button. */
-const PHONE = '(max-width: 560px)';
+const PHONE = '(max-width: 560px), (max-height: 500px)';
 
 /** Lines remembered for a reconnect (more than the server keeps). */
 const HEARD = 40;

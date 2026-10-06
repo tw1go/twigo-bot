@@ -242,9 +242,15 @@
       #settings .st-logout:hover { background: #FEE2E2; }
       #settings .st-logout:disabled { opacity: 0.6; }
       #town-hud .hud-prereg { margin-top: 8px; text-align: left; font-size: 13px; }
-      @media (max-width: 560px) {
+      @media (max-width: 560px), (max-height: 500px) {
         #town-hud .th-name { max-width: 110px; font-size: 15px; }
         #town-hud .th-avatar, #town-hud .th-avatar canvas { width: 45px; height: 45px; }
+        /* The tutorial, News and Settings stacked under the minimap (the bag under them), so the Kowens and shovels
+           fit on one row beside them. */
+        #town-hud .th-corner { gap: 6px; }
+        #town-hud .th-buttons { flex-direction: column; gap: 6px; }
+        #town-hud .th-settings { min-width: 40px; padding: 2px; line-height: 32px; }
+        #town-hud .th-row { max-width: calc(100vw - 80px); }
       }
       #reward { position: fixed; inset: 0; z-index: 4; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(4, 4, 12, 0.72); font: 15px/1.4 var(--ui-font); animation: rw-dim 0.2s ease-out; }
       #reward.rw-out { opacity: 0; transition: opacity 0.18s; }
@@ -313,11 +319,11 @@
       #megaphone .mg-icon { width: 32px; height: 32px; image-rendering: pixelated; font-size: 22px; filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.4)); }
       #megaphone .mg-name { color: #fff; }
       #megaphone .mg-name::after { content: ':'; }
-      @media (max-width: 760px) { #megaphone { top: 216px; } #megaphone .mg-line { font-size: 18px; } }
+      @media (max-width: 760px), (max-height: 500px) { #megaphone { top: 216px; } #megaphone .mg-line { font-size: 18px; } }
       #chat .ch-input { width: 100%; box-sizing: border-box; padding: 7px 9px; border: 0; border-radius: 4px; background: rgba(0, 0, 0, 0.35); color: #fff; font: inherit; outline: none; }
       #chat .ch-input::placeholder { color: rgba(230, 233, 242, 0.55); }
       #chat .ch-input:focus { background: rgba(0, 0, 0, 0.55); box-shadow: 0 0 0 1px rgba(183, 148, 246, 0.6); }
-      @media (max-width: 560px) { #chat { bottom: 64px; width: min(320px, calc(100vw - 24px)); } #chat .ch-log { height: 120px; } }
+      @media (max-width: 560px), (max-height: 500px) { #chat { bottom: 64px; width: min(320px, calc(100vw - 24px)); } #chat .ch-log { height: 120px; } }
       /* The movement tutorial (ui/tutorial.ts), in the reward box: two boxes side by side. */
       #reward .tu-boxes { display: flex; gap: 12px; margin: 4px 0 14px; }
       #reward .tu-box { flex: 1; padding: 12px 8px 10px; border: 2px solid #E2DDF3; border-radius: 2px; background: #F5F3FF; }
@@ -351,7 +357,7 @@
       @keyframes nv-in { from { transform: translate(-50%, -24px); opacity: 0; } }
       /* Phones: the chat folds away behind a button (bottom left) and opens above it. */
       #chat-toggle { display: none; }
-      @media (max-width: 560px) {
+      @media (max-width: 560px), (max-height: 500px) {
         #chat { bottom: 64px; }
         body:not(.chat-open) #chat { display: none; }
         #chat-toggle { position: fixed; left: 12px; bottom: 12px; z-index: 2; display: block; height: 42px; padding: 0 14px; border: 2px solid #7C2AE8; border-radius: 0; background: #111827; color: #E6E9F2; font: 700 14px var(--ui-font); box-shadow: 0 3px 0 #0B0A1A; }
@@ -368,7 +374,7 @@
       #bag-button.iv-framed-button { --px: 2; border-style: solid; border-width: calc(var(--slice) * var(--px) * 1px); border-image-source: var(--frame); border-image-slice: var(--slice) fill; border-image-width: calc(var(--slice) * var(--px) * 1px); border-image-repeat: round; image-rendering: pixelated; background: none; }
       #bag-button:hover .iv-icon, #bag-button[aria-expanded='true'] .iv-icon { transform: translateY(-2px); filter: brightness(1.2); }
       #bag-button .iv-icon { display: block; width: 32px; height: 32px; image-rendering: pixelated; }
-      @media (max-width: 760px) { #bag-button { left: auto; right: 12px; bottom: auto; top: 148px; width: 48px; height: 48px; } } /* under the minimap and the buttons */
+      @media (max-width: 760px), (max-height: 500px) { #bag-button { left: auto; right: 12px; bottom: auto; top: 148px; width: 48px; height: 48px; } } /* under the minimap and the buttons */
       /* The inventory (ui/inventory.ts): the bag on the right, in the item frame; 5 × 10 slots (the slot art, 2×),
          locked ones marked with an X; the picked item's Flex / Sell; Kowens at the bottom. */
       #inventory { position: fixed; right: 12px; top: 72px; z-index: 3; display: flex; flex-direction: column; gap: 10px; width: 420px; max-width: calc(100vw - 24px); max-height: calc(100vh - 96px); box-sizing: border-box; padding: 12px 14px 14px; border: 2px solid #7C2AE8; background: rgba(17, 24, 39, 0.96); color: #c0caf5; font: 15px/1.35 var(--ui-font); }
@@ -414,7 +420,7 @@
       #inventory .iv-note.iv-bad { color: #F7768E; }
       #inventory .iv-wallet { flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 6px 0; border-top: 2px solid #1E1B3A; font-size: 15px; color: #A9B1D6; }
       #inventory .iv-wallet b { font-size: 24px; color: #F8BF27; }
-      @media (max-width: 760px) { #inventory { top: 132px; right: 8px; max-height: calc(100vh - 150px); } #inventory .iv-grid { grid-template-columns: repeat(var(--cols, 5), minmax(0, 60px)); grid-auto-rows: 60px; } #inventory .iv-cell { width: 100%; height: 60px; } }
+      @media (max-width: 760px), (max-height: 500px) { #inventory { top: 132px; right: 8px; max-height: calc(100vh - 150px); } #inventory .iv-grid { grid-template-columns: repeat(var(--cols, 5), minmax(0, 60px)); grid-auto-rows: 60px; } #inventory .iv-cell { width: 100%; height: 60px; } }
       #chat .em-open { height: 100%; min-width: 38px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 4px; background: rgba(0, 0, 0, 0.35); padding: 0 6px; }
       #chat .em-open:hover, #chat .em-open[aria-expanded='true'] { background: rgba(0, 0, 0, 0.55); box-shadow: 0 0 0 1px rgba(183, 148, 246, 0.6); }
       #chat .em-palette { position: absolute; right: 0; bottom: calc(100% + 8px); display: flex; gap: 4px; padding: 6px; border-radius: 6px; background: rgba(10, 12, 24, 0.85); }
@@ -444,7 +450,7 @@
       #system-feed [data-tone='bail'] { color: #7DD3FC; }
       #system-feed [data-tone='quest'] { color: #FDE68A; }
       #system-feed [data-tone='quest-done'] { color: #A3E635; }
-      @media (max-width: 760px) { #system-feed { display: none; } }
+      @media (max-width: 760px), (max-height: 500px) { #system-feed { display: none; } }
       /* Staying in town pays (ui/stay.ts): over the system feed's top edge, a faint countdown; when a Kowen is ready, a
          small gold-edged pop-up with Claim. On phones (no feed) above the bottom edge. */
       #stay { position: fixed; right: 12px; bottom: 180px; z-index: 2; display: flex; align-items: center; gap: 8px; box-sizing: border-box; width: min(340px, calc(100vw - 24px)); font: 13px/1.3 var(--ui-font); color: #E6E9F2; -webkit-user-select: none; user-select: none; }
@@ -473,7 +479,15 @@
       #reward .dk-claim { display: block; margin: 0 auto 12px; padding: 8px 18px 10px; border: 2px solid #1E1B3A; border-radius: 0; background: #F8BF27; color: #1E1B3A; font: inherit; font-size: 16px; font-weight: 700; box-shadow: inset 0 2px 0 #FDE68A, inset 0 -3px 0 #B45309, 0 3px 0 #1E1B3A; }
       #reward .dk-claim:hover { background: #FACC15; }
       #reward .dk-claim:active { transform: translateY(2px); }
-      @media (max-width: 760px) { #stay { bottom: 70px; } }
+      @media (max-width: 760px), (max-height: 500px) { #stay { bottom: 70px; } }
+      /* Phones: beside the Chat button, out of the way while the chat is open; only what needs doing (the voice line
+         and a claimed daily line wait for a bigger screen). */
+      @media (max-width: 560px), (max-height: 500px) {
+        #stay { left: 90px; right: 12px; bottom: 12px; width: auto; max-width: 340px; margin-left: auto; }
+        body.chat-open #stay { display: none; }
+        #stay .st-voice:not(.st-daily-ready) { display: none; }
+        #bag-button { top: 234px; width: 40px; height: 40px; } /* under the HUD's column of buttons */
+      }
       /* Talking to an NPC (ui/npc-dialog.ts): bottom centre, the chat window's nine-slice at the HUD's scale (--px),
          the name, the characteristic and two rows of the typed-out line; the portrait in the item frame at 3× standing
          on the top-right corner. */
@@ -581,7 +595,7 @@
       #target .tg-note { margin-top: 8px; font-size: 12px; color: #7A8099; }
       #target .tg-good { color: #A3E635; font-weight: 600; }
       #target .tg-bad { color: #F7768E; font-weight: 600; }
-      @media (max-width: 760px) { #target { top: 64px; } }
+      @media (max-width: 760px), (max-height: 500px) { #target { top: 64px; } }
       #chat .ch-verdict { padding: 0 4px; border-radius: 2px; font-size: 12px; font-weight: 700; }
       #chat .ch-roast { background: rgba(247, 118, 142, 0.25); color: #F7768E; }
       #chat .ch-flex { background: rgba(248, 191, 39, 0.2); color: #F8BF27; }
@@ -593,7 +607,7 @@
       #arena-queue .aq-time { min-width: 36px; color: #5B5F75; font-variant-numeric: tabular-nums; }
       #arena-queue .aq-close { width: 28px; height: 28px; padding: 0; border: 3px solid #1E1B3A; border-radius: 0; background: #E2DDF3; color: #1E1B3A; font: inherit; font-size: 18px; line-height: 1; }
       #arena-queue .aq-close:hover { background: #FECACA; }
-      @media (max-width: 760px) { #arena-queue { top: auto; bottom: 72px; font-size: 14px; } }
+      @media (max-width: 760px), (max-height: 500px) { #arena-queue { top: auto; bottom: 72px; font-size: 14px; } }
       /* Banners (ui/announce.ts): floating top centre, below the HUD; jackpot gold with casino lights, notices amber. */
       .announce { position: fixed; top: 88px; left: 50%; z-index: 4; width: min(520px, calc(100vw - 32px)); box-sizing: border-box; padding: 14px 40px 14px 18px; background: rgba(17, 24, 39, 0.94); color: #E6E9F2; font: 15px/1.35 var(--ui-font); text-align: center; box-shadow: 0 4px 0 #1E1B3A; transform: translateX(-50%); animation: an-in 0.4s cubic-bezier(0.2, 1.4, 0.4, 1); }
       .announce.an-out { opacity: 0; transform: translate(-50%, -12px); transition: opacity 0.3s, transform 0.3s; }
@@ -608,7 +622,7 @@
       .an-bulb { width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 0 2px #1E1B3A; background: radial-gradient(circle at 35% 30%, #FFFDF2 0 14%, #EFE3B4 32%, #CDB878 70%, #9C8748 100%); animation: rw-blink 1s steps(1) infinite; }
       .an-odd { animation-delay: -0.5s; }
       @keyframes an-in { from { transform: translate(-50%, -20px); opacity: 0; } }
-      @media (max-width: 560px) { .announce { top: 76px; } }
+      @media (max-width: 560px), (max-height: 500px) { .announce { top: 76px; } }
       @media (prefers-reduced-motion: reduce) { .announce, .an-bulb { animation: none; } }
       /* The leaderboard (ui/leaderboard.ts), in the reward box. */
       #reward .rw-card:has(.lb-list) { width: min(420px, calc(100vw - 32px)); }
@@ -868,7 +882,7 @@
       /* News (ui/news.ts; tabs share the bank's .bk-tabs): announcements and patch notes from Discord, each a fold-out
          post (the newest open). A fixed size, like the outpost. */
       #reward .rw-card:has(.nw-body) { width: min(640px, calc(100vw - 32px)); }
-      @media (min-width: 761px) { #reward:has(.nw-body) { padding-top: 96px; } } /* wide: clear of the jackpot counter and minimap above */
+      @media (min-width: 761px) and (min-height: 501px) { #reward:has(.nw-body) { padding-top: 96px; } } /* wide: clear of the jackpot counter and minimap above */
       #reward .nw-body { margin-bottom: 14px; text-align: left; font-size: 14px; color: #3D4256; }
       #reward .nw-panel { height: min(420px, 55vh, calc(100vh - 340px)); overflow-x: hidden; overflow-y: auto; overflow-wrap: anywhere; }
       #reward .nw-note { height: 22px; min-height: 0; margin-top: 6px; overflow: hidden; }
@@ -890,11 +904,11 @@
       #reward .nw-quote { padding-left: 8px; border-left: 3px solid #C4B5FD; color: #5B5F75; }
       #reward .nw-code { padding: 0 4px; border-radius: 2px; background: #EDE9FE; font: 13px/1.3 ui-monospace, Menlo, monospace; color: #5B21B6; }
       #reward .nw-link { color: #6D28D9; }
-      @media (max-width: 560px) { #reward .nw-panel { height: min(420px, 46vh); } } /* clear of the HUD's top buttons */
+      @media (max-width: 560px), (max-height: 500px) { #reward .nw-panel { height: min(420px, 46vh); } } /* clear of the HUD's top buttons */
       /* Tutorial (ui/guide.ts, the "?" beside News): a tab per feature down the left, the page on the right (the news
          board's markdown classes); on phones the tabs become a scrolling row over the page. A fixed size, like News. */
       #reward .rw-card:has(.gd-body) { width: min(720px, calc(100vw - 32px)); }
-      @media (min-width: 761px) { #reward:has(.gd-body) { padding-top: 96px; } } /* wide: clear of the jackpot counter and minimap above */
+      @media (min-width: 761px) and (min-height: 501px) { #reward:has(.gd-body) { padding-top: 96px; } } /* wide: clear of the jackpot counter and minimap above */
       body:has(#reward .gd-body) #town-hud .th-corner { z-index: 5; } /* over the dimmed town, so the "?" closes it again */
       #reward .gd-body { display: grid; grid-template-columns: 184px 1fr; gap: 14px; height: min(440px, 58vh, calc(100vh - 330px)); margin-bottom: 14px; text-align: left; }
       #reward .gd-tabs { display: flex; flex-direction: column; gap: 4px; min-height: 0; overflow-y: auto; padding-right: 2px; }
@@ -913,6 +927,23 @@
         #reward .gd-body { grid-template-columns: 1fr; grid-template-rows: auto 1fr; gap: 10px; height: min(440px, calc(100vh - 380px)); }
         #reward .gd-tabs { flex-direction: row; overflow-x: auto; overflow-y: hidden; padding: 0 0 4px; }
         #reward .gd-tab { padding: 5px 8px; font-size: 13px; }
+      }
+      /* Phones: News and the tutorial keep clear of the HUD's column of buttons on the right (raised over the dimmed
+         town); short (landscape) screens get the tabs at the side again, and every pop-up taller than the screen scrolls. */
+      @media (max-width: 560px), (max-height: 500px) {
+        #reward:has(.gd-body), #reward:has(.nw-body) { padding-right: 64px; }
+        #reward .rw-card:has(.gd-body), #reward .rw-card:has(.nw-body) { width: min(720px, calc(100vw - 80px)); }
+      }
+      @media (max-height: 500px) {
+        #reward { align-items: flex-start; overflow-y: auto; padding-top: 8px; padding-bottom: 8px; }
+        #reward > * { margin-block: auto; } /* centred, but scrolls from the top when taller than the screen */
+        #reward .rw-card { padding-top: 12px; padding-bottom: 10px; }
+        #reward .rw-title { margin-bottom: 6px; font-size: 18px; }
+        #reward .gd-body { height: calc(100vh - 150px); margin-bottom: 8px; }
+        #reward .nw-panel { height: calc(100vh - 236px); }
+        #reward:has(.gd-body), #reward:has(.nw-body) { padding-right: 168px; } /* clear of the minimap too */
+        #reward .rw-card:has(.gd-body), #reward .rw-card:has(.nw-body) { width: min(720px, calc(100vw - 184px)); }
+        #reward .nw-body { margin-bottom: 8px; }
       }
       /* The Arena's menu (arena/menu.ts), in the reward box: two big modes, or the queue's wait. */
       /* The Arena's menu (arena/menu.ts, Popup theme 'arena'): a dark stone slab in bronze trim with corner rivets under a

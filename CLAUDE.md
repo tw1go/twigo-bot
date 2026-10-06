@@ -114,7 +114,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   `ui/reward.ts`: bank, jackpot, shop, outpost, board, Mine; the casino and the player menu have their own listener; the bag
   already did), not mid-action. Dev: `/__gift?as=Name&amount=50` (or `&wallet=1`).
 - Minimap (`ui/minimap.ts`, top right in the HUD's `.th-map` slot, the jackpot counter left of it, News and Settings in a row
-  under it; on phones the bag button goes under them): the town's isometric diamond, its ground and buildings from
+  under it; on phones (≤560 px wide, or ≤500 px tall = landscape phones, which get every phone rule) those buttons stack in
+  a column under the map with the bag button under them, and the stay box sits beside the Chat button): the town's isometric diamond, its ground and buildings from
   town.json, drawn once; green dots
   for everyone else, gold for you, a faint box for the camera's view; redrawn every 250 ms. Hidden in the casino.
 - Stay reward (`ui/stay.ts`, over the system feed's top edge; on phones above the bottom edge): a Kowen for every 15 min in
