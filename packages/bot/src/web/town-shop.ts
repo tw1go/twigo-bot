@@ -10,10 +10,11 @@ import { kowen } from '../kowens.js';
 import { debtOf } from '../loans/loans.js';
 import { potionCount, type PotionId } from '../potions/potions.js';
 import { freeSlots } from '../dig/bag.js';
+import { isTester } from '../games/testers.js';
 
 // 🎁 The town's rewards shop (GET/POST /town/shop): what /redeem sells, bought with the same checks
 // (games/redeem.ts). Each purchase is posted in the games channel just like /redeem's (passes ping the reward
-// owner, who sends them by hand) and shows in the town's feed.
+// owner, who sends them by hand) and shows in the town's feed. Passes are for testers only (games/testers.ts).
 
 /** Most of a stackable reward bought at once (as /redeem's quantity option). */
 const MAX_AT_ONCE = 10;
@@ -31,31 +32,36 @@ function about(r: Reward): string {
     case 'vault': return 'Store up to 30% of your Kowens, safe from /steal and bail. Use it at the bank.';
     case 'potion': return `${plain(potionEffect(r))}. Use it with /potion use in Discord.`;
     case 'bag': return `+${BAG_SLOTS} inventory slots for what you dig up. Each bag once.`;
-    case 'pass': return `A ${GAME_NAME} ${r.name}, sent to you by hand. Not while you have a loan.`;
+    case 'pass': return `A ${GAME_NAME} ${r.name}, sent to you by hand. Testers only; not while you have a loan.`;
   }
 }
 
-export function townShop(userId: string): TownShopResponse {
+/** `tester`: whether they have the Tester role (passes are for testers only). */
+export function townShop(userId: string, tester: boolean): TownShopResponse {
   const items = rewards.map((r): TownShopItem => {
     const owned = owns(userId, r);
+    const testersOnly = r.kind === 'pass' && !tester;
     // Keys and potions also need room in the bag, a slot each; megaphones one slot for them all.
-    const max = owned ? 0 : r.kind === 'shovel' ? shovelsLeftToday(userId) : r.kind === 'megaphone' ? (megaphones(userId) || freeSlots(userId) ? MAX_AT_ONCE : 0) : inBag(r) ? Math.min(MAX_AT_ONCE, freeSlots(userId)) : stackable(r) ? MAX_AT_ONCE : 1;
+    const max = owned || testersOnly ? 0 : r.kind === 'shovel' ? shovelsLeftToday(userId) : r.kind === 'megaphone' ? (megaphones(userId) || freeSlots(userId) ? MAX_AT_ONCE : 0) : inBag(r) ? Math.min(MAX_AT_ONCE, freeSlots(userId)) : stackable(r) ? MAX_AT_ONCE : 1;
     const have = r.kind === 'potion' ? potionCount(userId, r.id.replace('potion-', '') as PotionId) : r.kind === 'key' ? masterKeys(userId) : r.kind === 'megaphone' ? megaphones(userId) : undefined;
-    return { id: r.id, name: r.name, cost: r.cost, kind: r.kind, about: about(r), max, ...(owned ? { owned } : {}), ...(have !== undefined ? { have } : {}) };
+    return { id: r.id, name: r.name, cost: r.cost, kind: r.kind, about: about(r), max, ...(owned ? { owned } : {}), ...(testersOnly ? { testersOnly } : {}), ...(have !== undefined ? { have } : {}) };
   });
   return { kowens: balance(userId), items, fenceUntil: fencedUntil(userId), inDebt: !!debtOf(userId) };
 }
 
 /** Buys `quantity` of a reward; tells the games channel and the town's feed when it works. */
 export async function buyFromShop(client: Client, userId: string, id: string, quantity: number, name: string): Promise<TownShopBuyResponse> {
+  const tester = await isTester(client, userId);
+  const shop = () => townShop(userId, tester);
   const reward = rewards.find((r) => r.id === id);
-  if (!reward) return { ...townShop(userId), ok: false, message: 'That reward is gone.' };
-  const result = redeemReward(userId, reward, quantity);
+  if (!reward) return { ...shop(), ok: false, message: 'That reward is gone.' };
+  const result = redeemReward(userId, reward, quantity, tester);
   if (!result.ok) {
     const message = (() => {
       switch (result.reason) {
         case 'quantity': return `The ${reward.name} is one at a time.`;
         case 'loan': return 'You can\'t redeem passes while you have a loan. Pay it off at the bank first.';
+        case 'testers': return 'Passes are for testers only (members with the Tester role).';
         case 'owned': return `You already have the ${reward.name}.`;
         case 'shovels-today': return `You already bought ${SHOVELS_PER_DAY} shovels today. More tomorrow!`;
         case 'kowens':
@@ -68,7 +74,7 @@ export async function buyFromShop(client: Client, userId: string, id: string, qu
           return `Your Bakod already lasts until ${new Date(result.until).toLocaleString('en-US', { timeZone: config.timezone, dateStyle: 'medium', timeStyle: 'short' })}: the most is ${FENCE_MAX_DAYS} days.`;
       }
     })();
-    return { ...townShop(userId), ok: false, message };
+    return { ...shop(), ok: false, message };
   }
 
   const n = result.quantity;
@@ -80,5 +86,5 @@ export async function buyFromShop(client: Client, userId: string, id: string, qu
   redeemFeed(name, result);
   const channel = await client.channels.fetch(config.gamesChannelId).catch(() => null);
   if (channel?.isSendable()) await channel.send(redeemPost(userId, result)).catch((err) => console.error('[web] shop post failed:', err));
-  return { ...townShop(userId), ok: true, message };
+  return { ...shop(), ok: true, message };
 }

@@ -24,7 +24,7 @@ export const inBag = (r: Reward) => r.kind === 'key' || r.kind === 'potion' || r
 const fmt = (n: number) => n.toLocaleString('en-US');
 
 export type RedeemResult =
-  | { ok: false; reward: Reward; reason: 'quantity' | 'loan' | 'owned' | 'shovels-today' | 'marites' }
+  | { ok: false; reward: Reward; reason: 'quantity' | 'loan' | 'owned' | 'shovels-today' | 'marites' | 'testers' }
   | { ok: false; reward: Reward; reason: 'kowens'; quantity: number; total: number; have: number; canAfford: number }
   | { ok: false; reward: Reward; reason: 'fence-max'; until: number }
   | { ok: false; reward: Reward; reason: 'bag-full'; free: number }
@@ -50,9 +50,11 @@ export const owns = (userId: string, r: Reward) =>
 /** Shovels the member can still buy today. */
 export const shovelsLeftToday = (userId: string) => Math.max(0, SHOVELS_PER_DAY - shovelsBoughtToday(userId));
 
-export function redeemReward(userId: string, reward: Reward, asked: number): RedeemResult {
+/** `tester`: whether they have the Tester role (games/testers.ts): passes are for testers only. */
+export function redeemReward(userId: string, reward: Reward, asked: number, tester: boolean): RedeemResult {
   const have = balance(userId);
   if (asked > 1 && !stackable(reward)) return { ok: false, reward, reason: 'quantity' };
+  if (reward.kind === 'pass' && !tester) return { ok: false, reward, reason: 'testers' };
   if (reward.kind === 'pass' && debtOf(userId)) return { ok: false, reward, reason: 'loan' };
   if (owns(userId, reward)) return { ok: false, reward, reason: 'owned' };
 

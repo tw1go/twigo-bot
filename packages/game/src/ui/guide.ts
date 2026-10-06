@@ -147,7 +147,7 @@ const TOPICS: Topic[] = [
     icon: '🎁',
     label: 'Shop & Parlor',
     text: [
-      '**Rewards shop**: items (megaphones, Master Keys), potions, bigger bags and passes. Click an item, pick how many, buy.',
+      '**Rewards shop**: items (megaphones, Master Keys), potions, bigger bags and passes (passes: testers only). Click an item, pick how many, buy.',
       '',
       '**Parlor** (north of the shop):',
       '• **Appearance**: a new look for your character, **3 Kowens**',

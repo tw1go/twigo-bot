@@ -42,6 +42,8 @@ export const config = {
   digChannelId: process.env.DIG_CHANNEL_ID || required('GAMES_CHANNEL_ID'),
   jailRoleId: required('JAIL_ROLE_ID'),
   rewardOwnerId: required('REWARD_OWNER_ID'),
+  // Passes (/redeem, the town's shop) are for members with this role only (the Tester role). Empty = anyone.
+  testerRoleId: process.env.GAME_TESTER_ROLE_ID || undefined,
   // Gambling here has a much lower chance of getting busted by the Tanod.
   gamblingChannelId: required('GAMBLING_CHANNEL_ID'),
   // Where twigo's room finds (/claim) are announced.

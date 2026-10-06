@@ -188,7 +188,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
 - Rewards shop (`ui/shop.ts`, left click the shop): what `/redeem` sells, tabs Items / Potions / Bags / Passes, a grid
   of item art (manifest `items`, keyed by reward id; dug-up items there too) with a quantity stepper for stackables and
   a second press to confirm passes. Bot `GET/POST /town/shop` (`web/town-shop.ts`); `/redeem` and the shop share
-  `games/redeem.ts` (checks + purchase, the public Discord post `redeemPost`, the feed line). Passes ping the reward
+  `games/redeem.ts` (checks + purchase, the public Discord post `redeemPost`, the feed line). Passes are for testers only
+  (the Tester role, `GAME_TESTER_ROLE_ID`, `games/testers.ts`; the shop marks them "Testers"; dev `&tester=0`). Passes ping the reward
   owner like `/redeem`. Dev: a pretend shop.
 - Parlor (`ui/parlor.ts`, left click the parlor, north of the rewards shop; door (34,9)): the creator's box over the dimmed
   town (`mountCreator` with `parlor` hooks: no nickname; ×/Escape/click outside closes), the character on the left, tabs on

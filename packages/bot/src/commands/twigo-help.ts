@@ -70,7 +70,7 @@ export const twigoHelp: Command = {
           '-# ⚠️ Inactive for 3+ days? You lose a growing % of Kowens each day until you\'re back.',
         ]),
         ...section('💳 Spend & manage', [
-          '`/redeem` — 🧱 Bakod, 🪏 Shovel, 🗝️ Master Key, 📢 Megaphone (`/m message` in the web town\'s chat runs it across everyone\'s screen), 🔐 Vault, 🧪 potions, 🎒 bags, or Crystal of Atlan passes 🎁',
+          '`/redeem` — 🧱 Bakod, 🪏 Shovel, 🗝️ Master Key, 📢 Megaphone (`/m message` in the web town\'s chat runs it across everyone\'s screen), 🔐 Vault, 🧪 potions, 🎒 bags, or Crystal of Atlan passes 🎁 (testers only)',
           `💇 **Parlor** (web town, beside the rewards shop): a new look for **${LOOK_COST}** Kowens, or show another of your titles (free)`,
           '`/potion use|list` — 🧪 Kalawang (rust a Bakod) · 🫥 Tago (no busts 30 min) · 🍀 Swerte (better digs) · 🍵 Marites (hints)',
           '`/give @someone amount` — give a friend Kowens (max 20 per day)',

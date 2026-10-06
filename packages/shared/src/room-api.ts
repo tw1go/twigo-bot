@@ -272,6 +272,8 @@ export interface TownShopItem {
   max: number;
   /** A one-time reward the viewer already has. */
   owned?: boolean;
+  /** A pass the viewer can't redeem: passes are for members with the Tester role only. */
+  testersOnly?: boolean;
   /** How many the viewer has (potions, Master Keys). */
   have?: number;
 }

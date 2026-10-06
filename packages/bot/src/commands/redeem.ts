@@ -3,6 +3,7 @@ import type { Command } from '../types.js';
 import { balance, fencedUntil, hasVault } from '../credits/store.js';
 import { BAG_SLOTS, FENCE_DAYS, FENCE_MAX_DAYS, GAME_NAME, rewards, shopCatalogue } from '../games/rewards.js';
 import { redeemFeed, redeemPost, redeemReward, stackable } from '../games/redeem.js';
+import { isTester } from '../games/testers.js';
 import { townName } from '../web/town-feed.js';
 import { kowen } from '../kowens.js';
 import { POTIONS, type PotionId } from '../potions/potions.js';
@@ -28,6 +29,7 @@ export const redeem: Command = {
   async execute(interaction) {
     const have = balance(interaction.user.id);
     const choice = interaction.options.getString('reward');
+    const tester = await isTester(interaction.client, interaction.user.id);
 
     if (!choice) {
       const embed = new EmbedBuilder()
@@ -36,7 +38,7 @@ export const redeem: Command = {
         .setDescription(
           rewards
             .map((r) => {
-              const note = r.kind === 'fence' ? ` — blocks /steal for ${FENCE_DAYS} days` : r.kind === 'shovel' ? ` — ${SHOVEL_USES} digs, up to ${SHOVELS_PER_DAY} a day` : r.kind === 'key' ? ' — 50% chance to break through a Bakod on /steal' : r.kind === 'megaphone' ? ' — `/m message` in the web town\'s chat: it runs across everyone\'s screen' : r.kind === 'vault' ? ` — store up to 30% of your Kowens, safe from /steal & bail${hasVault(interaction.user.id) ? ' (owned ✅)' : ''}` : r.kind === 'potion' ? ` — ${POTIONS[r.id.replace('potion-', '') as PotionId].effect}` : r.kind === 'bag' ? ` — +${BAG_SLOTS} inventory slots${ownedBags(interaction.user.id).includes(r.id) ? ' (owned ✅)' : ''}` : ` — ${GAME_NAME}`;
+              const note = r.kind === 'fence' ? ` — blocks /steal for ${FENCE_DAYS} days` : r.kind === 'shovel' ? ` — ${SHOVEL_USES} digs, up to ${SHOVELS_PER_DAY} a day` : r.kind === 'key' ? ' — 50% chance to break through a Bakod on /steal' : r.kind === 'megaphone' ? ' — `/m message` in the web town\'s chat: it runs across everyone\'s screen' : r.kind === 'vault' ? ` — store up to 30% of your Kowens, safe from /steal & bail${hasVault(interaction.user.id) ? ' (owned ✅)' : ''}` : r.kind === 'potion' ? ` — ${POTIONS[r.id.replace('potion-', '') as PotionId].effect}` : r.kind === 'bag' ? ` — +${BAG_SLOTS} inventory slots${ownedBags(interaction.user.id).includes(r.id) ? ' (owned ✅)' : ''}` : ` — ${GAME_NAME}${tester ? '' : ' · 🧪 testers only'}`;
               return `${r.emoji} **${r.name}**${note} · **${fmt(r.cost)}** ${kowen(r.cost)} ${have >= r.cost ? '✅' : `(${fmt(r.cost - have)} to go)`}`;
             })
             .join('\n') + (fencedUntil(interaction.user.id) ? `\n\n🧱 Your Bakod is up until <t:${Math.floor(fencedUntil(interaction.user.id)! / 1000)}:f>.` : ''),
@@ -52,7 +54,7 @@ export const redeem: Command = {
       return;
     }
     const asked = interaction.options.getInteger('quantity') ?? 1;
-    const result = redeemReward(interaction.user.id, reward, asked);
+    const result = redeemReward(interaction.user.id, reward, asked, tester);
     const deny = (content: string) => interaction.reply({ content, flags: MessageFlags.Ephemeral });
 
     if (!result.ok) {
@@ -61,6 +63,8 @@ export const redeem: Command = {
           return void (await deny(`Quantity only works for the 🪏 **Shovel**, 🗝️ **Master Key** and 🧪 potions. The ${reward.emoji} **${reward.name}** is one at a time.`));
         case 'loan':
           return void (await deny("💳 You can't redeem passes while you have a loan. Pay it off first with `/loan pay`."));
+        case 'testers':
+          return void (await deny('🧪 Passes are for **testers** only (members with the Tester role).'));
         case 'owned':
           return void (await deny(reward.kind === 'vault'
             ? 'You already have a 🔐 **Vault**. Use `/vault` to store Kowens. 🪙'

@@ -79,9 +79,22 @@ test('Master Keys and potions take bag slots: a bag of keys stops digging, and k
 
   add('holder', 100);
   const key = rewards.find((r) => r.id === 'master-key')!;
-  const refused = redeemReward('holder', key, 1);
+  const refused = redeemReward('holder', key, 1, true);
   assert.equal(refused.ok, false);
   assert.equal(!refused.ok && refused.reason, 'bag-full');
+});
+
+test('passes are for testers only (checked before anything else about a pass)', async () => {
+  const { redeemReward } = await import('../games/redeem.js');
+  const { rewards } = await import('../games/rewards.js');
+  const { add, balance } = await import('../credits/store.js');
+  const pass = rewards.find((r) => r.kind === 'pass')!;
+  add('fan', pass.cost);
+  const refused = redeemReward('fan', pass, 1, false);
+  assert.equal(!refused.ok && refused.reason, 'testers');
+  assert.equal(balance('fan'), pass.cost); // nothing taken
+  assert.ok(redeemReward('fan', pass, 1, true).ok);
+  assert.equal(balance('fan'), 0);
 });
 
 test('/gift dig-reset: the daily dig and shovel counters go back to 0', async () => {

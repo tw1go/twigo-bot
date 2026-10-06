@@ -92,6 +92,7 @@ export function showShop(): void {
   /** Why an item can't be bought right now (null = it can). */
   const blocked = (s: TownShopResponse, it: TownShopItem): string | null => {
     if (it.owned) return it.kind === 'vault' ? 'You have a vault. Use it at the bank.' : 'You have this bag.';
+    if (it.testersOnly) return 'Passes are for testers only (the Tester role in Discord).';
     if (it.max === 0) return it.kind === 'shovel' ? 'No more shovels today. More tomorrow!' : it.kind === 'key' || it.kind === 'potion' || it.kind === 'megaphone' ? 'Your bag is full.' : 'Not available right now.';
     if (it.kind === 'pass' && s.inDebt) return 'Pay off your loan at the bank first.';
     if (s.kowens < it.cost) return `You need ${kowens(it.cost - s.kowens)} more.`;
@@ -123,6 +124,7 @@ export function showShop(): void {
         price.append(coinIcon(1), it.cost.toLocaleString());
         card.append(picture(it.id, ART_SCALE), el('span', 'sh-name', it.name), price);
         if (it.owned) card.append(el('span', 'sh-badge', 'Owned'));
+        else if (it.testersOnly) card.append(el('span', 'sh-badge', 'Testers'));
         else if (it.have) card.append(el('span', 'sh-badge sh-have', `×${it.have}`));
         card.addEventListener('click', () => {
           if (picked === it.id) return;
@@ -217,6 +219,11 @@ export function showShop(): void {
 
 // ── Dev: a pretend shop (no bot behind the dev server) ──
 
+/** Dev: &tester=0 shows the shop as a member without the Tester role sees it (passes locked). */
+const notTester = new URLSearchParams(location.search).get('tester') === '0';
+const testerMax = notTester ? 0 : 1;
+const testerFlag = notTester ? { testersOnly: true } : {};
+
 const fake: TownShopResponse = {
   kowens: Number(new URLSearchParams(location.search).get('kowens') ?? 1250),
   fenceUntil: null,
@@ -236,9 +243,9 @@ const fake: TownShopResponse = {
     { id: 'bag-backpack', name: 'School Backpack', cost: 20, kind: 'bag', about: '+8 inventory slots for what you dig up. Each bag once.', max: 1 },
     { id: 'bag-balikbayan', name: 'Balikbayan Box', cost: 35, kind: 'bag', about: '+8 inventory slots for what you dig up. Each bag once.', max: 1 },
     { id: 'bag-lola', name: "Lola's Bottomless Bag", cost: 50, kind: 'bag', about: '+8 inventory slots for what you dig up. Each bag once.', max: 1 },
-    { id: 'phantasium', name: 'Phantasium Pass', cost: 1_700, kind: 'pass', about: 'A Crystal of Atlan Phantasium Pass, sent to you by hand. Not while you have a loan.', max: 1 },
-    { id: 'basic-bp', name: 'Basic Battle Pass', cost: 2_450, kind: 'pass', about: 'A Crystal of Atlan Basic Battle Pass, sent to you by hand. Not while you have a loan.', max: 1 },
-    { id: 'advanced-bp', name: 'Advanced Battle Pass', cost: 3_650, kind: 'pass', about: 'A Crystal of Atlan Advanced Battle Pass, sent to you by hand. Not while you have a loan.', max: 1 },
+    { id: 'phantasium', name: 'Phantasium Pass', cost: 1_700, kind: 'pass', about: 'A Crystal of Atlan Phantasium Pass, sent to you by hand. Testers only; not while you have a loan.', max: testerMax, ...testerFlag },
+    { id: 'basic-bp', name: 'Basic Battle Pass', cost: 2_450, kind: 'pass', about: 'A Crystal of Atlan Basic Battle Pass, sent to you by hand. Testers only; not while you have a loan.', max: testerMax, ...testerFlag },
+    { id: 'advanced-bp', name: 'Advanced Battle Pass', cost: 3_650, kind: 'pass', about: 'A Crystal of Atlan Advanced Battle Pass, sent to you by hand. Testers only; not while you have a loan.', max: testerMax, ...testerFlag },
   ],
 };
 

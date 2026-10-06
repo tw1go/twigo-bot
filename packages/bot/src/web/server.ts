@@ -8,6 +8,7 @@ import { ITEM_BY_ID } from '../dig/items.js';
 import { getNickname, parseNickname, setNickname } from './nickname.js';
 import { RICHEST, TITLES, newTitle, titleOf, titleSeen } from './titles.js';
 import { welcome, welcomeEveryone, welcomeGift, welcomeSeen } from './welcome.js';
+import { isTester } from '../games/testers.js';
 import { checkRichest } from './richest.js';
 import { attachTown, loadTownMap } from './town.js';
 import { bridgeTownChat } from './town-chat.js';
@@ -418,7 +419,7 @@ export function startWebServer(client: Client): void {
           }
         }
         if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
-        if (req.method === 'GET') return send(res, 200, JSON.stringify(townShop(userId)));
+        if (req.method === 'GET') return send(res, 200, JSON.stringify(townShop(userId, await isTester(client, userId))));
         const id = body?.id;
         const quantity = body?.quantity ?? 1;
         if (typeof id !== 'string' || typeof quantity !== 'number' || !Number.isInteger(quantity) || quantity < 1 || quantity > 10) {
