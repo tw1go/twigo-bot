@@ -4,6 +4,7 @@ import { fakeLogin, loadMe } from '../session';
 import { playSound } from '../audio/sound';
 import { jackpotTimer } from './jackpot-timer';
 import { hasUnread, loadNews, showNews } from './news';
+import { showGuide } from './guide';
 import { showSettings } from './settings';
 
 // The town's HUD (replaces the page's login corner while you're in town): your character's head and name top left,
@@ -27,6 +28,8 @@ export interface TownHudOptions {
   gear: string | null;
   /** The news button's megaphone (manifest ui.newsIcon). */
   megaphone: string | null;
+  /** The tutorial button's icon (manifest ui.tutorialIcon); a "?" without it. */
+  guide: string | null;
   /** The jackpot counter's icon (manifest ui.jackpotIcon); the Kowen coin without it. */
   ticket: string | null;
 }
@@ -127,18 +130,30 @@ export function mountTownHud(o: TownHudOptions): void {
   news.title = 'News';
   news.addEventListener('click', () => showNews({ onSeen: () => (unread.hidden = true) }));
   if (o.me || fakeLogin()) void loadNews().then((n) => (unread.hidden = !n || !hasUnread(n)));
-  // Top left: the profile with the Kowens and shovel counters beside it; top right: the jackpot counter, News and Settings.
+  // The tutorial: a tab per feature (ui/guide.ts).
+  const guide = el('button', 'th-settings th-guide');
+  if (o.guide) {
+    const icon = el('img', 'th-gear');
+    icon.src = o.guide;
+    icon.alt = '';
+    guide.append(icon);
+  } else guide.textContent = '?';
+  guide.setAttribute('aria-label', 'Tutorial');
+  guide.setAttribute('aria-haspopup', 'dialog');
+  guide.title = 'Tutorial';
+  guide.addEventListener('click', () => showGuide());
+  // Top left: the profile with the Kowens and shovel counters beside it; top right: the jackpot counter, the tutorial, News and Settings.
   const left = el('div', 'th-left');
   const row = el('div', 'th-row');
   row.append(profile);
   left.append(row);
-  // Top right: the jackpot counter and the minimap side by side (ui/minimap.ts fills the slot), News and Settings under
+  // Top right: the jackpot counter and the minimap side by side (ui/minimap.ts fills the slot), the tutorial, News and Settings under
   // the map.
   const corner = el('div', 'th-corner');
   const top = el('div', 'th-top');
   top.append(el('div', 'th-map'));
   const buttons = el('div', 'th-buttons');
-  buttons.append(news, settings);
+  buttons.append(guide, news, settings);
   corner.append(top, buttons);
   root.append(left, corner);
 

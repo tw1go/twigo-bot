@@ -5,7 +5,7 @@ import { el, showPopup } from './reward';
 // blinks), and a line about doors, benches and chat.
 
 /** A pixel mouse drawn in squares (12 × 18 art pixels), its right button lit. */
-function mouse(): SVGSVGElement {
+export function mouse(): SVGSVGElement {
   const ns = 'http://www.w3.org/2000/svg';
   const svg = document.createElementNS(ns, 'svg');
   svg.setAttribute('viewBox', '0 0 12 18');
@@ -31,7 +31,7 @@ function mouse(): SVGSVGElement {
   return svg;
 }
 
-function keys(): HTMLElement {
+export function keys(): HTMLElement {
   const grid = el('div', 'tu-keys');
   grid.setAttribute('aria-hidden', 'true');
   ['W', 'A', 'S', 'D'].forEach((k, i) => {
@@ -42,7 +42,7 @@ function keys(): HTMLElement {
   return grid;
 }
 
-function panel(picture: Element, title: string, text: string): HTMLElement {
+export function panel(picture: Element, title: string, text: string): HTMLElement {
   const box = el('div', 'tu-box');
   const art = el('div', 'tu-art');
   art.append(picture);
@@ -56,6 +56,6 @@ export function showMovementTutorial(): Promise<void> {
     panel(keys(), 'WASD', 'Walk with W A S D (or the arrow keys).'),
     panel(mouse(), 'Right click', 'Right click a spot to walk there. On a phone, tap it.'),
   );
-  const tip = el('p', 'tu-tip', 'Left click a door to go in, or a bench to sit. Press Enter to chat.');
+  const tip = el('p', 'tu-tip', 'Left click a door to go in, or a bench to sit. Press Enter to chat. The ? button (top right) explains the rest.');
   return showPopup({ title: 'How to move', body: [boxes, tip], button: 'Got it!', celebrate: false });
 }

@@ -160,6 +160,11 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   are in `web/town-posts.ts`, never posted in Discord), Discord markdown drawn
   as DOM, newest open. A dot on the button while there's a post newer than the last seen (localStorage `mk_news_seen`).
   Dev: pretend news.
+- Tutorial (`ui/guide.ts`, the "?" left of News, manifest `ui.tutorialIcon` if added; toggles): the reward box with a tab
+  per feature down the left (a scrolling row on phones; last tab in localStorage `mk_guide_tab`), each a short how-to in
+  the news board's markdown; Moving reuses the first-visit tutorial's WASD/mouse pictures. The numbers are copied from the
+  bot's rules (stay, voice, casino, jackpot, steal, loans, dig, quests…): update the text when a rule changes. Prices
+  the CMS can change are left out.
 - Leaderboard monument (`ui/leaderboard.ts`, left click the monument): top 10 by Kowens from `GET /town/leaderboard`
   (logged in, may play; town nicknames, titles) with the top 3 idling on a podium ("?" silhouette without a character).
 - Jackpot counter (`ui/jackpot-timer.ts`, "Jackpot draw", top right left of the minimap; on phones under the Kowens and

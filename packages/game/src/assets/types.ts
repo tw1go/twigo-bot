@@ -48,6 +48,8 @@ export interface Manifest {
     shovelIcon?: { file: string; size: Vec2 };
     /** The news button's megaphone, beside Settings. */
     newsIcon?: { file: string; size: Vec2 };
+    /** The tutorial button's icon (ui/guide.ts); a "?" without it. */
+    tutorialIcon?: { file: string; size: Vec2 };
     /** The Arena's jack en poy (scenes/ArenaScene.ts): hands, VS, round pips, menu icons, speed lines. */
     jnpHands?: { file: string; size: Vec2; frames: number };
     vs?: { file: string; size: Vec2; frames: number; fps: number };

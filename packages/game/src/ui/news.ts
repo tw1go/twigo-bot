@@ -117,7 +117,7 @@ function post(p: TownNewsPost, open: boolean): HTMLElement {
 
 // ── Discord markdown → DOM (text nodes only, never HTML) ──
 
-function markdown(text: string): HTMLElement[] {
+export function markdown(text: string): HTMLElement[] {
   const out: HTMLElement[] = [];
   for (const line of text.split('\n')) {
     const heading = /^(#{1,3}) (.*)$/.exec(line);

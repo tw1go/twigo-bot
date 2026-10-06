@@ -824,6 +824,29 @@
       #reward .nw-code { padding: 0 4px; border-radius: 2px; background: #EDE9FE; font: 13px/1.3 ui-monospace, Menlo, monospace; color: #5B21B6; }
       #reward .nw-link { color: #6D28D9; }
       @media (max-width: 560px) { #reward .nw-panel { height: min(420px, 46vh); } } /* clear of the HUD's top buttons */
+      /* Tutorial (ui/guide.ts, the "?" beside News): a tab per feature down the left, the page on the right (the news
+         board's markdown classes); on phones the tabs become a scrolling row over the page. A fixed size, like News. */
+      #reward .rw-card:has(.gd-body) { width: min(720px, calc(100vw - 32px)); }
+      @media (min-width: 761px) { #reward:has(.gd-body) { padding-top: 96px; } } /* wide: clear of the jackpot counter and minimap above */
+      body:has(#reward .gd-body) #town-hud .th-corner { z-index: 5; } /* over the dimmed town, so the "?" closes it again */
+      #reward .gd-body { display: grid; grid-template-columns: 184px 1fr; gap: 14px; height: min(440px, 58vh, calc(100vh - 330px)); margin-bottom: 14px; text-align: left; }
+      #reward .gd-tabs { display: flex; flex-direction: column; gap: 4px; min-height: 0; overflow-y: auto; padding-right: 2px; }
+      #reward .gd-tab { display: flex; flex: none; align-items: center; gap: 8px; padding: 6px 8px; border: 2px solid #E2DDF3; border-radius: 2px; background: #fff; color: #5B21B6; font: inherit; font-size: 14px; font-weight: 700; text-align: left; white-space: nowrap; }
+      #reward .gd-tab:hover { border-color: #C4B5FD; background: #F5F3FF; }
+      #reward .gd-tab[aria-selected='true'] { border-color: #7C2AE8; background: #7C2AE8; color: #fff; box-shadow: inset 0 2px 0 #A78BFA; }
+      #reward .gd-tab:focus-visible { outline: 2px solid #F8BF27; outline-offset: -4px; }
+      #reward .gd-icon { flex: none; width: 20px; text-align: center; }
+      #reward .gd-panel { min-height: 0; overflow-x: hidden; overflow-y: auto; padding: 2px 6px 6px 2px; font-size: 14px; color: #3D4256; overflow-wrap: anywhere; }
+      #reward .gd-panel .nw-h1 { margin: 0 0 8px; }
+      #reward .gd-panel .nw-line { margin-bottom: 4px; }
+      #reward .gd-panel .tu-boxes { margin: 4px 0 12px; }
+      #reward .gd-panel:focus-visible { outline: 2px solid #F8BF27; }
+      @media (max-width: 560px) {
+        #reward:has(.gd-body) { padding-top: 140px; } /* under the HUD's buttons */
+        #reward .gd-body { grid-template-columns: 1fr; grid-template-rows: auto 1fr; gap: 10px; height: min(440px, calc(100vh - 380px)); }
+        #reward .gd-tabs { flex-direction: row; overflow-x: auto; overflow-y: hidden; padding: 0 0 4px; }
+        #reward .gd-tab { padding: 5px 8px; font-size: 13px; }
+      }
       /* The Arena's menu (arena/menu.ts), in the reward box: two big modes, or the queue's wait. */
       /* The Arena's menu (arena/menu.ts, Popup theme 'arena'): a dark stone slab in bronze trim with corner rivets under a
          flickering torch glow, a blood-red banner for the title, iron plates for the modes, a crimson Retreat. */
