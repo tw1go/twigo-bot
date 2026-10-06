@@ -37,7 +37,7 @@ export function hoodTownMap(hood: TownHoodResponse, town: TownMap): TownMap {
 }
 
 /** Where a gate leads: this page again with ?area=hood (or without it, for the town) and ?from= (so you arrive at the
- *  way in from there), dev flags kept. */
+ *  way in from there), dev flags kept. Both are tidied out of the address once the page has read them. */
 export function areaUrl(to: 'hood' | 'town'): string {
   const url = new URL(location.href);
   url.searchParams.set('from', currentArea());
@@ -46,14 +46,55 @@ export function areaUrl(to: 'hood' | 'town'): string {
   return url.pathname + url.search;
 }
 
-/** Whether this page came through a gate (?from=), without tidying it away. */
-export const viaGate = () => new URLSearchParams(location.search).has('from');
+/** This tab's area, remembered across reloads (sessionStorage), so the address can stay plain /play/. */
+const AREA_KEY = 'mk_area';
+let area: 'hood' | 'town' | null = null;
+let fresh = false;
 
-/** This page is the neighbourhood from now on (?area=hood), so its gates know where they lead from. */
-export function markHood(): void {
+function remember(a: 'hood' | 'town'): void {
+  try {
+    sessionStorage.setItem(AREA_KEY, a);
+  } catch {
+    // private mode: a reload starts in town
+  }
+}
+
+/** Which area this page is, worked out once: ?area= (a gate's address, or a dev link; then tidied out of the
+ *  address), else a gate to the town (?from= without ?area=), else this tab's area before a reload, else the town
+ *  (a fresh visit). */
+function resolveArea(): 'hood' | 'town' {
+  if (area) return area;
   const url = new URL(location.href);
-  url.searchParams.set('area', 'hood');
-  history.replaceState(null, '', url.pathname + url.search + url.hash);
+  const asked = url.searchParams.get('area');
+  let before: string | null = null;
+  try {
+    before = sessionStorage.getItem(AREA_KEY);
+  } catch {
+    // private mode
+  }
+  if (asked) area = asked === 'hood' ? 'hood' : 'town';
+  else if (url.searchParams.has('from')) area = 'town';
+  else if (before === 'hood' || before === 'town') area = before;
+  else {
+    area = 'town';
+    fresh = true;
+  }
+  remember(area);
+  if (asked) {
+    url.searchParams.delete('area');
+    history.replaceState(null, '', url.pathname + url.search + url.hash);
+  }
+  return area;
+}
+
+/** A fresh visit: not through a gate and not a reload (a house owner starts at their door then). */
+export const freshVisit = () => (resolveArea(), fresh);
+
+/** This page is the neighbourhood from now on (a fresh visit with a house), so its gates know where they lead from. */
+export function markHood(): void {
+  resolveArea();
+  area = 'hood';
+  remember('hood');
 }
 
 /** Where you came from (?from=, set by a gate), read once: then tidied out of the address, so a reload starts fresh. */
@@ -66,5 +107,5 @@ export function cameFrom(): 'hood' | 'town' | null {
   return from === 'hood' || from === 'town' ? from : null;
 }
 
-/** Which area this page is (?area=hood: the neighbourhood). */
-export const currentArea = (): 'hood' | 'town' => (new URLSearchParams(location.search).get('area') === 'hood' ? 'hood' : 'town');
+/** Which area this page is: the neighbourhood or the town (see resolveArea). */
+export const currentArea = (): 'hood' | 'town' => resolveArea();
