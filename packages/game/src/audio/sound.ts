@@ -70,7 +70,7 @@ export interface SoundSettings {
   /** Sound effects and ambience volume, 0–1. */
   sfx: number;
   muted: boolean;
-  /** The townsfolk quiet: no talk blips, no gossip murmur (Settings: "Mute townsfolk"). */
+  /** The Alings' gossip murmur off (Settings: "Mute gossip murmur"); their talk blips still play. */
   npcsMuted: boolean;
 }
 
@@ -217,7 +217,7 @@ export function hearGossip(distance: number | null, talking: boolean): void {
  *  doesn't sound robotic. Silent while sound is locked, muted or turned down to 0. */
 export function playVoice(rate: number): void {
   const s = scene;
-  if (!s || s.sound.locked || settings.muted || settings.npcsMuted || settings.sfx === 0) return;
+  if (!s || s.sound.locked || settings.muted || settings.sfx === 0) return;
   const v = VOICE.keys[Math.floor(Math.random() * VOICE.keys.length)];
   if (!s.cache.audio.exists(v.key)) return;
   s.sound.play(v.key, { volume: VOICE.volume * settings.sfx, rate: rate * (1 + (Math.random() * 2 - 1) * VOICE.detune) });

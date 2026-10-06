@@ -92,7 +92,7 @@ function audio(): HTMLElement {
   });
   mute.append(box, el('span', undefined, 'Mute all'));
 
-  // The townsfolk's voices and the Alings' gossip murmur, on their own.
+  // The Alings' gossip murmur, on its own (their voices in the dialog box still play).
   const folk = el('label', 'st-row st-check');
   const folkBox = el('input');
   folkBox.type = 'checkbox';
@@ -101,7 +101,7 @@ function audio(): HTMLElement {
     setSound({ npcsMuted: folkBox.checked });
     playSound('click');
   });
-  folk.append(folkBox, el('span', undefined, 'Mute townsfolk (voices and gossip)'));
+  folk.append(folkBox, el('span', undefined, 'Mute gossip murmur'));
 
   section.append(el('h3', 'st-heading', 'Audio'), music.row, sfx.row, mute, folk);
   return section;

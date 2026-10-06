@@ -156,7 +156,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   music (casino-shop-theme, 0.09 × the music volume) fades in, loaded only then; casino sfx: flip-spin (repeats while
   the coin spins), flip-land, casino-win (+ coin), casino-lose, busted (.m4a only: `formats`).
   Settings box (`ui/settings.ts`, gear button top right, manifest `ui.settingsIcon`): Music and Sounds volumes
-  (music 0 = off), Mute all and Mute townsfolk (`npcsMuted`: the NPCs' talk blips and gossip murmur; saved in localStorage `mk_sound`), log out, and a Credits page (keep it in step with
+  (music 0 = off), Mute all and Mute gossip murmur (`npcsMuted`: the Alings' ambient murmur only; saved in localStorage `mk_sound`), log out, and a Credits page (keep it in step with
   `public/assets/audio/CREDITS.md` and the font's licence). Keep sounds soft: no sharp clicks.
 - Emotes (`ui/emotes.ts` picker beside the chat input, keys 1–8; `EmotePop` in `ui/labels.ts`): the art's emote
   icons over the head for ~2 s (laugh also cheers, wave waves); `emote` goes to the others, rate-limited.
