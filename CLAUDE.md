@@ -200,7 +200,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
 - Neighbourhood (`?area=hood`, a page of its own: BootScene → `scenes/HouseScene.ts` (build a house first, free:
   `ui/house-creator.ts`, the creator's box) → TownScene with the bot's generated map (`net/hood.ts` `hoodTownMap`; the
   town's forest, no river). Bot `web/hood-map.ts` (pure, tested: bands of 5 and 4 houses down the map, each facing east onto
-  its street, a main street across the top whose west end goes back to town; grows with the houses; a Bakod = a fence round
+  its street, a main street across the top whose west end goes back to town; benches on the top grass row facing the main
+  street and at each band's street end; grows with the houses; a Bakod = a fence round
   the yard, which blocks walking: a fenced house's door spot is on the street outside it), `web/hood.ts` (schema v9 `houses`; GET /town/hood, POST /town/house (a new look 3 Kowens), POST /town/hood
   steal|key|kalawang with `/steal`'s rules from `games/steal.ts`, posted in the games channel + feed kind 'steal'). The live
   server has rooms (`?room=hood` on /ws): walking and who you see per room, chat and the rest global. Houses: manifest

@@ -8,6 +8,7 @@ import type { HoodMap, HoodObject } from '@mikazuki/shared';
 //   cols: [entrance 2] then per band [house 3][yard 1 (the doors)][street 3][back 1 (bushes)]
 // A house with a Bakod has a fence round its yard.
 //   rows: [grass 1][main street 3][grass 1] then the lots, 5 rows each (3 for the house, 2 between)
+// Benches sit on the top and bottom grass rows, facing the main street and each band's street.
 
 const HOUSE = 3;
 const BAND = 8;
@@ -52,10 +53,18 @@ export function hoodMap(houses: number, fenced: Set<number> = new Set()): HoodMa
   const doors: HoodMap['doors'] = {};
   const fence: HoodMap['fence'] = [];
   const block = (c: number, r: number) => (blocked[r][c] = 1);
+  const bench = (id: string, c: number, r: number) => {
+    objects.push({ kind: 'prop', id, col: c, row: r, footprint: [1, 1] });
+    block(c, r);
+  };
 
   for (const r of MAIN) for (let c = 0; c < cols; c++) ground[r][c] = 'path';
   for (let b = 0; b < bands; b++) {
     const bx = ENTRANCE + b * BAND;
+    // Benches on the grass at the edges, facing the streets: two along the main street (their backs to the forest),
+    // one where the band's street ends.
+    for (const c of [bx + 1, bx + HOUSE + 2]) bench('bench-sw', c, 0);
+    bench('bench-ne', bx + HOUSE + 2, rows - 1);
     for (let r = MAIN[0]; r < rows - 1; r++) for (let c = bx + HOUSE + 1; c < bx + HOUSE + 4; c++) ground[r][c] = 'path';
     // A lamp in the yard after each lot, and bushes along the back strip.
     for (let i = 0; i < capacity(b); i++) {
