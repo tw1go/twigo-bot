@@ -46,6 +46,16 @@ export function areaUrl(to: 'hood' | 'town'): string {
   return url.pathname + url.search;
 }
 
+/** Whether this page came through a gate (?from=), without tidying it away. */
+export const viaGate = () => new URLSearchParams(location.search).has('from');
+
+/** This page is the neighbourhood from now on (?area=hood), so its gates know where they lead from. */
+export function markHood(): void {
+  const url = new URL(location.href);
+  url.searchParams.set('area', 'hood');
+  history.replaceState(null, '', url.pathname + url.search + url.hash);
+}
+
 /** Where you came from (?from=, set by a gate), read once: then tidied out of the address, so a reload starts fresh. */
 export function cameFrom(): 'hood' | 'town' | null {
   const url = new URL(location.href);

@@ -5,7 +5,7 @@ import { loadMe, loginProblem } from '../session';
 import { loadCursors } from '../ui/cursor';
 import { showLogin } from '../ui/login';
 import { loadHouseArt } from '../houses/art';
-import { currentArea } from '../net/hood';
+import { currentArea, markHood, viaGate } from '../net/hood';
 import { bootHood } from './HouseScene';
 
 // Loads the two source-of-truth files, then: not logged in → the login screen; logged in without a saved look or
@@ -45,6 +45,8 @@ export class BootScene extends Phaser.Scene {
       if (debug === 'wardrobe') return this.scene.start('wardrobe', { manifest });
       if (me?.status === 'anon') return showLogin(loginProblem());
       if (me?.status === 'ok' && (!me.me.outfit || !me.me.nickname)) return this.scene.start('create', { manifest, town, me });
+      // A fresh visit with a house of your own: the neighbourhood, at your door (not after a gate: it led to the town).
+      if (currentArea() === 'town' && !viaGate() && me?.status === 'ok' && me.me.house) markHood();
       // ?area=hood: the neighbourhood (members only; the town if it can't be reached).
       if (currentArea() === 'hood' && me?.status === 'ok') {
         void loadHouseArt(manifest).then(async (art) => (await bootHood(this, { manifest, town, me }, art)) || this.scene.start('town', { manifest, town, me }));

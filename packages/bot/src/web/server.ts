@@ -21,7 +21,7 @@ import { bailFromTown, townOutpost } from './town-outpost.js';
 import { digInTown, townDigItems } from './town-mine.js';
 import { gambleInTown } from './town-casino.js';
 import { parlorAction, townParlor } from './town-parlor.js';
-import { hoodAction, hoodTownMap, parseHouseLook, saveHouse, townHood } from './hood.js';
+import { hoodAction, hoodTownMap, houseOf, parseHouseLook, saveHouse, townHood } from './hood.js';
 import { flexInTown, sellInTown, sellManyInTown, townInventory } from './town-bag.js';
 import { boardAction, townBoard } from './town-board.js';
 import { townNews } from './town-news.js';
@@ -205,7 +205,7 @@ async function me(client: Client, req: IncomingMessage, res: ServerResponse): Pr
     const item = ITEM_BY_ID.get(id)!;
     return { id, name: item.name, emoji: item.emoji, rarity: item.rarity, count };
   });
-  const body: MeResponse = { id: userId, name, avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items, preregistered: isPreregistered(userId), outfit: getOutfit(userId), nickname: getNickname(userId), title: titleOf(userId), newTitle: newTitle(userId), status: await statusOf(client, userId),
+  const body: MeResponse = { id: userId, name, avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items, preregistered: isPreregistered(userId), house: !!houseOf(userId), outfit: getOutfit(userId), nickname: getNickname(userId), title: titleOf(userId), newTitle: newTitle(userId), status: await statusOf(client, userId),
     dig: digStatus(userId) };
   send(res, 200, JSON.stringify(body));
 }

@@ -70,6 +70,8 @@ export interface MeResponse {
   items: MeItem[];
   /** Signed up for the launch reward (see `/prereg`). */
   preregistered: boolean;
+  /** Has a house in the neighbourhood (the game starts there, at its door). */
+  house?: boolean;
   /** Their saved character look, or null if they haven't made one. */
   outfit: OutfitData | null;
   /** Their nickname in the web game (`PUT /nickname`), or null if they haven't picked one. */

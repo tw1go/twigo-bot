@@ -301,6 +301,10 @@ export class TownScene extends Phaser.Scene {
     const from = cameFrom();
     const arrive = from ? this.map.arrive?.[from] : undefined;
     if (arrive) this.player.place({ col: arrive[0], row: arrive[1] }, 'nw');
+    // A fresh visit to the neighbourhood with a house there: at your door, facing the street.
+    const mine = !from && this.hood?.houses.find((h) => h.mine);
+    const door = mine && this.map.doors[`house-${mine.lot}`];
+    if (door && !Array.isArray(door[0])) this.player.place({ col: door[0] as number, row: door[1] as number }, 'se');
     this.others = new OtherPlayers(this, this.M, this.objects, (obj) => this.tint >= 0 && obj.setTint(this.tint));
 
     this.setupCamera(bounds);

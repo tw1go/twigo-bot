@@ -188,6 +188,9 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   vault; `web/richest.ts`, kv 'richest', tested): checked 2 s after any Kowens change and at startup; the first time ever
   it's the pop-up (`new-title` message live, or `/me` newTitle), not worn automatically; losing #1 drops it (wearers show
   Townfolk). Automatic titles can't be given (/gift title, CMS) or removed. Dev: `/__title?as=Alice`.
+- Where you start: a fresh visit (no `?from=`) with a house (`/me` house) goes to the neighbourhood at your door
+  (BootScene marks `?area=hood`); without one, the town's spawn, in front of the plaza fountain. Through a gate you arrive
+  at its way in (`arrive`). Dev: `&house=1`.
 - Neighbourhood (`?area=hood`, a page of its own: BootScene → `scenes/HouseScene.ts` (build a house first, free:
   `ui/house-creator.ts`, the creator's box) → TownScene with the bot's generated map (`net/hood.ts` `hoodTownMap`; the
   town's forest, no river). Bot `web/hood-map.ts` (pure, tested: bands of 5 and 4 houses down the map, each facing east onto

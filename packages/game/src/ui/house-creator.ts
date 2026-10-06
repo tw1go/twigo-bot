@@ -1,10 +1,11 @@
 import type { HouseLook } from '@mikazuki/shared';
 import { type HouseArt, comboLook, houseStyles, swatchKind, swatchShades, tidyLook } from '../houses/art';
+import { toast } from './toast';
 
 // 🏠 The house creator: the character creator's box (same look, #creator) with the house on the left and the choices
 // on the right: the house type, a colour scheme (the art's combos), then a swatch per part. First time in the
 // neighbourhood it builds your house (free); later, from your house's menu, it gives it a new look (costs Kowens; ×,
-// Escape or a click outside closes it). DOM text only.
+// Escape or a click outside closes it, and so does saving). DOM text only.
 
 export interface HouseCreatorHooks {
   art: HouseArt;
@@ -158,7 +159,8 @@ export function mountHouseCreator(h: HouseCreatorHooks): void {
     if (r.ok) {
       Object.assign(saved, { style: look.style, colours: { ...look.colours } });
       if (building) return shut(); // the neighbourhood takes over
-      h.kowens -= h.cost;
+      toast(r.message, 3000, 'good'); // a new look: done, and back to the town
+      return shut();
     }
     refresh();
   });
