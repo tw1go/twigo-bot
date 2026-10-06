@@ -28,6 +28,7 @@ import { puffHouse, riseHouse, sinkHouse } from '../world/house-rise';
 import { ChatBox } from '../ui/chat';
 import { StayReward } from '../ui/stay';
 import { MegaphoneBanner } from '../ui/megaphone';
+import { playTitleCard, titleCardMs } from '../ui/title-card';
 import { SystemFeed } from '../ui/system-feed';
 import { announce } from '../ui/announce';
 import { OnlineList } from '../ui/online';
@@ -79,6 +80,8 @@ const BIG_SCREEN = [2560, 1440];
  *  middle zoom. */
 const INTRO_ZOOM = 8;
 const INTRO_MS = 1600;
+/** The zoom-out lands this long before the title card is gone (as its letters swell open). */
+const TITLE_LANDS_EARLY_MS = 500;
 /** From a standstill, a direction key held shorter than this only turns the player. */
 const TURN_HOLD_MS = 150;
 const FADE_MS = 1100;
@@ -93,7 +96,7 @@ const TWIGO_ROOM_URL = 'https://tw1go.github.io';
 /** Each building's name (shown over it and in door messages). twigo's house leads back to twigo's room; the other
  *  doors are hooks to fill in later. */
 const BUILDINGS: Record<string, string> = {
-  'rewards-shop': 'Rewards shop',
+  'sari-sari-store': 'Sari-sari store',
   parlor: 'Parlor',
   bank: 'Bank',
   casino: 'Casino',
@@ -343,7 +346,7 @@ export class TownScene extends Phaser.Scene {
     const yours = built && this.objects.buildings.find((b) => b.id === `house-${built.lot}`);
     if (yours) {
       sinkHouse(yours);
-      this.time.delayedCall(INTRO_MS + 300, () => void riseHouse(this.fx(), yours));
+      this.time.delayedCall(titleCardMs() + 300, () => void riseHouse(this.fx(), yours)); // once the title card has opened
     }
     // Members show their nickname and title; without a login (login off, or the dev server) it's "Guest".
     const member = this.me?.status === 'ok' ? this.me.me : null;
@@ -581,7 +584,7 @@ export class TownScene extends Phaser.Scene {
           const left = Math.max(1, Math.ceil(((m.until ?? Date.now()) - Date.now()) / 60_000));
           return chat.notice(`You're muted in town chat for about ${left} more minute${left === 1 ? '' : 's'}.`);
         }
-        if (m.reason === 'megaphone') return chat.notice('You have no megaphones. Get one at the rewards shop (1 Kowen), or /g for general chat.');
+        if (m.reason === 'megaphone') return chat.notice('You have no megaphones. Get one at the sari-sari store (1 Kowen), or /g for general chat.');
         return chat.notice(m.reason === 'slow' ? "You're chatting a bit fast. Wait a moment." : "That message can't be sent.");
       }
       if (m.t === 'say') {
@@ -746,6 +749,8 @@ export class TownScene extends Phaser.Scene {
   /** Arriving: fade in from black, starting close on the player and easing out to the chosen zoom (skipped with
    *  reduced motion). */
   private zoomIntro(): void {
+    // The title card over it all: the area's name, the world pulling back inside the letters (ui/title-card.ts).
+    void playTitleCard(this.hood ? 'Neighbourhood' : 'Mikazuki');
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const cam = this.cameras.main;
     const p = this.player.sprite;
@@ -757,8 +762,8 @@ export class TownScene extends Phaser.Scene {
     this.intro = this.tweens.add({
       targets: cam,
       zoom: ZOOMS[this.zoomIndex],
-      duration: INTRO_MS,
-      ease: 'Cubic.easeInOut',
+      duration: Math.max(INTRO_MS, titleCardMs() - TITLE_LANDS_EARLY_MS), // landing as the letters swell open
+      ease: 'Sine.easeInOut',
       onUpdate: centre,
       onComplete: () => {
         this.intro = null;
@@ -1186,7 +1191,7 @@ export class TownScene extends Phaser.Scene {
     if (b.id === 'bank') return showBank();
     if (b.id === 'tanod-outpost') return showOutpost();
     if (b.id === 'notice-board') return showBoard();
-    if (b.id === 'rewards-shop') return showShop();
+    if (b.id === 'sari-sari-store') return showShop();
     if (b.id === 'parlor') return this.openParlor();
     const house = this.houseFor(b.id);
     if (house) return void this.openHouse(house);

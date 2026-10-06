@@ -131,6 +131,7 @@ const CREDITS: { heading: string; lines: [string, string, string?][] }[] = [
     lines: [
       ['Pixelify Sans by The Pixelify Sans Project Authors', 'SIL OFL 1.1', 'https://github.com/eifetx/Pixelify-Sans'],
       ['Jersey 10 by The Soft Type Project Authors', 'SIL OFL 1.1', 'https://github.com/scfried/soft-type-jersey'],
+      ['Marcellus SC by Brian J. Bonislawsky (Astigmatic)', 'SIL OFL 1.1', 'https://fonts.google.com/specimen/Marcellus+SC'],
     ],
   },
 ];

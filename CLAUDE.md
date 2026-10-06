@@ -88,6 +88,12 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
 - Numbers are Jersey 10 (`assets/font/Jersey_10`, OFL): an `@font-face 'Mk Numbers'` limited to the digits (unicode-range
   U+0030-0039) first in every font stack (`--ui-font`, `UI_FONT`, the arena's `FONT`, the leaderboard canvas), so only
   digits switch; BootScene waits for it with Pixelify Sans.
+- Opening title card (`ui/title-card.ts`, on every town load: logging in and arriving through a gate): a black canvas
+  over the page with the area's name ("MIKAZUKI", "NEIGHBOURHOOD"; a line per "\n" if one is ever wanted, all lines the same letter height) cut out in Marcellus SC (`assets/font/Marcellus_SC`,
+  OFL; no bold cut, so the letters are thickened with their own outline), capitals up to 90% of the screen tall,
+  condensed to fit but never under 50% of their width, with grit specks in them; the world shows through while the
+  opening zoom-out (stretched to the card) pulls back, then the black fades out. The page's UI is hidden meanwhile
+  (body.title-on) and fades back in with the black. Reduced motion: the name for a moment, then a fade.
 - Town text (`ui/labels.ts`): each character's white name + `<Title>` in the title's colour ('prismatic' = drifting
   rainbow; list in the bot's `web/titles.ts`), and building names that fade up on hover. Drawn
   over everything, never at less than 3 screen px per art px. Zoom is 2×–4×.
@@ -189,13 +195,13 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   tabs), Vault (store/take out), Loan (pay / pay all, or borrow from the Tanod Bank; loans you gave); bot `GET/POST /town/bank` (`web/town-bank.ts`, same stores and rules as `/vault`
   and `/loan`; town borrowing is posted in the games channel). Lending to members stays in Discord. Dev: a pretend
   bank (`&vault=0`, `&loan=1`).
-- Rewards shop (`ui/shop.ts`, left click the shop): what `/redeem` sells, tabs Items / Potions / Bags / Passes, a grid
+- Sari-sari store (`ui/shop.ts`, building id `sari-sari-store`, was the rewards shop; left click the store): what `/redeem` sells, tabs Items / Potions / Bags / Passes, a grid
   of item art (manifest `items`, keyed by reward id; dug-up items there too) with a quantity stepper for stackables and
   a second press to confirm passes. Bot `GET/POST /town/shop` (`web/town-shop.ts`); `/redeem` and the shop share
   `games/redeem.ts` (checks + purchase, the public Discord post `redeemPost`, the feed line). Passes are for testers only
   (the Tester role, `GAME_TESTER_ROLE_ID`, `games/testers.ts`; the shop marks them "Testers"; dev `&tester=0`). Passes ping the reward
   owner like `/redeem`. Dev: a pretend shop.
-- Parlor (`ui/parlor.ts`, left click the parlor, north of the rewards shop; door (34,9)): the creator's box over the dimmed
+- Parlor (`ui/parlor.ts`, left click the parlor, north of the sari-sari store; door (34,9)): the creator's box over the dimmed
   town (`mountCreator` with `parlor` hooks: no nickname; ×/Escape/click outside closes), the character on the left, tabs on
   the right: Appearance (the creator's choices; "Save look · 3 Kowens" only once it differs) and Title (your titles as
   2-column cards with their CMS description; hover/focus floats it in `.cr-info`; showing another is free). Bot
@@ -207,10 +213,12 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   vault; `web/richest.ts`, kv 'richest', tested): checked 2 s after any Kowens change and at startup; the first time ever
   it's the pop-up (`new-title` message live, or `/me` newTitle), not worn automatically; losing #1 drops it (wearers show
   Townfolk). Automatic titles can't be given (/gift title, CMS) or removed. Dev: `/__title?as=Alice`.
-- Where you start: a fresh visit (no `?from=`) with a house (`/me` house) goes to the neighbourhood at your door
-  (BootScene marks `?area=hood`); without one, the town's spawn, in front of the plaza fountain. Through a gate you arrive
+- Where you start: a fresh visit (a new tab: no `?from=`, nothing remembered) with a house (`/me` house) goes to the
+  neighbourhood at your door (BootScene `markHood`); without one, the town's spawn, in front of the plaza fountain. A
+  reload stays in the area you were in: the tab remembers it (sessionStorage `mk_area`, `net/hood.ts` resolveArea), so
+  the address stays plain `/play/` (a gate's `?area=hood` and `?from=` are read once and tidied away). Through a gate you arrive
   at its way in (`arrive`). Dev: `&house=1`.
-- Neighbourhood (`?area=hood`, a page of its own: BootScene → `scenes/HouseScene.ts` (build a house first, free:
+- Neighbourhood (a page of its own, reached with `?area=hood` then tidied out of the address: BootScene → `scenes/HouseScene.ts` (build a house first, free:
   `ui/house-creator.ts`, the creator's box) → TownScene with the bot's generated map (`net/hood.ts` `hoodTownMap`; the
   town's forest, no river). Bot `web/hood-map.ts` (pure, tested: bands of 5 and 4 houses down the map, each facing east onto
   its street, a main street across the top whose west end goes back to town; benches on the top grass row facing the main
