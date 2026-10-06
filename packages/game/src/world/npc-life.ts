@@ -47,7 +47,7 @@ interface Npc {
   busyUntil: number;
   talking: boolean;
   /** In the Mosang race (world/race-track.ts): her lane, her next warm-up at the line, the stop she's in, cheered. */
-  racing: { lane: number; warmAt: number; stop: TownRaceStop | null; cheered: boolean } | null;
+  racing: { lane: number; warmAt: number; stop: TownRaceStop | null; gotUp: boolean; cheered: boolean } | null;
 }
 
 /** How close you must be to talk (further: the scene walks you over first). */
@@ -61,6 +61,8 @@ const GOSSIP_EVERY: [number, number] = [30_000, 60_000];
 /** Two Alings this close (tiles) are gossiping: the murmur plays near them. */
 const GOSSIP_PAIR = 4;
 const EMOTE_MS = 800; // 8 frames at 10 fps
+/** A fallen racer starts getting up this long before her stop ends (the 'getup' art: 6 frames at 10 fps). */
+const GETUP_MS = 600;
 const between = ([a, b]: [number, number]) => a + Math.random() * (b - a);
 const dist = (a: Tile, b: Tile) => Math.max(Math.abs(a.col - b.col), Math.abs(a.row - b.row));
 const key = (t: Tile) => `${t.col},${t.row}`;
@@ -248,7 +250,7 @@ export class NpcLife {
     r.runners.forEach((id, lane) => {
       const npc = this.npcs.find((n) => n.place.id === id);
       if (!npc) return;
-      npc.racing = { lane, warmAt: 0, stop: null, cheered: false };
+      npc.racing = { lane, warmAt: 0, stop: null, gotUp: false, cheered: false };
       npc.dest = null;
     });
   }
@@ -258,8 +260,15 @@ export class NpcLife {
     if (!this.lanes[lane]) {
       const [s, f] = [RACE_START[lane % RACE_START.length], RACE_FINISH[lane % RACE_FINISH.length]];
       const start = { col: s[0], row: s[1] };
-      const finish = { col: f[0], row: f[1] };
-      this.lanes[lane] = this.w.grid.findPath(start, finish) ?? [start, finish];
+      let finish = { col: f[0], row: f[1] };
+      let path = this.w.grid.findPath(start, finish);
+      if (!path) {
+        // A blocked or walled-off tile: the nearest one she can reach (never a straight line through the town).
+        console.warn(`[race] lane ${lane}: no way from ${key(start)} to ${key(finish)}; using the nearest reachable finish`);
+        finish = this.w.grid.nearestReachable(start, finish) ?? start;
+        path = this.w.grid.findPath(start, finish);
+      }
+      this.lanes[lane] = path ?? [start];
     }
     return this.lanes[lane];
   }
@@ -296,26 +305,32 @@ export class NpcLife {
     // Off: where the script has her now, along her lane.
     const lane = r.run.lanes[run.lane];
     if (!lane) return;
-    const { at, stop } = laneAt(lane, t - r.closesAt);
+    const { at, stop, stopLeft } = laneAt(lane, t - r.closesAt);
     const pos = at * (path.length - 1);
     const i = Math.min(path.length - 1, Math.floor(pos));
     const a = path[i];
     const b = path[Math.min(path.length - 1, i + 1)];
     const k = pos - i;
     const dir = a.col !== b.col || a.row !== b.row ? dirForStep(b.col - a.col, b.row - a.row) : 'se';
+    npc.char.pose(a.col + 0.5 + (b.col - a.col) * k, a.row + 0.5 + (b.row - a.row) * k, dir, !stop && at < 1);
     if (stop !== run.stop) {
       if (run.stop?.kind === 'fall') npc.char.tip(false);
       run.stop = stop;
+      run.gotUp = false;
       if (stop) {
         const lines = STOP_LINES[stop.kind];
         if (this.w.bubbles) npc.char.say(lines[stop.line % lines.length], this.w.bubbles);
+        // Arthritis and asthma: she sits down on the road (with the art: npc sheets 'sit'); a fall: she falls (with
+        // 'fall', else she tips over) in a puff of dust.
+        if (stop.kind === 'arthritis' || stop.kind === 'asthma') npc.char.hold('sit');
         if (stop.kind === 'fall') {
-          npc.char.tip(true);
+          if (!npc.char.hold('fall')) npc.char.tip(true);
           npc.char.dust();
         }
       }
     }
-    npc.char.pose(a.col + 0.5 + (b.col - a.col) * k, a.row + 0.5 + (b.row - a.row) * k, dir, !stop && at < 1);
+    // Back on her feet before she carries on: 'getup' (with the art) as the fall's stop runs out.
+    if (stop?.kind === 'fall' && !run.gotUp && stopLeft <= GETUP_MS) run.gotUp = npc.char.hold('getup');
     // Over the line: the winner cheers once it's called.
     const won = run.lane === r.run.winner || run.lane === r.run.tie;
     if (at >= 1 && won && t >= r.run.endsAt && !run.cheered) {

@@ -222,6 +222,16 @@ export class Character {
     this.sync();
   }
 
+  /** Plays an animation and stays in it (a loop, or the last frame of a one-off) until she walks or is set to idle
+   *  (an NPC racer sitting down, falling, getting up). False if there's no such animation for her. */
+  hold(anim: string): boolean {
+    const key = this.keyFor(anim, this.dir);
+    if (!this.scene.anims.exists(key)) return false;
+    this.path = [];
+    this.play(anim);
+    return true;
+  }
+
   /** Tipped over on the ground (a fall: there's no fall art, so the sprite lies on its side), or back up. */
   tip(on: boolean): void {
     this.sprite.setAngle(on ? (this.dir === 'w' || this.dir === 'sw' || this.dir === 'nw' ? 90 : -90) : 0);
