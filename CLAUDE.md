@@ -254,7 +254,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   `net/race.ts` (the bot's clock). Runners (world/npc-life.ts race mode) walk to their lane on the start line
   (`world/race-track.ts`: west end of the main road → just before the bridge; lines per stop kind; the game's laneAt
   copy), warm up, then follow the script (pose per frame, a stop's line in a bubble); the
-  winner is called in the megaphone banner. Arthritis/asthma stops play the Alings' `sit`, falls `fall` (held) then
+  race's opening and its winner are called in the megaphone banner (`TownScene.raceNews`, town and neighbourhood). Arthritis/asthma stops play the Alings' `sit`, falls `fall` (held) then
   `getup` (manifest npcs, Alings only; SE/SW from the PixelLab reference, the rest script-built in mikazuki-assets). Race box beside the jackpot counter (`ui/race-box.ts`), bet pop-up
   (`ui/race-bet.ts`, `POST /town/race bet`). Dev: a pretend race in the dev server, `&race=fast` (20 s of betting) or `&race=now` (3 s),
   `__town.race()`.

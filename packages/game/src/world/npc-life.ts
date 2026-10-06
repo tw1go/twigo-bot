@@ -89,8 +89,6 @@ export interface NpcWorld {
   bubbles: BubbleArt | null;
   /** An asset's URL (for the portrait in the dialog box). */
   asset: (file: string) => string;
-  /** The race is won: the megaphone-style banner (a tie: two names). */
-  announce: (winner: string, tie: string | null) => void;
 }
 
 export class NpcLife {
@@ -100,7 +98,6 @@ export class NpcLife {
   /** The race the runners are in, and each lane's way from the start line to the finish. */
   private raceId: string | null = null;
   private lanes: Tile[][] = [];
-  private announced: string | null = null;
   /** Who's saying the line in the bubble (her murmur plays meanwhile). */
   private bubbleBy: Npc | null = null;
 
@@ -224,7 +221,6 @@ export class NpcLife {
     }
     this.gossip(now);
     this.murmur(now);
-    this.announceWinner();
   }
 
   // ── The Mosang race ──
@@ -338,15 +334,6 @@ export class NpcLife {
       run.cheered = true;
       this.emote(npc, 'cheer');
     }
-  }
-
-  /** The race is won (on the bot's clock): the banner, once. */
-  private announceWinner(): void {
-    const r = race();
-    if (!r?.run || r.id === this.announced || raceNow() < r.run.endsAt) return;
-    this.announced = r.id;
-    const name = (id: string | undefined) => (id ? (this.npcs.find((n) => n.place.id === id)?.text.name ?? id) : null);
-    this.w.announce(name(r.runners[r.run.winner])!, r.run.tie >= 0 ? name(r.runners[r.run.tie]) : null);
   }
 
   /** The gossip murmur: as loud as the nearest gossiping Aling is near you (gossiping: another Aling within

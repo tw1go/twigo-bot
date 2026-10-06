@@ -378,7 +378,7 @@ export class TownScene extends Phaser.Scene {
       }
     }
     this.others.update(delta);
-    if (!this.npcs) this.raceWinnerHere();
+    this.raceNews();
     if (this.npcs) {
       const me = this.player.tile;
       this.npcs.update(delta, [me, ...this.others.players.map((p) => ({ col: p.col, row: p.row }))]);
@@ -999,27 +999,34 @@ export class TownScene extends Phaser.Scene {
     const box = this.M.ui.chatWindow;
     const frame = this.M.ui.inventory?.itemFrame;
     setNpcDialogArt({ box: box ? { url: asset(box.file), slice: box.nineSlice } : null, frame: frame ? { url: asset(frame.file), slice: frame.nineSlice } : null });
-    const announce = (winner: string, tie: string | null) => {
-      this.banner().show('🏁 Mosang race', tie ? `Photo finish! ${winner} and ${tie} win!` : `${winner} wins!`);
-      playSound('casino-win');
-    };
-    const life = new NpcLife({ scene: this, M: this.M, grid: this.grid, objects: this.objects, avoid, onSpawn: (obj) => this.tint >= 0 && obj.setTint(this.tint), bubbles, asset, announce });
+    const life = new NpcLife({ scene: this, M: this.M, grid: this.grid, objects: this.objects, avoid, onSpawn: (obj) => this.tint >= 0 && obj.setTint(this.tint), bubbles, asset });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => closeNpcDialog());
     return life;
   }
 
   private megaphone: MegaphoneBanner | null = null;
+  private raceOpened: string | null = null;
   private raceCalled: string | null = null;
 
-  /** Where there are no NPCs (the neighbourhood), the Mosang race's winner is still called in the banner. */
-  private raceWinnerHere(): void {
+  /** The Mosang race in the megaphone banner, in town and the neighbourhood alike: once when it opens (while bets
+   *  are still open), once when it's won. */
+  private raceNews(): void {
     const r = currentRace();
-    if (!r?.run || r.id === this.raceCalled || raceNow() < r.run.endsAt) return;
-    this.raceCalled = r.id;
-    const tie = r.run.tie >= 0 ? mosangName(r.runners[r.run.tie]) : null;
-    const winner = mosangName(r.runners[r.run.winner]);
-    this.banner().show('🏁 Mosang race', tie ? `Photo finish! ${winner} and ${tie} win!` : `${winner} wins!`);
-    playSound('casino-win');
+    if (!r) return;
+    const now = raceNow();
+    if (r.id !== this.raceOpened && !r.run && now < r.closesAt) {
+      this.raceOpened = r.id;
+      const mins = Math.max(1, Math.round((r.closesAt - now) / 60_000));
+      this.banner().show('🏁 Mosang race', `${r.startedBy} started a race! Bet on a Mosang in the race box (top right): bets close in ${mins} ${mins === 1 ? 'minute' : 'minutes'}.`);
+      playSound('chip');
+    }
+    if (r.run && r.id !== this.raceCalled && now >= r.run.endsAt) {
+      this.raceCalled = r.id;
+      const tie = r.run.tie >= 0 ? mosangName(r.runners[r.run.tie]) : null;
+      const winner = mosangName(r.runners[r.run.winner]);
+      this.banner().show('🏁 Mosang race', tie ? `Photo finish! ${winner} and ${tie} win!` : `${winner} wins!`);
+      playSound('casino-win');
+    }
   }
 
   /** The megaphone banner (megaphone messages, the Mosang race's winner): one at a time, made once. */
