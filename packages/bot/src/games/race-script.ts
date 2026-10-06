@@ -60,7 +60,7 @@ export function raceScript(lanes = LANES): { lanes: TownRaceLane[]; winner: numb
   let tie = -1;
   if (lanes > 1 && Math.random() < PHOTO_FINISH_CHANCE) {
     tie = (winner + 1 + Math.floor(Math.random() * (lanes - 1))) % lanes;
-    script[tie] = { speed: 1000 / ms, stops: [] }; // a clean run, crossing the line with her
+    script[tie] = { speed: 1000 / (ms + 1e-6), stops: [] }; // a clean run, crossing the line with her (never a hair ahead)
   }
   return { lanes: script, winner, tie, ms };
 }

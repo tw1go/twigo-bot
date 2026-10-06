@@ -22,7 +22,7 @@ test('the race script: the first over the line wins, and the town and Discord re
     const times = s.lanes.map(finishMs);
     assert.equal(s.ms, Math.min(...times));
     assert.equal(times[s.winner], s.ms);
-    if (s.tie >= 0) assert.ok(Math.abs(times[s.tie] - s.ms) < 1e-6, 'a photo finish crosses together');
+    if (s.tie >= 0) assert.ok(times[s.tie] >= s.ms && times[s.tie] - s.ms < 1e-3, 'a photo finish crosses together (never a hair ahead)');
     for (const l of s.lanes) {
       // Starts at 0, never goes back, reaches the line exactly at its finish time.
       let last = 0;
