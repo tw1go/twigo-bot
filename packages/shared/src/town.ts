@@ -167,6 +167,16 @@ export interface TownStayInfo {
   /** Voice chat in Discord pays too (1 Kowen per `every` minutes, up to `max` a day): earned today and the minutes toward
    *  the next. Only in GET /town/stay (the `stay` messages leave it out). */
   voice?: { earned: number; max: number; minutes: number; every: number };
+  /** The daily Kowens (/get-kowens): claimed today or not, and how many they are today. Only in GET /town/stay. */
+  daily?: TownDailyInfo;
 }
 
 export type TownStayClaim = { ok: true; kowens: number; stay: TownStayInfo } | { ok: false; error: string };
+
+export interface TownDailyInfo {
+  claimed: boolean;
+  amount: number;
+}
+
+/** POST /town/daily: the daily Kowens claimed (`kowens` = the balance after; `christmas` = doubled today). */
+export type TownDailyClaim = { ok: true; amount: number; kowens: number; christmas: boolean } | { ok: false; error: string };

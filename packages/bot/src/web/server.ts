@@ -26,7 +26,7 @@ import { flexInTown, sellInTown, sellManyInTown, townInventory } from './town-ba
 import { boardAction, townBoard } from './town-board.js';
 import { townNews } from './town-news.js';
 import { useMegaphone } from '../items/megaphone.js';
-import { claimStay, stayInfo, stayMinute } from './town-stay.js';
+import { claimDaily, claimStay, dailyInfo, stayInfo, stayMinute } from './town-stay.js';
 import { arenaBets, refundHeldBets } from './town-arena-bets.js';
 import { kowen } from '../kowens.js';
 import { filterText, kickedUntil, mutedUntil } from './town-mod.js';
@@ -78,7 +78,8 @@ import { type CmsDeps, cms } from './cms.js';
 //   POST /town/hood     { action: steal|key|kalawang, lot } rob a house (/steal's rules) or rust its Bakod (from the game's page only; members)
 //   GET  /town/parlor   the Parlor: the viewer's look, Kowens, and the titles they have (members)
 //   POST /town/parlor   { action: look, outfit } (3 Kowens) | { action: title, id } (free) (from the game's page only; members)
-//   GET  /town/stay     staying in town (a Kowen every 15 min, claimed) and voice chat today (members); POST claims one
+//   GET  /town/stay     staying in town (a Kowen every 15 min, claimed), voice chat and the daily Kowens today (members); POST claims one
+//   POST /town/daily    claim the daily Kowens, as /get-kowens (from the game's page only; members)
 //   GET  /town/dig-items  the Mine's tier list: what digs can turn up, by rarity, with the odds (members)
 //   POST /town/dig      dig at the Mine (/dig's rules; from the game's page only; members)
 //   POST /title/seen    { id? } the game showed the member their new title (from the game's page only)
@@ -595,7 +596,15 @@ export function startWebServer(client: Client): void {
         if (!userId) return send(res, 401, '{"error":"not logged in"}');
         if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
         const voice = { earned: voiceCreditsToday(userId), max: VOICE_DAILY_CAP, minutes: voiceProgress(userId), every: VOICE_MINUTES_PER_CREDIT };
-        return send(res, 200, JSON.stringify(req.method === 'GET' ? { ...stayInfo(userId), voice } : claimStay(userId)));
+        return send(res, 200, JSON.stringify(req.method === 'GET' ? { ...stayInfo(userId), voice, daily: dailyInfo(userId) } : claimStay(userId)));
+      }
+      if (req.method === 'POST' && path === '/town/daily') {
+        if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
+        if (!fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
+        const userId = sessionUser(req);
+        if (!userId) return send(res, 401, '{"error":"not logged in"}');
+        if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
+        return send(res, 200, JSON.stringify(claimDaily(userId)));
       }
       if (req.method === 'GET' && path === '/town/dig-items') {
         if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');

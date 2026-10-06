@@ -70,7 +70,7 @@ Lines never repeat until every line has been used, even across restarts (progres
 `/diss`, `/praise` and `/judge` (`user:@someone`, or empty for yourself) — roast, praise, or let the Tanod pick at random.
 Lines don't repeat until all are used, across all three commands.
 Each use on someone else costs 1 Kowen. Ways to get Kowens:
-- `/get-kowens` — 5 per day (resets at midnight in `TIMEZONE`; unused Kowens carry over)
+- `/get-kowens` — 5 per day (resets at midnight in `TIMEZONE`; unused Kowens carry over); also claimable in the web town
 - Voice chat — 1 per 15 minutes, **max 12 per day** (needs 2+ people in the channel, not deafened, not the AFK channel; see `src/credits/voice.ts`)
 - Staying in the web town — 1 per 15 minutes there, **max 20 per day**, each claimed from a pop-up above the town's system
   feed; the count to the next waits until it's claimed (`src/web/town-stay.ts`)

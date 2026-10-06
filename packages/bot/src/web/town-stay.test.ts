@@ -13,8 +13,8 @@ for (const name of ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'ADMIN_ROLE_ID', 'ADMI
   'GAMBLING_CHANNEL_ID', 'GAMES_CHANNEL_ID', 'JAIL_ROLE_ID', 'REWARD_OWNER_ID', 'ROOM_FINDS_CHANNEL_ID']) process.env[name] = 'test';
 process.env.TIMEZONE = 'Asia/Manila';
 
-const { STAY_DAILY_CAP, STAY_MINUTES, claimStay, stayInfo, stayMinute } = await import('./town-stay.js');
-const { balance } = await import('../credits/store.js');
+const { STAY_DAILY_CAP, STAY_MINUTES, claimDaily, claimStay, dailyInfo, stayInfo, stayMinute } = await import('./town-stay.js');
+const { balance, claim, dailyAmount } = await import('../credits/store.js');
 const { closeDatabase } = await import('../db/db.js');
 
 test('a Kowen every 15 minutes in town: ready, waits until claimed, then the next starts; 20 a day', () => {
@@ -35,6 +35,18 @@ test('a Kowen every 15 minutes in town: ready, waits until claimed, then the nex
   assert.equal(balance('a'), STAY_DAILY_CAP);
   for (let i = 0; i < STAY_MINUTES * 2; i++) assert.deepEqual(stayMinute(['a']), []);
   assert.deepEqual(stayInfo('a'), { ready: false, minutes: 0, every: STAY_MINUTES, claimed: STAY_DAILY_CAP, max: STAY_DAILY_CAP });
+});
+
+test('the daily Kowens in town are /get-kowens: once a day, whichever comes first', () => {
+  assert.deepEqual(dailyInfo('c'), { claimed: false, amount: dailyAmount() });
+  const c = claimDaily('c');
+  assert.ok(c.ok && c.amount === dailyAmount() && c.kowens === dailyAmount());
+  assert.equal(claimDaily('c').ok, false); // only once
+  assert.equal(dailyInfo('c').claimed, true);
+  assert.equal(claim('c'), null); // and /get-kowens knows
+  claim('d'); // claimed in Discord first
+  assert.equal(claimDaily('d').ok, false);
+  assert.equal(balance('d'), dailyAmount());
 });
 
 test.after(() => {

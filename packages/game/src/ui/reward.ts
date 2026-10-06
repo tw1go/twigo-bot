@@ -67,9 +67,15 @@ export function coinIcon(z: number): HTMLElement {
   return coin;
 }
 
+/** Until the white frame is ready, pop-ups wait for it (only ones opened as the town loads), so none shows dark. */
+let framing: Promise<unknown> | null = null;
+
 export function setRewardArt(a: RewardArt): void {
   art = a;
-  if (a.frame) void whiteFrame(a.frame.url).then((url) => url && art.frame && (art.frame = { ...art.frame, url }));
+  if (!a.frame) return;
+  framing = whiteFrame(a.frame.url)
+    .then((url) => url && art.frame && (art.frame = { ...art.frame, url }))
+    .finally(() => (framing = null));
 }
 
 /** The item frame with its dark fill (the colour at its centre) painted white, for the white pop-up. */
@@ -112,7 +118,10 @@ export function showReward(reward: Reward): Promise<void> {
 export function showPopup(popup: Popup): Promise<void> {
   return new Promise((done) => {
     queue.push({ popup, done });
-    if (!showing) next();
+    if (showing) return;
+    if (!framing) return next();
+    showing = true;
+    void framing.then(() => next());
   });
 }
 

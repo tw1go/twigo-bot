@@ -116,8 +116,12 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   town (`Town.here()`) every 60 s and sends `stay` when one is ready). Ready → a gold-edged pop-up with Claim (`POST
   /town/stay`); the count to the next waits until it's claimed; between, a faint "next Kowen in N min · n/20 today"
   line. Under it, voice chat: the Kowens Discord voice can still pay today ("N Kowens left today · next after M min in
-  voice", n/12; GET /town/stay's `voice`, fetched again each minute). Dev: pretend (ready a minute in; `&stay=ready`;
-  `&voice=N` earned).
+  voice", n/12; GET /town/stay's `voice`, fetched again each minute). Last, the daily Kowens (`/get-kowens` in town: GET
+  /town/stay's `daily`, `POST /town/daily` = the same `claim()`, once a day wherever first; `claimDaily` in town-stay.ts,
+  tested): a gold "Daily Kowens: +5 · Claim" line until claimed, and on the day's first visit (per browser, localStorage
+  `mk_daily_offer`) a pop-up offering them (Claim / Later); claiming shows the Kowens reward pop-up. Dev: pretend (ready a
+  minute in; `&stay=ready`; `&voice=N` earned; `&daily=claimed`).
+  Pop-ups opened while the town loads wait for the white frame (`setRewardArt`'s repaint), so none shows dark.
 - Movement tutorial (`ui/tutorial.ts`, in the reward box via `showPopup`): shown when a member walks into town
   straight from the creator (their first visit). Dev: `?tutorial=1`.
 - Reward pop-up (`ui/reward.ts`, `showReward`): dimmed town, turning rays, white box in the item frame (its fill

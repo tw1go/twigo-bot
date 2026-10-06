@@ -464,6 +464,14 @@
       #stay .st-claim:disabled { opacity: 0.6; animation: none; }
       @keyframes st-pop { from { transform: translateY(12px) scale(0.9); opacity: 0; } }
       @keyframes st-nudge { 0%, 70%, 100% { transform: none; } 80% { transform: translateY(-2px); } 90% { transform: translateY(1px); } }
+      /* The daily Kowens (/get-kowens), the stay box's last line: a gold Claim until they're claimed today; the pop-up
+         offering them on the day's first visit. */
+      #stay .st-daily-ready { color: #FDE68A; }
+      #stay .st-daily-claim { padding: 3px 10px 5px; font-size: 12px; animation: none; }
+      #reward .dk-coin { display: flex; justify-content: center; margin: 4px 0 8px; }
+      #reward .dk-claim { display: block; margin: 0 auto 12px; padding: 8px 18px 10px; border: 2px solid #1E1B3A; border-radius: 0; background: #F8BF27; color: #1E1B3A; font: inherit; font-size: 16px; font-weight: 700; box-shadow: inset 0 2px 0 #FDE68A, inset 0 -3px 0 #B45309, 0 3px 0 #1E1B3A; }
+      #reward .dk-claim:hover { background: #FACC15; }
+      #reward .dk-claim:active { transform: translateY(2px); }
       @media (max-width: 760px) { #stay { bottom: 70px; } }
       @media (prefers-reduced-motion: reduce) { #stay.st-ready, #stay .st-claim { animation: none; } }
       /* Who's online (ui/online.ts), beside the chat input next to the emote button. */
