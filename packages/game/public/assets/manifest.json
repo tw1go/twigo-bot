@@ -853,6 +853,60 @@
           "tanod"
         ],
         "note": "the Tanod only; plays once, then back to idle"
+      },
+      "sit": {
+        "frames": 4,
+        "fps": 4,
+        "loop": true,
+        "only": [
+          "marites",
+          "nena",
+          "puring",
+          "tessie",
+          "dolor",
+          "bebang",
+          "charing",
+          "lourdes",
+          "pacita",
+          "rosing"
+        ],
+        "note": "seated on the ground catching her breath (the Mosang race's arthritis and asthma stops)"
+      },
+      "fall": {
+        "frames": 8,
+        "fps": 12,
+        "loop": false,
+        "only": [
+          "marites",
+          "nena",
+          "puring",
+          "tessie",
+          "dolor",
+          "bebang",
+          "charing",
+          "lourdes",
+          "pacita",
+          "rosing"
+        ],
+        "note": "trips and goes down; plays once and holds its last frame (the Mosang race's falls)"
+      },
+      "getup": {
+        "frames": 6,
+        "fps": 10,
+        "loop": false,
+        "only": [
+          "marites",
+          "nena",
+          "puring",
+          "tessie",
+          "dolor",
+          "bebang",
+          "charing",
+          "lourdes",
+          "pacita",
+          "rosing"
+        ],
+        "note": "back up from the fall's last frame; ends on idle frame 0"
       }
     },
     "file": "npcs/npc-{id}-{anim}-{dir}.png",
