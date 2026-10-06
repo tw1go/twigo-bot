@@ -312,7 +312,8 @@ export class NpcLife {
     const b = path[Math.min(path.length - 1, i + 1)];
     const k = pos - i;
     const dir = a.col !== b.col || a.row !== b.row ? dirForStep(b.col - a.col, b.row - a.row) : 'se';
-    npc.char.pose(a.col + 0.5 + (b.col - a.col) * k, a.row + 0.5 + (b.row - a.row) * k, dir, !stop && at < 1);
+    // Stopped (sitting, fallen, getting up): she faces the finish line, SE, the direction those sheets are drawn best in.
+    npc.char.pose(a.col + 0.5 + (b.col - a.col) * k, a.row + 0.5 + (b.row - a.row) * k, stop ? 'se' : dir, !stop && at < 1);
     if (stop !== run.stop) {
       if (run.stop?.kind === 'fall') npc.char.tip(false);
       run.stop = stop;
