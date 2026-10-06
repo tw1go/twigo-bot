@@ -193,6 +193,9 @@ export class TownScene extends Phaser.Scene {
   private bridge: Phaser.GameObjects.Image | null = null;
   /** The gates' signs (always shown, unlike the buildings' names). */
   private readonly gateLabels: BuildingLabel[] = [];
+  /** Each gate sign, where it sits, and the buildings it was lifted over: while one of them shows its name (in the same
+   *  spot), the sign steps aside. */
+  private readonly gateSpots: { sign: BuildingLabel; y: number; over: Set<string> }[] = [];
   /** Each house's texture, redrawn after a new look (the key changes so the sprite picks it up). */
   private houseKeys = 0;
 
@@ -1149,17 +1152,24 @@ export class TownScene extends Phaser.Scene {
       sign.setZoom(this.cameras.main.zoom);
       // Over the gate, or higher: clear of the roof of any building it would sit on (tall houses by the way in).
       const half = sign.text.displayWidth / 2 + 4;
+      const h = sign.text.displayHeight;
+      const near = this.objects.buildings.filter((b) => {
+        const box = b.sprite.getBounds();
+        return box.right >= at.x - half && box.left <= at.x + half;
+      });
       let y = at.y - 6;
       for (let moved = true; moved; ) {
         moved = false; // (again after a lift: it may now sit on a taller one)
-        for (const b of this.objects.buildings) {
-          const box = b.sprite.getBounds();
-          if (box.right < at.x - half || box.left > at.x + half || box.bottom < y - sign.text.displayHeight || b.top.y - 4 >= y) continue;
+        for (const b of near) {
+          if (b.sprite.getBounds().bottom < y - h || b.top.y - 4 >= y) continue;
           y = b.top.y - 4;
           moved = true;
         }
       }
       sign.show(y);
+      // The buildings whose name (shown just over their roof) would land on the sign.
+      const over = new Set(near.filter((b) => b.top.y - 2 - h < y + 2 && b.top.y - 2 > y - h - 2).map((b) => b.id));
+      this.gateSpots.push({ sign, y, over });
       sign.text.setInteractive({ cursor: 'pointer' }).on('pointerdown', (p: Phaser.Input.Pointer) => {
         if (!p.leftButtonDown()) return;
         p.event.stopPropagation();
@@ -1382,6 +1392,9 @@ export class TownScene extends Phaser.Scene {
       const alert = atDoor ? this.buildingAlert : null;
       label.show(!b ? null : alert ? alert.y - alert.height - 1 : b.top.y - 2);
     }
+    // A gate sign over a building whose name is showing would cover it: hidden till the name goes.
+    const named = [this.alertFor?.id, this.hovered?.id];
+    for (const g of this.gateSpots) g.sign.show(named.some((id) => id && g.over.has(id)) ? null : g.y);
   }
 
   // ── Day / night ──
