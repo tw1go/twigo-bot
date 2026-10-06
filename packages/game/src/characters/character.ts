@@ -161,11 +161,26 @@ export class Character {
     return this.dir;
   }
 
-  /** Follow a path (from the current tile). */
+  /** Where a new path should start: the tile the step in progress is heading for, else the tile you're on. */
+  get heading(): Tile {
+    const step = this.path[0];
+    return step ? { col: step.col, row: step.row } : this.tile;
+  }
+
+  /** Follow a path (from `heading`, or the current tile). Mid-step, the step in progress is finished first, so a
+   *  new click never stops you between two tiles. */
   walk(path: Tile[]): void {
     this.standUp();
-    this.path = path.slice(path.length && path[0].col === this.tile.col && path[0].row === this.tile.row ? 1 : 0);
+    const step = this.path[0];
+    const same = (a: Tile | undefined, b: Tile | undefined) => !!a && !!b && a.col === b.col && a.row === b.row;
+    if (step && same(path[0], step)) {
+      this.path = [step, ...path.slice(1)]; // carry on with the step in progress (stepFrom stays)
+      return;
+    }
+    this.path = path.slice(same(path[0], this.tile) ? 1 : 0);
     this.stepFrom = this.tile;
+    // Clicked the tile you're crossing: walk on to its centre rather than stopping off it.
+    if (!this.path.length && (this.col % 1 !== 0.5 || this.row % 1 !== 0.5)) this.path = [this.tile];
     if (!this.path.length) this.arrive();
   }
 

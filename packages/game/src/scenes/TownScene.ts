@@ -1049,7 +1049,7 @@ export class TownScene extends Phaser.Scene {
     this.byKeys = false;
     const me = this.player.tile;
     if (Math.max(Math.abs(at.col - me.col), Math.abs(at.row - me.row)) <= TALK_RANGE) return this.npcs!.talk(id, me);
-    const path = this.grid.findPath(me, at) ?? this.grid.findPath(me, this.grid.nearestReachable(me, at) ?? me);
+    const path = this.grid.findPath(this.player.heading, at) ?? this.grid.findPath(this.player.heading, this.grid.nearestReachable(this.player.heading, at) ?? this.player.heading);
     if (!path || path.length < 2) return;
     this.setBuildingAlert(null);
     this.player.walk(path.slice(0, -1));
@@ -1093,7 +1093,7 @@ export class TownScene extends Phaser.Scene {
   private moveTo(target: Tile): void {
     this.pending = null;
     this.byKeys = false;
-    const to = this.grid.walkable(target.col, target.row) ? target : this.grid.nearestReachable(this.player.tile, target);
+    const to = this.grid.walkable(target.col, target.row) ? target : this.grid.nearestReachable(this.player.heading, target);
     if (to && this.walkTo(to)) this.clickMarker(to);
   }
 
@@ -1139,7 +1139,7 @@ export class TownScene extends Phaser.Scene {
   goToBuilding(b: Building): void {
     this.pending = null;
     this.byKeys = false;
-    const from = this.player.tile;
+    const from = this.player.heading;
     const paths = b.doors.map(([col, row]) => this.grid.findPath(from, { col, row })).filter((p): p is Tile[] => !!p);
     paths.sort((a, z) => a.length - z.length);
     if (!paths[0]) return;
@@ -1148,7 +1148,7 @@ export class TownScene extends Phaser.Scene {
   }
 
   private walkTo(target: Tile): boolean {
-    const path = this.grid.findPath(this.player.tile, target);
+    const path = this.grid.findPath(this.player.heading, target);
     if (!path) return false;
     this.setBuildingAlert(null); // leaving the door we were at
     this.player.walk(path);
