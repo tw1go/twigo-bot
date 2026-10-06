@@ -1147,7 +1147,19 @@ export class TownScene extends Phaser.Scene {
       const sign = new BuildingLabel(this, to === 'hood' ? 'Neighbourhood →' : '← Back to town', at.x);
       this.gateLabels.push(sign);
       sign.setZoom(this.cameras.main.zoom);
-      sign.show(at.y - 6);
+      // Over the gate, or higher: clear of the roof of any building it would sit on (tall houses by the way in).
+      const half = sign.text.displayWidth / 2 + 4;
+      let y = at.y - 6;
+      for (let moved = true; moved; ) {
+        moved = false; // (again after a lift: it may now sit on a taller one)
+        for (const b of this.objects.buildings) {
+          const box = b.sprite.getBounds();
+          if (box.right < at.x - half || box.left > at.x + half || box.bottom < y - sign.text.displayHeight || b.top.y - 4 >= y) continue;
+          y = b.top.y - 4;
+          moved = true;
+        }
+      }
+      sign.show(y);
       sign.text.setInteractive({ cursor: 'pointer' }).on('pointerdown', (p: Phaser.Input.Pointer) => {
         if (!p.leftButtonDown()) return;
         p.event.stopPropagation();
