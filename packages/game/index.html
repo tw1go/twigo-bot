@@ -473,6 +473,24 @@
       #reward .dk-claim:hover { background: #FACC15; }
       #reward .dk-claim:active { transform: translateY(2px); }
       @media (max-width: 760px) { #stay { bottom: 70px; } }
+      /* Talking to an NPC (ui/npc-dialog.ts): bottom centre, the chat window's nine-slice at the HUD's scale (--px),
+         the name, the characteristic and two rows of the typed-out line; the portrait in the item frame at 3× standing
+         on the top-right corner. */
+      #npc-dialog { position: fixed; left: 12px; bottom: 12px; z-index: 3; box-sizing: border-box; display: block; padding: 10px 14px; border: 2px solid #7C2AE8; background: #111827; color: #E6E9F2; font: 14px/1.35 var(--ui-font); cursor: pointer; -webkit-user-select: none; user-select: none; animation: nd-in 0.15s ease-out; }
+      #npc-dialog.nd-framed, #npc-dialog .nd-framed { border-style: solid; border-width: calc(var(--slice) * var(--px) * 1px); border-image-source: var(--frame); border-image-slice: var(--slice) fill; border-image-width: calc(var(--slice) * var(--px) * 1px); border-image-repeat: round; image-rendering: pixelated; background: none; }
+      #npc-dialog.nd-framed { padding: 0 6px; }
+      /* The portrait stands on the box's top-right corner, its bottom just over the box's edge. */
+      #npc-dialog .nd-frame { position: absolute; right: 8px; display: flex; box-sizing: content-box; } /* top and --px: ui/npc-dialog.ts */
+      #npc-dialog .nd-portrait { background-repeat: no-repeat; background-position: 0 0; image-rendering: pixelated; }
+      #npc-dialog .nd-words { min-width: 0; }
+      #npc-dialog .nd-name { font-size: 16px; font-weight: 700; color: #FFFFFF; line-height: 1.2; }
+      #npc-dialog .nd-title { font-size: 12px; color: #A9B1D6; line-height: 1.3; margin-bottom: 3px; }
+      #npc-dialog .nd-line { height: 46px; overflow: hidden; overflow-wrap: anywhere; } /* two rows at 17px */
+      #npc-dialog .nd-more { position: absolute; right: 4px; bottom: 0; font-size: 11px; color: #F8BF27; visibility: hidden; }
+      #npc-dialog .nd-more.nd-ready { visibility: visible; animation: nd-blink 0.9s steps(1) infinite; }
+      @keyframes nd-blink { 50% { opacity: 0; } }
+      @keyframes nd-in { from { opacity: 0; transform: translateY(6px); } }
+      @media (prefers-reduced-motion: reduce) { #npc-dialog, #npc-dialog .nd-more.nd-ready { animation: none; } }
       /* The town's connection is down (a bot restart): a small quiet note top centre; the page carries on meanwhile. */
       #reconnecting { position: fixed; top: 12px; left: 50%; z-index: 3; transform: translateX(-50%); padding: 4px 12px; border-radius: 6px; background: rgba(10, 12, 24, 0.7); color: #A9B1D6; font: 13px/1.3 var(--ui-font); pointer-events: none; animation: rc-pulse 1.6s ease-in-out infinite; }
       @keyframes rc-pulse { 50% { opacity: 0.55; } }

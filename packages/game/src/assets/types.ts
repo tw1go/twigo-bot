@@ -35,6 +35,8 @@ export interface Manifest {
   buildings: Record<string, BuildingDef>;
   props: Record<string, PropDef> & { fence: FenceDef; 'tree-tufts': { files: string[]; size: Vec2 } };
   characters: CharacterDefs;
+  /** The town's ambient NPCs (world/npcs.ts): flat pre-baked sheets, not paper dolls. */
+  npcs?: NpcDefs;
   fx: Record<string, FxDef>;
   /** Item art by id (dig items and /redeem rewards), only for the ids that have art. */
   items?: Record<string, ItemArtDef>;
@@ -126,6 +128,21 @@ export interface FxDef {
 }
 
 export type Dir = 's' | 'se' | 'e' | 'ne' | 'n' | 'nw' | 'w' | 'sw';
+
+export interface NpcDefs {
+  cell: Vec2;
+  anchor: Vec2;
+  directions: Dir[];
+  /** `only`: the NPCs that have this animation (all of them without it). */
+  animations: Record<string, { frames: number; fps: number; loop: boolean; only?: string[] }>;
+  /** Sheet path with {id}, {anim} and {dir}. */
+  file: string;
+  /** Head portrait with {id}: `frames` frames of `size` side by side (0 = eyes open, 1 = a blink). */
+  portrait: { file: string; size: Vec2; frames: number };
+  /** Names, titles and lines: { npcs: { [id]: { name, title, portrait, lines } } }. */
+  dialogue: string;
+  ids: string[];
+}
 
 export interface CharacterDefs {
   cell: Vec2;

@@ -10,7 +10,8 @@ import type { Plugin } from 'vite';
 //
 // Character layers go one sheet per item (char-top-jacket, char-hair-bob, char-body, …: every animation and
 // direction of it), so an outfit loads only what it wears. Everything else goes one sheet per top folder
-// (tiles, props, buildings, fx, ui). Images too big for a page stay loose. In dev nothing is packed.
+// (tiles, props, buildings, fx, ui); NPC sheets one per NPC. Images too big for a page stay loose. In dev nothing
+// is packed.
 
 const MAX_PAGE = 2048;
 const OUT_DIR = 'packs'; // under assets/, which the server caches for good (the names carry a content hash)
@@ -64,8 +65,10 @@ function shelves(imgs: Img[]): { img: Img; x: number; y: number }[][] {
 }
 
 export function buildPacks(assetsDir: string): { index: PackIndex; out: { fileName: string; source: Buffer }[] } {
-  const C = JSON.parse(readFileSync(join(assetsDir, 'manifest.json'), 'utf8')).characters;
-  const anims = Object.keys(C.animations);
+  const manifest = JSON.parse(readFileSync(join(assetsDir, 'manifest.json'), 'utf8'));
+  const C = manifest.characters;
+  // NPC sheets (npc-<id>-<anim>-<dir>) group the same way: one sheet per NPC, the Tanod's whistle with his.
+  const anims = [...new Set([...Object.keys(C.animations), ...Object.keys(manifest.npcs?.animations ?? {})])];
   const dirs: string[] = C.directions;
   const groups = new Map<string, Img[]>();
   for (const path of walk(assetsDir)) {

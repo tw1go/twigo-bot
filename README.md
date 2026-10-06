@@ -293,6 +293,10 @@ either can be left empty), plus town-only posts written in the CMS (`web/town-po
 **Welcome gift** (`packages/bot/src/web/welcome.ts`): 50 Kowens once for every member with a character, given as they
 finish the character creator (and at startup to anyone who had a character before it existed), shown in a pop-up.
 
+**Townsfolk** (`packages/game/src/world/npcs.ts`, `npc-life.ts`, `ui/npc-dialog.ts`): the Tanod patrols and ten gossiping
+Alings wander the town (run in each browser, never on the server); click one for a line in the dialog box, with
+voice blips and a gossip murmur nearby.
+
 **Tutorial** (`packages/game/src/ui/guide.ts`): the "?" beside News opens a guide with a tab per feature (moving, chat,
 Kowens, players, Mine, bag, Casino, jackpot, Arena, bank, shop and Parlor, quests, neighbourhood, jail, news and settings).
 Its numbers are the bot's rules; keep them in step when those change.

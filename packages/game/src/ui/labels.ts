@@ -28,29 +28,30 @@ function hsv(h: number, s: number, v: number): number {
   return (f(5) << 16) | (f(3) << 8) | f(1);
 }
 
-/** A character's name in white with their <Title> under it in the title's colour. */
+/** A character's name in white with their <Title> under it in the title's colour (an NPC's: the name only). */
 export class NameTag {
   private readonly box: Phaser.GameObjects.Container;
   private readonly texts: Phaser.GameObjects.Text[];
-  private readonly baseHeight: number;
+  private baseHeight: number;
   private readonly tick: (() => void) | null = null;
+  private readonly name: Phaser.GameObjects.Text;
+  private readonly sub: Phaser.GameObjects.Text;
 
   constructor(
     private readonly scene: Phaser.Scene,
     nickname: string,
     title: TitleData,
+    opts: { nameOnly?: boolean } = {},
   ) {
     const outline = { stroke: '#1E1B3A', strokeThickness: 2 };
     const name = text(scene, nickname, 6, '#FFFFFF', outline).setOrigin(0.5, 0);
     const prismatic = title.color === PRISMATIC;
     const sub = text(scene, `<${title.name}>`, 4, prismatic ? '#FFFFFF' : title.color, outline).setOrigin(0.5, 0);
-    // Local coordinates: the bottom centre of the stack is (0, 0).
-    const subH = Math.ceil(sub.height);
-    const nameH = Math.ceil(name.height);
-    sub.setY(-subH);
-    name.setY(-subH - nameH + 1);
+    this.name = name;
+    this.sub = sub;
     this.texts = [name, sub];
-    this.baseHeight = subH + nameH - 1;
+    this.baseHeight = 0;
+    this.layout(!opts.nameOnly);
     this.box = scene.add.container(0, 0, [name, sub]).setDepth(LABEL_DEPTH);
     if (prismatic) {
       // A rainbow drifting across the title, one hue per corner.
@@ -60,6 +61,15 @@ export class NameTag {
       };
       scene.events.on(Phaser.Scenes.Events.UPDATE, this.tick);
     }
+  }
+
+  private layout(withTitle: boolean): void {
+    // Local coordinates: the bottom centre of the stack is (0, 0).
+    const subH = withTitle ? Math.ceil(this.sub.height) : 0;
+    const nameH = Math.ceil(this.name.height);
+    this.sub.setVisible(withTitle).setY(-subH);
+    this.name.setY(-subH - nameH + (withTitle ? 1 : 0));
+    this.baseHeight = subH + nameH - (withTitle ? 1 : 0);
   }
 
   /** Height of the whole stack (name + title), in world units. */

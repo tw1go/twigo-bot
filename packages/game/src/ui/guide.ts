@@ -26,6 +26,7 @@ const TOPICS: Topic[] = [
       '• **Drag** the map to peek around; it snaps back when you let go',
       '• The **minimap** (top right) shows the whole town: you in gold, everyone else in green',
       '• Hover a building to see its name',
+      '• **Townsfolk**: the Tanod on patrol and the Alings around town. Click one to hear the latest chismis',
     ].join('\n'),
   },
   {

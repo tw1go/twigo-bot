@@ -43,6 +43,10 @@ const SFX: Record<Sfx, { file: string; volume: number; formats?: string[] }> = {
 };
 const CRICKETS = { key: 'amb:crickets', urls: ['audio/ambient/crickets.mp3'], volume: 0.15 };
 const FOUNTAIN = { key: 'amb:fountain', urls: ['audio/ambient/fountain.ogg', 'audio/ambient/fountain.m4a'], volume: 0.1 };
+/** The Alings' gossip (world/npc-life.ts): one quiet loop for the whole town, as loud as the nearest gossip is near. */
+const MURMUR = { key: 'amb:npc-murmur', urls: ['audio/ambient/npc-murmur.ogg', 'audio/ambient/npc-murmur.m4a'], volume: 0.1, near: 1, far: 6, ducked: 0.03 };
+/** An NPC's voice while their line types out (ui/npc-dialog.ts): one of these blips, pitched per NPC. */
+const VOICE = { keys: ['a', 'e', 'i', 'o', 'u'].map((v) => ({ key: `voice:${v}`, urls: [`audio/sfx/npc-talk-${v}.ogg`, `audio/sfx/npc-talk-${v}.m4a`] })), volume: 0.12, detune: 0.04 };
 const MUSIC = { key: 'music:happy-tune', urls: ['audio/music/happy-tune.ogg', 'audio/music/happy-tune.m4a'], volume: 0.12 };
 const CASINO = { key: 'music:casino', urls: ['audio/music/casino-shop-theme.ogg', 'audio/music/casino-shop-theme.m4a'], volume: 0.09 };
 const ARENA = { key: 'music:arena', urls: ['audio/music/arena-battle.ogg', 'audio/music/arena-battle.m4a'], volume: 0.09, inMs: 400, outMs: 500 };
@@ -77,6 +81,8 @@ const lastPlayed = new Map<Sfx, number>();
 let fountain: Phaser.Sound.BaseSound | null = null;
 let fountainAt: { col: number; row: number } | null = null;
 let fountainVolume = 0;
+let murmur: Phaser.Sound.BaseSound | null = null;
+let murmurVolume = 0;
 let music: Phaser.Sound.BaseSound | null = null;
 let crickets: Phaser.Sound.BaseSound | null = null;
 /** In the casino or the arena: the town's music and ambience are quiet; in the casino its own music plays. */
@@ -123,11 +129,14 @@ export function startTownSound(s: Phaser.Scene, fountainTile: { col: number; row
   for (const [name, { file, formats = ['ogg', 'm4a'] }] of Object.entries(SFX)) load.audio(`sfx:${name}`, formats.map((f) => `audio/${file}.${f}`));
   load.audio(CRICKETS.key, CRICKETS.urls);
   if (fountainTile) load.audio(FOUNTAIN.key, FOUNTAIN.urls);
+  load.audio(MURMUR.key, MURMUR.urls);
+  for (const v of VOICE.keys) load.audio(v.key, v.urls);
   load.once(Phaser.Loader.Events.COMPLETE, () => whenUnlocked(startAmbience));
   load.start();
   s.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
     s.sound.stopAll();
-    fountain = music = crickets = casinoMusic = scene = null;
+    fountain = music = crickets = casinoMusic = murmur = scene = null;
+    murmurVolume = 0;
   });
   installButtonSounds();
 }
@@ -153,11 +162,16 @@ function startAmbience(): void {
     fountain = s.sound.add(FOUNTAIN.key, { loop: true, volume: fountainLevel() });
     fountain.play();
   }
+  if (s.cache.audio.exists(MURMUR.key)) {
+    murmur = s.sound.add(MURMUR.key, { loop: true, volume: murmurLevel() });
+    murmur.play();
+  }
   if (settings.music > 0) startMusic();
 }
 
 const cricketsVolume = () => (indoors ? 0 : CRICKETS.volume * cricketsLevel.value * settings.sfx);
 const fountainLevel = () => (indoors ? 0 : fountainVolume * settings.sfx);
+const murmurLevel = () => (indoors ? 0 : murmurVolume * settings.sfx);
 const setVolume = (sound: Phaser.Sound.BaseSound | null, volume: number) =>
   (sound as Phaser.Sound.WebAudioSound | null)?.setVolume(volume);
 
@@ -184,6 +198,27 @@ export function hearFrom(tile: { col: number; row: number }): void {
   if (Math.abs(target - fountainVolume) < 0.0005) return;
   fountainVolume += (target - fountainVolume) * 0.08;
   setVolume(fountain, fountainLevel());
+  setVolume(murmur, murmurLevel());
+}
+
+/** Each frame, from the NPCs: how far the nearest gossiping Aling is (tiles; null: none gossiping), and whether a
+ *  dialog box is open (the murmur ducks under the talk). It eases towards its level, like the fountain. */
+export function hearGossip(distance: number | null, talking: boolean): void {
+  const near = distance === null ? 0 : MURMUR.volume * Phaser.Math.Clamp((MURMUR.far - distance) / (MURMUR.far - MURMUR.near), 0, 1);
+  const target = talking ? Math.min(near, MURMUR.ducked) : near;
+  if (Math.abs(target - murmurVolume) < 0.0005) return;
+  murmurVolume += (target - murmurVolume) * 0.06;
+  setVolume(murmur, murmurLevel());
+}
+
+/** One blip of an NPC's voice: a random vowel at their playback rate (1 = as recorded), up to ±4% off each time so it
+ *  doesn't sound robotic. Silent while sound is locked, muted or turned down to 0. */
+export function playVoice(rate: number): void {
+  const s = scene;
+  if (!s || s.sound.locked || settings.muted || settings.sfx === 0) return;
+  const v = VOICE.keys[Math.floor(Math.random() * VOICE.keys.length)];
+  if (!s.cache.audio.exists(v.key)) return;
+  s.sound.play(v.key, { volume: VOICE.volume * settings.sfx, rate: rate * (1 + (Math.random() * 2 - 1) * VOICE.detune) });
 }
 
 /** A short sound (dropped while sound is locked, muted or turned down to 0, or if the same one just played).
@@ -241,6 +276,7 @@ export function enterCasinoSound(): void {
   stopMusic();
   setVolume(crickets, cricketsVolume());
   setVolume(fountain, fountainLevel());
+  setVolume(murmur, murmurLevel());
   if (settings.music > 0) whenUnlocked(startCasinoMusic);
 }
 
@@ -251,6 +287,7 @@ export function enterArenaSound(): void {
   stopMusic();
   setVolume(crickets, cricketsVolume());
   setVolume(fountain, fountainLevel());
+  setVolume(murmur, murmurLevel());
 }
 
 /** Out of the casino or the arena: its music fades out, and the town's music and ambience come back. */
@@ -261,6 +298,7 @@ export function leaveCasinoSound(): void {
   stopArenaMusic();
   setVolume(crickets, cricketsVolume());
   setVolume(fountain, fountainLevel());
+  setVolume(murmur, murmurLevel());
   if (settings.music > 0) whenUnlocked(startMusic);
 }
 
@@ -326,6 +364,7 @@ function applySettings(): void {
   s.sound.mute = settings.muted;
   setVolume(crickets, cricketsVolume());
   setVolume(fountain, fountainLevel());
+  setVolume(murmur, murmurLevel());
   if (music?.isPlaying && settings.music > 0 && !indoors) setLevel(music, musicVolume());
   if (casinoMusic?.isPlaying && settings.music > 0 && indoors) setLevel(casinoMusic, casinoVolume());
   if (arenaMusic?.isPlaying && settings.music > 0 && arenaOn) setLevel(arenaMusic, ARENA.volume * settings.music);

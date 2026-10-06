@@ -6,10 +6,19 @@ import { type Outfit, headTop, sheetKey } from './doll';
 import type { TitleData } from '@mikazuki/shared';
 import { type BubbleArt, EmotePop, NameTag, SpeechBubble } from '../ui/labels';
 
-// A walking paper doll. Position is in tile space (tile centre = col + 0.5); the sprite's feet anchor sits on it.
-// Depth is the front corner of the tile the feet are on, refreshed every frame.
+// A walking paper doll (or a flat pre-baked sheet set: the town's NPCs, world/npcs.ts). Position is in tile space
+// (tile centre = col + 0.5); the sprite's feet anchor sits on it. Depth is the front corner of the tile the feet are
+// on, refreshed every frame.
 
-const SPEED = 4; // tiles per second
+export const SPEED = 4; // tiles per second (players; NPCs walk slower: `speed`)
+
+/** A character drawn from flat sheets instead of a paper doll: the animation key per animation and direction (made
+ *  by the caller), how many empty rows sit above the head in the cell, and the directions drawn. */
+export interface FlatSheets {
+  key: (anim: string, dir: Dir) => string;
+  head: number;
+  directions: Dir[];
+}
 
 /** Facing for one grid step: col runs screen right-down, row runs screen left-down. */
 export function dirForStep(dc: number, dr: number): Dir {
@@ -54,28 +63,32 @@ export class Character {
   /** Called as each step to a neighbouring tile begins (the town tells the server). */
   onStep: ((to: Tile) => void) | null = null;
   private announced: Tile | null = null;
+  /** Walking speed, tiles per second. */
+  speed = SPEED;
 
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly M: Manifest,
     private outfit: Outfit,
     start: Tile,
+    /** Flat sheets instead of the paper doll (`outfit` is then unused). */
+    private readonly flat: FlatSheets | null = null,
   ) {
     const C: CharacterDefs = M.characters;
     this.col = start.col + 0.5;
     this.row = start.row + 0.5;
-    this.sprite = scene.add.sprite(0, 0, sheetKey(outfit, 'idle', 's'), 0).setOrigin(C.anchor[0] / C.cell[0], C.anchor[1] / C.cell[1]);
+    this.sprite = scene.add.sprite(0, 0, this.keyFor('idle', 's'), 0).setOrigin(C.anchor[0] / C.cell[0], C.anchor[1] / C.cell[1]);
     const sh = M.fx.shadow;
     this.shadow = sh?.file ? scene.add.image(0, 0, sh.file).setOrigin((sh.anchor?.[0] ?? 0) / (sh.size?.[0] ?? 1), (sh.anchor?.[1] ?? 0) / (sh.size?.[1] ?? 1)) : null;
-    this.head = headTop(scene, outfit);
+    this.head = flat ? flat.head : headTop(scene, outfit);
     this.play('idle');
     this.sync();
   }
 
-  /** Name and <Title> over the head (null removes them). */
-  setNameTag(nickname: string | null, title: TitleData): void {
+  /** Name and <Title> over the head (null removes them); `nameOnly`: no title line (an NPC's). */
+  setNameTag(nickname: string | null, title: TitleData, opts: { nameOnly?: boolean } = {}): void {
     this.tag?.destroy();
-    this.tag = nickname ? new NameTag(this.scene, nickname, title) : null;
+    this.tag = nickname ? new NameTag(this.scene, nickname, title, opts) : null;
     this.tag?.setZoom(this.zoom);
     this.sync();
   }
@@ -195,8 +208,8 @@ export class Character {
     this.sync();
   }
 
-  /** Play wave or cheer once, then go back to idle. */
-  emote(anim: 'wave' | 'cheer'): void {
+  /** Play wave or cheer (an NPC's whistle) once, then go back to idle. */
+  emote(anim: 'wave' | 'cheer' | 'whistle'): void {
     if (this.path.length || this.sittingAt) return;
     this.play(anim);
     this.sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => this.play('idle'));
@@ -242,7 +255,7 @@ export class Character {
   update(deltaMs: number): void {
     if (!this.path.length) this.takeNextStep();
     if (this.path.length) {
-      let budget = (SPEED * deltaMs) / 1000;
+      let budget = (this.speed * deltaMs) / 1000;
       while (budget > 0 && (this.path.length || this.takeNextStep())) {
         const next = this.path[0];
         const tx = next.col + 0.5;
@@ -322,14 +335,20 @@ export class Character {
     this.onArrive?.(this.tile);
   }
 
+  /** The animation key for an animation facing a direction (the doll's, or the flat sheets'). */
+  private keyFor(anim: string, dir: Dir): string {
+    return this.flat ? this.flat.key(anim, dir) : sheetKey(this.outfit, anim, dir);
+  }
+
   private play(anim: string): void {
     const C = this.M.characters;
-    const dirs = C.animations[anim]?.directions ?? C.directions;
+    const dirs = this.flat?.directions ?? C.animations[anim]?.directions ?? C.directions;
     const dir = dirs.includes(this.dir) ? this.dir : dirs[0];
-    const key = sheetKey(this.outfit, anim, dir);
+    const key = this.keyFor(anim, dir);
     this.anim = anim;
     if (this.sprite.anims.currentAnim?.key === key && this.sprite.anims.isPlaying) return;
-    // Keep the walk cycle's phase when only the direction changes (keys are "doll:<outfit>:<anim>:<dir>").
+    // Keep the walk cycle's phase when only the direction changes (keys are "doll:<outfit>:<anim>:<dir>", or
+    // "npc:<id>:<anim>:<dir>").
     const current = this.sprite.anims.currentAnim?.key.split(':')[2];
     const progress = current === anim && anim === 'walk' ? this.sprite.anims.getProgress() : 0;
     this.sprite.play(key);

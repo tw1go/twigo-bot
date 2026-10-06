@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { queueImage, queueTown } from '../assets/queue';
+import { queueImage, queueNpcs, queueTown } from '../assets/queue';
 import type { Dir, Manifest, TownMap } from '../assets/types';
 import { Character } from '../characters/character';
 import { type Outfit, assetProblems, buildOutfit, headPortrait, headTop, loadOutfit, outfitFiles, randomOutfit, sheetKey } from '../characters/doll';
@@ -15,6 +15,8 @@ import { showParlor } from '../ui/parlor';
 import { type HouseArt, composeHouse, houseFiles, houseStyles, tidyLook } from '../houses/art';
 import { areaUrl, cameFrom, hoodAction, loadHood, saveHouse } from '../net/hood';
 import { showHouseMenu } from '../ui/house-menu';
+import { closeNpcDialog, setNpcDialogArt } from '../ui/npc-dialog';
+import { NpcLife, TALK_LEAVE, TALK_RANGE } from '../world/npc-life';
 import { mountHouseCreator } from '../ui/house-creator';
 import { playBusted } from '../ui/casino';
 import { drawBridge } from '../world/bridge';
@@ -137,7 +139,7 @@ export class TownScene extends Phaser.Scene {
   private grid!: WalkGrid;
   private player!: Character;
   private doorAt = new Map<string, Building>();
-  private pending: { sit: Bench } | null = null;
+  private pending: { sit?: Bench; npc?: string } | null = null;
   private buildingAlert: Phaser.GameObjects.Sprite | null = null;
   private zoomIndex = 1;
   /** The arrival zoom-out while it runs (follow and label sizing wait for it). */
@@ -178,6 +180,8 @@ export class TownScene extends Phaser.Scene {
   /** Plays an emote and tells the server (set once connected). */
   private emoteKeys: ((e: TownEmote) => void) | null = null;
   private others!: OtherPlayers;
+  /** The town's ambient NPCs (not in the neighbourhood). */
+  private npcs: NpcLife | null = null;
   private link: TownLink | null = null;
   /** The picked player's box and menu (members only). */
   private target: TargetBox | null = null;
@@ -222,6 +226,7 @@ export class TownScene extends Phaser.Scene {
     // The neighbourhood's houses are drawn from their layers (composited in create).
     if (this.hood && this.art) for (const st of houseStyles(this.art)) for (const f of houseFiles(this.art, st)) queueImage(this.load, this.textures, f);
     queueTown(this.load, this.textures, this.M, this.map);
+    if (!this.hood) queueNpcs(this.load, this.textures, this.M);
     for (const f of outfitFiles(this.M.characters, this.outfit)) queueImage(this.load, this.textures, f);
     this.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR, (file: Phaser.Loader.File) => assetProblems.add(`failed to load ${file.src}`));
     // (After the character creator the town has usually loaded in the background already.)
@@ -312,6 +317,7 @@ export class TownScene extends Phaser.Scene {
     const door = mine && this.map.doors[`house-${mine.lot}`];
     if (door && !Array.isArray(door[0])) this.player.place({ col: door[0] as number, row: door[1] as number }, 'se');
     this.others = new OtherPlayers(this, this.M, this.objects, (obj) => this.tint >= 0 && obj.setTint(this.tint));
+    if (!this.hood) this.npcs = this.makeNpcs();
 
     this.setupCamera(bounds);
     // Only what the camera can see is drawn and animated.
@@ -366,6 +372,14 @@ export class TownScene extends Phaser.Scene {
       }
     }
     this.others.update(delta);
+    if (this.npcs) {
+      const me = this.player.tile;
+      this.npcs.update(delta, [me, ...this.others.players.map((p) => ({ col: p.col, row: p.row }))]);
+      // Walked away from the NPC you're talking to: the box closes.
+      const with_ = this.npcs.talkingTo;
+      const at = with_ && this.npcs.tileOf(with_);
+      if (at && Math.max(Math.abs(at.col - me.col), Math.abs(at.row - me.row)) > TALK_LEAVE) closeNpcDialog();
+    }
     hearFrom(this.player.tile);
     this.tellServer();
     if (this.follow && !this.intro && !this.inside && !this.peek) this.followPlayer();
@@ -388,10 +402,12 @@ export class TownScene extends Phaser.Scene {
     this.labelZoom = zoom;
     this.player.setZoom(zoom);
     this.others.setZoom(zoom);
+    this.npcs?.setZoom(zoom);
     for (const l of [...this.buildingLabels.values(), ...this.gateLabels]) l.setZoom(zoom);
     this.input.setDefaultCursor(cursor('pointer', zoom));
     for (const b of [...this.objects.buildings.flatMap((x) => x.parts), ...this.objects.benches.map((x) => x.sprite)]) if (b.input) b.input.cursor = cursor('hand', zoom);
     this.others.cursor = cursor('hand', zoom);
+    if (this.npcs) this.npcs.cursor = cursor('hand', zoom);
   }
 
   /** The town's HUD: your head and name top left (in the game's frame), Kowens and shovels top right. */
@@ -849,6 +865,9 @@ export class TownScene extends Phaser.Scene {
       // Someone else's character: left click (or a tap) picks them for the player menu.
       const other = this.others.pick(over);
       if (other && this.target && (p.wasTouch || p.leftButtonReleased())) return this.target.select(other);
+      // An NPC: left click (or a tap) talks to them (walking over first if they're far).
+      const npc = this.npcs?.pick(over);
+      if (npc && (p.wasTouch || p.leftButtonReleased())) return this.talkTo(npc);
       const building = this.objects.buildings.find((b) => b.parts.some((part) => over.includes(part)));
       const world = this.cameras.main.getWorldPoint(p.x, p.y);
       const { col, row } = screenToTile(world.x, world.y);
@@ -953,6 +972,46 @@ export class TownScene extends Phaser.Scene {
     if (bench) this.sitOn(bench);
   }
 
+  /** The town's NPCs: on the walkable tiles away from doors, gates, benches and the spawn (world/npcs.ts), with the
+   *  speech bubble for their gossip and the dialog box's art. */
+  private makeNpcs(): NpcLife | null {
+    if (!this.M.npcs) return null;
+    const avoid = new Set<string>();
+    const add = (c: number, r: number) => avoid.add(`${c},${r}`);
+    for (const b of this.objects.buildings) for (const [c, r] of b.doors) for (let dc = -1; dc <= 1; dc++) for (let dr = -1; dr <= 1; dr++) add(c + dc, r + dr);
+    for (const b of this.objects.benches) {
+      const s = benchApproach(b);
+      add(b.col, b.row);
+      add(s.col, s.row);
+    }
+    for (const tiles of Object.values(this.map.gates ?? {})) for (const [c, r] of tiles) add(c, r);
+    add(this.map.spawn[0], this.map.spawn[1]);
+    const asset = (file: string) => `${import.meta.env.BASE_URL}assets/${file}`;
+    const B = this.M.ui.speechBubble;
+    const bubbles: BubbleArt | null = B && this.textures.exists(B.file) ? lightBubble(this, { file: B.file, slice: B.nineSlice, tail: B.tail, tailAnchor: B.tailAnchor }) : null;
+    const box = this.M.ui.chatWindow;
+    const frame = this.M.ui.inventory?.itemFrame;
+    setNpcDialogArt({ box: box ? { url: asset(box.file), slice: box.nineSlice } : null, frame: frame ? { url: asset(frame.file), slice: frame.nineSlice } : null });
+    const life = new NpcLife({ scene: this, M: this.M, grid: this.grid, objects: this.objects, avoid, onSpawn: (obj) => this.tint >= 0 && obj.setTint(this.tint), bubbles, asset });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => closeNpcDialog());
+    return life;
+  }
+
+  /** Talk to an NPC: close enough, straight away; else walk up to them first (to the tile before theirs). */
+  private talkTo(id: string): void {
+    const at = this.npcs?.tileOf(id);
+    if (!at) return;
+    this.pending = null;
+    this.byKeys = false;
+    const me = this.player.tile;
+    if (Math.max(Math.abs(at.col - me.col), Math.abs(at.row - me.row)) <= TALK_RANGE) return this.npcs!.talk(id, me);
+    const path = this.grid.findPath(me, at) ?? this.grid.findPath(me, this.grid.nearestReachable(me, at) ?? me);
+    if (!path || path.length < 2) return;
+    this.setBuildingAlert(null);
+    this.player.walk(path.slice(0, -1));
+    this.pending = { npc: id };
+  }
+
   /** Walk to a tile; a bench means sit on it; a blocked tile means the nearest reachable one. */
   goToTile(target: Tile): void {
     const bench = this.benchAt(target);
@@ -1055,6 +1114,11 @@ export class TownScene extends Phaser.Scene {
   private arrived(tile: Tile): void {
     const gate = this.gateAt.get(`${tile.col},${tile.row}`);
     if (gate) return this.travel(gate);
+    if (this.pending?.npc) {
+      const id = this.pending.npc;
+      this.pending = null;
+      return this.talkTo(id); // there now (or they moved: after them again)
+    }
     if (this.pending?.sit) {
       const b = this.pending.sit;
       this.pending = null;
@@ -1540,11 +1604,19 @@ export class TownScene extends Phaser.Scene {
     this.objects.setLamps(sky.lampsOn);
     if (!force && sky.tint === this.tint) return;
     this.tint = sky.tint;
-    const all = [...this.ground.sprites, ...this.objects.sprites, ...this.player.tintables, ...this.others.tintables, ...(this.bridge ? [this.bridge] : [])];
+    const all = [...this.ground.sprites, ...this.objects.sprites, ...this.player.tintables, ...this.others.tintables, ...(this.npcs?.tintables ?? []), ...(this.bridge ? [this.bridge] : [])];
     for (const s of all) s.setTint(sky.tint);
   }
 
   // ── For debugging and the headless check ──
+
+  get debugNpcs() {
+    return this.npcs;
+  }
+
+  debugTalk(id: string): void {
+    this.talkTo(id);
+  }
 
   debugState() {
     const t = this.player.tile;
@@ -1682,6 +1754,9 @@ function exposeDebug(scene: TownScene): void {
     outfit: (o: Partial<Outfit>) => scene.setOutfit({ ...scene.debugState().outfit, ...o }),
     emote: (a: 'wave' | 'cheer') => scene.debugPlayer.emote(a),
     reward: (r: Reward) => scene.debugReward(r),
+    /** The NPCs' tiles, or talk to one (walking over if needed). */
+    npcs: () => scene.debugNpcs?.positions,
+    talk: (id: string) => scene.debugTalk(id),
     /** Fixed view for screenshots: zoom and centre on a world point (follow off), or follow again. */
     view: (zoom?: number, x?: number, y?: number) => {
       const cam = scene.cameras.main;

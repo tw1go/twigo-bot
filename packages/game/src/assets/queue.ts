@@ -92,3 +92,16 @@ export function queueTown(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Tex
     else img(fx.file);
   }
 }
+
+/** The town's NPCs (world/npc-life.ts): every animation sheet, the portraits and the dialogue file. */
+export function queueNpcs(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Textures.TextureManager, M: Manifest): void {
+  const N = M.npcs;
+  if (!N) return;
+  for (const id of N.ids) {
+    for (const [anim, a] of Object.entries(N.animations)) {
+      if (a.only && !a.only.includes(id)) continue;
+      for (const dir of N.directions) queueSheet(load, textures, N.file.replace('{id}', id).replace('{anim}', anim).replace('{dir}', dir), N.cell[0], N.cell[1]);
+    }
+  }
+  load.json('npc-dialogue', N.dialogue);
+}

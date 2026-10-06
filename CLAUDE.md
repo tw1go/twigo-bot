@@ -235,6 +235,18 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   (someone standing in that yard can still walk out: `fenceLater`). Dev: `/__bakod?name=Mara&on=0|1`.
   The house menu asks GET /town/hood again as it opens (jail, cooldown, keys, potions, Bakods are never stale), and
   `jailed` messages update it too.
+- NPCs (town only, not the neighbourhood; client-side: never on the server, the online list or the minimap): the
+  Tanod and ten Alings, flat pre-baked sheets (manifest `npcs`, art in `assets/npcs/`, one pack per NPC; `Character`
+  with `FlatSheets`, never the paper doll). Homes, behaviours, the Tanod's route, voices and portrait facing in
+  `world/npcs.ts` (data; checked at start: off doors, gates, benches, spawn); life in `world/npc-life.ts` (patrol with
+  a whistle heard within 2 tiles, wander, still; face the nearest player, Nena the plaza; gossip bubbles every 30–60 s
+  near you, one at a time; lines from `npcs/npc-dialogue.json`, a shuffled deck per NPC). Click → walk over →
+  `ui/npc-dialog.ts`: one line per talk (click/Space/E finishes it, then closes; Esc, outside or 4 tiles away close),
+  chat-window nine-slice at 2×, 320 art px, kept clear of HUD panels; the portrait at 3× on the top-right corner,
+  blinking, mirrored for 'sw'. Sounds (`audio/sound.ts`): talk blips (`playVoice`, sfx/npc-talk-a…u, a rate per NPC
+  ±4%, every 3rd letter) and the gossip murmur (ambient/npc-murmur, one loop, `hearGossip`: 0.10 at 1 tile to 0 at 6
+  from the nearest gossiping Aling, ducked to 0.03 under a dialog). Plates show the name only. Debug: `__town.npcs()`,
+  `__town.talk('marites')`.
 - Player menu (`ui/target.ts`): left click (or tap) someone → their name in a long box top centre (or click their name
   in the chat: the box opens right beside it with the menu open, `selectAt`; a click elsewhere closes it; no ×: a click
   outside the box closes it too, a drag to peek doesn't); clicking it opens

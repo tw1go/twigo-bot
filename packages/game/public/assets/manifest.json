@@ -802,6 +802,85 @@
       }
     }
   },
+  "npcs": {
+    "cell": [
+      32,
+      48
+    ],
+    "anchor": [
+      16,
+      47
+    ],
+    "anchorMeaning": "feet, as the players' (so they depth-sort like players)",
+    "directions": [
+      "s",
+      "se",
+      "e",
+      "ne",
+      "n",
+      "nw",
+      "w",
+      "sw"
+    ],
+    "animations": {
+      "idle": {
+        "frames": 6,
+        "fps": 6,
+        "loop": true
+      },
+      "walk": {
+        "frames": 8,
+        "fps": 12,
+        "loop": true
+      },
+      "wave": {
+        "frames": 8,
+        "fps": 10,
+        "loop": false,
+        "note": "plays once, then back to idle"
+      },
+      "cheer": {
+        "frames": 8,
+        "fps": 10,
+        "loop": false,
+        "note": "plays once, then back to idle"
+      },
+      "whistle": {
+        "frames": 8,
+        "fps": 10,
+        "loop": false,
+        "only": [
+          "tanod"
+        ],
+        "note": "the Tanod only; plays once, then back to idle"
+      }
+    },
+    "file": "npcs/npc-{id}-{anim}-{dir}.png",
+    "portrait": {
+      "file": "npcs/npc-{id}-portrait.png",
+      "size": [
+        32,
+        32
+      ],
+      "frames": 2,
+      "note": "frame 0 eyes open, frame 1 a blink"
+    },
+    "dialogue": "npcs/npc-dialogue.json",
+    "ids": [
+      "tanod",
+      "marites",
+      "nena",
+      "puring",
+      "tessie",
+      "dolor",
+      "bebang",
+      "charing",
+      "lourdes",
+      "pacita",
+      "rosing"
+    ],
+    "rule": "flat pre-baked sheets (never through the paper-doll compositor): one row of cell-sized frames per animation and direction, all 8 directions drawn (no mirroring); name, title and lines come from the dialogue file"
+  },
   "palette": {
     "gpl": "palette/mikazuki.gpl",
     "png": "palette/mikazuki-palette.png"
