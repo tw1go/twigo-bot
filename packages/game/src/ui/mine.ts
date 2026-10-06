@@ -50,7 +50,7 @@ export function showMine(): void {
   const lucky = el('div', 'mn-lucky');
   const listButton = el('button', 'mn-list-btn', '📜 Items');
   listButton.setAttribute('aria-label', 'What you can dig up, by rarity');
-  const main = [stats, lucky, found, button, listButton, note, el('p', 'mn-hint', 'Each dig uses your shovel once. Buy shovels at the rewards shop; finds go to your bag (sell them with /sell in Discord).')];
+  const main = [stats, lucky, found, button, listButton, note, el('p', 'mn-hint', 'Each dig uses your shovel once. Buy shovels at the sari-sari store; finds go to your bag (sell them with /sell in Discord).')];
   wrap.append(...main);
 
   // The tier list, in place of the Mine (Back returns); loaded once per visit.
@@ -195,7 +195,7 @@ const fakeState = { digs: Number(new URLSearchParams(location.search).get('digs'
 
 async function fakeDig(): Promise<TownDigResponse> {
   const d = (): MeDig => ({ shovel: fakeState.shovel, digsLeft: fakeState.digs, digsPerDay: 9, shovelsLeft: 2, shovelCost: 2, shovelUses: 3, lucky: fakeState.lucky, luckyEvery: 60 });
-  if (fakeState.shovel <= 0) return { ok: false, message: 'You need a shovel to dig. Get one at the rewards shop (2 Kowens).', dig: d() };
+  if (fakeState.shovel <= 0) return { ok: false, message: 'You need a shovel to dig. Get one at the sari-sari store (2 Kowens).', dig: d() };
   if (fakeState.digs <= 0) return { ok: false, message: "You've dug 9 times today. Your arms need a rest! Come back tomorrow.", dig: d() };
   fakeState.digs--;
   fakeState.shovel--;

@@ -337,10 +337,10 @@
       "collision": "block all 2x2",
       "interaction": "show the top-3 names as game text on the gold plaque area or in a popup"
     },
-    "rewards-shop": {
-      "file": "buildings/building-rewards-shop.png",
+    "sari-sari-store": {
+      "file": "buildings/building-sari-sari-store.png",
       "size": [
-        120,
+        112,
         120
       ],
       "footprint": [
@@ -348,15 +348,15 @@
         3
       ],
       "footprintTopCorner": [
-        60,
+        56,
         72
       ],
       "footprintBottomCorner": [
-        60,
+        56,
         120
       ],
       "collision": "block all 3x3",
-      "interaction": "door on the SE face: the tile in front is (col+3,row+1) from the top tile; opens the rewards shop"
+      "interaction": "door on the SE face: the tile in front is (col+3,row+1) from the top tile; opens the sari-sari store (what /redeem sells)"
     },
     "parlor": {
       "file": "buildings/building-parlor.png",
@@ -378,7 +378,7 @@
       ],
       "collision": "block all 3x3",
       "interaction": "door on the SE face (a gap in the railing): the tile in front is (col+3,row+1) from the top tile; opens the Parlor (change your look and the title you show)",
-      "note": "added 6 Oct; same size and footprint as the rewards shop; the blank sign has no text"
+      "note": "added 6 Oct; same footprint as the sari-sari store; the blank sign has no text"
     },
     "bank": {
       "file": "buildings/building-bank.png",
@@ -404,7 +404,7 @@
     "tanod-outpost": {
       "file": "buildings/building-tanod-outpost.png",
       "size": [
-        136,
+        128,
         136
       ],
       "footprint": [
@@ -412,11 +412,11 @@
         3
       ],
       "footprintTopCorner": [
-        60,
+        56,
         80
       ],
       "footprintBottomCorner": [
-        76,
+        72,
         136
       ],
       "collision": "block all 4x3 (4 tiles along the right edge, 3 along the left)",
@@ -425,7 +425,7 @@
     "casino": {
       "file": "buildings/building-casino.png",
       "size": [
-        160,
+        144,
         160
       ],
       "footprint": [
@@ -433,11 +433,11 @@
         4
       ],
       "footprintTopCorner": [
-        80,
+        72,
         96
       ],
       "footprintBottomCorner": [
-        80,
+        72,
         160
       ],
       "collision": "block all 4x4",
@@ -447,19 +447,19 @@
       "file": "buildings/building-mine-entrance.png",
       "size": [
         112,
-        112
+        104
       ],
       "footprint": [
         3,
         3
       ],
       "footprintTopCorner": [
-        57,
-        64
+        56,
+        56
       ],
       "footprintBottomCorner": [
-        57,
-        112
+        56,
+        104
       ],
       "collision": "block all 3x3",
       "interaction": "tunnel mouth on the SW face: the tile in front is (col+1,row+3)"

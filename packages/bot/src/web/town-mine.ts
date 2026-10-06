@@ -32,7 +32,7 @@ export async function digInTown(client: Client, userId: string, name: string, st
     const message =
       result.reason === 'jailed' ? `You're in jail until ${clock(result.until)}. No digging till you're out.`
       : result.reason === 'bag-full' ? `Your bag is full (${result.items}/${result.slots}). Sell something with /sell, or get a bigger bag at the shop.`
-      : result.reason === 'no-shovel' ? `You need a shovel to dig. Get one at the rewards shop (${SHOVEL_COST} ${kowen(SHOVEL_COST)}).`
+      : result.reason === 'no-shovel' ? `You need a shovel to dig. Get one at the sari-sari store (${SHOVEL_COST} ${kowen(SHOVEL_COST)}).`
       : `You've dug ${DIGS_PER_DAY} times today. Your arms need a rest! Come back tomorrow.`;
     return { ok: false, message, dig: status(userId) };
   }

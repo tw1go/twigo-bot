@@ -200,7 +200,7 @@ export class Inventory {
       const it = units[i];
       if (i >= open && !it) {
         const locked = el('div', 'iv-cell iv-locked');
-        locked.title = 'Locked: get a bigger bag at the rewards shop';
+        locked.title = 'Locked: get a bigger bag at the sari-sari store';
         cells.push(locked);
         continue;
       }
@@ -229,7 +229,7 @@ export class Inventory {
     this.grid.style.setProperty('--cols', String(COLS));
     this.grid.replaceChildren(...cells);
     if (!units.length) {
-      const empty = this.tab === 'misc' ? 'No keys or potions. Get them at the rewards shop.' : this.tab === 'dug' ? 'Nothing dug up yet. Dig at the Mine!' : 'Your bag is empty. Dig at the Mine!';
+      const empty = this.tab === 'misc' ? 'No keys or potions. Get them at the sari-sari store.' : this.tab === 'dug' ? 'Nothing dug up yet. Dig at the Mine!' : 'Your bag is empty. Dig at the Mine!';
       this.grid.append(el('div', 'iv-empty-note', empty));
     }
 

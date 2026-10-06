@@ -247,7 +247,7 @@ async function titles() {
 const KIND = { fence: 'Bakod', shovel: 'Shovel', key: 'Key', megaphone: 'Megaphone', vault: 'Vault', potion: 'Potion', bag: 'Bag', pass: 'Pass' };
 
 async function shop() {
-  page('Shop', 'What the town’s rewards shop and /redeem sell. Changes apply at once; past purchases keep their price.');
+  page('Shop', 'What the town’s sari-sari store and /redeem sell. Changes apply at once; past purchases keep their price.');
   let { rewards } = await api('shop');
   const table = h('tbody');
   main().append(h('div', { class: 'card table-wrap' }, h('table', null, h('thead', null, h('tr', null, h('th', null, 'Reward'), h('th', null, 'Kind'), h('th', { class: 'num' }, 'Default'), h('th', { class: 'num' }, 'Price'), h('th', null, 'On sale'), h('th'))), table)));

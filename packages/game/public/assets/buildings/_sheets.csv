@@ -4,9 +4,9 @@ building-jackpot-booth-nobase.png,112,128,1,0,no,56,80,same stall without the st
 building-twigos-house.png,120,120,1,0,no,60,72,3x3 footprint (bottom corner at 60;120); tall version (42 px walls, door about 30 px); door on the SE gable end = the way back to the room
 building-notice-board.png,80,80,1,0,no,40,48,2x2 footprint; a board on two posts with a lantern; block only the 2 tiles under the posts
 building-leaderboard-monument.png,80,104,1,0,no,40,72,2x2 footprint; obelisk on a stepped plinth; the game draws the top-3 names, not the sprite
-building-rewards-shop.png,120,120,1,0,no,60,72,3x3; wooden shop with green awning and gifts on the roof; door on the SE face
+building-sari-sari-store.png,112,120,1,0,no,56,72,3x3; sari-sari store with a red corrugated roof and a blank sign; door on the SE face
 building-bank.png,136,136,1,0,no,68,88,3x3; stone treasury with columns, steps and a Kowen coin in the pediment; door on the SW face
-building-tanod-outpost.png,136,136,1,0,no,60,80,4x3 (4 along the right edge); watch post + jail; blank white sign for game text; jail windows on the right
-building-casino.png,160,160,1,0,no,80,96,4x4; two-storey violet casino; blank neon marquee for game text; entrance under the canopy on the SW face
-building-mine-entrance.png,112,112,1,0,no,56,64,3x3; rocky hill with timber tunnel mouth on the SW face
+building-tanod-outpost.png,128,136,1,0,no,56,80,4x3 (4 along the right edge); watch post + jail; blank white sign for game text; jail windows on the right
+building-casino.png,144,160,1,0,no,72,96,4x4; two-storey violet casino; blank neon marquee for game text; entrance under the canopy on the SW face
+building-mine-entrance.png,112,104,1,0,no,56,56,3x3; rocky hill with timber tunnel mouth on the SW face
 building-arena.png,208,184,1,0,no,104,88,6x6 including its stone plinth; open arena with corner towers; gate on the SW face

@@ -48,7 +48,7 @@ export function showHouseMenu(h: HouseMenuHooks): void {
   const cooling = () => !!me.stealAt && me.stealAt > Date.now();
   /** Where things stand (shown under the box as the menu opens). */
   const status = () => {
-    if (house.mine) return fenced ? '🧱 Your Bakod is up: only a Master Key gets past the fence.' : 'No Bakod: anyone can try to rob you. Get one at the rewards shop.';
+    if (house.mine) return fenced ? '🧱 Your Bakod is up: only a Master Key gets past the fence.' : 'No Bakod: anyone can try to rob you. Get one at the sari-sari store.';
     const wait = me.stealAt && me.stealAt > Date.now() ? minutes(me.stealAt) : 0;
     return me.jailed
       ? "You're in jail. No house calls till you're out."
@@ -116,7 +116,7 @@ export function showHouseMenu(h: HouseMenuHooks): void {
   // Where things stand, under the box; with a Bakod and nothing to get past it with, what to buy instead.
   if (!house.mine && fenced && me.keys < 1 && me.kalawang < 1) {
     setTimeout(() => {
-      say('This house has a Bakod. Please purchase a Master Key or a Kalawang Potion at the rewards shop.', 'bad');
+      say('This house has a Bakod. Please purchase a Master Key or a Kalawang Potion at the sari-sari store.', 'bad');
       playSound('error');
     }, 200); // after the pop-up's own open sound
   } else say(status(), !house.mine && (me.jailed || cooling()) ? 'bad' : null); // laying low or in jail: in red

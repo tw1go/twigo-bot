@@ -53,7 +53,7 @@ export const NPC_PLACES: NpcPlace[] = [
   { id: 'marites', home: [37, 36], behaviour: SMALL, speed: 0.6, faces: 'sw', gossip: true, voice: 1.1, portrait: 'sw' }, // the plaza, by the fountain
   { id: 'nena', home: [31, 38], behaviour: STILL, speed: 0.6, watch: PLAZA, gossip: true, voice: 0.95, portrait: 'se' }, // the plaza's south-west side, in plain view (by the bank's wall the bank hid her)
   { id: 'puring', home: [31, 33], behaviour: SMALL, speed: 0.6, faces: 'se', gossip: true, voice: 1.05, portrait: 'sw' }, // the plaza's benches
-  { id: 'tessie', home: [29, 14], behaviour: STILL, speed: 0.6, faces: 'sw', gossip: true, voice: 1.12, portrait: 'se' }, // beside the rewards shop
+  { id: 'tessie', home: [29, 14], behaviour: STILL, speed: 0.6, faces: 'sw', gossip: true, voice: 1.12, portrait: 'se' }, // beside the sari-sari store
   { id: 'dolor', home: [38, 45], behaviour: SMALL, speed: 0.6, faces: 'sw', gossip: true, voice: 1.22, portrait: 'sw' }, // the south road, where people arrive
   { id: 'bebang', home: [29, 52], behaviour: SLOW, speed: 0.6, faces: 's', gossip: true, voice: 0.92, portrait: 'se' }, // by twigo's house
   { id: 'charing', home: [29, 24], behaviour: STILL, speed: 0.6, faces: 'se', gossip: true, voice: 1.3, portrait: 'sw' }, // near the notice board

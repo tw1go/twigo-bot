@@ -4,7 +4,7 @@ import { fakeLogin } from '../session';
 import { itemArt } from './item-art';
 import { coinIcon, el, followWallet, showPopup } from './reward';
 
-// 🎁 The rewards shop (left click the shop): what /redeem sells, in the reward box with tabs (Items, Potions, Bags,
+// 🎁 The sari-sari store (left click the store): what /redeem sells, in the reward box with tabs (Items, Potions, Bags,
 // Passes). Each tab is a grid of the item art with prices; picking one shows what it does, a quantity for the ones
 // that stack, and a Buy button (passes ask again first: they're expensive and sent by hand). Buying goes through
 // the bot (POST /town/shop) with /redeem's checks. Item art: manifest `items` by reward id (ui/item-art.ts), in the
@@ -207,7 +207,7 @@ export function showShop(): void {
     if (res.ok) window.dispatchEvent(new Event('mk-wallet')); // the HUD's Kowens (and shovels)
   };
 
-  const closed = showPopup({ title: 'Rewards shop', body: [wrap], button: 'Close', celebrate: false, sound: 'door' });
+  const closed = showPopup({ title: 'Sari-sari store', body: [wrap], button: 'Close', celebrate: false, sound: 'door' });
   followWallet(closed, () => !busy && void load().then((s) => s && !busy && ((shop = s), render())));
   void load().then((s) => {
     if (!s) return void (note.textContent = "Couldn't load the shop. Try again in a moment.");

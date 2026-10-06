@@ -21,7 +21,7 @@ const SEED: TownNewsPost[] = [
       '**🗺️ Things to try**',
       '• Walk around, chat and emote with everyone in town',
       '• ⛏️ Dig at the **Mine**, 🪙 flip **Kara y Krus** at the **Casino**, 🎟️ try your luck at the **jackpot booth**',
-      '• 🏦 Visit the **bank**, the 🎁 **rewards shop**, the 📜 **notice board** and the 🏆 **leaderboard monument**',
+      '• 🏦 Visit the **bank**, the 🎁 **sari-sari store**, the 📜 **notice board** and the 🏆 **leaderboard monument**',
       '• Click another player to give Kowens, or to praise, diss or judge them',
       '• 🎒 Press **B** for your bag',
       '',

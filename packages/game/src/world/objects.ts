@@ -16,7 +16,7 @@ import { hash, rng } from './rng';
 // col/row → in front; entirely before its col/row → behind. See BigObject / sortAgainstBig.
 
 /** Buildings that get a looping coin sparkle. */
-const SPARKLE_BUILDINGS = ['jackpot-booth', 'bank', 'rewards-shop'];
+const SPARKLE_BUILDINGS = ['jackpot-booth', 'bank', 'sari-sari-store'];
 
 export interface Building {
   id: string;

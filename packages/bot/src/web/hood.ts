@@ -175,7 +175,7 @@ export async function hoodAction(client: Client, userId: string, action: 'steal'
   if (action === 'kalawang') {
     const until = fencedUntil(owner);
     if (!until) return done(false, `${them}'s house has no Bakod to rust.`);
-    if (!usePotion(userId, 'kalawang')) return done(false, 'You have no Kalawang Potion. Get one at the rewards shop.');
+    if (!usePotion(userId, 'kalawang')) return done(false, 'You have no Kalawang Potion. Get one at the sari-sari store.');
     const now = halveFence(owner)!;
     await post(client, `🧪💥 <@${userId}> threw a **Kalawang Potion** at <@${owner}>'s 🧱 Bakod in the neighbourhood! Half of it rusted away 🟫\n-# Their Bakod now ends <t:${Math.floor(now / 1000)}:R>.`, [owner]);
     feed('steal', `${me} rusted ${them}'s Bakod with a Kalawang Potion`, 'lose');

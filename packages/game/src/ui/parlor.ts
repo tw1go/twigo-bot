@@ -7,7 +7,7 @@ import { fakeLogin } from '../session';
 import { type ParlorResult, mountCreator } from './creator';
 import { toast } from './toast';
 
-// 💇 The Parlor (left click the parlor, beside the rewards shop): the character creator's box over the town, with the
+// 💇 The Parlor (left click the parlor, beside the sari-sari store): the character creator's box over the town, with the
 // character on the left and two tabs on the right: Appearance (the creator's choices; a new look costs Kowens) and
 // Title (which of your titles to show, free). The bot checks and charges (GET/POST /town/parlor); everyone in town
 // sees the change through the town's `look` message (TownScene handles yours too).

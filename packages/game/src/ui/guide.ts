@@ -36,7 +36,7 @@ const TOPICS: Topic[] = [
     text: [
       '• **Enter** opens the chat; Enter again sends. Esc or a click outside closes it',
       '• The chat is linked to Discord: lines from there show with the Discord mark',
-      '• **Megaphone** (bought at the rewards shop): `/m your message` shouts it across the whole screen for everyone; `/g` goes back to General',
+      '• **Megaphone** (bought at the sari-sari store): `/m your message` shouts it across the whole screen for everyone; `/g` goes back to General',
       '• **Emotes**: the face button beside the chat, or keys **1–8**',
       '• **N online** beside the chat lists who is in town',
       '• Click a name in the chat to open that player’s menu',
@@ -59,7 +59,7 @@ const TOPICS: Topic[] = [
       '• Win at the **Casino**, the **Arena** or the **jackpot**',
       '• Finish quests on the **notice board**',
       '',
-      '**Ways to spend**: the rewards shop, the Parlor, jackpot tickets, shovels, bets.',
+      '**Ways to spend**: the sari-sari store, the Parlor, jackpot tickets, shovels, bets.',
       '-# The "+" beside your Kowens and shovels explains them too.',
     ].join('\n'),
   },
@@ -95,7 +95,7 @@ const TOPICS: Topic[] = [
       '• Dug-up items: **Sell** for Kowens or **Flex** to show off in Discord',
       '• Select many (Ctrl/⌘/Shift click, or the **Select** toggle) and **Sell selected**',
       '• Master Keys and potions live here too',
-      '• Slots marked X are locked; bigger bags are at the rewards shop',
+      '• Slots marked X are locked; bigger bags are at the sari-sari store',
     ].join('\n'),
   },
   {
@@ -150,7 +150,7 @@ const TOPICS: Topic[] = [
     label: 'Bank',
     text: [
       'Left click the **bank**.',
-      '• **Vault**: keeps Kowens safe from thieves (up to **30%** of what you have). Unlock it at the rewards shop',
+      '• **Vault**: keeps Kowens safe from thieves (up to **30%** of what you have). Unlock it at the sari-sari store',
       '• **Loan**: borrow from the Tanod Bank (from **20** up to **100** Kowens as you repay on time), **10%** interest, due in **3 days**',
       '• Late loans get fees, then half of what you earn goes to the debt, and then jail',
     ].join('\n'),
@@ -160,7 +160,7 @@ const TOPICS: Topic[] = [
     icon: '🎁',
     label: 'Shop & Parlor',
     text: [
-      '**Rewards shop**: items (megaphones, Master Keys), potions, bigger bags and passes (passes: testers only). Click an item, pick how many, buy.',
+      '**Sari-sari store**: items (megaphones, Master Keys), potions, bigger bags and passes (passes: testers only). Click an item, pick how many, buy.',
       '',
       '**Parlor** (north of the shop):',
       '• **Appearance**: a new look for your character, **3 Kowens**',
@@ -188,7 +188,7 @@ const TOPICS: Topic[] = [
       '• Your first house is **free**: pick a house and its colours. A new look later is **3 Kowens**',
       '• Next visit you start at your own door',
       '• **Steal**: click someone’s house. **35%** to take 2–5% of their Kowens; caught = a fine and **5 minutes** in jail. Once an hour',
-      '• **Bakod**: a fence that keeps thieves out (rewards shop). Only a **Master Key** gets past it (**50%** it snaps), or a **Kalawang Potion** rusts half of it away',
+      '• **Bakod**: a fence that keeps thieves out (sari-sari store). Only a **Master Key** gets past it (**50%** it snaps), or a **Kalawang Potion** rusts half of it away',
     ].join('\n'),
   },
   {
