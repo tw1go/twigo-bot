@@ -8,7 +8,7 @@ import { jailedUntil } from '../games/jail.js';
 import { stealCooldown, stealFrom } from '../games/steal.js';
 import { kowen } from '../kowens.js';
 import { potionCount, usePotion } from '../potions/potions.js';
-import { hoodMap } from './hood-map.js';
+import { hoodMap, lotTile } from './hood-map.js';
 import { getNickname } from './nickname.js';
 import { titleOf } from './titles.js';
 import { feed } from './town-feed.js';
@@ -95,20 +95,40 @@ export async function townHood(userId: string, names: (id: string) => Promise<st
   };
 }
 
+/** Tells the neighbourhood (those in it now) that a house was built or got a new look. */
+export type HouseNews = (change: 'built' | 'look', house: HoodHouse, at: { col: number; row: number; door: [number, number] }) => void;
+
+/** The house of `userId` as the neighbourhood shows it (for HouseNews). */
+async function shownHouse(userId: string, names: (id: string) => Promise<string>): Promise<{ house: HoodHouse; at: { col: number; row: number; door: [number, number] } } | null> {
+  const r = mineStmt.get(userId);
+  if (!r) return null;
+  const { col, row } = lotTile(r.lot);
+  const fenced = !!fencedUntil(userId);
+  const house: HoodHouse = { lot: r.lot, owner: getNickname(userId) ?? (await names(userId)), title: titleOf(userId), ...lookOf(r), fenced };
+  // The door spot as hood-map lays it: outside the fence on a house with a Bakod.
+  return { house, at: { col, row, door: fenced ? [col + 4, row + 1] : [col + 3, row + 1] } };
+}
+
 /** Builds the member's house (free, on the next lot) or gives it a new look (REPAINT_COST Kowens). */
-export async function saveHouse(userId: string, look: HouseLook, names: (id: string) => Promise<string>): Promise<TownHoodActionResponse> {
+export async function saveHouse(userId: string, look: HouseLook, names: (id: string) => Promise<string>, news: HouseNews = () => {}): Promise<TownHoodActionResponse> {
   const done = async (ok: boolean, message: string) => ({ ...(await townHood(userId, names)), ok, message });
+  const tell = async (change: 'built' | 'look') => {
+    const shown = await shownHouse(userId, names);
+    if (shown) news(change, shown.house, shown.at);
+  };
   const had = houseOf(userId);
   if (!had) {
     insertStmt.run(userId, look.style, JSON.stringify(look.colours), Date.now());
     const name = getNickname(userId) ?? (await names(userId));
     feed('shop', `${name} built a house in the neighbourhood`, 'shop');
+    await tell('built');
     return done(true, 'Your house is built! Welcome to the neighbourhood.');
   }
   if (had.style === look.style && JSON.stringify(had.colours) === JSON.stringify(look.colours)) return done(false, "That's how your house looks already.");
   if (balance(userId) < REPAINT_COST) return done(false, `A new look for your house is ${REPAINT_COST} ${kowen(REPAINT_COST)}, and you have ${balance(userId)}.`);
   take(userId, REPAINT_COST);
   updateStmt.run(look.style, JSON.stringify(look.colours), userId);
+  await tell('look');
   return done(true, `Your house has a new look! (−${REPAINT_COST} ${kowen(REPAINT_COST)})`);
 }
 

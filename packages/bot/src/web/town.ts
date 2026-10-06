@@ -4,7 +4,7 @@ import type { IncomingMessage, Server } from 'node:http';
 import type { Duplex } from 'node:stream';
 import { WebSocket, WebSocketServer } from 'ws';
 import { Arena, type ArenaBets, type ArenaSeat, arenaLine } from './town-arena.js';
-import type { OutfitData, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine } from '@mikazuki/shared';
+import type { HoodHouse, OutfitData, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
 // messages). The server keeps everyone's tile and checks each step — on the map, not blocked, next to the last
@@ -121,6 +121,9 @@ export interface Town {
   newTitle(userId: string, id: string, title: TitleData): void;
   /** A member changed their look or title at the Parlor: everyone in town sees it (them included). */
   restyle(userId: string, outfit: OutfitData, title: TitleData): void;
+  /** A house built or given a new look: everyone in the neighbourhood sees it at once (it rises, or puffs into its new
+   *  look). */
+  house(change: 'built' | 'look', house: HoodHouse, at: { col: number; row: number; door: [number, number] }): void;
   /** A member (if in town) flexed an item from their bag: to everyone, them included (chat line + bubble). */
   flexed(userId: string, item: { id: string; name: string; rarity: string }): void;
   /** A member (if in town) says a diss, praise or judge line: to everyone, the speaker included. */
@@ -416,6 +419,10 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     newTitle(userId, id, title) {
       const c = conns.get(userId);
       if (c) send(c, { t: 'new-title', id, title });
+    },
+    house(change, house, at) {
+      const text = JSON.stringify({ t: 'house', change, house, ...at } satisfies TownServerMessage);
+      for (const o of conns.values()) if (o.room === 'hood' && o.ws.readyState === WebSocket.OPEN) o.ws.send(text);
     },
     restyle(userId, outfit, title) {
       const c = conns.get(userId);

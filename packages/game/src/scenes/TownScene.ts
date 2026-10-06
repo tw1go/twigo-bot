@@ -19,6 +19,7 @@ import { mountHouseCreator } from '../ui/house-creator';
 import { playBusted } from '../ui/casino';
 import { drawBridge } from '../world/bridge';
 import { playKalawang, playMasterKey } from '../world/bakod-fx';
+import { puffHouse, riseHouse, sinkHouse } from '../world/house-rise';
 import { ChatBox } from '../ui/chat';
 import { StayReward } from '../ui/stay';
 import { MegaphoneBanner } from '../ui/megaphone';
@@ -198,9 +199,12 @@ export class TownScene extends Phaser.Scene {
   private readonly gateSpots: { sign: BuildingLabel; y: number; over: Set<string> }[] = [];
   /** Each house's texture, redrawn after a new look (the key changes so the sprite picks it up). */
   private houseKeys = 0;
+  /** Straight from building your house: it rises on its lot as you arrive. */
+  private justBuilt = false;
 
-  init(data: { manifest: Manifest; town: TownMap; me: MeResult | null; firstVisit?: boolean; hood?: TownHoodResponse; art?: HouseArt }): void {
+  init(data: { manifest: Manifest; town: TownMap; me: MeResult | null; firstVisit?: boolean; hood?: TownHoodResponse; art?: HouseArt; built?: boolean }): void {
     this.firstVisit = !!data.firstVisit;
+    this.justBuilt = !!data.built;
     this.M = data.manifest;
     this.map = data.town;
     this.me = data.me;
@@ -320,6 +324,13 @@ export class TownScene extends Phaser.Scene {
       if (name) this.buildingLabels.set(b.id, new BuildingLabel(this, name, b.top.x));
     }
     this.gateSigns();
+    // Your house, just built: hidden in the ground until the arrival has settled, then it rises.
+    const built = this.justBuilt ? this.hood?.houses.find((h) => h.mine) : null;
+    const yours = built && this.objects.buildings.find((b) => b.id === `house-${built.lot}`);
+    if (yours) {
+      sinkHouse(yours);
+      this.time.delayedCall(INTRO_MS + 300, () => void riseHouse(this.fx(), yours));
+    }
     // Members show their nickname and title; without a login (login off, or the dev server) it's "Guest".
     const member = this.me?.status === 'ok' ? this.me.me : null;
     this.player.setNameTag(member?.nickname ?? 'Guest', member?.title ?? TOWNFOLK);
@@ -580,6 +591,7 @@ export class TownScene extends Phaser.Scene {
         return;
       }
       if (m.t === 'new-title') return showNewTitle(m.id, m.title, member?.title ?? TOWNFOLK);
+      if (m.t === 'house') return this.houseNews(m);
       if (m.t === 'look' && m.id === myId) return void this.restyle(sanitize(this.M.characters, m.outfit, this.outfit), m.title);
       if (m.t === 'jailed' && m.id === myId) {
         this.player.setJailed(m.on);
@@ -785,26 +797,28 @@ export class TownScene extends Phaser.Scene {
     this.input.on(Phaser.Input.Events.GAME_OUT, () => this.peek?.dragging && settle());
   }
 
+  /** A building's layers clickable (the arena's back half too); its name shows while any of them is hovered. */
+  private wireBuilding(b: Building): void {
+    let over = 0;
+    for (const part of b.parts) {
+      part.setInteractive({ pixelPerfect: true, cursor: cursor('hand', this.cameras.main.zoom) });
+      part.on(Phaser.Input.Events.GAMEOBJECT_POINTER_OVER, () => {
+        over += 1;
+        this.hovered = b;
+        this.showBuildingName();
+      });
+      part.on(Phaser.Input.Events.GAMEOBJECT_POINTER_OUT, () => {
+        over = Math.max(0, over - 1);
+        if (!over && this.hovered === b) this.hovered = null;
+        this.showBuildingName();
+      });
+    }
+  }
+
   private setupInput(): void {
     // Benches are left-clickable too (sit), so they get the hand cursor.
     for (const b of this.objects.benches) b.sprite.setInteractive({ pixelPerfect: true, cursor: cursor('hand', this.cameras.main.zoom) });
-    for (const b of this.objects.buildings) {
-      // Every layer is clickable (the arena's back half too); the name shows while any of them is hovered.
-      let over = 0;
-      for (const part of b.parts) {
-        part.setInteractive({ pixelPerfect: true, cursor: cursor('hand', this.cameras.main.zoom) });
-        part.on(Phaser.Input.Events.GAMEOBJECT_POINTER_OVER, () => {
-          over += 1;
-          this.hovered = b;
-          this.showBuildingName();
-        });
-        part.on(Phaser.Input.Events.GAMEOBJECT_POINTER_OUT, () => {
-          over = Math.max(0, over - 1);
-          if (!over && this.hovered === b) this.hovered = null;
-          this.showBuildingName();
-        });
-      }
-    }
+    for (const b of this.objects.buildings) this.wireBuilding(b);
 
     // Left click uses things (a building's door, a bench); right click only walks. A tap on a touch screen does
     // both, as there's no right button.
@@ -1136,12 +1150,63 @@ export class TownScene extends Phaser.Scene {
           const now = r.houses.find((h) => h.lot === house.lot);
           const key = now && this.houseTexture(now);
           const b = this.objects.buildings.find((x) => x.id === `house-${house.lot}`);
-          if (key && b) b.sprite.setTexture(key);
+          if (key && b) puffHouse(this.fx(), b, key);
         }
         return r;
       },
       onClose: () => {},
     });
+  }
+
+  /** What the house effects need: this scene, its art and the world's tint now. */
+  private fx() {
+    return { scene: this, M: this.M, tint: this.tint };
+  }
+
+  /** Someone else's house, live: built (it rises on its lot, if this map already has room for it) or a new look. */
+  private houseNews(m: Extract<TownServerMessage, { t: 'house' }>): void {
+    const hood = this.hood;
+    const H = this.M.houses;
+    if (!hood || !this.art || !H) return;
+    const id = `house-${m.house.lot}`;
+    if (hood.houses.find((h) => h.mine)?.lot === m.house.lot) return; // yours: already shown here
+    const known = this.objects.buildings.find((b) => b.id === id);
+    const i = hood.houses.findIndex((h) => h.lot === m.house.lot);
+    if (i >= 0) hood.houses[i] = m.house;
+    else hood.houses.push(m.house);
+    if (m.change === 'look') {
+      const key = known && this.houseTexture(m.house);
+      if (key) puffHouse(this.fx(), known, key);
+      return;
+    }
+    if (known) return;
+    const [cols, rows] = this.map.size;
+    if (m.col + H.footprint[0] > cols || m.row + H.footprint[1] > rows) {
+      return toast(`${m.house.owner} built a house on a new street! It'll be there on your next visit.`, 3500);
+    }
+    const key = this.houseTexture(m.house);
+    if (!key) return;
+    this.M.buildings[id] = { file: key, size: H.size, footprint: H.footprint, footprintTopCorner: H.footprintTopCorner, footprintBottomCorner: H.footprintBottomCorner } as Manifest['buildings'][string];
+    const o = { kind: 'building' as const, id, col: m.col, row: m.row, footprint: [H.footprint[0], H.footprint[1]] as [number, number] };
+    this.map.objects.push(o);
+    this.map.doors[id] = m.door;
+    for (let r = m.row; r < m.row + H.footprint[1]; r++) {
+      for (let c = m.col; c < m.col + H.footprint[0]; c++) {
+        this.map.blocked[r][c] = 1;
+        this.grid.block(c, r);
+      }
+    }
+    const b = this.objects.addBuildingNow(o);
+    if (!b) return;
+    if (this.tint >= 0) b.sprite.setTint(this.tint);
+    this.doorAt.set(`${m.door[0]},${m.door[1]}`, b);
+    this.wireBuilding(b);
+    const label = new BuildingLabel(this, `${m.house.owner}'s house`, b.top.x);
+    label.setZoom(this.cameras.main.zoom);
+    this.buildingLabels.set(id, label);
+    sinkHouse(b);
+    void riseHouse(this.fx(), b);
+    toast(`${m.house.owner} built a house in the neighbourhood!`, 3000);
   }
 
   /** A clickable sign over each gate: "Neighbourhood" at the bridge, "Back to town" at the neighbourhood's exit. */

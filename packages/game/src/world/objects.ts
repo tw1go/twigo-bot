@@ -161,6 +161,14 @@ export class WorldObjects {
     return d;
   }
 
+  /** A building that arrives while the scene is up (a house just built in the neighbourhood): drawn, sorted and listed
+   *  like the others. Its manifest entry must already exist. */
+  addBuildingNow(o: MapObject): Building | null {
+    const before = this.buildings.length;
+    this.addBuilding(o);
+    return this.buildings.length > before ? this.buildings[this.buildings.length - 1] : null;
+  }
+
   private addBuilding(o: MapObject): void {
     const def: BuildingDef & { layers?: { back?: string; front?: string } } = this.M.buildings[o.id];
     if (!def) return console.warn(`[town] unknown building ${o.id}`);

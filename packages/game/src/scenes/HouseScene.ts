@@ -56,7 +56,7 @@ export class HouseScene extends Phaser.Scene {
   }
 
   private enter(hood: TownHoodResponse): void {
-    this.scene.start('town', { ...this.args, town: hoodTownMap(hood, this.args.town), hood, firstVisit: false });
+    this.scene.start('town', { ...this.args, town: hoodTownMap(hood, this.args.town), hood, firstVisit: false, built: true }); // it rises as you arrive
   }
 }
 

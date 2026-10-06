@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { HoodHouse, HouseLook, OutfitData, TownHoodActionResponse, TownHoodResponse } from '@mikazuki/shared';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { hoodMap } from '../../bot/src/web/hood-map.ts';
+import { hoodMap, lotTile } from '../../bot/src/web/hood-map.ts';
 import type { Plugin } from 'vite';
 import { attachTown } from '../../bot/src/web/town.ts';
 import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
@@ -116,6 +116,11 @@ export function devTown(): Plugin {
           message = 'Your house has a new look! (−3 Kowens)';
         } else houses.push({ name: who, lot: houses.length, owner: who, title: { name: 'Townfolk', color: '#B794F6' }, style: look.style, colours: look.colours, fenced: false });
         server.config.logger.info(`[hood] ${who}: ${mine ? 'new look' : 'built a house'} (${look.style})`, { timestamp: true });
+        // Everyone in the neighbourhood sees it go up (or puff into its new look), as from the bot.
+        const h = houses.find((x) => x.name === who)!;
+        const { col, row } = lotTile(h.lot);
+        const { name: _name, ...shown } = h;
+        town.house(mine ? 'look' : 'built', shown, { col, row, door: h.fenced ? [col + 4, row + 1] : [col + 3, row + 1] });
         reply(res, { ...hood(who), ok: true, message } satisfies TownHoodActionResponse);
       });
       server.middlewares.use('/town/hood', async (req, res) => {

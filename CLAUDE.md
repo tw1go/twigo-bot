@@ -206,6 +206,10 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   "Neighbourhood →" sign (TownScene `gateSigns`); walking onto a gate reloads the page in the other area (`?from=`: you arrive at town.json `arrive.hood`, the road's
   end by the bridge; the live server never places arrivals on gate tiles: TownMap `avoid`). Dev: the dev
   server answers the hood routes with pretend neighbours (Mara has a Bakod); `&steal=win|bust|snap`.
+  Houses rise (`world/house-rise.ts`): your new house rises out of its lot when you first walk in after building it
+  (HouseScene → `built: true`), shaking, in fx dig-dust / footstep-dust (arena-whoosh, arena-slam); anyone already in
+  the neighbourhood sees a house built live (the bot's `house` message to the hood room, `saveHouse`'s `HouseNews`;
+  a lot past the loaded map's edge only gets a toast) and a new look as a dust puff. Reduced motion: no rise, just dust.
 - Player menu (`ui/target.ts`): left click (or tap) someone → their name in a long box top centre (or click their name
   in the chat: the box opens right beside it with the menu open, `selectAt`; a click elsewhere closes it; no ×: a click
   outside the box closes it too, a drag to peek doesn't); clicking it opens

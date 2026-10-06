@@ -541,7 +541,7 @@ export function startWebServer(client: Client): void {
         if (path === '/town/house') {
           const look = parseHouseLook(body);
           if (!look) return send(res, 400, '{"error":"invalid house"}');
-          return send(res, 200, JSON.stringify(await saveHouse(userId, look, names)));
+          return send(res, 200, JSON.stringify(await saveHouse(userId, look, names, (change, house, at) => town?.house(change, house, at))));
         }
         const action = body?.action;
         const lot = body?.lot;

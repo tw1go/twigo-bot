@@ -39,6 +39,11 @@ export class WalkGrid {
     return col >= 0 && row >= 0 && col < this.cols && row < this.rows;
   }
 
+  /** Blocks a tile from now on (a house built while the scene is up). */
+  block(col: number, row: number): void {
+    if (this.inBounds(col, row)) this.blocked[row * this.cols + col] = 1;
+  }
+
   walkable(col: number, row: number): boolean {
     return this.inBounds(col, row) && !this.blocked[row * this.cols + col];
   }

@@ -88,6 +88,16 @@ test('a Bakod fences the house: stealing needs a Master Key, a Kalawang Potion h
   assert.equal((await hoodAction(client, 'b', 'steal', 1, names)).ok, false); // your own house
 });
 
+test('the neighbourhood hears when a house is built (it rises) or gets a new look', async () => {
+  const heard: [string, number, number, number, [number, number]][] = [];
+  const news = (change: string, house: { lot: number }, at: { col: number; row: number; door: [number, number] }) => void heard.push([change, house.lot, at.col, at.row, at.door]);
+  await saveHouse('d', look, names, news);
+  add('d', 10);
+  await saveHouse('d', { ...look, style: 'aframe' }, names, news);
+  const { col, row } = lotTile(2);
+  assert.deepEqual(heard, [['built', 2, col, row, [col + 3, row + 1]], ['look', 2, col, row, [col + 3, row + 1]]]);
+});
+
 test.after(() => {
   closeDatabase();
   rmSync(dir, { recursive: true, force: true });
