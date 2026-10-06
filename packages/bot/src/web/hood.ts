@@ -61,7 +61,7 @@ export function hoodTownMap(): TownMap {
   const houses = allStmt.all().length;
   if (cached?.houses !== houses) {
     const m = hoodMap(houses);
-    cached = { houses, map: { size: m.size, spawn: m.spawn, blocked: m.blocked } };
+    cached = { houses, map: { size: m.size, spawn: m.spawn, blocked: m.blocked, avoid: m.exit } };
   }
   return cached.map;
 }

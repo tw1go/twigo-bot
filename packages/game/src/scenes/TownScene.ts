@@ -13,7 +13,7 @@ import { showElsewhere, showKicked } from '../ui/elsewhere';
 import { mountTownHud, setHudAvatar } from '../ui/townhud';
 import { showParlor } from '../ui/parlor';
 import { type HouseArt, composeHouse, houseFiles, houseStyles, tidyLook } from '../houses/art';
-import { areaUrl, hoodAction, saveHouse } from '../net/hood';
+import { areaUrl, cameFrom, hoodAction, saveHouse } from '../net/hood';
 import { showHouseMenu } from '../ui/house-menu';
 import { mountHouseCreator } from '../ui/house-creator';
 import { playBusted } from '../ui/casino';
@@ -294,6 +294,10 @@ export class TownScene extends Phaser.Scene {
     this.player.onArrive = (tile) => this.arrived(tile);
     this.player.nextStep = () => this.keyStep();
     this.player.onSpawn = (obj) => this.tint >= 0 && obj.setTint(this.tint);
+    // Back through a gate: at its way in (town.json `arrive`), facing into the area, not the spawn point.
+    const from = cameFrom();
+    const arrive = from ? this.map.arrive?.[from] : undefined;
+    if (arrive) this.player.place({ col: arrive[0], row: arrive[1] }, 'nw');
     this.others = new OtherPlayers(this, this.M, this.objects, (obj) => this.tint >= 0 && obj.setTint(this.tint));
 
     this.setupCamera(bounds);

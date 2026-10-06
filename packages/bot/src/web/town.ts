@@ -53,6 +53,8 @@ export interface TownMap {
   size: [number, number]; // [cols, rows]
   spawn: [number, number]; // [col, row]
   blocked: number[][]; // [row][col], 1 = blocked
+  /** Tiles nobody arrives on (the gates to other areas: stepping on one there would take you straight back). */
+  avoid?: [number, number][];
 }
 
 export interface TownProfile {
@@ -127,8 +129,8 @@ export interface Town {
 
 /** The game's map (packages/game/public/assets/maps/town.json), from the monorepo next to the bot. */
 export function loadTownMap(): TownMap {
-  const json = JSON.parse(readFileSync(new URL('../../../game/public/assets/maps/town.json', import.meta.url), 'utf8')) as TownMap;
-  return { size: json.size, spawn: json.spawn, blocked: json.blocked };
+  const json = JSON.parse(readFileSync(new URL('../../../game/public/assets/maps/town.json', import.meta.url), 'utf8')) as TownMap & { gates?: Record<string, [number, number][]> };
+  return { size: json.size, spawn: json.spawn, blocked: json.blocked, avoid: Object.values(json.gates ?? {}).flat() };
 }
 
 /** Facing for one grid step (as the game's dirForStep: col runs screen right-down, row runs screen left-down). */
@@ -302,11 +304,12 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     const m = mapOf(room);
     const [sc, sr] = m.spawn;
     const taken = new Set([...conns.values()].filter((o) => o.room === room).map((o) => `${o.player.col},${o.player.row}`));
+    const avoid = new Set((m.avoid ?? []).map(([c, r]) => `${c},${r}`));
     const free: [number, number][] = [];
     const open: [number, number][] = [];
     for (let r = sr - SPAWN_SPREAD; r <= sr + SPAWN_SPREAD; r++) {
       for (let c = sc - SPAWN_SPREAD; c <= sc + SPAWN_SPREAD; c++) {
-        if (!inside(m, c, r) || !walkable(m, c, r)) continue;
+        if (!inside(m, c, r) || !walkable(m, c, r) || avoid.has(`${c},${r}`)) continue;
         open.push([c, r]);
         if (!taken.has(`${c},${r}`)) free.push([c, r]);
       }

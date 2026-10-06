@@ -149,6 +149,13 @@
         #creator.cr-parlor { padding: 8px; }
         #creator .cr-tabs { padding: 10px 10px 0; }
         #creator .cr-title-pick { min-height: 80px; padding: 10px; }
+        /* The house creator: the whole box scrolls (the house goes up out of view), the buttons stay at the bottom. */
+        #creator.cr-house:not(.cr-parlor) { padding-top: 72px; }
+        #creator.cr-house .cr-box { overflow-y: auto; overscroll-behavior: contain; }
+        #creator.cr-house .cr-panel, #creator.cr-house .cr-side { display: block; flex: none; }
+        #creator.cr-house .cr-settings { overflow: visible; }
+        #creator.cr-house .cr-actions { position: sticky; bottom: 0; z-index: 1; background: #111827; }
+        #creator.cr-house .cr-note { background: #111827; }
         #creator .cr-title-name { font-size: 15px; }
       }
       #elsewhere { position: fixed; inset: 0; z-index: 3; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0, 0, 0, 0.65); color: #c0caf5; font: 15px/1.45 var(--ui-font); text-align: center; }

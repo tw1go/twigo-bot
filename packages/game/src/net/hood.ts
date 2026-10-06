@@ -36,12 +36,24 @@ export function hoodTownMap(hood: TownHoodResponse, town: TownMap): TownMap {
   };
 }
 
-/** Where a gate leads: this page again with ?area=hood (or without it, for the town), dev flags kept. */
+/** Where a gate leads: this page again with ?area=hood (or without it, for the town) and ?from= (so you arrive at the
+ *  way in from there), dev flags kept. */
 export function areaUrl(to: 'hood' | 'town'): string {
   const url = new URL(location.href);
+  url.searchParams.set('from', currentArea());
   if (to === 'hood') url.searchParams.set('area', 'hood');
   else url.searchParams.delete('area');
   return url.pathname + url.search;
+}
+
+/** Where you came from (?from=, set by a gate), read once: then tidied out of the address, so a reload starts fresh. */
+export function cameFrom(): 'hood' | 'town' | null {
+  const url = new URL(location.href);
+  const from = url.searchParams.get('from');
+  if (!from) return null;
+  url.searchParams.delete('from');
+  history.replaceState(null, '', url.pathname + url.search + url.hash);
+  return from === 'hood' || from === 'town' ? from : null;
 }
 
 /** Which area this page is (?area=hood: the neighbourhood). */

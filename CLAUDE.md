@@ -199,7 +199,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   house (`houses/art.ts`; rule in the manifest note). House menu `ui/house-menu.ts`; a bust plays `playBusted`
   (`ui/casino.ts`, the casino's Tanod + siren over the town). Town side: the bridge over the river at the east road's end
   (town.json `bridge`, deck drawn in `world/bridge.ts`, railings = fence pieces), `gates.hood` tiles and an always-on
-  "Neighbourhood →" sign (TownScene `gateSigns`); walking onto a gate reloads the page in the other area. Dev: the dev
+  "Neighbourhood →" sign (TownScene `gateSigns`); walking onto a gate reloads the page in the other area (`?from=`: you arrive at town.json `arrive.hood`, the road's
+  end by the bridge; the live server never places arrivals on gate tiles: TownMap `avoid`). Dev: the dev
   server answers the hood routes with pretend neighbours (Mara has a Bakod); `&steal=win|bust|snap`.
 - Player menu (`ui/target.ts`): left click (or tap) someone → their name in a long box top centre (or click their name
   in the chat: the box opens right beside it with the menu open, `selectAt`; a click elsewhere closes it; no ×: a click

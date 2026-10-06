@@ -186,6 +186,8 @@ export interface TownMap {
   bridge?: Vec2[];
   /** Walking onto these tiles goes to another area: 'hood' (the neighbourhood) or 'town'. */
   gates?: Partial<Record<'hood' | 'town', Vec2[]>>;
+  /** Where you appear coming from another area (by where you came from), instead of the spawn point. */
+  arrive?: Partial<Record<'hood' | 'town', Vec2>>;
 }
 
 /** The forest drawn around the town (world/outskirts.ts). */

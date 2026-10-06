@@ -160,11 +160,11 @@ export function devTown(): Plugin {
       });
 
       const town = attachTown(httpServer as Parameters<typeof attachTown>[0], {
-        map: { size: json.size, spawn: json.spawn, blocked: json.blocked },
+        map: { size: json.size, spawn: json.spawn, blocked: json.blocked, avoid: Object.values((json.gates ?? {}) as Record<string, [number, number][]>).flat() },
         rooms: {
           hood: () => {
             const m = hoodMap(houses.length);
-            return { size: m.size, spawn: m.spawn, blocked: m.blocked };
+            return { size: m.size, spawn: m.spawn, blocked: m.blocked, avoid: m.exit };
           },
         },
         shared: true,
