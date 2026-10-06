@@ -1,4 +1,4 @@
-import type { MeDig, TownDigResponse } from '@mikazuki/shared';
+import type { MeDig, TownDigItemsResponse, TownDigResponse } from '@mikazuki/shared';
 import { playSound } from '../audio/sound';
 import { fakeLogin, fakeName, loadMe } from '../session';
 import { type Rarity, RARITY_COLOUR, isRarity, itemArt } from './item-art';
@@ -9,7 +9,8 @@ import { el, followWallet, showPopup } from './reward';
 // the server's lucky dig (the dig pity: a bar of the server's digs toward the next, which is Epic or better), and a
 // Dig button (POST /town/dig, /dig's rules). A find comes back as your feed line, which plays the dig panel over this
 // pop-up (ui/dig-panel.ts), and then shows here as a card: its picture, name, rarity and worth. A dig that can't
-// happen says why. The pop-up stays open to dig again.
+// happen says why. The pop-up stays open to dig again. "Items" swaps the pop-up to the tier list: what digs can turn up,
+// rarest first, each tier's and item's odds and what it sells for (GET /town/dig-items; secrets stay secret).
 
 const plural = (n: number, one: string, many: string) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
 const LABEL: Record<Rarity, string> = { junk: 'Junk', common: 'Common', uncommon: 'Uncommon', rare: 'Rare', epic: 'Epic', mythical: 'Mythical', legendary: 'Legendary', secret: 'Secret' };
@@ -47,7 +48,23 @@ export function showMine(): void {
   const stats = el('div', 'mn-stats');
   stats.append(digs, shovel);
   const lucky = el('div', 'mn-lucky');
-  wrap.append(stats, lucky, found, button, note, el('p', 'mn-hint', 'Each dig uses your shovel once. Buy shovels at the rewards shop; finds go to your bag (sell them with /sell in Discord).'));
+  const listButton = el('button', 'mn-list-btn', '📜 Items');
+  listButton.setAttribute('aria-label', 'What you can dig up, by rarity');
+  const main = [stats, lucky, found, button, listButton, note, el('p', 'mn-hint', 'Each dig uses your shovel once. Buy shovels at the rewards shop; finds go to your bag (sell them with /sell in Discord).')];
+  wrap.append(...main);
+
+  // The tier list, in place of the Mine (Back returns); loaded once per visit.
+  let list: Promise<TownDigItemsResponse | null> | null = null;
+  const showList = async () => {
+    const back = el('button', 'mn-list-btn', '← Back to digging');
+    back.addEventListener('click', () => wrap.replaceChildren(...main));
+    const box = el('div', 'mn-tiers', 'Loading…');
+    wrap.replaceChildren(back, box);
+    const data = await (list ??= loadDigItems());
+    if (!data) return void (box.textContent = "Couldn't reach the Mine. Try again in a moment.");
+    box.replaceChildren(tierList(data));
+  };
+  listButton.addEventListener('click', () => void showList());
 
   let busy = false;
   const render = (d: MeDig) => {
@@ -111,6 +128,56 @@ export function showMine(): void {
     else say('Log in to dig.', false);
   });
 }
+
+const percent = (p: number) => (p >= 0.1 ? `${Math.round(p * 100)}%` : p >= 0.01 ? `${(p * 100).toFixed(1)}%` : `${(p * 100).toFixed(2)}%`);
+const oneIn = (p: number) => (p > 0 ? `1 in ${Math.max(1, Math.round(1 / p)).toLocaleString()}` : '');
+
+/** Each rarity (rarest first) with its odds, and its items: art (or emoji), name, what it sells for, how rare. */
+function tierList(data: TownDigItemsResponse): HTMLElement {
+  const box = el('div', 'mn-tier-list');
+  for (const t of data.tiers) {
+    const rarity: Rarity = isRarity(t.rarity) ? t.rarity : 'common';
+    const tier = el('section', 'mn-tier');
+    tier.style.setProperty('--rarity', RARITY_COLOUR[rarity]);
+    const head = el('div', 'mn-tier-head');
+    const name = el('b', undefined, t.label);
+    name.style.color = RARITY_COLOUR[rarity];
+    head.append(name, el('span', undefined, `${percent(t.chance)} of digs`));
+    tier.append(head);
+    for (const i of t.items) {
+      const row = el('div', 'mn-tier-item');
+      const pic = itemArt(i.id, rarity, 'icon', 2) ?? el('span', 'mn-tier-emoji', i.emoji);
+      const text = el('div', 'mn-tier-text');
+      text.append(el('span', 'mn-tier-name', i.name), el('span', 'mn-tier-odds', `${oneIn(i.chance)} digs`));
+      row.append(pic, text, el('span', 'mn-tier-value', `${i.value.toLocaleString()} ${i.value === 1 ? 'Kowen' : 'Kowens'}`));
+      tier.append(row);
+    }
+    box.append(tier);
+  }
+  box.append(el('p', 'mn-hint', `The odds are for a plain dig. Every ${data.luckyEvery}th dig on the server is Epic or better, and a Swerte Elixir rerolls junk. Some finds are secret…`));
+  return box;
+}
+
+async function loadDigItems(): Promise<TownDigItemsResponse | null> {
+  if (fakeLogin()) return FAKE_ITEMS;
+  const res = await fetch('/town/dig-items', { credentials: 'same-origin' }).catch(() => null);
+  return res?.ok ? ((await res.json()) as TownDigItemsResponse) : null;
+}
+
+// ── Dev: a pretend tier list (no bot behind the dev server) ──
+
+const FAKE_ITEMS: TownDigItemsResponse = {
+  luckyEvery: 60,
+  tiers: [
+    { rarity: 'legendary', label: 'Legendary', chance: 0.0005, items: [{ id: 'twigo-treasure', name: "twigo's Hidden Treasure", emoji: '💰', value: 50, chance: 0.0005 }] },
+    { rarity: 'mythical', label: 'Mythical', chance: 0.002, items: [{ id: 'troyangs-frog', name: "Troyangs' Golden Frog", emoji: '🐸', value: 20, chance: 0.0004 }, { id: 'aka-poknat', name: "Aka's Poknat", emoji: '✨', value: 10, chance: 0.0016 }] },
+    { rarity: 'epic', label: 'Epic', chance: 0.0075, items: [{ id: 'mikko-kalabasa', name: "Mikko's Golden Kalabasa", emoji: '🎃', value: 8, chance: 0.0006 }, { id: 'hei-battery', name: "Hei's 20% Battery", emoji: '🪫', value: 5, chance: 0.0016 }] },
+    { rarity: 'rare', label: 'Rare', chance: 0.02, items: [{ id: 'trot-shelf', name: "Trot's Magical Shelf", emoji: '🪄', value: 4, chance: 0.0021 }, { id: 'fig-boxers', name: "Fig's Boxer Shorts", emoji: '🩲', value: 2, chance: 0.0059 }] },
+    { rarity: 'uncommon', label: 'Uncommon', chance: 0.05, items: [{ id: 'scrappy-milk', name: "Scrappy's Coconut Milk", emoji: '🥥', value: 3, chance: 0.0038 }, { id: 'junwuu-socks', name: "Junwuu's Socks", emoji: '🧦', value: 1, chance: 0.0153 }] },
+    { rarity: 'common', label: 'Common', chance: 0.32, items: [{ id: 'nokia-3310', name: 'Nokia 3310 (Indestructible)', emoji: '📱', value: 5, chance: 0.0017 }, { id: 'karaoke-mic', name: 'Mini Karaoke Mic', emoji: '🎤', value: 4, chance: 0.0025 }, { id: 'spoon', name: 'Spoon', emoji: '🥄', value: 1, chance: 0.0158 }] },
+    { rarity: 'junk', label: 'Junk', chance: 0.6, items: [{ id: 'half-pencil', name: 'Half a Pencil', emoji: '✏️', value: 1, chance: 0.0118 }, { id: 'rock', name: 'Rock', emoji: '🪨', value: 0, chance: 0.0471 }] },
+  ],
+};
 
 // ── Dev: a pretend dig (no bot behind the dev server). The find goes through the dev town as your feed line, so the
 // dig panel plays as it does live. ──

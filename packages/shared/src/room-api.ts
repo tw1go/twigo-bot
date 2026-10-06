@@ -357,6 +357,20 @@ export interface TownHoodResponse {
  *  the neighbourhood afterwards, and what happened. `busted`: caught by the Tanod (the game plays the bust, then jail). */
 export type TownHoodActionResponse = TownHoodResponse & { ok: boolean; message: string; busted?: boolean; stole?: number };
 
+/** GET /town/dig-items: what the Mine can turn up, by rarity (rarest first; secrets stay secret), with each tier's and
+ *  item's chance on a plain dig and what it sells for. */
+export interface TownDigItemsResponse {
+  tiers: {
+    rarity: string;
+    label: string;
+    /** Chance a dig lands on this tier (0–1). */
+    chance: number;
+    items: { id: string; name: string; emoji: string; value: number; chance: number }[];
+  }[];
+  /** Every this-many digs on the server is Epic or better. */
+  luckyEvery: number;
+}
+
 /** GET /town/player?id= : another player in town, as /balance and /status show them, and what the viewer can give. */
 export interface TownPlayerInfo {
   name: string;

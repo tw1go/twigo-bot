@@ -18,7 +18,7 @@ import { buyFromShop, townShop } from './town-shop.js';
 import { type PlayerDeps, giveInTown, playerInfo, verdictInTown } from './town-player.js';
 import type { Town } from './town.js';
 import { bailFromTown, townOutpost } from './town-outpost.js';
-import { digInTown } from './town-mine.js';
+import { digInTown, townDigItems } from './town-mine.js';
 import { gambleInTown } from './town-casino.js';
 import { parlorAction, townParlor } from './town-parlor.js';
 import { hoodAction, hoodTownMap, parseHouseLook, saveHouse, townHood } from './hood.js';
@@ -79,6 +79,7 @@ import { type CmsDeps, cms } from './cms.js';
 //   GET  /town/parlor   the Parlor: the viewer's look, Kowens, and the titles they have (members)
 //   POST /town/parlor   { action: look, outfit } (3 Kowens) | { action: title, id } (free) (from the game's page only; members)
 //   GET  /town/stay     staying in town (a Kowen every 15 min, claimed) and voice chat today (members); POST claims one
+//   GET  /town/dig-items  the Mine's tier list: what digs can turn up, by rarity, with the odds (members)
 //   POST /town/dig      dig at the Mine (/dig's rules; from the game's page only; members)
 //   POST /title/seen    { id? } the game showed the member their new title (from the game's page only)
 //   CMS_PATH/*          the CMS, for the gifter (see cms.ts)
@@ -595,6 +596,13 @@ export function startWebServer(client: Client): void {
         if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
         const voice = { earned: voiceCreditsToday(userId), max: VOICE_DAILY_CAP, minutes: voiceProgress(userId), every: VOICE_MINUTES_PER_CREDIT };
         return send(res, 200, JSON.stringify(req.method === 'GET' ? { ...stayInfo(userId), voice } : claimStay(userId)));
+      }
+      if (req.method === 'GET' && path === '/town/dig-items') {
+        if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
+        const userId = sessionUser(req);
+        if (!userId) return send(res, 401, '{"error":"not logged in"}');
+        if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
+        return send(res, 200, JSON.stringify(townDigItems()));
       }
       if (req.method === 'POST' && path === '/town/dig') {
         if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');

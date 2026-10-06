@@ -227,7 +227,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
 - Mine + dig panel (`ui/mine.ts`, `ui/dig-panel.ts`): left click the mine → digs left, shovel uses, the lucky dig (dig pity:
   `MeDig.lucky/luckyEvery`, the server's digs toward its every-60th Epic-or-better dig, as a bar; gold when the next is it;
   refreshed every 20 s while open; dev `&lucky=58`), Dig (`POST /town/dig`,
-  bot `web/town-mine.ts`). `/dig` and the Mine share `digFor` in `dig/dig.ts` (tested: `npm test`, `dig/dig.test.ts`).
+  bot `web/town-mine.ts`; "📜 Items" swaps the pop-up to the tier list, `GET /town/dig-items`: items in the ground by
+  rarity, rarest first, each tier's and item's odds and value; secrets never listed). `/dig` and the Mine share `digFor` in `dig/dig.ts` (tested: `npm test`, `dig/dig.test.ts`).
   Dig feed lines carry `itemId`/`itemName` and the digger's town `playerId` (the town swaps the Discord id for it):
   your own plays the dig panel (manifest `ui.digPanel`; falls back to the reward pop-up), others' puff `fx dig-dust` at
   the Mine door. Dev: `&find=karaoke-mic`, `/__system?kind=dig&itemId=…&itemName=…&as=Name`.

@@ -1,8 +1,8 @@
 import type { Client } from 'discord.js';
-import type { MeDig, TownDigResponse } from '@mikazuki/shared';
+import type { MeDig, TownDigItemsResponse, TownDigResponse } from '@mikazuki/shared';
 import { config } from '../config.js';
 import { digFor, digReveal } from '../dig/dig.js';
-import { RARITY } from '../dig/items.js';
+import { ITEMS, RARITY, RARITY_ORDER, itemChances } from '../dig/items.js';
 import { DIGS_PER_DAY, LUCKY_EVERY, SHOVEL_COST } from '../dig/store.js';
 import { kowen } from '../kowens.js';
 import { feed } from './town-feed.js';
@@ -10,6 +10,19 @@ import { feed } from './town-feed.js';
 // ⛏️ The town's Mine (POST /town/dig): one dig with /dig's rules (dig/dig.ts). The find goes to the town's feed like
 // /dig's (the digger's own game plays the dig panel from it) and the reveal is posted in the dig channel
 // (DIG_CHANNEL_ID), as /dig shows it in Discord.
+
+/** The Mine's tier list (GET /town/dig-items): every item still in the ground, by rarity (rarest first), with the
+ *  odds of a plain dig (no potion, not the lucky dig). Secret items are never listed. */
+export function townDigItems(): TownDigItemsResponse {
+  const chances = itemChances();
+  const tiers = RARITY_ORDER.filter((r) => r !== 'secret').map((rarity) => {
+    const items = ITEMS.filter((i) => i.rarity === rarity && !i.off)
+      .sort((a, b) => b.value - a.value || a.name.localeCompare(b.name))
+      .map((i) => ({ id: i.id, name: i.name, emoji: i.emoji, value: i.value, chance: chances.get(i.id) ?? 0 }));
+    return { rarity, label: RARITY[rarity].label, chance: items.reduce((n, i) => n + i.chance, 0), items };
+  });
+  return { tiers: tiers.filter((t) => t.items.length), luckyEvery: LUCKY_EVERY };
+}
 
 const clock = (ms: number) => new Date(ms).toLocaleTimeString('en-US', { timeZone: config.timezone, hour: 'numeric', minute: '2-digit' });
 

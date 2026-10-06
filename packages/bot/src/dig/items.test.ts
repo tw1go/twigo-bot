@@ -44,6 +44,19 @@ test('new items join the ground and /gift item; the last item of a rarity stays 
   assert.equal(setDigItem('golden-tabo', { ...tabo, rarity: 'epic' }), 'last-of-rarity');
 });
 
+test("the Mine's tier list: rarest first, no secrets, nothing out of the ground, the tiers' odds adding up", async () => {
+  const { townDigItems } = await import('../web/town-mine.js');
+  const { SECRET_CHANCE } = await import('./items.js');
+  const list = townDigItems();
+  assert.equal(list.tiers[0].rarity, 'legendary'); // the rarest listed first
+  assert.equal(list.tiers.at(-1)!.rarity, 'junk');
+  const ids = list.tiers.flatMap((t) => t.items.map((i) => i.id));
+  assert.ok(!ids.includes('twigo-tsinelas')); // 🤫
+  assert.ok(!ids.includes('rock')); // taken out of the ground above
+  const total = list.tiers.reduce((n, t) => n + t.chance, 0);
+  assert.ok(Math.abs(total - (1 - SECRET_CHANCE)) < 1e-9, `tiers add to ${total}`);
+});
+
 test.after(() => {
   closeDatabase();
   rmSync(dir, { recursive: true, force: true });
