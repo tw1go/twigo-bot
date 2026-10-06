@@ -14,6 +14,7 @@ import { onEgg67Reaction } from './games/egg67.js';
 import { onSaluteReaction } from './games/secrets.js';
 import { backfillFound } from './games/found.js';
 import { startWebServer } from './web/server.js';
+import { connectFeedChannel } from './web/town-feed.js';
 import { closeDatabase } from './db/db.js';
 
 /** Whether the Presence intent is on in the Developer Portal: asking for it while it's off stops the login. */
@@ -48,6 +49,7 @@ client.once(Events.ClientReady, (c) => {
   startVoiceCredits(c);
   startJailWatcher(c);
   startPatrolScheduler(c);
+  connectFeedChannel(c); // the town's system feed, also in its Discord channel
   startWebServer(c);
   initBoosters(c).catch((err) => console.error('[boosts] init failed:', err));
   catchUpEggs(c).catch((err) => console.error('[easter-egg] catch-up failed:', err));

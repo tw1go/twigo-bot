@@ -148,7 +148,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   `public/assets/audio/CREDITS.md` and the font's licence). Keep sounds soft: no sharp clicks.
 - Emotes (`ui/emotes.ts` picker beside the chat input, keys 1–8; `EmotePop` in `ui/labels.ts`): the art's emote
   icons over the head for ~2 s (laugh also cheers, wave waves); `emote` goes to the others, rate-limited.
-- System feed (`ui/system-feed.ts`, bottom right, hidden ≤760 px): digs and bets from the Discord commands (bot
+- System feed (`ui/system-feed.ts`, bottom right, hidden ≤760 px; every line and banner is also posted in Discord at
+  `TOWN_FEED_CHANNEL_ID`, gathered ~3 s per post, no pings: bot `web/town-feed.ts`, tested): digs and bets from the Discord commands (bot
   `web/town-feed.ts` `feed()`, called in `commands/dig.ts` after the reveal and `commands/gamble.ts`), coloured by
   rarity / win / lose / bust; last 10 kept in memory. Dev: `/__system?kind=dig&tone=rare&text=…`.
 - Banners (`ui/announce.ts`, top centre): jackpot wins (bot `games/jackpot.ts` → `announce`, gold with casino lights) and
