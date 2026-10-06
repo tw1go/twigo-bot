@@ -45,7 +45,7 @@ import { Inventory } from '../ui/inventory';
 import { closeCasino, openCasino, setCasinoArt } from '../ui/casino';
 import { fadeNavy } from '../ui/fade';
 import { OtherPlayers } from '../world/others';
-import { fakeLogin } from '../session';
+import { fakeLogin, loadMe } from '../session';
 import { screenToTile, tileToScreen } from '../iso';
 import { toast } from '../ui/toast';
 import { GROUND_SHADOW_DEPTH, LABEL_DEPTH, frontDepth } from '../world/depth';
@@ -438,6 +438,9 @@ export class TownScene extends Phaser.Scene {
     if (this.firstVisit || (import.meta.env.DEV && new URLSearchParams(location.search).has('tutorial'))) void showMovementTutorial();
     const member = this.me?.status === 'ok' ? this.me.me : null;
     if (member?.newTitle) showNewTitle(member.newTitle.id, member.newTitle, member.title);
+    // The welcome gift; straight from the creator it was only just given, so /me is asked again.
+    if (member?.welcomeGift) showWelcomeGift(member.welcomeGift);
+    else if (member && this.firstVisit) void loadMe(true).then((m) => m.status === 'ok' && m.me.welcomeGift && showWelcomeGift(m.me.welcomeGift));
     if (import.meta.env.DEV) {
       const demo = new URLSearchParams(location.search).get('reward');
       if (demo === 'kowens') void showReward({ title: 'Reward', graphic: { kind: 'kowens', amount: 50 }, message: 'Congratulations! 50 Kowens are yours.' });
@@ -1552,6 +1555,14 @@ function showNewTitle(id: string, title: TitleData, wearing: TitleData): void {
   const message = worn ? `Congratulations! You are now known as <${title.name}>.` : `Congratulations! <${title.name}> is yours. Show it under your name at the Parlor.`;
   void showReward({ title: 'New title!', graphic: { kind: 'title', title }, message }).then(() =>
     fakeLogin() ? null : fetch('/title/seen', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }).catch(() => null),
+  );
+}
+
+/** The welcome gift, in the reward pop-up (once: the bot is told when it's been seen). */
+function showWelcomeGift(amount: number): void {
+  window.dispatchEvent(new Event('mk-wallet')); // the HUD's Kowens (given before this page asked)
+  void showReward({ title: 'Welcome gift!', graphic: { kind: 'kowens', amount }, message: `Welcome to Mikazuki town! Every player gets ${amount} Kowens to start with. Enjoy!` }).then(() =>
+    fakeLogin() ? null : fetch('/welcome/seen', { method: 'POST', credentials: 'same-origin' }).catch(() => null),
   );
 }
 

@@ -50,6 +50,7 @@ const TOPICS: Topic[] = [
       'Kowens are the server’s money, the same ones as in Discord. Yours show top left.',
       '',
       '**Ways to earn**',
+      '• **Welcome gift**: **50 Kowens** once, when you make your character',
       '• **Daily Kowens**: **5 a day**. Claim them in town (the gold line bottom right) or with `/get-kowens` in Discord',
       '• **Stay in town**: a Kowen every **15 minutes**, up to **20 a day**. Press **Claim** when the pop-up shows',
       '• **Voice chat** in Discord: up to **12 a day**',

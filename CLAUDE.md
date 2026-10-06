@@ -122,6 +122,10 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   `mk_daily_offer`) a pop-up offering them (Claim / Later); claiming shows the Kowens reward pop-up. Dev: pretend (ready a
   minute in; `&stay=ready`; `&voice=N` earned; `&daily=claimed`).
   Pop-ups opened while the town loads wait for the white frame (`setRewardArt`'s repaint), so none shows dark.
+- Welcome gift (bot `web/welcome.ts`, kv 'welcome-gift', tested): 50 Kowens once per member with a character (look +
+  nickname): new players as the creator saves (`PUT /outfit` / `PUT /nickname`), everyone who already had one at bot
+  startup (`welcomeEveryone`). Shown in the reward pop-up on the next visit (`/me` welcomeGift → `POST /welcome/seen`;
+  straight from the creator the town asks /me again). Dev: `&welcome=1`.
 - Movement tutorial (`ui/tutorial.ts`, in the reward box via `showPopup`): shown when a member walks into town
   straight from the creator (their first visit). Dev: `?tutorial=1`.
 - Reward pop-up (`ui/reward.ts`, `showReward`): dimmed town, turning rays, white box in the item frame (its fill

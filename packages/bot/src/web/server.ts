@@ -7,6 +7,7 @@ import { DIGS_PER_DAY, digsToday, inventory, LUCKY_EVERY, serverDigProgress, SHO
 import { ITEM_BY_ID } from '../dig/items.js';
 import { getNickname, parseNickname, setNickname } from './nickname.js';
 import { RICHEST, TITLES, newTitle, titleOf, titleSeen } from './titles.js';
+import { welcome, welcomeEveryone, welcomeGift, welcomeSeen } from './welcome.js';
 import { checkRichest } from './richest.js';
 import { attachTown, loadTownMap } from './town.js';
 import { bridgeTownChat } from './town-chat.js';
@@ -83,6 +84,7 @@ import { type CmsDeps, cms } from './cms.js';
 //   GET  /town/dig-items  the Mine's tier list: what digs can turn up, by rarity, with the odds (members)
 //   POST /town/dig      dig at the Mine (/dig's rules; from the game's page only; members)
 //   POST /title/seen    { id? } the game showed the member their new title (from the game's page only)
+//   POST /welcome/seen  the game showed the member their welcome gift (from the game's page only)
 //   CMS_PATH/*          the CMS, for the gifter (see cms.ts)
 //   WS   /ws            the live town: who else is there and where (see town.ts; from the game's page only)
 
@@ -206,7 +208,7 @@ async function me(client: Client, req: IncomingMessage, res: ServerResponse): Pr
     const item = ITEM_BY_ID.get(id)!;
     return { id, name: item.name, emoji: item.emoji, rarity: item.rarity, count };
   });
-  const body: MeResponse = { id: userId, name, avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items, preregistered: isPreregistered(userId), house: !!houseOf(userId), outfit: getOutfit(userId), nickname: getNickname(userId), title: titleOf(userId), newTitle: newTitle(userId), status: await statusOf(client, userId),
+  const body: MeResponse = { id: userId, name, avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items, preregistered: isPreregistered(userId), house: !!houseOf(userId), outfit: getOutfit(userId), nickname: getNickname(userId), title: titleOf(userId), newTitle: newTitle(userId), welcomeGift: welcomeGift(userId), status: await statusOf(client, userId),
     dig: digStatus(userId) };
   send(res, 200, JSON.stringify(body));
 }
@@ -340,6 +342,7 @@ export function startWebServer(client: Client): void {
         // Free in the creator only (no look or nickname yet); after that a new look is bought at the Parlor.
         if (getOutfit(userId) && getNickname(userId)) return send(res, 409, '{"error":"change your look at the Parlor"}');
         saveOutfit(userId, outfit);
+        welcome(userId); // a character now (look + nickname): the welcome gift
         return send(res, 200, '{"ok":true}');
       }
       if (req.method === 'GET' && path === '/town/leaderboard') {
@@ -635,6 +638,14 @@ export function startWebServer(client: Client): void {
         titleSeen(userId, typeof body?.id === 'string' ? body.id : undefined);
         return send(res, 200, '{"ok":true}');
       }
+      if (req.method === 'POST' && path === '/welcome/seen') {
+        if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
+        if (!fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
+        const userId = sessionUser(req);
+        if (!userId) return send(res, 401, '{"error":"not logged in"}');
+        welcomeSeen(userId);
+        return send(res, 200, '{"ok":true}');
+      }
       if (req.method === 'PUT' && path === '/nickname') {
         if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
         if (!fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
@@ -650,6 +661,7 @@ export function startWebServer(client: Client): void {
         const nickname = parseNickname(body?.nickname);
         if (!nickname) return send(res, 400, '{"error":"invalid nickname"}');
         if (setNickname(userId, nickname) === 'taken') return send(res, 409, '{"error":"taken"}');
+        welcome(userId);
         return send(res, 200, JSON.stringify({ nickname }));
       }
       if (path.startsWith('/auth/') || path === '/me') {
@@ -726,5 +738,8 @@ export function startWebServer(client: Client): void {
     console.error('[web] town disabled, map not loaded:', err);
   }
 
+  // The welcome gift for everyone who already has a character (once each; new ones get it in the creator).
+  const welcomed = welcomeEveryone();
+  if (welcomed) console.log(`[welcome] gave the welcome gift to ${welcomed} member(s) with a character`);
   server.listen(port, '127.0.0.1', () => console.log(`[web] room API on 127.0.0.1:${port}`));
 }

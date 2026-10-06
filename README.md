@@ -290,6 +290,9 @@ Master Key gets in (50% it snaps), or a Kalawang Potion halves the Bakod. Caught
 `ANNOUNCEMENTS_CHANNEL_ID` and `PATCH_NOTES_CHANNEL_ID` (`GET /town/news`, read from Discord and kept for 2 minutes;
 either can be left empty), plus town-only posts written in the CMS (`web/town-posts.ts`).
 
+**Welcome gift** (`packages/bot/src/web/welcome.ts`): 50 Kowens once for every member with a character, given as they
+finish the character creator (and at startup to anyone who had a character before it existed), shown in a pop-up.
+
 **Tutorial** (`packages/game/src/ui/guide.ts`): the "?" beside News opens a guide with a tab per feature (moving, chat,
 Kowens, players, Mine, bag, Casino, jackpot, Arena, bank, shop and Parlor, quests, neighbourhood, jail, news and settings).
 Its numbers are the bot's rules; keep them in step when those change.

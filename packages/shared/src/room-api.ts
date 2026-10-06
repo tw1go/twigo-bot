@@ -81,6 +81,8 @@ export interface MeResponse {
   /** A title that's new to them (given, or won like <Richest Among All>): the game shows it in a reward pop-up, then
    *  calls `POST /title/seen { id }`. Null when there's none. */
   newTitle: (TitleData & { id: string }) | null;
+  /** The welcome gift (Kowens) not shown yet: the game shows it in a reward pop-up, then calls `POST /welcome/seen`. */
+  welcomeGift?: number | null;
   /** Digging today (see /dig and /redeem reward:Shovel). */
   dig: MeDig;
   /** Their Discord status, shown on the avatar (not sent yet: needs the Presence intent; dev fakes it). */
