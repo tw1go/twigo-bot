@@ -11,15 +11,15 @@ export const RACE_FINISH: [number, number][] = [[66, 33], [68, 34], [68, 35], [6
 /** What a runner says when she stops (the bot's script picks the kind and a number; the line is that number modulo
  *  the list). */
 export const STOP_LINES: Record<TownRaceStop['kind'], string[]> = {
-  arthritis: ['Aray, ang tuhod ko!', 'Teka… sumasakit ang rayuma ko.', 'Hay, ang likod ko!', 'Pahinga muna, mga mare…'],
-  asthma: ['*hingal* Teka lang… *hingal*', 'Nasaan ang inhaler ko?!', 'Hindi na ako bata, ha!', 'Ay, hinihingal na ako…'],
-  gossip: ["Ay, ano 'yon?! Sino'ng naghiwalay?", "Teka, narinig ko 'yan!", 'Psst! Ano’ng balita?', "Totoo ba 'yan?! Ikuwento mo!"],
-  phone: ['Teka, may bagong message sa GC!', 'Ay, nag-chat si Mareng Lourdes!', 'Seen lang?! Hmp!', 'Wait lang, nagla-live ako!'],
-  fall: ['Ay! Nadapa ako!', 'Aray ko po!', "Sino'ng naglagay ng bato dito?!", 'Okay lang ako! Okay lang!'],
+  arthritis: ['Ouch, my knee!', 'Hold on… my arthritis is acting up.', 'Oh, my aching back!', 'Break time, ladies…'],
+  asthma: ['*wheeze* Hold on… *wheeze*', "Where's my inhaler?!", "I'm not as young as I used to be!", "Oh, I'm out of breath…"],
+  gossip: ['Wait, what was that?! Who broke up?', 'Hold on, I heard that!', "Psst! What's the news?", "Is that true?! Tell me everything!"],
+  phone: ['Hold on, new message in the group chat!', 'Ooh, Lourdes just messaged me!', 'Left on seen?! Hmph!', "Wait, I'm going live!"],
+  fall: ['Whoa! I tripped!', 'Ow, ow, ow!', 'Who put a rock here?!', "I'm fine! I'm fine!"],
 };
 
 /** Now and then at the starting line, while the bets come in. */
-export const WARMUP_LINES = ['Handa na ako!', "Kaya ko 'to!", 'Tumaya kayo sa akin!', 'Mag-iinat muna ako.', 'Unahan tayo sa chismis!'];
+export const WARMUP_LINES = ['Ready when you are!', 'I can do this!', 'Bet on me!', 'Just stretching first.', 'First one to the gossip wins!'];
 
 /** How far along the track a lane is `ms` into the race (0–1), the stop she's in and how long it has left. The bot's laneAt
  *  (games/race-script.ts) is the reference: keep them in step. */
