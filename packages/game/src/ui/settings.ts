@@ -92,7 +92,18 @@ function audio(): HTMLElement {
   });
   mute.append(box, el('span', undefined, 'Mute all'));
 
-  section.append(el('h3', 'st-heading', 'Audio'), music.row, sfx.row, mute);
+  // The townsfolk's voices and the Alings' gossip murmur, on their own.
+  const folk = el('label', 'st-row st-check');
+  const folkBox = el('input');
+  folkBox.type = 'checkbox';
+  folkBox.checked = s.npcsMuted;
+  folkBox.addEventListener('change', () => {
+    setSound({ npcsMuted: folkBox.checked });
+    playSound('click');
+  });
+  folk.append(folkBox, el('span', undefined, 'Mute townsfolk (voices and gossip)'));
+
+  section.append(el('h3', 'st-heading', 'Audio'), music.row, sfx.row, mute, folk);
   return section;
 }
 

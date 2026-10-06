@@ -70,10 +70,12 @@ export interface SoundSettings {
   /** Sound effects and ambience volume, 0–1. */
   sfx: number;
   muted: boolean;
+  /** The townsfolk quiet: no talk blips, no gossip murmur (Settings: "Mute townsfolk"). */
+  npcsMuted: boolean;
 }
 
 const KEY = 'mk_sound';
-const DEFAULTS: SoundSettings = { music: 0, sfx: 1, muted: false };
+const DEFAULTS: SoundSettings = { music: 0, sfx: 1, muted: false, npcsMuted: false };
 
 let settings = loadSettings();
 let scene: Phaser.Scene | null = null;
@@ -101,10 +103,10 @@ function loadSettings(): SoundSettings {
     // Before music and sound effects had their own volumes: one master volume and a music switch.
     if (typeof saved.music === 'boolean' || saved.volume !== undefined) {
       const volume = saved.volume ?? 1;
-      return { music: saved.music === true ? volume : 0, sfx: volume, muted: !!saved.muted };
+      return { music: saved.music === true ? volume : 0, sfx: volume, muted: !!saved.muted, npcsMuted: false };
     }
     const level = (v: unknown, d: number) => (typeof v === 'number' ? Phaser.Math.Clamp(v, 0, 1) : d);
-    return { music: level(saved.music, DEFAULTS.music), sfx: level(saved.sfx, DEFAULTS.sfx), muted: !!saved.muted };
+    return { music: level(saved.music, DEFAULTS.music), sfx: level(saved.sfx, DEFAULTS.sfx), muted: !!saved.muted, npcsMuted: !!saved.npcsMuted };
   } catch {
     return { ...DEFAULTS };
   }
@@ -171,7 +173,7 @@ function startAmbience(): void {
 
 const cricketsVolume = () => (indoors ? 0 : CRICKETS.volume * cricketsLevel.value * settings.sfx);
 const fountainLevel = () => (indoors ? 0 : fountainVolume * settings.sfx);
-const murmurLevel = () => (indoors ? 0 : murmurVolume * settings.sfx);
+const murmurLevel = () => (indoors || settings.npcsMuted ? 0 : murmurVolume * settings.sfx);
 const setVolume = (sound: Phaser.Sound.BaseSound | null, volume: number) =>
   (sound as Phaser.Sound.WebAudioSound | null)?.setVolume(volume);
 
@@ -215,7 +217,7 @@ export function hearGossip(distance: number | null, talking: boolean): void {
  *  doesn't sound robotic. Silent while sound is locked, muted or turned down to 0. */
 export function playVoice(rate: number): void {
   const s = scene;
-  if (!s || s.sound.locked || settings.muted || settings.sfx === 0) return;
+  if (!s || s.sound.locked || settings.muted || settings.npcsMuted || settings.sfx === 0) return;
   const v = VOICE.keys[Math.floor(Math.random() * VOICE.keys.length)];
   if (!s.cache.audio.exists(v.key)) return;
   s.sound.play(v.key, { volume: VOICE.volume * settings.sfx, rate: rate * (1 + (Math.random() * 2 - 1) * VOICE.detune) });
