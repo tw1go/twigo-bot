@@ -577,6 +577,11 @@
       /* The picked player (ui/target.ts): a long box with their name at the top centre, and its menu. */
       #target { position: fixed; top: 12px; left: 50%; z-index: 3; width: min(300px, calc(100vw - 32px)); transform: translateX(-50%); font: 15px/1.3 var(--ui-font); color: #E6E9F2; }
       #target[hidden] { display: none; }
+      /* Dev ?switch (ui/class-switch.ts): the class badges, bottom left over the chat. */
+      #class-switch { position: fixed; left: 12px; bottom: 300px; z-index: 6; display: flex; gap: 4px; padding: 4px; border: 2px solid #7C2AE8; background: rgba(17, 24, 39, 0.92); }
+      #class-switch button { width: 36px; height: 36px; padding: 0; border: 2px solid transparent; background: #1E1B3A; color: #a9b1d6; font: 700 16px var(--ui-font); cursor: var(--cur-hand, pointer); }
+      #class-switch button img { display: block; width: 32px; height: 32px; image-rendering: pixelated; }
+      #class-switch button.cs-on { border-color: #A3E635; }
       /* The targeted mob (ui/mob-target.ts): an info bar like the picked player's box. */
       #mob-target { position: fixed; top: 12px; left: 50%; z-index: 3; width: min(300px, calc(100vw - 32px)); box-sizing: border-box; padding: 7px 14px 8px; border: 2px solid #7C2AE8; background: #111827; color: #E6E9F2; font: 15px/1.3 var(--ui-font); transform: translateX(-50%); pointer-events: none; }
       #mob-target[hidden] { display: none; }

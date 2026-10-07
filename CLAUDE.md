@@ -302,7 +302,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   up after 12 s without a hit or out of its leash and walks home; at 0 it dies (`mob-hit` dead: its death pose, gone)
   and respawns after its zone's respawnSec (`mob-spawn`). The game shows damage numbers (gold for a crit), an HP bar
   over a hurt mob and in the target's info bar. `residents` are unused for now. Dev: `?area=slums`,
-  `__town.mobs()`; the dev server reads maps/slums.json again when it changes.
+  `?switch` (pretend login: a row of class badges, bottom left, to become any class at once: `devSwitchClass` in
+  net/adventure.ts, its training weapon, the class choice done), `__town.mobs()`; the dev server reads maps/slums.json again when it changes.
 - NPCs (town only, not the neighbourhood; client-side: never on the server, the online list or the minimap): the
   Tanod and ten Alings, flat pre-baked sheets (manifest `npcs`, art in `assets/npcs/`, one pack per NPC; `Character`
   with `FlatSheets`, never the paper doll). Homes, behaviours, the Tanod's route, voices and portrait facing in

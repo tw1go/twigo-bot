@@ -81,8 +81,9 @@ import { type Bench, type Building, WorldObjects, characterDepth } from '../worl
 import { enterArenaSound, enterCasinoSound, hearFrom, leaveCasinoSound, playSound, startTownSound } from '../audio/sound';
 import type { AdventureData } from '../net/adventure';
 import { Hotbar } from '../ui/hotbar';
+import { mountClassSwitch } from '../ui/class-switch';
 import { MOVES, type MoveKind, isMoveKind, moveTiles, playMove } from '../world/mobility';
-import { adventure, adventureData, chooseClass, classInfo, initAdventure, itemDef, loadAdventureData, onAdventure, questDef, questFor, questTalk } from '../net/adventure';
+import { devSwitchClass, adventure, adventureData, chooseClass, classInfo, initAdventure, itemDef, loadAdventureData, onAdventure, questDef, questFor, questTalk } from '../net/adventure';
 import type { ClassArt } from '../assets/types';
 import { drawRested, loadImages, poseFiles, restFiles } from '../characters/kit-art';
 import { holdQuestBanners, mountQuests } from '../ui/quests';
@@ -646,6 +647,11 @@ export class TownScene extends Phaser.Scene {
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => hotbar.root.remove());
       hotbar.setClass(classInfo(adventure()?.cls) ?? null);
       void this.applyBattle(adventure()?.cls ?? null);
+      // Dev: ?switch shows a row of class badges to become any class at once (pretend login only).
+      if (new URLSearchParams(location.search).has('switch') && fakeLogin() && icons) {
+        const off = mountClassSwitch({ classes: data.classes, badge: (cls) => url(icons.file.replace('{class}', cls)), current: () => adventure()?.cls ?? null, pick: devSwitchClass });
+        this.events.once(Phaser.Scenes.Events.SHUTDOWN, off);
+      }
       onAdventure((s) => {
         hotbar.setClass(classInfo(s.cls) ?? null);
         void this.applyBattle(s.cls);

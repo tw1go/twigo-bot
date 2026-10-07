@@ -163,6 +163,31 @@ export function questFor(npc: string): { quest: QuestDef; step: number } | null 
   return null;
 }
 
+/**
+ * Dev (?switch): become another class at once (null: none), wearing its training weapon, the class choice done
+ * (the Tanod's quest finished). Everything listening (the HUD, the hotbar, battle poses, resting weapons) follows; the
+ * dev town hears the new kit. Only with the pretend login: a real account changes class through the bot (CMS: Reset
+ * class, then the Tanod).
+ */
+export function devSwitchClass(cls: string | null): void {
+  if (!fakeLogin() || !data) return;
+  const s = structuredClone(state ?? loadFake());
+  s.cls = cls;
+  const weapon = cls ? [...data.equipment.values()].find((i) => i.slot === 'weapon' && (i as { class?: string }).class === cls)?.id : undefined;
+  s.bag = s.bag.filter((id) => !data!.equipment.get(id)?.id.startsWith('weapon-training-'));
+  if (weapon) s.equipped.weapon = weapon;
+  else delete s.equipped.weapon;
+  const choosing = data.quests.filter((q) => q.objectives.some((o) => o.type === 'chooseClass')).map((q) => q.id);
+  s.quests.active = s.quests.active.filter((p) => !choosing.includes(p.id));
+  if (cls) s.quests.done = [...new Set([...s.quests.done, ...choosing])];
+  else {
+    s.quests.done = s.quests.done.filter((id) => !choosing.includes(id));
+    startQuests(s);
+  }
+  set(s);
+  void fetch(`/__kit?${new URLSearchParams({ as: fakeName(), cls: cls ?? '', weapon: weapon ?? '' })}`).catch(() => null);
+}
+
 /** Dev: your class and weapon for the dev town (sent on connect). */
 export function devKit(): { cls: string | null; weapon: string | null } {
   const s = state ?? loadFake();
