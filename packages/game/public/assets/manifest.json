@@ -13913,14 +13913,18 @@
         32
       ],
       "have": {
-        "slingshot": ["quick-shot", "double-tap", "pebble-spray", "ricochet", "piercing-shot", "knee-shot", "volley"],
-        "stick": ["quick-jab", "twin-strike", "low-sweep", "rising-swat", "flurry", "spinning-stick", "lunge"],
-        "greatstick": ["quick-chop", "shove", "wide-swing", "overhead-slam", "ground-pound", "plank-toss", "splinter-burst"],
+        "slingshot": ["quick-shot", "double-tap", "pebble-spray", "ricochet", "piercing-shot", "knee-shot", "volley", "step-back"],
+        "stick": ["quick-jab", "twin-strike", "low-sweep", "rising-swat", "flurry", "spinning-stick", "lunge", "step-back"],
+        "greatstick": ["quick-chop", "shove", "wide-swing", "overhead-slam", "ground-pound", "plank-toss", "splinter-burst", "charge"],
         "broom": ["dust-flick", "leaf-dart", "gust", "spark-sweep", "dust-devil", "ember-leaves", "static-bristles"],
-        "potlid": ["lid-bonk", "ladle-smack", "clang", "lid-toss", "steam-burst", "boiling-splash", "rebound"],
-        "hilot": ["menthol-flick", "herb-pinch", "menthol-puff", "stinging-rub", "root-snare", "camphor-cloud", "hot-compress"]
+        "potlid": ["lid-bonk", "ladle-smack", "clang", "lid-toss", "steam-burst", "boiling-splash", "rebound", "charge"],
+        "hilot": ["menthol-flick", "herb-pinch", "menthol-puff", "stinging-rub", "root-snare", "camphor-cloud", "hot-compress", "blink"]
       },
-      "note": "skill icons on the shared navy rounded-square frame, 32x32 (the hotbar and the Skills panel at 1x). {skill} = the skill's name from classes.json in lower case, words joined by '-' (Quick Shot = quick-shot). have: the icons there are; skills without one show their initials. Still missing: the movement skills (dash, step-back, charge, blink)."
+      "shared": {
+        "file": "ui/skills/shared/ui-skill-{skill}.png",
+        "skills": ["dash"]
+      },
+      "note": "skill icons on the shared navy rounded-square frame, 32x32 (the hotbar and the Skills panel at 1x). {skill} = the skill's name from classes.json in lower case, words joined by '-' (Quick Shot = quick-shot). have: the icons there are per class; shared: one icon for every class (Dash), used when the class has none of its own. Skills without one show their initials. Still missing: broom's blink."
     },
     "classIcons": {
       "file": "ui/classes/ui-class-{class}.png",

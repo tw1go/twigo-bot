@@ -298,7 +298,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   Skills panel on the right of the screen (K or the K button; `#skill-book`): each skill with its description, the hovered
   one played on the class choice's stage (`TownScene.skillStage`, 1×); drag a skill to a slot, or click it then a slot.
   Potions dragged from the bag; drag between slots swaps, off the bar or right-click empties. Per class in localStorage
-  `mk_hotbar` (a class's first bar = its skills in order). Skill icons from manifest ui.skillIcons (`have` lists the ones there are: every class's 7 damage skills; none yet for the move skills); the rest show
+  `mk_hotbar` (a class's first bar = its skills in order). Skill icons from manifest ui.skillIcons (`have` lists the ones there are: every class's 7 damage skills and its Lv 8 move; `shared` = one icon for all, Dash; Broom's Blink is missing); the rest show
   their initials over the class badge. In town the damage skills are dark (grey, dimmed: `usable`); only the move
   skills light up. Where it
   doesn't fit, the chat, bag button, system feed, stay box and toasts sit higher (body.hotbar-on). Emotes are F1–F8.

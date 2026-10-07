@@ -564,7 +564,8 @@ export class TownScene extends Phaser.Scene {
         icon: (cls, skill) => {
           const I = this.M.ui.skillIcons;
           const slug = skill.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-          return I?.have[cls]?.includes(slug) ? url(I.file.replaceAll('{class}', cls).replace('{skill}', slug)) : null;
+          if (I?.have[cls]?.includes(slug)) return url(I.file.replaceAll('{class}', cls).replace('{skill}', slug));
+          return I?.shared?.skills.includes(slug) ? url(I.shared.file.replace('{skill}', slug)) : null; // one for every class (Dash)
         },
       });
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => hotbar.root.remove());
