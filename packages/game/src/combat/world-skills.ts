@@ -103,9 +103,11 @@ export class WorldSkills {
       const [w, h] = def.frame;
       const [ax, ay] = def.anchor ?? [w / 2, h / 2];
       // Mirrored: flipped across; a shot turned to its flight is flipped upside down instead (the turn already points it left).
-      const img = this.scene.add.image(at.x, at.y, def.file, 0).setOrigin(ax / w, ay / h).setDepth(depthOf(o.z ?? 3));
-      if (shot && mirror) img.setFlipY(true).setFlipX(!!o.flip);
-      else img.setFlipX(!!o.flip !== mirror);
+      // (A flipped image keeps its anchor on the same art pixel: the origin flips with it, as the world's props do.)
+      const img = this.scene.add.image(at.x, at.y, def.file, 0).setDepth(depthOf(o.z ?? 3));
+      const fx = shot && mirror ? !!o.flip : !!o.flip !== mirror;
+      const fy = shot && mirror;
+      img.setFlipX(fx).setFlipY(fy).setOrigin((fx ? w - ax : ax) / w, (fy ? h - ay : ay) / h);
       const ms = o.ms ?? 1000 / (def.fps ?? 12);
       const seq = o.frames ?? null;
       const frames = def.frames ?? 1;
