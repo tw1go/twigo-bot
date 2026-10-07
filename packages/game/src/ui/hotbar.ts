@@ -350,7 +350,17 @@ export class Hotbar {
   }
 
   /** Every slot holding that skill gets a dark pie that shrinks round clockwise, with the seconds left on it. */
-  private cooldown(name: string, seconds: number): void {
+  /** Every slot holding that skill glows while it's auto-casting (null: none). */
+  setAuto(name: string | null): void {
+    for (const row of ['top', 'main', 'util'] as Row[]) {
+      this.cells[row].forEach((b, i) => {
+        const e = this.layout[row][i];
+        b.classList.toggle('hb-auto', !!name && e?.t === 'skill' && e.name === name);
+      });
+    }
+  }
+
+  cooldown(name: string, seconds: number): void {
     const now = performance.now();
     this.cds.set(name, { from: now, until: now + seconds * 1000 });
     cancelAnimationFrame(this.cdRaf);

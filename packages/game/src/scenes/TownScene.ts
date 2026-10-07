@@ -456,6 +456,7 @@ export class TownScene extends Phaser.Scene {
     this.others.update(delta);
     this.mobs?.update(delta);
     this.mobs?.check(this.player.tile);
+    this.fightTick();
     this.raceNews();
     if (this.npcs) {
       const me = this.player.tile;
@@ -636,6 +637,7 @@ export class TownScene extends Phaser.Scene {
           return I?.shared?.skills.includes(slug) ? url(I.shared.file.replace('{skill}', slug)) : null; // one for every class (Dash)
         },
       });
+      this.hotbar = hotbar;
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => hotbar.root.remove());
       hotbar.setClass(classInfo(adventure()?.cls) ?? null);
       void this.applyBattle(adventure()?.cls ?? null);
@@ -661,33 +663,78 @@ export class TownScene extends Phaser.Scene {
   }
 
   /**
-   * A damage skill on a battle map: at your target (Z), else the nearest mob, if it's in reach (melee classes: the next
-   * tile; the Slingshot, Broom and Hilot: 5). You face it and play the skill's attack pose; the server decides the
-   * hit (bot web/town-mobs.ts). Returns the cooldown (s), 'no', or undefined off a battle map.
+   * A damage skill on a battle map: it auto-casts on your target (Z; else the nearest mob) whenever it's ready, walking
+   * you into reach first (melee classes: next to it; the Slingshot, Broom and Hilot: within 5) and after it if it moves,
+   * until it dies; moving yourself, Escape or the same skill again stop it, another damage skill takes over (its slot
+   * glows meanwhile). Each cast faces it, plays the skill's attack pose and sends `attack` (the server decides the hit:
+   * bot web/town-mobs.ts). Returns 'no' (the casts show their own cooldown), or undefined off a battle map.
    */
   private fight(name: string): number | 'no' | undefined {
     if (!this.battleMap || !this.mobs) return undefined;
     const c = classInfo(adventure()?.cls);
     const idx = c?.skills.findIndex((k) => k.name === name) ?? -1;
     if (!c || idx < 0) return undefined;
-    if (this.player.isSitting || this.player.busy || this.inside) return 'no';
-    const me = this.player.tile;
+    if (this.engage?.name === name) return this.stopFight(), 'no';
     let m = this.mobs.current;
-    if (!m || m.dead) m = this.mobs.targetNext(me);
+    if (!m || m.dead) m = this.mobs.targetNext(this.player.tile);
     if (!m) {
       toast('No mob nearby. Walk up to one (Z picks the nearest).', 2200);
       return 'no';
     }
-    const reach = RANGED_CLASSES.has(c.id) ? 5 : 1;
-    const dc = Math.floor(m.col) - me.col;
-    const dr = Math.floor(m.row) - me.row;
-    if (Math.max(Math.abs(dc), Math.abs(dr)) > reach) {
-      toast(reach === 1 ? 'Get next to it to hit it.' : 'Too far: get within 5 tiles.', 1800);
-      return 'no';
+    this.engage = { name, idx, reach: RANGED_CLASSES.has(c.id) ? 5 : 1, goal: null };
+    this.hotbar?.setAuto(name);
+    this.fightTick();
+    return 'no';
+  }
+
+  /** The auto-cast under way: which skill, its reach, and where we're walking to get in reach. */
+  private hotbar: Hotbar | null = null;
+  private engage: { name: string; idx: number; reach: number; goal: Tile | null } | null = null;
+  private castReady = 0;
+
+  private stopFight(): void {
+    if (!this.engage) return;
+    this.engage = null;
+    this.hotbar?.setAuto(null);
+  }
+
+  /** Every frame while auto-casting: in reach, cast when ready; out of it, walk to a spot in reach (again if it moved). */
+  private fightTick(): void {
+    const e = this.engage;
+    if (!e) return;
+    const m = this.mobs?.current;
+    if (!m || m.dead) return this.stopFight(); // dead (or let go): done
+    if (this.player.busy || this.player.isSitting || this.inside) return;
+    const me = this.player.tile;
+    const at = { col: Math.floor(m.col), row: Math.floor(m.row) };
+    const dist = (t: Tile) => Math.max(Math.abs(t.col - at.col), Math.abs(t.row - at.row));
+    if (dist(me) <= e.reach) {
+      if (this.player.isIdle === false) this.player.cancelPath(); // stop on this tile
+      e.goal = null;
+      const now = this.time.now;
+      if (now < this.castReady || !this.player.isIdle) return;
+      this.castReady = now + SKILL_COOLDOWN * 1000;
+      this.player.strike(SKILL_POSE[e.idx] ?? 'attack-quick', dirForStep(at.col - me.col, at.row - me.row));
+      this.link?.send({ t: 'attack', mob: m.id, skill: e.idx });
+      this.hotbar?.cooldown(e.name, SKILL_COOLDOWN);
+      return;
     }
-    this.player.strike(SKILL_POSE[idx] ?? 'attack-quick', dirForStep(dc, dr));
-    this.link?.send({ t: 'attack', mob: m.id, skill: idx });
-    return SKILL_COOLDOWN;
+    // Out of reach: to the nearest open tile in reach of it (again if it has moved off our goal's reach).
+    if (e.goal && dist(e.goal) <= e.reach && !this.player.isIdle) return;
+    const spots: Tile[] = [];
+    for (let dr = -e.reach; dr <= e.reach; dr++) for (let dc = -e.reach; dc <= e.reach; dc++) {
+      const t = { col: at.col + dc, row: at.row + dr };
+      if ((dc || dr) && this.grid.walkable(t.col, t.row) && this.objects.heights.at(t.col, t.row) === this.objects.heights.at(at.col, at.row)) spots.push(t);
+    }
+    spots.sort((a, b) => Math.hypot(a.col - me.col, a.row - me.row) - Math.hypot(b.col - me.col, b.row - me.row));
+    for (const t of spots.slice(0, 6)) {
+      if (this.walkTo(t)) {
+        e.goal = t;
+        return;
+      }
+    }
+    toast("Can't reach it from here.", 1800);
+    this.stopFight();
   }
 
   /** When each mobility move can be used again (scene time, ms). */
@@ -1341,7 +1388,10 @@ export class TownScene extends Phaser.Scene {
       if (e.key.toLowerCase() === 'e' || e.key === ' ') this.interact();
       // Z: the nearest mob (again: the next nearest); Escape lets it go.
       if (this.mobs && e.key.toLowerCase() === 'z' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.repeat) this.mobs.targetNext(this.player.tile);
-      if (this.mobs && e.key === 'Escape') this.mobs.setTarget(null);
+      if (this.mobs && e.key === 'Escape') {
+        this.stopFight();
+        this.mobs.setTarget(null);
+      }
       // F1–F8: emotes (the picker beside the chat shows which is which; 1–0 are the hotbar's).
       const f = /^F([1-9])$/.exec(e.key);
       if (f && Number(f[1]) <= EMOTE_KEYS.length) {
@@ -1389,6 +1439,7 @@ export class TownScene extends Phaser.Scene {
       this.player.face(dir);
       return null;
     }
+    this.stopFight(); // the keys take over from an auto-cast
     const to = this.stepToward(this.player.tile, dir);
     if (!to) {
       this.player.face(dir);
@@ -1558,6 +1609,7 @@ export class TownScene extends Phaser.Scene {
 
   /** Just walk there (a blocked tile: the nearest reachable one), with the click marker on where you're going. */
   private moveTo(target: Tile): void {
+    this.stopFight(); // walking yourself stops an auto-cast
     this.pending = null;
     this.byKeys = false;
     const to = this.grid.walkable(target.col, target.row) ? target : this.grid.nearestReachable(this.player.heading, target);
