@@ -10,6 +10,12 @@ import { showVersion } from './ui/version';
 
 // The town, open to every member of the Mikazuki server (the bot checks; ?preview from before is simply ignored).
 document.getElementById('boot-msg')?.remove(); // shown by the page itself until this script arrives
+// Right-click is the game's (walking, emptying a slot): never the browser's menu, wherever it lands (the HUD, chat,
+// pop-ups, labels), except in a text field, where copy and paste stay.
+document.addEventListener('contextmenu', (e) => {
+  const t = e.target as HTMLElement | null;
+  if (!t?.closest('input, textarea, [contenteditable="true"]')) e.preventDefault();
+});
 startGame();
 
 void startHud(document.getElementById('hud')!);
