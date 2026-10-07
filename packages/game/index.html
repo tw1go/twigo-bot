@@ -1312,7 +1312,7 @@
         #class-choice .sp-stage { min-width: 0; justify-self: center; }
       }
       /* ── The equipment panel (ui/equipment.ts): on the bag's left, top to top, as tall as its slots ── */
-      #equipment { position: fixed; top: 72px; right: 442px; z-index: 3; display: flex; flex-direction: column; gap: 10px; width: 340px; max-height: calc(100vh - 96px); box-sizing: border-box; padding: 12px 14px 14px; border: 2px solid #7C2AE8; background: rgba(17, 24, 39, 0.96); color: #c0caf5; font: 15px/1.35 var(--ui-font); }
+      #equipment { position: fixed; top: 72px; right: 442px; z-index: 3; display: flex; flex-direction: column; gap: 10px; width: 380px; max-height: calc(100vh - 96px); box-sizing: border-box; padding: 12px 14px 14px; border: 2px solid #7C2AE8; background: rgba(17, 24, 39, 0.96); color: #c0caf5; font: 15px/1.35 var(--ui-font); }
       #equipment[hidden] { display: none; }
       #equipment.eq-framed { --px: 2; border-style: solid; border-width: calc(var(--slice) * var(--px) * 1px); border-image-source: var(--frame); border-image-slice: var(--slice) fill; border-image-width: calc(var(--slice) * var(--px) * 1px); border-image-repeat: round; image-rendering: pixelated; background: none; padding: 2px 4px 4px; }
       #equipment .eq-head { flex: none; display: flex; align-items: center; gap: 8px; }
@@ -1329,12 +1329,10 @@
       #equipment .eq-refused { animation: eq-refuse 0.6s ease-out; }
       @keyframes eq-refuse { 0%, 60% { box-shadow: inset 0 0 0 40px rgba(245, 158, 11, 0.55); outline: 3px solid #F59E0B; outline-offset: -3px; } }
       #equipment .eq-middle { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-width: 0; }
-      #equipment .eq-stage { position: relative; display: flex; align-items: center; justify-content: center; width: 140px; height: 140px; }
-      #equipment .eq-moon { position: absolute; left: 50%; top: 50%; width: 92px; height: 92px; margin: -52px 0 0 -54px; border-radius: 50%; box-shadow: inset 14px -8px 0 0 rgba(183, 148, 246, 0.16); } /* a faint crescent behind the character */
+      #equipment .eq-stage { position: relative; display: flex; align-items: center; justify-content: center; width: 200px; height: 200px; }
+      #equipment .eq-moon { position: absolute; left: 50%; top: 50%; width: 138px; height: 138px; margin: -78px 0 0 -80px; border-radius: 50%; box-shadow: inset 21px -12px 0 0 rgba(183, 148, 246, 0.16); } /* a faint crescent behind the character */
       #equipment .eq-doll { position: relative; image-rendering: pixelated; cursor: grab; touch-action: none; }
       #equipment .eq-turns { display: flex; align-items: center; gap: 6px; }
-      #equipment .eq-turn { width: 22px; height: 22px; padding: 0; border: 0; background: none; color: #7A8099; font: 14px/1 var(--ui-font); }
-      #equipment .eq-turn:hover { color: #A3E635; }
       #equipment .eq-who { display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 700; color: #A3E635; white-space: nowrap; }
       #equipment .eq-badge { width: 32px; height: 32px; image-rendering: pixelated; } /* the 16x16 badge at 2x */
       #equipment .eq-noclass { color: #7A8099; font-weight: 600; }

@@ -10,7 +10,7 @@ import { toast } from './toast';
 // inventory's slot art: Weapon, Head, Body, Hands, Bottoms and Feet on the left; Necklace, Earrings, two Bracers and two
 // Rings on the right. Empty ones show their grey silhouette (ui.equipSlots) and are named by your gear type on hover
 // (combat-guide.md: Heavy, Light, Household); worn ones show the item's 16x16 icon in its rarity's colour. Your
-// character idles in the middle (2×, with the resting weapon) over a faint crescent moon; ◀ ▶ or a drag turns it.
+// character idles in the middle (3×, facing SE, with the resting weapon) over a faint crescent moon; a drag turns it.
 // Under it your class and level, and the stats box (combat/stats.ts: placeholders plus the worn items). Double-click
 // or drag an item from the bag onto its place to wear it; right-click or double-click a worn one to take it off.
 
@@ -31,7 +31,7 @@ const GEAR: Record<string, Partial<Record<EquipSlot, string>>> = {
 };
 const DIRS: Dir[] = ['s', 'sw', 'w', 'nw', 'n', 'ne', 'e', 'se'];
 const DOLL = 64; // the character's cell
-const DOLL_PX = 2;
+const DOLL_PX = 3;
 
 export interface EquipmentOptions {
   /** The window frame (the inventory's). */
@@ -57,7 +57,7 @@ export class EquipmentPanel {
   private readonly who = el('div', 'eq-who');
   private readonly stats = el('div', 'eq-stats');
   private readonly tip = el('div', 'eq-tip');
-  private dir = 0; // index into DIRS (S first)
+  private dir = DIRS.indexOf('se'); // index into DIRS: facing SE to start
   private raf = 0;
   private busy = false;
 
@@ -96,13 +96,7 @@ export class EquipmentPanel {
     const turn = (by: number) => {
       this.dir = (this.dir + by + DIRS.length) % DIRS.length;
     };
-    const prev = el('button', 'eq-turn', '◀');
-    const next = el('button', 'eq-turn', '▶');
-    prev.setAttribute('aria-label', 'Turn left');
-    next.setAttribute('aria-label', 'Turn right');
-    prev.addEventListener('click', () => turn(-1));
-    next.addEventListener('click', () => turn(1));
-    // Dragging on the character turns it too (one facing per 24 px).
+    // Dragging on the character turns it (one facing per 24 px).
     let dragX: number | null = null;
     this.doll.addEventListener('pointerdown', (e) => {
       dragX = e.clientX;
@@ -119,7 +113,7 @@ export class EquipmentPanel {
     this.doll.addEventListener('pointerup', () => (dragX = null));
     stage.append(el('span', 'eq-moon'), this.doll);
     const turns = el('div', 'eq-turns');
-    turns.append(prev, this.who, next);
+    turns.append(this.who);
     middle.append(stage, turns);
     const body = el('div', 'eq-body');
     body.append(column(LEFT, 'left'), middle, column(RIGHT, 'right'));
