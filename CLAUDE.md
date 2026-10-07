@@ -290,13 +290,16 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   else the first ready damage skill (the bar's order, then the class's); each skill's cooldown by its level
   (`combat/cooldowns.ts` = the bot's `skillCooldown`: 0.8 s + 0.15 s a level, Lv 1 1 s … Lv 18 3.5 s; enforced by the
   server, shown in the Skills panel and the slot's pie); walking you into reach first and after
-  it if it moves (melee classes the next tile, Slingshot/Broom/Hilot 5), until it dies; moving yourself (click, WASD),
+  it if it moves (each skill's reach: skill-hits.json `range`; the class's own otherwise: Slingshot/Broom 5, the melee classes, Hilot included, the next tile), until it dies; moving yourself (click, WASD),
   Escape or the same skill again stop it, another damage skill takes over; its slot glows (`Hotbar.setAuto`). Each cast:
   your attack pose (`SKILL_POSE` by the skill's place) and `attack` to the server, which picks the mobs the skill reaches
   by its shape (game `classes/skill-hits.json`, read by both: single, chain:N, cone/area:N near the target, around:N next
   to you, line:N) and answers one `mob-hit` with every hit (the target first). Then the effects
   (`combat/world-skills.ts`: the skill preview's script played in the world; the hit mobs in the enemy slots the script
-  uses, `combat/skill-slots.ts` dry-runs it; launch points from the class's launch.json; others' casts too). Mobility skills never auto-cast. The bot decides (`MobRoom.attack`, tested): mobs have 100 HP, any class
+  uses, `combat/skill-slots.ts` dry-runs it; launch points from the class's launch.json; others' casts too; facing left
+  the whole skill plays mirrored round the caster's feet; each mob's damage number and HP land when the script's hit on
+  it does; skill-hits.json `fxScale` sizes a skill's effects). Each skill's reach: skill-hits.json `range` (from its
+  script's farthest slot, at least the class's own; around skills: their radius `around:N:R`). Mobility skills never auto-cast. The bot decides (`MobRoom.attack`, tested): mobs have 100 HP, any class
   hits 20 (25 on a 15% crit), at most one swing per 0.4 s; a hit mob chases its foe within its zone's leash and attacks
   next to them every 1.6 s (`mob-attack`: its attack pose and a red flash on the player; players have no HP yet), gives
   up after 12 s without a hit or out of its leash and walks home; at 0 it dies (`mob-hit` dead: its death pose, gone)

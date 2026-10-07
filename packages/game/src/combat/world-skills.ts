@@ -9,8 +9,10 @@ import type { FxHandle, FxOpts, Pt, ShotOpts, Skill, SkillKit } from './skill-st
 // mobs the server says it hit (the target in the first slot the script uses, the others in the rest: combat/skill-slots.ts),
 // a body a little above the feet. Each fx is a sprite updated every
 // frame by the stage's own rules (sequence, hold loop, fades, a stretched length, shots with an arc, turning, a streak
-// revealed past the pivot). Damage numbers are the server's (world/mobs.ts), so the scripts' are left out, as are the
-// moves of the fighter itself (lunges, trails, fades): where you stand is the server's.
+// revealed past the pivot). Damage numbers are the server's (world/mobs.ts), shown when the script's hit lands on that
+// mob (onHit), so the scripts' own are left out, as are the moves of the fighter itself (lunges, trails, fades): where
+// you stand is the server's. The scripts are drawn facing right (SE): facing left (SW, W, NW) the whole skill is played
+// mirrored round the fighter's feet (its points, angles and flips; the launch points of the matching right-hand facing).
 
 const ANCHOR: Pt = { x: 32, y: 56 }; // the fighter's feet in the 64 cell (as the stage)
 const BODY_UP = 12; // a mob's body above its feet
@@ -18,6 +20,9 @@ const Z_GROUND = GROUND_SHADOW_DEPTH + 5;
 const Z_OVER = LABEL_DEPTH - 100; // over the world, under the names
 
 type Launch = Record<string, Partial<Record<Dir, Record<string, [number, number]>[]>>>;
+
+/** Facing left: the right-hand facing whose launch points the mirrored skill uses. */
+const MIRROR: Partial<Record<Dir, Dir>> = { sw: 'se', w: 'e', nw: 'ne' };
 
 interface Live {
   def: FxDef;
@@ -33,6 +38,8 @@ interface Live {
   fadeOut: number;
   end: number;
   length?: number;
+  /** The skill's effects size (skill-hits.json fxScale). */
+  scale: number;
   path?: { from: Pt; to: Pt; t1: number; arc: number; turn: boolean; onArrive?: () => void; reveal: boolean };
 }
 
@@ -66,37 +73,47 @@ export class WorldSkills {
     return p;
   }
 
-  /** Plays `skill` by `who` (of class art `art`); enemy slot n's feet are `slot(n)` (it may move meanwhile). */
-  async play(skill: Skill, art: ClassArt, who: Caster, slot: (n: number) => Pt): Promise<void> {
+  /** Plays `skill` by `who` (of class art `art`); enemy slot n's feet are `slot(n)` (it may move meanwhile); `onHit(n)`
+   *  when the script's hit lands on slot n. */
+  async play(skill: Skill, art: ClassArt, who: Caster, slot: (n: number) => Pt, onHit?: (n: number) => void, scale = 1): Promise<void> {
     const launch = await this.launchOf(art);
-    skill.run(this.kit(art, launch, who, slot));
+    skill.run(this.kit(art, launch, who, slot, onHit, scale));
   }
 
-  private kit(art: ClassArt, launch: Launch | null, who: Caster, slot: (n: number) => Pt): SkillKit {
+  private kit(art: ClassArt, launch: Launch | null, who: Caster, slot: (n: number) => Pt, onHit?: (n: number) => void, scale = 1): SkillKit {
     const now = () => this.scene.time.now;
     const t0 = now();
     let cursor = 0;
     const feet = who.feet();
-    const targets = [0, 1, 2].map((n) => slot(n));
+    // Facing left: the script runs in a mirrored space (as if facing right); what it draws is mirrored back.
+    const facing = MIRROR[who.dir];
+    const mirror = !!facing;
+    const dir = facing ?? who.dir;
+    const m = (p: Pt): Pt => (mirror ? { x: 2 * feet.x - p.x, y: p.y } : p);
+    const targets = [0, 1, 2].map((n) => m(slot(n)));
     const body = (n: number): Pt => {
-      const t = slot(n);
+      const t = m(slot(n));
       return { x: t.x, y: t.y - BODY_UP };
     };
     const depthOf = (z: 0 | 1 | 3 | undefined) => (z === 0 ? Z_GROUND : z === 1 ? who.depth() - 0.4 : Z_OVER);
-    const spawn = (name: string, at: Pt, o: FxOpts): Live | null => {
+    const spawn = (name: string, stageAt: Pt, o: FxOpts, shot = false): Live | null => {
+      const at = m(stageAt);
       const def = this.fx[name];
       if (!def?.file || !def.frame || !this.scene.textures.exists(def.file)) return null;
       const [w, h] = def.frame;
       const [ax, ay] = def.anchor ?? [w / 2, h / 2];
-      const img = this.scene.add.image(at.x, at.y, def.file, 0).setOrigin(ax / w, ay / h).setDepth(depthOf(o.z ?? 3)).setFlipX(!!o.flip);
+      // Mirrored: flipped across; a shot turned to its flight is flipped upside down instead (the turn already points it left).
+      const img = this.scene.add.image(at.x, at.y, def.file, 0).setOrigin(ax / w, ay / h).setDepth(depthOf(o.z ?? 3));
+      if (shot && mirror) img.setFlipY(true).setFlipX(!!o.flip);
+      else img.setFlipX(!!o.flip !== mirror);
       const ms = o.ms ?? 1000 / (def.fps ?? 12);
       const seq = o.frames ?? null;
       const frames = def.frames ?? 1;
       const looping = !seq && !o.hold && !!def.loop;
       const length = seq ? seq.length * ms : o.hold ? o.hold.until + (frames - 1 - o.hold.to) * ms : frames * ms;
       const l: Live = {
-        def, img, x: at.x, y: at.y, angle: o.angle ?? 0, t0: now(), seq, hold: o.hold, ms, fadeIn: o.fadeIn ?? 0, fadeOut: o.fadeOut ?? 0,
-        end: now() + (looping ? (o.life ?? 4000) : length), length: o.length,
+        def, img, x: at.x, y: at.y, angle: mirror && o.angle ? -o.angle : (o.angle ?? 0), t0: now(), seq, hold: o.hold, ms, fadeIn: o.fadeIn ?? 0, fadeOut: o.fadeOut ?? 0,
+        end: now() + (looping ? (o.life ?? 4000) : length), length: o.length, scale,
       };
       this.lives.push(l);
       this.draw(l);
@@ -104,7 +121,7 @@ export class WorldSkills {
     };
     const fps = (anim: string) => art.anims[anim]?.fps ?? 12;
     return {
-      dir: who.dir,
+      dir,
       feet,
       targets,
       body: (n) => body(n),
@@ -119,9 +136,9 @@ export class WorldSkills {
       },
       launch(anim, frame, key) {
         const f = who.feet();
-        const p = key && launch?.[anim]?.[who.dir]?.[frame]?.[key];
+        const p = key && launch?.[anim]?.[dir]?.[frame]?.[key];
         if (p) return { x: f.x + p[0] - ANCHOR.x, y: f.y + p[1] - ANCHOR.y };
-        const fork = art.launchPoints?.[who.dir]; // body-cell px (feet at 16, 46)
+        const fork = art.launchPoints?.[dir]; // body-cell px (feet at 16, 46)
         if (fork) return { x: f.x + fork[0] - 16, y: f.y + fork[1] - 46 };
         return { x: f.x + 8, y: f.y - 20 };
       },
@@ -139,7 +156,7 @@ export class WorldSkills {
         };
       },
       shot: (name, from, to, o: ShotOpts) => {
-        const l = spawn(name, from, { ...o.fx, z: o.z ?? 3 });
+        const l = spawn(name, from, { ...o.fx, z: o.z ?? 3 }, o.turn ?? true);
         const t1 = now() + (Math.hypot(to.x - from.x, to.y - from.y) / o.speed) * 1000;
         if (!l) {
           this.scene.time.delayedCall(t1 - now(), () => o.onArrive?.());
@@ -147,11 +164,12 @@ export class WorldSkills {
         }
         l.end = Infinity;
         l.fadeOut = 0;
-        l.path = { from, to, t1, arc: o.arc ?? 0, turn: o.turn ?? true, onArrive: o.onArrive, reveal: !!o.reveal };
+        l.path = { from: m(from), to: m(to), t1, arc: o.arc ?? 0, turn: o.turn ?? true, onArrive: o.onArrive, reveal: !!o.reveal };
         this.draw(l);
       },
       hit: (n, o = {}) => {
         if (o.fx) spawn(o.fx, body(n), { z: o.z ?? 3 });
+        onHit?.(n);
       },
       number: () => {},
       hide: () => {},
@@ -204,7 +222,7 @@ export class WorldSkills {
       if (l.path.reveal) clip = Math.max(0, ax - Math.hypot(x - from.x, y - from.y));
     }
     l.img.setPosition(Math.round(x), Math.round(y)).setRotation(angle).setAlpha(Math.max(0, Math.min(1, alpha)));
-    l.img.setScale(l.length ? l.length / w : 1, 1);
+    l.img.setScale((l.length ? l.length / w : 1) * l.scale, l.scale);
     if (clip) l.img.setCrop(clip, 0, w - clip, h);
     else if (l.img.isCropped) l.img.setCrop();
   }

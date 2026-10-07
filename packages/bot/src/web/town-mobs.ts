@@ -8,7 +8,7 @@ import type { TownMob } from '@mikazuki/shared';
 // so it's tested on its own and the dev server runs it too.
 //
 // Battle (for now): every mob has MOB_HP; any class hits for HIT (CRIT on a crit, CRIT_CHANCE), from the next tile with
-// a melee class or up to RANGED tiles with a ranged one. A mob that's hit fights back: it goes after whoever hit it last
+// a melee class or up to RANGED tiles with a ranged one (each skill's own reach: skill-hits.json range). A mob that's hit fights back: it goes after whoever hit it last
 // (within its zone's leash from its spawn), and next to them attacks every ATTACK_MS (shown only: players have no HP
 // yet); it gives up and walks home when they're gone, out of its leash, or haven't hit it for GIVE_UP_MS. At 0 HP it
 // dies and comes back at its spawn after its zone's respawnSec. Each skill has its own cooldown by the level it's learnt
@@ -23,7 +23,7 @@ const CRIT = 25;
 const CRIT_CHANCE = 0.15;
 const RANGED = 5;
 /** The classes that fight from afar; the rest hit from the next tile. */
-const RANGED_CLASSES = new Set(['slingshot', 'broom', 'hilot']);
+const RANGED_CLASSES = new Set(['slingshot', 'broom']);
 const ATTACK_MS = 1600;
 const GIVE_UP_MS = 12_000;
 const SWING_MS = 400; // a player's attacks: no faster than this
@@ -54,13 +54,19 @@ export type AttackResult = { ok: true; hits: MobHit[] } | { ok: false; reason: '
 export interface SkillShapes {
   shapes: Record<string, string[]>;
   effects?: Record<string, (string | null)[]>;
+  /** Tiles each skill reaches (else the class's: RANGED or the next tile). */
+  range?: Record<string, number[]>;
 }
 
 /** The game's classes/skill-hits.json. */
 export function loadSkillShapes(): SkillShapes {
   const json = JSON.parse(readFileSync(new URL('../../../game/public/assets/classes/skill-hits.json', import.meta.url), 'utf8')) as Record<string, unknown>;
   const arrays = (o: Record<string, unknown> | undefined) => Object.fromEntries(Object.entries(o ?? {}).filter(([, v]) => Array.isArray(v)));
-  return { shapes: arrays(json) as Record<string, string[]>, effects: arrays(json.effects as Record<string, unknown> | undefined) as Record<string, (string | null)[]> };
+  return {
+    shapes: arrays(json) as Record<string, string[]>,
+    effects: arrays(json.effects as Record<string, unknown> | undefined) as Record<string, (string | null)[]>,
+    range: arrays(json.range as Record<string, unknown> | undefined) as Record<string, number[]>,
+  };
 }
 
 /** A skill effect string (skill-hits.json effects): slow:F:MS or root:MS. */
@@ -284,7 +290,7 @@ export class MobRoom {
     const ready = `${player}:${skill}`;
     if (now < (this.swings.get(player) ?? 0) || now < (this.swings.get(ready) ?? 0)) return { ok: false, reason: 'slow' };
     const [mc, mr] = this.at(m, now);
-    const reach = cls && RANGED_CLASSES.has(cls) ? RANGED : 1;
+    const reach = (cls && this.shapes.range?.[cls]?.[skill]) || (cls && RANGED_CLASSES.has(cls) ? RANGED : 1);
     // (A tile of slack: the mob may be mid-hop.)
     if (Math.max(Math.abs(from[0] - mc), Math.abs(from[1] - mr)) > reach + 1) return { ok: false, reason: 'range' };
     this.swings.set(player, now + SWING_MS);
@@ -336,7 +342,8 @@ export class MobRoom {
     } else if (kind === 'cone' || kind === 'area') {
       out.push(...live.filter((x) => cheb(x.at, at) <= 2).sort((a, b) => cheb(a.at, at) - cheb(b.at, at)).slice(0, most - 1).map((x) => x.m));
     } else if (kind === 'around') {
-      out.push(...live.filter((x) => cheb(x.at, from) <= 1).slice(0, most - 1).map((x) => x.m));
+      const radius = Number(shape.split(':')[2]) || 1;
+      out.push(...live.filter((x) => cheb(x.at, from) <= radius).sort((a, b) => cheb(a.at, from) - cheb(b.at, from)).slice(0, most - 1).map((x) => x.m));
     } else if (kind === 'line') {
       // Along the line from the caster through the target, out to RANGED tiles.
       const dx = at[0] - from[0];

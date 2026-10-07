@@ -150,7 +150,7 @@ const DIR_STEP: Record<Dir, [number, number]> = {
   ne: [0, -1], nw: [-1, 0], se: [1, 0], sw: [0, 1],
 };
 /** Battle: the classes that fight from afar (5 tiles; the rest from the next tile). A skill's cooldown: combat/cooldowns.ts. */
-const RANGED_CLASSES = new Set(['slingshot', 'broom', 'hilot']);
+const RANGED_CLASSES = new Set(['slingshot', 'broom']);
 const CAST_GAP_MS = 1000;
 const DIR_FOR_KEYS: Record<string, Dir> = {
   '0,-1': 'n', '0,1': 's', '1,0': 'e', '-1,0': 'w', '1,-1': 'ne', '-1,-1': 'nw', '1,1': 'se', '-1,1': 'sw',
@@ -376,6 +376,15 @@ export class TownScene extends Phaser.Scene {
     // A battle map (one with mobs: the Slums): characters with a class in its battle poses.
     this.battleMap = !!this.map.mobZones?.length && !!this.M.classes;
     if (this.battleMap) this.others.battleFor = (cls, look) => battleSheets(this, this.M.characters, this.M.classes!, cls, look);
+    // Each skill's reach (classes/skill-hits.json `range`, the same table the bot uses).
+    if (this.battleMap)
+      void fetch(`${import.meta.env.BASE_URL}assets/classes/skill-hits.json`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j: { range?: Record<string, number[]>; fxScale?: Record<string, number[]> } | null) => {
+          this.skillRange = j?.range ?? {};
+          this.fxScale = j?.fxScale ?? {};
+        })
+        .catch(() => null);
     if (this.area === 'town') this.npcs = this.makeNpcs();
     // The Slums' mobs (the zones that are on), sorted and tinted like everyone else.
     if (this.map.mobZones?.length) {
@@ -665,6 +674,14 @@ export class TownScene extends Phaser.Scene {
 
   /** A map with mobs (the Slums): battle poses, and the damage skills hit mobs. */
   private battleMap = false;
+  private skillRange: Record<string, number[]> = {};
+  /** How big each skill's effects are drawn (skill-hits.json fxScale; 1 by default). */
+  private fxScale: Record<string, number[]> = {};
+
+  /** How far (tiles) a class's skill reaches (skill-hits.json; else the class's own reach). */
+  private reachOf(cls: string, idx: number): number {
+    return this.skillRange[cls]?.[idx] ?? (RANGED_CLASSES.has(cls) ? 5 : 1);
+  }
 
   /** Your class's battle poses on a battle map (the doll without a class, or elsewhere). */
   private async applyBattle(cls: string | null): Promise<void> {
@@ -692,7 +709,7 @@ export class TownScene extends Phaser.Scene {
       toast('No mob nearby. Walk up to one (Z picks the nearest).', 2200);
       return 'no';
     }
-    this.engage = { name, idx, reach: RANGED_CLASSES.has(c.id) ? 5 : 1, goal: null, cooldown: skillCooldown(c.skills[idx].level) };
+    this.engage = { name, idx, reach: this.reachOf(c.id, idx), goal: null, cooldown: skillCooldown(c.skills[idx].level) };
     this.hotbar?.setAuto(name);
     this.fightTick();
     return 'no';
@@ -707,20 +724,28 @@ export class TownScene extends Phaser.Scene {
   private nextCast = 0;
 
   /** A skill's effects (the preview's script, combat/world-skills.ts) from a character at a mob. */
-  private castFx(cls: string, idx: number, who: Character, dir: Dir, hit: string[]): void {
+  private castFx(cls: string, idx: number, who: Character, dir: Dir, hit: string[], land: (id: string) => void, landAll: () => void): void {
     const skill = SKILL_PREVIEWS[cls]?.[idx];
     const art = this.M.classes?.list[cls];
     const mobs = hit.map((id) => this.mobs?.list.find((x) => x.id === id)).filter((x) => !!x);
-    if (!skill || !art || !mobs.length) return;
+    if (!skill || !art || !mobs.length) return landAll();
     this.worldSkills ??= new WorldSkills(this, this.M.fx, (f) => `${import.meta.env.BASE_URL}assets/${f}`);
     // The script's slots in order get the hit mobs (the target first); the rest, the target.
     const slots = skillSlots(skill);
     const bySlot = (n: number) => mobs[Math.max(0, slots.indexOf(n))] ?? mobs[0];
     const feet = () => ({ x: who.sprite.x, y: who.sprite.y });
+    // A hit on slot n lands its mob; the first also lands the mobs no slot shows (around a melee skill).
+    const shown = new Set(slots.map((n) => bySlot(n).id));
+    let first = true;
+    const onHit = (n: number) => {
+      land(bySlot(n).id);
+      if (first) for (const m of mobs) if (!shown.has(m.id)) land(m.id);
+      first = false;
+    };
     void this.worldSkills.play(skill, art, { feet, dir, depth: () => who.sprite.depth }, (n) => {
       const m = bySlot(n);
       return { x: m.sprite.x, y: m.sprite.y };
-    });
+    }, onHit, this.fxScale[cls]?.[idx] ?? 1);
   }
   private worldSkills: WorldSkills | null = null;
 
@@ -740,7 +765,11 @@ export class TownScene extends Phaser.Scene {
     const me = this.player.tile;
     const at = { col: Math.floor(m.col), row: Math.floor(m.row) };
     const dist = (t: Tile) => Math.max(Math.abs(t.col - at.col), Math.abs(t.row - at.row));
-    if (dist(me) <= e.reach) {
+    // In reach of the chosen skill, or (while it cools down) of another that's ready.
+    const c0 = classInfo(adventure()?.cls);
+    const readyNow = (n: string) => this.time.now >= (this.castReady.get(n) ?? 0);
+    const reachable = c0 ? c0.skills.filter((k, i) => readyNow(k.name) && this.reachOf(c0.id, i) >= dist(me)).length : 0;
+    if (dist(me) <= e.reach || (!readyNow(e.name) && reachable)) {
       if (this.player.isIdle === false) this.player.cancelPath(); // stop on this tile
       e.goal = null;
       const now = this.time.now;
@@ -748,7 +777,7 @@ export class TownScene extends Phaser.Scene {
       // The chosen skill, or while it's cooling down the first damage skill that's ready (the bar's order, then the class's).
       const c = classInfo(adventure()?.cls);
       if (!c) return this.stopFight();
-      const ready = (n: string) => now >= (this.castReady.get(n) ?? 0);
+      const ready = (n: string) => now >= (this.castReady.get(n) ?? 0) && this.reachOf(c.id, c.skills.findIndex((k) => k.name === n)) >= dist(me);
       const damage = new Set(c.skills.map((k) => k.name));
       const order = [...(this.hotbar?.skillOrder() ?? []).filter((n) => damage.has(n)), ...c.skills.map((k) => k.name)];
       const name = ready(e.name) ? e.name : order.find(ready);
@@ -1160,15 +1189,21 @@ export class TownScene extends Phaser.Scene {
         const mine = m.by === myId;
         const ch = mine ? this.player : this.others.charOf(m.by);
         const cls = mine ? (adventure()?.cls ?? null) : this.others.classOf(m.by);
-        if (ch && at) {
+        // Each mob's number and HP land when the effect's hit does (the rest with the first; all after 1.5 s at most).
+        const pending = new Map(m.hits.map((h) => [h.id, h]));
+        const land = (id: string) => {
+          const h = pending.get(id);
+          if (!h) return;
+          pending.delete(id);
+          this.mobs?.hit(h.id, h.damage, h.crit, h.hp, h.dead, h.slow);
+        };
+        const landAll = () => [...pending.keys()].forEach(land);
+        this.time.delayedCall(1500, landAll);
+        if (ch && at && cls) {
           const dir = dirForStep(at.col - ch.tile.col, at.row - ch.tile.row);
           if (!mine) ch.strike(SKILL_POSE[m.skill] ?? 'attack-quick', dir); // (yours played as you cast)
-          if (cls) this.castFx(cls, m.skill, ch, dir, ids);
-        }
-        // The numbers and HP land with the effects' hits, near enough: a beat after the cast.
-        this.time.delayedCall(mine ? 120 : 0, () => {
-          for (const h of m.hits) this.mobs?.hit(h.id, h.damage, h.crit, h.hp, h.dead, h.slow);
-        });
+          this.castFx(cls, m.skill, ch, dir, ids, land, landAll);
+        } else landAll();
         return;
       }
       if (m.t === 'mob-attack') {

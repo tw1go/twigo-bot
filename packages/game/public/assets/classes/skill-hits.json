@@ -1,14 +1,27 @@
 {
-  "note": "Which mobs each damage skill hits (in the order of classes.json's skills), read by the game and the bot (web/town-mobs.ts). single: the target. chain:N: the target, then the nearest live mob within 3 tiles of the last one hit, N in all. cone:N / area:N: the target and the mobs nearest it within 2 tiles, N in all. around:N: the live mobs next to the caster (1 tile), up to N. line:N: the mobs along the line from the caster through the target (to 5 tiles), nearest first, up to N. The effects play the skill preview's script with the hit mobs in the slots it uses (combat/skill-slots.ts).",
+  "note": "Which mobs each damage skill hits (in the order of classes.json's skills), read by the game and the bot (web/town-mobs.ts). single: the target. chain:N: the target, then the nearest live mob within 3 tiles of the last one hit, N in all. cone:N / area:N: the target and the mobs nearest it within 2 tiles, N in all. around:N:R: the live mobs within R tiles of the caster (default 1), up to N. line:N: the mobs along the line from the caster through the target (to 5 tiles), nearest first, up to N. The effects play the skill preview's script with the hit mobs in the slots it uses (combat/skill-slots.ts).",
   "slingshot": ["single", "single", "cone:3", "chain:3", "line:4", "single", "area:3"],
-  "stick": ["single", "single", "around:4", "single", "single", "around:4", "single"],
-  "greatstick": ["single", "single", "cone:3", "single", "around:4", "single", "cone:3"],
+  "stick": ["single", "single", "around:4:1", "single", "single", "around:4:1", "single"],
+  "greatstick": ["single", "single", "cone:3", "single", "around:4:2", "single", "cone:3"],
   "broom": ["single", "single", "cone:3", "cone:3", "line:4", "single", "chain:3"],
-  "potlid": ["single", "single", "around:4", "single", "around:4", "cone:3", "chain:3"],
+  "potlid": ["single", "single", "around:4:2", "single", "around:5:2", "cone:3", "chain:3"],
   "hilot": ["single", "single", "area:2", "single", "single", "area:3", "single"],
   "effects": {
     "note": "What a skill does to each mob it hits besides damage, by class and skill: slow:F:MS (moves at F of its speed for MS ms), root:MS (can't move for MS ms; it still attacks next to you). null: nothing.",
     "slingshot": [null, null, null, null, null, "slow:0.5:2500", null],
     "hilot": [null, null, null, null, "root:2000", null, null]
+  },
+  "fxScale": {
+    "note": "How big a skill's effects are drawn in the world (1 = the art's size), by class and skill.",
+    "potlid": [0.6, 0.6, 1, 1, 1, 1, 1]
+  },
+  "range": {
+    "note": "How far (tiles) each skill reaches: from how far out its preview's targets stand (1, 3 or 5), at least the class's own reach (5 for the Slingshot and Broom, 1 for the melee classes); an around skill: its radius.",
+    "slingshot": [5, 5, 5, 5, 5, 5, 5],
+    "stick": [1, 1, 1, 1, 1, 1, 3],
+    "greatstick": [1, 1, 1, 1, 2, 3, 3],
+    "broom": [5, 5, 5, 5, 5, 5, 5],
+    "potlid": [1, 1, 2, 3, 2, 5, 5],
+    "hilot": [3, 1, 1, 1, 3, 5, 1]
   }
 }

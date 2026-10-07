@@ -109,7 +109,7 @@ test('a slow halves a mob\'s pace for a while; a root keeps it still; both wear 
   // It goes after p1 (who has moved off), at half pace.
   const moves = room.tick(100, (id) => (id === 'p1' ? [a.col + 6, a.row] : null)).filter((e) => e.t === 'mob-move' && e.id === a.id);
   assert.ok(moves.length && moves.every((e) => e.t === 'mob-move' && e.speed === 1.2), 'half of 2.4');
-  const rooted = room.attack('p2', near(b), 'hilot', b.id, 0, 4);
+  const rooted = room.attack('p2', [b.col + 1, b.row], 'hilot', b.id, 0, 4); // (the Hilot is melee)
   assert.ok(rooted.ok && rooted.hits[0].slow?.factor === 0);
   for (let t = 100; t < 1900; t += 250) assert.ok(!room.tick(t, (id) => (id === 'p2' ? [b.col + 6, b.row] : null)).some((e) => e.t === 'mob-move' && e.id === b.id), 'rooted: no hop');
   let freed = false;
