@@ -104,11 +104,11 @@ export function outskirts(M: Manifest, map: TownMap, view: Phaser.Geom.Rectangle
 const SLUMS_CANAL: [number, number] = [62, 63];
 /** What's scattered round the Slums: [id prefix, weight] (the dead trees also line every edge, carrying on the map's own). */
 const SLUMS_JUNK: [string, number][] = [
-  ['slums-dead-tree-', 0.42],
-  ['slums-junk-mound-', 0.2],
-  ['slums-shanty-', 0.16],
-  ['slums-power-pole-', 0.12],
-  ['slums-car-wreck-', 0.1],
+  ['slums-dead-tree-', 0.6],
+  ['slums-junk-mound-', 0.12],
+  ['slums-shanty-', 0.1],
+  ['slums-power-pole-', 0.1],
+  ['slums-car-wreck-', 0.08],
 ];
 
 /**
@@ -170,7 +170,7 @@ export function slumsOutskirts(M: Manifest, map: TownMap, view: Phaser.Geom.Rect
       if (deadTrees.length && tileRandom(c, r, 41) < 0.3) add(pick(deadTrees, tileRandom(c, r, 42)), c, r);
       continue;
     }
-    if (tileRandom(c, r, 43) >= 0.16) continue;
+    if (tileRandom(c, r, 43) >= 0.055) continue; // sparse: the map is what you look at
     let roll = tileRandom(c, r, 45) * total;
     for (const [ids, w] of pools) {
       if (roll < w) {
