@@ -18,7 +18,8 @@ import { fakeLogin, fakeName } from '../session';
 // /town/quest and /town/equip change them). The data files (quests/quests.json, classes/classes.json,
 // items/equipment.json) are loaded once. Everything that shows them listens here: the quest tracker and log, the
 // marker over a quest giver, the equipment panel, the avatar's class badge. In dev with no bot, the same rules run
-// here, saved in this browser per ?as= name, and the dev town hears about class and weapon changes (/__kit).
+// here, saved in this browser per ?as= name (&quests=reset starts over), and the dev town hears about class and weapon
+// changes (/__kit).
 
 export interface AdventureData {
   quests: QuestDef[];
@@ -70,6 +71,15 @@ export async function loadAdventureData(url: (path: string) => string, files: { 
 /** Your state from /me (or, in dev, this browser's pretend one, with the autoStart quests started as the bot would). */
 export function initAdventure(fromMe: AdventureState | undefined): void {
   if (fakeLogin()) {
+    // Dev: &quests=reset forgets this browser's pretend class, quests and equipment (the Tanod's quest starts over).
+    if (new URLSearchParams(location.search).get('quests') === 'reset') {
+      try {
+        localStorage.removeItem(fakeKey());
+        localStorage.removeItem(SEEN_KEY);
+      } catch {
+        // nothing saved
+      }
+    }
     const s = loadFake();
     startQuests(s);
     return set(s);
