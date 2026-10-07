@@ -6,15 +6,15 @@ import { installPixelTiles } from './pixel-tiles';
 import { coinIcon } from './reward';
 import type { EquipmentPanel } from './equipment';
 import { adventure, itemDef } from '../net/adventure';
-import { NICKNAME_RULE, parseNickname } from '../characters/nickname';
+import { showRename } from './rename';
 
 // 🎒 The inventory: a bag button just right of the chat box (or B) opens the bag on the right of the screen. The bag shows every
 // slot a bag can ever have (5 × 10): the ones unlocked so far (bags from the shop add more) hold your items, one slot
 // each — dug-up items, Master Keys, potions and equipment not being worn, as the bot counts them — and the rest are
 // marked with an X. Tabs show all of it, the dug-up items, combat (weapons and gear not being worn), or the misc (keys,
 // potions, megaphones); each item's slot is bordered in its rarity's colour. Picking a dug-up item offers Flex (/flex,
-// in the games channel) and Sell (/sell's price); keys and potions say how they're used; a Rename Card offers Use: a
-// new nickname (POST /town/rename, the creator's rules), which everyone in town sees at once ('mk-renamed' here).
+// in the games channel) and Sell (/sell's price); keys and potions say how they're used; a Rename Card offers Use (the
+// rename pop-up, ui/rename.ts).
 // Several slots can be picked at once: Ctrl/⌘/Shift-click adds or removes one, or the Select toggle (top) makes every
 // click do that (phones); then the details show how many, what the sellable ones are worth, and Sell selected (one
 // POST /town/sell with all of them), or Select all on the tab.
@@ -79,8 +79,6 @@ export class Inventory {
   private busy = false;
   private message: { text: string; ok: boolean } | null = null;
   private equipment: EquipmentPanel | null = null;
-  /** The Rename Card's field is open in the details. */
-  private renaming = false;
 
   /** `icon`: the bag art (manifest ui.inventoryIcon); `frame`: the item frame the panel is drawn in; `slot`: the slot
    *  art and its picked version (manifest ui.inventory, nine-slice). */
@@ -257,7 +255,6 @@ export class Inventory {
         if (this.multi || e.ctrlKey || e.metaKey || e.shiftKey) this.picked = on ? this.picked.filter((p) => p.slot !== slot) : [...this.picked, { slot, id: it.id }];
         else this.picked = on && this.picked.length === 1 ? [] : [{ slot, id: it.id }];
         this.message = null;
-        this.renaming = false;
         this.render();
       });
       cells.push(cell);
@@ -349,65 +346,23 @@ export class Inventory {
     this.detail.replaceChildren(...parts);
   }
 
-  /** A Rename Card's Use, or (once pressed) the new name's field with Rename and Cancel. */
+  /** A Rename Card's Use: the rename pop-up (ui/rename.ts). */
   private renameControls(): HTMLElement {
     const row = el('div', 'iv-actions');
-    if (!this.renaming) {
-      row.append(this.action('Use', 'iv-flex', () => ((this.renaming = true), (this.message = null), this.render(), this.root.querySelector<HTMLInputElement>('.iv-rename')?.focus())));
-      return row;
-    }
-    const input = el('input', 'iv-rename');
-    input.maxLength = 16;
-    input.placeholder = 'New nickname';
-    input.title = NICKNAME_RULE;
-    input.setAttribute('aria-label', 'New nickname');
-    const go = () => void this.rename(input.value);
-    input.addEventListener('keydown', (e) => {
-      e.stopPropagation(); // not the town's keys
-      if (e.key === 'Enter') go();
-      if (e.key === 'Escape') ((this.renaming = false), this.render());
-    });
-    row.append(input, this.action('Rename', 'iv-sell', go), this.action('Cancel', 'iv-clear', () => ((this.renaming = false), this.render())));
+    row.append(
+      this.action('Use', 'iv-flex', () =>
+        showRename((nickname) => {
+          this.picked = [];
+          this.message = { text: `You're now ${nickname}!`, ok: true };
+          if (fakeLogin()) {
+            fake.items = fake.items.filter((x) => x.kind !== 'rename'); // dev: the pretend card is used
+            fake.used -= 1;
+          }
+          void this.refresh();
+        }),
+      ),
+    );
     return row;
-  }
-
-  /** Uses a Rename Card for `raw` (checked here first with the creator's rules; the bot has the last word). */
-  private async rename(raw: string): Promise<void> {
-    if (this.busy) return;
-    const nickname = parseNickname(raw);
-    if (!nickname) {
-      playSound('error');
-      this.message = { text: NICKNAME_RULE, ok: false };
-      return this.render();
-    }
-    this.busy = true;
-    this.render();
-    const res = fakeLogin()
-      ? ({ ok: true, nickname, cards: 0 } as const)
-      : await fetch('/town/rename', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nickname }) })
-          .then((r) => (r.ok ? (r.json() as Promise<{ ok: true; nickname: string } | { ok: false; error: string }>) : null))
-          .catch(() => null);
-    this.busy = false;
-    if (!res) {
-      playSound('error');
-      this.message = { text: "Couldn't reach the bot. Try again in a moment.", ok: false };
-      return this.render();
-    }
-    if (!res.ok) {
-      playSound('error');
-      this.message = { text: res.error, ok: false };
-      return this.render();
-    }
-    playSound('coin');
-    this.renaming = false;
-    this.picked = [];
-    this.message = { text: `You're now ${res.nickname}!`, ok: true };
-    if (fakeLogin()) {
-      fake.items = fake.items.filter((x) => x.kind !== 'rename'); // dev: the pretend card is used
-      fake.used -= 1;
-    }
-    window.dispatchEvent(new CustomEvent('mk-renamed', { detail: res.nickname }));
-    void this.refresh();
   }
 
   private async act(path: '/town/sell' | '/town/flex', body: ActBody): Promise<void> {

@@ -419,8 +419,17 @@
       #inventory .iv-clear { background: #E2DDF3; }
       #inventory .iv-flex { background: #B794F6; }
       #inventory .iv-sell { background: #FCDA4A; }
-      #inventory .iv-rename { flex: 1 1 140px; min-width: 0; padding: 6px 8px; border: 2px solid #3D4256; border-radius: 0; background: #0B0D17; color: #fff; font: inherit; font-size: 15px; }
-      #inventory .iv-rename:focus { outline: none; border-color: #B794F6; }
+      /* The Rename Card's pop-up (ui/rename.ts), in the reward box. */
+      #reward .rn-body { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 14px; }
+      #reward .rn-text { margin: 0; color: #3D4256; font-size: 14px; }
+      #reward .rn-row { display: flex; gap: 8px; width: 100%; }
+      #reward .rn-input { flex: 1; min-width: 0; padding: 8px 10px; border: 3px solid #1E1B3A; border-radius: 0; background: #F3F0FF; color: #1E1B3A; font: inherit; font-size: 16px; }
+      #reward .rn-input:focus { outline: none; border-color: #7C2AE8; }
+      #reward .rn-go { padding: 6px 16px; border: 3px solid #1E1B3A; border-radius: 0; background: #A3E635; color: #1E1B3A; font: inherit; font-weight: 700; box-shadow: 0 3px 0 #1E1B3A; }
+      #reward .rn-go:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 #1E1B3A; }
+      #reward .rn-go:disabled { opacity: 0.6; }
+      #reward .rn-note { margin: 0; font-size: 13px; color: #7A8099; }
+      #reward .rn-bad { color: #D9314F; font-weight: 600; }
       #inventory .iv-note { margin-top: 8px; font-size: 14px; font-weight: 600; color: #A3E635; }
       #inventory .iv-note.iv-bad { color: #F7768E; }
       #inventory .iv-wallet { flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 6px 0; border-top: 2px solid #1E1B3A; font-size: 15px; color: #A9B1D6; }
