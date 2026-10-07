@@ -188,6 +188,24 @@ export function townEquip(userId: string, a: TownEquipAction, freeSlots: number)
   return { ...r, adventure: s, changed: r.ok && before !== s.equipped.weapon };
 }
 
+/** A new class for someone who has one (a Bagong Buhay Ticket, items/class-ticket.ts): the new class's training weapon
+ *  in the weapon slot instead of the old one's (the old training weapon goes; any other worn weapon to the bag); quests
+ *  as they were. */
+export function switchClass(userId: string, cls: string): { ok: true; adventure: AdventureState } | { ok: false; message: string } {
+  const s = load(userId);
+  if (!s.cls) return { ok: false, message: 'Choose your first class with the Tanod.' };
+  if (s.cls === cls) return { ok: false, message: "That's already your class." };
+  const training = (id: string | undefined) => !!id && !!EQUIPMENT.get(id)?.starter;
+  s.bag = s.bag.filter((id) => !training(id));
+  if (s.equipped.weapon && !training(s.equipped.weapon)) s.bag.push(s.equipped.weapon);
+  const weapon = [...EQUIPMENT.values()].find((i) => i.starter && i.slot === 'weapon' && i.class === cls);
+  if (weapon) s.equipped.weapon = weapon.id;
+  else delete s.equipped.weapon;
+  s.cls = cls;
+  save(userId, s);
+  return { ok: true, adventure: s };
+}
+
 const deleteStmt = db.prepare('DELETE FROM adventurers WHERE user_id = ?');
 
 /** Starts a member's class, quests and equipment over (the CMS): no class, the Tanod's quest again on their next visit,

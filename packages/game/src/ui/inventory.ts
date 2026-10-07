@@ -159,6 +159,14 @@ export class Inventory {
     });
     // Kowens or items changed elsewhere (a dig, the shop, the bank): refresh if it's open.
     window.addEventListener('mk-wallet', () => !this.root.hidden && void this.refresh());
+    // A ticket spent on a new class (the town's class choice): dev's pretend one goes; the bag shows one fewer.
+    window.addEventListener('mk-bag-changed', () => {
+      if (fakeLogin()) {
+        fake.items = fake.items.filter((x) => x.kind !== 'classchange');
+        fake.used -= 1;
+      }
+      if (!this.root.hidden) void this.refresh();
+    });
   }
 
   /** The equipment panel, which opens and closes with the bag. */
@@ -334,7 +342,7 @@ export class Inventory {
     name.style.color = RARITY_TEXT[rarity];
     const meta = it.sellable
       ? `${LABEL[rarity]} · ${kowens(it.value)} each · you have ${it.count}`
-      : `${it.kind === 'key' ? 'Master Key' : it.kind === 'megaphone' ? 'Megaphone' : it.kind === 'equipment' ? 'Equipment' : it.kind === 'rename' ? 'Rename Card' : 'Potion'} · you have ${it.count}`;
+      : `${it.kind === 'key' ? 'Master Key' : it.kind === 'megaphone' ? 'Megaphone' : it.kind === 'equipment' ? 'Equipment' : it.kind === 'rename' ? 'Rename Card' : it.kind === 'classchange' ? 'Bagong Buhay Ticket' : 'Potion'} · you have ${it.count}`;
     const parts: HTMLElement[] = [name, el('div', 'iv-meta', meta)];
     if (it.sellable) {
       const row = el('div', 'iv-actions');
@@ -347,8 +355,21 @@ export class Inventory {
       parts.push(row);
     } else if (it.about) parts.push(el('div', 'iv-about', it.about));
     if (it.kind === 'rename') parts.push(this.renameControls());
+    if (it.kind === 'classchange') parts.push(this.ticketControls());
     if (note) parts.push(note);
     this.detail.replaceChildren(...parts);
+  }
+
+  /** A Bagong Buhay Ticket's Use: the class choice (the town opens it; the bag closes meanwhile). */
+  private ticketControls(): HTMLElement {
+    const row = el('div', 'iv-actions');
+    row.append(
+      this.action('Use', 'iv-flex', () => {
+        this.toggle(false);
+        dispatchEvent(new Event('mk-class-ticket'));
+      }),
+    );
+    return row;
   }
 
   /** A Rename Card's Use: the rename pop-up (ui/rename.ts). */
@@ -416,6 +437,7 @@ const fake: TownInventoryResponse = {
     { id: 'rock', name: 'Rock', emoji: '🪨', rarity: 'junk', value: 0, count: 2, kind: 'dig', sellable: true },
     { id: 'master-key', name: 'Master Key', emoji: '🗝️', rarity: 'common', value: 0, count: 1, kind: 'key', sellable: false, about: '50% chance to break through a Bakod when you /steal. Used only then.' },
     { id: 'rename-card', name: 'Rename Card', emoji: '🪪', rarity: 'common', value: 0, count: 1, kind: 'rename', sellable: false, stacked: true, about: 'Use it to change your town nickname (3-16 letters or numbers; spaces, _ - . in between).' },
+    { id: 'class-ticket', name: 'Bagong Buhay Ticket', emoji: '🎫', rarity: 'common', value: 0, count: 1, kind: 'classchange', sellable: false, stacked: true, about: "A fresh start: use it to change your class. You keep your quests and get the new class's training weapon." },
     { id: 'megaphone', name: 'Megaphone', emoji: '📢', rarity: 'common', value: 0, count: 3, kind: 'megaphone', sellable: false, stacked: true, about: "Type /m and your message in the town's chat: it runs across everyone's screen in sky blue. One per message." },
     { id: 'potion-tago', name: 'Tago Tonic', emoji: '🫥', rarity: 'common', value: 0, count: 2, kind: 'potion', sellable: false, about: "For 30 minutes the Tanod can't see you gamble: 0% bust chance. Use it with /potion use in Discord." },
   ],

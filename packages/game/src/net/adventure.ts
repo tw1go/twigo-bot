@@ -188,6 +188,20 @@ export function devSwitchClass(cls: string | null): void {
   void fetch(`/__kit?${new URLSearchParams({ as: fakeName(), cls: cls ?? '', weapon: weapon ?? '' })}`).catch(() => null);
 }
 
+/** A Bagong Buhay Ticket spent on a new class (bot POST /town/class-change; dev: the pretend one, as ?switch does). */
+export async function changeClass(cls: string): Promise<{ ok: boolean; error?: string; adventure: AdventureState } | null> {
+  if (fakeLogin()) {
+    if (!state?.cls) return { ok: false, error: 'Choose your first class with the Tanod.', adventure: state ?? fresh() };
+    devSwitchClass(cls);
+    return { ok: true, adventure: state! };
+  }
+  const res = await fetch('/town/class-change', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cls }) }).catch(() => null);
+  const r = res?.ok ? ((await res.json()) as { ok: boolean; error?: string; adventure?: AdventureState }) : null;
+  if (!r) return null;
+  if (r.ok && r.adventure) set(r.adventure, {});
+  return { ok: r.ok, error: r.error, adventure: r.adventure ?? state ?? fresh() };
+}
+
 /** Dev: your class and weapon for the dev town (sent on connect). */
 export function devKit(): { cls: string | null; weapon: string | null } {
   const s = state ?? loadFake();

@@ -10,6 +10,7 @@ import { feed } from '../web/town-feed.js';
 import { freeSlots } from '../dig/bag.js';
 import { addMegaphones, megaphones } from '../items/megaphone.js';
 import { addRenameCards, renameCards } from '../items/rename-card.js';
+import { addClassTickets, classTickets } from '../items/class-ticket.js';
 
 // 🎁 Redeeming a reward, shared by /redeem and the town's rewards shop: every check, then the purchase. Each caller
 // words the outcome its own way (Discord markdown, or plain town text).
@@ -17,10 +18,10 @@ import { addRenameCards, renameCards } from '../items/rename-card.js';
 export type { Reward };
 
 /** Rewards that can be bought several at a time. */
-export const stackable = (r: Reward) => r.kind === 'shovel' || r.kind === 'key' || r.kind === 'potion' || r.kind === 'megaphone' || r.kind === 'rename';
+export const stackable = (r: Reward) => r.kind === 'shovel' || r.kind === 'key' || r.kind === 'potion' || r.kind === 'megaphone' || r.kind === 'rename' || r.kind === 'classchange';
 
-/** Rewards kept in the bag: one slot each (megaphones all share one, and so do Rename Cards). */
-export const inBag = (r: Reward) => r.kind === 'key' || r.kind === 'potion' || r.kind === 'megaphone' || r.kind === 'rename';
+/** Rewards kept in the bag: one slot each (megaphones all share one, and so do Rename Cards and Bagong Buhay Tickets). */
+export const inBag = (r: Reward) => r.kind === 'key' || r.kind === 'potion' || r.kind === 'megaphone' || r.kind === 'rename' || r.kind === 'classchange';
 
 const fmt = (n: number) => n.toLocaleString('en-US');
 
@@ -40,6 +41,7 @@ export type RedeemResult =
       keys?: number;
       megaphones?: number;
       renameCards?: number;
+      classTickets?: number;
       uses?: number;
       slots?: number;
       fenceUntil?: number;
@@ -68,7 +70,7 @@ export function redeemReward(userId: string, reward: Reward, asked: number, test
     quantity = Math.min(asked, left);
   }
   // Master Keys and potions are held in the bag, one slot each; megaphones share one slot (needed only for the first).
-  const slots = reward.kind === 'megaphone' ? (megaphones(userId) ? 0 : 1) : reward.kind === 'rename' ? (renameCards(userId) ? 0 : 1) : quantity;
+  const slots = reward.kind === 'megaphone' ? (megaphones(userId) ? 0 : 1) : reward.kind === 'rename' ? (renameCards(userId) ? 0 : 1) : reward.kind === 'classchange' ? (classTickets(userId) ? 0 : 1) : quantity;
   if (inBag(reward) && freeSlots(userId) < slots) return { ok: false, reward, reason: 'bag-full', free: freeSlots(userId) };
   const total = reward.cost * quantity;
   if (have < total) return { ok: false, reward, reason: 'kowens', quantity, total, have, canAfford: Math.floor(have / reward.cost) };
@@ -97,6 +99,9 @@ export function redeemReward(userId: string, reward: Reward, asked: number, test
     case 'rename':
       take(userId, total);
       return { ...done, renameCards: addRenameCards(userId, quantity) };
+    case 'classchange':
+      take(userId, total);
+      return { ...done, classTickets: addClassTickets(userId, quantity) };
     case 'shovel': {
       take(userId, total);
       let uses = 0;
@@ -141,6 +146,10 @@ export function redeemPost(userId: string, result: Extract<RedeemResult, { ok: t
     case 'megaphone': {
       const n = result.megaphones!;
       return pub(`📢 ${who} bought ${quantity > 1 ? `**${quantity} Megaphones**` : 'a **Megaphone**'}! Time to make some noise in town.\n-# You have ${n}. In the town's chat, \`/m your message\` runs it across everyone's screen.`);
+    }
+    case 'classchange': {
+      const n = result.classTickets!;
+      return pub(`🎫 ${who} got ${quantity > 1 ? `**${quantity} Bagong Buhay Tickets**` : 'a **Bagong Buhay Ticket**'}! A fresh start is coming 👀\n-# You have ${n}. Use one from your bag in the web town to change your class.`);
     }
     case 'rename': {
       const n = result.renameCards!;

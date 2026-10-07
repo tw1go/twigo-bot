@@ -5,7 +5,7 @@ import { db, kvLoad, kvSave } from '../db/db.js';
 // saving from zero: Phantasium ~3.5 months, Basic ~5 months, Advanced ~7.5 months.
 export const GAME_NAME = 'Crystal of Atlan';
 
-// kind 'pass' = delivered by hand (owner is pinged); 'fence' / 'shovel' / 'bag' / 'key' / 'vault' / 'potion' / 'megaphone' / 'rename' = applied instantly by the bot.
+// kind 'pass' = delivered by hand (owner is pinged); 'fence' / 'shovel' / 'bag' / 'key' / 'vault' / 'potion' / 'megaphone' / 'rename' / 'classchange' = applied instantly by the bot.
 // Bags add BAG_SLOTS inventory slots each (10 base + 5 bags × 8 = 50 max); each bag can be bought once.
 // These are the defaults: the CMS can change a price or take a reward off sale (kv 'shop', see setShopEntry).
 const CATALOGUE = [
@@ -14,6 +14,7 @@ const CATALOGUE = [
   { id: 'master-key', name: 'Master Key', cost: 5, emoji: '🗝️', kind: 'key' },
   { id: 'megaphone', name: 'Megaphone', cost: 1, emoji: '📢', kind: 'megaphone' },
   { id: 'rename-card', name: 'Rename Card', cost: 5, emoji: '🪪', kind: 'rename' },
+  { id: 'class-ticket', name: 'Bagong Buhay Ticket', cost: 0, emoji: '🎫', kind: 'classchange' }, // free for now
   { id: 'vault', name: 'Vault', cost: 50, emoji: '🔐', kind: 'vault' },
   { id: 'potion-kalawang', name: 'Kalawang Potion', cost: 8, emoji: '🧪', kind: 'potion' },
   { id: 'potion-tago', name: 'Tago Tonic', cost: 6, emoji: '🫥', kind: 'potion' },

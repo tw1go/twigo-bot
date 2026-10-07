@@ -83,7 +83,7 @@ import type { AdventureData } from '../net/adventure';
 import { Hotbar } from '../ui/hotbar';
 import { mountClassSwitch } from '../ui/class-switch';
 import { MOVES, type MoveKind, isMoveKind, moveTiles, playMove } from '../world/mobility';
-import { devSwitchClass, adventure, adventureData, chooseClass, classInfo, initAdventure, itemDef, loadAdventureData, onAdventure, questDef, questFor, questTalk } from '../net/adventure';
+import { changeClass, devSwitchClass, adventure, adventureData, chooseClass, classInfo, initAdventure, itemDef, loadAdventureData, onAdventure, questDef, questFor, questTalk } from '../net/adventure';
 import type { ClassArt } from '../assets/types';
 import { drawRested, loadImages, poseFiles, restFiles } from '../characters/kit-art';
 import { holdQuestBanners, mountQuests } from '../ui/quests';
@@ -437,6 +437,10 @@ export class TownScene extends Phaser.Scene {
       setHudName(name);
     };
     addEventListener('mk-renamed', renamed);
+    // A Bagong Buhay Ticket's Use in the bag: the class choice.
+    const ticket = () => this.openClassTicket();
+    addEventListener('mk-class-ticket', ticket);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => removeEventListener('mk-class-ticket', ticket));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => removeEventListener('mk-renamed', renamed));
     this.minimap = new Minimap(this.map); // in the HUD's corner, above its buttons
     startTownSound(this, this.fountainTile());
@@ -890,8 +894,8 @@ export class TownScene extends Phaser.Scene {
     return null;
   }
 
-  /** The class choice (for a quest's chooseClass objective, given by `giver`). */
-  private async openClasses(questId: string, giver: string): Promise<void> {
+  /** The class choice window, with `onChoose` deciding what a choice does (true once it's done). */
+  private async showClassChoice(onChoose: (c: ClassInfo) => Promise<boolean>): Promise<void> {
     const data = adventureData();
     const K = this.M.classes;
     const icons = this.M.ui.classIcons;
@@ -908,7 +912,36 @@ export class TownScene extends Phaser.Scene {
       idle: { frames: C.animations.idle.frames, fps: C.animations.idle.fps },
       walk: { frames: C.animations.walk.frames, fps: C.animations.walk.fps },
       preview: (c, host, back, choose) => mountSkillPreview({ stage: (cls) => this.skillStage(cls.id, cls.fx) }, c, host, back, choose),
-      onChoose: async (c) => {
+      onChoose,
+      onClose: () => {},
+    });
+  }
+
+  /** A Bagong Buhay Ticket used from the bag: the class choice, and the pick becomes your class (the bot spends the ticket). */
+  private openClassTicket(): void {
+    const asset = (f: string) => `${import.meta.env.BASE_URL}assets/${f}`;
+    void this.showClassChoice(async (c) => {
+      if (c.id === adventure()?.cls) {
+        toast("That's already your class. Pick another one.", 2400, 'bad');
+        return false;
+      }
+      const r = await changeClass(c.id);
+      if (!r?.ok) {
+        toast(r?.error ?? "Couldn't reach the bot. Try again in a moment.", 3000, 'bad');
+        return false;
+      }
+      const item = itemDef(r.adventure.equipped.weapon);
+      const img = item ? Object.assign(document.createElement('img'), { src: asset(item.showcase), alt: '' }) : null;
+      toast(`A fresh start: you're a ${c.name} now!`, 3500, 'good', img);
+      dispatchEvent(new Event('mk-bag-changed')); // the bag shows one ticket fewer
+      return true;
+    });
+  }
+
+  /** The class choice (for a quest's chooseClass objective, given by `giver`). */
+  private async openClasses(questId: string, giver: string): Promise<void> {
+    const asset = (f: string) => `${import.meta.env.BASE_URL}assets/${f}`;
+    await this.showClassChoice(async (c) => {
         holdQuestBanners(true); // the giver has a last line first
         const r = await chooseClass(questId, c.id);
         if (!r?.ok) {
@@ -927,8 +960,6 @@ export class TownScene extends Phaser.Scene {
         if (this.npcs && lines.length) this.npcs.talk(giver, this.player.tile, { lines, after: () => holdQuestBanners(false) });
         else holdQuestBanners(false);
         return true;
-      },
-      onClose: () => {},
     });
   }
 

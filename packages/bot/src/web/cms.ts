@@ -21,6 +21,7 @@ import type { Town } from './town.js';
 import { isSettingKey, setSetting, setting, settingList, SETTINGS } from '../games/settings.js';
 import { CLASSES, EQUIPMENT, QUESTS, adventureOf, resetAdventure } from './adventure.js';
 import { renameCards } from '../items/rename-card.js';
+import { classTickets } from '../items/class-ticket.js';
 import { mineWarsNight, mineWarsPlan, payMineWars } from '../minewars/payout.js';
 
 // 🛠️ The CMS: a page for the gifter (and CMS_USER_IDS) to run the game's content without a deploy or a slash command:
@@ -132,6 +133,7 @@ async function player(id: string, deps: CmsDeps) {
     inTown: !!deps.town()?.here().includes(id),
     ...adventureView(id),
     renameCards: renameCards(id),
+    classTickets: classTickets(id),
   };
 }
 

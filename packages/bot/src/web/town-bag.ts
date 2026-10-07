@@ -10,6 +10,7 @@ import { kowen } from '../kowens.js';
 import { POTIONS, ownedPotions } from '../potions/potions.js';
 import { megaphones } from '../items/megaphone.js';
 import { renameCards } from '../items/rename-card.js';
+import { classTickets } from '../items/class-ticket.js';
 import { EQUIPMENT, equipmentInBag } from './adventure.js';
 
 // 🎒 The town's inventory (GET /town/inventory, POST /town/sell, POST /town/flex): the bag as the town shows it — every
@@ -31,6 +32,7 @@ export function townInventory(userId: string): TownInventoryResponse {
   const keys = masterKeys(userId);
   const megaphoneCount = megaphones(userId);
   const cards = renameCards(userId);
+  const tickets = classTickets(userId);
   const held: TownBagItem[] = [
     ...(keys ? [{ id: 'master-key', name: 'Master Key', emoji: '🗝️', rarity: 'common', value: 0, count: keys, kind: 'key' as const, sellable: false,
       about: '50% chance to break through a Bakod when you /steal. Used only then.' }] : []),
@@ -38,6 +40,8 @@ export function townInventory(userId: string): TownInventoryResponse {
       about: "Type /m and your message in the town's chat: it runs across everyone's screen in sky blue. One per message." }] : []),
     ...(cards ? [{ id: 'rename-card', name: 'Rename Card', emoji: '🪪', rarity: 'common', value: 0, count: cards, kind: 'rename' as const, sellable: false, stacked: true,
       about: 'Use it to change your town nickname (3-16 letters or numbers; spaces, _ - . in between).' }] : []),
+    ...(tickets ? [{ id: 'class-ticket', name: 'Bagong Buhay Ticket', emoji: '🎫', rarity: 'common', value: 0, count: tickets, kind: 'classchange' as const, sellable: false, stacked: true,
+      about: "A fresh start: use it to change your class. You keep your quests and get the new class's training weapon." }] : []),
     ...ownedPotions(userId).map(([pid, count]) => ({ id: `potion-${pid}`, name: POTIONS[pid].name, emoji: POTIONS[pid].emoji, rarity: 'common', value: 0, count,
       kind: 'potion' as const, sellable: false, about: `${plain(POTIONS[pid].effect)}. Use it with /potion use in Discord.` })),
   ];

@@ -149,7 +149,7 @@ export interface TownBagItem {
   /** All of them in one slot, with a count (megaphones). */
   stacked?: boolean;
   /** equipment: a weapon or gear piece not being worn (the equipment panel wears it). */
-  kind: 'dig' | 'key' | 'potion' | 'megaphone' | 'equipment' | 'rename';
+  kind: 'dig' | 'key' | 'potion' | 'megaphone' | 'equipment' | 'rename' | 'classchange';
   /** Dug-up items can be sold and flexed; keys and potions say how they're used. */
   sellable: boolean;
   about?: string;
@@ -272,7 +272,7 @@ export interface TownShopItem {
   id: string;
   name: string;
   cost: number;
-  kind: 'fence' | 'shovel' | 'key' | 'vault' | 'potion' | 'bag' | 'pass' | 'megaphone' | 'rename';
+  kind: 'fence' | 'shovel' | 'key' | 'vault' | 'potion' | 'bag' | 'pass' | 'megaphone' | 'rename' | 'classchange';
   /** What it does. */
   about: string;
   /** Most that can be bought at once now (0 = none today, e.g. shovels). */

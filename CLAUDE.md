@@ -158,6 +158,12 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   store's Items tab; all of them share one bag slot): the bag's Use asks for a new nickname (the creator's rules), `POST
   /town/rename` spends a card only if it works, and the town's `rename` message updates everyone's name tag (yours via
   'mk-renamed': tag and HUD). Art: manifest items['rename-card'] (items/consumables/item-rename-card*.png).
+- Bagong Buhay Ticket (a class change; bot `items/class-ticket.ts`, kv 'class-tickets', tested; reward kind 'classchange',
+  free for now in `/redeem` and the sari-sari store's Items tab; all of them share one bag slot): the bag's Use opens the
+  class choice (`mk-class-ticket` → `TownScene.openClassTicket`, the window shared with the Tanod's quest:
+  `showClassChoice`); a different class → `POST /town/class-change` (`switchClass` in web/adventure.ts: the new class's
+  training weapon instead of the old one's, quests kept; only once you have a class), the town's `kit` message for
+  everyone. Dev: the pretend bag has one (net/adventure.ts `changeClass` → `devSwitchClass`). No item art yet (🎫).
 - Chat (`ui/chat.ts` + `SpeechBubble` in `ui/labels.ts`): Enter to type, Enter sends and stays open, empty Enter/Esc or a click outside closes; the bot's `say` (tidied, ≤120 chars,
   burst 3 then 1 per 2 s; only the last 20 lines are kept) comes back to everyone, the speaker included. Linked to a Discord channel
   (`TOWN_CHAT_CHANNEL_ID`, bot `web/town-chat.ts`, needs the Message Content intent): Discord lines show with the
@@ -349,7 +355,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   Skills panel on the right of the screen (K or the K button; `#skill-book`): each skill with its description, the hovered
   one played on the class choice's stage (`TownScene.skillStage`, 1×); drag a skill to a slot, or click it then a slot.
   Potions dragged from the bag; drag between slots swaps, off the bar or right-click empties. Per class in localStorage
-  `mk_hotbar` (a class's first bar = its skills in order). Skill icons from manifest ui.skillIcons (`have` lists the ones there are: every class's 7 damage skills and its Lv 8 move; `shared` = one icon for all, Dash; Broom's Blink is missing); the rest show
+  `mk_hotbar` (a class's first bar = its skills in order). Skill icons from manifest ui.skillIcons (`have` lists the ones there are: every class's 7 damage skills and its Lv 8 move; `shared` = one icon for all, Dash); the rest show
   their initials over the class badge. In town the damage skills are dark (grey, dimmed: `usable`); only the move
   skills light up. Where it
   doesn't fit, the chat, bag button, system feed, stay box and toasts sit higher (body.hotbar-on). Emotes are F1–F8.
