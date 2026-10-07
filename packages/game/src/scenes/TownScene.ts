@@ -1462,8 +1462,16 @@ export class TownScene extends Phaser.Scene {
     // both, as there's no right button.
     this.input.mouse?.disableContextMenu();
     this.setupPeek();
-    this.input.on(Phaser.Input.Events.POINTER_DOWN, (p: Phaser.Input.Pointer) => (this.pressAt = { x: p.x, y: p.y }));
+    this.input.on(Phaser.Input.Events.POINTER_DOWN, (p: Phaser.Input.Pointer) => {
+      this.pressAt = { x: p.x, y: p.y };
+      // The middle button: as Z (the nearest mob, again: the next). Never the browser's autoscroll.
+      if (p.middleButtonDown()) {
+        p.event.preventDefault();
+        if (this.mobs && !this.intro && !this.inside) this.mobs.targetNext(this.player.tile);
+      }
+    });
     this.input.on(Phaser.Input.Events.POINTER_UP, (p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
+      if (p.button === 1) return; // the middle button only targets
       // A drag, not a click. (Measured from our own press: p.getDistance() only follows the left button, so after a
       // left drag every right click looked like a drag.)
       if (Math.hypot(p.x - this.pressAt.x, p.y - this.pressAt.y) > 8) return;
@@ -1505,7 +1513,7 @@ export class TownScene extends Phaser.Scene {
         this.player.cancelPath(); // the keys take over from a click path
       }
       if (e.key.toLowerCase() === 'e' || e.key === ' ') this.interact();
-      // Z: the nearest mob (again: the next nearest); Escape lets it go.
+      // Z (or the middle button): the nearest mob (again: the next nearest); Escape lets it go.
       if (this.mobs && e.key.toLowerCase() === 'z' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.repeat) this.mobs.targetNext(this.player.tile);
       if (this.mobs && e.key === 'Escape') {
         this.stopFight();

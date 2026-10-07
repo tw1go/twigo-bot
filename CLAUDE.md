@@ -286,7 +286,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   tiles round it on its zone's level (not ramps, blocked tiles or the `safeZone`); arrivals get `mobs` (a snapshot,
   hops under way included), each hop goes to the room as `mob-move`. The game (`world/mobs.ts`) walks them at the same
   pace (wandering on its own only when no server answers), facing their way (SE/NE/SW/NW sheets); a click shows "Tin Can Lv 1-2" over
-  it and targets it; Z targets the nearest within 12 tiles (again: the next), a gold ring under it and an info bar at
+  it and targets it; Z (or the middle mouse button) targets the nearest within 12 tiles (again: the next), a gold ring under it and an info bar at
   the top (`ui/mob-target.ts`: name, level, HP, zone); Escape or 20 tiles away lets go. Battle (battle maps = maps with
   mobs): characters with a class use their class's combat poses there (`characters/battle-art.ts`: every pose composited
   per class and look from kit-art drawPose into 64 × 64 sheets; standing = walk-ready's first frame, walking walk-ready /
