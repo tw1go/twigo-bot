@@ -88,6 +88,11 @@ export function layerFiles(C: CharacterDefs, o: Outfit, anim: string, dir: Dir):
   return out;
 }
 
+/** What a look wears on its head facing `dir` (hair, glasses, hat): the town idle's files, laid over the combat poses. */
+export function headFiles(C: CharacterDefs, o: Outfit, dir: Dir): LayerFile[] {
+  return layerFiles(C, o, 'idle', dir).filter((l) => l.layer === 'hair' || l.layer === 'glasses' || l.layer === 'hat');
+}
+
 /** Every image an outfit needs, for the loader. */
 export function outfitFiles(C: CharacterDefs, o: Outfit): string[] {
   const files = new Set<string>();
@@ -348,8 +353,8 @@ export function randomOutfit(C: CharacterDefs, random: () => number): Outfit {
 
 /** One layer sheet in someone's colours (the class combat poses' body and face: only those exist for them), made once
  *  per look. Null if the sheet isn't loaded. */
-export function dressLayer(scene: Phaser.Scene, C: CharacterDefs, o: Outfit, file: string, layer: 'body' | 'face'): HTMLCanvasElement | null {
-  const key = `${file}:${outfitKey(o)}`;
+export function dressLayer(scene: Phaser.Scene, C: CharacterDefs, o: Outfit, file: string, layer: string, clip?: string): HTMLCanvasElement | null {
+  const key = `${file}:${clip ?? ''}:${outfitKey(o)}`;
   const done = dressed.get(key);
   if (done) return done;
   const data = pixels(scene, file);
@@ -365,6 +370,9 @@ export function dressLayer(scene: Phaser.Scene, C: CharacterDefs, o: Outfit, fil
       d[i + 2] = to & 255;
     }
   }
+  // Hair under a clipping hat: hidden wherever the hat's clip mask is white (as buildOutfit).
+  const mask = clip ? pixels(scene, clip) : null;
+  if (mask) for (let i = 0; i < d.length && i < mask.data.length; i += 4) if (visible(mask.data[i + 3]) && mask.data[i] > 127 && mask.data[i + 1] > 127 && mask.data[i + 2] > 127) d[i + 3] = 0;
   const canvas = document.createElement('canvas');
   canvas.width = data.width;
   canvas.height = data.height;

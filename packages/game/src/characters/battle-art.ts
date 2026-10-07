@@ -1,13 +1,13 @@
 import type Phaser from 'phaser';
 import type { CharacterDefs, ClassArt, ClassesDefs, Dir } from '../assets/types';
 import { type Outfit, sheetKey } from './doll';
-import { CELL, drawPose, loadImages, poseFiles } from './kit-art';
+import { CELL, drawPose, headImages, loadImages, poseFiles } from './kit-art';
 
 // ⚔️ Battle poses (maps with mobs: the Slums): a character with a class is drawn in its class's combat sheets there
 // instead of the town doll, every pose composited once per class and look (back weapon layers, the body and face in
 // the look's skin, front layers: kit-art drawPose) into 64 × 64 sprite sheets. Standing is walk-ready's first frame,
 // walking walk-ready (the Slingshot's walk-hunt), and the skills play the attack poses once. The combat sheets have no
-// clothes or hair yet.
+// clothes or hair: the look's hair, glasses and hat are laid on each pose's head (kit-art headShift).
 
 export interface BattleSheets {
   cls: string;
@@ -29,7 +29,7 @@ export function battleSheets(scene: Phaser.Scene, C: CharacterDefs, K: ClassesDe
   const id = `${cls}|${sheetKey(o, 'idle', 's')}`;
   let p = built.get(id);
   if (!p) {
-    p = loadImages(scene, poseFiles(art)).then(() => build(scene, C, K, art, cls, o, id));
+    p = loadImages(scene, [...poseFiles(art), ...headImages(C, o, C.directions)]).then(() => build(scene, C, K, art, cls, o, id));
     built.set(id, p);
   }
   return p;

@@ -349,7 +349,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   `combat/skill-stage.ts`), the training weapon into the weapon slot, resting weapons over idle and walk for everyone
   (`Character.setRestingWeapon`, `characters/kit-art.ts`), the equipment panel beside the bag (`ui/equipment.ts`; B or
   I; 12 places: two bracers, two rings; stats from `combat/stats.ts`, placeholders), class badges on the avatar and before
-  players' names in the chat. Combat poses have no clothes or hair yet (body and face only).
+  players' names in the chat. Combat poses have no clothes yet: the look's hair, glasses and hat are laid on each pose's head (kit-art `headShift`: the idle head matched to the pose's pixels).
 - Hotbar (`ui/hotbar.ts`, bottom centre, members, hidden on phones and in the casino/arena): bottom row 10 skill slots
   (keys 1–0) and 3 for potions/usables (- = `, shown ~), evenly spaced; top row 13 more (Alt + the same keys, labelled "Alt+1"…) for either.
   Skills panel on the right of the screen (K or the K button; `#skill-book`): each skill with its description, the hovered
