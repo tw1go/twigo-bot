@@ -84,7 +84,6 @@ export class Hotbar {
         const cell = this.cell(row, i);
         this.cells[row].push(cell);
         (row === 'top' ? top : bottom).append(cell);
-        if (row !== 'util' && i === MAIN_KEYS.length - 1) (row === 'top' ? top : bottom).append(el('span', 'hb-gap')); // the top row's gap lines up with the bottom's
       }
     }
     top.prepend(el('span', 'hb-spacer', 'Ctrl')); // the top row's keys are Ctrl + the bottom row's
