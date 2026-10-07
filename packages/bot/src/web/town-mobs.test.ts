@@ -66,11 +66,22 @@ test('a hit takes 20 (25 on a crit) from 100, the mob goes after its foe, dies a
   assert.ok(events.some((e) => e.t === 'mob-attack' && e.id === mob.id && e.target === 'p1'));
   let t = 1000;
   let last: AttackResult = first;
-  while (last.ok && !last.dead) last = room.attack('p1', at, 'stick', mob.id, (t += 500));
+  while (last.ok && !last.dead) last = room.attack("p1", at, "stick", mob.id, (t += 1000));
   assert.ok(last.ok && last.dead && last.hp === 0);
   assert.equal(room.snapshot(t)[0].dead, true);
   assert.deepEqual(room.attack('p1', at, 'stick', mob.id, t + 500), { ok: false, reason: 'gone' });
   const zone = active.find((z) => mob.id.startsWith(`${z.id}:`))!;
   const back = room.tick(t + (zone.respawnSec ?? 20) * 1000 + 1).find((e) => e.t === 'mob-spawn' && e.id === mob.id);
   assert.ok(back && back.t === 'mob-spawn' && back.hp === 100);
+});
+
+test('each skill has its own cooldown by its level (Lv 1 the quickest)', () => {
+  const room = new MobRoom(map, () => 0.5, { stick: [1, 3, 6, 9, 12, 15, 18] });
+  const mob = room.snapshot(0)[0];
+  const at: [number, number] = [mob.col + 1, mob.row];
+  assert.ok(room.attack('p1', at, 'stick', mob.id, 0, 6).ok, 'the Lv 18 skill');
+  assert.deepEqual(room.attack('p1', at, 'stick', mob.id, 1000, 6), { ok: false, reason: 'slow' }, '3.5 s: not yet');
+  assert.ok(room.attack('p1', at, 'stick', mob.id, 1000, 0).ok, 'another skill is ready');
+  assert.ok(room.attack('p1', at, 'stick', mob.id, 2050, 0).ok, 'Lv 1: 1 s');
+  assert.ok(room.attack('p1', at, 'stick', mob.id, 3500, 6).ok, 'the Lv 18 one after 3.5 s');
 });

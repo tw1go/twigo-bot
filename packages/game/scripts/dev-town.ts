@@ -269,7 +269,15 @@ export function devTown(): Plugin {
           },
           slums: slumsMap,
         },
-        mobs: { slums: new MobRoom(JSON.parse(readFileSync(slumsFile, 'utf8'))) },
+        mobs: {
+          slums: new MobRoom(
+            JSON.parse(readFileSync(slumsFile, 'utf8')),
+            Math.random,
+            Object.fromEntries(
+              (JSON.parse(readFileSync(join(server.config.publicDir, 'assets/classes/classes.json'), 'utf8')).classes as { id: string; skills: { level: number }[] }[]).map((c) => [c.id, c.skills.map((k) => k.level)]),
+            ),
+          ),
+        },
         shared: true,
         arenaBets,
         authenticate: async (req) => {

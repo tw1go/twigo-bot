@@ -65,6 +65,7 @@ import { SlumsOutskirts, outskirts } from '../world/outskirts';
 import { Terrain } from '../world/terrain';
 import { MOB_HP, Mobs } from '../world/mobs';
 import { SKILL_POSE, battleSheets } from '../characters/battle-art';
+import { skillCooldown } from '../combat/cooldowns';
 import { MobTargetBox } from '../ui/mob-target';
 import { LEVEL_PX } from '../world/heights';
 import { NightLife } from '../world/night-life';
@@ -144,9 +145,8 @@ const DIR_STEP: Record<Dir, [number, number]> = {
   n: [-1, -1], s: [1, 1], e: [1, -1], w: [-1, 1],
   ne: [0, -1], nw: [-1, 0], se: [1, 0], sw: [0, 1],
 };
-/** Battle: the classes that fight from afar (5 tiles; the rest from the next tile), and a damage skill's cooldown (s). */
+/** Battle: the classes that fight from afar (5 tiles; the rest from the next tile). A skill's cooldown: combat/cooldowns.ts. */
 const RANGED_CLASSES = new Set(['slingshot', 'broom', 'hilot']);
-const SKILL_COOLDOWN = 1;
 const DIR_FOR_KEYS: Record<string, Dir> = {
   '0,-1': 'n', '0,1': 's', '1,0': 'e', '-1,0': 'w', '1,-1': 'ne', '-1,-1': 'nw', '1,1': 'se', '-1,1': 'sw',
 };
@@ -681,7 +681,7 @@ export class TownScene extends Phaser.Scene {
       toast('No mob nearby. Walk up to one (Z picks the nearest).', 2200);
       return 'no';
     }
-    this.engage = { name, idx, reach: RANGED_CLASSES.has(c.id) ? 5 : 1, goal: null };
+    this.engage = { name, idx, reach: RANGED_CLASSES.has(c.id) ? 5 : 1, goal: null, cooldown: skillCooldown(c.skills[idx].level) };
     this.hotbar?.setAuto(name);
     this.fightTick();
     return 'no';
@@ -689,8 +689,9 @@ export class TownScene extends Phaser.Scene {
 
   /** The auto-cast under way: which skill, its reach, and where we're walking to get in reach. */
   private hotbar: Hotbar | null = null;
-  private engage: { name: string; idx: number; reach: number; goal: Tile | null } | null = null;
-  private castReady = 0;
+  private engage: { name: string; idx: number; reach: number; goal: Tile | null; cooldown: number } | null = null;
+  /** When each damage skill can be cast again (scene time, ms). */
+  private castReady = new Map<string, number>();
 
   private stopFight(): void {
     if (!this.engage) return;
@@ -712,11 +713,11 @@ export class TownScene extends Phaser.Scene {
       if (this.player.isIdle === false) this.player.cancelPath(); // stop on this tile
       e.goal = null;
       const now = this.time.now;
-      if (now < this.castReady || !this.player.isIdle) return;
-      this.castReady = now + SKILL_COOLDOWN * 1000;
+      if (now < (this.castReady.get(e.name) ?? 0) || !this.player.isIdle) return;
+      this.castReady.set(e.name, now + e.cooldown * 1000);
       this.player.strike(SKILL_POSE[e.idx] ?? 'attack-quick', dirForStep(at.col - me.col, at.row - me.row));
       this.link?.send({ t: 'attack', mob: m.id, skill: e.idx });
-      this.hotbar?.cooldown(e.name, SKILL_COOLDOWN);
+      this.hotbar?.cooldown(e.name, e.cooldown);
       return;
     }
     // Out of reach: to the nearest open tile in reach of it (again if it has moved off our goal's reach).

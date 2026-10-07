@@ -11,7 +11,8 @@ import type { TownMob } from '@mikazuki/shared';
 // a melee class or up to RANGED tiles with a ranged one. A mob that's hit fights back: it goes after whoever hit it last
 // (within its zone's leash from its spawn), and next to them attacks every ATTACK_MS (shown only: players have no HP
 // yet); it gives up and walks home when they're gone, out of its leash, or haven't hit it for GIVE_UP_MS. At 0 HP it
-// dies and comes back at its spawn after its zone's respawnSec.
+// dies and comes back at its spawn after its zone's respawnSec. Each skill has its own cooldown by the level it's learnt
+// at (skillCooldown: Lv 1 the quickest; the game shows the same, combat/cooldowns.ts).
 
 const ROAM = 3;
 const SPEED = 2.4; // tiles per second (the game walks them at the same pace)
@@ -27,6 +28,10 @@ const ATTACK_MS = 1600;
 const GIVE_UP_MS = 12_000;
 const SWING_MS = 400; // a player's attacks: no faster than this
 
+/** A skill's cooldown (s) by the level it's learnt at: 0.8 + 0.15 a level, to a tenth (Lv 1: 1 s … Lv 18: 3.5 s). Keep in
+ *  step with the game's combat/cooldowns.ts. */
+export const skillCooldown = (level: number) => Math.round((0.8 + 0.15 * Math.max(1, level)) * 10) / 10;
+
 export type MobEvent =
   | { t: 'mob-move'; id: string; path: [number, number][] }
   | { t: 'mob-attack'; id: string; target: string }
@@ -35,6 +40,9 @@ export type MobEvent =
 export type AttackResult =
   | { ok: true; id: string; damage: number; crit: boolean; hp: number; dead: boolean }
   | { ok: false; reason: 'range' | 'slow' | 'gone' };
+
+/** Each class's damage skills' levels, in their order (classes.json). */
+export type SkillLevels = Record<string, number[]>;
 
 export interface MobZoneData {
   id: string;
@@ -94,6 +102,7 @@ export class MobRoom {
   constructor(
     private readonly map: MobMapData,
     private readonly random: () => number = Math.random,
+    private readonly levels: SkillLevels = {},
   ) {
     for (const r of map.ramps ?? []) this.ramps.add(`${r.col},${r.row}`);
     for (const zone of map.mobZones ?? []) {
@@ -224,15 +233,19 @@ export class MobRoom {
   private swings = new Map<string, number>();
 
   /** A player's attack on a mob: in range for their class (from where they stand), not too fast, the mob alive. */
-  attack(player: string, from: [number, number], cls: string | null | undefined, id: string, now: number): AttackResult {
+  attack(player: string, from: [number, number], cls: string | null | undefined, id: string, now: number, skill = 0): AttackResult {
     const m = this.mobs.find((x) => x.id === id);
     if (!m || m.respawnAt) return { ok: false, reason: 'gone' };
-    if (now < (this.swings.get(player) ?? 0)) return { ok: false, reason: 'slow' };
+    const ready = `${player}:${skill}`;
+    if (now < (this.swings.get(player) ?? 0) || now < (this.swings.get(ready) ?? 0)) return { ok: false, reason: 'slow' };
     const [mc, mr] = this.at(m, now);
     const reach = cls && RANGED_CLASSES.has(cls) ? RANGED : 1;
     // (A tile of slack: the mob may be mid-hop.)
     if (Math.max(Math.abs(from[0] - mc), Math.abs(from[1] - mr)) > reach + 1) return { ok: false, reason: 'range' };
     this.swings.set(player, now + SWING_MS);
+    // (A little slack: the game's clock and the message's trip.)
+    const level = (cls && this.levels[cls]?.[skill]) || 1;
+    this.swings.set(ready, now + skillCooldown(level) * 1000 - 150);
     const crit = this.random() < CRIT_CHANCE;
     const damage = crit ? CRIT : HIT;
     m.hp = Math.max(0, m.hp - damage);
@@ -249,7 +262,7 @@ export class MobRoom {
   /** A player left the room: no mob is after them any more. */
   forget(player: string): void {
     for (const m of this.mobs) if (m.foe?.id === player) m.foe.at = -Infinity;
-    this.swings.delete(player);
+    for (const k of [...this.swings.keys()]) if (k === player || k.startsWith(`${player}:`)) this.swings.delete(k);
   }
 
   /** Every mob as a newcomer should see it: where it is and the rest of a hop under way. */

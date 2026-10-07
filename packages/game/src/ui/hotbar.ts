@@ -3,6 +3,7 @@ import { playSound } from '../audio/sound';
 import { MOBILITY_PREVIEWS, SKILL_PREVIEWS } from '../combat/skill-previews';
 import { GAP_MS, STAGE_H, STAGE_W, type Skill, type SkillStage } from '../combat/skill-stage';
 import { itemArt, isRarity } from './item-art';
+import { skillCooldown } from '../combat/cooldowns';
 import { toast } from './toast';
 
 // ⚔️ The hotbar, bottom centre (members, not on phones): two rows of slots in the bag's slot art.
@@ -250,13 +251,15 @@ export class Hotbar {
     }
     this.list.append(this.stageBox, el('p', 'hb-note', 'Hover a skill to see it. Drag it onto a slot, or click it and then a slot.'), this.rows);
     const plays = previewsOf(this.cls);
+    const damage = this.cls?.skills.length ?? 0;
     this.rows.replaceChildren(
-      ...skills.map((s) => {
+      ...skills.map((s, i) => {
         const row = el('button', `hb-skill-row${this.picked?.name === s.name ? ' hb-picked' : ''}`);
         row.draggable = true;
         const text = el('span', 'sb-text');
         const line = el('span', 'sb-line');
-        line.append(el('span', 'hb-name', s.name), el('span', 'hb-lv', `Lv ${s.level}`));
+        // Damage skills: their cooldown too (by level: combat/cooldowns.ts).
+        line.append(el('span', 'hb-name', s.name), el('span', 'hb-lv', i < damage ? `Lv ${s.level} · ${skillCooldown(s.level)}s` : `Lv ${s.level}`));
         text.append(line, el('span', 'sb-desc', s.desc));
         const pic = this.iconOf(s.name) ?? el('span', 'hb-initials', initials(s.name));
         row.append(pic, text);

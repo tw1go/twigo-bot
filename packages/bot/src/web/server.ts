@@ -15,6 +15,7 @@ import { checkRichest } from './richest.js';
 import { attachTown, loadTownMap } from './town.js';
 import { bridgeTownChat } from './town-chat.js';
 import { MobRoom, loadMobMap } from './town-mobs.js';
+import { CLASSES } from './adventure.js';
 import { connectTownFeed, feed } from './town-feed.js';
 import { MAX_TICKETS, buyTickets, entries, lastDraw, nextDraw, pot, raidMoney, ticketWord, ticketsOf } from '../games/jackpot.js';
 import { jailedUntil } from '../games/jail.js';
@@ -802,7 +803,7 @@ export function startWebServer(client: Client): void {
       memory: townMemory(),
       map: loadTownMap(),
       rooms: { hood: hoodTownMap, slums: () => slumsMap },
-      mobs: { slums: new MobRoom(loadMobMap('slums')) },
+      mobs: { slums: new MobRoom(loadMobMap('slums'), Math.random, Object.fromEntries(CLASSES.map((c) => [c.id, c.skills.map((k) => k.level)]))) },
       // The Slums are for testers for now.
       mayEnter: async (room, userId) => room !== 'slums' || isTester(client, userId),
       authenticate: async (req) => {

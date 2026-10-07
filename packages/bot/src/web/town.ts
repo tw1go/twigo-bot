@@ -302,7 +302,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         // A damage skill on a mob (battle maps only): the mob room decides; everyone there sees the hit.
         const mobs = opts.mobs?.[c.room];
         if (!mobs || typeof m.mob !== 'string' || !Number.isInteger(m.skill)) return;
-        const r = mobs.attack(p.id, [p.col, p.row], p.cls, m.mob, Date.now());
+        const r = mobs.attack(p.id, [p.col, p.row], p.cls, m.mob, Date.now(), m.skill as number);
         if (!r.ok) return send(c, { t: 'attack-refused', reason: r.reason });
         const hit: TownServerMessage = { t: 'mob-hit', id: r.id, by: p.id, skill: m.skill as number, damage: r.damage, crit: r.crit, hp: r.hp, dead: r.dead };
         others(c, hit);
