@@ -1226,6 +1226,7 @@
       #hotbar .hb-emoji { font-size: 20px; }
       #hotbar .hb-icon, #skill-book .hb-icon { display: block; flex: none; width: 32px; height: 32px; image-rendering: pixelated; pointer-events: none; }
       #hotbar .hb-icon { margin: -2px; }
+      #hotbar .hb-off .hb-icon, #hotbar .hb-off .hb-initials { filter: grayscale(1) brightness(0.45); } /* damage skills: there's no combat in town */
       #hotbar .hb-fire { animation: hb-fire 0.35s ease-out; }
       #hotbar .hb-cd { position: absolute; inset: -4px; display: flex; align-items: center; justify-content: center; background: conic-gradient(transparent 0 calc(360deg - var(--left, 0deg)), rgba(124, 42, 232, 0.6) 0); pointer-events: none; }
       #hotbar .hb-cd-num { font: 700 17px/1 'Mk Numbers', var(--ui-font); color: #fff; text-shadow: 0 1px 0 #0B0A1A, 1px 0 0 #0B0A1A, -1px 0 0 #0B0A1A, 0 -1px 0 #0B0A1A; }

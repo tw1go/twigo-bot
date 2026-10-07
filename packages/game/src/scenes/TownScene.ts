@@ -559,6 +559,7 @@ export class TownScene extends Phaser.Scene {
         slot: inv?.slot && inv.selected && inv.nineSlice ? { url: url(inv.slot), picked: url(inv.selected), slice: inv.nineSlice } : null,
         badge: (cls) => (icons ? url(icons.file.replace('{class}', cls)) : ''),
         onSkill: (name) => this.mobility(name),
+        usable: (name) => !!(classInfo(adventure()?.cls) as (ClassInfo & { mobility?: { name: string }[] }) | undefined)?.mobility?.some((m) => m.name === name),
         stage: (c) => this.skillStage(c.id, c.fx),
         icon: (cls, skill) => {
           const I = this.M.ui.skillIcons;

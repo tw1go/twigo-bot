@@ -25,6 +25,8 @@ export interface HotbarOptions {
   /** A skill's key or click: its cooldown in seconds once used, 'no' if it can't go now, undefined if it has no use
    *  in town (yet). */
   onSkill?: (name: string) => number | 'no' | undefined;
+  /** Whether a skill does something here (the move skills in town); the others are shown dark. */
+  usable?: (name: string) => boolean;
   /** A skill's icon (32 px), or null: its initials over the class badge stand in. */
   icon?: (cls: string, skill: string) => string | null;
   /** The preview stage for a class (built once its poses and fx have loaded). */
@@ -216,6 +218,7 @@ export class Hotbar {
         b.draggable = !!entry;
         const icon = entry?.t === 'skill' && this.cls ? this.iconOf(entry.name) : null;
         b.classList.toggle('hb-skill', entry?.t === 'skill' && !icon);
+        b.classList.toggle('hb-off', entry?.t === 'skill' && !!this.o.usable && !this.o.usable(entry.name)); // damage skills: no combat in town
         const keyLabel = row === 'top' ? `Ctrl+${shown(TOP_KEYS[i])}` : key;
         if (entry?.t === 'skill') {
           const s = skillsOf(this.cls).find((k) => k.name === entry.name);
