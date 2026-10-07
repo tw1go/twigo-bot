@@ -9,10 +9,12 @@ import { MAX_SLOTS, capacity, inventory, masterKeys, removeItems } from '../dig/
 import { kowen } from '../kowens.js';
 import { POTIONS, ownedPotions } from '../potions/potions.js';
 import { megaphones } from '../items/megaphone.js';
+import { EQUIPMENT, equipmentInBag } from './adventure.js';
 
 // 🎒 The town's inventory (GET /town/inventory, POST /town/sell, POST /town/flex): the bag as the town shows it — every
-// dug-up item, Master Key and potion, one slot each — and selling or flexing a dug-up item with /sell's and /flex's
-// rules (flexes are posted in the games channel like /flex, with the same cooldown, and said in the town's chat).
+// dug-up item, Master Key, potion and piece of equipment not being worn, one slot each — and selling or flexing a
+// dug-up item with /sell's and /flex's rules (flexes are posted in the games channel like /flex, with the same
+// cooldown, and said in the town's chat).
 
 type NameOf = (id: string) => Promise<string>;
 
@@ -35,7 +37,16 @@ export function townInventory(userId: string): TownInventoryResponse {
     ...ownedPotions(userId).map(([pid, count]) => ({ id: `potion-${pid}`, name: POTIONS[pid].name, emoji: POTIONS[pid].emoji, rarity: 'common', value: 0, count,
       kind: 'potion' as const, sellable: false, about: `${plain(POTIONS[pid].effect)}. Use it with /potion use in Discord.` })),
   ];
-  return { items: [...dug, ...held], slots: capacity(userId), maxSlots: MAX_SLOTS, used: usedSlots(userId), kowens: balance(userId) };
+  // Equipment not being worn (one slot each; the equipment panel wears it).
+  const gear = new Map<string, number>();
+  for (const id of equipmentInBag(userId)) gear.set(id, (gear.get(id) ?? 0) + 1);
+  const equipment: TownBagItem[] = [...gear].flatMap(([id, count]) => {
+    const item = EQUIPMENT.get(id);
+    if (!item) return [];
+    const about = `Lv ${item.level} ${item.slot}${item.starter ? ". A starter item: it can't be dropped, traded or sold" : ''}. Double-click or drag it onto its slot to wear it.`;
+    return [{ id, name: item.name, emoji: '⚔️', rarity: item.rarity, value: 0, count, kind: 'equipment' as const, sellable: false, about }];
+  });
+  return { items: [...dug, ...held, ...equipment], slots: capacity(userId), maxSlots: MAX_SLOTS, used: usedSlots(userId), kowens: balance(userId) };
 }
 
 /** Sells `quantity` of a dug-up item (as /sell does: its value each, into the wallet). */

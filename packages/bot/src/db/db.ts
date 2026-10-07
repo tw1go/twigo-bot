@@ -15,6 +15,7 @@ import { today } from '../time.js';
 //  • v5, web game character looks: outfits.
 //  • v6, web game nicknames and titles: nicknames, titles. v7: titles.announced. v8: titles.opened.
 //  • v9, the neighbourhood: houses.
+//  • v10, the web game's classes, quests and equipment: adventurers.
 //  • kv: small singleton documents keyed by their old file name (e.g. 'race.json', 'rotation.json').
 // Stores cache their state in memory (the bot is the only writer) and save through db/sync.ts, which writes only
 // the rows that changed.
@@ -226,6 +227,16 @@ const MIGRATIONS: string[] = [
     style   TEXT NOT NULL,     -- the house type (buildings/houses/parts.json in the game)
     look    TEXT NOT NULL,     -- JSON: slot -> swatch name
     built   INTEGER NOT NULL   -- ms
+  );
+  `,
+  /* v10: each member's class, quests and equipment in the web game (web/adventure.ts) */ `
+  CREATE TABLE adventurers (
+    user_id   TEXT PRIMARY KEY,
+    class     TEXT,                -- class id (classes/classes.json in the game), NULL before choosing
+    quests    TEXT NOT NULL,       -- JSON: { active: [{ id, step }], done: [id] }
+    equipped  TEXT NOT NULL,       -- JSON: slot -> item id (items/equipment.json in the game)
+    bag       TEXT NOT NULL,       -- JSON: equipment item ids in the bag, not worn
+    updated   INTEGER NOT NULL     -- ms
   );
   `,
 ];

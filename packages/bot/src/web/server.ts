@@ -35,6 +35,8 @@ import { arenaBets, refundHeldBets } from './town-arena-bets.js';
 import { kowen } from '../kowens.js';
 import { filterText, kickedUntil, mutedUntil } from './town-mod.js';
 import { getOutfit, parseOutfit, saveOutfit } from './outfit.js';
+import { adventureOf, kitOf, parseEquipAction, parseQuestAction, townEquip, townQuest } from './adventure.js';
+import { freeSlots } from '../dig/bag.js';
 import { LAUNCH_REWARD, isPreregistered, launched, preregCount, preregister } from '../prereg/prereg.js';
 import { callback, clearSessionCookie, endSessions, isMember, login, loginEnabled, logout, sessionUser } from './auth.js';
 import { roll } from './finds.js';
@@ -76,6 +78,8 @@ import { type CmsDeps, cms } from './cms.js';
 //   GET  /town/inventory  the bag: dug-up items, Master Keys and potions, slots, wallet (members)
 //   POST /town/sell     { id, quantity } (or { items: [{ id, quantity }] }) sell dug-up items, /sell's prices (from the game's page only; members)
 //   POST /town/flex     { id } flex a dug-up item in the games channel, /flex's cooldown (from the game's page only; members)
+//   POST /town/quest    { quest, action: talk, npc } | { quest, action: chooseClass, cls }: a quest objective done (web/adventure.ts)
+//   POST /town/equip    { action: equip, item } | { action: unequip, slot }: wear or take off equipment (from the game's page only; members)
 //   POST /town/gamble   { bet, call: kara|krus } Kara y Krus at the Casino, /gamble's odds (from the game's page only; members)
 //   GET  /town/hood     the neighbourhood: its map, everyone's houses, the viewer's keys, potions and steal cooldown (members)
 //   POST /town/house    { style, colours } build your house (free) or give it a new look (from the game's page only; members)
@@ -215,7 +219,7 @@ async function me(client: Client, req: IncomingMessage, res: ServerResponse): Pr
     const item = ITEM_BY_ID.get(id)!;
     return { id, name: item.name, emoji: item.emoji, rarity: item.rarity, count };
   });
-  const body: MeResponse = { id: userId, name, avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items, preregistered: isPreregistered(userId), house: !!houseOf(userId), outfit: getOutfit(userId), nickname: getNickname(userId), title: titleOf(userId), newTitle: newTitle(userId), welcomeGift: welcomeGift(userId), status: await statusOf(client, userId),
+  const body: MeResponse = { id: userId, name, avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items, preregistered: isPreregistered(userId), house: !!houseOf(userId), outfit: getOutfit(userId), nickname: getNickname(userId), title: titleOf(userId), newTitle: newTitle(userId), welcomeGift: welcomeGift(userId), status: await statusOf(client, userId), adventure: adventureOf(userId),
     dig: digStatus(userId) };
   send(res, 200, JSON.stringify(body));
 }
@@ -503,6 +507,33 @@ export function startWebServer(client: Client): void {
         }
         return send(res, 200, JSON.stringify(await boardAction(client, userId, { action, id, task, reward }, names)));
       }
+      if (req.method === 'POST' && (path === '/town/quest' || path === '/town/equip')) {
+        if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
+        if (!fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
+        const userId = sessionUser(req);
+        if (!userId) return send(res, 401, '{"error":"not logged in"}');
+        let body: unknown = null;
+        try {
+          body = JSON.parse((await readBody(req)) || 'null');
+        } catch {
+          // invalid JSON → rejected below
+        }
+        if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
+        let result;
+        if (path === '/town/quest') {
+          const action = parseQuestAction(body);
+          if (!action) return send(res, 400, '{"error":"invalid quest action"}');
+          result = townQuest(userId, action);
+        } else {
+          const action = parseEquipAction(body);
+          if (!action) return send(res, 400, '{"error":"invalid equip action"}');
+          result = townEquip(userId, action, freeSlots(userId));
+        }
+        const { changed, ...reply } = result;
+        if (changed) town?.kit(userId, reply.adventure.cls, reply.adventure.equipped.weapon ?? null); // the resting weapon, for everyone
+        if (reply.completed) console.log(`[quests] ${userId} completed ${reply.completed}${reply.adventure.cls ? ` (${reply.adventure.cls})` : ''}`);
+        return send(res, 200, JSON.stringify(reply));
+      }
       if ((req.method === 'GET' && path === '/town/inventory') || (req.method === 'POST' && (path === '/town/sell' || path === '/town/flex'))) {
         if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
         if (req.method === 'POST' && !fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
@@ -742,7 +773,7 @@ export function startWebServer(client: Client): void {
       profile: (userId) => {
         const nickname = getNickname(userId);
         const outfit = getOutfit(userId);
-        return nickname && outfit ? { nickname, outfit, title: titleOf(userId), ...(jailedUntil(userId) ? { jailed: true } : {}) } : null;
+        return nickname && outfit ? { nickname, outfit, title: titleOf(userId), ...kitOf(userId), ...(jailedUntil(userId) ? { jailed: true } : {}) } : null;
       },
     });
     toDiscord = bridgeTownChat(client, town);

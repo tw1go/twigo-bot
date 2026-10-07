@@ -62,6 +62,9 @@ export interface TownProfile {
   title: TitleData;
   outfit: OutfitData;
   jailed?: boolean;
+  /** Their class and worn weapon (web/adventure.ts), if any. */
+  cls?: string | null;
+  weapon?: string | null;
 }
 
 export interface TownOptions {
@@ -124,6 +127,8 @@ export interface Town {
   newTitle(userId: string, id: string, title: TitleData): void;
   /** A member changed their look or title at the Parlor: everyone in town sees it (them included). */
   restyle(userId: string, outfit: OutfitData, title: TitleData): void;
+  /** A member chose a class or changed their weapon: everyone in town sees it (the resting weapon, the chat's badge). */
+  kit(userId: string, cls: string | null, weapon: string | null): void;
   /** A house built, given a new look, or its Bakod up or down: everyone in the neighbourhood sees it at once (it rises,
    *  puffs into its new look, or its fence goes up or comes down). */
   /** The Mosang race (games/race.ts) changed: to everyone in town and the neighbourhood, and to arrivals while it's on. */
@@ -443,6 +448,12 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       if (!c) return;
       Object.assign(c.player, { outfit, title });
       everyone({ t: 'look', id: c.player.id, outfit, title });
+    },
+    kit(userId, cls, weapon) {
+      const c = conns.get(userId);
+      if (!c) return;
+      Object.assign(c.player, { cls, weapon });
+      everyone({ t: 'kit', id: c.player.id, cls, weapon });
     },
     setJailed(userId, on) {
       const c = conns.get(userId);
