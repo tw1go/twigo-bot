@@ -9,7 +9,8 @@ import { BuildingLabel } from '../ui/labels';
 // 🥫 The Slums' mobs (map.mobZones; art in manifest mobs). No combat yet: for each zone that's on (`active`), one mob per
 // spawn tile, idling and now and then hopping a few tiles round its spawn (the move animation; at most 3 tiles away,
 // never off its zone's level, onto a blocked tile or a ramp, or into the safe zone), facing the way it goes (SE / NE /
-// SW / NW sheets). A click shows its name and level ("Tin Can Lv 1-2"). Zones that are off (no art yet) and the boss
+// SW / NW sheets). A click shows its name and level ("Tin Can Lv 1-2") and targets it; Z targets the nearest (again:
+// the next nearest): a ring under it and the info bar at the top (ui/mob-target.ts). Zones that are off (no art yet) and the boss
 // load and place nothing; their data waits in the map. The zone's aggro, aggroRange, leash, respawnSec and level stay
 // on each mob (`zone`) for combat later.
 
@@ -17,6 +18,8 @@ const ROAM = 3; // tiles from its spawn
 const SPEED = 2.4; // tiles per second
 const REST_MS: [number, number] = [2200, 6500];
 const LABEL_MS = 2600;
+const TARGET_RANGE = 12; // tiles: Z picks among the mobs this close
+const TARGET_LOSE = 20; // tiles: a target this far away is let go
 
 /** The four ways the art faces, for a step in screen directions. */
 const FACING: Record<string, 'se' | 'ne' | 'sw' | 'nw'> = { n: 'ne', ne: 'ne', e: 'se', se: 'se', s: 'sw', sw: 'sw', w: 'nw', nw: 'nw' };
@@ -41,6 +44,10 @@ export interface Mob {
 export class Mobs {
   readonly list: Mob[] = [];
   private zoom = 2;
+  private target: Mob | null = null;
+  private ring: Phaser.GameObjects.Graphics | null = null;
+  /** The targeted mob changed (null: none): the scene shows the info bar. */
+  onTarget: ((m: Mob | null) => void) | null = null;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -96,7 +103,9 @@ export class Mobs {
     if (shadow) this.onSpawn(shadow);
     // A click: its name and level over its head for a moment.
     sprite.setInteractive({ cursor: 'pointer', pixelPerfect: true }).on('pointerup', (p: Phaser.Input.Pointer) => {
-      if (p.leftButtonReleased() || p.wasTouch) this.showLabel(mob);
+      if (!p.leftButtonReleased() && !p.wasTouch) return;
+      this.showLabel(mob);
+      this.setTarget(mob);
     });
     this.play(mob, 'idle');
     this.list.push(mob);
@@ -180,6 +189,44 @@ export class Mobs {
     }
   }
 
+  /** Targets the nearest mob within reach of `from` that isn't the current one (so Z again goes on to the next). */
+  targetNext(from: { col: number; row: number }): Mob | null {
+    const near = this.list
+      .map((m) => ({ m, d: Math.hypot(m.col - from.col - 0.5, m.row - from.row - 0.5) }))
+      .filter((x) => x.d <= TARGET_RANGE)
+      .sort((a, b) => a.d - b.d);
+    if (!near.length) return this.setTarget(null);
+    const i = this.target ? near.findIndex((x) => x.m === this.target) : -1;
+    return this.setTarget(near[(i + 1) % near.length].m);
+  }
+
+  setTarget(m: Mob | null): Mob | null {
+    if (m === this.target) return m;
+    this.target = m;
+    this.ring?.destroy();
+    this.ring = null;
+    if (m) {
+      // A soft gold ring on the ground under it.
+      this.ring = this.scene.add.graphics();
+      this.ring.lineStyle(1, 0xfcda4a, 0.9).strokeEllipse(0, 0, 22, 10).lineStyle(1, 0x1e1b3a, 0.6).strokeEllipse(0, 1, 24, 11);
+      this.syncRing();
+    }
+    this.onTarget?.(m);
+    return m;
+  }
+
+  /** Lets go of the target once it's far from `from`. */
+  check(from: { col: number; row: number }): void {
+    const m = this.target;
+    if (m && Math.hypot(m.col - from.col - 0.5, m.row - from.row - 0.5) > TARGET_LOSE) this.setTarget(null);
+  }
+
+  private syncRing(): void {
+    const m = this.target;
+    if (!m || !this.ring) return;
+    this.ring.setPosition(m.sprite.x, m.sprite.y).setDepth(m.sprite.depth - 0.3);
+  }
+
   private sync(m: Mob): void {
     const ground = this.objects.heights.lift(m.col, m.row);
     const x = Math.round((m.col - m.row) * 16);
@@ -189,6 +236,7 @@ export class Mobs {
     const depth = characterDepth(this.objects, Math.floor(m.col), Math.floor(m.row), feet, m.sprite.getBounds());
     m.sprite.setDepth(depth);
     m.shadow?.setPosition(x, y).setDepth(depth - 0.2);
+    if (m === this.target) this.syncRing();
   }
 
   private showLabel(m: Mob): void {

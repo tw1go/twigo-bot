@@ -64,6 +64,7 @@ import { Ground } from '../world/ground';
 import { SlumsOutskirts, outskirts } from '../world/outskirts';
 import { Terrain } from '../world/terrain';
 import { Mobs } from '../world/mobs';
+import { MobTargetBox } from '../ui/mob-target';
 import { LEVEL_PX } from '../world/heights';
 import { NightLife } from '../world/night-life';
 import { type ArenaChannel, BotChannel, PlayerChannel } from '../arena/channel';
@@ -365,7 +366,16 @@ export class TownScene extends Phaser.Scene {
     this.others.restFor = (weapon, cls) => this.restArt(weapon, cls);
     if (this.area === 'town') this.npcs = this.makeNpcs();
     // The Slums' mobs (the zones that are on), sorted and tinted like everyone else.
-    if (this.map.mobZones?.length) this.mobs = new Mobs(this, this.M, this.map, this.grid, this.objects, (obj) => this.tint >= 0 && obj.setTint(this.tint));
+    if (this.map.mobZones?.length) {
+      const mobs = new Mobs(this, this.M, this.map, this.grid, this.objects, (obj) => this.tint >= 0 && obj.setTint(this.tint));
+      const box = new MobTargetBox();
+      mobs.onTarget = (m) => {
+        box.show(m && { name: m.def.name, level: m.level, zone: m.zone.name, hp: 1 });
+        if (m) this.target?.clear(); // one target at a time
+      };
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => box.destroy());
+      this.mobs = mobs;
+    }
     // The race box's bet pop-up shows the runners' portraits wherever you are (the neighbourhood too, which has no NPCs).
     const P = this.M.npcs?.portrait;
     if (P) setRacePortraits((id) => `${import.meta.env.BASE_URL}assets/${P.file.replace('{id}', id)}`);
@@ -438,6 +448,7 @@ export class TownScene extends Phaser.Scene {
     }
     this.others.update(delta);
     this.mobs?.update(delta);
+    this.mobs?.check(this.player.tile);
     this.raceNews();
     if (this.npcs) {
       const me = this.player.tile;
@@ -894,7 +905,10 @@ export class TownScene extends Phaser.Scene {
     if (target) {
       chat.onName = ({ id, name }, anchor) => {
         const p = this.others.players.find((o) => (id ? o.id === id : o.nickname === name));
-        if (p) target.selectAt(p, anchor);
+        if (p) {
+          this.mobs?.setTarget(null);
+          target.selectAt(p, anchor);
+        }
         else chat.notice(`${name} isn't in town right now.`);
       };
     }
@@ -1217,7 +1231,10 @@ export class TownScene extends Phaser.Scene {
       if (Math.hypot(p.x - this.pressAt.x, p.y - this.pressAt.y) > 8) return;
       // Someone else's character: left click (or a tap) picks them for the player menu.
       const other = this.others.pick(over);
-      if (other && this.target && (p.wasTouch || p.leftButtonReleased())) return this.target.select(other);
+      if (other && this.target && (p.wasTouch || p.leftButtonReleased())) {
+        this.mobs?.setTarget(null); // one target at a time
+        return this.target.select(other);
+      }
       // An NPC: left click (or a tap) talks to them (walking over first if they're far).
       const npc = this.npcs?.pick(over);
       if (npc && (p.wasTouch || p.leftButtonReleased())) return this.talkTo(npc);
@@ -1250,6 +1267,9 @@ export class TownScene extends Phaser.Scene {
         this.player.cancelPath(); // the keys take over from a click path
       }
       if (e.key.toLowerCase() === 'e' || e.key === ' ') this.interact();
+      // Z: the nearest mob (again: the next nearest); Escape lets it go.
+      if (this.mobs && e.key.toLowerCase() === 'z' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.repeat) this.mobs.targetNext(this.player.tile);
+      if (this.mobs && e.key === 'Escape') this.mobs.setTarget(null);
       // F1–F8: emotes (the picker beside the chat shows which is which; 1–0 are the hotbar's).
       const f = /^F([1-9])$/.exec(e.key);
       if (f && Number(f[1]) <= EMOTE_KEYS.length) {
