@@ -31,6 +31,8 @@ export interface Manifest {
       variants: string[];
       overlays: Record<string, { file: string; land: Vec2 } | string>;
     };
+    /** The Slums' ground and raised-ground pieces (world/terrain.ts; rules in the manifest's note). */
+    slums?: SlumsTiles;
   };
   buildings: Record<string, BuildingDef>;
   props: Record<string, PropDef> & { fence: FenceDef; 'tree-tufts': { files: string[]; size: Vec2 } };
@@ -44,6 +46,8 @@ export interface Manifest {
   /** The town's ambient NPCs (world/npcs.ts): flat pre-baked sheets, not paper dolls. */
   npcs?: NpcDefs;
   fx: Record<string, FxDef>;
+  /** Mobs (world/mobs.ts): sheets per animation and direction. */
+  mobs?: Record<string, MobDef | string>;
   /** Item art by id (dig items and /redeem rewards), only for the ids that have art. */
   items?: Record<string, ItemArtDef>;
   /** Players' houses in the neighbourhood (houses/art.ts): layered and recoloured per slot. */
@@ -240,7 +244,60 @@ export interface CharacterDefs {
 
 // ── maps/town.json ──
 
-export type Ground = 'grass' | 'plaza' | 'path' | 'water';
+export type Ground = 'grass' | 'plaza' | 'path' | 'water' | SlumsGround;
+export type SlumsGround = 'dirt' | 'dirt-junk' | 'weeds' | 'mud' | 'concrete' | 'plate' | 'planks' | 'canal';
+
+export interface SlumsTiles {
+  size: Vec2;
+  anchor: Vec2;
+  ground: Record<string, string[]>;
+  canal: { file: string; size: Vec2; frames: number; fps: number; anchor: Vec2 };
+  pieceSize: Vec2;
+  pieceAnchor: Vec2;
+  cliffs: Record<string, { l: string[]; r: string[] }>;
+  rim: { nw: string; ne: string };
+  cap: { w: string; e: string };
+  ramps: Record<string, Record<RampDir, [string, string]>>;
+}
+
+export type RampDir = 'ne' | 'nw' | 'se' | 'sw';
+
+export interface Ramp {
+  col: number;
+  row: number;
+  /** The way you walk up. */
+  dir: RampDir;
+  /** 1 = the low tile, 2 = the next; the tile after part 2 is the high ground. */
+  part: 1 | 2;
+  surface: string;
+}
+
+export interface MobDef {
+  name: string;
+  file: string; // with {anim} and {dir}
+  size: Vec2;
+  anchor: Vec2;
+  directions: string[];
+  animations: Record<string, { frames: number; fps: number; loop: boolean }>;
+}
+
+export interface MobZone {
+  id: string;
+  name: string;
+  mob: string;
+  level: [number, number];
+  rect: [number, number, number, number]; // col0, row0, col1, row1
+  /** The ground level its mobs stay on. */
+  height: number;
+  pack: number;
+  aggro: 'passive' | 'aggressive';
+  aggroRange: number;
+  leash: number;
+  respawnSec: number;
+  /** Off: no art yet, nothing placed or loaded. */
+  active: boolean;
+  spawns: Vec2[];
+}
 
 export interface MapObject {
   kind: 'building' | 'prop';
@@ -266,6 +323,19 @@ export interface TownMap {
   blocked: number[][]; // [row][col], 1 = blocked
   doors: Record<string, Vec2 | Vec2[]>; // [col, row] or several
   outskirts?: Outskirts;
+  /** Raised and low ground (the Slums): height[row][col] in levels of 16 px (0, 1 or 2). */
+  height?: number[][];
+  /** The material of a raised tile's walls, [row][col] ('earth' | 'concrete' | 'sheet', or ''). */
+  walls?: string[][];
+  /** Two tiles each, linking two levels. */
+  ramps?: Ramp[];
+  /** [col0, row0, col1, row1]: no mobs there. */
+  safeZone?: [number, number, number, number];
+  /** Spots for friendly NPCs later. */
+  residents?: Vec2[];
+  mobZones?: MobZone[];
+  /** The Scrapheap Golem's data (not placed yet). */
+  boss?: { id: string; name: string; level: number; tile: Vec2; arena: [number, number, number, number]; everyMinutes: number; warnMinutes: number; leash: number };
   /** Tiles over the river the game draws a bridge on (world/bridge.ts), crossing along the col axis. */
   bridge?: Vec2[];
   /** More bridges, each crossing along `along` (the slums bridge runs along the rows). */
@@ -278,6 +348,7 @@ export interface TownMap {
 }
 
 export type Gate = 'hood' | 'town' | 'slums';
+export type Area = Gate;
 
 /** The forest drawn around the town (world/outskirts.ts). */
 export interface Outskirts {

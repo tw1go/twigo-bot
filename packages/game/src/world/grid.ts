@@ -1,16 +1,17 @@
 import type { TownMap } from '../assets/types';
+import { Heights } from './heights';
 
 // Where players can walk: the map's blocked[row][col] grid (1 = blocked), plus fence edges, which block movement
-// across that edge only. Click-to-move uses 8-way A* on this grid; a diagonal step never cuts a blocked corner
-// or slips through a fence.
+// across that edge only, and raised ground (world/heights.ts: a step between levels only along a ramp). Click-to-move
+// uses 8-way A* on this grid; a diagonal step never cuts a blocked corner, slips through a fence or rounds a ledge.
 
 export interface Tile {
   col: number;
   row: number;
 }
 
-/** A* gives up after expanding this many tiles (a 72×72 town has 5,184). */
-const SEARCH_CAP = 12_000;
+/** A* gives up after expanding this many tiles per tile of map (the town has 5,184, the Slums 12,288). */
+const SEARCH_CAP_PER_TILE = 2.5;
 
 const STEPS: [number, number][] = [
   [1, 0], [-1, 0], [0, 1], [0, -1],
@@ -22,8 +23,10 @@ export class WalkGrid {
   readonly rows: number;
   private readonly blocked: Uint8Array;
   private readonly fenced = new Set<string>(); // "c,r|c2,r2" for both directions
+  readonly heights: Heights;
 
   constructor(map: TownMap) {
+    this.heights = new Heights(map);
     [this.cols, this.rows] = map.size;
     this.blocked = new Uint8Array(this.cols * this.rows);
     for (let r = 0; r < this.rows; r++) for (let c = 0; c < this.cols; c++) this.blocked[r * this.cols + c] = map.blocked[r][c] ? 1 : 0;
@@ -63,7 +66,8 @@ export class WalkGrid {
     if (!this.walkable(b.col, b.row)) return false;
     const dc = b.col - a.col;
     const dr = b.row - a.row;
-    if (dc === 0 || dr === 0) return !this.crossesFence(a, b);
+    const H = this.heights;
+    if (dc === 0 || dr === 0) return !this.crossesFence(a, b) && H.canStep(a, b);
     // Diagonal: both orthogonal neighbours must be open, with no fence on either route around the corner.
     const viaC = { col: a.col + dc, row: a.row };
     const viaR = { col: a.col, row: a.row + dr };
@@ -73,7 +77,11 @@ export class WalkGrid {
       !this.crossesFence(a, viaC) &&
       !this.crossesFence(viaC, b) &&
       !this.crossesFence(a, viaR) &&
-      !this.crossesFence(viaR, b)
+      !this.crossesFence(viaR, b) &&
+      H.canStep(a, viaC) &&
+      H.canStep(viaC, b) &&
+      H.canStep(a, viaR) &&
+      H.canStep(viaR, b)
     );
   }
 
@@ -133,7 +141,7 @@ export class WalkGrid {
       if (cur === goal) break;
       if (closed[cur]) continue;
       closed[cur] = 1;
-      if (++expanded > SEARCH_CAP) return null;
+      if (++expanded > n * SEARCH_CAP_PER_TILE) return null;
       const c = cur % this.cols;
       const r = (cur - c) / this.cols;
       for (const [dc, dr] of STEPS) {
