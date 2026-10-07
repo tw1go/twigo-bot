@@ -9,9 +9,10 @@ import { adventure, itemDef } from '../net/adventure';
 
 // 🎒 The inventory: a bag button just right of the chat box (or B) opens the bag on the right of the screen. The bag shows every
 // slot a bag can ever have (5 × 10): the ones unlocked so far (bags from the shop add more) hold your items, one slot
-// each — dug-up items, Master Keys and potions, as the bot counts them — and the rest are marked with an X. Tabs show
-// all of it, the dug-up items, or the misc (keys and potions); each item's slot is bordered in its rarity's colour. Picking a
-// dug-up item offers Flex (/flex, in the games channel) and Sell (/sell's price); keys and potions say how they're used.
+// each — dug-up items, Master Keys, potions and equipment not being worn, as the bot counts them — and the rest are
+// marked with an X. Tabs show all of it, the dug-up items, combat (weapons and gear not being worn), or the misc (keys,
+// potions, megaphones); each item's slot is bordered in its rarity's colour. Picking a dug-up item offers Flex (/flex,
+// in the games channel) and Sell (/sell's price); keys and potions say how they're used.
 // Several slots can be picked at once: Ctrl/⌘/Shift-click adds or removes one, or the Select toggle (top) makes every
 // click do that (phones); then the details show how many, what the sellable ones are worth, and Sell selected (one
 // POST /town/sell with all of them), or Select all on the tab.
@@ -20,9 +21,11 @@ import { adventure, itemDef } from '../net/adventure';
 // onto its place to wear it. On phones there's no room for both: Equipment / Bag in their heads switch between them.
 
 const COLS = 5;
-type Tab = 'all' | 'dug' | 'misc';
-const TABS: [Tab, string][] = [['all', 'All'], ['dug', 'Dug up'], ['misc', 'Misc']];
-const inTab = (tab: Tab, it: TownBagItem) => tab === 'all' || (tab === 'dug') === (it.kind === 'dig');
+type Tab = 'all' | 'dug' | 'combat' | 'misc';
+const TABS: [Tab, string][] = [['all', 'All'], ['dug', 'Dug up'], ['combat', 'Combat'], ['misc', 'Misc']];
+/** Which tab shows an item: dug-up items, combat (weapons and gear), the rest (keys, potions, megaphones) in Misc. */
+const tabOf = (it: TownBagItem): Tab => (it.kind === 'dig' ? 'dug' : it.kind === 'equipment' ? 'combat' : 'misc');
+const inTab = (tab: Tab, it: TownBagItem) => tab === 'all' || tabOf(it) === tab;
 
 /** True while a page field has the keyboard (chat, a pop-up's input), so B is a letter there. */
 function typing(): boolean {
@@ -257,7 +260,11 @@ export class Inventory {
     this.grid.style.setProperty('--cols', String(COLS));
     this.grid.replaceChildren(...cells);
     if (!units.length) {
-      const empty = this.tab === 'misc' ? 'No keys or potions. Get them at the sari-sari store.' : this.tab === 'dug' ? 'Nothing dug up yet. Dig at the Mine!' : 'Your bag is empty. Dig at the Mine!';
+      const empty =
+        this.tab === 'misc' ? 'No keys or potions. Get them at the sari-sari store.'
+        : this.tab === 'dug' ? 'Nothing dug up yet. Dig at the Mine!'
+        : this.tab === 'combat' ? 'No weapons or gear in your bag. What you wear is in Equipment.'
+        : 'Your bag is empty. Dig at the Mine!';
       this.grid.append(el('div', 'iv-empty-note', empty));
     }
 
