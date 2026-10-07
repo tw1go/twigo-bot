@@ -152,14 +152,13 @@ export class EquipmentPanel {
     this.raf = requestAnimationFrame(tick);
   }
 
-  /** Lines its height up with the bag's (and its top). */
+  /** Lines its top up with the bag's, on its left (as tall as its slots need, no taller). */
   fit(bag: DOMRect): void {
     if (matchMedia('(max-width: 900px)').matches) {
-      for (const p of ['top', 'height', 'right']) this.root.style.removeProperty(p); // in the bag's place (CSS)
+      for (const p of ['top', 'right']) this.root.style.removeProperty(p); // in the bag's place (CSS)
       return;
     }
     this.root.style.top = `${Math.round(bag.top)}px`;
-    this.root.style.height = `${Math.round(bag.height)}px`;
     this.root.style.right = `${Math.round(innerWidth - bag.left + 10)}px`;
   }
 
