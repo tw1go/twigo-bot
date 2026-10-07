@@ -307,7 +307,20 @@ export function startWebServer(client: Client): void {
     gifted: (userId, from, amount) => town?.gifted(userId, from, amount),
     verdict: (userId, kind, judged, text) => town?.verdict(userId, kind, judged, text),
   };
-  const cmsDeps: CmsDeps = { town: () => town, discordName: async (id) => (await profile(client, id)).name };
+  const cmsDeps: CmsDeps = {
+    town: () => town,
+    discordName: async (id) => (await profile(client, id)).name,
+    // The members search (REST) needs no privileged intent; an ID is fetched as is.
+    searchMembers: async (q) => {
+      const channel = await client.channels.fetch(config.gamesChannelId).catch(() => null);
+      const guild = channel && 'guild' in channel ? channel.guild : null;
+      if (!guild) return [];
+      const found = /^\d{17,20}$/.test(q)
+        ? [await guild.members.fetch(q).catch(() => null)].filter((m) => !!m)
+        : [...(await guild.members.search({ query: q, limit: 25 }).catch(() => new Map())).values()];
+      return found.filter((m) => !m.user.bot).map((m) => ({ id: m.id, name: m.displayName }));
+    },
+  };
   const cmsPath = loginEnabled() ? config.cmsPath : undefined;
   if (cmsPath) console.log('[web] CMS on');
 

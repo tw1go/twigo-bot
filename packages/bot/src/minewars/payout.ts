@@ -6,6 +6,7 @@ import {
   MessageFlags,
   UserSelectMenuBuilder,
   type ButtonInteraction,
+  type Client,
   type ChatInputCommandInteraction,
   type UserSelectMenuInteraction,
 } from 'discord.js';
@@ -54,8 +55,14 @@ interface Session {
 }
 const sessions = new Map<string, Session>();
 
+export interface MineWarsPayout {
+  id: string;
+  amount: number;
+  top: boolean;
+}
+
 /** What each member would be paid now, after subtracting what they already got that night. */
-function plan(s: Session): { id: string; amount: number; top: boolean }[] {
+function plan(s: { night: string; attended: Set<string>; top: Set<string> }): MineWarsPayout[] {
   const paid = ledger[s.night] ?? {};
   const everyone = new Set([...s.attended, ...s.top]);
   return [...everyone]
@@ -64,6 +71,41 @@ function plan(s: Session): { id: string; amount: number; top: boolean }[] {
       return { id, top, amount: Math.max(0, (top ? topReward() : attendReward()) - (paid[id] ?? 0)) };
     })
     .filter((p) => p.amount > 0);
+}
+
+/** The night a payout made now is for (the most recent 9 PM), its label and who's already been paid for it. */
+export function mineWarsNight(): { night: string; label: string; paid: { id: string; amount: number }[] } {
+  const night = nightKey();
+  return { night, label: nightLabel(night), paid: Object.entries(ledger[night] ?? {}).map(([id, amount]) => ({ id, amount })) };
+}
+
+/** What paying these members for that night would pay (the Discord panel and the CMS). */
+export const mineWarsPlan = (night: string, attended: string[], top: string[]) => plan({ night, attended: new Set(attended), top: new Set(top) });
+
+/** Pays them (the ledger keeps a night from paying twice) and posts the summary in the games channel, no pings. */
+export async function payMineWars(client: Client, night: string, attended: string[], top: string[]): Promise<{ payouts: MineWarsPayout[]; total: number; url: string | null }> {
+  const payouts = mineWarsPlan(night, attended, top);
+  if (!payouts.length) return { payouts, total: 0, url: null };
+  const paid = (ledger[night] ??= {});
+  for (const p of payouts) {
+    add(p.id, p.amount);
+    paid[p.id] = (paid[p.id] ?? 0) + p.amount;
+  }
+  saveLedger();
+  const total = payouts.reduce((n, p) => n + p.amount, 0);
+  console.log(`[minewars] paid ${payouts.length} member(s), ${total} total for ${night}`);
+
+  const tops = payouts.filter((p) => p.top);
+  const attendees = payouts.filter((p) => !p.top);
+  const lines = [
+    `**⛏️ Mine Wars rewards — ${nightLabel(night)}, 9 PM · ${MW_SERVER}** 🪙`,
+    tops.length ? `\n🏆 **Top 10**\n${tops.map((p) => `<@${p.id}> +${p.amount}`).join(' · ')}` : '',
+    attendees.length ? `\n✅ **Attendance**\n${attendees.map((p) => `<@${p.id}> +${p.amount}`).join(' · ')}` : '',
+    `\n-# Thank you for joining! Only Mine Wars in the ${MW_SERVER} server counts. Check your Kowens with /balance.`,
+  ].filter(Boolean);
+  const channel = await client.channels.fetch(config.gamesChannelId).catch(() => null);
+  const msg = channel?.isSendable() ? await channel.send({ content: lines.join('\n'), allowedMentions: { parse: [] } }) : null; // names shown, nobody pinged
+  return { payouts, total, url: msg?.url ?? null };
 }
 
 function render(sessionId: string, s: Session) {
@@ -148,35 +190,11 @@ export async function handlePayoutInteraction(interaction: UserSelectMenuInterac
   }
 
   // confirm
-  const payouts = plan(session);
   sessions.delete(sessionId);
+  const { payouts, total, url } = await payMineWars(interaction.client, session.night, [...session.attended], [...session.top]);
   if (!payouts.length) {
     await interaction.update({ content: 'Nothing to pay — everyone selected was already paid.', components: [] });
     return;
   }
-  const night = (ledger[session.night] ??= {});
-  for (const p of payouts) {
-    add(p.id, p.amount);
-    night[p.id] = (night[p.id] ?? 0) + p.amount;
-  }
-  saveLedger();
-  const total = payouts.reduce((n, p) => n + p.amount, 0);
-  console.log(`[minewars] paid ${payouts.length} member(s), ${total} total for ${session.night}`);
-
-  const tops = payouts.filter((p) => p.top);
-  const attendees = payouts.filter((p) => !p.top);
-  const lines = [
-    `**⛏️ Mine Wars rewards — ${nightLabel(session.night)}, 9 PM · ${MW_SERVER}** 🪙`,
-    tops.length ? `\n🏆 **Top 10**\n${tops.map((p) => `<@${p.id}> +${p.amount}`).join(' · ')}` : '',
-    attendees.length ? `\n✅ **Attendance**\n${attendees.map((p) => `<@${p.id}> +${p.amount}`).join(' · ')}` : '',
-    `\n-# Thank you for joining! Only Mine Wars in the ${MW_SERVER} server counts. Check your Kowens with /balance.`,
-  ].filter(Boolean);
-
-  const channel = await interaction.client.channels.fetch(config.gamesChannelId);
-  let link = '';
-  if (channel?.isSendable()) {
-    const msg = await channel.send({ content: lines.join('\n'), allowedMentions: { parse: [] } }); // names shown, nobody pinged
-    link = `\n${msg.url}`;
-  }
-  await interaction.update({ content: `✅ Paid **${payouts.length}** member(s), **${total} ${kowen(total)}** in total.${link}`, components: [] });
+  await interaction.update({ content: `✅ Paid **${payouts.length}** member(s), **${total} ${kowen(total)}** in total.${url ? `\n${url}` : ''}`, components: [] });
 }

@@ -92,6 +92,10 @@
   .sections { display: grid; gap: 16px; }
   .setting + .setting { margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.08); }
   .setting input[type=number] { width: 120px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .chips .tag { font-size: 13px; padding: 3px 4px 3px 10px; color: var(--text, inherit); }
+  .chips .x { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 14px; padding: 0 4px; }
+  .row .actions { margin-top: 6px; }
   h2 { font-size: 15px; margin: 0 0 4px; }
 
   .preview { border: 1px dashed var(--line); border-radius: 8px; padding: 12px; margin-top: 12px; background: var(--bg); white-space: normal; }
@@ -139,6 +143,7 @@
     <a href="#titles" data-tab="titles">Titles</a>
     <a href="#shop" data-tab="shop">Shop</a>
     <a href="#rewards" data-tab="rewards">Rewards</a>
+    <a href="#minewars" data-tab="minewars">Mine Wars</a>
     <a href="#items" data-tab="items">Dig items</a>
     <a href="#players" data-tab="players">Players</a>
     <div class="me" id="me"></div>

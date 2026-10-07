@@ -21,6 +21,7 @@ import type { Town } from './town.js';
 import { isSettingKey, setSetting, setting, settingList, SETTINGS } from '../games/settings.js';
 import { CLASSES, EQUIPMENT, QUESTS, adventureOf, resetAdventure } from './adventure.js';
 import { renameCards } from '../items/rename-card.js';
+import { mineWarsNight, mineWarsPlan, payMineWars } from '../minewars/payout.js';
 
 // 🛠️ The CMS: a page for the gifter (and CMS_USER_IDS) to run the game's content without a deploy or a slash command:
 // the town's own news posts, titles (make, change, give), the rewards shop's prices and what's on sale, reward amounts
@@ -38,11 +39,16 @@ import { renameCards } from '../items/rename-card.js';
 //   GET  <path>/api/players?q=   nickname or Discord ID; empty = the richest
 //   GET  <path>/api/player?id=   POST /api/player/kowens { id, amount, reason? } · POST /api/player/title { id, title }
 //                                POST /api/player/reset-class { id } (class, quests and equipment start over)
+//   GET  <path>/api/members?q=   Discord members by name (or one ID), for Mine Wars, who may have no town nickname
+//   GET  <path>/api/minewars     tonight's (the latest 9 PM's) payout so far · POST /api/minewars/plan { attended, top }
+//                                POST /api/minewars/pay { night, attended, top } (as /gift minewars: ledger, games channel post)
 
 export interface CmsDeps {
   town: () => Town | null;
   /** A member's Discord name. */
   discordName: (userId: string) => Promise<string>;
+  /** Discord members whose name starts with `q` (or the one with that ID), bots left out. */
+  searchMembers: (q: string) => Promise<{ id: string; name: string }[]>;
 }
 
 /** The page and its script (packages/bot/cms/, beside src/ and dist/), read once. */
@@ -101,6 +107,10 @@ function findPlayers(q: string): { id: string; nickname: string | null; kowens: 
   if (SNOWFLAKE.test(q)) return accountIds().includes(q) || getNickname(q) ? [row(q)] : [];
   return nameStmt.all(`%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`).map((r) => row(r.user_id));
 }
+
+/** Rows with each member's Discord name and town nickname added. */
+const named = <T extends { id: string }>(rows: T[], deps: CmsDeps) =>
+  Promise.all(rows.map(async (r) => ({ ...r, name: await deps.discordName(r.id), nickname: getNickname(r.id) })));
 
 const known = (id: string) => SNOWFLAKE.test(id) && (accountIds().includes(id) || !!getNickname(id));
 
@@ -327,6 +337,31 @@ export async function cms(client: Client, req: IncomingMessage, res: ServerRespo
       return send(res, 200, { player: await player(id, deps) });
     }
 
+    case 'GET /api/members': {
+      const q = str(url.searchParams.get('q')).trim().slice(0, 32);
+      const found = q ? await deps.searchMembers(q) : [];
+      return send(res, 200, { members: found.map((m) => ({ ...m, nickname: getNickname(m.id) })) });
+    }
+    case 'GET /api/minewars': {
+      const { night, label, paid } = mineWarsNight();
+      return send(res, 200, { night, label, attend: setting('minewars-attend'), top: setting('minewars-top'), paid: await named(paid, deps) });
+    }
+    case 'POST /api/minewars/plan':
+    case 'POST /api/minewars/pay': {
+      const ids = (v: unknown, max: number) => (Array.isArray(v) ? [...new Set(v.map(str).filter((id) => SNOWFLAKE.test(id)))].slice(0, max) : []);
+      const attended = ids(body!.attended, 200);
+      const top = ids(body!.top, 10);
+      const { night, label } = mineWarsNight();
+      if (route === 'POST /api/minewars/plan') {
+        const payouts = mineWarsPlan(night, attended, top);
+        return send(res, 200, { payouts: await named(payouts, deps), total: payouts.reduce((n, p) => n + p.amount, 0) });
+      }
+      if (str(body!.night) !== night) return bad(`It's now the payout for ${label}: reload the page and check the names again.`);
+      const done = await payMineWars(client, night, attended, top);
+      if (!done.payouts.length) return bad('Nothing to pay: everyone picked was already paid for this night.');
+      await log(client, who, `paid Mine Wars (${label}): ${done.payouts.length} member(s), ${done.total.toLocaleString('en-US')} ${kowen(done.total)}`);
+      return send(res, 200, { ...done, payouts: await named(done.payouts, deps), ...mineWarsNight(), paid: await named(mineWarsNight().paid, deps) });
+    }
     case 'GET /api/players':
       return send(res, 200, { players: findPlayers(str(url.searchParams.get('q')).slice(0, 32)) });
     case 'GET /api/player': {

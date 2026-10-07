@@ -314,6 +314,83 @@ async function rewards() {
   draw();
 }
 
+// ── Mine Wars payout (minewars/payout.ts, the same as /gift minewars) ──
+
+async function minewars() {
+  page('Mine Wars', 'Pay the latest 9 PM Mine Wars: pick who attended and the Top 10, check the list, then pay. Someone already paid for the night only gets the difference (attended → Top 10). The summary goes in the games channel, no pings.');
+  let night = await api('minewars');
+  const names = new Map(); // id → how they're shown
+  const attended = new Set();
+  const top = new Set();
+  const label = (m) => (m.nickname && m.nickname !== m.name ? `${m.nickname} (${m.name})` : m.name);
+
+  const q = h('input', { placeholder: 'Discord name or ID', type: 'search' });
+  const found = h('div', { class: 'list' }, h('p', { class: 'hint' }, 'Search for a member, then add them.'));
+  const picks = h('div');
+  const planned = h('div');
+  main().append(h('div', { class: 'split' }, h('div', { class: 'card' }, q, h('div', { style: 'height:10px' }), found), h('div', { class: 'card' }, picks, planned)));
+
+  let timer = 0;
+  q.addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => act(null, search), 300);
+  });
+  async function search() {
+    const text = q.value.trim();
+    if (!text) return found.replaceChildren(h('p', { class: 'hint' }, 'Search for a member, then add them.'));
+    const { members } = await api(`members?q=${encodeURIComponent(text)}`);
+    found.replaceChildren(...(members.length
+      ? members.map((m) => h('div', { class: 'row' },
+          h('div', null, label(m)), h('div', { class: 'sub' }, m.id),
+          h('div', { class: 'actions' },
+            h('button', { class: 'btn', onclick: () => pick(m, attended) }, '+ Attended'),
+            h('button', { class: 'btn', onclick: () => pick(m, top) }, '+ Top 10'))))
+      : [h('p', { class: 'hint' }, 'Nobody found.')]));
+  }
+  function pick(m, set) {
+    if (set === top && !top.has(m.id) && top.size >= 10) return toast('The Top 10 is full.', true);
+    names.set(m.id, label(m));
+    (set === top ? attended : top).delete(m.id); // Top 10 counts as attended
+    set.add(m.id);
+    draw();
+  }
+
+  function group(title, set, max) {
+    return h('div', { class: 'setting' },
+      h('label', null, `${title} · ${set.size}${max ? `/${max}` : ''}`),
+      set.size
+        ? h('div', { class: 'chips' }, ...[...set].map((id) => h('span', { class: 'tag' }, names.get(id), ' ', h('button', { class: 'x', title: 'Remove', onclick: () => (set.delete(id), draw()) }, '×'))))
+        : h('p', { class: 'hint' }, 'Nobody yet.'));
+  }
+  async function draw() {
+    picks.replaceChildren(
+      h('h2', null, `${night.label}, 9 PM`),
+      h('p', { class: 'hint' }, `Attended +${fmt(night.attend)} · Top 10 ${fmt(night.top)} in total (Rewards tab)`),
+      group('✅ Attended', attended), group('🏆 Top 10', top, 10),
+      night.paid.length ? h('div', { class: 'setting' }, h('label', null, `Already paid for this night · ${night.paid.length}`), h('p', { class: 'hint' }, night.paid.map((p) => `${label(p)} +${fmt(p.amount)}`).join(' · '))) : null,
+    );
+    if (!attended.size && !top.size) return planned.replaceChildren();
+    const plan = await api('minewars/plan', { attended: [...attended], top: [...top] });
+    const pay = h('button', { class: 'btn primary', disabled: !plan.total }, `Pay ${kowens(plan.total)}`);
+    pay.addEventListener('click', () => act(pay, async () => {
+      if (!confirm(`Pay ${plan.payouts.length} member(s) ${kowens(plan.total)} for ${night.label}? A summary goes in the games channel.`)) return;
+      const done = await api('minewars/pay', { night: night.night, attended: [...attended], top: [...top] });
+      toast(`Paid ${done.payouts.length} member(s), ${kowens(done.total)}.`);
+      night = { ...night, ...done };
+      attended.clear();
+      top.clear();
+      draw();
+    }));
+    planned.replaceChildren(h('div', { class: 'setting' },
+      h('label', null, 'Will be paid'),
+      plan.payouts.length
+        ? h('p', { class: 'hint' }, plan.payouts.map((p) => `${label(p)} +${fmt(p.amount)}${p.top ? ' 🏆' : ''}`).join(' · '))
+        : h('p', { class: 'hint' }, 'Nothing: everyone picked was already paid for this night.'),
+      h('div', { class: 'actions' }, pay)));
+  }
+  draw();
+}
+
 // ── Dig items ──
 
 /** "1 in 1,234 digs" for a chance per dig. */
@@ -488,7 +565,7 @@ async function players(selected) {
 
 // ── Tabs ──
 
-const TABS = { overview, news, titles, shop, rewards, items, players };
+const TABS = { overview, news, titles, shop, rewards, minewars, items, players };
 
 function route() {
   const tab = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'overview';

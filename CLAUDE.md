@@ -61,7 +61,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   rarity, in the ground or not, new ones; `dig/items.ts`, tested: every rarity keeps an item in the ground; odds shown per
   item), Rewards (Mine Wars attend/top 3 pay, daily Kowens, welcome gift, stay minutes and daily cap; `games/settings.ts`, kv
   `settings`, min/max per setting, Reset = the default) (kv `town-posts`, `titles`, `shop`, `dig-items`, `settings` over the
-  code's defaults) and players' Kowens, titles and class (shown with quests, gear, Rename Cards; Reset class); logs each
+  code's defaults), the Mine Wars payout (pick Discord members found by name or ID as attended / Top 10, see who gets what, pay:
+  `payMineWars` in `minewars/payout.ts`, shared with `/gift minewars`, same ledger and games channel post) and players' Kowens, titles and class (shown with quests, gear, Rename Cards; Reset class); logs each
   change in the bot's log only (never posted in Discord). Content that moves into the CMS keeps its code values as defaults.
 - Messages to Discord: no pings by default (`allowedMentions: { parse: [] }`); de-duplicate user IDs in
   `allowedMentions.users`.
