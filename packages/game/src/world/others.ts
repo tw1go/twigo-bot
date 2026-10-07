@@ -3,7 +3,8 @@ import type { ArenaServerMessage, TownPlayer, TownServerMessage } from '@mikazuk
 import type { ClassArt, Manifest } from '../assets/types';
 import { Character, dirForStep } from '../characters/character';
 import { MOVES, isMoveKind, playMove } from './mobility';
-import { loadOutfit, randomOutfit } from '../characters/doll';
+import { type Outfit, loadOutfit, randomOutfit } from '../characters/doll';
+import type { BattleSheets } from '../characters/battle-art';
 import { sanitize } from '../characters/looks';
 import type { BubbleArt } from '../ui/labels';
 import { type WorldObjects, characterDepth } from './objects';
@@ -30,6 +31,9 @@ export class OtherPlayers {
   onChange: () => void = () => {};
   /** The resting weapon art for a worn weapon (loaded), or null (the scene knows the items and classes). */
   restFor: (weapon: string | null | undefined, cls: string | null | undefined) => Promise<ClassArt | null> = async () => null;
+  /** Battle maps (the Slums): a class's battle poses in a look (characters/battle-art.ts); null elsewhere. */
+  battleFor: ((cls: string, look: Outfit) => Promise<BattleSheets | null>) | null = null;
+  private readonly looks = new Map<string, Outfit>();
   /** The CSS cursor over a character (left click picks them). */
   private cursorCss = 'pointer';
 
@@ -109,6 +113,8 @@ export class OtherPlayers {
         void loadOutfit(this.scene, C, look).then(() => {
           if (this.all.get(m.id) !== o || o.state.outfit !== m.outfit) return; // left, or changed again meanwhile
           o.char?.setOutfit(look);
+          this.looks.set(m.id, look);
+          void this.dressRest(o); // battle poses in the new skin
           o.char?.setNameTag(s.nickname, s.title);
         });
         return;
@@ -188,6 +194,7 @@ export class OtherPlayers {
     this.onChange();
     // Unknown items (an older or newer wardrobe) fall back to a look seeded by their id.
     const look = sanitize(C, p.outfit, randomOutfit(C, rng(parseInt(p.id.slice(0, 8), 16) || 1)));
+    this.looks.set(p.id, look);
     void loadOutfit(this.scene, C, look).then(() => {
       if (this.all.get(p.id) !== o) return; // left while loading
       const s = o.state;
@@ -209,10 +216,15 @@ export class OtherPlayers {
 
   /** Their resting weapon (none without a weapon), unless they changed it again meanwhile. */
   private async dressRest(o: Other): Promise<void> {
-    const { weapon, cls } = o.state;
+    const { weapon, cls, id } = o.state;
     const art = await this.restFor(weapon, cls);
     if (o.state.weapon !== weapon || !o.char) return;
     o.char.setRestingWeapon(art, this.M.classes?.bodyOffset);
+    // On a battle map: their class's battle poses (or the doll without a class).
+    const look = this.looks.get(id);
+    if (!this.battleFor || !look) return;
+    const b = cls ? await this.battleFor(cls, look) : null;
+    if (o.state.cls === cls) o.char?.setBattle(b);
   }
 
   private remove(id: string): void {

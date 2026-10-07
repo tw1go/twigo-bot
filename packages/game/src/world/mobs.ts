@@ -5,6 +5,7 @@ import { CHARACTER_BIAS, HEIGHT_DEPTH } from './depth';
 import type { Tile, WalkGrid } from './grid';
 import { type WorldObjects, characterDepth } from './objects';
 import { BuildingLabel } from '../ui/labels';
+import { LABEL_DEPTH } from './depth';
 
 // 🥫 The Slums' mobs (map.mobZones; art in manifest mobs). No combat yet: for each zone that's on (`active`), one mob per
 // spawn tile (id `<zone>:<spawn index>`), idling and now and then hopping a few tiles round its spawn. The server runs
@@ -12,7 +13,10 @@ import { BuildingLabel } from '../ui/labels';
 // walked here at the same pace. Only with no server (nothing heard yet) do they wander on their own here (the move animation; at most 3 tiles away,
 // never off its zone's level, onto a blocked tile or a ramp, or into the safe zone), facing the way it goes (SE / NE /
 // SW / NW sheets). A click shows its name and level ("Tin Can Lv 1-2") and targets it; Z targets the nearest (again:
-// the next nearest): a ring under it and the info bar at the top (ui/mob-target.ts). Zones that are off (no art yet) and the boss
+// the next nearest): a ring under it and the info bar at the top (ui/mob-target.ts). Battle (the server
+// decides: bot web/town-mobs.ts): a hit plays the mob's hit pose (its death at 0 HP, then it's gone until it respawns), a
+// damage number rises over it (gold for a crit), and a small HP bar shows once it's hurt; its own attacks play its attack
+// pose toward the player. Zones that are off (no art yet) and the boss
 // load and place nothing; their data waits in the map. The zone's aggro, aggroRange, leash, respawnSec and level stay
 // on each mob (`zone`) for combat later.
 
@@ -42,7 +46,14 @@ export interface Mob {
   restUntil: number;
   label: BuildingLabel | null;
   labelUntil: number;
+  hp: number;
+  dead: boolean;
+  /** A one-shot pose (hit, attack, death) is playing: idle / move wait. */
+  posing: boolean;
+  bar: Phaser.GameObjects.Graphics | null;
 }
+
+export const MOB_HP = 100;
 
 export class Mobs {
   readonly list: Mob[] = [];
@@ -102,6 +113,10 @@ export class Mobs {
       restUntil: this.scene.time.now + Phaser.Math.Between(0, REST_MS[1]),
       label: null,
       labelUntil: 0,
+      hp: MOB_HP,
+      dead: false,
+      posing: false,
+      bar: null,
     };
     this.onSpawn(sprite);
     if (shadow) this.onSpawn(shadow);
@@ -118,6 +133,7 @@ export class Mobs {
   }
 
   private play(m: Mob, anim: string): void {
+    if (m.posing || m.dead) return;
     const key = `mob:${m.zone.mob}:${anim}:${m.dir}`;
     if (m.sprite.anims.currentAnim?.key !== key && this.scene.anims.exists(key)) m.sprite.play(key, true);
   }
@@ -149,7 +165,7 @@ export class Mobs {
   }
 
   /** The server runs them from now on: every mob where it says (and the rest of a hop under way). */
-  applySnapshot(mobs: { id: string; col: number; row: number; level: number; path?: [number, number][] }[]): void {
+  applySnapshot(mobs: { id: string; col: number; row: number; level: number; hp: number; dead?: boolean; path?: [number, number][] }[]): void {
     this.server = true;
     for (const s of mobs) {
       const m = this.byId.get(s.id);
@@ -158,6 +174,8 @@ export class Mobs {
       m.row = s.row + 0.5;
       m.level = s.level;
       m.path = (s.path ?? []).map(([col, row]) => ({ col, row }));
+      m.hp = s.hp;
+      this.show(m, !s.dead);
       this.sync(m);
     }
     if (this.target) this.onTarget?.(this.target); // its level may have changed
@@ -175,12 +193,108 @@ export class Mobs {
     m.path = path.slice(1).map(([col, row]) => ({ col, row }));
   }
 
+  /** A hit (the server's word): the hit pose (or its death), a damage number, the HP bar. */
+  hit(id: string, damage: number, crit: boolean, hp: number, dead: boolean): void {
+    const m = this.byId.get(id);
+    if (!m || m.dead) return;
+    m.hp = hp;
+    this.number(m, damage, crit);
+    if (dead) {
+      m.path = [];
+      this.pose(m, 'death', () => this.show(m, false));
+      m.dead = true;
+      if (m === this.target) this.setTarget(null);
+    } else this.pose(m, 'hit');
+    this.drawBar(m);
+    if (m === this.target) this.onTarget?.(m);
+  }
+
+  /** Its attack on someone at `at`: faces them and plays the attack pose. */
+  strike(id: string, at: { col: number; row: number }): void {
+    const m = this.byId.get(id);
+    if (!m || m.dead) return;
+    const dc = Math.sign(at.col + 0.5 - m.col);
+    const dr = Math.sign(at.row + 0.5 - m.row);
+    if (dc || dr) m.dir = FACING[stepName(dc, dr)] ?? m.dir;
+    this.pose(m, 'attack');
+  }
+
+  /** Back at its spawn with full HP. */
+  respawn(id: string, col: number, row: number, hp: number): void {
+    const m = this.byId.get(id);
+    if (!m) return;
+    Object.assign(m, { col: col + 0.5, row: row + 0.5, hp, path: [], posing: false });
+    this.show(m, true);
+    m.sprite.setAlpha(0);
+    this.scene.tweens.add({ targets: m.sprite, alpha: 1, duration: 400 });
+    this.sync(m);
+  }
+
+  /** A one-shot pose, then idle again (or `then`). */
+  private pose(m: Mob, anim: string, then?: () => void): void {
+    const key = `mob:${m.zone.mob}:${anim}:${m.dir}`;
+    if (!this.scene.anims.exists(key)) return void then?.();
+    m.posing = true;
+    m.sprite.play(key);
+    m.sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
+      m.posing = false;
+      if (then) then();
+      else this.play(m, m.path.length ? 'move' : 'idle');
+    });
+  }
+
+  /** Shown (alive) or gone (dead, until it respawns). */
+  private show(m: Mob, alive: boolean): void {
+    m.dead = !alive;
+    m.sprite.setVisible(alive);
+    m.shadow?.setVisible(alive);
+    if (alive) {
+      m.posing = false;
+      this.play(m, 'idle');
+    }
+    this.drawBar(m);
+  }
+
+  /** A small HP bar over a hurt mob (none at full HP or dead). */
+  private drawBar(m: Mob): void {
+    if (m.dead || m.hp >= MOB_HP) {
+      m.bar?.destroy();
+      m.bar = null;
+      return;
+    }
+    m.bar ??= this.scene.add.graphics();
+    const w = 20;
+    m.bar.clear().fillStyle(0x0b0a1a, 0.85).fillRect(-w / 2 - 1, -1, w + 2, 4).fillStyle(0xdc2626, 1).fillRect(-w / 2, 0, Math.max(1, Math.round((w * m.hp) / MOB_HP)), 2);
+    this.syncBar(m);
+  }
+
+  private syncBar(m: Mob): void {
+    m.bar?.setPosition(Math.round(m.sprite.x), Math.round(m.sprite.y - m.def.anchor[1] + 2)).setDepth(LABEL_DEPTH - 1);
+  }
+
+  /** A damage number rising over it (gold and bigger for a crit). */
+  private number(m: Mob, damage: number, crit: boolean): void {
+    const t = this.scene.add
+      .text(Math.round(m.sprite.x), Math.round(m.sprite.y - m.def.anchor[1] - 4), String(damage), {
+        fontFamily: '"Mk Numbers", "Pixelify Sans", monospace',
+        fontSize: `${crit ? 16 : 12}px`,
+        color: crit ? '#FCDA4A' : '#FFFFFF',
+        stroke: '#1E1B3A',
+        strokeThickness: 3,
+        resolution: Math.max(2, this.zoom * 2),
+      })
+      .setOrigin(0.5, 1)
+      .setDepth(LABEL_DEPTH);
+    this.scene.tweens.add({ targets: t, y: t.y - 14, alpha: { from: 1, to: 0 }, duration: 800, ease: 'Quad.easeOut', onComplete: () => t.destroy() });
+  }
+
   private server = false;
   private readonly byId = new Map<string, Mob>();
 
   update(deltaMs: number): void {
     const now = this.scene.time.now;
     for (const m of this.list) {
+      if (m.dead) continue;
       if (!this.server && !m.path.length && now >= m.restUntil) {
         this.wander(m);
         m.restUntil = now + Phaser.Math.Between(...REST_MS);
@@ -228,11 +342,22 @@ export class Mobs {
   targetNext(from: { col: number; row: number }): Mob | null {
     const near = this.list
       .map((m) => ({ m, d: Math.hypot(m.col - from.col - 0.5, m.row - from.row - 0.5) }))
-      .filter((x) => x.d <= TARGET_RANGE)
+      .filter((x) => x.d <= TARGET_RANGE && !x.m.dead)
       .sort((a, b) => a.d - b.d);
     if (!near.length) return this.setTarget(null);
     const i = this.target ? near.findIndex((x) => x.m === this.target) : -1;
     return this.setTarget(near[(i + 1) % near.length].m);
+  }
+
+  /** The targeted mob, if any. */
+  get current(): Mob | null {
+    return this.target;
+  }
+
+  /** A mob's tile (null: no such mob). */
+  tileOf(id: string): { col: number; row: number } | null {
+    const m = this.byId.get(id);
+    return m ? { col: Math.floor(m.col), row: Math.floor(m.row) } : null;
   }
 
   setTarget(m: Mob | null): Mob | null {
@@ -272,6 +397,7 @@ export class Mobs {
     m.sprite.setDepth(depth);
     m.shadow?.setPosition(x, y).setDepth(depth - 0.2);
     if (m === this.target) this.syncRing();
+    this.syncBar(m);
   }
 
   private showLabel(m: Mob): void {

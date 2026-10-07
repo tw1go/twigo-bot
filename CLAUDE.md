@@ -281,8 +281,18 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   hops under way included), each hop goes to the room as `mob-move`. The game (`world/mobs.ts`) walks them at the same
   pace (wandering on its own only when no server answers), facing their way (SE/NE/SW/NW sheets); a click shows "Tin Can Lv 1-2" over
   it and targets it; Z targets the nearest within 12 tiles (again: the next), a gold ring under it and an info bar at
-  the top (`ui/mob-target.ts`: name, level, HP, zone); Escape or 20 tiles away lets go. The zone's aggro, aggroRange,
-  leash, respawnSec and level stay on each mob for combat. `residents` are unused for now. Dev: `?area=slums`,
+  the top (`ui/mob-target.ts`: name, level, HP, zone); Escape or 20 tiles away lets go. Battle (battle maps = maps with
+  mobs): characters with a class use their class's combat poses there (`characters/battle-art.ts`: every pose composited
+  per class and look from kit-art drawPose into 64 × 64 sheets; standing = walk-ready's first frame, walking walk-ready /
+  walk-hunt; `Character.setBattle`, `strike`, `hurt`; no clothes or hair in those sheets yet), others too
+  (`OtherPlayers.battleFor`). The hotbar's damage skills work there (`TownScene.fight`): on your Z target or the nearest
+  mob, in reach (melee classes the next tile, Slingshot/Broom/Hilot 5), your attack pose (`SKILL_POSE` by the skill's
+  place), `attack` to the server, 1 s cooldown. The bot decides (`MobRoom.attack`, tested): mobs have 100 HP, any class
+  hits 20 (25 on a 15% crit), at most one swing per 0.4 s; a hit mob chases its foe within its zone's leash and attacks
+  next to them every 1.6 s (`mob-attack`: its attack pose and a red flash on the player; players have no HP yet), gives
+  up after 12 s without a hit or out of its leash and walks home; at 0 it dies (`mob-hit` dead: its death pose, gone)
+  and respawns after its zone's respawnSec (`mob-spawn`). The game shows damage numbers (gold for a crit), an HP bar
+  over a hurt mob and in the target's info bar. `residents` are unused for now. Dev: `?area=slums`,
   `__town.mobs()`; the dev server reads maps/slums.json again when it changes.
 - NPCs (town only, not the neighbourhood; client-side: never on the server, the online list or the minimap): the
   Tanod and ten Alings, flat pre-baked sheets (manifest `npcs`, art in `assets/npcs/`, one pack per NPC; `Character`

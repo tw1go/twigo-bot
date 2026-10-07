@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import type { CharacterDefs, ClassArt, ClassLayer, Dir, Manifest } from '../assets/types';
 import { slice } from '../assets/packs';
 import { restLayers } from './kit-art';
+import type { BattleSheets } from './battle-art';
 import { CHARACTER_BIAS, HEIGHT_DEPTH, LABEL_DEPTH } from '../world/depth';
 import type { Tile } from '../world/grid';
 import { type Outfit, headTop, sheetKey } from './doll';
@@ -449,12 +450,14 @@ export class Character {
 
   /** The animation key for an animation facing a direction (the doll's, or the flat sheets'). */
   private keyFor(anim: string, dir: Dir): string {
+    if (this.battle) return this.battle.key(anim, dir);
     return this.flat ? this.flat.key(anim, dir) : sheetKey(this.outfit, anim, dir);
   }
 
   private play(anim: string): void {
+    if (this.striking) return; // an attack pose plays out first
     const C = this.M.characters;
-    const dirs = this.flat?.directions ?? C.animations[anim]?.directions ?? C.directions;
+    const dirs = this.battle?.directions ?? this.flat?.directions ?? C.animations[anim]?.directions ?? C.directions;
     const dir = dirs.includes(this.dir) ? this.dir : dirs[0];
     const key = this.keyFor(anim, dir);
     this.anim = anim;
@@ -465,6 +468,53 @@ export class Character {
     const progress = current === anim && anim === 'walk' ? this.sprite.anims.getProgress() : 0;
     this.sprite.play(key);
     if (progress) this.sprite.anims.setProgress(progress);
+  }
+
+  // ── Battle (maps with mobs): the class's combat poses instead of the doll ──
+
+  private battle: BattleSheets | null = null;
+  private striking = false;
+
+  get inBattle(): boolean {
+    return !!this.battle;
+  }
+
+  /** Battle poses from now on (null: the doll again). The resting weapon is part of them, so it's hidden meanwhile. */
+  setBattle(b: BattleSheets | null): void {
+    if (b === this.battle) return;
+    this.battle = b;
+    this.striking = false;
+    const C = this.M.characters;
+    const [ax, ay] = b?.anchor ?? C.anchor;
+    const [w, h] = b?.cell ?? C.cell;
+    this.sprite.setOrigin(ax / w, ay / h);
+    this.sprite.anims.stop();
+    this.play(this.anim);
+    this.sync();
+  }
+
+  /** An attack pose, once, facing `dir` (battle only); then standing or walking again. */
+  strike(pose: string, dir: Dir): void {
+    if (!this.battle || this.sittingAt) return;
+    this.dir = dir;
+    this.striking = false;
+    const key = this.battle.key(pose, dir);
+    if (!this.scene.anims.exists(key)) return;
+    this.striking = true;
+    this.sprite.play(key);
+    this.sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
+      this.striking = false;
+      this.play(this.path.length ? 'walk' : 'idle');
+    });
+  }
+
+  /** Hit: a red flash (then the world's tint again, via onSpawn). */
+  hurt(): void {
+    this.sprite.setTint(0xff6b6b);
+    this.scene.time.delayedCall(160, () => {
+      this.sprite.clearTint();
+      this.onSpawn?.(this.sprite);
+    });
   }
 
   /** Screen position and depth from the tile-space position. */
@@ -480,7 +530,8 @@ export class Character {
     this.sprite.setDepth(depth);
     this.shadow?.setPosition(Math.round(x), Math.round(y)).setDepth(depth - 0.2);
     this.bars?.setPosition(Math.round(x), Math.round(y)).setDepth(depth + 0.05);
-    if (this.rest) this.syncRest(Math.round(x), Math.round(y - this.lift), depth);
+    if (this.rest && !this.battle) this.syncRest(Math.round(x), Math.round(y - this.lift), depth);
+    else if (this.rest) for (const sp of [...this.rest.back, ...this.rest.front]) sp.setVisible(false);
     // The name sits just over the head (2 px above its first visible row); an alert goes above it.
     const plateBottom = Math.round(y) - this.M.characters.anchor[1] + this.head - 2;
     this.tag?.place(Math.round(x), plateBottom);

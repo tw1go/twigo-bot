@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { queueImage, queueNpcs, queueTown } from '../assets/queue';
 import type { Area, Dir, Gate, Manifest, TownMap } from '../assets/types';
-import { Character } from '../characters/character';
+import { Character, dirForStep } from '../characters/character';
 import { type Outfit, assetProblems, buildOutfit, headPortrait, headTop, loadOutfit, outfitFiles, randomOutfit, sheetKey } from '../characters/doll';
 import { sanitize, startingOutfit } from '../characters/looks';
 import type { MeResult } from '../session';
@@ -63,7 +63,8 @@ import { type Tile, WalkGrid } from '../world/grid';
 import { Ground } from '../world/ground';
 import { SlumsOutskirts, outskirts } from '../world/outskirts';
 import { Terrain } from '../world/terrain';
-import { Mobs } from '../world/mobs';
+import { MOB_HP, Mobs } from '../world/mobs';
+import { SKILL_POSE, battleSheets } from '../characters/battle-art';
 import { MobTargetBox } from '../ui/mob-target';
 import { LEVEL_PX } from '../world/heights';
 import { NightLife } from '../world/night-life';
@@ -143,6 +144,9 @@ const DIR_STEP: Record<Dir, [number, number]> = {
   n: [-1, -1], s: [1, 1], e: [1, -1], w: [-1, 1],
   ne: [0, -1], nw: [-1, 0], se: [1, 0], sw: [0, 1],
 };
+/** Battle: the classes that fight from afar (5 tiles; the rest from the next tile), and a damage skill's cooldown (s). */
+const RANGED_CLASSES = new Set(['slingshot', 'broom', 'hilot']);
+const SKILL_COOLDOWN = 1;
 const DIR_FOR_KEYS: Record<string, Dir> = {
   '0,-1': 'n', '0,1': 's', '1,0': 'e', '-1,0': 'w', '1,-1': 'ne', '-1,-1': 'nw', '1,1': 'se', '-1,1': 'sw',
 };
@@ -364,13 +368,16 @@ export class TownScene extends Phaser.Scene {
     if (door && !Array.isArray(door[0])) this.player.place({ col: door[0] as number, row: door[1] as number }, 'se');
     this.others = new OtherPlayers(this, this.M, this.objects, (obj) => this.tint >= 0 && obj.setTint(this.tint));
     this.others.restFor = (weapon, cls) => this.restArt(weapon, cls);
+    // A battle map (one with mobs: the Slums): characters with a class in its battle poses.
+    this.battleMap = !!this.map.mobZones?.length && !!this.M.classes;
+    if (this.battleMap) this.others.battleFor = (cls, look) => battleSheets(this, this.M.characters, this.M.classes!, cls, look);
     if (this.area === 'town') this.npcs = this.makeNpcs();
     // The Slums' mobs (the zones that are on), sorted and tinted like everyone else.
     if (this.map.mobZones?.length) {
       const mobs = new Mobs(this, this.M, this.map, this.grid, this.objects, (obj) => this.tint >= 0 && obj.setTint(this.tint));
       const box = new MobTargetBox();
       mobs.onTarget = (m) => {
-        box.show(m && { name: m.def.name, level: m.level, zone: m.zone.name, hp: 1 });
+        box.show(m && { name: m.def.name, level: m.level, zone: m.zone.name, hp: m.hp / MOB_HP });
         if (m) this.target?.clear(); // one target at a time
       };
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => box.destroy());
@@ -619,8 +626,8 @@ export class TownScene extends Phaser.Scene {
       const hotbar = new Hotbar({
         slot: inv?.slot && inv.selected && inv.nineSlice ? { url: url(inv.slot), picked: url(inv.selected), slice: inv.nineSlice } : null,
         badge: (cls) => (icons ? url(icons.file.replace('{class}', cls)) : ''),
-        onSkill: (name) => this.mobility(name),
-        usable: (name) => !!(classInfo(adventure()?.cls) as (ClassInfo & { mobility?: { name: string }[] }) | undefined)?.mobility?.some((m) => m.name === name),
+        onSkill: (name) => this.mobility(name) ?? this.fight(name),
+        usable: (name) => this.battleMap || !!(classInfo(adventure()?.cls) as (ClassInfo & { mobility?: { name: string }[] }) | undefined)?.mobility?.some((m) => m.name === name),
         stage: (c) => this.skillStage(c.id, c.fx),
         icon: (cls, skill) => {
           const I = this.M.ui.skillIcons;
@@ -631,14 +638,56 @@ export class TownScene extends Phaser.Scene {
       });
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => hotbar.root.remove());
       hotbar.setClass(classInfo(adventure()?.cls) ?? null);
+      void this.applyBattle(adventure()?.cls ?? null);
       onAdventure((s) => {
         hotbar.setClass(classInfo(s.cls) ?? null);
+        void this.applyBattle(s.cls);
         this.questMarkers();
         void this.wearWeapon(s.equipped.weapon, s.cls);
         const c = classInfo(s.cls);
         setHudClass(c && icons ? { name: c.name, badge: asset(icons.small.replace('{class}', c.id)) } : null);
       });
     });
+  }
+
+  /** A map with mobs (the Slums): battle poses, and the damage skills hit mobs. */
+  private battleMap = false;
+
+  /** Your class's battle poses on a battle map (the doll without a class, or elsewhere). */
+  private async applyBattle(cls: string | null): Promise<void> {
+    if (!this.battleMap) return;
+    const b = cls ? await battleSheets(this, this.M.characters, this.M.classes!, cls, this.outfit) : null;
+    if ((adventure()?.cls ?? null) === cls) this.player.setBattle(b);
+  }
+
+  /**
+   * A damage skill on a battle map: at your target (Z), else the nearest mob, if it's in reach (melee classes: the next
+   * tile; the Slingshot, Broom and Hilot: 5). You face it and play the skill's attack pose; the server decides the
+   * hit (bot web/town-mobs.ts). Returns the cooldown (s), 'no', or undefined off a battle map.
+   */
+  private fight(name: string): number | 'no' | undefined {
+    if (!this.battleMap || !this.mobs) return undefined;
+    const c = classInfo(adventure()?.cls);
+    const idx = c?.skills.findIndex((k) => k.name === name) ?? -1;
+    if (!c || idx < 0) return undefined;
+    if (this.player.isSitting || this.player.busy || this.inside) return 'no';
+    const me = this.player.tile;
+    let m = this.mobs.current;
+    if (!m || m.dead) m = this.mobs.targetNext(me);
+    if (!m) {
+      toast('No mob nearby. Walk up to one (Z picks the nearest).', 2200);
+      return 'no';
+    }
+    const reach = RANGED_CLASSES.has(c.id) ? 5 : 1;
+    const dc = Math.floor(m.col) - me.col;
+    const dr = Math.floor(m.row) - me.row;
+    if (Math.max(Math.abs(dc), Math.abs(dr)) > reach) {
+      toast(reach === 1 ? 'Get next to it to hit it.' : 'Too far: get within 5 tiles.', 1800);
+      return 'no';
+    }
+    this.player.strike(SKILL_POSE[idx] ?? 'attack-quick', dirForStep(dc, dr));
+    this.link?.send({ t: 'attack', mob: m.id, skill: idx });
+    return SKILL_COOLDOWN;
   }
 
   /** When each mobility move can be used again (scene time, ms). */
@@ -1014,6 +1063,27 @@ export class TownScene extends Phaser.Scene {
       }
       if (m.t === 'mobs') return this.mobs?.applySnapshot(m.mobs);
       if (m.t === 'mob-move') return this.mobs?.hop(m.id, m.path);
+      if (m.t === 'mob-hit') {
+        this.mobs?.hit(m.id, m.damage, m.crit, m.hp, m.dead);
+        // Someone else's hit: their attack pose toward it.
+        const at = this.mobs?.tileOf(m.id);
+        const ch = m.by !== myId ? this.others.charOf(m.by) : null;
+        if (ch && at) ch.strike(SKILL_POSE[m.skill] ?? 'attack-quick', dirForStep(at.col - ch.tile.col, at.row - ch.tile.row));
+        return;
+      }
+      if (m.t === 'mob-attack') {
+        const who = m.target === myId ? this.player : this.others.charOf(m.target);
+        if (who) {
+          this.mobs?.strike(m.id, who.tile);
+          this.time.delayedCall(250, () => who.hurt()); // as its swing lands
+        }
+        return;
+      }
+      if (m.t === 'mob-spawn') return this.mobs?.respawn(m.id, m.col, m.row, m.hp);
+      if (m.t === 'attack-refused') {
+        if (m.reason === 'range') toast('Too far to hit it.', 1500);
+        return;
+      }
       if (m.t === 'welcome') {
         myId = m.you;
         // A reconnect (the bot restarted, a blip): what's on screen stays; only what's new is added.
