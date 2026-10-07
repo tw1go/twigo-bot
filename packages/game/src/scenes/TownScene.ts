@@ -10,7 +10,7 @@ import { BuildingLabel, UI_FONT } from '../ui/labels';
 import { LOADING_LINES } from '../ui/loading-lines';
 import { TownLink } from '../net/town';
 import { showElsewhere, showKicked } from '../ui/elsewhere';
-import { mountTownHud, setHudAvatar, setHudClass } from '../ui/townhud';
+import { mountTownHud, setHudAvatar, setHudClass, setHudName } from '../ui/townhud';
 import { showParlor } from '../ui/parlor';
 import { type HouseArt, composeHouse, houseFiles, houseStyles, tidyLook } from '../houses/art';
 import { areaUrl, cameFrom, hoodAction, loadHood, saveHouse } from '../net/hood';
@@ -366,6 +366,16 @@ export class TownScene extends Phaser.Scene {
     this.player.setJailed(member?.status === 'jailed');
     this.mountHud();
     void this.setupQuests();
+    // A Rename Card (the bag): your new name on your tag and in the HUD (everyone else hears it from the server).
+    const renamed = (e: Event) => {
+      const name = (e as CustomEvent<string>).detail;
+      const me = this.me?.status === 'ok' ? this.me.me : null;
+      if (me) me.nickname = name;
+      this.player.setNameTag(name, me?.title ?? TOWNFOLK);
+      setHudName(name);
+    };
+    addEventListener('mk-renamed', renamed);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => removeEventListener('mk-renamed', renamed));
     this.minimap = new Minimap(this.map); // in the HUD's corner, above its buttons
     startTownSound(this, this.fountainTile());
     if (member || fakeLogin()) this.connect();

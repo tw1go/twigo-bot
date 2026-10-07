@@ -127,6 +127,8 @@ export interface Town {
   newTitle(userId: string, id: string, title: TitleData): void;
   /** A member changed their look or title at the Parlor: everyone in town sees it (them included). */
   restyle(userId: string, outfit: OutfitData, title: TitleData): void;
+  /** A member changed their nickname (a Rename Card): everyone in town sees the new name (them included). */
+  renamed(userId: string, nickname: string): void;
   /** A member chose a class or changed their weapon: everyone in town sees it (the resting weapon, the chat's badge). */
   kit(userId: string, cls: string | null, weapon: string | null): void;
   /** A house built, given a new look, or its Bakod up or down: everyone in the neighbourhood sees it at once (it rises,
@@ -448,6 +450,12 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       if (!c) return;
       Object.assign(c.player, { outfit, title });
       everyone({ t: 'look', id: c.player.id, outfit, title });
+    },
+    renamed(userId, nickname) {
+      const c = conns.get(userId);
+      if (!c) return;
+      c.player.nickname = nickname;
+      everyone({ t: 'rename', id: c.player.id, nickname });
     },
     kit(userId, cls, weapon) {
       const c = conns.get(userId);

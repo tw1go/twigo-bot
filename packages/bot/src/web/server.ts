@@ -37,6 +37,7 @@ import { filterText, kickedUntil, mutedUntil } from './town-mod.js';
 import { getOutfit, parseOutfit, saveOutfit } from './outfit.js';
 import { adventureOf, kitOf, parseEquipAction, parseQuestAction, townEquip, townQuest } from './adventure.js';
 import { freeSlots } from '../dig/bag.js';
+import { renameWithCard } from '../items/rename-card.js';
 import { LAUNCH_REWARD, isPreregistered, launched, preregCount, preregister } from '../prereg/prereg.js';
 import { callback, clearSessionCookie, endSessions, isMember, login, loginEnabled, logout, sessionUser } from './auth.js';
 import { roll } from './finds.js';
@@ -79,7 +80,8 @@ import { type CmsDeps, cms } from './cms.js';
 //   POST /town/sell     { id, quantity } (or { items: [{ id, quantity }] }) sell dug-up items, /sell's prices (from the game's page only; members)
 //   POST /town/flex     { id } flex a dug-up item in the games channel, /flex's cooldown (from the game's page only; members)
 //   POST /town/quest    { quest, action: talk, npc } | { quest, action: chooseClass, cls }: a quest objective done (web/adventure.ts)
-//   POST /town/equip    { action: equip, item } | { action: unequip, slot }: wear or take off equipment (from the game's page only; members)
+//   POST /town/equip    { action: equip, item } | { action: unequip, place }: wear or take off equipment (from the game's page only; members)
+//   POST /town/rename   { nickname } a new town nickname, using a Rename Card (from the game's page only; members)
 //   POST /town/gamble   { bet, call: kara|krus } Kara y Krus at the Casino, /gamble's odds (from the game's page only; members)
 //   GET  /town/hood     the neighbourhood: its map, everyone's houses, the viewer's keys, potions and steal cooldown (members)
 //   POST /town/house    { style, colours } build your house (free) or give it a new look (from the game's page only; members)
@@ -506,6 +508,26 @@ export function startWebServer(client: Client): void {
           return send(res, 400, '{"error":"invalid quest"}');
         }
         return send(res, 200, JSON.stringify(await boardAction(client, userId, { action, id, task, reward }, names)));
+      }
+      if (req.method === 'POST' && path === '/town/rename') {
+        if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
+        if (!fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
+        const userId = sessionUser(req);
+        if (!userId) return send(res, 401, '{"error":"not logged in"}');
+        let body: { nickname?: unknown } | null = null;
+        try {
+          body = JSON.parse((await readBody(req)) || 'null');
+        } catch {
+          // invalid JSON → rejected below
+        }
+        if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
+        const before = getNickname(userId);
+        const result = renameWithCard(userId, body?.nickname);
+        if (result.ok) {
+          town?.renamed(userId, result.nickname); // everyone in town sees the new name
+          console.log(`[rename] ${userId}: ${before} → ${result.nickname} (${result.cards} card(s) left)`);
+        }
+        return send(res, 200, JSON.stringify(result));
       }
       if (req.method === 'POST' && (path === '/town/quest' || path === '/town/equip')) {
         if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');

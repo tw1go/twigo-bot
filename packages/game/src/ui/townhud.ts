@@ -75,6 +75,10 @@ const EARN = [
 
 let setAvatar: (head: HTMLCanvasElement) => void = () => {};
 let setClass: (cls: { name: string; badge: string } | null) => void = () => {};
+let setName: (name: string) => void = () => {};
+
+/** Your new nickname in the profile box (a Rename Card). */
+export const setHudName = (name: string) => setName(name);
 
 /** Your class badge over the avatar's corner (the 16x16 badge at the HUD's 2×; the avatar is under 48 px at 1×), or
  *  none before a class is chosen. */
@@ -120,7 +124,9 @@ export function mountTownHud(o: TownHudOptions): void {
     classBadge.setAttribute('aria-label', `Class: ${cls.name}`);
   };
   face.append(dot, classBadge);
-  profile.append(face, el('span', 'th-name', o.name));
+  const nameEl = el('span', 'th-name', o.name);
+  setName = (name) => (nameEl.textContent = name);
+  profile.append(face, nameEl);
   const settings = el('button', 'th-settings');
   if (o.gear) {
     const gear = el('img', 'th-gear');

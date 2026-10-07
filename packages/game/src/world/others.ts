@@ -76,6 +76,11 @@ export class OtherPlayers {
       case 'jailed':
         s.jailed = m.on || undefined;
         return o.char?.setJailed(m.on);
+      case 'rename':
+        // A Rename Card: the new name over their head.
+        s.nickname = m.nickname;
+        o.char?.setNameTag(s.nickname, s.title);
+        return this.onChange();
       case 'kit':
         // A class chosen or a weapon changed: their resting weapon, once its sheets have loaded.
         Object.assign(s, { cls: m.cls, weapon: m.weapon });

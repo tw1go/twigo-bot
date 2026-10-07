@@ -56,7 +56,7 @@ export const twigoHelp: Command = {
           '`/dig` — dig for treasure (🪏 Shovel from `/redeem`: 3 digs each, up to 3 shovels & 9 digs a day)',
           '`/inventory` — your finds · `/sell` — turn them into Kowens · `/flex` — show off an item 💪',
           '🍀 Every **60th dig on the server** is a **Lucky Dig**: guaranteed Epic or better!',
-          '🎒 Inventory holds **10** items (🗝️ Master Keys and 🧪 potions take a slot each too, 📢 megaphones share one) — buy bags in `/redeem` for +8 each, up to **50**',
+          '🎒 Inventory holds **10** items (🗝️ Master Keys and 🧪 potions take a slot each too, 📢 megaphones share one, 🪪 Rename Cards share one) — buy bags in `/redeem` for +8 each, up to **50**',
         ]),
         ...section('🪙 Earn Kowens', [
           `\`/get-kowens\` — claim ${DAILY_CREDITS} ${kowen(DAILY_CREDITS)} once a day (or in the web town)`,

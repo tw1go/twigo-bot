@@ -187,6 +187,8 @@ export type TownServerMessage =
   | { t: 'house'; change: 'built' | 'look' | 'fence'; house: HoodHouse; col: number; row: number; door: [number, number]; fence: HoodMap['fence'] }
   /** Someone changed their look or title at the Parlor (you too: `id` is yours). */
   | { t: 'look'; id: string; outfit: OutfitData; title: TitleData }
+  /** Someone changed their nickname with a Rename Card (you too: `id` is yours). */
+  | { t: 'rename'; id: string; nickname: string }
   /** Someone chose a class or changed their weapon (you too: `id` is yours). */
   | { t: 'kit'; id: string; cls: string | null; weapon: string | null }
   /** Someone was jailed or released (you too: `id` is yours). */
