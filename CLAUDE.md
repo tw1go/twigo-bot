@@ -286,10 +286,15 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   per class and look from kit-art drawPose into 64 × 64 sheets; standing = walk-ready's first frame, walking walk-ready /
   walk-hunt; `Character.setBattle`, `strike`, `hurt`; no clothes or hair in those sheets yet), others too
   (`OtherPlayers.battleFor`). The hotbar's damage skills work there (`TownScene.fight` / `fightTick`): pressing one
-  auto-casts it on your Z target (else the nearest mob) whenever it's ready (1 s), walking you into reach first and after
+  auto-casts on your Z target (else the nearest mob): one cast a second (CAST_GAP_MS), the pressed skill when it's ready,
+  else the first ready damage skill (the bar's order, then the class's); each skill's cooldown by its level
+  (`combat/cooldowns.ts` = the bot's `skillCooldown`: 0.8 s + 0.15 s a level, Lv 1 1 s … Lv 18 3.5 s; enforced by the
+  server, shown in the Skills panel and the slot's pie); walking you into reach first and after
   it if it moves (melee classes the next tile, Slingshot/Broom/Hilot 5), until it dies; moving yourself (click, WASD),
   Escape or the same skill again stop it, another damage skill takes over; its slot glows (`Hotbar.setAuto`). Each cast:
-  your attack pose (`SKILL_POSE` by the skill's place) and `attack` to the server. Mobility skills never auto-cast. The bot decides (`MobRoom.attack`, tested): mobs have 100 HP, any class
+  your attack pose (`SKILL_POSE` by the skill's place), its effects (`combat/world-skills.ts`: the skill preview's
+  script played in the world, the mob as every enemy slot, launch points from the class's launch.json; others' casts
+  too, on their `mob-hit`) and `attack` to the server. Mobility skills never auto-cast. The bot decides (`MobRoom.attack`, tested): mobs have 100 HP, any class
   hits 20 (25 on a 15% crit), at most one swing per 0.4 s; a hit mob chases its foe within its zone's leash and attacks
   next to them every 1.6 s (`mob-attack`: its attack pose and a red flash on the player; players have no HP yet), gives
   up after 12 s without a hit or out of its leash and walks home; at 0 it dies (`mob-hit` dead: its death pose, gone)

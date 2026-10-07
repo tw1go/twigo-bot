@@ -353,6 +353,13 @@ export class Hotbar {
   }
 
   /** Every slot holding that skill gets a dark pie that shrinks round clockwise, with the seconds left on it. */
+  /** The skills on the bar in key order (1–0, then the Ctrl row), each once. */
+  skillOrder(): string[] {
+    const seen = new Set<string>();
+    for (const e of [...this.layout.main, ...this.layout.top]) if (e?.t === 'skill') seen.add(e.name);
+    return [...seen];
+  }
+
   /** Every slot holding that skill glows while it's auto-casting (null: none). */
   setAuto(name: string | null): void {
     for (const row of ['top', 'main', 'util'] as Row[]) {

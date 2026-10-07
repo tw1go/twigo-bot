@@ -66,6 +66,8 @@ import { Terrain } from '../world/terrain';
 import { MOB_HP, Mobs } from '../world/mobs';
 import { SKILL_POSE, battleSheets } from '../characters/battle-art';
 import { skillCooldown } from '../combat/cooldowns';
+import { WorldSkills } from '../combat/world-skills';
+import { SKILL_PREVIEWS } from '../combat/skill-previews';
 import { MobTargetBox } from '../ui/mob-target';
 import { LEVEL_PX } from '../world/heights';
 import { NightLife } from '../world/night-life';
@@ -147,6 +149,7 @@ const DIR_STEP: Record<Dir, [number, number]> = {
 };
 /** Battle: the classes that fight from afar (5 tiles; the rest from the next tile). A skill's cooldown: combat/cooldowns.ts. */
 const RANGED_CLASSES = new Set(['slingshot', 'broom', 'hilot']);
+const CAST_GAP_MS = 1000;
 const DIR_FOR_KEYS: Record<string, Dir> = {
   '0,-1': 'n', '0,1': 's', '1,0': 'e', '-1,0': 'w', '1,-1': 'ne', '-1,-1': 'nw', '1,1': 'se', '-1,1': 'sw',
 };
@@ -457,6 +460,7 @@ export class TownScene extends Phaser.Scene {
     this.mobs?.update(delta);
     this.mobs?.check(this.player.tile);
     this.fightTick();
+    this.worldSkills?.update();
     this.raceNews();
     if (this.npcs) {
       const me = this.player.tile;
@@ -692,6 +696,20 @@ export class TownScene extends Phaser.Scene {
   private engage: { name: string; idx: number; reach: number; goal: Tile | null; cooldown: number } | null = null;
   /** When each damage skill can be cast again (scene time, ms). */
   private castReady = new Map<string, number>();
+  /** No two casts closer than CAST_GAP_MS, whichever skills. */
+  private nextCast = 0;
+
+  /** A skill's effects (the preview's script, combat/world-skills.ts) from a character at a mob. */
+  private castFx(cls: string, idx: number, who: Character, dir: Dir, mob: string): void {
+    const skill = SKILL_PREVIEWS[cls]?.[idx];
+    const art = this.M.classes?.list[cls];
+    const m = this.mobs?.list.find((x) => x.id === mob);
+    if (!skill || !art || !m) return;
+    this.worldSkills ??= new WorldSkills(this, this.M.fx, (f) => `${import.meta.env.BASE_URL}assets/${f}`);
+    const feet = () => ({ x: who.sprite.x, y: who.sprite.y });
+    void this.worldSkills.play(skill, art, { feet, dir, depth: () => who.sprite.depth }, () => ({ x: m.sprite.x, y: m.sprite.y }));
+  }
+  private worldSkills: WorldSkills | null = null;
 
   private stopFight(): void {
     if (!this.engage) return;
@@ -713,11 +731,24 @@ export class TownScene extends Phaser.Scene {
       if (this.player.isIdle === false) this.player.cancelPath(); // stop on this tile
       e.goal = null;
       const now = this.time.now;
-      if (now < (this.castReady.get(e.name) ?? 0) || !this.player.isIdle) return;
-      this.castReady.set(e.name, now + e.cooldown * 1000);
-      this.player.strike(SKILL_POSE[e.idx] ?? 'attack-quick', dirForStep(at.col - me.col, at.row - me.row));
-      this.link?.send({ t: 'attack', mob: m.id, skill: e.idx });
-      this.hotbar?.cooldown(e.name, e.cooldown);
+      if (!this.player.isIdle || now < this.nextCast) return;
+      // The chosen skill, or while it's cooling down the first damage skill that's ready (the bar's order, then the class's).
+      const c = classInfo(adventure()?.cls);
+      if (!c) return this.stopFight();
+      const ready = (n: string) => now >= (this.castReady.get(n) ?? 0);
+      const damage = new Set(c.skills.map((k) => k.name));
+      const order = [...(this.hotbar?.skillOrder() ?? []).filter((n) => damage.has(n)), ...c.skills.map((k) => k.name)];
+      const name = ready(e.name) ? e.name : order.find(ready);
+      if (!name) return;
+      const idx = c.skills.findIndex((k) => k.name === name);
+      const cd = skillCooldown(c.skills[idx].level);
+      this.castReady.set(name, now + cd * 1000);
+      this.nextCast = now + CAST_GAP_MS;
+      const dir = dirForStep(at.col - me.col, at.row - me.row);
+      this.player.strike(SKILL_POSE[idx] ?? 'attack-quick', dir);
+      this.castFx(c.id, idx, this.player, dir, m.id);
+      this.link?.send({ t: 'attack', mob: m.id, skill: idx });
+      this.hotbar?.cooldown(name, cd);
       return;
     }
     // Out of reach: to the nearest open tile in reach of it (again if it has moved off our goal's reach).
@@ -1116,7 +1147,12 @@ export class TownScene extends Phaser.Scene {
         // Someone else's hit: their attack pose toward it.
         const at = this.mobs?.tileOf(m.id);
         const ch = m.by !== myId ? this.others.charOf(m.by) : null;
-        if (ch && at) ch.strike(SKILL_POSE[m.skill] ?? 'attack-quick', dirForStep(at.col - ch.tile.col, at.row - ch.tile.row));
+        const cls = m.by !== myId ? this.others.classOf(m.by) : null;
+        if (ch && at) {
+          const dir = dirForStep(at.col - ch.tile.col, at.row - ch.tile.row);
+          ch.strike(SKILL_POSE[m.skill] ?? 'attack-quick', dir);
+          if (cls) this.castFx(cls, m.skill, ch, dir, m.id);
+        }
         return;
       }
       if (m.t === 'mob-attack') {
