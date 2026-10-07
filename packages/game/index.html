@@ -1210,6 +1210,39 @@
       /* ── Quests (ui/quests.ts): the tracker on the left, the log (J), the "Quest complete" banner ── */
       #town-hud .th-quest .th-quest-dot { background: #B794F6; }
       #town-hud .th-class { position: absolute; right: -8px; bottom: -8px; width: 32px; height: 32px; image-rendering: pixelated; cursor: help; } /* the 16x16 badge at the HUD's 2x */
+      /* Hotbar (ui/hotbar.ts): bottom centre, two rows; not on phones. Where it doesn't fit between the chat and the
+         system feed, they (and the bag button, the stay box and toasts) move up over it. */
+      #hotbar { --hb: 44px; position: fixed; left: 50%; bottom: 8px; z-index: 2; display: flex; flex-direction: column; gap: 3px; transform: translateX(-50%); font: 13px/1 var(--ui-font); color: #E6E9F2; -webkit-user-select: none; user-select: none; }
+      #hotbar .hb-row { display: flex; gap: 3px; }
+      #hotbar .hb-gap { width: 12px; flex: none; }
+      #hotbar .hb-spacer { display: flex; align-items: center; justify-content: center; width: var(--hb); flex: none; font-size: 12px; font-weight: 700; color: #C4B5FD; text-shadow: 0 1px 0 #0B0A1A; }
+      #hotbar .hb-slot { position: relative; display: flex; align-items: center; justify-content: center; width: var(--hb); height: var(--hb); flex: none; box-sizing: border-box; padding: 0; border-style: solid; border-width: 8px; border-image: var(--slot) var(--slot-slice, 4) fill / 8px round; background: none; image-rendering: pixelated; color: inherit; font: inherit; cursor: var(--cur-hand, pointer); }
+      #hotbar .hb-slot.hb-top { opacity: 0.85; }
+      #hotbar .hb-slot:hover, #hotbar .hb-over { border-image-source: var(--slot-picked); filter: brightness(1.15); }
+      #hotbar .hb-slot[draggable='true'] { cursor: grab; }
+      #hotbar .hb-slot .it-frame { margin: -8px; }
+      #hotbar .hb-key { position: absolute; left: -6px; top: -8px; padding: 0 2px; font-size: 15px; color: #C4B5FD; text-shadow: 0 1px 0 #0B0A1A, 1px 0 0 #0B0A1A, -1px 0 0 #0B0A1A, 0 -1px 0 #0B0A1A; pointer-events: none; }
+      #hotbar .hb-skill::before { content: ''; position: absolute; inset: -2px; background: var(--badge) center / 32px 32px no-repeat; opacity: 0.35; image-rendering: pixelated; }
+      #hotbar .hb-initials { position: relative; font-weight: 700; font-size: 13px; letter-spacing: 0.5px; color: #fff; text-shadow: 0 1px 0 #0B0A1A, 1px 0 0 #0B0A1A, -1px 0 0 #0B0A1A, 0 -1px 0 #0B0A1A; }
+      #hotbar .hb-emoji { font-size: 20px; }
+      #hotbar .hb-fire { animation: hb-fire 0.35s ease-out; }
+      @keyframes hb-fire { from { filter: brightness(2.2); transform: scale(0.9); } to { filter: none; transform: none; } }
+      #hotbar .hb-book { width: var(--hb); height: var(--hb); flex: none; padding: 0; border: 2px solid #7C2AE8; background: #111827; color: #C4B5FD; font: 700 15px var(--ui-font); cursor: var(--cur-hand, pointer); }
+      #hotbar .hb-book:hover, #hotbar .hb-book[aria-expanded='true'] { background: #7C2AE8; color: #fff; }
+      #hotbar .hb-list { position: absolute; left: 0; bottom: calc(100% + 8px); width: 280px; max-height: 50vh; overflow-y: auto; box-sizing: border-box; padding: 10px; border: 2px solid #7C2AE8; background: rgba(17, 24, 39, 0.97); scrollbar-width: thin; }
+      #hotbar .hb-list-head { margin-bottom: 4px; font-size: 15px; font-weight: 700; color: #fff; }
+      #hotbar .hb-note { margin: 0 0 8px; font-size: 12px; line-height: 1.3; color: #a9b1d6; }
+      #hotbar .hb-skill-row { display: flex; align-items: center; gap: 8px; width: 100%; margin: 2px 0; padding: 5px 6px; border: 1px solid transparent; background: rgba(255, 255, 255, 0.04); color: inherit; font: inherit; text-align: left; cursor: grab; }
+      #hotbar .hb-skill-row:hover { background: rgba(183, 148, 246, 0.15); }
+      #hotbar .hb-skill-row.hb-picked { border-color: #A3E635; background: rgba(163, 230, 53, 0.12); }
+      #hotbar .hb-skill-row .hb-initials { width: 28px; text-align: center; }
+      #hotbar .hb-lv { color: #F8BF27; font-size: 12px; width: 36px; }
+      #hotbar .hb-name { flex: 1; }
+      body.town-locked #hotbar { display: none; }
+      @media (min-width: 761px) and (max-width: 1780px) and (min-height: 501px) { body.hotbar-on #chat, body.hotbar-on #bag-button { bottom: 118px; } }
+      @media (min-width: 761px) and (max-width: 1380px) and (min-height: 501px) { body.hotbar-on #system-feed { bottom: 118px; } body.hotbar-on #stay { bottom: 276px; } }
+      body.hotbar-on #toast { bottom: 118px; }
+      @media (max-width: 760px), (max-height: 500px) { #hotbar { display: none; } body.hotbar-on #toast { bottom: 24px; } }
       #quest-tracker { position: fixed; left: 12px; z-index: 2; width: 150px; box-sizing: border-box; padding: 6px 8px 8px; border-radius: 6px; background: rgba(10, 12, 24, 0.55); color: #E6E9F2; font: 13px/1.3 var(--ui-font); text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6); cursor: var(--cur-hand, pointer); }
       #quest-tracker[hidden] { display: none; }
       #quest-tracker:hover { background: rgba(10, 12, 24, 0.7); }

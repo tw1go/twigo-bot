@@ -37,7 +37,7 @@ const TOPICS: Topic[] = [
       '• **Enter** opens the chat; Enter again sends. Esc or a click outside closes it',
       '• The chat is linked to Discord: lines from there show with the Discord mark',
       '• **Megaphone** (bought at the sari-sari store): `/m your message` shouts it across the whole screen for everyone; `/g` goes back to General',
-      '• **Emotes**: the face button beside the chat, or keys **1–8**',
+      '• **Emotes**: the face button beside the chat, or keys **F1–F8**',
       '• **N online** beside the chat lists who is in town',
       '• Click a name in the chat to open that player’s menu',
       '-# Be kind: mods can mute, kick and filter words.',

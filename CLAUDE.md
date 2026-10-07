@@ -177,7 +177,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   Settings box (`ui/settings.ts`, gear button top right, manifest `ui.settingsIcon`): Music and Sounds volumes
   (music 0 = off), Mute all and Mute gossip murmur (`npcsMuted`: the Alings' ambient murmur only; saved in localStorage `mk_sound`), log out, and a Credits page (keep it in step with
   `public/assets/audio/CREDITS.md` and the font's licence). Keep sounds soft: no sharp clicks.
-- Emotes (`ui/emotes.ts` picker beside the chat input, keys 1–8; `EmotePop` in `ui/labels.ts`): the art's emote
+- Emotes (`ui/emotes.ts` picker beside the chat input, keys F1–F8; `EmotePop` in `ui/labels.ts`): the art's emote
   icons over the head for ~2 s (laugh also cheers, wave waves); `emote` goes to the others, rate-limited.
 - System feed (`ui/system-feed.ts`, bottom right, hidden ≤760 px; every line and banner is also posted in Discord at
   `TOWN_FEED_CHANNEL_ID`, gathered ~3 s per post, no pings: bot `web/town-feed.ts`, tested): digs and bets from the Discord commands (bot
@@ -293,6 +293,12 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   (`Character.setRestingWeapon`, `characters/kit-art.ts`), the equipment panel beside the bag (`ui/equipment.ts`; B or
   I; 12 places: two bracers, two rings; stats from `combat/stats.ts`, placeholders), class badges on the avatar and before
   players' names in the chat. Combat poses have no clothes or hair yet (body and face only).
+- Hotbar (`ui/hotbar.ts`, bottom centre, members, hidden on phones and in the casino/arena): bottom row 10 skill slots
+  (keys 1–0) and 3 for potions/usables (- = `, shown ~); top row 13 more (Ctrl + the same keys) for either. Skills from the
+  Skills list (K or the button at its left: drag, or click then click a slot); potions dragged from the bag; drag between
+  slots swaps, off the bar or right-click empties. Per class in localStorage `mk_hotbar` (a class's first bar = its skills
+  in order). No combat yet: a key lights its slot. No skill icons yet (initials over the class badge). Where it doesn't
+  fit, the chat, bag button, system feed, stay box and toasts sit higher (body.hotbar-on). Emotes moved to F1–F8.
 - Player menu (`ui/target.ts`): left click (or tap) someone → their name in a long box top centre (or click their name
   in the chat: the box opens right beside it with the menu open, `selectAt`; a click elsewhere closes it; no ×: a click
   outside the box closes it too, a drag to peek doesn't); clicking it opens

@@ -1,4 +1,5 @@
 import type { TownBagActionResponse, TownBagItem, TownInventoryResponse } from '@mikazuki/shared';
+import { hotbarDragItem, hotbarItem } from './hotbar';
 import { playSound } from '../audio/sound';
 import { fakeLogin, fakeName } from '../session';
 import { type Rarity, RARITY_COLOUR, RARITY_TEXT, isRarity, itemArt } from './item-art';
@@ -249,6 +250,10 @@ export class Inventory {
         cell.draggable = true;
         cell.addEventListener('dragstart', (e) => e.dataTransfer?.setData('application/x-mk-equipment', it.id));
         cell.addEventListener('dblclick', () => void this.equipment?.wear(it.id));
+      } else if (hotbarItem(it.kind)) {
+        // Potions go on the hotbar (its - = ~ slots or the top row).
+        cell.draggable = true;
+        cell.addEventListener('dragstart', (e) => hotbarDragItem(e, { id: it.id, name: it.name, emoji: it.emoji, rarity }));
       }
       cell.addEventListener('click', (e) => {
         const on = this.picked.some((p) => p.slot === slot);

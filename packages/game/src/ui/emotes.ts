@@ -1,7 +1,7 @@
 import type { TownEmote } from '@mikazuki/shared';
 
 // The emote picker, beside the chat input: a button that opens a row of the art's emote icons plus a wave, each
-// with its number key (1–8 also work in town when you're not typing). DOM only.
+// with its key (F1–F8 also work in town when you're not typing). DOM only.
 
 export const EMOTE_KEYS: TownEmote[] = ['heart', 'laugh', 'exclaim', 'question', 'kowen', 'sleep', 'angry', 'wave'];
 const NAMES: Record<TownEmote, string> = {
@@ -22,7 +22,7 @@ export function emotePicker(sheet: EmoteSheet | null, pick: (e: TownEmote) => vo
   open.className = 'em-open';
   open.setAttribute('aria-label', 'Emotes');
   open.setAttribute('aria-expanded', 'false');
-  open.title = 'Emotes (1–8)';
+  open.title = 'Emotes (F1–F8)';
   const face = icon(sheet, 'laugh');
   open.append(face ?? document.createTextNode(':)'));
   const palette = document.createElement('div');
@@ -31,14 +31,14 @@ export function emotePicker(sheet: EmoteSheet | null, pick: (e: TownEmote) => vo
   EMOTE_KEYS.forEach((e, i) => {
     const b = document.createElement('button');
     b.className = 'em-item';
-    b.title = `${NAMES[e]} (${i + 1})`;
+    b.title = `${NAMES[e]} (F${i + 1})`;
     b.setAttribute('aria-label', NAMES[e]);
     const pic = icon(sheet, e);
     if (pic) b.append(pic);
     else b.textContent = NAMES[e];
     const key = document.createElement('span');
     key.className = 'em-key';
-    key.textContent = String(i + 1);
+    key.textContent = `F${i + 1}`;
     b.append(key);
     b.addEventListener('click', () => {
       pick(e);

@@ -71,6 +71,7 @@ import { Minimap } from '../ui/minimap';
 import { type Bench, type Building, WorldObjects, characterDepth } from '../world/objects';
 import { enterArenaSound, enterCasinoSound, hearFrom, leaveCasinoSound, playSound, startTownSound } from '../audio/sound';
 import type { AdventureData } from '../net/adventure';
+import { Hotbar } from '../ui/hotbar';
 import { adventure, adventureData, chooseClass, classInfo, initAdventure, itemDef, loadAdventureData, onAdventure, questDef, questFor, questTalk } from '../net/adventure';
 import type { ClassArt } from '../assets/types';
 import { drawRested, loadImages, poseFiles, restFiles } from '../characters/kit-art';
@@ -551,7 +552,16 @@ export class TownScene extends Phaser.Scene {
       mountQuests({ colours: Q.colours, frame: frame ? { url: asset(frame.file), slice: frame.nineSlice } : null, giver: (id) => this.giverOf(id) });
       if (this.npcs) this.npcs.script = (id) => this.questScript(id);
       const icons = this.M.ui.classIcons;
+      const inv = this.M.ui.inventory;
+      const url = (file: string) => `${import.meta.env.BASE_URL}assets/${file}`;
+      const hotbar = new Hotbar({
+        slot: inv?.slot && inv.selected && inv.nineSlice ? { url: url(inv.slot), picked: url(inv.selected), slice: inv.nineSlice } : null,
+        badge: (cls) => (icons ? url(icons.file.replace('{class}', cls)) : ''),
+      });
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => hotbar.root.remove());
+      hotbar.setClass(classInfo(adventure()?.cls) ?? null);
       onAdventure((s) => {
+        hotbar.setClass(classInfo(s.cls) ?? null);
         this.questMarkers();
         void this.wearWeapon(s.equipped.weapon, s.cls);
         const c = classInfo(s.cls);
@@ -1140,9 +1150,12 @@ export class TownScene extends Phaser.Scene {
         this.player.cancelPath(); // the keys take over from a click path
       }
       if (e.key.toLowerCase() === 'e' || e.key === ' ') this.interact();
-      // 1–8: emotes (the picker beside the chat shows which is which).
-      const n = Number(e.key);
-      if (Number.isInteger(n) && n >= 1 && n <= EMOTE_KEYS.length) this.emoteKeys?.(EMOTE_KEYS[n - 1]);
+      // F1–F8: emotes (the picker beside the chat shows which is which; 1–0 are the hotbar's).
+      const f = /^F([1-9])$/.exec(e.key);
+      if (f && Number(f[1]) <= EMOTE_KEYS.length) {
+        e.preventDefault(); // F5 would reload, F1 open help
+        this.emoteKeys?.(EMOTE_KEYS[Number(f[1]) - 1]);
+      }
     });
 
     // Wheel zooms in whole steps only (1×–4×), keeping pixels crisp.
