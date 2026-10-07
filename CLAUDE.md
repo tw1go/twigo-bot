@@ -274,13 +274,16 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   props; dropped far away), A* is capped (a long click walks to the closest tile found). Outskirts: `SlumsOutskirts` in
   `world/outskirts.ts` (dirt, the canal carried on from the map's first/last rows, a concrete road out of the gate, dead
   trees thick on the edges and sparse junk/shanties/poles/wrecks, one per 4 × 4 cell). Minimap: the Slums' colours,
-  ridge lighter, basin darker. Mobs (`world/mobs.ts`, `map.mobZones`, only `active` zones load art: Tin Can Alley so
-  far; the boss and other zones are data only): one per spawn, idle and hopping ≤ 3 tiles round it on its zone's level
-  (not ramps, blocked tiles or the `safeZone`), facing its way (SE/NE/SW/NW sheets); a click shows "Tin Can Lv 1-2" over
+  ridge lighter, basin darker. Mobs (`map.mobZones`, only `active` zones load art: Tin Can Alley so far; the boss and
+  other zones are data only), shared by everyone: the bot runs them (`web/town-mobs.ts` MobRoom, tested; TownOptions
+  `mobs`, a quarter-second clock): one per spawn (id `<zone>:<index>`, a seeded level in the zone's range), hopping ≤ 3
+  tiles round it on its zone's level (not ramps, blocked tiles or the `safeZone`); arrivals get `mobs` (a snapshot,
+  hops under way included), each hop goes to the room as `mob-move`. The game (`world/mobs.ts`) walks them at the same
+  pace (wandering on its own only when no server answers), facing their way (SE/NE/SW/NW sheets); a click shows "Tin Can Lv 1-2" over
   it and targets it; Z targets the nearest within 12 tiles (again: the next), a gold ring under it and an info bar at
   the top (`ui/mob-target.ts`: name, level, HP, zone); Escape or 20 tiles away lets go. The zone's aggro, aggroRange,
   leash, respawnSec and level stay on each mob for combat. `residents` are unused for now. Dev: `?area=slums`,
-  `__town.mobs()`.
+  `__town.mobs()`; the dev server reads maps/slums.json again when it changes.
 - NPCs (town only, not the neighbourhood; client-side: never on the server, the online list or the minimap): the
   Tanod and ten Alings, flat pre-baked sheets (manifest `npcs`, art in `assets/npcs/`, one pack per NPC; `Character`
   with `FlatSheets`, never the paper doll). Homes, behaviours, the Tanod's route, voices and portrait facing in

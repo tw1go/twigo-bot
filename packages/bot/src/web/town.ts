@@ -4,6 +4,7 @@ import type { IncomingMessage, Server } from 'node:http';
 import type { Duplex } from 'node:stream';
 import { WebSocket, WebSocketServer } from 'ws';
 import { Arena, type ArenaBets, type ArenaSeat, arenaLine } from './town-arena.js';
+import type { MobRoom } from './town-mobs.js';
 import type { HoodHouse, HoodMap, OutfitData, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
@@ -78,6 +79,8 @@ export interface TownOptions {
   map: TownMap;
   /** Other rooms by name (e.g. 'hood'), each with its map (asked for again on each arrival, so it can grow). */
   rooms?: Record<string, () => TownMap>;
+  /** Rooms with mobs (the Slums: web/town-mobs.ts), run here so everyone there sees the same ones. */
+  mobs?: Record<string, MobRoom>;
   /** Whether a member may join a room (the Slums: testers only); every room when left out. */
   mayEnter?: (room: string, userId: string) => Promise<boolean>;
   /** Leave upgrades to other paths alone (the game's dev server shares its HTTP server with Vite's own socket). */
@@ -368,6 +371,8 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     const [col, row] = arrival(room);
     const player: TownPlayer = { id: randomBytes(6).toString('hex'), ...profile, col, row, dir: 's', sit: false };
     const c: Conn = { ws, userId, room, player, tokens: STEP_BURST, refilled: Date.now(), says: SAY_BURST, saidAt: Date.now(), emotes: EMOTE_BURST, emotedAt: Date.now(), alive: true, fresh: true };
+    const mobRoom = opts.mobs?.[room];
+    queueMicrotask(() => mobRoom && send(c, { t: 'mobs', mobs: mobRoom.snapshot(Date.now()) })); // after the welcome
     send(c, { t: 'welcome', you: player.id, players: [...conns.values()].filter((o) => o.room === room).map((o) => o.player), recent, system: systemLines, spawn: [col, row], notice: notice && notice.until > Date.now() ? notice.a : undefined });
     conns.set(userId, c);
     others(c, { t: 'join', player });
@@ -502,6 +507,22 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       everyone({ t: 'announce', announcement: a });
     },
   };
+
+  // The mobs: each room's clock, every quarter second; their hops go to whoever is in that room.
+  if (opts.mobs) {
+    setInterval(() => {
+      const now = Date.now();
+      for (const [room, mobs] of Object.entries(opts.mobs ?? {})) {
+        const hops = mobs.tick(now);
+        if (!hops.length) continue;
+        const listeners = [...conns.values()].filter((o) => o.room === room && o.ws.readyState === WebSocket.OPEN);
+        for (const h of hops) {
+          const text = JSON.stringify({ t: 'mob-move', id: h.id, path: h.path } satisfies TownServerMessage);
+          for (const o of listeners) o.ws.send(text);
+        }
+      }
+    }, 250).unref?.();
+  }
 
   // Drop connections that stopped answering pings (closed laptops, lost Wi-Fi).
   setInterval(() => {

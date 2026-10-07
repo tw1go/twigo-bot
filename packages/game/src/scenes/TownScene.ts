@@ -1012,6 +1012,8 @@ export class TownScene extends Phaser.Scene {
         if (char) this.playEmote(char, m.emote);
         return;
       }
+      if (m.t === 'mobs') return this.mobs?.applySnapshot(m.mobs);
+      if (m.t === 'mob-move') return this.mobs?.hop(m.id, m.path);
       if (m.t === 'welcome') {
         myId = m.you;
         // A reconnect (the bot restarted, a blip): what's on screen stays; only what's new is added.

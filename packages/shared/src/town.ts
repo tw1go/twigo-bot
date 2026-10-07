@@ -6,6 +6,15 @@ import type { HoodHouse, HoodMap, OutfitData, TitleData } from './room-api.js';
 
 export type TownDir = 's' | 'se' | 'e' | 'ne' | 'n' | 'nw' | 'w' | 'sw';
 
+/** A mob as the server has it: `<zone id>:<spawn index>`, its tile, its level, and the rest of a hop under way. */
+export interface TownMob {
+  id: string;
+  col: number;
+  row: number;
+  level: number;
+  path?: [number, number][];
+}
+
 export interface TownPlayer {
   id: string;
   nickname: string;
@@ -207,6 +216,10 @@ export type TownServerMessage =
   | { t: 'wallet' }
   /** Someone emoted (not sent back to the one who did it: they show it right away). */
   | { t: 'emote'; id: string; emote: TownEmote }
+  /** Every mob in your room as you arrive (the Slums; the same for everyone: bot web/town-mobs.ts). */
+  | { t: 'mobs'; mobs: TownMob[] }
+  /** A mob hops: from the first tile of `path` along the rest (at the mobs' pace). */
+  | { t: 'mob-move'; id: string; path: [number, number][] }
   /** Someone used a mobility move (their steps follow). */
   | { t: 'move'; id: string; move: TownMove; col: number; row: number }
   /** Someone said something in the town's Discord channel (shown with a Discord mark, no bubble). */

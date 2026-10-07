@@ -7,7 +7,9 @@ import { type WorldObjects, characterDepth } from './objects';
 import { BuildingLabel } from '../ui/labels';
 
 // 🥫 The Slums' mobs (map.mobZones; art in manifest mobs). No combat yet: for each zone that's on (`active`), one mob per
-// spawn tile, idling and now and then hopping a few tiles round its spawn (the move animation; at most 3 tiles away,
+// spawn tile (id `<zone>:<spawn index>`), idling and now and then hopping a few tiles round its spawn. The server runs
+// them (bot web/town-mobs.ts: everyone sees the same mobs): its `mobs` snapshot places them and each `mob-move` hop is
+// walked here at the same pace. Only with no server (nothing heard yet) do they wander on their own here (the move animation; at most 3 tiles away,
 // never off its zone's level, onto a blocked tile or a ramp, or into the safe zone), facing the way it goes (SE / NE /
 // SW / NW sheets). A click shows its name and level ("Tin Can Lv 1-2") and targets it; Z targets the nearest (again:
 // the next nearest): a ring under it and the info bar at the top (ui/mob-target.ts). Zones that are off (no art yet) and the boss
@@ -25,6 +27,7 @@ const TARGET_LOSE = 20; // tiles: a target this far away is let go
 const FACING: Record<string, 'se' | 'ne' | 'sw' | 'nw'> = { n: 'ne', ne: 'ne', e: 'se', se: 'se', s: 'sw', sw: 'sw', w: 'nw', nw: 'nw' };
 
 export interface Mob {
+  id: string;
   zone: MobZone;
   def: MobDef;
   /** Rolled once in its zone's range. */
@@ -85,6 +88,7 @@ export class Mobs {
     const shadow = S && this.scene.textures.exists(S.file) ? this.scene.add.image(0, 0, S.file).setOrigin(S.anchor[0] / S.size[0], S.anchor[1] / S.size[1]) : null;
     const [lo, hi] = zone.level;
     const mob: Mob = {
+      id: `${zone.id}:${i}`,
       zone,
       def,
       level: lo + ((i * 7) % (hi - lo + 1)),
@@ -109,6 +113,7 @@ export class Mobs {
     });
     this.play(mob, 'idle');
     this.list.push(mob);
+    this.byId.set(mob.id, mob);
     this.sync(mob);
   }
 
@@ -143,10 +148,40 @@ export class Mobs {
     }
   }
 
+  /** The server runs them from now on: every mob where it says (and the rest of a hop under way). */
+  applySnapshot(mobs: { id: string; col: number; row: number; level: number; path?: [number, number][] }[]): void {
+    this.server = true;
+    for (const s of mobs) {
+      const m = this.byId.get(s.id);
+      if (!m) continue;
+      m.col = s.col + 0.5;
+      m.row = s.row + 0.5;
+      m.level = s.level;
+      m.path = (s.path ?? []).map(([col, row]) => ({ col, row }));
+      this.sync(m);
+    }
+    if (this.target) this.onTarget?.(this.target); // its level may have changed
+  }
+
+  /** A hop from the server: from its first tile (a jump there if we'd drifted) along the rest. */
+  hop(id: string, path: [number, number][]): void {
+    const m = this.byId.get(id);
+    if (!m || !path.length) return;
+    const [c0, r0] = path[0];
+    if (Math.floor(m.col) !== c0 || Math.floor(m.row) !== r0) {
+      m.col = c0 + 0.5;
+      m.row = r0 + 0.5;
+    }
+    m.path = path.slice(1).map(([col, row]) => ({ col, row }));
+  }
+
+  private server = false;
+  private readonly byId = new Map<string, Mob>();
+
   update(deltaMs: number): void {
     const now = this.scene.time.now;
     for (const m of this.list) {
-      if (!m.path.length && now >= m.restUntil) {
+      if (!this.server && !m.path.length && now >= m.restUntil) {
         this.wander(m);
         m.restUntil = now + Phaser.Math.Between(...REST_MS);
       }

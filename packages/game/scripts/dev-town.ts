@@ -1,10 +1,11 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import type { HoodHouse, HouseLook, OutfitData, TownHoodActionResponse, TownHoodResponse, TownRace, TownRaceResponse } from '@mikazuki/shared';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { doorSpot, hoodMap, lotTile } from '../../bot/src/web/hood-map.ts';
 import type { Plugin } from 'vite';
 import { attachTown } from '../../bot/src/web/town.ts';
+import { MobRoom } from '../../bot/src/web/town-mobs.ts';
 import { LANES, finishMs, raceScript } from '../../bot/src/games/race-script.ts';
 import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
 
@@ -246,8 +247,19 @@ export function devTown(): Plugin {
         return done(true, 'You got away with 4 Kowens!', { stole: 4 });
       });
 
-      const sj = JSON.parse(readFileSync(join(server.config.publicDir, 'assets/maps/slums.json'), 'utf8'));
-      const slums = { size: sj.size, spawn: sj.spawn, blocked: sj.blocked, avoid: Object.values((sj.gates ?? {}) as Record<string, [number, number][]>).flat() };
+      // The Slums' map, read again whenever the file changes (a new map from the art folder needs no restart).
+      const slumsFile = join(server.config.publicDir, 'assets/maps/slums.json');
+      let slumsAt = 0;
+      let slums = { size: [0, 0] as [number, number], spawn: [0, 0] as [number, number], blocked: [] as number[][], avoid: [] as [number, number][] };
+      const slumsMap = () => {
+        const at = statSync(slumsFile).mtimeMs;
+        if (at !== slumsAt) {
+          slumsAt = at;
+          const sj = JSON.parse(readFileSync(slumsFile, 'utf8'));
+          slums = { size: sj.size, spawn: sj.spawn, blocked: sj.blocked, avoid: Object.values((sj.gates ?? {}) as Record<string, [number, number][]>).flat() };
+        }
+        return slums;
+      };
       const town = attachTown(httpServer as Parameters<typeof attachTown>[0], {
         map: { size: json.size, spawn: json.spawn, blocked: json.blocked, avoid: Object.values((json.gates ?? {}) as Record<string, [number, number][]>).flat() },
         rooms: {
@@ -255,8 +267,9 @@ export function devTown(): Plugin {
             const m = hoodMap(houses.length);
             return { size: m.size, spawn: m.spawn, blocked: m.blocked, avoid: m.exit };
           },
-          slums: () => slums,
+          slums: slumsMap,
         },
+        mobs: { slums: new MobRoom(JSON.parse(readFileSync(slumsFile, 'utf8'))) },
         shared: true,
         arenaBets,
         authenticate: async (req) => {
