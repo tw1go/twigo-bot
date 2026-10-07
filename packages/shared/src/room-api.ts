@@ -74,6 +74,8 @@ export interface MeResponse {
   preregistered: boolean;
   /** Has a house in the neighbourhood (the game starts there, at its door). */
   house?: boolean;
+  /** Has the Tester role (or no Tester role is set up): may cross into the slums once they're built. */
+  tester?: boolean;
   /** Their saved character look, or null if they haven't made one. */
   outfit: OutfitData | null;
   /** Their nickname in the web game (`PUT /nickname`), or null if they haven't picked one. */

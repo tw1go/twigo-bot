@@ -6,13 +6,14 @@ import { pick, tileRandom } from './rng';
 // The forest around the town (map.outskirts), so the space the camera can see past the map isn't blank. It's made
 // up on load (seeded, so the same every time) for the tiles whose centre falls in the camera's view of the town:
 // grass beyond the edges (the `meadow` mix within `clear` tiles of an edge, the `ground` mix past it), the river
-// carried on outward (`water` rectangles), trees on a 2 × 2 grid with their shadow and tufts, and some undergrowth.
+// carried on outward (`water` rectangles), a path on past a bridge (`lanes`: no undergrowth next to it, no tree whose
+// crown would hide it), trees on a 2 × 2 grid with their shadow and tufts, and some undergrowth.
 // None of it is walkable, and it doesn't widen the camera's bounds.
 
 export interface OutTile {
   col: number;
   row: number;
-  kind: 'grass' | 'water';
+  kind: 'grass' | 'water' | 'path';
   style: string; // grass mix name
 }
 
@@ -25,6 +26,14 @@ export function outskirts(M: Manifest, map: TownMap, view: Phaser.Geom.Rectangle
   const [cols, rows] = map.size;
   const inMap = (c: number, r: number) => c >= 0 && r >= 0 && c < cols && r < rows;
   const isWater = (c: number, r: number) => o.water.some(([c0, r0, c1, r1]) => c >= c0 && c <= c1 && r >= r0 && r <= r1);
+  /** A tree here would hide part of a lane: its crown rises up the screen, over the tiles behind it (col and row
+   *  both smaller), up to about 6 of them. */
+  const overLane = (c: number, r: number) => {
+    for (let k = 0; k <= 6; k++) if (nearLane(c - k, r - k, 2)) return true;
+    return false;
+  };
+  /** On a lane, or within `m` tiles of one. */
+  const nearLane = (c: number, r: number, m = 0) => (o.lanes ?? []).some(([c0, r0, c1, r1]) => c >= c0 - m && c <= c1 + m && r >= r0 - m && r <= r1 + m);
   // Past `clear` on every side it's beyond: forest.
   const forest = (c: number, r: number) =>
     (c >= 0 || -c > o.clear.nw) && (r >= 0 || -r > o.clear.ne) && (c < cols || c - cols + 1 > o.clear.se) && (r < rows || r - rows + 1 > o.clear.sw);
@@ -40,7 +49,7 @@ export function outskirts(M: Manifest, map: TownMap, view: Phaser.Geom.Rectangle
     for (let c = -REACH; c < cols + REACH; c++) {
       if (inMap(c, r) || !seen(c, r)) continue;
       const water = isWater(c, r);
-      tiles.push({ col: c, row: r, kind: water ? 'water' : 'grass', style: forest(c, r) ? o.ground : o.meadow });
+      tiles.push({ col: c, row: r, kind: water ? 'water' : nearLane(c, r) ? 'path' : 'grass', style: forest(c, r) ? o.ground : o.meadow });
       if (!water) land.add(`${c},${r}`);
     }
   }
@@ -60,7 +69,7 @@ export function outskirts(M: Manifest, map: TownMap, view: Phaser.Geom.Rectangle
       const spot = Math.floor(tileRandom(cc, cr, 22) * 4);
       const c = cc * 2 + (spot % 2);
       const r = cr * 2 + (spot >> 1);
-      if (!land.has(`${c},${r}`) || !forest(c, r) || nearWater(c, r)) continue;
+      if (!land.has(`${c},${r}`) || !forest(c, r) || nearWater(c, r) || overLane(c, r)) continue;
       const id = pick(treeIds, tileRandom(c, r, 23));
       objects.push({
         kind: 'prop',
@@ -78,7 +87,7 @@ export function outskirts(M: Manifest, map: TownMap, view: Phaser.Geom.Rectangle
   // Undergrowth: bushes, ferns and rocks here and there (mostly seen in the meadow strips).
   for (const t of tiles) {
     const key = `${t.col},${t.row}`;
-    if (!land.has(key) || taken.has(key) || tileRandom(t.col, t.row, 26) >= o.undergrowthChance) continue;
+    if (!land.has(key) || taken.has(key) || nearLane(t.col, t.row, 1) || tileRandom(t.col, t.row, 26) >= o.undergrowthChance) continue;
     objects.push({
       kind: 'prop',
       id: pick(o.undergrowth, tileRandom(t.col, t.row, 27)),

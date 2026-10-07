@@ -256,6 +256,11 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   (someone standing in that yard can still walk out: `fenceLater`). Dev: `/__bakod?name=Mara&on=0|1`.
   The house menu asks GET /town/hood again as it opens (jail, cooldown, keys, potions, Bakods are never stale), and
   `jailed` messages update it too.
+- Slums bridge (testers only; the slums map isn't built yet): town.json `bridges` (the south path's end, cols 34–36 over
+  rows 70–71, drawn along the rows by `world/bridge.ts`; railings = fence pieces), `gates.slums` + a "Slums · testers ←"
+  sign; stepping on the gate shows a note (testers: coming soon; others: testers only; `/me` `tester` from
+  `games/testers.ts`; dev `&tester=0`). The outskirts carry the path on past it (`outskirts.lanes`: path tiles, no tree
+  whose crown would hide it). The slums art (tiles, raised ground, props) is in mikazuki-assets, not yet in the game.
 - NPCs (town only, not the neighbourhood; client-side: never on the server, the online list or the minimap): the
   Tanod and ten Alings, flat pre-baked sheets (manifest `npcs`, art in `assets/npcs/`, one pack per NPC; `Character`
   with `FlatSheets`, never the paper doll). Homes, behaviours, the Tanod's route, voices and portrait facing in

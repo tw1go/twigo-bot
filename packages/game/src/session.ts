@@ -46,6 +46,7 @@ function fakeMe(fake: string): MeResult {
       newTitle: null,
       welcomeGift: new URLSearchParams(location.search).has('welcome') ? 50 : null, // dev: &welcome=1 shows the welcome gift
       house: new URLSearchParams(location.search).has('house'), // dev: &house=1 starts you at your door in the neighbourhood
+      tester: new URLSearchParams(location.search).get('tester') !== '0', // dev: &tester=0 = without the Tester role
       dig: { shovel: devNumber('shovels', 6), digsLeft: devNumber('digs', 7), digsPerDay: 9, shovelsLeft: 2, shovelCost: 2, shovelUses: 3, lucky: devNumber('lucky', 57), luckyEvery: 60 },
       status: fakeStatus() } };
 }

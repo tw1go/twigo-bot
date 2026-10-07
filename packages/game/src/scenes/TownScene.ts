@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { queueImage, queueNpcs, queueTown } from '../assets/queue';
-import type { Dir, Manifest, TownMap } from '../assets/types';
+import type { Dir, Gate, Manifest, TownMap } from '../assets/types';
 import { Character } from '../characters/character';
 import { type Outfit, assetProblems, buildOutfit, headPortrait, headTop, loadOutfit, outfitFiles, randomOutfit, sheetKey } from '../characters/doll';
 import { sanitize, startingOutfit } from '../characters/looks';
@@ -217,8 +217,8 @@ export class TownScene extends Phaser.Scene {
   private hood: TownHoodResponse | null = null;
   private art: HouseArt | null = null;
   /** Gate tiles (town.json / the neighbourhood's `gates`): walking onto one goes to that area. */
-  private gateAt = new Map<string, 'hood' | 'town'>();
-  private bridge: Phaser.GameObjects.Image | null = null;
+  private gateAt = new Map<string, Gate>();
+  private bridges: (Phaser.GameObjects.Image | null)[] = [];
   /** The gates' signs (always shown, unlike the buildings' names). */
   private readonly gateLabels: BuildingLabel[] = [];
   /** Each gate sign, where it sits, and the buildings it was lifted over: while one of them shows its name (in the same
@@ -312,8 +312,9 @@ export class TownScene extends Phaser.Scene {
     buildOutfit(this, this.M.characters, this.outfit);
     if (this.hood) this.addHouses();
     this.objects = new WorldObjects(this, this.M, this.map);
-    if (this.map.bridge) this.bridge = drawBridge(this, this.map.bridge);
-    for (const [to, tiles] of Object.entries(this.map.gates ?? {}) as ['hood' | 'town', [number, number][]][]) for (const [c, r] of tiles) this.gateAt.set(`${c},${r}`, to);
+    if (this.map.bridge) this.bridges.push(drawBridge(this, this.map.bridge));
+    this.map.bridges?.forEach((b, i) => this.bridges.push(drawBridge(this, b.tiles, b.along, `bridge-${i}`)));
+    for (const [to, tiles] of Object.entries(this.map.gates ?? {}) as [Gate, [number, number][]][]) for (const [c, r] of tiles) this.gateAt.set(`${c},${r}`, to);
     // The forest around the town fills what the camera can see past the map, without widening that view.
     const bounds = this.townBounds();
     const forest = outskirts(this.M, this.map, bounds);
@@ -1710,12 +1711,12 @@ export class TownScene extends Phaser.Scene {
 
   /** A clickable sign over each gate: "Neighbourhood" at the bridge, "Back to town" at the neighbourhood's exit. */
   private gateSigns(): void {
-    for (const to of ['hood', 'town'] as const) {
+    for (const to of ['hood', 'town', 'slums'] as const) {
       const tiles = this.map.gates?.[to];
       if (!tiles?.length) continue;
       const [c, r] = tiles[Math.floor(tiles.length / 2)];
       const at = tileToScreen(c, r);
-      const sign = new BuildingLabel(this, to === 'hood' ? 'Neighbourhood →' : '← Back to town', at.x);
+      const sign = new BuildingLabel(this, to === 'hood' ? 'Neighbourhood →' : to === 'slums' ? 'Slums · testers ←' : '← Back to town', at.x);
       this.gateLabels.push(sign);
       sign.setZoom(this.cameras.main.zoom);
       // Over the gate, or higher: clear of the roof of any building it would sit on (tall houses by the way in).
@@ -1746,8 +1747,13 @@ export class TownScene extends Phaser.Scene {
     }
   }
 
-  /** Off to the other area: a fade, then that page (the town's art is cached, so it's quick). */
-  private travel(to: 'hood' | 'town'): void {
+  /** Off to the other area: a fade, then that page (the town's art is cached, so it's quick). The slums aren't built
+   *  yet: testers hear that, everyone else that only testers may cross. */
+  private travel(to: Gate): void {
+    if (to === 'slums') {
+      const me = this.me?.status === 'ok' ? this.me.me : null;
+      return void toast(me?.tester ? 'The slums are still being built. Coming soon!' : 'Only testers can cross into the slums for now.', 2800);
+    }
     if (this.travelling) return;
     this.travelling = true;
     playSound('door');
@@ -1973,7 +1979,7 @@ export class TownScene extends Phaser.Scene {
     this.objects.setLamps(sky.lampsOn);
     if (!force && sky.tint === this.tint) return;
     this.tint = sky.tint;
-    const all = [...this.ground.sprites, ...this.objects.sprites, ...this.player.tintables, ...this.others.tintables, ...(this.npcs?.tintables ?? []), ...(this.bridge ? [this.bridge] : [])];
+    const all = [...this.ground.sprites, ...this.objects.sprites, ...this.player.tintables, ...this.others.tintables, ...(this.npcs?.tintables ?? []), ...this.bridges.filter((b) => !!b)];
     for (const s of all) s.setTint(sky.tint);
   }
 

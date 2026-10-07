@@ -266,13 +266,18 @@ export interface TownMap {
   blocked: number[][]; // [row][col], 1 = blocked
   doors: Record<string, Vec2 | Vec2[]>; // [col, row] or several
   outskirts?: Outskirts;
-  /** Tiles over the river the game draws a bridge on (world/bridge.ts). */
+  /** Tiles over the river the game draws a bridge on (world/bridge.ts), crossing along the col axis. */
   bridge?: Vec2[];
-  /** Walking onto these tiles goes to another area: 'hood' (the neighbourhood) or 'town'. */
-  gates?: Partial<Record<'hood' | 'town', Vec2[]>>;
+  /** More bridges, each crossing along `along` (the slums bridge runs along the rows). */
+  bridges?: { along: 'col' | 'row'; tiles: Vec2[] }[];
+  /** Walking onto these tiles goes to another area: 'hood' (the neighbourhood), 'town', or 'slums' (testers only, not
+   *  built yet: a note instead). */
+  gates?: Partial<Record<Gate, Vec2[]>>;
   /** Where you appear coming from another area (by where you came from), instead of the spawn point. */
-  arrive?: Partial<Record<'hood' | 'town', Vec2>>;
+  arrive?: Partial<Record<Gate, Vec2>>;
 }
+
+export type Gate = 'hood' | 'town' | 'slums';
 
 /** The forest drawn around the town (world/outskirts.ts). */
 export interface Outskirts {
@@ -280,6 +285,7 @@ export interface Outskirts {
   meadow: string; // grass mix within `clear` of an edge
   clear: Record<'nw' | 'ne' | 'se' | 'sw', number>; // tiles beyond each edge kept free of trees
   water: [number, number, number, number][]; // [col0, row0, col1, row1] rectangles of river outside the map
+  lanes?: [number, number, number, number][]; // [col0, row0, col1, row1] paths running on past a bridge, trees kept back
   trees: Record<string, string>; // tree prop id → its shadow
   treeChance: number; // per 2 × 2 cell
   undergrowth: string[]; // prop ids
