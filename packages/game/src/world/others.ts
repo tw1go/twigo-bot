@@ -123,6 +123,11 @@ export class OtherPlayers {
     for (const o of this.all.values()) if (o.char?.sprite.input) o.char.sprite.input.cursor = css;
   }
 
+  /** Someone's class (the chat's badge), if they're here and have one. */
+  classOf(id: string): string | null {
+    return this.all.get(id)?.state.cls ?? null;
+  }
+
   /** Someone's nickname (for the chat log), if they're here. */
   nameOf(id: string): string | null {
     return this.all.get(id)?.state.nickname ?? null;

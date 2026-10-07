@@ -298,6 +298,7 @@
       /* Lines stack from the bottom up, even when there are only a few (the first one takes the spare space above). */
       #chat .ch-log { display: flex; flex-direction: column; height: 210px; overflow-y: auto; margin-bottom: 6px; padding: 0 2px; scrollbar-width: thin; scrollbar-color: rgba(183, 148, 246, 0.6) transparent; }
       #chat .ch-line { margin: 2px 0; overflow-wrap: anywhere; }
+      #chat .ch-badge { width: 16px; height: 16px; margin-right: 2px; vertical-align: -3px; image-rendering: pixelated; } /* the 16x16 class badge at 1x, like the text: it fits the ~19 px line */
       #chat .ch-line:first-child { margin-top: auto; }
       #chat .ch-system { color: #C4B5FD; }
       #chat .ch-name { color: #fff; }
@@ -1309,6 +1310,53 @@
         #class-choice .cc-grid { grid-template-columns: repeat(2, 1fr); }
         #class-choice .sp-body { grid-template-columns: 1fr; }
         #class-choice .sp-stage { min-width: 0; justify-self: center; }
+      }
+      /* ── The equipment panel (ui/equipment.ts): on the bag's left, as tall as it ── */
+      #equipment { position: fixed; top: 72px; right: 442px; z-index: 3; display: flex; flex-direction: column; gap: 10px; width: 340px; max-height: calc(100vh - 96px); box-sizing: border-box; padding: 12px 14px 14px; border: 2px solid #7C2AE8; background: rgba(17, 24, 39, 0.96); color: #c0caf5; font: 15px/1.35 var(--ui-font); }
+      #equipment[hidden] { display: none; }
+      #equipment.eq-framed { --px: 2; border-style: solid; border-width: calc(var(--slice) * var(--px) * 1px); border-image-source: var(--frame); border-image-slice: var(--slice) fill; border-image-width: calc(var(--slice) * var(--px) * 1px); border-image-repeat: round; image-rendering: pixelated; background: none; padding: 2px 4px 4px; }
+      #equipment .eq-head { flex: none; display: flex; align-items: center; gap: 8px; }
+      #equipment .eq-title { font-size: 22px; font-weight: 700; color: #fff; }
+      #equipment .eq-close { margin-left: auto; width: 32px; height: 32px; padding: 0; border: 0; background: none; color: #7A8099; font: 26px/1 var(--ui-font); }
+      #equipment .eq-close:hover { color: #fff; }
+      #equipment .eq-body { flex: 1 1 auto; display: flex; justify-content: space-between; align-items: stretch; gap: 6px; min-height: 0; }
+      #equipment .eq-col { display: flex; flex-direction: column; gap: 4px; }
+      #equipment .eq-slot { position: relative; display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; box-sizing: border-box; padding: 0; border-style: solid; border-width: 12px; border-image: var(--slot) var(--slot-slice, 4) fill / 12px round; background: none; image-rendering: pixelated; cursor: var(--cur-hand, pointer); }
+      #equipment .eq-slot:hover, #equipment .eq-slot:focus-visible, #equipment .eq-over { border-image-source: var(--slot-picked); outline: 3px solid #A3E635; outline-offset: -3px; } /* the lime selected-slot look */
+      #equipment .eq-worn { outline: 3px solid var(--rarity, #7A8099); outline-offset: -3px; }
+      #equipment .eq-slot .it-frame { margin: -12px; }
+      #equipment .eq-silhouette { display: block; width: 32px; height: 32px; image-rendering: pixelated; background-repeat: no-repeat; opacity: 0.8; } /* 16x16 at 2x */
+      #equipment .eq-refused { animation: eq-refuse 0.6s ease-out; }
+      @keyframes eq-refuse { 0%, 60% { box-shadow: inset 0 0 0 40px rgba(245, 158, 11, 0.55); outline: 3px solid #F59E0B; outline-offset: -3px; } }
+      #equipment .eq-middle { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-width: 0; }
+      #equipment .eq-stage { position: relative; display: flex; align-items: center; justify-content: center; width: 140px; height: 150px; }
+      #equipment .eq-moon { position: absolute; left: 50%; top: 50%; width: 92px; height: 92px; margin: -52px 0 0 -54px; border-radius: 50%; box-shadow: inset 14px -8px 0 0 rgba(183, 148, 246, 0.16); } /* a faint crescent behind the character */
+      #equipment .eq-doll { position: relative; image-rendering: pixelated; cursor: grab; touch-action: none; }
+      #equipment .eq-turns { display: flex; align-items: center; gap: 6px; }
+      #equipment .eq-turn { width: 22px; height: 22px; padding: 0; border: 0; background: none; color: #7A8099; font: 14px/1 var(--ui-font); }
+      #equipment .eq-turn:hover { color: #A3E635; }
+      #equipment .eq-who { display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 700; color: #A3E635; white-space: nowrap; }
+      #equipment .eq-badge { width: 32px; height: 32px; image-rendering: pixelated; } /* the 16x16 badge at 2x */
+      #equipment .eq-noclass { color: #7A8099; font-weight: 600; }
+      #equipment .eq-stats { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; padding: 8px 12px; border: 2px solid #3D4256; background: rgba(10, 12, 24, 0.5); }
+      #equipment .eq-stat { display: flex; justify-content: space-between; align-items: baseline; }
+      #equipment .eq-stat-label { font-size: 13px; color: #7A8099; }
+      #equipment .eq-stat-value { font: 19px/1.15 'Mk Numbers', var(--ui-font); color: #fff; } /* Jersey 10 */
+      #equipment .eq-tip { position: absolute; z-index: 1; min-width: 130px; max-width: 220px; padding: 8px 10px; border: 2px solid #7C2AE8; background: #111827; color: #E6E9F2; font-size: 13px; pointer-events: none; --px: 2; border-style: solid; border-width: calc(var(--slice, 1) * var(--px) * 1px); border-image-source: var(--frame); border-image-slice: var(--slice) fill; border-image-width: calc(var(--slice, 1) * var(--px) * 1px); border-image-repeat: round; image-rendering: pixelated; }
+      #equipment .eq-tip[hidden] { display: none; }
+      #equipment .eq-tip-left { transform: translateX(-100%); }
+      #equipment .eq-tip-name { font-weight: 700; font-size: 14px; }
+      #equipment .eq-tip-meta { color: #A9B1D6; font-size: 12px; }
+      #equipment .eq-tip-stat { color: #A3E635; }
+      #equipment .eq-tip-note { margin-top: 4px; color: #7A8099; font-size: 11px; }
+      #equipment .eq-to-bag, #inventory .iv-to-equip { display: none; padding: 3px 10px 4px; border: 2px solid #3D4256; border-radius: 0; background: #1E1B3A; color: #A9B1D6; font: inherit; font-size: 13px; font-weight: 700; }
+      #inventory .iv-cell[draggable='true'] { cursor: grab; }
+      @media (max-width: 900px) {
+        /* No room for both: the panel takes the bag's place, Equipment / Bag switch between them. */
+        #equipment { top: 132px; right: 8px; width: min(420px, calc(100vw - 16px)); height: auto !important; max-height: calc(100vh - 150px); overflow-y: auto; }
+        #equipment .eq-to-bag, #inventory .iv-to-equip { display: inline-block; }
+        body:not(.show-equipment) #equipment { display: none; }
+        body.show-equipment #inventory { display: none; }
       }
     </style>
   </head>

@@ -148,6 +148,10 @@ export class ChatBox {
    *  itself (the player menu opens beside it). Set by the town for members. */
   onName: ((who: { id?: string; name: string }, anchor: HTMLElement) => void) | null = null;
 
+  /** The class badge (16x16) of whoever said a line in town (`me`, or their town id), or null without a class or
+   *  when it isn't known yet. Only players' own lines get one: never system lines. Set by the town. */
+  badgeFor: ((from: 'me' | 'town', id?: string) => { url: string; name: string } | null) | null = null;
+
   /** A name in the log, then `after`. Someone else in town (`clickable`) gets a button for the player menu. */
   private speaker(name: string, after: string, className: string, clickable: boolean, id?: string): Node[] {
     const who = document.createElement('b');
@@ -181,6 +185,15 @@ export class ChatBox {
     line.className = megaphone ? 'ch-line ch-mega' : 'ch-line';
     if (megaphone) line.title = 'Megaphone';
     if (from === 'discord') line.append(discordMark());
+    const badge = from !== 'discord' ? this.badgeFor?.(from, id) : null;
+    if (badge) {
+      const img = document.createElement('img');
+      img.className = 'ch-badge';
+      img.src = badge.url;
+      img.alt = '';
+      img.title = badge.name;
+      line.append(img);
+    }
     line.append(...this.speaker(name, ': ', from === 'me' ? 'ch-me' : 'ch-name', from === 'town', id), text);
     this.push(line);
   }

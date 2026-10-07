@@ -48,6 +48,7 @@ import { RARITY_TEXT, addItemArt, isRarity, setItemArt } from '../ui/item-art';
 import { playDig, setDigPanelArt } from '../ui/dig-panel';
 import { showMine } from '../ui/mine';
 import { Inventory } from '../ui/inventory';
+import { EquipmentPanel } from '../ui/equipment';
 import { closeCasino, openCasino, setCasinoArt } from '../ui/casino';
 import { fadeNavy } from '../ui/fade';
 import { OtherPlayers } from '../world/others';
@@ -70,7 +71,7 @@ import { Minimap } from '../ui/minimap';
 import { type Bench, type Building, WorldObjects, characterDepth } from '../world/objects';
 import { enterArenaSound, enterCasinoSound, hearFrom, leaveCasinoSound, playSound, startTownSound } from '../audio/sound';
 import type { AdventureData } from '../net/adventure';
-import { adventureData, chooseClass, classInfo, initAdventure, itemDef, loadAdventureData, onAdventure, questDef, questFor, questTalk } from '../net/adventure';
+import { adventure, adventureData, chooseClass, classInfo, initAdventure, itemDef, loadAdventureData, onAdventure, questDef, questFor, questTalk } from '../net/adventure';
 import type { ClassArt } from '../assets/types';
 import { drawRested, loadImages, poseFiles, restFiles } from '../characters/kit-art';
 import { holdQuestBanners, mountQuests } from '../ui/quests';
@@ -677,6 +678,8 @@ export class TownScene extends Phaser.Scene {
   }
 
   private worn: string | null = null;
+  /** Your resting weapon's art (the equipment panel draws it too). */
+  private wornArt: ClassArt | null = null;
 
   /** Your resting weapon in town (others see it through the server's kit message). */
   private async wearWeapon(weapon: string | undefined, cls: string | null): Promise<void> {
@@ -684,7 +687,9 @@ export class TownScene extends Phaser.Scene {
     if (this.worn === key) return;
     this.worn = key;
     const art = await this.restArt(key, cls);
-    if (this.worn === key) this.player.setRestingWeapon(art, this.M.classes?.bodyOffset);
+    if (this.worn !== key) return;
+    this.wornArt = art;
+    this.player.setRestingWeapon(art, this.M.classes?.bodyOffset);
   }
 
   // ── Other players ──
@@ -730,9 +735,33 @@ export class TownScene extends Phaser.Scene {
           inv?.slot && inv.selected && inv.nineSlice ? { url: url(inv.slot), picked: url(inv.selected), slice: inv.nineSlice } : null,
         )
       : null;
+    // The equipment panel, on the bag's left (it opens and closes with it).
+    const K = this.M.classes;
+    const icons = this.M.ui.classIcons;
+    const sil = this.M.ui.equipSlots;
+    if (bag && K) {
+      const C = this.M.characters;
+      bag.attachEquipment(
+        new EquipmentPanel({
+          frame: inv?.itemFrame ? { url: url(inv.itemFrame.file), slice: inv.itemFrame.nineSlice } : null,
+          slot: inv?.slot && inv.selected && inv.nineSlice ? { url: url(inv.slot), picked: url(inv.selected), slice: inv.nineSlice } : null,
+          silhouettes: sil ? { url: url(sil.file), frames: sil.frames } : null,
+          badge: (cls) => (icons ? url(icons.small.replace('{class}', cls)) : ''),
+          drawDoll: (ctx, dir, f, t) => drawRested(ctx, this, C, K, this.outfit, this.wornArt, 'idle', dir, f, t),
+          idle: { frames: C.animations.idle.frames, fps: C.animations.idle.fps },
+          freeSlots: () => bag.free,
+        }),
+      );
+    }
     tools.append(online.el, emotePicker(sheet, emote));
     if (bag) document.body.append(bag.button); // its own button, just right of the chat box
     const chat = new ChatBox((text, megaphone) => link.send({ t: 'say', text, ...(megaphone ? { megaphone } : {}) }), tools);
+    // A player's class badge before their name in the chat (yours from your quests, others' from the town).
+    chat.badgeFor = (from, id) => {
+      const icons = this.M.ui.classIcons;
+      const c = classInfo(from === 'me' ? adventure()?.cls : id ? this.others.classOf(id) : null);
+      return c && icons ? { url: `${import.meta.env.BASE_URL}assets/${icons.small.replace('{class}', c.id)}`, name: c.name } : null;
+    };
     // Megaphone messages run across the screen (with the megaphone's art, if it's there).
     const megaphone = this.banner();
     // Members can click someone's name in the chat: the player menu opens beside it (if they're still in town).

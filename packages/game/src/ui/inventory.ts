@@ -4,6 +4,8 @@ import { fakeLogin, fakeName } from '../session';
 import { type Rarity, RARITY_COLOUR, RARITY_TEXT, isRarity, itemArt } from './item-art';
 import { installPixelTiles } from './pixel-tiles';
 import { coinIcon } from './reward';
+import type { EquipmentPanel } from './equipment';
+import { adventure, itemDef } from '../net/adventure';
 
 // 🎒 The inventory: a bag button just right of the chat box (or B) opens the bag on the right of the screen. The bag shows every
 // slot a bag can ever have (5 × 10): the ones unlocked so far (bags from the shop add more) hold your items, one slot
@@ -14,6 +16,8 @@ import { coinIcon } from './reward';
 // click do that (phones); then the details show how many, what the sellable ones are worth, and Sell selected (one
 // POST /town/sell with all of them), or Select all on the tab.
 // Your Kowens are at the bottom. Everything comes from the bot (GET /town/inventory, POST /town/sell and /town/flex).
+// The equipment panel (ui/equipment.ts) opens on its left with it (B or I): double-click or drag a piece of equipment
+// onto its place to wear it. On phones there's no room for both: Equipment / Bag in their heads switch between them.
 
 const COLS = 5;
 type Tab = 'all' | 'dug' | 'misc';
@@ -38,7 +42,7 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, t
 }
 
 async function load(): Promise<TownInventoryResponse | null> {
-  if (fakeLogin()) return structuredClone(fake);
+  if (fakeLogin()) return withFakeEquipment(structuredClone(fake));
   const res = await fetch('/town/inventory', { credentials: 'same-origin' }).catch(() => null);
   return res?.ok ? ((await res.json()) as TownInventoryResponse) : null;
 }
@@ -69,6 +73,7 @@ export class Inventory {
   private readonly multiButton = el('button', 'iv-multi', 'Select');
   private busy = false;
   private message: { text: string; ok: boolean } | null = null;
+  private equipment: EquipmentPanel | null = null;
 
   /** `icon`: the bag art (manifest ui.inventoryIcon); `frame`: the item frame the panel is drawn in; `slot`: the slot
    *  art and its picked version (manifest ui.inventory, nine-slice). */
@@ -118,7 +123,9 @@ export class Inventory {
       this.message = null;
       this.render();
     });
-    head.append(el('span', 'iv-title', 'Inventory'), this.slots, this.multiButton, close);
+    const toEquip = el('button', 'iv-to-equip', 'Equipment'); // phones: the equipment panel in the bag's place
+    toEquip.addEventListener('click', () => document.body.classList.add('show-equipment'));
+    head.append(el('span', 'iv-title', 'Inventory'), this.slots, toEquip, this.multiButton, close);
     this.tabs.setAttribute('role', 'tablist');
     for (const [t, label] of TABS) {
       const b = el('button', 'iv-tab', label);
@@ -138,8 +145,8 @@ export class Inventory {
 
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && !this.root.hidden) this.toggle(false);
-      // B opens and closes the bag, unless you're typing (chat, a pop-up's field) or holding a modifier.
-      if (e.key.toLowerCase() === 'b' && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey && !typing()) {
+      // B (or I: the equipment) opens and closes the bag, unless you're typing (chat, a pop-up's field) or holding a modifier.
+      if ((e.key.toLowerCase() === 'b' || e.key.toLowerCase() === 'i') && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey && !typing()) {
         e.preventDefault();
         this.toggle();
       }
@@ -148,14 +155,29 @@ export class Inventory {
     window.addEventListener('mk-wallet', () => !this.root.hidden && void this.refresh());
   }
 
+  /** The equipment panel, which opens and closes with the bag. */
+  attachEquipment(panel: EquipmentPanel): void {
+    this.equipment = panel;
+    panel.onClose = () => this.toggle(false);
+    new ResizeObserver(() => !this.root.hidden && panel.fit(this.root.getBoundingClientRect())).observe(this.root);
+  }
+
   toggle(open = this.root.hidden): void {
     this.root.hidden = !open;
     this.button.setAttribute('aria-expanded', String(open));
+    this.equipment?.show(!!open);
+    if (!open) document.body.classList.remove('show-equipment');
+    if (open && this.equipment) requestAnimationFrame(() => this.equipment!.fit(this.root.getBoundingClientRect()));
     if (open) {
       playSound('click');
       this.message = null;
       void this.refresh();
     }
+  }
+
+  /** Free bag slots as last loaded (a full bag can't take worn equipment back). */
+  get free(): number {
+    return this.data ? Math.max(0, this.data.slots - this.data.used) : 1;
   }
 
   private async refresh(): Promise<void> {
@@ -217,6 +239,12 @@ export class Inventory {
       const art = itemArt(it.id, rarity, 'showcase', 2, true);
       cell.append(art ?? el('span', 'iv-emoji', it.emoji));
       if (it.stacked) cell.append(el('span', 'iv-count', String(it.count)));
+      if (it.kind === 'equipment') {
+        // Worn by a double-click, or dragged onto its place in the equipment panel.
+        cell.draggable = true;
+        cell.addEventListener('dragstart', (e) => e.dataTransfer?.setData('application/x-mk-equipment', it.id));
+        cell.addEventListener('dblclick', () => void this.equipment?.wear(it.id));
+      }
       cell.addEventListener('click', (e) => {
         const on = this.picked.some((p) => p.slot === slot);
         if (this.multi || e.ctrlKey || e.metaKey || e.shiftKey) this.picked = on ? this.picked.filter((p) => p.slot !== slot) : [...this.picked, { slot, id: it.id }];
@@ -292,7 +320,7 @@ export class Inventory {
     name.style.color = RARITY_TEXT[rarity];
     const meta = it.sellable
       ? `${LABEL[rarity]} · ${kowens(it.value)} each · you have ${it.count}`
-      : `${it.kind === 'key' ? 'Master Key' : it.kind === 'megaphone' ? 'Megaphone' : 'Potion'} · you have ${it.count}`;
+      : `${it.kind === 'key' ? 'Master Key' : it.kind === 'megaphone' ? 'Megaphone' : it.kind === 'equipment' ? 'Equipment' : 'Potion'} · you have ${it.count}`;
     const parts: HTMLElement[] = [name, el('div', 'iv-meta', meta)];
     if (it.sellable) {
       const row = el('div', 'iv-actions');
@@ -329,6 +357,18 @@ export class Inventory {
 }
 
 // ── Dev: a pretend bag (no bot behind the dev server) ──
+
+/** Dev: the pretend equipment in the bag (net/adventure.ts keeps it in this browser). */
+function withFakeEquipment(d: TownInventoryResponse): TownInventoryResponse {
+  const counts = new Map<string, number>();
+  for (const id of adventure()?.bag ?? []) counts.set(id, (counts.get(id) ?? 0) + 1);
+  for (const [id, count] of counts) {
+    const item = itemDef(id);
+    if (item) d.items.push({ id, name: item.name, emoji: '⚔️', rarity: item.rarity, value: 0, count, kind: 'equipment', sellable: false, about: `Lv ${item.level} ${item.slot}. Double-click or drag it onto its slot to wear it.` });
+  }
+  d.used += counts.size ? [...counts.values()].reduce((a, b) => a + b, 0) : 0;
+  return d;
+}
 
 const q = new URLSearchParams(location.search);
 const fake: TownInventoryResponse = {
