@@ -248,6 +248,153 @@
         "tiles/tile-water-4.png"
       ],
       "variantNote": "4 variants x 4 frames (128x16 sheets, 32x16 frames). Pick a variant per tile at random (seeded) so the river does not show a grid; all tiles share one frame clock so the ripples flow together. Ripples stay inside the diamond, so any variants can sit side by side."
+    },
+    "slums": {
+      "note": "The Slums' ground (maps/slums.json). ground: floor tiles per kind, 32x16, anchor = diamond centre; pick a variant per tile, seeded by col,row. canal: a 4-frame strip on a shared clock, banks from tiles.water's overlays. Raised ground (tiles/slums/slums-elevation-README.md): one level = 16 px; cliffs, rim, cap and ramps are 32x32 pieces anchored on the diamond centre of the tile they stand on (16,24). cliffs: <material>.l / .r = the wall shown when the SW / SE neighbour is lower (one per level of drop, 16 px apart), variant seeded by col,row. rim nw/ne: outline on a raised top whose NW / NE neighbour is lower. cap w/e: corner edges. ramps: <surface>.<dir> = [part 1 (low cell), part 2], dir = the way you walk up.",
+      "size": [
+        32,
+        16
+      ],
+      "anchor": [
+        16,
+        8
+      ],
+      "ground": {
+        "dirt": [
+          "tiles/slums/tile-slums-dirt-1.png",
+          "tiles/slums/tile-slums-dirt-2.png",
+          "tiles/slums/tile-slums-dirt-3.png",
+          "tiles/slums/tile-slums-dirt-4.png"
+        ],
+        "dirt-junk": [
+          "tiles/slums/tile-slums-dirt-junk-1.png",
+          "tiles/slums/tile-slums-dirt-junk-2.png"
+        ],
+        "weeds": [
+          "tiles/slums/tile-slums-weeds-1.png",
+          "tiles/slums/tile-slums-weeds-2.png"
+        ],
+        "mud": [
+          "tiles/slums/tile-slums-mud-1.png",
+          "tiles/slums/tile-slums-mud-2.png"
+        ],
+        "concrete": [
+          "tiles/slums/tile-slums-concrete-1.png",
+          "tiles/slums/tile-slums-concrete-2.png",
+          "tiles/slums/tile-slums-concrete-3.png",
+          "tiles/slums/tile-slums-concrete-4.png"
+        ],
+        "plate": [
+          "tiles/slums/tile-slums-plate-1.png",
+          "tiles/slums/tile-slums-plate-2.png"
+        ],
+        "planks": [
+          "tiles/slums/tile-slums-planks-1.png",
+          "tiles/slums/tile-slums-planks-2.png"
+        ]
+      },
+      "canal": {
+        "file": "tiles/slums/tile-slums-canal.png",
+        "size": [
+          32,
+          16
+        ],
+        "frames": 4,
+        "fps": 3,
+        "loop": true,
+        "anchor": [
+          16,
+          8
+        ]
+      },
+      "pieceSize": [
+        32,
+        32
+      ],
+      "pieceAnchor": [
+        16,
+        24
+      ],
+      "cliffs": {
+        "earth": {
+          "l": [
+            "tiles/slums/tile-slums-cliff-earth-l-1.png",
+            "tiles/slums/tile-slums-cliff-earth-l-2.png",
+            "tiles/slums/tile-slums-cliff-earth-l-3.png"
+          ],
+          "r": [
+            "tiles/slums/tile-slums-cliff-earth-r-1.png",
+            "tiles/slums/tile-slums-cliff-earth-r-2.png",
+            "tiles/slums/tile-slums-cliff-earth-r-3.png"
+          ]
+        },
+        "concrete": {
+          "l": [
+            "tiles/slums/tile-slums-cliff-concrete-l-1.png",
+            "tiles/slums/tile-slums-cliff-concrete-l-2.png"
+          ],
+          "r": [
+            "tiles/slums/tile-slums-cliff-concrete-r-1.png",
+            "tiles/slums/tile-slums-cliff-concrete-r-2.png"
+          ]
+        },
+        "sheet": {
+          "l": [
+            "tiles/slums/tile-slums-cliff-sheet-l-1.png",
+            "tiles/slums/tile-slums-cliff-sheet-l-2.png"
+          ],
+          "r": [
+            "tiles/slums/tile-slums-cliff-sheet-r-1.png",
+            "tiles/slums/tile-slums-cliff-sheet-r-2.png"
+          ]
+        }
+      },
+      "rim": {
+        "nw": "tiles/slums/tile-slums-cliff-rim-nw.png",
+        "ne": "tiles/slums/tile-slums-cliff-rim-ne.png"
+      },
+      "cap": {
+        "w": "tiles/slums/tile-slums-cliff-cap-w.png",
+        "e": "tiles/slums/tile-slums-cliff-cap-e.png"
+      },
+      "ramps": {
+        "dirt": {
+          "ne": [
+            "tiles/slums/tile-slums-ramp-dirt-ne-1.png",
+            "tiles/slums/tile-slums-ramp-dirt-ne-2.png"
+          ],
+          "nw": [
+            "tiles/slums/tile-slums-ramp-dirt-nw-1.png",
+            "tiles/slums/tile-slums-ramp-dirt-nw-2.png"
+          ],
+          "sw": [
+            "tiles/slums/tile-slums-ramp-dirt-sw-1.png",
+            "tiles/slums/tile-slums-ramp-dirt-sw-2.png"
+          ],
+          "se": [
+            "tiles/slums/tile-slums-ramp-dirt-se-1.png",
+            "tiles/slums/tile-slums-ramp-dirt-se-2.png"
+          ]
+        },
+        "planks": {
+          "ne": [
+            "tiles/slums/tile-slums-ramp-planks-ne-1.png",
+            "tiles/slums/tile-slums-ramp-planks-ne-2.png"
+          ],
+          "nw": [
+            "tiles/slums/tile-slums-ramp-planks-nw-1.png",
+            "tiles/slums/tile-slums-ramp-planks-nw-2.png"
+          ],
+          "sw": [
+            "tiles/slums/tile-slums-ramp-planks-sw-1.png",
+            "tiles/slums/tile-slums-ramp-planks-sw-2.png"
+          ],
+          "se": [
+            "tiles/slums/tile-slums-ramp-planks-se-1.png",
+            "tiles/slums/tile-slums-ramp-planks-se-2.png"
+          ]
+        }
+      }
     }
   },
   "buildings": {
@@ -11987,6 +12134,1030 @@
       "anchorMeaning": "top corner of the tile it stands on",
       "collision": "footprint",
       "decor": true
+    },
+    "slums-trash-bags": {
+      "file": "props/slums/prop-slums-trash-bags.png",
+      "size": [
+        32,
+        32
+      ],
+      "anchor": [
+        16,
+        16
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": true
+    },
+    "slums-trash-heap": {
+      "file": "props/slums/prop-slums-trash-heap.png",
+      "size": [
+        64,
+        48
+      ],
+      "anchor": [
+        32,
+        20
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false
+    },
+    "slums-trash-bin": {
+      "file": "props/slums/prop-slums-trash-bin.png",
+      "size": [
+        40,
+        44
+      ],
+      "anchor": [
+        20,
+        26
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "slums-cardboard": {
+      "file": "props/slums/prop-slums-cardboard.png",
+      "size": [
+        32,
+        24
+      ],
+      "anchor": [
+        16,
+        8
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": true
+    },
+    "slums-sacks": {
+      "file": "props/slums/prop-slums-sacks.png",
+      "size": [
+        32,
+        32
+      ],
+      "anchor": [
+        16,
+        16
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "slums-tire-stack": {
+      "file": "props/slums/prop-slums-tire-stack.png",
+      "size": [
+        32,
+        48
+      ],
+      "anchor": [
+        16,
+        32
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "slums-oil-drums": {
+      "file": "props/slums/prop-slums-oil-drums.png",
+      "size": [
+        48,
+        48
+      ],
+      "anchor": [
+        24,
+        28
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "slums-crates": {
+      "file": "props/slums/prop-slums-crates.png",
+      "size": [
+        48,
+        48
+      ],
+      "anchor": [
+        24,
+        28
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "slums-cinder-blocks": {
+      "file": "props/slums/prop-slums-cinder-blocks.png",
+      "size": [
+        32,
+        24
+      ],
+      "anchor": [
+        16,
+        8
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": true
+    },
+    "slums-scrap-pile": {
+      "file": "props/slums/prop-slums-scrap-pile.png",
+      "size": [
+        64,
+        48
+      ],
+      "anchor": [
+        32,
+        20
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false
+    },
+    "slums-sheet-fence": {
+      "file": "props/slums/prop-slums-sheet-fence.png",
+      "size": [
+        32,
+        48
+      ],
+      "anchor": [
+        16,
+        32
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "slums-sheet-fence-corner": {
+      "file": "props/slums/prop-slums-sheet-fence-corner.png",
+      "size": [
+        32,
+        48
+      ],
+      "anchor": [
+        16,
+        32
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "slums-chainlink": {
+      "file": "props/slums/prop-slums-chainlink.png",
+      "size": [
+        32,
+        48
+      ],
+      "anchor": [
+        16,
+        32
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "slums-fridge": {
+      "file": "props/slums/prop-slums-fridge.png",
+      "size": [
+        32,
+        48
+      ],
+      "anchor": [
+        16,
+        32
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "slums-mattress": {
+      "file": "props/slums/prop-slums-mattress.png",
+      "size": [
+        48,
+        32
+      ],
+      "anchor": [
+        24,
+        14
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": true
+    },
+    "slums-pushcart-1": {
+      "file": "props/slums/prop-slums-pushcart-1.png",
+      "size": [
+        48,
+        48
+      ],
+      "anchor": [
+        24,
+        28
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "slums-pushcart-2": {
+      "file": "props/slums/prop-slums-pushcart-2.png",
+      "size": [
+        48,
+        48
+      ],
+      "anchor": [
+        24,
+        28
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "slums-pushcart-3": {
+      "file": "props/slums/prop-slums-pushcart-3.png",
+      "size": [
+        48,
+        48
+      ],
+      "anchor": [
+        24,
+        29
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "slums-pushcart-4": {
+      "file": "props/slums/prop-slums-pushcart-4.png",
+      "size": [
+        48,
+        48
+      ],
+      "anchor": [
+        24,
+        29
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "slums-sidecar-wreck-1": {
+      "file": "props/slums/prop-slums-sidecar-wreck-1.png",
+      "size": [
+        64,
+        64
+      ],
+      "anchor": [
+        32,
+        33
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false
+    },
+    "slums-sidecar-wreck-2": {
+      "file": "props/slums/prop-slums-sidecar-wreck-2.png",
+      "size": [
+        64,
+        64
+      ],
+      "anchor": [
+        32,
+        34
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false
+    },
+    "slums-sidecar-wreck-4": {
+      "file": "props/slums/prop-slums-sidecar-wreck-4.png",
+      "size": [
+        64,
+        64
+      ],
+      "anchor": [
+        32,
+        34
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false
+    },
+    "slums-car-wreck-1": {
+      "file": "props/slums/prop-slums-car-wreck-1.png",
+      "size": [
+        96,
+        80
+      ],
+      "anchor": [
+        48,
+        39
+      ],
+      "footprint": [
+        3,
+        3
+      ],
+      "walkable": false
+    },
+    "slums-car-wreck-2": {
+      "file": "props/slums/prop-slums-car-wreck-2.png",
+      "size": [
+        96,
+        80
+      ],
+      "anchor": [
+        48,
+        39
+      ],
+      "footprint": [
+        3,
+        3
+      ],
+      "walkable": false
+    },
+    "slums-car-wreck-4": {
+      "file": "props/slums/prop-slums-car-wreck-4.png",
+      "size": [
+        96,
+        80
+      ],
+      "anchor": [
+        48,
+        39
+      ],
+      "footprint": [
+        3,
+        3
+      ],
+      "walkable": false
+    },
+    "slums-jeep-wreck-1": {
+      "file": "props/slums/prop-slums-jeep-wreck-1.png",
+      "size": [
+        112,
+        96
+      ],
+      "anchor": [
+        56,
+        50
+      ],
+      "footprint": [
+        3,
+        3
+      ],
+      "walkable": false
+    },
+    "slums-jeep-wreck-2": {
+      "file": "props/slums/prop-slums-jeep-wreck-2.png",
+      "size": [
+        112,
+        96
+      ],
+      "anchor": [
+        56,
+        52
+      ],
+      "footprint": [
+        3,
+        3
+      ],
+      "walkable": false
+    },
+    "slums-jeep-wreck-4": {
+      "file": "props/slums/prop-slums-jeep-wreck-4.png",
+      "size": [
+        112,
+        96
+      ],
+      "anchor": [
+        56,
+        50
+      ],
+      "footprint": [
+        3,
+        3
+      ],
+      "walkable": false
+    },
+    "slums-shanty-corner-1": {
+      "file": "props/slums/prop-slums-shanty-corner-1.png",
+      "size": [
+        64,
+        72
+      ],
+      "anchor": [
+        32,
+        43
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false
+    },
+    "slums-shanty-corner-2": {
+      "file": "props/slums/prop-slums-shanty-corner-2.png",
+      "size": [
+        64,
+        72
+      ],
+      "anchor": [
+        32,
+        42
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false
+    },
+    "slums-shanty-corner-3": {
+      "file": "props/slums/prop-slums-shanty-corner-3.png",
+      "size": [
+        64,
+        72
+      ],
+      "anchor": [
+        32,
+        41
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false
+    },
+    "slums-shanty-corner-4": {
+      "file": "props/slums/prop-slums-shanty-corner-4.png",
+      "size": [
+        64,
+        72
+      ],
+      "anchor": [
+        32,
+        41
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false
+    },
+    "slums-shanty-yard-1": {
+      "file": "props/slums/prop-slums-shanty-yard-1.png",
+      "size": [
+        64,
+        72
+      ],
+      "anchor": [
+        32,
+        43
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false
+    },
+    "slums-junk-mound-1": {
+      "file": "props/slums/prop-slums-junk-mound-1.png",
+      "size": [
+        120,
+        104
+      ],
+      "anchor": [
+        52,
+        58
+      ],
+      "footprint": [
+        4,
+        3
+      ],
+      "walkable": false
+    },
+    "slums-junk-mound-2": {
+      "file": "props/slums/prop-slums-junk-mound-2.png",
+      "size": [
+        120,
+        104
+      ],
+      "anchor": [
+        52,
+        56
+      ],
+      "footprint": [
+        4,
+        3
+      ],
+      "walkable": false
+    },
+    "slums-junk-mound-3": {
+      "file": "props/slums/prop-slums-junk-mound-3.png",
+      "size": [
+        120,
+        104
+      ],
+      "anchor": [
+        52,
+        56
+      ],
+      "footprint": [
+        4,
+        3
+      ],
+      "walkable": false
+    },
+    "slums-junk-mound-4": {
+      "file": "props/slums/prop-slums-junk-mound-4.png",
+      "size": [
+        120,
+        104
+      ],
+      "anchor": [
+        52,
+        58
+      ],
+      "footprint": [
+        4,
+        3
+      ],
+      "walkable": false
+    },
+    "slums-junk-mound-5": {
+      "file": "props/slums/prop-slums-junk-mound-5.png",
+      "size": [
+        120,
+        104
+      ],
+      "anchor": [
+        52,
+        59
+      ],
+      "footprint": [
+        4,
+        3
+      ],
+      "walkable": false
+    },
+    "slums-junk-mound-6": {
+      "file": "props/slums/prop-slums-junk-mound-6.png",
+      "size": [
+        120,
+        104
+      ],
+      "anchor": [
+        52,
+        57
+      ],
+      "footprint": [
+        4,
+        3
+      ],
+      "walkable": false
+    },
+    "slums-junk-mound-7": {
+      "file": "props/slums/prop-slums-junk-mound-7.png",
+      "size": [
+        120,
+        104
+      ],
+      "anchor": [
+        52,
+        57
+      ],
+      "footprint": [
+        4,
+        3
+      ],
+      "walkable": false
+    },
+    "slums-junk-mound-8": {
+      "file": "props/slums/prop-slums-junk-mound-8.png",
+      "size": [
+        120,
+        104
+      ],
+      "anchor": [
+        52,
+        56
+      ],
+      "footprint": [
+        4,
+        3
+      ],
+      "walkable": false
+    },
+    "slums-power-pole-1": {
+      "file": "props/slums/prop-slums-power-pole-1.png",
+      "size": [
+        64,
+        64
+      ],
+      "anchor": [
+        32,
+        42
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "slums-power-pole-2": {
+      "file": "props/slums/prop-slums-power-pole-2.png",
+      "size": [
+        64,
+        64
+      ],
+      "anchor": [
+        32,
+        42
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "slums-power-pole-3": {
+      "file": "props/slums/prop-slums-power-pole-3.png",
+      "size": [
+        64,
+        64
+      ],
+      "anchor": [
+        32,
+        42
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "slums-power-pole-4": {
+      "file": "props/slums/prop-slums-power-pole-4.png",
+      "size": [
+        64,
+        64
+      ],
+      "anchor": [
+        32,
+        42
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "slums-power-pole-5": {
+      "file": "props/slums/prop-slums-power-pole-5.png",
+      "size": [
+        64,
+        64
+      ],
+      "anchor": [
+        32,
+        42
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "slums-power-pole-6": {
+      "file": "props/slums/prop-slums-power-pole-6.png",
+      "size": [
+        64,
+        64
+      ],
+      "anchor": [
+        32,
+        43
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "slums-power-pole-7": {
+      "file": "props/slums/prop-slums-power-pole-7.png",
+      "size": [
+        64,
+        64
+      ],
+      "anchor": [
+        32,
+        43
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "slums-power-pole-8": {
+      "file": "props/slums/prop-slums-power-pole-8.png",
+      "size": [
+        64,
+        64
+      ],
+      "anchor": [
+        32,
+        41
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "slums-canal-bridge-1": {
+      "file": "props/slums/prop-slums-canal-bridge-1.png",
+      "size": [
+        64,
+        64
+      ],
+      "anchor": [
+        24,
+        37
+      ],
+      "footprint": [
+        2,
+        1
+      ],
+      "walkable": true
+    },
+    "slums-canal-bridge-2": {
+      "file": "props/slums/prop-slums-canal-bridge-2.png",
+      "size": [
+        64,
+        64
+      ],
+      "anchor": [
+        24,
+        37
+      ],
+      "footprint": [
+        2,
+        1
+      ],
+      "walkable": true
+    },
+    "slums-canal-bridge-3": {
+      "file": "props/slums/prop-slums-canal-bridge-3.png",
+      "size": [
+        64,
+        64
+      ],
+      "anchor": [
+        24,
+        37
+      ],
+      "footprint": [
+        2,
+        1
+      ],
+      "walkable": true
+    },
+    "slums-canal-bridge-4": {
+      "file": "props/slums/prop-slums-canal-bridge-4.png",
+      "size": [
+        64,
+        64
+      ],
+      "anchor": [
+        24,
+        37
+      ],
+      "footprint": [
+        2,
+        1
+      ],
+      "walkable": true
+    },
+    "slums-canal-bridge-5": {
+      "file": "props/slums/prop-slums-canal-bridge-5.png",
+      "size": [
+        64,
+        64
+      ],
+      "anchor": [
+        24,
+        37
+      ],
+      "footprint": [
+        2,
+        1
+      ],
+      "walkable": true
+    },
+    "slums-canal-bridge-6": {
+      "file": "props/slums/prop-slums-canal-bridge-6.png",
+      "size": [
+        64,
+        64
+      ],
+      "anchor": [
+        24,
+        37
+      ],
+      "footprint": [
+        2,
+        1
+      ],
+      "walkable": true
+    },
+    "slums-golem-pit-1": {
+      "file": "props/slums/prop-slums-golem-pit-1.png",
+      "size": [
+        180,
+        168
+      ],
+      "anchor": [
+        90,
+        36
+      ],
+      "footprint": [
+        6,
+        6
+      ],
+      "walkable": true
+    },
+    "slums-dead-tree-big-1": {
+      "file": "props/slums/prop-slums-dead-tree-big-1.png",
+      "size": [
+        64,
+        64
+      ],
+      "anchor": [
+        32,
+        46
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "slums-dead-tree-sapling-1": {
+      "file": "props/slums/prop-slums-dead-tree-sapling-1.png",
+      "size": [
+        48,
+        56
+      ],
+      "anchor": [
+        24,
+        38
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "slums-dead-tree-snapped-1": {
+      "file": "props/slums/prop-slums-dead-tree-snapped-1.png",
+      "size": [
+        64,
+        64
+      ],
+      "anchor": [
+        32,
+        46
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "slums-dead-tree-stump-1": {
+      "file": "props/slums/prop-slums-dead-tree-stump-1.png",
+      "size": [
+        40,
+        40
+      ],
+      "anchor": [
+        20,
+        22
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "slums-dead-tree-junk-1": {
+      "file": "props/slums/prop-slums-dead-tree-junk-1.png",
+      "size": [
+        64,
+        64
+      ],
+      "anchor": [
+        32,
+        46
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "slums-dead-tree-burnt-1": {
+      "file": "props/slums/prop-slums-dead-tree-burnt-1.png",
+      "size": [
+        64,
+        64
+      ],
+      "anchor": [
+        32,
+        46
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "slums-dead-tree-leaning-1": {
+      "file": "props/slums/prop-slums-dead-tree-leaning-1.png",
+      "size": [
+        64,
+        64
+      ],
+      "anchor": [
+        32,
+        41
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "slums-dead-tree-fallen-1": {
+      "file": "props/slums/prop-slums-dead-tree-fallen-1.png",
+      "size": [
+        64,
+        56
+      ],
+      "anchor": [
+        32,
+        22
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false
     }
   },
   "fx": {
@@ -14266,5 +15437,53 @@
   "equipment": {
     "note": "Equipment items (items/equipment.json): id, name, slot, who can use it, level, rarity, stats and icons. The training weapons are the first.",
     "file": "items/equipment.json"
+  },
+  "mobs": {
+    "note": "Mobs (world/mobs.ts): one sheet per animation and direction, file = pattern with {anim} and {dir}; anchor = the pixel between the feet. Only mobs of active zones load.",
+    "tin-can": {
+      "name": "Tin Can",
+      "file": "mobs/tin-can/mob-tin-can-{anim}-{dir}.png",
+      "size": [
+        40,
+        40
+      ],
+      "anchor": [
+        20,
+        38
+      ],
+      "directions": [
+        "se",
+        "ne",
+        "sw",
+        "nw"
+      ],
+      "animations": {
+        "idle": {
+          "frames": 4,
+          "fps": 6,
+          "loop": true
+        },
+        "move": {
+          "frames": 6,
+          "fps": 10,
+          "loop": true
+        },
+        "attack": {
+          "frames": 5,
+          "fps": 12,
+          "loop": false
+        },
+        "hit": {
+          "frames": 2,
+          "fps": 12,
+          "loop": false
+        },
+        "death": {
+          "frames": 6,
+          "fps": 10,
+          "loop": false
+        }
+      }
+    }
   }
 }

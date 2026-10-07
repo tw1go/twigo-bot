@@ -1,0 +1,65 @@
+file,cell_w,cell_h,frames,fps,loop,anchor_x,anchor_y,notes
+prop-slums-trash-bags.png,32,32,1,0,no,16,24,1x1; three tied bags, one torn
+prop-slums-trash-heap.png,64,48,1,0,no,32,36,2x2; garbage heap: bags, boxes, bottles, cans
+prop-slums-trash-bin.png,40,44,1,0,no,20,34,1x1; blue plastic drum used as a bin, overflowing; lid on the ground
+prop-slums-cardboard.png,32,24,1,0,no,16,16,1x1; soggy flattened boxes
+prop-slums-sacks.png,32,32,1,0,no,16,24,1x1; woven rice sacks with a stripe
+prop-slums-tire-stack.png,32,48,1,0,no,16,40,1x1; four old tyres, leaning
+prop-slums-oil-drums.png,48,48,1,0,no,24,36,1x1; two rusty drums, one tipped over, oil stain
+prop-slums-crates.png,48,48,1,0,no,24,36,1x1; stacked broken crates
+prop-slums-cinder-blocks.png,32,24,1,0,no,16,16,1x1; scattered cinder blocks
+prop-slums-scrap-pile.png,64,48,1,0,no,32,36,2x2; scrap metal: sheets, pipes, wire coils
+prop-slums-sheet-fence.png,32,48,1,0,no,16,40,1 edge; rusty roofing-sheet fence along the NE-SW line through the tile centre
+prop-slums-sheet-fence-corner.png,32,48,1,0,no,16,40,1x1; fence corner: NE half and NW half meet at the tile centre
+prop-slums-chainlink.png,32,48,1,0,no,16,40,1 edge; sagging chain-link along the NE-SW line, torn at the bottom
+prop-slums-fridge.png,32,48,1,0,no,16,40,1x1; dumped fridge, door hanging open
+prop-slums-mattress.png,48,32,1,0,no,24,22,2x1; stained old mattress with springs poking out
+prop-slums-pushcart-1.png,48,48,1,0,no,24,36,1x2; broken wooden pushcart with bottles (PixelLab variant 1, style-matched)
+prop-slums-pushcart-2.png,48,48,1,0,no,24,36,1x2; broken wooden pushcart with bottles (PixelLab variant 2, style-matched)
+prop-slums-pushcart-3.png,48,48,1,0,no,24,37,1x2; broken wooden pushcart with bottles (PixelLab variant 3, style-matched)
+prop-slums-pushcart-4.png,48,48,1,0,no,24,37,1x2; broken wooden pushcart with bottles (PixelLab variant 4, style-matched)
+prop-slums-sidecar-wreck-1.png,64,64,1,0,no,32,49,2x2; broken motorbike with sidecar cab (PixelLab variant 1, style-matched)
+prop-slums-sidecar-wreck-2.png,64,64,1,0,no,32,50,2x2; broken motorbike with sidecar cab (PixelLab variant 2, style-matched)
+prop-slums-sidecar-wreck-4.png,64,64,1,0,no,32,50,2x2; broken motorbike with sidecar cab (PixelLab variant 4, style-matched)
+prop-slums-car-wreck-1.png,96,80,1,0,no,48,63,3x2; abandoned sedan on cinder blocks (PixelLab variant 1, style-matched)
+prop-slums-car-wreck-2.png,96,80,1,0,no,48,63,3x2; abandoned sedan on cinder blocks (PixelLab variant 2, style-matched)
+prop-slums-car-wreck-4.png,96,80,1,0,no,48,63,3x2; abandoned sedan on cinder blocks (PixelLab variant 4, style-matched)
+prop-slums-jeep-wreck-1.png,112,96,1,0,no,56,74,3x2; rusted passenger jeep with crates on the roof (PixelLab variant 1, style-matched)
+prop-slums-jeep-wreck-2.png,112,96,1,0,no,56,76,3x2; rusted passenger jeep with crates on the roof (PixelLab variant 2, style-matched)
+prop-slums-jeep-wreck-4.png,112,96,1,0,no,56,74,3x2; rusted passenger jeep with crates on the roof (PixelLab variant 4, style-matched)
+prop-slums-shanty-corner-1.png,64,72,1,0,no,32,59,1x1; patchwork shanty wall corner (PixelLab, style-matched)
+prop-slums-shanty-corner-2.png,64,72,1,0,no,32,58,1x1; patchwork shanty wall corner (PixelLab, style-matched)
+prop-slums-shanty-corner-3.png,64,72,1,0,no,32,57,1x1; patchwork shanty wall corner (PixelLab, style-matched)
+prop-slums-shanty-corner-4.png,64,72,1,0,no,32,57,1x1; patchwork shanty wall corner (PixelLab, style-matched)
+prop-slums-shanty-yard-1.png,64,72,1,0,no,32,59,2x2; shanty corner with laundry line and a small shack (PixelLab, style-matched)
+prop-slums-junk-mound-1.png,120,104,1,0,no,60,86,4x3; junk mound, blocks the way (PixelLab, style-matched)
+prop-slums-junk-mound-2.png,120,104,1,0,no,60,84,4x3; junk mound, blocks the way (PixelLab, style-matched)
+prop-slums-junk-mound-3.png,120,104,1,0,no,60,84,4x3; junk mound, blocks the way (PixelLab, style-matched)
+prop-slums-junk-mound-4.png,120,104,1,0,no,60,86,4x3; junk mound, blocks the way (PixelLab, style-matched)
+prop-slums-junk-mound-5.png,120,104,1,0,no,60,87,4x3; junk mound, blocks the way (PixelLab, style-matched)
+prop-slums-junk-mound-6.png,120,104,1,0,no,60,85,4x3; junk mound, blocks the way (PixelLab, style-matched)
+prop-slums-junk-mound-7.png,120,104,1,0,no,60,85,4x3; junk mound, blocks the way (PixelLab, style-matched)
+prop-slums-junk-mound-8.png,120,104,1,0,no,60,84,4x3; junk mound, blocks the way (PixelLab, style-matched)
+prop-slums-power-pole-1.png,64,64,1,0,no,32,50,1x1; leaning power pole with cables (PixelLab, style-matched)
+prop-slums-power-pole-2.png,64,64,1,0,no,32,50,1x1; leaning power pole with cables (PixelLab, style-matched)
+prop-slums-power-pole-3.png,64,64,1,0,no,32,50,1x1; leaning power pole with cables (PixelLab, style-matched)
+prop-slums-power-pole-4.png,64,64,1,0,no,32,50,1x1; leaning power pole with cables (PixelLab, style-matched)
+prop-slums-power-pole-5.png,64,64,1,0,no,32,50,1x1; leaning power pole with cables (PixelLab, style-matched)
+prop-slums-power-pole-6.png,64,64,1,0,no,32,51,1x1; leaning power pole with cables (PixelLab, style-matched)
+prop-slums-power-pole-7.png,64,64,1,0,no,32,51,1x1; leaning power pole with cables (PixelLab, style-matched)
+prop-slums-power-pole-8.png,64,64,1,0,no,32,49,1x1; leaning power pole with cables (PixelLab, style-matched)
+prop-slums-canal-bridge-1.png,64,64,1,0,no,32,49,2x1; plank footbridge over the canal, along the NE-SW line (PixelLab, style-matched)
+prop-slums-canal-bridge-2.png,64,64,1,0,no,32,49,2x1; plank footbridge over the canal, along the NE-SW line (PixelLab, style-matched)
+prop-slums-canal-bridge-3.png,64,64,1,0,no,32,49,2x1; plank footbridge over the canal, along the NE-SW line (PixelLab, style-matched)
+prop-slums-canal-bridge-4.png,64,64,1,0,no,32,49,2x1; plank footbridge over the canal, along the NE-SW line (PixelLab, style-matched)
+prop-slums-canal-bridge-5.png,64,64,1,0,no,32,49,2x1; plank footbridge over the canal, along the NE-SW line (PixelLab, style-matched)
+prop-slums-canal-bridge-6.png,64,64,1,0,no,32,49,2x1; plank footbridge over the canal, along the NE-SW line (PixelLab, style-matched)
+prop-slums-golem-pit-1.png,180,168,1,0,no,90,84,6x6; Scrapheap Golem arena ring; players walk on the dirt centre (PixelLab, style-matched)
+prop-slums-dead-tree-big-1.png,64,64,1,0,no,32,54,1x1; big bare dead tree (PixelLab, style-matched)
+prop-slums-dead-tree-sapling-1.png,48,56,1,0,no,24,46,1x1; small dead sapling (PixelLab, style-matched)
+prop-slums-dead-tree-snapped-1.png,64,64,1,0,no,32,54,1x1; dead trunk snapped halfway up (PixelLab, style-matched)
+prop-slums-dead-tree-stump-1.png,40,40,1,0,no,20,30,1x1; dead tree stump (PixelLab, style-matched)
+prop-slums-dead-tree-junk-1.png,64,64,1,0,no,32,54,1x1; dead tree with a bag, tire swing and wire caught in it (PixelLab, style-matched)
+prop-slums-dead-tree-burnt-1.png,64,64,1,0,no,32,54,1x1; charred burnt dead tree (PixelLab, style-matched)
+prop-slums-dead-tree-leaning-1.png,64,64,1,0,no,32,49,1x1; leaning dead tree held up by guy ropes (PixelLab, style-matched)
+prop-slums-dead-tree-fallen-1.png,64,56,1,0,no,32,38,2x2; fallen mossy dead log on a weedy patch (PixelLab, style-matched)

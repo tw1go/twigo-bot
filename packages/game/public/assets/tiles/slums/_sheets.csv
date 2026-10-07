@@ -1,0 +1,54 @@
+file,cell_w,cell_h,frames,fps,loop,anchor_x,anchor_y,notes
+tile-slums-dirt-1.png,32,16,1,0,no,16,8,packed dirt
+tile-slums-dirt-2.png,32,16,1,0,no,16,8,packed dirt
+tile-slums-dirt-3.png,32,16,1,0,no,16,8,packed dirt
+tile-slums-dirt-4.png,32,16,1,0,no,16,8,packed dirt
+tile-slums-dirt-junk-1.png,32,16,1,0,no,16,8,dirt with tin bits, caps and glass
+tile-slums-dirt-junk-2.png,32,16,1,0,no,16,8,dirt with tin bits, caps and glass
+tile-slums-weeds-1.png,32,16,1,0,no,16,8,dirt with weed tufts
+tile-slums-weeds-2.png,32,16,1,0,no,16,8,dirt with weed tufts
+tile-slums-mud-1.png,32,16,1,0,no,16,8,wet mud with a little puddle
+tile-slums-mud-2.png,32,16,1,0,no,16,8,wet mud with a little puddle
+tile-slums-concrete-1.png,32,16,1,0,no,16,8,broken concrete; 4 is rust-stained
+tile-slums-concrete-2.png,32,16,1,0,no,16,8,broken concrete; 4 is rust-stained
+tile-slums-concrete-3.png,32,16,1,0,no,16,8,broken concrete; 4 is rust-stained
+tile-slums-concrete-4.png,32,16,1,0,no,16,8,broken concrete; 4 is rust-stained
+tile-slums-plate-1.png,32,16,1,0,no,16,8,rusty roofing sheet laid as floor
+tile-slums-plate-2.png,32,16,1,0,no,16,8,rusty roofing sheet laid as floor
+tile-slums-planks-1.png,32,16,1,0,no,16,8,plank boardwalk
+tile-slums-planks-2.png,32,16,1,0,no,16,8,plank boardwalk
+tile-slums-canal.png,32,16,4,3,yes,16,8,murky sewer canal; reuse tile-water-edge/corner overlays for its banks
+tile-slums-cliff-earth-l-1.png,32,32,1,0,no,16,24,earth cliff face on the SW (left) side; draw when the SW neighbour is lower
+tile-slums-cliff-earth-r-1.png,32,32,1,0,no,16,24,earth cliff face on the SE (right) side; draw when the SE neighbour is lower
+tile-slums-cliff-earth-l-2.png,32,32,1,0,no,16,24,earth cliff face on the SW (left) side; draw when the SW neighbour is lower
+tile-slums-cliff-earth-r-2.png,32,32,1,0,no,16,24,earth cliff face on the SE (right) side; draw when the SE neighbour is lower
+tile-slums-cliff-earth-l-3.png,32,32,1,0,no,16,24,earth cliff face on the SW (left) side; draw when the SW neighbour is lower
+tile-slums-cliff-earth-r-3.png,32,32,1,0,no,16,24,earth cliff face on the SE (right) side; draw when the SE neighbour is lower
+tile-slums-cliff-concrete-l-1.png,32,32,1,0,no,16,24,concrete cliff face on the SW (left) side; draw when the SW neighbour is lower
+tile-slums-cliff-concrete-r-1.png,32,32,1,0,no,16,24,concrete cliff face on the SE (right) side; draw when the SE neighbour is lower
+tile-slums-cliff-concrete-l-2.png,32,32,1,0,no,16,24,concrete cliff face on the SW (left) side; draw when the SW neighbour is lower
+tile-slums-cliff-concrete-r-2.png,32,32,1,0,no,16,24,concrete cliff face on the SE (right) side; draw when the SE neighbour is lower
+tile-slums-cliff-sheet-l-1.png,32,32,1,0,no,16,24,sheet cliff face on the SW (left) side; draw when the SW neighbour is lower
+tile-slums-cliff-sheet-r-1.png,32,32,1,0,no,16,24,sheet cliff face on the SE (right) side; draw when the SE neighbour is lower
+tile-slums-cliff-sheet-l-2.png,32,32,1,0,no,16,24,sheet cliff face on the SW (left) side; draw when the SW neighbour is lower
+tile-slums-cliff-sheet-r-2.png,32,32,1,0,no,16,24,sheet cliff face on the SE (right) side; draw when the SE neighbour is lower
+tile-slums-cliff-rim-nw.png,32,32,1,0,no,16,24,navy outline on the raised top; draw when the NW neighbour is lower
+tile-slums-cliff-rim-ne.png,32,32,1,0,no,16,24,navy outline on the raised top; draw when the NE neighbour is lower
+tile-slums-cliff-cap-w.png,32,32,1,0,no,16,24,navy corner edge; see README rule
+tile-slums-cliff-cap-e.png,32,32,1,0,no,16,24,navy corner edge; see README rule
+tile-slums-ramp-dirt-ne-1.png,32,32,1,0,no,16,24,dirt ramp walking up toward NE; part 1 of 2 (low cell)
+tile-slums-ramp-dirt-ne-2.png,32,32,1,0,no,16,24,dirt ramp walking up toward NE; part 2 of 2 (high cell)
+tile-slums-ramp-dirt-nw-1.png,32,32,1,0,no,16,24,dirt ramp walking up toward NW; part 1 of 2 (low cell)
+tile-slums-ramp-dirt-nw-2.png,32,32,1,0,no,16,24,dirt ramp walking up toward NW; part 2 of 2 (high cell)
+tile-slums-ramp-dirt-sw-1.png,32,32,1,0,no,16,24,dirt ramp walking up toward SW; part 1 of 2 (low cell)
+tile-slums-ramp-dirt-sw-2.png,32,32,1,0,no,16,24,dirt ramp walking up toward SW; part 2 of 2 (high cell)
+tile-slums-ramp-dirt-se-1.png,32,32,1,0,no,16,24,dirt ramp walking up toward SE; part 1 of 2 (low cell)
+tile-slums-ramp-dirt-se-2.png,32,32,1,0,no,16,24,dirt ramp walking up toward SE; part 2 of 2 (high cell)
+tile-slums-ramp-planks-ne-1.png,32,32,1,0,no,16,24,planks ramp walking up toward NE; part 1 of 2 (low cell)
+tile-slums-ramp-planks-ne-2.png,32,32,1,0,no,16,24,planks ramp walking up toward NE; part 2 of 2 (high cell)
+tile-slums-ramp-planks-nw-1.png,32,32,1,0,no,16,24,planks ramp walking up toward NW; part 1 of 2 (low cell)
+tile-slums-ramp-planks-nw-2.png,32,32,1,0,no,16,24,planks ramp walking up toward NW; part 2 of 2 (high cell)
+tile-slums-ramp-planks-sw-1.png,32,32,1,0,no,16,24,planks ramp walking up toward SW; part 1 of 2 (low cell)
+tile-slums-ramp-planks-sw-2.png,32,32,1,0,no,16,24,planks ramp walking up toward SW; part 2 of 2 (high cell)
+tile-slums-ramp-planks-se-1.png,32,32,1,0,no,16,24,planks ramp walking up toward SE; part 1 of 2 (low cell)
+tile-slums-ramp-planks-se-2.png,32,32,1,0,no,16,24,planks ramp walking up toward SE; part 2 of 2 (high cell)

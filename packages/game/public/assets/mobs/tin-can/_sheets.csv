@@ -1,0 +1,21 @@
+file,cell_w,cell_h,frames,fps,loop,anchor_x,anchor_y,notes
+mob-tin-can-idle-se.png,40,40,4,6,yes,20,38,tin-can idle se
+mob-tin-can-move-se.png,40,40,6,10,yes,20,38,tin-can move se
+mob-tin-can-attack-se.png,40,40,5,12,no,20,38,tin-can attack se
+mob-tin-can-hit-se.png,40,40,2,12,no,20,38,tin-can hit se
+mob-tin-can-death-se.png,40,40,6,10,no,20,38,tin-can death se
+mob-tin-can-idle-ne.png,40,40,4,6,yes,20,38,tin-can idle ne
+mob-tin-can-move-ne.png,40,40,6,10,yes,20,38,tin-can move ne
+mob-tin-can-attack-ne.png,40,40,5,12,no,20,38,tin-can attack ne
+mob-tin-can-hit-ne.png,40,40,2,12,no,20,38,tin-can hit ne
+mob-tin-can-death-ne.png,40,40,6,10,no,20,38,tin-can death ne
+mob-tin-can-idle-sw.png,40,40,4,6,yes,20,38,tin-can idle sw
+mob-tin-can-move-sw.png,40,40,6,10,yes,20,38,tin-can move sw
+mob-tin-can-attack-sw.png,40,40,5,12,no,20,38,tin-can attack sw
+mob-tin-can-hit-sw.png,40,40,2,12,no,20,38,tin-can hit sw
+mob-tin-can-death-sw.png,40,40,6,10,no,20,38,tin-can death sw
+mob-tin-can-idle-nw.png,40,40,4,6,yes,20,38,tin-can idle nw
+mob-tin-can-move-nw.png,40,40,6,10,yes,20,38,tin-can move nw
+mob-tin-can-attack-nw.png,40,40,5,12,no,20,38,tin-can attack nw
+mob-tin-can-hit-nw.png,40,40,2,12,no,20,38,tin-can hit nw
+mob-tin-can-death-nw.png,40,40,6,10,no,20,38,tin-can death nw
