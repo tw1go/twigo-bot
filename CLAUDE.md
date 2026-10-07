@@ -287,7 +287,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   walk-hunt; `Character.setBattle`, `strike`, `hurt`; no clothes or hair in those sheets yet), others too
   (`OtherPlayers.battleFor`). The hotbar's damage skills work there (`TownScene.fight` / `fightTick`): pressing one
   auto-casts on your Z target (else the nearest mob): one cast a second (CAST_GAP_MS), the pressed skill when it's ready,
-  else the first ready damage skill (the bar's order, then the class's); each skill's cooldown by its level
+  else the first ready damage skill (the bar's order: 1–0, then the Alt row; then the class's); each skill's cooldown by its level
   (`combat/cooldowns.ts` = the bot's `skillCooldown`: 0.8 s + 0.15 s a level, Lv 1 1 s … Lv 18 3.5 s; enforced by the
   server, shown in the Skills panel and the slot's pie); walking you into reach first and after
   it if it moves (each skill's reach: skill-hits.json `range`; the class's own otherwise: Slingshot/Broom 5, the melee classes, Hilot included, the next tile), until it dies; moving yourself (click, WASD),
@@ -345,7 +345,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   I; 12 places: two bracers, two rings; stats from `combat/stats.ts`, placeholders), class badges on the avatar and before
   players' names in the chat. Combat poses have no clothes or hair yet (body and face only).
 - Hotbar (`ui/hotbar.ts`, bottom centre, members, hidden on phones and in the casino/arena): bottom row 10 skill slots
-  (keys 1–0) and 3 for potions/usables (- = `, shown ~), evenly spaced; top row 13 more (Ctrl + the same keys) for either.
+  (keys 1–0) and 3 for potions/usables (- = `, shown ~), evenly spaced; top row 13 more (Alt + the same keys, labelled "Alt+1"…) for either.
   Skills panel on the right of the screen (K or the K button; `#skill-book`): each skill with its description, the hovered
   one played on the class choice's stage (`TownScene.skillStage`, 1×); drag a skill to a slot, or click it then a slot.
   Potions dragged from the bag; drag between slots swaps, off the bar or right-click empties. Per class in localStorage

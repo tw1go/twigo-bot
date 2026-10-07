@@ -8,7 +8,7 @@ import { toast } from './toast';
 
 // ⚔️ The hotbar, bottom centre (members, not on phones): two rows of slots in the bag's slot art.
 //   Bottom row: 10 skill slots (keys 1–0), then 3 for potions and other usables (keys - = `).
-//   Top row: 13 more (Ctrl+1–0, Ctrl+- Ctrl+= Ctrl+`), for skills or usables.
+//   Top row: 13 more (Alt+1–0, Alt+- Alt+= Alt+`; each labelled "Alt+1"…), for skills or usables.
 // Skills come from the Skills panel on the right of the screen (the K button at the bar's left, or K): each skill
 // with its description, played on a small stage while hovered (the class choice's preview, combat/skill-stage.ts);
 // drag one onto a slot, or click it and then a slot. Potions are dragged in from the bag. Drag a slot onto another to swap them; drag it off the bar (or
@@ -113,7 +113,7 @@ export class Hotbar {
         (row === 'top' ? top : bottom).append(cell);
       }
     }
-    top.prepend(el('span', 'hb-spacer', 'Ctrl')); // the top row's keys are Ctrl + the bottom row's
+    top.prepend(el('span', 'hb-spacer')); // (lines the top row up with the bottom's)
     bottom.prepend(this.book);
     this.root.append(top, bottom);
     document.body.append(this.root, this.list);
@@ -220,7 +220,7 @@ export class Hotbar {
         const icon = entry?.t === 'skill' && this.cls ? this.iconOf(entry.name) : null;
         b.classList.toggle('hb-skill', entry?.t === 'skill' && !icon);
         b.classList.toggle('hb-off', entry?.t === 'skill' && !!this.o.usable && !this.o.usable(entry.name)); // damage skills: no combat in town
-        const keyLabel = row === 'top' ? `Ctrl+${shown(TOP_KEYS[i])}` : key;
+        const keyLabel = row === 'top' ? `Alt+${shown(TOP_KEYS[i])}` : key;
         if (entry?.t === 'skill') {
           const s = skillsOf(this.cls).find((k) => k.name === entry.name);
           b.append(icon ?? el('span', 'hb-initials', initials(entry.name)));
@@ -229,7 +229,7 @@ export class Hotbar {
           b.append(itemArt(entry.id, isRarity(entry.rarity) ? entry.rarity : 'common', 'icon', 2, true) ?? el('span', 'hb-emoji', entry.emoji));
           b.title = `${entry.name}\n(${keyLabel})`;
         } else b.title = `Empty (${keyLabel})`;
-        b.append(el('span', 'hb-key', key));
+        b.append(row === 'top' ? el('span', 'hb-key hb-key-alt', keyLabel) : el('span', 'hb-key', key));
         b.setAttribute('aria-label', b.title.replace(/\n/g, ' '));
       });
     }
@@ -353,7 +353,7 @@ export class Hotbar {
   }
 
   /** Every slot holding that skill gets a dark pie that shrinks round clockwise, with the seconds left on it. */
-  /** The skills on the bar in key order (1–0, then the Ctrl row), each once. */
+  /** The skills on the bar in key order (1–0, then the Alt row), each once. */
   skillOrder(): string[] {
     const seen = new Set<string>();
     for (const e of [...this.layout.main, ...this.layout.top]) if (e?.t === 'skill') seen.add(e.name);
@@ -398,12 +398,12 @@ export class Hotbar {
   }
 
   private key(e: KeyboardEvent): void {
-    if (this.root.hidden || e.altKey || e.metaKey || e.repeat || busy()) return;
-    if (!e.ctrlKey && e.key.toLowerCase() === 'k') return this.toggleList();
+    if (this.root.hidden || e.ctrlKey || e.metaKey || e.repeat || busy()) return;
+    if (!e.altKey && e.key.toLowerCase() === 'k') return this.toggleList();
     const k = CODE_KEY[e.code];
     if (!k) return;
     e.preventDefault();
-    if (e.ctrlKey) return this.use('top', TOP_KEYS.indexOf(k));
+    if (e.altKey) return this.use('top', TOP_KEYS.indexOf(k)); // (by e.code: Alt+1 is still Digit1 on a Mac)
     const main = MAIN_KEYS.indexOf(k);
     this.use(main >= 0 ? 'main' : 'util', main >= 0 ? main : UTIL_KEYS.indexOf(k));
   }

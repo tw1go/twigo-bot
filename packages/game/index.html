@@ -1244,6 +1244,7 @@
       #hotbar .hb-fire { animation: hb-fire 0.35s ease-out; }
       #hotbar .hb-auto { border-image-source: var(--slot-picked); animation: hb-auto 0.9s ease-in-out infinite alternate; } /* auto-casting */
       @keyframes hb-auto { from { filter: drop-shadow(0 0 1px #F8BF27); } to { filter: drop-shadow(0 0 4px #F8BF27) brightness(1.15); } }
+      #hotbar .hb-key-alt { left: -5px; top: -7px; font-size: 11px; } /* the top row: "Alt+1" */
       #hotbar .hb-cd { position: absolute; inset: -4px; display: flex; align-items: center; justify-content: center; background: conic-gradient(transparent 0 calc(360deg - var(--left, 0deg)), rgba(124, 42, 232, 0.6) 0); pointer-events: none; }
       #hotbar .hb-cd-num { font: 700 17px/1 'Mk Numbers', var(--ui-font); color: #fff; text-shadow: 0 1px 0 #0B0A1A, 1px 0 0 #0B0A1A, -1px 0 0 #0B0A1A, 0 -1px 0 #0B0A1A; }
       @keyframes hb-fire { from { filter: brightness(2.2); transform: scale(0.9); } to { filter: none; transform: none; } }
