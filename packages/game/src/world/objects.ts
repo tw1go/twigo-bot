@@ -37,7 +37,7 @@ export interface Bench {
   row: number;
   faces: Dir; // se | sw | ne | nw
   depth: number;
-  sprite: Phaser.GameObjects.Image; // clickable (left click: sit)
+  sprite: Phaser.GameObjects.Image; // clickable (left click: sit); a long bench's seats share it
 }
 
 export interface Lamp {
@@ -239,7 +239,8 @@ export class WorldObjects {
     if (o.shadow) this.track(this.scene.add.image(centre.x + (o.flip ? -5 : 5), centre.y + 1, o.shadow).setDepth(GROUND_SHADOW_DEPTH));
     if (o.tufts) this.track(this.scene.add.image(centre.x - 10, centre.y - 5, o.tufts).setOrigin(0, 0).setDepth(depth + 0.01));
 
-    if (def.faces) this.benches.push({ col: o.col, row: o.row, faces: def.faces.toLowerCase() as Dir, depth, sprite });
+    // A bench: a seat on each tile of its footprint (a long bench seats 2 or 3, side by side).
+    if (def.faces) for (let c = 0; c < fc; c++) for (let r = 0; r < fr; r++) this.benches.push({ col: o.col + c, row: o.row + r, faces: def.faces.toLowerCase() as Dir, depth, sprite });
     if (o.id === 'lamp-off' || o.id === 'lamp-on') this.addLamp(sprite);
   }
 

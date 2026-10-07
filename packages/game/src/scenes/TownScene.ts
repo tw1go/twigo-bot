@@ -883,7 +883,7 @@ export class TownScene extends Phaser.Scene {
       const building = this.objects.buildings.find((b) => b.parts.some((part) => over.includes(part)));
       const world = this.cameras.main.getWorldPoint(p.x, p.y);
       const { col, row } = screenToTile(world.x, world.y);
-      const bench = this.objects.benches.find((b) => over.includes(b.sprite)) ?? this.benchAt({ col, row });
+      const bench = this.seatOn(over, { col, row }) ?? this.benchAt({ col, row });
       if (p.wasTouch) {
         if (building) return this.goToBuilding(building);
         return this.goToTile({ col, row });
@@ -1061,6 +1061,13 @@ export class TownScene extends Phaser.Scene {
     const bench = this.benchAt(target);
     if (bench) return this.goToBench(bench);
     this.moveTo(target);
+  }
+
+  /** The bench under the pointer: on a long bench, the free seat nearest the clicked tile. */
+  private seatOn(over: Phaser.GameObjects.GameObject[], at: Tile): Bench | undefined {
+    const seats = this.objects.benches.filter((b) => over.includes(b.sprite));
+    const far = (b: Bench) => Math.abs(b.col - at.col) + Math.abs(b.row - at.row) + (this.others.seatTaken(b.col, b.row) ? 100 : 0);
+    return seats.sort((a, z) => far(a) - far(z))[0];
   }
 
   private benchAt(t: Tile): Bench | undefined {

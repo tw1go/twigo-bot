@@ -72,6 +72,11 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   copy images only.
 - Depth: front corner of the footprint, plus a correction against big footprints (`WorldObjects.sortAgainstBig`);
   the arena uses back/front layers. Ground is baked into canvas chunks; off-screen sprites are culled.
+- Benches: manifest props with `faces` (bench-se|sw|ne|nw, 1 seat; bench2-*, bench3-* = 2 and 3 seats, made from the 1-seat art:
+  ends kept, the seat carried on along its slope, middle legs on the 3-seater). Each footprint tile is a seat (`WorldObjects`
+  pushes one `Bench` per tile, sharing the sprite; clicking a long bench takes the free seat nearest the click). Their tiles
+  are in town.json `blocked` (the bot checks walking against it too). Tambayan: a 2-seater by the sari-sari store, facing
+  a 3-seater across the path. Keep benches off the main road (rows 33–37 are the Mosang race lanes).
 - Night life (`world/night-life.ts`, while the lamps are on, fading in/out): fireflies (fx `firefly`, ADD, ~140 seeded
   near trees/bushes/ferns, drifting and blinking) and moths (fx `moth`, 1–2 round half the lamps' lanterns, over the glow
   on the near side). Only those on screen are drawn; not night-tinted. The art is tiny and drawn in the palette.

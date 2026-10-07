@@ -1506,6 +1506,158 @@
       "faces": "NW",
       "collision": "footprint"
     },
+    "bench2-sw": {
+      "file": "props/prop-bench2-sw.png",
+      "size": [
+        49,
+        38
+      ],
+      "anchor": [
+        16,
+        14
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        2,
+        1
+      ],
+      "faces": "SW",
+      "collision": "footprint",
+      "note": "2 seats (one per footprint tile), made from bench-sw: its ends kept, the seat carried on along its slope"
+    },
+    "bench2-se": {
+      "file": "props/prop-bench2-se.png",
+      "size": [
+        49,
+        38
+      ],
+      "anchor": [
+        32,
+        14
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        1,
+        2
+      ],
+      "faces": "SE",
+      "collision": "footprint",
+      "note": "2 seats (one per footprint tile), made from bench-se: its ends kept, the seat carried on along its slope"
+    },
+    "bench2-ne": {
+      "file": "props/prop-bench2-ne.png",
+      "size": [
+        49,
+        38
+      ],
+      "anchor": [
+        16,
+        14
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        2,
+        1
+      ],
+      "faces": "NE",
+      "collision": "footprint",
+      "note": "2 seats (one per footprint tile), made from bench-ne: its ends kept, the seat carried on along its slope"
+    },
+    "bench2-nw": {
+      "file": "props/prop-bench2-nw.png",
+      "size": [
+        49,
+        38
+      ],
+      "anchor": [
+        32,
+        14
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        1,
+        2
+      ],
+      "faces": "NW",
+      "collision": "footprint",
+      "note": "2 seats (one per footprint tile), made from bench-nw: its ends kept, the seat carried on along its slope"
+    },
+    "bench3-sw": {
+      "file": "props/prop-bench3-sw.png",
+      "size": [
+        65,
+        46
+      ],
+      "anchor": [
+        16,
+        14
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        3,
+        1
+      ],
+      "faces": "SW",
+      "collision": "footprint",
+      "note": "3 seats (one per footprint tile), made from bench-sw: its ends kept, the seat carried on along its slope, a middle pair of legs"
+    },
+    "bench3-se": {
+      "file": "props/prop-bench3-se.png",
+      "size": [
+        65,
+        46
+      ],
+      "anchor": [
+        48,
+        14
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        1,
+        3
+      ],
+      "faces": "SE",
+      "collision": "footprint",
+      "note": "3 seats (one per footprint tile), made from bench-se: its ends kept, the seat carried on along its slope, a middle pair of legs"
+    },
+    "bench3-ne": {
+      "file": "props/prop-bench3-ne.png",
+      "size": [
+        65,
+        46
+      ],
+      "anchor": [
+        16,
+        14
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        3,
+        1
+      ],
+      "faces": "NE",
+      "collision": "footprint",
+      "note": "3 seats (one per footprint tile), made from bench-ne: its ends kept, the seat carried on along its slope, a middle pair of legs"
+    },
+    "bench3-nw": {
+      "file": "props/prop-bench3-nw.png",
+      "size": [
+        65,
+        46
+      ],
+      "anchor": [
+        48,
+        14
+      ],
+      "anchorMeaning": "top corner of the footprint diamond",
+      "footprint": [
+        1,
+        3
+      ],
+      "faces": "NW",
+      "collision": "footprint",
+      "note": "3 seats (one per footprint tile), made from bench-nw: its ends kept, the seat carried on along its slope, a middle pair of legs"
+    },
     "tree-tufts": {
       "files": [
         "props/prop-tree-tufts-1.png",
