@@ -163,7 +163,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   class choice (`mk-class-ticket` → `TownScene.openClassTicket`, the window shared with the Tanod's quest:
   `showClassChoice`); a different class → `POST /town/class-change` (`switchClass` in web/adventure.ts: the new class's
   training weapon instead of the old one's, quests kept; only once you have a class), the town's `kit` message for
-  everyone. Dev: the pretend bag has one (net/adventure.ts `changeClass` → `devSwitchClass`). No item art yet (🎫).
+  everyone. Dev: the pretend bag has one (net/adventure.ts `changeClass` → `devSwitchClass`). Art: manifest items['class-ticket'] (items/consumables/item-class-change-card*.png).
 - Chat (`ui/chat.ts` + `SpeechBubble` in `ui/labels.ts`): Enter to type, Enter sends and stays open, empty Enter/Esc or a click outside closes; the bot's `say` (tidied, ≤120 chars,
   burst 3 then 1 per 2 s; only the last 20 lines are kept) comes back to everyone, the speaker included. Linked to a Discord channel
   (`TOWN_CHAT_CHANNEL_ID`, bot `web/town-chat.ts`, needs the Message Content intent): Discord lines show with the

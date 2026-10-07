@@ -15408,6 +15408,10 @@
     "rename-card": {
       "icon": "items/consumables/item-rename-card-16.png",
       "showcase": "items/consumables/item-rename-card.png"
+    },
+    "class-ticket": {
+      "icon": "items/consumables/item-class-change-card-16.png",
+      "showcase": "items/consumables/item-class-change-card.png"
     }
   },
   "notes_items": "Item art by id (dig items in the bot's dig/items.ts, rewards in games/rewards.ts): icon = 16x16 for small rows, showcase = 32x32 for pop-ups, anim = a 32x32 looping sheet shown instead of the showcase where there is one. Ids without art are simply absent (the game shows the emoji/name). Draw at whole-number scales with nearest-neighbour.",
