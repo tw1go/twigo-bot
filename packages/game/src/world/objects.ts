@@ -2,7 +2,8 @@ import Phaser from 'phaser';
 import type { BuildingDef, Dir, Manifest, MapObject, PropDef, TownMap, Vec2 } from '../assets/types';
 import { assetProblems } from '../characters/doll';
 import { tileToScreen } from '../iso';
-import { CHARACTER_BIAS, GLOW_DEPTH, GROUND_SHADOW_DEPTH, frontDepth } from './depth';
+import { CHARACTER_BIAS, GLOW_DEPTH, GROUND_SHADOW_DEPTH, HEIGHT_DEPTH, frontDepth } from './depth';
+import { Heights, LEVEL_PX } from './heights';
 import { differs, visible } from '../util/pixels';
 import { hash, rng } from './rng';
 
@@ -88,12 +89,15 @@ export class WorldObjects {
   readonly benches: Bench[] = [];
   readonly lamps: Lamp[] = [];
   private readonly big: BigObject[] = [];
+  /** The ground's levels (flat in town): objects stand on them. */
+  readonly heights: Heights;
 
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly M: Manifest,
     private readonly map: TownMap,
   ) {
+    this.heights = new Heights(map);
     // Big objects first, so smaller ones can be sorted against them.
     const isBig = (o: MapObject) => o.footprint[0] * o.footprint[1] > 1;
     const ordered = [...map.objects.filter(isBig), ...map.objects.filter((o) => !isBig(o))];
@@ -109,15 +113,21 @@ export class WorldObjects {
     for (const o of objects) this.addProp(o);
   }
 
+  /** A tile's top corner on screen, raised by its ground's level. */
+  private topOf(col: number, row: number): { x: number; y: number } {
+    const t = tileToScreen(col, row);
+    return { x: t.x, y: t.y - this.heights.at(col, row) * LEVEL_PX };
+  }
+
   private track<T extends Phaser.GameObjects.Image>(img: T): T {
     this.sprites.push(img);
     this.cullable.push(img);
     return img;
   }
 
-  /** Places an image so the pixel `anchor` lands on the top corner of tile (col, row). */
+  /** Places an image so the pixel `anchor` lands on the top corner of tile (col, row) (raised with its ground). */
   private place(key: string, col: number, row: number, anchor: Vec2, flip = false, frame?: number): Phaser.GameObjects.Image {
-    const top = tileToScreen(col, row);
+    const top = this.topOf(col, row);
     if (!this.scene.textures.exists(key)) assetProblems.add(`texture not loaded: ${key}`);
     const img = this.scene.add.image(top.x, top.y, key, frame);
     // Pixel anchors are measured on the real image (frame) size.
@@ -209,7 +219,7 @@ export class WorldObjects {
     if (o.animated && def.animation) {
       // Looping animation in place of the still (same anchor and footprint).
       const s = this.scene.add.sprite(0, 0, def.animation.file, 0);
-      const top = tileToScreen(o.col, o.row);
+      const top = this.topOf(o.col, o.row);
       const w = s.frame.width;
       s.setPosition(top.x, top.y).setOrigin((o.flip ? w - def.anchor[0] : def.anchor[0]) / w, def.anchor[1] / s.frame.height).setFlipX(!!o.flip);
       const key = `anim:${def.animation.file}`;
@@ -226,7 +236,7 @@ export class WorldObjects {
     } else {
       sprite = this.place(def.file, o.col, o.row, def.anchor, o.flip);
     }
-    const base = this.depthFor(o);
+    const base = this.depthFor(o) + this.heights.at(o.col, o.row) * LEVEL_PX * HEIGHT_DEPTH;
     const bounds = sprite.getBounds(new Phaser.Geom.Rectangle());
     const big = fc * fr > 1;
     const depth = big ? base : this.sortAgainstBig(o.col, o.row, fc, fr, base, bounds);
@@ -234,7 +244,7 @@ export class WorldObjects {
     if (big) this.big.push({ col: o.col, row: o.row, cols: fc, rows: fr, back: depth, front: depth, bounds });
 
     // Trees: a shadow on the ground under the trunk, and a tufts strip just in front of the trunk base.
-    const centre = tileToScreen(o.col, o.row);
+    const centre = this.topOf(o.col, o.row);
     centre.y += 8; // trunk tile centre
     if (o.shadow) this.track(this.scene.add.image(centre.x + (o.flip ? -5 : 5), centre.y + 1, o.shadow).setDepth(GROUND_SHADOW_DEPTH));
     if (o.tufts) this.track(this.scene.add.image(centre.x - 10, centre.y - 5, o.tufts).setOrigin(0, 0).setDepth(depth + 0.01));

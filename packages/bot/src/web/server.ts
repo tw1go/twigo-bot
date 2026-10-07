@@ -792,6 +792,7 @@ export function startWebServer(client: Client): void {
   try {
     let toDiscord: (userId: string, nickname: string, text: string, megaphone: boolean) => void = () => {};
     refundHeldBets(); // an arena match the bot didn't finish: both get their stake back
+    const slumsMap = loadTownMap('slums'); // the Slums (testers only)
     town = attachTown(server, {
       arenaBets: arenaBets(),
       onSay: (userId, nickname, text, megaphone) => toDiscord(userId, nickname, text, megaphone),
@@ -799,7 +800,9 @@ export function startWebServer(client: Client): void {
       moderation: { mutedUntil, kickedUntil, filter: filterText },
       memory: townMemory(),
       map: loadTownMap(),
-      rooms: { hood: hoodTownMap },
+      rooms: { hood: hoodTownMap, slums: () => slumsMap },
+      // The Slums are for testers for now.
+      mayEnter: async (room, userId) => room !== 'slums' || isTester(client, userId),
       authenticate: async (req) => {
         if (!loginEnabled() || !fromGame(req)) return null;
         const userId = sessionUser(req);

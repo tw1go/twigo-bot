@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { queueImage, queueNpcs, queueTown } from '../assets/queue';
-import type { Dir, Gate, Manifest, TownMap } from '../assets/types';
+import type { Area, Dir, Gate, Manifest, TownMap } from '../assets/types';
 import { Character } from '../characters/character';
 import { type Outfit, assetProblems, buildOutfit, headPortrait, headTop, loadOutfit, outfitFiles, randomOutfit, sheetKey } from '../characters/doll';
 import { sanitize, startingOutfit } from '../characters/looks';
@@ -61,7 +61,9 @@ import { Culler } from '../world/cull';
 import { rng } from '../world/rng';
 import { type Tile, WalkGrid } from '../world/grid';
 import { Ground } from '../world/ground';
-import { outskirts } from '../world/outskirts';
+import { outskirts, slumsOutskirts } from '../world/outskirts';
+import { Terrain } from '../world/terrain';
+import { LEVEL_PX } from '../world/heights';
 import { NightLife } from '../world/night-life';
 import { type ArenaChannel, BotChannel, PlayerChannel } from '../arena/channel';
 import { showArenaMenu } from '../arena/menu';
@@ -153,7 +155,9 @@ export class TownScene extends Phaser.Scene {
   private M!: Manifest;
   private map!: TownMap;
   private outfit!: Outfit;
-  private ground!: Ground;
+  private ground!: Ground | Terrain;
+  /** Which area this page is: the town, the neighbourhood or the Slums. */
+  private area: Area = 'town';
   private objects!: WorldObjects;
   private grid!: WalkGrid;
   private player!: Character;
@@ -229,13 +233,14 @@ export class TownScene extends Phaser.Scene {
   /** Straight from building your house: it rises on its lot as you arrive. */
   private justBuilt = false;
 
-  init(data: { manifest: Manifest; town: TownMap; me: MeResult | null; firstVisit?: boolean; hood?: TownHoodResponse; art?: HouseArt; built?: boolean }): void {
+  init(data: { manifest: Manifest; town: TownMap; me: MeResult | null; firstVisit?: boolean; hood?: TownHoodResponse; art?: HouseArt; built?: boolean; area?: Area }): void {
     this.firstVisit = !!data.firstVisit;
     this.justBuilt = !!data.built;
     this.M = data.manifest;
     this.map = data.town;
     this.me = data.me;
     this.hood = data.hood ?? null;
+    this.area = data.area ?? (this.hood ? 'hood' : 'town');
     this.art = data.art ?? null;
     this.outfit = startingOutfit(this.M.characters, data.me);
   }
@@ -247,7 +252,7 @@ export class TownScene extends Phaser.Scene {
     // The neighbourhood's houses are drawn from their layers (composited in create).
     if (this.hood && this.art) for (const st of houseStyles(this.art)) for (const f of houseFiles(this.art, st)) queueImage(this.load, this.textures, f);
     queueTown(this.load, this.textures, this.M, this.map);
-    if (!this.hood) queueNpcs(this.load, this.textures, this.M);
+    if (this.area === 'town') queueNpcs(this.load, this.textures, this.M);
     for (const f of outfitFiles(this.M.characters, this.outfit)) queueImage(this.load, this.textures, f);
     this.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR, (file: Phaser.Loader.File) => assetProblems.add(`failed to load ${file.src}`));
     // (After the character creator the town has usually loaded in the background already.)
@@ -317,8 +322,9 @@ export class TownScene extends Phaser.Scene {
     for (const [to, tiles] of Object.entries(this.map.gates ?? {}) as [Gate, [number, number][]][]) for (const [c, r] of tiles) this.gateAt.set(`${c},${r}`, to);
     // The forest around the town fills what the camera can see past the map, without widening that view.
     const bounds = this.townBounds();
-    const forest = outskirts(this.M, this.map, bounds);
-    this.ground = new Ground(this, this.M, this.map, forest.tiles);
+    // (The Slums: their junk and shanties instead, and raised ground: world/terrain.ts.)
+    const forest = this.map.height ? slumsOutskirts(this.M, this.map, bounds) : outskirts(this.M, this.map, bounds);
+    this.ground = this.map.height ? new Terrain(this, this.M, this.map, this.objects.heights, forest.tiles) : new Ground(this, this.M, this.map, forest.tiles);
     this.objects.addOutskirts(forest.objects);
     this.nightLife = new NightLife(this, this.M, this.map, this.objects.lamps);
     this.grid = new WalkGrid(this.map);
@@ -327,6 +333,7 @@ export class TownScene extends Phaser.Scene {
     const [sc, sr] = this.map.spawn;
     this.player = new Character(this, this.M, this.outfit, { col: sc, row: sr });
     this.player.depthFn = (c, r, d, b) => characterDepth(this.objects, c, r, d, b);
+    this.player.elevation = (c, r) => this.objects.heights.lift(c, r);
     this.player.onArrive = (tile) => this.arrived(tile);
     this.player.nextStep = () => this.keyStep();
     this.player.onSpawn = (obj) => this.tint >= 0 && obj.setTint(this.tint);
@@ -340,7 +347,7 @@ export class TownScene extends Phaser.Scene {
     if (door && !Array.isArray(door[0])) this.player.place({ col: door[0] as number, row: door[1] as number }, 'se');
     this.others = new OtherPlayers(this, this.M, this.objects, (obj) => this.tint >= 0 && obj.setTint(this.tint));
     this.others.restFor = (weapon, cls) => this.restArt(weapon, cls);
-    if (!this.hood) this.npcs = this.makeNpcs();
+    if (this.area === 'town') this.npcs = this.makeNpcs();
     // The race box's bet pop-up shows the runners' portraits wherever you are (the neighbourhood too, which has no NPCs).
     const P = this.M.npcs?.portrait;
     if (P) setRacePortraits((id) => `${import.meta.env.BASE_URL}assets/${P.file.replace('{id}', id)}`);
@@ -489,6 +496,18 @@ export class TownScene extends Phaser.Scene {
       ticket: this.M.ui.jackpotIcon?.file ? asset(this.M.ui.jackpotIcon.file) : null,
       quest: this.M.ui.questIcon?.file ? asset(this.M.ui.questIcon.file) : null,
     });
+  }
+
+  /** The tile drawn under a world point: on raised ground the highest one whose raised diamond is there. */
+  private pickTile(x: number, y: number): Tile {
+    const H = this.objects.heights;
+    if (!H.flat) {
+      for (let level = 2; level >= 0; level--) {
+        const t = screenToTile(x, y + level * LEVEL_PX);
+        if (this.grid.inBounds(t.col, t.row) && H.at(t.col, t.row) === level) return t;
+      }
+    }
+    return screenToTile(x, y);
   }
 
   /** The middle of the plaza fountain (the map's fountain prop), where its water sound is loudest. */
@@ -772,7 +791,7 @@ export class TownScene extends Phaser.Scene {
 
   /** Joins the live town: others appear, the player's steps, turns and seats are passed on, and the chat opens. */
   private connect(): void {
-    const link = new TownLink(this.outfit, this.hood ? 'hood' : 'town');
+    const link = new TownLink(this.outfit, this.area);
     this.link = link;
     const B = this.M.ui.speechBubble;
     const bubbles: BubbleArt | null = B && this.textures.exists(B.file) ? lightBubble(this, { file: B.file, slice: B.nineSlice, tail: B.tail, tailAnchor: B.tailAnchor }) : null;
@@ -1042,7 +1061,7 @@ export class TownScene extends Phaser.Scene {
    *  reduced motion). */
   private zoomIntro(): void {
     // The title card over it all: the area's name, the world pulling back inside the letters (ui/title-card.ts).
-    void playTitleCard(this.hood ? 'Neighbourhood' : 'Mikazuki');
+    void playTitleCard(this.area === 'hood' ? 'Neighbourhood' : this.area === 'slums' ? 'Slums' : 'Mikazuki');
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const cam = this.cameras.main;
     const p = this.player.sprite;
@@ -1174,7 +1193,7 @@ export class TownScene extends Phaser.Scene {
       if (npc && (p.wasTouch || p.leftButtonReleased())) return this.talkTo(npc);
       const building = this.objects.buildings.find((b) => b.parts.some((part) => over.includes(part)));
       const world = this.cameras.main.getWorldPoint(p.x, p.y);
-      const { col, row } = screenToTile(world.x, world.y);
+      const { col, row } = this.pickTile(world.x, world.y);
       const bench = this.seatOn(over, { col, row }) ?? this.benchAt({ col, row });
       if (p.wasTouch) {
         if (building) return this.goToBuilding(building);
@@ -1709,14 +1728,16 @@ export class TownScene extends Phaser.Scene {
     if (m.house.fenced && !known?.mine) toast(`${m.house.owner} put up a Bakod!`, 3000);
   }
 
-  /** A clickable sign over each gate: "Neighbourhood" at the bridge, "Back to town" at the neighbourhood's exit. */
+  /** A clickable sign over each gate: "Neighbourhood" at the bridge, "Slums" at the west road's end, "Back to town" at
+   *  the other areas' exits. */
   private gateSigns(): void {
     for (const to of ['hood', 'town', 'slums'] as const) {
       const tiles = this.map.gates?.[to];
       if (!tiles?.length) continue;
       const [c, r] = tiles[Math.floor(tiles.length / 2)];
-      const at = tileToScreen(c, r);
-      const sign = new BuildingLabel(this, to === 'hood' ? 'Neighbourhood →' : to === 'slums' ? 'Slums · testers ←' : '← Back to town', at.x);
+      const t = tileToScreen(c, r);
+      const at = { x: t.x, y: t.y - this.objects.heights.at(c, r) * LEVEL_PX };
+      const sign = new BuildingLabel(this, to === 'hood' ? 'Neighbourhood →' : to === 'slums' ? '← Slums' : this.area === 'slums' ? 'Back to town →' : '← Back to town', at.x);
       this.gateLabels.push(sign);
       sign.setZoom(this.cameras.main.zoom);
       // Over the gate, or higher: clear of the roof of any building it would sit on (tall houses by the way in).
@@ -1750,14 +1771,12 @@ export class TownScene extends Phaser.Scene {
   /** Off to the other area: a fade, then that page (the town's art is cached, so it's quick). The slums aren't built
    *  yet: testers hear that, everyone else that only testers may cross. */
   private travel(to: Gate): void {
-    if (to === 'slums') {
-      const me = this.me?.status === 'ok' ? this.me.me : null;
-      return void toast(me?.tester ? 'The slums are still being built. Coming soon!' : 'Only testers can cross into the slums for now.', 2800);
-    }
+    // The Slums are for testers for now (the server checks too).
+    if (to === 'slums' && !(this.me?.status === 'ok' && this.me.me.tester)) return void toast('Only testers can go into the Slums for now.', 2800);
     if (this.travelling) return;
     this.travelling = true;
     playSound('door');
-    toast(to === 'hood' ? 'To the neighbourhood…' : 'Back to town…');
+    toast(to === 'hood' ? 'To the neighbourhood…' : to === 'slums' ? 'Into the Slums…' : 'Back to town…');
     this.cameras.main.fadeOut(400, 0, 0, 0);
     this.time.delayedCall(420, () => location.assign(areaUrl(to)));
   }

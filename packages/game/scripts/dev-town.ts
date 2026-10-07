@@ -246,6 +246,8 @@ export function devTown(): Plugin {
         return done(true, 'You got away with 4 Kowens!', { stole: 4 });
       });
 
+      const sj = JSON.parse(readFileSync(join(server.config.publicDir, 'assets/maps/slums.json'), 'utf8'));
+      const slums = { size: sj.size, spawn: sj.spawn, blocked: sj.blocked, avoid: Object.values((sj.gates ?? {}) as Record<string, [number, number][]>).flat() };
       const town = attachTown(httpServer as Parameters<typeof attachTown>[0], {
         map: { size: json.size, spawn: json.spawn, blocked: json.blocked, avoid: Object.values((json.gates ?? {}) as Record<string, [number, number][]>).flat() },
         rooms: {
@@ -253,6 +255,7 @@ export function devTown(): Plugin {
             const m = hoodMap(houses.length);
             return { size: m.size, spawn: m.spawn, blocked: m.blocked, avoid: m.exit };
           },
+          slums: () => slums,
         },
         shared: true,
         arenaBets,

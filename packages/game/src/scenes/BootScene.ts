@@ -5,12 +5,13 @@ import { loadMe, loginProblem } from '../session';
 import { loadCursors } from '../ui/cursor';
 import { showLogin } from '../ui/login';
 import { loadHouseArt } from '../houses/art';
-import { currentArea, freshVisit, markHood } from '../net/hood';
+import { currentArea, freshVisit, markHood, markTown, slumsTownMap } from '../net/hood';
 import { bootHood } from './HouseScene';
 
 // Loads the two source-of-truth files, then: not logged in → the login screen; logged in without a saved look or
 // nickname → the character creator; otherwise the town (which queues every image they name), or with ?area=hood the
-// neighbourhood (after building a house, the first time: scenes/HouseScene.ts). If login is off on the server
+// neighbourhood (after building a house, the first time: scenes/HouseScene.ts), or with ?area=slums the Slums (testers
+// only; maps/slums.json). If login is off on the server
 // (or the API is down), everyone goes straight to the town with a look saved in this browser.
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -51,6 +52,21 @@ export class BootScene extends Phaser.Scene {
       // ?area=hood: the neighbourhood (members only; the town if it can't be reached).
       if (currentArea() === 'hood' && me?.status === 'ok') {
         void loadHouseArt(manifest).then(async (art) => (await bootHood(this, { manifest, town, me }, art)) || this.scene.start('town', { manifest, town, me }));
+        return;
+      }
+      // ?area=slums: the Slums, for testers (anyone else, or a map that won't load, lands back in town).
+      if (currentArea() === 'slums') {
+        if (me?.status !== 'ok' || !me.me.tester) {
+          markTown();
+          return this.scene.start('town', { manifest, town, me });
+        }
+        this.load.json('slums', 'maps/slums.json');
+        this.load.once(Phaser.Loader.Events.COMPLETE, () => {
+          const slums = this.cache.json.get('slums') as TownMap | undefined;
+          if (!slums) markTown();
+          this.scene.start('town', slums ? { manifest, town: slumsTownMap(slums), me, area: 'slums' } : { manifest, town, me });
+        });
+        this.load.start();
         return;
       }
       this.scene.start('town', { manifest, town, me });

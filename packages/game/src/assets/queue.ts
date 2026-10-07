@@ -19,6 +19,7 @@ export function queueSheet(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Te
 export function queueTown(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Textures.TextureManager, M: Manifest, map: TownMap): void {
   const img = (f: string) => queueImage(load, textures, f);
   const T = M.tiles;
+  if (map.height) queueSlums(load, textures, M, map);
   T.grass.files.forEach(img);
   T.grass.litter.files.forEach(img);
   for (const a of Object.values(T.grass.animated)) queueSheet(load, textures, a.file, a.frameSize[0], a.frameSize[1]);
@@ -104,4 +105,25 @@ export function queueNpcs(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Tex
     }
   }
   load.json('npc-dialogue', N.dialogue);
+}
+
+/** The Slums: its ground and raised-ground pieces (tiles.slums), every Slums prop (its outskirts scatter some that the
+ *  map itself doesn't use) and the mobs of its active zones only (no art for the others yet). */
+function queueSlums(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Textures.TextureManager, M: Manifest, map: TownMap): void {
+  const img = (f: string) => queueImage(load, textures, f);
+  const S = M.tiles.slums;
+  if (S) {
+    Object.values(S.ground).flat().forEach(img);
+    queueSheet(load, textures, S.canal.file, S.canal.size[0], S.canal.size[1]);
+    for (const m of Object.values(S.cliffs)) [...m.l, ...m.r].forEach(img);
+    [S.rim.nw, S.rim.ne, S.cap.w, S.cap.e].forEach(img);
+    for (const set of Object.values(S.ramps)) Object.values(set).flat().forEach(img);
+  }
+  for (const [id, p] of Object.entries(M.props)) if (id.startsWith('slums-') && (p as PropDef).file) img((p as PropDef).file);
+  for (const z of map.mobZones ?? []) {
+    const mob = z.active ? M.mobs?.[z.mob] : undefined;
+    if (!mob || typeof mob === 'string') continue;
+    for (const anim of Object.keys(mob.animations))
+      for (const dir of mob.directions) queueSheet(load, textures, mob.file.replace('{anim}', anim).replace('{dir}', dir), mob.size[0], mob.size[1]);
+  }
 }

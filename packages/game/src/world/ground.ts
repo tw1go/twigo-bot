@@ -127,46 +127,7 @@ export class Ground {
         }
       }
     }
-    this.bakeChunks(scene, baked);
-  }
-
-  /** Draws the static tiles into CHUNK-sized canvases (a tile on a seam is drawn into each chunk it touches). */
-  private bakeChunks(scene: Phaser.Scene, tiles: { key: string; x: number; y: number; ox: number; oy: number }[]): void {
-    const chunks = new Map<string, { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; cx: number; cy: number }>();
-    const source = new Map<string, CanvasImageSource>();
-    for (const t of tiles) {
-      let img = source.get(t.key);
-      if (!img) {
-        img = scene.textures.get(t.key).getSourceImage() as CanvasImageSource;
-        source.set(t.key, img);
-      }
-      const w = (img as HTMLImageElement).width;
-      const h = (img as HTMLImageElement).height;
-      const left = Math.round(t.x - t.ox);
-      const top = Math.round(t.y - t.oy);
-      for (let cy = Math.floor(top / CHUNK); cy <= Math.floor((top + h - 1) / CHUNK); cy++) {
-        for (let cx = Math.floor(left / CHUNK); cx <= Math.floor((left + w - 1) / CHUNK); cx++) {
-          const key = `${cx},${cy}`;
-          let chunk = chunks.get(key);
-          if (!chunk) {
-            const canvas = document.createElement('canvas');
-            canvas.width = CHUNK;
-            canvas.height = CHUNK;
-            const ctx = canvas.getContext('2d')!;
-            ctx.imageSmoothingEnabled = false;
-            chunk = { canvas, ctx, cx, cy };
-            chunks.set(key, chunk);
-          }
-          chunk.ctx.drawImage(img, left - cx * CHUNK, top - cy * CHUNK);
-        }
-      }
-    }
-    for (const [key, c] of chunks) {
-      const tex = `ground-chunk:${key}`;
-      if (scene.textures.exists(tex)) scene.textures.remove(tex);
-      scene.textures.addCanvas(tex, c.canvas);
-      // Under every moving tile, including the outskirts' (whose col + row is negative).
-      const img = scene.add.image(c.cx * CHUNK, c.cy * CHUNK, tex).setOrigin(0, 0).setDepth(GROUND_DEPTH - 10_000);
+    for (const img of bakeChunks(scene, baked)) {
       this.sprites.push(img);
       this.cullable.push(img);
     }
@@ -193,4 +154,56 @@ export class Ground {
     const clock = Math.max(0, t.kind === 'water' ? this.waterFrame : this.swayFrame);
     sprite.setFrame((clock + t.offset) % t.frames);
   }
+}
+
+/** A static tile to bake: its texture, where its anchor lands (x, y) and the anchor (ox, oy). */
+export interface Baked {
+  key: string;
+  x: number;
+  y: number;
+  ox: number;
+  oy: number;
+}
+
+/** Draws static tiles into CHUNK-sized canvases, in the order given (a tile on a seam is drawn into each chunk it
+ *  touches); returns the chunks' images, under every ground sprite. */
+export function bakeChunks(scene: Phaser.Scene, tiles: Baked[]): Phaser.GameObjects.Image[] {
+  const out: Phaser.GameObjects.Image[] = [];
+  const chunks = new Map<string, { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; cx: number; cy: number }>();
+  const source = new Map<string, CanvasImageSource>();
+  for (const t of tiles) {
+    let img = source.get(t.key);
+    if (!img) {
+      img = scene.textures.get(t.key).getSourceImage() as CanvasImageSource;
+      source.set(t.key, img);
+    }
+    const w = (img as HTMLImageElement).width;
+    const h = (img as HTMLImageElement).height;
+    const left = Math.round(t.x - t.ox);
+    const top = Math.round(t.y - t.oy);
+    for (let cy = Math.floor(top / CHUNK); cy <= Math.floor((top + h - 1) / CHUNK); cy++) {
+      for (let cx = Math.floor(left / CHUNK); cx <= Math.floor((left + w - 1) / CHUNK); cx++) {
+        const key = `${cx},${cy}`;
+        let chunk = chunks.get(key);
+        if (!chunk) {
+          const canvas = document.createElement('canvas');
+          canvas.width = CHUNK;
+          canvas.height = CHUNK;
+          const ctx = canvas.getContext('2d')!;
+          ctx.imageSmoothingEnabled = false;
+          chunk = { canvas, ctx, cx, cy };
+          chunks.set(key, chunk);
+        }
+        chunk.ctx.drawImage(img, left - cx * CHUNK, top - cy * CHUNK);
+      }
+    }
+  }
+  for (const [key, c] of chunks) {
+    const tex = `ground-chunk:${key}`;
+    if (scene.textures.exists(tex)) scene.textures.remove(tex);
+    scene.textures.addCanvas(tex, c.canvas);
+    // Under every moving tile, including the outskirts' (whose col + row is negative).
+    out.push(scene.add.image(c.cx * CHUNK, c.cy * CHUNK, tex).setOrigin(0, 0).setDepth(GROUND_DEPTH - 10_000));
+  }
+  return out;
 }

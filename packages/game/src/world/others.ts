@@ -193,6 +193,7 @@ export class OtherPlayers {
       const s = o.state;
       const char = new Character(this.scene, this.M, look, { col: s.col, row: s.row });
       char.depthFn = (c, r, d, b) => characterDepth(this.objects, c, r, d, b);
+      char.elevation = (c, r) => this.objects.heights.lift(c, r); // raised ground (the Slums)
       char.onSpawn = (obj) => this.onSpawn(obj);
       char.place({ col: s.col, row: s.row }, s.dir);
       if (s.sit) this.seat(char, s);

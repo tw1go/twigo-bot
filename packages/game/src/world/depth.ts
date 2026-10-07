@@ -9,4 +9,7 @@ export const LABEL_DEPTH = 2_000_000; // name plates and building names: over ev
 /** A character drawn at the same front corner as an object is in front of it (e.g. standing at a door). */
 export const CHARACTER_BIAS = 0.5;
 
+/** Per px of raised ground (world/heights.ts): what stands higher sorts a little in front (32 px = 0.1, under the bias). */
+export const HEIGHT_DEPTH = 0.1 / 32;
+
 export const frontDepth = (col: number, row: number, cols: number, rows: number) => (col + cols + row + rows) * 8;

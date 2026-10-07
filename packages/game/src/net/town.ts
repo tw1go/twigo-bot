@@ -1,3 +1,4 @@
+import type { Area } from '../assets/types';
 import type { TownClientMessage, TownServerMessage } from '@mikazuki/shared';
 import { fakeLogin, fakeName } from '../session';
 import { devKit } from './adventure';
@@ -23,8 +24,8 @@ export class TownLink {
   constructor(
     /** Dev only: the fake member's look, for the dev server's town (scripts/dev-town.ts). */
     private readonly devLook: unknown = null,
-    /** The room on the server: the town, or the neighbourhood ('hood'). */
-    private readonly room: 'town' | 'hood' = 'town',
+    /** The room on the server: the town, the neighbourhood ('hood') or the Slums ('slums'). */
+    private readonly room: Area = 'town',
   ) {
     this.connect();
   }

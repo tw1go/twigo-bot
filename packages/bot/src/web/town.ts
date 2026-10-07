@@ -78,6 +78,8 @@ export interface TownOptions {
   map: TownMap;
   /** Other rooms by name (e.g. 'hood'), each with its map (asked for again on each arrival, so it can grow). */
   rooms?: Record<string, () => TownMap>;
+  /** Whether a member may join a room (the Slums: testers only); every room when left out. */
+  mayEnter?: (room: string, userId: string) => Promise<boolean>;
   /** Leave upgrades to other paths alone (the game's dev server shares its HTTP server with Vite's own socket). */
   shared?: boolean;
   /** Someone said something in town (the Discord bridge passes it on). */
@@ -144,8 +146,10 @@ export interface Town {
 }
 
 /** The game's map (packages/game/public/assets/maps/town.json), from the monorepo next to the bot. */
-export function loadTownMap(): TownMap {
-  const json = JSON.parse(readFileSync(new URL('../../../game/public/assets/maps/town.json', import.meta.url), 'utf8')) as TownMap & { gates?: Record<string, [number, number][]> };
+/** A map from the game's assets (maps/<name>.json: the town, the Slums), as far as the server needs it. (Raised ground
+ *  isn't checked here, like fences: the game keeps to its ramps.) */
+export function loadTownMap(name = 'town'): TownMap {
+  const json = JSON.parse(readFileSync(new URL(`../../../game/public/assets/maps/${name}.json`, import.meta.url), 'utf8')) as TownMap & { gates?: Record<string, [number, number][]> };
   return { size: json.size, spawn: json.spawn, blocked: json.blocked, avoid: Object.values(json.gates ?? {}).flat() };
 }
 
@@ -397,6 +401,10 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       const profile = userId ? opts.profile(userId) : null;
       if (!userId || !profile) {
         socket.end('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n');
+        return;
+      }
+      if (opts.mayEnter && !(await opts.mayEnter(room, userId).catch(() => false))) {
+        socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
         return;
       }
       wss.handleUpgrade(req, socket, head, (ws) => join(ws, userId, profile, room));

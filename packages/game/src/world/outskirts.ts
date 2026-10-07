@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import type { Manifest, MapObject, Outskirts, TownMap } from '../assets/types';
+import type { Manifest, MapObject, Outskirts, PropDef, TownMap } from '../assets/types';
 import { tileToScreen } from '../iso';
 import { pick, tileRandom } from './rng';
 
@@ -13,7 +13,7 @@ import { pick, tileRandom } from './rng';
 export interface OutTile {
   col: number;
   row: number;
-  kind: 'grass' | 'water' | 'path';
+  kind: 'grass' | 'water' | 'path' | 'dirt' | 'concrete' | 'canal';
   style: string; // grass mix name
 }
 
@@ -99,3 +99,87 @@ export function outskirts(M: Manifest, map: TownMap, view: Phaser.Geom.Rectangle
   }
   return { tiles, objects };
 }
+
+/** The Slums' canal runs on past the map's north and south edges in these columns. */
+const SLUMS_CANAL: [number, number] = [62, 63];
+/** What's scattered round the Slums: [id prefix, weight] (the dead trees also line every edge, carrying on the map's own). */
+const SLUMS_JUNK: [string, number][] = [
+  ['slums-dead-tree-', 0.42],
+  ['slums-junk-mound-', 0.2],
+  ['slums-shanty-', 0.16],
+  ['slums-power-pole-', 0.12],
+  ['slums-car-wreck-', 0.1],
+];
+
+/**
+ * Round the Slums (no forest there): its dirt for whatever the camera can see past the map, the canal carried on
+ * north and south, a concrete road on out from the gate back to town, and a seeded scatter of dead trees (thick
+ * along the edges, carrying on the map's own treeline), junk mounds, shanties, power poles and car wrecks, none of them
+ * on the canal, the road or each other. Not walkable, like the forest.
+ */
+export function slumsOutskirts(M: Manifest, map: TownMap, view: Phaser.Geom.Rectangle): { tiles: OutTile[]; objects: MapObject[] } {
+  const [cols, rows] = map.size;
+  const inMap = (c: number, r: number) => c >= 0 && r >= 0 && c < cols && r < rows;
+  const canal = (c: number, r: number) => (r < 0 || r >= rows) && c >= SLUMS_CANAL[0] && c <= SLUMS_CANAL[1];
+  // The road out: the gate's tiles carried on past the edge they're on.
+  const gate = map.gates?.town ?? [];
+  const road = (c: number, r: number) =>
+    gate.some(([gc, gr]) => (gc === cols - 1 && c >= cols && r === gr) || (gc === 0 && c < 0 && r === gr) || (gr === rows - 1 && r >= rows && c === gc) || (gr === 0 && r < 0 && c === gc));
+  const seen = (c: number, r: number) => {
+    const t = tileToScreen(c, r);
+    const y = t.y + 8;
+    return t.x >= view.left - MARGIN.x && t.x <= view.right + MARGIN.x && y >= view.top - MARGIN.top && y <= view.bottom + MARGIN.bottom;
+  };
+  const tiles: OutTile[] = [];
+  for (let r = -REACH; r < rows + REACH; r++) {
+    for (let c = -REACH; c < cols + REACH; c++) {
+      if (inMap(c, r) || !seen(c, r)) continue;
+      tiles.push({ col: c, row: r, kind: canal(c, r) ? 'canal' : road(c, r) ? 'concrete' : 'dirt', style: '' });
+    }
+  }
+
+  // Props, biggest first, each on free ground (its whole footprint, a tile of space round it, off the canal and road).
+  const pools = SLUMS_JUNK.map(([prefix, w]) => [Object.keys(M.props).filter((id) => id.startsWith(prefix)), w] as const).filter(([ids]) => ids.length);
+  const taken = new Set<string>();
+  const clear = (c: number, r: number, fc: number, fr: number) => {
+    for (let dr = -1; dr <= fr; dr++)
+      for (let dc = -1; dc <= fc; dc++) {
+        const x = c + dc;
+        const y = r + dr;
+        if (inMap(x, y) || taken.has(`${x},${y}`) || canal(x, y) || road(x, y) || canal(x - 1, y) || canal(x + 1, y) || road(x, y - 1) || road(x, y + 1)) return false;
+      }
+    return true;
+  };
+  const objects: MapObject[] = [];
+  const add = (id: string, c: number, r: number) => {
+    const def = M.props[id] as PropDef | undefined;
+    const [fc, fr] = (def as PropDef & { footprint?: [number, number] })?.footprint ?? [1, 1];
+    if (!def?.file || !clear(c, r, fc, fr)) return;
+    for (let dr = 0; dr < fr; dr++) for (let dc = 0; dc < fc; dc++) taken.add(`${c + dc},${r + dr}`);
+    objects.push({ kind: 'prop', id, col: c, row: r, footprint: [fc, fr], flip: tileRandom(c, r, 44) < 0.5 });
+  };
+  const deadTrees = pools.find(([ids]) => ids[0].startsWith('slums-dead-tree-'))?.[0] ?? [];
+  const total = pools.reduce((n, [, w]) => n + w, 0);
+  for (const t of tiles) {
+    if (t.kind !== 'dirt') continue;
+    const { col: c, row: r } = t;
+    // How far past the map's edge.
+    const out = Math.max(-c, -r, c - cols + 1, r - rows + 1);
+    if (out <= 2) {
+      // The treeline: dead trees close along every edge.
+      if (deadTrees.length && tileRandom(c, r, 41) < 0.3) add(pick(deadTrees, tileRandom(c, r, 42)), c, r);
+      continue;
+    }
+    if (tileRandom(c, r, 43) >= 0.16) continue;
+    let roll = tileRandom(c, r, 45) * total;
+    for (const [ids, w] of pools) {
+      if (roll < w) {
+        add(pick(ids, tileRandom(c, r, 46)), c, r);
+        break;
+      }
+      roll -= w;
+    }
+  }
+  return { tiles, objects };
+}
+

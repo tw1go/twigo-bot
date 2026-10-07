@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import type { CharacterDefs, ClassArt, ClassLayer, Dir, Manifest } from '../assets/types';
 import { slice } from '../assets/packs';
 import { restLayers } from './kit-art';
-import { CHARACTER_BIAS, LABEL_DEPTH } from '../world/depth';
+import { CHARACTER_BIAS, HEIGHT_DEPTH, LABEL_DEPTH } from '../world/depth';
 import type { Tile } from '../world/grid';
 import { type Outfit, headTop, sheetKey } from './doll';
 import type { TitleData } from '@mikazuki/shared';
@@ -76,6 +76,8 @@ export class Character {
   busy = false;
   /** Pixels the body is lifted off the ground (a hop); the shadow stays down. */
   lift = 0;
+  /** How high the ground is at a point (raised ground: world/heights.ts), in px; everything of the character stands on it. */
+  elevation: ((col: number, row: number) => number) | null = null;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -467,11 +469,13 @@ export class Character {
 
   /** Screen position and depth from the tile-space position. */
   private sync(): void {
+    const ground = this.elevation?.(this.col, this.row) ?? 0;
     const x = (this.col - this.row) * 16;
-    const y = (this.col + this.row) * 8;
+    const y = (this.col + this.row) * 8 - ground;
     const t = this.tile;
     this.sprite.setPosition(Math.round(x), Math.round(y - this.lift));
-    const feet = (this.col + this.row + 1) * 8 + CHARACTER_BIAS;
+    // Higher ground sorts a hair in front (over the wall below it).
+    const feet = (this.col + this.row + 1) * 8 + CHARACTER_BIAS + ground * HEIGHT_DEPTH;
     const depth = this.sittingAt?.depth ?? (this.depthFn ? this.depthFn(t.col, t.row, feet, this.sprite.getBounds(this.boundsCache)) : feet);
     this.sprite.setDepth(depth);
     this.shadow?.setPosition(Math.round(x), Math.round(y)).setDepth(depth - 0.2);

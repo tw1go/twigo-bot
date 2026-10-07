@@ -1,5 +1,5 @@
 import type { HouseLook, TownHoodActionResponse, TownHoodResponse } from '@mikazuki/shared';
-import type { TownMap } from '../assets/types';
+import type { Area, TownMap } from '../assets/types';
 
 // 🏘️ The neighbourhood's API (bot web/hood.ts; in dev the dev server answers with pretend houses, scripts/dev-town.ts),
 // and its map as the town's renderer wants it.
@@ -36,22 +36,23 @@ export function hoodTownMap(hood: TownHoodResponse, town: TownMap): TownMap {
   };
 }
 
-/** Where a gate leads: this page again with ?area=hood (or without it, for the town) and ?from= (so you arrive at the
- *  way in from there), dev flags kept. Both are tidied out of the address once the page has read them. */
-export function areaUrl(to: 'hood' | 'town'): string {
+/** Where a gate leads: this page again with ?area=hood|slums (or without it, for the town) and ?from= (so you arrive at
+ *  the way in from there), dev flags kept. Both are tidied out of the address once the page has read them. */
+export function areaUrl(to: Area): string {
   const url = new URL(location.href);
   url.searchParams.set('from', currentArea());
-  if (to === 'hood') url.searchParams.set('area', 'hood');
+  if (to !== 'town') url.searchParams.set('area', to);
   else url.searchParams.delete('area');
   return url.pathname + url.search;
 }
 
 /** This tab's area, remembered across reloads (sessionStorage), so the address can stay plain /play/. */
 const AREA_KEY = 'mk_area';
-let area: 'hood' | 'town' | null = null;
+let area: Area | null = null;
+const isArea = (s: string | null): s is Area => s === 'hood' || s === 'town' || s === 'slums';
 let fresh = false;
 
-function remember(a: 'hood' | 'town'): void {
+function remember(a: Area): void {
   try {
     sessionStorage.setItem(AREA_KEY, a);
   } catch {
@@ -62,7 +63,7 @@ function remember(a: 'hood' | 'town'): void {
 /** Which area this page is, worked out once: ?area= (a gate's address, or a dev link; then tidied out of the
  *  address), else a gate to the town (?from= without ?area=), else this tab's area before a reload, else the town
  *  (a fresh visit). */
-function resolveArea(): 'hood' | 'town' {
+function resolveArea(): Area {
   if (area) return area;
   const url = new URL(location.href);
   const asked = url.searchParams.get('area');
@@ -72,9 +73,9 @@ function resolveArea(): 'hood' | 'town' {
   } catch {
     // private mode
   }
-  if (asked) area = asked === 'hood' ? 'hood' : 'town';
+  if (asked) area = isArea(asked) ? asked : 'town';
   else if (url.searchParams.has('from')) area = 'town';
-  else if (before === 'hood' || before === 'town') area = before;
+  else if (isArea(before)) area = before;
   else {
     area = 'town';
     fresh = true;
@@ -98,14 +99,27 @@ export function markHood(): void {
 }
 
 /** Where you came from (?from=, set by a gate), read once: then tidied out of the address, so a reload starts fresh. */
-export function cameFrom(): 'hood' | 'town' | null {
+export function cameFrom(): Area | null {
   const url = new URL(location.href);
   const from = url.searchParams.get('from');
   if (!from) return null;
   url.searchParams.delete('from');
   history.replaceState(null, '', url.pathname + url.search + url.hash);
-  return from === 'hood' || from === 'town' ? from : null;
+  return isArea(from) ? from : null;
 }
 
-/** Which area this page is: the neighbourhood or the town (see resolveArea). */
-export const currentArea = (): 'hood' | 'town' => resolveArea();
+/** Which area this page is: the town, the neighbourhood or the Slums (see resolveArea). */
+export const currentArea = (): Area => resolveArea();
+
+/** Back in town after all (the Slums weren't open to you): a reload starts there too. */
+export function markTown(): void {
+  resolveArea();
+  area = 'town';
+  remember('town');
+}
+
+/** The Slums' map (maps/slums.json) in the shape the town's renderer wants: no fences, doors or grass styles; the
+ *  outskirts are its own junk and shanties (world/outskirts.ts slumsOutskirts), not the forest. */
+export function slumsTownMap(json: TownMap): TownMap {
+  return { ...json, fence: json.fence ?? [], doors: json.doors ?? {}, groundStyle: json.groundStyle ?? [], outskirts: undefined };
+}
