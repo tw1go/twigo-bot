@@ -11,8 +11,8 @@ import { toast } from './toast';
 //   Top row: 13 more (Alt+1–0, Alt+- Alt+= Alt+`; each labelled "Alt+1"…), for skills or usables.
 // Skills come from the Skills panel on the right of the screen (the K button at the bar's left, or K): each skill
 // with its description, played on a small stage while hovered (the class choice's preview, combat/skill-stage.ts);
-// drag one onto a slot, or click it and then a slot. Potions are dragged in from the bag. Drag a slot onto another to swap them; drag it off the bar (or
-// right-click it) to empty it. Per class, saved in this browser (localStorage `mk_hotbar`); a class's first bar has
+// drag one onto a slot, or click it and then a slot. Potions are dragged in from the bag. Drag a slot onto another to swap them; drag it off the bar
+// to empty it (right-click leaves it). Per class, saved in this browser (localStorage `mk_hotbar`); a class's first bar has
 // its skills in order. Skills show their icon (manifest ui.skillIcons) where there is one, else their initials over the
 // class badge. Move skills work in town (onSkill: world/mobility.ts) and their slots show the cooldown as a
 // shrinking pie with the seconds left; the rest wait for combat. Skills have no icons yet: their
@@ -159,10 +159,6 @@ export class Hotbar {
         return;
       }
       this.use(row, i);
-    });
-    b.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      if (this.layout[row][i]) this.put(row, i, null);
     });
     b.addEventListener('dragstart', (e) => {
       const entry = this.layout[row][i];
