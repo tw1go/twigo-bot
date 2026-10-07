@@ -1,7 +1,8 @@
 import type Phaser from 'phaser';
 import type { ArenaServerMessage, TownPlayer, TownServerMessage } from '@mikazuki/shared';
 import type { ClassArt, Manifest } from '../assets/types';
-import { Character } from '../characters/character';
+import { Character, dirForStep } from '../characters/character';
+import { MOVES, isMoveKind, playMove } from './mobility';
 import { loadOutfit, randomOutfit } from '../characters/doll';
 import { sanitize } from '../characters/looks';
 import type { BubbleArt } from '../ui/labels';
@@ -60,6 +61,21 @@ export class OtherPlayers {
       case 'step':
         Object.assign(s, { col: m.col, row: m.row, sit: false });
         return o.char?.queueStep({ col: m.col, row: m.row });
+      case 'move': {
+        // A mobility move: played to where it ends (the steps that follow are skipped while it plays).
+        const ch = o.char;
+        if (!ch || ch.busy || !isMoveKind(m.move)) return;
+        const t = ch.tile;
+        const dc = Math.sign(m.col - t.col);
+        const dr = Math.sign(m.row - t.row);
+        const n = Math.max(Math.abs(m.col - t.col), Math.abs(m.row - t.row));
+        if (!n) return;
+        const dir = MOVES[m.move].back ? dirForStep(-dc, -dr) : dirForStep(dc, dr);
+        return void playMove(this.scene, this.M, ch, m.move, { col: m.col, row: m.row }, n, dir, this.onSpawn).then(() => {
+          // Where the server has them now (the steps landed while it played).
+          if (this.all.get(m.id) === o && (s.col !== m.col || s.row !== m.row)) ch.queueStep({ col: s.col, row: s.row });
+        });
+      }
       case 'face':
         s.dir = m.dir;
         return o.char?.face(m.dir);

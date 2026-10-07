@@ -36,6 +36,9 @@ export type TownClientMessage =
   | { t: 'say'; text: string; megaphone?: boolean }
   /** An emote over your head (one of TOWN_EMOTES). */
   | { t: 'emote'; emote: TownEmote }
+  /** A mobility move (Dash, Step Back, Charge, Blink) ending at col,row: sent just before its steps, so the others
+   *  play the move instead of a walk (where you are still comes from the steps). */
+  | { t: 'move'; move: TownMove; col: number; row: number }
   /** The Arena's jack en poy against another player (bot web/town-arena.ts): join the queue (with an optional bet in
    *  Kowens), leave it, pick a hand for the open round, ask for a rematch or accept one (with a bet), decline one, leave
    *  the match. The stake is the smaller of the two bets. */
@@ -72,6 +75,7 @@ export type ArenaServerMessage =
   | { t: 'arena-rematch-declined' };
 
 /** Emotes: the icons in the art's emote sheet (ui.emotes), plus a wave. */
+export type TownMove = 'dash' | 'step-back' | 'charge' | 'blink';
 export type TownEmote = 'heart' | 'laugh' | 'exclaim' | 'question' | 'kowen' | 'sleep' | 'angry' | 'wave';
 
 /** A line of the town chat, as kept for people arriving (the last few, in memory only). */
@@ -203,6 +207,8 @@ export type TownServerMessage =
   | { t: 'wallet' }
   /** Someone emoted (not sent back to the one who did it: they show it right away). */
   | { t: 'emote'; id: string; emote: TownEmote }
+  /** Someone used a mobility move (their steps follow). */
+  | { t: 'move'; id: string; move: TownMove; col: number; row: number }
   /** Someone said something in the town's Discord channel (shown with a Discord mark, no bubble). */
   | { t: 'say-discord'; name: string; text: string }
   /** Your message wasn't sent: too fast, empty / too long once tidied, or you're muted (until when, ms). */

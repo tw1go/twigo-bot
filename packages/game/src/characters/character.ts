@@ -72,6 +72,10 @@ export class Character {
   private announced: Tile | null = null;
   /** Walking speed, tiles per second. */
   speed = SPEED;
+  /** A mobility move (world/mobility.ts) is moving this character: walking and steps wait. */
+  busy = false;
+  /** Pixels the body is lifted off the ground (a hop); the shadow stays down. */
+  lift = 0;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -238,6 +242,7 @@ export class Character {
 
   /** Another player's step, from the server: walked after any still queued. Too far behind, it jumps there. */
   queueStep(tile: Tile): void {
+    if (this.busy) return; // a move is taking them there; it ends on the tile the server has them on
     this.standUp();
     if (this.path.length >= 4) return this.place(tile);
     if (!this.path.length) this.stepFrom = this.tile;
@@ -253,6 +258,11 @@ export class Character {
     this.dir = dir;
     this.play('idle');
     this.sync();
+  }
+
+  /** Where the feet are, in tiles (a tile's centre is col + 0.5). */
+  get spot(): { col: number; row: number } {
+    return { col: this.col, row: this.row };
   }
 
   /** Puts the feet at a tile-space point (a scripted move: an NPC racing), facing `dir`, walking or standing. */
@@ -330,6 +340,7 @@ export class Character {
   }
 
   update(deltaMs: number): void {
+    if (this.busy) return;
     if (!this.path.length) this.takeNextStep();
     if (this.path.length) {
       let budget = (this.speed * deltaMs) / 1000;
@@ -459,13 +470,13 @@ export class Character {
     const x = (this.col - this.row) * 16;
     const y = (this.col + this.row) * 8;
     const t = this.tile;
-    this.sprite.setPosition(Math.round(x), Math.round(y));
+    this.sprite.setPosition(Math.round(x), Math.round(y - this.lift));
     const feet = (this.col + this.row + 1) * 8 + CHARACTER_BIAS;
     const depth = this.sittingAt?.depth ?? (this.depthFn ? this.depthFn(t.col, t.row, feet, this.sprite.getBounds(this.boundsCache)) : feet);
     this.sprite.setDepth(depth);
     this.shadow?.setPosition(Math.round(x), Math.round(y)).setDepth(depth - 0.2);
     this.bars?.setPosition(Math.round(x), Math.round(y)).setDepth(depth + 0.05);
-    if (this.rest) this.syncRest(Math.round(x), Math.round(y), depth);
+    if (this.rest) this.syncRest(Math.round(x), Math.round(y - this.lift), depth);
     // The name sits just over the head (2 px above its first visible row); an alert goes above it.
     const plateBottom = Math.round(y) - this.M.characters.anchor[1] + this.head - 2;
     this.tag?.place(Math.round(x), plateBottom);

@@ -4,7 +4,7 @@ import type { IncomingMessage, Server } from 'node:http';
 import type { Duplex } from 'node:stream';
 import { WebSocket, WebSocketServer } from 'ws';
 import { Arena, type ArenaBets, type ArenaSeat, arenaLine } from './town-arena.js';
-import type { HoodHouse, HoodMap, OutfitData, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine } from '@mikazuki/shared';
+import type { HoodHouse, HoodMap, OutfitData, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
 // messages). The server keeps everyone's tile and checks each step — on the map, not blocked, next to the last
@@ -19,6 +19,7 @@ import type { HoodHouse, HoodMap, OutfitData, TownRace, TitleData, TownAnnouncem
 // banners and everything about a member (gifts, looks, jail) reach everyone.
 
 const DIRS = new Set<TownDir>(['s', 'se', 'e', 'ne', 'n', 'nw', 'w', 'sw']);
+const MOVES = new Set<TownMove>(['dash', 'step-back', 'charge', 'blink']);
 const EMOTES = new Set<TownEmote>(['heart', 'laugh', 'exclaim', 'question', 'kowen', 'sleep', 'angry', 'wave']);
 /** Emotes: a burst of 3, then one a second. */
 const EMOTES_PER_SECOND = 1;
@@ -169,6 +170,8 @@ interface Conn {
   saidAt: number;
   emotes: number;
   emotedAt: number;
+  /** The last mobility move shown (ms). */
+  movedAt?: number;
   alive: boolean;
   /** Still at the spawn point, so 'here' is accepted (once). */
   fresh: boolean;
@@ -278,6 +281,15 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         if (c.emotes < 1) return;
         c.emotes -= 1;
         return others(c, { t: 'emote', id: p.id, emote: m.emote });
+      }
+      case 'move': {
+        // A mobility move: just shown to the others (the steps after it move them, checked as ever). Ends near
+        // where they are, one at a time.
+        const near = inside_(m.col, m.row) && Math.abs((m.col as number) - p.col) <= 6 && Math.abs((m.row as number) - p.row) <= 6;
+        const now = Date.now();
+        if (!MOVES.has(m.move) || !near || now - (c.movedAt ?? 0) < 800) return;
+        c.movedAt = now;
+        return others(c, { t: 'move', id: p.id, move: m.move, col: m.col, row: m.row });
       }
       case 'arena-queue':
         if (p.jailed) return; // no games from jail

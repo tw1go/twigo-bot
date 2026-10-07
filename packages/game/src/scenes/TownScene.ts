@@ -33,7 +33,7 @@ import { SystemFeed } from '../ui/system-feed';
 import { announce } from '../ui/announce';
 import { OnlineList } from '../ui/online';
 import { EMOTE_KEYS, emotePicker } from '../ui/emotes';
-import type { ArenaServerMessage, HoodHouse, OutfitData, TitleData, TownClientMessage, TownEmote, TownHoodResponse, TownServerMessage } from '@mikazuki/shared';
+import type { ArenaServerMessage, ClassInfo, HoodHouse, OutfitData, TitleData, TownClientMessage, TownEmote, TownHoodResponse, TownServerMessage } from '@mikazuki/shared';
 import { type BubbleArt, lightBubble } from '../ui/labels';
 import { type Reward, setRewardArt, showReward } from '../ui/reward';
 import { showMovementTutorial } from '../ui/tutorial';
@@ -72,6 +72,7 @@ import { type Bench, type Building, WorldObjects, characterDepth } from '../worl
 import { enterArenaSound, enterCasinoSound, hearFrom, leaveCasinoSound, playSound, startTownSound } from '../audio/sound';
 import type { AdventureData } from '../net/adventure';
 import { Hotbar } from '../ui/hotbar';
+import { MOVES, type MoveKind, isMoveKind, moveTiles, playMove } from '../world/mobility';
 import { adventure, adventureData, chooseClass, classInfo, initAdventure, itemDef, loadAdventureData, onAdventure, questDef, questFor, questTalk } from '../net/adventure';
 import type { ClassArt } from '../assets/types';
 import { drawRested, loadImages, poseFiles, restFiles } from '../characters/kit-art';
@@ -557,6 +558,8 @@ export class TownScene extends Phaser.Scene {
       const hotbar = new Hotbar({
         slot: inv?.slot && inv.selected && inv.nineSlice ? { url: url(inv.slot), picked: url(inv.selected), slice: inv.nineSlice } : null,
         badge: (cls) => (icons ? url(icons.file.replace('{class}', cls)) : ''),
+        onSkill: (name) => this.mobility(name),
+        stage: (c) => this.skillStage(c.id, c.fx),
       });
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => hotbar.root.remove());
       hotbar.setClass(classInfo(adventure()?.cls) ?? null);
@@ -568,6 +571,46 @@ export class TownScene extends Phaser.Scene {
         setHudClass(c && icons ? { name: c.name, badge: asset(icons.small.replace('{class}', c.id)) } : null);
       });
     });
+  }
+
+  /** When each mobility move can be used again (scene time, ms). */
+  private moveReady = new Map<MoveKind, number>();
+
+  /**
+   * A hotbar skill: your class's Dash or Lv 8 move (world/mobility.ts) along the way you face. Its tiles go to the
+   * server as steps (no more than the step budget allows) after a `move` message for the others. Returns the cooldown
+   * in seconds, 'no' if it can't go now, or undefined for a skill that has no use in town yet.
+   */
+  private mobility(name: string): number | 'no' | undefined {
+    const c = classInfo(adventure()?.cls) as (ClassInfo & { mobility?: { id: string; name: string }[] }) | undefined;
+    const kind = c?.mobility?.find((m) => m.name === name)?.id;
+    if (!kind || !isMoveKind(kind)) return undefined;
+    const now = this.time.now;
+    if (now < (this.moveReady.get(kind) ?? 0) || this.player.busy || this.player.isSitting || this.inside) return 'no';
+    const dir = this.player.facing;
+    const tiles = moveTiles(this.grid, this.player.heading, dir, kind, Math.floor(this.stepBudget()) - 1);
+    const end = tiles[tiles.length - 1];
+    if (!end) {
+      toast("Something's in the way.", 1600);
+      return 'no';
+    }
+    this.pending = null;
+    this.byKeys = true; // landing on a door waits for E
+    this.setBuildingAlert(null);
+    this.link?.send({ t: 'move', move: kind, col: end.col, row: end.row });
+    for (const t of tiles) this.player.onStep?.(t);
+    void playMove(this, this.M, this.player, kind, end, tiles.length, dir, (o) => this.tint >= 0 && o.setTint(this.tint)).then(() => this.arrivedQuietly());
+    this.moveReady.set(kind, now + MOVES[kind].cooldown * 1000);
+    return MOVES[kind].cooldown;
+  }
+
+  /** After a move: a door or gate you landed on is noticed like after walking there with the keys. */
+  private arrivedQuietly(): void {
+    const t = this.player.tile;
+    const building = this.doorAt.get(`${t.col},${t.row}`);
+    this.setBuildingAlert(building ?? null);
+    const gate = this.gateAt.get(`${t.col},${t.row}`);
+    if (gate) this.travel(gate);
   }
 
   /** A quest giver's name and portrait (for the quest log). */

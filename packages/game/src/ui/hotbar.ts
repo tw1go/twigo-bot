@@ -1,15 +1,19 @@
 import type { ClassInfo } from '@mikazuki/shared';
 import { playSound } from '../audio/sound';
+import { MOBILITY_PREVIEWS, SKILL_PREVIEWS } from '../combat/skill-previews';
+import { GAP_MS, STAGE_H, STAGE_W, type Skill, type SkillStage } from '../combat/skill-stage';
 import { itemArt, isRarity } from './item-art';
 import { toast } from './toast';
 
 // ⚔️ The hotbar, bottom centre (members, not on phones): two rows of slots in the bag's slot art.
 //   Bottom row: 10 skill slots (keys 1–0), then 3 for potions and other usables (keys - = `).
 //   Top row: 13 more (Ctrl+1–0, Ctrl+- Ctrl+= Ctrl+`), for skills or usables.
-// Skills come from the Skills list (the book button at the bar's left, or K): drag one onto a slot, or click it and
-// then a slot. Potions are dragged in from the bag. Drag a slot onto another to swap them; drag it off the bar (or
+// Skills come from the Skills panel on the right of the screen (the K button at the bar's left, or K): each skill
+// with its description, played on a small stage while hovered (the class choice's preview, combat/skill-stage.ts);
+// drag one onto a slot, or click it and then a slot. Potions are dragged in from the bag. Drag a slot onto another to swap them; drag it off the bar (or
 // right-click it) to empty it. Per class, saved in this browser (localStorage `mk_hotbar`); a class's first bar has
-// its skills in order. There's no combat yet: a skill only lights up its slot. Skills have no icons yet: their
+// its skills in order. Move skills work in town (onSkill: world/mobility.ts) and their slots show the cooldown as a
+// shrinking pie with the seconds left; the rest wait for combat. Skills have no icons yet: their
 // initials over the class badge stand in.
 
 export interface HotbarOptions {
@@ -17,6 +21,11 @@ export interface HotbarOptions {
   slot: { url: string; picked: string; slice: number } | null;
   /** A class badge (32 px). */
   badge: (cls: string) => string;
+  /** A skill's key or click: its cooldown in seconds once used, 'no' if it can't go now, undefined if it has no use
+   *  in town (yet). */
+  onSkill?: (name: string) => number | 'no' | undefined;
+  /** The preview stage for a class (built once its poses and fx have loaded). */
+  stage?: (cls: ClassInfo) => Promise<SkillStage | null>;
 }
 
 type SkillEntry = { t: 'skill'; name: string };
@@ -55,7 +64,18 @@ export function hotbarDragItem(e: DragEvent, it: { id: string; name: string; emo
 export class Hotbar {
   readonly root = el('div');
   private readonly book = el('button', 'hb-book');
-  private readonly list = el('div', 'hb-list');
+  private readonly list = el('div');
+  private readonly rows = el('div', 'sb-rows');
+  private readonly stageBox = el('div', 'sb-stage');
+  private readonly numbers = el('div', 'sp-numbers');
+  private stage: { cls: string; stage: SkillStage | null } | null = null;
+  /** The skill under the pointer (played on the stage, again and again). */
+  private hovered: Skill | null = null;
+  private restUntil = 0;
+  private stageRaf = 0;
+  /** Skills cooling down: when they started and when they're ready (performance.now ms). */
+  private readonly cds = new Map<string, { from: number; until: number }>();
+  private cdRaf = 0;
   private readonly cells: Record<Row, HTMLButtonElement[]> = { top: [], main: [], util: [] };
   private cls: ClassInfo | null = null;
   private layout: Layout = blank();
@@ -76,6 +96,7 @@ export class Hotbar {
     this.book.setAttribute('aria-expanded', 'false');
     this.book.textContent = 'K';
     this.book.addEventListener('click', () => this.toggleList());
+    this.list.id = 'skill-book';
     this.list.hidden = true;
     const top = el('div', 'hb-row hb-toprow');
     const bottom = el('div', 'hb-row');
@@ -88,8 +109,8 @@ export class Hotbar {
     }
     top.prepend(el('span', 'hb-spacer', 'Ctrl')); // the top row's keys are Ctrl + the bottom row's
     bottom.prepend(this.book);
-    this.root.append(this.list, top, bottom);
-    document.body.append(this.root);
+    this.root.append(top, bottom);
+    document.body.append(this.root, this.list);
     // Dropped off the bar: that slot empties.
     this.root.addEventListener('dragend', (e) => {
       const from = (e.target as HTMLElement).dataset;
@@ -97,7 +118,7 @@ export class Hotbar {
     });
     document.addEventListener('keydown', (e) => this.key(e), true);
     document.addEventListener('pointerdown', (e) => {
-      if (!this.list.hidden && !this.root.contains(e.target as Node)) this.toggleList(false);
+      if (!this.list.hidden && !this.root.contains(e.target as Node) && !this.list.contains(e.target as Node)) this.toggleList(false);
     });
   }
 
@@ -206,36 +227,132 @@ export class Hotbar {
     }
   }
 
-  /** The Skills list: your class's skills and movement skills, each to drag (or click, then click a slot). */
+  /** The Skills panel: a stage on top (the hovered skill plays on it), then your class's skills and movement skills
+   *  with their descriptions, each to drag (or click, then click a slot). */
   private drawList(): void {
     const skills = skillsOf(this.cls);
-    this.list.replaceChildren(el('div', 'hb-list-head', this.cls ? `${this.cls.name} skills` : 'Skills'));
+    const close = el('button', 'sb-close', '×');
+    close.setAttribute('aria-label', 'Close');
+    close.addEventListener('click', () => this.toggleList(false));
+    const head = el('div', 'sb-head');
+    head.append(el('span', 'sb-title', this.cls ? `${this.cls.name} skills` : 'Skills'), close);
+    this.list.replaceChildren(head);
     if (!skills.length) {
       this.list.append(el('p', 'hb-note', 'Choose a class with the Tanod to get skills.'));
       return;
     }
-    this.list.append(el('p', 'hb-note', 'Drag a skill onto a slot, or click it and then a slot.'));
-    for (const s of skills) {
-      const row = el('button', `hb-skill-row${this.picked?.name === s.name ? ' hb-picked' : ''}`);
-      row.draggable = true;
-      row.append(el('span', 'hb-initials', initials(s.name)), el('span', 'hb-lv', `Lv ${s.level}`), el('span', 'hb-name', s.name));
-      row.title = s.desc;
-      row.addEventListener('dragstart', (e) => e.dataTransfer?.setData(DRAG, JSON.stringify({ entry: { t: 'skill', name: s.name } })));
-      row.addEventListener('click', () => {
-        this.picked = this.picked?.name === s.name ? null : { t: 'skill', name: s.name };
-        this.drawList();
-      });
-      this.list.append(row);
+    this.list.append(this.stageBox, el('p', 'hb-note', 'Hover a skill to see it. Drag it onto a slot, or click it and then a slot.'), this.rows);
+    const plays = previewsOf(this.cls);
+    this.rows.replaceChildren(
+      ...skills.map((s) => {
+        const row = el('button', `hb-skill-row${this.picked?.name === s.name ? ' hb-picked' : ''}`);
+        row.draggable = true;
+        const text = el('span', 'sb-text');
+        const line = el('span', 'sb-line');
+        line.append(el('span', 'hb-name', s.name), el('span', 'hb-lv', `Lv ${s.level}`));
+        text.append(line, el('span', 'sb-desc', s.desc));
+        row.append(el('span', 'hb-initials', initials(s.name)), text);
+        row.addEventListener('dragstart', (e) => e.dataTransfer?.setData(DRAG, JSON.stringify({ entry: { t: 'skill', name: s.name } })));
+        row.addEventListener('click', () => {
+          this.picked = this.picked?.name === s.name ? null : { t: 'skill', name: s.name };
+          this.drawList();
+        });
+        row.addEventListener('pointerenter', () => this.preview(plays.get(s.name) ?? null));
+        return row;
+      }),
+    );
+  }
+
+  /** The stage plays `skill` now and then keeps replaying it (null: back to resting). */
+  private preview(skill: Skill | null): void {
+    this.hovered = skill;
+    const st = this.stage?.stage;
+    if (!st) return;
+    this.restUntil = 0;
+    if (skill) st.play(skill);
+    else st.rest();
+  }
+
+  /** The stage for your class, built the first time the panel opens; it runs only while the panel is open. */
+  private async openStage(): Promise<void> {
+    const c = this.cls;
+    if (!c || !this.o.stage) return;
+    if (this.stage?.cls !== c.id) {
+      this.stage = { cls: c.id, stage: null };
+      this.stageBox.replaceChildren(el('div', 'sb-loading', 'Loading…'));
+      const st = await this.o.stage(c);
+      if (this.stage?.cls !== c.id) return; // the class changed meanwhile
+      this.stage.stage = st;
+      if (!st) return void this.stageBox.replaceChildren(el('div', 'sb-loading', "Couldn't load the preview."));
+      st.canvas.className = 'sp-canvas';
+      st.canvas.style.width = this.numbers.style.width = `${STAGE_W}px`;
+      st.canvas.style.height = this.numbers.style.height = `${STAGE_H}px`;
+      this.numbers.style.setProperty('--s', '1');
+      st.onNumber = (at, text, kind) => {
+        const n = el('span', `sp-num sp-${kind}`, text);
+        n.style.left = `${Math.round(at.x)}px`;
+        n.style.top = `${Math.round(at.y - 10)}px`;
+        this.numbers.append(n);
+        n.addEventListener('animationend', () => n.remove());
+      };
+      this.stageBox.replaceChildren(st.canvas, this.numbers);
+      st.update(performance.now());
+      st.rest();
     }
+    cancelAnimationFrame(this.stageRaf);
+    const tick = (now: number) => {
+      const st = this.stage?.stage;
+      if (this.list.hidden || !st) return;
+      st.update(now);
+      if (!st.busy && this.hovered) {
+        if (!this.restUntil) {
+          st.rest();
+          this.restUntil = now + GAP_MS;
+        } else if (now >= this.restUntil) this.preview(this.hovered);
+      }
+      this.stageRaf = requestAnimationFrame(tick);
+    };
+    this.stageRaf = requestAnimationFrame(tick);
   }
 
   private toggleList(show = this.list.hidden): void {
     this.list.hidden = !show;
     this.book.setAttribute('aria-expanded', String(show));
+    this.hovered = null;
+    if (show) void this.openStage();
+    else cancelAnimationFrame(this.stageRaf);
     if (!show && this.picked) {
       this.picked = null;
       this.drawList();
     }
+  }
+
+  /** Every slot holding that skill gets a dark pie that shrinks round clockwise, with the seconds left on it. */
+  private cooldown(name: string, seconds: number): void {
+    const now = performance.now();
+    this.cds.set(name, { from: now, until: now + seconds * 1000 });
+    cancelAnimationFrame(this.cdRaf);
+    const tick = (t: number) => {
+      for (const row of ['top', 'main', 'util'] as Row[]) {
+        this.cells[row].forEach((b, i) => {
+          const e = this.layout[row][i];
+          const cd = e?.t === 'skill' ? this.cds.get(e.name) : undefined;
+          let pie = b.querySelector<HTMLElement>('.hb-cd');
+          if (!cd || t >= cd.until) return void pie?.remove();
+          if (!pie) {
+            pie = el('span', 'hb-cd');
+            pie.append(el('span', 'hb-cd-num'));
+            b.append(pie);
+          }
+          const secs = (cd.until - t) / 1000;
+          pie.style.setProperty('--left', `${(((cd.until - t) / (cd.until - cd.from)) * 360).toFixed(1)}deg`);
+          pie.firstChild!.textContent = secs < 1 ? secs.toFixed(1) : String(Math.ceil(secs));
+        });
+      }
+      for (const [k, cd] of this.cds) if (t >= cd.until) this.cds.delete(k);
+      if (this.cds.size) this.cdRaf = requestAnimationFrame(tick);
+    };
+    this.cdRaf = requestAnimationFrame(tick);
   }
 
   private key(e: KeyboardEvent): void {
@@ -249,7 +366,8 @@ export class Hotbar {
     this.use(main >= 0 ? 'main' : 'util', main >= 0 ? main : UTIL_KEYS.indexOf(k));
   }
 
-  /** A slot's key or click: it lights up (skills have no combat to work in yet; potions are used in Discord). */
+  /** A slot's key or click: it lights up; a move skill moves you (onSkill), other skills wait for combat, potions are
+   *  used in Discord. */
   private use(row: Row, i: number): void {
     const entry = this.layout[row][i];
     const b = this.cells[row][i];
@@ -257,6 +375,11 @@ export class Hotbar {
     void b.offsetWidth; // restart the flash
     b.classList.add('hb-fire');
     if (!entry) return;
+    if (entry.t === 'skill') {
+      const cd = this.o.onSkill?.(entry.name);
+      if (typeof cd === 'number') this.cooldown(entry.name, cd);
+      if (cd !== undefined) return;
+    }
     const now = performance.now();
     if (now - this.nagged < 4000) return;
     this.nagged = now;
@@ -269,6 +392,21 @@ function skillsOf(c: ClassInfo | null): { level: number; name: string; desc: str
   if (!c) return [];
   const moves = (c as ClassInfo & { mobility?: { level: number; name: string; desc: string }[] }).mobility ?? [];
   return [...c.skills, ...moves];
+}
+
+/** Each skill's stage preview by name: the first 7 in order, then the movement skills by id. */
+function previewsOf(c: ClassInfo | null): Map<string, Skill> {
+  const out = new Map<string, Skill>();
+  if (!c) return out;
+  c.skills.forEach((s, i) => {
+    const p = SKILL_PREVIEWS[c.id]?.[i];
+    if (p) out.set(s.name, p);
+  });
+  for (const m of (c as ClassInfo & { mobility?: { id: string; name: string }[] }).mobility ?? []) {
+    const p = MOBILITY_PREVIEWS[c.id]?.[m.id];
+    if (p) out.set(m.name, p);
+  }
+  return out;
 }
 
 const initials = (name: string) =>
