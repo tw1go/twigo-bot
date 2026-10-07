@@ -289,7 +289,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   it and targets it; Z (or the middle mouse button) targets the nearest within 12 tiles (again: the next), a gold ring under it and an info bar at
   the top (`ui/mob-target.ts`: name, level, HP, zone); Escape or 20 tiles away lets go. Battle (battle maps = maps with
   mobs): characters with a class use their class's combat poses there (`characters/battle-art.ts`: every pose composited
-  per class and look from kit-art drawPose into 64 × 64 sheets; standing = walk-ready's first frame, walking walk-ready /
+  per class and look from kit-art drawPose into 64 × 64 sheets, built a few ms at a time between frames and one look
+  at a time (about a second of drawing each: done at once it froze everyone's game when someone arrived); standing = walk-ready's first frame, walking walk-ready /
   walk-hunt; `Character.setBattle`, `strike`, `hurt`; the look's clothes and hair laid on by kit-art), others too
   (`OtherPlayers.battleFor`). The hotbar's damage skills work there (`TownScene.fight` / `fightTick`): pressing one
   auto-casts on your Z target (else the nearest mob): one cast a second (CAST_GAP_MS), the pressed skill when it's ready,

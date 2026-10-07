@@ -94,37 +94,54 @@ function bandShift(scene: Phaser.Scene, C: CharacterDefs, idleBody: string, pose
   const known = shifts.get(id);
   if (known) return known;
   const [w, h] = C.cell;
-  const a = imageData(scene, idleBody);
+  const band = bandOf(scene, C, idleBody, y0, y1);
   const b = imageData(scene, poseBody);
   let best: [number, number] = [0, 0];
-  if (a && b) {
-    const band: [number, number, number][] = []; // x, y, rgb
-    for (let y = Math.max(0, y0); y < Math.min(h, y1); y++)
-      for (let x = 0; x < w; x++) {
-        const i = (y * a.width + x) * 4;
-        if (a.data[i + 3] >= 128) band.push([x, y, (a.data[i] << 16) | (a.data[i + 1] << 8) | a.data[i + 2]]);
+  if (band && b) {
+    const score = (dx: number, dy: number) => {
+      let s = 0;
+      for (const [x, y, rgb] of band) {
+        const px = x + dx;
+        const py = y + dy;
+        if (px < 0 || py < 0 || px >= w || py >= h) continue;
+        const i = (py * b.width + f * w + px) * 4;
+        if (b.data[i + 3] < 128) continue;
+        s += ((b.data[i] << 16) | (b.data[i + 1] << 8) | b.data[i + 2]) === rgb ? 2 : 1;
       }
-    let score = -Infinity;
+      return s - (Math.abs(dx) + Math.abs(dy)) * 0.01; // ties: the smaller move
+    };
+    // Every shift (a coarser search lands a shirt on a face now and then).
+    let top = -Infinity;
     for (let dy = -10; dy <= 10; dy++)
       for (let dx = -10; dx <= 10; dx++) {
-        let s = 0;
-        for (const [x, y, rgb] of band) {
-          const px = x + dx;
-          const py = y + dy;
-          if (px < 0 || py < 0 || px >= w || py >= h) continue;
-          const i = (py * b.width + f * w + px) * 4;
-          if (b.data[i + 3] < 128) continue;
-          s += ((b.data[i] << 16) | (b.data[i + 1] << 8) | b.data[i + 2]) === rgb ? 2 : 1;
-        }
-        s -= (Math.abs(dx) + Math.abs(dy)) * 0.01; // ties: the smaller move
-        if (s > score) {
-          score = s;
+        const s = score(dx, dy);
+        if (s > top) {
+          top = s;
           best = [dx, dy];
         }
       }
   }
   shifts.set(id, best);
   return best;
+}
+
+const bands = new Map<string, [number, number, number][] | null>();
+/** The idle body's pixels in rows y0 to y1 of its first frame: x, y, rgb. */
+function bandOf(scene: Phaser.Scene, C: CharacterDefs, idleBody: string, y0: number, y1: number): [number, number, number][] | null {
+  const id = `${idleBody}|${y0}|${y1}`;
+  if (bands.has(id)) return bands.get(id)!;
+  const a = imageData(scene, idleBody);
+  let band: [number, number, number][] | null = null;
+  if (a) {
+    band = [];
+    for (let y = Math.max(0, y0); y < Math.min(C.cell[1], y1); y++)
+      for (let x = 0; x < C.cell[0]; x++) {
+        const i = (y * a.width + x) * 4;
+        if (a.data[i + 3] >= 128) band.push([x, y, (a.data[i] << 16) | (a.data[i + 1] << 8) | a.data[i + 2]]);
+      }
+  }
+  bands.set(id, band);
+  return band;
 }
 
 /** The head's shift: the idle's top 13 rows. */

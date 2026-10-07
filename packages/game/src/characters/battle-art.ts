@@ -21,6 +21,8 @@ export interface BattleSheets {
 }
 
 const built = new Map<string, Promise<BattleSheets | null>>();
+/** Builds run one after another (several players arriving at once don't pile up in one frame). */
+let queue: Promise<unknown> = Promise.resolve();
 
 /** A class's battle sheets for a look (loads the poses the first time; then the same promise). */
 export function battleSheets(scene: Phaser.Scene, C: CharacterDefs, K: ClassesDefs, cls: string, o: Outfit): Promise<BattleSheets | null> {
@@ -29,18 +31,33 @@ export function battleSheets(scene: Phaser.Scene, C: CharacterDefs, K: ClassesDe
   const id = `${cls}|${sheetKey(o, 'idle', 's')}`;
   let p = built.get(id);
   if (!p) {
-    p = loadImages(scene, [...poseFiles(art), ...lookImages(C, o, C.directions)]).then(() => build(scene, C, K, art, cls, o, id));
+    const files = loadImages(scene, [...poseFiles(art), ...lookImages(C, o, C.directions)]);
+    p = queue.then(() => files).then(() => build(scene, C, K, art, cls, o, id));
+    queue = p.catch(() => null);
     built.set(id, p);
   }
   return p;
 }
 
-function build(scene: Phaser.Scene, C: CharacterDefs, K: ClassesDefs, art: ClassArt, cls: string, o: Outfit, id: string): BattleSheets | null {
+// Building a class's sheets for a look takes about a second of drawing: it's done a few ms at a time between frames, so
+// nobody's game stutters when someone arrives or changes class (they show their town look meanwhile).
+const SLICE_MS = 6;
+let sliceFrom = 0;
+async function breathe(): Promise<void> {
+  if (performance.now() - sliceFrom < SLICE_MS) return;
+  await new Promise((r) => setTimeout(r, 16));
+  sliceFrom = performance.now();
+}
+
+async function build(scene: Phaser.Scene, C: CharacterDefs, K: ClassesDefs, art: ClassArt, cls: string, o: Outfit, id: string): Promise<BattleSheets | null> {
   if (!art.anims['walk-ready']) return null;
   const tag = `battle:${id}`;
   const dirsOf = (anim: string) => Object.keys(art.anims[anim]?.dirs ?? {}) as Dir[];
   const directions = dirsOf('walk-ready');
-  for (const [anim, a] of Object.entries(art.anims)) {
+  sliceFrom = performance.now();
+  // Standing and walking first, then the attacks.
+  const anims = Object.entries(art.anims).sort(([a], [b]) => Number(b.startsWith('walk')) - Number(a.startsWith('walk')));
+  for (const [anim, a] of anims) {
     for (const dir of dirsOf(anim)) {
       const key = `${tag}:${anim}:${dir}`;
       if (scene.textures.exists(key)) continue;
@@ -49,7 +66,12 @@ function build(scene: Phaser.Scene, C: CharacterDefs, K: ClassesDefs, art: Class
       canvas.height = CELL;
       const ctx = canvas.getContext('2d')!;
       ctx.imageSmoothingEnabled = false;
-      for (let f = 0; f < a.frames; f++) drawPose(ctx, scene, C, K, o, art, anim, dir, f, f * CELL, 0);
+      for (let f = 0; f < a.frames; f++) {
+        await breathe();
+        if (!scene.sys.textures) return null; // the scene went away meanwhile
+        drawPose(ctx, scene, C, K, o, art, anim, dir, f, f * CELL, 0);
+      }
+      if (scene.textures.exists(key)) continue;
       const tex = scene.textures.addCanvas(key, canvas)!;
       for (let f = 0; f < a.frames; f++) tex.add(f, 0, f * CELL, 0, CELL, CELL);
       const frames = Array.from({ length: a.frames }, (_, f) => ({ key, frame: f }));
