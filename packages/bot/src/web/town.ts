@@ -298,6 +298,16 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         c.movedAt = now;
         return others(c, { t: 'move', id: p.id, move: m.move, col: m.col, row: m.row });
       }
+      case 'attack': {
+        // A damage skill on a mob (battle maps only): the mob room decides; everyone there sees the hit.
+        const mobs = opts.mobs?.[c.room];
+        if (!mobs || typeof m.mob !== 'string' || !Number.isInteger(m.skill)) return;
+        const r = mobs.attack(p.id, [p.col, p.row], p.cls, m.mob, Date.now());
+        if (!r.ok) return send(c, { t: 'attack-refused', reason: r.reason });
+        const hit: TownServerMessage = { t: 'mob-hit', id: r.id, by: p.id, skill: m.skill as number, damage: r.damage, crit: r.crit, hp: r.hp, dead: r.dead };
+        others(c, hit);
+        return send(c, hit);
+      }
       case 'arena-queue':
         if (p.jailed) return; // no games from jail
         c.seat ??= { key: c.userId, player: p, send: (msg) => send(c, msg) };
@@ -393,6 +403,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       conns.delete(userId);
       arena.leave(userId); // mid-match, the other player wins
       others(c, { t: 'leave', id: player.id });
+      opts.mobs?.[room]?.forget(player.id); // no mob goes after someone who left
     });
   };
 
@@ -513,11 +524,13 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     setInterval(() => {
       const now = Date.now();
       for (const [room, mobs] of Object.entries(opts.mobs ?? {})) {
-        const hops = mobs.tick(now);
-        if (!hops.length) continue;
-        const listeners = [...conns.values()].filter((o) => o.room === room && o.ws.readyState === WebSocket.OPEN);
-        for (const h of hops) {
-          const text = JSON.stringify({ t: 'mob-move', id: h.id, path: h.path } satisfies TownServerMessage);
+        const here = [...conns.values()].filter((o) => o.room === room);
+        const where = new Map(here.map((o) => [o.player.id, [o.player.col, o.player.row] as [number, number]]));
+        const events = mobs.tick(now, (id) => where.get(id) ?? null);
+        if (!events.length) continue;
+        const listeners = here.filter((o) => o.ws.readyState === WebSocket.OPEN);
+        for (const e of events) {
+          const text = JSON.stringify(e satisfies TownServerMessage);
           for (const o of listeners) o.ws.send(text);
         }
       }

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { MobRoom, loadMobMap } from './town-mobs.js';
+import { type AttackResult, MobRoom, loadMobMap } from './town-mobs.js';
 
 // The Slums' mobs on the real map (the game's maps/slums.json): where they stand, how they hop, what newcomers see.
 
@@ -28,7 +28,7 @@ test('hops stay near the spawn, on the zone level, off ramps, blocked tiles and 
   const zoneOf = (id: string) => active.find((z) => id.startsWith(`${z.id}:`))!;
   let hops = 0;
   for (let t = 0; t < 120_000; t += 250) {
-    for (const h of room.tick(t)) {
+    for (const h of room.tick(t).filter((e) => e.t === 'mob-move')) {
       hops++;
       const m = { zone: zoneOf(h.id), spawn: spawnOf.get(h.id)! };
       for (const [col, row] of h.path.slice(1)) assert.ok(room.canStand(m, col, row), `${h.id} → ${col},${row}`);
@@ -43,9 +43,34 @@ test('hops stay near the spawn, on the zone level, off ramps, blocked tiles and 
 
 test('a newcomer sees a hop under way as where the mob has got to and the rest of the way', () => {
   const room = new MobRoom(map, () => 0.9);
-  const hop = room.tick(10_000).find((h) => h.path.length >= 3)!;
+  const hop = room.tick(10_000).find((h) => h.t === 'mob-move' && h.path.length >= 3) as { id: string; path: [number, number][] };
   assert.ok(hop, 'a hop of 2+ tiles');
   const mid = room.snapshot(10_000 + 500).find((m) => m.id === hop.id)!; // 2.4 tiles/s: one tile in
   assert.deepEqual([mid.col, mid.row], hop.path[1]);
   assert.deepEqual(mid.path?.[mid.path.length - 1], hop.path[hop.path.length - 1]);
+});
+
+test('a hit takes 20 (25 on a crit) from 100, the mob goes after its foe, dies at 0 and comes back after respawnSec', () => {
+  let n = 0;
+  const room = new MobRoom(map, () => ((n = (n * 9301 + 49297) % 233280) / 233280));
+  const mob = room.snapshot(0)[0];
+  const at: [number, number] = [mob.col + 1, mob.row];
+  const far: [number, number] = [mob.col + 9, mob.row];
+  assert.deepEqual(room.attack('p1', far, 'stick', mob.id, 1000), { ok: false, reason: 'range' });
+  assert.equal(room.attack('p1', far, 'slingshot', mob.id, 1000).ok, false, '9 tiles is past the slingshot too');
+  const first = room.attack('p1', at, 'stick', mob.id, 1000);
+  assert.ok(first.ok && (first.damage === 20 || first.damage === 25) && first.hp === 100 - first.damage);
+  assert.deepEqual(room.attack('p1', at, 'stick', mob.id, 1100), { ok: false, reason: 'slow' });
+  // Next to it: it attacks back.
+  const events = room.tick(1200, (id) => (id === 'p1' ? at : null));
+  assert.ok(events.some((e) => e.t === 'mob-attack' && e.id === mob.id && e.target === 'p1'));
+  let t = 1000;
+  let last: AttackResult = first;
+  while (last.ok && !last.dead) last = room.attack('p1', at, 'stick', mob.id, (t += 500));
+  assert.ok(last.ok && last.dead && last.hp === 0);
+  assert.equal(room.snapshot(t)[0].dead, true);
+  assert.deepEqual(room.attack('p1', at, 'stick', mob.id, t + 500), { ok: false, reason: 'gone' });
+  const zone = active.find((z) => mob.id.startsWith(`${z.id}:`))!;
+  const back = room.tick(t + (zone.respawnSec ?? 20) * 1000 + 1).find((e) => e.t === 'mob-spawn' && e.id === mob.id);
+  assert.ok(back && back.t === 'mob-spawn' && back.hp === 100);
 });

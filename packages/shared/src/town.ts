@@ -12,6 +12,8 @@ export interface TownMob {
   col: number;
   row: number;
   level: number;
+  hp: number;
+  dead?: boolean;
   path?: [number, number][];
 }
 
@@ -45,6 +47,8 @@ export type TownClientMessage =
   | { t: 'say'; text: string; megaphone?: boolean }
   /** An emote over your head (one of TOWN_EMOTES). */
   | { t: 'emote'; emote: TownEmote }
+  /** A damage skill on a mob (battle maps: the Slums): `skill` = its place in the class's list (which pose it plays). */
+  | { t: 'attack'; mob: string; skill: number }
   /** A mobility move (Dash, Step Back, Charge, Blink) ending at col,row: sent just before its steps, so the others
    *  play the move instead of a walk (where you are still comes from the steps). */
   | { t: 'move'; move: TownMove; col: number; row: number }
@@ -220,6 +224,14 @@ export type TownServerMessage =
   | { t: 'mobs'; mobs: TownMob[] }
   /** A mob hops: from the first tile of `path` along the rest (at the mobs' pace). */
   | { t: 'mob-move'; id: string; path: [number, number][] }
+  /** Someone (`by`, a town id) hit a mob with skill `skill`: the damage, a crit or not, the HP left, dead or not. */
+  | { t: 'mob-hit'; id: string; by: string; skill: number; damage: number; crit: boolean; hp: number; dead: boolean }
+  /** A mob attacks a player (shown only: players have no HP yet). */
+  | { t: 'mob-attack'; id: string; target: string }
+  /** A dead mob is back at its spawn. */
+  | { t: 'mob-spawn'; id: string; col: number; row: number; hp: number }
+  /** Your attack didn't land: too far, too fast, or the mob's gone. */
+  | { t: 'attack-refused'; reason: 'range' | 'slow' | 'gone' }
   /** Someone used a mobility move (their steps follow). */
   | { t: 'move'; id: string; move: TownMove; col: number; row: number }
   /** Someone said something in the town's Discord channel (shown with a Discord mark, no bubble). */
