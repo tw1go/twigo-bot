@@ -7,7 +7,9 @@ import { playVoice } from '../audio/sound';
 // its edge), blinking now and then (its frame 1 for a moment); the box holds the name, the characteristic, and the line,
 // typed out letter by letter in their voice (a soft blip every few letters, pitched per NPC). One line per talk: a
 // click on the box, a tap, Space or E shows the whole line, and once it's shown closes the box (click the NPC again
-// for another line); Esc or a click outside closes it too (so does walking away: the scene's job). One at a time; it
+// for another line); Esc or a click outside closes it too (so does walking away: the scene's job). A quest gives a
+// few lines in order instead (`lines`): each shown in full goes on to the next (a click outside the box does too until
+// the last one is shown), and only clicking through the last counts as hearing them all (`onDone`). One at a time; it
 // never takes focus, so the chat still gets what's typed. Only the player who clicked sees it: nothing goes to the server.
 
 export interface NpcTalk {
@@ -26,6 +28,11 @@ export interface NpcTalk {
   action?: { label: string; run: () => void };
   /** Called once when the box closes (the NPC goes back to what it was doing). */
   onClose: () => void;
+  /** A quest's lines instead of one: said in order, each click/Space/E finishing it and then going on to the next.
+   *  `onDone` runs when the last one is clicked through (not when the box is closed early: Esc, a click outside,
+   *  walking away), after onClose. */
+  lines?: string[];
+  onDone?: () => void;
 }
 
 const PX = 2; // screen px per art px, as the HUD's frames
@@ -141,8 +148,15 @@ export function openNpcDialog(t: NpcTalk): void {
       if (done()) finish(); // (shown in full, or skipped: no more blips)
     }, 1000 / CPS);
   };
-  // Still typing: the whole line at once; shown in full: that's all they had to say, the box closes.
-  const advance = () => (done() ? close() : finish());
+  // Still typing: the whole line at once; shown in full: the next of a quest's lines, else the box closes.
+  const queue = t.lines ? [...t.lines] : null;
+  let heard = false;
+  const advance = () => {
+    if (!done()) return finish();
+    if (queue?.length) return say(queue.shift()!);
+    heard = !!queue;
+    close();
+  };
 
   // ── the portrait blinks now and then ──
   let blink: ReturnType<typeof setTimeout> | undefined;
@@ -197,7 +211,15 @@ export function openNpcDialog(t: NpcTalk): void {
     if (!e.repeat) advance();
   };
   const outside = (e: PointerEvent) => {
-    if (!root.contains(e.target as Node)) close();
+    if (root.contains(e.target as Node)) return;
+    // A quest's story isn't cut short by a stray click: until its last line has been shown, a click anywhere goes on
+    // (and doesn't reach the town, so you don't walk off). After that, a click outside closes the box.
+    if (queue && (queue.length || !done())) {
+      e.preventDefault();
+      e.stopPropagation();
+      return advance();
+    }
+    close();
   };
   root.addEventListener('click', advance);
   document.addEventListener('keydown', keys, true);
@@ -214,12 +236,13 @@ export function openNpcDialog(t: NpcTalk): void {
     removeEventListener('resize', place);
     root.remove();
     t.onClose();
+    if (heard) t.onDone?.();
   }
   open = { id: t.id, close };
 
   place();
   blinkLater();
-  say(t.next());
+  say(queue?.length ? queue.shift()! : t.next());
 }
 
 /** The line's text size: the largest (up to TEXT_PX) at which it fits two rows of the box. */

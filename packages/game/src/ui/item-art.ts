@@ -32,6 +32,11 @@ export function setItemArt(art: Record<string, ItemArtDef> | undefined, assetsUr
   base = assetsUrl;
 }
 
+/** More item art (the equipment's, from items/equipment.json), next to the manifest's. */
+export function addItemArt(art: Record<string, ItemArtDef>): void {
+  items = { ...items, ...art };
+}
+
 /** Whether an item has a picture of this size. */
 export const hasItemArt = (id: string, size: 'icon' | 'showcase') => (size === 'icon' ? !!items[id]?.icon : !!(items[id]?.showcase || items[id]?.anim));
 

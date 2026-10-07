@@ -4,6 +4,7 @@ import type {
   ClassesFile,
   EquipmentDef,
   EquipmentFile,
+  EquipPlace,
   EquipSlot,
   QuestDef,
   QuestsFile,
@@ -24,7 +25,10 @@ const asset = <T>(path: string): T => JSON.parse(readFileSync(new URL(`../../../
 export const QUESTS: QuestDef[] = asset<QuestsFile>('quests/quests.json').quests;
 export const CLASSES = asset<ClassesFile>('classes/classes.json').classes;
 export const EQUIPMENT = new Map<string, EquipmentDef>(asset<EquipmentFile>('items/equipment.json').items.map((i) => [i.id, i]));
-const SLOTS = new Set<EquipSlot>(['weapon', 'head', 'body', 'hands', 'bottoms', 'feet', 'necklace', 'earrings', 'bracers', 'ring']);
+const PLACES = new Set<EquipPlace>(['weapon', 'head', 'body', 'hands', 'bottoms', 'feet', 'necklace', 'earrings', 'bracers1', 'bracers2', 'ring1', 'ring2']);
+
+/** Where a kind of equipment can be worn (two places for bracers and rings). */
+export const placesFor = (slot: EquipSlot): EquipPlace[] => (slot === 'bracers' ? ['bracers1', 'bracers2'] : slot === 'ring' ? ['ring1', 'ring2'] : [slot]);
 
 export const freshAdventure = (): AdventureState => ({ cls: null, quests: { active: [], done: [] }, equipped: {}, bag: [] });
 
@@ -83,24 +87,28 @@ export function questStep(s: AdventureState, a: TownQuestAction): Result {
   return { ok: true, given: weapon?.id, completed: advance(s, q) };
 }
 
-/** Wear an item from the bag, or take one off (`freeSlots`: the bag's free slots, for taking off). */
+/** Wear an item from the bag (in the place asked for, else the first free one for its kind, else the first), or take
+ *  one off (`freeSlots`: the bag's free slots, for taking off). */
 export function equipStep(s: AdventureState, a: TownEquipAction, freeSlots: number): Result {
   if (a.action === 'equip') {
     const item = EQUIPMENT.get(a.item);
     const at = s.bag.indexOf(a.item);
     if (!item || at < 0) return { ok: false, message: "You don't have that item." };
+    const places = placesFor(item.slot);
+    if (a.place && !places.includes(a.place)) return { ok: false, message: 'Wrong slot.' };
     if (!usable(s, item)) return { ok: false, message: "Your class can't use this." };
+    const place = a.place ?? places.find((p) => !s.equipped[p]) ?? places[0];
     s.bag.splice(at, 1);
-    const old = s.equipped[item.slot];
+    const old = s.equipped[place];
     if (old) s.bag.push(old);
-    s.equipped[item.slot] = item.id;
+    s.equipped[place] = item.id;
     return { ok: true, message: `Equipped ${item.name}.` };
   }
-  if (!SLOTS.has(a.slot)) return { ok: false, message: 'No such slot.' };
-  const id = s.equipped[a.slot];
+  if (!PLACES.has(a.place)) return { ok: false, message: 'No such slot.' };
+  const id = s.equipped[a.place];
   if (!id) return { ok: false, message: 'Nothing to take off there.' };
   if (freeSlots < 1) return { ok: false, message: 'Your bag is full.' };
-  delete s.equipped[a.slot];
+  delete s.equipped[a.place];
   s.bag.push(id);
   return { ok: true, message: `Took off ${EQUIPMENT.get(id)?.name ?? 'it'}.` };
 }
@@ -152,8 +160,12 @@ export function parseQuestAction(body: unknown): TownQuestAction | null {
 /** The body of POST /town/equip, if it's a valid one. */
 export function parseEquipAction(body: unknown): TownEquipAction | null {
   const b = body as Record<string, unknown> | null;
-  if (b?.action === 'equip' && typeof b.item === 'string') return { action: 'equip', item: b.item };
-  if (b?.action === 'unequip' && typeof b.slot === 'string' && SLOTS.has(b.slot as EquipSlot)) return { action: 'unequip', slot: b.slot as EquipSlot };
+  const place = (p: unknown) => (typeof p === 'string' && PLACES.has(p as EquipPlace) ? (p as EquipPlace) : null);
+  if (b?.action === 'equip' && typeof b.item === 'string') {
+    if (b.place === undefined) return { action: 'equip', item: b.item };
+    return place(b.place) ? { action: 'equip', item: b.item, place: place(b.place)! } : null;
+  }
+  if (b?.action === 'unequip' && place(b.place)) return { action: 'unequip', place: place(b.place)! };
   return null;
 }
 

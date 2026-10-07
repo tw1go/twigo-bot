@@ -433,10 +433,21 @@ export class NpcLife {
     return this.npcs.find((n) => n.place.id === id)?.char.tile ?? null;
   }
 
-  /** Talk to an NPC (you're close enough: the scene checks): it stops, faces you, waves, and the box opens. */
-  talk(id: string, me: Tile): void {
+  /** A quest's lines for an NPC instead of its own (ui/quests via the scene), or null for its usual one. */
+  script: ((id: string) => { lines: string[]; onDone?: () => void } | null) | null = null;
+
+  /** A quest marker over an NPC's name (only this player sees it), or none. */
+  setMarker(id: string, mark: { symbol: string; color: string } | null): void {
+    this.npcs.find((n) => n.place.id === id)?.char.setQuestMarker(mark);
+  }
+
+  /** Talk to an NPC (you're close enough: the scene checks): it stops, faces you, waves, and the box opens with its
+   *  line, a quest's lines (`script`), or `say` (a quest's last words, then `after` once the box closes). */
+  talk(id: string, me: Tile, say?: { lines: string[]; after?: () => void }): void {
     const npc = this.npcs.find((n) => n.place.id === id);
     if (!npc) return;
+    const script = say ? null : (this.script?.(id) ?? null);
+    const lines = say?.lines ?? script?.lines;
     npc.talking = true;
     if (!npc.racing) {
       npc.dest = null;
@@ -445,7 +456,9 @@ export class NpcLife {
     }
     openNpcDialog({
       // Any Aling can start a Mosang race (she runs) while none is on.
-      action: npc.place.gossip && !race() ? { label: '🏁 Start a Mosang race', run: () => void this.startRaceWith(id) } : undefined,
+      action: npc.place.gossip && !race() && !lines ? { label: '🏁 Start a Mosang race', run: () => void this.startRaceWith(id) } : undefined,
+      lines,
+      onDone: script?.onDone,
       id,
       name: npc.text.name,
       title: npc.text.title,
@@ -456,6 +469,7 @@ export class NpcLife {
       onClose: () => {
         npc.talking = false;
         npc.nextAt = this.w.scene.time.now + this.restMs(npc);
+        say?.after?.();
       },
     });
   }

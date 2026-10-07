@@ -14,7 +14,7 @@ for (const name of ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'ADMIN_ROLE_ID', 'ADMI
   'GAMBLING_CHANNEL_ID', 'GAMES_CHANNEL_ID', 'JAIL_ROLE_ID', 'REWARD_OWNER_ID', 'ROOM_FINDS_CHANNEL_ID']) process.env[name] = 'test';
 process.env.TIMEZONE = 'Asia/Manila';
 
-const { CLASSES, EQUIPMENT, QUESTS, adventureOf, equipStep, freshAdventure, kitOf, parseEquipAction, parseQuestAction, questStep, startQuests, townEquip, townQuest } =
+const { CLASSES, EQUIPMENT, QUESTS, adventureOf, equipStep, freshAdventure, kitOf, parseEquipAction, parseQuestAction, placesFor, questStep, startQuests, townEquip, townQuest } =
   await import('./adventure.js');
 const { usedSlots } = await import('../dig/bag.js');
 const { closeDatabase } = await import('../db/db.js');
@@ -54,12 +54,13 @@ test('equipment: only your class, the old one back to the bag, taking off needs 
   const s = { ...freshAdventure(), cls: 'stick', equipped: { weapon: 'weapon-training-stick' as string | undefined }, bag: ['weapon-training-broom', 'weapon-training-stick'] };
   assert.deepEqual(equipStep(s, { action: 'equip', item: 'weapon-training-broom' }, 5), { ok: false, message: "Your class can't use this." });
   assert.equal(equipStep(s, { action: 'equip', item: 'weapon-training-plank' }, 5).ok, false); // not in the bag
+  assert.equal(equipStep(s, { action: 'equip', item: 'weapon-training-stick', place: 'ring1' }, 5).message, 'Wrong slot.');
   assert.equal(equipStep(s, { action: 'equip', item: 'weapon-training-stick' }, 5).ok, true); // a second stick: swaps
   assert.deepEqual(s.bag.sort(), ['weapon-training-broom', 'weapon-training-stick']);
-  assert.equal(equipStep(s, { action: 'unequip', slot: 'weapon' }, 0).message, 'Your bag is full.');
-  assert.equal(equipStep(s, { action: 'unequip', slot: 'weapon' }, 1).ok, true);
+  assert.equal(equipStep(s, { action: 'unequip', place: 'weapon' }, 0).message, 'Your bag is full.');
+  assert.equal(equipStep(s, { action: 'unequip', place: 'weapon' }, 1).ok, true);
   assert.equal(s.equipped.weapon, undefined);
-  assert.equal(equipStep(s, { action: 'unequip', slot: 'weapon' }, 1).ok, false); // nothing there
+  assert.equal(equipStep(s, { action: 'unequip', place: 'weapon' }, 1).ok, false); // nothing there
 });
 
 test('saved per member: /me starts the quest, the routes save, the bag counts unworn equipment', () => {
@@ -70,16 +71,24 @@ test('saved per member: /me starts the quest, the routes save, the bag counts un
   assert.equal(done.given, 'weapon-training-balm');
   assert.deepEqual(kitOf('m1'), { cls: 'hilot', weapon: 'weapon-training-balm' });
   assert.equal(usedSlots('m1'), 0); // worn: no bag slot
-  assert.equal(townEquip('m1', { action: 'unequip', slot: 'weapon' }, 3).changed, true);
+  assert.equal(townEquip('m1', { action: 'unequip', place: 'weapon' }, 3).changed, true);
   assert.equal(usedSlots('m1'), 1);
   assert.deepEqual(kitOf('m1'), { cls: 'hilot', weapon: null });
   assert.equal(adventureOf('m1').quests.done[0], Q); // kept
 });
 
+test('two places for bracers and two for rings', () => {
+  assert.deepEqual(placesFor('ring'), ['ring1', 'ring2']);
+  assert.deepEqual(placesFor('bracers'), ['bracers1', 'bracers2']);
+  assert.deepEqual(placesFor('weapon'), ['weapon']);
+});
+
 test('request bodies are checked', () => {
   assert.equal(parseQuestAction({ quest: Q, action: 'talk' }), null);
   assert.deepEqual(parseQuestAction({ quest: Q, action: 'chooseClass', cls: 'stick' }), { quest: Q, action: 'chooseClass', cls: 'stick' });
-  assert.equal(parseEquipAction({ action: 'unequip', slot: 'cape' }), null);
+  assert.equal(parseEquipAction({ action: 'unequip', place: 'cape' }), null);
+  assert.equal(parseEquipAction({ action: 'unequip', place: 'ring' }), null); // a kind, not a place
+  assert.deepEqual(parseEquipAction({ action: 'unequip', place: 'ring2' }), { action: 'unequip', place: 'ring2' });
   assert.deepEqual(parseEquipAction({ action: 'equip', item: 'x' }), { action: 'equip', item: 'x' });
 });
 

@@ -1,10 +1,12 @@
 import Phaser from 'phaser';
-import type { CharacterDefs, Dir, Manifest } from '../assets/types';
+import type { CharacterDefs, ClassArt, ClassLayer, Dir, Manifest } from '../assets/types';
+import { slice } from '../assets/packs';
+import { restLayers } from './kit-art';
 import { CHARACTER_BIAS, LABEL_DEPTH } from '../world/depth';
 import type { Tile } from '../world/grid';
 import { type Outfit, headTop, sheetKey } from './doll';
 import type { TitleData } from '@mikazuki/shared';
-import { type BubbleArt, EmotePop, NameTag, SpeechBubble } from '../ui/labels';
+import { type BubbleArt, EmotePop, NameTag, QuestMarker, SpeechBubble } from '../ui/labels';
 
 // A walking paper doll (or a flat pre-baked sheet set: the town's NPCs, world/npcs.ts). Position is in tile space
 // (tile centre = col + 0.5); the sprite's feet anchor sits on it. Depth is the front corner of the tile the feet are
@@ -42,6 +44,9 @@ export class Character {
   private bubble: SpeechBubble | null = null;
   private bubbleTimer: Phaser.Time.TimerEvent | null = null;
   private pop: EmotePop | null = null;
+  private marker: QuestMarker | null = null;
+  /** The class's resting weapon (behind and in front of the body), drawn over idle and walk. */
+  private rest: { art: ClassArt; offset: [number, number]; back: Phaser.GameObjects.Sprite[]; front: Phaser.GameObjects.Sprite[] } | null = null;
   private zoom = 1;
   private head = 0; // rows of empty cell above the head (headTop)
   private col: number; // tile-space position of the feet (tile centre = integer + 0.5)
@@ -109,10 +114,35 @@ export class Character {
     this.sync();
   }
 
+  /** Carries a class's resting weapon (its sheets must be loaded: kit-art restFiles), or none. `offset`: where the
+   *  doll's cell sits in the weapon's 64x64 cell (manifest classes.bodyOffset). */
+  setRestingWeapon(art: ClassArt | null, offset: [number, number] = [16, 10]): void {
+    for (const sp of [...(this.rest?.back ?? []), ...(this.rest?.front ?? [])]) sp.destroy();
+    this.rest = null;
+    if (!art) return;
+    const make = (n: number) => Array.from({ length: n }, () => {
+      const sp = this.scene.add.sprite(0, 0, '__DEFAULT').setVisible(false);
+      this.onSpawn?.(sp);
+      return sp;
+    });
+    const most = (k: 'back' | 'front') => Math.max(0, ...this.M.characters.directions.flatMap((d) => ['idle', 'walk'].map((a) => restLayers(art, a as 'idle', d)?.[k].length ?? 0)));
+    this.rest = { art, offset, back: make(most('back')), front: make(most('front')) };
+    this.sync();
+  }
+
+  /** A quest marker over the name (a "!" or "…" in the quest's colour), or none. */
+  setQuestMarker(mark: { symbol: string; color: string } | null): void {
+    this.marker?.destroy();
+    this.marker = mark ? new QuestMarker(this.scene, mark.symbol, mark.color) : null;
+    this.marker?.setZoom(this.zoom);
+    this.sync();
+  }
+
   /** Sizes the name tag (and any speech bubble) for the camera zoom. */
   setZoom(zoom: number): void {
     this.zoom = zoom;
     this.tag?.setZoom(zoom);
+    this.marker?.setZoom(zoom);
     this.bubble?.setZoom(zoom);
     this.pop?.setZoom(zoom);
     this.sync();
@@ -411,14 +441,39 @@ export class Character {
     this.sprite.setDepth(depth);
     this.shadow?.setPosition(Math.round(x), Math.round(y)).setDepth(depth - 0.2);
     this.bars?.setPosition(Math.round(x), Math.round(y)).setDepth(depth + 0.05);
+    if (this.rest) this.syncRest(Math.round(x), Math.round(y), depth);
     // The name sits just over the head (2 px above its first visible row); an alert goes above it.
     const plateBottom = Math.round(y) - this.M.characters.anchor[1] + this.head - 2;
     this.tag?.place(Math.round(x), plateBottom);
-    const alertY = this.tag ? plateBottom - this.tag.height - 1 : Math.round(y) - this.M.characters.cell[1] - 2;
+    let alertY = this.tag ? plateBottom - this.tag.height - 1 : Math.round(y) - this.M.characters.cell[1] - 2;
+    if (this.marker) {
+      this.marker.place(Math.round(x), alertY);
+      alertY -= this.marker.height;
+    }
     this.bubble?.place(Math.round(x), alertY);
     this.pop?.place(Math.round(x), alertY - (this.bubble ? this.bubble.height + 1 : 0));
     this.alert?.setPosition(Math.round(x), alertY).setDepth(depth + 0.1);
     this.overhead?.setPosition(Math.round(x), alertY - (this.bubble ? this.bubble.height + 1 : 0));
+  }
+
+  /** The resting weapon's sprites on this frame of the body (idle and walk only; hidden otherwise, e.g. sitting). */
+  private syncRest(x: number, y: number, depth: number): void {
+    const r = this.rest!;
+    const anim = this.anim === 'walk' || this.anim === 'idle' ? this.anim : null;
+    const layers = anim && !this.sprite.angle ? restLayers(r.art, anim, this.dir) : null;
+    const own = r.art.rest.own;
+    const frame = own ? Math.floor((this.scene.time.now / 1000) * own.fps) % own.frames : Number(this.sprite.frame.name) || 0;
+    const C = this.M.characters;
+    const place = (sp: Phaser.GameObjects.Sprite, l: ClassLayer | undefined, d: number) => {
+      if (!l || !this.scene.textures.exists(l.file)) return void sp.setVisible(false);
+      slice(this.scene.textures, l.file, l.size[0], l.size[1]);
+      // A 64x64 weapon cell holds the doll's cell at `offset`; a body-sized one lines up with it.
+      const at = l.size[0] === C.cell[0] && l.size[1] === C.cell[1] ? [0, 0] : r.offset;
+      sp.setTexture(l.file, frame).setOrigin((at[0] + C.anchor[0]) / l.size[0], (at[1] + C.anchor[1]) / l.size[1]);
+      sp.setPosition(x, y).setDepth(d).setVisible(this.sprite.visible).setAlpha(this.sprite.alpha);
+    };
+    r.back.forEach((sp, i) => place(sp, layers?.back[i], depth - 0.01));
+    r.front.forEach((sp, i) => place(sp, layers?.front[i], depth + 0.01));
   }
 
   /** A puff of dust at the feet (each step's; a fall's). */
@@ -445,6 +500,8 @@ export class Character {
     this.bubbleTimer?.remove();
     this.bubble?.destroy();
     this.pop?.destroy();
+    this.marker?.destroy();
+    for (const sp of [...(this.rest?.back ?? []), ...(this.rest?.front ?? [])]) sp.destroy();
   }
 
   /** Lets the scene tint effects spawned later (night). */
@@ -452,6 +509,6 @@ export class Character {
 
   /** Sprites to tint with the world. */
   get tintables(): Phaser.GameObjects.Components.Tint[] {
-    return [this.sprite, ...(this.shadow ? [this.shadow] : []), ...(this.bars ? [this.bars] : [])];
+    return [this.sprite, ...(this.shadow ? [this.shadow] : []), ...(this.bars ? [this.bars] : []), ...(this.rest ? [...this.rest.back, ...this.rest.front] : [])];
   }
 }

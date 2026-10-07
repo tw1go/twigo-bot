@@ -33,6 +33,8 @@ export interface TownHudOptions {
   guide: string | null;
   /** The jackpot counter's icon (manifest ui.jackpotIcon); the Kowen coin without it. */
   ticket: string | null;
+  /** The quest button's scroll (manifest ui.questIcon); its clicks and dot are ui/quests.ts's. */
+  quest: string | null;
 }
 
 /** One frame of a strip of square frames. */
@@ -72,6 +74,11 @@ const EARN = [
 ];
 
 let setAvatar: (head: HTMLCanvasElement) => void = () => {};
+let setClass: (cls: { name: string; badge: string } | null) => void = () => {};
+
+/** Your class badge over the avatar's corner (the 16x16 badge at the HUD's 2×; the avatar is under 48 px at 1×), or
+ *  none before a class is chosen. */
+export const setHudClass = (cls: { name: string; badge: string } | null) => setClass(cls);
 
 /** Your character's head in the profile box, after a new look (the Parlor). */
 export const setHudAvatar = (head: HTMLCanvasElement | null) => head && setAvatar(head);
@@ -102,7 +109,17 @@ export function mountTownHud(o: TownHudOptions): void {
     dot.setAttribute('aria-label', dot.title);
   };
   setStatus(o.me?.status);
-  face.append(dot);
+  const classBadge = el('img', 'th-class');
+  classBadge.alt = '';
+  classBadge.hidden = true;
+  setClass = (cls) => {
+    classBadge.hidden = !cls;
+    if (!cls) return;
+    classBadge.src = cls.badge;
+    classBadge.title = cls.name;
+    classBadge.setAttribute('aria-label', `Class: ${cls.name}`);
+  };
+  face.append(dot, classBadge);
   profile.append(face, el('span', 'th-name', o.name));
   const settings = el('button', 'th-settings');
   if (o.gear) {
@@ -143,6 +160,21 @@ export function mountTownHud(o: TownHudOptions): void {
   guide.setAttribute('aria-haspopup', 'dialog');
   guide.title = 'Tutorial';
   guide.addEventListener('click', () => showGuide());
+  // Quests (ui/quests.ts opens the log; the dot shows a quest started or moved on since it was last opened).
+  const quest = el('button', 'th-settings th-news th-quest');
+  quest.id = 'quest-button';
+  if (o.quest) {
+    const icon = el('img', 'th-gear');
+    icon.src = o.quest;
+    icon.alt = '';
+    quest.append(icon);
+  } else quest.textContent = '📜';
+  const questDot = el('span', 'th-news-dot th-quest-dot');
+  questDot.hidden = true;
+  quest.append(questDot);
+  quest.setAttribute('aria-label', 'Quests');
+  quest.setAttribute('aria-haspopup', 'dialog');
+  quest.title = 'Quests (J)';
   // Top left: the profile with the Kowens and shovel counters beside it; top right: the jackpot counter, the tutorial, News and Settings.
   const left = el('div', 'th-left');
   const row = el('div', 'th-row');
@@ -154,7 +186,7 @@ export function mountTownHud(o: TownHudOptions): void {
   const top = el('div', 'th-top');
   top.append(el('div', 'th-map'));
   const buttons = el('div', 'th-buttons');
-  buttons.append(guide, news, settings);
+  buttons.append(quest, guide, news, settings);
   corner.append(top, buttons);
   root.append(left, corner);
 

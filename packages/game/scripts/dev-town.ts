@@ -23,6 +23,8 @@ import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
 //   GET /__gift?as=Alice&item=megaphone&name=Megaphone&qty=3   Alice gets the item gift pop-up (as from /gift item)
 //   GET /__title?as=Alice&id=richest&name=Richest%20Among%20All&color=%23FFD54A   Alice gets the new-title pop-up
 //   GET /__look?as=Alice&look={…}&title=Kalbo&color=%23F8BF27   Alice's new look / title (the pretend Parlor calls it)
+//   GET /__kit?as=Alice&cls=stick&weapon=weapon-training-stick   Alice's class and worn weapon (the pretend quests and
+//   equipment call it; the page also sends them on connect as &kit=)
 //   The neighbourhood (?area=hood): GET /town/hood, POST /town/house, POST /town/hood answered here with pretend
 //   neighbours (one with a Bakod) and your house (by ?as=, from the page's address); &steal=win|bust|snap decides a
 //   steal (else it's random). Each page load refills your Master Keys and Kalawang Potions (3 each, or &keys=N
@@ -39,6 +41,7 @@ export function devTown(): Plugin {
       if (!httpServer) return;
       const json = JSON.parse(readFileSync(join(server.config.publicDir, 'assets/maps/town.json'), 'utf8'));
       const looks = new Map<string, OutfitData>();
+      const kits = new Map<string, { cls: string | null; weapon: string | null }>(); // class and worn weapon (the pretend quests)
       // Arena bets against pretend wallets (100 Kowens each, in memory; the HUD's Kowens don't follow them).
       const wallets = new Map<string, number>();
       const wallet = (who: string) => wallets.get(who) ?? 100;
@@ -258,13 +261,18 @@ export function devTown(): Plugin {
           const name = q.get('dev')?.slice(0, 16);
           if (!name) return null;
           try {
+            kits.set(name, JSON.parse(q.get('kit') ?? 'null') ?? { cls: null, weapon: null });
+          } catch {
+            // no class yet
+          }
+          try {
             looks.set(name, JSON.parse(q.get('look') ?? 'null'));
           } catch {
             // no look: the game shows a random one
           }
           return name;
         },
-        profile: (name) => ({ nickname: name, title: { name: 'Townfolk', color: '#B794F6' }, outfit: looks.get(name) ?? ({} as OutfitData) }),
+        profile: (name) => ({ nickname: name, title: { name: 'Townfolk', color: '#B794F6' }, outfit: looks.get(name) ?? ({} as OutfitData), ...kits.get(name) }),
         onSay: (_id, nickname, text, megaphone) => server.config.logger.info(`[town chat → Discord] ${megaphone ? '📢 ' : ''}${nickname}: ${text}`, { timestamp: true }),
       });
       server.middlewares.use('/__title', (req, res) => {
@@ -282,6 +290,14 @@ export function devTown(): Plugin {
         }
         town.restyle(name, looks.get(name) ?? ({} as OutfitData), { name: q.get('title') ?? 'Townfolk', color: q.get('color') ?? '#B794F6' });
         res.end(`${name} restyled\n`);
+      });
+      server.middlewares.use('/__kit', (req, res) => {
+        const q = new URL(req.url ?? '/', 'http://localhost').searchParams;
+        const name = q.get('as') ?? '';
+        const kit = { cls: q.get('cls') || null, weapon: q.get('weapon') || null };
+        kits.set(name, kit);
+        town.kit(name, kit.cls, kit.weapon);
+        res.end(`${name}: ${kit.cls ?? 'no class'}, ${kit.weapon ?? 'no weapon'}\n`);
       });
       server.middlewares.use('/__announce', (req, res) => {
         const q = new URL(req.url ?? '/', 'http://localhost').searchParams;

@@ -1,6 +1,6 @@
 import type Phaser from 'phaser';
 import type { ArenaServerMessage, TownPlayer, TownServerMessage } from '@mikazuki/shared';
-import type { Manifest } from '../assets/types';
+import type { ClassArt, Manifest } from '../assets/types';
 import { Character } from '../characters/character';
 import { loadOutfit, randomOutfit } from '../characters/doll';
 import { sanitize } from '../characters/looks';
@@ -27,6 +27,8 @@ export class OtherPlayers {
   bubbleArt: BubbleArt | null = null;
   /** Called when someone arrives or leaves (the online list). */
   onChange: () => void = () => {};
+  /** The resting weapon art for a worn weapon (loaded), or null (the scene knows the items and classes). */
+  restFor: (weapon: string | null | undefined, cls: string | null | undefined) => Promise<ClassArt | null> = async () => null;
   /** The CSS cursor over a character (left click picks them). */
   private cursorCss = 'pointer';
 
@@ -74,6 +76,10 @@ export class OtherPlayers {
       case 'jailed':
         s.jailed = m.on || undefined;
         return o.char?.setJailed(m.on);
+      case 'kit':
+        // A class chosen or a weapon changed: their resting weapon, once its sheets have loaded.
+        Object.assign(s, { cls: m.cls, weapon: m.weapon });
+        return void this.dressRest(o);
       case 'look': {
         // A new look or title from the Parlor: the new layers load first, then they change in place.
         Object.assign(s, { outfit: m.outfit, title: m.title });
@@ -170,7 +176,16 @@ export class OtherPlayers {
       char.setZoom(this.zoom);
       for (const t of char.tintables) this.onSpawn(t);
       o.char = char;
+      void this.dressRest(o);
     });
+  }
+
+  /** Their resting weapon (none without a weapon), unless they changed it again meanwhile. */
+  private async dressRest(o: Other): Promise<void> {
+    const { weapon, cls } = o.state;
+    const art = await this.restFor(weapon, cls);
+    if (o.state.weapon !== weapon || !o.char) return;
+    o.char.setRestingWeapon(art, this.M.classes?.bodyOffset);
   }
 
   private remove(id: string): void {

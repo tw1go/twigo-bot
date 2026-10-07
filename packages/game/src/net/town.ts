@@ -1,5 +1,6 @@
 import type { TownClientMessage, TownServerMessage } from '@mikazuki/shared';
 import { fakeLogin, fakeName } from '../session';
+import { devKit } from './adventure';
 
 // The live town connection (WebSocket /ws; the bot side is packages/bot/src/web/town.ts). Reconnects after a drop
 // (1 s, 2 s, 4 s … up to 30 s), except when the same member opened the town in another tab (see reconnect).
@@ -72,7 +73,7 @@ export class TownLink {
   }
 }
 
-/** /ws on this site (in dev, the fake login's name and look ride along for the dev server's town). */
+/** /ws on this site (in dev, the fake login's name, look, class and weapon ride along for the dev server's town). */
 function townUrl(look: unknown, room: string): string {
   const url = new URL('/ws', location.href);
   url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -80,6 +81,7 @@ function townUrl(look: unknown, room: string): string {
   if (fakeLogin()) {
     url.searchParams.set('dev', fakeName());
     if (look) url.searchParams.set('look', JSON.stringify(look));
+    url.searchParams.set('kit', JSON.stringify(devKit()));
   }
   return url.toString();
 }

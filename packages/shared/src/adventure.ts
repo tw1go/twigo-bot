@@ -52,8 +52,12 @@ export interface QuestsFile {
   quests: QuestDef[];
 }
 
-/** The ten equipment slots (in the order of ui.equipSlots' silhouettes). */
+/** The kinds of equipment (an item's slot; in the order of ui.equipSlots' silhouettes). */
 export type EquipSlot = 'weapon' | 'head' | 'body' | 'hands' | 'bottoms' | 'feet' | 'necklace' | 'earrings' | 'bracers' | 'ring';
+
+/** Where equipment is worn: one place per kind, but two for bracers and two for rings. The panel shows Weapon, Head,
+ *  Body, Hands, Bottoms and Feet on the left; Necklace, Earrings, both Bracers and both Rings on the right. */
+export type EquipPlace = Exclude<EquipSlot, 'bracers' | 'ring'> | 'bracers1' | 'bracers2' | 'ring1' | 'ring2';
 
 export interface EquipStats {
   atk?: number;
@@ -100,8 +104,8 @@ export interface QuestProgress {
 export interface AdventureState {
   cls: string | null;
   quests: { active: QuestProgress[]; done: string[] };
-  /** What's in each equipment slot (item ids). */
-  equipped: Partial<Record<EquipSlot, string>>;
+  /** What's worn in each place (item ids). */
+  equipped: Partial<Record<EquipPlace, string>>;
   /** Equipment in the bag, not worn (item ids, one slot each). */
   bag: string[];
 }
@@ -109,8 +113,9 @@ export interface AdventureState {
 /** POST /town/quest: an objective done in the game (talked to `npc`, or chose `cls`). */
 export type TownQuestAction = { quest: string; action: 'talk'; npc: string } | { quest: string; action: 'chooseClass'; cls: string };
 
-/** POST /town/equip: wear an item from the bag (its slot's item goes back to the bag), or take one off (needs a free bag slot). */
-export type TownEquipAction = { action: 'equip'; item: string } | { action: 'unequip'; slot: EquipSlot };
+/** POST /town/equip: wear an item from the bag (in `place`, or the first free place for its kind, else the first one; what
+ *  was there goes back to the bag), or take one off (needs a free bag slot). */
+export type TownEquipAction = { action: 'equip'; item: string; place?: EquipPlace } | { action: 'unequip'; place: EquipPlace };
 
 export interface TownAdventureResponse {
   ok: boolean;

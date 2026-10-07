@@ -275,3 +275,41 @@ export class EmotePop {
     this.box.destroy();
   }
 }
+
+/** A quest giver's marker over their name: a bobbing "!" (talk to them) or "…" (they're waiting on you), in the
+ *  quest's colour. Only the player whose quest it is sees it. */
+export class QuestMarker {
+  private readonly box: Phaser.GameObjects.Container;
+  private readonly mark: Phaser.GameObjects.Text;
+  private zoomScale = 1;
+
+  constructor(
+    private readonly scene: Phaser.Scene,
+    symbol: string,
+    color: string,
+  ) {
+    this.mark = text(scene, symbol, 10, color, { stroke: '#1E1B3A', strokeThickness: 3, fontStyle: 'bold' }).setOrigin(0.5, 1);
+    this.box = scene.add.container(0, 0, [this.mark]).setDepth(LABEL_DEPTH + 1);
+    scene.tweens.add({ targets: this.mark, y: -3, duration: 520, ease: 'Sine.easeInOut', yoyo: true, repeat: -1 });
+  }
+
+  get height(): number {
+    return Math.ceil((this.mark.height + 3) * this.zoomScale);
+  }
+
+  place(x: number, bottom: number): void {
+    this.box.setPosition(x, bottom);
+  }
+
+  setZoom(zoom: number): void {
+    const { scale, resolution } = scaleFor(zoom);
+    this.zoomScale = scale;
+    this.box.setScale(scale);
+    this.mark.setResolution(resolution);
+  }
+
+  destroy(): void {
+    this.scene.tweens.killTweensOf(this.mark);
+    this.box.destroy();
+  }
+}

@@ -10,7 +10,7 @@ import { BuildingLabel, UI_FONT } from '../ui/labels';
 import { LOADING_LINES } from '../ui/loading-lines';
 import { TownLink } from '../net/town';
 import { showElsewhere, showKicked } from '../ui/elsewhere';
-import { mountTownHud, setHudAvatar } from '../ui/townhud';
+import { mountTownHud, setHudAvatar, setHudClass } from '../ui/townhud';
 import { showParlor } from '../ui/parlor';
 import { type HouseArt, composeHouse, houseFiles, houseStyles, tidyLook } from '../houses/art';
 import { areaUrl, cameFrom, hoodAction, loadHood, saveHouse } from '../net/hood';
@@ -44,7 +44,7 @@ import { showOutpost } from '../ui/outpost';
 import { showBoard } from '../ui/board';
 import { showShop } from '../ui/shop';
 import { TargetBox } from '../ui/target';
-import { RARITY_TEXT, isRarity, setItemArt } from '../ui/item-art';
+import { RARITY_TEXT, addItemArt, isRarity, setItemArt } from '../ui/item-art';
 import { playDig, setDigPanelArt } from '../ui/dig-panel';
 import { showMine } from '../ui/mine';
 import { Inventory } from '../ui/inventory';
@@ -69,6 +69,16 @@ import type { ArenaData } from './ArenaScene';
 import { Minimap } from '../ui/minimap';
 import { type Bench, type Building, WorldObjects, characterDepth } from '../world/objects';
 import { enterArenaSound, enterCasinoSound, hearFrom, leaveCasinoSound, playSound, startTownSound } from '../audio/sound';
+import type { AdventureData } from '../net/adventure';
+import { adventureData, chooseClass, classInfo, initAdventure, itemDef, loadAdventureData, onAdventure, questDef, questFor, questTalk } from '../net/adventure';
+import type { ClassArt } from '../assets/types';
+import { drawRested, loadImages, poseFiles, restFiles } from '../characters/kit-art';
+import { holdQuestBanners, mountQuests } from '../ui/quests';
+import { openClassChoice } from '../ui/class-choice';
+import { mountSkillPreview } from '../ui/skill-preview';
+import { STAGE_H, STAGE_W, SkillStage } from '../combat/skill-stage';
+import { NPC_PLACES } from '../world/npcs';
+import { pick, tileRandom } from '../world/rng';
 
 // The playable town: ground, buildings, props and the player, all placed from manifest.json + maps/town.json.
 // Right click to walk; left click a building to walk to its door, or a bench to sit (a tap does all of these).
@@ -323,6 +333,7 @@ export class TownScene extends Phaser.Scene {
     const door = mine && this.map.doors[`house-${mine.lot}`];
     if (door && !Array.isArray(door[0])) this.player.place({ col: door[0] as number, row: door[1] as number }, 'se');
     this.others = new OtherPlayers(this, this.M, this.objects, (obj) => this.tint >= 0 && obj.setTint(this.tint));
+    this.others.restFor = (weapon, cls) => this.restArt(weapon, cls);
     if (!this.hood) this.npcs = this.makeNpcs();
     // The race box's bet pop-up shows the runners' portraits wherever you are (the neighbourhood too, which has no NPCs).
     const P = this.M.npcs?.portrait;
@@ -353,6 +364,7 @@ export class TownScene extends Phaser.Scene {
     this.player.setNameTag(member?.nickname ?? 'Guest', member?.title ?? TOWNFOLK);
     this.player.setJailed(member?.status === 'jailed');
     this.mountHud();
+    void this.setupQuests();
     this.minimap = new Minimap(this.map); // in the HUD's corner, above its buttons
     startTownSound(this, this.fountainTile());
     if (member || fakeLogin()) this.connect();
@@ -458,6 +470,7 @@ export class TownScene extends Phaser.Scene {
       megaphone: this.M.ui.newsIcon?.file ? asset(this.M.ui.newsIcon.file) : null,
       guide: this.M.ui.tutorialIcon?.file ? asset(this.M.ui.tutorialIcon.file) : null,
       ticket: this.M.ui.jackpotIcon?.file ? asset(this.M.ui.jackpotIcon.file) : null,
+      quest: this.M.ui.questIcon?.file ? asset(this.M.ui.questIcon.file) : null,
     });
   }
 
@@ -499,6 +512,179 @@ export class TownScene extends Phaser.Scene {
   /** Debug: show a reward pop-up. */
   debugReward(r: Reward): Promise<void> {
     return showReward(r);
+  }
+
+  // ── Quests, classes and equipment ──
+
+  private adventureReady: Promise<AdventureData | null> | null = null;
+
+  /** The quest, class and equipment data; then (for members) your quests in the tracker and log, the marker over the
+   *  quest giver, their lines, and your class badge and resting weapon. */
+  private setupQuests(): Promise<void> {
+    const Q = this.M.quests;
+    const K = this.M.classes;
+    const E = this.M.equipment;
+    if (!Q || !K || !E) return Promise.resolve();
+    const asset = (f: string) => `${import.meta.env.BASE_URL}assets/${f}`;
+    this.adventureReady ??= loadAdventureData(asset, { quests: Q.file, classes: K.data, equipment: E.file });
+    return this.adventureReady.then((data) => {
+      if (!data) return void console.warn('[quests] the quests, classes or equipment data is missing');
+      addItemArt(Object.fromEntries([...data.equipment.values()].map((i) => [i.id, { icon: i.icon, showcase: i.showcase }])));
+      const member = this.me?.status === 'ok' ? this.me.me : null;
+      if (!member) return; // guests have no quests
+      initAdventure(member.adventure);
+      const frame = this.M.ui.inventory?.itemFrame;
+      mountQuests({ colours: Q.colours, frame: frame ? { url: asset(frame.file), slice: frame.nineSlice } : null, giver: (id) => this.giverOf(id) });
+      if (this.npcs) this.npcs.script = (id) => this.questScript(id);
+      const icons = this.M.ui.classIcons;
+      onAdventure((s) => {
+        this.questMarkers();
+        void this.wearWeapon(s.equipped.weapon, s.cls);
+        const c = classInfo(s.cls);
+        setHudClass(c && icons ? { name: c.name, badge: asset(icons.small.replace('{class}', c.id)) } : null);
+      });
+    });
+  }
+
+  /** A quest giver's name and portrait (for the quest log). */
+  private giverOf(id: string): { name: string; portrait: string; mirror: boolean } | null {
+    const P = this.M.npcs?.portrait;
+    if (!P) return null;
+    const text = (this.cache.json.get('npc-dialogue') as { npcs?: Record<string, { name: string }> } | undefined)?.npcs?.[id];
+    return { name: text?.name ?? id, portrait: `${import.meta.env.BASE_URL}assets/${P.file.replace('{id}', id)}`, mirror: NPC_PLACES.find((p) => p.id === id)?.portrait === 'sw' };
+  }
+
+  /** A "!" over an NPC you're to talk to for a quest, a "…" over one waiting on you, in the quest's colour. */
+  private questMarkers(): void {
+    if (!this.npcs || !this.M.quests) return;
+    for (const id of Object.keys(this.npcs.positions)) {
+      const q = questFor(id);
+      const o = q && q.quest.objectives[q.step];
+      this.npcs.setMarker(id, q && o ? { symbol: o.type === 'talk' ? '!' : '…', color: this.M.quests.colours[q.quest.type] } : null);
+    }
+  }
+
+  /** An NPC's lines while a quest of theirs is on: the talk (then the next objective), or a reminder. */
+  private questScript(id: string): { lines: string[]; onDone?: () => void } | null {
+    const q = questFor(id);
+    if (!q) return null;
+    const { quest, step } = q;
+    const o = quest.objectives[step];
+    const d = quest.dialogue ?? {};
+    const chooseNext = () => quest.objectives[step + 1]?.type === 'chooseClass' && this.openClasses(quest.id, id);
+    if (o.type === 'talk' && d.talk?.length) {
+      return {
+        lines: d.talk,
+        onDone: () =>
+          void questTalk(quest.id, id).then((r) => {
+            if (!r?.ok) return toast(r?.message ?? "Couldn't reach the bot. Try again in a moment.", 3000, 'bad');
+            chooseNext();
+          }),
+      };
+    }
+    if (o.type === 'chooseClass') return { lines: d.remind?.length ? d.remind : ['…'], onDone: () => void this.openClasses(quest.id, id) };
+    return null;
+  }
+
+  /** The class choice (for a quest's chooseClass objective, given by `giver`). */
+  private async openClasses(questId: string, giver: string): Promise<void> {
+    const data = adventureData();
+    const K = this.M.classes;
+    const icons = this.M.ui.classIcons;
+    if (!data || !K || !icons) return;
+    const asset = (f: string) => `${import.meta.env.BASE_URL}assets/${f}`;
+    const C = this.M.characters;
+    await loadImages(this, data.classes.flatMap((c) => (K.list[c.id] ? restFiles(K.list[c.id]) : [])));
+    const frame = this.M.ui.inventory?.itemFrame;
+    openClassChoice({
+      classes: data.classes,
+      badge: (cls, size) => asset((size === 16 ? icons.small : size === 64 ? icons.large : icons.file).replace('{class}', cls)),
+      frame: frame ? { url: asset(frame.file), slice: frame.nineSlice } : null,
+      drawResting: (ctx, cls, f, t) => drawRested(ctx, this, C, K, this.outfit, K.list[cls] ?? null, 'idle', 's', f, t),
+      idle: { frames: C.animations.idle.frames, fps: C.animations.idle.fps },
+      preview: (c, host, back, choose) => mountSkillPreview({ stage: (cls) => this.skillStage(cls.id, cls.fx) }, c, host, back, choose),
+      onChoose: async (c) => {
+        holdQuestBanners(true); // the giver has a last line first
+        const r = await chooseClass(questId, c.id);
+        if (!r?.ok) {
+          holdQuestBanners(false);
+          toast(r?.message ?? "Couldn't reach the bot. Try again in a moment.", 3000, 'bad');
+          return false;
+        }
+        const item = itemDef(r.given);
+        if (item) {
+          const img = document.createElement('img');
+          img.src = asset(item.showcase);
+          img.alt = '';
+          toast(`Received: ${item.name}`, 3500, 'good', img);
+        }
+        const lines = (questDef(questId)?.dialogue?.complete ?? []).map((l) => l.replaceAll('{class}', c.name));
+        if (this.npcs && lines.length) this.npcs.talk(giver, this.player.tile, { lines, after: () => holdQuestBanners(false) });
+        else holdQuestBanners(false);
+        return true;
+      },
+      onClose: () => {},
+    });
+  }
+
+  /** The skill preview's stage for a class, once its poses and fx have loaded. */
+  private async skillStage(cls: string, fxFolder: string): Promise<SkillStage | null> {
+    const K = this.M.classes;
+    const art = K?.list[cls];
+    if (!K || !art) return null;
+    const asset = (f: string) => `${import.meta.env.BASE_URL}assets/${f}`;
+    const fx = Object.values(this.M.fx).filter((f) => f.file?.startsWith(`${fxFolder}/`)).map((f) => f.file!);
+    await loadImages(this, [...poseFiles(art), ...fx, ...this.M.tiles.grass.files]);
+    const launch = art.launch
+      ? await fetch(asset(art.launch)).then((r) => (r.ok ? r.json() : null)).then((j) => j?.points ?? null).catch(() => null)
+      : null;
+    return new SkillStage({ scene: this, C: this.M.characters, K, outfit: this.outfit, art, fx: this.M.fx, launch, ground: this.previewGround() });
+  }
+
+  /** The skill preview's ground: the town's grass in the night's tint. */
+  private previewGround(): HTMLCanvasElement {
+    const c = document.createElement('canvas');
+    c.width = STAGE_W;
+    c.height = STAGE_H;
+    const ctx = c.getContext('2d')!;
+    const G = this.M.tiles.grass;
+    const [ax, ay] = G.anchor;
+    for (let r = -12; r < 24; r++) {
+      for (let col = -12; col < 24; col++) {
+        const x = (col - r) * 16 + STAGE_W / 2;
+        const y = (col + r) * 8 - 40;
+        if (x < -40 || x > STAGE_W + 40 || y < -40 || y > STAGE_H + 40) continue;
+        const file = pick(G.files, tileRandom(col, r, 3));
+        if (!this.textures.exists(file)) continue;
+        ctx.drawImage(this.textures.get(file).getSourceImage() as CanvasImageSource, Math.round(x - ax), Math.round(y + 8 - ay));
+      }
+    }
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = `#${skyAt(0).tint.toString(16).padStart(6, '0')}`;
+    ctx.fillRect(0, 0, STAGE_W, STAGE_H);
+    return c;
+  }
+
+  /** A worn weapon's resting art (its sheets loaded): the weapon's class, else the wearer's. */
+  private async restArt(weapon: string | null | undefined, cls: string | null | undefined): Promise<ClassArt | null> {
+    if (!weapon) return null;
+    await this.adventureReady;
+    const id = itemDef(weapon)?.class ?? cls;
+    const art = id ? this.M.classes?.list[id] : undefined;
+    if (!art) return null;
+    await loadImages(this, restFiles(art));
+    return art;
+  }
+
+  private worn: string | null = null;
+
+  /** Your resting weapon in town (others see it through the server's kit message). */
+  private async wearWeapon(weapon: string | undefined, cls: string | null): Promise<void> {
+    const key = weapon ?? null;
+    if (this.worn === key) return;
+    this.worn = key;
+    const art = await this.restArt(key, cls);
+    if (this.worn === key) this.player.setRestingWeapon(art, this.M.classes?.bodyOffset);
   }
 
   // ── Other players ──
