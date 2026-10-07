@@ -18,10 +18,13 @@ import { kickedUntil, mutedUntil } from './town-mod.js';
 import { forgetNews } from './town-news.js';
 import { BODY_MAX, TITLE_MAX, deletePost, savePost, townPosts } from './town-posts.js';
 import type { Town } from './town.js';
+import { isSettingKey, setSetting, setting, settingList, SETTINGS } from '../games/settings.js';
+import { CLASSES, EQUIPMENT, QUESTS, adventureOf, resetAdventure } from './adventure.js';
+import { renameCards } from '../items/rename-card.js';
 
 // 🛠️ The CMS: a page for the gifter (and CMS_USER_IDS) to run the game's content without a deploy or a slash command:
-// the town's own news posts, titles (make, change, give), the rewards shop's prices and what's on sale, and players
-// (look someone up, give or take Kowens). It lives at CMS_PATH, a path nobody can guess; anyone else (logged out
+// the town's own news posts, titles (make, change, give), the rewards shop's prices and what's on sale, reward amounts
+// (Mine Wars, daily, welcome gift, stay), and players (look someone up, give or take Kowens, start their class over). It lives at CMS_PATH, a path nobody can guess; anyone else (logged out
 // visitors get a login button, other members a plain 404) sees nothing. Every change goes in the bot's log (not Discord).
 //
 //   GET  <path>/                 the page, packages/bot/cms/index.html (its script: <path>/app.js)
@@ -31,8 +34,10 @@ import type { Town } from './town.js';
 //   GET  <path>/api/titles       POST { id, name, color, description? } · POST /api/titles/delete { id }
 //   GET  <path>/api/shop         POST { id, cost: number | null, off }
 //   GET  <path>/api/items        dig items, their odds and how many are in bags · POST { id, name, emoji, value, rarity, off }
+//   GET  <path>/api/settings     reward amounts (games/settings.ts) · POST { key, value: number | null (the default) }
 //   GET  <path>/api/players?q=   nickname or Discord ID; empty = the richest
 //   GET  <path>/api/player?id=   POST /api/player/kowens { id, amount, reason? } · POST /api/player/title { id, title }
+//                                POST /api/player/reset-class { id } (class, quests and equipment start over)
 
 export interface CmsDeps {
   town: () => Town | null;
@@ -115,10 +120,25 @@ async function player(id: string, deps: CmsDeps) {
     mutedUntil: mutedUntil(id),
     kickedUntil: kickedUntil(id),
     inTown: !!deps.town()?.here().includes(id),
+    ...adventureView(id),
+    renameCards: renameCards(id),
   };
 }
 
 const nameOrId = (id: string | null) => id && (getNickname(id) ?? id);
+
+/** A player's class, quests and equipment, by name. */
+function adventureView(id: string) {
+  const s = adventureOf(id);
+  const quest = (q: string) => QUESTS.find((x) => x.id === q)?.title ?? q;
+  return {
+    cls: CLASSES.find((c) => c.id === s.cls)?.name ?? null,
+    questsActive: s.quests.active.map((p) => `${quest(p.id)} (${QUESTS.find((x) => x.id === p.id)?.objectives[p.step]?.text ?? 'done'})`),
+    questsDone: s.quests.done.map(quest),
+    equipped: Object.entries(s.equipped).map(([place, item]) => `${place}: ${EQUIPMENT.get(item!)?.name ?? item}`),
+    gear: s.bag.map((item) => EQUIPMENT.get(item)?.name ?? item),
+  };
+}
 
 const titleList = () => {
   const holders = titleHolders();
@@ -281,6 +301,30 @@ export async function cms(client: Client, req: IncomingMessage, res: ServerRespo
           ].filter(Boolean).join(', ') || 'nothing'}`;
       await log(client, who, what);
       return send(res, 200, { items: itemList(), rarities: rarities() });
+    }
+
+    case 'GET /api/settings':
+      return send(res, 200, { settings: settingList() });
+    case 'POST /api/settings': {
+      const key = str(body!.key);
+      const value = body!.value;
+      if (!isSettingKey(key)) return bad('No such setting.');
+      const def = SETTINGS[key];
+      const before = setting(key);
+      if (value !== null && typeof value !== 'number') return bad(`${def.label} is a whole number.`);
+      if (!setSetting(key, value)) return bad(`${def.label} is a whole number, ${def.min} to ${def.max.toLocaleString('en-US')}.`);
+      if (before !== setting(key)) await log(client, who, `rewards: ${def.group} · ${def.label} ${before} → ${setting(key)}${value === null ? ' (the default)' : ''}`);
+      return send(res, 200, { settings: settingList() });
+    }
+
+    case 'POST /api/player/reset-class': {
+      const id = str(body!.id);
+      if (!known(id)) return send(res, 404, '{"error":"No such player."}');
+      const was = adventureOf(id).cls;
+      resetAdventure(id);
+      deps.town()?.kit(id, null, null); // their resting weapon and badge go, for everyone in town
+      await log(client, who, `started **${getNickname(id) ?? (await deps.discordName(id))}**'s class over (was ${was ?? 'none'}): quests and equipment too`);
+      return send(res, 200, { player: await player(id, deps) });
     }
 
     case 'GET /api/players':

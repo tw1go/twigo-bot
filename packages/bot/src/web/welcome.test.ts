@@ -13,7 +13,7 @@ for (const name of ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'ADMIN_ROLE_ID', 'ADMI
   'GAMBLING_CHANNEL_ID', 'GAMES_CHANNEL_ID', 'JAIL_ROLE_ID', 'REWARD_OWNER_ID', 'ROOM_FINDS_CHANNEL_ID']) process.env[name] = 'test';
 process.env.TIMEZONE = 'Asia/Manila';
 
-const { WELCOME_KOWENS, welcome, welcomeEveryone, welcomeGift, welcomeSeen } = await import('./welcome.js');
+const { welcomeKowens, welcome, welcomeEveryone, welcomeGift, welcomeSeen } = await import('./welcome.js');
 const { saveOutfit } = await import('./outfit.js');
 const { setNickname } = await import('./nickname.js');
 const { balance } = await import('../credits/store.js');
@@ -29,18 +29,18 @@ test('the welcome gift: once, for members with a character (existing ones at sta
   saveOutfit('half', look); // no nickname yet: no character
   assert.equal(welcomeEveryone(), 2);
   assert.equal(welcomeEveryone(), 0); // only once
-  assert.equal(balance('old1'), WELCOME_KOWENS);
+  assert.equal(balance('old1'), welcomeKowens());
   assert.equal(balance('half'), 0);
-  assert.equal(welcomeGift('old1'), WELCOME_KOWENS); // to show
+  assert.equal(welcomeGift('old1'), welcomeKowens()); // to show
   welcomeSeen('old1');
   assert.equal(welcomeGift('old1'), null);
-  assert.equal(balance('old1'), WELCOME_KOWENS);
+  assert.equal(balance('old1'), welcomeKowens());
   // A new player: the look first, then the nickname finishes the character.
   assert.equal(welcome('half'), false);
   setNickname('half', 'Halfway');
   assert.equal(welcome('half'), true);
   assert.equal(welcome('half'), false);
-  assert.equal(balance('half'), WELCOME_KOWENS);
+  assert.equal(balance('half'), welcomeKowens());
 });
 
 test.after(() => {

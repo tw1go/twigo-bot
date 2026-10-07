@@ -2,7 +2,7 @@ import { EmbedBuilder, MessageFlags, PermissionFlagsBits, SlashCommandBuilder } 
 import { LAUNCH_REWARD } from '../prereg/prereg.js';
 import type { Command } from '../types.js';
 import { config } from '../config.js';
-import { DAILY_CREDITS } from '../credits/store.js';
+import { dailyCredits } from '../credits/store.js';
 import { LOOK_COST } from '../web/town-parlor.js';
 import { kowen } from '../kowens.js';
 
@@ -59,7 +59,7 @@ export const twigoHelp: Command = {
           '🎒 Inventory holds **10** items (🗝️ Master Keys and 🧪 potions take a slot each too, 📢 megaphones share one, 🪪 Rename Cards share one) — buy bags in `/redeem` for +8 each, up to **50**',
         ]),
         ...section('🪙 Earn Kowens', [
-          `\`/get-kowens\` — claim ${DAILY_CREDITS} ${kowen(DAILY_CREDITS)} once a day (or in the web town)`,
+          `\`/get-kowens\` — claim ${dailyCredits()} ${kowen(dailyCredits())} once a day (or in the web town)`,
           '🎙️ **1 Kowen per 15 min** in voice chat, **max 12 a day** (with 1+ other person, not deafened, not AFK)',
           '🌙 **1 Kowen per 15 min** in the web town, **max 20 a day**: claim each one from the pop-up above the system feed',
           '🏆 **Weekly voice rewards** (Mondays 12 PM): top 10 get 50 · 30 · 20 · 10 Kowens (`/leaderboard`)',

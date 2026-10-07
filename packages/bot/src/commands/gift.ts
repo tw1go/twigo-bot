@@ -6,7 +6,7 @@ import { BOOST_CREDITS, boostCount, setBoostCount } from '../games/boosts.js';
 import { DIGS_PER_DAY, SHOVELS_PER_DAY, SHOVEL_USES, capacity, resetDigCounters } from '../dig/store.js';
 import { usedSlots } from '../dig/bag.js';
 import { GIFTABLE, giftableById } from '../items/gift.js';
-import { ATTEND_REWARD, TOP_REWARD, openPayoutPanel } from '../minewars/payout.js';
+import { openPayoutPanel } from '../minewars/payout.js';
 import { kowen } from '../kowens.js';
 import { LAUNCH_REWARD, launchPayout, launched, preregPanel } from '../prereg/prereg.js';
 import { TITLES, giveTitle } from '../web/titles.js';
@@ -76,7 +76,7 @@ export const gift: Command = {
         .addUserOption((o) => o.setName('user').setDescription('Who').setRequired(true)),
     )
     .addSubcommand((s) =>
-      s.setName('minewars').setDescription(`Pay 9 PM Mine Wars: attendance +${ATTEND_REWARD}, Top 10 ${TOP_REWARD} · 🔒 panel · 🌐 summary`),
+      s.setName('minewars').setDescription('Pay 9 PM Mine Wars: attendance and Top 10 (amounts in the CMS) · 🔒 panel · 🌐 summary'),
     ),
   async autocomplete(interaction) {
     const typed = interaction.options.getFocused().toLowerCase();

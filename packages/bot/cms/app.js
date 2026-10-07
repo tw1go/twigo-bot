@@ -244,7 +244,7 @@ async function titles() {
 
 // ── Shop ──
 
-const KIND = { fence: 'Bakod', shovel: 'Shovel', key: 'Key', megaphone: 'Megaphone', vault: 'Vault', potion: 'Potion', bag: 'Bag', pass: 'Pass' };
+const KIND = { fence: 'Bakod', shovel: 'Shovel', key: 'Key', megaphone: 'Megaphone', rename: 'Rename', vault: 'Vault', potion: 'Potion', bag: 'Bag', pass: 'Pass' };
 
 async function shop() {
   page('Shop', 'What the town’s sari-sari store and /redeem sell. Changes apply at once; past purchases keep their price.');
@@ -276,6 +276,40 @@ async function shop() {
         h('td', { class: 'num' }, save),
       );
     }));
+  }
+  draw();
+}
+
+// ── Rewards (games/settings.ts) ──
+
+async function rewards() {
+  page('Rewards', 'How many Kowens the bot hands out. Changes apply at once (Mine Wars from the next payout panel). Reset goes back to the default.');
+  let { settings } = await api('settings');
+  const body = h('div', { class: 'sections' });
+  main().append(body);
+
+  function draw() {
+    const groups = [...new Set(settings.map((s) => s.group))];
+    body.replaceChildren(...groups.map((g) => h('div', { class: 'card' }, h('h2', null, g), ...settings.filter((s) => s.group === g).map(row))));
+  }
+  function row(s) {
+    const input = h('input', { type: 'number', min: s.min, max: s.max, step: 1, value: s.value });
+    const save = h('button', { class: 'btn primary', disabled: true }, 'Save');
+    const reset = h('button', { class: 'btn', disabled: !s.custom }, 'Reset');
+    input.addEventListener('input', () => (save.disabled = Number(input.value) === s.value));
+    const send = (value) => async () => {
+      if (value !== null && (!Number.isInteger(value) || value < s.min || value > s.max)) throw new Error(`${s.label} is a whole number, ${fmt(s.min)} to ${fmt(s.max)}.`);
+      ({ settings } = await api('settings', { key: s.key, value }));
+      toast(`${s.label} saved.`);
+      draw();
+    };
+    save.addEventListener('click', () => act(save, send(Number(input.value))));
+    reset.addEventListener('click', () => act(reset, send(null)));
+    return h('div', { class: 'setting' },
+      h('label', null, s.label, ' ', s.custom ? h('span', { class: 'tag changed' }, 'changed') : null),
+      h('p', { class: 'hint' }, `${s.help} · default ${fmt(s.default)}`),
+      h('div', { class: 'actions' }, input, save, reset),
+    );
   }
   draw();
 }
@@ -415,6 +449,11 @@ async function players(selected) {
         h('dt', null, 'Jailed'), h('dd', null, until(p.jailedUntil)),
         h('dt', null, 'Muted'), h('dd', null, until(p.mutedUntil)),
         h('dt', null, 'Kicked'), h('dd', null, until(p.kickedUntil)),
+        h('dt', null, 'Class'), h('dd', null, p.cls ?? 'none yet'),
+        h('dt', null, 'Quests'), h('dd', null, [...p.questsActive, ...p.questsDone.map((q) => `${q} ✓`)].join(' · ') || '—'),
+        h('dt', null, 'Wearing'), h('dd', null, p.equipped.join(' · ') || 'nothing'),
+        h('dt', null, 'Gear in bag'), h('dd', null, p.gear.join(' · ') || 'none'),
+        h('dt', null, 'Rename Cards'), h('dd', null, fmt(p.renameCards)),
       ),
       h('label', null, 'Give or take Kowens'), amount, h('div', { style: 'height:6px' }), reason,
       h('div', { class: 'actions' }, h('button', { class: 'btn primary', onclick: (e) => act(e.currentTarget, async () => {
@@ -432,6 +471,14 @@ async function players(selected) {
         toast('Title given. They see it from their next visit to town.');
         draw(next, all);
       }) }, 'Give title')),
+      h('label', null, 'Class'),
+      h('p', { class: 'hint' }, 'Starts their class, quests and equipment over: no class, nothing worn or carried, and the Tanod’s quest again on their next visit.'),
+      h('div', { class: 'actions' }, h('button', { class: 'btn', disabled: !p.cls && !p.questsDone.length, onclick: (e) => act(e.currentTarget, async () => {
+        if (!confirm(`Start ${p.nickname ?? p.discordName}'s class over? Their training weapon goes too.`)) return;
+        const { player: next } = await api('player/reset-class', { id: p.id });
+        toast('Class reset. They choose again with the Tanod.');
+        draw(next, all);
+      }) }, 'Reset class')),
     );
   }
 
@@ -441,7 +488,7 @@ async function players(selected) {
 
 // ── Tabs ──
 
-const TABS = { overview, news, titles, shop, items, players };
+const TABS = { overview, news, titles, shop, rewards, items, players };
 
 function route() {
   const tab = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'overview';

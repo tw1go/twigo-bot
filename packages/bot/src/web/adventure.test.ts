@@ -14,7 +14,7 @@ for (const name of ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'ADMIN_ROLE_ID', 'ADMI
   'GAMBLING_CHANNEL_ID', 'GAMES_CHANNEL_ID', 'JAIL_ROLE_ID', 'REWARD_OWNER_ID', 'ROOM_FINDS_CHANNEL_ID']) process.env[name] = 'test';
 process.env.TIMEZONE = 'Asia/Manila';
 
-const { CLASSES, EQUIPMENT, QUESTS, adventureOf, equipStep, freshAdventure, kitOf, parseEquipAction, parseQuestAction, placesFor, questStep, startQuests, townEquip, townQuest } =
+const { CLASSES, EQUIPMENT, QUESTS, adventureOf, equipStep, freshAdventure, kitOf, parseEquipAction, parseQuestAction, placesFor, questStep, resetAdventure, startQuests, townEquip, townQuest } =
   await import('./adventure.js');
 const { usedSlots } = await import('../dig/bag.js');
 const { closeDatabase } = await import('../db/db.js');
@@ -75,6 +75,11 @@ test('saved per member: /me starts the quest, the routes save, the bag counts un
   assert.equal(usedSlots('m1'), 1);
   assert.deepEqual(kitOf('m1'), { cls: 'hilot', weapon: null });
   assert.equal(adventureOf('m1').quests.done[0], Q); // kept
+  // The CMS can start it all over: no class, the class quest again, nothing carried.
+  resetAdventure('m1');
+  assert.deepEqual(kitOf('m1'), { cls: null, weapon: null });
+  assert.deepEqual(adventureOf('m1').quests, { active: [{ id: Q, step: 0 }], done: [] });
+  assert.equal(usedSlots('m1'), 0);
 });
 
 test('two places for bracers and two for rings', () => {

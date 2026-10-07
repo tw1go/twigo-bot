@@ -1,11 +1,13 @@
 import { tableSync } from '../db/sync.js';
 import { daysBetween, today, weekStart } from '../time.js';
+import { setting } from '../games/settings.js';
 
-// Credits for /diss, /praise and /judge. Claim DAILY_CREDITS once per day (config.timezone); unused credits carry over.
+// Credits for /diss, /praise and /judge. Claim dailyCredits() once per day (config.timezone); unused credits carry over.
 // Voice chat also earns 1 credit per VOICE_MINUTES_PER_CREDIT minutes (see voice.ts).
-export const DAILY_CREDITS = 5;
+/** The daily claim (the CMS's Rewards tab; games/settings.ts). */
+export const dailyCredits = () => setting('daily-kowens');
 /** 🤫 Double on Christmas Day. */
-export const dailyAmount = () => (today().slice(5) === '12-25' ? DAILY_CREDITS * 2 : DAILY_CREDITS);
+export const dailyAmount = () => (today().slice(5) === '12-25' ? dailyCredits() * 2 : dailyCredits());
 export const VOICE_MINUTES_PER_CREDIT = 15;
 export const VOICE_DAILY_CAP = 12; // max voice credits per day (= 3 hours), stops AFK farming
 

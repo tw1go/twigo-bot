@@ -59,7 +59,9 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   never write its value in the repo), gifter + `CMS_USER_IDS` only, Discord login (`/auth/login?next=cms`). Edits town
   news posts, titles (with descriptions, shown at the Parlor), shop prices/on sale, dig items (name, emoji, sell value,
   rarity, in the ground or not, new ones; `dig/items.ts`, tested: every rarity keeps an item in the ground; odds shown per
-  item) (kv `town-posts`, `titles`, `shop`, `dig-items` over the code's defaults) and players' Kowens and titles; logs each
+  item), Rewards (Mine Wars attend/top 3 pay, daily Kowens, welcome gift, stay minutes and daily cap; `games/settings.ts`, kv
+  `settings`, min/max per setting, Reset = the default) (kv `town-posts`, `titles`, `shop`, `dig-items`, `settings` over the
+  code's defaults) and players' Kowens, titles and class (shown with quests, gear, Rename Cards; Reset class); logs each
   change in the bot's log only (never posted in Discord). Content that moves into the CMS keeps its code values as defaults.
 - Messages to Discord: no pings by default (`allowedMentions: { parse: [] }`); de-duplicate user IDs in
   `allowedMentions.users`.

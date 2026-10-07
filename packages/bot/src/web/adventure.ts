@@ -187,3 +187,11 @@ export function townEquip(userId: string, a: TownEquipAction, freeSlots: number)
   if (r.ok) save(userId, s);
   return { ...r, adventure: s, changed: r.ok && before !== s.equipped.weapon };
 }
+
+const deleteStmt = db.prepare('DELETE FROM adventurers WHERE user_id = ?');
+
+/** Starts a member's class, quests and equipment over (the CMS): no class, the Tanod's quest again on their next visit,
+ *  nothing worn or carried. */
+export function resetAdventure(userId: string): void {
+  deleteStmt.run(userId);
+}

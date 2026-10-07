@@ -12,12 +12,13 @@ import {
 import { config } from '../config.js';
 import { add } from '../credits/store.js';
 import { kowen } from '../kowens.js';
+import { setting } from '../games/settings.js';
 
 // Gifter panel for the 9 PM Mine Wars payout (Institute Walkway 07 server only): pick who attended and who made the Top 10, then confirm.
-// Attendance = ATTEND_REWARD, Top 10 = TOP_REWARD total. A ledger per night prevents double payouts and
+// Attendance = attendReward(), Top 10 = topReward() in total (the CMS's Rewards tab; games/settings.ts). A ledger per night prevents double payouts and
 // lets a later run upgrade someone from attendance to Top 10 (only the difference is paid).
-export const ATTEND_REWARD = 2;
-export const TOP_REWARD = 3;
+export const attendReward = () => setting('minewars-attend');
+export const topReward = () => setting('minewars-top');
 export const MW_SERVER = 'Institute Walkway 07';
 const PREFIX = 'mwpay:';
 const SESSION_MS = 14 * 60_000; // Discord interaction tokens last 15 minutes
@@ -60,7 +61,7 @@ function plan(s: Session): { id: string; amount: number; top: boolean }[] {
   return [...everyone]
     .map((id) => {
       const top = s.top.has(id);
-      return { id, top, amount: Math.max(0, (top ? TOP_REWARD : ATTEND_REWARD) - (paid[id] ?? 0)) };
+      return { id, top, amount: Math.max(0, (top ? topReward() : attendReward()) - (paid[id] ?? 0)) };
     })
     .filter((p) => p.amount > 0);
 }
@@ -74,8 +75,8 @@ function render(sessionId: string, s: Session) {
   const content = [
     `## ⛏️ Mine Wars payout — ${nightLabel(s.night)}, 9 PM`,
     `-# ${MW_SERVER} server only`,
-    `✅ Attended: **${s.attended.size}** selected (+${ATTEND_REWARD} each)`,
-    `🏆 Top 10: **${s.top.size}** selected (${TOP_REWARD} total each — counts as attended)`,
+    `✅ Attended: **${s.attended.size}** selected (+${attendReward()} each)`,
+    `🏆 Top 10: **${s.top.size}** selected (${topReward()} total each — counts as attended)`,
     `🪙 Paying **${payouts.length}** member(s), **${total} ${kowen(total)}** in total`,
     alreadyPaid ? `-# ${alreadyPaid} member(s) already paid for this night — they only get the difference (e.g. attendance → Top 10).` : '',
     skipped > 0 ? `-# ${skipped} selected member(s) are already fully paid and will be skipped.` : '',

@@ -90,6 +90,8 @@
   .kv dt { color: var(--muted); }
   .kv dd { margin: 0; font-variant-numeric: tabular-nums; }
   .sections { display: grid; gap: 16px; }
+  .setting + .setting { margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.08); }
+  .setting input[type=number] { width: 120px; }
   h2 { font-size: 15px; margin: 0 0 4px; }
 
   .preview { border: 1px dashed var(--line); border-radius: 8px; padding: 12px; margin-top: 12px; background: var(--bg); white-space: normal; }
@@ -136,6 +138,7 @@
     <a href="#news" data-tab="news">Town news</a>
     <a href="#titles" data-tab="titles">Titles</a>
     <a href="#shop" data-tab="shop">Shop</a>
+    <a href="#rewards" data-tab="rewards">Rewards</a>
     <a href="#items" data-tab="items">Dig items</a>
     <a href="#players" data-tab="players">Players</a>
     <div class="me" id="me"></div>
