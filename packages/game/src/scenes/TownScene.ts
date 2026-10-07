@@ -93,6 +93,8 @@ const INTRO_ZOOM = 8;
 const INTRO_MS = 1600;
 /** The zoom-out lands this long before the title card is gone (as its letters swell open). */
 const TITLE_LANDS_EARLY_MS = 500;
+/** From a standstill, a direction key held shorter than this only turns the player. */
+const TURN_HOLD_MS = 150;
 const FADE_MS = 1100;
 /** Dragging the map peeks around: it gives with resistance up to about this far (screen px), then snaps back. */
 const PEEK_PX = 320;
@@ -134,10 +136,6 @@ const doorLabel = (id: string) => (id === 'twigos-house' ? "twigo's room" : (BUI
 const DIR_STEP: Record<Dir, [number, number]> = {
   n: [-1, -1], s: [1, 1], e: [1, -1], w: [-1, 1],
   ne: [0, -1], nw: [-1, 0], se: [1, 0], sw: [0, 1],
-};
-/** A movement key's own direction, as DIR_FOR_KEYS's "h,v". */
-const TAP_DIR: Record<string, string> = {
-  w: '0,-1', arrowup: '0,-1', s: '0,1', arrowdown: '0,1', a: '-1,0', arrowleft: '-1,0', d: '1,0', arrowright: '1,0',
 };
 const DIR_FOR_KEYS: Record<string, Dir> = {
   '0,-1': 'n', '0,1': 's', '1,0': 'e', '-1,0': 'w', '1,-1': 'ne', '-1,-1': 'nw', '1,1': 'se', '-1,1': 'sw',
@@ -193,8 +191,9 @@ export class TownScene extends Phaser.Scene {
   private hovered: Building | null = null;
   private marker: Phaser.GameObjects.Sprite | null = null;
   /** Keyboard walking: the held direction, since when, and whether the keys have us walking already. */
-  /** Direction keys pressed and not walked yet (up to 3), one tile each: quick taps all count, even mid-step. */
-  private taps: string[] = []; // TAP_DIR's "h,v"
+  private keyDir: Dir | null = null;
+  private keySince = 0;
+  private keyWalking = false;
   /** Plays an emote and tells the server (set once connected). */
   private emoteKeys: ((e: TownEmote) => void) | null = null;
   private others!: OtherPlayers;
@@ -1132,9 +1131,7 @@ export class TownScene extends Phaser.Scene {
     };
     kb.on('keydown', (e: KeyboardEvent) => {
       if (typing()) return;
-      const tap = TAP_DIR[e.key.toLowerCase()];
-      if (tap) {
-        if (!e.repeat && this.taps.length < 3) this.taps.push(tap);
+      if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(e.key.toLowerCase())) {
         this.pending = null;
         this.player.cancelPath(); // the keys take over from a click path
       }
@@ -1152,12 +1149,6 @@ export class TownScene extends Phaser.Scene {
     });
   }
 
-  /** The direction keys held, as TAP_DIR's "h,v". */
-  private heldKeys(): string[] {
-    const k = this.keys;
-    return [k.w.isDown || k.up.isDown ? '0,-1' : '', k.s.isDown || k.down.isDown ? '0,1' : '', k.a.isDown || k.left.isDown ? '-1,0' : '', k.d.isDown || k.right.isDown ? '1,0' : ''].filter(Boolean);
-  }
-
   /** The screen direction held on the keyboard, if any. */
   private heldDir(): Dir | null {
     if (typing()) return null;
@@ -1172,12 +1163,23 @@ export class TownScene extends Phaser.Scene {
    * the wall through either of its two halves. Pressing into a wall just turns the player.
    */
   private keyStep(): Tile | null {
-    // Taps not walked yet come first (one tile each), then the keys held now: every press counts.
-    // A tap whose key is still held, with another (W+D), walks the diagonal.
-    const tap = typing() ? undefined : this.taps.shift();
-    const held = this.heldDir();
-    const dir = tap ? (held && this.heldKeys().includes(tap) ? held : DIR_FOR_KEYS[tap]) : held;
-    if (!dir) return null;
+    const dir = this.heldDir();
+    if (!dir) {
+      this.keyWalking = false;
+      this.keyDir = null;
+      return null;
+    }
+    // From a standstill, a tap only turns you; holding the key (TURN_HOLD_MS) walks. Already walking with the
+    // keys, a new direction just carries on.
+    const now = this.time.now;
+    if (dir !== this.keyDir) {
+      this.keyDir = dir;
+      this.keySince = now;
+    }
+    if (!this.keyWalking && now - this.keySince < TURN_HOLD_MS) {
+      this.player.face(dir);
+      return null;
+    }
     const from = this.player.tile;
     const [dc, dr] = DIR_STEP[dir];
     const tries: [number, number][] = [[dc, dr]];
@@ -1187,6 +1189,7 @@ export class TownScene extends Phaser.Scene {
       if (this.grid.canStep(from, to)) {
         if (!this.byKeys) this.setBuildingAlert(null);
         this.byKeys = true;
+        this.keyWalking = true;
         this.pending = null;
         return to;
       }
