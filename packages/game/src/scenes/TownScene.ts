@@ -601,8 +601,9 @@ export class TownScene extends Phaser.Scene {
       classes: data.classes,
       badge: (cls, size) => asset((size === 16 ? icons.small : size === 64 ? icons.large : icons.file).replace('{class}', cls)),
       frame: frame ? { url: asset(frame.file), slice: frame.nineSlice } : null,
-      drawResting: (ctx, cls, f, t) => drawRested(ctx, this, C, K, this.outfit, K.list[cls] ?? null, 'idle', 's', f, t),
+      drawResting: (ctx, cls, anim, dir, f, t) => drawRested(ctx, this, C, K, this.outfit, K.list[cls] ?? null, anim, dir, f, t),
       idle: { frames: C.animations.idle.frames, fps: C.animations.idle.fps },
+      walk: { frames: C.animations.walk.frames, fps: C.animations.walk.fps },
       preview: (c, host, back, choose) => mountSkillPreview({ stage: (cls) => this.skillStage(cls.id, cls.fx) }, c, host, back, choose),
       onChoose: async (c) => {
         holdQuestBanners(true); // the giver has a last line first

@@ -2,9 +2,9 @@ import type { ClassInfo } from '@mikazuki/shared';
 import { playSound } from '../audio/sound';
 
 // 🗡️ Choosing a class (the Tanod's quest, A Weapon for the Town): six cards in classes.json order, each with the class
-// badge, your own character idling (facing S) with the class's resting weapon at 2×, its name, role, damage type and
-// stats. A card opens the skill preview (ui/skill-preview.ts) over the window; there, Choose {class} asks "Become a
-// {class}?" and Yes saves it. Closing the window without choosing is fine: the quest waits on "Choose your class".
+// badge, your own character with the class's resting weapon at 2× (facing SE or SW, turning between them now and then
+// and sometimes walking a few steps on the spot), its name, role, damage type and stats. A card opens the skill
+// preview (ui/skill-preview.ts) over the window; there, Choose {class} asks "Become a {class}?" and Yes saves it. Closing the window without choosing is fine: the quest waits on "Choose your class".
 
 export interface ClassChoiceOptions {
   classes: ClassInfo[];
@@ -12,9 +12,10 @@ export interface ClassChoiceOptions {
   badge: (cls: string, size: 16 | 32 | 64) => string;
   /** The window frame (the inventory's). */
   frame: { url: string; slice: number } | null;
-  /** Draws your character resting with the class's weapon into a 64x64 canvas (frame `f` of the idle, `t` ms). */
-  drawResting: (ctx: CanvasRenderingContext2D, cls: string, f: number, t: number) => void;
+  /** Draws your character resting with the class's weapon into a 64x64 canvas (frame `f` of idle or walk, `t` ms). */
+  drawResting: (ctx: CanvasRenderingContext2D, cls: string, anim: 'idle' | 'walk', dir: 'se' | 'sw', f: number, t: number) => void;
   idle: { frames: number; fps: number };
+  walk: { frames: number; fps: number };
   /** Opens the class's skill preview in `host` (over the cards); `back` returns to the cards, `choose` asks to confirm. */
   preview: (cls: ClassInfo, host: HTMLElement, back: () => void, choose: () => void) => () => void;
   /** Yes was pressed: true once it's saved (then everything closes). */
@@ -45,7 +46,10 @@ export function openClassChoice(o: ClassChoiceOptions): void {
   x.addEventListener('click', () => done());
   head.append(el('span', 'cc-heading', 'Choose your class'), x);
   const grid = el('div', 'cc-grid');
-  const canvases: { ctx: CanvasRenderingContext2D; cls: string }[] = [];
+  /** Each figure's own little life: which way it faces, and whether it's walking on the spot (until when). */
+  type Life = { ctx: CanvasRenderingContext2D; cls: string; dir: 'se' | 'sw'; walkFrom: number; walkUntil: number; nextAt: number };
+  const canvases: Life[] = [];
+  const later = (now: number) => now + 1800 + Math.random() * 3200;
   for (const c of o.classes) {
     const card = el('button', 'cc-card');
     card.setAttribute('aria-label', `${c.name}: ${c.role}`);
@@ -55,7 +59,7 @@ export function openClassChoice(o: ClassChoiceOptions): void {
     const canvas = el('canvas', 'cc-figure');
     canvas.width = canvas.height = 64;
     canvas.style.width = canvas.style.height = `${64 * CARD_PX}px`;
-    canvases.push({ ctx: canvas.getContext('2d')!, cls: c.id });
+    canvases.push({ ctx: canvas.getContext('2d')!, cls: c.id, dir: Math.random() < 0.5 ? 'se' : 'sw', walkFrom: 0, walkUntil: 0, nextAt: later(performance.now()) });
     card.append(badge, canvas, el('span', 'cc-name', c.name), el('span', 'cc-role', c.role), el('span', 'cc-stats', stats(c)));
     card.addEventListener('click', () => showPreview(c));
     grid.append(card);
@@ -67,15 +71,24 @@ export function openClassChoice(o: ClassChoiceOptions): void {
   document.body.append(root);
   playSound('click');
 
-  // The figures idle (one shared clock).
+  // The figures idle, now and then turn (SE ↔ SW) or walk a few steps on the spot, each on its own.
   let raf = 0;
   const start = performance.now();
   const tick = (now: number) => {
     const t = now - start;
-    const f = Math.floor((t / 1000) * o.idle.fps) % o.idle.frames;
-    for (const { ctx, cls } of canvases) {
-      ctx.clearRect(0, 0, 64, 64);
-      o.drawResting(ctx, cls, f, t);
+    for (const l of canvases) {
+      if (now >= l.nextAt) {
+        if (Math.random() < 0.4) {
+          l.walkFrom = now;
+          l.walkUntil = now + 900 + Math.random() * 900;
+        } else l.dir = l.dir === 'se' ? 'sw' : 'se';
+        l.nextAt = later(now);
+      }
+      const walking = now < l.walkUntil;
+      const a = walking ? o.walk : o.idle;
+      const f = Math.floor((((walking ? now - l.walkFrom : t) / 1000) * a.fps)) % a.frames;
+      l.ctx.clearRect(0, 0, 64, 64);
+      o.drawResting(l.ctx, l.cls, walking ? 'walk' : 'idle', l.dir, f, t);
     }
     raf = requestAnimationFrame(tick);
   };
