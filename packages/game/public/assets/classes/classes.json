@@ -1,5 +1,5 @@
 {
- "note": "The six classes for the class choice. Skills are the first 7 damage skills, the ones with FX. Paths are relative to public/assets/.",
+ "note": "The six classes for the class choice. Skills are the first 7 damage skills, the ones with FX. Paths are relative to public/assets/. mobility: the two movement skills (Dash, and the class's Lv 8 move); id names the move's anims (characters/classes/mobility-README.md).",
  "classes": [
   {
    "id": "slingshot",
@@ -50,6 +50,20 @@
      "level": 18,
      "name": "Volley",
      "desc": "Rain of pebbles on an area"
+    }
+   ],
+   "mobility": [
+    {
+     "id": "dash",
+     "level": 5,
+     "name": "Dash",
+     "desc": "Quick dash in the direction you face"
+    },
+    {
+     "id": "step-back",
+     "level": 8,
+     "name": "Step Back",
+     "desc": "Hop backwards"
     }
    ]
   },
@@ -103,6 +117,20 @@
      "name": "Lunge",
      "desc": "Dashing thrust"
     }
+   ],
+   "mobility": [
+    {
+     "id": "dash",
+     "level": 5,
+     "name": "Dash",
+     "desc": "Quick dash in the direction you face"
+    },
+    {
+     "id": "step-back",
+     "level": 8,
+     "name": "Step Back",
+     "desc": "Hop backwards"
+    }
    ]
   },
   {
@@ -154,6 +182,20 @@
      "level": 18,
      "name": "Splinter Burst",
      "desc": "Cone of wood shards"
+    }
+   ],
+   "mobility": [
+    {
+     "id": "dash",
+     "level": 5,
+     "name": "Dash",
+     "desc": "Quick dash in the direction you face"
+    },
+    {
+     "id": "charge",
+     "level": 8,
+     "name": "Charge",
+     "desc": "Rush forward"
     }
    ]
   },
@@ -207,6 +249,20 @@
      "name": "Static Bristles",
      "desc": "Chain lightning"
     }
+   ],
+   "mobility": [
+    {
+     "id": "dash",
+     "level": 5,
+     "name": "Dash",
+     "desc": "Quick dash in the direction you face"
+    },
+    {
+     "id": "blink",
+     "level": 8,
+     "name": "Blink",
+     "desc": "Short teleport"
+    }
    ]
   },
   {
@@ -259,6 +315,20 @@
      "name": "Rebound",
      "desc": "Lid bounces between enemies"
     }
+   ],
+   "mobility": [
+    {
+     "id": "dash",
+     "level": 5,
+     "name": "Dash",
+     "desc": "Quick dash in the direction you face"
+    },
+    {
+     "id": "charge",
+     "level": 8,
+     "name": "Charge",
+     "desc": "Rush forward"
+    }
    ]
   },
   {
@@ -310,6 +380,20 @@
      "level": 18,
      "name": "Hot Compress",
      "desc": "Burn over time"
+    }
+   ],
+   "mobility": [
+    {
+     "id": "dash",
+     "level": 5,
+     "name": "Dash",
+     "desc": "Quick dash in the direction you face"
+    },
+    {
+     "id": "blink",
+     "level": 8,
+     "name": "Blink",
+     "desc": "Short teleport"
     }
    ]
   }

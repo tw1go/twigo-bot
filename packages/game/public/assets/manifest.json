@@ -1392,6 +1392,238 @@
                 "front": []
               }
             }
+          },
+          "dash": {
+            "frames": 7,
+            "fps": 16,
+            "loop": false,
+            "dirs": {
+              "se": {
+                "body": "characters/classes/slingshot/dash/char-body-dash-se.png",
+                "back": [],
+                "front": [
+                  {
+                    "file": "characters/classes/slingshot/dash/char-weapon-slingshot-dash-se.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ],
+                "face": "characters/classes/slingshot/dash/char-face-default-dash-se.png"
+              },
+              "e": {
+                "body": "characters/classes/slingshot/dash/char-body-dash-e.png",
+                "back": [],
+                "front": [
+                  {
+                    "file": "characters/classes/slingshot/dash/char-weapon-slingshot-dash-e.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ],
+                "face": "characters/classes/slingshot/dash/char-face-default-dash-e.png"
+              },
+              "s": {
+                "body": "characters/classes/slingshot/dash/char-body-dash-s.png",
+                "back": [],
+                "front": [
+                  {
+                    "file": "characters/classes/slingshot/dash/char-weapon-slingshot-dash-s.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ],
+                "face": "characters/classes/slingshot/dash/char-face-default-dash-s.png"
+              },
+              "sw": {
+                "body": "characters/classes/slingshot/dash/char-body-dash-sw.png",
+                "back": [],
+                "front": [
+                  {
+                    "file": "characters/classes/slingshot/dash/char-weapon-slingshot-dash-sw.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ],
+                "face": "characters/classes/slingshot/dash/char-face-default-dash-sw.png"
+              },
+              "w": {
+                "body": "characters/classes/slingshot/dash/char-body-dash-w.png",
+                "back": [],
+                "front": [
+                  {
+                    "file": "characters/classes/slingshot/dash/char-weapon-slingshot-dash-w.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ],
+                "face": "characters/classes/slingshot/dash/char-face-default-dash-w.png"
+              },
+              "nw": {
+                "body": "characters/classes/slingshot/dash/char-body-dash-nw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/slingshot/dash/char-weapon-slingshot-dash-nw.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ],
+                "front": []
+              },
+              "n": {
+                "body": "characters/classes/slingshot/dash/char-body-dash-n.png",
+                "back": [
+                  {
+                    "file": "characters/classes/slingshot/dash/char-weapon-slingshot-dash-n.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ],
+                "front": []
+              },
+              "ne": {
+                "body": "characters/classes/slingshot/dash/char-body-dash-ne.png",
+                "back": [
+                  {
+                    "file": "characters/classes/slingshot/dash/char-weapon-slingshot-dash-ne.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ],
+                "front": []
+              }
+            }
+          },
+          "step-back": {
+            "frames": 7,
+            "fps": 14,
+            "loop": false,
+            "dirs": {
+              "se": {
+                "body": "characters/classes/slingshot/step-back/char-body-step-back-se.png",
+                "back": [],
+                "front": [
+                  {
+                    "file": "characters/classes/slingshot/step-back/char-weapon-slingshot-step-back-se.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ],
+                "face": "characters/classes/slingshot/step-back/char-face-default-step-back-se.png"
+              },
+              "e": {
+                "body": "characters/classes/slingshot/step-back/char-body-step-back-e.png",
+                "back": [],
+                "front": [
+                  {
+                    "file": "characters/classes/slingshot/step-back/char-weapon-slingshot-step-back-e.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ],
+                "face": "characters/classes/slingshot/step-back/char-face-default-step-back-e.png"
+              },
+              "s": {
+                "body": "characters/classes/slingshot/step-back/char-body-step-back-s.png",
+                "back": [],
+                "front": [
+                  {
+                    "file": "characters/classes/slingshot/step-back/char-weapon-slingshot-step-back-s.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ],
+                "face": "characters/classes/slingshot/step-back/char-face-default-step-back-s.png"
+              },
+              "sw": {
+                "body": "characters/classes/slingshot/step-back/char-body-step-back-sw.png",
+                "back": [],
+                "front": [
+                  {
+                    "file": "characters/classes/slingshot/step-back/char-weapon-slingshot-step-back-sw.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ],
+                "face": "characters/classes/slingshot/step-back/char-face-default-step-back-sw.png"
+              },
+              "w": {
+                "body": "characters/classes/slingshot/step-back/char-body-step-back-w.png",
+                "back": [],
+                "front": [
+                  {
+                    "file": "characters/classes/slingshot/step-back/char-weapon-slingshot-step-back-w.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ],
+                "face": "characters/classes/slingshot/step-back/char-face-default-step-back-w.png"
+              },
+              "nw": {
+                "body": "characters/classes/slingshot/step-back/char-body-step-back-nw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/slingshot/step-back/char-weapon-slingshot-step-back-nw.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ],
+                "front": []
+              },
+              "n": {
+                "body": "characters/classes/slingshot/step-back/char-body-step-back-n.png",
+                "back": [
+                  {
+                    "file": "characters/classes/slingshot/step-back/char-weapon-slingshot-step-back-n.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ],
+                "front": []
+              },
+              "ne": {
+                "body": "characters/classes/slingshot/step-back/char-body-step-back-ne.png",
+                "back": [
+                  {
+                    "file": "characters/classes/slingshot/step-back/char-weapon-slingshot-step-back-ne.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ],
+                "front": []
+              }
+            }
           }
         },
         "rest": {
@@ -2480,6 +2712,366 @@
                 ]
               }
             }
+          },
+          "dash": {
+            "frames": 7,
+            "fps": 16,
+            "loop": false,
+            "dirs": {
+              "se": {
+                "body": "characters/classes/stick/dash/char-body-dash-se.png",
+                "back": [
+                  {
+                    "file": "characters/classes/stick/dash/char-weapon-stick-back-dash-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/stick/dash/char-weapon-stick-dash-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/stick/dash/char-face-default-dash-se.png"
+              },
+              "e": {
+                "body": "characters/classes/stick/dash/char-body-dash-e.png",
+                "back": [
+                  {
+                    "file": "characters/classes/stick/dash/char-weapon-stick-back-dash-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/stick/dash/char-weapon-stick-dash-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/stick/dash/char-face-default-dash-e.png"
+              },
+              "s": {
+                "body": "characters/classes/stick/dash/char-body-dash-s.png",
+                "back": [
+                  {
+                    "file": "characters/classes/stick/dash/char-weapon-stick-back-dash-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/stick/dash/char-weapon-stick-dash-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/stick/dash/char-face-default-dash-s.png"
+              },
+              "sw": {
+                "body": "characters/classes/stick/dash/char-body-dash-sw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/stick/dash/char-weapon-stick-back-dash-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/stick/dash/char-weapon-stick-dash-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/stick/dash/char-face-default-dash-sw.png"
+              },
+              "w": {
+                "body": "characters/classes/stick/dash/char-body-dash-w.png",
+                "back": [
+                  {
+                    "file": "characters/classes/stick/dash/char-weapon-stick-back-dash-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/stick/dash/char-weapon-stick-dash-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/stick/dash/char-face-default-dash-w.png"
+              },
+              "nw": {
+                "body": "characters/classes/stick/dash/char-body-dash-nw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/stick/dash/char-weapon-stick-back-dash-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/stick/dash/char-weapon-stick-dash-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "n": {
+                "body": "characters/classes/stick/dash/char-body-dash-n.png",
+                "back": [
+                  {
+                    "file": "characters/classes/stick/dash/char-weapon-stick-back-dash-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/stick/dash/char-weapon-stick-dash-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "ne": {
+                "body": "characters/classes/stick/dash/char-body-dash-ne.png",
+                "back": [
+                  {
+                    "file": "characters/classes/stick/dash/char-weapon-stick-back-dash-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/stick/dash/char-weapon-stick-dash-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "step-back": {
+            "frames": 7,
+            "fps": 14,
+            "loop": false,
+            "dirs": {
+              "se": {
+                "body": "characters/classes/stick/step-back/char-body-step-back-se.png",
+                "back": [
+                  {
+                    "file": "characters/classes/stick/step-back/char-weapon-stick-back-step-back-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/stick/step-back/char-weapon-stick-step-back-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/stick/step-back/char-face-default-step-back-se.png"
+              },
+              "e": {
+                "body": "characters/classes/stick/step-back/char-body-step-back-e.png",
+                "back": [
+                  {
+                    "file": "characters/classes/stick/step-back/char-weapon-stick-back-step-back-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/stick/step-back/char-weapon-stick-step-back-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/stick/step-back/char-face-default-step-back-e.png"
+              },
+              "s": {
+                "body": "characters/classes/stick/step-back/char-body-step-back-s.png",
+                "back": [
+                  {
+                    "file": "characters/classes/stick/step-back/char-weapon-stick-back-step-back-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/stick/step-back/char-weapon-stick-step-back-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/stick/step-back/char-face-default-step-back-s.png"
+              },
+              "sw": {
+                "body": "characters/classes/stick/step-back/char-body-step-back-sw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/stick/step-back/char-weapon-stick-back-step-back-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/stick/step-back/char-weapon-stick-step-back-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/stick/step-back/char-face-default-step-back-sw.png"
+              },
+              "w": {
+                "body": "characters/classes/stick/step-back/char-body-step-back-w.png",
+                "back": [
+                  {
+                    "file": "characters/classes/stick/step-back/char-weapon-stick-back-step-back-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/stick/step-back/char-weapon-stick-step-back-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/stick/step-back/char-face-default-step-back-w.png"
+              },
+              "nw": {
+                "body": "characters/classes/stick/step-back/char-body-step-back-nw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/stick/step-back/char-weapon-stick-back-step-back-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/stick/step-back/char-weapon-stick-step-back-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "n": {
+                "body": "characters/classes/stick/step-back/char-body-step-back-n.png",
+                "back": [
+                  {
+                    "file": "characters/classes/stick/step-back/char-weapon-stick-back-step-back-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/stick/step-back/char-weapon-stick-step-back-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "ne": {
+                "body": "characters/classes/stick/step-back/char-body-step-back-ne.png",
+                "back": [
+                  {
+                    "file": "characters/classes/stick/step-back/char-weapon-stick-back-step-back-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/stick/step-back/char-weapon-stick-step-back-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              }
+            }
           }
         },
         "rest": {
@@ -3525,6 +4117,726 @@
                 "front": [
                   {
                     "file": "characters/classes/greatstick/walk-ready/char-weapon-greatstick-walk-ready-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "charge-end": {
+            "frames": 3,
+            "fps": 14,
+            "loop": false,
+            "dirs": {
+              "se": {
+                "body": "characters/classes/greatstick/charge-end/char-body-charge-end-se.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/charge-end/char-weapon-greatstick-back-charge-end-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/charge-end/char-weapon-greatstick-charge-end-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/greatstick/charge-end/char-face-default-charge-end-se.png"
+              },
+              "e": {
+                "body": "characters/classes/greatstick/charge-end/char-body-charge-end-e.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/charge-end/char-weapon-greatstick-back-charge-end-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/charge-end/char-weapon-greatstick-charge-end-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/greatstick/charge-end/char-face-default-charge-end-e.png"
+              },
+              "s": {
+                "body": "characters/classes/greatstick/charge-end/char-body-charge-end-s.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/charge-end/char-weapon-greatstick-back-charge-end-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/charge-end/char-weapon-greatstick-charge-end-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/greatstick/charge-end/char-face-default-charge-end-s.png"
+              },
+              "sw": {
+                "body": "characters/classes/greatstick/charge-end/char-body-charge-end-sw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/charge-end/char-weapon-greatstick-back-charge-end-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/charge-end/char-weapon-greatstick-charge-end-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/greatstick/charge-end/char-face-default-charge-end-sw.png"
+              },
+              "w": {
+                "body": "characters/classes/greatstick/charge-end/char-body-charge-end-w.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/charge-end/char-weapon-greatstick-back-charge-end-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/charge-end/char-weapon-greatstick-charge-end-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/greatstick/charge-end/char-face-default-charge-end-w.png"
+              },
+              "nw": {
+                "body": "characters/classes/greatstick/charge-end/char-body-charge-end-nw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/charge-end/char-weapon-greatstick-back-charge-end-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/charge-end/char-weapon-greatstick-charge-end-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "n": {
+                "body": "characters/classes/greatstick/charge-end/char-body-charge-end-n.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/charge-end/char-weapon-greatstick-back-charge-end-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/charge-end/char-weapon-greatstick-charge-end-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "ne": {
+                "body": "characters/classes/greatstick/charge-end/char-body-charge-end-ne.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/charge-end/char-weapon-greatstick-back-charge-end-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/charge-end/char-weapon-greatstick-charge-end-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "charge-loop": {
+            "frames": 8,
+            "fps": 18,
+            "loop": true,
+            "dirs": {
+              "se": {
+                "body": "characters/classes/greatstick/charge-loop/char-body-charge-loop-se.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/charge-loop/char-weapon-greatstick-back-charge-loop-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/charge-loop/char-weapon-greatstick-charge-loop-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/greatstick/charge-loop/char-face-default-charge-loop-se.png"
+              },
+              "e": {
+                "body": "characters/classes/greatstick/charge-loop/char-body-charge-loop-e.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/charge-loop/char-weapon-greatstick-back-charge-loop-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/charge-loop/char-weapon-greatstick-charge-loop-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/greatstick/charge-loop/char-face-default-charge-loop-e.png"
+              },
+              "s": {
+                "body": "characters/classes/greatstick/charge-loop/char-body-charge-loop-s.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/charge-loop/char-weapon-greatstick-back-charge-loop-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/charge-loop/char-weapon-greatstick-charge-loop-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/greatstick/charge-loop/char-face-default-charge-loop-s.png"
+              },
+              "sw": {
+                "body": "characters/classes/greatstick/charge-loop/char-body-charge-loop-sw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/charge-loop/char-weapon-greatstick-back-charge-loop-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/charge-loop/char-weapon-greatstick-charge-loop-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/greatstick/charge-loop/char-face-default-charge-loop-sw.png"
+              },
+              "w": {
+                "body": "characters/classes/greatstick/charge-loop/char-body-charge-loop-w.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/charge-loop/char-weapon-greatstick-back-charge-loop-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/charge-loop/char-weapon-greatstick-charge-loop-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/greatstick/charge-loop/char-face-default-charge-loop-w.png"
+              },
+              "nw": {
+                "body": "characters/classes/greatstick/charge-loop/char-body-charge-loop-nw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/charge-loop/char-weapon-greatstick-back-charge-loop-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/charge-loop/char-weapon-greatstick-charge-loop-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "n": {
+                "body": "characters/classes/greatstick/charge-loop/char-body-charge-loop-n.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/charge-loop/char-weapon-greatstick-back-charge-loop-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/charge-loop/char-weapon-greatstick-charge-loop-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "ne": {
+                "body": "characters/classes/greatstick/charge-loop/char-body-charge-loop-ne.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/charge-loop/char-weapon-greatstick-back-charge-loop-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/charge-loop/char-weapon-greatstick-charge-loop-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "charge-start": {
+            "frames": 2,
+            "fps": 14,
+            "loop": false,
+            "dirs": {
+              "se": {
+                "body": "characters/classes/greatstick/charge-start/char-body-charge-start-se.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/charge-start/char-weapon-greatstick-back-charge-start-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/charge-start/char-weapon-greatstick-charge-start-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/greatstick/charge-start/char-face-default-charge-start-se.png"
+              },
+              "e": {
+                "body": "characters/classes/greatstick/charge-start/char-body-charge-start-e.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/charge-start/char-weapon-greatstick-back-charge-start-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/charge-start/char-weapon-greatstick-charge-start-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/greatstick/charge-start/char-face-default-charge-start-e.png"
+              },
+              "s": {
+                "body": "characters/classes/greatstick/charge-start/char-body-charge-start-s.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/charge-start/char-weapon-greatstick-back-charge-start-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/charge-start/char-weapon-greatstick-charge-start-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/greatstick/charge-start/char-face-default-charge-start-s.png"
+              },
+              "sw": {
+                "body": "characters/classes/greatstick/charge-start/char-body-charge-start-sw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/charge-start/char-weapon-greatstick-back-charge-start-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/charge-start/char-weapon-greatstick-charge-start-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/greatstick/charge-start/char-face-default-charge-start-sw.png"
+              },
+              "w": {
+                "body": "characters/classes/greatstick/charge-start/char-body-charge-start-w.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/charge-start/char-weapon-greatstick-back-charge-start-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/charge-start/char-weapon-greatstick-charge-start-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/greatstick/charge-start/char-face-default-charge-start-w.png"
+              },
+              "nw": {
+                "body": "characters/classes/greatstick/charge-start/char-body-charge-start-nw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/charge-start/char-weapon-greatstick-back-charge-start-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/charge-start/char-weapon-greatstick-charge-start-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "n": {
+                "body": "characters/classes/greatstick/charge-start/char-body-charge-start-n.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/charge-start/char-weapon-greatstick-back-charge-start-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/charge-start/char-weapon-greatstick-charge-start-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "ne": {
+                "body": "characters/classes/greatstick/charge-start/char-body-charge-start-ne.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/charge-start/char-weapon-greatstick-back-charge-start-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/charge-start/char-weapon-greatstick-charge-start-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "dash": {
+            "frames": 7,
+            "fps": 16,
+            "loop": false,
+            "dirs": {
+              "se": {
+                "body": "characters/classes/greatstick/dash/char-body-dash-se.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/dash/char-weapon-greatstick-back-dash-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/dash/char-weapon-greatstick-dash-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/greatstick/dash/char-face-default-dash-se.png"
+              },
+              "e": {
+                "body": "characters/classes/greatstick/dash/char-body-dash-e.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/dash/char-weapon-greatstick-back-dash-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/dash/char-weapon-greatstick-dash-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/greatstick/dash/char-face-default-dash-e.png"
+              },
+              "s": {
+                "body": "characters/classes/greatstick/dash/char-body-dash-s.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/dash/char-weapon-greatstick-back-dash-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/dash/char-weapon-greatstick-dash-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/greatstick/dash/char-face-default-dash-s.png"
+              },
+              "sw": {
+                "body": "characters/classes/greatstick/dash/char-body-dash-sw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/dash/char-weapon-greatstick-back-dash-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/dash/char-weapon-greatstick-dash-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/greatstick/dash/char-face-default-dash-sw.png"
+              },
+              "w": {
+                "body": "characters/classes/greatstick/dash/char-body-dash-w.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/dash/char-weapon-greatstick-back-dash-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/dash/char-weapon-greatstick-dash-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/greatstick/dash/char-face-default-dash-w.png"
+              },
+              "nw": {
+                "body": "characters/classes/greatstick/dash/char-body-dash-nw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/dash/char-weapon-greatstick-back-dash-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/dash/char-weapon-greatstick-dash-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "n": {
+                "body": "characters/classes/greatstick/dash/char-body-dash-n.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/dash/char-weapon-greatstick-back-dash-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/dash/char-weapon-greatstick-dash-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "ne": {
+                "body": "characters/classes/greatstick/dash/char-body-dash-ne.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/dash/char-weapon-greatstick-back-dash-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/dash/char-weapon-greatstick-dash-ne.png",
                     "size": [
                       64,
                       64
@@ -4584,6 +5896,546 @@
                   }
                 ],
                 "face": "characters/classes/broom/walk-ready/char-face-default-walk-ready-w.png"
+              }
+            }
+          },
+          "blink-in": {
+            "frames": 5,
+            "fps": 16,
+            "loop": false,
+            "dirs": {
+              "se": {
+                "body": "characters/classes/broom/blink-in/char-body-blink-in-se.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/blink-in/char-weapon-broom-back-blink-in-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/blink-in/char-weapon-broom-blink-in-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/broom/blink-in/char-face-default-blink-in-se.png"
+              },
+              "e": {
+                "body": "characters/classes/broom/blink-in/char-body-blink-in-e.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/blink-in/char-weapon-broom-back-blink-in-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/blink-in/char-weapon-broom-blink-in-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/broom/blink-in/char-face-default-blink-in-e.png"
+              },
+              "s": {
+                "body": "characters/classes/broom/blink-in/char-body-blink-in-s.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/blink-in/char-weapon-broom-back-blink-in-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/blink-in/char-weapon-broom-blink-in-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/broom/blink-in/char-face-default-blink-in-s.png"
+              },
+              "sw": {
+                "body": "characters/classes/broom/blink-in/char-body-blink-in-sw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/blink-in/char-weapon-broom-back-blink-in-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/blink-in/char-weapon-broom-blink-in-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/broom/blink-in/char-face-default-blink-in-sw.png"
+              },
+              "w": {
+                "body": "characters/classes/broom/blink-in/char-body-blink-in-w.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/blink-in/char-weapon-broom-back-blink-in-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/blink-in/char-weapon-broom-blink-in-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/broom/blink-in/char-face-default-blink-in-w.png"
+              },
+              "nw": {
+                "body": "characters/classes/broom/blink-in/char-body-blink-in-nw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/blink-in/char-weapon-broom-back-blink-in-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/blink-in/char-weapon-broom-blink-in-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "n": {
+                "body": "characters/classes/broom/blink-in/char-body-blink-in-n.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/blink-in/char-weapon-broom-back-blink-in-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/blink-in/char-weapon-broom-blink-in-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "ne": {
+                "body": "characters/classes/broom/blink-in/char-body-blink-in-ne.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/blink-in/char-weapon-broom-back-blink-in-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/blink-in/char-weapon-broom-blink-in-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "blink-out": {
+            "frames": 6,
+            "fps": 16,
+            "loop": false,
+            "dirs": {
+              "se": {
+                "body": "characters/classes/broom/blink-out/char-body-blink-out-se.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/blink-out/char-weapon-broom-back-blink-out-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/blink-out/char-weapon-broom-blink-out-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/broom/blink-out/char-face-default-blink-out-se.png"
+              },
+              "e": {
+                "body": "characters/classes/broom/blink-out/char-body-blink-out-e.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/blink-out/char-weapon-broom-back-blink-out-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/blink-out/char-weapon-broom-blink-out-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/broom/blink-out/char-face-default-blink-out-e.png"
+              },
+              "s": {
+                "body": "characters/classes/broom/blink-out/char-body-blink-out-s.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/blink-out/char-weapon-broom-back-blink-out-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/blink-out/char-weapon-broom-blink-out-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/broom/blink-out/char-face-default-blink-out-s.png"
+              },
+              "sw": {
+                "body": "characters/classes/broom/blink-out/char-body-blink-out-sw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/blink-out/char-weapon-broom-back-blink-out-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/blink-out/char-weapon-broom-blink-out-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/broom/blink-out/char-face-default-blink-out-sw.png"
+              },
+              "w": {
+                "body": "characters/classes/broom/blink-out/char-body-blink-out-w.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/blink-out/char-weapon-broom-back-blink-out-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/blink-out/char-weapon-broom-blink-out-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/broom/blink-out/char-face-default-blink-out-w.png"
+              },
+              "nw": {
+                "body": "characters/classes/broom/blink-out/char-body-blink-out-nw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/blink-out/char-weapon-broom-back-blink-out-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/blink-out/char-weapon-broom-blink-out-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "n": {
+                "body": "characters/classes/broom/blink-out/char-body-blink-out-n.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/blink-out/char-weapon-broom-back-blink-out-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/blink-out/char-weapon-broom-blink-out-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "ne": {
+                "body": "characters/classes/broom/blink-out/char-body-blink-out-ne.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/blink-out/char-weapon-broom-back-blink-out-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/blink-out/char-weapon-broom-blink-out-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "dash": {
+            "frames": 7,
+            "fps": 16,
+            "loop": false,
+            "dirs": {
+              "se": {
+                "body": "characters/classes/broom/dash/char-body-dash-se.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/dash/char-weapon-broom-back-dash-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/dash/char-weapon-broom-dash-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/broom/dash/char-face-default-dash-se.png"
+              },
+              "e": {
+                "body": "characters/classes/broom/dash/char-body-dash-e.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/dash/char-weapon-broom-back-dash-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/dash/char-weapon-broom-dash-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/broom/dash/char-face-default-dash-e.png"
+              },
+              "s": {
+                "body": "characters/classes/broom/dash/char-body-dash-s.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/dash/char-weapon-broom-back-dash-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/dash/char-weapon-broom-dash-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/broom/dash/char-face-default-dash-s.png"
+              },
+              "sw": {
+                "body": "characters/classes/broom/dash/char-body-dash-sw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/dash/char-weapon-broom-back-dash-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/dash/char-weapon-broom-dash-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/broom/dash/char-face-default-dash-sw.png"
+              },
+              "w": {
+                "body": "characters/classes/broom/dash/char-body-dash-w.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/dash/char-weapon-broom-back-dash-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/dash/char-weapon-broom-dash-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/broom/dash/char-face-default-dash-w.png"
+              },
+              "nw": {
+                "body": "characters/classes/broom/dash/char-body-dash-nw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/dash/char-weapon-broom-back-dash-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/dash/char-weapon-broom-dash-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "n": {
+                "body": "characters/classes/broom/dash/char-body-dash-n.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/dash/char-weapon-broom-back-dash-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/dash/char-weapon-broom-dash-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "ne": {
+                "body": "characters/classes/broom/dash/char-body-dash-ne.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/dash/char-weapon-broom-back-dash-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/dash/char-weapon-broom-dash-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
               }
             }
           }
@@ -6088,6 +7940,1174 @@
                 "face": "characters/classes/potlid/walk-ready/char-face-default-walk-ready-w.png"
               }
             }
+          },
+          "charge-end": {
+            "frames": 3,
+            "fps": 14,
+            "loop": false,
+            "dirs": {
+              "se": {
+                "body": "characters/classes/potlid/charge-end/char-body-charge-end-se.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/charge-end/char-weapon-lid-back-charge-end-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-end/char-weapon-ladle-back-charge-end-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/charge-end/char-weapon-lid-charge-end-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-end/char-weapon-ladle-charge-end-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/potlid/charge-end/char-face-default-charge-end-se.png"
+              },
+              "e": {
+                "body": "characters/classes/potlid/charge-end/char-body-charge-end-e.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/charge-end/char-weapon-lid-back-charge-end-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-end/char-weapon-ladle-back-charge-end-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/charge-end/char-weapon-lid-charge-end-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-end/char-weapon-ladle-charge-end-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/potlid/charge-end/char-face-default-charge-end-e.png"
+              },
+              "s": {
+                "body": "characters/classes/potlid/charge-end/char-body-charge-end-s.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/charge-end/char-weapon-lid-back-charge-end-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-end/char-weapon-ladle-back-charge-end-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/charge-end/char-weapon-lid-charge-end-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-end/char-weapon-ladle-charge-end-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/potlid/charge-end/char-face-default-charge-end-s.png"
+              },
+              "sw": {
+                "body": "characters/classes/potlid/charge-end/char-body-charge-end-sw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/charge-end/char-weapon-lid-back-charge-end-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-end/char-weapon-ladle-back-charge-end-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/charge-end/char-weapon-lid-charge-end-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-end/char-weapon-ladle-charge-end-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/potlid/charge-end/char-face-default-charge-end-sw.png"
+              },
+              "w": {
+                "body": "characters/classes/potlid/charge-end/char-body-charge-end-w.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/charge-end/char-weapon-lid-back-charge-end-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-end/char-weapon-ladle-back-charge-end-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/charge-end/char-weapon-lid-charge-end-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-end/char-weapon-ladle-charge-end-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/potlid/charge-end/char-face-default-charge-end-w.png"
+              },
+              "nw": {
+                "body": "characters/classes/potlid/charge-end/char-body-charge-end-nw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/charge-end/char-weapon-lid-back-charge-end-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-end/char-weapon-ladle-back-charge-end-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/charge-end/char-weapon-lid-charge-end-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-end/char-weapon-ladle-charge-end-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "n": {
+                "body": "characters/classes/potlid/charge-end/char-body-charge-end-n.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/charge-end/char-weapon-lid-back-charge-end-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-end/char-weapon-ladle-back-charge-end-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/charge-end/char-weapon-lid-charge-end-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-end/char-weapon-ladle-charge-end-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "ne": {
+                "body": "characters/classes/potlid/charge-end/char-body-charge-end-ne.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/charge-end/char-weapon-lid-back-charge-end-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-end/char-weapon-ladle-back-charge-end-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/charge-end/char-weapon-lid-charge-end-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-end/char-weapon-ladle-charge-end-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "charge-loop": {
+            "frames": 8,
+            "fps": 18,
+            "loop": true,
+            "dirs": {
+              "se": {
+                "body": "characters/classes/potlid/charge-loop/char-body-charge-loop-se.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/charge-loop/char-weapon-lid-back-charge-loop-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-loop/char-weapon-ladle-back-charge-loop-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/charge-loop/char-weapon-lid-charge-loop-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-loop/char-weapon-ladle-charge-loop-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/potlid/charge-loop/char-face-default-charge-loop-se.png"
+              },
+              "e": {
+                "body": "characters/classes/potlid/charge-loop/char-body-charge-loop-e.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/charge-loop/char-weapon-lid-back-charge-loop-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-loop/char-weapon-ladle-back-charge-loop-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/charge-loop/char-weapon-lid-charge-loop-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-loop/char-weapon-ladle-charge-loop-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/potlid/charge-loop/char-face-default-charge-loop-e.png"
+              },
+              "s": {
+                "body": "characters/classes/potlid/charge-loop/char-body-charge-loop-s.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/charge-loop/char-weapon-lid-back-charge-loop-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-loop/char-weapon-ladle-back-charge-loop-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/charge-loop/char-weapon-lid-charge-loop-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-loop/char-weapon-ladle-charge-loop-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/potlid/charge-loop/char-face-default-charge-loop-s.png"
+              },
+              "sw": {
+                "body": "characters/classes/potlid/charge-loop/char-body-charge-loop-sw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/charge-loop/char-weapon-lid-back-charge-loop-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-loop/char-weapon-ladle-back-charge-loop-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/charge-loop/char-weapon-lid-charge-loop-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-loop/char-weapon-ladle-charge-loop-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/potlid/charge-loop/char-face-default-charge-loop-sw.png"
+              },
+              "w": {
+                "body": "characters/classes/potlid/charge-loop/char-body-charge-loop-w.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/charge-loop/char-weapon-lid-back-charge-loop-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-loop/char-weapon-ladle-back-charge-loop-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/charge-loop/char-weapon-lid-charge-loop-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-loop/char-weapon-ladle-charge-loop-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/potlid/charge-loop/char-face-default-charge-loop-w.png"
+              },
+              "nw": {
+                "body": "characters/classes/potlid/charge-loop/char-body-charge-loop-nw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/charge-loop/char-weapon-lid-back-charge-loop-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-loop/char-weapon-ladle-back-charge-loop-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/charge-loop/char-weapon-lid-charge-loop-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-loop/char-weapon-ladle-charge-loop-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "n": {
+                "body": "characters/classes/potlid/charge-loop/char-body-charge-loop-n.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/charge-loop/char-weapon-lid-back-charge-loop-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-loop/char-weapon-ladle-back-charge-loop-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/charge-loop/char-weapon-lid-charge-loop-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-loop/char-weapon-ladle-charge-loop-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "ne": {
+                "body": "characters/classes/potlid/charge-loop/char-body-charge-loop-ne.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/charge-loop/char-weapon-lid-back-charge-loop-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-loop/char-weapon-ladle-back-charge-loop-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/charge-loop/char-weapon-lid-charge-loop-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-loop/char-weapon-ladle-charge-loop-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "charge-start": {
+            "frames": 2,
+            "fps": 14,
+            "loop": false,
+            "dirs": {
+              "se": {
+                "body": "characters/classes/potlid/charge-start/char-body-charge-start-se.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/charge-start/char-weapon-lid-back-charge-start-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-start/char-weapon-ladle-back-charge-start-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/charge-start/char-weapon-lid-charge-start-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-start/char-weapon-ladle-charge-start-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/potlid/charge-start/char-face-default-charge-start-se.png"
+              },
+              "e": {
+                "body": "characters/classes/potlid/charge-start/char-body-charge-start-e.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/charge-start/char-weapon-lid-back-charge-start-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-start/char-weapon-ladle-back-charge-start-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/charge-start/char-weapon-lid-charge-start-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-start/char-weapon-ladle-charge-start-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/potlid/charge-start/char-face-default-charge-start-e.png"
+              },
+              "s": {
+                "body": "characters/classes/potlid/charge-start/char-body-charge-start-s.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/charge-start/char-weapon-lid-back-charge-start-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-start/char-weapon-ladle-back-charge-start-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/charge-start/char-weapon-lid-charge-start-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-start/char-weapon-ladle-charge-start-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/potlid/charge-start/char-face-default-charge-start-s.png"
+              },
+              "sw": {
+                "body": "characters/classes/potlid/charge-start/char-body-charge-start-sw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/charge-start/char-weapon-lid-back-charge-start-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-start/char-weapon-ladle-back-charge-start-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/charge-start/char-weapon-lid-charge-start-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-start/char-weapon-ladle-charge-start-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/potlid/charge-start/char-face-default-charge-start-sw.png"
+              },
+              "w": {
+                "body": "characters/classes/potlid/charge-start/char-body-charge-start-w.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/charge-start/char-weapon-lid-back-charge-start-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-start/char-weapon-ladle-back-charge-start-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/charge-start/char-weapon-lid-charge-start-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-start/char-weapon-ladle-charge-start-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/potlid/charge-start/char-face-default-charge-start-w.png"
+              },
+              "nw": {
+                "body": "characters/classes/potlid/charge-start/char-body-charge-start-nw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/charge-start/char-weapon-lid-back-charge-start-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-start/char-weapon-ladle-back-charge-start-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/charge-start/char-weapon-lid-charge-start-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-start/char-weapon-ladle-charge-start-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "n": {
+                "body": "characters/classes/potlid/charge-start/char-body-charge-start-n.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/charge-start/char-weapon-lid-back-charge-start-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-start/char-weapon-ladle-back-charge-start-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/charge-start/char-weapon-lid-charge-start-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-start/char-weapon-ladle-charge-start-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "ne": {
+                "body": "characters/classes/potlid/charge-start/char-body-charge-start-ne.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/charge-start/char-weapon-lid-back-charge-start-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-start/char-weapon-ladle-back-charge-start-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/charge-start/char-weapon-lid-charge-start-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/charge-start/char-weapon-ladle-charge-start-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "dash": {
+            "frames": 7,
+            "fps": 16,
+            "loop": false,
+            "dirs": {
+              "se": {
+                "body": "characters/classes/potlid/dash/char-body-dash-se.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/dash/char-weapon-lid-back-dash-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/dash/char-weapon-ladle-back-dash-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/dash/char-weapon-lid-dash-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/dash/char-weapon-ladle-dash-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/potlid/dash/char-face-default-dash-se.png"
+              },
+              "e": {
+                "body": "characters/classes/potlid/dash/char-body-dash-e.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/dash/char-weapon-lid-back-dash-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/dash/char-weapon-ladle-back-dash-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/dash/char-weapon-lid-dash-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/dash/char-weapon-ladle-dash-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/potlid/dash/char-face-default-dash-e.png"
+              },
+              "s": {
+                "body": "characters/classes/potlid/dash/char-body-dash-s.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/dash/char-weapon-lid-back-dash-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/dash/char-weapon-ladle-back-dash-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/dash/char-weapon-lid-dash-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/dash/char-weapon-ladle-dash-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/potlid/dash/char-face-default-dash-s.png"
+              },
+              "sw": {
+                "body": "characters/classes/potlid/dash/char-body-dash-sw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/dash/char-weapon-lid-back-dash-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/dash/char-weapon-ladle-back-dash-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/dash/char-weapon-lid-dash-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/dash/char-weapon-ladle-dash-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/potlid/dash/char-face-default-dash-sw.png"
+              },
+              "w": {
+                "body": "characters/classes/potlid/dash/char-body-dash-w.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/dash/char-weapon-lid-back-dash-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/dash/char-weapon-ladle-back-dash-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/dash/char-weapon-lid-dash-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/dash/char-weapon-ladle-dash-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/potlid/dash/char-face-default-dash-w.png"
+              },
+              "nw": {
+                "body": "characters/classes/potlid/dash/char-body-dash-nw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/dash/char-weapon-lid-back-dash-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/dash/char-weapon-ladle-back-dash-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/dash/char-weapon-lid-dash-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/dash/char-weapon-ladle-dash-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "n": {
+                "body": "characters/classes/potlid/dash/char-body-dash-n.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/dash/char-weapon-lid-back-dash-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/dash/char-weapon-ladle-back-dash-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/dash/char-weapon-lid-dash-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/dash/char-weapon-ladle-dash-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "ne": {
+                "body": "characters/classes/potlid/dash/char-body-dash-ne.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/dash/char-weapon-lid-back-dash-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/dash/char-weapon-ladle-back-dash-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/dash/char-weapon-lid-dash-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/dash/char-weapon-ladle-dash-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              }
+            }
           }
         },
         "rest": {
@@ -7140,6 +10160,546 @@
                   }
                 ],
                 "face": "characters/classes/hilot/walk-ready/char-face-default-walk-ready-w.png"
+              }
+            }
+          },
+          "blink-in": {
+            "frames": 5,
+            "fps": 16,
+            "loop": false,
+            "dirs": {
+              "se": {
+                "body": "characters/classes/hilot/blink-in/char-body-blink-in-se.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/blink-in/char-weapon-balm-back-blink-in-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/blink-in/char-weapon-balm-blink-in-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/hilot/blink-in/char-face-default-blink-in-se.png"
+              },
+              "e": {
+                "body": "characters/classes/hilot/blink-in/char-body-blink-in-e.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/blink-in/char-weapon-balm-back-blink-in-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/blink-in/char-weapon-balm-blink-in-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/hilot/blink-in/char-face-default-blink-in-e.png"
+              },
+              "s": {
+                "body": "characters/classes/hilot/blink-in/char-body-blink-in-s.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/blink-in/char-weapon-balm-back-blink-in-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/blink-in/char-weapon-balm-blink-in-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/hilot/blink-in/char-face-default-blink-in-s.png"
+              },
+              "sw": {
+                "body": "characters/classes/hilot/blink-in/char-body-blink-in-sw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/blink-in/char-weapon-balm-back-blink-in-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/blink-in/char-weapon-balm-blink-in-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/hilot/blink-in/char-face-default-blink-in-sw.png"
+              },
+              "w": {
+                "body": "characters/classes/hilot/blink-in/char-body-blink-in-w.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/blink-in/char-weapon-balm-back-blink-in-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/blink-in/char-weapon-balm-blink-in-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/hilot/blink-in/char-face-default-blink-in-w.png"
+              },
+              "nw": {
+                "body": "characters/classes/hilot/blink-in/char-body-blink-in-nw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/blink-in/char-weapon-balm-back-blink-in-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/blink-in/char-weapon-balm-blink-in-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "n": {
+                "body": "characters/classes/hilot/blink-in/char-body-blink-in-n.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/blink-in/char-weapon-balm-back-blink-in-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/blink-in/char-weapon-balm-blink-in-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "ne": {
+                "body": "characters/classes/hilot/blink-in/char-body-blink-in-ne.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/blink-in/char-weapon-balm-back-blink-in-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/blink-in/char-weapon-balm-blink-in-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "blink-out": {
+            "frames": 6,
+            "fps": 16,
+            "loop": false,
+            "dirs": {
+              "se": {
+                "body": "characters/classes/hilot/blink-out/char-body-blink-out-se.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/blink-out/char-weapon-balm-back-blink-out-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/blink-out/char-weapon-balm-blink-out-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/hilot/blink-out/char-face-default-blink-out-se.png"
+              },
+              "e": {
+                "body": "characters/classes/hilot/blink-out/char-body-blink-out-e.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/blink-out/char-weapon-balm-back-blink-out-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/blink-out/char-weapon-balm-blink-out-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/hilot/blink-out/char-face-default-blink-out-e.png"
+              },
+              "s": {
+                "body": "characters/classes/hilot/blink-out/char-body-blink-out-s.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/blink-out/char-weapon-balm-back-blink-out-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/blink-out/char-weapon-balm-blink-out-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/hilot/blink-out/char-face-default-blink-out-s.png"
+              },
+              "sw": {
+                "body": "characters/classes/hilot/blink-out/char-body-blink-out-sw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/blink-out/char-weapon-balm-back-blink-out-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/blink-out/char-weapon-balm-blink-out-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/hilot/blink-out/char-face-default-blink-out-sw.png"
+              },
+              "w": {
+                "body": "characters/classes/hilot/blink-out/char-body-blink-out-w.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/blink-out/char-weapon-balm-back-blink-out-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/blink-out/char-weapon-balm-blink-out-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/hilot/blink-out/char-face-default-blink-out-w.png"
+              },
+              "nw": {
+                "body": "characters/classes/hilot/blink-out/char-body-blink-out-nw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/blink-out/char-weapon-balm-back-blink-out-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/blink-out/char-weapon-balm-blink-out-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "n": {
+                "body": "characters/classes/hilot/blink-out/char-body-blink-out-n.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/blink-out/char-weapon-balm-back-blink-out-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/blink-out/char-weapon-balm-blink-out-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "ne": {
+                "body": "characters/classes/hilot/blink-out/char-body-blink-out-ne.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/blink-out/char-weapon-balm-back-blink-out-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/blink-out/char-weapon-balm-blink-out-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "dash": {
+            "frames": 7,
+            "fps": 16,
+            "loop": false,
+            "dirs": {
+              "se": {
+                "body": "characters/classes/hilot/dash/char-body-dash-se.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/dash/char-weapon-balm-back-dash-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/dash/char-weapon-balm-dash-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/hilot/dash/char-face-default-dash-se.png"
+              },
+              "e": {
+                "body": "characters/classes/hilot/dash/char-body-dash-e.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/dash/char-weapon-balm-back-dash-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/dash/char-weapon-balm-dash-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/hilot/dash/char-face-default-dash-e.png"
+              },
+              "s": {
+                "body": "characters/classes/hilot/dash/char-body-dash-s.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/dash/char-weapon-balm-back-dash-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/dash/char-weapon-balm-dash-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/hilot/dash/char-face-default-dash-s.png"
+              },
+              "sw": {
+                "body": "characters/classes/hilot/dash/char-body-dash-sw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/dash/char-weapon-balm-back-dash-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/dash/char-weapon-balm-dash-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/hilot/dash/char-face-default-dash-sw.png"
+              },
+              "w": {
+                "body": "characters/classes/hilot/dash/char-body-dash-w.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/dash/char-weapon-balm-back-dash-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/dash/char-weapon-balm-dash-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/hilot/dash/char-face-default-dash-w.png"
+              },
+              "nw": {
+                "body": "characters/classes/hilot/dash/char-body-dash-nw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/dash/char-weapon-balm-back-dash-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/dash/char-weapon-balm-dash-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "n": {
+                "body": "characters/classes/hilot/dash/char-body-dash-n.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/dash/char-weapon-balm-back-dash-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/dash/char-weapon-balm-dash-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "ne": {
+                "body": "characters/classes/hilot/dash/char-body-dash-ne.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/dash/char-weapon-balm-back-dash-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/dash/char-weapon-balm-dash-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
               }
             }
           }
@@ -9993,6 +13553,36 @@
         29
       ],
       "note": "Hot Compress impact front half of the heat ring; anchor on the target feet; draw OVER the monster"
+    },
+    "fx-mobility-dust": {
+      "file": "fx/mobility/fx-mobility-dust-standin.png",
+      "frame": [
+        24,
+        12
+      ],
+      "frames": 6,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        12,
+        12
+      ],
+      "note": "PLACEHOLDER dust puff for the mobility moves (dash, step back, charge); anchor bottom centre on the feet. To be replaced by the PixelLab fx: change the file here."
+    },
+    "fx-mobility-blink": {
+      "file": "fx/mobility/fx-mobility-blink-standin.png",
+      "frame": [
+        40,
+        56
+      ],
+      "frames": 6,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        20,
+        50
+      ],
+      "note": "PLACEHOLDER blink burst (Broom and Hilot), anchored on the feet. To be replaced by the PixelLab fx: change the file here."
     }
   },
   "ui": {
