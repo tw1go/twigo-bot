@@ -258,8 +258,12 @@ export class Hotbar {
         const line = el('span', 'sb-line');
         line.append(el('span', 'hb-name', s.name), el('span', 'hb-lv', `Lv ${s.level}`));
         text.append(line, el('span', 'sb-desc', s.desc));
-        row.append(this.iconOf(s.name) ?? el('span', 'hb-initials', initials(s.name)), text);
-        row.addEventListener('dragstart', (e) => e.dataTransfer?.setData(DRAG, JSON.stringify({ entry: { t: 'skill', name: s.name } })));
+        const pic = this.iconOf(s.name) ?? el('span', 'hb-initials', initials(s.name));
+        row.append(pic, text);
+        row.addEventListener('dragstart', (e) => {
+          e.dataTransfer?.setData(DRAG, JSON.stringify({ entry: { t: 'skill', name: s.name } }));
+          e.dataTransfer?.setDragImage(pic, pic.offsetWidth / 2, pic.offsetHeight / 2); // just the icon follows the pointer
+        });
         row.addEventListener('click', () => {
           this.picked = this.picked?.name === s.name ? null : { t: 'skill', name: s.name };
           this.drawList();
