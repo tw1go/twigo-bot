@@ -256,11 +256,31 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   (someone standing in that yard can still walk out: `fenceLater`). Dev: `/__bakod?name=Mara&on=0|1`.
   The house menu asks GET /town/hood again as it opens (jail, cooldown, keys, potions, Bakods are never stale), and
   `jailed` messages update it too.
-- Slums bridge (testers only; the slums map isn't built yet): town.json `bridges` (the south path's end, cols 34–36 over
-  rows 70–71, drawn along the rows by `world/bridge.ts`; railings = fence pieces), `gates.slums` + a "Slums · testers ←"
-  sign; stepping on the gate shows a note (testers: coming soon; others: testers only; `/me` `tester` from
-  `games/testers.ts`; dev `&tester=0`). The outskirts carry the path on past it (`outskirts.lanes`: path tiles, no tree
-  whose crown would hide it). The slums art (tiles, raised ground, props) is in mikazuki-assets, not yet in the game.
+- South bridge: town.json `bridges` (the south path's end, cols 34–36 over rows 70–71, drawn along the rows by
+  `world/bridge.ts`; railings = fence pieces): scenery, the path runs on into the woods (`outskirts.lanes`: path tiles, no
+  tree whose crown would hide it). The town's west road runs on west the same way, to the Slums gate.
+- The Slums (testers only: `/me` `tester` from `games/testers.ts`, the bot's `mayEnter` on /ws room 'slums'; dev
+  `&tester=0`): a third area like the neighbourhood (`?area=slums`, `net/hood.ts` areaUrl / resolveArea / cameFrom,
+  BootScene loads maps/slums.json via `slumsTownMap`). Town side: the west road's end, `gates.slums` (col 0, rows 34–36),
+  `arrive.slums` [2,35], a "← Slums" sign; back: slums.json `gates.town` on its east edge. The map (256 × 192, from the art
+  folder's maps/slums, with its manifest-snippet props, tiles.slums and mobs.tin-can) has raised and low ground:
+  `height` (0 basin, 1 ground, 2 ridge; 16 px a level), `walls` (cliff material), `ramps` (2 tiles; `world/heights.ts`:
+  steps only along a ramp, a smooth lift on it, the walk grid and A* use it; characters `elevation`, objects raised,
+  `HEIGHT_DEPTH` in depth; clicks pick the raised tile under the pointer). `world/terrain.ts` draws it by the art's
+  elevation README: floors, walls, rims, caps baked per 512 px chunk in the README's order; tiles that rise over the tile
+  just behind (and ramps) are sprites sorted with characters, so the ground in front hides what stands behind (Wire
+  Ridge, the Crab Basin's lip); the canal is animated with the river's bank overlays. Everything is streamed round the
+  camera (terrain chunks a few a frame, 16 × 16-tile regions of sprites, `WorldObjects` stream mode for the ~2,100
+  props; dropped far away), A* is capped (a long click walks to the closest tile found). Outskirts: `SlumsOutskirts` in
+  `world/outskirts.ts` (dirt, the canal carried on from the map's first/last rows, a concrete road out of the gate, dead
+  trees thick on the edges and sparse junk/shanties/poles/wrecks, one per 4 × 4 cell). Minimap: the Slums' colours,
+  ridge lighter, basin darker. Mobs (`world/mobs.ts`, `map.mobZones`, only `active` zones load art: Tin Can Alley so
+  far; the boss and other zones are data only): one per spawn, idle and hopping ≤ 3 tiles round it on its zone's level
+  (not ramps, blocked tiles or the `safeZone`), facing its way (SE/NE/SW/NW sheets); a click shows "Tin Can Lv 1-2" over
+  it and targets it; Z targets the nearest within 12 tiles (again: the next), a gold ring under it and an info bar at
+  the top (`ui/mob-target.ts`: name, level, HP, zone); Escape or 20 tiles away lets go. The zone's aggro, aggroRange,
+  leash, respawnSec and level stay on each mob for combat. `residents` are unused for now. Dev: `?area=slums`,
+  `__town.mobs()`.
 - NPCs (town only, not the neighbourhood; client-side: never on the server, the online list or the minimap): the
   Tanod and ten Alings, flat pre-baked sheets (manifest `npcs`, art in `assets/npcs/`, one pack per NPC; `Character`
   with `FlatSheets`, never the paper doll). Homes, behaviours, the Tanod's route, voices and portrait facing in
