@@ -272,6 +272,20 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   `getup` (manifest npcs, Alings only; SE/SW from the PixelLab reference, the rest script-built in mikazuki-assets). Race box beside the jackpot counter (`ui/race-box.ts`), bet pop-up
   (`ui/race-bet.ts`, `POST /town/race bet`). Dev: a pretend race in the dev server, `&race=fast` (20 s of betting) or `&race=now` (3 s),
   `__town.race()`.
+- Quests, classes and equipment (bot `web/adventure.ts`, schema v10 `adventurers`: class, quests, worn equipment, equipment
+  in the bag; tested). Data in the game's assets, read by the bot too: `quests/quests.json` (main = violet, side = yellow,
+  manifest quests.colours; objective types talk and chooseClass; the giver's lines in `dialogue`), `classes/classes.json`
+  (the six classes, their first 7 skills and their `mobility` moves), `items/equipment.json` (the training weapons,
+  placeholder stats). `/me` brings `adventure` (autoStart quests start there); `POST /town/quest` / `/town/equip`; the
+  town carries each player's `cls` and `weapon` (`kit` message). Game: `net/adventure.ts` (store; dev pretends in
+  localStorage per ?as=, `&quests=reset`), `ui/quests.ts` (tracker on the left, log J / scroll button with a dot,
+  "Quest complete" banner), the Tanod's quest A Weapon for the Town (a "!" over him, his lines in the NPC dialog box; a
+  click outside the box goes on like one on it), `ui/class-choice.ts` (six cards) and `ui/skill-preview.ts` (a stage
+  playing the class's 7 skills, Dash and its Lv 8 move on invisible enemies: `combat/skill-previews.ts` on
+  `combat/skill-stage.ts`), the training weapon into the weapon slot, resting weapons over idle and walk for everyone
+  (`Character.setRestingWeapon`, `characters/kit-art.ts`), the equipment panel beside the bag (`ui/equipment.ts`; B or
+  I; 12 places: two bracers, two rings; stats from `combat/stats.ts`, placeholders), class badges on the avatar and before
+  players' names in the chat. Combat poses have no clothes or hair yet (body and face only).
 - Player menu (`ui/target.ts`): left click (or tap) someone → their name in a long box top centre (or click their name
   in the chat: the box opens right beside it with the menu open, `selectAt`; a click elsewhere closes it; no ×: a click
   outside the box closes it too, a drag to peek doesn't); clicking it opens
