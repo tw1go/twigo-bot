@@ -594,5 +594,113 @@ const hilot: Skill[] = [
   },
 ];
 
+// ── Mobility: Dash (every class, Lv 5) and the class's Lv 8 move (characters/classes/mobility-README.md) ──
+// The sheets never travel sideways: the stage moves the fighter along the facing. After a move the fighter stands in
+// walk-ready ~0.3 s, then fades out and back in at the start spot (~0.3 s) before the next skill.
+
+const TILE = { x: 16, y: 8 }; // one tile toward SE
+const DUST = 'fx-mobility-dust'; // placeholders until the PixelLab fx (manifest fx: change the files there)
+const BLINK = 'fx-mobility-blink';
+const tiles = (n: number) => ({ x: TILE.x * n, y: TILE.y * n });
+
+/** Back to the start spot: walk-ready a moment, then out and in again there. */
+function homeAfter(k: SkillKit, end: number): void {
+  k.at(end + 300, () => k.fade(0, 150));
+  k.at(end + 450, () => {
+    k.move(0, 0, 0);
+    k.fade(1, 150);
+  });
+}
+
+const dash: Skill = {
+  name: 'Dash',
+  run(k) {
+    const t = k.pose('dash', [0, 1, 2, 3, 4, 5, 6]);
+    const to = tiles(2);
+    k.at(t[1], () => {
+      k.fx(DUST, k.self(-6, 0), { z: 1 }); // behind the feet
+      k.trail(true);
+      k.move(to.x, to.y, t[4] - t[1], 'out'); // frames 1-3, easing out
+    });
+    k.at(t[4], () => {
+      k.trail(false);
+      k.fx(DUST, k.self(0, 0), { z: 1 }); // the brake
+    });
+    homeAfter(k, t[6] + 1000 / 16);
+  },
+};
+
+const stepBack: Skill = {
+  name: 'Step Back',
+  run(k) {
+    const t = k.pose('step-back', [0, 1, 2, 3, 4, 5, 6]);
+    const back = tiles(-1);
+    k.at(t[1], () => {
+      k.fx(DUST, k.self(0, 0), { z: 1 });
+      k.move(back.x, back.y, t[5] - t[1]); // frames 1-4, a straight line on the ground (the hop is in the sheet)
+    });
+    k.at(t[5], () => k.fx(DUST, k.self(0, 0), { z: 1 }));
+    homeAfter(k, t[6] + 1000 / 14);
+  },
+};
+
+/** Charge: start, the run looping at ~6 tiles a second until it reaches its target, then the skid; the class's hit
+ *  lands on arrival. The melee enemy already stands within reach of the start spot, so the run goes to the next one. */
+const charge = (hitFx: string): Skill => ({
+  name: 'Charge',
+  run(k) {
+    const run = tiles(2); // to the mid enemy, stopping a tile short of it
+    const runMs = (Math.hypot(run.x, run.y) / (Math.hypot(TILE.x, TILE.y) * 6)) * 1000;
+    const loop = 1000 / 18;
+    const loops = Math.max(1, Math.ceil(runMs / loop));
+    const start = k.pose('charge-start', [0, 1]);
+    const looped = k.pose('charge-loop', Array.from({ length: loops }, (_, i) => i % 8));
+    const end = k.pose('charge-end', [0, 1, 2]);
+    k.at(start[1], () => {
+      k.fx(DUST, k.self(0, 0), { z: 1 });
+      k.trail(true);
+      k.move(run.x, run.y, looped[0] + loops * loop - start[1]);
+    });
+    for (let d = looped[0] + 220; d < end[0]; d += 220) k.at(d, () => k.fx(DUST, k.self(0, 0), { z: 1 }));
+    k.at(end[0], () => {
+      k.trail(false);
+      k.fx(DUST, k.self(0, 0), { z: 1 });
+      k.hit(1, { fx: hitFx });
+    });
+    homeAfter(k, end[2] + 1000 / 14);
+  },
+});
+
+const blink: Skill = {
+  name: 'Blink',
+  run(k) {
+    const out = k.pose('blink-out', [0, 1, 2, 3, 4, 5]); // the last frame is empty
+    const land = tiles(2.5);
+    const back = k.pose('blink-in', [0, 1, 2, 3, 4]);
+    k.at(out[2], () => k.fx(BLINK, k.self(0, 0)));
+    k.at(out[3], () => k.flash(true));
+    k.at(out[5], () => {
+      k.flash(false);
+      k.move(land.x, land.y, 0); // there at once
+    });
+    k.at(back[0], () => {
+      k.flash(true);
+      k.fx(BLINK, k.self(0, 0));
+    });
+    k.at(back[2], () => k.flash(false));
+    homeAfter(k, back[4] + 1000 / 16);
+  },
+};
+
+/** Each class's two mobility moves (Dash, then the Lv 8 one), by the ids in classes.json's mobility lists. */
+export const MOBILITY_PREVIEWS: Record<string, Record<string, Skill>> = {
+  slingshot: { dash, 'step-back': stepBack },
+  stick: { dash, 'step-back': stepBack },
+  greatstick: { dash, charge: charge('fx-crimson-hit') },
+  potlid: { dash, charge: charge('fx-potlid-hit') },
+  broom: { dash, blink },
+  hilot: { dash, blink },
+};
+
 /** Each class's first 7 damage skills, in classes.json order. */
 export const SKILL_PREVIEWS: Record<string, Skill[]> = { slingshot, stick, greatstick, broom, potlid, hilot };

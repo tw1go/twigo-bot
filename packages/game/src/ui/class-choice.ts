@@ -4,7 +4,8 @@ import { playSound } from '../audio/sound';
 // 🗡️ Choosing a class (the Tanod's quest, A Weapon for the Town): six cards in classes.json order, each with the class
 // badge, your own character with the class's resting weapon at 2× (facing SE or SW, turning between them now and then
 // and sometimes walking a few steps on the spot), its name, role, damage type and stats. A card opens the skill
-// preview (ui/skill-preview.ts) over the window; there, Choose {class} asks "Become a {class}?" and Yes saves it. Closing the window without choosing is fine: the quest waits on "Choose your class".
+// preview (ui/skill-preview.ts) over the window; there, Choose {class} asks "Become a {class}?" and Yes saves it.
+// Closing the window without choosing is fine: the quest waits on "Choose your class".
 
 export interface ClassChoiceOptions {
   classes: ClassInfo[];
@@ -44,7 +45,9 @@ export function openClassChoice(o: ClassChoiceOptions): void {
   const x = el('button', 'cc-close', '×');
   x.setAttribute('aria-label', 'Close');
   x.addEventListener('click', () => done());
-  head.append(el('span', 'cc-heading', 'Choose your class'), x);
+  head.append(x);
+  // The title sits above the window, outside it.
+  const title = el('h2', 'cc-title', 'Choose your class');
   const grid = el('div', 'cc-grid');
   /** Each figure's own little life: which way it faces, and whether it's walking on the spot (until when). */
   type Life = { ctx: CanvasRenderingContext2D; cls: string; dir: 'se' | 'sw'; walkFrom: number; walkUntil: number; nextAt: number };
@@ -67,7 +70,7 @@ export function openClassChoice(o: ClassChoiceOptions): void {
   const host = el('div', 'cc-preview-host');
   host.hidden = true;
   win.append(head, grid, host);
-  root.append(win);
+  root.append(title, win);
   document.body.append(root);
   playSound('click');
 

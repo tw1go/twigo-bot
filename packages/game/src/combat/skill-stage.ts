@@ -83,8 +83,15 @@ export interface SkillKit {
   number(at: Pt, kind?: NumberKind): void;
   /** Weapon layers whose file names contain `part` hidden (a thrown lid or plank) or shown again. */
   hide(part: string, on: boolean): void;
-  /** Moves the fighter to this offset from their spot over `ms` (a lunge; 0, 0 brings them back). */
-  move(dx: number, dy: number, ms: number): void;
+  /** Moves the fighter to this offset from their spot over `ms` (a lunge; 0, 0 brings them back; 0 ms: at once, a
+   *  blink), straight or easing out. */
+  move(dx: number, dy: number, ms: number, ease?: 'out'): void;
+  /** Afterimages behind the fighter while on (Dash, Charge): a lavender copy every 2nd frame, fading over ~130 ms. */
+  trail(on: boolean): void;
+  /** The fighter drawn as a white silhouette while on (Blink). */
+  flash(on: boolean): void;
+  /** Fades the fighter to `alpha` over `ms`. */
+  fade(alpha: number, ms: number): void;
 }
 
 export interface Skill {
@@ -116,6 +123,22 @@ const ANCHOR: Pt = { x: 32, y: 56 }; // the fighter's feet in the 64 cell
 const READY = 'walk-ready';
 export const GAP_MS = 600; // walk-ready between skills
 const NUMBER_MS = 800;
+
+const GHOST = '#B794F6'; // afterimages: lavender
+const GHOST_MS = 130;
+
+/** A copy of a drawing with every visible pixel in one colour (an afterimage, a white flash). */
+function silhouette(src: HTMLCanvasElement, colour: string): HTMLCanvasElement {
+  const c = document.createElement('canvas');
+  c.width = src.width;
+  c.height = src.height;
+  const ctx = c.getContext('2d')!;
+  ctx.drawImage(src, 0, 0);
+  ctx.globalCompositeOperation = 'source-in';
+  ctx.fillStyle = colour;
+  ctx.fillRect(0, 0, c.width, c.height);
+  return c;
+}
 
 interface Live {
   def: FxDef;
@@ -149,7 +172,13 @@ export class SkillStage {
   private lives: Live[] = [];
   private hidden = new Set<string>();
   private offset: Pt = { x: 0, y: 0 };
-  private moveTo: { from: Pt; to: Pt; t0: number; t1: number } | null = null;
+  private moveTo: { from: Pt; to: Pt; t0: number; t1: number; ease?: 'out' } | null = null;
+  private trailing = false;
+  private flashing = false;
+  private alpha = 1;
+  private fadeTo: { from: number; to: number; t0: number; t1: number } | null = null;
+  private ghosts: { img: HTMLCanvasElement; x: number; y: number; t0: number }[] = [];
+  private frameNo = 0;
   private busyUntil = 0;
   private playing: Skill | null = null;
   private readyFrom = 0;
@@ -194,6 +223,10 @@ export class SkillStage {
     this.hidden.clear();
     this.offset = { x: 0, y: 0 };
     this.moveTo = null;
+    this.trailing = this.flashing = false;
+    this.alpha = 1;
+    this.fadeTo = null;
+    this.ghosts = [];
     this.busyUntil = this.now;
   }
 
@@ -203,10 +236,18 @@ export class SkillStage {
     while (this.events.length && this.events[0].at <= now) this.events.shift()!.fn();
     if (this.moveTo) {
       const m = this.moveTo;
-      const p = Math.min(1, (now - m.t0) / Math.max(1, m.t1 - m.t0));
+      const lin = m.t1 <= m.t0 ? 1 : Math.min(1, (now - m.t0) / (m.t1 - m.t0));
+      const p = m.ease === 'out' ? 1 - (1 - lin) * (1 - lin) : lin;
       this.offset = { x: m.from.x + (m.to.x - m.from.x) * p, y: m.from.y + (m.to.y - m.from.y) * p };
-      if (p >= 1) this.moveTo = null;
+      if (lin >= 1) this.moveTo = null;
     }
+    if (this.fadeTo) {
+      const f = this.fadeTo;
+      const p = f.t1 <= f.t0 ? 1 : Math.min(1, (now - f.t0) / (f.t1 - f.t0));
+      this.alpha = f.from + (f.to - f.from) * p;
+      if (p >= 1) this.fadeTo = null;
+    }
+    this.ghosts = this.ghosts.filter((g) => now - g.t0 < GHOST_MS);
     // Shots arrive; done fx go.
     for (const l of [...this.lives]) {
       if (l.path && now >= l.path.t1) {
@@ -222,6 +263,10 @@ export class SkillStage {
     ctx.globalAlpha = 1;
     ctx.drawImage(this.a.ground, 0, 0);
     for (const z of [0, 1] as const) for (const l of this.lives) if (l.z === z) this.drawFx(l);
+    for (const g of this.ghosts) {
+      ctx.globalAlpha = 0.5 * (1 - (this.now - g.t0) / GHOST_MS);
+      ctx.drawImage(g.img, g.x, g.y);
+    }
     this.drawFighter();
     for (const l of this.lives) if (l.z === 3) this.drawFx(l);
   }
@@ -231,8 +276,13 @@ export class SkillStage {
     const c = this.cellCtx;
     c.clearRect(0, 0, CELL, CELL);
     drawPose(c, this.a.scene, this.a.C, this.a.K, this.a.outfit, this.a.art, anim, this.dir, frame, 0, 0, [...this.hidden]);
+    const x = Math.round(FEET.x + this.offset.x - ANCHOR.x);
+    const y = Math.round(FEET.y + this.offset.y - ANCHOR.y);
+    // Afterimages: a lavender copy of the whole character every 2nd frame while it moves.
+    if (this.trailing && this.frameNo++ % 2 === 0) this.ghosts.push({ img: silhouette(this.cell, GHOST), x, y, t0: this.now });
+    this.ctx.globalAlpha = this.alpha;
+    this.ctx.drawImage(this.flashing ? silhouette(this.cell, '#FFFFFF') : this.cell, x, y);
     this.ctx.globalAlpha = 1;
-    this.ctx.drawImage(this.cell, Math.round(FEET.x + this.offset.x - ANCHOR.x), Math.round(FEET.y + this.offset.y - ANCHOR.y));
   }
 
   private poseNow(): { anim: string; frame: number } {
@@ -385,8 +435,20 @@ export class SkillStage {
         if (on) stage.hidden.add(part);
         else stage.hidden.delete(part);
       },
-      move(dx, dy, ms) {
-        stage.moveTo = { from: { ...stage.offset }, to: { x: dx, y: dy }, t0: stage.now, t1: stage.now + ms };
+      move(dx, dy, ms, ease) {
+        stage.moveTo = { from: { ...stage.offset }, to: { x: dx, y: dy }, t0: stage.now, t1: stage.now + ms, ease };
+        if (!ms) stage.offset = { x: dx, y: dy };
+      },
+      trail(on) {
+        stage.trailing = on;
+        stage.frameNo = 0;
+      },
+      flash(on) {
+        stage.flashing = on;
+      },
+      fade(alpha, ms) {
+        stage.fadeTo = { from: stage.alpha, to: alpha, t0: stage.now, t1: stage.now + ms };
+        stage.busyUntil = Math.max(stage.busyUntil, stage.now + ms);
       },
     };
   }

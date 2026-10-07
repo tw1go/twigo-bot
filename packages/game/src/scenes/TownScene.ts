@@ -635,7 +635,8 @@ export class TownScene extends Phaser.Scene {
     const art = K?.list[cls];
     if (!K || !art) return null;
     const asset = (f: string) => `${import.meta.env.BASE_URL}assets/${f}`;
-    const fx = Object.values(this.M.fx).filter((f) => f.file?.startsWith(`${fxFolder}/`)).map((f) => f.file!);
+    // The class's fx, and the mobility moves' (shared by every class).
+    const fx = Object.values(this.M.fx).filter((f) => f.file?.startsWith(`${fxFolder}/`) || f.file?.startsWith('fx/mobility/')).map((f) => f.file!);
     await loadImages(this, [...poseFiles(art), ...fx, ...this.M.tiles.grass.files]);
     const launch = art.launch
       ? await fetch(asset(art.launch)).then((r) => (r.ok ? r.json() : null)).then((j) => j?.points ?? null).catch(() => null)

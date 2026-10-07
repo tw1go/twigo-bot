@@ -1256,12 +1256,12 @@
       }
       @media (prefers-reduced-motion: reduce) { #quest-banner { animation: none; } }
       /* ── Class choice (ui/class-choice.ts) and its skill preview (ui/skill-preview.ts) ── */
-      #class-choice { position: fixed; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; padding: 12px; background: rgba(4, 4, 12, 0.6); font: 15px/1.35 var(--ui-font); color: #c0caf5; }
-      #class-choice .cc-window { position: relative; width: 680px; max-width: 100%; max-height: 100%; overflow: auto; box-sizing: border-box; padding: 12px 14px 14px; border: 2px solid #7C2AE8; background: rgba(17, 24, 39, 0.97); }
+      #class-choice { position: fixed; inset: 0; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 12px; background: rgba(4, 4, 12, 0.6); font: 15px/1.35 var(--ui-font); color: #c0caf5; }
+      #class-choice .cc-window { position: relative; width: 680px; max-width: 100%; max-height: calc(100% - 50px); overflow: auto; box-sizing: border-box; padding: 12px 14px 14px; border: 2px solid #7C2AE8; background: rgba(17, 24, 39, 0.97); }
       #class-choice .cc-framed { --px: 2; border-style: solid; border-width: calc(var(--slice) * var(--px) * 1px); border-image-source: var(--frame); border-image-slice: var(--slice) fill; border-image-width: calc(var(--slice) * var(--px) * 1px); border-image-repeat: round; image-rendering: pixelated; background: none; padding: 2px 4px 4px; }
-      #class-choice .cc-head { display: flex; align-items: center; padding-bottom: 8px; }
+      #class-choice .cc-title { margin: 0; color: #fff; font: 700 34px/1 var(--ui-font); letter-spacing: 0.08em; text-transform: uppercase; text-shadow: 3px 0 #1E1B3A, -3px 0 #1E1B3A, 0 3px #1E1B3A, 0 -3px #1E1B3A, 0 5px 0 #1E1B3A; }
+      #class-choice .cc-head { display: flex; align-items: center; justify-content: flex-end; padding-bottom: 4px; }
       #class-choice .cc-head[hidden], #class-choice .cc-grid[hidden], #class-choice .cc-preview-host[hidden] { display: none; }
-      #class-choice .cc-heading { font-size: 22px; font-weight: 700; color: #fff; }
       #class-choice .cc-close { margin-left: auto; width: 32px; height: 32px; padding: 0; border: 0; background: none; color: #7A8099; font: 26px/1 var(--ui-font); }
       #class-choice .cc-close:hover { color: #fff; }
       #class-choice .cc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
@@ -1293,12 +1293,15 @@
       @keyframes sp-rise { 0% { opacity: 0; margin-top: 6px; } 15% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; margin-top: -26px; } }
       #class-choice .sp-info { min-width: 0; }
       #class-choice .sp-name { font-size: 22px; font-weight: 700; color: #fff; }
-      #class-choice .sp-blurb { margin: 4px 0 8px; font-size: 14px; }
+      #class-choice .sp-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+      #class-choice .sp-about { max-width: 600px; }
+      #class-choice .sp-blurb { margin: 0 0 8px; font-size: 14px; }
       #class-choice .sp-facts { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 0 0 10px; font-size: 13px; }
       #class-choice .sp-facts dt { color: #7A8099; }
       #class-choice .sp-facts dd { margin: 0; color: #E6E9F2; }
       #class-choice .sp-skills-head { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: #7A8099; }
       #class-choice .sp-skills { margin: 4px 0 0; padding: 0; list-style: none; }
+      #class-choice .sp-mobility-head { margin-top: 8px; }
       #class-choice .sp-skill-button { display: grid; grid-template-columns: 42px 1fr; gap: 0 6px; width: 100%; padding: 3px 6px; border: 2px solid transparent; border-radius: 0; background: none; color: #c0caf5; font: inherit; font-size: 13px; text-align: left; cursor: var(--cur-hand, pointer); }
       #class-choice .sp-skill-button:hover { background: #1E1B3A; }
       #class-choice .sp-playing .sp-skill-button { border-color: #A3E635; background: #1E1B3A; color: #fff; }
@@ -1309,7 +1312,7 @@
       @media (max-width: 760px) {
         #class-choice .cc-grid { grid-template-columns: repeat(2, 1fr); }
         #class-choice .sp-body { grid-template-columns: 1fr; }
-        #class-choice .sp-stage { min-width: 0; justify-self: center; }
+        #class-choice .sp-stage { min-width: 0; align-self: center; }
       }
       /* ── The equipment panel (ui/equipment.ts): on the bag's left, top to top, as tall as its slots ── */
       #equipment { position: fixed; top: 72px; right: 442px; z-index: 3; display: flex; flex-direction: column; gap: 10px; width: 380px; max-height: calc(100vh - 96px); box-sizing: border-box; padding: 12px 14px 14px; border: 2px solid #7C2AE8; background: rgba(17, 24, 39, 0.96); color: #c0caf5; font: 15px/1.35 var(--ui-font); }

@@ -1,13 +1,14 @@
 import type { ClassInfo } from '@mikazuki/shared';
 import { playSound } from '../audio/sound';
-import { SKILL_PREVIEWS } from '../combat/skill-previews';
-import { GAP_MS, type NumberKind, type Pt, STAGE_H, STAGE_W, type SkillStage } from '../combat/skill-stage';
+import { MOBILITY_PREVIEWS, SKILL_PREVIEWS } from '../combat/skill-previews';
+import { GAP_MS, type NumberKind, type Pt, STAGE_H, STAGE_W, type Skill, type SkillStage } from '../combat/skill-stage';
 import { stats } from './class-choice';
 
 // 🎬 A class's skill preview (over the class choice): on the left a small stage at a whole-number scale with your
 // character in the class's walk-ready pose facing SE and three invisible enemies along that line (combat/skill-stage.ts);
-// on the right the class (name, blurb, weapon, role, damage, stats, gear) and its first 7 skills. The skills play one
-// after another and loop, the one playing lit up in the list; clicking a skill plays it next. Damage numbers rise
+// under it the class's blurb, weapon, role, damage, stats and gear; on the right its name, its first 7 skills, and under a Mobility
+// heading its two movement skills (classes.json's mobility: Dash and the Lv 8 move). All nine play one after another
+// and loop, the one playing lit up in the list; clicking a skill plays it next. Damage numbers rise
 // over the hits in Jersey 10 (its 19 px steps): gold for a crit, small orange for burns, small mint for menthol.
 
 export interface SkillPreviewOptions {
@@ -15,16 +16,20 @@ export interface SkillPreviewOptions {
   stage: (cls: ClassInfo) => Promise<SkillStage | null>;
 }
 
+/** classes.json's movement skills (the game's own field). */
+type WithMobility = ClassInfo & { mobility?: { id: string; level: number; name: string; desc: string }[] };
+
 export function mountSkillPreview(o: SkillPreviewOptions, c: ClassInfo, host: HTMLElement, back: () => void, choose: () => void): () => void {
-  const skills = SKILL_PREVIEWS[c.id] ?? [];
+  const moves = ((c as WithMobility).mobility ?? []).filter((m) => MOBILITY_PREVIEWS[c.id]?.[m.id]);
+  const skills: Skill[] = [...(SKILL_PREVIEWS[c.id] ?? []), ...moves.map((m) => MOBILITY_PREVIEWS[c.id][m.id])];
   const root = el('div', 'sp-body');
   const left = el('div', 'sp-stage');
   const numbers = el('div', 'sp-numbers');
   const loading = el('div', 'sp-loading', 'Loading…');
   left.append(loading, numbers);
-  const right = el('div', 'sp-info');
-  right.append(
-    el('div', 'sp-name', c.name),
+  // Under the stage: what the class is (its blurb, weapon, role, damage and gear).
+  const about = el('div', 'sp-about');
+  about.append(
     el('p', 'sp-blurb', c.blurb),
     facts([
       ['Weapon', c.weapon],
@@ -33,8 +38,13 @@ export function mountSkillPreview(o: SkillPreviewOptions, c: ClassInfo, host: HT
       ['Gear', c.gear],
     ]),
   );
+  const side = el('div', 'sp-side');
+  side.append(left, about);
+  const right = el('div', 'sp-info');
+  right.append(el('div', 'sp-name', c.name));
   const list = el('ol', 'sp-skills');
-  const rows = c.skills.map((s, i) => {
+  const moveList = el('ol', 'sp-skills');
+  const rows = [...c.skills, ...moves].map((s, i) => {
     const li = el('li', 'sp-skill');
     const b = el('button', 'sp-skill-button');
     b.append(el('span', 'sp-lv', `Lv ${s.level}`), el('span', 'sp-skill-name', s.name), el('span', 'sp-desc', s.desc));
@@ -44,10 +54,11 @@ export function mountSkillPreview(o: SkillPreviewOptions, c: ClassInfo, host: HT
       if (stage && !stage.busy) startNext(performance.now());
     });
     li.append(b);
-    list.append(li);
+    (i < c.skills.length ? list : moveList).append(li);
     return li;
   });
   right.append(el('div', 'sp-skills-head', 'Skills'), list);
+  if (moves.length) right.append(el('div', 'sp-skills-head sp-mobility-head', 'Mobility'), moveList);
   const buttons = el('div', 'sp-buttons');
   const backButton = el('button', 'sp-back', 'Back');
   const chooseButton = el('button', 'sp-choose', `Choose ${c.name}`);
@@ -57,7 +68,7 @@ export function mountSkillPreview(o: SkillPreviewOptions, c: ClassInfo, host: HT
     choose();
   });
   buttons.append(backButton, chooseButton);
-  root.append(left, right, buttons);
+  root.append(side, right, buttons);
   host.replaceChildren(root);
 
   let stage: SkillStage | null = null;
