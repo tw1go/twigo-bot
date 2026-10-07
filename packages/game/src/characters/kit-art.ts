@@ -1,12 +1,12 @@
 import Phaser from 'phaser';
 import { queueImage } from '../assets/queue';
 import type { CharacterDefs, ClassArt, ClassLayer, ClassesDefs, Dir } from '../assets/types';
-import { type Outfit, dressLayer, headFiles, sheetKey } from './doll';
+import { type Outfit, clothesFiles, dressLayer, headFiles, sheetKey } from './doll';
 
 // ⚔️ A class's weapon on a character, drawn onto a canvas (the class cards, the skill preview, the equipment panel):
 // the resting weapon over the doll's idle or walk (the same frame, or the Hilot's balm on its own clock), and the
-// combat poses (walk-ready, the attacks: the body and face in the look's skin, the look's hair, glasses and hat moved
-// onto the pose's head, then the weapon layers; there are no clothes for these poses). Everything is drawn in a 64x64 cell whose (bodyOffset) is the doll's 32x48 cell,
+// combat poses (walk-ready, the attacks: the body and face in the look's skin, the look's clothes moved
+// onto the pose's body and trimmed to it, its hair, glasses and hat onto the pose's head, then the weapon layers). Everything is drawn in a 64x64 cell whose (bodyOffset) is the doll's 32x48 cell,
 // back layers first, front layers last. Every direction has its own sheets: nothing is mirrored.
 
 export const CELL = 64;
@@ -54,9 +54,12 @@ function drawLayer(ctx: CanvasRenderingContext2D, scene: Phaser.Scene, K: Classe
   drawCell(ctx, source(scene, l.file), w, h, f, x + at[0], y + at[1]);
 }
 
-/** Every image `headShift` and the head layers need for a look's poses facing `dirs` (to load). */
-export function headImages(C: CharacterDefs, o: Outfit, dirs: Dir[]): string[] {
-  return dirs.flatMap((dir) => [C.layers.body.replaceAll('{anim}', 'idle').replaceAll('{dir}', dir), ...headFiles(C, o, dir).flatMap((l) => (l.clip ? [l.file, l.clip] : [l.file]))]);
+/** Every image the look's layers on the poses need facing `dirs` (to load): the idle body, clothes and head. */
+export function lookImages(C: CharacterDefs, o: Outfit, dirs: Dir[]): string[] {
+  return dirs.flatMap((dir) => [
+    C.layers.body.replaceAll('{anim}', 'idle').replaceAll('{dir}', dir),
+    ...[...clothesFiles(C, o, dir), ...headFiles(C, o, dir)].flatMap((l) => (l.clip ? [l.file, l.clip] : [l.file])),
+  ]);
 }
 
 const alphas = new Map<string, ImageData | null>();
@@ -77,11 +80,17 @@ function imageData(scene: Phaser.Scene, file: string): ImageData | null {
 }
 
 const shifts = new Map<string, [number, number]>();
-/** How far the head in frame `f` of a combat body sheet is from the town idle's (its first frame): the shift that lays
- *  the idle's head (its top 13 rows) best over the pose's pixels, same colours counting most (raised arms and weapons
- *  can't pull it off). Within 10 px; none when either sheet is missing. */
-function headShift(scene: Phaser.Scene, C: CharacterDefs, idleBody: string, poseBody: string, f: number): [number, number] {
-  const id = `${idleBody}|${poseBody}|${f}`;
+/** The first row of frame 0 with a pixel in it (−1: none). */
+function topRow(d: ImageData, w: number, h: number): number {
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (d.data[(y * d.width + x) * 4 + 3] >= 128) return y;
+  return -1;
+}
+
+/** How far a band of the town idle's body (rows y0 to y1 of its first frame) is in frame `f` of a combat body sheet:
+ *  the shift that lays the band best over the pose's pixels, same colours counting most (raised arms and weapons can't
+ *  pull it off). Within 10 px; none when either sheet is missing. */
+function bandShift(scene: Phaser.Scene, C: CharacterDefs, idleBody: string, poseBody: string, f: number, y0: number, y1: number): [number, number] {
+  const id = `${idleBody}|${poseBody}|${f}|${y0}|${y1}`;
   const known = shifts.get(id);
   if (known) return known;
   const [w, h] = C.cell;
@@ -89,20 +98,17 @@ function headShift(scene: Phaser.Scene, C: CharacterDefs, idleBody: string, pose
   const b = imageData(scene, poseBody);
   let best: [number, number] = [0, 0];
   if (a && b) {
-    const head: [number, number, number][] = []; // x, y, rgb
-    let top = -1;
-    for (let y = 0; y < h && (top < 0 || y < top + 13); y++)
+    const band: [number, number, number][] = []; // x, y, rgb
+    for (let y = Math.max(0, y0); y < Math.min(h, y1); y++)
       for (let x = 0; x < w; x++) {
         const i = (y * a.width + x) * 4;
-        if (a.data[i + 3] < 128) continue;
-        if (top < 0) top = y;
-        head.push([x, y, (a.data[i] << 16) | (a.data[i + 1] << 8) | a.data[i + 2]]);
+        if (a.data[i + 3] >= 128) band.push([x, y, (a.data[i] << 16) | (a.data[i + 1] << 8) | a.data[i + 2]]);
       }
     let score = -Infinity;
     for (let dy = -10; dy <= 10; dy++)
       for (let dx = -10; dx <= 10; dx++) {
         let s = 0;
-        for (const [x, y, rgb] of head) {
+        for (const [x, y, rgb] of band) {
           const px = x + dx;
           const py = y + dy;
           if (px < 0 || py < 0 || px >= w || py >= h) continue;
@@ -119,6 +125,48 @@ function headShift(scene: Phaser.Scene, C: CharacterDefs, idleBody: string, pose
   }
   shifts.set(id, best);
   return best;
+}
+
+/** The head's shift: the idle's top 13 rows. */
+function headShift(scene: Phaser.Scene, C: CharacterDefs, idleBody: string, poseBody: string, f: number): [number, number] {
+  const a = imageData(scene, idleBody);
+  const top = a ? topRow(a, C.cell[0], C.cell[1]) : -1;
+  return top < 0 ? [0, 0] : bandShift(scene, C, idleBody, poseBody, f, top, top + 13);
+}
+
+/** A piece of clothing's shift: the idle body's band its own pixels cover (the top's rows, the bottom's, the shoes'). */
+function clothShift(scene: Phaser.Scene, C: CharacterDefs, idleBody: string, poseBody: string, f: number, cloth: string): [number, number] {
+  const [w, h] = C.cell;
+  const c = imageData(scene, cloth);
+  if (!c) return [0, 0];
+  let y0 = -1;
+  let y1 = -1;
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++)
+      if (c.data[(y * c.width + x) * 4 + 3] >= 128) {
+        if (y0 < 0) y0 = y;
+        y1 = y + 1;
+        break;
+      }
+  return y0 < 0 ? [0, 0] : bandShift(scene, C, idleBody, poseBody, f, y0, y1);
+}
+
+let trim: CanvasRenderingContext2D | null = null;
+/** A layer's first frame at (dx, dy) in the cell, kept only where frame `f` of the pose's body is (no sleeve where the
+ *  arm isn't), drawn at (x, y). */
+function drawTrimmed(ctx: CanvasRenderingContext2D, layer: CanvasImageSource | null, body: CanvasImageSource | null, w: number, h: number, f: number, dx: number, dy: number, x: number, y: number): void {
+  if (!layer || !body) return;
+  if (!trim) {
+    const c = document.createElement('canvas');
+    trim = c.getContext('2d')!;
+  }
+  trim.canvas.width = w;
+  trim.canvas.height = h;
+  trim.globalCompositeOperation = 'source-over';
+  trim.drawImage(layer, 0, 0, w, h, dx, dy, w, h);
+  trim.globalCompositeOperation = 'destination-in';
+  trim.drawImage(body, f * w, 0, w, h, 0, 0, w, h);
+  ctx.drawImage(trim.canvas, x, y);
 }
 
 /** A character resting in town at (x, y), the 64x64 cell's top left: back layers, the doll's frame, front layers.
@@ -167,8 +215,14 @@ export function drawPose(
   for (const l of d.back.filter(shown)) drawLayer(ctx, scene, K, l, frame, x, y);
   drawCell(ctx, dressLayer(scene, C, o, d.body, 'body'), C.cell[0], C.cell[1], frame, x + K.bodyOffset[0], y + K.bodyOffset[1]);
   if (d.face) drawCell(ctx, dressLayer(scene, C, o, d.face, 'face'), C.cell[0], C.cell[1], frame, x + K.bodyOffset[0], y + K.bodyOffset[1]);
-  // The look's hair, glasses and hat (the combat sheets have none): the town idle's first frame, moved to the pose's head.
+  // The look's clothes, hair, glasses and hat (the combat sheets have none): the town idle's first frame, each piece
+  // moved to its part of the pose (clothes trimmed to the pose's body), the head's to the pose's head.
   const idleBody = C.layers.body.replaceAll('{anim}', 'idle').replaceAll('{dir}', dir);
+  const poseBody = dressLayer(scene, C, o, d.body, 'body');
+  for (const l of clothesFiles(C, o, dir)) {
+    const [cx, cy] = clothShift(scene, C, idleBody, d.body, frame, l.file);
+    drawTrimmed(ctx, dressLayer(scene, C, o, l.file, l.layer), poseBody, C.cell[0], C.cell[1], frame, cx, cy, x + K.bodyOffset[0], y + K.bodyOffset[1]);
+  }
   const [dx, dy] = headShift(scene, C, idleBody, d.body, frame);
   for (const l of headFiles(C, o, dir)) drawCell(ctx, dressLayer(scene, C, o, l.file, l.layer, l.clip), C.cell[0], C.cell[1], 0, x + K.bodyOffset[0] + dx, y + K.bodyOffset[1] + dy);
   for (const l of d.front.filter(shown)) drawLayer(ctx, scene, K, l, frame, x, y);

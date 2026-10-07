@@ -93,6 +93,11 @@ export function headFiles(C: CharacterDefs, o: Outfit, dir: Dir): LayerFile[] {
   return layerFiles(C, o, 'idle', dir).filter((l) => l.layer === 'hair' || l.layer === 'glasses' || l.layer === 'hat');
 }
 
+/** What a look wears on its body facing `dir` (shoes, bottom, top): the town idle's files, laid over the combat poses. */
+export function clothesFiles(C: CharacterDefs, o: Outfit, dir: Dir): LayerFile[] {
+  return layerFiles(C, o, 'idle', dir).filter((l) => l.layer === 'shoes' || l.layer === 'bottom' || l.layer === 'top');
+}
+
 /** Every image an outfit needs, for the loader. */
 export function outfitFiles(C: CharacterDefs, o: Outfit): string[] {
   const files = new Set<string>();

@@ -290,7 +290,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   the top (`ui/mob-target.ts`: name, level, HP, zone); Escape or 20 tiles away lets go. Battle (battle maps = maps with
   mobs): characters with a class use their class's combat poses there (`characters/battle-art.ts`: every pose composited
   per class and look from kit-art drawPose into 64 × 64 sheets; standing = walk-ready's first frame, walking walk-ready /
-  walk-hunt; `Character.setBattle`, `strike`, `hurt`; no clothes or hair in those sheets yet), others too
+  walk-hunt; `Character.setBattle`, `strike`, `hurt`; the look's clothes and hair laid on by kit-art), others too
   (`OtherPlayers.battleFor`). The hotbar's damage skills work there (`TownScene.fight` / `fightTick`): pressing one
   auto-casts on your Z target (else the nearest mob): one cast a second (CAST_GAP_MS), the pressed skill when it's ready,
   else the first ready damage skill (the bar's order: 1–0, then the Alt row; then the class's); each skill's cooldown by its level
@@ -349,7 +349,9 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   `combat/skill-stage.ts`), the training weapon into the weapon slot, resting weapons over idle and walk for everyone
   (`Character.setRestingWeapon`, `characters/kit-art.ts`), the equipment panel beside the bag (`ui/equipment.ts`; B or
   I; 12 places: two bracers, two rings; stats from `combat/stats.ts`, placeholders), class badges on the avatar and before
-  players' names in the chat. Combat poses have no clothes yet: the look's hair, glasses and hat are laid on each pose's head (kit-art `headShift`: the idle head matched to the pose's pixels).
+  players' names in the chat. Combat poses have no clothes or hair of their own: the look's (town idle's first frame) are laid on each pose (kit-art
+  `bandShift`: a band of the idle body matched to the pose's pixels; the top, bottom and shoes each by their own rows,
+  trimmed to the pose's body so sleeves never float; hair, glasses and hat by the head).
 - Hotbar (`ui/hotbar.ts`, bottom centre, members, hidden on phones and in the casino/arena): bottom row 10 skill slots
   (keys 1–0) and 3 for potions/usables (- = `, shown ~), evenly spaced; top row 13 more (Alt + the same keys, labelled "Alt+1"…) for either.
   Skills panel on the right of the screen (K or the K button; `#skill-book`): each skill with its description, the hovered
