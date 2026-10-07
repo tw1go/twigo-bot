@@ -171,7 +171,11 @@ export class Mobs {
           const l = m.label;
           m.label = null;
           this.scene.time.delayedCall(200, () => l.text.destroy());
-        } else m.label.text.setPosition(Math.round(m.sprite.x), m.label.text.y);
+        } else {
+          // The name moves with it.
+          m.label.text.setX(Math.round(m.sprite.x));
+          m.label.show(m.sprite.y - m.def.anchor[1] + 4);
+        }
       }
     }
   }
