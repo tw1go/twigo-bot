@@ -2,9 +2,14 @@ import type { TownMap } from '../assets/types';
 
 // 🗺️ The minimap (top right, above the HUD's buttons; it goes in the HUD's .th-map slot): the town's diamond from maps/town.json — grass, paths, the plaza,
 // the river and the buildings' footprints — with a green dot for everyone else in town, a gold one for you, and a
-// faint box for what the camera shows. The ground is drawn once; the dots every quarter second. Smaller on phones.
+// faint box for what the camera shows. The Slums: their dirt, concrete, planks and canal, raised ground a shade lighter
+// and the basin darker. The ground is drawn once; the dots every quarter second. Smaller on phones.
 
-const GROUND: Record<string, string> = { grass: '#2D5240', path: '#565C75', plaza: '#7A8099', water: '#1D3F6E' };
+const GROUND: Record<string, string> = {
+  grass: '#2D5240', path: '#565C75', plaza: '#7A8099', water: '#1D3F6E',
+  // The Slums
+  dirt: '#4E3424', 'dirt-junk': '#553A28', weeds: '#4C3D26', mud: '#3B2A20', concrete: '#5A6078', plate: '#6E4836', planks: '#7A5634', canal: '#2E5A3E',
+};
 const BUILDING = '#7C2AE8';
 const OTHER = '#22C55E';
 const YOU = '#FCDA4A';
@@ -58,7 +63,15 @@ export class Minimap {
       g.fillStyle = colour;
       g.fillRect(x - hw, y - hw / 2, hw * 2, hw); // a little diamond's bounding box: the tiles mesh into the town's shape
     };
-    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) tile(c, r, GROUND[this.map.ground[r][c]] ?? GROUND.grass);
+    const H = this.map.height;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const colour = GROUND[this.map.ground[r][c]] ?? GROUND.grass;
+        // Raised ground (level 2) a shade lighter, low ground (level 0) darker; level 1 is the Slums' normal ground.
+        const level = H?.[r]?.[c] ?? 1;
+        tile(c, r, level > 1 ? shade(colour, 0.18) : level < 1 ? shade(colour, -0.35) : colour);
+      }
+    }
     for (const o of this.map.objects) {
       if (o.kind !== 'building') continue;
       for (let dc = 0; dc < o.footprint[0]; dc++) for (let dr = 0; dr < o.footprint[1]; dr++) tile(o.col + dc, o.row + dr, BUILDING);
@@ -96,4 +109,11 @@ export class Minimap {
     for (const p of v.others) dot(p, OTHER, r);
     dot(v.me, YOU, r + 1); // last, on top
   }
+}
+
+/** A colour mixed toward white (amount > 0) or black (< 0). */
+function shade(hex: string, amount: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const mix = (v: number) => Math.round(amount > 0 ? v + (255 - v) * amount : v * (1 + amount));
+  return `rgb(${mix(n >> 16)}, ${mix((n >> 8) & 255)}, ${mix(n & 255)})`;
 }

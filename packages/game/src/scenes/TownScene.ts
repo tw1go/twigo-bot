@@ -63,6 +63,7 @@ import { type Tile, WalkGrid } from '../world/grid';
 import { Ground } from '../world/ground';
 import { outskirts, slumsOutskirts } from '../world/outskirts';
 import { Terrain } from '../world/terrain';
+import { Mobs } from '../world/mobs';
 import { LEVEL_PX } from '../world/heights';
 import { NightLife } from '../world/night-life';
 import { type ArenaChannel, BotChannel, PlayerChannel } from '../arena/channel';
@@ -156,6 +157,10 @@ export class TownScene extends Phaser.Scene {
   private map!: TownMap;
   private outfit!: Outfit;
   private ground!: Ground | Terrain;
+  private mobs: Mobs | null = null;
+  get debugMobs(): Mobs | null {
+    return this.mobs;
+  }
   /** Which area this page is: the town, the neighbourhood or the Slums. */
   private area: Area = 'town';
   private objects!: WorldObjects;
@@ -348,6 +353,8 @@ export class TownScene extends Phaser.Scene {
     this.others = new OtherPlayers(this, this.M, this.objects, (obj) => this.tint >= 0 && obj.setTint(this.tint));
     this.others.restFor = (weapon, cls) => this.restArt(weapon, cls);
     if (this.area === 'town') this.npcs = this.makeNpcs();
+    // The Slums' mobs (the zones that are on), sorted and tinted like everyone else.
+    if (this.map.mobZones?.length) this.mobs = new Mobs(this, this.M, this.map, this.grid, this.objects, (obj) => this.tint >= 0 && obj.setTint(this.tint));
     // The race box's bet pop-up shows the runners' portraits wherever you are (the neighbourhood too, which has no NPCs).
     const P = this.M.npcs?.portrait;
     if (P) setRacePortraits((id) => `${import.meta.env.BASE_URL}assets/${P.file.replace('{id}', id)}`);
@@ -417,6 +424,7 @@ export class TownScene extends Phaser.Scene {
       }
     }
     this.others.update(delta);
+    this.mobs?.update(delta);
     this.raceNews();
     if (this.npcs) {
       const me = this.player.tile;
@@ -449,6 +457,7 @@ export class TownScene extends Phaser.Scene {
     this.player.setZoom(zoom);
     this.others.setZoom(zoom);
     this.npcs?.setZoom(zoom);
+    this.mobs?.setZoom(zoom);
     for (const l of [...this.buildingLabels.values(), ...this.gateLabels]) l.setZoom(zoom);
     this.input.setDefaultCursor(cursor('pointer', zoom));
     for (const b of [...this.objects.buildings.flatMap((x) => x.parts), ...this.objects.benches.map((x) => x.sprite)]) if (b.input) b.input.cursor = cursor('hand', zoom);
@@ -1998,7 +2007,7 @@ export class TownScene extends Phaser.Scene {
     this.objects.setLamps(sky.lampsOn);
     if (!force && sky.tint === this.tint) return;
     this.tint = sky.tint;
-    const all = [...this.ground.sprites, ...this.objects.sprites, ...this.player.tintables, ...this.others.tintables, ...(this.npcs?.tintables ?? []), ...this.bridges.filter((b) => !!b)];
+    const all = [...this.ground.sprites, ...this.objects.sprites, ...this.player.tintables, ...this.others.tintables, ...(this.npcs?.tintables ?? []), ...(this.mobs?.tintables ?? []), ...this.bridges.filter((b) => !!b)];
     for (const s of all) s.setTint(sky.tint);
   }
 
@@ -2153,6 +2162,12 @@ function exposeDebug(scene: TownScene): void {
     talk: (id: string) => scene.debugTalk(id),
     /** The Mosang race as this page has it, and the bot's clock. */
     race: () => ({ race: currentRace(), now: raceNow() }),
+    /** The Slums' mobs: tile, facing, and where each is on the screen (for clicking one in tests). */
+    mobs: () =>
+      scene.debugMobs?.list.map((m) => {
+        const cam = scene.cameras.main;
+        return { tile: [Math.floor(m.col), Math.floor(m.row)], dir: m.dir, walking: m.path.length > 0, x: (m.sprite.x - cam.worldView.x) * cam.zoom, y: (m.sprite.y - 12 - cam.worldView.y) * cam.zoom };
+      }),
     /** Fixed view for screenshots: zoom and centre on a world point (follow off), or follow again. */
     view: (zoom?: number, x?: number, y?: number) => {
       const cam = scene.cameras.main;
