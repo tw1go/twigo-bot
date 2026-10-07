@@ -194,6 +194,8 @@ export class TownScene extends Phaser.Scene {
   private keyDir: Dir | null = null;
   private keySince = 0;
   private keyWalking = false;
+  /** The direction held last frame, to turn mid-step as soon as it changes. */
+  private lastHeld: Dir | null = null;
   /** Plays an emote and tells the server (set once connected). */
   private emoteKeys: ((e: TownEmote) => void) | null = null;
   private others!: OtherPlayers;
@@ -394,6 +396,7 @@ export class TownScene extends Phaser.Scene {
     const zoom = this.cameras.main.zoom;
     if (zoom !== this.labelZoom && !this.intro && !this.inside) this.sizeForZoom(zoom);
     this.ground.tick(time);
+    this.keyTurn();
     this.player.update(delta);
     if (this.fenceLater) {
       const { col, row } = this.player.tile;
@@ -799,6 +802,7 @@ export class TownScene extends Phaser.Scene {
       if (!mine) playSound('chat');
     };
     this.player.onStep = (to) => {
+      this.stepBudget(1);
       link.send({ t: 'step', col: to.col, row: to.row });
       this.sent = { dir: this.player.facing, sit: false };
     };
@@ -1180,22 +1184,46 @@ export class TownScene extends Phaser.Scene {
       this.player.face(dir);
       return null;
     }
-    const from = this.player.tile;
+    const to = this.stepToward(this.player.tile, dir);
+    if (!to) {
+      this.player.face(dir);
+      return null;
+    }
+    if (!this.byKeys) this.setBuildingAlert(null);
+    this.byKeys = true;
+    this.keyWalking = true;
+    this.pending = null;
+    return to;
+  }
+
+  /** The tile one step from `from` toward a screen direction, sliding along a wall through either half; null if blocked. */
+  private stepToward(from: Tile, dir: Dir): Tile | null {
     const [dc, dr] = DIR_STEP[dir];
     const tries: [number, number][] = [[dc, dr]];
     if (dc && dr) tries.push([dc, 0], [0, dr]);
     for (const [c, r] of tries) {
       const to = { col: from.col + c, row: from.row + r };
-      if (this.grid.canStep(from, to)) {
-        if (!this.byKeys) this.setBuildingAlert(null);
-        this.byKeys = true;
-        this.keyWalking = true;
-        this.pending = null;
-        return to;
-      }
+      if (this.grid.canStep(from, to)) return to;
     }
-    this.player.face(dir);
     return null;
+  }
+
+  /** Walking on the keys and the held direction just changed (another key pressed or let go): turn mid-step. */
+  private keyTurn(): void {
+    const held = this.heldDir();
+    // A turn is an extra step message: only with room to spare in the server's budget (else it waits for the tile).
+    if (held && this.lastHeld && held !== this.lastHeld && this.keyWalking && this.stepBudget() >= 3) this.player.turnMidStep((from) => this.stepToward(from, held));
+    this.lastHeld = held;
+  }
+
+  /** The server's step budget as it stands for us (bot web/town.ts: 6 a second, up to 6 saved), so turns never go over it. */
+  private stepTokens = 6;
+  private stepRefilled = 0;
+  private stepBudget(spend = 0): number {
+    const now = performance.now();
+    this.stepTokens = Math.min(6, this.stepTokens + ((now - this.stepRefilled) / 1000) * 6) - spend;
+    this.stepRefilled = now;
+    return this.stepTokens;
   }
 
   /** E / Space: enter the door you're standing at, or sit on the bench you're in front of. */

@@ -54,6 +54,8 @@ export class Character {
   private path: Tile[] = [];
   /** The tile the current step started from: facing comes from the whole step, not the distance left. */
   private stepFrom: Tile = { col: 0, row: 0 };
+  /** The step in progress already turned mid-way (keyboard walking; once per step). */
+  private turned = false;
   private dir: Dir = 's';
   private anim = 'idle';
   private sittingAt: { depth: number } | null = null;
@@ -349,6 +351,7 @@ export class Character {
           budget -= dist;
           this.stepFrom = next;
           this.path.shift();
+          this.turned = false;
         } else {
           this.col += (dx / dist) * budget;
           this.row += (dy / dist) * budget;
@@ -390,6 +393,27 @@ export class Character {
     const anim = this.anim;
     this.sprite.anims.stop();
     this.play(anim);
+  }
+
+  /**
+   * Keyboard walking, a new direction mid-step: turn now instead of at the next tile's centre. From the nearer of
+   * the tile being left and the one being walked to, `pick` gives the next tile (null: can't go that way), and the
+   * walk goes straight there. Once per step, and only to a tile next to the one walked to (where the server has you),
+   * so it's one step message like any other.
+   */
+  turnMidStep(pick: (from: Tile) => Tile | null): boolean {
+    const next = this.path[0];
+    if (this.path.length !== 1 || this.sittingAt || this.turned) return false;
+    const done = Math.hypot(this.col - (this.stepFrom.col + 0.5), this.row - (this.stepFrom.row + 0.5));
+    const near = (t: Tile) => Math.abs(t.col - next.col) <= 1 && Math.abs(t.row - next.row) <= 1;
+    let base = done < 0.5 ? this.stepFrom : next;
+    let to = pick(base);
+    if (base !== next && (!to || !near(to))) to = pick((base = next));
+    if (!to || (to.col === next.col && to.row === next.row)) return false;
+    this.stepFrom = base;
+    this.path = [to];
+    this.turned = true;
+    return true;
   }
 
   /** Drops the rest of a click path, keeping only the step in progress (a movement key takes over). */
