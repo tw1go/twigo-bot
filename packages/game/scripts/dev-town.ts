@@ -5,7 +5,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { doorSpot, hoodMap, lotTile } from '../../bot/src/web/hood-map.ts';
 import type { Plugin } from 'vite';
 import { attachTown } from '../../bot/src/web/town.ts';
-import { MobRoom } from '../../bot/src/web/town-mobs.ts';
+import { MobRoom, loadSkillShapes } from '../../bot/src/web/town-mobs.ts';
 import { LANES, finishMs, raceScript } from '../../bot/src/games/race-script.ts';
 import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
 
@@ -276,6 +276,7 @@ export function devTown(): Plugin {
             Object.fromEntries(
               (JSON.parse(readFileSync(join(server.config.publicDir, 'assets/classes/classes.json'), 'utf8')).classes as { id: string; skills: { level: number }[] }[]).map((c) => [c.id, c.skills.map((k) => k.level)]),
             ),
+            loadSkillShapes(),
           ),
         },
         shared: true,

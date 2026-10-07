@@ -68,6 +68,7 @@ import { SKILL_POSE, battleSheets } from '../characters/battle-art';
 import { skillCooldown } from '../combat/cooldowns';
 import { WorldSkills } from '../combat/world-skills';
 import { SKILL_PREVIEWS } from '../combat/skill-previews';
+import { skillSlots } from '../combat/skill-slots';
 import { MobTargetBox } from '../ui/mob-target';
 import { LEVEL_PX } from '../world/heights';
 import { NightLife } from '../world/night-life';
@@ -700,14 +701,20 @@ export class TownScene extends Phaser.Scene {
   private nextCast = 0;
 
   /** A skill's effects (the preview's script, combat/world-skills.ts) from a character at a mob. */
-  private castFx(cls: string, idx: number, who: Character, dir: Dir, mob: string): void {
+  private castFx(cls: string, idx: number, who: Character, dir: Dir, hit: string[]): void {
     const skill = SKILL_PREVIEWS[cls]?.[idx];
     const art = this.M.classes?.list[cls];
-    const m = this.mobs?.list.find((x) => x.id === mob);
-    if (!skill || !art || !m) return;
+    const mobs = hit.map((id) => this.mobs?.list.find((x) => x.id === id)).filter((x) => !!x);
+    if (!skill || !art || !mobs.length) return;
     this.worldSkills ??= new WorldSkills(this, this.M.fx, (f) => `${import.meta.env.BASE_URL}assets/${f}`);
+    // The script's slots in order get the hit mobs (the target first); the rest, the target.
+    const slots = skillSlots(skill);
+    const bySlot = (n: number) => mobs[Math.max(0, slots.indexOf(n))] ?? mobs[0];
     const feet = () => ({ x: who.sprite.x, y: who.sprite.y });
-    void this.worldSkills.play(skill, art, { feet, dir, depth: () => who.sprite.depth }, () => ({ x: m.sprite.x, y: m.sprite.y }));
+    void this.worldSkills.play(skill, art, { feet, dir, depth: () => who.sprite.depth }, (n) => {
+      const m = bySlot(n);
+      return { x: m.sprite.x, y: m.sprite.y };
+    });
   }
   private worldSkills: WorldSkills | null = null;
 
@@ -745,8 +752,7 @@ export class TownScene extends Phaser.Scene {
       this.castReady.set(name, now + cd * 1000);
       this.nextCast = now + CAST_GAP_MS;
       const dir = dirForStep(at.col - me.col, at.row - me.row);
-      this.player.strike(SKILL_POSE[idx] ?? 'attack-quick', dir);
-      this.castFx(c.id, idx, this.player, dir, m.id);
+      this.player.strike(SKILL_POSE[idx] ?? 'attack-quick', dir); // (its effects come with the server's answer)
       this.link?.send({ t: 'attack', mob: m.id, skill: idx });
       this.hotbar?.cooldown(name, cd);
       return;
@@ -1143,16 +1149,20 @@ export class TownScene extends Phaser.Scene {
       if (m.t === 'mobs') return this.mobs?.applySnapshot(m.mobs);
       if (m.t === 'mob-move') return this.mobs?.hop(m.id, m.path);
       if (m.t === 'mob-hit') {
-        this.mobs?.hit(m.id, m.damage, m.crit, m.hp, m.dead);
-        // Someone else's hit: their attack pose toward it.
-        const at = this.mobs?.tileOf(m.id);
-        const ch = m.by !== myId ? this.others.charOf(m.by) : null;
-        const cls = m.by !== myId ? this.others.classOf(m.by) : null;
+        const ids = m.hits.map((h) => h.id);
+        const at = ids[0] ? this.mobs?.tileOf(ids[0]) : null;
+        const mine = m.by === myId;
+        const ch = mine ? this.player : this.others.charOf(m.by);
+        const cls = mine ? (adventure()?.cls ?? null) : this.others.classOf(m.by);
         if (ch && at) {
           const dir = dirForStep(at.col - ch.tile.col, at.row - ch.tile.row);
-          ch.strike(SKILL_POSE[m.skill] ?? 'attack-quick', dir);
-          if (cls) this.castFx(cls, m.skill, ch, dir, m.id);
+          if (!mine) ch.strike(SKILL_POSE[m.skill] ?? 'attack-quick', dir); // (yours played as you cast)
+          if (cls) this.castFx(cls, m.skill, ch, dir, ids);
         }
+        // The numbers and HP land with the effects' hits, near enough: a beat after the cast.
+        this.time.delayedCall(mine ? 120 : 0, () => {
+          for (const h of m.hits) this.mobs?.hit(h.id, h.damage, h.crit, h.hp, h.dead);
+        });
         return;
       }
       if (m.t === 'mob-attack') {

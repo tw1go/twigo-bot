@@ -224,8 +224,9 @@ export type TownServerMessage =
   | { t: 'mobs'; mobs: TownMob[] }
   /** A mob hops: from the first tile of `path` along the rest (at the mobs' pace). */
   | { t: 'mob-move'; id: string; path: [number, number][] }
-  /** Someone (`by`, a town id) hit a mob with skill `skill`: the damage, a crit or not, the HP left, dead or not. */
-  | { t: 'mob-hit'; id: string; by: string; skill: number; damage: number; crit: boolean; hp: number; dead: boolean }
+  /** Someone (`by`, a town id) hit with skill `skill`: each mob it reached (the target first) with the damage, a crit or
+   *  not, the HP left, dead or not. */
+  | { t: 'mob-hit'; by: string; skill: number; hits: { id: string; damage: number; crit: boolean; hp: number; dead: boolean }[] }
   /** A mob attacks a player (shown only: players have no HP yet). */
   | { t: 'mob-attack'; id: string; target: string }
   /** A dead mob is back at its spawn. */

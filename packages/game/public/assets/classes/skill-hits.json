@@ -1,0 +1,9 @@
+{
+  "note": "Which mobs each damage skill hits (in the order of classes.json's skills), read by the game and the bot (web/town-mobs.ts). single: the target. chain:N: the target, then the nearest live mob within 3 tiles of the last one hit, N in all. cone:N / area:N: the target and the mobs nearest it within 2 tiles, N in all. around:N: the live mobs next to the caster (1 tile), up to N. line:N: the mobs along the line from the caster through the target (to 5 tiles), nearest first, up to N. The effects play the skill preview's script with the hit mobs in the slots it uses (combat/skill-slots.ts).",
+  "slingshot": ["single", "single", "cone:3", "chain:3", "line:4", "single", "area:3"],
+  "stick": ["single", "single", "around:4", "single", "single", "around:4", "single"],
+  "greatstick": ["single", "single", "cone:3", "single", "around:4", "single", "cone:3"],
+  "broom": ["single", "single", "cone:3", "cone:3", "line:4", "single", "chain:3"],
+  "potlid": ["single", "single", "around:4", "single", "around:4", "cone:3", "chain:3"],
+  "hilot": ["single", "single", "area:2", "single", "single", "area:3", "single"]
+}

@@ -6,7 +6,8 @@ import type { FxHandle, FxOpts, Pt, ShotOpts, Skill, SkillKit } from './skill-st
 // ✨ The skills' effects in the world (battle maps): the same scripts as the class choice's preview (combat/skill-previews.ts,
 // written against SkillKit) played on a real character at a real mob. The fighter's feet are the character's, its
 // facing its real one (launch points per direction from the class's launch.json); every enemy slot of a script is the
-// mob being hit (the server only hurts that one), its body a little above its feet. Each fx is a sprite updated every
+// mobs the server says it hit (the target in the first slot the script uses, the others in the rest: combat/skill-slots.ts),
+// a body a little above the feet. Each fx is a sprite updated every
 // frame by the stage's own rules (sequence, hold loop, fades, a stretched length, shots with an arc, turning, a streak
 // revealed past the pivot). Damage numbers are the server's (world/mobs.ts), so the scripts' are left out, as are the
 // moves of the fighter itself (lunges, trails, fades): where you stand is the server's.
@@ -65,21 +66,20 @@ export class WorldSkills {
     return p;
   }
 
-  /** Plays `skill` by `who` (of class art `art`) at a mob whose feet are at `target()`. */
-  async play(skill: Skill, art: ClassArt, who: Caster, target: () => Pt): Promise<void> {
+  /** Plays `skill` by `who` (of class art `art`); enemy slot n's feet are `slot(n)` (it may move meanwhile). */
+  async play(skill: Skill, art: ClassArt, who: Caster, slot: (n: number) => Pt): Promise<void> {
     const launch = await this.launchOf(art);
-    skill.run(this.kit(art, launch, who, target));
+    skill.run(this.kit(art, launch, who, slot));
   }
 
-  private kit(art: ClassArt, launch: Launch | null, who: Caster, target: () => Pt): SkillKit {
+  private kit(art: ClassArt, launch: Launch | null, who: Caster, slot: (n: number) => Pt): SkillKit {
     const now = () => this.scene.time.now;
     const t0 = now();
     let cursor = 0;
     const feet = who.feet();
-    const tgt = () => target();
-    const targets = [0, 1, 2].map(() => tgt());
-    const body = (): Pt => {
-      const t = tgt();
+    const targets = [0, 1, 2].map((n) => slot(n));
+    const body = (n: number): Pt => {
+      const t = slot(n);
       return { x: t.x, y: t.y - BODY_UP };
     };
     const depthOf = (z: 0 | 1 | 3 | undefined) => (z === 0 ? Z_GROUND : z === 1 ? who.depth() - 0.4 : Z_OVER);
@@ -107,7 +107,7 @@ export class WorldSkills {
       dir: who.dir,
       feet,
       targets,
-      body: () => body(),
+      body: (n) => body(n),
       self: (dx, dy) => ({ x: feet.x + dx, y: feet.y + dy }),
       pose(anim, frames, ms) {
         // (The character plays its pose itself: these are only the times each frame starts.)
@@ -150,8 +150,8 @@ export class WorldSkills {
         l.path = { from, to, t1, arc: o.arc ?? 0, turn: o.turn ?? true, onArrive: o.onArrive, reveal: !!o.reveal };
         this.draw(l);
       },
-      hit: (_n, o = {}) => {
-        if (o.fx) spawn(o.fx, body(), { z: o.z ?? 3 });
+      hit: (n, o = {}) => {
+        if (o.fx) spawn(o.fx, body(n), { z: o.z ?? 3 });
       },
       number: () => {},
       hide: () => {},

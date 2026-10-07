@@ -37,9 +37,25 @@ export type MobEvent =
   | { t: 'mob-attack'; id: string; target: string }
   | { t: 'mob-spawn'; id: string; col: number; row: number; hp: number };
 
-export type AttackResult =
-  | { ok: true; id: string; damage: number; crit: boolean; hp: number; dead: boolean }
-  | { ok: false; reason: 'range' | 'slow' | 'gone' };
+export interface MobHit {
+  id: string;
+  damage: number;
+  crit: boolean;
+  hp: number;
+  dead: boolean;
+}
+
+/** `hits`: the target first, then any other mobs the skill's shape reached (skill-hits.json). */
+export type AttackResult = { ok: true; hits: MobHit[] } | { ok: false; reason: 'range' | 'slow' | 'gone' };
+
+/** Each class's skills' target shapes, in their order (the game's classes/skill-hits.json). */
+export type SkillShapes = Record<string, string[]>;
+
+/** The game's classes/skill-hits.json. */
+export function loadSkillShapes(): SkillShapes {
+  const json = JSON.parse(readFileSync(new URL('../../../game/public/assets/classes/skill-hits.json', import.meta.url), 'utf8')) as Record<string, unknown>;
+  return Object.fromEntries(Object.entries(json).filter(([, v]) => Array.isArray(v))) as SkillShapes;
+}
 
 /** Each class's damage skills' levels, in their order (classes.json). */
 export type SkillLevels = Record<string, number[]>;
@@ -103,6 +119,7 @@ export class MobRoom {
     private readonly map: MobMapData,
     private readonly random: () => number = Math.random,
     private readonly levels: SkillLevels = {},
+    private readonly shapes: SkillShapes = {},
   ) {
     for (const r of map.ramps ?? []) this.ramps.add(`${r.col},${r.row}`);
     for (const zone of map.mobZones ?? []) {
@@ -246,17 +263,62 @@ export class MobRoom {
     // (A little slack: the game's clock and the message's trip.)
     const level = (cls && this.levels[cls]?.[skill]) || 1;
     this.swings.set(ready, now + skillCooldown(level) * 1000 - 150);
+    const hits = this.reached(m, [mc, mr], from, (cls && this.shapes[cls]?.[skill]) || 'single', now).map((x) => this.damage(x, player, now));
+    return { ok: true, hits };
+  }
+
+  /** One hit on a mob: HIT (or CRIT), it goes after the player, at 0 it dies. */
+  private damage(m: Mob, player: string, now: number): MobHit {
     const crit = this.random() < CRIT_CHANCE;
     const damage = crit ? CRIT : HIT;
     m.hp = Math.max(0, m.hp - damage);
     m.foe = { id: player, at: now };
     if (m.hp === 0) {
+      [m.col, m.row] = this.at(m, now);
       m.respawnAt = now + (m.zone.respawnSec ?? 20) * 1000;
       m.foe = null;
-      [m.col, m.row] = [mc, mr];
       m.path = [];
     }
-    return { ok: true, id, damage, crit, hp: m.hp, dead: m.hp === 0 };
+    return { id: m.id, damage, crit, hp: m.hp, dead: m.hp === 0 };
+  }
+
+  /** The mobs a skill's shape reaches: the target first (see skill-hits.json). */
+  private reached(target: Mob, at: [number, number], from: [number, number], shape: string, now: number): Mob[] {
+    const [kind, n] = shape.split(':');
+    const most = Number(n) || 1;
+    const live = this.mobs.filter((x) => !x.respawnAt && x !== target).map((x) => ({ m: x, at: this.at(x, now) }));
+    const cheb = (a: [number, number], b: [number, number]) => Math.max(Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1]));
+    const out: Mob[] = [target];
+    if (kind === 'chain') {
+      let last = at;
+      while (out.length < most) {
+        const next = live.filter((x) => !out.includes(x.m) && cheb(x.at, last) <= 3).sort((a, b) => cheb(a.at, last) - cheb(b.at, last))[0];
+        if (!next) break;
+        out.push(next.m);
+        last = next.at;
+      }
+    } else if (kind === 'cone' || kind === 'area') {
+      out.push(...live.filter((x) => cheb(x.at, at) <= 2).sort((a, b) => cheb(a.at, at) - cheb(b.at, at)).slice(0, most - 1).map((x) => x.m));
+    } else if (kind === 'around') {
+      out.push(...live.filter((x) => cheb(x.at, from) <= 1).slice(0, most - 1).map((x) => x.m));
+    } else if (kind === 'line') {
+      // Along the line from the caster through the target, out to RANGED tiles.
+      const dx = at[0] - from[0];
+      const dy = at[1] - from[1];
+      const len = Math.hypot(dx, dy) || 1;
+      const [ux, uy] = [dx / len, dy / len];
+      const on = live
+        .map((x) => {
+          const px = x.at[0] - from[0];
+          const py = x.at[1] - from[1];
+          const along = px * ux + py * uy;
+          return { m: x.m, along, off: Math.abs(px * uy - py * ux) };
+        })
+        .filter((x) => x.along > 0 && x.along <= RANGED && x.off <= 0.8)
+        .sort((a, b) => a.along - b.along);
+      out.push(...on.slice(0, most - 1).map((x) => x.m));
+    }
+    return out;
   }
 
   /** A player left the room: no mob is after them any more. */

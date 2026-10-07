@@ -59,15 +59,15 @@ test('a hit takes 20 (25 on a crit) from 100, the mob goes after its foe, dies a
   assert.deepEqual(room.attack('p1', far, 'stick', mob.id, 1000), { ok: false, reason: 'range' });
   assert.equal(room.attack('p1', far, 'slingshot', mob.id, 1000).ok, false, '9 tiles is past the slingshot too');
   const first = room.attack('p1', at, 'stick', mob.id, 1000);
-  assert.ok(first.ok && (first.damage === 20 || first.damage === 25) && first.hp === 100 - first.damage);
+  assert.ok(first.ok && (first.hits[0].damage === 20 || first.hits[0].damage === 25) && first.hits[0].hp === 100 - first.hits[0].damage);
   assert.deepEqual(room.attack('p1', at, 'stick', mob.id, 1100), { ok: false, reason: 'slow' });
   // Next to it: it attacks back.
   const events = room.tick(1200, (id) => (id === 'p1' ? at : null));
   assert.ok(events.some((e) => e.t === 'mob-attack' && e.id === mob.id && e.target === 'p1'));
   let t = 1000;
   let last: AttackResult = first;
-  while (last.ok && !last.dead) last = room.attack("p1", at, "stick", mob.id, (t += 1000));
-  assert.ok(last.ok && last.dead && last.hp === 0);
+  while (last.ok && !last.hits[0].dead) last = room.attack("p1", at, "stick", mob.id, (t += 1000));
+  assert.ok(last.ok && last.hits[0].dead && last.hits[0].hp === 0);
   assert.equal(room.snapshot(t)[0].dead, true);
   assert.deepEqual(room.attack('p1', at, 'stick', mob.id, t + 500), { ok: false, reason: 'gone' });
   const zone = active.find((z) => mob.id.startsWith(`${z.id}:`))!;
@@ -84,4 +84,17 @@ test('each skill has its own cooldown by its level (Lv 1 the quickest)', () => {
   assert.ok(room.attack('p1', at, 'stick', mob.id, 1000, 0).ok, 'another skill is ready');
   assert.ok(room.attack('p1', at, 'stick', mob.id, 2050, 0).ok, 'Lv 1: 1 s');
   assert.ok(room.attack('p1', at, 'stick', mob.id, 3500, 6).ok, 'the Lv 18 one after 3.5 s');
+});
+
+test('a skill hits the mobs its shape reaches: a chain hops to the nearest, around hits those next to you', () => {
+  const room = new MobRoom(map, () => 0.5, {}, { slingshot: ['single', 'chain:3'], stick: ['around:4'] });
+  const mobs = room.snapshot(0);
+  // A target with another mob within 3 tiles.
+  const [a, b] = mobs.flatMap((x) => mobs.filter((y) => y !== x && Math.max(Math.abs(x.col - y.col), Math.abs(x.row - y.row)) <= 3).map((y) => [x, y]))[0];
+  const near: [number, number] = [a.col + 1, a.row];
+  const single = room.attack('p1', near, 'slingshot', a.id, 0, 0);
+  assert.ok(single.ok && single.hits.length === 1 && single.hits[0].id === a.id);
+  const chain = room.attack('p1', near, 'slingshot', a.id, 5000, 1);
+  assert.ok(chain.ok && chain.hits[0].id === a.id && chain.hits.some((h) => h.id === b.id), 'it hops to the other one');
+  assert.ok(chain.ok && chain.hits.length <= 3);
 });
