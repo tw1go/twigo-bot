@@ -298,7 +298,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   Skills panel on the right of the screen (K or the K button; `#skill-book`): each skill with its description, the hovered
   one played on the class choice's stage (`TownScene.skillStage`, 1×); drag a skill to a slot, or click it then a slot.
   Potions dragged from the bag; drag between slots swaps, off the bar or right-click empties. Per class in localStorage
-  `mk_hotbar` (a class's first bar = its skills in order). No skill icons yet (initials over the class badge). Where it
+  `mk_hotbar` (a class's first bar = its skills in order). Skill icons from manifest ui.skillIcons (`have` lists the ones there are: Slingshot and Stick so far); the rest show
+  their initials over the class badge. Where it
   doesn't fit, the chat, bag button, system feed, stay box and toasts sit higher (body.hotbar-on). Emotes are F1–F8.
 - Mobility in town (`world/mobility.ts`): the hotbar's Dash (3 tiles, 2 s) and the class's Lv 8 move: Step Back (2 back,
   3 s), Charge (5, 5 s), Blink (4, 4 s), along your facing, stopping where something's in the way. The combat sheets have

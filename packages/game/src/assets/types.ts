@@ -78,6 +78,8 @@ export interface Manifest {
     /** Empty equipment slots: one grey 16x16 silhouette per slot, in `frames` order. */
     equipSlots?: { file: string; size: Vec2; frames: string[] };
     /** Round class badges, {class} = the class id: `file` 32x32, `small` 16x16 (chat, avatar), `large` 64x64 (cards). */
+    /** Skill icons (32 px): file with {class} and {skill} (the name slugged); have = the ones there are, per class. */
+    skillIcons?: { file: string; size: Vec2; have: Record<string, string[]> };
     classIcons?: { file: string; small: string; large: string; size: Vec2; smallSize: Vec2; largeSize: Vec2 };
     /** The inventory button's bag, beside the chat input. */
     inventoryIcon?: { file: string; size: Vec2 };

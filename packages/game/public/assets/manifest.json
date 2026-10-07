@@ -13906,6 +13906,18 @@
       ],
       "note": "grey silhouettes for empty equipment slots, one 16x16 frame each"
     },
+    "skillIcons": {
+      "file": "ui/skills/{class}/ui-skill-{class}-{skill}.png",
+      "size": [
+        32,
+        32
+      ],
+      "have": {
+        "slingshot": ["quick-shot", "double-tap", "pebble-spray", "ricochet", "piercing-shot", "knee-shot", "volley"],
+        "stick": ["quick-jab", "twin-strike", "low-sweep", "rising-swat", "flurry", "spinning-stick", "lunge"]
+      },
+      "note": "skill icons on the shared navy rounded-square frame, 32x32 (the hotbar and the Skills panel at 1x). {skill} = the skill's name from classes.json in lower case, words joined by '-' (Quick Shot = quick-shot). have: the icons there are; skills without one show their initials. Still missing: greatstick, broom, potlid, hilot, and the movement skills (dash, step-back, charge, blink)."
+    },
     "classIcons": {
       "file": "ui/classes/ui-class-{class}.png",
       "small": "ui/classes/ui-class-{class}-16.png",

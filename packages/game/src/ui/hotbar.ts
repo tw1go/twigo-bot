@@ -12,7 +12,8 @@ import { toast } from './toast';
 // with its description, played on a small stage while hovered (the class choice's preview, combat/skill-stage.ts);
 // drag one onto a slot, or click it and then a slot. Potions are dragged in from the bag. Drag a slot onto another to swap them; drag it off the bar (or
 // right-click it) to empty it. Per class, saved in this browser (localStorage `mk_hotbar`); a class's first bar has
-// its skills in order. Move skills work in town (onSkill: world/mobility.ts) and their slots show the cooldown as a
+// its skills in order. Skills show their icon (manifest ui.skillIcons) where there is one, else their initials over the
+// class badge. Move skills work in town (onSkill: world/mobility.ts) and their slots show the cooldown as a
 // shrinking pie with the seconds left; the rest wait for combat. Skills have no icons yet: their
 // initials over the class badge stand in.
 
@@ -24,6 +25,8 @@ export interface HotbarOptions {
   /** A skill's key or click: its cooldown in seconds once used, 'no' if it can't go now, undefined if it has no use
    *  in town (yet). */
   onSkill?: (name: string) => number | 'no' | undefined;
+  /** A skill's icon (32 px), or null: its initials over the class badge stand in. */
+  icon?: (cls: string, skill: string) => string | null;
   /** The preview stage for a class (built once its poses and fx have loaded). */
   stage?: (cls: ClassInfo) => Promise<SkillStage | null>;
 }
@@ -211,11 +214,12 @@ export class Hotbar {
         const key = shown(row === 'top' ? TOP_KEYS[i] : row === 'main' ? MAIN_KEYS[i] : UTIL_KEYS[i]);
         b.replaceChildren();
         b.draggable = !!entry;
-        b.classList.toggle('hb-skill', entry?.t === 'skill');
+        const icon = entry?.t === 'skill' && this.cls ? this.iconOf(entry.name) : null;
+        b.classList.toggle('hb-skill', entry?.t === 'skill' && !icon);
         const keyLabel = row === 'top' ? `Ctrl+${shown(TOP_KEYS[i])}` : key;
         if (entry?.t === 'skill') {
           const s = skillsOf(this.cls).find((k) => k.name === entry.name);
-          b.append(el('span', 'hb-initials', initials(entry.name)));
+          b.append(icon ?? el('span', 'hb-initials', initials(entry.name)));
           b.title = `${entry.name}${s ? ` · Lv ${s.level}\n${s.desc}` : ''}\n(${keyLabel})`;
         } else if (entry?.t === 'item') {
           b.append(itemArt(entry.id, isRarity(entry.rarity) ? entry.rarity : 'common', 'icon', 2, true) ?? el('span', 'hb-emoji', entry.emoji));
@@ -251,7 +255,7 @@ export class Hotbar {
         const line = el('span', 'sb-line');
         line.append(el('span', 'hb-name', s.name), el('span', 'hb-lv', `Lv ${s.level}`));
         text.append(line, el('span', 'sb-desc', s.desc));
-        row.append(el('span', 'hb-initials', initials(s.name)), text);
+        row.append(this.iconOf(s.name) ?? el('span', 'hb-initials', initials(s.name)), text);
         row.addEventListener('dragstart', (e) => e.dataTransfer?.setData(DRAG, JSON.stringify({ entry: { t: 'skill', name: s.name } })));
         row.addEventListener('click', () => {
           this.picked = this.picked?.name === s.name ? null : { t: 'skill', name: s.name };
@@ -261,6 +265,17 @@ export class Hotbar {
         return row;
       }),
     );
+  }
+
+  /** A skill's icon as an image, if it has one. */
+  private iconOf(name: string): HTMLImageElement | null {
+    const url = this.cls ? this.o.icon?.(this.cls.id, name) : null;
+    if (!url) return null;
+    const img = el('img', 'hb-icon');
+    img.src = url;
+    img.alt = '';
+    img.draggable = false;
+    return img;
   }
 
   /** The stage plays `skill` now and then keeps replaying it (null: back to resting). */
