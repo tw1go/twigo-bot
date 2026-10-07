@@ -1147,7 +1147,7 @@ export class TownScene extends Phaser.Scene {
         return;
       }
       if (m.t === 'mobs') return this.mobs?.applySnapshot(m.mobs);
-      if (m.t === 'mob-move') return this.mobs?.hop(m.id, m.path);
+      if (m.t === 'mob-move') return this.mobs?.hop(m.id, m.path, m.speed);
       if (m.t === 'mob-hit') {
         const ids = m.hits.map((h) => h.id);
         const at = ids[0] ? this.mobs?.tileOf(ids[0]) : null;
@@ -1161,7 +1161,7 @@ export class TownScene extends Phaser.Scene {
         }
         // The numbers and HP land with the effects' hits, near enough: a beat after the cast.
         this.time.delayedCall(mine ? 120 : 0, () => {
-          for (const h of m.hits) this.mobs?.hit(h.id, h.damage, h.crit, h.hp, h.dead);
+          for (const h of m.hits) this.mobs?.hit(h.id, h.damage, h.crit, h.hp, h.dead, h.slow);
         });
         return;
       }

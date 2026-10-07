@@ -5,5 +5,10 @@
   "greatstick": ["single", "single", "cone:3", "single", "around:4", "single", "cone:3"],
   "broom": ["single", "single", "cone:3", "cone:3", "line:4", "single", "chain:3"],
   "potlid": ["single", "single", "around:4", "single", "around:4", "cone:3", "chain:3"],
-  "hilot": ["single", "single", "area:2", "single", "single", "area:3", "single"]
+  "hilot": ["single", "single", "area:2", "single", "single", "area:3", "single"],
+  "effects": {
+    "note": "What a skill does to each mob it hits besides damage, by class and skill: slow:F:MS (moves at F of its speed for MS ms), root:MS (can't move for MS ms; it still attacks next to you). null: nothing.",
+    "slingshot": [null, null, null, null, null, "slow:0.5:2500", null],
+    "hilot": [null, null, null, null, "root:2000", null, null]
+  }
 }

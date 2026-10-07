@@ -15,6 +15,8 @@ export interface TownMob {
   hp: number;
   dead?: boolean;
   path?: [number, number][];
+  /** The hop's pace (tiles a second) when it isn't the usual (slowed). */
+  speed?: number;
 }
 
 export interface TownPlayer {
@@ -223,10 +225,10 @@ export type TownServerMessage =
   /** Every mob in your room as you arrive (the Slums; the same for everyone: bot web/town-mobs.ts). */
   | { t: 'mobs'; mobs: TownMob[] }
   /** A mob hops: from the first tile of `path` along the rest (at the mobs' pace). */
-  | { t: 'mob-move'; id: string; path: [number, number][] }
+  | { t: 'mob-move'; id: string; path: [number, number][]; speed?: number }
   /** Someone (`by`, a town id) hit with skill `skill`: each mob it reached (the target first) with the damage, a crit or
    *  not, the HP left, dead or not. */
-  | { t: 'mob-hit'; by: string; skill: number; hits: { id: string; damage: number; crit: boolean; hp: number; dead: boolean }[] }
+  | { t: 'mob-hit'; by: string; skill: number; hits: { id: string; damage: number; crit: boolean; hp: number; dead: boolean; slow?: { factor: number; ms: number } }[] }
   /** A mob attacks a player (shown only: players have no HP yet). */
   | { t: 'mob-attack'; id: string; target: string }
   /** A dead mob is back at its spawn. */

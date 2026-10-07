@@ -33,7 +33,7 @@ const SWING_MS = 400; // a player's attacks: no faster than this
 export const skillCooldown = (level: number) => Math.round((0.8 + 0.15 * Math.max(1, level)) * 10) / 10;
 
 export type MobEvent =
-  | { t: 'mob-move'; id: string; path: [number, number][] }
+  | { t: 'mob-move'; id: string; path: [number, number][]; speed?: number }
   | { t: 'mob-attack'; id: string; target: string }
   | { t: 'mob-spawn'; id: string; col: number; row: number; hp: number };
 
@@ -43,18 +43,33 @@ export interface MobHit {
   crit: boolean;
   hp: number;
   dead: boolean;
+  /** Slowed (to `factor` of its speed; 0 = rooted) for `ms`. */
+  slow?: { factor: number; ms: number };
 }
 
 /** `hits`: the target first, then any other mobs the skill's shape reached (skill-hits.json). */
 export type AttackResult = { ok: true; hits: MobHit[] } | { ok: false; reason: 'range' | 'slow' | 'gone' };
 
-/** Each class's skills' target shapes, in their order (the game's classes/skill-hits.json). */
-export type SkillShapes = Record<string, string[]>;
+/** Each class's skills' target shapes, in their order (the game's classes/skill-hits.json), and their effects. */
+export interface SkillShapes {
+  shapes: Record<string, string[]>;
+  effects?: Record<string, (string | null)[]>;
+}
 
 /** The game's classes/skill-hits.json. */
 export function loadSkillShapes(): SkillShapes {
   const json = JSON.parse(readFileSync(new URL('../../../game/public/assets/classes/skill-hits.json', import.meta.url), 'utf8')) as Record<string, unknown>;
-  return Object.fromEntries(Object.entries(json).filter(([, v]) => Array.isArray(v))) as SkillShapes;
+  const arrays = (o: Record<string, unknown> | undefined) => Object.fromEntries(Object.entries(o ?? {}).filter(([, v]) => Array.isArray(v)));
+  return { shapes: arrays(json) as Record<string, string[]>, effects: arrays(json.effects as Record<string, unknown> | undefined) as Record<string, (string | null)[]> };
+}
+
+/** A skill effect string (skill-hits.json effects): slow:F:MS or root:MS. */
+function parseEffect(e: string | null | undefined): { factor: number; ms: number } | null {
+  if (!e) return null;
+  const [kind, a, b] = e.split(':');
+  if (kind === 'slow') return { factor: Math.max(0, Math.min(1, Number(a) || 0.5)), ms: Number(b) || 2000 };
+  if (kind === 'root') return { factor: 0, ms: Number(a) || 2000 };
+  return null;
 }
 
 /** Each class's damage skills' levels, in their order (classes.json). */
@@ -97,6 +112,10 @@ interface Mob {
   /** Who it's after, and when they last hit it. */
   foe: { id: string; at: number } | null;
   nextAttack: number;
+  /** Slowed to `factor` of its speed until then (0: rooted). */
+  slow: { factor: number; until: number } | null;
+  /** The pace of the hop under way (tiles a second). */
+  hopSpeed: number;
 }
 
 /** The mobs' data from a map file (maps/<name>.json in the game's assets). */
@@ -119,7 +138,7 @@ export class MobRoom {
     private readonly map: MobMapData,
     private readonly random: () => number = Math.random,
     private readonly levels: SkillLevels = {},
-    private readonly shapes: SkillShapes = {},
+    private readonly shapes: SkillShapes = { shapes: {} },
   ) {
     for (const r of map.ramps ?? []) this.ramps.add(`${r.col},${r.row}`);
     for (const zone of map.mobZones ?? []) {
@@ -127,7 +146,7 @@ export class MobRoom {
       zone.spawns.forEach(([col, row], i) => {
         const id = `${zone.id}:${i}`;
         const [lo, hi] = zone.level;
-        this.mobs.push({ id, zone, level: lo + Math.floor(seeded(id) * (hi - lo + 1)), spawn: [col, row], col, row, path: [], hopAt: 0, restUntil: 0, hp: MOB_HP, respawnAt: 0, foe: null, nextAttack: 0 });
+        this.mobs.push({ id, zone, level: lo + Math.floor(seeded(id) * (hi - lo + 1)), spawn: [col, row], col, row, path: [], hopAt: 0, restUntil: 0, hp: MOB_HP, respawnAt: 0, foe: null, nextAttack: 0, slow: null, hopSpeed: SPEED });
       });
     }
   }
@@ -173,14 +192,23 @@ export class MobRoom {
   /** Where a mob is now: the tile it stands on, or how far it has got along a hop. */
   private at(m: Mob, now: number): [number, number] {
     if (!m.path.length) return [m.col, m.row];
-    const done = Math.floor(((now - m.hopAt) / 1000) * SPEED);
+    const done = Math.floor(((now - m.hopAt) / 1000) * m.hopSpeed);
     return done > 0 ? m.path[Math.min(done, m.path.length) - 1] : [m.col, m.row];
   }
 
+  /** Its pace now: slowed (or rooted: 0) for a while after a skill's effect. */
+  private speedOf(m: Mob, now: number): number {
+    if (m.slow && now >= m.slow.until) m.slow = null;
+    return SPEED * (m.slow ? m.slow.factor : 1);
+  }
+
   private startHop(m: Mob, path: [number, number][], now: number, events: MobEvent[]): void {
+    const speed = this.speedOf(m, now);
+    if (!speed) return; // rooted
     m.path = path;
     m.hopAt = now;
-    events.push({ t: 'mob-move', id: m.id, path: [[m.col, m.row], ...path] });
+    m.hopSpeed = speed;
+    events.push({ t: 'mob-move', id: m.id, path: [[m.col, m.row], ...path], ...(speed !== SPEED ? { speed } : {}) });
   }
 
   /**
@@ -197,7 +225,7 @@ export class MobRoom {
         events.push({ t: 'mob-spawn', id: m.id, col: m.col, row: m.row, hp: m.hp });
         continue;
       }
-      if (m.path.length && now >= m.hopAt + (m.path.length / SPEED) * 1000) {
+      if (m.path.length && now >= m.hopAt + (m.path.length / m.hopSpeed) * 1000) {
         [m.col, m.row] = m.path[m.path.length - 1];
         m.path = [];
         m.restUntil = now + REST_MS[0] + this.random() * (REST_MS[1] - REST_MS[0]);
@@ -263,7 +291,15 @@ export class MobRoom {
     // (A little slack: the game's clock and the message's trip.)
     const level = (cls && this.levels[cls]?.[skill]) || 1;
     this.swings.set(ready, now + skillCooldown(level) * 1000 - 150);
-    const hits = this.reached(m, [mc, mr], from, (cls && this.shapes[cls]?.[skill]) || 'single', now).map((x) => this.damage(x, player, now));
+    const effect = parseEffect(cls ? this.shapes.effects?.[cls]?.[skill] : null);
+    const hits = this.reached(m, [mc, mr], from, (cls && this.shapes.shapes[cls]?.[skill]) || 'single', now).map((x) => {
+      const hit = this.damage(x, player, now);
+      if (effect && !hit.dead) {
+        x.slow = { factor: effect.factor, until: now + effect.ms };
+        hit.slow = effect;
+      }
+      return hit;
+    });
     return { ok: true, hits };
   }
 
@@ -330,10 +366,10 @@ export class MobRoom {
   /** Every mob as a newcomer should see it: where it is and the rest of a hop under way. */
   snapshot(now: number): TownMob[] {
     return this.mobs.map((m) => {
-      const done = Math.floor(((now - m.hopAt) / 1000) * SPEED);
+      const done = Math.floor(((now - m.hopAt) / 1000) * m.hopSpeed);
       const left = m.path.length ? m.path.slice(Math.min(done, m.path.length - 1)) : [];
       const at = m.path.length && done > 0 ? m.path[Math.min(done, m.path.length) - 1] : [m.col, m.row];
-      return { id: m.id, col: at[0], row: at[1], level: m.level, hp: m.hp, ...(m.respawnAt ? { dead: true } : {}), ...(left.length ? { path: left } : {}) };
+      return { id: m.id, col: at[0], row: at[1], level: m.level, hp: m.hp, ...(m.respawnAt ? { dead: true } : {}), ...(left.length ? { path: left, speed: m.hopSpeed } : {}) };
     });
   }
 }

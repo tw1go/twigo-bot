@@ -87,7 +87,7 @@ test('each skill has its own cooldown by its level (Lv 1 the quickest)', () => {
 });
 
 test('a skill hits the mobs its shape reaches: a chain hops to the nearest, around hits those next to you', () => {
-  const room = new MobRoom(map, () => 0.5, {}, { slingshot: ['single', 'chain:3'], stick: ['around:4'] });
+  const room = new MobRoom(map, () => 0.5, {}, { shapes: { slingshot: ['single', 'chain:3'], stick: ['around:4'] } });
   const mobs = room.snapshot(0);
   // A target with another mob within 3 tiles.
   const [a, b] = mobs.flatMap((x) => mobs.filter((y) => y !== x && Math.max(Math.abs(x.col - y.col), Math.abs(x.row - y.row)) <= 3).map((y) => [x, y]))[0];
@@ -97,4 +97,22 @@ test('a skill hits the mobs its shape reaches: a chain hops to the nearest, arou
   const chain = room.attack('p1', near, 'slingshot', a.id, 5000, 1);
   assert.ok(chain.ok && chain.hits[0].id === a.id && chain.hits.some((h) => h.id === b.id), 'it hops to the other one');
   assert.ok(chain.ok && chain.hits.length <= 3);
+});
+
+test('a slow halves a mob\'s pace for a while; a root keeps it still; both wear off', () => {
+  const shapes = { shapes: { slingshot: ['single', 'single', 'single', 'single', 'single', 'single'], hilot: ['single', 'single', 'single', 'single', 'single'] }, effects: { slingshot: [null, null, null, null, null, 'slow:0.5:2500'], hilot: [null, null, null, null, 'root:2000'] } };
+  const room = new MobRoom(map, () => 0.3, {}, shapes);
+  const [a, b] = room.snapshot(0);
+  const near = (m: { col: number; row: number }): [number, number] => [m.col + 2, m.row];
+  const slowed = room.attack('p1', near(a), 'slingshot', a.id, 0, 5);
+  assert.ok(slowed.ok && slowed.hits[0].slow?.factor === 0.5);
+  // It goes after p1 (who has moved off), at half pace.
+  const moves = room.tick(100, (id) => (id === 'p1' ? [a.col + 6, a.row] : null)).filter((e) => e.t === 'mob-move' && e.id === a.id);
+  assert.ok(moves.length && moves.every((e) => e.t === 'mob-move' && e.speed === 1.2), 'half of 2.4');
+  const rooted = room.attack('p2', near(b), 'hilot', b.id, 0, 4);
+  assert.ok(rooted.ok && rooted.hits[0].slow?.factor === 0);
+  for (let t = 100; t < 1900; t += 250) assert.ok(!room.tick(t, (id) => (id === 'p2' ? [b.col + 6, b.row] : null)).some((e) => e.t === 'mob-move' && e.id === b.id), 'rooted: no hop');
+  let freed = false;
+  for (let t = 2100; t < 6000 && !freed; t += 250) freed = room.tick(t, (id) => (id === 'p2' ? [b.col + 6, b.row] : null)).some((e) => e.t === 'mob-move' && e.id === b.id && !('speed' in e && e.speed));
+  assert.ok(freed, 'moving again at its own pace');
 });

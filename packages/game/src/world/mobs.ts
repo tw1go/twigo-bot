@@ -51,6 +51,10 @@ export interface Mob {
   /** A one-shot pose (hit, attack, death) is playing: idle / move wait. */
   posing: boolean;
   bar: Phaser.GameObjects.Graphics | null;
+  /** The pace of its hop (tiles a second; slower while slowed). */
+  speed: number;
+  /** Slowed or rooted until then (scene ms), shown with a cold tint. */
+  slowUntil: number;
 }
 
 export const MOB_HP = 100;
@@ -117,6 +121,8 @@ export class Mobs {
       dead: false,
       posing: false,
       bar: null,
+      speed: SPEED,
+      slowUntil: 0,
     };
     this.onSpawn(sprite);
     if (shadow) this.onSpawn(shadow);
@@ -165,7 +171,7 @@ export class Mobs {
   }
 
   /** The server runs them from now on: every mob where it says (and the rest of a hop under way). */
-  applySnapshot(mobs: { id: string; col: number; row: number; level: number; hp: number; dead?: boolean; path?: [number, number][] }[]): void {
+  applySnapshot(mobs: { id: string; col: number; row: number; level: number; hp: number; dead?: boolean; path?: [number, number][]; speed?: number }[]): void {
     this.server = true;
     for (const s of mobs) {
       const m = this.byId.get(s.id);
@@ -174,6 +180,7 @@ export class Mobs {
       m.row = s.row + 0.5;
       m.level = s.level;
       m.path = (s.path ?? []).map(([col, row]) => ({ col, row }));
+      m.speed = s.speed ?? SPEED;
       m.hp = s.hp;
       this.show(m, !s.dead);
       this.sync(m);
@@ -182,9 +189,10 @@ export class Mobs {
   }
 
   /** A hop from the server: from its first tile (a jump there if we'd drifted) along the rest. */
-  hop(id: string, path: [number, number][]): void {
+  hop(id: string, path: [number, number][], speed = SPEED): void {
     const m = this.byId.get(id);
     if (!m || !path.length) return;
+    m.speed = speed;
     const [c0, r0] = path[0];
     if (Math.floor(m.col) !== c0 || Math.floor(m.row) !== r0) {
       m.col = c0 + 0.5;
@@ -194,10 +202,11 @@ export class Mobs {
   }
 
   /** A hit (the server's word): the hit pose (or its death), a damage number, the HP bar. */
-  hit(id: string, damage: number, crit: boolean, hp: number, dead: boolean): void {
+  hit(id: string, damage: number, crit: boolean, hp: number, dead: boolean, slow?: { factor: number; ms: number }): void {
     const m = this.byId.get(id);
     if (!m || m.dead) return;
     m.hp = hp;
+    if (slow && !dead) this.chill(m, slow);
     this.number(m, damage, crit);
     if (dead) {
       m.path = [];
@@ -207,6 +216,13 @@ export class Mobs {
     } else this.pose(m, 'hit');
     this.drawBar(m);
     if (m === this.target) this.onTarget?.(m);
+  }
+
+  /** Slowed (or rooted: factor 0) for a while: a cold blue tint and a slower step, then itself again. */
+  private chill(m: Mob, slow: { factor: number; ms: number }): void {
+    m.slowUntil = this.scene.time.now + slow.ms;
+    m.sprite.setTint(slow.factor === 0 ? 0x7dd3fc : 0x93c5fd);
+    m.sprite.anims.timeScale = Math.max(0.35, slow.factor);
   }
 
   /** Its attack on someone at `at`: faces them and plays the attack pose. */
@@ -295,12 +311,18 @@ export class Mobs {
     const now = this.scene.time.now;
     for (const m of this.list) {
       if (m.dead) continue;
+      if (m.slowUntil && now >= m.slowUntil) {
+        m.slowUntil = 0;
+        m.sprite.clearTint();
+        m.sprite.anims.timeScale = 1;
+        this.onSpawn(m.sprite); // the night's tint again
+      }
       if (!this.server && !m.path.length && now >= m.restUntil) {
         this.wander(m);
         m.restUntil = now + Phaser.Math.Between(...REST_MS);
       }
       if (m.path.length) {
-        let budget = (SPEED * deltaMs) / 1000;
+        let budget = (m.speed * deltaMs) / 1000;
         while (budget > 0 && m.path.length) {
           const next = m.path[0];
           const dx = next.col + 0.5 - m.col;
