@@ -8,8 +8,9 @@ import { playVoice } from '../audio/sound';
 // typed out letter by letter in their voice (a soft blip every few letters, pitched per NPC). One line per talk: a
 // click on the box, a tap, Space or E shows the whole line, and once it's shown closes the box (click the NPC again
 // for another line); Esc or a click outside closes it too (so does walking away: the scene's job). A quest gives a
-// few lines in order instead (`lines`): each shown in full goes on to the next (a click outside the box does too until
-// the last one is shown), and only clicking through the last counts as hearing them all (`onDone`). One at a time; it
+// few lines in order instead (`lines`): each shown in full goes on to the next, and clicking through the last counts
+// as hearing them all (`onDone`). A click outside the box does the same as one on it (and never reaches the town);
+// Esc or walking away closes it early. One at a time; it
 // never takes focus, so the chat still gets what's typed. Only the player who clicked sees it: nothing goes to the server.
 
 export interface NpcTalk {
@@ -210,20 +211,29 @@ export function openNpcDialog(t: NpcTalk): void {
     e.stopPropagation(); // not the town's E/Space (doors, benches)
     if (!e.repeat) advance();
   };
+  // A quest's story isn't cut short by a stray click: a click anywhere goes on, like a click on the box, and on its
+  // last line (shown in full) it's heard, as with Space. None of that click reaches the town (no walking off, no
+  // clicking the NPC again). Otherwise a click outside just closes the box.
+  let swallow = false;
   const outside = (e: PointerEvent) => {
     if (root.contains(e.target as Node)) return;
-    // A quest's story isn't cut short by a stray click: until its last line has been shown, a click anywhere goes on
-    // (and doesn't reach the town, so you don't walk off). After that, a click outside closes the box.
-    if (queue && (queue.length || !done())) {
-      e.preventDefault();
-      e.stopPropagation();
-      return advance();
-    }
-    close();
+    if (!queue) return close();
+    e.preventDefault();
+    e.stopPropagation();
+    swallow = true;
+    advance();
   };
+  const rest = (e: Event) => {
+    if (!swallow) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'click') swallow = false;
+  };
+  const restOf = ['mousedown', 'mouseup', 'pointerup', 'touchstart', 'touchend', 'click'];
   root.addEventListener('click', advance);
   document.addEventListener('keydown', keys, true);
   document.addEventListener('pointerdown', outside, true);
+  for (const t of restOf) document.addEventListener(t, rest, true);
   addEventListener('resize', place);
 
   function close(): void {
@@ -233,6 +243,10 @@ export function openNpcDialog(t: NpcTalk): void {
     clearTimeout(blink);
     document.removeEventListener('keydown', keys, true);
     document.removeEventListener('pointerdown', outside, true);
+    // The rest of a swallowed click still arrives just after (pointerup, click): keep catching it for a moment.
+    setTimeout(() => {
+      for (const t of restOf) document.removeEventListener(t, rest, true);
+    }, swallow ? 400 : 0);
     removeEventListener('resize', place);
     root.remove();
     t.onClose();
