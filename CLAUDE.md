@@ -154,7 +154,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
 - Rename Card (bot `items/rename-card.ts`, kv 'rename-cards', tested; reward kind 'rename', 5 Kowens in `/redeem` and the sari-sari
   store's Items tab; all of them share one bag slot): the bag's Use asks for a new nickname (the creator's rules), `POST
   /town/rename` spends a card only if it works, and the town's `rename` message updates everyone's name tag (yours via
-  'mk-renamed': tag and HUD). No item art yet (the 🪪 emoji stands in; manifest items['rename-card'] when there is).
+  'mk-renamed': tag and HUD). Art: manifest items['rename-card'] (items/consumables/item-rename-card*.png).
 - Chat (`ui/chat.ts` + `SpeechBubble` in `ui/labels.ts`): Enter to type, Enter sends and stays open, empty Enter/Esc or a click outside closes; the bot's `say` (tidied, ≤120 chars,
   burst 3 then 1 per 2 s; only the last 20 lines are kept) comes back to everyone, the speaker included. Linked to a Discord channel
   (`TOWN_CHAT_CHANNEL_ID`, bot `web/town-chat.ts`, needs the Message Content intent): Discord lines show with the
