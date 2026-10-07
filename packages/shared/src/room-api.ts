@@ -1,6 +1,8 @@
 // Response shapes of the twigo's-room API (the bot's src/web/server.ts), served at https://twigo.dev
 // (and, for the room API, at the old https://twigo-bot.duckdns.org).
 
+import type { AdventureState } from './adventure.js';
+
 /** One row of `GET /leaderboard`. */
 export interface LeaderboardRow {
   rank: number;
@@ -87,6 +89,8 @@ export interface MeResponse {
   dig: MeDig;
   /** Their Discord status, shown on the avatar (not sent yet: needs the Presence intent; dev fakes it). */
   status?: PresenceStatus;
+  /** Their class, quests and equipment (autoStart quests start here, on their first visit). */
+  adventure?: AdventureState;
 }
 
 /** The status dots in the art (manifest ui.statusDots). */
@@ -142,7 +146,8 @@ export interface TownBagItem {
   count: number;
   /** All of them in one slot, with a count (megaphones). */
   stacked?: boolean;
-  kind: 'dig' | 'key' | 'potion' | 'megaphone';
+  /** equipment: a weapon or gear piece not being worn (the equipment panel wears it). */
+  kind: 'dig' | 'key' | 'potion' | 'megaphone' | 'equipment';
   /** Dug-up items can be sold and flexed; keys and potions say how they're used. */
   sellable: boolean;
   about?: string;

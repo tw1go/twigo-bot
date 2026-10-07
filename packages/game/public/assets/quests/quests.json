@@ -1,0 +1,42 @@
+{
+  "note": "The town's quests. type: main (violet) or side (yellow). Objective types so far: talk (talk to `npc`) and chooseClass. autoStart quests start the first time a player is in town (and for anyone who hasn't done them yet). dialogue: lines the giver says instead of their usual ones while the quest is on: talk (in order, while talking is the current objective), remind (talking again before the next objective is done), complete (when the quest is done; {class} is the class's name).",
+  "quests": [
+    {
+      "id": "main-01-class",
+      "type": "main",
+      "title": "A Weapon for the Town",
+      "giver": "tanod",
+      "summary": "The Tanod needs help keeping Mikazuki safe at night. Talk to him and choose how you'll fight.",
+      "autoStart": true,
+      "objectives": [
+        {
+          "id": "talk",
+          "type": "talk",
+          "npc": "tanod",
+          "text": "Talk to the Tanod"
+        },
+        {
+          "id": "class",
+          "type": "chooseClass",
+          "text": "Choose your class"
+        }
+      ],
+      "dialogue": {
+        "talk": [
+          "Hey, a new face! Welcome to Mikazuki.",
+          "Our town is quiet at night, but past the fence, the monsters are wide awake.",
+          "We tanods can't handle it all. We need your help.",
+          "Every watchman has a weapon. It doesn't have to be fancy, as long as you can protect your neighbours.",
+          "Pick one. Try it out before you decide, okay?"
+        ],
+        "remind": [
+          "So, have you picked one yet?"
+        ],
+        "complete": [
+          "Nice! A {class} watchman. Stay safe, okay? If there's trouble, I'm right here."
+        ]
+      },
+      "next": null
+    }
+  ]
+}

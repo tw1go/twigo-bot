@@ -1,0 +1,317 @@
+{
+ "note": "The six classes for the class choice. Skills are the first 7 damage skills, the ones with FX. Paths are relative to public/assets/.",
+ "classes": [
+  {
+   "id": "slingshot",
+   "name": "Slingshot",
+   "weapon": "Slingshot",
+   "role": "Ranged archer",
+   "damage": "Physical",
+   "mainStat": "DEX",
+   "secondStat": "INT",
+   "gear": "Light",
+   "blurb": "Picks enemies off from far away with fast, sharp pebble shots.",
+   "poses": "characters/classes/slingshot",
+   "fx": "fx/open-world",
+   "fxNotes": "fx/open-world/open-world-fx.md",
+   "resting": "slingshot",
+   "skills": [
+    {
+     "level": 1,
+     "name": "Quick Shot",
+     "desc": "Fast single pebble"
+    },
+    {
+     "level": 3,
+     "name": "Double Tap",
+     "desc": "Two quick shots"
+    },
+    {
+     "level": 6,
+     "name": "Pebble Spray",
+     "desc": "Cone of three pebbles"
+    },
+    {
+     "level": 9,
+     "name": "Ricochet",
+     "desc": "Bounces to two more enemies"
+    },
+    {
+     "level": 12,
+     "name": "Piercing Shot",
+     "desc": "Passes through every enemy in a line"
+    },
+    {
+     "level": 15,
+     "name": "Knee Shot",
+     "desc": "Damage plus a short slow"
+    },
+    {
+     "level": 18,
+     "name": "Volley",
+     "desc": "Rain of pebbles on an area"
+    }
+   ]
+  },
+  {
+   "id": "stick",
+   "name": "Stick",
+   "weapon": "Stick",
+   "role": "Melee swordsman",
+   "damage": "Physical",
+   "mainStat": "DEX",
+   "secondStat": "STR",
+   "gear": "Heavy",
+   "blurb": "Quick two-handed stick fighter with fast combos and wind strikes.",
+   "poses": "characters/classes/stick",
+   "fx": "fx/stick",
+   "fxNotes": "fx/stick/stick-wind-fx.md",
+   "resting": "stick",
+   "skills": [
+    {
+     "level": 1,
+     "name": "Quick Jab",
+     "desc": "Fast poke"
+    },
+    {
+     "level": 3,
+     "name": "Twin Strike",
+     "desc": "Two quick hits"
+    },
+    {
+     "level": 6,
+     "name": "Low Sweep",
+     "desc": "Sweep that hits all around"
+    },
+    {
+     "level": 9,
+     "name": "Rising Swat",
+     "desc": "Upward hit that knocks up"
+    },
+    {
+     "level": 12,
+     "name": "Flurry",
+     "desc": "Five rapid hits"
+    },
+    {
+     "level": 15,
+     "name": "Spinning Stick",
+     "desc": "Spin attack around self"
+    },
+    {
+     "level": 18,
+     "name": "Lunge",
+     "desc": "Dashing thrust"
+    }
+   ]
+  },
+  {
+   "id": "greatstick",
+   "name": "Greatstick",
+   "weapon": "Big plank",
+   "role": "Slow, wide-arc heavy hitter",
+   "damage": "Physical",
+   "mainStat": "STR",
+   "secondStat": null,
+   "gear": "Heavy",
+   "blurb": "Swings a heavy plank in wide arcs that hit everything in front.",
+   "poses": "characters/classes/greatstick",
+   "fx": "fx/greatstick",
+   "fxNotes": "fx/greatstick/greatstick-crimson-fx.md",
+   "resting": "greatstick",
+   "skills": [
+    {
+     "level": 1,
+     "name": "Quick Chop",
+     "desc": "Fast short swing"
+    },
+    {
+     "level": 3,
+     "name": "Shove",
+     "desc": "Jab with the plank's end, knocks back"
+    },
+    {
+     "level": 6,
+     "name": "Wide Swing",
+     "desc": "Big front arc"
+    },
+    {
+     "level": 9,
+     "name": "Overhead Slam",
+     "desc": "Heavy single hit"
+    },
+    {
+     "level": 12,
+     "name": "Ground Pound",
+     "desc": "Area hit around self"
+    },
+    {
+     "level": 15,
+     "name": "Plank Toss",
+     "desc": "Thrown plank at range"
+    },
+    {
+     "level": 18,
+     "name": "Splinter Burst",
+     "desc": "Cone of wood shards"
+    }
+   ]
+  },
+  {
+   "id": "broom",
+   "name": "Broom",
+   "weapon": "Broom",
+   "role": "Ranged caster, small area hits",
+   "damage": "Magic",
+   "mainStat": "INT",
+   "secondStat": null,
+   "gear": "Light",
+   "blurb": "A broom wizard: dust bolts, gusts, sparks and burning leaves.",
+   "poses": "characters/classes/broom",
+   "fx": "fx/broom",
+   "fxNotes": "fx/broom/broom-fx.md",
+   "resting": "broom",
+   "skills": [
+    {
+     "level": 1,
+     "name": "Dust Flick",
+     "desc": "Fast dust bolt"
+    },
+    {
+     "level": 3,
+     "name": "Leaf Dart",
+     "desc": "Quick leaf projectile"
+    },
+    {
+     "level": 6,
+     "name": "Gust",
+     "desc": "Cone of wind"
+    },
+    {
+     "level": 9,
+     "name": "Spark Sweep",
+     "desc": "Spark arc in front"
+    },
+    {
+     "level": 12,
+     "name": "Dust Devil",
+     "desc": "Small whirlwind that moves forward"
+    },
+    {
+     "level": 15,
+     "name": "Ember Leaves",
+     "desc": "Burning leaves, damage over time"
+    },
+    {
+     "level": 18,
+     "name": "Static Bristles",
+     "desc": "Chain lightning"
+    }
+   ]
+  },
+  {
+   "id": "potlid",
+   "name": "Pot lid",
+   "weapon": "Pot lid and ladle",
+   "role": "Tank, the lid's clang pulls aggro",
+   "damage": "Magic",
+   "mainStat": "STR",
+   "secondStat": "INT",
+   "gear": "Household",
+   "blurb": "Holds the line with a lid for a shield and a ladle for a club.",
+   "poses": "characters/classes/potlid",
+   "fx": "fx/potlid",
+   "fxNotes": "fx/potlid/potlid-fx.md",
+   "resting": "potlid",
+   "skills": [
+    {
+     "level": 1,
+     "name": "Lid Bonk",
+     "desc": "Fast bonk with the lid"
+    },
+    {
+     "level": 3,
+     "name": "Ladle Smack",
+     "desc": "Quick ladle hit"
+    },
+    {
+     "level": 6,
+     "name": "Clang",
+     "desc": "Sound wave around self"
+    },
+    {
+     "level": 9,
+     "name": "Lid Toss",
+     "desc": "Thrown lid that comes back"
+    },
+    {
+     "level": 12,
+     "name": "Steam Burst",
+     "desc": "Steam explosion around self"
+    },
+    {
+     "level": 15,
+     "name": "Boiling Splash",
+     "desc": "Cone that burns"
+    },
+    {
+     "level": 18,
+     "name": "Rebound",
+     "desc": "Lid bounces between enemies"
+    }
+   ]
+  },
+  {
+   "id": "hilot",
+   "name": "Hilot",
+   "weapon": "Floating balm",
+   "role": "Bare-handed melee fighter who also heals",
+   "damage": "Magic",
+   "mainStat": "INT",
+   "secondStat": "STR",
+   "gear": "Household",
+   "blurb": "Fights with open palms and a floating menthol balm, and patches friends up.",
+   "poses": "characters/classes/hilot",
+   "fx": "fx/hilot",
+   "fxNotes": "fx/hilot/hilot-fx.md",
+   "resting": "balm-float",
+   "skills": [
+    {
+     "level": 1,
+     "name": "Menthol Flick",
+     "desc": "Fast flick of menthol"
+    },
+    {
+     "level": 3,
+     "name": "Herb Pinch",
+     "desc": "Quick herb jab"
+    },
+    {
+     "level": 6,
+     "name": "Menthol Puff",
+     "desc": "Small stinging cloud"
+    },
+    {
+     "level": 9,
+     "name": "Stinging Rub",
+     "desc": "Melee hit with a cold menthol sting"
+    },
+    {
+     "level": 12,
+     "name": "Root Snare",
+     "desc": "Damage and roots the enemy"
+    },
+    {
+     "level": 15,
+     "name": "Camphor Cloud",
+     "desc": "Lingering damage cloud"
+    },
+    {
+     "level": 18,
+     "name": "Hot Compress",
+     "desc": "Burn over time"
+    }
+   ]
+  }
+ ]
+}

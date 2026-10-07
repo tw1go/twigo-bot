@@ -35,6 +35,12 @@ export interface Manifest {
   buildings: Record<string, BuildingDef>;
   props: Record<string, PropDef> & { fence: FenceDef; 'tree-tufts': { files: string[]; size: Vec2 } };
   characters: CharacterDefs;
+  /** The six classes' art (data in classes/classes.json): combat poses, resting weapons, launch points. */
+  classes?: ClassesDefs;
+  /** The quests file, and the colour of each quest type. */
+  quests?: { file: string; colours: Record<'main' | 'side', string> };
+  /** Equipment items (items/equipment.json). */
+  equipment?: { file: string };
   /** The town's ambient NPCs (world/npcs.ts): flat pre-baked sheets, not paper dolls. */
   npcs?: NpcDefs;
   fx: Record<string, FxDef>;
@@ -67,6 +73,12 @@ export interface Manifest {
     coinFlip?: { sides: Record<'kara' | 'krus', string>; size: Vec2; frames: number; fps: number; anchor: Vec2 };
     tanodBust?: { file: string; size: Vec2; frames: number; fps: number; anchor: Vec2 };
     casinoFelt?: { file: string; size: Vec2; nineSlice: number };
+    /** The quest button's scroll (HUD). */
+    questIcon?: { file: string; size: Vec2 };
+    /** Empty equipment slots: one grey 16x16 silhouette per slot, in `frames` order. */
+    equipSlots?: { file: string; size: Vec2; frames: string[] };
+    /** Round class badges, {class} = the class id: `file` 32x32, `small` 16x16 (chat, avatar), `large` 64x64 (cards). */
+    classIcons?: { file: string; small: string; large: string; size: Vec2; smallSize: Vec2; largeSize: Vec2 };
     /** The inventory button's bag, beside the chat input. */
     inventoryIcon?: { file: string; size: Vec2 };
     loadingMoon?: { file: string; size: Vec2; frames: number; fps: number; loopFrames?: Vec2; anchor: Vec2 };
@@ -125,6 +137,57 @@ export interface FxDef {
   frame?: Vec2;
   frames?: number;
   fps?: number;
+  loop?: boolean;
+  /** A grid sheet: this many frames per row (else one row). */
+  perRow?: number;
+}
+
+/** One weapon layer of a class pose: its sheet and cell size (64x64 with the body cell at ClassesDefs.bodyOffset, or
+ *  32x48 like the body). */
+export interface ClassLayer {
+  file: string;
+  size: Vec2;
+}
+
+/** A class pose facing one way: back layers, the body, its face (front views only), then the front layers. */
+export interface ClassDirLayers {
+  body: string;
+  face?: string;
+  back: ClassLayer[];
+  front: ClassLayer[];
+}
+
+export interface ClassAnim {
+  frames: number;
+  fps: number;
+  loop: boolean;
+  dirs: Partial<Record<Dir, ClassDirLayers>>;
+}
+
+/** The resting weapon in town: sheets over the base idle and walk (the body's frame), or (the Hilot's balm) a loop of
+ *  its own over both. */
+export interface ClassRest {
+  anims?: Partial<Record<'idle' | 'walk', Partial<Record<Dir, { back: ClassLayer[]; front: ClassLayer[] }>>>>;
+  own?: { frames: number; fps: number; loop: boolean };
+  dirs?: Partial<Record<Dir, { back: ClassLayer[]; front: ClassLayer[] }>>;
+}
+
+export interface ClassArt {
+  /** The class badge (32x32; ui.classIcons has the other sizes). */
+  icon: string;
+  anims: Record<string, ClassAnim>;
+  rest: ClassRest;
+  /** fx spawn points per anim/dir/frame (launch.json, 64-cell coords). */
+  launch?: string;
+  /** The Slingshot's pebble launch on the release frame, body-cell px. */
+  launchPoints?: Partial<Record<Dir, Vec2>>;
+}
+
+export interface ClassesDefs {
+  data: string;
+  /** Where the 32x48 body cell sits in a 64x64 weapon cell. */
+  bodyOffset: Vec2;
+  list: Record<string, ClassArt>;
 }
 
 export type Dir = 's' | 'se' | 'e' | 'ne' | 'n' | 'nw' | 'w' | 'sw';

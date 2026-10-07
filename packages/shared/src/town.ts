@@ -18,6 +18,9 @@ export interface TownPlayer {
   sit: boolean;
   /** In jail (shown under their name). */
   jailed?: boolean;
+  /** Their class (the chat's badge) and the weapon they wear (its resting weapon in town), if any. */
+  cls?: string | null;
+  weapon?: string | null;
 }
 
 /** Browser → server. A step is to a neighbouring tile; the server checks it (walkable, adjacent, walking speed). */
@@ -184,6 +187,8 @@ export type TownServerMessage =
   | { t: 'house'; change: 'built' | 'look' | 'fence'; house: HoodHouse; col: number; row: number; door: [number, number]; fence: HoodMap['fence'] }
   /** Someone changed their look or title at the Parlor (you too: `id` is yours). */
   | { t: 'look'; id: string; outfit: OutfitData; title: TitleData }
+  /** Someone chose a class or changed their weapon (you too: `id` is yours). */
+  | { t: 'kit'; id: string; cls: string | null; weapon: string | null }
   /** Someone was jailed or released (you too: `id` is yours). */
   | { t: 'jailed'; id: string; on: boolean }
   /** Someone flexed an item from their bag (`id` says it; to everyone, them included). */

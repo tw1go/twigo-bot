@@ -31,10 +31,14 @@ function walk(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(join(dir, e.name)) : [join(dir, e.name)]));
 }
 
-/** Character layers group by item (the name without -{anim}-{dir}); the rest by top folder. */
+/** Character layers group by item (the name without -{anim}-{dir}); a class's combat poses by class and anim
+ *  (characters/classes/<class>/<anim>), the class fx by their folder (fx/<class>); the rest by top folder. */
 function groupOf(file: string, anims: string[], dirs: string[]): string {
+  const parts = file.split('/');
+  if (parts[0] === 'characters' && parts[1] === 'classes' && parts.length > 4) return `class-${parts[2]}-${parts[3]}`;
+  if (parts[0] === 'fx' && parts.length > 2) return `fx-${parts[1]}`;
   const m = basename(file).match(new RegExp(`^(.+)-(?:${anims.join('|')})-(?:${dirs.join('|')})\\.png$`));
-  return m ? m[1] : file.split('/')[0];
+  return m ? m[1] : parts[0];
 }
 
 /** Shelf packing, tallest first: fine for pixel art of similar heights. Returns one list of placements per page. */
