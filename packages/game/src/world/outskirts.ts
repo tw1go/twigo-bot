@@ -100,8 +100,6 @@ export function outskirts(M: Manifest, map: TownMap, view: Phaser.Geom.Rectangle
   return { tiles, objects };
 }
 
-/** The Slums' canal runs on past the map's north and south edges in these columns. */
-const SLUMS_CANAL: [number, number] = [62, 63];
 /** What's scattered round the Slums: [id prefix, weight] (the dead trees also line every edge, carrying on the map's own). */
 const SLUMS_JUNK: [string, number][] = [
   ['slums-dead-tree-', 0.6],
@@ -110,76 +108,104 @@ const SLUMS_JUNK: [string, number][] = [
   ['slums-power-pole-', 0.1],
   ['slums-car-wreck-', 0.08],
 ];
+const CELL = 4; // tiles: at most one prop per CELL × CELL cell past the treeline (so props never meet, wherever they're made)
 
 /**
- * Round the Slums (no forest there): its dirt for whatever the camera can see past the map, the canal carried on
- * north and south, a concrete road on out from the gate back to town, and a seeded scatter of dead trees (thick
- * along the edges, carrying on the map's own treeline), junk mounds, shanties, power poles and car wrecks, none of them
- * on the canal, the road or each other. Not walkable, like the forest.
+ * Round the Slums (no forest there), asked tile by tile and region by region, so it can be made only near the camera
+ * (the map is 256 × 192): its dirt past the map, the canal carried on north and south (the columns it has on the
+ * map's first and last rows), a concrete road on out from the gate back to town, and a seeded scatter of dead trees
+ * (close along the edges, carrying on the map's own treeline), junk mounds, shanties, power poles and car wrecks: at
+ * most one per 4 × 4 cell (2 × 2 in the treeline), its footprint inside the cell, off the canal and the road. Not
+ * walkable, like the forest.
  */
-export function slumsOutskirts(M: Manifest, map: TownMap, view: Phaser.Geom.Rectangle): { tiles: OutTile[]; objects: MapObject[] } {
-  const [cols, rows] = map.size;
-  const inMap = (c: number, r: number) => c >= 0 && r >= 0 && c < cols && r < rows;
-  const canal = (c: number, r: number) => (r < 0 || r >= rows) && c >= SLUMS_CANAL[0] && c <= SLUMS_CANAL[1];
-  // The road out: the gate's tiles carried on past the edge they're on.
-  const gate = map.gates?.town ?? [];
-  const road = (c: number, r: number) =>
-    gate.some(([gc, gr]) => (gc === cols - 1 && c >= cols && r === gr) || (gc === 0 && c < 0 && r === gr) || (gr === rows - 1 && r >= rows && c === gc) || (gr === 0 && r < 0 && c === gc));
-  const seen = (c: number, r: number) => {
-    const t = tileToScreen(c, r);
-    const y = t.y + 8;
-    return t.x >= view.left - MARGIN.x && t.x <= view.right + MARGIN.x && y >= view.top - MARGIN.top && y <= view.bottom + MARGIN.bottom;
-  };
-  const tiles: OutTile[] = [];
-  for (let r = -REACH; r < rows + REACH; r++) {
-    for (let c = -REACH; c < cols + REACH; c++) {
-      if (inMap(c, r) || !seen(c, r)) continue;
-      tiles.push({ col: c, row: r, kind: canal(c, r) ? 'canal' : road(c, r) ? 'concrete' : 'dirt', style: '' });
-    }
+export class SlumsOutskirts {
+  private readonly cols: number;
+  private readonly rows: number;
+  private readonly canalN: Set<number>;
+  private readonly canalS: Set<number>;
+  private readonly gate: [number, number][];
+  private readonly pools: { ids: string[]; weight: number }[];
+  private readonly total: number;
+  private readonly deadTrees: string[];
+
+  constructor(
+    private readonly M: Manifest,
+    map: TownMap,
+  ) {
+    [this.cols, this.rows] = map.size;
+    const canalAt = (r: number) => new Set(map.ground[r].flatMap((k, c) => (k === 'canal' ? [c] : [])));
+    this.canalN = canalAt(0);
+    this.canalS = canalAt(this.rows - 1);
+    this.gate = map.gates?.town ?? [];
+    this.pools = SLUMS_JUNK.map(([prefix, weight]) => ({ ids: Object.keys(M.props).filter((id) => id.startsWith(prefix)), weight })).filter((p) => p.ids.length);
+    this.total = this.pools.reduce((n, p) => n + p.weight, 0);
+    this.deadTrees = this.pools.find((p) => p.ids[0].startsWith('slums-dead-tree-'))?.ids ?? [];
   }
 
-  // Props, biggest first, each on free ground (its whole footprint, a tile of space round it, off the canal and road).
-  const pools = SLUMS_JUNK.map(([prefix, w]) => [Object.keys(M.props).filter((id) => id.startsWith(prefix)), w] as const).filter(([ids]) => ids.length);
-  const taken = new Set<string>();
-  const clear = (c: number, r: number, fc: number, fr: number) => {
-    for (let dr = -1; dr <= fr; dr++)
-      for (let dc = -1; dc <= fc; dc++) {
-        const x = c + dc;
-        const y = r + dr;
-        if (inMap(x, y) || taken.has(`${x},${y}`) || canal(x, y) || road(x, y) || canal(x - 1, y) || canal(x + 1, y) || road(x, y - 1) || road(x, y + 1)) return false;
-      }
-    return true;
-  };
-  const objects: MapObject[] = [];
-  const add = (id: string, c: number, r: number) => {
-    const def = M.props[id] as PropDef | undefined;
-    const [fc, fr] = (def as PropDef & { footprint?: [number, number] })?.footprint ?? [1, 1];
-    if (!def?.file || !clear(c, r, fc, fr)) return;
-    for (let dr = 0; dr < fr; dr++) for (let dc = 0; dc < fc; dc++) taken.add(`${c + dc},${r + dr}`);
-    objects.push({ kind: 'prop', id, col: c, row: r, footprint: [fc, fr], flip: tileRandom(c, r, 44) < 0.5 });
-  };
-  const deadTrees = pools.find(([ids]) => ids[0].startsWith('slums-dead-tree-'))?.[0] ?? [];
-  const total = pools.reduce((n, [, w]) => n + w, 0);
-  for (const t of tiles) {
-    if (t.kind !== 'dirt') continue;
-    const { col: c, row: r } = t;
-    // How far past the map's edge.
-    const out = Math.max(-c, -r, c - cols + 1, r - rows + 1);
-    if (out <= 2) {
-      // The treeline: dead trees close along every edge.
-      if (deadTrees.length && tileRandom(c, r, 41) < 0.3) add(pick(deadTrees, tileRandom(c, r, 42)), c, r);
-      continue;
-    }
-    if (tileRandom(c, r, 43) >= 0.055) continue; // sparse: the map is what you look at
-    let roll = tileRandom(c, r, 45) * total;
-    for (const [ids, w] of pools) {
-      if (roll < w) {
-        add(pick(ids, tileRandom(c, r, 46)), c, r);
-        break;
-      }
-      roll -= w;
-    }
+  private inMap(c: number, r: number): boolean {
+    return c >= 0 && r >= 0 && c < this.cols && r < this.rows;
   }
-  return { tiles, objects };
+
+  private canal(c: number, r: number): boolean {
+    return (r < 0 && this.canalN.has(c)) || (r >= this.rows && this.canalS.has(c));
+  }
+
+  /** The gate's tiles carried on past the edge they're on. */
+  private road(c: number, r: number): boolean {
+    const [cols, rows] = [this.cols, this.rows];
+    return this.gate.some(([gc, gr]) => (gc === cols - 1 && c >= cols && r === gr) || (gc === 0 && c < 0 && r === gr) || (gr === rows - 1 && r >= rows && c === gc) || (gr === 0 && r < 0 && c === gc));
+  }
+
+  /** A tile past the map: its ground. */
+  kind(c: number, r: number): 'canal' | 'concrete' | 'dirt' {
+    return this.canal(c, r) ? 'canal' : this.road(c, r) ? 'concrete' : 'dirt';
+  }
+
+  /** How far past the map's edge (0 or less: on it). */
+  private past(c: number, r: number): number {
+    return Math.max(-c, -r, c - this.cols + 1, r - this.rows + 1);
+  }
+
+  /** The props whose top tile is in [c0, c1] × [r0, r1] (only past the map). */
+  objectsIn(c0: number, r0: number, c1: number, r1: number): MapObject[] {
+    const out: MapObject[] = [];
+    const free = (c: number, r: number, fc: number, fr: number) => {
+      for (let dr = -1; dr <= fr; dr++) for (let dc = -1; dc <= fc; dc++) if (this.inMap(c + dc, r + dr) || this.canal(c + dc, r + dr) || this.road(c + dc, r + dr)) return false;
+      return true;
+    };
+    const add = (id: string, c: number, r: number) => {
+      const def = this.M.props[id] as (PropDef & { footprint?: [number, number] }) | undefined;
+      const [fc, fr] = def?.footprint ?? [1, 1];
+      if (def?.file && free(c, r, fc, fr)) out.push({ kind: 'prop', id, col: c, row: r, footprint: [fc, fr], flip: tileRandom(c, r, 44) < 0.5 });
+    };
+    // The treeline: a dead tree in some 2 × 2 cells within 2 tiles of the edge.
+    for (let cr = Math.floor(r0 / 2); cr <= Math.floor(r1 / 2); cr++) {
+      for (let cc = Math.floor(c0 / 2); cc <= Math.floor(c1 / 2); cc++) {
+        const c = cc * 2 + (tileRandom(cc, cr, 47) < 0.5 ? 0 : 1);
+        const r = cr * 2 + (tileRandom(cc, cr, 48) < 0.5 ? 0 : 1);
+        if (c < c0 || c > c1 || r < r0 || r > r1) continue;
+        const d = this.past(c, r);
+        if (d < 1 || d > 2 || !this.deadTrees.length || tileRandom(cc, cr, 41) >= 0.55) continue;
+        const id = pick(this.deadTrees, tileRandom(cc, cr, 42));
+        const fp = (this.M.props[id] as PropDef & { footprint?: [number, number] }).footprint ?? [1, 1];
+        if (fp[0] === 1 && fp[1] === 1) add(id, c, r);
+      }
+    }
+    // Past it: one in some CELL × CELL cells, its footprint inside the cell.
+    for (let cr = Math.floor(r0 / CELL); cr <= Math.floor(r1 / CELL); cr++) {
+      for (let cc = Math.floor(c0 / CELL); cc <= Math.floor(c1 / CELL); cc++) {
+        if (tileRandom(cc, cr, 43) >= 0.22) continue;
+        let roll = tileRandom(cc, cr, 45) * this.total;
+        const pool = this.pools.find((p) => (roll -= p.weight) < 0) ?? this.pools[0];
+        const id = pick(pool.ids, tileRandom(cc, cr, 46));
+        const fp = (this.M.props[id] as PropDef & { footprint?: [number, number] }).footprint ?? [1, 1];
+        if (fp[0] > CELL || fp[1] > CELL) continue;
+        const c = cc * CELL + Math.floor(tileRandom(cc, cr, 49) * (CELL - fp[0] + 1));
+        const r = cr * CELL + Math.floor(tileRandom(cc, cr, 50) * (CELL - fp[1] + 1));
+        if (c < c0 || c > c1 || r < r0 || r > r1 || this.past(c, r) <= 2) continue;
+        add(id, c, r);
+      }
+    }
+    return out;
+  }
 }
-

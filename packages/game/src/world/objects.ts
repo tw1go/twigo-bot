@@ -16,6 +16,11 @@ import { hash, rng } from './rng';
 // anything overlapping a big object on screen is also checked with the footprint rule: entirely past its far
 // col/row → in front; entirely before its col/row → behind. See BigObject / sortAgainstBig.
 
+/** Streamed maps: tiles per side of a region, and how far round the view regions are made / dropped (px). */
+const REGION = 16;
+const STREAM_NEAR = 320;
+const STREAM_FAR = 1100;
+
 /** Buildings that get a looping coin sparkle. */
 const SPARKLE_BUILDINGS = ['jackpot-booth', 'bank', 'sari-sari-store'];
 
@@ -92,12 +97,35 @@ export class WorldObjects {
   /** The ground's levels (flat in town): objects stand on them. */
   readonly heights: Heights;
 
+  /**
+   * Big maps (the Slums, 256 × 192 with ~2,100 objects) are streamed: their props are made only near the camera, in
+   * REGION × REGION-tile regions (big ones first, so smaller ones sort against them), and dropped once well away;
+   * `extra` adds the props of a region past the map (the outskirts). New images get the day/night tint (onSpawn).
+   */
+  private readonly regionIndex: Map<string, MapObject[]> | null = null;
+  private readonly liveRegions = new Map<string, { images: Phaser.GameObjects.Image[]; big: BigObject[]; rect: Phaser.Geom.Rectangle }>();
+  private capture: Phaser.GameObjects.Image[] | null = null;
+  private lastRange = '';
+  extra: ((c0: number, r0: number, c1: number, r1: number) => MapObject[]) | null = null;
+  onSpawn: ((o: Phaser.GameObjects.Components.Tint) => void) | null = null;
+
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly M: Manifest,
     private readonly map: TownMap,
+    stream = false,
   ) {
     this.heights = new Heights(map);
+    if (stream) {
+      this.regionIndex = new Map();
+      for (const o of map.objects) {
+        const k = `${Math.floor(o.col / REGION)},${Math.floor(o.row / REGION)}`;
+        const list = this.regionIndex.get(k);
+        if (list) list.push(o);
+        else this.regionIndex.set(k, [o]);
+      }
+      return;
+    }
     // Big objects first, so smaller ones can be sorted against them.
     const isBig = (o: MapObject) => o.footprint[0] * o.footprint[1] > 1;
     const ordered = [...map.objects.filter(isBig), ...map.objects.filter((o) => !isBig(o))];
@@ -119,8 +147,68 @@ export class WorldObjects {
     return { x: t.x, y: t.y - this.heights.at(col, row) * LEVEL_PX };
   }
 
+  /** Makes the regions that have come near the view and drops those far from it (streamed maps only). */
+  stream(view: Phaser.Geom.Rectangle): void {
+    if (!this.regionIndex) return;
+    const near = new Phaser.Geom.Rectangle(view.x - STREAM_NEAR, view.y - STREAM_NEAR, view.width + STREAM_NEAR * 2, view.height + STREAM_NEAR * 2);
+    const range = `${Math.floor(near.x / 128)},${Math.floor(near.y / 128)},${Math.floor(near.right / 128)},${Math.floor(near.bottom / 128)}`;
+    if (range === this.lastRange) return;
+    this.lastRange = range;
+    const far = new Phaser.Geom.Rectangle(view.x - STREAM_FAR, view.y - STREAM_FAR, view.width + STREAM_FAR * 2, view.height + STREAM_FAR * 2);
+    for (const [k, l] of this.liveRegions) {
+      if (Phaser.Geom.Rectangle.Overlaps(far, l.rect)) continue;
+      for (const img of l.images) img.destroy();
+      const gone = new Set(l.images);
+      const drop = <T>(arr: T[], test: (x: T) => boolean) => {
+        for (let i = arr.length - 1; i >= 0; i--) if (test(arr[i])) arr.splice(i, 1);
+      };
+      drop(this.sprites, (x) => gone.has(x));
+      drop(this.big, (b) => l.big.includes(b));
+      this.liveRegions.delete(k);
+    }
+    // Regions whose box (with room for tall props) meets the near view.
+    const cs = [near.x / 16 + near.y / 8, near.right / 16 + near.y / 8, near.x / 16 + near.bottom / 8, near.right / 16 + near.bottom / 8].map((v) => v / 2);
+    const rs = [near.y / 8 - near.x / 16, near.y / 8 - near.right / 16, near.bottom / 8 - near.x / 16, near.bottom / 8 - near.right / 16].map((v) => v / 2);
+    const fresh: { k: string; objs: MapObject[]; rect: Phaser.Geom.Rectangle }[] = [];
+    for (let rr = Math.floor((Math.min(...rs) - 2) / REGION); rr <= Math.floor((Math.max(...rs) + 14) / REGION); rr++) {
+      for (let rc = Math.floor((Math.min(...cs) - 2) / REGION); rc <= Math.floor((Math.max(...cs) + 14) / REGION); rc++) {
+        const k = `${rc},${rr}`;
+        if (this.liveRegions.has(k)) continue;
+        const c0 = rc * REGION;
+        const r0 = rr * REGION;
+        const rect = new Phaser.Geom.Rectangle((c0 - r0 - REGION) * 16 - 64, (c0 + r0) * 8 - 220, (2 * REGION) * 16 + 128, 2 * REGION * 8 + 260);
+        if (!Phaser.Geom.Rectangle.Overlaps(near, rect)) continue;
+        const own = this.regionIndex.get(k) ?? [];
+        const past = this.extra?.(c0, r0, c0 + REGION - 1, r0 + REGION - 1) ?? [];
+        fresh.push({ k, objs: [...own, ...past], rect });
+      }
+    }
+    // Big ones of every new region first, then the rest, so the small sort against them.
+    const isBig = (o: MapObject) => o.footprint[0] * o.footprint[1] > 1;
+    const made = new Map<string, { images: Phaser.GameObjects.Image[]; big: BigObject[] }>();
+    for (const pass of [true, false]) {
+      for (const f of fresh) {
+        const images: Phaser.GameObjects.Image[] = made.get(f.k)?.images ?? [];
+        const bigBefore = this.big.length;
+        this.capture = images;
+        for (const o of f.objs) if (isBig(o) === pass && o.kind === 'prop') this.addProp(o);
+        this.capture = null;
+        made.set(f.k, { images, big: [...(made.get(f.k)?.big ?? []), ...this.big.slice(bigBefore)] });
+      }
+    }
+    for (const f of fresh) {
+      const m = made.get(f.k)!;
+      for (const img of m.images) this.onSpawn?.(img);
+      this.liveRegions.set(f.k, { ...m, rect: f.rect });
+    }
+  }
+
   private track<T extends Phaser.GameObjects.Image>(img: T): T {
     this.sprites.push(img);
+    if (this.capture) {
+      this.capture.push(img); // streamed: kept by its region, not culled by the scene
+      return img;
+    }
     this.cullable.push(img);
     return img;
   }

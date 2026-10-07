@@ -61,7 +61,7 @@ import { Culler } from '../world/cull';
 import { rng } from '../world/rng';
 import { type Tile, WalkGrid } from '../world/grid';
 import { Ground } from '../world/ground';
-import { outskirts, slumsOutskirts } from '../world/outskirts';
+import { SlumsOutskirts, outskirts } from '../world/outskirts';
 import { Terrain } from '../world/terrain';
 import { Mobs } from '../world/mobs';
 import { LEVEL_PX } from '../world/heights';
@@ -321,16 +321,27 @@ export class TownScene extends Phaser.Scene {
     applyTimeOverride();
     buildOutfit(this, this.M.characters, this.outfit);
     if (this.hood) this.addHouses();
-    this.objects = new WorldObjects(this, this.M, this.map);
+    // A big map (the Slums) is streamed round the camera: its objects, ground and outskirts (world/terrain.ts).
+    const big = !!this.map.height;
+    this.objects = new WorldObjects(this, this.M, this.map, big);
+    const junk = big ? new SlumsOutskirts(this.M, this.map) : null;
+    if (junk) this.objects.extra = (c0, r0, c1, r1) => junk.objectsIn(c0, r0, c1, r1);
+    this.objects.onSpawn = (o) => this.tint >= 0 && o.setTint(this.tint);
     if (this.map.bridge) this.bridges.push(drawBridge(this, this.map.bridge));
     this.map.bridges?.forEach((b, i) => this.bridges.push(drawBridge(this, b.tiles, b.along, `bridge-${i}`)));
     for (const [to, tiles] of Object.entries(this.map.gates ?? {}) as [Gate, [number, number][]][]) for (const [c, r] of tiles) this.gateAt.set(`${c},${r}`, to);
     // The forest around the town fills what the camera can see past the map, without widening that view.
     const bounds = this.townBounds();
-    // (The Slums: their junk and shanties instead, and raised ground: world/terrain.ts.)
-    const forest = this.map.height ? slumsOutskirts(this.M, this.map, bounds) : outskirts(this.M, this.map, bounds);
-    this.ground = this.map.height ? new Terrain(this, this.M, this.map, this.objects.heights, forest.tiles) : new Ground(this, this.M, this.map, forest.tiles);
-    this.objects.addOutskirts(forest.objects);
+    // (The Slums: their junk and shanties instead, streamed, and raised ground: world/terrain.ts.)
+    if (big) {
+      const terrain = new Terrain(this, this.M, this.map, this.objects.heights, junk);
+      terrain.onSpawn = (o) => this.tint >= 0 && o.setTint(this.tint);
+      this.ground = terrain;
+    } else {
+      const forest = outskirts(this.M, this.map, bounds);
+      this.ground = new Ground(this, this.M, this.map, forest.tiles);
+      this.objects.addOutskirts(forest.objects);
+    }
     this.nightLife = new NightLife(this, this.M, this.map, this.objects.lamps);
     this.grid = new WalkGrid(this.map);
     for (const b of this.objects.buildings) for (const [c, r] of b.doors) this.doorAt.set(`${c},${r}`, b);
@@ -360,6 +371,7 @@ export class TownScene extends Phaser.Scene {
     if (P) setRacePortraits((id) => `${import.meta.env.BASE_URL}assets/${P.file.replace('{id}', id)}`);
 
     this.setupCamera(bounds);
+    this.streamWorld(); // (a streamed map: what the first frame shows)
     // Only what the camera can see is drawn and animated.
     this.culler = new Culler([...this.ground.cullable, ...this.objects.cullable]);
     this.culler.onShow = (img) => this.ground.refresh(img);
@@ -413,6 +425,7 @@ export class TownScene extends Phaser.Scene {
     const zoom = this.cameras.main.zoom;
     if (zoom !== this.labelZoom && !this.intro && !this.inside) this.sizeForZoom(zoom);
     this.ground.tick(time);
+    this.streamWorld();
     this.keyTurn();
     this.player.update(delta);
     if (this.fenceLater) {
@@ -505,6 +518,14 @@ export class TownScene extends Phaser.Scene {
       ticket: this.M.ui.jackpotIcon?.file ? asset(this.M.ui.jackpotIcon.file) : null,
       quest: this.M.ui.questIcon?.file ? asset(this.M.ui.questIcon.file) : null,
     });
+  }
+
+  /** A streamed map: makes the ground and objects near the camera, drops those far away. */
+  private streamWorld(): void {
+    if (!(this.ground instanceof Terrain)) return;
+    const view = this.cameras.main.worldView;
+    this.ground.stream(view);
+    this.objects.stream(view);
   }
 
   /** The tile drawn under a world point: on raised ground the highest one whose raised diamond is there. */

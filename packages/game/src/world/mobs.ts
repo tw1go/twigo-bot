@@ -127,7 +127,7 @@ export class Mobs {
     for (let tries = 0; tries < 6; tries++) {
       const to = { col: m.spawn.col + Phaser.Math.Between(-ROAM, ROAM), row: m.spawn.row + Phaser.Math.Between(-ROAM, ROAM) };
       if ((to.col === from.col && to.row === from.row) || !this.canStand(m, to)) continue;
-      const path = this.grid.findPath(from, to);
+      const path = this.grid.findPath(from, to, 200); // a short hop: a small search
       if (!path || path.length > ROAM * 2 + 1 || !path.every((t) => this.canStand(m, t))) continue;
       m.path = path.slice(1);
       return;

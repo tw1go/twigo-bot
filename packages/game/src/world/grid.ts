@@ -10,8 +10,9 @@ export interface Tile {
   row: number;
 }
 
-/** A* gives up after expanding this many tiles per tile of map (the town has 5,184, the Slums 12,288). */
-const SEARCH_CAP_PER_TILE = 2.5;
+/** A* stops after expanding this many tiles (the town has 5,184, the Slums 49,152): a long click on a big map then walks
+ *  to the closest tile it found on the way, and the next click carries on. */
+const SEARCH_CAP = 30_000;
 
 const STEPS: [number, number][] = [
   [1, 0], [-1, 0], [0, 1], [0, -1],
@@ -85,8 +86,9 @@ export class WalkGrid {
     );
   }
 
-  /** Shortest path from `from` to `to` (both included), or null. */
-  findPath(from: Tile, to: Tile): Tile[] | null {
+  /** Shortest path from `from` to `to` (both included); past the search cap, the way to the closest tile found; null if
+   *  there's no way (or no progress). */
+  findPath(from: Tile, to: Tile, cap = SEARCH_CAP): Tile[] | null {
     if (!this.walkable(to.col, to.row)) return null;
     if (from.col === to.col && from.row === to.row) return [from];
     const idx = (c: number, r: number) => r * this.cols + c;
@@ -136,12 +138,24 @@ export class WalkGrid {
     g[start] = 0;
     push(h(from.col, from.row), start);
     let expanded = 0;
+    let best = start;
+    let bestH = h(from.col, from.row);
+    let capped = false;
     while (heap.length) {
       const [, cur] = pop();
       if (cur === goal) break;
       if (closed[cur]) continue;
       closed[cur] = 1;
-      if (++expanded > n * SEARCH_CAP_PER_TILE) return null;
+      const cc = cur % this.cols;
+      const ch = h(cc, (cur - cc) / this.cols);
+      if (ch < bestH) {
+        bestH = ch;
+        best = cur;
+      }
+      if (++expanded > cap) {
+        capped = true;
+        break;
+      }
       const c = cur % this.cols;
       const r = (cur - c) / this.cols;
       for (const [dc, dr] of STEPS) {
@@ -157,9 +171,10 @@ export class WalkGrid {
         }
       }
     }
-    if (came[goal] < 0) return null;
+    const end = came[goal] >= 0 ? goal : capped && best !== start ? best : -1;
+    if (end < 0) return null;
     const path: Tile[] = [];
-    for (let i = goal; i >= 0; i = came[i]) {
+    for (let i = end; i >= 0; i = came[i]) {
       const c = i % this.cols;
       path.push({ col: c, row: (i - c) / this.cols });
       if (i === start) break;
