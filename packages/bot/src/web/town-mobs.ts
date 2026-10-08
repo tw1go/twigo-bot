@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import type { TownGolem, TownMob, TownMobFacing } from '@mikazuki/shared';
-import { Golem, type GolemArt, type GolemBoss, type GolemEvent } from './town-golem.js';
+import { Golem, type GolemArt, type GolemBoss, type GolemEvent, type PitTiles, pitTiles } from './town-golem.js';
 
 // 🥫 The Slums' mobs, run on the server so every player sees the same ones in the same places, and fought there. One per
 // spawn tile of each zone that's on (`active` in the game's maps/slums.json), or a pack of a few round a leader for a
@@ -240,6 +240,8 @@ export class MobRoom {
   /** Its Adds' zones (one per kind: the golem's leash, aggressive), and how many Adds it has called so far (their ids). */
   private readonly addZones = new Map<string, MobZoneData>();
   private adds = 0;
+  /** The Golem Pit's tiles: no zone's mob steps on them; the Adds keep to its floor and way in. */
+  private readonly pit: PitTiles | null;
 
   constructor(
     private readonly map: MobMapData,
@@ -250,6 +252,7 @@ export class MobRoom {
     golem?: GolemArt,
   ) {
     for (const r of map.ramps ?? []) this.ramps.add(`${r.col},${r.row}`);
+    this.pit = pitTiles(map.boss);
     for (const zone of map.mobZones ?? []) {
       if (!zone.active) continue;
       const kind = kinds[zone.mob] ?? {};
@@ -354,6 +357,7 @@ export class MobRoom {
     if (col < 0 || row < 0 || col >= cols || row >= rows || this.map.blocked[row]?.[col]) return false;
     if ((this.map.height?.[row]?.[col] ?? 0) !== m.zone.height || this.ramps.has(`${col},${row}`)) return false;
     if (!this.inRect(m.zone, col, row)) return false;
+    if (this.pit && (m.zone.id === 'golem-add' ? !this.pit.fight.has(`${col},${row}`) : this.pit.all.has(`${col},${row}`))) return false;
     const [c0, r0, c1, r1] = this.map.safeZone ?? [-1, -1, -2, -2];
     if (col >= c0 && col <= c1 && row >= r0 && row <= r1) return false;
     return Math.max(Math.abs(col - m.spawn[0]), Math.abs(row - m.spawn[1])) <= reach;
@@ -612,6 +616,8 @@ export class MobRoom {
     // (A tile of slack: the mob may be mid-hop.)
     const far = boss ? boss.edge(from, now) : Math.max(Math.abs(from[0] - mc), Math.abs(from[1] - mr));
     if (far > reach + 1) return { ok: false, reason: 'range' };
+    // The golem is only hit from its fight: the pit floor and way in (no sniping over the ring it can't answer).
+    if (boss && !boss.inFight(from)) return { ok: false, reason: 'range' };
     this.swings.set(player, now + SWING_MS);
     // (A little slack: the game's clock and the message's trip.)
     const level = (cls && this.levels[cls]?.[skill]) || 1;

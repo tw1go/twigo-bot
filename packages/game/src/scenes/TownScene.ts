@@ -2381,9 +2381,19 @@ export class TownScene extends Phaser.Scene {
     };
   }
 
-  /** Dev (?golem=now, ?golemdemo=1): on an open tile at (or past) the Golem Pit's front corner, facing it. */
+  /** Dev (?golem=now, ?golemdemo=1): on its pit floor 6–7 tiles from its middle on the way in's side, facing it (without
+   *  the pit's tiles: at or past its box's front corner). */
   private byThePit(): void {
-    const [, , c1, r1] = this.map.boss?.arena ?? [0, 0, -1, -1];
+    const boss = this.map.boss;
+    if (boss?.pit) {
+      const [hc, hr] = boss.tile;
+      const [gc, gr] = boss.pit.gap.reduce(([a, b], [c, r]) => [a + c / boss.pit!.gap.length, b + r / boss.pit!.gap.length], [0, 0]);
+      const spot = boss.pit.floor
+        .filter(([dc, dr]) => Math.hypot(dc, dr) >= 6 && Math.hypot(dc, dr) <= 7)
+        .reduce((a, b) => (Math.hypot(b[0] - gc, b[1] - gr) < Math.hypot(a[0] - gc, a[1] - gr) ? b : a));
+      return this.debugTeleport(hc + spot[0], hr + spot[1], 'nw');
+    }
+    const [, , c1, r1] = boss?.arena ?? [0, 0, -1, -1];
     for (let d = 0; d < 8; d++) if (this.grid.walkable(c1 + d, r1 + d)) return this.debugTeleport(c1 + d, r1 + d, 'nw');
   }
 

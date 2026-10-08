@@ -384,12 +384,16 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   (`ui/boss-bar.ts`, top centre, red when enraged) while its fight is on and you're within its leash; body.boss-on moves
   the mob info bar under it (hidden when that shows the golem). Debug `__town.golem()`. The golem is drawn 1.5× its art
   (mobs.json `scale`: its sprite, shadow, top, lamp, fists and own fx; body `radius` 3; the glare's cone runs 5 tiles past
-  its body). The Golem Pit prop is drawn 2× (map object `scale`, footprint 12×12 at (12,89)) and lies on the ground
-  (objects.ts: walkable floors under the ground fx and everyone; its junk ring can't hide anyone); its junk ring is in
-  the map's `blocked` (measured from the art: dirt floor open, junk blocked), so the only way in is the gap at its
-  bottom (south corner); the golem stomps in [16,93,20,97], leash 11. The props that stood under the bigger pit, the
-  blocking ones within 4 tiles of its ring and within 8 in front of its gap (room for a crowd) are gone, and its lamp posts
-  don't block, in slums.json; the canal's plank crossing sits on the road's rows (93–95; it was a row south) (the art folder's copy still has the 6×6 pit: copy the map over again and this is lost). Packs (`scripts/packs.ts`) are written unfiltered with plain deflate (pngjs's RLE default made them ~5× bigger).
+  its body). The Golem Pit (v3, `slums-golem-pit-3`): two halves (back, front)
+  on one canvas and anchor, the anchor the ground point of the pit floor's centre tile (boss.tile (21,96)); each half sorts
+  as if its feet were at anchor y + sortOffsetY (back −144, front +231: WorldObjects `addHalves`, made once and kept on a
+  streamed map), characters and the golem between; no cast shadow. Its tiles (the art's json, in slums.json boss.pit as
+  [dcol, drow]): ring 322 (blocked), pit floor 399, way in 9 (the art's 7 + its corner tiles (32,101), (33,100): it met
+  the floor only corner to corner, which walking never cuts). The pit floor and way in are the golem's fight (its leash,
+  where it's hit from: others get 'range'; the boss bar); it stands only where its body (radius 3) is all floor; Call the
+  Junk spots are floor tiles round it; its Adds keep to the floor and way in; no zone's mob steps on a pit tile
+  (`pitTiles` in web/town-golem.ts). The props under the old pits and round them are gone, the old stand-in's blocking
+  cleared; the canal's plank crossing sits on the road's rows (93–95; it was a row south) (the art folder's copy still has the 6×6 pit: copy the map over again and this is lost). Packs (`scripts/packs.ts`) are written unfiltered with plain deflate (pngjs's RLE default made them ~5× bigger).
 - NPCs (town only, not the neighbourhood; client-side: never on the server, the online list or the minimap): the
   Tanod and ten Alings, flat pre-baked sheets (manifest `npcs`, art in `assets/npcs/`, one pack per NPC; `Character`
   with `FlatSheets`, never the paper doll). Homes, behaviours, the Tanod's route, voices and portrait facing in

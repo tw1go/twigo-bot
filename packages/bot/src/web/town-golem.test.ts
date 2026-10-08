@@ -4,7 +4,7 @@ import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { WebSocket } from 'ws';
 import type { TownServerMessage } from '@mikazuki/shared';
-import { Golem, type GolemEvent, type GolemHost, downLine, inCone, loadGolemArt, nextRiseAfter } from './town-golem.js';
+import { Golem, type GolemEvent, type GolemHost, downLine, inCone, loadGolemArt, nextRiseAfter, pitTiles } from './town-golem.js';
 import { MobRoom, loadMobKinds, loadMobMap } from './town-mobs.js';
 import { attachTown } from './town.js';
 
@@ -164,7 +164,7 @@ test('between 2 and 3 tiles of its edge it steps closer (inside its leash), then
   assert.equal(attacks(evs)[0].e.attack, 'slam');
 });
 
-test('at half HP it calls the Junk once: 3–4 spots round the pit, 2 Tin Cans and a Bottle Caps pack as Adds that come for the nearest player', () => {
+test('at half HP it calls the Junk once: 3–4 spots on the pit floor round it, 2 Tin Cans and a Bottle Caps pack as Adds that come for the nearest player', () => {
   const room = new MobRoom(map, lcg(5), {}, { shapes: {} }, kinds, art);
   room.riseGolem(0);
   room.tick(1000);
@@ -182,10 +182,11 @@ test('at half HP it calls the Junk once: 3–4 spots round the pit, 2 Tin Cans a
   assert.ok(call!.golem.hp <= 2000 && call!.golem.hp > 1975, `${call!.golem.hp}`);
   const spots = call!.spots!;
   assert.ok(spots.length === 3 || spots.length === 4, `${spots.length}`);
-  const [c0, r0, c1, r1] = boss.arena;
+  const pit = pitTiles(boss)!;
+  const g = room.golemState(t)!;
   for (const [c, r] of spots) {
-    assert.ok(!(c >= c0 && c <= c1 && r >= r0 && r <= r1), 'outside the pit');
-    assert.ok(Math.max(Math.abs(c - boss.tile[0]), Math.abs(r - boss.tile[1])) <= boss.leash && !map.blocked[r][c] && map.height![r][c] === map.height![boss.tile[1]][boss.tile[0]], 'open, in its leash, on its level');
+    assert.ok(pit.floor.has(`${c},${r}`) && !map.blocked[r][c], 'on the pit floor, open');
+    assert.ok(Math.hypot(c - g.col, r - g.row) >= art.radius + 2, 'clear of its body');
   }
   assert.equal(call!.ms, art.callMs);
   // The Adds after the fx.
@@ -375,4 +376,86 @@ test('its lines reach only those in the Slums: not the town, not the feed kept f
   for (const c of [inTown, inSlums, later]) c.ws.close();
   void town;
   await new Promise((ok) => server.close(ok));
+});
+
+// ── The Golem Pit (v3): its ring, pit floor and way in on the map ──
+
+/** Walking as the game does (8 ways, no cut corners) from `a` to `b` over open tiles; the path, or null. */
+function walk(a: [number, number], b: [number, number], blocked = map.blocked): [number, number][] | null {
+  const [cols, rows] = map.size;
+  const open = (c: number, r: number) => c >= 0 && r >= 0 && c < cols && r < rows && !blocked[r][c] && (map.height?.[r]?.[c] ?? 0) === map.height![b[1]][b[0]];
+  const key = (c: number, r: number) => c * 4096 + r;
+  const came = new Map<number, number>([[key(...a), -1]]);
+  const queue = [a];
+  for (let i = 0; i < queue.length; i++) {
+    const [c, r] = queue[i];
+    if (c === b[0] && r === b[1]) {
+      const path: [number, number][] = [];
+      for (let k = key(c, r); k !== -1; k = came.get(k)!) path.push([Math.floor(k / 4096), k % 4096]);
+      return path.reverse();
+    }
+    for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+      const [nc, nr] = [c + dc, r + dr];
+      if (came.has(key(nc, nr)) || !open(nc, nr) || (dc && dr && (!open(c + dc, r) || !open(c, r + dr)))) continue;
+      came.set(key(nc, nr), key(c, r));
+      queue.push([nc, nr]);
+    }
+  }
+  return null;
+}
+
+test('the pit on the map: its ring blocked, its floor and way in open and flat, nothing else standing on it', () => {
+  const pit = pitTiles(boss)!;
+  assert.deepEqual([pit.ring.size, pit.floor.size, pit.gap.size], [322, 399, 9]); // the art's, with the way in's corner opened (it met the floor only corner to corner)
+  assert.deepEqual(boss.tile, [21, 96]);
+  const tile = (k: string) => k.split(',').map(Number) as [number, number];
+  for (const k of pit.ring) assert.equal(map.blocked[tile(k)[1]][tile(k)[0]], 1, `ring ${k}`);
+  for (const k of pit.fight) assert.equal(map.blocked[tile(k)[1]][tile(k)[0]], 0, `open ${k}`);
+  for (const k of pit.all) assert.equal(map.height![tile(k)[1]][tile(k)[0]], 1, `flat ${k}`);
+});
+
+test('the only way onto the pit floor is its way in, from the safe zone, and it is 2 tiles wide out to the east', () => {
+  const pit = pitTiles(boss)!;
+  const [c0, r0] = map.safeZone!;
+  const start: [number, number] = [c0, r0 + 30];
+  const way = walk(start, boss.tile);
+  assert.ok(way, 'a way in from the safe zone');
+  assert.ok(way.some(([c, r]) => pit.gap.has(`${c},${r}`)), 'through the way in');
+  // With the way in blocked, no way at all.
+  const shut = map.blocked.map((row) => [...row]);
+  for (const k of pit.gap) {
+    const [c, r] = k.split(',').map(Number);
+    shut[r][c] = 1;
+  }
+  assert.equal(walk(start, boss.tile, shut), null, 'the ring is closed all round');
+  // Two tiles wide just outside it: the next column east of its last tiles is open on two rows.
+  assert.ok(!map.blocked[103][37] && !map.blocked[104][37] && !map.blocked[103][38] && !map.blocked[104][38]);
+});
+
+test('the golem is hit only from its pit floor or way in, and stands where its body clears the ring', () => {
+  const room = new MobRoom(map, lcg(), {}, { shapes: {} }, kinds, art);
+  room.riseGolem(0);
+  room.tick(art.riseMs);
+  const pit = pitTiles(boss)!;
+  // A slingshot just outside the ring, within its range of the golem's edge: refused.
+  const outside: [number, number] = [boss.tile[0] - 12, boss.tile[1]]; // ring or beyond, west
+  assert.ok(!pit.fight.has(`${outside[0]},${outside[1]}`));
+  assert.deepEqual(room.attack('p1', outside, 'slingshot', boss.id, 2000), { ok: false, reason: 'range' });
+  assert.ok(room.attack('p2', at(art.radius + 2, 0), 'slingshot', boss.id, 3000).ok, 'from the floor');
+  // A long fight: it never stands where its body would reach past the floor.
+  const players = new Map([['p2', at(art.radius + 4, 0)]]);
+  for (let t = 3250; t < 40_000; t += 250) {
+    room.tick(t, players);
+    const g = room.golemState(t)!;
+    for (let dr = -3; dr <= 3; dr++)
+      for (let dc = -3; dc <= 3; dc++)
+        if (Math.hypot(dc, dr) <= art.radius) assert.ok(pit.floor.has(`${g.col + dc},${g.row + dr}`), `body on the floor at ${g.col},${g.row}`);
+  }
+});
+
+test('no zone mob stands on any pit tile', () => {
+  const pit = pitTiles(boss)!;
+  const room = new MobRoom(map, lcg(3), {}, { shapes: {} }, kinds);
+  for (let t = 0; t < 60_000; t += 250) room.tick(t, new Map());
+  for (const m of room.snapshot(60_000)) assert.ok(!pit.all.has(`${m.col},${m.row}`), m.id);
 });

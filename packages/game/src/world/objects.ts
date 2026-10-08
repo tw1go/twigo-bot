@@ -107,6 +107,8 @@ export class WorldObjects {
   private readonly liveRegions = new Map<string, { images: Phaser.GameObjects.Image[]; big: BigObject[]; rect: Phaser.Geom.Rectangle }>();
   private capture: Phaser.GameObjects.Image[] | null = null;
   private lastRange = '';
+  /** Streamed maps' props that are always there (the Golem Pit). */
+  private readonly always: MapObject[] = [];
   extra: ((c0: number, r0: number, c1: number, r1: number) => MapObject[]) | null = null;
   onSpawn: ((o: Phaser.GameObjects.Components.Tint) => void) | null = null;
 
@@ -123,6 +125,11 @@ export class WorldObjects {
     if (stream) {
       this.regionIndex = new Map();
       for (const o of map.objects) {
+        // A prop you walk inside (the Golem Pit) is bigger than a region's margin: made once, on the first stream, kept.
+        if (o.kind === 'prop' && this.M.props[o.id]?.front) {
+          this.always.push(o);
+          continue;
+        }
         const k = `${Math.floor(o.col / REGION)},${Math.floor(o.row / REGION)}`;
         const list = this.regionIndex.get(k);
         if (list) list.push(o);
@@ -158,6 +165,7 @@ export class WorldObjects {
     const range = `${Math.floor(near.x / 128)},${Math.floor(near.y / 128)},${Math.floor(near.right / 128)},${Math.floor(near.bottom / 128)}`;
     if (range === this.lastRange) return;
     this.lastRange = range;
+    for (const o of this.always.splice(0)) this.addProp(o);
     const far = new Phaser.Geom.Rectangle(view.x - STREAM_FAR, view.y - STREAM_FAR, view.width + STREAM_FAR * 2, view.height + STREAM_FAR * 2);
     for (const [k, l] of this.liveRegions) {
       if (Phaser.Geom.Rectangle.Overlaps(far, l.rect)) continue;
@@ -303,7 +311,23 @@ export class WorldObjects {
     if (SPARKLE_BUILDINGS.includes(o.id)) this.sparkle(sprite, front);
   }
 
+  /** A prop you walk inside (the Golem Pit): its back and front halves on one anchor, the ground point of its tile's
+   *  centre; each half sorts as if its feet were at that point + its sortOffsetY (characters sort by their feet between). */
+  private addHalves(o: MapObject): void {
+    const def = this.M.props[o.id];
+    const t = this.topOf(o.col, o.row);
+    const feet = (o.col + o.row + 1) * 8 + CHARACTER_BIAS + this.heights.at(o.col, o.row) * LEVEL_PX * HEIGHT_DEPTH;
+    const off = def.sortOffsetY ?? { back: 0, front: 0 };
+    for (const [file, dy] of [[def.file, off.back], [def.front!, off.front]] as const) {
+      if (!this.scene.textures.exists(file)) assetProblems.add(`texture not loaded: ${file}`);
+      const img = this.scene.add.image(t.x, t.y + 8, file);
+      img.setOrigin(def.anchor[0] / img.frame.width, def.anchor[1] / img.frame.height).setDepth(feet + dy);
+      this.track(img);
+    }
+  }
+
   private addProp(o: MapObject): void {
+    if (this.M.props[o.id]?.front) return this.addHalves(o);
     const def = this.M.props[o.id] as PropDef | undefined;
     if (!def?.file) return console.warn(`[town] unknown prop ${o.id}`);
     const [fc, fr] = o.footprint;

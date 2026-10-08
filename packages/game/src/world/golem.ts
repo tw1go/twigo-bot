@@ -294,14 +294,23 @@ export class GolemView {
     return this.point(m, m.data?.lamp) ?? { ...this.mobs.feet(m), y: this.mobs.feet(m).y - 80 * (m.data?.scale ?? 1) };
   }
 
-  /** Every frame: the boss bar, while its fight is on and you're within its leash. */
+  /** Every frame: the boss bar, while its fight is on and you're in it (on its pit floor or in its way in). */
   update(): void {
     const g = this.state;
     const m = this.mob;
     const me = this.players.me();
-    const near = !!g && Math.max(Math.abs(me.col - g.home[0]), Math.abs(me.row - g.home[1])) <= g.leash;
+    const near = !!g && this.inFight(me.col, me.row, g);
     this.bar.show(g && m && !m.dead && g.state === 'fight' && near ? { name: this.boss.name, level: m.level, hp: m.hp, maxHp: m.maxHp, enraged: m.enraged } : null);
   }
+
+  /** You're in its fight: on its pit floor or in its way in (slums.json boss.pit), else within its leash of home. */
+  private inFight(col: number, row: number, g: TownGolem): boolean {
+    const pit = this.boss.pit;
+    if (!pit) return Math.max(Math.abs(col - g.home[0]), Math.abs(row - g.home[1])) <= g.leash;
+    this.fightTiles ??= new Set([...pit.floor, ...pit.gap].map(([dc, dr]) => `${this.boss.tile[0] + dc},${this.boss.tile[1] + dr}`));
+    return this.fightTiles.has(`${col},${row}`);
+  }
+  private fightTiles: Set<string> | null = null;
 
   destroy(): void {
     this.bar.destroy();

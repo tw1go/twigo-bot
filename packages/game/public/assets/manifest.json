@@ -13055,20 +13055,14 @@
       ],
       "walkable": true
     },
-    "slums-golem-pit-1": {
-      "file": "props/slums/prop-slums-golem-pit-1.png",
-      "size": [
-        180,
-        168
-      ],
-      "anchor": [
-        90,
-        36
-      ],
-      "footprint": [
-        6,
-        6
-      ],
+    "slums-golem-pit-3": {
+      "note": "The Golem Pit (v3): two halves on one canvas and anchor; the anchor is the ground point of the pit floor's centre tile (slums.json boss.tile), not a footprint corner. Each half sorts as if its feet were at anchor y + sortOffsetY (back behind everyone on the pit floor, front in front of them). Its tiles (ring, floor, way in) are in slums.json boss.pit.",
+      "file": "props/slums/prop-slums-golem-pit-3-back.png",
+      "front": "props/slums/prop-slums-golem-pit-3-front.png",
+      "size": [591, 453],
+      "anchor": [298, 235],
+      "sortOffsetY": { "back": -144, "front": 231 },
+      "footprint": [1, 1],
       "walkable": true
     },
     "slums-dead-tree-big-1": {

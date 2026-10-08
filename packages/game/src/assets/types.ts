@@ -113,6 +113,10 @@ export interface PropDef {
   decor?: boolean;
   animation?: AnimSheet;
   glow?: { file: string };
+  /** A prop you walk inside (the Golem Pit): `file` is its back half and this its front, on one canvas and anchor; the
+   *  anchor is the ground point of its tile's centre, and each half sorts as if its feet were at anchor y + sortOffsetY. */
+  front?: string;
+  sortOffsetY?: { back: number; front: number };
 }
 
 export interface FenceDef {
@@ -389,7 +393,11 @@ export interface TownMap {
   residents?: Vec2[];
   mobZones?: MobZone[];
   /** The Scrapheap Golem's data (not placed yet). */
-  boss?: { id: string; name: string; level: number; tile: Vec2; arena: [number, number, number, number]; everyMinutes: number; warnMinutes: number; leash: number };
+  boss?: {
+    id: string; name: string; level: number; tile: Vec2; arena: [number, number, number, number]; everyMinutes: number; warnMinutes: number; leash: number;
+    /** The Golem Pit's tiles, [dcol, drow] from `tile`: its ring, pit floor and way in. */
+    pit?: { ring: Vec2[]; floor: Vec2[]; gap: Vec2[] };
+  };
   /** Tiles over the river the game draws a bridge on (world/bridge.ts), crossing along the col axis. */
   bridge?: Vec2[];
   /** More bridges, each crossing along `along` (the slums bridge runs along the rows). */

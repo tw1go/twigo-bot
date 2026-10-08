@@ -120,7 +120,7 @@ function queueSlums(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Textures.
     [S.rim.nw, S.rim.ne, S.cap.w, S.cap.e].forEach(img);
     for (const set of Object.values(S.ramps)) Object.values(set).flat().forEach(img);
   }
-  for (const [id, p] of Object.entries(M.props)) if (id.startsWith('slums-') && (p as PropDef).file) img((p as PropDef).file);
+  for (const [id, p] of Object.entries(M.props)) if (id.startsWith('slums-')) for (const f of [(p as PropDef).file, (p as PropDef).front]) if (f) img(f);
   // Every variant's sheets of each active zone's mob (the field boss's wait: loadBoss, once the town is up).
   const ids = new Set((map.mobZones ?? []).filter((z) => z.active).map((z) => z.mob));
   for (const id of ids) {

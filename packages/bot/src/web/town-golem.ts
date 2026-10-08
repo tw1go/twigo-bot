@@ -39,11 +39,34 @@ export interface GolemBoss {
   name: string;
   level: number;
   tile: [number, number];
-  /** The Golem Pit: [col0, row0, col1, row1]; it idles inside it. */
+  /** The pit floor's extent: [col0, row0, col1, row1] (without `pit`, it idles inside it). */
   arena: [number, number, number, number];
   everyMinutes: number;
   warnMinutes: number;
+  /** Tiles of home it fights within (without `pit`). */
   leash: number;
+  /** The Golem Pit's tiles, [dcol, drow] from `tile` (the art's tile map): its ring (blocked), pit floor and way in. With
+   *  it, the pit floor and way in are its leash and the only place it's hit from; it stands where its body clears the
+   *  ring. */
+  pit?: { ring: [number, number][]; floor: [number, number][]; gap: [number, number][] };
+}
+
+/** The Golem Pit's tiles on the map ("col,row"): the ring, the pit floor, the way in, where a fight is (floor and way
+ *  in) and all of them. Null without `boss.pit`. */
+export interface PitTiles {
+  ring: Set<string>;
+  floor: Set<string>;
+  gap: Set<string>;
+  fight: Set<string>;
+  all: Set<string>;
+}
+
+export function pitTiles(boss: GolemBoss | undefined): PitTiles | null {
+  if (!boss?.pit) return null;
+  const [hc, hr] = boss.tile;
+  const set = (list: [number, number][]) => new Set(list.map(([dc, dr]) => `${hc + dc},${hr + dr}`));
+  const [ring, floor, gap] = [set(boss.pit.ring), set(boss.pit.floor), set(boss.pit.gap)];
+  return { ring, floor, gap, fight: new Set([...floor, ...gap]), all: new Set([...ring, ...floor, ...gap]) };
 }
 
 /** What it takes from its art and rules (manifest mobs.<id>, mobs/mobs.json): HP, body radius, and how long its rise
@@ -168,6 +191,28 @@ export class Golem {
     this.id = boss.id;
     [this.col, this.row] = boss.tile;
     this.hp = art.hp;
+    this.pit = pitTiles(boss);
+    // Where it may stand: pit floor tiles whose every tile within its body's radius is floor (its body clears the ring).
+    if (this.pit) {
+      const R = Math.ceil(art.radius);
+      for (const k of this.pit.floor) {
+        const [c, r] = k.split(',').map(Number);
+        let clear = true;
+        for (let dr = -R; dr <= R && clear; dr++)
+          for (let dc = -R; dc <= R && clear; dc++) if (Math.hypot(dc, dr) <= art.radius && !this.pit.floor.has(`${c + dc},${r + dr}`)) clear = false;
+        if (clear) this.stand.add(k);
+      }
+    }
+  }
+
+  /** The Golem Pit's tiles (null on a map without them). */
+  readonly pit: PitTiles | null;
+  /** Floor tiles its body fits on. */
+  private readonly stand = new Set<string>();
+
+  /** Whether a player there is in its fight: on the pit floor or in the way in (else within its leash of home). */
+  inFight(p: [number, number]): boolean {
+    return this.pit ? this.pit.fight.has(`${p[0]},${p[1]}`) : cheb(p, this.boss.tile) <= this.boss.leash;
   }
 
   get radius(): number {
@@ -287,7 +332,9 @@ export class Golem {
     this.turn(ways[1 + Math.floor(this.random() * 2)]);
   }
 
+  /** Where it may idle and stomp: floor tiles its body fits on (else the pit's box). */
   private inPit([col, row]: [number, number]): boolean {
+    if (this.pit) return this.stand.has(`${col},${row}`);
     const [c0, r0, c1, r1] = this.boss.arena;
     return col >= c0 && col <= c1 && row >= r0 && row <= r1;
   }
@@ -328,7 +375,7 @@ export class Golem {
   /** The shortest way (8 directions, no cut corners) over open tiles within its leash to the nearest tile `goal` likes. */
   private route(goal: (c: number, r: number) => boolean): [number, number][] | null {
     const home = this.boss.tile;
-    const ok = (c: number, r: number) => cheb([c, r], home) <= this.boss.leash && this.host.open(c, r);
+    const ok = (c: number, r: number) => (this.pit ? this.stand.has(`${c},${r}`) : cheb([c, r], home) <= this.boss.leash) && this.host.open(c, r);
     const key = (c: number, r: number) => c * 4096 + r;
     const came = new Map<number, number>([[key(this.col, this.row), -1]]);
     const queue: [number, number][] = [[this.col, this.row]];
@@ -361,8 +408,7 @@ export class Golem {
 
   /** In a fight: its target (whoever hit it last, within its leash; else the nearest there), closer, turned, an attack. */
   private fight(now: number, players: ReadonlyMap<string, [number, number]>): void {
-    const home = this.boss.tile;
-    const near = [...players].filter(([, p]) => cheb(p, home) <= this.boss.leash);
+    const near = [...players].filter(([, p]) => this.inFight(p));
     if (!near.length) {
       this.alone ??= now;
       if (now - this.alone >= RESET_MS) this.reset(now);
@@ -455,13 +501,21 @@ export class Golem {
     this.change('call', now, { spots, ms: this.art.callMs });
   }
 
-  /** 3–4 open tiles a tile or two outside the pit, apart from each other (round home if there are none). */
+  /** 3–4 open tiles round it, apart from each other (round home if there are none): on the pit floor, clear of its body
+   *  (without the pit's tiles: a tile or two outside its box). */
   private spots(): [number, number][] {
     const [c0, r0, c1, r1] = this.boss.arena;
     const ring: [number, number][] = [];
-    for (let r = r0 - 2; r <= r1 + 2; r++)
-      for (let c = c0 - 2; c <= c1 + 2; c++)
-        if (!this.inPit([c, r]) && cheb([c, r], this.boss.tile) <= this.boss.leash && this.host.open(c, r)) ring.push([c, r]);
+    if (this.pit) {
+      for (const k of this.pit.floor) {
+        const t = k.split(',').map(Number) as [number, number];
+        const d = Math.hypot(t[0] - this.col, t[1] - this.row);
+        if (d >= this.art.radius + 2 && d <= this.art.radius + 6 && this.host.open(...t)) ring.push(t);
+      }
+    } else
+      for (let r = r0 - 2; r <= r1 + 2; r++)
+        for (let c = c0 - 2; c <= c1 + 2; c++)
+          if (!this.inPit([c, r]) && cheb([c, r], this.boss.tile) <= this.boss.leash && this.host.open(c, r)) ring.push([c, r]);
     const want = 3 + (this.random() < 0.5 ? 1 : 0);
     const out: [number, number][] = [];
     const pool = [...ring];
