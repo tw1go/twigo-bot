@@ -14789,6 +14789,81 @@
         50
       ],
       "note": "PLACEHOLDER blink burst (Broom and Hilot), anchored on the feet. To be replaced by the PixelLab fx: change the file here."
+    },
+    "fx-enhance-success": {
+      "file": "fx/progress/fx-enhance-success.png",
+      "frame": [
+        48,
+        48
+      ],
+      "frames": 9,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        24,
+        24
+      ],
+      "note": "the forge popup (ui/forge.ts): starburst over the item slot on an enhance success (and a repair); plays once"
+    },
+    "fx-enhance-fail": {
+      "file": "fx/progress/fx-enhance-fail.png",
+      "frame": [
+        48,
+        48
+      ],
+      "frames": 7,
+      "fps": 12,
+      "loop": false,
+      "anchor": [
+        24,
+        22
+      ],
+      "note": "the forge popup: grey dust puff sinking off the item slot on an enhance fail; plays once"
+    },
+    "fx-enhance-break": {
+      "file": "fx/progress/fx-enhance-break.png",
+      "frame": [
+        48,
+        48
+      ],
+      "frames": 7,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        24,
+        24
+      ],
+      "note": "the forge popup: shards flying out of the item slot when an enhance breaks the item (with the red flash and break sound); plays once"
+    },
+    "fx-agimat-embed": {
+      "file": "fx/progress/fx-agimat-embed.png",
+      "frame": [
+        32,
+        32
+      ],
+      "frames": 7,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        16,
+        16
+      ],
+      "note": "the forge popup: ring expanding from the agimat slot as an agimat is set; plays once"
+    },
+    "fx-disassemble": {
+      "file": "fx/progress/fx-disassemble.png",
+      "frame": [
+        48,
+        48
+      ],
+      "frames": 7,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        24,
+        24
+      ],
+      "note": "the bag: chips and dust bursting out of the item slot as gear is taken apart; plays once"
     }
   },
   "ui": {

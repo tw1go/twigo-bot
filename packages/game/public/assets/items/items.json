@@ -1,5 +1,5 @@
 {
-  "note": "Combat items that aren't worn (gear is equipment.json): kind material (whetstones, fragments, Repair Kits; stack 999), potion (HP/MP Potions; stack 99, `heals` hp or mp by their tier's number in classes/stats.json potions), agimat (`stat`: its stat; the item's level and slot lock are the item's own; stack 999 with the same stat, level and lock), cosmetic (doesn't stack). rarity: its name's colour (stats.json rarity). tier: stats.json gearTiers / potions.tiers (low…). icon 16x16, showcase 32x32, large 64x64. shop: sold at the sari-sari store, priced by stats.json (potion: potions.tiers[tier].kusing in Kusing, the Healing tab; whetstone / repairKit: currencies.kowensShop in Kowens, the Smithing tab).",
+  "note": "Combat items that aren't worn (gear is equipment.json): kind material (whetstones, fragments, Repair Kits; stack 999), potion (HP/MP Potions; stack 99, `heals` hp or mp by their tier's number in classes/stats.json potions), agimat (`stat`: its stat; the item's level and slot lock are the item's own; stack 999 with the same stat, level and lock), cosmetic (doesn't stack). rarity: its name's colour (stats.json rarity). tier: stats.json gearTiers / potions.tiers (low…). icon 16x16, showcase 32x32, large 64x64. shop: sold at the sari-sari store, priced by stats.json (potion: potions.tiers[tier].kusing in Kusing, the Healing tab; whetstone / repairKit: currencies.kowensShop in Kowens, the Smithing tab). forge: what it does at the forge popup, for its tier's gear (whetstone: enhances; fragment: ten combine into its tier's whetstone; repairKit: repairs a broken item).",
   "items": [
     {
       "id": "rough-whetstone",
@@ -11,7 +11,8 @@
       "icon": "items/materials/item-mat-rough-whetstone-16.png",
       "showcase": "items/materials/item-mat-rough-whetstone.png",
       "large": "items/materials/item-mat-rough-whetstone-64.png",
-      "shop": "whetstone"
+      "shop": "whetstone",
+      "forge": "whetstone"
     },
     {
       "id": "rough-whetstone-fragment",
@@ -22,7 +23,8 @@
       "about": "Ten make a Rough Whetstone. From taking gear apart.",
       "icon": "items/materials/item-mat-rough-whetstone-fragment-16.png",
       "showcase": "items/materials/item-mat-rough-whetstone-fragment.png",
-      "large": "items/materials/item-mat-rough-whetstone-fragment-64.png"
+      "large": "items/materials/item-mat-rough-whetstone-fragment-64.png",
+      "forge": "fragment"
     },
     {
       "id": "low-repair-kit",
@@ -34,7 +36,8 @@
       "icon": "items/materials/item-mat-low-repair-kit-16.png",
       "showcase": "items/materials/item-mat-low-repair-kit.png",
       "large": "items/materials/item-mat-low-repair-kit-64.png",
-      "shop": "repairKit"
+      "shop": "repairKit",
+      "forge": "repairKit"
     },
     {
       "id": "low-hp-potion",
