@@ -40,7 +40,11 @@ A creature in the Slums that players fight; every player sees the same ones.
 _Avoid_: monster, enemy, NPC (NPCs are the town's Tanod and Alings)
 
 **Zone**:
-A stretch of the Slums where one kind of mob lives, with a level range.
+A stretch of the Slums where one kind of mob lives.
+
+**Mob level**:
+Each kind of mob's one fixed level (a Tin Can is always Lv 1).
+_Avoid_: level range
 _Avoid_: area, region
 
 **Spawn point**:
@@ -82,3 +86,63 @@ _Avoid_: minions, summons
 
 **Enrage**:
 The golem's last phase, from a quarter of its health: red lamp, faster attacks.
+
+## Characters
+
+**Level**:
+A character's level, 1 to 20, raised by XP from kills.
+_Avoid_: rank, tier (tier is a skill's place in its class's order)
+
+**XP**:
+Experience from killing mobs; enough of it raises the character's level.
+_Avoid_: exp, points
+
+**Main stat / Second stat / Third stat**:
+The three of STR, DEX and INT in the order a class grows them: the main grows most, the third not at all.
+
+**Stat point**:
+One a level-up; the player puts it into their class's main or second stat.
+_Avoid_: attribute point
+
+**Skill point**:
+Three a level-up; each raises one unlocked skill by a level.
+
+**Skill level**:
+How far a skill has been raised, from 1 when it unlocks, capped by the character's level.
+_Avoid_: rank
+
+**Unlock level**:
+The character level at which a skill can first be used.
+
+**Power**:
+A character's attack strength from their stats and weapon; ATK on the stats box.
+_Avoid_: attack (a mob's is its ATK)
+
+**Gear type**:
+Which armor a class wears: Heavy, Light or Household.
+
+**Item level**:
+An item's level; with its class or gear type it sets the stats needed to wear it.
+
+**Training gear**:
+The weapon and armor set the Tanod gives with a class; bound, and never sold or traded.
+
+**Bound**:
+An item that stays with its owner: it can't be traded.
+
+**HP / MP**:
+A character's health and mana; HP only goes down in the Slums, and both refill in the town and the neighbourhood.
+
+**Knocked out**:
+A character at 0 HP: out of the fight for a moment, then back at the gate they came in by, with no penalty.
+_Avoid_: dead, killed (mobs die; players are knocked out)
+
+**Respawn**:
+Coming back after being knocked out, at the gate of the map you came in through.
+
+**Blinded**:
+Caught in the golem's Lamp Glare: for a few seconds every attack you make misses.
+
+**Miss**:
+An attack that does nothing (shown as "Miss"): when you're blinded, or now and then against a mob above your level.
+
