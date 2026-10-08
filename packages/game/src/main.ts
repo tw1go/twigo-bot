@@ -16,6 +16,15 @@ document.addEventListener('contextmenu', (e) => {
   const t = e.target as HTMLElement | null;
   if (!t?.closest('input, textarea, [contenteditable="true"]')) e.preventDefault();
 });
+// Tab never moves the focus round the page's buttons, and a button clicked with the mouse lets go of it at once: a
+// focused button would go off again on Space or Enter, which are the game's keys.
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Tab') e.preventDefault();
+}, true);
+document.addEventListener('click', (e) => {
+  const b = (e.target as Element | null)?.closest?.('button, [role="button"], a, [tabindex]');
+  if (e.detail > 0 && b instanceof HTMLElement) b.blur();
+});
 startGame();
 
 void startHud(document.getElementById('hud')!);
