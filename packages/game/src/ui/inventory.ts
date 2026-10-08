@@ -1,3 +1,4 @@
+import { keyLabel, matches, onKeybinds } from './keybinds';
 import type { TownBagActionResponse, TownBagItem, TownInventoryResponse } from '@mikazuki/shared';
 import { hotbarDragItem, hotbarItem } from './hotbar';
 import { playSound } from '../audio/sound';
@@ -97,7 +98,7 @@ export class Inventory {
       this.button.style.setProperty('--slice', String(frame.slice));
     }
     this.button.id = 'bag-button';
-    this.button.title = 'Inventory (B)';
+    onKeybinds(() => (this.button.title = keyLabel('bag') ? `Inventory (${keyLabel('bag')})` : 'Inventory'));
     this.button.setAttribute('aria-label', 'Inventory');
     this.button.setAttribute('aria-expanded', 'false');
     this.button.addEventListener('click', () => this.toggle());
@@ -151,8 +152,8 @@ export class Inventory {
 
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && !this.root.hidden) this.toggle(false);
-      // B (or I: the equipment) opens and closes the bag, unless you're typing (chat, a pop-up's field) or holding a modifier.
-      if ((e.key.toLowerCase() === 'b' || e.key.toLowerCase() === 'i') && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey && !typing()) {
+      // The bag's keys (B or I by default: ui/keybinds.ts) open and close it, unless you're typing (chat, a pop-up's field).
+      if (matches('bag', e) && !e.repeat && !typing()) {
         e.preventDefault();
         this.toggle();
       }

@@ -1,3 +1,4 @@
+import { actionOf, keyLabel, matches, onKeybinds } from './keybinds';
 import type { ClassInfo } from '@mikazuki/shared';
 import { playSound } from '../audio/sound';
 import { MOBILITY_PREVIEWS, SKILL_PREVIEWS } from '../combat/skill-previews';
@@ -9,6 +10,7 @@ import { toast } from './toast';
 // ⚔️ The hotbar, bottom centre (members, not on phones): two rows of slots in the bag's slot art.
 //   Bottom row: 10 skill slots (keys 1–0), then 3 for potions and other usables (keys - = `).
 //   Top row: 13 more (Alt+1–0, Alt+- Alt+= Alt+`; each labelled "Alt+1"…), for skills or usables.
+//   (Those are the default keys: each slot's key is a keybind, ui/keybinds.ts, and its label follows it.)
 // Skills come from the Skills panel on the right of the screen (the K button at the bar's left, or K): each skill
 // with its description, played on a small stage while hovered (the class choice's preview, combat/skill-stage.ts);
 // drag one onto a slot, or click it and then a slot. Potions are dragged in from the bag. Drag a slot onto another to swap them; drag it off the bar
@@ -45,15 +47,9 @@ interface Layout {
 }
 
 const SIZE: Record<Row, number> = { top: 13, main: 10, util: 3 };
-const MAIN_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
-const UTIL_KEYS = ['-', '=', '`'];
-const TOP_KEYS = [...MAIN_KEYS, ...UTIL_KEYS];
-/** event.code → the slot key, so Shift or a keyboard layout doesn't change what a key does. */
-const CODE_KEY: Record<string, string> = {
-  Digit1: '1', Digit2: '2', Digit3: '3', Digit4: '4', Digit5: '5', Digit6: '6', Digit7: '7', Digit8: '8', Digit9: '9', Digit0: '0',
-  Minus: '-', Equal: '=', Backquote: '`',
-};
-const shown = (key: string) => (key === '`' ? '~' : key);
+/** Each slot's keybind action (ui/keybinds.ts: main1–10, util1–3, top1–13). */
+const slotAction = (row: Row, i: number) => `${row}${i + 1}`;
+const SLOT_ACTIONS = (['main', 'util', 'top'] as Row[]).flatMap((row) => Array.from({ length: SIZE[row] }, (_, i) => slotAction(row, i)));
 const DRAG = 'application/x-mk-hotbar';
 const STORE = 'mk_hotbar';
 
@@ -97,10 +93,13 @@ export class Hotbar {
       this.root.style.setProperty('--slot-picked', `url("${o.slot.picked}")`);
       this.root.style.setProperty('--slot-slice', String(o.slot.slice));
     }
-    this.book.title = 'Skills (K)';
     this.book.setAttribute('aria-label', 'Skills');
     this.book.setAttribute('aria-expanded', 'false');
-    this.book.textContent = 'K';
+    onKeybinds(() => {
+      this.book.title = keyLabel('skills') ? `Skills (${keyLabel('skills')})` : 'Skills';
+      this.book.textContent = keyLabel('skills') || 'K';
+      this.draw();
+    });
     this.book.addEventListener('click', () => this.toggleList());
     this.list.id = 'skill-book';
     this.list.hidden = true;
@@ -210,22 +209,22 @@ export class Hotbar {
     for (const row of ['top', 'main', 'util'] as Row[]) {
       this.cells[row].forEach((b, i) => {
         const entry = this.layout[row][i];
-        const key = shown(row === 'top' ? TOP_KEYS[i] : row === 'main' ? MAIN_KEYS[i] : UTIL_KEYS[i]);
         b.replaceChildren();
         b.draggable = !!entry;
         const icon = entry?.t === 'skill' && this.cls ? this.iconOf(entry.name) : null;
         b.classList.toggle('hb-skill', entry?.t === 'skill' && !icon);
         b.classList.toggle('hb-off', entry?.t === 'skill' && !!this.o.usable && !this.o.usable(entry.name)); // damage skills: no combat in town
-        const keyLabel = row === 'top' ? `Alt+${shown(TOP_KEYS[i])}` : key;
+        const key = keyLabel(slotAction(row, i));
+        const named = key ? ` (${key})` : '';
         if (entry?.t === 'skill') {
           const s = skillsOf(this.cls).find((k) => k.name === entry.name);
           b.append(icon ?? el('span', 'hb-initials', initials(entry.name)));
-          b.title = `${entry.name}${s ? ` · Lv ${s.level}\n${s.desc}` : ''}\n(${keyLabel})`;
+          b.title = `${entry.name}${s ? ` · Lv ${s.level}\n${s.desc}` : ''}${named ? `\n${named.trim()}` : ''}`;
         } else if (entry?.t === 'item') {
           b.append(itemArt(entry.id, isRarity(entry.rarity) ? entry.rarity : 'common', 'icon', 2, true) ?? el('span', 'hb-emoji', entry.emoji));
-          b.title = `${entry.name}\n(${keyLabel})`;
-        } else b.title = `Empty (${keyLabel})`;
-        b.append(row === 'top' ? el('span', 'hb-key hb-key-alt', keyLabel) : el('span', 'hb-key', key));
+          b.title = `${entry.name}${named ? `\n${named.trim()}` : ''}`;
+        } else b.title = `Empty${named}`;
+        if (key) b.append(el('span', key.length > 2 ? 'hb-key hb-key-alt' : 'hb-key', key));
         b.setAttribute('aria-label', b.title.replace(/\n/g, ' '));
       });
     }
@@ -394,14 +393,13 @@ export class Hotbar {
   }
 
   private key(e: KeyboardEvent): void {
-    if (this.root.hidden || e.ctrlKey || e.metaKey || e.repeat || busy()) return;
-    if (!e.altKey && e.key.toLowerCase() === 'k') return this.toggleList();
-    const k = CODE_KEY[e.code];
-    if (!k) return;
+    if (this.root.hidden || e.repeat || busy()) return;
+    if (matches('skills', e)) return this.toggleList();
+    const a = actionOf(e, SLOT_ACTIONS);
+    if (!a) return;
     e.preventDefault();
-    if (e.altKey) return this.use('top', TOP_KEYS.indexOf(k)); // (by e.code: Alt+1 is still Digit1 on a Mac)
-    const main = MAIN_KEYS.indexOf(k);
-    this.use(main >= 0 ? 'main' : 'util', main >= 0 ? main : UTIL_KEYS.indexOf(k));
+    const [, row, n] = /^(main|util|top)(\d+)$/.exec(a)!;
+    this.use(row as Row, Number(n) - 1);
   }
 
   /** A slot's key or click: it lights up; a move skill moves you (onSkill), other skills wait for combat, potions are

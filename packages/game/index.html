@@ -243,6 +243,18 @@
       #settings .st-logout { padding: 8px 16px; border: 2px solid #1E1B3A; border-radius: 0; background: #fff; color: #1E1B3A; font: inherit; font-weight: 600; box-shadow: 0 3px 0 #1E1B3A; }
       #settings .st-logout:hover { background: #FEE2E2; }
       #settings .st-logout:disabled { opacity: 0.6; }
+      #settings .st-wide { width: min(460px, calc(100vw - 32px)); }
+      #settings .st-more { display: flex; gap: 10px; }
+      #settings .st-buttons { display: flex; justify-content: space-between; gap: 10px; }
+      #settings .st-key-note { margin: 0 0 8px; color: #7A8099; font-size: 13px; }
+      #settings .st-key-list { max-height: min(52vh, 420px); overflow-y: auto; margin: 0 -4px 10px; padding: 0 4px; border-top: 2px solid #E2DDF3; border-bottom: 2px solid #E2DDF3; }
+      #settings .st-key-group { margin: 12px 0 4px; }
+      #settings .st-key-row { display: grid; grid-template-columns: 1fr 96px 96px; align-items: center; gap: 6px; margin: 3px 0; color: #3D4256; font-size: 14px; }
+      #settings .st-key { height: 28px; padding: 0 6px; border: 2px solid #1E1B3A; border-radius: 0; background: #F5F3FF; color: #1E1B3A; font: inherit; font-size: 14px; font-weight: 600; box-shadow: 0 2px 0 #1E1B3A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: var(--cur-hand, pointer); }
+      #settings .st-key:hover { background: #EDE9FE; }
+      #settings .st-key-none { color: #A9B1D6; font-weight: 400; }
+      #settings .st-key-wait { background: #FEF3C7; border-color: #B45309; color: #92400E; font-size: 12px; }
+      @media (max-width: 420px) { #settings .st-key-row { grid-template-columns: 1fr 76px 76px; font-size: 13px; } }
       #town-hud .hud-prereg { margin-top: 8px; text-align: left; font-size: 13px; }
       @media (max-width: 560px), (max-height: 500px) {
         #town-hud .th-name { max-width: 110px; font-size: 15px; }

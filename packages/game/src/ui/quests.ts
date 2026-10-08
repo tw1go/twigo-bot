@@ -1,3 +1,4 @@
+import { keyLabel, matches, onKeybinds } from './keybinds';
 import type { AdventureState, QuestDef } from '@mikazuki/shared';
 import { playSound } from '../audio/sound';
 import { type AdventureChange, adventure, markQuestsSeen, onAdventure, questDef, unseenQuest } from '../net/adventure';
@@ -56,7 +57,7 @@ export function mountQuests(o: QuestUiOptions): void {
   });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && logRoot && !logRoot.hidden) return toggleQuestLog(false);
-    if (e.key.toLowerCase() !== 'j' || e.repeat || e.ctrlKey || e.metaKey || e.altKey || typing()) return;
+    if (!matches('quests', e) || e.repeat || typing()) return;
     e.preventDefault();
     toggleQuestLog();
   });
@@ -93,9 +94,14 @@ class Tracker {
   constructor() {
     this.root.id = 'quest-tracker';
     this.root.hidden = true;
-    this.root.title = 'Open the quest log (J)';
     const head = el('div', 'qt-head');
-    head.append(el('span', 'qt-label', 'Quests'), el('kbd', 'qt-key', 'J'), this.fold);
+    const kbd = el('kbd', 'qt-key');
+    onKeybinds(() => {
+      kbd.textContent = keyLabel('quests');
+      kbd.hidden = !keyLabel('quests');
+      this.root.title = keyLabel('quests') ? `Open the quest log (${keyLabel('quests')})` : 'Open the quest log';
+    });
+    head.append(el('span', 'qt-label', 'Quests'), kbd, this.fold);
     this.fold.setAttribute('aria-label', 'Fold the quest tracker');
     this.fold.addEventListener('click', (e) => {
       e.stopPropagation();

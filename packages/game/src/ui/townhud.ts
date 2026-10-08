@@ -1,3 +1,4 @@
+import { keyLabel, onKeybinds } from './keybinds';
 import type { MeDig, MeResponse, PresenceStatus, PreregStatus } from '@mikazuki/shared';
 import { renderPrereg } from '../hud';
 import { fakeLogin, loadMe } from '../session';
@@ -180,7 +181,7 @@ export function mountTownHud(o: TownHudOptions): void {
   quest.append(questDot);
   quest.setAttribute('aria-label', 'Quests');
   quest.setAttribute('aria-haspopup', 'dialog');
-  quest.title = 'Quests (J)';
+  onKeybinds(() => (quest.title = keyLabel('quests') ? `Quests (${keyLabel('quests')})` : 'Quests'));
   // Top left: the profile with the Kowens and shovel counters beside it; top right: the jackpot counter, the tutorial, News and Settings.
   const left = el('div', 'th-left');
   const row = el('div', 'th-row');

@@ -1,3 +1,4 @@
+import { matches } from './keybinds';
 import { playVoice } from '../audio/sound';
 
 // 💬 Talking to an NPC (world/npc-life.ts): a box at the bottom, in the chat window's nine-slice (manifest
@@ -206,7 +207,7 @@ export function openNpcDialog(t: NpcTalk): void {
       e.stopPropagation();
       return close();
     }
-    if (k !== ' ' && k !== 'e') return;
+    if (!matches('interact', e)) return;
     e.preventDefault();
     e.stopPropagation(); // not the town's E/Space (doors, benches)
     if (!e.repeat) advance();

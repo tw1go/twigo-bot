@@ -1,9 +1,11 @@
 import { playSound, setSound, soundSettings } from '../audio/sound';
+import { ACTIONS, bindings, comboOf, keyName, resetKeybinds, setBinding } from './keybinds';
 import { el, popupFrame } from './reward';
+import { toast } from './toast';
 
 // ⚙️ The settings box (from the Settings button under your profile): centred over the dimmed town, white in the
 // game's pixel frame like the reward pop-up. Audio (music and sound-effect volumes, mute), for members logging
-// out, and a Credits page for the music, sounds and font. Closes with ×, Escape or a click outside. Its buttons make the soft button click (audio/sound.ts),
+// out, a Keybinds page (every game key, two per action: ui/keybinds.ts) and a Credits page for the music, sounds and font. Closes with ×, Escape or a click outside. Its buttons make the soft button click (audio/sound.ts),
 // like every other button. DOM text only.
 
 export function showSettings(o: { loggedIn: boolean; onClose?: () => void }): void {
@@ -26,23 +28,36 @@ export function showSettings(o: { loggedIn: boolean; onClose?: () => void }): vo
   const main = el('div');
   main.append(audio());
   if (o.loggedIn) main.append(account());
-  const back = el('button', 'st-button', 'Back');
-  const creditsPage = el('div');
-  creditsPage.hidden = true;
-  creditsPage.append(credits(), back);
-  const more = el('section', 'st-section');
-  const open = el('button', 'st-button', 'Credits');
-  more.append(open);
-  main.append(more);
-  const page = (showCredits: boolean) => {
-    main.hidden = showCredits;
-    creditsPage.hidden = !showCredits;
-    title.textContent = showCredits ? 'Credits' : 'Settings';
-    (showCredits ? back : open).focus();
+  // Pages: Settings, and from its buttons Keybinds and Credits (each with Back).
+  const pageOf = (body: HTMLElement, ...extra: HTMLElement[]) => {
+    const page = el('div');
+    page.hidden = true;
+    const back = el('button', 'st-button', 'Back');
+    back.addEventListener('click', () => show(null));
+    const row = el('div', 'st-buttons');
+    row.append(back, ...extra);
+    page.append(body, row);
+    return { page, back };
   };
-  open.addEventListener('click', () => page(true));
-  back.addEventListener('click', () => page(false));
-  card.append(x, title, main, creditsPage);
+  const keybinds = keybindsPage();
+  const keysPage = pageOf(keybinds.body, keybinds.reset);
+  const creditsPage = pageOf(credits());
+  const more = el('section', 'st-section st-more');
+  const openKeys = el('button', 'st-button', 'Keybinds');
+  const open = el('button', 'st-button', 'Credits');
+  more.append(openKeys, open);
+  main.append(more);
+  const show = (which: 'keys' | 'credits' | null) => {
+    main.hidden = which !== null;
+    keysPage.page.hidden = which !== 'keys';
+    creditsPage.page.hidden = which !== 'credits';
+    card.classList.toggle('st-wide', which === 'keys');
+    title.textContent = which === 'keys' ? 'Keybinds' : which === 'credits' ? 'Credits' : 'Settings';
+    (which === 'keys' ? keysPage.back : which === 'credits' ? creditsPage.back : which === null ? openKeys : open).focus();
+  };
+  openKeys.addEventListener('click', () => show('keys'));
+  open.addEventListener('click', () => show('credits'));
+  card.append(x, title, main, keysPage.page, creditsPage.page);
   root.append(card);
   document.body.append(root);
   x.focus();
@@ -53,7 +68,7 @@ export function showSettings(o: { loggedIn: boolean; onClose?: () => void }): vo
     o.onClose?.();
   };
   const keys = (e: KeyboardEvent) => {
-    if (e.key !== 'Escape') return;
+    if (e.key !== 'Escape' || e.defaultPrevented) return;
     e.preventDefault();
     close();
   };
@@ -105,6 +120,85 @@ function audio(): HTMLElement {
 
   section.append(el('h3', 'st-heading', 'Audio'), music.row, sfx.row, mute, folk);
   return section;
+}
+
+/** Every action's two keys: click one, press the new key (Escape: never mind; Backspace or Delete: none). A key
+ *  another action had is taken from it (a toast says which). Reset puts every key back. */
+function keybindsPage(): { body: HTMLElement; reset: HTMLElement } {
+  const box = el('div', 'st-keys');
+  const list = el('div', 'st-key-list');
+  let waiting: { b: HTMLButtonElement; id: string; place: 0 | 1 } | null = null;
+  const buttons: { b: HTMLButtonElement; id: string; place: 0 | 1 }[] = [];
+  const draw = () => {
+    for (const k of buttons) {
+      const key = bindings(k.id)[k.place];
+      k.b.textContent = key ? keyName(key) : '–';
+      k.b.classList.toggle('st-key-none', !key);
+      k.b.classList.remove('st-key-wait');
+    }
+  };
+  const stop = () => {
+    waiting = null;
+    document.removeEventListener('keydown', capture, true);
+    document.removeEventListener('pointerdown', cancel, true);
+    draw();
+  };
+  const cancel = (e: Event) => {
+    if (waiting && e.target !== waiting.b) stop();
+  };
+  // Caught before anything else (the town's keys, the box's own Escape).
+  const capture = (e: KeyboardEvent) => {
+    if (!waiting) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    if (e.key === 'Escape') return stop();
+    const { id, place } = waiting;
+    if (e.code === 'Backspace' || e.code === 'Delete') {
+      setBinding(id, place, null);
+      playSound('click');
+      return stop();
+    }
+    const combo = comboOf(e);
+    if (!combo) return; // a modifier on its own: wait for the key
+    const took = setBinding(id, place, combo);
+    playSound('click');
+    if (took) toast(`${keyName(combo)} moved here from “${took}”.`, 3200);
+    stop();
+  };
+  let group = '';
+  for (const a of ACTIONS) {
+    if (a.group !== group) {
+      group = a.group;
+      list.append(el('h3', 'st-heading st-key-group', group));
+    }
+    const row = el('div', 'st-key-row');
+    row.append(el('span', 'st-key-label', a.label));
+    for (const place of [0, 1] as const) {
+      const b = el('button', 'st-key');
+      b.setAttribute('aria-label', `${a.label}, ${place ? 'second' : 'first'} key`);
+      b.addEventListener('click', () => {
+        if (waiting) stop();
+        waiting = { b, id: a.id, place };
+        b.textContent = 'Press a key…';
+        b.classList.add('st-key-wait');
+        document.addEventListener('keydown', capture, true);
+        document.addEventListener('pointerdown', cancel, true);
+      });
+      buttons.push({ b, id: a.id, place });
+      row.append(b);
+    }
+    list.append(row);
+  }
+  const reset = el('button', 'st-button', 'Reset all');
+  reset.addEventListener('click', () => {
+    resetKeybinds();
+    draw();
+    toast('Every key is back to the default.', 2200);
+  });
+  const note = el('p', 'st-key-note', 'Click a key, then press the new one. Esc: never mind. Backspace: no key. Enter (chat) and Esc stay as they are.');
+  box.append(note, list);
+  draw();
+  return { body: box, reset };
 }
 
 /** Who made the music, sounds and font (assets/audio/CREDITS.md and the font's licence have the details). */

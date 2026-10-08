@@ -33,6 +33,7 @@ import { SystemFeed } from '../ui/system-feed';
 import { announce } from '../ui/announce';
 import { OnlineList } from '../ui/online';
 import { EMOTE_KEYS, emotePicker } from '../ui/emotes';
+import { actionOf, held, matches } from '../ui/keybinds';
 import type { ArenaServerMessage, ClassInfo, HoodHouse, OutfitData, TitleData, TownClientMessage, TownEmote, TownHoodResponse, TownServerMessage } from '@mikazuki/shared';
 import { type BubbleArt, lightBubble } from '../ui/labels';
 import { type Reward, setRewardArt, showReward } from '../ui/reward';
@@ -92,6 +93,9 @@ import { mountSkillPreview } from '../ui/skill-preview';
 import { STAGE_H, STAGE_W, SkillStage } from '../combat/skill-stage';
 import { NPC_PLACES } from '../world/npcs';
 import { pick, tileRandom } from '../world/rng';
+
+const MOVE_ACTIONS = ['up', 'left', 'down', 'right'];
+const EMOTE_ACTIONS = EMOTE_KEYS.map((_, i) => `emote${i + 1}`);
 
 // The playable town: ground, buildings, props and the player, all placed from manifest.json + maps/town.json.
 // Right click to walk; left click a building to walk to its door, or a bench to sit (a tap does all of these).
@@ -193,7 +197,6 @@ export class TownScene extends Phaser.Scene {
   private minimap: Minimap | null = null;
   private nextMinimap = 0;
   private lampsOn = false;
-  private keys!: Record<'up' | 'down' | 'left' | 'right' | 'w' | 'a' | 's' | 'd' | 'e' | 'space', Phaser.Input.Keyboard.Key>;
   /** Whether the current walk is keyboard-driven (doors then wait for E instead of entering on arrival). */
   private byKeys = false;
   /** The camera glides after the player (off while debugging a fixed view). */
@@ -1497,33 +1500,28 @@ export class TownScene extends Phaser.Scene {
       if (bench) return this.goToBench(bench);
     });
 
-    // WASD / arrow keys walk in screen directions; E or Space enters a door or sits on a bench.
-    // No key capture, so typing in page inputs (chat, later) is never swallowed.
+    // The walking keys (WASD / arrows by default) walk in screen directions; the interact keys (E or Space) enter a
+    // door or sit on a bench. Every key is a keybind (ui/keybinds.ts). No key capture, so typing in page inputs (chat)
+    // is never swallowed.
     const kb = this.input.keyboard!;
-    const K = Phaser.Input.Keyboard.KeyCodes;
-    this.keys = {
-      up: kb.addKey(K.UP, false), down: kb.addKey(K.DOWN, false), left: kb.addKey(K.LEFT, false), right: kb.addKey(K.RIGHT, false),
-      w: kb.addKey(K.W, false), a: kb.addKey(K.A, false), s: kb.addKey(K.S, false), d: kb.addKey(K.D, false),
-      e: kb.addKey(K.E, false), space: kb.addKey(K.SPACE, false),
-    };
     kb.on('keydown', (e: KeyboardEvent) => {
       if (typing()) return;
-      if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(e.key.toLowerCase())) {
+      if (actionOf(e, MOVE_ACTIONS)) {
         this.pending = null;
         this.player.cancelPath(); // the keys take over from a click path
       }
-      if (e.key.toLowerCase() === 'e' || e.key === ' ') this.interact();
-      // Z (or the middle button): the nearest mob (again: the next nearest); Escape lets it go.
-      if (this.mobs && e.key.toLowerCase() === 'z' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.repeat) this.mobs.targetNext(this.player.tile);
+      if (matches('interact', e)) this.interact();
+      // Target (Z, or the middle button): the nearest mob (again: the next nearest); Escape lets it go.
+      if (this.mobs && matches('target', e) && !e.repeat) this.mobs.targetNext(this.player.tile);
       if (this.mobs && e.key === 'Escape') {
         this.stopFight();
         this.mobs.setTarget(null);
       }
-      // F1–F8: emotes (the picker beside the chat shows which is which; 1–0 are the hotbar's).
-      const f = /^F([1-9])$/.exec(e.key);
-      if (f && Number(f[1]) <= EMOTE_KEYS.length) {
+      // Emotes (F1–F8; the picker beside the chat shows which is which).
+      const emote = actionOf(e, EMOTE_ACTIONS);
+      if (emote) {
         e.preventDefault(); // F5 would reload, F1 open help
-        this.emoteKeys?.(EMOTE_KEYS[Number(f[1]) - 1]);
+        this.emoteKeys?.(EMOTE_KEYS[EMOTE_ACTIONS.indexOf(emote)]);
       }
     });
 
@@ -1538,9 +1536,8 @@ export class TownScene extends Phaser.Scene {
   /** The screen direction held on the keyboard, if any. */
   private heldDir(): Dir | null {
     if (typing()) return null;
-    const k = this.keys;
-    const h = (k.d.isDown || k.right.isDown ? 1 : 0) - (k.a.isDown || k.left.isDown ? 1 : 0);
-    const v = (k.s.isDown || k.down.isDown ? 1 : 0) - (k.w.isDown || k.up.isDown ? 1 : 0);
+    const h = (held('right') ? 1 : 0) - (held('left') ? 1 : 0);
+    const v = (held('down') ? 1 : 0) - (held('up') ? 1 : 0);
     return DIR_FOR_KEYS[`${h},${v}`] ?? null;
   }
 
