@@ -1,3 +1,4 @@
+import type Phaser from 'phaser';
 import type { ClassArt, Dir, FxDef } from '../assets/types';
 import type { FxLayer, FxLayers, FxPlay } from '../world/fx-layers';
 import type { FxHandle, FxOpts, Pt, ShotOpts, Skill, SkillKit } from './skill-stage';
@@ -10,8 +11,9 @@ import type { FxHandle, FxOpts, Pt, ShotOpts, Skill, SkillKit } from './skill-st
 // rules: sequence, hold loop, fades, a stretched length, shots with an arc, turning, a streak revealed past the pivot):
 // a script's ground decals (z 0) on the ground layer, under every player and mob; the rest (z 3) on the front layer,
 // over them; z 1 just behind the fighter. Damage numbers are the server's (world/mobs.ts), shown when the script's hit lands on that
-// mob (onHit), so the scripts' own are left out, as are the moves of the fighter itself (lunges, trails, fades): where
-// you stand is the server's. The scripts are drawn facing right (SE): facing left (SW, W, NW) the whole skill is played
+// mob (onHit), so the scripts' own are left out, as are its trails and fades. A move of the fighter (a Lunge's dash) is
+// played on the character as a draw offset toward the real mob it's at (Caster.nudge), and back: where it stands is the
+// server's. Enemy points are read live, so a mob that moves mid-cast takes its effects along. The scripts are drawn facing right (SE): facing left (SW, W, NW) the whole skill is played
 // mirrored round the fighter's feet (its points, angles and flips; the launch points of the matching right-hand facing).
 
 const ANCHOR: Pt = { x: 32, y: 56 }; // the fighter's feet in the 64 cell (as the stage)
@@ -28,7 +30,14 @@ export interface Caster {
   dir: Dir;
   /** The fighter's depth (fx under them sort just below). */
   depth: () => number;
+  /** Draws the fighter this far (px) off where it stands, for a dash (the script's move); none: it stays put. */
+  nudge?: (x: number, y: number) => void;
 }
+
+/** The stage's enemy slots (combat/skill-stage.ts): 1, 3 and 5 tiles along SE from the fighter's feet. */
+const STAGE_SLOTS: Pt[] = [1, 3, 5].map((n) => ({ x: 16 * n, y: 8 * n }));
+/** A dash stops this short of the mob it's at (px), not on top of it. */
+const DASH_SHORT = 10;
 
 export class WorldSkills {
   private readonly launches = new Map<string, Promise<Launch | null>>();
@@ -69,10 +78,33 @@ export class WorldSkills {
     const mirror = !!facing;
     const dir = facing ?? who.dir;
     const m = (p: Pt): Pt => (mirror ? { x: 2 * feet.x - p.x, y: p.y } : p);
-    const targets = [0, 1, 2].map((n) => m(slot(n)));
+    // Live: a mob that hops or chases mid-cast takes its effects with it (read when the script uses them).
+    const targets: Pt[] = [0, 1, 2].map((n) => ({
+      get x() {
+        return m(slot(n)).x;
+      },
+      get y() {
+        return m(slot(n)).y;
+      },
+    }));
     const body = (n: number): Pt => {
       const t = m(slot(n));
       return { x: t.x, y: t.y - BODY_UP };
+    };
+    let nudged: Pt = { x: 0, y: 0 };
+    let dashing: Phaser.Tweens.Tween | null = null;
+    const dash = (dx: number, dy: number): Pt => {
+      if (Math.hypot(dx, dy) < 0.5) return { x: 0, y: 0 };
+      const n = [0, 1, 2].reduce((a, b) => (Math.hypot(dx - STAGE_SLOTS[b].x, dy - STAGE_SLOTS[b].y) < Math.hypot(dx - STAGE_SLOTS[a].x, dy - STAGE_SLOTS[a].y) ? b : a));
+      const S = STAGE_SLOTS[n];
+      const R = { x: targets[n].x - feet.x, y: targets[n].y - feet.y };
+      const lr = Math.hypot(R.x, R.y);
+      if (lr < 1) return { x: 0, y: 0 };
+      const turn = Math.atan2(R.y, R.x) - Math.atan2(S.y, S.x);
+      const k = Math.max(0, lr - DASH_SHORT) / Math.hypot(S.x, S.y);
+      const x = (dx * Math.cos(turn) - dy * Math.sin(turn)) * k;
+      const y = (dx * Math.sin(turn) + dy * Math.cos(turn)) * k;
+      return { x: mirror ? -x : x, y };
     };
     // A ground decal on the ground layer; under the fighter just behind them; the rest on the front layer.
     const layerOf = (z: 0 | 1 | 3 | undefined): FxLayer | number => (z === 0 ? 'ground' : z === 1 ? who.depth() - 0.4 : 'front');
@@ -124,7 +156,21 @@ export class WorldSkills {
       },
       number: () => {},
       hide: () => {},
-      move: () => {},
+      // The fighter's dash (a script's move: stage px off its feet, facing SE; 0,0 = back): turned and stretched from the
+      // stage's nearest enemy slot onto the real mob there (stopping DASH_SHORT before it), mirrored back facing left, and
+      // tweened on the character. Where it stands doesn't change (the script ends back at 0,0, as the stage does).
+      move: (dx, dy, ms, ease) => {
+        if (!who.nudge) return;
+        const to = dash(dx, dy);
+        const from = { ...nudged };
+        dashing?.stop();
+        const set = (k: number) => {
+          nudged = { x: from.x + (to.x - from.x) * k, y: from.y + (to.y - from.y) * k };
+          who.nudge!(Math.round(nudged.x), Math.round(nudged.y));
+        };
+        if (!ms) return set(1);
+        dashing = scene.tweens.addCounter({ from: 0, to: 1, duration: ms, ease: ease === 'out' ? 'Quad.easeOut' : 'Linear', onUpdate: (tw) => set(tw.getValue() ?? 1) });
+      },
       trail: () => {},
       flash: () => {},
       fade: () => {},

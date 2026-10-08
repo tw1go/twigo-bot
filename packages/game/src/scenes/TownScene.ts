@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { queueImage, queueNpcs, queueTown } from '../assets/queue';
 import type { Area, Dir, Gate, Manifest, TownMap } from '../assets/types';
-import { Character, dirForStep } from '../characters/character';
+import { Character, dirForStep, dirToward } from '../characters/character';
 import { type Outfit, assetProblems, buildOutfit, headPortrait, headTop, loadOutfit, outfitFiles, randomOutfit, sheetKey } from '../characters/doll';
 import { sanitize, startingOutfit } from '../characters/looks';
 import type { MeResult } from '../session';
@@ -769,7 +769,7 @@ export class TownScene extends Phaser.Scene {
       if (first) for (const m of mobs) if (!shown.has(m.id)) land(m.id);
       first = false;
     };
-    void this.worldSkills.play(skill, art, { feet, dir, depth: () => who.sprite.depth }, (n) => {
+    void this.worldSkills.play(skill, art, { feet, dir, depth: () => who.sprite.depth, nudge: (x, y) => who.setNudge(x, y) }, (n) => {
       const m = bySlot(n);
       return { x: m.sprite.x, y: m.sprite.y };
     }, onHit, this.fxScale[cls]?.[idx] ?? 1);
@@ -816,7 +816,7 @@ export class TownScene extends Phaser.Scene {
       const cd = skillCooldown(c.skills[idx].level);
       this.castReady.set(name, now + cd * 1000);
       this.nextCast = now + CAST_GAP_MS;
-      const dir = dirForStep(at.col - me.col, at.row - me.row);
+      const dir = dirToward(m.sprite.x - this.player.sprite.x, m.sprite.y - this.player.sprite.y);
       this.player.strike(SKILL_POSE[idx] ?? 'attack-quick', dir); // (its effects come with the server's answer)
       this.link?.send({ t: 'attack', mob: m.id, skill: idx });
       this.hotbar?.cooldown(name, cd);
@@ -1286,7 +1286,8 @@ export class TownScene extends Phaser.Scene {
         const landAll = () => [...pending.keys()].forEach(land);
         this.time.delayedCall(1500, landAll);
         if (ch && at && cls) {
-          const dir = dirForStep(at.col - ch.tile.col, at.row - ch.tile.row);
+          const mob = this.mobs?.list.find((x) => x.id === ids[0]);
+          const dir = mob ? dirToward(mob.sprite.x - ch.sprite.x, mob.sprite.y - ch.sprite.y) : dirForStep(at.col - ch.tile.col, at.row - ch.tile.row);
           if (!mine) ch.strike(SKILL_POSE[m.skill] ?? 'attack-quick', dir); // (yours played as you cast)
           this.castFx(cls, m.skill, ch, dir, ids, land, landAll);
         } else landAll();

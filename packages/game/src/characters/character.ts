@@ -33,6 +33,22 @@ export function dirForStep(dc: number, dr: number): Dir {
   return table[key] ?? 's';
 }
 
+/** The facing nearest a screen direction (dx, dy px): for turning toward something more than a step away (a mob a skill is
+ *  cast at), where dirForStep's signs would round (3, 1) and (1, 3) alike to S. The art's eight ways, by their angle on
+ *  screen (SE is along +col: 16 px across, 8 down). */
+export function dirToward(dx: number, dy: number): Dir {
+  if (!dx && !dy) return 's';
+  const a = Math.atan2(dy, dx);
+  let best: Dir = 's';
+  let gap = Infinity;
+  for (const [d, [x, y]] of Object.entries(SCREEN) as [Dir, [number, number]][]) {
+    const g = Math.abs(Math.atan2(Math.sin(a - Math.atan2(y, x)), Math.cos(a - Math.atan2(y, x))));
+    if (g < gap) [best, gap] = [d, g];
+  }
+  return best;
+}
+const SCREEN: Record<Dir, [number, number]> = { e: [32, 0], se: [16, 8], s: [0, 16], sw: [-16, 8], w: [-32, 0], nw: [-16, -8], n: [0, -16], ne: [16, -8] };
+
 export class Character {
   readonly sprite: Phaser.GameObjects.Sprite;
   private readonly shadow: Phaser.GameObjects.Image | null;
@@ -77,6 +93,13 @@ export class Character {
   busy = false;
   /** Pixels the body is lifted off the ground (a hop); the shadow stays down. */
   lift = 0;
+  /** Drawn this far (px) off its tile for now, its shadow too: a skill's dash (combat/world-skills.ts), back to 0 after. */
+  private nudge = { x: 0, y: 0 };
+
+  setNudge(x: number, y: number): void {
+    this.nudge = { x, y };
+    this.sync();
+  }
   /** How high the ground is at a point (raised ground: world/heights.ts), in px; everything of the character stands on it. */
   elevation: ((col: number, row: number) => number) | null = null;
 
@@ -520,8 +543,8 @@ export class Character {
   /** Screen position and depth from the tile-space position. */
   private sync(): void {
     const ground = this.elevation?.(this.col, this.row) ?? 0;
-    const x = (this.col - this.row) * 16;
-    const y = (this.col + this.row) * 8 - ground;
+    const x = (this.col - this.row) * 16 + this.nudge.x;
+    const y = (this.col + this.row) * 8 - ground + this.nudge.y;
     const t = this.tile;
     this.sprite.setPosition(Math.round(x), Math.round(y - this.lift));
     // Higher ground sorts a hair in front (over the wall below it).
