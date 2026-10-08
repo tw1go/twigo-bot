@@ -5,7 +5,8 @@ import type { Duplex } from 'node:stream';
 import { WebSocket, WebSocketServer } from 'ws';
 import { Arena, type ArenaBets, type ArenaSeat, arenaLine } from './town-arena.js';
 import type { MobRoom } from './town-mobs.js';
-import type { HoodHouse, HoodMap, OutfitData, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine } from '@mikazuki/shared';
+import { PARTY_MAX, type PartyChange, Parties } from './town-party.js';
+import type { HoodHouse, HoodMap, OutfitData, PartyState, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
 // messages). The server keeps everyone's tile and checks each step — on the map, not blocked, next to the last
@@ -17,7 +18,7 @@ import type { HoodHouse, HoodMap, OutfitData, TownRace, TitleData, TownAnnouncem
 // this file has no Discord in it.
 // Rooms: the town, and others the caller adds (the neighbourhood), picked with ?room= on the socket's address (going
 // from one to the other is a new connection). Walking, benches and who you see are per room; chat, the system feed,
-// banners and everything about a member (gifts, looks, jail) reach everyone.
+// banners and everything about a member (gifts, looks, jail) reach everyone. Parties (town-party.ts) span every room.
 
 const DIRS = new Set<TownDir>(['s', 'se', 'e', 'ne', 'n', 'nw', 'w', 'sw']);
 const MOVES = new Set<TownMove>(['dash', 'step-back', 'charge', 'blink']);
@@ -43,6 +44,10 @@ const NOTICE_MS = 30 * 60_000;
 const SYSTEM_RECENT = 10;
 /** Messages from the Discord channel can be longer, up to this. */
 const DISCORD_MAX = 200;
+/** A party member who disconnects stays in it this long (a reload, a gate to another area). */
+const PARTY_AWAY_MS = 60_000;
+/** Party invites: one a second. */
+const INVITE_GAP_MS = 1000;
 
 /** A chat message tidied up: no control characters, single spaces, trimmed; null if empty or too long. */
 function tidy(text: unknown, max = SAY_MAX): string | null {
@@ -184,6 +189,8 @@ interface Conn {
   fresh: boolean;
   /** This connection as the Arena sees it (made on first use). */
   seat?: ArenaSeat;
+  /** The last party invite sent (ms). */
+  invitedAt?: number;
 }
 
 export function attachTown(server: Server, opts: TownOptions): Town {
@@ -213,6 +220,50 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   const everyone = (m: TownServerMessage) => {
     const text = JSON.stringify(m);
     for (const o of conns.values()) if (o.ws.readyState === WebSocket.OPEN) o.ws.send(text);
+  };
+  // Parties (town-party.ts): kept by member; what the page sees is each member's party key, town id (while here) and
+  // where they are. Last-known names and looks, so a member who stepped away still shows.
+  const known = new Map<string, { nickname: string; outfit: OutfitData; cls?: string | null }>();
+  const parties = new Parties((u) => known.get(u)?.nickname ?? 'Someone');
+  const away = new Map<string, NodeJS.Timeout>();
+  const partyFor = (user: string): PartyState | null => {
+    const party = parties.of(user);
+    if (!party) return null;
+    return {
+      leader: parties.key(party.leader),
+      you: parties.key(user),
+      max: PARTY_MAX,
+      members: party.members.map((m) => {
+        const o = conns.get(m);
+        const k = known.get(m);
+        return { key: parties.key(m), id: o?.player.id ?? null, nickname: k?.nickname ?? 'Someone', outfit: k!.outfit, cls: k?.cls ?? null, area: o?.room ?? null };
+      }),
+    };
+  };
+  /** Sends the party (and a note) to everyone in it. */
+  const tellParty = (user: string, note?: string) => {
+    for (const m of parties.of(user)?.members ?? []) {
+      const o = conns.get(m);
+      if (o) send(o, { t: 'party', party: partyFor(m), ...(note ? { note } : {}) });
+    }
+  };
+  const partyChanged = (change: PartyChange | null) => {
+    if (!change) return;
+    for (const { user, note } of change.out) {
+      const o = conns.get(user);
+      if (o) send(o, { t: 'party', party: null, note });
+    }
+    if (change.party) tellParty(change.party.leader, change.note);
+  };
+  /** A member disconnected: still in their party for a minute (shown away), then out. */
+  const stepAway = (user: string) => {
+    if (!parties.of(user)) return;
+    tellParty(user);
+    clearTimeout(away.get(user));
+    away.set(user, setTimeout(() => {
+      away.delete(user);
+      if (!conns.has(user)) partyChanged(parties.leave(user));
+    }, PARTY_AWAY_MS));
   };
   const mapOf = (room: string): TownMap => (room === 'town' ? map : opts.rooms?.[room]?.() ?? map);
   const inside = (m: TownMap, col: unknown, row: unknown): col is number =>
@@ -308,6 +359,38 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         others(c, hit);
         return send(c, hit);
       }
+      case 'party-invite': {
+        const now = Date.now();
+        if (now - (c.invitedAt ?? 0) < INVITE_GAP_MS) return send(c, { t: 'party-refused', reason: 'slow' });
+        c.invitedAt = now;
+        const to = typeof m.to === 'string' ? town.memberOf(m.to) : null;
+        const them = to ? conns.get(to) : undefined;
+        if (!to || !them) return send(c, { t: 'party-refused', reason: 'gone' });
+        const r = parties.invite(c.userId, to, now);
+        if (!r.ok) return send(c, { t: 'party-refused', reason: r.reason, name: them.player.nickname });
+        return send(them, { t: 'party-invited', invite: r.invite, from: p.id, name: p.nickname, members: r.members });
+      }
+      case 'party-answer': {
+        if (typeof m.invite !== 'string') return;
+        const r = parties.answer(c.userId, m.invite, m.accept === true, Date.now());
+        if (!r.ok) return send(c, { t: 'party-refused', reason: r.reason });
+        if (!r.change) {
+          const inviter = conns.get(r.from);
+          return inviter && send(inviter, { t: 'party-declined', name: p.nickname });
+        }
+        return partyChanged(r.change);
+      }
+      case 'party-leave':
+        return partyChanged(parties.leave(c.userId));
+      case 'party-disband': {
+        const r = parties.disband(c.userId);
+        return r.ok ? partyChanged(r.change) : send(c, { t: 'party-refused', reason: r.reason });
+      }
+      case 'party-kick': {
+        const r = typeof m.member === 'string' ? parties.kick(c.userId, m.member) : null;
+        if (!r) return;
+        return r.ok ? partyChanged(r.change) : send(c, { t: 'party-refused', reason: r.reason });
+      }
       case 'arena-queue':
         if (p.jailed) return; // no games from jail
         c.seat ??= { key: c.userId, player: p, send: (msg) => send(c, msg) };
@@ -336,6 +419,17 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         c.says = Math.min(SAY_BURST, c.says + ((now - c.saidAt) / 1000) * SAYS_PER_SECOND);
         c.saidAt = now;
         if (c.says < 1) return send(c, { t: 'say-refused', reason: 'slow' });
+        // To the party only: its members, wherever they are (not kept, not to Discord).
+        if (m.party === true) {
+          const party = parties.of(c.userId);
+          if (!party) return send(c, { t: 'say-refused', reason: 'party' });
+          c.says -= 1;
+          for (const member of party.members) {
+            const o = conns.get(member);
+            if (o) send(o, { t: 'party-say', id: p.id, name: p.nickname, text });
+          }
+          return;
+        }
         const megaphone = m.megaphone === true;
         if (megaphone && opts.megaphone && opts.megaphone(c.userId) === null) return send(c, { t: 'say-refused', reason: 'megaphone' });
         c.says -= 1;
@@ -386,6 +480,10 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     send(c, { t: 'welcome', you: player.id, players: [...conns.values()].filter((o) => o.room === room).map((o) => o.player), recent, system: systemLines, spawn: [col, row], notice: notice && notice.until > Date.now() ? notice.a : undefined });
     conns.set(userId, c);
     others(c, { t: 'join', player });
+    known.set(userId, { nickname: player.nickname, outfit: player.outfit, cls: player.cls });
+    clearTimeout(away.get(userId));
+    away.delete(userId);
+    tellParty(userId); // back (or in another area): their new id and where they are
     if (raceNow) send(c, { t: 'race', race: { ...raceNow, now: Date.now() } });
 
     ws.on('pong', () => (c.alive = true));
@@ -404,6 +502,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       arena.leave(userId); // mid-match, the other player wins
       others(c, { t: 'leave', id: player.id });
       opts.mobs?.[room]?.forget(player.id); // no mob goes after someone who left
+      stepAway(userId);
     });
   };
 
@@ -444,6 +543,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       arena.leave(userId);
       others(c, { t: 'leave', id: c.player.id });
       c.ws.close(KICKED, String(until));
+      stepAway(userId);
       return true;
     },
     memberOf(playerId) {
@@ -486,18 +586,24 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       if (!c) return;
       Object.assign(c.player, { outfit, title });
       everyone({ t: 'look', id: c.player.id, outfit, title });
+      known.set(userId, { ...known.get(userId)!, outfit });
+      tellParty(userId);
     },
     renamed(userId, nickname) {
       const c = conns.get(userId);
       if (!c) return;
       c.player.nickname = nickname;
       everyone({ t: 'rename', id: c.player.id, nickname });
+      known.set(userId, { ...known.get(userId)!, nickname });
+      tellParty(userId);
     },
     kit(userId, cls, weapon) {
       const c = conns.get(userId);
       if (!c) return;
       Object.assign(c.player, { cls, weapon });
       everyone({ t: 'kit', id: c.player.id, cls, weapon });
+      known.set(userId, { ...known.get(userId)!, cls });
+      tellParty(userId);
     },
     setJailed(userId, on) {
       const c = conns.get(userId);
@@ -536,6 +642,14 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       }
     }, 250).unref?.();
   }
+
+  // Party invites nobody answered in time: the inviter hears no.
+  setInterval(() => {
+    for (const i of parties.prune(Date.now())) {
+      const from = conns.get(i.from);
+      if (from) send(from, { t: 'party-declined', name: known.get(i.to)?.nickname ?? 'They' });
+    }
+  }, 5000).unref();
 
   // Drop connections that stopped answering pings (closed laptops, lost Wi-Fi).
   setInterval(() => {

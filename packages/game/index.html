@@ -326,6 +326,11 @@
       #chat.ch-mega-mode .ch-channel { color: #7DD3FC; box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.6); }
       #chat.ch-mega-mode .ch-input { color: #7DD3FC; }
       #chat.ch-mega-mode .ch-input:focus { box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.7); }
+      #chat .ch-party, #chat .ch-party .ch-name, #chat .ch-party .ch-me { color: #F9A8D4; }
+      #chat .ch-party-tag { margin-right: 4px; padding: 0 4px; border-radius: 3px; background: rgba(249, 168, 212, 0.2); color: #F9A8D4; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+      #chat.ch-party-mode .ch-channel { color: #F9A8D4; box-shadow: 0 0 0 1px rgba(249, 168, 212, 0.6); }
+      #chat.ch-party-mode .ch-input { color: #F9A8D4; }
+      #chat.ch-party-mode .ch-input:focus { box-shadow: 0 0 0 1px rgba(249, 168, 212, 0.7); }
       /* A megaphone message (ui/megaphone.ts): centred in the upper part of the screen, sky blue on nothing (an outline
          keeps it readable), under the HUD's buttons and any open panel; clicks go through. */
       #megaphone { position: fixed; left: 0; right: 0; top: 152px; z-index: 1; display: flex; justify-content: center; padding: 0 16px; pointer-events: none; }
@@ -616,6 +621,11 @@
       #target .tg-view:hover, #target .tg-action:hover { border-color: #7C2AE8; color: #fff; }
       #target .tg-view[aria-pressed='true'] { border-color: #7C2AE8; background: #7C2AE8; color: #fff; }
       #target .tg-actions { margin-top: 10px; padding-top: 10px; border-top: 2px solid #1E1B3A; }
+      #target .tg-party { margin-top: 8px; }
+      #target .tg-party[hidden] { display: none; }
+      #target .tg-party-invite { width: 100%; padding: 6px 4px; border: 2px solid #DB7AB0; border-radius: 0; background: #3B1D4A; color: #F9A8D4; font: inherit; font-size: 13px; font-weight: 700; cursor: var(--cur-hand, pointer); }
+      #target .tg-party-invite:hover { border-color: #F9A8D4; color: #fff; }
+      #target .tg-party-invite:disabled { opacity: 0.6; cursor: default; }
       #target .tg-diss:hover { border-color: #F7768E; color: #F7768E; }
       #target .tg-praise:hover { border-color: #F0ABFC; color: #F0ABFC; }
       #target .tg-judge:hover { border-color: #F8BF27; color: #F8BF27; }
@@ -1288,6 +1298,53 @@
       @media (max-width: 760px), (max-height: 500px) { #hotbar, #skill-book { display: none; } body.hotbar-on #toast { bottom: 24px; } }
       #quest-tracker { position: fixed; left: 12px; z-index: 2; width: 150px; box-sizing: border-box; padding: 6px 8px 8px; border-radius: 6px; background: rgba(10, 12, 24, 0.55); color: #E6E9F2; font: 13px/1.3 var(--ui-font); text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6); cursor: var(--cur-hand, pointer); }
       #quest-tracker[hidden] { display: none; }
+      /* The party (ui/party.ts): under the quest tracker; names in party pink. */
+      #party { position: fixed; left: 12px; z-index: 2; width: 170px; box-sizing: border-box; padding: 6px 6px 6px 8px; border-radius: 6px; background: rgba(10, 12, 24, 0.6); color: #E6E9F2; font: 13px/1.25 var(--ui-font); text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6); box-shadow: inset 0 0 0 1px rgba(249, 168, 212, 0.25); }
+      #party[hidden] { display: none; }
+      #party .pt-head { display: flex; align-items: center; gap: 6px; color: #F9A8D4; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+      #party .pt-count { color: #7A8099; letter-spacing: 0; }
+      #party .pt-opts { margin-left: auto; width: 20px; height: 20px; padding: 0; border: 1px solid rgba(249, 168, 212, 0.4); border-radius: 4px; background: rgba(30, 27, 58, 0.8); display: grid; place-items: center; cursor: var(--cur-hand, pointer); }
+      #party .pt-opts:hover, #party .pt-opts[aria-expanded='true'] { border-color: #F9A8D4; background: #3B1D4A; }
+      /* A door with an arrow out, in CSS pixels. */
+      #party .pt-exit { position: relative; width: 8px; height: 10px; border: 2px solid #F9A8D4; border-right-width: 0; box-sizing: border-box; }
+      #party .pt-exit::after { content: ''; position: absolute; left: 3px; top: 2px; width: 7px; height: 2px; background: #F9A8D4; box-shadow: 4px -2px 0 -0px transparent; }
+      #party .pt-exit::before { content: ''; position: absolute; left: 7px; top: 0; border: 3px solid transparent; border-left: 3px solid #F9A8D4; }
+      #party .pt-list { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+      #party .pt-row { display: flex; align-items: center; gap: 6px; padding: 2px; border-radius: 4px; }
+      #party .pt-row:hover { background: rgba(249, 168, 212, 0.08); }
+      #party .pt-away { opacity: 0.5; }
+      #party .pt-face { flex: none; width: 24px; height: 24px; border-radius: 50%; overflow: hidden; background: #1E1B3A; box-shadow: 0 0 0 1px rgba(249, 168, 212, 0.5); }
+      #party .pt-face canvas { display: block; width: 24px; height: 24px; image-rendering: pixelated; }
+      #party .pt-words { min-width: 0; display: flex; flex-direction: column; }
+      #party .pt-line { display: flex; align-items: center; gap: 3px; min-width: 0; }
+      #party .pt-badge { width: 12px; height: 12px; image-rendering: pixelated; flex: none; }
+      #party .pt-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #F9A8D4; font-weight: 600; }
+      #party .pt-crown { color: #F8BF27; font-size: 12px; }
+      #party .pt-you { color: #7A8099; font-size: 11px; }
+      #party .pt-where { color: #7A8099; font-size: 11px; }
+      .pt-menu { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+      .pt-menu[hidden] { display: none; }
+      .pt-kick-menu { position: fixed; z-index: 6; margin: 0; padding: 4px; border: 2px solid #7C2AE8; background: rgba(17, 24, 39, 0.96); font: 13px/1.3 var(--ui-font); }
+      .pt-item { padding: 5px 8px; border: 2px solid #3D4256; border-radius: 0; background: #1E1B3A; color: #c0caf5; font: inherit; font-size: 13px; font-weight: 600; text-align: left; cursor: var(--cur-hand, pointer); }
+      .pt-item:hover { border-color: #F9A8D4; color: #fff; }
+      .pt-item.pt-danger { color: #FCA5A5; }
+      .pt-item.pt-danger:hover { border-color: #F87171; color: #fff; background: #4A1D2A; }
+      /* Invites: top centre, under the picked-player box. */
+      #party-invites { position: fixed; top: 64px; left: 50%; z-index: 6; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; width: min(300px, calc(100vw - 32px)); }
+      .pt-invite { position: relative; overflow: hidden; padding: 10px 12px 12px; border: 2px solid #F9A8D4; background: rgba(17, 24, 39, 0.96); color: #E6E9F2; font: 14px/1.3 var(--ui-font); box-shadow: 0 4px 0 #1E1B3A, 0 0 18px rgba(249, 168, 212, 0.25); animation: pt-in 0.25s cubic-bezier(0.2, 1.4, 0.4, 1); }
+      .pt-invite-text { margin: 0 0 8px; }
+      .pt-invite-text b { color: #F9A8D4; }
+      .pt-invite-row { display: flex; gap: 8px; justify-content: flex-end; }
+      .pt-yes, .pt-no { padding: 5px 14px 6px; border: 2px solid #1E1B3A; border-radius: 0; font: inherit; font-size: 13px; font-weight: 700; cursor: var(--cur-hand, pointer); }
+      .pt-yes { background: #F9A8D4; color: #1E1B3A; box-shadow: inset 0 -2px 0 #DB7AB0; }
+      .pt-yes:hover { background: #FBC4E2; }
+      .pt-no { background: #1E1B3A; color: #c0caf5; border-color: #3D4256; }
+      .pt-no:hover { border-color: #c0caf5; }
+      .pt-invite-bar { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: #F9A8D4; transform-origin: left; animation: pt-lapse linear forwards; }
+      @keyframes pt-lapse { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+      @keyframes pt-in { from { transform: translateY(-8px); opacity: 0; } }
+      @media (prefers-reduced-motion: reduce) { .pt-invite { animation: none; } }
+      @media (max-width: 560px), (max-height: 500px) { #party { width: 140px; font-size: 12px; } }
       #quest-tracker:hover { background: rgba(10, 12, 24, 0.7); }
       #quest-tracker .qt-head { display: flex; align-items: center; gap: 6px; color: #7A8099; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
       #quest-tracker .qt-key { padding: 0 4px; border: 1px solid #3D4256; border-radius: 2px; font: inherit; font-size: 10px; color: #A9B1D6; }

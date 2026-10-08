@@ -104,8 +104,16 @@ export class Character {
     this.tag?.destroy();
     this.tag = nickname ? new NameTag(this.scene, nickname, title, opts) : null;
     this.tag?.setZoom(this.zoom);
+    this.tag?.setParty(this.inParty);
     this.sync();
   }
+
+  /** In your party: the name turns pink (on your screen only). */
+  setParty(on: boolean): void {
+    this.inParty = on;
+    this.tag?.setParty(on);
+  }
+  private inParty = false;
 
   /** Jail bars over the character (manifest fx jailBars, in the same cell, on top of their layers), or off. */
   setJailed(on: boolean): void {

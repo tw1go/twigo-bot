@@ -56,6 +56,8 @@ import { OtherPlayers } from '../world/others';
 import { fakeLogin, loadMe } from '../session';
 import { screenToTile, tileToScreen } from '../iso';
 import { toast } from '../ui/toast';
+import { PartyPanel, showPartyInvite } from '../ui/party';
+import { answer as partyAnswer, inParty, onParty, party, refusal as partyRefusal, setParty, setPartyLink } from '../net/party';
 import { GROUND_SHADOW_DEPTH, LABEL_DEPTH, frontDepth } from '../world/depth';
 import { minutesNow, setTimeSource, skyAt } from '../world/daynight';
 import { Culler } from '../world/cull';
@@ -1094,7 +1096,29 @@ export class TownScene extends Phaser.Scene {
     }
     tools.append(online.el, emotePicker(sheet, emote));
     if (bag) document.body.append(bag.button); // its own button, just right of the chat box
-    const chat = new ChatBox((text, megaphone) => link.send({ t: 'say', text, ...(megaphone ? { megaphone } : {}) }), tools);
+    const chat = new ChatBox((text, channel) => link.send({ t: 'say', text, ...(channel === 'megaphone' ? { megaphone: true } : channel === 'party' ? { party: true } : {}) }), tools);
+    // Parties (net/party.ts): the panel on the left for members, pink names for your party (on your screen only).
+    setPartyLink(link);
+    this.others.inParty = inParty;
+    if (member) {
+      const C = this.M.characters;
+      new PartyPanel({
+        portrait: async (o) => {
+          const look = sanitize(C, o, this.outfit);
+          await loadOutfit(this, C, look);
+          return headPortrait(this, C, look, 20);
+        },
+        badge: (cls) => {
+          const c = classInfo(cls);
+          const icons = this.M.ui.classIcons;
+          return c && icons ? { url: `${import.meta.env.BASE_URL}assets/${icons.small.replace('{class}', c.id)}`, name: c.name } : null;
+        },
+      });
+    }
+    onParty(() => {
+      this.others.refreshParty();
+      this.player.setParty(!!party());
+    });
     // A player's class badge before their name in the chat (yours from your quests, others' from the town).
     chat.badgeFor = (from, id) => {
       const icons = this.M.ui.classIcons;
@@ -1143,6 +1167,7 @@ export class TownScene extends Phaser.Scene {
           return chat.notice(`You're muted in town chat for about ${left} more minute${left === 1 ? '' : 's'}.`);
         }
         if (m.reason === 'megaphone') return chat.notice('You have no megaphones. Get one at the sari-sari store (1 Kowen), or /g for general chat.');
+        if (m.reason === 'party') return chat.notice("You're not in a party. Invite someone from their menu, or /g for general chat.");
         return chat.notice(m.reason === 'slow' ? "You're chatting a bit fast. Wait a moment." : "That message can't be sent.");
       }
       if (m.t === 'say') {
@@ -1157,6 +1182,22 @@ export class TownScene extends Phaser.Scene {
         chat.add(name, m.text, 'town', m.id, m.megaphone);
         playSound('chat');
       }
+      if (m.t === 'party-say') {
+        const mine = m.id === myId;
+        const char = mine ? this.player : this.others.charOf(m.id);
+        if (char && bubbles) char.say(m.text, bubbles);
+        chat.add(mine ? (member?.nickname ?? 'You') : m.name, m.text, mine ? 'me' : 'town', mine ? undefined : m.id, 'party');
+        if (!mine) playSound('chat');
+        return;
+      }
+      if (m.t === 'party') {
+        setParty(m.party);
+        if (m.note) toast(m.note, 3000);
+        return;
+      }
+      if (m.t === 'party-invited') return showPartyInvite({ invite: m.invite, name: m.name, members: m.members, answer: (yes) => partyAnswer(m.invite, yes) });
+      if (m.t === 'party-refused') return toast(partyRefusal(m.reason, m.name), 2600, 'bad');
+      if (m.t === 'party-declined') return toast(`${m.name} didn't join the party.`, 2600);
       if (m.t === 'say-discord') {
         playSound('chat');
         return chat.add(m.name, m.text, 'discord');
@@ -1255,6 +1296,7 @@ export class TownScene extends Phaser.Scene {
       }
       if (m.t === 'welcome') {
         myId = m.you;
+        setParty(null); // the server sends your party (if you're still in one) right after
         // A reconnect (the bot restarted, a blip): what's on screen stays; only what's new is added.
         chat.history(m.recent ?? [], member?.nickname ?? null, arrived);
         feed.history(m.system ?? [], arrived);

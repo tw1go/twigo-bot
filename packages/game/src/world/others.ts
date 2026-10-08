@@ -57,7 +57,7 @@ export class OtherPlayers {
       case 'leave':
         return this.remove(m.id);
     }
-    if (m.t === 'snap' || m.t === 'say-refused' || m.t === 'say-discord' || m.t === 'emote' || m.t === 'system' || m.t === 'seat-taken' || m.t === 'announce' || m.t === 'gift' || m.t === 'gift-item' || m.t === 'new-title' || m.t === 'house' || m.t === 'race' || m.t === 'wallet' || m.t === 'stay' || m.t === 'mobs' || m.t === 'mob-move' || m.t === 'mob-hit' || m.t === 'mob-attack' || m.t === 'mob-spawn' || m.t === 'attack-refused' || isArena(m)) return;
+    if (m.t === 'snap' || m.t === 'say-refused' || m.t === 'say-discord' || m.t === 'emote' || m.t === 'system' || m.t === 'seat-taken' || m.t === 'announce' || m.t === 'gift' || m.t === 'gift-item' || m.t === 'new-title' || m.t === 'house' || m.t === 'race' || m.t === 'wallet' || m.t === 'stay' || m.t === 'mobs' || m.t === 'mob-move' || m.t === 'mob-hit' || m.t === 'mob-attack' || m.t === 'mob-spawn' || m.t === 'attack-refused' || m.t === 'party' || m.t === 'party-invited' || m.t === 'party-refused' || m.t === 'party-declined' || m.t === 'party-say' || isArena(m)) return;
     const o = this.all.get(m.id);
     if (!o) return;
     const s = o.state;
@@ -126,6 +126,14 @@ export class OtherPlayers {
   seatTaken(col: number, row: number): boolean {
     for (const o of this.all.values()) if (o.state.sit && o.state.col === col && o.state.row === row) return true;
     return false;
+  }
+
+  /** Whether a player is in your party (their name shows pink): set by the town (net/party.ts). */
+  inParty: (id: string) => boolean = () => false;
+
+  /** The party changed: everyone's name colour again. */
+  refreshParty(): void {
+    for (const [id, o] of this.all) o.char?.setParty(this.inParty(id));
   }
 
   /** Someone's character, once drawn. */
@@ -205,6 +213,7 @@ export class OtherPlayers {
       char.place({ col: s.col, row: s.row }, s.dir);
       if (s.sit) this.seat(char, s);
       char.setNameTag(s.nickname, s.title);
+      char.setParty(this.inParty(p.id));
       char.setJailed(!!s.jailed);
       char.sprite.setInteractive({ pixelPerfect: true, cursor: this.cursorCss });
       char.setZoom(this.zoom);

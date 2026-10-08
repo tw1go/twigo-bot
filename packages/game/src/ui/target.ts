@@ -1,5 +1,6 @@
 import type { PresenceStatus, TownGiveResponse, TownPlayer, TownPlayerInfo, TownVerdictMode } from '@mikazuki/shared';
 import { playSound } from '../audio/sound';
+import { inParty, invite, mayInvite, onParty } from '../net/party';
 import { fakeLogin } from '../session';
 import { coinIcon } from './reward';
 
@@ -8,7 +9,8 @@ import { coinIcon } from './reward';
 // giving: POST /town/give, /give's rules), and Diss / Praise / Judge (POST /town/verdict, 1 Kowen like the commands:
 // you say the line in town). The box goes when they leave, on Escape, or with a click anywhere outside it (a drag to
 // peek doesn't count; clicking someone else picks them instead). Clicking a name in the chat opens the same box and
-// menu right beside that name instead (selectAt); a press anywhere else closes it. DOM text only.
+// menu right beside that name instead (selectAt); a press anywhere else closes it. Under it, Invite to party (net/party.ts:
+// shown while you lead a party or are in none, and they're not in yours). DOM text only.
 
 type View = 'give' | 'balance' | 'status';
 const VIEWS: [View, string][] = [['give', 'Give Kowens'], ['balance', 'Balance'], ['status', 'Status']];
@@ -55,6 +57,8 @@ export class TargetBox {
   private readonly views = el('div', 'tg-views');
   private readonly panel = el('div', 'tg-panel');
   private readonly actions = el('div', 'tg-actions');
+  private readonly partyRow = el('div', 'tg-party');
+  private readonly partyButton = el('button', 'tg-party-invite', 'Invite to party');
   private target: TownPlayer | null = null;
   private view: View | null = null;
   private info: TownPlayerInfo | null = null;
@@ -92,8 +96,19 @@ export class TargetBox {
       b.addEventListener('click', () => void this.verdict(mode));
       this.actions.append(b);
     }
+    // Invite to party (you lead one, or you're in none): hidden for someone already in yours.
+    this.partyButton.addEventListener('click', () => {
+      if (!this.target) return;
+      playSound('click');
+      if (invite(this.target.id)) {
+        this.partyButton.disabled = true;
+        this.partyButton.textContent = 'Invite sent';
+      }
+    });
+    this.partyRow.append(this.partyButton);
+    onParty(() => this.drawParty());
     this.menu.hidden = true;
-    this.menu.append(this.views, this.panel, this.actions);
+    this.menu.append(this.views, this.panel, this.actions, this.partyRow);
     this.root.append(this.box, this.menu);
     document.body.append(this.root);
 
@@ -165,8 +180,20 @@ export class TargetBox {
     this.info = null;
     this.name.textContent = p.nickname;
     this.box.setAttribute('aria-label', `${p.nickname}: open the menu`);
+    this.drawParty(true);
     this.root.hidden = false;
     this.closeMenu();
+  }
+
+  /** The invite button for whoever's picked (`fresh`: someone new, so "Invite sent" goes back to the button). */
+  private drawParty(fresh = false): void {
+    const p = this.target;
+    const show = !!p && !inParty(p.id) && mayInvite();
+    this.partyRow.hidden = !show;
+    if (fresh || !show) {
+      this.partyButton.disabled = false;
+      this.partyButton.textContent = 'Invite to party';
+    }
   }
 
   clear(): void {
