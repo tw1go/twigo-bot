@@ -1,7 +1,8 @@
 import { keyLabel, matches, onKeybinds } from './keybinds';
-import type { AdventureState, QuestDef } from '@mikazuki/shared';
+import { type AdventureState, type QuestDef, newItem, nameColour } from '@mikazuki/shared';
+import { itemPicture, nameOf } from './item-tip';
 import { playSound } from '../audio/sound';
-import { type AdventureChange, adventure, markQuestsSeen, onAdventure, questDef, unseenQuest } from '../net/adventure';
+import { type AdventureChange, adventure, itemData, markQuestsSeen, onAdventure, questDef, unseenQuest } from '../net/adventure';
 
 // 📜 Quests on screen (the state: net/adventure.ts, the quests: quests/quests.json). Main quests are violet and side
 // quests yellow everywhere they show (manifest quests.colours):
@@ -278,6 +279,24 @@ function renderLog(): void {
       list.append(li);
     });
     detail.append(list);
+    // What it gives: each item's picture and name in its colour, ×count.
+    const D = itemData();
+    const rewards = (q.rewards ?? []).flatMap((r) => {
+      const def = D?.defs.get(r.item);
+      return def && D ? [newItem(D.stats, def, 'reward', r.count)] : [];
+    });
+    if (rewards.length) {
+      const box = el('div', 'ql-rewards');
+      box.append(el('div', 'ql-rewards-head', 'Rewards'));
+      for (const it of rewards) {
+        const row = el('div', 'ql-reward');
+        const name = el('span', 'ql-reward-name', nameOf(it));
+        name.style.color = nameColour(D!, it);
+        row.append(itemPicture(it, 'icon', 2), name, el('span', 'ql-reward-count', `×${it.count}`));
+        box.append(row);
+      }
+      detail.append(box);
+    }
     if (finished) detail.append(el('div', 'ql-finished-note', 'Completed'));
   }
   logRoot.querySelector('.ql-body')!.replaceChildren(side, detail);

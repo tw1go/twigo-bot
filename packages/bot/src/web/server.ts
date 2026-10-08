@@ -39,7 +39,7 @@ import { kowen } from '../kowens.js';
 import { filterText, kickedUntil, mutedUntil } from './town-mod.js';
 import { getOutfit, parseOutfit, saveOutfit } from './outfit.js';
 import { parseForgeAction } from './forge.js';
-import { adventureOf, combatOf, fighterOf, forgeFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townEquip, townPoints, townQuest, townSkills, trainingArmorFor } from './adventure.js';
+import { adventureOf, combatOf, fighterOf, forgeFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townEquip, townPoints, townQuest, townSkills, trainingArmorFor, questRewardsFor } from './adventure.js';
 import { renameWithCard } from '../items/rename-card.js';
 import { changeClassWithTicket } from '../items/class-ticket.js';
 import { LAUNCH_REWARD, isPreregistered, launched, preregCount, preregister } from '../prereg/prereg.js';
@@ -233,8 +233,10 @@ async function me(client: Client, req: IncomingMessage, res: ServerResponse): Pr
   // A class from before training armor: the Tanod's set, once (what has no room yet, on a later visit).
   const trainingGear = trainingArmorFor(userId);
   if (trainingGear.length) console.log(`[class] ${userId} got training armor: ${trainingGear.join(', ')}`);
+  const questRewards = questRewardsFor(userId);
+  if (questRewards.length) console.log(`[quest] ${userId} got quest rewards: ${questRewards.map((r) => `${r.count}× ${r.item}`).join(', ')}`);
   const body: MeResponse = { id: userId, name, avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items, preregistered: isPreregistered(userId), house: !!houseOf(userId), tester: await isTester(client, userId), outfit: getOutfit(userId), nickname: getNickname(userId), title: titleOf(userId), newTitle: newTitle(userId), welcomeGift: welcomeGift(userId), status: await statusOf(client, userId), adventure: adventureOf(userId),
-    dig: digStatus(userId), ...(trainingGear.length ? { trainingGear } : {}) };
+    dig: digStatus(userId), ...(trainingGear.length ? { trainingGear } : {}), ...(questRewards.length ? { questRewards } : {}) };
   send(res, 200, JSON.stringify(body));
 }
 

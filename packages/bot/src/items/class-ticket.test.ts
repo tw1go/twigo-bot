@@ -34,7 +34,7 @@ test('a Bagong Buhay Ticket changes the class (the new training gear in the old 
   gainXpFor('a', xpForLevel(loadStats(), 5));
   assert.ok(townPoints('a', { action: 'spend', stat: 'STR' }).ok);
   assert.ok(townEquip('a', { action: 'unequip', place: 'hands' }).ok);
-  assert.deepEqual(adventureOf('a').bag.map((i) => i.defId), ['armor-training-heavy-hands']);
+  assert.deepEqual(adventureOf('a').bag.map((i) => i.defId), ['low-hp-potion', 'low-mp-potion', 'armor-training-heavy-hands']); // (the quest's potions first)
   assert.equal(adventureOf('a').cls, 'stick');
   const done = adventureOf('a').quests.done;
 
@@ -54,7 +54,7 @@ test('a Bagong Buhay Ticket changes the class (the new training gear in the old 
   // The Light armor where the Heavy was: worn, and the gloves in the bag where the gauntlets were.
   const light = armorOf('light');
   assert.deepEqual([now.equipped.head, now.equipped.body, now.equipped.hands, now.equipped.bottoms, now.equipped.feet].map((i) => i?.defId), [light[0], light[1], undefined, light[3], light[4]]);
-  assert.deepEqual(now.bag.map((i) => i.defId), [light[2]]);
+  assert.deepEqual(now.bag.map((i) => i.defId), ['low-hp-potion', 'low-mp-potion', light[2]]);
   // Every stat and skill point back; the level stays.
   assert.deepEqual([now.progress.level, now.progress.points, now.progress.statPoints, now.progress.skillPoints], [5, {}, 4, skillPointsAt(loadStats(), 5)]);
   assert.deepEqual(now.quests.done, done);

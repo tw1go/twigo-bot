@@ -1,4 +1,4 @@
-import type { AdventureState, EquipmentDef, EquipPlace, EquipSlot, GearRarity } from './adventure.js';
+import type { AdventureState, EquipmentDef, EquipPlace, EquipSlot, GearRarity, QuestDef, QuestReward } from './adventure.js';
 import { type GearTotals, type StatName, type StatsData, gearKind, numbersIn, placesFor, needsLine, wearCheck } from './stats.js';
 
 // 🎒 Items as things a player owns: each one an instance (its own uid, rolls and history) of a kind from the game's data
@@ -393,6 +393,22 @@ export function pickupLine(data: ItemData, got: { kusing?: number; item?: Item }
 }
 
 // ── Bags and stacks ──
+
+/** The rewards of every finished quest not given yet (quests.json `rewards`), into the combat bag: each quest's all or
+ *  nothing (while they don't all fit, they wait for a later try); marked in `quests.rewarded`. Returns what was given. */
+export function giveQuestRewards(data: ItemData, s: AdventureState, quests: QuestDef[], uid: () => string): QuestReward[] {
+  const given: QuestReward[] = [];
+  for (const q of quests) {
+    if (!q.rewards?.length || !s.quests.done.includes(q.id) || s.quests.rewarded?.includes(q.id)) continue;
+    const rewards = q.rewards.filter((r) => data.defs.has(r.item) && r.count > 0);
+    const bag = s.bag.map((b) => ({ ...b }));
+    if (!rewards.every((r) => addToBag(data, bag, newItem(data.stats, data.defs.get(r.item)!, uid(), r.count), uid))) continue;
+    s.bag = bag;
+    s.quests.rewarded = [...(s.quests.rewarded ?? []), q.id];
+    given.push(...rewards);
+  }
+  return given;
+}
 
 /** The most of a kind in one slot (stats.json inventory: stackN lists; gear never stacks). */
 export function stackLimit(data: StatsData, def: AnyItemDef | undefined): number {

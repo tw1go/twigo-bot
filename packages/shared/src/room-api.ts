@@ -1,7 +1,7 @@
 // Response shapes of the twigo's-room API (the bot's src/web/server.ts), served at https://twigo.dev
 // (and, for the room API, at the old https://twigo-bot.duckdns.org).
 
-import type { AdventureState } from './adventure.js';
+import type { AdventureState, QuestReward } from './adventure.js';
 
 /** One row of `GET /leaderboard`. */
 export interface LeaderboardRow {
@@ -96,6 +96,8 @@ export interface MeResponse {
   /** Training armor the Tanod has just left them (item ids; a class from before training armor, given on this visit):
    *  the game says so once. */
   trainingGear?: string[];
+  /** Quest rewards just given (a quest finished before it had rewards, or one whose rewards had no room): said once. */
+  questRewards?: QuestReward[];
 }
 
 /** The status dots in the art (manifest ui.statusDots). */

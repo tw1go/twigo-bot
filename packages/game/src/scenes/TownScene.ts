@@ -95,7 +95,7 @@ import { Hotbar, potionCooldownKey } from '../ui/hotbar';
 import { mountClassSwitch } from '../ui/class-switch';
 import { MOVES, type MoveKind, isMoveKind, moveTiles, playMove } from '../world/mobility';
 import { changeClass, devItemsReady, devSwitchClass, adventure, adventureData, anyDef, chooseClass, classInfo, initAdventure, itemData, itemDef, loadAdventureData, onAdventure, questDef, questFor, questTalk, setItems, setProgress, skillView, skillViews } from '../net/adventure';
-import { type Item, type TownItems, LOOT_REACH, auraFor, countOf, isGearDef, itemAura, itemStats, tradeRules } from '@mikazuki/shared';
+import { type Item, type QuestReward, type TownItems, LOOT_REACH, auraFor, countOf, isGearDef, itemAura, itemStats, newItem, tradeRules } from '@mikazuki/shared';
 import type { ClassArt } from '../assets/types';
 import { drawRested, loadImages, poseFiles, restFiles } from '../characters/kit-art';
 import { holdQuestBanners, mountQuests } from '../ui/quests';
@@ -699,7 +699,9 @@ export class TownScene extends Phaser.Scene {
       setKusingArt(kusing ? asset(kusing.file) : null);
       const member = this.me?.status === 'ok' ? this.me.me : null;
       if (!member) return; // guests have no quests
-      const armor = initAdventure(member.adventure, member.trainingGear);
+      const { armor, rewards } = initAdventure(member.adventure, member.trainingGear, member.questRewards);
+      // Quest rewards given on this visit (a quest finished before it had any): said after the title card.
+      if (rewards.length) this.time.delayedCall(titleCardMs() + 600, () => this.questRewards(rewards));
       // A class from before training armor: the Tanod's set, said once (after the title card).
       const body = armor.map(itemDef).find((i) => i?.slot === 'body') ?? itemDef(armor[0]);
       if (body) this.time.delayedCall(titleCardMs() + 600, () => toast('The Tanod left you a set of training gear.', 4500, 'good', gearPicture(body, asset)));
@@ -1053,6 +1055,20 @@ export class TownScene extends Phaser.Scene {
     });
   }
 
+  /** Quest rewards just given: a "Gained Low HP Potion ×20" line each in your own system feed (as loot's), and the
+   *  pickup sound. */
+  private questRewards(rewards: QuestReward[]): void {
+    const D = itemData();
+    if (!D) return;
+    for (const r of rewards) {
+      const def = D.defs.get(r.item);
+      const line = def && pickupOf({ item: newItem(D.stats, def, 'reward', r.count) });
+      if (line) this.feed?.mine(line.parts);
+    }
+    playSound('combat-loot-pickup');
+  }
+  private feed: SystemFeed | null = null;
+
   /** The class choice (for a quest's chooseClass objective, given by `giver`). */
   private async openClasses(questId: string, giver: string): Promise<void> {
     const asset = (f: string) => `${import.meta.env.BASE_URL}assets/${f}`;
@@ -1272,6 +1288,11 @@ export class TownScene extends Phaser.Scene {
       };
     }
     const feed = new SystemFeed();
+    this.feed = feed;
+    // A quest's rewards as it's completed: "Gained" lines, like loot.
+    onAdventure((_s, change) => {
+      if (change.rewards?.length) this.questRewards(change.rewards);
+    });
     // Members earn a Kowen for every 15 minutes in town (claimed from a pop-up above the feed).
     const stay = member ? new StayReward() : null;
     let myId = '';

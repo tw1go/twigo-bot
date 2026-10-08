@@ -1,5 +1,5 @@
 {
-  "note": "The town's quests. type: main (violet) or side (yellow). Objective types so far: talk (talk to `npc`) and chooseClass. autoStart quests start the first time a player is in town (and for anyone who hasn't done them yet). dialogue: lines the giver says instead of their usual ones while the quest is on: talk (in order, while talking is the current objective), remind (talking again before the next objective is done), complete (when the quest is done; {class} is the class's name).",
+  "note": "The town's quests. type: main (violet) or side (yellow). Objective types so far: talk (talk to `npc`) and chooseClass. autoStart quests start the first time a player is in town (and for anyone who hasn't done them yet). dialogue: lines the giver says instead of their usual ones while the quest is on: talk (in order, while talking is the current objective), remind (talking again before the next objective is done), complete (when the quest is done; {class} is the class's name). rewards: items given into the combat bag when it's completed ({ item: an items.json or equipment.json id, count }); a quest finished before it had rewards gives them on the next visit. Every quest up to Lv 20 gives Low HP and MP Potions.",
   "quests": [
     {
       "id": "main-01-class",
@@ -36,6 +36,10 @@
           "Nice! A {class} watchman. Stay safe, okay? If there's trouble, I'm right here."
         ]
       },
+      "rewards": [
+        { "item": "low-hp-potion", "count": 20 },
+        { "item": "low-mp-potion", "count": 20 }
+      ],
       "next": null
     }
   ]

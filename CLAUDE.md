@@ -622,7 +622,11 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   suit and boots exist so far).
 - Quests, classes and equipment (bot `web/adventure.ts`, schema v10 `adventurers`: class, quests; v11 levels, above; v12
   items (above); tested). Data in the game's assets, read by the bot too: `quests/quests.json` (main = violet, side = yellow,
-  manifest quests.colours; objective types talk and chooseClass; the giver's lines in `dialogue`), `classes/classes.json`
+  manifest quests.colours; objective types talk and chooseClass; the giver's lines in `dialogue`; `rewards` [{ item, count }]
+  into the combat bag as it's completed: shared `giveQuestRewards`, all of a quest's or none (no room: a later visit),
+  `quests.rewarded`, kept through the CMS's reset; a quest finished before it had rewards gets them on the next /me
+  (`questRewardsFor`, MeResponse `questRewards`); "Gained … ×N" lines in your feed, a Rewards list in the log; every quest
+  up to Lv 20 gives Low HP and MP Potions (the class quest 20 each)), `classes/classes.json`
   (the six classes, their first 7 skills and their `mobility` moves), `items/equipment.json` (the training weapons and
   armor, placeholder stats). `/me` brings `adventure` (autoStart quests start there); `POST /town/quest` / `/town/equip` /
   `/town/points`; the

@@ -13,6 +13,7 @@ import {
   type EquipmentFile,
   type EquipPlace,
   type QuestDef,
+  type QuestReward,
   type QuestsFile,
   type StatName,
   type StatsData,
@@ -26,6 +27,8 @@ import {
   classSkills,
   equipFromBag,
   giveGear,
+  giveQuestRewards,
+  addToBag,
   missingTraining,
   needsLine,
   newItem,
@@ -75,6 +78,8 @@ export interface AdventureChange {
   gear?: string[];
   /** Picked up (loot): Kusing, or an item. */
   got?: { kusing?: number; item?: Item };
+  /** A quest's rewards, just given (the quest just completed, or one finished before it had any). */
+  rewards?: QuestReward[];
 }
 
 let data: AdventureData | null = null;
@@ -148,9 +153,10 @@ export async function loadAdventureData(url: (path: string) => string, files: { 
 }
 
 /** Your state from /me (or, in dev, this browser's pretend one, with the autoStart quests started as the bot would).
- *  Returns the training armor the Tanod has just left (a class from before training armor: /me's `trainingGear`; in dev,
- *  given here the bot's way), for the town to say so once. */
-export function initAdventure(fromMe: AdventureState | undefined, trainingArmor: string[] = []): string[] {
+ *  Returns the training armor the Tanod has just left (a class from before training armor: /me's `trainingGear`) and
+ *  quest rewards just given (quests finished before they had any: /me's `questRewards`) — in dev, given here the bot's
+ *  way — for the town to say so once. */
+export function initAdventure(fromMe: AdventureState | undefined, trainingArmor: string[] = [], questRewards: QuestReward[] = []): { armor: string[]; rewards: QuestReward[] } {
   if (fakeLogin()) {
     // Dev: &quests=reset forgets this browser's pretend class, quests and equipment (the Tanod's quest starts over).
     if (new URLSearchParams(location.search).get('quests') === 'reset') {
@@ -164,17 +170,26 @@ export function initAdventure(fromMe: AdventureState | undefined, trainingArmor:
     const s = loadFake();
     startQuests(s);
     const given = giveTrainingArmor(s);
+    const rewards = data ? giveQuestRewards(data, s, data.quests, devUid) : [];
     set(s, {}, true); // (not sent yet: the dev town's copy may be newer)
     // The dev town's copy wins while it runs (a page closed in a hurry may not have saved its last items); after a
     // restart it has none, and gets this browser's.
     devItemsReady = fetch(`/__items?${new URLSearchParams({ as: fakeName() })}`)
       .then((r) => (r.ok ? (r.json() as Promise<{ known: boolean } & Partial<TownItems>>) : null))
-      .then((r) => (r?.known && r.bag ? setItems({ equipped: r.equipped ?? {}, bag: r.bag, kusing: r.kusing ?? 0 }) : state && pushItems(state)))
+      .then((r) => {
+        if (!r?.known || !r.bag) return state && pushItems(state);
+        setItems({ equipped: r.equipped ?? {}, bag: r.bag, kusing: r.kusing ?? 0 });
+        // Quest rewards just given here go into the dev town's copy too.
+        if (!rewards.length || !state || !data) return;
+        const s = structuredClone(state);
+        for (const x of rewards) addToBag(data, s.bag, newItem(data.stats, data.defs.get(x.item)!, devUid(), x.count), devUid);
+        set(s);
+      })
       .catch(() => undefined);
-    return given;
+    return { armor: given, rewards };
   }
   set(fromMe ?? fresh());
-  return trainingArmor;
+  return { armor: trainingArmor, rewards: questRewards };
 }
 
 // ── Quests seen in the log (the button's dot) ──
@@ -230,7 +245,7 @@ async function act(path: Path, body: Body): Promise<TownAdventureResponse | null
       const o = p && questDef(body.quest)?.objectives[p.step];
       if (o) advanced = { quest: body.quest, objective: o.id };
     }
-    set(res.adventure, { advanced, completed: res.completed, given: res.given, gear: res.gear });
+    set(res.adventure, { advanced, completed: res.completed, given: res.given, gear: res.gear, rewards: res.rewards });
     if (fakeLogin() && (before?.cls !== res.adventure.cls || JSON.stringify(before?.equipped) !== JSON.stringify(res.adventure.equipped))) {
       void fetch(`/__kit?${new URLSearchParams({ as: fakeName(), cls: res.adventure.cls ?? '', weapon: res.adventure.equipped.weapon?.defId ?? '' })}`).catch(() => null);
     }
@@ -455,7 +470,8 @@ function fakeAct(body: TownQuestAction | TownEquipAction): TownAdventureResponse
       completed = q.id;
       if (q.next && !s.quests.done.includes(q.next)) s.quests.active.push({ id: q.next, step: 0 });
     }
-    return { ok: true, adventure: s, given, ...(gear.length ? { gear } : {}), completed };
+    const rewards = completed && data ? giveQuestRewards(data, s, data.quests, devUid) : [];
+    return { ok: true, adventure: s, given, ...(gear.length ? { gear } : {}), completed, ...(rewards.length ? { rewards } : {}) };
   }
   // Wearing and taking off: the bot's rules (@mikazuki/shared items.ts), by uid.
   if (!data) return no("Couldn't load the items.");

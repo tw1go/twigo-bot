@@ -50,7 +50,15 @@ export interface QuestDef {
   objectives: QuestObjectiveDef[];
   /** The giver's lines while it's on: talk (in order), remind, complete ({class} = the chosen class's name). */
   dialogue?: { talk?: string[]; remind?: string[]; complete?: string[] };
+  /** Given into the combat bag when it's completed (items/items.json kinds). */
+  rewards?: QuestReward[];
   next: string | null;
+}
+
+/** A quest's reward: `count` of an item kind (items/items.json or equipment.json id). */
+export interface QuestReward {
+  item: string;
+  count: number;
 }
 
 export interface QuestsFile {
@@ -140,7 +148,9 @@ export interface CharacterProgress {
 /** A member's class, quests, equipment and level (bot web/adventure.ts; in /me as `adventure`). */
 export interface AdventureState {
   cls: string | null;
-  quests: { active: QuestProgress[]; done: string[] };
+  /** `rewarded`: done quests whose rewards have been given (one finished before it had rewards gets them on a later
+   *  visit, as does one whose rewards had no room). */
+  quests: { active: QuestProgress[]; done: string[]; rewarded?: string[] };
   /** What's worn in each place. */
   equipped: Partial<Record<EquipPlace, Item>>;
   /** The combat bag (stats.json inventory.slots): gear not worn, whetstones, fragments, Repair Kits, agimats, HP/MP
@@ -177,4 +187,6 @@ export interface TownAdventureResponse {
   gear?: string[];
   /** A quest just completed. */
   completed?: string;
+  /** Its rewards, just given. */
+  rewards?: QuestReward[];
 }

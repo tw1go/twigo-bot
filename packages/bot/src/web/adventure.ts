@@ -6,6 +6,7 @@ import type {
   EquipPlace,
   Item,
   QuestDef,
+  QuestReward,
   QuestsFile,
   StatName,
   TownAdventureResponse,
@@ -23,6 +24,7 @@ import {
   damageSkillLevels,
   equipFromBag,
   giveGear,
+  giveQuestRewards,
   missingTraining,
   moveUnlock,
   newItem,
@@ -110,7 +112,7 @@ export function questStep(s: AdventureState, a: TownQuestAction): Result {
   const o = q.objectives[p.step];
   if (a.action === 'talk') {
     if (o?.type !== 'talk' || o.npc !== a.npc) return { ok: false, message: 'Not yet.' };
-    return { ok: true, completed: advance(s, q) };
+    return completedWith(s, { ok: true, completed: advance(s, q) });
   }
   if (o?.type !== 'chooseClass') return { ok: false, message: 'Not yet.' };
   if (s.cls) return { ok: false, message: 'You already have a class.' };
@@ -128,7 +130,14 @@ export function questStep(s: AdventureState, a: TownQuestAction): Result {
     } else s.bag.push(item);
   }
   const gear = giveTrainingArmor(s);
-  return { ok: true, given: weapon?.id, ...(gear.length ? { gear } : {}), completed: advance(s, q) };
+  return completedWith(s, { ok: true, given: weapon?.id, ...(gear.length ? { gear } : {}), completed: advance(s, q) });
+}
+
+/** A step's answer, with the quest's rewards if it was just completed (into the combat bag). */
+function completedWith(s: AdventureState, r: Result): Result {
+  if (!r.completed) return r;
+  const rewards = giveQuestRewards(loadItemData(), s, QUESTS, newUid);
+  return rewards.length ? { ...r, rewards } : r;
 }
 
 /** Wear an item from the combat bag (by uid; in the place asked for, else the first free one for its kind, else the
@@ -290,6 +299,14 @@ export function trainingArmorFor(userId: string): string[] {
   if (!s.cls || s.trainingArmorGiven) return [];
   const given = giveTrainingArmor(s);
   save(userId, s);
+  return given;
+}
+
+/** Rewards of quests finished before they had any (or that had no room then), saved; what was given. */
+export function questRewardsFor(userId: string): QuestReward[] {
+  const s = load(userId);
+  const given = giveQuestRewards(loadItemData(), s, QUESTS, newUid);
+  if (given.length) save(userId, s);
   return given;
 }
 
@@ -478,5 +495,7 @@ export function resetAdventure(userId: string): void {
   const s = load(userId);
   const training = (i: Item | undefined) => !!i && !!EQUIPMENT.get(i.defId)?.training;
   const equipped = Object.fromEntries(Object.entries(s.equipped).filter(([, i]) => !training(i)));
-  save(userId, { ...freshAdventure(), equipped, bag: s.bag.filter((i) => !training(i)), kusing: s.kusing, progress: refundPoints(loadStats(), null, s.progress) });
+  // Quest rewards already given stay given (doing the quest again doesn't pay twice).
+  const quests = { ...freshAdventure().quests, ...(s.quests.rewarded ? { rewarded: s.quests.rewarded } : {}) };
+  save(userId, { ...freshAdventure(), quests, equipped, bag: s.bag.filter((i) => !training(i)), kusing: s.kusing, progress: refundPoints(loadStats(), null, s.progress) });
 }
