@@ -46,7 +46,7 @@ export interface Manifest {
   /** The town's ambient NPCs (world/npcs.ts): flat pre-baked sheets, not paper dolls. */
   npcs?: NpcDefs;
   fx: Record<string, FxDef>;
-  /** Mobs (world/mobs.ts): sheets per animation and direction. */
+  /** Mobs (world/mobs.ts): sheets per variant, animation and direction; `data` = their rules file (mobs/mobs.json). */
   mobs?: Record<string, MobDef | string>;
   /** Item art by id (dig items and /redeem rewards), only for the ids that have art. */
   items?: Record<string, ItemArtDef>;
@@ -146,6 +146,8 @@ export interface FxDef {
   loop?: boolean;
   /** A grid sheet: this many frames per row (else one row). */
   perRow?: number;
+  /** Drawn under every player and mob (ground) or over them (front). */
+  layer?: 'ground' | 'front';
 }
 
 /** One weapon layer of a class pose: its sheet and cell size (64x64 with the body cell at ClassesDefs.bodyOffset, or
@@ -274,11 +276,33 @@ export interface Ramp {
 
 export interface MobDef {
   name: string;
-  file: string; // with {anim} and {dir}
+  file: string; // with {anim} and {dir} (and {variant} when it has variants)
   size: Vec2;
   anchor: Vec2;
+  /** The looks, one picked per spawn (by the server), each with its own cell and anchor if they differ. None: one look. */
+  variants?: Record<string, { size?: Vec2; anchor?: Vec2 }>;
   directions: string[];
   animations: Record<string, { frames: number; fps: number; loop: boolean }>;
+  /** The golem's red-lamp set: these anims from `file` (same cells and timing); the others are shared. */
+  enraged?: { file: string; animations: string[] };
+  /** The golem's effects (layer ground: under every player and mob, front: over them). */
+  fx?: Record<string, FxDef>;
+}
+
+/** A mob's rules (mobs/mobs.json, manifest mobs.data; the bot reads it too). Frames are 0-based. */
+export interface MobData {
+  /** The attack anim's frame where the hit lands (the golem's Tire Slam). */
+  attackFrame: number;
+  /** [w, h] art px of the ground shadow, centred on the anchor. */
+  shadow: Vec2;
+  /** It hangs above its anchor (the art already does): the shadow stays on the ground. */
+  floats?: boolean;
+  variants?: string[];
+  /** The Tire Roller's lunge frames (first, last). */
+  charge?: Vec2;
+  /** The golem's Scrap Toss release frame and Lamp Glare cone frames (first, last). */
+  tossFrame?: number;
+  glareFrames?: Vec2;
 }
 
 export interface MobZone {
