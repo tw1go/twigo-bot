@@ -8,11 +8,14 @@ import {
   type TownGolem,
   type TownMob,
   type TownMobFacing,
+  baseCooldown,
   baseStats,
   derivedStats,
   gearTotals,
   mobStats,
   rollHit,
+  skillCooldown,
+  skillLevelBonus,
   skillPct,
   skillTier,
   xpEarners,
@@ -42,7 +45,9 @@ import { Golem, type GolemArt, type GolemBoss, type GolemEvent, type PitTiles, p
 // its zone's aggroRange (in its zone, on its level) the same way. It gives up and walks home when they're gone, out of
 // its zone or its leash, or (a passive one) haven't hit it for GIVE_UP_MS. At 0 HP it dies (its XP to whoever killed
 // it: `kills`, which the town turns into levels) and comes back where it started after its zone's respawnSec (a pack's
-// caps each on their own). Each skill has its own cooldown by the level it's learnt at (skillCooldown: Lv 1 the quickest; the game shows the same, combat/cooldowns.ts).
+// caps each on their own). A skill can only be used from its unlock level (classes.json; refused 'locked' before). Each
+// has its own cooldown by its unlock level (baseCooldown in @mikazuki/shared: Lv 1 the quickest), 1% less for each skill
+// level past 1 (skillCooldown); a skill's slow or root lasts 5% longer a skill level (skillLevelBonus's buff).
 //
 // The field boss (the map's `boss`, given its art): town-golem.ts runs it on this room's clock; hits on it come through
 // attack() like any mob's (reach to its body's edge; area skills reach it too), and its Adds are mobs of this room (ids
@@ -59,10 +64,6 @@ const RANGED_CLASSES = new Set(['slingshot', 'broom']);
 const ATTACK_MS = 1600;
 const GIVE_UP_MS = 12_000;
 const SWING_MS = 400; // a player's attacks: no faster than this
-
-/** A skill's cooldown (s) by the level it's learnt at: 0.8 + 0.15 a level, to a tenth (Lv 1: 1 s … Lv 18: 3.5 s). Keep in
- *  step with the game's combat/cooldowns.ts. */
-export const skillCooldown = (level: number) => Math.round((0.8 + 0.15 * Math.max(1, level)) * 10) / 10;
 
 export type MobEvent =
   | { t: 'mob-move'; id: string; path: [number, number][]; speed?: number }
@@ -94,8 +95,9 @@ export interface MobKill {
 }
 
 /** `hits`: the target first, then any other mobs the skill's shape reached (skill-hits.json); `kills`: those it killed.
- *  Refused: out of reach, too soon, the mob gone, or `skill` isn't one of their class's (its tier would be made up). */
-export type AttackResult = { ok: true; hits: MobHit[]; kills: MobKill[] } | { ok: false; reason: 'range' | 'slow' | 'gone' | 'skill' };
+ *  Refused: out of reach, too soon, the mob gone, `skill` isn't one of their class's (its tier would be made up), or
+ *  it's still locked (their level is under its unlock level). */
+export type AttackResult = { ok: true; hits: MobHit[]; kills: MobKill[] } | { ok: false; reason: 'range' | 'slow' | 'gone' | 'skill' | 'locked' };
 
 /** Each class's skills' target shapes, in their order (the game's classes/skill-hits.json), and their effects. */
 export interface SkillShapes {
@@ -125,7 +127,7 @@ function parseEffect(e: string | null | undefined): { factor: number; ms: number
   return null;
 }
 
-/** Each class's damage skills' levels, in their order (classes.json). */
+/** Each class's damage skills' unlock levels, in their order (classes.json). */
 export type SkillLevels = Record<string, number[]>;
 
 /** Who attacks: their class, level and stat points spent, the items they wear (ids) and their skills' levels (by skill,
@@ -668,6 +670,8 @@ export class MobRoom {
     const cls = a.cls;
     const skills = (cls && (this.levels[cls]?.length ?? this.shapes.shapes[cls]?.length)) || 1;
     if (skill < 0 || skill >= skills) return { ok: false, reason: 'skill' };
+    const unlock = (cls && this.levels[cls]?.[skill]) || 1;
+    if ((a.level ?? 1) < unlock) return { ok: false, reason: 'locked' };
     const boss = this.golem?.id === id ? this.golem : null;
     const m = boss ? null : this.byId.get(id);
     if (boss ? !boss.hittable : !m || m.respawnAt) return { ok: false, reason: 'gone' };
@@ -682,11 +686,13 @@ export class MobRoom {
     if (boss && !boss.inFight(from)) return { ok: false, reason: 'range' };
     this.swings.set(player, now + SWING_MS);
     // (A little slack: the game's clock and the message's trip.)
-    const level = (cls && this.levels[cls]?.[skill]) || 1;
-    this.swings.set(ready, now + skillCooldown(level) * 1000 - 150);
+    const skillLevel = a.skills?.[skill] ?? 1;
+    this.swings.set(ready, now + skillCooldown(this.fightData.stats, baseCooldown(unlock), skillLevel) * 1000 - 150);
+    // Its slow or root, 5% longer a skill level.
     const effect = parseEffect(cls ? this.shapes.effects?.[cls]?.[skill] : null);
+    if (effect) effect.ms = Math.round(effect.ms * skillLevelBonus(this.fightData.stats, skillLevel).buff);
     const by = this.hitter(a);
-    const pct = skillPct(this.fightData.stats, skillTier(skill), a.skills?.[skill] ?? 1);
+    const pct = skillPct(this.fightData.stats, skillTier(skill), skillLevel);
     const kills: MobKill[] = [];
     const hits = this.reached(m ?? 'golem', [mc, mr], from, (cls && this.shapes.shapes[cls]?.[skill]) || 'single', now).map((x) => {
       if (x === 'golem') return this.hitGolem(player, name, by, pct, now, kills); // (no slowing it)

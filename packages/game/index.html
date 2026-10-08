@@ -1294,6 +1294,10 @@
       #hotbar .hb-icon, #skill-book .hb-icon { display: block; flex: none; width: 32px; height: 32px; image-rendering: pixelated; pointer-events: none; }
       #hotbar .hb-icon { margin: -2px; }
       #hotbar .hb-off .hb-icon, #hotbar .hb-off .hb-initials { filter: grayscale(1) brightness(0.45); } /* damage skills: there's no combat in town */
+      #hotbar .hb-locked .hb-icon, #hotbar .hb-locked .hb-initials { filter: grayscale(1) brightness(0.35); } /* not unlocked yet */
+      #hotbar .hb-lock { position: absolute; inset: -4px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; pointer-events: none; }
+      #hotbar .hb-lock svg { display: block; image-rendering: pixelated; }
+      #hotbar .hb-lock-lv { font: 700 11px/1 var(--ui-font); color: #E6E9F2; text-shadow: 0 1px 0 #0B0A1A, 1px 0 0 #0B0A1A, -1px 0 0 #0B0A1A, 0 -1px 0 #0B0A1A; }
       #hotbar .hb-fire { animation: hb-fire 0.35s ease-out; }
       #hotbar .hb-auto { border-image-source: var(--slot-picked); animation: hb-auto 0.9s ease-in-out infinite alternate; } /* auto-casting */
       @keyframes hb-auto { from { filter: drop-shadow(0 0 1px #F8BF27); } to { filter: drop-shadow(0 0 4px #F8BF27) brightness(1.15); } }
@@ -1315,13 +1319,26 @@
       #skill-book .sb-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
       #skill-book .sb-line { display: flex; justify-content: space-between; gap: 8px; }
       #skill-book .sb-desc { color: #a9b1d6; font-size: 12px; }
-      #skill-book .hb-skill-row { display: flex; align-items: center; gap: 10px; width: 100%; margin: 2px 0; padding: 6px 8px; border: 1px solid transparent; background: rgba(255, 255, 255, 0.04); color: inherit; font: inherit; text-align: left; cursor: grab; }
+      #skill-book .hb-skill-row { display: flex; align-items: center; gap: 10px; width: 100%; box-sizing: border-box; margin: 2px 0; padding: 6px 8px; border: 1px solid transparent; background: rgba(255, 255, 255, 0.04); color: inherit; font: inherit; text-align: left; cursor: grab; }
       #skill-book .hb-skill-row:hover { background: rgba(183, 148, 246, 0.15); }
       #skill-book .hb-skill-row.hb-picked { border-color: #A3E635; background: rgba(163, 230, 53, 0.12); }
       #skill-book .hb-initials { flex: none; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 1px solid #3D4256; background: #1E1B3A; font-weight: 700; font-size: 12px; color: #fff; }
-      #skill-book .hb-lv { color: #F8BF27; font-size: 12px; }
+      #skill-book .hb-lv { flex: none; color: #F8BF27; font-size: 12px; }
       #skill-book .hb-name { font-weight: 700; color: #fff; }
       #skill-book .hb-note { margin: 0 0 8px; font-size: 12px; line-height: 1.3; color: #a9b1d6; }
+      #skill-book .sb-points { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; padding: 4px 0; border-bottom: 1px solid #3D4256; font-size: 13px; color: #A9B1D6; }
+      #skill-book .sb-points-label { font-weight: 700; color: #E6E9F2; }
+      #skill-book .sb-points-n { margin-left: -4px; font: 17px/1 'Mk Numbers', var(--ui-font); color: #fff; } /* Jersey 10 */
+      #skill-book .sb-points-hint { color: #7A8099; font-size: 12px; }
+      #skill-book .sb-reset { margin-left: auto; padding: 1px 8px 2px; border: 2px solid #3D4256; border-radius: 0; background: #1E1B3A; color: #A9B1D6; font: inherit; font-size: 12px; font-weight: 700; cursor: var(--cur-hand, pointer); }
+      #skill-book .sb-reset:hover:not(:disabled) { border-color: #A3E635; color: #A3E635; }
+      #skill-book .sb-reset:disabled { opacity: 0.45; cursor: default; }
+      #skill-book .sb-plus { flex: none; align-self: center; width: 20px; height: 20px; padding: 0; border: 2px solid #A3E635; border-radius: 0; background: #1E1B3A; color: #A3E635; font: 700 15px/1 var(--ui-font); cursor: var(--cur-hand, pointer); }
+      #skill-book .sb-plus:hover, #skill-book .sb-plus:focus-visible { background: #A3E635; color: #1E1B3A; }
+      #skill-book .sb-locked { cursor: grab; }
+      #skill-book .sb-locked .hb-icon, #skill-book .sb-locked .hb-initials { filter: grayscale(1) brightness(0.5); }
+      #skill-book .sb-locked .hb-name, #skill-book .sb-locked .sb-desc { color: #7A8099; }
+      #skill-book .sb-locked .hb-lv { color: #7A8099; }
       body.town-locked #hotbar { display: none; }
       @media (min-width: 761px) and (max-width: 1780px) and (min-height: 501px) { body.hotbar-on #chat, body.hotbar-on #bag-button { bottom: 118px; } }
       @media (min-width: 761px) and (max-width: 1380px) and (min-height: 501px) { body.hotbar-on #system-feed { bottom: 118px; } body.hotbar-on #stay { bottom: 276px; } }
@@ -1482,6 +1499,8 @@
       #class-choice .sp-playing .sp-skill-button { border-color: #A3E635; background: #1E1B3A; color: #fff; }
       #class-choice .sp-lv { grid-row: span 2; color: #FCDA4A; font-weight: 700; }
       #class-choice .sp-skill-name { font-weight: 700; color: #fff; }
+      #class-choice .sp-cap { margin-left: 8px; font-weight: 400; font-size: 12px; color: #C4B5FD; }
+      #class-choice .sp-cap.sp-locked { color: #7A8099; }
       #class-choice .sp-desc { color: #A9B1D6; font-size: 12px; }
       #class-choice .sp-buttons { grid-column: 1 / -1; display: flex; justify-content: space-between; gap: 10px; }
       @media (max-width: 760px) {

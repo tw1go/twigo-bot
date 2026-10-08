@@ -1,12 +1,13 @@
 import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import type { HoodHouse, HouseLook, OutfitData, TownHoodActionResponse, TownHoodResponse, TownRace, TownRaceResponse } from '@mikazuki/shared';
+import type { ClassesFile, HoodHouse, HouseLook, OutfitData, TownHoodActionResponse, TownHoodResponse, TownRace, TownRaceResponse } from '@mikazuki/shared';
+import { classSkills, damageSkillLevels, moveUnlock } from '@mikazuki/shared';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { doorSpot, hoodMap, lotTile } from '../../bot/src/web/hood-map.ts';
 import type { Plugin } from 'vite';
 import { attachTown } from '../../bot/src/web/town.ts';
 import { MobRoom, loadMobKinds, loadSkillShapes } from '../../bot/src/web/town-mobs.ts';
-import { type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView, resetStatPoints, spendPoint } from '../../bot/src/web/progress.ts';
+import { type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView, raiseSkill, resetSkillPoints, resetStatPoints, spendPoint } from '../../bot/src/web/progress.ts';
 import { loadStats } from '../../bot/src/web/stats-data.ts';
 import { loadGolemArt } from '../../bot/src/web/town-golem.ts';
 import { LANES, finishMs, raceScript } from '../../bot/src/games/race-script.ts';
@@ -35,6 +36,8 @@ import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
 //   XP and points)
 //   GET /__points?as=Alice&stat=DEX   Alice spends a stat point on DEX (&reset=1: all back), by the bot's rules
 //   (web/progress.ts); answers { ok, message?, progress } and sends her `progress` (the pretend equipment panel calls it)
+//   GET /__skills?as=Alice&skill=0   Alice puts a skill point into her class's first skill (&skill=dash: Dash; &reset=1:
+//   all back), by the bot's rules; answers and sends like /__points (the pretend Skills panel calls it)
 //   GET /__xp?as=Alice&xp=500   Alice gains 500 XP (&level=10: her level set to 10), as from kills: her level-ups, "Level
 //   up!" for her room, her HUD (the page's ?xp= / ?level= call it). Levels live here in memory (bot web/progress.ts),
 //   from what the page sent on connect; kills in the Slums give XP the same way.
@@ -276,12 +279,12 @@ export function devTown(): Plugin {
         }
         return slums;
       };
+      const classes = (JSON.parse(readFileSync(join(server.config.publicDir, 'assets/classes/classes.json'), 'utf8')) as ClassesFile).classes;
+      const classOf = (name: string) => classes.find((c) => c.id === kits.get(name)?.cls);
       const slumsMobs = new MobRoom(
         JSON.parse(readFileSync(slumsFile, 'utf8')),
         Math.random,
-        Object.fromEntries(
-          (JSON.parse(readFileSync(join(server.config.publicDir, 'assets/classes/classes.json'), 'utf8')).classes as { id: string; skills: { level: number }[] }[]).map((c) => [c.id, c.skills.map((k) => k.level)]),
-        ),
+        Object.fromEntries(classes.map((c) => [c.id, c.skills.map((k) => k.level)])),
         loadSkillShapes(),
         loadMobKinds(),
         loadGolemArt(),
@@ -296,6 +299,7 @@ export function devTown(): Plugin {
           slums: slumsMap,
         },
         mobs: { slums: slumsMobs },
+        moveLevel: (cls, move) => moveUnlock(classes.find((c) => c.id === cls), move),
         shared: true,
         arenaBets,
         authenticate: async (req) => {
@@ -320,7 +324,7 @@ export function devTown(): Plugin {
         progress: {
           fighter: (name) => {
             const p = levelOf(name);
-            return { cls: kits.get(name)?.cls, level: p.level, points: p.points, gear: [kits.get(name)?.weapon] };
+            return { cls: kits.get(name)?.cls, level: p.level, points: p.points, gear: [kits.get(name)?.weapon], skills: damageSkillLevels(classOf(name), p) };
           },
           kill: (name, mob) => {
             const r = killXp(stats, kits.get(name)?.cls ?? null, levelOf(name), mob);
@@ -374,6 +378,17 @@ export function devTown(): Plugin {
         const name = q.get('as') ?? '';
         const cls = kits.get(name)?.cls ?? null;
         const r = q.has('reset') ? { ok: true as const, progress: resetStatPoints(stats, cls, levelOf(name)) } : spendPoint(stats, cls, levelOf(name), q.get('stat') as 'STR');
+        if (r.ok) {
+          levels.set(name, r.progress);
+          town.progress(name, r.progress);
+        }
+        reply(res, r);
+      });
+      server.middlewares.use('/__skills', (req, res) => {
+        const q = new URL(req.url ?? '/', 'http://localhost').searchParams;
+        const name = q.get('as') ?? '';
+        const cls = kits.get(name)?.cls ?? null;
+        const r = q.has('reset') ? { ok: true as const, progress: resetSkillPoints(stats, cls, levelOf(name)) } : raiseSkill(stats, cls, levelOf(name), classSkills(classOf(name)).find((k) => k.key === q.get('skill')));
         if (r.ok) {
           levels.set(name, r.progress);
           town.progress(name, r.progress);

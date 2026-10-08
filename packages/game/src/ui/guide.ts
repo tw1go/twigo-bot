@@ -101,6 +101,8 @@ const TOPICS: Topic[] = [
       '• The **Scrapheap Golem**\'s XP goes to everyone who did at least 5% of its HP',
       '• Each level up earns a **stat point** and **3 skill points**, and everyone nearby sees **Level up!** over you',
       '• Spend stat points in the **Equipment** panel (**B**): the **+** beside your class’s two stats. **Reset** gives them all back, free. Before you have a class they wait for you',
+      '• Skills unlock as you level: each says **Unlocks at Lv N** until then (**Dash** at Lv 5, your class’s own move at Lv 8). Locked ones can’t be used',
+      '• Spend skill points in the **Skills** panel (**K**): the **+** raises a skill a level, up to your level − its unlock level + 1 (never above 20). Each level: **+2%** damage and **1%** less cooldown. **Reset** is free',
       '• Gear needs a **level** and **stats**: its tooltip lists them, in red what you don’t meet yet. Only your own stats count, never what gear adds',
       '• With your class the Tanod gives a **training weapon** and **training armor**. They’re yours for good: never sold or traded',
       '• The highest level is **20**: the bar reads MAX',

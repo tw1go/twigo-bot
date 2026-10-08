@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { WebSocket } from 'ws';
-import { type Hitter, type TownServerMessage, baseStats, derivedStats, hitDamage, levelGap, mobStats, skillPct } from '@mikazuki/shared';
+import { type Hitter, type TownServerMessage, baseCooldown, baseStats, derivedStats, hitDamage, levelGap, mobStats, skillCooldown, skillPct } from '@mikazuki/shared';
 import { type SavedProgress, freshProgress, killXp } from './progress.js';
 import { loadGear, loadStats } from './stats-data.js';
 import { type AttackResult, MobRoom, facingTo, loadMobKinds, loadMobMap, packSize } from './town-mobs.js';
@@ -132,15 +132,50 @@ test('a hit takes the stats rules\' damage from its HP, the mob goes after its f
   assert.ok(back && back.t === 'mob-spawn' && back.hp === mob.maxHp);
 });
 
-test('each skill has its own cooldown by its level (Lv 1 the quickest)', () => {
-  const room = new MobRoom(map, () => 0.5, { stick: [1, 3, 6, 9, 12, 15, 18] });
-  const mob = room.snapshot(0).find((m) => m.id.startsWith('crab-basin:'))!; // (a sturdy one: a Lv 1 misses it at 0.5)
+test('each skill has its own cooldown by its unlock level (Lv 1 the quickest)', () => {
+  const room = new MobRoom(map, () => 0.5, { stick: [1, 3, 6, 9, 12, 15, 18] }, { shapes: {} }, loadMobKinds());
+  const mob = room.snapshot(0).find((m) => m.id.startsWith('crab-basin:'))!; // (a sturdy one: its shell takes the hits)
   const at: [number, number] = [mob.col + 1, mob.row];
-  assert.ok(room.attack('p1', at, 'stick', mob.id, 0, 6).ok, 'the Lv 18 skill');
-  assert.deepEqual(room.attack('p1', at, 'stick', mob.id, 1000, 6), { ok: false, reason: 'slow' }, '3.5 s: not yet');
-  assert.ok(room.attack('p1', at, 'stick', mob.id, 1000, 0).ok, 'another skill is ready');
-  assert.ok(room.attack('p1', at, 'stick', mob.id, 2050, 0).ok, 'Lv 1: 1 s');
-  assert.ok(room.attack('p1', at, 'stick', mob.id, 3500, 6).ok, 'the Lv 18 one after 3.5 s');
+  const lv18 = { cls: 'stick', level: 18 };
+  assert.ok(room.attack('p1', at, lv18, mob.id, 0, 6).ok, 'the Lv 18 skill');
+  assert.deepEqual(room.attack('p1', at, lv18, mob.id, 1000, 6), { ok: false, reason: 'slow' }, '3.5 s: not yet');
+  assert.ok(room.attack('p1', at, lv18, mob.id, 1000, 0).ok, 'another skill is ready');
+  assert.ok(room.attack('p1', at, lv18, mob.id, 2050, 0).ok, 'Lv 1: 1 s');
+  assert.ok(room.attack('p1', at, lv18, mob.id, 3500, 6).ok, 'the Lv 18 one after 3.5 s');
+});
+
+test('a skill is locked until its unlock level', () => {
+  const room = new MobRoom(map, () => 0.5, { slingshot: [1, 3, 6, 9, 12, 15, 18] });
+  const mob = room.snapshot(0).find((m) => m.id.startsWith('crab-basin:'))!;
+  const at: [number, number] = [mob.col + 2, mob.row];
+  assert.deepEqual(room.attack('p1', at, 'slingshot', mob.id, 0, 1), { ok: false, reason: 'locked' }, 'Double Tap is Lv 3');
+  assert.deepEqual(room.attack('p1', at, { cls: 'slingshot', level: 17 }, mob.id, 0, 6), { ok: false, reason: 'locked' }, 'Volley is Lv 18');
+  assert.ok(room.attack('p1', at, { cls: 'slingshot', level: 3 }, mob.id, 0, 1).ok, 'Lv 3: Double Tap');
+  assert.ok(room.attack('p2', at, { cls: 'slingshot', level: 18 }, mob.id, 0, 6).ok, 'Lv 18: Volley');
+});
+
+test('skill levels: +2% damage and 1% less cooldown a level past 1; slows and roots 5% longer', () => {
+  const room = () => new MobRoom(map, () => 0.9, { slingshot: [1, 3, 6, 9, 12, 15, 18] }, { shapes: {}, effects: { slingshot: ['slow:0.5:2500'] } });
+  const [a, b] = [room(), room()];
+  const wire = a.snapshot(0).find((m) => m.id.startsWith('wire-ridge:'))!; // (sturdy: one hit doesn't kill it)
+  const at: [number, number] = [wire.col + 2, wire.row];
+  const who = (skill: number) => ({ cls: 'slingshot', level: 11, skills: [skill] });
+  const one = a.attack('p1', at, who(1), wire.id, 0, 0);
+  const eleven = b.attack('p1', at, who(11), wire.id, 0, 0);
+  assert.ok(one.ok && eleven.ok);
+  // The same hit at 120% of the skill's % (rounded once, at the end).
+  const by = { ...derivedStats(stats, 'slingshot', 11, baseStats(stats, 'slingshot', 11)), level: 11 };
+  assert.equal(one.hits[0].damage, hitDamage(stats, by, kindOf(wire.id), skillPct(stats, 1, 1)));
+  assert.equal(eleven.hits[0].damage, hitDamage(stats, by, kindOf(wire.id), skillPct(stats, 1) * 1.2));
+  assert.ok(eleven.hits[0].damage > one.hits[0].damage);
+  // Its slow: 2.5 s at Lv 1, 50% longer at Lv 11.
+  assert.deepEqual(one.hits[0].slow, { factor: 0.5, ms: 2500 });
+  assert.deepEqual(eleven.hits[0].slow, { factor: 0.5, ms: 3750 });
+  // Quick Shot's 1 s cooldown: 0.9 s at Lv 11 (the server's 150 ms of slack either way).
+  assert.equal(skillCooldown(stats, baseCooldown(1), 11), 0.9);
+  assert.deepEqual(b.attack('p1', at, who(11), wire.id, 700, 0), { ok: false, reason: 'slow' });
+  assert.ok(b.attack('p1', at, who(11), wire.id, 760, 0).ok, 'Lv 11: ready after 0.9 s');
+  assert.deepEqual(a.attack('p1', at, who(1), wire.id, 760, 0), { ok: false, reason: 'slow' }, 'Lv 1: still 1 s');
 });
 
 test('a skill hits the mobs its shape reaches: a chain hops to the nearest, around hits those next to you', () => {
@@ -199,8 +234,9 @@ test('damage: Power from the class, level, points and worn weapon; the skill\'s 
   const r = room.attack('p1', [can.col + 2, can.row], { cls: 'slingshot', gear: [weapon.id] }, can.id, 0, 0);
   assert.ok(r.ok && r.hits[0].damage === hits(hitter('slingshot', 1, weapon.stats.atk), can.id)[0] && !r.hits[0].crit, JSON.stringify(r));
   assert.ok(r.ok && r.hits[0].damage === 30);
-  // A higher tier hits harder; so do levels and points.
-  const t3 = room.attack('p1', [can.col + 2, can.row], { cls: 'slingshot', gear: [weapon.id] }, can.id, 5000, 2);
+  // A higher tier hits harder (from its unlock level: Pebble Spray's 6); so do levels and points.
+  assert.deepEqual(room.attack('p1', [can.col + 2, can.row], { cls: 'slingshot', gear: [weapon.id] }, can.id, 5000, 2), { ok: false, reason: 'locked' });
+  const t3 = room.attack('p1', [can.col + 2, can.row], { cls: 'slingshot', level: 6, gear: [weapon.id] }, can.id, 5000, 2);
   assert.ok(t3.ok && t3.hits[0].dead, 'tier 3 (169%) finishes it');
   const wire = snap.find((m) => m.id.startsWith('wire-ridge:'))!;
   const lv11 = room.attack('p2', [wire.col + 2, wire.row], { cls: 'slingshot', level: 11, points: { DEX: 10 }, gear: [weapon.id] }, wire.id, 0, 0);
@@ -476,5 +512,39 @@ test('over the town\'s socket: a kill\'s XP goes to the killer; a level-up shows
   for (const c of [a, b]) assert.deepEqual(c.got.filter((m) => m.t === 'level-up'), [{ t: 'level-up', id: maraId, level: 2 }]);
   assert.ok(!b.got.some((m) => m.t === 'progress'), 'Bob only sees the level-up');
   for (const c of [a, b]) c.ws.close();
+  await new Promise((ok) => server.close(ok));
+});
+
+test('the town passes on a movement skill only from its unlock level, and only the class\'s own', async () => {
+  const server = createServer();
+  const open6 = Array.from({ length: 6 }, () => Array(6).fill(0));
+  const level: Record<string, number> = { Ann: 4, Mara: 5, Bob: 1 };
+  attachTown(server, {
+    map: { size: [6, 6], spawn: [1, 1], blocked: open6 },
+    authenticate: async (req) => new URL(req.url ?? '/', 'http://x').searchParams.get('as'),
+    profile: (name) => ({ nickname: name, title: { name: 'Townfolk', color: '#fff' }, outfit: {} as never, cls: 'slingshot', level: level[name] }),
+    moveLevel: (cls, move) => (cls === 'slingshot' ? ({ dash: 5, 'step-back': 8 } as Record<string, number>)[move] ?? null : null),
+  });
+  await new Promise<void>((ok) => server.listen(0, '127.0.0.1', ok));
+  const port = (server.address() as AddressInfo).port;
+  const open = (as: string) =>
+    new Promise<{ ws: WebSocket; got: TownServerMessage[] }>((ok) => {
+      const ws = new WebSocket(`ws://127.0.0.1:${port}/ws?as=${as}`);
+      const got: TownServerMessage[] = [];
+      ws.on('message', (d) => got.push(JSON.parse(String(d))));
+      ws.on('open', () => ok({ ws, got }));
+    });
+  const [ann, mara, bob] = [await open('Ann'), await open('Mara'), await open('Bob')];
+  await new Promise((ok) => setTimeout(ok, 100));
+  const idOf = (c: { got: TownServerMessage[] }) => (c.got.find((m) => m.t === 'welcome') as Extract<TownServerMessage, { t: 'welcome' }>).you;
+  const to = { col: 2, row: 2 }; // (anywhere near: the 6 × 6 map)
+  ann.ws.send(JSON.stringify({ t: 'move', move: 'dash', ...to })); // Lv 4: Dash is Lv 5
+  mara.ws.send(JSON.stringify({ t: 'move', move: 'blink', ...to })); // not the Slingshot's
+  mara.ws.send(JSON.stringify({ t: 'move', move: 'step-back', ...to })); // Lv 8
+  mara.ws.send(JSON.stringify({ t: 'move', move: 'dash', ...to }));
+  await new Promise((ok) => setTimeout(ok, 200));
+  const seen = bob.got.filter((m) => m.t === 'move');
+  assert.deepEqual(seen.map((m) => m.t === 'move' && [m.id, m.move]), [[idOf(mara), 'dash']]);
+  for (const c of [ann, mara, bob]) c.ws.close();
   await new Promise((ok) => server.close(ok));
 });

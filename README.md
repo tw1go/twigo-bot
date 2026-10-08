@@ -307,7 +307,9 @@ Its numbers are the bot's rules; keep them in step when those change.
 `classes/stats.json`): defeating mobs in the Slums gives XP (the golem's to everyone who did 5% of its HP); each level up
 earns a stat point and 3 skill points, up to Lv 20. The HUD shows "Lv N" and an XP bar; everyone nearby sees "Level up!".
 Saved with the class in `adventurers` (schema v11). Stat points go into the class's main or second stat in the equipment
-panel (`POST /town/points`; Reset is free; banked before a class). Gear needs an item level and stats (base stats only,
+panel (`POST /town/points`; Reset is free; banked before a class). Skills unlock at their level (Dash at 5, the class's
+own move at 8); skill points raise them in the Skills panel (K, `POST /town/skills`; cap = level − unlock level + 1, at
+most 20; Reset is free): +2% damage and −1% cooldown a level. Gear needs an item level and stats (base stats only,
 checked by the bot on every equip); the Tanod gives a training weapon and a training armor set with the class (once,
 also to classes from before training armor), bound and never sold.
 

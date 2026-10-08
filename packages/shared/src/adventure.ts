@@ -20,6 +20,8 @@ export interface ClassInfo {
   fxNotes: string;
   resting: string;
   skills: { level: number; name: string; desc: string }[];
+  /** The two movement skills: Dash and the class's Lv 8 move (`id` names the move: TownMove). */
+  mobility?: { id: string; level: number; name: string; desc: string }[];
 }
 
 export interface ClassesFile {
@@ -155,6 +157,10 @@ export type TownEquipAction = { action: 'equip'; item: string; place?: EquipPlac
 
 /** POST /town/points: one stat point into the class's main or second stat, or every stat point back (free). */
 export type TownPointsAction = { action: 'spend'; stat: StatName } | { action: 'reset' };
+
+/** POST /town/skills: one skill point into a skill (its key: a damage skill's place '0'…'6', or a move's id), or every
+ *  skill point back (free). */
+export type TownSkillsAction = { action: 'raise'; skill: string } | { action: 'reset' };
 
 export interface TownAdventureResponse {
   ok: boolean;

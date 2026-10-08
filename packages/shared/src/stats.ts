@@ -1,4 +1,4 @@
-import type { AdventureState, EquipmentDef, EquipPlace, EquipSlot, EquipStats } from './adventure.js';
+import type { AdventureState, CharacterProgress, ClassInfo, EquipmentDef, EquipPlace, EquipSlot, EquipStats } from './adventure.js';
 
 // 📊 Character levels and stats, gear requirements, skill levels, damage and XP: pure functions over the numbers in the
 // game's classes/stats.json (passed in as `data`; none of them are written here), shared by the bot (which decides every
@@ -387,6 +387,43 @@ export function skillLevelCap(data: StatsData, level: number, unlockLevel: numbe
   const [most] = numbersIn(data.skills.levelCap);
   return clamp(level - unlockLevel + 1, 0, most);
 }
+
+/** A skill in a class's list: its key (where its level is kept: a damage skill's place '0'…'6', a move's id), name,
+ *  description and unlock level; a damage skill's place (`index`, its tier − 1), a move's id (`move`). */
+export interface ClassSkill {
+  key: string;
+  name: string;
+  desc: string;
+  unlock: number;
+  index?: number;
+  move?: string;
+}
+
+/** A class's skills, damage skills and movement skills (classes.json `skills` and `mobility`), in unlock order (a
+ *  damage skill before a move of the same level). */
+export function classSkills(c: ClassInfo | null | undefined): ClassSkill[] {
+  if (!c) return [];
+  const damage = c.skills.map((s, i): ClassSkill => ({ key: String(i), name: s.name, desc: s.desc, unlock: s.level, index: i }));
+  const moves = (c.mobility ?? []).map((m): ClassSkill => ({ key: m.id, name: m.name, desc: m.desc, unlock: m.level, move: m.id }));
+  return [...damage, ...moves].sort((a, b) => a.unlock - b.unlock);
+}
+
+/** A skill's level (Lv 1 unless raised; `skills` keeps only those above it). */
+export const skillLevelOf = (p: Pick<CharacterProgress, 'skills'> | null | undefined, key: string) => Math.max(1, Math.floor(p?.skills[key] ?? 1));
+
+/** A class's damage skills' levels, in their order (a fight's Attacker). */
+export const damageSkillLevels = (c: ClassInfo | null | undefined, p: Pick<CharacterProgress, 'skills'>) => (c?.skills ?? []).map((_, i) => skillLevelOf(p, String(i)));
+
+/** The level a class's movement skill unlocks at (classes.json), or null: not one of its moves. */
+export const moveUnlock = (c: ClassInfo | null | undefined, move: string): number | null => c?.mobility?.find((m) => m.id === move)?.level ?? null;
+
+/** A damage skill's cooldown (s) at Lv 1, by its unlock level: 0.8 + 0.15 a level, to a tenth (Lv 1: 1 s … Lv 18: 3.5 s).
+ *  (Today's rule, not in stats.json: the base its skill levels take their −1% off.) */
+export const baseCooldown = (unlockLevel: number) => Math.round((0.8 + 0.15 * Math.max(1, unlockLevel)) * 10) / 10;
+
+/** A cooldown of `seconds` at Lv 1 at a skill level: −1% a level past 1 (stats.json perSkillLevel.cooldown), to a
+ *  hundredth. The bot enforces it, the game shows it. */
+export const skillCooldown = (data: StatsData, seconds: number, skillLevel = 1) => Math.round(seconds * skillLevelBonus(data, skillLevel).cooldown * 100) / 100;
 
 // ── Damage ──
 

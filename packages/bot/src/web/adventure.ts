@@ -10,17 +10,18 @@ import type {
   TownEquipAction,
   TownPointsAction,
   TownQuestAction,
+  TownSkillsAction,
 } from '@mikazuki/shared';
-import { STAT_NAMES, giveGear, needsLine, placesFor, swapTrainingGear, trainingGear, wearCheck } from '@mikazuki/shared';
+import { STAT_NAMES, classSkills, damageSkillLevels, giveGear, moveUnlock, needsLine, placesFor, swapTrainingGear, trainingGear, wearCheck } from '@mikazuki/shared';
 import { db } from '../db/db.js';
-import { type LevelGain, type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView, refundPoints, resetStatPoints, spendPoint } from './progress.js';
+import { type LevelGain, type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView, raiseSkill, refundPoints, resetSkillPoints, resetStatPoints, spendPoint } from './progress.js';
 import type { Attacker } from './town-mobs.js';
 import { loadGear, loadStats } from './stats-data.js';
 
 // ⚔️ A member's class, quests, equipment and level in the web game (table adventurers, schema v10; level, XP and points
 // v11, by web/progress.ts). The quests, classes and equipment are the game's data files (public/assets/quests/quests.json,
 // classes/classes.json, items/equipment.json), read here like the town map. The game says when an objective is done (POST /town/quest), what to wear (POST
-// /town/equip) and where stat points go (POST /town/points); everything is checked here (wearing: the stats rules'
+// /town/equip), where stat points go (POST /town/points) and which skills to raise (POST /town/skills); everything is checked here (wearing: the stats rules'
 // requirements on base stats), and items are only ever given here (the Tanod's training gear: the class's weapon and
 // its gear type's armor, on the class choice, or once on a later visit for a class from before training armor).
 // Training gear is bound and can't be dropped, traded or sold. Worn items don't take a bag slot; equipment in the bag
@@ -149,6 +150,24 @@ export function pointsStep(s: AdventureState, a: TownPointsAction): Result {
   return { ok: true };
 }
 
+/** A skill point into one of their class's skills (by key: '0'…'6' or a move's id), or every skill point back (free). */
+export function skillsStep(s: AdventureState, a: TownSkillsAction): Result {
+  if (a.action === 'reset') {
+    if (!Object.keys(s.progress.skills).length) return { ok: false, message: 'No skill points spent.' };
+    s.progress = resetSkillPoints(loadStats(), s.cls, s.progress);
+    return { ok: true, message: 'Skill points back.' };
+  }
+  const r = raiseSkill(loadStats(), s.cls, s.progress, classSkills(classOf(s.cls)).find((k) => k.key === a.skill));
+  if (!r.ok) return r;
+  s.progress = r.progress;
+  return { ok: true };
+}
+
+const classOf = (cls: string | null | undefined) => CLASSES.find((c) => c.id === cls);
+
+/** The level a class's movement skill unlocks at (classes.json), or null: not one of its moves (the town refuses it). */
+export const moveLevel = (cls: string | null | undefined, move: string): number | null => moveUnlock(classOf(cls), move);
+
 // ── Saved per member ──
 
 type Row = {
@@ -226,8 +245,7 @@ export function kitOf(userId: string): { cls: string | null; weapon: string | nu
  *  skills' levels in the class's order. */
 export function fighterOf(userId: string): Attacker {
   const s = load(userId);
-  const n = CLASSES.find((c) => c.id === s.cls)?.skills.length ?? 0;
-  return { cls: s.cls, level: s.progress.level, points: s.progress.points, gear: Object.values(s.equipped), skills: Array.from({ length: n }, (_, i) => s.progress.skills[i] ?? 1) };
+  return { cls: s.cls, level: s.progress.level, points: s.progress.points, gear: Object.values(s.equipped), skills: damageSkillLevels(classOf(s.cls), s.progress) };
 }
 
 /** Changes their progress through `f` (web/progress.ts) and saves it. */
@@ -262,6 +280,14 @@ export function parsePointsAction(body: unknown): TownPointsAction | null {
   const b = body as Record<string, unknown> | null;
   if (b?.action === 'reset') return { action: 'reset' };
   if (b?.action === 'spend' && STAT_NAMES.includes(b.stat as StatName)) return { action: 'spend', stat: b.stat as StatName };
+  return null;
+}
+
+/** The body of POST /town/skills, if it's a valid one. */
+export function parseSkillsAction(body: unknown): TownSkillsAction | null {
+  const b = body as Record<string, unknown> | null;
+  if (b?.action === 'reset') return { action: 'reset' };
+  if (b?.action === 'raise' && typeof b.skill === 'string' && b.skill.length <= 20) return { action: 'raise', skill: b.skill };
   return null;
 }
 
@@ -300,6 +326,14 @@ export function townEquip(userId: string, a: TownEquipAction, freeSlots: number)
 export function townPoints(userId: string, a: TownPointsAction): TownAdventureResponse {
   const s = load(userId);
   const r = pointsStep(s, a);
+  if (r.ok) save(userId, s);
+  return { ...r, adventure: s };
+}
+
+/** POST /town/skills for a member. */
+export function townSkills(userId: string, a: TownSkillsAction): TownAdventureResponse {
+  const s = load(userId);
+  const r = skillsStep(s, a);
   if (r.ok) save(userId, s);
   return { ...r, adventure: s };
 }

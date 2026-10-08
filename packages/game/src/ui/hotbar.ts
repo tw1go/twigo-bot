@@ -4,17 +4,20 @@ import { playSound } from '../audio/sound';
 import { MOBILITY_PREVIEWS, SKILL_PREVIEWS } from '../combat/skill-previews';
 import { GAP_MS, STAGE_H, STAGE_W, type Skill, type SkillStage } from '../combat/skill-stage';
 import { itemArt, isRarity } from './item-art';
-import { skillCooldown } from '../combat/cooldowns';
+import { cooldownOf, mpCostPct, seconds } from '../combat/cooldowns';
+import { type SkillView, adventure, adventureData, onAdventure, raiseSkill, resetSkills, skillViews } from '../net/adventure';
 import { toast } from './toast';
 
 // ⚔️ The hotbar, bottom centre (members, not on phones): two rows of slots in the bag's slot art.
 //   Bottom row: 10 skill slots (keys 1–0), then 3 for potions and other usables (keys - = `).
 //   Top row: 13 more (Alt+1–0, Alt+- Alt+= Alt+`; each labelled "Alt+1"…), for skills or usables.
 //   (Those are the default keys: each slot's key is a keybind, ui/keybinds.ts, and its label follows it.)
-// Skills come from the Skills panel on the right of the screen (the K button at the bar's left, or K): each skill
-// with its description, played on a small stage while hovered (the class choice's preview, combat/skill-stage.ts);
-// drag one onto a slot, or click it and then a slot. Potions are dragged in from the bag. Drag a slot onto another to swap them; drag it off the bar
-// to empty it (right-click leaves it). Per class, saved in this browser (localStorage `mk_hotbar`); a class's first bar has
+// Skills come from the Skills panel on the right of the screen (the K button at the bar's left, or K): your skill
+// points, then each skill in unlock order with its description, "Lv N / cap" and cooldown, played on a small stage while
+// hovered (the class choice's preview, combat/skill-stage.ts); a + raises an unlocked skill below its cap (a skill point,
+// POST /town/skills), Reset gives every point back (free). Locked skills are greyed with "Unlocks at Lv N" (on the bar
+// too, with a padlock: they can't be used until then). Drag one onto a slot, or click it and then a slot. Potions are
+// dragged in from the bag. Drag a slot onto another to swap them; drag it off the bar to empty it (right-click leaves it). Per class, saved in this browser (localStorage `mk_hotbar`); a class's first bar has
 // its skills in order. Skills show their icon (manifest ui.skillIcons) where there is one, else their initials over the
 // class badge. Move skills work in town (onSkill: world/mobility.ts) and their slots show the cooldown as a
 // shrinking pie with the seconds left; the rest wait for combat. Skills have no icons yet: their
@@ -85,6 +88,8 @@ export class Hotbar {
   private picked: SkillEntry | null = null;
   private nagged = 0;
 
+  private raising = false;
+
   constructor(private readonly o: HotbarOptions) {
     this.root.id = 'hotbar';
     this.root.hidden = true;
@@ -124,6 +129,16 @@ export class Hotbar {
     document.addEventListener('keydown', (e) => this.key(e), true);
     document.addEventListener('pointerdown', (e) => {
       if (!this.list.hidden && !this.root.contains(e.target as Node) && !this.list.contains(e.target as Node)) this.toggleList(false);
+    });
+    // Your level and skill levels: locks, caps and cooldowns follow.
+    let seen = '';
+    onAdventure((s) => {
+      const now = JSON.stringify([s.cls, s.progress.level, s.progress.skills, s.progress.skillPoints]);
+      if (now === seen) return;
+      seen = now;
+      if (this.cls?.id !== s.cls) return; // (setClass redraws)
+      this.drawList();
+      this.draw();
     });
   }
 
@@ -212,14 +227,16 @@ export class Hotbar {
         b.replaceChildren();
         b.draggable = !!entry;
         const icon = entry?.t === 'skill' && this.cls ? this.iconOf(entry.name) : null;
+        const s = entry?.t === 'skill' ? this.skill(entry.name) : undefined;
         b.classList.toggle('hb-skill', entry?.t === 'skill' && !icon);
         b.classList.toggle('hb-off', entry?.t === 'skill' && !!this.o.usable && !this.o.usable(entry.name)); // damage skills: no combat in town
+        b.classList.toggle('hb-locked', !!s?.locked);
         const key = keyLabel(slotAction(row, i));
         const named = key ? ` (${key})` : '';
         if (entry?.t === 'skill') {
-          const s = skillsOf(this.cls).find((k) => k.name === entry.name);
           b.append(icon ?? el('span', 'hb-initials', initials(entry.name)));
-          b.title = `${entry.name}${s ? ` · Lv ${s.level}\n${s.desc}` : ''}${named ? `\n${named.trim()}` : ''}`;
+          if (s?.locked) b.append(padlock(s.unlock));
+          b.title = `${s ? this.tip(s) : entry.name}${named ? `\n${named.trim()}` : ''}`;
         } else if (entry?.t === 'item') {
           b.append(itemArt(entry.id, isRarity(entry.rarity) ? entry.rarity : 'common', 'icon', 2, true) ?? el('span', 'hb-emoji', entry.emoji));
           b.title = `${entry.name}${named ? `\n${named.trim()}` : ''}`;
@@ -230,46 +247,102 @@ export class Hotbar {
     }
   }
 
-  /** The Skills panel: a stage on top (the hovered skill plays on it), then your class's skills and movement skills
-   *  with their descriptions, each to drag (or click, then click a slot). */
+  /** The Skills panel: a stage on top (the hovered skill plays on it), your skill points and Reset, then your class's
+   *  skills in unlock order with their descriptions, levels and cooldowns, a + on each you can raise; each to drag (or
+   *  click, then click a slot). Locked ones are greyed with their unlock level. */
   private drawList(): void {
-    const skills = skillsOf(this.cls);
+    const skills = this.views();
     const close = el('button', 'sb-close', '×');
     close.setAttribute('aria-label', 'Close');
     close.addEventListener('click', () => this.toggleList(false));
     const head = el('div', 'sb-head');
     head.append(el('span', 'sb-title', this.cls ? `${this.cls.name} skills` : 'Skills'), close);
     this.list.replaceChildren(head);
+    const p = adventure()?.progress;
+    const points = el('div', 'sb-points');
+    points.append(el('span', 'sb-points-label', 'Skill points:'), el('b', 'sb-points-n', String(p?.skillPoints ?? 0)));
     if (!skills.length) {
-      this.list.append(el('p', 'hb-note', 'Choose a class with the Tanod to get skills.'));
+      points.append(el('span', 'sb-points-hint', 'Choose a class to spend them'));
+      this.list.append(points, el('p', 'hb-note', 'Choose a class with the Tanod to get skills.'));
       return;
     }
-    this.list.append(this.stageBox, el('p', 'hb-note', 'Hover a skill to see it. Drag it onto a slot, or click it and then a slot.'), this.rows);
+    const reset = el('button', 'sb-reset', 'Reset');
+    reset.title = 'Get every skill point back (free)';
+    reset.disabled = !Object.keys(p?.skills ?? {}).length;
+    reset.addEventListener('click', () => void this.raise(null));
+    points.append(reset);
+    this.list.append(this.stageBox, points, el('p', 'hb-note', 'Hover a skill to see it. Drag it onto a slot, or click it and then a slot. + raises it (a skill point).'), this.rows);
     const plays = previewsOf(this.cls);
-    const damage = this.cls?.skills.length ?? 0;
+    const stats = adventureData()?.stats;
+    const spare = p?.skillPoints ?? 0;
     this.rows.replaceChildren(
-      ...skills.map((s, i) => {
-        const row = el('button', `hb-skill-row${this.picked?.name === s.name ? ' hb-picked' : ''}`);
+      ...skills.map((s) => {
+        const row = el('div', `hb-skill-row${this.picked?.name === s.name ? ' hb-picked' : ''}${s.locked ? ' sb-locked' : ''}`);
+        row.tabIndex = 0;
+        row.setAttribute('role', 'button');
         row.draggable = true;
+        row.title = this.tip(s);
         const text = el('span', 'sb-text');
         const line = el('span', 'sb-line');
-        // Damage skills: their cooldown too (by level: combat/cooldowns.ts).
-        line.append(el('span', 'hb-name', s.name), el('span', 'hb-lv', i < damage ? `Lv ${s.level} · ${skillCooldown(s.level)}s` : `Lv ${s.level}`));
+        const cd = stats ? ` · ${seconds(cooldownOf(stats, s, s.level))}` : '';
+        line.append(el('span', 'hb-name', s.name), el('span', 'hb-lv', s.locked ? `Unlocks at Lv ${s.unlock}` : `Lv ${s.level} / ${s.cap}${cd}`));
         text.append(line, el('span', 'sb-desc', s.desc));
         const pic = this.iconOf(s.name) ?? el('span', 'hb-initials', initials(s.name));
         row.append(pic, text);
+        if (!s.locked && s.level < s.cap && spare > 0) {
+          const add = el('button', 'sb-plus', '+');
+          add.title = `Raise ${s.name} to Lv ${s.level + 1} (a skill point)`;
+          add.setAttribute('aria-label', add.title);
+          add.addEventListener('click', (e) => {
+            e.stopPropagation();
+            void this.raise(s.key);
+          });
+          row.append(add);
+        }
         row.addEventListener('dragstart', (e) => {
           e.dataTransfer?.setData(DRAG, JSON.stringify({ entry: { t: 'skill', name: s.name } }));
           e.dataTransfer?.setDragImage(pic, pic.offsetWidth / 2, pic.offsetHeight / 2); // just the icon follows the pointer
         });
-        row.addEventListener('click', () => {
+        const pick = () => {
           this.picked = this.picked?.name === s.name ? null : { t: 'skill', name: s.name };
           this.drawList();
-        });
+        };
+        row.addEventListener('click', pick);
+        row.addEventListener('keydown', (e) => e.key === 'Enter' && pick());
         row.addEventListener('pointerenter', () => this.preview(plays.get(s.name) ?? null));
         return row;
       }),
     );
+  }
+
+  /** A skill point into a skill (by key), or (null) all of them back. */
+  private async raise(key: string | null): Promise<void> {
+    if (this.raising) return;
+    this.raising = true;
+    const r = await (key ? raiseSkill(key) : resetSkills());
+    this.raising = false;
+    if (!r?.ok) {
+      playSound('error');
+      return toast(r?.message?.replace(/\.$/, '') ?? "Couldn't reach the bot", 2200, 'bad');
+    }
+    playSound('click');
+  }
+
+  /** Your class's skills with their levels (net/adventure.ts skillViews), in unlock order. */
+  private views(): SkillView[] {
+    return skillViews(this.cls);
+  }
+
+  private skill(name: string): SkillView | undefined {
+    return this.views().find((k) => k.name === name);
+  }
+
+  /** A skill's tooltip: "Quick Shot Lv 3 / 10", what it does, its cooldown and MP cost at its level (or when it unlocks). */
+  private tip(s: SkillView): string {
+    if (s.locked) return `${s.name}\nUnlocks at Lv ${s.unlock}\n${s.desc}`;
+    const stats = adventureData()?.stats;
+    const more = stats ? `\nCooldown ${seconds(cooldownOf(stats, s, s.level))} · MP cost +${mpCostPct(stats, s.level)}%` : '';
+    return `${s.name} Lv ${s.level} / ${s.cap}\n${s.desc}${more}`;
   }
 
   /** A skill's icon as an image, if it has one. */
@@ -412,6 +485,11 @@ export class Hotbar {
     b.classList.add('hb-fire');
     if (!entry) return;
     if (entry.t === 'skill') {
+      const s = this.skill(entry.name);
+      if (s?.locked) {
+        playSound('error');
+        return toast(`${s.name} unlocks at Lv ${s.unlock}.`, 2000);
+      }
       const cd = this.o.onSkill?.(entry.name);
       if (typeof cd === 'number') this.cooldown(entry.name, cd);
       if (cd !== undefined) return;
@@ -425,9 +503,16 @@ export class Hotbar {
 
 /** The class's skills and then its movement skills (classes.json `mobility`). */
 function skillsOf(c: ClassInfo | null): { level: number; name: string; desc: string }[] {
-  if (!c) return [];
-  const moves = (c as ClassInfo & { mobility?: { level: number; name: string; desc: string }[] }).mobility ?? [];
-  return [...c.skills, ...moves];
+  return c ? [...c.skills, ...(c.mobility ?? [])] : [];
+}
+
+/** A locked slot's padlock (pixel art, 7 × 8) with the level it unlocks at. */
+function padlock(level: number): HTMLElement {
+  const box = el('span', 'hb-lock');
+  box.innerHTML =
+    '<svg viewBox="0 0 7 8" width="14" height="16" shape-rendering="crispEdges" aria-hidden="true"><path fill="#0B0A1A" d="M1 0h5v1h1v3H0V1h1z"/><path fill="#A9B1D6" d="M2 1h3v1h1v2H5V2H2v2H1V2h1z"/><path fill="#0B0A1A" d="M0 3h7v5H0z"/><path fill="#F8BF27" d="M1 4h5v3H1z"/><path fill="#0B0A1A" d="M3 5h1v1H3z"/></svg>';
+  box.append(el('span', 'hb-lock-lv', `Lv ${level}`));
+  return box;
 }
 
 /** Each skill's stage preview by name: the first 7 in order, then the movement skills by id. */
@@ -438,7 +523,7 @@ function previewsOf(c: ClassInfo | null): Map<string, Skill> {
     const p = SKILL_PREVIEWS[c.id]?.[i];
     if (p) out.set(s.name, p);
   });
-  for (const m of (c as ClassInfo & { mobility?: { id: string; name: string }[] }).mobility ?? []) {
+  for (const m of c.mobility ?? []) {
     const p = MOBILITY_PREVIEWS[c.id]?.[m.id];
     if (p) out.set(m.name, p);
   }

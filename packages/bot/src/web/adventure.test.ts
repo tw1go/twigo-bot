@@ -14,7 +14,7 @@ for (const name of ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'ADMIN_ROLE_ID', 'ADMI
   'GAMBLING_CHANNEL_ID', 'GAMES_CHANNEL_ID', 'JAIL_ROLE_ID', 'REWARD_OWNER_ID', 'ROOM_FINDS_CHANNEL_ID']) process.env[name] = 'test';
 process.env.TIMEZONE = 'Asia/Manila';
 
-const { CLASSES, EQUIPMENT, QUESTS, adventureOf, equipStep, fighterOf, freshAdventure, gainXpFor, giveTrainingArmor, killFor, kitOf, levelFor, parseEquipAction, parsePointsAction, parseQuestAction, placesFor, questStep, resetAdventure, startQuests, townEquip, townPoints, townQuest, trainingArmorFor } =
+const { CLASSES, EQUIPMENT, QUESTS, adventureOf, equipStep, fighterOf, freshAdventure, gainXpFor, giveTrainingArmor, killFor, kitOf, levelFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, placesFor, questStep, resetAdventure, startQuests, townEquip, townPoints, townQuest, townSkills, moveLevel, trainingArmorFor } =
   await import('./adventure.js');
 const { usedSlots } = await import('../dig/bag.js');
 const { sellInTown, sellManyInTown } = await import('./town-bag.js');
@@ -229,7 +229,45 @@ test('two places for bracers and two for rings', () => {
   assert.deepEqual(placesFor('weapon'), ['weapon']);
 });
 
+test('skill points: banked before a class; then into unlocked skills up to their cap; Reset gives them all back', () => {
+  // No class at Lv 10: 27 skill points, banked.
+  levelFor('sk', 10);
+  assert.equal(adventureOf('sk').progress.skillPoints, 9 * S.skills.skillPointsPerLevelUp);
+  assert.equal(townSkills('sk', { action: 'raise', skill: '0' }).message, 'Choose a class to raise skills.');
+  townQuest('sk', { quest: Q, action: 'talk', npc: 'tanod' }, 40);
+  townQuest('sk', { quest: Q, action: 'chooseClass', cls: 'slingshot' }, 40);
+  assert.equal(adventureOf('sk').progress.skillPoints, 27);
+  // Quick Shot (unlock Lv 1): up to Lv 10 at character Lv 10, not 11.
+  for (let i = 0; i < 9; i++) assert.ok(townSkills('sk', { action: 'raise', skill: '0' }).ok);
+  assert.equal(townSkills('sk', { action: 'raise', skill: '0' }).message, 'Quick Shot is at Lv 10, its cap for now.');
+  // Pebble Spray (unlock Lv 6): to 5, not 6. Volley (Lv 18): locked. Dash (a move, Lv 5): to 6.
+  for (let i = 0; i < 4; i++) assert.ok(townSkills('sk', { action: 'raise', skill: '2' }).ok);
+  assert.equal(townSkills('sk', { action: 'raise', skill: '2' }).ok, false);
+  assert.equal(townSkills('sk', { action: 'raise', skill: '6' }).message, 'Volley unlocks at Lv 18.');
+  assert.ok(townSkills('sk', { action: 'raise', skill: 'dash' }).ok);
+  assert.equal(townSkills('sk', { action: 'raise', skill: 'blink' }).message, 'No such skill.'); // the Broom's and Hilot's
+  const p = adventureOf('sk').progress;
+  assert.deepEqual([p.skills, p.skillPoints], [{ '0': 10, '2': 5, dash: 2 }, 27 - 9 - 4 - 1]);
+  // The fight sees the damage skills' levels, in order.
+  assert.deepEqual(fighterOf('sk').skills, [10, 1, 5, 1, 1, 1, 1]);
+  // Out of points: refused.
+  // (Double Tap to its cap 8: 7; Dash to 6: 4 more; Step Back, Lv 8, to 3: 2.)
+  for (const [skill, n] of [['1', 7], ['dash', 4], ['step-back', 2]] as const) for (let i = 0; i < n; i++) assert.ok(townSkills('sk', { action: 'raise', skill }).ok, skill);
+  assert.equal(adventureOf('sk').progress.skillPoints, 0);
+  assert.equal(townSkills('sk', { action: 'raise', skill: '3' }).message, 'No skill points to spend.');
+  // Reset: free, all 27 back, every skill at Lv 1; stat points stay.
+  townPoints('sk', { action: 'spend', stat: 'DEX' });
+  const reset = townSkills('sk', { action: 'reset' });
+  assert.deepEqual([reset.ok, reset.adventure.progress.skills, reset.adventure.progress.skillPoints, reset.adventure.progress.points], [true, {}, 27, { DEX: 1 }]);
+  assert.equal(townSkills('sk', { action: 'reset' }).ok, false); // nothing spent
+  // Movement skills unlock at their level, and only a class's own.
+  assert.deepEqual([moveLevel('slingshot', 'dash'), moveLevel('slingshot', 'step-back'), moveLevel('slingshot', 'blink'), moveLevel(null, 'dash')], [5, 8, null, null]);
+});
+
 test('request bodies are checked', () => {
+  assert.deepEqual(parseSkillsAction({ action: 'raise', skill: 'dash' }), { action: 'raise', skill: 'dash' });
+  assert.deepEqual(parseSkillsAction({ action: 'reset' }), { action: 'reset' });
+  assert.equal(parseSkillsAction({ action: 'raise', skill: 3 }), null);
   assert.equal(parseQuestAction({ quest: Q, action: 'talk' }), null);
   assert.deepEqual(parseQuestAction({ quest: Q, action: 'chooseClass', cls: 'stick' }), { quest: Q, action: 'chooseClass', cls: 'stick' });
   assert.equal(parseEquipAction({ action: 'unequip', place: 'cape' }), null);

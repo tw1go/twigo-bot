@@ -38,7 +38,7 @@ import { arenaBets, refundHeldBets } from './town-arena-bets.js';
 import { kowen } from '../kowens.js';
 import { filterText, kickedUntil, mutedUntil } from './town-mod.js';
 import { getOutfit, parseOutfit, saveOutfit } from './outfit.js';
-import { adventureOf, fighterOf, killFor, kitOf, parseEquipAction, parsePointsAction, parseQuestAction, townEquip, townPoints, townQuest, trainingArmorFor } from './adventure.js';
+import { adventureOf, fighterOf, killFor, kitOf, moveLevel, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townEquip, townPoints, townQuest, townSkills, trainingArmorFor } from './adventure.js';
 import { freeSlots } from '../dig/bag.js';
 import { renameWithCard } from '../items/rename-card.js';
 import { changeClassWithTicket } from '../items/class-ticket.js';
@@ -86,6 +86,7 @@ import { type CmsDeps, cms } from './cms.js';
 //   POST /town/quest    { quest, action: talk, npc } | { quest, action: chooseClass, cls }: a quest objective done (web/adventure.ts)
 //   POST /town/equip    { action: equip, item } | { action: unequip, place }: wear or take off equipment, if its requirements are met (from the game's page only; members)
 //   POST /town/points   { action: spend, stat } | { action: reset }: a stat point into the class's main or second stat, or all of them back (from the game's page only; members)
+//   POST /town/skills   { action: raise, skill } | { action: reset }: a skill point into an unlocked skill below its cap, or all of them back (from the game's page only; members)
 //   POST /town/rename   { nickname } a new town nickname, using a Rename Card (from the game's page only; members)
 //   POST /town/class-change { cls } a new class, using a Bagong Buhay Ticket (from the game's page only; members)
 //   POST /town/gamble   { bet, call: kara|krus } Kara y Krus at the Casino, /gamble's odds (from the game's page only; members)
@@ -571,7 +572,7 @@ export function startWebServer(client: Client): void {
         }
         return send(res, 200, JSON.stringify(result));
       }
-      if (req.method === 'POST' && (path === '/town/quest' || path === '/town/equip' || path === '/town/points')) {
+      if (req.method === 'POST' && (path === '/town/quest' || path === '/town/equip' || path === '/town/points' || path === '/town/skills')) {
         if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
         if (!fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
         const userId = sessionUser(req);
@@ -593,6 +594,12 @@ export function startWebServer(client: Client): void {
           if (!action) return send(res, 400, '{"error":"invalid points action"}');
           const r = townPoints(userId, action);
           if (r.ok) town?.progress(userId, r.adventure.progress); // their fights use the new stats at once
+          return send(res, 200, JSON.stringify(r));
+        } else if (path === '/town/skills') {
+          const action = parseSkillsAction(body);
+          if (!action) return send(res, 400, '{"error":"invalid skills action"}');
+          const r = townSkills(userId, action);
+          if (r.ok) town?.progress(userId, r.adventure.progress); // (fights read the saved levels: the next cast uses them)
           return send(res, 200, JSON.stringify(r));
         } else {
           const action = parseEquipAction(body);
@@ -846,6 +853,8 @@ export function startWebServer(client: Client): void {
           return r;
         },
       },
+      // Mobility moves from their unlock level (Dash Lv 5, the class's own move Lv 8).
+      moveLevel,
       // The Slums are for testers for now.
       mayEnter: async (room, userId) => room !== 'slums' || isTester(client, userId),
       authenticate: async (req) => {

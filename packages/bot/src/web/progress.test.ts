@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mobStats, xpForLevel, xpToNext } from '@mikazuki/shared';
-import { addXp, freshProgress, killXp, levelTo, progressView, refundPoints } from './progress.js';
+import { type ClassSkill, mobStats, skillLevelCap, xpForLevel, xpToNext } from '@mikazuki/shared';
+import { addXp, freshProgress, killXp, levelTo, progressView, raiseSkill, refundPoints, resetSkillPoints } from './progress.js';
 import { loadStats } from './stats-data.js';
 
 // Levels, XP and points by the game's real stats.json (the numbers are read from it, never written here).
@@ -72,6 +72,24 @@ test('refund: nothing spent, skills at Lv 1, the level\'s skill points back; lev
   const p = { ...levelTo(S, 'stick', freshProgress(S, 'stick'), 6).progress, xp: 3, points: { STR: 3, DEX: 2 }, skills: { '0': 4, dash: 2 }, skillPoints: 2 };
   const r = refundPoints(S, null, p);
   assert.deepEqual(r, { level: 6, xp: 3, next: xpToNext(S, 6), points: {}, statPoints: 5 * STAT, skills: {}, skillPoints: 5 * SKILL });
+});
+
+test('skill levels: a point each, unlocked skills only, capped at level − unlock + 1 (never above 20); Reset refunds them', () => {
+  const quick: ClassSkill = { key: '0', name: 'Quick Shot', desc: '', unlock: 1, index: 0 };
+  const volley: ClassSkill = { key: '6', name: 'Volley', desc: '', unlock: 18, index: 6 };
+  assert.deepEqual([skillLevelCap(S, 1, 1), skillLevelCap(S, 10, 6), skillLevelCap(S, 17, 18), skillLevelCap(S, CAP, 1)], [1, 5, 0, 20]);
+  const lv3 = levelTo(S, 'slingshot', freshProgress(S, 'slingshot'), 3).progress;
+  assert.equal(lv3.skillPoints, 2 * SKILL);
+  const once = raiseSkill(S, 'slingshot', lv3, quick);
+  assert.ok(once.ok && once.progress.skills['0'] === 2 && once.progress.skillPoints === 2 * SKILL - 1);
+  const twice = once.ok ? raiseSkill(S, 'slingshot', once.progress, quick) : once;
+  assert.ok(twice.ok && twice.progress.skills['0'] === 3);
+  assert.equal(twice.ok && raiseSkill(S, 'slingshot', twice.progress, quick).ok, false, 'Lv 3: Quick Shot caps at 3');
+  assert.deepEqual(raiseSkill(S, 'slingshot', lv3, volley), { ok: false, message: 'Volley unlocks at Lv 18.' });
+  assert.deepEqual(raiseSkill(S, null, lv3, quick), { ok: false, message: 'Choose a class to raise skills.' });
+  // Reset: every skill at Lv 1, the points back; the level stays.
+  const back = twice.ok ? resetSkillPoints(S, 'slingshot', twice.progress) : lv3;
+  assert.deepEqual([back.skills, back.skillPoints, back.level], [{}, 2 * SKILL, 3]);
 });
 
 test('dev ?level=N: up as from kills (each level-up counted); down from Lv 1 again with no level-up', () => {

@@ -2,6 +2,7 @@ import {
   type AdventureState,
   type CharacterProgress,
   type ClassInfo,
+  type ClassSkill,
   type ClassesFile,
   type EquipmentDef,
   type EquipmentFile,
@@ -14,9 +15,13 @@ import {
   type TownEquipAction,
   type TownPointsAction,
   type TownQuestAction,
+  type TownSkillsAction,
+  classSkills,
   giveGear,
   needsLine,
   placesFor,
+  skillLevelCap,
+  skillLevelOf,
   skillPointsAt,
   swapTrainingGear,
   trainingGear,
@@ -27,13 +32,13 @@ import {
 import { fakeLogin, fakeName } from '../session';
 
 // ⚔️ Your class, quests and equipment in the game (the bot keeps them: web/adventure.ts; /me brings them, POST
-// /town/quest, /town/equip and /town/points change them). The data files (quests/quests.json, classes/classes.json,
+// /town/quest, /town/equip, /town/points and /town/skills change them). The data files (quests/quests.json, classes/classes.json,
 // items/equipment.json; classes/stats.json, the stats rules' numbers, comes with the scene's assets) are loaded once. Everything that shows them listens here: the quest tracker and log, the
 // marker over a quest giver, the equipment panel, the avatar's class badge, the HUD's level and XP. Your level, XP and
 // points change on the server (kills in the Slums: the town's `progress` messages, setProgress). In dev with no bot, the
 // same rules run here, saved in this browser per ?as= name (&quests=reset starts over), and the dev town hears about
 // class and weapon changes (/__kit) and keeps your level while it runs (sent on connect; ?xp= / ?level= ask it, /__xp;
-// stat points are spent there too, /__points, by the bot's rules).
+// stat and skill points are spent there too, /__points and /__skills, by the bot's rules).
 
 export interface AdventureData {
   quests: QuestDef[];
@@ -142,8 +147,8 @@ export function markQuestsSeen(): void {
 
 // ── Actions ──
 
-type Path = '/town/quest' | '/town/equip' | '/town/points';
-type Body = TownQuestAction | TownEquipAction | TownPointsAction;
+type Path = '/town/quest' | '/town/equip' | '/town/points' | '/town/skills';
+type Body = TownQuestAction | TownEquipAction | TownPointsAction | TownSkillsAction;
 
 async function post(path: Path, body: Body): Promise<TownAdventureResponse | null> {
   const res = await fetch(path, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => null);
@@ -152,7 +157,11 @@ async function post(path: Path, body: Body): Promise<TownAdventureResponse | nul
 
 async function act(path: Path, body: Body): Promise<TownAdventureResponse | null> {
   const before = state;
-  const res = !fakeLogin() ? await post(path, body) : path === '/town/points' ? await fakePoints(body as TownPointsAction) : fakeAct(body as TownQuestAction | TownEquipAction);
+  const res = !fakeLogin()
+    ? await post(path, body)
+    : path === '/town/points' || path === '/town/skills'
+      ? await fakePoints(path, body as TownPointsAction | TownSkillsAction)
+      : fakeAct(body as TownQuestAction | TownEquipAction);
   if (!res) return null;
   if (res.ok) {
     let advanced: AdventureChange['advanced'];
@@ -185,6 +194,34 @@ export const unequipPlace = (place: EquipPlace) => act('/town/equip', { action: 
 /** One stat point into `stat` (your class's main or second stat), or every stat point back (free). */
 export const spendPoint = (stat: StatName) => act('/town/points', { action: 'spend', stat });
 export const resetPoints = () => act('/town/points', { action: 'reset' });
+
+/** One skill point into a skill of your class (its key: '0'…'6', or a move's id), or every skill point back (free). */
+export const raiseSkill = (skill: string) => act('/town/skills', { action: 'raise', skill });
+export const resetSkills = () => act('/town/skills', { action: 'reset' });
+
+/** A skill as the Skills panel, the hotbar and the class choice show it: its level (Lv 1 unless raised; another class's
+ *  always 1) and cap at your level (0: still locked). */
+export interface SkillView extends ClassSkill {
+  level: number;
+  cap: number;
+  locked: boolean;
+}
+
+/** Your class's skills (or another's, as they'd be for you), in unlock order. */
+export function skillViews(c: ClassInfo | null | undefined): SkillView[] {
+  const p = state?.progress;
+  const level = p?.level ?? 1;
+  const mine = !!c && c.id === state?.cls;
+  return classSkills(c).map((k) => ({
+    ...k,
+    level: mine ? skillLevelOf(p, k.key) : 1,
+    cap: data ? skillLevelCap(data.stats, level, k.unlock) : 0,
+    locked: level < k.unlock,
+  }));
+}
+
+/** One of your class's skills by name. */
+export const skillView = (name: string): SkillView | undefined => skillViews(classInfo(state?.cls)).find((k) => k.name === name);
 
 /** Whether you can wear an item (its requirements on your base stats; gear's STR, DEX and INT never count): null if so,
  *  else the line saying what's missing ("Needs DEX 26"). */
@@ -280,10 +317,10 @@ function giveTrainingArmor(s: AdventureState, free: number): string[] {
   return r.given;
 }
 
-/** Dev: the dev town spends the point (the bot's web/progress.ts) and sends your new progress. */
-async function fakePoints(body: TownPointsAction): Promise<TownAdventureResponse | null> {
-  const q = new URLSearchParams({ as: fakeName(), ...(body.action === 'spend' ? { stat: body.stat } : { reset: '1' }) });
-  const r = await fetch(`/__points?${q}`).then((x) => (x.ok ? (x.json() as Promise<{ ok: boolean; message?: string; progress?: CharacterProgress }>) : null)).catch(() => null);
+/** Dev: the dev town spends the stat or skill point (the bot's web/progress.ts) and sends your new progress. */
+async function fakePoints(path: Path, body: TownPointsAction | TownSkillsAction): Promise<TownAdventureResponse | null> {
+  const q = new URLSearchParams({ as: fakeName(), ...(body.action === 'spend' ? { stat: body.stat } : body.action === 'raise' ? { skill: body.skill } : { reset: '1' }) });
+  const r = await fetch(`${path === '/town/skills' ? '/__skills' : '/__points'}?${q}`).then((x) => (x.ok ? (x.json() as Promise<{ ok: boolean; message?: string; progress?: CharacterProgress }>) : null)).catch(() => null);
   if (!r || !state) return null;
   return { ok: r.ok, message: r.message, adventure: r.progress ? { ...state, progress: r.progress } : state };
 }

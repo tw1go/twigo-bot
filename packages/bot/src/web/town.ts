@@ -95,6 +95,9 @@ export interface TownOptions {
     fighter(userId: string): Attacker;
     kill(userId: string, mob: { level: number; xp: number }): LevelGain;
   };
+  /** The level a class's movement skill unlocks at (classes.json `mobility`), or null: not one of its moves. A move
+   *  before its level, or not theirs, isn't passed on; without it every move goes. */
+  moveLevel?: (cls: string | null | undefined, move: TownMove) => number | null;
   /** Whether a member may join a room (the Slums: testers only); every room when left out. */
   mayEnter?: (room: string, userId: string) => Promise<boolean>;
   /** Leave upgrades to other paths alone (the game's dev server shares its HTTP server with Vite's own socket). */
@@ -365,10 +368,14 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       }
       case 'move': {
         // A mobility move: just shown to the others (the steps after it move them, checked as ever). Ends near
-        // where they are, one at a time.
+        // where they are, one at a time; only their class's moves, from their unlock level.
         const near = inside_(m.col, m.row) && Math.abs((m.col as number) - p.col) <= 6 && Math.abs((m.row as number) - p.row) <= 6;
         const now = Date.now();
         if (!MOVES.has(m.move) || !near || now - (c.movedAt ?? 0) < 800) return;
+        if (opts.moveLevel) {
+          const unlock = opts.moveLevel(p.cls, m.move);
+          if (unlock === null || (p.level ?? 1) < unlock) return;
+        }
         c.movedAt = now;
         return others(c, { t: 'move', id: p.id, move: m.move, col: m.col, row: m.row });
       }

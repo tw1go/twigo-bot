@@ -71,7 +71,7 @@ import { GolemView } from '../world/golem';
 import { loadBoss } from '../assets/queue';
 import { FxLayers } from '../world/fx-layers';
 import { SKILL_POSE, battleSheets } from '../characters/battle-art';
-import { skillCooldown } from '../combat/cooldowns';
+import { cooldownOf } from '../combat/cooldowns';
 import { WorldSkills } from '../combat/world-skills';
 import { SKILL_PREVIEWS } from '../combat/skill-previews';
 import { skillSlots } from '../combat/skill-slots';
@@ -89,7 +89,7 @@ import type { AdventureData } from '../net/adventure';
 import { Hotbar } from '../ui/hotbar';
 import { mountClassSwitch } from '../ui/class-switch';
 import { MOVES, type MoveKind, isMoveKind, moveTiles, playMove } from '../world/mobility';
-import { changeClass, devSwitchClass, adventure, adventureData, chooseClass, classInfo, initAdventure, itemDef, loadAdventureData, onAdventure, questDef, questFor, questTalk, setProgress } from '../net/adventure';
+import { changeClass, devSwitchClass, adventure, adventureData, chooseClass, classInfo, initAdventure, itemDef, loadAdventureData, onAdventure, questDef, questFor, questTalk, setProgress, skillView, skillViews } from '../net/adventure';
 import type { ClassArt } from '../assets/types';
 import { drawRested, loadImages, poseFiles, restFiles } from '../characters/kit-art';
 import { holdQuestBanners, mountQuests } from '../ui/quests';
@@ -676,7 +676,7 @@ export class TownScene extends Phaser.Scene {
         slot: inv?.slot && inv.selected && inv.nineSlice ? { url: url(inv.slot), picked: url(inv.selected), slice: inv.nineSlice } : null,
         badge: (cls) => (icons ? url(icons.file.replace('{class}', cls)) : ''),
         onSkill: (name) => this.mobility(name) ?? this.fight(name),
-        usable: (name) => this.battleMap || !!(classInfo(adventure()?.cls) as (ClassInfo & { mobility?: { name: string }[] }) | undefined)?.mobility?.some((m) => m.name === name),
+        usable: (name) => this.battleMap || !!classInfo(adventure()?.cls)?.mobility?.some((m) => m.name === name),
         stage: (c) => this.skillStage(c.id, c.fx),
         icon: (cls, skill) => {
           const I = this.M.ui.skillIcons;
@@ -740,13 +740,14 @@ export class TownScene extends Phaser.Scene {
     const idx = c?.skills.findIndex((k) => k.name === name) ?? -1;
     if (!c || idx < 0) return undefined;
     if (this.engage?.name === name) return this.stopFight(), 'no';
+    if (skillView(name)?.locked) return 'no'; // (the bar says when it unlocks)
     let m = this.mobs.current;
     if (!m || m.dead) m = this.mobs.targetNext(this.player.tile);
     if (!m) {
       toast('No mob nearby. Walk up to one (Z picks the nearest).', 2200);
       return 'no';
     }
-    this.engage = { name, idx, reach: this.reachOf(c.id, idx), goal: null, cooldown: skillCooldown(c.skills[idx].level) };
+    this.engage = { name, idx, reach: this.reachOf(c.id, idx), goal: null };
     this.hotbar?.setAuto(name);
     this.fightTick();
     return 'no';
@@ -754,7 +755,7 @@ export class TownScene extends Phaser.Scene {
 
   /** The auto-cast under way: which skill, its reach, and where we're walking to get in reach. */
   private hotbar: Hotbar | null = null;
-  private engage: { name: string; idx: number; reach: number; goal: Tile | null; cooldown: number } | null = null;
+  private engage: { name: string; idx: number; reach: number; goal: Tile | null } | null = null;
   /** When each damage skill can be cast again (scene time, ms). */
   private castReady = new Map<string, number>();
   /** No two casts closer than CAST_GAP_MS, whichever skills. */
@@ -807,7 +808,8 @@ export class TownScene extends Phaser.Scene {
     const dist = (t: Tile) => (m.radius ? Math.max(0, Math.hypot(t.col - at.col, t.row - at.row) - m.radius) : Math.max(Math.abs(t.col - at.col), Math.abs(t.row - at.row)));
     // In reach of the chosen skill, or (while it cools down) of another that's ready.
     const c0 = classInfo(adventure()?.cls);
-    const readyNow = (n: string) => this.time.now >= (this.castReady.get(n) ?? 0);
+    const open = (n: string) => !skillView(n)?.locked; // (locked skills never cast: the server refuses them)
+    const readyNow = (n: string) => this.time.now >= (this.castReady.get(n) ?? 0) && open(n);
     const reachable = c0 ? c0.skills.filter((k, i) => readyNow(k.name) && this.reachOf(c0.id, i) >= dist(me)).length : 0;
     if (dist(me) <= e.reach || (!readyNow(e.name) && reachable)) {
       if (this.player.isIdle === false) this.player.cancelPath(); // stop on this tile
@@ -817,13 +819,16 @@ export class TownScene extends Phaser.Scene {
       // The chosen skill, or while it's cooling down the first damage skill that's ready (the bar's order, then the class's).
       const c = classInfo(adventure()?.cls);
       if (!c) return this.stopFight();
-      const ready = (n: string) => now >= (this.castReady.get(n) ?? 0) && this.reachOf(c.id, c.skills.findIndex((k) => k.name === n)) >= dist(me);
+      const ready = (n: string) => now >= (this.castReady.get(n) ?? 0) && open(n) && this.reachOf(c.id, c.skills.findIndex((k) => k.name === n)) >= dist(me);
       const damage = new Set(c.skills.map((k) => k.name));
       const order = [...(this.hotbar?.skillOrder() ?? []).filter((n) => damage.has(n)), ...c.skills.map((k) => k.name)];
       const name = ready(e.name) ? e.name : order.find(ready);
       if (!name) return;
       const idx = c.skills.findIndex((k) => k.name === name);
-      const cd = skillCooldown(c.skills[idx].level);
+      // Its cooldown at its skill level (1% less a level; the server holds it to the same).
+      const sk = skillView(name);
+      const S = adventureData()?.stats;
+      const cd = sk && S ? cooldownOf(S, sk, sk.level) : 1;
       this.castReady.set(name, now + cd * 1000);
       this.nextCast = now + CAST_GAP_MS;
       const dir = dirToward(m.sprite.x - this.player.sprite.x, m.sprite.y - this.player.sprite.y);
@@ -860,9 +865,11 @@ export class TownScene extends Phaser.Scene {
    * in seconds, 'no' if it can't go now, or undefined for a skill that has no use in town yet.
    */
   private mobility(name: string): number | 'no' | undefined {
-    const c = classInfo(adventure()?.cls) as (ClassInfo & { mobility?: { id: string; name: string }[] }) | undefined;
+    const c = classInfo(adventure()?.cls);
     const kind = c?.mobility?.find((m) => m.name === name)?.id;
     if (!kind || !isMoveKind(kind)) return undefined;
+    const sk = skillView(name);
+    if (!sk || sk.locked) return 'no'; // (from its unlock level: the bar says when; the town ignores it before)
     const now = this.time.now;
     if (now < (this.moveReady.get(kind) ?? 0) || this.player.busy || this.player.isSitting || this.inside) return 'no';
     const dir = this.player.facing;
@@ -878,8 +885,11 @@ export class TownScene extends Phaser.Scene {
     this.link?.send({ t: 'move', move: kind, col: end.col, row: end.row });
     for (const t of tiles) this.player.onStep?.(t);
     void playMove(this, this.M, this.player, kind, end, tiles.length, dir, (o) => this.tint >= 0 && o.setTint(this.tint)).then(() => this.arrivedQuietly());
-    this.moveReady.set(kind, now + MOVES[kind].cooldown * 1000);
-    return MOVES[kind].cooldown;
+    // Its cooldown at its skill level (1% less a level).
+    const S = adventureData()?.stats;
+    const cd = S ? cooldownOf(S, sk, sk.level) : MOVES[kind].cooldown;
+    this.moveReady.set(kind, now + cd * 1000);
+    return cd;
   }
 
   /** After a move: a door or gate you landed on is noticed like after walking there with the keys. */
@@ -948,7 +958,8 @@ export class TownScene extends Phaser.Scene {
       drawResting: (ctx, cls, anim, dir, f, t) => drawRested(ctx, this, C, K, this.outfit, K.list[cls] ?? null, anim, dir, f, t),
       idle: { frames: C.animations.idle.frames, fps: C.animations.idle.fps },
       walk: { frames: C.animations.walk.frames, fps: C.animations.walk.fps },
-      preview: (c, host, back, choose) => mountSkillPreview({ stage: (cls) => this.skillStage(cls.id, cls.fx) }, c, host, back, choose),
+      // (Each skill's level and cap at your level: "Lv 1 / 10"; your own class's as raised.)
+      preview: (c, host, back, choose) => mountSkillPreview({ stage: (cls) => this.skillStage(cls.id, cls.fx), levels: skillViews }, c, host, back, choose),
       onChoose,
       onClose: () => {},
     });
@@ -1354,6 +1365,7 @@ export class TownScene extends Phaser.Scene {
       }
       if (m.t === 'attack-refused') {
         if (m.reason === 'range') toast('Too far to hit it.', 1500);
+        if (m.reason === 'locked') toast("You can't use that skill yet.", 1500);
         return;
       }
       if (m.t === 'welcome') {

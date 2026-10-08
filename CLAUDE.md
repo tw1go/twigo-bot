@@ -324,9 +324,10 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   walk-hunt; `Character.setBattle`, `strike`, `hurt`; the look's clothes and hair laid on by kit-art), others too
   (`OtherPlayers.battleFor`). The hotbar's damage skills work there (`TownScene.fight` / `fightTick`): pressing one
   auto-casts on your Z target (else the nearest mob): one cast a second (CAST_GAP_MS), the pressed skill when it's ready,
-  else the first ready damage skill (the bar's order: 1–0, then the Alt row; then the class's); each skill's cooldown by its level
-  (`combat/cooldowns.ts` = the bot's `skillCooldown`: 0.8 s + 0.15 s a level, Lv 1 1 s … Lv 18 3.5 s; enforced by the
-  server, shown in the Skills panel and the slot's pie); walking you into reach first and after
+  else the first ready unlocked damage skill (the bar's order: 1–0, then the Alt row; then the class's); each skill's cooldown by its
+  unlock level (shared `baseCooldown`: 0.8 s + 0.15 s a level, Lv 1 1 s … Lv 18 3.5 s) × (1 − 1% a skill level past 1)
+  (shared `skillCooldown`; game `combat/cooldowns.ts` `cooldownOf`, moves from MOVES; enforced by the server for damage
+  skills, shown in the Skills panel, tooltips and the slot's pie); walking you into reach first and after
   it if it moves (each skill's reach: skill-hits.json `range`; the class's own otherwise: Slingshot/Broom 5, the melee classes, Hilot included, the next tile), until it dies; moving yourself (click, WASD),
   Escape or the same skill again stop it, another damage skill takes over; its slot glows (`Hotbar.setAuto`). Each cast:
   your attack pose (`SKILL_POSE` by the skill's place) and `attack` to the server, which picks the mobs the skill reaches
@@ -337,11 +338,12 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   the whole skill plays mirrored round the caster's feet; each mob's damage number and HP land when the script's hit on
   it does; skill-hits.json `fxScale` sizes a skill's effects). Each skill's reach: skill-hits.json `range` (from its
   script's farthest slot, at least the class's own; around skills: their radius `around:N:R`). Mobility skills never auto-cast. The bot decides (`MobRoom.attack`, tested): mobs have their kind's HP (`TownMob.maxHp`); a hit is the
-  stats rules' (`rollHit`: Power from `attack`'s `Attacker` = class, level, spent points, worn gear (town.ts passes the
-  class and weapon; level 1 and no points until they're saved) × the skill's tier % (its place in the class's order)
-  at its skill level (1 for now) × crit × 100/(100 + DEF) × the level gap, which also misses (`miss`, 0: "Miss" in the
-  game); Lv 1 Slingshot with its training weapon vs a Tin Can = 30; a skill index outside the class's list: refused,
-  'skill'), at most one swing per 0.4 s; a Scrap Crab's
+  stats rules' (`rollHit`: Power from `attack`'s `Attacker` = class, level, spent points, worn gear, skill levels
+  (`fighterOf`) × the skill's tier % (its place in the class's order) × (1 + 2% a skill level past 1) × crit ×
+  100/(100 + DEF) × the level gap, which also misses (`miss`, 0: "Miss" in the game); Lv 1 Slingshot with its training
+  weapon vs a Tin Can = 30; a skill index outside the class's list: refused, 'skill'; under its classes.json unlock level:
+  refused, 'locked' (toast "You can't use that skill yet"); a slow/root effect lasts 5% longer a skill level (its ms;
+  the slow's factor stays)), at most one swing per 0.4 s; a Scrap Crab's
   shell (`shell`) blocks every hit from any side (`blocked`, 0) except for `shellOpenMs` (1.2 s) from each of its own
   swings (shell down: hit it then; it swings every `attackMs` 2.5 s; the game shows a small shield over a fighting or targeted crab while its shell is up); a hit mob (its whole pack) chases its foe, an aggressive zone's mob (`aggro`) one who comes within its
   `aggroRange` (in its zone, on its level; players are sorted per zone once a tick), to the nearest free tile within
@@ -436,7 +438,9 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   `web/stats-data.ts` (`loadStats`, `loadGear`); game: the scene's json cache 'stats' and `adventureData().stats`. Level/XP
   (`xpToNext`, `levelFromXp`, `gainXp`), `baseStats` (class growth + spent points; classless 4/4/4), `derivedStats` (HP,
   MP, MP regen, Power, DEF, crit, capped), `requirements` / `canEquip` / `needsLine` (base stats only), skills
-  (`skillTier`, `skillBasePct`, `skillPct`, `skillLevelCap`, `skillLevelBonus`), damage (`levelGap`, `hitDamage`,
+  (`skillTier`, `skillBasePct`, `skillPct`, `skillLevelCap`, `skillLevelBonus`, `classSkills` (damage + mobility in
+  unlock order, keyed '0'…'6' / move id), `skillLevelOf`, `damageSkillLevels`, `moveUnlock`, `baseCooldown`,
+  `skillCooldown`), damage (`levelGap`, `hitDamage`,
   `rollHit`), `mobStats`, `mobXp` (low-mob penalty), `mobTone`. classes.json main/second stats match stats.json (tested).
   Gear (both sides use them): `wearCheck` (canEquip on a character's base stats), `placesFor`, `trainingGear` (a class's
   training weapon + its gear type's armor), `giveGear` (into a free place if wearable, else the bag while it has room),
@@ -461,6 +465,18 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   HP, MP | STR, DEX, INT, Crit from the stats rules (class, level, points, worn gear), "Points: N", a + on the main and
   second stat while N > 0, Reset; classless: "Choose a class to spend points". Dev: `/__points?as=&stat=|reset=1`
   (progress.ts in the dev server; the page's pretend store calls it).
+- Skills unlock at their classes.json `level` (damage skills; mobility: Dash 5, the Lv 8 move 8): before it the server
+  refuses `attack` ('locked') and doesn't pass on the `move` (`TownOptions.moveLevel`, web/adventure.ts `moveLevel`; also
+  refuses another class's move), and the game won't cast or move (hotbar slot greyed with a padlock and "Lv N"; use →
+  "X unlocks at Lv N."). Skill points (`POST /town/skills` { raise, skill: '0'…'6' | move id } | { reset },
+  `skillsStep` / `townSkills`, progress.ts `raiseSkill` / `resetSkillPoints`, tested): 1 point = +1 level, unlocked skills
+  only, cap = min(20, level − unlock + 1); Reset free, all back (stat points stay); banked before a class; the ticket
+  refunds them. Per level: damage +2%, cooldown −1%, slow/root +5% (ms), MP cost +3% (shown only: "MP cost +27%" in
+  tooltips; skills cost no MP yet). Skills panel (`#skill-book`): "Skill points: N" + Reset, skills in unlock order with
+  icon, name, "Lv N / cap · cooldown", a + while below the cap with points; locked rows greyed "Unlocks at Lv N". Slot
+  tooltips "Quick Shot Lv 3 / 10", desc, cooldown, MP cost. The class choice's preview shows "Lv 1 / cap" at your level
+  (your own class: as raised; locked: "Locked"); `skillViews` in net/adventure.ts. Dev: `/__skills?as=&skill=|reset=1`;
+  `?level=N` at your level already changes nothing.
 - Gear requirements: items/equipment.json items have `level`, `rarity` (stats.json's: brown … darkOrange; colours ours,
   in ui/item-art.ts FRAMES, since stats.json has none), `bound`, `training`, `agimats` ([]); a weapon's `class` or armor's
   `gear` only feeds the formula (no class-name rule). Checked on the server for every equip (`equipStep`: refused with
@@ -497,8 +513,9 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   trimmed to the pose's body so sleeves never float; hair, glasses and hat by the head).
 - Hotbar (`ui/hotbar.ts`, bottom centre, members, hidden on phones and in the casino/arena): bottom row 10 skill slots
   (keys 1–0) and 3 for potions/usables (- = `, shown ~), evenly spaced; top row 13 more (Alt + the same keys, labelled "Alt+1"…) for either.
-  Skills panel on the right of the screen (K or the K button; `#skill-book`): each skill with its description, the hovered
-  one played on the class choice's stage (`TownScene.skillStage`, 1×); drag a skill to a slot, or click it then a slot.
+  Skills panel on the right of the screen (K or the K button; `#skill-book`): skill points, each skill with its level and
+  description (see Skills unlock), the hovered one played on the class choice's stage (`TownScene.skillStage`, 1×); drag a
+  skill to a slot, or click it then a slot.
   Potions dragged from the bag; drag between slots swaps, off the bar empties (right-click never does). Per class in localStorage
   `mk_hotbar` (a class's first bar = its skills in order). Skill icons from manifest ui.skillIcons (`have` lists the ones there are: every class's 7 damage skills and its Lv 8 move; `shared` = one icon for all, Dash); the rest show
   their initials over the class badge. In town the damage skills are dark (grey, dimmed: `usable`); only the move

@@ -2,25 +2,27 @@ import type { ClassInfo } from '@mikazuki/shared';
 import { playSound } from '../audio/sound';
 import { MOBILITY_PREVIEWS, SKILL_PREVIEWS } from '../combat/skill-previews';
 import { GAP_MS, type NumberKind, type Pt, STAGE_H, STAGE_W, type Skill, type SkillStage } from '../combat/skill-stage';
+import type { SkillView } from '../net/adventure';
 import { stats } from './class-choice';
 
 // 🎬 A class's skill preview (over the class choice): on the left a small stage at a whole-number scale with your
 // character in the class's walk-ready pose facing SE and three invisible enemies along that line (combat/skill-stage.ts);
 // under it the class's blurb, weapon, role, damage, stats and gear; on the right its name, its first 7 skills, and under a Mobility
-// heading its two movement skills (classes.json's mobility: Dash and the Lv 8 move). All nine play one after another
+// heading its two movement skills (classes.json's mobility: Dash and the Lv 8 move), each with its unlock level and, once
+// unlocked at your level, its skill level and cap ("Lv 1 / 10"; locked ones say so). All nine play one after another
 // and loop, the one playing lit up in the list; clicking a skill plays it next. Damage numbers rise
 // over the hits in Jersey 10 (its 19 px steps): gold for a crit, small orange for burns, small mint for menthol.
 
 export interface SkillPreviewOptions {
   /** Builds the stage once the class's poses and fx have loaded (null if they can't be). */
   stage: (cls: ClassInfo) => Promise<SkillStage | null>;
+  /** The class's skills with their levels and caps at your level (net/adventure.ts skillViews). */
+  levels?: (cls: ClassInfo) => SkillView[];
 }
 
-/** classes.json's movement skills (the game's own field). */
-type WithMobility = ClassInfo & { mobility?: { id: string; level: number; name: string; desc: string }[] };
-
 export function mountSkillPreview(o: SkillPreviewOptions, c: ClassInfo, host: HTMLElement, back: () => void, choose: () => void): () => void {
-  const moves = ((c as WithMobility).mobility ?? []).filter((m) => MOBILITY_PREVIEWS[c.id]?.[m.id]);
+  const moves = (c.mobility ?? []).filter((m) => MOBILITY_PREVIEWS[c.id]?.[m.id]);
+  const levels = new Map((o.levels?.(c) ?? []).map((k) => [k.name, k]));
   const skills: Skill[] = [...(SKILL_PREVIEWS[c.id] ?? []), ...moves.map((m) => MOBILITY_PREVIEWS[c.id][m.id])];
   const root = el('div', 'sp-body');
   const left = el('div', 'sp-stage');
@@ -47,7 +49,10 @@ export function mountSkillPreview(o: SkillPreviewOptions, c: ClassInfo, host: HT
   const rows = [...c.skills, ...moves].map((s, i) => {
     const li = el('li', 'sp-skill');
     const b = el('button', 'sp-skill-button');
-    b.append(el('span', 'sp-lv', `Lv ${s.level}`), el('span', 'sp-skill-name', s.name), el('span', 'sp-desc', s.desc));
+    const name = el('span', 'sp-skill-name', s.name);
+    const v = levels.get(s.name);
+    if (v) name.append(el('span', v.locked ? 'sp-cap sp-locked' : 'sp-cap', v.locked ? 'Locked' : `Lv ${v.level} / ${v.cap}`));
+    b.append(el('span', 'sp-lv', `Lv ${s.level}`), name, el('span', 'sp-desc', s.desc));
     b.addEventListener('click', () => {
       playSound('click');
       next = i;

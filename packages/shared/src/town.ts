@@ -330,8 +330,8 @@ export type TownServerMessage =
   | { t: 'progress'; progress: CharacterProgress; gained?: number }
   /** Someone in your room went up a level (you too: `id` is yours): "Level up!" over them. HP and MP refill with it. */
   | { t: 'level-up'; id: string; level: number }
-  /** Your attack didn't land: too far, too fast, or the mob's gone. */
-  | { t: 'attack-refused'; reason: 'range' | 'slow' | 'gone' | 'skill' }
+  /** Your attack didn't land: too far, too fast, the mob's gone, or the skill isn't one of yours or unlocked yet. */
+  | { t: 'attack-refused'; reason: 'range' | 'slow' | 'gone' | 'skill' | 'locked' }
   /** Your party now (null: none), with a line for a toast when something happened ("Mara joined the party."). */
   | { t: 'party'; party: PartyState | null; note?: string }
   /** Someone invites you: answer with party-answer (it lapses after a minute). */
