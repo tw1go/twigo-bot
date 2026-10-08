@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { type ClassSkill, mobStats, skillLevelCap, xpForLevel, xpToNext } from '@mikazuki/shared';
+import { type ClassSkill, mobStats, skillCap, skillLevelCap, xpForLevel, xpToNext } from '@mikazuki/shared';
 import { addXp, freshProgress, killXp, levelTo, progressView, raiseSkill, refundPoints, resetSkillPoints } from './progress.js';
 import { loadStats } from './stats-data.js';
 
@@ -104,4 +104,13 @@ test('saved numbers are held to the rules: level within 1…cap, XP under the ne
   const v = progressView(S, 'stick', { level: 0, xp: -4, points: { STR: -2, INT: 1.7 }, skills: { '0': 1, '1': 3 }, skillPoints: -1 });
   assert.deepEqual(v, { level: 1, xp: 0, next: xpToNext(S, 1), points: { INT: 1 }, statPoints: 0, skills: { '1': 3 }, skillPoints: 0 }, 'INT is the Stick\'s third stat: not counted as spent');
   assert.equal(progressView(S, 'stick', { level: 3, xp: 1e9 }).xp, xpToNext(S, 3) - 1);
+});
+
+test('mobility moves stay at Lv 1: never raised; points put into one before come back', () => {
+  const dash: ClassSkill = { key: 'dash', name: 'Dash', desc: '', unlock: 5, move: 'dash' };
+  assert.deepEqual([skillCap(S, 4, dash), skillCap(S, 5, dash), skillCap(S, CAP, dash)], [0, 1, 1]);
+  const lv10 = levelTo(S, 'slingshot', freshProgress(S, 'slingshot'), 10).progress;
+  assert.deepEqual(raiseSkill(S, 'slingshot', lv10, dash), { ok: false, message: 'Dash is at Lv 1, its cap for now.' });
+  const old = progressView(S, 'slingshot', { ...lv10, skills: { '0': 3, dash: 4, 'step-back': 2 }, skillPoints: 10 });
+  assert.deepEqual([old.skills, old.skillPoints], [{ '0': 3 }, 10 + 3 + 1]);
 });

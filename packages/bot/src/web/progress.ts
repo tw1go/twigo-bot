@@ -8,7 +8,7 @@ import {
   gainXp,
   mobXp,
   pointStats,
-  skillLevelCap,
+  skillCap,
   skillLevelOf,
   skillPointsAt,
   unspentStatPoints,
@@ -43,8 +43,14 @@ export function progressView(data: StatsData, cls: string | null, p: Partial<Sav
   const points: StatPoints = {};
   for (const s of STAT_NAMES) if (whole(p.points?.[s])) points[s] = whole(p.points?.[s]);
   const skills: Record<string, number> = {};
-  for (const [k, v] of Object.entries(p.skills ?? {})) if (whole(v) > 1) skills[k] = whole(v);
-  return { level, xp: next ? Math.min(whole(p.xp), next - 1) : 0, next, points, statPoints: unspentStatPoints(data, cls, level, points), skills, skillPoints: whole(p.skillPoints) };
+  // (Mobility moves stay at Lv 1, skillCap: points put into one before that rule come back.)
+  let back = 0;
+  for (const [k, v] of Object.entries(p.skills ?? {})) {
+    if (whole(v) <= 1) continue;
+    if (/^\d+$/.test(k)) skills[k] = whole(v);
+    else back += whole(v) - 1;
+  }
+  return { level, xp: next ? Math.min(whole(p.xp), next - 1) : 0, next, points, statPoints: unspentStatPoints(data, cls, level, points), skills, skillPoints: whole(p.skillPoints) + back };
 }
 
 /** A new character's: Lv 1, no XP, nothing earned or spent. */
@@ -95,7 +101,7 @@ export function raiseSkill(data: StatsData, cls: string | null, p: SavedProgress
   if (!skill) return { ok: false, message: 'No such skill.' };
   if (now.level < skill.unlock) return { ok: false, message: `${skill.name} unlocks at Lv ${skill.unlock}.` };
   const level = skillLevelOf(now, skill.key);
-  const cap = skillLevelCap(data, now.level, skill.unlock);
+  const cap = skillCap(data, now.level, skill);
   if (level >= cap) return { ok: false, message: `${skill.name} is at Lv ${level}, its cap for now.` };
   if (now.skillPoints < 1) return { ok: false, message: 'No skill points to spend.' };
   return { ok: true, progress: progressView(data, cls, { ...p, skills: { ...now.skills, [skill.key]: level + 1 }, skillPoints: now.skillPoints - 1 }) };

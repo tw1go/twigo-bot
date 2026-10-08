@@ -297,21 +297,20 @@ test('skill points: banked before a class; then into unlocked skills up to their
   // Quick Shot (unlock Lv 1): up to Lv 10 at character Lv 10, not 11.
   for (let i = 0; i < 9; i++) assert.ok(townSkills('sk', { action: 'raise', skill: '0' }).ok);
   assert.equal(townSkills('sk', { action: 'raise', skill: '0' }).message, 'Quick Shot is at Lv 10, its cap for now.');
-  // Pebble Spray (unlock Lv 6): to 5, not 6. Volley (Lv 18): locked. Dash (a move, Lv 5): to 6.
+  // Pebble Spray (unlock Lv 6): to 5, not 6. Volley (Lv 18): locked. The mobility moves stay at Lv 1.
   for (let i = 0; i < 4; i++) assert.ok(townSkills('sk', { action: 'raise', skill: '2' }).ok);
   assert.equal(townSkills('sk', { action: 'raise', skill: '2' }).ok, false);
   assert.equal(townSkills('sk', { action: 'raise', skill: '6' }).message, 'Volley unlocks at Lv 18.');
-  assert.ok(townSkills('sk', { action: 'raise', skill: 'dash' }).ok);
+  assert.equal(townSkills('sk', { action: 'raise', skill: 'dash' }).message, 'Dash is at Lv 1, its cap for now.');
+  assert.equal(townSkills('sk', { action: 'raise', skill: 'step-back' }).ok, false);
   assert.equal(townSkills('sk', { action: 'raise', skill: 'blink' }).message, 'No such skill.'); // the Broom's and Hilot's
   const p = adventureOf('sk').progress;
-  assert.deepEqual([p.skills, p.skillPoints], [{ '0': 10, '2': 5, dash: 2 }, 27 - 9 - 4 - 1]);
+  assert.deepEqual([p.skills, p.skillPoints], [{ '0': 10, '2': 5 }, 27 - 9 - 4]);
   // The fight sees the damage skills' levels, in order.
   assert.deepEqual(fighterOf('sk').skills, [10, 1, 5, 1, 1, 1, 1]);
-  // Out of points: refused.
-  // (Double Tap to its cap 8: 7; Dash to 6: 4 more; Step Back, Lv 8, to 3: 2.)
-  for (const [skill, n] of [['1', 7], ['dash', 4], ['step-back', 2]] as const) for (let i = 0; i < n; i++) assert.ok(townSkills('sk', { action: 'raise', skill }).ok, skill);
-  assert.equal(adventureOf('sk').progress.skillPoints, 0);
-  assert.equal(townSkills('sk', { action: 'raise', skill: '3' }).message, 'No skill points to spend.');
+  // (Double Tap to its cap 8: 7; Ricochet, Lv 9, to 2: 1.)
+  for (const [skill, n] of [['1', 7], ['3', 1]] as const) for (let i = 0; i < n; i++) assert.ok(townSkills('sk', { action: 'raise', skill }).ok, skill);
+  assert.equal(adventureOf('sk').progress.skillPoints, 27 - 9 - 4 - 7 - 1);
   // Reset: free, all 27 back, every skill at Lv 1; stat points stay.
   townPoints('sk', { action: 'spend', stat: 'DEX' });
   const reset = townSkills('sk', { action: 'reset' });

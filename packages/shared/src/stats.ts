@@ -382,6 +382,12 @@ export function skillLevelCap(data: StatsData, level: number, unlockLevel: numbe
   return clamp(level - unlockLevel + 1, 0, most);
 }
 
+/** A skill's cap: a damage skill's skillLevelCap; a mobility move (Dash, the Lv 8 move) stays at Lv 1 (0 before it
+ *  unlocks). */
+export function skillCap(data: StatsData, level: number, skill: { unlock: number; move?: string }): number {
+  return skill.move ? (level >= skill.unlock ? 1 : 0) : skillLevelCap(data, level, skill.unlock);
+}
+
 /** A skill in a class's list: its key (where its level is kept: a damage skill's place '0'…'6', a move's id), name,
  *  description and unlock level; a damage skill's place (`index`, its tier − 1), a move's id (`move`). */
 export interface ClassSkill {

@@ -38,7 +38,7 @@ import {
   needsLine,
   newItem,
   placesFor,
-  skillLevelCap,
+  skillCap,
   skillLevelOf,
   skillPointsAt,
   swapTrainingGear,
@@ -324,7 +324,7 @@ export function skillViews(c: ClassInfo | null | undefined): SkillView[] {
   return classSkills(c).map((k) => ({
     ...k,
     level: mine ? skillLevelOf(p, k.key) : 1,
-    cap: data ? skillLevelCap(data.stats, level, k.unlock) : 0,
+    cap: data ? skillCap(data.stats, level, k) : 0,
     locked: level < k.unlock,
   }));
 }

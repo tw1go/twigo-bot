@@ -596,7 +596,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   refuses another class's move), and the game won't cast or move (hotbar slot greyed with a padlock and "Lv N"; use →
   "X unlocks at Lv N."). Skill points (`POST /town/skills` { raise, skill: '0'…'6' | move id } | { reset },
   `skillsStep` / `townSkills`, progress.ts `raiseSkill` / `resetSkillPoints`, tested): 1 point = +1 level, unlocked skills
-  only, cap = min(20, level − unlock + 1); Reset free, all back (stat points stay); banked before a class; the ticket
+  only, cap = min(20, level − unlock + 1) (`skillCap`; the mobility moves stay at Lv 1, points once put into one come back in progressView); Reset free, all back (stat points stay); banked before a class; the ticket
   refunds them. Per level: damage +2%, cooldown −1%, slow/root +5% (ms), MP cost +3%. MP costs (stats.json
   skills.mpCost, repo-only: tell the user to add it to the art folder's; per class the damage skills by tier, Dash, the
   Lv 8 move; shared `skillMpCost`, rounded): spent on battle maps only (town.ts: `attack` refused 'mp' without enough,
