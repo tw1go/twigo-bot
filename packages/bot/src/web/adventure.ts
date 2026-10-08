@@ -2,43 +2,53 @@ import { readFileSync } from 'node:fs';
 import type {
   AdventureState,
   ClassesFile,
-  EquipmentDef,
-  EquipmentFile,
   EquipPlace,
-  EquipSlot,
   QuestDef,
   QuestsFile,
+  StatName,
   TownAdventureResponse,
   TownEquipAction,
+  TownPointsAction,
   TownQuestAction,
 } from '@mikazuki/shared';
+import { STAT_NAMES, giveGear, needsLine, placesFor, swapTrainingGear, trainingGear, wearCheck } from '@mikazuki/shared';
 import { db } from '../db/db.js';
-import { type LevelGain, type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView, refundPoints } from './progress.js';
+import { type LevelGain, type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView, refundPoints, resetStatPoints, spendPoint } from './progress.js';
 import type { Attacker } from './town-mobs.js';
-import { loadStats } from './stats-data.js';
+import { loadGear, loadStats } from './stats-data.js';
 
 // ⚔️ A member's class, quests, equipment and level in the web game (table adventurers, schema v10; level, XP and points
 // v11, by web/progress.ts). The quests, classes and equipment are the game's data files (public/assets/quests/quests.json,
-// classes/classes.json, items/equipment.json), read here like the town map. The game says when an objective is done (POST /town/quest) and what to wear (POST
-// /town/equip); everything is checked here, and items are only ever given here (a class's training weapon). Starter
-// items can't be dropped, traded or sold. Worn items don't take a bag slot; equipment in the bag takes one each.
+// classes/classes.json, items/equipment.json), read here like the town map. The game says when an objective is done (POST /town/quest), what to wear (POST
+// /town/equip) and where stat points go (POST /town/points); everything is checked here (wearing: the stats rules'
+// requirements on base stats), and items are only ever given here (the Tanod's training gear: the class's weapon and
+// its gear type's armor, on the class choice, or once on a later visit for a class from before training armor).
+// Training gear is bound and can't be dropped, traded or sold. Worn items don't take a bag slot; equipment in the bag
+// takes one each.
 
 const asset = <T>(path: string): T => JSON.parse(readFileSync(new URL(`../../../game/public/assets/${path}`, import.meta.url), 'utf8')) as T;
 
 export const QUESTS: QuestDef[] = asset<QuestsFile>('quests/quests.json').quests;
 export const CLASSES = asset<ClassesFile>('classes/classes.json').classes;
-export const EQUIPMENT = new Map<string, EquipmentDef>(asset<EquipmentFile>('items/equipment.json').items.map((i) => [i.id, i]));
+export const EQUIPMENT = loadGear();
 const PLACES = new Set<EquipPlace>(['weapon', 'head', 'body', 'hands', 'bottoms', 'feet', 'necklace', 'earrings', 'bracers1', 'bracers2', 'ring1', 'ring2']);
 
-/** Where a kind of equipment can be worn (two places for bracers and rings). */
-export const placesFor = (slot: EquipSlot): EquipPlace[] => (slot === 'bracers' ? ['bracers1', 'bracers2'] : slot === 'ring' ? ['ring1', 'ring2'] : [slot]);
+export { placesFor };
 
 export const freshAdventure = (): AdventureState => ({ cls: null, quests: { active: [], done: [] }, equipped: {}, bag: [], progress: freshProgress(loadStats()), trainingArmorGiven: false });
 
-/** The class's gear type (Heavy, Light, Household). */
-const gearOf = (cls: string | null) => CLASSES.find((c) => c.id === cls)?.gear ?? null;
-/** Whether someone of this class can wear the item. */
-const usable = (s: AdventureState, item: EquipmentDef) => (item.class ? item.class === s.cls : item.gear ? item.gear === gearOf(s.cls) : true);
+/** Whether they own an item (worn or in the bag). */
+const owns = (s: AdventureState, id: string) => s.bag.includes(id) || Object.values(s.equipped).includes(id);
+
+/** Their class's training armor they don't have yet: each into its place if it's free, else the bag while it has room
+ *  (`free` slots); done once all of it has been given (what fitted nowhere comes on a later visit). Returns what was
+ *  given. */
+export function giveTrainingArmor(s: AdventureState, free: number): string[] {
+  if (!s.cls || s.trainingArmorGiven) return [];
+  const { given, left } = giveGear(loadStats(), s, trainingGear(loadStats(), EQUIPMENT.values(), s.cls).armor.filter((i) => !owns(s, i.id)), free);
+  s.trainingArmorGiven = !left.length;
+  return given;
+}
 
 /** Starts the autoStart quests they haven't started or finished (a class quest only for someone without a class).
  *  Returns the ones started. */
@@ -68,7 +78,7 @@ function advance(s: AdventureState, q: QuestDef): string | undefined {
 type Result = Omit<TownAdventureResponse, 'adventure'>;
 
 /** An objective done in the game: checked against the quest's current objective. */
-export function questStep(s: AdventureState, a: TownQuestAction): Result {
+export function questStep(s: AdventureState, a: TownQuestAction, freeSlots: number): Result {
   const q = QUESTS.find((x) => x.id === a.quest);
   const p = s.quests.active.find((x) => x.id === a.quest);
   if (!q || !p) return { ok: false, message: "That quest isn't under way." };
@@ -81,13 +91,22 @@ export function questStep(s: AdventureState, a: TownQuestAction): Result {
   if (s.cls) return { ok: false, message: 'You already have a class.' };
   if (!CLASSES.some((c) => c.id === a.cls)) return { ok: false, message: 'No such class.' };
   s.cls = a.cls;
-  // The class's training weapon, straight into the weapon slot (anything there goes to the bag).
-  const weapon = [...EQUIPMENT.values()].find((i) => i.starter && i.slot === 'weapon' && i.class === a.cls);
+  s.progress = progressView(loadStats(), s.cls, s.progress); // its growth, and the banked points to spend
+  // The class's training weapon, straight into the weapon slot (anything there goes to the bag; the bag if they can't
+  // wear it, which every class can its own), then its armor.
+  let free = freeSlots;
+  const weapon = trainingGear(loadStats(), EQUIPMENT.values(), a.cls).weapon;
   if (weapon) {
-    if (s.equipped.weapon) s.bag.push(s.equipped.weapon);
-    s.equipped.weapon = weapon.id;
+    const wear = wearCheck(loadStats(), s, weapon).ok;
+    const off = wear ? s.equipped.weapon : weapon.id;
+    if (wear) s.equipped.weapon = weapon.id;
+    if (off) {
+      s.bag.push(off);
+      free--;
+    }
   }
-  return { ok: true, given: weapon?.id, completed: advance(s, q) };
+  const gear = giveTrainingArmor(s, Math.max(0, free));
+  return { ok: true, given: weapon?.id, ...(gear.length ? { gear } : {}), completed: advance(s, q) };
 }
 
 /** Wear an item from the bag (in the place asked for, else the first free one for its kind, else the first), or take
@@ -99,7 +118,8 @@ export function equipStep(s: AdventureState, a: TownEquipAction, freeSlots: numb
     if (!item || at < 0) return { ok: false, message: "You don't have that item." };
     const places = placesFor(item.slot);
     if (a.place && !places.includes(a.place)) return { ok: false, message: 'Wrong slot.' };
-    if (!usable(s, item)) return { ok: false, message: "Your class can't use this." };
+    const can = wearCheck(loadStats(), s, item);
+    if (!can.ok) return { ok: false, message: needsLine(can.missing) };
     const place = a.place ?? places.find((p) => !s.equipped[p]) ?? places[0];
     s.bag.splice(at, 1);
     const old = s.equipped[place];
@@ -114,6 +134,19 @@ export function equipStep(s: AdventureState, a: TownEquipAction, freeSlots: numb
   delete s.equipped[a.place];
   s.bag.push(id);
   return { ok: true, message: `Took off ${EQUIPMENT.get(id)?.name ?? 'it'}.` };
+}
+
+/** One stat point into the class's main or second stat, or every stat point back (free). */
+export function pointsStep(s: AdventureState, a: TownPointsAction): Result {
+  if (a.action === 'reset') {
+    if (!Object.values(s.progress.points).some((n) => n)) return { ok: false, message: 'No stat points spent.' };
+    s.progress = resetStatPoints(loadStats(), s.cls, s.progress);
+    return { ok: true, message: 'Stat points back.' };
+  }
+  const r = spendPoint(loadStats(), s.cls, s.progress, a.stat);
+  if (!r.ok) return r;
+  s.progress = r.progress;
+  return { ok: true };
 }
 
 // ── Saved per member ──
@@ -170,6 +203,16 @@ export function adventureOf(userId: string): AdventureState {
   return s;
 }
 
+/** The training armor of a class from before training armor (their first visit since; again while some of it had no
+ *  room), saved; what was given. `free`: their bag's free slots. */
+export function trainingArmorFor(userId: string, free: number): string[] {
+  const s = load(userId);
+  if (!s.cls || s.trainingArmorGiven) return [];
+  const given = giveTrainingArmor(s, free);
+  save(userId, s);
+  return given;
+}
+
 /** Equipment in their bag (one slot each), for the bag's count and the town's inventory. */
 export const equipmentInBag = (userId: string): string[] => load(userId).bag;
 
@@ -214,6 +257,14 @@ export function parseQuestAction(body: unknown): TownQuestAction | null {
   return null;
 }
 
+/** The body of POST /town/points, if it's a valid one. */
+export function parsePointsAction(body: unknown): TownPointsAction | null {
+  const b = body as Record<string, unknown> | null;
+  if (b?.action === 'reset') return { action: 'reset' };
+  if (b?.action === 'spend' && STAT_NAMES.includes(b.stat as StatName)) return { action: 'spend', stat: b.stat as StatName };
+  return null;
+}
+
 /** The body of POST /town/equip, if it's a valid one. */
 export function parseEquipAction(body: unknown): TownEquipAction | null {
   const b = body as Record<string, unknown> | null;
@@ -227,11 +278,11 @@ export function parseEquipAction(body: unknown): TownEquipAction | null {
 }
 
 /** POST /town/quest for a member: the step checked and saved. `changed`: their class or weapon changed (the town shows it). */
-export function townQuest(userId: string, a: TownQuestAction): TownAdventureResponse & { changed: boolean } {
+export function townQuest(userId: string, a: TownQuestAction, freeSlots: number): TownAdventureResponse & { changed: boolean } {
   const s = load(userId);
   startQuests(s);
   const before = `${s.cls}|${s.equipped.weapon}`;
-  const r = questStep(s, a);
+  const r = questStep(s, a, freeSlots);
   if (r.ok) save(userId, s);
   return { ...r, adventure: s, changed: r.ok && before !== `${s.cls}|${s.equipped.weapon}` };
 }
@@ -245,20 +296,24 @@ export function townEquip(userId: string, a: TownEquipAction, freeSlots: number)
   return { ...r, adventure: s, changed: r.ok && before !== s.equipped.weapon };
 }
 
-/** A new class for someone who has one (a Bagong Buhay Ticket, items/class-ticket.ts): the new class's training weapon
- *  in the weapon slot instead of the old one's (the old training weapon goes; any other worn weapon to the bag); quests
- *  as they were. */
+/** POST /town/points for a member. */
+export function townPoints(userId: string, a: TownPointsAction): TownAdventureResponse {
+  const s = load(userId);
+  const r = pointsStep(s, a);
+  if (r.ok) save(userId, s);
+  return { ...r, adventure: s };
+}
+
+/** A new class for someone who has one (a Bagong Buhay Ticket, items/class-ticket.ts): every stat and skill point back,
+ *  and the new class's training weapon and armor in place of the old class's, wherever those were (worn, or in the
+ *  bag); quests as they were. */
 export function switchClass(userId: string, cls: string): { ok: true; adventure: AdventureState } | { ok: false; message: string } {
   const s = load(userId);
   if (!s.cls) return { ok: false, message: 'Choose your first class with the Tanod.' };
   if (s.cls === cls) return { ok: false, message: "That's already your class." };
-  const training = (id: string | undefined) => !!id && !!EQUIPMENT.get(id)?.starter;
-  s.bag = s.bag.filter((id) => !training(id));
-  if (s.equipped.weapon && !training(s.equipped.weapon)) s.bag.push(s.equipped.weapon);
-  const weapon = [...EQUIPMENT.values()].find((i) => i.starter && i.slot === 'weapon' && i.class === cls);
-  if (weapon) s.equipped.weapon = weapon.id;
-  else delete s.equipped.weapon;
   s.cls = cls;
+  s.progress = refundPoints(loadStats(), cls, s.progress);
+  swapTrainingGear(loadStats(), s, EQUIPMENT);
   save(userId, s);
   return { ok: true, adventure: s };
 }

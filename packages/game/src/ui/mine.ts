@@ -1,7 +1,7 @@
 import type { MeDig, TownDigItemsResponse, TownDigResponse } from '@mikazuki/shared';
 import { playSound } from '../audio/sound';
 import { fakeLogin, fakeName, loadMe } from '../session';
-import { type Rarity, RARITY_COLOUR, isRarity, itemArt } from './item-art';
+import { type Rarity, RARITY_COLOUR, RARITY_LABEL as LABEL, isRarity, itemArt } from './item-art';
 import { installPixelTiles } from './pixel-tiles';
 import { el, followWallet, showPopup } from './reward';
 
@@ -13,7 +13,6 @@ import { el, followWallet, showPopup } from './reward';
 // rarest first, each tier's and item's odds and what it sells for (GET /town/dig-items; secrets stay secret).
 
 const plural = (n: number, one: string, many: string) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
-const LABEL: Record<Rarity, string> = { junk: 'Junk', common: 'Common', uncommon: 'Uncommon', rare: 'Rare', epic: 'Epic', mythical: 'Mythical', legendary: 'Legendary', secret: 'Secret' };
 
 /** The last find: its picture in its rarity frame, "You dug up", its name in the rarity's colour, rarity and worth. */
 function findCard(item: NonNullable<TownDigResponse['item']>): HTMLElement {

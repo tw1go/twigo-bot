@@ -1,18 +1,21 @@
-import type { AdventureState, EquipPlace, EquipSlot, EquipmentDef } from '@mikazuki/shared';
+import { type AdventureState, type EquipPlace, type EquipSlot, type EquipmentDef, type StatName, STAT_NAMES, baseStats, canEquip, derivedStats, gearTotals, pointStats, requirements } from '@mikazuki/shared';
 import type { Dir } from '../assets/types';
 import { playSound } from '../audio/sound';
-import { statsFor } from '../combat/stats';
-import { adventure, classInfo, equipItem, itemDef, onAdventure, placesFor, unequipPlace } from '../net/adventure';
-import { type Rarity, RARITY_COLOUR, RARITY_TEXT, isRarity, itemArt } from './item-art';
+import { adventure, adventureData, cantWear, classInfo, equipItem, itemDef, onAdventure, placesFor, resetPoints, spendPoint, unequipPlace } from '../net/adventure';
+import { type Rarity, RARITY_COLOUR, RARITY_LABEL, RARITY_TEXT, isRarity, itemArt } from './item-art';
 import { toast } from './toast';
 
 // 🛡️ The equipment panel, on the left of the bag (it opens and closes with it; I or B). Twelve places in the
 // inventory's slot art: Weapon, Head, Body, Hands, Bottoms and Feet on the left; Necklace, Earrings, two Bracers and two
 // Rings on the right. Empty ones show their grey silhouette (ui.equipSlots) and are named by your gear type on hover
-// (combat-guide.md: Heavy, Light, Household); worn ones show the item's 16x16 icon in its rarity's colour. Your
-// character idles in the middle (3×, facing SE, with the resting weapon) over a faint crescent moon; a drag turns it.
-// Under it your class and level, and the stats box (combat/stats.ts: placeholders plus the worn items). Double-click
-// or drag an item from the bag onto its place to wear it; right-click or double-click a worn one to take it off.
+// (combat-guide.md: Heavy, Light, Household); worn ones show the item's 16x16 icon in its rarity's colour (an item
+// without art yet: its place's silhouette). Your character idles in the middle (3×, facing SE, with the resting weapon)
+// over a faint crescent moon; a drag turns it. Under it your class and level, and the stats box (the stats rules,
+// @mikazuki/shared: ATK = Power, DEF, HP, MP, STR, DEX, INT, Crit from your class, level, stat points and what's worn),
+// with your unspent stat points: a + on your class's main and second stat (POST /town/points), and a free Reset;
+// before a class they're banked. Double-click or drag an item from the bag onto its place to wear it (if its
+// requirements are met: base stats only; refused with what's missing, "Needs DEX 26"); right-click or double-click a
+// worn one to take it off.
 
 const LEFT: EquipPlace[] = ['weapon', 'head', 'body', 'hands', 'bottoms', 'feet'];
 const RIGHT: EquipPlace[] = ['necklace', 'earrings', 'bracers1', 'bracers2', 'ring1', 'ring2'];
@@ -30,6 +33,27 @@ const GEAR: Record<string, Partial<Record<EquipSlot, string>>> = {
   Household: { head: 'Headwrap', body: 'Robe', hands: 'Wraps', bottoms: 'Trousers', feet: 'Sandals' },
 };
 const DIRS: Dir[] = ['s', 'sw', 'w', 'nw', 'n', 'ne', 'e', 'se'];
+
+/** The empty-slot silhouettes (set by the panel), which also stand in for an item without art yet. */
+let silhouettes: EquipmentOptions['silhouettes'] = null;
+
+/** A kind's grey silhouette at `px` px square (16x16 art), or null without the sheet. */
+export function slotSilhouette(kind: EquipSlot, px = 32): HTMLElement | null {
+  if (!silhouettes) return null;
+  const i = Math.max(0, silhouettes.frames.indexOf(kind));
+  const icon = el('span', 'gear-silhouette');
+  icon.style.width = icon.style.height = `${px}px`;
+  icon.style.backgroundImage = `url("${silhouettes.url}")`;
+  icon.style.backgroundSize = `${silhouettes.frames.length * px}px ${px}px`;
+  icon.style.backgroundPosition = `-${i * px}px 0`;
+  return icon;
+}
+
+/** A piece of equipment's 32x32 picture (toasts): its showcase art, else its place's silhouette. */
+export function gearPicture(item: EquipmentDef, assets: (file: string) => string): HTMLElement | null {
+  if (!item.showcase) return slotSilhouette(item.slot);
+  return Object.assign(document.createElement('img'), { src: assets(item.showcase), alt: '' });
+}
 const DOLL = 64; // the character's cell
 const DOLL_PX = 3;
 
@@ -62,6 +86,7 @@ export class EquipmentPanel {
   private busy = false;
 
   constructor(private readonly o: EquipmentOptions) {
+    silhouettes = o.silhouettes;
     this.root.id = 'equipment';
     this.root.hidden = true;
     this.root.setAttribute('role', 'dialog');
@@ -162,9 +187,8 @@ export class EquipmentPanel {
     if (!item || this.busy) return;
     const target = place ?? placesFor(item.slot)[0];
     if (place && KIND[place] !== item.slot) return this.refuse(place, 'Wrong slot');
-    const s = adventure();
-    const cls = classInfo(s?.cls);
-    if (item.class ? item.class !== s?.cls : item.gear ? item.gear !== cls?.gear : false) return this.refuse(target, "Your class can't use this");
+    const cant = cantWear(item); // the server checks it too
+    if (cant) return this.refuse(target, cant);
     this.busy = true;
     const r = await equipItem(id, place);
     this.busy = false;
@@ -182,6 +206,19 @@ export class EquipmentPanel {
     if (!r?.ok) return this.refuse(place, r?.message?.replace(/\.$/, '') ?? "Couldn't reach the bot");
     playSound('click');
     window.dispatchEvent(new Event('mk-wallet'));
+  }
+
+  /** A stat point into `stat`, or (null) all of them back. */
+  private async points(stat: StatName | null): Promise<void> {
+    if (this.busy) return;
+    this.busy = true;
+    const r = await (stat ? spendPoint(stat) : resetPoints());
+    this.busy = false;
+    if (!r?.ok) {
+      playSound('error');
+      return toast(r?.message?.replace(/\.$/, '') ?? "Couldn't reach the bot", 2200, 'bad');
+    }
+    playSound('click');
   }
 
   /** The place flashes warm orange and says why. */
@@ -254,13 +291,10 @@ export class EquipmentPanel {
       if (item) {
         const rarity: Rarity = isRarity(item.rarity) ? item.rarity : 'common';
         b.style.setProperty('--rarity', RARITY_COLOUR[rarity]);
-        b.append(itemArt(item.id, rarity, 'icon', 2, true) ?? el('span', 'eq-emoji', '⚔️'));
+        b.append(itemArt(item.id, rarity, 'icon', 2, true) ?? slotSilhouette(kind) ?? el('span', 'eq-emoji', '⚔️'));
       } else if (sil) {
-        const i = sil.frames.indexOf(kind);
-        const icon = el('span', 'eq-silhouette');
-        icon.style.backgroundImage = `url("${sil.url}")`;
-        icon.style.backgroundSize = `${sil.frames.length * 32}px 32px`;
-        icon.style.backgroundPosition = `-${Math.max(0, i) * 32}px 0`;
+        const icon = slotSilhouette(kind)!;
+        icon.classList.add('eq-silhouette');
         b.append(icon);
       }
     }
@@ -270,33 +304,77 @@ export class EquipmentPanel {
       const badge = el('img', 'eq-badge');
       badge.src = this.o.badge(c.id);
       badge.alt = '';
-      this.who.append(badge, el('span', undefined, `${c.name} · Lv 1`));
-    } else this.who.append(el('span', 'eq-noclass', 'No class yet'));
+      this.who.append(badge, el('span', undefined, `${c.name} · Lv ${s.progress.level}`));
+    } else this.who.append(el('span', 'eq-noclass', `No class yet · Lv ${s.progress.level}`));
+    this.renderStats(s);
+  }
+
+  /** The stats box: ATK (Power), DEF, HP, MP | STR, DEX, INT, Crit, and your stat points. */
+  private renderStats(s: AdventureState): void {
+    const S = adventureData()?.stats;
+    if (!S) return void this.stats.replaceChildren();
+    const p = s.progress;
     const worn = Object.values(s.equipped).map((id) => itemDef(id)?.stats ?? {});
-    const st = statsFor(s.cls, 1, worn);
-    const row = (label: string, value: string) => {
+    const st = derivedStats(S, s.cls, p.level, baseStats(S, s.cls, p.level, p.points), gearTotals(worn));
+    const plus = s.cls && p.statPoints > 0 ? pointStats(S, s.cls) : [];
+    const row = (label: string, value: string, stat?: StatName) => {
       const r = el('div', 'eq-stat');
-      r.append(el('span', 'eq-stat-label', label), el('b', 'eq-stat-value', value));
+      const name = el('span', 'eq-stat-label', label);
+      if (stat && plus.includes(stat)) {
+        const add = el('button', 'eq-plus', '+');
+        add.setAttribute('aria-label', `Put a stat point into ${stat}`);
+        add.title = `Put a point into ${stat}`;
+        add.addEventListener('click', () => void this.points(stat));
+        name.append(add);
+      }
+      r.append(name, el('b', 'eq-stat-value', value));
       return r;
     };
     const left = el('div', 'eq-stats-col');
-    left.append(row('ATK', String(st.atk)), row('DEF', String(st.def)), row('HP', String(st.hp)), row('MP', String(st.mp)));
+    left.append(row('ATK', String(st.power)), row('DEF', String(st.def)), row('HP', String(st.hp)), row('MP', String(st.mp)));
     const right = el('div', 'eq-stats-col');
-    right.append(row('STR', String(st.str)), row('DEX', String(st.dex)), row('INT', String(st.int)), row('Crit', `${st.crit}%`));
-    this.stats.replaceChildren(left, right);
+    right.append(...STAT_NAMES.map((n) => row(n, String(st[n]), n)), row('Crit', `${+(st.critRate * 100).toFixed(1)}%`));
+    const foot = el('div', 'eq-points');
+    foot.append(el('span', 'eq-points-label', 'Points:'), el('b', 'eq-points-n', String(p.statPoints)));
+    if (!s.cls) foot.append(el('span', 'eq-points-hint', 'Choose a class to spend points'));
+    else {
+      const reset = el('button', 'eq-reset', 'Reset');
+      reset.title = 'Get every stat point back (free)';
+      reset.disabled = !Object.values(p.points).some((n) => n);
+      reset.addEventListener('click', () => void this.points(null));
+      foot.append(reset);
+    }
+    this.stats.replaceChildren(left, right, foot);
   }
 }
 
-/** An item's tooltip: its name in its rarity's colour, Lv, who can use it, and its stats. */
+/** An item's tooltip: its name in its rarity's colour, its rarity and who it's for, what it needs ("Lv 1 · DEX 8 · INT 5":
+ *  what you don't meet in red, by your base stats), and its stats. */
 export function itemTip(item: EquipmentDef): HTMLElement[] {
   const rarity: Rarity = isRarity(item.rarity) ? item.rarity : 'common';
   const name = el('div', 'eq-tip-name', item.name);
   name.style.color = RARITY_TEXT[rarity];
-  const who = item.class ? (classInfo(item.class)?.name ?? item.class) : (item.gear ?? 'Anyone');
-  const label = `${rarity[0].toUpperCase()}${rarity.slice(1)} · Lv ${item.level} · ${who}`;
-  const stats = Object.entries(item.stats).map(([k, v]) => el('div', 'eq-tip-stat', `+${v} ${k === 'crit' ? 'Crit %' : k.toUpperCase()}`));
-  const notes = item.starter ? [el('div', 'eq-tip-note', "Starter: can't be dropped, traded or sold")] : [];
-  return [name, el('div', 'eq-tip-meta', label), ...stats, ...notes];
+  const who = item.class ? (classInfo(item.class)?.name ?? item.class) : item.gear;
+  const label = [RARITY_LABEL[rarity], who, NAME[item.slot]].filter(Boolean).join(' · ');
+  const parts = [name, el('div', 'eq-tip-meta', label)];
+  const S = adventureData()?.stats;
+  const s = adventure();
+  if (S) {
+    const missing = s ? canEquip(S, baseStats(S, s.cls, s.progress.level, s.progress.points), s.progress.level, item).missing : [];
+    const needs = el('div', 'eq-tip-needs');
+    requirements(S, item).forEach((r, i) => {
+      const m = missing.find((x) => x.stat === r.stat);
+      if (i) needs.append(' · ');
+      needs.append(el('span', m && !m.highest ? 'eq-tip-unmet' : undefined, r.stat === 'level' ? `Lv ${r.value}` : `${r.stat} ${r.value}`));
+    });
+    parts.push(needs);
+    const highest = missing.find((m) => m.highest);
+    if (highest) parts.push(el('div', 'eq-tip-unmet', `${highest.stat} must be your highest stat`));
+  }
+  parts.push(...Object.entries(item.stats).map(([k, v]) => el('div', 'eq-tip-stat', `+${v} ${k === 'crit' ? 'Crit %' : k.toUpperCase()}`)));
+  if (item.training) parts.push(el('div', 'eq-tip-note', "Training gear: bound; it can't be dropped, traded or sold"));
+  else if (item.bound) parts.push(el('div', 'eq-tip-note', "Bound: it can't be traded"));
+  return parts;
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {

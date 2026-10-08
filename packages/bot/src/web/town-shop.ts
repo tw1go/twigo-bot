@@ -32,7 +32,7 @@ function about(r: Reward): string {
     case 'key': return '50% chance to break through a Bakod when you /steal. Used only then.';
     case 'megaphone': return "Type /m and your message in the town's chat: it runs across everyone's screen in sky blue. One per message.";
     case 'rename': return "Changes your town nickname: use it from your bag. All your cards share one bag slot.";
-    case 'classchange': return 'A fresh start: use it from your bag to change your class (you keep your quests; you get the new class\'s training weapon). All your tickets share one bag slot.';
+    case 'classchange': return 'A fresh start: use it from your bag to change your class (you keep your quests and level, get your stat and skill points back, and your training gear becomes the new class\'s). All your tickets share one bag slot.';
     case 'vault': return 'Store up to 30% of your Kowens, safe from /steal and bail. Use it at the bank.';
     case 'potion': return `${plain(potionEffect(r))}. Use it with /potion use in Discord.`;
     case 'bag': return `+${BAG_SLOTS} inventory slots for what you dig up. Each bag once.`;

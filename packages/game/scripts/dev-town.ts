@@ -6,7 +6,7 @@ import { doorSpot, hoodMap, lotTile } from '../../bot/src/web/hood-map.ts';
 import type { Plugin } from 'vite';
 import { attachTown } from '../../bot/src/web/town.ts';
 import { MobRoom, loadMobKinds, loadSkillShapes } from '../../bot/src/web/town-mobs.ts';
-import { type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView } from '../../bot/src/web/progress.ts';
+import { type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView, resetStatPoints, spendPoint } from '../../bot/src/web/progress.ts';
 import { loadStats } from '../../bot/src/web/stats-data.ts';
 import { loadGolemArt } from '../../bot/src/web/town-golem.ts';
 import { LANES, finishMs, raceScript } from '../../bot/src/games/race-script.ts';
@@ -31,7 +31,10 @@ import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
 //   GET /__title?as=Alice&id=richest&name=Richest%20Among%20All&color=%23FFD54A   Alice gets the new-title pop-up
 //   GET /__look?as=Alice&look={…}&title=Kalbo&color=%23F8BF27   Alice's new look / title (the pretend Parlor calls it)
 //   GET /__kit?as=Alice&cls=stick&weapon=weapon-training-stick   Alice's class and worn weapon (the pretend quests and
-//   equipment call it; the page also sends them on connect as &kit=, with her level, XP and points)
+//   equipment call it, &progress= after a class change; the page also sends them on connect as &kit=, with her level,
+//   XP and points)
+//   GET /__points?as=Alice&stat=DEX   Alice spends a stat point on DEX (&reset=1: all back), by the bot's rules
+//   (web/progress.ts); answers { ok, message?, progress } and sends her `progress` (the pretend equipment panel calls it)
 //   GET /__xp?as=Alice&xp=500   Alice gains 500 XP (&level=10: her level set to 10), as from kills: her level-ups, "Level
 //   up!" for her room, her HUD (the page's ?xp= / ?level= call it). Levels live here in memory (bot web/progress.ts),
 //   from what the page sent on connect; kills in the Slums give XP the same way.
@@ -349,6 +352,11 @@ export function devTown(): Plugin {
         const name = q.get('as') ?? '';
         const kit = { cls: q.get('cls') || null, weapon: q.get('weapon') || null };
         kits.set(name, kit);
+        try {
+          if (q.get('progress')) levels.set(name, progressView(stats, kit.cls, JSON.parse(q.get('progress')!))); // a class change gives the points back
+        } catch {
+          // keep their level as it was
+        }
         town.kit(name, kit.cls, kit.weapon);
         res.end(`${name}: ${kit.cls ?? 'no class'}, ${kit.weapon ?? 'no weapon'}\n`);
       });
@@ -360,6 +368,17 @@ export function devTown(): Plugin {
         levels.set(name, r.progress);
         town.progress(name, r.progress, r.ups, r.gained);
         res.end(`${name}: Lv ${r.progress.level}, ${r.progress.xp}/${r.progress.next} XP (+${r.gained}, ${r.ups} level-up${r.ups === 1 ? '' : 's'})\n`);
+      });
+      server.middlewares.use('/__points', (req, res) => {
+        const q = new URL(req.url ?? '/', 'http://localhost').searchParams;
+        const name = q.get('as') ?? '';
+        const cls = kits.get(name)?.cls ?? null;
+        const r = q.has('reset') ? { ok: true as const, progress: resetStatPoints(stats, cls, levelOf(name)) } : spendPoint(stats, cls, levelOf(name), q.get('stat') as 'STR');
+        if (r.ok) {
+          levels.set(name, r.progress);
+          town.progress(name, r.progress);
+        }
+        reply(res, r);
       });
       server.middlewares.use('/__announce', (req, res) => {
         const q = new URL(req.url ?? '/', 'http://localhost').searchParams;

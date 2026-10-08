@@ -38,7 +38,7 @@ import { arenaBets, refundHeldBets } from './town-arena-bets.js';
 import { kowen } from '../kowens.js';
 import { filterText, kickedUntil, mutedUntil } from './town-mod.js';
 import { getOutfit, parseOutfit, saveOutfit } from './outfit.js';
-import { adventureOf, fighterOf, killFor, kitOf, parseEquipAction, parseQuestAction, townEquip, townQuest } from './adventure.js';
+import { adventureOf, fighterOf, killFor, kitOf, parseEquipAction, parsePointsAction, parseQuestAction, townEquip, townPoints, townQuest, trainingArmorFor } from './adventure.js';
 import { freeSlots } from '../dig/bag.js';
 import { renameWithCard } from '../items/rename-card.js';
 import { changeClassWithTicket } from '../items/class-ticket.js';
@@ -84,7 +84,8 @@ import { type CmsDeps, cms } from './cms.js';
 //   POST /town/sell     { id, quantity } (or { items: [{ id, quantity }] }) sell dug-up items, /sell's prices (from the game's page only; members)
 //   POST /town/flex     { id } flex a dug-up item in the games channel, /flex's cooldown (from the game's page only; members)
 //   POST /town/quest    { quest, action: talk, npc } | { quest, action: chooseClass, cls }: a quest objective done (web/adventure.ts)
-//   POST /town/equip    { action: equip, item } | { action: unequip, place }: wear or take off equipment (from the game's page only; members)
+//   POST /town/equip    { action: equip, item } | { action: unequip, place }: wear or take off equipment, if its requirements are met (from the game's page only; members)
+//   POST /town/points   { action: spend, stat } | { action: reset }: a stat point into the class's main or second stat, or all of them back (from the game's page only; members)
 //   POST /town/rename   { nickname } a new town nickname, using a Rename Card (from the game's page only; members)
 //   POST /town/class-change { cls } a new class, using a Bagong Buhay Ticket (from the game's page only; members)
 //   POST /town/gamble   { bet, call: kara|krus } Kara y Krus at the Casino, /gamble's odds (from the game's page only; members)
@@ -226,8 +227,11 @@ async function me(client: Client, req: IncomingMessage, res: ServerResponse): Pr
     const item = ITEM_BY_ID.get(id)!;
     return { id, name: item.name, emoji: item.emoji, rarity: item.rarity, count };
   });
+  // A class from before training armor: the Tanod's set, once (what has no room yet, on a later visit).
+  const trainingGear = trainingArmorFor(userId, freeSlots(userId));
+  if (trainingGear.length) console.log(`[class] ${userId} got training armor: ${trainingGear.join(', ')}`);
   const body: MeResponse = { id: userId, name, avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items, preregistered: isPreregistered(userId), house: !!houseOf(userId), tester: await isTester(client, userId), outfit: getOutfit(userId), nickname: getNickname(userId), title: titleOf(userId), newTitle: newTitle(userId), welcomeGift: welcomeGift(userId), status: await statusOf(client, userId), adventure: adventureOf(userId),
-    dig: digStatus(userId) };
+    dig: digStatus(userId), ...(trainingGear.length ? { trainingGear } : {}) };
   send(res, 200, JSON.stringify(body));
 }
 
@@ -567,7 +571,7 @@ export function startWebServer(client: Client): void {
         }
         return send(res, 200, JSON.stringify(result));
       }
-      if (req.method === 'POST' && (path === '/town/quest' || path === '/town/equip')) {
+      if (req.method === 'POST' && (path === '/town/quest' || path === '/town/equip' || path === '/town/points')) {
         if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
         if (!fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
         const userId = sessionUser(req);
@@ -583,7 +587,13 @@ export function startWebServer(client: Client): void {
         if (path === '/town/quest') {
           const action = parseQuestAction(body);
           if (!action) return send(res, 400, '{"error":"invalid quest action"}');
-          result = townQuest(userId, action);
+          result = townQuest(userId, action, freeSlots(userId));
+        } else if (path === '/town/points') {
+          const action = parsePointsAction(body);
+          if (!action) return send(res, 400, '{"error":"invalid points action"}');
+          const r = townPoints(userId, action);
+          if (r.ok) town?.progress(userId, r.adventure.progress); // their fights use the new stats at once
+          return send(res, 200, JSON.stringify(r));
         } else {
           const action = parseEquipAction(body);
           if (!action) return send(res, 400, '{"error":"invalid equip action"}');

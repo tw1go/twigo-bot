@@ -306,7 +306,10 @@ Its numbers are the bot's rules; keep them in step when those change.
 **Levels** (`packages/bot/src/web/progress.ts`, rules in `packages/shared/src/stats.ts`, numbers in the game's
 `classes/stats.json`): defeating mobs in the Slums gives XP (the golem's to everyone who did 5% of its HP); each level up
 earns a stat point and 3 skill points, up to Lv 20. The HUD shows "Lv N" and an XP bar; everyone nearby sees "Level up!".
-Saved with the class in `adventurers` (schema v11).
+Saved with the class in `adventurers` (schema v11). Stat points go into the class's main or second stat in the equipment
+panel (`POST /town/points`; Reset is free; banked before a class). Gear needs an item level and stats (base stats only,
+checked by the bot on every equip); the Tanod gives a training weapon and a training armor set with the class (once,
+also to classes from before training armor), bound and never sold.
 
 #### CMS
 

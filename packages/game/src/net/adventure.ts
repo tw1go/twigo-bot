@@ -6,25 +6,34 @@ import {
   type EquipmentDef,
   type EquipmentFile,
   type EquipPlace,
-  type EquipSlot,
   type QuestDef,
   type QuestsFile,
+  type StatName,
   type StatsData,
   type TownAdventureResponse,
   type TownEquipAction,
+  type TownPointsAction,
   type TownQuestAction,
+  giveGear,
+  needsLine,
+  placesFor,
+  skillPointsAt,
+  swapTrainingGear,
+  trainingGear,
   unspentStatPoints,
+  wearCheck,
   xpToNext,
 } from '@mikazuki/shared';
 import { fakeLogin, fakeName } from '../session';
 
 // ⚔️ Your class, quests and equipment in the game (the bot keeps them: web/adventure.ts; /me brings them, POST
-// /town/quest and /town/equip change them). The data files (quests/quests.json, classes/classes.json,
+// /town/quest, /town/equip and /town/points change them). The data files (quests/quests.json, classes/classes.json,
 // items/equipment.json; classes/stats.json, the stats rules' numbers, comes with the scene's assets) are loaded once. Everything that shows them listens here: the quest tracker and log, the
 // marker over a quest giver, the equipment panel, the avatar's class badge, the HUD's level and XP. Your level, XP and
 // points change on the server (kills in the Slums: the town's `progress` messages, setProgress). In dev with no bot, the
 // same rules run here, saved in this browser per ?as= name (&quests=reset starts over), and the dev town hears about
-// class and weapon changes (/__kit) and keeps your level while it runs (sent on connect; ?xp= / ?level= ask it, /__xp).
+// class and weapon changes (/__kit) and keeps your level while it runs (sent on connect; ?xp= / ?level= ask it, /__xp;
+// stat points are spent there too, /__points, by the bot's rules).
 
 export interface AdventureData {
   quests: QuestDef[];
@@ -40,6 +49,8 @@ export interface AdventureChange {
   advanced?: { quest: string; objective: string };
   completed?: string;
   given?: string;
+  /** Training armor given with it. */
+  gear?: string[];
 }
 
 let data: AdventureData | null = null;
@@ -77,8 +88,10 @@ export async function loadAdventureData(url: (path: string) => string, files: { 
   return data;
 }
 
-/** Your state from /me (or, in dev, this browser's pretend one, with the autoStart quests started as the bot would). */
-export function initAdventure(fromMe: AdventureState | undefined): void {
+/** Your state from /me (or, in dev, this browser's pretend one, with the autoStart quests started as the bot would).
+ *  Returns the training armor the Tanod has just left (a class from before training armor: /me's `trainingGear`; in dev,
+ *  given here the bot's way), for the town to say so once. */
+export function initAdventure(fromMe: AdventureState | undefined, trainingArmor: string[] = []): string[] {
   if (fakeLogin()) {
     // Dev: &quests=reset forgets this browser's pretend class, quests and equipment (the Tanod's quest starts over).
     if (new URLSearchParams(location.search).get('quests') === 'reset') {
@@ -91,9 +104,12 @@ export function initAdventure(fromMe: AdventureState | undefined): void {
     }
     const s = loadFake();
     startQuests(s);
-    return set(s);
+    const given = giveTrainingArmor(s, FAKE_FREE);
+    set(s);
+    return given;
   }
   set(fromMe ?? fresh());
+  return trainingArmor;
 }
 
 // ── Quests seen in the log (the button's dot) ──
@@ -126,14 +142,17 @@ export function markQuestsSeen(): void {
 
 // ── Actions ──
 
-async function post(path: '/town/quest' | '/town/equip', body: TownQuestAction | TownEquipAction): Promise<TownAdventureResponse | null> {
+type Path = '/town/quest' | '/town/equip' | '/town/points';
+type Body = TownQuestAction | TownEquipAction | TownPointsAction;
+
+async function post(path: Path, body: Body): Promise<TownAdventureResponse | null> {
   const res = await fetch(path, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => null);
   return res?.ok ? ((await res.json()) as TownAdventureResponse) : null;
 }
 
-async function act(path: '/town/quest' | '/town/equip', body: TownQuestAction | TownEquipAction): Promise<TownAdventureResponse | null> {
+async function act(path: Path, body: Body): Promise<TownAdventureResponse | null> {
   const before = state;
-  const res = fakeLogin() ? fakeAct(body) : await post(path, body);
+  const res = !fakeLogin() ? await post(path, body) : path === '/town/points' ? await fakePoints(body as TownPointsAction) : fakeAct(body as TownQuestAction | TownEquipAction);
   if (!res) return null;
   if (res.ok) {
     let advanced: AdventureChange['advanced'];
@@ -142,7 +161,7 @@ async function act(path: '/town/quest' | '/town/equip', body: TownQuestAction | 
       const o = p && questDef(body.quest)?.objectives[p.step];
       if (o) advanced = { quest: body.quest, objective: o.id };
     }
-    set(res.adventure, { advanced, completed: res.completed, given: res.given });
+    set(res.adventure, { advanced, completed: res.completed, given: res.given, gear: res.gear });
     if (fakeLogin() && (before?.cls !== res.adventure.cls || before?.equipped.weapon !== res.adventure.equipped.weapon)) {
       void fetch(`/__kit?${new URLSearchParams({ as: fakeName(), cls: res.adventure.cls ?? '', weapon: res.adventure.equipped.weapon ?? '' })}`).catch(() => null);
     }
@@ -157,14 +176,25 @@ export function setProgress(progress: CharacterProgress): void {
 
 /** Talked to `npc` for `quest`'s talk objective. */
 export const questTalk = (quest: string, npc: string) => act('/town/quest', { quest, action: 'talk', npc });
-/** Chose a class for `quest`'s chooseClass objective (the training weapon comes with it). */
+/** Chose a class for `quest`'s chooseClass objective (the training weapon and armor come with it). */
 export const chooseClass = (quest: string, cls: string) => act('/town/quest', { quest, action: 'chooseClass', cls });
 /** Wear an item from the bag (in `place`, or the first free place for its kind). */
 export const equipItem = (item: string, place?: EquipPlace) => act('/town/equip', { action: 'equip', item, ...(place ? { place } : {}) });
 export const unequipPlace = (place: EquipPlace) => act('/town/equip', { action: 'unequip', place });
 
-/** Where a kind of equipment can be worn (two places for bracers and rings), as the bot has it. */
-export const placesFor = (slot: EquipSlot): EquipPlace[] => (slot === 'bracers' ? ['bracers1', 'bracers2'] : slot === 'ring' ? ['ring1', 'ring2'] : [slot]);
+/** One stat point into `stat` (your class's main or second stat), or every stat point back (free). */
+export const spendPoint = (stat: StatName) => act('/town/points', { action: 'spend', stat });
+export const resetPoints = () => act('/town/points', { action: 'reset' });
+
+/** Whether you can wear an item (its requirements on your base stats; gear's STR, DEX and INT never count): null if so,
+ *  else the line saying what's missing ("Needs DEX 26"). */
+export function cantWear(item: EquipmentDef): string | null {
+  if (!state || !data) return null;
+  const r = wearCheck(data.stats, state, item);
+  return r.ok ? null : needsLine(r.missing);
+}
+
+export { placesFor };
 
 /** The quest under way whose current objective is to talk to this NPC, or choose a class after talking to them. */
 export function questFor(npc: string): { quest: QuestDef; step: number } | null {
@@ -178,7 +208,8 @@ export function questFor(npc: string): { quest: QuestDef; step: number } | null 
 }
 
 /**
- * Dev (?switch): become another class at once (null: none), wearing its training weapon, the class choice done
+ * Dev (?switch): become another class at once (null: none), its training gear in place of the old (the bot's
+ * swapTrainingGear; the armor given if it hasn't been), every stat and skill point back, the class choice done
  * (the Tanod's quest finished). Everything listening (the HUD, the hotbar, battle poses, resting weapons) follows; the
  * dev town hears the new kit. Only with the pretend login: a real account changes class through the bot (CMS: Reset
  * class, then the Tanod).
@@ -187,10 +218,16 @@ export function devSwitchClass(cls: string | null): void {
   if (!fakeLogin() || !data) return;
   const s = structuredClone(state ?? loadFake());
   s.cls = cls;
-  const weapon = cls ? [...data.equipment.values()].find((i) => i.slot === 'weapon' && (i as { class?: string }).class === cls)?.id : undefined;
-  s.bag = s.bag.filter((id) => !data!.equipment.get(id)?.id.startsWith('weapon-training-'));
-  if (weapon) s.equipped.weapon = weapon;
-  else delete s.equipped.weapon;
+  // Every stat and skill point back (the bot's refundPoints), and the new class's training gear in the old one's places.
+  s.progress = { ...s.progress, points: {}, skills: {}, skillPoints: skillPointsAt(data.stats, s.progress.level) };
+  if (cls) swapTrainingGear(data.stats, s, data.equipment);
+  else {
+    for (const [place, id] of Object.entries(s.equipped)) if (data.equipment.get(id)?.training) delete s.equipped[place as EquipPlace];
+    s.bag = s.bag.filter((id) => !data!.equipment.get(id)?.training);
+    s.trainingArmorGiven = false;
+  }
+  if (cls && !s.trainingArmorGiven) giveTrainingArmor(s, FAKE_FREE);
+  const weapon = s.equipped.weapon;
   const choosing = data.quests.filter((q) => q.objectives.some((o) => o.type === 'chooseClass')).map((q) => q.id);
   s.quests.active = s.quests.active.filter((p) => !choosing.includes(p.id));
   if (cls) s.quests.done = [...new Set([...s.quests.done, ...choosing])];
@@ -199,7 +236,7 @@ export function devSwitchClass(cls: string | null): void {
     startQuests(s);
   }
   set(s);
-  void fetch(`/__kit?${new URLSearchParams({ as: fakeName(), cls: cls ?? '', weapon: weapon ?? '' })}`).catch(() => null);
+  void fetch(`/__kit?${new URLSearchParams({ as: fakeName(), cls: cls ?? '', weapon: weapon ?? '', progress: JSON.stringify(s.progress) })}`).catch(() => null);
 }
 
 /** A Bagong Buhay Ticket spent on a new class (bot POST /town/class-change; dev: the pretend one, as ?switch does). */
@@ -228,6 +265,27 @@ export function devKit(): { cls: string | null; weapon: string | null; progress:
 function freshProgress(cls: string | null = null): CharacterProgress {
   const S = data?.stats;
   return { level: 1, xp: 0, next: S ? xpToNext(S, 1) : 0, points: {}, statPoints: S ? unspentStatPoints(S, cls, 1) : 0, skills: {}, skillPoints: 0 };
+}
+
+/** Dev: the pretend bag's room for given gear (the bot counts the real bag). */
+const FAKE_FREE = 40;
+
+/** The bot's giveTrainingArmor: your class's training armor you don't have yet, each into its place if free, else the
+ *  bag; done once all of it is given. */
+function giveTrainingArmor(s: AdventureState, free: number): string[] {
+  if (!s.cls || s.trainingArmorGiven || !data) return [];
+  const owned = new Set([...s.bag, ...Object.values(s.equipped)]);
+  const r = giveGear(data.stats, s, trainingGear(data.stats, data.equipment.values(), s.cls).armor.filter((i) => !owned.has(i.id)), free);
+  s.trainingArmorGiven = !r.left.length;
+  return r.given;
+}
+
+/** Dev: the dev town spends the point (the bot's web/progress.ts) and sends your new progress. */
+async function fakePoints(body: TownPointsAction): Promise<TownAdventureResponse | null> {
+  const q = new URLSearchParams({ as: fakeName(), ...(body.action === 'spend' ? { stat: body.stat } : { reset: '1' }) });
+  const r = await fetch(`/__points?${q}`).then((x) => (x.ok ? (x.json() as Promise<{ ok: boolean; message?: string; progress?: CharacterProgress }>) : null)).catch(() => null);
+  if (!r || !state) return null;
+  return { ok: r.ok, message: r.message, adventure: r.progress ? { ...state, progress: r.progress } : state };
 }
 
 const fresh = (): AdventureState => ({ cls: null, quests: { active: [], done: [] }, equipped: {}, bag: [], progress: freshProgress(), trainingArmorGiven: false });
@@ -269,17 +327,21 @@ function fakeAct(body: TownQuestAction | TownEquipAction): TownAdventureResponse
     const o = p && q?.objectives[p.step];
     if (!q || !p || !o) return no("That quest isn't under way.");
     let given: string | undefined;
+    let gear: string[] = [];
     if (body.action === 'talk') {
       if (o.type !== 'talk' || o.npc !== body.npc) return no('Not yet.');
     } else {
-      if (o.type !== 'chooseClass' || s.cls || !classInfo(body.cls)) return no('Not yet.');
+      if (o.type !== 'chooseClass' || s.cls || !classInfo(body.cls) || !data) return no('Not yet.');
       s.cls = body.cls;
-      const weapon = [...(data?.equipment.values() ?? [])].find((i) => i.starter && i.slot === 'weapon' && i.class === body.cls);
+      const weapon = trainingGear(data.stats, data.equipment.values(), body.cls).weapon;
       if (weapon) {
-        if (s.equipped.weapon) s.bag.push(s.equipped.weapon);
-        s.equipped.weapon = weapon.id;
+        if (wearCheck(data.stats, s, weapon).ok) {
+          if (s.equipped.weapon) s.bag.push(s.equipped.weapon);
+          s.equipped.weapon = weapon.id;
+        } else s.bag.push(weapon.id);
         given = weapon.id;
       }
+      gear = giveTrainingArmor(s, FAKE_FREE);
     }
     p.step++;
     let completed: string | undefined;
@@ -289,7 +351,7 @@ function fakeAct(body: TownQuestAction | TownEquipAction): TownAdventureResponse
       completed = q.id;
       if (q.next && !s.quests.done.includes(q.next)) s.quests.active.push({ id: q.next, step: 0 });
     }
-    return { ok: true, adventure: s, given, completed };
+    return { ok: true, adventure: s, given, ...(gear.length ? { gear } : {}), completed };
   }
   if (body.action === 'equip') {
     const item = itemDef(body.item);
@@ -297,8 +359,8 @@ function fakeAct(body: TownQuestAction | TownEquipAction): TownAdventureResponse
     if (!item || at < 0) return no("You don't have that item.");
     const places = placesFor(item.slot);
     if (body.place && !places.includes(body.place)) return no('Wrong slot.');
-    const gear = classInfo(s.cls)?.gear;
-    if (item.class ? item.class !== s.cls : item.gear ? item.gear !== gear : false) return no("Your class can't use this.");
+    const cant = cantWear(item);
+    if (cant) return no(cant);
     const place = body.place ?? places.find((p) => !s.equipped[p]) ?? places[0];
     s.bag.splice(at, 1);
     if (s.equipped[place]) s.bag.push(s.equipped[place]!);

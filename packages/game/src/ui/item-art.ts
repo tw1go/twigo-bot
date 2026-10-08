@@ -1,3 +1,4 @@
+import type { GearRarity } from '@mikazuki/shared';
 import type { ItemArtDef } from '../assets/types';
 
 // Item art in the page (pop-ups, the shop, the dig panel): an item's picture in a rarity frame — a 1 px border and a
@@ -5,9 +6,10 @@ import type { ItemArtDef } from '../assets/types';
 // with crisp pixels. Pictures come from the manifest's `items` (set once by the town); an id without art gives null,
 // so callers keep their emoji or text.
 
-export type Rarity = 'junk' | 'common' | 'uncommon' | 'rare' | 'epic' | 'mythical' | 'legendary' | 'secret';
+export type Rarity = 'junk' | 'common' | 'uncommon' | 'rare' | 'epic' | 'mythical' | 'legendary' | 'secret' | GearRarity;
 
-/** Border and glow per rarity (the bot's rarity colours); junk has no glow. */
+/** Border and glow per rarity (the bot's rarity colours; junk has no glow), then equipment's (classes/stats.json
+ *  `rarity`, which names them but has no colours: these are ours). */
 const FRAMES: Record<Rarity, { border: string; glow: string | null; shimmer?: boolean }> = {
   junk: { border: '#3D4256', glow: null },
   common: { border: '#7A8099', glow: '#7A8099' },
@@ -17,6 +19,18 @@ const FRAMES: Record<Rarity, { border: string; glow: string | null; shimmer?: bo
   mythical: { border: '#F59E0B', glow: '#FFC46B' },
   legendary: { border: '#F8BF27', glow: '#FCFC64', shimmer: true },
   secret: { border: '#D946EF', glow: '#F0ABFC', shimmer: true },
+  brown: { border: '#8A5A34', glow: '#C68B59' },
+  white: { border: '#C8CCD8', glow: '#F2F3F7' },
+  grey: { border: '#6B7180', glow: '#A3A9B8' },
+  lightBlue: { border: '#5BB8E8', glow: '#9EDCFB' },
+  darkBlue: { border: '#3B5FC0', glow: '#6E8EF0' },
+  lightOrange: { border: '#E8A04A', glow: '#FFC98A' },
+  darkOrange: { border: '#D2621C', glow: '#FF8F45' },
+};
+/** Each rarity's name, for labels. */
+export const RARITY_LABEL: Record<Rarity, string> = {
+  junk: 'Junk', common: 'Common', uncommon: 'Uncommon', rare: 'Rare', epic: 'Epic', mythical: 'Mythical', legendary: 'Legendary', secret: 'Secret',
+  brown: 'Brown', white: 'White', grey: 'Grey', lightBlue: 'Light blue', darkBlue: 'Dark blue', lightOrange: 'Light orange', darkOrange: 'Dark orange',
 };
 export const RARITY_COLOUR: Record<Rarity, string> = Object.fromEntries(Object.entries(FRAMES).map(([r, f]) => [r, f.border])) as Record<Rarity, string>;
 /** The rarity's colour for text on the dark dig panel: its glow (lighter), and a readable grey for junk. */

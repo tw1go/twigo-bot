@@ -41,7 +41,7 @@ export function townInventory(userId: string): TownInventoryResponse {
     ...(cards ? [{ id: 'rename-card', name: 'Rename Card', emoji: '🪪', rarity: 'common', value: 0, count: cards, kind: 'rename' as const, sellable: false, stacked: true,
       about: 'Use it to change your town nickname (3-16 letters or numbers; spaces, _ - . in between).' }] : []),
     ...(tickets ? [{ id: 'class-ticket', name: 'Bagong Buhay Ticket', emoji: '🎫', rarity: 'common', value: 0, count: tickets, kind: 'classchange' as const, sellable: false, stacked: true,
-      about: "A fresh start: use it to change your class. You keep your quests and get the new class's training weapon." }] : []),
+      about: "A fresh start: use it to change your class. You keep your quests and level, get your stat and skill points back, and your training gear becomes the new class's." }] : []),
     ...ownedPotions(userId).map(([pid, count]) => ({ id: `potion-${pid}`, name: POTIONS[pid].name, emoji: POTIONS[pid].emoji, rarity: 'common', value: 0, count,
       kind: 'potion' as const, sellable: false, about: `${plain(POTIONS[pid].effect)}. Use it with /potion use in Discord.` })),
   ];
@@ -51,14 +51,15 @@ export function townInventory(userId: string): TownInventoryResponse {
   const equipment: TownBagItem[] = [...gear].flatMap(([id, count]) => {
     const item = EQUIPMENT.get(id);
     if (!item) return [];
-    const about = `Lv ${item.level} ${item.slot}${item.starter ? ". A starter item: it can't be dropped, traded or sold" : ''}. Double-click or drag it onto its slot to wear it.`;
-    return [{ id, name: item.name, emoji: '⚔️', rarity: item.rarity, value: 0, count, kind: 'equipment' as const, sellable: false, about }];
+    // (The game shows its level, what it needs and whether it's training gear from items/equipment.json.)
+    return [{ id, name: item.name, emoji: '⚔️', rarity: item.rarity, value: 0, count, kind: 'equipment' as const, sellable: false, about: 'Double-click or drag it onto its slot to wear it.' }];
   });
   return { items: [...dug, ...held, ...equipment], slots: capacity(userId), maxSlots: MAX_SLOTS, used: usedSlots(userId), kowens: balance(userId) };
 }
 
 /** Sells `quantity` of a dug-up item (as /sell does: its value each, into the wallet). */
 export function sellInTown(userId: string, id: string, quantity: number): TownBagActionResponse {
+  if (EQUIPMENT.get(id)?.training) return { ...townInventory(userId), ok: false, message: "Training gear can't be sold." };
   const item = ITEM_BY_ID.get(id);
   const have = inventory(userId).find(([itemId]) => itemId === id)?.[1] ?? 0;
   if (!item || !have) return { ...townInventory(userId), ok: false, message: "You don't have that item." };

@@ -3,7 +3,7 @@ import { playSound } from '../audio/sound';
 import { toast } from './toast';
 
 // 🔀 Dev (?switch): a row of the six class badges (and "none") at the bottom left; a click makes you that class at
-// once (net/adventure.ts devSwitchClass: its training weapon, the class choice done). Only with the pretend login.
+// once (net/adventure.ts devSwitchClass: its training gear, the points back, the class choice done). Only with the pretend login.
 
 export function mountClassSwitch(o: { classes: ClassInfo[]; badge: (cls: string) => string; current: () => string | null; pick: (cls: string | null) => void }): () => void {
   const root = document.createElement('div');

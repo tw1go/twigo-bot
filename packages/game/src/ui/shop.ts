@@ -234,7 +234,7 @@ const fake: TownShopResponse = {
     { id: 'master-key', name: 'Master Key', cost: 5, kind: 'key', about: '50% chance to break through a Bakod when you /steal. Used only then.', max: 10, have: 1 },
     { id: 'megaphone', name: 'Megaphone', cost: 1, kind: 'megaphone', about: "Type /m and your message in the town's chat: it runs across everyone's screen in sky blue. One per message.", max: 10, have: 3 },
     { id: 'rename-card', name: 'Rename Card', cost: 5, kind: 'rename', about: 'Changes your town nickname: use it from your bag. All your cards share one bag slot.', max: 10, have: 0 },
-    { id: 'class-ticket', name: 'Bagong Buhay Ticket', cost: 0, kind: 'classchange', about: "A fresh start: use it from your bag to change your class (you keep your quests; you get the new class's training weapon). All your tickets share one bag slot.", max: 10, have: 0 },
+    { id: 'class-ticket', name: 'Bagong Buhay Ticket', cost: 0, kind: 'classchange', about: "A fresh start: use it from your bag to change your class (you keep your quests and level, get your stat and skill points back, and your training gear becomes the new class's). All your tickets share one bag slot.", max: 10, have: 0 },
     { id: 'vault', name: 'Vault', cost: 50, kind: 'vault', about: 'Store up to 30% of your Kowens, safe from /steal and bail. Use it at the bank.', max: 0, owned: true },
     { id: 'potion-kalawang', name: 'Kalawang Potion', cost: 8, kind: 'potion', about: "Rusts someone's Bakod: cuts its remaining time in half. Use it with /potion use in Discord.", max: 10 },
     { id: 'potion-tago', name: 'Tago Tonic', cost: 6, kind: 'potion', about: "For 30 minutes the Tanod can't see you gamble: 0% bust chance. Use it with /potion use in Discord.", max: 10, have: 2 },

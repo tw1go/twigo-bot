@@ -1,4 +1,4 @@
-import { type CharacterProgress, type StatPoints, type StatsData, STAT_NAMES, gainXp, mobXp, skillPointsAt, unspentStatPoints, xpForLevel, xpToNext } from '@mikazuki/shared';
+import { type CharacterProgress, type StatName, type StatPoints, type StatsData, STAT_NAMES, gainXp, mobXp, pointStats, skillPointsAt, unspentStatPoints, xpForLevel, xpToNext } from '@mikazuki/shared';
 
 // 📈 A character's level, XP and points: pure, over the stats rules (@mikazuki/shared stats.ts, numbers from the game's
 // classes/stats.json). XP comes from kills (the killer's, less for a mob far below them; the golem's for everyone who
@@ -54,6 +54,19 @@ export const killXp = (data: StatsData, cls: string | null, p: SavedProgress, mo
 export function refundPoints(data: StatsData, cls: string | null, p: SavedProgress): CharacterProgress {
   return progressView(data, cls, { level: p.level, xp: p.xp, skillPoints: skillPointsAt(data, p.level) });
 }
+
+/** One stat point into `stat`: only the class's main or second stat, and only with a point unspent (none before a
+ *  class: they're banked). */
+export function spendPoint(data: StatsData, cls: string | null, p: SavedProgress, stat: StatName): { ok: true; progress: CharacterProgress } | { ok: false; message: string } {
+  const now = progressView(data, cls, p);
+  if (!cls) return { ok: false, message: 'Choose a class to spend points.' };
+  if (!pointStats(data, cls).includes(stat)) return { ok: false, message: `Your class doesn't put points into ${stat}.` };
+  if (now.statPoints < 1) return { ok: false, message: 'No stat points to spend.' };
+  return { ok: true, progress: progressView(data, cls, { ...p, points: { ...now.points, [stat]: (now.points[stat] ?? 0) + 1 } }) };
+}
+
+/** Every stat point back (free for now); skill levels and points stay. */
+export const resetStatPoints = (data: StatsData, cls: string | null, p: SavedProgress): CharacterProgress => progressView(data, cls, { ...p, points: {} });
 
 /** Dev (?level=N): up to level N through addXp (its level-ups as from kills); down, from Lv 1 again (points back), with
  *  no level-up. */

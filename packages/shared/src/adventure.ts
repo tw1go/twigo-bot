@@ -1,7 +1,7 @@
 // Classes, quests and equipment: the shapes of the game's data files (classes/classes.json, quests/quests.json,
 // items/equipment.json under the game's public/assets/, read by the bot too) and of each member's saved state.
 
-import type { StatPoints } from './stats.js';
+import type { StatName, StatPoints } from './stats.js';
 
 /** classes/classes.json */
 export interface ClassInfo {
@@ -72,23 +72,34 @@ export interface EquipStats {
   crit?: number;
 }
 
-/** items/equipment.json: an item that goes in an equipment slot. Usable by one class (`class`) or a gear type (`gear`). */
+/** An item's rarity (classes/stats.json `rarity`): its name's colour, which says its affix and agimat slots. */
+export type GearRarity = 'brown' | 'white' | 'grey' | 'lightBlue' | 'darkBlue' | 'lightOrange' | 'darkOrange';
+
+/** items/equipment.json: an item that goes in an equipment slot. Who can wear it comes from its level and its class (a
+ *  weapon) or gear type (armor), by the stats rules' requirements (stats.ts `requirements`). */
 export interface EquipmentDef {
   id: string;
   name: string;
   slot: EquipSlot;
+  /** A weapon's class. */
   class?: string;
+  /** An armor piece's gear type: Heavy, Light or Household. */
   gear?: string;
+  /** Its item level. */
   level: number;
-  rarity: string;
+  rarity: GearRarity;
+  /** Can't be traded. */
+  bound: boolean;
+  /** The Tanod's training gear (bound, and never dropped, sold, enhanced or disassembled). */
+  training?: boolean;
+  /** The agimats set in it (none yet). */
+  agimats: string[];
   stats: EquipStats;
   /** Fields whose numbers are stand-ins for now. */
   placeholder?: string[];
-  /** Given by a quest: can't be dropped, traded or sold. */
-  starter?: boolean;
-  /** 16x16, 32x32 and 64x64 art. */
-  icon: string;
-  showcase: string;
+  /** 16x16, 32x32 and 64x64 art; until it's drawn, the slot's empty silhouette stands in. */
+  icon?: string;
+  showcase?: string;
   large?: string;
 }
 
@@ -142,12 +153,17 @@ export type TownQuestAction = { quest: string; action: 'talk'; npc: string } | {
  *  was there goes back to the bag), or take one off (needs a free bag slot). */
 export type TownEquipAction = { action: 'equip'; item: string; place?: EquipPlace } | { action: 'unequip'; place: EquipPlace };
 
+/** POST /town/points: one stat point into the class's main or second stat, or every stat point back (free). */
+export type TownPointsAction = { action: 'spend'; stat: StatName } | { action: 'reset' };
+
 export interface TownAdventureResponse {
   ok: boolean;
   message?: string;
   adventure: AdventureState;
   /** An item just given (the class's training weapon), for the "Received" toast. */
   given?: string;
+  /** The training armor just given with it (item ids), for the "Received: Training gear" toast. */
+  gear?: string[];
   /** A quest just completed. */
   completed?: string;
 }

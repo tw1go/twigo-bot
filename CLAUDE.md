@@ -166,8 +166,9 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
 - Bagong Buhay Ticket (a class change; bot `items/class-ticket.ts`, kv 'class-tickets', tested; reward kind 'classchange',
   free for now in `/redeem` and the sari-sari store's Items tab; all of them share one bag slot): the bag's Use opens the
   class choice (`mk-class-ticket` → `TownScene.openClassTicket`, the window shared with the Tanod's quest:
-  `showClassChoice`); a different class → `POST /town/class-change` (`switchClass` in web/adventure.ts: the new class's
-  training weapon instead of the old one's, quests kept; only once you have a class), the town's `kit` message for
+  `showClassChoice`); a different class → `POST /town/class-change` (`switchClass` in web/adventure.ts: every stat and
+  skill point back (`refundPoints`), `swapTrainingGear`: the new class's training weapon and armor in the old pieces'
+  places, worn or in the bag; quests and level kept; only once you have a class), the town's `kit` message for
   everyone. Dev: the pretend bag has one (net/adventure.ts `changeClass` → `devSwitchClass`). Art: manifest items['class-ticket'] (items/consumables/item-class-change-card*.png).
 - Chat (`ui/chat.ts` + `SpeechBubble` in `ui/labels.ts`; channels General / Megaphone / Party: `/g` `/m` `/p`): Enter to type, Enter sends and stays open, empty Enter/Esc or a click outside closes; the bot's `say` (tidied, ≤120 chars,
   burst 3 then 1 per 2 s; only the last 20 lines are kept) comes back to everyone, the speaker included. Linked to a Discord channel
@@ -437,6 +438,9 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   MP, MP regen, Power, DEF, crit, capped), `requirements` / `canEquip` / `needsLine` (base stats only), skills
   (`skillTier`, `skillBasePct`, `skillPct`, `skillLevelCap`, `skillLevelBonus`), damage (`levelGap`, `hitDamage`,
   `rollHit`), `mobStats`, `mobXp` (low-mob penalty), `mobTone`. classes.json main/second stats match stats.json (tested).
+  Gear (both sides use them): `wearCheck` (canEquip on a character's base stats), `placesFor`, `trainingGear` (a class's
+  training weapon + its gear type's armor), `giveGear` (into a free place if wearable, else the bag while it has room),
+  `swapTrainingGear` (a class change).
 - Levels (bot `web/progress.ts`, pure, tested; saved in `adventurers` schema v11: `level`, `xp` (into the level),
   `str_points`/`dex_points`/`int_points` (spent), `skill_levels` (JSON: damage skill index or mobility id → level above 1),
   `skill_points` (unspent), `training_armor_given`; older rows Lv 1, nothing spent). `CharacterProgress` (in
@@ -450,11 +454,36 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   (`Character.levelUp`, `LevelUpPop` in ui/labels.ts) and the casino-win chime quietly (0.1 yours, 0.05 others');
   `Mobs.myLevel` follows. Dev: `?xp=500` / `?level=N` (the dev server's `/__xp?as=&xp=|level=`: levels in memory there,
   sent from the page's localStorage on connect with `&kit=`, through the same functions).
+- Stat points (`POST /town/points` { spend, stat } | { reset }, `pointsStep` / `townPoints` in web/adventure.ts,
+  `spendPoint` / `resetStatPoints` in progress.ts, tested; `Town.progress` after, so fights use them): one point into
+  the class's main or second stat only; Reset free, all back (skills stay); none before a class (banked; choosing a class
+  applies its growth at once, base stats being computed). Equipment panel's stats box (`renderStats`): ATK (Power), DEF,
+  HP, MP | STR, DEX, INT, Crit from the stats rules (class, level, points, worn gear), "Points: N", a + on the main and
+  second stat while N > 0, Reset; classless: "Choose a class to spend points". Dev: `/__points?as=&stat=|reset=1`
+  (progress.ts in the dev server; the page's pretend store calls it).
+- Gear requirements: items/equipment.json items have `level`, `rarity` (stats.json's: brown … darkOrange; colours ours,
+  in ui/item-art.ts FRAMES, since stats.json has none), `bound`, `training`, `agimats` ([]); a weapon's `class` or armor's
+  `gear` only feeds the formula (no class-name rule). Checked on the server for every equip (`equipStep`: refused with
+  `needsLine`, "Needs STR 8"), the class choice and the ticket swap (a piece they can't wear goes to the bag), and in the
+  game before sending (`cantWear`: double-click and drag both go through `EquipmentPanel.wear`). Tooltips (`itemTip`:
+  the panel and the bag's detail) list "Lv R" and each requirement, unmet ones red (#F7768E), "X must be your highest
+  stat" for a weapon's main; names in the rarity's colour.
+- Training gear (stats.json `trainingGear`): the six training weapons and 15 armor pieces `armor-training-<gear>-<slot>`
+  (Lv 1, brown, bound, `training`, DEF placeholder from armorDEFPerPiece). Class choice (`questStep`, given a bag's free
+  slots): the weapon, then `giveTrainingArmor` (each piece into its place if free, else the bag; `trainingArmorGiven` once
+  all five are in; response `gear` → toasts "Received: <weapon>", then "Received: Training gear" with the body piece's
+  picture). A class from before: `/me` runs `trainingArmorFor` first (`MeResponse.trainingGear` → "The Tanod left you a
+  set of training gear." after the title card; again next visit only for pieces that had no room). Can't be sold
+  (`sellInTown` refuses), and no path drops, trades, gifts or enhances equipment. Doesn't change the paper doll. Art:
+  `items/armor/item-armor-training-<piece>(-16|-64).png`; an item without `icon`/`showcase` shows its place's silhouette
+  (`slotSilhouette` / `gearPicture` in ui/equipment.ts: panel, bag, toasts) — add the fields when the art comes (only
+  suit and boots exist so far).
 - Quests, classes and equipment (bot `web/adventure.ts`, schema v10 `adventurers`: class, quests, worn equipment, equipment
   in the bag; v11 levels, above; tested). Data in the game's assets, read by the bot too: `quests/quests.json` (main = violet, side = yellow,
   manifest quests.colours; objective types talk and chooseClass; the giver's lines in `dialogue`), `classes/classes.json`
-  (the six classes, their first 7 skills and their `mobility` moves), `items/equipment.json` (the training weapons,
-  placeholder stats). `/me` brings `adventure` (autoStart quests start there); `POST /town/quest` / `/town/equip`; the
+  (the six classes, their first 7 skills and their `mobility` moves), `items/equipment.json` (the training weapons and
+  armor, placeholder stats). `/me` brings `adventure` (autoStart quests start there); `POST /town/quest` / `/town/equip` /
+  `/town/points`; the
   town carries each player's `cls` and `weapon` (`kit` message). Game: `net/adventure.ts` (store; dev pretends in
   localStorage per ?as=, `&quests=reset`), `ui/quests.ts` (tracker on the left, log J / scroll button with a dot,
   "Quest complete" banner), the Tanod's quest A Weapon for the Town (a "!" over him, his lines in the NPC dialog box; a
@@ -462,7 +491,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   playing the class's 7 skills, Dash and its Lv 8 move on invisible enemies: `combat/skill-previews.ts` on
   `combat/skill-stage.ts`), the training weapon into the weapon slot, resting weapons over idle and walk for everyone
   (`Character.setRestingWeapon`, `characters/kit-art.ts`), the equipment panel beside the bag (`ui/equipment.ts`; B or
-  I; 12 places: two bracers, two rings; stats from `combat/stats.ts`, placeholders), class badges on the avatar and before
+  I; 12 places: two bracers, two rings; the stats box, below), class badges on the avatar and before
   players' names in the chat. Combat poses have no clothes or hair of their own: the look's (town idle's first frame) are laid on each pose (kit-art
   `bandShift`: a band of the idle body matched to the pose's pixels; the top, bottom and shoes each by their own rows,
   trimmed to the pose's body so sleeves never float; hair, glasses and hat by the head).

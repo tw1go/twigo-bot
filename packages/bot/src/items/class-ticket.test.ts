@@ -16,22 +16,31 @@ process.env.TIMEZONE = 'Asia/Manila';
 const { addRenameCards, renameCards, renameWithCard } = await import('./rename-card.js');
 
 const { addClassTickets, classTickets, changeClassWithTicket } = await import('./class-ticket.js');
-const { adventureOf, townQuest } = await import('../web/adventure.js');
+const { adventureOf, gainXpFor, townEquip, townPoints, townQuest } = await import('../web/adventure.js');
+const { loadStats } = await import('../web/stats-data.js');
+const { skillPointsAt, xpForLevel } = await import('@mikazuki/shared');
 const { usedSlots } = await import('../dig/bag.js');
 const { closeDatabase } = await import('../db/db.js');
 
-test('a Bagong Buhay Ticket changes the class (the new training weapon, quests kept), and is only used when it works', () => {
+const armorOf = (gear: string) => ['head', 'body', 'hands', 'bottoms', 'feet'].map((slot) => `armor-training-${gear}-${slot}`);
+
+test('a Bagong Buhay Ticket changes the class (the new training gear in the old one\'s places, points back, quests kept), and is only used when it works', () => {
   // A class first, the Tanod's way.
   const s = adventureOf('a');
   const quest = s.quests.active[0].id;
-  townQuest('a', { quest, action: 'talk', npc: 'tanod' });
-  townQuest('a', { quest, action: 'chooseClass', cls: 'stick' });
+  townQuest('a', { quest, action: 'talk', npc: 'tanod' }, 40);
+  townQuest('a', { quest, action: 'chooseClass', cls: 'stick' }, 40);
+  // Lv 5 with a stat point spent; the gauntlets off, in the bag.
+  gainXpFor('a', xpForLevel(loadStats(), 5));
+  assert.ok(townPoints('a', { action: 'spend', stat: 'STR' }).ok);
+  assert.ok(townEquip('a', { action: 'unequip', place: 'hands' }, 5).ok);
+  assert.deepEqual(adventureOf('a').bag, ['armor-training-heavy-hands']);
   assert.equal(adventureOf('a').cls, 'stick');
   const done = adventureOf('a').quests.done;
 
   assert.equal(changeClassWithTicket('a', 'broom').ok, false); // no ticket
   addClassTickets('a', 2);
-  assert.equal(usedSlots('a'), 1); // both share one slot
+  assert.equal(usedSlots('a'), 2); // both share one slot (and the gauntlets take one)
   assert.equal(changeClassWithTicket('a', 'stick').ok, false); // already theirs
   assert.equal(changeClassWithTicket('a', 'wizard').ok, false); // no such class
   assert.equal(classTickets('a'), 2);
@@ -42,6 +51,12 @@ test('a Bagong Buhay Ticket changes the class (the new training weapon, quests k
   assert.equal(now.cls, 'broom');
   assert.equal(now.equipped.weapon, 'weapon-training-broom');
   assert.ok(!now.bag.includes('weapon-training-stick'), 'the old training weapon goes');
+  // The Light armor where the Heavy was: worn, and the gloves in the bag where the gauntlets were.
+  const light = armorOf('light');
+  assert.deepEqual([now.equipped.head, now.equipped.body, now.equipped.hands, now.equipped.bottoms, now.equipped.feet], [light[0], light[1], undefined, light[3], light[4]]);
+  assert.deepEqual(now.bag, [light[2]]);
+  // Every stat and skill point back; the level stays.
+  assert.deepEqual([now.progress.level, now.progress.points, now.progress.statPoints, now.progress.skillPoints], [5, {}, 4, skillPointsAt(loadStats(), 5)]);
   assert.deepEqual(now.quests.done, done);
   assert.equal(classTickets('a'), 1);
 

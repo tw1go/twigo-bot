@@ -1503,7 +1503,8 @@
       #equipment .eq-slot:hover, #equipment .eq-slot:focus-visible, #equipment .eq-over { border-image-source: var(--slot-picked); outline: 3px solid #A3E635; outline-offset: -3px; } /* the lime selected-slot look */
       #equipment .eq-worn { outline: 3px solid var(--rarity, #7A8099); outline-offset: -3px; }
       #equipment .eq-slot .it-frame { margin: -12px; }
-      #equipment .eq-silhouette { display: block; width: 32px; height: 32px; image-rendering: pixelated; background-repeat: no-repeat; opacity: 0.8; } /* 16x16 at 2x */
+      .gear-silhouette { display: block; flex: none; image-rendering: pixelated; background-repeat: no-repeat; opacity: 0.8; } /* an empty slot's, or an item's without art yet (16x16, scaled) */
+      #equipment .eq-silhouette { width: 32px; height: 32px; } /* 16x16 at 2x */
       #equipment .eq-refused { animation: eq-refuse 0.6s ease-out; }
       @keyframes eq-refuse { 0%, 60% { box-shadow: inset 0 0 0 40px rgba(245, 158, 11, 0.55); outline: 3px solid #F59E0B; outline-offset: -3px; } }
       #equipment .eq-middle { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-width: 0; }
@@ -1518,6 +1519,16 @@
       #equipment .eq-stat { display: flex; justify-content: space-between; align-items: baseline; }
       #equipment .eq-stat-label { font-size: 13px; color: #7A8099; }
       #equipment .eq-stat-value { font: 19px/1.15 'Mk Numbers', var(--ui-font); color: #fff; } /* Jersey 10 */
+      #equipment .eq-stat-label { display: inline-flex; align-items: center; gap: 5px; }
+      #equipment .eq-plus { width: 16px; height: 16px; padding: 0; border: 2px solid #A3E635; border-radius: 0; background: #1E1B3A; color: #A3E635; font: 700 13px/1 var(--ui-font); cursor: var(--cur-hand, pointer); }
+      #equipment .eq-plus:hover, #equipment .eq-plus:focus-visible { background: #A3E635; color: #1E1B3A; }
+      #equipment .eq-points { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; margin-top: 4px; padding-top: 4px; border-top: 1px solid #3D4256; font-size: 13px; color: #A9B1D6; }
+      #equipment .eq-points-label { font-weight: 700; color: #E6E9F2; }
+      #equipment .eq-points-n { margin-left: -4px; font: 17px/1 'Mk Numbers', var(--ui-font); color: #fff; } /* Jersey 10 */
+      #equipment .eq-points-hint { color: #7A8099; font-size: 12px; }
+      #equipment .eq-reset { margin-left: auto; padding: 1px 8px 2px; border: 2px solid #3D4256; border-radius: 0; background: #1E1B3A; color: #A9B1D6; font: inherit; font-size: 12px; font-weight: 700; cursor: var(--cur-hand, pointer); }
+      #equipment .eq-reset:hover:not(:disabled) { border-color: #A3E635; color: #A3E635; }
+      #equipment .eq-reset:disabled { opacity: 0.45; cursor: default; }
       #equipment .eq-tip { position: absolute; z-index: 1; min-width: 130px; max-width: 220px; padding: 8px 10px; border: 2px solid #7C2AE8; background: #111827; color: #E6E9F2; font-size: 13px; pointer-events: none; --px: 2; border-style: solid; border-width: calc(var(--slice, 1) * var(--px) * 1px); border-image-source: var(--frame); border-image-slice: var(--slice) fill; border-image-width: calc(var(--slice, 1) * var(--px) * 1px); border-image-repeat: round; image-rendering: pixelated; }
       #equipment .eq-tip[hidden] { display: none; }
       #equipment .eq-tip-left { transform: translateX(-100%); }
@@ -1525,6 +1536,12 @@
       #equipment .eq-tip-meta { color: #A9B1D6; font-size: 12px; }
       #equipment .eq-tip-stat { color: #A3E635; }
       #equipment .eq-tip-note { margin-top: 4px; color: #7A8099; font-size: 11px; }
+      #equipment .eq-tip-needs, #inventory .eq-tip-needs { color: #E6E9F2; font-size: 12px; }
+      #equipment .eq-tip-unmet, #inventory .eq-tip-unmet { color: #F7768E; }
+      #inventory .eq-tip-meta { font-size: 14px; color: #A9B1D6; }
+      #inventory .eq-tip-needs { font-size: 14px; }
+      #inventory .eq-tip-stat { font-size: 14px; color: #A3E635; }
+      #inventory .eq-tip-note { margin-top: 4px; font-size: 13px; color: #7A8099; }
       #equipment .eq-to-bag, #inventory .iv-to-equip { display: none; padding: 3px 10px 4px; border: 2px solid #3D4256; border-radius: 0; background: #1E1B3A; color: #A9B1D6; font: inherit; font-size: 13px; font-weight: 700; }
       #inventory .iv-cell[draggable='true'] { cursor: grab; }
       @media (max-width: 900px) {

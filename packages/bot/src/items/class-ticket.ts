@@ -4,8 +4,8 @@ import type { AdventureState } from '@mikazuki/shared';
 
 // 🎫 Bagong Buhay Tickets (a fresh start: free in /redeem and the town's sari-sari store for now; all of them share one
 // bag slot): used from the bag in the web town, one changes your class to another (web/adventure.ts switchClass: its
-// training weapon in place of the old one's, your quests kept). Only once you have a class (the Tanod gives the first).
-// Kept in kv 'class-tickets' (member → how many).
+// training gear in place of the old one's, every stat and skill point back, your quests and level kept). Only once you
+// have a class (the Tanod gives the first). Kept in kv 'class-tickets' (member → how many).
 
 const KEY = 'class-tickets';
 let held = kvLoad<Record<string, number>>(KEY, {});

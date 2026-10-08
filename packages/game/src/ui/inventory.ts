@@ -3,10 +3,10 @@ import type { TownBagActionResponse, TownBagItem, TownInventoryResponse } from '
 import { hotbarDragItem, hotbarItem } from './hotbar';
 import { playSound } from '../audio/sound';
 import { fakeLogin, fakeName } from '../session';
-import { type Rarity, RARITY_COLOUR, RARITY_TEXT, isRarity, itemArt } from './item-art';
+import { type Rarity, RARITY_COLOUR, RARITY_LABEL as LABEL, RARITY_TEXT, isRarity, itemArt } from './item-art';
 import { installPixelTiles } from './pixel-tiles';
 import { coinIcon } from './reward';
-import type { EquipmentPanel } from './equipment';
+import { type EquipmentPanel, itemTip, slotSilhouette } from './equipment';
 import { adventure, itemDef } from '../net/adventure';
 import { showRename } from './rename';
 
@@ -39,7 +39,6 @@ function typing(): boolean {
 }
 const plural = (n: number, one: string, many: string) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
 const kowens = (n: number) => plural(n, 'Kowen', 'Kowens');
-const LABEL: Record<Rarity, string> = { junk: 'Junk', common: 'Common', uncommon: 'Uncommon', rare: 'Rare', epic: 'Epic', mythical: 'Mythical', legendary: 'Legendary', secret: 'Secret' };
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag);
@@ -251,7 +250,8 @@ export class Inventory {
       cell.style.setProperty('--rarity', RARITY_COLOUR[rarity]);
       cell.setAttribute('aria-label', `${it.name} (${LABEL[rarity]})`);
       cell.title = it.name;
-      const art = itemArt(it.id, rarity, 'showcase', 2, true);
+      const gear = it.kind === 'equipment' ? itemDef(it.id) : undefined;
+      const art = itemArt(it.id, rarity, 'showcase', 2, true) ?? (gear ? slotSilhouette(gear.slot, 64) : null); // no art yet: its place's silhouette
       cell.append(art ?? el('span', 'iv-emoji', it.emoji));
       if (it.stacked) cell.append(el('span', 'iv-count', String(it.count)));
       if (it.kind === 'equipment') {
@@ -344,7 +344,9 @@ export class Inventory {
     const meta = it.sellable
       ? `${LABEL[rarity]} · ${kowens(it.value)} each · you have ${it.count}`
       : `${it.kind === 'key' ? 'Master Key' : it.kind === 'megaphone' ? 'Megaphone' : it.kind === 'equipment' ? 'Equipment' : it.kind === 'rename' ? 'Rename Card' : it.kind === 'classchange' ? 'Bagong Buhay Ticket' : 'Potion'} · you have ${it.count}`;
-    const parts: HTMLElement[] = [name, el('div', 'iv-meta', meta)];
+    const gear = it.kind === 'equipment' ? itemDef(it.id) : undefined;
+    // Equipment: the equipment panel's tooltip (rarity, what it needs in red if you don't meet it, its stats).
+    const parts: HTMLElement[] = [name, ...(gear ? itemTip(gear).slice(1) : [el('div', 'iv-meta', meta)])];
     if (it.sellable) {
       const row = el('div', 'iv-actions');
       const button = (text: string, cls: string, run: () => void) => this.action(text, cls, run);
@@ -420,7 +422,7 @@ function withFakeEquipment(d: TownInventoryResponse): TownInventoryResponse {
   for (const id of adventure()?.bag ?? []) counts.set(id, (counts.get(id) ?? 0) + 1);
   for (const [id, count] of counts) {
     const item = itemDef(id);
-    if (item) d.items.push({ id, name: item.name, emoji: '⚔️', rarity: item.rarity, value: 0, count, kind: 'equipment', sellable: false, about: `Lv ${item.level} ${item.slot}. Double-click or drag it onto its slot to wear it.` });
+    if (item) d.items.push({ id, name: item.name, emoji: '⚔️', rarity: item.rarity, value: 0, count, kind: 'equipment', sellable: false, about: 'Double-click or drag it onto its slot to wear it.' });
   }
   d.used += counts.size ? [...counts.values()].reduce((a, b) => a + b, 0) : 0;
   return d;
@@ -438,7 +440,7 @@ const fake: TownInventoryResponse = {
     { id: 'rock', name: 'Rock', emoji: '🪨', rarity: 'junk', value: 0, count: 2, kind: 'dig', sellable: true },
     { id: 'master-key', name: 'Master Key', emoji: '🗝️', rarity: 'common', value: 0, count: 1, kind: 'key', sellable: false, about: '50% chance to break through a Bakod when you /steal. Used only then.' },
     { id: 'rename-card', name: 'Rename Card', emoji: '🪪', rarity: 'common', value: 0, count: 1, kind: 'rename', sellable: false, stacked: true, about: 'Use it to change your town nickname (3-16 letters or numbers; spaces, _ - . in between).' },
-    { id: 'class-ticket', name: 'Bagong Buhay Ticket', emoji: '🎫', rarity: 'common', value: 0, count: 1, kind: 'classchange', sellable: false, stacked: true, about: "A fresh start: use it to change your class. You keep your quests and get the new class's training weapon." },
+    { id: 'class-ticket', name: 'Bagong Buhay Ticket', emoji: '🎫', rarity: 'common', value: 0, count: 1, kind: 'classchange', sellable: false, stacked: true, about: "A fresh start: use it to change your class. You keep your quests and level, get your stat and skill points back, and your training gear becomes the new class's." },
     { id: 'megaphone', name: 'Megaphone', emoji: '📢', rarity: 'common', value: 0, count: 3, kind: 'megaphone', sellable: false, stacked: true, about: "Type /m and your message in the town's chat: it runs across everyone's screen in sky blue. One per message." },
     { id: 'potion-tago', name: 'Tago Tonic', emoji: '🫥', rarity: 'common', value: 0, count: 2, kind: 'potion', sellable: false, about: "For 30 minutes the Tanod can't see you gamble: 0% bust chance. Use it with /potion use in Discord." },
   ],

@@ -1,5 +1,5 @@
 import { playSound } from '../audio/sound';
-import { type Rarity, RARITY_TEXT, isRarity, itemArt } from './item-art';
+import { type Rarity, RARITY_LABEL as LABEL, RARITY_TEXT, isRarity, itemArt } from './item-art';
 import { showReward } from './reward';
 
 // ⛏️ The dig panel: when you dig (at the Mine, or /dig in Discord while you're in town), the town dims and the dig
@@ -26,7 +26,6 @@ export interface Find {
 const RISE = 8; // art px
 const RISE_FRAMES = 4;
 const HOLD_MS = 2500;
-const LABEL: Record<Rarity, string> = { junk: 'Junk', common: 'Common', uncommon: 'Uncommon', rare: 'Rare', epic: 'Epic', mythical: 'Mythical', legendary: 'Legendary', secret: 'Secret' };
 const BIG: Rarity[] = ['epic', 'mythical', 'legendary', 'secret'];
 
 let art: DigPanelArt | null = null;

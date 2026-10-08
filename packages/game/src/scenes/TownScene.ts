@@ -49,7 +49,7 @@ import { RARITY_TEXT, addItemArt, isRarity, setItemArt } from '../ui/item-art';
 import { playDig, setDigPanelArt } from '../ui/dig-panel';
 import { showMine } from '../ui/mine';
 import { Inventory } from '../ui/inventory';
-import { EquipmentPanel } from '../ui/equipment';
+import { EquipmentPanel, gearPicture } from '../ui/equipment';
 import { closeCasino, openCasino, setCasinoArt } from '../ui/casino';
 import { fadeNavy } from '../ui/fade';
 import { OtherPlayers } from '../world/others';
@@ -662,7 +662,10 @@ export class TownScene extends Phaser.Scene {
       addItemArt(Object.fromEntries([...data.equipment.values()].map((i) => [i.id, { icon: i.icon, showcase: i.showcase }])));
       const member = this.me?.status === 'ok' ? this.me.me : null;
       if (!member) return; // guests have no quests
-      initAdventure(member.adventure);
+      const armor = initAdventure(member.adventure, member.trainingGear);
+      // A class from before training armor: the Tanod's set, said once (after the title card).
+      const body = armor.map(itemDef).find((i) => i?.slot === 'body') ?? itemDef(armor[0]);
+      if (body) this.time.delayedCall(titleCardMs() + 600, () => toast('The Tanod left you a set of training gear.', 4500, 'good', gearPicture(body, asset)));
       const frame = this.M.ui.inventory?.itemFrame;
       mountQuests({ colours: Q.colours, frame: frame ? { url: asset(frame.file), slice: frame.nineSlice } : null, giver: (id) => this.giverOf(id) });
       if (this.npcs) this.npcs.script = (id) => this.questScript(id);
@@ -965,8 +968,7 @@ export class TownScene extends Phaser.Scene {
         return false;
       }
       const item = itemDef(r.adventure.equipped.weapon);
-      const img = item ? Object.assign(document.createElement('img'), { src: asset(item.showcase), alt: '' }) : null;
-      toast(`A fresh start: you're a ${c.name} now!`, 3500, 'good', img);
+      toast(`A fresh start: you're a ${c.name} now!`, 3500, 'good', item ? gearPicture(item, asset) : null);
       dispatchEvent(new Event('mk-bag-changed')); // the bag shows one ticket fewer
       return true;
     });
@@ -983,13 +985,11 @@ export class TownScene extends Phaser.Scene {
           toast(r?.message ?? "Couldn't reach the bot. Try again in a moment.", 3000, 'bad');
           return false;
         }
+        // "Received": the training weapon, then the armor (one toast, with the body piece).
         const item = itemDef(r.given);
-        if (item) {
-          const img = document.createElement('img');
-          img.src = asset(item.showcase);
-          img.alt = '';
-          toast(`Received: ${item.name}`, 3500, 'good', img);
-        }
+        if (item) toast(`Received: ${item.name}`, 3000, 'good', gearPicture(item, asset));
+        const body = r.gear?.map(itemDef).find((i) => i?.slot === 'body') ?? itemDef(r.gear?.[0]);
+        if (body) this.time.delayedCall(item ? 3200 : 0, () => toast('Received: Training gear', 3500, 'good', gearPicture(body, asset)));
         const lines = (questDef(questId)?.dialogue?.complete ?? []).map((l) => l.replaceAll('{class}', c.name));
         if (this.npcs && lines.length) this.npcs.talk(giver, this.player.tile, { lines, after: () => holdQuestBanners(false) });
         else holdQuestBanners(false);

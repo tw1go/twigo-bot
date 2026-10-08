@@ -1,4 +1,4 @@
-import type { EquipStats } from './adventure.js';
+import type { AdventureState, EquipmentDef, EquipPlace, EquipSlot, EquipStats } from './adventure.js';
 
 // 📊 Character levels and stats, gear requirements, skill levels, damage and XP: pure functions over the numbers in the
 // game's classes/stats.json (passed in as `data`; none of them are written here), shared by the bot (which decides every
@@ -284,6 +284,79 @@ export function canEquip(data: StatsData, base: StatBlock, level: number, item: 
 export function needsLine(missing: Missing[]): string {
   const parts = missing.map((m) => (m.highest ? `${m.stat} as your highest stat` : m.stat === 'level' ? `Lv ${m.need}` : `${m.stat} ${m.need}`));
   return parts.length ? `Needs ${parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}` : parts[0]}` : '';
+}
+
+/** Whether a character (class, level and stat points spent) can wear an item: canEquip on their base stats. */
+export const wearCheck = (data: StatsData, who: { cls: string | null; progress: { level: number; points: StatPoints } }, item: GearItem) =>
+  canEquip(data, baseStats(data, who.cls, who.progress.level, who.progress.points), who.progress.level, item);
+
+// ── Wearing and giving gear ──
+
+/** Where a kind of equipment can be worn (two places for bracers and rings). */
+export const placesFor = (slot: EquipSlot): EquipPlace[] => (slot === 'bracers' ? ['bracers1', 'bracers2'] : slot === 'ring' ? ['ring1', 'ring2'] : [slot]);
+
+/** The Tanod's training gear for a class (items/equipment.json `training`): its weapon, and its gear type's armor. */
+export function trainingGear<T extends EquipmentDef>(data: StatsData, items: Iterable<T>, cls: string | null): { weapon?: T; armor: T[] } {
+  const type = cls ? data.classes[cls]?.gearType : undefined;
+  const all = [...items].filter((i) => i.training);
+  return { weapon: all.find((i) => i.slot === 'weapon' && i.class === cls), armor: type ? all.filter((i) => gearKind(i.slot) === 'armor' && i.gear?.toLowerCase() === type) : [] };
+}
+
+/** Gives items: each into a free place for its kind if they can wear it, else into the bag while it has room (`free`
+ *  slots). Returns the ids given, and those that fitted nowhere (to try again later). */
+export function giveGear(data: StatsData, s: AdventureState, items: EquipmentDef[], free: number): { given: string[]; left: string[] } {
+  const given: string[] = [];
+  const left: string[] = [];
+  for (const item of items) {
+    const place = placesFor(item.slot).find((p) => !s.equipped[p]);
+    if (place && wearCheck(data, s, item).ok) s.equipped[place] = item.id;
+    else if (free > 0) {
+      s.bag.push(item.id);
+      free--;
+    } else {
+      left.push(item.id);
+      continue;
+    }
+    given.push(item.id);
+  }
+  return { given, left };
+}
+
+/** A new class's training gear in place of the old (a Bagong Buhay Ticket): every training piece they own, worn or in the
+ *  bag, becomes the new class's piece for the same kind, in the same place (a worn one goes to the bag instead if they
+ *  can't wear it); a piece the new class has none of goes. With no training weapon at all, the new one is put on (what
+ *  was worn there to the bag). Call it with `s.cls` (and their points) already the new class's. */
+export function swapTrainingGear(data: StatsData, s: AdventureState, items: Map<string, EquipmentDef>): void {
+  const kit = trainingGear(data, items.values(), s.cls);
+  const forSlot = (slot: EquipSlot) => (slot === 'weapon' ? kit.weapon : kit.armor.find((i) => i.slot === slot));
+  const training = (id: string | undefined) => !!id && !!items.get(id)?.training;
+  let hadWeapon = false;
+  const bag: string[] = [];
+  for (const id of s.bag) {
+    const old = items.get(id);
+    if (!training(id) || !old) bag.push(id);
+    else {
+      hadWeapon ||= old.slot === 'weapon';
+      const now = forSlot(old.slot);
+      if (now) bag.push(now.id);
+    }
+  }
+  s.bag = bag;
+  for (const [place, id] of Object.entries(s.equipped) as [EquipPlace, string][]) {
+    const old = items.get(id);
+    if (!training(id) || !old) continue;
+    hadWeapon ||= old.slot === 'weapon';
+    const now = forSlot(old.slot);
+    if (now && wearCheck(data, s, now).ok) s.equipped[place] = now.id;
+    else {
+      delete s.equipped[place];
+      if (now) s.bag.push(now.id);
+    }
+  }
+  if (!hadWeapon && kit.weapon) {
+    if (s.equipped.weapon) s.bag.push(s.equipped.weapon);
+    s.equipped.weapon = kit.weapon.id;
+  }
 }
 
 // ── Skills ──

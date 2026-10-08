@@ -1,5 +1,5 @@
 {
-  "note": "Equipment items. slot: weapon, head, body, hands, bottoms, feet, necklace, earrings, bracers or ring. Who can use it: `class` (a class id) or `gear` (Heavy, Light or Household, from combat-guide.md). starter: given by a quest; it can't be dropped, traded or sold. stats: atk, def, hp, mp, str, dex, int, crit; `placeholder` lists the fields whose numbers are stand-ins (to fill in later). icon is 16x16 (rows, slots), showcase 32x32 (pop-ups, toasts), large 64x64.",
+  "note": "Equipment items. slot: weapon, head, body, hands, bottoms, feet, necklace, earrings, bracers or ring. A weapon's `class` (a class id) or an armor piece's `gear` (Heavy, Light or Household, combat-guide.md) and its `level` set what it needs (classes/stats.json requirements: base stats only); accessories need the level only. rarity: a stats.json rarity (brown, white, grey, lightBlue, darkBlue, lightOrange, darkOrange). bound: can't be traded. training: the Tanod's training gear (stats.json trainingGear): also never dropped, sold, enhanced or disassembled. agimats: the agimats set in it (none yet). stats: atk, def, hp, mp, str, dex, int, crit; `placeholder` lists the fields whose numbers are stand-ins (to fill in later). icon is 16x16 (rows, slots), showcase 32x32 (pop-ups, toasts), large 64x64; an item without them shows its slot's empty silhouette until its art is added.",
   "items": [
     {
       "id": "weapon-training-slingshot",
@@ -7,14 +7,16 @@
       "slot": "weapon",
       "class": "slingshot",
       "level": 1,
-      "rarity": "common",
+      "rarity": "brown",
+      "bound": true,
+      "training": true,
+      "agimats": [],
       "stats": {
         "atk": 5
       },
       "placeholder": [
         "stats"
       ],
-      "starter": true,
       "icon": "items/weapons/item-weapon-training-slingshot-16.png",
       "showcase": "items/weapons/item-weapon-training-slingshot.png",
       "large": "items/weapons/item-weapon-training-slingshot-64.png"
@@ -25,14 +27,16 @@
       "slot": "weapon",
       "class": "stick",
       "level": 1,
-      "rarity": "common",
+      "rarity": "brown",
+      "bound": true,
+      "training": true,
+      "agimats": [],
       "stats": {
         "atk": 5
       },
       "placeholder": [
         "stats"
       ],
-      "starter": true,
       "icon": "items/weapons/item-weapon-training-stick-16.png",
       "showcase": "items/weapons/item-weapon-training-stick.png",
       "large": "items/weapons/item-weapon-training-stick-64.png"
@@ -43,14 +47,16 @@
       "slot": "weapon",
       "class": "greatstick",
       "level": 1,
-      "rarity": "common",
+      "rarity": "brown",
+      "bound": true,
+      "training": true,
+      "agimats": [],
       "stats": {
         "atk": 5
       },
       "placeholder": [
         "stats"
       ],
-      "starter": true,
       "icon": "items/weapons/item-weapon-training-plank-16.png",
       "showcase": "items/weapons/item-weapon-training-plank.png",
       "large": "items/weapons/item-weapon-training-plank-64.png"
@@ -61,14 +67,16 @@
       "slot": "weapon",
       "class": "broom",
       "level": 1,
-      "rarity": "common",
+      "rarity": "brown",
+      "bound": true,
+      "training": true,
+      "agimats": [],
       "stats": {
         "atk": 5
       },
       "placeholder": [
         "stats"
       ],
-      "starter": true,
       "icon": "items/weapons/item-weapon-training-broom-16.png",
       "showcase": "items/weapons/item-weapon-training-broom.png",
       "large": "items/weapons/item-weapon-training-broom-64.png"
@@ -79,14 +87,16 @@
       "slot": "weapon",
       "class": "potlid",
       "level": 1,
-      "rarity": "common",
+      "rarity": "brown",
+      "bound": true,
+      "training": true,
+      "agimats": [],
       "stats": {
         "atk": 5
       },
       "placeholder": [
         "stats"
       ],
-      "starter": true,
       "icon": "items/weapons/item-weapon-training-potlid-16.png",
       "showcase": "items/weapons/item-weapon-training-potlid.png",
       "large": "items/weapons/item-weapon-training-potlid-64.png"
@@ -97,17 +107,280 @@
       "slot": "weapon",
       "class": "hilot",
       "level": 1,
-      "rarity": "common",
+      "rarity": "brown",
+      "bound": true,
+      "training": true,
+      "agimats": [],
       "stats": {
         "atk": 5
       },
       "placeholder": [
         "stats"
       ],
-      "starter": true,
       "icon": "items/weapons/item-weapon-training-balm-16.png",
       "showcase": "items/weapons/item-weapon-training-balm.png",
       "large": "items/weapons/item-weapon-training-balm-64.png"
+    },
+    {
+      "id": "armor-training-heavy-head",
+      "name": "Training Hard Hat",
+      "slot": "head",
+      "gear": "Heavy",
+      "level": 1,
+      "rarity": "brown",
+      "bound": true,
+      "training": true,
+      "agimats": [],
+      "stats": {
+        "def": 2
+      },
+      "placeholder": [
+        "stats"
+      ]
+    },
+    {
+      "id": "armor-training-heavy-body",
+      "name": "Training Armor",
+      "slot": "body",
+      "gear": "Heavy",
+      "level": 1,
+      "rarity": "brown",
+      "bound": true,
+      "training": true,
+      "agimats": [],
+      "stats": {
+        "def": 2
+      },
+      "placeholder": [
+        "stats"
+      ]
+    },
+    {
+      "id": "armor-training-heavy-hands",
+      "name": "Training Gauntlets",
+      "slot": "hands",
+      "gear": "Heavy",
+      "level": 1,
+      "rarity": "brown",
+      "bound": true,
+      "training": true,
+      "agimats": [],
+      "stats": {
+        "def": 2
+      },
+      "placeholder": [
+        "stats"
+      ]
+    },
+    {
+      "id": "armor-training-heavy-bottoms",
+      "name": "Training Legguards",
+      "slot": "bottoms",
+      "gear": "Heavy",
+      "level": 1,
+      "rarity": "brown",
+      "bound": true,
+      "training": true,
+      "agimats": [],
+      "stats": {
+        "def": 2
+      },
+      "placeholder": [
+        "stats"
+      ]
+    },
+    {
+      "id": "armor-training-heavy-feet",
+      "name": "Training Greaves",
+      "slot": "feet",
+      "gear": "Heavy",
+      "level": 1,
+      "rarity": "brown",
+      "bound": true,
+      "training": true,
+      "agimats": [],
+      "stats": {
+        "def": 2
+      },
+      "placeholder": [
+        "stats"
+      ]
+    },
+    {
+      "id": "armor-training-light-head",
+      "name": "Training Headpiece",
+      "slot": "head",
+      "gear": "Light",
+      "level": 1,
+      "rarity": "brown",
+      "bound": true,
+      "training": true,
+      "agimats": [],
+      "stats": {
+        "def": 1
+      },
+      "placeholder": [
+        "stats"
+      ]
+    },
+    {
+      "id": "armor-training-light-body",
+      "name": "Training Suit",
+      "slot": "body",
+      "gear": "Light",
+      "level": 1,
+      "rarity": "brown",
+      "bound": true,
+      "training": true,
+      "agimats": [],
+      "stats": {
+        "def": 1
+      },
+      "placeholder": [
+        "stats"
+      ],
+      "icon": "items/armor/item-armor-training-suit-16.png",
+      "showcase": "items/armor/item-armor-training-suit.png",
+      "large": "items/armor/item-armor-training-suit-64.png"
+    },
+    {
+      "id": "armor-training-light-hands",
+      "name": "Training Gloves",
+      "slot": "hands",
+      "gear": "Light",
+      "level": 1,
+      "rarity": "brown",
+      "bound": true,
+      "training": true,
+      "agimats": [],
+      "stats": {
+        "def": 1
+      },
+      "placeholder": [
+        "stats"
+      ]
+    },
+    {
+      "id": "armor-training-light-bottoms",
+      "name": "Training Pants",
+      "slot": "bottoms",
+      "gear": "Light",
+      "level": 1,
+      "rarity": "brown",
+      "bound": true,
+      "training": true,
+      "agimats": [],
+      "stats": {
+        "def": 1
+      },
+      "placeholder": [
+        "stats"
+      ]
+    },
+    {
+      "id": "armor-training-light-feet",
+      "name": "Training Boots",
+      "slot": "feet",
+      "gear": "Light",
+      "level": 1,
+      "rarity": "brown",
+      "bound": true,
+      "training": true,
+      "agimats": [],
+      "stats": {
+        "def": 1
+      },
+      "placeholder": [
+        "stats"
+      ],
+      "icon": "items/armor/item-armor-training-boots-16.png",
+      "showcase": "items/armor/item-armor-training-boots.png",
+      "large": "items/armor/item-armor-training-boots-64.png"
+    },
+    {
+      "id": "armor-training-household-head",
+      "name": "Training Headwrap",
+      "slot": "head",
+      "gear": "Household",
+      "level": 1,
+      "rarity": "brown",
+      "bound": true,
+      "training": true,
+      "agimats": [],
+      "stats": {
+        "def": 2
+      },
+      "placeholder": [
+        "stats"
+      ]
+    },
+    {
+      "id": "armor-training-household-body",
+      "name": "Training Robe",
+      "slot": "body",
+      "gear": "Household",
+      "level": 1,
+      "rarity": "brown",
+      "bound": true,
+      "training": true,
+      "agimats": [],
+      "stats": {
+        "def": 2
+      },
+      "placeholder": [
+        "stats"
+      ]
+    },
+    {
+      "id": "armor-training-household-hands",
+      "name": "Training Wraps",
+      "slot": "hands",
+      "gear": "Household",
+      "level": 1,
+      "rarity": "brown",
+      "bound": true,
+      "training": true,
+      "agimats": [],
+      "stats": {
+        "def": 2
+      },
+      "placeholder": [
+        "stats"
+      ]
+    },
+    {
+      "id": "armor-training-household-bottoms",
+      "name": "Training Trousers",
+      "slot": "bottoms",
+      "gear": "Household",
+      "level": 1,
+      "rarity": "brown",
+      "bound": true,
+      "training": true,
+      "agimats": [],
+      "stats": {
+        "def": 2
+      },
+      "placeholder": [
+        "stats"
+      ]
+    },
+    {
+      "id": "armor-training-household-feet",
+      "name": "Training Sandals",
+      "slot": "feet",
+      "gear": "Household",
+      "level": 1,
+      "rarity": "brown",
+      "bound": true,
+      "training": true,
+      "agimats": [],
+      "stats": {
+        "def": 2
+      },
+      "placeholder": [
+        "stats"
+      ]
     }
   ]
 }

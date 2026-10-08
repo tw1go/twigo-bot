@@ -93,6 +93,9 @@ export interface MeResponse {
   status?: PresenceStatus;
   /** Their class, quests and equipment (autoStart quests start here, on their first visit). */
   adventure?: AdventureState;
+  /** Training armor the Tanod has just left them (item ids; a class from before training armor, given on this visit):
+   *  the game says so once. */
+  trainingGear?: string[];
 }
 
 /** The status dots in the art (manifest ui.statusDots). */
