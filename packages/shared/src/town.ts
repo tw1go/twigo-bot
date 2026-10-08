@@ -2,6 +2,7 @@
 // JSON messages, one per frame. Players are identified by a random id per connection, never their Discord ID.
 // A moderator's kick closes the socket with code 4001 and the time (ms) they may come back as the reason.
 
+import type { CharacterProgress } from './adventure.js';
 import type { HoodHouse, HoodMap, OutfitData, TitleData } from './room-api.js';
 
 export type TownDir = 's' | 'se' | 'e' | 'ne' | 'n' | 'nw' | 'w' | 'sw';
@@ -75,6 +76,8 @@ export interface TownPlayer {
   /** Their class (the chat's badge) and the weapon they wear (its resting weapon in town), if any. */
   cls?: string | null;
   weapon?: string | null;
+  /** Their character level (stats rules), if they have one saved. */
+  level?: number;
 }
 
 /** Browser → server. A step is to a neighbouring tile; the server checks it (walkable, adjacent, walking speed). */
@@ -323,6 +326,10 @@ export type TownServerMessage =
   | { t: 'mob-attack'; id: string; target: string; dir: TownMobFacing; slow?: number }
   /** A dead mob is back at its spawn. */
   | { t: 'mob-spawn'; id: string; col: number; row: number; hp: number }
+  /** Your level, XP and points changed (XP from a kill: `gained`; a level-up; dev's ?xp= / ?level=). */
+  | { t: 'progress'; progress: CharacterProgress; gained?: number }
+  /** Someone in your room went up a level (you too: `id` is yours): "Level up!" over them. HP and MP refill with it. */
+  | { t: 'level-up'; id: string; level: number }
   /** Your attack didn't land: too far, too fast, or the mob's gone. */
   | { t: 'attack-refused'; reason: 'range' | 'slow' | 'gone' | 'skill' }
   /** Your party now (null: none), with a line for a toast when something happened ("Mara joined the party."). */

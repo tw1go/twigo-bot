@@ -549,7 +549,7 @@ async function players(selected) {
         draw(next, all);
       }) }, 'Give title')),
       h('label', null, 'Class'),
-      h('p', { class: 'hint' }, 'Starts their class, quests and equipment over: no class, nothing worn or carried, and the Tanod’s quest again on their next visit.'),
+      h('p', { class: 'hint' }, 'Starts their class, quests and equipment over: no class, nothing worn or carried, and the Tanod’s quest again on their next visit. Their level and XP stay; their stat and skill points come back.'),
       h('div', { class: 'actions' }, h('button', { class: 'btn', disabled: !p.cls && !p.questsDone.length, onclick: (e) => act(e.currentTarget, async () => {
         if (!confirm(`Start ${p.nickname ?? p.discordName}'s class over? Their training weapon goes too.`)) return;
         const { player: next } = await api('player/reset-class', { id: p.id });

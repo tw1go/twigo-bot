@@ -1,9 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
-import { type Hitter, baseStats, derivedStats, hitDamage, levelGap, mobStats, skillPct } from '@mikazuki/shared';
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
+import { WebSocket } from 'ws';
+import { type Hitter, type TownServerMessage, baseStats, derivedStats, hitDamage, levelGap, mobStats, skillPct } from '@mikazuki/shared';
+import { type SavedProgress, freshProgress, killXp } from './progress.js';
 import { loadGear, loadStats } from './stats-data.js';
 import { type AttackResult, MobRoom, facingTo, loadMobKinds, loadMobMap, packSize } from './town-mobs.js';
+import { attachTown } from './town.js';
 
 // The Slums' mobs on the real map (the game's maps/slums.json): where they stand, how they hop, what newcomers see.
 
@@ -113,10 +118,13 @@ test('a hit takes the stats rules\' damage from its HP, the mob goes after its f
   // Next to it: it attacks back.
   const events = room.tick(1200, new Map([['p1', at]]));
   assert.ok(events.some((e) => e.t === 'mob-attack' && e.id === mob.id && e.target === 'p1'));
+  assert.ok(first.ok && !first.kills.length, 'no kill yet');
   let t = 1000;
   let last: AttackResult = first;
   while (last.ok && !last.hits[0].dead) last = room.attack("p1", at, "stick", mob.id, (t += 1000));
   assert.ok(last.ok && last.hits[0].dead && last.hits[0].hp === 0);
+  // Its XP (the mob table's) goes to its killer.
+  assert.deepEqual(last.kills, [{ id: mob.id, level: mob.level, xp: kindOf(mob.id).xp, to: ['p1'] }]);
   assert.equal(room.snapshot(t)[0].dead, true);
   assert.deepEqual(room.attack('p1', at, 'stick', mob.id, t + 500), { ok: false, reason: 'gone' });
   const zone = active.find((z) => mob.id.startsWith(`${z.id}:`))!;
@@ -421,4 +429,52 @@ test('a quarter-second tick with every mob and a few players fighting stays chea
   const ms = (performance.now() - t0) / n;
   console.log(`  tick: ${ms.toFixed(3)} ms with ${room.size} mobs and ${players.size} players`);
   assert.ok(ms < 5, `${ms} ms`);
+});
+
+test('over the town\'s socket: a kill\'s XP goes to the killer; a level-up shows to everyone in the room, the progress to them only', async () => {
+  const room = new MobRoom(map, lcg(9), {}, { shapes: {} }, kinds);
+  const can = room.snapshot(0).find((m) => m.id.startsWith('tin-can-alley:'))!;
+  // Mara is one Tin Can short of Lv 2, and strong enough to finish it in one hit.
+  const fresh = freshProgress(stats, 'slingshot');
+  let mara: SavedProgress = { ...fresh, xp: fresh.next - 1 };
+  const server = createServer();
+  attachTown(server, {
+    map: { size: [4, 4], spawn: [1, 1], blocked: [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]] },
+    rooms: { slums: () => ({ size: map.size, spawn: [can.col + 1, can.row], blocked: map.blocked }) },
+    mobs: { slums: room },
+    authenticate: async (req) => new URL(req.url ?? '/', 'http://x').searchParams.get('as'),
+    profile: (name) => ({ nickname: name, title: { name: 'Townfolk', color: '#fff' }, outfit: {} as never, cls: 'slingshot' }),
+    progress: {
+      fighter: (name) => ({ cls: 'slingshot', level: name === 'Mara' ? stats.levelCap : 1, points: name === 'Mara' ? { DEX: 100_000 } : {} }),
+      kill: (_name, mob) => {
+        const r = killXp(stats, 'slingshot', mara, mob);
+        mara = r.progress;
+        return r;
+      },
+    },
+  });
+  await new Promise<void>((ok) => server.listen(0, '127.0.0.1', ok));
+  const port = (server.address() as AddressInfo).port;
+  const open = (as: string) =>
+    new Promise<{ ws: WebSocket; got: TownServerMessage[] }>((ok) => {
+      const ws = new WebSocket(`ws://127.0.0.1:${port}/ws?as=${as}&room=slums`);
+      const got: TownServerMessage[] = [];
+      ws.on('message', (d) => got.push(JSON.parse(String(d))));
+      ws.on('open', () => ok({ ws, got }));
+    });
+  const a = await open('Mara');
+  const b = await open('Bob');
+  await new Promise((ok) => setTimeout(ok, 100));
+  const maraId = (a.got.find((m) => m.t === 'welcome') as Extract<TownServerMessage, { t: 'welcome' }>).you;
+  a.ws.send(JSON.stringify({ t: 'attack', mob: can.id, skill: 0 }));
+  await new Promise((ok) => setTimeout(ok, 200));
+  const hit = a.got.find((m) => m.t === 'mob-hit');
+  assert.ok(hit && hit.t === 'mob-hit' && hit.hits[0].dead, JSON.stringify(a.got.filter((m) => m.t !== 'welcome' && m.t !== 'mobs')));
+  const progress = a.got.find((m) => m.t === 'progress');
+  assert.ok(progress && progress.t === 'progress' && progress.progress.level === 2 && progress.progress.skillPoints === stats.skills.skillPointsPerLevelUp);
+  assert.ok((progress.gained ?? 0) >= 1);
+  for (const c of [a, b]) assert.deepEqual(c.got.filter((m) => m.t === 'level-up'), [{ t: 'level-up', id: maraId, level: 2 }]);
+  assert.ok(!b.got.some((m) => m.t === 'progress'), 'Bob only sees the level-up');
+  for (const c of [a, b]) c.ws.close();
+  await new Promise((ok) => server.close(ok));
 });

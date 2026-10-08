@@ -38,7 +38,7 @@ import { arenaBets, refundHeldBets } from './town-arena-bets.js';
 import { kowen } from '../kowens.js';
 import { filterText, kickedUntil, mutedUntil } from './town-mod.js';
 import { getOutfit, parseOutfit, saveOutfit } from './outfit.js';
-import { adventureOf, kitOf, parseEquipAction, parseQuestAction, townEquip, townQuest } from './adventure.js';
+import { adventureOf, fighterOf, killFor, kitOf, parseEquipAction, parseQuestAction, townEquip, townQuest } from './adventure.js';
 import { freeSlots } from '../dig/bag.js';
 import { renameWithCard } from '../items/rename-card.js';
 import { changeClassWithTicket } from '../items/class-ticket.js';
@@ -827,6 +827,15 @@ export function startWebServer(client: Client): void {
       map: loadTownMap(),
       rooms: { hood: hoodTownMap, slums: () => slumsMap },
       mobs: { slums: new MobRoom(loadMobMap('slums'), Math.random, Object.fromEntries(CLASSES.map((c) => [c.id, c.skills.map((k) => k.level)])), loadSkillShapes(), loadMobKinds(), loadGolemArt()) },
+      // Levels: who they are in a fight, and kills' XP (saved with the class).
+      progress: {
+        fighter: fighterOf,
+        kill: (userId, mob) => {
+          const r = killFor(userId, mob);
+          if (r.ups) console.log(`[levels] ${userId} reached Lv ${r.progress.level}`);
+          return r;
+        },
+      },
       // The Slums are for testers for now.
       mayEnter: async (room, userId) => room !== 'slums' || isTester(client, userId),
       authenticate: async (req) => {

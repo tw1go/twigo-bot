@@ -32,6 +32,8 @@ export interface MobStats {
   xp: number;
   /** The golem's attacks' multipliers (Tire Slam, Scrap Toss). */
   skillMult?: Record<string, number>;
+  /** Who gets its XP, when not only the killer: "everyone who did at least 5% of its HP" (the golem). */
+  xpTo?: string;
 }
 
 /** classes/stats.json: the parts the rules read (the file has more: gear, affixes, enhancement… for later). */
@@ -367,6 +369,21 @@ export function mobXp(data: StatsData, mob: { level: number; xp: number }, level
   const extra = level - mob.level - P.freeGap;
   const mult = extra > 0 ? Math.max(P.minMult, 1 - P.perExtraLevel * extra) : 1;
   return mob.xp > 0 ? Math.max(1, Math.round(mob.xp * mult)) : 0;
+}
+
+/** The share of a mob's HP a player must have done in its fight to get its XP (the mob table's `xpTo`: 5% → 0.05), or
+ *  null: its killer gets it. */
+export function xpShare(mob: MobStats): number | null {
+  const [pct] = numbersIn(mob.xpTo ?? '');
+  return pct === undefined ? null : pct / 100;
+}
+
+/** Who gets a kill's XP: everyone whose damage in its fight (`dealt`, by player) reached the mob's share of its HP, for a
+ *  mob with one (the golem); else the killer. */
+export function xpEarners(mob: MobStats, dealt: ReadonlyMap<string, number>, killer: string): string[] {
+  const share = xpShare(mob);
+  if (share === null) return [killer];
+  return [...dealt].filter(([, n]) => n >= share * mob.hp).map(([who]) => who);
 }
 
 /** A mob's name colour for a character at `level`: grey 5+ levels below them (little XP), red 3+ above, white between. */

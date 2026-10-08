@@ -18,7 +18,7 @@ import { loadStats } from './stats-data.js';
 // HP yet. At half HP it calls the Junk once (3–4 spots round the pit; its Adds crawl out there when the fx is done: the
 // host spawns them as real mobs), at a quarter it enrages once. Nobody within its leash for RESET_MS: it resets (full HP,
 // Adds gone, both phases again next fight) and walks home. At 0 it dies: its Adds go, and a line names everyone who hit
-// it in that fight. Pure (the clock is passed in), so it's tested on its own and the dev server runs it too.
+// it in that fight; the damage each did in it goes back with the last hit (its XP: everyone who did 5% of its HP). Pure (the clock is passed in), so it's tested on its own and the dev server runs it too.
 
 const SPEED = 1.5; // tiles a second, stomping (the game walks it at this pace: it's in every mob-move)
 const IDLE_MS: [number, number] = [5000, 11_000]; // between idle stomps and turns
@@ -172,6 +172,8 @@ export class Golem {
   private foe: string | null = null;
   /** Everyone who hit it this fight (town id → nickname), in order. */
   private readonly hitters = new Map<string, string>();
+  /** The damage each of them did this fight (its XP goes to everyone who did enough: stats.json's xpTo). */
+  private readonly dealt = new Map<string, number>();
   /** Nobody within its leash since then. */
   private alone: number | null = null;
   private nextAttack = 0;
@@ -469,14 +471,16 @@ export class Golem {
   private reset(now: number): void {
     Object.assign(this, { hp: this.art.hp, enraged: false, called: false, adds: null, foe: null, alone: null, attacks: 0 });
     this.hitters.clear();
+    this.dealt.clear();
     this.phase = 'home';
     this.pending.push(...this.host.dropAdds());
     this.change('reset', now);
     this.goHome(now);
   }
 
-  /** A player's hit for `damage` (town id and nickname, for the line when it falls). Null when it can't be hit. */
-  hit(player: string, name: string, damage: number, now: number): { hp: number; dead: boolean } | null {
+  /** A player's hit for `damage` (town id and nickname, for the line when it falls). Null when it can't be hit. When it
+   *  falls, `dealt`: the damage each player did in its fight. */
+  hit(player: string, name: string, damage: number, now: number): { hp: number; dead: boolean; dealt?: Map<string, number> } | null {
     if (!this.hittable) return null;
     const starts = this.phase !== 'fight';
     if (starts) {
@@ -487,12 +491,15 @@ export class Golem {
     this.foe = player;
     this.hitters.set(player, name);
     this.lastHit = now;
+    this.dealt.set(player, (this.dealt.get(player) ?? 0) + Math.min(damage, this.hp));
     this.hp = Math.max(0, this.hp - damage);
     if (starts) this.change('fight', now);
     if (this.hp && !this.called && this.hp <= this.art.hp / 2) this.callJunk(now);
     if (this.hp && !this.enraged && this.hp <= this.art.hp / 4) this.enrage(now);
-    if (!this.hp) this.die(now);
-    return { hp: this.hp, dead: !this.hp };
+    if (this.hp) return { hp: this.hp, dead: false };
+    const dealt = new Map(this.dealt);
+    this.die(now);
+    return { hp: 0, dead: true, dealt };
   }
 
   /** Half HP: 3–4 spots round the pit; its Adds crawl out there once the fx is done. */
@@ -545,6 +552,7 @@ export class Golem {
     this.pending.push(...this.host.dropAdds());
     this.line(downLine([...this.hitters.values()], this.boss.name), 'down');
     this.hitters.clear();
+    this.dealt.clear();
   }
 
   /** A player left the room: it stops going after them. */

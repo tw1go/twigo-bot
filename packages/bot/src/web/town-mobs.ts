@@ -15,6 +15,7 @@ import {
   rollHit,
   skillPct,
   skillTier,
+  xpEarners,
 } from '@mikazuki/shared';
 import { loadGear, loadStats } from './stats-data.js';
 import { Golem, type GolemArt, type GolemBoss, type GolemEvent, type PitTiles, pitTiles } from './town-golem.js';
@@ -39,9 +40,9 @@ import { Golem, type GolemArt, type GolemBoss, type GolemEvent, type PitTiles, p
 // together): it goes after whoever hit it last, and within its reach of them attacks every ATTACK_MS (shown only: players
 // have no HP yet; the Bag's slows them for show, `slow`). A mob of an aggressive zone goes after a player who comes within
 // its zone's aggroRange (in its zone, on its level) the same way. It gives up and walks home when they're gone, out of
-// its zone or its leash, or (a passive one) haven't hit it for GIVE_UP_MS. At 0 HP it dies and comes back where it
-// started after its zone's respawnSec (a pack's caps each on their own). Each skill has its own cooldown by the level
-// it's learnt at (skillCooldown: Lv 1 the quickest; the game shows the same, combat/cooldowns.ts).
+// its zone or its leash, or (a passive one) haven't hit it for GIVE_UP_MS. At 0 HP it dies (its XP to whoever killed
+// it: `kills`, which the town turns into levels) and comes back where it started after its zone's respawnSec (a pack's
+// caps each on their own). Each skill has its own cooldown by the level it's learnt at (skillCooldown: Lv 1 the quickest; the game shows the same, combat/cooldowns.ts).
 //
 // The field boss (the map's `boss`, given its art): town-golem.ts runs it on this room's clock; hits on it come through
 // attack() like any mob's (reach to its body's edge; area skills reach it too), and its Adds are mobs of this room (ids
@@ -83,9 +84,18 @@ export interface MobHit {
   slow?: { factor: number; ms: number };
 }
 
-/** `hits`: the target first, then any other mobs the skill's shape reached (skill-hits.json). Refused: out of reach, too
- *  soon, the mob gone, or `skill` isn't one of their class's (its tier would be made up). */
-export type AttackResult = { ok: true; hits: MobHit[] } | { ok: false; reason: 'range' | 'slow' | 'gone' | 'skill' };
+/** A mob that died: its level and XP (the mob table's), and who gets the XP (town ids): its killer, or for the golem
+ *  everyone who did its share of its HP in the fight (stats.json xpTo). */
+export interface MobKill {
+  id: string;
+  level: number;
+  xp: number;
+  to: string[];
+}
+
+/** `hits`: the target first, then any other mobs the skill's shape reached (skill-hits.json); `kills`: those it killed.
+ *  Refused: out of reach, too soon, the mob gone, or `skill` isn't one of their class's (its tier would be made up). */
+export type AttackResult = { ok: true; hits: MobHit[]; kills: MobKill[] } | { ok: false; reason: 'range' | 'slow' | 'gone' | 'skill' };
 
 /** Each class's skills' target shapes, in their order (the game's classes/skill-hits.json), and their effects. */
 export interface SkillShapes {
@@ -677,16 +687,18 @@ export class MobRoom {
     const effect = parseEffect(cls ? this.shapes.effects?.[cls]?.[skill] : null);
     const by = this.hitter(a);
     const pct = skillPct(this.fightData.stats, skillTier(skill), a.skills?.[skill] ?? 1);
+    const kills: MobKill[] = [];
     const hits = this.reached(m ?? 'golem', [mc, mr], from, (cls && this.shapes.shapes[cls]?.[skill]) || 'single', now).map((x) => {
-      if (x === 'golem') return this.hitGolem(player, name, by, pct, now); // (no slowing it)
+      if (x === 'golem') return this.hitGolem(player, name, by, pct, now, kills); // (no slowing it)
       const hit = this.damage(x, player, by, pct, now);
+      if (hit.dead) kills.push({ id: x.id, level: x.stats.level, xp: x.stats.xp, to: [player] });
       if (effect && !hit.dead && !hit.blocked && !hit.miss) {
         x.slow = { factor: effect.factor, until: now + effect.ms };
         hit.slow = effect;
       }
       return hit;
     });
-    return { ok: true, hits };
+    return { ok: true, hits, kills };
   }
 
   /** An attacker's Power, crit and level (the stats rules), from their class, level, points and worn gear. */
@@ -719,11 +731,13 @@ export class MobRoom {
   }
 
   /** A hit on the golem (the stats rules' damage against its row in the mob table, or a miss), never blocked. A miss
-   *  still starts its fight. */
-  private hitGolem(player: string, name: string, by: Hitter, pct: number, now: number): MobHit {
+   *  still starts its fight. The last hit: its XP to everyone who did enough of its HP (into `kills`). */
+  private hitGolem(player: string, name: string, by: Hitter, pct: number, now: number, kills: MobKill[]): MobHit {
     const g = this.golem!;
-    const { damage, crit, miss } = rollHit(this.fightData.stats, by, this.statsOf(g.id), pct, this.random);
+    const stats = this.statsOf(g.id);
+    const { damage, crit, miss } = rollHit(this.fightData.stats, by, stats, pct, this.random);
     const r = g.hit(player, name, damage, now)!;
+    if (r.dead) kills.push({ id: g.id, level: stats.level, xp: stats.xp, to: xpEarners(stats, r.dealt ?? new Map(), player) });
     return { id: g.id, damage, crit, hp: r.hp, dead: r.dead, ...(miss ? { miss } : {}) };
   }
 

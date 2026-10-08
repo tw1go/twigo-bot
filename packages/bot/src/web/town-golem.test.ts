@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { WebSocket } from 'ws';
-import { type TownServerMessage, baseStats, derivedStats, hitDamage, mobStats } from '@mikazuki/shared';
+import { type TownServerMessage, baseStats, derivedStats, hitDamage, mobStats, xpEarners, xpShare } from '@mikazuki/shared';
 import { Golem, type GolemEvent, type GolemHost, downLine, inCone, loadGolemArt, nextRiseAfter, pitTiles } from './town-golem.js';
 import { loadStats } from './stats-data.js';
 import { type Attacker, MobRoom, loadMobKinds, loadMobMap } from './town-mobs.js';
@@ -300,7 +300,7 @@ test('at 0 it dies: a line names everyone who hit it in that fight, its Adds go,
   golem.hit('b', 'Bob', quarter, t0 + 3100);
   golem.hit('a', 'Mara', quarter, t0 + 3200);
   const last = golem.hit('c', 'Lito', quarter, t0 + 3300);
-  assert.deepEqual(last, { hp: 0, dead: true });
+  assert.deepEqual(last, { hp: 0, dead: true, dealt: new Map([['a', 2 * quarter], ['b', quarter], ['c', art.hp - 3 * quarter]]) }, 'the damage each did (none past 0)');
   const evs = golem.flush();
   const death = evs.find((e) => e.t === 'golem' && e.change === 'death');
   assert.ok(death && death.t === 'golem' && death.golem.state === 'dead' && death.golem.hp === 0);
@@ -310,6 +310,34 @@ test('at 0 it dies: a line names everyone who hit it in that fight, its Adds go,
   assert.equal(golem.state(t0 + 3400), null);
   const next = run(golem, t0 + 3500, t0 + 2 * HOUR);
   assert.equal(next.find((x) => x.e.t === 'golem' && x.e.change === 'rise')!.at, t0 + 2 * HOUR);
+});
+
+test('its XP goes to everyone who did at least 5% of its HP in the fight (stats.json xpTo), the killer or not', () => {
+  assert.equal(xpShare(golemStats), 0.05);
+  const room = new MobRoom(map, lcg(7), {}, { shapes: {} }, kinds, art);
+  room.riseGolem(0);
+  room.tick(art.riseMs);
+  const from = at(3, 0);
+  // A Lv 15 player chips at it (well under 5%), a stronger one does more than 5%, a very strong one finishes it.
+  const weak = hero('stick');
+  const strong: Attacker = { cls: 'stick', level: golemStats.level, points: { STR: 1000 } };
+  const huge: Attacker = { cls: 'stick', level: 20, points: { STR: 100_000 } };
+  const dealt = new Map<string, number>();
+  let t = art.riseMs + 1000;
+  const swing = (who: string, a: Attacker) => {
+    const r = room.attack(who, from, a, boss.id, (t += 1000));
+    assert.ok(r.ok, JSON.stringify(r));
+    dealt.set(who, (dealt.get(who) ?? 0) + r.hits[0].damage);
+    return r;
+  };
+  swing('weak', weak);
+  swing('weak', weak);
+  swing('strong', strong);
+  assert.ok(dealt.get('weak')! < 0.05 * golemStats.hp && dealt.get('strong')! >= 0.05 * golemStats.hp && dealt.get('strong')! < golemStats.hp / 2, JSON.stringify([...dealt]));
+  const last = swing('huge', huge);
+  assert.ok(last.ok && last.hits[0].dead);
+  assert.deepEqual(last.kills, [{ id: boss.id, level: golemStats.level, xp: golemStats.xp, to: ['strong', 'huge'] }]);
+  assert.deepEqual(xpEarners(golemStats, new Map([['a', 539], ['b', 540]]), 'a'), ['b'], 'the killer only if they did enough');
 });
 
 test('the dev demo: it rises, slams, tosses and glares at the nearest player, calls the Junk at a pretend half, enrages at a pretend quarter, dies', () => {

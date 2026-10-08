@@ -4,9 +4,10 @@ import type { IncomingMessage, Server } from 'node:http';
 import type { Duplex } from 'node:stream';
 import { WebSocket, WebSocketServer } from 'ws';
 import { Arena, type ArenaBets, type ArenaSeat, arenaLine } from './town-arena.js';
-import type { MobRoom } from './town-mobs.js';
+import type { LevelGain } from './progress.js';
+import type { Attacker, MobRoom } from './town-mobs.js';
 import { PARTY_MAX, type PartyChange, Parties } from './town-party.js';
-import type { HoodHouse, HoodMap, OutfitData, PartyState, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine } from '@mikazuki/shared';
+import type { CharacterProgress, HoodHouse, HoodMap, OutfitData, PartyState, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
 // messages). The server keeps everyone's tile and checks each step — on the map, not blocked, next to the last
@@ -69,9 +70,10 @@ export interface TownProfile {
   title: TitleData;
   outfit: OutfitData;
   jailed?: boolean;
-  /** Their class and worn weapon (web/adventure.ts), if any. */
+  /** Their class and worn weapon (web/adventure.ts), if any, and level. */
   cls?: string | null;
   weapon?: string | null;
+  level?: number;
 }
 
 export interface TownOptions {
@@ -86,6 +88,13 @@ export interface TownOptions {
   rooms?: Record<string, () => TownMap>;
   /** Rooms with mobs (the Slums: web/town-mobs.ts), run here so everyone there sees the same ones. */
   mobs?: Record<string, MobRoom>;
+  /** Characters' levels (web/adventure.ts in the bot; in memory on the game's dev server, web/progress.ts either way):
+   *  who someone is in a fight, and a kill's XP for them (saved; the level-ups it brought). Without it everyone fights as
+   *  their class at Lv 1 and gains nothing. */
+  progress?: {
+    fighter(userId: string): Attacker;
+    kill(userId: string, mob: { level: number; xp: number }): LevelGain;
+  };
   /** Whether a member may join a room (the Slums: testers only); every room when left out. */
   mayEnter?: (room: string, userId: string) => Promise<boolean>;
   /** Leave upgrades to other paths alone (the game's dev server shares its HTTP server with Vite's own socket). */
@@ -142,6 +151,9 @@ export interface Town {
   renamed(userId: string, nickname: string): void;
   /** A member chose a class or changed their weapon: everyone in town sees it (the resting weapon, the chat's badge). */
   kit(userId: string, cls: string | null, weapon: string | null): void;
+  /** A member's level, XP or points changed outside a fight (points refunded, dev's ?xp=): theirs to them, and with
+   *  `ups` levels gained "Level up!" over them for their room. */
+  progress(userId: string, progress: CharacterProgress, ups?: number, gained?: number): void;
   /** A house built, given a new look, or its Bakod up or down: everyone in the neighbourhood sees it at once (it rises,
    *  puffs into its new look, or its fence goes up or comes down). */
   /** The Mosang race (games/race.ts) changed: to everyone in town and the neighbourhood, and to arrivals while it's on. */
@@ -279,6 +291,17 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     everyone({ t: 'system', line: playerId ? { ...line, playerId } : line });
   };
 
+  /** A member's level, XP and points to them; each level-up "Level up!" over them for their room (them included). */
+  const progressed = (c: Conn, g: Pick<LevelGain, 'progress' | 'ups' | 'gained'>) => {
+    c.player.level = g.progress.level;
+    send(c, { t: 'progress', progress: g.progress, ...(g.gained ? { gained: g.gained } : {}) });
+    if (g.ups > 0) {
+      const up: TownServerMessage = { t: 'level-up', id: c.player.id, level: g.progress.level };
+      others(c, up);
+      send(c, up);
+    }
+  };
+
   /** Token bucket: true if this message may go through. */
   const spend = (c: Conn) => {
     const now = Date.now();
@@ -353,13 +376,21 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         // A damage skill on a mob (battle maps only): the mob room decides; everyone there sees the hit.
         const mobs = opts.mobs?.[c.room];
         if (!mobs || typeof m.mob !== 'string' || !Number.isInteger(m.skill)) return;
-        // (Their level and points come with saving them: Lv 1 and none until then.)
-        const r = mobs.attack(p.id, [p.col, p.row], { cls: p.cls, gear: [p.weapon] }, m.mob, Date.now(), m.skill as number, p.nickname);
+        // Their class, level, points, everything worn and skill levels (the class and weapon alone without saved levels).
+        const who = opts.progress?.fighter(c.userId) ?? { cls: p.cls, gear: [p.weapon] };
+        const r = mobs.attack(p.id, [p.col, p.row], who, m.mob, Date.now(), m.skill as number, p.nickname);
         if (!r.ok) return send(c, { t: 'attack-refused', reason: r.reason });
         // The hit, then what it set off (the golem calling the Junk, enraging, falling: its line too, to this room only).
         for (const e of [{ t: 'mob-hit', by: p.id, skill: m.skill as number, hits: r.hits } satisfies TownServerMessage, ...mobs.flush()]) {
           others(c, e);
           send(c, e);
+        }
+        // What it killed: its XP for whoever earns it (the killer; the golem's for everyone who did enough), if still here.
+        for (const k of r.kills) {
+          for (const id of k.to) {
+            const o = [...conns.values()].find((x) => x.player.id === id);
+            if (o && opts.progress) progressed(o, opts.progress.kill(o.userId, k));
+          }
         }
         return;
       }
@@ -608,6 +639,10 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       everyone({ t: 'kit', id: c.player.id, cls, weapon });
       known.set(userId, { ...known.get(userId)!, cls });
       tellParty(userId);
+    },
+    progress(userId, progress, ups = 0, gained = 0) {
+      const c = conns.get(userId);
+      if (c) progressed(c, { progress, ups, gained });
     },
     setJailed(userId, on) {
       const c = conns.get(userId);

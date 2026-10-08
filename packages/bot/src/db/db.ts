@@ -15,7 +15,7 @@ import { today } from '../time.js';
 //  • v5, web game character looks: outfits.
 //  • v6, web game nicknames and titles: nicknames, titles. v7: titles.announced. v8: titles.opened.
 //  • v9, the neighbourhood: houses.
-//  • v10, the web game's classes, quests and equipment: adventurers.
+//  • v10, the web game's classes, quests and equipment: adventurers. v11: their level, XP and points.
 //  • kv: small singleton documents keyed by their old file name (e.g. 'race.json', 'rotation.json').
 // Stores cache their state in memory (the bot is the only writer) and save through db/sync.ts, which writes only
 // the rows that changed.
@@ -238,6 +238,16 @@ const MIGRATIONS: string[] = [
     bag       TEXT NOT NULL,       -- JSON: equipment item ids in the bag, not worn
     updated   INTEGER NOT NULL     -- ms
   );
+  `,
+  /* v11: each character's level, XP and points (web/progress.ts; everyone so far starts at Lv 1 with nothing spent) */ `
+  ALTER TABLE adventurers ADD COLUMN level INTEGER NOT NULL DEFAULT 1;
+  ALTER TABLE adventurers ADD COLUMN xp INTEGER NOT NULL DEFAULT 0;              -- into the level
+  ALTER TABLE adventurers ADD COLUMN str_points INTEGER NOT NULL DEFAULT 0;      -- stat points spent on each stat
+  ALTER TABLE adventurers ADD COLUMN dex_points INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE adventurers ADD COLUMN int_points INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE adventurers ADD COLUMN skill_levels TEXT NOT NULL DEFAULT '{}';    -- JSON: skill key -> level above 1
+  ALTER TABLE adventurers ADD COLUMN skill_points INTEGER NOT NULL DEFAULT 0;    -- not spent
+  ALTER TABLE adventurers ADD COLUMN training_armor_given INTEGER NOT NULL DEFAULT 0 CHECK (training_armor_given IN (0, 1));
   `,
 ];
 

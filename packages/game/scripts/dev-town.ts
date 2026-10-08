@@ -6,6 +6,8 @@ import { doorSpot, hoodMap, lotTile } from '../../bot/src/web/hood-map.ts';
 import type { Plugin } from 'vite';
 import { attachTown } from '../../bot/src/web/town.ts';
 import { MobRoom, loadMobKinds, loadSkillShapes } from '../../bot/src/web/town-mobs.ts';
+import { type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView } from '../../bot/src/web/progress.ts';
+import { loadStats } from '../../bot/src/web/stats-data.ts';
 import { loadGolemArt } from '../../bot/src/web/town-golem.ts';
 import { LANES, finishMs, raceScript } from '../../bot/src/games/race-script.ts';
 import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
@@ -29,7 +31,10 @@ import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
 //   GET /__title?as=Alice&id=richest&name=Richest%20Among%20All&color=%23FFD54A   Alice gets the new-title pop-up
 //   GET /__look?as=Alice&look={…}&title=Kalbo&color=%23F8BF27   Alice's new look / title (the pretend Parlor calls it)
 //   GET /__kit?as=Alice&cls=stick&weapon=weapon-training-stick   Alice's class and worn weapon (the pretend quests and
-//   equipment call it; the page also sends them on connect as &kit=)
+//   equipment call it; the page also sends them on connect as &kit=, with her level, XP and points)
+//   GET /__xp?as=Alice&xp=500   Alice gains 500 XP (&level=10: her level set to 10), as from kills: her level-ups, "Level
+//   up!" for her room, her HUD (the page's ?xp= / ?level= call it). Levels live here in memory (bot web/progress.ts),
+//   from what the page sent on connect; kills in the Slums give XP the same way.
 //   The neighbourhood (?area=hood): GET /town/hood, POST /town/house, POST /town/hood answered here with pretend
 //   neighbours (one with a Bakod) and your house (by ?as=, from the page's address); &steal=win|bust|snap decides a
 //   steal (else it's random). Each page load refills your Master Keys and Kalawang Potions (3 each, or &keys=N
@@ -47,6 +52,10 @@ export function devTown(): Plugin {
       const json = JSON.parse(readFileSync(join(server.config.publicDir, 'assets/maps/town.json'), 'utf8'));
       const looks = new Map<string, OutfitData>();
       const kits = new Map<string, { cls: string | null; weapon: string | null }>(); // class and worn weapon (the pretend quests)
+      // Levels, XP and points (the bot's web/progress.ts, in memory; each page sends its own on connect).
+      const stats = loadStats();
+      const levels = new Map<string, SavedProgress>();
+      const levelOf = (name: string) => levels.get(name) ?? freshProgress(stats);
       // Arena bets against pretend wallets (100 Kowens each, in memory; the HUD's Kowens don't follow them).
       const wallets = new Map<string, number>();
       const wallet = (who: string) => wallets.get(who) ?? 100;
@@ -291,7 +300,9 @@ export function devTown(): Plugin {
           const name = q.get('dev')?.slice(0, 16);
           if (!name) return null;
           try {
-            kits.set(name, JSON.parse(q.get('kit') ?? 'null') ?? { cls: null, weapon: null });
+            const kit = (JSON.parse(q.get('kit') ?? 'null') ?? {}) as { cls?: string | null; weapon?: string | null; progress?: SavedProgress };
+            kits.set(name, { cls: kit.cls ?? null, weapon: kit.weapon ?? null });
+            if (kit.progress) levels.set(name, progressView(stats, kit.cls ?? null, kit.progress));
           } catch {
             // no class yet
           }
@@ -302,7 +313,19 @@ export function devTown(): Plugin {
           }
           return name;
         },
-        profile: (name) => ({ nickname: name, title: { name: 'Townfolk', color: '#B794F6' }, outfit: looks.get(name) ?? ({} as OutfitData), ...kits.get(name) }),
+        profile: (name) => ({ nickname: name, title: { name: 'Townfolk', color: '#B794F6' }, outfit: looks.get(name) ?? ({} as OutfitData), ...kits.get(name), level: levelOf(name).level }),
+        progress: {
+          fighter: (name) => {
+            const p = levelOf(name);
+            return { cls: kits.get(name)?.cls, level: p.level, points: p.points, gear: [kits.get(name)?.weapon] };
+          },
+          kill: (name, mob) => {
+            const r = killXp(stats, kits.get(name)?.cls ?? null, levelOf(name), mob);
+            levels.set(name, r.progress);
+            server.config.logger.info(`[levels] ${name} +${r.gained} XP → Lv ${r.progress.level} (${r.progress.xp}/${r.progress.next})`, { timestamp: true });
+            return r;
+          },
+        },
         onSay: (_id, nickname, text, megaphone) => server.config.logger.info(`[town chat → Discord] ${megaphone ? '📢 ' : ''}${nickname}: ${text}`, { timestamp: true }),
       });
       server.middlewares.use('/__title', (req, res) => {
@@ -328,6 +351,15 @@ export function devTown(): Plugin {
         kits.set(name, kit);
         town.kit(name, kit.cls, kit.weapon);
         res.end(`${name}: ${kit.cls ?? 'no class'}, ${kit.weapon ?? 'no weapon'}\n`);
+      });
+      server.middlewares.use('/__xp', (req, res) => {
+        const q = new URL(req.url ?? '/', 'http://localhost').searchParams;
+        const name = q.get('as') ?? '';
+        const cls = kits.get(name)?.cls ?? null;
+        const r = q.has('level') ? levelTo(stats, cls, levelOf(name), Number(q.get('level'))) : addXp(stats, cls, levelOf(name), Number(q.get('xp')));
+        levels.set(name, r.progress);
+        town.progress(name, r.progress, r.ups, r.gained);
+        res.end(`${name}: Lv ${r.progress.level}, ${r.progress.xp}/${r.progress.next} XP (+${r.gained}, ${r.ups} level-up${r.ups === 1 ? '' : 's'})\n`);
       });
       server.middlewares.use('/__announce', (req, res) => {
         const q = new URL(req.url ?? '/', 'http://localhost').searchParams;

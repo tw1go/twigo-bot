@@ -335,7 +335,8 @@ export async function cms(client: Client, req: IncomingMessage, res: ServerRespo
       const was = adventureOf(id).cls;
       resetAdventure(id);
       deps.town()?.kit(id, null, null); // their resting weapon and badge go, for everyone in town
-      await log(client, who, `started **${getNickname(id) ?? (await deps.discordName(id))}**'s class over (was ${was ?? 'none'}): quests and equipment too`);
+      deps.town()?.progress(id, adventureOf(id).progress); // their points back (level and XP stay)
+      await log(client, who, `started **${getNickname(id) ?? (await deps.discordName(id))}**'s class over (was ${was ?? 'none'}): quests and equipment too, points refunded`);
       return send(res, 200, { player: await player(id, deps) });
     }
 

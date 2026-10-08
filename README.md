@@ -300,8 +300,13 @@ Alings wander the town (run in each browser, never on the server); click one for
 voice blips and a gossip murmur nearby.
 
 **Tutorial** (`packages/game/src/ui/guide.ts`): the "?" beside News opens a guide with a tab per feature (moving, chat,
-Kowens, players, Mine, bag, Casino, jackpot, Arena, bank, shop and Parlor, quests, neighbourhood, jail, news and settings).
+Kowens, players, party, levels, Mine, bag, Casino, jackpot, Arena, bank, shop and Parlor, quests, neighbourhood, jail, news and settings).
 Its numbers are the bot's rules; keep them in step when those change.
+
+**Levels** (`packages/bot/src/web/progress.ts`, rules in `packages/shared/src/stats.ts`, numbers in the game's
+`classes/stats.json`): defeating mobs in the Slums gives XP (the golem's to everyone who did 5% of its HP); each level up
+earns a stat point and 3 skill points, up to Lv 20. The HUD shows "Lv N" and an XP bar; everyone nearby sees "Level up!".
+Saved with the class in `adventurers` (schema v11).
 
 #### CMS
 

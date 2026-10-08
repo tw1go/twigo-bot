@@ -1,6 +1,8 @@
 // Classes, quests and equipment: the shapes of the game's data files (classes/classes.json, quests/quests.json,
 // items/equipment.json under the game's public/assets/, read by the bot too) and of each member's saved state.
 
+import type { StatPoints } from './stats.js';
+
 /** classes/classes.json */
 export interface ClassInfo {
   id: string;
@@ -100,7 +102,27 @@ export interface QuestProgress {
   step: number;
 }
 
-/** A member's class, quests and equipment (bot web/adventure.ts; in /me as `adventure`). */
+/** A character's level, XP and points (bot web/progress.ts, by the stats rules; saved with the class). Only `level`,
+ *  `xp`, `points`, `skills` and `skillPoints` are kept: `next` and `statPoints` come from them. */
+export interface CharacterProgress {
+  /** 1 … the level cap (stats.json levelCap). */
+  level: number;
+  /** XP into this level (0 at the cap). */
+  xp: number;
+  /** XP this level takes to the next; 0 at the cap (MAX: XP stops). */
+  next: number;
+  /** Stat points spent, per stat (only the class's main and second stat take them). */
+  points: StatPoints;
+  /** Stat points earned and not spent (banked before a class). */
+  statPoints: number;
+  /** Skill levels above Lv 1, by skill: a damage skill by its place in the class's order ('0'…'6'), a mobility move by
+   *  its id ('dash'). Left out: Lv 1 (or not unlocked yet). */
+  skills: Record<string, number>;
+  /** Skill points not spent (three a level-up; banked before a class). */
+  skillPoints: number;
+}
+
+/** A member's class, quests, equipment and level (bot web/adventure.ts; in /me as `adventure`). */
 export interface AdventureState {
   cls: string | null;
   quests: { active: QuestProgress[]; done: string[] };
@@ -108,6 +130,9 @@ export interface AdventureState {
   equipped: Partial<Record<EquipPlace, string>>;
   /** Equipment in the bag, not worn (item ids, one slot each). */
   bag: string[];
+  progress: CharacterProgress;
+  /** The Tanod's training armor set has been given (once, with the class or on a later login). */
+  trainingArmorGiven: boolean;
 }
 
 /** POST /town/quest: an objective done in the game (talked to `npc`, or chose `cls`). */

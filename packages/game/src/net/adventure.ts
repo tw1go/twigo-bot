@@ -1,26 +1,30 @@
-import type {
-  AdventureState,
-  ClassInfo,
-  ClassesFile,
-  EquipmentDef,
-  EquipmentFile,
-  EquipPlace,
-  EquipSlot,
-  QuestDef,
-  QuestsFile,
-  StatsData,
-  TownAdventureResponse,
-  TownEquipAction,
-  TownQuestAction,
+import {
+  type AdventureState,
+  type CharacterProgress,
+  type ClassInfo,
+  type ClassesFile,
+  type EquipmentDef,
+  type EquipmentFile,
+  type EquipPlace,
+  type EquipSlot,
+  type QuestDef,
+  type QuestsFile,
+  type StatsData,
+  type TownAdventureResponse,
+  type TownEquipAction,
+  type TownQuestAction,
+  unspentStatPoints,
+  xpToNext,
 } from '@mikazuki/shared';
 import { fakeLogin, fakeName } from '../session';
 
 // ⚔️ Your class, quests and equipment in the game (the bot keeps them: web/adventure.ts; /me brings them, POST
 // /town/quest and /town/equip change them). The data files (quests/quests.json, classes/classes.json,
 // items/equipment.json; classes/stats.json, the stats rules' numbers, comes with the scene's assets) are loaded once. Everything that shows them listens here: the quest tracker and log, the
-// marker over a quest giver, the equipment panel, the avatar's class badge. In dev with no bot, the same rules run
-// here, saved in this browser per ?as= name (&quests=reset starts over), and the dev town hears about class and weapon
-// changes (/__kit).
+// marker over a quest giver, the equipment panel, the avatar's class badge, the HUD's level and XP. Your level, XP and
+// points change on the server (kills in the Slums: the town's `progress` messages, setProgress). In dev with no bot, the
+// same rules run here, saved in this browser per ?as= name (&quests=reset starts over), and the dev town hears about
+// class and weapon changes (/__kit) and keeps your level while it runs (sent on connect; ?xp= / ?level= ask it, /__xp).
 
 export interface AdventureData {
   quests: QuestDef[];
@@ -56,6 +60,8 @@ export function onAdventure(fn: (s: AdventureState, change: AdventureChange) => 
 }
 
 function set(s: AdventureState, change: AdventureChange = {}): void {
+  // Dev: the banked stat points follow the pretend class (the bot works them out as it saves).
+  if (fakeLogin() && data) s = { ...s, progress: { ...s.progress, next: xpToNext(data.stats, s.progress.level), statPoints: unspentStatPoints(data.stats, s.cls, s.progress.level, s.progress.points) } };
   state = s;
   if (fakeLogin()) saveFake(s);
   for (const fn of listeners) fn(s, change);
@@ -144,6 +150,11 @@ async function act(path: '/town/quest' | '/town/equip', body: TownQuestAction | 
   return res;
 }
 
+/** Your level, XP and points from the server (the town's `progress` message). */
+export function setProgress(progress: CharacterProgress): void {
+  if (state) set({ ...state, progress });
+}
+
 /** Talked to `npc` for `quest`'s talk objective. */
 export const questTalk = (quest: string, npc: string) => act('/town/quest', { quest, action: 'talk', npc });
 /** Chose a class for `quest`'s chooseClass objective (the training weapon comes with it). */
@@ -205,20 +216,29 @@ export async function changeClass(cls: string): Promise<{ ok: boolean; error?: s
   return { ok: r.ok, error: r.error, adventure: r.adventure ?? state ?? fresh() };
 }
 
-/** Dev: your class and weapon for the dev town (sent on connect). */
-export function devKit(): { cls: string | null; weapon: string | null } {
+/** Dev: your class, weapon and level for the dev town (sent on connect; it keeps the level from there). */
+export function devKit(): { cls: string | null; weapon: string | null; progress: CharacterProgress } {
   const s = state ?? loadFake();
-  return { cls: s.cls, weapon: s.equipped.weapon ?? null };
+  return { cls: s.cls, weapon: s.equipped.weapon ?? null, progress: s.progress };
 }
 
 // ── Dev: the bot's rules, here (web/adventure.ts) ──
 
-const fresh = (): AdventureState => ({ cls: null, quests: { active: [], done: [] }, equipped: {}, bag: [] });
+/** Lv 1, nothing earned (the bot's freshProgress). */
+function freshProgress(cls: string | null = null): CharacterProgress {
+  const S = data?.stats;
+  return { level: 1, xp: 0, next: S ? xpToNext(S, 1) : 0, points: {}, statPoints: S ? unspentStatPoints(S, cls, 1) : 0, skills: {}, skillPoints: 0 };
+}
+
+const fresh = (): AdventureState => ({ cls: null, quests: { active: [], done: [] }, equipped: {}, bag: [], progress: freshProgress(), trainingArmorGiven: false });
 const fakeKey = () => `mk_adventure:${fakeName()}`;
 
 function loadFake(): AdventureState {
   try {
-    return (JSON.parse(localStorage.getItem(fakeKey()) ?? 'null') as AdventureState | null) ?? fresh();
+    const saved = JSON.parse(localStorage.getItem(fakeKey()) ?? 'null') as Partial<AdventureState> | null;
+    if (!saved) return fresh();
+    // (Saved before levels: Lv 1.)
+    return { ...fresh(), ...saved, progress: { ...freshProgress(saved.cls ?? null), ...saved.progress } };
   } catch {
     return fresh();
   }

@@ -13,10 +13,13 @@ import type {
   TownQuestAction,
 } from '@mikazuki/shared';
 import { db } from '../db/db.js';
+import { type LevelGain, type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView, refundPoints } from './progress.js';
+import type { Attacker } from './town-mobs.js';
+import { loadStats } from './stats-data.js';
 
-// ⚔️ A member's class, quests and equipment in the web game (table adventurers, schema v10). The quests, classes and
-// equipment are the game's data files (public/assets/quests/quests.json, classes/classes.json, items/equipment.json),
-// read here like the town map. The game says when an objective is done (POST /town/quest) and what to wear (POST
+// ⚔️ A member's class, quests, equipment and level in the web game (table adventurers, schema v10; level, XP and points
+// v11, by web/progress.ts). The quests, classes and equipment are the game's data files (public/assets/quests/quests.json,
+// classes/classes.json, items/equipment.json), read here like the town map. The game says when an objective is done (POST /town/quest) and what to wear (POST
 // /town/equip); everything is checked here, and items are only ever given here (a class's training weapon). Starter
 // items can't be dropped, traded or sold. Worn items don't take a bag slot; equipment in the bag takes one each.
 
@@ -30,7 +33,7 @@ const PLACES = new Set<EquipPlace>(['weapon', 'head', 'body', 'hands', 'bottoms'
 /** Where a kind of equipment can be worn (two places for bracers and rings). */
 export const placesFor = (slot: EquipSlot): EquipPlace[] => (slot === 'bracers' ? ['bracers1', 'bracers2'] : slot === 'ring' ? ['ring1', 'ring2'] : [slot]);
 
-export const freshAdventure = (): AdventureState => ({ cls: null, quests: { active: [], done: [] }, equipped: {}, bag: [] });
+export const freshAdventure = (): AdventureState => ({ cls: null, quests: { active: [], done: [] }, equipped: {}, bag: [], progress: freshProgress(loadStats()), trainingArmorGiven: false });
 
 /** The class's gear type (Heavy, Light, Household). */
 const gearOf = (cls: string | null) => CLASSES.find((c) => c.id === cls)?.gear ?? null;
@@ -115,21 +118,49 @@ export function equipStep(s: AdventureState, a: TownEquipAction, freeSlots: numb
 
 // ── Saved per member ──
 
-type Row = { class: string | null; quests: string; equipped: string; bag: string };
-const getStmt = db.prepare<[string], Row>('SELECT class, quests, equipped, bag FROM adventurers WHERE user_id = ?');
+type Row = {
+  class: string | null;
+  quests: string;
+  equipped: string;
+  bag: string;
+  level: number;
+  xp: number;
+  str_points: number;
+  dex_points: number;
+  int_points: number;
+  skill_levels: string;
+  skill_points: number;
+  training_armor_given: number;
+};
+const getStmt = db.prepare<[string], Row>(
+  'SELECT class, quests, equipped, bag, level, xp, str_points, dex_points, int_points, skill_levels, skill_points, training_armor_given FROM adventurers WHERE user_id = ?',
+);
 const setStmt = db.prepare(
-  `INSERT INTO adventurers (user_id, class, quests, equipped, bag, updated) VALUES (?, ?, ?, ?, ?, ?)
-   ON CONFLICT(user_id) DO UPDATE SET class = excluded.class, quests = excluded.quests, equipped = excluded.equipped, bag = excluded.bag, updated = excluded.updated`,
+  `INSERT INTO adventurers (user_id, class, quests, equipped, bag, level, xp, str_points, dex_points, int_points, skill_levels, skill_points, training_armor_given, updated)
+   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+   ON CONFLICT(user_id) DO UPDATE SET class = excluded.class, quests = excluded.quests, equipped = excluded.equipped, bag = excluded.bag,
+     level = excluded.level, xp = excluded.xp, str_points = excluded.str_points, dex_points = excluded.dex_points, int_points = excluded.int_points,
+     skill_levels = excluded.skill_levels, skill_points = excluded.skill_points, training_armor_given = excluded.training_armor_given, updated = excluded.updated`,
 );
 
 function load(userId: string): AdventureState {
   const row = getStmt.get(userId);
   if (!row) return freshAdventure();
-  return { cls: row.class, quests: JSON.parse(row.quests), equipped: JSON.parse(row.equipped), bag: JSON.parse(row.bag) };
+  const progress = progressView(loadStats(), row.class, {
+    level: row.level,
+    xp: row.xp,
+    points: { STR: row.str_points, DEX: row.dex_points, INT: row.int_points },
+    skills: JSON.parse(row.skill_levels),
+    skillPoints: row.skill_points,
+  });
+  return { cls: row.class, quests: JSON.parse(row.quests), equipped: JSON.parse(row.equipped), bag: JSON.parse(row.bag), progress, trainingArmorGiven: !!row.training_armor_given };
 }
 
+/** Saves it (and works out its progress's banked points again: a class may have come or gone). */
 function save(userId: string, s: AdventureState): void {
-  setStmt.run(userId, s.cls, JSON.stringify(s.quests), JSON.stringify(s.equipped), JSON.stringify(s.bag), Date.now());
+  const p = (s.progress = progressView(loadStats(), s.cls, s.progress));
+  setStmt.run(userId, s.cls, JSON.stringify(s.quests), JSON.stringify(s.equipped), JSON.stringify(s.bag), p.level, p.xp, p.points.STR ?? 0, p.points.DEX ?? 0, p.points.INT ?? 0,
+    JSON.stringify(p.skills), p.skillPoints, s.trainingArmorGiven ? 1 : 0, Date.now());
 }
 
 /** Their state for /me: autoStart quests start here, on their first visit (and for anyone who hasn't done them). */
@@ -142,11 +173,37 @@ export function adventureOf(userId: string): AdventureState {
 /** Equipment in their bag (one slot each), for the bag's count and the town's inventory. */
 export const equipmentInBag = (userId: string): string[] => load(userId).bag;
 
-/** Their class and worn weapon, for the town (the chat's badge and the resting weapon). */
-export function kitOf(userId: string): { cls: string | null; weapon: string | null } {
+/** Their class, worn weapon and level, for the town (the chat's badge, the resting weapon). */
+export function kitOf(userId: string): { cls: string | null; weapon: string | null; level: number } {
   const s = load(userId);
-  return { cls: s.cls, weapon: s.equipped.weapon ?? null };
+  return { cls: s.cls, weapon: s.equipped.weapon ?? null, level: s.progress.level };
 }
+
+/** Who they are in a fight (MobRoom.attack's Attacker): class, level, stat points spent, everything worn, and their damage
+ *  skills' levels in the class's order. */
+export function fighterOf(userId: string): Attacker {
+  const s = load(userId);
+  const n = CLASSES.find((c) => c.id === s.cls)?.skills.length ?? 0;
+  return { cls: s.cls, level: s.progress.level, points: s.progress.points, gear: Object.values(s.equipped), skills: Array.from({ length: n }, (_, i) => s.progress.skills[i] ?? 1) };
+}
+
+/** Changes their progress through `f` (web/progress.ts) and saves it. */
+function progress(userId: string, f: (cls: string | null, p: SavedProgress) => LevelGain): LevelGain {
+  const s = load(userId);
+  const r = f(s.cls, s.progress);
+  s.progress = r.progress;
+  save(userId, s);
+  return r;
+}
+
+/** A kill's XP for them (the town: town-mobs.ts says who killed what), saved; how many levels it went up. */
+export const killFor = (userId: string, mob: { level: number; xp: number }): LevelGain => progress(userId, (cls, p) => killXp(loadStats(), cls, p, mob));
+
+/** `n` XP for them, saved. */
+export const gainXpFor = (userId: string, n: number): LevelGain => progress(userId, (cls, p) => addXp(loadStats(), cls, p, n));
+
+/** Sets their level (nothing in the bot calls it yet: the game's dev server's ?level= has its own). */
+export const levelFor = (userId: string, level: number): LevelGain => progress(userId, (cls, p) => levelTo(loadStats(), cls, p, level));
 
 /** The body of POST /town/quest, if it's a valid one. */
 export function parseQuestAction(body: unknown): TownQuestAction | null {
@@ -206,10 +263,10 @@ export function switchClass(userId: string, cls: string): { ok: true; adventure:
   return { ok: true, adventure: s };
 }
 
-const deleteStmt = db.prepare('DELETE FROM adventurers WHERE user_id = ?');
-
 /** Starts a member's class, quests and equipment over (the CMS): no class, the Tanod's quest again on their next visit,
- *  nothing worn or carried. */
+ *  nothing worn or carried. Their level and XP stay; every stat and skill point comes back. */
 export function resetAdventure(userId: string): void {
-  deleteStmt.run(userId);
+  if (!getStmt.get(userId)) return;
+  const s = load(userId);
+  save(userId, { ...freshAdventure(), progress: refundPoints(loadStats(), null, s.progress) });
 }

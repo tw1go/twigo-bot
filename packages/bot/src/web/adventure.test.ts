@@ -14,10 +14,13 @@ for (const name of ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'ADMIN_ROLE_ID', 'ADMI
   'GAMBLING_CHANNEL_ID', 'GAMES_CHANNEL_ID', 'JAIL_ROLE_ID', 'REWARD_OWNER_ID', 'ROOM_FINDS_CHANNEL_ID']) process.env[name] = 'test';
 process.env.TIMEZONE = 'Asia/Manila';
 
-const { CLASSES, EQUIPMENT, QUESTS, adventureOf, equipStep, freshAdventure, kitOf, parseEquipAction, parseQuestAction, placesFor, questStep, resetAdventure, startQuests, townEquip, townQuest } =
+const { CLASSES, EQUIPMENT, QUESTS, adventureOf, equipStep, fighterOf, freshAdventure, gainXpFor, killFor, kitOf, parseEquipAction, parseQuestAction, placesFor, questStep, resetAdventure, startQuests, townEquip, townQuest } =
   await import('./adventure.js');
 const { usedSlots } = await import('../dig/bag.js');
-const { closeDatabase } = await import('../db/db.js');
+const { closeDatabase, db } = await import('../db/db.js');
+const { loadStats } = await import('./stats-data.js');
+const { mobStats, skillPointsAt, xpForLevel, xpToNext } = await import('@mikazuki/shared');
+const S = loadStats();
 
 const Q = 'main-01-class';
 
@@ -69,17 +72,52 @@ test('saved per member: /me starts the quest, the routes save, the bag counts un
   const done = townQuest('m1', { quest: Q, action: 'chooseClass', cls: 'hilot' });
   assert.equal(done.changed, true);
   assert.equal(done.given, 'weapon-training-balm');
-  assert.deepEqual(kitOf('m1'), { cls: 'hilot', weapon: 'weapon-training-balm' });
+  assert.deepEqual(kitOf('m1'), { cls: 'hilot', weapon: 'weapon-training-balm', level: 1 });
   assert.equal(usedSlots('m1'), 0); // worn: no bag slot
   assert.equal(townEquip('m1', { action: 'unequip', place: 'weapon' }, 3).changed, true);
   assert.equal(usedSlots('m1'), 1);
-  assert.deepEqual(kitOf('m1'), { cls: 'hilot', weapon: null });
+  assert.deepEqual(kitOf('m1'), { cls: 'hilot', weapon: null, level: 1 });
   assert.equal(adventureOf('m1').quests.done[0], Q); // kept
   // The CMS can start it all over: no class, the class quest again, nothing carried.
   resetAdventure('m1');
-  assert.deepEqual(kitOf('m1'), { cls: null, weapon: null });
+  assert.deepEqual(kitOf('m1'), { cls: null, weapon: null, level: 1 });
   assert.deepEqual(adventureOf('m1').quests, { active: [{ id: Q, step: 0 }], done: [] });
   assert.equal(usedSlots('m1'), 0);
+});
+
+test('a row saved before levels (schema v10) reads as Lv 1, 0 XP, nothing earned or spent', () => {
+  db.prepare('INSERT INTO adventurers (user_id, class, quests, equipped, bag, updated) VALUES (?, ?, ?, ?, ?, ?)').run(
+    'old', 'stick', JSON.stringify({ active: [], done: [Q] }), JSON.stringify({ weapon: 'weapon-training-stick' }), '[]', Date.now(),
+  );
+  const s = adventureOf('old');
+  assert.equal(s.cls, 'stick');
+  assert.deepEqual(s.progress, { level: 1, xp: 0, next: xpToNext(S, 1), points: {}, statPoints: 0, skills: {}, skillPoints: 0 });
+  assert.equal(s.trainingArmorGiven, false);
+  assert.deepEqual(freshAdventure().progress, s.progress, 'the same as a new character');
+});
+
+test('levels are saved: XP and kills level them up (points earned), the fight sees them, a class reset keeps the level', () => {
+  townQuest('lv', { quest: Q, action: 'talk', npc: 'tanod' });
+  townQuest('lv', { quest: Q, action: 'chooseClass', cls: 'slingshot' });
+  const can = mobStats(S, 'tin-can')!;
+  const kill = killFor('lv', can);
+  assert.deepEqual([kill.gained, kill.ups, kill.progress.level], [can.xp, 0, 1]);
+  const up = gainXpFor('lv', xpForLevel(S, 4) - can.xp);
+  assert.deepEqual([up.ups, up.progress.level, up.progress.xp], [3, 4, 0]);
+  const saved = adventureOf('lv').progress;
+  assert.deepEqual([saved.level, saved.xp, saved.statPoints, saved.skillPoints], [4, 0, 3 * S.growth.pointsPerLevelUp, skillPointsAt(S, 4)]);
+  assert.equal(kitOf('lv').level, 4);
+  // What the town passes into a fight: class, level, points, everything worn, the skills' levels (Lv 1 each so far).
+  assert.deepEqual(fighterOf('lv'), { cls: 'slingshot', level: 4, points: {}, gear: ['weapon-training-slingshot'], skills: Array(CLASSES.find((c) => c.id === 'slingshot')!.skills.length).fill(1) });
+  // Far below them, a Tin Can gives less (the low-mob penalty).
+  gainXpFor('lv', xpForLevel(S, 12) - xpForLevel(S, 4));
+  assert.ok(killFor('lv', can).gained < can.xp);
+  // Starting the class over keeps the level and XP; the points come back (none spent, all the skill points).
+  const before = adventureOf('lv').progress;
+  resetAdventure('lv');
+  const after = adventureOf('lv').progress;
+  assert.deepEqual([after.level, after.xp, after.skillPoints, after.points], [before.level, before.xp, skillPointsAt(S, before.level), {}]);
+  assert.equal(adventureOf('lv').cls, null);
 });
 
 test('two places for bracers and two for rings', () => {
