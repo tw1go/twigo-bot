@@ -175,6 +175,8 @@ export interface Attacker {
   points?: StatPoints;
   gear?: (Item | string | null | undefined)[];
   skills?: number[];
+  /** Their mobility moves' skill levels (by move id; for their MP cost). */
+  moves?: Record<string, number>;
   blinded?: boolean;
 }
 

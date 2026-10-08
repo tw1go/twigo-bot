@@ -575,7 +575,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   golem's `hitMs`: slam frame, toss frame + 600 ms flight, glare frame) on town.ts's 100 ms clock: off HP, the Bag's
   slow (`Vitals.slow`: the step budget halved, rate and burst), the glare's blindness (`Attacker.blinded`: every hit a
   Miss). In combat = hit, missed or hitting within 5 s; regen in the Slums by stats.json `regen` (HP 2%/s out of combat,
-  MP mpRegen all along; skills cost no MP yet). 0 HP: knocked out (`knocked-out` to the room; no here/step/sit/face/move,
+  MP mpRegen all along; skills spend MP: below). 0 HP: knocked out (`knocked-out` to the room; no here/step/sit/face/move,
   `attack-refused` 'out'; left out of the mobs' tick, so mobs walk home and the golem looks elsewhere; `forget` drops
   hits on their way), after `RESPAWN_MS` 3 s `respawn` at the room's arrival tile (the Slums' spawn = `arrive.town`),
   full. `vitals` (id, hp, maxHp; mp/maxMp to yourself) to you, your room and your party elsewhere; `TownPlayer.hp/maxHp/
@@ -597,8 +597,14 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   "X unlocks at Lv N."). Skill points (`POST /town/skills` { raise, skill: '0'…'6' | move id } | { reset },
   `skillsStep` / `townSkills`, progress.ts `raiseSkill` / `resetSkillPoints`, tested): 1 point = +1 level, unlocked skills
   only, cap = min(20, level − unlock + 1); Reset free, all back (stat points stay); banked before a class; the ticket
-  refunds them. Per level: damage +2%, cooldown −1%, slow/root +5% (ms), MP cost +3% (shown only: "MP cost +27%" in
-  tooltips; skills cost no MP yet). Skills panel (`#skill-book`): "Skill points: N" + Reset, skills in unlock order with
+  refunds them. Per level: damage +2%, cooldown −1%, slow/root +5% (ms), MP cost +3%. MP costs (stats.json
+  skills.mpCost, repo-only: tell the user to add it to the art folder's; per class the damage skills by tier, Dash, the
+  Lv 8 move; shared `skillMpCost`, rounded): spent on battle maps only (town.ts: `attack` refused 'mp' without enough,
+  spent once the hit is taken; a `move` without enough isn't passed on; `Vitals.spend`/`hasMp`; `Attacker.moves` = move
+  skill levels); the game shows "N MP" in the Skills panel and slot tooltips, auto-cast skips skills it can't pay for, a
+  move without MP doesn't go; auto MP Potion (TownScene `lowMp`): under a quarter of your MP, or too little for the skill
+  you're using, an MP Potion from the combat bag is sent as a `potion` when the shared cooldown is ready (once a second at
+  most); else "Not enough MP." Skills panel (`#skill-book`): "Skill points: N" + Reset, skills in unlock order with
   icon, name, "Lv N / cap · cooldown", a + while below the cap with points; locked rows greyed "Unlocks at Lv N". Slot
   tooltips "Quick Shot Lv 3 / 10", desc, cooldown, MP cost. The class choice's preview shows "Lv 1 / cap" at your level
   (your own class: as raised; locked: "Locked"); `skillViews` in net/adventure.ts. Dev: `/__skills?as=&skill=|reset=1`;

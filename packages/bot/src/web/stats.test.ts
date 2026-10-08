@@ -23,6 +23,7 @@ import {
   skillLevelBonus,
   skillLevelCap,
   skillPct,
+  skillMpCost,
   skillPointsAt,
   statPointsAt,
   unspentStatPoints,
@@ -245,4 +246,15 @@ test('mob name colours: grey 5+ levels below you, red 3+ above, white between', 
   const tone = (me: number, mob: number) => mobTone(data, me, mob);
   assert.deepEqual([tone(1, 1), tone(1, 3), tone(1, 4), tone(1, 13)], ['white', 'white', 'red', 'red']);
   assert.deepEqual([tone(5, 1), tone(6, 1), tone(10, 1)], ['white', 'grey', 'grey']);
+});
+
+test('MP costs: the table by class (T1 free), Dash and the Lv 8 move, +3% a skill level rounded; every class has one', () => {
+  for (const c of CLASSES) assert.ok(data.skills.mpCost?.[c.id], `${c.id} has MP costs`);
+  assert.deepEqual([0, 1, 2, 3, 4, 5, 6].map((i) => skillMpCost(data, 'broom', String(i))), [0, 2, 8, 14, 20, 27, 36]);
+  assert.deepEqual([0, 1, 2, 3, 4, 5, 6].map((i) => skillMpCost(data, 'potlid', String(i))), [0, 1, 4, 8, 11, 15, 20]);
+  assert.deepEqual([0, 1, 2, 3, 4, 5, 6].map((i) => skillMpCost(data, 'greatstick', String(i))), [0, 1, 3, 5, 7, 9, 12]);
+  assert.deepEqual([skillMpCost(data, 'hilot', 'dash'), skillMpCost(data, 'hilot', 'blink'), skillMpCost(data, 'slingshot', 'step-back'), skillMpCost(data, 'stick', 'dash')], [6, 10, 6, 2]);
+  assert.equal(skillMpCost(data, 'broom', '6', 20), Math.round(36 * 1.57)); // 57
+  assert.equal(skillMpCost(data, 'broom', '0', 20), 0);
+  assert.equal(skillMpCost(data, null, '3'), 0); // no class: free
 });

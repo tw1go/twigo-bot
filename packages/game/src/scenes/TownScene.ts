@@ -76,7 +76,7 @@ import { GOLEM_SOUNDS, GolemView } from '../world/golem';
 import { loadBoss } from '../assets/queue';
 import { FxLayers } from '../world/fx-layers';
 import { SKILL_POSE, battleSheets } from '../characters/battle-art';
-import { cooldownOf } from '../combat/cooldowns';
+import { cooldownOf, mpCostOf } from '../combat/cooldowns';
 import { WorldSkills } from '../combat/world-skills';
 import { SKILL_PREVIEWS } from '../combat/skill-previews';
 import { skillSlots } from '../combat/skill-slots';
@@ -857,6 +857,48 @@ export class TownScene extends Phaser.Scene {
   /** The world's effects: ground (under every player and mob) and front (over them): world/fx-layers.ts. */
   private fxLayers!: FxLayers;
 
+  /** A skill's MP at its level (stats.json skills.mpCost); 0 off battle maps, where skills are free. */
+  private mpOf(name: string): number {
+    const sk = skillView(name);
+    const S = adventureData()?.stats;
+    return this.battleMap && sk && S ? mpCostOf(S, adventure()?.cls, sk, sk.level) : 0;
+  }
+
+  /** Whether you have the MP for a skill now (as last heard; the server decides). */
+  private canPay(name: string): boolean {
+    const need = this.mpOf(name);
+    return need <= 0 || !this.vitalsNow || this.vitalsNow.mp >= need;
+  }
+
+  /**
+   * MP running low (under `need` for a skill, or a quarter of your most): an MP Potion from the combat bag drinks itself
+   * when the potions' shared cooldown is ready (battle maps; the server heals and starts the cooldown as for a click).
+   * `say`: tell them when there's none to drink.
+   */
+  private lowMp(need: number, say = false): void {
+    const v = this.vitalsNow;
+    if (!this.battleMap || !v || this.knockedOut) return;
+    if (v.mp >= need && v.mp >= v.maxMp / 4) return;
+    const now = this.time.now;
+    const potion = (adventure()?.bag ?? []).find((i) => {
+      const d = anyDef(i.defId);
+      return !isGearDef(d) && d?.kind === 'potion' && d.heals === 'mp' && i.count > 0;
+    });
+    if (potion && v.mp < v.maxMp && now >= this.potionReady && now >= this.autoPotionAt) {
+      this.autoPotionAt = now + 1000; // (once a second at most, while the server answers)
+      this.link?.send({ t: 'potion', item: potion.defId });
+      return;
+    }
+    if (v.mp < need && (say || now >= this.noMpToldAt)) {
+      this.noMpToldAt = now + 4000;
+      toast(potion ? 'Not enough MP. Your potions are cooling down.' : 'Not enough MP.', 1600, 'bad');
+    }
+  }
+  /** When the potions' shared cooldown is over (scene time), as the server last said. */
+  private potionReady = 0;
+  private autoPotionAt = 0;
+  private noMpToldAt = 0;
+
   private stopFight(): void {
     if (!this.engage) return;
     this.engage = null;
@@ -888,9 +930,12 @@ export class TownScene extends Phaser.Scene {
       // The chosen skill, or while it's cooling down the first damage skill that's ready (the bar's order, then the class's).
       const c = classInfo(adventure()?.cls);
       if (!c) return this.stopFight();
-      const ready = (n: string) => now >= (this.castReady.get(n) ?? 0) && open(n) && this.reachOf(c.id, c.skills.findIndex((k) => k.name === n)) >= dist(me);
+      const inReach = (n: string) => now >= (this.castReady.get(n) ?? 0) && open(n) && this.reachOf(c.id, c.skills.findIndex((k) => k.name === n)) >= dist(me);
+      const ready = (n: string) => inReach(n) && this.canPay(n);
       const damage = new Set(c.skills.map((k) => k.name));
       const order = [...(this.hotbar?.skillOrder() ?? []).filter((n) => damage.has(n)), ...c.skills.map((k) => k.name)];
+      // Not enough MP for the chosen one: an MP Potion if there's one (auto), meanwhile whatever else is ready.
+      if (inReach(e.name) && !this.canPay(e.name)) this.lowMp(this.mpOf(e.name));
       const name = ready(e.name) ? e.name : order.find(ready);
       if (!name) return;
       const idx = c.skills.findIndex((k) => k.name === name);
@@ -942,6 +987,10 @@ export class TownScene extends Phaser.Scene {
     if (!sk || sk.locked) return 'no'; // (from its unlock level: the bar says when; the town ignores it before)
     const now = this.time.now;
     if (now < (this.moveReady.get(kind) ?? 0) || this.player.busy || this.player.isSitting || this.inside || this.knockedOut) return 'no';
+    if (!this.canPay(name)) {
+      this.lowMp(this.mpOf(name), true);
+      return 'no';
+    }
     const dir = this.player.facing;
     const tiles = moveTiles(this.grid, this.player.heading, dir, kind, Math.floor(this.stepBudget()) - 1);
     const end = tiles[tiles.length - 1];
@@ -1483,6 +1532,7 @@ export class TownScene extends Phaser.Scene {
         if (m.id !== myId) return this.others.handle(m);
         setHudVitals({ hp: m.hp, maxHp: m.maxHp, mp: m.mp ?? 0, maxMp: m.maxMp ?? 0 });
         this.vitalsNow = { hp: m.hp, maxHp: m.maxHp, mp: m.mp ?? 0, maxMp: m.maxMp ?? 0 };
+        this.lowMp(0); // under a quarter: an MP Potion drinks itself
         return this.player.setHp(m.hp, m.maxHp);
       }
       // Knocked out (0 HP): you fade out where you stand and can't act; in 3 s the server puts you back at the way in.
@@ -1532,13 +1582,19 @@ export class TownScene extends Phaser.Scene {
         ch?.hitNumber(`+${m.amount}`, m.id === myId, m.heals === 'hp' ? '#4ADE80' : '#60A5FA');
         if (m.id === myId) {
           playSound('combat-potion');
-          if (m.cooldown) this.hotbar?.cooldown(potionCooldownKey, m.cooldown / 1000);
+          if (m.cooldown) {
+            this.hotbar?.cooldown(potionCooldownKey, m.cooldown / 1000);
+            this.potionReady = this.time.now + m.cooldown;
+          }
         }
         return;
       }
       if (m.t === 'potion-refused') {
         playSound('error');
-        if (m.reason === 'cooldown' && m.ms) this.hotbar?.cooldown(potionCooldownKey, m.ms / 1000);
+        if (m.reason === 'cooldown' && m.ms) {
+          this.hotbar?.cooldown(potionCooldownKey, m.ms / 1000);
+          this.potionReady = this.time.now + m.ms;
+        }
         const why = { cooldown: 'Your potions are cooling down.', none: 'None left.', full: "You're already full.", here: 'HP and MP Potions work in the Slums.' }[m.reason];
         return toast(why, 1800, 'bad');
       }
@@ -1558,6 +1614,7 @@ export class TownScene extends Phaser.Scene {
       if (m.t === 'attack-refused') {
         if (m.reason === 'range') toast('Too far to hit it.', 1500);
         if (m.reason === 'locked') toast("You can't use that skill yet.", 1500);
+        if (m.reason === 'mp') this.lowMp(Infinity, true);
         return;
       }
       if (m.t === 'welcome') {

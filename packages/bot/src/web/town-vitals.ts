@@ -5,7 +5,7 @@ import type { StatsData } from '@mikazuki/shared';
 // in battle maps (the Slums), from mobs' and the golem's hits; the town and the neighbourhood are safe, and arriving there
 // fills both up. A reload in the Slums keeps what they had. In the Slums they come back by stats.json `regen`: HP not
 // while in combat (hit, or hitting, in the last outOfCombatAfterSec), else outOfCombatPctPerSec of the most a second; MP
-// its mpPerSec ("1 + 0.05 * INT", derivedStats' mpRegen) all the time (skills cost no MP yet). At 0 HP they're knocked
+// its mpPerSec ("1 + 0.05 * INT", derivedStats' mpRegen) all the time; skills spend it (`spend`, stats.json skills.mpCost). At 0 HP they're knocked
 // out for RESPAWN_MS, then the host puts them back at the map's way in with everything full; no penalty. The Bag's slow
 // and the Lamp Glare's blindness are kept here too (the host halves their steps and makes their attacks miss). Pure (the
 // clock is passed in), so it's tested on its own.
@@ -95,6 +95,22 @@ export class Vitals {
     const before = shown(v)[stat];
     v[stat] = Math.min(v.max[stat], v[stat] + amount);
     return shown(v)[stat] - before;
+  }
+
+  /** A skill's MP: spent if they have it (true), else nothing (false; knocked out or unknown: false). */
+  spend(user: string, mp: number): boolean {
+    const v = this.all.get(user);
+    if (!v || v.outUntil) return false;
+    if (mp <= 0) return true;
+    if (v.mp < mp) return false;
+    v.mp -= mp;
+    return true;
+  }
+
+  /** Whether they have this much MP now (0: always). */
+  hasMp(user: string, mp: number): boolean {
+    const v = this.all.get(user);
+    return mp <= 0 || (!!v && !v.outUntil && v.mp >= mp);
   }
 
   /** Whether they're at their most of it. */

@@ -367,7 +367,7 @@ export type TownServerMessage =
   | { t: 'level-up'; id: string; level: number }
   /** Your attack didn't land: too far, too fast, the mob's gone, the skill isn't one of yours or unlocked yet, or you're
    *  knocked out. */
-  | { t: 'attack-refused'; reason: 'range' | 'slow' | 'gone' | 'skill' | 'locked' | 'out' }
+  | { t: 'attack-refused'; reason: 'range' | 'slow' | 'gone' | 'skill' | 'locked' | 'out' | 'mp' }
   /** Someone's HP (and yours with your MP) changed: to you (the HUD), to everyone in your room (only a party member's
    *  shows over their head) and to your party (its panel). */
   | { t: 'vitals'; id: string; hp: number; maxHp: number; mp?: number; maxMp?: number }

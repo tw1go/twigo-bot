@@ -1,4 +1,4 @@
-import { type ClassSkill, type StatsData, baseCooldown, skillCooldown, skillLevelBonus } from '@mikazuki/shared';
+import { type ClassSkill, type StatsData, baseCooldown, skillCooldown, skillMpCost } from '@mikazuki/shared';
 import { MOVES, isMoveKind } from '../world/mobility';
 
 // ⏱️ A skill's cooldown (s) at its skill level: a damage skill's base by its unlock level (@mikazuki/shared baseCooldown:
@@ -10,9 +10,9 @@ export function cooldownOf(stats: StatsData, skill: ClassSkill, level: number): 
   return skillCooldown(stats, base, level);
 }
 
-/** A skill's MP cost over its base at its skill level (+3% a level past 1), in %: skills cost no MP yet, so it's shown
- *  only. */
-export const mpCostPct = (stats: StatsData, level: number) => Math.round((skillLevelBonus(stats, level).mpCost - 1) * 100);
+/** A skill's MP at its skill level (stats.json skills.mpCost, +3% a level past 1; the bot spends the same on battle
+ *  maps). */
+export const mpCostOf = (stats: StatsData, cls: string | null | undefined, skill: ClassSkill, level: number) => skillMpCost(stats, cls, skill.key, level);
 
 /** Seconds as the panel and tooltips show them: "1s", "0.95s". */
 export const seconds = (s: number) => `${+s.toFixed(2)}s`;

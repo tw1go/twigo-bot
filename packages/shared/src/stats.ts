@@ -63,6 +63,8 @@ export interface StatsData {
     /** "100 * 1.3^(tier-1), rounded" */
     basePct: string;
     perSkillLevel: { damageOrHeal: number; buffDebuff: number; mpCost: number; cooldown: number };
+    /** Per class: MP at skill Lv 1 for its damage skills by tier, Dash and its Lv 8 move. */
+    mpCost?: Record<string, { tiers: number[]; dash: number; move: number }>;
   };
   caps: Record<string, number>;
   /** MP per second: "1 + 0.05 * INT". */
@@ -359,6 +361,15 @@ export function skillLevelBonus(data: StatsData, skillLevel: number): { damage: 
   const n = Math.max(1, skillLevel) - 1;
   const P = data.skills.perSkillLevel;
   return { damage: 1 + P.damageOrHeal * n, buff: 1 + P.buffDebuff * n, mpCost: 1 + P.mpCost * n, cooldown: 1 + P.cooldown * n };
+}
+
+/** The MP a skill costs at its skill level (stats.json skills.mpCost: its base, +3% a level past 1, rounded): `key` is a
+ *  damage skill's place ('0'…'6') or a move's id ('dash', else the class's Lv 8 move). 0 when the table has none. */
+export function skillMpCost(data: StatsData, cls: string | null | undefined, key: string, skillLevel = 1): number {
+  const t = cls ? data.skills.mpCost?.[cls] : undefined;
+  if (!t) return 0;
+  const base = /^\d+$/.test(key) ? (t.tiers[Number(key)] ?? 0) : key === 'dash' ? t.dash : t.move;
+  return Math.round(base * skillLevelBonus(data, skillLevel).mpCost);
 }
 
 /** A damage skill's multiplier on Power at its skill level (tier 2 at Lv 5: 1.3 × 1.08). */

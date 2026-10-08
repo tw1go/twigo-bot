@@ -142,6 +142,7 @@ const TOPICS: Topic[] = [
       '• Loot goes in your **combat bag**: the **Combat** tab of your bag (**B**), **40 slots**. Potions stack to 99, whetstones and agimats to 999, gear one a slot. Full: it stays on the ground',
       '• Hover an item for its tooltip: its level and stats needed (red: not yet), its base stat, its **3 affix lines** (blue and orange gear), its agimat slots. **Orange gear binds** the first time you wear it',
       '• **HP and MP Potions**: buy them at the sari-sari store’s **Healing** tab for Kusing, drag them onto your hotbar (the **- = ~** slots) and press the key. They heal at once and share a **10 s** cooldown',
+      '• In the Slums skills cost **MP** (the first skill is free; the stronger ones and the moves cost more; each skill level 3% more: the Skills panel shows it). Without enough MP a skill waits. When your MP runs low (under a quarter, or too little for a skill), an **MP Potion** from your combat bag drinks itself if the potions’ cooldown is ready',
     ].join('\n'),
   },
   {

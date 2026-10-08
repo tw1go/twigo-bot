@@ -22,6 +22,7 @@ import {
   bagSlots,
   classSkills,
   damageSkillLevels,
+  skillLevelOf,
   equipFromBag,
   giveGear,
   giveQuestRewards,
@@ -381,7 +382,8 @@ export function forgeFor(userId: string, a: TownForgeAction): TownForgeResponse 
  *  skills' levels in the class's order. */
 export function fighterOf(userId: string): Attacker {
   const s = load(userId);
-  return { cls: s.cls, level: s.progress.level, points: s.progress.points, gear: Object.values(s.equipped), skills: damageSkillLevels(classOf(s.cls), s.progress) };
+  const moves = Object.fromEntries((classOf(s.cls)?.mobility ?? []).map((m) => [m.id, skillLevelOf(s.progress, m.id)]));
+  return { cls: s.cls, level: s.progress.level, points: s.progress.points, gear: Object.values(s.equipped), skills: damageSkillLevels(classOf(s.cls), s.progress), moves };
 }
 
 /** Changes their progress through `f` (web/progress.ts) and saves it. */

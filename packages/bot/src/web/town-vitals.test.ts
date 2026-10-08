@@ -389,3 +389,16 @@ test('the Bag\'s slow holds their steps to half: 3 at once instead of 6, then ba
   a.ws.close();
   await close();
 });
+
+test('MP: a skill spends it only when there is enough; knocked out, none', () => {
+  const v = new Vitals(R);
+  v.fill('a', MAX, 0);
+  assert.ok(v.hasMp('a', MAX.mp) && !v.hasMp('a', MAX.mp + 1));
+  assert.equal(v.spend('a', MAX.mp + 1), false);
+  assert.equal(v.get('a')!.mp, MAX.mp); // nothing spent
+  assert.ok(v.spend('a', 10));
+  assert.equal(v.get('a')!.mp, MAX.mp - 10);
+  assert.ok(v.spend('a', 0) && v.hasMp('nobody', 0)); // free skills always go
+  v.hurt('a', 1e9, 0);
+  assert.equal(v.spend('a', 1), false);
+});

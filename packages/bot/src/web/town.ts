@@ -13,7 +13,7 @@ import { type CombatItems, type LootContent, potionOf } from './combat-bag.js';
 import { type Loot, LootRoom } from './town-loot.js';
 import { type HeldOffer, type Trade, Trades, checkOffer } from './trade.js';
 import type { CharacterProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item, TradeEnd, TradeView } from '@mikazuki/shared';
-import { itemStats, tradeRules } from '@mikazuki/shared';
+import { itemStats, skillMpCost, tradeRules } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
 // messages). The server keeps everyone's tile and checks each step — on the map, not blocked, next to the last
@@ -331,7 +331,8 @@ export function attachTown(server: Server, opts: TownOptions): Town {
 
   // HP and MP: only where there are mobs (their rules come from a mob room: class, level, points, worn gear).
   const rules = Object.values(opts.mobs ?? {})[0];
-  const vitals = rules ? new Vitals(loadStats().regen) : null;
+  const STATS = loadStats();
+  const vitals = rules ? new Vitals(STATS.regen) : null;
   const battle = (room: string) => !!opts.mobs?.[room];
   /** Who they are in a fight: class, level, points, everything worn, skill levels (the class and weapon alone without
    *  saved levels). */
@@ -588,6 +589,12 @@ export function attachTown(server: Server, opts: TownOptions): Town {
           const unlock = opts.moveLevel(p.cls, m.move);
           if (unlock === null || (p.level ?? 1) < unlock) return;
         }
+        // Its MP on a battle map (the town is free): not enough, not shown (the game checks first).
+        if (vitals && battle(c.room)) {
+          const who = fighterOf(c);
+          if (!vitals.spend(c.userId, skillMpCost(STATS, who.cls, m.move, who.moves?.[m.move] ?? 1))) return;
+          tellVitals(c);
+        }
         c.movedAt = now;
         return others(c, { t: 'move', id: p.id, move: m.move, col: m.col, row: m.row });
       }
@@ -598,8 +605,12 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         // Their class, level, points, everything worn and skill levels; blinded, every hit misses.
         const now = Date.now();
         const who = { ...fighterOf(c), blinded: !!vitals?.blinded(c.userId, now) };
+        // Its MP (stats.json skills.mpCost at its skill level), spent once the mob room takes the hit.
+        const mp = skillMpCost(STATS, who.cls, String(m.skill), who.skills?.[m.skill as number] ?? 1);
+        if (vitals && !vitals.hasMp(c.userId, mp)) return send(c, { t: 'attack-refused', reason: 'mp' });
         const r = mobs.attack(p.id, [p.col, p.row], who, m.mob, now, m.skill as number, p.nickname, c.userId);
         if (!r.ok) return send(c, { t: 'attack-refused', reason: r.reason });
+        if (mp > 0 && vitals?.spend(c.userId, mp)) tellVitals(c);
         vitals?.fought(c.userId, now); // in combat: no HP back for a while
         // The hit, then what it set off (the golem calling the Junk, enraging, falling: its line too, to this room only).
         for (const e of [{ t: 'mob-hit', by: p.id, skill: m.skill as number, hits: r.hits } satisfies TownServerMessage, ...mobs.flush()]) {

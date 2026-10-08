@@ -4,7 +4,7 @@ import { playSound } from '../audio/sound';
 import { MOBILITY_PREVIEWS, SKILL_PREVIEWS } from '../combat/skill-previews';
 import { GAP_MS, STAGE_H, STAGE_W, type Skill, type SkillStage } from '../combat/skill-stage';
 import { itemArt, isRarity } from './item-art';
-import { cooldownOf, mpCostPct, seconds } from '../combat/cooldowns';
+import { cooldownOf, mpCostOf, seconds } from '../combat/cooldowns';
 import { type SkillView, adventure, adventureData, onAdventure, raiseSkill, resetSkills, skillViews } from '../net/adventure';
 import { toast } from './toast';
 
@@ -305,7 +305,8 @@ export class Hotbar {
         row.title = this.tip(s);
         const text = el('span', 'sb-text');
         const line = el('span', 'sb-line');
-        const cd = stats ? ` · ${seconds(cooldownOf(stats, s, s.level))}` : '';
+        const mp = stats ? mpCostOf(stats, this.cls?.id, s, s.level) : 0;
+        const cd = stats ? ` · ${seconds(cooldownOf(stats, s, s.level))}${mp ? ` · ${mp} MP` : ''}` : '';
         line.append(el('span', 'hb-name', s.name), el('span', 'hb-lv', s.locked ? `Unlocks at Lv ${s.unlock}` : `Lv ${s.level} / ${s.cap}${cd}`));
         text.append(line, el('span', 'sb-desc', s.desc));
         const pic = this.iconOf(s.name) ?? el('span', 'hb-initials', initials(s.name));
@@ -362,7 +363,8 @@ export class Hotbar {
   private tip(s: SkillView): string {
     if (s.locked) return `${s.name}\nUnlocks at Lv ${s.unlock}\n${s.desc}`;
     const stats = adventureData()?.stats;
-    const more = stats ? `\nCooldown ${seconds(cooldownOf(stats, s, s.level))} · MP cost +${mpCostPct(stats, s.level)}%` : '';
+    const mp = stats ? mpCostOf(stats, this.cls?.id, s, s.level) : 0;
+    const more = stats ? `\nCooldown ${seconds(cooldownOf(stats, s, s.level))} · ${mp ? `${mp} MP` : 'No MP'}` : '';
     return `${s.name} Lv ${s.level} / ${s.cap}\n${s.desc}${more}`;
   }
 
