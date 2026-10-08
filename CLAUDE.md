@@ -280,7 +280,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   `height` (0 basin, 1 ground, 2 ridge; 16 px a level), `walls` (cliff material), `ramps` (2 tiles; `world/heights.ts`:
   steps only along a ramp, a smooth lift on it, the walk grid and A* use it; characters `elevation`, objects raised,
   `HEIGHT_DEPTH` in depth; clicks pick the raised tile under the pointer). `world/terrain.ts` draws it by the art's
-  elevation README: floors, walls, rims, caps baked per 512 px chunk in the README's order; tiles that rise over the tile
+  elevation README (each ground tile one of its kind's variants, tiles.slums.ground listed from the art's _sheets.csv,
+  picked by `rng.ts` `variantAt`: a murmur3 mix of col,row seeded per kind, so repeats never line up in stripes): floors, walls, rims, caps baked per 512 px chunk in the README's order; tiles that rise over the tile
   just behind (and ramps) are sprites sorted with characters, so the ground in front hides what stands behind (Wire
   Ridge, the Crab Basin's lip); the canal is animated with the river's bank overlays. Everything is streamed round the
   camera (terrain chunks a few a frame, 16 × 16-tile regions of sprites, `WorldObjects` stream mode for the ~2,100
