@@ -14,6 +14,8 @@ import {
   type EquipPlace,
   type QuestDef,
   type QuestReward,
+  type LevelingData,
+  type QuestProgress,
   type QuestsFile,
   type StatName,
   type StatsData,
@@ -28,6 +30,9 @@ import {
   equipFromBag,
   giveGear,
   giveQuestRewards,
+  questKill,
+  readyToReport,
+  withLeveling,
   addToBag,
   missingTraining,
   needsLine,
@@ -62,6 +67,8 @@ export interface AdventureData extends ItemData {
   quests: QuestDef[];
   classes: ClassInfo[];
   equipment: Map<string, EquipmentDef>;
+  /** classes/leveling.json: the mini bosses and the Tanod's leveling quests (filled into `quests`). */
+  leveling: LevelingData | null;
   /** classes/stats.json, for @mikazuki/shared's stats rules. */
   stats: StatsData;
   /** Every item kind (gear and the rest: items/items.json), for the items rules. */
@@ -80,6 +87,11 @@ export interface AdventureChange {
   got?: { kusing?: number; item?: Item };
   /** A quest's rewards, just given (the quest just completed, or one finished before it had any). */
   rewards?: QuestReward[];
+  /** Quests that just started (the Tanod's lines as each is given). */
+  started?: string[];
+  /** A report's XP and Kusing. */
+  xp?: number;
+  kusing?: number;
 }
 
 let data: AdventureData | null = null;
@@ -106,6 +118,11 @@ function set(s: AdventureState, change: AdventureChange = {}, fromServer = false
   if (fakeLogin() && data) s = { ...s, progress: { ...s.progress, next: xpToNext(data.stats, s.progress.level), statPoints: unspentStatPoints(data.stats, s.cls, s.progress.level, s.progress.points) } };
   const items = JSON.stringify([s.equipped, s.bag, s.kusing]);
   const changed = items !== JSON.stringify([state?.equipped, state?.bag, state?.kusing]);
+  // Quests that weren't on before (not on the first state: those were on already).
+  if (state && !change.started) {
+    const started = s.quests.active.filter((p) => !state!.quests.active.some((x) => x.id === p.id)).map((p) => p.id);
+    if (started.length) change = { ...change, started };
+  }
   state = s;
   if (fakeLogin()) {
     saveFake(s);
@@ -142,13 +159,13 @@ function pushItems(s: AdventureState): Promise<unknown> {
 }
 
 /** Loads the data files (once); `stats` is loaded already (the scene's json cache). */
-export async function loadAdventureData(url: (path: string) => string, files: { quests: string; classes: string; equipment: string; items?: string }, stats: StatsData | undefined): Promise<AdventureData | null> {
+export async function loadAdventureData(url: (path: string) => string, files: { quests: string; classes: string; equipment: string; items?: string }, stats: StatsData | undefined, leveling?: LevelingData): Promise<AdventureData | null> {
   if (data) return data;
   const get = <T>(path: string) => fetch(url(path)).then((r) => (r.ok ? (r.json() as Promise<T>) : null)).catch(() => null);
   const [q, c, e, i] = await Promise.all([get<QuestsFile>(files.quests), get<ClassesFile>(files.classes), get<EquipmentFile>(files.equipment), files.items ? get<CombatItemsFile>(files.items) : null]);
   if (!q || !c || !e || !stats) return null;
   const equipment = new Map(e.items.map((x) => [x.id, x]));
-  data = { quests: q.quests, classes: c.classes, equipment, stats, defs: new Map<string, AnyItemDef>([...equipment, ...(i?.items ?? []).map((x): [string, AnyItemDef] => [x.id, x])]) };
+  data = { quests: withLeveling(q.quests, leveling), leveling: leveling ?? null, classes: c.classes, equipment, stats, defs: new Map<string, AnyItemDef>([...equipment, ...(i?.items ?? []).map((x): [string, AnyItemDef] => [x.id, x])]) };
   return data;
 }
 
@@ -168,6 +185,8 @@ export function initAdventure(fromMe: AdventureState | undefined, trainingArmor:
       }
     }
     const s = loadFake();
+    const jump = new URLSearchParams(location.search).get('quest');
+    if (jump) jumpToQuest(s, jump);
     startQuests(s);
     const given = giveTrainingArmor(s);
     const rewards = data ? giveQuestRewards(data, s, data.quests, devUid) : [];
@@ -245,7 +264,7 @@ async function act(path: Path, body: Body): Promise<TownAdventureResponse | null
       const o = p && questDef(body.quest)?.objectives[p.step];
       if (o) advanced = { quest: body.quest, objective: o.id };
     }
-    set(res.adventure, { advanced, completed: res.completed, given: res.given, gear: res.gear, rewards: res.rewards });
+    set(res.adventure, { advanced, completed: res.completed, given: res.given, gear: res.gear, rewards: res.rewards, xp: res.xp, kusing: res.kusing });
     if (fakeLogin() && (before?.cls !== res.adventure.cls || JSON.stringify(before?.equipped) !== JSON.stringify(res.adventure.equipped))) {
       void fetch(`/__kit?${new URLSearchParams({ as: fakeName(), cls: res.adventure.cls ?? '', weapon: res.adventure.equipped.weapon?.defId ?? '' })}`).catch(() => null);
     }
@@ -257,6 +276,21 @@ async function act(path: Path, body: Body): Promise<TownAdventureResponse | null
 export function setProgress(progress: CharacterProgress): void {
   if (state) set({ ...state, progress });
 }
+
+/** Your quests' counts from the town (`quests`: a kill counted, saved by the bot). */
+export function setQuestCounts(active: QuestProgress[]): void {
+  if (state) set({ ...state, quests: { ...state.quests, active } }, {}, true);
+}
+
+/** Dev: a kill that counts toward quests (the dev town's `quest-kill`; it keeps no quests), counted here the bot's way. */
+export function devQuestKill(kill: { kind: string; mini: boolean }): void {
+  if (!state || !data || !fakeLogin()) return;
+  const s = structuredClone(state);
+  if (questKill(s, data.quests, kill)) set(s, {}, true);
+}
+
+/** Reports a quest whose count is reached, over the Tanod's radio: its rewards come back, and the next one starts. */
+export const questReport = (quest: string) => act('/town/quest', { quest, action: 'report' });
 
 /** Talked to `npc` for `quest`'s talk objective. */
 export const questTalk = (quest: string, npc: string) => act('/town/quest', { quest, action: 'talk', npc });
@@ -434,6 +468,24 @@ function startQuests(s: AdventureState): void {
     if (s.cls && q.objectives.some((o) => o.type === 'chooseClass')) continue;
     s.quests.active.push({ id: q.id, step: 0 });
   }
+  // A finished quest's next one that never started (the bot's startQuests).
+  for (const id of s.quests.done) {
+    const next = data?.quests.find((q) => q.id === questDef(id)?.next);
+    if (next && !s.quests.done.includes(next.id) && !s.quests.active.some((p) => p.id === next.id)) s.quests.active.push({ id: next.id, step: 0 });
+  }
+}
+
+/** Dev (?quest=tanod-05): straight to that quest of the chain, every one before it done. */
+function jumpToQuest(s: AdventureState, id: string): void {
+  const quests = data?.quests ?? [];
+  const chain: string[] = [];
+  for (let q = quests.find((x) => x.autoStart); q; q = quests.find((x) => x.id === q!.next)) {
+    if (q.id === id) {
+      s.quests = { active: [{ id, step: 0 }], done: chain, rewarded: [...chain] };
+      return;
+    }
+    chain.push(q.id);
+  }
 }
 
 function fakeAct(body: TownQuestAction | TownEquipAction): TownAdventureResponse {
@@ -446,7 +498,14 @@ function fakeAct(body: TownQuestAction | TownEquipAction): TownAdventureResponse
     if (!q || !p || !o) return no("That quest isn't under way.");
     let given: string | undefined;
     let gear: string[] = [];
-    if (body.action === 'talk') {
+    let xp = 0;
+    if (body.action === 'report') {
+      if (!readyToReport(q, p)) return no('Not done yet.');
+      // Its XP from the dev town (levels live there: it sends the level-ups), its Kusing here (sent with the items).
+      xp = q.rewardXP ?? 0;
+      if (xp) void fetch(`/__xp?${new URLSearchParams({ as: fakeName(), xp: String(xp) })}`).catch(() => null);
+      s.kusing += q.rewardKusing ?? 0;
+    } else if (body.action === 'talk') {
       if (o.type !== 'talk' || o.npc !== body.npc) return no('Not yet.');
     } else {
       if (o.type !== 'chooseClass' || s.cls || !classInfo(body.cls) || !data) return no('Not yet.');
@@ -463,6 +522,7 @@ function fakeAct(body: TownQuestAction | TownEquipAction): TownAdventureResponse
       gear = giveTrainingArmor(s);
     }
     p.step++;
+    delete p.count;
     let completed: string | undefined;
     if (p.step >= q.objectives.length) {
       s.quests.active = s.quests.active.filter((x) => x.id !== q.id);
@@ -471,7 +531,7 @@ function fakeAct(body: TownQuestAction | TownEquipAction): TownAdventureResponse
       if (q.next && !s.quests.done.includes(q.next)) s.quests.active.push({ id: q.next, step: 0 });
     }
     const rewards = completed && data ? giveQuestRewards(data, s, data.quests, devUid) : [];
-    return { ok: true, adventure: s, given, ...(gear.length ? { gear } : {}), completed, ...(rewards.length ? { rewards } : {}) };
+    return { ok: true, adventure: s, given, ...(gear.length ? { gear } : {}), completed, ...(rewards.length ? { rewards } : {}), ...(xp ? { xp } : {}), ...(q.rewardKusing && completed ? { kusing: q.rewardKusing } : {}) };
   }
   // Wearing and taking off: the bot's rules (@mikazuki/shared items.ts), by uid.
   if (!data) return no("Couldn't load the items.");

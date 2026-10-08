@@ -94,7 +94,7 @@ import type { AdventureData } from '../net/adventure';
 import { Hotbar, potionCooldownKey } from '../ui/hotbar';
 import { mountClassSwitch } from '../ui/class-switch';
 import { MOVES, type MoveKind, isMoveKind, moveTiles, playMove } from '../world/mobility';
-import { changeClass, devItemsReady, devSwitchClass, adventure, adventureData, anyDef, chooseClass, classInfo, initAdventure, itemData, itemDef, loadAdventureData, onAdventure, questDef, questFor, questTalk, setItems, setProgress, skillView, skillViews } from '../net/adventure';
+import { changeClass, devItemsReady, devQuestKill, setQuestCounts, devSwitchClass, adventure, adventureData, anyDef, chooseClass, classInfo, initAdventure, itemData, itemDef, loadAdventureData, onAdventure, questDef, questFor, questTalk, setItems, setProgress, skillView, skillViews } from '../net/adventure';
 import { type Item, type QuestReward, type TownItems, LOOT_REACH, auraFor, classSkills, countOf, isGearDef, itemAura, itemStats, newItem, tradeRules } from '@mikazuki/shared';
 import type { ClassArt } from '../assets/types';
 import { drawRested, loadImages, poseFiles, restFiles } from '../characters/kit-art';
@@ -687,7 +687,7 @@ export class TownScene extends Phaser.Scene {
     const E = this.M.equipment;
     if (!Q || !K || !E) return Promise.resolve();
     const asset = (f: string) => `${import.meta.env.BASE_URL}assets/${f}`;
-    this.adventureReady ??= loadAdventureData(asset, { quests: Q.file, classes: K.data, equipment: E.file, items: this.M.combatItems?.file }, this.cache.json.get('stats'));
+    this.adventureReady ??= loadAdventureData(asset, { quests: Q.file, classes: K.data, equipment: E.file, items: this.M.combatItems?.file }, this.cache.json.get('stats'), this.cache.json.get('leveling'));
     return this.adventureReady.then((data) => {
       if (!data) return void console.warn('[quests] the quests, classes, equipment or stats data is missing');
       // Each class's first 7 skills' sounds (heard from others too), on a battle map.
@@ -1622,6 +1622,9 @@ export class TownScene extends Phaser.Scene {
         return toast(why, 1800, 'bad');
       }
       // Your level, XP and points (a kill's XP, dev's ?xp=): the HUD and everything that shows them follow.
+      // Your quests' counts (a kill counted: yours or your party's nearby); the dev town only says the kill.
+      if (m.t === 'quests') return setQuestCounts(m.active);
+      if (m.t === 'quest-kill') return devQuestKill(m);
       if (m.t === 'progress') {
         const before = adventure()?.progress.level ?? m.progress.level;
         setProgress(m.progress);

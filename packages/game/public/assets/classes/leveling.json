@@ -1,0 +1,492 @@
+{
+ "note": "Tanod leveling chain + mini bosses (Mac, 8 Oct 2026). Names and numbers are Claude placeholders.",
+ "miniBoss": {
+  "scale": 2,
+  "hpMult": 10,
+  "xpMult": 8,
+  "atkMult": 1.3,
+  "respawnSeconds": 180,
+  "perZone": "all names alive at once, one each",
+  "nameColour": "#F59E0B",
+  "kill_credit": "everyone who did >= 10% of its HP, plus their party nearby",
+  "loot": "Kusing x10 of its mob, 1 gear piece of its level (white/grey only), whetstone fragment 1 in 3"
+ },
+ "miniBosses": {
+  "tin-can": [
+   {
+    "id": "tin-can-jus-tin",
+    "name": "Jus Tin",
+    "level": 4,
+    "hp": 641,
+    "atk": 23,
+    "defense": 8,
+    "xp": 103
+   },
+   {
+    "id": "tin-can-kris-tin",
+    "name": "Kris Tin",
+    "level": 4,
+    "hp": 641,
+    "atk": 23,
+    "defense": 8,
+    "xp": 103
+   },
+   {
+    "id": "tin-can-mar-tin",
+    "name": "Mar Tin",
+    "level": 5,
+    "hp": 750,
+    "atk": 27,
+    "defense": 10,
+    "xp": 120
+   },
+   {
+    "id": "tin-can-valen-tin",
+    "name": "Valen Tin",
+    "level": 5,
+    "hp": 750,
+    "atk": 27,
+    "defense": 10,
+    "xp": 120
+   },
+   {
+    "id": "tin-can-augus-tin",
+    "name": "Augus Tin",
+    "level": 6,
+    "hp": 877,
+    "atk": 31,
+    "defense": 12,
+    "xp": 140
+   }
+  ],
+  "bottle-caps": [
+   {
+    "id": "bottle-caps-kap-tan",
+    "name": "Kap Tan",
+    "level": 6,
+    "hp": 702,
+    "atk": 31,
+    "defense": 12,
+    "xp": 112
+   },
+   {
+    "id": "bottle-caps-cap-rice",
+    "name": "Cap Rice",
+    "level": 7,
+    "hp": 821,
+    "atk": 35,
+    "defense": 14,
+    "xp": 131
+   },
+   {
+    "id": "bottle-caps-capu-chino",
+    "name": "Capu Chino",
+    "level": 7,
+    "hp": 821,
+    "atk": 35,
+    "defense": 14,
+    "xp": 131
+   },
+   {
+    "id": "bottle-caps-escap-ade",
+    "name": "Escap Ade",
+    "level": 8,
+    "hp": 960,
+    "atk": 39,
+    "defense": 16,
+    "xp": 154
+   }
+  ],
+  "tire-roller": [
+   {
+    "id": "tire-roller-tire-sa",
+    "name": "Tire Sa",
+    "level": 8,
+    "hp": 1200,
+    "atk": 39,
+    "defense": 16,
+    "xp": 192
+   },
+   {
+    "id": "tire-roller-ret-tire",
+    "name": "Ret Tire",
+    "level": 9,
+    "hp": 1405,
+    "atk": 43,
+    "defense": 18,
+    "xp": 225
+   },
+   {
+    "id": "tire-roller-sat-tire",
+    "name": "Sat Tire",
+    "level": 9,
+    "hp": 1405,
+    "atk": 43,
+    "defense": 18,
+    "xp": 225
+   },
+   {
+    "id": "tire-roller-en-tire",
+    "name": "En Tire",
+    "level": 10,
+    "hp": 1643,
+    "atk": 47,
+    "defense": 20,
+    "xp": 263
+   },
+   {
+    "id": "tire-roller-tire-mendous",
+    "name": "Tire Mendous",
+    "level": 10,
+    "hp": 1643,
+    "atk": 47,
+    "defense": 20,
+    "xp": 263
+   }
+  ],
+  "plastic-bag-spook": [
+   {
+    "id": "plastic-bag-spook-bag-ets",
+    "name": "Bag Ets",
+    "level": 11,
+    "hp": 1730,
+    "atk": 51,
+    "defense": 22,
+    "xp": 277
+   },
+   {
+    "id": "plastic-bag-spook-bag-yo",
+    "name": "Bag Yo",
+    "level": 12,
+    "hp": 2025,
+    "atk": 55,
+    "defense": 24,
+    "xp": 324
+   },
+   {
+    "id": "plastic-bag-spook-plas-tita",
+    "name": "Plas Tita",
+    "level": 12,
+    "hp": 2025,
+    "atk": 55,
+    "defense": 24,
+    "xp": 324
+   },
+   {
+    "id": "plastic-bag-spook-ba-ghost",
+    "name": "Ba Ghost",
+    "level": 13,
+    "hp": 2369,
+    "atk": 58,
+    "defense": 26,
+    "xp": 379
+   }
+  ],
+  "wire-tangle": [
+   {
+    "id": "wire-tangle-live-wire",
+    "name": "Live Wire",
+    "level": 14,
+    "hp": 2464,
+    "atk": 62,
+    "defense": 28,
+    "xp": 394
+   },
+   {
+    "id": "wire-tangle-wire-lito",
+    "name": "Wire Lito",
+    "level": 15,
+    "hp": 2882,
+    "atk": 66,
+    "defense": 30,
+    "xp": 461
+   },
+   {
+    "id": "wire-tangle-tangle-lyn",
+    "name": "Tangle Lyn",
+    "level": 15,
+    "hp": 2882,
+    "atk": 66,
+    "defense": 30,
+    "xp": 461
+   },
+   {
+    "id": "wire-tangle-hay-wire",
+    "name": "Hay Wire",
+    "level": 16,
+    "hp": 3372,
+    "atk": 70,
+    "defense": 32,
+    "xp": 540
+   }
+  ],
+  "scrap-crab": [
+   {
+    "id": "scrap-crab-scrap-py",
+    "name": "Scrap Py",
+    "level": 16,
+    "hp": 4215,
+    "atk": 70,
+    "defense": 32,
+    "xp": 1012
+   },
+   {
+    "id": "scrap-crab-crab-bie",
+    "name": "Crab Bie",
+    "level": 17,
+    "hp": 4932,
+    "atk": 74,
+    "defense": 34,
+    "xp": 1184
+   },
+   {
+    "id": "scrap-crab-ali-mango",
+    "name": "Ali Mango",
+    "level": 17,
+    "hp": 4932,
+    "atk": 74,
+    "defense": 34,
+    "xp": 1184
+   },
+   {
+    "id": "scrap-crab-sir-pincho",
+    "name": "Sir Pincho",
+    "level": 18,
+    "hp": 5771,
+    "atk": 78,
+    "defense": 36,
+    "xp": 1385
+   }
+  ]
+ },
+ "quests": [
+  {
+   "id": "tanod-01",
+   "title": "Lata Patrol",
+   "mob": "tin-can",
+   "kind": "kill",
+   "count": 20,
+   "goal": "Defeat 20 Tin Cans",
+   "startLevel": 1,
+   "targetLevel": 3,
+   "xpFromKills": 160,
+   "rewardXP": 50,
+   "soloXPAfter": 210,
+   "partyXPAfter": 138,
+   "rewardKusing": 125324,
+   "dialogue": {
+    "give": "May mga lata na gumagala sa Slums. Linisin mo, mga 20 lang.",
+    "report": "Ayos! Malinis na ang daan. Heto ang pang-merienda mo."
+   }
+  },
+  {
+   "id": "tanod-02",
+   "title": "Just In Time",
+   "mob": "tin-can",
+   "kind": "miniBoss",
+   "count": 1,
+   "goal": "Defeat one of the Tin Can mini bosses (Jus Tin, Kris Tin, Mar Tin, Valen Tin, Augus Tin)",
+   "startLevel": 3,
+   "targetLevel": 4,
+   "xpFromKills": 103,
+   "rewardXP": 100,
+   "soloXPAfter": 413,
+   "partyXPAfter": 295,
+   "rewardKusing": 152817,
+   "dialogue": {
+    "give": "May malaking lata raw dun, Jus Tin daw ang pangalan. Just in time ka!",
+    "report": "Talo si Jus Tin? Ikaw na talaga!"
+   }
+  },
+  {
+   "id": "tanod-03",
+   "title": "Caps Off",
+   "mob": "bottle-caps",
+   "kind": "kill",
+   "count": 30,
+   "goal": "Defeat 30 Bottle Caps",
+   "startLevel": 4,
+   "targetLevel": 5,
+   "xpFromKills": 120,
+   "rewardXP": 230,
+   "soloXPAfter": 763,
+   "partyXPAfter": 591,
+   "rewardKusing": 186493,
+   "dialogue": {
+    "give": "Yung mga tansan, naglalakad na! 30 piraso, sige na.",
+    "report": "Caps off sa'yo, bantay!"
+   }
+  },
+  {
+   "id": "tanod-04",
+   "title": "Kap the Captain",
+   "mob": "bottle-caps",
+   "kind": "miniBoss",
+   "count": 1,
+   "goal": "Defeat one of the Bottle Cap mini bosses (Kap Tan, Cap Rice, Capu Chino, Escap Ade)",
+   "startLevel": 5,
+   "targetLevel": 6,
+   "xpFromKills": 112,
+   "rewardXP": 360,
+   "soloXPAfter": 1235,
+   "partyXPAfter": 1012,
+   "rewardKusing": 227158,
+   "dialogue": {
+    "give": "May tansan na nagpapa-kapitan. Turuan mo ng leksyon.",
+    "report": "Wala nang kapitan-kapitan. Salamat!"
+   }
+  },
+  {
+   "id": "tanod-05",
+   "title": "Road Rage",
+   "mob": "tire-roller",
+   "kind": "kill",
+   "count": 20,
+   "goal": "Defeat 20 Tire Rollers",
+   "startLevel": 6,
+   "targetLevel": 7,
+   "xpFromKills": 300,
+   "rewardXP": 420,
+   "soloXPAfter": 1955,
+   "partyXPAfter": 1597,
+   "rewardKusing": 276941,
+   "dialogue": {
+    "give": "Mga gulong na gumugulong mag-isa. Pigilan mo ang 20.",
+    "report": "Huminto na ang gulo, este, gulong."
+   }
+  },
+  {
+   "id": "tanod-06",
+   "title": "Tired of You",
+   "mob": "tire-roller",
+   "kind": "miniBoss",
+   "count": 1,
+   "goal": "Defeat one of the Tire Roller mini bosses (Tire Sa, Ret Tire, Sat Tire, En Tire, Tire Mendous)",
+   "startLevel": 7,
+   "targetLevel": 8,
+   "xpFromKills": 192,
+   "rewardXP": 660,
+   "soloXPAfter": 2807,
+   "partyXPAfter": 2363,
+   "rewardKusing": 337612,
+   "dialogue": {
+    "give": "Si Tire Sa at mga barkada niya, sobrang yabang. Ikaw na bahala.",
+    "report": "Pagod na sila. Tired na tired!"
+   }
+  },
+  {
+   "id": "tanod-07",
+   "title": "Ghost Bags",
+   "mob": "plastic-bag-spook",
+   "kind": "kill",
+   "count": 20,
+   "goal": "Defeat 20 Plastic Bag Spooks",
+   "startLevel": 8,
+   "targetLevel": 9,
+   "xpFromKills": 440,
+   "rewardXP": 720,
+   "soloXPAfter": 3967,
+   "partyXPAfter": 3325,
+   "rewardKusing": 411873,
+   "dialogue": {
+    "give": "Mga plastik na multo, nananakot ng bata. 20 lang, kaya mo 'yan.",
+    "report": "Wala nang multo sa kanto. Galing!"
+   }
+  },
+  {
+   "id": "tanod-08",
+   "title": "Bag It Up",
+   "mob": "plastic-bag-spook",
+   "kind": "miniBoss",
+   "count": 1,
+   "goal": "Defeat one of the Plastic Bag Spook mini bosses (Bag Ets, Bag Yo, Plas Tita, Ba Ghost)",
+   "startLevel": 9,
+   "targetLevel": 10,
+   "xpFromKills": 277,
+   "rewardXP": 1030,
+   "soloXPAfter": 5274,
+   "partyXPAfter": 4507,
+   "rewardKusing": 502396,
+   "dialogue": {
+    "give": "May plastik na parang bagyo ang lakas. Ingat ka dun.",
+    "report": "Tahimik na ang kanto. Salamat, bantay!"
+   }
+  },
+  {
+   "id": "tanod-09",
+   "title": "Live Wires",
+   "mob": "wire-tangle",
+   "kind": "kill",
+   "count": 20,
+   "goal": "Defeat 20 Wire Tangles",
+   "startLevel": 10,
+   "targetLevel": 11,
+   "xpFromKills": 620,
+   "rewardXP": 1070,
+   "soloXPAfter": 6964,
+   "partyXPAfter": 5918,
+   "rewardKusing": 612847,
+   "dialogue": {
+    "give": "Mga kable na buhay! Delikado, pero ikaw pa. 20 piraso.",
+    "report": "Walang nakuryente? Buti naman."
+   }
+  },
+  {
+   "id": "tanod-10",
+   "title": "Untangled",
+   "mob": "wire-tangle",
+   "kind": "miniBoss",
+   "count": 1,
+   "goal": "Defeat one of the Wire Tangle mini bosses (Live Wire, Wire Lito, Tangle Lyn, Hay Wire)",
+   "startLevel": 11,
+   "targetLevel": 12,
+   "xpFromKills": 394,
+   "rewardXP": 1460,
+   "soloXPAfter": 8818,
+   "partyXPAfter": 7595,
+   "rewardKusing": 747521,
+   "dialogue": {
+    "give": "Si Hay Wire at mga kasama niya, gulo talaga. Ayusin mo.",
+    "report": "Untangled na! Ang linis ng trabaho mo."
+   }
+  },
+  {
+   "id": "tanod-11",
+   "title": "Crab Mentality",
+   "mob": "scrap-crab",
+   "kind": "kill",
+   "count": 20,
+   "goal": "Defeat 20 Scrap Crabs",
+   "startLevel": 12,
+   "targetLevel": 13,
+   "xpFromKills": 1580,
+   "rewardXP": 1080,
+   "soloXPAfter": 11478,
+   "partyXPAfter": 9544,
+   "rewardKusing": 912368,
+   "dialogue": {
+    "give": "Mga alimangong bakal sa dulo ng Slums. 20, tapos balik ka.",
+    "report": "Walang crab mentality dito, tulungan tayo!"
+   }
+  },
+  {
+   "id": "tanod-12",
+   "title": "Shell Shock",
+   "mob": "scrap-crab",
+   "kind": "miniBoss",
+   "count": 1,
+   "goal": "Defeat one of the Scrap Crab mini bosses (Scrap Py, Crab Bie, Ali Mango, Sir Pincho)",
+   "startLevel": 13,
+   "targetLevel": 15,
+   "xpFromKills": 1012,
+   "rewardXP": 4240,
+   "soloXPAfter": 16730,
+   "partyXPAfter": 14340,
+   "rewardKusing": 1113592,
+   "dialogue": {
+    "give": "Huling utos ko: talunin mo ang isa sa mga hari ng alimango.",
+    "report": "Handa ka na sa Golem, bantay. Ipinagmamalaki kita."
+   }
+  }
+ ]
+}

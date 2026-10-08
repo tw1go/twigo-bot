@@ -39,7 +39,7 @@ import { kowen } from '../kowens.js';
 import { filterText, kickedUntil, mutedUntil } from './town-mod.js';
 import { getOutfit, parseOutfit, saveOutfit } from './outfit.js';
 import { parseForgeAction } from './forge.js';
-import { adventureOf, combatOf, fighterOf, forgeFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townEquip, townPoints, townQuest, townSkills, trainingArmorFor, questRewardsFor } from './adventure.js';
+import { adventureOf, combatOf, fighterOf, forgeFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townEquip, townPoints, townQuest, townSkills, trainingArmorFor, questRewardsFor, questKillFor } from './adventure.js';
 import { renameWithCard } from '../items/rename-card.js';
 import { changeClassWithTicket } from '../items/class-ticket.js';
 import { LAUNCH_REWARD, isPreregistered, launched, preregCount, preregister } from '../prereg/prereg.js';
@@ -612,7 +612,10 @@ export function startWebServer(client: Client): void {
           if (!action) return send(res, 400, '{"error":"invalid equip action"}');
           result = townEquip(userId, action);
         }
-        const { changed, ...reply } = result;
+        const { changed, ups, ...reply } = result as typeof result & { ups?: number };
+        // A report's XP (and its level-ups: "Level up!" for their room) and Kusing reach the town at once.
+        if (reply.xp) town?.progress(userId, reply.adventure.progress, ups ?? 0, reply.xp);
+        if (reply.kusing || reply.rewards?.length) town?.items(userId);
         if (changed) town?.kit(userId, reply.adventure.cls, reply.adventure.equipped.weapon?.defId ?? null, weaponPlusOf(reply.adventure.equipped.weapon)); // the resting weapon for everyone, their gear's stats in fights
         if (reply.completed) console.log(`[quests] ${userId} completed ${reply.completed}${reply.adventure.cls ? ` (${reply.adventure.cls})` : ''}`);
         return send(res, 200, JSON.stringify(reply));
@@ -875,6 +878,7 @@ export function startWebServer(client: Client): void {
       map: loadTownMap(),
       rooms: { hood: hoodTownMap, slums: () => slumsMap },
       mobs: { slums: new MobRoom(loadMobMap('slums'), Math.random, Object.fromEntries(CLASSES.map((c) => [c.id, c.skills.map((k) => k.level)])), loadSkillShapes(), loadMobKinds(), loadGolemArt()) },
+      quests: { kill: questKillFor },
       // Levels: who they are in a fight, and kills' XP (saved with the class).
       progress: {
         fighter: fighterOf,

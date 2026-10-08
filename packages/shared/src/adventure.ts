@@ -31,12 +31,15 @@ export interface ClassesFile {
 
 export type QuestType = 'main' | 'side';
 
-/** An objective: talk (to `npc`) or chooseClass so far; more types (visit, collect, defeat…) can be added. */
+/** An objective: talk (to `npc`), chooseClass, kill (`count` of `mob`; its mini bosses don't count) or miniBoss (one
+ *  of `mob`'s mini bosses). Kill and miniBoss are reported to the giver when reached (the tracker's Report). */
 export interface QuestObjectiveDef {
   id: string;
   type: string;
   text: string;
   npc?: string;
+  mob?: string;
+  count?: number;
 }
 
 export interface QuestDef {
@@ -48,10 +51,14 @@ export interface QuestDef {
   summary: string;
   autoStart?: boolean;
   objectives: QuestObjectiveDef[];
-  /** The giver's lines while it's on: talk (in order), remind, complete ({class} = the chosen class's name). */
-  dialogue?: { talk?: string[]; remind?: string[]; complete?: string[] };
+  /** The giver's lines while it's on: talk (in order), remind, complete ({class} = the chosen class's name); give (as
+   *  it starts) and report (as it's reported over the radio): the leveling chain's. */
+  dialogue?: { talk?: string[]; remind?: string[]; complete?: string[]; give?: string[]; report?: string[] };
   /** Given into the combat bag when it's completed (items/items.json kinds). */
   rewards?: QuestReward[];
+  /** XP and Kusing given when it's completed (the leveling chain's: the same for everyone). */
+  rewardXP?: number;
+  rewardKusing?: number;
   next: string | null;
 }
 
@@ -62,7 +69,8 @@ export interface QuestReward {
 }
 
 export interface QuestsFile {
-  quests: QuestDef[];
+  /** (The leveling chain's entries are filled in from classes/leveling.json: @mikazuki/shared withLeveling.) */
+  quests: import('./leveling.js').QuestFileEntry[];
 }
 
 /** The kinds of equipment (an item's slot; in the order of ui.equipSlots' silhouettes). */
@@ -123,6 +131,8 @@ export interface EquipmentFile {
 export interface QuestProgress {
   id: string;
   step: number;
+  /** How many so far of the current objective's count (kill, miniBoss). */
+  count?: number;
 }
 
 /** A character's level, XP and points (bot web/progress.ts, by the stats rules; saved with the class). Only `level`,
@@ -164,7 +174,7 @@ export interface AdventureState {
 }
 
 /** POST /town/quest: an objective done in the game (talked to `npc`, or chose `cls`). */
-export type TownQuestAction = { quest: string; action: 'talk'; npc: string } | { quest: string; action: 'chooseClass'; cls: string };
+export type TownQuestAction = { quest: string; action: 'talk'; npc: string } | { quest: string; action: 'chooseClass'; cls: string } | { quest: string; action: 'report' };
 
 /** POST /town/equip: wear an item from the combat bag (by uid; in `place`, or the first free place for its kind, else the
  *  first one; what was there goes back to the bag), or take one off (needs a free bag slot). */
@@ -189,4 +199,7 @@ export interface TownAdventureResponse {
   completed?: string;
   /** Its rewards, just given. */
   rewards?: QuestReward[];
+  /** Its XP and Kusing, just given (a report). */
+  xp?: number;
+  kusing?: number;
 }

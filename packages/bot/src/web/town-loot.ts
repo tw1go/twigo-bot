@@ -1,12 +1,13 @@
 import type { ItemData, TownLoot } from '@mikazuki/shared';
-import { LOOT_REACH, itemStats, numbersIn } from '@mikazuki/shared';
+import { LOOT_REACH, type LevelingData, itemStats, miniBossRules, numbersIn } from '@mikazuki/shared';
 import type { LootContent } from './combat-bag.js';
-import { golemLoot, mobDrops } from './loot.js';
+import { golemLoot, miniLoot, mobDrops } from './loot.js';
+import { loadLeveling } from './stats-data.js';
 
 // 🪙 Loot on the ground in a battle map (one LootRoom per room with mobs, run by the town: web/town.ts). A kill's drops
 // (web/loot.ts) land round where it died, each on its own tile. Who may pick each one up (stats.json `party`): a solo
 // kill's are the killer's for 10 s, then anyone's; a party's are any member's (those in the room when it fell) for 10 s,
-// then anyone's; the golem's are personal, each player's own, never anyone else's (and never shown to them). Nothing is
+// then anyone's; the golem's and a mini boss's are personal, each player's own, never anyone else's (and never shown to them). Nothing is
 // picked up on its own (not by walking over it, Kusing neither): a click on it or F / Space picks it up, within
 // LOOT_REACH (shared). Loot lies there for LOOT_MS, then it's gone. Everything is by member (it outlasts a reload). Pure
 // (the clock is passed in).
@@ -37,6 +38,8 @@ export interface LootKill {
   to: string[];
   /** The field boss: personal loot for each of `to`. */
   boss?: boolean;
+  /** A mini boss (classes/leveling.json): personal loot for each of `to` (miniLoot). */
+  mini?: string;
 }
 
 export class LootRoom {
@@ -44,6 +47,7 @@ export class LootRoom {
   private n = 0;
   /** How long a kill's loot is kept for its killer (or party): stats.json party.solo ("killer only for 10 s"). */
   readonly reserveMs: number;
+  private readonly minis: ReturnType<typeof miniBossRules> | null;
 
   constructor(
     private readonly data: ItemData,
@@ -51,7 +55,9 @@ export class LootRoom {
     private readonly uid: () => string = () => Math.random().toString(16).slice(2, 18),
     /** Dropped gear's plus (loot.ts dropPlus): `random` unless given (the dev town's rich loot). */
     private readonly plusRandom: () => number = random,
+    leveling: LevelingData | null = loadLeveling(),
   ) {
+    this.minis = leveling ? miniBossRules(leveling) : null;
     this.reserveMs = (numbersIn(itemStats(data.stats).party.solo)[0] ?? 10) * 1000;
   }
 
@@ -61,9 +67,12 @@ export class LootRoom {
    * on. Returns the new loot.
    */
   drop(kill: LootKill, party: string[], spots: (at: [number, number], n: number) => [number, number][], now: number): Loot[] {
+    const mini = kill.mini && this.minis ? this.minis : null;
     const lots: { owner: string; contents: LootContent[] }[] = kill.boss
       ? kill.to.map((owner) => ({ owner, contents: golemLoot(this.data, this.random, this.uid, this.plusRandom) }))
-      : kill.to.slice(0, 1).map((owner) => ({ owner, contents: mobDrops(this.data, kill.kind, kill.level, this.random, this.uid, this.plusRandom) }));
+      : mini
+        ? kill.to.map((owner) => ({ owner, contents: miniLoot(this.data, kill.kind, kill.level, mini, this.random, this.uid, this.plusRandom) }))
+        : kill.to.slice(0, 1).map((owner) => ({ owner, contents: mobDrops(this.data, kill.kind, kill.level, this.random, this.uid, this.plusRandom) }));
     const total = lots.reduce((n, l) => n + l.contents.length, 0);
     const tiles = spots(kill.at, total);
     let i = 0;
@@ -76,9 +85,9 @@ export class LootRoom {
           col,
           row,
           content,
-          owners: kill.boss ? [lot.owner] : [...new Set([lot.owner, ...party])],
-          personal: !!kill.boss,
-          opensAt: kill.boss ? Infinity : now + this.reserveMs,
+          owners: kill.boss || mini ? [lot.owner] : [...new Set([lot.owner, ...party])],
+          personal: !!(kill.boss || mini),
+          opensAt: kill.boss || mini ? Infinity : now + this.reserveMs,
           goneAt: now + LOOT_MS,
         };
         this.all.set(loot.id, loot);

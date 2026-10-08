@@ -12,7 +12,7 @@ import { loadItemData, loadStats } from './stats-data.js';
 import { type CombatItems, type LootContent, potionOf } from './combat-bag.js';
 import { type Loot, LootRoom } from './town-loot.js';
 import { type HeldOffer, type Trade, Trades, checkOffer } from './trade.js';
-import type { CharacterProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item, TradeEnd, TradeView } from '@mikazuki/shared';
+import type { CharacterProgress, QuestProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item, TradeEnd, TradeView } from '@mikazuki/shared';
 import { itemStats, skillMpCost, tradeRules } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
@@ -112,6 +112,10 @@ export interface TownOptions {
   rooms?: Record<string, () => TownMap>;
   /** Rooms with mobs (the Slums: web/town-mobs.ts), run here so everyone there sees the same ones. */
   mobs?: Record<string, MobRoom>;
+  /** Quests (web/adventure.ts questKillFor): a kill that counts toward a member's (theirs, or their party's nearby), saved;
+   *  their active quests if anything moved. Without it (the dev town) the page's pretend store is told the kill
+   *  (`quest-kill`) and counts it itself. */
+  quests?: { kill(userId: string, kill: { kind: string; mini: boolean }): QuestProgress[] | null };
   /** Characters' levels (web/adventure.ts in the bot; in memory on the game's dev server, web/progress.ts either way):
    *  who someone is in a fight, and a kill's XP for them (saved; the level-ups it brought). Without it everyone fights as
    *  their class at Lv 1 and gains nothing. */
@@ -436,13 +440,29 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     const m: TownServerMessage = { t: 'loot-gone', ids };
     for (const o of conns.values()) if (o.room === room) send(o, m);
   };
-  /** A kill's drops, round where it died: the killer's (and their party's, those in the room), or the golem's for each
-   *  player who earned it. */
-  const dropFor = (room: string, kill: { kind: string; level: number; at: [number, number]; to: string[]; boss?: boolean }) => {
+  /** Members and their party members nearby (in the same room), once each. */
+  const withParty = (members: string[], room: string): string[] =>
+    [...new Set(members.flatMap((u) => [u, ...(parties.of(u)?.members ?? []).filter((m) => conns.get(m)?.room === room)]))];
+  /** A kill counted toward each member's quests (saved by the bot; told to them). */
+  const questKill = (members: string[], kill: { kind: string; mini: boolean }) => {
+    for (const user of members) {
+      const o = conns.get(user);
+      if (!o) continue;
+      if (!opts.quests) {
+        send(o, { t: 'quest-kill', ...kill });
+        continue;
+      }
+      const active = opts.quests.kill(user, kill);
+      if (active) send(o, { t: 'quests', active });
+    }
+  };
+  /** A kill's drops, round where it died: the killer's (and their party's, those in the room), or the golem's or a mini
+   *  boss's for each player who earned it (their own). */
+  const dropFor = (room: string, kill: { kind: string; level: number; at: [number, number]; to: string[]; boss?: boolean; mini?: string }) => {
     const L = loots.get(room);
     const mobs = opts.mobs?.[room];
     if (!L || !mobs || !kill.to.length) return;
-    const party = kill.boss ? [] : (parties.of(kill.to[0])?.members ?? []).filter((m) => conns.get(m)?.room === room);
+    const party = kill.boss || kill.mini ? [] : (parties.of(kill.to[0])?.members ?? []).filter((m) => conns.get(m)?.room === room);
     const fresh = L.drop(kill, party, (at, n) => mobs.lootSpots(at, n), Date.now());
     showLoot(room, fresh, kill.at);
   };
@@ -620,11 +640,15 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         // What it killed: its XP for whoever earns it (the killer; the golem's for every member who did enough, even
         // after a reload mid-fight), if still here.
         for (const k of r.kills) {
-          for (const user of k.to) {
+          // A mini boss: everyone who did their share and their party nearby get its XP and their own loot.
+          const credited = k.mini ? withParty(k.to, c.room) : k.to;
+          for (const user of credited) {
             const o = conns.get(user);
             if (o && opts.progress) progressed(o, opts.progress.kill(o.userId, k));
           }
-          dropFor(c.room, k); // and its loot
+          dropFor(c.room, { ...k, to: credited }); // and its loot
+          // It counts toward quests for them and their party nearby (the killer's, a normal mob's).
+          questKill(withParty(credited, c.room), { kind: k.kind, mini: !!k.mini });
         }
         return;
       }

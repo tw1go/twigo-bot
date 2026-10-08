@@ -22,6 +22,7 @@ export function queueTown(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Tex
   const T = M.tiles;
   // The stats rules' numbers (net/adventure.ts keeps them; the mobs read their table).
   if (M.classes?.stats) load.json('stats', M.classes.stats);
+  if (M.classes?.leveling) load.json('leveling', M.classes.leveling);
   if (map.height) queueSlums(load, textures, M, map);
   T.grass.files.forEach(img);
   T.grass.litter.files.forEach(img);

@@ -89,7 +89,7 @@ test('the class quest: starts once, talk then choose, gives the weapon into the 
   assert.equal(s.trainingArmorGiven, true);
   // Its rewards in the combat bag (a stack each).
   assert.deepEqual(s.bag.map((i) => [i.defId, i.count]), rewards.map((x) => [x.item, x.count]));
-  assert.deepEqual(s.quests, { active: [], done: [Q], rewarded: [Q] });
+  assert.deepEqual(s.quests, { active: [{ id: 'tanod-01', step: 0 }], done: [Q], rewarded: [Q] }); // the Tanod's leveling chain next
   assert.equal(startQuests(s).length, 0); // done: never again
   // Someone who already has a class never gets the class quest.
   const old = { ...freshAdventure(), cls: 'broom' };

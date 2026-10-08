@@ -203,6 +203,8 @@ export interface ClassesDefs {
   data: string;
   /** The stats rules' numbers (classes/stats.json: levels, stats, requirements, damage, XP, the mob table). */
   stats: string;
+  /** classes/leveling.json: the mini bosses and the Tanod's leveling quests (the art folder's data/leveling.json). */
+  leveling?: string;
   /** Where the 32x48 body cell sits in a 64x64 weapon cell. */
   bodyOffset: Vec2;
   list: Record<string, ClassArt>;

@@ -1,4 +1,4 @@
-import { type EquipmentDef, type GearRarity, type ItemData, type Item, gearKind, isGearDef, itemStats, kusingRange, newAgimat, newItem, numbersIn, rollGear } from '@mikazuki/shared';
+import { type EquipmentDef, type GearRarity, type ItemData, type Item, gearKind, isGearDef, itemStats, kusingRange, mobStats, nearestGearLevel, newAgimat, newItem, numbersIn, rollGear } from '@mikazuki/shared';
 import type { LootContent } from './combat-bag.js';
 
 // 🎲 What a kill drops, rolled on the server by stats.json (rarity.mobGearDrop and bossGearDrop, potions, currencies,
@@ -76,6 +76,37 @@ export function mobDrops(data: ItemData, kind: string, level: number, random: ()
     const tier = tierAt(data, dropLevel(data, 'default', random));
     const potions = [...data.defs.values()].filter((d) => !isGearDef(d) && d.kind === 'potion' && d.tier === tier);
     if (potions.length) out.push({ item: newItem(data.stats, pick(potions, random), uid()) });
+  }
+  return out;
+}
+
+/** A mini boss's loot for one player who earned it (classes/leveling.json miniBoss.loot): its mob's Kusing × kusingTimes,
+ *  `gearPieces` of gear at the gear level nearest its own (brown, white or grey by the mobs' odds, +0 to +3), and now and
+ *  then (fragmentChance) a fragment of its tier's whetstone. */
+export function miniLoot(
+  data: ItemData,
+  kind: string,
+  level: number,
+  rules: { kusingTimes: number; gearPieces: number; fragmentChance: number },
+  random: () => number,
+  uid: () => string,
+  plusRandom = random,
+): LootContent[] {
+  const S = itemStats(data.stats);
+  const mob = mobStats(data.stats, kind)?.level ?? level;
+  const out: LootContent[] = [{ kusing: between(kusingRange(data.stats, mob), random) * rules.kusingTimes }];
+  const levels = [...new Set([...data.defs.values()].filter((d): d is EquipmentDef => isGearDef(d) && !d.training && gearKind(d.slot) !== 'accessory').map((d) => d.level))];
+  const gearLevel = nearestGearLevel(levels, level);
+  for (let n = rules.gearPieces; n > 0; n--) {
+    const kinds = dropGear(data, gearLevel);
+    if (!kinds.length) break;
+    const rarity = weighted(Object.entries(S.rarity.mobGearDrop.odds) as [GearRarity, number][], random);
+    out.push({ item: dropped(data, pick(kinds, random), rarity, uid(), random, plusRandom) });
+  }
+  if (random() < rules.fragmentChance) {
+    const tier = tierAt(data, gearLevel);
+    const fragment = [...data.defs.values()].find((d) => !isGearDef(d) && d.forge === 'fragment' && d.tier === tier);
+    if (fragment) out.push({ item: newItem(data.stats, fragment, uid()) });
   }
   return out;
 }

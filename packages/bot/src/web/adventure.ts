@@ -26,6 +26,9 @@ import {
   equipFromBag,
   giveGear,
   giveQuestRewards,
+  questKill,
+  readyToReport,
+  withLeveling,
   missingTraining,
   moveUnlock,
   newItem,
@@ -41,7 +44,7 @@ import type { Attacker } from './town-mobs.js';
 import { type CombatItems, type LootContent, buyCombat, takeLoot, usePotion } from './combat-bag.js';
 import { forge } from './forge.js';
 import { type HeldOffer, settleTrade } from './trade.js';
-import { loadGear, loadItemData, loadStats } from './stats-data.js';
+import { loadGear, loadItemData, loadLeveling, loadStats } from './stats-data.js';
 
 // ⚔️ A member's class, quests, equipment and level in the web game (table adventurers, schema v10; level, XP and points
 // v11, by web/progress.ts). The quests, classes and equipment are the game's data files (public/assets/quests/quests.json,
@@ -56,7 +59,8 @@ import { loadGear, loadItemData, loadStats } from './stats-data.js';
 
 const asset = <T>(path: string): T => JSON.parse(readFileSync(new URL(`../../../game/public/assets/${path}`, import.meta.url), 'utf8')) as T;
 
-export const QUESTS: QuestDef[] = asset<QuestsFile>('quests/quests.json').quests;
+/** quests/quests.json, the Tanod's leveling chain filled in from classes/leveling.json. */
+export const QUESTS: QuestDef[] = withLeveling(asset<QuestsFile>('quests/quests.json').quests, loadLeveling());
 export const CLASSES = asset<ClassesFile>('classes/classes.json').classes;
 export const EQUIPMENT = loadGear();
 const PLACES = new Set<EquipPlace>(['weapon', 'head', 'body', 'hands', 'bottoms', 'feet', 'necklace', 'earrings', 'bracers1', 'bracers2', 'ring1', 'ring2']);
@@ -88,6 +92,14 @@ export function startQuests(s: AdventureState): QuestDef[] {
     s.quests.active.push({ id: q.id, step: 0 });
     started.push(q);
   }
+  // A finished quest's next one that never started (it was added after they finished: the Tanod's leveling chain after
+  // the class quest).
+  for (const id of s.quests.done) {
+    const next = QUESTS.find((q) => q.id === QUESTS.find((x) => x.id === id)?.next);
+    if (!next || s.quests.done.includes(next.id) || s.quests.active.some((p) => p.id === next.id)) continue;
+    s.quests.active.push({ id: next.id, step: 0 });
+    started.push(next);
+  }
   return started;
 }
 
@@ -95,6 +107,7 @@ export function startQuests(s: AdventureState): QuestDef[] {
 function advance(s: AdventureState, q: QuestDef): string | undefined {
   const p = s.quests.active.find((x) => x.id === q.id)!;
   p.step++;
+  delete p.count; // (the next objective counts from 0)
   if (p.step < q.objectives.length) return undefined;
   s.quests.active = s.quests.active.filter((x) => x.id !== q.id);
   s.quests.done.push(q.id);
@@ -106,11 +119,16 @@ function advance(s: AdventureState, q: QuestDef): string | undefined {
 type Result = Omit<TownAdventureResponse, 'adventure'>;
 
 /** An objective done in the game: checked against the quest's current objective. */
-export function questStep(s: AdventureState, a: TownQuestAction): Result {
+export function questStep(s: AdventureState, a: TownQuestAction): Result & { ups?: number } {
   const q = QUESTS.find((x) => x.id === a.quest);
   const p = s.quests.active.find((x) => x.id === a.quest);
   if (!q || !p) return { ok: false, message: "That quest isn't under way." };
   const o = q.objectives[p.step];
+  if (a.action === 'report') {
+    // Its count reached (kills, a mini boss): reported over the Tanod's radio, wherever they are.
+    if (!readyToReport(q, p)) return { ok: false, message: 'Not done yet.' };
+    return completedWith(s, { ok: true, completed: advance(s, q) });
+  }
   if (a.action === 'talk') {
     if (o?.type !== 'talk' || o.npc !== a.npc) return { ok: false, message: 'Not yet.' };
     return completedWith(s, { ok: true, completed: advance(s, q) });
@@ -134,11 +152,33 @@ export function questStep(s: AdventureState, a: TownQuestAction): Result {
   return completedWith(s, { ok: true, given: weapon?.id, ...(gear.length ? { gear } : {}), completed: advance(s, q) });
 }
 
-/** A step's answer, with the quest's rewards if it was just completed (into the combat bag). */
-function completedWith(s: AdventureState, r: Result): Result {
+/** A step's answer, with the quest's rewards if it was just completed: its items into the combat bag, its XP (`ups`:
+ *  the levels it brought) and Kusing (the leveling chain's: the same for everyone). */
+function completedWith(s: AdventureState, r: Result): Result & { ups?: number } {
   if (!r.completed) return r;
+  const q = QUESTS.find((x) => x.id === r.completed);
   const rewards = giveQuestRewards(loadItemData(), s, QUESTS, newUid);
-  return rewards.length ? { ...r, rewards } : r;
+  const out: Result & { ups?: number } = rewards.length ? { ...r, rewards } : { ...r };
+  if (q?.rewardKusing) {
+    s.kusing += q.rewardKusing;
+    out.kusing = q.rewardKusing;
+  }
+  if (q?.rewardXP) {
+    const g = addXp(loadStats(), s.cls, s.progress, q.rewardXP);
+    s.progress = g.progress;
+    out.xp = g.gained;
+    out.ups = g.ups;
+  }
+  return out;
+}
+
+/** A kill that counts toward a member's quests (theirs, or their party's nearby): the counts saved; their active quests
+ *  if anything moved (the town tells them), else null. */
+export function questKillFor(userId: string, kill: { kind: string; mini: boolean }): AdventureState['quests']['active'] | null {
+  const s = load(userId);
+  if (!questKill(s, QUESTS, kill)) return null;
+  save(userId, s);
+  return s.quests.active;
 }
 
 /** Wear an item from the combat bag (by uid; in the place asked for, else the first free one for its kind, else the
@@ -410,6 +450,7 @@ export function parseQuestAction(body: unknown): TownQuestAction | null {
   if (!b || typeof b.quest !== 'string') return null;
   if (b.action === 'talk' && typeof b.npc === 'string') return { quest: b.quest, action: 'talk', npc: b.npc };
   if (b.action === 'chooseClass' && typeof b.cls === 'string') return { quest: b.quest, action: 'chooseClass', cls: b.cls };
+  if (b.action === 'report') return { quest: b.quest, action: 'report' };
   return null;
 }
 
@@ -442,7 +483,7 @@ export function parseEquipAction(body: unknown): TownEquipAction | null {
 }
 
 /** POST /town/quest for a member: the step checked and saved. `changed`: their class or weapon changed (the town shows it). */
-export function townQuest(userId: string, a: TownQuestAction): TownAdventureResponse & { changed: boolean } {
+export function townQuest(userId: string, a: TownQuestAction): TownAdventureResponse & { changed: boolean; ups?: number } {
   const s = load(userId);
   startQuests(s);
   const before = `${s.cls}|${s.equipped.weapon?.defId}`;

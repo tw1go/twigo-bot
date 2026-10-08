@@ -1,5 +1,5 @@
 {
-  "note": "The town's quests. type: main (violet) or side (yellow). Objective types so far: talk (talk to `npc`) and chooseClass. autoStart quests start the first time a player is in town (and for anyone who hasn't done them yet). dialogue: lines the giver says instead of their usual ones while the quest is on: talk (in order, while talking is the current objective), remind (talking again before the next objective is done), complete (when the quest is done; {class} is the class's name). rewards: items given into the combat bag when it's completed ({ item: an items.json or equipment.json id, count }); a quest finished before it had rewards gives them on the next visit. Every quest up to Lv 20 gives Low HP and MP Potions.",
+  "note": "The town's quests. type: main (violet) or side (yellow). Objective types so far: talk (talk to `npc`) and chooseClass. autoStart quests start the first time a player is in town (and for anyone who hasn't done them yet). dialogue: lines the giver says instead of their usual ones while the quest is on: talk (in order, while talking is the current objective), remind (talking again before the next objective is done), complete (when the quest is done; {class} is the class's name). rewards: items given into the combat bag when it's completed ({ item: an items.json or equipment.json id, count }); a quest finished before it had rewards gives them on the next visit. Every quest up to Lv 20 gives Low HP and MP Potions. leveling: one of the Tanod's leveling chain (objective types kill and miniBoss, reported over his radio): its title, goal, count, XP and Kusing rewards and his give/report lines come from classes/leveling.json by its id; the entry keeps its type, giver, item rewards and next.",
   "quests": [
     {
       "id": "main-01-class",
@@ -39,6 +39,138 @@
       "rewards": [
         { "item": "low-hp-potion", "count": 20 },
         { "item": "low-mp-potion", "count": 20 }
+      ],
+      "next": "tanod-01"
+    },
+    {
+      "id": "tanod-01",
+      "type": "main",
+      "giver": "tanod",
+      "leveling": true,
+      "rewards": [
+        { "item": "low-hp-potion", "count": 10 },
+        { "item": "low-mp-potion", "count": 10 }
+      ],
+      "next": "tanod-02"
+    },
+    {
+      "id": "tanod-02",
+      "type": "main",
+      "giver": "tanod",
+      "leveling": true,
+      "rewards": [
+        { "item": "low-hp-potion", "count": 10 },
+        { "item": "low-mp-potion", "count": 10 }
+      ],
+      "next": "tanod-03"
+    },
+    {
+      "id": "tanod-03",
+      "type": "main",
+      "giver": "tanod",
+      "leveling": true,
+      "rewards": [
+        { "item": "low-hp-potion", "count": 10 },
+        { "item": "low-mp-potion", "count": 10 }
+      ],
+      "next": "tanod-04"
+    },
+    {
+      "id": "tanod-04",
+      "type": "main",
+      "giver": "tanod",
+      "leveling": true,
+      "rewards": [
+        { "item": "low-hp-potion", "count": 10 },
+        { "item": "low-mp-potion", "count": 10 }
+      ],
+      "next": "tanod-05"
+    },
+    {
+      "id": "tanod-05",
+      "type": "main",
+      "giver": "tanod",
+      "leveling": true,
+      "rewards": [
+        { "item": "low-hp-potion", "count": 10 },
+        { "item": "low-mp-potion", "count": 10 }
+      ],
+      "next": "tanod-06"
+    },
+    {
+      "id": "tanod-06",
+      "type": "main",
+      "giver": "tanod",
+      "leveling": true,
+      "rewards": [
+        { "item": "low-hp-potion", "count": 10 },
+        { "item": "low-mp-potion", "count": 10 }
+      ],
+      "next": "tanod-07"
+    },
+    {
+      "id": "tanod-07",
+      "type": "main",
+      "giver": "tanod",
+      "leveling": true,
+      "rewards": [
+        { "item": "low-hp-potion", "count": 10 },
+        { "item": "low-mp-potion", "count": 10 }
+      ],
+      "next": "tanod-08"
+    },
+    {
+      "id": "tanod-08",
+      "type": "main",
+      "giver": "tanod",
+      "leveling": true,
+      "rewards": [
+        { "item": "low-hp-potion", "count": 10 },
+        { "item": "low-mp-potion", "count": 10 }
+      ],
+      "next": "tanod-09"
+    },
+    {
+      "id": "tanod-09",
+      "type": "main",
+      "giver": "tanod",
+      "leveling": true,
+      "rewards": [
+        { "item": "low-hp-potion", "count": 10 },
+        { "item": "low-mp-potion", "count": 10 }
+      ],
+      "next": "tanod-10"
+    },
+    {
+      "id": "tanod-10",
+      "type": "main",
+      "giver": "tanod",
+      "leveling": true,
+      "rewards": [
+        { "item": "low-hp-potion", "count": 10 },
+        { "item": "low-mp-potion", "count": 10 }
+      ],
+      "next": "tanod-11"
+    },
+    {
+      "id": "tanod-11",
+      "type": "main",
+      "giver": "tanod",
+      "leveling": true,
+      "rewards": [
+        { "item": "low-hp-potion", "count": 10 },
+        { "item": "low-mp-potion", "count": 10 }
+      ],
+      "next": "tanod-12"
+    },
+    {
+      "id": "tanod-12",
+      "type": "main",
+      "giver": "tanod",
+      "leveling": true,
+      "rewards": [
+        { "item": "low-hp-potion", "count": 10 },
+        { "item": "low-mp-potion", "count": 10 }
       ],
       "next": null
     }

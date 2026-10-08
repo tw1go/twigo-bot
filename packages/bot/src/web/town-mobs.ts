@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs';
 import {
   type DerivedStats,
   type GolemAttack,
+  type LevelingData,
+  type MiniBossDef,
   type Hitter,
   type Item,
   type ItemData,
@@ -18,6 +20,9 @@ import {
   baseStats,
   derivedStats,
   itemTotals,
+  miniBossDef,
+  miniBossRules,
+  miniMobId,
   mobRules,
   mobStartSpots,
   mobStats,
@@ -31,7 +36,7 @@ import {
   skillTier,
   xpEarners,
 } from '@mikazuki/shared';
-import { loadItemData } from './stats-data.js';
+import { loadItemData, loadLeveling } from './stats-data.js';
 import { Golem, type GolemArt, type GolemBoss, type GolemEvent, type PitTiles, pitTiles } from './town-golem.js';
 
 // 🥫 The Slums' mobs, run on the server so every player sees the same ones in the same places, and fought there. How they
@@ -68,6 +73,12 @@ import { Golem, type GolemArt, type GolemBoss, type GolemEvent, type PitTiles, p
 // 'locked' before). Each has its own cooldown by its unlock level (baseCooldown in @mikazuki/shared: Lv 1 the quickest),
 // 1% less for each skill level past 1 (skillCooldown); a skill's slow or root lasts 5% longer a skill level
 // (skillLevelBonus's buff).
+//
+// Mini bosses (classes/leveling.json miniBosses, at the spots in each zone's `miniBosses` in the map): one mob each, ids
+// `<zone>:mini:<id>`, its kind's art, moves and rules with its own level, HP, ATK, DEF and XP; all up at once, each back
+// at its own spot miniBoss.respawnSeconds after it dies, never part of a zone's count. Its kill goes to every member who
+// did miniBoss.kill_credit's share of its HP (`dealt`, cleared when it heals or dies), each getting its XP and their own
+// loot (`mini` on the kill; the town adds their party nearby).
 //
 // The field boss (the map's `boss`, given its art): town-golem.ts runs it on this room's clock; hits on it come through
 // attack() like any mob's (reach to its body's edge; area skills reach it too), and its Adds are mobs of this room (ids
@@ -119,6 +130,8 @@ export interface MobKill {
   to: string[];
   /** The field boss: its loot is personal, for each of `to`. */
   boss?: boolean;
+  /** A mini boss (its leveling.json id): `to` is everyone who did their share; personal loot for each. */
+  mini?: string;
 }
 
 /** `hits`: the target first, then any other mobs the skill's shape reached (skill-hits.json); `kills`: those it killed.
@@ -220,6 +233,8 @@ export interface MobZoneData {
   leash?: number;
   /** (Unused: stats.json mobBehaviour respawnSeconds.) */
   respawnSec?: number;
+  /** Its mini bosses' spots (classes/leveling.json miniBosses ids). */
+  miniBosses?: { id: string; tile: [number, number] }[];
 }
 
 export interface MobMapData {
@@ -293,6 +308,9 @@ interface Mob {
   pack: Mob[] | null;
   /** One of the golem's Adds: no spawn point, never back once dead, gone when the fight ends. */
   add?: boolean;
+  /** A mini boss (its leveling.json entry): back at its own spot; who has done how much of its HP (members). */
+  mini?: MiniBossDef;
+  dealt?: Map<string, number>;
 }
 
 /** The game's mobs/mobs.json, with when each kind's attack lands (its attackFrame at the manifest's attack fps). */
@@ -349,6 +367,8 @@ export class MobRoom {
 
   /** The field boss, if the map has one (and its art was given). */
   private readonly golem: Golem | null = null;
+  /** The mini bosses' rules (classes/leveling.json miniBoss), if there are any. */
+  private readonly minis: ReturnType<typeof miniBossRules> | null;
   /** Its Adds' zones (one per kind: the golem's leash, aggressive), and how many Adds it has called so far (their ids). */
   private readonly addZones = new Map<string, MobZoneData>();
   private adds = 0;
@@ -363,7 +383,9 @@ export class MobRoom {
     private readonly kinds: MobKinds = {},
     golem?: GolemArt,
     private readonly fightData: FightData = loadFightData(),
+    leveling: LevelingData | null = loadLeveling(),
   ) {
+    this.minis = leveling ? miniBossRules(leveling) : null;
     for (const r of map.ramps ?? []) this.ramps.add(`${r.col},${r.row}`);
     this.pit = pitTiles(map.boss);
     this.roam = fightData.stats.mobBehaviour.wanderTiles;
@@ -375,6 +397,14 @@ export class MobRoom {
       this.zones.push(z);
       // Its `alive` mobs (packs) at spread-out spawn points.
       mobStartSpots(zone.id, zone.spawns, R.alive).forEach((i, k) => this.place(z, kind, `${zone.id}:${k}`, zone.spawns[i]));
+      // Its mini bosses, each at its spot (one alone: never a pack).
+      for (const spot of zone.miniBosses ?? []) {
+        const def = leveling ? miniBossDef(leveling, spot.id) : null;
+        if (!def || def.kind !== zone.mob) continue;
+        const [m] = this.place(z, { ...kind, pack: undefined }, miniMobId(zone.id, spot.id), spot.tile);
+        const stats = { ...m.stats, level: def.level, hp: def.hp, atk: def.atk, def: def.defense, xp: def.xp };
+        Object.assign(m, { stats, level: def.level, maxHp: def.hp, hp: def.hp, mini: def, dealt: new Map() });
+      }
     }
     const boss = map.boss;
     if (boss && golem) {
@@ -510,7 +540,7 @@ export class MobRoom {
    *  now on. */
   private respawn(m: Mob, now: number, players: ReadonlyMap<string, [number, number]>): void {
     const lead = m.pack?.find((x) => x !== m && !x.respawnAt);
-    let at: [number, number] | null = null;
+    let at: [number, number] | null = m.mini ? m.spawn : null; // (a mini boss: its own spot, always)
     if (lead) {
       const to = this.dest(lead);
       const near = STEPS.map(([dc, dr]): [number, number] => [to[0] + dc, to[1] + dr]).filter(([c, r]) => this.canStand({ zone: m.zone, spawn: lead.spawn }, c, r, this.roam + FOLLOW) && !this.taken(m, c, r));
@@ -740,6 +770,7 @@ export class MobRoom {
     if (!p || cheb(p, m.spawn) > leash || !this.inZone(m.zone, p) || bored) {
       // Gone, pulled past its leash, or done with it: healed to full, home.
       m.foe = null;
+      m.dealt?.clear();
       if (m.hp < m.maxHp) {
         m.hp = m.maxHp;
         events.push({ t: 'mob-heal', id: m.id, hp: m.hp });
@@ -854,8 +885,8 @@ export class MobRoom {
     const kills: MobKill[] = [];
     const hits = this.reached(m ?? 'golem', [mc, mr], from, (cls && this.shapes.shapes[cls]?.[skill]) || 'single', now).map((x) => {
       if (x === 'golem') return this.hitGolem(player, name, member, by, pct, now, kills); // (no slowing it)
-      const hit = this.damage(x, player, by, pct, now);
-      if (hit.dead) kills.push({ id: x.id, kind: x.zone.mob, at: [x.col, x.row], level: x.stats.level, xp: x.stats.xp, to: [member] });
+      const hit = this.damage(x, player, by, pct, now, member);
+      if (hit.dead) kills.push({ id: x.id, kind: x.zone.mob, at: [x.col, x.row], level: x.stats.level, xp: x.stats.xp, to: x.mini ? this.miniEarners(x, member) : [member], ...(x.mini ? { mini: x.mini.id } : {}) });
       if (effect && !hit.dead && !hit.blocked && !hit.miss) {
         x.slow = { factor: effect.factor, until: now + effect.ms };
         hit.slow = effect;
@@ -867,20 +898,30 @@ export class MobRoom {
 
   /** One hit on a mob (the stats rules' damage, or a miss), none through a shell that's up; it (and its pack) goes after
    *  the player either way; at 0 it dies. */
-  private damage(m: Mob, player: string, by: Hitter & { blinded?: boolean }, pct: number, now: number): MobHit {
+  private damage(m: Mob, player: string, by: Hitter & { blinded?: boolean }, pct: number, now: number, member = player): MobHit {
     const [mc, mr] = this.at(m, now);
     this.rally(m, player, now);
     if (m.kind.shell && now >= m.openUntil) return { id: m.id, damage: 0, crit: false, hp: m.hp, dead: false, blocked: true };
     const { damage, crit, miss } = by.blinded ? MISSED : rollHit(this.fightData.stats, by, m.stats, pct, this.random);
     if (miss) return { id: m.id, damage: 0, crit: false, hp: m.hp, dead: false, miss };
+    if (m.dealt) m.dealt.set(member, (m.dealt.get(member) ?? 0) + Math.min(damage, m.hp));
     m.hp = Math.max(0, m.hp - damage);
     if (m.hp === 0) {
       [m.col, m.row] = [mc, mr];
-      m.respawnAt = m.add ? Infinity : now + m.rules.respawnMs;
+      m.respawnAt = m.add ? Infinity : now + (m.mini && this.minis ? this.minis.respawnMs : m.rules.respawnMs);
       m.foe = null;
       m.path = [];
     }
     return { id: m.id, damage, crit, hp: m.hp, dead: m.hp === 0 };
+  }
+
+  /** Who earned a mini boss that just fell: every member who did its share of its HP (miniBoss.kill_credit), the killer
+   *  if nobody did; its tally starts over. */
+  private miniEarners(m: Mob, killer: string): string[] {
+    const share = this.minis?.creditShare ?? 0;
+    const to = [...(m.dealt ?? new Map<string, number>())].filter(([, d]) => d >= m.maxHp * share).map(([u]) => u);
+    m.dealt?.clear();
+    return to.length ? to : [killer];
   }
 
   /** A hit on the golem (the stats rules' damage against its row in the mob table, or a miss), never blocked. A miss
@@ -958,6 +999,7 @@ export class MobRoom {
     return {
       id: m.id, col: at[0], row: at[1], level: m.level, ...(m.variant ? { variant: m.variant } : {}), hp: m.hp, maxHp: m.maxHp, dir: this.facingAt(m, now),
       ...(m.respawnAt ? { dead: true } : {}), ...(left.length ? { path: left, speed: m.hopSpeed } : {}), ...(m.add ? { kind: m.zone.mob } : {}),
+      ...(m.mini ? { mini: m.mini.id } : {}),
     };
   }
 
@@ -974,6 +1016,13 @@ export class MobRoom {
   /** What happened outside the clock (a hit that called the Junk, enraged the golem or brought it down): send it now. */
   flush(): MobEvent[] {
     return this.golem?.flush() ?? [];
+  }
+
+  /** Dev (?minibosses=now): every mini boss that's down comes back on the next tick. How many. */
+  respawnMinis(): number {
+    const down = this.mobs.filter((m) => m.mini && m.respawnAt);
+    for (const m of down) m.respawnAt = 1;
+    return down.length;
   }
 
   /** Dev: the golem rises now (?golem=now); plays its whole fight (?golemdemo=1, `name` = who asked). */

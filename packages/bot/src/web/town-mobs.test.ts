@@ -25,9 +25,10 @@ test('each zone that is on keeps mobBehaviour\'s aliveperZone at spread-out spaw
   const a = new MobRoom(map);
   const b = new MobRoom(map);
   const alive = stats.mobBehaviour.aliveperZone;
-  assert.equal(a.size, active.length * alive, 'no packs without the kinds: one mob a slot');
+  const minis = active.reduce((n, z) => n + (z.miniBosses?.length ?? 0), 0);
+  assert.equal(a.size, active.length * alive + minis, 'no packs without the kinds: one mob a slot (and the mini bosses)');
   const now = Date.now();
-  const sa = a.snapshot(now);
+  const sa = a.snapshot(now).filter((m) => !m.mini);
   for (const z of active) {
     const mine = sa.filter((m) => m.id.startsWith(`${z.id}:`));
     assert.deepEqual(mine.map((m) => m.id), Array.from({ length: alive }, (_, k) => `${z.id}:${k}`));
@@ -36,7 +37,7 @@ test('each zone that is on keeps mobBehaviour\'s aliveperZone at spread-out spaw
     const near = Math.min(...mine.flatMap((m, i) => mine.slice(i + 1).map((o) => Math.max(Math.abs(m.col - o.col), Math.abs(m.row - o.row)))));
     assert.ok(near >= 3, `${z.id}: spread out (${near})`);
   }
-  assert.deepEqual(sa.map((m) => m.level), b.snapshot(now).map((m) => m.level));
+  assert.deepEqual(sa.map((m) => m.level), b.snapshot(now).filter((m) => !m.mini).map((m) => m.level));
   for (const m of sa) {
     const zone = active.find((z) => m.id.startsWith(`${z.id}:`))!;
     assert.deepEqual([m.level, m.maxHp, m.hp], [kindOf(m.id).level, kindOf(m.id).hp, kindOf(m.id).hp], m.id);
@@ -294,8 +295,8 @@ test('a passive zone\'s mob leaves a player next to it alone', () => {
 });
 
 test('a Bottle Caps slot is a pack of 3–5 (counted once in aliveperZone), each cap its own mob with an id of its own, the same every time', () => {
-  const a = new MobRoom(map, Math.random, {}, { shapes: {} }, kinds).snapshot(0);
-  const b = new MobRoom(map, Math.random, {}, { shapes: {} }, kinds).snapshot(0);
+  const a = new MobRoom(map, Math.random, {}, { shapes: {} }, kinds).snapshot(0).filter((m) => !m.mini);
+  const b = new MobRoom(map, Math.random, {}, { shapes: {} }, kinds).snapshot(0).filter((m) => !m.mini);
   assert.deepEqual(a.map((m) => [m.id, m.col, m.row, m.variant]), b.map((m) => [m.id, m.col, m.row, m.variant]));
   assert.equal(new Set(a.map((m) => m.id)).size, a.length, 'ids unique');
   const alive = stats.mobBehaviour.aliveperZone;

@@ -2,7 +2,7 @@
 // JSON messages, one per frame. Players are identified by a random id per connection, never their Discord ID.
 // A moderator's kick closes the socket with code 4001 and the time (ms) they may come back as the reason.
 
-import type { AdventureState, CharacterProgress } from './adventure.js';
+import type { AdventureState, CharacterProgress, QuestProgress } from './adventure.js';
 import type { Item } from './items.js';
 import type { TradeEnd, TradeRefusal, TradeView, TradePut } from './trade.js';
 import type { HoodHouse, HoodMap, OutfitData, TitleData } from './room-api.js';
@@ -30,6 +30,9 @@ export interface TownMob {
   speed?: number;
   /** Its kind (mobs.json id) for a mob that isn't on a spawn point (the golem's Adds: ids `golem-add:<n>`). */
   kind?: string;
+  /** A mini boss (classes/leveling.json miniBosses id; ids `<zone>:mini:<id>`): its mob's art at miniBoss.scale, its
+   *  name in orange, its HP bar always shown. */
+  mini?: string;
 }
 
 /** The Scrapheap Golem's attacks: Tire Slam, Scrap Toss, Lamp Glare. */
@@ -363,6 +366,10 @@ export type TownServerMessage =
   | { t: 'mob-heal'; id: string; hp: number }
   /** Your level, XP and points changed (XP from a kill: `gained`; a level-up; dev's ?xp= / ?level=). */
   | { t: 'progress'; progress: CharacterProgress; gained?: number }
+  /** Your quests moved (a kill counted toward one: yours, or your party's nearby): the active ones with their counts. */
+  | { t: 'quests'; active: QuestProgress[] }
+  /** A kill that counts toward quests (the dev town, which keeps no quests: the page's pretend store counts it). */
+  | { t: 'quest-kill'; kind: string; mini: boolean }
   /** Someone in your room went up a level (you too: `id` is yours): "Level up!" over them. HP and MP refill with it. */
   | { t: 'level-up'; id: string; level: number }
   /** Your attack didn't land: too far, too fast, the mob's gone, the skill isn't one of yours or unlocked yet, or you're
