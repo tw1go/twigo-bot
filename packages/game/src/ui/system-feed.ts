@@ -1,8 +1,10 @@
 import type { TownSystemLine } from '@mikazuki/shared';
+import { toast } from './toast';
 
 // 📰 The system feed (bottom right): what happens around the server — digs and bets from the Discord commands — as
 // plain lines coloured by result (a dig's rarity; won, lost, busted). Same see-through box as the chat, lines
-// stacked from the bottom, fading when quiet. Hidden on phones (no room next to the chat and the counters).
+// stacked from the bottom, fading when quiet. Hidden on phones (no room next to the chat and the counters). Your own
+// pickups (`mine`) are lines added here by the page only: never sent anywhere, nobody else sees them (on phones a toast).
 
 const MAX_LINES = 30;
 const IDLE_MS = 15_000;
@@ -29,6 +31,26 @@ export class SystemFeed {
     row.dataset.key = `${line.kind}|${line.text}`;
     if (line.tone === 'secret') row.classList.add('prismatic');
     row.textContent = line.text;
+    this.root.append(row);
+    while (this.root.childElementCount > MAX_LINES) this.root.firstElementChild?.remove();
+    this.root.scrollTop = this.root.scrollHeight;
+    this.wake();
+  }
+
+  /** A line only you see, added by the page, in coloured runs (what you picked up: "Gained " in white, the item's name
+   *  in its rarity's colour). Where the feed is hidden (phones) it's a short toast instead. */
+  mine(parts: { text: string; colour: string }[]): void {
+    const text = parts.map((p) => p.text).join('');
+    if (getComputedStyle(this.root).display === 'none') return toast(text, 1800);
+    const row = document.createElement('div');
+    row.className = 'sf-line sf-mine';
+    row.dataset.key = `mine|${text}`; // never matches a server line: a reconnect's history keeps it
+    for (const p of parts) {
+      const run = document.createElement('span');
+      run.style.color = p.colour;
+      run.textContent = p.text;
+      row.append(run);
+    }
     this.root.append(row);
     while (this.root.childElementCount > MAX_LINES) this.root.firstElementChild?.remove();
     this.root.scrollTop = this.root.scrollHeight;

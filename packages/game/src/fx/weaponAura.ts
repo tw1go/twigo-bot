@@ -324,8 +324,9 @@ export class WeaponAura {
     return !!this.tier;
   }
 
-  /** Places it on the cell whose top-left is (x, y), under and over `depth`, for `trace` (null: hidden). */
-  place(trace: AuraTrace | null, x: number, y: number, depthUnder: number, depthOver: number, alpha = 1): void {
+  /** Places it on the cell whose top-left is (x, y), under and over `depth`, for `trace` (null: hidden). `scale`: the
+   *  sprite's (loot on the ground is drawn at half size). */
+  place(trace: AuraTrace | null, x: number, y: number, depthUnder: number, depthOver: number, alpha = 1, scale = 1): void {
     const tier = this.tier;
     if (!tier || !trace?.box) {
       for (const o of [this.under, this.over]) o.setVisible(false);
@@ -342,8 +343,8 @@ export class WeaponAura {
         tex.refresh();
       }
     }
-    this.under.setPosition(x - MARGIN, y - MARGIN).setDepth(depthUnder).setVisible(true).setAlpha(alpha);
-    this.over.setPosition(x - MARGIN, y - MARGIN).setDepth(depthOver).setVisible(true).setAlpha(alpha);
+    this.under.setPosition(x - MARGIN * scale, y - MARGIN * scale).setScale(scale).setDepth(depthUnder).setVisible(true).setAlpha(alpha);
+    this.over.setPosition(x - MARGIN * scale, y - MARGIN * scale).setScale(scale).setDepth(depthOver).setVisible(true).setAlpha(alpha);
   }
 
   hide(): void {

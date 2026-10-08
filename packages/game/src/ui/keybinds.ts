@@ -21,6 +21,7 @@ export const ACTIONS: ActionDef[] = [
   { id: 'down', label: 'Walk down', group: 'Movement', keys: ['KeyS', 'ArrowDown'] },
   { id: 'right', label: 'Walk right', group: 'Movement', keys: ['KeyD', 'ArrowRight'] },
   { id: 'interact', label: 'Enter, sit, talk', group: 'Actions', keys: ['KeyE', 'Space'] },
+  { id: 'pickup', label: 'Pick up', group: 'Actions', keys: ['KeyF'] },
   { id: 'target', label: 'Target the nearest mob', group: 'Actions', keys: ['KeyZ'] },
   { id: 'skills', label: 'Skills', group: 'Actions', keys: ['KeyK'] },
   { id: 'bag', label: 'Bag and equipment', group: 'Actions', keys: ['KeyB', 'KeyI'] },

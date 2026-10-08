@@ -50,7 +50,7 @@ import { RARITY_TEXT, addItemArt, isRarity, setItemArt, setRarityColours } from 
 import { setForgeArt } from '../ui/forge';
 import { LootLayer } from '../world/loot';
 import { setKusingArt } from '../ui/reward';
-import { nameOf } from '../ui/item-tip';
+import { nameOf, pickupOf } from '../ui/item-tip';
 import { playDig, setDigPanelArt } from '../ui/dig-panel';
 import { showMine } from '../ui/mine';
 import { Inventory } from '../ui/inventory';
@@ -95,7 +95,7 @@ import { Hotbar, potionCooldownKey } from '../ui/hotbar';
 import { mountClassSwitch } from '../ui/class-switch';
 import { MOVES, type MoveKind, isMoveKind, moveTiles, playMove } from '../world/mobility';
 import { changeClass, devItemsReady, devSwitchClass, adventure, adventureData, anyDef, chooseClass, classInfo, initAdventure, itemData, itemDef, loadAdventureData, onAdventure, questDef, questFor, questTalk, setItems, setProgress, skillView, skillViews } from '../net/adventure';
-import { type Item, type TownItems, auraFor, countOf, isGearDef, itemAura, itemStats, tradeRules } from '@mikazuki/shared';
+import { type Item, type TownItems, LOOT_REACH, auraFor, countOf, isGearDef, itemAura, itemStats, tradeRules } from '@mikazuki/shared';
 import type { ClassArt } from '../assets/types';
 import { drawRested, loadImages, poseFiles, restFiles } from '../characters/kit-art';
 import { holdQuestBanners, mountQuests } from '../ui/quests';
@@ -201,7 +201,7 @@ export class TownScene extends Phaser.Scene {
   private grid!: WalkGrid;
   private player!: Character;
   private doorAt = new Map<string, Building>();
-  private pending: { sit?: Bench; npc?: string } | null = null;
+  private pending: { sit?: Bench; npc?: string; loot?: string } | null = null;
   private buildingAlert: Phaser.GameObjects.Sprite | null = null;
   private zoomIndex = 1;
   /** The arrival zoom-out while it runs (follow and label sizing wait for it). */
@@ -1497,10 +1497,11 @@ export class TownScene extends Phaser.Scene {
       if (m.t === 'items') {
         setItems(m.items, m.got);
         if (m.got?.kusing) playSound('combat-coins');
-        if (m.got?.item) {
-          playSound('combat-loot-pickup');
-          toast(`Picked up ${nameOf(m.got.item)}${m.got.item.count > 1 ? ` ×${m.got.item.count}` : ''}`, 1800, 'good');
-        }
+        if (m.got?.item) playSound('combat-loot-pickup');
+        // What you picked up: a line in your own system feed, added here only (never the server's feed, which goes to
+        // everyone and to Discord), in its name's colour.
+        const line = m.got && pickupOf(m.got);
+        if (line) feed.mine(line.parts);
         return;
       }
       // An HP or MP Potion (maybe yours): the heal over them in green or blue; yours starts the potions' cooldown.
@@ -1841,7 +1842,9 @@ export class TownScene extends Phaser.Scene {
         this.pending = null;
         this.player.cancelPath(); // the keys take over from a click path
       }
-      if (matches('interact', e)) this.interact();
+      // Pick up (F) and Space: the nearest loot in reach; Space otherwise enters, sits or talks as ever.
+      if (matches('pickup', e) && !e.repeat) this.pickUpNearest();
+      else if (matches('interact', e) && !(e.code === 'Space' && !e.repeat && this.pickUpNearest())) this.interact();
       // Target (Z, or the middle button): the nearest mob (again: the next nearest); Escape lets it go.
       if (this.mobs && matches('target', e) && !e.repeat) this.mobs.targetNext(this.player.tile);
       if (this.mobs && e.key === 'Escape') {
@@ -2042,11 +2045,22 @@ export class TownScene extends Phaser.Scene {
     this.pending = { npc: id };
   }
 
-  /** Loot clicked: a tile away (or on it), picked up at once; else walk onto it (the server picks it up as you arrive). */
+  /** Loot clicked: within LOOT_REACH, picked up at once; else walk onto it and pick it up there (nothing is picked up
+   *  just by walking over it). */
   private goToLoot(id: string, at: Tile): void {
     const me = this.player.tile;
-    if (Math.max(Math.abs(at.col - me.col), Math.abs(at.row - me.row)) <= 1) return void this.link?.send({ t: 'pick', id });
+    if (Math.max(Math.abs(at.col - me.col), Math.abs(at.row - me.row)) <= LOOT_REACH) return void this.link?.send({ t: 'pick', id });
     this.moveTo(at);
+    this.pending = { loot: id };
+  }
+
+  /** F (the Pick up key) or Space: the nearest loot you may take within LOOT_REACH, if any (the server picks it up). */
+  private pickUpNearest(): boolean {
+    if (this.knockedOut || !this.loot) return false;
+    const l = this.loot.nearest(this.player.tile);
+    if (!l) return false;
+    this.link?.send({ t: 'pick', id: l.id });
+    return true;
   }
 
   /** Walk to a tile; a bench means sit on it; a blocked tile means the nearest reachable one. */
@@ -2164,6 +2178,11 @@ export class TownScene extends Phaser.Scene {
       const id = this.pending.npc;
       this.pending = null;
       return this.talkTo(id); // there now (or they moved: after them again)
+    }
+    if (this.pending?.loot) {
+      const id = this.pending.loot;
+      this.pending = null;
+      return void this.link?.send({ t: 'pick', id }); // the loot you clicked (the server checks it's in reach)
     }
     if (this.pending?.sit) {
       const b = this.pending.sit;

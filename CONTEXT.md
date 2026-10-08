@@ -173,7 +173,8 @@ An item's grade, from brown to dark orange; it sets the name colour and how many
 One of the three extra stats a blue or orange item rolls; the third names it ("of Calamity").
 
 **Plus**:
-How many times an item has been enhanced, 0 to 20 ("+7").
+How many times an item has been enhanced, 0 to 20, written after its name ("Sturdy Slingshot of Calamity +7"); dropped
+gear may already have +1 to +3.
 _Avoid_: enchant level, upgrade level
 
 **Enhance**:
@@ -201,7 +202,8 @@ Breaking an item down into whetstone fragments (and, if it had slots, one agimat
 _Avoid_: salvage, dismantle
 
 **Loot**:
-A drop lying on the ground after a kill, for a moment reserved for whoever earned it.
+A drop lying on the ground after a kill, for a moment reserved for whoever earned it; it stays there until picked up
+(a click, F or Space within a tile), never by walking over it.
 _Avoid_: drop (the act), item (once picked up)
 
 **HP Potion / MP Potion**:

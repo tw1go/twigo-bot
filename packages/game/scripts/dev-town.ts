@@ -45,7 +45,7 @@ import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
 //   (the page's ?give=<defId>:<rarity>:<plus>, ?kusing=, ?whetstones= call it on arrival)
 //   POST /__forge?as=Alice {action, item, …}   the forge popup (enhance, repair, embed, disassemble, combine) on her
 //   items here, rolled by the bot's web/forge.ts (the page's pretend /town/forge); sends her `items` (and `kit` for her aura)
-//   GET /__loot?rich=1   nearly every kill drops gear (the first kind, brown) and a potion, to try loot (rich=0: as ever)
+//   GET /__loot?rich=1   nearly every kill drops gear (the first kind, brown, +0 to +3) and a potion, to try loot (rich=0: as ever)
 //   POST /__shop?as=Alice {id, quantity, kowens}   buys a combat item (the sari-sari store's Healing and Smithing tabs)
 //   with her Kusing here, or the pretend shop's Kowens (sent along; what's left comes back)
 //   GET /__points?as=Alice&stat=DEX   Alice spends a stat point on DEX (&reset=1: all back), by the bot's rules
@@ -362,8 +362,10 @@ export function devTown(): Plugin {
             return r;
           },
         },
-        // /__loot?rich=1: nearly every kill drops gear and a potion (the first kinds: the rolls come out low).
+        // /__loot?rich=1: nearly every kill drops gear and a potion (the first kinds: the rolls come out low); their plus
+        // keeps its real odds (+0 to +3).
         lootRandom: () => (richLoot ? Math.random() * 0.04 : Math.random()),
+        lootPlusRandom: Math.random,
         items: {
           take: (name, loot) => takeLoot(items, gearOf(name), loot, devUid),
           usePotion: (name, defId) => usePotion(items, gearOf(name), defId),

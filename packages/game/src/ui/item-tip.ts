@@ -1,11 +1,11 @@
-import { type EquipSlot, type Item, type StatName, affixTier, agimatValue, baseStats, canEquip, enhancedBase, gearKind, isGearDef, itemAura, itemName, lineText, lineValue, requirements, statLabel } from '@mikazuki/shared';
+import { type EquipSlot, type Item, type StatName, affixTier, agimatValue, baseStats, canEquip, enhancedBase, gearKind, isGearDef, itemAura, itemName, lineText, lineValue, pickupLine, requirements, statLabel } from '@mikazuki/shared';
 import { adventure, classInfo, itemData } from '../net/adventure';
 import { type Rarity, RARITY_LABEL, RARITY_TEXT, isRarity, itemArt, itemArtUrl, placeholderArt } from './item-art';
 import { auraIcon } from '../fx/weaponAura';
 import { slotSilhouette } from './equipment';
 
-// 🏷️ An item's tooltip (the combat bag, the equipment panel, the shop, loot): its name in its rarity's colour ("+7
-// Sturdy Slingshot of Calamity", "(Broken)"), what it is, its level and what it needs (what you don't meet in red, by
+// 🏷️ An item's tooltip (the combat bag, the equipment panel, the shop, loot): its name in its rarity's colour ("Sturdy
+// Slingshot of Calamity +7", "(Broken)"), what it is, its level and what it needs (what you don't meet in red, by
 // your base stats), its base stat with its plus ("ATK 46 (40 +6)"), its three affix lines (line 3 last), its agimat
 // slots as dots (filled: the agimat's stat and value), and Bound / "Binds when worn". Things that aren't gear: what they
 // do. Also the item's picture (its icon, else its slot's silhouette or a square in its rarity's colour).
@@ -22,6 +22,13 @@ export const myMainStat = (): StatName | null => {
 };
 
 /** An item's name as you see it. */
+/** The line in your own system feed as you pick something up ("Gained Sturdy Slingshot of Calamity +1 (1 slot)",
+ *  "Gained 120 Kusing"): its text and coloured runs. */
+export const pickupOf = (got: { kusing?: number; item?: Item }): ReturnType<typeof pickupLine> | null => {
+  const D = itemData();
+  return D ? pickupLine(D, got, myMainStat()) : null;
+};
+
 export const nameOf = (item: Item): string => {
   const D = itemData();
   return D ? itemName(D, item, myMainStat()) : item.defId;

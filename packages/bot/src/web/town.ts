@@ -10,7 +10,7 @@ import { PARTY_MAX, type PartyChange, Parties } from './town-party.js';
 import { type VitalMax, Vitals, shown } from './town-vitals.js';
 import { loadItemData, loadStats } from './stats-data.js';
 import { type CombatItems, type LootContent, potionOf } from './combat-bag.js';
-import { KUSING_SETTLE_MS, type Loot, LootRoom } from './town-loot.js';
+import { type Loot, LootRoom } from './town-loot.js';
 import { type HeldOffer, type Trade, Trades, checkOffer } from './trade.js';
 import type { CharacterProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item, TradeEnd, TradeView } from '@mikazuki/shared';
 import { itemStats, tradeRules } from '@mikazuki/shared';
@@ -132,6 +132,8 @@ export interface TownOptions {
   };
   /** Rolls drops (Math.random if left out; the game's dev server can make loot rich to try it). */
   lootRandom?: () => number;
+  /** Rolls dropped gear's plus (lootRandom if left out). */
+  lootPlusRandom?: () => number;
   /** The level a class's movement skill unlocks at (classes.json `mobility`), or null: not one of its moves. A move
    *  before its level, or not theirs, isn't passed on; without it every move goes. */
   moveLevel?: (cls: string | null | undefined, move: TownMove) => number | null;
@@ -248,8 +250,6 @@ interface Conn {
   seat?: ArenaSeat;
   /** The last party invite sent (ms). */
   invitedAt?: number;
-  /** The last "Inventory full" told (ms). */
-  fullAt?: number;
   /** The last trade request sent (ms). */
   askedAt?: number;
 }
@@ -410,7 +410,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
 
   // Loot on the ground, by battle room (only with somewhere to keep what's picked up).
   const items = loadItemData();
-  const loots = new Map<string, LootRoom>(opts.items ? Object.keys(opts.mobs ?? {}).map((room) => [room, new LootRoom(items, opts.lootRandom)]) : []);
+  const loots = new Map<string, LootRoom>(opts.items ? Object.keys(opts.mobs ?? {}).map((room) => [room, new LootRoom(items, opts.lootRandom, undefined, opts.lootPlusRandom)]) : []);
   /** HP and MP Potions' shared cooldown (ms), and when each member's is over. */
   const POTION_MS = itemStats(items.stats).potions.sharedCooldownSec * 1000;
   const potionReady = new Map<string, number>();
@@ -444,42 +444,18 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     const party = kill.boss ? [] : (parties.of(kill.to[0])?.members ?? []).filter((m) => conns.get(m)?.room === room);
     const fresh = L.drop(kill, party, (at, n) => mobs.lootSpots(at, n), Date.now());
     showLoot(room, fresh);
-    // Kusing picks itself up for whoever may take it nearby, once it has settled (the killer first).
-    if (fresh.some((l) => 'kusing' in l.content)) {
-      setTimeout(() => {
-        const here = [...conns.values()].filter((o) => o.room === room);
-        for (const o of here.sort((a, b) => Number(b.userId === kill.to[0]) - Number(a.userId === kill.to[0]))) pickUp(o);
-      }, KUSING_SETTLE_MS + 50).unref?.();
-    }
   };
-  /** Picks up what they may take where they stand (Kusing nearby too), or the one loot asked for (`id`, within a tile).
-   *  Full bag: it stays, and they're told (now and then). */
+  /** Picks up the loot asked for (`id`) or, without one, the nearest they may take, within LOOT_REACH (a click, F or
+   *  Space; nothing is picked up on its own). Full bag: it stays, and they're told. */
   const pickUp = (c: Conn, id?: string) => {
     const L = loots.get(c.room);
     if (!L || !opts.items || c.player.out) return;
-    const now = Date.now();
-    const p = c.player;
-    let picks = L.takeable(c.userId, p.col, p.row, now);
-    if (id) {
-      const l = L.get(id);
-      picks = l && L.mayTake(l, c.userId, now) && Math.max(Math.abs(l.col - p.col), Math.abs(l.row - p.row)) <= 1 ? [l] : [];
-    }
-    const gone: string[] = [];
-    let full = false;
-    for (const l of picks) {
-      if (!opts.items.take(c.userId, l.content)) {
-        full = true;
-        continue;
-      }
-      L.remove(l.id);
-      gone.push(l.id);
-      tellItems(c, 'kusing' in l.content ? { kusing: l.content.kusing } : { item: l.content.item });
-    }
-    lootGone(c.room, gone);
-    if (full && (id || now - (c.fullAt ?? 0) > 3000)) {
-      c.fullAt = now;
-      send(c, { t: 'loot-full' });
-    }
+    const l = L.pickable(c.userId, c.player.col, c.player.row, Date.now(), id);
+    if (!l) return;
+    if (!opts.items.take(c.userId, l.content)) return send(c, { t: 'loot-full' });
+    L.remove(l.id);
+    tellItems(c, 'kusing' in l.content ? { kusing: l.content.kusing } : { item: l.content.item });
+    lootGone(c.room, [l.id]);
   };
 
   // Trades (trade.ts): only with somewhere to keep items and a way to settle them.
@@ -560,8 +536,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         if (!fresh || !inside_(m.col, m.row) || !walkable_(m.col, m.row) || !DIRS.has(m.dir)) return send(c, { t: 'snap', col: p.col, row: p.row });
         Object.assign(p, { col: m.col, row: m.row, dir: m.dir });
         others(c, { t: 'join', player: p }); // seen at the spawn point so far: show them where they are
-        tradeRange(c);
-        return pickUp(c);
+        return tradeRange(c);
       case 'step': {
         const dc = (m.col as number) - p.col;
         const dr = (m.row as number) - p.row;
@@ -569,8 +544,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         if (!ok) return send(c, { t: 'snap', col: p.col, row: p.row });
         Object.assign(p, { col: m.col, row: m.row, dir: dirForStep(dc, dr), sit: false });
         others(c, { t: 'step', id: p.id, col: p.col, row: p.row });
-        tradeRange(c); // walking away from someone you're trading with cancels it
-        return pickUp(c); // walking onto loot picks it up
+        return tradeRange(c); // walking away from someone you're trading with cancels it
       }
       case 'face':
         if (!DIRS.has(m.dir) || !spend(c)) return;
@@ -644,7 +618,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         return;
       }
       case 'pick':
-        if (typeof m.id === 'string') pickUp(c, m.id);
+        if (m.id === undefined || typeof m.id === 'string') pickUp(c, m.id);
         return;
       case 'potion': {
         // An HP or MP Potion from their bag: battle maps only, one shared cooldown, never when it'd do nothing.

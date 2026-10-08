@@ -113,8 +113,9 @@ export type TownClientMessage =
   /** A mobility move (Dash, Step Back, Charge, Blink) ending at col,row: sent just before its steps, so the others
    *  play the move instead of a walk (where you are still comes from the steps). */
   | { t: 'move'; move: TownMove; col: number; row: number }
-  /** Pick up loot you stand on or next to (walking onto it does too; Kusing within a tile on its own). */
-  | { t: 'pick'; id: string }
+  /** Pick up loot within LOOT_REACH of you (a click on it, or F / Space): that one, or (no `id`) the nearest you may
+   *  take. Nothing is ever picked up on its own (not by walking over it, Kusing neither). */
+  | { t: 'pick'; id?: string }
   /** Use an HP or MP Potion of this kind (its item id) from your combat bag (battle maps; one shared cooldown). */
   | { t: 'potion'; item: string }
   /** The Arena's jack en poy against another player (bot web/town-arena.ts): join the queue (with an optional bet in
@@ -380,7 +381,7 @@ export type TownServerMessage =
   | { t: 'loot-drop'; loot: TownLoot[] }
   /** Loot gone: picked up by someone, or lain there too long. */
   | { t: 'loot-gone'; ids: string[] }
-  /** You walked onto loot your combat bag has no room for: it stays there. */
+  /** You tried to pick up loot your combat bag has no room for: it stays there. */
   | { t: 'loot-full' }
   /** Your worn items, combat bag and Kusing changed on the server (loot picked up, a potion used, dev's ?give=);
    *  `got`: what you just picked up. */

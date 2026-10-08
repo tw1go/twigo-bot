@@ -20,15 +20,15 @@ for (const name of ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'ADMIN_ROLE_ID', 'ADMI
 process.env.TIMEZONE = 'Asia/Manila';
 
 const shared = await import('@mikazuki/shared');
-const { addToBag, affixTier, agimatValue, bagRoom, enhancedBase, equipFromBag, itemName, itemTotals, kusingFor, lineMax, lineValue, newAgimat, newItem, rollGear, rollLines, stackLimit } = shared;
+const { LOOT_REACH, PLAIN_COLOUR, addToBag, affixTier, agimatValue, bagRoom, enhancedBase, equipFromBag, itemName, itemTotals, kusingFor, kusingRange, lineMax, lineValue, nameColour, newAgimat, newItem, pickupLine, rarityColour, rollGear, rollLines, stackLimit } = shared;
 type Item = import('@mikazuki/shared').Item;
 type EquipmentDef = import('@mikazuki/shared').EquipmentDef;
 type CombatItemDef = import('@mikazuki/shared').CombatItemDef;
 type TownServerMessage = import('@mikazuki/shared').TownServerMessage;
 const { loadItemData } = await import('./stats-data.js');
 const { buyCombat, devGive, takeLoot, usePotion } = await import('./combat-bag.js');
-const { golemLoot, mobDrops, rollAgimatStat } = await import('./loot.js');
-const { KUSING_REACH, KUSING_SETTLE_MS, LOOT_MS, LootRoom } = await import('./town-loot.js');
+const { dropPlus, golemLoot, mobDrops, rollAgimatStat } = await import('./loot.js');
+const { LOOT_MS, LootRoom } = await import('./town-loot.js');
 const { MIGRATIONS } = await import('../db/db.js');
 const { MobRoom, loadMobKinds, loadMobMap } = await import('./town-mobs.js');
 const { attachTown } = await import('./town.js');
@@ -96,14 +96,14 @@ test('rolled gear: slots by rarity (weapons and armor only), lines only on blue 
   assert.equal(affixTier(S, 'grey'), null);
 });
 
-test('names: material + slot + line 3\'s affix, the plus first, (Broken) after; agimats with their level and lock', () => {
+test('names: material + slot + line 3\'s affix, the plus after the name, (Broken) after that; agimats with their level and lock', () => {
   const it = rollGear(S, gear('weapon-sturdy-slingshot'), 'darkOrange', uid(), lcg(4));
   it.lines[2] = { stat: 'critRate', value: 0.012 };
   assert.equal(itemName(D, it), 'Sturdy Slingshot of Calamity');
   it.plus = 7;
-  assert.equal(itemName(D, it), '+7 Sturdy Slingshot of Calamity');
+  assert.equal(itemName(D, it), 'Sturdy Slingshot of Calamity +7');
   it.broken = true;
-  assert.equal(itemName(D, it), '+7 Sturdy Slingshot of Calamity (Broken)');
+  assert.equal(itemName(D, it), 'Sturdy Slingshot of Calamity +7 (Broken)');
   it.rarity = 'lightBlue';
   it.broken = false;
   it.plus = 0;
@@ -117,6 +117,30 @@ test('names: material + slot + line 3\'s affix, the plus first, (Broken) after; 
   const ag = newAgimat(S, thing('agimat-critdmg'), 20, uid());
   assert.equal(itemName(D, ag), 'Crit Damage Agimat Lv 20');
   assert.equal(itemName(D, newAgimat(S, thing('agimat-atk'), 20, uid(), 'body')), 'ATK Agimat Lv 20 (Body only)');
+});
+
+test('the pickup line: "Gained ", the name (plus after it) in its colour, its slot count, a stack\'s ×N, Kusing; plain things white', () => {
+  const W = PLAIN_COLOUR;
+  const sling = rollGear(S, gear('weapon-sturdy-slingshot'), 'lightOrange', uid(), lcg(6));
+  sling.lines[2] = { stat: 'critRate', value: 0.012 };
+  sling.plus = 1;
+  assert.deepEqual(pickupLine(D, { item: sling }), {
+    text: 'Gained Sturdy Slingshot of Calamity +1 (1 slot)',
+    parts: [{ text: 'Gained ', colour: W }, { text: 'Sturdy Slingshot of Calamity +1', colour: rarityColour(S, 'lightOrange') }, { text: ' (1 slot)', colour: W }],
+  });
+  sling.plus = 0;
+  sling.rarity = 'darkOrange';
+  sling.agimats = [null, null];
+  assert.equal(pickupLine(D, { item: sling }).text, 'Gained Sturdy Slingshot of Calamity (2 slots)', 'no +0');
+  const stick = rollGear(S, gear('weapon-crude-stick'), 'brown', uid(), lcg(7));
+  stick.plus = 3;
+  assert.deepEqual(pickupLine(D, { item: stick }).parts, [{ text: 'Gained ', colour: W }, { text: 'Crude Stick +3', colour: rarityColour(S, 'brown') }], 'no slot part without slots');
+  assert.deepEqual(pickupLine(D, { item: newItem(S, thing('rough-whetstone'), uid(), 3) }).parts, [{ text: 'Gained ', colour: W }, { text: 'Rough Whetstone', colour: W }, { text: ' ×3', colour: W }]);
+  assert.deepEqual(pickupLine(D, { kusing: 1200 }), { text: 'Gained 1,200 Kusing', parts: [{ text: 'Gained 1,200 Kusing', colour: W }] });
+  // Plain things are white; gear, agimats and cosmetics keep their rarity's colour.
+  for (const id of ['rough-whetstone', 'rough-whetstone-fragment', 'low-repair-kit', 'low-hp-potion', 'low-mp-potion']) assert.equal(nameColour(D, newItem(S, thing(id), uid())), PLAIN_COLOUR, id);
+  assert.equal(nameColour(D, newAgimat(S, thing('agimat-critdmg'), 20, uid())), rarityColour(S, 'lightOrange'));
+  assert.equal(nameColour(D, newItem(S, thing('lamp-hat'), uid())), rarityColour(S, 'darkOrange'));
 });
 
 test('what an item gives: base ATK/DEF by its level with its plus (the guide\'s table), accessories +1% a plus on their lines, agimats fixed', () => {
@@ -184,16 +208,21 @@ test('the combat bag: 40 slots; potions stack to 99, whetstones and agimats (sam
   assert.equal(bag.length, 40);
 });
 
-test('drops: Kusing every kill by the mob\'s level; gear about 3% (brown 20 / white 35 / grey 45, map level, Wire and Crab Lv 20 30%); potions about 5%', () => {
+test('drops: Kusing every kill, a random 0.6–1.2 × its level\'s (Tin Can 60–120); gear about 3% (brown 20 / white 35 / grey 45, map level, Wire and Crab Lv 20 30%); potions about 5%', () => {
   assert.deepEqual([kusingFor(S, 1), kusingFor(S, 11), kusingFor(S, 13)], [100, 216, 252]);
+  assert.deepEqual([kusingRange(S, 1), kusingRange(S, 3), kusingRange(S, 5)], [[60, 120], [70, 140], [82, 163]]);
+  const coins: number[] = [];
   const random = lcg(12);
   const N = 30_000;
   let gearN = 0;
   let potions = 0;
   const rarity: Record<string, number> = {};
+  const plus: number[] = [];
   for (let i = 0; i < N; i++) {
     const d = mobDrops(D, 'tin-can', 1, random, uid);
-    assert.deepEqual(d[0], { kusing: 100 });
+    const k = 'kusing' in d[0] ? d[0].kusing : NaN;
+    assert.ok(Number.isInteger(k) && k >= 60 && k <= 120, `Kusing ${k}`);
+    coins.push(k);
     for (const x of d.slice(1)) {
       if (!('item' in x)) continue;
       const def = D.defs.get(x.item.defId)!;
@@ -201,6 +230,7 @@ test('drops: Kusing every kill by the mob\'s level; gear about 3% (brown 20 / wh
         gearN++;
         rarity[x.item.rarity] = (rarity[x.item.rarity] ?? 0) + 1;
         assert.equal(x.item.level, 10, 'the Slums\' gear level');
+        plus[x.item.plus] = (plus[x.item.plus] ?? 0) + 1;
         assert.ok(!def.training && !x.item.lines.length);
       } else {
         potions++;
@@ -211,10 +241,35 @@ test('drops: Kusing every kill by the mob\'s level; gear about 3% (brown 20 / wh
   assert.ok(Math.abs(gearN / N - 0.03) < 0.004, `gear ${gearN / N}`);
   assert.ok(Math.abs(potions / N - 0.05) < 0.005, `potions ${potions / N}`);
   for (const [r, p] of [['brown', 0.2], ['white', 0.35], ['grey', 0.45]] as const) assert.ok(Math.abs(rarity[r] / gearN - p) < 0.05, `${r} ${rarity[r] / gearN}`);
+  assert.ok(coins.includes(60) && coins.includes(120), 'both ends');
+  const mean = coins.reduce((a, b) => a + b, 0) / coins.length;
+  assert.ok(Math.abs(mean - 90) < 1, `Kusing evenly spread (mean ${mean})`);
+  assert.equal(plus.length, 4, `dropped gear: +0 to +3 only (${plus})`);
+  assert.ok([0, 1, 2, 3].every((k) => plus[k] > 0), `each plus drops (${plus})`);
   let lv20 = 0;
   let wire = 0;
   for (let i = 0; i < N; i++) for (const x of mobDrops(D, 'wire-tangle', 11, random, uid)) if ('item' in x && 'slot' in D.defs.get(x.item.defId)!) (wire++, x.item.level === 20 && lv20++);
   assert.ok(Math.abs(lv20 / wire - 0.3) < 0.08, `Lv 20 ${lv20 / wire}`);
+});
+
+test('dropped gear\'s plus: +0 to +3 by stats.json rarity.dropPlus (60 / 25 / 10 / 5), never more; mob drops and golem loot alike', () => {
+  const random = lcg(21);
+  const N = 40_000;
+  const seen = [0, 0, 0, 0];
+  for (let i = 0; i < N; i++) seen[dropPlus(D, random)]++;
+  assert.equal(seen.reduce((a, b) => a + b), N, 'nothing over +3');
+  for (const [k, p] of [[0, 0.6], [1, 0.25], [2, 0.1], [3, 0.05]] as const) assert.ok(Math.abs(seen[k] / N - p) < 0.01, `+${k} ${seen[k] / N}`);
+  // The golem's pieces too (its own random for the plus: the rest of the loot as ever).
+  const pluses = new Set<number>();
+  const always3 = () => 0.999;
+  for (let i = 0; i < 200; i++) {
+    for (const x of golemLoot(D, random, uid, always3)) {
+      if ('item' in x && 'slot' in D.defs.get(x.item.defId)!) pluses.add(x.item.plus);
+    }
+  }
+  assert.deepEqual([...pluses], [3]);
+  const gearOnly = mobDrops(D, 'tin-can', 1, () => 0.001, uid, () => 0.7).find((x) => 'item' in x && 'slot' in D.defs.get(x.item.defId)!);
+  assert.ok(gearOnly && 'item' in gearOnly && gearOnly.item.plus === 1, 'a mob\'s gear: 0.7 falls in +1');
 });
 
 test('golem loot: its Kusing, 10–20 Rough Whetstones, 1–2 blue or orange gear pieces with lines; an accessory, agimat and the hat now and then', () => {
@@ -253,19 +308,32 @@ test('loot on the ground: a solo kill\'s for its killer 10 s, a party\'s for its
   const room = new LootRoom(D, lcg(14), uid);
   const spots = (at: [number, number], k: number) => Array.from({ length: k }, (_, i): [number, number] => [at[0] + i, at[1]]);
   const [coin] = room.drop({ kind: 'tin-can', level: 1, at: [5, 5], to: ['ann'] }, [], spots, 0);
-  assert.deepEqual(room.view(coin, 'ann', 0), { id: coin.id, col: 5, row: 5, kusing: 100, mine: true });
-  assert.deepEqual(room.view(coin, 'bob', 2000), { id: coin.id, col: 5, row: 5, kusing: 100, mine: false, opensIn: 8000 }); // faint for Bob
+  const k = 'kusing' in coin.content ? coin.content.kusing : 0;
+  assert.ok(k >= 60 && k <= 120);
+  assert.deepEqual(room.view(coin, 'ann', 0), { id: coin.id, col: 5, row: 5, kusing: k, mine: true });
+  assert.deepEqual(room.view(coin, 'bob', 2000), { id: coin.id, col: 5, row: 5, kusing: k, mine: false, opensIn: 8000 }); // faint for Bob
   assert.equal(room.mayTake(coin, 'bob', 9999), false);
   assert.equal(room.mayTake(coin, 'bob', 10_000), true, 'anyone\'s after 10 s');
-  // Kusing picks itself up nearby once it has settled; an item only on its own tile.
-  assert.deepEqual(room.takeable('ann', 6, 6, 0), [], 'still falling');
-  assert.deepEqual(room.takeable('ann', 5 + KUSING_REACH, 6, KUSING_SETTLE_MS).map((l) => l.id), [coin.id]);
-  assert.deepEqual(room.takeable('ann', 6 + KUSING_REACH, 5, KUSING_SETTLE_MS), []);
+  // Picked up within LOOT_REACH (a click, F or Space), Kusing and items alike; never from further.
+  assert.equal(LOOT_REACH, 1);
+  assert.equal(room.pickable('ann', 6, 6, 0, coin.id)?.id, coin.id, 'from the next tile');
+  assert.equal(room.pickable('ann', 5, 5, 0)?.id, coin.id, 'no id: the nearest');
+  assert.equal(room.pickable('ann', 7, 5, 0, coin.id), null, 'two tiles away: no');
+  assert.equal(room.pickable('ann', 7, 5, 0), null);
+  assert.equal(room.pickable('bob', 5, 5, 0, coin.id), null, 'not Bob\'s yet');
+  assert.equal(room.pickable('bob', 5, 5, 10_000, coin.id)?.id, coin.id);
   const [, ...things] = room.drop({ kind: 'wire-tangle', level: 11, at: [30, 30], to: ['ann'] }, [], spots, 0);
   for (const th of things) {
-    assert.deepEqual(room.takeable('ann', th.col + 1, th.row, KUSING_SETTLE_MS).filter((l) => l.id === th.id), [], 'an item: not from the next tile');
-    assert.deepEqual(room.takeable('ann', th.col, th.row, 0).filter((l) => l.id === th.id).length, 1);
+    assert.equal(room.pickable('ann', th.col + 1, th.row + 1, 0, th.id)?.id, th.id, 'an item: from the next tile too');
+    assert.equal(room.pickable('ann', th.col + 2, th.row, 0, th.id), null);
   }
+  // Without an id, the nearest of several.
+  const near = new LootRoom(D, lcg(15), uid);
+  const line = (at: [number, number], k: number) => Array.from({ length: k }, (_, i): [number, number] => [at[0] + i, at[1]]);
+  const a = near.drop({ kind: 'tin-can', level: 1, at: [10, 10], to: ['ann'] }, [], line, 0)[0];
+  const b = near.drop({ kind: 'tin-can', level: 1, at: [11, 10], to: ['ann'] }, [], line, 0)[0];
+  assert.equal(near.pickable('ann', 11, 11, 0)?.id, b.id);
+  assert.equal(near.pickable('ann', 10, 11, 0)?.id, a.id);
   // A party's: any member in the room first.
   const [p] = room.drop({ kind: 'tin-can', level: 1, at: [9, 9], to: ['ann'] }, ['ann', 'cy'], spots, 0);
   assert.deepEqual([room.mayTake(p, 'cy', 1), room.mayTake(p, 'bob', 1), room.mayTake(p, 'bob', 10_000)], [true, false, true]);
@@ -315,7 +383,7 @@ test('dev ?give=: gear rolled at its rarity and plus, into the bag', () => {
   const c = { equipped: {}, bag: [] as Item[], kusing: 0 };
   const it = devGive(D, c, 'weapon-sturdy-slingshot', { rarity: 'darkOrange', plus: 7 }, uid, lcg(15))!;
   assert.deepEqual([it.rarity, it.plus, it.lines.length, it.agimats.length, c.bag.length], ['darkOrange', 7, 3, 2, 1]);
-  assert.ok(/^\+7 Sturdy Slingshot of /.test(itemName(D, it)));
+  assert.ok(/^Sturdy Slingshot of \w+ \+7$/.test(itemName(D, it)));
 });
 
 test('schema v12: every worn and carried training piece becomes an item in the same place, nothing else changed', () => {
@@ -338,7 +406,7 @@ test('schema v12: every worn and carried training piece becomes an item in the s
   mem.close();
 });
 
-test('over the town\'s socket: a kill drops Kusing (faint for others), walking onto it picks it up; a potion heals, then waits out its shared cooldown', async () => {
+test('over the town\'s socket: a kill drops Kusing (faint for others), nothing picks itself up (not even walking onto it), `pick` takes it within reach; a potion heals, then waits out its shared cooldown', async () => {
   const map = loadMobMap('slums');
   const room = new MobRoom(map, lcg(16), {}, { shapes: {} }, loadMobKinds());
   const can = room.snapshot(0).find((m) => m.id.startsWith('tin-can-alley:'))!;
@@ -383,21 +451,38 @@ test('over the town\'s socket: a kill drops Kusing (faint for others), walking o
   const theirs = b.got.find((m) => m.t === 'loot-drop') as Extract<TownServerMessage, { t: 'loot-drop' }>;
   assert.ok(mine && theirs, 'both see it fall');
   const coin = mine.loot.find((l) => l.kusing)!;
-  assert.deepEqual([coin.kusing, coin.mine], [100, true]);
+  assert.ok(coin.mine && coin.kusing! >= 60 && coin.kusing! <= 120);
   assert.equal(theirs.loot.find((l) => l.id === coin.id)!.mine, false);
-  // Walk onto it (a step at a time: the server checks each).
-  let [col, row] = [sc, sr];
-  while (Math.max(Math.abs(col - coin.col), Math.abs(row - coin.row)) > 1) {
-    col += Math.sign(coin.col - col);
-    row += Math.sign(coin.row - row);
-    a.ws.send(JSON.stringify({ t: 'step', col, row }));
-    await wait(180);
-  }
-  a.ws.send(JSON.stringify({ t: 'pick', id: coin.id })); // (a tile away already: no step needed; `pick` takes it)
+  // Kusing no longer picks itself up (it used to after 0.7 s within 5 tiles).
+  await wait(900);
+  assert.ok(!a.got.some((m) => m.t === 'items'), 'nothing picked up on its own');
+  // Two tiles away: `pick` is refused (silently); walking onto it picks nothing up either.
+  const walkTo = async (to: [number, number], [col, row]: [number, number]) => {
+    while (col !== to[0] || row !== to[1]) {
+      col += Math.sign(to[0] - col);
+      row += Math.sign(to[1] - row);
+      a.ws.send(JSON.stringify({ t: 'step', col, row }));
+      await wait(180);
+    }
+    return [col, row] as [number, number];
+  };
+  const blocked = (c: number, r: number) => c < 0 || r < 0 || !!map.blocked[r]?.[c];
+  const away = ([[2, 0], [-2, 0], [0, 2], [0, -2]] as const).map(([dc, dr]): [number, number] => [coin.col + dc, coin.row + dr]).find(([c, r]) => !blocked(c, r));
+  assert.ok(away, 'a free tile two away');
+  let at = await walkTo(away, [sc, sr]);
+  a.ws.send(JSON.stringify({ t: 'pick', id: coin.id }));
+  a.ws.send(JSON.stringify({ t: 'pick' }));
+  await wait(100);
+  assert.ok(!a.got.some((m) => m.t === 'items'), 'out of reach');
+  at = await walkTo([coin.col, coin.row], at);
+  await wait(100);
+  assert.ok(!a.got.some((m) => m.t === 'snap'), 'walked there');
+  assert.ok(!a.got.some((m) => m.t === 'items'), 'walking onto it picks nothing up');
+  a.ws.send(JSON.stringify({ t: 'pick' })); // F / Space: the nearest within reach
   await wait(100);
   const got = a.got.find((m) => m.t === 'items' && m.got?.kusing) as Extract<TownServerMessage, { t: 'items' }>;
   assert.ok(got, JSON.stringify(a.got.filter((m) => m.t === 'snap')));
-  assert.equal(got.items.kusing, 100);
+  assert.equal(got.items.kusing, coin.kusing);
   assert.ok(b.got.some((m) => m.t === 'loot-gone' && m.ids.includes(coin.id)), 'gone for Bob too');
   // A potion at full HP: refused, none used.
   a.ws.send(JSON.stringify({ t: 'potion', item: 'low-hp-potion' }));

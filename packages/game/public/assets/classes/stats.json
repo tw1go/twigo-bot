@@ -679,6 +679,14 @@
         "20": 0.4
       }
     },
+    "dropPlus": {
+      "placeholder": true,
+      "about": "the plus a dropped piece of gear comes with (mob drops and golem loot alike), never more than +3",
+      "0": 0.6,
+      "1": 0.25,
+      "2": 0.1,
+      "3": 0.05
+    },
     "trainingWeapons": "brown",
     "accessories": "field boss only, blue/orange; about 1 in 3 golem loots",
     "trainingArmor": "brown"
@@ -760,6 +768,8 @@
     "combat": "Kusing",
     "premium": "Kowens",
     "kusingPerMob": "round(100 * 1.08^(level-1))",
+    "kusingPerMobRange": [0.6, 1.2],
+    "kusingPerMobRangeAbout": "a kill drops a random whole number of Kusing between these times kusingPerMob (rounded): a Tin Can 60-120",
     "golemKusingPerPlayer": 20000,
     "kowensShop": {
       "whetstone": 3,

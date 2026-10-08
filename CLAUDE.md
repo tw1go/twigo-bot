@@ -199,7 +199,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   (music 0 = off), Mute all and Mute gossip murmur (`npcsMuted`: the Alings' ambient murmur only; saved in localStorage `mk_sound`), log out, a Keybinds page and a Credits page (keep it in step with
   `public/assets/audio/CREDITS.md` and the font's licence). Keep sounds soft: no sharp clicks.
 - Keybinds (`ui/keybinds.ts`): every game key is an action with up to two keys (event.code + Ctrl/Alt/Shift, so layouts
-  and Caps Lock don't matter): walking (WASD + arrows), interact (E, Space), target (Z), skills (K), bag (B, I), settings (O), quest log
+  and Caps Lock don't matter): walking (WASD + arrows), interact (E, Space), pick up (F; Space too when loot is in reach), target (Z), skills (K), bag (B, I), settings (O), quest log
   (J), the 26 hotbar slots (1–0 - = `, Alt + those), emotes (F1–F8). Saved per browser (localStorage `mk_keys`, only
   what differs from the defaults); Settings → Keybinds: click a key, press the new one (Esc never mind, Backspace none; a
   key another action had moves over, with a toast), Reset all. Everything listening asks `matches` / `actionOf` /
@@ -469,8 +469,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   (`heals`, `shop`), 11 agimats, the Lamp-head Hat cosmetic). `rollGear` / `rollLines` (3 lines: slot stat, HP, a pool
   stat at rareRollWeight; 80–100% of the line's max), `slotCount`, `bindsOnWear` (orange), `enhancedBase`, `lineValue`
   (accessories +1%/plus), `agimatValue`, `itemTotals` (base+plus, lines, agimats; broken = nothing) → `derivedStats` (caps:
-  attack/DEF rate, lifesteal, manasteal, drop rate too), `itemName` ("+7 Sturdy Slingshot of Calamity (Broken)"; agimats
-  "… Lv 20 (Body only)"), `stackLimit` / `addToBag` (all or nothing) / `takeKind` / `bagRoom`, `kusingFor`,
+  attack/DEF rate, lifesteal, manasteal, drop rate too), `itemName` ("Sturdy Slingshot of Calamity +7 (Broken)": the plus after the name everywhere; agimats
+  "… Lv 20 (Body only)"), `nameColour` (rarity colour; materials and potions white), `pickupLine`, `LOOT_REACH` (1), `stackLimit` / `addToBag` (all or nothing) / `takeKind` / `bagRoom`, `kusingFor`,
   `equipFromBag` / `unequipToBag` (by uid), `giveGear` / `missingTraining` / `swapTrainingGear` (fresh training items).
   Bot: schema v12 `items` table (one row each; `place` = worn place, `slot` = combat bag order; migration: every old
   equipped/bag id became a Lv 1 brown bound item in place; the old JSON columns are left unread) + `adventurers.kusing`;
@@ -480,21 +480,27 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   `combatWares` / `buyCombat` (Healing: potions for Kusing; Smithing: whetstones / kits for Kowens; Low tier until the
   next tier's level), `devGive`.
 - Loot (`web/loot.ts` rolls, `web/town-loot.ts` LootRoom per mob room, run by `web/town.ts` with `TownOptions.items`):
-  each kill (`MobKill` has kind, `at`, `boss`) drops Kusing + 3% gear (map level; Wire/Crab Lv 20 30%) + 5% a Low potion;
-  the golem's `golemLoot` per earner, personal. Reserved 10 s for the killer (party: members in the room), shown per
-  viewer (`TownLoot.mine` / `opensIn`; golem loot only to its owner), gone after 2 min. Picked up on `step`/`here`
-  (its tile; Kusing within 5 tiles once it settled 0.7 s, also right after the kill) or `pick {id}` (a tile away);
-  full bag → `loot-full`. `items` message (the player's items + `got`). Potions: `potion {item}` → battle maps only,
+  each kill (`MobKill` has kind, `at`, `boss`) drops Kusing (`kusingRange`: 0.6–1.2 × `kusingFor`, stats.json
+  currencies.kusingPerMobRange; Tin Can 60–120; the golem's stays bossLoot's) + 3% gear (map level; Wire/Crab Lv 20 30%) + 5% a Low potion;
+  the golem's `golemLoot` per earner, personal. Dropped gear (both) rolls a plus +0–+3 (`dropPlus`, stats.json
+  rarity.dropPlus: 60/25/10/5, placeholder). Reserved 10 s for the killer (party: members in the room), shown per
+  viewer (`TownLoot.mine` / `opensIn`; golem loot only to its owner), gone after 2 min. Never picked up on its own (not
+  walking over it, Kusing neither): only `pick {id?}` within LOOT_REACH (`LootRoom.pickable`: that one, or the nearest you
+  may take); full bag → `loot-full`. `items` message (the player's items + `got`). Potions: `potion {item}` → battle maps only,
   refused when full, one shared cooldown (stats.json potions.sharedCooldownSec) per member, `potion` to the room (heal
-  shown), `potion-refused`. Game: `world/loot.ts` (16 px icon, oval shadow, 1 px bob, Kusing amount in Jersey 10, names on
-  hover/Alt in rarity colour, half alpha while reserved), click → walk on / `pick`; `ui/item-tip.ts` (tooltips:
+  shown), `potion-refused`. Game: `world/loot.ts` (16 px icon at half size, shadow and bob to match, Kusing amount in white,
+  names on hover/Alt in a small font: `nameColour`; half alpha while reserved), click → `pick` (in reach) or walk onto it
+  then `pick`; F (keybind 'pickup') or Space (when loot is in reach; else interact) picks the nearest (`LootLayer.nearest`);
+  each pickup is a line only you see in your system feed, added by the page (`SystemFeed.mine`, never the server's
+  feed, which reaches everyone and Discord; a toast where the feed is hidden), `pickupLine` (coloured runs: only the
+  name in its colour): "Gained Sturdy Slingshot of Calamity +1 (1 slot)", "Gained Rough Whetstone ×3", "Gained 120 Kusing"; `ui/item-tip.ts` (tooltips:
   requirements red, base "ATK 46 (40 +6)", lines, agimat dots, Bound / Binds when worn); the inventory's Combat tab =
   combat bag (hover tooltip `.iv-tip`, double-click gear to wear, potions drag to the hotbar), Kowens + Kusing footer;
   hotbar `onItem` / `countOf`, `potionCooldownKey` pie; shop tabs Healing / Smithing (number box). Sounds: combat-hit(-crit),
   combat-player-hurt-1..3 (`playSet`, never twice running), combat-loot-drop/-pickup, combat-coins, combat-potion.
   Dev: the dev town keeps each player's items (`/__items`, the page's copy wins only after a restart), `?give=<defId>:
   <rarity>:<plus>`, `?kusing=`, `?whetstones=` (`/__give`), `/__shop`, `/__loot?rich=1` (nearly every kill drops gear
-  and a potion); `__town.items()`, `__town.loot()`.
+  and a potion; the plus at its real odds: `TownOptions.lootPlusRandom`); `__town.items()`, `__town.loot()`.
 - Forge (combat-guide.md How to enhance, Enhancement cost and odds, Agimats, Disassembly; stats.json enhancement.cost,
   agimats, disassembly, gearTiers): rules and refusals in `packages/shared/src/forge.ts` (pure, both sides: `gearTier`,
   `toolFor` (items.json `forge`: whetstone / fragment / repairKit by `tier`), `enhanceRefusal` ("Needs a Rough Whetstone",

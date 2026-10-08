@@ -1,19 +1,29 @@
 import Phaser from 'phaser';
-import { type ItemData, type TownLoot, isGearDef, itemAura, itemName, rarityColour } from '@mikazuki/shared';
+import { type ItemData, type TownLoot, LOOT_REACH, PLAIN_COLOUR, isGearDef, itemAura, itemName, nameColour, rarityColour } from '@mikazuki/shared';
 import { type AuraTrace, WeaponAura, traceAura } from '../fx/weaponAura';
 import { loadImages } from '../characters/kit-art';
 import { CHARACTER_BIAS, HEIGHT_DEPTH, LABEL_DEPTH } from './depth';
 import { type WorldObjects, characterDepth } from './objects';
 
 // 🪙 Loot on the ground in the Slums (the server's: bot web/town-loot.ts; the town's `loot`, `loot-drop` and `loot-gone`
-// messages). Each drop is its own 16x16 icon (the item's inventory icon, Kusing's coin) on a small dark oval shadow,
-// bobbing 1 px, slowly; Kusing has its amount over it in Jersey 10. Hovering one (or holding Alt) shows its name in its
-// rarity's colour; a +18 or +20 weapon glows on the ground too (fx/weaponAura.ts). Someone else's loot (the first 10 s of their kill) is drawn at half strength until it opens to you;
+// messages). Each drop is its own 16x16 icon (the item's inventory icon, Kusing's coin) drawn at half size (ICON_SCALE)
+// on a small dark oval shadow, bobbing one icon pixel, slowly; Kusing has its amount over it in Jersey 10 (white).
+// Hovering one (or holding Alt) shows its name in a small font: gear, agimats and cosmetics in their rarity's colour,
+// plain things (Kusing, whetstones, fragments, potions) white. A +18 or +20 weapon glows on the ground too
+// (fx/weaponAura.ts). Someone else's loot (the first 10 s of their kill) is drawn at half strength until it opens to you;
 // the golem's loot only ever reaches its owner. An icon not drawn yet: its slot's silhouette (gear) or a square in its
-// rarity's colour. Clicking one walks you onto it (the server picks it up as you arrive).
+// rarity's colour. Nothing is picked up by walking over it: a click on one walks you next to it and picks it up, F or
+// Space the nearest within LOOT_REACH (TownScene; the server checks).
 
 const BOB_MS = 1800;
 const FAINT = 0.5;
+/** Ground loot's size against its 16 px art (8 world px: 16–32 screen px at zoom 2–4). */
+const ICON_SCALE = 0.5;
+/** The icon's centre over its tile's centre, and the bob (one icon pixel). */
+const LIFT = 4;
+const BOB = ICON_SCALE;
+/** The labels' font size (world px). */
+const LABEL_PX = 6;
 
 interface Drop {
   loot: TownLoot;
@@ -78,6 +88,13 @@ export class LootLayer {
     for (const id of ids) this.drop(id);
   }
 
+  /** The nearest loot you may take within LOOT_REACH of a tile (F / Space), if any. */
+  nearest(at: { col: number; row: number }): TownLoot | null {
+    const near = [...this.all.values()].filter((d) => d.loot.mine && Math.max(Math.abs(d.loot.col - at.col), Math.abs(d.loot.row - at.row)) <= LOOT_REACH);
+    const far = (l: TownLoot) => Math.abs(l.col - at.col) + Math.abs(l.row - at.row);
+    return near.map((d) => d.loot).sort((a, b) => far(a) - far(b))[0] ?? null;
+  }
+
   /** The loot under the pointer, if any. */
   pick(over: Phaser.GameObjects.GameObject[]): TownLoot | null {
     for (const d of this.all.values()) if (over.includes(d.icon)) return d.loot;
@@ -89,17 +106,18 @@ export class LootLayer {
   }
 
   /** Debug: each drop as it's shown (world position, faint or not). */
-  list(): { id: string; col: number; row: number; kusing?: number; item?: string; mine: boolean; x: number; y: number; alpha: number }[] {
-    return [...this.all.values()].map((d) => ({ id: d.loot.id, col: d.loot.col, row: d.loot.row, kusing: d.loot.kusing, item: d.loot.item?.defId, mine: d.loot.mine, x: d.icon.x, y: d.icon.y, alpha: d.icon.alpha }));
+  list(): { id: string; col: number; row: number; kusing?: number; item?: string; plus?: number; name: string; mine: boolean; x: number; y: number; alpha: number; scale: number }[] {
+    return [...this.all.values()].map((d) => ({ id: d.loot.id, col: d.loot.col, row: d.loot.row, kusing: d.loot.kusing, item: d.loot.item?.defId, plus: d.loot.item?.plus, name: d.name.text, mine: d.loot.mine, x: d.icon.x, y: d.icon.y, alpha: d.icon.alpha, scale: d.icon.scale }));
   }
 
   /** The bob, and loot opening to you. */
   update(now = performance.now()): void {
     for (const d of this.all.values()) {
-      const bob = Math.round(Math.sin(((now + d.phase) / BOB_MS) * Math.PI * 2) * 0.5 - 0.5); // 0 or −1
-      d.icon.setY(d.y - 6 + bob);
-      d.amount?.setY(d.y - 14 + bob);
-      d.aura?.fx.place(d.aura.trace, d.icon.x - 8, d.icon.y - 8, d.icon.depth - 0.005, d.icon.depth + 0.005, d.icon.alpha);
+      const bob = Math.round(Math.sin(((now + d.phase) / BOB_MS) * Math.PI * 2) * 0.5 - 0.5) * BOB; // 0 or one icon pixel up
+      d.icon.setY(d.y - LIFT + bob);
+      d.amount?.setY(d.y - LIFT - 5 + bob);
+      const half = 8 * ICON_SCALE;
+      d.aura?.fx.place(d.aura.trace, d.icon.x - half, d.icon.y - half, d.icon.depth - 0.005, d.icon.depth + 0.005, d.icon.alpha, ICON_SCALE);
       if (!d.loot.mine && now >= d.opensAt) {
         d.loot = { ...d.loot, mine: true };
         this.fade(d);
@@ -134,7 +152,7 @@ export class LootLayer {
     const x = (l.col - l.row) * 16;
     const y = (l.col + l.row + 1) * 8 - ground;
     const def = l.item ? D?.defs.get(l.item.defId) : undefined;
-    const colour = l.item && D ? rarityColour(D.stats, l.item.rarity) : '#FCDA4A';
+    const colour = l.item && D ? rarityColour(D.stats, l.item.rarity) : '#FCDA4A'; // a placeholder's square
     let key = this.iconFile(l);
     let frame: number | undefined;
     if (!key || !this.scene.textures.exists(key)) {
@@ -146,23 +164,19 @@ export class LootLayer {
       } else key = this.placeholder(colour);
     }
     const feet = (l.col + l.row + 1) * 8 + CHARACTER_BIAS + ground * HEIGHT_DEPTH - 0.4; // on the ground: under whoever stands there
-    const shadow = this.scene.add.ellipse(x, y, 12, 4, 0x0b0a1a, 0.45);
-    const icon = this.scene.add.image(x, y - 6, key, frame === undefined ? undefined : String(frame)).setOrigin(0.5, 0.5);
+    const shadow = this.scene.add.ellipse(x, y, 12 * ICON_SCALE, 4 * ICON_SCALE, 0x0b0a1a, 0.45);
+    const icon = this.scene.add.image(x, y - LIFT, key, frame === undefined ? undefined : String(frame)).setOrigin(0.5, 0.5).setScale(ICON_SCALE);
     const depth = characterDepth(this.objects, l.col, l.row, feet, icon.getBounds());
     shadow.setDepth(depth - 0.01);
     icon.setDepth(depth);
-    icon.setInteractive({ cursor: 'pointer' });
+    // A click lands on a little more than the (small) icon: 12 world px square round it.
+    icon.setInteractive({ hitArea: new Phaser.Geom.Rectangle(-4, -4, 24, 24), hitAreaCallback: Phaser.Geom.Rectangle.Contains, cursor: 'pointer' });
+    const text = (s: string, colour: string) =>
+      this.scene.add.text(x, y, s, { fontFamily: '"Mk Numbers", "Pixelify Sans", monospace', fontSize: `${LABEL_PX}px`, color: colour, stroke: '#1E1B3A', strokeThickness: 2, resolution: 8 }).setOrigin(0.5, 1);
     let amount: Phaser.GameObjects.Text | null = null;
-    if (l.kusing !== undefined) {
-      amount = this.scene.add
-        .text(x, y - 14, l.kusing.toLocaleString(), { fontFamily: '"Mk Numbers", "Pixelify Sans", monospace', fontSize: '10px', color: '#FCDA4A', stroke: '#1E1B3A', strokeThickness: 3, resolution: 4 })
-        .setOrigin(0.5, 1)
-        .setDepth(depth + 0.01);
-    }
+    if (l.kusing !== undefined) amount = text(l.kusing.toLocaleString(), PLAIN_COLOUR).setDepth(depth + 0.01);
     const label = l.kusing !== undefined ? `${l.kusing.toLocaleString()} Kusing` : l.item && D ? itemName(D, l.item) : 'Loot';
-    const name = this.scene.add
-      .text(x, y - 18, label, { fontFamily: '"Mk Numbers", "Pixelify Sans", monospace', fontSize: '9px', color: colour, stroke: '#1E1B3A', strokeThickness: 3, resolution: 4 })
-      .setOrigin(0.5, 1)
+    const name = text(label, l.item && D ? nameColour(D, l.item) : PLAIN_COLOUR)
       .setDepth(LABEL_DEPTH)
       .setVisible(false);
     const d: Drop = { loot: l, icon, shadow, amount, name, opensAt: l.mine ? 0 : l.opensIn === undefined ? Infinity : performance.now() + l.opensIn, phase: Math.random() * BOB_MS, aura: null, x, y, hovered: false };
@@ -191,7 +205,7 @@ export class LootLayer {
 
   private syncName(d: Drop): void {
     const on = d.hovered || this.alt;
-    d.name.setVisible(on).setY(d.y - (d.amount ? 24 : 16));
+    d.name.setVisible(on).setY(d.y - LIFT - (d.amount ? 11 : 5));
   }
 
   private drop(id: string): void {

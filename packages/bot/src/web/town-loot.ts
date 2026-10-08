@@ -1,22 +1,18 @@
 import type { ItemData, TownLoot } from '@mikazuki/shared';
-import { itemStats, numbersIn } from '@mikazuki/shared';
+import { LOOT_REACH, itemStats, numbersIn } from '@mikazuki/shared';
 import type { LootContent } from './combat-bag.js';
 import { golemLoot, mobDrops } from './loot.js';
 
 // 🪙 Loot on the ground in a battle map (one LootRoom per room with mobs, run by the town: web/town.ts). A kill's drops
 // (web/loot.ts) land round where it died, each on its own tile. Who may pick each one up (stats.json `party`): a solo
 // kill's are the killer's for 10 s, then anyone's; a party's are any member's (those in the room when it fell) for 10 s,
-// then anyone's; the golem's are personal, each player's own, never anyone else's (and never shown to them). Kusing
-// picks itself up for whoever may take it nearby (KUSING_REACH); items are walked onto or clicked. Loot lies there for
-// LOOT_MS, then it's gone. Everything is by member (it outlasts a reload). Pure (the clock is passed in).
+// then anyone's; the golem's are personal, each player's own, never anyone else's (and never shown to them). Nothing is
+// picked up on its own (not by walking over it, Kusing neither): a click on it or F / Space picks it up, within
+// LOOT_REACH (shared). Loot lies there for LOOT_MS, then it's gone. Everything is by member (it outlasts a reload). Pure
+// (the clock is passed in).
 
 /** Loot lies on the ground this long. */
 export const LOOT_MS = 2 * 60_000;
-/** Kusing picks itself up for whoever may take it within this many tiles (a ranged class's reach: Kusing always
- *  auto-picks); items only on their own tile (walking onto them) or by a click. */
-export const KUSING_REACH = 5;
-/** Fresh Kusing lies there this long before it's picked up on its own (so it's seen to fall). */
-export const KUSING_SETTLE_MS = 700;
 
 export interface Loot {
   id: string;
@@ -53,6 +49,8 @@ export class LootRoom {
     private readonly data: ItemData,
     private readonly random: () => number = Math.random,
     private readonly uid: () => string = () => Math.random().toString(16).slice(2, 18),
+    /** Dropped gear's plus (loot.ts dropPlus): `random` unless given (the dev town's rich loot). */
+    private readonly plusRandom: () => number = random,
   ) {
     this.reserveMs = (numbersIn(itemStats(data.stats).party.solo)[0] ?? 10) * 1000;
   }
@@ -64,8 +62,8 @@ export class LootRoom {
    */
   drop(kill: LootKill, party: string[], spots: (at: [number, number], n: number) => [number, number][], now: number): Loot[] {
     const lots: { owner: string; contents: LootContent[] }[] = kill.boss
-      ? kill.to.map((owner) => ({ owner, contents: golemLoot(this.data, this.random, this.uid) }))
-      : kill.to.slice(0, 1).map((owner) => ({ owner, contents: mobDrops(this.data, kill.kind, kill.level, this.random, this.uid) }));
+      ? kill.to.map((owner) => ({ owner, contents: golemLoot(this.data, this.random, this.uid, this.plusRandom) }))
+      : kill.to.slice(0, 1).map((owner) => ({ owner, contents: mobDrops(this.data, kill.kind, kill.level, this.random, this.uid, this.plusRandom) }));
     const total = lots.reduce((n, l) => n + l.contents.length, 0);
     const tiles = spots(kill.at, total);
     let i = 0;
@@ -123,14 +121,21 @@ export class LootRoom {
     return [...this.all.values()].flatMap((l) => this.view(l, member, now) ?? []);
   }
 
-  /** What a member could pick up standing at col,row: loot on that tile, and Kusing within KUSING_REACH once it has
-   *  settled. */
-  takeable(member: string, col: number, row: number, now: number): Loot[] {
-    return [...this.all.values()].filter((l) => {
-      const far = Math.max(Math.abs(l.col - col), Math.abs(l.row - row));
-      const kusing = 'kusing' in l.content && far <= KUSING_REACH && now >= l.goneAt - LOOT_MS + KUSING_SETTLE_MS;
-      return (far === 0 || kusing) && this.mayTake(l, member, now);
-    });
+  /** Whether loot is within LOOT_REACH of col,row (tiles, either way). */
+  inReach(l: Loot, col: number, row: number): boolean {
+    return Math.max(Math.abs(l.col - col), Math.abs(l.row - row)) <= LOOT_REACH;
+  }
+
+  /** What a member may pick up standing at col,row: `id`, if it's within reach and theirs to take; without one, the
+   *  nearest such (the oldest of the nearest). Null: nothing. */
+  pickable(member: string, col: number, row: number, now: number, id?: string): Loot | null {
+    const ok = (l: Loot | undefined): l is Loot => !!l && this.inReach(l, col, row) && this.mayTake(l, member, now);
+    if (id !== undefined) {
+      const l = this.all.get(id);
+      return ok(l) ? l : null;
+    }
+    const far = (l: Loot) => Math.abs(l.col - col) + Math.abs(l.row - row);
+    return [...this.all.values()].filter(ok).sort((a, b) => far(a) - far(b))[0] ?? null;
   }
 
   /** Taken off the ground. */

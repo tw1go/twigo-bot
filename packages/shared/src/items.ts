@@ -113,9 +113,11 @@ export interface ItemStats {
     slotsOn: string[];
     mobGearDrop: { chancePerKill: number; odds: Record<string, number>; level: Record<string, string | Record<string, number>> };
     bossGearDrop: { affix: Record<string, number>; slots: Record<string, number>; level: Record<string, number> };
+    /** A dropped piece's plus: weight by plus ("0": 0.6, "1": 0.25…; other keys are notes). */
+    dropPlus: Record<string, number | string | boolean>;
   };
   agimats: { valueAtLevel: Record<string, string | number>; rare: string[]; dropWeight: Record<string, number> };
-  currencies: { kusingPerMob: string; kowensShop: { whetstone: number; repairKit: number } };
+  currencies: { kusingPerMob: string; kusingPerMobRange?: [number, number]; kowensShop: { whetstone: number; repairKit: number } };
   potions: { tiers: Record<string, { minLevel: number; hp: number; mp: number; kusing: number }>; sharedCooldownSec: number; mobDropChance: number };
   inventory: Record<string, unknown> & { slots: number };
   trading: { bindOnWear: string };
@@ -338,8 +340,9 @@ const SLOT_WORD: Record<EquipSlot, string> = {
   weapon: 'Weapon', head: 'Head', body: 'Body', hands: 'Hands', bottoms: 'Bottoms', feet: 'Feet', necklace: 'Necklace', earrings: 'Earrings', bracers: 'Bracers', ring: 'Ring',
 };
 
-/** An item's name: "+7 Sturdy Slingshot of Calamity", "(Broken)" after a broken one's; an agimat's "Crit Damage Agimat Lv 20"
- *  ("(Body only)" when locked); a stack's without its count. `mainStat`: the viewer's (a `stat` line's name). */
+/** An item's name: "Sturdy Slingshot of Calamity +7" (the plus after the name, none at +0), "(Broken)" after that; an
+ *  agimat's "Crit Damage Agimat Lv 20" ("(Body only)" when locked); a stack's without its count. `mainStat`: the
+ *  viewer's (a `stat` line's name). */
 export function itemName(data: ItemData, item: Item, mainStat: StatName | null = null): string {
   const def = data.defs.get(item.defId);
   if (!def) return item.defId;
@@ -350,7 +353,43 @@ export function itemName(data: ItemData, item: Item, mainStat: StatName | null =
   const tier = affixTier(data.stats, item.rarity);
   const third = item.lines[2];
   const affix = tier && third ? affixName(data.stats, third.stat, tier, mainStat) : '';
-  return `${item.plus > 0 ? `+${item.plus} ` : ''}${def.name}${affix ? ` ${affix}` : ''}${item.broken ? ' (Broken)' : ''}`;
+  return `${def.name}${affix ? ` ${affix}` : ''}${item.plus > 0 ? ` +${item.plus}` : ''}${item.broken ? ' (Broken)' : ''}`;
+}
+
+/** Plain things' names (Kusing, whetstones, fragments, Repair Kits, HP/MP Potions) are white; gear, agimats and
+ *  cosmetics show their rarity's colour. */
+export const PLAIN_COLOUR = '#FFFFFF';
+
+/** The colour an item's name is shown in (loot labels, the pickup line). */
+export function nameColour(data: ItemData, item: Item): string {
+  const def = data.defs.get(item.defId);
+  if (!def || (!isGearDef(def) && (def.kind === 'material' || def.kind === 'potion'))) return PLAIN_COLOUR;
+  return rarityColour(data.stats, item.rarity);
+}
+
+/** Loot is picked up within this many tiles of you (either way): a click on it, F or Space. The server checks it. */
+export const LOOT_REACH = 1;
+
+/** One run of a coloured line. */
+export interface LinePart {
+  text: string;
+  colour: string;
+}
+
+/** The line in your own system feed (only you see it) as you pick something up: "Gained Sturdy Slingshot of Calamity +1
+ *  (1 slot)", "Gained Crude Stick +3" (no slot part without slots), "Gained Rough Whetstone ×3", "Gained 120 Kusing".
+ *  Only the item's name is in its colour (`nameColour`); the rest is white. `text`: all of it. `mainStat`: the viewer's. */
+export function pickupLine(data: ItemData, got: { kusing?: number; item?: Item }, mainStat: StatName | null = null): { text: string; parts: LinePart[] } {
+  const plain = (text: string): LinePart => ({ text, colour: PLAIN_COLOUR });
+  let parts: LinePart[];
+  if (!got.item) parts = [plain(`Gained ${(got.kusing ?? 0).toLocaleString('en-US')} Kusing`)];
+  else {
+    const it = got.item;
+    const slots = isGearDef(data.defs.get(it.defId)) ? it.agimats.length : 0;
+    const after = `${it.count > 1 ? ` ×${it.count}` : ''}${slots ? ` (${slots} slot${slots === 1 ? '' : 's'})` : ''}`;
+    parts = [plain('Gained '), { text: itemName(data, it, mainStat), colour: nameColour(data, it) }, ...(after ? [plain(after)] : [])];
+  }
+  return { text: parts.map((p) => p.text).join(''), parts };
 }
 
 // ── Bags and stacks ──
@@ -428,6 +467,14 @@ export function takeKind(bag: Item[], defId: string, n: number): boolean {
 export function kusingFor(data: StatsData, mobLevel: number): number {
   const [base, growth] = numbersIn(itemStats(data).currencies.kusingPerMob);
   return Math.round(base * growth ** (Math.max(1, mobLevel) - 1));
+}
+
+/** The Kusing a kill may drop, lowest and highest: kusingFor × stats.json currencies.kusingPerMobRange (0.6–1.2),
+ *  rounded (a Tin Can 60–120, Bottle Caps Lv 3 70–140). The roll is the server's. */
+export function kusingRange(data: StatsData, mobLevel: number): [number, number] {
+  const mid = kusingFor(data, mobLevel);
+  const [lo, hi] = itemStats(data).currencies.kusingPerMobRange ?? [1, 1];
+  return [Math.round(mid * lo), Math.round(mid * hi)];
 }
 
 // ── Wearing ──
