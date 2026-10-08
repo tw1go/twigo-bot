@@ -13680,6 +13680,38 @@
       "note": "Mac's full-size bullet (3 per row); same use as the small one",
       "perRow": 3
     },
+    "fx-slingshot-volley": {
+      "file": "fx/slingshot/fx-slingshot-volley.png",
+      "frame": [
+        100,
+        90
+      ],
+      "frames": 24,
+      "fps": 25,
+      "loop": false,
+      "anchor": [
+        50,
+        84
+      ],
+      "layer": "front",
+      "note": "Volley v2 rain, straight down, never mirrored: anchor = the centre of the aimed area on the ground; hits on frames 6, 11 and 16"
+    },
+    "fx-slingshot-volley-area": {
+      "file": "fx/slingshot/fx-slingshot-volley-area.png",
+      "frame": [
+        98,
+        33
+      ],
+      "frames": 1,
+      "fps": 25,
+      "loop": false,
+      "anchor": [
+        49,
+        16
+      ],
+      "layer": "ground",
+      "note": "Volley v2 target area (the dark oval, under everyone): same anchor as the rain; held through it, then faded out over 150 ms"
+    },
     "fx-pebble-volley": {
       "file": "fx/open-world/fx-pebble-volley.png",
       "frame": [
@@ -14445,6 +14477,54 @@
         45
       ],
       "note": "Steam Burst front half + the gathering puff; anchor on the caster feet; draw OVER the caster; the ring hits from frame 8"
+    },
+    "fx-potlid-boil-drops": {
+      "file": "fx/potlid/fx-potlid-boil-drops.png",
+      "frame": [
+        41,
+        40
+      ],
+      "frames": 12,
+      "fps": 12,
+      "loop": true,
+      "anchor": [
+        20,
+        20
+      ],
+      "layer": "front",
+      "note": "Boiling Splash v2 projectile: anchor = the cluster centre; flown on an arc from the lid to the target's feet, turned 90 degrees every 120 ms (never stretched or mirrored); no trail"
+    },
+    "fx-potlid-boil-splash": {
+      "file": "fx/potlid/fx-potlid-boil-splash.png",
+      "frame": [
+        109,
+        107
+      ],
+      "frames": 16,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        56,
+        71
+      ],
+      "layer": "front",
+      "note": "Boiling Splash v2 hit: anchor = the ground centre of the splash on the target's feet; the hit lands on frame 1, the puddle starts on frame 8"
+    },
+    "fx-potlid-boil-puddle": {
+      "file": "fx/potlid/fx-potlid-boil-puddle.png",
+      "frame": [
+        72,
+        42
+      ],
+      "frames": 12,
+      "fps": 12,
+      "loop": true,
+      "anchor": [
+        36,
+        29
+      ],
+      "layer": "ground",
+      "note": "Boiling Splash v2 burn puddle: anchor = the puddle centre on the target's feet; loops through the 3 burn ticks (1.2 s), then fades out over 200 ms"
     },
     "fx-potlid-splash-puddle": {
       "file": "fx/potlid/fx-potlid-splash-puddle.png",

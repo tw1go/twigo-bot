@@ -1,0 +1,18 @@
+file,cell_w,cell_h,frames,fps,loop,anchor_x,anchor_y,notes
+fx-potlid-clang-waves.png,121,120,11,16,no,60,60,Clang sound rings; centre on the lid (launch.csv lid); over everything; enemies inside the outer ring are hit as it passes
+fx-potlid-hit.png,64,64,4,16,no,32,32,Clang hit ring; centre on the target body; over everything
+fx-potlid-steam-burst-back.png,126,65,15,12,no,63,45,Steam Burst back half; anchor on the caster feet; draw UNDER the caster
+fx-potlid-steam-burst-front.png,126,65,15,12,no,63,45,Steam Burst front half + the gathering puff; anchor on the caster feet; draw OVER the caster; the ring hits from frame 8
+fx-potlid-splash-puddle.png,76,40,13,14,no,38,28,Boiling Splash landing (hot puddle + steam); centre at the lid + the landing offset for the facing (see potlid-fx.md); draw under monsters; it burns what stands in it
+fx-potlid-lid-spin.png,24,24,8,24,yes,12,12,Lid Toss / Rebound: the thrown lid spinning; game moves it; hide the lid layers while it flies
+fx-potlid-splash-e.png,240,160,11,14,no,120,80,Boiling Splash water arcs facing e; anchor on the lid; puddle lands at 80;25 from the lid; draw OVER the caster
+fx-potlid-splash-se.png,240,160,11,14,no,120,80,Boiling Splash water arcs facing se; anchor on the lid; puddle lands at 57;53 from the lid; draw OVER the caster
+fx-potlid-splash-s.png,240,160,11,14,no,120,80,Boiling Splash water arcs facing s; anchor on the lid; puddle lands at 0;65 from the lid; draw OVER the caster
+fx-potlid-splash-ne.png,240,160,11,14,no,120,80,Boiling Splash water arcs facing ne; anchor on the lid; puddle lands at 57;-3 from the lid; draw UNDER the caster
+fx-potlid-splash-n.png,240,160,11,14,no,120,80,Boiling Splash water arcs facing n; anchor on the lid; puddle lands at 0;-15 from the lid; draw UNDER the caster
+fx-potlid-splash-w.png,240,160,11,14,no,120,80,Boiling Splash water arcs facing w; anchor on the lid; puddle lands at -80;25 from the lid; draw OVER the caster
+fx-potlid-splash-sw.png,240,160,11,14,no,120,80,Boiling Splash water arcs facing sw; anchor on the lid; puddle lands at -57;53 from the lid; draw OVER the caster
+fx-potlid-splash-nw.png,240,160,11,14,no,120,80,Boiling Splash water arcs facing nw; anchor on the lid; puddle lands at -57;-3 from the lid; draw UNDER the caster
+fx-potlid-boil-drops.png,41,40,12,12,yes,20,20,Boiling Splash v2 projectile; anchor = cluster centre; game moves it on an arc from the lid and spins it (no facing); no trail; draw OVER players and mobs
+fx-potlid-boil-splash.png,109,107,16,14,no,56,71,Boiling Splash v2 hit; anchor = ground centre of the splash at the target feet; the hit lands on frame 1; start the puddle on frame 8; draw OVER players and mobs
+fx-potlid-boil-puddle.png,72,42,12,12,yes,36,29,Boiling Splash v2 burn puddle; anchor = puddle centre at the target feet; loop during the 3 burn ticks; draw UNDER players and mobs

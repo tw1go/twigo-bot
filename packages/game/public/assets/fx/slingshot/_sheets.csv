@@ -1,0 +1,3 @@
+file,cell_w,cell_h,frames,fps,loop,anchor_x,anchor_y,layer,notes
+fx-slingshot-volley.png,100,90,24,25,no,50,84,front,Volley v2 rain (straight down; never mirrored); anchor = centre of the aimed area on the ground; impacts frames 3-21; hits on frames 6; 11 and 16
+fx-slingshot-volley-area.png,98,33,1,25,no,49,16,ground,Volley v2 target area (Mac's dark oval); 1 frame; same anchor as the rain; hold it for the whole rain; under players and mobs; optional
