@@ -385,11 +385,12 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   the mob info bar under it (hidden when that shows the golem). Debug `__town.golem()`. The golem is drawn 1.5× its art
   (mobs.json `scale`: its sprite, shadow, top, lamp, fists and own fx; body `radius` 3; the glare's cone runs 5 tiles past
   its body). The Golem Pit (v3, `slums-golem-pit-3`): two halves (back, front)
-  on one canvas and anchor, the anchor the ground point of the pit floor's centre tile (boss.tile (21,96)); each half sorts
-  as if its feet were at anchor y + sortOffsetY (back −144, front +231: WorldObjects `addHalves`, made once and kept on a
-  streamed map), characters and the golem between; no cast shadow. Its tiles (the art's json, in slums.json boss.pit as
-  [dcol, drow]): ring 322 (blocked), pit floor 399, way in 9 (the art's 7 + its corner tiles (32,101), (33,100): it met
-  the floor only corner to corner, which walking never cuts). The pit floor and way in are the golem's fight (its leash,
+  on one canvas and anchor, the anchor the ground point of the pit floor's centre tile (boss.tile (21,96)); the back half
+  sorts as if its feet were at anchor y + sortOffsetY.back (−144); the front half is cut into 8 px columns, each sorted at
+  its own lowest heap pixel (WorldObjects `addHalves`: one layer at +231 buried players in the way in between heaps that
+  stand partly behind them); made once and kept on a streamed map; characters and the golem sort between; no shadow. Its tiles (the art's json, in slums.json boss.pit as
+  [dcol, drow]): ring 323 (blocked), pit floor 399, way in 8 (the art's 7 + the corner tile (32,101), 32% under heap art: it
+  met the floor only corner to corner, which walking never cuts; (33,100) stays ring, 78% under the pallet pile). The pit floor and way in are the golem's fight (its leash,
   where it's hit from: others get 'range'; the boss bar); it stands only where its body (radius 3) is all floor; Call the
   Junk spots are floor tiles round it; its Adds keep to the floor and way in; no zone's mob steps on a pit tile
   (`pitTiles` in web/town-golem.ts). The props under the old pits and round them are gone, the old stand-in's blocking

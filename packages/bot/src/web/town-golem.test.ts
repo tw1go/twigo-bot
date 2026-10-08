@@ -406,7 +406,7 @@ function walk(a: [number, number], b: [number, number], blocked = map.blocked): 
 
 test('the pit on the map: its ring blocked, its floor and way in open and flat, nothing else standing on it', () => {
   const pit = pitTiles(boss)!;
-  assert.deepEqual([pit.ring.size, pit.floor.size, pit.gap.size], [322, 399, 9]); // the art's, with the way in's corner opened (it met the floor only corner to corner)
+  assert.deepEqual([pit.ring.size, pit.floor.size, pit.gap.size], [323, 399, 8]); // the art's, with one corner tile of the way in opened (it met the floor only corner to corner)
   assert.deepEqual(boss.tile, [21, 96]);
   const tile = (k: string) => k.split(',').map(Number) as [number, number];
   for (const k of pit.ring) assert.equal(map.blocked[tile(k)[1]][tile(k)[0]], 1, `ring ${k}`);

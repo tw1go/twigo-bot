@@ -312,18 +312,27 @@ export class WorldObjects {
   }
 
   /** A prop you walk inside (the Golem Pit): its back and front halves on one anchor, the ground point of its tile's
-   *  centre; each half sorts as if its feet were at that point + its sortOffsetY (characters sort by their feet between). */
+   *  centre. The back half sorts as if its feet were at that point + its sortOffsetY.back (behind everyone on the floor).
+   *  The front half is cut into STRIP-px columns, each sorting at its own lowest heap pixel (where that bit of heap meets
+   *  the ground), not all at sortOffsetY.front: someone in the way in, between heaps that stand partly behind and partly
+   *  in front of them, is drawn over the ones behind and under the ones in front. */
   private addHalves(o: MapObject): void {
     const def = this.M.props[o.id];
     const t = this.topOf(o.col, o.row);
+    const [x, y] = [t.x, t.y + 8];
     const feet = (o.col + o.row + 1) * 8 + CHARACTER_BIAS + this.heights.at(o.col, o.row) * LEVEL_PX * HEIGHT_DEPTH;
     const off = def.sortOffsetY ?? { back: 0, front: 0 };
-    for (const [file, dy] of [[def.file, off.back], [def.front!, off.front]] as const) {
-      if (!this.scene.textures.exists(file)) assetProblems.add(`texture not loaded: ${file}`);
-      const img = this.scene.add.image(t.x, t.y + 8, file);
-      img.setOrigin(def.anchor[0] / img.frame.width, def.anchor[1] / img.frame.height).setDepth(feet + dy);
-      this.track(img);
-    }
+    const [ax, ay] = def.anchor;
+    const back = this.scene.add.image(x, y, def.file).setOrigin(ax / def.size[0], ay / def.size[1]).setDepth(feet + off.back);
+    this.track(back);
+    const front = def.front!;
+    if (!this.scene.textures.exists(front)) return void assetProblems.add(`texture not loaded: ${front}`);
+    const bases = columnBases(this.scene, front, STRIP);
+    bases.forEach((base, i) => {
+      if (base < 0) return; // nothing in this column
+      const strip = this.scene.add.image(x, y, front).setOrigin(ax / def.size[0], ay / def.size[1]).setCrop(i * STRIP, 0, STRIP, def.size[1]);
+      this.track(strip.setDepth(feet + base - ay));
+    });
   }
 
   private addProp(o: MapObject): void {
@@ -559,4 +568,32 @@ function lanternOffset(scene: Phaser.Scene, M: Manifest): { x: number; y: number
   const cy = n ? sy / n : a.height / 2;
   lanternCache = { x: Math.round(cx - on.anchor[0]), y: Math.round(cy - on.anchor[1]) };
   return lanternCache;
+}
+
+/** How wide (px) the strips of a walk-inside prop's front half are, each sorted at its own foot. */
+const STRIP = 8;
+
+/** Each `step`-px column's lowest opaque row of an image (−1: empty), read once. */
+function columnBases(scene: Phaser.Scene, key: string, step: number): number[] {
+  const frame = scene.textures.getFrame(key);
+  const src = scene.textures.get(key).getSourceImage() as HTMLImageElement | HTMLCanvasElement;
+  const [w, h] = [frame.cutWidth, frame.cutHeight];
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  const g = c.getContext('2d', { willReadFrequently: true })!;
+  g.drawImage(src, frame.cutX, frame.cutY, w, h, 0, 0, w, h);
+  const d = g.getImageData(0, 0, w, h).data;
+  const out: number[] = [];
+  for (let x0 = 0; x0 < w; x0 += step) {
+    let base = -1;
+    for (let x = x0; x < Math.min(w, x0 + step); x++)
+      for (let yy = h - 1; yy > base; yy--)
+        if (d[(yy * w + x) * 4 + 3] > 96) {
+          base = yy;
+          break;
+        }
+    out.push(base);
+  }
+  return out;
 }

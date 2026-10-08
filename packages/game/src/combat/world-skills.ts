@@ -36,8 +36,8 @@ export interface Caster {
 
 /** The stage's enemy slots (combat/skill-stage.ts): 1, 3 and 5 tiles along SE from the fighter's feet. */
 const STAGE_SLOTS: Pt[] = [1, 3, 5].map((n) => ({ x: 16 * n, y: 8 * n }));
-/** A dash stops this short of the mob it's at (px), not on top of it. */
-const DASH_SHORT = 10;
+/** A dash stops this short of the mob it's at (px): beside it, not on top of it (which hid the mob and its hit). */
+const DASH_SHORT = 20;
 
 export class WorldSkills {
   private readonly launches = new Map<string, Promise<Launch | null>>();
