@@ -14,7 +14,8 @@ import { Golem, type GolemArt, type GolemBoss, type GolemEvent } from './town-go
 //
 // Battle: a mob has mobHp(level) HP; any class hits for HIT (CRIT on a crit, CRIT_CHANCE), from the next tile with a
 // melee class or up to RANGED tiles with a ranged one (each skill's own reach: skill-hits.json range). A Scrap Crab's
-// shell blocks every hit from a player standing in its front quarter (0, `blocked`). A mob that's hit fights back (a
+// shell blocks every hit (0, `blocked`) except for a moment after each of its own attacks (shell down: mobs.json
+// shellOpenMs, SHELL_OPEN_MS if not given), from any side. A mob that's hit fights back (a
 // pack all together): it goes after whoever hit it last, and within its reach of them attacks every ATTACK_MS (shown
 // only: players have no HP yet; the Bag's slows them for show, `slow`). A mob of an aggressive zone goes after a player
 // who comes within its zone's aggroRange (in its zone, on its level) the same way. It gives up and walks home when they're
@@ -136,8 +137,11 @@ export interface MobKind {
   reach?: number;
   /** Its attack slows the player hit for this long (shown only). */
   slowMs?: number;
-  /** Its front quarter blocks hits. */
+  /** Its shell blocks every hit, except for `shellOpenMs` from each of its own attacks (shell down). */
   shell?: boolean;
+  shellOpenMs?: number;
+  /** Its own pace of attack (ms between swings), if not ATTACK_MS. */
+  attackMs?: number;
   /** Now and then, rested, a short straight roll along its facing. */
   roll?: { chance: number; tiles: [number, number]; speed: number };
   /** It drifts: its own pace and short rests. */
@@ -171,6 +175,8 @@ interface Mob {
   /** Who it's after, and when they last hit it. */
   foe: { id: string; at: number } | null;
   nextAttack: number;
+  /** A shell's down until then (its last attack + shellOpenMs). */
+  openUntil: number;
   /** Slowed to `factor` of its speed until then (0: rooted). */
   slow: { factor: number; until: number } | null;
   /** The pace of the hop under way (tiles a second). */
@@ -216,13 +222,8 @@ export function facingTo(dc: number, dr: number): TownMobFacing | null {
   return dc > 0 ? 'se' : dr > 0 ? 'sw' : 'ne';
 }
 
-/** Whether something `dc, dr` from a mob facing `f` is in its front quarter (a 90° wedge round its facing; the
- *  diagonals between are its sides). */
-export function inFront(f: TownMobFacing, dc: number, dr: number): boolean {
-  const [fx, fy] = AXIS[f];
-  const along = dc * fx + dr * fy;
-  return along > 0 && Math.abs(dc * fy - dr * fx) < along;
-}
+/** A shell's down this long from each of its attacks, if its kind doesn't say. */
+const SHELL_OPEN_MS = 2000;
 
 const cheb = (a: [number, number], b: [number, number]) => Math.max(Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1]));
 const STEPS: [number, number][] = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
@@ -277,7 +278,7 @@ export class MobRoom {
       const variant = variants[Math.floor(seeded(`${id}:variant`) * variants.length)] ?? '';
       const m: Mob = {
         id, zone, kind, level, maxHp: mobHp(level), variant, spawn: [col, row], home: [col, row], col, row, facing: FACINGS[Math.floor(seeded(`${id}:dir`) * 4)], path: [], hopAt: 0, restUntil: 0,
-        hp: mobHp(level), respawnAt: 0, foe: null, nextAttack: 0, slow: null, hopSpeed: SPEED, pack: kind.pack ? pack : null, ...(add ? { add } : {}),
+        hp: mobHp(level), respawnAt: 0, foe: null, nextAttack: 0, openUntil: 0, slow: null, hopSpeed: SPEED, pack: kind.pack ? pack : null, ...(add ? { add } : {}),
       };
       // A pack's caps start round the point, each on a tile of its own (seeded: the same every time).
       if (k) m.home = this.besideSpawn(m, pack, id);
@@ -535,8 +536,9 @@ export class MobRoom {
     const reach = m.kind.reach ?? 1;
     if (cheb(p, [m.col, m.row]) <= reach) {
       if (now >= m.nextAttack) {
-        m.nextAttack = now + ATTACK_MS;
+        m.nextAttack = now + (m.kind.attackMs ?? ATTACK_MS);
         m.facing = facingTo(p[0] - m.col, p[1] - m.row) ?? m.facing;
+        if (m.kind.shell) m.openUntil = now + (m.kind.shellOpenMs ?? SHELL_OPEN_MS); // its shell drops as it swings
         events.push({ t: 'mob-attack', id: m.id, target: foe.id, dir: m.facing, ...(m.kind.slowMs ? { slow: m.kind.slowMs } : {}) });
       }
       return;
@@ -632,7 +634,7 @@ export class MobRoom {
   private damage(m: Mob, player: string, from: [number, number], now: number): MobHit {
     const [mc, mr] = this.at(m, now);
     this.rally(m, player, now);
-    if (m.kind.shell && inFront(this.facingAt(m, now), from[0] - mc, from[1] - mr)) return { id: m.id, damage: 0, crit: false, hp: m.hp, dead: false, blocked: true };
+    if (m.kind.shell && now >= m.openUntil) return { id: m.id, damage: 0, crit: false, hp: m.hp, dead: false, blocked: true };
     const crit = this.random() < CRIT_CHANCE;
     const damage = crit ? CRIT : HIT;
     m.hp = Math.max(0, m.hp - damage);

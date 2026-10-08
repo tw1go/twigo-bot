@@ -310,8 +310,10 @@ export interface MobData {
   drift?: { speed: number; rest: Vec2 };
   /** Its attack slows the player hit for this long (ms; shown only). */
   slowMs?: number;
-  /** Hits from its front quarter are blocked (the Scrap Crab; the server decides). */
+  /** Its shell blocks every hit except just after its own attacks (the Scrap Crab; the server decides). */
   shell?: boolean;
+  /** A shell's down this long (ms) from each of its attacks: hit it then. */
+  shellOpenMs?: number;
   /** Where its zap leaves: art px in the SE cell (mirrored for SW and NW). */
   eye?: Vec2;
   /** The golem's Scrap Toss release frame and Lamp Glare cone frames (first, last). */

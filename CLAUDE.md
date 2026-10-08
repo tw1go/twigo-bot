@@ -329,9 +329,9 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   the whole skill plays mirrored round the caster's feet; each mob's damage number and HP land when the script's hit on
   it does; skill-hits.json `fxScale` sizes a skill's effects). Each skill's reach: skill-hits.json `range` (from its
   script's farthest slot, at least the class's own; around skills: their radius `around:N:R`). Mobility skills never auto-cast. The bot decides (`MobRoom.attack`, tested): mobs have `mobHp(level)` = 100 + 25 a
-  level above 1 (`TownMob.maxHp`), any class hits 20 (25 on a 15% crit), at most one swing per 0.4 s; a Scrap Crab
-  (`shell`) blocks every hit from a player in its front quarter (`inFront`; area skills too: where the attacker stands;
-  `blocked`, 0); a hit mob (its whole pack) chases its foe, an aggressive zone's mob (`aggro`) one who comes within its
+  level above 1 (`TownMob.maxHp`), any class hits 20 (25 on a 15% crit), at most one swing per 0.4 s; a Scrap Crab's
+  shell (`shell`) blocks every hit from any side (`blocked`, 0) except for `shellOpenMs` (1.2 s) from each of its own
+  swings (shell down: hit it then; it swings every `attackMs` 2.5 s; the game shows a small shield over a fighting or targeted crab while its shell is up); a hit mob (its whole pack) chases its foe, an aggressive zone's mob (`aggro`) one who comes within its
   `aggroRange` (in its zone, on its level; players are sorted per zone once a tick), to the nearest free tile within
   its `reach` (mobs.json; the Wire Tangle zaps from 3) and attacks every 1.6 s (`mob-attack` with its `dir`, and the Bag's
   `slow` ms; players have no HP yet), gives up when they leave its zone or its leash, or (passive) after 12 s without a

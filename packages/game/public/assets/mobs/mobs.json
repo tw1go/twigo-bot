@@ -5,7 +5,7 @@
   "tire-roller": { "attackFrame": 9, "charge": [2, 9], "shadow": [20, 7], "roll": { "chance": 0.4, "tiles": [1, 2], "speed": 4 }, "variants": ["yellow", "cyan", "grey", "red", "green"] },
   "plastic-bag-spook": { "attackFrame": 2, "shadow": [18, 6], "floats": true, "drift": { "speed": 1.4, "rest": [300, 1400] }, "slowMs": 2500, "variants": ["white", "striped"] },
   "wire-tangle": { "attackFrame": 2, "shadow": [34, 11], "reach": 3, "eye": [40, 24] },
-  "scrap-crab": { "attackFrame": 2, "shadow": [30, 10], "shell": true, "variants": ["blue", "rust", "silver"] },
+  "scrap-crab": { "attackFrame": 2, "shadow": [30, 10], "shell": true, "shellOpenMs": 1200, "attackMs": 2500, "variants": ["blue", "rust", "silver"] },
   "scrapheap-golem": { "attackFrame": 5, "tossFrame": 4, "glareFrames": [3, 5], "shadow": [72, 24], "hp": 4000, "radius": 3, "scale": 1.5, "top": 37,
     "lamp": { "se": [108, 71], "sw": [91, 71], "ne": [116, 50], "nw": [83, 50] }, "slamFist": { "se": [148, 154], "sw": [52, 154], "ne": [152, 144], "nw": [48, 144] }, "tossFist": { "se": [147, 45], "sw": [53, 45], "ne": [165, 27], "nw": [35, 27] } }
 }

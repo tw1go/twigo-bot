@@ -49,6 +49,10 @@ const LUNGE = 0.8; // tiles: the Tire Roller's charge, out and back
 const SPARK_SPEED = 260; // px a second
 const BODY_UP = 12; // a player's body above their feet (where a spark lands)
 const DEATH_FADE_MS = 350;
+/** A Scrap Crab's shell is down this long from each of its attacks if mobs.json doesn't say (as the server), and it shows its
+ *  shield this long after its last hit or swing. */
+const SHELL_OPEN_MS = 2000;
+const FIGHT_MS = 8000;
 
 /** Where the field boss lives (and its Adds' zone, in the info bar). */
 export const GOLEM_PIT = 'Golem Pit';
@@ -96,6 +100,11 @@ export interface Mob {
    *  per frame (0-based), `then` when it's over. */
   pose: { key: string; anim: string; t: number; onFrame?: (f: number) => void; then?: () => void } | null;
   bar: Phaser.GameObjects.Graphics | null;
+  /** A Scrap Crab's shell: up (blocking: a shield over it while it's fighting or your target) or down until `openUntil`
+   *  (scene ms) after each of its attacks; `fightUntil` (scene ms) while it's been fighting lately. */
+  shield: Phaser.GameObjects.Graphics | null;
+  openUntil: number;
+  fightUntil: number;
   /** The pace of its hop (tiles a second; slower while slowed). */
   speed: number;
   /** Slowed or rooted until then (scene ms), shown with a cold tint. */
@@ -197,7 +206,7 @@ export class Mobs {
       id, zone, def, variant, cell: mobCell(def, variant), data, level, maxHp: mobHp(level), spawn: at, home: at, pack,
       col: at.col + 0.5, row: at.row + 0.5, drawCol: 0, drawRow: 0, dir: (['se', 'sw', 'ne', 'nw'] as const)[Math.floor(seeded(`${id}:dir`) * 4)],
       sprite, shadow, path: [], restUntil: this.scene.time.now + Phaser.Math.Between(0, REST_MS[1]), label: null, labelUntil: 0,
-      hp: mobHp(level), dead: false, pose: null, bar: null, speed: data?.drift?.speed ?? SPEED, slowUntil: 0, asleep: false, lunge: { x: 0, y: 0 },
+      hp: mobHp(level), dead: false, pose: null, bar: null, shield: null, openUntil: 0, fightUntil: 0, speed: data?.drift?.speed ?? SPEED, slowUntil: 0, asleep: false, lunge: { x: 0, y: 0 },
       enraged: false, add: false, radius: data?.radius ?? 0, untouchable: false,
     };
     // A pack's caps start round the point, each on a tile of its own (the server's place comes with its snapshot).
@@ -391,6 +400,7 @@ export class Mobs {
       const drop = () => {
         parts.forEach((p) => p.destroy());
         m.bar?.destroy();
+        m.shield?.destroy();
         m.label?.text.destroy();
       };
       m.bar?.destroy();
@@ -483,6 +493,8 @@ export class Mobs {
     const m = this.byId.get(id);
     if (!m || m.dead) return;
     m.hp = hp;
+    m.fightUntil = this.scene.time.now + FIGHT_MS;
+    if (blocked) m.shield?.setScale(1.6); // the shield bounces as it takes the hit
     if (slow && !dead) this.chill(m, slow);
     if (!m.asleep) this.number(m, blocked ? 'Blocked' : String(damage), crit);
     if (dead) this.kill(m);
@@ -537,6 +549,8 @@ export class Mobs {
     const m = this.byId.get(id);
     if (!m || m.dead) return;
     m.dir = dir;
+    m.fightUntil = this.scene.time.now + FIGHT_MS;
+    if (m.data?.shell) m.openUntil = this.scene.time.now + (m.data.shellOpenMs ?? SHELL_OPEN_MS); // its shell drops as it swings
     const land = () => this.hooks.onHit?.(m, target, slow);
     const frame = m.data?.attackFrame ?? 0;
     const fire = () => {
@@ -838,6 +852,22 @@ export class Mobs {
     m.shadow?.setPosition(x + Math.round(m.lunge.x), y + Math.round(m.lunge.y)).setDepth(depth - 0.2);
     if (m === this.target) this.syncRing();
     this.syncBar(m);
+    if (m.data?.shell) this.syncShield(m);
+  }
+
+  /** A crab's shield over its HP bar: shown while its shell is up and it's fighting (or your target), gone while it's
+   *  down (hit it then); a blocked hit bounces it. */
+  private syncShield(m: Mob): void {
+    const now = this.scene.time.now;
+    const show = !m.dead && !m.asleep && now >= m.openUntil && (now < m.fightUntil || m === this.target);
+    if (!show) {
+      m.shield?.setVisible(false);
+      return;
+    }
+    if (!m.shield) m.shield = drawShield(this.scene.add.graphics());
+    const k = m.shield.scale;
+    m.shield.setScale(k > 1 ? Math.max(1, k - 0.06) : 1).setVisible(true);
+    m.shield.setPosition(Math.round(m.sprite.x - m.lunge.x), Math.round(this.top(m) - 4)).setDepth(LABEL_DEPTH - 1);
   }
 
   private showLabel(m: Mob): void {
@@ -923,4 +953,12 @@ function stepName(dc: number, dr: number): string {
   if (sy < 0 && sx === 0) return 'n';
   if (sx > 0) return sy > 0 ? 'se' : 'ne';
   return sy > 0 ? 'sw' : 'nw';
+}
+
+/** A small silver shield (code-drawn pixels, 7 × 8, centred on its bottom tip): a Scrap Crab's shell is up. */
+function drawShield(g: Phaser.GameObjects.Graphics): Phaser.GameObjects.Graphics {
+  const rows = ['.#####.', '#ooooo#', '#owooo#', '#owooo#', '#ooooo#', '.#ooo#.', '..#o#..', '...#...'];
+  const colour: Record<string, number> = { '#': 0x1e1b3a, o: 0xa9b1d6, w: 0xeef1ff };
+  rows.forEach((row, y) => [...row].forEach((ch, x) => ch !== '.' && g.fillStyle(colour[ch], 1).fillRect(x - 3.5, y - 8, 1, 1)));
+  return g;
 }

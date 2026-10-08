@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
-import { type AttackResult, MobRoom, facingTo, inFront, loadMobKinds, loadMobMap, mobHp, packSize } from './town-mobs.js';
+import { type AttackResult, MobRoom, facingTo, loadMobKinds, loadMobMap, mobHp, packSize } from './town-mobs.js';
 
 // The Slums' mobs on the real map (the game's maps/slums.json): where they stand, how they hop, what newcomers see.
 
@@ -278,7 +278,7 @@ test('hitting one cap makes the whole pack fight that player', () => {
   assert.ok(new Set(at).size >= Math.min(3, caps.length), at.join(' '));
 });
 
-test('facing and the front quarter: the art\'s four ways, the diagonals between are sides', () => {
+test('facing: the art\'s four ways, the diagonals between as the game shows a step', () => {
   assert.equal(facingTo(1, 0), 'se');
   assert.equal(facingTo(0, 1), 'sw');
   assert.equal(facingTo(-1, 0), 'nw');
@@ -289,27 +289,31 @@ test('facing and the front quarter: the art\'s four ways, the diagonals between 
   assert.equal(facingTo(-1, -1), 'ne'); // N → NE
   assert.equal(facingTo(5, 2), 'se');
   assert.equal(facingTo(0, 0), null);
-  assert.ok(inFront('se', 1, 0) && inFront('se', 4, 2) && inFront('sw', 0, 3) && inFront('ne', 1, -3));
-  assert.ok(!inFront('se', 1, 1) && !inFront('se', 0, 1) && !inFront('se', -1, 0) && !inFront('nw', 2, 0) && !inFront('se', 0, 0));
 });
 
-test('a Scrap Crab\'s shell blocks hits from its front quarter (0, blocked), not from behind or its sides', () => {
+test('a Scrap Crab\'s shell blocks every hit, from any side, except for a moment after each of its own attacks', () => {
   const room = new MobRoom(map, () => 0.5, {}, { shapes: {} }, kinds);
   const crab = room.snapshot(0).find((m) => m.id.startsWith('crab-basin:'))!;
-  const ahead: Record<string, [number, number]> = { se: [1, 0], sw: [0, 1], nw: [-1, 0], ne: [0, -1] };
-  const [fx, fy] = ahead[crab.dir];
-  const front = room.attack('p1', [crab.col + 2 * fx, crab.row + 2 * fy], 'slingshot', crab.id, 0);
-  assert.ok(front.ok);
-  assert.deepEqual(front.hits[0], { id: crab.id, damage: 0, crit: false, hp: crab.maxHp, dead: false, blocked: true });
-  const back = room.attack('p2', [crab.col - 2 * fx, crab.row - 2 * fy], 'slingshot', crab.id, 0);
-  assert.ok(back.ok && back.hits[0].damage > 0 && !back.hits[0].blocked);
-  const side = room.attack('p3', [crab.col + fx + fy, crab.row + fy + fx], 'slingshot', crab.id, 0); // a diagonal
-  assert.ok(side.ok && side.hits[0].damage > 0);
-  // An area skill too: it's where the attacker stands.
-  const room2 = new MobRoom(map, () => 0.5, {}, { shapes: { stick: ['around:8:3'] } }, kinds);
-  const c2 = room2.snapshot(0).find((m) => m.id === crab.id)!;
-  const r = room2.attack('p1', [c2.col + fx, c2.row + fy], 'stick', c2.id, 0);
-  assert.ok(r.ok && r.hits[0].blocked);
+  const open = kinds['scrap-crab'].shellOpenMs!;
+  assert.ok(open >= 1000, 'long enough to land a hit or two');
+  // Shell up: blocked from the front, behind, a side; area skills too.
+  for (const [dc, dr] of [[2, 0], [-2, 0], [0, 2], [1, 1]]) {
+    const r = room.attack(`p${dc}${dr}`, [crab.col + dc, crab.row + dr], 'slingshot', crab.id, 0);
+    assert.ok(r.ok);
+    assert.deepEqual(r.hits[0], { id: crab.id, damage: 0, crit: false, hp: crab.maxHp, dead: false, blocked: true });
+  }
+  // It comes for the last of them and swings: its shell is down for `open` ms from that swing.
+  const me = near(room, crab, 1);
+  const players = new Map([['p1-1', me]]);
+  let swing = -1;
+  for (let t = 250; t < 20_000 && swing < 0; t += 250)
+    for (const e of room.tick(t, players)) if (e.t === 'mob-attack' && e.id === crab.id) swing = t;
+  assert.ok(swing > 0, 'it swung');
+  const now = room.snapshot(swing).find((m) => m.id === crab.id)!;
+  const down = room.attack('p1-1', [now.col + 1, now.row], 'slingshot', crab.id, swing + 100);
+  assert.ok(down.ok && down.hits[0].damage > 0 && !down.hits[0].blocked, 'shell down');
+  const up = room.attack('p1-1', [now.col + 1, now.row], 'slingshot', crab.id, swing + open + 1);
+  assert.ok(up.ok && up.hits[0].blocked, 'shell back up');
 });
 
 test('mobs face the way they last stepped (a newcomer sees it)', () => {
