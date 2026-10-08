@@ -25,6 +25,7 @@ export const ACTIONS: ActionDef[] = [
   { id: 'skills', label: 'Skills', group: 'Actions', keys: ['KeyK'] },
   { id: 'bag', label: 'Bag and equipment', group: 'Actions', keys: ['KeyB', 'KeyI'] },
   { id: 'quests', label: 'Quest log', group: 'Actions', keys: ['KeyJ'] },
+  { id: 'settings', label: 'Settings', group: 'Actions', keys: ['KeyO'] },
   ...slotCodes.map((code, i): ActionDef => ({ id: i < 10 ? `main${i + 1}` : `util${i - 9}`, label: `Slot ${i + 1}`, group: 'Hotbar', keys: [code] })),
   ...slotCodes.map((code, i): ActionDef => ({ id: `top${i + 1}`, label: `Top slot ${i + 1}`, group: 'Hotbar (top row)', keys: [`Alt+${code}`] })),
   ...EMOTES.map((name, i): ActionDef => ({ id: `emote${i + 1}`, label: name, group: 'Emotes', keys: [`F${i + 1}`] })),

@@ -1,4 +1,4 @@
-import { keyLabel, onKeybinds } from './keybinds';
+import { keyLabel, matches, onKeybinds } from './keybinds';
 import type { MeDig, MeResponse, PresenceStatus, PreregStatus } from '@mikazuki/shared';
 import { renderPrereg } from '../hud';
 import { fakeLogin, loadMe } from '../session';
@@ -137,8 +137,19 @@ export function mountTownHud(o: TownHudOptions): void {
   } else settings.textContent = '⚙';
   settings.setAttribute('aria-label', 'Settings');
   settings.setAttribute('aria-haspopup', 'dialog');
-  settings.title = 'Settings';
+  onKeybinds(() => (settings.title = keyLabel('settings') ? `Settings (${keyLabel('settings')})` : 'Settings'));
   settings.addEventListener('click', () => showSettings({ loggedIn: !!o.me, onClose: () => settings.focus() }));
+  // Its key (O by default: ui/keybinds.ts) opens and closes it, unless you're typing (its own sliders and boxes don't count).
+  document.addEventListener('keydown', (e) => {
+    if (e.repeat || !matches('settings', e) || !root.isConnected) return;
+    const a = document.activeElement as HTMLInputElement | null;
+    const box = document.getElementById('settings');
+    const field = !!a && (a.tagName === 'TEXTAREA' || a.isContentEditable || (a.tagName === 'INPUT' && !(box?.contains(a) && (a.type === 'range' || a.type === 'checkbox'))));
+    if (field || document.getElementById('creator')) return;
+    e.preventDefault();
+    if (box) box.querySelector<HTMLButtonElement>('.st-close')?.click();
+    else settings.click();
+  });
   // News (announcements and patch notes), with a dot while there's something new.
   const news = el('button', 'th-settings th-news');
   if (o.megaphone) {

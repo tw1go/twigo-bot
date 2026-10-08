@@ -184,7 +184,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   (music 0 = off), Mute all and Mute gossip murmur (`npcsMuted`: the Alings' ambient murmur only; saved in localStorage `mk_sound`), log out, a Keybinds page and a Credits page (keep it in step with
   `public/assets/audio/CREDITS.md` and the font's licence). Keep sounds soft: no sharp clicks.
 - Keybinds (`ui/keybinds.ts`): every game key is an action with up to two keys (event.code + Ctrl/Alt/Shift, so layouts
-  and Caps Lock don't matter): walking (WASD + arrows), interact (E, Space), target (Z), skills (K), bag (B, I), quest log
+  and Caps Lock don't matter): walking (WASD + arrows), interact (E, Space), target (Z), skills (K), bag (B, I), settings (O), quest log
   (J), the 26 hotbar slots (1–0 - = `, Alt + those), emotes (F1–F8). Saved per browser (localStorage `mk_keys`, only
   what differs from the defaults); Settings → Keybinds: click a key, press the new one (Esc never mind, Backspace none; a
   key another action had moves over, with a toast), Reset all. Everything listening asks `matches` / `actionOf` /
