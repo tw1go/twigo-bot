@@ -28,7 +28,11 @@ function hsv(h: number, s: number, v: number): number {
   return (f(5) << 16) | (f(3) << 8) | f(1);
 }
 
-/** A character's name in white with their <Title> under it in the title's colour (an NPC's: the name only). */
+/** A party member's name (only the party sees it: ui/party.ts). */
+export const PARTY_PINK = '#F9A8D4';
+
+/** A character's name in white (party pink for your party) with their <Title> under it in the title's colour (an
+ *  NPC's: the name only). */
 export class NameTag {
   private readonly box: Phaser.GameObjects.Container;
   private readonly texts: Phaser.GameObjects.Text[];
@@ -70,6 +74,11 @@ export class NameTag {
     this.sub.setVisible(withTitle).setY(-subH);
     this.name.setY(-subH - nameH + (withTitle ? 1 : 0));
     this.baseHeight = subH + nameH - (withTitle ? 1 : 0);
+  }
+
+  /** The name in party pink (a party member, as the party sees them) or white. */
+  setParty(on: boolean): void {
+    this.name.setColor(on ? PARTY_PINK : '#FFFFFF');
   }
 
   /** Height of the whole stack (name + title), in world units. */

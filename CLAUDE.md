@@ -164,7 +164,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   `showClassChoice`); a different class → `POST /town/class-change` (`switchClass` in web/adventure.ts: the new class's
   training weapon instead of the old one's, quests kept; only once you have a class), the town's `kit` message for
   everyone. Dev: the pretend bag has one (net/adventure.ts `changeClass` → `devSwitchClass`). Art: manifest items['class-ticket'] (items/consumables/item-class-change-card*.png).
-- Chat (`ui/chat.ts` + `SpeechBubble` in `ui/labels.ts`): Enter to type, Enter sends and stays open, empty Enter/Esc or a click outside closes; the bot's `say` (tidied, ≤120 chars,
+- Chat (`ui/chat.ts` + `SpeechBubble` in `ui/labels.ts`; channels General / Megaphone / Party: `/g` `/m` `/p`): Enter to type, Enter sends and stays open, empty Enter/Esc or a click outside closes; the bot's `say` (tidied, ≤120 chars,
   burst 3 then 1 per 2 s; only the last 20 lines are kept) comes back to everyone, the speaker included. Linked to a Discord channel
   (`TOWN_CHAT_CHANNEL_ID`, bot `web/town-chat.ts`, needs the Message Content intent): Discord lines show with the
   Discord mark. Quiet restarts: the last 20 chat lines are saved in data/town-chat.json (its own file, never in the
@@ -449,6 +449,18 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   a hop, a stretch-and-pop blink). Tiles go to the server as steps (within the step budget) after a `move` message that
   the bot relays (`web/town.ts`, one per 0.8 s, ending within 6 tiles) so others play it too (`world/others.ts`, steps
   skipped while it plays; `Character.busy`). Slots show the cooldown as a purple pie with the seconds left.
+- Parties (bot `web/town-party.ts`, tested; `web/town.ts` sends it all): up to 6, one leader. Only the leader invites (or
+  anyone in no party: it starts when the first invite is accepted); invites lapse after a minute (the inviter is told no).
+  Leaving passes the lead to the next member (join order); a party down to one ends; the leader kicks (by party key: a
+  random key per member per process, never a Discord id) or disbands. Kept by member, in memory only (a restart ends
+  them); a member who drops stays for a minute (Away), so reloads and gates keep the party. Messages party-invite /
+  -answer / -leave / -disband / -kick, and `party` (state + a toast note), `party-invited`, `party-refused`,
+  `party-declined`, `party-say`. Game: `net/party.ts` (state, actions), `ui/party.ts` (the panel under the quest tracker:
+  heads, pink names, class badges, area or Away, crown, "you"; the exit icon opens Leave / Disband (asks twice); the
+  leader right-clicks a member for Kick; the invite pop-up, Accept / Decline with a minute's bar), "Invite to party" in
+  the player menu (so also from chat names), party members' names pink only for the party (`Character.setParty`,
+  `OtherPlayers.inParty`), party chat `/p` (pink, a "Party" tag; to the party only, never Discord or the kept lines).
+  Dev: two windows `?as=Alice` / `?as=Bob`.
 - Player menu (`ui/target.ts`): left click (or tap) someone → their name in a long box top centre (or click their name
   in the chat: the box opens right beside it with the menu open, `selectAt`; a click elsewhere closes it; no ×: a click
   outside the box closes it too, a drag to peek doesn't); clicking it opens

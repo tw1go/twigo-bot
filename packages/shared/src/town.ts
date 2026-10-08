@@ -87,7 +87,7 @@ export type TownClientMessage =
   | { t: 'stand' }
   /** Say something (1–120 characters after tidying; a few at once, then about one every 2 s). */
   /** `megaphone`: uses one of the sender's megaphones; the line runs across everyone's screen. */
-  | { t: 'say'; text: string; megaphone?: boolean }
+  | { t: 'say'; text: string; megaphone?: boolean; /** To your party only (`/p` in the chat; not to Discord). */ party?: boolean }
   /** An emote over your head (one of TOWN_EMOTES). */
   | { t: 'emote'; emote: TownEmote }
   /** A damage skill on a mob (battle maps: the Slums): `skill` = its place in the class's list (which pose it plays). */
@@ -105,7 +105,37 @@ export type TownClientMessage =
   | { t: 'arena-pick'; hand: ArenaHand }
   | { t: 'arena-rematch'; bet?: number }
   | { t: 'arena-decline' }
-  | { t: 'arena-leave' };
+  | { t: 'arena-leave' }
+  /** Parties (bot web/town-party.ts; up to 6): invite a player (by their town id; you lead, or you're in none), answer an
+   *  invite, leave (a leader's lead passes to the next member), disband (the leader), kick a member (the leader; by
+   *  their party key). */
+  | { t: 'party-invite'; to: string }
+  | { t: 'party-answer'; invite: string; accept: boolean }
+  | { t: 'party-leave' }
+  | { t: 'party-disband' }
+  | { t: 'party-kick'; member: string };
+
+/** A party member as everyone in the party sees them: `key` is theirs for the party's lifetime (never a Discord id),
+ *  `id` their town player id while they're connected (null: away, kept for a minute), `area` the room they're in. */
+export interface PartyMember {
+  key: string;
+  id: string | null;
+  nickname: string;
+  outfit: OutfitData;
+  cls?: string | null;
+  area: string | null;
+}
+
+export interface PartyState {
+  leader: string;
+  /** Your own key. */
+  you: string;
+  /** In the order they joined (the next leader is the first after the leader). */
+  members: PartyMember[];
+  max: number;
+}
+
+export type PartyRefusal = 'self' | 'gone' | 'not-leader' | 'full' | 'in-party' | 'already' | 'invited' | 'expired' | 'slow';
 
 /** Jack en poy: bato (rock) beats gunting (scissors), gunting beats papel (paper), papel beats bato. */
 export type ArenaHand = 'bato' | 'papel' | 'gunting';
@@ -295,13 +325,23 @@ export type TownServerMessage =
   | { t: 'mob-spawn'; id: string; col: number; row: number; hp: number }
   /** Your attack didn't land: too far, too fast, or the mob's gone. */
   | { t: 'attack-refused'; reason: 'range' | 'slow' | 'gone' }
+  /** Your party now (null: none), with a line for a toast when something happened ("Mara joined the party."). */
+  | { t: 'party'; party: PartyState | null; note?: string }
+  /** Someone invites you: answer with party-answer (it lapses after a minute). */
+  | { t: 'party-invited'; invite: string; from: string; name: string; members: number }
+  /** Your invite or action didn't go through (`name`: who it was about). */
+  | { t: 'party-refused'; reason: PartyRefusal; name?: string }
+  /** The player you invited said no (or let it lapse). */
+  | { t: 'party-declined'; name: string }
+  /** A party member said something to the party (you too: your own words come back this way). */
+  | { t: 'party-say'; id: string; name: string; text: string }
   /** Someone used a mobility move (their steps follow). */
   | { t: 'move'; id: string; move: TownMove; col: number; row: number }
   /** Someone said something in the town's Discord channel (shown with a Discord mark, no bubble). */
   | { t: 'say-discord'; name: string; text: string }
   /** Your message wasn't sent: too fast, empty / too long once tidied, or you're muted (until when, ms). */
   /** 'megaphone': they have none (bought in the shop). */
-  | { t: 'say-refused'; reason: 'slow' | 'invalid' | 'muted' | 'megaphone'; until?: number }
+  | { t: 'say-refused'; reason: 'slow' | 'invalid' | 'muted' | 'megaphone' | 'party'; until?: number }
   | ArenaServerMessage;
 
 /** Staying in the web town pays (bot web/town-stay.ts): a Kowen to claim every `every` minutes in town (`minutes`
