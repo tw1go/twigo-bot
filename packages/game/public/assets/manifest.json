@@ -14864,6 +14864,38 @@
         24
       ],
       "note": "the bag: chips and dust bursting out of the item slot as gear is taken apart; plays once"
+    },
+    "fx-level-up-ring": {
+      "file": "fx/progress/fx-level-up-ring.png",
+      "frame": [
+        72,
+        40
+      ],
+      "frames": 10,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        36,
+        20
+      ],
+      "layer": "ground",
+      "note": "a level up (TownScene levelUpFx): gold ring flat on the ground under the player, with fx-level-up-sparks and \"Level up!\"; plays once"
+    },
+    "fx-level-up-sparks": {
+      "file": "fx/progress/fx-level-up-sparks.png",
+      "frame": [
+        72,
+        72
+      ],
+      "frames": 10,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        36,
+        64
+      ],
+      "layer": "front",
+      "note": "a level up: gold and cream sparks rising off the player; anchor = the player's feet; plays once"
     }
   },
   "ui": {

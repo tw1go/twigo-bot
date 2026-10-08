@@ -38,3 +38,27 @@ macOS `afconvert`) for browsers that can't play Ogg; the game loads the `.ogg` f
 - `music/arena-battle.*` — "8-bit Battle Loop" by Wolfgang_ (Theodore Kerr), CC0,
   https://opengameart.org/content/8-bit-battle-loop (the arena's match music; renamed from `8BitBattleLoop.ogg`, the
   `.m4a` an AAC copy; a 26.65 s loop)
+
+## Combat (picked by Mac, 8 Oct) in `sfx/`
+
+All from Kenney (www.kenney.nl), CC0: Impact Sounds, Interface Sounds, RPG Audio. Built in the art folder by
+`scripts/audio/build_combat_sfx.py` (layered, pitched, trimmed, peak-normalised). Each sound has an `.ogg` and an AAC
+`.m4a`.
+
+- `combat-hit`, `combat-hit-crit`, `combat-level-up`, `combat-loot-drop`, `combat-loot-pickup`, `combat-coins`,
+  `combat-potion`, `combat-enhance-success`, `combat-enhance-fail`, `combat-enhance-break`, `combat-repair`,
+  `combat-agimat-embed`, `combat-disassemble`, `combat-trade-done`.
+- `combat-player-hurt-1..3`, `combat-mob-hurt-<mob>-1..3`, `combat-mob-death-<mob>-1..3` (mob = tin-can, bottle-caps,
+  tire-roller, plastic-bag-spook, wire-tangle, scrap-crab, scrapheap-golem): one of the three at random each time, never
+  the same twice running.
+
+## Skills and field boss (8 Oct) in `sfx/`
+
+Kenney (www.kenney.nl), CC0: Impact Sounds, Interface Sounds, RPG Audio, layered with whoosh, hiss, puff and hum made
+from ffmpeg noise generators (no source to credit). Built in the art folder by `scripts/audio/build_skill_sfx.py`. Each
+sound has an `.ogg` and an AAC `.m4a`.
+
+- `skill-<class>-<skill>-1..3` for each class's 7 early skills, `skill-dash-1..3`, `skill-step-back-1..3`,
+  `skill-charge-1..3`, `skill-blink-out-1..3`, `skill-blink-in-1..3`, and `golem-<attack>-1..3` (tire-slam-windup,
+  tire-slam, scrap-toss-throw, scrap-toss-land, lamp-glare, call-junk, enrage): one of the three at random each time,
+  never the same twice running.
