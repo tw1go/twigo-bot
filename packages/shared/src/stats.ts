@@ -68,8 +68,28 @@ export interface StatsData {
   /** MP per second: "1 + 0.05 * INT". */
   regen: { inCombat: { hp: number; mpPerSec: string }; outOfCombatAfterSec: number; outOfCombatPctPerSec: number };
   rarity: { nameColour: Record<string, { affix: string | null; slots: number }> };
+  mobBehaviour: MobBehaviour;
+}
+
+/** stats.json mobBehaviour: how the mobs live (the guide's "Mob behaviour"). Kinds in its lists are camelCase ('tinCan'). */
+export interface MobBehaviour {
+  respawnSeconds: number;
+  /** Mobs about in each zone (a pack counted once). */
+  aliveperZone: number;
+  passive: string[];
+  aggressive: string[];
+  aggroTiles: number;
+  /** Hitting one of these pulls its whole pack. */
+  packAssist: string[];
+  leashTiles: number;
+  wanderTiles: number;
+  attackEverySeconds: number;
+  /** Tiles a mob attacks from: `melee` for every kind not listed. */
+  rangeTiles: Record<string, number> & { melee: number };
+  hpBar: { showOn: string; hideAfterSeconds: number; playersSee: string };
   /** Mob name colours by level gap: "mob 5+ levels below" (grey), "mob 3+ levels above" (red). */
-  mobBehaviour: { nameColour: { grey: string; white: string; red: string } };
+  nameColour: { grey: string; white: string; red: string };
+  golem: { leavesPit: boolean; resetAfterSecondsEmpty: number };
 }
 
 /** The numbers in a formula string, in order ("100 * 1.3^(tier-1)" → 100, 1.3, 1). */
@@ -464,4 +484,78 @@ export function mobTone(data: StatsData, level: number, mobLevel: number): 'grey
   const [below] = numbersIn(data.mobBehaviour.nameColour.grey);
   const [above] = numbersIn(data.mobBehaviour.nameColour.red);
   return level - mobLevel >= below ? 'grey' : mobLevel - level >= above ? 'red' : 'white';
+}
+
+// ── Mob behaviour ──
+
+/** A mob kind's key in mobBehaviour's lists ('tin-can' → 'tinCan'). */
+const behaviourKey = (kind: string) => kind.replace(/-(\w)/g, (_, c: string) => c.toUpperCase());
+
+/** How a kind of mob lives (stats.json mobBehaviour): whether it comes for players within `aggroTiles` (else it only
+ *  fights back), whether a hit pulls its whole pack, the tiles it attacks from and how often (ms), how far it's pulled
+ *  before it walks home healed, how far it wanders, how soon it's back after dying (ms), and how many are about in its
+ *  zone (a pack counted once). A kind in neither list (the golem) is passive. */
+export interface MobRules {
+  aggressive: boolean;
+  packAssist: boolean;
+  reach: number;
+  attackMs: number;
+  aggroTiles: number;
+  leashTiles: number;
+  wanderTiles: number;
+  respawnMs: number;
+  alive: number;
+}
+
+export function mobRules(data: StatsData, kind: string): MobRules {
+  const B = data.mobBehaviour;
+  const key = behaviourKey(kind);
+  return {
+    aggressive: B.aggressive.includes(key),
+    packAssist: B.packAssist.includes(key),
+    reach: B.rangeTiles[key] ?? B.rangeTiles.melee,
+    attackMs: B.attackEverySeconds * 1000,
+    aggroTiles: B.aggroTiles,
+    leashTiles: B.leashTiles,
+    wanderTiles: B.wanderTiles,
+    respawnMs: B.respawnSeconds * 1000,
+    alive: B.aliveperZone,
+  };
+}
+
+/** How long a mob's HP bar stays after its last hit (ms; while it's your target it stays). */
+export const mobBarMs = (data: StatsData): number => data.mobBehaviour.hpBar.hideAfterSeconds * 1000;
+
+/** How long the golem waits with nobody fighting it before it resets to full (ms). */
+export const golemResetMs = (data: StatsData): number => data.mobBehaviour.golem.resetAfterSecondsEmpty * 1000;
+
+/** A small seeded number (0–1) from a string, so a mob's look, pack and first spot are the same on every restart and in
+ *  the game before the server answers. */
+export function seeded(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
+  return ((h >>> 0) % 10_000) / 10_000;
+}
+
+/** How many caps a pack of `[lo, hi]` with id `id` has (seeded). */
+export const packSize = (id: string, [lo, hi]: [number, number]): number => lo + Math.floor(seeded(`${id}:pack`) * (hi - lo + 1));
+
+/** Where a zone's `n` mobs (or packs) start: indices into its spawn points, spread out (a seeded first, then each the
+ *  point farthest from those taken), the same every time. Its mob `k` is `<zone>:<k>` (a pack's caps `<zone>:<k>:<n>`);
+ *  after a death it comes back at a random free point of the zone (the server's pick). */
+export function mobStartSpots(zone: string, spawns: readonly (readonly [number, number])[], n: number): number[] {
+  if (!spawns.length) return [];
+  const out = [Math.floor(seeded(`${zone}:first`) * spawns.length)];
+  const d = (a: readonly [number, number], b: readonly [number, number]) => Math.max(Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1]));
+  while (out.length < Math.min(n, spawns.length)) {
+    let best = -1;
+    let far = -1;
+    spawns.forEach((s, i) => {
+      if (out.includes(i)) return;
+      const near = Math.min(...out.map((j) => d(s, spawns[j])));
+      if (near > far) [best, far] = [i, near];
+    });
+    out.push(best);
+  }
+  return out;
 }

@@ -57,8 +57,10 @@ export function moveTiles(grid: WalkGrid, from: Tile, dir: Dir, kind: MoveKind, 
 }
 
 /** Plays a move on a character (yours or someone else's) to `end`, `n` tiles away, facing `dir`; resolves when it
- *  has landed. `onSpawn` night-tints what it makes (the character again too, after the move's own tints). */
-export function playMove(scene: Phaser.Scene, M: Manifest, char: Character, kind: MoveKind, end: Tile, n: number, dir: Dir, onSpawn?: (o: Phaser.GameObjects.Components.Tint) => void): Promise<void> {
+ *  has landed. `onSpawn` night-tints what it makes (the character again too, after the move's own tints); `sound` plays
+ *  a set of its sounds (audio/sound.ts playSet: skill-dash, -step-back, -charge as it goes; a Blink's skill-blink-out as
+ *  it vanishes, skill-blink-in as it pops back). */
+export function playMove(scene: Phaser.Scene, M: Manifest, char: Character, kind: MoveKind, end: Tile, n: number, dir: Dir, onSpawn?: (o: Phaser.GameObjects.Components.Tint) => void, sound?: (set: string) => void): Promise<void> {
   const from = char.spot;
   const to = { col: end.col + 0.5, row: end.row + 0.5 };
   const fx = (name: string, at = char.sprite) => {
@@ -84,6 +86,7 @@ export function playMove(scene: Phaser.Scene, M: Manifest, char: Character, kind
     return new Promise((resolve) => {
       const sp = char.sprite;
       fx(BURST);
+      sound?.('skill-blink-out');
       sp.setTint(0xffffff).setTintMode(Phaser.TintModes.FILL); // the white flash
       scene.tweens.add({
         targets: sp, scaleX: 0.15, scaleY: 1.5, alpha: 0, duration: 180, ease: 'Quad.easeIn',
@@ -91,6 +94,7 @@ export function playMove(scene: Phaser.Scene, M: Manifest, char: Character, kind
           char.pose(to.col, to.row, dir, false);
           sp.setScale(1.6, 0.4);
           fx(BURST);
+          sound?.('skill-blink-in');
           scene.tweens.add({
             targets: sp, scaleX: 1, scaleY: 1, alpha: 1, duration: 160, ease: 'Back.easeOut',
             onUpdate: (t) => {
@@ -116,6 +120,7 @@ export function playMove(scene: Phaser.Scene, M: Manifest, char: Character, kind
     char.sprite.anims.timeScale = kind === 'step-back' ? 1 : 2.2;
     char.pose(from.col, from.row, dir, kind !== 'step-back');
     fx(DUST);
+    sound?.(`skill-${kind}`);
     scene.tweens.addCounter({
       from: 0, to: 1, duration: ms, delay: windup, ease,
       onUpdate: (t) => {

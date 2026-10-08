@@ -5,13 +5,17 @@ import Phaser from 'phaser';
 // Phaser's sound manager, which holds every sound until the first click, tap or key (browsers require one).
 // The music and sound-effect volumes and mute are saved in this browser. Files and credits: assets/audio/.
 // Inside the casino the town goes quiet (no town music, crickets or fountain) and the casino's own music plays.
+// Combat (the Slums): sounds that come in three versions (`<base>-1`…`-3`: a player hurt, each mob kind hurt and dying,
+// each class's first 7 skills, the mobility moves, the golem's attacks) play one at random, never the same twice running
+// (playSet); the mobility moves' load with the town, the rest only on a battle map (loadSoundSets). Your own always; from
+// elsewhere (others' skills, mobs, the golem) only within HEAR_TILES of you, others' and the golem's at OTHERS.
 
 export type Sfx =
   | 'emote' | 'chat' | 'door' | 'card' | 'chip' | 'coin' | 'click' | 'error'
   | 'flip-spin' | 'flip-land' | 'casino-win' | 'casino-lose' | 'busted'
   | 'arena-whoosh' | 'arena-slam' | 'arena-reveal'
   | 'bakod-throw' | 'bakod-shatter' | 'bakod-key-in' | 'bakod-unlock' | 'bakod-snap'
-  | 'combat-hit' | 'combat-hit-crit' | 'combat-player-hurt-1' | 'combat-player-hurt-2' | 'combat-player-hurt-3'
+  | 'combat-hit' | 'combat-hit-crit' | 'combat-level-up'
   | 'combat-loot-drop' | 'combat-loot-pickup' | 'combat-coins' | 'combat-potion'
   | 'combat-enhance-success' | 'combat-enhance-fail' | 'combat-enhance-break' | 'combat-repair' | 'combat-agimat-embed' | 'combat-disassemble'
   | 'combat-trade-done';
@@ -44,13 +48,11 @@ const SFX: Record<Sfx, { file: string; volume: number; formats?: string[] }> = {
   'bakod-key-in': { file: 'sfx/bakod-key-in', volume: 0.14 },
   'bakod-unlock': { file: 'sfx/bakod-unlock', volume: 0.18 },
   'bakod-snap': { file: 'sfx/bakod-snap', volume: 0.16 },
-  // The Slums (Kenney, picked by Mac): your hits landing (a crit's own), you taking damage (three, never the same twice
-  // running: playVariant), loot landing and picked up, Kusing picked up or spent, an HP or MP Potion.
+  // The Slums (Kenney, picked by Mac): your hits landing (a crit's own), a level up, loot landing and picked up, Kusing
+  // picked up or spent, an HP or MP Potion (you taking damage: SETS).
   'combat-hit': { file: 'sfx/combat-hit', volume: 0.14 },
   'combat-hit-crit': { file: 'sfx/combat-hit-crit', volume: 0.18 },
-  'combat-player-hurt-1': { file: 'sfx/combat-player-hurt-1', volume: 0.16 },
-  'combat-player-hurt-2': { file: 'sfx/combat-player-hurt-2', volume: 0.16 },
-  'combat-player-hurt-3': { file: 'sfx/combat-player-hurt-3', volume: 0.16 },
+  'combat-level-up': { file: 'sfx/combat-level-up', volume: 0.2 },
   'combat-loot-drop': { file: 'sfx/combat-loot-drop', volume: 0.12 },
   'combat-loot-pickup': { file: 'sfx/combat-loot-pickup', volume: 0.16 },
   'combat-coins': { file: 'sfx/combat-coins', volume: 0.14 },
@@ -75,6 +77,25 @@ const MUSIC = { key: 'music:happy-tune', urls: ['audio/music/happy-tune.ogg', 'a
 const CASINO = { key: 'music:casino', urls: ['audio/music/casino-shop-theme.ogg', 'audio/music/casino-shop-theme.m4a'], volume: 0.09 };
 const ARENA = { key: 'music:arena', urls: ['audio/music/arena-battle.ogg', 'audio/music/arena-battle.m4a'], volume: 0.09, inMs: 400, outMs: 500 };
 const JACKPOT = { volume: 0.25, times: 3, gapMs: 260 };
+
+/** Sounds in numbered versions (sfx/<base>-1…), how many, and each's volume by the start of its base (the first that
+ *  fits). CORE_SETS load with every town; the rest when a battle map asks (loadSoundSets). */
+const VERSIONS = 3;
+const CORE_SETS = ['combat-player-hurt', 'skill-dash', 'skill-step-back', 'skill-charge', 'skill-blink-out', 'skill-blink-in'];
+const SET_VOLUMES: [string, number][] = [
+  ['combat-player-hurt', 0.16],
+  ['combat-mob-hurt-', 0.12],
+  ['combat-mob-death-', 0.16],
+  ['skill-blink-', 0.12],
+  ['skill-', 0.14],
+  ['golem-tire-slam-windup', 0.14],
+  ['golem-enrage', 0.22],
+  ['golem-', 0.2],
+];
+/** Sounds from elsewhere (others' skills, mobs, the golem) are heard within this many tiles of you… */
+const HEAR_TILES = 12;
+/** …others' skills and the golem's a little quieter. */
+const OTHERS = 0.7;
 
 /** The same sound again sooner than this is dropped (a burst of emotes or bets stays one sound). */
 const THROTTLE_MS = 80;
@@ -103,7 +124,10 @@ const DEFAULTS: SoundSettings = { music: 0, sfx: 1, muted: false, npcsMuted: fal
 
 let settings = loadSettings();
 let scene: Phaser.Scene | null = null;
-const lastPlayed = new Map<Sfx, number>();
+const lastPlayed = new Map<string, number>();
+/** The sets asked for (base → its volume); and where you are (tiles), for hearing range. */
+const sets = new Map<string, number>();
+let listener: { col: number; row: number } | null = null;
 let fountain: Phaser.Sound.BaseSound | null = null;
 let fountainAt: { col: number; row: number } | null = null;
 let fountainVolume = 0;
@@ -153,6 +177,7 @@ export function startTownSound(s: Phaser.Scene, fountainTile: { col: number; row
   const load = s.load;
   load.setPath(`${import.meta.env.BASE_URL}assets/`);
   for (const [name, { file, formats = ['ogg', 'm4a'] }] of Object.entries(SFX)) load.audio(`sfx:${name}`, formats.map((f) => `audio/${file}.${f}`));
+  queueSets(CORE_SETS);
   load.audio(CRICKETS.key, CRICKETS.urls);
   if (fountainTile) load.audio(FOUNTAIN.key, FOUNTAIN.urls);
   load.audio(MURMUR.key, MURMUR.urls);
@@ -161,8 +186,9 @@ export function startTownSound(s: Phaser.Scene, fountainTile: { col: number; row
   load.start();
   s.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
     s.sound.stopAll();
-    fountain = music = crickets = casinoMusic = murmur = scene = null;
+    fountain = music = crickets = casinoMusic = murmur = scene = listener = null;
     murmurVolume = 0;
+    sets.clear();
   });
   installButtonSounds();
 }
@@ -216,8 +242,10 @@ function cricketsComeAndGo(s: Phaser.Scene, on: boolean): void {
   });
 }
 
-/** Each frame: the fountain eases towards its volume for where the player stands. */
+/** Each frame: where you stand (sounds from elsewhere are heard near it), and the fountain eases towards its volume for
+ *  there. */
 export function hearFrom(tile: { col: number; row: number }): void {
+  listener = tile;
   if (!fountainAt) return;
   const d = Math.hypot(tile.col - fountainAt.col, tile.row - fountainAt.row);
   const target = FOUNTAIN.volume * Phaser.Math.Clamp(1 - d / FOUNTAIN_REACH, 0, 1) ** 2;
@@ -250,6 +278,11 @@ export function playVoice(rate: number): void {
 /** A short sound (dropped while sound is locked, muted or turned down to 0, or if the same one just played).
  *  `pitch`: cents up or down (e.g. -300, a little lower), on top of the usual small random detune. */
 export function playSound(name: Sfx, volume = SFX[name].volume, pitch = 0): void {
+  play(name, volume, pitch);
+}
+
+function play(name: string, volume: number, pitch = 0): void {
+  tap?.({ name, volume });
   const s = scene;
   if (!s || s.sound.locked || settings.muted || settings.sfx === 0 || !s.cache.audio.exists(`sfx:${name}`)) return;
   const now = performance.now();
@@ -258,19 +291,86 @@ export function playSound(name: Sfx, volume = SFX[name].volume, pitch = 0): void
   s.sound.play(`sfx:${name}`, { volume: volume * settings.sfx, detune: pitch + Phaser.Math.Between(-DETUNE, DETUNE) });
 }
 
-/** The last of each set of versions played (`name-1`…`name-n`), so the same one never plays twice running. */
+/** Where a sound comes from (tiles; none: you), and whether it's someone else's (a little quieter). */
+export interface Heard {
+  at?: { col: number; row: number } | null;
+  others?: boolean;
+}
+
+/** Whether a sound from `at` reaches you (within HEAR_TILES; anything of your own does). */
+export function hears(at?: { col: number; row: number } | null): boolean {
+  return !at || !listener || Math.hypot(at.col - listener.col, at.row - listener.row) <= HEAR_TILES;
+}
+
+/** One sound from somewhere (`Heard`): dropped out of hearing range, others' a little quieter. */
+export function playFrom(name: Sfx, heard: Heard = {}): void {
+  if (hears(heard.at)) play(name, SFX[name].volume * (heard.others ? OTHERS : 1));
+  else tap?.({ name, volume: 0, far: true });
+}
+
+/** The last of each set of versions played, so the same one never plays twice running. */
 const lastVariant = new Map<string, number>();
 
-/** One of a sound's numbered versions (`combat-player-hurt` → -1…-3) at random, never the one played last. */
-export function playVariant(base: 'combat-player-hurt', volume?: number): void {
-  const n = (Object.keys(SFX) as Sfx[]).filter((k) => k.startsWith(`${base}-`)).length;
-  if (!n) return;
+/** One of a set's versions (`skill-dash` → skill-dash-1…-3) at random, never the one played last; from `heard` (out of
+ *  hearing range: nothing). A set nobody asked for (loadSoundSets), or not loaded yet, is silent. */
+export function playSet(base: string, heard: Heard = {}): void {
+  const volume = sets.get(base);
+  if (volume === undefined) return void tap?.({ name: base, volume: 0, missing: true });
+  if (!hears(heard.at)) return void tap?.({ name: base, volume: 0, far: true });
   const last = lastVariant.get(base) ?? 0;
-  let pick = 1 + Math.floor(Math.random() * n);
-  if (n > 1 && pick === last) pick = (pick % n) + 1;
+  let pick = 1 + Math.floor(Math.random() * (last ? VERSIONS - 1 : VERSIONS));
+  if (last && pick >= last) pick++; // (any but the last, evenly)
   lastVariant.set(base, pick);
-  playSound(`${base}-${pick}` as Sfx, volume);
+  play(`${base}-${pick}`, volume * (heard.others ? OTHERS : 1));
 }
+
+/** A set's volume (by its base's start), or undefined for no known kind of set. */
+const setVolumeOf = (base: string) => SET_VOLUMES.find(([start]) => base.startsWith(start))?.[1];
+
+/** Asks for sets (bases): each version queued on the scene's loader (once). */
+function queueSets(bases: string[]): number {
+  const s = scene;
+  if (!s) return 0;
+  let n = 0;
+  for (const base of bases) {
+    const volume = setVolumeOf(base);
+    if (volume === undefined || sets.has(base)) continue;
+    sets.set(base, volume);
+    for (let i = 1; i <= VERSIONS; i++) {
+      if (s.cache.audio.exists(`sfx:${base}-${i}`)) continue;
+      s.load.audio(`sfx:${base}-${i}`, ['ogg', 'm4a'].map((f) => `audio/sfx/${base}-${i}.${f}`));
+      n++;
+    }
+  }
+  return n;
+}
+
+/** A battle map's sets (mob kinds, the golem, every class's skills): loaded in the background, each playing once in. */
+export function loadSoundSets(bases: string[]): void {
+  const s = scene;
+  if (!s) return;
+  s.load.setPath(`${import.meta.env.BASE_URL}assets/`);
+  if (queueSets(bases) && !s.load.isLoading()) s.load.start();
+}
+
+/** The sets asked for so far (debug: the sound hook in __town). */
+export const soundSets = (): string[] => [...sets.keys()];
+
+/** Debug: every sound asked to play (even while sound is locked, as in a headless browser), and those dropped as too far
+ *  (`far`) or not loaded (`missing`). */
+export interface SoundTapped {
+  name: string;
+  volume: number;
+  far?: boolean;
+  missing?: boolean;
+}
+let tap: ((e: SoundTapped) => void) | null = null;
+export function tapSounds(fn: ((e: SoundTapped) => void) | null): void {
+  tap = fn;
+}
+
+/** A skill's set: `skill-<class>-<its name in kebab case>` (Quick Shot → skill-slingshot-quick-shot). */
+export const skillSet = (cls: string, name: string): string => `skill-${cls}-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
 
 /** A jackpot: the coin, a few times, gently spaced (no jingle). */
 export function playJackpot(): void {

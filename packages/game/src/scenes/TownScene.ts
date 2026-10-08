@@ -72,7 +72,7 @@ import { Ground } from '../world/ground';
 import { SlumsOutskirts, outskirts } from '../world/outskirts';
 import { Terrain } from '../world/terrain';
 import { Mobs, TONE, showSlowed } from '../world/mobs';
-import { GolemView } from '../world/golem';
+import { GOLEM_SOUNDS, GolemView } from '../world/golem';
 import { loadBoss } from '../assets/queue';
 import { FxLayers } from '../world/fx-layers';
 import { SKILL_POSE, battleSheets } from '../characters/battle-art';
@@ -89,7 +89,7 @@ import { stopQueue } from '../arena/queue';
 import type { ArenaData } from './ArenaScene';
 import { Minimap } from '../ui/minimap';
 import { type Bench, type Building, WorldObjects, characterDepth } from '../world/objects';
-import { enterArenaSound, enterCasinoSound, hearFrom, leaveCasinoSound, playSound, playVariant, startTownSound } from '../audio/sound';
+import { type SoundTapped, enterArenaSound, enterCasinoSound, hearFrom, leaveCasinoSound, loadSoundSets, playFrom, playSet, playSound, skillSet, soundSets, startTownSound, tapSounds } from '../audio/sound';
 import type { AdventureData } from '../net/adventure';
 import { Hotbar, potionCooldownKey } from '../ui/hotbar';
 import { mountClassSwitch } from '../ui/class-switch';
@@ -167,6 +167,8 @@ const DIR_STEP: Record<Dir, [number, number]> = {
 /** Battle: the classes that fight from afar (5 tiles; the rest from the next tile). A skill's cooldown: combat/cooldowns.ts. */
 const RANGED_CLASSES = new Set(['slingshot', 'broom']);
 const CAST_GAP_MS = 1000;
+/** Only each class's first 7 skills have sounds (audio/sfx skill-<class>-<skill>-1…3); later ones play none yet. */
+const SKILL_SOUNDS = 7;
 const DIR_FOR_KEYS: Record<string, Dir> = {
   '0,-1': 'n', '0,1': 's', '1,0': 'e', '-1,0': 'w', '1,-1': 'ne', '-1,-1': 'nw', '1,1': 'se', '-1,1': 'sw',
 };
@@ -489,6 +491,11 @@ export class TownScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => removeEventListener('mk-renamed', renamed));
     this.minimap = new Minimap(this.map); // in the HUD's corner, above its buttons
     startTownSound(this, this.fountainTile());
+    // A battle map's sounds: each mob kind's hurt and death, the golem's attacks (the classes' skills once their data is in).
+    if (this.battleMap) {
+      const kinds = new Set([...(this.map.mobZones ?? []).filter((z) => z.active).map((z) => z.mob), ...(this.map.boss ? [this.map.boss.id] : [])]);
+      loadSoundSets([...[...kinds].flatMap((k) => [`combat-mob-hurt-${k}`, `combat-mob-death-${k}`]), ...(this.map.boss ? GOLEM_SOUNDS.map((a) => `golem-${a}`) : [])]);
+    }
     if (member || fakeLogin()) this.connect();
     this.zoomIntro(); // last, once the names, labels and building cursors exist
     this.time.delayedCall(1800, () => this.announceRewards()); // once the arrival has settled
@@ -682,6 +689,8 @@ export class TownScene extends Phaser.Scene {
     this.adventureReady ??= loadAdventureData(asset, { quests: Q.file, classes: K.data, equipment: E.file, items: this.M.combatItems?.file }, this.cache.json.get('stats'));
     return this.adventureReady.then((data) => {
       if (!data) return void console.warn('[quests] the quests, classes, equipment or stats data is missing');
+      // Each class's first 7 skills' sounds (heard from others too), on a battle map.
+      if (this.battleMap) loadSoundSets(data.classes.flatMap((c) => c.skills.slice(0, SKILL_SOUNDS).map((k) => skillSet(c.id, k.name))));
       // Every item kind's art (gear and the rest), and the rarity colours every item name uses (stats.json).
       addItemArt(Object.fromEntries([...data.defs.values()].map((i) => [i.id, { icon: i.icon, showcase: i.showcase }])));
       setRarityColours(Object.fromEntries(Object.entries(itemStats(data.stats).rarity.nameColour).map(([r, c]) => [r, c.colour])));
@@ -835,6 +844,13 @@ export class TownScene extends Phaser.Scene {
     }, onHit, this.fxScale[cls]?.[idx] ?? 1);
   }
   private worldSkills: WorldSkills | null = null;
+
+  /** A level up's effect (manifest fx-level-up-ring flat under their feet, fx-level-up-sparks rising off them), with
+   *  "Level up!" over the head; both follow them for the moment it plays. */
+  private levelUpFx(who: Character): void {
+    const feet = () => ({ x: who.sprite.x, y: who.sprite.y });
+    for (const id of ['fx-level-up-ring', 'fx-level-up-sparks']) this.fxLayers.play(this.M.fx[id], feet(), { follow: feet });
+  }
   /** The world's effects: ground (under every player and mob) and front (over them): world/fx-layers.ts. */
   private fxLayers!: FxLayers;
 
@@ -883,6 +899,7 @@ export class TownScene extends Phaser.Scene {
       this.nextCast = now + CAST_GAP_MS;
       const dir = dirToward(m.sprite.x - this.player.sprite.x, m.sprite.y - this.player.sprite.y);
       this.player.strike(SKILL_POSE[idx] ?? 'attack-quick', dir); // (its effects come with the server's answer)
+      if (idx < SKILL_SOUNDS) playSet(skillSet(c.id, name)); // your skill fires (its hits: combat-hit as they land)
       this.link?.send({ t: 'attack', mob: m.id, skill: idx });
       this.hotbar?.cooldown(name, cd);
       return;
@@ -934,7 +951,7 @@ export class TownScene extends Phaser.Scene {
     this.setBuildingAlert(null);
     this.link?.send({ t: 'move', move: kind, col: end.col, row: end.row });
     for (const t of tiles) this.player.onStep?.(t);
-    void playMove(this, this.M, this.player, kind, end, tiles.length, dir, (o) => this.tint >= 0 && o.setTint(this.tint)).then(() => this.arrivedQuietly());
+    void playMove(this, this.M, this.player, kind, end, tiles.length, dir, (o) => this.tint >= 0 && o.setTint(this.tint), (set) => playSet(set)).then(() => this.arrivedQuietly());
     // Its cooldown at its skill level (1% less a level).
     const S = adventureData()?.stats;
     const cd = S ? cooldownOf(S, sk, sk.level) : MOVES[kind].cooldown;
@@ -1279,7 +1296,7 @@ export class TownScene extends Phaser.Scene {
         if (hit?.miss) return who.hitNumber('Miss', mine);
         who.hurt();
         if (hit) who.hitNumber(String(hit.damage), mine);
-        if (mine && hit) playVariant('combat-player-hurt');
+        if (mine && hit) playSet('combat-player-hurt');
         if (!slow) return;
         showSlowed(this.fxLayers, () => ({ x: who.sprite.x, y: who.headY }), () => ({ x: who.sprite.x, y: who.sprite.y }), slow);
         if (mine) this.slowMe(slow);
@@ -1428,19 +1445,23 @@ export class TownScene extends Phaser.Scene {
         if (ch && at && cls) {
           const mob = this.mobs?.list.find((x) => x.id === ids[0]);
           const dir = mob ? dirToward(mob.sprite.x - ch.sprite.x, mob.sprite.y - ch.sprite.y) : dirForStep(at.col - ch.tile.col, at.row - ch.tile.row);
-          if (!mine) ch.strike(SKILL_POSE[m.skill] ?? 'attack-quick', dir); // (yours played as you cast)
+          if (!mine) {
+            ch.strike(SKILL_POSE[m.skill] ?? 'attack-quick', dir); // (yours played as you cast)
+            const name = classInfo(cls)?.skills[m.skill]?.name;
+            if (name && m.skill < SKILL_SOUNDS) playSet(skillSet(cls, name), { at: ch.tile, others: true });
+          }
           this.castFx(cls, m.skill, ch, dir, ids, land, landAll);
         } else landAll();
         return;
       }
       if (m.t === 'mob-attack') return this.mobs?.strike(m.id, m.target, m.dir, m.slow, m.hit);
-      // HP (and yours with MP): the HUD's bars, the bar over a hurt player's head, the party panel.
+      // HP (and yours with MP): the HUD's bars, the bar over a hurt party member's head, the party panel.
       if (m.t === 'vitals') {
         setMemberHp(m.id, m.hp, m.maxHp);
         if (m.id !== myId) return this.others.handle(m);
         setHudVitals({ hp: m.hp, maxHp: m.maxHp, mp: m.mp ?? 0, maxMp: m.maxMp ?? 0 });
         this.vitalsNow = { hp: m.hp, maxHp: m.maxHp, mp: m.mp ?? 0, maxMp: m.maxMp ?? 0 };
-        return this.player.setHp(m.hp, m.maxHp);
+        return; // (yours is in the HUD, never over your head)
       }
       // Knocked out (0 HP): you fade out where you stand and can't act; in 3 s the server puts you back at the way in.
       if (m.t === 'knocked-out' && m.id === myId) {
@@ -1459,6 +1480,7 @@ export class TownScene extends Phaser.Scene {
         return this.player.setKnockedOut(false);
       }
       if (m.t === 'mob-spawn') return this.mobs?.respawn(m.id, m.col, m.row, m.hp);
+      if (m.t === 'mob-heal') return this.mobs?.heal(m.id, m.hp);
       // Loot on the ground: what you can see of it (faint while it's someone else's).
       if (m.t === 'loot') return this.loot?.set(m.loot);
       if (m.t === 'loot-drop') {
@@ -1499,13 +1521,15 @@ export class TownScene extends Phaser.Scene {
       }
       // Your level, XP and points (a kill's XP, dev's ?xp=): the HUD and everything that shows them follow.
       if (m.t === 'progress') return setProgress(m.progress);
-      // Someone went up a level (maybe you): "Level up!" over them, a soft chime (quieter for others).
+      // Someone went up a level (maybe you): "Level up!" over them with its ring and sparks, and its sound (others' near
+      // you, quieter).
       if (m.t === 'level-up') {
         const mine = m.id === myId;
         const ch = charOf(m.id);
         if (!ch) return;
         ch.levelUp();
-        playSound('casino-win', mine ? 0.1 : 0.05);
+        this.levelUpFx(ch);
+        playFrom('combat-level-up', mine ? {} : { at: ch.tile, others: true });
         return;
       }
       if (m.t === 'attack-refused') {
@@ -2783,8 +2807,12 @@ function applyTimeOverride(): void {
   });
 }
 
+/** Debug: the sounds asked for (__town.sounds()). */
+const soundLog: (SoundTapped & { at: number })[] = [];
+
 function exposeDebug(scene: TownScene): void {
   if (!import.meta.env.DEV && !new URLSearchParams(location.search).has('debug')) return;
+  tapSounds((e) => soundLog.push({ ...e, at: Math.round(performance.now()) }));
   (window as unknown as { __town: unknown }).__town = {
     scene,
     state: () => scene.debugState(),
@@ -2807,8 +2835,13 @@ function exposeDebug(scene: TownScene): void {
     mobs: () =>
       scene.debugMobs?.list.map((m) => {
         const cam = scene.cameras.main;
-        return { id: m.id, variant: m.variant, anim: m.sprite.anims.currentAnim?.key, tile: [Math.floor(m.col), Math.floor(m.row)], dir: m.dir, walking: m.path.length > 0, hp: m.hp, maxHp: m.maxHp, level: m.level, dead: m.dead, asleep: m.asleep, pose: m.pose?.anim ?? null, x: (m.sprite.x - cam.worldView.x) * cam.zoom, y: (m.sprite.y - 12 - cam.worldView.y) * cam.zoom };
+        return { id: m.id, variant: m.variant, anim: m.sprite.anims.currentAnim?.key, bar: !!m.bar, tile: [Math.floor(m.col), Math.floor(m.row)], dir: m.dir, walking: m.path.length > 0, hp: m.hp, maxHp: m.maxHp, level: m.level, dead: m.dead, asleep: m.asleep, pose: m.pose?.anim ?? null, x: (m.sprite.x - cam.worldView.x) * cam.zoom, y: (m.sprite.y - 12 - cam.worldView.y) * cam.zoom };
       }),
+    /** Every sound asked to play since the last call (debug tap in audio/sound.ts), and the sets loaded. */
+    sounds: () => {
+      const got = soundLog.splice(0);
+      return { got, sets: soundSets() };
+    },
     /** The golem as the page has it (null: not made yet) and where it is on the screen. */
     golem: () => {
       const m = scene.debugMobs?.get('scrapheap-golem');

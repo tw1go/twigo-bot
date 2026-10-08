@@ -3,6 +3,7 @@ import type { ArenaServerMessage, AuraTier, TownPlayer, TownServerMessage } from
 import type { ClassArt, Manifest } from '../assets/types';
 import { Character, dirForStep } from '../characters/character';
 import { MOVES, isMoveKind, playMove } from './mobility';
+import { playSet } from '../audio/sound';
 import { type Outfit, loadOutfit, randomOutfit } from '../characters/doll';
 import type { BattleSheets } from '../characters/battle-art';
 import { sanitize } from '../characters/looks';
@@ -61,7 +62,7 @@ export class OtherPlayers {
       case 'leave':
         return this.remove(m.id);
     }
-    if (m.t === 'snap' || m.t === 'say-refused' || m.t === 'say-discord' || m.t === 'emote' || m.t === 'system' || m.t === 'seat-taken' || m.t === 'announce' || m.t === 'gift' || m.t === 'gift-item' || m.t === 'new-title' || m.t === 'house' || m.t === 'race' || m.t === 'wallet' || m.t === 'stay' || m.t === 'mobs' || m.t === 'mob-move' || m.t === 'mob-hit' || m.t === 'mob-attack' || m.t === 'mob-spawn' || m.t === 'mob-add' || m.t === 'mob-remove' || m.t === 'mob-face' || m.t === 'golem' || m.t === 'golem-attack' || m.t === 'attack-refused' || m.t === 'progress' || m.t === 'level-up' || m.t === 'party' || m.t === 'party-invited' || m.t === 'party-refused' || m.t === 'party-declined' || m.t === 'party-say' || m.t === 'loot' || m.t === 'loot-drop' || m.t === 'loot-gone' || m.t === 'loot-full' || m.t === 'items' || m.t === 'potion-refused' || isTrade(m) || isArena(m)) return;
+    if (m.t === 'snap' || m.t === 'say-refused' || m.t === 'say-discord' || m.t === 'emote' || m.t === 'system' || m.t === 'seat-taken' || m.t === 'announce' || m.t === 'gift' || m.t === 'gift-item' || m.t === 'new-title' || m.t === 'house' || m.t === 'race' || m.t === 'wallet' || m.t === 'stay' || m.t === 'mobs' || m.t === 'mob-move' || m.t === 'mob-hit' || m.t === 'mob-attack' || m.t === 'mob-spawn' || m.t === 'mob-heal' || m.t === 'mob-add' || m.t === 'mob-remove' || m.t === 'mob-face' || m.t === 'golem' || m.t === 'golem-attack' || m.t === 'attack-refused' || m.t === 'progress' || m.t === 'level-up' || m.t === 'party' || m.t === 'party-invited' || m.t === 'party-refused' || m.t === 'party-declined' || m.t === 'party-say' || m.t === 'loot' || m.t === 'loot-drop' || m.t === 'loot-gone' || m.t === 'loot-full' || m.t === 'items' || m.t === 'potion-refused' || isTrade(m) || isArena(m)) return;
     const o = this.all.get(m.id);
     if (!o) return;
     const s = o.state;
@@ -79,7 +80,8 @@ export class OtherPlayers {
         const n = Math.max(Math.abs(m.col - t.col), Math.abs(m.row - t.row));
         if (!n) return;
         const dir = MOVES[m.move].back ? dirForStep(-dc, -dr) : dirForStep(dc, dr);
-        return void playMove(this.scene, this.M, ch, m.move, { col: m.col, row: m.row }, n, dir, this.onSpawn).then(() => {
+        // (Its sounds from where they are: within hearing, a little quieter than yours.)
+        return void playMove(this.scene, this.M, ch, m.move, { col: m.col, row: m.row }, n, dir, this.onSpawn, (set) => playSet(set, { at: ch.tile, others: true })).then(() => {
           // Where the server has them now (the steps landed while it played).
           if (this.all.get(m.id) === o && (s.col !== m.col || s.row !== m.row)) ch.queueStep({ col: s.col, row: s.row });
         });

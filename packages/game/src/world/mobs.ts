@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { type PlayerHit, type StatsData, type TownMob, type TownMobFacing, mobStats, mobTone } from '@mikazuki/shared';
+import { type PlayerHit, type StatsData, type TownMob, type TownMobFacing, mobBarMs, mobRules, mobStartSpots, mobStats, mobTone, packSize, seeded } from '@mikazuki/shared';
+import { playSet } from '../audio/sound';
 import type { Manifest, MobData, MobDef, MobZone, TownMap, Vec2 } from '../assets/types';
 import { mobCell, mobSheet, mobVariants } from '../assets/mob-art';
 import { slice } from '../assets/packs';
@@ -10,10 +11,12 @@ import { type WorldObjects, characterDepth } from './objects';
 import { BuildingLabel } from '../ui/labels';
 import { LABEL_DEPTH } from './depth';
 
-// 🥫 The Slums' mobs (map.mobZones; art in manifest mobs, rules in mobs/mobs.json). For each zone that's on (`active`),
-// one mob per spawn tile (id `<zone>:<spawn index>`), or a pack round it for a kind with `pack` (the Bottle Caps: a
-// seeded 3–5, ids `<zone>:<spawn>:<n>`, the first alive leading), each in one of its kind's variants (the server's pick,
-// `variant`; the same seeded pick here until it answers), idling and now and then hopping a few tiles round its spawn,
+// 🥫 The Slums' mobs (map.mobZones; art in manifest mobs, rules in mobs/mobs.json, how they live in classes/stats.json
+// mobBehaviour). For each zone that's on (`active`), its `aliveperZone` mobs (ids `<zone>:<k>`) at the spread-out spawn
+// points the server starts them on (mobStartSpots), or a pack round each for a kind with `pack` (the Bottle Caps: a
+// seeded 3–5, ids `<zone>:<k>:<n>`, the first alive leading); any other the server has is made as it says. Each in one of
+// its kind's variants (the server's pick, `variant`; the same seeded pick here until it answers), idling and now and
+// then hopping a few tiles (`wanderTiles`) round its spawn,
 // on a ground shadow sized per kind (a floating one, the Plastic Bag Spook, keeps it on the ground under its anchor, and
 // drifts: its drawn place eases after the real one, so it glides round corners and never stops dead). The server runs
 // them (bot web/town-mobs.ts: everyone sees the same mobs): its `mobs` snapshot places them (and their facing and HP) and
@@ -26,7 +29,10 @@ import { LABEL_DEPTH } from './depth';
 // kind's (classes/stats.json's mob table; the server's snapshot says the same).
 // Battle (the server decides: bot web/town-mobs.ts): a hit plays the mob's hit pose and a damage number rises over it
 // (gold for a crit; "Blocked" off a Scrap Crab's shell; "Miss" when it missed, the level gap's chance); at 0 HP its death
-// pose, then it fades out and is gone until it respawns at its spawn (fading in). A small HP bar shows once it's hurt.
+// pose, then it fades out and is gone until it respawns somewhere free in its zone (fading in). A small HP bar shows
+// over it while it's your target and for `hpBar.hideAfterSeconds` after each hit (mobBarMs); a mob that gives up its fight
+// heals to full (`mob-heal`). Its sounds (audio/sound.ts, within hearing of you): a hurt one per mob at most every
+// HURT_SOUND_MS (area skills hit many at once), its death; by kind (combat-mob-hurt-<kind>, combat-mob-death-<kind>).
 // Its own attacks (`strike`) turn it the server's way and play its attack pose; on the table's attack frame (mobs.json
 // attackFrame) `onAttackFrame`, then `onHit` as it lands on the player (at once, or for the Wire Tangle when its spark gets there:
 // drawn in code from its insulator eye, mobs.json `eye`, on the front fx layer); the Tire Roller's sprite lunges out
@@ -38,7 +44,6 @@ import { LABEL_DEPTH } from './depth';
 // a hit never cuts its attacks short), numbers and a wider bar at its art's `top`. Its Adds come and go with `add` /
 // `remove` (their `kind`, in a zone of their own). Shadows are the shadow art's look drawn at each kind's size.
 
-const ROAM = 3; // tiles from its spawn
 const FOLLOW = 2; // a pack's followers keep within this of their leader
 const SPEED = 2.4; // tiles per second
 const REST_MS: [number, number] = [2200, 6500];
@@ -55,6 +60,8 @@ const DEATH_FADE_MS = 350;
  *  shield this long after its last hit or swing. */
 const SHELL_OPEN_MS = 2000;
 const FIGHT_MS = 8000;
+/** A mob's hurt sound at most this often (an area skill's many hits stay one). */
+const HURT_SOUND_MS = 150;
 
 /** A mob's name colours by level gap (Mobs.tone). */
 export const TONE = { grey: '#9CA3AF', white: '#FFFFFF', red: '#F87171' } as const;
@@ -123,6 +130,9 @@ export interface Mob {
   radius: number;
   /** Up but not to be hit or targeted (the golem rising or sinking). */
   untouchable: boolean;
+  /** Its last hit (scene ms: its HP bar shows for a while after) and its last hurt sound. */
+  hitAt: number;
+  hurtAt: number;
 }
 
 /** What the scene does with a mob's attack (these show it; the server takes the HP). */
@@ -162,19 +172,28 @@ export class Mobs {
   ) {
     const data = (scene.cache.json.get('mob-data') ?? {}) as Record<string, MobData | string>;
     this.stats = (scene.cache.json.get('stats') as StatsData | undefined) ?? null;
+    this.roam = this.stats?.mobBehaviour.wanderTiles ?? 3;
+    this.barMs = this.stats ? mobBarMs(this.stats) : 5000;
     for (const zone of map.mobZones ?? []) {
       const def = zone.active ? M.mobs?.[zone.mob] : undefined;
       if (!def || typeof def === 'string') continue;
       this.anims(zone.mob, def);
       const d = typeof data[zone.mob] === 'object' ? (data[zone.mob] as MobData) : null;
-      zone.spawns.forEach(([col, row], i) => {
-        const point = `${zone.id}:${i}`;
+      // Where the server starts them (its first snapshot puts them where they are now).
+      const alive = this.stats ? mobRules(this.stats, zone.mob).alive : zone.spawns.length;
+      mobStartSpots(zone.id, zone.spawns, alive).forEach((i, k) => {
+        const [col, row] = zone.spawns[i];
+        const point = `${zone.id}:${k}`;
         const n = d?.pack ? packSize(point, d.pack) : 1;
         const pack: Mob[] = [];
-        for (let k = 0; k < n; k++) this.place(zone, def, d, { col, row }, d?.pack ? `${point}:${k}` : point, d?.pack ? pack : null);
+        for (let c = 0; c < n; c++) this.place(zone, def, d, { col, row }, d?.pack ? `${point}:${c}` : point, d?.pack ? pack : null);
       });
     }
   }
+
+  /** Tiles from its spawn an idle mob wanders (no server), and how long its HP bar stays after a hit (ms). */
+  private readonly roam: number;
+  private readonly barMs: number;
 
   /** Its animations, one per sheet (variant × anim × direction); the golem's red-lamp set too (variant 'enraged'), and
    *  its rise: its death played backwards. */
@@ -217,7 +236,7 @@ export class Mobs {
       col: at.col + 0.5, row: at.row + 0.5, drawCol: 0, drawRow: 0, dir: (['se', 'sw', 'ne', 'nw'] as const)[Math.floor(seeded(`${id}:dir`) * 4)],
       sprite, shadow, path: [], restUntil: this.scene.time.now + Phaser.Math.Between(0, REST_MS[1]), label: null, labelUntil: 0,
       hp, dead: false, pose: null, bar: null, shield: null, openUntil: 0, fightUntil: 0, speed: data?.drift?.speed ?? SPEED, slowUntil: 0, asleep: false, lunge: { x: 0, y: 0 },
-      enraged: false, add: false, radius: data?.radius ?? 0, untouchable: false,
+      enraged: false, add: false, radius: data?.radius ?? 0, untouchable: false, hitAt: -Infinity, hurtAt: -Infinity,
     };
     // A pack's caps start round the point, each on a tile of its own (the server's place comes with its snapshot).
     if (pack?.length) mob.home = this.besideSpawn(mob, pack, id);
@@ -306,7 +325,7 @@ export class Mobs {
   }
 
   /** Where it can stand: its zone's level and rect, open, not a ramp, outside the safe zone, close to its spawn. */
-  private canStand(m: Mob, t: Tile, reach = ROAM): boolean {
+  private canStand(m: Mob, t: Tile, reach = this.roam): boolean {
     const H = this.objects.heights;
     const [c0, r0, c1, r1] = this.map.safeZone ?? [-1, -1, -2, -2];
     const [z0, y0, z1, y1] = m.zone.rect;
@@ -326,7 +345,7 @@ export class Mobs {
     const from = { col: Math.floor(m.col), row: Math.floor(m.row) };
     const lead = m.pack?.find((x) => !x.dead);
     const near = lead && lead !== m ? { col: Math.floor(lead.path.at(-1)?.col ?? lead.col), row: Math.floor(lead.path.at(-1)?.row ?? lead.row) } : null;
-    const [centre, spread, reach] = near ? [near, FOLLOW, ROAM + FOLLOW] : [m.spawn, ROAM, ROAM];
+    const [centre, spread, reach] = near ? [near, FOLLOW, this.roam + FOLLOW] : [m.spawn, this.roam, this.roam];
     for (let tries = 0; tries < 6; tries++) {
       const to = { col: centre.col + Phaser.Math.Between(-spread, spread), row: centre.row + Phaser.Math.Between(-spread, spread) };
       if ((to.col === from.col && to.row === from.row) || !this.canStand(m, to, reach)) continue;
@@ -338,13 +357,14 @@ export class Mobs {
   }
 
   /** The server runs them from now on: every mob where it says (facing its way, its HP, the rest of a hop under way); the
-   *  golem's Adds in it are made (their `kind`), and Adds it no longer has are gone. */
+   *  golem's Adds in it are made (their `kind`), and Adds it no longer has are gone; a zone's mob we didn't start with is
+   *  made where it is. */
   applySnapshot(mobs: TownMob[]): void {
     this.server = true;
     const ids = new Set(mobs.map((s) => s.id));
     this.remove(this.list.filter((m) => m.add && !ids.has(m.id)).map((m) => m.id), false);
     for (const s of mobs) {
-      const m = this.byId.get(s.id) ?? (s.kind ? this.makeAdd(s) : null);
+      const m = this.byId.get(s.id) ?? (s.kind ? this.makeAdd(s) : this.makeZoneMob(s));
       if (m) this.apply(m, s);
     }
     if (this.target) this.onTarget?.(this.target); // its level may have changed
@@ -364,6 +384,19 @@ export class Mobs {
     m.pose = null;
     this.show(m, !s.dead);
     this.sync(m);
+  }
+
+  /** A zone's mob (`<zone>:<k>`, a pack's cap `<zone>:<k>:<n>` with the others of `<zone>:<k>`) we didn't start with:
+   *  made where the server has it. */
+  private makeZoneMob(s: TownMob): Mob | null {
+    const zone = this.map.mobZones?.find((z) => z.active && s.id.startsWith(`${z.id}:`));
+    const def = zone ? this.M.mobs?.[zone.mob] : undefined;
+    if (!zone || !def || typeof def === 'string') return null;
+    const raw = (this.scene.cache.json.get('mob-data') ?? {})[zone.mob];
+    const data = typeof raw === 'object' ? (raw as MobData) : null;
+    const slot = data?.pack ? s.id.slice(0, s.id.lastIndexOf(':')) : null;
+    const pack = slot ? (this.list.find((x) => x.pack && x.id.startsWith(`${slot}:`))?.pack ?? []) : null;
+    return this.place(zone, def, data, { col: s.col, row: s.row }, s.id, pack);
   }
 
   /** The golem's Adds crawling out (`mob-add`): made where the server says, fading in. */
@@ -504,7 +537,13 @@ export class Mobs {
     const m = this.byId.get(id);
     if (!m || m.dead) return;
     m.hp = hp;
-    m.fightUntil = this.scene.time.now + FIGHT_MS;
+    const now = this.scene.time.now;
+    m.fightUntil = now + FIGHT_MS;
+    m.hitAt = now; // its HP bar for a while
+    if (damage > 0 && !dead && now - m.hurtAt >= HURT_SOUND_MS) {
+      m.hurtAt = now;
+      playSet(`combat-mob-hurt-${m.zone.mob}`, { at: this.tileOf(m.id) });
+    }
     if (blocked) m.shield?.setScale(1.6); // the shield bounces as it takes the hit
     if (slow && !dead) this.chill(m, slow);
     if (!m.asleep) this.number(m, blocked ? 'Blocked' : miss ? 'Miss' : String(damage), crit);
@@ -517,6 +556,7 @@ export class Mobs {
   /** It dies: `onDeath`, let go, its death pose and gone. */
   kill(m: Mob): void {
     if (m.dead) return;
+    playSet(`combat-mob-death-${m.zone.mob}`, { at: this.tileOf(m.id) });
     m.path = [];
     m.dead = true;
     this.hooks.onDeath?.(m);
@@ -536,6 +576,12 @@ export class Mobs {
       then: () =>
         this.scene.tweens.add({ targets: [m.sprite, ...(m.shadow ? [m.shadow] : [])], alpha: 0, duration: DEATH_FADE_MS, onComplete: () => m.dead && this.show(m, false) }),
     });
+  }
+
+  /** It gave up its fight (`mob-heal`): full HP again as it walks home. */
+  heal(id: string, hp: number): void {
+    const m = this.byId.get(id);
+    if (m && !m.dead) this.setHp(m, hp);
   }
 
   /** Its HP (and max) as the server has them now: the bar over it and the info bar. */
@@ -594,11 +640,11 @@ export class Mobs {
     this.fx.drawnShot('front', from, to, { speed: SPARK_SPEED, onArrive }, (g) => drawSpark(g));
   }
 
-  /** Back at its spawn with full HP. */
+  /** Back (somewhere free in its zone: its spawn from now on) with full HP. */
   respawn(id: string, col: number, row: number, hp: number): void {
     const m = this.byId.get(id);
     if (!m) return;
-    Object.assign(m, { col: col + 0.5, row: row + 0.5, drawCol: col + 0.5, drawRow: row + 0.5, hp, path: [], pose: null });
+    Object.assign(m, { col: col + 0.5, row: row + 0.5, drawCol: col + 0.5, drawRow: row + 0.5, hp, path: [], pose: null, spawn: { col, row }, home: { col, row }, hitAt: -Infinity });
     this.scene.tweens.killTweensOf([m.sprite, ...(m.shadow ? [m.shadow] : [])]);
     this.show(m, true);
     m.shadow?.setAlpha(1);
@@ -640,9 +686,13 @@ export class Mobs {
     this.drawBar(m);
   }
 
-  /** A small HP bar over a hurt mob (none at full HP, dead or asleep). */
+  /** A small HP bar over it while it's your target or for barMs after its last hit (none dead or asleep). */
+  private barShown(m: Mob): boolean {
+    return !m.dead && !m.asleep && (m === this.target || this.scene.time.now < m.hitAt + this.barMs);
+  }
+
   private drawBar(m: Mob): void {
-    if (m.dead || m.asleep || m.hp >= m.maxHp) {
+    if (!this.barShown(m)) {
       m.bar?.destroy();
       m.bar = null;
       return;
@@ -720,6 +770,7 @@ export class Mobs {
         moving ||= Math.hypot(m.col - m.drawCol, m.row - m.drawRow) > 0.08;
       } else [m.drawCol, m.drawRow] = [m.col, m.row];
       if (m.pose) this.posing(m, deltaMs);
+      if (m.bar && !this.barShown(m)) this.drawBar(m); // its bar's time is up
       this.play(m, moving ? 'move' : 'idle');
       if (moving || m.pose) this.sync(m);
       if (m.label) {
@@ -824,7 +875,10 @@ export class Mobs {
 
   setTarget(m: Mob | null): Mob | null {
     if (m === this.target) return m;
+    const was = this.target;
     this.target = m;
+    if (was) this.drawBar(was); // (its bar only while hit lately)
+    if (m) this.drawBar(m);
     this.ring?.destroy();
     this.ring = null;
     if (m) {
@@ -948,17 +1002,6 @@ export function showSlowed(fx: FxLayers, head: () => Pt, feet: () => Pt, ms: num
     g.lineStyle(1, 0x93c5fd, 0.55 + 0.25 * Math.sin(t / 160)).strokeEllipse(Math.round(f.x), Math.round(f.y), 20, 9);
   }, ms, 300);
 }
-
-/** A small seeded number (0–1) from a string: the bot's `seeded` in web/town-mobs.ts (keep in step), so the variant
- *  and pack picked here before the server answers are the ones it picks. */
-function seeded(s: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
-  return ((h >>> 0) % 10_000) / 10_000;
-}
-
-/** How many caps a pack has (the bot's packSize: keep in step). */
-const packSize = (id: string, [lo, hi]: Vec2) => lo + Math.floor(seeded(`${id}:pack`) * (hi - lo + 1));
 
 /** The screen direction of a grid step (as the characters' dirForStep). */
 function stepName(dc: number, dr: number): string {

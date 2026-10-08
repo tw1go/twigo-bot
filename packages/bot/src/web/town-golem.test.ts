@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { WebSocket } from 'ws';
-import { type TownServerMessage, baseStats, derivedStats, hitDamage, mobStats, xpEarners, xpShare } from '@mikazuki/shared';
+import { type TownServerMessage, baseStats, derivedStats, golemResetMs, hitDamage, mobStats, xpEarners, xpShare } from '@mikazuki/shared';
 import { Golem, type GolemEvent, type GolemHost, downLine, inCone, loadGolemArt, nextRiseAfter, pitTiles } from './town-golem.js';
 import { loadStats } from './stats-data.js';
 import { type Attacker, MobRoom, loadMobKinds, loadMobMap } from './town-mobs.js';
@@ -228,7 +228,10 @@ test('at half HP it calls the Junk once: 3–4 spots on the pit floor round it, 
   assert.ok(enrage[0].golem.enraged && enrage[0].golem.hp <= art.hp / 4 && enrage[0].golem.hp > art.hp / 4 - MOST);
 });
 
-test('reset: nobody within its leash for 10 s, it heals to full, its Adds go, it walks home, and both phases can come again', () => {
+test('reset: nobody in its fight for mobBehaviour.golem.resetAfterSecondsEmpty (30 s), it heals to full, its Adds go, it walks home, and both phases can come again', () => {
+  const RESET = golemResetMs(stats);
+  assert.equal(RESET, stats.mobBehaviour.golem.resetAfterSecondsEmpty * 1000);
+  assert.equal(art.resetMs, RESET);
   const room = new MobRoom(map, lcg(9), {}, { shapes: {} }, kinds, art);
   room.riseGolem(0);
   room.tick(1000);
@@ -242,14 +245,14 @@ test('reset: nobody within its leash for 10 s, it heals to full, its Adds go, it
   }
   for (const end = t + 2000; t < end; t += 250) room.tick(t, players); // the Adds are out
   assert.ok(room.snapshot(t).some((m) => m.id.startsWith('golem-add:')));
-  // Gone (out of the room): 10 s, then the reset.
-  const evs = run(room, t + 250, t + 12_000);
+  // Gone (out of the room): RESET, then the reset (not before).
+  const evs = run(room, t + 250, t + RESET + 2000);
   const reset = evs.find((x) => x.e.t === 'golem' && x.e.change === 'reset')!;
-  assert.ok(reset.at - t >= 10_000 && reset.at - t <= 10_500, `${reset.at - t}`);
+  assert.ok(reset.at - t >= RESET && reset.at - t <= RESET + 500, `${reset.at - t}`);
   assert.ok(reset.e.t === 'golem' && reset.e.golem.hp === art.hp && !reset.e.golem.enraged && reset.e.golem.state === 'home');
   const removed = evs.find((x) => x.e.t === 'mob-remove')!;
   assert.ok(removed.e.t === 'mob-remove' && removed.e.ids.length >= 5 && removed.e.ids.every((id) => id.startsWith('golem-add:')));
-  assert.ok(!room.snapshot(t + 12_000).some((m) => m.id.startsWith('golem-add:')));
+  assert.ok(!room.snapshot(t + RESET + 2000).some((m) => m.id.startsWith('golem-add:')));
   const back = evs.find((x) => x.e.t === 'mob-move' && x.e.id === boss.id && x.at === reset.at)!;
   assert.ok(back.e.t === 'mob-move' && back.e.path.at(-1)![0] === boss.tile[0] && back.e.path.at(-1)![1] === boss.tile[1], 'walks home');
   t = reset.at + (back.e.t === 'mob-move' ? back.e.path.length - 1 : 0) * 1000; // 1.5 tiles a second

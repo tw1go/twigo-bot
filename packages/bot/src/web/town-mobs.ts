@@ -5,6 +5,7 @@ import {
   type Hitter,
   type Item,
   type ItemData,
+  type MobRules,
   type MobStats,
   type PlayerHit,
   type StatPoints,
@@ -17,9 +18,13 @@ import {
   baseStats,
   derivedStats,
   itemTotals,
+  mobRules,
+  mobStartSpots,
   mobStats,
   newItem,
+  packSize,
   rollHit,
+  seeded,
   skillCooldown,
   skillLevelBonus,
   skillPct,
@@ -29,12 +34,16 @@ import {
 import { loadItemData } from './stats-data.js';
 import { Golem, type GolemArt, type GolemBoss, type GolemEvent, type PitTiles, pitTiles } from './town-golem.js';
 
-// 🥫 The Slums' mobs, run on the server so every player sees the same ones in the same places, and fought there. One per
-// spawn tile of each zone that's on (`active` in the game's maps/slums.json), or a pack of a few round a leader for a
-// kind with `pack` (the Bottle Caps: a seeded 3–5, ids `<zone>:<spawn>:<n>`); its kind's one level, HP, ATK, DEF and XP
-// (the mob table in the game's classes/stats.json), a variant (its look) picked once from its kind's (the game's
-// mobs/mobs.json), and now and then a hop of a few tiles round its spawn: at most ROAM away, on its zone's level and in
-// its rect, on open tiles that aren't ramps or in the safe zone (a pack's followers hop to within FOLLOW of their leader
+// 🥫 The Slums' mobs, run on the server so every player sees the same ones in the same places, and fought there. How they
+// live is stats.json mobBehaviour's (mobRules in @mikazuki/shared; the guide's "Mob behaviour"): each zone that's on
+// (`active` in the game's maps/slums.json) keeps `aliveperZone` about, a pack counting once (a kind with `pack`, the
+// Bottle Caps: a seeded 3–5 round a leader, ids `<zone>:<k>:<n>`; the rest `<zone>:<k>`), starting at spread-out spawn
+// points (mobStartSpots) — the map's spawn points are only places now: a mob that dies comes back `respawnSeconds` later
+// at a random free one of its zone's (nobody standing on or next to it), or a pack's cap beside its pack while any of it
+// lives; the zone's own `aggro`/`aggroRange`/`leash`/`respawnSec` in the map aren't read. Each has its kind's one level,
+// HP, ATK, DEF and XP (the mob table in classes/stats.json), a variant (its look) picked once from its kind's (the game's
+// mobs/mobs.json), and now and then a hop round its spawn: at most `wanderTiles` away, on its zone's level and in its
+// rect, on open tiles that aren't ramps or in the safe zone (a pack's followers hop to within FOLLOW of their leader
 // instead; a Tire Roller sometimes rolls a tile or two straight on; a Plastic Bag Spook drifts, slower, with short
 // rests). A hop is sent to the room as a path; the game walks it at its pace. Each mob faces the way it last stepped (or
 // turned to attack), on the art's four diagonals. Pure (no Discord), so it's tested on its own and the dev server runs it
@@ -45,17 +54,20 @@ import { Golem, type GolemArt, type GolemBoss, type GolemEvent, type PitTiles, p
 // and its skill level) × crit × the mob's DEF × the level gap, which can also make it miss (`miss`: no damage). Reach: the
 // next tile with a melee class or up to RANGED tiles with a ranged one (each skill's own: skill-hits.json range). A Scrap
 // Crab's shell blocks every hit (0, `blocked`) except for a moment after each of its own attacks (shell down: mobs.json
-// shellOpenMs, SHELL_OPEN_MS if not given), from any side. A mob that's hit (or missed) fights back (a pack all
-// together): it goes after whoever hit it last, and within its reach of them attacks every ATTACK_MS: the stats rules' hit
-// with its ATK as Power against the player's DEF and level (`guards`, from the host each tick; a miss by the level gap),
-// sent with the attack (`hit`) and landing as its art does (its attack frame: `landed` hands the host what to take off
-// their HP then; the Bag's also slows them for `slow` ms). A mob of an aggressive zone goes after a player who comes within
-// its zone's aggroRange (in its zone, on its level) the same way. It gives up and walks home when they're gone, out of
-// its zone or its leash, or (a passive one) haven't hit it for GIVE_UP_MS. At 0 HP it dies (its XP to whoever killed
-// it: `kills`, which the town turns into levels) and comes back where it started after its zone's respawnSec (a pack's
-// caps each on their own). A skill can only be used from its unlock level (classes.json; refused 'locked' before). Each
-// has its own cooldown by its unlock level (baseCooldown in @mikazuki/shared: Lv 1 the quickest), 1% less for each skill
-// level past 1 (skillCooldown); a skill's slow or root lasts 5% longer a skill level (skillLevelBonus's buff).
+// shellOpenMs, SHELL_OPEN_MS if not given), from any side. A mob that's hit (or missed) fights back (a `packAssist` kind's
+// whole pack together): it goes after whoever hit it last, and within its reach of them (`rangeTiles`: melee 1, the Wire
+// Tangle's zap 4) attacks every `attackEverySeconds` (the Scrap Crab its own rhythm: mobs.json attackMs, its shell down
+// shellOpenMs from each): the stats rules' hit with its ATK as Power against the player's DEF and level (`guards`, from
+// the host each tick; a miss by the level gap), sent with the attack (`hit`) and landing as its art does (its attack
+// frame: `landed` hands the host what to take off their HP then; the Bag's also slows them for `slow` ms). An aggressive
+// kind (Tire Roller, Wire Tangle, Scrap Crab) goes after a player who comes within `aggroTiles` of it (in its zone, on its
+// level) the same way; passive ones (Tin Can, Bottle Caps, Plastic Bag Spook) only fight back. It gives up when they're
+// gone, out of its zone or more than `leashTiles` from its spawn (it can't follow further), or (a passive one) haven't
+// hit it for GIVE_UP_MS: it heals to full (`mob-heal`) and walks home. At 0 HP it dies (its XP to whoever killed it:
+// `kills`, which the town turns into levels). A skill can only be used from its unlock level (classes.json; refused
+// 'locked' before). Each has its own cooldown by its unlock level (baseCooldown in @mikazuki/shared: Lv 1 the quickest),
+// 1% less for each skill level past 1 (skillCooldown); a skill's slow or root lasts 5% longer a skill level
+// (skillLevelBonus's buff).
 //
 // The field boss (the map's `boss`, given its art): town-golem.ts runs it on this room's clock; hits on it come through
 // attack() like any mob's (reach to its body's edge; area skills reach it too), and its Adds are mobs of this room (ids
@@ -64,14 +76,13 @@ import { Golem, type GolemArt, type GolemBoss, type GolemEvent, type PitTiles, p
 // attacks (`landed`), its Lamp Glare blinds (`blind` ms: the host makes their attacks miss, `Attacker.blinded`).
 // Players the host leaves out of a tick (knocked out) are nobody's target: mobs walk home, the golem looks elsewhere.
 
-const ROAM = 3;
 const SPEED = 2.4; // tiles per second (the game walks them at the same pace)
 const REST_MS: [number, number] = [2200, 6500];
 const FOLLOW = 2; // a pack's followers keep within this of their leader
+const FREE = 4; // a mob comes back at a spawn point no player is this close to
 const RANGED = 5;
 /** The classes that fight from afar; the rest hit from the next tile. */
 const RANGED_CLASSES = new Set(['slingshot', 'broom']);
-const ATTACK_MS = 1600;
 const GIVE_UP_MS = 12_000;
 const SWING_MS = 400; // a player's attacks: no faster than this
 
@@ -79,6 +90,7 @@ export type MobEvent =
   | { t: 'mob-move'; id: string; path: [number, number][]; speed?: number }
   | { t: 'mob-attack'; id: string; target: string; dir: TownMobFacing; slow?: number; hit?: PlayerHit }
   | { t: 'mob-spawn'; id: string; col: number; row: number; hp: number }
+  | { t: 'mob-heal'; id: string; hp: number }
   | GolemEvent;
 
 export interface MobHit {
@@ -199,10 +211,12 @@ export interface MobZoneData {
   height: number;
   active: boolean;
   spawns: [number, number][];
-  /** Aggressive: its mobs go after a player within aggroRange; passive: they only fight back. */
+  /** Aggressive: its mobs go after a player within aggroRange; passive: they only fight back. (The map's are ignored:
+   *  stats.json mobBehaviour sets them by kind; the golem's Adds have their own.) */
   aggro?: 'passive' | 'aggressive';
   aggroRange?: number;
   leash?: number;
+  /** (Unused: stats.json mobBehaviour respawnSeconds.) */
   respawnSec?: number;
 }
 
@@ -222,8 +236,6 @@ export interface MobKind {
   variants?: string[];
   /** A spawn point is a pack of this many (lowest, highest). */
   pack?: [number, number];
-  /** Tiles it attacks from (else the next tile). */
-  reach?: number;
   /** Its attack slows the player hit (to half their walking speed) for this long. */
   slowMs?: number;
   /** When its attack lands after it starts (ms: its attack frame at its anim's fps, from the manifest; loadMobKinds). */
@@ -231,7 +243,7 @@ export interface MobKind {
   /** Its shell blocks every hit, except for `shellOpenMs` from each of its own attacks (shell down). */
   shell?: boolean;
   shellOpenMs?: number;
-  /** Its own pace of attack (ms between swings), if not ATTACK_MS. */
+  /** Its own pace of attack (ms between swings), if not stats.json mobBehaviour's (the Scrap Crab's). */
   attackMs?: number;
   /** Now and then, rested, a short straight roll along its facing. */
   roll?: { chance: number; tiles: [number, number]; speed: number };
@@ -244,14 +256,15 @@ interface Mob {
   id: string;
   zone: MobZoneData;
   kind: MobKind;
-  /** Its kind's level, HP, ATK, DEF and XP (the mob table). */
+  /** Its kind's level, HP, ATK, DEF and XP (the mob table), and how it lives (stats.json mobBehaviour). */
   stats: MobStats;
+  rules: MobRules;
   level: number;
   maxHp: number;
   /** Its look ('' for a kind with one). */
   variant: string;
-  /** Its spawn point (how far it may roam is measured from here) and where it starts and comes back (a pack's caps
-   *  round the point). */
+  /** Its spawn point (how far it may roam and be pulled is measured from here: where it last came back) and its own
+   *  tile there (a pack's caps round the point). */
   spawn: [number, number];
   home: [number, number];
   /** Where it is (or, mid-hop, where the hop started). */
@@ -299,16 +312,8 @@ export function loadMobMap(name: string): MobMapData {
   return JSON.parse(readFileSync(new URL(`../../../game/public/assets/maps/${name}.json`, import.meta.url), 'utf8')) as MobMapData;
 }
 
-/** A small seeded number (0–1) from a string, so a mob's look and pack are the same on every restart (the game
- *  picks the same with its copy in world/mobs.ts until the server answers: keep them in step). */
-export function seeded(s: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
-  return ((h >>> 0) % 10_000) / 10_000;
-}
-
-/** How many caps a pack of `[lo, hi]` at spawn `id` has (seeded; the game's world/mobs.ts the same). */
-export const packSize = (id: string, [lo, hi]: [number, number]) => lo + Math.floor(seeded(`${id}:pack`) * (hi - lo + 1));
+// (seeded and packSize are @mikazuki/shared's, as the game's world/mobs.ts uses them: the same looks and packs there.)
+export { packSize, seeded };
 
 /** Each facing's step on the grid: the art's SE is +col, SW +row, NW −col, NE −row. */
 const AXIS: Record<TownMobFacing, [number, number]> = { se: [1, 0], sw: [0, 1], nw: [-1, 0], ne: [0, -1] };
@@ -333,6 +338,10 @@ export class MobRoom {
   private readonly mobs: Mob[] = [];
   private readonly byId = new Map<string, Mob>();
   private readonly ramps = new Set<string>();
+  /** The zones that are on, with their behaviour from stats.json (by kind). */
+  private readonly zones: MobZoneData[] = [];
+  /** Tiles from its spawn an idle mob wanders (stats.json mobBehaviour wanderTiles). */
+  private readonly roam: number;
   /** This tick's tiles each mob stands on or is hopping to (so they don't pile up on one): col × 4096 + row. */
   private claimed: Map<number, Mob> | null = null;
 
@@ -355,10 +364,15 @@ export class MobRoom {
   ) {
     for (const r of map.ramps ?? []) this.ramps.add(`${r.col},${r.row}`);
     this.pit = pitTiles(map.boss);
+    this.roam = fightData.stats.mobBehaviour.wanderTiles;
     for (const zone of map.mobZones ?? []) {
       if (!zone.active) continue;
       const kind = kinds[zone.mob] ?? {};
-      zone.spawns.forEach(([col, row], i) => this.place(zone, kind, `${zone.id}:${i}`, [col, row]));
+      const R = mobRules(fightData.stats, zone.mob);
+      const z: MobZoneData = { ...zone, aggro: R.aggressive ? 'aggressive' : 'passive', aggroRange: R.aggroTiles, leash: R.leashTiles };
+      this.zones.push(z);
+      // Its `alive` mobs (packs) at spread-out spawn points.
+      mobStartSpots(zone.id, zone.spawns, R.alive).forEach((i, k) => this.place(z, kind, `${zone.id}:${k}`, zone.spawns[i]));
     }
     const boss = map.boss;
     if (boss && golem) {
@@ -413,12 +427,13 @@ export class MobRoom {
     const variants = kind.variants ?? [];
     const n = kind.pack ? packSize(point, kind.pack) : 1;
     const stats = this.statsOf(zone.mob);
+    const rules = mobRules(this.fightData.stats, zone.mob);
     const pack: Mob[] = [];
     for (let k = 0; k < n; k++) {
       const id = kind.pack ? `${point}:${k}` : point;
       const variant = variants[Math.floor(seeded(`${id}:variant`) * variants.length)] ?? '';
       const m: Mob = {
-        id, zone, kind, stats, level: stats.level, maxHp: stats.hp, variant, spawn: [col, row], home: [col, row], col, row, facing: FACINGS[Math.floor(seeded(`${id}:dir`) * 4)], path: [], hopAt: 0, restUntil: 0,
+        id, zone, kind, stats, rules, level: stats.level, maxHp: stats.hp, variant, spawn: [col, row], home: [col, row], col, row, facing: FACINGS[Math.floor(seeded(`${id}:dir`) * 4)], path: [], hopAt: 0, restUntil: 0,
         hp: stats.hp, respawnAt: 0, foe: null, nextAttack: 0, openUntil: 0, slow: null, hopSpeed: SPEED, pack: kind.pack ? pack : null, ...(add ? { add } : {}),
       };
       // A pack's caps start round the point, each on a tile of its own (seeded: the same every time).
@@ -488,9 +503,35 @@ export class MobRoom {
     return m.spawn;
   }
 
+  /** A dead mob comes back, full: a pack's cap beside its pack while any of it lives (the leader's spot), else at a
+   *  random free spawn point of its zone (no mob on or next to it, no player within FREE tiles), which is its spawn from
+   *  now on. */
+  private respawn(m: Mob, now: number, players: ReadonlyMap<string, [number, number]>): void {
+    const lead = m.pack?.find((x) => x !== m && !x.respawnAt);
+    let at: [number, number] | null = null;
+    if (lead) {
+      const to = this.dest(lead);
+      const near = STEPS.map(([dc, dr]): [number, number] => [to[0] + dc, to[1] + dr]).filter(([c, r]) => this.canStand({ zone: m.zone, spawn: lead.spawn }, c, r, this.roam + FOLLOW) && !this.taken(m, c, r));
+      at = near[Math.floor(this.random() * near.length)] ?? null;
+      if (at) m.spawn = lead.spawn;
+    }
+    if (!at) {
+      const points = m.zone.spawns.filter((s) => this.canStand({ zone: m.zone, spawn: s }, s[0], s[1], 0));
+      const busy = (s: [number, number]) =>
+        this.mobs.some((x) => x !== m && !x.respawnAt && cheb(this.dest(x), s) <= 1) || [...players.values()].some((p) => cheb(p, s) <= FREE);
+      const free = points.filter((s) => !busy(s));
+      const pick = free.length ? free : points;
+      at = pick[Math.floor(this.random() * pick.length)] ?? m.spawn;
+      m.spawn = [at[0], at[1]];
+    }
+    m.home = [at[0], at[1]];
+    Object.assign(m, { respawnAt: 0, hp: m.maxHp, col: at[0], row: at[1], path: [], foe: null, slow: null, nextAttack: 0, restUntil: now + REST_MS[0] });
+    this.claim(m, m.col, m.row);
+  }
+
   /** Where a mob may stand: open, on its zone's level and in its rect, not a ramp, outside the safe zone, close to its
    *  spawn. */
-  canStand(m: { zone: MobZoneData; spawn: [number, number] }, col: number, row: number, reach = ROAM): boolean {
+  canStand(m: { zone: MobZoneData; spawn: [number, number] }, col: number, row: number, reach = this.roam): boolean {
     const [cols, rows] = this.map.size;
     if (col < 0 || row < 0 || col >= cols || row >= rows || this.map.blocked[row]?.[col]) return false;
     if ((this.map.height?.[row]?.[col] ?? 0) !== m.zone.height || this.ramps.has(`${col},${row}`)) return false;
@@ -533,7 +574,7 @@ export class MobRoom {
 
   /** The shortest way (8 directions, no cut corners) over tiles it may stand on to the nearest tile `goal` likes, or
    *  null. */
-  private route(m: Mob, goal: (c: number, r: number) => boolean, reach = ROAM): [number, number][] | null {
+  private route(m: Mob, goal: (c: number, r: number) => boolean, reach = this.roam): [number, number][] | null {
     const key = (c: number, r: number) => c * 4096 + r;
     const came = new Map<number, number>([[key(m.col, m.row), -1]]);
     const queue: [number, number][] = [[m.col, m.row]];
@@ -622,9 +663,9 @@ export class MobRoom {
     return m.pack?.find((x) => !x.respawnAt) ?? null;
   }
 
-  /** Someone it should fight: it (and its whole pack) goes after them. */
+  /** Someone it should fight: it (and a `packAssist` kind's whole pack) goes after them. */
   private rally(m: Mob, player: string, now: number): void {
-    for (const x of m.pack ?? [m]) if (!x.respawnAt) x.foe = { id: player, at: now };
+    for (const x of (m.rules.packAssist && m.pack) || [m]) if (!x.respawnAt) x.foe = { id: player, at: now };
   }
 
   /**
@@ -647,7 +688,7 @@ export class MobRoom {
     }
     // Who each aggressive zone's mobs could notice (a few players at most: looked up once a tick, not per mob).
     const watched = new Map<MobZoneData, [string, [number, number]][]>();
-    for (const zone of [...(this.map.mobZones ?? []), ...this.addZones.values()]) {
+    for (const zone of [...this.zones, ...this.addZones.values()]) {
       if (!zone.active || zone.aggro !== 'aggressive' || !zone.aggroRange) continue;
       const here = [...players].filter(([, p]) => this.inZone(zone, p));
       if (here.length) watched.set(zone, here);
@@ -655,8 +696,7 @@ export class MobRoom {
     for (const m of this.mobs) {
       if (m.respawnAt) {
         if (now < m.respawnAt) continue;
-        Object.assign(m, { respawnAt: 0, hp: m.maxHp, col: m.home[0], row: m.home[1], path: [], foe: null, restUntil: now + REST_MS[0] });
-        this.claim(m, m.col, m.row);
+        this.respawn(m, now, players);
         events.push({ t: 'mob-spawn', id: m.id, col: m.col, row: m.row, hp: m.hp });
         continue;
       }
@@ -692,21 +732,25 @@ export class MobRoom {
   /** After its foe: next to them (within its reach), it attacks; else closer, two steps at a time; or home. */
   private fight(m: Mob, now: number, players: ReadonlyMap<string, [number, number]>, events: MobEvent[]): void {
     const foe = m.foe!;
-    const leash = m.zone.leash ?? 10;
+    const leash = m.zone.leash ?? m.rules.leashTiles;
     const p = players.get(foe.id);
     const bored = m.zone.aggro !== 'aggressive' && now - foe.at > GIVE_UP_MS;
     if (!p || cheb(p, m.spawn) > leash || !this.inZone(m.zone, p) || bored) {
-      // Gone, out of reach, or done with it: home.
+      // Gone, pulled past its leash, or done with it: healed to full, home.
       m.foe = null;
+      if (m.hp < m.maxHp) {
+        m.hp = m.maxHp;
+        events.push({ t: 'mob-heal', id: m.id, hp: m.hp });
+      }
       const [hc, hr] = m.home;
       const home = this.route(m, (c, r) => c === hc && r === hr, leash);
       if (home?.length) this.startHop(m, home, now, events);
       return;
     }
-    const reach = m.kind.reach ?? 1;
+    const reach = m.rules.reach;
     if (cheb(p, [m.col, m.row]) <= reach) {
       if (now >= m.nextAttack) {
-        m.nextAttack = now + (m.kind.attackMs ?? ATTACK_MS);
+        m.nextAttack = now + (m.kind.attackMs ?? m.rules.attackMs);
         m.facing = facingTo(p[0] - m.col, p[1] - m.row) ?? m.facing;
         if (m.kind.shell) m.openUntil = now + (m.kind.shellOpenMs ?? SHELL_OPEN_MS); // its shell drops as it swings
         // Its hit, rolled now and sent with the attack; it lands on its attack frame (the Bag's slow only if it hits).
@@ -743,7 +787,7 @@ export class MobRoom {
       }
     }
     for (let tries = 0; tries < 6; tries++) {
-      const to: [number, number] = [m.spawn[0] + Math.round((this.random() * 2 - 1) * ROAM), m.spawn[1] + Math.round((this.random() * 2 - 1) * ROAM)];
+      const to: [number, number] = [m.spawn[0] + Math.round((this.random() * 2 - 1) * this.roam), m.spawn[1] + Math.round((this.random() * 2 - 1) * this.roam)];
       if ((to[0] === m.col && to[1] === m.row) || !this.canStand(m, to[0], to[1]) || this.taken(m, to[0], to[1])) continue;
       const path = this.route(m, (c, r) => c === to[0] && r === to[1]);
       if (!path?.length) continue;
@@ -756,7 +800,7 @@ export class MobRoom {
   /** A follower: back to within FOLLOW of where its leader is headed (and now and then a shuffle while near it). */
   private follow(m: Mob, lead: Mob, now: number, events: MobEvent[]): void {
     const to = this.dest(lead);
-    const reach = ROAM + FOLLOW;
+    const reach = this.roam + FOLLOW;
     if (cheb(to, [m.col, m.row]) <= FOLLOW && this.random() < 0.6) {
       m.restUntil = now + REST_MS[0] + this.random() * (REST_MS[1] - REST_MS[0]);
       return;
@@ -830,7 +874,7 @@ export class MobRoom {
     m.hp = Math.max(0, m.hp - damage);
     if (m.hp === 0) {
       [m.col, m.row] = [mc, mr];
-      m.respawnAt = m.add ? Infinity : now + (m.zone.respawnSec ?? 20) * 1000;
+      m.respawnAt = m.add ? Infinity : now + m.rules.respawnMs;
       m.foe = null;
       m.path = [];
     }

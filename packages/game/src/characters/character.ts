@@ -144,12 +144,15 @@ export class Character {
     this.sync();
   }
 
-  /** In your party: the name turns pink (on your screen only). */
+  /** In your party: the name turns pink (on your screen only), and their HP bar shows while they're hurt. */
   setParty(on: boolean): void {
     this.inParty = on;
     this.tag?.setParty(on);
+    if (this.hp) this.setHp(...this.hp);
   }
   private inParty = false;
+  /** Their HP and most, as last heard. */
+  private hp: [number, number] | null = null;
 
   /** Jail bars over the character (manifest fx jailBars, in the same cell, on top of their layers), or off. */
   setJailed(on: boolean): void {
@@ -573,9 +576,11 @@ export class Character {
     });
   }
 
-  /** HP now and at most: a thin red bar over the name while it's under the most (gone when full or knocked out). */
+  /** HP now and at most: a thin red bar over the name while it's under the most, only over a party member's head
+   *  (stats.json mobBehaviour.hpBar: players see HP bars over their party only; gone when full or knocked out). */
   setHp(hp: number, max: number): void {
-    if (hp >= max || max <= 0 || this.knockedOut) {
+    this.hp = [hp, max];
+    if (hp >= max || max <= 0 || this.knockedOut || !this.inParty) {
       this.hpBar?.destroy();
       this.hpBar = null;
       return this.sync();

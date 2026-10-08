@@ -213,7 +213,7 @@ const CREDITS: { heading: string; lines: [string, string, string?][] }[] = [
   {
     heading: 'Sounds',
     lines: [
-      ['Interface, RPG, Casino and Impact sounds by Kenney', 'CC0', 'https://kenney.nl'],
+      ['Interface, RPG, Casino and Impact sounds by Kenney (and the combat, skill and golem sounds made from them)', 'CC0', 'https://kenney.nl'],
       ['Crickets by Wolfgang_ (notice: Ted Kerr)', 'CC0'],
       ['Fountain by rubberduck, "30 CC0 SFX Loops"', 'CC0'],
       ['Tanod\'s whistle: "Whistles" by dklon', 'CC-BY 3.0', 'https://opengameart.org/node/121038'],

@@ -310,10 +310,8 @@ export interface MobData {
   variants?: string[];
   /** The Tire Roller's lunge frames (first, last). */
   charge?: Vec2;
-  /** A spawn point's pack size (lowest, highest): the Bottle Caps. */
+  /** A pack's size (lowest, highest): the Bottle Caps. */
   pack?: Vec2;
-  /** Tiles it attacks from (else the next tile). */
-  reach?: number;
   /** Now and then a short straight roll (the Tire Roller; the server runs it). */
   roll?: { chance: number; tiles: Vec2; speed: number };
   /** It drifts: its pace (tiles a second) and short rests (the Plastic Bag Spook). */

@@ -186,6 +186,15 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   Inside the casino (`enterCasinoSound`/`leaveCasinoSound`) the town music, crickets and fountain go quiet and its own
   music (casino-shop-theme, 0.09 × the music volume) fades in, loaded only then; casino sfx: flip-spin (repeats while
   the coin spins), flip-land, casino-win (+ coin), casino-lose, busted (.m4a only: `formats`).
+  Combat sets (`playSet`: sfx/<base>-1..3, one at random, never the same twice running; volumes by `SET_VOLUMES`, the
+  user's quiet 0.10–0.25): combat-player-hurt and the mobility moves' (skill-dash/-step-back/-charge, skill-blink-out/-in:
+  `playMove`'s `sound`) load with every town; on a battle map `loadSoundSets` adds combat-mob-hurt/-death-<kind> (world/
+  mobs.ts: a hurt one per mob at most every 150 ms, its death), golem-<attack> (world/golem.ts `GOLEM_SOUNDS`: the slam's
+  wind-up as it starts, the slam on its frame, the toss's throw on release and land, the glare as it lights, call-junk,
+  enrage) and skill-<class>-<skill> for each class's first 7 skills (`skillSet`: kebab case of classes.json's name; yours
+  as it fires in `fightTick`, others' with their `mob-hit`). Hearing (`Heard`): yours always; mobs, others' skills and the
+  golem only within 12 tiles of you (`hearFrom` keeps your tile), others' and the golem's at 70%. combat-level-up (yours,
+  others' near you at 70%). Debug: `__town.sounds()` (every sound asked for, even while sound is locked headless: `tapSounds`).
   Settings box (`ui/settings.ts`, gear button top right, manifest `ui.settingsIcon`): Music and Sounds volumes
   (music 0 = off), Mute all and Mute gossip murmur (`npcsMuted`: the Alings' ambient murmur only; saved in localStorage `mk_sound`), log out, a Keybinds page and a Credits page (keep it in step with
   `public/assets/audio/CREDITS.md` and the font's licence). Keep sounds soft: no sharp clicks.
@@ -302,11 +311,16 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   shadow size (drawn as the shadow art's pixel ellipse at that size), `floats`, variants, the golem's toss/glare frames,
   `top`, and its `lamp` / `slamFist` / `tossFist` per facing, measured from the art; a bot test keeps its variants in step with the
   manifest's and checks every sheet exists). Shared by everyone: the bot runs them (`web/town-mobs.ts` MobRoom, tested; TownOptions
-  `mobs`, a quarter-second clock, ~0.25 ms a tick with all ~240 mobs and 5 players fighting): one per spawn (id
-  `<zone>:<index>`), or for a kind with mobs.json `pack` (Bottle Caps) a seeded 3–5 round the point (ids `<zone>:<index>:<n>`,
+  `mobs`, a quarter-second clock, ~0.15 ms a tick with all ~93 mobs and 5 players fighting). How they live is stats.json
+  `mobBehaviour` (`mobRules` in @mikazuki/shared; the guide's "Mob behaviour"; slums.json's zone `aggro`/`aggroRange`/
+  `leash`/`respawnSec` aren't read): `aliveperZone` (10) a zone, a pack counted once (ids `<zone>:<k>`), starting at
+  spread-out spawn points (`mobStartSpots`, shared: the game places the same); the spawn points are only places now: a
+  dead mob is back `respawnSeconds` (30) later (`mob-spawn` with its tile, full) at a random spawn point of its zone with
+  no living mob on or next to it and no player within 4 (`respawn`), which is its spawn from then on; a pack's cap comes
+  back beside its pack while any of it lives. For a kind with mobs.json `pack` (Bottle Caps) a seeded 3–5 round the point (ids `<zone>:<k>:<n>`,
   each its own mob; the first alive leads, the others hop to within 2 tiles of where it's headed and follow it shortly;
   `packSize`), its kind's one level, HP, ATK, DEF and XP (stats.json's mob table; slums.json's zone `level` says the
-  same, a test checks) and a seeded `variant` from mobs.json, sent in `mobs`; the game picks the same until it hears), hopping ≤ 3 tiles round it on its zone's level and in its `rect` (not ramps, blocked tiles
+  same, a test checks) and a seeded `variant` from mobs.json, sent in `mobs`; the game picks the same until it hears; `seeded`/`packSize` are shared), hopping ≤ `wanderTiles` (3) round its spawn on its zone's level and in its `rect` (not ramps, blocked tiles
   or the `safeZone`; never onto a tile another mob stands on or is headed for), facing its last step (`TownMob.dir`;
   `facingTo`: SE = +col, SW = +row, NW = −col, NE = −row); a Tire Roller sometimes rolls 1–2 tiles straight on (mobs.json
   `roll`, quicker), a Plastic Bag Spook drifts (`drift`: its own pace, short rests); arrivals get `mobs` (a snapshot,
@@ -345,13 +359,14 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   refused, 'locked' (toast "You can't use that skill yet"); a slow/root effect lasts 5% longer a skill level (its ms;
   the slow's factor stays)), at most one swing per 0.4 s; a Scrap Crab's
   shell (`shell`) blocks every hit from any side (`blocked`, 0) except for `shellOpenMs` (1.2 s) from each of its own
-  swings (shell down: hit it then; it swings every `attackMs` 2.5 s; the game shows a small shield over a fighting or targeted crab while its shell is up); a hit mob (its whole pack) chases its foe, an aggressive zone's mob (`aggro`) one who comes within its
-  `aggroRange` (in its zone, on its level; players are sorted per zone once a tick), to the nearest free tile within
-  its `reach` (mobs.json; the Wire Tangle zaps from 3) and attacks every 1.6 s (`mob-attack` with its `dir`, its `hit`
-  rolled against the player (Player HP, below) and on a hit the Bag's `slow` ms), gives up when they leave its zone or its leash, or (passive) after 12 s without a
-  hit, and walks home; at 0 it dies (`mob-hit` dead: its death pose, gone)
-  and respawns after its zone's respawnSec (`mob-spawn`). The game shows damage numbers (gold for a crit; "Blocked" off a shell; "Miss"), an HP bar
-  of its `maxHp` over a hurt mob and in the target's info bar, its death pose then a fade out. A mob's attack
+  swings (shell down: hit it then; it keeps its own rhythm, mobs.json `attackMs` 2.5 s; the game shows a small shield over a fighting or targeted crab while its shell is up); a hit mob (a `packAssist` kind's whole pack: Bottle Caps) chases its foe; an aggressive kind
+  (`mobBehaviour.aggressive`: Tire Roller, Wire Tangle, Scrap Crab; passive: Tin Can, Bottle Caps, Plastic Bag Spook) one who comes within `aggroTiles` (4)
+  (in its zone, on its level; players are sorted per zone once a tick), to the nearest free tile within
+  its reach (`rangeTiles`: melee 1, the Wire Tangle zaps from 4) and attacks every `attackEverySeconds` (2 s) (`mob-attack` with its `dir`, its `hit`
+  rolled against the player (Player HP, below) and on a hit the Bag's `slow` ms); it gives up when they leave its zone, are more than `leashTiles` (10) from its spawn (it can't follow further), or (passive) after 12 s without a
+  hit: healed to full (`mob-heal` {id, hp}) it walks home; at 0 it dies (`mob-hit` dead: its death pose, gone)
+  and is back as above. The game shows damage numbers (gold for a crit; "Blocked" off a shell; "Miss"), an HP bar
+  of its `maxHp` over it while it's your target and for `hpBar.hideAfterSeconds` (5 s, `mobBarMs`) after each hit (`Mob.hitAt`), in the target's info bar, its death pose then a fade out. A mob's attack
   (`Mobs.strike`): turned the server's way, its attack pose, hooks `onAttackFrame` (mobs.json attackFrame) and `onHit` as
   it lands (TownScene: the number over them, red flash, and the Bag's slow badge + cold ring for `slow` ms, `showSlowed`), `onDeath`;
   the Wire Tangle's spark (drawn in code: a jagged yellow-white flickering line) flies from its insulator eye (mobs.json
@@ -378,7 +393,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   tile, 60°] in grid space; `blinded` ids, `blindMs`) — `golem-attack`, with `hits` (Player HP, below). ≤ 50% once: `golem` change 'call' with
   3–4 `spots` a tile or two outside the pit, then (`ms` = the call-junk fx) `mob-add`: 2 Tin Cans + a Bottle Caps pack
   (ids `golem-add:<n>[:<k>]`, `TownMob.kind`; aggressive toward the nearest player within the golem's leash; never back
-  once dead). ≤ 25% once: 'enrage'. 10 s with nobody within its leash: 'reset' (full HP, phases re-armed, Adds
+  once dead). ≤ 25% once: 'enrage'. `mobBehaviour.golem.resetAfterSecondsEmpty` (30 s, `GolemArt.resetMs`) with nobody in its fight (pit floor and way in; the knocked out left out): 'reset' (full HP, phases re-armed, Adds
   `mob-remove`d), walks home. 0: 'death' (state 'dead'), Adds removed, the line naming everyone who hit it that fight
   (`downLine`). Every `golem` message carries the whole `TownGolem` (HP, enraged, state, home/leash/radius for the boss
   bar); arrivals get it in `mobs` (`golem`). Dev: `/__golem?now=1` (rise now), `/__golem?demo=1&as=Name` (its fight
@@ -476,7 +491,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   requirements red, base "ATK 46 (40 +6)", lines, agimat dots, Bound / Binds when worn); the inventory's Combat tab =
   combat bag (hover tooltip `.iv-tip`, double-click gear to wear, potions drag to the hotbar), Kowens + Kusing footer;
   hotbar `onItem` / `countOf`, `potionCooldownKey` pie; shop tabs Healing / Smithing (number box). Sounds: combat-hit(-crit),
-  combat-player-hurt-1..3 (`playVariant`, never twice running), combat-loot-drop/-pickup, combat-coins, combat-potion.
+  combat-player-hurt-1..3 (`playSet`, never twice running), combat-loot-drop/-pickup, combat-coins, combat-potion.
   Dev: the dev town keeps each player's items (`/__items`, the page's copy wins only after a restart), `?give=<defId>:
   <rarity>:<plus>`, `?kusing=`, `?whetstones=` (`/__give`), `/__shop`, `/__loot?rich=1` (nearly every kill drops gear
   and a potion); `__town.items()`, `__town.loot()`.
@@ -538,7 +553,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   stats.json's `xpTo` 5%); `web/town.ts` asks `TownOptions.progress` (`fighter`: the Attacker with level, points, all
   worn gear, skill levels; `kill`: saves the XP) and sends `progress` to the player and `level-up` (id, level) to their
   room; `Town.progress(...)` for changes outside a fight. Game: `setProgress`, "Level up!" over them
-  (`Character.levelUp`, `LevelUpPop` in ui/labels.ts) and the casino-win chime quietly (0.1 yours, 0.05 others');
+  (`Character.levelUp`, `LevelUpPop` in ui/labels.ts) with manifest fx `fx-level-up-ring` (ground) + `fx-level-up-sparks`
+  (front) at their feet (TownScene `levelUpFx`) and combat-level-up (yours 0.2, others' within hearing at 70%);
   `Mobs.myLevel` follows. Dev: `?xp=500` / `?level=N` (the dev server's `/__xp?as=&xp=|level=`: levels in memory there,
   sent from the page's localStorage on connect with `&kit=`, through the same functions).
 - Player HP (bot `web/town-vitals.ts` `Vitals`, pure, tested in town-vitals.test.ts; by member, in memory only, never
@@ -559,7 +575,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   full. `vitals` (id, hp, maxHp; mp/maxMp to yourself) to you, your room and your party elsewhere; `TownPlayer.hp/maxHp/
   out` for arrivals. Golem XP credit by member (`attack`'s `member`, `Golem.hit`; kills' `to` are members). Game: HUD HP
   (red, pulsing under 25%) and MP (blue) bars in `.th-bars` (`setHudVitals`), `Character.setHp` (a 20 px bar over the
-  name while hurt), `hitNumber` (red on you, pale on others, "Miss"), `setKnockedOut` (fade out/in, no death pose);
+  name while hurt, only over your party's members: `mobBehaviour.hpBar.playersSee`; never over yourself), `hitNumber` (red on you, pale on others, "Miss"), `setKnockedOut` (fade out/in, no death pose);
   TownScene `knockedOut` blocks walking, keys, skills, moves, E; "You were knocked out." toast; `slowMe` (half
   `SPEED`, the step-budget mirror halved). Dev: the dev server runs it all (`?golemdemo=1` hits whoever is nearest).
 - Stat points (`POST /town/points` { spend, stat } | { reset }, `pointsStep` / `townPoints` in web/adventure.ts,

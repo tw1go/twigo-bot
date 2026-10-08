@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { type GolemAttack, type GolemChange, type PlayerHit, type TownGolem, type TownMobFacing, type TownServerMessage, mobStats } from '@mikazuki/shared';
+import { type GolemAttack, type GolemChange, type PlayerHit, type TownGolem, type TownMobFacing, type TownServerMessage, golemResetMs, mobStats } from '@mikazuki/shared';
 import { loadStats } from './stats-data.js';
 
 // 🗿 The Scrapheap Golem, the Slums' field boss (the game's maps/slums.json `boss`), run on the server inside the Slums'
@@ -19,8 +19,9 @@ import { loadStats } from './stats-data.js';
 // next to it (TOSS_AREA): each a hit by the stats rules with its ATK × the mob table's skillMult (×3, ×2), rolled by the
 // host (`roll`) and sent with the attack (`hits`); the host takes the HP as it lands (`hitMs`). At half HP it calls the
 // Junk once (3–4 spots round the pit; its Adds crawl out there when the fx is done: the host spawns them as real mobs),
-// at a quarter it enrages once. Nobody within its leash for RESET_MS: it resets (full HP, Adds gone, both phases again
-// next fight) and walks home. At 0 it dies: its Adds go, and a line names everyone who hit it in that fight; the damage
+// at a quarter it enrages once. Nobody in its fight (on its pit floor or way in, knocked out players left out) for
+// stats.json mobBehaviour.golem.resetAfterSecondsEmpty (`resetMs`): it resets (full HP, Adds gone, both phases again
+// next fight) and walks home; it never leaves its pit. At 0 it dies: its Adds go, and a line names everyone who hit it in that fight; the damage
 // each member did in it (by member, so a reload mid-fight keeps it) goes back with the last hit (its XP: everyone who did
 // 5% of its HP). Pure (the clock is passed in), so it's tested on its own and the dev server runs it too.
 
@@ -41,7 +42,6 @@ const TOSS_AREA = 1; // Scrap Toss: its target's tile and the tiles next to it
 const FLIGHT_MS = 600;
 /** Each attack's multiplier in the mob table's skillMult. */
 const MULT: Partial<Record<GolemAttack, string>> = { slam: 'tireSlam', toss: 'scrapToss' };
-const RESET_MS = 10_000;
 const SINK_MS = 30 * 60_000;
 
 /** slums.json `boss`. */
@@ -92,6 +92,8 @@ export interface GolemArt {
   callMs: number;
   hitMs?: Record<GolemAttack, number>;
   mult?: Partial<Record<GolemAttack, number>>;
+  /** Nobody in its fight this long (ms): it resets (stats.json mobBehaviour.golem). */
+  resetMs: number;
 }
 
 /** The game's manifest, mobs.json and stats.json, for the golem `id`. */
@@ -106,7 +108,7 @@ export function loadGolemArt(id = 'scrapheap-golem'): GolemArt {
   const row = mobStats(loadStats(), id)!;
   const mult = Object.fromEntries(Object.entries(MULT).map(([k, v]) => [k, row.skillMult?.[v] ?? 1])) as Partial<Record<GolemAttack, number>>;
   return {
-    hp: row.hp, radius: rules.radius, riseMs: ms(a.death), attackMs: { slam: ms(a.attack), toss: ms(a.toss), glare: ms(a.glare) }, callMs: ms(art.fx['fx-golem-call-junk']),
+    hp: row.hp, resetMs: golemResetMs(loadStats()), radius: rules.radius, riseMs: ms(a.death), attackMs: { slam: ms(a.attack), toss: ms(a.toss), glare: ms(a.glare) }, callMs: ms(art.fx['fx-golem-call-junk']),
     hitMs: { slam: at(a.attack, rules.attackFrame ?? 5), toss: at(a.toss, rules.tossFrame ?? 4) + FLIGHT_MS, glare: at(a.glare, rules.glareFrames?.[0] ?? 3) },
     mult,
   };
@@ -438,7 +440,7 @@ export class Golem {
     const near = [...players].filter(([, p]) => this.inFight(p));
     if (!near.length) {
       this.alone ??= now;
-      if (now - this.alone >= RESET_MS) this.reset(now);
+      if (now - this.alone >= this.art.resetMs) this.reset(now);
       return;
     }
     this.alone = null;

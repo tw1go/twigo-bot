@@ -356,8 +356,10 @@ export type TownServerMessage =
   /** A mob attacks a player, turned to face `dir`; `hit`: the server's roll (shown as it lands; the server takes the HP
    *  then too); `slow`: a hit slows the player to half their walking speed for that long (ms; the Plastic Bag Spook's). */
   | { t: 'mob-attack'; id: string; target: string; dir: TownMobFacing; slow?: number; hit?: PlayerHit }
-  /** A dead mob is back at its spawn. */
+  /** A dead mob is back (at a free spot in its zone, or beside its pack), full. */
   | { t: 'mob-spawn'; id: string; col: number; row: number; hp: number }
+  /** A mob gave up its fight (pulled past its leash, its foe gone or quiet): healed to full, it walks home. */
+  | { t: 'mob-heal'; id: string; hp: number }
   /** Your level, XP and points changed (XP from a kill: `gained`; a level-up; dev's ?xp= / ?level=). */
   | { t: 'progress'; progress: CharacterProgress; gained?: number }
   /** Someone in your room went up a level (you too: `id` is yours): "Level up!" over them. HP and MP refill with it. */
@@ -365,8 +367,8 @@ export type TownServerMessage =
   /** Your attack didn't land: too far, too fast, the mob's gone, the skill isn't one of yours or unlocked yet, or you're
    *  knocked out. */
   | { t: 'attack-refused'; reason: 'range' | 'slow' | 'gone' | 'skill' | 'locked' | 'out' }
-  /** Someone's HP (and yours with your MP) changed: to you, to everyone in your room (the bar over your head) and to your
-   *  party (its panel). */
+  /** Someone's HP (and yours with your MP) changed: to you (the HUD), to everyone in your room (only a party member's
+   *  shows over their head) and to your party (its panel). */
   | { t: 'vitals'; id: string; hp: number; maxHp: number; mp?: number; maxMp?: number }
   /** Someone in your room (maybe you) was knocked out (0 HP): they fade out and can't act until they respawn. */
   | { t: 'knocked-out'; id: string }

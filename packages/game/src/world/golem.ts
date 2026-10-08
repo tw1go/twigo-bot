@@ -4,6 +4,7 @@ import type { FxDef, MobZone, TownMap, Vec2 } from '../assets/types';
 import { BossBar } from '../ui/boss-bar';
 import type { FxLayers, Pt } from './fx-layers';
 import { GOLEM_PIT, type Mob, type Mobs } from './mobs';
+import { type Heard, playSet } from '../audio/sound';
 
 // 🗿 The Scrapheap Golem in the game (the field boss; the server runs it: bot web/town-golem.ts). It's a mob of world/
 // mobs.ts (drawn, sorted by its feet, sleeping off camera, clicked and targeted like the rest; mobs.json `radius`: reach
@@ -22,7 +23,12 @@ import { GOLEM_PIT, type Mob, type Mobs } from './mobs';
 // as `mob-add`); Enrage: the fx at the lamp, the red lamp half-way through. The lamp, fists measured from the art per
 // facing (mobs.json lamp, slamFist, tossFist). The slam's and toss's `hits` (the server's rolls, on everyone they caught)
 // go through the mob hooks as they land (TownScene: numbers, flashes). A wide boss bar (ui/boss-bar.ts) during its fight
-// for whoever's within its leash.
+// for whoever's within its leash. Its sounds (golem-<attack>, GOLEM_SOUNDS: the slam's wind-up as it starts and the slam
+// on its frame, the toss's throw on release and landing, the glare as it lights, the Junk called, the enrage) are heard
+// within range of it, a little quieter than your own (audio/sound.ts).
+
+/** The golem's sound sets (audio/sfx golem-<name>-1…3). */
+export const GOLEM_SOUNDS = ['tire-slam-windup', 'tire-slam', 'scrap-toss-throw', 'scrap-toss-land', 'lamp-glare', 'call-junk', 'enrage'] as const;
 
 const RUBBLE_MS = 3500; // an enraged slam's rubble ring stays this long
 const FLIGHT_MS = 600; // the scrap's flight (the bot's town-golem.ts lands the toss after the same)
@@ -85,6 +91,7 @@ export class GolemView {
   /** It changed (`golem`): risen, a fight begun, the Junk called, enraged, reset, sinking, dead. */
   change(change: GolemChange, g: TownGolem, spots?: [number, number][]): void {
     this.setState(g);
+    if (change === 'call' || change === 'enrage') this.sound(change === 'call' ? 'call-junk' : 'enrage', { col: g.col, row: g.row });
     if (!this.art) return;
     if (change === 'call') for (const [c, r] of spots ?? []) this.fx.play(this.def('fx-golem-call-junk'), this.mobs.ground(c + 0.5, r + 0.5));
     if (change === 'enrage') return this.enrage(g);
@@ -175,6 +182,7 @@ export class GolemView {
     const frameMs = 1000 / A.fps;
     const later = (frame: number, fn: () => void) => this.scene.time.delayedCall(frame * frameMs, fn);
     this.mobs.pose(m, anim);
+    if (a.attack === 'slam') this.sound('tire-slam-windup', m);
     const at = this.mobs.ground(a.at[0] + 0.5, a.at[1] + 0.5);
     const D = m.data;
     const k = D?.scale ?? 1; // its own fx are drawn for its art's size: as big as it's drawn
@@ -186,6 +194,7 @@ export class GolemView {
       this.fx.play(this.def('fx-golem-slam-warning'), fist, { life: f * frameMs, fadeIn: 120, scale: k });
       later(f, () => {
         this.mobs.hooks.onAttackFrame?.(m, a.target);
+        this.sound('tire-slam', m);
         this.fx.play(this.def('fx-golem-slam-impact'), fist, { scale: k });
         this.fx.play(this.def('fx-golem-shockwave'), fist, { scale: k });
         if (a.enraged) this.fx.play(this.def('fx-golem-rubble-ring'), fist, { life: RUBBLE_MS, fadeIn: 200, fadeOut: 900, scale: k });
@@ -197,6 +206,7 @@ export class GolemView {
       const marker = this.fx.play(this.def('fx-golem-toss-marker'), at, { life: 60_000, fadeIn: 120 });
       later(D?.tossFrame ?? 4, () => {
         this.mobs.hooks.onAttackFrame?.(m, a.target);
+        this.sound('scrap-toss-throw', m);
         const from = this.point(m, D?.tossFist) ?? this.mobs.feet(m);
         const d = Math.hypot(at.x - from.x, at.y - from.y);
         const o = { speed: d / (FLIGHT_MS / 1000), arc: Math.max(24, d * 0.3) };
@@ -209,6 +219,7 @@ export class GolemView {
             marker?.kill(150);
             trail?.kill(0);
             this.fx.play(this.def('fx-golem-scrap-land'), at, { scale: k });
+            this.sound('scrap-toss-land', { col: a.at[0], row: a.at[1] });
             for (const h of a.hits ?? []) this.mobs.hooks.onHit?.(m, h.id, undefined, h); // its tile and the ones next to it
           },
         });
@@ -217,6 +228,7 @@ export class GolemView {
       const [g0, g1] = D?.glareFrames ?? [3, 5];
       later(g0, () => {
         this.mobs.hooks.onAttackFrame?.(m, a.target);
+        this.sound('lamp-glare', m);
         this.glare(m, a.dir, a.cone ?? [5, 60], (g1 - g0 + 1) * frameMs);
         for (const id of a.blinded ?? []) this.blind(id, a.blindMs ?? 3000);
       });
@@ -273,6 +285,12 @@ export class GolemView {
   private shake(at: Pt): void {
     const cam = this.scene.cameras.main;
     if (!reducedMotion() && cam.worldView.contains(at.x, at.y)) cam.shake(150, 0.0015); // a nudge: about 2 px on a laptop screen
+  }
+
+  /** One of its sounds from where it (or its scrap) is: heard within range, a little quieter than your own. */
+  private sound(name: (typeof GOLEM_SOUNDS)[number], at: { col: number; row: number }): void {
+    const heard: Heard = { at: { col: Math.floor(at.col), row: Math.floor(at.row) }, others: true };
+    playSet(`golem-${name}`, heard);
   }
 
   /** One of its effects (manifest mobs.<id>.fx). */
