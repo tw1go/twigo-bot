@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { type ItemData, type TownLoot, isGearDef, itemName, rarityColour } from '@mikazuki/shared';
+import { type ItemData, type TownLoot, isGearDef, itemAura, itemName, rarityColour } from '@mikazuki/shared';
+import { type AuraTrace, WeaponAura, traceAura } from '../fx/weaponAura';
 import { loadImages } from '../characters/kit-art';
 import { CHARACTER_BIAS, HEIGHT_DEPTH, LABEL_DEPTH } from './depth';
 import { type WorldObjects, characterDepth } from './objects';
@@ -7,7 +8,7 @@ import { type WorldObjects, characterDepth } from './objects';
 // 🪙 Loot on the ground in the Slums (the server's: bot web/town-loot.ts; the town's `loot`, `loot-drop` and `loot-gone`
 // messages). Each drop is its own 16x16 icon (the item's inventory icon, Kusing's coin) on a small dark oval shadow,
 // bobbing 1 px, slowly; Kusing has its amount over it in Jersey 10. Hovering one (or holding Alt) shows its name in its
-// rarity's colour. Someone else's loot (the first 10 s of their kill) is drawn at half strength until it opens to you;
+// rarity's colour; a +18 or +20 weapon glows on the ground too (fx/weaponAura.ts). Someone else's loot (the first 10 s of their kill) is drawn at half strength until it opens to you;
 // the golem's loot only ever reaches its owner. An icon not drawn yet: its slot's silhouette (gear) or a square in its
 // rarity's colour. Clicking one walks you onto it (the server picks it up as you arrive).
 
@@ -23,6 +24,8 @@ interface Drop {
   /** Faint until then (performance.now ms; Infinity: someone else's for good). */
   opensAt: number;
   phase: number;
+  /** A +18 or +20 weapon's aura round its icon. */
+  aura: { fx: WeaponAura; trace: AuraTrace } | null;
   x: number;
   y: number;
   hovered: boolean;
@@ -96,6 +99,7 @@ export class LootLayer {
       const bob = Math.round(Math.sin(((now + d.phase) / BOB_MS) * Math.PI * 2) * 0.5 - 0.5); // 0 or −1
       d.icon.setY(d.y - 6 + bob);
       d.amount?.setY(d.y - 14 + bob);
+      d.aura?.fx.place(d.aura.trace, d.icon.x - 8, d.icon.y - 8, d.icon.depth - 0.005, d.icon.depth + 0.005, d.icon.alpha);
       if (!d.loot.mine && now >= d.opensAt) {
         d.loot = { ...d.loot, mine: true };
         this.fade(d);
@@ -161,7 +165,16 @@ export class LootLayer {
       .setOrigin(0.5, 1)
       .setDepth(LABEL_DEPTH)
       .setVisible(false);
-    const d: Drop = { loot: l, icon, shadow, amount, name, opensAt: l.mine ? 0 : l.opensIn === undefined ? Infinity : performance.now() + l.opensIn, phase: Math.random() * BOB_MS, x, y, hovered: false };
+    const d: Drop = { loot: l, icon, shadow, amount, name, opensAt: l.mine ? 0 : l.opensIn === undefined ? Infinity : performance.now() + l.opensIn, phase: Math.random() * BOB_MS, aura: null, x, y, hovered: false };
+    // +18 and +20 weapons glow on the ground (the guide; +15–17 only once picked up).
+    const tier = l.item && D ? itemAura(D, l.item) : null;
+    if (tier && tier.aura !== 'blue' && icon.width === 16) {
+      const fr = icon.frame;
+      const trace = traceAura(`loot:${key}:${fr.name}`, { w: 16, h: 16, front: (ctx) => ctx.drawImage(fr.source.image as CanvasImageSource, fr.cutX, fr.cutY, fr.cutWidth, fr.cutHeight, 0, 0, 16, 16) });
+      const fx = new WeaponAura(this.scene, [16, 16]);
+      fx.set(tier);
+      d.aura = { fx, trace };
+    }
     icon.on('pointerover', () => ((d.hovered = true), this.syncName(d)));
     icon.on('pointerout', () => ((d.hovered = false), this.syncName(d)));
     this.all.set(l.id, d);
@@ -185,6 +198,7 @@ export class LootLayer {
     const d = this.all.get(id);
     if (!d) return;
     for (const o of [d.icon, d.shadow, d.amount, d.name]) o?.destroy();
+    d.aura?.fx.destroy();
     this.all.delete(id);
   }
 

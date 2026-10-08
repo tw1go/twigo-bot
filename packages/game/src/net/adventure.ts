@@ -18,6 +18,8 @@ import {
   type StatsData,
   type TownAdventureResponse,
   type TownEquipAction,
+  type TownForgeAction,
+  type TownForgeResponse,
   type TownPointsAction,
   type TownQuestAction,
   type TownSkillsAction,
@@ -110,6 +112,17 @@ function set(s: AdventureState, change: AdventureChange = {}, fromServer = false
 /** Your worn items, combat bag and Kusing from the server (the town's `items` message; `got`: just picked up). */
 export function setItems(items: TownItems, got?: AdventureChange['got']): void {
   if (state) set({ ...state, ...items }, got ? { got } : {}, true);
+}
+
+/** A forge action (the popup's enhance, repair and embed; the bag's disassemble and combine), rolled by the bot (POST
+ *  /town/forge; dev: the dev town's /__forge, the same code). Your items come back with the answer. */
+export async function forgeAction(a: TownForgeAction): Promise<TownForgeResponse | null> {
+  const path = fakeLogin() ? `/__forge?${new URLSearchParams({ as: fakeName() })}` : '/town/forge';
+  if (fakeLogin()) await devItemsReady;
+  const res = await fetch(path, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(a) }).catch(() => null);
+  const r = res?.ok ? ((await res.json()) as TownForgeResponse) : null;
+  if (r?.items) setItems(r.items);
+  return r;
 }
 
 /** Every item kind and the stats rules (the items module's data). */

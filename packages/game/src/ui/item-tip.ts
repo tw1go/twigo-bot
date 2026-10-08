@@ -1,6 +1,7 @@
-import { type EquipSlot, type Item, type StatName, affixTier, agimatValue, baseStats, canEquip, enhancedBase, gearKind, isGearDef, itemName, lineText, lineValue, requirements, statLabel } from '@mikazuki/shared';
+import { type EquipSlot, type Item, type StatName, affixTier, agimatValue, baseStats, canEquip, enhancedBase, gearKind, isGearDef, itemAura, itemName, lineText, lineValue, requirements, statLabel } from '@mikazuki/shared';
 import { adventure, classInfo, itemData } from '../net/adventure';
-import { type Rarity, RARITY_LABEL, RARITY_TEXT, isRarity, itemArt, placeholderArt } from './item-art';
+import { type Rarity, RARITY_LABEL, RARITY_TEXT, isRarity, itemArt, itemArtUrl, placeholderArt } from './item-art';
+import { auraIcon } from '../fx/weaponAura';
 import { slotSilhouette } from './equipment';
 
 // 🏷️ An item's tooltip (the combat bag, the equipment panel, the shop, loot): its name in its rarity's colour ("+7
@@ -29,10 +30,23 @@ export const nameOf = (item: Item): string => {
 export const rarityOf = (item: Pick<Item, 'rarity'>): Rarity => (isRarity(item.rarity) ? item.rarity : 'white');
 
 /** An item's picture at `scale`× ('icon' 16 px, 'showcase' 32 px): its art, else its slot's silhouette (gear), else a
- *  square in its rarity's colour. */
+ *  square in its rarity's colour. A +15 or better weapon has its aura round it (fx/weaponAura.ts). */
 export function itemPicture(item: Item, size: 'icon' | 'showcase' = 'icon', scale = 2): HTMLElement {
-  const def = itemData()?.defs.get(item.defId);
+  const D = itemData();
+  const def = D?.defs.get(item.defId);
   const art = itemArt(item.defId, rarityOf(item), size, scale, true);
+  const aura = D ? itemAura(D, item) : null;
+  const url = itemArtUrl(item.defId, size);
+  if (art && aura && url) {
+    // The glow, the icon and its spirals drawn together in place of the plain picture.
+    const pic = art.querySelector<HTMLElement>('.it-pic');
+    const glow = auraIcon(url, size === 'icon' ? 16 : 32, aura, scale);
+    glow.style.position = 'absolute';
+    glow.style.left = glow.style.top = `${scale}px`;
+    pic?.replaceWith(glow);
+    art.classList.add('it-aura');
+    return art;
+  }
   if (art) return art;
   if (isGearDef(def)) return slotSilhouette(def.slot, (size === 'icon' ? 16 : 32) * scale) ?? placeholderArt(rarityOf(item), size, scale);
   return placeholderArt(rarityOf(item), size, scale);
@@ -47,6 +61,12 @@ export function itemTipFor(item: Item): HTMLElement[] {
   name.style.color = item.broken ? '#9CA3AF' : RARITY_TEXT[rarity];
   if (!D || !def) return [name];
   const parts: HTMLElement[] = [name];
+  if (isGearDef(def) && itemAura(D, item)) {
+    // A glowing weapon shows its aura in the tooltip too.
+    const head = el('div', 'eq-tip-head');
+    head.append(itemPicture(item, 'icon', 2), name);
+    parts[0] = head;
+  }
   if (!isGearDef(def)) {
     const kind = def.kind === 'potion' ? (def.heals === 'mp' ? 'MP Potion' : 'HP Potion') : def.kind === 'agimat' ? 'Agimat' : def.kind === 'cosmetic' ? 'Cosmetic' : 'Material';
     parts.push(el('div', 'eq-tip-meta', `${kind}${item.count > 1 ? ` · ×${item.count}` : ''}`));

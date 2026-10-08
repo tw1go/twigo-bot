@@ -12,7 +12,8 @@ export type Sfx =
   | 'arena-whoosh' | 'arena-slam' | 'arena-reveal'
   | 'bakod-throw' | 'bakod-shatter' | 'bakod-key-in' | 'bakod-unlock' | 'bakod-snap'
   | 'combat-hit' | 'combat-hit-crit' | 'combat-player-hurt-1' | 'combat-player-hurt-2' | 'combat-player-hurt-3'
-  | 'combat-loot-drop' | 'combat-loot-pickup' | 'combat-coins' | 'combat-potion';
+  | 'combat-loot-drop' | 'combat-loot-pickup' | 'combat-coins' | 'combat-potion'
+  | 'combat-enhance-success' | 'combat-enhance-fail' | 'combat-enhance-break' | 'combat-repair' | 'combat-agimat-embed' | 'combat-disassemble';
 
 /** Each sound's file (under assets/audio/, as .ogg with an .m4a fallback unless `formats` says otherwise) and volume
  *  (0–1, before the player's sound-effects volume, which also covers the crickets and the fountain). */
@@ -53,6 +54,13 @@ const SFX: Record<Sfx, { file: string; volume: number; formats?: string[] }> = {
   'combat-loot-pickup': { file: 'sfx/combat-loot-pickup', volume: 0.16 },
   'combat-coins': { file: 'sfx/combat-coins', volume: 0.14 },
   'combat-potion': { file: 'sfx/combat-potion', volume: 0.18 },
+  // The forge (ui/forge.ts): an enhance's success, fail and break, a repair, an agimat set, gear taken apart.
+  'combat-enhance-success': { file: 'sfx/combat-enhance-success', volume: 0.2 },
+  'combat-enhance-fail': { file: 'sfx/combat-enhance-fail', volume: 0.16 },
+  'combat-enhance-break': { file: 'sfx/combat-enhance-break', volume: 0.22 },
+  'combat-repair': { file: 'sfx/combat-repair', volume: 0.18 },
+  'combat-agimat-embed': { file: 'sfx/combat-agimat-embed', volume: 0.18 },
+  'combat-disassemble': { file: 'sfx/combat-disassemble', volume: 0.18 },
 };
 const CRICKETS = { key: 'amb:crickets', urls: ['audio/ambient/crickets.mp3'], volume: 0.15 };
 const FOUNTAIN = { key: 'amb:fountain', urls: ['audio/ambient/fountain.ogg', 'audio/ambient/fountain.m4a'], volume: 0.1 };

@@ -73,6 +73,12 @@ export function addItemArt(art: Record<string, ItemArtDef>): void {
   items = { ...items, ...art };
 }
 
+/** An item's still picture's address ('icon' 16 px, 'showcase' 32 px), if it has one. */
+export function itemArtUrl(id: string, size: 'icon' | 'showcase'): string | null {
+  const still = size === 'icon' ? items[id]?.icon : items[id]?.showcase;
+  return still ? `${base}${still}` : null;
+}
+
 /** Whether an item has a picture of this size. */
 export const hasItemArt = (id: string, size: 'icon' | 'showcase') => (size === 'icon' ? !!items[id]?.icon : !!(items[id]?.showcase || items[id]?.anim));
 

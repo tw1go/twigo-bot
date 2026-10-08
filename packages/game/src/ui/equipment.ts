@@ -5,6 +5,7 @@ import { adventure, adventureData, cantWear, classInfo, equipItem, itemDef, onAd
 import { type Rarity, RARITY_COLOUR, RARITY_LABEL, RARITY_TEXT, isRarity } from './item-art';
 import { itemPicture, itemTipFor, myMainStat, nameOf, rarityOf } from './item-tip';
 import { toast } from './toast';
+import { forgeTake } from './forge';
 
 // 🛡️ The equipment panel, on the left of the bag (it opens and closes with it; I or B). Twelve places in the
 // inventory's slot art: Weapon, Head, Body, Hands, Bottoms and Feet on the left; Necklace, Earrings, two Bracers and two
@@ -16,7 +17,7 @@ import { toast } from './toast';
 // with your unspent stat points: a + on your class's main and second stat (POST /town/points), and a free Reset;
 // before a class they're banked. Double-click or drag an item from the bag onto its place to wear it (if its
 // requirements are met: base stats only; refused with what's missing, "Needs DEX 26"); right-click or double-click a
-// worn one to take it off.
+// worn one to take it off. While the forge popup (ui/forge.ts) is open, a click or a drag puts a worn item into it.
 
 const LEFT: EquipPlace[] = ['weapon', 'head', 'body', 'hands', 'bottoms', 'feet'];
 const RIGHT: EquipPlace[] = ['necklace', 'earrings', 'bracers1', 'bracers2', 'ring1', 'ring2'];
@@ -239,6 +240,15 @@ export class EquipmentPanel {
     const b = el('button', 'eq-slot');
     b.dataset.place = place;
     b.addEventListener('dblclick', () => void this.takeOff(place));
+    // While the forge popup is open, a click (or a drag) puts the worn item into it.
+    b.addEventListener('click', () => {
+      const worn = adventure()?.equipped[place];
+      if (worn) forgeTake(worn.uid);
+    });
+    b.addEventListener('dragstart', (e) => {
+      const worn = adventure()?.equipped[place];
+      if (worn) e.dataTransfer?.setData('application/x-mk-worn', worn.uid);
+    });
     b.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       void this.takeOff(place);
@@ -292,6 +302,7 @@ export class EquipmentPanel {
       b.replaceChildren();
       b.classList.toggle('eq-worn', !!item);
       b.classList.toggle('eq-broken', !!item?.broken);
+      b.draggable = !!item;
       b.setAttribute('aria-label', item ? `${this.placeName(place)}: ${nameOf(item)}` : `${this.placeName(place)} (empty)`);
       if (item) {
         b.style.setProperty('--rarity', RARITY_COLOUR[rarityOf(item)]);

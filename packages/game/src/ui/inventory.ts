@@ -11,6 +11,8 @@ import { adventure, anyDef, itemData, onAdventure } from '../net/adventure';
 import { itemPicture, itemTipFor, nameOf, rarityOf } from './item-tip';
 import { potionCooldownKey } from './hotbar';
 import { showRename } from './rename';
+import { type ForgePopup, confirmDisassemble, forgeFromBag, mountForge } from './forge';
+import { fragmentsPerWhetstone } from '@mikazuki/shared';
 
 // 🎒 The inventory: a bag button just right of the chat box (or B) opens the bag on the right of the screen. The bag shows every
 // slot a bag can ever have (5 × 10): the ones unlocked so far (bags from the shop add more) hold your items, one slot
@@ -28,6 +30,9 @@ import { showRename } from './rename';
 // agimats, HP/MP Potions and cosmetics, one slot each (a stack with its count), as the server keeps them (/me's
 // adventure and the town's `items` messages: net/adventure.ts). Hover or pick one for its tooltip; gear is worn by a
 // double-click or a drag onto its place; HP/MP Potions are dragged onto the hotbar.
+// The forge (ui/forge.ts): clicking a whetstone, Repair Kit or agimat opens the forge popup beside the bag (enhance,
+// repair, embed); gear clicked or dragged while it's open goes into it. Right-click gear for Disassemble (a confirm box
+// first), a fragment stack for Combine (ten into a whetstone).
 // The equipment panel (ui/equipment.ts) opens on its left with it (B or I): double-click or drag a piece of equipment
 // onto its place to wear it. On phones there's no room for both: Equipment / Bag in their heads switch between them.
 
@@ -92,6 +97,10 @@ export class Inventory {
   private pickedUid: string | null = null;
   /** The combat bag's hover tooltip. */
   private readonly tip = el('div', 'eq-tip iv-tip');
+  /** The forge popup (enhance, repair, embed). */
+  private readonly forge: ForgePopup;
+  /** The right-click menu (Disassemble, Combine). */
+  private readonly menu = el('div', 'iv-menu');
 
   /** `icon`: the bag art (manifest ui.inventoryIcon); `frame`: the item frame the panel is drawn in; `slot`: the slot
    *  art and its picked version (manifest ui.inventory, nine-slice). */
@@ -160,7 +169,15 @@ export class Inventory {
     this.grid.setAttribute('role', 'grid');
     this.tip.hidden = true;
     this.root.append(head, this.tabs, this.grid, this.detail, this.wallet);
-    document.body.append(this.root, this.tip); // (the tooltip over the equipment panel too)
+    this.menu.hidden = true;
+    this.menu.setAttribute('role', 'menu');
+    document.body.append(this.root, this.tip, this.menu); // (the tooltip over the equipment panel too)
+    document.addEventListener('pointerdown', (e) => !this.menu.contains(e.target as Node) && (this.menu.hidden = true));
+    this.forge = mountForge(frame, slot);
+    this.forge.besides = () => {
+      const eq = document.getElementById('equipment');
+      return eq && !eq.hidden && eq.offsetWidth ? eq.getBoundingClientRect() : this.root.hidden ? null : this.root.getBoundingClientRect();
+    };
     // The combat bag and Kusing live in the adventure state: redraw as they change (loot, potions, the shop).
     onAdventure(() => !this.root.hidden && this.render());
 
@@ -194,6 +211,8 @@ export class Inventory {
   toggle(open = this.root.hidden): void {
     this.root.hidden = !open;
     this.tip.hidden = true;
+    this.menu.hidden = true;
+    if (!open) this.forge.close();
     this.button.setAttribute('aria-expanded', String(open));
     this.equipment?.show(!!open);
     if (!open) document.body.classList.remove('show-equipment');
@@ -331,13 +350,18 @@ export class Inventory {
       const cell = el('button', `iv-cell iv-item${it.uid === this.pickedUid ? ' iv-picked' : ''}${it.broken ? ' iv-broken' : ''}`);
       cell.style.setProperty('--rarity', RARITY_COLOUR[rarityOf(it)]);
       cell.setAttribute('aria-label', nameOf(it));
+      cell.dataset.uid = it.uid;
       cell.append(itemPicture(it, 'showcase', 2));
       if (it.count > 1) cell.append(el('span', 'iv-count', String(it.count)));
       if (isGearDef(def)) {
-        // Worn by a double-click, or dragged onto its place in the equipment panel.
+        // Worn by a double-click, or dragged onto its place in the equipment panel (or into the forge popup).
         cell.draggable = true;
         cell.addEventListener('dragstart', (e) => e.dataTransfer?.setData('application/x-mk-equipment', it.uid));
-        cell.addEventListener('dblclick', () => void this.equipment?.wear(it.uid));
+        cell.addEventListener('dblclick', () => !this.forge.isOpen && void this.equipment?.wear(it.uid));
+      } else if (def && (def.kind === 'agimat' || def.forge === 'whetstone' || def.forge === 'repairKit')) {
+        // Forge tools: dragged onto the forge popup's slots.
+        cell.draggable = true;
+        cell.addEventListener('dragstart', (e) => e.dataTransfer?.setData('application/x-mk-tool', it.uid));
       } else if (def?.kind === 'potion') {
         // HP and MP Potions go on the hotbar (its - = ~ slots or the top row).
         cell.draggable = true;
@@ -346,9 +370,16 @@ export class Inventory {
       cell.addEventListener('pointerenter', () => this.showTip(it, cell));
       cell.addEventListener('pointerleave', () => (this.tip.hidden = true));
       cell.addEventListener('click', () => {
+        // A whetstone, Repair Kit or agimat opens the forge popup; gear goes into it while it's open.
+        if (!isGearDef(def) && this.openForge(it)) return;
+        if (isGearDef(def) && this.forge.put(it.uid)) return;
         this.pickedUid = this.pickedUid === it.uid ? null : it.uid;
         this.message = null;
         this.render();
+      });
+      cell.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        this.showMenu(it, cell, e.clientX, e.clientY);
       });
       cells.push(cell);
     }
@@ -360,12 +391,85 @@ export class Inventory {
     const def = anyDef(it.defId);
     const parts = itemTipFor(it);
     const row = el('div', 'iv-actions');
-    if (isGearDef(def)) row.append(this.action('Wear', 'iv-flex', () => void this.equipment?.wear(it.uid)));
-    else if (def?.kind === 'potion') parts.push(el('div', 'iv-about', 'Drag it onto your hotbar (the - = ~ slots) and use it in the Slums.'));
+    if (isGearDef(def)) {
+      row.append(this.action('Wear', 'iv-flex', () => void this.equipment?.wear(it.uid)));
+      if (!def.training) row.append(this.action('Disassemble', 'iv-sell', () => void this.disassemble(it, null)));
+    } else if (def?.kind === 'potion') parts.push(el('div', 'iv-about', 'Drag it onto your hotbar (the - = ~ slots) and use it in the Slums.'));
+    else if (def?.forge === 'whetstone') row.append(this.action('Enhance…', 'iv-flex', () => void this.openForge(it)));
+    else if (def?.forge === 'repairKit') row.append(this.action('Repair…', 'iv-flex', () => void this.openForge(it)));
+    else if (def?.kind === 'agimat') row.append(this.action('Embed…', 'iv-flex', () => void this.openForge(it)));
+    else if (def?.forge === 'fragment') row.append(this.action('Combine', 'iv-flex', () => void this.combine(it, null)));
     if (row.childElementCount) parts.push(row);
     const note = this.note();
     if (note) parts.push(note);
     this.detail.replaceChildren(...parts);
+  }
+
+  /** Opens the forge popup for a whetstone (enhance), Repair Kit (repair) or agimat (embed); false for anything else. */
+  private openForge(it: Item): boolean {
+    const def = anyDef(it.defId);
+    if (!def || isGearDef(def)) return false;
+    if (def.kind === 'agimat') this.forge.open('embed', it.uid);
+    else if (def.forge === 'whetstone') this.forge.open('enhance', def.id);
+    else if (def.forge === 'repairKit') this.forge.open('repair', def.id);
+    else return false;
+    this.tip.hidden = true;
+    return true;
+  }
+
+  /** The right-click menu: Disassemble for gear (not training gear), Combine for fragments, the forge for its tools. */
+  private showMenu(it: Item, cell: HTMLElement, x: number, y: number): void {
+    const def = anyDef(it.defId);
+    const items: [string, () => void][] = [];
+    if (isGearDef(def)) {
+      items.push(['Wear', () => void this.equipment?.wear(it.uid)]);
+      if (def.training) items.push(["Training gear can't be taken apart", () => {}]);
+      else items.push(['Disassemble', () => void this.disassemble(it, cell)]);
+    } else if (def?.forge === 'fragment') {
+      const D = itemData();
+      const per = D ? fragmentsPerWhetstone(D.stats) : 10;
+      items.push([`Combine (${per} → 1 whetstone)`, () => void this.combine(it, cell)]);
+    } else if (def && (def.kind === 'agimat' || def.forge)) {
+      items.push([def.kind === 'agimat' ? 'Embed…' : def.forge === 'repairKit' ? 'Repair…' : 'Enhance…', () => void this.openForge(it)]);
+    }
+    if (!items.length) return;
+    this.menu.replaceChildren(
+      ...items.map(([label, run], i) => {
+        const b = el('button', 'iv-menu-item', label);
+        b.setAttribute('role', 'menuitem');
+        b.disabled = isGearDef(def) && !!def.training && i === 1;
+        b.addEventListener('click', () => {
+          this.menu.hidden = true;
+          run();
+        });
+        return b;
+      }),
+    );
+    this.menu.hidden = false;
+    this.tip.hidden = true;
+    this.menu.style.left = `${Math.round(Math.min(x, innerWidth - this.menu.offsetWidth - 8))}px`;
+    this.menu.style.top = `${Math.round(Math.min(y, innerHeight - this.menu.offsetHeight - 8))}px`;
+  }
+
+  /** Takes gear apart once they've said yes in the confirm box. */
+  private async disassemble(it: Item, cell: HTMLElement | null): Promise<void> {
+    if (this.busy || !(await confirmDisassemble(it))) return;
+    this.busy = true;
+    const r = await forgeFromBag({ action: 'disassemble', item: it.uid }, cell ?? this.grid);
+    this.busy = false;
+    if (r) this.message = { text: r.message, ok: r.ok };
+    if (this.pickedUid === it.uid && r?.ok) this.pickedUid = null;
+    this.render();
+  }
+
+  /** Every ten fragments of a stack's kind into a whetstone. */
+  private async combine(it: Item, cell: HTMLElement | null): Promise<void> {
+    if (this.busy) return;
+    this.busy = true;
+    const r = await forgeFromBag({ action: 'combine', item: it.uid }, cell);
+    this.busy = false;
+    if (r) this.message = { text: r.message, ok: r.ok };
+    this.render();
   }
 
   /** A combat item's tooltip beside its slot. */

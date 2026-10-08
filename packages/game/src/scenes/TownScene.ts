@@ -46,6 +46,7 @@ import { showBoard } from '../ui/board';
 import { showShop } from '../ui/shop';
 import { TargetBox } from '../ui/target';
 import { RARITY_TEXT, addItemArt, isRarity, setItemArt, setRarityColours } from '../ui/item-art';
+import { setForgeArt } from '../ui/forge';
 import { LootLayer } from '../world/loot';
 import { setKusingArt } from '../ui/reward';
 import { nameOf } from '../ui/item-tip';
@@ -93,7 +94,7 @@ import { Hotbar, potionCooldownKey } from '../ui/hotbar';
 import { mountClassSwitch } from '../ui/class-switch';
 import { MOVES, type MoveKind, isMoveKind, moveTiles, playMove } from '../world/mobility';
 import { changeClass, devItemsReady, devSwitchClass, adventure, adventureData, anyDef, chooseClass, classInfo, initAdventure, itemData, itemDef, loadAdventureData, onAdventure, questDef, questFor, questTalk, setItems, setProgress, skillView, skillViews } from '../net/adventure';
-import { type Item, type TownItems, countOf, isGearDef, itemStats } from '@mikazuki/shared';
+import { type Item, type TownItems, auraFor, countOf, isGearDef, itemAura, itemStats } from '@mikazuki/shared';
 import type { ClassArt } from '../assets/types';
 import { drawRested, loadImages, poseFiles, restFiles } from '../characters/kit-art';
 import { holdQuestBanners, mountQuests } from '../ui/quests';
@@ -395,6 +396,10 @@ export class TownScene extends Phaser.Scene {
     if (door && !Array.isArray(door[0])) this.player.place({ col: door[0] as number, row: door[1] as number }, 'se');
     this.others = new OtherPlayers(this, this.M, this.objects, (obj) => this.tint >= 0 && obj.setTint(this.tint));
     this.others.restFor = (weapon, cls) => this.restArt(weapon, cls);
+    this.others.auraFor = (plus) => {
+      const D = itemData();
+      return D && plus ? auraFor(D.stats, plus, { weapon: true }) : null;
+    };
     // A battle map (one with mobs: the Slums): characters with a class in its battle poses.
     this.battleMap = !!this.map.mobZones?.length && !!this.M.classes;
     if (this.battleMap) this.others.battleFor = (cls, look) => battleSheets(this, this.M.characters, this.M.classes!, cls, look);
@@ -583,6 +588,8 @@ export class TownScene extends Phaser.Scene {
       ...(U.tanodBust ? { tanod: { url: asset(U.tanodBust.file), w: U.tanodBust.size[0], h: U.tanodBust.size[1], frames: U.tanodBust.frames, fps: U.tanodBust.fps } } : {}),
       ...(U.casinoFelt ? { felt: { url: asset(U.casinoFelt.file), slice: U.casinoFelt.nineSlice } } : {}),
     });
+    // The forge popup's effects (fx/progress).
+    setForgeArt({ success: strip(this.M.fx['fx-enhance-success']), fail: strip(this.M.fx['fx-enhance-fail']), break: strip(this.M.fx['fx-enhance-break']), embed: strip(this.M.fx['fx-agimat-embed']), disassemble: strip(this.M.fx['fx-disassemble']) });
     mountTownHud({
       me: member,
       name: member?.nickname ?? 'Guest',
@@ -734,6 +741,7 @@ export class TownScene extends Phaser.Scene {
         void this.applyBattle(s.cls);
         this.questMarkers();
         void this.wearWeapon(s.equipped.weapon?.defId, s.cls);
+        this.player.setAura(s.equipped.weapon ? itemAura(data, s.equipped.weapon) : null); // +15 and up glows
         const c = classInfo(s.cls);
         setHudClass(c && icons ? { name: c.name, badge: asset(icons.small.replace('{class}', c.id)) } : null);
         setHudLevel(s.progress);
@@ -1512,18 +1520,29 @@ export class TownScene extends Phaser.Scene {
         this.sent = { dir: this.player.facing, sit: false };
         if (golemDev) void fetch(q.has('golemdemo') ? `/__golem?${new URLSearchParams({ demo: '1', as: fakeName() })}` : '/__golem?now=1').catch(() => null);
         // Dev: ?kusing=5000, ?whetstones=200, ?give=<defId>:<rarity>:<plus> (the dev server's /__give: rolled there as
-        // drops are; your items come back as an `items` message). Once a visit.
+        // drops are; your items come back as an `items` message). Once a visit. ?give= may come more than once; for a
+        // stack the third part is how many (?give=low-repair-kit::3), an agimat's fourth its level
+        // (?give=agimat-critdmg::2:20).
         if (import.meta.env.DEV && fakeLogin() && !this.devGiven && (q.has('kusing') || q.has('whetstones') || q.has('give'))) {
           this.devGiven = true;
-          const [def, rarity, plus] = (q.get('give') ?? '').split(':');
-          const ask = new URLSearchParams({ as: fakeName() });
-          if (q.has('kusing')) ask.set('kusing', q.get('kusing')!);
-          if (q.has('whetstones')) ask.set('whetstones', q.get('whetstones')!);
-          if (def) Object.entries({ def, rarity: rarity ?? '', plus: plus ?? '0' }).forEach(([k, v]) => ask.set(k, v));
+          const asks: URLSearchParams[] = [];
+          const first = new URLSearchParams({ as: fakeName() });
+          if (q.has('kusing')) first.set('kusing', q.get('kusing')!);
+          if (q.has('whetstones')) first.set('whetstones', q.get('whetstones')!);
+          asks.push(first);
+          for (const g of q.getAll('give')) {
+            const [def, rarity, plus, level] = g.split(':');
+            if (!def) continue;
+            const isGear = isGearDef(anyDef(def));
+            asks.push(new URLSearchParams({ as: fakeName(), def, rarity: rarity ?? '', ...(isGear ? { plus: plus || '0' } : { count: plus || '1' }), ...(level ? { level } : {}) }));
+          }
           void devItemsReady
-            .then(() => fetch(`/__give?${ask}`))
-            .then((r) => (r.ok ? (r.json() as Promise<{ items?: TownItems }>) : null))
-            .then((r) => r?.items && setItems(r.items))
+            .then(async () => {
+              for (const ask of asks) {
+                const r = await fetch(`/__give?${ask}`).then((x) => (x.ok ? (x.json() as Promise<{ items?: TownItems }>) : null));
+                if (r?.items) setItems(r.items);
+              }
+            })
             .catch(() => null);
         }
         // Dev: ?xp=500 gives you XP, ?level=10 sets your level (the dev server's /__xp: its level-ups as from kills).
@@ -2773,7 +2792,7 @@ function exposeDebug(scene: TownScene): void {
     /** Your items and Kusing as the page has them (names as shown). */
     items: () => {
       const s = adventure();
-      const view = (i: Item) => ({ uid: i.uid, defId: i.defId, name: nameOf(i), rarity: i.rarity, plus: i.plus, count: i.count, bound: i.bound, lines: i.lines, agimats: i.agimats });
+      const view = (i: Item) => ({ uid: i.uid, defId: i.defId, name: nameOf(i), rarity: i.rarity, plus: i.plus, luck: i.luck, broken: i.broken, count: i.count, bound: i.bound, level: i.level, lock: i.lock, lines: i.lines, agimats: i.agimats });
       return s && { kusing: s.kusing, bag: s.bag.map(view), equipped: Object.fromEntries(Object.entries(s.equipped).map(([p, i]) => [p, view(i!)])) };
     },
     /** Loot on the ground as shown, with where each is on the screen. */

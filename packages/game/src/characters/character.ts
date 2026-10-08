@@ -6,7 +6,8 @@ import type { BattleSheets } from './battle-art';
 import { CHARACTER_BIAS, HEIGHT_DEPTH, LABEL_DEPTH } from '../world/depth';
 import type { Tile } from '../world/grid';
 import { type Outfit, headTop, sheetKey } from './doll';
-import type { TitleData } from '@mikazuki/shared';
+import type { AuraTier, TitleData } from '@mikazuki/shared';
+import { type AuraTrace, WeaponAura, traceAura } from '../fx/weaponAura';
 import { type BubbleArt, EmotePop, LevelUpPop, NameTag, QuestMarker, SpeechBubble } from '../ui/labels';
 
 // A walking paper doll (or a flat pre-baked sheet set: the town's NPCs, world/npcs.ts). Position is in tile space
@@ -74,6 +75,8 @@ export class Character {
   knockedOut = false;
   /** The class's resting weapon (behind and in front of the body), drawn over idle and walk. */
   private rest: { art: ClassArt; offset: [number, number]; back: Phaser.GameObjects.Sprite[]; front: Phaser.GameObjects.Sprite[] } | null = null;
+  /** The worn weapon's aura (+15 and up, fx/weaponAura.ts): round the resting weapon in town, the weapon in hand in battle. */
+  private aura: WeaponAura | null = null;
   private zoom = 1;
   private head = 0; // rows of empty cell above the head (headTop)
   private col: number; // tile-space position of the feet (tile centre = integer + 0.5)
@@ -177,6 +180,15 @@ export class Character {
     });
     const most = (k: 'back' | 'front') => Math.max(0, ...this.M.characters.directions.flatMap((d) => ['idle', 'walk'].map((a) => restLayers(art, a as 'idle', d)?.[k].length ?? 0)));
     this.rest = { art, offset, back: make(most('back')), front: make(most('front')) };
+    this.sync();
+  }
+
+  /** The worn weapon's aura (null: none), on whatever weapon shows: the resting weapon in town, the weapon in hand in
+   *  battle poses. */
+  setAura(tier: AuraTier | null): void {
+    if (!tier && !this.aura) return;
+    this.aura ??= new WeaponAura(this.scene, [64, 64]);
+    this.aura.set(tier);
     this.sync();
   }
 
@@ -645,6 +657,7 @@ export class Character {
     this.bars?.setPosition(Math.round(x), Math.round(y)).setDepth(depth + 0.05);
     if (this.rest && !this.battle) this.syncRest(Math.round(x), Math.round(y - this.lift), depth);
     else if (this.rest) for (const sp of [...this.rest.back, ...this.rest.front]) sp.setVisible(false);
+    if (this.aura?.on) this.syncAura(depth);
     // The name sits just over the head (2 px above its first visible row); an alert goes above it.
     const plateBottom = Math.round(y) - this.M.characters.anchor[1] + this.head - 2;
     this.tag?.place(Math.round(x), plateBottom);
@@ -684,6 +697,81 @@ export class Character {
     r.front.forEach((sp, i) => place(sp, layers?.front[i], depth + 0.01));
   }
 
+  /** The aura on this frame's weapon: the battle pose's weapon layers (in hand), or the resting weapon's (town idle and
+   *  walk); hidden otherwise. Each frame's outline is traced once (fx/weaponAura.ts caches it). */
+  private syncAura(depth: number): void {
+    const aura = this.aura!;
+    const trace = this.battle ? this.battleTrace() : this.restTrace();
+    if (!trace || !this.sprite.visible) return aura.hide();
+    aura.place(trace.trace, trace.x, trace.y, depth - 0.03, depth + 0.03, this.sprite.alpha);
+  }
+
+  /** A weapon layer's frame `f` (a strip of `size` cells) drawn at (x, y). */
+  private drawLayer(ctx: CanvasRenderingContext2D, l: ClassLayer, f: number, x: number, y: number): void {
+    if (!this.scene.textures.exists(l.file)) return;
+    const img = this.scene.textures.get(l.file).getSourceImage() as CanvasImageSource;
+    ctx.drawImage(img, f * l.size[0], 0, l.size[0], l.size[1], x, y, l.size[0], l.size[1]);
+  }
+
+  /** The sprite's current frame drawn at (x, y). */
+  private drawShown(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+    const fr = this.sprite.frame;
+    ctx.drawImage(fr.source.image as CanvasImageSource, fr.cutX, fr.cutY, fr.cutWidth, fr.cutHeight, x, y, fr.cutWidth, fr.cutHeight);
+  }
+
+  /** In battle: the pose's weapon layers on this frame (standing = walk-ready's first), against the frame as shown. */
+  private battleTrace(): { trace: AuraTrace; x: number; y: number } | null {
+    const b = this.battle!;
+    const art = this.M.classes?.list[b.cls] as ClassArt | undefined;
+    const key = this.sprite.anims.currentAnim?.key;
+    if (!art || !key) return null;
+    const parts = key.split(':');
+    const dir = parts[parts.length - 1] as Dir;
+    let anim = parts[parts.length - 2];
+    let f = Number(this.sprite.frame.name) || 0;
+    if (anim === 'idle') [anim, f] = ['walk-ready', 0];
+    const d = art.anims[anim]?.dirs[dir];
+    if (!d) return null;
+    const K = this.M.classes!;
+    const at = (l: ClassLayer) => (l.size[0] === 64 ? [0, 0] : K.bodyOffset);
+    const trace = traceAura(`pose:${this.sprite.texture.key}:${anim}:${dir}:${f}`, {
+      w: 64,
+      h: 64,
+      back: (ctx) => d.back.forEach((l) => this.drawLayer(ctx, l, f, at(l)[0], at(l)[1])),
+      front: (ctx) => d.front.forEach((l) => this.drawLayer(ctx, l, f, at(l)[0], at(l)[1])),
+      cover: { mode: 'composite', draw: (ctx) => this.drawShown(ctx, 0, 0) },
+    });
+    return { trace, x: this.sprite.x - b.anchor[0], y: this.sprite.y - b.anchor[1] };
+  }
+
+  /** In town: the resting weapon's layers on this frame of idle or walk, behind and in front of the doll. */
+  private restTrace(): { trace: AuraTrace; x: number; y: number } | null {
+    const r = this.rest;
+    const anim = this.anim === 'walk' || this.anim === 'idle' ? this.anim : null;
+    if (!r || !anim || this.sprite.angle || this.sittingAt || this.flat) return null;
+    const layers = restLayers(r.art, anim, this.dir);
+    if (!layers) return null;
+    const own = r.art.rest.own;
+    const f = own ? Math.floor((this.scene.time.now / 1000) * own.fps) % own.frames : Number(this.sprite.frame.name) || 0;
+    const C = this.M.characters;
+    const at = (l: ClassLayer) => (l.size[0] === C.cell[0] && l.size[1] === C.cell[1] ? r.offset : l.size[0] === 64 ? [0, 0] : r.offset);
+    const files = (ls: ClassLayer[]) => ls.map((l) => l.file).join(',');
+    const trace = traceAura(`rest:${files(layers.back)}|${files(layers.front)}:${f}:${this.sprite.texture.key}:${this.sprite.frame.name}`, {
+      w: 64,
+      h: 64,
+      back: (ctx) => layers.back.forEach((l) => this.drawLayer(ctx, l, f, at(l)[0], at(l)[1])),
+      front: (ctx) => layers.front.forEach((l) => this.drawLayer(ctx, l, f, at(l)[0], at(l)[1])),
+      cover: {
+        mode: 'alpha',
+        draw: (ctx) => {
+          this.drawShown(ctx, r.offset[0], r.offset[1]);
+          layers.front.forEach((l) => this.drawLayer(ctx, l, f, at(l)[0], at(l)[1]));
+        },
+      },
+    });
+    return { trace, x: this.sprite.x - (r.offset[0] + C.anchor[0]), y: this.sprite.y - (r.offset[1] + C.anchor[1]) };
+  }
+
   /** A puff of dust at the feet (each step's; a fall's). */
   dust(): void {
     const fx = this.M.fx['footstep-dust'];
@@ -713,6 +801,7 @@ export class Character {
     this.levelPop?.destroy();
     this.marker?.destroy();
     for (const sp of [...(this.rest?.back ?? []), ...(this.rest?.front ?? [])]) sp.destroy();
+    this.aura?.destroy();
   }
 
   /** The world y of the top of the head (its first visible row), for things shown over it. */

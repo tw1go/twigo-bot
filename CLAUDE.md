@@ -480,6 +480,35 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   Dev: the dev town keeps each player's items (`/__items`, the page's copy wins only after a restart), `?give=<defId>:
   <rarity>:<plus>`, `?kusing=`, `?whetstones=` (`/__give`), `/__shop`, `/__loot?rich=1` (nearly every kill drops gear
   and a potion); `__town.items()`, `__town.loot()`.
+- Forge (combat-guide.md How to enhance, Enhancement cost and odds, Agimats, Disassembly; stats.json enhancement.cost,
+  agimats, disassembly, gearTiers): rules and refusals in `packages/shared/src/forge.ts` (pure, both sides: `gearTier`,
+  `toolFor` (items.json `forge`: whetstone / fragment / repairKit by `tier`), `enhanceRefusal` ("Needs a Rough Whetstone",
+  training gear, broken, +20), `enhanceView` (stones `whetstonesPerTry[target]`, odds `successPct + luck`, `nextStats`:
+  ATK/DEF, accessories' lines +1%), `luckPerFail`, `breaksFrom` (+16), `repairRefusal`, `embedRefusal` (gear Lv ≥ agimat,
+  slot lock, two different stats, one rare), `fragmentsFor` (2 + 3 × the stones to its +), `disassemblyYield`, `auraFor` /
+  `itemAura`); rolls in bot `web/forge.ts` (pure, tested `forge.test.ts`): `enhance` (success +1, luck 0; fail: stones
+  used, luck += its bracket's; from +16 broken, keeps its +, `unequipBroken`), `repair` (a kit of its tier), `embed` (a full
+  slot answers `confirm` until `replace`; the old agimat breaks), `disassemble` (bag only; fragments + from slotted gear an
+  agimat of its level locked to its slot, `rollAgimatStat` × 3 rare weight for two slots; its agimats go; all or nothing),
+  `combine` (every 10 fragments → a whetstone). `POST /town/forge` (`forgeFor` in web/adventure.ts saves; `items` to them,
+  `kit` when what's worn changed); dev `/__forge` (the same code on the dev town's items). Game: `ui/forge.ts` popup beside
+  the bag (left of the equipment panel; over it when narrow): clicking a whetstone / Repair Kit / agimat opens it (enhance /
+  repair / embed); gear goes in by drag (`application/x-mk-equipment`, worn: `x-mk-worn`) or a click while it's open
+  (bag and equipment panel); tools drag as `x-mk-tool`; refusals bounce (shake + toast). Enhance: stone slot, − / +,
+  "Whetstones n / N", odds, "Luck +N%", "ATK 48 → 49", a break warning, the item stays in (+ refills the stones once filled).
+  The bag's right-click menu: Wear / Disassemble (`confirmDisassemble`: what comes back, agimats destroyed) and Combine.
+  Effects manifest fx `fx-enhance-success|fail|break`, `fx-agimat-embed`, `fx-disassemble` (fx/progress, DOM strips via
+  `setForgeArt`); sounds combat-enhance-success/-fail/-break, combat-repair, combat-agimat-embed, combat-disassemble.
+  Dev: ?give= may repeat; a stack's third part is how many, an agimat's fourth its level (`?give=agimat-critdmg::2:20`).
+- Weapon auras (`src/fx/weaponAura.ts`, guide "Weapon auras", stats.json enhancement.weaponAura; matches the art folder's
+  items/weapon-aura/weapon-aura-preview-v6.gif): +15–17 blue, +18–19 gold (2 glints), +20 prismatic (4 glints, the cycle by
+  angle, turning; each spiral its own colour); weapons only, never broken. `traceAura(key, src)` traces a frame once
+  (cached: glow rings at 1/2/3 px, the art's dark outline pixels that show, the box), `paintUnder` (rings at 100/50/25%,
+  back half of the spirals) / `paintOver` (lit outline, front spirals, glints). `WeaponAura` (two canvas textures under and
+  over a sprite, redrawn every 50 ms): `Character.setAura` (battle: the pose's weapon layers vs the frame as shown; town:
+  the resting weapon's layers vs the doll, all 8 directions), loot on the ground (+18 and +20 only, the guide).
+  `auraIcon` (DOM canvas, shared 50 ms loop) in `itemPicture` (bag, equipment panel, forge, tooltips' header). Everyone's:
+  `TownPlayer.weaponPlus` / the `kit` message's (0 when broken; `kitOf`, `Town.kit(…, weaponPlus)`), `OtherPlayers.auraFor`.
 - Levels (bot `web/progress.ts`, pure, tested; saved in `adventurers` schema v11: `level`, `xp` (into the level),
   `str_points`/`dex_points`/`int_points` (spent), `skill_levels` (JSON: damage skill index or mobility id → level above 1),
   `skill_points` (unspent), `training_armor_given`; older rows Lv 1, nothing spent). `CharacterProgress` (in
@@ -632,7 +661,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   potions say how they're used; multi-select (Ctrl/⌘/Shift-click, or the Select toggle for every click; Select all on the tab):
   the count, what the sellable ones bring and Sell selected (`POST /town/sell { items: [{ id, quantity }] }`,
   `sellManyInTown`); tabs All / Dug up / Combat (the combat bag: Items, above) / Misc; item slots bordered in their
-  rarity's colour; B toggles it; Kowens and Kusing at the bottom. Bot `GET /town/inventory`, `POST /town/sell`, `POST /town/flex`
+  rarity's colour; B toggles it; Kowens and Kusing at the bottom; Combat tab: click a whetstone / Repair Kit / agimat for the forge popup, right-click gear (Disassemble) or fragments (Combine): Forge, above. Bot `GET /town/inventory`, `POST /town/sell`, `POST /town/flex`
   (`web/town-bag.ts`; flex shares `flexEmbed` and the cooldown with `/flex`). Dev: a pretend bag (`&slots=18`).
 - Casino: left click the casino → `TownScene.enterCasino` locks the town (body.town-locked: no input; bag, player
   menu, banners hide; profile + Settings, chat and system feed stay on top), pans/zooms the camera into the door

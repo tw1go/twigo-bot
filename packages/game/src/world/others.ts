@@ -1,5 +1,5 @@
 import type Phaser from 'phaser';
-import type { ArenaServerMessage, TownPlayer, TownServerMessage } from '@mikazuki/shared';
+import type { ArenaServerMessage, AuraTier, TownPlayer, TownServerMessage } from '@mikazuki/shared';
 import type { ClassArt, Manifest } from '../assets/types';
 import { Character, dirForStep } from '../characters/character';
 import { MOVES, isMoveKind, playMove } from './mobility';
@@ -31,6 +31,8 @@ export class OtherPlayers {
   onChange: () => void = () => {};
   /** The resting weapon art for a worn weapon (loaded), or null (the scene knows the items and classes). */
   restFor: (weapon: string | null | undefined, cls: string | null | undefined) => Promise<ClassArt | null> = async () => null;
+  /** A worn weapon's aura at its + (the scene knows the stats rules); none by default. */
+  auraFor: (plus: number | undefined) => AuraTier | null = () => null;
   /** Battle maps (the Slums): a class's battle poses in a look (characters/battle-art.ts); null elsewhere. */
   battleFor: ((cls: string, look: Outfit) => Promise<BattleSheets | null>) | null = null;
   private readonly looks = new Map<string, Outfit>();
@@ -115,7 +117,8 @@ export class OtherPlayers {
         return this.onChange();
       case 'kit':
         // A class chosen or a weapon changed: their resting weapon, once its sheets have loaded.
-        Object.assign(s, { cls: m.cls, weapon: m.weapon });
+        Object.assign(s, { cls: m.cls, weapon: m.weapon, weaponPlus: m.weaponPlus });
+        o.char?.setAura(this.auraFor(m.weaponPlus)); // a +15 or better weapon glows (fx/weaponAura.ts)
         return void this.dressRest(o);
       case 'look': {
         // A new look or title from the Parlor: the new layers load first, then they change in place.
@@ -232,6 +235,7 @@ export class OtherPlayers {
       char.sprite.setInteractive({ pixelPerfect: true, cursor: this.cursorCss });
       char.setZoom(this.zoom);
       for (const t of char.tintables) this.onSpawn(t);
+      char.setAura(this.auraFor(s.weaponPlus));
       o.char = char;
       void this.dressRest(o);
     });

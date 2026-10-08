@@ -1610,7 +1610,74 @@
       #inventory .eq-tip-note { margin-top: 4px; font-size: 13px; color: #7A8099; }
       #equipment .eq-to-bag, #inventory .iv-to-equip { display: none; padding: 3px 10px 4px; border: 2px solid #3D4256; border-radius: 0; background: #1E1B3A; color: #A9B1D6; font: inherit; font-size: 13px; font-weight: 700; }
       #inventory .iv-cell[draggable='true'] { cursor: grab; }
+      /* The forge popup (ui/forge.ts): beside the bag (left of the equipment panel), the same window. */
+      #forge { position: fixed; top: 72px; right: 832px; z-index: 4; display: flex; flex-direction: column; gap: 8px; width: 300px; max-height: calc(100vh - 96px); overflow-y: auto; box-sizing: border-box; padding: 12px 14px 14px; border: 2px solid #7C2AE8; background: rgba(17, 24, 39, 0.97); color: #c0caf5; font: 15px/1.35 var(--ui-font); }
+      #forge[hidden] { display: none; }
+      #forge.fg-framed { --px: 2; border-style: solid; border-width: calc(var(--slice) * var(--px) * 1px); border-image-source: var(--frame); border-image-slice: var(--slice) fill; border-image-width: calc(var(--slice) * var(--px) * 1px); border-image-repeat: round; image-rendering: pixelated; background: none; padding: 2px 6px 6px; }
+      #forge .fg-head { display: flex; align-items: center; }
+      #forge .fg-title { font-size: 22px; font-weight: 700; color: #fff; }
+      #forge .fg-close { margin-left: auto; width: 32px; height: 32px; padding: 0; border: 0; background: none; color: #7A8099; font: 26px/1 var(--ui-font); }
+      #forge .fg-close:hover { color: #fff; }
+      #forge .fg-body { display: flex; flex-direction: column; gap: 6px; }
+      #forge .fg-slots { display: flex; justify-content: center; align-items: center; gap: 18px; padding: 6px 0 2px; }
+      #forge .fg-slot { position: relative; display: flex; align-items: center; justify-content: center; width: 96px; height: 96px; box-sizing: border-box; padding: 0; border-style: solid; border-width: 12px; border-image: var(--slot) var(--slot-slice, 4) fill / 12px round; background: none; image-rendering: pixelated; color: #7A8099; font: inherit; font-size: 12px; line-height: 1.1; }
+      #forge .fg-tool { width: 72px; height: 72px; }
+      #forge .fg-slot .it-frame { margin: -12px; }
+      #forge .fg-full { outline: 3px solid #7C2AE8; outline-offset: -3px; }
+      #forge .fg-over { border-image-source: var(--slot-picked); outline: 3px solid #A3E635; outline-offset: -3px; }
+      #forge .fg-hint { text-align: center; }
+      #forge .fg-broken > :first-child { filter: grayscale(1) brightness(0.7); }
+      #forge .fg-count { position: absolute; right: -8px; bottom: -8px; color: #fff; font-size: 17px; font-weight: 700; line-height: 1; text-shadow: 1px 0 #1E1B3A, -1px 0 #1E1B3A, 0 1px #1E1B3A, 0 -1px #1E1B3A; pointer-events: none; }
+      #forge .fg-refused { animation: eq-refuse 0.6s ease-out; }
+      #forge .fg-broke { animation: fg-broke 0.7s ease-out; }
+      @keyframes fg-broke { 0%, 40% { box-shadow: inset 0 0 0 60px rgba(220, 38, 38, 0.55), 0 0 18px rgba(220, 38, 38, 0.7); } }
+      #forge .fg-name { min-height: 22px; text-align: center; font-size: 17px; font-weight: 700; color: #A9B1D6; }
+      #forge .fg-row { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 16px; }
+      #forge .fg-num { color: #fff; font-size: 19px; }
+      #forge .fg-chance { color: #A3E635; }
+      #forge .fg-step { width: 32px; height: 30px; padding: 0; border: 3px solid #1E1B3A; border-radius: 0; background: #E2DDF3; color: #1E1B3A; font: 700 20px/1 var(--ui-font); box-shadow: 0 3px 0 #0B0A1A; }
+      #forge .fg-step:disabled { opacity: 0.45; }
+      #forge .fg-have { text-align: center; font-size: 12px; color: #7A8099; }
+      #forge .fg-luck { text-align: center; font-size: 15px; font-weight: 700; color: #FCDA4A; }
+      #forge .fg-next { text-align: center; font-size: 15px; color: #7DD3FC; }
+      #forge .fg-warn { text-align: center; font-size: 13px; color: #FDBA74; }
+      #forge .fg-note { text-align: center; font-size: 14px; color: #A3E635; }
+      #forge .fg-note.fg-bad { color: #F7768E; }
+      #forge .fg-agimat { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 14px; }
+      #forge .fg-dots { display: flex; flex-direction: column; gap: 4px; }
+      #forge .fg-dot { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border: 2px solid #3D4256; border-radius: 0; background: #1E1B3A; color: #A9B1D6; font: inherit; font-size: 14px; text-align: left; }
+      #forge .fg-dot:hover { color: #fff; }
+      #forge .fg-dot-picked { border-color: #A3E635; color: #fff; }
+      #forge .fg-dot-mark { flex: none; width: 10px; height: 10px; border: 2px solid #A9B1D6; border-radius: 50%; }
+      #forge .fg-dot-on .fg-dot-mark { background: #A3E635; border-color: #A3E635; }
+      #forge .fg-actions { display: flex; gap: 8px; justify-content: center; }
+      #forge .fg-go, .fg-confirm .fg-go { align-self: center; min-width: 130px; padding: 7px 16px; border: 3px solid #1E1B3A; border-radius: 0; background: #3D4256; color: #7A8099; font: inherit; font-size: 17px; font-weight: 700; box-shadow: 0 3px 0 #0B0A1A; }
+      #forge .fg-go.fg-ready, .fg-confirm .fg-go { background: #A3E635; color: #1E1B3A; }
+      .fg-confirm .fg-go:not(.fg-ready) { background: #E2DDF3; }
+      #forge .fg-go.fg-danger, .fg-confirm .fg-go.fg-danger { background: #F7768E; }
+      #forge .fg-go:active:not(:disabled), .fg-confirm .fg-go:active { transform: translateY(2px); box-shadow: 0 1px 0 #0B0A1A; }
+      #forge .fg-go:disabled { opacity: 0.6; }
+      .fg-fx { position: fixed; z-index: 70; pointer-events: none; image-rendering: pixelated; background-repeat: no-repeat; }
+      .fg-confirm-back { position: fixed; inset: 0; z-index: 65; display: flex; align-items: center; justify-content: center; background: rgba(4, 4, 12, 0.5); }
+      .fg-confirm { width: min(360px, calc(100vw - 32px)); padding: 14px 16px; border: 3px solid #7C2AE8; background: #111827; color: #c0caf5; font: 15px/1.35 var(--ui-font); box-shadow: 0 6px 0 #0B0A1A; display: flex; flex-direction: column; gap: 8px; }
+      .fg-confirm-title { font-size: 18px; color: #fff; }
+      .fg-confirm-sub { font-size: 13px; color: #A9B1D6; }
+      .fg-confirm-list { margin: 0; padding-left: 18px; color: #A3E635; font-size: 14px; }
+      .fg-confirm .fg-warn { font-size: 13px; color: #FDBA74; }
+      .fg-confirm .fg-actions { display: flex; gap: 8px; justify-content: center; margin-top: 4px; }
+      /* The bag's right-click menu. */
+      .iv-menu { position: fixed; z-index: 62; display: flex; flex-direction: column; min-width: 150px; border: 2px solid #7C2AE8; background: #111827; box-shadow: 0 4px 0 #0B0A1A; font-family: var(--ui-font); }
+      .iv-menu[hidden] { display: none; }
+      .iv-menu-item { padding: 7px 12px; border: 0; background: none; color: #E6E9F2; font: inherit; font-size: 15px; text-align: left; }
+      .iv-menu-item:hover:not(:disabled) { background: #7C2AE8; color: #fff; }
+      .iv-menu-item:disabled { color: #7A8099; }
+      /* A weapon's aura on its icon (fx/weaponAura.ts): drawn past the icon's box, never catching the pointer. */
+      .aura-icon { image-rendering: pixelated; pointer-events: none; }
+      .it-frame.it-aura { overflow: visible; }
+      .eq-tip-head { display: flex; align-items: center; gap: 8px; }
+      .eq-tip-head .it-frame { flex: none; }
       @media (max-width: 900px) {
+        #forge { top: 132px; right: 8px; width: min(340px, calc(100vw - 16px)); }
         /* No room for both: the panel takes the bag's place, Equipment / Bag switch between them. */
         #equipment { top: 132px; right: 8px; width: min(420px, calc(100vw - 16px)); height: auto !important; max-height: calc(100vh - 150px); overflow-y: auto; }
         #equipment .eq-to-bag, #inventory .iv-to-equip { display: inline-block; }

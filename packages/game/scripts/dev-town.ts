@@ -10,6 +10,7 @@ import { MobRoom, loadMobKinds, loadSkillShapes } from '../../bot/src/web/town-m
 import { type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView, raiseSkill, resetSkillPoints, resetStatPoints, spendPoint } from '../../bot/src/web/progress.ts';
 import { loadItemData, loadStats } from '../../bot/src/web/stats-data.ts';
 import { buyCombat, devGive, takeLoot, usePotion } from '../../bot/src/web/combat-bag.ts';
+import { forge, parseForgeAction } from '../../bot/src/web/forge.ts';
 import { loadGolemArt } from '../../bot/src/web/town-golem.ts';
 import { LANES, finishMs, raceScript } from '../../bot/src/games/race-script.ts';
 import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
@@ -41,6 +42,8 @@ import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
 //   GET /__give?as=Alice&def=weapon-sturdy-slingshot&rarity=darkOrange&plus=7   an item for Alice, rolled as drops are
 //   (&count=N a stack; &level= an agimat's); &kusing=5000 sets her Kusing, &whetstones=200 gives her Rough Whetstones
 //   (the page's ?give=<defId>:<rarity>:<plus>, ?kusing=, ?whetstones= call it on arrival)
+//   POST /__forge?as=Alice {action, item, …}   the forge popup (enhance, repair, embed, disassemble, combine) on her
+//   items here, rolled by the bot's web/forge.ts (the page's pretend /town/forge); sends her `items` (and `kit` for her aura)
 //   GET /__loot?rich=1   nearly every kill drops gear (the first kind, brown) and a potion, to try loot (rich=0: as ever)
 //   POST /__shop?as=Alice {id, quantity, kowens}   buys a combat item (the sari-sari store's Healing and Smithing tabs)
 //   with her Kusing here, or the pretend shop's Kowens (sent along; what's left comes back)
@@ -73,6 +76,11 @@ export function devTown(): Plugin {
       const gear = new Map<string, TownItems>();
       const gearOf = (name: string) => gear.get(name) ?? gear.set(name, { equipped: {}, bag: [], kusing: 0 }).get(name)!;
       const devUid = () => `dev-${Math.random().toString(16).slice(2, 14)}`;
+      /** Their worn weapon's + as its aura shows it (none when broken). */
+      const plusOf = (name: string) => {
+        const w = gear.get(name)?.equipped.weapon;
+        return w && !w.broken ? w.plus : 0;
+      };
       let richLoot = false;
       // Levels, XP and points (the bot's web/progress.ts, in memory; each page sends its own on connect).
       const stats = loadStats();
@@ -336,7 +344,7 @@ export function devTown(): Plugin {
           }
           return name;
         },
-        profile: (name) => ({ nickname: name, title: { name: 'Townfolk', color: '#B794F6' }, outfit: looks.get(name) ?? ({} as OutfitData), cls: kits.get(name)?.cls, weapon: kits.get(name)?.weapon, level: levelOf(name).level }),
+        profile: (name) => ({ nickname: name, title: { name: 'Townfolk', color: '#B794F6' }, outfit: looks.get(name) ?? ({} as OutfitData), cls: kits.get(name)?.cls, weapon: kits.get(name)?.weapon, weaponPlus: plusOf(name), level: levelOf(name).level }),
         progress: {
           fighter: (name) => {
             const p = levelOf(name);
@@ -386,7 +394,7 @@ export function devTown(): Plugin {
         } catch {
           // keep their level as it was
         }
-        town.kit(name, kit.cls, kit.weapon);
+        town.kit(name, kit.cls, kit.weapon, plusOf(name));
         res.end(`${name}: ${kit.cls ?? 'no class'}, ${kit.weapon ?? 'no weapon'}\n`);
       });
       server.middlewares.use('/__items', async (req, res) => {
@@ -394,7 +402,7 @@ export function devTown(): Plugin {
         if (req.method !== 'POST') return reply(res, gear.has(name) ? { known: true, ...gearOf(name) } : { known: false });
         const body = (await readJson(req)) as unknown as TownItems;
         if (body && typeof body === 'object' && Array.isArray(body.bag)) gear.set(name, { equipped: body.equipped ?? {}, bag: body.bag, kusing: Number(body.kusing) || 0 });
-        town.kit(name, kits.get(name)?.cls ?? null, gearOf(name).equipped.weapon?.defId ?? kits.get(name)?.weapon ?? null); // its HP and DEF in fights
+        town.kit(name, kits.get(name)?.cls ?? null, gearOf(name).equipped.weapon?.defId ?? kits.get(name)?.weapon ?? null, plusOf(name)); // its HP and DEF in fights, its aura
         reply(res, { ok: true });
       });
       server.middlewares.use('/__give', (req, res) => {
@@ -424,6 +432,20 @@ export function devTown(): Plugin {
         const r = buyCombat(items, gearOf(name), levelOf(name).level, String(id), Number(quantity), { have, spend: (n) => (have >= n ? ((have -= n), true) : false) }, devUid);
         if (r.ok) town.items(name);
         reply(res, { ok: r.ok, message: r.message, kusing: gearOf(name).kusing, kowens: have });
+      });
+      server.middlewares.use('/__forge', async (req, res) => {
+        const name = new URL(req.url ?? '/', 'http://localhost').searchParams.get('as') ?? '';
+        const action = parseForgeAction(await readJson(req));
+        if (!action) return reply(res, { ok: false, message: 'Invalid forge action.' });
+        const g = gearOf(name);
+        const before = JSON.stringify(g.equipped);
+        const r = forge(items, g, action, Math.random, devUid);
+        if (r.ok) {
+          town.items(name);
+          if (before !== JSON.stringify(g.equipped)) town.kit(name, kits.get(name)?.cls ?? null, g.equipped.weapon?.defId ?? null, plusOf(name));
+          server.config.logger.info(`[forge] ${name}: ${action.action} ${r.outcome}: ${r.message}`, { timestamp: true });
+        }
+        reply(res, { ...r, items: g });
       });
       server.middlewares.use('/__xp', (req, res) => {
         const q = new URL(req.url ?? '/', 'http://localhost').searchParams;
