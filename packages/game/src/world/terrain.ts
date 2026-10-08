@@ -5,7 +5,7 @@ import { GROUND_DEPTH, frontDepth } from './depth';
 import type { Heights } from './heights';
 import { LEVEL_PX, RAMP_STEP } from './heights';
 import type { SlumsOutskirts } from './outskirts';
-import { pick, tileRandom } from './rng';
+import { pick, seedOf, tileRandom, variantAt } from './rng';
 
 // 🏚️ The ground of a map with raised and low ground (the Slums: manifest tiles.slums, rules in mikazuki-assets
 // tiles/slums/slums-elevation-README.md). Each tile's floor is drawn 16 px × its level higher; a raised tile shows a wall
@@ -74,6 +74,13 @@ export class Terrain {
     return [...this.chunks.values(), ...this.regions.values()].flatMap((l) => l.images);
   }
 
+  /** A ground tile's file: one of its kind's variants, picked by a well-mixed hash of col, row seeded per kind (rng.ts
+   *  mix32), so no repeats line up. */
+  private groundFile(kind: string, c: number, r: number): string {
+    const files = this.T.ground[kind] ?? this.T.ground.dirt;
+    return variantAt(files, c, r, seedOf(kind in this.T.ground ? kind : 'dirt'));
+  }
+
   private inMap(c: number, r: number): boolean {
     return c >= 0 && r >= 0 && c < this.cols && r < this.rows;
   }
@@ -120,7 +127,7 @@ export class Terrain {
       const p = this.at(c, r, L);
       out.push({ key, x: p.x, y: p.y, ox: anchor[0], oy: anchor[1], order: order(L, phase) });
     };
-    if (kind !== 'canal' && !this.raised(c, r)) add(pick(T.ground[kind] ?? T.ground.dirt, tileRandom(c, r, 31)), level, 0, T.anchor);
+    if (kind !== 'canal' && !this.raised(c, r)) add(this.groundFile(kind, c, r), level, 0, T.anchor);
     const mat = T.cliffs[this.map.walls?.[r]?.[c] || 'earth'] ?? Object.values(T.cliffs)[0];
     const wall = (side: 'l' | 'r', c2: number, r2: number) => {
       const below = this.level(c2, r2);
@@ -202,7 +209,7 @@ export class Terrain {
             if (!isCanal(c + dc, r + dr) && (!corner || (isCanal(c + dc, r) && isCanal(c, r + dr)))) sprite(o.file, c, r, level, T.canal.anchor, T.canal.size, GROUND_DEPTH + 2 + (c + r) * 4);
           }
         } else if (this.raised(c, r)) {
-          sprite(pick(T.ground[this.kind(c, r)] ?? T.ground.dirt, tileRandom(c, r, 31)), c, r, level, T.anchor, T.size, front - 0.32);
+          sprite(this.groundFile(this.kind(c, r), c, r), c, r, level, T.anchor, T.size, front - 0.32);
           // Rims on the raised top where the NW / NE neighbour is lower (not where a ramp comes up).
           for (const [key, c2, r2] of [[T.rim.nw, c - 1, r], [T.rim.ne, c, r - 1]] as const) {
             if (this.level(c2, r2) < level && !this.rampUp(c, r, c2, r2)) sprite(key, c, r, level - 1, T.pieceAnchor, T.pieceSize, front - 0.31);

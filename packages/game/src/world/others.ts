@@ -57,7 +57,7 @@ export class OtherPlayers {
       case 'leave':
         return this.remove(m.id);
     }
-    if (m.t === 'snap' || m.t === 'say-refused' || m.t === 'say-discord' || m.t === 'emote' || m.t === 'system' || m.t === 'seat-taken' || m.t === 'announce' || m.t === 'gift' || m.t === 'gift-item' || m.t === 'new-title' || m.t === 'house' || m.t === 'race' || m.t === 'wallet' || m.t === 'stay' || m.t === 'mobs' || m.t === 'mob-move' || m.t === 'mob-hit' || m.t === 'mob-attack' || m.t === 'mob-spawn' || m.t === 'attack-refused' || isArena(m)) return;
+    if (m.t === 'snap' || m.t === 'say-refused' || m.t === 'say-discord' || m.t === 'emote' || m.t === 'system' || m.t === 'seat-taken' || m.t === 'announce' || m.t === 'gift' || m.t === 'gift-item' || m.t === 'new-title' || m.t === 'house' || m.t === 'race' || m.t === 'wallet' || m.t === 'stay' || m.t === 'mobs' || m.t === 'mob-move' || m.t === 'mob-hit' || m.t === 'mob-attack' || m.t === 'mob-spawn' || m.t === 'mob-add' || m.t === 'mob-remove' || m.t === 'mob-face' || m.t === 'golem' || m.t === 'golem-attack' || m.t === 'attack-refused' || isArena(m)) return;
     const o = this.all.get(m.id);
     if (!o) return;
     const s = o.state;

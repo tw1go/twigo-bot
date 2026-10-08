@@ -476,6 +476,9 @@
       #system-feed [data-tone='bail'] { color: #7DD3FC; }
       #system-feed [data-tone='quest'] { color: #FDE68A; }
       #system-feed [data-tone='quest-done'] { color: #A3E635; }
+      #system-feed [data-tone='stir'] { color: #FDBA74; }
+      #system-feed [data-tone='rise'] { color: #F97316; font-weight: 700; }
+      #system-feed [data-tone='down'] { color: #F8BF27; font-weight: 700; }
       @media (max-width: 760px), (max-height: 500px) { #system-feed { display: none; } }
       /* Staying in town pays (ui/stay.ts): over the system feed's top edge, a faint countdown; when a Kowen is ready, a
          small gold-edged pop-up with Claim. On phones (no feed) above the bottom edge. */
@@ -603,6 +606,23 @@
       #mob-target .mt-bar { height: 8px; margin: 5px 0 3px; border: 1px solid #0B0A1A; background: #3B1220; }
       #mob-target .mt-fill { display: block; height: 100%; background: linear-gradient(#F87171, #DC2626); }
       #mob-target .mt-zone { display: block; text-align: center; font-size: 12px; color: #a9b1d6; }
+      /* The field boss's bar (ui/boss-bar.ts): wide, top centre, during its fight; red when it enrages. The mob info bar
+         goes under it meanwhile (and hides when it shows the boss too). */
+      #boss-bar { position: fixed; top: 12px; left: 50%; z-index: 3; width: min(560px, calc(100vw - 32px)); box-sizing: border-box; padding: 6px 14px 9px; border: 2px solid #7C2AE8; background: #111827; color: #E6E9F2; font: 15px/1.3 var(--ui-font); transform: translateX(-50%); pointer-events: none; transition: border-color 0.4s, background 0.4s; }
+      #boss-bar[hidden] { display: none; }
+      #boss-bar .bb-top { display: flex; align-items: baseline; justify-content: center; gap: 8px; }
+      #boss-bar .bb-name { font-size: 18px; font-weight: 700; color: #fff; letter-spacing: 0.02em; }
+      #boss-bar .bb-level { font-size: 13px; font-weight: 700; color: #F8BF27; }
+      #boss-bar .bb-bar { position: relative; height: 14px; margin-top: 5px; border: 1px solid #0B0A1A; background: #3B1220; }
+      #boss-bar .bb-fill { display: block; height: 100%; background: linear-gradient(#F87171, #DC2626); transition: width 0.25s; }
+      #boss-bar .bb-hp { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; line-height: 1; color: #fff; text-shadow: 0 1px 0 #0B0A1A, 0 -1px 0 #0B0A1A, 1px 0 0 #0B0A1A, -1px 0 0 #0B0A1A; }
+      #boss-bar.bb-enraged { border-color: #EF4444; background: #2A0F14; box-shadow: 0 0 12px rgba(239, 68, 68, 0.45); }
+      #boss-bar.bb-enraged .bb-level { color: #FCA5A5; }
+      #boss-bar.bb-enraged .bb-fill { background: linear-gradient(#FF4D4D, #B91C1C); animation: bb-pulse 0.9s ease-in-out infinite alternate; }
+      @keyframes bb-pulse { from { filter: brightness(1); } to { filter: brightness(1.35); } }
+      @media (prefers-reduced-motion: reduce) { #boss-bar.bb-enraged .bb-fill { animation: none; } }
+      body.boss-on #mob-target { top: 74px; }
+      body.boss-on #mob-target.mt-boss { display: none; }
       #target.tg-beside { z-index: 5; transform: none; } /* opened from a chat name: beside it (ui/target.ts places it) */
       #target .tg-box { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 40px; padding: 6px 34px; border: 2px solid #7C2AE8; background: #111827; color: #fff; font: inherit; font-size: 17px; font-weight: 600; }
       #target .tg-framed { --px: 2; border-style: solid; border-width: calc(var(--slice) * var(--px) * 1px); border-image-source: var(--frame); border-image-slice: var(--slice) fill; border-image-width: calc(var(--slice) * var(--px) * 1px); border-image-repeat: round; image-rendering: pixelated; background: none; padding: 0 30px; }

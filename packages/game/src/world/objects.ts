@@ -3,6 +3,7 @@ import type { BuildingDef, Dir, Manifest, MapObject, PropDef, TownMap, Vec2 } fr
 import { assetProblems } from '../characters/doll';
 import { tileToScreen } from '../iso';
 import { CHARACTER_BIAS, GLOW_DEPTH, GROUND_SHADOW_DEPTH, HEIGHT_DEPTH, frontDepth } from './depth';
+import { castShadow } from './cast-shadow';
 import { Heights, LEVEL_PX } from './heights';
 import { differs, visible } from '../util/pixels';
 import { hash, rng } from './rng';
@@ -106,8 +107,13 @@ export class WorldObjects {
   private readonly liveRegions = new Map<string, { images: Phaser.GameObjects.Image[]; big: BigObject[]; rect: Phaser.Geom.Rectangle }>();
   private capture: Phaser.GameObjects.Image[] | null = null;
   private lastRange = '';
+  /** Streamed maps' props that are always there (the Golem Pit). */
+  private readonly always: MapObject[] = [];
   extra: ((c0: number, r0: number, c1: number, r1: number) => MapObject[]) | null = null;
   onSpawn: ((o: Phaser.GameObjects.Components.Tint) => void) | null = null;
+
+  /** Props cast their own shadow on the ground (world/cast-shadow.ts; the Slums). Set before any are added. */
+  castShadows = false;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -119,6 +125,11 @@ export class WorldObjects {
     if (stream) {
       this.regionIndex = new Map();
       for (const o of map.objects) {
+        // A prop you walk inside (the Golem Pit) is bigger than a region's margin: made once, on the first stream, kept.
+        if (o.kind === 'prop' && this.M.props[o.id]?.front) {
+          this.always.push(o);
+          continue;
+        }
         const k = `${Math.floor(o.col / REGION)},${Math.floor(o.row / REGION)}`;
         const list = this.regionIndex.get(k);
         if (list) list.push(o);
@@ -154,6 +165,7 @@ export class WorldObjects {
     const range = `${Math.floor(near.x / 128)},${Math.floor(near.y / 128)},${Math.floor(near.right / 128)},${Math.floor(near.bottom / 128)}`;
     if (range === this.lastRange) return;
     this.lastRange = range;
+    for (const o of this.always.splice(0)) this.addProp(o);
     const far = new Phaser.Geom.Rectangle(view.x - STREAM_FAR, view.y - STREAM_FAR, view.width + STREAM_FAR * 2, view.height + STREAM_FAR * 2);
     for (const [k, l] of this.liveRegions) {
       if (Phaser.Geom.Rectangle.Overlaps(far, l.rect)) continue;
@@ -299,7 +311,32 @@ export class WorldObjects {
     if (SPARKLE_BUILDINGS.includes(o.id)) this.sparkle(sprite, front);
   }
 
+  /** A prop you walk inside (the Golem Pit): its back and front halves on one anchor, the ground point of its tile's
+   *  centre. The back half sorts as if its feet were at that point + its sortOffsetY.back (behind everyone on the floor).
+   *  The front half is cut into STRIP-px columns, each sorting at its own lowest heap pixel (where that bit of heap meets
+   *  the ground), not all at sortOffsetY.front: someone in the way in, between heaps that stand partly behind and partly
+   *  in front of them, is drawn over the ones behind and under the ones in front. */
+  private addHalves(o: MapObject): void {
+    const def = this.M.props[o.id];
+    const t = this.topOf(o.col, o.row);
+    const [x, y] = [t.x, t.y + 8];
+    const feet = (o.col + o.row + 1) * 8 + CHARACTER_BIAS + this.heights.at(o.col, o.row) * LEVEL_PX * HEIGHT_DEPTH;
+    const off = def.sortOffsetY ?? { back: 0, front: 0 };
+    const [ax, ay] = def.anchor;
+    const back = this.scene.add.image(x, y, def.file).setOrigin(ax / def.size[0], ay / def.size[1]).setDepth(feet + off.back);
+    this.track(back);
+    const front = def.front!;
+    if (!this.scene.textures.exists(front)) return void assetProblems.add(`texture not loaded: ${front}`);
+    const bases = columnBases(this.scene, front, STRIP);
+    bases.forEach((base, i) => {
+      if (base < 0) return; // nothing in this column
+      const strip = this.scene.add.image(x, y, front).setOrigin(ax / def.size[0], ay / def.size[1]).setCrop(i * STRIP, 0, STRIP, def.size[1]);
+      this.track(strip.setDepth(feet + base - ay));
+    });
+  }
+
   private addProp(o: MapObject): void {
+    if (this.M.props[o.id]?.front) return this.addHalves(o);
     const def = this.M.props[o.id] as PropDef | undefined;
     if (!def?.file) return console.warn(`[town] unknown prop ${o.id}`);
     const [fc, fr] = o.footprint;
@@ -324,12 +361,28 @@ export class WorldObjects {
     } else {
       sprite = this.place(def.file, o.col, o.row, def.anchor, o.flip);
     }
+    // Drawn bigger than its art round its anchor (the Golem Pit, twice over: its map entry's footprint is the bigger one).
+    if (o.scale) sprite.setScale(o.scale);
+    // A floor you walk about on (walkable both ways round: the Golem Pit, a clearing in a ring of junk) lies on the ground,
+    // under the ground fx and whoever stands on it (sorted by its front corner it hid them: the golem, a slam's warning).
+    // (One image, so its ring can't hide anyone standing behind it; the map's `blocked` keeps people off the ring.)
+    const floor = !!o.walkable && fc > 1 && fr > 1;
     const base = this.depthFor(o) + this.heights.at(o.col, o.row) * LEVEL_PX * HEIGHT_DEPTH;
     const bounds = sprite.getBounds(new Phaser.Geom.Rectangle());
-    const big = fc * fr > 1;
-    const depth = big ? base : this.sortAgainstBig(o.col, o.row, fc, fr, base, bounds);
+    const big = fc * fr > 1 && !floor;
+    const depth = floor ? GROUND_SHADOW_DEPTH - 1 : big ? base : this.sortAgainstBig(o.col, o.row, fc, fr, base, bounds);
     sprite.setDepth(depth);
     if (big) this.big.push({ col: o.col, row: o.row, cols: fc, rows: fr, back: depth, front: depth, bounds });
+    // Its own shadow on the ground (castShadows: the Slums, whose props came with none), not for floors.
+    if (this.castShadows && !floor && !def.animation) {
+      const sh = castShadow(this.scene, def.file, !!o.flip);
+      if (sh) {
+        const top = this.topOf(o.col, o.row);
+        const w = sprite.frame.width;
+        const ax = o.flip ? w - def.anchor[0] : def.anchor[0];
+        this.track(this.scene.add.image(top.x, top.y, sh.key).setOrigin(ax / (w + sh.extra), def.anchor[1] / sh.height).setDepth(GROUND_SHADOW_DEPTH));
+      }
+    }
 
     // Trees: a shadow on the ground under the trunk, and a tufts strip just in front of the trunk base.
     const centre = this.topOf(o.col, o.row);
@@ -515,4 +568,32 @@ function lanternOffset(scene: Phaser.Scene, M: Manifest): { x: number; y: number
   const cy = n ? sy / n : a.height / 2;
   lanternCache = { x: Math.round(cx - on.anchor[0]), y: Math.round(cy - on.anchor[1]) };
   return lanternCache;
+}
+
+/** How wide (px) the strips of a walk-inside prop's front half are, each sorted at its own foot. */
+const STRIP = 8;
+
+/** Each `step`-px column's lowest opaque row of an image (−1: empty), read once. */
+function columnBases(scene: Phaser.Scene, key: string, step: number): number[] {
+  const frame = scene.textures.getFrame(key);
+  const src = scene.textures.get(key).getSourceImage() as HTMLImageElement | HTMLCanvasElement;
+  const [w, h] = [frame.cutWidth, frame.cutHeight];
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  const g = c.getContext('2d', { willReadFrequently: true })!;
+  g.drawImage(src, frame.cutX, frame.cutY, w, h, 0, 0, w, h);
+  const d = g.getImageData(0, 0, w, h).data;
+  const out: number[] = [];
+  for (let x0 = 0; x0 < w; x0 += step) {
+    let base = -1;
+    for (let x = x0; x < Math.min(w, x0 + step); x++)
+      for (let yy = h - 1; yy > base; yy--)
+        if (d[(yy * w + x) * 4 + 3] > 96) {
+          base = yy;
+          break;
+        }
+    out.push(base);
+  }
+  return out;
 }

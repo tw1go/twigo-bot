@@ -6,18 +6,59 @@ import type { HoodHouse, HoodMap, OutfitData, TitleData } from './room-api.js';
 
 export type TownDir = 's' | 'se' | 'e' | 'ne' | 'n' | 'nw' | 'w' | 'sw';
 
-/** A mob as the server has it: `<zone id>:<spawn index>`, its tile, its level, and the rest of a hop under way. */
+/** The four ways a mob's art faces (SE = +col, SW = +row, NW = −col, NE = −row on the grid). */
+export type TownMobFacing = 'se' | 'sw' | 'ne' | 'nw';
+
+/** A mob as the server has it: `<zone id>:<spawn index>` (a pack's: `…:<n>`), its tile, its level, its HP of its
+ *  `maxHp` (by its level), which way it faces, and the rest of a hop under way. */
 export interface TownMob {
   id: string;
   col: number;
   row: number;
   level: number;
+  maxHp: number;
+  dir: TownMobFacing;
+  /** Its look, one of its kind's variants (seeded per spawn: the same every time); none for a kind with one look. */
+  variant?: string;
   hp: number;
   dead?: boolean;
   path?: [number, number][];
   /** The hop's pace (tiles a second) when it isn't the usual (slowed). */
   speed?: number;
+  /** Its kind (mobs.json id) for a mob that isn't on a spawn point (the golem's Adds: ids `golem-add:<n>`). */
+  kind?: string;
 }
+
+/** The Scrapheap Golem's attacks: Tire Slam, Scrap Toss, Lamp Glare. */
+export type GolemAttack = 'slam' | 'toss' | 'glare';
+
+/** The field boss as the server has it (bot web/town-golem.ts). `state`: rising (its death anim backwards, `left` ms of
+ *  it to go; not hittable), idle in the Golem Pit, in a fight, walking home after a reset, sinking (its death anim
+ *  forwards, `left` ms; not hittable), or dead. Its body is `radius` tiles round its tile (reach to it is measured to
+ *  that edge); it fights players within `leash` tiles of `home` (the boss bar is for them, during a fight). */
+export interface TownGolem {
+  id: string;
+  col: number;
+  row: number;
+  dir: TownMobFacing;
+  level: number;
+  hp: number;
+  maxHp: number;
+  state: 'rising' | 'idle' | 'fight' | 'home' | 'sinking' | 'dead';
+  left?: number;
+  /** 25% HP and under: the `-enraged` sheets, faster attacks, rubble rings after slams. */
+  enraged: boolean;
+  home: [number, number];
+  leash: number;
+  radius: number;
+  /** The rest of a hop under way (as TownMob's). */
+  path?: [number, number][];
+  speed?: number;
+}
+
+/** What changed for the golem: it rose, a fight began, it called the Junk (50%), enraged (25%), reset (healed, walking
+ *  home), sank, or died. */
+export type GolemChange = 'rise' | 'fight' | 'call' | 'enrage' | 'reset' | 'sink' | 'death';
 
 export interface TownPlayer {
   id: string;
@@ -148,7 +189,8 @@ export interface TownRaceResponse {
 }
 
 export interface TownSystemLine {
-  kind: 'dig' | 'gamble' | 'jackpot' | 'shop' | 'gift' | 'jail' | 'quest' | 'arena' | 'steal' | 'race';
+  /** 'golem': the field boss's lines, only to those in the Slums (never kept for arrivals, never in Discord). */
+  kind: 'dig' | 'gamble' | 'jackpot' | 'shop' | 'gift' | 'jail' | 'quest' | 'arena' | 'steal' | 'race' | 'golem';
   text: string;
   /** Colour key: a dig's rarity, win / lose / bust, jackpot, shop, or gift. */
   tone: string;
@@ -222,15 +264,33 @@ export type TownServerMessage =
   | { t: 'wallet' }
   /** Someone emoted (not sent back to the one who did it: they show it right away). */
   | { t: 'emote'; id: string; emote: TownEmote }
-  /** Every mob in your room as you arrive (the Slums; the same for everyone: bot web/town-mobs.ts). */
-  | { t: 'mobs'; mobs: TownMob[] }
+  /** Every mob in your room as you arrive (the Slums; the same for everyone: bot web/town-mobs.ts), the golem's Adds
+   *  included (with their `kind`), and the field boss if it's up (null: not). */
+  | { t: 'mobs'; mobs: TownMob[]; golem?: TownGolem | null }
+  /** Mobs that weren't there (the golem's Adds, as they crawl out), and mobs that are gone for good (the Adds when the
+   *  fight ends). */
+  | { t: 'mob-add'; mobs: TownMob[] }
+  | { t: 'mob-remove'; ids: string[] }
+  /** A mob turns where it stands (the golem, slowly: a quarter turn at a time). */
+  | { t: 'mob-face'; id: string; dir: TownMobFacing }
+  /** The golem changed (its whole state each time: HP, enraged, where it is). 'call': the Junk crawls out at `spots`
+   *  (fx-golem-call-junk on each), its Adds arrive as `mob-add` `ms` later. */
+  | { t: 'golem'; change: GolemChange; golem: TownGolem; spots?: [number, number][]; ms?: number }
+  /** The golem attacks (shown only: players have no HP yet), turned to `dir`, at `target` (a town id): 'slam' lands its
+   *  fist at `at` (the warning there from the start, impact + shockwave on mobs.json attackFrame; a rubble ring after it
+   *  when `enraged`), 'toss' throws at `at` (the target's tile: the marker from the start, the scrap leaves on
+   *  tossFrame), 'glare' lights a cone from its tile along `dir` (`cone`: tiles long, degrees wide, in grid space) on
+   *  glareFrames: `blinded` are the players inside, blinded for `blindMs` (shown only). Frame times come from the
+   *  manifest's anims (the server keeps it still for the anim's length). */
+  | { t: 'golem-attack'; id: string; attack: GolemAttack; dir: TownMobFacing; target: string; at: [number, number]; enraged: boolean; blinded?: string[]; blindMs?: number; cone?: [number, number] }
   /** A mob hops: from the first tile of `path` along the rest (at the mobs' pace). */
   | { t: 'mob-move'; id: string; path: [number, number][]; speed?: number }
   /** Someone (`by`, a town id) hit with skill `skill`: each mob it reached (the target first) with the damage, a crit or
-   *  not, the HP left, dead or not. */
-  | { t: 'mob-hit'; by: string; skill: number; hits: { id: string; damage: number; crit: boolean; hp: number; dead: boolean; slow?: { factor: number; ms: number } }[] }
-  /** A mob attacks a player (shown only: players have no HP yet). */
-  | { t: 'mob-attack'; id: string; target: string }
+   *  not, the HP left, dead or not; `blocked`: a Scrap Crab's shell took it (0). */
+  | { t: 'mob-hit'; by: string; skill: number; hits: { id: string; damage: number; crit: boolean; hp: number; dead: boolean; blocked?: boolean; slow?: { factor: number; ms: number } }[] }
+  /** A mob attacks a player (shown only: players have no HP yet), turned to face `dir`; `slow`: the player is slowed
+   *  for that long (ms; the Plastic Bag Spook's, shown only). */
+  | { t: 'mob-attack'; id: string; target: string; dir: TownMobFacing; slow?: number }
   /** A dead mob is back at its spawn. */
   | { t: 'mob-spawn'; id: string; col: number; row: number; hp: number }
   /** Your attack didn't land: too far, too fast, or the mob's gone. */

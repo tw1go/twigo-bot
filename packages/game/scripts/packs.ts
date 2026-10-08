@@ -32,11 +32,13 @@ function walk(dir: string): string[] {
 }
 
 /** Character layers group by item (the name without -{anim}-{dir}); a class's combat poses by class and anim
- *  (characters/classes/<class>/<anim>), the class fx by their folder (fx/<class>); the rest by top folder. */
+ *  (characters/classes/<class>/<anim>), the class fx by their folder (fx/<class>), mobs by mob (mobs/<mob>, its fx
+ *  folder apart); the rest by top folder. */
 function groupOf(file: string, anims: string[], dirs: string[]): string {
   const parts = file.split('/');
   if (parts[0] === 'characters' && parts[1] === 'classes' && parts.length > 4) return `class-${parts[2]}-${parts[3]}`;
   if (parts[0] === 'fx' && parts.length > 2) return `fx-${parts[1]}`;
+  if (parts[0] === 'mobs' && parts.length > 2) return parts.length > 3 ? `mobs-${parts[1]}-${parts[2]}` : `mobs-${parts[1]}`;
   const m = basename(file).match(new RegExp(`^(.+)-(?:${anims.join('|')})-(?:${dirs.join('|')})\\.png$`));
   return m ? m[1] : parts[0];
 }
@@ -93,7 +95,9 @@ export function buildPacks(assetsDir: string): { index: PackIndex; out: { fileNa
       const h = Math.max(...placed.map((p) => p.y + p.img.png.height));
       const page = new PNG({ width: w, height: h });
       for (const p of placed) PNG.bitblt(p.img.png, page, 0, 0, p.img.png.width, p.img.png.height, p.x, p.y);
-      const source = PNG.sync.write(page, { deflateLevel: 9 });
+      // Pixel art packs best unfiltered with plain deflate (pngjs's own default, run-length only, wrote every page about
+      // five times bigger: all the packs came to 16 MB, now 3).
+      const source = PNG.sync.write(page, { deflateLevel: 9, deflateStrategy: 0, filterType: 0 });
       const hash = createHash('sha256').update(source).digest('hex').slice(0, 8);
       const name = `${group}${pages.length > 1 ? `-${i + 1}` : ''}-${hash}.png`;
       const n = index.pages.push(`${OUT_DIR}/${name}`) - 1;

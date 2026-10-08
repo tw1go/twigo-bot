@@ -46,7 +46,7 @@ export interface Manifest {
   /** The town's ambient NPCs (world/npcs.ts): flat pre-baked sheets, not paper dolls. */
   npcs?: NpcDefs;
   fx: Record<string, FxDef>;
-  /** Mobs (world/mobs.ts): sheets per animation and direction. */
+  /** Mobs (world/mobs.ts): sheets per variant, animation and direction; `data` = their rules file (mobs/mobs.json). */
   mobs?: Record<string, MobDef | string>;
   /** Item art by id (dig items and /redeem rewards), only for the ids that have art. */
   items?: Record<string, ItemArtDef>;
@@ -113,6 +113,10 @@ export interface PropDef {
   decor?: boolean;
   animation?: AnimSheet;
   glow?: { file: string };
+  /** A prop you walk inside (the Golem Pit): `file` is its back half and this its front, on one canvas and anchor; the
+   *  anchor is the ground point of its tile's centre, and each half sorts as if its feet were at anchor y + sortOffsetY. */
+  front?: string;
+  sortOffsetY?: { back: number; front: number };
 }
 
 export interface FenceDef {
@@ -146,6 +150,8 @@ export interface FxDef {
   loop?: boolean;
   /** A grid sheet: this many frames per row (else one row). */
   perRow?: number;
+  /** Drawn under every player and mob (ground) or over them (front). */
+  layer?: 'ground' | 'front';
 }
 
 /** One weapon layer of a class pose: its sheet and cell size (64x64 with the body cell at ClassesDefs.bodyOffset, or
@@ -274,11 +280,61 @@ export interface Ramp {
 
 export interface MobDef {
   name: string;
-  file: string; // with {anim} and {dir}
+  file: string; // with {anim} and {dir} (and {variant} when it has variants)
   size: Vec2;
   anchor: Vec2;
+  /** The looks, one picked per spawn (by the server), each with its own cell and anchor if they differ. None: one look. */
+  variants?: Record<string, { size?: Vec2; anchor?: Vec2 }>;
   directions: string[];
   animations: Record<string, { frames: number; fps: number; loop: boolean }>;
+  /** The golem's red-lamp set: these anims from `file` (same cells and timing); the others are shared. */
+  enraged?: { file: string; animations: string[] };
+  /** The golem's effects (layer ground: under every player and mob, front: over them). */
+  fx?: Record<string, FxDef>;
+}
+
+/** A mob's rules (mobs/mobs.json, manifest mobs.data; the bot reads it too). Frames are 0-based. */
+export interface MobData {
+  /** The attack anim's frame where the hit lands (the golem's Tire Slam). */
+  attackFrame: number;
+  /** [w, h] art px of the ground shadow, centred on the anchor. */
+  shadow: Vec2;
+  /** It hangs above its anchor (the art already does): the shadow stays on the ground. */
+  floats?: boolean;
+  variants?: string[];
+  /** The Tire Roller's lunge frames (first, last). */
+  charge?: Vec2;
+  /** A spawn point's pack size (lowest, highest): the Bottle Caps. */
+  pack?: Vec2;
+  /** Tiles it attacks from (else the next tile). */
+  reach?: number;
+  /** Now and then a short straight roll (the Tire Roller; the server runs it). */
+  roll?: { chance: number; tiles: Vec2; speed: number };
+  /** It drifts: its pace (tiles a second) and short rests (the Plastic Bag Spook). */
+  drift?: { speed: number; rest: Vec2 };
+  /** Its attack slows the player hit for this long (ms; shown only). */
+  slowMs?: number;
+  /** Its shell blocks every hit except just after its own attacks (the Scrap Crab; the server decides). */
+  shell?: boolean;
+  /** A shell's down this long (ms) from each of its attacks: hit it then. */
+  shellOpenMs?: number;
+  /** Where its zap leaves: art px in the SE cell (mirrored for SW and NW). */
+  eye?: Vec2;
+  /** The golem's Scrap Toss release frame and Lamp Glare cone frames (first, last). */
+  tossFrame?: number;
+  glareFrames?: Vec2;
+  /** The golem's HP (not by level) and its body's radius in tiles (reach to it is measured to that edge). */
+  hp?: number;
+  radius?: number;
+  /** The art's highest pixel row in its cells: its HP bar, name and numbers go there (else the cell's top). */
+  top?: number;
+  /** Drawn this much bigger than its art (the golem); every art point above (top, eye, lamp, fists) and its shadow with it. */
+  scale?: number;
+  /** The golem's lamp, the ground under its fist as the Tire Slam lands, and its raised fist as the Scrap Toss leaves:
+   *  art px per facing (in that facing's cell). */
+  lamp?: Record<string, Vec2>;
+  slamFist?: Record<string, Vec2>;
+  tossFist?: Record<string, Vec2>;
 }
 
 export interface MobZone {
@@ -311,6 +367,8 @@ export interface MapObject {
   animated?: boolean;
   decor?: boolean;
   walkable?: boolean;
+  /** Drawn this much bigger than its art, round its anchor (the Golem Pit); `footprint` is the bigger one. */
+  scale?: number;
 }
 
 export interface TownMap {
@@ -335,7 +393,11 @@ export interface TownMap {
   residents?: Vec2[];
   mobZones?: MobZone[];
   /** The Scrapheap Golem's data (not placed yet). */
-  boss?: { id: string; name: string; level: number; tile: Vec2; arena: [number, number, number, number]; everyMinutes: number; warnMinutes: number; leash: number };
+  boss?: {
+    id: string; name: string; level: number; tile: Vec2; arena: [number, number, number, number]; everyMinutes: number; warnMinutes: number; leash: number;
+    /** The Golem Pit's tiles, [dcol, drow] from `tile`: its ring, pit floor and way in. */
+    pit?: { ring: Vec2[]; floor: Vec2[]; gap: Vec2[] };
+  };
   /** Tiles over the river the game draws a bridge on (world/bridge.ts), crossing along the col axis. */
   bridge?: Vec2[];
   /** More bridges, each crossing along `along` (the slums bridge runs along the rows). */

@@ -1,22 +1,62 @@
 file,cell_w,cell_h,frames,fps,loop,anchor_x,anchor_y,notes
-tile-slums-dirt-1.png,32,16,1,0,no,16,8,packed dirt
-tile-slums-dirt-2.png,32,16,1,0,no,16,8,packed dirt
-tile-slums-dirt-3.png,32,16,1,0,no,16,8,packed dirt
-tile-slums-dirt-4.png,32,16,1,0,no,16,8,packed dirt
-tile-slums-dirt-junk-1.png,32,16,1,0,no,16,8,dirt with tin bits, caps and glass
-tile-slums-dirt-junk-2.png,32,16,1,0,no,16,8,dirt with tin bits, caps and glass
-tile-slums-weeds-1.png,32,16,1,0,no,16,8,dirt with weed tufts
-tile-slums-weeds-2.png,32,16,1,0,no,16,8,dirt with weed tufts
-tile-slums-mud-1.png,32,16,1,0,no,16,8,wet mud with a little puddle
-tile-slums-mud-2.png,32,16,1,0,no,16,8,wet mud with a little puddle
-tile-slums-concrete-1.png,32,16,1,0,no,16,8,broken concrete; 4 is rust-stained
-tile-slums-concrete-2.png,32,16,1,0,no,16,8,broken concrete; 4 is rust-stained
-tile-slums-concrete-3.png,32,16,1,0,no,16,8,broken concrete; 4 is rust-stained
-tile-slums-concrete-4.png,32,16,1,0,no,16,8,broken concrete; 4 is rust-stained
-tile-slums-plate-1.png,32,16,1,0,no,16,8,rusty roofing sheet laid as floor
-tile-slums-plate-2.png,32,16,1,0,no,16,8,rusty roofing sheet laid as floor
-tile-slums-planks-1.png,32,16,1,0,no,16,8,plank boardwalk
-tile-slums-planks-2.png,32,16,1,0,no,16,8,plank boardwalk
+tile-slums-dirt-1.png,32,16,1,0,no,16,8,packed dirt; 5-12 add pebbles, cracks, cart ruts, footprints, damp and dry patches
+tile-slums-dirt-2.png,32,16,1,0,no,16,8,packed dirt; 5-12 add pebbles, cracks, cart ruts, footprints, damp and dry patches
+tile-slums-dirt-3.png,32,16,1,0,no,16,8,packed dirt; 5-12 add pebbles, cracks, cart ruts, footprints, damp and dry patches
+tile-slums-dirt-4.png,32,16,1,0,no,16,8,packed dirt; 5-12 add pebbles, cracks, cart ruts, footprints, damp and dry patches
+tile-slums-dirt-5.png,32,16,1,0,no,16,8,packed dirt; 5-12 add pebbles, cracks, cart ruts, footprints, damp and dry patches
+tile-slums-dirt-6.png,32,16,1,0,no,16,8,packed dirt; 5-12 add pebbles, cracks, cart ruts, footprints, damp and dry patches
+tile-slums-dirt-7.png,32,16,1,0,no,16,8,packed dirt; 5-12 add pebbles, cracks, cart ruts, footprints, damp and dry patches
+tile-slums-dirt-8.png,32,16,1,0,no,16,8,packed dirt; 5-12 add pebbles, cracks, cart ruts, footprints, damp and dry patches
+tile-slums-dirt-9.png,32,16,1,0,no,16,8,packed dirt; 5-12 add pebbles, cracks, cart ruts, footprints, damp and dry patches
+tile-slums-dirt-10.png,32,16,1,0,no,16,8,packed dirt; 5-12 add pebbles, cracks, cart ruts, footprints, damp and dry patches
+tile-slums-dirt-11.png,32,16,1,0,no,16,8,packed dirt; 5-12 add pebbles, cracks, cart ruts, footprints, damp and dry patches
+tile-slums-dirt-12.png,32,16,1,0,no,16,8,packed dirt; 5-12 add pebbles, cracks, cart ruts, footprints, damp and dry patches
+tile-slums-dirt-junk-1.png,32,16,1,0,no,16,8,dirt with caps, cans, glass, paper, rubber and nails
+tile-slums-dirt-junk-2.png,32,16,1,0,no,16,8,dirt with caps, cans, glass, paper, rubber and nails
+tile-slums-dirt-junk-3.png,32,16,1,0,no,16,8,dirt with caps, cans, glass, paper, rubber and nails
+tile-slums-dirt-junk-4.png,32,16,1,0,no,16,8,dirt with caps, cans, glass, paper, rubber and nails
+tile-slums-dirt-junk-5.png,32,16,1,0,no,16,8,dirt with caps, cans, glass, paper, rubber and nails
+tile-slums-dirt-junk-6.png,32,16,1,0,no,16,8,dirt with caps, cans, glass, paper, rubber and nails
+tile-slums-dirt-junk-7.png,32,16,1,0,no,16,8,dirt with caps, cans, glass, paper, rubber and nails
+tile-slums-dirt-junk-8.png,32,16,1,0,no,16,8,dirt with caps, cans, glass, paper, rubber and nails
+tile-slums-weeds-1.png,32,16,1,0,no,16,8,dirt with weed tufts; some sparse, thick, with tiny flowers or dried brown
+tile-slums-weeds-2.png,32,16,1,0,no,16,8,dirt with weed tufts; some sparse, thick, with tiny flowers or dried brown
+tile-slums-weeds-3.png,32,16,1,0,no,16,8,dirt with weed tufts; some sparse, thick, with tiny flowers or dried brown
+tile-slums-weeds-4.png,32,16,1,0,no,16,8,dirt with weed tufts; some sparse, thick, with tiny flowers or dried brown
+tile-slums-weeds-5.png,32,16,1,0,no,16,8,dirt with weed tufts; some sparse, thick, with tiny flowers or dried brown
+tile-slums-weeds-6.png,32,16,1,0,no,16,8,dirt with weed tufts; some sparse, thick, with tiny flowers or dried brown
+tile-slums-weeds-7.png,32,16,1,0,no,16,8,dirt with weed tufts; some sparse, thick, with tiny flowers or dried brown
+tile-slums-weeds-8.png,32,16,1,0,no,16,8,dirt with weed tufts; some sparse, thick, with tiny flowers or dried brown
+tile-slums-mud-1.png,32,16,1,0,no,16,8,wet mud with puddles; some bigger puddles or cart ruts
+tile-slums-mud-2.png,32,16,1,0,no,16,8,wet mud with puddles; some bigger puddles or cart ruts
+tile-slums-mud-3.png,32,16,1,0,no,16,8,wet mud with puddles; some bigger puddles or cart ruts
+tile-slums-mud-4.png,32,16,1,0,no,16,8,wet mud with puddles; some bigger puddles or cart ruts
+tile-slums-mud-5.png,32,16,1,0,no,16,8,wet mud with puddles; some bigger puddles or cart ruts
+tile-slums-mud-6.png,32,16,1,0,no,16,8,wet mud with puddles; some bigger puddles or cart ruts
+tile-slums-concrete-1.png,32,16,1,0,no,16,8,broken concrete; 4 rust stain, 5 drain grate, 6 manhole, 7 oil stain, 8 patched slab, 9 weeds in the cracks, 10-12 plain or cracked
+tile-slums-concrete-2.png,32,16,1,0,no,16,8,broken concrete; 4 rust stain, 5 drain grate, 6 manhole, 7 oil stain, 8 patched slab, 9 weeds in the cracks, 10-12 plain or cracked
+tile-slums-concrete-3.png,32,16,1,0,no,16,8,broken concrete; 4 rust stain, 5 drain grate, 6 manhole, 7 oil stain, 8 patched slab, 9 weeds in the cracks, 10-12 plain or cracked
+tile-slums-concrete-4.png,32,16,1,0,no,16,8,broken concrete; 4 rust stain, 5 drain grate, 6 manhole, 7 oil stain, 8 patched slab, 9 weeds in the cracks, 10-12 plain or cracked
+tile-slums-concrete-5.png,32,16,1,0,no,16,8,broken concrete; 4 rust stain, 5 drain grate, 6 manhole, 7 oil stain, 8 patched slab, 9 weeds in the cracks, 10-12 plain or cracked
+tile-slums-concrete-6.png,32,16,1,0,no,16,8,broken concrete; 4 rust stain, 5 drain grate, 6 manhole, 7 oil stain, 8 patched slab, 9 weeds in the cracks, 10-12 plain or cracked
+tile-slums-concrete-7.png,32,16,1,0,no,16,8,broken concrete; 4 rust stain, 5 drain grate, 6 manhole, 7 oil stain, 8 patched slab, 9 weeds in the cracks, 10-12 plain or cracked
+tile-slums-concrete-8.png,32,16,1,0,no,16,8,broken concrete; 4 rust stain, 5 drain grate, 6 manhole, 7 oil stain, 8 patched slab, 9 weeds in the cracks, 10-12 plain or cracked
+tile-slums-concrete-9.png,32,16,1,0,no,16,8,broken concrete; 4 rust stain, 5 drain grate, 6 manhole, 7 oil stain, 8 patched slab, 9 weeds in the cracks, 10-12 plain or cracked
+tile-slums-concrete-10.png,32,16,1,0,no,16,8,broken concrete; 4 rust stain, 5 drain grate, 6 manhole, 7 oil stain, 8 patched slab, 9 weeds in the cracks, 10-12 plain or cracked
+tile-slums-concrete-11.png,32,16,1,0,no,16,8,broken concrete; 4 rust stain, 5 drain grate, 6 manhole, 7 oil stain, 8 patched slab, 9 weeds in the cracks, 10-12 plain or cracked
+tile-slums-concrete-12.png,32,16,1,0,no,16,8,broken concrete; 4 rust stain, 5 drain grate, 6 manhole, 7 oil stain, 8 patched slab, 9 weeds in the cracks, 10-12 plain or cracked
+tile-slums-plate-1.png,32,16,1,0,no,16,8,rusty roofing sheet floor; some rusted through or patched
+tile-slums-plate-2.png,32,16,1,0,no,16,8,rusty roofing sheet floor; some rusted through or patched
+tile-slums-plate-3.png,32,16,1,0,no,16,8,rusty roofing sheet floor; some rusted through or patched
+tile-slums-plate-4.png,32,16,1,0,no,16,8,rusty roofing sheet floor; some rusted through or patched
+tile-slums-plate-5.png,32,16,1,0,no,16,8,rusty roofing sheet floor; some rusted through or patched
+tile-slums-plate-6.png,32,16,1,0,no,16,8,rusty roofing sheet floor; some rusted through or patched
+tile-slums-planks-1.png,32,16,1,0,no,16,8,plank boardwalk; some with a missing board or shiny nails
+tile-slums-planks-2.png,32,16,1,0,no,16,8,plank boardwalk; some with a missing board or shiny nails
+tile-slums-planks-3.png,32,16,1,0,no,16,8,plank boardwalk; some with a missing board or shiny nails
+tile-slums-planks-4.png,32,16,1,0,no,16,8,plank boardwalk; some with a missing board or shiny nails
+tile-slums-planks-5.png,32,16,1,0,no,16,8,plank boardwalk; some with a missing board or shiny nails
+tile-slums-planks-6.png,32,16,1,0,no,16,8,plank boardwalk; some with a missing board or shiny nails
 tile-slums-canal.png,32,16,4,3,yes,16,8,murky sewer canal; reuse tile-water-edge/corner overlays for its banks
 tile-slums-cliff-earth-l-1.png,32,32,1,0,no,16,24,earth cliff face on the SW (left) side; draw when the SW neighbour is lower
 tile-slums-cliff-earth-r-1.png,32,32,1,0,no,16,24,earth cliff face on the SE (right) side; draw when the SE neighbour is lower

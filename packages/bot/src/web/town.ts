@@ -302,11 +302,14 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         // A damage skill on a mob (battle maps only): the mob room decides; everyone there sees the hit.
         const mobs = opts.mobs?.[c.room];
         if (!mobs || typeof m.mob !== 'string' || !Number.isInteger(m.skill)) return;
-        const r = mobs.attack(p.id, [p.col, p.row], p.cls, m.mob, Date.now(), m.skill as number);
+        const r = mobs.attack(p.id, [p.col, p.row], p.cls, m.mob, Date.now(), m.skill as number, p.nickname);
         if (!r.ok) return send(c, { t: 'attack-refused', reason: r.reason });
-        const hit: TownServerMessage = { t: 'mob-hit', by: p.id, skill: m.skill as number, hits: r.hits };
-        others(c, hit);
-        return send(c, hit);
+        // The hit, then what it set off (the golem calling the Junk, enraging, falling: its line too, to this room only).
+        for (const e of [{ t: 'mob-hit', by: p.id, skill: m.skill as number, hits: r.hits } satisfies TownServerMessage, ...mobs.flush()]) {
+          others(c, e);
+          send(c, e);
+        }
+        return;
       }
       case 'arena-queue':
         if (p.jailed) return; // no games from jail
@@ -382,7 +385,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     const player: TownPlayer = { id: randomBytes(6).toString('hex'), ...profile, col, row, dir: 's', sit: false };
     const c: Conn = { ws, userId, room, player, tokens: STEP_BURST, refilled: Date.now(), says: SAY_BURST, saidAt: Date.now(), emotes: EMOTE_BURST, emotedAt: Date.now(), alive: true, fresh: true };
     const mobRoom = opts.mobs?.[room];
-    queueMicrotask(() => mobRoom && send(c, { t: 'mobs', mobs: mobRoom.snapshot(Date.now()) })); // after the welcome
+    queueMicrotask(() => mobRoom && send(c, { t: 'mobs', mobs: mobRoom.snapshot(Date.now()), golem: mobRoom.golemState(Date.now()) })); // after the welcome
     send(c, { t: 'welcome', you: player.id, players: [...conns.values()].filter((o) => o.room === room).map((o) => o.player), recent, system: systemLines, spawn: [col, row], notice: notice && notice.until > Date.now() ? notice.a : undefined });
     conns.set(userId, c);
     others(c, { t: 'join', player });
@@ -519,14 +522,16 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     },
   };
 
-  // The mobs: each room's clock, every quarter second; their hops go to whoever is in that room.
+  // The mobs: each room's clock, every quarter second; their hops go to whoever is in that room. So do the golem's lines
+  // (`system`, kind 'golem': its warning, rise and fall), which are only for that room: never kept for arrivals like
+  // postSystem's, and never passed to the bot's Discord feed (that only hears town.system).
   if (opts.mobs) {
     setInterval(() => {
       const now = Date.now();
       for (const [room, mobs] of Object.entries(opts.mobs ?? {})) {
         const here = [...conns.values()].filter((o) => o.room === room);
         const where = new Map(here.map((o) => [o.player.id, [o.player.col, o.player.row] as [number, number]]));
-        const events = mobs.tick(now, (id) => where.get(id) ?? null);
+        const events = mobs.tick(now, where);
         if (!events.length) continue;
         const listeners = here.filter((o) => o.ws.readyState === WebSocket.OPEN);
         for (const e of events) {

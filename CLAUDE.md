@@ -88,7 +88,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
 - Outskirts (`world/outskirts.ts`, town.json `outskirts`): a seeded forest fills what the camera can see past the map
   (grass, the river carried on outward, trees with shadows and tufts, undergrowth). Not walkable and not part of the
   camera bounds; `clear` strips beyond each edge (wider on the river sides) keep trees from hiding players.
-- Builds pack the loose images into sheets (`scripts/packs.ts`: one per character item, one per top folder) and
+- Builds pack the loose images into sheets (`scripts/packs.ts`: one per character item, one per mob folder, one per top folder) and
   cut them back into per-path textures at load (`src/assets/packs.ts`); dev loads loose files. Add art as loose
   images only.
 - Characters are paper dolls composited per outfit (`characters/doll.ts`), saved per account (`PUT /outfit`).
@@ -280,19 +280,35 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   `height` (0 basin, 1 ground, 2 ridge; 16 px a level), `walls` (cliff material), `ramps` (2 tiles; `world/heights.ts`:
   steps only along a ramp, a smooth lift on it, the walk grid and A* use it; characters `elevation`, objects raised,
   `HEIGHT_DEPTH` in depth; clicks pick the raised tile under the pointer). `world/terrain.ts` draws it by the art's
-  elevation README: floors, walls, rims, caps baked per 512 px chunk in the README's order; tiles that rise over the tile
+  elevation README (each ground tile one of its kind's variants, tiles.slums.ground listed from the art's _sheets.csv,
+  picked by `rng.ts` `variantAt`: a murmur3 mix of col,row seeded per kind, so repeats never line up in stripes): floors, walls, rims, caps baked per 512 px chunk in the README's order; tiles that rise over the tile
   just behind (and ramps) are sprites sorted with characters, so the ground in front hides what stands behind (Wire
-  Ridge, the Crab Basin's lip); the canal is animated with the river's bank overlays. Everything is streamed round the
+  Ridge, the Crab Basin's lip); the canal is animated with the river's bank overlays. Props cast their own shadow there (`world/cast-shadow.ts`, WorldObjects `castShadows`: each image's
+  silhouette laid down-right on the ground from its foot, the sun in the north-west, baked once per image; not floors). Everything is streamed round the
   camera (terrain chunks a few a frame, 16 × 16-tile regions of sprites, `WorldObjects` stream mode for the ~2,100
   props; dropped far away), A* is capped (a long click walks to the closest tile found). Outskirts: `SlumsOutskirts` in
   `world/outskirts.ts` (dirt, the canal carried on from the map's first/last rows, a concrete road out of the gate, dead
   trees thick on the edges and sparse junk/shanties/poles/wrecks, one per 4 × 4 cell). Minimap: the Slums' colours,
-  ridge lighter, basin darker. Mobs (`map.mobZones`, only `active` zones load art: Tin Can Alley so far; the boss and
-  other zones are data only), shared by everyone: the bot runs them (`web/town-mobs.ts` MobRoom, tested; TownOptions
-  `mobs`, a quarter-second clock): one per spawn (id `<zone>:<index>`, a seeded level in the zone's range), hopping ≤ 3
-  tiles round it on its zone's level (not ramps, blocked tiles or the `safeZone`); arrivals get `mobs` (a snapshot,
+  ridge lighter, basin darker. Mobs (`map.mobZones`, all six `active`: Tin Can, Bottle Caps, Tire Roller, Plastic Bag
+  Spook, Wire Tangle, Scrap Crab; only active zones load art; the boss (Scrapheap Golem): below). Art: manifest `mobs.<id>` (file with {variant}/{anim}/{dir}, `variants` with their own cell/anchor where they
+  differ, the golem's `enraged` set and `fx` with `layer` ground/front; `assets/mob-art.ts`; built from the art folder's
+  _sheets.csv, PNGs only); rules: `mobs/mobs.json` (manifest `mobs.data`, read by the bot too: 0-based attack frame,
+  shadow size (drawn as the shadow art's pixel ellipse at that size), `floats`, variants, the golem's toss/glare frames,
+  `top`, and its `lamp` / `slamFist` / `tossFist` per facing, measured from the art; a bot test keeps its variants in step with the
+  manifest's and checks every sheet exists). Shared by everyone: the bot runs them (`web/town-mobs.ts` MobRoom, tested; TownOptions
+  `mobs`, a quarter-second clock, ~0.25 ms a tick with all ~240 mobs and 5 players fighting): one per spawn (id
+  `<zone>:<index>`), or for a kind with mobs.json `pack` (Bottle Caps) a seeded 3–5 round the point (ids `<zone>:<index>:<n>`,
+  each its own mob; the first alive leads, the others hop to within 2 tiles of where it's headed and follow it shortly;
+  `packSize`), a seeded level in the zone's range and a seeded `variant` from mobs.json, sent in `mobs`; the game picks
+  the same until it hears), hopping ≤ 3 tiles round it on its zone's level and in its `rect` (not ramps, blocked tiles
+  or the `safeZone`; never onto a tile another mob stands on or is headed for), facing its last step (`TownMob.dir`;
+  `facingTo`: SE = +col, SW = +row, NW = −col, NE = −row); a Tire Roller sometimes rolls 1–2 tiles straight on (mobs.json
+  `roll`, quicker), a Plastic Bag Spook drifts (`drift`: its own pace, short rests); arrivals get `mobs` (a snapshot,
   hops under way included), each hop goes to the room as `mob-move`. The game (`world/mobs.ts`) walks them at the same
-  pace (wandering on its own only when no server answers), facing their way (SE/NE/SW/NW sheets); a click shows "Tin Can Lv 1-2" over
+  pace (wandering on its own only when no server answers), facing their way on the four diagonal sheets (SE for S and E,
+  SW for W, NE for N; no mirroring), on a shadow sized per kind (the bag floats over its own and drifts: its drawn place
+  eases after its real one), a pack's caps placed and wandering round their leader like the server's; only mobs near the
+  camera are drawn and animated (the rest sleep: sprites inactive, hops still walked on paper; `Mob.asleep`); a click shows "Tin Can Lv 1-2" over
   it and targets it; Z (or the middle mouse button) targets the nearest within 12 tiles (again: the next), a gold ring under it and an info bar at
   the top (`ui/mob-target.ts`: name, level, HP, zone); Escape or 20 tiles away lets go. Battle (battle maps = maps with
   mobs): characters with a class use their class's combat poses there (`characters/battle-art.ts`: every pose composited
@@ -313,14 +329,72 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   uses, `combat/skill-slots.ts` dry-runs it; launch points from the class's launch.json; others' casts too; facing left
   the whole skill plays mirrored round the caster's feet; each mob's damage number and HP land when the script's hit on
   it does; skill-hits.json `fxScale` sizes a skill's effects). Each skill's reach: skill-hits.json `range` (from its
-  script's farthest slot, at least the class's own; around skills: their radius `around:N:R`). Mobility skills never auto-cast. The bot decides (`MobRoom.attack`, tested): mobs have 100 HP, any class
-  hits 20 (25 on a 15% crit), at most one swing per 0.4 s; a hit mob chases its foe within its zone's leash and attacks
-  next to them every 1.6 s (`mob-attack`: its attack pose and a red flash on the player; players have no HP yet), gives
-  up after 12 s without a hit or out of its leash and walks home; at 0 it dies (`mob-hit` dead: its death pose, gone)
-  and respawns after its zone's respawnSec (`mob-spawn`). The game shows damage numbers (gold for a crit), an HP bar
-  over a hurt mob and in the target's info bar. `residents` are unused for now. Dev: `?area=slums`,
+  script's farthest slot, at least the class's own; around skills: their radius `around:N:R`). Mobility skills never auto-cast. The bot decides (`MobRoom.attack`, tested): mobs have `mobHp(level)` = 100 + 25 a
+  level above 1 (`TownMob.maxHp`), any class hits 20 (25 on a 15% crit), at most one swing per 0.4 s; a Scrap Crab's
+  shell (`shell`) blocks every hit from any side (`blocked`, 0) except for `shellOpenMs` (1.2 s) from each of its own
+  swings (shell down: hit it then; it swings every `attackMs` 2.5 s; the game shows a small shield over a fighting or targeted crab while its shell is up); a hit mob (its whole pack) chases its foe, an aggressive zone's mob (`aggro`) one who comes within its
+  `aggroRange` (in its zone, on its level; players are sorted per zone once a tick), to the nearest free tile within
+  its `reach` (mobs.json; the Wire Tangle zaps from 3) and attacks every 1.6 s (`mob-attack` with its `dir`, and the Bag's
+  `slow` ms; players have no HP yet), gives up when they leave its zone or its leash, or (passive) after 12 s without a
+  hit, and walks home; at 0 it dies (`mob-hit` dead: its death pose, gone)
+  and respawns after its zone's respawnSec (`mob-spawn`). The game shows damage numbers (gold for a crit; "Blocked" off a shell), an HP bar
+  of its `maxHp` over a hurt mob and in the target's info bar, its death pose then a fade out. A mob's attack
+  (`Mobs.strike`): turned the server's way, its attack pose, hooks `onAttackFrame` (mobs.json attackFrame) and `onHit` as
+  it lands (TownScene: the player's red flash, and the Bag's slow badge + cold ring for `slow` ms, `showSlowed`), `onDeath`;
+  the Wire Tangle's spark (drawn in code: a jagged yellow-white flickering line) flies from its insulator eye (mobs.json
+  `eye`) to the player on the attack frame; the Tire Roller's sprite lunges along its facing over its `charge` frames and
+  back (its tile stays). FX layers (`world/fx-layers.ts`, the rule for every effect): `ground` (under every player and mob)
+  and `front` (over them, under names) depths; sheets from fx defs (their `layer`), shots (straight/arc, turned to the
+  flight), code-drawn effects (`drawFx`, `drawnShot`); one per TownScene (`fxLayers`, updated every frame); class skills'
+  world effects (`combat/world-skills.ts`) play on it (a script's z 0 = ground, z 3 = front, z 1 just behind the caster). `residents` are unused for now. Dev: `?area=slums`,
   `?switch` (pretend login: a row of class badges, bottom left, to become any class at once: `devSwitchClass` in
   net/adventure.ts, its training weapon, the class choice done), `__town.mobs()`; the dev server reads maps/slums.json again when it changes.
+- Scrapheap Golem (field boss; bot `web/town-golem.ts` `Golem`, tested, run by the Slums' MobRoom on its clock when given
+  `loadGolemArt()`; data: slums.json `boss`, mobs.json `hp` 4000 / `radius` 2, the manifest's anim and fx lengths): rises at
+  minute 0 of every `everyMinutes` (120: even hours, from the epoch, so UTC = Manila) at its tile, `rising` for its death
+  anim's length (riseMs, not hittable); `warnMinutes` before, a line. Its lines (`system` kind 'golem', tones stir / rise /
+  down) go only to the Slums room through the mob clock: not kept for arrivals, never in Discord. Nothing saved: after a
+  restart, the next even hour. Idle: a quarter turn (`mob-face`) or a 1–3 tile stomp inside the pit (`arena` rect) every
+  5–11 s; 30 min with no hit (since rise or last hit) and not fighting → `sinking` (riseMs) → gone. Reach to it = to its
+  body's edge (`edge`: distance from its tile − radius; area skills reach it too, `reached`); 20/25 a hit, never blocked or
+  slowed. First hit → fight: target = the last to hit it if within `leash` (8, Chebyshev from home), else the nearest
+  there; it steps closer (1.5 tiles/s, within its leash), turns a quarter per 0.5 s and only attacks facing its target,
+  every 1.5 s (1 s enraged): Tire Slam within 2 of its edge (`at` = a tile past its body toward them), Scrap Toss past 3
+  (`at` = their tile; between 2 and 3 it steps closer), every 4th a Lamp Glare along its facing (`cone` [5 tiles from its
+  tile, 60°] in grid space; `blinded` ids, `blindMs`) — `golem-attack`, harmless. ≤ 50% once: `golem` change 'call' with
+  3–4 `spots` a tile or two outside the pit, then (`ms` = the call-junk fx) `mob-add`: 2 Tin Cans + a Bottle Caps pack
+  (ids `golem-add:<n>[:<k>]`, `TownMob.kind`; aggressive toward the nearest player within the golem's leash; never back
+  once dead). ≤ 25% once: 'enrage'. 10 s with nobody within its leash: 'reset' (full HP, phases re-armed, Adds
+  `mob-remove`d), walks home. 0: 'death' (state 'dead'), Adds removed, the line naming everyone who hit it that fight
+  (`downLine`). Every `golem` message carries the whole `TownGolem` (HP, enraged, state, home/leash/radius for the boss
+  bar); arrivals get it in `mobs` (`golem`). Dev: `/__golem?now=1` (rise now), `/__golem?demo=1&as=Name` (its fight
+  against the nearest player in the room: slam, toss, glare, the Junk at a pretend half, enrage at a pretend quarter,
+  death); the page's `?golem=now` / `?golemdemo=1` (dev, the Slums) call them and put you at the pit's front corner.
+  In the game (`world/golem.ts` GolemView; a mob of world/mobs.ts via `makeBoss`): its art (52 sheets + fx, ~660 KB
+  packed) loads in the background once the Slums is up (`assets/queue.ts` loadBoss), messages before that keep its
+  state. 200×168 at 100,150 on a 72×24 shadow, sorted by its feet, asleep off camera; rises (death backwards, from
+  `left` for a late arrival), sinks (death forwards, fade), untouchable meanwhile; `mob-face` turns, `-enraged` sheets
+  (`Mob.enraged`). `golem-attack`: its anim, every fx timed from its frames on its layer: slam (warning → impact,
+  shockwave, small shake, enraged rubble ring 3.5 s) all where its fist lands (mobs.json slamFist; the server's `at` can
+  be a tile or two off it, four facings), toss (marker at `at` → scrap from tossFist arcing, tumbling, trail turned to
+  its flight → land), glare (the grid cone projected: a warm ADD wedge from the lamp, frames 3–5; blinded sparkles round
+  the heads in `blinded`); 'call' fx at `spots`, Adds via `mob-add`/`mob-remove` (`Mobs.add/remove`, `TownMob.kind`);
+  'enrage' fx at the lamp, red half-way; 'death' lamp burst. Hits: numbers spread over its shoulders, a 40 px bar at
+  its `top`; a hit never cuts its attack; reach/auto-cast walk measure to its body's edge (TownScene fightTick). Boss bar
+  (`ui/boss-bar.ts`, top centre, red when enraged) while its fight is on and you're within its leash; body.boss-on moves
+  the mob info bar under it (hidden when that shows the golem). Debug `__town.golem()`. The golem is drawn 1.5× its art
+  (mobs.json `scale`: its sprite, shadow, top, lamp, fists and own fx; body `radius` 3; the glare's cone runs 5 tiles past
+  its body). The Golem Pit (v3, `slums-golem-pit-3`): two halves (back, front)
+  on one canvas and anchor, the anchor the ground point of the pit floor's centre tile (boss.tile (21,96)); the back half
+  sorts as if its feet were at anchor y + sortOffsetY.back (−144); the front half is cut into 8 px columns, each sorted at
+  its own lowest heap pixel (WorldObjects `addHalves`: one layer at +231 buried players in the way in between heaps that
+  stand partly behind them); made once and kept on a streamed map; characters and the golem sort between; no shadow. Its tiles (the art's json, in slums.json boss.pit as
+  [dcol, drow]): ring 323 (blocked), pit floor 399, way in 8 (the art's 7 + the corner tile (32,101), 32% under heap art: it
+  met the floor only corner to corner, which walking never cuts; (33,100) stays ring, 78% under the pallet pile). The pit floor and way in are the golem's fight (its leash,
+  where it's hit from: others get 'range'; the boss bar); it stands only where its body (radius 3) is all floor; Call the
+  Junk spots are floor tiles round it; its Adds keep to the floor and way in; no zone's mob steps on a pit tile
+  (`pitTiles` in web/town-golem.ts). The props under the old pits and round them are gone, the old stand-in's blocking
+  cleared; the canal's plank crossing sits on the road's rows (93–95; it was a row south) (the art folder's copy still has the 6×6 pit: copy the map over again and this is lost). Packs (`scripts/packs.ts`) are written unfiltered with plain deflate (pngjs's RLE default made them ~5× bigger).
 - NPCs (town only, not the neighbourhood; client-side: never on the server, the online list or the minimap): the
   Tanod and ten Alings, flat pre-baked sheets (manifest `npcs`, art in `assets/npcs/`, one pack per NPC; `Character`
   with `FlatSheets`, never the paper doll). Homes, behaviours, the Tanod's route, voices and portrait facing in

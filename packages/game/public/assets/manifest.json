@@ -264,33 +264,73 @@
           "tiles/slums/tile-slums-dirt-1.png",
           "tiles/slums/tile-slums-dirt-2.png",
           "tiles/slums/tile-slums-dirt-3.png",
-          "tiles/slums/tile-slums-dirt-4.png"
+          "tiles/slums/tile-slums-dirt-4.png",
+          "tiles/slums/tile-slums-dirt-5.png",
+          "tiles/slums/tile-slums-dirt-6.png",
+          "tiles/slums/tile-slums-dirt-7.png",
+          "tiles/slums/tile-slums-dirt-8.png",
+          "tiles/slums/tile-slums-dirt-9.png",
+          "tiles/slums/tile-slums-dirt-10.png",
+          "tiles/slums/tile-slums-dirt-11.png",
+          "tiles/slums/tile-slums-dirt-12.png"
         ],
         "dirt-junk": [
           "tiles/slums/tile-slums-dirt-junk-1.png",
-          "tiles/slums/tile-slums-dirt-junk-2.png"
+          "tiles/slums/tile-slums-dirt-junk-2.png",
+          "tiles/slums/tile-slums-dirt-junk-3.png",
+          "tiles/slums/tile-slums-dirt-junk-4.png",
+          "tiles/slums/tile-slums-dirt-junk-5.png",
+          "tiles/slums/tile-slums-dirt-junk-6.png",
+          "tiles/slums/tile-slums-dirt-junk-7.png",
+          "tiles/slums/tile-slums-dirt-junk-8.png"
         ],
         "weeds": [
           "tiles/slums/tile-slums-weeds-1.png",
-          "tiles/slums/tile-slums-weeds-2.png"
+          "tiles/slums/tile-slums-weeds-2.png",
+          "tiles/slums/tile-slums-weeds-3.png",
+          "tiles/slums/tile-slums-weeds-4.png",
+          "tiles/slums/tile-slums-weeds-5.png",
+          "tiles/slums/tile-slums-weeds-6.png",
+          "tiles/slums/tile-slums-weeds-7.png",
+          "tiles/slums/tile-slums-weeds-8.png"
         ],
         "mud": [
           "tiles/slums/tile-slums-mud-1.png",
-          "tiles/slums/tile-slums-mud-2.png"
+          "tiles/slums/tile-slums-mud-2.png",
+          "tiles/slums/tile-slums-mud-3.png",
+          "tiles/slums/tile-slums-mud-4.png",
+          "tiles/slums/tile-slums-mud-5.png",
+          "tiles/slums/tile-slums-mud-6.png"
         ],
         "concrete": [
           "tiles/slums/tile-slums-concrete-1.png",
           "tiles/slums/tile-slums-concrete-2.png",
           "tiles/slums/tile-slums-concrete-3.png",
-          "tiles/slums/tile-slums-concrete-4.png"
+          "tiles/slums/tile-slums-concrete-4.png",
+          "tiles/slums/tile-slums-concrete-5.png",
+          "tiles/slums/tile-slums-concrete-6.png",
+          "tiles/slums/tile-slums-concrete-7.png",
+          "tiles/slums/tile-slums-concrete-8.png",
+          "tiles/slums/tile-slums-concrete-9.png",
+          "tiles/slums/tile-slums-concrete-10.png",
+          "tiles/slums/tile-slums-concrete-11.png",
+          "tiles/slums/tile-slums-concrete-12.png"
         ],
         "plate": [
           "tiles/slums/tile-slums-plate-1.png",
-          "tiles/slums/tile-slums-plate-2.png"
+          "tiles/slums/tile-slums-plate-2.png",
+          "tiles/slums/tile-slums-plate-3.png",
+          "tiles/slums/tile-slums-plate-4.png",
+          "tiles/slums/tile-slums-plate-5.png",
+          "tiles/slums/tile-slums-plate-6.png"
         ],
         "planks": [
           "tiles/slums/tile-slums-planks-1.png",
-          "tiles/slums/tile-slums-planks-2.png"
+          "tiles/slums/tile-slums-planks-2.png",
+          "tiles/slums/tile-slums-planks-3.png",
+          "tiles/slums/tile-slums-planks-4.png",
+          "tiles/slums/tile-slums-planks-5.png",
+          "tiles/slums/tile-slums-planks-6.png"
         ]
       },
       "canal": {
@@ -13015,20 +13055,14 @@
       ],
       "walkable": true
     },
-    "slums-golem-pit-1": {
-      "file": "props/slums/prop-slums-golem-pit-1.png",
-      "size": [
-        180,
-        168
-      ],
-      "anchor": [
-        90,
-        36
-      ],
-      "footprint": [
-        6,
-        6
-      ],
+    "slums-golem-pit-3": {
+      "note": "The Golem Pit (v3): two halves on one canvas and anchor; the anchor is the ground point of the pit floor's centre tile (slums.json boss.tile), not a footprint corner. Each half sorts as if its feet were at anchor y + sortOffsetY (back behind everyone on the pit floor, front in front of them). Its tiles (ring, floor, way in) are in slums.json boss.pit.",
+      "file": "props/slums/prop-slums-golem-pit-3-back.png",
+      "front": "props/slums/prop-slums-golem-pit-3-front.png",
+      "size": [591, 453],
+      "anchor": [298, 235],
+      "sortOffsetY": { "back": -144, "front": 231 },
+      "footprint": [1, 1],
       "walkable": true
     },
     "slums-dead-tree-big-1": {
@@ -15443,7 +15477,8 @@
     "file": "items/equipment.json"
   },
   "mobs": {
-    "note": "Mobs (world/mobs.ts): one sheet per animation and direction, file = pattern with {anim} and {dir}; anchor = the pixel between the feet. Only mobs of active zones load.",
+    "note": "Mobs (world/mobs.ts): one sheet per variant, animation and direction, file = pattern with {variant}, {anim} and {dir}; size = the cell, anchor = the pixel between the feet (a variant may have its own size and anchor). `variants` lists the looks (one picked per spawn by the server); none = one look. The golem: `enraged` = its red-lamp set (the anims listed; death is shared), `fx` = its attack effects (layer ground: under every player and mob, front: over them). Rules (attack frame, shadow, floating) in `data`. Only mobs of active zones (and the boss) load.",
+    "data": "mobs/mobs.json",
     "tin-can": {
       "name": "Tin Can",
       "file": "mobs/tin-can/mob-tin-can-{anim}-{dir}.png",
@@ -15486,6 +15521,547 @@
           "frames": 6,
           "fps": 10,
           "loop": false
+        }
+      }
+    },
+    "bottle-caps": {
+      "name": "Bottle Caps",
+      "file": "mobs/bottle-caps/mob-bottle-caps-{variant}-{anim}-{dir}.png",
+      "size": [
+        32,
+        32
+      ],
+      "anchor": [
+        16,
+        29
+      ],
+      "variants": {
+        "red": {},
+        "orange": {},
+        "yellow": {},
+        "green": {},
+        "blue": {}
+      },
+      "directions": [
+        "se",
+        "ne",
+        "sw",
+        "nw"
+      ],
+      "animations": {
+        "idle": {
+          "frames": 4,
+          "fps": 6,
+          "loop": true
+        },
+        "move": {
+          "frames": 6,
+          "fps": 12,
+          "loop": true
+        },
+        "attack": {
+          "frames": 5,
+          "fps": 12,
+          "loop": false
+        },
+        "hit": {
+          "frames": 2,
+          "fps": 12,
+          "loop": false
+        },
+        "death": {
+          "frames": 7,
+          "fps": 10,
+          "loop": false
+        }
+      }
+    },
+    "tire-roller": {
+      "name": "Tire Roller",
+      "file": "mobs/tire-roller/mob-tire-roller-{variant}-{anim}-{dir}.png",
+      "size": [
+        50,
+        50
+      ],
+      "anchor": [
+        25,
+        43
+      ],
+      "variants": {
+        "yellow": {},
+        "cyan": {},
+        "grey": {},
+        "red": {
+          "size": [
+            48,
+            46
+          ],
+          "anchor": [
+            24,
+            39
+          ]
+        },
+        "green": {
+          "size": [
+            46,
+            46
+          ],
+          "anchor": [
+            23,
+            39
+          ]
+        }
+      },
+      "directions": [
+        "se",
+        "ne",
+        "sw",
+        "nw"
+      ],
+      "animations": {
+        "idle": {
+          "frames": 4,
+          "fps": 6,
+          "loop": true
+        },
+        "move": {
+          "frames": 6,
+          "fps": 10,
+          "loop": true
+        },
+        "attack": {
+          "frames": 12,
+          "fps": 16,
+          "loop": false
+        },
+        "hit": {
+          "frames": 2,
+          "fps": 12,
+          "loop": false
+        },
+        "death": {
+          "frames": 6,
+          "fps": 10,
+          "loop": false
+        }
+      }
+    },
+    "plastic-bag-spook": {
+      "name": "Plastic Bag Spook",
+      "file": "mobs/plastic-bag-spook/mob-plastic-bag-spook-{variant}-{anim}-{dir}.png",
+      "size": [
+        64,
+        62
+      ],
+      "anchor": [
+        32,
+        55
+      ],
+      "variants": {
+        "white": {},
+        "striped": {}
+      },
+      "directions": [
+        "se",
+        "ne",
+        "sw",
+        "nw"
+      ],
+      "animations": {
+        "idle": {
+          "frames": 4,
+          "fps": 6,
+          "loop": true
+        },
+        "move": {
+          "frames": 6,
+          "fps": 10,
+          "loop": true
+        },
+        "attack": {
+          "frames": 5,
+          "fps": 12,
+          "loop": false
+        },
+        "hit": {
+          "frames": 2,
+          "fps": 12,
+          "loop": false
+        },
+        "death": {
+          "frames": 6,
+          "fps": 10,
+          "loop": false
+        }
+      }
+    },
+    "wire-tangle": {
+      "name": "Wire Tangle",
+      "file": "mobs/wire-tangle/mob-wire-tangle-{anim}-{dir}.png",
+      "size": [
+        82,
+        83
+      ],
+      "anchor": [
+        41,
+        76
+      ],
+      "directions": [
+        "se",
+        "ne",
+        "sw",
+        "nw"
+      ],
+      "animations": {
+        "idle": {
+          "frames": 4,
+          "fps": 6,
+          "loop": true
+        },
+        "move": {
+          "frames": 6,
+          "fps": 10,
+          "loop": true
+        },
+        "attack": {
+          "frames": 5,
+          "fps": 12,
+          "loop": false
+        },
+        "hit": {
+          "frames": 2,
+          "fps": 12,
+          "loop": false
+        },
+        "death": {
+          "frames": 6,
+          "fps": 10,
+          "loop": false
+        }
+      }
+    },
+    "scrap-crab": {
+      "name": "Scrap Crab",
+      "file": "mobs/scrap-crab/mob-scrap-crab-{variant}-{anim}-{dir}.png",
+      "size": [
+        66,
+        51
+      ],
+      "anchor": [
+        33,
+        44
+      ],
+      "variants": {
+        "blue": {},
+        "rust": {
+          "size": [
+            64,
+            52
+          ],
+          "anchor": [
+            32,
+            45
+          ]
+        },
+        "silver": {
+          "size": [
+            64,
+            58
+          ],
+          "anchor": [
+            32,
+            51
+          ]
+        }
+      },
+      "directions": [
+        "se",
+        "ne",
+        "sw",
+        "nw"
+      ],
+      "animations": {
+        "idle": {
+          "frames": 4,
+          "fps": 6,
+          "loop": true
+        },
+        "move": {
+          "frames": 6,
+          "fps": 12,
+          "loop": true
+        },
+        "attack": {
+          "frames": 5,
+          "fps": 12,
+          "loop": false
+        },
+        "hit": {
+          "frames": 2,
+          "fps": 12,
+          "loop": false
+        },
+        "death": {
+          "frames": 6,
+          "fps": 10,
+          "loop": false
+        }
+      }
+    },
+    "scrapheap-golem": {
+      "name": "Scrapheap Golem",
+      "file": "mobs/scrapheap-golem/mob-scrapheap-golem-{anim}-{dir}.png",
+      "size": [
+        200,
+        168
+      ],
+      "anchor": [
+        100,
+        150
+      ],
+      "directions": [
+        "se",
+        "ne",
+        "sw",
+        "nw"
+      ],
+      "animations": {
+        "idle": {
+          "frames": 4,
+          "fps": 6,
+          "loop": true
+        },
+        "move": {
+          "frames": 8,
+          "fps": 8,
+          "loop": true
+        },
+        "attack": {
+          "frames": 9,
+          "fps": 10,
+          "loop": false
+        },
+        "toss": {
+          "frames": 8,
+          "fps": 10,
+          "loop": false
+        },
+        "glare": {
+          "frames": 8,
+          "fps": 10,
+          "loop": false
+        },
+        "hit": {
+          "frames": 2,
+          "fps": 12,
+          "loop": false
+        },
+        "death": {
+          "frames": 8,
+          "fps": 8,
+          "loop": false
+        }
+      },
+      "enraged": {
+        "file": "mobs/scrapheap-golem/mob-scrapheap-golem-enraged-{anim}-{dir}.png",
+        "animations": [
+          "idle",
+          "move",
+          "attack",
+          "toss",
+          "glare",
+          "hit"
+        ]
+      },
+      "fx": {
+        "fx-golem-slam-warning": {
+          "file": "mobs/scrapheap-golem/fx/fx-golem-slam-warning.png",
+          "frame": [
+            112,
+            64
+          ],
+          "frames": 12,
+          "fps": 12,
+          "loop": true,
+          "anchor": [
+            56,
+            32
+          ],
+          "layer": "ground",
+          "note": "Tire Slam warning, flat on the ground where the fist lands; from wind-up to frame 6"
+        },
+        "fx-golem-slam-impact": {
+          "file": "mobs/scrapheap-golem/fx/fx-golem-slam-impact.png",
+          "frame": [
+            66,
+            44
+          ],
+          "frames": 9,
+          "fps": 16,
+          "loop": false,
+          "anchor": [
+            33,
+            40
+          ],
+          "layer": "front",
+          "note": "Tire Slam hit at the fist on frame 6; anchor = ground under the fist"
+        },
+        "fx-golem-shockwave": {
+          "file": "mobs/scrapheap-golem/fx/fx-golem-shockwave.png",
+          "frame": [
+            106,
+            61
+          ],
+          "frames": 11,
+          "fps": 14,
+          "loop": false,
+          "anchor": [
+            53,
+            30
+          ],
+          "layer": "ground",
+          "note": "Tire Slam shockwave on the ground at the fist on frame 6; damages everyone inside"
+        },
+        "fx-golem-rubble-ring": {
+          "file": "mobs/scrapheap-golem/fx/fx-golem-rubble-ring.png",
+          "frame": [
+            97,
+            58
+          ],
+          "frames": 12,
+          "fps": 10,
+          "loop": true,
+          "anchor": [
+            50,
+            33
+          ],
+          "layer": "ground",
+          "note": "enraged Tire Slam: stays on the ground for a few seconds after the slam"
+        },
+        "fx-golem-toss-marker": {
+          "file": "mobs/scrapheap-golem/fx/fx-golem-toss-marker.png",
+          "frame": [
+            68,
+            36
+          ],
+          "frames": 10,
+          "fps": 12,
+          "loop": true,
+          "anchor": [
+            34,
+            18
+          ],
+          "layer": "ground",
+          "note": "Scrap Toss target on the ground where the scrap will land"
+        },
+        "fx-golem-scrap-trail": {
+          "file": "mobs/scrapheap-golem/fx/fx-golem-scrap-trail.png",
+          "frame": [
+            80,
+            40
+          ],
+          "frames": 8,
+          "fps": 12,
+          "loop": true,
+          "anchor": [
+            65,
+            20
+          ],
+          "layer": "front",
+          "note": "trail behind the flying scrap; anchor = the scrap (flies right, mirror when flying left)"
+        },
+        "fx-golem-scrap-land": {
+          "file": "mobs/scrapheap-golem/fx/fx-golem-scrap-land.png",
+          "frame": [
+            78,
+            55
+          ],
+          "frames": 20,
+          "fps": 14,
+          "loop": false,
+          "anchor": [
+            33,
+            44
+          ],
+          "layer": "front",
+          "note": "Scrap Toss landing; anchor = ground at the target"
+        },
+        "fx-golem-blinded": {
+          "file": "mobs/scrapheap-golem/fx/fx-golem-blinded.png",
+          "frame": [
+            40,
+            24
+          ],
+          "frames": 12,
+          "fps": 12,
+          "loop": true,
+          "anchor": [
+            20,
+            13
+          ],
+          "layer": "front",
+          "note": "over a blinded player's head for the debuff"
+        },
+        "fx-golem-call-junk": {
+          "file": "mobs/scrapheap-golem/fx/fx-golem-call-junk.png",
+          "frame": [
+            57,
+            27
+          ],
+          "frames": 14,
+          "fps": 14,
+          "loop": false,
+          "anchor": [
+            24,
+            19
+          ],
+          "layer": "ground",
+          "note": "Call the Junk (50% HP): where each Tin Can / Bottle Cap crawls out; anchor = ground"
+        },
+        "fx-golem-enrage": {
+          "file": "mobs/scrapheap-golem/fx/fx-golem-enrage.png",
+          "frame": [
+            62,
+            62
+          ],
+          "frames": 12,
+          "fps": 12,
+          "loop": false,
+          "anchor": [
+            31,
+            31
+          ],
+          "layer": "front",
+          "note": "Enrage (25% HP): at the lamp when it turns red"
+        },
+        "fx-golem-lamp-burst": {
+          "file": "mobs/scrapheap-golem/fx/fx-golem-lamp-burst.png",
+          "frame": [
+            58,
+            56
+          ],
+          "frames": 10,
+          "fps": 14,
+          "loop": false,
+          "anchor": [
+            30,
+            15
+          ],
+          "layer": "front",
+          "note": "death: at the lamp when it goes out"
+        },
+        "fx-golem-scrap": {
+          "file": "mobs/scrapheap-golem/fx-golem-scrap.png",
+          "size": [
+            23,
+            32
+          ],
+          "anchor": [
+            11,
+            16
+          ],
+          "layer": "front",
+          "note": "Scrap Toss projectile (the junk pile from the front view): flown by the game in an arc from the fist to the marker, the trail behind it; anchor = its middle"
         }
       }
     }
