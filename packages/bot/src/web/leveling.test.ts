@@ -17,7 +17,7 @@ for (const name of ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'ADMIN_ROLE_ID', 'ADMI
   'GAMBLING_CHANNEL_ID', 'GAMES_CHANNEL_ID', 'JAIL_ROLE_ID', 'REWARD_OWNER_ID', 'ROOM_FINDS_CHANNEL_ID']) process.env[name] = 'test';
 process.env.TIMEZONE = 'Asia/Manila';
 
-const { gainXp, isGearDef, kusingRange, miniBossRules, mobStats, mobXp, nearestGearLevel, questKill, readyToReport } = await import('@mikazuki/shared');
+const { gainXp, isGearDef, kusingRange, miniBossRules, questDropFor, agimatSlots, mobStats, mobXp, nearestGearLevel, questKill, readyToReport } = await import('@mikazuki/shared');
 type TownServerMessage = import('@mikazuki/shared').TownServerMessage;
 const { loadItemData, loadLeveling } = await import('./stats-data.js');
 const { miniLoot } = await import('./loot.js');
@@ -181,6 +181,25 @@ test('mini boss loot: its mob\'s Kusing × 10, one gear piece at the nearest gea
   assert.ok(lots.filter((l) => l.owners[0] === 'a').every((l) => !room.view(l, 'b', 0)));
 });
 
+test('quest pieces: each mob\'s slot and agimat (classes/leveling.json miniBoss.questDrop), your gear type, grey, +5, bound, no lines', () => {
+  const want: Record<string, [string, string]> = {
+    'tin-can': ['body', 'hp'], 'bottle-caps': ['hands', 'critRate'], 'tire-roller': ['bottoms', 'atkRate'],
+    'plastic-bag-spook': ['weapon', 'critDmg'], 'wire-tangle': ['head', 'critDmg'], 'scrap-crab': ['feet', 'amp'],
+  };
+  for (const [kind, [slot, stat]] of Object.entries(want)) {
+    for (const [cls, type] of [['stick', 'heavy'], ['broom', 'light'], ['potlid', 'household']] as const) {
+      const it = questDropFor(D, L, kind, L.miniBosses[kind][0].level, cls, `q-${kind}-${cls}`, lcg(4))!;
+      const def = D.defs.get(it.defId) as { slot: string; gear?: string; level: number };
+      assert.deepEqual([def.slot, it.rarity, it.plus, it.bound, it.lines, it.agimats.length, it.agimats[0]], [slot, 'grey', 5, true, [], 2, { stat, level: it.level }], `${kind} ${cls}`);
+      if (slot === 'weapon') assert.equal((def as { class?: string }).class, cls, `${kind}: the ${cls}'s own weapon`);
+      else assert.equal(def.gear?.toLowerCase(), type, `${kind}: the ${cls}'s own gear type`);
+      // (Its agimat fits where it sits: crit stats on weapons, heads and hands, damage amp on weapons, bodies and feet.)
+      assert.ok(!agimatSlots(S, stat) || agimatSlots(S, stat)!.includes(def.slot as never), `${kind}: ${stat} on ${slot}`);
+    }
+  }
+  assert.equal(questDropFor(D, L, 'scrapheap-golem', 15, 'stick', 'q', lcg(1)), null);
+});
+
 /** A town over a socket with the Slums' mobs, two players (Mara, who one-shots anything, and Bob) arriving next to `at`,
  *  in a party; what each kill's XP and quest count went to. */
 async function partyTown(room: InstanceType<typeof MobRoom>, at: [number, number]) {
@@ -198,7 +217,7 @@ async function partyTown(room: InstanceType<typeof MobRoom>, at: [number, number
       kill: (name, k) => (kills.push({ who: name, xp: k.xp }), { progress: freshProgress(S, 'slingshot'), gained: k.xp, ups: 0 }),
     },
     items: { take: () => ({ ok: true }) as never, usePotion: () => null as never, state: () => ({ equipped: {}, bag: [], kusing: 0 }) },
-    quests: { kill: (name, k) => (counted.push(`${name}:${k.kind}:${k.mini}`), [{ id: CHAIN[0], step: 0, count: 1 }]) },
+    quests: { kill: (name, k) => (counted.push(`${name}:${k.kind}:${k.mini}`), { active: [{ id: CHAIN[1], step: 0, count: 1 }], questDrop: k.mini, cls: 'slingshot' }) },
   });
   await new Promise<void>((ok) => server.listen(0, '127.0.0.1', ok));
   const port = (server.address() as AddressInfo).port;
@@ -241,6 +260,18 @@ test('over the town\'s socket: a party of 2 both get a mini boss\'s XP, their ow
   assert.ok(mine.loot.every((l) => l.mine) && his.loot.every((l) => l.mine), 'each only their own');
   assert.ok(!mine.loot.some((l) => his.loot.some((h) => h.id === l.id)));
   assert.deepEqual(t.counted.sort(), ['Bob:tin-can:true', 'Mara:tin-can:true']);
+  // The kill completed both players' mini boss quest: each gets their quest piece too, theirs alone (a Slingshot's Light
+  // body armor at the nearest gear level, grey, +5, bound, an HP agimat in its first slot).
+  const pieces = (got: TownServerMessage[]) =>
+    got.filter((m): m is Extract<TownServerMessage, { t: 'loot-drop' }> => m.t === 'loot-drop').flatMap((m) => m.loot).filter((l) => l.item?.plus === 5);
+  for (const c of [t.a, t.b]) {
+    const [p, ...more] = pieces(c.got);
+    assert.ok(p && !more.length, 'one quest piece each');
+    const def = D.defs.get(p.item!.defId) as { slot: string; gear?: string; level: number };
+    assert.deepEqual([def.slot, def.gear?.toLowerCase(), p.item!.rarity, p.item!.bound, p.item!.lines, p.item!.agimats[0]?.stat, p.item!.agimats.length], ['body', 'light', 'grey', true, [], 'hp', 2]);
+    assert.equal(def.level, 10, 'Jus Tin (Lv 4): the Lv 10 gear');
+  }
+  assert.notEqual(pieces(t.a.got)[0].id, pieces(t.b.got)[0].id);
   assert.ok(t.b.got.some((m) => m.t === 'quests'), 'Bob told his counts');
   await t.close();
   // A normal Tin Can she kills counts for Bob's quest too (its XP is hers alone).

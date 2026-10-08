@@ -1,14 +1,14 @@
 import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ClassesFile, GearRarity, HoodHouse, HouseLook, OutfitData, TownHoodActionResponse, TownHoodResponse, TownItems, TownRace, TownRaceResponse } from '@mikazuki/shared';
-import { classSkills, damageSkillLevels, moveUnlock } from '@mikazuki/shared';
+import { addToBag, classSkills, damageSkillLevels, moveUnlock, questDropFor } from '@mikazuki/shared';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { doorSpot, hoodMap, lotTile } from '../../bot/src/web/hood-map.ts';
 import type { Plugin } from 'vite';
 import { attachTown } from '../../bot/src/web/town.ts';
 import { MobRoom, loadMobKinds, loadSkillShapes } from '../../bot/src/web/town-mobs.ts';
 import { type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView, raiseSkill, resetSkillPoints, resetStatPoints, spendPoint } from '../../bot/src/web/progress.ts';
-import { loadItemData, loadStats } from '../../bot/src/web/stats-data.ts';
+import { loadItemData, loadLeveling, loadStats } from '../../bot/src/web/stats-data.ts';
 import { buyCombat, devGive, takeLoot, usePotion } from '../../bot/src/web/combat-bag.ts';
 import { forge, parseForgeAction } from '../../bot/src/web/forge.ts';
 import { settleTrade } from '../../bot/src/web/trade.ts';
@@ -26,6 +26,7 @@ import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
 //   GET /__announce?kind=jackpot|notice&title=…&text=…   a banner at the top
 //   GET /__jail?name=Bob&on=1   shows Bob as jailed (on=0: released) to everyone in town
 //   GET /__bakod?name=Mara&on=0 takes down (on=1 puts up) a pretend neighbour's Bakod, live in the neighbourhood
+//   GET /__questdrop?as=Alice&kind=tin-can&level=4   a mini boss kill completed Alice's pretend quest: its piece into her bag
 //   GET /__minibosses   every mini boss that's down comes back now (the page's ?minibosses=now)
 //   GET /__golem?now=1   the Scrapheap Golem rises in the Slums now (the page's ?golem=now); ?demo=1&as=Alice: it rises if
 //       it must and plays its whole fight against the nearest player (?golemdemo=1): each attack, the Junk at a pretend
@@ -432,6 +433,17 @@ export function devTown(): Plugin {
         town.items(name);
         server.config.logger.info(`[items] ${name}: ${said.join(', ')}`, { timestamp: true });
         reply(res, { said, items: g }); // (the page takes them from here too, in case its socket isn't up yet)
+      });
+      server.middlewares.use('/__questdrop', (req, res) => {
+        // The page's pretend quests: a mini boss kill completed one; its piece into the bag (the live bot drops it as
+        // personal loot).
+        const q = new URL(req.url ?? '/', 'http://localhost').searchParams;
+        const name = q.get('as') ?? '';
+        const piece = questDropFor(items, loadLeveling(), q.get('kind') ?? '', Number(q.get('level')) || 1, kits.get(name)?.cls, devUid());
+        const ok = !!piece && addToBag(items, gearOf(name).bag, piece, devUid);
+        if (ok) town.items(name, { item: piece });
+        server.config.logger.info(`[quest] ${name}: ${ok ? `${piece!.defId} +${piece!.plus}` : 'no quest piece'}`, { timestamp: true });
+        res.end(ok ? 'quest piece given\n' : 'no quest piece\n');
       });
       server.middlewares.use('/__loot', (req, res) => {
         richLoot = new URL(req.url ?? '/', 'http://localhost').searchParams.get('rich') === '1';

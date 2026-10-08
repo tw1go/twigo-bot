@@ -97,6 +97,17 @@ export class LootRoom {
     return out;
   }
 
+  /** Personal loot for one member (theirs alone, never opening to anyone: a mini boss's quest piece), laid round `at`. */
+  give(owner: string, contents: LootContent[], at: [number, number], spots: (at: [number, number], n: number) => [number, number][], now: number): Loot[] {
+    const tiles = spots(at, contents.length);
+    return contents.map((content, i) => {
+      const [col, row] = tiles[i % Math.max(1, tiles.length)] ?? at;
+      const loot: Loot = { id: `l${++this.n}`, col, row, content, owners: [owner], personal: true, opensAt: Infinity, goneAt: now + LOOT_MS };
+      this.all.set(loot.id, loot);
+      return loot;
+    });
+  }
+
   get(id: string): Loot | undefined {
     return this.all.get(id);
   }

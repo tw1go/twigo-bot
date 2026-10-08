@@ -369,7 +369,7 @@ export type TownServerMessage =
   /** Your quests moved (a kill counted toward one: yours, or your party's nearby): the active ones with their counts. */
   | { t: 'quests'; active: QuestProgress[] }
   /** A kill that counts toward quests (the dev town, which keeps no quests: the page's pretend store counts it). */
-  | { t: 'quest-kill'; kind: string; mini: boolean }
+  | { t: 'quest-kill'; kind: string; mini: boolean; level?: number }
   /** Someone in your room went up a level (you too: `id` is yours): "Level up!" over them. HP and MP refill with it. */
   | { t: 'level-up'; id: string; level: number }
   /** Your attack didn't land: too far, too fast, the mob's gone, the skill isn't one of yours or unlocked yet, or you're

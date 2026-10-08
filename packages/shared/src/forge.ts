@@ -198,6 +198,9 @@ export const rareAgimat = (data: StatsData, stat: string) => itemStats(data).agi
 
 /** Why this agimat can't go into slot `slot` of this gear, or null (a full slot is allowed: it asks, then breaks the old
  *  one). Gear level ≥ the agimat's, its slot lock matches, the item's two agimats are different stats, at most one rare. */
+/** "a, b and c". */
+export const wordList = (words: string[]) => (words.length < 2 ? (words[0] ?? '') : `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`);
+
 export function embedRefusal(data: ItemData, gear: Item, agimat: Item, slot?: number): string | null {
   const def = data.defs.get(gear.defId);
   const adef = data.defs.get(agimat.defId);
@@ -207,7 +210,7 @@ export function embedRefusal(data: ItemData, gear: Item, agimat: Item, slot?: nu
   if (gear.level < agimat.level) return `Needs gear of Lv ${agimat.level} or higher.`;
   if (agimat.lock && agimat.lock !== def.slot) return `It fits ${SLOT_WORD[agimat.lock].toLowerCase()} gear only.`;
   const only = agimatSlots(data.stats, agimat.stat);
-  if (only && !only.includes(def.slot)) return `It fits ${only.map((x) => SLOT_WORD[x].toLowerCase()).join(' and ')} gear only.`;
+  if (only && !only.includes(def.slot)) return `It fits ${wordList(only.map((x) => SLOT_WORD[x].toLowerCase()))} gear only.`;
   if (slot === undefined) return null;
   if (!Number.isInteger(slot) || slot < 0 || slot >= gear.agimats.length) return 'No such slot.';
   const others = gear.agimats.filter((a, i): a is AgimatSet => !!a && i !== slot);

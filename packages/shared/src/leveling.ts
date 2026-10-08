@@ -1,5 +1,6 @@
-import type { AdventureState, QuestDef, QuestObjectiveDef, QuestReward } from './adventure.js';
-import { numbersIn } from './stats.js';
+import type { AdventureState, EquipSlot, GearRarity, QuestDef, QuestObjectiveDef, QuestReward } from './adventure.js';
+import { type AgimatStat, type Item, type ItemData, isGearDef, rollGear } from './items.js';
+import { gearKind, numbersIn } from './stats.js';
 
 // 📈 The Tanod's leveling quests and the Slums' mini bosses: the game's classes/leveling.json (the art folder's
 // data/leveling.json; its rules in words: data/leveling-plan.md). Every number comes from the file, never from here; a
@@ -30,8 +31,16 @@ export interface LevelingQuest {
   dialogue?: { give?: string; report?: string };
 }
 
+/** The piece a mini boss drops for the quest it completes (leveling.json miniBoss.questDrop; a repo addition). */
+export interface QuestDropRules {
+  rarity: GearRarity;
+  plus: number;
+  bound: boolean;
+  kinds: Record<string, { slot: EquipSlot; agimat: AgimatStat }>;
+}
+
 export interface LevelingData {
-  miniBoss: { scale: number; respawnSeconds: number; nameColour: string; kill_credit: string; loot: string };
+  miniBoss: { scale: number; respawnSeconds: number; nameColour: string; kill_credit: string; loot: string; questDrop?: QuestDropRules };
   miniBosses: Record<string, MiniBossDef[]>;
   quests: LevelingQuest[];
 }
@@ -109,6 +118,28 @@ export function miniBossRules(L: LevelingData) {
     gearPieces: Number(gear ?? 1),
     fragmentChance: frag ? Number(frag[1]) / Number(frag[2]) : 0,
   };
+}
+
+/** The piece a mini boss of `kind` (at `level`) drops for the player whose quest it completes (class `cls`): their gear
+ *  type's armor for its slot (a weapon: their class's own) at the gear level nearest, at questDrop's rarity (no lines) and
+ *  plus, bound, its agimat in the first slot at the piece's level. Null without the rules or a fitting piece. */
+export function questDropFor(data: ItemData, L: LevelingData, kind: string, level: number, cls: string | null | undefined, uid: string, random: () => number = Math.random): Item | null {
+  const Q = L.miniBoss.questDrop;
+  const k = Q?.kinds[kind];
+  if (!Q || !k) return null;
+  const type = cls ? data.stats.classes[cls]?.gearType : undefined;
+  const yours = (d: { slot: string; class?: string; gear?: string }) =>
+    gearKind(k.slot) === 'weapon' ? d.class === cls : gearKind(k.slot) === 'accessory' || (!!type && d.gear?.toLowerCase() === type);
+  const fits = [...data.defs.values()].filter(isGearDef).filter((d) => !d.training && d.slot === k.slot && yours(d));
+  if (!fits.length) return null;
+  const at = nearestGearLevel([...new Set(fits.map((d) => d.level))], level);
+  const pick = fits.filter((d) => d.level === at);
+  const item = rollGear(data.stats, pick[Math.floor(random() * pick.length)], Q.rarity, uid, random);
+  item.lines = [];
+  item.plus = Q.plus;
+  item.bound = Q.bound;
+  if (item.agimats.length) item.agimats[0] = { stat: k.agimat, level: item.level };
+  return item;
 }
 
 /** A zone's mini boss id in the room (`<zone>:mini:<id>`), and the other way. */

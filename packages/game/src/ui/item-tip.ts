@@ -1,4 +1,4 @@
-import { type EquipSlot, type Item, type StatName, affixTier, agimatSlots, agimatValue, baseStats, canEquip, enhancedBase, gearKind, isGearDef, itemAura, itemName, lineText, lineValue, pickupLine, requirements, statLabel } from '@mikazuki/shared';
+import { type EquipSlot, type Item, type StatName, affixTier, agimatSlots, agimatValue, wordList, baseStats, canEquip, enhancedBase, gearKind, isGearDef, itemAura, itemName, lineText, lineValue, pickupLine, requirements, statLabel } from '@mikazuki/shared';
 import { adventure, classInfo, itemData } from '../net/adventure';
 import { type Rarity, RARITY_TEXT, isRarity, itemArt, itemArtUrl, placeholderArt } from './item-art';
 import { auraIcon } from '../fx/weaponAura';
@@ -80,7 +80,7 @@ export function itemTipFor(item: Item): HTMLElement[] {
     if (def.kind === 'agimat' && item.stat) {
       parts.push(el('div', 'eq-tip-line', lineText(item.stat, agimatValue(D.stats, item.stat, item.level))));
       const only = agimatSlots(D.stats, item.stat);
-      const where = item.lock ? `, ${SLOT[item.lock].toLowerCase()} only` : only ? `, ${only.map((x) => SLOT[x].toLowerCase()).join(' and ')} only` : '';
+      const where = item.lock ? `, ${SLOT[item.lock].toLowerCase()} only` : only ? `, ${wordList(only.map((x) => SLOT[x].toLowerCase()))} only` : '';
       parts.push(el('div', 'eq-tip-meta', `Fits gear of Lv ${item.level} or higher${where}`));
     }
     if (def.about) parts.push(el('div', 'eq-tip-about', def.about));

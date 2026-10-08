@@ -234,13 +234,16 @@ test('agimats: gear level, slot lock, two different stats, one rare at most; a f
   // No slots: refused.
   const brown = rollGear(D.stats, gear('armor-copper-body'), 'brown', uid(), lcg(1));
   assert.match(embedRefusal(D, brown, hp2) ?? '', /slots/);
-  // Crit rate and crit damage fit heads and hands only, damage amp boots and bodies only (stats.json agimats.onlyIn).
+  // Crit rate and crit damage fit weapons, heads and hands only, damage amp weapons, bodies and boots only (stats.json
+  // agimats.onlyIn).
   const body = rollGear(D.stats, gear('armor-copper-body'), 'grey', uid(), lcg(2));
   const head = rollGear(D.stats, gear('armor-copper-head'), 'grey', uid(), lcg(2));
   const amp = ag('agimat-amp');
-  assert.equal(embedRefusal(D, body, critDmg, 0), 'It fits head and hands gear only.');
-  assert.equal(embedRefusal(D, body, critRate, 0), 'It fits head and hands gear only.');
-  assert.equal(embedRefusal(D, head, amp, 0), 'It fits feet and body gear only.');
+  assert.equal(embedRefusal(D, body, critDmg, 0), 'It fits weapon, head and hands gear only.');
+  assert.equal(embedRefusal(D, body, critRate, 0), 'It fits weapon, head and hands gear only.');
+  assert.equal(embedRefusal(D, head, amp, 0), 'It fits weapon, body and feet gear only.');
+  assert.equal(embedRefusal(D, sling(), amp, 0), null);
+  assert.equal(embedRefusal(D, sling(), critDmg, 0), null);
   assert.equal(embedRefusal(D, body, amp, 0), null);
   assert.equal(embedRefusal(D, rollGear(D.stats, gear('armor-copper-hands'), 'grey', uid(), lcg(2)), critRate, 0), null);
   // Disassembly never rolls an agimat for a slot it can't go in.

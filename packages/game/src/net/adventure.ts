@@ -283,10 +283,16 @@ export function setQuestCounts(active: QuestProgress[]): void {
 }
 
 /** Dev: a kill that counts toward quests (the dev town's `quest-kill`; it keeps no quests), counted here the bot's way. */
-export function devQuestKill(kill: { kind: string; mini: boolean }): void {
+export function devQuestKill(kill: { kind: string; mini: boolean; level?: number }): void {
   if (!state || !data || !fakeLogin()) return;
   const s = structuredClone(state);
-  if (questKill(s, data.quests, kill)) set(s, {}, true);
+  const quests = data.quests;
+  const waiting = s.quests.active.filter((p) => quests.find((q) => q.id === p.id)?.objectives[p.step]?.type === 'miniBoss' && !readyToReport(questDef(p.id), p)).map((p) => p.id);
+  if (!questKill(s, quests, kill)) return;
+  set(s, {}, true);
+  // A mini boss kill that completed a quest: its piece (the dev town gives it; the bot drops it as your loot).
+  if (kill.mini && waiting.some((id) => readyToReport(questDef(id), s.quests.active.find((p) => p.id === id))))
+    void fetch(`/__questdrop?${new URLSearchParams({ as: fakeName(), kind: kill.kind, level: String(kill.level ?? 1) })}`).catch(() => null);
 }
 
 /** Reports a quest whose count is reached, over the Tanod's radio: its rewards come back, and the next one starts. */

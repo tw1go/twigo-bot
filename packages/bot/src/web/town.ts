@@ -8,12 +8,12 @@ import type { LevelGain } from './progress.js';
 import type { Attacker, MobRoom } from './town-mobs.js';
 import { PARTY_MAX, type PartyChange, Parties } from './town-party.js';
 import { type VitalMax, Vitals, shown } from './town-vitals.js';
-import { loadItemData, loadStats } from './stats-data.js';
+import { loadItemData, loadLeveling, loadStats } from './stats-data.js';
 import { type CombatItems, type LootContent, potionOf } from './combat-bag.js';
 import { type Loot, LootRoom } from './town-loot.js';
 import { type HeldOffer, type Trade, Trades, checkOffer } from './trade.js';
 import type { CharacterProgress, QuestProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item, TradeEnd, TradeView } from '@mikazuki/shared';
-import { itemStats, skillMpCost, tradeRules } from '@mikazuki/shared';
+import { itemStats, questDropFor, skillMpCost, tradeRules } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
 // messages). The server keeps everyone's tile and checks each step — on the map, not blocked, next to the last
@@ -115,7 +115,7 @@ export interface TownOptions {
   /** Quests (web/adventure.ts questKillFor): a kill that counts toward a member's (theirs, or their party's nearby), saved;
    *  their active quests if anything moved. Without it (the dev town) the page's pretend store is told the kill
    *  (`quest-kill`) and counts it itself. */
-  quests?: { kill(userId: string, kill: { kind: string; mini: boolean }): QuestProgress[] | null };
+  quests?: { kill(userId: string, kill: { kind: string; mini: boolean }): { active: QuestProgress[]; questDrop?: boolean; cls?: string | null } | null };
   /** Characters' levels (web/adventure.ts in the bot; in memory on the game's dev server, web/progress.ts either way):
    *  who someone is in a fight, and a kill's XP for them (saved; the level-ups it brought). Without it everyone fights as
    *  their class at Lv 1 and gains nothing. */
@@ -199,7 +199,7 @@ export interface Town {
    *  the chat's badge). */
   kit(userId: string, cls: string | null, weapon: string | null, weaponPlus?: number): void;
   /** A member's worn items, combat bag or Kusing changed outside the town (the shop, dev's ?give=): theirs to them. */
-  items(userId: string): void;
+  items(userId: string, got?: { kusing?: number; item?: Item }): void;
   /** A member's level, XP or points changed outside a fight (points refunded, dev's ?xp=): theirs to them, and with
    *  `ups` levels gained "Level up!" over them for their room. */
   progress(userId: string, progress: CharacterProgress, ups?: number, gained?: number): void;
@@ -415,6 +415,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
 
   // Loot on the ground, by battle room (only with somewhere to keep what's picked up).
   const items = loadItemData();
+  const leveling = opts.mobs ? loadLeveling() : null;
   const loots = new Map<string, LootRoom>(opts.items ? Object.keys(opts.mobs ?? {}).map((room) => [room, new LootRoom(items, opts.lootRandom, undefined, opts.lootPlusRandom)]) : []);
   /** HP and MP Potions' shared cooldown (ms), and when each member's is over. */
   const POTION_MS = itemStats(items.stats).potions.sharedCooldownSec * 1000;
@@ -443,17 +444,23 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   /** Members and their party members nearby (in the same room), once each. */
   const withParty = (members: string[], room: string): string[] =>
     [...new Set(members.flatMap((u) => [u, ...(parties.of(u)?.members ?? []).filter((m) => conns.get(m)?.room === room)]))];
-  /** A kill counted toward each member's quests (saved by the bot; told to them). */
-  const questKill = (members: string[], kill: { kind: string; mini: boolean }) => {
+  /** A kill counted toward each member's quests (saved by the bot; told to them). A mini boss kill that completes one's
+   *  miniBoss quest drops its piece for them, theirs alone (classes/leveling.json miniBoss.questDrop). */
+  const questKill = (members: string[], kill: { kind: string; mini: boolean; level: number; at: [number, number] }, room: string) => {
     for (const user of members) {
       const o = conns.get(user);
       if (!o) continue;
       if (!opts.quests) {
-        send(o, { t: 'quest-kill', ...kill });
+        send(o, { t: 'quest-kill', kind: kill.kind, mini: kill.mini, level: kill.level });
         continue;
       }
-      const active = opts.quests.kill(user, kill);
-      if (active) send(o, { t: 'quests', active });
+      const r = opts.quests.kill(user, { kind: kill.kind, mini: kill.mini });
+      if (!r) continue;
+      send(o, { t: 'quests', active: r.active });
+      const L = loots.get(room);
+      const mobs = opts.mobs?.[room];
+      const piece = r.questDrop && leveling ? questDropFor(items, leveling, kill.kind, kill.level, r.cls ?? o.player.cls, randomBytes(8).toString('hex')) : null;
+      if (piece && L && mobs) showLoot(room, L.give(user, [{ item: piece }], kill.at, (at, n) => mobs.lootSpots(at, n), Date.now()), kill.at);
     }
   };
   /** A kill's drops, round where it died: the killer's (and their party's, those in the room), or the golem's or a mini
@@ -648,7 +655,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
           }
           dropFor(c.room, { ...k, to: credited }); // and its loot
           // It counts toward quests for them and their party nearby (the killer's, a normal mob's).
-          questKill(withParty(credited, c.room), { kind: k.kind, mini: !!k.mini });
+          questKill(withParty(credited, c.room), { kind: k.kind, mini: !!k.mini, level: k.level, at: k.at }, c.room);
         }
         return;
       }
@@ -1012,9 +1019,9 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       tellParty(userId);
       refreshVitals(c); // their gear's HP, MP and DEF
     },
-    items(userId) {
+    items(userId, got) {
       const c = conns.get(userId);
-      if (c) tellItems(c);
+      if (c) tellItems(c, got);
     },
     progress(userId, progress, ups = 0, gained = 0) {
       const c = conns.get(userId);

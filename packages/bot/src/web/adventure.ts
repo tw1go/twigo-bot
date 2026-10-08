@@ -173,12 +173,16 @@ function completedWith(s: AdventureState, r: Result): Result & { ups?: number } 
 }
 
 /** A kill that counts toward a member's quests (theirs, or their party's nearby): the counts saved; their active quests
- *  if anything moved (the town tells them), else null. */
-export function questKillFor(userId: string, kill: { kind: string; mini: boolean }): AdventureState['quests']['active'] | null {
+ *  if anything moved (the town tells them), else null. `questDrop`: a mini boss kill that completed their miniBoss quest
+ *  (its piece drops for them: classes/leveling.json miniBoss.questDrop); `cls`: their class, for the piece's gear type. */
+export function questKillFor(userId: string, kill: { kind: string; mini: boolean }): { active: AdventureState['quests']['active']; questDrop: boolean; cls: string | null } | null {
   const s = load(userId);
+  const waiting = (p: { id: string; step: number; count?: number }) => QUESTS.find((q) => q.id === p.id)?.objectives[p.step]?.type === 'miniBoss' && !readyToReport(QUESTS.find((q) => q.id === p.id), p);
+  const before = s.quests.active.filter(waiting).map((p) => p.id);
   if (!questKill(s, QUESTS, kill)) return null;
   save(userId, s);
-  return s.quests.active;
+  const questDrop = kill.mini && before.some((id) => readyToReport(QUESTS.find((q) => q.id === id), s.quests.active.find((p) => p.id === id)));
+  return { active: s.quests.active, questDrop, cls: s.cls };
 }
 
 /** Wear an item from the combat bag (by uid; in the place asked for, else the first free one for its kind, else the

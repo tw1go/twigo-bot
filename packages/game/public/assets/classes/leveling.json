@@ -9,7 +9,21 @@
   "perZone": "all names alive at once, one each",
   "nameColour": "#F59E0B",
   "kill_credit": "everyone who did >= 10% of its HP, plus their party nearby",
-  "loot": "Kusing x10 of its mob, 1 gear piece of its level (white/grey only), whetstone fragment 1 in 3"
+  "loot": "Kusing x10 of its mob, 1 gear piece of its level (white/grey only), whetstone fragment 1 in 3",
+  "questDrop": {
+   "note": "Repo addition (Mac, 9 Oct 2026): the mini boss kill that completes its mob's miniBoss quest also drops, for each credited player whose quest it completes, a piece of their class's gear type (a weapon: their class's own) at the gear level nearest the mini boss's, in this rarity (2 agimat slots, no affix lines), at this plus, bound, with this agimat in its first slot at the piece's level. The Tire Roller's lifesteal became attack rate (no lifesteal agimat); the Bag Spook's the class's weapon with crit damage (Mac).",
+   "rarity": "grey",
+   "plus": 5,
+   "bound": true,
+   "kinds": {
+    "tin-can": { "slot": "body", "agimat": "hp" },
+    "bottle-caps": { "slot": "hands", "agimat": "critRate" },
+    "tire-roller": { "slot": "bottoms", "agimat": "atkRate" },
+    "plastic-bag-spook": { "slot": "weapon", "agimat": "critDmg" },
+    "wire-tangle": { "slot": "head", "agimat": "critDmg" },
+    "scrap-crab": { "slot": "feet", "agimat": "amp" }
+   }
+  }
  },
  "miniBosses": {
   "tin-can": [
