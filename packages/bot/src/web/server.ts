@@ -38,7 +38,8 @@ import { arenaBets, refundHeldBets } from './town-arena-bets.js';
 import { kowen } from '../kowens.js';
 import { filterText, kickedUntil, mutedUntil } from './town-mod.js';
 import { getOutfit, parseOutfit, saveOutfit } from './outfit.js';
-import { adventureOf, combatOf, fighterOf, killFor, kitOf, moveLevel, takeLootFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townEquip, townPoints, townQuest, townSkills, trainingArmorFor } from './adventure.js';
+import { parseForgeAction } from './forge.js';
+import { adventureOf, combatOf, fighterOf, forgeFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townEquip, townPoints, townQuest, townSkills, trainingArmorFor } from './adventure.js';
 import { renameWithCard } from '../items/rename-card.js';
 import { changeClassWithTicket } from '../items/class-ticket.js';
 import { LAUNCH_REWARD, isPreregistered, launched, preregCount, preregister } from '../prereg/prereg.js';
@@ -84,6 +85,8 @@ import { type CmsDeps, cms } from './cms.js';
 //   POST /town/flex     { id } flex a dug-up item in the games channel, /flex's cooldown (from the game's page only; members)
 //   POST /town/quest    { quest, action: talk, npc } | { quest, action: chooseClass, cls }: a quest objective done (web/adventure.ts)
 //   POST /town/equip    { action: equip, item } | { action: unequip, place }: wear or take off equipment, if its requirements are met (from the game's page only; members)
+//   POST /town/forge    { action: enhance|repair, item, tool? } | { action: embed, item, agimat, slot, replace? } | { action: disassemble|combine, item }:
+//                       the forge popup (web/forge.ts rolls it; from the game's page only; members)
 //   POST /town/points   { action: spend, stat } | { action: reset }: a stat point into the class's main or second stat, or all of them back (from the game's page only; members)
 //   POST /town/skills   { action: raise, skill } | { action: reset }: a skill point into an unlocked skill below its cap, or all of them back (from the game's page only; members)
 //   POST /town/rename   { nickname } a new town nickname, using a Rename Card (from the game's page only; members)
@@ -568,7 +571,7 @@ export function startWebServer(client: Client): void {
         const before = kitOf(userId).cls;
         const result = changeClassWithTicket(userId, body?.cls);
         if (result.ok) {
-          town?.kit(userId, result.adventure.cls, result.adventure.equipped.weapon?.defId ?? null); // their badge and weapon, for everyone
+          town?.kit(userId, result.adventure.cls, result.adventure.equipped.weapon?.defId ?? null, weaponPlusOf(result.adventure.equipped.weapon)); // their badge and weapon, for everyone
           console.log(`[class] ${userId}: ${before} → ${result.adventure.cls} (${result.tickets} ticket(s) left)`);
         }
         return send(res, 200, JSON.stringify(result));
@@ -608,8 +611,33 @@ export function startWebServer(client: Client): void {
           result = townEquip(userId, action);
         }
         const { changed, ...reply } = result;
-        if (changed) town?.kit(userId, reply.adventure.cls, reply.adventure.equipped.weapon?.defId ?? null); // the resting weapon for everyone, their gear's stats in fights
+        if (changed) town?.kit(userId, reply.adventure.cls, reply.adventure.equipped.weapon?.defId ?? null, weaponPlusOf(reply.adventure.equipped.weapon)); // the resting weapon for everyone, their gear's stats in fights
         if (reply.completed) console.log(`[quests] ${userId} completed ${reply.completed}${reply.adventure.cls ? ` (${reply.adventure.cls})` : ''}`);
+        return send(res, 200, JSON.stringify(reply));
+      }
+      if (req.method === 'POST' && path === '/town/forge') {
+        if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
+        if (!fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
+        const userId = sessionUser(req);
+        if (!userId) return send(res, 401, '{"error":"not logged in"}');
+        let body: unknown = null;
+        try {
+          body = JSON.parse((await readBody(req)) || 'null');
+        } catch {
+          // invalid JSON → rejected below
+        }
+        if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
+        const action = parseForgeAction(body);
+        if (!action) return send(res, 400, '{"error":"invalid forge action"}');
+        const { worn, ...reply } = forgeFor(userId, action);
+        if (reply.ok) {
+          town?.items(userId);
+          if (worn) {
+            const k = kitOf(userId);
+            town?.kit(userId, k.cls, k.weapon, k.weaponPlus); // the weapon's aura for everyone, their gear's stats in fights
+          }
+          if (reply.outcome !== 'fail') console.log(`[forge] ${userId}: ${action.action} ${reply.outcome}: ${reply.message}`);
+        }
         return send(res, 200, JSON.stringify(reply));
       }
       if ((req.method === 'GET' && path === '/town/inventory') || (req.method === 'POST' && (path === '/town/sell' || path === '/town/flex'))) {

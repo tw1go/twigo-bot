@@ -77,6 +77,8 @@ export interface TownPlayer {
   /** Their class (the chat's badge) and the weapon they wear (its resting weapon in town), if any. */
   cls?: string | null;
   weapon?: string | null;
+  /** Their worn weapon's + for its aura (0 when broken; none below +15 shows anything). */
+  weaponPlus?: number;
   /** Their character level (stats rules), if they have one saved. */
   level?: number;
   /** Their HP now and at most (bot web/town-vitals.ts; a bar over a hurt player's head), and knocked out (faded out until
@@ -303,7 +305,7 @@ export type TownServerMessage =
   /** Someone changed their nickname with a Rename Card (you too: `id` is yours). */
   | { t: 'rename'; id: string; nickname: string }
   /** Someone chose a class or changed their weapon (you too: `id` is yours). */
-  | { t: 'kit'; id: string; cls: string | null; weapon: string | null }
+  | { t: 'kit'; id: string; cls: string | null; weapon: string | null; weaponPlus?: number }
   /** Someone was jailed or released (you too: `id` is yours). */
   | { t: 'jailed'; id: string; on: boolean }
   /** Someone flexed an item from their bag (`id` says it; to everyone, them included). */

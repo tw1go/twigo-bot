@@ -69,6 +69,9 @@ export interface CombatItemDef {
   cosmetic?: boolean;
   /** Sold at the sari-sari store: priced as a potion (its tier's Kusing), a whetstone or a Repair Kit (Kowens). */
   shop?: 'potion' | 'whetstone' | 'repairKit';
+  /** What it does at the forge popup for its tier's gear: enhances (whetstone), combines ten into a whetstone
+   *  (fragment), repairs (repairKit). */
+  forge?: 'whetstone' | 'fragment' | 'repairKit';
   icon?: string;
   showcase?: string;
   large?: string;
@@ -97,7 +100,14 @@ export interface ItemStats {
     names: Record<string, unknown>;
   };
   gearBase: { weaponATK: string; armorDEFPerPiece: Record<string, number | string> };
-  enhancement: { perLevel: { from: number; to: number; pct: number }[]; accessories: { perLevel: number } };
+  enhancement: {
+    max: number;
+    perLevel: { from: number; to: number; pct: number }[];
+    accessories: { perLevel: number };
+    cost: { successPct: (number | null)[]; whetstonesPerTry: (number | null)[]; luckPerFail: Record<string, number>; breaks: string };
+    weaponAura: { tiers: { from: number; to: number; aura: string; colours?: string[]; cycle?: string[]; glints?: number }[]; smoke: { count: Record<string, string> } };
+  };
+  disassembly: { fragments: { formula: string; craft: string }; agimat: { rareWeight: Record<string, string> } };
   rarity: {
     nameColour: Record<string, { affix: string | null; slots: number; colour?: string }>;
     slotsOn: string[];
@@ -459,7 +469,7 @@ export function unequipToBag(data: ItemData, s: Wearer, place: EquipPlace): { ok
 
 /** Takes off anything broken that's worn (an enhance that broke it), into the bag (worn on if there's no room: it gives
  *  nothing anyway). */
-export function unequipBroken(data: ItemData, s: Wearer): void {
+export function unequipBroken(data: ItemData, s: Pick<Wearer, 'equipped' | 'bag'>): void {
   for (const [place, item] of Object.entries(s.equipped) as [EquipPlace, Item][]) {
     if (item?.broken && s.bag.length < bagSlots(data.stats)) {
       delete s.equipped[place];

@@ -87,9 +87,10 @@ export interface TownProfile {
   title: TitleData;
   outfit: OutfitData;
   jailed?: boolean;
-  /** Their class and worn weapon (web/adventure.ts), if any, and level. */
+  /** Their class and worn weapon (web/adventure.ts), if any (its + for the aura), and level. */
   cls?: string | null;
   weapon?: string | null;
+  weaponPlus?: number;
   level?: number;
 }
 
@@ -179,8 +180,9 @@ export interface Town {
   restyle(userId: string, outfit: OutfitData, title: TitleData): void;
   /** A member changed their nickname (a Rename Card): everyone in town sees the new name (them included). */
   renamed(userId: string, nickname: string): void;
-  /** A member chose a class or changed their weapon: everyone in town sees it (the resting weapon, the chat's badge). */
-  kit(userId: string, cls: string | null, weapon: string | null): void;
+  /** A member chose a class or changed their weapon (or its +: the aura): everyone in town sees it (the resting weapon,
+   *  the chat's badge). */
+  kit(userId: string, cls: string | null, weapon: string | null, weaponPlus?: number): void;
   /** A member's worn items, combat bag or Kusing changed outside the town (the shop, dev's ?give=): theirs to them. */
   items(userId: string): void;
   /** A member's level, XP or points changed outside a fight (points refunded, dev's ?xp=): theirs to them, and with
@@ -849,11 +851,11 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       known.set(userId, { ...known.get(userId)!, nickname });
       tellParty(userId);
     },
-    kit(userId, cls, weapon) {
+    kit(userId, cls, weapon, weaponPlus = 0) {
       const c = conns.get(userId);
       if (!c) return;
-      Object.assign(c.player, { cls, weapon });
-      everyone({ t: 'kit', id: c.player.id, cls, weapon });
+      Object.assign(c.player, { cls, weapon, weaponPlus });
+      everyone({ t: 'kit', id: c.player.id, cls, weapon, weaponPlus });
       known.set(userId, { ...known.get(userId)!, cls });
       tellParty(userId);
       refreshVitals(c); // their gear's HP, MP and DEF

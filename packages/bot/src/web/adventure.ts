@@ -10,6 +10,8 @@ import type {
   StatName,
   TownAdventureResponse,
   TownEquipAction,
+  TownForgeAction,
+  TownForgeResponse,
   TownPointsAction,
   TownQuestAction,
   TownSkillsAction,
@@ -34,6 +36,7 @@ import { db } from '../db/db.js';
 import { type LevelGain, type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView, raiseSkill, refundPoints, resetSkillPoints, resetStatPoints, spendPoint } from './progress.js';
 import type { Attacker } from './town-mobs.js';
 import { type CombatItems, type LootContent, buyCombat, takeLoot, usePotion } from './combat-bag.js';
+import { forge } from './forge.js';
 import { loadGear, loadItemData, loadStats } from './stats-data.js';
 
 // ⚔️ A member's class, quests, equipment and level in the web game (table adventurers, schema v10; level, XP and points
@@ -313,10 +316,25 @@ export const usePotionFor = (userId: string, defId: string) => withItems(userId,
 export const buyCombatFor = (userId: string, defId: string, quantity: number, kowens: { have: number; spend(n: number): boolean }) =>
   withItems(userId, (s) => buyCombat(loadItemData(), s, s.progress.level, defId, quantity, kowens, newUid), (r) => r.ok);
 
-/** Their class, worn weapon (its kind) and level, for the town (the chat's badge, the resting weapon). */
-export function kitOf(userId: string): { cls: string | null; weapon: string | null; level: number } {
+/** Their class, worn weapon (its kind and its + for the aura: 0 when broken) and level, for the town (the chat's badge,
+ *  the resting weapon). */
+export function kitOf(userId: string): { cls: string | null; weapon: string | null; weaponPlus: number; level: number } {
   const s = load(userId);
-  return { cls: s.cls, weapon: s.equipped.weapon?.defId ?? null, level: s.progress.level };
+  return { cls: s.cls, weapon: s.equipped.weapon?.defId ?? null, weaponPlus: weaponPlusOf(s.equipped.weapon), level: s.progress.level };
+}
+
+/** A worn weapon's + as its aura shows it (none when broken). */
+export const weaponPlusOf = (weapon: Item | undefined): number => (weapon && !weapon.broken ? weapon.plus : 0);
+
+/** A forge action (POST /town/forge: enhance, repair, embed an agimat, take gear apart, combine fragments), rolled and
+ *  saved (web/forge.ts). `worn`: what they wear changed (the town shows the weapon's aura; fights use the rest). */
+export function forgeFor(userId: string, a: TownForgeAction): TownForgeResponse & { worn: boolean } {
+  const s = load(userId);
+  const before = JSON.stringify(s.equipped);
+  const r = forge(loadItemData(), s, a, Math.random, newUid);
+  // (A refused one changes nothing; an enhance that failed still used its stones.)
+  if (r.ok) save(userId, s);
+  return { ...r, items: { equipped: s.equipped, bag: s.bag, kusing: s.kusing }, worn: r.ok && before !== JSON.stringify(s.equipped) };
 }
 
 /** Who they are in a fight (MobRoom.attack's Attacker): class, level, stat points spent, everything worn, and their damage
