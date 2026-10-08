@@ -11,15 +11,27 @@ _Avoid_: hub, lobby
 
 **Slums**:
 The battle area west of the town, reached through its gate; where mobs live.
-_Avoid_: battle map, dungeon
+_Avoid_: battle map, dungeon, junkyard (only flavour in its lines)
 
 **Arena**:
 The jack en poy building in the town, and only that.
 _Avoid_: using "arena" for a boss's ground (that's the Golem Pit)
 
 **Golem Pit**:
-The small patch of the Slums where the Scrapheap Golem rises, idles and stomps.
+The ring of heaped scrap in the Slums where the Scrapheap Golem rises and is fought.
 _Avoid_: arena, boss room
+
+**Pit floor**:
+The open ground inside the Golem Pit's ring; standing on it (or in its way in) puts a player in the golem's fight.
+_Avoid_: arena floor
+
+**Ring**:
+The Golem Pit's wall of scrap heaps; nobody walks on it.
+_Avoid_: wall, rim
+
+**Way in**:
+The one gap in the ring, at its bottom right, that leads onto the pit floor.
+_Avoid_: gap, entrance, door
 
 ## Mobs
 
@@ -42,7 +54,7 @@ _Avoid_: group, squad
 A mob that comes after a player who walks within its aggro range; a **passive** mob only fights back.
 
 **Leash**:
-How far a mob follows a player from home before it gives up and walks back.
+How far a mob follows a player from home before it gives up and walks back; for the field boss, the pit floor itself.
 
 **Field boss**:
 A single big mob that rises on a schedule rather than on a spawn point: the Scrapheap Golem.
