@@ -7,7 +7,7 @@ import { type Rarity, RARITY_COLOUR, RARITY_LABEL as LABEL, RARITY_TEXT, isRarit
 import { installPixelTiles } from './pixel-tiles';
 import { coinIcon, kusingIcon } from './reward';
 import type { EquipmentPanel } from './equipment';
-import { adventure, anyDef, itemData, onAdventure } from '../net/adventure';
+import { adventure, anyDef, cantWear, itemData, onAdventure } from '../net/adventure';
 import { itemPicture, itemTipFor, nameOf, rarityOf } from './item-tip';
 import { potionCooldownKey } from './hotbar';
 import { showRename } from './rename';
@@ -363,7 +363,9 @@ export class Inventory {
       const def = anyDef(it.defId);
       // Trading: what can't go in greyed, what's in already dimmed.
       const blocked = trading() ? tradeBlocked(it) : null;
-      const cell = el('button', `iv-cell iv-item${it.uid === this.pickedUid ? ' iv-picked' : ''}${it.broken ? ' iv-broken' : ''}${blocked ? ' iv-no-trade' : ''}${trading() && inTrade(it.uid) ? ' iv-in-trade' : ''}`);
+      // Gear you can't wear (another class's, or above what your stats meet): a red slot.
+      const unusable = isGearDef(def) && !!cantWear({ ...def, level: it.level });
+      const cell = el('button', `iv-cell iv-item${it.uid === this.pickedUid ? ' iv-picked' : ''}${it.broken ? ' iv-broken' : ''}${unusable ? ' iv-unusable' : ''}${blocked ? ' iv-no-trade' : ''}${trading() && inTrade(it.uid) ? ' iv-in-trade' : ''}`);
       if (blocked) cell.title = blocked;
       cell.style.setProperty('--rarity', RARITY_COLOUR[rarityOf(it)]);
       cell.setAttribute('aria-label', nameOf(it));

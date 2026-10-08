@@ -1,6 +1,6 @@
 import { type EquipSlot, type Item, type StatName, affixTier, agimatValue, baseStats, canEquip, enhancedBase, gearKind, isGearDef, itemAura, itemName, lineText, lineValue, pickupLine, requirements, statLabel } from '@mikazuki/shared';
 import { adventure, classInfo, itemData } from '../net/adventure';
-import { type Rarity, RARITY_LABEL, RARITY_TEXT, isRarity, itemArt, itemArtUrl, placeholderArt } from './item-art';
+import { type Rarity, RARITY_TEXT, isRarity, itemArt, itemArtUrl, placeholderArt } from './item-art';
 import { auraIcon } from '../fx/weaponAura';
 import { slotSilhouette } from './equipment';
 
@@ -86,7 +86,8 @@ export function itemTipFor(item: Item): HTMLElement[] {
     return parts;
   }
   const who = def.class ? (classInfo(def.class)?.name ?? def.class) : def.gear;
-  parts.push(el('div', 'eq-tip-meta', [RARITY_LABEL[rarity], who, SLOT[def.slot]].filter(Boolean).join(' · ')));
+  // (Its rarity shows in its name's colour; it isn't written out.)
+  parts.push(el('div', 'eq-tip-meta', [who, SLOT[def.slot]].filter(Boolean).join(' · ')));
   // Lv and what it needs, by your base stats (gear's never count).
   const s = adventure();
   const gearItem = { ...def, level: item.level };

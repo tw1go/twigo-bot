@@ -737,7 +737,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   potions say how they're used; multi-select (Ctrl/⌘/Shift-click, or the Select toggle for every click; Select all on the tab):
   the count, what the sellable ones bring and Sell selected (`POST /town/sell { items: [{ id, quantity }] }`,
   `sellManyInTown`); tabs All / Dug up / Combat (the combat bag: Items, above) / Misc; item slots bordered in their
-  rarity's colour; B toggles it; Kowens and Kusing at the bottom; Combat tab: click a whetstone / Repair Kit / agimat for the forge popup, right-click gear (Disassemble) or fragments (Combine): Forge, above. Bot `GET /town/inventory`, `POST /town/sell`, `POST /town/flex`
+  rarity's colour (gear you can't wear, another class's or above your stats: a red slot, `iv-unusable` via `cantWear`); B toggles it; Kowens and Kusing at the bottom; Combat tab: click a whetstone / Repair Kit / agimat for the forge popup, right-click gear (Disassemble) or fragments (Combine): Forge, above. Bot `GET /town/inventory`, `POST /town/sell`, `POST /town/flex`
   (`web/town-bag.ts`; flex shares `flexEmbed` and the cooldown with `/flex`). Dev: a pretend bag (`&slots=18`).
 - Casino: left click the casino → `TownScene.enterCasino` locks the town (body.town-locked: no input; bag, player
   menu, banners hide; profile + Settings, chat and system feed stay on top), pans/zooms the camera into the door

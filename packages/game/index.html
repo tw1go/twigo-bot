@@ -1734,6 +1734,7 @@
       .pt-invite.tr-ask .pt-yes { background: #A3E635; box-shadow: inset 0 -2px 0 #65A30D; }
       .pt-invite.tr-ask .pt-invite-bar { background: #A3E635; }
       /* The bag while trading: bound items greyed, what's in the trade dimmed. */
+      #inventory .iv-unusable::before { content: ''; position: absolute; inset: 0; background: rgba(220, 38, 38, 0.45); pointer-events: none; } /* gear you can't wear: a red slot under its picture */
       #inventory .iv-no-trade > :first-child { filter: grayscale(1) brightness(0.55); }
       #inventory .iv-no-trade { outline-color: #3D4256; }
       #inventory .iv-in-trade { opacity: 0.45; outline-style: dashed; }
