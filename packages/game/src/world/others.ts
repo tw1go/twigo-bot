@@ -21,6 +21,8 @@ interface Other {
 
 /** The Arena's messages are the arena's business (ui/arena-net.ts), not the town's players'. */
 const isArena = (m: TownServerMessage): m is ArenaServerMessage => m.t.startsWith('arena-');
+/** Trading's messages (ui/trade.ts has them). */
+const isTrade = (m: TownServerMessage): m is Extract<TownServerMessage, { t: `trade${string}` }> => m.t === 'trade' || m.t.startsWith('trade-');
 
 export class OtherPlayers {
   private readonly all = new Map<string, Other>();
@@ -59,7 +61,7 @@ export class OtherPlayers {
       case 'leave':
         return this.remove(m.id);
     }
-    if (m.t === 'snap' || m.t === 'say-refused' || m.t === 'say-discord' || m.t === 'emote' || m.t === 'system' || m.t === 'seat-taken' || m.t === 'announce' || m.t === 'gift' || m.t === 'gift-item' || m.t === 'new-title' || m.t === 'house' || m.t === 'race' || m.t === 'wallet' || m.t === 'stay' || m.t === 'mobs' || m.t === 'mob-move' || m.t === 'mob-hit' || m.t === 'mob-attack' || m.t === 'mob-spawn' || m.t === 'mob-add' || m.t === 'mob-remove' || m.t === 'mob-face' || m.t === 'golem' || m.t === 'golem-attack' || m.t === 'attack-refused' || m.t === 'progress' || m.t === 'level-up' || m.t === 'party' || m.t === 'party-invited' || m.t === 'party-refused' || m.t === 'party-declined' || m.t === 'party-say' || m.t === 'loot' || m.t === 'loot-drop' || m.t === 'loot-gone' || m.t === 'loot-full' || m.t === 'items' || m.t === 'potion-refused' || isArena(m)) return;
+    if (m.t === 'snap' || m.t === 'say-refused' || m.t === 'say-discord' || m.t === 'emote' || m.t === 'system' || m.t === 'seat-taken' || m.t === 'announce' || m.t === 'gift' || m.t === 'gift-item' || m.t === 'new-title' || m.t === 'house' || m.t === 'race' || m.t === 'wallet' || m.t === 'stay' || m.t === 'mobs' || m.t === 'mob-move' || m.t === 'mob-hit' || m.t === 'mob-attack' || m.t === 'mob-spawn' || m.t === 'mob-add' || m.t === 'mob-remove' || m.t === 'mob-face' || m.t === 'golem' || m.t === 'golem-attack' || m.t === 'attack-refused' || m.t === 'progress' || m.t === 'level-up' || m.t === 'party' || m.t === 'party-invited' || m.t === 'party-refused' || m.t === 'party-declined' || m.t === 'party-say' || m.t === 'loot' || m.t === 'loot-drop' || m.t === 'loot-gone' || m.t === 'loot-full' || m.t === 'items' || m.t === 'potion-refused' || isTrade(m) || isArena(m)) return;
     const o = this.all.get(m.id);
     if (!o) return;
     const s = o.state;

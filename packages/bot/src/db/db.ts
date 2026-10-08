@@ -17,6 +17,7 @@ import { today } from '../time.js';
 //  • v9, the neighbourhood: houses.
 //  • v10, the web game's classes, quests and equipment: adventurers. v11: their level, XP and points.
 //  • v12, the web game's items as instances: items (worn, or in the combat bag), and adventurers.kusing.
+//  • v13, the web game's finished trades (a log: who gave whom what): trades.
 //  • kv: small singleton documents keyed by their old file name (e.g. 'race.json', 'rotation.json').
 // Stores cache their state in memory (the bot is the only writer) and save through db/sync.ts, which writes only
 // the rows that changed.
@@ -279,6 +280,21 @@ export const MIGRATIONS: string[] = [
     SELECT lower(hex(randomblob(8))), a.user_id, e.value, 1, 'brown', 1, e.key, a.updated FROM adventurers a, json_each(a.equipped) e WHERE e.value IS NOT NULL;
   INSERT INTO items (uid, owner, def_id, level, rarity, bound, slot, created)
     SELECT lower(hex(randomblob(8))), a.user_id, e.value, 1, 'brown', 1, e.key, a.updated FROM adventurers a, json_each(a.bag) e WHERE e.value IS NOT NULL;
+  `,
+  /* v13: every finished trade in the web town (web/trade.ts, saved by web/adventure.ts tradeFor), so mistakes and scams
+     can be checked: both members, what each gave (every item as it was, with its uid and how many) and Kusing. */ `
+  CREATE TABLE trades (
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    at        INTEGER NOT NULL,   -- ms
+    a         TEXT NOT NULL,      -- member id: who asked
+    b         TEXT NOT NULL,      -- member id: who accepted
+    a_items   TEXT NOT NULL,      -- JSON: what a gave, each item as it was (uid, defId, level, rarity, plus, lines… count)
+    b_items   TEXT NOT NULL,      -- JSON: what b gave
+    a_kusing  INTEGER NOT NULL,   -- Kusing a gave
+    b_kusing  INTEGER NOT NULL    -- Kusing b gave
+  );
+  CREATE INDEX trades_a ON trades (a);
+  CREATE INDEX trades_b ON trades (b);
   `,
 ];
 

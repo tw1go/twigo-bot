@@ -4,6 +4,7 @@
 
 import type { AdventureState, CharacterProgress } from './adventure.js';
 import type { Item } from './items.js';
+import type { TradeEnd, TradeRefusal, TradeView, TradePut } from './trade.js';
 import type { HoodHouse, HoodMap, OutfitData, TitleData } from './room-api.js';
 
 export type TownDir = 's' | 'se' | 'e' | 'ne' | 'n' | 'nw' | 'w' | 'sw';
@@ -134,7 +135,16 @@ export type TownClientMessage =
   | { t: 'party-answer'; invite: string; accept: boolean }
   | { t: 'party-leave' }
   | { t: 'party-disband' }
-  | { t: 'party-kick'; member: string };
+  | { t: 'party-kick'; member: string }
+  /** Trading (bot web/trade.ts; stats.json trading): ask a player within range (by town id), answer a request, put your
+   *  side in (the whole side each time: items from your combat bag and Kusing; any change unlocks both), lock or unlock
+   *  it, press Trade (both locked), or cancel (closing the window). */
+  | { t: 'trade-ask'; to: string }
+  | { t: 'trade-answer'; ask: string; accept: boolean }
+  | { t: 'trade-offer'; items: TradePut[]; kusing: number }
+  | { t: 'trade-lock'; on: boolean }
+  | { t: 'trade-confirm' }
+  | { t: 'trade-cancel' };
 
 /** A party member as everyone in the party sees them: `key` is theirs for the party's lifetime (never a Discord id),
  *  `id` their town player id while they're connected (null: away, kept for a minute), `area` the room they're in. */
@@ -390,6 +400,18 @@ export type TownServerMessage =
   | { t: 'party-say'; id: string; name: string; text: string }
   /** Someone used a mobility move (their steps follow). */
   | { t: 'move'; id: string; move: TownMove; col: number; row: number }
+  /** Someone (`from`, a town id) asks you to trade: answer with trade-answer within `ms`. */
+  | { t: 'trade-asked'; ask: string; from: string; name: string; ms: number }
+  /** That request is gone (no answer in time, or they left): its pop-up closes. */
+  | { t: 'trade-ask-gone'; ask: string }
+  /** Your request or trade action didn't go (`name`: who it was about). */
+  | { t: 'trade-refused'; reason: TradeRefusal; name?: string }
+  /** The trade window: opened, or something in it changed (`note`: what happened, e.g. a change unlocked both). */
+  | { t: 'trade'; trade: TradeView; note?: string }
+  /** What you tried to put in or do didn't go (a bound item, not enough Kusing…): the window stays. */
+  | { t: 'trade-bad'; message: string }
+  /** The trade is over (`name`: who cancelled; `message`: why the last check failed). Done: your items follow. */
+  | { t: 'trade-end'; reason: TradeEnd; name?: string; message?: string }
   /** Someone said something in the town's Discord channel (shown with a Discord mark, no bubble). */
   | { t: 'say-discord'; name: string; text: string }
   /** Your message wasn't sent: too fast, empty / too long once tidied, or you're muted (until when, ms). */

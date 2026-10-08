@@ -11,8 +11,9 @@ import { type VitalMax, Vitals, shown } from './town-vitals.js';
 import { loadItemData, loadStats } from './stats-data.js';
 import { type CombatItems, type LootContent, potionOf } from './combat-bag.js';
 import { KUSING_SETTLE_MS, type Loot, LootRoom } from './town-loot.js';
-import type { CharacterProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item } from '@mikazuki/shared';
-import { itemStats } from '@mikazuki/shared';
+import { type HeldOffer, type Trade, Trades, checkOffer } from './trade.js';
+import type { CharacterProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item, TradeEnd, TradeView } from '@mikazuki/shared';
+import { itemStats, tradeRules } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
 // messages). The server keeps everyone's tile and checks each step — on the map, not blocked, next to the last
@@ -34,6 +35,11 @@ import { itemStats } from '@mikazuki/shared';
 // through TownOptions.items (saved by the bot), and `items` tells them. HP and MP Potions (`potion`) heal at once, with
 // one shared cooldown per member (stats.json potions.sharedCooldownSec), only in battle maps and never when it'd do
 // nothing.
+// Trades (trade.ts, in memory): asked from the player menu, within stats.json trading's range by the positions kept
+// here, in the same room; the asked one has its timeout to accept. Each side's changes are checked against their combat
+// bag (TownOptions.items.state) and unlock both; with both locked and Trade pressed by both, TownOptions.items.trade
+// checks it all again and moves it in one go (or nothing). Walking (or being moved) out of range, leaving, another tab
+// taking over, a moderator's kick, or being knocked out cancels it.
 
 const DIRS = new Set<TownDir>(['s', 'se', 'e', 'ne', 'n', 'nw', 'w', 'sw']);
 const MOVES = new Set<TownMove>(['dash', 'step-back', 'charge', 'blink']);
@@ -120,6 +126,9 @@ export interface TownOptions {
     take(userId: string, loot: LootContent): boolean;
     usePotion(userId: string, defId: string): { heals: 'hp' | 'mp'; amount: number } | null;
     state(userId: string): CombatItems;
+    /** A trade both have confirmed (web/trade.ts settleTrade): checked again and moved in one go, logged; or nothing,
+     *  with why. Without it nobody can trade. */
+    trade?(users: [string, string], offers: [HeldOffer, HeldOffer], names: [string, string]): { ok: true } | { ok: false; message: string };
   };
   /** Rolls drops (Math.random if left out; the game's dev server can make loot rich to try it). */
   lootRandom?: () => number;
@@ -241,6 +250,8 @@ interface Conn {
   invitedAt?: number;
   /** The last "Inventory full" told (ms). */
   fullAt?: number;
+  /** The last trade request sent (ms). */
+  askedAt?: number;
 }
 
 export function attachTown(server: Server, opts: TownOptions): Town {
@@ -358,6 +369,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     c.player.out = true;
     c.player.sit = false;
     opts.mobs?.[c.room]?.forget(c.player.id, true);
+    endTrade(c.userId, 'out', { name: c.player.nickname }); // no trading while knocked out
     const m: TownServerMessage = { t: 'knocked-out', id: c.player.id };
     send(c, m);
     others(c, m);
@@ -470,6 +482,55 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     }
   };
 
+  // Trades (trade.ts): only with somewhere to keep items and a way to settle them.
+  const TR = tradeRules(items.stats);
+  const trades = opts.items?.trade ? new Trades(TR) : null;
+  /** Near enough to trade: in the same room, neither knocked out, within range (tiles, either way). */
+  const nearEnough = (a: Conn, b: Conn) =>
+    a.room === b.room && !a.player.out && !b.player.out && Math.max(Math.abs(a.player.col - b.player.col), Math.abs(a.player.row - b.player.row)) <= TR.range;
+  const nameOf = (user: string) => conns.get(user)?.player.nickname ?? known.get(user)?.nickname ?? 'Someone';
+  /** The trade window as one side sees it (`with`: the other's town id). */
+  const tradeView = (t: Trade, i: 0 | 1): TradeView => {
+    const side = (k: 0 | 1) => ({ name: nameOf(t.users[k]), items: t.offers[k].items, kusing: t.offers[k].kusing, locked: t.locked[k], confirmed: t.confirmed[k] });
+    const j = (1 - i) as 0 | 1;
+    return { id: t.id, with: conns.get(t.users[j])?.player.id ?? '', you: side(i), them: side(j), slots: TR.slots };
+  };
+  /** The trade window to both sides (`note`: a line for each, if any). */
+  const tellTrade = (t: Trade, note?: (user: string) => string | undefined) => {
+    t.users.forEach((u, i) => {
+      const o = conns.get(u);
+      const n = note?.(u);
+      if (o) send(o, { t: 'trade', trade: tradeView(t, i as 0 | 1), ...(n ? { note: n } : {}) });
+    });
+  };
+  /** Ends a member's trade, if they're in one, telling both sides how. */
+  const endTrade = (user: string, reason: TradeEnd, extra: { name?: string; message?: string } = {}) => {
+    const t = trades?.end(user);
+    if (!t) return;
+    for (const u of t.users) {
+      const o = conns.get(u);
+      if (o) send(o, { t: 'trade-end', reason, ...extra });
+    }
+  };
+  /** A member left (closed the page, another tab, a kick): their trade ends, their requests go (pop-ups close, askers
+   *  hear they're gone). */
+  const leftTrades = (user: string) => {
+    endTrade(user, 'left', { name: nameOf(user) });
+    for (const a of trades?.dropAsks(user) ?? []) {
+      const o = conns.get(a.from === user ? a.to : a.from);
+      if (!o) continue;
+      if (a.from === user) send(o, { t: 'trade-ask-gone', ask: a.id });
+      else send(o, { t: 'trade-refused', reason: 'gone', name: nameOf(user) });
+    }
+  };
+  /** After someone moved: their trade ends if they're now too far apart (or in different rooms). */
+  const tradeRange = (c: Conn) => {
+    const t = trades?.of(c.userId);
+    if (!t) return;
+    const other = conns.get(t.users[0] === c.userId ? t.users[1] : t.users[0]);
+    if (!other || !nearEnough(c, other)) endTrade(c.userId, 'far');
+  };
+
   /** Token bucket: true if this message may go through (slowed: half as many, half as fast). */
   const spend = (c: Conn) => {
     const now = Date.now();
@@ -499,6 +560,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         if (!fresh || !inside_(m.col, m.row) || !walkable_(m.col, m.row) || !DIRS.has(m.dir)) return send(c, { t: 'snap', col: p.col, row: p.row });
         Object.assign(p, { col: m.col, row: m.row, dir: m.dir });
         others(c, { t: 'join', player: p }); // seen at the spawn point so far: show them where they are
+        tradeRange(c);
         return pickUp(c);
       case 'step': {
         const dc = (m.col as number) - p.col;
@@ -507,6 +569,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         if (!ok) return send(c, { t: 'snap', col: p.col, row: p.row });
         Object.assign(p, { col: m.col, row: m.row, dir: dirForStep(dc, dr), sit: false });
         others(c, { t: 'step', id: p.id, col: p.col, row: p.row });
+        tradeRange(c); // walking away from someone you're trading with cancels it
         return pickUp(c); // walking onto loot picks it up
       }
       case 'face':
@@ -525,6 +588,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
           }
         }
         Object.assign(p, { col: m.col, row: m.row, dir: m.dir, sit: true });
+        tradeRange(c);
         return others(c, { t: 'sit', id: p.id, col: p.col, row: p.row, dir: p.dir });
       }
       case 'stand':
@@ -634,6 +698,82 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         if (!r) return;
         return r.ok ? partyChanged(r.change) : send(c, { t: 'party-refused', reason: r.reason });
       }
+      case 'trade-ask': {
+        // Ask someone near you to trade (the player menu): they have the timeout to answer.
+        if (!trades) return;
+        const now = Date.now();
+        if (now - (c.askedAt ?? 0) < INVITE_GAP_MS) return send(c, { t: 'trade-refused', reason: 'slow' });
+        c.askedAt = now;
+        const to = typeof m.to === 'string' ? town.memberOf(m.to) : null;
+        const them = to ? conns.get(to) : undefined;
+        if (!to || !them) return send(c, { t: 'trade-refused', reason: 'gone' });
+        const name = them.player.nickname;
+        if (p.out || them.player.out) return send(c, { t: 'trade-refused', reason: 'out', name });
+        if (!nearEnough(c, them)) return send(c, { t: 'trade-refused', reason: 'far', name });
+        const r = trades.ask(c.userId, to, now);
+        if (!r.ok) return send(c, { t: 'trade-refused', reason: r.reason, name });
+        return send(them, { t: 'trade-asked', ask: r.ask.id, from: p.id, name: p.nickname, ms: TR.timeoutMs });
+      }
+      case 'trade-answer': {
+        // Yes opens the window for both (if they're still near each other); no tells the asker.
+        if (!trades || typeof m.ask !== 'string') return;
+        const now = Date.now();
+        const a = trades.pending(c.userId, m.ask, now);
+        if (!a) return send(c, { t: 'trade-refused', reason: 'expired' });
+        const asker = conns.get(a.from);
+        const accept = m.accept === true;
+        if (accept && (!asker || !nearEnough(c, asker))) {
+          trades.answer(c.userId, a.id, false, now);
+          const reason = !asker ? 'gone' : p.out || asker.player.out ? 'out' : 'far';
+          send(c, { t: 'trade-refused', reason, name: nameOf(a.from) });
+          if (asker) send(asker, { t: 'trade-refused', reason, name: p.nickname });
+          return;
+        }
+        const r = trades.answer(c.userId, a.id, accept, now);
+        if (!r.ok) return send(c, { t: 'trade-refused', reason: r.reason, name: nameOf(a.from) });
+        if (!r.trade) return asker && send(asker, { t: 'trade-refused', reason: 'declined', name: p.nickname });
+        return tellTrade(r.trade);
+      }
+      case 'trade-offer': {
+        // Their whole side again, checked against their combat bag: any change unlocks both.
+        if (!trades || !opts.items) return;
+        const t = trades.of(c.userId);
+        if (!t) return;
+        const r = checkOffer(items, opts.items.state(c.userId), { items: m.items, kusing: m.kusing }, TR.slots);
+        if (!r.ok) return send(c, { t: 'trade-bad', message: r.message });
+        const wasLocked = t.locked[0] || t.locked[1];
+        trades.offer(c.userId, r.offer);
+        return tellTrade(t, (u) => (!wasLocked ? undefined : u === c.userId ? 'You changed your side: both unlocked.' : `${p.nickname} changed their side: both unlocked.`));
+      }
+      case 'trade-lock': {
+        const t = trades?.lock(c.userId, m.on === true);
+        if (t) tellTrade(t);
+        return;
+      }
+      case 'trade-confirm': {
+        // Trade pressed: once both have, everything is checked again and moved in one go (or nothing, and it ends).
+        if (!trades || !opts.items?.trade) return;
+        const r = trades.confirm(c.userId);
+        if (!r) return send(c, { t: 'trade-bad', message: 'Both sides lock first.' });
+        if (!r.both) return tellTrade(r.trade);
+        const t = r.trade;
+        let done: { ok: true } | { ok: false; message: string };
+        try {
+          done = opts.items.trade(t.users, t.offers, [nameOf(t.users[0]), nameOf(t.users[1])]);
+        } catch (e) {
+          console.error('[trade] failed to save:', e);
+          done = { ok: false, message: "Couldn't save the trade. Nothing moved." };
+        }
+        if (!done.ok) return endTrade(c.userId, 'failed', { message: done.message });
+        for (const u of t.users) {
+          const o = conns.get(u);
+          if (o) tellItems(o);
+        }
+        return endTrade(c.userId, 'done');
+      }
+      case 'trade-cancel':
+        // Closing the window (or Cancel): it ends for both.
+        return endTrade(c.userId, 'cancelled', { name: p.nickname });
       case 'arena-queue':
         if (p.jailed) return; // no games from jail
         c.seat ??= { key: c.userId, player: p, send: (msg) => send(c, msg) };
@@ -712,6 +852,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     if (old) {
       conns.delete(userId);
       arena.leave(userId);
+      leftTrades(userId);
       others(old, { t: 'leave', id: old.player.id });
       old.ws.close(4000, 'opened elsewhere');
     }
@@ -754,6 +895,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       if (conns.get(userId) !== c) return; // already replaced by a newer tab
       conns.delete(userId);
       arena.leave(userId); // mid-match, the other player wins
+      leftTrades(userId); // a trade ends, nothing moved
       others(c, { t: 'leave', id: player.id });
       opts.mobs?.[room]?.forget(player.id); // no mob goes after someone who left
       stepAway(userId);
@@ -795,6 +937,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       if (!c) return false;
       conns.delete(userId);
       arena.leave(userId);
+      leftTrades(userId);
       others(c, { t: 'leave', id: c.player.id });
       c.ws.close(KICKED, String(until));
       stepAway(userId);
@@ -957,6 +1100,18 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       if (from) send(from, { t: 'party-declined', name: known.get(i.to)?.nickname ?? 'They' });
     }
   }, 5000).unref();
+
+  // Trade requests nobody answered in time: the asker hears so, the asked one's pop-up closes.
+  if (trades) {
+    setInterval(() => {
+      for (const a of trades.prune(Date.now())) {
+        const from = conns.get(a.from);
+        const to = conns.get(a.to);
+        if (from) send(from, { t: 'trade-refused', reason: 'timeout', name: nameOf(a.to) });
+        if (to) send(to, { t: 'trade-ask-gone', ask: a.id });
+      }
+    }, 1000).unref();
+  }
 
   // Drop connections that stopped answering pings (closed laptops, lost Wi-Fi).
   setInterval(() => {

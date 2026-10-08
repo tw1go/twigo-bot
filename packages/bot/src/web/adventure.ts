@@ -37,6 +37,7 @@ import { type LevelGain, type SavedProgress, addXp, freshProgress, killXp, level
 import type { Attacker } from './town-mobs.js';
 import { type CombatItems, type LootContent, buyCombat, takeLoot, usePotion } from './combat-bag.js';
 import { forge } from './forge.js';
+import { type HeldOffer, settleTrade } from './trade.js';
 import { loadGear, loadItemData, loadStats } from './stats-data.js';
 
 // ⚔️ A member's class, quests, equipment and level in the web game (table adventurers, schema v10; level, XP and points
@@ -47,7 +48,8 @@ import { loadGear, loadItemData, loadStats } from './stats-data.js';
 // its gear type's armor, on the class choice, or once on a later visit for a class from before training armor).
 // Training gear is bound and can't be dropped, traded or sold. Every item is its own row in `items` (schema v12: worn
 // in a place, or in the combat bag in order; @mikazuki/shared items.ts), with the Kusing wallet on adventurers.
-// Worn items don't take a bag slot; the combat bag has stats.json inventory.slots.
+// Worn items don't take a bag slot; the combat bag has stats.json inventory.slots. Trades (web/trade.ts) move items and
+// Kusing between two members in one transaction and log each one in `trades` (schema v13).
 
 const asset = <T>(path: string): T => JSON.parse(readFileSync(new URL(`../../../game/public/assets/${path}`, import.meta.url), 'utf8')) as T;
 
@@ -315,6 +317,27 @@ export const usePotionFor = (userId: string, defId: string) => withItems(userId,
  *  whetstones and Repair Kits for Kowens (`kowens`: their wallet). */
 export const buyCombatFor = (userId: string, defId: string, quantity: number, kowens: { have: number; spend(n: number): boolean }) =>
   withItems(userId, (s) => buyCombat(loadItemData(), s, s.progress.level, defId, quantity, kowens, newUid), (r) => r.ok);
+
+const addTradeStmt = db.prepare('INSERT INTO trades (at, a, b, a_items, b_items, a_kusing, b_kusing) VALUES (?, ?, ?, ?, ?, ?, ?)');
+
+/** A finished trade (web/trade.ts: both sides locked and confirmed): both members' items and Kusing checked again and
+ *  moved, both saved and the trade logged (table trades, and a line in the bot's log), all in one transaction; or
+ *  nothing (`message` says why). `names`: their town nicknames, for that message. */
+export const tradeFor = db.transaction((users: [string, string], offers: [HeldOffer, HeldOffer], names: [string, string]): { ok: true } | { ok: false; message: string } => {
+  const sides = [load(users[0]), load(users[1])] as [AdventureState, AdventureState];
+  const r = settleTrade(loadItemData(), sides, offers, names, newUid);
+  if (!r.ok) return r;
+  // Both sets of rows go first: an item that changed hands keeps its uid.
+  dropItemsStmt.run(users[0]);
+  dropItemsStmt.run(users[1]);
+  save(users[0], sides[0]);
+  save(users[1], sides[1]);
+  const [a, b] = r.gave;
+  const info = addTradeStmt.run(Date.now(), users[0], users[1], JSON.stringify(a.items), JSON.stringify(b.items), a.kusing, b.kusing);
+  const list = (o: HeldOffer) => [...o.items.map((i) => `${i.defId}${i.count > 1 ? ` ×${i.count}` : ''} (${i.uid})`), ...(o.kusing ? [`${o.kusing} Kusing`] : [])].join(', ') || 'nothing';
+  console.log(`[trade] #${info.lastInsertRowid} ${users[0]} gave ${list(a)}; ${users[1]} gave ${list(b)}`);
+  return { ok: true };
+});
 
 /** Their class, worn weapon (its kind and its + for the aura: 0 when broken) and level, for the town (the chat's badge,
  *  the resting weapon). */
