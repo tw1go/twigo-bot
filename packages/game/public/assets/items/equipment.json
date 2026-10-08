@@ -1,5 +1,5 @@
 {
-  "note": "Equipment items. slot: weapon, head, body, hands, bottoms, feet, necklace, earrings, bracers or ring. A weapon's `class` (a class id) or an armor piece's `gear` (Heavy, Light or Household, combat-guide.md) and its `level` set what it needs (classes/stats.json requirements: base stats only); accessories need the level only. rarity: a stats.json rarity (brown, white, grey, lightBlue, darkBlue, lightOrange, darkOrange). bound: can't be traded. training: the Tanod's training gear (stats.json trainingGear): also never dropped, sold, enhanced or disassembled. agimats: the agimats set in it (none yet). stats: atk, def, hp, mp, str, dex, int, crit; `placeholder` lists the fields whose numbers are stand-ins (to fill in later). icon is 16x16 (rows, slots), showcase 32x32 (pop-ups, toasts), large 64x64; an item without them shows its slot's empty silhouette until its art is added.",
+  "note": "Equipment items. slot: weapon, head, body, hands, bottoms, feet, necklace, earrings, bracers or ring. A weapon's `class` (a class id) or an armor piece's `gear` (Heavy, Light or Household, combat-guide.md) and its `level` set what it needs (classes/stats.json requirements: base stats only); accessories need the level only. rarity: a stats.json rarity (brown, white, grey, lightBlue, darkBlue, lightOrange, darkOrange): the kind's own for training gear; a dropped item rolls its own (the kind's is a stand-in). bound: can't be traded. training: the Tanod's training gear (stats.json trainingGear): also never dropped, sold, enhanced or disassembled. agimats: the agimats set in it (none yet). stats: a training piece's own atk or def (everything else's base comes from classes/stats.json gearBase by its level; its rolls are the item's own), also hp, mp, str, dex, int, crit; `placeholder` lists the fields whose numbers are stand-ins (to fill in later). icon is 16x16 (rows, slots), showcase 32x32 (pop-ups, toasts), large 64x64; an item without them shows its slot's empty silhouette until its art is added.",
   "items": [
     {
       "id": "weapon-training-slingshot",
@@ -136,7 +136,10 @@
       },
       "placeholder": [
         "stats"
-      ]
+      ],
+      "icon": "items/armor/item-armor-training-hardhat-16.png",
+      "showcase": "items/armor/item-armor-training-hardhat.png",
+      "large": "items/armor/item-armor-training-hardhat-64.png"
     },
     {
       "id": "armor-training-heavy-body",
@@ -153,7 +156,10 @@
       },
       "placeholder": [
         "stats"
-      ]
+      ],
+      "icon": "items/armor/item-armor-training-armor-16.png",
+      "showcase": "items/armor/item-armor-training-armor.png",
+      "large": "items/armor/item-armor-training-armor-64.png"
     },
     {
       "id": "armor-training-heavy-hands",
@@ -170,7 +176,10 @@
       },
       "placeholder": [
         "stats"
-      ]
+      ],
+      "icon": "items/armor/item-armor-training-gauntlets-16.png",
+      "showcase": "items/armor/item-armor-training-gauntlets.png",
+      "large": "items/armor/item-armor-training-gauntlets-64.png"
     },
     {
       "id": "armor-training-heavy-bottoms",
@@ -187,7 +196,10 @@
       },
       "placeholder": [
         "stats"
-      ]
+      ],
+      "icon": "items/armor/item-armor-training-legguards-16.png",
+      "showcase": "items/armor/item-armor-training-legguards.png",
+      "large": "items/armor/item-armor-training-legguards-64.png"
     },
     {
       "id": "armor-training-heavy-feet",
@@ -204,7 +216,10 @@
       },
       "placeholder": [
         "stats"
-      ]
+      ],
+      "icon": "items/armor/item-armor-training-greaves-16.png",
+      "showcase": "items/armor/item-armor-training-greaves.png",
+      "large": "items/armor/item-armor-training-greaves-64.png"
     },
     {
       "id": "armor-training-light-head",
@@ -221,7 +236,10 @@
       },
       "placeholder": [
         "stats"
-      ]
+      ],
+      "icon": "items/armor/item-armor-training-headpiece-16.png",
+      "showcase": "items/armor/item-armor-training-headpiece.png",
+      "large": "items/armor/item-armor-training-headpiece-64.png"
     },
     {
       "id": "armor-training-light-body",
@@ -258,7 +276,10 @@
       },
       "placeholder": [
         "stats"
-      ]
+      ],
+      "icon": "items/armor/item-armor-training-gloves-16.png",
+      "showcase": "items/armor/item-armor-training-gloves.png",
+      "large": "items/armor/item-armor-training-gloves-64.png"
     },
     {
       "id": "armor-training-light-bottoms",
@@ -275,7 +296,10 @@
       },
       "placeholder": [
         "stats"
-      ]
+      ],
+      "icon": "items/armor/item-armor-training-pants-16.png",
+      "showcase": "items/armor/item-armor-training-pants.png",
+      "large": "items/armor/item-armor-training-pants-64.png"
     },
     {
       "id": "armor-training-light-feet",
@@ -312,7 +336,10 @@
       },
       "placeholder": [
         "stats"
-      ]
+      ],
+      "icon": "items/armor/item-armor-training-headwrap-16.png",
+      "showcase": "items/armor/item-armor-training-headwrap.png",
+      "large": "items/armor/item-armor-training-headwrap-64.png"
     },
     {
       "id": "armor-training-household-body",
@@ -329,7 +356,10 @@
       },
       "placeholder": [
         "stats"
-      ]
+      ],
+      "icon": "items/armor/item-armor-training-robe-16.png",
+      "showcase": "items/armor/item-armor-training-robe.png",
+      "large": "items/armor/item-armor-training-robe-64.png"
     },
     {
       "id": "armor-training-household-hands",
@@ -346,7 +376,10 @@
       },
       "placeholder": [
         "stats"
-      ]
+      ],
+      "icon": "items/armor/item-armor-training-wraps-16.png",
+      "showcase": "items/armor/item-armor-training-wraps.png",
+      "large": "items/armor/item-armor-training-wraps-64.png"
     },
     {
       "id": "armor-training-household-bottoms",
@@ -363,7 +396,10 @@
       },
       "placeholder": [
         "stats"
-      ]
+      ],
+      "icon": "items/armor/item-armor-training-trousers-16.png",
+      "showcase": "items/armor/item-armor-training-trousers.png",
+      "large": "items/armor/item-armor-training-trousers-64.png"
     },
     {
       "id": "armor-training-household-feet",
@@ -380,7 +416,702 @@
       },
       "placeholder": [
         "stats"
-      ]
+      ],
+      "icon": "items/armor/item-armor-training-sandals-16.png",
+      "showcase": "items/armor/item-armor-training-sandals.png",
+      "large": "items/armor/item-armor-training-sandals-64.png"
+    },
+    {
+      "id": "weapon-crude-slingshot",
+      "name": "Crude Slingshot",
+      "slot": "weapon",
+      "class": "slingshot",
+      "level": 10,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/weapons/item-weapon-crude-slingshot-16.png",
+      "showcase": "items/weapons/item-weapon-crude-slingshot.png",
+      "large": "items/weapons/item-weapon-crude-slingshot-64.png"
+    },
+    {
+      "id": "weapon-crude-stick",
+      "name": "Crude Stick",
+      "slot": "weapon",
+      "class": "stick",
+      "level": 10,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/weapons/item-weapon-crude-stick-16.png",
+      "showcase": "items/weapons/item-weapon-crude-stick.png",
+      "large": "items/weapons/item-weapon-crude-stick-64.png"
+    },
+    {
+      "id": "weapon-crude-greatstick",
+      "name": "Crude Plank",
+      "slot": "weapon",
+      "class": "greatstick",
+      "level": 10,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/weapons/item-weapon-crude-greatstick-16.png",
+      "showcase": "items/weapons/item-weapon-crude-greatstick.png",
+      "large": "items/weapons/item-weapon-crude-greatstick-64.png"
+    },
+    {
+      "id": "weapon-crude-broom",
+      "name": "Crude Broom",
+      "slot": "weapon",
+      "class": "broom",
+      "level": 10,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/weapons/item-weapon-crude-broom-16.png",
+      "showcase": "items/weapons/item-weapon-crude-broom.png",
+      "large": "items/weapons/item-weapon-crude-broom-64.png"
+    },
+    {
+      "id": "weapon-crude-potlid",
+      "name": "Crude Pot Lid",
+      "slot": "weapon",
+      "class": "potlid",
+      "level": 10,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/weapons/item-weapon-crude-potlid-16.png",
+      "showcase": "items/weapons/item-weapon-crude-potlid.png",
+      "large": "items/weapons/item-weapon-crude-potlid-64.png"
+    },
+    {
+      "id": "weapon-crude-hilot",
+      "name": "Crude Balm",
+      "slot": "weapon",
+      "class": "hilot",
+      "level": 10,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/weapons/item-weapon-crude-hilot-16.png",
+      "showcase": "items/weapons/item-weapon-crude-hilot.png",
+      "large": "items/weapons/item-weapon-crude-hilot-64.png"
+    },
+    {
+      "id": "weapon-sturdy-slingshot",
+      "name": "Sturdy Slingshot",
+      "slot": "weapon",
+      "class": "slingshot",
+      "level": 20,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/weapons/item-weapon-sturdy-slingshot-16.png",
+      "showcase": "items/weapons/item-weapon-sturdy-slingshot.png",
+      "large": "items/weapons/item-weapon-sturdy-slingshot-64.png"
+    },
+    {
+      "id": "weapon-sturdy-stick",
+      "name": "Sturdy Stick",
+      "slot": "weapon",
+      "class": "stick",
+      "level": 20,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/weapons/item-weapon-sturdy-stick-16.png",
+      "showcase": "items/weapons/item-weapon-sturdy-stick.png",
+      "large": "items/weapons/item-weapon-sturdy-stick-64.png"
+    },
+    {
+      "id": "weapon-sturdy-greatstick",
+      "name": "Sturdy Plank",
+      "slot": "weapon",
+      "class": "greatstick",
+      "level": 20,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/weapons/item-weapon-sturdy-greatstick-16.png",
+      "showcase": "items/weapons/item-weapon-sturdy-greatstick.png",
+      "large": "items/weapons/item-weapon-sturdy-greatstick-64.png"
+    },
+    {
+      "id": "weapon-sturdy-broom",
+      "name": "Sturdy Broom",
+      "slot": "weapon",
+      "class": "broom",
+      "level": 20,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/weapons/item-weapon-sturdy-broom-16.png",
+      "showcase": "items/weapons/item-weapon-sturdy-broom.png",
+      "large": "items/weapons/item-weapon-sturdy-broom-64.png"
+    },
+    {
+      "id": "weapon-sturdy-potlid",
+      "name": "Sturdy Pot Lid",
+      "slot": "weapon",
+      "class": "potlid",
+      "level": 20,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/weapons/item-weapon-sturdy-potlid-16.png",
+      "showcase": "items/weapons/item-weapon-sturdy-potlid.png",
+      "large": "items/weapons/item-weapon-sturdy-potlid-64.png"
+    },
+    {
+      "id": "weapon-sturdy-hilot",
+      "name": "Sturdy Balm",
+      "slot": "weapon",
+      "class": "hilot",
+      "level": 20,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/weapons/item-weapon-sturdy-hilot-16.png",
+      "showcase": "items/weapons/item-weapon-sturdy-hilot.png",
+      "large": "items/weapons/item-weapon-sturdy-hilot-64.png"
+    },
+    {
+      "id": "armor-tin-head",
+      "name": "Tin Hard Hat",
+      "slot": "head",
+      "gear": "Heavy",
+      "level": 10,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/armor/item-armor-tin-hardhat-16.png",
+      "showcase": "items/armor/item-armor-tin-hardhat.png",
+      "large": "items/armor/item-armor-tin-hardhat-64.png"
+    },
+    {
+      "id": "armor-tin-body",
+      "name": "Tin Armor",
+      "slot": "body",
+      "gear": "Heavy",
+      "level": 10,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/armor/item-armor-tin-armor-16.png",
+      "showcase": "items/armor/item-armor-tin-armor.png",
+      "large": "items/armor/item-armor-tin-armor-64.png"
+    },
+    {
+      "id": "armor-tin-hands",
+      "name": "Tin Gauntlets",
+      "slot": "hands",
+      "gear": "Heavy",
+      "level": 10,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/armor/item-armor-tin-gauntlets-16.png",
+      "showcase": "items/armor/item-armor-tin-gauntlets.png",
+      "large": "items/armor/item-armor-tin-gauntlets-64.png"
+    },
+    {
+      "id": "armor-tin-bottoms",
+      "name": "Tin Legguards",
+      "slot": "bottoms",
+      "gear": "Heavy",
+      "level": 10,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/armor/item-armor-tin-legguards-16.png",
+      "showcase": "items/armor/item-armor-tin-legguards.png",
+      "large": "items/armor/item-armor-tin-legguards-64.png"
+    },
+    {
+      "id": "armor-tin-feet",
+      "name": "Tin Greaves",
+      "slot": "feet",
+      "gear": "Heavy",
+      "level": 10,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/armor/item-armor-tin-greaves-16.png",
+      "showcase": "items/armor/item-armor-tin-greaves.png",
+      "large": "items/armor/item-armor-tin-greaves-64.png"
+    },
+    {
+      "id": "armor-copper-head",
+      "name": "Copper Hard Hat",
+      "slot": "head",
+      "gear": "Heavy",
+      "level": 20,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/armor/item-armor-copper-hardhat-16.png",
+      "showcase": "items/armor/item-armor-copper-hardhat.png",
+      "large": "items/armor/item-armor-copper-hardhat-64.png"
+    },
+    {
+      "id": "armor-copper-body",
+      "name": "Copper Armor",
+      "slot": "body",
+      "gear": "Heavy",
+      "level": 20,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/armor/item-armor-copper-armor-16.png",
+      "showcase": "items/armor/item-armor-copper-armor.png",
+      "large": "items/armor/item-armor-copper-armor-64.png"
+    },
+    {
+      "id": "armor-copper-hands",
+      "name": "Copper Gauntlets",
+      "slot": "hands",
+      "gear": "Heavy",
+      "level": 20,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/armor/item-armor-copper-gauntlets-16.png",
+      "showcase": "items/armor/item-armor-copper-gauntlets.png",
+      "large": "items/armor/item-armor-copper-gauntlets-64.png"
+    },
+    {
+      "id": "armor-copper-bottoms",
+      "name": "Copper Legguards",
+      "slot": "bottoms",
+      "gear": "Heavy",
+      "level": 20,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/armor/item-armor-copper-legguards-16.png",
+      "showcase": "items/armor/item-armor-copper-legguards.png",
+      "large": "items/armor/item-armor-copper-legguards-64.png"
+    },
+    {
+      "id": "armor-copper-feet",
+      "name": "Copper Greaves",
+      "slot": "feet",
+      "gear": "Heavy",
+      "level": 20,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/armor/item-armor-copper-greaves-16.png",
+      "showcase": "items/armor/item-armor-copper-greaves.png",
+      "large": "items/armor/item-armor-copper-greaves-64.png"
+    },
+    {
+      "id": "armor-abaca-head",
+      "name": "Abaca Headpiece",
+      "slot": "head",
+      "gear": "Light",
+      "level": 10,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/armor/item-armor-abaca-headpiece-16.png",
+      "showcase": "items/armor/item-armor-abaca-headpiece.png",
+      "large": "items/armor/item-armor-abaca-headpiece-64.png"
+    },
+    {
+      "id": "armor-abaca-body",
+      "name": "Abaca Suit",
+      "slot": "body",
+      "gear": "Light",
+      "level": 10,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/armor/item-armor-abaca-suit-16.png",
+      "showcase": "items/armor/item-armor-abaca-suit.png",
+      "large": "items/armor/item-armor-abaca-suit-64.png"
+    },
+    {
+      "id": "armor-abaca-hands",
+      "name": "Abaca Gloves",
+      "slot": "hands",
+      "gear": "Light",
+      "level": 10,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/armor/item-armor-abaca-gloves-16.png",
+      "showcase": "items/armor/item-armor-abaca-gloves.png",
+      "large": "items/armor/item-armor-abaca-gloves-64.png"
+    },
+    {
+      "id": "armor-abaca-bottoms",
+      "name": "Abaca Pants",
+      "slot": "bottoms",
+      "gear": "Light",
+      "level": 10,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/armor/item-armor-abaca-pants-16.png",
+      "showcase": "items/armor/item-armor-abaca-pants.png",
+      "large": "items/armor/item-armor-abaca-pants-64.png"
+    },
+    {
+      "id": "armor-abaca-feet",
+      "name": "Abaca Boots",
+      "slot": "feet",
+      "gear": "Light",
+      "level": 10,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/armor/item-armor-abaca-boots-16.png",
+      "showcase": "items/armor/item-armor-abaca-boots.png",
+      "large": "items/armor/item-armor-abaca-boots-64.png"
+    },
+    {
+      "id": "armor-cotton-head",
+      "name": "Cotton Headpiece",
+      "slot": "head",
+      "gear": "Light",
+      "level": 20,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/armor/item-armor-cotton-headpiece-16.png",
+      "showcase": "items/armor/item-armor-cotton-headpiece.png",
+      "large": "items/armor/item-armor-cotton-headpiece-64.png"
+    },
+    {
+      "id": "armor-cotton-body",
+      "name": "Cotton Suit",
+      "slot": "body",
+      "gear": "Light",
+      "level": 20,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/armor/item-armor-cotton-suit-16.png",
+      "showcase": "items/armor/item-armor-cotton-suit.png",
+      "large": "items/armor/item-armor-cotton-suit-64.png"
+    },
+    {
+      "id": "armor-cotton-hands",
+      "name": "Cotton Gloves",
+      "slot": "hands",
+      "gear": "Light",
+      "level": 20,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/armor/item-armor-cotton-gloves-16.png",
+      "showcase": "items/armor/item-armor-cotton-gloves.png",
+      "large": "items/armor/item-armor-cotton-gloves-64.png"
+    },
+    {
+      "id": "armor-cotton-bottoms",
+      "name": "Cotton Pants",
+      "slot": "bottoms",
+      "gear": "Light",
+      "level": 20,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/armor/item-armor-cotton-pants-16.png",
+      "showcase": "items/armor/item-armor-cotton-pants.png",
+      "large": "items/armor/item-armor-cotton-pants-64.png"
+    },
+    {
+      "id": "armor-cotton-feet",
+      "name": "Cotton Boots",
+      "slot": "feet",
+      "gear": "Light",
+      "level": 20,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/armor/item-armor-cotton-boots-16.png",
+      "showcase": "items/armor/item-armor-cotton-boots.png",
+      "large": "items/armor/item-armor-cotton-boots-64.png"
+    },
+    {
+      "id": "armor-hemp-head",
+      "name": "Hemp Headwrap",
+      "slot": "head",
+      "gear": "Household",
+      "level": 10,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/armor/item-armor-hemp-headwrap-16.png",
+      "showcase": "items/armor/item-armor-hemp-headwrap.png",
+      "large": "items/armor/item-armor-hemp-headwrap-64.png"
+    },
+    {
+      "id": "armor-hemp-body",
+      "name": "Hemp Robe",
+      "slot": "body",
+      "gear": "Household",
+      "level": 10,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/armor/item-armor-hemp-robe-16.png",
+      "showcase": "items/armor/item-armor-hemp-robe.png",
+      "large": "items/armor/item-armor-hemp-robe-64.png"
+    },
+    {
+      "id": "armor-hemp-hands",
+      "name": "Hemp Wraps",
+      "slot": "hands",
+      "gear": "Household",
+      "level": 10,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/armor/item-armor-hemp-wraps-16.png",
+      "showcase": "items/armor/item-armor-hemp-wraps.png",
+      "large": "items/armor/item-armor-hemp-wraps-64.png"
+    },
+    {
+      "id": "armor-hemp-bottoms",
+      "name": "Hemp Trousers",
+      "slot": "bottoms",
+      "gear": "Household",
+      "level": 10,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/armor/item-armor-hemp-trousers-16.png",
+      "showcase": "items/armor/item-armor-hemp-trousers.png",
+      "large": "items/armor/item-armor-hemp-trousers-64.png"
+    },
+    {
+      "id": "armor-hemp-feet",
+      "name": "Hemp Sandals",
+      "slot": "feet",
+      "gear": "Household",
+      "level": 10,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/armor/item-armor-hemp-sandals-16.png",
+      "showcase": "items/armor/item-armor-hemp-sandals.png",
+      "large": "items/armor/item-armor-hemp-sandals-64.png"
+    },
+    {
+      "id": "armor-jute-head",
+      "name": "Jute Headwrap",
+      "slot": "head",
+      "gear": "Household",
+      "level": 20,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/armor/item-armor-jute-headwrap-16.png",
+      "showcase": "items/armor/item-armor-jute-headwrap.png",
+      "large": "items/armor/item-armor-jute-headwrap-64.png"
+    },
+    {
+      "id": "armor-jute-body",
+      "name": "Jute Robe",
+      "slot": "body",
+      "gear": "Household",
+      "level": 20,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/armor/item-armor-jute-robe-16.png",
+      "showcase": "items/armor/item-armor-jute-robe.png",
+      "large": "items/armor/item-armor-jute-robe-64.png"
+    },
+    {
+      "id": "armor-jute-hands",
+      "name": "Jute Wraps",
+      "slot": "hands",
+      "gear": "Household",
+      "level": 20,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/armor/item-armor-jute-wraps-16.png",
+      "showcase": "items/armor/item-armor-jute-wraps.png",
+      "large": "items/armor/item-armor-jute-wraps-64.png"
+    },
+    {
+      "id": "armor-jute-bottoms",
+      "name": "Jute Trousers",
+      "slot": "bottoms",
+      "gear": "Household",
+      "level": 20,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/armor/item-armor-jute-trousers-16.png",
+      "showcase": "items/armor/item-armor-jute-trousers.png",
+      "large": "items/armor/item-armor-jute-trousers-64.png"
+    },
+    {
+      "id": "armor-jute-feet",
+      "name": "Jute Sandals",
+      "slot": "feet",
+      "gear": "Household",
+      "level": 20,
+      "rarity": "brown",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/armor/item-armor-jute-sandals-16.png",
+      "showcase": "items/armor/item-armor-jute-sandals.png",
+      "large": "items/armor/item-armor-jute-sandals-64.png"
+    },
+    {
+      "id": "acc-shell-ring",
+      "name": "Shell Ring",
+      "slot": "ring",
+      "level": 10,
+      "rarity": "lightBlue",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/accessories/item-acc-shell-ring-16.png",
+      "showcase": "items/accessories/item-acc-shell-ring.png",
+      "large": "items/accessories/item-acc-shell-ring-64.png"
+    },
+    {
+      "id": "acc-shell-bracers",
+      "name": "Shell Bracers",
+      "slot": "bracers",
+      "level": 10,
+      "rarity": "lightBlue",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/accessories/item-acc-shell-bracers-16.png",
+      "showcase": "items/accessories/item-acc-shell-bracers.png",
+      "large": "items/accessories/item-acc-shell-bracers-64.png"
+    },
+    {
+      "id": "acc-shell-necklace",
+      "name": "Shell Necklace",
+      "slot": "necklace",
+      "level": 10,
+      "rarity": "lightBlue",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/accessories/item-acc-shell-necklace-16.png",
+      "showcase": "items/accessories/item-acc-shell-necklace.png",
+      "large": "items/accessories/item-acc-shell-necklace-64.png"
+    },
+    {
+      "id": "acc-shell-earrings",
+      "name": "Shell Earrings",
+      "slot": "earrings",
+      "level": 10,
+      "rarity": "lightBlue",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/accessories/item-acc-shell-earrings-16.png",
+      "showcase": "items/accessories/item-acc-shell-earrings.png",
+      "large": "items/accessories/item-acc-shell-earrings-64.png"
+    },
+    {
+      "id": "acc-bone-ring",
+      "name": "Bone Ring",
+      "slot": "ring",
+      "level": 20,
+      "rarity": "lightBlue",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/accessories/item-acc-bone-ring-16.png",
+      "showcase": "items/accessories/item-acc-bone-ring.png",
+      "large": "items/accessories/item-acc-bone-ring-64.png"
+    },
+    {
+      "id": "acc-bone-bracers",
+      "name": "Bone Bracers",
+      "slot": "bracers",
+      "level": 20,
+      "rarity": "lightBlue",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/accessories/item-acc-bone-bracers-16.png",
+      "showcase": "items/accessories/item-acc-bone-bracers.png",
+      "large": "items/accessories/item-acc-bone-bracers-64.png"
+    },
+    {
+      "id": "acc-bone-necklace",
+      "name": "Bone Necklace",
+      "slot": "necklace",
+      "level": 20,
+      "rarity": "lightBlue",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/accessories/item-acc-bone-necklace-16.png",
+      "showcase": "items/accessories/item-acc-bone-necklace.png",
+      "large": "items/accessories/item-acc-bone-necklace-64.png"
+    },
+    {
+      "id": "acc-bone-earrings",
+      "name": "Bone Earrings",
+      "slot": "earrings",
+      "level": 20,
+      "rarity": "lightBlue",
+      "bound": false,
+      "agimats": [],
+      "stats": {},
+      "icon": "items/accessories/item-acc-bone-earrings-16.png",
+      "showcase": "items/accessories/item-acc-bone-earrings.png",
+      "large": "items/accessories/item-acc-bone-earrings-64.png"
     }
   ]
 }

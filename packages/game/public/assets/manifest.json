@@ -14965,6 +14965,11 @@
       "itemFrom": 5,
       "note": "the Mine dig: a shovel digging a mound, played once (cell 7 held); the find rises 8 px from the hole (its bottom centre at hole) from cell itemFrom"
     },
+    "kusingIcon": {
+      "note": "Kusing, the money mobs drop: the 16x16 coin (loot on the ground, the inventory footer, prices), its 32x32 for pop-ups",
+      "file": "ui/ui-currency-kusing-16.png",
+      "showcase": "ui/ui-currency-kusing.png"
+    },
     "inventoryIcon": {
       "file": "ui/ui-bag.png",
       "size": [
@@ -15476,6 +15481,10 @@
   "equipment": {
     "note": "Equipment items (items/equipment.json): id, name, slot, who can use it, level, rarity, stats and icons. The training weapons are the first.",
     "file": "items/equipment.json"
+  },
+  "combatItems": {
+    "note": "Combat items that aren't worn (items/items.json): whetstones, fragments, Repair Kits, HP/MP Potions, agimats, cosmetics; their icons beside the gear's under items/.",
+    "file": "items/items.json"
   },
   "mobs": {
     "note": "Mobs (world/mobs.ts): one sheet per variant, animation and direction, file = pattern with {variant}, {anim} and {dir}; size = the cell, anchor = the pixel between the feet (a variant may have its own size and anchor). `variants` lists the looks (one picked per spawn by the server); none = one look. The golem: `enraged` = its red-lamp set (the anims listed; death is shared), `fx` = its attack effects (layer ground: under every player and mob, front: over them). Rules (attack frame, shadow, floating) in `data`. Only mobs of active zones (and the boss) load.",

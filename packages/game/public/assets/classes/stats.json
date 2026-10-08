@@ -425,6 +425,27 @@
         ]
       ]
     },
+    "names": {
+      "note": "[blue, orange] affix names (combat-guide.md Affixes), from line 3; stat = the wearer's main stat",
+      "atk": ["of Devastation", "of Havoc"],
+      "hp": ["of Vigor", "of the Titan"],
+      "mp": ["of Insight", "of the Arcane"],
+      "def": ["of Guarding", "of the Bastion"],
+      "stat": {
+        "STR": ["of Might", "of Dominion"],
+        "DEX": ["of Swiftness", "of the Tempest"],
+        "INT": ["of Wit", "of the Sage"]
+      },
+      "hpRegen": ["of Mending", "of Renewal"],
+      "atkRate": ["of Haste", "of Frenzy"],
+      "defRate": ["of Warding", "of the Aegis"],
+      "critRate": ["of Ruin", "of Calamity"],
+      "critDmg": ["of Ruin", "of Calamity"],
+      "amp": ["of Flair", "of Flamboyance"],
+      "lifesteal": ["of Thirst", "of Bloodlust"],
+      "manasteal": ["of Hunger", "of the Abyss"],
+      "dropRate": ["of Fortune", "of Plunder"]
+    },
     "nameFrom": "line 3"
   },
   "caps": {
@@ -583,31 +604,38 @@
     "nameColour": {
       "brown": {
         "affix": null,
-        "slots": 0
+        "slots": 0,
+        "colour": "#A0703F"
       },
       "white": {
         "affix": null,
-        "slots": 1
+        "slots": 1,
+        "colour": "#E5E7EB"
       },
       "grey": {
         "affix": null,
-        "slots": 2
+        "slots": 2,
+        "colour": "#9CA3AF"
       },
       "lightBlue": {
         "affix": "blue",
-        "slots": 1
+        "slots": 1,
+        "colour": "#7DD3FC"
       },
       "darkBlue": {
         "affix": "blue",
-        "slots": 2
+        "slots": 2,
+        "colour": "#3B82F6"
       },
       "lightOrange": {
         "affix": "orange",
-        "slots": 1
+        "slots": 1,
+        "colour": "#FDBA74"
       },
       "darkOrange": {
         "affix": "orange",
-        "slots": 2
+        "slots": 2,
+        "colour": "#F97316"
       }
     },
     "slotsOn": [

@@ -1,0 +1,196 @@
+{
+  "note": "Combat items that aren't worn (gear is equipment.json): kind material (whetstones, fragments, Repair Kits; stack 999), potion (HP/MP Potions; stack 99, `heals` hp or mp by their tier's number in classes/stats.json potions), agimat (`stat`: its stat; the item's level and slot lock are the item's own; stack 999 with the same stat, level and lock), cosmetic (doesn't stack). rarity: its name's colour (stats.json rarity). tier: stats.json gearTiers / potions.tiers (low…). icon 16x16, showcase 32x32, large 64x64. shop: sold at the sari-sari store, priced by stats.json (potion: potions.tiers[tier].kusing in Kusing, the Healing tab; whetstone / repairKit: currencies.kowensShop in Kowens, the Smithing tab).",
+  "items": [
+    {
+      "id": "rough-whetstone",
+      "name": "Rough Whetstone",
+      "kind": "material",
+      "rarity": "white",
+      "tier": "low",
+      "about": "Enhances weapons, armor and accessories of item Lv 1-20 (the Low tier).",
+      "icon": "items/materials/item-mat-rough-whetstone-16.png",
+      "showcase": "items/materials/item-mat-rough-whetstone.png",
+      "large": "items/materials/item-mat-rough-whetstone-64.png",
+      "shop": "whetstone"
+    },
+    {
+      "id": "rough-whetstone-fragment",
+      "name": "Rough Whetstone Fragment",
+      "kind": "material",
+      "rarity": "white",
+      "tier": "low",
+      "about": "Ten make a Rough Whetstone. From taking gear apart.",
+      "icon": "items/materials/item-mat-rough-whetstone-fragment-16.png",
+      "showcase": "items/materials/item-mat-rough-whetstone-fragment.png",
+      "large": "items/materials/item-mat-rough-whetstone-fragment-64.png"
+    },
+    {
+      "id": "low-repair-kit",
+      "name": "Low Repair Kit",
+      "kind": "material",
+      "rarity": "white",
+      "tier": "low",
+      "about": "Repairs a broken item of item Lv 1-20 (the Low tier).",
+      "icon": "items/materials/item-mat-low-repair-kit-16.png",
+      "showcase": "items/materials/item-mat-low-repair-kit.png",
+      "large": "items/materials/item-mat-low-repair-kit-64.png",
+      "shop": "repairKit"
+    },
+    {
+      "id": "low-hp-potion",
+      "name": "Low HP Potion",
+      "kind": "potion",
+      "rarity": "white",
+      "tier": "low",
+      "heals": "hp",
+      "icon": "items/potions/item-potion-low-hp-16.png",
+      "showcase": "items/potions/item-potion-low-hp.png",
+      "large": "items/potions/item-potion-low-hp-64.png",
+      "shop": "potion"
+    },
+    {
+      "id": "low-mp-potion",
+      "name": "Low MP Potion",
+      "kind": "potion",
+      "rarity": "white",
+      "tier": "low",
+      "heals": "mp",
+      "icon": "items/potions/item-potion-low-mp-16.png",
+      "showcase": "items/potions/item-potion-low-mp.png",
+      "large": "items/potions/item-potion-low-mp-64.png",
+      "shop": "potion"
+    },
+    {
+      "id": "agimat-atk",
+      "name": "ATK Agimat",
+      "kind": "agimat",
+      "rarity": "white",
+      "stat": "atk",
+      "about": "Set it into a slotted weapon or armor piece of its level or higher (for good).",
+      "icon": "items/agimats/item-agimat-atk-16.png",
+      "showcase": "items/agimats/item-agimat-atk.png",
+      "large": "items/agimats/item-agimat-atk-64.png"
+    },
+    {
+      "id": "agimat-hp",
+      "name": "HP Agimat",
+      "kind": "agimat",
+      "rarity": "white",
+      "stat": "hp",
+      "about": "Set it into a slotted weapon or armor piece of its level or higher (for good).",
+      "icon": "items/agimats/item-agimat-hp-16.png",
+      "showcase": "items/agimats/item-agimat-hp.png",
+      "large": "items/agimats/item-agimat-hp-64.png"
+    },
+    {
+      "id": "agimat-mp",
+      "name": "Mana Agimat",
+      "kind": "agimat",
+      "rarity": "white",
+      "stat": "mp",
+      "about": "Set it into a slotted weapon or armor piece of its level or higher (for good).",
+      "icon": "items/agimats/item-agimat-mp-16.png",
+      "showcase": "items/agimats/item-agimat-mp.png",
+      "large": "items/agimats/item-agimat-mp-64.png"
+    },
+    {
+      "id": "agimat-def",
+      "name": "DEF Agimat",
+      "kind": "agimat",
+      "rarity": "white",
+      "stat": "def",
+      "about": "Set it into a slotted weapon or armor piece of its level or higher (for good).",
+      "icon": "items/agimats/item-agimat-def-16.png",
+      "showcase": "items/agimats/item-agimat-def.png",
+      "large": "items/agimats/item-agimat-def-64.png"
+    },
+    {
+      "id": "agimat-str",
+      "name": "STR Agimat",
+      "kind": "agimat",
+      "rarity": "white",
+      "stat": "STR",
+      "about": "Set it into a slotted weapon or armor piece of its level or higher (for good).",
+      "icon": "items/agimats/item-agimat-str-16.png",
+      "showcase": "items/agimats/item-agimat-str.png",
+      "large": "items/agimats/item-agimat-str-64.png"
+    },
+    {
+      "id": "agimat-dex",
+      "name": "DEX Agimat",
+      "kind": "agimat",
+      "rarity": "white",
+      "stat": "DEX",
+      "about": "Set it into a slotted weapon or armor piece of its level or higher (for good).",
+      "icon": "items/agimats/item-agimat-dex-16.png",
+      "showcase": "items/agimats/item-agimat-dex.png",
+      "large": "items/agimats/item-agimat-dex-64.png"
+    },
+    {
+      "id": "agimat-int",
+      "name": "INT Agimat",
+      "kind": "agimat",
+      "rarity": "white",
+      "stat": "INT",
+      "about": "Set it into a slotted weapon or armor piece of its level or higher (for good).",
+      "icon": "items/agimats/item-agimat-int-16.png",
+      "showcase": "items/agimats/item-agimat-int.png",
+      "large": "items/agimats/item-agimat-int-64.png"
+    },
+    {
+      "id": "agimat-atkrate",
+      "name": "Attack Rate Agimat",
+      "kind": "agimat",
+      "rarity": "lightBlue",
+      "stat": "atkRate",
+      "about": "Set it into a slotted weapon or armor piece of its level or higher (for good).",
+      "icon": "items/agimats/item-agimat-atkrate-16.png",
+      "showcase": "items/agimats/item-agimat-atkrate.png",
+      "large": "items/agimats/item-agimat-atkrate-64.png"
+    },
+    {
+      "id": "agimat-critrate",
+      "name": "Crit Rate Agimat",
+      "kind": "agimat",
+      "rarity": "lightOrange",
+      "stat": "critRate",
+      "about": "Set it into a slotted weapon or armor piece of its level or higher (for good).",
+      "icon": "items/agimats/item-agimat-critrate-16.png",
+      "showcase": "items/agimats/item-agimat-critrate.png",
+      "large": "items/agimats/item-agimat-critrate-64.png"
+    },
+    {
+      "id": "agimat-critdmg",
+      "name": "Crit Damage Agimat",
+      "kind": "agimat",
+      "rarity": "lightOrange",
+      "stat": "critDmg",
+      "about": "Set it into a slotted weapon or armor piece of its level or higher (for good).",
+      "icon": "items/agimats/item-agimat-critdmg-16.png",
+      "showcase": "items/agimats/item-agimat-critdmg.png",
+      "large": "items/agimats/item-agimat-critdmg-64.png"
+    },
+    {
+      "id": "agimat-amp",
+      "name": "Damage Amp Agimat",
+      "kind": "agimat",
+      "rarity": "lightOrange",
+      "stat": "amp",
+      "about": "Set it into a slotted weapon or armor piece of its level or higher (for good).",
+      "icon": "items/agimats/item-agimat-amp-16.png",
+      "showcase": "items/agimats/item-agimat-amp.png",
+      "large": "items/agimats/item-agimat-amp-64.png"
+    },
+    {
+      "id": "lamp-hat",
+      "name": "Lamp-head Hat",
+      "kind": "cosmetic",
+      "rarity": "darkOrange",
+      "cosmetic": true,
+      "about": "The Scrapheap Golem's lamp, as a hat. Can't be worn yet.",
+      "icon": "items/cosmetics/item-cosmetic-lamp-hat-16.png",
+      "showcase": "items/cosmetics/item-cosmetic-lamp-hat.png",
+      "large": "items/cosmetics/item-cosmetic-lamp-hat-64.png"
+    }
+  ]
+}
