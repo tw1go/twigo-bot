@@ -5,6 +5,7 @@ import { MOBILITY_PREVIEWS, SKILL_PREVIEWS } from '../combat/skill-previews';
 import { GAP_MS, STAGE_H, STAGE_W, type Skill, type SkillStage } from '../combat/skill-stage';
 import { itemArt, isRarity } from './item-art';
 import { cooldownOf, mpCostOf, seconds } from '../combat/cooldowns';
+import { SkillTip, skillTipLines } from './skill-tip';
 import { type SkillView, adventure, adventureData, onAdventure, raiseSkill, resetSkills, skillViews } from '../net/adventure';
 import { toast } from './toast';
 
@@ -86,6 +87,7 @@ export class Hotbar {
   private stage: { cls: string; stage: SkillStage | null } | null = null;
   /** The skill under the pointer (played on the stage, again and again). */
   private hovered: Skill | null = null;
+  private readonly skillTip = new SkillTip();
   private restUntil = 0;
   private stageRaf = 0;
   /** Skills cooling down: when they started and when they're ready (performance.now ms). */
@@ -182,6 +184,16 @@ export class Hotbar {
     const b = el('button', `hb-slot hb-${row}`);
     b.dataset.row = row;
     b.dataset.i = String(i);
+    // A skill's details on hover (its key last).
+    b.addEventListener('pointerenter', () => {
+      const entry = this.layout[row][i];
+      const s = entry?.t === 'skill' ? this.skill(entry.name) : undefined;
+      if (!s || !this.cls) return;
+      const key = keyLabel(slotAction(row, i));
+      this.skillTip.show([...skillTipLines(this.cls, s), ...(key ? [el('div', 'sk-tip-key', `Key: ${key}`)] : [])], b);
+    });
+    b.addEventListener('pointerleave', () => this.skillTip.hide());
+    b.addEventListener('pointerdown', () => this.skillTip.hide());
     b.addEventListener('click', () => {
       if (this.picked) {
         if (!fits(row, this.picked)) return toast('Skills go in the first ten slots or the top row.', 2400);
@@ -254,7 +266,7 @@ export class Hotbar {
         if (entry?.t === 'skill') {
           b.append(icon ?? el('span', 'hb-initials', initials(entry.name)));
           if (s?.locked) b.append(padlock(s.unlock));
-          b.title = `${s ? this.tip(s) : entry.name}${named ? `\n${named.trim()}` : ''}`;
+          b.removeAttribute('title'); // (its details show on hover: ui/skill-tip.ts)
         } else if (entry?.t === 'item') {
           b.append(itemArt(entry.id, isRarity(entry.rarity) ? entry.rarity : 'common', 'icon', 2, true) ?? el('span', 'hb-emoji', entry.emoji));
           b.title = `${entry.name}${named ? `\n${named.trim()}` : ''}`;
@@ -302,7 +314,11 @@ export class Hotbar {
         row.tabIndex = 0;
         row.setAttribute('role', 'button');
         row.draggable = true;
-        row.title = this.tip(s);
+        if (this.cls) {
+          const cls = this.cls;
+          row.addEventListener('pointerenter', () => this.skillTip.show(skillTipLines(cls, s), row, true));
+          row.addEventListener('pointerleave', () => this.skillTip.hide());
+        }
         const text = el('span', 'sb-text');
         const line = el('span', 'sb-line');
         const mp = stats ? mpCostOf(stats, this.cls?.id, s, s.level) : 0;
@@ -357,15 +373,6 @@ export class Hotbar {
 
   private skill(name: string): SkillView | undefined {
     return this.views().find((k) => k.name === name);
-  }
-
-  /** A skill's tooltip: "Quick Shot Lv 3 / 10", what it does, its cooldown and MP cost at its level (or when it unlocks). */
-  private tip(s: SkillView): string {
-    if (s.locked) return `${s.name}\nUnlocks at Lv ${s.unlock}\n${s.desc}`;
-    const stats = adventureData()?.stats;
-    const mp = stats ? mpCostOf(stats, this.cls?.id, s, s.level) : 0;
-    const more = stats ? `\nCooldown ${seconds(cooldownOf(stats, s, s.level))} · ${mp ? `${mp} MP` : 'No MP'}` : '';
-    return `${s.name} Lv ${s.level} / ${s.cap}\n${s.desc}${more}`;
   }
 
   /** A skill's icon as an image, if it has one. */

@@ -482,6 +482,14 @@
       #inventory .iv-broken > :first-child { filter: grayscale(1) brightness(0.7); }
       .iv-tip { position: fixed; z-index: 60; font-family: var(--ui-font); min-width: 170px; max-width: 250px; padding: 8px 10px; background: #111827; color: #E6E9F2; font-size: 13px; pointer-events: none; border: 2px solid #7C2AE8; box-shadow: 0 4px 0 #0B0A1A; }
       .iv-tip[hidden] { display: none; }
+      .sk-tip { max-width: 270px; }
+      .sk-tip .sk-tip-row { display: flex; justify-content: space-between; gap: 10px; margin-top: 2px; font-size: 12px; }
+      .sk-tip .sk-tip-row:first-of-type { margin-top: 6px; }
+      .sk-tip .sk-tip-label { color: #A9B1D6; flex: none; }
+      .sk-tip .sk-tip-value { text-align: right; }
+      .sk-tip .sk-tip-next { margin-top: 6px; color: #A3E635; font-size: 12px; }
+      .sk-tip .sk-tip-key { margin-top: 4px; color: #C4B5FD; font-size: 12px; }
+      .sk-tip .eq-tip-unmet { color: #F7768E; font-size: 12px; }
       .iv-tip .eq-tip-name { font-weight: 700; font-size: 15px; }
       .iv-tip .eq-tip-meta, .iv-tip .eq-tip-needs { font-size: 12px; color: #A9B1D6; }
       .iv-tip .eq-tip-needs { color: #E6E9F2; }

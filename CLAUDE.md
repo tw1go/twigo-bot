@@ -673,6 +673,9 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   (keys 1–0) and 3 for potions/usables (- = `, shown ~), evenly spaced; top row 13 more (Alt + the same keys, labelled "Alt+1"…) for either.
   A level-up that unlocks skills (the town's `progress`, TownScene `newSkills`): a toast each with its icon ("New skill
   unlocked: Dash! Open Skills (K) …"), one after another, and a gold dot on the K button until the panel opens (`markNew`).
+  Hovering a skill (a hotbar slot, a Skills panel row) shows its details card (`ui/skill-tip.ts`, the item tooltip's
+  box: Lv / cap, its text, damage as % of ATK and ≈ with your ATK now, what it hits (skill-hits.json shape), range, slow /
+  root, cooldown, MP, the next level's gain; a move: its tiles).
   Skills panel on the right of the screen (K or the K button; `#skill-book`): skill points, each skill with its level and
   description (see Skills unlock), the hovered one played on the class choice's stage (`TownScene.skillStage`, 1×); drag a
   skill to a slot, or click it then a slot.
