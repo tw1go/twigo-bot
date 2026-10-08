@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { type PlayerHit, type StatsData, type TownMob, type TownMobFacing, mobBarMs, mobRules, mobStartSpots, mobStats, mobTone, packSize, seeded } from '@mikazuki/shared';
+import { type LevelingData, type PlayerHit, type StatsData, type TownMob, type TownMobFacing, miniBossDef, miniBossRules, miniMobId, miniOfMobId, mobBarMs, mobRules, mobStartSpots, mobStats, mobTone, packSize, seeded } from '@mikazuki/shared';
 import { playSet } from '../audio/sound';
 import type { Manifest, MobData, MobDef, MobZone, TownMap, Vec2 } from '../assets/types';
 import { mobCell, mobSheet, mobVariants } from '../assets/mob-art';
@@ -11,6 +11,10 @@ import { type WorldObjects, characterDepth } from './objects';
 import { BuildingLabel } from '../ui/labels';
 import { LABEL_DEPTH } from './depth';
 
+// Mini bosses (classes/leveling.json; each zone's `miniBosses` spots in the map): their mob's art at miniBoss.scale (its
+// kind's mobs.json numbers scaled with it: shadow, top, eye), one fixed look by id, "Jus Tin Lv 4" always over it in
+// miniBoss.nameColour and its HP bar always shown; ids `<zone>:mini:<id>`.
+//
 // 🥫 The Slums' mobs (map.mobZones; art in manifest mobs, rules in mobs/mobs.json, how they live in classes/stats.json
 // mobBehaviour). For each zone that's on (`active`), its `aliveperZone` mobs (ids `<zone>:<k>`) at the spread-out spawn
 // points the server starts them on (mobStartSpots), or a pack round each for a kind with `pack` (the Bottle Caps: a
@@ -126,6 +130,8 @@ export interface Mob {
   enraged: boolean;
   /** One of the golem's Adds (no spawn point; gone when its fight ends). */
   add: boolean;
+  /** A mini boss: its name and its name's colour (always shown, with its HP bar). */
+  mini: { name: string; colour: string } | null;
   /** Its body's radius in tiles (the golem's; 0 for the rest): reach to it is measured to that edge. */
   radius: number;
   /** Up but not to be hit or targeted (the golem rising or sinking). */
@@ -188,7 +194,32 @@ export class Mobs {
         const pack: Mob[] = [];
         for (let c = 0; c < n; c++) this.place(zone, def, d, { col, row }, d?.pack ? `${point}:${c}` : point, d?.pack ? pack : null);
       });
+      for (const spot of zone.miniBosses ?? []) this.placeMini(zone, miniMobId(zone.id, spot.id), { col: spot.tile[0], row: spot.tile[1] });
     }
+  }
+
+  /** classes/leveling.json (the mini bosses), if loaded. */
+  private get leveling(): LevelingData | null {
+    return (this.scene.cache.json.get('leveling') as LevelingData | undefined) ?? null;
+  }
+
+  /** A mini boss (`<zone>:mini:<id>`) at its spot: its mob's art and numbers at miniBoss.scale, its own level and HP,
+   *  its name always over it. Null without its data. */
+  private placeMini(zone: MobZone, id: string, at: Tile): Mob | null {
+    const L = this.leveling;
+    const mini = L ? miniBossDef(L, miniOfMobId(id) ?? '') : null;
+    const def = this.M.mobs?.[zone.mob];
+    if (!L || !mini || mini.kind !== zone.mob || !def || typeof def === 'string') return null;
+    const raw = (this.scene.cache.json.get('mob-data') ?? {})[zone.mob];
+    const k = miniBossRules(L).scale;
+    const base = typeof raw === 'object' ? (raw as MobData) : null;
+    const data = { ...(base ?? {}), scale: (base?.scale ?? 1) * k, pack: undefined } as MobData;
+    const m = this.place(zone, def, data, at, id, null);
+    if (!base?.shadow) m.shadow?.setScale(k);
+    Object.assign(m, { level: mini.level, maxHp: mini.hp, hp: mini.hp, mini: { name: mini.name, colour: miniBossRules(L).nameColour } });
+    this.showLabel(m);
+    this.drawBar(m);
+    return m;
   }
 
   /** Tiles from its spawn an idle mob wanders (no server), and how long its HP bar stays after a hit (ms). */
@@ -236,7 +267,7 @@ export class Mobs {
       col: at.col + 0.5, row: at.row + 0.5, drawCol: 0, drawRow: 0, dir: (['se', 'sw', 'ne', 'nw'] as const)[Math.floor(seeded(`${id}:dir`) * 4)],
       sprite, shadow, path: [], restUntil: this.scene.time.now + Phaser.Math.Between(0, REST_MS[1]), label: null, labelUntil: 0,
       hp, dead: false, pose: null, bar: null, shield: null, openUntil: 0, fightUntil: 0, speed: data?.drift?.speed ?? SPEED, slowUntil: 0, asleep: false, lunge: { x: 0, y: 0 },
-      enraged: false, add: false, radius: data?.radius ?? 0, untouchable: false, hitAt: -Infinity, hurtAt: -Infinity,
+      enraged: false, add: false, mini: null, radius: data?.radius ?? 0, untouchable: false, hitAt: -Infinity, hurtAt: -Infinity,
     };
     // A pack's caps start round the point, each on a tile of its own (the server's place comes with its snapshot).
     if (pack?.length) mob.home = this.besideSpawn(mob, pack, id);
@@ -390,6 +421,7 @@ export class Mobs {
    *  made where the server has it. */
   private makeZoneMob(s: TownMob): Mob | null {
     const zone = this.map.mobZones?.find((z) => z.active && s.id.startsWith(`${z.id}:`));
+    if (zone && s.mini) return this.placeMini(zone, s.id, { col: s.col, row: s.row });
     const def = zone ? this.M.mobs?.[zone.mob] : undefined;
     if (!zone || !def || typeof def === 'string') return null;
     const raw = (this.scene.cache.json.get('mob-data') ?? {})[zone.mob];
@@ -679,6 +711,7 @@ export class Mobs {
     m.dead = !alive;
     m.sprite.setVisible(alive && !m.asleep).setAlpha(1);
     m.shadow?.setVisible(alive && !m.asleep).setAlpha(1);
+    if (m.mini) m.label?.text.setVisible(alive && !m.asleep);
     if (alive) {
       m.pose = null;
       this.play(m, 'idle');
@@ -688,7 +721,7 @@ export class Mobs {
 
   /** A small HP bar over it while it's your target or for barMs after its last hit (none dead or asleep). */
   private barShown(m: Mob): boolean {
-    return !m.dead && !m.asleep && (m === this.target || this.scene.time.now < m.hitAt + this.barMs);
+    return !m.dead && !m.asleep && (!!m.mini || m === this.target || this.scene.time.now < m.hitAt + this.barMs);
   }
 
   private drawBar(m: Mob): void {
@@ -698,7 +731,7 @@ export class Mobs {
       return;
     }
     m.bar ??= this.scene.add.graphics();
-    const w = m.radius ? 40 : 20; // (the golem's wider)
+    const w = m.radius ? 40 : m.mini ? 30 : 20; // (the golem's wider, a mini boss's a little)
     m.bar.clear().fillStyle(0x0b0a1a, 0.85).fillRect(-w / 2 - 1, -1, w + 2, 4).fillStyle(0xdc2626, 1).fillRect(-w / 2, 0, Math.max(1, Math.round((w * m.hp) / m.maxHp)), 2);
     this.syncBar(m);
   }
@@ -832,6 +865,7 @@ export class Mobs {
     m.asleep = !awake;
     m.sprite.setActive(awake).setVisible(awake && !m.dead);
     m.shadow?.setVisible(awake && !m.dead);
+    if (m.mini) m.label?.text.setVisible(awake && !m.dead); // (a mini boss's name: with it)
     if (!awake) {
       if (m.pose) {
         const then = m.pose.then;
@@ -936,14 +970,14 @@ export class Mobs {
   }
 
   private showLabel(m: Mob): void {
-    const name = `${m.def.name} Lv ${m.level}`;
+    const name = `${m.mini?.name ?? m.def.name} Lv ${m.level}`;
     if (!m.label) {
       m.label = new BuildingLabel(this.scene, name, m.sprite.x);
       m.label.setZoom(this.zoom);
     }
-    m.label.text.setText(name).setColor(TONE[this.tone(m)]);
+    m.label.text.setText(name).setColor(m.mini?.colour ?? TONE[this.tone(m)]);
     m.label.show(this.top(m) + (m.radius ? -10 : 4));
-    m.labelUntil = this.scene.time.now + LABEL_MS;
+    m.labelUntil = m.mini ? Infinity : this.scene.time.now + LABEL_MS; // (a mini boss's name always shows)
   }
 
   /** Its name's colour for you: grey 5+ levels below you, red 3+ above, white between (white without the rules). */

@@ -26,6 +26,7 @@ import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
 //   GET /__announce?kind=jackpot|notice&title=…&text=…   a banner at the top
 //   GET /__jail?name=Bob&on=1   shows Bob as jailed (on=0: released) to everyone in town
 //   GET /__bakod?name=Mara&on=0 takes down (on=1 puts up) a pretend neighbour's Bakod, live in the neighbourhood
+//   GET /__minibosses   every mini boss that's down comes back now (the page's ?minibosses=now)
 //   GET /__golem?now=1   the Scrapheap Golem rises in the Slums now (the page's ?golem=now); ?demo=1&as=Alice: it rises if
 //       it must and plays its whole fight against the nearest player (?golemdemo=1): each attack, the Junk at a pretend
 //       half, Enrage at a pretend quarter, death (the line names Alice if nobody hit it)
@@ -531,6 +532,9 @@ export function devTown(): Plugin {
           return void res.end('the golem plays its fight\n');
         }
         res.end(slumsMobs.riseGolem(Date.now()) ? 'the golem rises\n' : 'the golem is up already\n');
+      });
+      server.middlewares.use('/__minibosses', (_req, res) => {
+        res.end(`${slumsMobs.respawnMinis()} mini bosses back\n`);
       });
       server.middlewares.use('/__flex', (req, res) => {
         const q = new URL(req.url ?? '/', 'http://localhost').searchParams;

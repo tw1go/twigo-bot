@@ -126,6 +126,19 @@ const TOPICS: Topic[] = [
       '• A mob’s **HP bar** shows while it’s your target and for **5 s** after a hit. Over players you only see your **party**’s bars and your own',
       '• A mob’s name is **grey** 5+ levels below you, **red** 3+ above, else white',
       '• The **Scrapheap Golem** never leaves its pit. If nobody fights it for **30 s** (everyone knocked out or gone), it heals to full',
+      '• **Mini bosses**: each zone has a few big ones with **orange** names (Jus Tin, Kap Tan, Tire Mendous…), a few levels above their mob, each in its own spot and back **3 min** after it falls. Do at least **10%** of one’s HP and you get its XP and your **own loot** (lots of Kusing, a piece of gear, sometimes a whetstone fragment); your party nearby gets them too',
+    ].join('\n'),
+  },
+  {
+    id: 'tanod-quests',
+    icon: '📻',
+    label: 'Tanod quests',
+    text: [
+      'After you choose your class, the **Tanod** keeps you busy in the Slums: **12 quests**, from Tin Cans to the Scrap Crabs, that take you from **Lv 1 to Lv 15**, ready for the golem.',
+      '• Each is in your tracker (top left), with its count: **Tin Cans 12/20**. Your party’s kills nearby count for you too',
+      '• Every other quest asks you to beat one of that mob’s **mini bosses**',
+      '• Done? Press **Report** in the tracker: you report over the Tanod’s **radio**, no walk back to town',
+      '• Rewards: the same **XP** and **Kusing** for everyone, whatever your level, plus **HP and MP Potions**. Then the next one starts',
     ].join('\n'),
   },
   {

@@ -360,6 +360,8 @@ export interface MobZone {
   /** Off: no art yet, nothing placed or loaded. */
   active: boolean;
   spawns: Vec2[];
+  /** Its mini bosses' spots (classes/leveling.json miniBosses ids). */
+  miniBosses?: { id: string; tile: Vec2 }[];
 }
 
 export interface MapObject {

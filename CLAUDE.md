@@ -626,6 +626,28 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   `items/armor/item-armor-training-<piece>(-16|-64).png`; an item without `icon`/`showcase` shows its place's silhouette
   (`slotSilhouette` / `gearPicture` in ui/equipment.ts: panel, bag, toasts) — add the fields when the art comes (only
   suit and boots exist so far).
+- Leveling chain and mini bosses (classes/leveling.json = the art folder's data/leveling.json, manifest classes.leveling;
+  its rules in words: data/leveling-plan.md; shared `leveling.ts`: `withLeveling` fills quests.json's `leveling` entries
+  (title, goal, count, rewardXP/rewardKusing, the Tanod's give/report lines) from it, `questKill`, `readyToReport`,
+  `miniBossRules` (numbers read from its sentences), `miniMobId`, `nearestGearLevel`): the Tanod's 12 main quests after the
+  class quest (`next`; anyone who finished it before gets tanod-01 on /me: `startQuests` starts a done quest's missing
+  next), objectives kill (count of a kind, never its mini bosses) and miniBoss (one of its mini bosses); the count in
+  `QuestProgress.count`, saved in the quests JSON (no schema change); kills count for the killer (a mini boss: everyone
+  credited) and their party in the same room (town.ts `withParty`, `TownOptions.quests.kill` = `questKillFor`, `quests`
+  message; the dev town, with no quests, sends `quest-kill` and the page's pretend store counts); the tracker shows
+  "Tin Cans 12/20" and, once reached, Report (`POST /town/quest {action:'report'}`): rewards (rewardXP via addXp: the same
+  for every level, rewardKusing, 10 HP + 10 MP Potions), the next quest; the town gets the progress (level-up) and items.
+  Game: the Tanod's lines as toasts with his bust (manifest ui.tanodBust's last frame; `giveLines` once per quest per
+  browser, localStorage mk_quests_given, after the title card; a report: his report line, "+50 XP, +125,324 Kusing" with the
+  coin, the next one's line). Mini bosses: each zone's `miniBosses` [{id, tile}] in slums.json (12 apart near the spawn
+  points, 2+ from paths: concrete/plate/planks); the bot's MobRoom places one each (`<zone>:mini:<id>`, its kind's
+  rules with leveling.json's level/HP/ATK/DEF/XP, never a pack, outside the zone's count), back at its own spot after
+  respawnSeconds; credit = members who did kill_credit's share (`dealt`, cleared on heal/death; the killer if nobody), each
+  its XP and personal loot (`miniLoot` in web/loot.ts: its mob's Kusing × 10, one gear piece at the nearest gear level
+  (Lv 10 below 15, else 20; brown/white/grey by the mobs' odds, +0–+3), a fragment 1 in 3), plus their party in the room.
+  Game (`world/mobs.ts` `placeMini`): its mob's art and mobs.json numbers at miniBoss.scale, its fixed look by id, "Jus Tin
+  Lv 4" always over it in nameColour, its HP bar always. Dev: `?quest=tanod-05` (pretend store: earlier ones done),
+  `?minibosses=now` (`/__minibosses`). Tested: web/leveling.test.ts (Lv 1 → 15 on the quests alone, solo and a party of 2).
 - Quests, classes and equipment (bot `web/adventure.ts`, schema v10 `adventurers`: class, quests; v11 levels, above; v12
   items (above); tested). Data in the game's assets, read by the bot too: `quests/quests.json` (main = violet, side = yellow,
   manifest quests.colours; objective types talk and chooseClass; the giver's lines in `dialogue`; `rewards` [{ item, count }]

@@ -1,5 +1,5 @@
 import { keyLabel, matches, onKeybinds } from './keybinds';
-import { type AdventureState, type QuestDef, newItem, nameColour } from '@mikazuki/shared';
+import { type AdventureState, type QuestDef, type QuestObjectiveDef, newItem, nameColour, objectiveCount, readyToReport } from '@mikazuki/shared';
 import { itemPicture, nameOf } from './item-tip';
 import { playSound } from '../audio/sound';
 import { type AdventureChange, adventure, itemData, markQuestsSeen, onAdventure, questDef, unseenQuest } from '../net/adventure';
@@ -7,7 +7,8 @@ import { type AdventureChange, adventure, itemData, markQuestsSeen, onAdventure,
 // 📜 Quests on screen (the state: net/adventure.ts, the quests: quests/quests.json). Main quests are violet and side
 // quests yellow everywhere they show (manifest quests.colours):
 //   • the tracker, on the left under the top-left HUD: each active quest (up to 3, main first) with its current
-//     objective; an objective just done ticks to ✓ for a moment before the next shows. Click it for the log; its
+//     objective ("Tin Cans 12/20" for a count); an objective just done ticks to ✓ for a moment before the next shows;
+//     a count that's reached turns into a Report button (the Tanod's radio: `report`). Click it for the log; its
 //     toggle folds it to the header (remembered in localStorage mk_quests_folded). Hidden with no active quests.
 //   • the log (J, or the scroll button among the HUD's buttons, which has a dot while a quest started or moved on
 //     since the log was last opened): Main and Side on the left (done ones under a folded Completed row), the picked
@@ -21,7 +22,13 @@ export interface QuestUiOptions {
   frame: { url: string; slice: number } | null;
   /** A quest giver's name and portrait (the NPC dialog box's: two frames side by side, eyes open first). */
   giver: (npc: string) => { name: string; portrait: string; mirror: boolean } | null;
+  /** Report a quest whose count is reached (the tracker's Report): false if it didn't go through. */
+  report: (quest: string) => Promise<boolean>;
 }
+
+/** An objective as it shows: its text, and "12/20" after a count's. */
+const objectiveText = (o: QuestObjectiveDef | undefined, count: number | undefined, done = false) =>
+  !o ? '' : o.type === 'kill' || o.type === 'miniBoss' ? `${o.text} ${done ? objectiveCount(o) : Math.min(count ?? 0, objectiveCount(o))}/${objectiveCount(o)}` : o.text;
 
 const TRACKED = 3;
 const TICK_MS = 1300; // an objective's ✓ before the next shows
@@ -147,7 +154,7 @@ class Tracker {
       const q = questDef(change.advanced.quest);
       const o = q?.objectives.find((x) => x.id === change.advanced!.objective);
       if (q && o) {
-        this.ticks.set(q.id, { text: o.text, title: q.title, type: q.type, until: performance.now() + TICK_MS });
+        this.ticks.set(q.id, { text: objectiveText(o, 0, true), title: q.title, type: q.type, until: performance.now() + TICK_MS });
         setTimeout(() => this.render(), TICK_MS + 20);
       }
     }
@@ -159,13 +166,13 @@ class Tracker {
     for (const [id, t] of this.ticks) if (t.until <= now) this.ticks.delete(id);
     const active = (this.state?.quests.active ?? [])
       .map((p) => ({ p, q: questDef(p.id) }))
-      .filter((x): x is { p: { id: string; step: number }; q: QuestDef } => !!x.q)
+      .filter((x): x is { p: { id: string; step: number; count?: number }; q: QuestDef } => !!x.q)
       .sort((a, b) => (a.q.type === b.q.type ? 0 : a.q.type === 'main' ? -1 : 1));
     // A quest that just finished stays a moment with its last objective ticked.
-    const rows: { id: string; title: string; type: QuestDef['type']; text: string; done: boolean }[] = [];
+    const rows: { id: string; title: string; type: QuestDef['type']; text: string; done: boolean; report?: boolean }[] = [];
     for (const { p, q } of active) {
       const tick = this.ticks.get(q.id);
-      rows.push({ id: q.id, title: q.title, type: q.type, text: tick?.text ?? q.objectives[p.step]?.text ?? '', done: !!tick });
+      rows.push({ id: q.id, title: q.title, type: q.type, text: tick?.text ?? objectiveText(q.objectives[p.step], (p as { count?: number }).count), done: !!tick, report: !tick && readyToReport(q, p) });
     }
     for (const [id, t] of this.ticks) if (!rows.some((r) => r.id === id)) rows.push({ id, title: t.title, type: t.type, text: t.text, done: true });
     rows.sort((a, b) => (a.type === b.type ? 0 : a.type === 'main' ? -1 : 1));
@@ -178,6 +185,19 @@ class Tracker {
         const step = el('div', `qt-step${r.done ? ' qt-done' : ''}`);
         step.append(el('span', 'qt-mark', r.done ? '✓' : '○'), el('span', undefined, r.text));
         row.append(title, step);
+        if (r.report) {
+          // Done: report it over the Tanod's radio (no walk back to town).
+          const b = el('button', 'qt-report', 'Report');
+          b.type = 'button';
+          b.addEventListener('click', (e) => {
+            e.stopPropagation(); // (not the log)
+            b.disabled = true;
+            void opts.report(r.id).then((ok) => {
+              if (!ok) b.disabled = false;
+            });
+          });
+          row.append(b);
+        }
         return row;
       }),
     );
@@ -210,7 +230,7 @@ function buildLog(): void {
 function renderLog(): void {
   if (!logRoot) return;
   const s = adventure();
-  const active = (s?.quests.active ?? []).map((p) => ({ q: questDef(p.id), step: p.step })).filter((x): x is { q: QuestDef; step: number } => !!x.q);
+  const active = (s?.quests.active ?? []).map((p) => ({ q: questDef(p.id), step: p.step, count: p.count })).filter((x): x is { q: QuestDef; step: number; count: number | undefined } => !!x.q);
   const done = (s?.quests.done ?? []).map((id) => questDef(id)).filter((q): q is QuestDef => !!q);
   const all = [...active.map((a) => a.q), ...done];
   if (!picked || !all.some((q) => q.id === picked)) picked = (active.find((a) => a.q.type === 'main') ?? active[0])?.q.id ?? done[0]?.id ?? null;
@@ -275,7 +295,8 @@ function renderLog(): void {
     q.objectives.forEach((o, i) => {
       const state = finished || i < step ? 'done' : i === step ? 'current' : 'later';
       const li = el('li', `ql-obj ql-${state}`);
-      li.append(el('span', 'ql-mark', state === 'done' ? '✓' : '○'), el('span', undefined, o.text));
+      const count = active.find((a) => a.q === q)?.count;
+      li.append(el('span', 'ql-mark', state === 'done' ? '✓' : '○'), el('span', undefined, objectiveText(o, state === 'current' ? count : undefined, state === 'done')));
       list.append(li);
     });
     detail.append(list);

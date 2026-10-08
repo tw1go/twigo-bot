@@ -94,7 +94,7 @@ import type { AdventureData } from '../net/adventure';
 import { Hotbar, potionCooldownKey } from '../ui/hotbar';
 import { mountClassSwitch } from '../ui/class-switch';
 import { MOVES, type MoveKind, isMoveKind, moveTiles, playMove } from '../world/mobility';
-import { changeClass, devItemsReady, devQuestKill, setQuestCounts, devSwitchClass, adventure, adventureData, anyDef, chooseClass, classInfo, initAdventure, itemData, itemDef, loadAdventureData, onAdventure, questDef, questFor, questTalk, setItems, setProgress, skillView, skillViews } from '../net/adventure';
+import { changeClass, devItemsReady, devQuestKill, questReport, setQuestCounts, devSwitchClass, adventure, adventureData, anyDef, chooseClass, classInfo, initAdventure, itemData, itemDef, loadAdventureData, onAdventure, questDef, questFor, questTalk, setItems, setProgress, skillView, skillViews } from '../net/adventure';
 import { type Item, type QuestReward, type TownItems, LOOT_REACH, auraFor, classSkills, countOf, isGearDef, itemAura, itemStats, newItem, tradeRules } from '@mikazuki/shared';
 import type { ClassArt } from '../assets/types';
 import { drawRested, loadImages, poseFiles, restFiles } from '../characters/kit-art';
@@ -706,7 +706,13 @@ export class TownScene extends Phaser.Scene {
       const body = armor.map(itemDef).find((i) => i?.slot === 'body') ?? itemDef(armor[0]);
       if (body) this.time.delayedCall(titleCardMs() + 600, () => toast('The Tanod left you a set of training gear.', 4500, 'good', gearPicture(body, asset)));
       const frame = this.M.ui.inventory?.itemFrame;
-      mountQuests({ colours: Q.colours, frame: frame ? { url: asset(frame.file), slice: frame.nineSlice } : null, giver: (id) => this.giverOf(id) });
+      mountQuests({ colours: Q.colours, frame: frame ? { url: asset(frame.file), slice: frame.nineSlice } : null, giver: (id) => this.giverOf(id), report: (id) => this.reportQuest(id) });
+      // The Tanod's line as each quest of his is given (his leveling chain; also one given while you were away), once.
+      this.time.delayedCall(titleCardMs() + 900, () => {
+        this.giveReady = true;
+        this.giveLines();
+      });
+      onAdventure(() => this.giveLines());
       if (this.npcs) this.npcs.script = (id) => this.questScript(id);
       const icons = this.M.ui.classIcons;
       const inv = this.M.ui.inventory;
@@ -851,6 +857,74 @@ export class TownScene extends Phaser.Scene {
   }
   /** The world's effects: ground (under every player and mob) and front (over them): world/fx-layers.ts. */
   private fxLayers!: FxLayers;
+
+  /** Toasts one after another (the Tanod's lines, a report's rewards), each for its time. */
+  private say(text: string, ms: number, tone: 'good' | 'bad' | null, icon: HTMLElement | null): void {
+    const at = Math.max(this.time.now, this.sayFree);
+    this.sayFree = at + ms + 250;
+    this.time.delayedCall(at - this.time.now, () => toast(text, ms, tone, icon));
+  }
+  private sayFree = 0;
+
+  /** The Tanod's bust (manifest ui.tanodBust, its last frame: risen all the way) for his radio lines. */
+  private tanodBust(): HTMLElement | null {
+    const B = this.M.ui.tanodBust;
+    if (!B) return null;
+    const pic = document.createElement('span');
+    const k = 40 / B.size[1];
+    Object.assign(pic.style, {
+      display: 'inline-block', flex: 'none', width: `${B.size[0] * k}px`, height: `${B.size[1] * k}px`, imageRendering: 'pixelated',
+      background: `url("${import.meta.env.BASE_URL}assets/${B.file}") ${-(B.frames - 1) * B.size[0] * k}px 0 / ${B.size[0] * B.frames * k}px ${B.size[1] * k}px no-repeat`,
+    });
+    return pic;
+  }
+
+  /** A line from the Tanod over his radio. */
+  private tanodSays(line: string): void {
+    this.say(`Tanod: “${line}”`, Math.min(6000, 2600 + line.length * 40), null, this.tanodBust());
+  }
+
+  /** Each active quest's give line (dialogue.give), once per quest in this browser (localStorage mk_quests_given), held
+   *  while a report is under way (its own lines come first). */
+  private giveLines(): void {
+    if (this.reporting || !this.giveReady) return;
+    let given: string[] = [];
+    try {
+      given = JSON.parse(localStorage.getItem('mk_quests_given') ?? '[]');
+    } catch {
+      // none yet
+    }
+    const fresh = (adventure()?.quests.active ?? []).filter((p) => !given.includes(p.id) && questDef(p.id)?.dialogue?.give?.length);
+    if (!fresh.length) return;
+    for (const p of fresh) for (const line of questDef(p.id)!.dialogue!.give!) this.tanodSays(line);
+    try {
+      localStorage.setItem('mk_quests_given', JSON.stringify([...given, ...fresh.map((p) => p.id)].slice(-50)));
+    } catch {
+      // said again next time
+    }
+  }
+  private reporting = false;
+  /** (Not under the title card.) */
+  private giveReady = false;
+
+  /** The tracker's Report: over the Tanod's radio, his report line, then the rewards (+XP, +Kusing; the potions as
+   *  "Gained" lines, the level-up from the town), then the next quest's line. False if it didn't go through. */
+  private async reportQuest(id: string): Promise<boolean> {
+    this.reporting = true;
+    const r = await questReport(id);
+    this.reporting = false;
+    if (!r?.ok) {
+      toast(r?.message ?? "Couldn't reach the Tanod's radio. Try again in a moment.", 2500, 'bad');
+      return false;
+    }
+    for (const line of questDef(id)?.dialogue?.report ?? []) this.tanodSays(line);
+    const parts = [r.xp ? `+${r.xp.toLocaleString('en-US')} XP` : '', r.kusing ? `+${r.kusing.toLocaleString('en-US')} Kusing` : ''].filter(Boolean);
+    const coin = this.M.ui.kusingIcon;
+    if (parts.length) this.say(parts.join(', '), 3500, 'good', coin ? Object.assign(document.createElement('img'), { src: `${import.meta.env.BASE_URL}assets/${coin.file}`, alt: '' }) : null);
+    if (r.kusing) playSound('combat-coins');
+    this.giveLines(); // the next one's
+    return true;
+  }
 
   /** A skill's icon (manifest ui.skillIcons: the class's, or the one every class shares, Dash), if there is one. */
   private skillIcon(cls: string, skill: string): string | null {
@@ -1666,6 +1740,8 @@ export class TownScene extends Phaser.Scene {
         const q = new URLSearchParams(location.search);
         const golemDev = import.meta.env.DEV && !arrived && !!this.golem && (q.get('golem') === 'now' || q.has('golemdemo'));
         if (golemDev) this.byThePit();
+        // Dev, in the Slums: ?minibosses=now brings every mini boss that's down back at once (the dev server's /__minibosses).
+        if (import.meta.env.DEV && !arrived && this.battleMap && q.get('minibosses') === 'now') void fetch('/__minibosses').catch(() => null);
         const [sc, sr] = this.map.spawn;
         const at = this.player.tile;
         if (!arrived && m.spawn && at.col === sc && at.row === sr && this.player.isIdle) {
