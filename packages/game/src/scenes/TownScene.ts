@@ -344,6 +344,7 @@ export class TownScene extends Phaser.Scene {
     // A big map (the Slums) is streamed round the camera: its objects, ground and outskirts (world/terrain.ts).
     const big = !!this.map.height;
     this.objects = new WorldObjects(this, this.M, this.map, big);
+    this.objects.castShadows = big; // the Slums' props came with no shadows
     const junk = big ? new SlumsOutskirts(this.M, this.map) : null;
     if (junk) this.objects.extra = (c0, r0, c1, r1) => junk.objectsIn(c0, r0, c1, r1);
     this.objects.onSpawn = (o) => this.tint >= 0 && o.setTint(this.tint);

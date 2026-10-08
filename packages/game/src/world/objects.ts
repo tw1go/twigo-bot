@@ -3,6 +3,7 @@ import type { BuildingDef, Dir, Manifest, MapObject, PropDef, TownMap, Vec2 } fr
 import { assetProblems } from '../characters/doll';
 import { tileToScreen } from '../iso';
 import { CHARACTER_BIAS, GLOW_DEPTH, GROUND_SHADOW_DEPTH, HEIGHT_DEPTH, frontDepth } from './depth';
+import { castShadow } from './cast-shadow';
 import { Heights, LEVEL_PX } from './heights';
 import { differs, visible } from '../util/pixels';
 import { hash, rng } from './rng';
@@ -108,6 +109,9 @@ export class WorldObjects {
   private lastRange = '';
   extra: ((c0: number, r0: number, c1: number, r1: number) => MapObject[]) | null = null;
   onSpawn: ((o: Phaser.GameObjects.Components.Tint) => void) | null = null;
+
+  /** Props cast their own shadow on the ground (world/cast-shadow.ts; the Slums). Set before any are added. */
+  castShadows = false;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -336,6 +340,16 @@ export class WorldObjects {
     const depth = floor ? GROUND_SHADOW_DEPTH - 1 : big ? base : this.sortAgainstBig(o.col, o.row, fc, fr, base, bounds);
     sprite.setDepth(depth);
     if (big) this.big.push({ col: o.col, row: o.row, cols: fc, rows: fr, back: depth, front: depth, bounds });
+    // Its own shadow on the ground (castShadows: the Slums, whose props came with none), not for floors.
+    if (this.castShadows && !floor && !def.animation) {
+      const sh = castShadow(this.scene, def.file, !!o.flip);
+      if (sh) {
+        const top = this.topOf(o.col, o.row);
+        const w = sprite.frame.width;
+        const ax = o.flip ? w - def.anchor[0] : def.anchor[0];
+        this.track(this.scene.add.image(top.x, top.y, sh.key).setOrigin(ax / (w + sh.extra), def.anchor[1] / sh.height).setDepth(GROUND_SHADOW_DEPTH));
+      }
+    }
 
     // Trees: a shadow on the ground under the trunk, and a tufts strip just in front of the trunk base.
     const centre = this.topOf(o.col, o.row);

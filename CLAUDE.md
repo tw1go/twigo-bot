@@ -283,7 +283,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   elevation README (each ground tile one of its kind's variants, tiles.slums.ground listed from the art's _sheets.csv,
   picked by `rng.ts` `variantAt`: a murmur3 mix of col,row seeded per kind, so repeats never line up in stripes): floors, walls, rims, caps baked per 512 px chunk in the README's order; tiles that rise over the tile
   just behind (and ramps) are sprites sorted with characters, so the ground in front hides what stands behind (Wire
-  Ridge, the Crab Basin's lip); the canal is animated with the river's bank overlays. Everything is streamed round the
+  Ridge, the Crab Basin's lip); the canal is animated with the river's bank overlays. Props cast their own shadow there (`world/cast-shadow.ts`, WorldObjects `castShadows`: each image's
+  silhouette laid down-right on the ground from its foot, the sun in the north-west, baked once per image; not floors). Everything is streamed round the
   camera (terrain chunks a few a frame, 16 × 16-tile regions of sprites, `WorldObjects` stream mode for the ~2,100
   props; dropped far away), A* is capped (a long click walks to the closest tile found). Outskirts: `SlumsOutskirts` in
   `world/outskirts.ts` (dirt, the canal carried on from the map's first/last rows, a concrete road out of the gate, dead
