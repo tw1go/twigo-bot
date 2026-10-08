@@ -9,7 +9,7 @@
     "start": "node scripts/local-guard.mjs && node dist/index.js",
     "deploy-commands": "tsx src/deploy-commands.ts",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test 'src/**/*.test.ts'"
+    "test": "tsx --conditions=source --test 'src/**/*.test.ts'"
   },
   "engines": {
     "node": ">=22.12"

@@ -1,0 +1,980 @@
+{
+  "version": 1,
+  "note": "Mikazuki stats and scaling, 8 Oct 2026. Source of truth is combat-classes/combat-guide.md ('Stats, levels and scaling'). Numbers marked placeholder are for tuning.",
+  "levelCap": 20,
+  "classless": {
+    "STR": 4,
+    "DEX": 4,
+    "INT": 4
+  },
+  "classes": {
+    "slingshot": {
+      "main": "DEX",
+      "second": "INT",
+      "third": "STR",
+      "gearType": "light"
+    },
+    "stick": {
+      "main": "DEX",
+      "second": "STR",
+      "third": "INT",
+      "gearType": "heavy"
+    },
+    "greatstick": {
+      "main": "STR",
+      "second": "DEX",
+      "third": "INT",
+      "gearType": "heavy"
+    },
+    "broom": {
+      "main": "INT",
+      "second": "DEX",
+      "third": "STR",
+      "gearType": "light"
+    },
+    "potlid": {
+      "main": "STR",
+      "second": "INT",
+      "third": "DEX",
+      "gearType": "household"
+    },
+    "hilot": {
+      "main": "INT",
+      "second": "STR",
+      "third": "DEX",
+      "gearType": "household"
+    }
+  },
+  "growth": {
+    "main": {
+      "base": 8,
+      "perLevel": 2
+    },
+    "second": {
+      "base": 5,
+      "perLevel": 1
+    },
+    "third": {
+      "base": 4,
+      "perLevel": 0
+    },
+    "pointsPerLevelUp": 1,
+    "pointsGoTo": [
+      "main",
+      "second"
+    ]
+  },
+  "gearTypeStats": {
+    "heavy": [
+      "STR",
+      "DEX"
+    ],
+    "light": [
+      "DEX",
+      "INT"
+    ],
+    "household": [
+      "STR",
+      "INT"
+    ]
+  },
+  "requirements": {
+    "checks": "base stats only (growth + spent points), never gear bonuses",
+    "weapon": {
+      "main": {
+        "perItemLevel": 2,
+        "plus": 6
+      },
+      "second": {
+        "perItemLevel": 1,
+        "plus": 4
+      },
+      "mainMustBeHighest": true
+    },
+    "armor": {
+      "bothGearTypeStats": {
+        "perItemLevel": 1,
+        "plus": 4
+      }
+    },
+    "accessory": "level only"
+  },
+  "derived": {
+    "placeholder": true,
+    "hp": {
+      "base": 80,
+      "perLevel": 15,
+      "perSTR": 6
+    },
+    "mp": {
+      "base": 30,
+      "perLevel": 5,
+      "perINT": 4
+    },
+    "mpRegenPerINT": 0.05,
+    "power": {
+      "perMain": 2,
+      "perSecond": 1,
+      "plusGearATK": true
+    },
+    "def": {
+      "perSTR": 0.5,
+      "round": "down",
+      "plusGearDEF": true
+    },
+    "critRate": {
+      "base": 0.05,
+      "perDEX": 0.001
+    },
+    "critDamage": 1.5
+  },
+  "damage": {
+    "placeholder": true,
+    "formula": "power * skillPct * (1 + damageAmp) * crit * 100 / (100 + targetDEF) * levelGap",
+    "levelGap": {
+      "perLevelAboveYou": -0.08,
+      "missPerLevelAboveYou": 0.05,
+      "minMult": 0.4
+    }
+  },
+  "xp": {
+    "placeholder": true,
+    "toNext": {
+      "mult": 25,
+      "pow": 1.75,
+      "round": true
+    },
+    "mob": {
+      "base": 8,
+      "growth": 1.17
+    },
+    "lowMobPenalty": {
+      "freeGap": 5,
+      "perExtraLevel": 0.2,
+      "minMult": 0.2
+    }
+  },
+  "gearBase": {
+    "placeholder": true,
+    "weaponATK": "2 * itemLevel (training weapon 5)",
+    "armorDEFPerPiece": {
+      "heavy": 0.6,
+      "household": 0.5,
+      "light": 0.3,
+      "note": "times itemLevel"
+    }
+  },
+  "mobs": {
+    "placeholder": true,
+    "formula": {
+      "hp": "40 * 1.17^(lv-1) * hpMult",
+      "atk": "6 + 3 * lv",
+      "def": "2 * lv",
+      "xp": "8 * 1.17^(lv-1) * xpMult"
+    },
+    "list": {
+      "tin-can": {
+        "level": 1,
+        "hp": 40,
+        "atk": 9,
+        "def": 2,
+        "xp": 8,
+        "hpMult": 1.0,
+        "xpMult": 1.0
+      },
+      "bottle-caps": {
+        "level": 3,
+        "hp": 22,
+        "atk": 15,
+        "def": 6,
+        "xp": 4,
+        "hpMult": 0.4,
+        "xpMult": 0.4
+      },
+      "tire-roller": {
+        "level": 5,
+        "hp": 75,
+        "atk": 21,
+        "def": 10,
+        "xp": 15,
+        "hpMult": 1.0,
+        "xpMult": 1.0
+      },
+      "plastic-bag-spook": {
+        "level": 8,
+        "hp": 108,
+        "atk": 30,
+        "def": 16,
+        "xp": 22,
+        "hpMult": 0.9,
+        "xpMult": 0.9
+      },
+      "wire-tangle": {
+        "level": 11,
+        "hp": 154,
+        "atk": 39,
+        "def": 22,
+        "xp": 31,
+        "hpMult": 0.8,
+        "xpMult": 0.8
+      },
+      "scrap-crab": {
+        "level": 13,
+        "hp": 474,
+        "atk": 45,
+        "def": 26,
+        "xp": 79,
+        "hpMult": 1.8,
+        "xpMult": 1.5
+      },
+      "scrapheap-golem": {
+        "level": 15,
+        "hp": 10800,
+        "atk": 51,
+        "def": 30,
+        "xp": 1440,
+        "hpMult": 30,
+        "xpMult": 20,
+        "skillMult": {
+          "tireSlam": 3,
+          "scrapToss": 2
+        },
+        "xpTo": "everyone who did at least 5% of its HP"
+      }
+    }
+  },
+  "skills": {
+    "placeholder": true,
+    "levelOnUnlock": 1,
+    "skillPointsPerLevelUp": 3,
+    "levelCap": "min(20, characterLevel - unlockLevel + 1)",
+    "tier": "place in the class's damage-skill unlock order, 1-based",
+    "basePct": "100 * 1.3^(tier-1), rounded",
+    "perSkillLevel": {
+      "damageOrHeal": 0.02,
+      "buffDebuff": 0.05,
+      "mpCost": 0.03,
+      "cooldown": -0.01
+    },
+    "rule": "higher-tier skill at Lv 5 always beats a lower-tier skill at Lv 20"
+  },
+  "affixes": {
+    "placeholder": true,
+    "rollRange": [
+      0.8,
+      1.0
+    ],
+    "maxAtItemLevel": {
+      "atk": [
+        "0.1R",
+        "0.16R+1"
+      ],
+      "hp": [
+        "0.24R+1",
+        "0.48R+1"
+      ],
+      "mp": [
+        "0.18R+1",
+        "0.34R+2"
+      ],
+      "def": [
+        "0.18R+1",
+        "0.34R+2"
+      ],
+      "stat": [
+        "0.07R+1",
+        "0.14R+1"
+      ],
+      "hpRegen": [
+        "0.05R+1",
+        "0.09R+1"
+      ],
+      "atkRate": [
+        0.007,
+        0.014
+      ],
+      "defRate": [
+        0.015,
+        0.025
+      ],
+      "critRate": [
+        0.007,
+        0.014
+      ],
+      "critDmg": [
+        0.03,
+        0.05
+      ],
+      "amp": [
+        0.007,
+        0.014
+      ],
+      "lifesteal": [
+        0.009,
+        0.018
+      ],
+      "manasteal": [
+        0.009,
+        0.018
+      ],
+      "dropRate": [
+        0.03,
+        0.05
+      ]
+    },
+    "note": "[blue, orange] max per LINE at item level R; stat = wearer main stat",
+    "rareRollWeight": {
+      "critRate": 0.1,
+      "critDmg": 0.1,
+      "amp": 0.1,
+      "others": 1
+    },
+    "linesPerItem": 3,
+    "lines": {
+      "1": "slot fixed stat",
+      "2": "HP (every affix item)",
+      "3": "random from slot pool; rare stats only here"
+    },
+    "slots": {
+      "weapon": [
+        "atk",
+        [
+          "critRate",
+          "critDmg",
+          "amp",
+          "atkRate",
+          "lifesteal",
+          "manasteal"
+        ]
+      ],
+      "head": [
+        "atk",
+        [
+          "critRate",
+          "critDmg",
+          "mp",
+          "lifesteal",
+          "manasteal"
+        ]
+      ],
+      "body": [
+        "def",
+        [
+          "mp",
+          "amp",
+          "defRate"
+        ]
+      ],
+      "hands": [
+        "atkRate",
+        [
+          "critRate",
+          "atk",
+          "mp",
+          "lifesteal",
+          "manasteal",
+          "dropRate"
+        ]
+      ],
+      "bottoms": [
+        "mp",
+        [
+          "def",
+          "stat",
+          "defRate"
+        ]
+      ],
+      "feet": [
+        "defRate",
+        [
+          "amp",
+          "mp",
+          "dropRate"
+        ]
+      ],
+      "ring": [
+        "critRate|critDmg",
+        [
+          "atk",
+          "amp",
+          "critRate|critDmg (the other one)"
+        ]
+      ],
+      "necklace": [
+        "stat",
+        [
+          "mp",
+          "atk",
+          "critRate"
+        ]
+      ],
+      "earrings": [
+        "def",
+        [
+          "lifesteal",
+          "mp",
+          "defRate"
+        ]
+      ],
+      "bracers": [
+        "hpRegen",
+        [
+          "mp",
+          "def",
+          "atkRate"
+        ]
+      ]
+    },
+    "nameFrom": "line 3"
+  },
+  "caps": {
+    "critRate": 0.5,
+    "atkRate": 0.3,
+    "damageReduction": 0.75,
+    "lifesteal": 0.1,
+    "manasteal": 0.1,
+    "defRate": 0.25,
+    "dropRate": 0.5
+  },
+  "gearBudget": "best set (dark orange, 2 agimats, +20) about 1.75x damage or 1.5x HP vs plain white gear; check with check_budget.py",
+  "enhancement": {
+    "placeholder": true,
+    "max": 20,
+    "affects": "weapons and armor: item base ATK / DEF; accessories: their affix value",
+    "perLevel": [
+      {
+        "from": 1,
+        "to": 10,
+        "pct": 0.02
+      },
+      {
+        "from": 11,
+        "to": 15,
+        "pct": 0.03
+      },
+      {
+        "from": 16,
+        "to": 20,
+        "pct": 0.05
+      }
+    ],
+    "totalAt20": 0.6,
+    "accessories": {
+      "perLevel": 0.01,
+      "totalAt20": 0.2,
+      "of": "affix value"
+    },
+    "cost": {
+      "placeholder": true,
+      "successPct": [
+        null,
+        1,
+        1,
+        0.95,
+        0.9,
+        0.85,
+        0.8,
+        0.75,
+        0.7,
+        0.65,
+        0.6,
+        0.55,
+        0.5,
+        0.45,
+        0.4,
+        0.35,
+        0.3,
+        0.27,
+        0.24,
+        0.22,
+        0.2
+      ],
+      "whetstonesPerTry": [
+        null,
+        1,
+        1,
+        2,
+        2,
+        3,
+        3,
+        4,
+        4,
+        5,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        12,
+        14,
+        16,
+        18,
+        20
+      ],
+      "onFail": {
+        "upTo15": "nothing but materials",
+        "16to20": "item breaks: keeps level, unusable until a Repair Kit of its tier"
+      },
+      "luckResetsOnSuccess": true,
+      "breaks": "from +16, needs Repair Kit",
+      "index": "array index = target + level",
+      "luckPerFail": {
+        "1-5": 0.1,
+        "6-10": 0.08,
+        "11-15": 0.05,
+        "16-20": 0.03
+      },
+      "neverLosesLevel": true,
+      "currency": "none, whetstones only"
+    },
+    "weaponAura": {
+      "appliesTo": "weapons only, in hand and resting, all directions, visible to everyone; also the item icon",
+      "tiers": [
+        {
+          "from": 15,
+          "to": 17,
+          "aura": "blue",
+          "colours": [
+            "#5B8FD1",
+            "#DCDCF0"
+          ]
+        },
+        {
+          "from": 18,
+          "to": 19,
+          "aura": "gold",
+          "colours": [
+            "#FCDA4A",
+            "#FCFC64"
+          ],
+          "glints": 2
+        },
+        {
+          "from": 20,
+          "to": 20,
+          "aura": "prismatic",
+          "cycle": [
+            "#7C2AE8",
+            "#D946EF",
+            "#5B8FD1",
+            "#A3E635",
+            "#F8BF27"
+          ],
+          "glints": 4,
+          "prismatic": "all colours at once by angle around the weapon, turning slowly; each spiral line its own colour"
+        }
+      ],
+      "style": "code-drawn steady 3px glow outside the weapon (ring 1 full aura colour, ring 2 50%, ring 3 25%), weapon outline tinted, NO pulse/blink",
+      "brokenShowsAura": false,
+      "preview": "items/weapon-aura/weapon-aura-preview-v6.gif",
+      "smoke": {
+        "look": "spiral: lines wind around the weapon ~1.5 turns while rising from its bottom, fade ~18px above its top; back half hidden behind the weapon",
+        "count": {
+          "blue": "4 (2 long, 2 short)",
+          "gold": "5 (2 long, 3 short)",
+          "prismatic": "7 (3 long, 4 short)"
+        },
+        "trailLength": "long lines trail about 1.5 turns of the spiral, short ones about a third of that"
+      }
+    }
+  },
+  "rarity": {
+    "nameColour": {
+      "brown": {
+        "affix": null,
+        "slots": 0
+      },
+      "white": {
+        "affix": null,
+        "slots": 1
+      },
+      "grey": {
+        "affix": null,
+        "slots": 2
+      },
+      "lightBlue": {
+        "affix": "blue",
+        "slots": 1
+      },
+      "darkBlue": {
+        "affix": "blue",
+        "slots": 2
+      },
+      "lightOrange": {
+        "affix": "orange",
+        "slots": 1
+      },
+      "darkOrange": {
+        "affix": "orange",
+        "slots": 2
+      }
+    },
+    "slotsOn": [
+      "weapon",
+      "head",
+      "body",
+      "hands",
+      "bottoms",
+      "feet"
+    ],
+    "mobGearDrop": {
+      "chancePerKill": 0.03,
+      "odds": {
+        "brown": 0.2,
+        "white": 0.35,
+        "grey": 0.45
+      },
+      "level": {
+        "default": "map gear level (Slums 10)",
+        "wire-tangle": {
+          "10": 0.7,
+          "20": 0.3
+        },
+        "scrap-crab": {
+          "10": 0.7,
+          "20": 0.3
+        }
+      }
+    },
+    "bossGearDrop": {
+      "affix": {
+        "blue": 0.8,
+        "orange": 0.2
+      },
+      "slots": {
+        "1": 0.44,
+        "2": 0.56
+      },
+      "level": {
+        "10": 0.6,
+        "20": 0.4
+      }
+    },
+    "trainingWeapons": "brown",
+    "accessories": "field boss only, blue/orange; about 1 in 3 golem loots",
+    "trainingArmor": "brown"
+  },
+  "agimats": {
+    "placeholder": true,
+    "valueAtLevel": {
+      "atk": "0.1A+1",
+      "hp": "0.36A+1",
+      "mp": "0.25A+1",
+      "def": "0.25A+1",
+      "stat": "0.05A+1",
+      "atkRate": 0.01,
+      "critRate": 0.01,
+      "critDmg": 0.04,
+      "amp": 0.01
+    },
+    "fitsGearLevel": ">= A",
+    "perItem": "different stats, at most one rare",
+    "rare": [
+      "critRate",
+      "critDmg",
+      "amp"
+    ],
+    "dropWeight": {
+      "rare": 0.1,
+      "atkRate": 0.33,
+      "others": 1
+    },
+    "replacingBreaksOld": true,
+    "slotLock": "agimats from disassembly only fit the slot type they came from; dropped agimats fit any slot"
+  },
+  "gearTiers": {
+    "placeholder": true,
+    "low": {
+      "levels": [
+        1,
+        20
+      ],
+      "material": "Rough Whetstone"
+    },
+    "mid": {
+      "levels": [
+        30,
+        40
+      ],
+      "material": "Polished Whetstone"
+    },
+    "high": {
+      "levels": [
+        50,
+        60
+      ],
+      "material": "Gleaming Whetstone"
+    },
+    "superior": {
+      "levels": [
+        70,
+        80
+      ],
+      "material": "Radiant Whetstone"
+    },
+    "moon": {
+      "levels": [
+        90,
+        100
+      ],
+      "material": "Moon Whetstone"
+    },
+    "repairKits": [
+      "Low Repair Kit",
+      "Mid Repair Kit",
+      "High Repair Kit",
+      "Superior Repair Kit",
+      "Moon Repair Kit"
+    ]
+  },
+  "currencies": {
+    "combat": "Kusing",
+    "premium": "Kowens",
+    "kusingPerMob": "round(100 * 1.08^(level-1))",
+    "golemKusingPerPlayer": 20000,
+    "kowensShop": {
+      "whetstone": 3,
+      "repairKit": 15
+    },
+    "whetstoneSources": [
+      "field boss (10-20 per player)",
+      "Kowens shop",
+      "disassembly fragments"
+    ]
+  },
+  "disassembly": {
+    "placeholder": true,
+    "anyItem": true,
+    "fragments": {
+      "formula": "2 + 3 * sum(whetstonesPerTry[1..plusLevel])",
+      "name": "<Tier> Whetstone Fragment",
+      "craft": "10 fragments = 1 whetstone of that tier"
+    },
+    "agimat": {
+      "from": "slotted items only, always 1",
+      "rareWeight": {
+        "oneSlot": "normal",
+        "twoSlots": "3x"
+      },
+      "level": "item level",
+      "lockedToSlot": "slot type of the dismantled item"
+    },
+    "embeddedAgimats": "destroyed, with a warning"
+  },
+  "death": {
+    "penalty": null,
+    "respawn": "gate of the map you entered through"
+  },
+  "party": {
+    "xp": "shared among nearby members, +10% per extra member, max +30%",
+    "loot": "first come within the party; opens to all after 10 s",
+    "solo": "killer only for 10 s, then anyone",
+    "boss": "personal loot for everyone with >=5% damage, visible only to them"
+  },
+  "resets": {
+    "statPoints": "free for now",
+    "skillPoints": "free for now"
+  },
+  "trading": {
+    "tradeable": "anything not bound",
+    "bindOnWear": "orange items (lightOrange, darkOrange)",
+    "alwaysBound": [
+      "training weapons",
+      "training armor"
+    ],
+    "kowens": "not tradeable",
+    "kusing": "tradeable",
+    "flow": {
+      "rangeTiles": 5,
+      "requestTimeoutSeconds": 20,
+      "slotsEach": 8,
+      "lockThenConfirm": true,
+      "serverLog": true
+    }
+  },
+  "potions": {
+    "placeholder": true,
+    "tiers": {
+      "low": {
+        "minLevel": 1,
+        "hp": 150,
+        "mp": 80,
+        "kusing": 50
+      },
+      "mid": {
+        "minLevel": 30,
+        "hp": 250,
+        "mp": 140,
+        "kusing": 150
+      },
+      "high": {
+        "minLevel": 50,
+        "hp": 350,
+        "mp": 200,
+        "kusing": 400
+      },
+      "superior": {
+        "minLevel": 70,
+        "hp": 450,
+        "mp": 260,
+        "kusing": 900
+      },
+      "moon": {
+        "minLevel": 90,
+        "hp": 550,
+        "mp": 320,
+        "kusing": 2000
+      }
+    },
+    "sharedCooldownSec": 10,
+    "mobDropChance": 0.05
+  },
+  "regen": {
+    "inCombat": {
+      "hp": 0,
+      "mpPerSec": "1 + 0.05 * INT"
+    },
+    "outOfCombatAfterSec": 5,
+    "outOfCombatPctPerSec": 0.02
+  },
+  "inventory": {
+    "slots": 40,
+    "stack999": [
+      "whetstones",
+      "fragments",
+      "repair kits",
+      "materials",
+      "agimats (same stat, level, slot lock)"
+    ],
+    "stack99": [
+      "potions"
+    ],
+    "gearStacks": false
+  },
+  "trainingGear": {
+    "placeholder": true,
+    "givenBy": "Tanod on class choice (quest A Weapon for the Town)",
+    "retroactive": "players who already finished the quest get the armor set once on next login (flag trainingArmorGiven)",
+    "level": 1,
+    "rarity": "brown",
+    "bound": true,
+    "slots": 0,
+    "noDrop": true,
+    "noTrade": true,
+    "noSell": true,
+    "noEnhance": true,
+    "noDisassemble": true,
+    "weaponATK": 5,
+    "armorDEFPerPiece": {
+      "heavy": 2,
+      "household": 2,
+      "light": 1
+    },
+    "armorSets": {
+      "heavy": {
+        "classes": [
+          "stick",
+          "greatstick"
+        ],
+        "pieces": {
+          "head": "Training Hard Hat",
+          "body": "Training Armor",
+          "hands": "Training Gauntlets",
+          "bottoms": "Training Legguards",
+          "feet": "Training Greaves"
+        }
+      },
+      "light": {
+        "classes": [
+          "slingshot",
+          "broom"
+        ],
+        "pieces": {
+          "head": "Training Headpiece",
+          "body": "Training Suit",
+          "hands": "Training Gloves",
+          "bottoms": "Training Pants",
+          "feet": "Training Boots"
+        }
+      },
+      "household": {
+        "classes": [
+          "potlid",
+          "hilot"
+        ],
+        "pieces": {
+          "head": "Training Headwrap",
+          "body": "Training Robe",
+          "hands": "Training Wraps",
+          "bottoms": "Training Trousers",
+          "feet": "Training Sandals"
+        }
+      }
+    },
+    "classChange": "swap owned training weapon and armor for the new class ones"
+  },
+  "mobBehaviour": {
+    "respawnSeconds": 30,
+    "aliveperZone": 10,
+    "passive": [
+      "tinCan",
+      "bottleCaps",
+      "plasticBagSpook"
+    ],
+    "aggressive": [
+      "tireRoller",
+      "wireTangle",
+      "scrapCrab"
+    ],
+    "aggroTiles": 4,
+    "packAssist": [
+      "bottleCaps"
+    ],
+    "leashTiles": 10,
+    "wanderTiles": 3,
+    "attackEverySeconds": 2,
+    "rangeTiles": {
+      "melee": 1,
+      "wireTangle": 4
+    },
+    "hpBar": {
+      "showOn": "hit or targeted",
+      "hideAfterSeconds": 5,
+      "playersSee": "party members only"
+    },
+    "nameColour": {
+      "grey": "mob 5+ levels below",
+      "white": "otherwise",
+      "red": "mob 3+ levels above"
+    },
+    "golem": {
+      "leavesPit": false,
+      "resetAfterSecondsEmpty": 30
+    }
+  },
+  "bossLoot": {
+    "placeholder": true,
+    "perEligiblePlayer": {
+      "kusing": 20000,
+      "roughWhetstones": [
+        10,
+        20
+      ],
+      "gearPieces": [
+        1,
+        2
+      ],
+      "accessoryChance": 0.33,
+      "agimatChance": 0.5,
+      "agimatLevels": [
+        10,
+        20
+      ],
+      "agimatSlotLock": "none",
+      "lampHatChance": 0.02
+    },
+    "eligible": "did >= 5% of golem HP",
+    "agimatSources": "golem loot and disassembly only"
+  }
+}

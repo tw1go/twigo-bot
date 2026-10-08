@@ -7,7 +7,7 @@
 #                            purpose; data/ is live state, backed up to data/backups/pre-deploy-<commit>.db first)
 #   package.json, package-lock.json, packages/*/package.json   workspace manifests (npm needs all of them)
 #   packages/bot/dist        the built bot, run by systemd (deploy/twigo-bot.service)
-#   packages/shared/dist     built shared types (the bot only imports types, so nothing loads it at runtime)
+#   packages/shared/dist     built shared types and the stats rules (the bot loads them at runtime)
 #   web/play                 the built web game, served by Caddy at /play (deploy/Caddyfile)
 #
 # Steps: build here → back up the database → upload → install the bot's dependencies if the lockfile changed →

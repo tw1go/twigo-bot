@@ -3,10 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Types and constants shared by the Mikazuki bot and the web game",
+  "description": "Types and the stats rules shared by the Mikazuki bot and the web game",
   "exports": {
     ".": {
       "types": "./src/index.ts",
+      "source": "./src/index.ts",
       "default": "./dist/index.js"
     }
   },

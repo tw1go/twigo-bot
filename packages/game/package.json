@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Mikazuki web town (Phaser + Vite), served at /play",
   "scripts": {
-    "dev": "vite",
+    "dev": "npm run build -w @mikazuki/shared && vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"
