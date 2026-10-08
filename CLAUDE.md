@@ -289,8 +289,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   `world/outskirts.ts` (dirt, the canal carried on from the map's first/last rows, a concrete road out of the gate, dead
   trees thick on the edges and sparse junk/shanties/poles/wrecks, one per 4 × 4 cell). Minimap: the Slums' colours,
   ridge lighter, basin darker. Mobs (`map.mobZones`, all six `active`: Tin Can, Bottle Caps, Tire Roller, Plastic Bag
-  Spook, Wire Tangle, Scrap Crab; only active zones load art; the boss (Scrapheap Golem) is data and art only, not drawn
-  yet). Art: manifest `mobs.<id>` (file with {variant}/{anim}/{dir}, `variants` with their own cell/anchor where they
+  Spook, Wire Tangle, Scrap Crab; only active zones load art; the boss (Scrapheap Golem) runs on the server (below), the game doesn't
+  draw it yet). Art: manifest `mobs.<id>` (file with {variant}/{anim}/{dir}, `variants` with their own cell/anchor where they
   differ, the golem's `enraged` set and `fx` with `layer` ground/front; `assets/mob-art.ts`; built from the art folder's
   _sheets.csv, PNGs only); rules: `mobs/mobs.json` (manifest `mobs.data`, read by the bot too: 0-based attack frame,
   shadow size, `floats`, variants, the golem's toss/glare frames; a bot test keeps its variants in step with the
@@ -348,6 +348,27 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   world effects (`combat/world-skills.ts`) play on it (a script's z 0 = ground, z 3 = front, z 1 just behind the caster). `residents` are unused for now. Dev: `?area=slums`,
   `?switch` (pretend login: a row of class badges, bottom left, to become any class at once: `devSwitchClass` in
   net/adventure.ts, its training weapon, the class choice done), `__town.mobs()`; the dev server reads maps/slums.json again when it changes.
+- Scrapheap Golem (field boss; bot `web/town-golem.ts` `Golem`, tested, run by the Slums' MobRoom on its clock when given
+  `loadGolemArt()`; data: slums.json `boss`, mobs.json `hp` 4000 / `radius` 2, the manifest's anim and fx lengths): rises at
+  minute 0 of every `everyMinutes` (120: even hours, from the epoch, so UTC = Manila) at its tile, `rising` for its death
+  anim's length (riseMs, not hittable); `warnMinutes` before, a line. Its lines (`system` kind 'golem', tones stir / rise /
+  down) go only to the Slums room through the mob clock: not kept for arrivals, never in Discord. Nothing saved: after a
+  restart, the next even hour. Idle: a quarter turn (`mob-face`) or a 1–3 tile stomp inside the pit (`arena` rect) every
+  5–11 s; 30 min with no hit (since rise or last hit) and not fighting → `sinking` (riseMs) → gone. Reach to it = to its
+  body's edge (`edge`: distance from its tile − radius; area skills reach it too, `reached`); 20/25 a hit, never blocked or
+  slowed. First hit → fight: target = the last to hit it if within `leash` (8, Chebyshev from home), else the nearest
+  there; it steps closer (1.5 tiles/s, within its leash), turns a quarter per 0.5 s and only attacks facing its target,
+  every 1.5 s (1 s enraged): Tire Slam within 2 of its edge (`at` = a tile past its body toward them), Scrap Toss past 3
+  (`at` = their tile; between 2 and 3 it steps closer), every 4th a Lamp Glare along its facing (`cone` [5 tiles from its
+  tile, 60°] in grid space; `blinded` ids, `blindMs`) — `golem-attack`, harmless. ≤ 50% once: `golem` change 'call' with
+  3–4 `spots` a tile or two outside the pit, then (`ms` = the call-junk fx) `mob-add`: 2 Tin Cans + a Bottle Caps pack
+  (ids `golem-add:<n>[:<k>]`, `TownMob.kind`; aggressive toward the nearest player within the golem's leash; never back
+  once dead). ≤ 25% once: 'enrage'. 10 s with nobody within its leash: 'reset' (full HP, phases re-armed, Adds
+  `mob-remove`d), walks home. 0: 'death' (state 'dead'), Adds removed, the line naming everyone who hit it that fight
+  (`downLine`). Every `golem` message carries the whole `TownGolem` (HP, enraged, state, home/leash/radius for the boss
+  bar); arrivals get it in `mobs` (`golem`). Dev: `/__golem?now=1` (rise now), `/__golem?demo=1&as=Name` (its fight
+  against the nearest player in the room: slam, toss, glare, the Junk at a pretend half, enrage at a pretend quarter,
+  death); the page doesn't call them yet.
 - NPCs (town only, not the neighbourhood; client-side: never on the server, the online list or the minimap): the
   Tanod and ten Alings, flat pre-baked sheets (manifest `npcs`, art in `assets/npcs/`, one pack per NPC; `Character`
   with `FlatSheets`, never the paper doll). Homes, behaviours, the Tanod's route, voices and portrait facing in

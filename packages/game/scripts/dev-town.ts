@@ -6,6 +6,7 @@ import { doorSpot, hoodMap, lotTile } from '../../bot/src/web/hood-map.ts';
 import type { Plugin } from 'vite';
 import { attachTown } from '../../bot/src/web/town.ts';
 import { MobRoom, loadMobKinds, loadSkillShapes } from '../../bot/src/web/town-mobs.ts';
+import { loadGolemArt } from '../../bot/src/web/town-golem.ts';
 import { LANES, finishMs, raceScript } from '../../bot/src/games/race-script.ts';
 import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
 
@@ -19,6 +20,9 @@ import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
 //   GET /__announce?kind=jackpot|notice&title=…&text=…   a banner at the top
 //   GET /__jail?name=Bob&on=1   shows Bob as jailed (on=0: released) to everyone in town
 //   GET /__bakod?name=Mara&on=0 takes down (on=1 puts up) a pretend neighbour's Bakod, live in the neighbourhood
+//   GET /__golem?now=1   the Scrapheap Golem rises in the Slums now (the page's ?golem=now); ?demo=1&as=Alice: it rises if
+//       it must and plays its whole fight against the nearest player (?golemdemo=1): each attack, the Junk at a pretend
+//       half, Enrage at a pretend quarter, death (the line names Alice if nobody hit it)
 //   GET /__flex?as=Bob&itemId=rock&itemName=Rock&rarity=junk   Bob flexes an item (chat line + bubble)
 //   GET /__gift?as=Alice&amount=50   Alice gets the gift pop-up (as from /gift kowens); &wallet=1: only her HUD's Kowens reload
 //   GET /__gift?as=Alice&item=megaphone&name=Megaphone&qty=3   Alice gets the item gift pop-up (as from /gift item)
@@ -260,6 +264,16 @@ export function devTown(): Plugin {
         }
         return slums;
       };
+      const slumsMobs = new MobRoom(
+        JSON.parse(readFileSync(slumsFile, 'utf8')),
+        Math.random,
+        Object.fromEntries(
+          (JSON.parse(readFileSync(join(server.config.publicDir, 'assets/classes/classes.json'), 'utf8')).classes as { id: string; skills: { level: number }[] }[]).map((c) => [c.id, c.skills.map((k) => k.level)]),
+        ),
+        loadSkillShapes(),
+        loadMobKinds(),
+        loadGolemArt(),
+      );
       const town = attachTown(httpServer as Parameters<typeof attachTown>[0], {
         map: { size: json.size, spawn: json.spawn, blocked: json.blocked, avoid: Object.values((json.gates ?? {}) as Record<string, [number, number][]>).flat() },
         rooms: {
@@ -269,17 +283,7 @@ export function devTown(): Plugin {
           },
           slums: slumsMap,
         },
-        mobs: {
-          slums: new MobRoom(
-            JSON.parse(readFileSync(slumsFile, 'utf8')),
-            Math.random,
-            Object.fromEntries(
-              (JSON.parse(readFileSync(join(server.config.publicDir, 'assets/classes/classes.json'), 'utf8')).classes as { id: string; skills: { level: number }[] }[]).map((c) => [c.id, c.skills.map((k) => k.level)]),
-            ),
-            loadSkillShapes(),
-            loadMobKinds(),
-          ),
-        },
+        mobs: { slums: slumsMobs },
         shared: true,
         arenaBets,
         authenticate: async (req) => {
@@ -358,6 +362,14 @@ export function devTown(): Plugin {
         const q = new URL(req.url ?? '/', 'http://localhost').searchParams;
         town.setJailed(q.get('name') ?? '', q.get('on') !== '0');
         res.end('jail updated in town\n');
+      });
+      server.middlewares.use('/__golem', (req, res) => {
+        const q = new URL(req.url ?? '/', 'http://localhost').searchParams;
+        if (q.has('demo')) {
+          slumsMobs.golemDemo(Date.now(), q.get('as') ?? 'Dev tester');
+          return void res.end('the golem plays its fight\n');
+        }
+        res.end(slumsMobs.riseGolem(Date.now()) ? 'the golem rises\n' : 'the golem is up already\n');
       });
       server.middlewares.use('/__flex', (req, res) => {
         const q = new URL(req.url ?? '/', 'http://localhost').searchParams;

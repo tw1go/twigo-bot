@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
-import type { TownMob, TownMobFacing } from '@mikazuki/shared';
+import type { TownGolem, TownMob, TownMobFacing } from '@mikazuki/shared';
+import { Golem, type GolemArt, type GolemBoss, type GolemEvent } from './town-golem.js';
 
 // 🥫 The Slums' mobs, run on the server so every player sees the same ones in the same places, and fought there. One per
 // spawn tile of each zone that's on (`active` in the game's maps/slums.json), or a pack of a few round a leader for a
@@ -20,6 +21,11 @@ import type { TownMob, TownMobFacing } from '@mikazuki/shared';
 // gone, out of its zone or its leash, or (a passive one) haven't hit it for GIVE_UP_MS. At 0 HP it dies and comes back
 // where it started after its zone's respawnSec (a pack's caps each on their own). Each skill has its own cooldown by the
 // level it's learnt at (skillCooldown: Lv 1 the quickest; the game shows the same, combat/cooldowns.ts).
+//
+// The field boss (the map's `boss`, given its art): town-golem.ts runs it on this room's clock; hits on it come through
+// attack() like any mob's (reach to its body's edge; area skills reach it too), and its Adds are mobs of this room (ids
+// `golem-add:<n>`, sent with their `kind` in `mob-add`; aggressive toward the nearest player within its leash, never
+// coming back once dead, all removed with `mob-remove` when the fight ends).
 
 const ROAM = 3;
 const SPEED = 2.4; // tiles per second (the game walks them at the same pace)
@@ -45,7 +51,8 @@ export const skillCooldown = (level: number) => Math.round((0.8 + 0.15 * Math.ma
 export type MobEvent =
   | { t: 'mob-move'; id: string; path: [number, number][]; speed?: number }
   | { t: 'mob-attack'; id: string; target: string; dir: TownMobFacing; slow?: number }
-  | { t: 'mob-spawn'; id: string; col: number; row: number; hp: number };
+  | { t: 'mob-spawn'; id: string; col: number; row: number; hp: number }
+  | GolemEvent;
 
 export interface MobHit {
   id: string;
@@ -116,6 +123,8 @@ export interface MobMapData {
   ramps?: { col: number; row: number }[];
   safeZone?: [number, number, number, number];
   mobZones?: MobZoneData[];
+  /** The field boss (the Scrapheap Golem): town-golem.ts. */
+  boss?: GolemBoss;
 }
 
 /** Each kind's rules (the game's mobs/mobs.json): its looks, and what sets it apart. */
@@ -168,6 +177,8 @@ interface Mob {
   hopSpeed: number;
   /** Its pack (the caps of one spawn point, the leader the first alive), or null. */
   pack: Mob[] | null;
+  /** One of the golem's Adds: no spawn point, never back once dead, gone when the fight ends. */
+  add?: boolean;
 }
 
 /** The game's mobs/mobs.json. */
@@ -223,40 +234,100 @@ export class MobRoom {
   /** This tick's tiles each mob stands on or is hopping to (so they don't pile up on one): col × 4096 + row. */
   private claimed: Map<number, Mob> | null = null;
 
+  /** The field boss, if the map has one (and its art was given). */
+  private readonly golem: Golem | null = null;
+  /** Its Adds' zones (one per kind: the golem's leash, aggressive), and how many Adds it has called so far (their ids). */
+  private readonly addZones = new Map<string, MobZoneData>();
+  private adds = 0;
+
   constructor(
     private readonly map: MobMapData,
     private readonly random: () => number = Math.random,
     private readonly levels: SkillLevels = {},
     private readonly shapes: SkillShapes = { shapes: {} },
-    kinds: MobKinds = {},
+    private readonly kinds: MobKinds = {},
+    golem?: GolemArt,
   ) {
     for (const r of map.ramps ?? []) this.ramps.add(`${r.col},${r.row}`);
     for (const zone of map.mobZones ?? []) {
       if (!zone.active) continue;
       const kind = kinds[zone.mob] ?? {};
-      const variants = kind.variants ?? [];
-      zone.spawns.forEach(([col, row], i) => {
-        const point = `${zone.id}:${i}`;
-        const n = kind.pack ? packSize(point, kind.pack) : 1;
-        const pack: Mob[] = [];
-        for (let k = 0; k < n; k++) {
-          const id = kind.pack ? `${point}:${k}` : point;
-          const [lo, hi] = zone.level;
-          const level = lo + Math.floor(seeded(id) * (hi - lo + 1));
-          const variant = variants[Math.floor(seeded(`${id}:variant`) * variants.length)] ?? '';
-          const m: Mob = {
-            id, zone, kind, level, maxHp: mobHp(level), variant, spawn: [col, row], home: [col, row], col, row, facing: FACINGS[Math.floor(seeded(`${id}:dir`) * 4)], path: [], hopAt: 0, restUntil: 0,
-            hp: mobHp(level), respawnAt: 0, foe: null, nextAttack: 0, slow: null, hopSpeed: SPEED, pack: kind.pack ? pack : null,
-          };
-          // A pack's caps start round the point, each on a tile of its own (seeded: the same every time).
-          if (k) m.home = this.besideSpawn(m, pack, id);
-          [m.col, m.row] = m.home;
-          pack.push(m);
-          this.mobs.push(m);
-          this.byId.set(id, m);
-        }
-      });
+      zone.spawns.forEach(([col, row], i) => this.place(zone, kind, `${zone.id}:${i}`, [col, row]));
     }
+    const boss = map.boss;
+    if (boss && golem) {
+      const level = this.map.height?.[boss.tile[1]]?.[boss.tile[0]] ?? 0;
+      this.golem = new Golem(boss, golem, {
+        open: (c, r) => c >= 0 && r >= 0 && c < map.size[0] && r < map.size[1] && !map.blocked[r]?.[c] && (map.height?.[r]?.[c] ?? 0) === level && !this.ramps.has(`${c},${r}`),
+        callAdds: (spots, now) => this.callAdds(boss, level, spots, now),
+        dropAdds: () => this.dropAdds(),
+      }, random);
+    }
+  }
+
+  /** A spawn point's mob (or pack: `point:<n>` each), its level and look seeded from its id; the Adds' too. */
+  private place(zone: MobZoneData, kind: MobKind, point: string, [col, row]: [number, number], add = false): Mob[] {
+    const variants = kind.variants ?? [];
+    const n = kind.pack ? packSize(point, kind.pack) : 1;
+    const pack: Mob[] = [];
+    for (let k = 0; k < n; k++) {
+      const id = kind.pack ? `${point}:${k}` : point;
+      const [lo, hi] = zone.level;
+      const level = lo + Math.floor(seeded(id) * (hi - lo + 1));
+      const variant = variants[Math.floor(seeded(`${id}:variant`) * variants.length)] ?? '';
+      const m: Mob = {
+        id, zone, kind, level, maxHp: mobHp(level), variant, spawn: [col, row], home: [col, row], col, row, facing: FACINGS[Math.floor(seeded(`${id}:dir`) * 4)], path: [], hopAt: 0, restUntil: 0,
+        hp: mobHp(level), respawnAt: 0, foe: null, nextAttack: 0, slow: null, hopSpeed: SPEED, pack: kind.pack ? pack : null, ...(add ? { add } : {}),
+      };
+      // A pack's caps start round the point, each on a tile of its own (seeded: the same every time).
+      if (k) m.home = this.besideSpawn(m, pack, id);
+      [m.col, m.row] = m.home;
+      pack.push(m);
+      this.mobs.push(m);
+      this.byId.set(id, m);
+    }
+    return pack;
+  }
+
+  /** The golem's Adds at its spots: two Tin Cans, then a Bottle Caps pack (round the third spot, and a fourth if there
+   *  is one); each kind's level from its zone in the map. They come for the nearest player within the golem's leash. */
+  private callAdds(boss: GolemBoss, level: number, spots: [number, number][], now: number): GolemEvent[] {
+    const made: Mob[] = [];
+    const zoneFor = (mob: string) => {
+      let z = this.addZones.get(mob);
+      if (!z) {
+        const [hc, hr] = boss.tile;
+        const L = boss.leash;
+        z = {
+          id: 'golem-add', mob, level: this.map.mobZones?.find((x) => x.mob === mob)?.level ?? [1, 1], rect: [hc - L, hr - L, hc + L, hr + L], height: level,
+          active: true, spawns: [], aggro: 'aggressive', aggroRange: 2 * L + 1, leash: 2 * L,
+        };
+        this.addZones.set(mob, z);
+      }
+      return z;
+    };
+    const at = (i: number) => spots[Math.min(i, spots.length - 1)];
+    for (const [i, mob] of ['tin-can', 'tin-can', 'bottle-caps'].entries()) {
+      const caps = this.place(zoneFor(mob), this.kinds[mob] ?? {}, `golem-add:${this.adds++}`, at(i), true);
+      // A fourth spot: half the pack crawls out there.
+      if (caps.length > 1 && spots.length > 3)
+        caps.forEach((m, k) => {
+          if (k === 1 && this.canStand({ zone: m.zone, spawn: spots[3] }, ...spots[3], 0)) [m.col, m.row] = m.home = m.spawn = spots[3];
+        });
+      made.push(...caps);
+    }
+    for (const m of made) m.restUntil = now;
+    return [{ t: 'mob-add', mobs: made.map((m) => this.view(m, now)) }];
+  }
+
+  /** The fight is over: every Add goes (alive or not). */
+  private dropAdds(): GolemEvent[] {
+    const gone = this.mobs.filter((m) => m.add);
+    if (!gone.length) return [];
+    for (const m of gone) this.byId.delete(m.id);
+    this.mobs.splice(0, this.mobs.length, ...this.mobs.filter((m) => !m.add));
+    this.claimed = null;
+    return [{ t: 'mob-remove', ids: gone.map((m) => m.id) }];
   }
 
   get size(): number {
@@ -401,11 +472,11 @@ export class MobRoom {
    * hop. `players`: where each player in the room is (by town id). Returns what to send to the room.
    */
   tick(now: number, players: ReadonlyMap<string, [number, number]> = new Map()): MobEvent[] {
-    const events: MobEvent[] = [];
     this.claimed = null;
+    const events: MobEvent[] = this.golem ? this.golem.tick(now, players) : [];
     // Who each aggressive zone's mobs could notice (a few players at most: looked up once a tick, not per mob).
     const watched = new Map<MobZoneData, [string, [number, number]][]>();
-    for (const zone of this.map.mobZones ?? []) {
+    for (const zone of [...(this.map.mobZones ?? []), ...this.addZones.values()]) {
       if (!zone.active || zone.aggro !== 'aggressive' || !zone.aggroRange) continue;
       const here = [...players].filter(([, p]) => this.inZone(zone, p));
       if (here.length) watched.set(zone, here);
@@ -428,8 +499,14 @@ export class MobRoom {
       }
       if (m.path.length) continue;
       if (!m.foe) {
-        const near = watched.get(m.zone)?.find(([, p]) => cheb(p, [m.col, m.row]) <= m.zone.aggroRange!);
-        if (near) this.rally(m, near[0], now);
+        // The nearest player within its aggroRange.
+        let near: string | null = null;
+        let best = m.zone.aggroRange! + 1;
+        for (const [id, p] of watched.get(m.zone) ?? []) {
+          const d = cheb(p, [m.col, m.row]);
+          if (d < best) [near, best] = [id, d];
+        }
+        if (near) this.rally(m, near, now);
       }
       if (m.foe) {
         this.fight(m, now, players, events);
@@ -520,22 +597,26 @@ export class MobRoom {
 
   private swings = new Map<string, number>();
 
-  /** A player's attack on a mob: in range for their class (from where they stand), not too fast, the mob alive. */
-  attack(player: string, from: [number, number], cls: string | null | undefined, id: string, now: number, skill = 0): AttackResult {
-    const m = this.byId.get(id);
-    if (!m || m.respawnAt) return { ok: false, reason: 'gone' };
+  /** A player's attack on a mob (or the golem): in range for their class (from where they stand; to the golem's body's
+   *  edge), not too fast, the mob alive. `name`: theirs, for the golem's line when it falls. */
+  attack(player: string, from: [number, number], cls: string | null | undefined, id: string, now: number, skill = 0, name = player): AttackResult {
+    const boss = this.golem?.id === id ? this.golem : null;
+    const m = boss ? null : this.byId.get(id);
+    if (boss ? !boss.hittable : !m || m.respawnAt) return { ok: false, reason: 'gone' };
     const ready = `${player}:${skill}`;
     if (now < (this.swings.get(player) ?? 0) || now < (this.swings.get(ready) ?? 0)) return { ok: false, reason: 'slow' };
-    const [mc, mr] = this.at(m, now);
+    const [mc, mr] = boss ? boss.at(now) : this.at(m!, now);
     const reach = (cls && this.shapes.range?.[cls]?.[skill]) || (cls && RANGED_CLASSES.has(cls) ? RANGED : 1);
     // (A tile of slack: the mob may be mid-hop.)
-    if (Math.max(Math.abs(from[0] - mc), Math.abs(from[1] - mr)) > reach + 1) return { ok: false, reason: 'range' };
+    const far = boss ? boss.edge(from, now) : Math.max(Math.abs(from[0] - mc), Math.abs(from[1] - mr));
+    if (far > reach + 1) return { ok: false, reason: 'range' };
     this.swings.set(player, now + SWING_MS);
     // (A little slack: the game's clock and the message's trip.)
     const level = (cls && this.levels[cls]?.[skill]) || 1;
     this.swings.set(ready, now + skillCooldown(level) * 1000 - 150);
     const effect = parseEffect(cls ? this.shapes.effects?.[cls]?.[skill] : null);
-    const hits = this.reached(m, [mc, mr], from, (cls && this.shapes.shapes[cls]?.[skill]) || 'single', now).map((x) => {
+    const hits = this.reached(m ?? 'golem', [mc, mr], from, (cls && this.shapes.shapes[cls]?.[skill]) || 'single', now).map((x) => {
+      if (x === 'golem') return this.hitGolem(player, name, now); // (no slowing it)
       const hit = this.damage(x, player, from, now);
       if (effect && !hit.dead && !hit.blocked) {
         x.slow = { factor: effect.factor, until: now + effect.ms };
@@ -557,35 +638,46 @@ export class MobRoom {
     m.hp = Math.max(0, m.hp - damage);
     if (m.hp === 0) {
       [m.col, m.row] = [mc, mr];
-      m.respawnAt = now + (m.zone.respawnSec ?? 20) * 1000;
+      m.respawnAt = m.add ? Infinity : now + (m.zone.respawnSec ?? 20) * 1000;
       m.foe = null;
       m.path = [];
     }
     return { id: m.id, damage, crit, hp: m.hp, dead: m.hp === 0 };
   }
 
-  /** The mobs a skill's shape reaches: the target first (see skill-hits.json). */
-  private reached(target: Mob, at: [number, number], from: [number, number], shape: string, now: number): Mob[] {
+  /** A hit on the golem: HIT (or CRIT), never blocked. */
+  private hitGolem(player: string, name: string, now: number): MobHit {
+    const crit = this.random() < CRIT_CHANCE;
+    const damage = crit ? CRIT : HIT;
+    const r = this.golem!.hit(player, name, damage, now)!;
+    return { id: this.golem!.id, damage, crit, hp: r.hp, dead: r.dead };
+  }
+
+  /** The mobs a skill's shape reaches (the golem too, by its body's edge): the target first (see skill-hits.json). */
+  private reached(target: Mob | 'golem', at: [number, number], from: [number, number], shape: string, now: number): (Mob | 'golem')[] {
     const [kind, n] = shape.split(':');
     const most = Number(n) || 1;
-    const out: Mob[] = [target];
+    const out: (Mob | 'golem')[] = [target];
     if (most < 2) return out;
-    const live = this.mobs.filter((x) => !x.respawnAt && x !== target).map((x) => ({ m: x, at: this.at(x, now) }));
+    // Each other one alive, where it is and its body's radius (0 but the golem's).
+    const live: { m: Mob | 'golem'; at: [number, number]; r: number }[] = this.mobs.filter((x) => !x.respawnAt && x !== target).map((x) => ({ m: x, at: this.at(x, now), r: 0 }));
+    if (this.golem?.hittable && target !== 'golem') live.push({ m: 'golem', at: this.golem.at(now), r: this.golem.radius });
+    const dist = (x: { at: [number, number]; r: number }, p: [number, number]) => (x.r ? Math.max(0, Math.hypot(x.at[0] - p[0], x.at[1] - p[1]) - x.r) : cheb(x.at, p));
     if (kind === 'chain') {
       let last = at;
       while (out.length < most) {
-        const next = live.filter((x) => !out.includes(x.m) && cheb(x.at, last) <= 3).sort((a, b) => cheb(a.at, last) - cheb(b.at, last))[0];
+        const next = live.filter((x) => !out.includes(x.m) && dist(x, last) <= 3).sort((a, b) => dist(a, last) - dist(b, last))[0];
         if (!next) break;
         out.push(next.m);
         last = next.at;
       }
     } else if (kind === 'cone' || kind === 'area') {
-      out.push(...live.filter((x) => cheb(x.at, at) <= 2).sort((a, b) => cheb(a.at, at) - cheb(b.at, at)).slice(0, most - 1).map((x) => x.m));
+      out.push(...live.filter((x) => dist(x, at) <= 2).sort((a, b) => dist(a, at) - dist(b, at)).slice(0, most - 1).map((x) => x.m));
     } else if (kind === 'around') {
       const radius = Number(shape.split(':')[2]) || 1;
-      out.push(...live.filter((x) => cheb(x.at, from) <= radius).sort((a, b) => cheb(a.at, from) - cheb(b.at, from)).slice(0, most - 1).map((x) => x.m));
+      out.push(...live.filter((x) => dist(x, from) <= radius).sort((a, b) => dist(a, from) - dist(b, from)).slice(0, most - 1).map((x) => x.m));
     } else if (kind === 'line') {
-      // Along the line from the caster through the target, out to RANGED tiles.
+      // Along the line from the caster through the target, out to RANGED tiles (the golem's body widens it).
       const dx = at[0] - from[0];
       const dy = at[1] - from[1];
       const len = Math.hypot(dx, dy) || 1;
@@ -595,31 +687,54 @@ export class MobRoom {
           const px = x.at[0] - from[0];
           const py = x.at[1] - from[1];
           const along = px * ux + py * uy;
-          return { m: x.m, along, off: Math.abs(px * uy - py * ux) };
+          return { m: x.m, r: x.r, along, off: Math.abs(px * uy - py * ux) };
         })
-        .filter((x) => x.along > 0 && x.along <= RANGED && x.off <= 0.8)
+        .filter((x) => x.along > -x.r && x.along <= RANGED + x.r && x.off <= 0.8 + x.r)
         .sort((a, b) => a.along - b.along);
       out.push(...on.slice(0, most - 1).map((x) => x.m));
     }
     return out;
   }
 
-  /** A player left the room: no mob is after them any more. */
+  /** A player left the room: no mob (nor the golem) is after them any more. */
   forget(player: string): void {
     for (const m of this.mobs) if (m.foe?.id === player) m.foe.at = -Infinity;
     for (const k of [...this.swings.keys()]) if (k === player || k.startsWith(`${player}:`)) this.swings.delete(k);
+    this.golem?.forget(player);
   }
 
-  /** Every mob as a newcomer should see it: where it is, which way it faces and the rest of a hop under way. */
+  /** A mob as the room sees it: where it is, which way it faces and the rest of a hop under way (an Add's kind too). */
+  private view(m: Mob, now: number): TownMob {
+    const done = Math.floor(((now - m.hopAt) / 1000) * m.hopSpeed);
+    const left = m.path.length ? m.path.slice(Math.min(done, m.path.length - 1)) : [];
+    const at = m.path.length && done > 0 ? m.path[Math.min(done, m.path.length) - 1] : [m.col, m.row];
+    return {
+      id: m.id, col: at[0], row: at[1], level: m.level, ...(m.variant ? { variant: m.variant } : {}), hp: m.hp, maxHp: m.maxHp, dir: this.facingAt(m, now),
+      ...(m.respawnAt ? { dead: true } : {}), ...(left.length ? { path: left, speed: m.hopSpeed } : {}), ...(m.add ? { kind: m.zone.mob } : {}),
+    };
+  }
+
+  /** Every mob as a newcomer should see it (Adds that died are gone for good: left out). */
   snapshot(now: number): TownMob[] {
-    return this.mobs.map((m) => {
-      const done = Math.floor(((now - m.hopAt) / 1000) * m.hopSpeed);
-      const left = m.path.length ? m.path.slice(Math.min(done, m.path.length - 1)) : [];
-      const at = m.path.length && done > 0 ? m.path[Math.min(done, m.path.length) - 1] : [m.col, m.row];
-      return {
-        id: m.id, col: at[0], row: at[1], level: m.level, ...(m.variant ? { variant: m.variant } : {}), hp: m.hp, maxHp: m.maxHp, dir: this.facingAt(m, now),
-        ...(m.respawnAt ? { dead: true } : {}), ...(left.length ? { path: left, speed: m.hopSpeed } : {}),
-      };
-    });
+    return this.mobs.filter((m) => !(m.add && m.respawnAt)).map((m) => this.view(m, now));
+  }
+
+  /** The golem as a newcomer should see it (null: not up, or no golem here). */
+  golemState(now: number): TownGolem | null {
+    return this.golem?.state(now) ?? null;
+  }
+
+  /** What happened outside the clock (a hit that called the Junk, enraged the golem or brought it down): send it now. */
+  flush(): MobEvent[] {
+    return this.golem?.flush() ?? [];
+  }
+
+  /** Dev: the golem rises now (?golem=now); plays its whole fight (?golemdemo=1, `name` = who asked). */
+  riseGolem(now: number): boolean {
+    return this.golem?.riseNow(now) ?? false;
+  }
+
+  golemDemo(now: number, name: string): void {
+    this.golem?.demo(now, name);
   }
 }

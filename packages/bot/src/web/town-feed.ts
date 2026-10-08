@@ -16,7 +16,7 @@ export function connectTownFeed(t: Town): void {
   town = t;
 }
 
-const ICON: Record<TownSystemLine['kind'], string> = { dig: '⛏️', gamble: '🪙', jackpot: '🎟️', shop: '🎁', gift: '🎁', jail: '🚔', quest: '📜', arena: '⚔️', steal: '🥷', race: '🏁' };
+const ICON: Record<TownSystemLine['kind'], string> = { dig: '⛏️', gamble: '🪙', jackpot: '🎟️', shop: '🎁', gift: '🎁', jail: '🚔', quest: '📜', arena: '⚔️', steal: '🥷', race: '🏁', golem: '🗿' }; // (golem lines stay in the Slums: never here)
 const GATHER_MS = 3000;
 const MAX_POST = 1900;
 let client: Client | null = null;

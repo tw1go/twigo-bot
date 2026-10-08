@@ -185,7 +185,7 @@ test('an aggressive zone\'s mob comes for a player within its aggroRange, attack
   assert.equal(zone.aggro, 'aggressive');
   // Out of its range: left alone.
   const far = near(room, tire, (zone.aggroRange ?? 4) + 2);
-  for (let t = 0; t < 3000; t += 250) assert.ok(!room.tick(t, new Map([['p1', far]])).some((e) => e.id === tire.id && e.t === 'mob-attack'));
+  for (let t = 0; t < 3000; t += 250) assert.ok(!room.tick(t, new Map([['p1', far]])).some((e) => e.t === 'mob-attack' && e.id === tire.id));
   // Within it: after them, then an attack.
   let p = near(room, room.snapshot(3000).find((m) => m.id === tire.id)!, 3);
   let attacked = false;
