@@ -300,6 +300,20 @@ export interface MobData {
   variants?: string[];
   /** The Tire Roller's lunge frames (first, last). */
   charge?: Vec2;
+  /** A spawn point's pack size (lowest, highest): the Bottle Caps. */
+  pack?: Vec2;
+  /** Tiles it attacks from (else the next tile). */
+  reach?: number;
+  /** Now and then a short straight roll (the Tire Roller; the server runs it). */
+  roll?: { chance: number; tiles: Vec2; speed: number };
+  /** It drifts: its pace (tiles a second) and short rests (the Plastic Bag Spook). */
+  drift?: { speed: number; rest: Vec2 };
+  /** Its attack slows the player hit for this long (ms; shown only). */
+  slowMs?: number;
+  /** Hits from its front quarter are blocked (the Scrap Crab; the server decides). */
+  shell?: boolean;
+  /** Where its zap leaves: art px in the SE cell (mirrored for SW and NW). */
+  eye?: Vec2;
   /** The golem's Scrap Toss release frame and Lamp Glare cone frames (first, last). */
   tossFrame?: number;
   glareFrames?: Vec2;

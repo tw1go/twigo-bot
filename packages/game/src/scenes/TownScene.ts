@@ -64,7 +64,8 @@ import { type Tile, WalkGrid } from '../world/grid';
 import { Ground } from '../world/ground';
 import { SlumsOutskirts, outskirts } from '../world/outskirts';
 import { Terrain } from '../world/terrain';
-import { MOB_HP, Mobs } from '../world/mobs';
+import { Mobs, showSlowed } from '../world/mobs';
+import { FxLayers } from '../world/fx-layers';
 import { SKILL_POSE, battleSheets } from '../characters/battle-art';
 import { skillCooldown } from '../combat/cooldowns';
 import { WorldSkills } from '../combat/world-skills';
@@ -332,6 +333,8 @@ export class TownScene extends Phaser.Scene {
 
   create(): void {
     applyTimeOverride();
+    this.fxLayers = new FxLayers(this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.fxLayers.clear());
     buildOutfit(this, this.M.characters, this.outfit);
     if (this.hood) this.addHouses();
     // A big map (the Slums) is streamed round the camera: its objects, ground and outskirts (world/terrain.ts).
@@ -391,10 +394,10 @@ export class TownScene extends Phaser.Scene {
     if (this.area === 'town') this.npcs = this.makeNpcs();
     // The Slums' mobs (the zones that are on), sorted and tinted like everyone else.
     if (this.map.mobZones?.length) {
-      const mobs = new Mobs(this, this.M, this.map, this.grid, this.objects, (obj) => this.tint >= 0 && obj.setTint(this.tint));
+      const mobs = new Mobs(this, this.M, this.map, this.grid, this.objects, (obj) => this.tint >= 0 && obj.setTint(this.tint), this.fxLayers);
       const box = new MobTargetBox();
       mobs.onTarget = (m) => {
-        box.show(m && { name: m.def.name, level: m.level, zone: m.zone.name, hp: m.hp / MOB_HP });
+        box.show(m && { name: m.def.name, level: m.level, zone: m.zone.name, hp: m.hp / m.maxHp });
         if (m) this.target?.clear(); // one target at a time
       };
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => box.destroy());
@@ -478,7 +481,7 @@ export class TownScene extends Phaser.Scene {
     this.mobs?.update(delta);
     this.mobs?.check(this.player.tile);
     this.fightTick();
-    this.worldSkills?.update();
+    this.fxLayers.update();
     this.raceNews();
     if (this.npcs) {
       const me = this.player.tile;
@@ -736,7 +739,7 @@ export class TownScene extends Phaser.Scene {
     const art = this.M.classes?.list[cls];
     const mobs = hit.map((id) => this.mobs?.list.find((x) => x.id === id)).filter((x) => !!x);
     if (!skill || !art || !mobs.length) return landAll();
-    this.worldSkills ??= new WorldSkills(this, this.M.fx, (f) => `${import.meta.env.BASE_URL}assets/${f}`);
+    this.worldSkills ??= new WorldSkills(this.fxLayers, this.M.fx, (f) => `${import.meta.env.BASE_URL}assets/${f}`);
     // The script's slots in order get the hit mobs (the target first); the rest, the target.
     const slots = skillSlots(skill);
     const bySlot = (n: number) => mobs[Math.max(0, slots.indexOf(n))] ?? mobs[0];
@@ -755,6 +758,8 @@ export class TownScene extends Phaser.Scene {
     }, onHit, this.fxScale[cls]?.[idx] ?? 1);
   }
   private worldSkills: WorldSkills | null = null;
+  /** The world's effects: ground (under every player and mob) and front (over them): world/fx-layers.ts. */
+  private fxLayers!: FxLayers;
 
   private stopFight(): void {
     if (!this.engage) return;
@@ -1120,6 +1125,20 @@ export class TownScene extends Phaser.Scene {
     const stay = member ? new StayReward() : null;
     let myId = '';
     let arrived = false;
+    // A mob's attack on someone (shown only: players have no HP yet): a red flash as it lands, and the Bag's slow.
+    const charOf = (id: string) => (id === myId ? this.player : this.others.charOf(id));
+    if (this.mobs) {
+      this.mobs.playerAt = (id) => {
+        const c = charOf(id);
+        return c ? { x: c.sprite.x, y: c.sprite.y } : null;
+      };
+      this.mobs.hooks.onHit = (_m, target, slow) => {
+        const who = charOf(target);
+        if (!who) return;
+        who.hurt();
+        if (slow) showSlowed(this.fxLayers, () => ({ x: who.sprite.x, y: who.headY }), () => ({ x: who.sprite.x, y: who.sprite.y }), slow);
+      };
+    }
     /** Someone (maybe you) says a diss, praise or judge line: a speech bubble and a tagged line in the chat. */
     const verdict = (id: string, kind: 'roast' | 'praise', judged: boolean, text: string) => {
       const mine = id === myId;
@@ -1229,7 +1248,7 @@ export class TownScene extends Phaser.Scene {
           const h = pending.get(id);
           if (!h) return;
           pending.delete(id);
-          this.mobs?.hit(h.id, h.damage, h.crit, h.hp, h.dead, h.slow);
+          this.mobs?.hit(h.id, h.damage, h.crit, h.hp, h.dead, h.slow, h.blocked);
         };
         const landAll = () => [...pending.keys()].forEach(land);
         this.time.delayedCall(1500, landAll);
@@ -1240,14 +1259,7 @@ export class TownScene extends Phaser.Scene {
         } else landAll();
         return;
       }
-      if (m.t === 'mob-attack') {
-        const who = m.target === myId ? this.player : this.others.charOf(m.target);
-        if (who) {
-          this.mobs?.strike(m.id, who.tile);
-          this.time.delayedCall(250, () => who.hurt()); // as its swing lands
-        }
-        return;
-      }
+      if (m.t === 'mob-attack') return this.mobs?.strike(m.id, m.target, m.dir, m.slow);
       if (m.t === 'mob-spawn') return this.mobs?.respawn(m.id, m.col, m.row, m.hp);
       if (m.t === 'attack-refused') {
         if (m.reason === 'range') toast('Too far to hit it.', 1500);
@@ -2455,7 +2467,7 @@ function exposeDebug(scene: TownScene): void {
     mobs: () =>
       scene.debugMobs?.list.map((m) => {
         const cam = scene.cameras.main;
-        return { id: m.id, variant: m.variant, anim: m.sprite.anims.currentAnim?.key, tile: [Math.floor(m.col), Math.floor(m.row)], dir: m.dir, walking: m.path.length > 0, x: (m.sprite.x - cam.worldView.x) * cam.zoom, y: (m.sprite.y - 12 - cam.worldView.y) * cam.zoom };
+        return { id: m.id, variant: m.variant, anim: m.sprite.anims.currentAnim?.key, tile: [Math.floor(m.col), Math.floor(m.row)], dir: m.dir, walking: m.path.length > 0, hp: m.hp, maxHp: m.maxHp, level: m.level, dead: m.dead, asleep: m.asleep, pose: m.pose?.anim ?? null, x: (m.sprite.x - cam.worldView.x) * cam.zoom, y: (m.sprite.y - 12 - cam.worldView.y) * cam.zoom };
       }),
     /** Fixed view for screenshots: zoom and centre on a world point (follow off), or follow again. */
     view: (zoom?: number, x?: number, y?: number) => {

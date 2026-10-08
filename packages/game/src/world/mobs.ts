@@ -1,37 +1,59 @@
 import Phaser from 'phaser';
-import type { TownMob } from '@mikazuki/shared';
+import type { TownMob, TownMobFacing } from '@mikazuki/shared';
 import type { Manifest, MobData, MobDef, MobZone, TownMap, Vec2 } from '../assets/types';
 import { mobCell, mobSheet, mobVariants } from '../assets/mob-art';
 import { slice } from '../assets/packs';
 import { CHARACTER_BIAS, HEIGHT_DEPTH } from './depth';
+import type { FxLayers, Pt } from './fx-layers';
 import type { Tile, WalkGrid } from './grid';
 import { type WorldObjects, characterDepth } from './objects';
 import { BuildingLabel } from '../ui/labels';
 import { LABEL_DEPTH } from './depth';
 
 // 🥫 The Slums' mobs (map.mobZones; art in manifest mobs, rules in mobs/mobs.json). For each zone that's on (`active`),
-// one mob per spawn tile (id `<zone>:<spawn index>`) in one of its kind's variants (the server's pick, `variant`; the
-// same seeded pick here until it answers), idling and now and then hopping a few tiles round its spawn, on a ground
-// shadow sized per kind (a floating one, the Plastic Bag Spook, keeps it on the ground under its anchor). The server runs
-// them (bot web/town-mobs.ts: everyone sees the same mobs): its `mobs` snapshot places them and each `mob-move` hop is
-// walked here at the same pace. Only with no server (nothing heard yet) do they wander on their own here (the move animation; at most 3 tiles away,
-// never off its zone's level or out of its rect, onto a blocked tile or a ramp, or into the safe zone), facing the way it
-// goes on the art's four diagonals (SE for S and E, SW for W, NE for N; no mirroring). A click shows its name and level ("Tin Can Lv 1-2") and targets it; Z targets the nearest (again:
-// the next nearest): a ring under it and the info bar at the top (ui/mob-target.ts). Battle (the server
-// decides: bot web/town-mobs.ts): a hit plays the mob's hit pose (its death at 0 HP, then it's gone until it respawns), a
-// damage number rises over it (gold for a crit), and a small HP bar shows once it's hurt; its own attacks play its attack
-// pose toward the player. Zones that are off and the boss (not drawn yet) place nothing; their data waits in the map. The zone's aggro, aggroRange, leash, respawnSec and level stay
-// on each mob (`zone`) for combat later.
+// one mob per spawn tile (id `<zone>:<spawn index>`), or a pack round it for a kind with `pack` (the Bottle Caps: a
+// seeded 3–5, ids `<zone>:<spawn>:<n>`, the first alive leading), each in one of its kind's variants (the server's pick,
+// `variant`; the same seeded pick here until it answers), idling and now and then hopping a few tiles round its spawn,
+// on a ground shadow sized per kind (a floating one, the Plastic Bag Spook, keeps it on the ground under its anchor, and
+// drifts: its drawn place eases after the real one, so it glides round corners and never stops dead). The server runs
+// them (bot web/town-mobs.ts: everyone sees the same mobs): its `mobs` snapshot places them (and their facing and HP) and
+// each `mob-move` hop is walked here at its pace. Only with no server (nothing heard yet) do they wander on their own
+// here (the move animation; at most 3 tiles away, a pack's followers near their leader, never off its zone's level or out
+// of its rect, onto a blocked tile or a ramp, or into the safe zone), facing the way it goes on the art's four diagonals
+// (SE for S and E, SW for W, NE for N; no mirroring). A click shows its name and level ("Tin Can Lv 1-2") and targets it;
+// Z targets the nearest (again: the next nearest): a ring under it and the info bar at the top (ui/mob-target.ts).
+// Battle (the server decides: bot web/town-mobs.ts): a hit plays the mob's hit pose and a damage number rises over it
+// (gold for a crit; "Blocked" off a Scrap Crab's shell); at 0 HP its death pose, then it fades out and is gone until it
+// respawns at its spawn (fading in). A small HP bar of its real max HP (by level) shows once it's hurt. Its own attacks
+// (`strike`) turn it the server's way and play its attack pose; on the table's attack frame (mobs.json attackFrame)
+// `onAttackFrame`, then `onHit` as it lands on the player (at once, or for the Wire Tangle when its spark gets there:
+// drawn in code from its insulator eye, mobs.json `eye`, on the front fx layer); the Tire Roller's sprite lunges out
+// along its facing over its charge frames and back (its tile stays). `onDeath` as one dies. Players have no HP yet:
+// the hooks show the hit (TownScene). Only the mobs near the camera are drawn and animated; the rest sleep (their
+// sprites off, still walking their hops on paper) and wake right where they should be.
 
 const ROAM = 3; // tiles from its spawn
+const FOLLOW = 2; // a pack's followers keep within this of their leader
 const SPEED = 2.4; // tiles per second
 const REST_MS: [number, number] = [2200, 6500];
 const LABEL_MS = 2600;
 const TARGET_RANGE = 12; // tiles: Z picks among the mobs this close
 const TARGET_LOSE = 20; // tiles: a target this far away is let go
+const WAKE_MARGIN = 160; // world px round the camera's view where mobs are awake
+const DRIFT_MS = 220; // a drifter's drawn place eases after its real one over about this long
+const LUNGE = 0.8; // tiles: the Tire Roller's charge, out and back
+const SPARK_SPEED = 260; // px a second
+const BODY_UP = 12; // a player's body above their feet (where a spark lands)
+const DEATH_FADE_MS = 350;
 
 /** The four ways the art faces, for a step in screen directions (SE for S and E, SW for W, NE for N). */
-const FACING: Record<string, 'se' | 'ne' | 'sw' | 'nw'> = { n: 'ne', ne: 'ne', e: 'se', se: 'se', s: 'se', sw: 'sw', w: 'sw', nw: 'nw' };
+const FACING: Record<string, TownMobFacing> = { n: 'ne', ne: 'ne', e: 'se', se: 'se', s: 'se', sw: 'sw', w: 'sw', nw: 'nw' };
+/** Each facing's step on the grid (SE = +col, SW = +row, NW = −col, NE = −row), as the bot's. */
+const AXIS: Record<TownMobFacing, [number, number]> = { se: [1, 0], sw: [0, 1], nw: [-1, 0], ne: [0, -1] };
+const STEPS: [number, number][] = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+
+/** A mob's HP by its level (the bot's mobHp: keep in step). */
+export const mobHp = (level: number) => 100 + 25 * (Math.max(1, level) - 1);
 
 export interface Mob {
   id: string;
@@ -42,12 +64,19 @@ export interface Mob {
   cell: { size: Vec2; anchor: Vec2 };
   /** Its kind's rules (mobs/mobs.json: attack frame, shadow, floating), if loaded. */
   data: MobData | null;
-  /** Rolled once in its zone's range. */
   level: number;
+  maxHp: number;
   spawn: Tile;
+  /** Where it starts and comes back (a pack's caps round the spawn point). */
+  home: Tile;
+  /** Its pack (the first alive leads), or null. */
+  pack: Mob[] | null;
   col: number;
   row: number;
-  dir: 'se' | 'ne' | 'sw' | 'nw';
+  /** Where it's drawn (a drifter's eases after col/row; the rest are the same). */
+  drawCol: number;
+  drawRow: number;
+  dir: TownMobFacing;
   sprite: Phaser.GameObjects.Sprite;
   shadow: Phaser.GameObjects.Image | null;
   path: Tile[];
@@ -56,16 +85,29 @@ export interface Mob {
   labelUntil: number;
   hp: number;
   dead: boolean;
-  /** A one-shot pose (hit, attack, death) is playing: idle / move wait. */
-  posing: boolean;
+  /** A one-shot pose (hit, attack, death) playing: idle / move wait; `t` = how far in (ms of its own time), `onFrame`
+   *  per frame (0-based), `then` when it's over. */
+  pose: { key: string; anim: string; t: number; onFrame?: (f: number) => void; then?: () => void } | null;
   bar: Phaser.GameObjects.Graphics | null;
   /** The pace of its hop (tiles a second; slower while slowed). */
   speed: number;
   /** Slowed or rooted until then (scene ms), shown with a cold tint. */
   slowUntil: number;
+  /** Off screen: sprites off, not animated (its hops still walked on paper). */
+  asleep: boolean;
+  /** The sprite's offset from its tile (px): the Tire Roller's lunge. */
+  lunge: Pt;
 }
 
-export const MOB_HP = 100;
+/** What the scene does with a mob's attack (players have no HP yet: these show it). */
+export interface MobHooks {
+  /** Its attack anim reaches the frame where it lands (mobs.json attackFrame); the Wire Tangle's spark leaves here. */
+  onAttackFrame?: (m: Mob, target: string) => void;
+  /** Its attack reaches the player (melee: on that frame; the spark: when it gets there); `slow`: ms (the Bag's). */
+  onHit?: (m: Mob, target: string, slow?: number) => void;
+  /** It dies (its death pose starts). */
+  onDeath?: (m: Mob) => void;
+}
 
 export class Mobs {
   readonly list: Mob[] = [];
@@ -74,6 +116,9 @@ export class Mobs {
   private ring: Phaser.GameObjects.Graphics | null = null;
   /** The targeted mob changed (null: none): the scene shows the info bar. */
   onTarget: ((m: Mob | null) => void) | null = null;
+  hooks: MobHooks = {};
+  /** Where a player's feet are (town id; null: not here), for a spark to fly to. */
+  playerAt: ((id: string) => Pt | null) | null = null;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -82,14 +127,20 @@ export class Mobs {
     private readonly grid: WalkGrid,
     private readonly objects: WorldObjects,
     private readonly onSpawn: (o: Phaser.GameObjects.Components.Tint) => void,
+    private readonly fx: FxLayers,
   ) {
     const data = (scene.cache.json.get('mob-data') ?? {}) as Record<string, MobData | string>;
     for (const zone of map.mobZones ?? []) {
       const def = zone.active ? M.mobs?.[zone.mob] : undefined;
       if (!def || typeof def === 'string') continue;
       this.anims(zone.mob, def);
-      const d = data[zone.mob];
-      zone.spawns.forEach(([col, row], i) => this.place(zone, def, typeof d === 'object' ? d : null, { col, row }, i));
+      const d = typeof data[zone.mob] === 'object' ? (data[zone.mob] as MobData) : null;
+      zone.spawns.forEach(([col, row], i) => {
+        const point = `${zone.id}:${i}`;
+        const n = d?.pack ? packSize(point, d.pack) : 1;
+        const pack: Mob[] = [];
+        for (let k = 0; k < n; k++) this.place(zone, def, d, { col, row }, d?.pack ? `${point}:${k}` : point, d?.pack ? pack : null);
+      });
     }
   }
 
@@ -109,8 +160,7 @@ export class Mobs {
     }
   }
 
-  private place(zone: MobZone, def: MobDef, data: MobData | null, at: Tile, i: number): void {
-    const id = `${zone.id}:${i}`;
+  private place(zone: MobZone, def: MobDef, data: MobData | null, at: Tile, id: string, pack: Mob[] | null): void {
     const variants = mobVariants(def);
     const variant = variants[Math.floor(seeded(`${id}:variant`) * variants.length)];
     const sprite = this.scene.add.sprite(0, 0, mobSheet(def, variant, 'idle', 'se'));
@@ -119,31 +169,19 @@ export class Mobs {
     // Its kind's size of shadow (mobs.json), on the ground at its anchor (a floating one's too).
     if (shadow && data?.shadow) shadow.setDisplaySize(...data.shadow);
     const [lo, hi] = zone.level;
+    const level = lo + Math.floor(seeded(id) * (hi - lo + 1));
     const mob: Mob = {
-      id,
-      zone,
-      def,
-      variant,
-      cell: mobCell(def, variant),
-      data,
-      level: lo + ((i * 7) % (hi - lo + 1)),
-      spawn: at,
-      col: at.col + 0.5,
-      row: at.row + 0.5,
-      dir: (['se', 'sw', 'ne', 'nw'] as const)[i % 4],
-      sprite,
-      shadow,
-      path: [],
-      restUntil: this.scene.time.now + Phaser.Math.Between(0, REST_MS[1]),
-      label: null,
-      labelUntil: 0,
-      hp: MOB_HP,
-      dead: false,
-      posing: false,
-      bar: null,
-      speed: SPEED,
-      slowUntil: 0,
+      id, zone, def, variant, cell: mobCell(def, variant), data, level, maxHp: mobHp(level), spawn: at, home: at, pack,
+      col: at.col + 0.5, row: at.row + 0.5, drawCol: 0, drawRow: 0, dir: (['se', 'sw', 'ne', 'nw'] as const)[Math.floor(seeded(`${id}:dir`) * 4)],
+      sprite, shadow, path: [], restUntil: this.scene.time.now + Phaser.Math.Between(0, REST_MS[1]), label: null, labelUntil: 0,
+      hp: mobHp(level), dead: false, pose: null, bar: null, speed: data?.drift?.speed ?? SPEED, slowUntil: 0, asleep: false, lunge: { x: 0, y: 0 },
     };
+    // A pack's caps start round the point, each on a tile of its own (the server's place comes with its snapshot).
+    if (pack?.length) mob.home = this.besideSpawn(mob, pack, id);
+    pack?.push(mob);
+    mob.col = mob.home.col + 0.5;
+    mob.row = mob.home.row + 0.5;
+    [mob.drawCol, mob.drawRow] = [mob.col, mob.row];
     this.dress(mob);
     this.onSpawn(sprite);
     if (shadow) this.onSpawn(shadow);
@@ -153,10 +191,29 @@ export class Mobs {
       this.showLabel(mob);
       this.setTarget(mob);
     });
+    // Its one-shot poses: each frame (hooks on the frames that matter) and their end.
+    sprite.on(Phaser.Animations.Events.ANIMATION_UPDATE, (_a: Phaser.Animations.Animation, f: Phaser.Animations.AnimationFrame) => {
+      if (mob.pose && sprite.anims.currentAnim?.key === mob.pose.key) mob.pose.onFrame?.(f.index - 1);
+    });
+    sprite.on(Phaser.Animations.Events.ANIMATION_COMPLETE, (a: Phaser.Animations.Animation) => {
+      if (mob.pose?.key === a.key) this.endPose(mob);
+    });
     this.play(mob, 'idle');
     this.list.push(mob);
     this.byId.set(mob.id, mob);
     this.sync(mob);
+  }
+
+  /** A free tile next to the spawn for a pack's cap (seeded, as the bot's), or the spawn. */
+  private besideSpawn(m: Mob, pack: Mob[], id: string): Tile {
+    const taken = new Set(pack.map((x) => `${x.home.col},${x.home.row}`));
+    const first = Math.floor(seeded(`${id}:spot`) * STEPS.length);
+    for (let i = 0; i < STEPS.length; i++) {
+      const [dc, dr] = STEPS[(first + i) % STEPS.length];
+      const t = { col: m.spawn.col + dc, row: m.spawn.row + dr };
+      if (!taken.has(`${t.col},${t.row}`) && this.canStand(m, t, 1)) return t;
+    }
+    return m.spawn;
   }
 
   /** Its sprite's origin at its variant's anchor. */
@@ -174,7 +231,7 @@ export class Mobs {
     m.sprite.setTexture(mobSheet(m.def, variant, anim, m.dir), 0);
     this.dress(m);
     const key = `mob:${m.zone.mob}:${variant}:${anim}:${m.dir}`;
-    if (this.scene.anims.exists(key)) m.sprite.play(key, true);
+    if (this.scene.anims.exists(key) && !m.asleep) m.sprite.play(key, true);
   }
 
   private key(m: Mob, anim: string): string {
@@ -182,13 +239,13 @@ export class Mobs {
   }
 
   private play(m: Mob, anim: string): void {
-    if (m.posing || m.dead) return;
+    if (m.pose || m.dead || m.asleep) return;
     const key = this.key(m, anim);
     if (m.sprite.anims.currentAnim?.key !== key && this.scene.anims.exists(key)) m.sprite.play(key, true);
   }
 
   /** Where it can stand: its zone's level and rect, open, not a ramp, outside the safe zone, close to its spawn. */
-  private canStand(m: Mob, t: Tile): boolean {
+  private canStand(m: Mob, t: Tile, reach = ROAM): boolean {
     const H = this.objects.heights;
     const [c0, r0, c1, r1] = this.map.safeZone ?? [-1, -1, -2, -2];
     const [z0, y0, z1, y1] = m.zone.rect;
@@ -198,36 +255,43 @@ export class Mobs {
       H.at(t.col, t.row) === m.zone.height &&
       !H.ramp(t.col, t.row) &&
       !(t.col >= c0 && t.col <= c1 && t.row >= r0 && t.row <= r1) &&
-      Math.max(Math.abs(t.col - m.spawn.col), Math.abs(t.row - m.spawn.row)) <= ROAM
+      Math.max(Math.abs(t.col - m.spawn.col), Math.abs(t.row - m.spawn.row)) <= reach
     );
   }
 
-  /** A few tiles' hop to a spot near its spawn, every step on ground it may stand on. */
+  /** (No server.) A few tiles' hop to a spot near its spawn (a follower: near its leader), every step on ground it may
+   *  stand on. */
   private wander(m: Mob): void {
     const from = { col: Math.floor(m.col), row: Math.floor(m.row) };
+    const lead = m.pack?.find((x) => !x.dead);
+    const near = lead && lead !== m ? { col: Math.floor(lead.path.at(-1)?.col ?? lead.col), row: Math.floor(lead.path.at(-1)?.row ?? lead.row) } : null;
+    const [centre, spread, reach] = near ? [near, FOLLOW, ROAM + FOLLOW] : [m.spawn, ROAM, ROAM];
     for (let tries = 0; tries < 6; tries++) {
-      const to = { col: m.spawn.col + Phaser.Math.Between(-ROAM, ROAM), row: m.spawn.row + Phaser.Math.Between(-ROAM, ROAM) };
-      if ((to.col === from.col && to.row === from.row) || !this.canStand(m, to)) continue;
+      const to = { col: centre.col + Phaser.Math.Between(-spread, spread), row: centre.row + Phaser.Math.Between(-spread, spread) };
+      if ((to.col === from.col && to.row === from.row) || !this.canStand(m, to, reach)) continue;
       const path = this.grid.findPath(from, to, 200); // a short hop: a small search
-      if (!path || path.length > ROAM * 2 + 1 || !path.every((t) => this.canStand(m, t))) continue;
+      if (!path || path.length > reach * 2 + 1 || !path.every((t) => this.canStand(m, t, reach))) continue;
       m.path = path.slice(1);
       return;
     }
   }
 
-  /** The server runs them from now on: every mob where it says (and the rest of a hop under way). */
+  /** The server runs them from now on: every mob where it says (facing its way, its HP, the rest of a hop under way). */
   applySnapshot(mobs: TownMob[]): void {
     this.server = true;
     for (const s of mobs) {
       const m = this.byId.get(s.id);
       if (!m) continue;
       if (s.variant !== undefined) this.setVariant(m, s.variant);
-      m.col = s.col + 0.5;
-      m.row = s.row + 0.5;
+      m.col = m.drawCol = s.col + 0.5;
+      m.row = m.drawRow = s.row + 0.5;
       m.level = s.level;
+      m.maxHp = s.maxHp ?? mobHp(s.level);
+      if (s.dir) m.dir = s.dir;
       m.path = (s.path ?? []).map(([col, row]) => ({ col, row }));
       m.speed = s.speed ?? SPEED;
       m.hp = s.hp;
+      m.pose = null;
       this.show(m, !s.dead);
       this.sync(m);
     }
@@ -243,23 +307,31 @@ export class Mobs {
     if (Math.floor(m.col) !== c0 || Math.floor(m.row) !== r0) {
       m.col = c0 + 0.5;
       m.row = r0 + 0.5;
+      if (!m.data?.drift) [m.drawCol, m.drawRow] = [m.col, m.row];
     }
     m.path = path.slice(1).map(([col, row]) => ({ col, row }));
   }
 
-  /** A hit (the server's word): the hit pose (or its death), a damage number, the HP bar. */
-  hit(id: string, damage: number, crit: boolean, hp: number, dead: boolean, slow?: { factor: number; ms: number }): void {
+  /** A hit (the server's word): the hit pose (or its death), a damage number ("Blocked" off a shell), the HP bar. */
+  hit(id: string, damage: number, crit: boolean, hp: number, dead: boolean, slow?: { factor: number; ms: number }, blocked = false): void {
     const m = this.byId.get(id);
     if (!m || m.dead) return;
     m.hp = hp;
     if (slow && !dead) this.chill(m, slow);
-    this.number(m, damage, crit);
+    if (!m.asleep) this.number(m, blocked ? 'Blocked' : String(damage), crit);
     if (dead) {
       m.path = [];
-      this.pose(m, 'death', () => this.show(m, false));
       m.dead = true;
+      this.hooks.onDeath?.(m);
       if (m === this.target) this.setTarget(null);
-    } else this.pose(m, 'hit');
+      // Its death, then it fades out (asleep: just gone).
+      if (m.asleep) this.show(m, false);
+      else
+        this.pose(m, 'death', {
+          then: () =>
+            this.scene.tweens.add({ targets: [m.sprite, ...(m.shadow ? [m.shadow] : [])], alpha: 0, duration: DEATH_FADE_MS, onComplete: () => m.dead && this.show(m, false) }),
+        });
+    } else if (!blocked) this.pose(m, 'hit');
     this.drawBar(m);
     if (m === this.target) this.onTarget?.(m);
   }
@@ -271,62 +343,98 @@ export class Mobs {
     m.sprite.anims.timeScale = Math.max(0.35, slow.factor);
   }
 
-  /** Its attack on someone at `at`: faces them and plays the attack pose. */
-  strike(id: string, at: { col: number; row: number }): void {
+  /** Its attack on a player (the server's word): turned its way (`dir`), its attack pose; the hooks on its attack
+   *  frame and as it lands (the Wire Tangle's spark flies there first; the Tire Roller lunges). */
+  strike(id: string, target: string, dir: TownMobFacing, slow?: number): void {
     const m = this.byId.get(id);
     if (!m || m.dead) return;
-    const dc = Math.sign(at.col + 0.5 - m.col);
-    const dr = Math.sign(at.row + 0.5 - m.row);
-    if (dc || dr) m.dir = FACING[stepName(dc, dr)] ?? m.dir;
-    this.pose(m, 'attack');
+    m.dir = dir;
+    const land = () => this.hooks.onHit?.(m, target, slow);
+    const frame = m.data?.attackFrame ?? 0;
+    const fire = () => {
+      this.hooks.onAttackFrame?.(m, target);
+      const to = this.playerAt?.(target);
+      if (m.data?.eye && to && !m.asleep) this.spark(m, { x: to.x, y: to.y - BODY_UP }, land);
+      else land();
+    };
+    if (m.asleep) return fire();
+    let fired = false;
+    this.pose(m, 'attack', {
+      onFrame: (f) => {
+        if (f >= frame && !fired) (fired = true), fire();
+      },
+      then: () => {
+        if (!fired) (fired = true), fire();
+      },
+    });
+    if (frame === 0 && !fired) (fired = true), fire();
+  }
+
+  /** The Wire Tangle's zap: a spark from its insulator eye (mobs.json eye, art px in the SE cell; mirrored for SW and NW)
+   *  to the player, drawn in code on the front layer: a short jagged yellow-white line, flickering. */
+  private spark(m: Mob, to: Pt, onArrive: () => void): void {
+    const [ex, ey] = m.data!.eye!;
+    const [ax, ay] = m.cell.anchor;
+    const flip = m.dir === 'sw' || m.dir === 'nw';
+    const from = { x: m.sprite.x + (flip ? ax - ex : ex - ax), y: m.sprite.y + ey - ay };
+    this.fx.drawnShot('front', from, to, { speed: SPARK_SPEED, onArrive }, (g) => drawSpark(g));
   }
 
   /** Back at its spawn with full HP. */
   respawn(id: string, col: number, row: number, hp: number): void {
     const m = this.byId.get(id);
     if (!m) return;
-    Object.assign(m, { col: col + 0.5, row: row + 0.5, hp, path: [], posing: false });
+    Object.assign(m, { col: col + 0.5, row: row + 0.5, drawCol: col + 0.5, drawRow: row + 0.5, hp, path: [], pose: null });
+    this.scene.tweens.killTweensOf([m.sprite, ...(m.shadow ? [m.shadow] : [])]);
     this.show(m, true);
-    m.sprite.setAlpha(0);
-    this.scene.tweens.add({ targets: m.sprite, alpha: 1, duration: 400 });
+    m.shadow?.setAlpha(1);
+    if (!m.asleep) {
+      m.sprite.setAlpha(0);
+      this.scene.tweens.add({ targets: m.sprite, alpha: 1, duration: 400 });
+    } else m.sprite.setAlpha(1);
     this.sync(m);
   }
 
-  /** A one-shot pose, then idle again (or `then`). */
-  private pose(m: Mob, anim: string, then?: () => void): void {
+  /** A one-shot pose, then idle again (or `then`); a new one replaces one under way (its `then` dropped). */
+  private pose(m: Mob, anim: string, o: { onFrame?: (f: number) => void; then?: () => void } = {}): void {
     const key = this.key(m, anim);
-    if (!this.scene.anims.exists(key)) return void then?.();
-    m.posing = true;
+    if (!this.scene.anims.exists(key) || m.asleep) return void o.then?.();
+    m.pose = { key, anim, t: 0, ...o };
+    m.lunge = { x: 0, y: 0 };
     m.sprite.play(key);
-    m.sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
-      m.posing = false;
-      if (then) then();
-      else this.play(m, m.path.length ? 'move' : 'idle');
-    });
+  }
+
+  private endPose(m: Mob): void {
+    const then = m.pose?.then;
+    m.pose = null;
+    m.lunge = { x: 0, y: 0 };
+    if (then) then();
+    else this.play(m, m.path.length ? 'move' : 'idle');
+    this.sync(m);
   }
 
   /** Shown (alive) or gone (dead, until it respawns). */
   private show(m: Mob, alive: boolean): void {
     m.dead = !alive;
-    m.sprite.setVisible(alive);
-    m.shadow?.setVisible(alive);
+    m.sprite.setVisible(alive && !m.asleep).setAlpha(1);
+    m.shadow?.setVisible(alive && !m.asleep).setAlpha(1);
     if (alive) {
-      m.posing = false;
+      m.pose = null;
       this.play(m, 'idle');
     }
     this.drawBar(m);
   }
 
-  /** A small HP bar over a hurt mob (none at full HP or dead). */
+  /** A small HP bar over a hurt mob (none at full HP, dead or asleep). */
   private drawBar(m: Mob): void {
-    if (m.dead || m.hp >= MOB_HP) {
+    if (m.dead || m.asleep || m.hp >= m.maxHp) {
       m.bar?.destroy();
       m.bar = null;
       return;
     }
     m.bar ??= this.scene.add.graphics();
     const w = 20;
-    m.bar.clear().fillStyle(0x0b0a1a, 0.85).fillRect(-w / 2 - 1, -1, w + 2, 4).fillStyle(0xdc2626, 1).fillRect(-w / 2, 0, Math.max(1, Math.round((w * m.hp) / MOB_HP)), 2);
+    m.bar.clear().fillStyle(0x0b0a1a, 0.85).fillRect(-w / 2 - 1, -1, w + 2, 4).fillStyle(0xdc2626, 1).fillRect(-w / 2, 0, Math.max(1, Math.round((w * m.hp) / m.maxHp)), 2);
     this.syncBar(m);
   }
 
@@ -334,13 +442,14 @@ export class Mobs {
     m.bar?.setPosition(Math.round(m.sprite.x), Math.round(m.sprite.y - m.cell.anchor[1] + 2)).setDepth(LABEL_DEPTH - 1);
   }
 
-  /** A damage number rising over it (gold and bigger for a crit). */
-  private number(m: Mob, damage: number, crit: boolean): void {
+  /** A number rising over it (gold and bigger for a crit; "Blocked" smaller, pale). */
+  private number(m: Mob, text: string, crit: boolean): void {
+    const word = !/^\d+$/.test(text);
     const t = this.scene.add
-      .text(Math.round(m.sprite.x), Math.round(m.sprite.y - m.cell.anchor[1] - 4), String(damage), {
+      .text(Math.round(m.sprite.x), Math.round(m.sprite.y - m.cell.anchor[1] - 4), text, {
         fontFamily: '"Mk Numbers", "Pixelify Sans", monospace',
-        fontSize: `${crit ? 16 : 12}px`,
-        color: crit ? '#FCDA4A' : '#FFFFFF',
+        fontSize: `${crit ? 16 : word ? 10 : 12}px`,
+        color: crit ? '#FCDA4A' : word ? '#CBD5E1' : '#FFFFFF',
         stroke: '#1E1B3A',
         strokeThickness: 3,
         resolution: Math.max(2, this.zoom * 2),
@@ -355,42 +464,42 @@ export class Mobs {
 
   update(deltaMs: number): void {
     const now = this.scene.time.now;
+    const view = this.scene.cameras.main.worldView;
+    const [vx0, vy0, vx1, vy1] = [view.x - WAKE_MARGIN, view.y - WAKE_MARGIN, view.right + WAKE_MARGIN, view.bottom + WAKE_MARGIN];
     for (const m of this.list) {
-      if (m.dead) continue;
+      // Near the camera, or asleep (its sprites off).
+      const x = (m.col - m.row) * 16;
+      const y = (m.col + m.row) * 8;
+      const awake = x >= vx0 && x <= vx1 && y >= vy0 && y <= vy1;
+      if (awake === m.asleep) this.setAwake(m, awake);
       if (m.slowUntil && now >= m.slowUntil) {
         m.slowUntil = 0;
         m.sprite.clearTint();
         m.sprite.anims.timeScale = 1;
         this.onSpawn(m.sprite); // the night's tint again
       }
+      if (m.dead) continue;
       if (!this.server && !m.path.length && now >= m.restUntil) {
         this.wander(m);
         m.restUntil = now + Phaser.Math.Between(...REST_MS);
       }
-      if (m.path.length) {
-        let budget = (m.speed * deltaMs) / 1000;
-        while (budget > 0 && m.path.length) {
-          const next = m.path[0];
-          const dx = next.col + 0.5 - m.col;
-          const dy = next.row + 0.5 - m.row;
-          const d = Math.hypot(dx, dy);
-          const sc = Math.sign(Math.round(dx * 2));
-          const sr = Math.sign(Math.round(dy * 2));
-          if (sc || sr) m.dir = FACING[stepName(sc, sr)] ?? m.dir;
-          if (d <= budget) {
-            m.col = next.col + 0.5;
-            m.row = next.row + 0.5;
-            m.path.shift();
-            budget -= d;
-          } else {
-            m.col += (dx / d) * budget;
-            m.row += (dy / d) * budget;
-            budget = 0;
-          }
-        }
-        this.play(m, m.path.length ? 'move' : 'idle');
-        this.sync(m);
-      } else this.play(m, 'idle');
+      const walking = m.path.length > 0;
+      if (walking) this.walk(m, deltaMs);
+      if (m.asleep) {
+        [m.drawCol, m.drawRow] = [m.col, m.row];
+        continue;
+      }
+      // A drifter's drawn place eases after its real one; it keeps drifting till it's there.
+      let moving = walking;
+      if (m.data?.drift) {
+        const k = 1 - Math.exp(-deltaMs / DRIFT_MS);
+        m.drawCol += (m.col - m.drawCol) * k;
+        m.drawRow += (m.row - m.drawRow) * k;
+        moving ||= Math.hypot(m.col - m.drawCol, m.row - m.drawRow) > 0.08;
+      } else [m.drawCol, m.drawRow] = [m.col, m.row];
+      if (m.pose) this.posing(m, deltaMs);
+      this.play(m, moving ? 'move' : 'idle');
+      if (moving || m.pose) this.sync(m);
       if (m.label) {
         if (now >= m.labelUntil) {
           m.label.show(null);
@@ -404,6 +513,69 @@ export class Mobs {
         }
       }
     }
+  }
+
+  /** Along its hop at its pace, facing each step's way. */
+  private walk(m: Mob, deltaMs: number): void {
+    let budget = (m.speed * deltaMs) / 1000;
+    while (budget > 0 && m.path.length) {
+      const next = m.path[0];
+      const dx = next.col + 0.5 - m.col;
+      const dy = next.row + 0.5 - m.row;
+      const d = Math.hypot(dx, dy);
+      const sc = Math.sign(Math.round(dx * 2));
+      const sr = Math.sign(Math.round(dy * 2));
+      if (sc || sr) m.dir = FACING[stepName(sc, sr)] ?? m.dir;
+      if (d <= budget) {
+        m.col = next.col + 0.5;
+        m.row = next.row + 0.5;
+        m.path.shift();
+        budget -= d;
+      } else {
+        m.col += (dx / d) * budget;
+        m.row += (dy / d) * budget;
+        budget = 0;
+      }
+    }
+  }
+
+  /** A pose under way: the Tire Roller's lunge over its charge frames (out along its facing, then back). */
+  private posing(m: Mob, deltaMs: number): void {
+    const p = m.pose!;
+    p.t += deltaMs * m.sprite.anims.timeScale;
+    const charge = m.data?.charge;
+    const a = m.def.animations.attack;
+    if (!charge || p.anim !== 'attack' || !a) return;
+    const f = p.t / (1000 / a.fps); // frames in
+    const [c0, c1] = charge;
+    const k = f < c0 ? 0 : f <= c1 ? Phaser.Math.Easing.Quadratic.In((f - c0) / Math.max(1, c1 - c0)) : Math.max(0, 1 - (f - c1) / Math.max(1, a.frames - c1));
+    const [dc, dr] = AXIS[m.dir];
+    m.lunge = { x: (dc - dr) * 16 * LUNGE * k, y: (dc + dr) * 8 * LUNGE * k };
+  }
+
+  /** Wakes it (sprites on, where it is now, in the anim it should be in) or puts it to sleep (sprites off; a pose under
+   *  way is cut short and its end done now). */
+  private setAwake(m: Mob, awake: boolean): void {
+    m.asleep = !awake;
+    m.sprite.setActive(awake).setVisible(awake && !m.dead);
+    m.shadow?.setVisible(awake && !m.dead);
+    if (!awake) {
+      if (m.pose) {
+        const then = m.pose.then;
+        m.pose = null;
+        then?.();
+      }
+      this.scene.tweens.killTweensOf([m.sprite, ...(m.shadow ? [m.shadow] : [])]);
+      if (m.dead) this.show(m, false);
+      m.sprite.setAlpha(1);
+      m.lunge = { x: 0, y: 0 };
+      this.drawBar(m);
+      return;
+    }
+    [m.drawCol, m.drawRow] = [m.col, m.row];
+    this.play(m, m.path.length ? 'move' : 'idle');
+    this.drawBar(m);
+    this.sync(m);
   }
 
   /** Targets the nearest mob within reach of `from` that isn't the current one (so Z again goes on to the next). */
@@ -452,18 +624,19 @@ export class Mobs {
   private syncRing(): void {
     const m = this.target;
     if (!m || !this.ring) return;
-    this.ring.setPosition(m.sprite.x, m.sprite.y).setDepth(m.sprite.depth - 0.3);
+    this.ring.setPosition(m.sprite.x - m.lunge.x, m.sprite.y - m.lunge.y).setDepth(m.sprite.depth - 0.3);
   }
 
   private sync(m: Mob): void {
-    const ground = this.objects.heights.lift(m.col, m.row);
-    const x = Math.round((m.col - m.row) * 16);
-    const y = Math.round((m.col + m.row) * 8 - ground);
-    m.sprite.setPosition(x, y);
-    const feet = (m.col + m.row + 1) * 8 + CHARACTER_BIAS + ground * HEIGHT_DEPTH;
-    const depth = characterDepth(this.objects, Math.floor(m.col), Math.floor(m.row), feet, m.sprite.getBounds());
+    if (m.asleep) return;
+    const ground = this.objects.heights.lift(m.drawCol, m.drawRow);
+    const x = Math.round((m.drawCol - m.drawRow) * 16);
+    const y = Math.round((m.drawCol + m.drawRow) * 8 - ground);
+    m.sprite.setPosition(x + Math.round(m.lunge.x), y + Math.round(m.lunge.y));
+    const feet = (m.drawCol + m.drawRow + 1) * 8 + CHARACTER_BIAS + ground * HEIGHT_DEPTH;
+    const depth = characterDepth(this.objects, Math.floor(m.drawCol), Math.floor(m.drawRow), feet, m.sprite.getBounds());
     m.sprite.setDepth(depth);
-    m.shadow?.setPosition(x, y).setDepth(depth - 0.2);
+    m.shadow?.setPosition(x + Math.round(m.lunge.x), y + Math.round(m.lunge.y)).setDepth(depth - 0.2);
     if (m === this.target) this.syncRing();
     this.syncBar(m);
   }
@@ -484,18 +657,62 @@ export class Mobs {
     for (const m of this.list) m.label?.setZoom(zoom);
   }
 
+  /** How many are awake (near the camera) now. */
+  get awakeCount(): number {
+    return this.list.reduce((n, m) => n + (m.asleep ? 0 : 1), 0);
+  }
+
   get tintables(): Phaser.GameObjects.Components.Tint[] {
     return this.list.flatMap((m) => (m.shadow ? [m.sprite, m.shadow] : [m.sprite]));
   }
 }
 
-/** A small seeded number (0–1) from a string: the bot's `seeded` in web/town-mobs.ts (keep in step), so the variant
- *  picked here before the server answers is the one it picks. */
+/** A spark's look (around its own origin, pointing along +x): a short jagged line, a yellow glow round a white core,
+ *  re-jagged and flickering every frame. */
+function drawSpark(g: Phaser.GameObjects.Graphics): void {
+  const pts: [number, number][] = [[-7, 0]];
+  for (let i = 1; i < 4; i++) pts.push([-7 + i * 3.5, Phaser.Math.Between(-2, 2)]);
+  pts.push([7, 0]);
+  const line = (w: number, c: number, a: number) => {
+    g.lineStyle(w, c, a).beginPath().moveTo(...pts[0]);
+    for (const p of pts.slice(1)) g.lineTo(...p);
+    g.strokePath();
+  };
+  const a = 0.65 + Math.random() * 0.35;
+  line(3, 0xfacc15, a * 0.8);
+  line(1, 0xffffff, a);
+  if (Math.random() < 0.5) g.fillStyle(0xfef9c3, a).fillRect(Phaser.Math.Between(-6, 4), Phaser.Math.Between(-3, 2), 1, 1);
+}
+
+/** The Bag's slow on a player (shown only, players have no slow yet): a small badge by the head (two pale-blue chevrons
+ *  pointing down on navy) and a faint cold ring at the feet, for `ms`; on the front and ground fx layers. */
+export function showSlowed(fx: FxLayers, head: () => Pt, feet: () => Pt, ms: number): void {
+  fx.drawFx('front', (g, t) => {
+    const h = head();
+    const bob = Math.round(Math.sin(t / 220));
+    const x = Math.round(h.x + 8);
+    const y = Math.round(h.y + 3 + bob);
+    g.fillStyle(0x1e1b3a, 0.9).fillRect(x - 4, y - 4, 9, 9);
+    g.fillStyle(0x7dd3fc, 1).fillRect(x - 3, y - 3, 7, 7);
+    g.fillStyle(0xffffff, 1);
+    for (const dy of [-2, 1]) g.fillRect(x - 2, y + dy, 1, 1).fillRect(x - 1, y + dy + 1, 1, 1).fillRect(x, y + dy + 2, 1, 1).fillRect(x + 1, y + dy + 1, 1, 1).fillRect(x + 2, y + dy, 1, 1);
+  }, ms, 300);
+  fx.drawFx('ground', (g, t) => {
+    const f = feet();
+    g.lineStyle(1, 0x93c5fd, 0.55 + 0.25 * Math.sin(t / 160)).strokeEllipse(Math.round(f.x), Math.round(f.y), 20, 9);
+  }, ms, 300);
+}
+
+/** A small seeded number (0–1) from a string: the bot's `seeded` in web/town-mobs.ts (keep in step), so the variant,
+ *  level and pack picked here before the server answers are the ones it picks. */
 function seeded(s: string): number {
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
   return ((h >>> 0) % 10_000) / 10_000;
 }
+
+/** How many caps a pack has (the bot's packSize: keep in step). */
+const packSize = (id: string, [lo, hi]: Vec2) => lo + Math.floor(seeded(`${id}:pack`) * (hi - lo + 1));
 
 /** The screen direction of a grid step (as the characters' dirForStep). */
 function stepName(dc: number, dr: number): string {

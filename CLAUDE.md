@@ -305,7 +305,9 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   `roll`, quicker), a Plastic Bag Spook drifts (`drift`: its own pace, short rests); arrivals get `mobs` (a snapshot,
   hops under way included), each hop goes to the room as `mob-move`. The game (`world/mobs.ts`) walks them at the same
   pace (wandering on its own only when no server answers), facing their way on the four diagonal sheets (SE for S and E,
-  SW for W, NE for N; no mirroring), on a shadow sized per kind (the bag floats over its own); a click shows "Tin Can Lv 1-2" over
+  SW for W, NE for N; no mirroring), on a shadow sized per kind (the bag floats over its own and drifts: its drawn place
+  eases after its real one), a pack's caps placed and wandering round their leader like the server's; only mobs near the
+  camera are drawn and animated (the rest sleep: sprites inactive, hops still walked on paper; `Mob.asleep`); a click shows "Tin Can Lv 1-2" over
   it and targets it; Z (or the middle mouse button) targets the nearest within 12 tiles (again: the next), a gold ring under it and an info bar at
   the top (`ui/mob-target.ts`: name, level, HP, zone); Escape or 20 tiles away lets go. Battle (battle maps = maps with
   mobs): characters with a class use their class's combat poses there (`characters/battle-art.ts`: every pose composited
@@ -334,8 +336,16 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   its `reach` (mobs.json; the Wire Tangle zaps from 3) and attacks every 1.6 s (`mob-attack` with its `dir`, and the Bag's
   `slow` ms; players have no HP yet), gives up when they leave its zone or its leash, or (passive) after 12 s without a
   hit, and walks home; at 0 it dies (`mob-hit` dead: its death pose, gone)
-  and respawns after its zone's respawnSec (`mob-spawn`). The game shows damage numbers (gold for a crit), an HP bar
-  over a hurt mob and in the target's info bar. `residents` are unused for now. Dev: `?area=slums`,
+  and respawns after its zone's respawnSec (`mob-spawn`). The game shows damage numbers (gold for a crit; "Blocked" off a shell), an HP bar
+  of its `maxHp` over a hurt mob and in the target's info bar, its death pose then a fade out. A mob's attack
+  (`Mobs.strike`): turned the server's way, its attack pose, hooks `onAttackFrame` (mobs.json attackFrame) and `onHit` as
+  it lands (TownScene: the player's red flash, and the Bag's slow badge + cold ring for `slow` ms, `showSlowed`), `onDeath`;
+  the Wire Tangle's spark (drawn in code: a jagged yellow-white flickering line) flies from its insulator eye (mobs.json
+  `eye`) to the player on the attack frame; the Tire Roller's sprite lunges along its facing over its `charge` frames and
+  back (its tile stays). FX layers (`world/fx-layers.ts`, the rule for every effect): `ground` (under every player and mob)
+  and `front` (over them, under names) depths; sheets from fx defs (their `layer`), shots (straight/arc, turned to the
+  flight), code-drawn effects (`drawFx`, `drawnShot`); one per TownScene (`fxLayers`, updated every frame); class skills'
+  world effects (`combat/world-skills.ts`) play on it (a script's z 0 = ground, z 3 = front, z 1 just behind the caster). `residents` are unused for now. Dev: `?area=slums`,
   `?switch` (pretend login: a row of class badges, bottom left, to become any class at once: `devSwitchClass` in
   net/adventure.ts, its training weapon, the class choice done), `__town.mobs()`; the dev server reads maps/slums.json again when it changes.
 - NPCs (town only, not the neighbourhood; client-side: never on the server, the online list or the minimap): the

@@ -594,6 +594,11 @@ export class Character {
     for (const sp of [...(this.rest?.back ?? []), ...(this.rest?.front ?? [])]) sp.destroy();
   }
 
+  /** The world y of the top of the head (its first visible row), for things shown over it. */
+  get headY(): number {
+    return this.sprite.y - this.M.characters.anchor[1] + this.head;
+  }
+
   /** Lets the scene tint effects spawned later (night). */
   onSpawn: ((obj: Phaser.GameObjects.Sprite) => void) | null = null;
 
