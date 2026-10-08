@@ -53,7 +53,7 @@ import { EquipmentPanel } from '../ui/equipment';
 import { closeCasino, openCasino, setCasinoArt } from '../ui/casino';
 import { fadeNavy } from '../ui/fade';
 import { OtherPlayers } from '../world/others';
-import { fakeLogin, loadMe } from '../session';
+import { fakeLogin, fakeName, loadMe } from '../session';
 import { screenToTile, tileToScreen } from '../iso';
 import { toast } from '../ui/toast';
 import { GROUND_SHADOW_DEPTH, LABEL_DEPTH, frontDepth } from '../world/depth';
@@ -65,6 +65,8 @@ import { Ground } from '../world/ground';
 import { SlumsOutskirts, outskirts } from '../world/outskirts';
 import { Terrain } from '../world/terrain';
 import { Mobs, showSlowed } from '../world/mobs';
+import { GolemView } from '../world/golem';
+import { loadBoss } from '../assets/queue';
 import { FxLayers } from '../world/fx-layers';
 import { SKILL_POSE, battleSheets } from '../characters/battle-art';
 import { skillCooldown } from '../combat/cooldowns';
@@ -176,6 +178,8 @@ export class TownScene extends Phaser.Scene {
   get debugMobs(): Mobs | null {
     return this.mobs;
   }
+  /** The Slums' field boss (world/golem.ts), drawn as one of the mobs. */
+  private golem: GolemView | null = null;
   /** Which area this page is: the town, the neighbourhood or the Slums. */
   private area: Area = 'town';
   private objects!: WorldObjects;
@@ -397,11 +401,22 @@ export class TownScene extends Phaser.Scene {
       const mobs = new Mobs(this, this.M, this.map, this.grid, this.objects, (obj) => this.tint >= 0 && obj.setTint(this.tint), this.fxLayers);
       const box = new MobTargetBox();
       mobs.onTarget = (m) => {
-        box.show(m && { name: m.def.name, level: m.level, zone: m.zone.name, hp: m.hp / m.maxHp });
+        box.show(m && { name: m.def.name, level: m.level, zone: m.zone.name, hp: m.hp / m.maxHp, boss: m.radius > 0 });
         if (m) this.target?.clear(); // one target at a time
       };
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => box.destroy());
       this.mobs = mobs;
+      // Its field boss, once its art is in (loaded in the background: it never holds up arriving).
+      const boss = this.map.boss;
+      if (boss && this.M.mobs?.[boss.id]) {
+        const golem = new GolemView(this, this.map, mobs, this.fxLayers, { at: () => null, me: () => this.player.tile });
+        this.golem = golem;
+        void loadBoss(this, this.M, boss.id).then(() => this.golem === golem && golem.loaded());
+        this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+          golem.destroy();
+          this.golem = null;
+        });
+      }
     }
     // The race box's bet pop-up shows the runners' portraits wherever you are (the neighbourhood too, which has no NPCs).
     const P = this.M.npcs?.portrait;
@@ -480,6 +495,7 @@ export class TownScene extends Phaser.Scene {
     this.others.update(delta);
     this.mobs?.update(delta);
     this.mobs?.check(this.player.tile);
+    this.golem?.update();
     this.fightTick();
     this.fxLayers.update();
     this.raceNews();
@@ -776,7 +792,8 @@ export class TownScene extends Phaser.Scene {
     if (this.player.busy || this.player.isSitting || this.inside) return;
     const me = this.player.tile;
     const at = { col: Math.floor(m.col), row: Math.floor(m.row) };
-    const dist = (t: Tile) => Math.max(Math.abs(t.col - at.col), Math.abs(t.row - at.row));
+    // (To the golem: to its body's edge, as the server measures it.)
+    const dist = (t: Tile) => (m.radius ? Math.max(0, Math.hypot(t.col - at.col, t.row - at.row) - m.radius) : Math.max(Math.abs(t.col - at.col), Math.abs(t.row - at.row)));
     // In reach of the chosen skill, or (while it cools down) of another that's ready.
     const c0 = classInfo(adventure()?.cls);
     const readyNow = (n: string) => this.time.now >= (this.castReady.get(n) ?? 0);
@@ -807,9 +824,10 @@ export class TownScene extends Phaser.Scene {
     // Out of reach: to the nearest open tile in reach of it (again if it has moved off our goal's reach).
     if (e.goal && dist(e.goal) <= e.reach && !this.player.isIdle) return;
     const spots: Tile[] = [];
-    for (let dr = -e.reach; dr <= e.reach; dr++) for (let dc = -e.reach; dc <= e.reach; dc++) {
+    const span = e.reach + Math.ceil(m.radius);
+    for (let dr = -span; dr <= span; dr++) for (let dc = -span; dc <= span; dc++) {
       const t = { col: at.col + dc, row: at.row + dr };
-      if ((dc || dr) && this.grid.walkable(t.col, t.row) && this.objects.heights.at(t.col, t.row) === this.objects.heights.at(at.col, at.row)) spots.push(t);
+      if ((dc || dr) && dist(t) <= e.reach && this.grid.walkable(t.col, t.row) && this.objects.heights.at(t.col, t.row) === this.objects.heights.at(at.col, at.row)) spots.push(t);
     }
     spots.sort((a, b) => Math.hypot(a.col - me.col, a.row - me.row) - Math.hypot(b.col - me.col, b.row - me.row));
     for (const t of spots.slice(0, 6)) {
@@ -1132,6 +1150,12 @@ export class TownScene extends Phaser.Scene {
         const c = charOf(id);
         return c ? { x: c.sprite.x, y: c.sprite.y } : null;
       };
+      if (this.golem) {
+        this.golem.players.at = (id) => {
+          const c = charOf(id);
+          return c ? { feet: { x: c.sprite.x, y: c.sprite.y }, head: { x: c.sprite.x, y: c.headY } } : null;
+        };
+      }
       this.mobs.hooks.onHit = (_m, target, slow) => {
         const who = charOf(target);
         if (!who) return;
@@ -1234,8 +1258,16 @@ export class TownScene extends Phaser.Scene {
         if (char) this.playEmote(char, m.emote);
         return;
       }
-      if (m.t === 'mobs') return this.mobs?.applySnapshot(m.mobs);
+      if (m.t === 'mobs') {
+        this.mobs?.applySnapshot(m.mobs);
+        return this.golem?.snapshot(m.golem ?? null);
+      }
       if (m.t === 'mob-move') return this.mobs?.hop(m.id, m.path, m.speed);
+      if (m.t === 'mob-add') return this.mobs?.add(m.mobs);
+      if (m.t === 'mob-remove') return this.mobs?.remove(m.ids);
+      if (m.t === 'mob-face') return this.mobs?.face(m.id, m.dir);
+      if (m.t === 'golem') return this.golem?.change(m.change, m.golem, m.spots);
+      if (m.t === 'golem-attack') return this.golem?.attack(m);
       if (m.t === 'mob-hit') {
         const ids = m.hits.map((h) => h.id);
         const at = ids[0] ? this.mobs?.tileOf(ids[0]) : null;
@@ -1273,6 +1305,11 @@ export class TownScene extends Phaser.Scene {
         if (m.notice && !arrived) announce(m.notice); // a notice still current when you arrive
         // Arriving: go to the free tile the server picked (so people don't land on each other), unless you've
         // already walked off or this is a reconnect, in which case you stay where you are ('here' below).
+        // Dev, in the Slums: ?golem=now raises its golem now, ?golemdemo=1 plays its whole fight on the nearest player
+        // (the dev server's /__golem); either way you arrive by the Golem Pit to watch.
+        const q = new URLSearchParams(location.search);
+        const golemDev = import.meta.env.DEV && !arrived && !!this.golem && (q.get('golem') === 'now' || q.has('golemdemo'));
+        if (golemDev) this.byThePit();
         const [sc, sr] = this.map.spawn;
         const at = this.player.tile;
         if (!arrived && m.spawn && at.col === sc && at.row === sr && this.player.isIdle) {
@@ -1285,6 +1322,7 @@ export class TownScene extends Phaser.Scene {
         const t = this.player.tile;
         link.send({ t: 'here', col: t.col, row: t.row, dir: this.player.facing });
         this.sent = { dir: this.player.facing, sit: false };
+        if (golemDev) void fetch(q.has('golemdemo') ? `/__golem?${new URLSearchParams({ demo: '1', as: fakeName() })}` : '/__golem?now=1').catch(() => null);
       }
       this.others.handle(m);
     };
@@ -2342,6 +2380,12 @@ export class TownScene extends Phaser.Scene {
     };
   }
 
+  /** Dev (?golem=now, ?golemdemo=1): on an open tile at (or past) the Golem Pit's front corner, facing it. */
+  private byThePit(): void {
+    const [, , c1, r1] = this.map.boss?.arena ?? [0, 0, -1, -1];
+    for (let d = 0; d < 8; d++) if (this.grid.walkable(c1 + d, r1 + d)) return this.debugTeleport(c1 + d, r1 + d, 'nw');
+  }
+
   debugTeleport(col: number, row: number, dir: Dir = 's'): void {
     this.setBuildingAlert(null);
     this.player.place({ col, row }, dir);
@@ -2469,6 +2513,12 @@ function exposeDebug(scene: TownScene): void {
         const cam = scene.cameras.main;
         return { id: m.id, variant: m.variant, anim: m.sprite.anims.currentAnim?.key, tile: [Math.floor(m.col), Math.floor(m.row)], dir: m.dir, walking: m.path.length > 0, hp: m.hp, maxHp: m.maxHp, level: m.level, dead: m.dead, asleep: m.asleep, pose: m.pose?.anim ?? null, x: (m.sprite.x - cam.worldView.x) * cam.zoom, y: (m.sprite.y - 12 - cam.worldView.y) * cam.zoom };
       }),
+    /** The golem as the page has it (null: not made yet) and where it is on the screen. */
+    golem: () => {
+      const m = scene.debugMobs?.get('scrapheap-golem');
+      const cam = scene.cameras.main;
+      return m ? { tile: [Math.floor(m.col), Math.floor(m.row)], dir: m.dir, hp: m.hp, maxHp: m.maxHp, dead: m.dead, asleep: m.asleep, enraged: m.enraged, untouchable: m.untouchable, anim: m.sprite.anims.currentAnim?.key, frame: m.sprite.anims.currentFrame?.index, x: (m.sprite.x - cam.worldView.x) * cam.zoom, y: (m.sprite.y - cam.worldView.y) * cam.zoom } : null;
+    },
     /** Fixed view for screenshots: zoom and centre on a world point (follow off), or follow again. */
     view: (zoom?: number, x?: number, y?: number) => {
       const cam = scene.cameras.main;

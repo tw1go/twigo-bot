@@ -317,6 +317,16 @@ export interface MobData {
   /** The golem's Scrap Toss release frame and Lamp Glare cone frames (first, last). */
   tossFrame?: number;
   glareFrames?: Vec2;
+  /** The golem's HP (not by level) and its body's radius in tiles (reach to it is measured to that edge). */
+  hp?: number;
+  radius?: number;
+  /** The art's highest pixel row in its cells: its HP bar, name and numbers go there (else the cell's top). */
+  top?: number;
+  /** The golem's lamp, the ground under its fist as the Tire Slam lands, and its raised fist as the Scrap Toss leaves:
+   *  art px per facing (in that facing's cell). */
+  lamp?: Record<string, Vec2>;
+  slamFist?: Record<string, Vec2>;
+  tossFist?: Record<string, Vec2>;
 }
 
 export interface MobZone {

@@ -289,11 +289,11 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   `world/outskirts.ts` (dirt, the canal carried on from the map's first/last rows, a concrete road out of the gate, dead
   trees thick on the edges and sparse junk/shanties/poles/wrecks, one per 4 × 4 cell). Minimap: the Slums' colours,
   ridge lighter, basin darker. Mobs (`map.mobZones`, all six `active`: Tin Can, Bottle Caps, Tire Roller, Plastic Bag
-  Spook, Wire Tangle, Scrap Crab; only active zones load art; the boss (Scrapheap Golem) runs on the server (below), the game doesn't
-  draw it yet). Art: manifest `mobs.<id>` (file with {variant}/{anim}/{dir}, `variants` with their own cell/anchor where they
+  Spook, Wire Tangle, Scrap Crab; only active zones load art; the boss (Scrapheap Golem): below). Art: manifest `mobs.<id>` (file with {variant}/{anim}/{dir}, `variants` with their own cell/anchor where they
   differ, the golem's `enraged` set and `fx` with `layer` ground/front; `assets/mob-art.ts`; built from the art folder's
   _sheets.csv, PNGs only); rules: `mobs/mobs.json` (manifest `mobs.data`, read by the bot too: 0-based attack frame,
-  shadow size, `floats`, variants, the golem's toss/glare frames; a bot test keeps its variants in step with the
+  shadow size (drawn as the shadow art's pixel ellipse at that size), `floats`, variants, the golem's toss/glare frames,
+  `top`, and its `lamp` / `slamFist` / `tossFist` per facing, measured from the art; a bot test keeps its variants in step with the
   manifest's and checks every sheet exists). Shared by everyone: the bot runs them (`web/town-mobs.ts` MobRoom, tested; TownOptions
   `mobs`, a quarter-second clock, ~0.25 ms a tick with all ~240 mobs and 5 players fighting): one per spawn (id
   `<zone>:<index>`), or for a kind with mobs.json `pack` (Bottle Caps) a seeded 3–5 round the point (ids `<zone>:<index>:<n>`,
@@ -368,7 +368,22 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   (`downLine`). Every `golem` message carries the whole `TownGolem` (HP, enraged, state, home/leash/radius for the boss
   bar); arrivals get it in `mobs` (`golem`). Dev: `/__golem?now=1` (rise now), `/__golem?demo=1&as=Name` (its fight
   against the nearest player in the room: slam, toss, glare, the Junk at a pretend half, enrage at a pretend quarter,
-  death); the page doesn't call them yet.
+  death); the page's `?golem=now` / `?golemdemo=1` (dev, the Slums) call them and put you at the pit's front corner.
+  In the game (`world/golem.ts` GolemView; a mob of world/mobs.ts via `makeBoss`): its art (52 sheets + fx, ~660 KB
+  packed) loads in the background once the Slums is up (`assets/queue.ts` loadBoss), messages before that keep its
+  state. 200×168 at 100,150 on a 72×24 shadow, sorted by its feet, asleep off camera; rises (death backwards, from
+  `left` for a late arrival), sinks (death forwards, fade), untouchable meanwhile; `mob-face` turns, `-enraged` sheets
+  (`Mob.enraged`). `golem-attack`: its anim, every fx timed from its frames on its layer: slam (warning → impact,
+  shockwave, small shake, enraged rubble ring 3.5 s) all where its fist lands (mobs.json slamFist; the server's `at` can
+  be a tile or two off it, four facings), toss (marker at `at` → scrap from tossFist arcing, tumbling, trail turned to
+  its flight → land), glare (the grid cone projected: a warm ADD wedge from the lamp, frames 3–5; blinded sparkles round
+  the heads in `blinded`); 'call' fx at `spots`, Adds via `mob-add`/`mob-remove` (`Mobs.add/remove`, `TownMob.kind`);
+  'enrage' fx at the lamp, red half-way; 'death' lamp burst. Hits: numbers spread over its shoulders, a 40 px bar at
+  its `top`; a hit never cuts its attack; reach/auto-cast walk measure to its body's edge (TownScene fightTick). Boss bar
+  (`ui/boss-bar.ts`, top centre, red when enraged) while its fight is on and you're within its leash; body.boss-on moves
+  the mob info bar under it (hidden when that shows the golem). Debug `__town.golem()`. The Golem Pit prop (a walkable
+  6×6 floor) lies on the ground (objects.ts: walkable floors under the ground fx and everyone; its junk ring can't hide
+  anyone). Packs (`scripts/packs.ts`) are written unfiltered with plain deflate (pngjs's RLE default made them ~5× bigger).
 - NPCs (town only, not the neighbourhood; client-side: never on the server, the online list or the minimap): the
   Tanod and ten Alings, flat pre-baked sheets (manifest `npcs`, art in `assets/npcs/`, one pack per NPC; `Character`
   with `FlatSheets`, never the paper doll). Homes, behaviours, the Tanod's route, voices and portrait facing in

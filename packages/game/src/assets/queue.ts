@@ -121,7 +121,7 @@ function queueSlums(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Textures.
     for (const set of Object.values(S.ramps)) Object.values(set).flat().forEach(img);
   }
   for (const [id, p] of Object.entries(M.props)) if (id.startsWith('slums-') && (p as PropDef).file) img((p as PropDef).file);
-  // Every variant's sheets of each active zone's mob (the boss isn't drawn yet: its art waits).
+  // Every variant's sheets of each active zone's mob (the field boss's wait: loadBoss, once the town is up).
   const ids = new Set((map.mobZones ?? []).filter((z) => z.active).map((z) => z.mob));
   for (const id of ids) {
     const mob = M.mobs?.[id];
@@ -130,4 +130,22 @@ function queueSlums(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Textures.
   }
   // Their rules (attack frames, shadows, floating).
   if (ids.size && typeof M.mobs?.data === 'string') load.json('mob-data', M.mobs.data);
+}
+
+/** The field boss's art (the Scrapheap Golem: its sheets, red-lamp set included, and its fx), loaded with the scene's
+ *  loader in the background once the Slums is up, so it never holds up arriving. */
+export function loadBoss(scene: Phaser.Scene, M: Manifest, id: string): Promise<void> {
+  const mob = M.mobs?.[id];
+  if (!mob || typeof mob === 'string') return Promise.resolve();
+  const files = [...mobSheets(mob), ...Object.values(mob.fx ?? {}).flatMap((f) => (f.file ? [{ file: f.file, size: f.frame }] : []))];
+  const missing = files.filter((f) => !scene.textures.exists(f.file));
+  if (!missing.length) return Promise.resolve();
+  return new Promise((resolve) => {
+    for (const f of missing) {
+      if (f.size) queueSheet(scene.load, scene.textures, f.file, f.size[0], f.size[1]);
+      else queueImage(scene.load, scene.textures, f.file);
+    }
+    scene.load.once('complete', () => resolve());
+    if (!scene.load.isLoading()) scene.load.start();
+  });
 }

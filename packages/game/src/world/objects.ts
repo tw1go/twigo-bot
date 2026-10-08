@@ -324,10 +324,14 @@ export class WorldObjects {
     } else {
       sprite = this.place(def.file, o.col, o.row, def.anchor, o.flip);
     }
+    // A floor you walk about on (walkable both ways round: the Golem Pit, a clearing in a ring of junk) lies on the ground,
+    // under the ground fx and whoever stands on it (sorted by its front corner it hid them: the golem, a slam's warning).
+    // (One image, so its ring can't hide anyone standing behind it.)
+    const floor = !!o.walkable && fc > 1 && fr > 1;
     const base = this.depthFor(o) + this.heights.at(o.col, o.row) * LEVEL_PX * HEIGHT_DEPTH;
     const bounds = sprite.getBounds(new Phaser.Geom.Rectangle());
-    const big = fc * fr > 1;
-    const depth = big ? base : this.sortAgainstBig(o.col, o.row, fc, fr, base, bounds);
+    const big = fc * fr > 1 && !floor;
+    const depth = floor ? GROUND_SHADOW_DEPTH - 1 : big ? base : this.sortAgainstBig(o.col, o.row, fc, fr, base, bounds);
     sprite.setDepth(depth);
     if (big) this.big.push({ col: o.col, row: o.row, cols: fc, rows: fr, back: depth, front: depth, bounds });
 

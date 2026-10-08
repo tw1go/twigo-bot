@@ -7,6 +7,8 @@ export interface MobInfo {
   zone: string;
   /** 0–1. */
   hp: number;
+  /** The field boss (its boss bar, while up, says it all: this one hides). */
+  boss?: boolean;
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
@@ -38,6 +40,7 @@ export class MobTargetBox {
   show(m: MobInfo | null): void {
     this.root.hidden = !m;
     if (!m) return;
+    this.root.classList.toggle('mt-boss', !!m.boss);
     this.name.textContent = m.name;
     this.level.textContent = `Lv ${m.level}`;
     this.fill.style.width = `${Math.round(Math.max(0, Math.min(1, m.hp)) * 100)}%`;

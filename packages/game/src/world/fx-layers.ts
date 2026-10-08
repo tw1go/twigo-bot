@@ -29,6 +29,8 @@ export interface FxPlay {
   flipY?: boolean;
   /** Turned (radians). */
   angle?: number;
+  /** Spinning (radians a second; a thrown thing tumbling). */
+  spin?: number;
   /** These frames in turn (else the sheet's). */
   frames?: number[];
   /** Loops frames from–to until `until` ms in, then plays on to the end. */
@@ -80,6 +82,7 @@ interface Live {
   x: number;
   y: number;
   angle: number;
+  spin: number;
   t0: number;
   seq: number[] | null;
   hold: FxPlay['hold'];
@@ -231,7 +234,7 @@ export class FxLayers {
     const length = seq ? seq.length * ms : o.hold ? o.hold.until + (frames - 1 - o.hold.to) * ms : frames * ms;
     const now = this.now;
     const l: Live = {
-      def, img, sheet: img.texture.has('0'), size: [w, h], x: at.x, y: at.y, angle: o.angle ?? 0, t0: now, seq, hold: o.hold, ms,
+      def, img, sheet: img.texture.has('0'), size: [w, h], x: at.x, y: at.y, angle: o.angle ?? 0, spin: o.spin ?? 0, t0: now, seq, hold: o.hold, ms,
       fadeIn: o.fadeIn ?? 0, fadeOut: o.fadeOut ?? 0, end: now + (looping ? (o.life ?? 4000) : length), length: o.length, scale: o.scale ?? 1, follow: o.follow,
     };
     this.lives.push(l);
@@ -279,7 +282,7 @@ export class FxLayers {
     if (l.follow) ({ x: l.x, y: l.y } = l.follow());
     let x = l.x;
     let y = l.y;
-    let angle = l.angle;
+    let angle = l.angle + (l.spin * t) / 1000;
     let clip = 0;
     if (l.path) {
       const a = along(l.path, Math.min(1, (now - l.t0) / Math.max(1, l.path.t1 - l.t0)));

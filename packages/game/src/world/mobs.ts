@@ -31,6 +31,10 @@ import { LABEL_DEPTH } from './depth';
 // along its facing over its charge frames and back (its tile stays). `onDeath` as one dies. Players have no HP yet:
 // the hooks show the hit (TownScene). Only the mobs near the camera are drawn and animated; the rest sleep (their
 // sprites off, still walking their hops on paper) and wake right where they should be.
+// The field boss (world/golem.ts runs it) is one of these too, made with `makeBoss` once its art is in: its own sheets
+// or its red-lamp set (`enraged`), its rise (its death backwards), a body `radius` (reach and Z measure to its edge;
+// a hit never cuts its attacks short), numbers and a wider bar at its art's `top`. Its Adds come and go with `add` /
+// `remove` (their `kind`, in a zone of their own). Shadows are the shadow art's look drawn at each kind's size.
 
 const ROAM = 3; // tiles from its spawn
 const FOLLOW = 2; // a pack's followers keep within this of their leader
@@ -45,6 +49,9 @@ const LUNGE = 0.8; // tiles: the Tire Roller's charge, out and back
 const SPARK_SPEED = 260; // px a second
 const BODY_UP = 12; // a player's body above their feet (where a spark lands)
 const DEATH_FADE_MS = 350;
+
+/** Where the field boss lives (and its Adds' zone, in the info bar). */
+export const GOLEM_PIT = 'Golem Pit';
 
 /** The four ways the art faces, for a step in screen directions (SE for S and E, SW for W, NE for N). */
 const FACING: Record<string, TownMobFacing> = { n: 'ne', ne: 'ne', e: 'se', se: 'se', s: 'se', sw: 'sw', w: 'sw', nw: 'nw' };
@@ -97,6 +104,14 @@ export interface Mob {
   asleep: boolean;
   /** The sprite's offset from its tile (px): the Tire Roller's lunge. */
   lunge: Pt;
+  /** The golem's red-lamp sheets (its `enraged` set) instead of its own. */
+  enraged: boolean;
+  /** One of the golem's Adds (no spawn point; gone when its fight ends). */
+  add: boolean;
+  /** Its body's radius in tiles (the golem's; 0 for the rest): reach to it is measured to that edge. */
+  radius: number;
+  /** Up but not to be hit or targeted (the golem rising or sinking). */
+  untouchable: boolean;
 }
 
 /** What the scene does with a mob's attack (players have no HP yet: these show it). */
@@ -144,30 +159,38 @@ export class Mobs {
     }
   }
 
-  /** Its animations, one per sheet (variant × anim × direction). */
+  /** Its animations, one per sheet (variant × anim × direction); the golem's red-lamp set too (variant 'enraged'), and
+   *  its rise: its death played backwards. */
   private anims(id: string, def: MobDef): void {
+    const make = (key: string, file: string, size: Vec2, a: { frames: number; fps: number; loop: boolean }, back = false) => {
+      if (this.scene.anims.exists(key) || !this.scene.textures.exists(file)) return;
+      slice(this.scene.textures, file, size[0], size[1]);
+      const frames = this.scene.anims.generateFrameNumbers(file, { start: 0, end: a.frames - 1 });
+      this.scene.anims.create({ key, frames: back ? frames.reverse() : frames, frameRate: a.fps, repeat: a.loop ? -1 : 0 });
+    };
     for (const v of mobVariants(def)) {
       const { size } = mobCell(def, v);
-      for (const [anim, a] of Object.entries(def.animations)) {
-        for (const dir of def.directions) {
-          const file = mobSheet(def, v, anim, dir);
-          const key = `mob:${id}:${v}:${anim}:${dir}`;
-          if (this.scene.anims.exists(key) || !this.scene.textures.exists(file)) continue;
-          slice(this.scene.textures, file, size[0], size[1]);
-          this.scene.anims.create({ key, frames: this.scene.anims.generateFrameNumbers(file, { start: 0, end: a.frames - 1 }), frameRate: a.fps, repeat: a.loop ? -1 : 0 });
-        }
-      }
+      for (const [anim, a] of Object.entries(def.animations)) for (const dir of def.directions) make(`mob:${id}:${v}:${anim}:${dir}`, mobSheet(def, v, anim, dir), size, a);
     }
+    if (!def.enraged) return;
+    for (const anim of def.enraged.animations) {
+      const a = def.animations[anim];
+      if (a) for (const dir of def.directions) make(`mob:${id}:enraged:${anim}:${dir}`, mobSheet(def, '', anim, dir, true), def.size, a);
+    }
+    const death = def.animations.death;
+    if (death) for (const dir of def.directions) make(`mob:${id}::rise:${dir}`, mobSheet(def, '', 'death', dir), def.size, death, true);
   }
 
-  private place(zone: MobZone, def: MobDef, data: MobData | null, at: Tile, id: string, pack: Mob[] | null): void {
+  private place(zone: MobZone, def: MobDef, data: MobData | null, at: Tile, id: string, pack: Mob[] | null): Mob {
     const variants = mobVariants(def);
     const variant = variants[Math.floor(seeded(`${id}:variant`) * variants.length)];
     const sprite = this.scene.add.sprite(0, 0, mobSheet(def, variant, 'idle', 'se'));
     const S = this.M.fx.shadow as unknown as { file: string; size: [number, number]; anchor: [number, number] } | undefined;
-    const shadow = S && this.scene.textures.exists(S.file) ? this.scene.add.image(0, 0, S.file).setOrigin(S.anchor[0] / S.size[0], S.anchor[1] / S.size[1]) : null;
-    // Its kind's size of shadow (mobs.json), on the ground at its anchor (a floating one's too).
-    if (shadow && data?.shadow) shadow.setDisplaySize(...data.shadow);
+    // Its kind's size of shadow (mobs.json), on the ground at its anchor (a floating one's too): the shadow art's look
+    // drawn at that size (scaled up, the golem's went blocky), else the art itself.
+    const shadow = !S || !this.scene.textures.exists(S.file) ? null
+      : data?.shadow ? this.scene.add.image(0, 0, this.shadowSheet(S.file, ...data.shadow))
+      : this.scene.add.image(0, 0, S.file).setOrigin(S.anchor[0] / S.size[0], S.anchor[1] / S.size[1]);
     const [lo, hi] = zone.level;
     const level = lo + Math.floor(seeded(id) * (hi - lo + 1));
     const mob: Mob = {
@@ -175,6 +198,7 @@ export class Mobs {
       col: at.col + 0.5, row: at.row + 0.5, drawCol: 0, drawRow: 0, dir: (['se', 'sw', 'ne', 'nw'] as const)[Math.floor(seeded(`${id}:dir`) * 4)],
       sprite, shadow, path: [], restUntil: this.scene.time.now + Phaser.Math.Between(0, REST_MS[1]), label: null, labelUntil: 0,
       hp: mobHp(level), dead: false, pose: null, bar: null, speed: data?.drift?.speed ?? SPEED, slowUntil: 0, asleep: false, lunge: { x: 0, y: 0 },
+      enraged: false, add: false, radius: data?.radius ?? 0, untouchable: false,
     };
     // A pack's caps start round the point, each on a tile of its own (the server's place comes with its snapshot).
     if (pack?.length) mob.home = this.besideSpawn(mob, pack, id);
@@ -202,6 +226,23 @@ export class Mobs {
     this.list.push(mob);
     this.byId.set(mob.id, mob);
     this.sync(mob);
+    return mob;
+  }
+
+  /** A `w × h` ground shadow like the shadow art (a pixel ellipse in its colour, taken from its middle), made once. */
+  private shadowSheet(art: string, w: number, h: number): string {
+    const key = `mob-shadow:${w}x${h}`;
+    if (this.scene.textures.exists(key)) return key;
+    const src = this.scene.textures.get(art).getSourceImage() as HTMLImageElement;
+    const c = this.scene.textures.getPixel(Math.floor(src.width / 2), Math.floor(src.height / 2), art);
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = c ? `rgba(${c.red}, ${c.green}, ${c.blue}, ${c.alpha / 255})` : 'rgba(30, 27, 58, 0.4)';
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (((x + 0.5 - w / 2) / (w / 2)) ** 2 + ((y + 0.5 - h / 2) / (h / 2)) ** 2 <= 1) ctx.fillRect(x, y, 1, 1);
+    this.scene.textures.addCanvas(key, canvas);
+    return key;
   }
 
   /** A free tile next to the spawn for a pack's cap (seeded, as the bot's), or the spawn. */
@@ -235,7 +276,8 @@ export class Mobs {
   }
 
   private key(m: Mob, anim: string): string {
-    return `mob:${m.zone.mob}:${m.variant}:${anim}:${m.dir}`;
+    const v = m.enraged && m.def.enraged?.animations.includes(anim) ? 'enraged' : m.variant;
+    return `mob:${m.zone.mob}:${v}:${anim}:${m.dir}`;
   }
 
   private play(m: Mob, anim: string): void {
@@ -276,26 +318,150 @@ export class Mobs {
     }
   }
 
-  /** The server runs them from now on: every mob where it says (facing its way, its HP, the rest of a hop under way). */
+  /** The server runs them from now on: every mob where it says (facing its way, its HP, the rest of a hop under way); the
+   *  golem's Adds in it are made (their `kind`), and Adds it no longer has are gone. */
   applySnapshot(mobs: TownMob[]): void {
     this.server = true;
+    const ids = new Set(mobs.map((s) => s.id));
+    this.remove(this.list.filter((m) => m.add && !ids.has(m.id)).map((m) => m.id), false);
     for (const s of mobs) {
-      const m = this.byId.get(s.id);
-      if (!m) continue;
-      if (s.variant !== undefined) this.setVariant(m, s.variant);
-      m.col = m.drawCol = s.col + 0.5;
-      m.row = m.drawRow = s.row + 0.5;
-      m.level = s.level;
-      m.maxHp = s.maxHp ?? mobHp(s.level);
-      if (s.dir) m.dir = s.dir;
-      m.path = (s.path ?? []).map(([col, row]) => ({ col, row }));
-      m.speed = s.speed ?? SPEED;
-      m.hp = s.hp;
-      m.pose = null;
-      this.show(m, !s.dead);
-      this.sync(m);
+      const m = this.byId.get(s.id) ?? (s.kind ? this.makeAdd(s) : null);
+      if (m) this.apply(m, s);
     }
     if (this.target) this.onTarget?.(this.target); // its level may have changed
+  }
+
+  /** A mob as the server has it. */
+  private apply(m: Mob, s: TownMob): void {
+    if (s.variant !== undefined) this.setVariant(m, s.variant);
+    m.col = m.drawCol = s.col + 0.5;
+    m.row = m.drawRow = s.row + 0.5;
+    m.level = s.level;
+    m.maxHp = s.maxHp ?? mobHp(s.level);
+    if (s.dir) m.dir = s.dir;
+    m.path = (s.path ?? []).map(([col, row]) => ({ col, row }));
+    m.speed = s.speed ?? SPEED;
+    m.hp = s.hp;
+    m.pose = null;
+    this.show(m, !s.dead);
+    this.sync(m);
+  }
+
+  /** The golem's Adds crawling out (`mob-add`): made where the server says, fading in. */
+  add(mobs: TownMob[]): void {
+    for (const s of mobs) {
+      if (!s.kind || this.byId.has(s.id)) continue;
+      const m = this.makeAdd(s);
+      if (!m) continue;
+      this.apply(m, s);
+      if (!m.asleep) {
+        m.sprite.setAlpha(0);
+        this.scene.tweens.add({ targets: m.sprite, alpha: 1, duration: 400 });
+      }
+    }
+  }
+
+  /** An Add of `kind` (its art is a zone's that's on: the Tin Cans' and Bottle Caps'), in a zone of its own made from its
+   *  kind's (its level range; it lives where the server puts it). */
+  private makeAdd(s: TownMob): Mob | null {
+    const def = this.M.mobs?.[s.kind!];
+    if (!def || typeof def === 'string') return null;
+    this.anims(s.kind!, def);
+    const own = this.map.mobZones?.find((z) => z.mob === s.kind);
+    const zone: MobZone = {
+      id: 'golem-add', name: GOLEM_PIT, mob: s.kind!, level: own?.level ?? [s.level, s.level], rect: [s.col, s.row, s.col, s.row], height: own?.height ?? 0,
+      pack: 0, aggro: 'aggressive', aggroRange: 0, leash: 0, respawnSec: 0, active: true, spawns: [],
+    };
+    const data = (this.scene.cache.json.get('mob-data') ?? {})[s.kind!];
+    const m = this.place(zone, def, typeof data === 'object' ? (data as MobData) : null, { col: s.col, row: s.row }, s.id, null);
+    m.add = true;
+    return m;
+  }
+
+  /** Mobs gone for good (the golem's Adds when its fight ends): faded out (`fade`), then dropped. */
+  remove(ids: string[], fade = true): void {
+    for (const id of ids) {
+      const m = this.byId.get(id);
+      if (!m) continue;
+      this.byId.delete(id);
+      this.list.splice(this.list.indexOf(m), 1);
+      if (m === this.target) this.setTarget(null);
+      const parts = [m.sprite, ...(m.shadow ? [m.shadow] : [])];
+      this.scene.tweens.killTweensOf(parts);
+      const drop = () => {
+        parts.forEach((p) => p.destroy());
+        m.bar?.destroy();
+        m.label?.text.destroy();
+      };
+      m.bar?.destroy();
+      m.bar = null;
+      if (fade && !m.asleep && !m.dead) this.scene.tweens.add({ targets: parts, alpha: 0, duration: DEATH_FADE_MS, onComplete: drop });
+      else drop();
+    }
+  }
+
+  /** The field boss (the golem) in its pit (`zone`: its name, level and rect), made once its art is loaded; hidden (dead)
+   *  until it rises. Null without its art. */
+  makeBoss(id: string, zone: MobZone): Mob | null {
+    const known = this.byId.get(id);
+    if (known) return known;
+    const def = this.M.mobs?.[id];
+    if (!def || typeof def === 'string' || !this.scene.textures.exists(mobSheet(def, '', 'idle', 'se'))) return null;
+    this.anims(id, def);
+    const data = (this.scene.cache.json.get('mob-data') ?? {})[id];
+    const m = this.place(zone, def, typeof data === 'object' ? (data as MobData) : null, { col: zone.spawns[0][0], row: zone.spawns[0][1] }, id, null);
+    this.show(m, false);
+    return m;
+  }
+
+  /** A mob by id. */
+  get(id: string): Mob | undefined {
+    return this.byId.get(id);
+  }
+
+  /** Where its feet are in the world now (asleep too: from its tile, not its sprite). */
+  feet(m: Mob): Pt {
+    const ground = this.objects.heights.lift(m.drawCol, m.drawRow);
+    return { x: Math.round((m.drawCol - m.drawRow) * 16), y: Math.round((m.drawCol + m.drawRow) * 8 - ground) };
+  }
+
+  /** A tile's middle in the world, on its ground (grid point `col, row` = a tile's top corner; + 0.5 its middle). */
+  ground(col: number, row: number): Pt {
+    return { x: Math.round((col - row) * 16), y: Math.round((col + row) * 8 - this.objects.heights.lift(col, row)) };
+  }
+
+  /** Where it stands now (a hop cut short: there at once), shown or not. */
+  setAt(m: Mob, col: number, row: number): void {
+    m.col = m.drawCol = col + 0.5;
+    m.row = m.drawRow = row + 0.5;
+    m.path = [];
+    this.sync(m);
+  }
+
+  /** Turns where it stands (`mob-face`: the golem's slow quarter turns): the anim it's in, in the new facing. */
+  face(id: string, dir: TownMobFacing): void {
+    const m = this.byId.get(id);
+    if (!m || m.dir === dir) return;
+    m.dir = dir;
+    this.reshow(m);
+  }
+
+  /** The golem's red-lamp sheets on or off: the anim it's in, from the same frame. */
+  setEnraged(m: Mob, on: boolean): void {
+    if (m.enraged === on) return;
+    m.enraged = on;
+    this.reshow(m);
+  }
+
+  /** The anim it's in again, in its sheets now (its facing, its lamp), from the same frame. */
+  private reshow(m: Mob): void {
+    if (m.asleep || m.dead) return;
+    const cur = m.sprite.anims.currentAnim?.key.split(':')[3] ?? 'idle';
+    const key = this.key(m, cur);
+    if (!this.scene.anims.exists(key)) return;
+    const frame = m.sprite.anims.currentFrame?.index ?? 1;
+    if (m.pose) m.pose.key = key;
+    m.sprite.play({ key, startFrame: Math.max(0, frame - 1) });
   }
 
   /** A hop from the server: from its first tile (a jump there if we'd drifted) along the rest. */
@@ -319,19 +485,41 @@ export class Mobs {
     m.hp = hp;
     if (slow && !dead) this.chill(m, slow);
     if (!m.asleep) this.number(m, blocked ? 'Blocked' : String(damage), crit);
-    if (dead) {
-      m.path = [];
-      m.dead = true;
-      this.hooks.onDeath?.(m);
-      if (m === this.target) this.setTarget(null);
-      // Its death, then it fades out (asleep: just gone).
-      if (m.asleep) this.show(m, false);
-      else
-        this.pose(m, 'death', {
-          then: () =>
-            this.scene.tweens.add({ targets: [m.sprite, ...(m.shadow ? [m.shadow] : [])], alpha: 0, duration: DEATH_FADE_MS, onComplete: () => m.dead && this.show(m, false) }),
-        });
-    } else if (!blocked) this.pose(m, 'hit');
+    if (dead) this.kill(m);
+    else if (!blocked && !(m.radius && m.pose)) this.pose(m, 'hit'); // (a hit never cuts the golem's attack short)
+    this.drawBar(m);
+    if (m === this.target) this.onTarget?.(m);
+  }
+
+  /** It dies: `onDeath`, let go, its death pose and gone. */
+  kill(m: Mob): void {
+    if (m.dead) return;
+    m.path = [];
+    m.dead = true;
+    this.hooks.onDeath?.(m);
+    if (m === this.target) this.setTarget(null);
+    this.fall(m);
+  }
+
+  /** Its death pose (from frame `from`), then it fades out and is gone (asleep: just gone). Dead already, or about to be. */
+  fall(m: Mob, from = 0): void {
+    m.dead = true;
+    m.path = [];
+    if (m === this.target) this.setTarget(null);
+    if (m.asleep) return this.show(m, false);
+    this.drawBar(m);
+    this.pose(m, 'death', {
+      from,
+      then: () =>
+        this.scene.tweens.add({ targets: [m.sprite, ...(m.shadow ? [m.shadow] : [])], alpha: 0, duration: DEATH_FADE_MS, onComplete: () => m.dead && this.show(m, false) }),
+    });
+  }
+
+  /** Its HP (and max) as the server has them now: the bar over it and the info bar. */
+  setHp(m: Mob, hp: number, maxHp = m.maxHp): void {
+    if (m.hp === hp && m.maxHp === maxHp) return;
+    m.hp = hp;
+    m.maxHp = maxHp;
     this.drawBar(m);
     if (m === this.target) this.onTarget?.(m);
   }
@@ -395,13 +583,14 @@ export class Mobs {
     this.sync(m);
   }
 
-  /** A one-shot pose, then idle again (or `then`); a new one replaces one under way (its `then` dropped). */
-  private pose(m: Mob, anim: string, o: { onFrame?: (f: number) => void; then?: () => void } = {}): void {
+  /** A one-shot pose, then idle again (or `then`); a new one replaces one under way (its `then` dropped). `from`: its
+   *  first frame (one that's partly over: a late arrival's view of the golem rising). */
+  pose(m: Mob, anim: string, o: { onFrame?: (f: number) => void; then?: () => void; from?: number } = {}): void {
     const key = this.key(m, anim);
     if (!this.scene.anims.exists(key) || m.asleep) return void o.then?.();
     m.pose = { key, anim, t: 0, ...o };
     m.lunge = { x: 0, y: 0 };
-    m.sprite.play(key);
+    m.sprite.play({ key, startFrame: o.from ?? 0 });
   }
 
   private endPose(m: Mob): void {
@@ -414,7 +603,7 @@ export class Mobs {
   }
 
   /** Shown (alive) or gone (dead, until it respawns). */
-  private show(m: Mob, alive: boolean): void {
+  show(m: Mob, alive: boolean): void {
     m.dead = !alive;
     m.sprite.setVisible(alive && !m.asleep).setAlpha(1);
     m.shadow?.setVisible(alive && !m.asleep).setAlpha(1);
@@ -433,20 +622,27 @@ export class Mobs {
       return;
     }
     m.bar ??= this.scene.add.graphics();
-    const w = 20;
+    const w = m.radius ? 40 : 20; // (the golem's wider)
     m.bar.clear().fillStyle(0x0b0a1a, 0.85).fillRect(-w / 2 - 1, -1, w + 2, 4).fillStyle(0xdc2626, 1).fillRect(-w / 2, 0, Math.max(1, Math.round((w * m.hp) / m.maxHp)), 2);
     this.syncBar(m);
   }
 
   private syncBar(m: Mob): void {
-    m.bar?.setPosition(Math.round(m.sprite.x), Math.round(m.sprite.y - m.cell.anchor[1] + 2)).setDepth(LABEL_DEPTH - 1);
+    m.bar?.setPosition(Math.round(m.sprite.x - m.lunge.x), Math.round(this.top(m) + 2)).setDepth(LABEL_DEPTH - 1);
   }
 
-  /** A number rising over it (gold and bigger for a crit; "Blocked" smaller, pale). */
+  /** Where its art's top is now (world y): the cell's top, or mobs.json `top` (the golem's head, well under its cell's). */
+  private top(m: Mob): number {
+    return m.sprite.y - m.cell.anchor[1] + (m.data?.top ?? 0);
+  }
+
+  /** A number rising over it (gold and bigger for a crit; "Blocked" smaller, pale); over the golem, spread across its
+   *  shoulders so many hitters' numbers don't pile up. */
   private number(m: Mob, text: string, crit: boolean): void {
     const word = !/^\d+$/.test(text);
+    const x = m.sprite.x + (m.radius ? Phaser.Math.Between(-24, 24) : 0);
     const t = this.scene.add
-      .text(Math.round(m.sprite.x), Math.round(m.sprite.y - m.cell.anchor[1] - 4), text, {
+      .text(Math.round(x), Math.round(this.top(m) - 4), text, {
         fontFamily: '"Mk Numbers", "Pixelify Sans", monospace',
         fontSize: `${crit ? 16 : word ? 10 : 12}px`,
         color: crit ? '#FCDA4A' : word ? '#CBD5E1' : '#FFFFFF',
@@ -509,7 +705,7 @@ export class Mobs {
         } else {
           // The name moves with it.
           m.label.text.setX(Math.round(m.sprite.x));
-          m.label.show(m.sprite.y - m.cell.anchor[1] + 4);
+          m.label.show(this.top(m) + (m.radius ? -10 : 4));
         }
       }
     }
@@ -582,7 +778,7 @@ export class Mobs {
   targetNext(from: { col: number; row: number }): Mob | null {
     const near = this.list
       .map((m) => ({ m, d: Math.hypot(m.col - from.col - 0.5, m.row - from.row - 0.5) }))
-      .filter((x) => x.d <= TARGET_RANGE && !x.m.dead)
+      .filter((x) => x.d - x.m.radius <= TARGET_RANGE && !x.m.dead && !x.m.untouchable)
       .sort((a, b) => a.d - b.d);
     if (!near.length) return this.setTarget(null);
     const i = this.target ? near.findIndex((x) => x.m === this.target) : -1;
@@ -607,8 +803,10 @@ export class Mobs {
     this.ring = null;
     if (m) {
       // A soft gold ring on the ground under it.
+      // (Round the golem's shadow.)
+      const [w, h] = m.radius && m.data ? [m.data.shadow[0] + 8, m.data.shadow[1] + 6] : [22, 10];
       this.ring = this.scene.add.graphics();
-      this.ring.lineStyle(1, 0xfcda4a, 0.9).strokeEllipse(0, 0, 22, 10).lineStyle(1, 0x1e1b3a, 0.6).strokeEllipse(0, 1, 24, 11);
+      this.ring.lineStyle(1, 0xfcda4a, 0.9).strokeEllipse(0, 0, w, h).lineStyle(1, 0x1e1b3a, 0.6).strokeEllipse(0, 1, w + 2, h + 1);
       this.syncRing();
     }
     this.onTarget?.(m);
@@ -648,7 +846,7 @@ export class Mobs {
       m.label = new BuildingLabel(this.scene, name, m.sprite.x);
       m.label.setZoom(this.zoom);
     }
-    m.label.show(m.sprite.y - m.cell.anchor[1] + 4);
+    m.label.show(this.top(m) + (m.radius ? -10 : 4));
     m.labelUntil = this.scene.time.now + LABEL_MS;
   }
 

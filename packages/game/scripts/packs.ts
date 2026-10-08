@@ -95,7 +95,9 @@ export function buildPacks(assetsDir: string): { index: PackIndex; out: { fileNa
       const h = Math.max(...placed.map((p) => p.y + p.img.png.height));
       const page = new PNG({ width: w, height: h });
       for (const p of placed) PNG.bitblt(p.img.png, page, 0, 0, p.img.png.width, p.img.png.height, p.x, p.y);
-      const source = PNG.sync.write(page, { deflateLevel: 9 });
+      // Pixel art packs best unfiltered with plain deflate (pngjs's own default, run-length only, wrote every page about
+      // five times bigger: all the packs came to 16 MB, now 3).
+      const source = PNG.sync.write(page, { deflateLevel: 9, deflateStrategy: 0, filterType: 0 });
       const hash = createHash('sha256').update(source).digest('hex').slice(0, 8);
       const name = `${group}${pages.length > 1 ? `-${i + 1}` : ''}-${hash}.png`;
       const n = index.pages.push(`${OUT_DIR}/${name}`) - 1;
