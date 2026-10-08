@@ -137,7 +137,7 @@ export function mountTownHud(o: TownHudOptions): void {
   face.append(dot, classBadge);
   const nameEl = el('span', 'th-name', o.name);
   setName = (name) => (nameEl.textContent = name);
-  // Level and XP under the name: "Lv 7" and a thin bar (gold and full, "MAX", at the cap). HP and MP bars join .th-bars.
+  // Level and XP under the name: "Lv 7" and a thin bar (gold and full, "MAX", at the cap). HP and MP bars join .th-bars, over it.
   const who = el('span', 'th-who');
   const level = el('span', 'th-level');
   const lv = el('span', 'th-lv');
@@ -154,7 +154,7 @@ export function mountTownHud(o: TownHudOptions): void {
   hpBar.append(hpFill);
   mpBar.append(mpFill);
   hpBar.hidden = mpBar.hidden = true;
-  bars.append(xpBar, hpBar, mpBar);
+  bars.append(hpBar, mpBar, xpBar); // XP last, under MP
   setVitals = (v) => {
     hpBar.hidden = mpBar.hidden = !v;
     if (!v) return;

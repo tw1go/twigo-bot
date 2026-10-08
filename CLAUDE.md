@@ -118,7 +118,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   name top left in the item frame (round pixel avatar + status dot from `/me` status: jailed, else the Discord status when the Presence
   intent is on in the Developer Portal — the bot checks at startup and only asks for it then — else online), under the
   name "Lv N" and a thin XP bar (no %; gold, full and "MAX" at the cap; hover: the XP numbers; `setHudLevel`, from
-  `adventure().progress`; HP/MP bars go in `.th-bars` under it), with Kowens and shovels beside it (they wrap below on phones); Settings top right;
+  `adventure().progress`; HP/MP bars go in `.th-bars` over it, XP last), with Kowens and shovels beside it (they wrap below on phones); Settings top right;
   Kowens/shovels have "+" info (from `/me`: `kowens`, `dig`). The
   shovel icon is `ui-shovel.png` (manifest ui.shovelIcon). The Kowens follow every balance change, wherever it came from:
   the credits store's `setWalletHook` → town `wallet` message → the HUD reloads. `/gift item` (an item to someone or everyone, `items/gift.ts`) shows the item gift pop-up (`gift-item`; dev
