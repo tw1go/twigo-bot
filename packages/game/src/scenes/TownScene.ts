@@ -384,6 +384,7 @@ export class TownScene extends Phaser.Scene {
 
     const [sc, sr] = this.map.spawn;
     this.player = new Character(this, this.M, this.outfit, { col: sc, row: sr });
+    this.player.mine = true;
     this.player.depthFn = (c, r, d, b) => characterDepth(this.objects, c, r, d, b);
     this.player.elevation = (c, r) => this.objects.heights.lift(c, r);
     this.player.onArrive = (tile) => this.arrived(tile);
@@ -1455,13 +1456,13 @@ export class TownScene extends Phaser.Scene {
         return;
       }
       if (m.t === 'mob-attack') return this.mobs?.strike(m.id, m.target, m.dir, m.slow, m.hit);
-      // HP (and yours with MP): the HUD's bars, the bar over a hurt party member's head, the party panel.
+      // HP (and yours with MP): the HUD's bars, the bar over your head and a hurt party member's, the party panel.
       if (m.t === 'vitals') {
         setMemberHp(m.id, m.hp, m.maxHp);
         if (m.id !== myId) return this.others.handle(m);
         setHudVitals({ hp: m.hp, maxHp: m.maxHp, mp: m.mp ?? 0, maxMp: m.maxMp ?? 0 });
         this.vitalsNow = { hp: m.hp, maxHp: m.maxHp, mp: m.mp ?? 0, maxMp: m.maxMp ?? 0 };
-        return; // (yours is in the HUD, never over your head)
+        return this.player.setHp(m.hp, m.maxHp);
       }
       // Knocked out (0 HP): you fade out where you stand and can't act; in 3 s the server puts you back at the way in.
       if (m.t === 'knocked-out' && m.id === myId) {

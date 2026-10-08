@@ -175,7 +175,8 @@ export function mountTownHud(o: TownHudOptions): void {
     lv.textContent = `Lv ${p.level}`;
     level.classList.toggle('th-max', max);
     xpFill.style.width = `${max ? 100 : Math.min(100, (p.xp / p.next) * 100)}%`;
-    xpText.textContent = max ? 'MAX' : `${Math.floor((p.xp / p.next) * 100)}%`;
+    xpText.textContent = max ? 'MAX' : ''; // no % (hover shows the XP numbers)
+    xpText.hidden = !max;
     level.title = max ? `Level ${p.level}: the highest` : `Level ${p.level} · ${p.xp.toLocaleString()} / ${p.next.toLocaleString()} XP to Lv ${p.level + 1}`;
     level.setAttribute('aria-label', level.title);
   };

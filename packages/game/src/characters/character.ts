@@ -151,6 +151,8 @@ export class Character {
     if (this.hp) this.setHp(...this.hp);
   }
   private inParty = false;
+  /** Your own character: its HP bar shows full too. */
+  mine = false;
   /** Their HP and most, as last heard. */
   private hp: [number, number] | null = null;
 
@@ -576,11 +578,12 @@ export class Character {
     });
   }
 
-  /** HP now and at most: a thin red bar over the name while it's under the most, only over a party member's head
-   *  (stats.json mobBehaviour.hpBar: players see HP bars over their party only; gone when full or knocked out). */
+  /** HP now and at most: a thin red bar over the name; over your own head always (where HP counts: the server only
+   *  sends it on battle maps), over a party member's while they're hurt (stats.json mobBehaviour.hpBar: players see
+   *  HP bars over their party only); gone when knocked out. */
   setHp(hp: number, max: number): void {
     this.hp = [hp, max];
-    if (hp >= max || max <= 0 || this.knockedOut || !this.inParty) {
+    if (max <= 0 || this.knockedOut || (!this.mine && (hp >= max || !this.inParty))) {
       this.hpBar?.destroy();
       this.hpBar = null;
       return this.sync();

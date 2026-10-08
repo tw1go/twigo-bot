@@ -117,7 +117,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
 - Town HUD (`ui/townhud.ts`, replaces the page's login corner in town): your character's head (`headPortrait`) and
   name top left in the item frame (round pixel avatar + status dot from `/me` status: jailed, else the Discord status when the Presence
   intent is on in the Developer Portal — the bot checks at startup and only asks for it then — else online), under the
-  name "Lv N" and a thin XP bar with its % (gold, full and "MAX" at the cap; hover: the XP numbers; `setHudLevel`, from
+  name "Lv N" and a thin XP bar (no %; gold, full and "MAX" at the cap; hover: the XP numbers; `setHudLevel`, from
   `adventure().progress`; HP/MP bars go in `.th-bars` under it), with Kowens and shovels beside it (they wrap below on phones); Settings top right;
   Kowens/shovels have "+" info (from `/me`: `kowens`, `dig`). The
   shovel icon is `ui-shovel.png` (manifest ui.shovelIcon). The Kowens follow every balance change, wherever it came from:
@@ -581,7 +581,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   full. `vitals` (id, hp, maxHp; mp/maxMp to yourself) to you, your room and your party elsewhere; `TownPlayer.hp/maxHp/
   out` for arrivals. Golem XP credit by member (`attack`'s `member`, `Golem.hit`; kills' `to` are members). Game: HUD HP
   (red, pulsing under 25%) and MP (blue) bars in `.th-bars` (`setHudVitals`), `Character.setHp` (a 20 px bar over the
-  name while hurt, only over your party's members: `mobBehaviour.hpBar.playersSee`; never over yourself), `hitNumber` (red on you, pale on others, "Miss"), `setKnockedOut` (fade out/in, no death pose);
+  name: over your own head always (`Character.mine`; vitals come on battle maps only), over your party's members while hurt: `mobBehaviour.hpBar.playersSee`), `hitNumber` (red on you, pale on others, "Miss"), `setKnockedOut` (fade out/in, no death pose);
   TownScene `knockedOut` blocks walking, keys, skills, moves, E; "You were knocked out." toast; `slowMe` (half
   `SPEED`, the step-budget mirror halved). Dev: the dev server runs it all (`?golemdemo=1` hits whoever is nearest).
 - Stat points (`POST /town/points` { spend, stat } | { reset }, `pointsStep` / `townPoints` in web/adventure.ts,
