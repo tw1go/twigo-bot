@@ -431,8 +431,14 @@ export class Hotbar {
     this.stageRaf = requestAnimationFrame(tick);
   }
 
+  /** A new skill unlocked: a dot on the Skills button until the panel is opened. */
+  markNew(): void {
+    this.book.classList.add('hb-new');
+  }
+
   private toggleList(show = this.list.hidden): void {
     this.list.hidden = !show;
+    if (show) this.book.classList.remove('hb-new');
     this.book.setAttribute('aria-expanded', String(show));
     this.hovered = null;
     if (show) void this.openStage();

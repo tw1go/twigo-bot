@@ -649,6 +649,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   trimmed to the pose's body so sleeves never float; hair, glasses and hat by the head).
 - Hotbar (`ui/hotbar.ts`, bottom centre, members, hidden on phones and in the casino/arena): bottom row 10 skill slots
   (keys 1–0) and 3 for potions/usables (- = `, shown ~), evenly spaced; top row 13 more (Alt + the same keys, labelled "Alt+1"…) for either.
+  A level-up that unlocks skills (the town's `progress`, TownScene `newSkills`): a toast each with its icon ("New skill
+  unlocked: Dash! Open Skills (K) …"), one after another, and a gold dot on the K button until the panel opens (`markNew`).
   Skills panel on the right of the screen (K or the K button; `#skill-book`): skill points, each skill with its level and
   description (see Skills unlock), the hovered one played on the class choice's stage (`TownScene.skillStage`, 1×); drag a
   skill to a slot, or click it then a slot.

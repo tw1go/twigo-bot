@@ -33,7 +33,7 @@ import { SystemFeed } from '../ui/system-feed';
 import { announce } from '../ui/announce';
 import { OnlineList } from '../ui/online';
 import { EMOTE_KEYS, emotePicker } from '../ui/emotes';
-import { actionOf, held, matches } from '../ui/keybinds';
+import { actionOf, held, keyLabel, matches } from '../ui/keybinds';
 import type { ArenaServerMessage, ClassInfo, HoodHouse, OutfitData, TitleData, TownClientMessage, TownEmote, TownHoodResponse, TownServerMessage } from '@mikazuki/shared';
 import { type BubbleArt, lightBubble } from '../ui/labels';
 import { type Reward, setRewardArt, showReward } from '../ui/reward';
@@ -95,7 +95,7 @@ import { Hotbar, potionCooldownKey } from '../ui/hotbar';
 import { mountClassSwitch } from '../ui/class-switch';
 import { MOVES, type MoveKind, isMoveKind, moveTiles, playMove } from '../world/mobility';
 import { changeClass, devItemsReady, devSwitchClass, adventure, adventureData, anyDef, chooseClass, classInfo, initAdventure, itemData, itemDef, loadAdventureData, onAdventure, questDef, questFor, questTalk, setItems, setProgress, skillView, skillViews } from '../net/adventure';
-import { type Item, type QuestReward, type TownItems, LOOT_REACH, auraFor, countOf, isGearDef, itemAura, itemStats, newItem, tradeRules } from '@mikazuki/shared';
+import { type Item, type QuestReward, type TownItems, LOOT_REACH, auraFor, classSkills, countOf, isGearDef, itemAura, itemStats, newItem, tradeRules } from '@mikazuki/shared';
 import type { ClassArt } from '../assets/types';
 import { drawRested, loadImages, poseFiles, restFiles } from '../characters/kit-art';
 import { holdQuestBanners, mountQuests } from '../ui/quests';
@@ -733,12 +733,7 @@ export class TownScene extends Phaser.Scene {
         },
         usable: (name) => this.battleMap || !!classInfo(adventure()?.cls)?.mobility?.some((m) => m.name === name),
         stage: (c) => this.skillStage(c.id, c.fx),
-        icon: (cls, skill) => {
-          const I = this.M.ui.skillIcons;
-          const slug = skill.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-          if (I?.have[cls]?.includes(slug)) return url(I.file.replaceAll('{class}', cls).replace('{skill}', slug));
-          return I?.shared?.skills.includes(slug) ? url(I.shared.file.replace('{skill}', slug)) : null; // one for every class (Dash)
-        },
+        icon: (cls, skill) => this.skillIcon(cls, skill),
       });
       this.hotbar = hotbar;
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => hotbar.root.remove());
@@ -856,6 +851,32 @@ export class TownScene extends Phaser.Scene {
   }
   /** The world's effects: ground (under every player and mob) and front (over them): world/fx-layers.ts. */
   private fxLayers!: FxLayers;
+
+  /** A skill's icon (manifest ui.skillIcons: the class's, or the one every class shares, Dash), if there is one. */
+  private skillIcon(cls: string, skill: string): string | null {
+    const I = this.M.ui.skillIcons;
+    const url = (file: string) => `${import.meta.env.BASE_URL}assets/${file}`;
+    const slug = skill.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    if (I?.have[cls]?.includes(slug)) return url(I.file.replaceAll('{class}', cls).replace('{skill}', slug));
+    return I?.shared?.skills.includes(slug) ? url(I.shared.file.replace('{skill}', slug)) : null; // one for every class (Dash)
+  }
+
+  /** Skills a level-up unlocked (from Lv `from` to `to`): a toast each with its icon, one after another, and a dot on
+   *  the Skills button until it's opened. */
+  private newSkills(from: number, to: number): void {
+    const c = classInfo(adventure()?.cls);
+    if (!c || to <= from) return;
+    const fresh = classSkills(c).filter((k) => k.unlock > from && k.unlock <= to);
+    if (!fresh.length) return;
+    this.hotbar?.markNew();
+    fresh.forEach((k, i) =>
+      this.time.delayedCall(1200 + i * 3400, () => {
+        const file = this.skillIcon(c.id, k.name);
+        const pic = file ? Object.assign(document.createElement('img'), { src: file, alt: '' }) : null;
+        toast(`New skill unlocked: ${k.name}! Open Skills (${keyLabel('skills') || 'K'}) to put it on your hotbar.`, 3200, 'good', pic);
+      }),
+    );
+  }
 
   /** A skill's MP at its level (stats.json skills.mpCost); 0 off battle maps, where skills are free. */
   private mpOf(name: string): number {
@@ -1601,7 +1622,11 @@ export class TownScene extends Phaser.Scene {
         return toast(why, 1800, 'bad');
       }
       // Your level, XP and points (a kill's XP, dev's ?xp=): the HUD and everything that shows them follow.
-      if (m.t === 'progress') return setProgress(m.progress);
+      if (m.t === 'progress') {
+        const before = adventure()?.progress.level ?? m.progress.level;
+        setProgress(m.progress);
+        return this.newSkills(before, m.progress.level);
+      }
       // Someone went up a level (maybe you): "Level up!" over them with its ring and sparks, and its sound (others' near
       // you, quieter).
       if (m.t === 'level-up') {
