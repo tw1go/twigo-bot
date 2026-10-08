@@ -1,5 +1,5 @@
 import type { AdventureState, EquipPlace, EquipmentDef, EquipSlot } from './adventure.js';
-import { type AgimatSet, type CombatItemDef, type Item, type ItemData, enhancedBase, isGearDef, itemStats, lineValue } from './items.js';
+import { type AgimatSet, type CombatItemDef, type Item, type ItemData, agimatSlots, enhancedBase, isGearDef, itemStats, lineValue } from './items.js';
 import { type StatsData, gearKind, numbersIn } from './stats.js';
 import type { TownItems } from './town.js';
 
@@ -206,6 +206,8 @@ export function embedRefusal(data: ItemData, gear: Item, agimat: Item, slot?: nu
   if (gear.broken) return "It's broken: repair it first.";
   if (gear.level < agimat.level) return `Needs gear of Lv ${agimat.level} or higher.`;
   if (agimat.lock && agimat.lock !== def.slot) return `It fits ${SLOT_WORD[agimat.lock].toLowerCase()} gear only.`;
+  const only = agimatSlots(data.stats, agimat.stat);
+  if (only && !only.includes(def.slot)) return `It fits ${only.map((x) => SLOT_WORD[x].toLowerCase()).join(' and ')} gear only.`;
   if (slot === undefined) return null;
   if (!Number.isInteger(slot) || slot < 0 || slot >= gear.agimats.length) return 'No such slot.';
   const others = gear.agimats.filter((a, i): a is AgimatSet => !!a && i !== slot);

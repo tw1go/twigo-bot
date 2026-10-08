@@ -196,7 +196,7 @@ test('accessories: each line +1% of itself a level (weapons and armor: base ATK 
 });
 
 test('agimats: gear level, slot lock, two different stats, one rare at most; a full slot asks, then breaks the old one', () => {
-  const item = rollGear(D.stats, gear('armor-copper-body'), 'darkBlue', uid(), lcg(5)); // Lv 20, 2 slots
+  const item = rollGear(D.stats, gear('armor-copper-head'), 'darkBlue', uid(), lcg(5)); // Lv 20, 2 slots (crit agimats fit heads)
   assert.equal(item.agimats.length, 2);
   const ag = (id: string, level = 20, count = 1, lock?: Item['lock']) => ({ ...newAgimat(D.stats, thing(id), level, uid(), lock), count });
   const critDmg = ag('agimat-critdmg', 20, 3);
@@ -205,7 +205,7 @@ test('agimats: gear level, slot lock, two different stats, one rare at most; a f
   const hp2 = ag('agimat-hp', 10);
   const high = ag('agimat-atk', 30);
   const handsOnly = ag('agimat-def', 20, 1, 'hands');
-  const bodyOnly = ag('agimat-def', 20, 1, 'body');
+  const bodyOnly = ag('agimat-def', 20, 1, 'head');
   const s = holder([item, critDmg, critRate, hp, hp2, high, handsOnly, bodyOnly]);
   assert.equal(embed(D, s, item.uid, high.uid, 0, false).message, 'Needs gear of Lv 30 or higher.');
   assert.match(embed(D, s, item.uid, handsOnly.uid, 0, false).message, /hands gear only/);
@@ -227,13 +227,24 @@ test('agimats: gear level, slot lock, two different stats, one rare at most; a f
   assert.deepEqual(item.agimats[1], { stat: 'hp', level: 20 });
   const done = embed(D, s, item.uid, bodyOnly.uid, 1, true);
   assert.equal(done.outcome, 'embedded');
-  assert.deepEqual(item.agimats[1], { stat: 'def', level: 20, lock: 'body' });
+  assert.deepEqual(item.agimats[1], { stat: 'def', level: 20, lock: 'head' });
   assert.match(done.message, /broke/);
   // Replacing the rare one with another rare one is fine (it's the only rare left).
   assert.equal(embedRefusal(D, item, critRate, 0), null);
   // No slots: refused.
   const brown = rollGear(D.stats, gear('armor-copper-body'), 'brown', uid(), lcg(1));
   assert.match(embedRefusal(D, brown, hp2) ?? '', /slots/);
+  // Crit rate and crit damage fit heads and hands only, damage amp boots and bodies only (stats.json agimats.onlyIn).
+  const body = rollGear(D.stats, gear('armor-copper-body'), 'grey', uid(), lcg(2));
+  const head = rollGear(D.stats, gear('armor-copper-head'), 'grey', uid(), lcg(2));
+  const amp = ag('agimat-amp');
+  assert.equal(embedRefusal(D, body, critDmg, 0), 'It fits head and hands gear only.');
+  assert.equal(embedRefusal(D, body, critRate, 0), 'It fits head and hands gear only.');
+  assert.equal(embedRefusal(D, head, amp, 0), 'It fits feet and body gear only.');
+  assert.equal(embedRefusal(D, body, amp, 0), null);
+  assert.equal(embedRefusal(D, rollGear(D.stats, gear('armor-copper-hands'), 'grey', uid(), lcg(2)), critRate, 0), null);
+  // Disassembly never rolls an agimat for a slot it can't go in.
+  for (let i = 0; i < 300; i++) assert.ok(!['critRate', 'critDmg'].includes(rollAgimatStat(D, lcg(i), 3, 'feet')));
   // Agimat stats count in the stats.
   assert.ok((itemTotals(D, [item], 'STR').critDamage ?? 0) > 0);
 });

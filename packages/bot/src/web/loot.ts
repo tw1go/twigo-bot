@@ -1,4 +1,4 @@
-import { type EquipmentDef, type GearRarity, type ItemData, type Item, gearKind, isGearDef, itemStats, kusingRange, mobStats, nearestGearLevel, newAgimat, newItem, numbersIn, rollGear } from '@mikazuki/shared';
+import { type EquipSlot, type EquipmentDef, type GearRarity, type ItemData, type Item, agimatSlots, gearKind, isGearDef, itemStats, kusingRange, mobStats, nearestGearLevel, newAgimat, newItem, numbersIn, rollGear } from '@mikazuki/shared';
 import type { LootContent } from './combat-bag.js';
 
 // 🎲 What a kill drops, rolled on the server by stats.json (rarity.mobGearDrop and bossGearDrop, potions, currencies,
@@ -112,10 +112,13 @@ export function miniLoot(
 }
 
 /** An agimat's stat, by stats.json agimats.dropWeight (the rare three seldom, attack rate now and then; STR, DEX and INT
- *  share a common one's weight). `rareTimes`: the rare three that many times as likely (disassembly's two slots). */
-export function rollAgimatStat(data: ItemData, random: () => number, rareTimes = 1): string {
+ *  share a common one's weight). `rareTimes`: the rare three that many times as likely (disassembly's two slots); `slot`:
+ *  only stats that fit it (agimats.onlyIn: disassembly locks the agimat to the item's slot). */
+export function rollAgimatStat(data: ItemData, random: () => number, rareTimes = 1, slot?: EquipSlot): string {
   const A = itemStats(data.stats).agimats;
-  const stats = Object.keys(A.valueAtLevel).flatMap((s) => (s === 'stat' ? ['STR', 'DEX', 'INT'] : [s]));
+  const stats = Object.keys(A.valueAtLevel)
+    .flatMap((s) => (s === 'stat' ? ['STR', 'DEX', 'INT'] : [s]))
+    .filter((s) => !slot || !agimatSlots(data.stats, s) || agimatSlots(data.stats, s)!.includes(slot));
   const w = (s: string) => (A.rare.includes(s) ? (A.dropWeight.rare ?? 0.1) * rareTimes : A.dropWeight[s] ?? (['STR', 'DEX', 'INT'].includes(s) ? (A.dropWeight.others ?? 1) / 3 : A.dropWeight.others ?? 1));
   return weighted(stats.map((s): [string, number] => [s, w(s)]), random);
 }

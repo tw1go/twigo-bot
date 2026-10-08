@@ -117,7 +117,7 @@ export function disassemble(data: ItemData, s: ForgeHolder, uid: string, random:
   const got: Item[] = [];
   if (y.fragment && y.fragments > 0) got.push(newItem(data.stats, y.fragment, newUid(), y.fragments));
   if (y.agimat) {
-    const stat = rollAgimatStat(data, random, y.agimat.rareTimes);
+    const stat = rollAgimatStat(data, random, y.agimat.rareTimes, y.agimat.lock); // (one that fits its slot)
     const def = [...data.defs.values()].find((d): d is CombatItemDef => !isGearDef(d) && d.kind === 'agimat' && d.stat === stat);
     if (def) got.push(newAgimat(data.stats, def, y.agimat.level, newUid(), y.agimat.lock));
   }

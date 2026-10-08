@@ -116,7 +116,8 @@ export interface ItemStats {
     /** A dropped piece's plus: weight by plus ("0": 0.6, "1": 0.25…; other keys are notes). */
     dropPlus: Record<string, number | string | boolean>;
   };
-  agimats: { valueAtLevel: Record<string, string | number>; rare: string[]; dropWeight: Record<string, number> };
+  /** onlyIn: agimats that fit only gear of these slots (a repo addition). */
+  agimats: { valueAtLevel: Record<string, string | number>; rare: string[]; dropWeight: Record<string, number>; onlyIn?: Record<string, EquipSlot[] | string> };
   currencies: { kusingPerMob: string; kusingPerMobRange?: [number, number]; kowensShop: { whetstone: number; repairKit: number } };
   potions: { tiers: Record<string, { minLevel: number; hp: number; mp: number; kusing: number }>; sharedCooldownSec: number; mobDropChance: number };
   inventory: Record<string, unknown> & { slots: number };
@@ -242,6 +243,12 @@ export function rollGear(data: StatsData, def: EquipmentDef, rarity: GearRarity,
   const tier = affixTier(data, rarity);
   if (tier) item.lines = rollLines(data, def.slot, tier, def.level, random);
   return item;
+}
+
+/** The slots an agimat stat fits (stats.json agimats.onlyIn), or null: any slot with agimat slots. */
+export function agimatSlots(data: StatsData, stat: string | undefined): EquipSlot[] | null {
+  const only = stat ? itemStats(data).agimats.onlyIn?.[stat] : undefined;
+  return Array.isArray(only) ? only : null;
 }
 
 /** An agimat item: its stat and level, maybe locked to a slot type. */

@@ -702,6 +702,12 @@
   },
   "agimats": {
     "placeholder": true,
+    "onlyIn": {
+      "note": "Repo addition (Mac, 9 Oct 2026): these agimats go only into gear of these slots (embedding refuses the rest; disassembly never rolls one for a slot it can't go in).",
+      "critRate": ["head", "hands"],
+      "critDmg": ["head", "hands"],
+      "amp": ["feet", "body"]
+    },
     "valueAtLevel": {
       "atk": "0.1A+1",
       "hp": "0.36A+1",
