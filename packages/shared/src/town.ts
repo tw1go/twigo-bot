@@ -6,12 +6,18 @@ import type { HoodHouse, HoodMap, OutfitData, TitleData } from './room-api.js';
 
 export type TownDir = 's' | 'se' | 'e' | 'ne' | 'n' | 'nw' | 'w' | 'sw';
 
-/** A mob as the server has it: `<zone id>:<spawn index>`, its tile, its level, and the rest of a hop under way. */
+/** The four ways a mob's art faces (SE = +col, SW = +row, NW = −col, NE = −row on the grid). */
+export type TownMobFacing = 'se' | 'sw' | 'ne' | 'nw';
+
+/** A mob as the server has it: `<zone id>:<spawn index>` (a pack's: `…:<n>`), its tile, its level, its HP of its
+ *  `maxHp` (by its level), which way it faces, and the rest of a hop under way. */
 export interface TownMob {
   id: string;
   col: number;
   row: number;
   level: number;
+  maxHp: number;
+  dir: TownMobFacing;
   /** Its look, one of its kind's variants (seeded per spawn: the same every time); none for a kind with one look. */
   variant?: string;
   hp: number;
@@ -229,10 +235,11 @@ export type TownServerMessage =
   /** A mob hops: from the first tile of `path` along the rest (at the mobs' pace). */
   | { t: 'mob-move'; id: string; path: [number, number][]; speed?: number }
   /** Someone (`by`, a town id) hit with skill `skill`: each mob it reached (the target first) with the damage, a crit or
-   *  not, the HP left, dead or not. */
-  | { t: 'mob-hit'; by: string; skill: number; hits: { id: string; damage: number; crit: boolean; hp: number; dead: boolean; slow?: { factor: number; ms: number } }[] }
-  /** A mob attacks a player (shown only: players have no HP yet). */
-  | { t: 'mob-attack'; id: string; target: string }
+   *  not, the HP left, dead or not; `blocked`: a Scrap Crab's shell took it (0). */
+  | { t: 'mob-hit'; by: string; skill: number; hits: { id: string; damage: number; crit: boolean; hp: number; dead: boolean; blocked?: boolean; slow?: { factor: number; ms: number } }[] }
+  /** A mob attacks a player (shown only: players have no HP yet), turned to face `dir`; `slow`: the player is slowed
+   *  for that long (ms; the Plastic Bag Spook's, shown only). */
+  | { t: 'mob-attack'; id: string; target: string; dir: TownMobFacing; slow?: number }
   /** A dead mob is back at its spawn. */
   | { t: 'mob-spawn'; id: string; col: number; row: number; hp: number }
   /** Your attack didn't land: too far, too fast, or the mob's gone. */

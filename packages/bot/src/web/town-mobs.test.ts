@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
-import { type AttackResult, MobRoom, loadMobKinds, loadMobMap } from './town-mobs.js';
+import { type AttackResult, MobRoom, facingTo, inFront, loadMobKinds, loadMobMap, mobHp, packSize } from './town-mobs.js';
 
 // The Slums' mobs on the real map (the game's maps/slums.json): where they stand, how they hop, what newcomers see.
 
@@ -89,7 +89,7 @@ test('a newcomer sees a hop under way as where the mob has got to and the rest o
   assert.deepEqual(mid.path?.[mid.path.length - 1], hop.path[hop.path.length - 1]);
 });
 
-test('a hit takes 20 (25 on a crit) from 100, the mob goes after its foe, dies at 0 and comes back after respawnSec', () => {
+test('a hit takes 20 (25 on a crit) from its HP by level, the mob goes after its foe, dies at 0 and comes back after respawnSec', () => {
   let n = 0;
   const room = new MobRoom(map, () => ((n = (n * 9301 + 49297) % 233280) / 233280));
   const mob = room.snapshot(0)[0];
@@ -98,10 +98,11 @@ test('a hit takes 20 (25 on a crit) from 100, the mob goes after its foe, dies a
   assert.deepEqual(room.attack('p1', far, 'stick', mob.id, 1000), { ok: false, reason: 'range' });
   assert.equal(room.attack('p1', far, 'slingshot', mob.id, 1000).ok, false, '9 tiles is past the slingshot too');
   const first = room.attack('p1', at, 'stick', mob.id, 1000);
-  assert.ok(first.ok && (first.hits[0].damage === 20 || first.hits[0].damage === 25) && first.hits[0].hp === 100 - first.hits[0].damage);
+  assert.equal(mob.maxHp, mobHp(mob.level));
+  assert.ok(first.ok && (first.hits[0].damage === 20 || first.hits[0].damage === 25) && first.hits[0].hp === mob.maxHp - first.hits[0].damage);
   assert.deepEqual(room.attack('p1', at, 'stick', mob.id, 1100), { ok: false, reason: 'slow' });
   // Next to it: it attacks back.
-  const events = room.tick(1200, (id) => (id === 'p1' ? at : null));
+  const events = room.tick(1200, new Map([['p1', at]]));
   assert.ok(events.some((e) => e.t === 'mob-attack' && e.id === mob.id && e.target === 'p1'));
   let t = 1000;
   let last: AttackResult = first;
@@ -111,7 +112,7 @@ test('a hit takes 20 (25 on a crit) from 100, the mob goes after its foe, dies a
   assert.deepEqual(room.attack('p1', at, 'stick', mob.id, t + 500), { ok: false, reason: 'gone' });
   const zone = active.find((z) => mob.id.startsWith(`${z.id}:`))!;
   const back = room.tick(t + (zone.respawnSec ?? 20) * 1000 + 1).find((e) => e.t === 'mob-spawn' && e.id === mob.id);
-  assert.ok(back && back.t === 'mob-spawn' && back.hp === 100);
+  assert.ok(back && back.t === 'mob-spawn' && back.hp === mob.maxHp);
 });
 
 test('each skill has its own cooldown by its level (Lv 1 the quickest)', () => {
@@ -146,12 +147,244 @@ test('a slow halves a mob\'s pace for a while; a root keeps it still; both wear 
   const slowed = room.attack('p1', near(a), 'slingshot', a.id, 0, 5);
   assert.ok(slowed.ok && slowed.hits[0].slow?.factor === 0.5);
   // It goes after p1 (who has moved off), at half pace.
-  const moves = room.tick(100, (id) => (id === 'p1' ? [a.col + 6, a.row] : null)).filter((e) => e.t === 'mob-move' && e.id === a.id);
+  const moves = room.tick(100, new Map([['p1', [a.col + 6, a.row] as [number, number]]])).filter((e) => e.t === 'mob-move' && e.id === a.id);
   assert.ok(moves.length && moves.every((e) => e.t === 'mob-move' && e.speed === 1.2), 'half of 2.4');
   const rooted = room.attack('p2', [b.col + 1, b.row], 'hilot', b.id, 0, 4); // (the Hilot is melee)
   assert.ok(rooted.ok && rooted.hits[0].slow?.factor === 0);
-  for (let t = 100; t < 1900; t += 250) assert.ok(!room.tick(t, (id) => (id === 'p2' ? [b.col + 6, b.row] : null)).some((e) => e.t === 'mob-move' && e.id === b.id), 'rooted: no hop');
+  for (let t = 100; t < 1900; t += 250) assert.ok(!room.tick(t, new Map([['p2', [b.col + 6, b.row] as [number, number]]])).some((e) => e.t === 'mob-move' && e.id === b.id), 'rooted: no hop');
   let freed = false;
-  for (let t = 2100; t < 6000 && !freed; t += 250) freed = room.tick(t, (id) => (id === 'p2' ? [b.col + 6, b.row] : null)).some((e) => e.t === 'mob-move' && e.id === b.id && !('speed' in e && e.speed));
+  for (let t = 2100; t < 6000 && !freed; t += 250) freed = room.tick(t, new Map([['p2', [b.col + 6, b.row] as [number, number]]])).some((e) => e.t === 'mob-move' && e.id === b.id && !('speed' in e && e.speed));
   assert.ok(freed, 'moving again at its own pace');
+});
+
+// ── The kinds' own rules (mobs.json): aggressive zones, packs, the crab's shell, the roller's roll, the bag's drift ──
+
+const kinds = loadMobKinds();
+const lcg = (seed = 11) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
+const zoneOf = (id: string) => active.find((z) => id.startsWith(`${z.id}:`))!;
+/** An open tile on a mob's zone level `d` tiles from it (east first). */
+function near(room: MobRoom, m: { id: string; col: number; row: number }, d: number): [number, number] {
+  const zone = zoneOf(m.id);
+  for (const [dc, dr] of [[d, 0], [0, d], [-d, 0], [0, -d], [d, d], [-d, -d], [d, -d], [-d, d]])
+    if (room.canStand({ zone, spawn: [m.col, m.row] }, m.col + dc, m.row + dr, 10)) return [m.col + dc, m.row + dr];
+  throw new Error(`no tile ${d} from ${m.id}`);
+}
+
+test('HP by level: 100 at Lv 1, 25 more a level; every mob starts full', () => {
+  assert.deepEqual([1, 2, 5, 9].map(mobHp), [100, 125, 200, 300]);
+  for (const m of new MobRoom(map, Math.random, {}, { shapes: {} }, kinds).snapshot(0)) {
+    assert.equal(m.maxHp, mobHp(m.level), m.id);
+    assert.equal(m.hp, m.maxHp, m.id);
+  }
+});
+
+test('an aggressive zone\'s mob comes for a player within its aggroRange, attacks next to them, and walks home past its leash', () => {
+  const room = new MobRoom(map, lcg(), {}, { shapes: {} }, kinds);
+  const tire = room.snapshot(0).find((m) => m.id.startsWith('tire-yard:'))!;
+  const zone = zoneOf(tire.id);
+  assert.equal(zone.aggro, 'aggressive');
+  // Out of its range: left alone.
+  const far = near(room, tire, (zone.aggroRange ?? 4) + 2);
+  for (let t = 0; t < 3000; t += 250) assert.ok(!room.tick(t, new Map([['p1', far]])).some((e) => e.id === tire.id && e.t === 'mob-attack'));
+  // Within it: after them, then an attack.
+  let p = near(room, room.snapshot(3000).find((m) => m.id === tire.id)!, 3);
+  let attacked = false;
+  let t = 3000;
+  for (; t < 15_000 && !attacked; t += 250) attacked = room.tick(t, new Map([['p1', p]])).some((e) => e.t === 'mob-attack' && e.id === tire.id && e.target === 'p1');
+  assert.ok(attacked, 'it came and attacked');
+  // Past its leash: home.
+  const home = tire;
+  p = [home.col + (zone.leash ?? 10) + 1, home.row];
+  const moves = [];
+  for (let k = 0; k < 12; k++, t += 250) moves.push(...room.tick(t, new Map([['p1', p]])).filter((e) => e.t === 'mob-move' && e.id === tire.id));
+  const back = moves[0];
+  assert.ok(back && back.t === 'mob-move' && back.path.at(-1)![0] === home.col && back.path.at(-1)![1] === home.row, 'walked home');
+});
+
+test('a passive zone\'s mob leaves a player next to it alone', () => {
+  const room = new MobRoom(map, lcg(), {}, { shapes: {} }, kinds);
+  const can = room.snapshot(0).find((m) => m.id.startsWith('tin-can-alley:'))!;
+  const p = near(room, can, 1);
+  for (let t = 0; t < 6000; t += 250) assert.ok(!room.tick(t, new Map([['p1', p]])).some((e) => e.t === 'mob-attack'));
+});
+
+test('a Bottle Caps spawn point is a pack of 3–5, each cap its own mob with an id of its own, the same every time', () => {
+  const a = new MobRoom(map, Math.random, {}, { shapes: {} }, kinds).snapshot(0);
+  const b = new MobRoom(map, Math.random, {}, { shapes: {} }, kinds).snapshot(0);
+  assert.deepEqual(a.map((m) => [m.id, m.col, m.row, m.variant]), b.map((m) => [m.id, m.col, m.row, m.variant]));
+  assert.equal(new Set(a.map((m) => m.id)).size, a.length, 'ids unique');
+  const lot = (map.mobZones ?? []).find((z) => z.id === 'bottle-cap-lot')!;
+  const sizes = lot.spawns.map((_, i) => a.filter((m) => m.id.startsWith(`bottle-cap-lot:${i}:`)).length);
+  assert.deepEqual(sizes, lot.spawns.map((_, i) => packSize(`bottle-cap-lot:${i}`, kinds['bottle-caps'].pack!)));
+  assert.ok(sizes.every((n) => n >= 3 && n <= 5) && new Set(sizes).size > 1, sizes.join(','));
+  for (let i = 0; i < lot.spawns.length; i++) {
+    const caps = a.filter((m) => m.id.startsWith(`bottle-cap-lot:${i}:`));
+    assert.equal(new Set(caps.map((m) => `${m.col},${m.row}`)).size, caps.length, 'a tile each');
+    for (const c of caps) assert.ok(Math.max(Math.abs(c.col - lot.spawns[i][0]), Math.abs(c.row - lot.spawns[i][1])) <= 1, 'round the point');
+  }
+  assert.ok(a.length > 220 && a.length < 280, `${a.length} mobs`);
+});
+
+test('a pack\'s followers keep near their leader; with the leader dead the next cap leads', () => {
+  const room = new MobRoom(map, lcg(5), {}, { shapes: {} }, kinds);
+  const caps = (now: number) => room.snapshot(now).filter((m) => m.id.startsWith('bottle-cap-lot:0:'));
+  const endOf = (m: { col: number; row: number; path?: [number, number][] }): [number, number] => m.path?.at(-1) ?? [m.col, m.row];
+  let far = 0;
+  let checks = 0;
+  for (let t = 0; t < 120_000; t += 250) {
+    room.tick(t);
+    if (t % 5000) continue;
+    const [lead, ...rest] = caps(t);
+    for (const f of rest) {
+      checks++;
+      if (Math.max(Math.abs(endOf(f)[0] - endOf(lead)[0]), Math.abs(endOf(f)[1] - endOf(lead)[1])) > 3) far++;
+    }
+  }
+  assert.ok(far / checks < 0.15, `${far}/${checks} away from the leader`);
+  // The leader dies: the others follow the next.
+  let t = 120_000;
+  const leader = caps(t)[0];
+  while (true) {
+    const r = room.attack('p1', [leader.col, leader.row], 'slingshot', leader.id, (t += 1000));
+    if (r.ok && r.hits[0].dead) break;
+  }
+  room.forget('p1');
+  far = 0;
+  checks = 0;
+  for (t += 250; t < 240_000; t += 250) {
+    room.tick(t);
+    if (t % 5000) continue;
+    const live = caps(t).filter((m) => !m.dead);
+    if (live[0].id === leader.id) break; // back
+    assert.notEqual(live[0].id, leader.id);
+    for (const f of live.slice(1)) {
+      checks++;
+      if (Math.max(Math.abs(endOf(f)[0] - endOf(live[0])[0]), Math.abs(endOf(f)[1] - endOf(live[0])[1])) > 3) far++;
+    }
+  }
+  assert.ok(checks && far / checks < 0.2, `${far}/${checks} away from the new leader`);
+});
+
+test('hitting one cap makes the whole pack fight that player', () => {
+  const room = new MobRoom(map, lcg(3), {}, { shapes: {} }, kinds);
+  const caps = room.snapshot(0).filter((m) => m.id.startsWith('bottle-cap-lot:1:'));
+  const p = near(room, caps[0], 2);
+  assert.ok(room.attack('p1', p, 'slingshot', caps[caps.length - 1].id, 0).ok);
+  const fought = new Set<string>();
+  for (let t = 250; t < 8000; t += 250) for (const e of room.tick(t, new Map([['p1', p]]))) if (e.t === 'mob-attack' && e.target === 'p1') fought.add(e.id);
+  assert.deepEqual([...fought].sort(), caps.map((c) => c.id).sort());
+  // Not all on one tile next to them.
+  const at = room.snapshot(8000).filter((m) => m.id.startsWith('bottle-cap-lot:1:')).map((m) => `${m.col},${m.row}`);
+  assert.ok(new Set(at).size >= Math.min(3, caps.length), at.join(' '));
+});
+
+test('facing and the front quarter: the art\'s four ways, the diagonals between are sides', () => {
+  assert.equal(facingTo(1, 0), 'se');
+  assert.equal(facingTo(0, 1), 'sw');
+  assert.equal(facingTo(-1, 0), 'nw');
+  assert.equal(facingTo(0, -1), 'ne');
+  assert.equal(facingTo(1, 1), 'se'); // S → SE
+  assert.equal(facingTo(1, -1), 'se'); // E → SE
+  assert.equal(facingTo(-1, 1), 'sw'); // W → SW
+  assert.equal(facingTo(-1, -1), 'ne'); // N → NE
+  assert.equal(facingTo(5, 2), 'se');
+  assert.equal(facingTo(0, 0), null);
+  assert.ok(inFront('se', 1, 0) && inFront('se', 4, 2) && inFront('sw', 0, 3) && inFront('ne', 1, -3));
+  assert.ok(!inFront('se', 1, 1) && !inFront('se', 0, 1) && !inFront('se', -1, 0) && !inFront('nw', 2, 0) && !inFront('se', 0, 0));
+});
+
+test('a Scrap Crab\'s shell blocks hits from its front quarter (0, blocked), not from behind or its sides', () => {
+  const room = new MobRoom(map, () => 0.5, {}, { shapes: {} }, kinds);
+  const crab = room.snapshot(0).find((m) => m.id.startsWith('crab-basin:'))!;
+  const ahead: Record<string, [number, number]> = { se: [1, 0], sw: [0, 1], nw: [-1, 0], ne: [0, -1] };
+  const [fx, fy] = ahead[crab.dir];
+  const front = room.attack('p1', [crab.col + 2 * fx, crab.row + 2 * fy], 'slingshot', crab.id, 0);
+  assert.ok(front.ok);
+  assert.deepEqual(front.hits[0], { id: crab.id, damage: 0, crit: false, hp: crab.maxHp, dead: false, blocked: true });
+  const back = room.attack('p2', [crab.col - 2 * fx, crab.row - 2 * fy], 'slingshot', crab.id, 0);
+  assert.ok(back.ok && back.hits[0].damage > 0 && !back.hits[0].blocked);
+  const side = room.attack('p3', [crab.col + fx + fy, crab.row + fy + fx], 'slingshot', crab.id, 0); // a diagonal
+  assert.ok(side.ok && side.hits[0].damage > 0);
+  // An area skill too: it's where the attacker stands.
+  const room2 = new MobRoom(map, () => 0.5, {}, { shapes: { stick: ['around:8:3'] } }, kinds);
+  const c2 = room2.snapshot(0).find((m) => m.id === crab.id)!;
+  const r = room2.attack('p1', [c2.col + fx, c2.row + fy], 'stick', c2.id, 0);
+  assert.ok(r.ok && r.hits[0].blocked);
+});
+
+test('mobs face the way they last stepped (a newcomer sees it)', () => {
+  const room = new MobRoom(map, lcg(9), {}, { shapes: {} }, kinds);
+  const ends = new Map<string, [number, number][]>();
+  for (let t = 0; t < 20_000; t += 250) for (const e of room.tick(t)) if (e.t === 'mob-move') ends.set(e.id, e.path);
+  const snap = new Map(room.snapshot(60_000).map((m) => [m.id, m]));
+  let checked = 0;
+  for (const [id, path] of ends) {
+    const m = snap.get(id)!;
+    if (m.path || path.length < 2) continue;
+    const [a, b] = [path.at(-2)!, path.at(-1)!];
+    if (m.col !== b[0] || m.row !== b[1]) continue;
+    assert.equal(m.dir, facingTo(b[0] - a[0], b[1] - a[1]), id);
+    checked++;
+  }
+  assert.ok(checked > 50, `${checked}`);
+});
+
+test('a Tire Roller sometimes rolls a tile or two straight on, quicker; a Plastic Bag Spook drifts at its own pace', () => {
+  const room = new MobRoom(map, lcg(2), {}, { shapes: {} }, kinds);
+  let rolls = 0;
+  let drifts = 0;
+  for (let t = 0; t < 60_000; t += 250)
+    for (const e of room.tick(t)) {
+      if (e.t !== 'mob-move') continue;
+      if (e.id.startsWith('tire-yard:') && e.speed === kinds['tire-roller'].roll!.speed) {
+        rolls++;
+        assert.ok(e.path.length >= 2 && e.path.length <= 3, 'a tile or two');
+        const [dc, dr] = [e.path[1][0] - e.path[0][0], e.path[1][1] - e.path[0][1]];
+        assert.ok(Math.abs(dc) + Math.abs(dr) === 1, 'along one way');
+        for (let i = 1; i < e.path.length; i++) assert.deepEqual([e.path[i][0] - e.path[i - 1][0], e.path[i][1] - e.path[i - 1][1]], [dc, dr], 'straight');
+      }
+      if (e.id.startsWith('bag-flats:')) {
+        drifts++;
+        assert.equal(e.speed, kinds['plastic-bag-spook'].drift!.speed);
+      }
+    }
+  assert.ok(rolls > 5, `${rolls} rolls`);
+  assert.ok(drifts > 28 * 3, `${drifts} drifts (short rests)`);
+});
+
+test('mob attacks: the Wire Tangle zaps from its reach, the Bag slows (for show), each turned to face the player', () => {
+  const room = new MobRoom(map, lcg(4), {}, { shapes: {} }, kinds);
+  const snap = room.snapshot(0);
+  const wire = snap.find((m) => m.id.startsWith('wire-ridge:'))!;
+  const p = near(room, wire, 3);
+  const zaps = [];
+  for (let t = 0; t < 3000; t += 250) zaps.push(...room.tick(t, new Map([['p1', p]])).filter((e) => e.t === 'mob-attack' && e.id === wire.id));
+  assert.ok(zaps.length, 'it zaps from 3 tiles');
+  assert.equal(room.snapshot(3000).find((m) => m.id === wire.id)!.col, wire.col, 'without coming closer');
+  const z = zaps[0];
+  assert.ok(z.t === 'mob-attack' && z.dir === facingTo(p[0] - wire.col, p[1] - wire.row));
+  const bag = snap.find((m) => m.id.startsWith('bag-flats:'))!;
+  const q = near(room, bag, 1);
+  let slow: number | undefined;
+  for (let t = 3000; t < 8000 && slow === undefined; t += 250) {
+    const e = room.tick(t, new Map([['p2', q]])).find((x) => x.t === 'mob-attack' && x.id === bag.id);
+    if (e && e.t === 'mob-attack') slow = e.slow;
+  }
+  assert.equal(slow, kinds['plastic-bag-spook'].slowMs);
+});
+
+test('a quarter-second tick with every mob and a few players fighting stays cheap', () => {
+  const room = new MobRoom(map, lcg(8), {}, { shapes: {} }, kinds);
+  const snap = room.snapshot(0);
+  // Five players: in the Tire Yard, the Bag Flats, the Crab Basin, by a pack (hit), on the Wire Ridge.
+  const players = new Map<string, [number, number]>();
+  for (const [i, z] of ['tire-yard:3', 'bag-flats:5', 'crab-basin:2', 'bottle-cap-lot:4:0', 'wire-ridge:7'].entries()) players.set(`p${i}`, near(room, snap.find((m) => m.id === z)!, 2));
+  room.attack('p3', players.get('p3')!, 'slingshot', 'bottle-cap-lot:4:0', 0);
+  for (let t = 0; t < 10_000; t += 250) room.tick(t, players); // warm up
+  const t0 = performance.now();
+  let n = 0;
+  for (let t = 10_000; t < 70_000; t += 250, n++) room.tick(t, players);
+  const ms = (performance.now() - t0) / n;
+  console.log(`  tick: ${ms.toFixed(3)} ms with ${room.size} mobs and ${players.size} players`);
+  assert.ok(ms < 5, `${ms} ms`);
 });

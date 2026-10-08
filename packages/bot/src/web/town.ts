@@ -526,7 +526,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       for (const [room, mobs] of Object.entries(opts.mobs ?? {})) {
         const here = [...conns.values()].filter((o) => o.room === room);
         const where = new Map(here.map((o) => [o.player.id, [o.player.col, o.player.row] as [number, number]]));
-        const events = mobs.tick(now, (id) => where.get(id) ?? null);
+        const events = mobs.tick(now, where);
         if (!events.length) continue;
         const listeners = here.filter((o) => o.ws.readyState === WebSocket.OPEN);
         for (const e of events) {

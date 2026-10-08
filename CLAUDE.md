@@ -295,9 +295,14 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   _sheets.csv, PNGs only); rules: `mobs/mobs.json` (manifest `mobs.data`, read by the bot too: 0-based attack frame,
   shadow size, `floats`, variants, the golem's toss/glare frames; a bot test keeps its variants in step with the
   manifest's and checks every sheet exists). Shared by everyone: the bot runs them (`web/town-mobs.ts` MobRoom, tested; TownOptions
-  `mobs`, a quarter-second clock): one per spawn (id `<zone>:<index>`, a seeded level in the zone's range and a seeded
-  `variant` from mobs.json, sent in `mobs`; the game picks the same until it hears), hopping ≤ 3
-  tiles round it on its zone's level and in its `rect` (not ramps, blocked tiles or the `safeZone`); arrivals get `mobs` (a snapshot,
+  `mobs`, a quarter-second clock, ~0.25 ms a tick with all ~240 mobs and 5 players fighting): one per spawn (id
+  `<zone>:<index>`), or for a kind with mobs.json `pack` (Bottle Caps) a seeded 3–5 round the point (ids `<zone>:<index>:<n>`,
+  each its own mob; the first alive leads, the others hop to within 2 tiles of where it's headed and follow it shortly;
+  `packSize`), a seeded level in the zone's range and a seeded `variant` from mobs.json, sent in `mobs`; the game picks
+  the same until it hears), hopping ≤ 3 tiles round it on its zone's level and in its `rect` (not ramps, blocked tiles
+  or the `safeZone`; never onto a tile another mob stands on or is headed for), facing its last step (`TownMob.dir`;
+  `facingTo`: SE = +col, SW = +row, NW = −col, NE = −row); a Tire Roller sometimes rolls 1–2 tiles straight on (mobs.json
+  `roll`, quicker), a Plastic Bag Spook drifts (`drift`: its own pace, short rests); arrivals get `mobs` (a snapshot,
   hops under way included), each hop goes to the room as `mob-move`. The game (`world/mobs.ts`) walks them at the same
   pace (wandering on its own only when no server answers), facing their way on the four diagonal sheets (SE for S and E,
   SW for W, NE for N; no mirroring), on a shadow sized per kind (the bag floats over its own); a click shows "Tin Can Lv 1-2" over
@@ -321,10 +326,14 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   uses, `combat/skill-slots.ts` dry-runs it; launch points from the class's launch.json; others' casts too; facing left
   the whole skill plays mirrored round the caster's feet; each mob's damage number and HP land when the script's hit on
   it does; skill-hits.json `fxScale` sizes a skill's effects). Each skill's reach: skill-hits.json `range` (from its
-  script's farthest slot, at least the class's own; around skills: their radius `around:N:R`). Mobility skills never auto-cast. The bot decides (`MobRoom.attack`, tested): mobs have 100 HP, any class
-  hits 20 (25 on a 15% crit), at most one swing per 0.4 s; a hit mob chases its foe within its zone's leash and attacks
-  next to them every 1.6 s (`mob-attack`: its attack pose and a red flash on the player; players have no HP yet), gives
-  up after 12 s without a hit or out of its leash and walks home; at 0 it dies (`mob-hit` dead: its death pose, gone)
+  script's farthest slot, at least the class's own; around skills: their radius `around:N:R`). Mobility skills never auto-cast. The bot decides (`MobRoom.attack`, tested): mobs have `mobHp(level)` = 100 + 25 a
+  level above 1 (`TownMob.maxHp`), any class hits 20 (25 on a 15% crit), at most one swing per 0.4 s; a Scrap Crab
+  (`shell`) blocks every hit from a player in its front quarter (`inFront`; area skills too: where the attacker stands;
+  `blocked`, 0); a hit mob (its whole pack) chases its foe, an aggressive zone's mob (`aggro`) one who comes within its
+  `aggroRange` (in its zone, on its level; players are sorted per zone once a tick), to the nearest free tile within
+  its `reach` (mobs.json; the Wire Tangle zaps from 3) and attacks every 1.6 s (`mob-attack` with its `dir`, and the Bag's
+  `slow` ms; players have no HP yet), gives up when they leave its zone or its leash, or (passive) after 12 s without a
+  hit, and walks home; at 0 it dies (`mob-hit` dead: its death pose, gone)
   and respawns after its zone's respawnSec (`mob-spawn`). The game shows damage numbers (gold for a crit), an HP bar
   over a hurt mob and in the target's info bar. `residents` are unused for now. Dev: `?area=slums`,
   `?switch` (pretend login: a row of class badges, bottom left, to become any class at once: `devSwitchClass` in
