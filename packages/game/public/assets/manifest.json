@@ -264,33 +264,73 @@
           "tiles/slums/tile-slums-dirt-1.png",
           "tiles/slums/tile-slums-dirt-2.png",
           "tiles/slums/tile-slums-dirt-3.png",
-          "tiles/slums/tile-slums-dirt-4.png"
+          "tiles/slums/tile-slums-dirt-4.png",
+          "tiles/slums/tile-slums-dirt-5.png",
+          "tiles/slums/tile-slums-dirt-6.png",
+          "tiles/slums/tile-slums-dirt-7.png",
+          "tiles/slums/tile-slums-dirt-8.png",
+          "tiles/slums/tile-slums-dirt-9.png",
+          "tiles/slums/tile-slums-dirt-10.png",
+          "tiles/slums/tile-slums-dirt-11.png",
+          "tiles/slums/tile-slums-dirt-12.png"
         ],
         "dirt-junk": [
           "tiles/slums/tile-slums-dirt-junk-1.png",
-          "tiles/slums/tile-slums-dirt-junk-2.png"
+          "tiles/slums/tile-slums-dirt-junk-2.png",
+          "tiles/slums/tile-slums-dirt-junk-3.png",
+          "tiles/slums/tile-slums-dirt-junk-4.png",
+          "tiles/slums/tile-slums-dirt-junk-5.png",
+          "tiles/slums/tile-slums-dirt-junk-6.png",
+          "tiles/slums/tile-slums-dirt-junk-7.png",
+          "tiles/slums/tile-slums-dirt-junk-8.png"
         ],
         "weeds": [
           "tiles/slums/tile-slums-weeds-1.png",
-          "tiles/slums/tile-slums-weeds-2.png"
+          "tiles/slums/tile-slums-weeds-2.png",
+          "tiles/slums/tile-slums-weeds-3.png",
+          "tiles/slums/tile-slums-weeds-4.png",
+          "tiles/slums/tile-slums-weeds-5.png",
+          "tiles/slums/tile-slums-weeds-6.png",
+          "tiles/slums/tile-slums-weeds-7.png",
+          "tiles/slums/tile-slums-weeds-8.png"
         ],
         "mud": [
           "tiles/slums/tile-slums-mud-1.png",
-          "tiles/slums/tile-slums-mud-2.png"
+          "tiles/slums/tile-slums-mud-2.png",
+          "tiles/slums/tile-slums-mud-3.png",
+          "tiles/slums/tile-slums-mud-4.png",
+          "tiles/slums/tile-slums-mud-5.png",
+          "tiles/slums/tile-slums-mud-6.png"
         ],
         "concrete": [
           "tiles/slums/tile-slums-concrete-1.png",
           "tiles/slums/tile-slums-concrete-2.png",
           "tiles/slums/tile-slums-concrete-3.png",
-          "tiles/slums/tile-slums-concrete-4.png"
+          "tiles/slums/tile-slums-concrete-4.png",
+          "tiles/slums/tile-slums-concrete-5.png",
+          "tiles/slums/tile-slums-concrete-6.png",
+          "tiles/slums/tile-slums-concrete-7.png",
+          "tiles/slums/tile-slums-concrete-8.png",
+          "tiles/slums/tile-slums-concrete-9.png",
+          "tiles/slums/tile-slums-concrete-10.png",
+          "tiles/slums/tile-slums-concrete-11.png",
+          "tiles/slums/tile-slums-concrete-12.png"
         ],
         "plate": [
           "tiles/slums/tile-slums-plate-1.png",
-          "tiles/slums/tile-slums-plate-2.png"
+          "tiles/slums/tile-slums-plate-2.png",
+          "tiles/slums/tile-slums-plate-3.png",
+          "tiles/slums/tile-slums-plate-4.png",
+          "tiles/slums/tile-slums-plate-5.png",
+          "tiles/slums/tile-slums-plate-6.png"
         ],
         "planks": [
           "tiles/slums/tile-slums-planks-1.png",
-          "tiles/slums/tile-slums-planks-2.png"
+          "tiles/slums/tile-slums-planks-2.png",
+          "tiles/slums/tile-slums-planks-3.png",
+          "tiles/slums/tile-slums-planks-4.png",
+          "tiles/slums/tile-slums-planks-5.png",
+          "tiles/slums/tile-slums-planks-6.png"
         ]
       },
       "canal": {
