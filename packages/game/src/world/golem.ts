@@ -102,7 +102,7 @@ export class GolemView {
     if (this.mob || !this.art) return this.mob;
     const [c0, r0, c1, r1] = this.boss.arena;
     const zone: MobZone = {
-      id: 'golem-pit', name: GOLEM_PIT, mob: g.id, level: [g.level, g.level], rect: [c0, r0, c1, r1], height: 0, pack: 0, aggro: 'passive', aggroRange: 0,
+      id: 'golem-pit', name: GOLEM_PIT, mob: g.id, level: g.level, rect: [c0, r0, c1, r1], height: 0, pack: 0, aggro: 'passive', aggroRange: 0,
       leash: g.leash, respawnSec: 0, active: true, spawns: [g.home],
     };
     this.mob = this.mobs.makeBoss(g.id, zone);

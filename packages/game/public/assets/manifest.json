@@ -992,6 +992,7 @@
   "classes": {
     "note": "The six classes (data: classes/classes.json). Combat poses per class and anim: for each direction the body, the face (s/se/e/sw/w) and the weapon layers behind (back, drawn before the body) and in front (front, after the body, face and clothes), in draw order. Weapon cells are 64x64 with the 32x48 body cell at bodyOffset (Slingshot's weapon is 32x48 like the body). Every direction has its own files: nothing is mirrored. rest: the town resting weapon over the base idle and walk (same frame index as the body), or for the Hilot the balm-float loop on its own clock. launch: fx spawn points per anim/dir/frame in 64-cell coords (launch.json), or for the Slingshot the README's release-frame points in body-cell coords.",
     "data": "classes/classes.json",
+    "stats": "classes/stats.json",
     "bodyOffset": [
       16,
       10

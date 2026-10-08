@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
-import type { GolemAttack, GolemChange, TownGolem, TownMobFacing, TownServerMessage } from '@mikazuki/shared';
+import { type GolemAttack, type GolemChange, type TownGolem, type TownMobFacing, type TownServerMessage, mobStats } from '@mikazuki/shared';
+import { loadStats } from './stats-data.js';
 
 // 🗿 The Scrapheap Golem, the Slums' field boss (the game's maps/slums.json `boss`), run on the server inside the Slums'
 // MobRoom so everyone sees the same fight. It rises in the Golem Pit at minute 0 of every `everyMinutes` (120: the even
@@ -69,8 +70,9 @@ export function pitTiles(boss: GolemBoss | undefined): PitTiles | null {
   return { ring, floor, gap, fight: new Set([...floor, ...gap]), all: new Set([...ring, ...floor, ...gap]) };
 }
 
-/** What it takes from its art and rules (manifest mobs.<id>, mobs/mobs.json): HP, body radius, and how long its rise
- *  (the death anim), its attacks and the Call the Junk fx last (ms). */
+/** What it takes from its art and rules (manifest mobs.<id>, mobs/mobs.json; its HP from the mob table in
+ *  classes/stats.json): HP, body radius, and how long its rise (the death anim), its attacks and the Call the Junk fx last
+ *  (ms). */
 export interface GolemArt {
   hp: number;
   radius: number;
@@ -79,15 +81,15 @@ export interface GolemArt {
   callMs: number;
 }
 
-/** The game's manifest and mobs.json, for the golem `id`. */
+/** The game's manifest, mobs.json and stats.json, for the golem `id`. */
 export function loadGolemArt(id = 'scrapheap-golem'): GolemArt {
   const read = (file: string) => JSON.parse(readFileSync(new URL(`../../../game/public/assets/${file}`, import.meta.url), 'utf8'));
   type Anim = { frames: number; fps: number };
   const art = read('manifest.json').mobs[id] as { animations: Record<string, Anim>; fx: Record<string, Anim> };
-  const rules = read('mobs/mobs.json')[id] as { hp: number; radius: number };
+  const rules = read('mobs/mobs.json')[id] as { radius: number };
   const ms = (a: Anim) => Math.round((a.frames / a.fps) * 1000);
   const a = art.animations;
-  return { hp: rules.hp, radius: rules.radius, riseMs: ms(a.death), attackMs: { slam: ms(a.attack), toss: ms(a.toss), glare: ms(a.glare) }, callMs: ms(art.fx['fx-golem-call-junk']) };
+  return { hp: mobStats(loadStats(), id)!.hp, radius: rules.radius, riseMs: ms(a.death), attackMs: { slam: ms(a.attack), toss: ms(a.toss), glare: ms(a.glare) }, callMs: ms(art.fx['fx-golem-call-junk']) };
 }
 
 /** What the golem sends to the room. */

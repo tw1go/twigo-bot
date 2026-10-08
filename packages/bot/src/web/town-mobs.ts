@@ -1,27 +1,47 @@
 import { readFileSync } from 'node:fs';
-import type { TownGolem, TownMob, TownMobFacing } from '@mikazuki/shared';
+import {
+  type EquipmentDef,
+  type Hitter,
+  type MobStats,
+  type StatPoints,
+  type StatsData,
+  type TownGolem,
+  type TownMob,
+  type TownMobFacing,
+  baseStats,
+  derivedStats,
+  gearTotals,
+  mobStats,
+  rollHit,
+  skillPct,
+  skillTier,
+} from '@mikazuki/shared';
+import { loadGear, loadStats } from './stats-data.js';
 import { Golem, type GolemArt, type GolemBoss, type GolemEvent, type PitTiles, pitTiles } from './town-golem.js';
 
 // 🥫 The Slums' mobs, run on the server so every player sees the same ones in the same places, and fought there. One per
 // spawn tile of each zone that's on (`active` in the game's maps/slums.json), or a pack of a few round a leader for a
-// kind with `pack` (the Bottle Caps: a seeded 3–5, ids `<zone>:<spawn>:<n>`); a level rolled once in its zone's range, a
-// variant (its look) picked once from its kind's (the game's mobs/mobs.json), and now and then a hop of a few tiles round
-// its spawn: at most ROAM away, on its zone's level and in its rect, on open tiles that aren't ramps or in the safe zone
-// (a pack's followers hop to within FOLLOW of their leader instead; a Tire Roller sometimes rolls a tile or two straight
-// on; a Plastic Bag Spook drifts, slower, with short rests). A hop is sent to the room as a path; the game walks it at
-// its pace. Each mob faces the way it last stepped (or turned to attack), on the art's four diagonals. Pure (no
-// Discord), so it's tested on its own and the dev server runs it too.
+// kind with `pack` (the Bottle Caps: a seeded 3–5, ids `<zone>:<spawn>:<n>`); its kind's one level, HP, ATK, DEF and XP
+// (the mob table in the game's classes/stats.json), a variant (its look) picked once from its kind's (the game's
+// mobs/mobs.json), and now and then a hop of a few tiles round its spawn: at most ROAM away, on its zone's level and in
+// its rect, on open tiles that aren't ramps or in the safe zone (a pack's followers hop to within FOLLOW of their leader
+// instead; a Tire Roller sometimes rolls a tile or two straight on; a Plastic Bag Spook drifts, slower, with short
+// rests). A hop is sent to the room as a path; the game walks it at its pace. Each mob faces the way it last stepped (or
+// turned to attack), on the art's four diagonals. Pure (no Discord), so it's tested on its own and the dev server runs it
+// too.
 //
-// Battle: a mob has mobHp(level) HP; any class hits for HIT (CRIT on a crit, CRIT_CHANCE), from the next tile with a
-// melee class or up to RANGED tiles with a ranged one (each skill's own reach: skill-hits.json range). A Scrap Crab's
-// shell blocks every hit (0, `blocked`) except for a moment after each of its own attacks (shell down: mobs.json
-// shellOpenMs, SHELL_OPEN_MS if not given), from any side. A mob that's hit fights back (a
-// pack all together): it goes after whoever hit it last, and within its reach of them attacks every ATTACK_MS (shown
-// only: players have no HP yet; the Bag's slows them for show, `slow`). A mob of an aggressive zone goes after a player
-// who comes within its zone's aggroRange (in its zone, on its level) the same way. It gives up and walks home when they're
-// gone, out of its zone or its leash, or (a passive one) haven't hit it for GIVE_UP_MS. At 0 HP it dies and comes back
-// where it started after its zone's respawnSec (a pack's caps each on their own). Each skill has its own cooldown by the
-// level it's learnt at (skillCooldown: Lv 1 the quickest; the game shows the same, combat/cooldowns.ts).
+// Battle: a hit's damage is the stats rules' (@mikazuki/shared stats.ts, numbers from stats.json): the attacker's Power
+// (their class, level, spent stat points and worn gear's ATK) × the skill's % (its tier = its place in the class's order,
+// and its skill level) × crit × the mob's DEF × the level gap, which can also make it miss (`miss`: no damage). Reach: the
+// next tile with a melee class or up to RANGED tiles with a ranged one (each skill's own: skill-hits.json range). A Scrap
+// Crab's shell blocks every hit (0, `blocked`) except for a moment after each of its own attacks (shell down: mobs.json
+// shellOpenMs, SHELL_OPEN_MS if not given), from any side. A mob that's hit (or missed) fights back (a pack all
+// together): it goes after whoever hit it last, and within its reach of them attacks every ATTACK_MS (shown only: players
+// have no HP yet; the Bag's slows them for show, `slow`). A mob of an aggressive zone goes after a player who comes within
+// its zone's aggroRange (in its zone, on its level) the same way. It gives up and walks home when they're gone, out of
+// its zone or its leash, or (a passive one) haven't hit it for GIVE_UP_MS. At 0 HP it dies and comes back where it
+// started after its zone's respawnSec (a pack's caps each on their own). Each skill has its own cooldown by the level
+// it's learnt at (skillCooldown: Lv 1 the quickest; the game shows the same, combat/cooldowns.ts).
 //
 // The field boss (the map's `boss`, given its art): town-golem.ts runs it on this room's clock; hits on it come through
 // attack() like any mob's (reach to its body's edge; area skills reach it too), and its Adds are mobs of this room (ids
@@ -32,18 +52,12 @@ const ROAM = 3;
 const SPEED = 2.4; // tiles per second (the game walks them at the same pace)
 const REST_MS: [number, number] = [2200, 6500];
 const FOLLOW = 2; // a pack's followers keep within this of their leader
-const HIT = 20;
-const CRIT = 25;
-const CRIT_CHANCE = 0.15;
 const RANGED = 5;
 /** The classes that fight from afar; the rest hit from the next tile. */
 const RANGED_CLASSES = new Set(['slingshot', 'broom']);
 const ATTACK_MS = 1600;
 const GIVE_UP_MS = 12_000;
 const SWING_MS = 400; // a player's attacks: no faster than this
-
-/** A mob's HP by its level: 100 at Lv 1, 25 more a level. */
-export const mobHp = (level: number) => 100 + 25 * (Math.max(1, level) - 1);
 
 /** A skill's cooldown (s) by the level it's learnt at: 0.8 + 0.15 a level, to a tenth (Lv 1: 1 s … Lv 18: 3.5 s). Keep in
  *  step with the game's combat/cooldowns.ts. */
@@ -61,14 +75,17 @@ export interface MobHit {
   crit: boolean;
   hp: number;
   dead: boolean;
-  /** Its shell took it (a Scrap Crab hit from the front): no damage. */
+  /** Its shell took it (a Scrap Crab with its shell up): no damage. */
   blocked?: boolean;
+  /** It missed (the level gap's chance against a mob above you): no damage. */
+  miss?: boolean;
   /** Slowed (to `factor` of its speed; 0 = rooted) for `ms`. */
   slow?: { factor: number; ms: number };
 }
 
-/** `hits`: the target first, then any other mobs the skill's shape reached (skill-hits.json). */
-export type AttackResult = { ok: true; hits: MobHit[] } | { ok: false; reason: 'range' | 'slow' | 'gone' };
+/** `hits`: the target first, then any other mobs the skill's shape reached (skill-hits.json). Refused: out of reach, too
+ *  soon, the mob gone, or `skill` isn't one of their class's (its tier would be made up). */
+export type AttackResult = { ok: true; hits: MobHit[] } | { ok: false; reason: 'range' | 'slow' | 'gone' | 'skill' };
 
 /** Each class's skills' target shapes, in their order (the game's classes/skill-hits.json), and their effects. */
 export interface SkillShapes {
@@ -101,10 +118,30 @@ function parseEffect(e: string | null | undefined): { factor: number; ms: number
 /** Each class's damage skills' levels, in their order (classes.json). */
 export type SkillLevels = Record<string, number[]>;
 
+/** Who attacks: their class, level and stat points spent, the items they wear (ids) and their skills' levels (by skill,
+ *  in their order). Left out: Lv 1, nothing spent, nothing worn, every skill at Lv 1. A class id alone is the same. */
+export interface Attacker {
+  cls: string | null | undefined;
+  level?: number;
+  points?: StatPoints;
+  gear?: (string | null | undefined)[];
+  skills?: number[];
+}
+
+/** The stats rules' data (classes/stats.json) and the equipment (items/equipment.json) a fight needs. */
+export interface FightData {
+  stats: StatsData;
+  gear: Map<string, EquipmentDef>;
+}
+
+/** The game's classes/stats.json and items/equipment.json. */
+export const loadFightData = (): FightData => ({ stats: loadStats(), gear: loadGear() });
+
 export interface MobZoneData {
   id: string;
   mob: string;
-  level: [number, number];
+  /** Its mobs' one level (the mob table's: the stats rules take that one). */
+  level: number;
   /** [col0, row0, col1, row1]: its mobs never leave it. */
   rect?: [number, number, number, number];
   height: number;
@@ -153,6 +190,8 @@ interface Mob {
   id: string;
   zone: MobZoneData;
   kind: MobKind;
+  /** Its kind's level, HP, ATK, DEF and XP (the mob table). */
+  stats: MobStats;
   level: number;
   maxHp: number;
   /** Its look ('' for a kind with one). */
@@ -198,7 +237,7 @@ export function loadMobMap(name: string): MobMapData {
   return JSON.parse(readFileSync(new URL(`../../../game/public/assets/maps/${name}.json`, import.meta.url), 'utf8')) as MobMapData;
 }
 
-/** A small seeded number (0–1) from a string, so a mob's level, look and pack are the same on every restart (the game
+/** A small seeded number (0–1) from a string, so a mob's look and pack are the same on every restart (the game
  *  picks the same with its copy in world/mobs.ts until the server answers: keep them in step). */
 export function seeded(s: string): number {
   let h = 2166136261;
@@ -250,6 +289,7 @@ export class MobRoom {
     private readonly shapes: SkillShapes = { shapes: {} },
     private readonly kinds: MobKinds = {},
     golem?: GolemArt,
+    private readonly fightData: FightData = loadFightData(),
   ) {
     for (const r of map.ramps ?? []) this.ramps.add(`${r.col},${r.row}`);
     this.pit = pitTiles(map.boss);
@@ -269,19 +309,26 @@ export class MobRoom {
     }
   }
 
-  /** A spawn point's mob (or pack: `point:<n>` each), its level and look seeded from its id; the Adds' too. */
+  /** A kind's row in the mob table (a kind without one is a data problem: loud, at start). */
+  private statsOf(mob: string): MobStats {
+    const s = mobStats(this.fightData.stats, mob);
+    if (!s) throw new Error(`No stats for the mob kind ${mob} (classes/stats.json mobs.list)`);
+    return s;
+  }
+
+  /** A spawn point's mob (or pack: `point:<n>` each), its look seeded from its id, its level and HP its kind's; the Adds'
+   *  too. */
   private place(zone: MobZoneData, kind: MobKind, point: string, [col, row]: [number, number], add = false): Mob[] {
     const variants = kind.variants ?? [];
     const n = kind.pack ? packSize(point, kind.pack) : 1;
+    const stats = this.statsOf(zone.mob);
     const pack: Mob[] = [];
     for (let k = 0; k < n; k++) {
       const id = kind.pack ? `${point}:${k}` : point;
-      const [lo, hi] = zone.level;
-      const level = lo + Math.floor(seeded(id) * (hi - lo + 1));
       const variant = variants[Math.floor(seeded(`${id}:variant`) * variants.length)] ?? '';
       const m: Mob = {
-        id, zone, kind, level, maxHp: mobHp(level), variant, spawn: [col, row], home: [col, row], col, row, facing: FACINGS[Math.floor(seeded(`${id}:dir`) * 4)], path: [], hopAt: 0, restUntil: 0,
-        hp: mobHp(level), respawnAt: 0, foe: null, nextAttack: 0, openUntil: 0, slow: null, hopSpeed: SPEED, pack: kind.pack ? pack : null, ...(add ? { add } : {}),
+        id, zone, kind, stats, level: stats.level, maxHp: stats.hp, variant, spawn: [col, row], home: [col, row], col, row, facing: FACINGS[Math.floor(seeded(`${id}:dir`) * 4)], path: [], hopAt: 0, restUntil: 0,
+        hp: stats.hp, respawnAt: 0, foe: null, nextAttack: 0, openUntil: 0, slow: null, hopSpeed: SPEED, pack: kind.pack ? pack : null, ...(add ? { add } : {}),
       };
       // A pack's caps start round the point, each on a tile of its own (seeded: the same every time).
       if (k) m.home = this.besideSpawn(m, pack, id);
@@ -294,7 +341,7 @@ export class MobRoom {
   }
 
   /** The golem's Adds at its spots: two Tin Cans, then a Bottle Caps pack (round the third spot, and a fourth if there
-   *  is one); each kind's level from its zone in the map. They come for the nearest player within the golem's leash. */
+   *  is one); each kind's own level and HP. They come for the nearest player within the golem's leash. */
   private callAdds(boss: GolemBoss, level: number, spots: [number, number][], now: number): GolemEvent[] {
     const made: Mob[] = [];
     const zoneFor = (mob: string) => {
@@ -303,7 +350,7 @@ export class MobRoom {
         const [hc, hr] = boss.tile;
         const L = boss.leash;
         z = {
-          id: 'golem-add', mob, level: this.map.mobZones?.find((x) => x.mob === mob)?.level ?? [1, 1], rect: [hc - L, hr - L, hc + L, hr + L], height: level,
+          id: 'golem-add', mob, level: this.statsOf(mob).level, rect: [hc - L, hr - L, hc + L, hr + L], height: level,
           active: true, spawns: [], aggro: 'aggressive', aggroRange: 2 * L + 1, leash: 2 * L,
         };
         this.addZones.set(mob, z);
@@ -604,8 +651,13 @@ export class MobRoom {
   private swings = new Map<string, number>();
 
   /** A player's attack on a mob (or the golem): in range for their class (from where they stand; to the golem's body's
-   *  edge), not too fast, the mob alive. `name`: theirs, for the golem's line when it falls. */
-  attack(player: string, from: [number, number], cls: string | null | undefined, id: string, now: number, skill = 0, name = player): AttackResult {
+   *  edge), not too fast, the mob alive. `who`: their class, level, points, gear and skill levels (or their class alone).
+   *  `name`: theirs, for the golem's line when it falls. */
+  attack(player: string, from: [number, number], who: Attacker | string | null | undefined, id: string, now: number, skill = 0, name = player): AttackResult {
+    const a: Attacker = who && typeof who === 'object' ? who : { cls: who };
+    const cls = a.cls;
+    const skills = (cls && (this.levels[cls]?.length ?? this.shapes.shapes[cls]?.length)) || 1;
+    if (skill < 0 || skill >= skills) return { ok: false, reason: 'skill' };
     const boss = this.golem?.id === id ? this.golem : null;
     const m = boss ? null : this.byId.get(id);
     if (boss ? !boss.hittable : !m || m.respawnAt) return { ok: false, reason: 'gone' };
@@ -623,10 +675,12 @@ export class MobRoom {
     const level = (cls && this.levels[cls]?.[skill]) || 1;
     this.swings.set(ready, now + skillCooldown(level) * 1000 - 150);
     const effect = parseEffect(cls ? this.shapes.effects?.[cls]?.[skill] : null);
+    const by = this.hitter(a);
+    const pct = skillPct(this.fightData.stats, skillTier(skill), a.skills?.[skill] ?? 1);
     const hits = this.reached(m ?? 'golem', [mc, mr], from, (cls && this.shapes.shapes[cls]?.[skill]) || 'single', now).map((x) => {
-      if (x === 'golem') return this.hitGolem(player, name, now); // (no slowing it)
-      const hit = this.damage(x, player, from, now);
-      if (effect && !hit.dead && !hit.blocked) {
+      if (x === 'golem') return this.hitGolem(player, name, by, pct, now); // (no slowing it)
+      const hit = this.damage(x, player, by, pct, now);
+      if (effect && !hit.dead && !hit.blocked && !hit.miss) {
         x.slow = { factor: effect.factor, until: now + effect.ms };
         hit.slow = effect;
       }
@@ -635,14 +689,25 @@ export class MobRoom {
     return { ok: true, hits };
   }
 
-  /** One hit on a mob from a player at `from`: HIT (or CRIT), none through a shell's front; it (and its pack) goes after
-   *  the player; at 0 it dies. */
-  private damage(m: Mob, player: string, from: [number, number], now: number): MobHit {
+  /** An attacker's Power, crit and level (the stats rules), from their class, level, points and worn gear. */
+  private hitter(a: Attacker): Hitter {
+    const S = this.fightData.stats;
+    const level = a.level ?? 1;
+    const worn = (a.gear ?? []).flatMap((id) => {
+      const item = id ? this.fightData.gear.get(id) : undefined;
+      return item ? [item.stats] : [];
+    });
+    return { ...derivedStats(S, a.cls, level, baseStats(S, a.cls, level, a.points), gearTotals(worn)), level };
+  }
+
+  /** One hit on a mob (the stats rules' damage, or a miss), none through a shell that's up; it (and its pack) goes after
+   *  the player either way; at 0 it dies. */
+  private damage(m: Mob, player: string, by: Hitter, pct: number, now: number): MobHit {
     const [mc, mr] = this.at(m, now);
     this.rally(m, player, now);
     if (m.kind.shell && now >= m.openUntil) return { id: m.id, damage: 0, crit: false, hp: m.hp, dead: false, blocked: true };
-    const crit = this.random() < CRIT_CHANCE;
-    const damage = crit ? CRIT : HIT;
+    const { damage, crit, miss } = rollHit(this.fightData.stats, by, m.stats, pct, this.random);
+    if (miss) return { id: m.id, damage: 0, crit: false, hp: m.hp, dead: false, miss };
     m.hp = Math.max(0, m.hp - damage);
     if (m.hp === 0) {
       [m.col, m.row] = [mc, mr];
@@ -653,12 +718,13 @@ export class MobRoom {
     return { id: m.id, damage, crit, hp: m.hp, dead: m.hp === 0 };
   }
 
-  /** A hit on the golem: HIT (or CRIT), never blocked. */
-  private hitGolem(player: string, name: string, now: number): MobHit {
-    const crit = this.random() < CRIT_CHANCE;
-    const damage = crit ? CRIT : HIT;
-    const r = this.golem!.hit(player, name, damage, now)!;
-    return { id: this.golem!.id, damage, crit, hp: r.hp, dead: r.dead };
+  /** A hit on the golem (the stats rules' damage against its row in the mob table, or a miss), never blocked. A miss
+   *  still starts its fight. */
+  private hitGolem(player: string, name: string, by: Hitter, pct: number, now: number): MobHit {
+    const g = this.golem!;
+    const { damage, crit, miss } = rollHit(this.fightData.stats, by, this.statsOf(g.id), pct, this.random);
+    const r = g.hit(player, name, damage, now)!;
+    return { id: g.id, damage, crit, hp: r.hp, dead: r.dead, ...(miss ? { miss } : {}) };
   }
 
   /** The mobs a skill's shape reaches (the golem too, by its body's edge): the target first (see skill-hits.json). */

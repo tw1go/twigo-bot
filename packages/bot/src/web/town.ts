@@ -353,7 +353,8 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         // A damage skill on a mob (battle maps only): the mob room decides; everyone there sees the hit.
         const mobs = opts.mobs?.[c.room];
         if (!mobs || typeof m.mob !== 'string' || !Number.isInteger(m.skill)) return;
-        const r = mobs.attack(p.id, [p.col, p.row], p.cls, m.mob, Date.now(), m.skill as number, p.nickname);
+        // (Their level and points come with saving them: Lv 1 and none until then.)
+        const r = mobs.attack(p.id, [p.col, p.row], { cls: p.cls, gear: [p.weapon] }, m.mob, Date.now(), m.skill as number, p.nickname);
         if (!r.ok) return send(c, { t: 'attack-refused', reason: r.reason });
         // The hit, then what it set off (the golem calling the Junk, enraging, falling: its line too, to this room only).
         for (const e of [{ t: 'mob-hit', by: p.id, skill: m.skill as number, hits: r.hits } satisfies TownServerMessage, ...mobs.flush()]) {

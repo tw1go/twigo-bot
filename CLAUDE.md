@@ -10,7 +10,10 @@ npm-workspaces monorepo (Node ≥ 22.12, TypeScript):
 - `packages/bot` (`@mikazuki/bot`) — discord.js v14 bot for the Mikazuki server: Kowens economy, games, loans,
   digging, quests, events/reminders, plus a small HTTP "room API" (`src/web/`) behind Caddy.
 - `packages/game` (`@mikazuki/game`) — Phaser 4 + Vite web town served at `/play/`.
-- `packages/shared` (`@mikazuki/shared`) — types shared by both (room API responses, outfits). Types only.
+- `packages/shared` (`@mikazuki/shared`) — types shared by both (room API responses, outfits), plus one pure module of
+  code: the stats rules (`src/stats.ts`, below). Bot tests load its source (`tsx --conditions=source`, export condition
+  `source`); the built bot and the dev server's bot code (dev-town, loaded by Vite's config through Node) load its
+  `dist/`, so `npm run dev:game` builds it first.
 
 State is one SQLite database, `data/mikazuki.db` (better-sqlite3, WAL), schema in `packages/bot/src/db/db.ts`
 (versioned migrations via `PRAGMA user_version`). Stores keep state in memory and save through
@@ -299,8 +302,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   `mobs`, a quarter-second clock, ~0.25 ms a tick with all ~240 mobs and 5 players fighting): one per spawn (id
   `<zone>:<index>`), or for a kind with mobs.json `pack` (Bottle Caps) a seeded 3–5 round the point (ids `<zone>:<index>:<n>`,
   each its own mob; the first alive leads, the others hop to within 2 tiles of where it's headed and follow it shortly;
-  `packSize`), a seeded level in the zone's range and a seeded `variant` from mobs.json, sent in `mobs`; the game picks
-  the same until it hears), hopping ≤ 3 tiles round it on its zone's level and in its `rect` (not ramps, blocked tiles
+  `packSize`), its kind's one level, HP, ATK, DEF and XP (stats.json's mob table; slums.json's zone `level` says the
+  same, a test checks) and a seeded `variant` from mobs.json, sent in `mobs`; the game picks the same until it hears), hopping ≤ 3 tiles round it on its zone's level and in its `rect` (not ramps, blocked tiles
   or the `safeZone`; never onto a tile another mob stands on or is headed for), facing its last step (`TownMob.dir`;
   `facingTo`: SE = +col, SW = +row, NW = −col, NE = −row); a Tire Roller sometimes rolls 1–2 tiles straight on (mobs.json
   `roll`, quicker), a Plastic Bag Spook drifts (`drift`: its own pace, short rests); arrivals get `mobs` (a snapshot,
@@ -308,8 +311,9 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   pace (wandering on its own only when no server answers), facing their way on the four diagonal sheets (SE for S and E,
   SW for W, NE for N; no mirroring), on a shadow sized per kind (the bag floats over its own and drifts: its drawn place
   eases after its real one), a pack's caps placed and wandering round their leader like the server's; only mobs near the
-  camera are drawn and animated (the rest sleep: sprites inactive, hops still walked on paper; `Mob.asleep`); a click shows "Tin Can Lv 1-2" over
-  it and targets it; Z (or the middle mouse button) targets the nearest within 12 tiles (again: the next), a gold ring under it and an info bar at
+  camera are drawn and animated (the rest sleep: sprites inactive, hops still walked on paper; `Mob.asleep`); a click shows "Tin Can Lv 1" over
+  it (never a range; grey 5+ levels below you, red 3+ above, else white: `mobTone`, `Mobs.tone`/`TONE`, the info bar's
+  name too; your level is `Mobs.myLevel`, 1 until levels are saved) and targets it; Z (or the middle mouse button) targets the nearest within 12 tiles (again: the next), a gold ring under it and an info bar at
   the top (`ui/mob-target.ts`: name, level, HP, zone); Escape or 20 tiles away lets go. Battle (battle maps = maps with
   mobs): characters with a class use their class's combat poses there (`characters/battle-art.ts`: every pose composited
   per class and look from kit-art drawPose into 64 × 64 sheets, built a few ms at a time between frames and one look
@@ -329,15 +333,19 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   uses, `combat/skill-slots.ts` dry-runs it; launch points from the class's launch.json; others' casts too; facing left
   the whole skill plays mirrored round the caster's feet; each mob's damage number and HP land when the script's hit on
   it does; skill-hits.json `fxScale` sizes a skill's effects). Each skill's reach: skill-hits.json `range` (from its
-  script's farthest slot, at least the class's own; around skills: their radius `around:N:R`). Mobility skills never auto-cast. The bot decides (`MobRoom.attack`, tested): mobs have `mobHp(level)` = 100 + 25 a
-  level above 1 (`TownMob.maxHp`), any class hits 20 (25 on a 15% crit), at most one swing per 0.4 s; a Scrap Crab's
+  script's farthest slot, at least the class's own; around skills: their radius `around:N:R`). Mobility skills never auto-cast. The bot decides (`MobRoom.attack`, tested): mobs have their kind's HP (`TownMob.maxHp`); a hit is the
+  stats rules' (`rollHit`: Power from `attack`'s `Attacker` = class, level, spent points, worn gear (town.ts passes the
+  class and weapon; level 1 and no points until they're saved) × the skill's tier % (its place in the class's order)
+  at its skill level (1 for now) × crit × 100/(100 + DEF) × the level gap, which also misses (`miss`, 0: "Miss" in the
+  game); Lv 1 Slingshot with its training weapon vs a Tin Can = 30; a skill index outside the class's list: refused,
+  'skill'), at most one swing per 0.4 s; a Scrap Crab's
   shell (`shell`) blocks every hit from any side (`blocked`, 0) except for `shellOpenMs` (1.2 s) from each of its own
   swings (shell down: hit it then; it swings every `attackMs` 2.5 s; the game shows a small shield over a fighting or targeted crab while its shell is up); a hit mob (its whole pack) chases its foe, an aggressive zone's mob (`aggro`) one who comes within its
   `aggroRange` (in its zone, on its level; players are sorted per zone once a tick), to the nearest free tile within
   its `reach` (mobs.json; the Wire Tangle zaps from 3) and attacks every 1.6 s (`mob-attack` with its `dir`, and the Bag's
   `slow` ms; players have no HP yet), gives up when they leave its zone or its leash, or (passive) after 12 s without a
   hit, and walks home; at 0 it dies (`mob-hit` dead: its death pose, gone)
-  and respawns after its zone's respawnSec (`mob-spawn`). The game shows damage numbers (gold for a crit; "Blocked" off a shell), an HP bar
+  and respawns after its zone's respawnSec (`mob-spawn`). The game shows damage numbers (gold for a crit; "Blocked" off a shell; "Miss"), an HP bar
   of its `maxHp` over a hurt mob and in the target's info bar, its death pose then a fade out. A mob's attack
   (`Mobs.strike`): turned the server's way, its attack pose, hooks `onAttackFrame` (mobs.json attackFrame) and `onHit` as
   it lands (TownScene: the player's red flash, and the Bag's slow badge + cold ring for `slow` ms, `showSlowed`), `onDeath`;
@@ -350,14 +358,15 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   `?switch` (pretend login: a row of class badges, bottom left, to become any class at once: `devSwitchClass` in
   net/adventure.ts, its training weapon, the class choice done), `__town.mobs()`; the dev server reads maps/slums.json again when it changes.
 - Scrapheap Golem (field boss; bot `web/town-golem.ts` `Golem`, tested, run by the Slums' MobRoom on its clock when given
-  `loadGolemArt()`; data: slums.json `boss`, mobs.json `hp` 4000 / `radius` 2, the manifest's anim and fx lengths): rises at
+  `loadGolemArt()`; data: slums.json `boss`, stats.json's mob table (Lv 15, 10,800 HP), mobs.json `radius`, the
+  manifest's anim and fx lengths): rises at
   minute 0 of every `everyMinutes` (120: even hours, from the epoch, so UTC = Manila) at its tile, `rising` for its death
   anim's length (riseMs, not hittable); `warnMinutes` before, a line. Its lines (`system` kind 'golem', tones stir / rise /
   down) go only to the Slums room through the mob clock: not kept for arrivals, never in Discord. Nothing saved: after a
   restart, the next even hour. Idle: a quarter turn (`mob-face`) or a 1–3 tile stomp inside the pit (`arena` rect) every
   5–11 s; 30 min with no hit (since rise or last hit) and not fighting → `sinking` (riseMs) → gone. Reach to it = to its
-  body's edge (`edge`: distance from its tile − radius; area skills reach it too, `reached`); 20/25 a hit, never blocked or
-  slowed. First hit → fight: target = the last to hit it if within `leash` (8, Chebyshev from home), else the nearest
+  body's edge (`edge`: distance from its tile − radius; area skills reach it too, `reached`); the stats rules' hit (its
+  DEF and level; a miss still starts its fight), never blocked or slowed. First hit → fight: target = the last to hit it if within `leash` (8, Chebyshev from home), else the nearest
   there; it steps closer (1.5 tiles/s, within its leash), turns a quarter per 0.5 s and only attacks facing its target,
   every 1.5 s (1 s enraged): Tire Slam within 2 of its edge (`at` = a tile past its body toward them), Scrap Toss past 3
   (`at` = their tile; between 2 and 3 it steps closer), every 4th a Lamp Glare along its facing (`cone` [5 tiles from its
@@ -418,6 +427,14 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   `getup` (manifest npcs, Alings only; SE/SW from the PixelLab reference, the rest script-built in mikazuki-assets). Race box beside the jackpot counter (`ui/race-box.ts`), bet pop-up
   (`ui/race-bet.ts`, `POST /town/race bet`). Dev: a pretend race in the dev server, `&race=fast` (20 s of betting) or `&race=now` (3 s),
   `__town.race()`.
+- Stats rules (`packages/shared/src/stats.ts`, pure; tested in the bot's `web/stats.test.ts` against the combat guide's
+  tables): every number from the game's `classes/stats.json` (the art folder's data/stats.json copied over; manifest
+  `classes.stats`; never copy its numbers into code; a few sit in formula strings, read by `numbersIn` / `linear`). Bot:
+  `web/stats-data.ts` (`loadStats`, `loadGear`); game: the scene's json cache 'stats' and `adventureData().stats`. Level/XP
+  (`xpToNext`, `levelFromXp`, `gainXp`), `baseStats` (class growth + spent points; classless 4/4/4), `derivedStats` (HP,
+  MP, MP regen, Power, DEF, crit, capped), `requirements` / `canEquip` / `needsLine` (base stats only), skills
+  (`skillTier`, `skillBasePct`, `skillPct`, `skillLevelCap`, `skillLevelBonus`), damage (`levelGap`, `hitDamage`,
+  `rollHit`), `mobStats`, `mobXp` (low-mob penalty), `mobTone`. classes.json main/second stats match stats.json (tested).
 - Quests, classes and equipment (bot `web/adventure.ts`, schema v10 `adventurers`: class, quests, worn equipment, equipment
   in the bag; tested). Data in the game's assets, read by the bot too: `quests/quests.json` (main = violet, side = yellow,
   manifest quests.colours; objective types talk and chooseClass; the giver's lines in `dialogue`), `classes/classes.json`

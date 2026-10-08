@@ -30,6 +30,7 @@ import {
   xpToNext,
 } from '@mikazuki/shared';
 import { loadGear, loadStats } from './stats-data.js';
+import { loadMobMap } from './town-mobs.js';
 
 // The shared stats rules (@mikazuki/shared stats.ts) on the game's real classes/stats.json, against the combat guide's
 // tables ("Stats, levels and scaling").
@@ -231,10 +232,13 @@ test('mob XP: the table\'s, less for a mob more than 5 levels below (20% a level
   assert.equal(mobXp(data, golem, 1), golem.xp);
 });
 
-test('the mob table: one fixed level each; the golem Lv 15 with 10,800 HP', () => {
+test('the mob table: one fixed level each, as on the Slums map; the golem Lv 15 with 10,800 HP', () => {
   const table: Record<string, number> = { 'tin-can': 1, 'bottle-caps': 3, 'tire-roller': 5, 'plastic-bag-spook': 8, 'wire-tangle': 11, 'scrap-crab': 13, 'scrapheap-golem': 15 };
   for (const [kind, level] of Object.entries(table)) assert.equal(mobStats(data, kind)?.level, level, kind);
   assert.equal(mobStats(data, 'scrapheap-golem')!.hp, 10_800);
+  const map = loadMobMap('slums');
+  for (const z of map.mobZones ?? []) assert.equal(z.level, mobStats(data, z.mob)!.level, `${z.id}: one level, the table's`);
+  assert.equal(map.boss!.level, 15);
 });
 
 test('mob name colours: grey 5+ levels below you, red 3+ above, white between', () => {

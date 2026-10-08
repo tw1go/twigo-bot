@@ -3,9 +3,10 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { WebSocket } from 'ws';
-import type { TownServerMessage } from '@mikazuki/shared';
+import { type TownServerMessage, baseStats, derivedStats, hitDamage, mobStats } from '@mikazuki/shared';
 import { Golem, type GolemEvent, type GolemHost, downLine, inCone, loadGolemArt, nextRiseAfter, pitTiles } from './town-golem.js';
-import { MobRoom, loadMobKinds, loadMobMap } from './town-mobs.js';
+import { loadStats } from './stats-data.js';
+import { type Attacker, MobRoom, loadMobKinds, loadMobMap } from './town-mobs.js';
 import { attachTown } from './town.js';
 
 // The Scrapheap Golem (the Slums' field boss) on the real map and art: its schedule, its fight, its phases, its Adds,
@@ -18,6 +19,17 @@ const kinds = loadMobKinds();
 const HOUR = 3_600_000;
 const lcg = (seed = 11) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
 const at = (dc: number, dr: number): [number, number] => [boss.tile[0] + dc, boss.tile[1] + dr];
+const stats = loadStats();
+const golemStats = mobStats(stats, boss.id)!;
+/** A player of the golem's level (no misses, full damage), with nothing spent or worn. */
+const hero = (cls: string): Attacker => ({ cls, level: golemStats.level });
+/** Their skill's first-level hit on it, and its crit. */
+const heroHits = (cls: string) => {
+  const by = { ...derivedStats(stats, cls, golemStats.level, baseStats(stats, cls, golemStats.level)), level: golemStats.level };
+  return [false, true].map((crit) => hitDamage(stats, by, golemStats, 1, crit));
+};
+/** The most a hero's hit takes (a crit). */
+const MOST = Math.max(heroHits('stick')[1], heroHits('slingshot')[1]);
 
 /** A golem on its own, with a pretend room (every tile open) that counts its Adds. */
 function lone(random = lcg()) {
@@ -39,8 +51,9 @@ const attacks = (evs: { at: number; e: GolemEvent }[]) => evs.filter((x) => x.e.
 const changes = (evs: { at: number; e: GolemEvent }[]) => evs.flatMap((x) => (x.e.t === 'golem' ? [x.e.change] : []));
 const lines = (evs: { at: number; e: GolemEvent }[]) => evs.flatMap((x) => (x.e.t === 'system' ? [x.e.line] : []));
 
-test('the art and rules: 4,000 HP, a body of radius 3 (drawn 1.5× its art), its rise as long as its death anim, the Junk as long as its fx', () => {
-  assert.equal(art.hp, 4000);
+test('the art and rules: its HP and level from the mob table (Lv 15, 10,800), a body of radius 3 (drawn 1.5× its art), its rise as long as its death anim, the Junk as long as its fx', () => {
+  assert.equal(art.hp, golemStats.hp);
+  assert.deepEqual([golemStats.level, golemStats.hp, boss.level], [15, 10_800, 15]);
   assert.equal(art.radius, 3);
   assert.equal(art.riseMs, 1000); // death: 8 frames at 8 fps
   assert.deepEqual(art.attackMs, { slam: 900, toss: 800, glare: 800 });
@@ -80,7 +93,7 @@ test('after a restart it waits for the next even hour; while rising it can\'t be
   assert.equal(rise.at, Date.UTC(2026, 9, 8, 4, 0));
   const t = rise.at;
   const s = room.golemState(t)!;
-  assert.deepEqual([s.state, s.left, s.hp, s.maxHp, s.level, s.col, s.row], ['rising', art.riseMs, 4000, 4000, 10, ...boss.tile]);
+  assert.deepEqual([s.state, s.left, s.hp, s.maxHp, s.level, s.col, s.row], ['rising', art.riseMs, art.hp, art.hp, golemStats.level, ...boss.tile]);
   assert.deepEqual(room.attack('p1', at(3, 0), 'stick', boss.id, t + 500), { ok: false, reason: 'gone' }, 'rising');
   room.tick(t + art.riseMs);
   assert.equal(room.golemState(t + art.riseMs)!.state, 'idle');
@@ -93,9 +106,9 @@ test('reach to it is measured to its body\'s edge: a melee player a tile past it
   room.riseGolem(0);
   room.tick(art.riseMs);
   let t = 2000;
-  const hit = (from: [number, number], cls: string) => room.attack(`p${t}`, from, cls, boss.id, (t += 1000));
+  const hit = (from: [number, number], cls: string) => room.attack(`p${t}`, from, hero(cls), boss.id, (t += 1000));
   const r = hit(at(R + 1, 0), 'stick');
-  assert.ok(r.ok && r.hits[0].id === boss.id && (r.hits[0].damage === 20 || r.hits[0].damage === 25) && !r.hits[0].blocked);
+  assert.ok(r.ok && r.hits[0].id === boss.id && heroHits('stick').includes(r.hits[0].damage) && !r.hits[0].blocked, JSON.stringify(r));
   assert.ok(hit(at(R + 1, 2), 'stick').ok, 'off its axis: about 1.5 from its edge (with the tile of slack)');
   assert.deepEqual(hit(at(R + 1, 4), 'stick'), { ok: false, reason: 'range' }, 'about 2.7 from its edge');
   assert.ok(hit(at(0, 0), 'stick').ok, 'standing inside it');
@@ -146,7 +159,7 @@ test('attacks: Tire Slam close, Scrap Toss far, a Lamp Glare every 4th at whoeve
   const toss = attacks(run(golem, 9250, 11_000, new Map([['p1', far]])))[0];
   assert.deepEqual([toss.e.attack, toss.e.at], ['toss', far]);
   // Enraged (a quarter left): 1 s apart, slams flagged for the rubble ring.
-  golem.hit('p1', 'Mara', 3000, 11_000);
+  golem.hit('p1', 'Mara', Math.ceil((art.hp * 3) / 4), 11_000);
   const fast = attacks(run(golem, 11_250, 16_000, new Map([['p1', close]]))).filter((a) => a.e.attack === 'slam');
   assert.ok(fast.length >= 3 && fast.every((a) => a.e.enraged));
   assert.ok(fast.slice(1).some((a, i) => a.at - fast[i].at === 1000), fast.map((a) => a.at).join());
@@ -174,12 +187,12 @@ test('at half HP it calls the Junk once: 3–4 spots on the pit floor round it, 
   const all: GolemEvent[] = [];
   // Hits until it calls (each a second apart, a Lv 1 skill).
   while (!call) {
-    assert.ok(room.attack('p1', at(3, 0), 'stick', boss.id, (t += 1000)).ok);
+    assert.ok(room.attack('p1', at(3, 0), hero('stick'), boss.id, (t += 1000)).ok);
     const evs = [...room.flush(), ...room.tick(t, players)] as GolemEvent[];
     all.push(...evs);
     call = evs.find((e) => e.t === 'golem' && e.change === 'call') as typeof call;
   }
-  assert.ok(call!.golem.hp <= 2000 && call!.golem.hp > 1975, `${call!.golem.hp}`);
+  assert.ok(call!.golem.hp <= art.hp / 2 && call!.golem.hp > art.hp / 2 - MOST, `${call!.golem.hp}`);
   const spots = call!.spots!;
   assert.ok(spots.length === 3 || spots.length === 4, `${spots.length}`);
   const pit = pitTiles(boss)!;
@@ -205,14 +218,14 @@ test('at half HP it calls the Junk once: 3–4 spots on the pit floor round it, 
   assert.ok(hit, 'an Add attacked');
   // Down past a quarter: no second call (an enrage instead).
   const later: GolemEvent[] = [];
-  while (room.golemState(t)!.hp > 900) {
-    if (!room.attack('p1', at(3, 0), 'stick', boss.id, (t += 1000)).ok) continue;
+  while (room.golemState(t)!.hp > art.hp / 4 - MOST) {
+    if (!room.attack('p1', at(3, 0), hero('stick'), boss.id, (t += 1000)).ok) continue;
     later.push(...(room.flush() as GolemEvent[]), ...(room.tick(t, players) as GolemEvent[]));
   }
   assert.ok(!later.some((e) => e.t === 'golem' && e.change === 'call'));
   const enrage = later.filter((e) => e.t === 'golem' && e.change === 'enrage') as Extract<GolemEvent, { t: 'golem' }>[];
   assert.equal(enrage.length, 1);
-  assert.ok(enrage[0].golem.enraged && enrage[0].golem.hp <= 1000 && enrage[0].golem.hp > 975);
+  assert.ok(enrage[0].golem.enraged && enrage[0].golem.hp <= art.hp / 4 && enrage[0].golem.hp > art.hp / 4 - MOST);
 });
 
 test('reset: nobody within its leash for 10 s, it heals to full, its Adds go, it walks home, and both phases can come again', () => {
@@ -222,8 +235,8 @@ test('reset: nobody within its leash for 10 s, it heals to full, its Adds go, it
   const far = at(art.radius + 3, 0);
   const players = new Map([['p1', far]]); // 3 from its edge: it steps closer to slam
   let t = 2000;
-  while (room.golemState(t)!.hp > 1900) {
-    room.attack('p1', far, 'slingshot', boss.id, (t += 1000));
+  while (room.golemState(t)!.hp > art.hp / 2 - MOST) {
+    room.attack('p1', far, hero('slingshot'), boss.id, (t += 1000));
     room.flush();
     room.tick(t, players);
   }
@@ -233,7 +246,7 @@ test('reset: nobody within its leash for 10 s, it heals to full, its Adds go, it
   const evs = run(room, t + 250, t + 12_000);
   const reset = evs.find((x) => x.e.t === 'golem' && x.e.change === 'reset')!;
   assert.ok(reset.at - t >= 10_000 && reset.at - t <= 10_500, `${reset.at - t}`);
-  assert.ok(reset.e.t === 'golem' && reset.e.golem.hp === 4000 && !reset.e.golem.enraged && reset.e.golem.state === 'home');
+  assert.ok(reset.e.t === 'golem' && reset.e.golem.hp === art.hp && !reset.e.golem.enraged && reset.e.golem.state === 'home');
   const removed = evs.find((x) => x.e.t === 'mob-remove')!;
   assert.ok(removed.e.t === 'mob-remove' && removed.e.ids.length >= 5 && removed.e.ids.every((id) => id.startsWith('golem-add:')));
   assert.ok(!room.snapshot(t + 12_000).some((m) => m.id.startsWith('golem-add:')));
@@ -246,7 +259,7 @@ test('reset: nobody within its leash for 10 s, it heals to full, its Adds go, it
   // A new fight: the Junk again at half.
   let again = false;
   while (!again) {
-    room.attack('p1', far, 'slingshot', boss.id, (t += 1000));
+    room.attack('p1', far, hero('slingshot'), boss.id, (t += 1000));
     again = [...room.flush(), ...room.tick(t, players)].some((e) => e.t === 'golem' && e.change === 'call');
   }
 });
@@ -282,10 +295,11 @@ test('at 0 it dies: a line names everyone who hit it in that fight, its Adds go,
   const { golem, host } = lone();
   const t0 = Date.UTC(2026, 9, 8, 6, 0);
   run(golem, t0 - 250, t0 + 2000);
-  golem.hit('a', 'Mara', 1000, t0 + 3000);
-  golem.hit('b', 'Bob', 1000, t0 + 3100);
-  golem.hit('a', 'Mara', 1000, t0 + 3200);
-  const last = golem.hit('c', 'Lito', 1000, t0 + 3300);
+  const quarter = Math.ceil(art.hp / 4);
+  golem.hit('a', 'Mara', quarter, t0 + 3000);
+  golem.hit('b', 'Bob', quarter, t0 + 3100);
+  golem.hit('a', 'Mara', quarter, t0 + 3200);
+  const last = golem.hit('c', 'Lito', quarter, t0 + 3300);
   assert.deepEqual(last, { hp: 0, dead: true });
   const evs = golem.flush();
   const death = evs.find((e) => e.t === 'golem' && e.change === 'death');
@@ -315,8 +329,8 @@ test('a quarter-second tick with every mob, the golem fighting 5 players and its
   const players = new Map<string, [number, number]>([['p0', at(3, 0)], ['p1', at(-3, 1)], ['p2', at(0, 4)], ['p3', at(6, -2)], ['p4', at(2, 3)]]);
   let t = 1000;
   // Down to the Junk (the Adds come for them), then a minute of fighting.
-  while (room.golemState(t)!.hp > 1990) {
-    for (const [id, p] of players) room.attack(id, p, 'slingshot', boss.id, t);
+  while (room.golemState(t)!.hp > art.hp / 2) {
+    for (const [id, p] of players) room.attack(id, p, hero('slingshot'), boss.id, t);
     room.flush();
     room.tick((t += 500), players);
   }

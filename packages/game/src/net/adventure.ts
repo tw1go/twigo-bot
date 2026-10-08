@@ -8,6 +8,7 @@ import type {
   EquipSlot,
   QuestDef,
   QuestsFile,
+  StatsData,
   TownAdventureResponse,
   TownEquipAction,
   TownQuestAction,
@@ -16,7 +17,7 @@ import { fakeLogin, fakeName } from '../session';
 
 // ⚔️ Your class, quests and equipment in the game (the bot keeps them: web/adventure.ts; /me brings them, POST
 // /town/quest and /town/equip change them). The data files (quests/quests.json, classes/classes.json,
-// items/equipment.json) are loaded once. Everything that shows them listens here: the quest tracker and log, the
+// items/equipment.json; classes/stats.json, the stats rules' numbers, comes with the scene's assets) are loaded once. Everything that shows them listens here: the quest tracker and log, the
 // marker over a quest giver, the equipment panel, the avatar's class badge. In dev with no bot, the same rules run
 // here, saved in this browser per ?as= name (&quests=reset starts over), and the dev town hears about class and weapon
 // changes (/__kit).
@@ -25,6 +26,8 @@ export interface AdventureData {
   quests: QuestDef[];
   classes: ClassInfo[];
   equipment: Map<string, EquipmentDef>;
+  /** classes/stats.json, for @mikazuki/shared's stats rules. */
+  stats: StatsData;
 }
 
 /** What just happened, for the tracker's tick, the log button's dot and the banners. */
@@ -58,13 +61,13 @@ function set(s: AdventureState, change: AdventureChange = {}): void {
   for (const fn of listeners) fn(s, change);
 }
 
-/** Loads the data files (once). */
-export async function loadAdventureData(url: (path: string) => string, files: { quests: string; classes: string; equipment: string }): Promise<AdventureData | null> {
+/** Loads the data files (once); `stats` is loaded already (the scene's json cache). */
+export async function loadAdventureData(url: (path: string) => string, files: { quests: string; classes: string; equipment: string }, stats: StatsData | undefined): Promise<AdventureData | null> {
   if (data) return data;
   const get = <T>(path: string) => fetch(url(path)).then((r) => (r.ok ? (r.json() as Promise<T>) : null)).catch(() => null);
   const [q, c, e] = await Promise.all([get<QuestsFile>(files.quests), get<ClassesFile>(files.classes), get<EquipmentFile>(files.equipment)]);
-  if (!q || !c || !e) return null;
-  data = { quests: q.quests, classes: c.classes, equipment: new Map(e.items.map((i) => [i.id, i])) };
+  if (!q || !c || !e || !stats) return null;
+  data = { quests: q.quests, classes: c.classes, equipment: new Map(e.items.map((i) => [i.id, i])), stats };
   return data;
 }
 

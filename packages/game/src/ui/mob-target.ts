@@ -1,9 +1,12 @@
-// 🎯 The targeted mob (Z, or a click on one): an info bar at the top of the screen like a picked player's — its name, its
-// level, its HP (full: there's no combat yet) and its zone. DOM only; world/mobs.ts picks the mob and rings it.
+// 🎯 The targeted mob (Z, or a click on one): an info bar at the top of the screen like a picked player's — its name (in
+// its level-gap colour: world/mobs.ts TONE), its level, its HP and its zone. DOM only; world/mobs.ts picks the mob and
+// rings it.
 
 export interface MobInfo {
   name: string;
   level: number;
+  /** Its name's colour (a CSS colour; white if not given). */
+  colour?: string;
   zone: string;
   /** 0–1. */
   hp: number;
@@ -42,6 +45,7 @@ export class MobTargetBox {
     if (!m) return;
     this.root.classList.toggle('mt-boss', !!m.boss);
     this.name.textContent = m.name;
+    this.name.style.color = m.colour ?? '';
     this.level.textContent = `Lv ${m.level}`;
     this.fill.style.width = `${Math.round(Math.max(0, Math.min(1, m.hp)) * 100)}%`;
     this.zone.textContent = m.zone;

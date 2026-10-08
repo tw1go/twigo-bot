@@ -66,7 +66,7 @@ import { type Tile, WalkGrid } from '../world/grid';
 import { Ground } from '../world/ground';
 import { SlumsOutskirts, outskirts } from '../world/outskirts';
 import { Terrain } from '../world/terrain';
-import { Mobs, showSlowed } from '../world/mobs';
+import { Mobs, TONE, showSlowed } from '../world/mobs';
 import { GolemView } from '../world/golem';
 import { loadBoss } from '../assets/queue';
 import { FxLayers } from '../world/fx-layers';
@@ -404,7 +404,7 @@ export class TownScene extends Phaser.Scene {
       const mobs = new Mobs(this, this.M, this.map, this.grid, this.objects, (obj) => this.tint >= 0 && obj.setTint(this.tint), this.fxLayers);
       const box = new MobTargetBox();
       mobs.onTarget = (m) => {
-        box.show(m && { name: m.def.name, level: m.level, zone: m.zone.name, hp: m.hp / m.maxHp, boss: m.radius > 0 });
+        box.show(m && { name: m.def.name, level: m.level, colour: TONE[mobs.tone(m)], zone: m.zone.name, hp: m.hp / m.maxHp, boss: m.radius > 0 });
         if (m) this.target?.clear(); // one target at a time
       };
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => box.destroy());
@@ -655,9 +655,9 @@ export class TownScene extends Phaser.Scene {
     const E = this.M.equipment;
     if (!Q || !K || !E) return Promise.resolve();
     const asset = (f: string) => `${import.meta.env.BASE_URL}assets/${f}`;
-    this.adventureReady ??= loadAdventureData(asset, { quests: Q.file, classes: K.data, equipment: E.file });
+    this.adventureReady ??= loadAdventureData(asset, { quests: Q.file, classes: K.data, equipment: E.file }, this.cache.json.get('stats'));
     return this.adventureReady.then((data) => {
-      if (!data) return void console.warn('[quests] the quests, classes or equipment data is missing');
+      if (!data) return void console.warn('[quests] the quests, classes, equipment or stats data is missing');
       addItemArt(Object.fromEntries([...data.equipment.values()].map((i) => [i.id, { icon: i.icon, showcase: i.showcase }])));
       const member = this.me?.status === 'ok' ? this.me.me : null;
       if (!member) return; // guests have no quests
@@ -1322,7 +1322,7 @@ export class TownScene extends Phaser.Scene {
           const h = pending.get(id);
           if (!h) return;
           pending.delete(id);
-          this.mobs?.hit(h.id, h.damage, h.crit, h.hp, h.dead, h.slow, h.blocked);
+          this.mobs?.hit(h.id, h.damage, h.crit, h.hp, h.dead, h.slow, h.blocked, h.miss);
         };
         const landAll = () => [...pending.keys()].forEach(land);
         this.time.delayedCall(1500, landAll);

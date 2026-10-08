@@ -1,14 +1,22 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
-import { type AttackResult, MobRoom, facingTo, loadMobKinds, loadMobMap, mobHp, packSize } from './town-mobs.js';
+import { type Hitter, baseStats, derivedStats, hitDamage, levelGap, mobStats, skillPct } from '@mikazuki/shared';
+import { loadGear, loadStats } from './stats-data.js';
+import { type AttackResult, MobRoom, facingTo, loadMobKinds, loadMobMap, packSize } from './town-mobs.js';
 
 // The Slums' mobs on the real map (the game's maps/slums.json): where they stand, how they hop, what newcomers see.
 
 const map = loadMobMap('slums');
 const active = (map.mobZones ?? []).filter((z) => z.active);
+const stats = loadStats();
+const kindOf = (id: string) => mobStats(stats, active.find((z) => id.startsWith(`${z.id}:`))!.mob)!;
+/** A class's hitter (the stats rules) at a level, with nothing spent, wearing `atk` of weapon. */
+const hitter = (cls: string, level = 1, atk = 0): Hitter => ({ ...derivedStats(stats, cls, level, baseStats(stats, cls, level), { atk }), level });
+/** A skill's first-level hit (and crit) on a mob of a kind, from a hitter. */
+const hits = (by: Hitter, id: string, skill = 0) => [false, true].map((crit) => hitDamage(stats, by, kindOf(id), skillPct(stats, skill + 1), crit));
 
-test('one mob per spawn of each zone that is on, with a level in its range that is the same every time', () => {
+test('one mob per spawn of each zone that is on, at its kind\'s one level with its HP (the mob table), the same every time', () => {
   const a = new MobRoom(map);
   const b = new MobRoom(map);
   assert.equal(a.size, active.reduce((n, z) => n + z.spawns.length, 0));
@@ -17,7 +25,8 @@ test('one mob per spawn of each zone that is on, with a level in its range that 
   assert.deepEqual(sa.map((m) => m.level), b.snapshot(now).map((m) => m.level));
   for (const m of sa) {
     const zone = active.find((z) => m.id.startsWith(`${z.id}:`))!;
-    assert.ok(m.level >= zone.level[0] && m.level <= zone.level[1], `${m.id} level ${m.level}`);
+    assert.deepEqual([m.level, m.maxHp, m.hp], [kindOf(m.id).level, kindOf(m.id).hp, kindOf(m.id).hp], m.id);
+    assert.equal(m.level, zone.level, `${m.id}: the map says the same`);
   }
 });
 
@@ -89,7 +98,7 @@ test('a newcomer sees a hop under way as where the mob has got to and the rest o
   assert.deepEqual(mid.path?.[mid.path.length - 1], hop.path[hop.path.length - 1]);
 });
 
-test('a hit takes 20 (25 on a crit) from its HP by level, the mob goes after its foe, dies at 0 and comes back after respawnSec', () => {
+test('a hit takes the stats rules\' damage from its HP, the mob goes after its foe, dies at 0 and comes back after respawnSec', () => {
   let n = 0;
   const room = new MobRoom(map, () => ((n = (n * 9301 + 49297) % 233280) / 233280));
   const mob = room.snapshot(0)[0];
@@ -98,8 +107,8 @@ test('a hit takes 20 (25 on a crit) from its HP by level, the mob goes after its
   assert.deepEqual(room.attack('p1', far, 'stick', mob.id, 1000), { ok: false, reason: 'range' });
   assert.equal(room.attack('p1', far, 'slingshot', mob.id, 1000).ok, false, '9 tiles is past the slingshot too');
   const first = room.attack('p1', at, 'stick', mob.id, 1000);
-  assert.equal(mob.maxHp, mobHp(mob.level));
-  assert.ok(first.ok && (first.hits[0].damage === 20 || first.hits[0].damage === 25) && first.hits[0].hp === mob.maxHp - first.hits[0].damage);
+  assert.equal(levelGap(stats, 1, mob.level).miss, 0, 'a Lv 1 mob: no misses');
+  assert.ok(first.ok && hits(hitter('stick'), mob.id).includes(first.hits[0].damage) && first.hits[0].hp === mob.maxHp - first.hits[0].damage, JSON.stringify(first));
   assert.deepEqual(room.attack('p1', at, 'stick', mob.id, 1100), { ok: false, reason: 'slow' });
   // Next to it: it attacks back.
   const events = room.tick(1200, new Map([['p1', at]]));
@@ -117,7 +126,7 @@ test('a hit takes 20 (25 on a crit) from its HP by level, the mob goes after its
 
 test('each skill has its own cooldown by its level (Lv 1 the quickest)', () => {
   const room = new MobRoom(map, () => 0.5, { stick: [1, 3, 6, 9, 12, 15, 18] });
-  const mob = room.snapshot(0)[0];
+  const mob = room.snapshot(0).find((m) => m.id.startsWith('crab-basin:'))!; // (a sturdy one: a Lv 1 misses it at 0.5)
   const at: [number, number] = [mob.col + 1, mob.row];
   assert.ok(room.attack('p1', at, 'stick', mob.id, 0, 6).ok, 'the Lv 18 skill');
   assert.deepEqual(room.attack('p1', at, 'stick', mob.id, 1000, 6), { ok: false, reason: 'slow' }, '3.5 s: not yet');
@@ -140,16 +149,17 @@ test('a skill hits the mobs its shape reaches: a chain hops to the nearest, arou
 });
 
 test('a slow halves a mob\'s pace for a while; a root keeps it still; both wear off', () => {
-  const shapes = { shapes: { slingshot: ['single', 'single', 'single', 'single', 'single', 'single'], hilot: ['single', 'single', 'single', 'single', 'single'] }, effects: { slingshot: [null, null, null, null, null, 'slow:0.5:2500'], hilot: [null, null, null, null, 'root:2000'] } };
+  // (On their first skill: a Lv 1's first skill leaves a Tin Can standing.)
+  const shapes = { shapes: { slingshot: ['single'], hilot: ['single'] }, effects: { slingshot: ['slow:0.5:2500'], hilot: ['root:2000'] } };
   const room = new MobRoom(map, () => 0.3, {}, shapes);
   const [a, b] = room.snapshot(0);
   const near = (m: { col: number; row: number }): [number, number] => [m.col + 2, m.row];
-  const slowed = room.attack('p1', near(a), 'slingshot', a.id, 0, 5);
+  const slowed = room.attack('p1', near(a), 'slingshot', a.id, 0, 0);
   assert.ok(slowed.ok && slowed.hits[0].slow?.factor === 0.5);
   // It goes after p1 (who has moved off), at half pace.
   const moves = room.tick(100, new Map([['p1', [a.col + 6, a.row] as [number, number]]])).filter((e) => e.t === 'mob-move' && e.id === a.id);
   assert.ok(moves.length && moves.every((e) => e.t === 'mob-move' && e.speed === 1.2), 'half of 2.4');
-  const rooted = room.attack('p2', [b.col + 1, b.row], 'hilot', b.id, 0, 4); // (the Hilot is melee)
+  const rooted = room.attack('p2', [b.col + 1, b.row], 'hilot', b.id, 0, 0); // (the Hilot is melee)
   assert.ok(rooted.ok && rooted.hits[0].slow?.factor === 0);
   for (let t = 100; t < 1900; t += 250) assert.ok(!room.tick(t, new Map([['p2', [b.col + 6, b.row] as [number, number]]])).some((e) => e.t === 'mob-move' && e.id === b.id), 'rooted: no hop');
   let freed = false;
@@ -170,12 +180,31 @@ function near(room: MobRoom, m: { id: string; col: number; row: number }, d: num
   throw new Error(`no tile ${d} from ${m.id}`);
 }
 
-test('HP by level: 100 at Lv 1, 25 more a level; every mob starts full', () => {
-  assert.deepEqual([1, 2, 5, 9].map(mobHp), [100, 125, 200, 300]);
-  for (const m of new MobRoom(map, Math.random, {}, { shapes: {} }, kinds).snapshot(0)) {
-    assert.equal(m.maxHp, mobHp(m.level), m.id);
-    assert.equal(m.hp, m.maxHp, m.id);
-  }
+test('damage: Power from the class, level, points and worn weapon; the skill\'s tier; a miss now and then against a mob above you', () => {
+  const room = new MobRoom(map, () => 0.5, { slingshot: [1, 3, 6, 9, 12, 15, 18] }, { shapes: {} }, kinds);
+  const snap = room.snapshot(0);
+  const can = snap.find((m) => m.id.startsWith('tin-can-alley:'))!;
+  assert.deepEqual(room.attack('p1', [can.col + 2, can.row], 'slingshot', can.id, 0, 7), { ok: false, reason: 'skill' }, 'no 8th skill (no made-up tier)');
+  assert.deepEqual(room.attack('p1', [can.col + 2, can.row], 'slingshot', can.id, 0, -1), { ok: false, reason: 'skill' });
+  const weapon = [...loadGear().values()].find((i) => i.slot === 'weapon' && i.class === 'slingshot')!;
+  // A Lv 1 Slingshot with its training weapon: about 30 a Quick Shot on a Tin Can (two to kill it).
+  const r = room.attack('p1', [can.col + 2, can.row], { cls: 'slingshot', gear: [weapon.id] }, can.id, 0, 0);
+  assert.ok(r.ok && r.hits[0].damage === hits(hitter('slingshot', 1, weapon.stats.atk), can.id)[0] && !r.hits[0].crit, JSON.stringify(r));
+  assert.ok(r.ok && r.hits[0].damage === 30);
+  // A higher tier hits harder; so do levels and points.
+  const t3 = room.attack('p1', [can.col + 2, can.row], { cls: 'slingshot', gear: [weapon.id] }, can.id, 5000, 2);
+  assert.ok(t3.ok && t3.hits[0].dead, 'tier 3 (169%) finishes it');
+  const wire = snap.find((m) => m.id.startsWith('wire-ridge:'))!;
+  const lv11 = room.attack('p2', [wire.col + 2, wire.row], { cls: 'slingshot', level: 11, points: { DEX: 10 }, gear: [weapon.id] }, wire.id, 0, 0);
+  const by = { ...derivedStats(stats, 'slingshot', 11, baseStats(stats, 'slingshot', 11, { DEX: 10 }), { atk: weapon.stats.atk }), level: 11 };
+  assert.ok(lv11.ok && lv11.hits[0].damage === hits(by, wire.id)[0], JSON.stringify(lv11));
+  // Lv 1 against the Lv 11 Wire Tangle: 50% to miss (0.3 misses, 0.9 hits for 40% of the damage).
+  const miss = new MobRoom(map, () => 0.3, {}, { shapes: {} }, kinds).attack('p3', [wire.col + 2, wire.row], 'slingshot', wire.id, 0, 0);
+  assert.ok(miss.ok);
+  assert.deepEqual(miss.hits[0], { id: wire.id, damage: 0, crit: false, hp: wire.maxHp, dead: false, miss: true });
+  const land = new MobRoom(map, () => 0.9, {}, { shapes: {} }, kinds).attack('p3', [wire.col + 2, wire.row], 'slingshot', wire.id, 0, 0);
+  assert.ok(land.ok && !land.hits[0].miss && land.hits[0].damage === hits(hitter('slingshot'), wire.id)[0]);
+  assert.equal(levelGap(stats, 1, wire.level).mult, stats.damage.levelGap.minMult);
 });
 
 test('an aggressive zone\'s mob comes for a player within its aggroRange, attacks next to them, and walks home past its leash', () => {
@@ -310,7 +339,8 @@ test('a Scrap Crab\'s shell blocks every hit, from any side, except for a moment
     for (const e of room.tick(t, players)) if (e.t === 'mob-attack' && e.id === crab.id) swing = t;
   assert.ok(swing > 0, 'it swung');
   const now = room.snapshot(swing).find((m) => m.id === crab.id)!;
-  const down = room.attack('p1-1', [now.col + 1, now.row], 'slingshot', crab.id, swing + 100);
+  // (A Lv 13 Slingshot: no misses against the Lv 13 crab.)
+  const down = room.attack('p1-1', [now.col + 1, now.row], { cls: 'slingshot', level: 13 }, crab.id, swing + 100);
   assert.ok(down.ok && down.hits[0].damage > 0 && !down.hits[0].blocked, 'shell down');
   const up = room.attack('p1-1', [now.col + 1, now.row], 'slingshot', crab.id, swing + open + 1);
   assert.ok(up.ok && up.hits[0].blocked, 'shell back up');

@@ -197,6 +197,8 @@ export interface ClassArt {
 
 export interface ClassesDefs {
   data: string;
+  /** The stats rules' numbers (classes/stats.json: levels, stats, requirements, damage, XP, the mob table). */
+  stats: string;
   /** Where the 32x48 body cell sits in a 64x64 weapon cell. */
   bodyOffset: Vec2;
   list: Record<string, ClassArt>;
@@ -323,8 +325,8 @@ export interface MobData {
   /** The golem's Scrap Toss release frame and Lamp Glare cone frames (first, last). */
   tossFrame?: number;
   glareFrames?: Vec2;
-  /** The golem's HP (not by level) and its body's radius in tiles (reach to it is measured to that edge). */
-  hp?: number;
+  /** The golem's body's radius in tiles (reach to it is measured to that edge). Every mob's level, HP, ATK, DEF and XP
+   *  are in classes/stats.json's mob table. */
   radius?: number;
   /** The art's highest pixel row in its cells: its HP bar, name and numbers go there (else the cell's top). */
   top?: number;
@@ -341,7 +343,8 @@ export interface MobZone {
   id: string;
   name: string;
   mob: string;
-  level: [number, number];
+  /** Its mobs' one level (as the mob table in classes/stats.json). */
+  level: number;
   rect: [number, number, number, number]; // col0, row0, col1, row1
   /** The ground level its mobs stay on. */
   height: number;

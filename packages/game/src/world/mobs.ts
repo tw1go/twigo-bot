@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import type { TownMob, TownMobFacing } from '@mikazuki/shared';
+import { type StatsData, type TownMob, type TownMobFacing, mobStats, mobTone } from '@mikazuki/shared';
 import type { Manifest, MobData, MobDef, MobZone, TownMap, Vec2 } from '../assets/types';
 import { mobCell, mobSheet, mobVariants } from '../assets/mob-art';
 import { slice } from '../assets/packs';
@@ -20,13 +20,15 @@ import { LABEL_DEPTH } from './depth';
 // each `mob-move` hop is walked here at its pace. Only with no server (nothing heard yet) do they wander on their own
 // here (the move animation; at most 3 tiles away, a pack's followers near their leader, never off its zone's level or out
 // of its rect, onto a blocked tile or a ramp, or into the safe zone), facing the way it goes on the art's four diagonals
-// (SE for S and E, SW for W, NE for N; no mirroring). A click shows its name and level ("Tin Can Lv 1-2") and targets it;
-// Z targets the nearest (again: the next nearest): a ring under it and the info bar at the top (ui/mob-target.ts).
+// (SE for S and E, SW for W, NE for N; no mirroring). A click shows its name and its kind's one level ("Tin Can Lv 1",
+// grey 5+ levels below you, red 3+ above, else white: the stats rules' mobTone) and targets it; Z targets the nearest
+// (again: the next nearest): a ring under it and the info bar at the top (ui/mob-target.ts). Its level and HP are its
+// kind's (classes/stats.json's mob table; the server's snapshot says the same).
 // Battle (the server decides: bot web/town-mobs.ts): a hit plays the mob's hit pose and a damage number rises over it
-// (gold for a crit; "Blocked" off a Scrap Crab's shell); at 0 HP its death pose, then it fades out and is gone until it
-// respawns at its spawn (fading in). A small HP bar of its real max HP (by level) shows once it's hurt. Its own attacks
-// (`strike`) turn it the server's way and play its attack pose; on the table's attack frame (mobs.json attackFrame)
-// `onAttackFrame`, then `onHit` as it lands on the player (at once, or for the Wire Tangle when its spark gets there:
+// (gold for a crit; "Blocked" off a Scrap Crab's shell; "Miss" when it missed, the level gap's chance); at 0 HP its death
+// pose, then it fades out and is gone until it respawns at its spawn (fading in). A small HP bar shows once it's hurt.
+// Its own attacks (`strike`) turn it the server's way and play its attack pose; on the table's attack frame (mobs.json
+// attackFrame) `onAttackFrame`, then `onHit` as it lands on the player (at once, or for the Wire Tangle when its spark gets there:
 // drawn in code from its insulator eye, mobs.json `eye`, on the front fx layer); the Tire Roller's sprite lunges out
 // along its facing over its charge frames and back (its tile stays). `onDeath` as one dies. Players have no HP yet:
 // the hooks show the hit (TownScene). Only the mobs near the camera are drawn and animated; the rest sleep (their
@@ -54,6 +56,9 @@ const DEATH_FADE_MS = 350;
 const SHELL_OPEN_MS = 2000;
 const FIGHT_MS = 8000;
 
+/** A mob's name colours by level gap (Mobs.tone). */
+export const TONE = { grey: '#9CA3AF', white: '#FFFFFF', red: '#F87171' } as const;
+
 /** Where the field boss lives (and its Adds' zone, in the info bar). */
 export const GOLEM_PIT = 'Golem Pit';
 
@@ -62,9 +67,6 @@ const FACING: Record<string, TownMobFacing> = { n: 'ne', ne: 'ne', e: 'se', se: 
 /** Each facing's step on the grid (SE = +col, SW = +row, NW = −col, NE = −row), as the bot's. */
 const AXIS: Record<TownMobFacing, [number, number]> = { se: [1, 0], sw: [0, 1], nw: [-1, 0], ne: [0, -1] };
 const STEPS: [number, number][] = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
-
-/** A mob's HP by its level (the bot's mobHp: keep in step). */
-export const mobHp = (level: number) => 100 + 25 * (Math.max(1, level) - 1);
 
 export interface Mob {
   id: string;
@@ -143,6 +145,10 @@ export class Mobs {
   hooks: MobHooks = {};
   /** Where a player's feet are (town id; null: not here), for a spark to fly to. */
   playerAt: ((id: string) => Pt | null) | null = null;
+  /** Your level (a mob's name colour is by the gap). */
+  myLevel: () => number = () => 1;
+  /** The stats rules' numbers (classes/stats.json), if loaded. */
+  private readonly stats: StatsData | null;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -154,6 +160,7 @@ export class Mobs {
     private readonly fx: FxLayers,
   ) {
     const data = (scene.cache.json.get('mob-data') ?? {}) as Record<string, MobData | string>;
+    this.stats = (scene.cache.json.get('stats') as StatsData | undefined) ?? null;
     for (const zone of map.mobZones ?? []) {
       const def = zone.active ? M.mobs?.[zone.mob] : undefined;
       if (!def || typeof def === 'string') continue;
@@ -200,13 +207,15 @@ export class Mobs {
     const shadow = !S || !this.scene.textures.exists(S.file) ? null
       : data?.shadow ? this.scene.add.image(0, 0, this.shadowSheet(S.file, ...(data.shadow.map((n) => Math.round(n * (data.scale ?? 1))) as [number, number])))
       : this.scene.add.image(0, 0, S.file).setOrigin(S.anchor[0] / S.size[0], S.anchor[1] / S.size[1]);
-    const [lo, hi] = zone.level;
-    const level = lo + Math.floor(seeded(id) * (hi - lo + 1));
+    // Its kind's level and HP (the server's snapshot says the same).
+    const kind = this.stats ? mobStats(this.stats, zone.mob) : undefined;
+    const level = kind?.level ?? zone.level;
+    const hp = kind?.hp ?? 1;
     const mob: Mob = {
-      id, zone, def, variant, cell: mobCell(def, variant), data, level, maxHp: mobHp(level), spawn: at, home: at, pack,
+      id, zone, def, variant, cell: mobCell(def, variant), data, level, maxHp: hp, spawn: at, home: at, pack,
       col: at.col + 0.5, row: at.row + 0.5, drawCol: 0, drawRow: 0, dir: (['se', 'sw', 'ne', 'nw'] as const)[Math.floor(seeded(`${id}:dir`) * 4)],
       sprite, shadow, path: [], restUntil: this.scene.time.now + Phaser.Math.Between(0, REST_MS[1]), label: null, labelUntil: 0,
-      hp: mobHp(level), dead: false, pose: null, bar: null, shield: null, openUntil: 0, fightUntil: 0, speed: data?.drift?.speed ?? SPEED, slowUntil: 0, asleep: false, lunge: { x: 0, y: 0 },
+      hp, dead: false, pose: null, bar: null, shield: null, openUntil: 0, fightUntil: 0, speed: data?.drift?.speed ?? SPEED, slowUntil: 0, asleep: false, lunge: { x: 0, y: 0 },
       enraged: false, add: false, radius: data?.radius ?? 0, untouchable: false,
     };
     // A pack's caps start round the point, each on a tile of its own (the server's place comes with its snapshot).
@@ -346,7 +355,7 @@ export class Mobs {
     m.col = m.drawCol = s.col + 0.5;
     m.row = m.drawRow = s.row + 0.5;
     m.level = s.level;
-    m.maxHp = s.maxHp ?? mobHp(s.level);
+    m.maxHp = s.maxHp;
     if (s.dir) m.dir = s.dir;
     m.path = (s.path ?? []).map(([col, row]) => ({ col, row }));
     m.speed = s.speed ?? SPEED;
@@ -371,14 +380,14 @@ export class Mobs {
   }
 
   /** An Add of `kind` (its art is a zone's that's on: the Tin Cans' and Bottle Caps'), in a zone of its own made from its
-   *  kind's (its level range; it lives where the server puts it). */
+   *  kind's (its level; it lives where the server puts it). */
   private makeAdd(s: TownMob): Mob | null {
     const def = this.M.mobs?.[s.kind!];
     if (!def || typeof def === 'string') return null;
     this.anims(s.kind!, def);
     const own = this.map.mobZones?.find((z) => z.mob === s.kind);
     const zone: MobZone = {
-      id: 'golem-add', name: GOLEM_PIT, mob: s.kind!, level: own?.level ?? [s.level, s.level], rect: [s.col, s.row, s.col, s.row], height: own?.height ?? 0,
+      id: 'golem-add', name: GOLEM_PIT, mob: s.kind!, level: own?.level ?? s.level, rect: [s.col, s.row, s.col, s.row], height: own?.height ?? 0,
       pack: 0, aggro: 'aggressive', aggroRange: 0, leash: 0, respawnSec: 0, active: true, spawns: [],
     };
     const data = (this.scene.cache.json.get('mob-data') ?? {})[s.kind!];
@@ -488,17 +497,18 @@ export class Mobs {
     m.path = path.slice(1).map(([col, row]) => ({ col, row }));
   }
 
-  /** A hit (the server's word): the hit pose (or its death), a damage number ("Blocked" off a shell), the HP bar. */
-  hit(id: string, damage: number, crit: boolean, hp: number, dead: boolean, slow?: { factor: number; ms: number }, blocked = false): void {
+  /** A hit (the server's word): the hit pose (or its death), a damage number ("Blocked" off a shell, "Miss" for a miss),
+   *  the HP bar. */
+  hit(id: string, damage: number, crit: boolean, hp: number, dead: boolean, slow?: { factor: number; ms: number }, blocked = false, miss = false): void {
     const m = this.byId.get(id);
     if (!m || m.dead) return;
     m.hp = hp;
     m.fightUntil = this.scene.time.now + FIGHT_MS;
     if (blocked) m.shield?.setScale(1.6); // the shield bounces as it takes the hit
     if (slow && !dead) this.chill(m, slow);
-    if (!m.asleep) this.number(m, blocked ? 'Blocked' : String(damage), crit);
+    if (!m.asleep) this.number(m, blocked ? 'Blocked' : miss ? 'Miss' : String(damage), crit);
     if (dead) this.kill(m);
-    else if (!blocked && !(m.radius && m.pose)) this.pose(m, 'hit'); // (a hit never cuts the golem's attack short)
+    else if (!blocked && !miss && !(m.radius && m.pose)) this.pose(m, 'hit'); // (a hit never cuts the golem's attack short)
     this.drawBar(m);
     if (m === this.target) this.onTarget?.(m);
   }
@@ -651,7 +661,7 @@ export class Mobs {
     return m.sprite.y + ((m.data?.top ?? 0) - m.cell.anchor[1]) * (m.data?.scale ?? 1);
   }
 
-  /** A number rising over it (gold and bigger for a crit; "Blocked" smaller, pale); over the golem, spread across its
+  /** A number rising over it (gold and bigger for a crit; "Blocked" and "Miss" smaller, pale); over the golem, spread across its
    *  shoulders so many hitters' numbers don't pile up. */
   private number(m: Mob, text: string, crit: boolean): void {
     const word = !/^\d+$/.test(text);
@@ -871,14 +881,19 @@ export class Mobs {
   }
 
   private showLabel(m: Mob): void {
-    const [lo, hi] = m.zone.level;
-    const name = `${m.def.name} Lv ${lo === hi ? lo : `${lo}-${hi}`}`;
+    const name = `${m.def.name} Lv ${m.level}`;
     if (!m.label) {
       m.label = new BuildingLabel(this.scene, name, m.sprite.x);
       m.label.setZoom(this.zoom);
     }
+    m.label.text.setText(name).setColor(TONE[this.tone(m)]);
     m.label.show(this.top(m) + (m.radius ? -10 : 4));
     m.labelUntil = this.scene.time.now + LABEL_MS;
+  }
+
+  /** Its name's colour for you: grey 5+ levels below you, red 3+ above, white between (white without the rules). */
+  tone(m: Mob): 'grey' | 'white' | 'red' {
+    return this.stats ? mobTone(this.stats, this.myLevel(), m.level) : 'white';
   }
 
   setZoom(zoom: number): void {
@@ -932,8 +947,8 @@ export function showSlowed(fx: FxLayers, head: () => Pt, feet: () => Pt, ms: num
   }, ms, 300);
 }
 
-/** A small seeded number (0–1) from a string: the bot's `seeded` in web/town-mobs.ts (keep in step), so the variant,
- *  level and pack picked here before the server answers are the ones it picks. */
+/** A small seeded number (0–1) from a string: the bot's `seeded` in web/town-mobs.ts (keep in step), so the variant
+ *  and pack picked here before the server answers are the ones it picks. */
 function seeded(s: string): number {
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
