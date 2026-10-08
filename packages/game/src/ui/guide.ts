@@ -92,6 +92,18 @@ const TOPICS: Topic[] = [
     ].join('\n'),
   },
   {
+    id: 'levels',
+    icon: '⭐',
+    label: 'Levels',
+    text: [
+      '• Your **level** and **XP bar** sit under your name (top left); hover it for the XP numbers',
+      '• Defeat mobs in the **Slums** for XP. A mob far below your level gives less (its name is grey); one well above you can make you miss (red)',
+      '• The **Scrapheap Golem**\'s XP goes to everyone who did at least 5% of its HP',
+      '• Each level up earns a **stat point** and **3 skill points**, and everyone nearby sees **Level up!** over you',
+      '• The highest level is **20**: the bar reads MAX',
+    ].join('\n'),
+  },
+  {
     id: 'mine',
     icon: '⛏️',
     label: 'Mine',

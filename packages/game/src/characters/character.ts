@@ -7,7 +7,7 @@ import { CHARACTER_BIAS, HEIGHT_DEPTH, LABEL_DEPTH } from '../world/depth';
 import type { Tile } from '../world/grid';
 import { type Outfit, headTop, sheetKey } from './doll';
 import type { TitleData } from '@mikazuki/shared';
-import { type BubbleArt, EmotePop, NameTag, QuestMarker, SpeechBubble } from '../ui/labels';
+import { type BubbleArt, EmotePop, LevelUpPop, NameTag, QuestMarker, SpeechBubble } from '../ui/labels';
 
 // A walking paper doll (or a flat pre-baked sheet set: the town's NPCs, world/npcs.ts). Position is in tile space
 // (tile centre = col + 0.5); the sprite's feet anchor sits on it. Depth is the front corner of the tile the feet are
@@ -61,6 +61,7 @@ export class Character {
   private bubble: SpeechBubble | null = null;
   private bubbleTimer: Phaser.Time.TimerEvent | null = null;
   private pop: EmotePop | null = null;
+  private levelPop: LevelUpPop | null = null;
   private marker: QuestMarker | null = null;
   /** The class's resting weapon (behind and in front of the body), drawn over idle and walk. */
   private rest: { art: ClassArt; offset: [number, number]; back: Phaser.GameObjects.Sprite[]; front: Phaser.GameObjects.Sprite[] } | null = null;
@@ -185,6 +186,18 @@ export class Character {
     this.marker?.setZoom(zoom);
     this.bubble?.setZoom(zoom);
     this.pop?.setZoom(zoom);
+    this.levelPop?.setZoom(zoom);
+    this.sync();
+  }
+
+  /** "Level up!" over the head (above any bubble or emote) for about 2 s. */
+  levelUp(): void {
+    this.levelPop?.destroy();
+    const pop = new LevelUpPop(this.scene, () => {
+      if (this.levelPop === pop) this.levelPop = null;
+    });
+    pop.setZoom(this.zoom);
+    this.levelPop = pop;
     this.sync();
   }
 
@@ -573,6 +586,7 @@ export class Character {
     }
     this.bubble?.place(Math.round(x), alertY);
     this.pop?.place(Math.round(x), alertY - (this.bubble ? this.bubble.height + 1 : 0));
+    this.levelPop?.place(Math.round(x), alertY - (this.bubble ? this.bubble.height + 1 : 0) - (this.pop ? this.pop.height + 1 : 0));
     this.alert?.setPosition(Math.round(x), alertY).setDepth(depth + 0.1);
     this.overhead?.setPosition(Math.round(x), alertY - (this.bubble ? this.bubble.height + 1 : 0));
   }
@@ -621,6 +635,7 @@ export class Character {
     this.bubbleTimer?.remove();
     this.bubble?.destroy();
     this.pop?.destroy();
+    this.levelPop?.destroy();
     this.marker?.destroy();
     for (const sp of [...(this.rest?.back ?? []), ...(this.rest?.front ?? [])]) sp.destroy();
   }

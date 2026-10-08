@@ -116,7 +116,9 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   guest. Dev: `?me=anon|new|saved` fakes the login (and stands in when no bot answers /me).
 - Town HUD (`ui/townhud.ts`, replaces the page's login corner in town): your character's head (`headPortrait`) and
   name top left in the item frame (round pixel avatar + status dot from `/me` status: jailed, else the Discord status when the Presence
-  intent is on in the Developer Portal — the bot checks at startup and only asks for it then — else online), with Kowens and shovels beside it (they wrap below on phones); Settings top right;
+  intent is on in the Developer Portal — the bot checks at startup and only asks for it then — else online), under the
+  name "Lv N" and a thin XP bar with its % (gold, full and "MAX" at the cap; hover: the XP numbers; `setHudLevel`, from
+  `adventure().progress`; HP/MP bars go in `.th-bars` under it), with Kowens and shovels beside it (they wrap below on phones); Settings top right;
   Kowens/shovels have "+" info (from `/me`: `kowens`, `dig`). The
   shovel icon is `ui-shovel.png` (manifest ui.shovelIcon). The Kowens follow every balance change, wherever it came from:
   the credits store's `setWalletHook` → town `wallet` message → the HUD reloads. `/gift item` (an item to someone or everyone, `items/gift.ts`) shows the item gift pop-up (`gift-item`; dev
@@ -435,8 +437,21 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   MP, MP regen, Power, DEF, crit, capped), `requirements` / `canEquip` / `needsLine` (base stats only), skills
   (`skillTier`, `skillBasePct`, `skillPct`, `skillLevelCap`, `skillLevelBonus`), damage (`levelGap`, `hitDamage`,
   `rollHit`), `mobStats`, `mobXp` (low-mob penalty), `mobTone`. classes.json main/second stats match stats.json (tested).
+- Levels (bot `web/progress.ts`, pure, tested; saved in `adventurers` schema v11: `level`, `xp` (into the level),
+  `str_points`/`dex_points`/`int_points` (spent), `skill_levels` (JSON: damage skill index or mobility id → level above 1),
+  `skill_points` (unspent), `training_armor_given`; older rows Lv 1, nothing spent). `CharacterProgress` (in
+  `AdventureState.progress`, so in `/me`): level, xp, next (0 = MAX), points, statPoints (worked out: earned − spent,
+  banked before a class), skills, skillPoints. `addXp` (3 skill points a level; XP stops at the cap), `killXp`,
+  `refundPoints` (the CMS's Reset class keeps level and XP, gives the points back), `levelTo` (dev). Kills: `MobRoom.attack`
+  returns `kills` (`to`: the killer; the golem's `xpEarners`: everyone whose damage in the fight, `Golem` `dealt`, reached
+  stats.json's `xpTo` 5%); `web/town.ts` asks `TownOptions.progress` (`fighter`: the Attacker with level, points, all
+  worn gear, skill levels; `kill`: saves the XP) and sends `progress` to the player and `level-up` (id, level) to their
+  room; `Town.progress(...)` for changes outside a fight. Game: `setProgress`, "Level up!" over them
+  (`Character.levelUp`, `LevelUpPop` in ui/labels.ts) and the casino-win chime quietly (0.1 yours, 0.05 others');
+  `Mobs.myLevel` follows. Dev: `?xp=500` / `?level=N` (the dev server's `/__xp?as=&xp=|level=`: levels in memory there,
+  sent from the page's localStorage on connect with `&kit=`, through the same functions).
 - Quests, classes and equipment (bot `web/adventure.ts`, schema v10 `adventurers`: class, quests, worn equipment, equipment
-  in the bag; tested). Data in the game's assets, read by the bot too: `quests/quests.json` (main = violet, side = yellow,
+  in the bag; v11 levels, above; tested). Data in the game's assets, read by the bot too: `quests/quests.json` (main = violet, side = yellow,
   manifest quests.colours; objective types talk and chooseClass; the giver's lines in `dialogue`), `classes/classes.json`
   (the six classes, their first 7 skills and their `mobility` moves), `items/equipment.json` (the training weapons,
   placeholder stats). `/me` brings `adventure` (autoStart quests start there); `POST /town/quest` / `/town/equip`; the

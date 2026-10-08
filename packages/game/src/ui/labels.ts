@@ -285,6 +285,45 @@ export class EmotePop {
   }
 }
 
+/** "Level up!" over someone who just went up a level: gold, it pops in, rises a little, holds and fades (~2.2 s). */
+export class LevelUpPop {
+  private readonly box: Phaser.GameObjects.Container;
+  private readonly word: Phaser.GameObjects.Text;
+  private zoomScale = 1;
+
+  constructor(
+    private readonly scene: Phaser.Scene,
+    done: () => void,
+  ) {
+    this.word = text(scene, 'Level up!', 8, '#FCDA4A', { stroke: '#1E1B3A', strokeThickness: 3, fontStyle: 'bold' }).setOrigin(0.5, 1);
+    this.box = scene.add.container(0, 0, [this.word]).setDepth(LABEL_DEPTH + 2);
+    this.word.setScale(0.4);
+    scene.tweens.add({ targets: this.word, scale: 1, duration: 280, ease: 'Back.easeOut' });
+    scene.tweens.add({ targets: this.word, y: -6, duration: 2200, ease: 'Sine.easeOut' });
+    scene.tweens.add({ targets: this.word, alpha: 0, delay: 1700, duration: 500, onComplete: () => (this.box.destroy(), done()) });
+  }
+
+  get height(): number {
+    return Math.ceil(this.word.height * this.zoomScale);
+  }
+
+  place(x: number, bottom: number): void {
+    this.box.setPosition(x, bottom);
+  }
+
+  setZoom(zoom: number): void {
+    const { scale, resolution } = scaleFor(zoom);
+    this.zoomScale = scale;
+    this.box.setScale(scale);
+    this.word.setResolution(resolution);
+  }
+
+  destroy(): void {
+    this.scene.tweens.killTweensOf(this.word);
+    this.box.destroy();
+  }
+}
+
 /** A quest giver's marker over their name: a bobbing "!" (talk to them) or "…" (they're waiting on you), in the
  *  quest's colour. Only the player whose quest it is sees it. */
 export class QuestMarker {

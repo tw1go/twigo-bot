@@ -1,5 +1,5 @@
 import { keyLabel, matches, onKeybinds } from './keybinds';
-import type { MeDig, MeResponse, PresenceStatus, PreregStatus } from '@mikazuki/shared';
+import type { CharacterProgress, MeDig, MeResponse, PresenceStatus, PreregStatus } from '@mikazuki/shared';
 import { renderPrereg } from '../hud';
 import { fakeLogin, loadMe } from '../session';
 import { playSound } from '../audio/sound';
@@ -10,7 +10,8 @@ import { showGuide } from './guide';
 import { showSettings } from './settings';
 
 // The town's HUD (replaces the page's login corner while you're in town): your character's head and name top left,
-// in the game's pixel frame with the Settings button under them; Kowens and shovels top right, each with a "+" that
+// in the game's pixel frame, with your level ("Lv N") and a thin XP bar under the name (full and "MAX" at the cap; HP
+// and MP bars go under it, in .th-bars); the Settings button under them; Kowens and shovels top right, each with a "+" that
 // explains how to get more. DOM text only. The numbers refresh every minute and whenever a "+" is opened.
 
 export interface TownHudOptions {
@@ -77,6 +78,7 @@ const EARN = [
 let setAvatar: (head: HTMLCanvasElement) => void = () => {};
 let setClass: (cls: { name: string; badge: string } | null) => void = () => {};
 let setName: (name: string) => void = () => {};
+let setLevel: (p: CharacterProgress | null) => void = () => {};
 
 /** Your new nickname in the profile box (a Rename Card). */
 export const setHudName = (name: string) => setName(name);
@@ -84,6 +86,9 @@ export const setHudName = (name: string) => setName(name);
 /** Your class badge over the avatar's corner (the 16x16 badge at the HUD's 2×; the avatar is under 48 px at 1×), or
  *  none before a class is chosen. */
 export const setHudClass = (cls: { name: string; badge: string } | null) => setClass(cls);
+
+/** Your level and XP under the name (none: hidden, e.g. a guest). */
+export const setHudLevel = (p: CharacterProgress | null) => setLevel(p);
 
 /** Your character's head in the profile box, after a new look (the Parlor). */
 export const setHudAvatar = (head: HTMLCanvasElement | null) => head && setAvatar(head);
@@ -127,7 +132,31 @@ export function mountTownHud(o: TownHudOptions): void {
   face.append(dot, classBadge);
   const nameEl = el('span', 'th-name', o.name);
   setName = (name) => (nameEl.textContent = name);
-  profile.append(face, nameEl);
+  // Level and XP under the name: "Lv 7" and a thin bar (gold and full, "MAX", at the cap). HP and MP bars join .th-bars.
+  const who = el('span', 'th-who');
+  const level = el('span', 'th-level');
+  const lv = el('span', 'th-lv');
+  const bars = el('span', 'th-bars');
+  const xpBar = el('span', 'th-xp');
+  const xpFill = el('span', 'th-xp-fill');
+  const xpText = el('span', 'th-xp-text');
+  xpBar.append(xpFill);
+  bars.append(xpBar);
+  level.append(lv, bars, xpText);
+  level.hidden = true;
+  setLevel = (p) => {
+    level.hidden = !p;
+    if (!p) return;
+    const max = !p.next;
+    lv.textContent = `Lv ${p.level}`;
+    level.classList.toggle('th-max', max);
+    xpFill.style.width = `${max ? 100 : Math.min(100, (p.xp / p.next) * 100)}%`;
+    xpText.textContent = max ? 'MAX' : `${Math.floor((p.xp / p.next) * 100)}%`;
+    level.title = max ? `Level ${p.level}: the highest` : `Level ${p.level} · ${p.xp.toLocaleString()} / ${p.next.toLocaleString()} XP to Lv ${p.level + 1}`;
+    level.setAttribute('aria-label', level.title);
+  };
+  who.append(nameEl, level);
+  profile.append(face, who);
   const settings = el('button', 'th-settings');
   if (o.gear) {
     const gear = el('img', 'th-gear');

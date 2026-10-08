@@ -10,7 +10,7 @@ import { BuildingLabel, UI_FONT } from '../ui/labels';
 import { LOADING_LINES } from '../ui/loading-lines';
 import { TownLink } from '../net/town';
 import { showElsewhere, showKicked } from '../ui/elsewhere';
-import { mountTownHud, setHudAvatar, setHudClass, setHudName } from '../ui/townhud';
+import { mountTownHud, setHudAvatar, setHudClass, setHudLevel, setHudName } from '../ui/townhud';
 import { showParlor } from '../ui/parlor';
 import { type HouseArt, composeHouse, houseFiles, houseStyles, tidyLook } from '../houses/art';
 import { areaUrl, cameFrom, hoodAction, loadHood, saveHouse } from '../net/hood';
@@ -89,7 +89,7 @@ import type { AdventureData } from '../net/adventure';
 import { Hotbar } from '../ui/hotbar';
 import { mountClassSwitch } from '../ui/class-switch';
 import { MOVES, type MoveKind, isMoveKind, moveTiles, playMove } from '../world/mobility';
-import { changeClass, devSwitchClass, adventure, adventureData, chooseClass, classInfo, initAdventure, itemDef, loadAdventureData, onAdventure, questDef, questFor, questTalk } from '../net/adventure';
+import { changeClass, devSwitchClass, adventure, adventureData, chooseClass, classInfo, initAdventure, itemDef, loadAdventureData, onAdventure, questDef, questFor, questTalk, setProgress } from '../net/adventure';
 import type { ClassArt } from '../assets/types';
 import { drawRested, loadImages, poseFiles, restFiles } from '../characters/kit-art';
 import { holdQuestBanners, mountQuests } from '../ui/quests';
@@ -402,6 +402,7 @@ export class TownScene extends Phaser.Scene {
     // The Slums' mobs (the zones that are on), sorted and tinted like everyone else.
     if (this.map.mobZones?.length) {
       const mobs = new Mobs(this, this.M, this.map, this.grid, this.objects, (obj) => this.tint >= 0 && obj.setTint(this.tint), this.fxLayers);
+      mobs.myLevel = () => adventure()?.progress.level ?? 1; // name colours by the level gap
       const box = new MobTargetBox();
       mobs.onTarget = (m) => {
         box.show(m && { name: m.def.name, level: m.level, colour: TONE[mobs.tone(m)], zone: m.zone.name, hp: m.hp / m.maxHp, boss: m.radius > 0 });
@@ -697,9 +698,13 @@ export class TownScene extends Phaser.Scene {
         void this.wearWeapon(s.equipped.weapon, s.cls);
         const c = classInfo(s.cls);
         setHudClass(c && icons ? { name: c.name, badge: asset(icons.small.replace('{class}', c.id)) } : null);
+        setHudLevel(s.progress);
       });
     });
   }
+
+  /** Dev: ?xp= / ?level= asked for once this visit (not again on a reconnect). */
+  private devLevelled = false;
 
   /** A map with mobs (the Slums): battle poses, and the damage skills hit mobs. */
   private battleMap = false;
@@ -1336,6 +1341,17 @@ export class TownScene extends Phaser.Scene {
       }
       if (m.t === 'mob-attack') return this.mobs?.strike(m.id, m.target, m.dir, m.slow);
       if (m.t === 'mob-spawn') return this.mobs?.respawn(m.id, m.col, m.row, m.hp);
+      // Your level, XP and points (a kill's XP, dev's ?xp=): the HUD and everything that shows them follow.
+      if (m.t === 'progress') return setProgress(m.progress);
+      // Someone went up a level (maybe you): "Level up!" over them, a soft chime (quieter for others).
+      if (m.t === 'level-up') {
+        const mine = m.id === myId;
+        const ch = charOf(m.id);
+        if (!ch) return;
+        ch.levelUp();
+        playSound('casino-win', mine ? 0.1 : 0.05);
+        return;
+      }
       if (m.t === 'attack-refused') {
         if (m.reason === 'range') toast('Too far to hit it.', 1500);
         return;
@@ -1367,6 +1383,12 @@ export class TownScene extends Phaser.Scene {
         link.send({ t: 'here', col: t.col, row: t.row, dir: this.player.facing });
         this.sent = { dir: this.player.facing, sit: false };
         if (golemDev) void fetch(q.has('golemdemo') ? `/__golem?${new URLSearchParams({ demo: '1', as: fakeName() })}` : '/__golem?now=1').catch(() => null);
+        // Dev: ?xp=500 gives you XP, ?level=10 sets your level (the dev server's /__xp: its level-ups as from kills).
+        if (import.meta.env.DEV && fakeLogin() && (q.has('xp') || q.has('level')) && !this.devLevelled) {
+          this.devLevelled = true;
+          const ask: [string, string] = q.has('level') ? ['level', q.get('level')!] : ['xp', q.get('xp')!];
+          void fetch(`/__xp?${new URLSearchParams([['as', fakeName()], ask])}`).catch(() => null);
+        }
       }
       this.others.handle(m);
     };
