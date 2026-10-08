@@ -1,6 +1,6 @@
 import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import type { ClassesFile, HoodHouse, HouseLook, OutfitData, TownHoodActionResponse, TownHoodResponse, TownRace, TownRaceResponse } from '@mikazuki/shared';
+import type { ClassesFile, GearRarity, HoodHouse, HouseLook, OutfitData, TownHoodActionResponse, TownHoodResponse, TownItems, TownRace, TownRaceResponse } from '@mikazuki/shared';
 import { classSkills, damageSkillLevels, moveUnlock } from '@mikazuki/shared';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { doorSpot, hoodMap, lotTile } from '../../bot/src/web/hood-map.ts';
@@ -8,7 +8,8 @@ import type { Plugin } from 'vite';
 import { attachTown } from '../../bot/src/web/town.ts';
 import { MobRoom, loadMobKinds, loadSkillShapes } from '../../bot/src/web/town-mobs.ts';
 import { type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView, raiseSkill, resetSkillPoints, resetStatPoints, spendPoint } from '../../bot/src/web/progress.ts';
-import { loadStats } from '../../bot/src/web/stats-data.ts';
+import { loadItemData, loadStats } from '../../bot/src/web/stats-data.ts';
+import { buyCombat, devGive, takeLoot, usePotion } from '../../bot/src/web/combat-bag.ts';
 import { loadGolemArt } from '../../bot/src/web/town-golem.ts';
 import { LANES, finishMs, raceScript } from '../../bot/src/games/race-script.ts';
 import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
@@ -31,9 +32,18 @@ import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
 //   GET /__gift?as=Alice&item=megaphone&name=Megaphone&qty=3   Alice gets the item gift pop-up (as from /gift item)
 //   GET /__title?as=Alice&id=richest&name=Richest%20Among%20All&color=%23FFD54A   Alice gets the new-title pop-up
 //   GET /__look?as=Alice&look={…}&title=Kalbo&color=%23F8BF27   Alice's new look / title (the pretend Parlor calls it)
-//   GET /__kit?as=Alice&cls=stick&weapon=weapon-training-stick&gear=[…]   Alice's class, worn weapon and everything she
-//   wears (the pretend quests and equipment call it, &progress= after a class change; the page also sends them on
-//   connect as &kit=, with her level, XP and points). Fights (and HP: her armor's DEF) use it all.
+//   GET /__kit?as=Alice&cls=stick&weapon=weapon-training-stick   Alice's class and worn weapon (the pretend quests and
+//   equipment call it, &progress= after a class change; the page also sends them on connect as &kit=, with her level, XP
+//   and points).
+//   POST /__items?as=Alice {equipped, bag, kusing}   Alice's items (the page sends them whenever they change on its
+//   side): fights (and HP: her armor's DEF) use them; loot, potions, the shop and /__give change them here and send her
+//   `items` (the page keeps them). GET: what's kept here ({ known: false } after a restart: the page sends its own).
+//   GET /__give?as=Alice&def=weapon-sturdy-slingshot&rarity=darkOrange&plus=7   an item for Alice, rolled as drops are
+//   (&count=N a stack; &level= an agimat's); &kusing=5000 sets her Kusing, &whetstones=200 gives her Rough Whetstones
+//   (the page's ?give=<defId>:<rarity>:<plus>, ?kusing=, ?whetstones= call it on arrival)
+//   GET /__loot?rich=1   nearly every kill drops gear (the first kind, brown) and a potion, to try loot (rich=0: as ever)
+//   POST /__shop?as=Alice {id, quantity, kowens}   buys a combat item (the sari-sari store's Healing and Smithing tabs)
+//   with her Kusing here, or the pretend shop's Kowens (sent along; what's left comes back)
 //   GET /__points?as=Alice&stat=DEX   Alice spends a stat point on DEX (&reset=1: all back), by the bot's rules
 //   (web/progress.ts); answers { ok, message?, progress } and sends her `progress` (the pretend equipment panel calls it)
 //   GET /__skills?as=Alice&skill=0   Alice puts a skill point into her class's first skill (&skill=dash: Dash; &reset=1:
@@ -57,7 +67,13 @@ export function devTown(): Plugin {
       if (!httpServer) return;
       const json = JSON.parse(readFileSync(join(server.config.publicDir, 'assets/maps/town.json'), 'utf8'));
       const looks = new Map<string, OutfitData>();
-      const kits = new Map<string, { cls: string | null; weapon: string | null; gear?: string[] }>(); // class, worn weapon and everything worn (the pretend quests and equipment)
+      const kits = new Map<string, { cls: string | null; weapon: string | null }>(); // class and worn weapon (the pretend quests and equipment)
+      // Each player's items (the page's copy, sent with /__items): loot, potions, the shop and ?give= change them here.
+      const items = loadItemData();
+      const gear = new Map<string, TownItems>();
+      const gearOf = (name: string) => gear.get(name) ?? gear.set(name, { equipped: {}, bag: [], kusing: 0 }).get(name)!;
+      const devUid = () => `dev-${Math.random().toString(16).slice(2, 14)}`;
+      let richLoot = false;
       // Levels, XP and points (the bot's web/progress.ts, in memory; each page sends its own on connect).
       const stats = loadStats();
       const levels = new Map<string, SavedProgress>();
@@ -307,8 +323,8 @@ export function devTown(): Plugin {
           const name = q.get('dev')?.slice(0, 16);
           if (!name) return null;
           try {
-            const kit = (JSON.parse(q.get('kit') ?? 'null') ?? {}) as { cls?: string | null; weapon?: string | null; gear?: string[]; progress?: SavedProgress };
-            kits.set(name, { cls: kit.cls ?? null, weapon: kit.weapon ?? null, ...(Array.isArray(kit.gear) ? { gear: kit.gear } : {}) });
+            const kit = (JSON.parse(q.get('kit') ?? 'null') ?? {}) as { cls?: string | null; weapon?: string | null; progress?: SavedProgress };
+            kits.set(name, { cls: kit.cls ?? null, weapon: kit.weapon ?? null });
             if (kit.progress) levels.set(name, progressView(stats, kit.cls ?? null, kit.progress));
           } catch {
             // no class yet
@@ -325,7 +341,8 @@ export function devTown(): Plugin {
           fighter: (name) => {
             const p = levelOf(name);
             const kit = kits.get(name);
-            return { cls: kit?.cls, level: p.level, points: p.points, gear: kit?.gear ?? [kit?.weapon], skills: damageSkillLevels(classOf(name), p) }; // everything worn (its DEF, HP…)
+            const worn = Object.values(gear.get(name)?.equipped ?? {});
+            return { cls: kit?.cls, level: p.level, points: p.points, gear: worn.length ? worn : [kit?.weapon], skills: damageSkillLevels(classOf(name), p) }; // everything worn (its DEF, HP…)
           },
           kill: (name, mob) => {
             const r = killXp(stats, kits.get(name)?.cls ?? null, levelOf(name), mob);
@@ -333,6 +350,13 @@ export function devTown(): Plugin {
             server.config.logger.info(`[levels] ${name} +${r.gained} XP → Lv ${r.progress.level} (${r.progress.xp}/${r.progress.next})`, { timestamp: true });
             return r;
           },
+        },
+        // /__loot?rich=1: nearly every kill drops gear and a potion (the first kinds: the rolls come out low).
+        lootRandom: () => (richLoot ? Math.random() * 0.04 : Math.random()),
+        items: {
+          take: (name, loot) => takeLoot(items, gearOf(name), loot, devUid),
+          usePotion: (name, defId) => usePotion(items, gearOf(name), defId),
+          state: (name) => gearOf(name),
         },
         onSay: (_id, nickname, text, megaphone) => server.config.logger.info(`[town chat → Discord] ${megaphone ? '📢 ' : ''}${nickname}: ${text}`, { timestamp: true }),
       });
@@ -355,13 +379,7 @@ export function devTown(): Plugin {
       server.middlewares.use('/__kit', (req, res) => {
         const q = new URL(req.url ?? '/', 'http://localhost').searchParams;
         const name = q.get('as') ?? '';
-        let gear: string[] | undefined;
-        try {
-          gear = q.get('gear') ? JSON.parse(q.get('gear')!) : undefined;
-        } catch {
-          // just the weapon
-        }
-        const kit = { cls: q.get('cls') || null, weapon: q.get('weapon') || null, ...(Array.isArray(gear) ? { gear } : {}) };
+        const kit = { cls: q.get('cls') || null, weapon: q.get('weapon') || null };
         kits.set(name, kit);
         try {
           if (q.get('progress')) levels.set(name, progressView(stats, kit.cls, JSON.parse(q.get('progress')!))); // a class change gives the points back
@@ -370,6 +388,42 @@ export function devTown(): Plugin {
         }
         town.kit(name, kit.cls, kit.weapon);
         res.end(`${name}: ${kit.cls ?? 'no class'}, ${kit.weapon ?? 'no weapon'}\n`);
+      });
+      server.middlewares.use('/__items', async (req, res) => {
+        const name = new URL(req.url ?? '/', 'http://localhost').searchParams.get('as') ?? '';
+        if (req.method !== 'POST') return reply(res, gear.has(name) ? { known: true, ...gearOf(name) } : { known: false });
+        const body = (await readJson(req)) as unknown as TownItems;
+        if (body && typeof body === 'object' && Array.isArray(body.bag)) gear.set(name, { equipped: body.equipped ?? {}, bag: body.bag, kusing: Number(body.kusing) || 0 });
+        town.kit(name, kits.get(name)?.cls ?? null, gearOf(name).equipped.weapon?.defId ?? kits.get(name)?.weapon ?? null); // its HP and DEF in fights
+        reply(res, { ok: true });
+      });
+      server.middlewares.use('/__give', (req, res) => {
+        const q = new URL(req.url ?? '/', 'http://localhost').searchParams;
+        const name = q.get('as') ?? '';
+        const g = gearOf(name);
+        const said: string[] = [];
+        if (q.has('kusing')) said.push(`Kusing ${(g.kusing = Math.max(0, Math.floor(Number(q.get('kusing'))) || 0))}`);
+        if (q.has('whetstones')) said.push(devGive(items, g, 'rough-whetstone', { count: Math.max(1, Math.floor(Number(q.get('whetstones'))) || 1) }, devUid) ? `${q.get('whetstones')} Rough Whetstones` : 'no room for the whetstones');
+        if (q.get('def')) {
+          const it = devGive(items, g, q.get('def')!, { rarity: (q.get('rarity') || undefined) as GearRarity | undefined, plus: Number(q.get('plus') ?? 0), count: Number(q.get('count') ?? 1), level: Number(q.get('level') ?? 0) || undefined }, devUid);
+          said.push(it ? `${it.defId} (${it.rarity} +${it.plus})` : `no ${q.get('def')} (unknown, or no room)`);
+        }
+        town.items(name);
+        server.config.logger.info(`[items] ${name}: ${said.join(', ')}`, { timestamp: true });
+        reply(res, { said, items: g }); // (the page takes them from here too, in case its socket isn't up yet)
+      });
+      server.middlewares.use('/__loot', (req, res) => {
+        richLoot = new URL(req.url ?? '/', 'http://localhost').searchParams.get('rich') === '1';
+        res.end(`rich loot ${richLoot ? 'on' : 'off'}\n`);
+      });
+      server.middlewares.use('/__shop', async (req, res) => {
+        const name = new URL(req.url ?? '/', 'http://localhost').searchParams.get('as') ?? '';
+        // (Kowens: the page's pretend shop's, sent along.)
+        const { id, quantity, kowens } = (await readJson(req)) as { id?: string; quantity?: number; kowens?: number };
+        let have = Number(kowens) || 0;
+        const r = buyCombat(items, gearOf(name), levelOf(name).level, String(id), Number(quantity), { have, spend: (n) => (have >= n ? ((have -= n), true) : false) }, devUid);
+        if (r.ok) town.items(name);
+        reply(res, { ok: r.ok, message: r.message, kusing: gearOf(name).kusing, kowens: have });
       });
       server.middlewares.use('/__xp', (req, res) => {
         const q = new URL(req.url ?? '/', 'http://localhost').searchParams;

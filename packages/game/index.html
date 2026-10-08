@@ -472,6 +472,32 @@
       #inventory .iv-note.iv-bad { color: #F7768E; }
       #inventory .iv-wallet { flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 6px 0; border-top: 2px solid #1E1B3A; font-size: 15px; color: #A9B1D6; }
       #inventory .iv-wallet b { font-size: 24px; color: #F8BF27; }
+      /* Kowens and Kusing side by side (Kusing's coin, the numbers in Jersey 10 like every number). */
+      #inventory .iv-kowens, #inventory .iv-kusing { display: flex; align-items: center; gap: 6px; }
+      #inventory .iv-kusing { margin-left: auto; }
+      #inventory .iv-kusing b { color: #FCDA4A; }
+      .rw-kusing { display: inline-block; flex: none; vertical-align: middle; background-size: 100% 100%; background-repeat: no-repeat; image-rendering: pixelated; }
+      .it-placeholder { display: inline-block; flex: none; image-rendering: pixelated; }
+      /* The combat bag: a broken item greyed; its hover tooltip, beside the slot (left of it). */
+      #inventory .iv-broken > :first-child { filter: grayscale(1) brightness(0.7); }
+      .iv-tip { position: fixed; z-index: 60; font-family: var(--ui-font); min-width: 170px; max-width: 250px; padding: 8px 10px; background: #111827; color: #E6E9F2; font-size: 13px; pointer-events: none; border: 2px solid #7C2AE8; box-shadow: 0 4px 0 #0B0A1A; }
+      .iv-tip[hidden] { display: none; }
+      .iv-tip .eq-tip-name { font-weight: 700; font-size: 15px; }
+      .iv-tip .eq-tip-meta, .iv-tip .eq-tip-needs { font-size: 12px; color: #A9B1D6; }
+      .iv-tip .eq-tip-needs { color: #E6E9F2; }
+      .iv-tip .eq-tip-stat { font-size: 13px; color: #A3E635; }
+      .iv-tip .eq-tip-unmet { color: #F7768E; }
+      .iv-tip .eq-tip-note { margin-top: 4px; color: #7A8099; font-size: 11px; }
+      /* Item tooltips (ui/item-tip.ts): affix lines (orange items' warmer), agimat slots as dots, what binds. */
+      .eq-tip-line { color: #7DD3FC; font-size: 13px; }
+      .eq-tip-line.eq-tip-orange { color: #FDBA74; }
+      #inventory .eq-tip-line { font-size: 14px; }
+      .eq-tip-about { margin-top: 4px; color: #c0caf5; font-size: 12px; }
+      .eq-tip-dots { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 2px 6px; margin-top: 4px; font-size: 12px; color: #A9B1D6; }
+      .eq-tip-dot { width: 8px; height: 8px; border: 2px solid #A9B1D6; box-sizing: border-box; border-radius: 50%; }
+      .eq-tip-dot-on { background: #A3E635; border-color: #A3E635; }
+      .eq-tip-binds, #inventory .eq-tip-binds, #equipment .eq-tip-binds, .iv-tip .eq-tip-binds { color: #FDBA74; }
+      #equipment .eq-broken > :first-child { filter: grayscale(1) brightness(0.7); }
       @media (max-width: 760px), (max-height: 500px) { #inventory { top: 132px; right: 8px; max-height: calc(100vh - 150px); } #inventory .iv-grid { grid-template-columns: repeat(var(--cols, 5), minmax(0, 60px)); grid-auto-rows: 60px; } #inventory .iv-cell { width: 100%; height: 60px; } }
       #chat .em-open { height: 100%; min-width: 38px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 4px; background: rgba(0, 0, 0, 0.35); padding: 0 6px; }
       #chat .em-open:hover, #chat .em-open[aria-expanded='true'] { background: rgba(0, 0, 0, 0.55); box-shadow: 0 0 0 1px rgba(183, 148, 246, 0.6); }
@@ -1170,7 +1196,8 @@
       #reward .op-bail { flex: none; padding: 5px 10px; border: 2px solid #1E1B3A; border-radius: 0; background: #7DD3FC; color: #1E1B3A; font: inherit; font-size: 13px; font-weight: 700; box-shadow: inset 0 2px 0 #E0F2FE, inset 0 -3px 0 #0284C7, 0 3px 0 #1E1B3A; }
       #reward .op-bail:hover:not(:disabled) { background: #BAE6FD; }
       #reward .op-bail:disabled { opacity: 0.5; }
-      /* Sari-sari store (ui/shop.ts; tabs share the bank's .bk-tabs) */
+      /* Sari-sari store (ui/shop.ts; tabs share the bank's .bk-tabs): six tabs, a little narrower. */
+      #reward .sh-tabs .bk-tab { min-width: 0; padding: 6px 4px 5px; font-size: 13px; }
       #reward .rw-card:has(.sh-body) { width: min(460px, calc(100vw - 32px)); }
       /* A fixed size: the grid scrolls, the details and the message keep their room, so nothing jumps. */
       #reward .sh-body { margin-bottom: 14px; text-align: left; }
@@ -1198,6 +1225,9 @@
       #reward .sh-step:hover:not(:disabled) { background: #C4B5FD; }
       #reward .sh-step:disabled { opacity: 0.4; }
       #reward .sh-count { min-width: 32px; text-align: center; font-weight: 700; }
+      #reward .sh-number { width: 56px; height: 30px; box-sizing: border-box; border: 0; border-radius: 0; background: #F3F0FF; color: #1E1B3A; font: inherit; font-weight: 700; -moz-appearance: textfield; }
+      #reward .sh-number::-webkit-inner-spin-button, #reward .sh-number::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+      #reward .sh-number:focus { outline: 2px solid #7C2AE8; outline-offset: -2px; }
       #reward .sh-buy { padding: 7px 14px; border: 2px solid #1E1B3A; border-radius: 0; background: #FCDA4A; color: #1E1B3A; font: inherit; font-size: 14px; font-weight: 700; box-shadow: inset 0 2px 0 #FFF59A, inset 0 -3px 0 #D99A0B, 0 3px 0 #1E1B3A; transition: transform 0.06s, box-shadow 0.06s; }
       #reward .sh-buy:hover:not(:disabled) { background: #FDE68A; }
       #reward .sh-buy:active:not(:disabled) { transform: translateY(2px); box-shadow: inset 0 2px 0 #FFF59A, inset 0 -2px 0 #D99A0B, 0 1px 0 #1E1B3A; }
@@ -1301,6 +1331,9 @@
       #hotbar .hb-skill::before { content: ''; position: absolute; inset: -2px; background: var(--badge) center / 32px 32px no-repeat; opacity: 0.35; image-rendering: pixelated; }
       #hotbar .hb-initials { position: relative; font-weight: 700; font-size: 13px; letter-spacing: 0.5px; color: #fff; text-shadow: 0 1px 0 #0B0A1A, 1px 0 0 #0B0A1A, -1px 0 0 #0B0A1A, 0 -1px 0 #0B0A1A; }
       #hotbar .hb-emoji { font-size: 20px; }
+      #hotbar .hb-count { position: absolute; right: -6px; bottom: -8px; font-size: 15px; color: #fff; text-shadow: 0 1px 0 #0B0A1A, 1px 0 0 #0B0A1A, -1px 0 0 #0B0A1A, 0 -1px 0 #0B0A1A; pointer-events: none; } /* HP/MP Potions you carry */
+      #hotbar .hb-count.hb-none { color: #F7768E; }
+      #hotbar .hb-empty .it-frame { filter: grayscale(1) brightness(0.5); }
       #hotbar .hb-icon, #skill-book .hb-icon { display: block; flex: none; width: 32px; height: 32px; image-rendering: pixelated; pointer-events: none; }
       #hotbar .hb-icon { margin: -2px; }
       #hotbar .hb-off .hb-icon, #hotbar .hb-off .hb-initials { filter: grayscale(1) brightness(0.45); } /* damage skills: there's no combat in town */

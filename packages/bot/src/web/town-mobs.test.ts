@@ -124,7 +124,8 @@ test('a hit takes the stats rules\' damage from its HP, the mob goes after its f
   while (last.ok && !last.hits[0].dead) last = room.attack("p1", at, "stick", mob.id, (t += 1000));
   assert.ok(last.ok && last.hits[0].dead && last.hits[0].hp === 0);
   // Its XP (the mob table's) goes to its killer.
-  assert.deepEqual(last.kills, [{ id: mob.id, level: mob.level, xp: kindOf(mob.id).xp, to: ['p1'] }]);
+  assert.deepEqual(last.kills.map(({ at: _at, ...k }) => k), [{ id: mob.id, kind: 'tin-can', level: mob.level, xp: kindOf(mob.id).xp, to: ['p1'] }]);
+  assert.equal(last.kills[0].at.length, 2); // where it died: its loot lands round there
   assert.equal(room.snapshot(t)[0].dead, true);
   assert.deepEqual(room.attack('p1', at, 'stick', mob.id, t + 500), { ok: false, reason: 'gone' });
   const zone = active.find((z) => mob.id.startsWith(`${z.id}:`))!;

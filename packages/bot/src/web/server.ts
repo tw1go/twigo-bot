@@ -38,8 +38,7 @@ import { arenaBets, refundHeldBets } from './town-arena-bets.js';
 import { kowen } from '../kowens.js';
 import { filterText, kickedUntil, mutedUntil } from './town-mod.js';
 import { getOutfit, parseOutfit, saveOutfit } from './outfit.js';
-import { adventureOf, fighterOf, killFor, kitOf, moveLevel, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townEquip, townPoints, townQuest, townSkills, trainingArmorFor } from './adventure.js';
-import { freeSlots } from '../dig/bag.js';
+import { adventureOf, combatOf, fighterOf, killFor, kitOf, moveLevel, takeLootFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townEquip, townPoints, townQuest, townSkills, trainingArmorFor } from './adventure.js';
 import { renameWithCard } from '../items/rename-card.js';
 import { changeClassWithTicket } from '../items/class-ticket.js';
 import { LAUNCH_REWARD, isPreregistered, launched, preregCount, preregister } from '../prereg/prereg.js';
@@ -72,7 +71,7 @@ import { type CmsDeps, cms } from './cms.js';
 //   GET  /town/bank     wallet, vault and loans (members)
 //   POST /town/bank     { action: deposit|withdraw|borrow|repay, amount? } (from the game's page only; members)
 //   GET  /town/shop     the rewards shop: what /redeem sells, as the viewer sees it (members)
-//   POST /town/shop     { id, quantity } redeem a reward (from the game's page only; members)
+//   POST /town/shop     { id, quantity } redeem a reward, or buy HP/MP Potions (Kusing) or whetstones and Repair Kits (from the game's page only; members)
 //   GET  /town/player?id=  another player in town (by town id): /balance and /status for them (members)
 //   POST /town/give     { to, amount } give Kowens to a player in town (from the game's page only; members)
 //   POST /town/verdict  { to, mode: diss|praise|judge } on a player in town, 1 Kowen (from the game's page only; members)
@@ -229,7 +228,7 @@ async function me(client: Client, req: IncomingMessage, res: ServerResponse): Pr
     return { id, name: item.name, emoji: item.emoji, rarity: item.rarity, count };
   });
   // A class from before training armor: the Tanod's set, once (what has no room yet, on a later visit).
-  const trainingGear = trainingArmorFor(userId, freeSlots(userId));
+  const trainingGear = trainingArmorFor(userId);
   if (trainingGear.length) console.log(`[class] ${userId} got training armor: ${trainingGear.join(', ')}`);
   const body: MeResponse = { id: userId, name, avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items, preregistered: isPreregistered(userId), house: !!houseOf(userId), tester: await isTester(client, userId), outfit: getOutfit(userId), nickname: getNickname(userId), title: titleOf(userId), newTitle: newTitle(userId), welcomeGift: welcomeGift(userId), status: await statusOf(client, userId), adventure: adventureOf(userId),
     dig: digStatus(userId), ...(trainingGear.length ? { trainingGear } : {}) };
@@ -457,10 +456,12 @@ export function startWebServer(client: Client): void {
         if (req.method === 'GET') return send(res, 200, JSON.stringify(townShop(userId, await isTester(client, userId))));
         const id = body?.id;
         const quantity = body?.quantity ?? 1;
-        if (typeof id !== 'string' || typeof quantity !== 'number' || !Number.isInteger(quantity) || quantity < 1 || quantity > 10) {
+        if (typeof id !== 'string' || typeof quantity !== 'number' || !Number.isInteger(quantity) || quantity < 1 || quantity > 999) {
           return send(res, 400, '{"error":"invalid purchase"}');
         }
-        return send(res, 200, JSON.stringify(await buyFromShop(client, userId, id, quantity, await nameOf(client, userId))));
+        const bought = await buyFromShop(client, userId, id, quantity, await nameOf(client, userId));
+        if (bought.ok) town?.items(userId); // the combat bag and Kusing, if it was a combat item
+        return send(res, 200, JSON.stringify(bought));
       }
       if ((req.method === 'GET' && path === '/town/player') || (req.method === 'POST' && (path === '/town/give' || path === '/town/verdict'))) {
         if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
@@ -567,7 +568,7 @@ export function startWebServer(client: Client): void {
         const before = kitOf(userId).cls;
         const result = changeClassWithTicket(userId, body?.cls);
         if (result.ok) {
-          town?.kit(userId, result.adventure.cls, result.adventure.equipped.weapon ?? null); // their badge and weapon, for everyone
+          town?.kit(userId, result.adventure.cls, result.adventure.equipped.weapon?.defId ?? null); // their badge and weapon, for everyone
           console.log(`[class] ${userId}: ${before} → ${result.adventure.cls} (${result.tickets} ticket(s) left)`);
         }
         return send(res, 200, JSON.stringify(result));
@@ -588,7 +589,7 @@ export function startWebServer(client: Client): void {
         if (path === '/town/quest') {
           const action = parseQuestAction(body);
           if (!action) return send(res, 400, '{"error":"invalid quest action"}');
-          result = townQuest(userId, action, freeSlots(userId));
+          result = townQuest(userId, action);
         } else if (path === '/town/points') {
           const action = parsePointsAction(body);
           if (!action) return send(res, 400, '{"error":"invalid points action"}');
@@ -604,10 +605,10 @@ export function startWebServer(client: Client): void {
         } else {
           const action = parseEquipAction(body);
           if (!action) return send(res, 400, '{"error":"invalid equip action"}');
-          result = townEquip(userId, action, freeSlots(userId));
+          result = townEquip(userId, action);
         }
         const { changed, ...reply } = result;
-        if (changed) town?.kit(userId, reply.adventure.cls, reply.adventure.equipped.weapon ?? null); // the resting weapon, for everyone
+        if (changed) town?.kit(userId, reply.adventure.cls, reply.adventure.equipped.weapon?.defId ?? null); // the resting weapon for everyone, their gear's stats in fights
         if (reply.completed) console.log(`[quests] ${userId} completed ${reply.completed}${reply.adventure.cls ? ` (${reply.adventure.cls})` : ''}`);
         return send(res, 200, JSON.stringify(reply));
       }
@@ -853,6 +854,8 @@ export function startWebServer(client: Client): void {
           return r;
         },
       },
+      // Loot and HP/MP Potions: their combat bag and Kusing (saved with the character).
+      items: { take: takeLootFor, usePotion: usePotionFor, state: combatOf },
       // Mobility moves from their unlock level (Dash Lv 5, the class's own move Lv 8).
       moveLevel,
       // The Slums are for testers for now.

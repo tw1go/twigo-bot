@@ -1,6 +1,7 @@
 // Classes, quests and equipment: the shapes of the game's data files (classes/classes.json, quests/quests.json,
 // items/equipment.json under the game's public/assets/, read by the bot too) and of each member's saved state.
 
+import type { Item } from './items.js';
 import type { StatName, StatPoints } from './stats.js';
 
 /** classes/classes.json */
@@ -96,6 +97,7 @@ export interface EquipmentDef {
   training?: boolean;
   /** The agimats set in it (none yet). */
   agimats: string[];
+  /** Its own base and extras (training gear); others' base comes from stats.json gearBase by their level. */
   stats: EquipStats;
   /** Fields whose numbers are stand-ins for now. */
   placeholder?: string[];
@@ -139,10 +141,13 @@ export interface CharacterProgress {
 export interface AdventureState {
   cls: string | null;
   quests: { active: QuestProgress[]; done: string[] };
-  /** What's worn in each place (item ids). */
-  equipped: Partial<Record<EquipPlace, string>>;
-  /** Equipment in the bag, not worn (item ids, one slot each). */
-  bag: string[];
+  /** What's worn in each place. */
+  equipped: Partial<Record<EquipPlace, Item>>;
+  /** The combat bag (stats.json inventory.slots): gear not worn, whetstones, fragments, Repair Kits, agimats, HP/MP
+   *  Potions and cosmetics, one slot each (a stack in one). */
+  bag: Item[];
+  /** Kusing, the money mobs drop. */
+  kusing: number;
   progress: CharacterProgress;
   /** The Tanod's training armor set has been given (once, with the class or on a later login). */
   trainingArmorGiven: boolean;
@@ -151,8 +156,8 @@ export interface AdventureState {
 /** POST /town/quest: an objective done in the game (talked to `npc`, or chose `cls`). */
 export type TownQuestAction = { quest: string; action: 'talk'; npc: string } | { quest: string; action: 'chooseClass'; cls: string };
 
-/** POST /town/equip: wear an item from the bag (in `place`, or the first free place for its kind, else the first one; what
- *  was there goes back to the bag), or take one off (needs a free bag slot). */
+/** POST /town/equip: wear an item from the combat bag (by uid; in `place`, or the first free place for its kind, else the
+ *  first one; what was there goes back to the bag), or take one off (needs a free bag slot). */
 export type TownEquipAction = { action: 'equip'; item: string; place?: EquipPlace } | { action: 'unequip'; place: EquipPlace };
 
 /** POST /town/points: one stat point into the class's main or second stat, or every stat point back (free). */
@@ -166,9 +171,9 @@ export interface TownAdventureResponse {
   ok: boolean;
   message?: string;
   adventure: AdventureState;
-  /** An item just given (the class's training weapon), for the "Received" toast. */
+  /** An item just given (the class's training weapon: its kind), for the "Received" toast. */
   given?: string;
-  /** The training armor just given with it (item ids), for the "Received: Training gear" toast. */
+  /** The training armor just given with it (kinds), for the "Received: Training gear" toast. */
   gear?: string[];
   /** A quest just completed. */
   completed?: string;

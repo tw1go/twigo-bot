@@ -263,6 +263,8 @@ export type TownBankActionResponse = TownBankResponse & { ok: boolean; message: 
 /** The rewards shop: what /redeem sells, as the viewer sees it. */
 export interface TownShopResponse {
   kowens: number;
+  /** The viewer's Kusing (the Healing tab's money). */
+  kusing?: number;
   items: TownShopItem[];
   /** The viewer's Bakod lasts until (ms), if up. */
   fenceUntil: number | null;
@@ -275,7 +277,9 @@ export interface TownShopItem {
   id: string;
   name: string;
   cost: number;
-  kind: 'fence' | 'shovel' | 'key' | 'vault' | 'potion' | 'bag' | 'pass' | 'megaphone' | 'rename' | 'classchange';
+  kind: 'fence' | 'shovel' | 'key' | 'vault' | 'potion' | 'bag' | 'pass' | 'megaphone' | 'rename' | 'classchange' | 'healing' | 'smithing';
+  /** Paid in Kusing (the Healing tab's HP/MP Potions); else Kowens. */
+  currency?: 'kusing';
   /** What it does. */
   about: string;
   /** Most that can be bought at once now (0 = none today, e.g. shovels). */

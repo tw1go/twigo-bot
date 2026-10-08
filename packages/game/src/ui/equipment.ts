@@ -1,8 +1,9 @@
-import { type AdventureState, type EquipPlace, type EquipSlot, type EquipmentDef, type StatName, STAT_NAMES, baseStats, canEquip, derivedStats, gearTotals, pointStats, requirements } from '@mikazuki/shared';
+import { type AdventureState, type EquipPlace, type EquipSlot, type EquipmentDef, type StatName, STAT_NAMES, baseStats, canEquip, derivedStats, itemTotals, pointStats, requirements } from '@mikazuki/shared';
 import type { Dir } from '../assets/types';
 import { playSound } from '../audio/sound';
 import { adventure, adventureData, cantWear, classInfo, equipItem, itemDef, onAdventure, placesFor, resetPoints, spendPoint, unequipPlace } from '../net/adventure';
-import { type Rarity, RARITY_COLOUR, RARITY_LABEL, RARITY_TEXT, isRarity, itemArt } from './item-art';
+import { type Rarity, RARITY_COLOUR, RARITY_LABEL, RARITY_TEXT, isRarity } from './item-art';
+import { itemPicture, itemTipFor, myMainStat, nameOf, rarityOf } from './item-tip';
 import { toast } from './toast';
 
 // 🛡️ The equipment panel, on the left of the bag (it opens and closes with it; I or B). Twelve places in the
@@ -181,16 +182,19 @@ export class EquipmentPanel {
     this.root.style.right = `${Math.round(innerWidth - bag.left + 10)}px`;
   }
 
-  /** Wears an item from the bag: in `place` (a drop) or the first place for its kind (a double-click). */
-  async wear(id: string, place?: EquipPlace): Promise<void> {
-    const item = itemDef(id);
-    if (!item || this.busy) return;
+  /** Wears an item from the combat bag (by uid): in `place` (a drop) or the first place for its kind (a double-click). */
+  async wear(uid: string, place?: EquipPlace): Promise<void> {
+    const it = adventure()?.bag.find((b) => b.uid === uid);
+    const item = itemDef(it?.defId);
+    if (!it || this.busy) return;
+    if (!item) return void toast("That can't be worn.", 2200, 'bad');
     const target = place ?? placesFor(item.slot)[0];
     if (place && KIND[place] !== item.slot) return this.refuse(place, 'Wrong slot');
-    const cant = cantWear(item); // the server checks it too
+    if (it.broken) return this.refuse(target, "It's broken: repair it first");
+    const cant = cantWear({ ...item, level: it.level }); // the server checks it too
     if (cant) return this.refuse(target, cant);
     this.busy = true;
-    const r = await equipItem(id, place);
+    const r = await equipItem(uid, place);
     this.busy = false;
     if (!r?.ok) return this.refuse(target, r?.message?.replace(/\.$/, '') ?? "Couldn't reach the bot");
     playSound('click');
@@ -269,8 +273,8 @@ export class EquipmentPanel {
   }
 
   private showTip(place: EquipPlace, at: HTMLElement): void {
-    const item = itemDef(adventure()?.equipped[place]);
-    this.tip.replaceChildren(...(item ? itemTip(item) : [el('div', 'eq-tip-name', this.placeName(place))]));
+    const item = adventure()?.equipped[place];
+    this.tip.replaceChildren(...(item ? itemTipFor(item) : [el('div', 'eq-tip-name', this.placeName(place))]));
     this.tip.hidden = false;
     const r = at.getBoundingClientRect();
     const box = this.root.getBoundingClientRect();
@@ -283,15 +287,15 @@ export class EquipmentPanel {
   private render(s: AdventureState): void {
     const sil = this.o.silhouettes;
     for (const [place, b] of this.slots) {
-      const item = itemDef(s.equipped[place]);
+      const item = s.equipped[place];
       const kind = KIND[place];
       b.replaceChildren();
       b.classList.toggle('eq-worn', !!item);
-      b.setAttribute('aria-label', item ? `${this.placeName(place)}: ${item.name}` : `${this.placeName(place)} (empty)`);
+      b.classList.toggle('eq-broken', !!item?.broken);
+      b.setAttribute('aria-label', item ? `${this.placeName(place)}: ${nameOf(item)}` : `${this.placeName(place)} (empty)`);
       if (item) {
-        const rarity: Rarity = isRarity(item.rarity) ? item.rarity : 'common';
-        b.style.setProperty('--rarity', RARITY_COLOUR[rarity]);
-        b.append(itemArt(item.id, rarity, 'icon', 2, true) ?? slotSilhouette(kind) ?? el('span', 'eq-emoji', '⚔️'));
+        b.style.setProperty('--rarity', RARITY_COLOUR[rarityOf(item)]);
+        b.append(itemPicture(item, 'icon', 2));
       } else if (sil) {
         const icon = slotSilhouette(kind)!;
         icon.classList.add('eq-silhouette');
@@ -311,11 +315,11 @@ export class EquipmentPanel {
 
   /** The stats box: ATK (Power), DEF, HP, MP | STR, DEX, INT, Crit, and your stat points. */
   private renderStats(s: AdventureState): void {
-    const S = adventureData()?.stats;
-    if (!S) return void this.stats.replaceChildren();
+    const D = adventureData();
+    const S = D?.stats;
+    if (!D || !S) return void this.stats.replaceChildren();
     const p = s.progress;
-    const worn = Object.values(s.equipped).map((id) => itemDef(id)?.stats ?? {});
-    const st = derivedStats(S, s.cls, p.level, baseStats(S, s.cls, p.level, p.points), gearTotals(worn));
+    const st = derivedStats(S, s.cls, p.level, baseStats(S, s.cls, p.level, p.points), itemTotals(D, Object.values(s.equipped).filter((i) => !!i), myMainStat()));
     const plus = s.cls && p.statPoints > 0 ? pointStats(S, s.cls) : [];
     const row = (label: string, value: string, stat?: StatName) => {
       const r = el('div', 'eq-stat');
@@ -346,35 +350,6 @@ export class EquipmentPanel {
     }
     this.stats.replaceChildren(left, right, foot);
   }
-}
-
-/** An item's tooltip: its name in its rarity's colour, its rarity and who it's for, what it needs ("Lv 1 · DEX 8 · INT 5":
- *  what you don't meet in red, by your base stats), and its stats. */
-export function itemTip(item: EquipmentDef): HTMLElement[] {
-  const rarity: Rarity = isRarity(item.rarity) ? item.rarity : 'common';
-  const name = el('div', 'eq-tip-name', item.name);
-  name.style.color = RARITY_TEXT[rarity];
-  const who = item.class ? (classInfo(item.class)?.name ?? item.class) : item.gear;
-  const label = [RARITY_LABEL[rarity], who, NAME[item.slot]].filter(Boolean).join(' · ');
-  const parts = [name, el('div', 'eq-tip-meta', label)];
-  const S = adventureData()?.stats;
-  const s = adventure();
-  if (S) {
-    const missing = s ? canEquip(S, baseStats(S, s.cls, s.progress.level, s.progress.points), s.progress.level, item).missing : [];
-    const needs = el('div', 'eq-tip-needs');
-    requirements(S, item).forEach((r, i) => {
-      const m = missing.find((x) => x.stat === r.stat);
-      if (i) needs.append(' · ');
-      needs.append(el('span', m && !m.highest ? 'eq-tip-unmet' : undefined, r.stat === 'level' ? `Lv ${r.value}` : `${r.stat} ${r.value}`));
-    });
-    parts.push(needs);
-    const highest = missing.find((m) => m.highest);
-    if (highest) parts.push(el('div', 'eq-tip-unmet', `${highest.stat} must be your highest stat`));
-  }
-  parts.push(...Object.entries(item.stats).map(([k, v]) => el('div', 'eq-tip-stat', `+${v} ${k === 'crit' ? 'Crit %' : k.toUpperCase()}`)));
-  if (item.training) parts.push(el('div', 'eq-tip-note', "Training gear: bound; it can't be dropped, traded or sold"));
-  else if (item.bound) parts.push(el('div', 'eq-tip-note', "Bound: it can't be traded"));
-  return parts;
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {

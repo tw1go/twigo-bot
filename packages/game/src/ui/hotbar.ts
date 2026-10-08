@@ -17,7 +17,9 @@ import { toast } from './toast';
 // hovered (the class choice's preview, combat/skill-stage.ts); a + raises an unlocked skill below its cap (a skill point,
 // POST /town/skills), Reset gives every point back (free). Locked skills are greyed with "Unlocks at Lv N" (on the bar
 // too, with a padlock: they can't be used until then). Drag one onto a slot, or click it and then a slot. Potions are
-// dragged in from the bag. Drag a slot onto another to swap them; drag it off the bar to empty it (right-click leaves it). Per class, saved in this browser (localStorage `mk_hotbar`); a class's first bar has
+// dragged in from the bag: HP and MP Potions from the combat bag (onItem uses one: the town asks the server, which
+// keeps their one shared cooldown, shown as a pie on every potion slot; the count you carry in the corner), the
+// Discord buff potions from the old bag (they're used in Discord). Drag a slot onto another to swap them; drag it off the bar to empty it (right-click leaves it). Per class, saved in this browser (localStorage `mk_hotbar`); a class's first bar has
 // its skills in order. Skills show their icon (manifest ui.skillIcons) where there is one, else their initials over the
 // class badge. Move skills work in town (onSkill: world/mobility.ts) and their slots show the cooldown as a
 // shrinking pie with the seconds left; the rest wait for combat. Skills have no icons yet: their
@@ -33,6 +35,10 @@ export interface HotbarOptions {
   onSkill?: (name: string) => number | 'no' | undefined;
   /** Whether a skill does something here (the move skills in town); the others are shown dark. */
   usable?: (name: string) => boolean;
+  /** An item slot's key or click (an HP or MP Potion: its item id): true if it was used (or asked for). */
+  onItem?: (id: string) => boolean;
+  /** How many of an item you carry (shown in its slot's corner), or undefined: not counted. */
+  countOf?: (id: string) => number | undefined;
   /** A skill's icon (32 px), or null: its initials over the class badge stand in. */
   icon?: (cls: string, skill: string) => string | null;
   /** The preview stage for a class (built once its poses and fx have loaded). */
@@ -40,7 +46,9 @@ export interface HotbarOptions {
 }
 
 type SkillEntry = { t: 'skill'; name: string };
-type ItemEntry = { t: 'item'; id: string; name: string; emoji: string; rarity: string };
+/** An item on the bar: its id, name, emoji (no art) and rarity; `cooldown`: the key of a cooldown it shares (HP and MP
+ *  Potions: potionCooldownKey). */
+type ItemEntry = { t: 'item'; id: string; name: string; emoji: string; rarity: string; cooldown?: string };
 type Entry = SkillEntry | ItemEntry | null;
 type Row = 'top' | 'main' | 'util';
 interface Layout {
@@ -59,11 +67,13 @@ const STORE = 'mk_hotbar';
 /** What a row takes: the bottom row's first ten are for skills, its last three for usables, the top row either. */
 const fits = (row: Row, e: Entry) => !e || row === 'top' || (row === 'main' ? e.t === 'skill' : e.t === 'item');
 
-/** Bag items that can go on the bar (potions for now). */
+/** Old-bag items that can go on the bar (the Discord buff potions; the combat bag's HP and MP Potions too). */
 export const hotbarItem = (kind: string) => kind === 'potion';
+/** The cooldown HP and MP Potions share (one key for every slot holding one). */
+export const potionCooldownKey = 'hp-mp-potion';
 /** Bag cells call this as a usable is dragged: the bar takes it. */
-export function hotbarDragItem(e: DragEvent, it: { id: string; name: string; emoji: string; rarity: string }): void {
-  e.dataTransfer?.setData(DRAG, JSON.stringify({ entry: { t: 'item', id: it.id, name: it.name, emoji: it.emoji, rarity: it.rarity } }));
+export function hotbarDragItem(e: DragEvent, it: { id: string; name: string; emoji: string; rarity: string; cooldown?: string }): void {
+  e.dataTransfer?.setData(DRAG, JSON.stringify({ entry: { t: 'item', id: it.id, name: it.name, emoji: it.emoji, rarity: it.rarity, ...(it.cooldown ? { cooldown: it.cooldown } : {}) } }));
 }
 
 export class Hotbar {
@@ -138,6 +148,14 @@ export class Hotbar {
       seen = now;
       if (this.cls?.id !== s.cls) return; // (setClass redraws)
       this.drawList();
+      this.draw();
+    });
+    // What you carry: the potions' counts.
+    let carried = '';
+    onAdventure((s) => {
+      const now = JSON.stringify(s.bag.map((i) => [i.defId, i.count]));
+      if (now === carried) return;
+      carried = now;
       this.draw();
     });
   }
@@ -240,6 +258,9 @@ export class Hotbar {
         } else if (entry?.t === 'item') {
           b.append(itemArt(entry.id, isRarity(entry.rarity) ? entry.rarity : 'common', 'icon', 2, true) ?? el('span', 'hb-emoji', entry.emoji));
           b.title = `${entry.name}${named ? `\n${named.trim()}` : ''}`;
+          const n = this.o.countOf?.(entry.id);
+          if (n !== undefined) b.append(el('span', `hb-count${n ? '' : ' hb-none'}`, String(n)));
+          b.classList.toggle('hb-empty', n === 0);
         } else b.title = `Empty${named}`;
         if (key) b.append(el('span', key.length > 2 ? 'hb-key hb-key-alt' : 'hb-key', key));
         b.setAttribute('aria-label', b.title.replace(/\n/g, ' '));
@@ -446,7 +467,7 @@ export class Hotbar {
       for (const row of ['top', 'main', 'util'] as Row[]) {
         this.cells[row].forEach((b, i) => {
           const e = this.layout[row][i];
-          const cd = e?.t === 'skill' ? this.cds.get(e.name) : undefined;
+          const cd = e?.t === 'skill' ? this.cds.get(e.name) : e?.t === 'item' && e.cooldown ? this.cds.get(e.cooldown) : undefined;
           let pie = b.querySelector<HTMLElement>('.hb-cd');
           if (!cd || t >= cd.until) return void pie?.remove();
           if (!pie) {
@@ -493,7 +514,7 @@ export class Hotbar {
       const cd = this.o.onSkill?.(entry.name);
       if (typeof cd === 'number') this.cooldown(entry.name, cd);
       if (cd !== undefined) return;
-    }
+    } else if (this.o.onItem?.(entry.id)) return; // (an HP or MP Potion: the server answers with its cooldown)
     const now = performance.now();
     if (now - this.nagged < 4000) return;
     this.nagged = now;

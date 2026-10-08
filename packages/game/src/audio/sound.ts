@@ -10,7 +10,9 @@ export type Sfx =
   | 'emote' | 'chat' | 'door' | 'card' | 'chip' | 'coin' | 'click' | 'error'
   | 'flip-spin' | 'flip-land' | 'casino-win' | 'casino-lose' | 'busted'
   | 'arena-whoosh' | 'arena-slam' | 'arena-reveal'
-  | 'bakod-throw' | 'bakod-shatter' | 'bakod-key-in' | 'bakod-unlock' | 'bakod-snap';
+  | 'bakod-throw' | 'bakod-shatter' | 'bakod-key-in' | 'bakod-unlock' | 'bakod-snap'
+  | 'combat-hit' | 'combat-hit-crit' | 'combat-player-hurt-1' | 'combat-player-hurt-2' | 'combat-player-hurt-3'
+  | 'combat-loot-drop' | 'combat-loot-pickup' | 'combat-coins' | 'combat-potion';
 
 /** Each sound's file (under assets/audio/, as .ogg with an .m4a fallback unless `formats` says otherwise) and volume
  *  (0–1, before the player's sound-effects volume, which also covers the crickets and the fountain). */
@@ -40,6 +42,17 @@ const SFX: Record<Sfx, { file: string; volume: number; formats?: string[] }> = {
   'bakod-key-in': { file: 'sfx/bakod-key-in', volume: 0.14 },
   'bakod-unlock': { file: 'sfx/bakod-unlock', volume: 0.18 },
   'bakod-snap': { file: 'sfx/bakod-snap', volume: 0.16 },
+  // The Slums (Kenney, picked by Mac): your hits landing (a crit's own), you taking damage (three, never the same twice
+  // running: playVariant), loot landing and picked up, Kusing picked up or spent, an HP or MP Potion.
+  'combat-hit': { file: 'sfx/combat-hit', volume: 0.14 },
+  'combat-hit-crit': { file: 'sfx/combat-hit-crit', volume: 0.18 },
+  'combat-player-hurt-1': { file: 'sfx/combat-player-hurt-1', volume: 0.16 },
+  'combat-player-hurt-2': { file: 'sfx/combat-player-hurt-2', volume: 0.16 },
+  'combat-player-hurt-3': { file: 'sfx/combat-player-hurt-3', volume: 0.16 },
+  'combat-loot-drop': { file: 'sfx/combat-loot-drop', volume: 0.12 },
+  'combat-loot-pickup': { file: 'sfx/combat-loot-pickup', volume: 0.16 },
+  'combat-coins': { file: 'sfx/combat-coins', volume: 0.14 },
+  'combat-potion': { file: 'sfx/combat-potion', volume: 0.18 },
 };
 const CRICKETS = { key: 'amb:crickets', urls: ['audio/ambient/crickets.mp3'], volume: 0.15 };
 const FOUNTAIN = { key: 'amb:fountain', urls: ['audio/ambient/fountain.ogg', 'audio/ambient/fountain.m4a'], volume: 0.1 };
@@ -232,6 +245,20 @@ export function playSound(name: Sfx, volume = SFX[name].volume, pitch = 0): void
   if (now - (lastPlayed.get(name) ?? -Infinity) < THROTTLE_MS) return;
   lastPlayed.set(name, now);
   s.sound.play(`sfx:${name}`, { volume: volume * settings.sfx, detune: pitch + Phaser.Math.Between(-DETUNE, DETUNE) });
+}
+
+/** The last of each set of versions played (`name-1`…`name-n`), so the same one never plays twice running. */
+const lastVariant = new Map<string, number>();
+
+/** One of a sound's numbered versions (`combat-player-hurt` → -1…-3) at random, never the one played last. */
+export function playVariant(base: 'combat-player-hurt', volume?: number): void {
+  const n = (Object.keys(SFX) as Sfx[]).filter((k) => k.startsWith(`${base}-`)).length;
+  if (!n) return;
+  const last = lastVariant.get(base) ?? 0;
+  let pick = 1 + Math.floor(Math.random() * n);
+  if (n > 1 && pick === last) pick = (pick % n) + 1;
+  lastVariant.set(base, pick);
+  playSound(`${base}-${pick}` as Sfx, volume);
 }
 
 /** A jackpot: the coin, a few times, gently spaced (no jingle). */

@@ -1,7 +1,7 @@
 import type { Client } from 'discord.js';
 import type { TownShopBuyResponse, TownShopItem, TownShopResponse } from '@mikazuki/shared';
 import { config } from '../config.js';
-import { balance, fencedUntil } from '../credits/store.js';
+import { balance, fencedUntil, take } from '../credits/store.js';
 import { SHOVELS_PER_DAY, SHOVEL_USES, masterKeys } from '../dig/store.js';
 import { BAG_SLOTS, FENCE_DAYS, FENCE_MAX_DAYS, GAME_NAME, rewards } from '../games/rewards.js';
 import { type Reward, inBag, owns, potionEffect, redeemFeed, redeemPost, redeemReward, shovelsLeftToday, stackable } from '../games/redeem.js';
@@ -13,10 +13,16 @@ import { debtOf } from '../loans/loans.js';
 import { potionCount, type PotionId } from '../potions/potions.js';
 import { freeSlots } from '../dig/bag.js';
 import { isTester } from '../games/testers.js';
+import { countOf, itemStats } from '@mikazuki/shared';
+import { adventureOf, buyCombatFor } from './adventure.js';
+import { combatWares, mostAtOnce, potionOf, roomFor } from './combat-bag.js';
+import { loadItemData } from './stats-data.js';
 
 // 🎁 The town's rewards shop (GET/POST /town/shop): what /redeem sells, bought with the same checks
 // (games/redeem.ts). Each purchase is posted in the games channel just like /redeem's (passes ping the reward
 // owner, who sends them by hand) and shows in the town's feed. Passes are for testers only (games/testers.ts).
+// Two more tabs for the Slums (web/combat-bag.ts): Healing (HP and MP Potions for Kusing) and Smithing (whetstones and
+// Repair Kits for Kowens), into the combat bag; only the Low tier until a character reaches the next tier's level.
 
 /** Most of a stackable reward bought at once (as /redeem's quantity option). */
 const MAX_AT_ONCE = 10;
@@ -50,15 +56,48 @@ export function townShop(userId: string, tester: boolean): TownShopResponse {
     const have = r.kind === 'potion' ? potionCount(userId, r.id.replace('potion-', '') as PotionId) : r.kind === 'key' ? masterKeys(userId) : r.kind === 'megaphone' ? megaphones(userId) : r.kind === 'rename' ? renameCards(userId) : r.kind === 'classchange' ? classTickets(userId) : undefined;
     return { id: r.id, name: r.name, cost: r.cost, kind: r.kind, about: about(r), max, ...(owned ? { owned } : {}), ...(testersOnly ? { testersOnly } : {}), ...(have !== undefined ? { have } : {}) };
   });
-  return { kowens: balance(userId), items, fenceUntil: fencedUntil(userId), inDebt: !!debtOf(userId) };
+  // The combat items (their own tabs), by the character's level and combat bag.
+  const D = loadItemData();
+  const s = adventureOf(userId);
+  const combat = combatWares(D, s.progress.level).map((w): TownShopItem => ({
+    id: w.def.id,
+    name: w.def.name,
+    cost: w.cost,
+    kind: w.tab,
+    ...(w.currency === 'kusing' ? { currency: 'kusing' as const } : {}),
+    about: combatAbout(w.def.id, w.def.about),
+    max: Math.min(mostAtOnce(D, w.def.id), roomFor(D, s, w.def.id)),
+    have: countOf(s.bag, w.def.id),
+  }));
+  return { kowens: balance(userId), kusing: s.kusing, items: [...items, ...combat], fenceUntil: fencedUntil(userId), inDebt: !!debtOf(userId) };
+}
+
+/** What a combat item does, for the shop. */
+function combatAbout(id: string, about: string | undefined): string {
+  const D = loadItemData();
+  const p = potionOf(D, id);
+  if (p) return `Heals ${p.amount} ${p.heals.toUpperCase()} at once. Put it on your hotbar; HP and MP Potions share a ${itemStats(D.stats).potions.sharedCooldownSec} s cooldown. For the Slums.`;
+  return about ?? '';
+}
+
+/** Buys a combat item (Healing or Smithing): into the combat bag, paid in Kusing or Kowens. */
+function buyCombatItem(userId: string, id: string, quantity: number, tester: boolean): TownShopBuyResponse {
+  const r = buyCombatFor(userId, id, quantity, {
+    have: balance(userId),
+    spend: (n) => balance(userId) >= n && take(userId, n) === n,
+  });
+  if (r.ok) console.log(`[shop] ${userId} bought ${r.quantity}× ${id}`);
+  return { ...townShop(userId, tester), ok: r.ok, message: r.message };
 }
 
 /** Buys `quantity` of a reward; tells the games channel and the town's feed when it works. */
 export async function buyFromShop(client: Client, userId: string, id: string, quantity: number, name: string): Promise<TownShopBuyResponse> {
   const tester = await isTester(client, userId);
   const shop = () => townShop(userId, tester);
+  if (combatWares(loadItemData(), adventureOf(userId).progress.level).some((w) => w.def.id === id)) return buyCombatItem(userId, id, quantity, tester);
   const reward = rewards.find((r) => r.id === id);
   if (!reward) return { ...shop(), ok: false, message: 'That reward is gone.' };
+  if (quantity > MAX_AT_ONCE) return { ...shop(), ok: false, message: `Up to ${MAX_AT_ONCE} at a time.` };
   const result = redeemReward(userId, reward, quantity, tester);
   if (!result.ok) {
     const message = (() => {

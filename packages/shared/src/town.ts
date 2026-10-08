@@ -2,7 +2,8 @@
 // JSON messages, one per frame. Players are identified by a random id per connection, never their Discord ID.
 // A moderator's kick closes the socket with code 4001 and the time (ms) they may come back as the reason.
 
-import type { CharacterProgress } from './adventure.js';
+import type { AdventureState, CharacterProgress } from './adventure.js';
+import type { Item } from './items.js';
 import type { HoodHouse, HoodMap, OutfitData, TitleData } from './room-api.js';
 
 export type TownDir = 's' | 'se' | 'e' | 'ne' | 'n' | 'nw' | 'w' | 'sw';
@@ -109,6 +110,10 @@ export type TownClientMessage =
   /** A mobility move (Dash, Step Back, Charge, Blink) ending at col,row: sent just before its steps, so the others
    *  play the move instead of a walk (where you are still comes from the steps). */
   | { t: 'move'; move: TownMove; col: number; row: number }
+  /** Pick up loot you stand on or next to (walking onto it does too; Kusing within a tile on its own). */
+  | { t: 'pick'; id: string }
+  /** Use an HP or MP Potion of this kind (its item id) from your combat bag (battle maps; one shared cooldown). */
+  | { t: 'potion'; item: string }
   /** The Arena's jack en poy against another player (bot web/town-arena.ts): join the queue (with an optional bet in
    *  Kowens), leave it, pick a hand for the open round, ask for a rematch or accept one (with a bet), decline one, leave
    *  the match. The stake is the smaller of the two bets. */
@@ -355,6 +360,22 @@ export type TownServerMessage =
   | { t: 'knocked-out'; id: string }
   /** Someone in your room (maybe you) is back after being knocked out, at the map's way in, with full HP and MP. */
   | { t: 'respawn'; id: string; col: number; row: number }
+  /** The loot you can see in your room (on arrival): golem loot only its owner's. */
+  | { t: 'loot'; loot: TownLoot[] }
+  /** Loot fell (a kill): what you can see of it. */
+  | { t: 'loot-drop'; loot: TownLoot[] }
+  /** Loot gone: picked up by someone, or lain there too long. */
+  | { t: 'loot-gone'; ids: string[] }
+  /** You walked onto loot your combat bag has no room for: it stays there. */
+  | { t: 'loot-full' }
+  /** Your worn items, combat bag and Kusing changed on the server (loot picked up, a potion used, dev's ?give=);
+   *  `got`: what you just picked up. */
+  | { t: 'items'; items: TownItems; got?: { kusing?: number; item?: Item } }
+  /** Someone in your room (maybe you) drank an HP or MP Potion: what it restored, over them; yours with its shared
+   *  cooldown (ms). */
+  | { t: 'potion'; id: string; heals: 'hp' | 'mp'; amount: number; cooldown?: number }
+  /** Your potion didn't go: on cooldown (`ms` left), none left, already full, or not here (only in battle maps). */
+  | { t: 'potion-refused'; reason: 'cooldown' | 'none' | 'full' | 'here'; ms?: number }
   /** Your party now (null: none), with a line for a toast when something happened ("Mara joined the party."). */
   | { t: 'party'; party: PartyState | null; note?: string }
   /** Someone invites you: answer with party-answer (it lapses after a minute). */
@@ -398,3 +419,18 @@ export interface TownDailyInfo {
 
 /** POST /town/daily: the daily Kowens claimed (`kowens` = the balance after; `christmas` = doubled today). */
 export type TownDailyClaim = { ok: true; amount: number; kowens: number; christmas: boolean } | { ok: false; error: string };
+
+/** A character's worn items, combat bag and Kusing (the server's; the town's `items` message). */
+export type TownItems = Pick<AdventureState, 'equipped' | 'bag' | 'kusing'>;
+
+/** Loot on the ground as one player sees it: Kusing (its amount) or an item; `mine`: you may pick it up now (else it's
+ *  drawn faint: someone's for `opensIn` ms more, or for good: golem loot is only ever shown to its owner). */
+export interface TownLoot {
+  id: string;
+  col: number;
+  row: number;
+  kusing?: number;
+  item?: Item;
+  mine: boolean;
+  opensIn?: number;
+}

@@ -16,6 +16,7 @@ import { today } from '../time.js';
 //  • v6, web game nicknames and titles: nicknames, titles. v7: titles.announced. v8: titles.opened.
 //  • v9, the neighbourhood: houses.
 //  • v10, the web game's classes, quests and equipment: adventurers. v11: their level, XP and points.
+//  • v12, the web game's items as instances: items (worn, or in the combat bag), and adventurers.kusing.
 //  • kv: small singleton documents keyed by their old file name (e.g. 'race.json', 'rotation.json').
 // Stores cache their state in memory (the bot is the only writer) and save through db/sync.ts, which writes only
 // the rows that changed.
@@ -32,7 +33,7 @@ db.pragma('foreign_keys = ON');
 db.pragma('busy_timeout = 5000');
 
 // ── Schema (versioned) ──
-const MIGRATIONS: string[] = [
+export const MIGRATIONS: string[] = [
   /* v1 */ `
   CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
   CREATE TABLE kv (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated INTEGER NOT NULL);
@@ -248,6 +249,36 @@ const MIGRATIONS: string[] = [
   ALTER TABLE adventurers ADD COLUMN skill_levels TEXT NOT NULL DEFAULT '{}';    -- JSON: skill key -> level above 1
   ALTER TABLE adventurers ADD COLUMN skill_points INTEGER NOT NULL DEFAULT 0;    -- not spent
   ALTER TABLE adventurers ADD COLUMN training_armor_given INTEGER NOT NULL DEFAULT 0 CHECK (training_armor_given IN (0, 1));
+  `,
+  /* v12: items as instances (web/adventure.ts, @mikazuki/shared items.ts): each one its own row with its rolls, worn in a
+     place or in the combat bag; the Kusing wallet. Everything owned so far is the Tanod's training gear (Lv 1, brown,
+     bound, no lines or slots): each worn or carried id becomes one of those, in the same place (or bag order). The old
+     equipped / bag JSON columns are left as they were (no longer read; a record to roll back to). */ `
+  CREATE TABLE items (
+    uid      TEXT PRIMARY KEY,
+    owner    TEXT NOT NULL,                 -- member id
+    def_id   TEXT NOT NULL,                 -- its kind: items/equipment.json or items/items.json in the game
+    level    INTEGER NOT NULL,
+    rarity   TEXT NOT NULL,                 -- stats.json rarity (brown … darkOrange)
+    plus     INTEGER NOT NULL DEFAULT 0,    -- enhanced, 0-20
+    broken   INTEGER NOT NULL DEFAULT 0 CHECK (broken IN (0, 1)),
+    bound    INTEGER NOT NULL DEFAULT 0 CHECK (bound IN (0, 1)),
+    luck     REAL NOT NULL DEFAULT 0,       -- its next enhance's bonus
+    agimats  TEXT NOT NULL DEFAULT '[]',    -- JSON: one per agimat slot, null when empty
+    lines    TEXT NOT NULL DEFAULT '[]',    -- JSON: affix lines [{ stat, value }]
+    stat     TEXT,                          -- an agimat item's stat
+    lock     TEXT,                          -- an agimat item's slot lock
+    count    INTEGER NOT NULL DEFAULT 1 CHECK (count > 0),
+    place    TEXT,                          -- worn: where (weapon, head … ring2); else NULL
+    slot     INTEGER,                       -- in the combat bag: its order; else NULL
+    created  INTEGER NOT NULL               -- ms
+  );
+  CREATE INDEX items_owner ON items (owner);
+  ALTER TABLE adventurers ADD COLUMN kusing INTEGER NOT NULL DEFAULT 0;
+  INSERT INTO items (uid, owner, def_id, level, rarity, bound, place, created)
+    SELECT lower(hex(randomblob(8))), a.user_id, e.value, 1, 'brown', 1, e.key, a.updated FROM adventurers a, json_each(a.equipped) e WHERE e.value IS NOT NULL;
+  INSERT INTO items (uid, owner, def_id, level, rarity, bound, slot, created)
+    SELECT lower(hex(randomblob(8))), a.user_id, e.value, 1, 'brown', 1, e.key, a.updated FROM adventurers a, json_each(a.bag) e WHERE e.value IS NOT NULL;
   `,
 ];
 

@@ -1,9 +1,10 @@
 import { readFileSync } from 'node:fs';
 import {
   type DerivedStats,
-  type EquipmentDef,
   type GolemAttack,
   type Hitter,
+  type Item,
+  type ItemData,
   type MobStats,
   type PlayerHit,
   type StatPoints,
@@ -15,8 +16,9 @@ import {
   baseCooldown,
   baseStats,
   derivedStats,
-  gearTotals,
+  itemTotals,
   mobStats,
+  newItem,
   rollHit,
   skillCooldown,
   skillLevelBonus,
@@ -24,7 +26,7 @@ import {
   skillTier,
   xpEarners,
 } from '@mikazuki/shared';
-import { loadGear, loadStats } from './stats-data.js';
+import { loadItemData } from './stats-data.js';
 import { Golem, type GolemArt, type GolemBoss, type GolemEvent, type PitTiles, pitTiles } from './town-golem.js';
 
 // 🥫 The Slums' mobs, run on the server so every player sees the same ones in the same places, and fought there. One per
@@ -97,9 +99,14 @@ export interface MobHit {
  *  for the golem everyone who did its share of its HP in the fight (stats.json xpTo). */
 export interface MobKill {
   id: string;
+  /** Its kind (the mob table's key) and where it died (its loot lands round there). */
+  kind: string;
+  at: [number, number];
   level: number;
   xp: number;
   to: string[];
+  /** The field boss: its loot is personal, for each of `to`. */
+  boss?: boolean;
 }
 
 /** `hits`: the target first, then any other mobs the skill's shape reached (skill-hits.json); `kills`: those it killed.
@@ -147,37 +154,36 @@ function parseEffect(e: string | null | undefined): { factor: number; ms: number
 /** Each class's damage skills' unlock levels, in their order (classes.json). */
 export type SkillLevels = Record<string, number[]>;
 
-/** Who attacks: their class, level and stat points spent, the items they wear (ids) and their skills' levels (by skill,
- *  in their order); `blinded`: every hit misses (the golem's Lamp Glare). Left out: Lv 1, nothing spent, nothing worn,
- *  every skill at Lv 1. A class id alone is the same. */
+/** Who attacks: their class, level and stat points spent, the items they wear (each an item, or a kind's id: a plain
+ *  one of it) and their skills' levels (by skill, in their order); `blinded`: every hit misses (the golem's Lamp Glare).
+ *  Left out: Lv 1, nothing spent, nothing worn, every skill at Lv 1. A class id alone is the same. */
 export interface Attacker {
   cls: string | null | undefined;
   level?: number;
   points?: StatPoints;
-  gear?: (string | null | undefined)[];
+  gear?: (Item | string | null | undefined)[];
   skills?: number[];
   blinded?: boolean;
 }
 
-/** The stats rules' data (classes/stats.json) and the equipment (items/equipment.json) a fight needs. */
-export interface FightData {
-  stats: StatsData;
-  gear: Map<string, EquipmentDef>;
-}
+/** The stats rules' data (classes/stats.json) and the item kinds (items/equipment.json, items/items.json) a fight needs. */
+export type FightData = ItemData;
 
-/** The game's classes/stats.json and items/equipment.json. */
-export const loadFightData = (): FightData => ({ stats: loadStats(), gear: loadGear() });
+/** The game's classes/stats.json and item kinds. */
+export const loadFightData = (): FightData => loadItemData();
 
 /** A character's stats as a fight sees them (the stats rules): HP, MP, Power, DEF, crit… from their class, level, points
- *  and worn gear, with their level. */
+ *  and worn items (each one's base with its plus, lines and agimats; a broken one nothing), with their level. */
 export function fighterStats(data: FightData, a: Attacker): DerivedStats & { level: number } {
   const S = data.stats;
   const level = a.level ?? 1;
-  const worn = (a.gear ?? []).flatMap((id) => {
-    const item = id ? data.gear.get(id) : undefined;
-    return item ? [item.stats] : [];
+  const worn = (a.gear ?? []).flatMap((g): Item[] => {
+    if (g && typeof g === 'object') return [g];
+    const def = g ? data.defs.get(g) : undefined;
+    return def ? [newItem(S, def, g!)] : [];
   });
-  return { ...derivedStats(S, a.cls, level, baseStats(S, a.cls, level, a.points), gearTotals(worn)), level };
+  const main = a.cls ? (S.classes[a.cls]?.main ?? null) : null;
+  return { ...derivedStats(S, a.cls, level, baseStats(S, a.cls, level, a.points), itemTotals(data, worn, main)), level };
 }
 
 /** A blinded attacker's hit: always a miss. */
@@ -495,6 +501,24 @@ export class MobRoom {
     return Math.max(Math.abs(col - m.spawn[0]), Math.abs(row - m.spawn[1])) <= reach;
   }
 
+  /** `n` tiles round `at` (its own first, then outward) on its level, open and not ramps, to lay a kill's loot on (the
+   *  same ones again if there aren't enough). */
+  lootSpots(at: [number, number], n: number): [number, number][] {
+    const [cols, rows] = this.map.size;
+    const level = this.map.height?.[at[1]]?.[at[0]] ?? 0;
+    const open = (c: number, r: number) => c >= 0 && r >= 0 && c < cols && r < rows && !this.map.blocked[r]?.[c] && (this.map.height?.[r]?.[c] ?? 0) === level && !this.ramps.has(`${c},${r}`);
+    const out: [number, number][] = [];
+    for (let ring = 0; ring <= 3 && out.length < n; ring++) {
+      for (let dr = -ring; dr <= ring && out.length < n; dr++) {
+        for (let dc = -ring; dc <= ring && out.length < n; dc++) {
+          if (Math.max(Math.abs(dc), Math.abs(dr)) !== ring) continue;
+          if (open(at[0] + dc, at[1] + dr)) out.push([at[0] + dc, at[1] + dr]);
+        }
+      }
+    }
+    return out.length ? out : [at];
+  }
+
   private inRect(zone: MobZoneData, col: number, row: number): boolean {
     const [z0, y0, z1, y1] = zone.rect ?? [0, 0, this.map.size[0], this.map.size[1]];
     return col >= z0 && col <= z1 && row >= y0 && row <= y1;
@@ -785,7 +809,7 @@ export class MobRoom {
     const hits = this.reached(m ?? 'golem', [mc, mr], from, (cls && this.shapes.shapes[cls]?.[skill]) || 'single', now).map((x) => {
       if (x === 'golem') return this.hitGolem(player, name, member, by, pct, now, kills); // (no slowing it)
       const hit = this.damage(x, player, by, pct, now);
-      if (hit.dead) kills.push({ id: x.id, level: x.stats.level, xp: x.stats.xp, to: [member] });
+      if (hit.dead) kills.push({ id: x.id, kind: x.zone.mob, at: [x.col, x.row], level: x.stats.level, xp: x.stats.xp, to: [member] });
       if (effect && !hit.dead && !hit.blocked && !hit.miss) {
         x.slow = { factor: effect.factor, until: now + effect.ms };
         hit.slow = effect;
@@ -821,7 +845,10 @@ export class MobRoom {
     const stats = this.statsOf(g.id);
     const { damage, crit, miss } = by.blinded ? MISSED : rollHit(this.fightData.stats, by, stats, pct, this.random);
     const r = g.hit(player, name, damage, now, member)!;
-    if (r.dead) kills.push({ id: g.id, level: stats.level, xp: stats.xp, to: xpEarners(stats, r.dealt ?? new Map(), member) });
+    if (r.dead) {
+      const [gc, gr] = g.at(now);
+      kills.push({ id: g.id, kind: g.id, at: [Math.round(gc), Math.round(gr)], level: stats.level, xp: stats.xp, to: xpEarners(stats, r.dealt ?? new Map(), member), boss: true });
+    }
     return { id: g.id, damage, crit, hp: r.hp, dead: r.dead, ...(miss ? { miss } : {}) };
   }
 

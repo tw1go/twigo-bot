@@ -112,6 +112,22 @@ const TOPICS: Topic[] = [
     ].join('\n'),
   },
   {
+    id: 'loot',
+    icon: '🪙',
+    label: 'Loot',
+    text: [
+      'What mobs drop in the **Slums**.',
+      '• Every kill drops **Kusing**, the Slums’ money (a Tin Can 100, more from higher mobs). It picks itself up if you’re near',
+      '• Now and then a kill drops **gear** (brown, white or grey) or an **HP/MP Potion**. Walk onto it or click it to pick it up',
+      '• Your kill’s loot is yours for **10 s** (in a party: any member nearby), then anyone’s. Someone else’s shows faint. Loot is gone after **2 minutes**',
+      '• Hover loot (or hold **Alt**) for its name, in its rarity’s colour: brown, white, grey (more agimat slots), light/dark blue, light/dark orange',
+      '• The **Scrapheap Golem** gives everyone who did 5% of its HP their own loot, only they can see: Kusing, Rough Whetstones, blue or orange gear, sometimes an accessory, an agimat or the Lamp-head Hat',
+      '• Loot goes in your **combat bag**: the **Combat** tab of your bag (**B**), **40 slots**. Potions stack to 99, whetstones and agimats to 999, gear one a slot. Full: it stays on the ground',
+      '• Hover an item for its tooltip: its level and stats needed (red: not yet), its base stat, its **3 affix lines** (blue and orange gear), its agimat slots. **Orange gear binds** the first time you wear it',
+      '• **HP and MP Potions**: buy them at the sari-sari store’s **Healing** tab for Kusing, drag them onto your hotbar (the **- = ~** slots) and press the key. They heal at once and share a **10 s** cooldown',
+    ].join('\n'),
+  },
+  {
     id: 'mine',
     icon: '⛏️',
     label: 'Mine',
@@ -132,6 +148,7 @@ const TOPICS: Topic[] = [
       '• Dug-up items: **Sell** for Kowens or **Flex** to show off in Discord',
       '• Select many (Ctrl/⌘/Shift click, or the **Select** toggle) and **Sell selected**',
       '• Master Keys and potions live here too',
+      '• The **Combat** tab is your **combat bag** for the Slums (40 slots): gear, whetstones, HP/MP Potions. Double-click gear to wear it. Your **Kusing** is at the bottom, beside your Kowens',
       '• Slots marked X are locked; bigger bags are at the sari-sari store',
     ].join('\n'),
   },
@@ -198,6 +215,7 @@ const TOPICS: Topic[] = [
     label: 'Shop & Parlor',
     text: [
       '**Sari-sari store**: items (megaphones, Master Keys), potions, bigger bags and passes (passes: testers only). Click an item, pick how many, buy.',
+      '• **Healing**: HP and MP Potions for **Kusing**. **Smithing**: Rough Whetstones and Repair Kits for Kowens. Type how many in the box',
       '',
       '**Parlor** (north of the shop):',
       '• **Appearance**: a new look for your character, **3 Kowens**',

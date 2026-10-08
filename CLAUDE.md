@@ -227,7 +227,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   tabs), Vault (store/take out), Loan (pay / pay all, or borrow from the Tanod Bank; loans you gave); bot `GET/POST /town/bank` (`web/town-bank.ts`, same stores and rules as `/vault`
   and `/loan`; town borrowing is posted in the games channel). Lending to members stays in Discord. Dev: a pretend
   bank (`&vault=0`, `&loan=1`).
-- Sari-sari store (`ui/shop.ts`, building id `sari-sari-store`, was the rewards shop; left click the store): what `/redeem` sells, tabs Items / Potions / Bags / Passes, a grid
+- Sari-sari store (`ui/shop.ts`, building id `sari-sari-store`, was the rewards shop; left click the store): what `/redeem` sells, tabs Items / Potions / Bags / Passes (+ Healing / Smithing: Items, above), a grid
   of item art (manifest `items`, keyed by reward id; dug-up items there too) with a quantity stepper for stackables and
   a second press to confirm passes. Bot `GET/POST /town/shop` (`web/town-shop.ts`); `/redeem` and the shop share
   `games/redeem.ts` (checks + purchase, the public Discord post `redeemPost`, the feed line). Passes are for testers only
@@ -443,8 +443,43 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   `skillCooldown`), damage (`levelGap`, `hitDamage`,
   `rollHit`), `mobStats`, `mobXp` (low-mob penalty), `mobTone`. classes.json main/second stats match stats.json (tested).
   Gear (both sides use them): `wearCheck` (canEquip on a character's base stats), `placesFor`, `trainingGear` (a class's
-  training weapon + its gear type's armor), `giveGear` (into a free place if wearable, else the bag while it has room),
-  `swapTrainingGear` (a class change).
+  training weapon + its gear type's armor). stats.json has two repo-only additions (tell the user to add them to the art
+  folder's): `rarity.nameColour[r].colour` (brown #A0703F … darkOrange #F97316; every item name, `setRarityColours` in
+  `ui/item-art.ts`) and `affixes.names` (the guide's Affixes table: [blue, orange] per stat; `stat` by STR/DEX/INT).
+- Items (`packages/shared/src/items.ts`, pure, both sides; tested in the bot's `web/items.test.ts`): every item an
+  instance (`Item`: uid, defId, level, rarity, plus, broken, bound, luck, agimats (one per slot, null = empty), lines,
+  count; an agimat's stat/lock). Kinds: `items/equipment.json` (gear: training, Crude/Sturdy weapons Lv 10/20, Tin/Copper,
+  Abaca/Cotton, Hemp/Jute armor, Shell/Bone accessories; base from stats.json gearBase unless a training piece's own
+  `stats`) and `items/items.json` (manifest `combatItems`: whetstone, fragment, Low Repair Kit, Low HP/MP Potion
+  (`heals`, `shop`), 11 agimats, the Lamp-head Hat cosmetic). `rollGear` / `rollLines` (3 lines: slot stat, HP, a pool
+  stat at rareRollWeight; 80–100% of the line's max), `slotCount`, `bindsOnWear` (orange), `enhancedBase`, `lineValue`
+  (accessories +1%/plus), `agimatValue`, `itemTotals` (base+plus, lines, agimats; broken = nothing) → `derivedStats` (caps:
+  attack/DEF rate, lifesteal, manasteal, drop rate too), `itemName` ("+7 Sturdy Slingshot of Calamity (Broken)"; agimats
+  "… Lv 20 (Body only)"), `stackLimit` / `addToBag` (all or nothing) / `takeKind` / `bagRoom`, `kusingFor`,
+  `equipFromBag` / `unequipToBag` (by uid), `giveGear` / `missingTraining` / `swapTrainingGear` (fresh training items).
+  Bot: schema v12 `items` table (one row each; `place` = worn place, `slot` = combat bag order; migration: every old
+  equipped/bag id became a Lv 1 brown bound item in place; the old JSON columns are left unread) + `adventurers.kusing`;
+  `web/adventure.ts` saves all of a member's items with the character (`combatOf`, `withItems`, `takeLootFor`,
+  `usePotionFor`, `buyCombatFor`); `loadItemData()` in stats-data.ts. Combat bag = `AdventureState.bag` (40, stats.json
+  inventory.slots); the old bag (dig/bag.ts) no longer counts gear. `web/combat-bag.ts` (pure): `takeLoot`, `usePotion`,
+  `combatWares` / `buyCombat` (Healing: potions for Kusing; Smithing: whetstones / kits for Kowens; Low tier until the
+  next tier's level), `devGive`.
+- Loot (`web/loot.ts` rolls, `web/town-loot.ts` LootRoom per mob room, run by `web/town.ts` with `TownOptions.items`):
+  each kill (`MobKill` has kind, `at`, `boss`) drops Kusing + 3% gear (map level; Wire/Crab Lv 20 30%) + 5% a Low potion;
+  the golem's `golemLoot` per earner, personal. Reserved 10 s for the killer (party: members in the room), shown per
+  viewer (`TownLoot.mine` / `opensIn`; golem loot only to its owner), gone after 2 min. Picked up on `step`/`here`
+  (its tile; Kusing within 5 tiles once it settled 0.7 s, also right after the kill) or `pick {id}` (a tile away);
+  full bag → `loot-full`. `items` message (the player's items + `got`). Potions: `potion {item}` → battle maps only,
+  refused when full, one shared cooldown (stats.json potions.sharedCooldownSec) per member, `potion` to the room (heal
+  shown), `potion-refused`. Game: `world/loot.ts` (16 px icon, oval shadow, 1 px bob, Kusing amount in Jersey 10, names on
+  hover/Alt in rarity colour, half alpha while reserved), click → walk on / `pick`; `ui/item-tip.ts` (tooltips:
+  requirements red, base "ATK 46 (40 +6)", lines, agimat dots, Bound / Binds when worn); the inventory's Combat tab =
+  combat bag (hover tooltip `.iv-tip`, double-click gear to wear, potions drag to the hotbar), Kowens + Kusing footer;
+  hotbar `onItem` / `countOf`, `potionCooldownKey` pie; shop tabs Healing / Smithing (number box). Sounds: combat-hit(-crit),
+  combat-player-hurt-1..3 (`playVariant`, never twice running), combat-loot-drop/-pickup, combat-coins, combat-potion.
+  Dev: the dev town keeps each player's items (`/__items`, the page's copy wins only after a restart), `?give=<defId>:
+  <rarity>:<plus>`, `?kusing=`, `?whetstones=` (`/__give`), `/__shop`, `/__loot?rich=1` (nearly every kill drops gear
+  and a potion); `__town.items()`, `__town.loot()`.
 - Levels (bot `web/progress.ts`, pure, tested; saved in `adventurers` schema v11: `level`, `xp` (into the level),
   `str_points`/`dex_points`/`int_points` (spent), `skill_levels` (JSON: damage skill index or mobility id → level above 1),
   `skill_points` (unspent), `training_armor_given`; older rows Lv 1, nothing spent). `CharacterProgress` (in
@@ -515,8 +550,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   `items/armor/item-armor-training-<piece>(-16|-64).png`; an item without `icon`/`showcase` shows its place's silhouette
   (`slotSilhouette` / `gearPicture` in ui/equipment.ts: panel, bag, toasts) — add the fields when the art comes (only
   suit and boots exist so far).
-- Quests, classes and equipment (bot `web/adventure.ts`, schema v10 `adventurers`: class, quests, worn equipment, equipment
-  in the bag; v11 levels, above; tested). Data in the game's assets, read by the bot too: `quests/quests.json` (main = violet, side = yellow,
+- Quests, classes and equipment (bot `web/adventure.ts`, schema v10 `adventurers`: class, quests; v11 levels, above; v12
+  items (above); tested). Data in the game's assets, read by the bot too: `quests/quests.json` (main = violet, side = yellow,
   manifest quests.colours; objective types talk and chooseClass; the giver's lines in `dialogue`), `classes/classes.json`
   (the six classes, their first 7 skills and their `mobility` moves), `items/equipment.json` (the training weapons and
   armor, placeholder stats). `/me` brings `adventure` (autoStart quests start there); `POST /town/quest` / `/town/equip` /
@@ -537,7 +572,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   Skills panel on the right of the screen (K or the K button; `#skill-book`): skill points, each skill with its level and
   description (see Skills unlock), the hovered one played on the class choice's stage (`TownScene.skillStage`, 1×); drag a
   skill to a slot, or click it then a slot.
-  Potions dragged from the bag; drag between slots swaps, off the bar empties (right-click never does). Per class in localStorage
+  Potions dragged from the bag (HP/MP Potions from the combat bag: used through the town, shared cooldown); drag between slots swaps, off the bar empties (right-click never does). Per class in localStorage
   `mk_hotbar` (a class's first bar = its skills in order). Skill icons from manifest ui.skillIcons (`have` lists the ones there are: every class's 7 damage skills and its Lv 8 move; `shared` = one icon for all, Dash); the rest show
   their initials over the class badge. In town the damage skills are dark (grey, dimmed: `usable`); only the move
   skills light up. Where it
@@ -596,8 +631,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   all, `dig/bag.ts` `usedSlots`), unlocked = `capacity`, the rest marked X; dug-up items offer Flex / Sell, keys and
   potions say how they're used; multi-select (Ctrl/⌘/Shift-click, or the Select toggle for every click; Select all on the tab):
   the count, what the sellable ones bring and Sell selected (`POST /town/sell { items: [{ id, quantity }] }`,
-  `sellManyInTown`); tabs All / Dug up / Misc; item slots bordered in their rarity's colour; B toggles it;
-  Kowens at the bottom. Bot `GET /town/inventory`, `POST /town/sell`, `POST /town/flex`
+  `sellManyInTown`); tabs All / Dug up / Combat (the combat bag: Items, above) / Misc; item slots bordered in their
+  rarity's colour; B toggles it; Kowens and Kusing at the bottom. Bot `GET /town/inventory`, `POST /town/sell`, `POST /town/flex`
   (`web/town-bag.ts`; flex shares `flexEmbed` and the cooldown with `/flex`). Dev: a pretend bag (`&slots=18`).
 - Casino: left click the casino → `TownScene.enterCasino` locks the town (body.town-locked: no input; bag, player
   menu, banners hide; profile + Settings, chat and system feed stay on top), pans/zooms the camera into the door

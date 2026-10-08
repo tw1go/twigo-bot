@@ -43,6 +43,8 @@ export interface Manifest {
   quests?: { file: string; colours: Record<'main' | 'side', string> };
   /** Equipment items (items/equipment.json). */
   equipment?: { file: string };
+  /** Combat items that aren't worn (items/items.json). */
+  combatItems?: { file: string };
   /** The town's ambient NPCs (world/npcs.ts): flat pre-baked sheets, not paper dolls. */
   npcs?: NpcDefs;
   fx: Record<string, FxDef>;
@@ -87,6 +89,8 @@ export interface Manifest {
     classIcons?: { file: string; small: string; large: string; size: Vec2; smallSize: Vec2; largeSize: Vec2 };
     /** The inventory button's bag, beside the chat input. */
     inventoryIcon?: { file: string; size: Vec2 };
+    /** Kusing's coin: 16x16, and 32x32 (showcase). */
+    kusingIcon?: { file: string; showcase?: string };
     loadingMoon?: { file: string; size: Vec2; frames: number; fps: number; loopFrames?: Vec2; anchor: Vec2 };
     /** The Mine's dig: played once; the find rises from `hole` (its bottom centre) from cell `itemFrom`. */
     digPanel?: { file: string; size: Vec2; frames: number; fps: number; loop: boolean; anchor: Vec2; hole: Vec2; itemFrom: number };

@@ -336,7 +336,7 @@ test('its XP goes to everyone who did at least 5% of its HP in the fight (stats.
   assert.ok(dealt.get('weak')! < 0.05 * golemStats.hp && dealt.get('strong')! >= 0.05 * golemStats.hp && dealt.get('strong')! < golemStats.hp / 2, JSON.stringify([...dealt]));
   const last = swing('huge', huge);
   assert.ok(last.ok && last.hits[0].dead);
-  assert.deepEqual(last.kills, [{ id: boss.id, level: golemStats.level, xp: golemStats.xp, to: ['strong', 'huge'] }]);
+  assert.deepEqual(last.kills.map(({ at: _at, ...k }) => k), [{ id: boss.id, kind: boss.id, level: golemStats.level, xp: golemStats.xp, to: ['strong', 'huge'], boss: true }]);
   assert.deepEqual(xpEarners(golemStats, new Map([['a', 539], ['b', 540]]), 'a'), ['b'], 'the killer only if they did enough');
 });
 

@@ -8,8 +8,11 @@ import type { LevelGain } from './progress.js';
 import type { Attacker, MobRoom } from './town-mobs.js';
 import { PARTY_MAX, type PartyChange, Parties } from './town-party.js';
 import { type VitalMax, Vitals, shown } from './town-vitals.js';
-import { loadStats } from './stats-data.js';
-import type { CharacterProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine } from '@mikazuki/shared';
+import { loadItemData, loadStats } from './stats-data.js';
+import { type CombatItems, type LootContent, potionOf } from './combat-bag.js';
+import { KUSING_SETTLE_MS, type Loot, LootRoom } from './town-loot.js';
+import type { CharacterProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item } from '@mikazuki/shared';
+import { itemStats } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
 // messages). The server keeps everyone's tile and checks each step — on the map, not blocked, next to the last
@@ -26,6 +29,11 @@ import type { CharacterProgress, HoodHouse, HoodMap, OutfitData, PartyState, Tar
 // (MobRoom.landed) and come off HP; each change goes to the player, their room (the bar over their head) and their party.
 // At 0 they're knocked out (no steps, moves or attacks; mobs forget them) and after 3 s respawn at the room's way in
 // (its spawn point, where arrivals land). Slowed (the Bag's), their steps are held to half; blinded, their attacks miss.
+// Loot (town-loot.ts, by room, in memory): each kill's drops land round it, shown per player (faint while someone
+// else's; the golem's only to its owner); walking onto loot (or next to Kusing) or `pick` takes it into their combat bag
+// through TownOptions.items (saved by the bot), and `items` tells them. HP and MP Potions (`potion`) heal at once, with
+// one shared cooldown per member (stats.json potions.sharedCooldownSec), only in battle maps and never when it'd do
+// nothing.
 
 const DIRS = new Set<TownDir>(['s', 'se', 'e', 'ne', 'n', 'nw', 'w', 'sw']);
 const MOVES = new Set<TownMove>(['dash', 'step-back', 'charge', 'blink']);
@@ -104,6 +112,16 @@ export interface TownOptions {
     fighter(userId: string): Attacker;
     kill(userId: string, mob: { level: number; xp: number }): LevelGain;
   };
+  /** Members' combat bags and Kusing (web/adventure.ts in the bot; in memory on the game's dev server): loot picked up
+   *  (false: no room), an HP or MP Potion of a kind used (what it heals; null: none), and what they hold now. Without it
+   *  nothing drops. */
+  items?: {
+    take(userId: string, loot: LootContent): boolean;
+    usePotion(userId: string, defId: string): { heals: 'hp' | 'mp'; amount: number } | null;
+    state(userId: string): CombatItems;
+  };
+  /** Rolls drops (Math.random if left out; the game's dev server can make loot rich to try it). */
+  lootRandom?: () => number;
   /** The level a class's movement skill unlocks at (classes.json `mobility`), or null: not one of its moves. A move
    *  before its level, or not theirs, isn't passed on; without it every move goes. */
   moveLevel?: (cls: string | null | undefined, move: TownMove) => number | null;
@@ -163,6 +181,8 @@ export interface Town {
   renamed(userId: string, nickname: string): void;
   /** A member chose a class or changed their weapon: everyone in town sees it (the resting weapon, the chat's badge). */
   kit(userId: string, cls: string | null, weapon: string | null): void;
+  /** A member's worn items, combat bag or Kusing changed outside the town (the shop, dev's ?give=): theirs to them. */
+  items(userId: string): void;
   /** A member's level, XP or points changed outside a fight (points refunded, dev's ?xp=): theirs to them, and with
    *  `ups` levels gained "Level up!" over them for their room. */
   progress(userId: string, progress: CharacterProgress, ups?: number, gained?: number): void;
@@ -217,6 +237,8 @@ interface Conn {
   seat?: ArenaSeat;
   /** The last party invite sent (ms). */
   invitedAt?: number;
+  /** The last "Inventory full" told (ms). */
+  fullAt?: number;
 }
 
 export function attachTown(server: Server, opts: TownOptions): Town {
@@ -372,6 +394,80 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     }
   };
 
+  // Loot on the ground, by battle room (only with somewhere to keep what's picked up).
+  const items = loadItemData();
+  const loots = new Map<string, LootRoom>(opts.items ? Object.keys(opts.mobs ?? {}).map((room) => [room, new LootRoom(items, opts.lootRandom)]) : []);
+  /** HP and MP Potions' shared cooldown (ms), and when each member's is over. */
+  const POTION_MS = itemStats(items.stats).potions.sharedCooldownSec * 1000;
+  const potionReady = new Map<string, number>();
+  /** Their worn items, combat bag and Kusing to them (`got`: what they just picked up). */
+  const tellItems = (c: Conn, got?: { kusing?: number; item?: Item }) => {
+    if (opts.items) send(c, { t: 'items', items: opts.items.state(c.userId) as TownItems, ...(got ? { got } : {}) });
+  };
+  /** New loot to everyone in the room who can see it (each their own view of it). */
+  const showLoot = (room: string, fresh: Loot[]) => {
+    const L = loots.get(room);
+    if (!L || !fresh.length) return;
+    const now = Date.now();
+    for (const o of conns.values()) {
+      if (o.room !== room) continue;
+      const seen = fresh.flatMap((l) => L.view(l, o.userId, now) ?? []);
+      if (seen.length) send(o, { t: 'loot-drop', loot: seen });
+    }
+  };
+  /** Loot gone (taken or lain too long): off everyone's screen in the room. */
+  const lootGone = (room: string, ids: string[]) => {
+    if (!ids.length) return;
+    const m: TownServerMessage = { t: 'loot-gone', ids };
+    for (const o of conns.values()) if (o.room === room) send(o, m);
+  };
+  /** A kill's drops, round where it died: the killer's (and their party's, those in the room), or the golem's for each
+   *  player who earned it. */
+  const dropFor = (room: string, kill: { kind: string; level: number; at: [number, number]; to: string[]; boss?: boolean }) => {
+    const L = loots.get(room);
+    const mobs = opts.mobs?.[room];
+    if (!L || !mobs || !kill.to.length) return;
+    const party = kill.boss ? [] : (parties.of(kill.to[0])?.members ?? []).filter((m) => conns.get(m)?.room === room);
+    const fresh = L.drop(kill, party, (at, n) => mobs.lootSpots(at, n), Date.now());
+    showLoot(room, fresh);
+    // Kusing picks itself up for whoever may take it nearby, once it has settled (the killer first).
+    if (fresh.some((l) => 'kusing' in l.content)) {
+      setTimeout(() => {
+        const here = [...conns.values()].filter((o) => o.room === room);
+        for (const o of here.sort((a, b) => Number(b.userId === kill.to[0]) - Number(a.userId === kill.to[0]))) pickUp(o);
+      }, KUSING_SETTLE_MS + 50).unref?.();
+    }
+  };
+  /** Picks up what they may take where they stand (Kusing nearby too), or the one loot asked for (`id`, within a tile).
+   *  Full bag: it stays, and they're told (now and then). */
+  const pickUp = (c: Conn, id?: string) => {
+    const L = loots.get(c.room);
+    if (!L || !opts.items || c.player.out) return;
+    const now = Date.now();
+    const p = c.player;
+    let picks = L.takeable(c.userId, p.col, p.row, now);
+    if (id) {
+      const l = L.get(id);
+      picks = l && L.mayTake(l, c.userId, now) && Math.max(Math.abs(l.col - p.col), Math.abs(l.row - p.row)) <= 1 ? [l] : [];
+    }
+    const gone: string[] = [];
+    let full = false;
+    for (const l of picks) {
+      if (!opts.items.take(c.userId, l.content)) {
+        full = true;
+        continue;
+      }
+      L.remove(l.id);
+      gone.push(l.id);
+      tellItems(c, 'kusing' in l.content ? { kusing: l.content.kusing } : { item: l.content.item });
+    }
+    lootGone(c.room, gone);
+    if (full && (id || now - (c.fullAt ?? 0) > 3000)) {
+      c.fullAt = now;
+      send(c, { t: 'loot-full' });
+    }
+  };
+
   /** Token bucket: true if this message may go through (slowed: half as many, half as fast). */
   const spend = (c: Conn) => {
     const now = Date.now();
@@ -400,14 +496,16 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       case 'here':
         if (!fresh || !inside_(m.col, m.row) || !walkable_(m.col, m.row) || !DIRS.has(m.dir)) return send(c, { t: 'snap', col: p.col, row: p.row });
         Object.assign(p, { col: m.col, row: m.row, dir: m.dir });
-        return others(c, { t: 'join', player: p }); // seen at the spawn point so far: show them where they are
+        others(c, { t: 'join', player: p }); // seen at the spawn point so far: show them where they are
+        return pickUp(c);
       case 'step': {
         const dc = (m.col as number) - p.col;
         const dr = (m.row as number) - p.row;
         const ok = inside_(m.col, m.row) && walkable_(m.col, m.row) && Math.abs(dc) <= 1 && Math.abs(dr) <= 1 && (dc || dr) && spend(c);
         if (!ok) return send(c, { t: 'snap', col: p.col, row: p.row });
         Object.assign(p, { col: m.col, row: m.row, dir: dirForStep(dc, dr), sit: false });
-        return others(c, { t: 'step', id: p.id, col: p.col, row: p.row });
+        others(c, { t: 'step', id: p.id, col: p.col, row: p.row });
+        return pickUp(c); // walking onto loot picks it up
       }
       case 'face':
         if (!DIRS.has(m.dir) || !spend(c)) return;
@@ -475,8 +573,32 @@ export function attachTown(server: Server, opts: TownOptions): Town {
             const o = conns.get(user);
             if (o && opts.progress) progressed(o, opts.progress.kill(o.userId, k));
           }
+          dropFor(c.room, k); // and its loot
         }
         return;
+      }
+      case 'pick':
+        if (typeof m.id === 'string') pickUp(c, m.id);
+        return;
+      case 'potion': {
+        // An HP or MP Potion from their bag: battle maps only, one shared cooldown, never when it'd do nothing.
+        if (typeof m.item !== 'string' || !opts.items) return;
+        const kind = potionOf(items, m.item);
+        if (!kind) return;
+        const now = Date.now();
+        if (!vitals?.get(c.userId) || !battle(c.room)) return send(c, { t: 'potion-refused', reason: 'here' });
+        const ready = potionReady.get(c.userId) ?? 0;
+        if (now < ready) return send(c, { t: 'potion-refused', reason: 'cooldown', ms: ready - now });
+        if (vitals.full(c.userId, kind.heals)) return send(c, { t: 'potion-refused', reason: 'full' });
+        const used = opts.items.usePotion(c.userId, m.item);
+        if (!used) return send(c, { t: 'potion-refused', reason: 'none' });
+        const healed = vitals.heal(c.userId, used.heals, used.amount);
+        potionReady.set(c.userId, now + POTION_MS);
+        tellItems(c);
+        const shownTo: TownServerMessage = { t: 'potion', id: p.id, heals: used.heals, amount: healed };
+        others(c, shownTo);
+        send(c, { ...shownTo, cooldown: POTION_MS });
+        return tellVitals(c);
       }
       case 'party-invite': {
         const now = Date.now();
@@ -600,7 +722,12 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       Object.assign(player, { hp, maxHp });
     }
     const mobRoom = opts.mobs?.[room];
-    queueMicrotask(() => mobRoom && send(c, { t: 'mobs', mobs: mobRoom.snapshot(Date.now()), golem: mobRoom.golemState(Date.now()) })); // after the welcome
+    queueMicrotask(() => {
+      // After the welcome: the mobs, and the loot they can see.
+      if (mobRoom) send(c, { t: 'mobs', mobs: mobRoom.snapshot(Date.now()), golem: mobRoom.golemState(Date.now()) });
+      const loot = loots.get(room);
+      if (loot) send(c, { t: 'loot', loot: loot.viewAll(userId, Date.now()) });
+    });
     send(c, { t: 'welcome', you: player.id, players: [...conns.values()].filter((o) => o.room === room).map((o) => o.player), recent, system: systemLines, spawn: [col, row], notice: notice && notice.until > Date.now() ? notice.a : undefined });
     conns.set(userId, c);
     others(c, { t: 'join', player });
@@ -731,6 +858,10 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       tellParty(userId);
       refreshVitals(c); // their gear's HP, MP and DEF
     },
+    items(userId) {
+      const c = conns.get(userId);
+      if (c) tellItems(c);
+    },
     progress(userId, progress, ups = 0, gained = 0) {
       const c = conns.get(userId);
       if (c) progressed(c, { progress, ups, gained });
@@ -768,6 +899,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         const where = new Map(up.map((o) => [o.player.id, [o.player.col, o.player.row] as [number, number]]));
         const guards = new Map(up.flatMap((o) => (o.guard ? [[o.player.id, o.guard] as const] : [])));
         const events = mobs.tick(now, where, guards);
+        lootGone(room, loots.get(room)?.tick(now) ?? []); // loot that lay there too long
         if (!events.length) continue;
         const listeners = here.filter((o) => o.ws.readyState === WebSocket.OPEN);
         for (const e of events) {

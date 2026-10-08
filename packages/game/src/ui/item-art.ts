@@ -8,8 +8,8 @@ import type { ItemArtDef } from '../assets/types';
 
 export type Rarity = 'junk' | 'common' | 'uncommon' | 'rare' | 'epic' | 'mythical' | 'legendary' | 'secret' | GearRarity;
 
-/** Border and glow per rarity (the bot's rarity colours; junk has no glow), then equipment's (classes/stats.json
- *  `rarity`, which names them but has no colours: these are ours). */
+/** Border and glow per rarity (the bot's rarity colours; junk has no glow), then equipment's: stand-ins until the
+ *  game's classes/stats.json `rarity` colours come in (setRarityColours), which every item name uses. */
 const FRAMES: Record<Rarity, { border: string; glow: string | null; shimmer?: boolean }> = {
   junk: { border: '#3D4256', glow: null },
   common: { border: '#7A8099', glow: '#7A8099' },
@@ -36,6 +36,28 @@ export const RARITY_COLOUR: Record<Rarity, string> = Object.fromEntries(Object.e
 /** The rarity's colour for text on the dark dig panel: its glow (lighter), and a readable grey for junk. */
 export const RARITY_TEXT: Record<Rarity, string> = Object.fromEntries(Object.entries(FRAMES).map(([r, f]) => [r, f.glow ?? '#9AA1B8'])) as Record<Rarity, string>;
 export const isRarity = (s: string): s is Rarity => s in FRAMES;
+
+/** Equipment's rarity colours from classes/stats.json (`rarity.nameColour[r].colour`): the name, border and glow. */
+export function setRarityColours(colours: Record<string, string | undefined>): void {
+  for (const [r, c] of Object.entries(colours)) {
+    if (!c || !isRarity(r)) continue;
+    FRAMES[r] = { border: c, glow: c };
+    RARITY_COLOUR[r] = c;
+    RARITY_TEXT[r] = c;
+  }
+  frames.clear();
+}
+
+/** A plain square in the rarity's colour (an item whose icon hasn't been drawn yet; gear uses its slot's silhouette). */
+export function placeholderArt(rarity: Rarity, size: 'icon' | 'showcase' = 'icon', scale = 1): HTMLElement {
+  const box = document.createElement('span');
+  const px = (size === 'icon' ? 16 : 32) * scale;
+  box.className = 'it-placeholder';
+  box.style.width = box.style.height = `${px}px`;
+  box.style.background = RARITY_COLOUR[rarity];
+  box.style.boxShadow = `inset 0 0 0 ${scale}px #1E1B3A`;
+  return box;
+}
 
 let items: Record<string, ItemArtDef> = {};
 let base = '';

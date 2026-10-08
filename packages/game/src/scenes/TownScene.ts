@@ -45,7 +45,10 @@ import { showOutpost } from '../ui/outpost';
 import { showBoard } from '../ui/board';
 import { showShop } from '../ui/shop';
 import { TargetBox } from '../ui/target';
-import { RARITY_TEXT, addItemArt, isRarity, setItemArt } from '../ui/item-art';
+import { RARITY_TEXT, addItemArt, isRarity, setItemArt, setRarityColours } from '../ui/item-art';
+import { LootLayer } from '../world/loot';
+import { setKusingArt } from '../ui/reward';
+import { nameOf } from '../ui/item-tip';
 import { playDig, setDigPanelArt } from '../ui/dig-panel';
 import { showMine } from '../ui/mine';
 import { Inventory } from '../ui/inventory';
@@ -84,12 +87,13 @@ import { stopQueue } from '../arena/queue';
 import type { ArenaData } from './ArenaScene';
 import { Minimap } from '../ui/minimap';
 import { type Bench, type Building, WorldObjects, characterDepth } from '../world/objects';
-import { enterArenaSound, enterCasinoSound, hearFrom, leaveCasinoSound, playSound, startTownSound } from '../audio/sound';
+import { enterArenaSound, enterCasinoSound, hearFrom, leaveCasinoSound, playSound, playVariant, startTownSound } from '../audio/sound';
 import type { AdventureData } from '../net/adventure';
-import { Hotbar } from '../ui/hotbar';
+import { Hotbar, potionCooldownKey } from '../ui/hotbar';
 import { mountClassSwitch } from '../ui/class-switch';
 import { MOVES, type MoveKind, isMoveKind, moveTiles, playMove } from '../world/mobility';
-import { changeClass, devSwitchClass, adventure, adventureData, chooseClass, classInfo, initAdventure, itemDef, loadAdventureData, onAdventure, questDef, questFor, questTalk, setProgress, skillView, skillViews } from '../net/adventure';
+import { changeClass, devItemsReady, devSwitchClass, adventure, adventureData, anyDef, chooseClass, classInfo, initAdventure, itemData, itemDef, loadAdventureData, onAdventure, questDef, questFor, questTalk, setItems, setProgress, skillView, skillViews } from '../net/adventure';
+import { type Item, type TownItems, countOf, isGearDef, itemStats } from '@mikazuki/shared';
 import type { ClassArt } from '../assets/types';
 import { drawRested, loadImages, poseFiles, restFiles } from '../characters/kit-art';
 import { holdQuestBanners, mountQuests } from '../ui/quests';
@@ -177,6 +181,11 @@ export class TownScene extends Phaser.Scene {
   private outfit!: Outfit;
   private ground!: Ground | Terrain;
   private mobs: Mobs | null = null;
+  /** Loot on the ground (battle maps). */
+  private loot: LootLayer | null = null;
+  get debugLoot(): LootLayer | null {
+    return this.loot;
+  }
   get debugMobs(): Mobs | null {
     return this.mobs;
   }
@@ -410,6 +419,11 @@ export class TownScene extends Phaser.Scene {
       };
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => box.destroy());
       this.mobs = mobs;
+      // Loot on the ground: a click walks you onto it (the server picks it up as you arrive; a tile away, at once).
+      const sil = this.M.ui.equipSlots;
+      const loot = new LootLayer(this, this.objects, itemData, { kusing: this.M.ui.kusingIcon?.file ?? null, silhouettes: sil ? { file: sil.file, frames: sil.frames } : null });
+      this.loot = loot;
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => loot.destroy());
       // Its field boss, once its art is in (loaded in the background: it never holds up arriving).
       const boss = this.map.boss;
       if (boss && this.M.mobs?.[boss.id]) {
@@ -499,6 +513,7 @@ export class TownScene extends Phaser.Scene {
     this.others.update(delta);
     this.mobs?.update(delta);
     this.mobs?.check(this.player.tile);
+    this.loot?.update();
     this.golem?.update();
     this.fightTick();
     this.fxLayers.update();
@@ -656,10 +671,14 @@ export class TownScene extends Phaser.Scene {
     const E = this.M.equipment;
     if (!Q || !K || !E) return Promise.resolve();
     const asset = (f: string) => `${import.meta.env.BASE_URL}assets/${f}`;
-    this.adventureReady ??= loadAdventureData(asset, { quests: Q.file, classes: K.data, equipment: E.file }, this.cache.json.get('stats'));
+    this.adventureReady ??= loadAdventureData(asset, { quests: Q.file, classes: K.data, equipment: E.file, items: this.M.combatItems?.file }, this.cache.json.get('stats'));
     return this.adventureReady.then((data) => {
       if (!data) return void console.warn('[quests] the quests, classes, equipment or stats data is missing');
-      addItemArt(Object.fromEntries([...data.equipment.values()].map((i) => [i.id, { icon: i.icon, showcase: i.showcase }])));
+      // Every item kind's art (gear and the rest), and the rarity colours every item name uses (stats.json).
+      addItemArt(Object.fromEntries([...data.defs.values()].map((i) => [i.id, { icon: i.icon, showcase: i.showcase }])));
+      setRarityColours(Object.fromEntries(Object.entries(itemStats(data.stats).rarity.nameColour).map(([r, c]) => [r, c.colour])));
+      const kusing = this.M.ui.kusingIcon;
+      setKusingArt(kusing ? asset(kusing.file) : null);
       const member = this.me?.status === 'ok' ? this.me.me : null;
       if (!member) return; // guests have no quests
       const armor = initAdventure(member.adventure, member.trainingGear);
@@ -676,6 +695,22 @@ export class TownScene extends Phaser.Scene {
         slot: inv?.slot && inv.selected && inv.nineSlice ? { url: url(inv.slot), picked: url(inv.selected), slice: inv.nineSlice } : null,
         badge: (cls) => (icons ? url(icons.file.replace('{class}', cls)) : ''),
         onSkill: (name) => this.mobility(name) ?? this.fight(name),
+        // HP and MP Potions: the server heals and starts their shared cooldown (the town's `potion` message).
+        onItem: (id) => {
+          const def = anyDef(id);
+          if (isGearDef(def) || def?.kind !== 'potion') return false;
+          if (!countOf(adventure()?.bag ?? [], id)) {
+            playSound('error');
+            toast(`No ${def.name}s left. Get more at the sari-sari store.`, 2200, 'bad');
+            return true;
+          }
+          this.link?.send({ t: 'potion', item: id });
+          return true;
+        },
+        countOf: (id) => {
+          const def = anyDef(id);
+          return !isGearDef(def) && def?.kind === 'potion' ? countOf(adventure()?.bag ?? [], id) : undefined;
+        },
         usable: (name) => this.battleMap || !!classInfo(adventure()?.cls)?.mobility?.some((m) => m.name === name),
         stage: (c) => this.skillStage(c.id, c.fx),
         icon: (cls, skill) => {
@@ -698,7 +733,7 @@ export class TownScene extends Phaser.Scene {
         hotbar.setClass(classInfo(s.cls) ?? null);
         void this.applyBattle(s.cls);
         this.questMarkers();
-        void this.wearWeapon(s.equipped.weapon, s.cls);
+        void this.wearWeapon(s.equipped.weapon?.defId, s.cls);
         const c = classInfo(s.cls);
         setHudClass(c && icons ? { name: c.name, badge: asset(icons.small.replace('{class}', c.id)) } : null);
         setHudLevel(s.progress);
@@ -708,6 +743,10 @@ export class TownScene extends Phaser.Scene {
 
   /** Dev: ?xp= / ?level= asked for once this visit (not again on a reconnect). */
   private devLevelled = false;
+  /** Your HP and MP as the server last said (debug). */
+  private vitalsNow: { hp: number; maxHp: number; mp: number; maxMp: number } | null = null;
+  /** Dev: ?kusing= / ?whetstones= / ?give= asked for once this visit. */
+  private devGiven = false;
 
   /** A map with mobs (the Slums): battle poses, and the damage skills hit mobs. */
   private battleMap = false;
@@ -980,7 +1019,7 @@ export class TownScene extends Phaser.Scene {
         toast(r?.error ?? "Couldn't reach the bot. Try again in a moment.", 3000, 'bad');
         return false;
       }
-      const item = itemDef(r.adventure.equipped.weapon);
+      const item = itemDef(r.adventure.equipped.weapon?.defId);
       toast(`A fresh start: you're a ${c.name} now!`, 3500, 'good', item ? gearPicture(item, asset) : null);
       dispatchEvent(new Event('mk-bag-changed')); // the bag shows one ticket fewer
       return true;
@@ -1207,6 +1246,7 @@ export class TownScene extends Phaser.Scene {
         if (hit?.miss) return who.hitNumber('Miss', mine);
         who.hurt();
         if (hit) who.hitNumber(String(hit.damage), mine);
+        if (mine && hit) playVariant('combat-player-hurt');
         if (!slow) return;
         showSlowed(this.fxLayers, () => ({ x: who.sprite.x, y: who.headY }), () => ({ x: who.sprite.x, y: who.sprite.y }), slow);
         if (mine) this.slowMe(slow);
@@ -1347,6 +1387,7 @@ export class TownScene extends Phaser.Scene {
           if (!h) return;
           pending.delete(id);
           this.mobs?.hit(h.id, h.damage, h.crit, h.hp, h.dead, h.slow, h.blocked, h.miss);
+          if (mine && h.damage > 0) playSound(h.crit ? 'combat-hit-crit' : 'combat-hit'); // your hit landing
         };
         const landAll = () => [...pending.keys()].forEach(land);
         this.time.delayedCall(1500, landAll);
@@ -1364,6 +1405,7 @@ export class TownScene extends Phaser.Scene {
         setMemberHp(m.id, m.hp, m.maxHp);
         if (m.id !== myId) return this.others.handle(m);
         setHudVitals({ hp: m.hp, maxHp: m.maxHp, mp: m.mp ?? 0, maxMp: m.maxMp ?? 0 });
+        this.vitalsNow = { hp: m.hp, maxHp: m.maxHp, mp: m.mp ?? 0, maxMp: m.maxMp ?? 0 };
         return this.player.setHp(m.hp, m.maxHp);
       }
       // Knocked out (0 HP): you fade out where you stand and can't act; in 3 s the server puts you back at the way in.
@@ -1383,6 +1425,44 @@ export class TownScene extends Phaser.Scene {
         return this.player.setKnockedOut(false);
       }
       if (m.t === 'mob-spawn') return this.mobs?.respawn(m.id, m.col, m.row, m.hp);
+      // Loot on the ground: what you can see of it (faint while it's someone else's).
+      if (m.t === 'loot') return this.loot?.set(m.loot);
+      if (m.t === 'loot-drop') {
+        this.loot?.add(m.loot);
+        if (m.loot.some((l) => l.mine)) playSound('combat-loot-drop');
+        return;
+      }
+      if (m.t === 'loot-gone') return this.loot?.remove(m.ids);
+      if (m.t === 'loot-full') {
+        playSound('error');
+        return toast('Inventory full', 1800, 'bad');
+      }
+      // Your items and Kusing changed on the server (loot picked up, a potion, the shop, dev's ?give=).
+      if (m.t === 'items') {
+        setItems(m.items, m.got);
+        if (m.got?.kusing) playSound('combat-coins');
+        if (m.got?.item) {
+          playSound('combat-loot-pickup');
+          toast(`Picked up ${nameOf(m.got.item)}${m.got.item.count > 1 ? ` ×${m.got.item.count}` : ''}`, 1800, 'good');
+        }
+        return;
+      }
+      // An HP or MP Potion (maybe yours): the heal over them in green or blue; yours starts the potions' cooldown.
+      if (m.t === 'potion') {
+        const ch = charOf(m.id);
+        ch?.hitNumber(`+${m.amount}`, m.id === myId, m.heals === 'hp' ? '#4ADE80' : '#60A5FA');
+        if (m.id === myId) {
+          playSound('combat-potion');
+          if (m.cooldown) this.hotbar?.cooldown(potionCooldownKey, m.cooldown / 1000);
+        }
+        return;
+      }
+      if (m.t === 'potion-refused') {
+        playSound('error');
+        if (m.reason === 'cooldown' && m.ms) this.hotbar?.cooldown(potionCooldownKey, m.ms / 1000);
+        const why = { cooldown: 'Your potions are cooling down.', none: 'None left.', full: "You're already full.", here: 'HP and MP Potions work in the Slums.' }[m.reason];
+        return toast(why, 1800, 'bad');
+      }
       // Your level, XP and points (a kill's XP, dev's ?xp=): the HUD and everything that shows them follow.
       if (m.t === 'progress') return setProgress(m.progress);
       // Someone went up a level (maybe you): "Level up!" over them, a soft chime (quieter for others).
@@ -1431,6 +1511,21 @@ export class TownScene extends Phaser.Scene {
         link.send({ t: 'here', col: t.col, row: t.row, dir: this.player.facing });
         this.sent = { dir: this.player.facing, sit: false };
         if (golemDev) void fetch(q.has('golemdemo') ? `/__golem?${new URLSearchParams({ demo: '1', as: fakeName() })}` : '/__golem?now=1').catch(() => null);
+        // Dev: ?kusing=5000, ?whetstones=200, ?give=<defId>:<rarity>:<plus> (the dev server's /__give: rolled there as
+        // drops are; your items come back as an `items` message). Once a visit.
+        if (import.meta.env.DEV && fakeLogin() && !this.devGiven && (q.has('kusing') || q.has('whetstones') || q.has('give'))) {
+          this.devGiven = true;
+          const [def, rarity, plus] = (q.get('give') ?? '').split(':');
+          const ask = new URLSearchParams({ as: fakeName() });
+          if (q.has('kusing')) ask.set('kusing', q.get('kusing')!);
+          if (q.has('whetstones')) ask.set('whetstones', q.get('whetstones')!);
+          if (def) Object.entries({ def, rarity: rarity ?? '', plus: plus ?? '0' }).forEach(([k, v]) => ask.set(k, v));
+          void devItemsReady
+            .then(() => fetch(`/__give?${ask}`))
+            .then((r) => (r.ok ? (r.json() as Promise<{ items?: TownItems }>) : null))
+            .then((r) => r?.items && setItems(r.items))
+            .catch(() => null);
+        }
         // Dev: ?xp=500 gives you XP, ?level=10 sets your level (the dev server's /__xp: its level-ups as from kills).
         if (import.meta.env.DEV && fakeLogin() && (q.has('xp') || q.has('level')) && !this.devLevelled) {
           this.devLevelled = true;
@@ -1642,6 +1737,9 @@ export class TownScene extends Phaser.Scene {
       // A drag, not a click. (Measured from our own press: p.getDistance() only follows the left button, so after a
       // left drag every right click looked like a drag.)
       if (Math.hypot(p.x - this.pressAt.x, p.y - this.pressAt.y) > 8) return;
+      // Loot: left click (or a tap) goes and picks it up.
+      const lootHit = this.loot?.pick(over);
+      if (lootHit && (p.wasTouch || p.leftButtonReleased())) return this.goToLoot(lootHit.id, { col: lootHit.col, row: lootHit.row });
       // Someone else's character: left click (or a tap) picks them for the player menu.
       const other = this.others.pick(over);
       if (other && this.target && (p.wasTouch || p.leftButtonReleased())) {
@@ -1873,6 +1971,13 @@ export class TownScene extends Phaser.Scene {
     this.setBuildingAlert(null);
     this.player.walk(path.slice(0, -1));
     this.pending = { npc: id };
+  }
+
+  /** Loot clicked: a tile away (or on it), picked up at once; else walk onto it (the server picks it up as you arrive). */
+  private goToLoot(id: string, at: Tile): void {
+    const me = this.player.tile;
+    if (Math.max(Math.abs(at.col - me.col), Math.abs(at.row - me.row)) <= 1) return void this.link?.send({ t: 'pick', id });
+    this.moveTo(at);
   }
 
   /** Walk to a tile; a bench means sit on it; a blocked tile means the nearest reachable one. */
@@ -2500,6 +2605,7 @@ export class TownScene extends Phaser.Scene {
     const s = skyAt(minutesNow());
     return {
       tile: t,
+      vitals: this.vitalsNow,
       facing: this.player.facing,
       sitting: this.player.isSitting,
       anim: this.player.sprite.anims.currentAnim?.key.split(':').slice(2).join(':'),
@@ -2663,6 +2769,17 @@ function exposeDebug(scene: TownScene): void {
       const m = scene.debugMobs?.get('scrapheap-golem');
       const cam = scene.cameras.main;
       return m ? { tile: [Math.floor(m.col), Math.floor(m.row)], dir: m.dir, hp: m.hp, maxHp: m.maxHp, dead: m.dead, asleep: m.asleep, enraged: m.enraged, untouchable: m.untouchable, anim: m.sprite.anims.currentAnim?.key, frame: m.sprite.anims.currentFrame?.index, x: (m.sprite.x - cam.worldView.x) * cam.zoom, y: (m.sprite.y - cam.worldView.y) * cam.zoom } : null;
+    },
+    /** Your items and Kusing as the page has them (names as shown). */
+    items: () => {
+      const s = adventure();
+      const view = (i: Item) => ({ uid: i.uid, defId: i.defId, name: nameOf(i), rarity: i.rarity, plus: i.plus, count: i.count, bound: i.bound, lines: i.lines, agimats: i.agimats });
+      return s && { kusing: s.kusing, bag: s.bag.map(view), equipped: Object.fromEntries(Object.entries(s.equipped).map(([p, i]) => [p, view(i!)])) };
+    },
+    /** Loot on the ground as shown, with where each is on the screen. */
+    loot: () => {
+      const cam = scene.cameras.main;
+      return scene.debugLoot?.list().map((l) => ({ ...l, sx: (l.x - cam.worldView.x) * cam.zoom, sy: (l.y - cam.worldView.y) * cam.zoom }));
     },
     /** Fixed view for screenshots: zoom and centre on a world point (follow off), or follow again. */
     view: (zoom?: number, x?: number, y?: number) => {

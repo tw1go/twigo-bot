@@ -19,9 +19,19 @@ const { CLASSES, EQUIPMENT, QUESTS, adventureOf, equipStep, fighterOf, freshAdve
 const { usedSlots } = await import('../dig/bag.js');
 const { sellInTown, sellManyInTown } = await import('./town-bag.js');
 const { closeDatabase, db } = await import('../db/db.js');
-const { loadStats } = await import('./stats-data.js');
-const { baseStats, mobStats, skillPointsAt, xpForLevel, xpToNext } = await import('@mikazuki/shared');
+const { loadItemData, loadStats } = await import('./stats-data.js');
+const { baseStats, mobStats, newItem, skillPointsAt, xpForLevel, xpToNext } = await import('@mikazuki/shared');
 const S = loadStats();
+type Item = import('@mikazuki/shared').Item;
+
+/** Items' kinds (what tests compare), and what's worn by place. */
+const kinds = (items: Item[]) => items.map((i) => i.defId);
+const worn = (s: { equipped: Partial<Record<string, Item>> }) => Object.fromEntries(Object.entries(s.equipped).map(([p, i]) => [p, i!.defId]));
+let n = 0;
+/** A plain item of a kind. */
+const item = (id: string) => newItem(S, EQUIPMENT.get(id)!, `t${++n}`);
+/** A combat bag with only `free` slots left (filled with plain whetstones… no: training sticks, which don't stack). */
+const fullBag = (free: number) => Array.from({ length: 40 - free }, () => item('weapon-training-stick'));
 
 const Q = 'main-01-class';
 
@@ -42,19 +52,21 @@ test('the data files: six classes, a training weapon for each, the first main qu
 test('the class choice: armor into its place, else the bag; what has no room comes on a later visit', () => {
   const s = freshAdventure();
   startQuests(s);
-  questStep(s, { quest: Q, action: 'talk', npc: 'tanod' }, 0);
-  s.equipped.head = 'armor-training-light-head'; // something already on their head
-  s.equipped.weapon = 'weapon-training-plank';
-  const r = questStep(s, { quest: Q, action: 'chooseClass', cls: 'potlid' }, 1); // one free slot: the old weapon takes it
+  questStep(s, { quest: Q, action: 'talk', npc: 'tanod' });
+  s.equipped.head = item('armor-training-light-head'); // something already on their head
+  s.equipped.weapon = item('weapon-training-plank');
+  s.bag = fullBag(1); // one free slot: the old weapon takes it
+  const r = questStep(s, { quest: Q, action: 'chooseClass', cls: 'potlid' });
   assert.equal(r.given, 'weapon-training-potlid');
-  assert.deepEqual(s.bag, ['weapon-training-plank']);
+  assert.deepEqual(s.bag.at(-1)!.defId, 'weapon-training-plank');
   assert.deepEqual(r.gear, armorOf('household').slice(1)); // no room for the headwrap
   assert.equal(s.trainingArmorGiven, false);
-  assert.deepEqual(giveTrainingArmor(s, 0), []); // still no room
-  assert.deepEqual(giveTrainingArmor(s, 2), ['armor-training-household-head']); // into the bag (the head is taken)
-  assert.deepEqual(s.bag, ['weapon-training-plank', 'armor-training-household-head']);
+  assert.deepEqual(giveTrainingArmor(s), []); // still no room
+  s.bag.splice(0, 2);
+  assert.deepEqual(giveTrainingArmor(s), ['armor-training-household-head']); // into the bag (the head is taken)
+  assert.deepEqual(kinds(s.bag).slice(-2), ['weapon-training-plank', 'armor-training-household-head']);
   assert.equal(s.trainingArmorGiven, true);
-  assert.deepEqual(giveTrainingArmor(s, 2), []); // once
+  assert.deepEqual(giveTrainingArmor(s), []); // once
 });
 
 test('the class quest: starts once, talk then choose, gives the weapon into the weapon slot', () => {
@@ -62,16 +74,17 @@ test('the class quest: starts once, talk then choose, gives the weapon into the 
   assert.deepEqual(startQuests(s).map((q) => q.id), [Q]);
   assert.equal(startQuests(s).length, 0); // only once
   // Out of order or the wrong NPC: refused.
-  assert.equal(questStep(s, { quest: Q, action: 'chooseClass', cls: 'stick' }, 5).ok, false);
-  assert.equal(questStep(s, { quest: Q, action: 'talk', npc: 'marites' }, 5).ok, false);
-  assert.deepEqual(questStep(s, { quest: Q, action: 'talk', npc: 'tanod' }, 5), { ok: true, completed: undefined });
-  assert.equal(questStep(s, { quest: Q, action: 'talk', npc: 'tanod' }, 5).ok, false); // already past it
-  assert.equal(questStep(s, { quest: Q, action: 'chooseClass', cls: 'wizard' }, 5).ok, false); // no such class
-  const r = questStep(s, { quest: Q, action: 'chooseClass', cls: 'stick' }, 5);
+  assert.equal(questStep(s, { quest: Q, action: 'chooseClass', cls: 'stick' }).ok, false);
+  assert.equal(questStep(s, { quest: Q, action: 'talk', npc: 'marites' }).ok, false);
+  assert.deepEqual(questStep(s, { quest: Q, action: 'talk', npc: 'tanod' }), { ok: true, completed: undefined });
+  assert.equal(questStep(s, { quest: Q, action: 'talk', npc: 'tanod' }).ok, false); // already past it
+  assert.equal(questStep(s, { quest: Q, action: 'chooseClass', cls: 'wizard' }).ok, false); // no such class
+  const r = questStep(s, { quest: Q, action: 'chooseClass', cls: 'stick' });
   assert.deepEqual(r, { ok: true, given: 'weapon-training-stick', gear: armorOf('heavy'), completed: Q });
   assert.equal(s.cls, 'stick');
   // The weapon and the Heavy armor, all worn; given once.
-  assert.deepEqual(s.equipped, { weapon: 'weapon-training-stick', ...Object.fromEntries(armorOf('heavy').map((id) => [EQUIPMENT.get(id)!.slot, id])) });
+  assert.deepEqual(worn(s), { weapon: 'weapon-training-stick', ...Object.fromEntries(armorOf('heavy').map((id) => [EQUIPMENT.get(id)!.slot, id])) });
+  assert.ok(Object.values(s.equipped).every((i) => i!.bound && i!.rarity === 'brown' && i!.level === 1 && !i!.lines.length && !i!.agimats.length), 'training gear: bound, brown, no rolls');
   assert.equal(s.trainingArmorGiven, true);
   assert.deepEqual(s.bag, []);
   assert.deepEqual(s.quests, { active: [], done: [Q] });
@@ -82,35 +95,40 @@ test('the class quest: starts once, talk then choose, gives the weapon into the 
 });
 
 test('equipment: only what your base stats meet, the old one back to the bag, taking off needs a free slot', () => {
-  const s = { ...freshAdventure(), cls: 'stick', equipped: { weapon: 'weapon-training-stick' as string | undefined }, bag: ['weapon-training-broom', 'weapon-training-stick'] };
-  assert.deepEqual(equipStep(s, { action: 'equip', item: 'weapon-training-broom' }, 5), { ok: false, message: 'Needs INT 8' });
-  assert.equal(equipStep(s, { action: 'equip', item: 'weapon-training-plank' }, 5).ok, false); // not in the bag
-  assert.equal(equipStep(s, { action: 'equip', item: 'weapon-training-stick', place: 'ring1' }, 5).message, 'Wrong slot.');
-  assert.equal(equipStep(s, { action: 'equip', item: 'weapon-training-stick' }, 5).ok, true); // a second stick: swaps
-  assert.deepEqual(s.bag.sort(), ['weapon-training-broom', 'weapon-training-stick']);
-  assert.equal(equipStep(s, { action: 'unequip', place: 'weapon' }, 0).message, 'Your bag is full.');
-  assert.equal(equipStep(s, { action: 'unequip', place: 'weapon' }, 1).ok, true);
+  const [broom, stick, worn1] = [item('weapon-training-broom'), item('weapon-training-stick'), item('weapon-training-stick')];
+  const s = { ...freshAdventure(), cls: 'stick', equipped: { weapon: worn1 }, bag: [broom, stick] };
+  assert.deepEqual(equipStep(s, { action: 'equip', item: broom.uid }), { ok: false, message: 'Needs INT 8' });
+  assert.equal(equipStep(s, { action: 'equip', item: 'nope' }).ok, false); // not in the bag
+  assert.equal(equipStep(s, { action: 'equip', item: stick.uid, place: 'ring1' }).message, 'Wrong slot.');
+  assert.equal(equipStep(s, { action: 'equip', item: stick.uid }).ok, true); // a second stick: swaps (by uid)
+  assert.equal(s.equipped.weapon!.uid, stick.uid);
+  assert.deepEqual(s.bag.map((i) => i.uid), [broom.uid, worn1.uid]); // where it was
+  s.bag.push(...fullBag(2)); // 40 in the bag
+  assert.equal(equipStep(s, { action: 'unequip', place: 'weapon' }).message, 'Your bag is full.');
+  s.bag.pop();
+  assert.equal(equipStep(s, { action: 'unequip', place: 'weapon' }).ok, true);
   assert.equal(s.equipped.weapon, undefined);
-  assert.equal(equipStep(s, { action: 'unequip', place: 'weapon' }, 1).ok, false); // nothing there
+  assert.equal(equipStep(s, { action: 'unequip', place: 'weapon' }).ok, false); // nothing there
 });
 
-test('saved per member: /me starts the quest, the routes save, the bag counts unworn equipment', () => {
+test('saved per member: /me starts the quest, the routes save, unworn gear goes in the combat bag (not the old bag)', () => {
   assert.deepEqual(adventureOf('m1').quests.active, [{ id: Q, step: 0 }]);
-  assert.equal(townQuest('m1', { quest: Q, action: 'talk', npc: 'tanod' }, 40).changed, false);
-  const done = townQuest('m1', { quest: Q, action: 'chooseClass', cls: 'hilot' }, usedSlots('m1') + 40);
+  assert.equal(townQuest('m1', { quest: Q, action: 'talk', npc: 'tanod' }).changed, false);
+  const done = townQuest('m1', { quest: Q, action: 'chooseClass', cls: 'hilot' });
   assert.equal(done.changed, true);
   assert.equal(done.given, 'weapon-training-balm');
   assert.deepEqual(kitOf('m1'), { cls: 'hilot', weapon: 'weapon-training-balm', level: 1 });
-  assert.equal(usedSlots('m1'), 0); // worn: no bag slot
-  assert.equal(townEquip('m1', { action: 'unequip', place: 'weapon' }, 3).changed, true);
-  assert.equal(usedSlots('m1'), 1);
+  const uid = adventureOf('m1').equipped.weapon!.uid;
+  assert.equal(townEquip('m1', { action: 'unequip', place: 'weapon' }).changed, true);
+  assert.equal(usedSlots('m1'), 0); // the old bag never counts gear
+  assert.deepEqual(adventureOf('m1').bag.map((i) => i.uid), [uid]); // the same item, saved
   assert.deepEqual(kitOf('m1'), { cls: 'hilot', weapon: null, level: 1 });
   assert.equal(adventureOf('m1').quests.done[0], Q); // kept
-  // The CMS can start it all over: no class, the class quest again, nothing carried.
+  // The CMS can start it all over: no class, the class quest again, the training gear gone (other items kept).
   resetAdventure('m1');
   assert.deepEqual(kitOf('m1'), { cls: null, weapon: null, level: 1 });
   assert.deepEqual(adventureOf('m1').quests, { active: [{ id: Q, step: 0 }], done: [] });
-  assert.equal(usedSlots('m1'), 0);
+  assert.deepEqual(adventureOf('m1').bag, []);
 });
 
 test('a row saved before levels (schema v10) reads as Lv 1, 0 XP, nothing earned or spent', () => {
@@ -125,8 +143,8 @@ test('a row saved before levels (schema v10) reads as Lv 1, 0 XP, nothing earned
 });
 
 test('levels are saved: XP and kills level them up (points earned), the fight sees them, a class reset keeps the level', () => {
-  townQuest('lv', { quest: Q, action: 'talk', npc: 'tanod' }, 40);
-  townQuest('lv', { quest: Q, action: 'chooseClass', cls: 'slingshot' }, 40);
+  townQuest('lv', { quest: Q, action: 'talk', npc: 'tanod' });
+  townQuest('lv', { quest: Q, action: 'chooseClass', cls: 'slingshot' });
   const can = mobStats(S, 'tin-can')!;
   const kill = killFor('lv', can);
   assert.deepEqual([kill.gained, kill.ups, kill.progress.level], [can.xp, 0, 1]);
@@ -136,7 +154,8 @@ test('levels are saved: XP and kills level them up (points earned), the fight se
   assert.deepEqual([saved.level, saved.xp, saved.statPoints, saved.skillPoints], [4, 0, 3 * S.growth.pointsPerLevelUp, skillPointsAt(S, 4)]);
   assert.equal(kitOf('lv').level, 4);
   // What the town passes into a fight: class, level, points, everything worn, the skills' levels (Lv 1 each so far).
-  assert.deepEqual(fighterOf('lv'), { cls: 'slingshot', level: 4, points: {}, gear: ['weapon-training-slingshot', ...armorOf('light')], skills: Array(CLASSES.find((c) => c.id === 'slingshot')!.skills.length).fill(1) });
+  const f = fighterOf('lv');
+  assert.deepEqual({ ...f, gear: kinds(f.gear as Item[]) }, { cls: 'slingshot', level: 4, points: {}, gear: ['weapon-training-slingshot', ...armorOf('light')], skills: Array(CLASSES.find((c) => c.id === 'slingshot')!.skills.length).fill(1) });
   // Far below them, a Tin Can gives less (the low-mob penalty).
   gainXpFor('lv', xpForLevel(S, 12) - xpForLevel(S, 4));
   assert.ok(killFor('lv', can).gained < can.xp);
@@ -154,8 +173,8 @@ test('stat points: banked before a class, then only into its main or second stat
   assert.equal(adventureOf('sp').progress.statPoints, 3 * S.growth.pointsPerLevelUp);
   assert.deepEqual(townPoints('sp', { action: 'spend', stat: 'DEX' }), { ok: false, message: 'Choose a class to spend points.', adventure: adventureOf('sp') });
   // A Slingshot (DEX, INT; STR third): its growth at Lv 4 at once, and the banked points to spend.
-  townQuest('sp', { quest: Q, action: 'talk', npc: 'tanod' }, 40);
-  townQuest('sp', { quest: Q, action: 'chooseClass', cls: 'slingshot' }, 40);
+  townQuest('sp', { quest: Q, action: 'talk', npc: 'tanod' });
+  townQuest('sp', { quest: Q, action: 'chooseClass', cls: 'slingshot' });
   const g = S.growth;
   assert.deepEqual(baseStats(S, 'slingshot', 4), { DEX: g.main.base + g.main.perLevel * 4, INT: g.second.base + g.second.perLevel * 4, STR: g.third.base + g.third.perLevel * 4 });
   assert.equal(townPoints('sp', { action: 'spend', stat: 'STR' }).message, "Your class doesn't put points into STR.");
@@ -175,52 +194,61 @@ test('stat points: banked before a class, then only into its main or second stat
 });
 
 test('wearing checks base stats on the server: another class\'s weapon and armor refused with the line, gear STR never counts', () => {
-  townQuest('sl', { quest: Q, action: 'talk', npc: 'tanod' }, 40);
-  townQuest('sl', { quest: Q, action: 'chooseClass', cls: 'slingshot' }, 40);
+  townQuest('sl', { quest: Q, action: 'talk', npc: 'tanod' });
+  townQuest('sl', { quest: Q, action: 'chooseClass', cls: 'slingshot' });
   // Into the bag to try them (a Slingshot: DEX 10, INT 6, STR 4 at Lv 1).
   const plank = EQUIPMENT.get('weapon-training-plank')!; // a Greatstick's: STR its main
   const need = S.requirements.weapon.main.perItemLevel * plank.level + S.requirements.weapon.main.plus;
-  db.prepare('UPDATE adventurers SET bag = ? WHERE user_id = ?').run(JSON.stringify(['weapon-training-plank', 'armor-training-heavy-head', 'test-necklace']), 'sl');
-  EQUIPMENT.set('test-necklace', { id: 'test-necklace', name: 'Test Necklace', slot: 'necklace', level: 1, rarity: 'lightBlue', bound: false, agimats: [], stats: { str: 50 } });
-  assert.deepEqual(townEquip('sl', { action: 'equip', item: 'weapon-training-plank' }, 5).message, `Needs STR ${need}`);
-  assert.deepEqual(townEquip('sl', { action: 'equip', item: 'armor-training-heavy-head' }, 5).message, `Needs STR ${S.requirements.armor.bothGearTypeStats.perItemLevel + S.requirements.armor.bothGearTypeStats.plus}`);
+  const necklace = { id: 'test-necklace', name: 'Test Necklace', slot: 'necklace' as const, level: 1, rarity: 'lightBlue' as const, bound: false, agimats: [], stats: { str: 50 } };
+  EQUIPMENT.set(necklace.id, necklace);
+  loadItemData().defs.set(necklace.id, necklace);
+  const [p, h, nk] = [item('weapon-training-plank'), item('armor-training-heavy-head'), item('test-necklace')];
+  const put = db.prepare('INSERT INTO items (uid, owner, def_id, level, rarity, slot, created) VALUES (?, ?, ?, 1, ?, ?, 0)');
+  for (const [i, x] of [p, h, nk].entries()) put.run(x.uid, 'sl', x.defId, x.rarity, 100 + i); // into the bag to try them
+  assert.deepEqual(townEquip('sl', { action: 'equip', item: p.uid }).message, `Needs STR ${need}`);
+  assert.deepEqual(townEquip('sl', { action: 'equip', item: h.uid }).message, `Needs STR ${S.requirements.armor.bothGearTypeStats.perItemLevel + S.requirements.armor.bothGearTypeStats.plus}`);
   // +50 STR from a necklace changes nothing.
-  assert.ok(townEquip('sl', { action: 'equip', item: 'test-necklace' }, 5).ok);
-  assert.equal(townEquip('sl', { action: 'equip', item: 'weapon-training-plank' }, 5).ok, false);
-  assert.equal(townEquip('sl', { action: 'equip', item: 'armor-training-heavy-head' }, 5).ok, false);
+  assert.ok(townEquip('sl', { action: 'equip', item: nk.uid }).ok);
+  assert.equal(townEquip('sl', { action: 'equip', item: p.uid }).ok, false);
+  assert.equal(townEquip('sl', { action: 'equip', item: h.uid }).ok, false);
   // Its own: fine (off, then on again).
-  assert.ok(townEquip('sl', { action: 'unequip', place: 'weapon' }, 5).ok);
-  assert.ok(townEquip('sl', { action: 'equip', item: 'weapon-training-slingshot' }, 5).ok);
-  EQUIPMENT.delete('test-necklace');
+  assert.ok(townEquip('sl', { action: 'unequip', place: 'weapon' }).ok);
+  const own = adventureOf('sl').bag.find((i) => i.defId === 'weapon-training-slingshot')!;
+  assert.ok(townEquip('sl', { action: 'equip', item: own.uid }).ok);
+  EQUIPMENT.delete(necklace.id);
+  loadItemData().defs.delete(necklace.id);
 });
 
 test('a class from before training armor gets the set once, on a visit; the rest on a later one if the bag was full', () => {
-  const row = (id: string, equipped: object) => db.prepare('INSERT INTO adventurers (user_id, class, quests, equipped, bag, updated) VALUES (?, ?, ?, ?, ?, ?)').run(
-    id, 'broom', JSON.stringify({ active: [], done: [Q] }), JSON.stringify(equipped), '[]', Date.now(),
-  );
+  const row = (id: string, equipped: Record<string, string>, bag: string[] = []) => {
+    db.prepare('INSERT INTO adventurers (user_id, class, quests, equipped, bag, updated) VALUES (?, ?, ?, ?, ?, ?)').run(id, 'broom', JSON.stringify({ active: [], done: [Q] }), '{}', '[]', Date.now());
+    for (const [place, def] of Object.entries(equipped)) db.prepare("INSERT INTO items (uid, owner, def_id, level, rarity, bound, place, created) VALUES (?, ?, ?, 1, 'brown', 1, ?, 0)").run(`${id}-${place}`, id, def, place);
+    bag.forEach((def, i) => db.prepare("INSERT INTO items (uid, owner, def_id, level, rarity, bound, slot, created) VALUES (?, ?, ?, 1, 'brown', 1, ?, 0)").run(`${id}-bag${i}`, id, def, i));
+  };
   row('vet', { weapon: 'weapon-training-broom' });
-  assert.deepEqual(trainingArmorFor('vet', 10), armorOf('light'));
-  assert.deepEqual(trainingArmorFor('vet', 10), []); // once
+  assert.deepEqual(trainingArmorFor('vet'), armorOf('light'));
+  assert.deepEqual(trainingArmorFor('vet'), []); // once
   assert.equal(adventureOf('vet').trainingArmorGiven, true);
   assert.deepEqual(adventureOf('vet').bag, []); // all worn
-  // Their feet taken and no room in the bag: the boots wait for a later visit.
-  row('vet2', { weapon: 'weapon-training-broom', feet: 'armor-training-heavy-feet' });
-  assert.deepEqual(trainingArmorFor('vet2', 0), armorOf('light').slice(0, 4));
+  // Their feet taken and no room in the combat bag: the boots wait for a later visit.
+  row('vet2', { weapon: 'weapon-training-broom', feet: 'armor-training-heavy-feet' }, Array(40).fill('weapon-training-stick'));
+  assert.deepEqual(trainingArmorFor('vet2'), armorOf('light').slice(0, 4));
   assert.equal(adventureOf('vet2').trainingArmorGiven, false);
-  assert.deepEqual(trainingArmorFor('vet2', 1), ['armor-training-light-feet']);
-  assert.deepEqual(adventureOf('vet2').bag, ['armor-training-light-feet']);
-  assert.deepEqual(trainingArmorFor('vet2', 1), []);
+  db.prepare("DELETE FROM items WHERE uid = 'vet2-bag0'").run();
+  assert.deepEqual(trainingArmorFor('vet2'), ['armor-training-light-feet']);
+  assert.deepEqual(adventureOf('vet2').bag.at(-1)!.defId, 'armor-training-light-feet');
+  assert.deepEqual(trainingArmorFor('vet2'), []);
   // No class: nothing.
-  assert.deepEqual(trainingArmorFor('nobody', 10), []);
+  assert.deepEqual(trainingArmorFor('nobody'), []);
 });
 
 test("training gear can't be sold", () => {
-  townQuest('ts', { quest: Q, action: 'talk', npc: 'tanod' }, 40);
-  townQuest('ts', { quest: Q, action: 'chooseClass', cls: 'stick' }, 40);
-  townEquip('ts', { action: 'unequip', place: 'weapon' }, 5);
+  townQuest('ts', { quest: Q, action: 'talk', npc: 'tanod' });
+  townQuest('ts', { quest: Q, action: 'chooseClass', cls: 'stick' });
+  townEquip('ts', { action: 'unequip', place: 'weapon' });
   assert.deepEqual([sellInTown('ts', 'weapon-training-stick', 1).ok, sellInTown('ts', 'weapon-training-stick', 1).message], [false, "Training gear can't be sold."]);
   assert.equal(sellManyInTown('ts', [{ id: 'weapon-training-stick', quantity: 1 }]).ok, false);
-  assert.deepEqual(adventureOf('ts').bag, ['weapon-training-stick']);
+  assert.deepEqual(kinds(adventureOf('ts').bag), ['weapon-training-stick']);
 });
 
 test('two places for bracers and two for rings', () => {
@@ -234,8 +262,8 @@ test('skill points: banked before a class; then into unlocked skills up to their
   levelFor('sk', 10);
   assert.equal(adventureOf('sk').progress.skillPoints, 9 * S.skills.skillPointsPerLevelUp);
   assert.equal(townSkills('sk', { action: 'raise', skill: '0' }).message, 'Choose a class to raise skills.');
-  townQuest('sk', { quest: Q, action: 'talk', npc: 'tanod' }, 40);
-  townQuest('sk', { quest: Q, action: 'chooseClass', cls: 'slingshot' }, 40);
+  townQuest('sk', { quest: Q, action: 'talk', npc: 'tanod' });
+  townQuest('sk', { quest: Q, action: 'chooseClass', cls: 'slingshot' });
   assert.equal(adventureOf('sk').progress.skillPoints, 27);
   // Quick Shot (unlock Lv 1): up to Lv 10 at character Lv 10, not 11.
   for (let i = 0; i < 9; i++) assert.ok(townSkills('sk', { action: 'raise', skill: '0' }).ok);

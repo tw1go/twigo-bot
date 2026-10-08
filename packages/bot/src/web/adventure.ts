@@ -1,8 +1,10 @@
+import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type {
   AdventureState,
   ClassesFile,
   EquipPlace,
+  Item,
   QuestDef,
   QuestsFile,
   StatName,
@@ -12,11 +14,27 @@ import type {
   TownQuestAction,
   TownSkillsAction,
 } from '@mikazuki/shared';
-import { STAT_NAMES, classSkills, damageSkillLevels, giveGear, moveUnlock, needsLine, placesFor, swapTrainingGear, trainingGear, wearCheck } from '@mikazuki/shared';
+import {
+  STAT_NAMES,
+  bagSlots,
+  classSkills,
+  damageSkillLevels,
+  equipFromBag,
+  giveGear,
+  missingTraining,
+  moveUnlock,
+  newItem,
+  placesFor,
+  swapTrainingGear,
+  trainingGear,
+  unequipToBag,
+  wearCheck,
+} from '@mikazuki/shared';
 import { db } from '../db/db.js';
 import { type LevelGain, type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView, raiseSkill, refundPoints, resetSkillPoints, resetStatPoints, spendPoint } from './progress.js';
 import type { Attacker } from './town-mobs.js';
-import { loadGear, loadStats } from './stats-data.js';
+import { type CombatItems, type LootContent, buyCombat, takeLoot, usePotion } from './combat-bag.js';
+import { loadGear, loadItemData, loadStats } from './stats-data.js';
 
 // ⚔️ A member's class, quests, equipment and level in the web game (table adventurers, schema v10; level, XP and points
 // v11, by web/progress.ts). The quests, classes and equipment are the game's data files (public/assets/quests/quests.json,
@@ -24,8 +42,9 @@ import { loadGear, loadStats } from './stats-data.js';
 // /town/equip), where stat points go (POST /town/points) and which skills to raise (POST /town/skills); everything is checked here (wearing: the stats rules'
 // requirements on base stats), and items are only ever given here (the Tanod's training gear: the class's weapon and
 // its gear type's armor, on the class choice, or once on a later visit for a class from before training armor).
-// Training gear is bound and can't be dropped, traded or sold. Worn items don't take a bag slot; equipment in the bag
-// takes one each.
+// Training gear is bound and can't be dropped, traded or sold. Every item is its own row in `items` (schema v12: worn
+// in a place, or in the combat bag in order; @mikazuki/shared items.ts), with the Kusing wallet on adventurers.
+// Worn items don't take a bag slot; the combat bag has stats.json inventory.slots.
 
 const asset = <T>(path: string): T => JSON.parse(readFileSync(new URL(`../../../game/public/assets/${path}`, import.meta.url), 'utf8')) as T;
 
@@ -36,17 +55,17 @@ const PLACES = new Set<EquipPlace>(['weapon', 'head', 'body', 'hands', 'bottoms'
 
 export { placesFor };
 
-export const freshAdventure = (): AdventureState => ({ cls: null, quests: { active: [], done: [] }, equipped: {}, bag: [], progress: freshProgress(loadStats()), trainingArmorGiven: false });
+export const freshAdventure = (): AdventureState => ({ cls: null, quests: { active: [], done: [] }, equipped: {}, bag: [], kusing: 0, progress: freshProgress(loadStats()), trainingArmorGiven: false });
 
-/** Whether they own an item (worn or in the bag). */
-const owns = (s: AdventureState, id: string) => s.bag.includes(id) || Object.values(s.equipped).includes(id);
+/** A new item's uid. */
+export const newUid = () => randomBytes(8).toString('hex');
 
-/** Their class's training armor they don't have yet: each into its place if it's free, else the bag while it has room
- *  (`free` slots); done once all of it has been given (what fitted nowhere comes on a later visit). Returns what was
- *  given. */
-export function giveTrainingArmor(s: AdventureState, free: number): string[] {
+/** Their class's training armor they don't have yet: each into its place if it's free, else the combat bag while it has
+ *  room; done once all of it has been given (what fitted nowhere comes on a later visit). Returns what was given (kinds). */
+export function giveTrainingArmor(s: AdventureState): string[] {
   if (!s.cls || s.trainingArmorGiven) return [];
-  const { given, left } = giveGear(loadStats(), s, trainingGear(loadStats(), EQUIPMENT.values(), s.cls).armor.filter((i) => !owns(s, i.id)), free);
+  const D = loadItemData();
+  const { given, left } = giveGear(D, s, missingTraining(D, s, trainingGear(loadStats(), EQUIPMENT.values(), s.cls).armor), newUid);
   s.trainingArmorGiven = !left.length;
   return given;
 }
@@ -79,7 +98,7 @@ function advance(s: AdventureState, q: QuestDef): string | undefined {
 type Result = Omit<TownAdventureResponse, 'adventure'>;
 
 /** An objective done in the game: checked against the quest's current objective. */
-export function questStep(s: AdventureState, a: TownQuestAction, freeSlots: number): Result {
+export function questStep(s: AdventureState, a: TownQuestAction): Result {
   const q = QUESTS.find((x) => x.id === a.quest);
   const p = s.quests.active.find((x) => x.id === a.quest);
   if (!q || !p) return { ok: false, message: "That quest isn't under way." };
@@ -95,46 +114,24 @@ export function questStep(s: AdventureState, a: TownQuestAction, freeSlots: numb
   s.progress = progressView(loadStats(), s.cls, s.progress); // its growth, and the banked points to spend
   // The class's training weapon, straight into the weapon slot (anything there goes to the bag; the bag if they can't
   // wear it, which every class can its own), then its armor.
-  let free = freeSlots;
   const weapon = trainingGear(loadStats(), EQUIPMENT.values(), a.cls).weapon;
   if (weapon) {
-    const wear = wearCheck(loadStats(), s, weapon).ok;
-    const off = wear ? s.equipped.weapon : weapon.id;
-    if (wear) s.equipped.weapon = weapon.id;
-    if (off) {
-      s.bag.push(off);
-      free--;
-    }
+    const item = newItem(loadStats(), weapon, newUid());
+    if (wearCheck(loadStats(), s, weapon).ok) {
+      if (s.equipped.weapon) s.bag.push(s.equipped.weapon);
+      s.equipped.weapon = item;
+    } else s.bag.push(item);
   }
-  const gear = giveTrainingArmor(s, Math.max(0, free));
+  const gear = giveTrainingArmor(s);
   return { ok: true, given: weapon?.id, ...(gear.length ? { gear } : {}), completed: advance(s, q) };
 }
 
-/** Wear an item from the bag (in the place asked for, else the first free one for its kind, else the first), or take
- *  one off (`freeSlots`: the bag's free slots, for taking off). */
-export function equipStep(s: AdventureState, a: TownEquipAction, freeSlots: number): Result {
-  if (a.action === 'equip') {
-    const item = EQUIPMENT.get(a.item);
-    const at = s.bag.indexOf(a.item);
-    if (!item || at < 0) return { ok: false, message: "You don't have that item." };
-    const places = placesFor(item.slot);
-    if (a.place && !places.includes(a.place)) return { ok: false, message: 'Wrong slot.' };
-    const can = wearCheck(loadStats(), s, item);
-    if (!can.ok) return { ok: false, message: needsLine(can.missing) };
-    const place = a.place ?? places.find((p) => !s.equipped[p]) ?? places[0];
-    s.bag.splice(at, 1);
-    const old = s.equipped[place];
-    if (old) s.bag.push(old);
-    s.equipped[place] = item.id;
-    return { ok: true, message: `Equipped ${item.name}.` };
-  }
+/** Wear an item from the combat bag (by uid; in the place asked for, else the first free one for its kind, else the
+ *  first), or take one off into the bag (refused when it's full). An orange item binds as it's first worn. */
+export function equipStep(s: AdventureState, a: TownEquipAction): Result {
+  if (a.action === 'equip') return equipFromBag(loadItemData(), s, a.item, a.place);
   if (!PLACES.has(a.place)) return { ok: false, message: 'No such slot.' };
-  const id = s.equipped[a.place];
-  if (!id) return { ok: false, message: 'Nothing to take off there.' };
-  if (freeSlots < 1) return { ok: false, message: 'Your bag is full.' };
-  delete s.equipped[a.place];
-  s.bag.push(id);
-  return { ok: true, message: `Took off ${EQUIPMENT.get(id)?.name ?? 'it'}.` };
+  return unequipToBag(loadItemData(), s, a.place);
 }
 
 /** One stat point into the class's main or second stat, or every stat point back (free). */
@@ -173,8 +170,6 @@ export const moveLevel = (cls: string | null | undefined, move: string): number 
 type Row = {
   class: string | null;
   quests: string;
-  equipped: string;
-  bag: string;
   level: number;
   xp: number;
   str_points: number;
@@ -183,17 +178,71 @@ type Row = {
   skill_levels: string;
   skill_points: number;
   training_armor_given: number;
+  kusing: number;
+};
+type ItemRow = {
+  uid: string;
+  def_id: string;
+  level: number;
+  rarity: string;
+  plus: number;
+  broken: number;
+  bound: number;
+  luck: number;
+  agimats: string;
+  lines: string;
+  stat: string | null;
+  lock: string | null;
+  count: number;
+  place: string | null;
+  slot: number | null;
 };
 const getStmt = db.prepare<[string], Row>(
-  'SELECT class, quests, equipped, bag, level, xp, str_points, dex_points, int_points, skill_levels, skill_points, training_armor_given FROM adventurers WHERE user_id = ?',
+  'SELECT class, quests, level, xp, str_points, dex_points, int_points, skill_levels, skill_points, training_armor_given, kusing FROM adventurers WHERE user_id = ?',
 );
+// (equipped and bag are schema v10's JSON, no longer read: items live in `items`.)
 const setStmt = db.prepare(
-  `INSERT INTO adventurers (user_id, class, quests, equipped, bag, level, xp, str_points, dex_points, int_points, skill_levels, skill_points, training_armor_given, updated)
-   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-   ON CONFLICT(user_id) DO UPDATE SET class = excluded.class, quests = excluded.quests, equipped = excluded.equipped, bag = excluded.bag,
+  `INSERT INTO adventurers (user_id, class, quests, equipped, bag, level, xp, str_points, dex_points, int_points, skill_levels, skill_points, training_armor_given, kusing, updated)
+   VALUES (?, ?, ?, '{}', '[]', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+   ON CONFLICT(user_id) DO UPDATE SET class = excluded.class, quests = excluded.quests,
      level = excluded.level, xp = excluded.xp, str_points = excluded.str_points, dex_points = excluded.dex_points, int_points = excluded.int_points,
-     skill_levels = excluded.skill_levels, skill_points = excluded.skill_points, training_armor_given = excluded.training_armor_given, updated = excluded.updated`,
+     skill_levels = excluded.skill_levels, skill_points = excluded.skill_points, training_armor_given = excluded.training_armor_given, kusing = excluded.kusing,
+     updated = excluded.updated`,
 );
+const itemsStmt = db.prepare<[string], ItemRow>('SELECT uid, def_id, level, rarity, plus, broken, bound, luck, agimats, lines, stat, lock, count, place, slot FROM items WHERE owner = ? ORDER BY slot, created, uid');
+const dropItemsStmt = db.prepare('DELETE FROM items WHERE owner = ?');
+const addItemStmt = db.prepare(
+  `INSERT INTO items (uid, owner, def_id, level, rarity, plus, broken, bound, luck, agimats, lines, stat, lock, count, place, slot, created) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+);
+
+const fromRow = (r: ItemRow): Item => ({
+  uid: r.uid,
+  defId: r.def_id,
+  level: r.level,
+  rarity: r.rarity as Item['rarity'],
+  plus: r.plus,
+  broken: !!r.broken,
+  bound: !!r.bound,
+  luck: r.luck,
+  agimats: JSON.parse(r.agimats),
+  lines: JSON.parse(r.lines),
+  count: r.count,
+  ...(r.stat ? { stat: r.stat as Item['stat'] } : {}),
+  ...(r.lock ? { lock: r.lock as Item['lock'] } : {}),
+});
+
+/** Their items: worn by place, and the combat bag in order. */
+function loadItems(userId: string): Pick<AdventureState, 'equipped' | 'bag'> {
+  const equipped: AdventureState['equipped'] = {};
+  const bag: Item[] = [];
+  const worn = new Map<string, Item>();
+  for (const r of itemsStmt.all(userId)) {
+    if (r.place && PLACES.has(r.place as EquipPlace)) worn.set(r.place, fromRow(r));
+    else bag.push(fromRow(r));
+  }
+  for (const p of PLACES) if (worn.has(p)) equipped[p] = worn.get(p); // in the panel's order
+  return { equipped, bag };
+}
 
 function load(userId: string): AdventureState {
   const row = getStmt.get(userId);
@@ -205,15 +254,22 @@ function load(userId: string): AdventureState {
     skills: JSON.parse(row.skill_levels),
     skillPoints: row.skill_points,
   });
-  return { cls: row.class, quests: JSON.parse(row.quests), equipped: JSON.parse(row.equipped), bag: JSON.parse(row.bag), progress, trainingArmorGiven: !!row.training_armor_given };
+  return { cls: row.class, quests: JSON.parse(row.quests), ...loadItems(userId), kusing: row.kusing, progress, trainingArmorGiven: !!row.training_armor_given };
 }
 
-/** Saves it (and works out its progress's banked points again: a class may have come or gone). */
-function save(userId: string, s: AdventureState): void {
+/** Saves it (and works out its progress's banked points again: a class may have come or gone), its items with it (all of
+ *  them, in one go). */
+const save = db.transaction((userId: string, s: AdventureState): void => {
   const p = (s.progress = progressView(loadStats(), s.cls, s.progress));
-  setStmt.run(userId, s.cls, JSON.stringify(s.quests), JSON.stringify(s.equipped), JSON.stringify(s.bag), p.level, p.xp, p.points.STR ?? 0, p.points.DEX ?? 0, p.points.INT ?? 0,
-    JSON.stringify(p.skills), p.skillPoints, s.trainingArmorGiven ? 1 : 0, Date.now());
-}
+  setStmt.run(userId, s.cls, JSON.stringify(s.quests), p.level, p.xp, p.points.STR ?? 0, p.points.DEX ?? 0, p.points.INT ?? 0,
+    JSON.stringify(p.skills), p.skillPoints, s.trainingArmorGiven ? 1 : 0, Math.max(0, Math.floor(s.kusing)), Date.now());
+  dropItemsStmt.run(userId);
+  const now = Date.now();
+  const put = (i: Item, place: string | null, slot: number | null) =>
+    addItemStmt.run(i.uid, userId, i.defId, i.level, i.rarity, i.plus, i.broken ? 1 : 0, i.bound ? 1 : 0, i.luck, JSON.stringify(i.agimats), JSON.stringify(i.lines), i.stat ?? null, i.lock ?? null, i.count, place, slot, now);
+  for (const [place, item] of Object.entries(s.equipped)) if (item) put(item, place, null);
+  s.bag.forEach((item, i) => put(item, null, i));
+});
 
 /** Their state for /me: autoStart quests start here, on their first visit (and for anyone who hasn't done them). */
 export function adventureOf(userId: string): AdventureState {
@@ -223,22 +279,44 @@ export function adventureOf(userId: string): AdventureState {
 }
 
 /** The training armor of a class from before training armor (their first visit since; again while some of it had no
- *  room), saved; what was given. `free`: their bag's free slots. */
-export function trainingArmorFor(userId: string, free: number): string[] {
+ *  room), saved; what was given. */
+export function trainingArmorFor(userId: string): string[] {
   const s = load(userId);
   if (!s.cls || s.trainingArmorGiven) return [];
-  const given = giveTrainingArmor(s, free);
+  const given = giveTrainingArmor(s);
   save(userId, s);
   return given;
 }
 
-/** Equipment in their bag (one slot each), for the bag's count and the town's inventory. */
-export const equipmentInBag = (userId: string): string[] => load(userId).bag;
+/** Their worn items, combat bag and Kusing (the town's `items` message). */
+export function combatOf(userId: string): CombatItems {
+  const { equipped, bag, kusing } = load(userId);
+  return { equipped, bag, kusing };
+}
 
-/** Their class, worn weapon and level, for the town (the chat's badge, the resting weapon). */
+/** Changes their items or Kusing through `f` and saves it if it says so; what `f` returned. */
+export function withItems<T>(userId: string, f: (s: AdventureState) => T, changed: (r: T) => boolean = () => true): T {
+  const s = load(userId);
+  const r = f(s);
+  if (changed(r)) save(userId, s);
+  return r;
+}
+
+/** Loot picked up in the Slums (Kusing, or an item into the bag): false if the bag has no room for it. */
+export const takeLootFor = (userId: string, loot: LootContent): boolean => withItems(userId, (s) => takeLoot(loadItemData(), s, loot, newUid), (ok) => ok);
+
+/** One HP or MP Potion of a kind used from their bag: what it heals, or null (none). */
+export const usePotionFor = (userId: string, defId: string) => withItems(userId, (s) => usePotion(loadItemData(), s, defId), (r) => !!r);
+
+/** Buys `quantity` of a combat item at the sari-sari store (its Healing and Smithing tabs): HP/MP Potions for Kusing,
+ *  whetstones and Repair Kits for Kowens (`kowens`: their wallet). */
+export const buyCombatFor = (userId: string, defId: string, quantity: number, kowens: { have: number; spend(n: number): boolean }) =>
+  withItems(userId, (s) => buyCombat(loadItemData(), s, s.progress.level, defId, quantity, kowens, newUid), (r) => r.ok);
+
+/** Their class, worn weapon (its kind) and level, for the town (the chat's badge, the resting weapon). */
 export function kitOf(userId: string): { cls: string | null; weapon: string | null; level: number } {
   const s = load(userId);
-  return { cls: s.cls, weapon: s.equipped.weapon ?? null, level: s.progress.level };
+  return { cls: s.cls, weapon: s.equipped.weapon?.defId ?? null, level: s.progress.level };
 }
 
 /** Who they are in a fight (MobRoom.attack's Attacker): class, level, stat points spent, everything worn, and their damage
@@ -304,22 +382,21 @@ export function parseEquipAction(body: unknown): TownEquipAction | null {
 }
 
 /** POST /town/quest for a member: the step checked and saved. `changed`: their class or weapon changed (the town shows it). */
-export function townQuest(userId: string, a: TownQuestAction, freeSlots: number): TownAdventureResponse & { changed: boolean } {
+export function townQuest(userId: string, a: TownQuestAction): TownAdventureResponse & { changed: boolean } {
   const s = load(userId);
   startQuests(s);
-  const before = `${s.cls}|${s.equipped.weapon}`;
-  const r = questStep(s, a, freeSlots);
+  const before = `${s.cls}|${s.equipped.weapon?.defId}`;
+  const r = questStep(s, a);
   if (r.ok) save(userId, s);
-  return { ...r, adventure: s, changed: r.ok && before !== `${s.cls}|${s.equipped.weapon}` };
+  return { ...r, adventure: s, changed: r.ok && before !== `${s.cls}|${s.equipped.weapon?.defId}` };
 }
 
-/** POST /town/equip for a member (`freeSlots`: their bag's free slots). */
-export function townEquip(userId: string, a: TownEquipAction, freeSlots: number): TownAdventureResponse & { changed: boolean } {
+/** POST /town/equip for a member. `changed`: their worn gear changed (the town shows the weapon, fights the rest). */
+export function townEquip(userId: string, a: TownEquipAction): TownAdventureResponse & { changed: boolean } {
   const s = load(userId);
-  const before = s.equipped.weapon;
-  const r = equipStep(s, a, freeSlots);
+  const r = equipStep(s, a);
   if (r.ok) save(userId, s);
-  return { ...r, adventure: s, changed: r.ok && before !== s.equipped.weapon };
+  return { ...r, adventure: s, changed: r.ok };
 }
 
 /** POST /town/points for a member. */
@@ -347,15 +424,18 @@ export function switchClass(userId: string, cls: string): { ok: true; adventure:
   if (s.cls === cls) return { ok: false, message: "That's already your class." };
   s.cls = cls;
   s.progress = refundPoints(loadStats(), cls, s.progress);
-  swapTrainingGear(loadStats(), s, EQUIPMENT);
+  swapTrainingGear(loadItemData(), s, trainingGear(loadStats(), EQUIPMENT.values(), cls), newUid);
   save(userId, s);
   return { ok: true, adventure: s };
 }
 
 /** Starts a member's class, quests and equipment over (the CMS): no class, the Tanod's quest again on their next visit,
- *  nothing worn or carried. Their level and XP stay; every stat and skill point comes back. */
+ *  and their training gear gone (worn or carried; it comes again with the next class). Everything else they own stays,
+ *  Kusing too. Their level and XP stay; every stat and skill point comes back. */
 export function resetAdventure(userId: string): void {
   if (!getStmt.get(userId)) return;
   const s = load(userId);
-  save(userId, { ...freshAdventure(), progress: refundPoints(loadStats(), null, s.progress) });
+  const training = (i: Item | undefined) => !!i && !!EQUIPMENT.get(i.defId)?.training;
+  const equipped = Object.fromEntries(Object.entries(s.equipped).filter(([, i]) => !training(i)));
+  save(userId, { ...freshAdventure(), equipped, bag: s.bag.filter((i) => !training(i)), kusing: s.kusing, progress: refundPoints(loadStats(), null, s.progress) });
 }

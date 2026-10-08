@@ -576,14 +576,14 @@ export class Character {
   }
 
   /** A number rising over the head: damage taken (red for you, `mine`; pale for others) or "Miss". */
-  hitNumber(text: string, mine: boolean): void {
-    const word = !/^\d+$/.test(text);
+  hitNumber(text: string, mine: boolean, colour?: string): void {
+    const word = !/^\d+$/.test(text) && !colour;
     const zoom = Math.max(1, this.zoom);
     const t = this.scene.add
       .text(Math.round(this.sprite.x), Math.round(this.headY - 6), text, {
         fontFamily: '"Mk Numbers", "Pixelify Sans", monospace',
         fontSize: `${word ? 10 : mine ? 13 : 11}px`,
-        color: word ? '#CBD5E1' : mine ? '#F87171' : '#FECACA',
+        color: colour ?? (word ? '#CBD5E1' : mine ? '#F87171' : '#FECACA'),
         stroke: '#1E1B3A',
         strokeThickness: 3,
         resolution: Math.max(2, zoom * 2),

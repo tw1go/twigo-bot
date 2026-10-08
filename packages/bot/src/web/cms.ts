@@ -19,7 +19,9 @@ import { forgetNews } from './town-news.js';
 import { BODY_MAX, TITLE_MAX, deletePost, savePost, townPosts } from './town-posts.js';
 import type { Town } from './town.js';
 import { isSettingKey, setSetting, setting, settingList, SETTINGS } from '../games/settings.js';
-import { CLASSES, EQUIPMENT, QUESTS, adventureOf, resetAdventure } from './adventure.js';
+import { CLASSES, QUESTS, adventureOf, resetAdventure } from './adventure.js';
+import { itemName } from '@mikazuki/shared';
+import { loadItemData } from './stats-data.js';
 import { renameCards } from '../items/rename-card.js';
 import { classTickets } from '../items/class-ticket.js';
 import { mineWarsNight, mineWarsPlan, payMineWars } from '../minewars/payout.js';
@@ -147,8 +149,9 @@ function adventureView(id: string) {
     cls: CLASSES.find((c) => c.id === s.cls)?.name ?? null,
     questsActive: s.quests.active.map((p) => `${quest(p.id)} (${QUESTS.find((x) => x.id === p.id)?.objectives[p.step]?.text ?? 'done'})`),
     questsDone: s.quests.done.map(quest),
-    equipped: Object.entries(s.equipped).map(([place, item]) => `${place}: ${EQUIPMENT.get(item!)?.name ?? item}`),
-    gear: s.bag.map((item) => EQUIPMENT.get(item)?.name ?? item),
+    equipped: Object.entries(s.equipped).map(([place, item]) => `${place}: ${itemName(loadItemData(), item!)}`),
+    gear: s.bag.map((item) => `${itemName(loadItemData(), item)}${item.count > 1 ? ` ×${item.count}` : ''}`),
+    kusing: s.kusing,
   };
 }
 

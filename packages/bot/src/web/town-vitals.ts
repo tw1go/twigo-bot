@@ -87,6 +87,22 @@ export class Vitals {
     return 'out';
   }
 
+  /** An HP or MP Potion: `amount` more of it, up to their most. How much it gave as shown (0: it would do nothing:
+   *  unknown, knocked out, or already full). */
+  heal(user: string, stat: 'hp' | 'mp', amount: number): number {
+    const v = this.all.get(user);
+    if (!v || v.outUntil || v[stat] >= v.max[stat]) return 0;
+    const before = shown(v)[stat];
+    v[stat] = Math.min(v.max[stat], v[stat] + amount);
+    return shown(v)[stat] - before;
+  }
+
+  /** Whether they're at their most of it. */
+  full(user: string, stat: 'hp' | 'mp'): boolean {
+    const v = this.all.get(user);
+    return !v || v[stat] >= v.max[stat];
+  }
+
   /** They hit something (or were missed): in combat, so no HP comes back for a while. */
   fought(user: string, now: number): void {
     const v = this.all.get(user);

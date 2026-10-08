@@ -1,13 +1,15 @@
 import { keyLabel, matches, onKeybinds } from './keybinds';
-import type { TownBagActionResponse, TownBagItem, TownInventoryResponse } from '@mikazuki/shared';
+import { type Item, type TownBagActionResponse, type TownBagItem, type TownInventoryResponse, bagSlots, isGearDef } from '@mikazuki/shared';
 import { hotbarDragItem, hotbarItem } from './hotbar';
 import { playSound } from '../audio/sound';
 import { fakeLogin, fakeName } from '../session';
 import { type Rarity, RARITY_COLOUR, RARITY_LABEL as LABEL, RARITY_TEXT, isRarity, itemArt } from './item-art';
 import { installPixelTiles } from './pixel-tiles';
-import { coinIcon } from './reward';
-import { type EquipmentPanel, itemTip, slotSilhouette } from './equipment';
-import { adventure, itemDef } from '../net/adventure';
+import { coinIcon, kusingIcon } from './reward';
+import type { EquipmentPanel } from './equipment';
+import { adventure, anyDef, itemData, onAdventure } from '../net/adventure';
+import { itemPicture, itemTipFor, nameOf, rarityOf } from './item-tip';
+import { potionCooldownKey } from './hotbar';
 import { showRename } from './rename';
 
 // 🎒 The inventory: a bag button just right of the chat box (or B) opens the bag on the right of the screen. The bag shows every
@@ -20,15 +22,21 @@ import { showRename } from './rename';
 // Several slots can be picked at once: Ctrl/⌘/Shift-click adds or removes one, or the Select toggle (top) makes every
 // click do that (phones); then the details show how many, what the sellable ones are worth, and Sell selected (one
 // POST /town/sell with all of them), or Select all on the tab.
-// Your Kowens are at the bottom. Everything comes from the bot (GET /town/inventory, POST /town/sell and /town/flex).
+// Your Kowens and Kusing are at the bottom. Everything comes from the bot (GET /town/inventory, POST /town/sell and
+// /town/flex).
+// The Combat tab is the combat bag (stats.json inventory.slots, 40): gear not worn, whetstones, fragments, Repair Kits,
+// agimats, HP/MP Potions and cosmetics, one slot each (a stack with its count), as the server keeps them (/me's
+// adventure and the town's `items` messages: net/adventure.ts). Hover or pick one for its tooltip; gear is worn by a
+// double-click or a drag onto its place; HP/MP Potions are dragged onto the hotbar.
 // The equipment panel (ui/equipment.ts) opens on its left with it (B or I): double-click or drag a piece of equipment
 // onto its place to wear it. On phones there's no room for both: Equipment / Bag in their heads switch between them.
 
 const COLS = 5;
 type Tab = 'all' | 'dug' | 'combat' | 'misc';
 const TABS: [Tab, string][] = [['all', 'All'], ['dug', 'Dug up'], ['combat', 'Combat'], ['misc', 'Misc']];
-/** Which tab shows an item: dug-up items, combat (weapons and gear), the rest (keys, potions, megaphones) in Misc. */
-const tabOf = (it: TownBagItem): Tab => (it.kind === 'dig' ? 'dug' : it.kind === 'equipment' ? 'combat' : 'misc');
+/** Which tab shows an item of the old bag: dug-up items, the rest (keys, potions, megaphones) in Misc. (Combat is the
+ *  combat bag's own.) */
+const tabOf = (it: TownBagItem): Tab => (it.kind === 'dig' ? 'dug' : 'misc');
 const inTab = (tab: Tab, it: TownBagItem) => tab === 'all' || tabOf(it) === tab;
 
 /** True while a page field has the keyboard (chat, a pop-up's input), so B is a letter there. */
@@ -48,7 +56,7 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, t
 }
 
 async function load(): Promise<TownInventoryResponse | null> {
-  if (fakeLogin()) return withFakeEquipment(structuredClone(fake));
+  if (fakeLogin()) return structuredClone(fake);
   const res = await fetch('/town/inventory', { credentials: 'same-origin' }).catch(() => null);
   return res?.ok ? ((await res.json()) as TownInventoryResponse) : null;
 }
@@ -80,6 +88,10 @@ export class Inventory {
   private busy = false;
   private message: { text: string; ok: boolean } | null = null;
   private equipment: EquipmentPanel | null = null;
+  /** The combat bag's picked slot (its item's uid). */
+  private pickedUid: string | null = null;
+  /** The combat bag's hover tooltip. */
+  private readonly tip = el('div', 'eq-tip iv-tip');
 
   /** `icon`: the bag art (manifest ui.inventoryIcon); `frame`: the item frame the panel is drawn in; `slot`: the slot
    *  art and its picked version (manifest ui.inventory, nine-slice). */
@@ -146,8 +158,11 @@ export class Inventory {
       this.tabs.append(b);
     }
     this.grid.setAttribute('role', 'grid');
+    this.tip.hidden = true;
     this.root.append(head, this.tabs, this.grid, this.detail, this.wallet);
-    document.body.append(this.root);
+    document.body.append(this.root, this.tip); // (the tooltip over the equipment panel too)
+    // The combat bag and Kusing live in the adventure state: redraw as they change (loot, potions, the shop).
+    onAdventure(() => !this.root.hidden && this.render());
 
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && !this.root.hidden) this.toggle(false);
@@ -178,6 +193,7 @@ export class Inventory {
 
   toggle(open = this.root.hidden): void {
     this.root.hidden = !open;
+    this.tip.hidden = true;
     this.button.setAttribute('aria-expanded', String(open));
     this.equipment?.show(!!open);
     if (!open) document.body.classList.remove('show-equipment');
@@ -189,9 +205,11 @@ export class Inventory {
     }
   }
 
-  /** Free bag slots as last loaded (a full bag can't take worn equipment back). */
+  /** Free combat bag slots (a full bag can't take worn equipment back). */
   get free(): number {
-    return this.data ? Math.max(0, this.data.slots - this.data.used) : 1;
+    const D = itemData();
+    const s = adventure();
+    return D && s ? Math.max(0, bagSlots(D.stats) - s.bag.length) : 1;
   }
 
   private async refresh(): Promise<void> {
@@ -212,10 +230,13 @@ export class Inventory {
 
     for (const b of this.tabs.querySelectorAll<HTMLElement>('.iv-tab')) {
       const t = b.dataset.tab as Tab;
-      const n = d.items.filter((it) => inTab(t, it)).reduce((sum, it) => sum + (it.stacked ? 1 : it.count), 0);
+      const n = t === 'combat' ? (adventure()?.bag.length ?? 0) : d.items.filter((it) => inTab(t, it)).reduce((sum, it) => sum + (it.stacked ? 1 : it.count), 0);
       b.textContent = `${TABS.find(([x]) => x === t)![1]} ${n}`;
       b.setAttribute('aria-selected', String(t === this.tab));
     }
+    this.renderWallet(d);
+    if (this.tab === 'combat') return this.renderCombat();
+    this.tip.hidden = true;
 
     // One slot per item (this tab's; a stacked kind, megaphones, in one with its count), then the free slots, then the
     // locked ones up to the most a bag can have.
@@ -250,16 +271,9 @@ export class Inventory {
       cell.style.setProperty('--rarity', RARITY_COLOUR[rarity]);
       cell.setAttribute('aria-label', `${it.name} (${LABEL[rarity]})`);
       cell.title = it.name;
-      const gear = it.kind === 'equipment' ? itemDef(it.id) : undefined;
-      const art = itemArt(it.id, rarity, 'showcase', 2, true) ?? (gear ? slotSilhouette(gear.slot, 64) : null); // no art yet: its place's silhouette
-      cell.append(art ?? el('span', 'iv-emoji', it.emoji));
+      cell.append(itemArt(it.id, rarity, 'showcase', 2, true) ?? el('span', 'iv-emoji', it.emoji));
       if (it.stacked) cell.append(el('span', 'iv-count', String(it.count)));
-      if (it.kind === 'equipment') {
-        // Worn by a double-click, or dragged onto its place in the equipment panel.
-        cell.draggable = true;
-        cell.addEventListener('dragstart', (e) => e.dataTransfer?.setData('application/x-mk-equipment', it.id));
-        cell.addEventListener('dblclick', () => void this.equipment?.wear(it.id));
-      } else if (hotbarItem(it.kind)) {
+      if (hotbarItem(it.kind)) {
         // Potions go on the hotbar (its - = ~ slots or the top row).
         cell.draggable = true;
         cell.addEventListener('dragstart', (e) => hotbarDragItem(e, { id: it.id, name: it.name, emoji: it.emoji, rarity }));
@@ -279,14 +293,88 @@ export class Inventory {
       const empty =
         this.tab === 'misc' ? 'No keys or potions. Get them at the sari-sari store.'
         : this.tab === 'dug' ? 'Nothing dug up yet. Dig at the Mine!'
-        : this.tab === 'combat' ? 'No weapons or gear in your bag. What you wear is in Equipment.'
         : 'Your bag is empty. Dig at the Mine!';
       this.grid.append(el('div', 'iv-empty-note', empty));
     }
 
     if (this.picked.length > 1) this.renderMany(d);
     else this.renderDetail(this.picked.length ? (d.items.find((it) => it.id === this.picked[0].id) ?? null) : null, units);
-    this.wallet.replaceChildren(coinIcon(2), el('b', undefined, d.kowens.toLocaleString()), el('span', undefined, d.kowens === 1 ? 'Kowen' : 'Kowens'));
+  }
+
+  /** Kowens and Kusing at the bottom (Kusing's coin, the numbers in Jersey 10 like every number). */
+  private renderWallet(d: TownInventoryResponse): void {
+    const k = adventure()?.kusing ?? 0;
+    const kusing = el('span', 'iv-kusing');
+    kusing.append(kusingIcon(2), el('b', undefined, k.toLocaleString()), el('span', undefined, 'Kusing'));
+    const kowens = el('span', 'iv-kowens');
+    kowens.append(coinIcon(2), el('b', undefined, d.kowens.toLocaleString()), el('span', undefined, d.kowens === 1 ? 'Kowen' : 'Kowens'));
+    this.wallet.replaceChildren(kowens, kusing);
+  }
+
+  /** The combat bag: its 40 slots, items in order, then the empty ones; the picked one's tooltip and what it can do. */
+  private renderCombat(): void {
+    const D = itemData();
+    const s = adventure();
+    if (!D || !s) return void this.grid.replaceChildren(el('div', 'iv-empty', 'Choose a class with the Tanod to fill your combat bag.'));
+    const slots = bagSlots(D.stats);
+    this.slots.textContent = `${s.bag.length}/${slots}`;
+    this.slots.classList.toggle('iv-full', s.bag.length >= slots);
+    if (this.pickedUid && !s.bag.some((b) => b.uid === this.pickedUid)) this.pickedUid = null;
+    const cells: HTMLElement[] = [];
+    for (let i = 0; i < Math.max(slots, s.bag.length); i++) {
+      const it = s.bag[i];
+      if (!it) {
+        cells.push(el('div', 'iv-cell'));
+        continue;
+      }
+      const def = anyDef(it.defId);
+      const cell = el('button', `iv-cell iv-item${it.uid === this.pickedUid ? ' iv-picked' : ''}${it.broken ? ' iv-broken' : ''}`);
+      cell.style.setProperty('--rarity', RARITY_COLOUR[rarityOf(it)]);
+      cell.setAttribute('aria-label', nameOf(it));
+      cell.append(itemPicture(it, 'showcase', 2));
+      if (it.count > 1) cell.append(el('span', 'iv-count', String(it.count)));
+      if (isGearDef(def)) {
+        // Worn by a double-click, or dragged onto its place in the equipment panel.
+        cell.draggable = true;
+        cell.addEventListener('dragstart', (e) => e.dataTransfer?.setData('application/x-mk-equipment', it.uid));
+        cell.addEventListener('dblclick', () => void this.equipment?.wear(it.uid));
+      } else if (def?.kind === 'potion') {
+        // HP and MP Potions go on the hotbar (its - = ~ slots or the top row).
+        cell.draggable = true;
+        cell.addEventListener('dragstart', (e) => hotbarDragItem(e, { id: it.defId, name: def.name, emoji: '🧪', rarity: it.rarity, cooldown: potionCooldownKey }));
+      }
+      cell.addEventListener('pointerenter', () => this.showTip(it, cell));
+      cell.addEventListener('pointerleave', () => (this.tip.hidden = true));
+      cell.addEventListener('click', () => {
+        this.pickedUid = this.pickedUid === it.uid ? null : it.uid;
+        this.message = null;
+        this.render();
+      });
+      cells.push(cell);
+    }
+    this.grid.style.setProperty('--cols', String(COLS));
+    this.grid.replaceChildren(...cells);
+    if (!s.bag.length) this.grid.append(el('div', 'iv-empty-note', 'Nothing in your combat bag. Loot from the Slums lands here; what you wear is in Equipment.'));
+    const it = s.bag.find((b) => b.uid === this.pickedUid);
+    if (!it) return void this.detail.replaceChildren(this.note() ?? el('div', 'iv-hint', 'Pick an item for what it is. Double-click gear to wear it; drag HP and MP Potions onto your hotbar.'));
+    const def = anyDef(it.defId);
+    const parts = itemTipFor(it);
+    const row = el('div', 'iv-actions');
+    if (isGearDef(def)) row.append(this.action('Wear', 'iv-flex', () => void this.equipment?.wear(it.uid)));
+    else if (def?.kind === 'potion') parts.push(el('div', 'iv-about', 'Drag it onto your hotbar (the - = ~ slots) and use it in the Slums.'));
+    if (row.childElementCount) parts.push(row);
+    const note = this.note();
+    if (note) parts.push(note);
+    this.detail.replaceChildren(...parts);
+  }
+
+  /** A combat item's tooltip beside its slot. */
+  private showTip(it: Item, at: HTMLElement): void {
+    this.tip.replaceChildren(...itemTipFor(it));
+    this.tip.hidden = false;
+    const r = at.getBoundingClientRect();
+    this.tip.style.right = `${Math.round(innerWidth - r.left + 6)}px`;
+    this.tip.style.top = `${Math.round(Math.max(8, Math.min(r.top, innerHeight - this.tip.offsetHeight - 8)))}px`;
   }
 
   private action(text: string, cls: string, run: () => void): HTMLButtonElement {
@@ -344,9 +432,7 @@ export class Inventory {
     const meta = it.sellable
       ? `${LABEL[rarity]} · ${kowens(it.value)} each · you have ${it.count}`
       : `${it.kind === 'key' ? 'Master Key' : it.kind === 'megaphone' ? 'Megaphone' : it.kind === 'equipment' ? 'Equipment' : it.kind === 'rename' ? 'Rename Card' : it.kind === 'classchange' ? 'Bagong Buhay Ticket' : 'Potion'} · you have ${it.count}`;
-    const gear = it.kind === 'equipment' ? itemDef(it.id) : undefined;
-    // Equipment: the equipment panel's tooltip (rarity, what it needs in red if you don't meet it, its stats).
-    const parts: HTMLElement[] = [name, ...(gear ? itemTip(gear).slice(1) : [el('div', 'iv-meta', meta)])];
+    const parts: HTMLElement[] = [name, el('div', 'iv-meta', meta)];
     if (it.sellable) {
       const row = el('div', 'iv-actions');
       const button = (text: string, cls: string, run: () => void) => this.action(text, cls, run);
@@ -415,18 +501,6 @@ export class Inventory {
 }
 
 // ── Dev: a pretend bag (no bot behind the dev server) ──
-
-/** Dev: the pretend equipment in the bag (net/adventure.ts keeps it in this browser). */
-function withFakeEquipment(d: TownInventoryResponse): TownInventoryResponse {
-  const counts = new Map<string, number>();
-  for (const id of adventure()?.bag ?? []) counts.set(id, (counts.get(id) ?? 0) + 1);
-  for (const [id, count] of counts) {
-    const item = itemDef(id);
-    if (item) d.items.push({ id, name: item.name, emoji: '⚔️', rarity: item.rarity, value: 0, count, kind: 'equipment', sellable: false, about: 'Double-click or drag it onto its slot to wear it.' });
-  }
-  d.used += counts.size ? [...counts.values()].reduce((a, b) => a + b, 0) : 0;
-  return d;
-}
 
 const q = new URLSearchParams(location.search);
 const fake: TownInventoryResponse = {

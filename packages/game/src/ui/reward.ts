@@ -67,6 +67,19 @@ export function coinIcon(z: number): HTMLElement {
   return coin;
 }
 
+let kusingUrl: string | null = null;
+/** Kusing's 16x16 coin (manifest ui.kusingIcon), set by the town. */
+export const setKusingArt = (url: string | null) => (kusingUrl = url);
+
+/** Kusing's coin at `z`× (a gold dot until its art is set). */
+export function kusingIcon(z: number): HTMLElement {
+  const coin = el('span', 'rw-kusing');
+  coin.style.width = coin.style.height = `${16 * z}px`;
+  if (kusingUrl) coin.style.backgroundImage = `url("${kusingUrl}")`;
+  else coin.style.background = '#F8BF27';
+  return coin;
+}
+
 /** Until the white frame is ready, pop-ups wait for it (only ones opened as the town loads), so none shows dark. */
 let framing: Promise<unknown> | null = null;
 
