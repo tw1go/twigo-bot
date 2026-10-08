@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { type StatsData, type TownMob, type TownMobFacing, mobStats, mobTone } from '@mikazuki/shared';
+import { type PlayerHit, type StatsData, type TownMob, type TownMobFacing, mobStats, mobTone } from '@mikazuki/shared';
 import type { Manifest, MobData, MobDef, MobZone, TownMap, Vec2 } from '../assets/types';
 import { mobCell, mobSheet, mobVariants } from '../assets/mob-art';
 import { slice } from '../assets/packs';
@@ -30,8 +30,8 @@ import { LABEL_DEPTH } from './depth';
 // Its own attacks (`strike`) turn it the server's way and play its attack pose; on the table's attack frame (mobs.json
 // attackFrame) `onAttackFrame`, then `onHit` as it lands on the player (at once, or for the Wire Tangle when its spark gets there:
 // drawn in code from its insulator eye, mobs.json `eye`, on the front fx layer); the Tire Roller's sprite lunges out
-// along its facing over its charge frames and back (its tile stays). `onDeath` as one dies. Players have no HP yet:
-// the hooks show the hit (TownScene). Only the mobs near the camera are drawn and animated; the rest sleep (their
+// along its facing over its charge frames and back (its tile stays). `onDeath` as one dies. The server rolled the hit
+// (`hit`: damage or a miss) and takes the HP as it lands: the hooks show it then (TownScene: the number, the flash). Only the mobs near the camera are drawn and animated; the rest sleep (their
 // sprites off, still walking their hops on paper) and wake right where they should be.
 // The field boss (world/golem.ts runs it) is one of these too, made with `makeBoss` once its art is in: its own sheets
 // or its red-lamp set (`enraged`), its rise (its death backwards), a body `radius` (reach and Z measure to its edge;
@@ -125,12 +125,13 @@ export interface Mob {
   untouchable: boolean;
 }
 
-/** What the scene does with a mob's attack (players have no HP yet: these show it). */
+/** What the scene does with a mob's attack (these show it; the server takes the HP). */
 export interface MobHooks {
   /** Its attack anim reaches the frame where it lands (mobs.json attackFrame); the Wire Tangle's spark leaves here. */
   onAttackFrame?: (m: Mob, target: string) => void;
-  /** Its attack reaches the player (melee: on that frame; the spark: when it gets there); `slow`: ms (the Bag's). */
-  onHit?: (m: Mob, target: string, slow?: number) => void;
+  /** Its attack reaches the player (melee: on that frame; the spark: when it gets there; the golem's slam or toss: each
+   *  player it caught); `slow`: ms (the Bag's); `hit`: the server's roll (damage or a miss). */
+  onHit?: (m: Mob, target: string, slow?: number, hit?: PlayerHit) => void;
   /** It dies (its death pose starts). */
   onDeath?: (m: Mob) => void;
 }
@@ -555,13 +556,13 @@ export class Mobs {
 
   /** Its attack on a player (the server's word): turned its way (`dir`), its attack pose; the hooks on its attack
    *  frame and as it lands (the Wire Tangle's spark flies there first; the Tire Roller lunges). */
-  strike(id: string, target: string, dir: TownMobFacing, slow?: number): void {
+  strike(id: string, target: string, dir: TownMobFacing, slow?: number, hit?: PlayerHit): void {
     const m = this.byId.get(id);
     if (!m || m.dead) return;
     m.dir = dir;
     m.fightUntil = this.scene.time.now + FIGHT_MS;
     if (m.data?.shell) m.openUntil = this.scene.time.now + (m.data.shellOpenMs ?? SHELL_OPEN_MS); // its shell drops as it swings
-    const land = () => this.hooks.onHit?.(m, target, slow);
+    const land = () => this.hooks.onHit?.(m, target, slow, hit);
     const frame = m.data?.attackFrame ?? 0;
     const fire = () => {
       this.hooks.onAttackFrame?.(m, target);
@@ -928,8 +929,9 @@ function drawSpark(g: Phaser.GameObjects.Graphics): void {
   if (Math.random() < 0.5) g.fillStyle(0xfef9c3, a).fillRect(Phaser.Math.Between(-6, 4), Phaser.Math.Between(-3, 2), 1, 1);
 }
 
-/** The Bag's slow on a player (shown only, players have no slow yet): a small badge by the head (two pale-blue chevrons
- *  pointing down on navy) and a faint cold ring at the feet, for `ms`; on the front and ground fx layers. */
+/** The Bag's slow on a player (half their walking speed meanwhile: TownScene slowMe, the server's step budget): a small
+ *  badge by the head (two pale-blue chevrons pointing down on navy) and a faint cold ring at the feet, for `ms`; on the
+ *  front and ground fx layers. */
 export function showSlowed(fx: FxLayers, head: () => Pt, feet: () => Pt, ms: number): void {
   fx.drawFx('front', (g, t) => {
     const h = head();

@@ -83,7 +83,7 @@ const TOPICS: Topic[] = [
     text: [
       'Team up with up to **6** players, wherever each of you is.',
       '• **Invite**: open someone’s menu (click them, or their name in the chat) and press **Invite to party**. They have a minute to accept',
-      '• Only the **leader** (♛) invites. Your party shows on the left: who, their class and where they are',
+      '• Only the **leader** (♛) invites. Your party shows on the left: who, their class, where they are and their HP',
       '• Party members’ names turn **pink**, only for the party',
       '• **Party chat**: `/p your message` (only your party sees it); `/g` goes back to General',
       '• The icon on the party box: **Leave party**, or for the leader **Disband party**. A leader who leaves passes the lead to the next member',
@@ -99,6 +99,9 @@ const TOPICS: Topic[] = [
       '• Your **level** and **XP bar** sit under your name (top left); hover it for the XP numbers',
       '• Defeat mobs in the **Slums** for XP. A mob far below your level gives less (its name is grey); one well above you can make you miss (red)',
       '• The **Scrapheap Golem**\'s XP goes to everyone who did at least 5% of its HP',
+      '• Your **HP** (red) and **MP** (blue) sit under the XP bar. Mobs hit back in the Slums (a bar over your head while you\'re hurt); the town and the neighbourhood are safe, and arriving there fills both. 5 s out of a fight, HP slowly comes back',
+      '• At 0 HP you\'re **knocked out**: 3 s later you\'re back at the Slums\' way in from town with full HP and MP. Nothing is lost',
+      '• The Plastic Bag Spook **slows** you to half speed for a moment; the golem\'s Lamp Glare **blinds** you: for 3 s every attack you make misses',
       '• Each level up earns a **stat point** and **3 skill points**, and everyone nearby sees **Level up!** over you',
       '• Spend stat points in the **Equipment** panel (**B**): the **+** beside your class’s two stats. **Reset** gives them all back, free. Before you have a class they wait for you',
       '• Skills unlock as you level: each says **Unlocks at Lv N** until then (**Dash** at Lv 5, your class’s own move at Lv 8). Locked ones can’t be used',

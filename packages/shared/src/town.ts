@@ -78,6 +78,17 @@ export interface TownPlayer {
   weapon?: string | null;
   /** Their character level (stats rules), if they have one saved. */
   level?: number;
+  /** Their HP now and at most (bot web/town-vitals.ts; a bar over a hurt player's head), and knocked out (faded out until
+   *  they respawn). */
+  hp?: number;
+  maxHp?: number;
+  out?: boolean;
+}
+
+/** A mob's (or the golem's) hit on a player as the server rolled it: its damage, or a miss (0). */
+export interface PlayerHit {
+  damage: number;
+  miss?: boolean;
 }
 
 /** Browser → server. A step is to a neighbouring tile; the server checks it (walkable, adjacent, walking speed). */
@@ -127,6 +138,9 @@ export interface PartyMember {
   outfit: OutfitData;
   cls?: string | null;
   area: string | null;
+  /** Their HP now and at most (while connected or last known). */
+  hp?: number;
+  maxHp?: number;
 }
 
 export interface PartyState {
@@ -309,29 +323,38 @@ export type TownServerMessage =
   /** The golem changed (its whole state each time: HP, enraged, where it is). 'call': the Junk crawls out at `spots`
    *  (fx-golem-call-junk on each), its Adds arrive as `mob-add` `ms` later. */
   | { t: 'golem'; change: GolemChange; golem: TownGolem; spots?: [number, number][]; ms?: number }
-  /** The golem attacks (shown only: players have no HP yet), turned to `dir`, at `target` (a town id): 'slam' lands its
-   *  fist at `at` (the warning there from the start, impact + shockwave on mobs.json attackFrame; a rubble ring after it
-   *  when `enraged`), 'toss' throws at `at` (the target's tile: the marker from the start, the scrap leaves on
-   *  tossFrame), 'glare' lights a cone from its tile along `dir` (`cone`: tiles long, degrees wide, in grid space) on
-   *  glareFrames: `blinded` are the players inside, blinded for `blindMs` (shown only). Frame times come from the
-   *  manifest's anims (the server keeps it still for the anim's length). */
-  | { t: 'golem-attack'; id: string; attack: GolemAttack; dir: TownMobFacing; target: string; at: [number, number]; enraged: boolean; blinded?: string[]; blindMs?: number; cone?: [number, number] }
+  /** The golem attacks, turned to `dir`, at `target` (a town id): 'slam' lands its fist at `at` (the warning there from
+   *  the start, impact + shockwave on mobs.json attackFrame; a rubble ring after it when `enraged`), 'toss' throws at `at`
+   *  (the target's tile: the marker from the start, the scrap leaves on tossFrame), 'glare' lights a cone from its tile
+   *  along `dir` (`cone`: tiles long, degrees wide, in grid space) on glareFrames: `blinded` are the players inside,
+   *  blinded for `blindMs` (their attacks miss). `hits`: each player the slam or toss caught (town ids) with the server's
+   *  roll, shown as it lands (the server takes the HP then too). Frame times come from the manifest's anims (the server
+   *  keeps it still for the anim's length). */
+  | { t: 'golem-attack'; id: string; attack: GolemAttack; dir: TownMobFacing; target: string; at: [number, number]; enraged: boolean; blinded?: string[]; blindMs?: number; cone?: [number, number]; hits?: (PlayerHit & { id: string })[] }
   /** A mob hops: from the first tile of `path` along the rest (at the mobs' pace). */
   | { t: 'mob-move'; id: string; path: [number, number][]; speed?: number }
   /** Someone (`by`, a town id) hit with skill `skill`: each mob it reached (the target first) with the damage, a crit or
    *  not, the HP left, dead or not; `blocked`: a Scrap Crab's shell took it (0); `miss`: it missed (0). */
   | { t: 'mob-hit'; by: string; skill: number; hits: { id: string; damage: number; crit: boolean; hp: number; dead: boolean; blocked?: boolean; miss?: boolean; slow?: { factor: number; ms: number } }[] }
-  /** A mob attacks a player (shown only: players have no HP yet), turned to face `dir`; `slow`: the player is slowed
-   *  for that long (ms; the Plastic Bag Spook's, shown only). */
-  | { t: 'mob-attack'; id: string; target: string; dir: TownMobFacing; slow?: number }
+  /** A mob attacks a player, turned to face `dir`; `hit`: the server's roll (shown as it lands; the server takes the HP
+   *  then too); `slow`: a hit slows the player to half their walking speed for that long (ms; the Plastic Bag Spook's). */
+  | { t: 'mob-attack'; id: string; target: string; dir: TownMobFacing; slow?: number; hit?: PlayerHit }
   /** A dead mob is back at its spawn. */
   | { t: 'mob-spawn'; id: string; col: number; row: number; hp: number }
   /** Your level, XP and points changed (XP from a kill: `gained`; a level-up; dev's ?xp= / ?level=). */
   | { t: 'progress'; progress: CharacterProgress; gained?: number }
   /** Someone in your room went up a level (you too: `id` is yours): "Level up!" over them. HP and MP refill with it. */
   | { t: 'level-up'; id: string; level: number }
-  /** Your attack didn't land: too far, too fast, the mob's gone, or the skill isn't one of yours or unlocked yet. */
-  | { t: 'attack-refused'; reason: 'range' | 'slow' | 'gone' | 'skill' | 'locked' }
+  /** Your attack didn't land: too far, too fast, the mob's gone, the skill isn't one of yours or unlocked yet, or you're
+   *  knocked out. */
+  | { t: 'attack-refused'; reason: 'range' | 'slow' | 'gone' | 'skill' | 'locked' | 'out' }
+  /** Someone's HP (and yours with your MP) changed: to you, to everyone in your room (the bar over your head) and to your
+   *  party (its panel). */
+  | { t: 'vitals'; id: string; hp: number; maxHp: number; mp?: number; maxMp?: number }
+  /** Someone in your room (maybe you) was knocked out (0 HP): they fade out and can't act until they respawn. */
+  | { t: 'knocked-out'; id: string }
+  /** Someone in your room (maybe you) is back after being knocked out, at the map's way in, with full HP and MP. */
+  | { t: 'respawn'; id: string; col: number; row: number }
   /** Your party now (null: none), with a line for a toast when something happened ("Mara joined the party."). */
   | { t: 'party'; party: PartyState | null; note?: string }
   /** Someone invites you: answer with party-answer (it lapses after a minute). */

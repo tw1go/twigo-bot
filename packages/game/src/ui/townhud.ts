@@ -10,8 +10,8 @@ import { showGuide } from './guide';
 import { showSettings } from './settings';
 
 // The town's HUD (replaces the page's login corner while you're in town): your character's head and name top left,
-// in the game's pixel frame, with your level ("Lv N") and a thin XP bar under the name (full and "MAX" at the cap; HP
-// and MP bars go under it, in .th-bars); the Settings button under them; Kowens and shovels top right, each with a "+" that
+// in the game's pixel frame, with your level ("Lv N") and a thin XP bar under the name (full and "MAX" at the cap), your
+// HP (red) and MP (blue) bars under it (.th-bars); the Settings button under them; Kowens and shovels top right, each with a "+" that
 // explains how to get more. DOM text only. The numbers refresh every minute and whenever a "+" is opened.
 
 export interface TownHudOptions {
@@ -79,6 +79,8 @@ let setAvatar: (head: HTMLCanvasElement) => void = () => {};
 let setClass: (cls: { name: string; badge: string } | null) => void = () => {};
 let setName: (name: string) => void = () => {};
 let setLevel: (p: CharacterProgress | null) => void = () => {};
+type HudVitals = { hp: number; maxHp: number; mp: number; maxMp: number };
+let setVitals: (v: HudVitals | null) => void = () => {};
 
 /** Your new nickname in the profile box (a Rename Card). */
 export const setHudName = (name: string) => setName(name);
@@ -89,6 +91,9 @@ export const setHudClass = (cls: { name: string; badge: string } | null) => setC
 
 /** Your level and XP under the name (none: hidden, e.g. a guest). */
 export const setHudLevel = (p: CharacterProgress | null) => setLevel(p);
+
+/** Your HP and MP under the XP bar (the town's `vitals`; none: hidden). */
+export const setHudVitals = (v: HudVitals | null) => setVitals(v);
 
 /** Your character's head in the profile box, after a new look (the Parlor). */
 export const setHudAvatar = (head: HTMLCanvasElement | null) => head && setAvatar(head);
@@ -141,7 +146,26 @@ export function mountTownHud(o: TownHudOptions): void {
   const xpFill = el('span', 'th-xp-fill');
   const xpText = el('span', 'th-xp-text');
   xpBar.append(xpFill);
-  bars.append(xpBar);
+  // HP (red; pulsing under a quarter) and MP (blue) under it, once the town says what they are.
+  const hpBar = el('span', 'th-hp');
+  const hpFill = el('span', 'th-hp-fill');
+  const mpBar = el('span', 'th-mp');
+  const mpFill = el('span', 'th-mp-fill');
+  hpBar.append(hpFill);
+  mpBar.append(mpFill);
+  hpBar.hidden = mpBar.hidden = true;
+  bars.append(xpBar, hpBar, mpBar);
+  setVitals = (v) => {
+    hpBar.hidden = mpBar.hidden = !v;
+    if (!v) return;
+    hpFill.style.width = `${Math.min(100, (v.hp / Math.max(1, v.maxHp)) * 100)}%`;
+    mpFill.style.width = `${Math.min(100, (v.mp / Math.max(1, v.maxMp)) * 100)}%`;
+    hpBar.classList.toggle('th-low', v.hp > 0 && v.hp <= v.maxHp / 4);
+    hpBar.title = `HP ${v.hp} / ${v.maxHp}`;
+    mpBar.title = `MP ${v.mp} / ${v.maxMp}`;
+    hpBar.setAttribute('aria-label', hpBar.title);
+    mpBar.setAttribute('aria-label', mpBar.title);
+  };
   level.append(lv, bars, xpText);
   level.hidden = true;
   setLevel = (p) => {

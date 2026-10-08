@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { type GolemAttack, type GolemChange, type TownGolem, type TownMobFacing, type TownServerMessage, mobStats } from '@mikazuki/shared';
+import { type GolemAttack, type GolemChange, type PlayerHit, type TownGolem, type TownMobFacing, type TownServerMessage, mobStats } from '@mikazuki/shared';
 import { loadStats } from './stats-data.js';
 
 // 🗿 The Scrapheap Golem, the Slums' field boss (the game's maps/slums.json `boss`), run on the server inside the Slums'
@@ -13,12 +13,16 @@ import { loadStats } from './stats-data.js';
 // hit starts a fight: it goes after whoever hit it last while they're within its leash (`leash` tiles of home), else the
 // nearest player there, stepping closer within the leash, and attacks every GAP_MS (ENRAGED_GAP_MS enraged): Tire Slam
 // with its target within SLAM tiles of its body's edge, Scrap Toss past TOSS, and every GLARE_EVERY-th attack a Lamp
-// Glare along its facing (a cone from its tile, CONE tiles past its body's edge and degrees wide: whoever's inside is blinded, shown
-// only). It turns a quarter at a time (TURN_MS) and attacks only once it faces its target. Harmless: players have no
-// HP yet. At half HP it calls the Junk once (3–4 spots round the pit; its Adds crawl out there when the fx is done: the
-// host spawns them as real mobs), at a quarter it enrages once. Nobody within its leash for RESET_MS: it resets (full HP,
-// Adds gone, both phases again next fight) and walks home. At 0 it dies: its Adds go, and a line names everyone who hit
-// it in that fight; the damage each did in it goes back with the last hit (its XP: everyone who did 5% of its HP). Pure (the clock is passed in), so it's tested on its own and the dev server runs it too.
+// Glare along its facing (a cone from its tile, CONE tiles past its body's edge and degrees wide: whoever's inside is
+// blinded, their attacks missing for BLIND_MS). It turns a quarter at a time (TURN_MS) and attacks only once it faces its
+// target. Tire Slam hits every player within SLAM_AREA of where its fist lands, Scrap Toss the target's tile and the tiles
+// next to it (TOSS_AREA): each a hit by the stats rules with its ATK × the mob table's skillMult (×3, ×2), rolled by the
+// host (`roll`) and sent with the attack (`hits`); the host takes the HP as it lands (`hitMs`). At half HP it calls the
+// Junk once (3–4 spots round the pit; its Adds crawl out there when the fx is done: the host spawns them as real mobs),
+// at a quarter it enrages once. Nobody within its leash for RESET_MS: it resets (full HP, Adds gone, both phases again
+// next fight) and walks home. At 0 it dies: its Adds go, and a line names everyone who hit it in that fight; the damage
+// each member did in it (by member, so a reload mid-fight keeps it) goes back with the last hit (its XP: everyone who did
+// 5% of its HP). Pure (the clock is passed in), so it's tested on its own and the dev server runs it too.
 
 const SPEED = 1.5; // tiles a second, stomping (the game walks it at this pace: it's in every mob-move)
 const IDLE_MS: [number, number] = [5000, 11_000]; // between idle stomps and turns
@@ -31,6 +35,12 @@ const TOSS = 3; // Scrap Toss: past this (between the two it steps closer)
 const GLARE_EVERY = 4;
 const CONE: [number, number] = [5, 60]; // tiles long (past its body's edge), degrees wide
 const BLIND_MS = 3000;
+const SLAM_AREA = 2; // Tire Slam: every player within this of where its fist lands
+const TOSS_AREA = 1; // Scrap Toss: its target's tile and the tiles next to it
+/** The scrap's flight (the game's golem.ts FLIGHT_MS): a toss lands this long after it leaves the fist. */
+const FLIGHT_MS = 600;
+/** Each attack's multiplier in the mob table's skillMult. */
+const MULT: Partial<Record<GolemAttack, string>> = { slam: 'tireSlam', toss: 'scrapToss' };
 const RESET_MS = 10_000;
 const SINK_MS = 30 * 60_000;
 
@@ -70,15 +80,18 @@ export function pitTiles(boss: GolemBoss | undefined): PitTiles | null {
   return { ring, floor, gap, fight: new Set([...floor, ...gap]), all: new Set([...ring, ...floor, ...gap]) };
 }
 
-/** What it takes from its art and rules (manifest mobs.<id>, mobs/mobs.json; its HP from the mob table in
- *  classes/stats.json): HP, body radius, and how long its rise (the death anim), its attacks and the Call the Junk fx last
- *  (ms). */
+/** What it takes from its art and rules (manifest mobs.<id>, mobs/mobs.json; its HP and attack multipliers from the
+ *  mob table in classes/stats.json): HP, body radius, and how long its rise (the death anim), its attacks and the Call the
+ *  Junk fx last (ms); when each attack lands (`hitMs`: the slam's attackFrame, the toss's tossFrame + its flight, the
+ *  glare's first glareFrame); each attack's damage multiplier (`mult`, 1 if the table has none). */
 export interface GolemArt {
   hp: number;
   radius: number;
   riseMs: number;
   attackMs: Record<GolemAttack, number>;
   callMs: number;
+  hitMs?: Record<GolemAttack, number>;
+  mult?: Partial<Record<GolemAttack, number>>;
 }
 
 /** The game's manifest, mobs.json and stats.json, for the golem `id`. */
@@ -86,10 +99,17 @@ export function loadGolemArt(id = 'scrapheap-golem'): GolemArt {
   const read = (file: string) => JSON.parse(readFileSync(new URL(`../../../game/public/assets/${file}`, import.meta.url), 'utf8'));
   type Anim = { frames: number; fps: number };
   const art = read('manifest.json').mobs[id] as { animations: Record<string, Anim>; fx: Record<string, Anim> };
-  const rules = read('mobs/mobs.json')[id] as { radius: number };
+  const rules = read('mobs/mobs.json')[id] as { radius: number; attackFrame?: number; tossFrame?: number; glareFrames?: [number, number] };
   const ms = (a: Anim) => Math.round((a.frames / a.fps) * 1000);
+  const at = (a: Anim, frame: number) => Math.round((frame / a.fps) * 1000);
   const a = art.animations;
-  return { hp: mobStats(loadStats(), id)!.hp, radius: rules.radius, riseMs: ms(a.death), attackMs: { slam: ms(a.attack), toss: ms(a.toss), glare: ms(a.glare) }, callMs: ms(art.fx['fx-golem-call-junk']) };
+  const row = mobStats(loadStats(), id)!;
+  const mult = Object.fromEntries(Object.entries(MULT).map(([k, v]) => [k, row.skillMult?.[v] ?? 1])) as Partial<Record<GolemAttack, number>>;
+  return {
+    hp: row.hp, radius: rules.radius, riseMs: ms(a.death), attackMs: { slam: ms(a.attack), toss: ms(a.toss), glare: ms(a.glare) }, callMs: ms(art.fx['fx-golem-call-junk']),
+    hitMs: { slam: at(a.attack, rules.attackFrame ?? 5), toss: at(a.toss, rules.tossFrame ?? 4) + FLIGHT_MS, glare: at(a.glare, rules.glareFrames?.[0] ?? 3) },
+    mult,
+  };
 }
 
 /** What the golem sends to the room. */
@@ -103,6 +123,9 @@ export interface GolemHost {
   callAdds(spots: [number, number][], now: number): GolemEvent[];
   /** The fight is over: its Adds go. */
   dropAdds(): GolemEvent[];
+  /** Its hit on a player (town id) with this multiplier on its ATK: the stats rules' roll, or null (nothing to hit: no
+   *  HP known for them). Without it its attacks are harmless. */
+  roll?(player: string, mult: number): PlayerHit | null;
 }
 
 /** The next rise after `now`: the next whole `everyMinutes` since the epoch. */
@@ -170,9 +193,9 @@ export class Golem {
   private lastHit = 0;
   /** Whoever hit it last (it goes after them while they're within its leash). */
   private foe: string | null = null;
-  /** Everyone who hit it this fight (town id → nickname), in order. */
+  /** Everyone who hit it this fight (by member: a reload's new town id is still them → nickname), in order. */
   private readonly hitters = new Map<string, string>();
-  /** The damage each of them did this fight (its XP goes to everyone who did enough: stats.json's xpTo). */
+  /** The damage each of them did this fight, by member (its XP goes to everyone who did enough: stats.json's xpTo). */
   private readonly dealt = new Map<string, number>();
   /** Nobody within its leash since then. */
   private alone: number | null = null;
@@ -461,9 +484,17 @@ export class Golem {
       at = [Math.round(from[0] + ux * reach), Math.round(from[1] + uy * reach)];
     }
     const blinded = attack === 'glare' ? [...players].filter(([, q]) => inCone(from, this.facing, q, cone)).map(([id]) => id) : [];
+    // Who the slam or toss catches (where they stand as it strikes), each rolled by the host.
+    const area = attack === 'slam' ? SLAM_AREA : attack === 'toss' ? TOSS_AREA : -1;
+    const hits = this.host.roll && area >= 0
+      ? [...players].filter(([, q]) => cheb(q, at) <= area).flatMap(([id]) => {
+        const h = this.host.roll!(id, this.art.mult?.[attack] ?? 1);
+        return h ? [{ id, ...h }] : [];
+      })
+      : [];
     this.pending.push({
       t: 'golem-attack', id: this.id, attack, dir: this.facing, target, at, enraged: this.enraged,
-      ...(attack === 'glare' ? { blinded, blindMs: BLIND_MS, cone } : {}),
+      ...(attack === 'glare' ? { blinded, blindMs: BLIND_MS, cone } : {}), ...(hits.length ? { hits } : {}),
     });
   }
 
@@ -478,9 +509,10 @@ export class Golem {
     this.goHome(now);
   }
 
-  /** A player's hit for `damage` (town id and nickname, for the line when it falls). Null when it can't be hit. When it
-   *  falls, `dealt`: the damage each player did in its fight. */
-  hit(player: string, name: string, damage: number, now: number): { hp: number; dead: boolean; dealt?: Map<string, number> } | null {
+  /** A player's hit for `damage` (town id; nickname, for the line when it falls; `member`: who they are across reloads,
+   *  their town id if not given). Null when it can't be hit. When it falls, `dealt`: the damage each member did in its
+   *  fight. */
+  hit(player: string, name: string, damage: number, now: number, member = player): { hp: number; dead: boolean; dealt?: Map<string, number> } | null {
     if (!this.hittable) return null;
     const starts = this.phase !== 'fight';
     if (starts) {
@@ -489,9 +521,9 @@ export class Golem {
       Object.assign(this, { alone: null, attacks: 0, nextAttack: Math.max(this.nextAttack, now + FIRST_MS) });
     }
     this.foe = player;
-    this.hitters.set(player, name);
+    this.hitters.set(member, name);
     this.lastHit = now;
-    this.dealt.set(player, (this.dealt.get(player) ?? 0) + Math.min(damage, this.hp));
+    this.dealt.set(member, (this.dealt.get(member) ?? 0) + Math.min(damage, this.hp));
     this.hp = Math.max(0, this.hp - damage);
     if (starts) this.change('fight', now);
     if (this.hp && !this.called && this.hp <= this.art.hp / 2) this.callJunk(now);
@@ -555,7 +587,12 @@ export class Golem {
     this.dealt.clear();
   }
 
-  /** A player left the room: it stops going after them. */
+  /** When each attack lands after it starts (ms): the host takes the HP then. */
+  hitMs(attack: GolemAttack): number {
+    return this.art.hitMs?.[attack] ?? 0;
+  }
+
+  /** A player left the room (or was knocked out): it stops going after them. */
   forget(player: string): void {
     if (this.foe === player) this.foe = null;
   }

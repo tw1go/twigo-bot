@@ -7,7 +7,9 @@ import { Arena, type ArenaBets, type ArenaSeat, arenaLine } from './town-arena.j
 import type { LevelGain } from './progress.js';
 import type { Attacker, MobRoom } from './town-mobs.js';
 import { PARTY_MAX, type PartyChange, Parties } from './town-party.js';
-import type { CharacterProgress, HoodHouse, HoodMap, OutfitData, PartyState, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine } from '@mikazuki/shared';
+import { type VitalMax, Vitals, shown } from './town-vitals.js';
+import { loadStats } from './stats-data.js';
+import type { CharacterProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
 // messages). The server keeps everyone's tile and checks each step — on the map, not blocked, next to the last
@@ -20,6 +22,10 @@ import type { CharacterProgress, HoodHouse, HoodMap, OutfitData, PartyState, Tow
 // Rooms: the town, and others the caller adds (the neighbourhood), picked with ?room= on the socket's address (going
 // from one to the other is a new connection). Walking, benches and who you see are per room; chat, the system feed,
 // banners and everything about a member (gifts, looks, jail) reach everyone. Parties (town-party.ts) span every room.
+// HP and MP (town-vitals.ts, by member, in memory): where there are mobs (TownOptions.mobs), their hits land here
+// (MobRoom.landed) and come off HP; each change goes to the player, their room (the bar over their head) and their party.
+// At 0 they're knocked out (no steps, moves or attacks; mobs forget them) and after 3 s respawn at the room's way in
+// (its spawn point, where arrivals land). Slowed (the Bag's), their steps are held to half; blinded, their attacks miss.
 
 const DIRS = new Set<TownDir>(['s', 'se', 'e', 'ne', 'n', 'nw', 'w', 'sw']);
 const MOVES = new Set<TownMove>(['dash', 'step-back', 'charge', 'blink']);
@@ -27,9 +33,12 @@ const EMOTES = new Set<TownEmote>(['heart', 'laugh', 'exclaim', 'question', 'kow
 /** Emotes: a burst of 3, then one a second. */
 const EMOTES_PER_SECOND = 1;
 const EMOTE_BURST = 3;
-/** Walking is 4 tiles a second; allow a little more, in bursts (messages bunch up on a bad connection). */
+/** Walking is 4 tiles a second; allow a little more, in bursts (messages bunch up on a bad connection). Slowed: half. */
 const STEPS_PER_SECOND = 6;
 const STEP_BURST = 6;
+const SLOWED = 0.5;
+/** Mobs' hits land, HP and MP come back and the knocked out respawn on this clock (ms). */
+const VITALS_MS = 100;
 const HEARTBEAT_MS = 30_000;
 /** Arrivals spread over the free tiles this far (in tiles, each way) around the map's spawn point. */
 const SPAWN_SPREAD = 3;
@@ -202,6 +211,8 @@ interface Conn {
   alive: boolean;
   /** Still at the spawn point, so 'here' is accepted (once). */
   fresh: boolean;
+  /** Their DEF and level (what mobs' hits are rolled against), with their HP's most. */
+  guard?: Target;
   /** This connection as the Arena sees it (made on first use). */
   seat?: ArenaSeat;
   /** The last party invite sent (ms). */
@@ -251,7 +262,8 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       members: party.members.map((m) => {
         const o = conns.get(m);
         const k = known.get(m);
-        return { key: parties.key(m), id: o?.player.id ?? null, nickname: k?.nickname ?? 'Someone', outfit: k!.outfit, cls: k?.cls ?? null, area: o?.room ?? null };
+        const v = vitals?.get(m);
+        return { key: parties.key(m), id: o?.player.id ?? null, nickname: k?.nickname ?? 'Someone', outfit: k!.outfit, cls: k?.cls ?? null, area: o?.room ?? null, ...(v ? { hp: shown(v).hp, maxHp: v.max.hp } : {}) };
       }),
     };
   };
@@ -281,6 +293,60 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     }, PARTY_AWAY_MS));
   };
   const mapOf = (room: string): TownMap => (room === 'town' ? map : opts.rooms?.[room]?.() ?? map);
+
+  // HP and MP: only where there are mobs (their rules come from a mob room: class, level, points, worn gear).
+  const rules = Object.values(opts.mobs ?? {})[0];
+  const vitals = rules ? new Vitals(loadStats().regen) : null;
+  const battle = (room: string) => !!opts.mobs?.[room];
+  /** Who they are in a fight: class, level, points, everything worn, skill levels (the class and weapon alone without
+   *  saved levels). */
+  const fighterOf = (c: Conn): Attacker => opts.progress?.fighter(c.userId) ?? { cls: c.player.cls, gear: [c.player.weapon] };
+  /** Their most HP and MP (and their DEF and level, for mobs' hits). */
+  const maxOf = (c: Conn): VitalMax => {
+    const d = rules!.fighter(fighterOf(c));
+    c.guard = { def: d.def, level: d.level };
+    return { hp: d.hp, mp: d.mp, mpRegen: d.mpRegen };
+  };
+  /** Their HP (and to them, MP) to them, their room and their party (wherever they are). */
+  const tellVitals = (c: Conn) => {
+    const v = vitals?.get(c.userId);
+    if (!v) return;
+    const { hp, maxHp, mp, maxMp } = shown(v);
+    Object.assign(c.player, { hp, maxHp });
+    send(c, { t: 'vitals', id: c.player.id, hp, maxHp, mp, maxMp });
+    const seen: TownServerMessage = { t: 'vitals', id: c.player.id, hp, maxHp };
+    others(c, seen);
+    for (const m of parties.of(c.userId)?.members ?? []) {
+      const o = conns.get(m);
+      if (o && o !== c && o.room !== c.room) send(o, seen);
+    }
+  };
+  /** Their most changed (points, gear, a level: `full` fills them up). */
+  const refreshVitals = (c: Conn, full = false) => {
+    if (!vitals?.get(c.userId)) return;
+    const max = maxOf(c);
+    if (full) vitals.fill(c.userId, max, Date.now());
+    else vitals.setMax(c.userId, max);
+    tellVitals(c);
+  };
+  /** 0 HP: faded out for everyone there, no mob after them, nothing more lands on them. */
+  const knockOut = (c: Conn) => {
+    c.player.out = true;
+    c.player.sit = false;
+    opts.mobs?.[c.room]?.forget(c.player.id, true);
+    const m: TownServerMessage = { t: 'knocked-out', id: c.player.id };
+    send(c, m);
+    others(c, m);
+  };
+  /** Back after being knocked out: at the room's way in (where arrivals land), full, seen by everyone there. */
+  const respawn = (c: Conn) => {
+    const [col, row] = arrival(c.room);
+    Object.assign(c.player, { col, row, sit: false, out: undefined });
+    const m: TownServerMessage = { t: 'respawn', id: c.player.id, col, row };
+    send(c, m);
+    others(c, m);
+    tellVitals(c);
+  };
   const inside = (m: TownMap, col: unknown, row: unknown): col is number =>
     Number.isInteger(col) && Number.isInteger(row) && (col as number) >= 0 && (row as number) >= 0 && (col as number) < m.size[0] && (row as number) < m.size[1];
   const walkable = (m: TownMap, col: number, row: number) => !m.blocked[row]?.[col];
@@ -297,6 +363,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   /** A member's level, XP and points to them; each level-up "Level up!" over them for their room (them included). */
   const progressed = (c: Conn, g: Pick<LevelGain, 'progress' | 'ups' | 'gained'>) => {
     c.player.level = g.progress.level;
+    refreshVitals(c, g.ups > 0); // a level up fills HP and MP; points change the most
     send(c, { t: 'progress', progress: g.progress, ...(g.gained ? { gained: g.gained } : {}) });
     if (g.ups > 0) {
       const up: TownServerMessage = { t: 'level-up', id: c.player.id, level: g.progress.level };
@@ -305,10 +372,11 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     }
   };
 
-  /** Token bucket: true if this message may go through. */
+  /** Token bucket: true if this message may go through (slowed: half as many, half as fast). */
   const spend = (c: Conn) => {
     const now = Date.now();
-    c.tokens = Math.min(STEP_BURST, c.tokens + ((now - c.refilled) / 1000) * STEPS_PER_SECOND);
+    const k = vitals?.slowed(c.userId, now) ? SLOWED : 1;
+    c.tokens = Math.min(STEP_BURST * k, c.tokens + ((now - c.refilled) / 1000) * STEPS_PER_SECOND * k);
     c.refilled = now;
     if (c.tokens < 1) return false;
     c.tokens -= 1;
@@ -322,6 +390,12 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     const walkable_ = (col: number, row: number) => walkable(here, col, row);
     const fresh = c.fresh;
     c.fresh = false;
+    // Knocked out: they can't walk, sit, move or fight until they respawn (chat and the rest go on).
+    if (p.out) {
+      if (m.t === 'here' || m.t === 'step' || m.t === 'sit') return send(c, { t: 'snap', col: p.col, row: p.row });
+      if (m.t === 'attack') return send(c, { t: 'attack-refused', reason: 'out' });
+      if (m.t === 'face' || m.t === 'move' || m.t === 'stand') return;
+    }
     switch (m.t) {
       case 'here':
         if (!fresh || !inside_(m.col, m.row) || !walkable_(m.col, m.row) || !DIRS.has(m.dir)) return send(c, { t: 'snap', col: p.col, row: p.row });
@@ -383,19 +457,22 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         // A damage skill on a mob (battle maps only): the mob room decides; everyone there sees the hit.
         const mobs = opts.mobs?.[c.room];
         if (!mobs || typeof m.mob !== 'string' || !Number.isInteger(m.skill)) return;
-        // Their class, level, points, everything worn and skill levels (the class and weapon alone without saved levels).
-        const who = opts.progress?.fighter(c.userId) ?? { cls: p.cls, gear: [p.weapon] };
-        const r = mobs.attack(p.id, [p.col, p.row], who, m.mob, Date.now(), m.skill as number, p.nickname);
+        // Their class, level, points, everything worn and skill levels; blinded, every hit misses.
+        const now = Date.now();
+        const who = { ...fighterOf(c), blinded: !!vitals?.blinded(c.userId, now) };
+        const r = mobs.attack(p.id, [p.col, p.row], who, m.mob, now, m.skill as number, p.nickname, c.userId);
         if (!r.ok) return send(c, { t: 'attack-refused', reason: r.reason });
+        vitals?.fought(c.userId, now); // in combat: no HP back for a while
         // The hit, then what it set off (the golem calling the Junk, enraging, falling: its line too, to this room only).
         for (const e of [{ t: 'mob-hit', by: p.id, skill: m.skill as number, hits: r.hits } satisfies TownServerMessage, ...mobs.flush()]) {
           others(c, e);
           send(c, e);
         }
-        // What it killed: its XP for whoever earns it (the killer; the golem's for everyone who did enough), if still here.
+        // What it killed: its XP for whoever earns it (the killer; the golem's for every member who did enough, even
+        // after a reload mid-fight), if still here.
         for (const k of r.kills) {
-          for (const id of k.to) {
-            const o = [...conns.values()].find((x) => x.player.id === id);
+          for (const user of k.to) {
+            const o = conns.get(user);
             if (o && opts.progress) progressed(o, opts.progress.kill(o.userId, k));
           }
         }
@@ -517,6 +594,11 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     const [col, row] = arrival(room);
     const player: TownPlayer = { id: randomBytes(6).toString('hex'), ...profile, col, row, dir: 's', sit: false };
     const c: Conn = { ws, userId, room, player, tokens: STEP_BURST, refilled: Date.now(), says: SAY_BURST, saidAt: Date.now(), emotes: EMOTE_BURST, emotedAt: Date.now(), alive: true, fresh: true };
+    // HP and MP: full in a safe room; in a battle map as they were (a reload), full if new there or knocked out.
+    if (vitals) {
+      const { hp, maxHp } = shown(vitals.arrive(userId, maxOf(c), battle(room), Date.now()));
+      Object.assign(player, { hp, maxHp });
+    }
     const mobRoom = opts.mobs?.[room];
     queueMicrotask(() => mobRoom && send(c, { t: 'mobs', mobs: mobRoom.snapshot(Date.now()), golem: mobRoom.golemState(Date.now()) })); // after the welcome
     send(c, { t: 'welcome', you: player.id, players: [...conns.values()].filter((o) => o.room === room).map((o) => o.player), recent, system: systemLines, spawn: [col, row], notice: notice && notice.until > Date.now() ? notice.a : undefined });
@@ -527,6 +609,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     away.delete(userId);
     tellParty(userId); // back (or in another area): their new id and where they are
     if (raceNow) send(c, { t: 'race', race: { ...raceNow, now: Date.now() } });
+    if (vitals) tellVitals(c); // your HP and MP (the HUD), and your party's panel
 
     ws.on('pong', () => (c.alive = true));
     ws.on('message', (data) => {
@@ -646,6 +729,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       everyone({ t: 'kit', id: c.player.id, cls, weapon });
       known.set(userId, { ...known.get(userId)!, cls });
       tellParty(userId);
+      refreshVitals(c); // their gear's HP, MP and DEF
     },
     progress(userId, progress, ups = 0, gained = 0) {
       const c = conns.get(userId);
@@ -679,8 +763,11 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       const now = Date.now();
       for (const [room, mobs] of Object.entries(opts.mobs ?? {})) {
         const here = [...conns.values()].filter((o) => o.room === room);
-        const where = new Map(here.map((o) => [o.player.id, [o.player.col, o.player.row] as [number, number]]));
-        const events = mobs.tick(now, where);
+        // The knocked out are nobody's target.
+        const up = here.filter((o) => !o.player.out);
+        const where = new Map(up.map((o) => [o.player.id, [o.player.col, o.player.row] as [number, number]]));
+        const guards = new Map(up.flatMap((o) => (o.guard ? [[o.player.id, o.guard] as const] : [])));
+        const events = mobs.tick(now, where, guards);
         if (!events.length) continue;
         const listeners = here.filter((o) => o.ws.readyState === WebSocket.OPEN);
         for (const e of events) {
@@ -689,6 +776,44 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         }
       }
     }, 250).unref?.();
+  }
+
+  // Mobs' hits landing (off HP; the Bag's slow, the Lamp Glare's blindness), HP and MP coming back, the knocked out
+  // respawning: on a quicker clock than the mobs', so a hit lands about when the game shows it.
+  if (vitals) {
+    setInterval(() => {
+      const now = Date.now();
+      const touched = new Set<Conn>();
+      for (const [room, mobs] of Object.entries(opts.mobs ?? {})) {
+        const landed = mobs.landed(now);
+        if (!landed.length) continue;
+        const byId = new Map([...conns.values()].filter((o) => o.room === room).map((o) => [o.player.id, o]));
+        for (const l of landed) {
+          const o = byId.get(l.player);
+          if (!o || o.player.out) continue;
+          if (l.blind) {
+            vitals.blind(o.userId, l.blind, now);
+            continue;
+          }
+          vitals.fought(o.userId, now);
+          if (l.miss) continue;
+          if (l.slow) vitals.slow(o.userId, l.slow, now);
+          const r = vitals.hurt(o.userId, l.damage, now);
+          if (!r) continue;
+          touched.add(o);
+          if (r === 'out') knockOut(o);
+        }
+      }
+      const inBattle = [...conns.values()].filter((o) => battle(o.room));
+      const { changed, respawned } = vitals.tick(now, inBattle.map((o) => o.userId));
+      for (const user of changed) touched.add(conns.get(user)!);
+      for (const user of respawned) {
+        const o = conns.get(user)!;
+        touched.delete(o);
+        respawn(o);
+      }
+      for (const o of touched) tellVitals(o);
+    }, VITALS_MS).unref?.();
   }
 
   // Party invites nobody answered in time: the inviter hears no.

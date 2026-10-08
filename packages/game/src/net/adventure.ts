@@ -171,8 +171,8 @@ async function act(path: Path, body: Body): Promise<TownAdventureResponse | null
       if (o) advanced = { quest: body.quest, objective: o.id };
     }
     set(res.adventure, { advanced, completed: res.completed, given: res.given, gear: res.gear });
-    if (fakeLogin() && (before?.cls !== res.adventure.cls || before?.equipped.weapon !== res.adventure.equipped.weapon)) {
-      void fetch(`/__kit?${new URLSearchParams({ as: fakeName(), cls: res.adventure.cls ?? '', weapon: res.adventure.equipped.weapon ?? '' })}`).catch(() => null);
+    if (fakeLogin() && (before?.cls !== res.adventure.cls || JSON.stringify(before?.equipped) !== JSON.stringify(res.adventure.equipped))) {
+      void fetch(`/__kit?${new URLSearchParams({ as: fakeName(), cls: res.adventure.cls ?? '', weapon: res.adventure.equipped.weapon ?? '', gear: JSON.stringify(Object.values(res.adventure.equipped)) })}`).catch(() => null);
     }
   }
   return res;
@@ -273,7 +273,7 @@ export function devSwitchClass(cls: string | null): void {
     startQuests(s);
   }
   set(s);
-  void fetch(`/__kit?${new URLSearchParams({ as: fakeName(), cls: cls ?? '', weapon: weapon ?? '', progress: JSON.stringify(s.progress) })}`).catch(() => null);
+  void fetch(`/__kit?${new URLSearchParams({ as: fakeName(), cls: cls ?? '', weapon: weapon ?? '', gear: JSON.stringify(Object.values(s.equipped)), progress: JSON.stringify(s.progress) })}`).catch(() => null);
 }
 
 /** A Bagong Buhay Ticket spent on a new class (bot POST /town/class-change; dev: the pretend one, as ?switch does). */
@@ -291,9 +291,9 @@ export async function changeClass(cls: string): Promise<{ ok: boolean; error?: s
 }
 
 /** Dev: your class, weapon and level for the dev town (sent on connect; it keeps the level from there). */
-export function devKit(): { cls: string | null; weapon: string | null; progress: CharacterProgress } {
+export function devKit(): { cls: string | null; weapon: string | null; gear: string[]; progress: CharacterProgress } {
   const s = state ?? loadFake();
-  return { cls: s.cls, weapon: s.equipped.weapon ?? null, progress: s.progress };
+  return { cls: s.cls, weapon: s.equipped.weapon ?? null, gear: Object.values(s.equipped), progress: s.progress };
 }
 
 // ── Dev: the bot's rules, here (web/adventure.ts) ──

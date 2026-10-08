@@ -14,6 +14,8 @@ import { type BubbleArt, EmotePop, LevelUpPop, NameTag, QuestMarker, SpeechBubbl
 // on, refreshed every frame.
 
 export const SPEED = 4; // tiles per second (players; NPCs walk slower: `speed`)
+const HP_BAR_W = 20; // the HP bar over a hurt player (a mob's is as wide)
+const KO_FADE_MS = 600; // a knocked-out player fades out this long (back in half as long)
 
 /** A character drawn from flat sheets instead of a paper doll: the animation key per animation and direction (made
  *  by the caller), how many empty rows sit above the head in the cell, and the directions drawn. */
@@ -63,6 +65,13 @@ export class Character {
   private pop: EmotePop | null = null;
   private levelPop: LevelUpPop | null = null;
   private marker: QuestMarker | null = null;
+  /** A thin HP bar over the name while hurt (players in battle maps; everyone sees it). */
+  private hpBar: Phaser.GameObjects.Graphics | null = null;
+  /** How much of the character shows: 1, or fading to 0 while knocked out (and back as they respawn). */
+  private seen = 1;
+  private seenTween: Phaser.Tweens.Tween | null = null;
+  /** Knocked out (0 HP): faded out where they fell until they respawn. */
+  knockedOut = false;
   /** The class's resting weapon (behind and in front of the body), drawn over idle and walk. */
   private rest: { art: ClassArt; offset: [number, number]; back: Phaser.GameObjects.Sprite[]; front: Phaser.GameObjects.Sprite[] } | null = null;
   private zoom = 1;
@@ -552,6 +561,66 @@ export class Character {
     });
   }
 
+  /** HP now and at most: a thin red bar over the name while it's under the most (gone when full or knocked out). */
+  setHp(hp: number, max: number): void {
+    if (hp >= max || max <= 0 || this.knockedOut) {
+      this.hpBar?.destroy();
+      this.hpBar = null;
+      return this.sync();
+    }
+    this.hpBar ??= this.scene.add.graphics();
+    const w = HP_BAR_W;
+    this.hpBar.clear().fillStyle(0x0b0a1a, 0.85).fillRect(-w / 2 - 1, -1, w + 2, 4).fillStyle(0xdc2626, 1).fillRect(-w / 2, 0, Math.max(1, Math.round((w * hp) / max)), 2);
+    this.hpBar.setAlpha(this.seen);
+    this.sync();
+  }
+
+  /** A number rising over the head: damage taken (red for you, `mine`; pale for others) or "Miss". */
+  hitNumber(text: string, mine: boolean): void {
+    const word = !/^\d+$/.test(text);
+    const zoom = Math.max(1, this.zoom);
+    const t = this.scene.add
+      .text(Math.round(this.sprite.x), Math.round(this.headY - 6), text, {
+        fontFamily: '"Mk Numbers", "Pixelify Sans", monospace',
+        fontSize: `${word ? 10 : mine ? 13 : 11}px`,
+        color: word ? '#CBD5E1' : mine ? '#F87171' : '#FECACA',
+        stroke: '#1E1B3A',
+        strokeThickness: 3,
+        resolution: Math.max(2, zoom * 2),
+      })
+      .setOrigin(0.5, 1)
+      .setDepth(LABEL_DEPTH);
+    this.scene.tweens.add({ targets: t, y: t.y - 14, alpha: { from: 1, to: 0 }, duration: 800, ease: 'Quad.easeOut', onComplete: () => t.destroy() });
+  }
+
+  /** Knocked out (0 HP): fades out where they stand, name and all (no death pose: players are never "dead"); `false`:
+   *  fades back in (respawned, placed first). */
+  setKnockedOut(on: boolean): void {
+    if (this.knockedOut === on) return;
+    this.knockedOut = on;
+    if (on) {
+      this.cancelPath();
+      this.hpBar?.destroy();
+      this.hpBar = null;
+    }
+    this.seenTween?.stop();
+    this.seenTween = this.scene.tweens.addCounter({
+      from: this.seen,
+      to: on ? 0 : 1,
+      duration: on ? KO_FADE_MS : KO_FADE_MS / 2,
+      onUpdate: (tw) => this.setSeen(tw.getValue() ?? (on ? 0 : 1)),
+    });
+  }
+
+  private setSeen(seen: number): void {
+    this.seen = seen;
+    this.sprite.setAlpha(seen);
+    this.shadow?.setAlpha(seen);
+    this.bars?.setAlpha(seen);
+    this.tag?.setAlpha(seen);
+    this.hpBar?.setAlpha(seen);
+  }
+
   /** Hit: a red flash (then the world's tint again, via onSpawn). */
   hurt(): void {
     this.sprite.setTint(0xff6b6b);
@@ -580,6 +649,10 @@ export class Character {
     const plateBottom = Math.round(y) - this.M.characters.anchor[1] + this.head - 2;
     this.tag?.place(Math.round(x), plateBottom);
     let alertY = this.tag ? plateBottom - this.tag.height - 1 : Math.round(y) - this.M.characters.cell[1] - 2;
+    if (this.hpBar) {
+      this.hpBar.setPosition(Math.round(x), alertY - 3).setDepth(LABEL_DEPTH - 1);
+      alertY -= 5;
+    }
     if (this.marker) {
       this.marker.place(Math.round(x), alertY);
       alertY -= this.marker.height;
@@ -631,6 +704,8 @@ export class Character {
     this.alert?.destroy();
     this.bars?.destroy();
     this.overhead?.destroy();
+    this.hpBar?.destroy();
+    this.seenTween?.stop();
     this.tag?.destroy();
     this.bubbleTimer?.remove();
     this.bubble?.destroy();

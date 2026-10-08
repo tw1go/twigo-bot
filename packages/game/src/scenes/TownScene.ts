@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { queueImage, queueNpcs, queueTown } from '../assets/queue';
 import type { Area, Dir, Gate, Manifest, TownMap } from '../assets/types';
-import { Character, dirForStep, dirToward } from '../characters/character';
+import { Character, SPEED, dirForStep, dirToward } from '../characters/character';
 import { type Outfit, assetProblems, buildOutfit, headPortrait, headTop, loadOutfit, outfitFiles, randomOutfit, sheetKey } from '../characters/doll';
 import { sanitize, startingOutfit } from '../characters/looks';
 import type { MeResult } from '../session';
@@ -10,7 +10,7 @@ import { BuildingLabel, UI_FONT } from '../ui/labels';
 import { LOADING_LINES } from '../ui/loading-lines';
 import { TownLink } from '../net/town';
 import { showElsewhere, showKicked } from '../ui/elsewhere';
-import { mountTownHud, setHudAvatar, setHudClass, setHudLevel, setHudName } from '../ui/townhud';
+import { mountTownHud, setHudAvatar, setHudClass, setHudLevel, setHudName, setHudVitals } from '../ui/townhud';
 import { showParlor } from '../ui/parlor';
 import { type HouseArt, composeHouse, houseFiles, houseStyles, tidyLook } from '../houses/art';
 import { areaUrl, cameFrom, hoodAction, loadHood, saveHouse } from '../net/hood';
@@ -57,7 +57,7 @@ import { fakeLogin, fakeName, loadMe } from '../session';
 import { screenToTile, tileToScreen } from '../iso';
 import { toast } from '../ui/toast';
 import { PartyPanel, showPartyInvite } from '../ui/party';
-import { answer as partyAnswer, inParty, onParty, party, refusal as partyRefusal, setParty, setPartyLink } from '../net/party';
+import { answer as partyAnswer, inParty, onParty, party, refusal as partyRefusal, setMemberHp, setParty, setPartyLink } from '../net/party';
 import { GROUND_SHADOW_DEPTH, LABEL_DEPTH, frontDepth } from '../world/depth';
 import { minutesNow, setTimeSource, skyAt } from '../world/daynight';
 import { Culler } from '../world/cull';
@@ -739,6 +739,7 @@ export class TownScene extends Phaser.Scene {
     const c = classInfo(adventure()?.cls);
     const idx = c?.skills.findIndex((k) => k.name === name) ?? -1;
     if (!c || idx < 0) return undefined;
+    if (this.knockedOut) return 'no';
     if (this.engage?.name === name) return this.stopFight(), 'no';
     if (skillView(name)?.locked) return 'no'; // (the bar says when it unlocks)
     let m = this.mobs.current;
@@ -799,6 +800,7 @@ export class TownScene extends Phaser.Scene {
   private fightTick(): void {
     const e = this.engage;
     if (!e) return;
+    if (this.knockedOut) return this.stopFight();
     const m = this.mobs?.current;
     if (!m || m.dead) return this.stopFight(); // dead (or let go): done
     if (this.player.busy || this.player.isSitting || this.inside) return;
@@ -871,7 +873,7 @@ export class TownScene extends Phaser.Scene {
     const sk = skillView(name);
     if (!sk || sk.locked) return 'no'; // (from its unlock level: the bar says when; the town ignores it before)
     const now = this.time.now;
-    if (now < (this.moveReady.get(kind) ?? 0) || this.player.busy || this.player.isSitting || this.inside) return 'no';
+    if (now < (this.moveReady.get(kind) ?? 0) || this.player.busy || this.player.isSitting || this.inside || this.knockedOut) return 'no';
     const dir = this.player.facing;
     const tiles = moveTiles(this.grid, this.player.heading, dir, kind, Math.floor(this.stepBudget()) - 1);
     const end = tiles[tiles.length - 1];
@@ -1184,7 +1186,8 @@ export class TownScene extends Phaser.Scene {
     const stay = member ? new StayReward() : null;
     let myId = '';
     let arrived = false;
-    // A mob's attack on someone (shown only: players have no HP yet): a red flash as it lands, and the Bag's slow.
+    // A mob's (or the golem's) attack on someone as it lands: the server's roll over them (red on you; "Miss"), a red
+    // flash on a hit, and the Bag's slow (half your walking speed for its ms; the server holds your steps to it).
     const charOf = (id: string) => (id === myId ? this.player : this.others.charOf(id));
     if (this.mobs) {
       this.mobs.playerAt = (id) => {
@@ -1197,11 +1200,16 @@ export class TownScene extends Phaser.Scene {
           return c ? { feet: { x: c.sprite.x, y: c.sprite.y }, head: { x: c.sprite.x, y: c.headY } } : null;
         };
       }
-      this.mobs.hooks.onHit = (_m, target, slow) => {
+      this.mobs.hooks.onHit = (_m, target, slow, hit) => {
         const who = charOf(target);
-        if (!who) return;
+        if (!who || who.knockedOut) return;
+        const mine = target === myId;
+        if (hit?.miss) return who.hitNumber('Miss', mine);
         who.hurt();
-        if (slow) showSlowed(this.fxLayers, () => ({ x: who.sprite.x, y: who.headY }), () => ({ x: who.sprite.x, y: who.sprite.y }), slow);
+        if (hit) who.hitNumber(String(hit.damage), mine);
+        if (!slow) return;
+        showSlowed(this.fxLayers, () => ({ x: who.sprite.x, y: who.headY }), () => ({ x: who.sprite.x, y: who.sprite.y }), slow);
+        if (mine) this.slowMe(slow);
       };
     }
     /** Someone (maybe you) says a diss, praise or judge line: a speech bubble and a tagged line in the chat. */
@@ -1350,7 +1358,30 @@ export class TownScene extends Phaser.Scene {
         } else landAll();
         return;
       }
-      if (m.t === 'mob-attack') return this.mobs?.strike(m.id, m.target, m.dir, m.slow);
+      if (m.t === 'mob-attack') return this.mobs?.strike(m.id, m.target, m.dir, m.slow, m.hit);
+      // HP (and yours with MP): the HUD's bars, the bar over a hurt player's head, the party panel.
+      if (m.t === 'vitals') {
+        setMemberHp(m.id, m.hp, m.maxHp);
+        if (m.id !== myId) return this.others.handle(m);
+        setHudVitals({ hp: m.hp, maxHp: m.maxHp, mp: m.mp ?? 0, maxMp: m.maxMp ?? 0 });
+        return this.player.setHp(m.hp, m.maxHp);
+      }
+      // Knocked out (0 HP): you fade out where you stand and can't act; in 3 s the server puts you back at the way in.
+      if (m.t === 'knocked-out' && m.id === myId) {
+        this.knockedOut = true;
+        this.stopFight();
+        this.pending = null;
+        this.player.setKnockedOut(true);
+        playSound('casino-lose', 0.1);
+        return toast('You were knocked out.', 2800, 'bad');
+      }
+      if (m.t === 'respawn' && m.id === myId) {
+        this.knockedOut = false;
+        this.player.place({ col: m.col, row: m.row });
+        this.cameras.main.centerOn(this.player.sprite.x, this.player.sprite.y - 24);
+        this.sent = { dir: this.player.facing, sit: false };
+        return this.player.setKnockedOut(false);
+      }
       if (m.t === 'mob-spawn') return this.mobs?.respawn(m.id, m.col, m.row, m.hp);
       // Your level, XP and points (a kill's XP, dev's ?xp=): the HUD and everything that shows them follow.
       if (m.t === 'progress') return setProgress(m.progress);
@@ -1370,6 +1401,11 @@ export class TownScene extends Phaser.Scene {
       }
       if (m.t === 'welcome') {
         myId = m.you;
+        // (Knocked out when the link dropped: the server has you up again, full.)
+        if (this.knockedOut) {
+          this.knockedOut = false;
+          this.player.setKnockedOut(false);
+        }
         setParty(null); // the server sends your party (if you're still in one) right after
         // A reconnect (the bot restarted, a blip): what's on screen stays; only what's new is added.
         chat.history(m.recent ?? [], member?.nickname ?? null, arrived);
@@ -1674,7 +1710,7 @@ export class TownScene extends Phaser.Scene {
    * the wall through either of its two halves. Pressing into a wall just turns the player.
    */
   private keyStep(): Tile | null {
-    const dir = this.heldDir();
+    const dir = this.knockedOut ? null : this.heldDir();
     if (!dir) {
       this.keyWalking = false;
       this.keyDir = null;
@@ -1724,18 +1760,38 @@ export class TownScene extends Phaser.Scene {
     this.lastHeld = held;
   }
 
-  /** The server's step budget as it stands for us (bot web/town.ts: 6 a second, up to 6 saved), so turns never go over it. */
+  /** The server's step budget as it stands for us (bot web/town.ts: 6 a second, up to 6 saved; slowed, half of both), so
+   *  turns and moves never go over it. */
   private stepTokens = 6;
   private stepRefilled = 0;
   private stepBudget(spend = 0): number {
     const now = performance.now();
-    this.stepTokens = Math.min(6, this.stepTokens + ((now - this.stepRefilled) / 1000) * 6) - spend;
+    const k = now < this.slowUntil ? 0.5 : 1;
+    this.stepTokens = Math.min(6 * k, this.stepTokens + ((now - this.stepRefilled) / 1000) * 6 * k) - spend;
     this.stepRefilled = now;
     return this.stepTokens;
   }
 
+  /** Knocked out (0 HP): faded out, no walking, moves or skills until the server respawns you. */
+  private knockedOut = false;
+  /** Slowed by the Bag until then (performance.now(), as the step budget): half walking speed, half the budget. */
+  private slowUntil = 0;
+  private slowTimer: Phaser.Time.TimerEvent | null = null;
+
+  /** The Bag's slow on you: half walking speed for `ms` (the server holds your steps to it too). */
+  private slowMe(ms: number): void {
+    this.slowUntil = Math.max(this.slowUntil, performance.now() + ms);
+    this.player.speed = SPEED / 2;
+    this.slowTimer?.remove();
+    this.slowTimer = this.time.delayedCall(Math.max(0, this.slowUntil - performance.now()), () => {
+      this.player.speed = SPEED;
+      this.slowTimer = null;
+    });
+  }
+
   /** E / Space: enter the door you're standing at, or sit on the bench you're in front of. */
   private interact(): void {
+    if (this.knockedOut) return;
     if (this.player.isSitting) return this.player.standUp();
     const t = this.player.tile;
     const building = this.doorAt.get(`${t.col},${t.row}`);
@@ -1919,6 +1975,7 @@ export class TownScene extends Phaser.Scene {
   }
 
   private walkTo(target: Tile): boolean {
+    if (this.knockedOut) return false;
     const path = this.grid.findPath(this.player.heading, target);
     if (!path) return false;
     this.setBuildingAlert(null); // leaving the door we were at

@@ -1,9 +1,10 @@
 import type { OutfitData, PartyMember } from '@mikazuki/shared';
 import { playSound } from '../audio/sound';
-import { disband, kick, leading, leave, onParty, party } from '../net/party';
+import { disband, kick, leading, leave, onMemberHp, onParty, party } from '../net/party';
 
 // 🎉 The party panel (left side, under the quest tracker): each member's head, name (party pink), class badge and where
-// they are (Town, Neighbourhood, Slums, or Away for a minute after they drop), the leader's crown and "you". A small
+// they are (Town, Neighbourhood, Slums, or Away for a minute after they drop), the leader's crown, "you" and a thin HP bar
+// (following their HP live, wherever they are). A small
 // icon on its top opens Leave party (a leader's lead passes to the next member) and, for the leader, Disband party. The
 // leader can right-click a member for Kick from party. Plus the invite pop-up someone gets (Accept / Decline, gone
 // after a minute). DOM only; net/party.ts has the state and sends the actions.
@@ -33,6 +34,8 @@ export class PartyPanel {
   private readonly list = el('div', 'pt-list');
   private readonly kickMenu = el('div', 'pt-menu pt-kick-menu');
   private disbandArmed = false;
+  /** Each member's HP bar (by party key). */
+  private readonly hpBars = new Map<string, HTMLElement>();
 
   constructor(private readonly art: PartyArt) {
     this.root.id = 'party';
@@ -64,6 +67,10 @@ export class PartyPanel {
       this.kickMenu.hidden = true;
     });
     onParty(() => this.draw());
+    onMemberHp((key, hp, maxHp) => {
+      const bar = this.hpBars.get(key);
+      if (bar) setHp(bar, hp, maxHp);
+    });
     this.draw();
     // Under the quest tracker (or, without it, under the profile in the top-left corner).
     const place = () => {
@@ -86,6 +93,7 @@ export class PartyPanel {
     this.kickMenu.hidden = true;
     if (!p) return;
     this.count.textContent = `${p.members.length}/${p.max}`;
+    this.hpBars.clear();
     this.list.replaceChildren(...p.members.map((m) => this.row(m, m.key === p.leader, m.key === p.you)));
   }
 
@@ -111,7 +119,12 @@ export class PartyPanel {
       line.append(crown);
     }
     if (you) line.append(el('span', 'pt-you', 'you'));
-    words.append(line, el('span', 'pt-where', m.id ? (AREAS[m.area ?? ''] ?? 'Town') : 'Away'));
+    const hp = el('span', 'pt-hp');
+    hp.append(el('span', 'pt-hp-fill'));
+    hp.hidden = true;
+    if (m.maxHp) setHp(hp, m.hp ?? m.maxHp, m.maxHp);
+    this.hpBars.set(m.key, hp);
+    words.append(line, el('span', 'pt-where', m.id ? (AREAS[m.area ?? ''] ?? 'Town') : 'Away'), hp);
     row.append(face, words);
     row.setAttribute('aria-label', `${m.nickname}${leader ? ', leader' : ''}${you ? ', you' : ''}`);
     // The leader: right-click a member to kick them.
@@ -177,6 +190,13 @@ export class PartyPanel {
     this.disbandArmed = false;
     this.opts.setAttribute('aria-expanded', 'false');
   }
+}
+
+/** A member's HP bar: how full, the numbers on hover. */
+function setHp(bar: HTMLElement, hp: number, maxHp: number): void {
+  bar.hidden = false;
+  (bar.firstElementChild as HTMLElement).style.width = `${Math.min(100, (hp / Math.max(1, maxHp)) * 100)}%`;
+  bar.title = `HP ${hp} / ${maxHp}`;
 }
 
 /** A door with an arrow out (the options icon), drawn in CSS pixels. */

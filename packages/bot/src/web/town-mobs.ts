@@ -1,10 +1,14 @@
 import { readFileSync } from 'node:fs';
 import {
+  type DerivedStats,
   type EquipmentDef,
+  type GolemAttack,
   type Hitter,
   type MobStats,
+  type PlayerHit,
   type StatPoints,
   type StatsData,
+  type Target,
   type TownGolem,
   type TownMob,
   type TownMobFacing,
@@ -40,8 +44,10 @@ import { Golem, type GolemArt, type GolemBoss, type GolemEvent, type PitTiles, p
 // next tile with a melee class or up to RANGED tiles with a ranged one (each skill's own: skill-hits.json range). A Scrap
 // Crab's shell blocks every hit (0, `blocked`) except for a moment after each of its own attacks (shell down: mobs.json
 // shellOpenMs, SHELL_OPEN_MS if not given), from any side. A mob that's hit (or missed) fights back (a pack all
-// together): it goes after whoever hit it last, and within its reach of them attacks every ATTACK_MS (shown only: players
-// have no HP yet; the Bag's slows them for show, `slow`). A mob of an aggressive zone goes after a player who comes within
+// together): it goes after whoever hit it last, and within its reach of them attacks every ATTACK_MS: the stats rules' hit
+// with its ATK as Power against the player's DEF and level (`guards`, from the host each tick; a miss by the level gap),
+// sent with the attack (`hit`) and landing as its art does (its attack frame: `landed` hands the host what to take off
+// their HP then; the Bag's also slows them for `slow` ms). A mob of an aggressive zone goes after a player who comes within
 // its zone's aggroRange (in its zone, on its level) the same way. It gives up and walks home when they're gone, out of
 // its zone or its leash, or (a passive one) haven't hit it for GIVE_UP_MS. At 0 HP it dies (its XP to whoever killed
 // it: `kills`, which the town turns into levels) and comes back where it started after its zone's respawnSec (a pack's
@@ -52,7 +58,9 @@ import { Golem, type GolemArt, type GolemBoss, type GolemEvent, type PitTiles, p
 // The field boss (the map's `boss`, given its art): town-golem.ts runs it on this room's clock; hits on it come through
 // attack() like any mob's (reach to its body's edge; area skills reach it too), and its Adds are mobs of this room (ids
 // `golem-add:<n>`, sent with their `kind` in `mob-add`; aggressive toward the nearest player within its leash, never
-// coming back once dead, all removed with `mob-remove` when the fight ends).
+// coming back once dead, all removed with `mob-remove` when the fight ends). Its slams and tosses land like the mobs'
+// attacks (`landed`), its Lamp Glare blinds (`blind` ms: the host makes their attacks miss, `Attacker.blinded`).
+// Players the host leaves out of a tick (knocked out) are nobody's target: mobs walk home, the golem looks elsewhere.
 
 const ROAM = 3;
 const SPEED = 2.4; // tiles per second (the game walks them at the same pace)
@@ -67,7 +75,7 @@ const SWING_MS = 400; // a player's attacks: no faster than this
 
 export type MobEvent =
   | { t: 'mob-move'; id: string; path: [number, number][]; speed?: number }
-  | { t: 'mob-attack'; id: string; target: string; dir: TownMobFacing; slow?: number }
+  | { t: 'mob-attack'; id: string; target: string; dir: TownMobFacing; slow?: number; hit?: PlayerHit }
   | { t: 'mob-spawn'; id: string; col: number; row: number; hp: number }
   | GolemEvent;
 
@@ -85,8 +93,8 @@ export interface MobHit {
   slow?: { factor: number; ms: number };
 }
 
-/** A mob that died: its level and XP (the mob table's), and who gets the XP (town ids): its killer, or for the golem
- *  everyone who did its share of its HP in the fight (stats.json xpTo). */
+/** A mob that died: its level and XP (the mob table's), and who gets the XP (members: attack's `member`): its killer, or
+ *  for the golem everyone who did its share of its HP in the fight (stats.json xpTo). */
 export interface MobKill {
   id: string;
   level: number;
@@ -98,6 +106,15 @@ export interface MobKill {
  *  Refused: out of reach, too soon, the mob gone, `skill` isn't one of their class's (its tier would be made up), or
  *  it's still locked (their level is under its unlock level). */
 export type AttackResult = { ok: true; hits: MobHit[]; kills: MobKill[] } | { ok: false; reason: 'range' | 'slow' | 'gone' | 'skill' | 'locked' };
+
+/** A mob's (or the golem's) attack landing on a player (town id) now: its damage (or a miss), and the Bag's slow (ms,
+ *  on a hit) or the Lamp Glare's blindness (ms). The host takes it off their HP. */
+export interface PlayerLanding extends PlayerHit {
+  player: string;
+  by: string;
+  slow?: number;
+  blind?: number;
+}
 
 /** Each class's skills' target shapes, in their order (the game's classes/skill-hits.json), and their effects. */
 export interface SkillShapes {
@@ -131,13 +148,15 @@ function parseEffect(e: string | null | undefined): { factor: number; ms: number
 export type SkillLevels = Record<string, number[]>;
 
 /** Who attacks: their class, level and stat points spent, the items they wear (ids) and their skills' levels (by skill,
- *  in their order). Left out: Lv 1, nothing spent, nothing worn, every skill at Lv 1. A class id alone is the same. */
+ *  in their order); `blinded`: every hit misses (the golem's Lamp Glare). Left out: Lv 1, nothing spent, nothing worn,
+ *  every skill at Lv 1. A class id alone is the same. */
 export interface Attacker {
   cls: string | null | undefined;
   level?: number;
   points?: StatPoints;
   gear?: (string | null | undefined)[];
   skills?: number[];
+  blinded?: boolean;
 }
 
 /** The stats rules' data (classes/stats.json) and the equipment (items/equipment.json) a fight needs. */
@@ -148,6 +167,21 @@ export interface FightData {
 
 /** The game's classes/stats.json and items/equipment.json. */
 export const loadFightData = (): FightData => ({ stats: loadStats(), gear: loadGear() });
+
+/** A character's stats as a fight sees them (the stats rules): HP, MP, Power, DEF, crit… from their class, level, points
+ *  and worn gear, with their level. */
+export function fighterStats(data: FightData, a: Attacker): DerivedStats & { level: number } {
+  const S = data.stats;
+  const level = a.level ?? 1;
+  const worn = (a.gear ?? []).flatMap((id) => {
+    const item = id ? data.gear.get(id) : undefined;
+    return item ? [item.stats] : [];
+  });
+  return { ...derivedStats(S, a.cls, level, baseStats(S, a.cls, level, a.points), gearTotals(worn)), level };
+}
+
+/** A blinded attacker's hit: always a miss. */
+const MISSED = { damage: 0, crit: false, miss: true } as const;
 
 export interface MobZoneData {
   id: string;
@@ -184,8 +218,10 @@ export interface MobKind {
   pack?: [number, number];
   /** Tiles it attacks from (else the next tile). */
   reach?: number;
-  /** Its attack slows the player hit for this long (shown only). */
+  /** Its attack slows the player hit (to half their walking speed) for this long. */
   slowMs?: number;
+  /** When its attack lands after it starts (ms: its attack frame at its anim's fps, from the manifest; loadMobKinds). */
+  hitMs?: number;
   /** Its shell blocks every hit, except for `shellOpenMs` from each of its own attacks (shell down). */
   shell?: boolean;
   shellOpenMs?: number;
@@ -238,10 +274,18 @@ interface Mob {
   add?: boolean;
 }
 
-/** The game's mobs/mobs.json. */
+/** The game's mobs/mobs.json, with when each kind's attack lands (its attackFrame at the manifest's attack fps). */
 export function loadMobKinds(): MobKinds {
-  const json = JSON.parse(readFileSync(new URL('../../../game/public/assets/mobs/mobs.json', import.meta.url), 'utf8')) as Record<string, unknown>;
-  return Object.fromEntries(Object.entries(json).filter(([, v]) => typeof v === 'object' && v)) as MobKinds;
+  const read = (file: string) => JSON.parse(readFileSync(new URL(`../../../game/public/assets/${file}`, import.meta.url), 'utf8')) as Record<string, unknown>;
+  const json = read('mobs/mobs.json');
+  const art = read('manifest.json').mobs as Record<string, { animations?: Record<string, { fps: number }> } | string>;
+  const kinds = Object.fromEntries(Object.entries(json).filter(([, v]) => typeof v === 'object' && v)) as Record<string, MobKind & { attackFrame?: number }>;
+  for (const [id, k] of Object.entries(kinds)) {
+    const def = art[id];
+    const fps = typeof def === 'object' ? def.animations?.attack?.fps : undefined;
+    if (fps) k.hitMs = Math.round(((k.attackFrame ?? 0) / fps) * 1000);
+  }
+  return kinds;
 }
 
 /** The mobs' data from a map file (maps/<name>.json in the game's assets). */
@@ -317,8 +361,37 @@ export class MobRoom {
         open: (c, r) => c >= 0 && r >= 0 && c < map.size[0] && r < map.size[1] && !map.blocked[r]?.[c] && (map.height?.[r]?.[c] ?? 0) === level && !this.ramps.has(`${c},${r}`),
         callAdds: (spots, now) => this.callAdds(boss, level, spots, now),
         dropAdds: () => this.dropAdds(),
+        roll: (player, mult) => this.rollOn(player, this.statsOf(boss.id), mult),
       }, random);
     }
+  }
+
+  /** This tick's players' DEF and level (town id → them): what mobs' and the golem's hits are rolled against. */
+  private guards: ReadonlyMap<string, Target> = new Map();
+  /** Attacks under way, landing on players at `at` (ms). */
+  private landings: (PlayerLanding & { at: number })[] = [];
+
+  /** A mob's hit on a player: its ATK (× `mult`) as Power against their DEF and level (the stats rules, with the level
+   *  gap's miss chance), or null when their DEF isn't known (no HP here: harmless). */
+  private rollOn(player: string, mob: MobStats, mult = 1): PlayerHit | null {
+    const guard = this.guards.get(player);
+    if (!guard) return null;
+    const { damage, miss } = rollHit(this.fightData.stats, { power: mob.atk, level: mob.level }, guard, mult, this.random);
+    return miss ? { damage: 0, miss } : { damage };
+  }
+
+  /** The attacks that land now (the host takes them off players' HP), in the order they land. */
+  landed(now: number): PlayerLanding[] {
+    if (!this.landings.length) return [];
+    const due = this.landings.filter((l) => l.at <= now).sort((a, b) => a.at - b.at);
+    if (!due.length) return [];
+    this.landings = this.landings.filter((l) => l.at > now);
+    return due.map(({ at: _at, ...l }) => l);
+  }
+
+  /** A player's stats as a fight sees them (HP, MP, DEF… and level), from their class, level, points and worn gear. */
+  fighter(a: Attacker): DerivedStats & { level: number } {
+    return fighterStats(this.fightData, a);
   }
 
   /** A kind's row in the mob table (a kind without one is a data problem: loud, at start). */
@@ -533,11 +606,21 @@ export class MobRoom {
   /**
    * Moves the clock on: hops that are over land; the dead come back; an aggressive mob notices a player near it; a mob
    * with a foe goes after them and attacks within its reach (or gives up and walks home); the rest, rested, start a new
-   * hop. `players`: where each player in the room is (by town id). Returns what to send to the room.
+   * hop. `players`: where each player in the room is (by town id; the knocked out left out); `guards`: their DEF and
+   * level, which mobs' hits are rolled against (without one, the mobs' hits on that player are harmless). Returns what to send to the
+   * room; what lands later, `landed`.
    */
-  tick(now: number, players: ReadonlyMap<string, [number, number]> = new Map()): MobEvent[] {
+  tick(now: number, players: ReadonlyMap<string, [number, number]> = new Map(), guards: ReadonlyMap<string, Target> = new Map()): MobEvent[] {
     this.claimed = null;
+    this.guards = guards;
     const events: MobEvent[] = this.golem ? this.golem.tick(now, players) : [];
+    // The golem's slams and tosses land after a moment (its art's), its glare blinds as it lights.
+    for (const e of events) {
+      if (e.t !== 'golem-attack' || !this.golem) continue;
+      const at = now + this.golem.hitMs(e.attack as GolemAttack);
+      for (const h of e.hits ?? []) this.landings.push({ at, player: h.id, by: e.id, damage: h.damage, ...(h.miss ? { miss: true } : {}) });
+      for (const id of e.blinded ?? []) this.landings.push({ at, player: id, by: e.id, damage: 0, blind: e.blindMs });
+    }
     // Who each aggressive zone's mobs could notice (a few players at most: looked up once a tick, not per mob).
     const watched = new Map<MobZoneData, [string, [number, number]][]>();
     for (const zone of [...(this.map.mobZones ?? []), ...this.addZones.values()]) {
@@ -602,7 +685,11 @@ export class MobRoom {
         m.nextAttack = now + (m.kind.attackMs ?? ATTACK_MS);
         m.facing = facingTo(p[0] - m.col, p[1] - m.row) ?? m.facing;
         if (m.kind.shell) m.openUntil = now + (m.kind.shellOpenMs ?? SHELL_OPEN_MS); // its shell drops as it swings
-        events.push({ t: 'mob-attack', id: m.id, target: foe.id, dir: m.facing, ...(m.kind.slowMs ? { slow: m.kind.slowMs } : {}) });
+        // Its hit, rolled now and sent with the attack; it lands on its attack frame (the Bag's slow only if it hits).
+        const hit = this.rollOn(foe.id, m.stats);
+        const slow = m.kind.slowMs && !hit?.miss ? m.kind.slowMs : undefined;
+        events.push({ t: 'mob-attack', id: m.id, target: foe.id, dir: m.facing, ...(slow ? { slow } : {}), ...(hit ? { hit } : {}) });
+        if (hit) this.landings.push({ at: now + (m.kind.hitMs ?? 0), player: foe.id, by: m.id, ...hit, ...(slow ? { slow } : {}) });
       }
       return;
     }
@@ -663,9 +750,10 @@ export class MobRoom {
   private swings = new Map<string, number>();
 
   /** A player's attack on a mob (or the golem): in range for their class (from where they stand; to the golem's body's
-   *  edge), not too fast, the mob alive. `who`: their class, level, points, gear and skill levels (or their class alone).
-   *  `name`: theirs, for the golem's line when it falls. */
-  attack(player: string, from: [number, number], who: Attacker | string | null | undefined, id: string, now: number, skill = 0, name = player): AttackResult {
+   *  edge), not too fast, the mob alive. `who`: their class, level, points, gear and skill levels (or their class alone);
+   *  blinded, every hit misses. `name`: theirs, for the golem's line when it falls; `member`: who they are across reloads
+   *  (the golem's damage is counted by it, and kills' XP goes to it), their town id if not given. */
+  attack(player: string, from: [number, number], who: Attacker | string | null | undefined, id: string, now: number, skill = 0, name = player, member = player): AttackResult {
     const a: Attacker = who && typeof who === 'object' ? who : { cls: who };
     const cls = a.cls;
     const skills = (cls && (this.levels[cls]?.length ?? this.shapes.shapes[cls]?.length)) || 1;
@@ -691,13 +779,13 @@ export class MobRoom {
     // Its slow or root, 5% longer a skill level.
     const effect = parseEffect(cls ? this.shapes.effects?.[cls]?.[skill] : null);
     if (effect) effect.ms = Math.round(effect.ms * skillLevelBonus(this.fightData.stats, skillLevel).buff);
-    const by = this.hitter(a);
+    const by = { ...this.fighter(a), blinded: a.blinded };
     const pct = skillPct(this.fightData.stats, skillTier(skill), skillLevel);
     const kills: MobKill[] = [];
     const hits = this.reached(m ?? 'golem', [mc, mr], from, (cls && this.shapes.shapes[cls]?.[skill]) || 'single', now).map((x) => {
-      if (x === 'golem') return this.hitGolem(player, name, by, pct, now, kills); // (no slowing it)
+      if (x === 'golem') return this.hitGolem(player, name, member, by, pct, now, kills); // (no slowing it)
       const hit = this.damage(x, player, by, pct, now);
-      if (hit.dead) kills.push({ id: x.id, level: x.stats.level, xp: x.stats.xp, to: [player] });
+      if (hit.dead) kills.push({ id: x.id, level: x.stats.level, xp: x.stats.xp, to: [member] });
       if (effect && !hit.dead && !hit.blocked && !hit.miss) {
         x.slow = { factor: effect.factor, until: now + effect.ms };
         hit.slow = effect;
@@ -707,24 +795,13 @@ export class MobRoom {
     return { ok: true, hits, kills };
   }
 
-  /** An attacker's Power, crit and level (the stats rules), from their class, level, points and worn gear. */
-  private hitter(a: Attacker): Hitter {
-    const S = this.fightData.stats;
-    const level = a.level ?? 1;
-    const worn = (a.gear ?? []).flatMap((id) => {
-      const item = id ? this.fightData.gear.get(id) : undefined;
-      return item ? [item.stats] : [];
-    });
-    return { ...derivedStats(S, a.cls, level, baseStats(S, a.cls, level, a.points), gearTotals(worn)), level };
-  }
-
   /** One hit on a mob (the stats rules' damage, or a miss), none through a shell that's up; it (and its pack) goes after
    *  the player either way; at 0 it dies. */
-  private damage(m: Mob, player: string, by: Hitter, pct: number, now: number): MobHit {
+  private damage(m: Mob, player: string, by: Hitter & { blinded?: boolean }, pct: number, now: number): MobHit {
     const [mc, mr] = this.at(m, now);
     this.rally(m, player, now);
     if (m.kind.shell && now >= m.openUntil) return { id: m.id, damage: 0, crit: false, hp: m.hp, dead: false, blocked: true };
-    const { damage, crit, miss } = rollHit(this.fightData.stats, by, m.stats, pct, this.random);
+    const { damage, crit, miss } = by.blinded ? MISSED : rollHit(this.fightData.stats, by, m.stats, pct, this.random);
     if (miss) return { id: m.id, damage: 0, crit: false, hp: m.hp, dead: false, miss };
     m.hp = Math.max(0, m.hp - damage);
     if (m.hp === 0) {
@@ -737,13 +814,14 @@ export class MobRoom {
   }
 
   /** A hit on the golem (the stats rules' damage against its row in the mob table, or a miss), never blocked. A miss
-   *  still starts its fight. The last hit: its XP to everyone who did enough of its HP (into `kills`). */
-  private hitGolem(player: string, name: string, by: Hitter, pct: number, now: number, kills: MobKill[]): MobHit {
+   *  still starts its fight. Its damage counts for the member (a reload mid-fight keeps it); the last hit: its XP to
+   *  every member who did enough of its HP (into `kills`). */
+  private hitGolem(player: string, name: string, member: string, by: Hitter & { blinded?: boolean }, pct: number, now: number, kills: MobKill[]): MobHit {
     const g = this.golem!;
     const stats = this.statsOf(g.id);
-    const { damage, crit, miss } = rollHit(this.fightData.stats, by, stats, pct, this.random);
-    const r = g.hit(player, name, damage, now)!;
-    if (r.dead) kills.push({ id: g.id, level: stats.level, xp: stats.xp, to: xpEarners(stats, r.dealt ?? new Map(), player) });
+    const { damage, crit, miss } = by.blinded ? MISSED : rollHit(this.fightData.stats, by, stats, pct, this.random);
+    const r = g.hit(player, name, damage, now, member)!;
+    if (r.dead) kills.push({ id: g.id, level: stats.level, xp: stats.xp, to: xpEarners(stats, r.dealt ?? new Map(), member) });
     return { id: g.id, damage, crit, hp: r.hp, dead: r.dead, ...(miss ? { miss } : {}) };
   }
 
@@ -790,10 +868,12 @@ export class MobRoom {
     return out;
   }
 
-  /** A player left the room: no mob (nor the golem) is after them any more. */
-  forget(player: string): void {
+  /** A player left the room: no mob (nor the golem) is after them any more, and nothing still on its way lands on them.
+   *  `keepSwings`: their cooldowns stay (knocked out: they're still here). */
+  forget(player: string, keepSwings = false): void {
     for (const m of this.mobs) if (m.foe?.id === player) m.foe.at = -Infinity;
-    for (const k of [...this.swings.keys()]) if (k === player || k.startsWith(`${player}:`)) this.swings.delete(k);
+    if (!keepSwings) for (const k of [...this.swings.keys()]) if (k === player || k.startsWith(`${player}:`)) this.swings.delete(k);
+    this.landings = this.landings.filter((l) => l.player !== player);
     this.golem?.forget(player);
   }
 

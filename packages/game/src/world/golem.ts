@@ -20,14 +20,14 @@ import { GOLEM_PIT, type Mob, type Mobs } from './mobs';
 // lamp over the grid cone the server tests, fading in on its first frame, held, fading after its last; the blinded
 // icon over the heads of whoever's inside for blindMs). Call the Junk: the crawl-out fx at each spot (the Adds come
 // as `mob-add`); Enrage: the fx at the lamp, the red lamp half-way through. The lamp, fists measured from the art per
-// facing (mobs.json lamp, slamFist, tossFist). Harmless: the mob hooks show it on the players. A wide boss bar (ui/
-// boss-bar.ts) during its fight for whoever's within its leash.
+// facing (mobs.json lamp, slamFist, tossFist). The slam's and toss's `hits` (the server's rolls, on everyone they caught)
+// go through the mob hooks as they land (TownScene: numbers, flashes). A wide boss bar (ui/boss-bar.ts) during its fight
+// for whoever's within its leash.
 
 const RUBBLE_MS = 3500; // an enraged slam's rubble ring stays this long
-const FLIGHT_MS = 600; // the scrap's flight
+const FLIGHT_MS = 600; // the scrap's flight (the bot's town-golem.ts lands the toss after the same)
 const GLARE_IN_MS = 100;
 const GLARE_OUT_MS = 220;
-const BLAST = 1.5; // tiles round the slam's spot: a target still there flashes as it lands
 const BLIND_Y = 5; // the blinded sparkles circle a head: this far under its top (px; over it, the name tag hid them)
 
 /** Each facing's axis on the grid, as an angle (SE = +col, SW = +row, NW = −col, NE = −row). */
@@ -190,9 +190,8 @@ export class GolemView {
         this.fx.play(this.def('fx-golem-shockwave'), fist, { scale: k });
         if (a.enraged) this.fx.play(this.def('fx-golem-rubble-ring'), fist, { life: RUBBLE_MS, fadeIn: 200, fadeOut: 900, scale: k });
         this.shake(fist);
-        // Whoever it was after, if they're in it (harmless: shown).
-        const who = this.players.at(a.target);
-        if (who && Math.hypot((who.feet.x - fist.x) / 16, (who.feet.y - fist.y) / 8) / Math.SQRT2 <= BLAST * k) this.mobs.hooks.onHit?.(m, a.target);
+        // Everyone it caught (the server's: within 2 tiles of where it lands), their numbers as it lands.
+        for (const h of a.hits ?? []) this.mobs.hooks.onHit?.(m, h.id, undefined, h);
       });
     } else if (a.attack === 'toss') {
       const marker = this.fx.play(this.def('fx-golem-toss-marker'), at, { life: 60_000, fadeIn: 120 });
@@ -210,7 +209,7 @@ export class GolemView {
             marker?.kill(150);
             trail?.kill(0);
             this.fx.play(this.def('fx-golem-scrap-land'), at, { scale: k });
-            this.mobs.hooks.onHit?.(m, a.target);
+            for (const h of a.hits ?? []) this.mobs.hooks.onHit?.(m, h.id, undefined, h); // its tile and the ones next to it
           },
         });
       });
@@ -255,7 +254,7 @@ export class GolemView {
     }, GLARE_IN_MS + hold + GLARE_OUT_MS, GLARE_OUT_MS);
   }
 
-  /** The blinded sparkles round a player's head for `ms` (shown only), following them. */
+  /** The blinded sparkles round a player's head for `ms` (their attacks miss meanwhile: the server's), following them. */
   private blind(id: string, ms: number): void {
     const first = this.players.at(id);
     if (!first) return;

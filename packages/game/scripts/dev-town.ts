@@ -31,9 +31,9 @@ import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
 //   GET /__gift?as=Alice&item=megaphone&name=Megaphone&qty=3   Alice gets the item gift pop-up (as from /gift item)
 //   GET /__title?as=Alice&id=richest&name=Richest%20Among%20All&color=%23FFD54A   Alice gets the new-title pop-up
 //   GET /__look?as=Alice&look={…}&title=Kalbo&color=%23F8BF27   Alice's new look / title (the pretend Parlor calls it)
-//   GET /__kit?as=Alice&cls=stick&weapon=weapon-training-stick   Alice's class and worn weapon (the pretend quests and
-//   equipment call it, &progress= after a class change; the page also sends them on connect as &kit=, with her level,
-//   XP and points)
+//   GET /__kit?as=Alice&cls=stick&weapon=weapon-training-stick&gear=[…]   Alice's class, worn weapon and everything she
+//   wears (the pretend quests and equipment call it, &progress= after a class change; the page also sends them on
+//   connect as &kit=, with her level, XP and points). Fights (and HP: her armor's DEF) use it all.
 //   GET /__points?as=Alice&stat=DEX   Alice spends a stat point on DEX (&reset=1: all back), by the bot's rules
 //   (web/progress.ts); answers { ok, message?, progress } and sends her `progress` (the pretend equipment panel calls it)
 //   GET /__skills?as=Alice&skill=0   Alice puts a skill point into her class's first skill (&skill=dash: Dash; &reset=1:
@@ -57,7 +57,7 @@ export function devTown(): Plugin {
       if (!httpServer) return;
       const json = JSON.parse(readFileSync(join(server.config.publicDir, 'assets/maps/town.json'), 'utf8'));
       const looks = new Map<string, OutfitData>();
-      const kits = new Map<string, { cls: string | null; weapon: string | null }>(); // class and worn weapon (the pretend quests)
+      const kits = new Map<string, { cls: string | null; weapon: string | null; gear?: string[] }>(); // class, worn weapon and everything worn (the pretend quests and equipment)
       // Levels, XP and points (the bot's web/progress.ts, in memory; each page sends its own on connect).
       const stats = loadStats();
       const levels = new Map<string, SavedProgress>();
@@ -307,8 +307,8 @@ export function devTown(): Plugin {
           const name = q.get('dev')?.slice(0, 16);
           if (!name) return null;
           try {
-            const kit = (JSON.parse(q.get('kit') ?? 'null') ?? {}) as { cls?: string | null; weapon?: string | null; progress?: SavedProgress };
-            kits.set(name, { cls: kit.cls ?? null, weapon: kit.weapon ?? null });
+            const kit = (JSON.parse(q.get('kit') ?? 'null') ?? {}) as { cls?: string | null; weapon?: string | null; gear?: string[]; progress?: SavedProgress };
+            kits.set(name, { cls: kit.cls ?? null, weapon: kit.weapon ?? null, ...(Array.isArray(kit.gear) ? { gear: kit.gear } : {}) });
             if (kit.progress) levels.set(name, progressView(stats, kit.cls ?? null, kit.progress));
           } catch {
             // no class yet
@@ -320,11 +320,12 @@ export function devTown(): Plugin {
           }
           return name;
         },
-        profile: (name) => ({ nickname: name, title: { name: 'Townfolk', color: '#B794F6' }, outfit: looks.get(name) ?? ({} as OutfitData), ...kits.get(name), level: levelOf(name).level }),
+        profile: (name) => ({ nickname: name, title: { name: 'Townfolk', color: '#B794F6' }, outfit: looks.get(name) ?? ({} as OutfitData), cls: kits.get(name)?.cls, weapon: kits.get(name)?.weapon, level: levelOf(name).level }),
         progress: {
           fighter: (name) => {
             const p = levelOf(name);
-            return { cls: kits.get(name)?.cls, level: p.level, points: p.points, gear: [kits.get(name)?.weapon], skills: damageSkillLevels(classOf(name), p) };
+            const kit = kits.get(name);
+            return { cls: kit?.cls, level: p.level, points: p.points, gear: kit?.gear ?? [kit?.weapon], skills: damageSkillLevels(classOf(name), p) }; // everything worn (its DEF, HP…)
           },
           kill: (name, mob) => {
             const r = killXp(stats, kits.get(name)?.cls ?? null, levelOf(name), mob);
@@ -354,7 +355,13 @@ export function devTown(): Plugin {
       server.middlewares.use('/__kit', (req, res) => {
         const q = new URL(req.url ?? '/', 'http://localhost').searchParams;
         const name = q.get('as') ?? '';
-        const kit = { cls: q.get('cls') || null, weapon: q.get('weapon') || null };
+        let gear: string[] | undefined;
+        try {
+          gear = q.get('gear') ? JSON.parse(q.get('gear')!) : undefined;
+        } catch {
+          // just the weapon
+        }
+        const kit = { cls: q.get('cls') || null, weapon: q.get('weapon') || null, ...(Array.isArray(gear) ? { gear } : {}) };
         kits.set(name, kit);
         try {
           if (q.get('progress')) levels.set(name, progressView(stats, kit.cls, JSON.parse(q.get('progress')!))); // a class change gives the points back

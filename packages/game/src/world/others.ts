@@ -96,6 +96,18 @@ export class OtherPlayers {
       case 'jailed':
         s.jailed = m.on || undefined;
         return o.char?.setJailed(m.on);
+      case 'vitals':
+        // Their HP: the thin bar over a hurt player's head.
+        Object.assign(s, { hp: m.hp, maxHp: m.maxHp });
+        return o.char?.setHp(m.hp, m.maxHp);
+      case 'knocked-out':
+        s.out = true;
+        return o.char?.setKnockedOut(true);
+      case 'respawn':
+        // Back at the way in: there at once (no walk across the map), fading in.
+        Object.assign(s, { col: m.col, row: m.row, sit: false, out: undefined });
+        o.char?.place({ col: m.col, row: m.row });
+        return o.char?.setKnockedOut(false);
       case 'rename':
         // A Rename Card: the new name over their head.
         s.nickname = m.nickname;
@@ -215,6 +227,8 @@ export class OtherPlayers {
       char.setNameTag(s.nickname, s.title);
       char.setParty(this.inParty(p.id));
       char.setJailed(!!s.jailed);
+      if (s.out) char.setKnockedOut(true);
+      else if (s.maxHp) char.setHp(s.hp ?? s.maxHp, s.maxHp);
       char.sprite.setInteractive({ pixelPerfect: true, cursor: this.cursorCss });
       char.setZoom(this.zoom);
       for (const t of char.tintables) this.onSpawn(t);
@@ -233,7 +247,7 @@ export class OtherPlayers {
     const look = this.looks.get(id);
     if (!this.battleFor || !look) return;
     const b = cls ? await this.battleFor(cls, look) : null;
-    if (o.state.cls === cls) o.char?.setBattle(b);
+    if (o.state.cls === cls && this.all.get(id) === o) o.char?.setBattle(b); // (not if they left, or rejoined, meanwhile)
   }
 
   private remove(id: string): void {

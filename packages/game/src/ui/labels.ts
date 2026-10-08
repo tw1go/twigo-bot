@@ -91,6 +91,11 @@ export class NameTag {
     this.box.setPosition(x, bottom);
   }
 
+  /** Faded (a knocked-out player's name goes with them). */
+  setAlpha(alpha: number): void {
+    this.box.setAlpha(alpha);
+  }
+
   setZoom(zoom: number): void {
     const { scale, resolution } = scaleFor(zoom);
     this.box.setScale(scale);

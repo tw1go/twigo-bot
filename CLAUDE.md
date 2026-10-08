@@ -347,13 +347,13 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   shell (`shell`) blocks every hit from any side (`blocked`, 0) except for `shellOpenMs` (1.2 s) from each of its own
   swings (shell down: hit it then; it swings every `attackMs` 2.5 s; the game shows a small shield over a fighting or targeted crab while its shell is up); a hit mob (its whole pack) chases its foe, an aggressive zone's mob (`aggro`) one who comes within its
   `aggroRange` (in its zone, on its level; players are sorted per zone once a tick), to the nearest free tile within
-  its `reach` (mobs.json; the Wire Tangle zaps from 3) and attacks every 1.6 s (`mob-attack` with its `dir`, and the Bag's
-  `slow` ms; players have no HP yet), gives up when they leave its zone or its leash, or (passive) after 12 s without a
+  its `reach` (mobs.json; the Wire Tangle zaps from 3) and attacks every 1.6 s (`mob-attack` with its `dir`, its `hit`
+  rolled against the player (Player HP, below) and on a hit the Bag's `slow` ms), gives up when they leave its zone or its leash, or (passive) after 12 s without a
   hit, and walks home; at 0 it dies (`mob-hit` dead: its death pose, gone)
   and respawns after its zone's respawnSec (`mob-spawn`). The game shows damage numbers (gold for a crit; "Blocked" off a shell; "Miss"), an HP bar
   of its `maxHp` over a hurt mob and in the target's info bar, its death pose then a fade out. A mob's attack
   (`Mobs.strike`): turned the server's way, its attack pose, hooks `onAttackFrame` (mobs.json attackFrame) and `onHit` as
-  it lands (TownScene: the player's red flash, and the Bag's slow badge + cold ring for `slow` ms, `showSlowed`), `onDeath`;
+  it lands (TownScene: the number over them, red flash, and the Bag's slow badge + cold ring for `slow` ms, `showSlowed`), `onDeath`;
   the Wire Tangle's spark (drawn in code: a jagged yellow-white flickering line) flies from its insulator eye (mobs.json
   `eye`) to the player on the attack frame; the Tire Roller's sprite lunges along its facing over its `charge` frames and
   back (its tile stays). FX layers (`world/fx-layers.ts`, the rule for every effect): `ground` (under every player and mob)
@@ -375,7 +375,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   there; it steps closer (1.5 tiles/s, within its leash), turns a quarter per 0.5 s and only attacks facing its target,
   every 1.5 s (1 s enraged): Tire Slam within 2 of its edge (`at` = a tile past its body toward them), Scrap Toss past 3
   (`at` = their tile; between 2 and 3 it steps closer), every 4th a Lamp Glare along its facing (`cone` [5 tiles from its
-  tile, 60°] in grid space; `blinded` ids, `blindMs`) — `golem-attack`, harmless. ≤ 50% once: `golem` change 'call' with
+  tile, 60°] in grid space; `blinded` ids, `blindMs`) — `golem-attack`, with `hits` (Player HP, below). ≤ 50% once: `golem` change 'call' with
   3–4 `spots` a tile or two outside the pit, then (`ms` = the call-junk fx) `mob-add`: 2 Tin Cans + a Bottle Caps pack
   (ids `golem-add:<n>[:<k>]`, `TownMob.kind`; aggressive toward the nearest player within the golem's leash; never back
   once dead). ≤ 25% once: 'enrage'. 10 s with nobody within its leash: 'reset' (full HP, phases re-armed, Adds
@@ -458,6 +458,27 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   (`Character.levelUp`, `LevelUpPop` in ui/labels.ts) and the casino-win chime quietly (0.1 yours, 0.05 others');
   `Mobs.myLevel` follows. Dev: `?xp=500` / `?level=N` (the dev server's `/__xp?as=&xp=|level=`: levels in memory there,
   sent from the page's localStorage on connect with `&kit=`, through the same functions).
+- Player HP (bot `web/town-vitals.ts` `Vitals`, pure, tested in town-vitals.test.ts; by member, in memory only, never
+  saved): most HP/MP from the stats rules (`fighterStats` in town-mobs.ts: class, level, points, all worn gear; dev:
+  /__kit `gear`), only where there are mobs (`TownOptions.mobs`). Arriving in the town or the neighbourhood fills both; in
+  the Slums a reload keeps them (full if new there or knocked out); a level-up fills them, points/gear (`progress`,
+  `kit`) change the most. Hits: a mob's attack (its target only) is `rollHit` with its ATK as Power, pct 1, against the
+  player's DEF and level (`MobRoom.tick`'s `guards`; a player above it takes less and can be missed); the golem's Tire
+  Slam hits everyone within 2 tiles (Chebyshev) of its `at` ×3, Scrap Toss its tile and the next ×2 (stats.json mob
+  table `skillMult`; `GolemHost.roll`, positions as it strikes), Lamp Glare blinds. Rolled as the attack starts (sent
+  in it: `mob-attack.hit`, `golem-attack.hits`), they land later (`MobRoom.landed`: a kind's attackFrame / fps; the
+  golem's `hitMs`: slam frame, toss frame + 600 ms flight, glare frame) on town.ts's 100 ms clock: off HP, the Bag's
+  slow (`Vitals.slow`: the step budget halved, rate and burst), the glare's blindness (`Attacker.blinded`: every hit a
+  Miss). In combat = hit, missed or hitting within 5 s; regen in the Slums by stats.json `regen` (HP 2%/s out of combat,
+  MP mpRegen all along; skills cost no MP yet). 0 HP: knocked out (`knocked-out` to the room; no here/step/sit/face/move,
+  `attack-refused` 'out'; left out of the mobs' tick, so mobs walk home and the golem looks elsewhere; `forget` drops
+  hits on their way), after `RESPAWN_MS` 3 s `respawn` at the room's arrival tile (the Slums' spawn = `arrive.town`),
+  full. `vitals` (id, hp, maxHp; mp/maxMp to yourself) to you, your room and your party elsewhere; `TownPlayer.hp/maxHp/
+  out` for arrivals. Golem XP credit by member (`attack`'s `member`, `Golem.hit`; kills' `to` are members). Game: HUD HP
+  (red, pulsing under 25%) and MP (blue) bars in `.th-bars` (`setHudVitals`), `Character.setHp` (a 20 px bar over the
+  name while hurt), `hitNumber` (red on you, pale on others, "Miss"), `setKnockedOut` (fade out/in, no death pose);
+  TownScene `knockedOut` blocks walking, keys, skills, moves, E; "You were knocked out." toast; `slowMe` (half
+  `SPEED`, the step-budget mirror halved). Dev: the dev server runs it all (`?golemdemo=1` hits whoever is nearest).
 - Stat points (`POST /town/points` { spend, stat } | { reset }, `pointsStep` / `townPoints` in web/adventure.ts,
   `spendPoint` / `resetStatPoints` in progress.ts, tested; `Town.progress` after, so fights use them): one point into
   the class's main or second stat only; Reset free, all back (skills stay); none before a class (banked; choosing a class
@@ -534,7 +555,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   them); a member who drops stays for a minute (Away), so reloads and gates keep the party. Messages party-invite /
   -answer / -leave / -disband / -kick, and `party` (state + a toast note), `party-invited`, `party-refused`,
   `party-declined`, `party-say`. Game: `net/party.ts` (state, actions), `ui/party.ts` (the panel under the quest tracker:
-  heads, pink names, class badges, area or Away, crown, "you"; the exit icon opens Leave / Disband (asks twice); the
+  heads, pink names, class badges, area or Away, crown, "you", an HP bar (`PartyMember.hp/maxHp`, live from `vitals`:
+  net/party.ts `setMemberHp`, no redraw); the exit icon opens Leave / Disband (asks twice); the
   leader right-clicks a member for Kick; the invite pop-up, Accept / Decline with a minute's bar), "Invite to party" in
   the player menu (so also from chat names), party members' names pink only for the party (`Character.setParty`,
   `OtherPlayers.inParty`), party chat `/p` (pink, a "Party" tag; to the party only, never Discord or the kept lines).

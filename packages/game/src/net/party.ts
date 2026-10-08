@@ -24,6 +24,22 @@ export function onParty(fn: () => void): () => void {
   return () => listeners.delete(fn);
 }
 
+const hpListeners = new Set<(key: string, hp: number, maxHp: number) => void>();
+
+/** A player's HP changed (the town's `vitals`): if they're in your party, its panel's bar follows (no redraw). */
+export function setMemberHp(playerId: string, hp: number, maxHp: number): void {
+  const m = state?.members.find((x) => x.id === playerId);
+  if (!m || (m.hp === hp && m.maxHp === maxHp)) return;
+  Object.assign(m, { hp, maxHp });
+  for (const fn of hpListeners) fn(m.key, hp, maxHp);
+}
+
+/** Runs `fn` whenever a member's HP changes (by their party key). */
+export function onMemberHp(fn: (key: string, hp: number, maxHp: number) => void): () => void {
+  hpListeners.add(fn);
+  return () => hpListeners.delete(fn);
+}
+
 /** Whether a town player (by their id) is in your party (yourself included). */
 export const inParty = (playerId: string): boolean => !!state?.members.some((m) => m.id === playerId);
 
