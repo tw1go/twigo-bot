@@ -322,6 +322,8 @@ export interface MobData {
   radius?: number;
   /** The art's highest pixel row in its cells: its HP bar, name and numbers go there (else the cell's top). */
   top?: number;
+  /** Drawn this much bigger than its art (the golem); every art point above (top, eye, lamp, fists) and its shadow with it. */
+  scale?: number;
   /** The golem's lamp, the ground under its fist as the Tire Slam lands, and its raised fist as the Scrap Toss leaves:
    *  art px per facing (in that facing's cell). */
   lamp?: Record<string, Vec2>;
@@ -359,6 +361,8 @@ export interface MapObject {
   animated?: boolean;
   decor?: boolean;
   walkable?: boolean;
+  /** Drawn this much bigger than its art, round its anchor (the Golem Pit); `footprint` is the bigger one. */
+  scale?: number;
 }
 
 export interface TownMap {

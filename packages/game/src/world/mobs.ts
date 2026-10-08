@@ -184,12 +184,12 @@ export class Mobs {
   private place(zone: MobZone, def: MobDef, data: MobData | null, at: Tile, id: string, pack: Mob[] | null): Mob {
     const variants = mobVariants(def);
     const variant = variants[Math.floor(seeded(`${id}:variant`) * variants.length)];
-    const sprite = this.scene.add.sprite(0, 0, mobSheet(def, variant, 'idle', 'se'));
+    const sprite = this.scene.add.sprite(0, 0, mobSheet(def, variant, 'idle', 'se')).setScale(data?.scale ?? 1);
     const S = this.M.fx.shadow as unknown as { file: string; size: [number, number]; anchor: [number, number] } | undefined;
     // Its kind's size of shadow (mobs.json), on the ground at its anchor (a floating one's too): the shadow art's look
     // drawn at that size (scaled up, the golem's went blocky), else the art itself.
     const shadow = !S || !this.scene.textures.exists(S.file) ? null
-      : data?.shadow ? this.scene.add.image(0, 0, this.shadowSheet(S.file, ...data.shadow))
+      : data?.shadow ? this.scene.add.image(0, 0, this.shadowSheet(S.file, ...(data.shadow.map((n) => Math.round(n * (data.scale ?? 1))) as [number, number])))
       : this.scene.add.image(0, 0, S.file).setOrigin(S.anchor[0] / S.size[0], S.anchor[1] / S.size[1]);
     const [lo, hi] = zone.level;
     const level = lo + Math.floor(seeded(id) * (hi - lo + 1));
@@ -564,7 +564,8 @@ export class Mobs {
     const [ex, ey] = m.data!.eye!;
     const [ax, ay] = m.cell.anchor;
     const flip = m.dir === 'sw' || m.dir === 'nw';
-    const from = { x: m.sprite.x + (flip ? ax - ex : ex - ax), y: m.sprite.y + ey - ay };
+    const k = m.data?.scale ?? 1;
+    const from = { x: m.sprite.x + (flip ? ax - ex : ex - ax) * k, y: m.sprite.y + (ey - ay) * k };
     this.fx.drawnShot('front', from, to, { speed: SPARK_SPEED, onArrive }, (g) => drawSpark(g));
   }
 
@@ -633,14 +634,14 @@ export class Mobs {
 
   /** Where its art's top is now (world y): the cell's top, or mobs.json `top` (the golem's head, well under its cell's). */
   private top(m: Mob): number {
-    return m.sprite.y - m.cell.anchor[1] + (m.data?.top ?? 0);
+    return m.sprite.y + ((m.data?.top ?? 0) - m.cell.anchor[1]) * (m.data?.scale ?? 1);
   }
 
   /** A number rising over it (gold and bigger for a crit; "Blocked" smaller, pale); over the golem, spread across its
    *  shoulders so many hitters' numbers don't pile up. */
   private number(m: Mob, text: string, crit: boolean): void {
     const word = !/^\d+$/.test(text);
-    const x = m.sprite.x + (m.radius ? Phaser.Math.Between(-24, 24) : 0);
+    const x = m.sprite.x + (m.radius ? Phaser.Math.Between(-24, 24) * (m.data?.scale ?? 1) : 0);
     const t = this.scene.add
       .text(Math.round(x), Math.round(this.top(m) - 4), text, {
         fontFamily: '"Mk Numbers", "Pixelify Sans", monospace',
@@ -804,7 +805,7 @@ export class Mobs {
     if (m) {
       // A soft gold ring on the ground under it.
       // (Round the golem's shadow.)
-      const [w, h] = m.radius && m.data ? [m.data.shadow[0] + 8, m.data.shadow[1] + 6] : [22, 10];
+      const [w, h] = m.radius && m.data ? [m.data.shadow[0] * (m.data.scale ?? 1) + 8, m.data.shadow[1] * (m.data.scale ?? 1) + 6] : [22, 10];
       this.ring = this.scene.add.graphics();
       this.ring.lineStyle(1, 0xfcda4a, 0.9).strokeEllipse(0, 0, w, h).lineStyle(1, 0x1e1b3a, 0.6).strokeEllipse(0, 1, w + 2, h + 1);
       this.syncRing();

@@ -381,9 +381,13 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   'enrage' fx at the lamp, red half-way; 'death' lamp burst. Hits: numbers spread over its shoulders, a 40 px bar at
   its `top`; a hit never cuts its attack; reach/auto-cast walk measure to its body's edge (TownScene fightTick). Boss bar
   (`ui/boss-bar.ts`, top centre, red when enraged) while its fight is on and you're within its leash; body.boss-on moves
-  the mob info bar under it (hidden when that shows the golem). Debug `__town.golem()`. The Golem Pit prop (a walkable
-  6×6 floor) lies on the ground (objects.ts: walkable floors under the ground fx and everyone; its junk ring can't hide
-  anyone). Packs (`scripts/packs.ts`) are written unfiltered with plain deflate (pngjs's RLE default made them ~5× bigger).
+  the mob info bar under it (hidden when that shows the golem). Debug `__town.golem()`. The golem is drawn 1.5× its art
+  (mobs.json `scale`: its sprite, shadow, top, lamp, fists and own fx; body `radius` 3; the glare's cone runs 5 tiles past
+  its body). The Golem Pit prop is drawn 2× (map object `scale`, footprint 12×12 at (12,89)) and lies on the ground
+  (objects.ts: walkable floors under the ground fx and everyone; its junk ring can't hide anyone); its junk ring is in
+  the map's `blocked` (measured from the art: dirt floor open, junk blocked), so the only way in is the gap at its
+  bottom (south corner); the golem stomps in [16,93,20,97], leash 11. The props that stood under the bigger pit are gone
+  from slums.json (the art folder's copy still has the 6×6 pit: copy the map over again and this is lost). Packs (`scripts/packs.ts`) are written unfiltered with plain deflate (pngjs's RLE default made them ~5× bigger).
 - NPCs (town only, not the neighbourhood; client-side: never on the server, the online list or the minimap): the
   Tanod and ten Alings, flat pre-baked sheets (manifest `npcs`, art in `assets/npcs/`, one pack per NPC; `Character`
   with `FlatSheets`, never the paper doll). Homes, behaviours, the Tanod's route, voices and portrait facing in

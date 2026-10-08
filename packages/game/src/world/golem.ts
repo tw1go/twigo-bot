@@ -149,7 +149,7 @@ export class GolemView {
     const m = this.mob;
     if (!m || m.dead) return;
     const def = this.def('fx-golem-enrage');
-    this.fx.play(def, this.lamp(m), { follow: () => this.lamp(m) });
+    this.fx.play(def, this.lamp(m), { follow: () => this.lamp(m), scale: m.data?.scale });
     const ms = def?.frames && def.fps ? (def.frames / def.fps) * 500 : 400;
     this.scene.time.delayedCall(ms, () => this.mobs.setEnraged(m, this.state?.enraged ?? true));
   }
@@ -159,7 +159,7 @@ export class GolemView {
     const m = this.mob;
     if (!m) return;
     this.touchTimer?.remove();
-    this.fx.play(this.def('fx-golem-lamp-burst'), this.lamp(m));
+    this.fx.play(this.def('fx-golem-lamp-burst'), this.lamp(m), { scale: m.data?.scale });
     if (!m.dead) this.mobs.kill(m);
   }
 
@@ -177,21 +177,22 @@ export class GolemView {
     this.mobs.pose(m, anim);
     const at = this.mobs.ground(a.at[0] + 0.5, a.at[1] + 0.5);
     const D = m.data;
+    const k = D?.scale ?? 1; // its own fx are drawn for its art's size: as big as it's drawn
     if (a.attack === 'slam') {
       // All where its fist comes down (the art's: mobs.json slamFist; its fx are drawn for that spot). The server's `at`
       // (toward its target, any of eight ways) can be a tile or two off it, the art having four facings.
       const f = D?.attackFrame ?? 5;
       const fist = this.point(m, D?.slamFist) ?? at;
-      this.fx.play(this.def('fx-golem-slam-warning'), fist, { life: f * frameMs, fadeIn: 120 });
+      this.fx.play(this.def('fx-golem-slam-warning'), fist, { life: f * frameMs, fadeIn: 120, scale: k });
       later(f, () => {
         this.mobs.hooks.onAttackFrame?.(m, a.target);
-        this.fx.play(this.def('fx-golem-slam-impact'), fist);
-        this.fx.play(this.def('fx-golem-shockwave'), fist);
-        if (a.enraged) this.fx.play(this.def('fx-golem-rubble-ring'), fist, { life: RUBBLE_MS, fadeIn: 200, fadeOut: 900 });
+        this.fx.play(this.def('fx-golem-slam-impact'), fist, { scale: k });
+        this.fx.play(this.def('fx-golem-shockwave'), fist, { scale: k });
+        if (a.enraged) this.fx.play(this.def('fx-golem-rubble-ring'), fist, { life: RUBBLE_MS, fadeIn: 200, fadeOut: 900, scale: k });
         this.shake(fist);
         // Whoever it was after, if they're in it (harmless: shown).
         const who = this.players.at(a.target);
-        if (who && Math.hypot((who.feet.x - fist.x) / 16, (who.feet.y - fist.y) / 8) / Math.SQRT2 <= BLAST) this.mobs.hooks.onHit?.(m, a.target);
+        if (who && Math.hypot((who.feet.x - fist.x) / 16, (who.feet.y - fist.y) / 8) / Math.SQRT2 <= BLAST * k) this.mobs.hooks.onHit?.(m, a.target);
       });
     } else if (a.attack === 'toss') {
       const marker = this.fx.play(this.def('fx-golem-toss-marker'), at, { life: 60_000, fadeIn: 120 });
@@ -202,13 +203,13 @@ export class GolemView {
         const o = { speed: d / (FLIGHT_MS / 1000), arc: Math.max(24, d * 0.3) };
         const left = at.x < from.x;
         // The trail first (the scrap over it), turned to the flight (mirrored flying left: flipped across it).
-        const trail = this.fx.shot(this.def('fx-golem-scrap-trail'), from, at, { ...o, flipY: left });
+        const trail = this.fx.shot(this.def('fx-golem-scrap-trail'), from, at, { ...o, flipY: left, scale: k });
         this.fx.shot(this.def('fx-golem-scrap'), from, at, {
-          ...o, turn: false, spin: left ? -8 : 8,
+          ...o, turn: false, spin: left ? -8 : 8, scale: k,
           onArrive: () => {
             marker?.kill(150);
             trail?.kill(0);
-            this.fx.play(this.def('fx-golem-scrap-land'), at);
+            this.fx.play(this.def('fx-golem-scrap-land'), at, { scale: k });
             this.mobs.hooks.onHit?.(m, a.target);
           },
         });
@@ -285,11 +286,12 @@ export class GolemView {
     const p = per?.[m.dir];
     if (!p) return null;
     const f = this.mobs.feet(m);
-    return { x: f.x - m.cell.anchor[0] + p[0], y: f.y - m.cell.anchor[1] + p[1] };
+    const k = m.data?.scale ?? 1;
+    return { x: f.x + (p[0] - m.cell.anchor[0]) * k, y: f.y + (p[1] - m.cell.anchor[1]) * k };
   }
 
   private lamp(m: Mob): Pt {
-    return this.point(m, m.data?.lamp) ?? { ...this.mobs.feet(m), y: this.mobs.feet(m).y - 80 };
+    return this.point(m, m.data?.lamp) ?? { ...this.mobs.feet(m), y: this.mobs.feet(m).y - 80 * (m.data?.scale ?? 1) };
   }
 
   /** Every frame: the boss bar, while its fight is on and you're within its leash. */

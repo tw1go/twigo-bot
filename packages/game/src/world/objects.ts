@@ -324,9 +324,11 @@ export class WorldObjects {
     } else {
       sprite = this.place(def.file, o.col, o.row, def.anchor, o.flip);
     }
+    // Drawn bigger than its art round its anchor (the Golem Pit, twice over: its map entry's footprint is the bigger one).
+    if (o.scale) sprite.setScale(o.scale);
     // A floor you walk about on (walkable both ways round: the Golem Pit, a clearing in a ring of junk) lies on the ground,
     // under the ground fx and whoever stands on it (sorted by its front corner it hid them: the golem, a slam's warning).
-    // (One image, so its ring can't hide anyone standing behind it.)
+    // (One image, so its ring can't hide anyone standing behind it; the map's `blocked` keeps people off the ring.)
     const floor = !!o.walkable && fc > 1 && fr > 1;
     const base = this.depthFor(o) + this.heights.at(o.col, o.row) * LEVEL_PX * HEIGHT_DEPTH;
     const bounds = sprite.getBounds(new Phaser.Geom.Rectangle());

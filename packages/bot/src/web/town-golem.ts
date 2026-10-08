@@ -12,7 +12,7 @@ import type { GolemAttack, GolemChange, TownGolem, TownMobFacing, TownServerMess
 // hit starts a fight: it goes after whoever hit it last while they're within its leash (`leash` tiles of home), else the
 // nearest player there, stepping closer within the leash, and attacks every GAP_MS (ENRAGED_GAP_MS enraged): Tire Slam
 // with its target within SLAM tiles of its body's edge, Scrap Toss past TOSS, and every GLARE_EVERY-th attack a Lamp
-// Glare along its facing (a cone, CONE tiles long and degrees wide, from its tile: whoever's inside is blinded, shown
+// Glare along its facing (a cone from its tile, CONE tiles past its body's edge and degrees wide: whoever's inside is blinded, shown
 // only). It turns a quarter at a time (TURN_MS) and attacks only once it faces its target. Harmless: players have no
 // HP yet. At half HP it calls the Junk once (3–4 spots round the pit; its Adds crawl out there when the fx is done: the
 // host spawns them as real mobs), at a quarter it enrages once. Nobody within its leash for RESET_MS: it resets (full HP,
@@ -28,7 +28,7 @@ const FIRST_MS = 800; // from the first hit to its first attack
 const SLAM = 2; // Tire Slam: its target within this of its body's edge
 const TOSS = 3; // Scrap Toss: past this (between the two it steps closer)
 const GLARE_EVERY = 4;
-const CONE: [number, number] = [5, 60]; // tiles long (from its tile), degrees wide
+const CONE: [number, number] = [5, 60]; // tiles long (past its body's edge), degrees wide
 const BLIND_MS = 3000;
 const RESET_MS = 10_000;
 const SINK_MS = 30 * 60_000;
@@ -397,6 +397,8 @@ export class Golem {
     this.busyUntil = now + this.art.attackMs[attack];
     this.nextAttack = now + (this.enraged ? ENRAGED_GAP_MS : GAP_MS);
     const from: [number, number] = [this.col, this.row];
+    // The glare's cone from its tile, CONE[0] tiles past its body's edge (a big body would hide a short one).
+    const cone: [number, number] = [this.art.radius + CONE[0], CONE[1]];
     let at: [number, number];
     if (attack === 'toss') at = [p[0], p[1]];
     else {
@@ -404,14 +406,14 @@ export class Golem {
       const [ax, ay] = AXIS[this.facing];
       const [dx, dy] = [p[0] - from[0], p[1] - from[1]];
       const d = Math.hypot(dx, dy);
-      const reach = attack === 'slam' ? Math.min(d, this.art.radius + 1) : CONE[0];
+      const reach = attack === 'slam' ? Math.min(d, this.art.radius + 1) : cone[0];
       const [ux, uy] = attack === 'slam' && d ? [dx / d, dy / d] : [ax, ay];
       at = [Math.round(from[0] + ux * reach), Math.round(from[1] + uy * reach)];
     }
-    const blinded = attack === 'glare' ? [...players].filter(([, q]) => inCone(from, this.facing, q)).map(([id]) => id) : [];
+    const blinded = attack === 'glare' ? [...players].filter(([, q]) => inCone(from, this.facing, q, cone)).map(([id]) => id) : [];
     this.pending.push({
       t: 'golem-attack', id: this.id, attack, dir: this.facing, target, at, enraged: this.enraged,
-      ...(attack === 'glare' ? { blinded, blindMs: BLIND_MS, cone: CONE } : {}),
+      ...(attack === 'glare' ? { blinded, blindMs: BLIND_MS, cone } : {}),
     });
   }
 

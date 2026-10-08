@@ -39,13 +39,13 @@ const attacks = (evs: { at: number; e: GolemEvent }[]) => evs.filter((x) => x.e.
 const changes = (evs: { at: number; e: GolemEvent }[]) => evs.flatMap((x) => (x.e.t === 'golem' ? [x.e.change] : []));
 const lines = (evs: { at: number; e: GolemEvent }[]) => evs.flatMap((x) => (x.e.t === 'system' ? [x.e.line] : []));
 
-test('the art and rules: 4,000 HP, a body of radius 2, its rise as long as its death anim, the Junk as long as its fx', () => {
+test('the art and rules: 4,000 HP, a body of radius 3 (drawn 1.5× its art), its rise as long as its death anim, the Junk as long as its fx', () => {
   assert.equal(art.hp, 4000);
-  assert.equal(art.radius, 2);
+  assert.equal(art.radius, 3);
   assert.equal(art.riseMs, 1000); // death: 8 frames at 8 fps
   assert.deepEqual(art.attackMs, { slam: 900, toss: 800, glare: 800 });
   assert.equal(art.callMs, 1000);
-  assert.equal(boss.leash, 8);
+  assert.equal(boss.leash, 11);
 });
 
 test('it rises at minute 0 of every even hour (UTC and Manila alike) with a line 5 minutes before and one as it rises', () => {
@@ -87,20 +87,21 @@ test('after a restart it waits for the next even hour; while rising it can\'t be
   assert.ok(room.attack('p1', at(3, 0), 'stick', boss.id, t + art.riseMs + 10).ok, 'risen');
 });
 
-test('reach to it is measured to its body\'s edge (radius 2): a melee player 3 tiles from its middle hits, 5 doesn\'t', () => {
+test('reach to it is measured to its body\'s edge: a melee player a tile past its edge hits, three past doesn\'t', () => {
+  const R = art.radius;
   const room = new MobRoom(map, lcg(), {}, { shapes: {} }, kinds, art);
   room.riseGolem(0);
   room.tick(art.riseMs);
   let t = 2000;
   const hit = (from: [number, number], cls: string) => room.attack(`p${t}`, from, cls, boss.id, (t += 1000));
-  const r = hit(at(3, 0), 'stick');
+  const r = hit(at(R + 1, 0), 'stick');
   assert.ok(r.ok && r.hits[0].id === boss.id && (r.hits[0].damage === 20 || r.hits[0].damage === 25) && !r.hits[0].blocked);
-  assert.ok(hit(at(3, 2), 'stick').ok, 'off its axis: 3.6 from its middle, 1.6 from its edge (with the tile of slack)');
-  assert.deepEqual(hit(at(3, 3), 'stick'), { ok: false, reason: 'range' }, '4.2 from its middle: 2.2 from its edge');
+  assert.ok(hit(at(R + 1, 2), 'stick').ok, 'off its axis: about 1.5 from its edge (with the tile of slack)');
+  assert.deepEqual(hit(at(R + 1, 4), 'stick'), { ok: false, reason: 'range' }, 'about 2.7 from its edge');
   assert.ok(hit(at(0, 0), 'stick').ok, 'standing inside it');
-  assert.deepEqual(hit(at(5, 0), 'stick'), { ok: false, reason: 'range' });
-  assert.ok(hit(at(8, 0), 'slingshot').ok, 'a slingshot from 6 of its edge (5 + slack)');
-  assert.deepEqual(hit(at(9, 0), 'slingshot'), { ok: false, reason: 'range' });
+  assert.deepEqual(hit(at(R + 3, 0), 'stick'), { ok: false, reason: 'range' });
+  assert.ok(hit(at(R + 6, 0), 'slingshot').ok, 'a slingshot from 6 of its edge (5 + slack)');
+  assert.deepEqual(hit(at(R + 7, 0), 'slingshot'), { ok: false, reason: 'range' });
 });
 
 test('it waits to be hit; then it goes after whoever hit it last within its leash, else the nearest there', () => {
@@ -123,9 +124,10 @@ test('it waits to be hit; then it goes after whoever hit it last within its leas
 test('attacks: Tire Slam close, Scrap Toss far, a Lamp Glare every 4th at whoever is in its cone; 1.5 s apart, 1 s enraged', () => {
   const { golem } = lone();
   golem.riseNow(0);
-  const close = at(3, 0); // 1 from its edge, SE of it
-  const blindToo = at(4, 1); // in the cone as well
-  const behind = at(-3, 0); // NW: not
+  const R = art.radius;
+  const close = at(R + 1, 0); // 1 from its edge, SE of it
+  const blindToo = at(R + 2, 1); // in the cone as well
+  const behind = at(-R - 1, 0); // NW: not
   run(golem, 0, 1750);
   golem.hit('p1', 'Mara', 20, 2000);
   const evs = attacks(run(golem, 2000, 9000, new Map([['p1', close], ['p2', blindToo], ['p3', behind]])));
@@ -133,14 +135,14 @@ test('attacks: Tire Slam close, Scrap Toss far, a Lamp Glare every 4th at whoeve
   assert.ok(evs.every((a) => a.e.dir === 'se' && a.e.target === 'p1'), 'turned to face it first');
   assert.deepEqual(evs.slice(1, 4).map((a, i) => a.at - evs[i].at), [1500, 1500, 1500]);
   const slam = evs[0].e;
-  assert.deepEqual(slam.at, at(3, 0), 'the fist lands a tile past its body, toward the target');
+  assert.deepEqual(slam.at, at(R + 1, 0), 'the fist lands a tile past its body, toward the target');
   assert.equal(slam.enraged, false);
   const glare = evs[3].e;
   assert.deepEqual(glare.blinded, ['p1', 'p2']);
-  assert.deepEqual([glare.cone, glare.blindMs, glare.at], [[5, 60], 3000, at(5, 0)]);
-  assert.ok(inCone(boss.tile, 'se', at(4, 2)) && !inCone(boss.tile, 'se', at(2, 4)) && !inCone(boss.tile, 'se', at(6, 0)), '60° wide, 5 long');
+  assert.deepEqual([glare.cone, glare.blindMs, glare.at], [[R + 5, 60], 3000, at(R + 5, 0)], '5 tiles past its body');
+  assert.ok(inCone(boss.tile, 'se', at(4, 2)) && !inCone(boss.tile, 'se', at(2, 4)) && !inCone(boss.tile, 'se', at(6, 0)), '60° wide, 5 long (as given)');
   // Far off: Scrap Toss at their tile.
-  const far = at(7, 0); // 5 from its edge
+  const far = at(R + 5, 0); // 5 from its edge
   const toss = attacks(run(golem, 9250, 11_000, new Map([['p1', far]])))[0];
   assert.deepEqual([toss.e.attack, toss.e.at], ['toss', far]);
   // Enraged (a quarter left): 1 s apart, slams flagged for the rubble ring.
@@ -153,7 +155,7 @@ test('attacks: Tire Slam close, Scrap Toss far, a Lamp Glare every 4th at whoeve
 test('between 2 and 3 tiles of its edge it steps closer (inside its leash), then slams', () => {
   const { golem } = lone();
   golem.riseNow(0);
-  const p = at(5, 0); // 3 from its edge
+  const p = at(art.radius + 3, 0); // 3 from its edge
   run(golem, 0, 1750);
   golem.hit('p1', 'Mara', 20, 2000);
   const evs = run(golem, 2000, 8000, new Map([['p1', p]]));
@@ -216,10 +218,11 @@ test('reset: nobody within its leash for 10 s, it heals to full, its Adds go, it
   const room = new MobRoom(map, lcg(9), {}, { shapes: {} }, kinds, art);
   room.riseGolem(0);
   room.tick(1000);
-  const players = new Map([['p1', at(5, 0)]]); // 3 from its edge: it steps closer to slam
+  const far = at(art.radius + 3, 0);
+  const players = new Map([['p1', far]]); // 3 from its edge: it steps closer to slam
   let t = 2000;
   while (room.golemState(t)!.hp > 1900) {
-    room.attack('p1', at(5, 0), 'slingshot', boss.id, (t += 1000));
+    room.attack('p1', far, 'slingshot', boss.id, (t += 1000));
     room.flush();
     room.tick(t, players);
   }
@@ -242,7 +245,7 @@ test('reset: nobody within its leash for 10 s, it heals to full, its Adds go, it
   // A new fight: the Junk again at half.
   let again = false;
   while (!again) {
-    room.attack('p1', at(5, 0), 'slingshot', boss.id, (t += 1000));
+    room.attack('p1', far, 'slingshot', boss.id, (t += 1000));
     again = [...room.flush(), ...room.tick(t, players)].some((e) => e.t === 'golem' && e.change === 'call');
   }
 });
