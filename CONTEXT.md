@@ -125,7 +125,8 @@ Which armor a class wears: Heavy, Light or Household.
 An item's level; with its class or gear type it sets the stats needed to wear it.
 
 **Training gear**:
-The weapon and armor set the Tanod gives with a class; bound, and never sold or traded.
+The weapon and armor set the Tanod gives with a class; bound, and never sold, traded, enhanced or disassembled (the
+one exception to "every item can be").
 
 **Bound**:
 An item that stays with its owner: it can't be traded.
@@ -145,4 +146,70 @@ Caught in the golem's Lamp Glare: for a few seconds every attack you make misses
 
 **Miss**:
 An attack that does nothing (shown as "Miss"): when you're blinded, or now and then against a mob above your level.
+
+## Items and money
+
+**Kowens**:
+The server's money, shared with Discord; bought things in the sari-sari store, never traded in town.
+_Avoid_: credits, coins
+
+**Kusing**:
+The money mobs drop in the Slums; spent on HP and MP Potions and traded between players.
+_Avoid_: gold, coins
+
+**Combat bag**:
+The 40-slot bag for gear, whetstones, fragments, agimats and HP/MP Potions; the old bag keeps dug-up items, keys,
+buff potions and tickets.
+_Avoid_: inventory (that's both bags together)
+
+**Item**:
+One particular piece of gear or stuff a player owns, with its own rolls and history; many items share one kind.
+_Avoid_: item definition, item type (that's its kind)
+
+**Rarity**:
+An item's grade, from brown to dark orange; it sets the name colour and how many agimat slots it has.
+
+**Affix line**:
+One of the three extra stats a blue or orange item rolls; the third names it ("of Calamity").
+
+**Plus**:
+How many times an item has been enhanced, 0 to 20 ("+7").
+_Avoid_: enchant level, upgrade level
+
+**Enhance**:
+Raising an item's plus with whetstones; a failed try never lowers it.
+_Avoid_: upgrade, enchant, refine
+
+**Whetstone**:
+The stone that enhances items of its tier (Rough for item levels 1–20); ten fragments make one.
+
+**Luck**:
+An item's bonus to its next enhance, grown by each failure and cleared by a success.
+
+**Broken**:
+An item that failed an enhance past +15: it keeps its plus but gives nothing until repaired with a Repair Kit.
+
+**Agimat**:
+A charm with one stat and level, set into an item's agimat slot for good.
+_Avoid_: gem, socket, rune
+
+**Slot lock**:
+An agimat that only fits one kind of slot (shown "(Body only)").
+
+**Disassemble**:
+Breaking an item down into whetstone fragments (and, if it had slots, one agimat).
+_Avoid_: salvage, dismantle
+
+**Loot**:
+A drop lying on the ground after a kill, for a moment reserved for whoever earned it.
+_Avoid_: drop (the act), item (once picked up)
+
+**HP Potion / MP Potion**:
+Bottles that heal at once from the hotbar; never just "potions", which are the Discord buff potions.
+
+**Weapon aura**:
+The glow and rising lines on a weapon at +15 and above: blue, then gold, then prismatic at +20.
+
+**Trade**:
+Two players swapping items and Kusing face to face, both locking then confirming.
 
