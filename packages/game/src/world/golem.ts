@@ -272,7 +272,7 @@ export class GolemView {
   /** A small shake for a slam you can see (none with reduced motion). */
   private shake(at: Pt): void {
     const cam = this.scene.cameras.main;
-    if (!reducedMotion() && cam.worldView.contains(at.x, at.y)) cam.shake(180, 0.004);
+    if (!reducedMotion() && cam.worldView.contains(at.x, at.y)) cam.shake(150, 0.0015); // a nudge: about 2 px on a laptop screen
   }
 
   /** One of its effects (manifest mobs.<id>.fx). */
