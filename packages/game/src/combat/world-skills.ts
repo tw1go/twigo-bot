@@ -109,12 +109,13 @@ export class WorldSkills {
     // A ground decal on the ground layer; under the fighter just behind them; the rest on the front layer.
     const layerOf = (z: 0 | 1 | 3 | undefined): FxLayer | number => (z === 0 ? 'ground' : z === 1 ? who.depth() - 0.4 : 'front');
     // Mirrored: flipped across; a shot turned to its flight is flipped upside down instead (the turn already points it left).
+    // Upright pieces (straight-down rain, a spinning splash of drops) are never mirrored: drawn as the art is.
     const look = (o: FxOpts, shot: boolean): FxPlay => ({
       layer: layerOf(o.z ?? 3),
-      flipX: shot && mirror ? !!o.flip : !!o.flip !== mirror,
-      flipY: shot && mirror,
-      angle: mirror && o.angle ? -o.angle : (o.angle ?? 0),
-      frames: o.frames, hold: o.hold, ms: o.ms, fadeIn: o.fadeIn, fadeOut: o.fadeOut, life: o.life, length: o.length, scale,
+      flipX: o.upright ? !!o.flip : shot && mirror ? !!o.flip : !!o.flip !== mirror,
+      flipY: !o.upright && shot && mirror,
+      angle: !o.upright && mirror && o.angle ? -o.angle : (o.angle ?? 0),
+      frames: o.frames, hold: o.hold, ms: o.ms, fadeIn: o.fadeIn, fadeOut: o.fadeOut, life: o.life, length: o.length, scale, alpha: o.alpha,
     });
     const fps = (anim: string) => art.anims[anim]?.fps ?? 12;
     return {
@@ -148,7 +149,11 @@ export class WorldSkills {
       },
       shot: (name, from, to, o: ShotOpts) => {
         const turn = o.turn ?? true;
-        this.layers.shot(this.fx[name], m(from), m(to), { ...look({ ...o.fx, z: o.z ?? 3 }, turn), speed: o.speed, arc: o.arc, turn, reveal: o.reveal, onArrive: o.onArrive, fadeOut: 0 });
+        this.layers.shot(this.fx[name], m(from), m(to), {
+          ...look({ ...o.fx, z: o.z ?? 3, upright: o.upright || o.fx?.upright }, turn),
+          speed: o.speed, arc: o.arc, turn, reveal: o.reveal, onArrive: o.onArrive, fadeOut: 0,
+          minMs: o.minMs, flightMs: o.ms, ease: o.ease, quarter: o.quarterTurnMs, fadeEnd: o.fadeEnd,
+        });
       },
       hit: (n, o = {}) => {
         // (body(n) is in the script's space: mirrored back like every other point, or facing left the hit landed behind you.)

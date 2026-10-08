@@ -36,11 +36,27 @@ export interface FxOpts {
   life?: number;
   /** Stretched along its x to this many px (a lightning link). */
   length?: number;
+  /** Never mirrored: drawn as the art is whichever way the fighter faces (in the world, facing left mirrors the rest). */
+  upright?: boolean;
+  /** Its opacity (0–1; default 1). */
+  alpha?: number;
 }
 
 export interface ShotOpts {
   /** px a second */
   speed: number;
+  /** The flight takes at least this long (ms), however close: a near target still shows the arc. */
+  minMs?: number;
+  /** The flight takes exactly this long (ms), whatever the speed. */
+  ms?: number;
+  /** Eases out along its way (fast, then settling). */
+  ease?: 'out';
+  /** Turned 90° every this many ms as it flies (only quarter turns, so its pixels stay crisp); not turned to its flight. */
+  quarterTurnMs?: number;
+  /** Never mirrored (see FxOpts.upright). */
+  upright?: boolean;
+  /** Fades out over its last this many ms in the air (both the preview and the world). */
+  fadeEnd?: number;
   z?: 0 | 1 | 3;
   /** Bows upward by this many px in the middle (a lob). */
   arc?: number;
@@ -156,8 +172,9 @@ interface Live {
   fadeOut: number;
   end: number; // ms (stage time) it's gone; Infinity while looping
   length?: number;
+  alpha: number;
   /** For a shot: where it's flying, and the hidden-streak cut. */
-  path?: { from: Pt; to: Pt; t1: number; arc: number; turn: boolean; onArrive?: () => void; reveal: boolean };
+  path?: { from: Pt; to: Pt; t1: number; arc: number; turn: boolean; onArrive?: () => void; reveal: boolean; ease?: 'out'; quarter?: number; fadeEnd?: number };
 }
 
 export class SkillStage {
@@ -302,7 +319,7 @@ export class SkillStage {
     const per = l.def.perRow ?? l.def.frames ?? 1;
     const sx = (f % per) * w;
     const sy = Math.floor(f / per) * h;
-    let alpha = 1;
+    let alpha = l.alpha;
     if (l.fadeIn) alpha = Math.min(alpha, t / l.fadeIn);
     if (l.fadeOut && Number.isFinite(l.end)) alpha = Math.min(alpha, (l.end - this.now) / l.fadeOut);
     let x = l.x;
@@ -310,12 +327,15 @@ export class SkillStage {
     let angle = l.angle;
     let clip = 0; // px of the streak hidden behind the pivot
     if (l.path) {
-      const p = Math.min(1, (this.now - l.t0) / Math.max(1, l.path.t1 - l.t0));
+      const lin = Math.min(1, (this.now - l.t0) / Math.max(1, l.path.t1 - l.t0));
+      const p = l.path.ease === 'out' ? 1 - (1 - lin) * (1 - lin) : lin;
       const { from, to, arc } = l.path;
       x = from.x + (to.x - from.x) * p;
       y = from.y + (to.y - from.y) * p - arc * 4 * p * (1 - p);
-      if (l.path.turn) angle = Math.atan2(to.y - from.y - arc * 4 * (1 - 2 * p), to.x - from.x);
+      if (l.path.quarter) angle = Math.floor((this.now - l.t0) / l.path.quarter) * (Math.PI / 2);
+      else if (l.path.turn) angle = Math.atan2(to.y - from.y - arc * 4 * (1 - 2 * p), to.x - from.x);
       if (l.path.reveal) clip = Math.max(0, ax - Math.hypot(x - from.x, y - from.y));
+      if (l.path.fadeEnd) alpha = Math.min(alpha, (l.path.t1 - this.now) / l.path.fadeEnd);
     }
     const ctx = this.ctx;
     ctx.save();
@@ -364,7 +384,7 @@ export class SkillStage {
       const life = looping ? (o.life ?? Infinity) : length;
       const l: Live = {
         def, img, x: at.x, y: at.y, z: o.z ?? 3, angle: o.angle ?? 0, flip: !!o.flip, t0: stage.now, seq, hold: o.hold, ms,
-        fadeIn: o.fadeIn ?? 0, fadeOut: o.fadeOut ?? 0, end: stage.now + life, length: o.length,
+        fadeIn: o.fadeIn ?? 0, fadeOut: o.fadeOut ?? 0, end: stage.now + life, length: o.length, alpha: o.alpha ?? 1,
       };
       stage.lives.push(l);
       return l;
@@ -410,7 +430,7 @@ export class SkillStage {
       },
       shot(name, from, to, o) {
         const l = spawn(name, from, { ...o.fx, z: o.z ?? 3 });
-        const t1 = stage.now + (Math.hypot(to.x - from.x, to.y - from.y) / o.speed) * 1000;
+        const t1 = stage.now + (o.ms ?? Math.max(o.minMs ?? 0, (Math.hypot(to.x - from.x, to.y - from.y) / o.speed) * 1000));
         if (!l) {
           stage.events.push({ at: t1, fn: () => o.onArrive?.() });
           stage.events.sort((x, y) => x.at - y.at);
@@ -418,7 +438,7 @@ export class SkillStage {
         }
         l.end = Infinity;
         l.fadeOut = 0;
-        l.path = { from, to, t1, arc: o.arc ?? 0, turn: o.turn ?? true, onArrive: o.onArrive, reveal: !!o.reveal };
+        l.path = { from, to, t1, arc: o.arc ?? 0, turn: (o.turn ?? true) && !o.quarterTurnMs, onArrive: o.onArrive, reveal: !!o.reveal, ease: o.ease, quarter: o.quarterTurnMs, fadeEnd: o.fadeEnd };
       },
       hit(n, o = {}) {
         const b = { x: targets[n].x, y: targets[n].y - BODY_UP };

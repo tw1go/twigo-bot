@@ -28,6 +28,13 @@ function pebble(k: SkillKit, anim: keyof typeof RELEASE, to: Pt, then: () => voi
   k.shot(BULLET, fork, to, { speed: BULLET_SPEED, reveal: true, onArrive: then });
 }
 
+/** Volley's dark oval under the rain: its opacity (0 hides it), and its half-size (the area's 98×33 art, centred on the
+ *  anchor): an enemy whose feet are inside is hit. The lob: up from the fork this far, this long, fading at the end. */
+export const VOLLEY_AREA_ALPHA = 0.6;
+const VOLLEY_RX = 49;
+const VOLLEY_RY = 16;
+const VOLLEY_LOB = { up: 70, ms: 200, fade: 80 };
+
 const slingshot: Skill[] = [
   {
     name: 'Quick Shot',
@@ -99,23 +106,23 @@ const slingshot: Skill[] = [
   {
     name: 'Volley',
     run(k) {
+      // v2 (fx/slingshot): a pebble lobbed straight up from the fork, then the rain falls straight down on the aimed spot
+      // (enemy 1's feet) over its dark oval: the same up close and far off, never mirrored. Its hits (frames 6, 11 and 16)
+      // land on every enemy whose feet are inside the oval.
       const t = k.pose('attack-cast', [0, 1, 2, 3, 4, 5]);
-      // A lob from the fork to the top of the rain, then the rain three times over the pack, hits ~220 ms apart.
-      const area = { x: (k.targets[1].x + k.targets[2].x) / 2, y: (k.targets[1].y + k.targets[2].y) / 2 };
-      const top = { x: area.x + 14 - 47, y: area.y + 12 - 72 }; // the rain's cell 14,12 with its impact (47,72) on the area
       k.at(t[4], () => {
         const fork = k.launch('attack-cast', 4);
         k.fx('fx-slingshot-launch', fork);
-        k.shot(BULLET, fork, top, {
-          speed: 260,
-          arc: 22,
-          fadeOut: 140,
-          onArrive: () => {
-            const frames = [...Array(36).keys()].map((i) => i % 12);
-            k.fx('fx-pebble-volley', area, { frames, fadeIn: 140, fadeOut: 260, z: 3 });
-            [1, 2, 1, 2].forEach((n, i) => k.at(t[4] + 700 + i * 220, () => k.hit(n, { fx: 'fx-slingshot-hit-small' })));
-          },
-        });
+        k.shot(BULLET, fork, { x: fork.x, y: fork.y - VOLLEY_LOB.up }, { speed: BULLET_SPEED, ms: VOLLEY_LOB.ms, ease: 'out', fadeEnd: VOLLEY_LOB.fade, upright: true });
+      });
+      const rain = t[4] + VOLLEY_LOB.ms - VOLLEY_LOB.fade; // as the lob starts fading
+      const frame = 1000 / 25;
+      k.at(rain, () => {
+        const at = { x: k.targets[1].x, y: k.targets[1].y };
+        k.fx('fx-slingshot-volley-area', at, { z: 0, upright: true, alpha: VOLLEY_AREA_ALPHA, frames: [0], ms: 24 * frame + 150, fadeOut: 150 });
+        k.fx('fx-slingshot-volley', at, { upright: true });
+        const inside = (p: Pt) => ((p.x - at.x) / VOLLEY_RX) ** 2 + ((p.y - at.y) / VOLLEY_RY) ** 2 <= 1;
+        for (const f of [6, 11, 16]) k.at(rain + f * frame, () => [1, 2].forEach((n) => inside(k.targets[n]) && k.hit(n, { fx: 'fx-slingshot-hit-small' })));
       });
     },
   },
@@ -399,6 +406,11 @@ const broom: Skill[] = [
 
 const LID = 'char-weapon-lid'; // the lid's layers (front and back), hidden while it flies
 
+/** Boiling Splash: its target (enemy 2, as before), the drops' flight (px a second, at least this long, this high in the
+ *  middle, a quarter turn this often) and how long the puddle lies there before fading. */
+const BOIL_AT = 2;
+const BOIL = { speed: 260, minMs: 250, arc: 40, quarterMs: 120, puddleMs: 1200 };
+
 const potlid: Skill[] = [
   {
     name: 'Lid Bonk',
@@ -461,17 +473,21 @@ const potlid: Skill[] = [
   {
     name: 'Boiling Splash',
     run(k) {
+      // v2 (fx/potlid boil-*): the bonk flings a cluster of boiling drops from the lid in an arc to the target's feet,
+      // turning a quarter every 120 ms (never stretched, mirrored or trailed); it bursts into a splash there (the hit on its
+      // frame 1), and from frame 8 a burning puddle lies under everyone: 3 burn ticks, 300 ms apart.
       const t = k.pose('attack-quick', [0, 1, 2, 3], [83, 83, 400, 83]);
       k.at(t[1], () => {
         const lid = k.launch('attack-quick', 1, 'lid');
-        k.fx('fx-potlid-splash-se', lid);
-        const land = { x: lid.x + 57, y: lid.y + 53 }; // the splash's landing for SE
-        const splash = 1000 / 14;
-        k.at(t[1] + splash * 6, () => {
-          k.fx('fx-potlid-splash-puddle', land, { z: 0, hold: { from: 4, to: 8, until: 1300 } });
-          k.hit(2);
-          [1, 2, 3].forEach((i) => k.at(t[1] + splash * 6 + i * 300, () => k.number({ x: k.body(2).x + 8, y: k.body(2).y }, 'dot')));
-        });
+        const feet = { x: k.targets[BOIL_AT].x, y: k.targets[BOIL_AT].y };
+        const fly = Math.max(BOIL.minMs, (dist(lid, feet) / BOIL.speed) * 1000);
+        k.shot('fx-potlid-boil-drops', lid, feet, { speed: BOIL.speed, ms: fly, arc: BOIL.arc, turn: false, quarterTurnMs: BOIL.quarterMs, upright: true });
+        const land = t[1] + fly;
+        const frame = 1000 / 14;
+        k.at(land, () => k.fx('fx-potlid-boil-splash', k.targets[BOIL_AT], { upright: true }));
+        k.at(land + frame, () => k.hit(BOIL_AT));
+        k.at(land + frame * 8, () => k.fx('fx-potlid-boil-puddle', k.targets[BOIL_AT], { z: 0, upright: true, life: BOIL.puddleMs + 200, fadeOut: 200 }));
+        [1, 2, 3].forEach((i) => k.at(land + frame + i * 300, () => k.number({ x: k.body(BOIL_AT).x + 8, y: k.body(BOIL_AT).y }, 'dot')));
       });
     },
   },

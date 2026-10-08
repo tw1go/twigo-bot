@@ -46,11 +46,22 @@ export interface FxPlay {
   scale?: number;
   /** Kept at this point every frame (e.g. over someone's head). */
   follow?: () => Pt;
+  /** Its opacity (0–1; default 1). */
+  alpha?: number;
 }
 
 /** A shot: flown at `speed` px a second, `arc` px up at the middle, turned to its flight (unless `turn` is false). */
 export interface ShotPlay extends FxPlay {
   speed: number;
+  /** At least this long in the air (ms), or exactly `ms`. */
+  minMs?: number;
+  flightMs?: number;
+  /** Eases out along its way. */
+  ease?: 'out';
+  /** Turned 90° every this many ms (quarter turns only), not to its flight. */
+  quarter?: number;
+  /** Fades out over its last this many ms in the air. */
+  fadeEnd?: number;
   arc?: number;
   turn?: boolean;
   /** Revealed past its anchor as it leaves (a streak growing out of the hand). */
@@ -71,6 +82,9 @@ interface Flight {
   turn: boolean;
   reveal: boolean;
   onArrive?: () => void;
+  ease?: 'out';
+  quarter?: number;
+  fadeEnd?: number;
 }
 
 interface Live {
@@ -93,6 +107,7 @@ interface Live {
   length?: number;
   scale: number;
   follow?: () => Pt;
+  alpha: number;
   path?: Flight;
 }
 
@@ -139,7 +154,7 @@ export class FxLayers {
 
   /** Flies a sheet from → to; `onArrive` when it gets there (even without art: after the same time). */
   shot(def: FxDef | undefined, from: Pt, to: Pt, o: ShotPlay): FxHandle | null {
-    const t1 = this.now + (Math.hypot(to.x - from.x, to.y - from.y) / Math.max(1, o.speed)) * 1000;
+    const t1 = this.now + (o.flightMs ?? Math.max(o.minMs ?? 0, (Math.hypot(to.x - from.x, to.y - from.y) / Math.max(1, o.speed)) * 1000));
     const l = this.spawn(def, from, o);
     if (!l) {
       this.scene.time.delayedCall(t1 - this.now, () => o.onArrive?.());
@@ -147,7 +162,7 @@ export class FxLayers {
     }
     l.end = Infinity;
     l.fadeOut = 0;
-    l.path = { from, to, t1, arc: o.arc ?? 0, turn: o.turn ?? true, reveal: !!o.reveal, onArrive: o.onArrive };
+    l.path = { from, to, t1, arc: o.arc ?? 0, turn: (o.turn ?? true) && !o.quarter, reveal: !!o.reveal, onArrive: o.onArrive, ease: o.ease, quarter: o.quarter, fadeEnd: o.fadeEnd };
     this.draw(l);
     return this.handle(l);
   }
@@ -235,7 +250,7 @@ export class FxLayers {
     const now = this.now;
     const l: Live = {
       def, img, sheet: img.texture.has('0'), size: [w, h], x: at.x, y: at.y, angle: o.angle ?? 0, spin: o.spin ?? 0, t0: now, seq, hold: o.hold, ms,
-      fadeIn: o.fadeIn ?? 0, fadeOut: o.fadeOut ?? 0, end: now + (looping ? (o.life ?? 4000) : length), length: o.length, scale: o.scale ?? 1, follow: o.follow,
+      fadeIn: o.fadeIn ?? 0, fadeOut: o.fadeOut ?? 0, end: now + (looping ? (o.life ?? 4000) : length), length: o.length, scale: o.scale ?? 1, follow: o.follow, alpha: o.alpha ?? 1,
     };
     this.lives.push(l);
     this.draw(l);
@@ -276,7 +291,7 @@ export class FxLayers {
     l.img.setVisible(f >= 0);
     if (f < 0) return;
     if (l.sheet) l.img.setFrame(f);
-    let alpha = 1;
+    let alpha = l.alpha;
     if (l.fadeIn) alpha = Math.min(alpha, t / l.fadeIn);
     if (l.fadeOut && Number.isFinite(l.end)) alpha = Math.min(alpha, (l.end - now) / l.fadeOut);
     if (l.follow) ({ x: l.x, y: l.y } = l.follow());
@@ -285,10 +300,13 @@ export class FxLayers {
     let angle = l.angle + (l.spin * t) / 1000;
     let clip = 0;
     if (l.path) {
-      const a = along(l.path, Math.min(1, (now - l.t0) / Math.max(1, l.path.t1 - l.t0)));
+      const lin = Math.min(1, (now - l.t0) / Math.max(1, l.path.t1 - l.t0));
+      const a = along(l.path, l.path.ease === 'out' ? 1 - (1 - lin) * (1 - lin) : lin);
       ({ x, y } = a.at);
-      if (l.path.turn) angle = a.angle;
+      if (l.path.quarter) angle = Math.floor(t / l.path.quarter) * (Math.PI / 2);
+      else if (l.path.turn) angle = a.angle;
       if (l.path.reveal) clip = Math.max(0, ax - Math.hypot(x - l.path.from.x, y - l.path.from.y));
+      if (l.path.fadeEnd) alpha = Math.min(alpha, (l.path.t1 - now) / l.path.fadeEnd);
     }
     l.img.setPosition(Math.round(x), Math.round(y)).setRotation(angle).setAlpha(Math.max(0, Math.min(1, alpha)));
     l.img.setScale((l.length ? l.length / w : 1) * l.scale, l.scale);
