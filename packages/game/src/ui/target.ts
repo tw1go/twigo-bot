@@ -10,7 +10,8 @@ import { coinIcon } from './reward';
 // you say the line in town). The box goes when they leave, on Escape, or with a click anywhere outside it (a drag to
 // peek doesn't count; clicking someone else picks them instead). Clicking a name in the chat opens the same box and
 // menu right beside that name instead (selectAt); a press anywhere else closes it. Under it, Invite to party (net/party.ts:
-// shown while you lead a party or are in none, and they're not in yours). DOM text only.
+// shown while you lead a party or are in none, and they're not in yours) and Trade (ui/trade.ts: only within 5 tiles,
+// "Too far to trade" otherwise; the server checks again by its own positions). DOM text only.
 
 type View = 'give' | 'balance' | 'status';
 const VIEWS: [View, string][] = [['give', 'Give Kowens'], ['balance', 'Balance'], ['status', 'Status']];
@@ -59,6 +60,11 @@ export class TargetBox {
   private readonly actions = el('div', 'tg-actions');
   private readonly partyRow = el('div', 'tg-party');
   private readonly partyButton = el('button', 'tg-party-invite', 'Invite to party');
+  private readonly tradeRow = el('div', 'tg-trade');
+  private readonly tradeButton = el('button', 'tg-trade-ask', 'Trade');
+  /** Trading (the town sets it): how far someone is (tiles; null: not here), the range, whether you're trading already,
+   *  and the ask. */
+  trade: { distance(id: string): number | null; range: number; busy(): boolean; ask(p: TownPlayer): void } | null = null;
   private target: TownPlayer | null = null;
   private view: View | null = null;
   private info: TownPlayerInfo | null = null;
@@ -107,8 +113,24 @@ export class TargetBox {
     });
     this.partyRow.append(this.partyButton);
     onParty(() => this.drawParty());
+    // Trade: within range only (kept up to date while the menu is open: either of you may walk).
+    this.tradeButton.addEventListener('click', () => {
+      if (!this.target || !this.trade || this.tradeButton.disabled) return;
+      this.trade.ask(this.target);
+      this.tradeButton.disabled = true;
+      this.tradeButton.textContent = 'Request sent';
+      this.tradeSent = this.target.id;
+    });
+    this.tradeRow.append(this.tradeButton);
+    this.tradeRow.hidden = true;
+    setInterval(() => !this.menu.hidden && this.drawTrade(), 400);
+    // A trade opened or ended: the button is ready again.
+    addEventListener('mk-trade', () => {
+      this.tradeSent = null;
+      if (!this.menu.hidden) this.drawTrade();
+    });
     this.menu.hidden = true;
-    this.menu.append(this.views, this.panel, this.actions, this.partyRow);
+    this.menu.append(this.views, this.panel, this.actions, this.partyRow, this.tradeRow);
     this.root.append(this.box, this.menu);
     document.body.append(this.root);
 
@@ -172,12 +194,29 @@ export class TargetBox {
     this.root.style.top = `${top}px`;
   }
 
+  /** Who the last trade request went to (the button says so until they're picked again). */
+  private tradeSent: string | null = null;
+
+  /** The Trade button for whoever's picked: within range, else "Too far to trade" (greyed). */
+  private drawTrade(): void {
+    const p = this.target;
+    const t = this.trade;
+    this.tradeRow.hidden = !p || !t;
+    if (!p || !t || this.tradeSent === p.id) return;
+    const d = t.distance(p.id);
+    const why = t.busy() ? 'Already trading' : d === null || d > t.range ? 'Too far to trade' : null;
+    this.tradeButton.disabled = !!why;
+    this.tradeButton.textContent = why ?? 'Trade';
+    this.tradeButton.title = why === 'Too far to trade' ? `Walk within ${t.range} tiles of them` : '';
+  }
+
   /** Shows someone in the box (the menu stays closed until the box is clicked). */
   select(p: TownPlayer): void {
     this.unplace();
     if (this.target?.id === p.id) return void (this.root.hidden = false);
     this.target = p;
     this.info = null;
+    this.tradeSent = null;
     this.name.textContent = p.nickname;
     this.box.setAttribute('aria-label', `${p.nickname}: open the menu`);
     this.drawParty(true);
@@ -221,6 +260,8 @@ export class TargetBox {
     if (this.menu.hidden) {
       this.menu.hidden = false;
       this.box.setAttribute('aria-expanded', 'true');
+      this.tradeSent = null;
+      this.drawTrade();
       this.show(this.view ?? 'give');
     } else this.closeMenu();
   }

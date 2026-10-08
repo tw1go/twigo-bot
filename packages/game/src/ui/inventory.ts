@@ -13,6 +13,7 @@ import { potionCooldownKey } from './hotbar';
 import { showRename } from './rename';
 import { type ForgePopup, confirmDisassemble, forgeFromBag, mountForge } from './forge';
 import { fragmentsPerWhetstone } from '@mikazuki/shared';
+import { inTrade, tradeBlocked, tradeDrag, tradePut, trading } from './trade';
 
 // 🎒 The inventory: a bag button just right of the chat box (or B) opens the bag on the right of the screen. The bag shows every
 // slot a bag can ever have (5 × 10): the ones unlocked so far (bags from the shop add more) hold your items, one slot
@@ -33,6 +34,8 @@ import { fragmentsPerWhetstone } from '@mikazuki/shared';
 // The forge (ui/forge.ts): clicking a whetstone, Repair Kit or agimat opens the forge popup beside the bag (enhance,
 // repair, embed); gear clicked or dragged while it's open goes into it. Right-click gear for Disassemble (a confirm box
 // first), a fragment stack for Combine (ten into a whetstone).
+// Trading (ui/trade.ts): while the trade window is open the bag shows the Combat tab beside it; what can't be traded
+// (bound) is greyed, what's in the trade dimmed, and a click or drag puts an item in.
 // The equipment panel (ui/equipment.ts) opens on its left with it (B or I): double-click or drag a piece of equipment
 // onto its place to wear it. On phones there's no room for both: Equipment / Bag in their heads switch between them.
 
@@ -191,6 +194,8 @@ export class Inventory {
     });
     // Kowens or items changed elsewhere (a dig, the shop, the bank): refresh if it's open.
     window.addEventListener('mk-wallet', () => !this.root.hidden && void this.refresh());
+    // The trade window opened, changed or closed: what's greyed and dimmed follows.
+    window.addEventListener('mk-trade', () => !this.root.hidden && this.render());
     // A ticket spent on a new class (the town's class choice): dev's pretend one goes; the bag shows one fewer.
     window.addEventListener('mk-bag-changed', () => {
       if (fakeLogin()) {
@@ -222,6 +227,15 @@ export class Inventory {
       this.message = null;
       void this.refresh();
     }
+  }
+
+  /** For a trade: the bag on its Combat tab, without the equipment panel (the trade window goes beside it). */
+  openForTrade(): void {
+    this.tab = 'combat';
+    if (this.root.hidden) this.toggle(true);
+    else this.render();
+    this.equipment?.show(false);
+    document.body.classList.remove('show-equipment');
   }
 
   /** Free combat bag slots (a full bag can't take worn equipment back). */
@@ -347,7 +361,10 @@ export class Inventory {
         continue;
       }
       const def = anyDef(it.defId);
-      const cell = el('button', `iv-cell iv-item${it.uid === this.pickedUid ? ' iv-picked' : ''}${it.broken ? ' iv-broken' : ''}`);
+      // Trading: what can't go in greyed, what's in already dimmed.
+      const blocked = trading() ? tradeBlocked(it) : null;
+      const cell = el('button', `iv-cell iv-item${it.uid === this.pickedUid ? ' iv-picked' : ''}${it.broken ? ' iv-broken' : ''}${blocked ? ' iv-no-trade' : ''}${trading() && inTrade(it.uid) ? ' iv-in-trade' : ''}`);
+      if (blocked) cell.title = blocked;
       cell.style.setProperty('--rarity', RARITY_COLOUR[rarityOf(it)]);
       cell.setAttribute('aria-label', nameOf(it));
       cell.dataset.uid = it.uid;
@@ -357,7 +374,7 @@ export class Inventory {
         // Worn by a double-click, or dragged onto its place in the equipment panel (or into the forge popup).
         cell.draggable = true;
         cell.addEventListener('dragstart', (e) => e.dataTransfer?.setData('application/x-mk-equipment', it.uid));
-        cell.addEventListener('dblclick', () => !this.forge.isOpen && void this.equipment?.wear(it.uid));
+        cell.addEventListener('dblclick', () => !this.forge.isOpen && !trading() && void this.equipment?.wear(it.uid));
       } else if (def && (def.kind === 'agimat' || def.forge === 'whetstone' || def.forge === 'repairKit')) {
         // Forge tools: dragged onto the forge popup's slots.
         cell.draggable = true;
@@ -367,9 +384,14 @@ export class Inventory {
         cell.draggable = true;
         cell.addEventListener('dragstart', (e) => hotbarDragItem(e, { id: it.defId, name: def.name, emoji: '🧪', rarity: it.rarity, cooldown: potionCooldownKey }));
       }
+      // Anything can be dragged into the trade window.
+      cell.draggable = true;
+      cell.addEventListener('dragstart', (e) => tradeDrag(e, it.uid));
       cell.addEventListener('pointerenter', () => this.showTip(it, cell));
       cell.addEventListener('pointerleave', () => (this.tip.hidden = true));
       cell.addEventListener('click', () => {
+        // Trading: it goes into the trade.
+        if (tradePut(it.uid)) return;
         // A whetstone, Repair Kit or agimat opens the forge popup; gear goes into it while it's open.
         if (!isGearDef(def) && this.openForge(it)) return;
         if (isGearDef(def) && this.forge.put(it.uid)) return;

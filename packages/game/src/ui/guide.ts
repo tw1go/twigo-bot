@@ -74,6 +74,7 @@ const TOPICS: Topic[] = [
       '• **Balance** and **Status**: how they’re doing',
       '• **Diss**, **Praise** or **Judge**: 1 Kowen; your character says it out loud',
       '• **Invite to party**: see the Party tab',
+      '• **Trade**: within 5 tiles; see the Trading tab',
     ].join('\n'),
   },
   {
@@ -142,6 +143,21 @@ const TOPICS: Topic[] = [
       '• **Agimats**: click one, drag a weapon or armor piece with agimat slots in (white, grey, blue or orange names), pick a slot, **Embed**. Gear of the agimat’s level or higher; an item’s two agimats must be different stats, and only one rare (crit rate, crit damage, damage amp). A full slot asks first: the old agimat breaks. Embedding is for good',
       '• **Right-click gear → Disassemble**: whetstone fragments (more for a higher +) and, from gear with slots, an agimat that fits that kind of slot only. Its own agimats are destroyed. Training gear can’t be enhanced or taken apart',
       '• **Right-click fragments → Combine**: every **10** make a whetstone',
+    ].join('\n'),
+  },
+  {
+    id: 'trade',
+    icon: '🤝',
+    label: 'Trading',
+    text: [
+      'Swap gear, whetstones, fragments, agimats, potions and **Kusing** with another player, face to face.',
+      '• Click a player **within 5 tiles** and press **Trade** in their menu (farther: “Too far to trade”). They have **20 s** to accept',
+      '• The trade window opens for both, beside your bag: drag (or click) up to **8** items in from your **combat bag** and type the Kusing. A stack asks how many. Click one of yours to take it out',
+      '• **Bound** items can’t be traded (greyed): training gear, and orange gear once worn. **Kowens** never trade',
+      '• Both press **Lock**. Any change after that unlocks both, so check what’s there before you press **Trade**; it finishes when both have',
+      '• Everything is checked again at the end and moves at once, or nothing does (no room in a bag, an item gone)',
+      '• Walking more than 5 tiles apart, leaving, closing the window or being knocked out cancels it',
+      '-# Every trade is logged, so mistakes and scams can be checked.',
     ].join('\n'),
   },
   {

@@ -11,6 +11,7 @@ import { type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView
 import { loadItemData, loadStats } from '../../bot/src/web/stats-data.ts';
 import { buyCombat, devGive, takeLoot, usePotion } from '../../bot/src/web/combat-bag.ts';
 import { forge, parseForgeAction } from '../../bot/src/web/forge.ts';
+import { settleTrade } from '../../bot/src/web/trade.ts';
 import { loadGolemArt } from '../../bot/src/web/town-golem.ts';
 import { LANES, finishMs, raceScript } from '../../bot/src/games/race-script.ts';
 import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
@@ -59,6 +60,8 @@ import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
 //   steal (else it's random). Each page load refills your Master Keys and Kalawang Potions (3 each, or &keys=N
 //   &kalawang=N) and there's no steal cooldown unless &cooldown=1. Its room on the town server uses the bot's own
 //   layout (web/hood-map.ts).
+//   Trades between two windows (?as=Alice / ?as=Bob, the player menu's Trade) run on the items kept here, by the bot's
+//   web/trade.ts; each finished one is printed here (no trades table).
 // What's said in town is printed here instead of going to Discord.
 
 export function devTown(): Plugin {
@@ -365,6 +368,13 @@ export function devTown(): Plugin {
           take: (name, loot) => takeLoot(items, gearOf(name), loot, devUid),
           usePotion: (name, defId) => usePotion(items, gearOf(name), defId),
           state: (name) => gearOf(name),
+          // Trades: the bot's settleTrade on the kept copies (logged here instead of the trades table).
+          trade: (users, offers, names) => {
+            const r = settleTrade(items, [gearOf(users[0]), gearOf(users[1])], offers, names, devUid);
+            const list = (i: 0 | 1) => [...offers[i].items.map((x) => `${x.defId}${x.count > 1 ? ` ×${x.count}` : ''}`), ...(offers[i].kusing ? [`${offers[i].kusing} Kusing`] : [])].join(', ') || 'nothing';
+            server.config.logger.info(r.ok ? `[trade] ${users[0]} gave ${list(0)}; ${users[1]} gave ${list(1)}` : `[trade] refused: ${r.message}`, { timestamp: true });
+            return r.ok ? { ok: true } : r;
+          },
         },
         onSay: (_id, nickname, text, megaphone) => server.config.logger.info(`[town chat → Discord] ${megaphone ? '📢 ' : ''}${nickname}: ${text}`, { timestamp: true }),
       });

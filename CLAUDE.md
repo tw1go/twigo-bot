@@ -509,6 +509,25 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   the resting weapon's layers vs the doll, all 8 directions), loot on the ground (+18 and +20 only, the guide).
   `auraIcon` (DOM canvas, shared 50 ms loop) in `itemPicture` (bag, equipment panel, forge, tooltips' header). Everyone's:
   `TownPlayer.weaponPlus` / the `kit` message's (0 when broken; `kitOf`, `Town.kit(…, weaponPlus)`), `OtherPlayers.auraFor`.
+- Trading (combat-guide.md "Trading"; stats.json trading.flow: 5 tiles, 20 s, 8 items a side): rules both sides in
+  `packages/shared/src/trade.ts` (`tradeRules`, `tradeRefusal`: training gear, bound; types `TradeOffer`, `TradeView`);
+  bot `web/trade.ts` (pure, tested `trade.test.ts`): `Trades` (requests: one out and one waiting per player, lapse after
+  the timeout, `prune`; one trade at a time; `offer` = a whole side, any change unlocks both and takes back Trade; `lock`;
+  `confirm` only with both locked), `checkOffer` (combat bag only, not worn, counts, Kusing they have, 8 at most; copies
+  kept), `settleTrade` (everything checked again: in the bag, unchanged since put in, enough, still tradeable, Kusing,
+  room after what goes out with stacks; a whole stack keeps its uid, part of one leaves as a new item; all or nothing).
+  `web/town.ts` runs it (`TownOptions.items.trade`): `trade-ask` (Chebyshev range by the server's tiles, same room, not
+  knocked out; one a second) → `trade-asked` (Accept / Decline) → `trade` (each side's view) / `trade-bad` / `trade-end`
+  (done, cancelled, far, left, out, failed); cancels on a step/here/sit out of range, close, another tab, kick, knock-out.
+  Bot `tradeFor` in web/adventure.ts: one transaction (both members' items rows dropped first, both saved, a `trades`
+  row: schema v13, both members, each side's items as they were with uid and count, Kusing each way) + `[trade]` log line.
+  Game `ui/trade.ts` (`TradeWindow`, left of the bag; the bag opens on Combat without the equipment panel:
+  `Inventory.openForTrade`): request pop-up (party invite's box in lime, its bar = the timeout), 8 slots a side (16 px
+  icons ×3, tooltips), drag (`application/x-mk-item`, every combat cell) or click from the bag, a stack asks how many,
+  your item clicked = out, Kusing box (Enter/blur), Lock / Unlock, Trade (both locked), Cancel / × / Escape; the bag
+  greys bound items (`iv-no-trade`) and dims what's in (`iv-in-trade`); player menu Trade only within range ("Too far to
+  trade", checked every 0.4 s), "Already trading". Sound combat-trade-done for both. Dev: the dev town settles on its
+  kept copies (printed, no table); two windows `?as=Alice` / `?as=Bob` (`?give=`, `?kusing=`, `?whetstones=`).
 - Levels (bot `web/progress.ts`, pure, tested; saved in `adventurers` schema v11: `level`, `xp` (into the level),
   `str_points`/`dex_points`/`int_points` (spent), `skill_levels` (JSON: damage skill index or mobility id → level above 1),
   `skill_points` (unspent), `training_armor_given`; older rows Lv 1, nothing spent). `CharacterProgress` (in
@@ -633,6 +652,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   /town/give`, `POST /town/verdict` (`web/town-player.ts`): players are looked up by their town id via
   `Town.memberOf` (Discord ids never reach the page). Gifts post in the games channel and pop up for the receiver
   (`gift`); verdicts post in the town chat channel, pinging the target. Dev fakes the numbers and verdicts locally.
+  Also Invite to party and Trade (below).
 - Tanod outpost (`ui/outpost.ts`, left click the outpost), tabs Jail (you, who's in, bail yourself or a friend: `/bail`'s
   rules via `payBail` in `games/jail.ts`) and Patrol (the rules, and whether roll is being called now). Bot `GET
   /town/outpost`, `POST /town/bail` (`web/town-outpost.ts`; jailed members get a per-startup hashed id, never their

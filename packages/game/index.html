@@ -1676,7 +1676,66 @@
       .it-frame.it-aura { overflow: visible; }
       .eq-tip-head { display: flex; align-items: center; gap: 8px; }
       .eq-tip-head .it-frame { flex: none; }
+      /* The trade window (ui/trade.ts): left of the bag, the inventory's window style; "You" and the other side. */
+      #trade { position: fixed; top: 72px; right: 442px; z-index: 4; display: flex; flex-direction: column; gap: 8px; max-width: calc(100vw - 16px); max-height: calc(100vh - 96px); overflow-y: auto; box-sizing: border-box; padding: 12px 14px 14px; border: 2px solid #7C2AE8; background: rgba(17, 24, 39, 0.97); color: #c0caf5; font: 15px/1.35 var(--ui-font); }
+      #trade[hidden] { display: none; }
+      #trade.tr-centred { left: 50%; right: auto; transform: translateX(-50%); }
+      #trade.tr-framed { --px: 2; border-style: solid; border-width: calc(var(--slice) * var(--px) * 1px); border-image-source: var(--frame); border-image-slice: var(--slice) fill; border-image-width: calc(var(--slice) * var(--px) * 1px); border-image-repeat: round; image-rendering: pixelated; background: none; padding: 2px 6px 6px; }
+      #trade .tr-head { display: flex; align-items: center; }
+      #trade .tr-title { font-size: 22px; font-weight: 700; color: #fff; }
+      #trade .tr-close { margin-left: auto; width: 32px; height: 32px; padding: 0; border: 0; background: none; color: #7A8099; font: 26px/1 var(--ui-font); }
+      #trade .tr-close:hover { color: #fff; }
+      #trade .tr-body { display: flex; flex-direction: column; gap: 8px; }
+      #trade .tr-halves { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+      #trade .tr-half { display: flex; flex-direction: column; gap: 6px; padding: 6px 6px 8px; border: 2px solid #3D4256; background: rgba(30, 27, 58, 0.55); }
+      #trade .tr-half.tr-locked { border-color: #A3E635; }
+      #trade .tr-half.tr-over { border-color: #A3E635; background: rgba(163, 230, 53, 0.12); }
+      #trade .tr-side-head { display: flex; align-items: baseline; gap: 8px; }
+      #trade .tr-name { font-size: 18px; font-weight: 700; color: #fff; }
+      #trade .tr-lockmark { margin-left: auto; font-size: 13px; color: #7A8099; }
+      #trade .tr-lockmark.tr-on { color: #A3E635; font-weight: 700; }
+      #trade .tr-grid { display: grid; grid-template-columns: repeat(4, 64px); grid-auto-rows: 64px; gap: 3px; }
+      #trade .tr-cell { position: relative; display: flex; align-items: center; justify-content: center; width: 64px; height: 64px; box-sizing: border-box; padding: 0; border-style: solid; border-width: 8px; border-image: var(--slot) var(--slot-slice, 4) fill / 8px round; background: none; image-rendering: pixelated; font: inherit; }
+      #trade .tr-cell .it-frame { margin: -4px; }
+      #trade .tr-item { outline: 3px solid var(--rarity, #7A8099); outline-offset: -3px; }
+      #trade .tr-mine .tr-item:hover { border-image-source: var(--slot-picked); }
+      #trade .tr-count { position: absolute; right: -6px; bottom: -6px; color: #fff; font-size: 17px; line-height: 1; font-weight: 700; text-shadow: 1px 0 #1E1B3A, -1px 0 #1E1B3A, 0 1px #1E1B3A, 0 -1px #1E1B3A; pointer-events: none; }
+      #trade .tr-refused { animation: eq-refuse 0.6s ease-out; }
+      #trade .tr-kusing { display: flex; align-items: center; gap: 6px; font-size: 14px; color: #A9B1D6; }
+      #trade .tr-kusing b { font-size: 22px; color: #FCDA4A; }
+      #trade .tr-kusing input, #trade .tr-how input { width: 90px; padding: 3px 6px; border: 2px solid #3D4256; border-radius: 0; background: #0B0A1A; color: #FCDA4A; font: 700 19px/1 var(--ui-font); }
+      #trade .tr-how input { width: 64px; color: #fff; }
+      #trade .tr-of { font-size: 12px; color: #7A8099; }
+      #trade .tr-how { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 13px; }
+      #trade .tr-how-name { color: #fff; }
+      #trade .tr-small { padding: 4px 10px; border: 2px solid #1E1B3A; border-radius: 0; background: #A3E635; color: #1E1B3A; font: inherit; font-size: 13px; font-weight: 700; }
+      #trade .tr-small.tr-no { background: #1E1B3A; color: #c0caf5; border-color: #3D4256; }
+      #trade .tr-status { text-align: center; font-size: 15px; color: #FCDA4A; }
+      #trade .tr-actions { display: flex; gap: 8px; justify-content: center; }
+      #trade .tr-go { min-width: 100px; padding: 7px 14px; border: 3px solid #1E1B3A; border-radius: 0; background: #E2DDF3; color: #1E1B3A; font: inherit; font-size: 17px; font-weight: 700; box-shadow: 0 3px 0 #0B0A1A; }
+      #trade .tr-go.tr-lock.tr-on { background: #FCDA4A; }
+      #trade .tr-go.tr-trade { background: #3D4256; color: #7A8099; }
+      #trade .tr-go.tr-trade.tr-ready { background: #A3E635; color: #1E1B3A; }
+      #trade .tr-go.tr-cancel { background: #1E1B3A; color: #c0caf5; border-color: #3D4256; }
+      #trade .tr-go:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 #0B0A1A; }
+      #trade .tr-hint { text-align: center; font-size: 12px; color: #7A8099; }
+      /* A trade request: the party invite's box in the trade's lime. */
+      .pt-invite.tr-ask { border-color: #A3E635; box-shadow: 0 4px 0 #1E1B3A, 0 0 18px rgba(163, 230, 53, 0.22); }
+      .pt-invite.tr-ask .pt-invite-text b { color: #A3E635; }
+      .pt-invite.tr-ask .pt-yes { background: #A3E635; box-shadow: inset 0 -2px 0 #65A30D; }
+      .pt-invite.tr-ask .pt-invite-bar { background: #A3E635; }
+      /* The bag while trading: bound items greyed, what's in the trade dimmed. */
+      #inventory .iv-no-trade > :first-child { filter: grayscale(1) brightness(0.55); }
+      #inventory .iv-no-trade { outline-color: #3D4256; }
+      #inventory .iv-in-trade { opacity: 0.45; outline-style: dashed; }
+      #target .tg-trade { margin-top: 6px; }
+      #target .tg-trade[hidden] { display: none; }
+      #target .tg-trade-ask { width: 100%; padding: 6px 4px; border: 2px solid #65A30D; border-radius: 0; background: #1A2E12; color: #A3E635; font: inherit; font-size: 13px; font-weight: 700; cursor: var(--cur-hand, pointer); }
+      #target .tg-trade-ask:hover:not(:disabled) { border-color: #A3E635; color: #fff; }
+      #target .tg-trade-ask:disabled { border-color: #3D4256; background: #1E1B3A; color: #7A8099; cursor: default; }
       @media (max-width: 900px) {
+        #trade { top: 132px; right: 8px; }
+        #trade.tr-centred { left: auto; right: 8px; transform: none; }
         #forge { top: 132px; right: 8px; width: min(340px, calc(100vw - 16px)); }
         /* No room for both: the panel takes the bag's place, Equipment / Bag switch between them. */
         #equipment { top: 132px; right: 8px; width: min(420px, calc(100vw - 16px)); height: auto !important; max-height: calc(100vh - 150px); overflow-y: auto; }

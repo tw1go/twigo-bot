@@ -45,6 +45,7 @@ import { showOutpost } from '../ui/outpost';
 import { showBoard } from '../ui/board';
 import { showShop } from '../ui/shop';
 import { TargetBox } from '../ui/target';
+import { TradeWindow, trading } from '../ui/trade';
 import { RARITY_TEXT, addItemArt, isRarity, setItemArt, setRarityColours } from '../ui/item-art';
 import { setForgeArt } from '../ui/forge';
 import { LootLayer } from '../world/loot';
@@ -94,7 +95,7 @@ import { Hotbar, potionCooldownKey } from '../ui/hotbar';
 import { mountClassSwitch } from '../ui/class-switch';
 import { MOVES, type MoveKind, isMoveKind, moveTiles, playMove } from '../world/mobility';
 import { changeClass, devItemsReady, devSwitchClass, adventure, adventureData, anyDef, chooseClass, classInfo, initAdventure, itemData, itemDef, loadAdventureData, onAdventure, questDef, questFor, questTalk, setItems, setProgress, skillView, skillViews } from '../net/adventure';
-import { type Item, type TownItems, auraFor, countOf, isGearDef, itemAura, itemStats } from '@mikazuki/shared';
+import { type Item, type TownItems, auraFor, countOf, isGearDef, itemAura, itemStats, tradeRules } from '@mikazuki/shared';
 import type { ClassArt } from '../assets/types';
 import { drawRested, loadImages, poseFiles, restFiles } from '../characters/kit-art';
 import { holdQuestBanners, mountQuests } from '../ui/quests';
@@ -1185,6 +1186,30 @@ export class TownScene extends Phaser.Scene {
     }
     tools.append(online.el, emotePicker(sheet, emote));
     if (bag) document.body.append(bag.button); // its own button, just right of the chat box
+    // Trading (ui/trade.ts): the player menu's Trade within range (stats.json trading), the window beside the bag.
+    const tradeWin = bag
+      ? new TradeWindow(
+          inv?.itemFrame ? { url: url(inv.itemFrame.file), slice: inv.itemFrame.nineSlice } : null,
+          inv?.slot && inv.selected && inv.nineSlice ? { url: url(inv.slot), picked: url(inv.selected), slice: inv.nineSlice } : null,
+          link,
+          () => bag.openForTrade(),
+        )
+      : null;
+    if (this.target && tradeWin) {
+      this.target.trade = {
+        get range() {
+          const data = itemData();
+          return data ? tradeRules(data.stats).range : 0;
+        },
+        distance: (id) => {
+          const o = this.others.players.find((x) => x.id === id);
+          const me = this.player.tile;
+          return o ? Math.max(Math.abs(o.col - me.col), Math.abs(o.row - me.row)) : null;
+        },
+        busy: trading,
+        ask: (p) => tradeWin.ask(p.id, p.nickname),
+      };
+    }
     const chat = new ChatBox((text, channel) => link.send({ t: 'say', text, ...(channel === 'megaphone' ? { megaphone: true } : channel === 'party' ? { party: true } : {}) }), tools);
     // Parties (net/party.ts): the panel on the left for members, pink names for your party (on your screen only).
     setPartyLink(link);
@@ -1311,6 +1336,7 @@ export class TownScene extends Phaser.Scene {
         if (m.note) toast(m.note, 3000);
         return;
       }
+      if (tradeWin?.handle(m)) return;
       if (m.t === 'party-invited') return showPartyInvite({ invite: m.invite, name: m.name, members: m.members, answer: (yes) => partyAnswer(m.invite, yes) });
       if (m.t === 'party-refused') return toast(partyRefusal(m.reason, m.name), 2600, 'bad');
       if (m.t === 'party-declined') return toast(`${m.name} didn't join the party.`, 2600);

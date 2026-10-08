@@ -13,7 +13,8 @@ export type Sfx =
   | 'bakod-throw' | 'bakod-shatter' | 'bakod-key-in' | 'bakod-unlock' | 'bakod-snap'
   | 'combat-hit' | 'combat-hit-crit' | 'combat-player-hurt-1' | 'combat-player-hurt-2' | 'combat-player-hurt-3'
   | 'combat-loot-drop' | 'combat-loot-pickup' | 'combat-coins' | 'combat-potion'
-  | 'combat-enhance-success' | 'combat-enhance-fail' | 'combat-enhance-break' | 'combat-repair' | 'combat-agimat-embed' | 'combat-disassemble';
+  | 'combat-enhance-success' | 'combat-enhance-fail' | 'combat-enhance-break' | 'combat-repair' | 'combat-agimat-embed' | 'combat-disassemble'
+  | 'combat-trade-done';
 
 /** Each sound's file (under assets/audio/, as .ogg with an .m4a fallback unless `formats` says otherwise) and volume
  *  (0–1, before the player's sound-effects volume, which also covers the crickets and the fountain). */
@@ -61,6 +62,8 @@ const SFX: Record<Sfx, { file: string; volume: number; formats?: string[] }> = {
   'combat-repair': { file: 'sfx/combat-repair', volume: 0.18 },
   'combat-agimat-embed': { file: 'sfx/combat-agimat-embed', volume: 0.18 },
   'combat-disassemble': { file: 'sfx/combat-disassemble', volume: 0.18 },
+  // A trade finished (ui/trade.ts), for both players.
+  'combat-trade-done': { file: 'sfx/combat-trade-done', volume: 0.18 },
 };
 const CRICKETS = { key: 'amb:crickets', urls: ['audio/ambient/crickets.mp3'], volume: 0.15 };
 const FOUNTAIN = { key: 'amb:fountain', urls: ['audio/ambient/fountain.ogg', 'audio/ambient/fountain.m4a'], volume: 0.1 };
