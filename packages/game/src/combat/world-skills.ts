@@ -151,7 +151,8 @@ export class WorldSkills {
         this.layers.shot(this.fx[name], m(from), m(to), { ...look({ ...o.fx, z: o.z ?? 3 }, turn), speed: o.speed, arc: o.arc, turn, reveal: o.reveal, onArrive: o.onArrive, fadeOut: 0 });
       },
       hit: (n, o = {}) => {
-        if (o.fx) this.layers.play(this.fx[o.fx], body(n), look({ z: o.z ?? 3 }, false));
+        // (body(n) is in the script's space: mirrored back like every other point, or facing left the hit landed behind you.)
+        if (o.fx) this.layers.play(this.fx[o.fx], m(body(n)), look({ z: o.z ?? 3 }, false));
         onHit?.(n);
       },
       number: () => {},
