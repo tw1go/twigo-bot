@@ -377,8 +377,8 @@ export type TownServerMessage =
   | { t: 'respawn'; id: string; col: number; row: number }
   /** The loot you can see in your room (on arrival): golem loot only its owner's. */
   | { t: 'loot'; loot: TownLoot[] }
-  /** Loot fell (a kill): what you can see of it. */
-  | { t: 'loot-drop'; loot: TownLoot[] }
+  /** Loot fell (a kill): what you can see of it; `from`: the tile it died on (the loot bounces out of it). */
+  | { t: 'loot-drop'; loot: TownLoot[]; from?: [number, number] }
   /** Loot gone: picked up by someone, or lain there too long. */
   | { t: 'loot-gone'; ids: string[] }
   /** You tried to pick up loot your combat bag has no room for: it stays there. */

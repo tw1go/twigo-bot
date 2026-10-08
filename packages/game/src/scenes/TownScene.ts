@@ -48,7 +48,7 @@ import { TargetBox } from '../ui/target';
 import { TradeWindow, trading } from '../ui/trade';
 import { RARITY_TEXT, addItemArt, isRarity, setItemArt, setRarityColours } from '../ui/item-art';
 import { setForgeArt } from '../ui/forge';
-import { LootLayer } from '../world/loot';
+import { LOOT_LAND_MS, LootLayer } from '../world/loot';
 import { setKusingArt } from '../ui/reward';
 import { nameOf, pickupOf } from '../ui/item-tip';
 import { playDig, setDigPanelArt } from '../ui/dig-panel';
@@ -1556,8 +1556,10 @@ export class TownScene extends Phaser.Scene {
       // Loot on the ground: what you can see of it (faint while it's someone else's).
       if (m.t === 'loot') return this.loot?.set(m.loot);
       if (m.t === 'loot-drop') {
-        this.loot?.add(m.loot);
-        if (m.loot.some((l) => l.mine)) playSound('combat-loot-drop');
+        // Bouncing out of the mob (the golem's from higher up); the drop sound as the first lands.
+        const boss = !!m.from && !!this.golem && this.mobs?.list.some((x) => x.radius && Math.floor(x.col) === m.from![0] && Math.floor(x.row) === m.from![1]);
+        this.loot?.add(m.loot, m.from, boss);
+        if (m.loot.some((l) => l.mine)) this.time.delayedCall(m.from ? LOOT_LAND_MS : 0, () => playSound('combat-loot-drop'));
         return;
       }
       if (m.t === 'loot-gone') return this.loot?.remove(m.ids);

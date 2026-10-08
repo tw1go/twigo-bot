@@ -488,7 +488,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   walking over it, Kusing neither): only `pick {id?}` within LOOT_REACH (`LootRoom.pickable`: that one, or the nearest you
   may take); full bag → `loot-full`. `items` message (the player's items + `got`). Potions: `potion {item}` → battle maps only,
   refused when full, one shared cooldown (stats.json potions.sharedCooldownSec) per member, `potion` to the room (heal
-  shown), `potion-refused`. Game: `world/loot.ts` (16 px icon at half size, shadow and bob to match, Kusing amount in white,
+  shown), `potion-refused`. Game: `world/loot.ts` (bounces out of the mob: `loot-drop`'s `from` = the kill's tile, each drop an arc from its middle to its tile 70 ms after the one before, a small second hop, the shadow sliding under it; the drop sound as the first lands, LOOT_LAND_MS; the golem's from higher; reduced motion: none; 16 px icon at half size, shadow and bob to match, Kusing amount in white,
   names on hover/Alt in a small font: `nameColour`; half alpha while reserved), click → `pick` (in reach) or walk onto it
   then `pick`; F (keybind 'pickup') or Space (when loot is in reach; else interact) picks the nearest (`LootLayer.nearest`);
   each pickup is a line only you see in your system feed, added by the page (`SystemFeed.mine`, never the server's

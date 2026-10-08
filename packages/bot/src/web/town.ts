@@ -419,15 +419,15 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   const tellItems = (c: Conn, got?: { kusing?: number; item?: Item }) => {
     if (opts.items) send(c, { t: 'items', items: opts.items.state(c.userId) as TownItems, ...(got ? { got } : {}) });
   };
-  /** New loot to everyone in the room who can see it (each their own view of it). */
-  const showLoot = (room: string, fresh: Loot[]) => {
+  /** New loot to everyone in the room who can see it (each their own view of it), bouncing out of `from`. */
+  const showLoot = (room: string, fresh: Loot[], from?: [number, number]) => {
     const L = loots.get(room);
     if (!L || !fresh.length) return;
     const now = Date.now();
     for (const o of conns.values()) {
       if (o.room !== room) continue;
       const seen = fresh.flatMap((l) => L.view(l, o.userId, now) ?? []);
-      if (seen.length) send(o, { t: 'loot-drop', loot: seen });
+      if (seen.length) send(o, { t: 'loot-drop', loot: seen, ...(from ? { from } : {}) });
     }
   };
   /** Loot gone (taken or lain too long): off everyone's screen in the room. */
@@ -444,7 +444,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     if (!L || !mobs || !kill.to.length) return;
     const party = kill.boss ? [] : (parties.of(kill.to[0])?.members ?? []).filter((m) => conns.get(m)?.room === room);
     const fresh = L.drop(kill, party, (at, n) => mobs.lootSpots(at, n), Date.now());
-    showLoot(room, fresh);
+    showLoot(room, fresh, kill.at);
   };
   /** Picks up the loot asked for (`id`) or, without one, the nearest they may take, within LOOT_REACH (a click, F or
    *  Space; nothing is picked up on its own). Full bag: it stays, and they're told. */

@@ -14,6 +14,9 @@ import { type WorldObjects, characterDepth } from './objects';
 // the golem's loot only ever reaches its owner. An icon not drawn yet: its slot's silhouette (gear) or a square in its
 // rarity's colour. Nothing is picked up by walking over it: a click on one walks you next to it and picks it up, F or
 // Space the nearest within LOOT_REACH (TownScene; the server checks).
+// A kill's loot bounces out of the mob (`loot-drop`'s `from`): each drop leaps from its middle in an arc to its own
+// tile, a few ms after the one before, lands (LOOT_LAND_MS: the drop sound) and hops once more, small, then settles into
+// its bob; its shadow slides along the ground under it, smaller the higher it is. Reduced motion: it's just there.
 
 const BOB_MS = 1800;
 const FAINT = 0.5;
@@ -24,6 +27,17 @@ const LIFT = 4;
 const BOB = ICON_SCALE;
 /** The labels' font size (world px). */
 const LABEL_PX = 6;
+/** The bounce out of the mob: the whole flight, its first hop's share (it lands at LOOT_LAND_MS), how far along the way
+ *  the first hop goes, the arcs' heights, where it starts (over the mob's feet; the golem's higher), and between drops. */
+const FLY_MS = 620;
+const FIRST_HOP = 0.7;
+const FIRST_REACH = 0.85;
+const ARC = 18;
+const HOP = 4;
+const FROM_LIFT = 10;
+const STAGGER_MS = 70;
+export const LOOT_LAND_MS = FLY_MS * FIRST_HOP;
+const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 interface Drop {
   loot: TownLoot;
@@ -39,6 +53,8 @@ interface Drop {
   x: number;
   y: number;
   hovered: boolean;
+  /** Bouncing out of the mob (world px where it starts, and how high; performance.now ms it leaves). */
+  flight: { x: number; y: number; lift: number; start: number } | null;
 }
 
 export interface LootArt {
@@ -75,11 +91,20 @@ export class LootLayer {
     this.add(list);
   }
 
-  /** New loot (a kill). */
-  add(list: TownLoot[]): void {
+  /** New loot (a kill), bouncing out of the tile it died on (`from`; `high`: from a big body, the golem's). */
+  add(list: TownLoot[], from?: [number, number], high = false): void {
     const files = [this.art.kusing, ...list.map((l) => this.iconFile(l)), this.art.silhouettes?.file].filter((f): f is string => !!f);
+    const sent = performance.now();
     void loadImages(this.scene, files).then(() => {
-      for (const l of list) if (!this.all.has(l.id)) this.make(l);
+      list.forEach((l, i) => {
+        if (this.all.has(l.id)) return;
+        const d = this.make(l);
+        if (!from || reducedMotion()) return;
+        const [c, r] = from;
+        const ground = this.objects.heights.lift(c + 0.5, r + 0.5);
+        d.flight = { x: (c - r) * 16, y: (c + r + 1) * 8 - ground, lift: high ? FROM_LIFT * 4 : FROM_LIFT, start: sent + i * STAGGER_MS };
+        this.fly(d, performance.now());
+      });
     });
   }
 
@@ -113,6 +138,7 @@ export class LootLayer {
   /** The bob, and loot opening to you. */
   update(now = performance.now()): void {
     for (const d of this.all.values()) {
+      if (d.flight && this.fly(d, now)) continue;
       const bob = Math.round(Math.sin(((now + d.phase) / BOB_MS) * Math.PI * 2) * 0.5 - 0.5) * BOB; // 0 or one icon pixel up
       d.icon.setY(d.y - LIFT + bob);
       d.amount?.setY(d.y - LIFT - 5 + bob);
@@ -123,6 +149,36 @@ export class LootLayer {
         this.fade(d);
       }
     }
+  }
+
+  /** Where a bouncing drop is now (true while it's still in the air; on landing it's back on its tile). */
+  private fly(d: Drop, now: number): boolean {
+    const f = d.flight!;
+    const t = (now - f.start) / FLY_MS;
+    if (t >= 1) {
+      d.flight = null;
+      d.icon.setPosition(d.x, d.y - LIFT);
+      d.amount?.setPosition(d.x, d.y - LIFT - 5);
+      d.shadow.setPosition(d.x, d.y).setScale(1);
+      return false;
+    }
+    // Before it leaves (the ones after the first wait their turn): not shown yet.
+    const shown = t >= 0;
+    for (const o of [d.icon, d.shadow, d.amount]) o?.setVisible(shown);
+    if (!shown) return true;
+    // The first hop: most of the way, from the mob's middle up and over; then a small hop the rest of it.
+    const first = t < FIRST_HOP;
+    const u = first ? t / FIRST_HOP : (t - FIRST_HOP) / (1 - FIRST_HOP);
+    const along = first ? FIRST_REACH * u : FIRST_REACH + (1 - FIRST_REACH) * u;
+    const up = first ? f.lift * (1 - u) + ARC * 4 * u * (1 - u) : HOP * 4 * u * (1 - u);
+    const gx = Math.round(f.x + (d.x - f.x) * along);
+    const gy = Math.round(f.y + (d.y - f.y) * along);
+    d.icon.setPosition(gx, Math.round(gy - LIFT - up));
+    d.amount?.setPosition(gx, Math.round(gy - LIFT - 5 - up));
+    d.shadow.setPosition(gx, gy).setScale(Math.max(0.4, 1 - up / 40));
+    const half = 8 * ICON_SCALE;
+    d.aura?.fx.place(d.aura.trace, d.icon.x - half, d.icon.y - half, d.icon.depth - 0.005, d.icon.depth + 0.005, d.icon.alpha, ICON_SCALE);
+    return true;
   }
 
   private iconFile(l: TownLoot): string | null {
@@ -146,7 +202,7 @@ export class LootLayer {
     return key;
   }
 
-  private make(l: TownLoot): void {
+  private make(l: TownLoot): Drop {
     const D = this.data();
     const ground = this.objects.heights.lift(l.col + 0.5, l.row + 0.5);
     const x = (l.col - l.row) * 16;
@@ -179,7 +235,7 @@ export class LootLayer {
     const name = text(label, l.item && D ? nameColour(D, l.item) : PLAIN_COLOUR)
       .setDepth(LABEL_DEPTH)
       .setVisible(false);
-    const d: Drop = { loot: l, icon, shadow, amount, name, opensAt: l.mine ? 0 : l.opensIn === undefined ? Infinity : performance.now() + l.opensIn, phase: Math.random() * BOB_MS, aura: null, x, y, hovered: false };
+    const d: Drop = { loot: l, icon, shadow, amount, name, opensAt: l.mine ? 0 : l.opensIn === undefined ? Infinity : performance.now() + l.opensIn, phase: Math.random() * BOB_MS, aura: null, x, y, hovered: false, flight: null };
     // +18 and +20 weapons glow on the ground (the guide; +15–17 only once picked up).
     const tier = l.item && D ? itemAura(D, l.item) : null;
     if (tier && tier.aura !== 'blue' && icon.width === 16) {
@@ -194,6 +250,7 @@ export class LootLayer {
     this.all.set(l.id, d);
     this.fade(d);
     this.syncName(d);
+    return d;
   }
 
   private fade(d: Drop): void {
