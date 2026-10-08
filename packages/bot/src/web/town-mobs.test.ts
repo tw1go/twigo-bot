@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { type AttackResult, MobRoom, loadMobMap } from './town-mobs.js';
+import { existsSync, readFileSync } from 'node:fs';
+import { type AttackResult, MobRoom, loadMobKinds, loadMobMap } from './town-mobs.js';
 
 // The Slums' mobs on the real map (the game's maps/slums.json): where they stand, how they hop, what newcomers see.
 
@@ -20,7 +21,41 @@ test('one mob per spawn of each zone that is on, with a level in its range that 
   }
 });
 
-test('hops stay near the spawn, on the zone level, off ramps, blocked tiles and the safe zone', () => {
+test('each mob has one of its kind\'s variants, picked the same every time, and a varied kind shows several', () => {
+  const kinds = loadMobKinds();
+  const a = new MobRoom(map, Math.random, {}, { shapes: {} }, kinds).snapshot(0);
+  const b = new MobRoom(map, Math.random, {}, { shapes: {} }, kinds).snapshot(0);
+  assert.deepEqual(a.map((m) => m.variant), b.map((m) => m.variant));
+  for (const z of active) {
+    const variants = kinds[z.mob]?.variants ?? [];
+    const seen = new Set(a.filter((m) => m.id.startsWith(`${z.id}:`)).map((m) => m.variant));
+    if (!variants.length) assert.deepEqual([...seen], [undefined], `${z.id}: one look`);
+    else {
+      for (const v of seen) assert.ok(variants.includes(v!), `${z.id}: ${v}`);
+      assert.ok(seen.size > 1, `${z.id}: ${[...seen].join(', ')}`);
+    }
+  }
+});
+
+test('every mob kind\'s rules (mobs.json) match its art (manifest): the same variants, and every sheet is there', () => {
+  const assets = new URL('../../../game/public/assets/', import.meta.url);
+  const mobs = JSON.parse(readFileSync(new URL('manifest.json', assets), 'utf8')).mobs as Record<string, { file: string; variants?: Record<string, unknown>; directions: string[]; animations: Record<string, unknown>; enraged?: { file: string; animations: string[] } } | string>;
+  const kinds = loadMobKinds();
+  for (const [id, def] of Object.entries(mobs)) {
+    if (typeof def === 'string') continue;
+    assert.ok(kinds[id], `${id} in mobs.json`);
+    assert.deepEqual(Object.keys(def.variants ?? {}), kinds[id].variants ?? [], `${id} variants`);
+    for (const v of Object.keys(def.variants ?? { '': 0 }))
+      for (const anim of [...Object.keys(def.animations), ...(def.enraged?.animations.map((a) => `enraged:${a}`) ?? [])])
+        for (const dir of def.directions) {
+          const file: string = (anim.startsWith('enraged:') ? def.enraged!.file : def.file).replace('{variant}', v).replace('{anim}', anim.replace('enraged:', '')).replace('{dir}', dir);
+          assert.ok(existsSync(new URL(file, assets)), file);
+        }
+  }
+  for (const z of map.mobZones ?? []) assert.ok(typeof mobs[z.mob] === 'object', `${z.id}: ${z.mob} has art`);
+});
+
+test('hops stay near the spawn, in the zone, on its level, off ramps, blocked tiles and the safe zone', () => {
   let seed = 7;
   const random = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
   const room = new MobRoom(map, random);
@@ -31,7 +66,11 @@ test('hops stay near the spawn, on the zone level, off ramps, blocked tiles and 
     for (const h of room.tick(t).filter((e) => e.t === 'mob-move')) {
       hops++;
       const m = { zone: zoneOf(h.id), spawn: spawnOf.get(h.id)! };
-      for (const [col, row] of h.path.slice(1)) assert.ok(room.canStand(m, col, row), `${h.id} → ${col},${row}`);
+      for (const [col, row] of h.path.slice(1)) {
+        assert.ok(room.canStand(m, col, row), `${h.id} → ${col},${row}`);
+        const [c0, r0, c1, r1] = m.zone.rect!;
+        assert.ok(col >= c0 && col <= c1 && row >= r0 && row <= r1, `${h.id} stays in its zone`);
+      }
       for (let i = 1; i < h.path.length; i++) {
         const [a, b] = [h.path[i - 1], h.path[i]];
         assert.ok(Math.abs(a[0] - b[0]) <= 1 && Math.abs(a[1] - b[1]) <= 1, 'one tile a step');

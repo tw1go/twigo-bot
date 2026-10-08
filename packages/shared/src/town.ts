@@ -12,6 +12,8 @@ export interface TownMob {
   col: number;
   row: number;
   level: number;
+  /** Its look, one of its kind's variants (seeded per spawn: the same every time); none for a kind with one look. */
+  variant?: string;
   hp: number;
   dead?: boolean;
   path?: [number, number][];

@@ -2451,11 +2451,11 @@ function exposeDebug(scene: TownScene): void {
     talk: (id: string) => scene.debugTalk(id),
     /** The Mosang race as this page has it, and the bot's clock. */
     race: () => ({ race: currentRace(), now: raceNow() }),
-    /** The Slums' mobs: tile, facing, and where each is on the screen (for clicking one in tests). */
+    /** The Slums' mobs: id, look, tile, facing, and where each is on the screen (for clicking one in tests). */
     mobs: () =>
       scene.debugMobs?.list.map((m) => {
         const cam = scene.cameras.main;
-        return { tile: [Math.floor(m.col), Math.floor(m.row)], dir: m.dir, walking: m.path.length > 0, x: (m.sprite.x - cam.worldView.x) * cam.zoom, y: (m.sprite.y - 12 - cam.worldView.y) * cam.zoom };
+        return { id: m.id, variant: m.variant, anim: m.sprite.anims.currentAnim?.key, tile: [Math.floor(m.col), Math.floor(m.row)], dir: m.dir, walking: m.path.length > 0, x: (m.sprite.x - cam.worldView.x) * cam.zoom, y: (m.sprite.y - 12 - cam.worldView.y) * cam.zoom };
       }),
     /** Fixed view for screenshots: zoom and centre on a world point (follow off), or follow again. */
     view: (zoom?: number, x?: number, y?: number) => {

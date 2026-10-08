@@ -2,9 +2,9 @@ import { readFileSync } from 'node:fs';
 import type { TownMob } from '@mikazuki/shared';
 
 // 🥫 The Slums' mobs, run on the server so every player sees the same ones in the same places, and fought there. One per
-// spawn tile of each zone that's on (`active` in the game's maps/slums.json): a level rolled once in its zone's range,
-// and now and then a hop of a few tiles round its spawn: at most ROAM away, on its zone's level, on open tiles that
-// aren't ramps or in the safe zone. A hop is sent to the room as a path; the game walks it at SPEED. Pure (no Discord),
+// spawn tile of each zone that's on (`active` in the game's maps/slums.json): a level rolled once in its zone's range, a
+// variant (its look) picked once from its kind's (the game's mobs/mobs.json), and now and then a hop of a few tiles round
+// its spawn: at most ROAM away, on its zone's level and in its rect, on open tiles that aren't ramps or in the safe zone. A hop is sent to the room as a path; the game walks it at SPEED. Pure (no Discord),
 // so it's tested on its own and the dev server runs it too.
 //
 // Battle (for now): every mob has MOB_HP; any class hits for HIT (CRIT on a crit, CRIT_CHANCE), from the next tile with
@@ -85,6 +85,8 @@ export interface MobZoneData {
   id: string;
   mob: string;
   level: [number, number];
+  /** [col0, row0, col1, row1]: its mobs never leave it. */
+  rect?: [number, number, number, number];
   height: number;
   active: boolean;
   spawns: [number, number][];
@@ -105,6 +107,8 @@ interface Mob {
   id: string;
   zone: MobZoneData;
   level: number;
+  /** Its look ('' for a kind with one). */
+  variant: string;
   spawn: [number, number];
   /** Where it is (or, mid-hop, where the hop started). */
   col: number;
@@ -124,12 +128,22 @@ interface Mob {
   hopSpeed: number;
 }
 
+/** Each kind's rules (the game's mobs/mobs.json); the server uses its variants. */
+export type MobKinds = Record<string, { variants?: string[] }>;
+
+/** The game's mobs/mobs.json. */
+export function loadMobKinds(): MobKinds {
+  const json = JSON.parse(readFileSync(new URL('../../../game/public/assets/mobs/mobs.json', import.meta.url), 'utf8')) as Record<string, unknown>;
+  return Object.fromEntries(Object.entries(json).filter(([, v]) => typeof v === 'object' && v)) as MobKinds;
+}
+
 /** The mobs' data from a map file (maps/<name>.json in the game's assets). */
 export function loadMobMap(name: string): MobMapData {
   return JSON.parse(readFileSync(new URL(`../../../game/public/assets/maps/${name}.json`, import.meta.url), 'utf8')) as MobMapData;
 }
 
-/** A small seeded number (0–1) from a string, so a mob's level is the same on every restart. */
+/** A small seeded number (0–1) from a string, so a mob's level and look are the same on every restart (the game picks
+ *  the same look with its copy in world/mobs.ts until the server answers: keep them in step). */
 function seeded(s: string): number {
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
@@ -145,14 +159,17 @@ export class MobRoom {
     private readonly random: () => number = Math.random,
     private readonly levels: SkillLevels = {},
     private readonly shapes: SkillShapes = { shapes: {} },
+    kinds: MobKinds = {},
   ) {
     for (const r of map.ramps ?? []) this.ramps.add(`${r.col},${r.row}`);
     for (const zone of map.mobZones ?? []) {
       if (!zone.active) continue;
+      const variants = kinds[zone.mob]?.variants ?? [];
       zone.spawns.forEach(([col, row], i) => {
         const id = `${zone.id}:${i}`;
         const [lo, hi] = zone.level;
-        this.mobs.push({ id, zone, level: lo + Math.floor(seeded(id) * (hi - lo + 1)), spawn: [col, row], col, row, path: [], hopAt: 0, restUntil: 0, hp: MOB_HP, respawnAt: 0, foe: null, nextAttack: 0, slow: null, hopSpeed: SPEED });
+        const variant = variants[Math.floor(seeded(`${id}:variant`) * variants.length)] ?? '';
+        this.mobs.push({ id, zone, level: lo + Math.floor(seeded(id) * (hi - lo + 1)), variant, spawn: [col, row], col, row, path: [], hopAt: 0, restUntil: 0, hp: MOB_HP, respawnAt: 0, foe: null, nextAttack: 0, slow: null, hopSpeed: SPEED });
       });
     }
   }
@@ -161,11 +178,14 @@ export class MobRoom {
     return this.mobs.length;
   }
 
-  /** Where a mob may stand: open, on its zone's level, not a ramp, outside the safe zone, close to its spawn. */
+  /** Where a mob may stand: open, on its zone's level and in its rect, not a ramp, outside the safe zone, close to its
+   *  spawn. */
   canStand(m: { zone: MobZoneData; spawn: [number, number] }, col: number, row: number, reach = ROAM): boolean {
     const [cols, rows] = this.map.size;
     if (col < 0 || row < 0 || col >= cols || row >= rows || this.map.blocked[row]?.[col]) return false;
     if ((this.map.height?.[row]?.[col] ?? 0) !== m.zone.height || this.ramps.has(`${col},${row}`)) return false;
+    const [z0, y0, z1, y1] = m.zone.rect ?? [0, 0, cols, rows];
+    if (col < z0 || col > z1 || row < y0 || row > y1) return false;
     const [c0, r0, c1, r1] = this.map.safeZone ?? [-1, -1, -2, -2];
     if (col >= c0 && col <= c1 && row >= r0 && row <= r1) return false;
     return Math.max(Math.abs(col - m.spawn[0]), Math.abs(row - m.spawn[1])) <= reach;
@@ -376,7 +396,7 @@ export class MobRoom {
       const done = Math.floor(((now - m.hopAt) / 1000) * m.hopSpeed);
       const left = m.path.length ? m.path.slice(Math.min(done, m.path.length - 1)) : [];
       const at = m.path.length && done > 0 ? m.path[Math.min(done, m.path.length) - 1] : [m.col, m.row];
-      return { id: m.id, col: at[0], row: at[1], level: m.level, hp: m.hp, ...(m.respawnAt ? { dead: true } : {}), ...(left.length ? { path: left, speed: m.hopSpeed } : {}) };
+      return { id: m.id, col: at[0], row: at[1], level: m.level, ...(m.variant ? { variant: m.variant } : {}), hp: m.hp, ...(m.respawnAt ? { dead: true } : {}), ...(left.length ? { path: left, speed: m.hopSpeed } : {}) };
     });
   }
 }

@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
-import type { Manifest, MobDef, MobZone, TownMap } from '../assets/types';
+import type { TownMob } from '@mikazuki/shared';
+import type { Manifest, MobData, MobDef, MobZone, TownMap, Vec2 } from '../assets/types';
+import { mobCell, mobSheet, mobVariants } from '../assets/mob-art';
 import { slice } from '../assets/packs';
 import { CHARACTER_BIAS, HEIGHT_DEPTH } from './depth';
 import type { Tile, WalkGrid } from './grid';
@@ -7,17 +9,18 @@ import { type WorldObjects, characterDepth } from './objects';
 import { BuildingLabel } from '../ui/labels';
 import { LABEL_DEPTH } from './depth';
 
-// 🥫 The Slums' mobs (map.mobZones; art in manifest mobs). No combat yet: for each zone that's on (`active`), one mob per
-// spawn tile (id `<zone>:<spawn index>`), idling and now and then hopping a few tiles round its spawn. The server runs
+// 🥫 The Slums' mobs (map.mobZones; art in manifest mobs, rules in mobs/mobs.json). For each zone that's on (`active`),
+// one mob per spawn tile (id `<zone>:<spawn index>`) in one of its kind's variants (the server's pick, `variant`; the
+// same seeded pick here until it answers), idling and now and then hopping a few tiles round its spawn, on a ground
+// shadow sized per kind (a floating one, the Plastic Bag Spook, keeps it on the ground under its anchor). The server runs
 // them (bot web/town-mobs.ts: everyone sees the same mobs): its `mobs` snapshot places them and each `mob-move` hop is
 // walked here at the same pace. Only with no server (nothing heard yet) do they wander on their own here (the move animation; at most 3 tiles away,
-// never off its zone's level, onto a blocked tile or a ramp, or into the safe zone), facing the way it goes (SE / NE /
-// SW / NW sheets). A click shows its name and level ("Tin Can Lv 1-2") and targets it; Z targets the nearest (again:
+// never off its zone's level or out of its rect, onto a blocked tile or a ramp, or into the safe zone), facing the way it
+// goes on the art's four diagonals (SE for S and E, SW for W, NE for N; no mirroring). A click shows its name and level ("Tin Can Lv 1-2") and targets it; Z targets the nearest (again:
 // the next nearest): a ring under it and the info bar at the top (ui/mob-target.ts). Battle (the server
 // decides: bot web/town-mobs.ts): a hit plays the mob's hit pose (its death at 0 HP, then it's gone until it respawns), a
 // damage number rises over it (gold for a crit), and a small HP bar shows once it's hurt; its own attacks play its attack
-// pose toward the player. Zones that are off (no art yet) and the boss
-// load and place nothing; their data waits in the map. The zone's aggro, aggroRange, leash, respawnSec and level stay
+// pose toward the player. Zones that are off and the boss (not drawn yet) place nothing; their data waits in the map. The zone's aggro, aggroRange, leash, respawnSec and level stay
 // on each mob (`zone`) for combat later.
 
 const ROAM = 3; // tiles from its spawn
@@ -27,13 +30,18 @@ const LABEL_MS = 2600;
 const TARGET_RANGE = 12; // tiles: Z picks among the mobs this close
 const TARGET_LOSE = 20; // tiles: a target this far away is let go
 
-/** The four ways the art faces, for a step in screen directions. */
-const FACING: Record<string, 'se' | 'ne' | 'sw' | 'nw'> = { n: 'ne', ne: 'ne', e: 'se', se: 'se', s: 'sw', sw: 'sw', w: 'nw', nw: 'nw' };
+/** The four ways the art faces, for a step in screen directions (SE for S and E, SW for W, NE for N). */
+const FACING: Record<string, 'se' | 'ne' | 'sw' | 'nw'> = { n: 'ne', ne: 'ne', e: 'se', se: 'se', s: 'se', sw: 'sw', w: 'sw', nw: 'nw' };
 
 export interface Mob {
   id: string;
   zone: MobZone;
   def: MobDef;
+  /** Its look ('' for a kind with one) and that look's cell and anchor. */
+  variant: string;
+  cell: { size: Vec2; anchor: Vec2 };
+  /** Its kind's rules (mobs/mobs.json: attack frame, shadow, floating), if loaded. */
+  data: MobData | null;
   /** Rolled once in its zone's range. */
   level: number;
   spawn: Tile;
@@ -75,37 +83,49 @@ export class Mobs {
     private readonly objects: WorldObjects,
     private readonly onSpawn: (o: Phaser.GameObjects.Components.Tint) => void,
   ) {
+    const data = (scene.cache.json.get('mob-data') ?? {}) as Record<string, MobData | string>;
     for (const zone of map.mobZones ?? []) {
       const def = zone.active ? M.mobs?.[zone.mob] : undefined;
       if (!def || typeof def === 'string') continue;
       this.anims(zone.mob, def);
-      zone.spawns.forEach(([col, row], i) => this.place(zone, def, { col, row }, i));
+      const d = data[zone.mob];
+      zone.spawns.forEach(([col, row], i) => this.place(zone, def, typeof d === 'object' ? d : null, { col, row }, i));
     }
   }
 
-  /** Its animations, one per sheet (anim × direction). */
+  /** Its animations, one per sheet (variant × anim × direction). */
   private anims(id: string, def: MobDef): void {
-    for (const [anim, a] of Object.entries(def.animations)) {
-      for (const dir of def.directions) {
-        const file = def.file.replace('{anim}', anim).replace('{dir}', dir);
-        const key = `mob:${id}:${anim}:${dir}`;
-        if (this.scene.anims.exists(key) || !this.scene.textures.exists(file)) continue;
-        slice(this.scene.textures, file, def.size[0], def.size[1]);
-        this.scene.anims.create({ key, frames: this.scene.anims.generateFrameNumbers(file, { start: 0, end: a.frames - 1 }), frameRate: a.fps, repeat: a.loop ? -1 : 0 });
+    for (const v of mobVariants(def)) {
+      const { size } = mobCell(def, v);
+      for (const [anim, a] of Object.entries(def.animations)) {
+        for (const dir of def.directions) {
+          const file = mobSheet(def, v, anim, dir);
+          const key = `mob:${id}:${v}:${anim}:${dir}`;
+          if (this.scene.anims.exists(key) || !this.scene.textures.exists(file)) continue;
+          slice(this.scene.textures, file, size[0], size[1]);
+          this.scene.anims.create({ key, frames: this.scene.anims.generateFrameNumbers(file, { start: 0, end: a.frames - 1 }), frameRate: a.fps, repeat: a.loop ? -1 : 0 });
+        }
       }
     }
   }
 
-  private place(zone: MobZone, def: MobDef, at: Tile, i: number): void {
-    const sprite = this.scene.add.sprite(0, 0, def.file.replace('{anim}', 'idle').replace('{dir}', 'se'));
-    sprite.setOrigin(def.anchor[0] / def.size[0], def.anchor[1] / def.size[1]);
+  private place(zone: MobZone, def: MobDef, data: MobData | null, at: Tile, i: number): void {
+    const id = `${zone.id}:${i}`;
+    const variants = mobVariants(def);
+    const variant = variants[Math.floor(seeded(`${id}:variant`) * variants.length)];
+    const sprite = this.scene.add.sprite(0, 0, mobSheet(def, variant, 'idle', 'se'));
     const S = this.M.fx.shadow as unknown as { file: string; size: [number, number]; anchor: [number, number] } | undefined;
     const shadow = S && this.scene.textures.exists(S.file) ? this.scene.add.image(0, 0, S.file).setOrigin(S.anchor[0] / S.size[0], S.anchor[1] / S.size[1]) : null;
+    // Its kind's size of shadow (mobs.json), on the ground at its anchor (a floating one's too).
+    if (shadow && data?.shadow) shadow.setDisplaySize(...data.shadow);
     const [lo, hi] = zone.level;
     const mob: Mob = {
-      id: `${zone.id}:${i}`,
+      id,
       zone,
       def,
+      variant,
+      cell: mobCell(def, variant),
+      data,
       level: lo + ((i * 7) % (hi - lo + 1)),
       spawn: at,
       col: at.col + 0.5,
@@ -124,6 +144,7 @@ export class Mobs {
       speed: SPEED,
       slowUntil: 0,
     };
+    this.dress(mob);
     this.onSpawn(sprite);
     if (shadow) this.onSpawn(shadow);
     // A click: its name and level over its head for a moment.
@@ -138,17 +159,41 @@ export class Mobs {
     this.sync(mob);
   }
 
+  /** Its sprite's origin at its variant's anchor. */
+  private dress(m: Mob): void {
+    const { size, anchor } = m.cell;
+    m.sprite.setOrigin(anchor[0] / size[0], anchor[1] / size[1]);
+  }
+
+  /** Another look (the server's pick): its cell and anchor, and the anim it was playing in the new sheets. */
+  private setVariant(m: Mob, variant: string): void {
+    if (variant === m.variant || !mobVariants(m.def).includes(variant)) return;
+    m.variant = variant;
+    m.cell = mobCell(m.def, variant);
+    const anim = m.sprite.anims.currentAnim?.key.split(':')[3] ?? 'idle';
+    m.sprite.setTexture(mobSheet(m.def, variant, anim, m.dir), 0);
+    this.dress(m);
+    const key = `mob:${m.zone.mob}:${variant}:${anim}:${m.dir}`;
+    if (this.scene.anims.exists(key)) m.sprite.play(key, true);
+  }
+
+  private key(m: Mob, anim: string): string {
+    return `mob:${m.zone.mob}:${m.variant}:${anim}:${m.dir}`;
+  }
+
   private play(m: Mob, anim: string): void {
     if (m.posing || m.dead) return;
-    const key = `mob:${m.zone.mob}:${anim}:${m.dir}`;
+    const key = this.key(m, anim);
     if (m.sprite.anims.currentAnim?.key !== key && this.scene.anims.exists(key)) m.sprite.play(key, true);
   }
 
-  /** Where it can stand: its zone's level, open, not a ramp, outside the safe zone, close to its spawn. */
+  /** Where it can stand: its zone's level and rect, open, not a ramp, outside the safe zone, close to its spawn. */
   private canStand(m: Mob, t: Tile): boolean {
     const H = this.objects.heights;
     const [c0, r0, c1, r1] = this.map.safeZone ?? [-1, -1, -2, -2];
+    const [z0, y0, z1, y1] = m.zone.rect;
     return (
+      t.col >= z0 && t.col <= z1 && t.row >= y0 && t.row <= y1 &&
       this.grid.walkable(t.col, t.row) &&
       H.at(t.col, t.row) === m.zone.height &&
       !H.ramp(t.col, t.row) &&
@@ -171,11 +216,12 @@ export class Mobs {
   }
 
   /** The server runs them from now on: every mob where it says (and the rest of a hop under way). */
-  applySnapshot(mobs: { id: string; col: number; row: number; level: number; hp: number; dead?: boolean; path?: [number, number][]; speed?: number }[]): void {
+  applySnapshot(mobs: TownMob[]): void {
     this.server = true;
     for (const s of mobs) {
       const m = this.byId.get(s.id);
       if (!m) continue;
+      if (s.variant !== undefined) this.setVariant(m, s.variant);
       m.col = s.col + 0.5;
       m.row = s.row + 0.5;
       m.level = s.level;
@@ -248,7 +294,7 @@ export class Mobs {
 
   /** A one-shot pose, then idle again (or `then`). */
   private pose(m: Mob, anim: string, then?: () => void): void {
-    const key = `mob:${m.zone.mob}:${anim}:${m.dir}`;
+    const key = this.key(m, anim);
     if (!this.scene.anims.exists(key)) return void then?.();
     m.posing = true;
     m.sprite.play(key);
@@ -285,13 +331,13 @@ export class Mobs {
   }
 
   private syncBar(m: Mob): void {
-    m.bar?.setPosition(Math.round(m.sprite.x), Math.round(m.sprite.y - m.def.anchor[1] + 2)).setDepth(LABEL_DEPTH - 1);
+    m.bar?.setPosition(Math.round(m.sprite.x), Math.round(m.sprite.y - m.cell.anchor[1] + 2)).setDepth(LABEL_DEPTH - 1);
   }
 
   /** A damage number rising over it (gold and bigger for a crit). */
   private number(m: Mob, damage: number, crit: boolean): void {
     const t = this.scene.add
-      .text(Math.round(m.sprite.x), Math.round(m.sprite.y - m.def.anchor[1] - 4), String(damage), {
+      .text(Math.round(m.sprite.x), Math.round(m.sprite.y - m.cell.anchor[1] - 4), String(damage), {
         fontFamily: '"Mk Numbers", "Pixelify Sans", monospace',
         fontSize: `${crit ? 16 : 12}px`,
         color: crit ? '#FCDA4A' : '#FFFFFF',
@@ -354,7 +400,7 @@ export class Mobs {
         } else {
           // The name moves with it.
           m.label.text.setX(Math.round(m.sprite.x));
-          m.label.show(m.sprite.y - m.def.anchor[1] + 4);
+          m.label.show(m.sprite.y - m.cell.anchor[1] + 4);
         }
       }
     }
@@ -429,7 +475,7 @@ export class Mobs {
       m.label = new BuildingLabel(this.scene, name, m.sprite.x);
       m.label.setZoom(this.zoom);
     }
-    m.label.show(m.sprite.y - m.def.anchor[1] + 4);
+    m.label.show(m.sprite.y - m.cell.anchor[1] + 4);
     m.labelUntil = this.scene.time.now + LABEL_MS;
   }
 
@@ -441,6 +487,14 @@ export class Mobs {
   get tintables(): Phaser.GameObjects.Components.Tint[] {
     return this.list.flatMap((m) => (m.shadow ? [m.sprite, m.shadow] : [m.sprite]));
   }
+}
+
+/** A small seeded number (0–1) from a string: the bot's `seeded` in web/town-mobs.ts (keep in step), so the variant
+ *  picked here before the server answers is the one it picks. */
+function seeded(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
+  return ((h >>> 0) % 10_000) / 10_000;
 }
 
 /** The screen direction of a grid step (as the characters' dirForStep). */

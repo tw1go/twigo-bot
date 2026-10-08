@@ -1,4 +1,5 @@
 import type Phaser from 'phaser';
+import { mobSheets } from './mob-art';
 import { packed, queuePacked } from './packs';
 import type { Manifest, PropDef, TownMap } from './types';
 
@@ -108,7 +109,7 @@ export function queueNpcs(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Tex
 }
 
 /** The Slums: its ground and raised-ground pieces (tiles.slums), every Slums prop (its outskirts scatter some that the
- *  map itself doesn't use) and the mobs of its active zones only (no art for the others yet). */
+ *  map itself doesn't use) and the mobs of its active zones. */
 function queueSlums(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Textures.TextureManager, M: Manifest, map: TownMap): void {
   const img = (f: string) => queueImage(load, textures, f);
   const S = M.tiles.slums;
@@ -120,10 +121,13 @@ function queueSlums(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Textures.
     for (const set of Object.values(S.ramps)) Object.values(set).flat().forEach(img);
   }
   for (const [id, p] of Object.entries(M.props)) if (id.startsWith('slums-') && (p as PropDef).file) img((p as PropDef).file);
-  for (const z of map.mobZones ?? []) {
-    const mob = z.active ? M.mobs?.[z.mob] : undefined;
+  // Every variant's sheets of each active zone's mob (the boss isn't drawn yet: its art waits).
+  const ids = new Set((map.mobZones ?? []).filter((z) => z.active).map((z) => z.mob));
+  for (const id of ids) {
+    const mob = M.mobs?.[id];
     if (!mob || typeof mob === 'string') continue;
-    for (const anim of Object.keys(mob.animations))
-      for (const dir of mob.directions) queueSheet(load, textures, mob.file.replace('{anim}', anim).replace('{dir}', dir), mob.size[0], mob.size[1]);
+    for (const s of mobSheets(mob)) queueSheet(load, textures, s.file, s.size[0], s.size[1]);
   }
+  // Their rules (attack frames, shadows, floating).
+  if (ids.size && typeof M.mobs?.data === 'string') load.json('mob-data', M.mobs.data);
 }

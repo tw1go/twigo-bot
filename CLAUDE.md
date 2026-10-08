@@ -88,7 +88,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
 - Outskirts (`world/outskirts.ts`, town.json `outskirts`): a seeded forest fills what the camera can see past the map
   (grass, the river carried on outward, trees with shadows and tufts, undergrowth). Not walkable and not part of the
   camera bounds; `clear` strips beyond each edge (wider on the river sides) keep trees from hiding players.
-- Builds pack the loose images into sheets (`scripts/packs.ts`: one per character item, one per top folder) and
+- Builds pack the loose images into sheets (`scripts/packs.ts`: one per character item, one per mob folder, one per top folder) and
   cut them back into per-path textures at load (`src/assets/packs.ts`); dev loads loose files. Add art as loose
   images only.
 - Characters are paper dolls composited per outfit (`characters/doll.ts`), saved per account (`PUT /outfit`).
@@ -288,12 +288,19 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   props; dropped far away), A* is capped (a long click walks to the closest tile found). Outskirts: `SlumsOutskirts` in
   `world/outskirts.ts` (dirt, the canal carried on from the map's first/last rows, a concrete road out of the gate, dead
   trees thick on the edges and sparse junk/shanties/poles/wrecks, one per 4 × 4 cell). Minimap: the Slums' colours,
-  ridge lighter, basin darker. Mobs (`map.mobZones`, only `active` zones load art: Tin Can Alley so far; the boss and
-  other zones are data only), shared by everyone: the bot runs them (`web/town-mobs.ts` MobRoom, tested; TownOptions
-  `mobs`, a quarter-second clock): one per spawn (id `<zone>:<index>`, a seeded level in the zone's range), hopping ≤ 3
-  tiles round it on its zone's level (not ramps, blocked tiles or the `safeZone`); arrivals get `mobs` (a snapshot,
+  ridge lighter, basin darker. Mobs (`map.mobZones`, all six `active`: Tin Can, Bottle Caps, Tire Roller, Plastic Bag
+  Spook, Wire Tangle, Scrap Crab; only active zones load art; the boss (Scrapheap Golem) is data and art only, not drawn
+  yet). Art: manifest `mobs.<id>` (file with {variant}/{anim}/{dir}, `variants` with their own cell/anchor where they
+  differ, the golem's `enraged` set and `fx` with `layer` ground/front; `assets/mob-art.ts`; built from the art folder's
+  _sheets.csv, PNGs only); rules: `mobs/mobs.json` (manifest `mobs.data`, read by the bot too: 0-based attack frame,
+  shadow size, `floats`, variants, the golem's toss/glare frames; a bot test keeps its variants in step with the
+  manifest's and checks every sheet exists). Shared by everyone: the bot runs them (`web/town-mobs.ts` MobRoom, tested; TownOptions
+  `mobs`, a quarter-second clock): one per spawn (id `<zone>:<index>`, a seeded level in the zone's range and a seeded
+  `variant` from mobs.json, sent in `mobs`; the game picks the same until it hears), hopping ≤ 3
+  tiles round it on its zone's level and in its `rect` (not ramps, blocked tiles or the `safeZone`); arrivals get `mobs` (a snapshot,
   hops under way included), each hop goes to the room as `mob-move`. The game (`world/mobs.ts`) walks them at the same
-  pace (wandering on its own only when no server answers), facing their way (SE/NE/SW/NW sheets); a click shows "Tin Can Lv 1-2" over
+  pace (wandering on its own only when no server answers), facing their way on the four diagonal sheets (SE for S and E,
+  SW for W, NE for N; no mirroring), on a shadow sized per kind (the bag floats over its own); a click shows "Tin Can Lv 1-2" over
   it and targets it; Z (or the middle mouse button) targets the nearest within 12 tiles (again: the next), a gold ring under it and an info bar at
   the top (`ui/mob-target.ts`: name, level, HP, zone); Escape or 20 tiles away lets go. Battle (battle maps = maps with
   mobs): characters with a class use their class's combat poses there (`characters/battle-art.ts`: every pose composited
