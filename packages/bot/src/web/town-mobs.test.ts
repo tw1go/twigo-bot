@@ -7,7 +7,7 @@ import { WebSocket } from 'ws';
 import { type Hitter, type TownServerMessage, baseCooldown, baseStats, derivedStats, hitDamage, levelGap, mobRules, mobStartSpots, mobStats, skillCooldown, skillPct } from '@mikazuki/shared';
 import { type SavedProgress, freshProgress, killXp } from './progress.js';
 import { loadGear, loadStats } from './stats-data.js';
-import { type AttackResult, type MobEvent, MobRoom, facingTo, loadMobKinds, loadMobMap, packSize } from './town-mobs.js';
+import { type AttackResult, type MobEvent, MobRoom, facingTo, loadMobKinds, loadMobMap, loadSkillShapes, packSize } from './town-mobs.js';
 import { attachTown } from './town.js';
 
 // The Slums' mobs on the real map (the game's maps/slums.json): where they stand, how they hop, what newcomers see.
@@ -706,4 +706,28 @@ test('the town passes on a movement skill only from its unlock level, and only t
   assert.deepEqual(seen.map((m) => m.t === 'move' && [m.id, m.move]), [[idOf(mara), 'dash']]);
   for (const c of [ann, mara, bob]) c.ws.close();
   await new Promise((ok) => server.close(ok));
+});
+
+test('Boiling Splash leaves a burning puddle: 3 ticks 300 ms apart from 700 ms, each hitting every mob within a tile of where it landed for a share of the hit; a tick that kills is a kill', () => {
+  const room = new MobRoom(map, () => 0.5, {}, loadSkillShapes(), {});
+  const now = 1000;
+  const live = room.snapshot(now).filter((m) => m.id.startsWith('bag-flats:') && !m.mini);
+  // A Plastic Bag Spook (108 HP: a Lv 3 Pot lid's splash leaves it standing) with no other mob within 3 tiles of it.
+  const bag = live.find((m) => !live.some((o) => o !== m && Math.max(Math.abs(o.col - m.col), Math.abs(o.row - m.row)) <= 3))!;
+  const r = room.attack('mara', [bag.col + 1, bag.row], { cls: 'potlid', level: 3 }, bag.id, now, 5, 'Mara', 'm-mara');
+  assert.ok(r.ok);
+  const first = r.hits[0];
+  assert.ok(!first.dead && first.damage > 0, JSON.stringify(first));
+  assert.deepEqual(room.burnTick(now + 699).ticks, []);
+  const ticks = [700, 1000, 1300].map((dt) => room.burnTick(now + dt));
+  for (const t of ticks) {
+    assert.equal(t.ticks.length, 1);
+    assert.equal(t.ticks[0].by, 'mara');
+    assert.deepEqual(t.ticks[0].hits.map((h) => h.id), [bag.id], 'only what stands in it');
+    assert.ok(t.ticks[0].hits[0].damage > 0 && t.ticks[0].hits[0].damage < first.damage, 'a share of the hit');
+  }
+  // The third finishes it (69 + 3 × about 14 > 108): a kill for whoever cast the puddle.
+  assert.deepEqual([ticks[0].kills, ticks[1].kills], [[], []]);
+  assert.deepEqual(ticks[2].kills.map((k) => [k.id, k.to]), [[bag.id, ['m-mara']]]);
+  assert.deepEqual(room.burnTick(now + 5000).ticks, [], 'three, then gone');
 });

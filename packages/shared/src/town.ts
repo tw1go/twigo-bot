@@ -367,6 +367,8 @@ export type TownServerMessage =
   /** Your level, XP and points changed (XP from a kill: `gained`; a level-up; dev's ?xp= / ?level=). */
   | { t: 'progress'; progress: CharacterProgress; gained?: number }
   /** Your quests moved (a kill counted toward one: yours, or your party's nearby): the active ones with their counts. */
+  /** A burning puddle's tick (Boiling Splash): every mob standing in it hit, orange; `by`: who cast it. */
+  | { t: 'mob-burn'; by: string; hits: { id: string; damage: number; crit: boolean; hp: number; dead: boolean; blocked?: boolean; miss?: boolean }[] }
   | { t: 'quests'; active: QuestProgress[] }
   /** A kill that counts toward quests (the dev town, which keeps no quests: the page's pretend store counts it). */
   | { t: 'quest-kill'; kind: string; mini: boolean; level?: number }

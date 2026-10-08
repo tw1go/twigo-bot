@@ -5,7 +5,7 @@ import type { Duplex } from 'node:stream';
 import { WebSocket, WebSocketServer } from 'ws';
 import { Arena, type ArenaBets, type ArenaSeat, arenaLine } from './town-arena.js';
 import type { LevelGain } from './progress.js';
-import type { Attacker, MobRoom } from './town-mobs.js';
+import type { Attacker, MobKill, MobRoom } from './town-mobs.js';
 import { PARTY_MAX, type PartyChange, Parties } from './town-party.js';
 import { type VitalMax, Vitals, shown } from './town-vitals.js';
 import { loadItemData, loadLeveling, loadStats } from './stats-data.js';
@@ -441,6 +441,20 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     const m: TownServerMessage = { t: 'loot-gone', ids };
     for (const o of conns.values()) if (o.room === room) send(o, m);
   };
+  /** What a hit (or a burn's tick) killed: its XP for whoever earns it (the killer; the golem's for every member who did
+   *  enough, even after a reload mid-fight; a mini boss: everyone who did their share and their party nearby), if still
+   *  here, its loot, and quest credit for them and their party nearby. */
+  const killed = (room: string, kills: MobKill[]) => {
+    for (const k of kills) {
+      const credited = k.mini ? withParty(k.to, room) : k.to;
+      for (const user of credited) {
+        const o = conns.get(user);
+        if (o && opts.progress) progressed(o, opts.progress.kill(o.userId, k));
+      }
+      dropFor(room, { ...k, to: credited });
+      questKill(withParty(credited, room), { kind: k.kind, mini: !!k.mini, level: k.level, at: k.at }, room);
+    }
+  };
   /** Members and their party members nearby (in the same room), once each. */
   const withParty = (members: string[], room: string): string[] =>
     [...new Set(members.flatMap((u) => [u, ...(parties.of(u)?.members ?? []).filter((m) => conns.get(m)?.room === room)]))];
@@ -644,19 +658,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
           others(c, e);
           send(c, e);
         }
-        // What it killed: its XP for whoever earns it (the killer; the golem's for every member who did enough, even
-        // after a reload mid-fight), if still here.
-        for (const k of r.kills) {
-          // A mini boss: everyone who did their share and their party nearby get its XP and their own loot.
-          const credited = k.mini ? withParty(k.to, c.room) : k.to;
-          for (const user of credited) {
-            const o = conns.get(user);
-            if (o && opts.progress) progressed(o, opts.progress.kill(o.userId, k));
-          }
-          dropFor(c.room, { ...k, to: credited }); // and its loot
-          // It counts toward quests for them and their party nearby (the killer's, a normal mob's).
-          questKill(withParty(credited, c.room), { kind: k.kind, mini: !!k.mini, level: k.level, at: k.at }, c.room);
-        }
+        killed(c.room, r.kills);
         return;
       }
       case 'pick':
@@ -1059,8 +1061,15 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         const up = here.filter((o) => !o.player.out);
         const where = new Map(up.map((o) => [o.player.id, [o.player.col, o.player.row] as [number, number]]));
         const guards = new Map(up.flatMap((o) => (o.guard ? [[o.player.id, o.guard] as const] : [])));
-        const events = mobs.tick(now, where, guards);
+        const events: TownServerMessage[] = mobs.tick(now, where, guards);
         lootGone(room, loots.get(room)?.tick(now) ?? []); // loot that lay there too long
+        // Burning puddles' ticks (their hits to the room, then what they killed and what that set off).
+        const burn = mobs.burnTick(now);
+        for (const t of burn.ticks) events.push({ t: 'mob-burn', by: t.by, hits: t.hits.map(({ slow: _s, ...h }) => h) });
+        if (burn.kills.length) {
+          events.push(...mobs.flush());
+          killed(room, burn.kills);
+        }
         if (!events.length) continue;
         const listeners = here.filter((o) => o.ws.readyState === WebSocket.OPEN);
         for (const e of events) {

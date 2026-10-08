@@ -168,6 +168,13 @@ export function loadSkillShapes(): SkillShapes {
 }
 
 /** A skill effect string (skill-hits.json effects): slow:F:MS or root:MS. */
+/** A skill's burning puddle (skill-hits.json effects: burn:N:EVERY:SHARE:R:FIRST), or null. */
+function parseBurn(e: string | null | undefined): { ticks: number; every: number; share: number; radius: number; first: number } | null {
+  const [kind, n, every, share, r, first] = (e ?? '').split(':');
+  if (kind !== 'burn') return null;
+  return { ticks: Number(n) || 3, every: Number(every) || 300, share: Number(share) || 0.2, radius: Number(r) || 1, first: Number(first) || 700 };
+}
+
 function parseEffect(e: string | null | undefined): { factor: number; ms: number } | null {
   if (!e) return null;
   const [kind, a, b] = e.split(':');
@@ -850,6 +857,9 @@ export class MobRoom {
 
   private swings = new Map<string, number>();
 
+  /** Burning puddles (Boiling Splash): where, whose (for credit), how hard, and their ticks to come. */
+  private burns: { at: [number, number]; player: string; name: string; member: string; by: Hitter & { blinded?: boolean }; pct: number; radius: number; left: number; next: number; every: number }[] = [];
+
   /** A player's attack on a mob (or the golem): in range for their class (from where they stand; to the golem's body's
    *  edge), not too fast, the mob alive. `who`: their class, level, points, gear and skill levels (or their class alone);
    *  blinded, every hit misses. `name`: theirs, for the golem's line when it falls; `member`: who they are across reloads
@@ -883,10 +893,13 @@ export class MobRoom {
     const by = { ...this.fighter(a), blinded: a.blinded };
     const pct = skillPct(this.fightData.stats, skillTier(skill), skillLevel);
     const kills: MobKill[] = [];
+    // A burning puddle where it lands (its ticks: burnTick), on the target's tile.
+    const burn = parseBurn(cls ? this.shapes.effects?.[cls]?.[skill] : null);
+    if (burn) this.burns.push({ at: [Math.round(mc), Math.round(mr)], player, name, member, by: { ...by }, pct: pct * burn.share, radius: burn.radius, left: burn.ticks, next: now + burn.first, every: burn.every });
     const hits = this.reached(m ?? 'golem', [mc, mr], from, (cls && this.shapes.shapes[cls]?.[skill]) || 'single', now).map((x) => {
       if (x === 'golem') return this.hitGolem(player, name, member, by, pct, now, kills); // (no slowing it)
       const hit = this.damage(x, player, by, pct, now, member);
-      if (hit.dead) kills.push({ id: x.id, kind: x.zone.mob, at: [x.col, x.row], level: x.stats.level, xp: x.stats.xp, to: x.mini ? this.miniEarners(x, member) : [member], ...(x.mini ? { mini: x.mini.id } : {}) });
+      if (hit.dead) kills.push(this.killOf(x, member));
       if (effect && !hit.dead && !hit.blocked && !hit.miss) {
         x.slow = { factor: effect.factor, until: now + effect.ms };
         hit.slow = effect;
@@ -894,6 +907,36 @@ export class MobRoom {
       return hit;
     });
     return { ok: true, hits, kills };
+  }
+
+  /** A mob that just died, as a kill: its XP for its killer (a mini boss: everyone who did their share). */
+  private killOf(x: Mob, member: string): MobKill {
+    return { id: x.id, kind: x.zone.mob, at: [x.col, x.row], level: x.stats.level, xp: x.stats.xp, to: x.mini ? this.miniEarners(x, member) : [member], ...(x.mini ? { mini: x.mini.id } : {}) };
+  }
+
+  /** The burning puddles' ticks due by `now`: each hits every mob standing within its radius (the golem by its body's
+   *  edge) for its share of the cast's damage, credited to whoever cast it. What each tick hit (by caster, for the room)
+   *  and what it killed. */
+  burnTick(now: number): { ticks: { by: string; hits: MobHit[] }[]; kills: MobKill[] } {
+    const ticks: { by: string; hits: MobHit[] }[] = [];
+    const kills: MobKill[] = [];
+    for (const b of this.burns) {
+      while (b.left > 0 && now >= b.next) {
+        b.left--;
+        b.next += b.every;
+        const hits: MobHit[] = [];
+        for (const x of this.mobs) {
+          if (x.respawnAt || cheb(this.at(x, now), b.at) > b.radius) continue;
+          const hit = this.damage(x, b.player, b.by, b.pct, now, b.member);
+          if (hit.dead) kills.push(this.killOf(x, b.member));
+          hits.push(hit);
+        }
+        if (this.golem?.hittable && this.golem.edge(b.at, now) <= b.radius) hits.push(this.hitGolem(b.player, b.name, b.member, b.by, b.pct, now, kills));
+        if (hits.length) ticks.push({ by: b.player, hits });
+      }
+    }
+    this.burns = this.burns.filter((b) => b.left > 0);
+    return { ticks, kills };
   }
 
   /** One hit on a mob (the stats rules' damage, or a miss), none through a shell that's up; it (and its pack) goes after

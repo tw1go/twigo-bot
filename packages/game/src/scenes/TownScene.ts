@@ -1620,6 +1620,11 @@ export class TownScene extends Phaser.Scene {
         } else landAll();
         return;
       }
+      // A burning puddle's tick (Boiling Splash): each mob in it, an orange number.
+      if (m.t === 'mob-burn') {
+        for (const h of m.hits) this.mobs?.hit(h.id, h.damage, h.crit, h.hp, h.dead, undefined, h.blocked, h.miss, true);
+        return;
+      }
       if (m.t === 'mob-attack') return this.mobs?.strike(m.id, m.target, m.dir, m.slow, m.hit);
       // HP (and yours with MP): the HUD's bars, the bar over your head and a hurt party member's, the party panel.
       if (m.t === 'vitals') {

@@ -67,6 +67,9 @@ const FIGHT_MS = 8000;
 /** A mob's hurt sound at most this often (an area skill's many hits stay one). */
 const HURT_SOUND_MS = 150;
 
+/** A burn's tick on a mob (Boiling Splash's puddle): its number in orange. */
+const BURN_COLOUR = '#FB923C';
+
 /** A mob's name colours by level gap (Mobs.tone). */
 export const TONE = { grey: '#9CA3AF', white: '#FFFFFF', red: '#F87171' } as const;
 
@@ -565,7 +568,7 @@ export class Mobs {
 
   /** A hit (the server's word): the hit pose (or its death), a damage number ("Blocked" off a shell, "Miss" for a miss),
    *  the HP bar. */
-  hit(id: string, damage: number, crit: boolean, hp: number, dead: boolean, slow?: { factor: number; ms: number }, blocked = false, miss = false): void {
+  hit(id: string, damage: number, crit: boolean, hp: number, dead: boolean, slow?: { factor: number; ms: number }, blocked = false, miss = false, burn = false): void {
     const m = this.byId.get(id);
     if (!m || m.dead) return;
     m.hp = hp;
@@ -578,7 +581,7 @@ export class Mobs {
     }
     if (blocked) m.shield?.setScale(1.6); // the shield bounces as it takes the hit
     if (slow && !dead) this.chill(m, slow);
-    if (!m.asleep) this.number(m, blocked ? 'Blocked' : miss ? 'Miss' : String(damage), crit);
+    if (!m.asleep) this.number(m, blocked ? 'Blocked' : miss ? 'Miss' : String(damage), crit, burn && !blocked && !miss ? BURN_COLOUR : undefined);
     if (dead) this.kill(m);
     else if (!blocked && !miss && !(m.radius && m.pose)) this.pose(m, 'hit'); // (a hit never cuts the golem's attack short)
     this.drawBar(m);
@@ -747,14 +750,14 @@ export class Mobs {
 
   /** A number rising over it (gold and bigger for a crit; "Blocked" and "Miss" smaller, pale); over the golem, spread across its
    *  shoulders so many hitters' numbers don't pile up. */
-  private number(m: Mob, text: string, crit: boolean): void {
+  private number(m: Mob, text: string, crit: boolean, colour?: string): void {
     const word = !/^\d+$/.test(text);
     const x = m.sprite.x + (m.radius ? Phaser.Math.Between(-24, 24) * (m.data?.scale ?? 1) : 0);
     const t = this.scene.add
       .text(Math.round(x), Math.round(this.top(m) - 4), text, {
         fontFamily: '"Mk Numbers", "Pixelify Sans", monospace',
         fontSize: `${crit ? 16 : word ? 10 : 12}px`,
-        color: crit ? '#FCDA4A' : word ? '#CBD5E1' : '#FFFFFF',
+        color: colour ?? (crit ? '#FCDA4A' : word ? '#CBD5E1' : '#FFFFFF'),
         stroke: '#1E1B3A',
         strokeThickness: 3,
         resolution: Math.max(2, this.zoom * 2),
