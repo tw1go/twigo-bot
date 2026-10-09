@@ -1552,12 +1552,13 @@ export class TownScene extends Phaser.Scene {
     const target = this.target;
     if (target) {
       chat.onName = ({ id, name }, anchor) => {
-        const p = this.others.players.find((o) => (id ? o.id === id : o.nickname === name));
+        // By the line's town id, else by name: ids change with every reload or gate, so an older line's may be stale.
+        const p = (id ? this.others.players.find((o) => o.id === id) : undefined) ?? this.others.players.find((o) => o.nickname === name);
         if (p) {
           this.mobs?.setTarget(null);
           target.selectAt(p, anchor);
         }
-        else chat.notice(`${name} isn't in town right now.`);
+        else chat.notice(`${name} isn't here right now.`); // (gone, or in another area: chat reaches every area)
       };
     }
     const feed = new SystemFeed();
