@@ -1,5 +1,5 @@
 import { keyLabel, matches, onKeybinds } from './keybinds';
-import { type Item, type TownBagActionResponse, type TownBagItem, type TownInventoryResponse, bagSlots, isGearDef, trainingSellPrice } from '@mikazuki/shared';
+import { type Item, type TownBagActionResponse, type TownBagItem, type TownInventoryResponse, bagSlots, isGearDef, sellPrice } from '@mikazuki/shared';
 import { hotbarDragItem, hotbarItem } from './hotbar';
 import { playSound } from '../audio/sound';
 import { fakeLogin, fakeName } from '../session';
@@ -11,7 +11,7 @@ import { adventure, anyDef, cantWear, itemData, onAdventure } from '../net/adven
 import { chatItem, itemKeys, itemPicture, itemTipFor, nameOf, rarityOf, wearDiff, wornFor } from './item-tip';
 import { potionCooldownKey } from './hotbar';
 import { showRename } from './rename';
-import { type ForgePopup, confirmCombine, confirmDisassemble, confirmSell, forgeFromBag, mountForge } from './forge';
+import { type ForgePopup, confirmCombine, confirmDisassemble, confirmDisassembleMany, confirmSell, confirmSellMany, forgeFromBag, mountForge } from './forge';
 import { fragmentsPerWhetstone } from '@mikazuki/shared';
 import { inTrade, tradeBlocked, tradeDrag, tradePut, trading } from './trade';
 
@@ -98,6 +98,8 @@ export class Inventory {
   private equipment: EquipmentPanel | null = null;
   /** The combat bag's picked slot (its item's uid). */
   private pickedUid: string | null = null;
+  /** The combat bag's items picked together (Select, or Ctrl/⌘/Shift-click): taken apart or sold at once. */
+  private readonly pickedMany = new Set<string>();
   /** The combat bag's hover tooltip. */
   private readonly tip = el('div', 'eq-tip iv-tip');
   /** Shift held over gear: what you wear in its place, beside its tooltip. */
@@ -154,6 +156,7 @@ export class Inventory {
       this.multi = !this.multi;
       this.multiButton.setAttribute('aria-pressed', String(this.multi));
       if (!this.multi && this.picked.length > 1) this.picked = [];
+      if (!this.multi) this.pickedMany.clear();
       this.message = null;
       this.render();
     });
@@ -168,6 +171,7 @@ export class Inventory {
       b.addEventListener('click', () => {
         this.tab = t;
         this.picked = [];
+        this.pickedMany.clear();
         this.message = null;
         this.render();
       });
@@ -362,6 +366,7 @@ export class Inventory {
     this.slots.textContent = `${s.bag.length}/${slots}`;
     this.slots.classList.toggle('iv-full', s.bag.length >= slots);
     if (this.pickedUid && !s.bag.some((b) => b.uid === this.pickedUid)) this.pickedUid = null;
+    for (const uid of [...this.pickedMany]) if (!s.bag.some((b) => b.uid === uid)) this.pickedMany.delete(uid);
     const cells: HTMLElement[] = [];
     for (let i = 0; i < Math.max(slots, s.bag.length); i++) {
       const it = s.bag[i];
@@ -374,7 +379,7 @@ export class Inventory {
       const blocked = trading() ? tradeBlocked(it) : null;
       // Gear you can't wear (another class's, or above what your stats meet): a red slot.
       const unusable = isGearDef(def) && !!cantWear({ ...def, level: it.level });
-      const cell = el('button', `iv-cell iv-item${it.uid === this.pickedUid ? ' iv-picked' : ''}${it.broken ? ' iv-broken' : ''}${unusable ? ' iv-unusable' : ''}${blocked ? ' iv-no-trade' : ''}${trading() && inTrade(it.uid) ? ' iv-in-trade' : ''}`);
+      const cell = el('button', `iv-cell iv-item${it.uid === this.pickedUid || this.pickedMany.has(it.uid) ? ' iv-picked' : ''}${it.broken ? ' iv-broken' : ''}${unusable ? ' iv-unusable' : ''}${blocked ? ' iv-no-trade' : ''}${trading() && inTrade(it.uid) ? ' iv-in-trade' : ''}`);
       if (blocked) cell.title = blocked;
       cell.style.setProperty('--rarity', RARITY_COLOUR[rarityOf(it)]);
       cell.setAttribute('aria-label', nameOf(it));
@@ -403,6 +408,14 @@ export class Inventory {
       cell.addEventListener('click', (e) => {
         // Alt+click: shown in the chat (ui/chat.ts).
         if (e.altKey) return chatItem(it);
+        // Several at once (Select, or Ctrl/⌘/Shift-click): picked or let go, to take apart or sell together.
+        if (!trading() && (this.multi || e.ctrlKey || e.metaKey || e.shiftKey)) {
+          if (this.pickedUid && this.pickedUid !== it.uid) this.pickedMany.add(this.pickedUid);
+          this.pickedUid = null;
+          if (!this.pickedMany.delete(it.uid)) this.pickedMany.add(it.uid);
+          this.message = null;
+          return this.render();
+        }
         // Trading: it goes into the trade.
         if (tradePut(it.uid)) return;
         // A whetstone, Repair Kit or agimat opens the forge popup; gear goes into it while it's open.
@@ -421,6 +434,7 @@ export class Inventory {
     this.grid.style.setProperty('--cols', String(COLS));
     this.grid.replaceChildren(...cells);
     if (!s.bag.length) this.grid.append(el('div', 'iv-empty-note', 'Nothing in your combat bag. Loot from the Slums lands here; what you wear is in Equipment.'));
+    if (this.pickedMany.size > 1 || (this.multi && !this.pickedUid)) return this.renderCombatMany(s.bag);
     const it = s.bag.find((b) => b.uid === this.pickedUid);
     if (!it) return void this.detail.replaceChildren(this.note() ?? el('div', 'iv-hint', 'Pick an item for what it is. Double-click gear to wear it; drag HP and MP Potions onto your hotbar.'));
     const def = anyDef(it.defId);
@@ -432,13 +446,17 @@ export class Inventory {
       const why = this.cantWearWhy(it);
       if (why) Object.assign(wear, { disabled: true, title: why });
       row.append(wear);
-      const price = def.training ? this.trainingPrice() : null;
+      const price = this.priceOf(it);
       if (!def.training) row.append(this.action('Disassemble', 'iv-sell', () => void this.disassemble(it, null)));
       else if (price !== null) row.append(this.action(`Sell · ${price} Kusing`, 'iv-sell', () => void this.sell(it, null, price)));
     } else if (def?.kind === 'potion') parts.push(el('div', 'iv-about', 'Drag it onto your hotbar (the - = ~ slots) and use it in the Slums.'));
     else if (def?.forge === 'whetstone') row.append(this.action('Enhance…', 'iv-flex', () => void this.openForge(it)));
     else if (def?.forge === 'repairKit') row.append(this.action('Repair…', 'iv-flex', () => void this.openForge(it)));
-    else if (def?.kind === 'agimat') row.append(this.action('Embed…', 'iv-flex', () => void this.openForge(it)));
+    else if (def?.kind === 'agimat') {
+      row.append(this.action('Embed…', 'iv-flex', () => void this.openForge(it)));
+      const price = this.priceOf(it);
+      if (price !== null) row.append(this.action(`Sell · ${price.toLocaleString()} Kusing`, 'iv-sell', () => void this.sell(it, null, price)));
+    }
     else if (def?.forge === 'fragment') row.append(this.action('Combine', 'iv-flex', () => void this.combine(it, null)));
     if (row.childElementCount) parts.push(row);
     const note = this.note();
@@ -467,7 +485,7 @@ export class Inventory {
       if (this.cantWearWhy(it)) off.add(items.length);
       items.push(['Wear', () => void this.equipment?.wear(it.uid)]);
       // Training gear sells for Kusing (it can't be taken apart); the rest is taken apart.
-      const price = def.training ? this.trainingPrice() : null;
+      const price = this.priceOf(it);
       if (def.training && price !== null) items.push([`Sell (${price} Kusing)`, () => void this.sell(it, cell, price)]);
       else if (def.training) {
         off.add(items.length);
@@ -479,6 +497,8 @@ export class Inventory {
       items.push([`Combine (${per} → 1 whetstone)`, () => void this.combine(it, cell)]);
     } else if (def && (def.kind === 'agimat' || def.forge)) {
       items.push([def.kind === 'agimat' ? 'Embed…' : def.forge === 'repairKit' ? 'Repair…' : 'Enhance…', () => void this.openForge(it)]);
+      const price = def.kind === 'agimat' ? this.priceOf(it) : null;
+      if (price !== null) items.push([`Sell (${price.toLocaleString()} Kusing)`, () => void this.sell(it, cell, price)]);
     }
     // Every item: into the chat (as Alt/Option+click does).
     items.push(['Show in chat', () => chatItem(it)]);
@@ -512,10 +532,74 @@ export class Inventory {
     this.render();
   }
 
-  /** What training gear sells for (stats.json trainingGear), or null. */
-  private trainingPrice(): number | null {
+  /** What an item sells for in Kusing (training gear, agimats: the whole stack), or null. */
+  private priceOf(it: Item): number | null {
     const D = itemData();
-    return D ? trainingSellPrice(D.stats) : null;
+    return D ? sellPrice(D, it) : null;
+  }
+
+  /** Several combat items picked (or Select on with none yet): how many, what can be taken apart and what sells (and
+   *  for how much), Disassemble N / Sell N, Clear; Select all gear while nothing is picked. */
+  private renderCombatMany(bag: Item[]): void {
+    const picked = bag.filter((b) => this.pickedMany.has(b.uid));
+    const canApart = (b: Item) => {
+      const d = anyDef(b.defId);
+      return isGearDef(d) && !d.training;
+    };
+    const apart = picked.filter(canApart);
+    const sold = picked.flatMap((b) => {
+      const price = this.priceOf(b);
+      return price === null ? [] : [{ b, price }];
+    });
+    const total = sold.reduce((n, x) => n + x.price, 0);
+    const row = el('div', 'iv-actions');
+    const parts: HTMLElement[] = [];
+    if (!picked.length) {
+      parts.push(el('div', 'iv-hint', 'Click items to select them: gear to take apart, training gear and agimats to sell.'));
+      // (Gear only: agimats are picked one by one.)
+      const all = bag.filter((b) => isGearDef(anyDef(b.defId)) && (canApart(b) || this.priceOf(b) !== null));
+      if (all.length) {
+        row.append(this.action(`Select all gear (${all.length})`, 'iv-clear', () => {
+          for (const b of all) this.pickedMany.add(b.uid);
+          this.message = null;
+          this.render();
+        }));
+      }
+    } else {
+      parts.push(el('div', 'iv-name', `${picked.length} item${picked.length === 1 ? '' : 's'} selected`));
+      const kept = picked.length - apart.length - sold.length;
+      const meta = [apart.length ? `${apart.length} to take apart` : '', sold.length ? `${sold.length} to sell for ${total.toLocaleString()} Kusing` : '', kept ? `${kept} can't be taken apart or sold` : ''].filter(Boolean).join(' · ');
+      parts.push(el('div', 'iv-meta', meta));
+      if (apart.length) row.append(this.action(`Disassemble ${apart.length}`, 'iv-sell', () => void this.disassembleMany(apart)));
+      if (sold.length) row.append(this.action(`Sell ${sold.length} · ${total.toLocaleString()} Kusing`, 'iv-sell', () => void this.sellMany(sold.map((x) => x.b), total)));
+      row.append(this.action('Clear', 'iv-clear', () => ((this.pickedMany.clear(), (this.message = null)), this.render())));
+    }
+    if (row.childElementCount) parts.push(row);
+    const note = this.note();
+    if (note) parts.push(note);
+    this.detail.replaceChildren(...parts);
+  }
+
+  /** Several pieces taken apart at once, once they've said yes. */
+  private async disassembleMany(items: Item[]): Promise<void> {
+    if (this.busy || !(await confirmDisassembleMany(items))) return;
+    this.busy = true;
+    const r = await forgeFromBag({ action: 'disassemble-many', items: items.map((i) => i.uid) }, this.grid);
+    this.busy = false;
+    if (r) this.message = { text: r.message, ok: r.ok };
+    if (r?.ok) for (const i of items) this.pickedMany.delete(i.uid);
+    this.render();
+  }
+
+  /** Training gear and agimats sold at once, once they've said yes. */
+  private async sellMany(items: Item[], total: number): Promise<void> {
+    if (this.busy || !(await confirmSellMany(items, total))) return;
+    this.busy = true;
+    const r = await forgeFromBag({ action: 'sell-many', items: items.map((i) => i.uid) }, this.grid);
+    this.busy = false;
+    if (r) this.message = { text: r.message, ok: r.ok };
+    if (r?.ok) for (const i of items) this.pickedMany.delete(i.uid);
+    this.render();
   }
 
   /** Training gear sold for Kusing, once they've said yes. */

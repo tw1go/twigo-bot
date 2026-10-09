@@ -21,7 +21,10 @@ export type TownForgeAction =
   | { action: 'disassemble'; item: string }
   | { action: 'combine'; item: string }
   /** Training gear only: sold from the bag for Kusing (stats.json trainingGear.sellKusing). */
-  | { action: 'sell'; item: string };
+  | { action: 'sell'; item: string }
+  /** Several at once (the bag's multi-select): every one or none. */
+  | { action: 'disassemble-many'; items: string[] }
+  | { action: 'sell-many'; items: string[] };
 
 /** What happened: an enhance's success, fail or break, a repair, an embed, a disassembly or a combine. */
 export type ForgeOutcome = 'success' | 'fail' | 'break' | 'repaired' | 'embedded' | 'disassembled' | 'combined' | 'sold';
@@ -47,6 +50,24 @@ export type ForgeHolder = Pick<AdventureState, 'equipped' | 'bag'> & { kusing?: 
 export function trainingSellPrice(stats: StatsData): number | null {
   const T = (stats as StatsData & { trainingGear?: { noSell?: boolean; sellKusing?: number } }).trainingGear;
   return T && !T.noSell && typeof T.sellKusing === 'number' && T.sellKusing > 0 ? T.sellKusing : null;
+}
+
+/** What an agimat sells for, each (stats.json agimats.sellKusing, a repo addition: perLevel × its level, × rareTimes for
+ *  a rare stat), or null: they don't sell. */
+export function agimatSellPrice(stats: StatsData, item: Pick<Item, 'level' | 'stat'>): number | null {
+  const A = (stats as StatsData & { agimats?: { sellKusing?: { perLevel?: number; rareTimes?: number } } }).agimats?.sellKusing;
+  if (!A || typeof A.perLevel !== 'number' || A.perLevel <= 0) return null;
+  return Math.round(A.perLevel * item.level * (item.stat && rareAgimat(stats, item.stat) ? (A.rareTimes ?? 1) : 1));
+}
+
+/** What an item in the combat bag sells for in Kusing, the whole of it (a stack: each × how many): training gear and
+ *  agimats only; null for anything else. */
+export function sellPrice(data: ItemData, item: Item): number | null {
+  const def = data.defs.get(item.defId);
+  if (isGearDef(def)) return def.training ? trainingSellPrice(data.stats) : null;
+  if (def?.kind !== 'agimat') return null;
+  const each = agimatSellPrice(data.stats, item);
+  return each === null ? null : each * item.count;
 }
 
 /** An item by uid, worn (its place) or in the combat bag (its index). */

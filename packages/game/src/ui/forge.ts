@@ -565,7 +565,7 @@ export function confirmSell(item: Item, price: number): Promise<boolean> {
     const box = el('div', 'fg-confirm');
     box.setAttribute('role', 'alertdialog');
     const title = el('div', 'fg-confirm-title');
-    title.append('Sell ', Object.assign(el('b', undefined, nameOf(item)), { style: `color: ${RARITY_TEXT[rarityOf(item)]}` }), ` for ${price} Kusing?`);
+    title.append('Sell ', item.count > 1 ? `${item.count}× ` : '', Object.assign(el('b', undefined, nameOf({ ...item, count: 1 })), { style: `color: ${RARITY_TEXT[rarityOf(item)]}` }), ` for ${price.toLocaleString()} Kusing?`);
     const row = el('div', 'fg-actions');
     const yes = el('button', 'fg-go fg-ready', 'Sell');
     const no = el('button', 'fg-go', 'Cancel');
@@ -585,11 +585,85 @@ export function confirmSell(item: Item, price: number): Promise<boolean> {
     back.addEventListener('click', (e) => e.target === back && done(false));
     document.addEventListener('keydown', key, true);
     row.append(yes, no);
-    box.append(title, el('div', 'fg-warn', 'Training gear is bound: once sold it’s gone.'), row);
+    box.append(title, el('div', 'fg-warn', isGearDef(anyDef(item.defId)) ? 'Training gear is bound: once sold it’s gone.' : 'Once sold it’s gone.'), row);
     back.append(box);
     document.body.append(back);
     yes.focus();
   });
+}
+
+/** A confirm box for several items at once (the bag's multi-select): the title, the items by name (in their rarity's
+ *  colour, a scrolling list), what comes back, warnings, and the button. Resolves true if confirmed. */
+function confirmMany(title: string, items: Item[], gives: string[], warn: string[], yesLabel: string, danger: boolean): Promise<boolean> {
+  return new Promise((resolve) => {
+    const back = el('div', 'fg-confirm-back');
+    const box = el('div', 'fg-confirm');
+    box.setAttribute('role', 'alertdialog');
+    const names = el('ul', 'fg-confirm-names');
+    for (const it of items) {
+      const li = el('li', undefined, `${it.count > 1 ? `${it.count}× ` : ''}${nameOf({ ...it, count: 1 })}`);
+      li.style.color = RARITY_TEXT[rarityOf(it)];
+      names.append(li);
+    }
+    const list = el('ul', 'fg-confirm-list');
+    for (const g of gives) list.append(el('li', undefined, g));
+    const row = el('div', 'fg-actions');
+    const yes = el('button', `fg-go fg-ready${danger ? ' fg-danger' : ''}`, yesLabel);
+    const no = el('button', 'fg-go', 'Cancel');
+    const done = (ok: boolean) => {
+      back.remove();
+      document.removeEventListener('keydown', key, true);
+      resolve(ok);
+    };
+    const key = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        done(false);
+      }
+    };
+    yes.addEventListener('click', () => done(true));
+    no.addEventListener('click', () => done(false));
+    back.addEventListener('click', (e) => e.target === back && done(false));
+    document.addEventListener('keydown', key, true);
+    row.append(yes, no);
+    box.append(el('div', 'fg-confirm-title', title), names, ...(gives.length ? [el('div', 'fg-confirm-sub', 'You get back:'), list] : []), ...warn.map((w) => el('div', 'fg-warn', w)), row);
+    back.append(box);
+    document.body.append(back);
+    yes.focus();
+  });
+}
+
+/** Taking several pieces apart: their fragments added up by kind, how many agimats come back (each rolled, locked to
+ *  its piece's slot), and what's lost. */
+export function confirmDisassembleMany(items: Item[]): Promise<boolean> {
+  const D = itemData();
+  if (!D) return Promise.resolve(false);
+  const frags = new Map<string, number>();
+  let agimats = 0;
+  let destroyed = 0;
+  let plussed = 0;
+  for (const it of items) {
+    const y = disassemblyYield(D, it);
+    if (y.fragment) frags.set(y.fragment.name, (frags.get(y.fragment.name) ?? 0) + y.fragments);
+    if (y.agimat) agimats++;
+    destroyed += y.destroys.length;
+    if (it.plus) plussed++;
+  }
+  const gives = [
+    ...[...frags].map(([name, n]) => `${n.toLocaleString()} ${name}${n === 1 ? '' : 's'}`),
+    ...(agimats ? [`${agimats} agimat${agimats === 1 ? '' : 's'} (each rolled, locked to its piece's slot)`] : []),
+  ];
+  const warn = [
+    ...(destroyed ? [`${destroyed} agimat${destroyed === 1 ? '' : 's'} set in them ${destroyed === 1 ? 'is' : 'are'} destroyed.`] : []),
+    ...(plussed ? [`${plussed} of them ${plussed === 1 ? 'has a + that is' : 'have a + that is'} lost (the fragments give back part of it).`] : []),
+    "This can't be undone.",
+  ];
+  return confirmMany(`Take apart ${items.length} item${items.length === 1 ? '' : 's'}?`, items, gives, warn, 'Disassemble', true);
+}
+
+/** Selling several (training gear, agimats) for their Kusing added up. */
+export function confirmSellMany(items: Item[], total: number): Promise<boolean> {
+  return confirmMany(`Sell ${items.length} item${items.length === 1 ? '' : 's'} for ${total.toLocaleString()} Kusing?`, items, [], ['Once sold they’re gone.'], 'Sell', false);
 }
 
 /** The Combine box: the fragments going in (their icon ×how many) » the whetstones they make (icon ×how many), and any
@@ -644,7 +718,7 @@ export function confirmCombine(item: Item): Promise<boolean> {
 }
 
 /** Takes an item apart (asked first) or combines fragments: the server's answer, with the effect and sound. */
-export async function forgeFromBag(a: Extract<TownForgeAction, { action: 'disassemble' | 'combine' | 'sell' }>, at: HTMLElement | null): Promise<TownForgeResponse | null> {
+export async function forgeFromBag(a: Extract<TownForgeAction, { action: 'disassemble' | 'combine' | 'sell' | 'disassemble-many' | 'sell-many' }>, at: HTMLElement | null): Promise<TownForgeResponse | null> {
   const where = at?.getBoundingClientRect(); // (the slot is gone once the bag redraws)
   const r = await forgeAction(a);
   if (!r) {

@@ -1,4 +1,4 @@
-import { trainingSellPrice,
+import { sellPrice,
   type CombatItemDef,
   type ForgeHolder,
   type Item,
@@ -147,18 +147,46 @@ export function combine(data: ItemData, s: ForgeHolder, uid: string, newUid: () 
   return { ok: true, outcome: 'combined', message: `Combined ${n * per} fragments into ${n} ${stone.name}${n === 1 ? '' : 's'}.`, got: [made] };
 }
 
-/** Sells a piece of training gear from the bag for Kusing (stats.json trainingGear.sellKusing); nothing else sells here. */
+/** Sells training gear or an agimat (a whole stack) from the bag for Kusing (stats.json trainingGear.sellKusing,
+ *  agimats.sellKusing: `sellPrice`); nothing else sells here. */
 export function sell(data: ItemData, s: ForgeHolder, uid: string): Result {
   const at = s.bag.findIndex((b) => b.uid === uid);
   const item = s.bag[at];
-  const def = item && data.defs.get(item.defId);
-  const price = trainingSellPrice(data.stats);
   if (!item) return no(Object.values(s.equipped).some((i) => i?.uid === uid) ? 'Take it off first.' : "You don't have that item.");
-  if (!isGearDef(def) || !def.training) return no('Only training gear sells here.');
-  if (price === null) return no("Training gear can't be sold.");
+  const price = sellPrice(data, item);
+  if (price === null) return no('Only training gear and agimats sell here.');
   s.bag.splice(at, 1);
   s.kusing = (s.kusing ?? 0) + price;
-  return { ok: true, outcome: 'sold', message: `Sold ${itemName(data, item)} for ${price} Kusing.` };
+  return { ok: true, outcome: 'sold', message: `Sold ${item.count > 1 ? `${item.count}× ` : ''}${itemName(data, { ...item, count: 1 })} for ${price.toLocaleString('en-US')} Kusing.` };
+}
+
+/** Several items taken apart or sold at once (the bag's multi-select): each by the one-item rules, in turn on a copy;
+ *  every one or none (the first refusal, with the item's name, and nothing changes). One message with all that came back
+ *  (like kinds added up). */
+function many(data: ItemData, s: ForgeHolder, uids: string[], one: (h: ForgeHolder, uid: string) => Result, outcome: 'disassembled' | 'sold'): Result {
+  const list = [...new Set(uids)];
+  if (!list.length) return no('Pick some items first.');
+  const copy: ForgeHolder = { equipped: s.equipped, bag: structuredClone(s.bag), kusing: s.kusing };
+  const got: Item[] = [];
+  for (const uid of list) {
+    const item = copy.bag.find((b) => b.uid === uid);
+    const r = one(copy, uid);
+    if (!r.ok) return no(item ? `${itemName(data, item)}: ${r.message}` : r.message);
+    got.push(...(r.got ?? []));
+  }
+  s.bag.splice(0, s.bag.length, ...copy.bag);
+  const earned = (copy.kusing ?? 0) - (s.kusing ?? 0);
+  s.kusing = copy.kusing;
+  const counts = new Map<string, number>();
+  for (const g of got) {
+    const name = itemName(data, { ...g, count: 1 });
+    counts.set(name, (counts.get(name) ?? 0) + g.count);
+  }
+  const what = [...counts].map(([name, n]) => `${n > 1 ? `${n}× ` : ''}${name}`).join(', ');
+  const n = `${list.length} item${list.length === 1 ? '' : 's'}`;
+  return outcome === 'sold'
+    ? { ok: true, outcome, message: `Sold ${n} for ${earned.toLocaleString('en-US')} Kusing.` }
+    : { ok: true, outcome, message: `Took ${n} apart${what ? `: ${what}` : ''}.`, got };
 }
 
 /** One forge action. */
@@ -176,6 +204,10 @@ export function forge(data: ItemData, s: ForgeHolder, a: TownForgeAction, random
       return combine(data, s, a.item, newUid);
     case 'sell':
       return sell(data, s, a.item);
+    case 'disassemble-many':
+      return many(data, s, a.items, (h, uid) => disassemble(data, h, uid, random, newUid), 'disassembled');
+    case 'sell-many':
+      return many(data, s, a.items, (h, uid) => sell(data, h, uid), 'sold');
   }
 }
 
@@ -183,6 +215,8 @@ export function forge(data: ItemData, s: ForgeHolder, a: TownForgeAction, random
 export function parseForgeAction(body: unknown): TownForgeAction | null {
   const b = body as Record<string, unknown> | null;
   const id = (v: unknown) => typeof v === 'string' && v.length > 0 && v.length <= 64;
+  if (b && (b.action === 'disassemble-many' || b.action === 'sell-many'))
+    return Array.isArray(b.items) && b.items.length > 0 && b.items.length <= 100 && b.items.every(id) ? { action: b.action, items: b.items as string[] } : null;
   if (!b || !id(b.item)) return null;
   const item = b.item as string;
   const tool = id(b.tool) ? (b.tool as string) : undefined;

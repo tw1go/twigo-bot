@@ -1062,6 +1062,11 @@
       "others": 1
     },
     "replacingBreaksOld": true,
+    "sellKusing": {
+      "note": "Repo addition (Mac, 9 Oct 2026): an agimat sells from the combat bag for perLevel x its level Kusing (a rare stat: x rareTimes; a stack: each)",
+      "perLevel": 20,
+      "rareTimes": 3
+    },
     "slotLock": "agimats from disassembly only fit the slot type they came from; dropped agimats fit any slot"
   },
   "gearTiers": {

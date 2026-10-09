@@ -361,9 +361,52 @@ test('training gear sells from the bag for stats.json trainingGear.sellKusing; o
   const crude = newItem(D.stats, D.defs.get('weapon-crude-slingshot') as never, 'c1');
   const worn = newItem(D.stats, D.defs.get('armor-training-light-head') as never, 'w1');
   const s = { equipped: { head: worn }, bag: [train, crude], kusing: 10 };
-  assert.deepEqual(forge(D, s, { action: 'sell', item: 'c1' }, Math.random, () => 'x'), { ok: false, message: 'Only training gear sells here.' });
+  assert.deepEqual(forge(D, s, { action: 'sell', item: 'c1' }, Math.random, () => 'x'), { ok: false, message: 'Only training gear and agimats sell here.' });
   assert.deepEqual(forge(D, s, { action: 'sell', item: 'w1' }, Math.random, () => 'x'), { ok: false, message: 'Take it off first.' });
   const r = forge(D, s, { action: 'sell', item: 't1' }, Math.random, () => 'x');
   assert.ok(r.ok && r.outcome === 'sold');
   assert.deepEqual([s.kusing, s.bag.map((i) => i.uid)], [10 + price, ['c1']]);
+});
+
+test('many at once (the bag\'s multi-select): disassembly and training gear sales, every one or none', () => {
+  const price = trainingSellPrice(D.stats)!;
+  // Three pieces taken apart: their fragments added up, one message; the bag keeps the rest.
+  const a = sling('brown', 0);
+  const b = sling('brown', 5);
+  const c = sling('grey', 0); // slotted: an agimat too
+  const keep = newItem(D.stats, thing('low-hp-potion'), 'pot', 3);
+  const s = holder([a, b, c, keep]);
+  const r = forge(D, s, { action: 'disassemble-many', items: [a.uid, b.uid, c.uid, a.uid] }, lcg(5), uid);
+  assert.ok(r.ok && r.outcome === 'disassembled', r.message);
+  assert.equal(countOf(s.bag, 'rough-whetstone-fragment'), fragmentsFor(D.stats, 0) * 2 + fragmentsFor(D.stats, 5));
+  assert.equal(s.bag.filter((i) => thing(i.defId)?.kind === 'agimat').length, 1);
+  assert.ok(!s.bag.some((i) => [a.uid, b.uid, c.uid].includes(i.uid)) && s.bag.some((i) => i.uid === 'pot'));
+  assert.match(r.message, /^Took 3 items apart: \d+× Rough Whetstone Fragment, .*Agimat/);
+  // One refused (training gear, a potion): nothing taken apart, the item named.
+  const d = sling('brown', 0);
+  const train = newItem(D.stats, D.defs.get('weapon-training-slingshot') as never, 'tr1');
+  const t = holder([d, train]);
+  const before = structuredClone(t.bag);
+  const no = forge(D, t, { action: 'disassemble-many', items: [d.uid, 'tr1'] }, lcg(5), uid);
+  assert.deepEqual(no, { ok: false, message: "Training Slingshot: Training gear can't be taken apart." });
+  assert.deepEqual(t.bag, before, 'nothing changed');
+  // Training gear sold together: the Kusing added up; anything else in the pick refuses them all.
+  const t2 = newItem(D.stats, D.defs.get('armor-training-light-head') as never, 'tr2');
+  const u = { ...holder([train, t2, d]), kusing: 5 };
+  assert.equal(forge(D, u, { action: 'sell-many', items: ['tr1', d.uid] }, Math.random, uid).ok, false);
+  assert.equal(u.kusing, 5);
+  const sold = forge(D, u, { action: 'sell-many', items: ['tr1', 'tr2'] }, Math.random, uid);
+  assert.deepEqual([sold.ok, sold.message, u.kusing, u.bag.map((i) => i.uid)], [true, `Sold 2 items for ${2 * price} Kusing.`, 5 + 2 * price, [d.uid]]);
+  // Agimats sell too: 20 Kusing a level each (stats.json agimats.sellKusing), a rare stat 3×, a stack all at once.
+  const mp = { ...newAgimat(D.stats, thing('agimat-mp'), 10, 'ag1'), count: 2 };
+  const crit = newAgimat(D.stats, thing('agimat-critdmg'), 20, 'ag2', 'hands');
+  const v = { ...holder([mp, crit]), kusing: 0 };
+  const ag = forge(D, v, { action: 'sell-many', items: ['ag1', 'ag2'] }, Math.random, uid);
+  assert.deepEqual([ag.ok, v.kusing, v.bag.length], [true, 2 * 20 * 10 + 20 * 20 * 3, 0]);
+  assert.match(forge(D, { ...holder([{ ...mp, uid: 'ag3' }]), kusing: 0 }, { action: 'sell', item: 'ag3' }, Math.random, uid).message, /^Sold 2× Mana Agimat Lv 10 for 400 Kusing\.$/);
+  assert.equal(forge(D, holder([newItem(D.stats, thing('low-hp-potion'), 'p1')]), { action: 'sell', item: 'p1' }, Math.random, uid).message, 'Only training gear and agimats sell here.');
+  // The body: a list of ids.
+  assert.deepEqual(parseForgeAction({ action: 'sell-many', items: ['a', 'b'] }), { action: 'sell-many', items: ['a', 'b'] });
+  assert.equal(parseForgeAction({ action: 'disassemble-many', items: [] }), null);
+  assert.equal(parseForgeAction({ action: 'disassemble-many', items: 'a' }), null);
 });

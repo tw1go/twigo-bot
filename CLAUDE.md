@@ -527,7 +527,11 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   used, luck += its bracket's; from +16 broken, keeps its +, `unequipBroken`), `repair` (a kit of its tier), `embed` (a full
   slot answers `confirm` until `replace`; the old agimat breaks), `disassemble` (bag only; fragments + from slotted gear an
   agimat of its level locked to its slot, `rollAgimatStat` × 3 rare weight for two slots; its agimats go; all or nothing),
-  `combine` (every 10 fragments → a whetstone). `POST /town/forge` (`forgeFor` in web/adventure.ts saves; `items` to them,
+  `combine` (every 10 fragments → a whetstone), and several at once: 'disassemble-many' / 'sell-many' {items} (`many`: each by
+  the one-item rules on a copy, every one or none, the refusal names the item; one message adding up what came back; tested).
+  The bag's Combat tab multi-selects (Select, or Ctrl/⌘/Shift-click; Select all gear) → Disassemble N / Sell N with
+  `confirmDisassembleMany` / `confirmSellMany` (every item named, fragments added up, agimats coming back, what's lost).
+  `POST /town/forge` (`forgeFor` in web/adventure.ts saves; `items` to them,
   `kit` when what's worn changed); dev `/__forge` (the same code on the dev town's items). Game: `ui/forge.ts` popup beside
   the bag (left of the equipment panel; over it when narrow): clicking a whetstone / Repair Kit / agimat opens it (enhance /
   repair / embed); gear goes in by drag (`application/x-mk-equipment`, worn: `x-mk-worn`) or a click while it's open
@@ -638,7 +642,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   all five are in; response `gear` → toasts "Received: <weapon>", then "Received: Training gear" with the body piece's
   picture). A class from before: `/me` runs `trainingArmorFor` first (`MeResponse.trainingGear` → "The Tanod left you a
   set of training gear." after the title card; again next visit only for pieces that had no room). Sells from the combat bag for Kusing (stats.json trainingGear
-  `noSell` false, `sellKusing` 25, repo additions; forge action 'sell', the bag's right-click and detail, a confirm box); never dropped, traded, gifted, enhanced or taken apart. Doesn't change the paper doll. Art:
+  `noSell` false, `sellKusing` 25, repo additions; forge action 'sell', the bag's right-click and detail, a confirm box; agimats sell too: stats.json
+  agimats.sellKusing (repo addition: perLevel 20 × level, rare ×3, a stack all at once; shared `agimatSellPrice` / `sellPrice`)); never dropped, traded, gifted, enhanced or taken apart. Doesn't change the paper doll. Art:
   `items/armor/item-armor-training-<piece>(-16|-64).png`; an item without `icon`/`showcase` shows its place's silhouette
   (`slotSilhouette` / `gearPicture` in ui/equipment.ts: panel, bag, toasts) — add the fields when the art comes (only
   suit and boots exist so far).
