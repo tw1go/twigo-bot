@@ -18,6 +18,7 @@ import { kickedUntil, mutedUntil } from './town-mod.js';
 import { forgetNews } from './town-news.js';
 import { BODY_MAX, TITLE_MAX, deletePost, savePost, townPosts } from './town-posts.js';
 import type { Town } from './town.js';
+import type { MobRoom } from './town-mobs.js';
 import { isSettingKey, setSetting, setting, settingList, SETTINGS } from '../games/settings.js';
 import { CLASSES, QUESTS, adventureOf, resetAdventure } from './adventure.js';
 import { itemName } from '@mikazuki/shared';
@@ -43,15 +44,29 @@ import { mineWarsNight, mineWarsPlan, payMineWars } from '../minewars/payout.js'
 //   GET  <path>/api/player?id=   POST /api/player/kowens { id, amount, reason? } · POST /api/player/title { id, title }
 //                                POST /api/player/reset-class { id } (class, quests and equipment start over)
 //   GET  <path>/api/members?q=   Discord members by name (or one ID), for Mine Wars, who may have no town nickname
+//   GET  <path>/api/boss         the field boss (Scrapheap Golem): up or not, its HP, its next rise
+//                                POST /api/boss/spawn {} it rises now in the Slums (if it isn't up)
 //   GET  <path>/api/minewars     tonight's (the latest 9 PM's) payout so far · POST /api/minewars/plan { attended, top }
 //                                POST /api/minewars/pay { night, attended, top } (as /gift minewars: ledger, games channel post)
 
 export interface CmsDeps {
   town: () => Town | null;
+  /** The Slums' mobs, with the field boss (null: not running). */
+  slums: () => MobRoom | null;
   /** A member's Discord name. */
   discordName: (userId: string) => Promise<string>;
   /** Discord members whose name starts with `q` (or the one with that ID), bots left out. */
   searchMembers: (q: string) => Promise<{ id: string; name: string }[]>;
+}
+
+/** The field boss as the CMS shows it: its name, whether it's up (its state and HP) and when it rises next on its own. */
+function boss(deps: CmsDeps) {
+  const room = deps.slums();
+  const now = Date.now();
+  const plan = room?.golemPlan(now);
+  if (!room || !plan) return { running: false };
+  const g = room.golemState(now);
+  return { running: true, name: plan.name, everyMinutes: plan.everyMinutes, nextRise: plan.nextRise, up: !!g && g.state !== 'dead', state: g?.state ?? 'gone', hp: g?.hp ?? 0, maxHp: g?.maxHp ?? 0 };
 }
 
 /** The page and its script (packages/bot/cms/, beside src/ and dist/), read once. */
@@ -207,6 +222,15 @@ export async function cms(client: Client, req: IncomingMessage, res: ServerRespo
   const route = `${req.method} ${sub}`;
 
   switch (route) {
+    case 'GET /api/boss':
+      return send(res, 200, boss(deps));
+    case 'POST /api/boss/spawn': {
+      const room = deps.slums();
+      if (!room?.golemPlan(Date.now())) return bad('There is no field boss running.');
+      if (!room.riseGolem(Date.now())) return bad('It is up already.');
+      await log(client, who, 'spawned the field boss');
+      return send(res, 200, boss(deps));
+    }
     case 'GET /api/me':
       return send(res, 200, { id: userId, name: who, nickname: getNickname(userId) });
 

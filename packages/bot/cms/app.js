@@ -564,9 +564,40 @@ async function players(selected) {
   if (current) open(current);
 }
 
+// ── Field boss (the Scrapheap Golem in the Slums) ──
+
+async function boss() {
+  page('Field boss', 'The Scrapheap Golem rises in the Slums on its own every two hours. Spawn it now for an event or a test: it rises in its pit at once (players in the Slums see the line), and its usual schedule carries on.');
+  const body = h('div', { class: 'sections' });
+  main().append(body);
+  let timer = 0;
+  async function draw() {
+    const b = await api('boss');
+    if (!b.running) return body.replaceChildren(h('div', { class: 'card' }, h('p', { class: 'hint' }, 'The field boss isn’t running on this server.')));
+    const spawn = h('button', { class: 'btn primary', disabled: b.up }, b.up ? 'It’s up' : 'Spawn now');
+    spawn.addEventListener('click', () => act(spawn, async () => {
+      if (!confirm(`Spawn the ${b.name} in the Slums now?`)) return;
+      await api('boss/spawn', {});
+      toast(`The ${b.name} is rising.`);
+      draw();
+    }));
+    const STATE = { rising: 'Rising', idle: 'Up, waiting in its pit', fight: 'Fighting', home: 'Walking home', sinking: 'Sinking back', dead: 'Down', gone: 'Not up' };
+    const pct = b.maxHp ? Math.round((b.hp / b.maxHp) * 100) : 0;
+    body.replaceChildren(h('div', { class: 'card' },
+      h('h2', null, b.name),
+      h('p', null, h('b', null, STATE[b.state] ?? b.state), b.up ? ` · ${fmt(b.hp)} / ${fmt(b.maxHp)} HP (${pct}%)` : ''),
+      h('p', { class: 'hint' }, `Next rise on its own: ${when(b.nextRise)} (every ${b.everyMinutes} minutes).`),
+      h('div', { class: 'actions' }, spawn),
+    ));
+    clearTimeout(timer);
+    if (location.hash === '#boss') timer = setTimeout(() => act(null, draw), 5000); // (its HP and state, kept fresh)
+  }
+  await draw();
+}
+
 // ── Tabs ──
 
-const TABS = { overview, news, titles, shop, rewards, minewars, items, players };
+const TABS = { overview, news, titles, shop, rewards, minewars, boss, items, players };
 
 function route() {
   const tab = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'overview';

@@ -629,7 +629,12 @@ export class Golem {
     };
   }
 
-  /** Dev: it rises now (if it isn't up). */
+  /** Its name, and when it rises next on its own (every `everyMinutes`, from the epoch). */
+  plan(now: number): { name: string; nextRise: number; everyMinutes: number } {
+    return { name: this.boss.name, nextRise: this.nextRise ?? nextRiseAfter(now, this.boss.everyMinutes), everyMinutes: this.boss.everyMinutes };
+  }
+
+  /** It rises now, if it isn't up (dev's ?golem=now, the CMS's Spawn now). */
   riseNow(now: number): boolean {
     if (this.phase !== 'gone') return false;
     this.rise(now);

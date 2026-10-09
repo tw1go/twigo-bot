@@ -65,7 +65,9 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   item), Rewards (Mine Wars attend/top 3 pay, daily Kowens, welcome gift, stay minutes and daily cap; `games/settings.ts`, kv
   `settings`, min/max per setting, Reset = the default) (kv `town-posts`, `titles`, `shop`, `dig-items`, `settings` over the
   code's defaults), the Mine Wars payout (pick Discord members found by name or ID as attended / Top 10, see who gets what, pay:
-  `payMineWars` in `minewars/payout.ts`, shared with `/gift minewars`, same ledger and games channel post) and players' Kowens, titles and class (shown with quests, gear, Rename Cards; Reset class); logs each
+  `payMineWars` in `minewars/payout.ts`, shared with `/gift minewars`, same ledger and games channel post) players' Kowens, titles and class (shown with quests, gear, Rename Cards; Reset class), and the Field boss (the
+  Scrapheap Golem: up or not, HP, next rise; Spawn now = `MobRoom.riseGolem`, only when it isn't up, its schedule carries on;
+  `CmsDeps.slums`, GET /api/boss, POST /api/boss/spawn); logs each
   change in the bot's log only (never posted in Discord). Content that moves into the CMS keeps its code values as defaults.
 - Messages to Discord: no pings by default (`allowedMentions: { parse: [] }`); de-duplicate user IDs in
   `allowedMentions.users`.
@@ -406,7 +408,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   once dead). ≤ 25% once: 'enrage'. `mobBehaviour.golem.resetAfterSecondsEmpty` (30 s, `GolemArt.resetMs`) with nobody in its fight (pit floor and way in; the knocked out left out): 'reset' (full HP, phases re-armed, Adds
   `mob-remove`d), walks home. 0: 'death' (state 'dead'), Adds removed, the line naming everyone who hit it that fight
   (`downLine`). Every `golem` message carries the whole `TownGolem` (HP, enraged, state, home/leash/radius for the boss
-  bar); arrivals get it in `mobs` (`golem`). Dev: `/__golem?now=1` (rise now), `/__golem?demo=1&as=Name` (its fight
+  bar); arrivals get it in `mobs` (`golem`). The CMS's Field boss tab spawns it live (above). Dev: `/__golem?now=1` (rise now), `/__golem?demo=1&as=Name` (its fight
   against the nearest player in the room: slam, toss, glare, the Junk at a pretend half, enrage at a pretend quarter,
   death); the page's `?golem=now` / `?golemdemo=1` (dev, the Slums) call them and put you at the pit's front corner.
   In the game (`world/golem.ts` GolemView; a mob of world/mobs.ts via `makeBoss`): its art (52 sheets + fx, ~660 KB

@@ -100,6 +100,19 @@ test('after a restart it waits for the next even hour; while rising it can\'t be
   assert.ok(room.attack('p1', at(3, 0), 'stick', boss.id, t + art.riseMs + 10).ok, 'risen');
 });
 
+test('spawned now (the CMS\'s Spawn now): it rises at once, only when it isn\'t up; its own schedule carries on', () => {
+  const room = new MobRoom(map, lcg(), {}, { shapes: {} }, kinds, art);
+  const t0 = Date.UTC(2026, 9, 8, 3, 10);
+  room.tick(t0);
+  assert.deepEqual(room.golemPlan(t0), { name: boss.name, nextRise: Date.UTC(2026, 9, 8, 4, 0), everyMinutes: 120 });
+  assert.equal(room.riseGolem(t0), true);
+  const rise = room.flush().find((e) => e.t === 'golem' && e.change === 'rise');
+  assert.ok(rise, 'the rise goes to the room');
+  assert.equal(room.golemState(t0)!.state, 'rising');
+  assert.equal(room.riseGolem(t0 + 1000), false, 'up already');
+  assert.equal(room.golemPlan(t0 + 1000)!.nextRise, Date.UTC(2026, 9, 8, 4, 0));
+});
+
 test('reach to it is measured to its body\'s edge: a melee player a tile past its edge hits, three past doesn\'t', () => {
   const R = art.radius;
   const room = new MobRoom(map, lcg(), {}, { shapes: {} }, kinds, art);

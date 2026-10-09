@@ -324,8 +324,11 @@ export function startWebServer(client: Client): void {
     gifted: (userId, from, amount) => town?.gifted(userId, from, amount),
     verdict: (userId, kind, judged, text) => town?.verdict(userId, kind, judged, text),
   };
+  /** The Slums' mobs and field boss (made with the town, below; the CMS can spawn the boss). */
+  let slumsRoom: MobRoom | null = null;
   const cmsDeps: CmsDeps = {
     town: () => town,
+    slums: () => slumsRoom,
     discordName: async (id) => (await profile(client, id)).name,
     // The members search (REST) needs no privileged intent; an ID is fetched as is.
     searchMembers: async (q) => {
@@ -880,7 +883,7 @@ export function startWebServer(client: Client): void {
       memory: townMemory(),
       map: loadTownMap(),
       rooms: { hood: hoodTownMap, slums: () => slumsMap },
-      mobs: { slums: new MobRoom(loadMobMap('slums'), Math.random, Object.fromEntries(CLASSES.map((c) => [c.id, c.skills.map((k) => k.level)])), loadSkillShapes(), loadMobKinds(), loadGolemArt()) },
+      mobs: { slums: (slumsRoom = new MobRoom(loadMobMap('slums'), Math.random, Object.fromEntries(CLASSES.map((c) => [c.id, c.skills.map((k) => k.level)])), loadSkillShapes(), loadMobKinds(), loadGolemArt())) },
       quests: { kill: questKillFor },
       // Levels: who they are in a fight, and kills' XP (saved with the class).
       progress: {

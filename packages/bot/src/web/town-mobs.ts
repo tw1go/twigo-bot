@@ -1100,7 +1100,13 @@ export class MobRoom {
     return down.length;
   }
 
-  /** Dev: the golem rises now (?golem=now); plays its whole fight (?golemdemo=1, `name` = who asked). */
+  /** The golem's name and next rise on its own (null: no golem here). */
+  golemPlan(now: number): { name: string; nextRise: number; everyMinutes: number } | null {
+    return this.golem?.plan(now) ?? null;
+  }
+
+  /** The golem rises now (dev's ?golem=now, the CMS's Spawn now; false: it's up already, or none); plays its whole
+   *  fight (dev's ?golemdemo=1, `name` = who asked). */
   riseGolem(now: number): boolean {
     return this.golem?.riseNow(now) ?? false;
   }
