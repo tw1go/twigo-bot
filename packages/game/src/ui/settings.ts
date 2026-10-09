@@ -2,6 +2,7 @@ import { playSound, setSound, soundSettings } from '../audio/sound';
 import { ACTIONS, bindings, comboOf, keyName, resetKeybinds, setBinding } from './keybinds';
 import { el, popupFrame } from './reward';
 import { toast } from './toast';
+import { TEXT_SIZES, setTextSize, textSize } from './text-size';
 
 // ⚙️ The settings box (from the Settings button under your profile): centred over the dimmed town, white in the
 // game's pixel frame like the reward pop-up. Audio (music and sound-effect volumes, mute), for members logging
@@ -26,7 +27,7 @@ export function showSettings(o: { loggedIn: boolean; onClose?: () => void }): vo
   x.setAttribute('aria-label', 'Close');
   const title = el('h2', 'st-title', 'Settings');
   const main = el('div');
-  main.append(audio());
+  main.append(audio(), display());
   if (o.loggedIn) main.append(account());
   // Pages: Settings, and from its buttons Keybinds and Credits (each with Back).
   const pageOf = (body: HTMLElement, ...extra: HTMLElement[]) => {
@@ -119,6 +120,34 @@ function audio(): HTMLElement {
   folk.append(folkBox, el('span', undefined, 'Mute gossip murmur'));
 
   section.append(el('h3', 'st-heading', 'Audio'), music.row, sfx.row, mute, folk);
+  return section;
+}
+
+/** Text size for the whole UI (ui/text-size.ts), one of four, applied at once. */
+function display(): HTMLElement {
+  const section = el('section', 'st-section');
+  const row = el('div', 'st-sizes');
+  row.setAttribute('role', 'radiogroup');
+  row.setAttribute('aria-label', 'Text size');
+  const draw = () => {
+    for (const b of row.children) b.setAttribute('aria-checked', String((b as HTMLElement).dataset.size === textSize()));
+  };
+  for (const t of TEXT_SIZES) {
+    const b = el('button', 'st-size', t.label);
+    b.dataset.size = t.id;
+    b.setAttribute('role', 'radio');
+    b.style.fontSize = `${Math.round(14 * t.scale)}px`; // each button in its own size
+    b.addEventListener('click', () => {
+      setTextSize(t.id);
+      playSound('click');
+      draw();
+    });
+    row.append(b);
+  }
+  draw();
+  const label = el('div', 'st-row');
+  label.append(el('span', 'st-label', 'Text size'));
+  section.append(el('h3', 'st-heading', 'Display'), label, row);
   return section;
 }
 

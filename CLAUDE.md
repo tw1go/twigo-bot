@@ -207,7 +207,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   golem only within 12 tiles of you (`hearFrom` keeps your tile), others' and the golem's at 70%. combat-level-up (yours,
   others' near you at 70%). Debug: `__town.sounds()` (every sound asked for, even while sound is locked headless: `tapSounds`).
   Settings box (`ui/settings.ts`, gear button top right, manifest `ui.settingsIcon`): Music and Sounds volumes
-  (music 0 = off), Mute all and Mute gossip murmur (`npcsMuted`: the Alings' ambient murmur only; saved in localStorage `mk_sound`), log out, a Keybinds page and a Credits page (keep it in step with
+  (music 0 = off), Mute all and Mute gossip murmur (`npcsMuted`: the Alings' ambient murmur only; saved in localStorage `mk_sound`), Display → Text size (`ui/text-size.ts`: Small 90% / Normal / Large 115% / Larger 130%, localStorage `mk_text`, applied in main.ts before anything draws: every UI font size in index.html is `calc(Npx * var(--text))`, so write new ones that way; the world's text and pixel-art boxes keep theirs), log out, a Keybinds page and a Credits page (keep it in step with
   `public/assets/audio/CREDITS.md` and the font's licence). Keep sounds soft: no sharp clicks.
 - Keybinds (`ui/keybinds.ts`): every game key is an action with up to two keys (event.code + Ctrl/Alt/Shift, so layouts
   and Caps Lock don't matter): walking (WASD + arrows), interact (E, Space), pick up (F; Space too when loot is in reach), target (Z), skills (K), bag (B, I), settings (O), quest log

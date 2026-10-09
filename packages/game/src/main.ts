@@ -7,6 +7,9 @@ import { ArenaScene } from './scenes/ArenaScene';
 import { HouseScene } from './scenes/HouseScene';
 import { startHud } from './hud';
 import { showVersion } from './ui/version';
+import { setTextSize, textSize } from './ui/text-size';
+
+setTextSize(textSize(), false); // Settings → Text size, before anything is drawn
 
 // The town, open to every member of the Mikazuki server (the bot checks; ?preview from before is simply ignored).
 document.getElementById('boot-msg')?.remove(); // shown by the page itself until this script arrives
