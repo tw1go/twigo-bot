@@ -589,18 +589,23 @@ export class MobRoom {
     return Math.max(Math.abs(col - m.spawn[0]), Math.abs(row - m.spawn[1])) <= reach;
   }
 
-  /** `n` tiles round `at` (its own first, then outward) on its level, open and not ramps, to lay a kill's loot on (the
-   *  same ones again if there aren't enough). */
-  lootSpots(at: [number, number], n: number): [number, number][] {
+  /** `n` tiles round `at` (its own first, then outward) on its level, open and not ramps, to lay a kill's loot on;
+   *  never a tile in `taken` (loot already lying there would hide under it, or it under that) while there's another
+   *  (then those, then the same ones again if there still aren't enough). */
+  lootSpots(at: [number, number], n: number, taken: ReadonlySet<string> = new Set()): [number, number][] {
     const [cols, rows] = this.map.size;
     const level = this.map.height?.[at[1]]?.[at[0]] ?? 0;
     const open = (c: number, r: number) => c >= 0 && r >= 0 && c < cols && r < rows && !this.map.blocked[r]?.[c] && (this.map.height?.[r]?.[c] ?? 0) === level && !this.ramps.has(`${c},${r}`);
     const out: [number, number][] = [];
-    for (let ring = 0; ring <= 3 && out.length < n; ring++) {
-      for (let dr = -ring; dr <= ring && out.length < n; dr++) {
-        for (let dc = -ring; dc <= ring && out.length < n; dc++) {
-          if (Math.max(Math.abs(dc), Math.abs(dr)) !== ring) continue;
-          if (open(at[0] + dc, at[1] + dr)) out.push([at[0] + dc, at[1] + dr]);
+    for (const skipTaken of [true, false]) {
+      for (let ring = 0; ring <= 3 && out.length < n; ring++) {
+        for (let dr = -ring; dr <= ring && out.length < n; dr++) {
+          for (let dc = -ring; dc <= ring && out.length < n; dc++) {
+            const [c, r] = [at[0] + dc, at[1] + dr];
+            if (Math.max(Math.abs(dc), Math.abs(dr)) !== ring || !open(c, r)) continue;
+            if (taken.has(`${c},${r}`) ? skipTaken : out.some(([x, y]) => x === c && y === r)) continue;
+            out.push([c, r]);
+          }
         }
       }
     }

@@ -124,6 +124,11 @@ export class LootRoom {
     });
   }
 
+  /** The tiles loot lies on now ("col,row"), so new loot lands beside it rather than on top. */
+  taken(): Set<string> {
+    return new Set([...this.all.values()].map((l) => `${l.col},${l.row}`));
+  }
+
   get(id: string): Loot | undefined {
     return this.all.get(id);
   }

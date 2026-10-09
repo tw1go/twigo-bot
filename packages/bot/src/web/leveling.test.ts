@@ -24,7 +24,7 @@ const { miniLoot } = await import('./loot.js');
 const { LootRoom } = await import('./town-loot.js');
 const { MobRoom, loadMobKinds, loadMobMap } = await import('./town-mobs.js');
 const { attachTown } = await import('./town.js');
-const { QUESTS, adventureOf, freshAdventure, questStep, startQuests, townQuest } = await import('./adventure.js');
+const { QUESTS, adventureOf, combatOf, fighterOf, freshAdventure, killFor, questKillFor, questStep, startQuests, takeLootFor, townQuest, usePotionFor } = await import('./adventure.js');
 const { freshProgress } = await import('./progress.js');
 const { closeDatabase } = await import('../db/db.js');
 
@@ -285,6 +285,73 @@ test('over the town\'s socket: a party of 2 both get a mini boss\'s XP, their ow
   assert.deepEqual(u.kills.map((k) => k.who), ['Mara']);
   assert.deepEqual(u.counted.sort(), ['Bob:tin-can:false', 'Mara:tin-can:false']);
   await u.close();
+});
+
+test('the real quests: a party on Just In Time kills Jus Tin; each gets their own +5 piece on a tile of its own (never under their other loot), and can pick it up', async () => {
+  // Two members on tanod-02 (as on the live server, 9 Oct: the Pot lid's piece fell on its Kusing's tile and hid).
+  for (const [u, cls] of [['qPot', 'potlid'], ['qBroom', 'broom']] as const) {
+    adventureOf(u);
+    townQuest(u, { quest: 'main-01-class', action: 'talk', npc: 'tanod' } as never);
+    townQuest(u, { quest: 'main-01-class', action: 'chooseClass', cls } as never);
+    for (let i = 0; i < 20; i++) questKillFor(u, { kind: 'tin-can', mini: false });
+    assert.ok(townQuest(u, { quest: CHAIN[0], action: 'report' } as never).ok);
+  }
+  const room = new MobRoom(map, lcg(16), {}, { shapes: {} }, loadMobKinds());
+  const jus = room.snapshot(0).find((m) => m.mini === 'tin-can-jus-tin')!;
+  const server = createServer();
+  attachTown(server, {
+    map: { size: [4, 4], spawn: [1, 1], blocked: [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]] },
+    rooms: { slums: () => ({ size: map.size, spawn: [jus.col + 1, jus.row], blocked: map.blocked }) },
+    mobs: { slums: room },
+    authenticate: async (req) => new URL(req.url ?? '/', 'http://x').searchParams.get('as'),
+    profile: (name) => ({ nickname: name, title: { name: 'Townfolk', color: '#fff' }, outfit: {} as never, cls: adventureOf(name).cls }),
+    // (The Pot lid hits from range here and one-shots it; the quests, loot and bags are the bot's own.)
+    progress: { fighter: (name) => ({ ...fighterOf(name), cls: 'slingshot', level: 20, points: name === 'qPot' ? { DEX: 100_000 } : {} }), kill: (name, k) => killFor(name, k) },
+    items: { take: takeLootFor, usePotion: usePotionFor, state: combatOf },
+    quests: { kill: questKillFor },
+  });
+  await new Promise<void>((ok) => server.listen(0, '127.0.0.1', ok));
+  const port = (server.address() as AddressInfo).port;
+  const open = (as: string) =>
+    new Promise<{ ws: WebSocket; got: TownServerMessage[] }>((ok) => {
+      const ws = new WebSocket(`ws://127.0.0.1:${port}/ws?as=${as}&room=slums`);
+      const got: TownServerMessage[] = [];
+      ws.on('message', (d) => got.push(JSON.parse(String(d))));
+      ws.on('open', () => ok({ ws, got }));
+    });
+  const pot = await open('qPot');
+  const broom = await open('qBroom');
+  await wait(150);
+  const broomId = (broom.got.find((m) => m.t === 'welcome') as Extract<TownServerMessage, { t: 'welcome' }>).you;
+  pot.ws.send(JSON.stringify({ t: 'party-invite', to: broomId }));
+  await wait(150);
+  const invite = broom.got.find((m) => m.t === 'party-invited') as Extract<TownServerMessage, { t: 'party-invited' }>;
+  broom.ws.send(JSON.stringify({ t: 'party-answer', invite: invite.invite, accept: true }));
+  await wait(150);
+  pot.ws.send(JSON.stringify({ t: 'attack', mob: jus.id, skill: 0 }));
+  await wait(300);
+  for (const [name, c, gear] of [['qPot', pot, 'household'], ['qBroom', broom, 'light']] as const) {
+    const drops = c.got.filter((m): m is Extract<TownServerMessage, { t: 'loot-drop' }> => m.t === 'loot-drop').flatMap((m) => m.loot);
+    const pieces = drops.filter((l) => l.item?.plus === 5 && l.item.bound);
+    assert.equal(pieces.length, 1, `${name}: one quest piece`);
+    const p = pieces[0];
+    assert.equal((D.defs.get(p.item!.defId) as { gear?: string }).gear?.toLowerCase(), gear, `${name}: their own gear type`);
+    assert.ok(!drops.some((l) => l !== p && l.col === p.col && l.row === p.row), `${name}: nothing else on its tile`);
+  }
+  // The Pot lid walks to it and picks it up: it's in the bag.
+  const p = pot.got.filter((m): m is Extract<TownServerMessage, { t: 'loot-drop' }> => m.t === 'loot-drop').flatMap((m) => m.loot).find((l) => l.item?.plus === 5)!;
+  let [col, row] = (pot.got.find((m) => m.t === 'welcome') as Extract<TownServerMessage, { t: 'welcome' }>).spawn;
+  while (col !== p.col || row !== p.row) {
+    col += Math.sign(p.col - col);
+    row += Math.sign(p.row - row);
+    pot.ws.send(JSON.stringify({ t: 'step', col, row }));
+    await wait(180);
+  }
+  pot.ws.send(JSON.stringify({ t: 'pick', id: p.id }));
+  await wait(150);
+  assert.ok(combatOf('qPot').bag.some((i) => i.uid === p.item!.uid && i.plus === 5), 'in the bag');
+  for (const c of [pot, broom]) c.ws.close();
+  await new Promise((ok) => server.close(ok));
 });
 
 test.after(() => {

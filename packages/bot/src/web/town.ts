@@ -488,7 +488,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       const L = loots.get(room);
       const mobs = opts.mobs?.[room];
       const piece = r.questDrop && leveling ? questDropFor(items, leveling, kill.kind, kill.level, r.cls ?? o.player.cls, randomBytes(8).toString('hex')) : null;
-      if (piece && L && mobs) showLoot(room, L.give(user, [{ item: piece }], kill.at, (at, n) => mobs.lootSpots(at, n), Date.now()), kill.at);
+      if (piece && L && mobs) showLoot(room, L.give(user, [{ item: piece }], kill.at, (at, n) => mobs.lootSpots(at, n, L.taken()), Date.now()), kill.at);
     }
   };
   /** A kill's drops, round where it died: the killer's (and their party's, those in the room), or the golem's or a mini
@@ -498,7 +498,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     const mobs = opts.mobs?.[room];
     if (!L || !mobs || !kill.to.length) return;
     const party = kill.boss || kill.mini ? [] : (parties.of(kill.to[0])?.members ?? []).filter((m) => conns.get(m)?.room === room);
-    const fresh = L.drop(kill, party, (at, n) => mobs.lootSpots(at, n), Date.now());
+    const fresh = L.drop(kill, party, (at, n) => mobs.lootSpots(at, n, L.taken()), Date.now()); // (beside loot already there, not on it)
     showLoot(room, fresh, kill.at);
   };
   /** Picks up the loot asked for (`id`) or, without one, the nearest they may take, within LOOT_REACH (a click, F or
