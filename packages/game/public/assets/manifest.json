@@ -1698,6 +1698,186 @@
               }
             }
           },
+          "buff-cast": {
+            "frames": 11,
+            "fps": 12,
+            "loop": false,
+            "dirs": {
+              "se": {
+                "body": "characters/classes/slingshot/buff-cast/char-body-buff-cast-se.png",
+                "back": [
+                  {
+                    "file": "characters/classes/slingshot/buff-cast/char-weapon-slingshot-back-buff-cast-se.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/slingshot/buff-cast/char-weapon-slingshot-buff-cast-se.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ],
+                "face": "characters/classes/slingshot/buff-cast/char-face-default-buff-cast-se.png"
+              },
+              "e": {
+                "body": "characters/classes/slingshot/buff-cast/char-body-buff-cast-e.png",
+                "back": [
+                  {
+                    "file": "characters/classes/slingshot/buff-cast/char-weapon-slingshot-back-buff-cast-e.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/slingshot/buff-cast/char-weapon-slingshot-buff-cast-e.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ],
+                "face": "characters/classes/slingshot/buff-cast/char-face-default-buff-cast-e.png"
+              },
+              "s": {
+                "body": "characters/classes/slingshot/buff-cast/char-body-buff-cast-s.png",
+                "back": [
+                  {
+                    "file": "characters/classes/slingshot/buff-cast/char-weapon-slingshot-back-buff-cast-s.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/slingshot/buff-cast/char-weapon-slingshot-buff-cast-s.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ],
+                "face": "characters/classes/slingshot/buff-cast/char-face-default-buff-cast-s.png"
+              },
+              "ne": {
+                "body": "characters/classes/slingshot/buff-cast/char-body-buff-cast-ne.png",
+                "back": [
+                  {
+                    "file": "characters/classes/slingshot/buff-cast/char-weapon-slingshot-back-buff-cast-ne.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/slingshot/buff-cast/char-weapon-slingshot-buff-cast-ne.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ]
+              },
+              "n": {
+                "body": "characters/classes/slingshot/buff-cast/char-body-buff-cast-n.png",
+                "back": [
+                  {
+                    "file": "characters/classes/slingshot/buff-cast/char-weapon-slingshot-back-buff-cast-n.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/slingshot/buff-cast/char-weapon-slingshot-buff-cast-n.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ]
+              },
+              "sw": {
+                "body": "characters/classes/slingshot/buff-cast/char-body-buff-cast-sw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/slingshot/buff-cast/char-weapon-slingshot-back-buff-cast-sw.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/slingshot/buff-cast/char-weapon-slingshot-buff-cast-sw.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ],
+                "face": "characters/classes/slingshot/buff-cast/char-face-default-buff-cast-sw.png"
+              },
+              "w": {
+                "body": "characters/classes/slingshot/buff-cast/char-body-buff-cast-w.png",
+                "back": [
+                  {
+                    "file": "characters/classes/slingshot/buff-cast/char-weapon-slingshot-back-buff-cast-w.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/slingshot/buff-cast/char-weapon-slingshot-buff-cast-w.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ],
+                "face": "characters/classes/slingshot/buff-cast/char-face-default-buff-cast-w.png"
+              },
+              "nw": {
+                "body": "characters/classes/slingshot/buff-cast/char-body-buff-cast-nw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/slingshot/buff-cast/char-weapon-slingshot-back-buff-cast-nw.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/slingshot/buff-cast/char-weapon-slingshot-buff-cast-nw.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ]
+              }
+            }
+          },
           "step-back": {
             "frames": 7,
             "fps": 14,
@@ -3073,6 +3253,186 @@
                 "front": [
                   {
                     "file": "characters/classes/stick/dash/char-weapon-stick-dash-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "buff-cast": {
+            "frames": 6,
+            "fps": 10,
+            "loop": false,
+            "dirs": {
+              "se": {
+                "body": "characters/classes/stick/buff-cast/char-body-buff-cast-se.png",
+                "back": [
+                  {
+                    "file": "characters/classes/stick/buff-cast/char-weapon-stick-back-buff-cast-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/stick/buff-cast/char-weapon-stick-buff-cast-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/stick/buff-cast/char-face-default-buff-cast-se.png"
+              },
+              "s": {
+                "body": "characters/classes/stick/buff-cast/char-body-buff-cast-s.png",
+                "back": [
+                  {
+                    "file": "characters/classes/stick/buff-cast/char-weapon-stick-back-buff-cast-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/stick/buff-cast/char-weapon-stick-buff-cast-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/stick/buff-cast/char-face-default-buff-cast-s.png"
+              },
+              "ne": {
+                "body": "characters/classes/stick/buff-cast/char-body-buff-cast-ne.png",
+                "back": [
+                  {
+                    "file": "characters/classes/stick/buff-cast/char-weapon-stick-back-buff-cast-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/stick/buff-cast/char-weapon-stick-buff-cast-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "n": {
+                "body": "characters/classes/stick/buff-cast/char-body-buff-cast-n.png",
+                "back": [
+                  {
+                    "file": "characters/classes/stick/buff-cast/char-weapon-stick-back-buff-cast-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/stick/buff-cast/char-weapon-stick-buff-cast-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "e": {
+                "body": "characters/classes/stick/buff-cast/char-body-buff-cast-e.png",
+                "back": [
+                  {
+                    "file": "characters/classes/stick/buff-cast/char-weapon-stick-back-buff-cast-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/stick/buff-cast/char-weapon-stick-buff-cast-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/stick/buff-cast/char-face-default-buff-cast-e.png"
+              },
+              "sw": {
+                "body": "characters/classes/stick/buff-cast/char-body-buff-cast-sw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/stick/buff-cast/char-weapon-stick-back-buff-cast-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/stick/buff-cast/char-weapon-stick-buff-cast-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/stick/buff-cast/char-face-default-buff-cast-sw.png"
+              },
+              "w": {
+                "body": "characters/classes/stick/buff-cast/char-body-buff-cast-w.png",
+                "back": [
+                  {
+                    "file": "characters/classes/stick/buff-cast/char-weapon-stick-back-buff-cast-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/stick/buff-cast/char-weapon-stick-buff-cast-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/stick/buff-cast/char-face-default-buff-cast-w.png"
+              },
+              "nw": {
+                "body": "characters/classes/stick/buff-cast/char-body-buff-cast-nw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/stick/buff-cast/char-weapon-stick-back-buff-cast-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/stick/buff-cast/char-weapon-stick-buff-cast-nw.png",
                     "size": [
                       64,
                       64
@@ -5034,6 +5394,186 @@
                 ]
               }
             }
+          },
+          "buff-cast": {
+            "frames": 10,
+            "fps": 12,
+            "loop": false,
+            "dirs": {
+              "se": {
+                "body": "characters/classes/greatstick/buff-cast/char-body-buff-cast-se.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/buff-cast/char-weapon-greatstick-back-buff-cast-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/buff-cast/char-weapon-greatstick-buff-cast-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/greatstick/buff-cast/char-face-default-buff-cast-se.png"
+              },
+              "s": {
+                "body": "characters/classes/greatstick/buff-cast/char-body-buff-cast-s.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/buff-cast/char-weapon-greatstick-back-buff-cast-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/buff-cast/char-weapon-greatstick-buff-cast-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/greatstick/buff-cast/char-face-default-buff-cast-s.png"
+              },
+              "ne": {
+                "body": "characters/classes/greatstick/buff-cast/char-body-buff-cast-ne.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/buff-cast/char-weapon-greatstick-back-buff-cast-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/buff-cast/char-weapon-greatstick-buff-cast-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "n": {
+                "body": "characters/classes/greatstick/buff-cast/char-body-buff-cast-n.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/buff-cast/char-weapon-greatstick-back-buff-cast-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/buff-cast/char-weapon-greatstick-buff-cast-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "e": {
+                "body": "characters/classes/greatstick/buff-cast/char-body-buff-cast-e.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/buff-cast/char-weapon-greatstick-back-buff-cast-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/buff-cast/char-weapon-greatstick-buff-cast-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/greatstick/buff-cast/char-face-default-buff-cast-e.png"
+              },
+              "sw": {
+                "body": "characters/classes/greatstick/buff-cast/char-body-buff-cast-sw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/buff-cast/char-weapon-greatstick-back-buff-cast-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/buff-cast/char-weapon-greatstick-buff-cast-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/greatstick/buff-cast/char-face-default-buff-cast-sw.png"
+              },
+              "w": {
+                "body": "characters/classes/greatstick/buff-cast/char-body-buff-cast-w.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/buff-cast/char-weapon-greatstick-back-buff-cast-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/buff-cast/char-weapon-greatstick-buff-cast-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/greatstick/buff-cast/char-face-default-buff-cast-w.png"
+              },
+              "nw": {
+                "body": "characters/classes/greatstick/buff-cast/char-body-buff-cast-nw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/buff-cast/char-weapon-greatstick-back-buff-cast-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/buff-cast/char-weapon-greatstick-buff-cast-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              }
+            }
           }
         },
         "rest": {
@@ -6625,6 +7165,186 @@
                     ]
                   }
                 ]
+              }
+            }
+          },
+          "buff-cast": {
+            "frames": 7,
+            "fps": 10,
+            "loop": false,
+            "dirs": {
+              "se": {
+                "body": "characters/classes/broom/buff-cast/char-body-buff-cast-se.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/buff-cast/char-weapon-broom-back-buff-cast-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/buff-cast/char-weapon-broom-buff-cast-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/broom/buff-cast/char-face-default-buff-cast-se.png"
+              },
+              "s": {
+                "body": "characters/classes/broom/buff-cast/char-body-buff-cast-s.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/buff-cast/char-weapon-broom-back-buff-cast-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/buff-cast/char-weapon-broom-buff-cast-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/broom/buff-cast/char-face-default-buff-cast-s.png"
+              },
+              "sw": {
+                "body": "characters/classes/broom/buff-cast/char-body-buff-cast-sw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/buff-cast/char-weapon-broom-back-buff-cast-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/buff-cast/char-weapon-broom-buff-cast-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/broom/buff-cast/char-face-default-buff-cast-sw.png"
+              },
+              "ne": {
+                "body": "characters/classes/broom/buff-cast/char-body-buff-cast-ne.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/buff-cast/char-weapon-broom-back-buff-cast-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/buff-cast/char-weapon-broom-buff-cast-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "n": {
+                "body": "characters/classes/broom/buff-cast/char-body-buff-cast-n.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/buff-cast/char-weapon-broom-back-buff-cast-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/buff-cast/char-weapon-broom-buff-cast-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "nw": {
+                "body": "characters/classes/broom/buff-cast/char-body-buff-cast-nw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/buff-cast/char-weapon-broom-back-buff-cast-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/buff-cast/char-weapon-broom-buff-cast-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "e": {
+                "body": "characters/classes/broom/buff-cast/char-body-buff-cast-e.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/buff-cast/char-weapon-broom-back-buff-cast-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/buff-cast/char-weapon-broom-buff-cast-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/broom/buff-cast/char-face-default-buff-cast-e.png"
+              },
+              "w": {
+                "body": "characters/classes/broom/buff-cast/char-body-buff-cast-w.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/buff-cast/char-weapon-broom-back-buff-cast-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/buff-cast/char-weapon-broom-buff-cast-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/broom/buff-cast/char-face-default-buff-cast-w.png"
               }
             }
           }
@@ -9297,6 +10017,298 @@
                 ]
               }
             }
+          },
+          "buff-cast": {
+            "frames": 7,
+            "fps": 10,
+            "loop": false,
+            "dirs": {
+              "se": {
+                "body": "characters/classes/potlid/buff-cast/char-body-buff-cast-se.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/buff-cast/char-weapon-lid-back-buff-cast-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/buff-cast/char-weapon-ladle-back-buff-cast-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/buff-cast/char-weapon-lid-buff-cast-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/buff-cast/char-weapon-ladle-buff-cast-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/potlid/buff-cast/char-face-default-buff-cast-se.png"
+              },
+              "s": {
+                "body": "characters/classes/potlid/buff-cast/char-body-buff-cast-s.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/buff-cast/char-weapon-lid-back-buff-cast-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/buff-cast/char-weapon-ladle-back-buff-cast-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/buff-cast/char-weapon-lid-buff-cast-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/buff-cast/char-weapon-ladle-buff-cast-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/potlid/buff-cast/char-face-default-buff-cast-s.png"
+              },
+              "sw": {
+                "body": "characters/classes/potlid/buff-cast/char-body-buff-cast-sw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/buff-cast/char-weapon-lid-back-buff-cast-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/buff-cast/char-weapon-ladle-back-buff-cast-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/buff-cast/char-weapon-lid-buff-cast-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/buff-cast/char-weapon-ladle-buff-cast-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/potlid/buff-cast/char-face-default-buff-cast-sw.png"
+              },
+              "ne": {
+                "body": "characters/classes/potlid/buff-cast/char-body-buff-cast-ne.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/buff-cast/char-weapon-lid-back-buff-cast-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/buff-cast/char-weapon-ladle-back-buff-cast-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/buff-cast/char-weapon-lid-buff-cast-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/buff-cast/char-weapon-ladle-buff-cast-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "n": {
+                "body": "characters/classes/potlid/buff-cast/char-body-buff-cast-n.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/buff-cast/char-weapon-lid-back-buff-cast-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/buff-cast/char-weapon-ladle-back-buff-cast-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/buff-cast/char-weapon-lid-buff-cast-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/buff-cast/char-weapon-ladle-buff-cast-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "nw": {
+                "body": "characters/classes/potlid/buff-cast/char-body-buff-cast-nw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/buff-cast/char-weapon-lid-back-buff-cast-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/buff-cast/char-weapon-ladle-back-buff-cast-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/buff-cast/char-weapon-lid-buff-cast-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/buff-cast/char-weapon-ladle-buff-cast-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "e": {
+                "body": "characters/classes/potlid/buff-cast/char-body-buff-cast-e.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/buff-cast/char-weapon-lid-back-buff-cast-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/buff-cast/char-weapon-ladle-back-buff-cast-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/buff-cast/char-weapon-lid-buff-cast-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/buff-cast/char-weapon-ladle-buff-cast-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/potlid/buff-cast/char-face-default-buff-cast-e.png"
+              },
+              "w": {
+                "body": "characters/classes/potlid/buff-cast/char-body-buff-cast-w.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/buff-cast/char-weapon-lid-back-buff-cast-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/buff-cast/char-weapon-ladle-back-buff-cast-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/buff-cast/char-weapon-lid-buff-cast-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/buff-cast/char-weapon-ladle-buff-cast-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/potlid/buff-cast/char-face-default-buff-cast-w.png"
+              }
+            }
           }
         },
         "rest": {
@@ -10889,6 +11901,186 @@
                     ]
                   }
                 ]
+              }
+            }
+          },
+          "buff-cast": {
+            "frames": 7,
+            "fps": 10,
+            "loop": false,
+            "dirs": {
+              "se": {
+                "body": "characters/classes/hilot/buff-cast/char-body-buff-cast-se.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/buff-cast/char-weapon-balm-back-buff-cast-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/buff-cast/char-weapon-balm-buff-cast-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/hilot/buff-cast/char-face-default-buff-cast-se.png"
+              },
+              "s": {
+                "body": "characters/classes/hilot/buff-cast/char-body-buff-cast-s.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/buff-cast/char-weapon-balm-back-buff-cast-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/buff-cast/char-weapon-balm-buff-cast-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/hilot/buff-cast/char-face-default-buff-cast-s.png"
+              },
+              "sw": {
+                "body": "characters/classes/hilot/buff-cast/char-body-buff-cast-sw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/buff-cast/char-weapon-balm-back-buff-cast-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/buff-cast/char-weapon-balm-buff-cast-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/hilot/buff-cast/char-face-default-buff-cast-sw.png"
+              },
+              "ne": {
+                "body": "characters/classes/hilot/buff-cast/char-body-buff-cast-ne.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/buff-cast/char-weapon-balm-back-buff-cast-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/buff-cast/char-weapon-balm-buff-cast-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "n": {
+                "body": "characters/classes/hilot/buff-cast/char-body-buff-cast-n.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/buff-cast/char-weapon-balm-back-buff-cast-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/buff-cast/char-weapon-balm-buff-cast-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "nw": {
+                "body": "characters/classes/hilot/buff-cast/char-body-buff-cast-nw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/buff-cast/char-weapon-balm-back-buff-cast-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/buff-cast/char-weapon-balm-buff-cast-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "e": {
+                "body": "characters/classes/hilot/buff-cast/char-body-buff-cast-e.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/buff-cast/char-weapon-balm-back-buff-cast-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/buff-cast/char-weapon-balm-buff-cast-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/hilot/buff-cast/char-face-default-buff-cast-e.png"
+              },
+              "w": {
+                "body": "characters/classes/hilot/buff-cast/char-body-buff-cast-w.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/buff-cast/char-weapon-balm-back-buff-cast-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/buff-cast/char-weapon-balm-buff-cast-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/hilot/buff-cast/char-face-default-buff-cast-w.png"
               }
             }
           }
@@ -15312,12 +16504,12 @@
         32
       ],
       "have": {
-        "slingshot": ["quick-shot", "double-tap", "pebble-spray", "ricochet", "piercing-shot", "knee-shot", "volley", "step-back"],
-        "stick": ["quick-jab", "twin-strike", "low-sweep", "rising-swat", "flurry", "spinning-stick", "lunge", "step-back"],
-        "greatstick": ["quick-chop", "shove", "wide-swing", "overhead-slam", "ground-pound", "plank-toss", "splinter-burst", "charge"],
-        "broom": ["dust-flick", "leaf-dart", "gust", "spark-sweep", "dust-devil", "ember-leaves", "static-bristles", "blink"],
-        "potlid": ["lid-bonk", "ladle-smack", "clang", "lid-toss", "steam-burst", "boiling-splash", "rebound", "charge"],
-        "hilot": ["menthol-flick", "herb-pinch", "menthol-puff", "stinging-rub", "root-snare", "camphor-cloud", "hot-compress", "blink"]
+        "slingshot": ["quick-shot", "double-tap", "pebble-spray", "ricochet", "piercing-shot", "knee-shot", "volley", "step-back", "rally", "steady-aim", "second-wind"],
+        "stick": ["quick-jab", "twin-strike", "low-sweep", "rising-swat", "flurry", "spinning-stick", "lunge", "step-back", "keen-stance"],
+        "greatstick": ["quick-chop", "shove", "wide-swing", "overhead-slam", "ground-pound", "plank-toss", "splinter-burst", "charge", "hearty-cheer", "steady-breath", "battle-roar"],
+        "broom": ["dust-flick", "leaf-dart", "gust", "spark-sweep", "dust-devil", "ember-leaves", "static-bristles", "blink", "warding-dust"],
+        "potlid": ["lid-bonk", "ladle-smack", "clang", "lid-toss", "steam-burst", "boiling-splash", "rebound", "charge", "dinner-bell"],
+        "hilot": ["menthol-flick", "herb-pinch", "menthol-puff", "stinging-rub", "root-snare", "camphor-cloud", "hot-compress", "blink", "vital-rub", "calm-mind", "soothing-touch"]
       },
       "shared": {
         "file": "ui/skills/shared/ui-skill-{skill}.png",
