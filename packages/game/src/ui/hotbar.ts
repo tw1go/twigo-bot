@@ -293,6 +293,7 @@ export class Hotbar {
    *  slot). Locked ones are greyed with their unlock level. */
   private drawList(): void {
     const skills = this.views();
+    const scrolled = this.rows.scrollTop; // (taken out and put back below, which scrolls it to the top: kept)
     const close = el('button', 'sb-close', '×');
     close.setAttribute('aria-label', 'Close');
     close.addEventListener('click', () => this.toggleList(false));
@@ -366,6 +367,7 @@ export class Hotbar {
       ...section('Mobility', skills.filter((s) => s.move).map(skillRow)),
       ...section('Buffs', skills.filter((s) => s.buff).map(skillRow)),
     );
+    this.rows.scrollTop = scrolled;
   }
 
   /** A skill point into a skill (by key), or (null) all of them back. */
