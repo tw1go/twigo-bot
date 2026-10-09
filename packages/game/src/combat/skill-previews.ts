@@ -718,5 +718,14 @@ export const MOBILITY_PREVIEWS: Record<string, Record<string, Skill>> = {
   hilot: { dash, blink },
 };
 
+/** A buff (classes.json buffs): the class's buff-cast played once, every frame at its fps, facing SE. Every buff of a
+ *  class looks the same for now: their effects and FX come later. */
+export const buffPreview = (name: string): Skill => ({
+  name,
+  run(k) {
+    k.pose('buff-cast', Array.from({ length: k.frames('buff-cast') }, (_, f) => f));
+  },
+});
+
 /** Each class's first 7 damage skills, in classes.json order. */
 export const SKILL_PREVIEWS: Record<string, Skill[]> = { slingshot, stick, greatstick, broom, potlid, hilot };

@@ -335,6 +335,23 @@ export function skillViews(c: ClassInfo | null | undefined): SkillView[] {
   }));
 }
 
+/** A buff as the class choice's preview shows it (classes.json buffs; not castable or raised yet: Lv 1 once unlocked). */
+export interface BuffView {
+  name: string;
+  unlock: number;
+  level: number;
+  cap: number;
+  locked: boolean;
+}
+
+/** A class's buffs at your level, in unlock order. */
+export function buffViews(c: ClassInfo | null | undefined): BuffView[] {
+  const level = state?.progress?.level ?? 1;
+  return [...(c?.buffs ?? [])]
+    .sort((a, b) => a.level - b.level)
+    .map((b) => ({ name: b.name, unlock: b.level, level: 1, cap: data ? skillCap(data.stats, level, { unlock: b.level }) : 0, locked: level < b.level }));
+}
+
 /** One of your class's skills by name. */
 export const skillView = (name: string): SkillView | undefined => skillViews(classInfo(state?.cls)).find((k) => k.name === name);
 

@@ -95,7 +95,7 @@ import type { AdventureData } from '../net/adventure';
 import { Hotbar, potionCooldownKey } from '../ui/hotbar';
 import { mountClassSwitch } from '../ui/class-switch';
 import { MOVES, type MoveKind, isMoveKind, moveTiles, playMove } from '../world/mobility';
-import { changeClass, devItemsReady, devQuestKill, questReport, setQuestCounts, devSwitchClass, adventure, adventureData, anyDef, chooseClass, classInfo, initAdventure, itemData, itemDef, loadAdventureData, onAdventure, questDef, questFor, questTalk, setItems, setProgress, skillView, skillViews } from '../net/adventure';
+import { changeClass, devItemsReady, devQuestKill, questReport, setQuestCounts, devSwitchClass, adventure, adventureData, anyDef, chooseClass, classInfo, initAdventure, itemData, itemDef, loadAdventureData, onAdventure, questDef, questFor, questTalk, setItems, setProgress, skillView, skillViews, buffViews } from '../net/adventure';
 import { type Item, type QuestReward, type TownItems, LOOT_REACH, auraFor, classSkills, countOf, isGearDef, itemAura, itemStats, newItem, tradeRules } from '@mikazuki/shared';
 import type { ClassArt } from '../assets/types';
 import { drawRested, loadImages, poseFiles, restFiles } from '../characters/kit-art';
@@ -1192,7 +1192,7 @@ export class TownScene extends Phaser.Scene {
       idle: { frames: C.animations.idle.frames, fps: C.animations.idle.fps },
       walk: { frames: C.animations.walk.frames, fps: C.animations.walk.fps },
       // (Each skill's level and cap at your level: "Lv 1 / 10"; your own class's as raised.)
-      preview: (c, host, back, choose) => mountSkillPreview({ stage: (cls) => this.skillStage(cls.id, cls.fx), levels: skillViews }, c, host, back, choose),
+      preview: (c, host, back, choose) => mountSkillPreview({ stage: (cls) => this.skillStage(cls.id, cls.fx), levels: skillViews, buffs: buffViews, icon: (cls, skill) => this.skillIcon(cls, skill) }, c, host, back, choose),
       onChoose,
       onClose: () => {},
     });

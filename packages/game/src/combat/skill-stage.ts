@@ -85,6 +85,8 @@ export interface SkillKit {
   body(n: number): Pt;
   /** A point off the fighter's feet. */
   self(dx: number, dy: number): Pt;
+  /** How many frames a pose anim has (1 if the class has no such anim). */
+  frames(anim: string): number;
   /** Queues body frames after whatever is queued (each `ms` long, default the anim's fps); returns when each starts. */
   pose(anim: string, frames: number[], ms?: number | number[]): number[];
   /** A launch point on a pose frame: launch.json's `key` (palm, tip, lid, balm…), or the Slingshot's fork. */
@@ -392,6 +394,7 @@ export class SkillStage {
     return {
       dir: this.dir,
       feet: FEET,
+      frames: (anim) => this.a.art.anims[anim]?.frames ?? 1,
       targets,
       body: (n) => ({ x: targets[n].x, y: targets[n].y - BODY_UP }),
       self: (dx, dy) => ({ x: FEET.x + stage.offset.x + dx, y: FEET.y + stage.offset.y + dy }),

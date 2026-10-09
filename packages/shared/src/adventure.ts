@@ -23,6 +23,9 @@ export interface ClassInfo {
   skills: { level: number; name: string; desc: string }[];
   /** The two movement skills: Dash and the class's Lv 8 move (`id` names the move: TownMove). */
   mobility?: { id: string; level: number; name: string; desc: string }[];
+  /** The class's buffs (name, unlock level; stats.json skills.mpCost.buffs by name). All play its `buff-cast` anim; not
+   *  castable yet, only shown in the skill preview. */
+  buffs?: { name: string; level: number }[];
 }
 
 export interface ClassesFile {

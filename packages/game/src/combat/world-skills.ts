@@ -124,6 +124,7 @@ export class WorldSkills {
       targets,
       body: (n) => body(n),
       self: (dx, dy) => ({ x: feet.x + dx, y: feet.y + dy }),
+      frames: (anim) => art.anims[anim]?.frames ?? 1,
       pose(anim, frames, ms) {
         // (The character plays its pose itself: these are only the times each frame starts.)
         return frames.map((_, i) => {

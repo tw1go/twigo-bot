@@ -1,5 +1,5 @@
 {
- "note": "The six classes for the class choice. Skills are the first 7 damage skills, the ones with FX. Paths are relative to public/assets/. mobility: the two movement skills (Dash, and the class's Lv 8 move); id names the move's anims (characters/classes/mobility-README.md).",
+ "note": "The six classes for the class choice. Skills are the first 7 damage skills, the ones with FX. Paths are relative to public/assets/. mobility: the two movement skills (Dash, and the class's Lv 8 move); id names the move's anims (characters/classes/mobility-README.md). buffs: the class's buffs (name, unlock level; their names are the keys of stats.json skills.mpCost.buffs); every buff plays the class's buff-cast anim (characters/classes/buff-cast-README.md in the art folder). Not castable in the game yet: the skill preview shows them.",
  "classes": [
   {
    "id": "slingshot",
@@ -64,6 +64,20 @@
      "level": 8,
      "name": "Step Back",
      "desc": "Hop backwards"
+    }
+   ],
+   "buffs": [
+    {
+     "name": "Rally",
+     "level": 10
+    },
+    {
+     "name": "Steady Aim",
+     "level": 14
+    },
+    {
+     "name": "Second Wind",
+     "level": 20
     }
    ]
   },
@@ -131,6 +145,12 @@
      "name": "Step Back",
      "desc": "Hop backwards"
     }
+   ],
+   "buffs": [
+    {
+     "name": "Keen Stance",
+     "level": 14
+    }
    ]
   },
   {
@@ -196,6 +216,20 @@
      "level": 8,
      "name": "Charge",
      "desc": "Rush forward"
+    }
+   ],
+   "buffs": [
+    {
+     "name": "Hearty Cheer",
+     "level": 10
+    },
+    {
+     "name": "Steady Breath",
+     "level": 14
+    },
+    {
+     "name": "Battle Roar",
+     "level": 20
     }
    ]
   },
@@ -263,6 +297,12 @@
      "name": "Blink",
      "desc": "Short teleport"
     }
+   ],
+   "buffs": [
+    {
+     "name": "Warding Dust",
+     "level": 20
+    }
    ]
   },
   {
@@ -329,6 +369,12 @@
      "name": "Charge",
      "desc": "Rush forward"
     }
+   ],
+   "buffs": [
+    {
+     "name": "Dinner Bell",
+     "level": 14
+    }
    ]
   },
   {
@@ -394,6 +440,20 @@
      "level": 8,
      "name": "Blink",
      "desc": "Short teleport"
+    }
+   ],
+   "buffs": [
+    {
+     "name": "Vital Rub",
+     "level": 10
+    },
+    {
+     "name": "Calm Mind",
+     "level": 14
+    },
+    {
+     "name": "Soothing Touch",
+     "level": 20
     }
    ]
   }

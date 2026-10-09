@@ -1,16 +1,17 @@
 import type { ClassInfo } from '@mikazuki/shared';
 import { playSound } from '../audio/sound';
-import { MOBILITY_PREVIEWS, SKILL_PREVIEWS } from '../combat/skill-previews';
+import { MOBILITY_PREVIEWS, SKILL_PREVIEWS, buffPreview } from '../combat/skill-previews';
 import { GAP_MS, type NumberKind, type Pt, STAGE_H, STAGE_W, type Skill, type SkillStage } from '../combat/skill-stage';
-import type { SkillView } from '../net/adventure';
+import type { BuffView, SkillView } from '../net/adventure';
 import { stats } from './class-choice';
 
 // 🎬 A class's skill preview (over the class choice): on the left a small stage at a whole-number scale with your
 // character in the class's walk-ready pose facing SE and three invisible enemies along that line (combat/skill-stage.ts);
 // under it the class's blurb, weapon, role, damage, stats and gear; on the right its name, its first 7 skills, and under a Mobility
-// heading its two movement skills (classes.json's mobility: Dash and the Lv 8 move), each with its unlock level and, once
-// unlocked at your level, its skill level and cap ("Lv 1 / 10"; locked ones say so). All nine play one after another
-// and loop, the one playing lit up in the list; clicking a skill plays it next. Damage numbers rise
+// heading its two movement skills (classes.json's mobility: Dash and the Lv 8 move), and under a Buffs heading its buffs
+// (classes.json's buffs, with their icons; each plays the class's buff-cast, no FX yet), each with its unlock level and,
+// once unlocked at your level, its skill level and cap ("Lv 1 / 10"; locked ones say so). All of them play one after
+// another and loop, the one playing lit up in the list; clicking a skill plays it next. Damage numbers rise
 // over the hits in Jersey 10 (its 19 px steps): gold for a crit, small orange for burns, small mint for menthol.
 
 export interface SkillPreviewOptions {
@@ -18,12 +19,17 @@ export interface SkillPreviewOptions {
   stage: (cls: ClassInfo) => Promise<SkillStage | null>;
   /** The class's skills with their levels and caps at your level (net/adventure.ts skillViews). */
   levels?: (cls: ClassInfo) => SkillView[];
+  /** The class's buffs with their caps at your level (net/adventure.ts buffViews). */
+  buffs?: (cls: ClassInfo) => BuffView[];
+  /** A skill's icon (manifest ui.skillIcons), if there is one. */
+  icon?: (cls: string, skill: string) => string | null;
 }
 
 export function mountSkillPreview(o: SkillPreviewOptions, c: ClassInfo, host: HTMLElement, back: () => void, choose: () => void): () => void {
   const moves = (c.mobility ?? []).filter((m) => MOBILITY_PREVIEWS[c.id]?.[m.id]);
-  const levels = new Map((o.levels?.(c) ?? []).map((k) => [k.name, k]));
-  const skills: Skill[] = [...(SKILL_PREVIEWS[c.id] ?? []), ...moves.map((m) => MOBILITY_PREVIEWS[c.id][m.id])];
+  const buffs = [...(c.buffs ?? [])].sort((a, b) => a.level - b.level);
+  const levels = new Map<string, { level: number; cap: number; locked: boolean }>([...(o.levels?.(c) ?? []), ...(o.buffs?.(c) ?? [])].map((k) => [k.name, k]));
+  const skills: Skill[] = [...(SKILL_PREVIEWS[c.id] ?? []), ...moves.map((m) => MOBILITY_PREVIEWS[c.id][m.id]), ...buffs.map((b) => buffPreview(b.name))];
   const root = el('div', 'sp-body');
   const left = el('div', 'sp-stage');
   const numbers = el('div', 'sp-numbers');
@@ -46,24 +52,36 @@ export function mountSkillPreview(o: SkillPreviewOptions, c: ClassInfo, host: HT
   right.append(el('div', 'sp-name', c.name));
   const list = el('ol', 'sp-skills');
   const moveList = el('ol', 'sp-skills');
-  const rows = [...c.skills, ...moves].map((s, i) => {
+  const buffList = el('ol', 'sp-skills');
+  const firstBuff = c.skills.length + moves.length;
+  const rows = [...c.skills, ...moves, ...buffs.map((x) => ({ ...x, desc: '' }))].map((s, i) => {
     const li = el('li', 'sp-skill');
     const b = el('button', 'sp-skill-button');
-    const name = el('span', 'sp-skill-name', s.name);
+    const name = el('span', 'sp-skill-name');
+    const src = i >= firstBuff ? o.icon?.(c.id, s.name) : null;
+    if (src) {
+      const img = el('img', 'sp-icon');
+      img.src = src;
+      img.alt = '';
+      name.append(img);
+    }
+    name.append(s.name);
     const v = levels.get(s.name);
     if (v) name.append(el('span', v.locked ? 'sp-cap sp-locked' : 'sp-cap', v.locked ? 'Locked' : `Lv ${v.level} / ${v.cap}`));
-    b.append(el('span', 'sp-lv', `Lv ${s.level}`), name, el('span', 'sp-desc', s.desc));
+    b.append(el('span', 'sp-lv', `Lv ${s.level}`), name);
+    if (s.desc) b.append(el('span', 'sp-desc', s.desc));
     b.addEventListener('click', () => {
       playSound('click');
       next = i;
       if (stage && !stage.busy) startNext(performance.now());
     });
     li.append(b);
-    (i < c.skills.length ? list : moveList).append(li);
+    (i < c.skills.length ? list : i < firstBuff ? moveList : buffList).append(li);
     return li;
   });
   right.append(el('div', 'sp-skills-head', 'Skills'), list);
   if (moves.length) right.append(el('div', 'sp-skills-head sp-mobility-head', 'Mobility'), moveList);
+  if (buffs.length) right.append(el('div', 'sp-skills-head sp-mobility-head', 'Buffs'), buffList);
   const buttons = el('div', 'sp-buttons');
   const backButton = el('button', 'sp-back', 'Back');
   const chooseButton = el('button', 'sp-choose', `Choose ${c.name}`);

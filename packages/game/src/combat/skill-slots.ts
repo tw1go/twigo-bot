@@ -20,6 +20,7 @@ export function skillSlots(skill: Skill): number[] {
     targets,
     body: (n) => (used.add(n), pt),
     self: () => pt,
+    frames: () => 1,
     pose: (_a, frames) => frames.map((_, i) => i * 80),
     launch: () => pt,
     at: (_ms, fn) => fn(),
