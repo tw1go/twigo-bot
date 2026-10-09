@@ -587,7 +587,7 @@ export class TownScene extends Phaser.Scene {
     if (this.minimap && time >= this.nextMinimap) {
       this.nextMinimap = time + 250;
       const v = this.cameras.main.worldView;
-      this.minimap.draw({ me: this.player.tile, others: this.others.players, camera: { x: v.x, y: v.y, width: v.width, height: v.height } });
+      this.minimap.draw({ me: this.player.tile, others: this.others.players.map((o) => ({ col: o.col, row: o.row, party: inParty(o.id) })), camera: { x: v.x, y: v.y, width: v.width, height: v.height } });
     }
     if (time >= this.nextSkyCheck) {
       this.nextSkyCheck = time + 1000;

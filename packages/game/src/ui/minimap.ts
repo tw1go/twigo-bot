@@ -1,7 +1,7 @@
 import type { TownMap } from '../assets/types';
 
 // 🗺️ The minimap (top right, above the HUD's buttons; it goes in the HUD's .th-map slot): the town's diamond from maps/town.json — grass, paths, the plaza,
-// the river and the buildings' footprints — with a green dot for everyone else in town, a gold one for you, and a
+// the river and the buildings' footprints — with a green dot for everyone else in town (pink for your party), a gold one for you, and a
 // faint box for what the camera shows. The Slums: their dirt, concrete, planks and canal, raised ground a shade lighter
 // and the basin darker. The ground is drawn once; the dots every quarter second. Smaller on phones.
 
@@ -12,13 +12,15 @@ const GROUND: Record<string, string> = {
 };
 const BUILDING = '#7C2AE8';
 const OTHER = '#22C55E';
+const PARTY = '#F9A8D4'; // your party's pink (their names in town, the party panel)
 const YOU = '#FCDA4A';
 const OUTLINE = '#111827';
 const PHONE = '(max-width: 760px), (max-height: 500px)';
 
 export interface MinimapView {
   me: { col: number; row: number };
-  others: { col: number; row: number }[];
+  /** Everyone else; `party`: in your party (pink). */
+  others: { col: number; row: number; party?: boolean }[];
   /** The camera's view, in world px (tile (col, row)'s top corner is at ((col - row) × 16, (col + row) × 8)). */
   camera: { x: number; y: number; width: number; height: number };
 }
@@ -35,7 +37,7 @@ export class Minimap {
   constructor(private readonly map: TownMap) {
     this.el.id = 'minimap';
     this.el.setAttribute('role', 'img');
-    this.el.setAttribute('aria-label', 'Town map: you in gold, everyone else in green');
+    this.el.setAttribute('aria-label', 'Town map: you in gold, your party in pink, everyone else in green');
     (document.querySelector('#town-hud .th-map') ?? document.body).append(this.el);
     this.phone.addEventListener('change', () => this.layout());
     this.layout();
@@ -106,7 +108,8 @@ export class Minimap {
       g.strokeStyle = OUTLINE;
       g.stroke();
     };
-    for (const p of v.others) dot(p, OTHER, r);
+    for (const p of v.others) if (!p.party) dot(p, OTHER, r);
+    for (const p of v.others) if (p.party) dot(p, PARTY, r); // (over the others)
     dot(v.me, YOU, r + 1); // last, on top
   }
 }

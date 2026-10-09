@@ -140,7 +140,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   under it; on phones (≤560 px wide, or ≤500 px tall = landscape phones, which get every phone rule) those buttons stack in
   a column under the map with the bag button under them, and the stay box sits beside the Chat button): the town's isometric diamond, its ground and buildings from
   town.json, drawn once; green dots
-  for everyone else, gold for you, a faint box for the camera's view; redrawn every 250 ms. Hidden in the casino.
+  for everyone else (your party's pink, over the others: `inParty`), gold for you, a faint box for the camera's view; redrawn every 250 ms. Hidden in the casino.
 - Stay reward (`ui/stay.ts`, over the system feed's top edge; on phones above the bottom edge): a Kowen for every 15 min in
   town, max 20 a day (bot `web/town-stay.ts`, kv 'town-stay', tested; the web server counts a minute for everyone in
   town (`Town.here()`) every 60 s and sends `stay` when one is ready). Ready → a gold-edged pop-up with Claim (`POST
