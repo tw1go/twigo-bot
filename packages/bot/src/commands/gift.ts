@@ -10,7 +10,7 @@ import { openPayoutPanel } from '../minewars/payout.js';
 import { kowen } from '../kowens.js';
 import { LAUNCH_REWARD, launchPayout, launched, preregPanel } from '../prereg/prereg.js';
 import { TITLES, giveTitle } from '../web/titles.js';
-import { townGift, townGiftItem } from '../web/town-feed.js';
+import { townGift, townGiftItem, townItems } from '../web/town-feed.js';
 
 // Only the gifter (REWARD_OWNER_ID) can use this. Hidden from non-admins by default.
 export const gift: Command = {
@@ -138,8 +138,13 @@ export const gift: Command = {
       }
       const ids = user ? [user.id] : accountIds();
       const shown = { id: it.id, name: it.name, rarity: it.rarity };
+      let full = 0;
       for (const id of ids) {
-        it.give(id, quantity);
+        if (it.give(id, quantity) === false) {
+          full++;
+          continue;
+        }
+        if (it.combat) townItems(id);
         townGiftItem(id, 'The gifter', shown, quantity); // a pop-up for those in the web town
       }
       const over = ids.filter((id) => usedSlots(id) > capacity(id)).length;
@@ -149,7 +154,8 @@ export const gift: Command = {
         content:
           (user ? `🎁 ${user} received ${what} from the gifter!` : `🎁 **Everyone who has used the bot** (${ids.length} members) received ${what} from the gifter!`) +
           (it.id === 'shovel' ? `\n-# Each shovel is ${SHOVEL_USES} digs.` : '') +
-          (over ? `\n-# ${user ? 'Their bag is' : `${over} bag${over === 1 ? ' is' : 's are'}`} now over capacity: no digging until they sell something.` : ''),
+          (over ? `\n-# ${user ? 'Their bag is' : `${over} bag${over === 1 ? ' is' : 's are'}`} now over capacity: no digging until they sell something.` : '') +
+          (full ? `\n-# ${user ? "Their combat bag is full: it wasn't given." : `${full} combat bag${full === 1 ? ' was' : 's were'} full: not given to them.`}` : ''),
         allowedMentions: user ? { users: [user.id] } : { parse: [] },
       });
       return;

@@ -722,3 +722,15 @@ test('over the town\'s socket: a dropped item lands at your feet for anyone (no 
   for (const c of [mara, bob, dee]) c.ws.close();
   await new Promise((ok) => server.close(ok));
 });
+
+test('/gift item: whetstones, Repair Kits and HP/MP Potions go into the combat bag, stacking; not agimats or gear', async () => {
+  const { giftableById } = await import('../items/gift.js');
+  const { combatOf } = await import('./adventure.js');
+  const stone = giftableById.get('rough-whetstone')!;
+  assert.equal(stone.combat, true);
+  assert.notEqual(stone.give('gift-test', 10), false);
+  assert.notEqual(stone.give('gift-test', 10), false);
+  assert.deepEqual(combatOf('gift-test').bag.map((i) => [i.defId, i.count]), [['rough-whetstone', 20]]);
+  assert.ok(giftableById.has('low-hp-potion') && giftableById.has('low-repair-kit'));
+  assert.ok(!giftableById.has('agimat-atk') && !giftableById.has('weapon-crude-stick'));
+});

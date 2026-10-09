@@ -129,7 +129,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   `adventure().progress`; HP/MP bars go in `.th-bars` over it, XP last), with Kowens and shovels beside it (they wrap below on phones); Settings top right;
   Kowens/shovels have "+" info (from `/me`: `kowens`, `dig`). The
   shovel icon is `ui-shovel.png` (manifest ui.shovelIcon). The Kowens follow every balance change, wherever it came from:
-  the credits store's `setWalletHook` → town `wallet` message → the HUD reloads. `/gift item` (an item to someone or everyone, `items/gift.ts`) shows the item gift pop-up (`gift-item`; dev
+  the credits store's `setWalletHook` → town `wallet` message → the HUD reloads. `/gift item` (an item to someone or everyone, `items/gift.ts`; combat bag materials and potions too: whetstones, fragments, Repair Kits, HP/MP Potions, only into a bag with room, the town's bag told via `townItems`; tested) shows the item gift pop-up (`gift-item`; dev
   `/__gift?as=Name&item=megaphone&name=Megaphone&qty=3`). `/gift kowens` and `/gift everyone` also show
   the gift pop-up in town (`townGift`). Every open pop-up showing Kowens follows them too (`followWallet` in
   `ui/reward.ts`: bank, jackpot, shop, outpost, board, Mine; the casino and the player menu have their own listener; the bag

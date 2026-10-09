@@ -92,6 +92,11 @@ export function townGiftItem(userId: string, from: string, item: { id: string; n
   town?.giftedItem(userId, from, item, quantity);
 }
 
+/** A member's combat bag changed outside the town (a gift): their bag in town shows it. */
+export function townItems(userId: string): void {
+  town?.items(userId);
+}
+
 /** Shows a member as jailed (or not) in the town, if they're in it. */
 export function townJailed(userId: string, on: boolean): void {
   town?.setJailed(userId, on);
