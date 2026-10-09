@@ -344,8 +344,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   the top (`ui/mob-target.ts`: name, level, HP, zone); Escape or 20 tiles away lets go. Battle (battle maps = maps with
   mobs): characters with a class use their class's combat poses there (`characters/battle-art.ts`: every pose composited
   per class and look from kit-art drawPose into 64 × 64 sheets, built a few ms at a time between frames and one look
-  at a time (about a second of drawing each: done at once it froze everyone's game when someone arrived); standing = walk-ready's first frame, walking walk-ready /
-  walk-hunt; `Character.setBattle`, `strike`, `hurt`; the look's clothes and hair laid on by kit-art), others too
+  at a time (about a second of drawing each: done at once it froze everyone's game when someone arrived); standing = idle-ready (the combat-stance idle: 6 frames at 8 fps, looped, walk-ready's guard on the base idle's planted legs; a class without it holds walk-ready's first frame), walking walk-ready /
+  walk-hunt; attacks, moves and buff casts end back in it; `Character.setBattle`, `strike`, `hurt`; the look's clothes and hair laid on by kit-art), others too
   (`OtherPlayers.battleFor`). The hotbar's damage skills work there (`TownScene.fight` / `fightTick`): pressing one
   auto-casts on your Z target (else the nearest mob): one cast a second (CAST_GAP_MS), the pressed skill when it's ready,
   else the first ready unlocked damage skill (the bar's order: 1–0, then the Alt row; then the class's); each skill's cooldown by its

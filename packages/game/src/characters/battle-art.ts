@@ -5,7 +5,7 @@ import { CELL, drawPose, lookImages, loadImages, poseFiles } from './kit-art';
 
 // ⚔️ Battle poses (maps with mobs: the Slums): a character with a class is drawn in its class's combat sheets there
 // instead of the town doll, every pose composited once per class and look (back weapon layers, the body and face in
-// the look's skin, front layers: kit-art drawPose) into 64 × 64 sprite sheets. Standing is walk-ready's first frame,
+// the look's skin, front layers: kit-art drawPose) into 64 × 64 sprite sheets. Standing is idle-ready (looped),
 // walking walk-ready (the Slingshot's walk-hunt), and the skills play the attack poses once. The combat sheets have no
 // clothes or hair: the look's are laid on each pose (kit-art: clothes on the body, trimmed to it; hair, glasses and hat on the head).
 
@@ -56,7 +56,8 @@ async function build(scene: Phaser.Scene, C: CharacterDefs, K: ClassesDefs, art:
   const directions = dirsOf('walk-ready');
   sliceFrom = performance.now();
   // Standing and walking first, then the attacks.
-  const anims = Object.entries(art.anims).sort(([a], [b]) => Number(b.startsWith('walk')) - Number(a.startsWith('walk')));
+  const first = (a: string) => Number(a.startsWith('walk') || a === 'idle-ready');
+  const anims = Object.entries(art.anims).sort(([a], [b]) => first(b) - first(a));
   for (const [anim, a] of anims) {
     for (const dir of dirsOf(anim)) {
       const key = `${tag}:${anim}:${dir}`;
@@ -76,15 +77,16 @@ async function build(scene: Phaser.Scene, C: CharacterDefs, K: ClassesDefs, art:
       for (let f = 0; f < a.frames; f++) tex.add(f, 0, f * CELL, 0, CELL, CELL);
       const frames = Array.from({ length: a.frames }, (_, f) => ({ key, frame: f }));
       scene.anims.create({ key, frames, frameRate: a.fps, repeat: a.loop ? -1 : 0 });
-      // Standing: walk-ready's first frame, held.
-      if (anim === 'walk-ready') scene.anims.create({ key: `${tag}:idle:${dir}`, frames: [frames[0]], frameRate: 1, repeat: -1 });
+      // Standing: the combat-stance idle (idle-ready, breathing, looped); a class without it holds walk-ready's first frame.
+      if (anim === 'walk-ready' && !art.anims['idle-ready']) scene.anims.create({ key: `${tag}:idle:${dir}`, frames: [frames[0]], frameRate: 1, repeat: -1 });
     }
   }
   const walk = art.anims['walk-hunt'] ? 'walk-hunt' : 'walk-ready';
   return {
     cls,
     key: (anim, dir) => {
-      const a = anim === 'walk' ? walk : anim === 'idle' || !art.anims[anim] ? 'idle' : anim;
+      const idle = art.anims['idle-ready'] ? 'idle-ready' : 'idle';
+      const a = anim === 'walk' ? walk : anim === 'idle' || !art.anims[anim] ? idle : anim;
       const dirs = a === 'idle' ? directions : dirsOf(a);
       return `${tag}:${a}:${dirs.includes(dir) ? dir : dirs[0]}`;
     },

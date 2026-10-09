@@ -138,6 +138,8 @@ const FEET: Pt = { x: 84, y: 70 };
 const TILE: Pt = { x: 16, y: 8 };
 const BODY_UP = 9; // an enemy's body above its feet
 const ANCHOR: Pt = { x: 32, y: 56 }; // the fighter's feet in the 64 cell
+/** Standing between skills: the combat-stance idle (idle-ready, breathing), else walk-ready for a class without it. */
+const IDLE = 'idle-ready';
 const READY = 'walk-ready';
 export const GAP_MS = 600; // walk-ready between skills
 const NUMBER_MS = 800;
@@ -228,7 +230,7 @@ export class SkillStage {
     return !!this.playing && (this.now < this.busyUntil || this.events.length > 0 || this.lives.length > 0 || this.poses.some((p) => p.end > this.now));
   }
 
-  /** Back to walk-ready (between skills). */
+  /** Back to the combat stance (between skills): idle-ready, breathing. */
   rest(): void {
     this.clear();
     this.playing = null;
@@ -307,8 +309,9 @@ export class SkillStage {
   private poseNow(): { anim: string; frame: number } {
     const p = this.poses.find((x) => x.start <= this.now && this.now < x.end) ?? (this.poses.length && this.now < this.poses[this.poses.length - 1].end ? this.poses[0] : null);
     if (p) return p;
-    const r = this.a.art.anims[READY];
-    return { anim: READY, frame: Math.floor(((this.now - this.readyFrom) / 1000) * r.fps) % r.frames };
+    const anim = this.a.art.anims[IDLE] ? IDLE : READY;
+    const r = this.a.art.anims[anim];
+    return { anim, frame: Math.floor(((this.now - this.readyFrom) / 1000) * r.fps) % r.frames };
   }
 
   private drawFx(l: Live): void {
