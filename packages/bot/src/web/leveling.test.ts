@@ -17,7 +17,7 @@ for (const name of ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'ADMIN_ROLE_ID', 'ADMI
   'GAMBLING_CHANNEL_ID', 'GAMES_CHANNEL_ID', 'JAIL_ROLE_ID', 'REWARD_OWNER_ID', 'ROOM_FINDS_CHANNEL_ID']) process.env[name] = 'test';
 process.env.TIMEZONE = 'Asia/Manila';
 
-const { gainXp, isGearDef, kusingRange, miniBossRules, questDropFor, agimatSlots, mobStats, mobXp, nearestGearLevel, questKill, readyToReport } = await import('@mikazuki/shared');
+const { gainXp, itemStats, isGearDef, kusingRange, miniBossRules, questDropFor, agimatSlots, mobStats, mobXp, nearestGearLevel, questKill, readyToReport } = await import('@mikazuki/shared');
 type TownServerMessage = import('@mikazuki/shared').TownServerMessage;
 const { loadItemData, loadLeveling } = await import('./stats-data.js');
 const { miniLoot } = await import('./loot.js');
@@ -350,7 +350,7 @@ test('mini boss quests finished before the piece came with the report get it on 
   const s = adventureOf(u);
   s.quests.pieces = [];
   s.bag = s.bag.filter((i) => !(i.plus === 5 && i.bound));
-  const full = Array.from({ length: S.inventory.slots }, (_, k) => ({ ...s.bag[0], uid: `f${k}`, count: 99 }));
+  const full = Array.from({ length: itemStats(S).inventory.slots }, (_, k) => ({ ...s.bag[0], uid: `f${k}`, count: 99 }));
   db.prepare('DELETE FROM items WHERE owner = ? AND place IS NULL').run(u);
   const put = db.prepare('INSERT INTO items (uid, owner, def_id, level, rarity, count, slot, created) VALUES (?, ?, ?, 1, ?, ?, ?, 0)');
   db.prepare('UPDATE adventurers SET quests = ? WHERE user_id = ?').run(JSON.stringify(s.quests), u);
