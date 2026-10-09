@@ -1582,6 +1582,122 @@
               }
             }
           },
+          "idle-ready": {
+            "frames": 6,
+            "fps": 8,
+            "loop": true,
+            "dirs": {
+              "se": {
+                "body": "characters/classes/slingshot/idle-ready/char-body-idle-ready-se.png",
+                "back": [],
+                "front": [
+                  {
+                    "file": "characters/classes/slingshot/idle-ready/char-weapon-slingshot-idle-ready-se.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ],
+                "face": "characters/classes/slingshot/idle-ready/char-face-default-idle-ready-se.png"
+              },
+              "e": {
+                "body": "characters/classes/slingshot/idle-ready/char-body-idle-ready-e.png",
+                "back": [],
+                "front": [
+                  {
+                    "file": "characters/classes/slingshot/idle-ready/char-weapon-slingshot-idle-ready-e.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ],
+                "face": "characters/classes/slingshot/idle-ready/char-face-default-idle-ready-e.png"
+              },
+              "s": {
+                "body": "characters/classes/slingshot/idle-ready/char-body-idle-ready-s.png",
+                "back": [],
+                "front": [
+                  {
+                    "file": "characters/classes/slingshot/idle-ready/char-weapon-slingshot-idle-ready-s.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ],
+                "face": "characters/classes/slingshot/idle-ready/char-face-default-idle-ready-s.png"
+              },
+              "ne": {
+                "body": "characters/classes/slingshot/idle-ready/char-body-idle-ready-ne.png",
+                "back": [
+                  {
+                    "file": "characters/classes/slingshot/idle-ready/char-weapon-slingshot-idle-ready-ne.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ],
+                "front": []
+              },
+              "n": {
+                "body": "characters/classes/slingshot/idle-ready/char-body-idle-ready-n.png",
+                "back": [
+                  {
+                    "file": "characters/classes/slingshot/idle-ready/char-weapon-slingshot-idle-ready-n.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ],
+                "front": []
+              },
+              "sw": {
+                "body": "characters/classes/slingshot/idle-ready/char-body-idle-ready-sw.png",
+                "back": [],
+                "front": [
+                  {
+                    "file": "characters/classes/slingshot/idle-ready/char-weapon-slingshot-idle-ready-sw.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ],
+                "face": "characters/classes/slingshot/idle-ready/char-face-default-idle-ready-sw.png"
+              },
+              "w": {
+                "body": "characters/classes/slingshot/idle-ready/char-body-idle-ready-w.png",
+                "back": [],
+                "front": [
+                  {
+                    "file": "characters/classes/slingshot/idle-ready/char-weapon-slingshot-idle-ready-w.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ],
+                "face": "characters/classes/slingshot/idle-ready/char-face-default-idle-ready-w.png"
+              },
+              "nw": {
+                "body": "characters/classes/slingshot/idle-ready/char-body-idle-ready-nw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/slingshot/idle-ready/char-weapon-slingshot-idle-ready-nw.png",
+                    "size": [
+                      32,
+                      48
+                    ]
+                  }
+                ],
+                "front": []
+              }
+            }
+          },
           "dash": {
             "frames": 7,
             "fps": 16,
@@ -3073,6 +3189,186 @@
                 "front": [
                   {
                     "file": "characters/classes/stick/walk-ready/char-weapon-stick-walk-ready-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "idle-ready": {
+            "frames": 6,
+            "fps": 8,
+            "loop": true,
+            "dirs": {
+              "se": {
+                "body": "characters/classes/stick/idle-ready/char-body-idle-ready-se.png",
+                "back": [
+                  {
+                    "file": "characters/classes/stick/idle-ready/char-weapon-stick-back-idle-ready-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/stick/idle-ready/char-weapon-stick-idle-ready-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/stick/idle-ready/char-face-default-idle-ready-se.png"
+              },
+              "s": {
+                "body": "characters/classes/stick/idle-ready/char-body-idle-ready-s.png",
+                "back": [
+                  {
+                    "file": "characters/classes/stick/idle-ready/char-weapon-stick-back-idle-ready-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/stick/idle-ready/char-weapon-stick-idle-ready-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/stick/idle-ready/char-face-default-idle-ready-s.png"
+              },
+              "ne": {
+                "body": "characters/classes/stick/idle-ready/char-body-idle-ready-ne.png",
+                "back": [
+                  {
+                    "file": "characters/classes/stick/idle-ready/char-weapon-stick-back-idle-ready-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/stick/idle-ready/char-weapon-stick-idle-ready-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "n": {
+                "body": "characters/classes/stick/idle-ready/char-body-idle-ready-n.png",
+                "back": [
+                  {
+                    "file": "characters/classes/stick/idle-ready/char-weapon-stick-back-idle-ready-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/stick/idle-ready/char-weapon-stick-idle-ready-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "e": {
+                "body": "characters/classes/stick/idle-ready/char-body-idle-ready-e.png",
+                "back": [
+                  {
+                    "file": "characters/classes/stick/idle-ready/char-weapon-stick-back-idle-ready-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/stick/idle-ready/char-weapon-stick-idle-ready-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/stick/idle-ready/char-face-default-idle-ready-e.png"
+              },
+              "sw": {
+                "body": "characters/classes/stick/idle-ready/char-body-idle-ready-sw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/stick/idle-ready/char-weapon-stick-back-idle-ready-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/stick/idle-ready/char-weapon-stick-idle-ready-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/stick/idle-ready/char-face-default-idle-ready-sw.png"
+              },
+              "w": {
+                "body": "characters/classes/stick/idle-ready/char-body-idle-ready-w.png",
+                "back": [
+                  {
+                    "file": "characters/classes/stick/idle-ready/char-weapon-stick-back-idle-ready-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/stick/idle-ready/char-weapon-stick-idle-ready-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/stick/idle-ready/char-face-default-idle-ready-w.png"
+              },
+              "nw": {
+                "body": "characters/classes/stick/idle-ready/char-body-idle-ready-nw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/stick/idle-ready/char-weapon-stick-back-idle-ready-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/stick/idle-ready/char-weapon-stick-idle-ready-nw.png",
                     "size": [
                       64,
                       64
@@ -4666,6 +4962,186 @@
                 "front": [
                   {
                     "file": "characters/classes/greatstick/walk-ready/char-weapon-greatstick-walk-ready-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "idle-ready": {
+            "frames": 6,
+            "fps": 8,
+            "loop": true,
+            "dirs": {
+              "se": {
+                "body": "characters/classes/greatstick/idle-ready/char-body-idle-ready-se.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/idle-ready/char-weapon-greatstick-back-idle-ready-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/idle-ready/char-weapon-greatstick-idle-ready-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/greatstick/idle-ready/char-face-default-idle-ready-se.png"
+              },
+              "s": {
+                "body": "characters/classes/greatstick/idle-ready/char-body-idle-ready-s.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/idle-ready/char-weapon-greatstick-back-idle-ready-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/idle-ready/char-weapon-greatstick-idle-ready-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/greatstick/idle-ready/char-face-default-idle-ready-s.png"
+              },
+              "ne": {
+                "body": "characters/classes/greatstick/idle-ready/char-body-idle-ready-ne.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/idle-ready/char-weapon-greatstick-back-idle-ready-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/idle-ready/char-weapon-greatstick-idle-ready-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "n": {
+                "body": "characters/classes/greatstick/idle-ready/char-body-idle-ready-n.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/idle-ready/char-weapon-greatstick-back-idle-ready-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/idle-ready/char-weapon-greatstick-idle-ready-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "e": {
+                "body": "characters/classes/greatstick/idle-ready/char-body-idle-ready-e.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/idle-ready/char-weapon-greatstick-back-idle-ready-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/idle-ready/char-weapon-greatstick-idle-ready-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/greatstick/idle-ready/char-face-default-idle-ready-e.png"
+              },
+              "sw": {
+                "body": "characters/classes/greatstick/idle-ready/char-body-idle-ready-sw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/idle-ready/char-weapon-greatstick-back-idle-ready-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/idle-ready/char-weapon-greatstick-idle-ready-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/greatstick/idle-ready/char-face-default-idle-ready-sw.png"
+              },
+              "w": {
+                "body": "characters/classes/greatstick/idle-ready/char-body-idle-ready-w.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/idle-ready/char-weapon-greatstick-back-idle-ready-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/idle-ready/char-weapon-greatstick-idle-ready-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/greatstick/idle-ready/char-face-default-idle-ready-w.png"
+              },
+              "nw": {
+                "body": "characters/classes/greatstick/idle-ready/char-body-idle-ready-nw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/greatstick/idle-ready/char-weapon-greatstick-back-idle-ready-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/greatstick/idle-ready/char-weapon-greatstick-idle-ready-nw.png",
                     "size": [
                       64,
                       64
@@ -6625,6 +7101,186 @@
                   }
                 ],
                 "face": "characters/classes/broom/walk-ready/char-face-default-walk-ready-w.png"
+              }
+            }
+          },
+          "idle-ready": {
+            "frames": 6,
+            "fps": 8,
+            "loop": true,
+            "dirs": {
+              "se": {
+                "body": "characters/classes/broom/idle-ready/char-body-idle-ready-se.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/idle-ready/char-weapon-broom-back-idle-ready-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/idle-ready/char-weapon-broom-idle-ready-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/broom/idle-ready/char-face-default-idle-ready-se.png"
+              },
+              "s": {
+                "body": "characters/classes/broom/idle-ready/char-body-idle-ready-s.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/idle-ready/char-weapon-broom-back-idle-ready-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/idle-ready/char-weapon-broom-idle-ready-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/broom/idle-ready/char-face-default-idle-ready-s.png"
+              },
+              "sw": {
+                "body": "characters/classes/broom/idle-ready/char-body-idle-ready-sw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/idle-ready/char-weapon-broom-back-idle-ready-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/idle-ready/char-weapon-broom-idle-ready-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/broom/idle-ready/char-face-default-idle-ready-sw.png"
+              },
+              "ne": {
+                "body": "characters/classes/broom/idle-ready/char-body-idle-ready-ne.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/idle-ready/char-weapon-broom-back-idle-ready-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/idle-ready/char-weapon-broom-idle-ready-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "n": {
+                "body": "characters/classes/broom/idle-ready/char-body-idle-ready-n.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/idle-ready/char-weapon-broom-back-idle-ready-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/idle-ready/char-weapon-broom-idle-ready-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "nw": {
+                "body": "characters/classes/broom/idle-ready/char-body-idle-ready-nw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/idle-ready/char-weapon-broom-back-idle-ready-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/idle-ready/char-weapon-broom-idle-ready-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "e": {
+                "body": "characters/classes/broom/idle-ready/char-body-idle-ready-e.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/idle-ready/char-weapon-broom-back-idle-ready-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/idle-ready/char-weapon-broom-idle-ready-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/broom/idle-ready/char-face-default-idle-ready-e.png"
+              },
+              "w": {
+                "body": "characters/classes/broom/idle-ready/char-body-idle-ready-w.png",
+                "back": [
+                  {
+                    "file": "characters/classes/broom/idle-ready/char-weapon-broom-back-idle-ready-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/broom/idle-ready/char-weapon-broom-idle-ready-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/broom/idle-ready/char-face-default-idle-ready-w.png"
               }
             }
           },
@@ -8847,6 +9503,298 @@
                   }
                 ],
                 "face": "characters/classes/potlid/walk-ready/char-face-default-walk-ready-w.png"
+              }
+            }
+          },
+          "idle-ready": {
+            "frames": 6,
+            "fps": 8,
+            "loop": true,
+            "dirs": {
+              "se": {
+                "body": "characters/classes/potlid/idle-ready/char-body-idle-ready-se.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/idle-ready/char-weapon-lid-back-idle-ready-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/idle-ready/char-weapon-ladle-back-idle-ready-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/idle-ready/char-weapon-lid-idle-ready-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/idle-ready/char-weapon-ladle-idle-ready-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/potlid/idle-ready/char-face-default-idle-ready-se.png"
+              },
+              "s": {
+                "body": "characters/classes/potlid/idle-ready/char-body-idle-ready-s.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/idle-ready/char-weapon-lid-back-idle-ready-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/idle-ready/char-weapon-ladle-back-idle-ready-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/idle-ready/char-weapon-lid-idle-ready-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/idle-ready/char-weapon-ladle-idle-ready-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/potlid/idle-ready/char-face-default-idle-ready-s.png"
+              },
+              "sw": {
+                "body": "characters/classes/potlid/idle-ready/char-body-idle-ready-sw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/idle-ready/char-weapon-lid-back-idle-ready-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/idle-ready/char-weapon-ladle-back-idle-ready-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/idle-ready/char-weapon-lid-idle-ready-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/idle-ready/char-weapon-ladle-idle-ready-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/potlid/idle-ready/char-face-default-idle-ready-sw.png"
+              },
+              "ne": {
+                "body": "characters/classes/potlid/idle-ready/char-body-idle-ready-ne.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/idle-ready/char-weapon-lid-back-idle-ready-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/idle-ready/char-weapon-ladle-back-idle-ready-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/idle-ready/char-weapon-lid-idle-ready-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/idle-ready/char-weapon-ladle-idle-ready-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "n": {
+                "body": "characters/classes/potlid/idle-ready/char-body-idle-ready-n.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/idle-ready/char-weapon-lid-back-idle-ready-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/idle-ready/char-weapon-ladle-back-idle-ready-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/idle-ready/char-weapon-lid-idle-ready-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/idle-ready/char-weapon-ladle-idle-ready-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "nw": {
+                "body": "characters/classes/potlid/idle-ready/char-body-idle-ready-nw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/idle-ready/char-weapon-lid-back-idle-ready-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/idle-ready/char-weapon-ladle-back-idle-ready-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/idle-ready/char-weapon-lid-idle-ready-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/idle-ready/char-weapon-ladle-idle-ready-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "e": {
+                "body": "characters/classes/potlid/idle-ready/char-body-idle-ready-e.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/idle-ready/char-weapon-lid-back-idle-ready-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/idle-ready/char-weapon-ladle-back-idle-ready-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/idle-ready/char-weapon-lid-idle-ready-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/idle-ready/char-weapon-ladle-idle-ready-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/potlid/idle-ready/char-face-default-idle-ready-e.png"
+              },
+              "w": {
+                "body": "characters/classes/potlid/idle-ready/char-body-idle-ready-w.png",
+                "back": [
+                  {
+                    "file": "characters/classes/potlid/idle-ready/char-weapon-lid-back-idle-ready-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/idle-ready/char-weapon-ladle-back-idle-ready-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/potlid/idle-ready/char-weapon-lid-idle-ready-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  },
+                  {
+                    "file": "characters/classes/potlid/idle-ready/char-weapon-ladle-idle-ready-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/potlid/idle-ready/char-face-default-idle-ready-w.png"
               }
             }
           },
@@ -11361,6 +12309,186 @@
                   }
                 ],
                 "face": "characters/classes/hilot/walk-ready/char-face-default-walk-ready-w.png"
+              }
+            }
+          },
+          "idle-ready": {
+            "frames": 6,
+            "fps": 8,
+            "loop": true,
+            "dirs": {
+              "se": {
+                "body": "characters/classes/hilot/idle-ready/char-body-idle-ready-se.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/idle-ready/char-weapon-balm-back-idle-ready-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/idle-ready/char-weapon-balm-idle-ready-se.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/hilot/idle-ready/char-face-default-idle-ready-se.png"
+              },
+              "s": {
+                "body": "characters/classes/hilot/idle-ready/char-body-idle-ready-s.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/idle-ready/char-weapon-balm-back-idle-ready-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/idle-ready/char-weapon-balm-idle-ready-s.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/hilot/idle-ready/char-face-default-idle-ready-s.png"
+              },
+              "sw": {
+                "body": "characters/classes/hilot/idle-ready/char-body-idle-ready-sw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/idle-ready/char-weapon-balm-back-idle-ready-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/idle-ready/char-weapon-balm-idle-ready-sw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/hilot/idle-ready/char-face-default-idle-ready-sw.png"
+              },
+              "ne": {
+                "body": "characters/classes/hilot/idle-ready/char-body-idle-ready-ne.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/idle-ready/char-weapon-balm-back-idle-ready-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/idle-ready/char-weapon-balm-idle-ready-ne.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "n": {
+                "body": "characters/classes/hilot/idle-ready/char-body-idle-ready-n.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/idle-ready/char-weapon-balm-back-idle-ready-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/idle-ready/char-weapon-balm-idle-ready-n.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "nw": {
+                "body": "characters/classes/hilot/idle-ready/char-body-idle-ready-nw.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/idle-ready/char-weapon-balm-back-idle-ready-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/idle-ready/char-weapon-balm-idle-ready-nw.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ]
+              },
+              "e": {
+                "body": "characters/classes/hilot/idle-ready/char-body-idle-ready-e.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/idle-ready/char-weapon-balm-back-idle-ready-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/idle-ready/char-weapon-balm-idle-ready-e.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/hilot/idle-ready/char-face-default-idle-ready-e.png"
+              },
+              "w": {
+                "body": "characters/classes/hilot/idle-ready/char-body-idle-ready-w.png",
+                "back": [
+                  {
+                    "file": "characters/classes/hilot/idle-ready/char-weapon-balm-back-idle-ready-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "front": [
+                  {
+                    "file": "characters/classes/hilot/idle-ready/char-weapon-balm-idle-ready-w.png",
+                    "size": [
+                      64,
+                      64
+                    ]
+                  }
+                ],
+                "face": "characters/classes/hilot/idle-ready/char-face-default-idle-ready-w.png"
               }
             }
           },
