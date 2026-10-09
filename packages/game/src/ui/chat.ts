@@ -19,7 +19,7 @@ const ORDER: ChatChannel[] = ['general', 'megaphone', 'party', 'gm'];
 // screen) and Party (pink: your party only, wherever they are; net/party.ts). `/m`, `/g` or `/p message` say it there
 // and stay on that channel; `/m`, `/g` or `/p` alone just switch, and the tag before the input shows (and switches,
 // General → Megaphone → Party) which one you're on. Game Masters (the server says so in `welcome`) have a fourth, GM
-// (gold, `/gm`): free, across everyone's screen like a megaphone, with a GM tag in the log.
+// (gold, `/gm`): free, across everyone's screen like a megaphone, gold in the log.
 // Items: Alt+click one in your bag or equipment panel (the 'mk-chat-item' event) writes "[its name]" into the input; the
 // line goes with its uid and the server checks it's yours. In the log a shown item is its name in its rarity's colour,
 // and a click on it opens its tooltip (`showItem`, set by the town).
@@ -241,7 +241,6 @@ export class ChatBox {
     if (megaphone === true) line.title = 'Megaphone';
     if (gm) line.title = 'Game Master';
     if (party) line.append(Object.assign(document.createElement('span'), { className: 'ch-party-tag', textContent: 'Party' }));
-    if (gm) line.append(Object.assign(document.createElement('span'), { className: 'ch-party-tag ch-gm-tag', textContent: 'GM' }));
     if (from === 'discord') line.append(discordMark());
     const badge = from !== 'discord' ? this.badgeFor?.(from, id) : null;
     if (badge) {

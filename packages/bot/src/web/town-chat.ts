@@ -34,7 +34,7 @@ export function bridgeTownChat(client: Client, town: Town): (userId: string, nic
     const channel = await client.channels.fetch(channelId);
     if (!channel?.isSendable()) return;
     await channel.send({
-      content: `${gm ? '🛡️ **[GM]** ' : megaphone ? '📢 ' : ''}**${escapeMarkdown(nickname)}**: ${escapeMarkdown(text)}`,
+      content: `${!gm && megaphone ? '📢 ' : ''}**${escapeMarkdown(nickname)}**: ${escapeMarkdown(text)}`,
       allowedMentions: { parse: [] },
       flags: MessageFlags.SuppressEmbeds,
     });

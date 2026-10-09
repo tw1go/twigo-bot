@@ -10,7 +10,7 @@ const PER_CHAR_MS = 40; // a long message stays a little longer…
 const MAX_MS = 9000; // …up to this
 const FADE_MS = 300;
 
-/** A megaphone's (sky blue, the megaphone's art) or a Game Master's (gold, a GM badge). */
+/** A megaphone's (sky blue, the megaphone's art) or a Game Master's (gold: the name and words only). */
 type Shout = { name: string; text: string; gm: boolean };
 
 export class MegaphoneBanner {
@@ -39,14 +39,10 @@ export class MegaphoneBanner {
       return;
     }
     const line = el('div', `mg-line${s.gm ? ' mg-gm' : ''}`);
-    let mark: HTMLElement;
-    if (s.gm) mark = el('span', 'mg-gm-badge', 'GM');
-    else if (this.icon) {
-      mark = el('img', 'mg-icon') as HTMLImageElement;
-      (mark as HTMLImageElement).src = this.icon;
-      (mark as HTMLImageElement).alt = '';
-    } else mark = el('span', 'mg-icon', '📢');
-    line.append(mark, el('b', 'mg-name', s.name), el('span', 'mg-text', s.text));
+    // A megaphone's art (or 📢) before the name; a Game Master's has none.
+    if (!s.gm && this.icon) line.append(Object.assign(el('img', 'mg-icon') as HTMLImageElement, { src: this.icon, alt: '' }));
+    else if (!s.gm) line.append(el('span', 'mg-icon', '📢'));
+    line.append(el('b', 'mg-name', s.name), el('span', 'mg-text', s.text));
     this.root.replaceChildren(line);
     this.root.hidden = false;
     const hold = Math.min(MAX_MS, HOLD_MS + s.text.length * PER_CHAR_MS);
