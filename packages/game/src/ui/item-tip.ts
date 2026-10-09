@@ -65,12 +65,14 @@ export function itemPicture(item: Item, size: 'icon' | 'showcase' = 'icon', scal
   return placeholderArt(rarityOf(item), size, scale);
 }
 
-/** The tooltip's lines for an item. */
-export function itemTipFor(item: Item): HTMLElement[] {
+/** The tooltip's lines for an item. `owner`: someone else's (the player menu's Info): named for their class's main stat,
+ *  its requirements listed without checking them against yours. */
+export function itemTipFor(item: Item, owner?: { cls: string | null }): HTMLElement[] {
   const D = itemData();
   const def = D?.defs.get(item.defId);
   const rarity = rarityOf(item);
-  const name = el('div', 'eq-tip-name', nameOf(item));
+  const main = owner ? (owner.cls && D?.stats.classes[owner.cls]?.main) || null : myMainStat();
+  const name = el('div', 'eq-tip-name', D ? itemName(D, item, main) : item.defId);
   name.style.color = item.broken ? '#9CA3AF' : RARITY_TEXT[rarity];
   if (!D || !def) return [name];
   const parts: HTMLElement[] = [name];
@@ -98,10 +100,10 @@ export function itemTipFor(item: Item): HTMLElement[] {
   parts.push(el('div', 'eq-tip-meta', [who, SLOT[def.slot]].filter(Boolean).join(' · ')));
   // Another class's gear, said plainly (its stat needs below would only say "Needs DEX 14").
   const D0 = itemData();
-  const other = D0 ? gearMismatch(D0.stats, adventure()?.cls, def, (c) => classInfo(c)?.name ?? c) : null;
+  const other = D0 && !owner ? gearMismatch(D0.stats, adventure()?.cls, def, (c) => classInfo(c)?.name ?? c) : null;
   if (other) parts.push(el('div', 'eq-tip-unmet', other));
   // Lv and what it needs, by your base stats (gear's never count).
-  const s = adventure();
+  const s = owner ? null : adventure();
   const gearItem = { ...def, level: item.level };
   const missing = s ? canEquip(D.stats, baseStats(D.stats, s.cls, s.progress.level, s.progress.points), s.progress.level, gearItem).missing : [];
   const needs = el('div', 'eq-tip-needs');
@@ -125,7 +127,7 @@ export function itemTipFor(item: Item): HTMLElement[] {
   // The affix lines, line 3 last (an accessory's grow with its plus).
   const tier = affixTier(D.stats, item.rarity);
   for (const line of item.lines) {
-    const row = el('div', `eq-tip-line${tier === 'orange' ? ' eq-tip-orange' : ''}`, lineText(line.stat, lineValue(D.stats, def, item, line), myMainStat()));
+    const row = el('div', `eq-tip-line${tier === 'orange' ? ' eq-tip-orange' : ''}`, lineText(line.stat, lineValue(D.stats, def, item, line), main));
     parts.push(row);
   }
   // Agimat slots: a filled one shows its agimat's icon, an empty one a ring.

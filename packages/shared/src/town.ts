@@ -2,7 +2,7 @@
 // JSON messages, one per frame. Players are identified by a random id per connection, never their Discord ID.
 // A moderator's kick closes the socket with code 4001 and the time (ms) they may come back as the reason.
 
-import type { AdventureState, CharacterProgress, QuestProgress } from './adventure.js';
+import type { AdventureState, CharacterProgress, EquipPlace, QuestProgress } from './adventure.js';
 import type { Item } from './items.js';
 import type { TradeEnd, TradeRefusal, TradeView, TradePut } from './trade.js';
 import type { HoodHouse, HoodMap, OutfitData, TitleData } from './room-api.js';
@@ -162,6 +162,8 @@ export type TownClientMessage =
    *  side in (the whole side each time: items from your combat bag and Kusing; any change unlocks both), lock or unlock
    *  it, press Trade (both locked), or cancel (closing the window). */
   | { t: 'trade-ask'; to: string }
+  /** Another player's worn gear and stats (the player menu's Info), by town id. */
+  | { t: 'inspect'; id: string }
   | { t: 'trade-answer'; ask: string; accept: boolean }
   | { t: 'trade-offer'; items: TradePut[]; kusing: number }
   | { t: 'trade-lock'; on: boolean }
@@ -309,6 +311,18 @@ export interface TownAnnouncement {
 }
 
 /** Server → browser. */
+/** What the player menu's Info shows of someone's stats (the stats rules: class, level, points, worn gear, buffs). */
+export interface InspectStats {
+  power: number;
+  def: number;
+  hp: number;
+  mp: number;
+  STR: number;
+  DEX: number;
+  INT: number;
+  critRate: number;
+}
+
 export type TownServerMessage =
   /** `spawn`: where you arrive (a free tile near the town's spawn point), unless you're already somewhere (a reconnect). */
   | { t: 'welcome'; you: string; players: TownPlayer[]; recent: TownChatLine[]; system: TownSystemLine[]; spawn: [number, number];
@@ -454,6 +468,8 @@ export type TownServerMessage =
   /** A party member picked something up (to the rest of the party, wherever they are): their name and what; Kusing
    *  with each one's share (`share`) when it was split. */
   | { t: 'party-loot'; name: string; got: { kusing?: number; item?: Item }; share?: number }
+  /** Another player's worn gear and stats (an answer to `inspect`); `gone`: they left. */
+  | { t: 'inspect'; id: string; gone?: boolean; cls?: string | null; level?: number; equipped?: Partial<Record<EquipPlace, Item>>; stats?: InspectStats | null }
   /** Someone used a mobility move (their steps follow). */
   | { t: 'move'; id: string; move: TownMove; col: number; row: number }
   /** Someone (`from`, a town id) asks you to trade: answer with trade-answer within `ms`. */

@@ -261,6 +261,8 @@ interface Conn {
   invitedAt?: number;
   /** The last trade request sent (ms). */
   askedAt?: number;
+  /** When they last looked at someone's gear (the player menu's Info). */
+  inspectAt?: number;
 }
 
 export function attachTown(server: Server, opts: TownOptions): Town {
@@ -802,6 +804,19 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         const r = typeof m.member === 'string' ? parties.kick(c.userId, m.member) : null;
         if (!r) return;
         return r.ok ? partyChanged(r.change) : send(c, { t: 'party-refused', reason: r.reason });
+      }
+      case 'inspect': {
+        // Someone's worn gear and stats (the player menu's Info): anyone in town, a few a second at most.
+        const now = Date.now();
+        if (now - (c.inspectAt ?? 0) < 250 || typeof m.id !== 'string') return;
+        c.inspectAt = now;
+        const to = town.memberOf(m.id);
+        const them = to ? conns.get(to) : undefined;
+        if (!them) return send(c, { t: 'inspect', id: m.id, gone: true });
+        const equipped = opts.items ? opts.items.state(them.userId).equipped : {};
+        const d = rules?.fighter(fighterOf(them));
+        const stats = d ? { power: d.power, def: d.def, hp: d.hp, mp: d.mp, STR: d.STR, DEX: d.DEX, INT: d.INT, critRate: d.critRate } : null;
+        return send(c, { t: 'inspect', id: m.id, cls: them.player.cls ?? null, level: d?.level ?? them.player.level ?? 1, equipped, stats });
       }
       case 'trade-ask': {
         // Ask someone near you to trade (the player menu): they have the timeout to answer.

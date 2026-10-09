@@ -753,7 +753,11 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   /town/give`, `POST /town/verdict` (`web/town-player.ts`): players are looked up by their town id via
   `Town.memberOf` (Discord ids never reach the page). Gifts post in the games channel and pop up for the receiver
   (`gift`); verdicts post in the town chat channel, pinging the target. Dev fakes the numbers and verdicts locally.
-  Also Invite to party and Trade (below).
+  Also Invite to party and Trade (below). The box's "i" (Info) opens `ui/inspect.ts`: their character idling with its
+  resting weapon (drag turns it; the look the town drew, `OtherPlayers.dollOf`), class and level, the twelve places with
+  what they wear (tooltips named for their class: `itemTipFor(item, { cls })`, requirements not checked against yours) and
+  their stats; read only. The `inspect` message (by town id) → the server's `inspect` (worn items, `InspectStats` from the
+  stats rules with buffs; `gone`). The equipment panel's CSS is shared (`:is(#equipment, #inspect)`).
 - Tanod outpost (`ui/outpost.ts`, left click the outpost), tabs Jail (you, who's in, bail yourself or a friend: `/bail`'s
   rules via `payBail` in `games/jail.ts`) and Patrol (the rules, and whether roll is being called now). Bot `GET
   /town/outpost`, `POST /town/bail` (`web/town-outpost.ts`; jailed members get a per-startup hashed id, never their

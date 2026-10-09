@@ -45,6 +45,7 @@ import { showBank } from '../ui/bank';
 import { showOutpost } from '../ui/outpost';
 import { showBoard } from '../ui/board';
 import { showShop } from '../ui/shop';
+import { InspectWindow } from '../ui/inspect';
 import { TargetBox } from '../ui/target';
 import { TradeWindow, trading } from '../ui/trade';
 import { RARITY_TEXT, addItemArt, isRarity, setItemArt, setRarityColours } from '../ui/item-art';
@@ -255,6 +256,8 @@ export class TownScene extends Phaser.Scene {
   /** The town's ambient NPCs (not in the neighbourhood). */
   private npcs: NpcLife | null = null;
   private link: TownLink | null = null;
+  /** The player menu's Info window (members with the bag). */
+  private inspect: InspectWindow | null = null;
   /** The picked player's box and menu (members only). */
   private target: TargetBox | null = null;
   /** What the server last heard about the player (face / sit / stand are sent when these change). */
@@ -1428,6 +1431,7 @@ export class TownScene extends Phaser.Scene {
     this.others.onChange = () => {
       online.update([me, ...this.others.players.map((p) => ({ name: p.nickname, title: p.title }))]);
       this.target?.check((id) => this.others.has(id));
+      this.inspect?.check((id) => this.others.has(id));
     };
     this.others.onChange();
     const tools = document.createElement('div');
@@ -1460,6 +1464,21 @@ export class TownScene extends Phaser.Scene {
           freeSlots: () => bag.free,
         }),
       );
+      // The player menu's Info: someone's character, gear and stats (ui/inspect.ts; the server answers `inspect`).
+      const inspect = new InspectWindow({
+        frame: inv?.itemFrame ? { url: url(inv.itemFrame.file), slice: inv.itemFrame.nineSlice } : null,
+        slot: inv?.slot && inv.selected && inv.nineSlice ? { url: url(inv.slot), picked: url(inv.selected), slice: inv.nineSlice } : null,
+        badge: (cls) => (icons ? url(icons.small.replace('{class}', cls)) : ''),
+        drawDoll: (id, ctx, dir, f, t) => {
+          const d = this.others.dollOf(id);
+          if (d) drawRested(ctx, this, C, K, d.look, d.rest, 'idle', dir, f, t);
+          return !!d;
+        },
+        idle: { frames: C.animations.idle.frames, fps: C.animations.idle.fps },
+        ask: (id) => !!this.link?.send({ t: 'inspect', id }),
+      });
+      this.inspect = inspect;
+      if (this.target) this.target.onInfo = (p) => inspect.show(p);
     }
     tools.append(online.el, emotePicker(sheet, emote));
     if (bag) document.body.append(bag.button); // its own button, just right of the chat box
@@ -1791,6 +1810,7 @@ export class TownScene extends Phaser.Scene {
         return;
       }
       // A party member's pickup: "Mara looted Sturdy Slingshot +1" in your feed (their name in party pink).
+      if (m.t === 'inspect') return this.inspect?.answer(m);
       if (m.t === 'party-loot') {
         const line = pickupOf(m.got);
         if (!line) return;

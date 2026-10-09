@@ -62,6 +62,8 @@ export class TargetBox {
   private readonly partyButton = el('button', 'tg-party-invite', 'Invite to party');
   private readonly tradeRow = el('div', 'tg-trade');
   private readonly tradeButton = el('button', 'tg-trade-ask', 'Trade');
+  /** Their character, gear and stats in a window of its own (ui/inspect.ts). */
+  private readonly infoButton = el('button', 'tg-info', 'i');
   /** Trading (the town sets it): how far someone is (tiles; null: not here), the range, whether you're trading already,
    *  and the ask. */
   trade: { distance(id: string): number | null; range: number; busy(): boolean; ask(p: TownPlayer): void } | null = null;
@@ -131,7 +133,10 @@ export class TargetBox {
     });
     this.menu.hidden = true;
     this.menu.append(this.views, this.panel, this.actions, this.partyRow, this.tradeRow);
-    this.root.append(this.box, this.menu);
+    this.infoButton.title = 'Info: their character, gear and stats';
+    this.infoButton.setAttribute('aria-label', 'Info');
+    this.infoButton.addEventListener('click', () => this.target && this.onInfo(this.target));
+    this.root.append(this.box, this.infoButton, this.menu);
     document.body.append(this.root);
 
     document.addEventListener('keydown', (e) => {
@@ -143,7 +148,7 @@ export class TargetBox {
     // it does (a press and release in about the same place: a drag to peek around the map keeps it); clicking someone
     // in town picks them right after.
     let down: { x: number; y: number; outside: boolean } | null = null;
-    const outside = (t: Element) => !this.root.hidden && !this.root.contains(t) && !t.closest?.('.ch-click');
+    const outside = (t: Element) => !this.root.hidden && !this.root.contains(t) && !t.closest?.('.ch-click, #inspect');
     document.addEventListener(
       'pointerdown',
       (e) => {
@@ -170,6 +175,9 @@ export class TargetBox {
     // The menu's size changes as its numbers load: keep it beside the name.
     new ResizeObserver(() => this.place()).observe(this.root);
   }
+
+  /** The Info button was pressed (TownScene opens ui/inspect.ts). */
+  onInfo: (p: TownPlayer) => void = () => {};
 
   /** Someone picked from their name in the chat: the box with the menu open, right beside that name. */
   selectAt(p: TownPlayer, anchor: HTMLElement): void {

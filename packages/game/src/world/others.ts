@@ -18,6 +18,8 @@ import { rng } from './rng';
 interface Other {
   state: TownPlayer;
   char: Character | null;
+  /** Their resting weapon's art, once loaded. */
+  rest?: ClassArt | null;
 }
 
 /** The Arena's messages are the arena's business (ui/arena-net.ts), not the town's players'. */
@@ -62,7 +64,7 @@ export class OtherPlayers {
       case 'leave':
         return this.remove(m.id);
     }
-    if (m.t === 'snap' || m.t === 'say-refused' || m.t === 'say-discord' || m.t === 'emote' || m.t === 'system' || m.t === 'seat-taken' || m.t === 'announce' || m.t === 'gift' || m.t === 'gift-item' || m.t === 'new-title' || m.t === 'house' || m.t === 'race' || m.t === 'wallet' || m.t === 'stay' || m.t === 'mobs' || m.t === 'mob-move' || m.t === 'mob-hit' || m.t === 'mob-burn' || m.t === 'mob-attack' || m.t === 'mob-spawn' || m.t === 'mob-heal' || m.t === 'mob-add' || m.t === 'mob-remove' || m.t === 'mob-face' || m.t === 'golem' || m.t === 'golem-attack' || m.t === 'attack-refused' || m.t === 'progress' || m.t === 'quests' || m.t === 'quest-kill' || m.t === 'level-up' || m.t === 'party' || m.t === 'party-invited' || m.t === 'party-refused' || m.t === 'party-declined' || m.t === 'party-say' || m.t === 'party-loot' || m.t === 'loot' || m.t === 'loot-drop' || m.t === 'loot-gone' || m.t === 'loot-full' || m.t === 'items' || m.t === 'potion-refused' || m.t === 'buff-refused' || m.t === 'buff-heal' || m.t === 'buffs' || isTrade(m) || isArena(m)) return;
+    if (m.t === 'snap' || m.t === 'say-refused' || m.t === 'say-discord' || m.t === 'emote' || m.t === 'system' || m.t === 'seat-taken' || m.t === 'announce' || m.t === 'gift' || m.t === 'gift-item' || m.t === 'new-title' || m.t === 'house' || m.t === 'race' || m.t === 'wallet' || m.t === 'stay' || m.t === 'mobs' || m.t === 'mob-move' || m.t === 'mob-hit' || m.t === 'mob-burn' || m.t === 'mob-attack' || m.t === 'mob-spawn' || m.t === 'mob-heal' || m.t === 'mob-add' || m.t === 'mob-remove' || m.t === 'mob-face' || m.t === 'golem' || m.t === 'golem-attack' || m.t === 'attack-refused' || m.t === 'progress' || m.t === 'quests' || m.t === 'quest-kill' || m.t === 'level-up' || m.t === 'party' || m.t === 'party-invited' || m.t === 'party-refused' || m.t === 'party-declined' || m.t === 'party-say' || m.t === 'party-loot' || m.t === 'inspect' || m.t === 'loot' || m.t === 'loot-drop' || m.t === 'loot-gone' || m.t === 'loot-full' || m.t === 'items' || m.t === 'potion-refused' || m.t === 'buff-refused' || m.t === 'buff-heal' || m.t === 'buffs' || isTrade(m) || isArena(m)) return;
     const o = this.all.get(m.id);
     if (!o) return;
     const s = o.state;
@@ -188,6 +190,13 @@ export class OtherPlayers {
     return this.all.get(id)?.state.cls ?? null;
   }
 
+  /** Someone's look and resting weapon (the player menu's Info draws them), once their look has loaded. */
+  dollOf(id: string): { look: Outfit; rest: ClassArt | null } | null {
+    const o = this.all.get(id);
+    const look = this.looks.get(id);
+    return o?.char && look ? { look, rest: o.rest ?? null } : null;
+  }
+
   /** Someone's nickname (for the chat log), if they're here. */
   nameOf(id: string): string | null {
     return this.all.get(id)?.state.nickname ?? null;
@@ -256,6 +265,7 @@ export class OtherPlayers {
     const { weapon, cls, id } = o.state;
     const art = await this.restFor(weapon, cls);
     if (o.state.weapon !== weapon || !o.char) return;
+    o.rest = art;
     o.char.setRestingWeapon(art, this.M.classes?.bodyOffset);
     // On a battle map: their class's battle poses (or the doll without a class).
     const look = this.looks.get(id);
