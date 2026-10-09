@@ -21,6 +21,17 @@ document.addEventListener('contextmenu', (e) => {
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Tab') e.preventDefault();
 }, true);
+// Pictures and links never drag out as a ghost image (the game's own drags are on [draggable] elements, which still
+// work), and no text gets selected outside a typing field.
+document.addEventListener('dragstart', (e) => {
+  const t = e.target as Element | null;
+  if (t instanceof Element && (t.tagName === 'IMG' || t.tagName === 'A') && !t.closest('[draggable="true"]')) e.preventDefault();
+});
+document.addEventListener('selectstart', (e) => {
+  const t = e.target as Element | null;
+  const el = t instanceof Element ? t : (t as Node | null)?.parentElement;
+  if (!el?.closest('input, textarea, [contenteditable="true"]')) e.preventDefault();
+});
 document.addEventListener('click', (e) => {
   const b = (e.target as Element | null)?.closest?.('button, [role="button"], a, [tabindex]');
   if (e.detail > 0 && b instanceof HTMLElement) b.blur();

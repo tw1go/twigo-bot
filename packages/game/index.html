@@ -22,6 +22,11 @@
       input, textarea { cursor: text; }
       input[type=range], input[type=checkbox], label.st-row { cursor: var(--cur-hand, pointer); }
       html, body { margin: 0; height: 100%; background: #1a1b26; overflow: hidden; }
+      /* Nothing on the page highlights when a drag sweeps over it (the map, the HUD, pop-ups, images); typing fields
+         stay selectable, and images never get dragged out as pictures (main.ts stops that drag). */
+      body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+      input, textarea, [contenteditable="true"] { -webkit-user-select: text; user-select: text; }
+      img { -webkit-user-drag: none; }
       #game { width: 100%; height: 100%; }
       canvas { image-rendering: pixelated; }
       #hud { position: fixed; top: 12px; right: 12px; font: 13px/1.35 var(--ui-font); color: #c0caf5; z-index: 2; }

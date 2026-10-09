@@ -850,6 +850,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   standstill a tap only turns, holding walks; a new direction while walking turns mid-step at once, `Character.turnMidStep`:
   once per step, one step message, within a mirror of the server's step budget so it never snaps), E/Space to enter or sit. Left-click/touch drag on the map peeks around
   (rubber band up to ~320 screen px, follow paused) and snaps back on release (`setupPeek`; drags are never clicks).
+- No highlighting: the page selects nothing (body `user-select: none`, main.ts `selectstart`), except typing fields;
+  images and links never drag out as pictures (main.ts `dragstart`), while the game's `[draggable]` drags still work.
 - Checking work: run the dev server and drive headless Chrome over the DevTools protocol (screenshots +
   `window.__town` debug API: `state()`, `teleport()`, `walk()`, `time()`, `view()`, `outfit()`). Use
   `--use-angle=metal` for real frame rates; SwiftShader under-reports.
