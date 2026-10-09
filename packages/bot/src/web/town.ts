@@ -517,13 +517,24 @@ export function attachTown(server: Server, opts: TownOptions): Town {
           const o = conns.get(user);
           if (o && opts.items.take(user, { kusing })) tellItems(o, { kusing });
         }
+        partyLoot(c, { kusing: l.content.kusing }, Math.min(...shares.values()));
         return lootGone(c.room, [l.id]);
       }
     }
     if (!opts.items.take(c.userId, l.content)) return send(c, { t: 'loot-full' });
     L.remove(l.id);
-    tellItems(c, 'kusing' in l.content ? { kusing: l.content.kusing } : { item: l.content.item });
+    const got = 'kusing' in l.content ? { kusing: l.content.kusing } : { item: l.content.item };
+    tellItems(c, got);
+    partyLoot(c, got);
     lootGone(c.room, [l.id]);
+  };
+  /** What a member picked up, to the rest of their party (their system feed), wherever they are. */
+  const partyLoot = (c: Conn, got: { kusing?: number; item?: Item }, share?: number) => {
+    const m: TownServerMessage = { t: 'party-loot', name: c.player.nickname, got, ...(share ? { share } : {}) };
+    for (const user of parties.of(c.userId)?.members ?? []) {
+      const o = conns.get(user);
+      if (o && o !== c) send(o, m);
+    }
   };
 
   // Trades (trade.ts): only with somewhere to keep items and a way to settle them.

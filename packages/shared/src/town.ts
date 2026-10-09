@@ -439,6 +439,9 @@ export type TownServerMessage =
   | { t: 'party-declined'; name: string }
   /** A party member said something to the party (you too: your own words come back this way). */
   | { t: 'party-say'; id: string; name: string; text: string }
+  /** A party member picked something up (to the rest of the party, wherever they are): their name and what; Kusing
+   *  with each one's share (`share`) when it was split. */
+  | { t: 'party-loot'; name: string; got: { kusing?: number; item?: Item }; share?: number }
   /** Someone used a mobility move (their steps follow). */
   | { t: 'move'; id: string; move: TownMove; col: number; row: number }
   /** Someone (`from`, a town id) asks you to trade: answer with trade-answer within `ms`. */

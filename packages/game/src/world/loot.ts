@@ -8,8 +8,8 @@ import { type WorldObjects, characterDepth } from './objects';
 // 🪙 Loot on the ground in the Slums (the server's: bot web/town-loot.ts; the town's `loot`, `loot-drop` and `loot-gone`
 // messages). Each drop is its own 16x16 icon (the item's inventory icon, Kusing's coin) drawn at half size (ICON_SCALE)
 // on a small dark oval shadow, bobbing one icon pixel, slowly; Kusing has its amount over it in Jersey 10 (white).
-// Hovering one (or holding Alt) shows its name in a small font: gear, agimats and cosmetics in their rarity's colour,
-// plain things (Kusing, whetstones, fragments, potions) white. A +18 or +20 weapon glows on the ground too
+// Each one's name always shows over it in a small font once it has landed: gear, agimats and cosmetics in their rarity's
+// colour, plain things (whetstones, fragments, potions) white; Kusing shows its amount. A +18 or +20 weapon glows on the ground too
 // (fx/weaponAura.ts). Someone else's loot (the first 10 s of their kill) is drawn at half strength until it opens to you;
 // the golem's loot only ever reaches its owner. An icon not drawn yet: its slot's silhouette (gear) or a square in its
 // rarity's colour. Nothing is picked up by walking over it: a click on one walks you next to it and picks it up, F or
@@ -52,7 +52,6 @@ interface Drop {
   aura: { fx: WeaponAura; trace: AuraTrace } | null;
   x: number;
   y: number;
-  hovered: boolean;
   /** Bouncing out of the mob (world px where it starts, and how high; performance.now ms it leaves). */
   flight: { x: number; y: number; lift: number; start: number } | null;
 }
@@ -66,24 +65,13 @@ export interface LootArt {
 
 export class LootLayer {
   private readonly all = new Map<string, Drop>();
-  private alt = false;
 
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly objects: WorldObjects,
     private readonly data: () => ItemData | null,
     private readonly art: LootArt,
-  ) {
-    const kb = scene.input.keyboard;
-    const alt = (on: boolean) => (e: KeyboardEvent) => {
-      if (e.key !== 'Alt' || this.alt === on) return;
-      this.alt = on;
-      for (const d of this.all.values()) this.syncName(d);
-    };
-    kb?.on('keydown', alt(true));
-    kb?.on('keyup', alt(false));
-    window.addEventListener('blur', () => alt(false)({ key: 'Alt' } as KeyboardEvent));
-  }
+  ) {}
 
   /** Everything on the ground you can see (on arrival). */
   set(list: TownLoot[]): void {
@@ -103,6 +91,7 @@ export class LootLayer {
         const [c, r] = from;
         const ground = this.objects.heights.lift(c + 0.5, r + 0.5);
         d.flight = { x: (c - r) * 16, y: (c + r + 1) * 8 - ground, lift: high ? FROM_LIFT * 4 : FROM_LIFT, start: sent + i * STAGGER_MS };
+        this.syncName(d); // (its name once it lands)
         this.fly(d, performance.now());
       });
     });
@@ -157,6 +146,7 @@ export class LootLayer {
     const t = (now - f.start) / FLY_MS;
     if (t >= 1) {
       d.flight = null;
+      this.syncName(d);
       d.icon.setPosition(d.x, d.y - LIFT);
       d.amount?.setPosition(d.x, d.y - LIFT - 5);
       d.shadow.setPosition(d.x, d.y).setScale(1);
@@ -235,7 +225,7 @@ export class LootLayer {
     const name = text(label, l.item && D ? nameColour(D, l.item) : PLAIN_COLOUR)
       .setDepth(LABEL_DEPTH)
       .setVisible(false);
-    const d: Drop = { loot: l, icon, shadow, amount, name, opensAt: l.mine ? 0 : l.opensIn === undefined ? Infinity : performance.now() + l.opensIn, phase: Math.random() * BOB_MS, aura: null, x, y, hovered: false, flight: null };
+    const d: Drop = { loot: l, icon, shadow, amount, name, opensAt: l.mine ? 0 : l.opensIn === undefined ? Infinity : performance.now() + l.opensIn, phase: Math.random() * BOB_MS, aura: null, x, y, flight: null };
     // +18 and +20 weapons glow on the ground (the guide; +15–17 only once picked up).
     const tier = l.item && D ? itemAura(D, l.item) : null;
     if (tier && tier.aura !== 'blue' && icon.width === 16) {
@@ -245,8 +235,6 @@ export class LootLayer {
       fx.set(tier);
       d.aura = { fx, trace };
     }
-    icon.on('pointerover', () => ((d.hovered = true), this.syncName(d)));
-    icon.on('pointerout', () => ((d.hovered = false), this.syncName(d)));
     this.all.set(l.id, d);
     this.fade(d);
     this.syncName(d);
@@ -261,7 +249,8 @@ export class LootLayer {
   }
 
   private syncName(d: Drop): void {
-    const on = d.hovered || this.alt;
+    // (Always, once landed; Kusing's amount is its name.)
+    const on = !d.flight && d.loot.kusing === undefined;
     d.name.setVisible(on).setY(d.y - LIFT - (d.amount ? 11 : 5));
   }
 

@@ -581,6 +581,9 @@ test('over the town\'s socket: a party member picks up Kusing and everyone in th
   assert.deepEqual(parts, [coin.kusing! - 2 * share, share, share], `${coin.kusing} split three ways`);
   assert.deepEqual([bagOf('Mara').kusing, bagOf('Bob').kusing, bagOf('Cy').kusing], parts, 'in their wallets');
   assert.equal(got(dee), 0, 'Dee is in no party: nothing');
+  // Bob and Cy's feeds say who picked it up and the share; Mara's own line is hers; Dee hears nothing.
+  for (const c of [bob, cy]) assert.deepEqual(c.got.filter((m) => m.t === 'party-loot'), [{ t: 'party-loot', name: 'Mara', got: { kusing: coin.kusing }, share }]);
+  for (const c of [mara, dee]) assert.ok(!c.got.some((m) => m.t === 'party-loot'));
   assert.equal(bags.get('Dee')?.kusing ?? 0, 0);
   for (const c of [mara, bob, cy, dee]) c.ws.close();
   await new Promise((ok) => server.close(ok));

@@ -1764,6 +1764,14 @@ export class TownScene extends Phaser.Scene {
         if (line) feed.mine(line.parts);
         return;
       }
+      // A party member's pickup: "Mara looted Sturdy Slingshot +1" in your feed (their name in party pink).
+      if (m.t === 'party-loot') {
+        const line = pickupOf(m.got);
+        if (!line) return;
+        const rest = m.got.item ? line.parts.slice(1) : [{ text: `${m.got.kusing?.toLocaleString('en-US')} Kusing${m.share ? ` (${m.share.toLocaleString('en-US')} each)` : ''}`, colour: line.parts[0].colour }];
+        feed.mine([{ text: m.name, colour: '#F9A8D4' }, { text: ' looted ', colour: line.parts[0].colour }, ...rest]);
+        return;
+      }
       // An HP or MP Potion (maybe yours): the heal over them in green or blue; yours starts the potions' cooldown.
       if (m.t === 'potion') {
         const ch = charOf(m.id);

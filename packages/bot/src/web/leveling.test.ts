@@ -350,6 +350,9 @@ test('the real quests: a party on Just In Time kills Jus Tin; each gets their ow
   pot.ws.send(JSON.stringify({ t: 'pick', id: p.id }));
   await wait(150);
   assert.ok(combatOf('qPot').bag.some((i) => i.uid === p.item!.uid && i.plus === 5), 'in the bag');
+  // Her party's feed says what she picked up.
+  const told = broom.got.find((m) => m.t === 'party-loot') as Extract<TownServerMessage, { t: 'party-loot' }>;
+  assert.ok(told && told.name === 'qPot' && told.got.item?.uid === p.item!.uid, JSON.stringify(told));
   for (const c of [pot, broom]) c.ws.close();
   await new Promise((ok) => server.close(ok));
 });
