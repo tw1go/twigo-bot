@@ -150,6 +150,7 @@ const TOPICS: Topic[] = [
       '• Every kill drops **Kusing**, the Slums’ money (a Tin Can 60–120, more from higher mobs). Now and then it drops **gear** (brown, white or grey, sometimes already **+1 to +3**) or an **HP/MP Potion**',
       '• Nothing is picked up by walking over it. **Click** loot to walk over and pick it up, or press **F** or **Space** to pick up the nearest loot next to you (F can be changed in Settings → Keybinds). What you got shows in the feed at the bottom right, only for you',
       '• Your kill’s loot is yours for **10 s** (in a party: any member nearby), then anyone’s. Someone else’s shows faint. Loot is gone after **2 minutes**',
+      '• In a party, **Kusing** anyone picks up is **split equally** between the party members in the Slums with you (any odd Kusing goes to whoever picked it up)',
       '• Hover loot (or hold **Alt**) for its name: gear and agimats in their rarity’s colour (brown, white, grey with more agimat slots, light/dark blue, light/dark orange), Kusing, whetstones and potions in white',
       '• The **Scrapheap Golem** gives everyone who did 5% of its HP their own loot, only they can see: Kusing, Rough Whetstones, blue or orange gear, sometimes an accessory, an agimat or the Lamp-head Hat',
       '• Loot goes in your **combat bag**: the **Combat** tab of your bag (**B**), **40 slots**. Potions stack to 99, whetstones and agimats to 999, gear one a slot. Full: it stays on the ground',

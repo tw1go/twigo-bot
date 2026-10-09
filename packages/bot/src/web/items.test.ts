@@ -28,7 +28,7 @@ type TownServerMessage = import('@mikazuki/shared').TownServerMessage;
 const { loadItemData } = await import('./stats-data.js');
 const { buyCombat, devGive, takeLoot, usePotion } = await import('./combat-bag.js');
 const { dropPlus, golemLoot, mobDrops, rollAgimatStat } = await import('./loot.js');
-const { LOOT_MS, LootRoom } = await import('./town-loot.js');
+const { LOOT_MS, LootRoom, splitKusing } = await import('./town-loot.js');
 const { MIGRATIONS } = await import('../db/db.js');
 const { MobRoom, loadMobKinds, loadMobMap } = await import('./town-mobs.js');
 const { attachTown } = await import('./town.js');
@@ -508,3 +508,80 @@ test('over the town\'s socket: a kill drops Kusing (faint for others), nothing p
 });
 
 test.after(() => rmSync(dir, { recursive: true, force: true }));
+
+test('Kusing picked up in a party is split equally between the party members in the room (the picker gets the remainder); never anyone outside it', () => {
+  const shares = (amount: number, members: string[]) => Object.fromEntries(splitKusing(amount, members));
+  assert.deepEqual(shares(120, ['a', 'b', 'c']), { a: 40, b: 40, c: 40 });
+  assert.deepEqual(shares(100, ['a', 'b', 'c']), { a: 34, b: 33, c: 33 }, 'the remainder to the picker');
+  assert.deepEqual(shares(77, ['a']), { a: 77 }, 'alone: all of it');
+  assert.deepEqual(shares(2, ['a', 'b', 'c']), { a: 1, b: 1 }, 'less than the party: a Kusing each down the line');
+  for (const [amount, n] of [[60, 4], [119, 6], [5, 2]] as const) {
+    const s = splitKusing(amount, Array.from({ length: n }, (_, i) => `m${i}`));
+    assert.equal([...s.values()].reduce((x, y) => x + y, 0), amount, 'nothing lost or made');
+  }
+});
+
+test('over the town\'s socket: a party member picks up Kusing and everyone in the party in the room gets an equal share; someone outside the party gets none', async () => {
+  const map = loadMobMap('slums');
+  const room = new MobRoom(map, lcg(16), {}, { shapes: {} }, loadMobKinds());
+  const can = room.snapshot(0).find((m) => m.id.startsWith('tin-can-alley:'))!;
+  const bags = new Map<string, { equipped: Record<string, never>; bag: Item[]; kusing: number }>();
+  const bagOf = (name: string) => bags.get(name) ?? bags.set(name, { equipped: {}, bag: [], kusing: 0 }).get(name)!;
+  const server = createServer();
+  attachTown(server, {
+    map: { size: [4, 4], spawn: [1, 1], blocked: [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]] },
+    rooms: { slums: () => ({ size: map.size, spawn: [can.col + 1, can.row], blocked: map.blocked }) },
+    mobs: { slums: room },
+    authenticate: async (req) => new URL(req.url ?? '/', 'http://x').searchParams.get('as'),
+    profile: (name) => ({ nickname: name, title: { name: 'Townfolk', color: '#fff' }, outfit: {} as never, cls: 'slingshot' }),
+    progress: {
+      fighter: (name) => ({ cls: 'slingshot', level: name === 'Mara' ? 20 : 1, points: name === 'Mara' ? { DEX: 100_000 } : {} }),
+      kill: () => ({ progress: freshProgress(S, 'slingshot'), gained: 0, ups: 0 }),
+    },
+    items: { take: (name, loot) => takeLoot(D, bagOf(name), loot, uid), usePotion: (name, defId) => usePotion(D, bagOf(name), defId), state: (name) => bagOf(name) },
+  });
+  await new Promise<void>((ok) => server.listen(0, '127.0.0.1', ok));
+  const port = (server.address() as AddressInfo).port;
+  const open = (as: string) =>
+    new Promise<{ ws: WebSocket; got: TownServerMessage[] }>((ok) => {
+      const ws = new WebSocket(`ws://127.0.0.1:${port}/ws?as=${as}&room=slums`);
+      const got: TownServerMessage[] = [];
+      ws.on('message', (d) => got.push(JSON.parse(String(d))));
+      ws.on('open', () => ok({ ws, got }));
+    });
+  const wait = (ms: number) => new Promise((ok) => setTimeout(ok, ms));
+  const [mara, bob, cy, dee] = [await open('Mara'), await open('Bob'), await open('Cy'), await open('Dee')];
+  await wait(100);
+  const idOf = (c: { got: TownServerMessage[] }) => (c.got.find((m) => m.t === 'welcome') as Extract<TownServerMessage, { t: 'welcome' }>).you;
+  // Mara, Bob and Cy in one party; Dee on her own.
+  for (const c of [bob, cy]) {
+    mara.ws.send(JSON.stringify({ t: 'party-invite', to: idOf(c) }));
+    await wait(1100); // (one invite a second)
+    const inv = c.got.find((m) => m.t === 'party-invited') as Extract<TownServerMessage, { t: 'party-invited' }>;
+    c.ws.send(JSON.stringify({ t: 'party-answer', invite: inv.invite, accept: true }));
+    await wait(100);
+  }
+  mara.ws.send(JSON.stringify({ t: 'attack', mob: can.id, skill: 0 }));
+  await wait(200);
+  const coin = (mara.got.find((m) => m.t === 'loot-drop') as Extract<TownServerMessage, { t: 'loot-drop' }>).loot.find((l) => l.kusing)!;
+  // Mara walks onto it and picks it up.
+  const [sc, sr] = (mara.got.find((m) => m.t === 'welcome') as Extract<TownServerMessage, { t: 'welcome' }>).spawn;
+  let [col, row] = [sc, sr];
+  while (col !== coin.col || row !== coin.row) {
+    col += Math.sign(coin.col - col);
+    row += Math.sign(coin.row - row);
+    mara.ws.send(JSON.stringify({ t: 'step', col, row }));
+    await wait(180);
+  }
+  mara.ws.send(JSON.stringify({ t: 'pick', id: coin.id }));
+  await wait(150);
+  const got = (c: { got: TownServerMessage[] }) => (c.got.find((m) => m.t === 'items' && m.got?.kusing) as Extract<TownServerMessage, { t: 'items' }> | undefined)?.got?.kusing ?? 0;
+  const parts = [got(mara), got(bob), got(cy)];
+  const share = Math.floor(coin.kusing! / 3);
+  assert.deepEqual(parts, [coin.kusing! - 2 * share, share, share], `${coin.kusing} split three ways`);
+  assert.deepEqual([bagOf('Mara').kusing, bagOf('Bob').kusing, bagOf('Cy').kusing], parts, 'in their wallets');
+  assert.equal(got(dee), 0, 'Dee is in no party: nothing');
+  assert.equal(bags.get('Dee')?.kusing ?? 0, 0);
+  for (const c of [mara, bob, cy, dee]) c.ws.close();
+  await new Promise((ok) => server.close(ok));
+});

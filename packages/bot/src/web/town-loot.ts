@@ -7,10 +7,26 @@ import { loadLeveling } from './stats-data.js';
 // 🪙 Loot on the ground in a battle map (one LootRoom per room with mobs, run by the town: web/town.ts). A kill's drops
 // (web/loot.ts) land round where it died, each on its own tile. Who may pick each one up (stats.json `party`): a solo
 // kill's are the killer's for 10 s, then anyone's; a party's are any member's (those in the room when it fell) for 10 s,
-// then anyone's; the golem's and a mini boss's are personal, each player's own, never anyone else's (and never shown to them). Nothing is
+// then anyone's (Kusing a party member picks up is split equally between the party in the room: splitKusing, the
+// town does it); the golem's and a mini boss's are personal, each player's own, never anyone else's (and never shown to them). Nothing is
 // picked up on its own (not by walking over it, Kusing neither): a click on it or F / Space picks it up, within
 // LOOT_REACH (shared). Loot lies there for LOOT_MS, then it's gone. Everything is by member (it outlasts a reload). Pure
 // (the clock is passed in).
+
+/** Kusing picked up in a party, split equally between `members` (the picker first): each the same whole share, the
+ *  picker the remainder too; nobody gets 0 (a heap smaller than the party: the first in line, a Kusing each). */
+export function splitKusing(amount: number, members: string[]): Map<string, number> {
+  const who = members.length ? members : [];
+  const share = Math.floor(amount / Math.max(1, who.length));
+  const out = new Map<string, number>();
+  if (!share) {
+    who.slice(0, amount).forEach((m) => out.set(m, 1));
+    return out;
+  }
+  who.forEach((m) => out.set(m, share));
+  if (who.length) out.set(who[0], share + (amount - share * who.length));
+  return out;
+}
 
 /** Loot lies on the ground this long. */
 export const LOOT_MS = 2 * 60_000;

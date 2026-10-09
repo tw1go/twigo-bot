@@ -11,7 +11,7 @@ import { type VitalMax, Vitals, shown } from './town-vitals.js';
 import { Buffs, type Nearby } from './town-buffs.js';
 import { loadItemData, loadLeveling, loadStats } from './stats-data.js';
 import { type CombatItems, type LootContent, potionOf } from './combat-bag.js';
-import { type Loot, LootRoom } from './town-loot.js';
+import { type Loot, LootRoom, splitKusing } from './town-loot.js';
 import { type HeldOffer, type Trade, Trades, checkOffer } from './trade.js';
 import type { CharacterProgress, QuestProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item, TradeEnd, TradeView } from '@mikazuki/shared';
 import { itemStats, questDropFor, skillMpCost, tradeRules } from '@mikazuki/shared';
@@ -508,6 +508,18 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     if (!L || !opts.items || c.player.out) return;
     const l = L.pickable(c.userId, c.player.col, c.player.row, Date.now(), id);
     if (!l) return;
+    // Kusing in a party (not personal loot): split equally between the party members in this room, the picker first.
+    if ('kusing' in l.content && !l.personal) {
+      const shares = splitKusing(l.content.kusing, withParty([c.userId], c.room));
+      if (shares.size > 1) {
+        L.remove(l.id);
+        for (const [user, kusing] of shares) {
+          const o = conns.get(user);
+          if (o && opts.items.take(user, { kusing })) tellItems(o, { kusing });
+        }
+        return lootGone(c.room, [l.id]);
+      }
+    }
     if (!opts.items.take(c.userId, l.content)) return send(c, { t: 'loot-full' });
     L.remove(l.id);
     tellItems(c, 'kusing' in l.content ? { kusing: l.content.kusing } : { item: l.content.item });
