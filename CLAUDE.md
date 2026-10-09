@@ -731,7 +731,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   map, skill, locked, out, slow + ms, mp) or MP spent, `buff-cast` to the room (yours with its cooldown: cooldownSec −1% a
   skill level; a stance rules.stanceSwitchSec), and who it reaches (self; ally+self: the player you've picked (clicked: any player, party
   or not; the game sends `target` = their town id) within rules.partyRangeTiles, else the nearest party member; party: all
-  in range plus the picked player; same room, never the knocked out; tested) gets `buffs` (their
+  in range plus the picked player; with rules.allyBuffsReachParty (a repo addition, on) ally+self is shared like party;
+  same room, never the knocked out; tested) gets `buffs` (their
   tray). Per member in memory: name, caster's level, stats, end; recast restarts; per stat only the strongest counts;
   timed ones end on time, off a battle map (on arrival elsewhere; a reload on the same map keeps them) and on a knock-out;
   a stance toggles, stays across maps, ends on a class change (Town.kit). Soothing Touch (durationSec 0) heals the

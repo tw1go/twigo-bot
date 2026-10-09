@@ -6,7 +6,8 @@ import { type BuffDef, type BuffRefusal, type StatsData, type TownBuff, buffMpCo
 // stance's switch: rules.stanceSwitchSec) or without the MP (buffMpCost at its skill level). It reaches the caster, and
 // one party member (`ally+self`: the one asked for if in range, else the nearest) or every one (`party`) in the same
 // room, up and within rules.partyRangeTiles (tiles either way, like every tile check). The player you've picked (clicked)
-// counts too, in your party or not: a one-ally buff goes to them first, a party buff reaches them as well. A timed buff on someone is its
+// counts too, in your party or not: a one-ally buff goes to them first, a party buff reaches them as well. With
+// rules.allyBuffsReachParty (a repo addition), a one-ally buff is shared like a party buff: the whole party in range too. A timed buff on someone is its
 // stats at the caster's skill level (buffValue) until it runs out; casting it again restarts it. For each stat only the
 // strongest buff counts (strongestBuffs). Timed buffs end on time, on leaving the battle map and on a knock-out; a
 // stance (Keen Stance) stays on until cast again (off) or a class change, across maps. Soothing Touch (durationSec 0)
@@ -86,8 +87,9 @@ export class Buffs {
     const asked = typeof target === 'string' ? party.find((p) => p.member === target) : target;
     const picked = asked && reach(asked) ? asked : undefined;
     const to = [c.member];
-    if (b.target === 'party') to.push(...near.map((p) => p.member), ...(picked && !near.some((p) => p.member === picked.member) ? [picked.member] : []));
-    if (b.target === 'ally+self') {
+    const shared = b.target === 'party' || (b.target === 'ally+self' && !!(R as { allyBuffsReachParty?: boolean }).allyBuffsReachParty);
+    if (shared) to.push(...near.map((p) => p.member), ...(picked && !near.some((p) => p.member === picked.member) ? [picked.member] : []));
+    if (b.target === 'ally+self' && !shared) {
       const pick = picked ?? [...near].sort((x, y) => cheb(x.at, c.at) - cheb(y.at, c.at))[0];
       if (pick) to.push(pick.member);
     }

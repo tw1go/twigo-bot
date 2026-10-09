@@ -36,7 +36,9 @@ export function buffText(data: StatsData, name: string, skillLevel = 1): string 
   const b = data.skills.buffs?.list[name];
   if (!b) return null;
   const v = buffValue(data, name, skillLevel);
-  const who = WHO[b.target] ?? 'you';
+  // (A one-ally buff shared like a party buff: stats.json skills.buffs.rules.allyBuffsReachParty.)
+  const shared = b.target === 'ally+self' && !!(data.skills.buffs?.rules as { allyBuffsReachParty?: boolean } | undefined)?.allyBuffsReachParty;
+  const who = WHO[shared ? 'party' : b.target] ?? 'you';
   if (v.healPctOfPower !== undefined) return `Heals ${who} for ${pct(v.healPctOfPower)}% of ATK`;
   const stats = Object.entries(v).map(([k, n]) => STAT[k]?.(pct(n)) ?? `${k} ${n}`).join(', ');
   if (b.durationSec === null) return `${stats}, ${b.stance ? 'permanent stance' : 'permanent'}`;

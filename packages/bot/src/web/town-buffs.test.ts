@@ -50,8 +50,10 @@ test('MP and cooldown: buffMpCost and cooldownSec at its skill level (+3% MP, âˆ
 test('who gets it: self; one ally + self (the one asked for in range, else the nearest, else only you); the whole party in range; never the knocked out', () => {
   const b = new Buffs(stats);
   const party = [near('ann', 2), near('bob', 5), near('cy', R.range + 1), near('dee', 1, true)];
-  const to = (cls: string, name: string, p: Nearby[], target?: string) => {
-    const r = new Buffs(stats).cast(caster(cls), name, p, target, 0);
+  // (One-ally buffs as the guide has them: stats.json allyBuffsReachParty off.)
+  const oneAlly = { ...stats, skills: { ...stats.skills, buffs: { ...B, rules: { ...B.rules, allyBuffsReachParty: false } } } } as unknown as typeof stats;
+  const to = (cls: string, name: string, p: Nearby[], target?: string, data = oneAlly) => {
+    const r = new Buffs(data).cast(caster(cls), name, p, target, 0);
     return r.ok ? r.to : r.reason;
   };
   assert.deepEqual(to('hilot', 'Calm Mind', party), ['me']);
@@ -60,6 +62,12 @@ test('who gets it: self; one ally + self (the one asked for in range, else the n
   assert.deepEqual(to('slingshot', 'Rally', party, 'dee'), ['me', 'ann'], 'knocked out: the nearest instead');
   assert.deepEqual(to('slingshot', 'Rally', party), ['me', 'ann']);
   assert.deepEqual(to('slingshot', 'Rally', [near('cy', R.range + 1)]), ['me'], 'nobody near: only you');
+  // As the game has it (allyBuffsReachParty on): a one-ally buff is shared with the whole party in range, like a party
+  // buff; a self buff stays yours.
+  assert.equal((B.rules as { allyBuffsReachParty?: boolean }).allyBuffsReachParty, true);
+  assert.deepEqual(to('slingshot', 'Rally', party, undefined, stats), ['me', 'ann', 'bob'], 'everyone in range');
+  assert.deepEqual(to('slingshot', 'Steady Aim', party, 'bob', stats), ['me', 'ann', 'bob']);
+  assert.deepEqual(to('stick', 'Keen Stance', party, undefined, stats), ['me'], 'a self buff');
   assert.deepEqual(to('greatstick', 'Hearty Cheer', party), ['me', 'ann', 'bob'], `within ${R.range} tiles, not knocked out`);
   assert.deepEqual(to('greatstick', 'Hearty Cheer', [near('far', R.range)]), ['me', 'far'], 'the edge of the range counts');
   // Those it reaches have it; the rest don't.
@@ -254,9 +262,9 @@ test('the town: a buff on a battle map reaches the party member in range, both s
 test('the player you\'ve picked gets it too, in your party or not: a one-ally buff goes to them first, a party buff reaches them as well; out of range or knocked out: not', () => {
   const b = new Buffs(stats);
   const party = [near('pal', 1)];
-  // Rally (you and one ally): the picked stranger in range, not your party member.
+  // Rally (shared with the party, stats.json allyBuffsReachParty): the party in range and the picked stranger.
   const r = b.cast(caster('slingshot'), 'Rally', party, near('stranger', 2), 0);
-  assert.ok(r.ok && r.to.join() === 'me,stranger');
+  assert.ok(r.ok && r.to.join() === 'me,pal,stranger');
   // Too far, or knocked out: the nearest party member instead.
   const far = new Buffs(stats).cast(caster('slingshot'), 'Rally', party, near('stranger', R.range + 1), 0);
   assert.ok(far.ok && far.to.join() === 'me,pal');

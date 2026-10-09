@@ -431,6 +431,8 @@
       "recast": "Casting a buff again restarts its timer.",
       "where": "Buffs can only be cast on battle maps (like MP); they end when you leave the map or are knocked out.",
       "partyRangeTiles": 6,
+      "allyBuffsReachParty": true,
+      "allyBuffsReachPartyNote": "Repo addition (Mac, 10 Oct 2026): a one-ally buff (ally+self) reaches the caster's whole party within partyRangeTiles, plus the player they've picked, like a party buff; false = one ally (allyTarget)",
       "allyTarget": "one ally + self: the selected party member within partyRangeTiles, else the nearest one; with no party member near, only yourself",
       "maxHp": "raising max HP raises current HP by the same amount; when it ends, HP above the new max drops to it",
       "accuracy": "points off the miss chance (the level gap gives 5 points a level the target is above you); never below 0",
