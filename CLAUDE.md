@@ -693,14 +693,20 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   Hovering a skill (a hotbar slot, a Skills panel row) shows its details card (`ui/skill-tip.ts`, the item tooltip's
   box: Lv / cap, its text, damage as % of ATK and ≈ with your ATK now, what it hits (skill-hits.json shape), range, slow /
   root, cooldown, MP, the next level's gain; a move: its tiles).
-  Skills panel on the right of the screen (K or the K button; `#skill-book`): skill points, each skill with its level and
-  description (see Skills unlock), the hovered one played on the class choice's stage (`TownScene.skillStage`, 1×); drag a
+  Skills panel on the right of the screen (K or the K button; `#skill-book`): skill points, the skills in three lists,
+  Damage, Mobility and Buffs (classes.json buffs: icon, unlock level, their buff-cast on the stage on hover; not usable
+  yet), each with its level and description (see Skills unlock), the hovered one played on the class choice's stage (`TownScene.skillStage`, 1×); drag a
   skill to a slot, or click it then a slot.
   Potions dragged from the bag (HP/MP Potions from the combat bag: used through the town, shared cooldown); drag between slots swaps, off the bar empties (right-click never does). Per class in localStorage
   `mk_hotbar` (a class's first bar = its skills in order). Skill icons from manifest ui.skillIcons (`have` lists the ones there are: every class's 7 damage skills and its Lv 8 move; `shared` = one icon for all, Dash); the rest show
   their initials over the class badge. In town the damage skills are dark (grey, dimmed: `usable`); only the move
   skills light up. Where it
   doesn't fit, the chat, bag button, system feed, stay box and toasts sit higher (body.hotbar-on). Emotes are F1–F8.
+- Buff tray (`ui/buff-tray.ts`, the HUD's `.th-buffs` slot under News/Settings): a row per buff on you: icon, name,
+  what it gives (the server's numbers, else classes.json's `effect`), time left (Jersey 10; amber under 30 s, the icon
+  fading under 10 s, gone at 0; a stance "On"); phones: icon and time only. Buffs can't be cast yet, so nothing feeds
+  it but dev `?buffs=demo` and `__town.buffs(list?)`. classes.json buffs carry `effect`, `minutes`, `permanent` from
+  combat-guide.md's class tables; amounts aren't in the spec yet.
 - Mobility in town (`world/mobility.ts`): the hotbar's Dash (3 tiles, 2 s) and the class's Lv 8 move: Step Back (2 back,
   3 s), Charge (5, 5 s), Blink (4, 4 s), along your facing, stopping where something's in the way. The combat sheets have
   no clothes, so in town it's your outfit with motion and fx (lavender afterimages, fx-mobility-dust / -blink placeholders,

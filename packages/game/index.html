@@ -232,6 +232,17 @@
       /* Not in the casino: out of the layout too, so News and Settings go back up top, clear of the casino's Leave. */
       body.town-locked #minimap, body.town-locked #town-hud .th-jackpot { display: none; }
       #town-hud .th-news { position: relative; }
+      /* The buffs on you (ui/buff-tray.ts), under the buttons: icon, name, what it gives, time left. */
+      #town-hud .buff-tray { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+      #town-hud .bt-buff { display: grid; grid-template-columns: 32px minmax(0, 150px) auto; align-items: center; gap: 0 8px; padding: 4px 8px 4px 4px; border: 2px solid #7C2AE8; background: rgba(17, 24, 39, 0.82); color: #E6E9F2; font: 12px/1.25 var(--ui-font); transition: opacity 0.3s; }
+      #town-hud .bt-icon { display: block; width: 32px; height: 32px; image-rendering: pixelated; transition: opacity 0.4s; }
+      #town-hud .bt-initials { display: flex; align-items: center; justify-content: center; box-sizing: border-box; border: 1px solid #3D4256; background: #1E1B3A; font-weight: 700; color: #fff; }
+      #town-hud .bt-name { font-weight: 700; color: #fff; }
+      #town-hud .bt-stat { color: #A3E635; }
+      #town-hud .bt-time { min-width: 32px; text-align: right; font: 17px/1 'Mk Numbers', var(--ui-font); color: #fff; } /* Jersey 10 */
+      #town-hud .bt-soon .bt-time { color: #F8BF27; }
+      #town-hud .bt-fading .bt-icon { opacity: 0.5; }
+      @media (max-width: 560px), (max-height: 500px) { #town-hud .bt-text { display: none; } #town-hud .bt-buff { grid-template-columns: 32px auto; } }
       #town-hud .th-news-dot { position: absolute; top: -5px; right: -5px; width: 12px; height: 12px; border: 2px solid #111827; border-radius: 50%; background: #F43F5E; }
       /* The jackpot counter (ui/jackpot-timer.ts): a little event board left of News, casino lights on top; gold and
          pulsing in the last 10 minutes. */

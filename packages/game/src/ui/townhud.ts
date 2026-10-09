@@ -253,13 +253,13 @@ export function mountTownHud(o: TownHudOptions): void {
   row.append(profile);
   left.append(row);
   // Top right: the jackpot counter and the minimap side by side (ui/minimap.ts fills the slot), the tutorial, News and Settings under
-  // the map.
+  // the map, and under them the buffs on you (ui/buff-tray.ts).
   const corner = el('div', 'th-corner');
   const top = el('div', 'th-top');
   top.append(el('div', 'th-map'));
   const buttons = el('div', 'th-buttons');
   buttons.append(quest, guide, news, settings);
-  corner.append(top, buttons);
+  corner.append(top, buttons, el('div', 'th-buffs')); // (ui/buff-tray.ts fills the buffs slot)
   root.append(left, corner);
 
   if (o.me || fakeLogin()) {

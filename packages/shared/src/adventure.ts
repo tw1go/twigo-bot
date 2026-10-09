@@ -25,7 +25,7 @@ export interface ClassInfo {
   mobility?: { id: string; level: number; name: string; desc: string }[];
   /** The class's buffs (name, unlock level; stats.json skills.mpCost.buffs by name). All play its `buff-cast` anim; not
    *  castable yet, only shown in the skill preview. */
-  buffs?: { name: string; level: number }[];
+  buffs?: { name: string; level: number; effect?: string; minutes?: number; permanent?: boolean }[];
 }
 
 export interface ClassesFile {

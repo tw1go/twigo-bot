@@ -89,6 +89,7 @@ import { showArenaMenu } from '../arena/menu';
 import { stopQueue } from '../arena/queue';
 import type { ArenaData } from './ArenaScene';
 import { Minimap } from '../ui/minimap';
+import { type ActiveBuff, BuffTray } from '../ui/buff-tray';
 import { type Bench, type Building, WorldObjects, characterDepth } from '../world/objects';
 import { type SoundTapped, enterArenaSound, enterCasinoSound, hearFrom, leaveCasinoSound, loadSoundSets, playFrom, playSet, playSound, skillSet, soundSets, startTownSound, tapSounds } from '../audio/sound';
 import type { AdventureData } from '../net/adventure';
@@ -218,6 +219,8 @@ export class TownScene extends Phaser.Scene {
   private fenceLater: { fence: NonNullable<TownMap['fence']>; yard: [number, number, number, number] } | null = null;
   private nightLife!: NightLife;
   private minimap: Minimap | null = null;
+  /** The buffs on you (ui/buff-tray.ts), under the HUD's buttons. */
+  buffTray: BuffTray | null = null;
   private nextMinimap = 0;
   private lampsOn = false;
   /** Whether the current walk is keyboard-driven (doors then wait for E instead of entering on arrival). */
@@ -499,6 +502,12 @@ export class TownScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => removeEventListener('mk-class-ticket', ticket));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => removeEventListener('mk-renamed', renamed));
     this.minimap = new Minimap(this.map); // in the HUD's corner, above its buttons
+    const tray = new BuffTray({
+      icon: (cls, name) => this.skillIcon(cls, name),
+      effect: (cls, name) => classInfo(cls)?.buffs?.find((b) => b.name === name)?.effect ?? null,
+    });
+    this.buffTray = tray;
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => tray.destroy());
     startTownSound(this, this.fountainTile(), this.area === 'slums' ? 'slums' : 'town'); // (the Slums: its own music, no crickets)
     // A battle map's sounds: each mob kind's hurt and death, the golem's attacks (the classes' skills once their data is in).
     if (this.battleMap) {
@@ -670,7 +679,20 @@ export class TownScene extends Phaser.Scene {
       const demo = new URLSearchParams(location.search).get('reward');
       if (demo === 'kowens') void showReward({ title: 'Reward', graphic: { kind: 'kowens', amount: 50 }, message: 'Congratulations! 50 Kowens are yours.' });
       if (demo === 'title') void showReward({ title: 'New title!', graphic: { kind: 'title', title: { name: 'Game Master', color: 'prismatic' } }, message: 'Congratulations! You are now known as <Game Master>.' });
+      // ?buffs=demo: your class's lasting buffs on you (their effect in words, as from classes.json), and a party member's
+      // Battle Roar with pretend numbers running out in 40 s.
+      if (new URLSearchParams(location.search).get('buffs') === 'demo') this.demoBuffs();
     }
+  }
+
+  /** Dev: pretend buffs in the buff tray (?buffs=demo). */
+  demoBuffs(): void {
+    const c = classInfo(adventure()?.cls) ?? classInfo('slingshot');
+    const now = Date.now();
+    this.buffTray?.set([
+      ...(c?.buffs ?? []).filter((b) => b.minutes || b.permanent).map((b): ActiveBuff => ({ cls: c!.id, name: b.name, endsAt: b.minutes ? now + b.minutes * 60_000 - 1000 : null, stats: [] })),
+      { cls: 'greatstick', name: 'Battle Roar', endsAt: now + 40_000, stats: ['+8% Damage amp'] },
+    ]);
   }
 
   /** A character for the leaderboard podium: their look idling (built like any player's), or a base look as the
@@ -3060,6 +3082,8 @@ function exposeDebug(scene: TownScene): void {
     talk: (id: string) => scene.debugTalk(id),
     /** The Mosang race as this page has it, and the bot's clock. */
     race: () => ({ race: currentRace(), now: raceNow() }),
+    /** Shows these buffs in the buff tray (none: the dev demo's). */
+    buffs: (list?: ActiveBuff[]) => (list ? scene.buffTray?.set(list) : scene.demoBuffs()),
     /** The Slums' mobs: id, look, tile, facing, and where each is on the screen (for clicking one in tests). */
     mobs: () =>
       scene.debugMobs?.list.map((m) => {
