@@ -846,7 +846,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   fake login), so two windows `?as=Alice` / `?as=Bob` see and chat with each other;
   `/__discord?name=&text=` fakes a #town-chat line and town lines print in the dev server's terminal. Dev: with no bot behind the dev server, plain `/play/` acts as `?me=saved`; `?me=anon|new&as=Alice` fakes a member (test values: `&kowens=` `&shovels=` `&digs=` `&status=online|idle|busy|offline|jailed`); to test,
   run only the compiled `web/town.js` on 127.0.0.1:8787 with a fake `authenticate` (never the whole bot).
-- Movement: right-click-to-move (tap on touch screens; A* on `blocked`), WASD/arrows (screen directions; from a
+- Movement: right-click-to-move (tap on touch screens; A* on `blocked`; only the latest right-click of a frame is walked to, `clickTo`; `WalkGrid` keeps each tile's allowed steps as bits, its search memory and typed heap between searches, and the reach from where you are (moves go both ways), all warmed a few ms a frame after the map loads (`warmUp`) and reset when a fence or house changes the map: a far click in the Slums ~0.3 ms, the worst ~12 ms; a tile you can't reach goes to the nearest reachable one without a search), WASD/arrows (screen directions; from a
   standstill a tap only turns, holding walks; a new direction while walking turns mid-step at once, `Character.turnMidStep`:
   once per step, one step message, within a mirror of the server's step budget so it never snaps), E/Space to enter or sit. Left-click/touch drag on the map peeks around
   (rubber band up to ~320 screen px, follow paused) and snaps back on release (`setupPeek`; drags are never clicks).

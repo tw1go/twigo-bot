@@ -535,6 +535,14 @@ export class TownScene extends Phaser.Scene {
     this.ground.tick(time);
     this.streamWorld();
     this.keyTurn();
+    // Walking's groundwork, a few ms a frame until done (each tile's steps, where you can get to): no first-click hitch.
+    this.grid.warmUp(this.player.heading, 3); // (done: returns at once; a fence or a new house starts it over)
+    // Right-clicks since the last frame: only the latest is walked to (clicking fast never runs a search per click).
+    if (this.clickTo) {
+      const to = this.clickTo;
+      this.clickTo = null;
+      this.moveTo(to);
+    }
     this.player.update(delta);
     if (this.fenceLater) {
       const { col, row } = this.player.tile;
@@ -2171,7 +2179,7 @@ export class TownScene extends Phaser.Scene {
         if (building) return this.goToBuilding(building);
         return this.goToTile({ col, row });
       }
-      if (p.rightButtonReleased()) return this.moveTo({ col, row });
+      if (p.rightButtonReleased()) return void (this.clickTo = { col, row }); // (walked to in the next update: one search a frame)
       if (building) return this.goToBuilding(building);
       if (bench) return this.goToBench(bench);
     });
@@ -2447,12 +2455,16 @@ export class TownScene extends Phaser.Scene {
     toast("Someone's already sitting there.");
   }
 
-  /** Just walk there (a blocked tile: the nearest reachable one), with the click marker on where you're going. */
+  /** The latest right-click's tile, walked to in the next update. */
+  private clickTo: Tile | null = null;
+
+  /** Just walk there (a tile you can't get to: the nearest one you can), with the click marker on where you're going. */
   private moveTo(target: Tile): void {
     this.stopFight(); // walking yourself stops an auto-cast
     this.pending = null;
     this.byKeys = false;
-    const to = this.grid.walkable(target.col, target.row) ? target : this.grid.nearestReachable(this.player.heading, target);
+    const from = this.player.heading;
+    const to = this.grid.reachable(from, target) ? target : this.grid.nearestReachable(from, target);
     if (to && this.walkTo(to)) this.clickMarker(to);
   }
 

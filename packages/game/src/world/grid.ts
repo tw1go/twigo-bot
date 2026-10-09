@@ -25,18 +25,77 @@ export class WalkGrid {
   private readonly blocked: Uint8Array;
   private readonly fenced = new Set<string>(); // "c,r|c2,r2" for both directions
   readonly heights: Heights;
+  /** Each tile's allowed steps (bit k: STEPS[k]), worked out once (`known`) and kept until the map changes: the search
+   *  then only tests bits, not fences and heights. */
+  private moves: Uint8Array = new Uint8Array(0);
+  private known: Uint8Array = new Uint8Array(0);
+  /** The search's working memory, kept between searches (a stamp per search instead of clearing it). */
+  private g: Float64Array = new Float64Array(0);
+  private came: Int32Array = new Int32Array(0);
+  private seen: Uint32Array = new Uint32Array(0);
+  private shut: Uint32Array = new Uint32Array(0);
+  private stamp = 0;
+  private heapF: Float64Array = new Float64Array(0);
+  private heapI: Int32Array = new Int32Array(0);
+  /** The tiles reachable from where the last flood started (kept until the map changes; moves go both ways, so one flood
+   *  serves every tile in it). */
+  private reach: Uint8Array | null = null;
 
   constructor(map: TownMap) {
     this.heights = new Heights(map);
     [this.cols, this.rows] = map.size;
     this.blocked = new Uint8Array(this.cols * this.rows);
     for (let r = 0; r < this.rows; r++) for (let c = 0; c < this.cols; c++) this.blocked[r * this.cols + c] = map.blocked[r][c] ? 1 : 0;
+    const n = this.cols * this.rows;
+    this.moves = new Uint8Array(n);
+    this.known = new Uint8Array(n);
+    this.g = new Float64Array(n);
+    this.came = new Int32Array(n);
+    this.seen = new Uint32Array(n);
+    this.shut = new Uint32Array(n);
     this.setFence(map.fence ?? []);
+  }
+
+  /** The map changed (a fence, a newly blocked tile): steps and reach are worked out again. */
+  private changed(): void {
+    this.known.fill(0);
+    this.reach = null;
+    this.warmAt = 0;
+  }
+
+  /** Where the warm-up has got to (tiles whose steps are worked out ahead of any click). */
+  private warmAt = 0;
+
+  /** Works out every tile's steps, then the reach from `from`, a few ms at a time (call it each frame until it says
+   *  true): so the first long click doesn't pay for it. The map changing starts it over. */
+  warmUp(from: Tile, budgetMs = 3): boolean {
+    const n = this.cols * this.rows;
+    if (this.warmAt >= n && this.reach) return true;
+    const until = performance.now() + budgetMs;
+    while (this.warmAt < n) {
+      for (let k = 0; k < 256 && this.warmAt < n; k++) if (!this.known[this.warmAt]) this.stepsOf(this.warmAt++); else this.warmAt++;
+      if (performance.now() >= until) return false;
+    }
+    if (!this.reach && this.walkable(from.col, from.row)) this.reachableFrom(from);
+    return true;
+  }
+
+  /** A tile's allowed steps as bits (STEPS order). */
+  private stepsOf(i: number): number {
+    if (this.known[i]) return this.moves[i];
+    const c = i % this.cols;
+    const r = (i - c) / this.cols;
+    let bits = 0;
+    for (let k = 0; k < 8; k++) if (this.canStep({ col: c, row: r }, { col: c + STEPS[k][0], row: r + STEPS[k][1] })) bits |= 1 << k;
+    this.moves[i] = bits;
+    this.known[i] = 1;
+    return bits;
   }
 
   /** The fence's edges from now on (all of them: a Bakod went up or came down). */
   setFence(fence: NonNullable<TownMap['fence']>): void {
     this.fenced.clear();
+    this.changed();
     // fence-nw sits on the tile's top-left edge (shared with col − 1), fence-ne on its top-right edge (row − 1).
     for (const f of fence) {
       const other: Tile = f.edge === 'nw' ? { col: f.col - 1, row: f.row } : { col: f.col, row: f.row - 1 };
@@ -51,7 +110,9 @@ export class WalkGrid {
 
   /** Blocks a tile from now on (a house built while the scene is up). */
   block(col: number, row: number): void {
-    if (this.inBounds(col, row)) this.blocked[row * this.cols + col] = 1;
+    if (!this.inBounds(col, row)) return;
+    this.blocked[row * this.cols + col] = 1;
+    this.changed();
   }
 
   walkable(col: number, row: number): boolean {
@@ -91,63 +152,91 @@ export class WalkGrid {
   findPath(from: Tile, to: Tile, cap = SEARCH_CAP): Tile[] | null {
     if (!this.walkable(to.col, to.row)) return null;
     if (from.col === to.col && from.row === to.row) return [from];
-    const idx = (c: number, r: number) => r * this.cols + c;
-    const n = this.cols * this.rows;
-    const g = new Float64Array(n).fill(Infinity);
-    const came = new Int32Array(n).fill(-1);
-    const closed = new Uint8Array(n);
+    const cols = this.cols;
+    const n = cols * this.rows;
+    // A tile it can't get to at all: no search (it would look at every tile there is before giving up).
+    if (this.reach && this.reach[from.row * cols + from.col] && !this.reach[to.row * cols + to.col]) return null;
+    const stamp = ++this.stamp;
+    if (stamp === 0xffffffff) {
+      this.seen.fill(0);
+      this.shut.fill(0);
+      this.stamp = 1;
+    }
+    const { g, came, seen, shut } = this;
+    const tc = to.col;
+    const tr = to.row;
     const h = (c: number, r: number) => {
-      const dx = Math.abs(c - to.col);
-      const dy = Math.abs(r - to.row);
-      return Math.max(dx, dy) + (Math.SQRT2 - 1) * Math.min(dx, dy); // octile
+      const dx = Math.abs(c - tc);
+      const dy = Math.abs(r - tr);
+      return dx > dy ? dx + (Math.SQRT2 - 1) * dy : dy + (Math.SQRT2 - 1) * dx; // octile
     };
-    // Small binary heap of [f, index].
-    const heap: [number, number][] = [];
+    // A binary heap of (f, index) on typed arrays (grown when it must be).
+    let size = 0;
     const push = (f: number, i: number) => {
-      heap.push([f, i]);
-      let k = heap.length - 1;
+      if (size >= this.heapF.length) {
+        const F = new Float64Array(Math.max(1024, this.heapF.length * 2));
+        const I = new Int32Array(F.length);
+        F.set(this.heapF);
+        I.set(this.heapI);
+        [this.heapF, this.heapI] = [F, I];
+      }
+      const HF = this.heapF;
+      const HI = this.heapI;
+      let k = size++;
       while (k > 0) {
         const p = (k - 1) >> 1;
-        if (heap[p][0] <= heap[k][0]) break;
-        [heap[p], heap[k]] = [heap[k], heap[p]];
+        if (HF[p] <= f) break;
+        HF[k] = HF[p];
+        HI[k] = HI[p];
         k = p;
       }
+      HF[k] = f;
+      HI[k] = i;
     };
-    const pop = () => {
-      const top = heap[0];
-      const last = heap.pop()!;
-      if (heap.length) {
-        heap[0] = last;
-        let k = 0;
-        for (;;) {
-          const l = 2 * k + 1;
-          const r = l + 1;
-          let m = k;
-          if (l < heap.length && heap[l][0] < heap[m][0]) m = l;
-          if (r < heap.length && heap[r][0] < heap[m][0]) m = r;
-          if (m === k) break;
-          [heap[m], heap[k]] = [heap[k], heap[m]];
-          k = m;
-        }
+    const pop = (): number => {
+      const HF = this.heapF;
+      const HI = this.heapI;
+      const top = HI[0];
+      const lf = HF[--size];
+      const li = HI[size];
+      let k = 0;
+      for (;;) {
+        const l = 2 * k + 1;
+        if (l >= size) break;
+        const m = l + 1 < size && HF[l + 1] < HF[l] ? l + 1 : l;
+        if (HF[m] >= lf) break;
+        HF[k] = HF[m];
+        HI[k] = HI[m];
+        k = m;
       }
+      HF[k] = lf;
+      HI[k] = li;
       return top;
     };
 
-    const start = idx(from.col, from.row);
-    const goal = idx(to.col, to.row);
+    const start = from.row * cols + from.col;
+    const goal = to.row * cols + to.col;
+    if (start < 0 || start >= n) return null;
+    seen[start] = stamp;
     g[start] = 0;
+    came[start] = -1;
     push(h(from.col, from.row), start);
     let expanded = 0;
     let best = start;
     let bestH = h(from.col, from.row);
     let capped = false;
-    while (heap.length) {
-      const [, cur] = pop();
-      if (cur === goal) break;
-      if (closed[cur]) continue;
-      closed[cur] = 1;
-      const cc = cur % this.cols;
-      const ch = h(cc, (cur - cc) / this.cols);
+    let found = false;
+    while (size) {
+      const cur = pop();
+      if (cur === goal) {
+        found = true;
+        break;
+      }
+      if (shut[cur] === stamp) continue;
+      shut[cur] = stamp;
+      const c = cur % cols;
+      const r = (cur - c) / cols;
+      const ch = h(c, r);
       if (ch < bestH) {
         bestH = ch;
         best = cur;
@@ -156,48 +245,61 @@ export class WalkGrid {
         capped = true;
         break;
       }
-      const c = cur % this.cols;
-      const r = (cur - c) / this.cols;
-      for (const [dc, dr] of STEPS) {
-        const nc = c + dc;
-        const nr = r + dr;
-        if (!this.canStep({ col: c, row: r }, { col: nc, row: nr })) continue;
-        const ni = idx(nc, nr);
-        const cost = g[cur] + (dc && dr ? Math.SQRT2 : 1);
-        if (cost < g[ni]) {
-          g[ni] = cost;
-          came[ni] = cur;
-          push(cost + h(nc, nr), ni);
-        }
+      const bits = this.stepsOf(cur);
+      if (!bits) continue;
+      const gc = g[cur];
+      for (let k = 0; k < 8; k++) {
+        if (!(bits & (1 << k))) continue;
+        const ni = cur + STEPS[k][1] * cols + STEPS[k][0];
+        const cost = gc + (k >= 4 ? Math.SQRT2 : 1);
+        if (seen[ni] === stamp && cost >= g[ni]) continue;
+        seen[ni] = stamp;
+        g[ni] = cost;
+        came[ni] = cur;
+        push(cost + h(c + STEPS[k][0], r + STEPS[k][1]), ni);
       }
     }
-    const end = came[goal] >= 0 ? goal : capped && best !== start ? best : -1;
+    const end = found ? goal : capped && best !== start ? best : -1;
     if (end < 0) return null;
     const path: Tile[] = [];
     for (let i = end; i >= 0; i = came[i]) {
-      const c = i % this.cols;
-      path.push({ col: c, row: (i - c) / this.cols });
+      const c = i % cols;
+      path.push({ col: c, row: (i - c) / cols });
       if (i === start) break;
     }
     return path.reverse();
   }
 
-  /** Every tile reachable from `from` (one flood fill; 1 = reachable). */
+  /** Every tile reachable from `from` (one flood fill; 1 = reachable), kept while the map stays the same: moves go both
+   *  ways, so it's the same set from anywhere in it. */
   reachableFrom(from: Tile): Uint8Array {
-    const seen = new Uint8Array(this.cols * this.rows);
+    const cols = this.cols;
+    const i0 = from.row * cols + from.col;
+    if (this.reach?.[i0]) return this.reach;
+    const seen = new Uint8Array(cols * this.rows);
     if (!this.walkable(from.col, from.row)) return seen;
-    const queue = [from];
-    seen[from.row * this.cols + from.col] = 1;
-    for (let i = 0; i < queue.length; i++) {
-      const t = queue[i];
-      for (const [dc, dr] of STEPS) {
-        const n = { col: t.col + dc, row: t.row + dr };
-        if (!this.inBounds(n.col, n.row) || seen[n.row * this.cols + n.col] || !this.canStep(t, n)) continue;
-        seen[n.row * this.cols + n.col] = 1;
-        queue.push(n);
+    const queue = new Int32Array(cols * this.rows);
+    let tail = 0;
+    queue[tail++] = i0;
+    seen[i0] = 1;
+    for (let q = 0; q < tail; q++) {
+      const cur = queue[q];
+      const bits = this.stepsOf(cur);
+      for (let k = 0; k < 8; k++) {
+        if (!(bits & (1 << k))) continue;
+        const ni = cur + STEPS[k][1] * cols + STEPS[k][0];
+        if (seen[ni]) continue;
+        seen[ni] = 1;
+        queue[tail++] = ni;
       }
     }
+    this.reach = seen;
     return seen;
+  }
+
+  /** Whether `to` can be walked to from `from` at all. */
+  reachable(from: Tile, to: Tile): boolean {
+    return this.walkable(to.col, to.row) && !!this.reachableFrom(from)[to.row * this.cols + to.col];
   }
 
   /** The reachable tile closest to `target` (for clicks on blocked tiles), searching outward ring by ring. */
