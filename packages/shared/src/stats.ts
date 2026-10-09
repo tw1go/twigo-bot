@@ -68,6 +68,8 @@ export interface StatsData {
     mpCost?: { damageByTier: Record<string, number[]>; dash: Record<string, number>; mobilityLv8: Record<string, number>; buffs?: Record<string, Record<string, number>> };
     /** A damage skill's cooldown (s) at skill Lv 1, by its unlock level ("18": 14); `note` says why. */
     cooldownByUnlock?: Record<string, number | string>;
+    /** The buffs' numbers (Mac, 9 Oct; combat-guide.md "Buffs"): each one's stats at skill Lv 1, duration, cooldown. */
+    buffs?: BuffsData;
   };
   caps: Record<string, number>;
   /** MP per second: "1 + 0.05 * INT". */
@@ -373,6 +375,51 @@ export function skillMpCost(data: StatsData, cls: string | null | undefined, key
   const T = data.skills.mpCost;
   if (!cls || !T) return 0;
   const base = /^\d+$/.test(key) ? (T.damageByTier[cls]?.[Number(key)] ?? 0) : key === 'dash' ? (T.dash[cls] ?? 0) : (T.mobilityLv8[cls] ?? 0);
+  return Math.round(base * skillLevelBonus(data, skillLevel).mpCost);
+}
+
+/** stats.json skills.buffs: the rules in words (and a few numbers: party range, cooldowns), each buff by name. */
+export interface BuffsData {
+  note?: string;
+  rules: Record<string, string | number>;
+  list: Record<string, BuffDef>;
+  /** What each stat key means, in words. */
+  statKeys: Record<string, string>;
+}
+
+/** A buff (skills.buffs.list): its class, unlock level, who it reaches, its stats at skill Lv 1 (atkPct 0.08 = +8%;
+ *  point stats like critRate 0.08 = 8 points), how long it lasts (s; null = a stance, until changed; 0 = instant),
+ *  and its cooldown (s). */
+export interface BuffDef {
+  class: string;
+  unlock: number;
+  target: 'self' | 'ally+self' | 'party';
+  stats: Record<string, number>;
+  durationSec: number | null;
+  cooldownSec: number;
+  stance?: boolean;
+  note?: string;
+}
+
+/** A buff's stats at a skill level: each +5% of itself a level past 1 (perSkillLevel.buffDebuff); a heal's
+ *  (healPctOfPower) +2% like other heals (damageOrHeal). Rounded to a millionth. Empty for an unknown buff. */
+export function buffValue(data: StatsData, name: string, skillLevel = 1): Record<string, number> {
+  const b = data.skills.buffs?.list[name];
+  if (!b) return {};
+  const bonus = skillLevelBonus(data, skillLevel);
+  return Object.fromEntries(Object.entries(b.stats).map(([k, v]) => [k, Math.round(v * (k === 'healPctOfPower' ? bonus.damage : bonus.buff) * 1e6) / 1e6]));
+}
+
+/** A buff's skill level cap at a character level: the damage skills' rule (skillLevelCap) from its unlock level. */
+export function buffSkillCap(data: StatsData, name: string, characterLevel: number): number {
+  const b = data.skills.buffs?.list[name];
+  return b ? skillLevelCap(data, characterLevel, b.unlock) : 0;
+}
+
+/** A buff's MP at its skill level (stats.json skills.mpCost.buffs, +3% a level past 1, rounded); 0 if none. */
+export function buffMpCost(data: StatsData, name: string, skillLevel = 1): number {
+  const b = data.skills.buffs?.list[name];
+  const base = b ? (data.skills.mpCost?.buffs?.[b.class]?.[name] ?? 0) : 0;
   return Math.round(base * skillLevelBonus(data, skillLevel).mpCost);
 }
 

@@ -423,6 +423,160 @@
       "50": 40
      }
     },
+    "buffs": {
+     "placeholder": true,
+     "note": "Buff numbers (Mac, 9 Oct: 'make it balance'). value is at skill Lv 1; +5% of it per skill level (perSkillLevel.buffDebuff), so a Lv 10 buff at its Lv 20 cap (skill Lv 11) gives 1.5x, a Lv 14 buff 1.3x, a Lv 20 buff 1x. MP costs are in mpCost.buffs. One-ally buffs are stronger than party buffs of the same stat.",
+     "rules": {
+      "sameStat": "Two buffs on the same stat do not add up: only the stronger one counts (both timers keep running). Different stats stack.",
+      "recast": "Casting a buff again restarts its timer.",
+      "where": "Buffs can only be cast on battle maps (like MP); they end when you leave the map or are knocked out.",
+      "partyRangeTiles": 6,
+      "allyTarget": "one ally + self: the selected party member within partyRangeTiles, else the nearest one; with no party member near, only yourself",
+      "maxHp": "raising max HP raises current HP by the same amount; when it ends, HP above the new max drops to it",
+      "accuracy": "points off the miss chance (the level gap gives 5 points a level the target is above you); never below 0",
+      "defRate": "percent less damage taken, after DEF; held to caps.defRate",
+      "cooldownPct": "percent off damage skill cooldowns",
+      "timedCooldownSec": 10,
+      "stanceSwitchSec": 3
+     },
+     "list": {
+      "Rally": {
+       "class": "slingshot",
+       "unlock": 10,
+       "target": "ally+self",
+       "stats": {
+        "atkPct": 0.08
+       },
+       "durationSec": 300,
+       "cooldownSec": 10
+      },
+      "Steady Aim": {
+       "class": "slingshot",
+       "unlock": 14,
+       "target": "ally+self",
+       "stats": {
+        "accuracy": 0.1
+       },
+       "durationSec": 300,
+       "cooldownSec": 10
+      },
+      "Second Wind": {
+       "class": "slingshot",
+       "unlock": 20,
+       "target": "ally+self",
+       "stats": {
+        "maxHpPct": 0.1
+       },
+       "durationSec": 300,
+       "cooldownSec": 10
+      },
+      "Keen Stance": {
+       "class": "stick",
+       "unlock": 14,
+       "target": "self",
+       "stats": {
+        "critRate": 0.08
+       },
+       "durationSec": null,
+       "cooldownSec": 3,
+       "stance": true
+      },
+      "Hearty Cheer": {
+       "class": "greatstick",
+       "unlock": 10,
+       "target": "party",
+       "stats": {
+        "maxHpPct": 0.06
+       },
+       "durationSec": 300,
+       "cooldownSec": 10
+      },
+      "Steady Breath": {
+       "class": "greatstick",
+       "unlock": 14,
+       "target": "party",
+       "stats": {
+        "hpRegenPctPerSec": 0.005
+       },
+       "durationSec": 300,
+       "cooldownSec": 10
+      },
+      "Battle Roar": {
+       "class": "greatstick",
+       "unlock": 20,
+       "target": "party",
+       "stats": {
+        "amp": 0.06
+       },
+       "durationSec": 180,
+       "cooldownSec": 10
+      },
+      "Warding Dust": {
+       "class": "broom",
+       "unlock": 20,
+       "target": "party",
+       "stats": {
+        "defPct": 0.1,
+        "defRate": 0.04
+       },
+       "durationSec": 300,
+       "cooldownSec": 10
+      },
+      "Dinner Bell": {
+       "class": "potlid",
+       "unlock": 14,
+       "target": "party",
+       "stats": {
+        "accuracy": 0.06
+       },
+       "durationSec": 300,
+       "cooldownSec": 10
+      },
+      "Vital Rub": {
+       "class": "hilot",
+       "unlock": 10,
+       "target": "party",
+       "stats": {
+        "atkPct": 0.06
+       },
+       "durationSec": 300,
+       "cooldownSec": 10
+      },
+      "Calm Mind": {
+       "class": "hilot",
+       "unlock": 14,
+       "target": "self",
+       "stats": {
+        "cooldownPct": 0.06
+       },
+       "durationSec": 300,
+       "cooldownSec": 10
+      },
+      "Soothing Touch": {
+       "class": "hilot",
+       "unlock": 20,
+       "target": "party",
+       "stats": {
+        "healPctOfPower": 0.8
+       },
+       "durationSec": 0,
+       "cooldownSec": 10,
+       "note": "an instant heal, not a timed buff: self + party members in range, Power x 80% (+2% a skill level, perSkillLevel.damageOrHeal, like heals)"
+      }
+     },
+     "statKeys": {
+      "atkPct": "Power (ATK) +%",
+      "maxHpPct": "max HP +%",
+      "defPct": "DEF +%",
+      "defRate": "DEF rate + points",
+      "amp": "damage amp + points",
+      "critRate": "crit rate + points",
+      "accuracy": "miss chance - points",
+      "hpRegenPctPerSec": "HP regen, % of max HP a second, in combat too",
+      "cooldownPct": "damage skill cooldowns -%",
+      "healPctOfPower": "instant heal, % of Power"
+     }
+    },
     "cooldownByUnlock": {
      "note": "Damage skill cooldown (s) at skill Lv 1, by unlock level (Mac, 9 Oct: longer cooldowns so the MP costs hold, a full bar lasts about 30 s of nonstop casting at Lv 20). Tier 1 keeps the game's 1 s. -1% a skill level past 1 (perSkillLevel.cooldown). Mobility moves keep their own cooldowns.",
      "1": 1.0,

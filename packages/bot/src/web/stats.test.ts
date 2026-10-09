@@ -24,6 +24,9 @@ import {
   skillLevelCap,
   skillPct,
   skillMpCost,
+  buffValue,
+  buffSkillCap,
+  buffMpCost,
   skillPointsAt,
   statPointsAt,
   unspentStatPoints,
@@ -258,4 +261,24 @@ test('MP costs: the table by class (T1 free), Dash and the Lv 8 move, +3% a skil
   assert.equal(skillMpCost(data, 'broom', '6', 20), Math.round(36 * 1.57)); // 57
   assert.equal(skillMpCost(data, 'broom', '0', 20), 0);
   assert.equal(skillMpCost(data, null, '3'), 0); // no class: free
+});
+
+test('buffs: stats.json skills.buffs at a skill level (+5% a level; a heal +2%), the damage skills\' cap rule, MP from mpCost.buffs', () => {
+  assert.equal(buffValue(data, 'Rally', 1).atkPct, 0.08);
+  assert.equal(buffSkillCap(data, 'Rally', 20), 11); // a Lv 10 buff at character Lv 20
+  assert.equal(buffValue(data, 'Rally', 11).atkPct, 0.12);
+  assert.equal(buffValue(data, 'Keen Stance', 7).critRate, 0.104);
+  assert.equal(buffValue(data, 'Soothing Touch', 1).healPctOfPower, 0.8);
+  assert.equal(buffValue(data, 'Soothing Touch', 11).healPctOfPower, 0.96); // a heal: +2% a level, not +5%
+  assert.deepEqual(buffValue(data, 'Warding Dust', 1), { defPct: 0.1, defRate: 0.04 });
+  assert.deepEqual([buffSkillCap(data, 'Keen Stance', 20), buffSkillCap(data, 'Battle Roar', 20), buffSkillCap(data, 'Battle Roar', 19)], [7, 1, 0]);
+  assert.equal(buffMpCost(data, 'Rally', 1), 35);
+  assert.deepEqual(buffValue(data, 'Nothing'), {});
+  // Every buff has its MP cost under the same class, and is the one classes.json lists at the same unlock level.
+  const list = data.skills.buffs!.list;
+  for (const [name, b] of Object.entries(list)) {
+    assert.ok(data.skills.mpCost?.buffs?.[b.class]?.[name] !== undefined, `${name}: MP cost under ${b.class}`);
+    assert.equal(CLASSES.find((c) => c.id === b.class)?.buffs?.find((x) => x.name === name)?.level, b.unlock, `${name}: classes.json`);
+  }
+  for (const c of CLASSES) for (const x of c.buffs ?? []) assert.equal(list[x.name]?.class, c.id, `${x.name} in skills.buffs`);
 });
