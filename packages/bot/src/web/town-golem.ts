@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { type GolemAttack, type GolemChange, type PlayerHit, type TownGolem, type TownMobFacing, type TownServerMessage, golemResetMs, mobStats } from '@mikazuki/shared';
+import { type GolemAttack, type GolemChange, type PlayerHit, type TownGolem, type TownMobFacing, type TownServerMessage, golemResetMs, golemHpPerPlayer, mobStats } from '@mikazuki/shared';
 import { loadStats } from './stats-data.js';
 
 // 🗿 The Scrapheap Golem, the Slums' field boss (the game's maps/slums.json `boss`), run on the server inside the Slums'
@@ -94,6 +94,8 @@ export interface GolemArt {
   mult?: Partial<Record<GolemAttack, number>>;
   /** Nobody in its fight this long (ms): it resets (stats.json mobBehaviour.golem). */
   resetMs: number;
+  /** Its HP × this for every player in the Slums (stats.json mobBehaviour.golem.hpPerPlayer; 1 = none). */
+  hpPerPlayer?: number;
 }
 
 /** The game's manifest, mobs.json and stats.json, for the golem `id`. */
@@ -108,7 +110,7 @@ export function loadGolemArt(id = 'scrapheap-golem'): GolemArt {
   const row = mobStats(loadStats(), id)!;
   const mult = Object.fromEntries(Object.entries(MULT).map(([k, v]) => [k, row.skillMult?.[v] ?? 1])) as Partial<Record<GolemAttack, number>>;
   return {
-    hp: row.hp, resetMs: golemResetMs(loadStats()), radius: rules.radius, riseMs: ms(a.death), attackMs: { slam: ms(a.attack), toss: ms(a.toss), glare: ms(a.glare) }, callMs: ms(art.fx['fx-golem-call-junk']),
+    hp: row.hp, resetMs: golemResetMs(loadStats()), hpPerPlayer: golemHpPerPlayer(loadStats()), radius: rules.radius, riseMs: ms(a.death), attackMs: { slam: ms(a.attack), toss: ms(a.toss), glare: ms(a.glare) }, callMs: ms(art.fx['fx-golem-call-junk']),
     hitMs: { slam: at(a.attack, rules.attackFrame ?? 5), toss: at(a.toss, rules.tossFrame ?? 4) + FLIGHT_MS, glare: at(a.glare, rules.glareFrames?.[0] ?? 3) },
     mult,
   };
@@ -221,7 +223,7 @@ export class Golem {
   ) {
     this.id = boss.id;
     [this.col, this.row] = boss.tile;
-    this.hp = art.hp;
+    this.hp = this.max = art.hp;
     this.pit = pitTiles(boss);
     // Where it may stand: pit floor tiles whose every tile within its body's radius is floor (its body clears the ring).
     if (this.pit) {
@@ -264,7 +266,8 @@ export class Golem {
 
   /** Moves its clock on: the schedule (warning, rise), a hop that's over lands, rising/sinking end, idle stomps and turns,
    *  the sink, the fight. `players`: where each player in the room is. */
-  tick(now: number, players: ReadonlyMap<string, [number, number]>): GolemEvent[] {
+  tick(now: number, players: ReadonlyMap<string, [number, number]>, present = players.size): GolemEvent[] {
+    this.scale(present, now); // (before a rise: it rises at its HP for who's here)
     this.schedule(now);
     if (this.adds && now >= this.adds.at) {
       this.pending.push(...this.host.callAdds(this.adds.spots, now));
@@ -321,10 +324,29 @@ export class Golem {
     }
   }
 
+  /** Its most HP now: the mob table's × hpPerPlayer for each player in the Slums (`scale`). */
+  private max: number;
+
+  /** Its most HP for `players` in the Slums (stats.json mobBehaviour.golem.hpPerPlayer ^ players). When that changes,
+   *  its HP keeps its share of it (never 0 while it stands), and the room hears ('scale') while it's up. */
+  private scale(players: number, now: number): void {
+    const max = Math.round(this.art.hp * (this.art.hpPerPlayer ?? 1) ** players);
+    if (max === this.max) return;
+    const share = this.hp / this.max;
+    this.max = max;
+    if (this.hp > 0) this.hp = Math.max(1, Math.round(share * max));
+    if (this.phase !== 'gone') this.change('scale', now);
+  }
+
+  /** Its most HP now (the 5% share of its XP is of this). */
+  get maxHp(): number {
+    return this.max;
+  }
+
   /** It rises at home, whole: its death anim backwards for riseMs. */
   private rise(now: number): void {
     [this.col, this.row] = this.boss.tile;
-    Object.assign(this, { facing: 'sw', path: [], hp: this.art.hp, enraged: false, called: false, foe: null, alone: null, adds: null, attacks: 0, lastHit: 0 });
+    Object.assign(this, { facing: 'sw', path: [], hp: this.max, enraged: false, called: false, foe: null, alone: null, adds: null, attacks: 0, lastHit: 0 });
     this.hitters.clear();
     this.phase = 'rising';
     this.risenAt = now;
@@ -508,7 +530,7 @@ export class Golem {
 
   /** Nobody stayed: full HP, Adds gone, both phases ready again, and home. */
   private reset(now: number): void {
-    Object.assign(this, { hp: this.art.hp, enraged: false, called: false, adds: null, foe: null, alone: null, attacks: 0 });
+    Object.assign(this, { hp: this.max, enraged: false, called: false, adds: null, foe: null, alone: null, attacks: 0 });
     this.hitters.clear();
     this.dealt.clear();
     this.phase = 'home';
@@ -534,8 +556,8 @@ export class Golem {
     this.dealt.set(member, (this.dealt.get(member) ?? 0) + Math.min(damage, this.hp));
     this.hp = Math.max(0, this.hp - damage);
     if (starts) this.change('fight', now);
-    if (this.hp && !this.called && this.hp <= this.art.hp / 2) this.callJunk(now);
-    if (this.hp && !this.enraged && this.hp <= this.art.hp / 4) this.enrage(now);
+    if (this.hp && !this.called && this.hp <= this.max / 2) this.callJunk(now);
+    if (this.hp && !this.enraged && this.hp <= this.max / 4) this.enrage(now);
     if (this.hp) return { hp: this.hp, dead: false };
     const dealt = new Map(this.dealt);
     this.die(now);
@@ -622,7 +644,7 @@ export class Golem {
     const [col, row] = this.at(now);
     const state = dead ? 'dead' : this.phase === 'gone' ? 'idle' : this.phase;
     return {
-      id: this.id, col, row, dir: this.facing, level: this.boss.level, hp: this.hp, maxHp: this.art.hp, state, enraged: this.enraged,
+      id: this.id, col, row, dir: this.facing, level: this.boss.level, hp: this.hp, maxHp: this.max, state, enraged: this.enraged,
       home: this.boss.tile, leash: this.boss.leash, radius: this.art.radius,
       ...(state === 'rising' || state === 'sinking' ? { left: Math.max(0, this.until - now) } : {}),
       ...(left.length ? { path: left, speed: SPEED } : {}),
@@ -659,7 +681,7 @@ export class Golem {
     }
     const step = DEMO[run.step++];
     if (step === 'call' || step === 'enrage') {
-      this.hp = Math.floor(this.art.hp / (step === 'call' ? 2 : 4));
+      this.hp = Math.floor(this.max / (step === 'call' ? 2 : 4));
       if (step === 'call') this.callJunk(now);
       else this.enrage(now);
       run.at = now + (step === 'call' ? this.art.callMs + 2500 : 2000);

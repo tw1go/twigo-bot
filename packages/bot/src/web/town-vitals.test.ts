@@ -17,7 +17,7 @@ const stats = loadStats();
 const R = stats.regen;
 const map = loadMobMap('slums');
 const kinds = loadMobKinds();
-const art = loadGolemArt();
+const art = { ...loadGolemArt(), hpPerPlayer: 1 }; // (its HP the mob table's: the scaling with players has its own test)
 const boss = map.boss!;
 const lcg = (seed = 11) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
 const at = (dc: number, dr: number): [number, number] => [boss.tile[0] + dc, boss.tile[1] + dr];

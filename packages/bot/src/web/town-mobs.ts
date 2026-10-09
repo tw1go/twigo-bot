@@ -745,10 +745,11 @@ export class MobRoom {
    * level, which mobs' hits are rolled against (without one, the mobs' hits on that player are harmless). Returns what to send to the
    * room; what lands later, `landed`.
    */
-  tick(now: number, players: ReadonlyMap<string, [number, number]> = new Map(), guards: ReadonlyMap<string, Target> = new Map()): MobEvent[] {
+  tick(now: number, players: ReadonlyMap<string, [number, number]> = new Map(), guards: ReadonlyMap<string, Target> = new Map(), present = players.size): MobEvent[] {
     this.claimed = null;
     this.guards = guards;
-    const events: MobEvent[] = this.golem ? this.golem.tick(now, players) : [];
+    // (`present`: everyone in the room, the knocked out too: the golem's HP follows it.)
+    const events: MobEvent[] = this.golem ? this.golem.tick(now, players, present) : [];
     // The golem's slams and tosses land after a moment (its art's), its glare blinds as it lights.
     for (const e of events) {
       if (e.t !== 'golem-attack' || !this.golem) continue;
@@ -1009,7 +1010,7 @@ export class MobRoom {
     const r = g.hit(player, name, damage, now, member)!;
     if (r.dead) {
       const [gc, gr] = g.at(now);
-      kills.push({ id: g.id, kind: g.id, at: [Math.round(gc), Math.round(gr)], level: stats.level, xp: stats.xp, to: xpEarners(stats, r.dealt ?? new Map(), member), boss: true });
+      kills.push({ id: g.id, kind: g.id, at: [Math.round(gc), Math.round(gr)], level: stats.level, xp: stats.xp, to: xpEarners({ ...stats, hp: g.maxHp }, r.dealt ?? new Map(), member), boss: true });
     }
     return { id: g.id, damage, crit, hp: r.hp, dead: r.dead, ...(miss ? { miss } : {}) };
   }

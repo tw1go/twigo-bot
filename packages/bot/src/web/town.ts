@@ -1224,7 +1224,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         const up = here.filter((o) => !o.player.out);
         const where = new Map(up.map((o) => [o.player.id, [o.player.col, o.player.row] as [number, number]]));
         const guards = new Map(up.flatMap((o) => (o.guard ? [[o.player.id, o.guard] as const] : [])));
-        const events: TownServerMessage[] = mobs.tick(now, where, guards);
+        const events: TownServerMessage[] = mobs.tick(now, where, guards, here.length);
         lootGone(room, loots.get(room)?.tick(now) ?? []); // loot that lay there too long
         // Burning puddles' ticks (their hits to the room, then what they killed and what that set off).
         const burn = mobs.burnTick(now);

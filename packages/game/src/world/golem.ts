@@ -91,6 +91,12 @@ export class GolemView {
   /** It changed (`golem`): risen, a fight begun, the Junk called, enraged, reset, sinking, dead. */
   change(change: GolemChange, g: TownGolem, spots?: [number, number][]): void {
     this.setState(g);
+    // Players came or went: only its HP (and most HP) change.
+    if (change === 'scale') {
+      const m = this.mob;
+      if (m && !m.dead) this.mobs.setHp(m, g.hp, g.maxHp);
+      return;
+    }
     if (change === 'call' || change === 'enrage') this.sound(change === 'call' ? 'call-junk' : 'enrage', { col: g.col, row: g.row });
     if (!this.art) return;
     if (change === 'call') for (const [c, r] of spots ?? []) this.fx.play(this.def('fx-golem-call-junk'), this.mobs.ground(c + 0.5, r + 0.5));

@@ -64,7 +64,7 @@ export interface TownGolem {
 
 /** What changed for the golem: it rose, a fight began, it called the Junk (50%), enraged (25%), reset (healed, walking
  *  home), sank, or died. */
-export type GolemChange = 'rise' | 'fight' | 'call' | 'enrage' | 'reset' | 'sink' | 'death';
+export type GolemChange = 'rise' | 'fight' | 'call' | 'enrage' | 'reset' | 'sink' | 'death' | 'scale';
 
 export interface TownPlayer {
   id: string;

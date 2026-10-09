@@ -14,7 +14,7 @@ import { attachTown } from './town.js';
 
 const map = loadMobMap('slums');
 const boss = map.boss!;
-const art = loadGolemArt();
+const art = { ...loadGolemArt(), hpPerPlayer: 1 }; // (its HP the mob table's: the scaling with players has its own test)
 const kinds = loadMobKinds();
 const HOUR = 3_600_000;
 const lcg = (seed = 11) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
@@ -111,6 +111,26 @@ test('spawned now (the CMS\'s Spawn now): it rises at once, only when it isn\'t 
   assert.equal(room.golemState(t0)!.state, 'rising');
   assert.equal(room.riseGolem(t0 + 1000), false, 'up already');
   assert.equal(room.golemPlan(t0 + 1000)!.nextRise, Date.UTC(2026, 9, 8, 4, 0));
+});
+
+test('its HP grows with the players in the Slums: the mob table\'s × 1.5 ^ players (stats.json hpPerPlayer), keeping its share as they come and go', () => {
+  const room = new MobRoom(map, lcg(), {}, { shapes: {} }, kinds, { ...art, hpPerPlayer: 1.5 });
+  const t0 = Date.UTC(2026, 9, 8, 3, 10);
+  room.tick(t0, new Map(), new Map(), 2);
+  room.riseGolem(t0);
+  assert.equal(room.golemState(t0)!.maxHp, Math.round(art.hp * 1.5 ** 2), 'risen for the two here');
+  room.flush();
+  // A third arrives: up again, a 'scale' to the room; still full.
+  const evs = room.tick(t0 + 250, new Map(), new Map(), 3);
+  const scale = evs.find((e) => e.t === 'golem' && e.change === 'scale') as { golem: { hp: number; maxHp: number } } | undefined;
+  assert.deepEqual([scale?.golem.maxHp, scale?.golem.hp], [Math.round(art.hp * 1.5 ** 3), Math.round(art.hp * 1.5 ** 3)]);
+  // Nobody new: nothing sent.
+  assert.ok(!room.tick(t0 + 500, new Map(), new Map(), 3).some((e) => e.t === 'golem' && e.change === 'scale'));
+  // Without the setting: the mob table's HP whoever's here.
+  const plain = new MobRoom(map, lcg(), {}, { shapes: {} }, kinds, { ...art, hpPerPlayer: undefined });
+  plain.tick(t0, new Map(), new Map(), 5);
+  plain.riseGolem(t0);
+  assert.equal(plain.golemState(t0)!.maxHp, art.hp);
 });
 
 test('reach to it is measured to its body\'s edge: a melee player a tile past its edge hits, three past doesn\'t', () => {

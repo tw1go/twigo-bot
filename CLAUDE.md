@@ -394,7 +394,9 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   `?switch` (pretend login: a row of class badges, bottom left, to become any class at once: `devSwitchClass` in
   net/adventure.ts, its training weapon, the class choice done), `__town.mobs()`; the dev server reads maps/slums.json again when it changes.
 - Scrapheap Golem (field boss; bot `web/town-golem.ts` `Golem`, tested, run by the Slums' MobRoom on its clock when given
-  `loadGolemArt()`; data: slums.json `boss`, stats.json's mob table (Lv 15, 10,800 HP), mobs.json `radius`, the
+  `loadGolemArt()`; data: slums.json `boss`, stats.json's mob table (Lv 15, 10,800 HP × stats.json mobBehaviour.golem.hpPerPlayer (repo addition, 1.5) ^ players in the Slums:
+  `Golem.scale` each tick from the room's count (the knocked out too), its HP keeping its share, a 'scale' change to the
+  room (the game only updates its bar); the 5% XP share is of that; tested), mobs.json `radius`, the
   manifest's anim and fx lengths): rises at
   minute 0 of every `everyMinutes` (120: even hours, from the epoch, so UTC = Manila) at its tile, `rising` for its death
   anim's length (riseMs, not hittable); `warnMinutes` before, a line. Its lines (`system` kind 'golem', tones stir / rise /
