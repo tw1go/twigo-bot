@@ -1,12 +1,12 @@
 import { actionOf, keyLabel, matches, onKeybinds } from './keybinds';
 import type { ClassInfo } from '@mikazuki/shared';
 import { playSound } from '../audio/sound';
-import { MOBILITY_PREVIEWS, SKILL_PREVIEWS } from '../combat/skill-previews';
+import { MOBILITY_PREVIEWS, SKILL_PREVIEWS, buffPreview } from '../combat/skill-previews';
 import { GAP_MS, STAGE_H, STAGE_W, type Skill, type SkillStage } from '../combat/skill-stage';
 import { itemArt, isRarity } from './item-art';
 import { cooldownOf, mpCostOf, seconds } from '../combat/cooldowns';
 import { SkillTip, skillTipLines } from './skill-tip';
-import { type SkillView, adventure, adventureData, onAdventure, raiseSkill, resetSkills, skillViews } from '../net/adventure';
+import { type BuffView, type SkillView, adventure, adventureData, buffViews, onAdventure, raiseSkill, resetSkills, skillViews } from '../net/adventure';
 import { toast } from './toast';
 
 // ⚔️ The hotbar, bottom centre (members, not on phones): two rows of slots in the bag's slot art.
@@ -281,8 +281,9 @@ export class Hotbar {
   }
 
   /** The Skills panel: a stage on top (the hovered skill plays on it), your skill points and Reset, then your class's
-   *  skills in unlock order with their descriptions, levels and cooldowns, a + on each you can raise; each to drag (or
-   *  click, then click a slot). Locked ones are greyed with their unlock level. */
+   *  skills in three lists, Damage, Mobility and Buffs, each in unlock order with their descriptions, levels and
+   *  cooldowns, a + on each you can raise; each to drag (or click, then click a slot). Locked ones are greyed with their
+   *  unlock level. Buffs (classes.json buffs) can't be used yet: shown with their unlock level, their buff-cast on hover. */
   private drawList(): void {
     const skills = this.views();
     const close = el('button', 'sb-close', '×');
@@ -308,48 +309,63 @@ export class Hotbar {
     const plays = previewsOf(this.cls);
     const stats = adventureData()?.stats;
     const spare = p?.skillPoints ?? 0;
-    this.rows.replaceChildren(
-      ...skills.map((s) => {
-        const row = el('div', `hb-skill-row${this.picked?.name === s.name ? ' hb-picked' : ''}${s.locked ? ' sb-locked' : ''}`);
-        row.tabIndex = 0;
-        row.setAttribute('role', 'button');
-        row.draggable = true;
-        if (this.cls) {
-          const cls = this.cls;
-          row.addEventListener('pointerenter', () => this.skillTip.show(skillTipLines(cls, s), row, true));
-          row.addEventListener('pointerleave', () => this.skillTip.hide());
-        }
-        const text = el('span', 'sb-text');
-        const line = el('span', 'sb-line');
-        const mp = stats ? mpCostOf(stats, this.cls?.id, s, s.level) : 0;
-        const cd = stats ? ` · ${seconds(cooldownOf(stats, s, s.level))}${mp ? ` · ${mp} MP` : ''}` : '';
-        line.append(el('span', 'hb-name', s.name), el('span', 'hb-lv', s.locked ? `Unlocks at Lv ${s.unlock}` : `Lv ${s.level} / ${s.cap}${cd}`));
-        text.append(line, el('span', 'sb-desc', s.desc));
-        const pic = this.iconOf(s.name) ?? el('span', 'hb-initials', initials(s.name));
-        row.append(pic, text);
-        if (!s.locked && s.level < s.cap && spare > 0) {
-          const add = el('button', 'sb-plus', '+');
-          add.title = `Raise ${s.name} to Lv ${s.level + 1} (a skill point)`;
-          add.setAttribute('aria-label', add.title);
-          add.addEventListener('click', (e) => {
-            e.stopPropagation();
-            void this.raise(s.key);
-          });
-          row.append(add);
-        }
-        row.addEventListener('dragstart', (e) => {
-          e.dataTransfer?.setData(DRAG, JSON.stringify({ entry: { t: 'skill', name: s.name } }));
-          e.dataTransfer?.setDragImage(pic, pic.offsetWidth / 2, pic.offsetHeight / 2); // just the icon follows the pointer
+    const skillRow = (s: SkillView) => {
+      const row = el('div', `hb-skill-row${this.picked?.name === s.name ? ' hb-picked' : ''}${s.locked ? ' sb-locked' : ''}`);
+      row.tabIndex = 0;
+      row.setAttribute('role', 'button');
+      row.draggable = true;
+      if (this.cls) {
+        const cls = this.cls;
+        row.addEventListener('pointerenter', () => this.skillTip.show(skillTipLines(cls, s), row, true));
+        row.addEventListener('pointerleave', () => this.skillTip.hide());
+      }
+      const text = el('span', 'sb-text');
+      const line = el('span', 'sb-line');
+      const mp = stats ? mpCostOf(stats, this.cls?.id, s, s.level) : 0;
+      const cd = stats ? ` · ${seconds(cooldownOf(stats, s, s.level))}${mp ? ` · ${mp} MP` : ''}` : '';
+      line.append(el('span', 'hb-name', s.name), el('span', 'hb-lv', s.locked ? `Unlocks at Lv ${s.unlock}` : `Lv ${s.level} / ${s.cap}${cd}`));
+      text.append(line, el('span', 'sb-desc', s.desc));
+      const pic = this.iconOf(s.name) ?? el('span', 'hb-initials', initials(s.name));
+      row.append(pic, text);
+      if (!s.locked && s.level < s.cap && spare > 0) {
+        const add = el('button', 'sb-plus', '+');
+        add.title = `Raise ${s.name} to Lv ${s.level + 1} (a skill point)`;
+        add.setAttribute('aria-label', add.title);
+        add.addEventListener('click', (e) => {
+          e.stopPropagation();
+          void this.raise(s.key);
         });
-        const pick = () => {
-          this.picked = this.picked?.name === s.name ? null : { t: 'skill', name: s.name };
-          this.drawList();
-        };
-        row.addEventListener('click', pick);
-        row.addEventListener('keydown', (e) => e.key === 'Enter' && pick());
-        row.addEventListener('pointerenter', () => this.preview(plays.get(s.name) ?? null));
-        return row;
-      }),
+        row.append(add);
+      }
+      row.addEventListener('dragstart', (e) => {
+        e.dataTransfer?.setData(DRAG, JSON.stringify({ entry: { t: 'skill', name: s.name } }));
+        e.dataTransfer?.setDragImage(pic, pic.offsetWidth / 2, pic.offsetHeight / 2); // just the icon follows the pointer
+      });
+      const pick = () => {
+        this.picked = this.picked?.name === s.name ? null : { t: 'skill', name: s.name };
+        this.drawList();
+      };
+      row.addEventListener('click', pick);
+      row.addEventListener('keydown', (e) => e.key === 'Enter' && pick());
+      row.addEventListener('pointerenter', () => this.preview(plays.get(s.name) ?? null));
+      return row;
+    };
+    // A buff: not usable yet (no slot, no points), its buff-cast on the stage on hover.
+    const buffRow = (b: BuffView) => {
+      const row = el('div', `hb-skill-row sb-buff${b.locked ? ' sb-locked' : ''}`);
+      const text = el('span', 'sb-text');
+      const line = el('span', 'sb-line');
+      line.append(el('span', 'hb-name', b.name), el('span', 'hb-lv', b.locked ? `Unlocks at Lv ${b.unlock}` : `Lv ${b.level} / ${b.cap}`));
+      text.append(line, el('span', 'sb-desc', "A buff: can't be used yet"));
+      row.append(this.iconOf(b.name) ?? el('span', 'hb-initials', initials(b.name)), text);
+      row.addEventListener('pointerenter', () => this.preview(buffPreview(b.name)));
+      return row;
+    };
+    const section = (title: string, rows: HTMLElement[]) => (rows.length ? [el('div', 'sb-section', title), ...rows] : []);
+    this.rows.replaceChildren(
+      ...section('Damage', skills.filter((s) => !s.move).map(skillRow)),
+      ...section('Mobility', skills.filter((s) => s.move).map(skillRow)),
+      ...section('Buffs', buffViews(this.cls).map(buffRow)),
     );
   }
 
