@@ -1429,6 +1429,19 @@ export class TownScene extends Phaser.Scene {
     const itemFrame = this.M.ui.inventory?.itemFrame;
     const frame = itemFrame ? { url: `${import.meta.env.BASE_URL}assets/${itemFrame.file}`, slice: itemFrame.nineSlice } : null;
     if (member) this.target = new TargetBox(frame, (kind, judged, text) => verdict(myId, kind, judged, text));
+    // The picked player's buffs under their box: asked now and every 2 s while they're picked.
+    if (this.target) {
+      const target = this.target;
+      let ask = 0;
+      target.onPick = (id) => {
+        clearInterval(ask);
+        if (!id) return;
+        const send = () => this.link?.send({ t: 'buffs-of', id });
+        send();
+        ask = window.setInterval(send, 2000);
+      };
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => clearInterval(ask));
+    }
     this.others.onChange = () => {
       online.update([me, ...this.others.players.map((p) => ({ name: p.nickname, title: p.title }))]);
       this.target?.check((id) => this.others.has(id));
@@ -1841,6 +1854,15 @@ export class TownScene extends Phaser.Scene {
       }
       // Buffs: the ones on you (the tray, the stats box), someone's cast (their buff-cast; yours with the server's
       // cooldown), a heal's green numbers, and a refused cast (why, like a refused attack).
+      if (m.t === 'buffs-of') {
+        const now = Date.now();
+        return this.target?.setBuffs(m.id, m.buffs.map((b) => ({
+          name: b.name,
+          icon: this.skillIcon(b.cls, b.name),
+          lines: buffStatLines(b.stats).length ? buffStatLines(b.stats) : [classInfo(b.cls)?.buffs?.find((x) => x.name === b.name)?.effect ?? ''].filter(Boolean),
+          endsAt: b.ms === null ? null : now + b.ms,
+        })));
+      }
       if (m.t === 'buffs') {
         setMyBuffs(m.buffs);
         if (!this.buffDemo) {

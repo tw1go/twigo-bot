@@ -271,6 +271,8 @@ interface Conn {
   droppedAt?: number;
   /** When they last looked at someone's gear (the player menu's Info). */
   inspectAt?: number;
+  /** When they last asked for someone's buffs (the player box). */
+  buffsOfAt?: number;
 }
 
 export function attachTown(server: Server, opts: TownOptions): Town {
@@ -857,6 +859,14 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         const r = typeof m.member === 'string' ? parties.kick(c.userId, m.member) : null;
         if (!r) return;
         return r.ok ? partyChanged(r.change) : send(c, { t: 'party-refused', reason: r.reason });
+      }
+      case 'buffs-of': {
+        // The buffs on someone (the player box's icons, asked every couple of seconds while it's open).
+        const now = Date.now();
+        if (now - (c.buffsOfAt ?? 0) < 400 || typeof m.id !== 'string') return;
+        c.buffsOfAt = now;
+        const of = town.memberOf(m.id);
+        return send(c, { t: 'buffs-of', id: m.id, buffs: of && buffs ? buffs.view(of, now) : [] });
       }
       case 'inspect': {
         // Someone's worn gear and stats (the player menu's Info): anyone in town, a few a second at most.

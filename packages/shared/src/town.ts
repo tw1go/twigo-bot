@@ -168,6 +168,8 @@ export type TownClientMessage =
   | { t: 'trade-ask'; to: string }
   /** Another player's worn gear and stats (the player menu's Info), by town id. */
   | { t: 'inspect'; id: string }
+  /** The buffs on another player (the player box shows their icons), by town id. */
+  | { t: 'buffs-of'; id: string }
   | { t: 'trade-answer'; ask: string; accept: boolean }
   | { t: 'trade-offer'; items: TradePut[]; kusing: number }
   | { t: 'trade-lock'; on: boolean }
@@ -478,6 +480,8 @@ export type TownServerMessage =
   /** A party member picked something up (to the rest of the party, wherever they are): their name and what; Kusing
    *  with each one's share (`share`) when it was split. */
   | { t: 'party-loot'; name: string; got: { kusing?: number; item?: Item }; share?: number }
+  /** The buffs on another player (an answer to `buffs-of`). */
+  | { t: 'buffs-of'; id: string; buffs: TownBuff[] }
   /** Another player's worn gear and stats (an answer to `inspect`); `gone`: they left. */
   | { t: 'inspect'; id: string; gone?: boolean; cls?: string | null; level?: number; equipped?: Partial<Record<EquipPlace, Item>>; stats?: InspectStats | null }
   /** Someone used a mobility move (their steps follow). */

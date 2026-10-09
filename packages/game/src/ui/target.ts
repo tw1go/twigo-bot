@@ -62,6 +62,9 @@ export class TargetBox {
   private readonly partyButton = el('button', 'tg-party-invite', 'Invite to party');
   private readonly tradeRow = el('div', 'tg-trade');
   private readonly tradeButton = el('button', 'tg-trade-ask', 'Trade');
+  /** The buffs on them: icons under the box, a card on hover (TownScene asks the server and calls setBuffs). */
+  private readonly buffRow = el('div', 'tg-buffs');
+  private readonly buffTip = el('div', 'tg-buff-tip');
   /** Their character, gear and stats in a window of its own (ui/inspect.ts). */
   private readonly infoButton = el('button', 'tg-info', 'i');
   /** Trading (the town sets it): how far someone is (tiles; null: not here), the range, whether you're trading already,
@@ -136,7 +139,8 @@ export class TargetBox {
     this.infoButton.title = 'Info: their character, gear and stats';
     this.infoButton.setAttribute('aria-label', 'Info');
     this.infoButton.addEventListener('click', () => this.target && this.onInfo(this.target));
-    this.root.append(this.box, this.infoButton, this.menu);
+    this.buffRow.hidden = this.buffTip.hidden = true;
+    this.root.append(this.box, this.infoButton, this.buffRow, this.buffTip, this.menu);
     document.body.append(this.root);
 
     document.addEventListener('keydown', (e) => {
@@ -178,6 +182,42 @@ export class TargetBox {
 
   /** The Info button was pressed (TownScene opens ui/inspect.ts). */
   onInfo: (p: TownPlayer) => void = () => {};
+
+  /** Someone was picked (their town id), or nobody: TownScene asks for their buffs. */
+  onPick: (id: string | null) => void = () => {};
+
+  /** The buffs on whoever's picked (`id`: who they're for; anyone else's are ignored): an icon each, under the box;
+   *  hovering one shows its name, what it gives and the time left. */
+  setBuffs(id: string, list: { name: string; icon: string | null; lines: string[]; endsAt: number | null }[]): void {
+    if (id !== this.target?.id) return;
+    this.buffRow.hidden = !list.length;
+    this.buffRow.replaceChildren(
+      ...list.map((b) => {
+        const icon = b.icon ? Object.assign(el('img', 'tg-buff'), { src: b.icon, alt: b.name }) : el('span', 'tg-buff tg-buff-initials', b.name.split(/\s+/).map((w) => w[0]).join('').slice(0, 2));
+        icon.tabIndex = 0;
+        const left = b.endsAt === null ? Infinity : b.endsAt - Date.now();
+        icon.classList.toggle('tg-buff-fading', left < 10_000);
+        const show = () => {
+          const ms = b.endsAt === null ? null : Math.max(0, b.endsAt - Date.now());
+          const s = ms === null ? 0 : Math.ceil(ms / 1000);
+          const time = ms === null ? 'On (a stance)' : s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')} left` : `${s}s left`;
+          this.buffTip.replaceChildren(el('b', 'tg-buff-name', b.name), ...b.lines.map((l) => el('div', 'tg-buff-line', l)), el('div', 'tg-buff-time', time));
+          this.buffTip.hidden = false;
+          const r = icon.getBoundingClientRect();
+          const box = this.root.getBoundingClientRect();
+          this.buffTip.style.left = `${Math.round(r.left - box.left + r.width / 2)}px`;
+          this.buffTip.style.top = `${Math.round(r.bottom - box.top + 6)}px`;
+        };
+        const hide = () => (this.buffTip.hidden = true);
+        icon.addEventListener('pointerenter', show);
+        icon.addEventListener('pointerleave', hide);
+        icon.addEventListener('focus', show);
+        icon.addEventListener('blur', hide);
+        return icon;
+      }),
+    );
+    if (!list.length) this.buffTip.hidden = true;
+  }
 
   /** Someone picked from their name in the chat: the box with the menu open, right beside that name. */
   selectAt(p: TownPlayer, anchor: HTMLElement): void {
@@ -250,6 +290,9 @@ export class TargetBox {
     this.drawParty(true);
     this.root.hidden = false;
     this.closeMenu();
+    this.buffRow.hidden = this.buffTip.hidden = true;
+    this.buffRow.replaceChildren();
+    this.onPick(p.id);
   }
 
   /** The invite button for whoever's picked (`fresh`: someone new, so "Invite sent" goes back to the button). */
@@ -269,6 +312,8 @@ export class TargetBox {
     this.info = null;
     this.root.hidden = true;
     this.closeMenu();
+    this.buffRow.hidden = this.buffTip.hidden = true;
+    this.onPick(null);
   }
 
   /** Back to the top of the screen. */

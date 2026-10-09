@@ -740,6 +740,15 @@
       #target .tg-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       #target .tg-lv { margin-left: 8px; font-size: 0.8em; font-weight: 400; color: #FCDA4A; }
       #target .tg-caret { font-size: calc(12px * var(--text)); color: #A78BFA; }
+      #target .tg-buffs { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; margin-top: 4px; } /* their buffs (TargetBox.setBuffs) */
+      #target .tg-buffs[hidden], #target .tg-buff-tip[hidden] { display: none; }
+      #target .tg-buff { width: 24px; height: 24px; box-sizing: border-box; padding: 2px; border: 1px solid #7C2AE8; border-radius: 4px; background: rgba(17, 24, 39, 0.9); image-rendering: pixelated; cursor: help; }
+      #target .tg-buff-initials { display: inline-flex; align-items: center; justify-content: center; color: #C4B5FD; font: 700 calc(10px * var(--text))/1 var(--ui-font); }
+      #target .tg-buff-fading { opacity: 0.55; }
+      #target .tg-buff-tip { position: absolute; z-index: 2; min-width: 120px; max-width: 220px; transform: translateX(-50%); padding: 6px 9px; border: 2px solid #7C2AE8; background: #111827; color: #E6E9F2; font-size: calc(12px * var(--text)); pointer-events: none; }
+      #target .tg-buff-name { display: block; font-size: calc(13px * var(--text)); color: #fff; }
+      #target .tg-buff-line { color: #4ADE80; }
+      #target .tg-buff-time { margin-top: 2px; color: #A9B1D6; font-family: 'Mk Numbers', var(--ui-font); }
       #target .tg-info { position: absolute; top: 10px; left: 10px; width: 22px; height: 22px; padding: 0; border: 2px solid #A78BFA; border-radius: 50%; background: #1E1B3A; color: #C4B5FD; font: italic 700 calc(14px * var(--text))/1 Georgia, serif; cursor: var(--cur-hand, pointer); }
       #target .tg-info:hover, #target .tg-info:focus-visible { border-color: #F8BF27; color: #F8BF27; }
       #target .tg-menu { margin-top: 6px; padding: 10px 12px 12px; border: 2px solid #7C2AE8; background: rgba(17, 24, 39, 0.96); font-size: calc(14px * var(--text)); color: #c0caf5; }
