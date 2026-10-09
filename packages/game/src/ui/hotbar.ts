@@ -594,7 +594,8 @@ const blank = (): Layout => ({ top: Array(SIZE.top).fill(null), main: Array(SIZE
 
 /** A saved bar, trimmed to the slots there are and the skills the class still has. */
 function tidy(saved: Partial<Layout>, c: ClassInfo): Layout {
-  const names = new Set(skillsOf(c).map((s) => s.name));
+  // (Buffs too: they go on the bar like skills, mostly in the Alt row.)
+  const names = new Set([...skillsOf(c), ...(c.buffs ?? [])].map((s) => s.name));
   const out = blank();
   for (const row of ['top', 'main', 'util'] as Row[]) {
     (saved[row] ?? []).slice(0, SIZE[row]).forEach((e, i) => {
