@@ -63,8 +63,9 @@ export interface StatsData {
     /** "100 * 1.3^(tier-1), rounded" */
     basePct: string;
     perSkillLevel: { damageOrHeal: number; buffDebuff: number; mpCost: number; cooldown: number };
-    /** Per class: MP at skill Lv 1 for its damage skills by tier, Dash and its Lv 8 move. */
-    mpCost?: Record<string, { tiers: number[]; dash: number; move: number }>;
+    /** MP at skill Lv 1 (the art folder's stats.json): damage skills by tier per class, Dash and the Lv 8 move per class
+     *  (buffs too, for later). */
+    mpCost?: { damageByTier: Record<string, number[]>; dash: Record<string, number>; mobilityLv8: Record<string, number>; buffs?: Record<string, Record<string, number>> };
   };
   caps: Record<string, number>;
   /** MP per second: "1 + 0.05 * INT". */
@@ -363,12 +364,13 @@ export function skillLevelBonus(data: StatsData, skillLevel: number): { damage: 
   return { damage: 1 + P.damageOrHeal * n, buff: 1 + P.buffDebuff * n, mpCost: 1 + P.mpCost * n, cooldown: 1 + P.cooldown * n };
 }
 
-/** The MP a skill costs at its skill level (stats.json skills.mpCost: its base, +3% a level past 1, rounded): `key` is a
- *  damage skill's place ('0'…'6') or a move's id ('dash', else the class's Lv 8 move). 0 when the table has none. */
+/** The MP a skill costs at its skill level (stats.json skills.mpCost: damageByTier / dash / mobilityLv8 for the class,
+ *  +3% a level past 1, rounded): `key` is a damage skill's place ('0'…) or a move's id ('dash', else the class's Lv 8
+ *  move). 0 when the table has none. */
 export function skillMpCost(data: StatsData, cls: string | null | undefined, key: string, skillLevel = 1): number {
-  const t = cls ? data.skills.mpCost?.[cls] : undefined;
-  if (!t) return 0;
-  const base = /^\d+$/.test(key) ? (t.tiers[Number(key)] ?? 0) : key === 'dash' ? t.dash : t.move;
+  const T = data.skills.mpCost;
+  if (!cls || !T) return 0;
+  const base = /^\d+$/.test(key) ? (T.damageByTier[cls]?.[Number(key)] ?? 0) : key === 'dash' ? (T.dash[cls] ?? 0) : (T.mobilityLv8[cls] ?? 0);
   return Math.round(base * skillLevelBonus(data, skillLevel).mpCost);
 }
 

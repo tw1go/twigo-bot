@@ -249,7 +249,8 @@ test('mob name colours: grey 5+ levels below you, red 3+ above, white between', 
 });
 
 test('MP costs: the table by class (T1 free), Dash and the Lv 8 move, +3% a skill level rounded; every class has one', () => {
-  for (const c of CLASSES) assert.ok(data.skills.mpCost?.[c.id], `${c.id} has MP costs`);
+  const T = data.skills.mpCost!;
+  for (const c of CLASSES) assert.ok(T.damageByTier[c.id] && T.dash[c.id] !== undefined && T.mobilityLv8[c.id] !== undefined, `${c.id} has MP costs`);
   assert.deepEqual([0, 1, 2, 3, 4, 5, 6].map((i) => skillMpCost(data, 'broom', String(i))), [0, 2, 8, 14, 20, 27, 36]);
   assert.deepEqual([0, 1, 2, 3, 4, 5, 6].map((i) => skillMpCost(data, 'potlid', String(i))), [0, 1, 4, 8, 11, 15, 20]);
   assert.deepEqual([0, 1, 2, 3, 4, 5, 6].map((i) => skillMpCost(data, 'greatstick', String(i))), [0, 1, 3, 5, 7, 9, 12]);
