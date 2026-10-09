@@ -84,6 +84,17 @@ interface BigObject {
   bounds: Phaser.Geom.Rectangle;
 }
 
+/** Where a prop's own shadow goes: its image (and flip), its top corner and its anchor in its frame. */
+interface ShadowJob {
+  file: string;
+  flip: boolean;
+  x: number;
+  y: number;
+  ax: number;
+  ay: number;
+  w: number;
+}
+
 export class WorldObjects {
   /** Every world sprite except lamp glows, for the day/night tint. */
   readonly sprites: Phaser.GameObjects.Image[] = [];
@@ -158,8 +169,66 @@ export class WorldObjects {
     return { x: t.x, y: t.y - this.heights.at(col, row) * LEVEL_PX };
   }
 
-  /** Makes the regions that have come near the view and drops those far from it (streamed maps only). */
-  stream(view: Phaser.Geom.Rectangle): void {
+  /** Makes the regions that have come near the view and drops those far from it (streamed maps only): their props
+   *  queued and made at most `budgetMs` a frame (Infinity: all now, the first frame's), so walking into new ground or
+   *  arriving never stalls a frame; the near margin keeps the half-made edge off screen. */
+  stream(view: Phaser.Geom.Rectangle, budgetMs = 4): void {
+    if (!this.regionIndex) return;
+    this.queueRegions(view);
+    this.pump(budgetMs, Math.min(budgetMs, 4)); // (shadows a little a frame, even on the first)
+  }
+
+  /** Props waiting to be made (a region's, then that region's done), in order: each batch's big ones first. */
+  private readonly queue: ({ k: string; o: MapObject } | { k: string; done: Phaser.Geom.Rectangle })[] = [];
+  private readonly building = new Map<string, { images: Phaser.GameObjects.Image[]; big: BigObject[] }>();
+
+  /** Makes queued props until `budgetMs` is spent, then their shadows for at most `shadowMs`. */
+  private pump(budgetMs: number, shadowMs = budgetMs): void {
+    const start = performance.now();
+    while (this.queue.length && performance.now() - start < budgetMs) {
+      const q = this.queue.shift()!;
+      const r = this.building.get(q.k) ?? this.building.set(q.k, { images: [], big: [] }).get(q.k)!;
+      if ('done' in q) {
+        this.building.delete(q.k);
+        this.liveRegions.set(q.k, { ...r, rect: q.done });
+        continue;
+      }
+      const from = r.images.length;
+      const bigBefore = this.big.length;
+      this.capture = r.images;
+      this.making = q.k;
+      this.addProp(q.o);
+      this.making = null;
+      this.capture = null;
+      r.big.push(...this.big.slice(bigBefore));
+      for (let i = from; i < r.images.length; i++) this.onSpawn?.(r.images[i]);
+    }
+    // Shadows, while there's time (a region dropped meanwhile: its shadows skipped).
+    const shadowStart = performance.now();
+    while (this.shadows.length && performance.now() - start < budgetMs && performance.now() - shadowStart < shadowMs) {
+      const { k, job } = this.shadows.shift()!;
+      const r = this.building.get(k) ?? this.liveRegions.get(k);
+      if (!r) continue;
+      const img = this.shadowOf(job);
+      if (!img) continue;
+      this.sprites.push(img);
+      r.images.push(img);
+      this.onSpawn?.(img);
+    }
+  }
+
+  /** The region whose props are being made (their shadows wait in `shadows`). */
+  private making: string | null = null;
+  private readonly shadows: { k: string; job: ShadowJob }[] = [];
+
+  /** A prop's own shadow on the ground (world/cast-shadow.ts), or null without one. */
+  private shadowOf(j: ShadowJob): Phaser.GameObjects.Image | null {
+    const sh = castShadow(this.scene, j.file, j.flip);
+    return sh ? this.scene.add.image(j.x, j.y, sh.key).setOrigin(j.ax / (j.w + sh.extra), j.ay / sh.height).setDepth(GROUND_SHADOW_DEPTH) : null;
+  }
+
+  /** The regions near the view that aren't made or queued yet, queued; those far from it dropped. */
+  private queueRegions(view: Phaser.Geom.Rectangle): void {
     if (!this.regionIndex) return;
     const near = new Phaser.Geom.Rectangle(view.x - STREAM_NEAR, view.y - STREAM_NEAR, view.width + STREAM_NEAR * 2, view.height + STREAM_NEAR * 2);
     const range = `${Math.floor(near.x / 128)},${Math.floor(near.y / 128)},${Math.floor(near.right / 128)},${Math.floor(near.bottom / 128)}`;
@@ -185,7 +254,7 @@ export class WorldObjects {
     for (let rr = Math.floor((Math.min(...rs) - 2) / REGION); rr <= Math.floor((Math.max(...rs) + 14) / REGION); rr++) {
       for (let rc = Math.floor((Math.min(...cs) - 2) / REGION); rc <= Math.floor((Math.max(...cs) + 14) / REGION); rc++) {
         const k = `${rc},${rr}`;
-        if (this.liveRegions.has(k)) continue;
+        if (this.liveRegions.has(k) || this.building.has(k)) continue;
         const c0 = rc * REGION;
         const r0 = rr * REGION;
         const rect = new Phaser.Geom.Rectangle((c0 - r0 - REGION) * 16 - 64, (c0 + r0) * 8 - 220, (2 * REGION) * 16 + 128, 2 * REGION * 8 + 260);
@@ -195,23 +264,12 @@ export class WorldObjects {
         fresh.push({ k, objs: [...own, ...past], rect });
       }
     }
-    // Big ones of every new region first, then the rest, so the small sort against them.
+    // Big ones of every new region first, then the rest, so the small sort against them; then each region's done.
     const isBig = (o: MapObject) => o.footprint[0] * o.footprint[1] > 1;
-    const made = new Map<string, { images: Phaser.GameObjects.Image[]; big: BigObject[] }>();
-    for (const pass of [true, false]) {
-      for (const f of fresh) {
-        const images: Phaser.GameObjects.Image[] = made.get(f.k)?.images ?? [];
-        const bigBefore = this.big.length;
-        this.capture = images;
-        for (const o of f.objs) if (isBig(o) === pass && o.kind === 'prop') this.addProp(o);
-        this.capture = null;
-        made.set(f.k, { images, big: [...(made.get(f.k)?.big ?? []), ...this.big.slice(bigBefore)] });
-      }
-    }
+    for (const pass of [true, false]) for (const f of fresh) for (const o of f.objs) if (isBig(o) === pass && o.kind === 'prop') this.queue.push({ k: f.k, o });
     for (const f of fresh) {
-      const m = made.get(f.k)!;
-      for (const img of m.images) this.onSpawn?.(img);
-      this.liveRegions.set(f.k, { ...m, rect: f.rect });
+      this.building.set(f.k, { images: [], big: [] });
+      this.queue.push({ k: f.k, done: f.rect });
     }
   }
 
@@ -375,12 +433,14 @@ export class WorldObjects {
     if (big) this.big.push({ col: o.col, row: o.row, cols: fc, rows: fr, back: depth, front: depth, bounds });
     // Its own shadow on the ground (castShadows: the Slums, whose props came with none), not for floors.
     if (this.castShadows && !floor && !def.animation) {
-      const sh = castShadow(this.scene, def.file, !!o.flip);
-      if (sh) {
-        const top = this.topOf(o.col, o.row);
-        const w = sprite.frame.width;
-        const ax = o.flip ? w - def.anchor[0] : def.anchor[0];
-        this.track(this.scene.add.image(top.x, top.y, sh.key).setOrigin(ax / (w + sh.extra), def.anchor[1] / sh.height).setDepth(GROUND_SHADOW_DEPTH));
+      const top = this.topOf(o.col, o.row);
+      const w = sprite.frame.width;
+      const job = { file: def.file, flip: !!o.flip, x: top.x, y: top.y, ax: o.flip ? w - def.anchor[0] : def.anchor[0], ay: def.anchor[1], w };
+      // Streamed: made a little later (a new image's shadow is costly to bake), with its region's.
+      if (this.making) this.shadows.push({ k: this.making, job });
+      else {
+        const img = this.shadowOf(job);
+        if (img) this.track(img);
       }
     }
 

@@ -167,6 +167,8 @@ const DIR_STEP: Record<Dir, [number, number]> = {
 /** Battle: the classes that fight from afar (5 tiles; the rest from the next tile). A skill's cooldown: combat/cooldowns.ts. */
 const RANGED_CLASSES = new Set(['slingshot', 'broom']);
 const CAST_GAP_MS = 1000;
+/** The golem's art loads once you're this near its pit's middle (tiles). */
+const BOSS_NEAR = 45;
 /** Only each class's first 7 skills have sounds (audio/sfx skill-<class>-<skill>-1…3); later ones play none yet. */
 const SKILL_SOUNDS = 7;
 const DIR_FOR_KEYS: Record<string, Dir> = {
@@ -438,7 +440,12 @@ export class TownScene extends Phaser.Scene {
       if (boss && this.M.mobs?.[boss.id]) {
         const golem = new GolemView(this, this.map, mobs, this.fxLayers, { at: () => null, me: () => this.player.tile });
         this.golem = golem;
-        void loadBoss(this, this.M, boss.id).then(() => this.golem === golem && golem.loaded());
+        // Its art once you come near its pit (BOSS_NEAR tiles); its messages before that keep its state.
+        this.bossNear = (at) => {
+          if (Math.max(Math.abs(at.col - boss.tile[0]), Math.abs(at.row - boss.tile[1])) > BOSS_NEAR) return;
+          this.bossNear = null;
+          void loadBoss(this, this.M, boss.id).then(() => this.golem === golem && golem.loaded());
+        };
         this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
           golem.destroy();
           this.golem = null;
@@ -450,7 +457,7 @@ export class TownScene extends Phaser.Scene {
     if (P) setRacePortraits((id) => `${import.meta.env.BASE_URL}assets/${P.file.replace('{id}', id)}`);
 
     this.setupCamera(bounds);
-    this.streamWorld(); // (a streamed map: what the first frame shows)
+    this.streamWorld(true); // (a streamed map: what the first frame shows)
     // Only what the camera can see is drawn and animated.
     this.culler = new Culler([...this.ground.cullable, ...this.objects.cullable]);
     this.culler.onShow = (img) => this.ground.refresh(img);
@@ -527,6 +534,12 @@ export class TownScene extends Phaser.Scene {
     this.others.update(delta);
     this.mobs?.update(delta);
     this.mobs?.check(this.player.tile);
+    // Mob art (and the golem's) loads zone by zone as you come near (a quick look twice a second).
+    if (this.mobs && time >= this.nearAt) {
+      this.nearAt = time + 500;
+      this.mobs.near(this.player.tile);
+      this.bossNear?.(this.player.tile);
+    }
     this.loot?.update();
     this.golem?.update();
     this.fightTick();
@@ -616,11 +629,12 @@ export class TownScene extends Phaser.Scene {
   }
 
   /** A streamed map: makes the ground and objects near the camera, drops those far away. */
-  private streamWorld(): void {
+  /** A streamed map's ground and props near the view: a little each frame (`all`: everything the first frame shows). */
+  private streamWorld(all = false): void {
     if (!(this.ground instanceof Terrain)) return;
     const view = this.cameras.main.worldView;
-    this.ground.stream(view);
-    this.objects.stream(view);
+    this.ground.stream(view, all ? Infinity : 4);
+    this.objects.stream(view, all ? Infinity : 4);
   }
 
   /** The tile drawn under a world point: on raised ground the highest one whose raised diamond is there. */
@@ -769,6 +783,10 @@ export class TownScene extends Phaser.Scene {
   private vitalsNow: { hp: number; maxHp: number; mp: number; maxMp: number } | null = null;
   /** Dev: ?kusing= / ?whetstones= / ?give= asked for once this visit. */
   private devGiven = false;
+
+  /** When to look again which zones' mob art to load (scene ms), and the golem's art's own look (null once asked). */
+  private nearAt = 0;
+  private bossNear: ((at: Tile) => void) | null = null;
 
   /** A map with mobs (the Slums): battle poses, and the damage skills hit mobs. */
   private battleMap = false;

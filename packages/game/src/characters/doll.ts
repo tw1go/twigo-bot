@@ -163,15 +163,52 @@ function swapsFor(C: CharacterDefs, o: Outfit, layer: string): Map<number, numbe
   return m;
 }
 
+/** A texture's pixels, read back once (a canvas readback is slow) and copied for each use: the layers never change. */
+const read = new Map<string, ImageData>();
 function pixels(scene: Phaser.Scene, key: string): ImageData | null {
   if (!scene.textures.exists(key)) return null;
-  const img = scene.textures.get(key).getSourceImage() as HTMLImageElement;
-  const c = document.createElement('canvas');
-  c.width = img.width;
-  c.height = img.height;
-  const ctx = c.getContext('2d', { willReadFrequently: true })!;
-  ctx.drawImage(img, 0, 0);
-  return ctx.getImageData(0, 0, img.width, img.height);
+  let r = read.get(key);
+  if (!r) {
+    const img = scene.textures.get(key).getSourceImage() as HTMLImageElement;
+    const c = document.createElement('canvas');
+    c.width = img.width;
+    c.height = img.height;
+    const ctx = c.getContext('2d', { willReadFrequently: true })!;
+    ctx.drawImage(img, 0, 0);
+    r = ctx.getImageData(0, 0, img.width, img.height);
+    read.set(key, r);
+  }
+  return new ImageData(new Uint8ClampedArray(r.data), r.width, r.height);
+}
+
+/** A layer's pixels with its colour swaps done, each colour looked up once (most of a sheet is a few colours). */
+function swapPixels(d: Uint8ClampedArray, swaps: Map<number, number>): void {
+  if (!swaps.size) return;
+  const seen = new Map<number, number>(); // colour → its new colour, or -1: kept
+  for (let i = 0; i < d.length; i += 4) {
+    if (!visible(d[i + 3])) continue;
+    const rgb = (d[i] << 16) | (d[i + 1] << 8) | d[i + 2];
+    let to = seen.get(rgb);
+    if (to === undefined) {
+      to = swapAt(swaps, d, i) ?? -1;
+      seen.set(rgb, to);
+    }
+    if (to < 0) continue;
+    d[i] = to >> 16;
+    d[i + 1] = (to >> 8) & 255;
+    d[i + 2] = to & 255;
+  }
+}
+
+/** One canvas for putting a layer's pixels before drawing it onto a sheet (made once). */
+let scratch: CanvasRenderingContext2D | null = null;
+function scratchFor(w: number, h: number): CanvasRenderingContext2D {
+  if (!scratch) scratch = document.createElement('canvas').getContext('2d')!;
+  if (scratch.canvas.width !== w || scratch.canvas.height !== h) {
+    scratch.canvas.width = w;
+    scratch.canvas.height = h;
+  }
+  return scratch;
 }
 
 export const outfitKey = (o: Outfit) =>
@@ -189,62 +226,73 @@ export const assetProblems = new Set<string>();
  * loaded (see outfitFiles).
  */
 export function buildOutfit(scene: Phaser.Scene, C: CharacterDefs, o: Outfit): void {
-  const [cw, ch] = C.cell;
-  for (const anim of ANIMS) {
-    const spec = C.animations[anim];
-    if (!spec) continue;
-    for (const dir of dirsFor(C, anim)) {
-      const key = sheetKey(o, anim, dir);
-      if (scene.textures.exists(key)) continue;
-      const width = spec.frames * cw;
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = ch;
-      const ctx = canvas.getContext('2d')!;
-      for (const l of layerFiles(C, o, anim, dir)) {
-        const data = pixels(scene, l.file);
-        if (!data) {
-          assetProblems.add(`missing layer ${l.file}`);
-          continue;
-        }
-        if (data.width !== width || data.height !== ch) assetProblems.add(`${l.file} is ${data.width}×${data.height}, expected ${width}×${ch}`);
-        const swaps = swapsFor(C, o, l.layer);
-        const d = data.data;
-        for (let i = 0; i < d.length; i += 4) {
-          if (!visible(d[i + 3])) continue;
-          const to = swapAt(swaps, d, i);
-          if (to !== undefined) {
-            d[i] = to >> 16;
-            d[i + 1] = (to >> 8) & 255;
-            d[i + 2] = to & 255;
-          }
-        }
-        if (l.clip) {
-          // Hide the hair wherever the hat's clip mask is white.
-          const mask = pixels(scene, l.clip);
-          if (!mask) assetProblems.add(`missing hat clip ${l.clip}`);
-          else {
-            if (mask.width !== data.width || mask.height !== data.height) assetProblems.add(`${l.clip} does not match ${l.file}`);
-            const md = mask.data;
-            for (let i = 0; i < d.length && i < md.length; i += 4) if (visible(md[i + 3]) && md[i] > 127 && md[i + 1] > 127 && md[i + 2] > 127) d[i + 3] = 0;
-          }
-        }
-        const layer = document.createElement('canvas');
-        layer.width = data.width;
-        layer.height = data.height;
-        layer.getContext('2d')!.putImageData(data, 0, 0);
-        ctx.drawImage(layer, 0, 0);
-      }
-      const tex = scene.textures.addCanvas(key, canvas)!;
-      for (let f = 0; f < spec.frames; f++) tex.add(f, 0, f * cw, 0, cw, ch);
-      scene.anims.create({
-        key,
-        frames: Array.from({ length: spec.frames }, (_, f) => ({ key, frame: f })),
-        frameRate: spec.fps || 1,
-        repeat: spec.loop ? -1 : 0,
-      });
+  for (const [anim, dir] of outfitSheets(C)) buildSheet(scene, C, o, anim, dir);
+}
+
+/** Every sheet an outfit has: each anim facing each of its directions. */
+function outfitSheets(C: CharacterDefs): [string, Dir][] {
+  return ANIMS.filter((a) => C.animations[a]).flatMap((anim) => dirsFor(C, anim).map((dir): [string, Dir] => [anim, dir]));
+}
+
+/**
+ * The same, a few sheets at a time between frames (at most `budgetMs` of work a frame), so another player arriving
+ * never stalls everyone's game. Resolves once every sheet is made.
+ */
+export async function buildOutfitSlowly(scene: Phaser.Scene, C: CharacterDefs, o: Outfit, budgetMs = 4): Promise<void> {
+  await new Promise((r) => requestAnimationFrame(r)); // (not in the loader's own task: its files came in just now)
+  let start = performance.now();
+  for (const [anim, dir] of outfitSheets(C)) {
+    if (performance.now() - start > budgetMs) {
+      await new Promise((r) => requestAnimationFrame(r));
+      if (!scene.sys.isActive() && !scene.sys.isSleeping()) return; // (the scene went: nothing to build for)
+      start = performance.now();
     }
+    buildSheet(scene, C, o, anim, dir);
   }
+}
+
+/** One composited sheet (an anim facing a direction) and its animation, once. */
+function buildSheet(scene: Phaser.Scene, C: CharacterDefs, o: Outfit, anim: string, dir: Dir): void {
+  const [cw, ch] = C.cell;
+  const spec = C.animations[anim];
+  const key = sheetKey(o, anim, dir);
+  if (scene.textures.exists(key) || !spec) return;
+  const width = spec.frames * cw;
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = ch;
+  const ctx = canvas.getContext('2d')!;
+  for (const l of layerFiles(C, o, anim, dir)) {
+    const data = pixels(scene, l.file);
+    if (!data) {
+      assetProblems.add(`missing layer ${l.file}`);
+      continue;
+    }
+    if (data.width !== width || data.height !== ch) assetProblems.add(`${l.file} is ${data.width}×${data.height}, expected ${width}×${ch}`);
+    const d = data.data;
+    swapPixels(d, swapsFor(C, o, l.layer));
+    if (l.clip) {
+      // Hide the hair wherever the hat's clip mask is white.
+      const mask = pixels(scene, l.clip);
+      if (!mask) assetProblems.add(`missing hat clip ${l.clip}`);
+      else {
+        if (mask.width !== data.width || mask.height !== data.height) assetProblems.add(`${l.clip} does not match ${l.file}`);
+        const md = mask.data;
+        for (let i = 0; i < d.length && i < md.length; i += 4) if (visible(md[i + 3]) && md[i] > 127 && md[i + 1] > 127 && md[i + 2] > 127) d[i + 3] = 0;
+      }
+    }
+    const layer = scratchFor(data.width, data.height);
+    layer.putImageData(data, 0, 0);
+    ctx.drawImage(layer.canvas, 0, 0);
+  }
+  const tex = scene.textures.addCanvas(key, canvas)!;
+  for (let f = 0; f < spec.frames; f++) tex.add(f, 0, f * cw, 0, cw, ch);
+  scene.anims.create({
+    key,
+    frames: Array.from({ length: spec.frames }, (_, f) => ({ key, frame: f })),
+    frameRate: spec.fps || 1,
+    repeat: spec.loop ? -1 : 0,
+  });
 }
 
 /**
@@ -256,17 +304,7 @@ export function recolourSheet(scene: Phaser.Scene, C: CharacterDefs, o: Outfit, 
   if (scene.textures.exists(key)) return key;
   const data = pixels(scene, src);
   if (!data) return null;
-  const swaps = new Map([...swapsFor(C, o, 'body'), ...swapsFor(C, o, 'top')]);
-  const d = data.data;
-  for (let i = 0; i < d.length; i += 4) {
-    if (!visible(d[i + 3])) continue;
-    const to = swapAt(swaps, d, i);
-    if (to !== undefined) {
-      d[i] = to >> 16;
-      d[i + 1] = (to >> 8) & 255;
-      d[i + 2] = to & 255;
-    }
-  }
+  swapPixels(data.data, new Map([...swapsFor(C, o, 'body'), ...swapsFor(C, o, 'top')]));
   const canvas = document.createElement('canvas');
   canvas.width = data.width;
   canvas.height = data.height;
@@ -315,14 +353,11 @@ export function headPortrait(scene: Phaser.Scene, C: CharacterDefs, o: Outfit, s
   return c;
 }
 
-/** Loads any layers an outfit still needs (with the scene's loader), then builds it. */
+/** Loads any layers an outfit still needs (with the scene's loader), then builds it a few sheets a frame. */
 export function loadOutfit(scene: Phaser.Scene, C: CharacterDefs, o: Outfit): Promise<void> {
   const missing = outfitFiles(C, o).filter((f) => !scene.textures.exists(f));
   return new Promise((resolve) => {
-    const done = () => {
-      buildOutfit(scene, C, o);
-      resolve();
-    };
+    const done = () => void buildOutfitSlowly(scene, C, o).then(resolve);
     if (!missing.length) return done();
     for (const f of missing) queueImage(scene.load, scene.textures, f);
     scene.load.once(Phaser.Loader.Events.COMPLETE, done);

@@ -79,7 +79,46 @@ function imageData(scene: Phaser.Scene, file: string): ImageData | null {
   return data;
 }
 
-const shifts = new Map<string, [number, number]>();
+/** Shifts worked out (the search is costly), kept in this browser too (localStorage mk_shifts, for this build: new
+ *  art comes with a new build, so a deploy works them out afresh): each look's fit is found once per computer. */
+declare const __BUILD__: { version: string };
+const SHIFTS_KEY = 'mk_shifts';
+const shifts = new Map<string, [number, number]>(
+  (() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(SHIFTS_KEY) ?? '{}') as { build?: string; shifts?: Record<string, [number, number]> };
+      return saved.build === __BUILD__.version && __BUILD__.version !== 'dev' ? Object.entries(saved.shifts ?? {}) : [];
+    } catch {
+      return [];
+    }
+  })(),
+);
+let saveLater = 0;
+function rememberShifts(): void {
+  if (saveLater) return;
+  saveLater = window.setTimeout(() => {
+    saveLater = 0;
+    try {
+      localStorage.setItem(SHIFTS_KEY, JSON.stringify({ build: __BUILD__.version, shifts: Object.fromEntries([...shifts].slice(-20000)) }));
+    } catch {
+      // full or private: worked out again next visit
+    }
+  }, 2000);
+}
+
+/** A sheet's pixels as one number each: its colour (0xRRGGBB), or -1 where it's see-through (read once a sheet). */
+const colours = new Map<string, Int32Array | null>();
+function colourData(scene: Phaser.Scene, file: string): { c: Int32Array; width: number } | null {
+  const d = imageData(scene, file);
+  if (!d) return null;
+  let c = colours.get(file);
+  if (!c) {
+    c = new Int32Array(d.width * d.height);
+    for (let i = 0, p = 0; p < c.length; i += 4, p++) c[p] = d.data[i + 3] >= 128 ? (d.data[i] << 16) | (d.data[i + 1] << 8) | d.data[i + 2] : -1;
+    colours.set(file, c);
+  }
+  return { c, width: d.width };
+}
 /** The first row of frame 0 with a pixel in it (−1: none). */
 function topRow(d: ImageData, w: number, h: number): number {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (d.data[(y * d.width + x) * 4 + 3] >= 128) return y;
@@ -95,18 +134,27 @@ function bandShift(scene: Phaser.Scene, C: CharacterDefs, idleBody: string, pose
   if (known) return known;
   const [w, h] = C.cell;
   const band = bandOf(scene, C, idleBody, y0, y1);
-  const b = imageData(scene, poseBody);
+  const b = colourData(scene, poseBody);
   let best: [number, number] = [0, 0];
   if (band && b) {
+    // (Flat arrays: the band's x, y and colour; the pose's colours, -1 see-through.)
+    const n = band.length;
+    const bx = new Int32Array(n);
+    const by = new Int32Array(n);
+    const bc = new Int32Array(n);
+    band.forEach(([x, y, rgb], k) => ((bx[k] = x), (by[k] = y), (bc[k] = rgb)));
+    const pc = b.c;
+    const stride = b.width;
+    const fx = f * w;
     const score = (dx: number, dy: number) => {
       let s = 0;
-      for (const [x, y, rgb] of band) {
-        const px = x + dx;
-        const py = y + dy;
+      for (let k = 0; k < n; k++) {
+        const px = bx[k] + dx;
+        const py = by[k] + dy;
         if (px < 0 || py < 0 || px >= w || py >= h) continue;
-        const i = (py * b.width + f * w + px) * 4;
-        if (b.data[i + 3] < 128) continue;
-        s += ((b.data[i] << 16) | (b.data[i + 1] << 8) | b.data[i + 2]) === rgb ? 2 : 1;
+        const v = pc[py * stride + fx + px];
+        if (v < 0) continue;
+        s += v === bc[k] ? 2 : 1;
       }
       return s - (Math.abs(dx) + Math.abs(dy)) * 0.01; // ties: the smaller move
     };
@@ -122,6 +170,7 @@ function bandShift(scene: Phaser.Scene, C: CharacterDefs, idleBody: string, pose
       }
   }
   shifts.set(id, best);
+  rememberShifts();
   return best;
 }
 

@@ -225,8 +225,12 @@ export class Terrain {
     return { images, rect: regionRect(rc, rr) };
   }
 
-  /** Makes what has come near the view and drops what's far from it (cheap while the view stays in the same cells). */
-  stream(view: Phaser.Geom.Rectangle): void {
+  /** Makes what has come near the view and drops what's far from it (cheap while the view stays in the same cells):
+   *  chunks nearest the view first and raised-ground regions, at most `budgetMs` a frame (at least one of each; the first
+   *  call makes all it needs), so walking into new ground never stalls a frame. */
+  stream(view: Phaser.Geom.Rectangle, budgetMs = 4): void {
+    const start = performance.now();
+    const spent = () => performance.now() - start >= budgetMs;
     const near = new Phaser.Geom.Rectangle(view.x - NEAR, view.y - NEAR, view.width + NEAR * 2, view.height + NEAR * 2);
     const far = new Phaser.Geom.Rectangle(view.x - FAR, view.y - FAR, view.width + FAR * 2, view.height + FAR * 2);
     const range = `${Math.floor(near.x / 128)},${Math.floor(near.y / 128)},${Math.floor(near.right / 128)},${Math.floor(near.bottom / 128)}`;
@@ -240,18 +244,33 @@ export class Terrain {
       for (let cx = Math.floor(near.x / CHUNK); cx <= Math.floor(near.right / CHUNK); cx++) if (!this.chunks.has(`${cx},${cy}`)) want.push([cx, cy]);
     const mid = { x: view.centerX, y: view.centerY };
     want.sort((a, b) => Math.hypot((a[0] + 0.5) * CHUNK - mid.x, (a[1] + 0.5) * CHUNK - mid.y) - Math.hypot((b[0] + 0.5) * CHUNK - mid.x, (b[1] + 0.5) * CHUNK - mid.y));
-    for (const [cx, cy] of want.slice(0, this.first ? want.length : BAKES_PER_FRAME)) this.chunks.set(`${cx},${cy}`, this.bake(cx, cy));
-    this.pending = want.length > BAKES_PER_FRAME && !this.first;
-    this.first = false;
-    // Regions whose screen box meets the near view.
+    let baked = 0;
+    // (The first time: every chunk the view shows, the margin round it after, a few a frame like the rest.)
+    const inView = (cx: number, cy: number) => Phaser.Geom.Rectangle.Overlaps(view, new Phaser.Geom.Rectangle(cx * CHUNK, cy * CHUNK, CHUNK, CHUNK));
+    for (const [cx, cy] of want) {
+      if (this.first ? !inView(cx, cy) : baked >= BAKES_PER_FRAME || (baked && spent())) continue;
+      this.chunks.set(`${cx},${cy}`, this.bake(cx, cy));
+      baked++;
+    }
+    let left = want.length > baked;
+    if (this.first && left) this.lastRange = ''; // (the margin's still to come)
+    // Regions whose screen box meets the near view (one at least, then while there's time).
     const t0 = screenToTileRange(near);
+    let made = 0;
     for (let rr = Math.floor(t0.r0 / REGION); rr <= Math.floor(t0.r1 / REGION); rr++) {
       for (let rc = Math.floor(t0.c0 / REGION); rc <= Math.floor(t0.c1 / REGION); rc++) {
         const k = `${rc},${rr}`;
         if (this.regions.has(k) || !Phaser.Geom.Rectangle.Overlaps(near, regionRect(rc, rr))) continue;
+        if (!this.first && made && spent()) {
+          left = true;
+          continue;
+        }
         this.regions.set(k, this.region(rc, rr));
+        made++;
       }
     }
+    this.pending = left && !this.first;
+    this.first = false;
   }
   private pending = false;
   private first = true;

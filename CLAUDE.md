@@ -94,6 +94,14 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
 - Builds pack the loose images into sheets (`scripts/packs.ts`: one per character item, one per mob folder, one per top folder) and
   cut them back into per-path textures at load (`src/assets/packs.ts`); dev loads loose files. Add art as loose
   images only.
+- Smoothness (all on the main thread, so nothing big in one go): images load as `<img>` (main.ts `loader.imageLoadType`,
+  no blob step); another player's look is built a few sheets a frame (`buildOutfitSlowly`, ≤ 4 ms; layer pixels read
+  once and copied, each colour's swap looked up once); battle poses a few ms at a time, their clothes' fit searched on
+  typed arrays and remembered in the browser per build (kit-art `mk_shifts`); a streamed map's ground (`Terrain.stream`)
+  and props (`WorldObjects.stream`: a queue, big ones first, then their cast shadows) at most 4 ms a frame, only the view
+  itself on the first frame; mob art loads zone by zone within 30 tiles (`Mobs.near`, twice a second; mobs the server tells
+  of before are kept in `unmade` and made where it has them; the golem's Adds load their kind's art), the golem's within
+  45 of its pit (`bossNear`). Measured with two headless browsers: a player arriving costs the others no frame over 17 ms.
 - Characters are paper dolls composited per outfit (`characters/doll.ts`), saved per account (`PUT /outfit`).
   The look is picked in the creator (free, once), then changed at the Parlor (3 Kowens; the wardrobe button is gone).
 - Numbers are Jersey 10 (`assets/font/Jersey_10`, OFL): an `@font-face 'Mk Numbers'` limited to the digits (unicode-range

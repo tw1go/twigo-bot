@@ -40,6 +40,9 @@ function startGame(): void {
     pixelArt: true, // nearest-neighbour scaling, no smoothing
     roundPixels: true, // snap to whole pixels so sprites never blur between pixels
     scale: { mode: Phaser.Scale.RESIZE, width: window.innerWidth, height: window.innerHeight },
+    // Images straight into <img> (the browser decodes them off the main thread), not fetched into blobs first: the
+    // blob step ran on the main thread for every file, a stutter when someone arrives with a new look.
+    loader: { imageLoadType: 'HTMLImageElement' },
     scene: [BootScene, TownScene, WardrobeScene, CreateScene, TownPreloadScene, HouseScene, ArenaScene], // the arena last: drawn over the town
   });
 }

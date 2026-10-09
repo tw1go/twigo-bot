@@ -111,8 +111,8 @@ export function queueNpcs(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Tex
   load.json('npc-dialogue', N.dialogue);
 }
 
-/** The Slums: its ground and raised-ground pieces (tiles.slums), every Slums prop (its outskirts scatter some that the
- *  map itself doesn't use) and the mobs of its active zones. */
+/** The Slums: its ground and raised-ground pieces (tiles.slums) and every Slums prop (its outskirts scatter some that
+ *  the map itself doesn't use); its mobs' art comes later, zone by zone. */
 function queueSlums(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Textures.TextureManager, M: Manifest, map: TownMap): void {
   const img = (f: string) => queueImage(load, textures, f);
   const S = M.tiles.slums;
@@ -124,19 +124,14 @@ function queueSlums(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Textures.
     for (const set of Object.values(S.ramps)) Object.values(set).flat().forEach(img);
   }
   for (const [id, p] of Object.entries(M.props)) if (id.startsWith('slums-')) for (const f of [(p as PropDef).file, (p as PropDef).front]) if (f) img(f);
-  // Every variant's sheets of each active zone's mob (the field boss's wait: loadBoss, once the town is up).
+  // The mobs' sheets load later, a zone's once you come near it (world/mobs.ts `near`; the field boss's near its pit:
+  // loadBoss), so arriving loads only the ground and props. Their rules (attack frames, shadows, floating) now.
   const ids = new Set((map.mobZones ?? []).filter((z) => z.active).map((z) => z.mob));
-  for (const id of ids) {
-    const mob = M.mobs?.[id];
-    if (!mob || typeof mob === 'string') continue;
-    for (const s of mobSheets(mob)) queueSheet(load, textures, s.file, s.size[0], s.size[1]);
-  }
-  // Their rules (attack frames, shadows, floating).
   if (ids.size && typeof M.mobs?.data === 'string') load.json('mob-data', M.mobs.data);
 }
 
 /** The field boss's art (the Scrapheap Golem: its sheets, red-lamp set included, and its fx), loaded with the scene's
- *  loader in the background once the Slums is up, so it never holds up arriving. */
+ *  loader in the background once you come near its pit, so it never holds up arriving. */
 export function loadBoss(scene: Phaser.Scene, M: Manifest, id: string): Promise<void> {
   const mob = M.mobs?.[id];
   if (!mob || typeof mob === 'string') return Promise.resolve();

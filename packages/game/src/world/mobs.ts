@@ -2,7 +2,8 @@ import Phaser from 'phaser';
 import { type LevelingData, type PlayerHit, type StatsData, type TownMob, type TownMobFacing, miniBossDef, miniBossRules, miniMobId, miniOfMobId, mobBarMs, mobRules, mobStartSpots, mobStats, mobTone, packSize, seeded } from '@mikazuki/shared';
 import { playSet } from '../audio/sound';
 import type { Manifest, MobData, MobDef, MobZone, TownMap, Vec2 } from '../assets/types';
-import { mobCell, mobSheet, mobVariants } from '../assets/mob-art';
+import { mobCell, mobSheet, mobSheets, mobVariants } from '../assets/mob-art';
+import { queueSheet } from '../assets/queue';
 import { slice } from '../assets/packs';
 import { CHARACTER_BIAS, HEIGHT_DEPTH } from './depth';
 import type { FxLayers, Pt } from './fx-layers';
@@ -69,6 +70,9 @@ const HURT_SOUND_MS = 150;
 
 /** A burn's tick on a mob (Boiling Splash's puddle): its number in orange. */
 const BURN_COLOUR = '#FB923C';
+
+/** A zone's mob art loads once you come this near it (tiles from its rect). */
+const NEAR_TILES = 30;
 
 /** A mob's name colours by level gap (Mobs.tone). */
 export const TONE = { grey: '#9CA3AF', white: '#FFFFFF', red: '#F87171' } as const;
@@ -179,26 +183,98 @@ export class Mobs {
     private readonly onSpawn: (o: Phaser.GameObjects.Components.Tint) => void,
     private readonly fx: FxLayers,
   ) {
-    const data = (scene.cache.json.get('mob-data') ?? {}) as Record<string, MobData | string>;
     this.stats = (scene.cache.json.get('stats') as StatsData | undefined) ?? null;
     this.roam = this.stats?.mobBehaviour.wanderTiles ?? 3;
     this.barMs = this.stats ? mobBarMs(this.stats) : 5000;
+    // Each zone's art loads only once you come near it (`near`); its mobs are made then (those the server has told of
+    // meanwhile where it says they are). Art already in (a reload) makes them now.
     for (const zone of map.mobZones ?? []) {
       const def = zone.active ? M.mobs?.[zone.mob] : undefined;
       if (!def || typeof def === 'string') continue;
-      this.anims(zone.mob, def);
-      const d = typeof data[zone.mob] === 'object' ? (data[zone.mob] as MobData) : null;
-      // Where the server starts them (its first snapshot puts them where they are now).
-      const alive = this.stats ? mobRules(this.stats, zone.mob).alive : zone.spawns.length;
-      mobStartSpots(zone.id, zone.spawns, alive).forEach((i, k) => {
-        const [col, row] = zone.spawns[i];
-        const point = `${zone.id}:${k}`;
-        const n = d?.pack ? packSize(point, d.pack) : 1;
-        const pack: Mob[] = [];
-        for (let c = 0; c < n; c++) this.place(zone, def, d, { col, row }, d?.pack ? `${point}:${c}` : point, d?.pack ? pack : null);
-      });
-      for (const spot of zone.miniBosses ?? []) this.placeMini(zone, miniMobId(zone.id, spot.id), { col: spot.tile[0], row: spot.tile[1] });
+      this.zones.push(zone);
+      if (this.artIn(zone.mob)) this.zoneReady(zone);
     }
+  }
+
+  /** The zones that are on, and which mob kinds' art is in or on its way. */
+  private readonly zones: MobZone[] = [];
+  private readonly art = new Map<string, Promise<void> | true>();
+  /** Mobs the server has told of whose art isn't in yet: their latest state, made when it is. */
+  private readonly unmade = new Map<string, TownMob>();
+
+  /** A kind's sheets are all loaded. */
+  private artIn(kind: string): boolean {
+    if (this.art.get(kind) === true) return true;
+    const def = this.M.mobs?.[kind];
+    const ok = !!def && typeof def !== 'string' && mobSheets(def).every((sh) => this.scene.textures.exists(sh.file));
+    if (ok) this.art.set(kind, true);
+    return ok;
+  }
+
+  /** Loads a kind's sheets in the background (once); resolves when they're in. */
+  private loadKind(kind: string): Promise<void> {
+    const known = this.art.get(kind);
+    if (known === true) return Promise.resolve();
+    if (known) return known;
+    const def = this.M.mobs?.[kind];
+    if (!def || typeof def === 'string') return Promise.resolve();
+    const load = this.scene.load;
+    const p = new Promise<void>((resolve) => {
+      const missing = mobSheets(def).filter((sh) => !this.scene.textures.exists(sh.file));
+      if (!missing.length) return resolve();
+      for (const sh of missing) queueSheet(load, this.scene.textures, sh.file, sh.size[0], sh.size[1]);
+      // (In a build they come in packed pages: done once the loader is; files queued mid-run load in the same run.)
+      load.once(Phaser.Loader.Events.COMPLETE, () => resolve());
+      if (!load.isLoading()) load.start();
+    }).then(() => {
+      this.art.set(kind, true);
+    });
+    this.art.set(kind, p);
+    return p;
+  }
+
+  /** Loads the art of zones you've come near (within NEAR_TILES of their rect) and makes their mobs once it's in. */
+  near(at: { col: number; row: number }): void {
+    for (const zone of this.zones) {
+      if (this.art.has(zone.mob)) continue;
+      const [c0, r0, c1, r1] = zone.rect;
+      const d = Math.max(c0 - at.col, at.col - c1, r0 - at.row, at.row - r1, 0);
+      if (d > NEAR_TILES) continue;
+      void this.loadKind(zone.mob).then(() => {
+        for (const z of this.zones) if (z.mob === zone.mob) this.zoneReady(z);
+      });
+    }
+  }
+
+  /** A zone's art is in: its mobs made (the server's, where it has them; without a server, at their start spots). */
+  private readonly madeZones = new Set<string>();
+  private zoneReady(zone: MobZone): void {
+    if (this.madeZones.has(zone.id)) return;
+    this.madeZones.add(zone.id);
+    const def = this.M.mobs?.[zone.mob];
+    if (!def || typeof def === 'string') return;
+    this.anims(zone.mob, def);
+    if (this.server) {
+      for (const [id, st] of [...this.unmade]) {
+        if (!id.startsWith(`${zone.id}:`)) continue;
+        this.unmade.delete(id);
+        const m = this.makeZoneMob(st);
+        if (m) this.apply(m, st);
+      }
+      return;
+    }
+    const data = (this.scene.cache.json.get('mob-data') ?? {}) as Record<string, MobData | string>;
+    const d = typeof data[zone.mob] === 'object' ? (data[zone.mob] as MobData) : null;
+    // Where the server starts them (its first snapshot puts them where they are now).
+    const alive = this.stats ? mobRules(this.stats, zone.mob).alive : zone.spawns.length;
+    mobStartSpots(zone.id, zone.spawns, alive).forEach((i, k) => {
+      const [col, row] = zone.spawns[i];
+      const point = `${zone.id}:${k}`;
+      const n = d?.pack ? packSize(point, d.pack) : 1;
+      const pack: Mob[] = [];
+      for (let c = 0; c < n; c++) this.place(zone, def, d, { col, row }, d?.pack ? `${point}:${c}` : point, d?.pack ? pack : null);
+    });
+    for (const spot of zone.miniBosses ?? []) this.placeMini(zone, miniMobId(zone.id, spot.id), { col: spot.tile[0], row: spot.tile[1] });
   }
 
   /** classes/leveling.json (the mini bosses), if loaded. */
@@ -400,6 +476,7 @@ export class Mobs {
     for (const s of mobs) {
       const m = this.byId.get(s.id) ?? (s.kind ? this.makeAdd(s) : this.makeZoneMob(s));
       if (m) this.apply(m, s);
+      else this.unmade.set(s.id, s); // (its art isn't in yet: made when it is)
     }
     if (this.target) this.onTarget?.(this.target); // its level may have changed
   }
@@ -424,6 +501,7 @@ export class Mobs {
    *  made where the server has it. */
   private makeZoneMob(s: TownMob): Mob | null {
     const zone = this.map.mobZones?.find((z) => z.active && s.id.startsWith(`${z.id}:`));
+    if (zone && !this.madeZones.has(zone.id)) return null; // (its zone's art isn't in yet)
     if (zone && s.mini) return this.placeMini(zone, s.id, { col: s.col, row: s.row });
     const def = zone ? this.M.mobs?.[zone.mob] : undefined;
     if (!zone || !def || typeof def === 'string') return null;
@@ -439,7 +517,10 @@ export class Mobs {
     for (const s of mobs) {
       if (!s.kind || this.byId.has(s.id)) continue;
       const m = this.makeAdd(s);
-      if (!m) continue;
+      if (!m) {
+        this.unmade.set(s.id, s);
+        continue;
+      }
       this.apply(m, s);
       if (!m.asleep) {
         m.sprite.setAlpha(0);
@@ -453,6 +534,17 @@ export class Mobs {
   private makeAdd(s: TownMob): Mob | null {
     const def = this.M.mobs?.[s.kind!];
     if (!def || typeof def === 'string') return null;
+    // (The golem's Adds are Tin Cans and Bottle Caps: their art may not be in out by the pit. Loaded, then made.)
+    if (!this.artIn(s.kind!)) {
+      void this.loadKind(s.kind!).then(() => {
+        const st = this.unmade.get(s.id);
+        if (!st || this.byId.has(s.id)) return;
+        this.unmade.delete(s.id);
+        const m = this.makeAdd(st);
+        if (m) this.apply(m, st);
+      });
+      return null;
+    }
     this.anims(s.kind!, def);
     const own = this.map.mobZones?.find((z) => z.mob === s.kind);
     const zone: MobZone = {
@@ -468,6 +560,7 @@ export class Mobs {
   /** Mobs gone for good (the golem's Adds when its fight ends): faded out (`fade`), then dropped. */
   remove(ids: string[], fade = true): void {
     for (const id of ids) {
+      this.unmade.delete(id);
       const m = this.byId.get(id);
       if (!m) continue;
       this.byId.delete(id);
@@ -529,6 +622,8 @@ export class Mobs {
   /** Turns where it stands (`mob-face`: the golem's slow quarter turns): the anim it's in, in the new facing. */
   face(id: string, dir: TownMobFacing): void {
     const m = this.byId.get(id);
+    const u = !m && this.unmade.get(id);
+    if (u) u.dir = dir;
     if (!m || m.dir === dir) return;
     m.dir = dir;
     this.reshow(m);
@@ -555,6 +650,8 @@ export class Mobs {
   /** A hop from the server: from its first tile (a jump there if we'd drifted) along the rest. */
   hop(id: string, path: [number, number][], speed = SPEED): void {
     const m = this.byId.get(id);
+    const u = !m && this.unmade.get(id);
+    if (u && path.length) [u.col, u.row] = path[path.length - 1]; // (not made yet: where it'll be)
     if (!m || !path.length) return;
     m.speed = speed;
     const [c0, r0] = path[0];
@@ -570,6 +667,8 @@ export class Mobs {
    *  the HP bar. */
   hit(id: string, damage: number, crit: boolean, hp: number, dead: boolean, slow?: { factor: number; ms: number }, blocked = false, miss = false, burn = false): void {
     const m = this.byId.get(id);
+    const u = !m && this.unmade.get(id);
+    if (u) Object.assign(u, { hp, ...(dead ? { dead: true } : {}) });
     if (!m || m.dead) return;
     m.hp = hp;
     const now = this.scene.time.now;
@@ -616,6 +715,8 @@ export class Mobs {
   /** It gave up its fight (`mob-heal`): full HP again as it walks home. */
   heal(id: string, hp: number): void {
     const m = this.byId.get(id);
+    const u = !m && this.unmade.get(id);
+    if (u) u.hp = hp;
     if (m && !m.dead) this.setHp(m, hp);
   }
 
@@ -678,6 +779,8 @@ export class Mobs {
   /** Back (somewhere free in its zone: its spawn from now on) with full HP. */
   respawn(id: string, col: number, row: number, hp: number): void {
     const m = this.byId.get(id);
+    const u = !m && this.unmade.get(id);
+    if (u) Object.assign(u, { col, row, hp, dead: undefined, path: undefined });
     if (!m) return;
     Object.assign(m, { col: col + 0.5, row: row + 0.5, drawCol: col + 0.5, drawRow: row + 0.5, hp, path: [], pose: null, spawn: { col, row }, home: { col, row }, hitAt: -Infinity });
     this.scene.tweens.killTweensOf([m.sprite, ...(m.shadow ? [m.shadow] : [])]);
