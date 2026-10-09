@@ -1,8 +1,8 @@
 import type { TownShopBuyResponse, TownShopItem, TownShopResponse } from '@mikazuki/shared';
 import { playSound } from '../audio/sound';
-import { countOf } from '@mikazuki/shared';
+import { bagSlots, countOf, pocketUsed } from '@mikazuki/shared';
 import { fakeLogin, fakeName } from '../session';
-import { adventure, onAdventure } from '../net/adventure';
+import { adventure, itemData, onAdventure } from '../net/adventure';
 import { itemArt } from './item-art';
 import { coinIcon, el, followWallet, kusingIcon, showPopup } from './reward';
 
@@ -324,7 +324,8 @@ const FAKE_COMBAT: TownShopItem[] = [
 /** Dev: the pretend shop with the combat tabs, your Kusing and what you carry. */
 function withCombat(s: TownShopResponse): TownShopResponse {
   const a = adventure();
-  const room = 40 - (a?.bag.length ?? 0);
+  const D = itemData();
+  const room = a && D ? bagSlots(D.stats) - pocketUsed(D, a.bag, 'bag') : 40;
   const items = s.items.filter((it) => !combat(it));
   return { ...s, kusing: a?.kusing ?? 0, items: [...items, ...FAKE_COMBAT.map((it) => ({ ...it, have: a ? countOf(a.bag, it.id) : 0, max: room > 0 || (a && countOf(a.bag, it.id)) ? it.max : 0 }))] };
 }

@@ -315,6 +315,8 @@ test('disassembly: refused (nothing lost) when what comes back has no room', () 
   const item = rollGear(D.stats, gear('armor-copper-feet'), 'grey', uid(), lcg(4)); // fragments + an agimat
   const s = holder([item]);
   while (s.bag.length < 40) s.bag.push(rollGear(D.stats, gear('armor-tin-head'), 'brown', uid(), lcg(1)));
+  // The agimats' own pocket full too (40 kinds that don't stack), so the agimat has nowhere to go.
+  for (let lv = 1; lv <= 40; lv++) s.bag.push(newAgimat(D.stats, thing('agimat-mp'), lv, uid(), 'body'));
   const r = disassemble(D, s, item.uid, lcg(1), uid);
   assert.equal(r.ok, false);
   assert.ok(s.bag.includes(item));

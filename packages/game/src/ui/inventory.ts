@@ -1,5 +1,5 @@
 import { keyLabel, matches, onKeybinds } from './keybinds';
-import { type Item, type TownBagActionResponse, type TownBagItem, type TownInventoryResponse, bagSlots, isGearDef, sellPrice } from '@mikazuki/shared';
+import { type Item, type Pocket, type TownBagActionResponse, type TownBagItem, type TownInventoryResponse, agimatPocket, bagSlots, isGearDef, pocketOf, pocketSlots, pocketUsed, sellPrice } from '@mikazuki/shared';
 import { hotbarDragItem, hotbarItem } from './hotbar';
 import { playSound } from '../audio/sound';
 import { fakeLogin, fakeName } from '../session';
@@ -34,14 +34,16 @@ import { inTrade, tradeBlocked, tradeDrag, tradePut, trading } from './trade';
 // The forge (ui/forge.ts): clicking a whetstone, Repair Kit or agimat opens the forge popup beside the bag (enhance,
 // repair, embed); gear clicked or dragged while it's open goes into it. Right-click gear for Disassemble (a confirm box
 // first), a fragment stack for Combine (ten into a whetstone).
+// The Agimats tab is the agimats' own pocket (stats.json inventory.agimatSlots, 40): they don't take the Combat tab's
+// slots (hidden when there's no such pocket: agimats are in Combat then).
 // Trading (ui/trade.ts): while the trade window is open the bag shows the Combat tab beside it; what can't be traded
 // (bound) is greyed, what's in the trade dimmed, and a click or drag puts an item in.
 // The equipment panel (ui/equipment.ts) opens on its left with it (B or I): double-click or drag a piece of equipment
 // onto its place to wear it. On phones there's no room for both: Equipment / Bag in their heads switch between them.
 
 const COLS = 5;
-type Tab = 'all' | 'dug' | 'combat' | 'misc';
-const TABS: [Tab, string][] = [['all', 'All'], ['dug', 'Dug up'], ['combat', 'Combat'], ['misc', 'Misc']];
+type Tab = 'all' | 'dug' | 'combat' | 'agimats' | 'misc';
+const TABS: [Tab, string][] = [['all', 'All'], ['dug', 'Dug up'], ['combat', 'Combat'], ['agimats', 'Agimats'], ['misc', 'Misc']];
 /** Which tab shows an item of the old bag: dug-up items, the rest (keys, potions, megaphones) in Misc. (Combat is the
  *  combat bag's own.) */
 const tabOf = (it: TownBagItem): Tab => (it.kind === 'dig' ? 'dug' : 'misc');
@@ -255,7 +257,7 @@ export class Inventory {
   get free(): number {
     const D = itemData();
     const s = adventure();
-    return D && s ? Math.max(0, bagSlots(D.stats) - s.bag.length) : 1;
+    return D && s ? Math.max(0, bagSlots(D.stats) - pocketUsed(D, s.bag, 'bag')) : 1;
   }
 
   private async refresh(): Promise<void> {
@@ -276,12 +278,15 @@ export class Inventory {
 
     for (const b of this.tabs.querySelectorAll<HTMLElement>('.iv-tab')) {
       const t = b.dataset.tab as Tab;
-      const n = t === 'combat' ? (adventure()?.bag.length ?? 0) : d.items.filter((it) => inTab(t, it)).reduce((sum, it) => sum + (it.stacked ? 1 : it.count), 0);
+      const D = itemData();
+      const a = adventure();
+      const n = t === 'combat' || t === 'agimats' ? (D && a ? pocketUsed(D, a.bag, t === 'agimats' ? 'agimats' : 'bag') : 0) : d.items.filter((it) => inTab(t, it)).reduce((sum, it) => sum + (it.stacked ? 1 : it.count), 0);
+      if (t === 'agimats') b.hidden = !D || !agimatPocket(D.stats); // (no pocket of their own: agimats are in Combat)
       b.textContent = `${TABS.find(([x]) => x === t)![1]} ${n}`;
       b.setAttribute('aria-selected', String(t === this.tab));
     }
     this.renderWallet(d);
-    if (this.tab === 'combat') return this.renderCombat();
+    if (this.tab === 'combat' || this.tab === 'agimats') return this.renderCombat();
     this.hideTip();
 
     // One slot per item (this tab's; a stacked kind, megaphones, in one with its count), then the free slots, then the
@@ -362,14 +367,17 @@ export class Inventory {
     const D = itemData();
     const s = adventure();
     if (!D || !s) return void this.grid.replaceChildren(el('div', 'iv-empty', 'Choose a class with the Tanod to fill your combat bag.'));
-    const slots = bagSlots(D.stats);
-    this.slots.textContent = `${s.bag.length}/${slots}`;
-    this.slots.classList.toggle('iv-full', s.bag.length >= slots);
-    if (this.pickedUid && !s.bag.some((b) => b.uid === this.pickedUid)) this.pickedUid = null;
-    for (const uid of [...this.pickedMany]) if (!s.bag.some((b) => b.uid === uid)) this.pickedMany.delete(uid);
+    // This tab's pocket: the Agimats tab's own, the Combat tab the rest.
+    const pocket: Pocket = this.tab === 'agimats' ? 'agimats' : 'bag';
+    const bag = s.bag.filter((b) => pocketOf(D, b) === pocket);
+    const slots = pocketSlots(D, pocket);
+    this.slots.textContent = `${bag.length}/${slots}`;
+    this.slots.classList.toggle('iv-full', bag.length >= slots);
+    if (this.pickedUid && !bag.some((b) => b.uid === this.pickedUid)) this.pickedUid = null;
+    for (const uid of [...this.pickedMany]) if (!bag.some((b) => b.uid === uid)) this.pickedMany.delete(uid);
     const cells: HTMLElement[] = [];
-    for (let i = 0; i < Math.max(slots, s.bag.length); i++) {
-      const it = s.bag[i];
+    for (let i = 0; i < Math.max(slots, bag.length); i++) {
+      const it = bag[i];
       if (!it) {
         cells.push(el('div', 'iv-cell'));
         continue;
@@ -433,8 +441,8 @@ export class Inventory {
     }
     this.grid.style.setProperty('--cols', String(COLS));
     this.grid.replaceChildren(...cells);
-    if (!s.bag.length) this.grid.append(el('div', 'iv-empty-note', 'Nothing in your combat bag. Loot from the Slums lands here; what you wear is in Equipment.'));
-    if (this.pickedMany.size > 1 || (this.multi && !this.pickedUid)) return this.renderCombatMany(s.bag);
+    if (!bag.length) this.grid.append(el('div', 'iv-empty-note', pocket === 'agimats' ? 'No agimats yet. Take slotted gear apart, or find them on the golem.' : 'Nothing in your combat bag. Loot from the Slums lands here; what you wear is in Equipment.'));
+    if (this.pickedMany.size > 1 || (this.multi && !this.pickedUid)) return this.renderCombatMany(bag);
     const it = s.bag.find((b) => b.uid === this.pickedUid);
     if (!it) return void this.detail.replaceChildren(this.note() ?? el('div', 'iv-hint', 'Pick an item for what it is. Double-click gear to wear it; drag HP and MP Potions onto your hotbar.'));
     const def = anyDef(it.defId);

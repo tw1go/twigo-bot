@@ -437,11 +437,27 @@ export function sameStack(data: ItemData, a: Item, b: Item): boolean {
 /** Slots in the combat bag (stats.json inventory.slots). */
 export const bagSlots = (data: StatsData) => itemStats(data).inventory.slots;
 
-/** How many of `item` the bag could take: what fits on its stacks plus free slots' worth. */
+/** Slots in the agimats' own pocket (stats.json inventory.agimatSlots, a repo addition; the inventory's Agimats tab), or
+ *  0: agimats share the bag's slots. */
+export const agimatPocket = (data: StatsData): number => (itemStats(data).inventory as { agimatSlots?: number }).agimatSlots ?? 0;
+
+/** The pocket an item takes a slot in: agimats their own (when there is one), everything else the bag's. */
+export type Pocket = 'bag' | 'agimats';
+export function pocketOf(data: ItemData, item: Pick<Item, 'defId'>): Pocket {
+  const def = data.defs.get(item.defId);
+  return agimatPocket(data.stats) > 0 && def && !isGearDef(def) && def.kind === 'agimat' ? 'agimats' : 'bag';
+}
+
+/** A pocket's slots, and how many of them its items take. */
+export const pocketSlots = (data: ItemData, pocket: Pocket) => (pocket === 'agimats' ? agimatPocket(data.stats) : bagSlots(data.stats));
+export const pocketUsed = (data: ItemData, bag: Item[], pocket: Pocket) => bag.filter((b) => pocketOf(data, b) === pocket).length;
+
+/** How many of `item` the bag could take: what fits on its stacks plus free slots' worth (in its pocket). */
 export function bagRoom(data: ItemData, bag: Item[], item: Item): number {
   const limit = stackLimit(data.stats, data.defs.get(item.defId));
   const onStacks = bag.filter((b) => sameStack(data, b, item)).reduce((n, b) => n + Math.max(0, limit - b.count), 0);
-  return onStacks + Math.max(0, bagSlots(data.stats) - bag.length) * limit;
+  const pocket = pocketOf(data, item);
+  return onStacks + Math.max(0, pocketSlots(data, pocket) - pocketUsed(data, bag, pocket)) * limit;
 }
 
 /** Puts an item (or a stack) into the bag: onto its stacks first, then new slots (new uids from `uid` for the extra ones).
@@ -533,7 +549,7 @@ export function equipFromBag(data: ItemData, s: Wearer, uid: string, place?: Equ
 export function unequipToBag(data: ItemData, s: Wearer, place: EquipPlace): { ok: boolean; message: string } {
   const item = s.equipped[place];
   if (!item) return { ok: false, message: 'Nothing to take off there.' };
-  if (s.bag.length >= bagSlots(data.stats)) return { ok: false, message: 'Your bag is full.' };
+  if (pocketUsed(data, s.bag, 'bag') >= bagSlots(data.stats)) return { ok: false, message: 'Your bag is full.' };
   delete s.equipped[place];
   s.bag.push(item);
   return { ok: true, message: `Took off ${itemName(data, item)}.` };
@@ -543,7 +559,7 @@ export function unequipToBag(data: ItemData, s: Wearer, place: EquipPlace): { ok
  *  nothing anyway). */
 export function unequipBroken(data: ItemData, s: Pick<Wearer, 'equipped' | 'bag'>): void {
   for (const [place, item] of Object.entries(s.equipped) as [EquipPlace, Item][]) {
-    if (item?.broken && s.bag.length < bagSlots(data.stats)) {
+    if (item?.broken && pocketUsed(data, s.bag, 'bag') < bagSlots(data.stats)) {
       delete s.equipped[place];
       s.bag.push(item);
     }
@@ -567,7 +583,7 @@ export function giveGear(data: ItemData, s: Wearer, defs: EquipmentDef[], uid: (
     const item = newItem(data.stats, def, uid());
     const place = placesFor(def.slot).find((p) => !s.equipped[p]);
     if (place && wearCheck(data.stats, s, def).ok) s.equipped[place] = item;
-    else if (s.bag.length < bagSlots(data.stats)) s.bag.push(item);
+    else if (pocketUsed(data, s.bag, 'bag') < bagSlots(data.stats)) s.bag.push(item);
     else {
       left.push(def.id);
       continue;

@@ -201,11 +201,12 @@ test('the combat bag: 40 slots; potions stack to 99, whetstones and agimats (sam
   addToBag(D, bag, newAgimat(S, thing('agimat-atk'), 20, uid()), uid);
   addToBag(D, bag, newAgimat(S, thing('agimat-atk'), 10, uid(), 'hands'), uid);
   assert.deepEqual(bag.slice(2).map((i) => [i.level, i.lock ?? null, i.count]), [[10, null, 2], [20, null, 1], [10, 'hands', 1]]);
-  while (bag.length < 40) assert.ok(addToBag(D, bag, newItem(S, gear('weapon-crude-stick'), uid()), uid));
+  // (Agimats are in their own pocket: the bag's 40 slots are for the rest.)
+  while (shared.pocketUsed(D, bag, 'bag') < 40) assert.ok(addToBag(D, bag, newItem(S, gear('weapon-crude-stick'), uid()), uid));
   assert.equal(addToBag(D, bag, newItem(S, gear('weapon-crude-stick'), uid()), uid), false, 'full: refused');
   assert.equal(bagRoom(D, bag, newItem(S, thing('low-hp-potion'), uid())), 0);
   assert.equal(addToBag(D, bag, newAgimat(S, thing('agimat-atk'), 10, uid()), uid), true, 'onto its stack still');
-  assert.equal(bag.length, 40);
+  assert.equal(bag.length, 43);
 });
 
 test('drops: Kusing every kill, a random 0.6–1.2 × its level\'s (Tin Can 60–120); gear about 3% (brown 20 / white 35 / grey 45, map level, Wire and Crab Lv 20 30%); potions about 5%', () => {
@@ -773,4 +774,24 @@ test('over the town\'s socket: the GM channel is for Game Masters only (free, to
   assert.deepEqual(welcome(cy).recent.map((l) => [l.text, l.gm]), [['Event at the plaza in 5!', true]]);
   for (const c of [twigo, bob, cy]) c.ws.close();
   await new Promise((ok) => server.close(ok));
+});
+
+test('agimats have their own pocket (stats.json inventory.agimatSlots): a full bag still takes them, and they never fill the bag', () => {
+  const { agimatPocket, bagRoom, pocketOf, pocketUsed, unequipToBag } = shared;
+  assert.equal(agimatPocket(S), 40);
+  const ag = (stat: string, level: number, id = `ag-${stat}-${level}`) => shared.newAgimat(S, [...D.defs.values()].find((d) => !('slot' in d) && (d as CombatItemDef).kind === 'agimat' && (d as CombatItemDef).stat === stat) as CombatItemDef, level, id);
+  // 40 pieces of gear: the bag is full; an agimat still fits, a 41st piece of gear doesn't.
+  const bag: Item[] = Array.from({ length: 40 }, (_, i) => newItem(S, gear('weapon-crude-stick'), `g${i}`));
+  assert.equal(pocketOf(D, ag('hp', 10)), 'agimats');
+  assert.equal(bagRoom(D, bag, newItem(S, gear('weapon-crude-stick'), 'one-more')), 0);
+  assert.ok(addToBag(D, bag, ag('hp', 10), uid));
+  // 40 different agimats fill their pocket; the 41st kind is refused, while one of a kind already there stacks.
+  for (let lv = 11; lv < 50; lv++) assert.ok(addToBag(D, bag, ag('hp', lv), uid), `agimat Lv ${lv}`);
+  assert.deepEqual([pocketUsed(D, bag, 'bag'), pocketUsed(D, bag, 'agimats')], [40, 40]);
+  assert.equal(addToBag(D, bag, ag('mp', 10), uid), false);
+  assert.ok(addToBag(D, bag, ag('hp', 10, 'again'), uid), 'onto its stack');
+  // Taking off gear only needs a bag slot: with 39 pieces and 40 agimats it goes in.
+  bag.splice(0, 1);
+  const w = { equipped: { weapon: newItem(S, gear('weapon-crude-stick'), 'worn') }, bag };
+  assert.equal(unequipToBag(D, w, 'weapon').ok, true);
 });

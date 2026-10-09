@@ -1230,6 +1230,8 @@
   },
   "inventory": {
     "slots": 40,
+    "agimatSlots": 40,
+    "agimatSlotsNote": "Repo addition (Mac, 9 Oct 2026): agimats have their own pocket of this many slots (the inventory's Agimats tab) and don't take the bag's; 0 = they share the bag's slots",
     "stack999": [
       "whetstones",
       "fragments",
