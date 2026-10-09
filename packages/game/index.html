@@ -542,6 +542,9 @@
       .eq-tip-dots { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 2px 6px; margin-top: 4px; font-size: 12px; color: #A9B1D6; }
       .eq-tip-dot { width: 8px; height: 8px; border: 2px solid #A9B1D6; box-sizing: border-box; border-radius: 50%; }
       .eq-tip-dot-on { background: #A3E635; border-color: #A3E635; }
+      .eq-tip-dots .eq-tip-dot { justify-self: center; } /* (in line with the agimat icons above or below it) */
+      /* A filled agimat slot: its agimat's icon (tooltips and the forge). */
+      .agimat-icon { display: block; flex: none; width: 32px; height: 32px; margin: -4px 0; image-rendering: pixelated; }
       .eq-tip-binds, #inventory .eq-tip-binds, #equipment .eq-tip-binds, .iv-tip .eq-tip-binds { color: #FDBA74; }
       #equipment .eq-broken > :first-child { filter: grayscale(1) brightness(0.7); }
       @media (max-width: 760px), (max-height: 500px) { #inventory { top: 132px; right: 8px; max-height: calc(100vh - 150px); } #inventory .iv-grid { grid-template-columns: repeat(var(--cols, 5), minmax(0, 60px)); grid-auto-rows: 60px; } #inventory .iv-cell { width: 100%; height: 60px; } }

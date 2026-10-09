@@ -504,7 +504,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   each pickup is a line only you see in your system feed, added by the page (`SystemFeed.mine`, never the server's
   feed, which reaches everyone and Discord; party members get `party-loot` and see "Mara looted …" in theirs; a toast where the feed is hidden), `pickupLine` (coloured runs: only the
   name in its colour): "Gained Sturdy Slingshot of Calamity +1 (1 slot)", "Gained Rough Whetstone ×3", "Gained 120 Kusing"; `ui/item-tip.ts` (tooltips:
-  requirements red, base "ATK 46 (40 +6)", lines, agimat dots, Bound / Binds when worn); the inventory's Combat tab =
+  requirements red, base "ATK 46 (40 +6)", lines, agimat slots (a filled one: its agimat's icon at 2×, `agimatIcon`, the forge's embed slots too; empty: a ring), Bound / Binds when worn); the inventory's Combat tab =
   combat bag (hover tooltip `.iv-tip` with the item's keys at its foot (`itemKeys`; the equipment panel's too); Shift held over gear: `wearDiff` (ATK/DEF/HP/MP/crit change, green/red) and the worn piece(s) in a box beside it (`wornFor`, `.iv-compare`); double-click gear to wear, potions drag to the hotbar), Kowens + Kusing footer;
   hotbar `onItem` / `countOf`, `potionCooldownKey` pie; shop tabs Healing / Smithing (number box). Sounds: combat-hit(-crit),
   combat-player-hurt-1..3 (`playSet`, never twice running), combat-loot-drop/-pickup, combat-coins, combat-potion.

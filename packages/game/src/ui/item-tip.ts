@@ -7,7 +7,7 @@ import { slotSilhouette } from './equipment';
 // 🏷️ An item's tooltip (the combat bag, the equipment panel, the shop, loot): its name in its rarity's colour ("Sturdy
 // Slingshot of Calamity +7", "(Broken)"), what it is, its level and what it needs (what you don't meet in red, by
 // your base stats), its base stat with its plus ("ATK 46 (40 +6)"), its three affix lines (line 3 last), its agimat
-// slots as dots (filled: the agimat's stat and value), and Bound / "Binds when worn". Things that aren't gear: what they
+// slots (filled: the agimat's icon, its stat and value; empty: a ring), and Bound / "Binds when worn". Things that aren't gear: what they
 // do. Also the item's picture (its icon, else its slot's silhouette or a square in its rarity's colour).
 
 const SLOT: Record<EquipSlot, string> = {
@@ -128,11 +128,11 @@ export function itemTipFor(item: Item): HTMLElement[] {
     const row = el('div', `eq-tip-line${tier === 'orange' ? ' eq-tip-orange' : ''}`, lineText(line.stat, lineValue(D.stats, def, item, line), myMainStat()));
     parts.push(row);
   }
-  // Agimat slots as dots.
+  // Agimat slots: a filled one shows its agimat's icon, an empty one a ring.
   if (item.agimats.length) {
     const dots = el('div', 'eq-tip-dots');
     for (const a of item.agimats) {
-      const dot = el('span', `eq-tip-dot${a ? ' eq-tip-dot-on' : ''}`);
+      const dot = (a && agimatIcon(a.stat)) || el('span', `eq-tip-dot${a ? ' eq-tip-dot-on' : ''}`);
       dots.append(dot, el('span', 'eq-tip-dot-text', a ? `${lineText(a.stat, agimatValue(D.stats, a.stat, a.level))} (Lv ${a.level})` : 'Empty agimat slot'));
     }
     parts.push(dots);
@@ -207,4 +207,17 @@ export function itemKeys(item: Item, where: 'bag' | 'worn'): HTMLElement {
   else if (def?.kind === 'potion') keys.push('Drag onto your hotbar');
   keys.push(`${ALT}+click: show in chat`);
   return el('div', 'eq-tip-keys', keys.join(' · '));
+}
+
+/** An agimat's icon (items.json, the agimat of that stat), 16 px, for its slot in tooltips and the forge; null without
+  *  one (a ring stands in). Drawn at 2× (index.html .agimat-icon). */
+export function agimatIcon(stat: string): HTMLElement | null {
+  const def = [...(itemData()?.defs.values() ?? [])].find((d) => !isGearDef(d) && d.kind === 'agimat' && d.stat === stat);
+  if (!def || isGearDef(def) || !def.icon) return null;
+  const img = el('img', 'agimat-icon');
+  img.src = `${import.meta.env.BASE_URL}assets/${def.icon}`;
+  img.alt = '';
+  img.width = 16;
+  img.height = 16;
+  return img;
 }

@@ -26,7 +26,7 @@ import { playSound } from '../audio/sound';
 import { adventure, anyDef, forgeAction, itemData, onAdventure } from '../net/adventure';
 import type { Strip } from './casino';
 import { RARITY_TEXT } from './item-art';
-import { itemPicture, nameOf, rarityOf } from './item-tip';
+import { agimatIcon, itemPicture, nameOf, rarityOf } from './item-tip';
 import { toast } from './toast';
 
 // ⚒️ The forge popup (combat-guide.md "How to enhance"), beside the inventory in the same window style. Clicking a
@@ -415,7 +415,7 @@ export class ForgePopup {
     const dots = el('div', 'fg-dots');
     item.agimats.forEach((a, i) => {
       const b = el('button', `fg-dot${a ? ' fg-dot-on' : ''}${this.slot === i ? ' fg-dot-picked' : ''}`);
-      b.append(el('span', 'fg-dot-mark'), el('span', undefined, a ? `${lineText(a.stat, agimatValue(D.stats, a.stat, a.level))} (Lv ${a.level})` : 'Empty slot'));
+      b.append((a && agimatIcon(a.stat)) || el('span', 'fg-dot-mark'), el('span', undefined, a ? `${lineText(a.stat, agimatValue(D.stats, a.stat, a.level))} (Lv ${a.level})` : 'Empty slot'));
       b.addEventListener('click', () => {
         this.slot = i;
         this.asking = false;
