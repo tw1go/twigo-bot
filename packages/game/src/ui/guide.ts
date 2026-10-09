@@ -155,7 +155,7 @@ const TOPICS: Topic[] = [
       '• In a party, **Kusing** anyone picks up is **split equally** between the party members in the Slums with you (any odd Kusing goes to whoever picked it up)',
       '• Every drop shows its name over it: gear and agimats in their rarity’s colour (brown, white, grey with more agimat slots, light/dark blue, light/dark orange), whetstones and potions in white; Kusing shows its amount',
       '• In a party, what your party members pick up shows in your feed too',
-      '• The **Scrapheap Golem** drops **one set of loot** for everyone: Kusing, Rough Whetstones, blue or orange gear, sometimes an accessory, an agimat or the Lamp-head Hat. Everyone who did 5% of its HP gets **10 s** to grab it first, then anyone can',
+      '• The **Scrapheap Golem** gives everyone who did 5% of its HP **their own loot**, only they can see: Kusing, Rough Whetstones, blue or orange gear, sometimes an accessory, an agimat or the Lamp-head Hat',
       '• Loot goes in your **combat bag**: the **Combat** tab of your bag (**B**), **40 slots**; agimats go in their own **Agimats** tab (40 more). Potions stack to 99, whetstones and agimats to 999, gear one a slot. Full: it stays on the ground',
       '• Hover an item for its tooltip: its level and stats needed (red: not yet), its base stat, its **3 affix lines** (blue and orange gear), its agimat slots. **Orange gear binds** the first time you wear it',
       '• **HP and MP Potions**: buy them at the sari-sari store’s **Healing** tab for Kusing, drag them onto your hotbar (the **- = ~** slots) and press the key. They heal at once; HP and MP Potions each have their own **10 s** cooldown',

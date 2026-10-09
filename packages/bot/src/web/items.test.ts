@@ -305,7 +305,7 @@ test('golem loot: its Kusing, 10–20 Rough Whetstones, 1–2 blue or orange gea
   assert.ok((counts.critRate ?? 0) < (counts.atk ?? 0) / 5);
 });
 
-test('loot on the ground: one set for everyone; a solo kill\'s held 10 s for its killer, a party\'s for its members, the golem\'s for all who earned it; gone after 2 minutes', () => {
+test('loot on the ground: one set for everyone; a solo kill\'s held 10 s for its killer, a party\'s for its members, the golem\'s each earner\'s own; gone after 2 minutes', () => {
   const room = new LootRoom(D, lcg(14), uid);
   const spots = (at: [number, number], k: number) => Array.from({ length: k }, (_, i): [number, number] => [at[0] + i, at[1]]);
   const [coin] = room.drop({ kind: 'tin-can', level: 1, at: [5, 5], to: ['ann'] }, [], spots, 0);
@@ -338,15 +338,16 @@ test('loot on the ground: one set for everyone; a solo kill\'s held 10 s for its
   // A party's: any member in the room first.
   const [p] = room.drop({ kind: 'tin-can', level: 1, at: [9, 9], to: ['ann'] }, ['ann', 'cy'], spots, 0);
   assert.deepEqual([room.mayTake(p, 'cy', 1), room.mayTake(p, 'bob', 1), room.mayTake(p, 'bob', 10_000)], [true, false, true]);
-  // The golem's: one set for everyone (no personal copies), held 10 s for everyone who earned it, then anyone's.
-  const boss = room.drop({ kind: 'scrapheap-golem', level: 15, at: [20, 20], to: ['ann', 'bob'], boss: true }, [], spots, 0);
-  assert.ok(boss.length >= 3, 'its Kusing, whetstones and gear, once');
-  assert.ok(boss.every((l) => !l.personal && l.owners.includes('ann') && l.owners.includes('bob')));
-  assert.ok(room.view(boss[0], 'dee', 0), 'everyone sees it');
-  assert.deepEqual([room.mayTake(boss[0], 'bob', 1), room.mayTake(boss[0], 'dee', 1), room.mayTake(boss[0], 'dee', 10_000)], [true, false, true]);
+  // The golem's: each player's own set, never shown to anyone else, never opening.
+  const boss = room.drop({ kind: 'scrapheap-golem', level: 15, at: [20, 20], to: ['ann', 'bob'], boss: true }, ['cy'], spots, 0);
+  const anns = boss.filter((l) => l.owners[0] === 'ann');
+  assert.ok(anns.length >= 3 && boss.length > anns.length, 'a set each');
+  assert.equal(room.view(anns[0], 'bob', 0), null);
+  assert.equal(room.view(anns[0], 'cy', 0), null, 'not even their party');
+  assert.equal(room.mayTake(anns[0], 'bob', LOOT_MS - 1), false, 'never opens');
   assert.ok(room.viewAll('bob', 0).every((l) => l.mine || l.opensIn !== undefined));
   // Two minutes on: all gone.
-  const all = room.viewAll('ann', 0).length;
+  const all = room.viewAll('ann', 0).length + boss.filter((l) => l.owners[0] === 'bob').length;
   assert.equal(room.tick(LOOT_MS - 1).length, 0);
   assert.equal(room.tick(LOOT_MS).length, all);
   assert.equal(room.viewAll('ann', LOOT_MS).length, 0);

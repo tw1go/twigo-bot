@@ -500,9 +500,9 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
 - Loot (`web/loot.ts` rolls, `web/town-loot.ts` LootRoom per mob room, run by `web/town.ts` with `TownOptions.items`):
   each kill (`MobKill` has kind, `at`, `boss`) drops Kusing (`kusingRange`: 0.6–1.2 × `kusingFor`, stats.json
   currencies.kusingPerMobRange; Tin Can 60–120; the golem's stays bossLoot's) + 3% gear (map level; Wire/Crab Lv 20 30%) + 5% a Low potion;
-  the golem's `golemLoot` and a mini boss's `miniLoot`: one set for everyone (no personal copies), held 10 s for everyone credited (`kill.to`), then anyone's. Dropped gear (both) rolls a plus +0–+3 (`dropPlus`, stats.json
-  rarity.dropPlus: 60/25/10/5, placeholder). Kusing a party member picks up (not personal loot) is split equally between the party in the room (`splitKusing` in web/town-loot.ts, the picker gets the remainder; tested). Reserved 10 s for the killer (party: members in the room; a boss's: all who earned it), shown per
-  viewer (`TownLoot.mine` / `opensIn`), gone after 2 min. Never picked up on its own (not
+  the golem's `golemLoot`: each earner's own set, personal (only they see it, never opens); a mini boss's `miniLoot`: one set for everyone, held 10 s for everyone credited (`kill.to`), then anyone's. Dropped gear (both) rolls a plus +0–+3 (`dropPlus`, stats.json
+  rarity.dropPlus: 60/25/10/5, placeholder). Kusing a party member picks up (not personal loot) is split equally between the party in the room (`splitKusing` in web/town-loot.ts, the picker gets the remainder; tested). Reserved 10 s for the killer (party: members in the room; a mini boss's: all who earned it), shown per
+  viewer (`TownLoot.mine` / `opensIn`; golem loot only to its owner), gone after 2 min. Never picked up on its own (not
   walking over it, Kusing neither): only `pick {id?}` within LOOT_REACH (`LootRoom.pickable`: that one, or the nearest you
   may take); full bag → `loot-full`. `items` message (the player's items + `got`). Potions: `potion {item}` → battle maps only,
   refused when full, a cooldown of stats.json potions.sharedCooldownSec per member and kind (HP and MP each their own:
