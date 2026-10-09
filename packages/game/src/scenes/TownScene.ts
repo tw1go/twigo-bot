@@ -491,7 +491,7 @@ export class TownScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => removeEventListener('mk-class-ticket', ticket));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => removeEventListener('mk-renamed', renamed));
     this.minimap = new Minimap(this.map); // in the HUD's corner, above its buttons
-    startTownSound(this, this.fountainTile());
+    startTownSound(this, this.fountainTile(), this.area === 'slums' ? 'slums' : 'town'); // (the Slums: its own music, no crickets)
     // A battle map's sounds: each mob kind's hurt and death, the golem's attacks (the classes' skills once their data is in).
     if (this.battleMap) {
       const kinds = new Set([...(this.map.mobZones ?? []).filter((z) => z.active).map((z) => z.mob), ...(this.map.boss ? [this.map.boss.id] : [])]);

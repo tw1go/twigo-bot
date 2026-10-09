@@ -62,3 +62,9 @@ sound has an `.ogg` and an AAC `.m4a`.
   `skill-charge-1..3`, `skill-blink-out-1..3`, `skill-blink-in-1..3`, and `golem-<attack>-1..3` (tire-slam-windup,
   tire-slam, scrap-toss-throw, scrap-toss-land, lamp-glare, call-junk, enrage): one of the three at random each time,
   never the same twice running.
+
+## Slums music (Mac picked B, 9 Oct) in `music/`
+
+- `music/music-slums.*` — "Old Radio", an original loop composed for Mikazuki (the art folder's
+  `scripts/audio/build_slums_music.py`; no source, no credit needed). 66 bpm, a 58.2 s seamless loop; the Slums' music
+  in place of the town's, at 0.09 × the music volume.

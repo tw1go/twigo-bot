@@ -208,6 +208,7 @@ const CREDITS: { heading: string; lines: [string, string, string?][] }[] = [
     lines: [
       ['"happy tune" by syncopika', 'CC-BY 3.0', 'https://opengameart.org/content/happy-tune'],
       ['"Buy Something!" (casino) by Cleyton Kauffman', 'CC0', 'https://opengameart.org/content/shop-theme'],
+      ['"Old Radio" (the Slums), an original loop for Mikazuki', 'Original'],
     ],
   },
   {

@@ -4,7 +4,9 @@ import Phaser from 'phaser';
 // sounds for emotes, chat, doors, bets, coins and the UI, and music that's off until switched on. Built on
 // Phaser's sound manager, which holds every sound until the first click, tap or key (browsers require one).
 // The music and sound-effect volumes and mute are saved in this browser. Files and credits: assets/audio/.
-// Inside the casino the town goes quiet (no town music, crickets or fountain) and the casino's own music plays.
+// Inside the casino the town goes quiet (no town music, crickets or fountain) and the casino's own music plays. The
+// Slums (its own page, like every area) has no crickets and its own music in place of the town's, at the same setting;
+// back in town the town's music and crickets play again.
 // Combat (the Slums): sounds that come in three versions (`<base>-1`…`-3`: a player hurt, each mob kind hurt and dying,
 // each class's first 7 skills, the mobility moves, the golem's attacks) play one at random, never the same twice running
 // (playSet); the mobility moves' load with the town, the rest only on a battle map (loadSoundSets). Your own always; from
@@ -74,6 +76,12 @@ const MURMUR = { key: 'amb:npc-murmur', urls: ['audio/ambient/npc-murmur.ogg', '
 /** An NPC's voice while their line types out (ui/npc-dialog.ts): one of these blips, pitched per NPC. */
 const VOICE = { keys: ['a', 'e', 'i', 'o', 'u'].map((v) => ({ key: `voice:${v}`, urls: [`audio/sfx/npc-talk-${v}.ogg`, `audio/sfx/npc-talk-${v}.m4a`] })), volume: 0.12, detune: 0.04 };
 const MUSIC = { key: 'music:happy-tune', urls: ['audio/music/happy-tune.ogg', 'audio/music/happy-tune.m4a'], volume: 0.12 };
+/** The Slums' own music (in place of the town's there; no crickets either). */
+const SLUMS = { key: 'music:slums', urls: ['audio/music/music-slums.ogg', 'audio/music/music-slums.m4a'], volume: 0.09 };
+/** The area's music: the town's (and the neighbourhood's), or the Slums'. */
+let areaMusic = MUSIC;
+/** The area has crickets (not the Slums). */
+let hasCrickets = true;
 const CASINO = { key: 'music:casino', urls: ['audio/music/casino-shop-theme.ogg', 'audio/music/casino-shop-theme.m4a'], volume: 0.09 };
 const ARENA = { key: 'music:arena', urls: ['audio/music/arena-battle.ogg', 'audio/music/arena-battle.m4a'], volume: 0.09, inMs: 400, outMs: 500 };
 const JACKPOT = { volume: 0.25, times: 3, gapMs: 260 };
@@ -170,15 +178,17 @@ function saveSettings(): void {
 
 /** Starts the town's sounds: loads them (in the background, after the town's art), starts the ambience once the
  *  browser allows sound, and plays the UI's button sounds. `fountain` is the plaza fountain's middle tile. */
-export function startTownSound(s: Phaser.Scene, fountainTile: { col: number; row: number } | null): void {
+export function startTownSound(s: Phaser.Scene, fountainTile: { col: number; row: number } | null, area: 'town' | 'slums' = 'town'): void {
   scene = s;
   fountainAt = fountainTile;
+  areaMusic = area === 'slums' ? SLUMS : MUSIC;
+  hasCrickets = area !== 'slums';
   applySettings();
   const load = s.load;
   load.setPath(`${import.meta.env.BASE_URL}assets/`);
   for (const [name, { file, formats = ['ogg', 'm4a'] }] of Object.entries(SFX)) load.audio(`sfx:${name}`, formats.map((f) => `audio/${file}.${f}`));
   queueSets(CORE_SETS);
-  load.audio(CRICKETS.key, CRICKETS.urls);
+  if (hasCrickets) load.audio(CRICKETS.key, CRICKETS.urls);
   if (fountainTile) load.audio(FOUNTAIN.key, FOUNTAIN.urls);
   load.audio(MURMUR.key, MURMUR.urls);
   for (const v of VOICE.keys) load.audio(v.key, v.urls);
@@ -204,7 +214,7 @@ function whenUnlocked(fn: () => void): void {
 function startAmbience(): void {
   const s = scene;
   if (!s) return;
-  if (s.cache.audio.exists(CRICKETS.key)) {
+  if (hasCrickets && s.cache.audio.exists(CRICKETS.key)) {
     cricketsLevel.value = 1;
     crickets = s.sound.add(CRICKETS.key, { loop: true, volume: cricketsVolume() });
     crickets.play();
@@ -510,7 +520,7 @@ function applySettings(): void {
   if (arenaMusic?.isPlaying && settings.music > 0 && arenaOn) setLevel(arenaMusic, ARENA.volume * settings.music);
 }
 
-const musicVolume = () => MUSIC.volume * settings.music;
+const musicVolume = () => areaMusic.volume * settings.music;
 
 // ── Music fades ──
 // Phaser reads a sound's `volume` back from its Web Audio gain node, which only catches up once the audio thread has
@@ -563,14 +573,15 @@ function startMusic(): void {
     fade(s, music, musicVolume(), MUSIC_FADE_MS / 3);
     return;
   }
-  if (!s.cache.audio.exists(MUSIC.key)) {
+  const M = areaMusic;
+  if (!s.cache.audio.exists(M.key)) {
     s.load.setPath(`${import.meta.env.BASE_URL}assets/`);
-    s.load.audio(MUSIC.key, MUSIC.urls);
-    s.load.once(`filecomplete-audio-${MUSIC.key}`, () => settings.music > 0 && !indoors && startMusic());
+    s.load.audio(M.key, M.urls);
+    s.load.once(`filecomplete-audio-${M.key}`, () => settings.music > 0 && !indoors && startMusic());
     s.load.start();
     return;
   }
-  music ??= s.sound.add(MUSIC.key, { loop: true, volume: 0 });
+  music ??= s.sound.add(M.key, { loop: true, volume: 0 });
   playSilent(music);
   fade(s, music, musicVolume(), MUSIC_FADE_MS);
 }

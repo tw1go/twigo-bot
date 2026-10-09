@@ -186,6 +186,9 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   Inside the casino (`enterCasinoSound`/`leaveCasinoSound`) the town music, crickets and fountain go quiet and its own
   music (casino-shop-theme, 0.09 × the music volume) fades in, loaded only then; casino sfx: flip-spin (repeats while
   the coin spins), flip-land, casino-win (+ coin), casino-lose, busted (.m4a only: `formats`).
+  The Slums (its own page) plays its own music (music-slums "Old Radio", 0.09 × the music volume, looped, loaded only
+  with music on: `startTownSound`'s area, `areaMusic`) in place of the town's, and no crickets; back in town (a page of
+  its own again) the town's music and crickets play as ever.
   Combat sets (`playSet`: sfx/<base>-1..3, one at random, never the same twice running; volumes by `SET_VOLUMES`, the
   user's quiet 0.10–0.25): combat-player-hurt and the mobility moves' (skill-dash/-step-back/-charge, skill-blink-out/-in:
   `playMove`'s `sound`) load with every town; on a battle map `loadSoundSets` adds combat-mob-hurt/-death-<kind> (world/
