@@ -755,7 +755,10 @@ export function attachTown(server: Server, opts: TownOptions): Town {
           const o = conns.get(u);
           return o && o.room === c.room ? [{ member: u, at: [o.player.col, o.player.row], out: !!o.player.out }] : [];
         });
-        const target = typeof m.target === 'string' ? (town.memberOf(m.target) ?? undefined) : undefined;
+        // The player they've picked (any player in the room, party or not).
+        const picked = typeof m.target === 'string' ? town.memberOf(m.target) : null;
+        const t = picked ? conns.get(picked) : undefined;
+        const target: Nearby | undefined = t && t.room === c.room ? { member: t.userId, at: [t.player.col, t.player.row], out: !!t.player.out } : undefined;
         const v = vitals.get(c.userId);
         const r = buffs.cast({ member: c.userId, cls: who.cls, level: who.level ?? p.level ?? 1, skillLevel: who.buffLevels?.[m.buff] ?? 1, out: !!p.out, battle: battle(c.room), mp: v ? v.mp : 0, at: [p.col, p.row] }, m.buff, party, target, now);
         if (!r.ok) return send(c, { t: 'buff-refused', buff: m.buff, reason: r.reason, ...(r.ms ? { ms: r.ms } : {}) });

@@ -1146,7 +1146,7 @@ export class TownScene extends Phaser.Scene {
     const now = this.time.now;
     if (now < (this.buffReady.get(name) ?? 0)) return 'no';
     const picked = this.target?.selectedId;
-    const target = picked && inParty(picked) ? picked : undefined;
+    const target = picked ?? undefined; // whoever you've clicked, in your party or not
     if (!this.battleMap) {
       this.link?.send({ t: 'buff', buff: name });
       return 'no';

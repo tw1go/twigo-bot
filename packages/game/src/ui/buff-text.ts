@@ -18,7 +18,7 @@ const STAT: Record<string, (n: string) => string> = {
   cooldownPct: (n) => `−${n}% damage skill cooldowns`,
 };
 
-const WHO: Record<string, string> = { self: 'you', 'ally+self': 'you and one ally', party: 'you and your party' };
+const WHO: Record<string, string> = { self: 'you', 'ally+self': 'you and one ally (whoever you picked, else a party member)', party: 'you, your party and whoever you picked' };
 
 /** 0.104 → "10.4" (a fraction as a percentage, to a tenth at most). */
 const pct = (v: number) => String(Math.round(v * 1000) / 10);

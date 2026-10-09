@@ -250,3 +250,24 @@ test('the town: a buff on a battle map reaches the party member in range, both s
   for (const c of [gus, hana]) c.ws.close();
   await new Promise((ok) => server.close(ok));
 });
+
+test('the player you\'ve picked gets it too, in your party or not: a one-ally buff goes to them first, a party buff reaches them as well; out of range or knocked out: not', () => {
+  const b = new Buffs(stats);
+  const party = [near('pal', 1)];
+  // Rally (you and one ally): the picked stranger in range, not your party member.
+  const r = b.cast(caster('slingshot'), 'Rally', party, near('stranger', 2), 0);
+  assert.ok(r.ok && r.to.join() === 'me,stranger');
+  // Too far, or knocked out: the nearest party member instead.
+  const far = new Buffs(stats).cast(caster('slingshot'), 'Rally', party, near('stranger', R.range + 1), 0);
+  assert.ok(far.ok && far.to.join() === 'me,pal');
+  const down = new Buffs(stats).cast(caster('slingshot'), 'Rally', party, near('stranger', 2, true), 0);
+  assert.ok(down.ok && down.to.join() === 'me,pal');
+  // Hearty Cheer (you and your party): the party and the picked stranger; never twice.
+  const p = new Buffs(stats).cast(caster('greatstick'), 'Hearty Cheer', party, near('stranger', 3), 0);
+  assert.ok(p.ok && p.to.join() === 'me,pal,stranger');
+  const twice = new Buffs(stats).cast(caster('greatstick'), 'Hearty Cheer', party, near('pal', 1), 0);
+  assert.ok(twice.ok && twice.to.join() === 'me,pal');
+  // Not in a party at all: the picked one alone.
+  const solo = new Buffs(stats).cast(caster('greatstick'), 'Hearty Cheer', [], near('stranger', 1), 0);
+  assert.ok(solo.ok && solo.to.join() === 'me,stranger');
+});

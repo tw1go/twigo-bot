@@ -5,7 +5,8 @@ import { type BuffDef, type BuffRefusal, type StatsData, type TownBuff, buffMpCo
 // for another class's buff, under its unlock level, while knocked out, on cooldown (cooldownSec, −1% a skill level; a
 // stance's switch: rules.stanceSwitchSec) or without the MP (buffMpCost at its skill level). It reaches the caster, and
 // one party member (`ally+self`: the one asked for if in range, else the nearest) or every one (`party`) in the same
-// room, up and within rules.partyRangeTiles (tiles either way, like every tile check). A timed buff on someone is its
+// room, up and within rules.partyRangeTiles (tiles either way, like every tile check). The player you've picked (clicked)
+// counts too, in your party or not: a one-ally buff goes to them first, a party buff reaches them as well. A timed buff on someone is its
 // stats at the caster's skill level (buffValue) until it runs out; casting it again restarts it. For each stat only the
 // strongest buff counts (strongestBuffs). Timed buffs end on time, on leaving the battle map and on a knock-out; a
 // stance (Keen Stance) stays on until cast again (off) or a class change, across maps. Soothing Touch (durationSec 0)
@@ -62,8 +63,8 @@ export class Buffs {
   }
 
   /** A cast (checked, then put on everyone it reaches; a heal only says who). `party`: their party members in the same
-   *  room; `target`: the member a one-ally buff was asked for. */
-  cast(c: Caster, name: string, party: Nearby[], target: string | undefined, now: number): CastResult {
+   *  room; `target`: the player they've picked (any player in the room: a party member's member id, or anyone's place). */
+  cast(c: Caster, name: string, party: Nearby[], target: string | Nearby | undefined, now: number): CastResult {
     const b = this.def(name);
     if (!c.battle) return { ok: false, reason: 'here' };
     if (!b || b.class !== c.cls) return { ok: false, reason: 'skill' };
@@ -78,12 +79,16 @@ export class Buffs {
     const R = this.data.skills.buffs!.rules;
     const cooldownMs = Math.round((b.stance ? Number(R.stanceSwitchSec) : skillCooldown(this.data, b.cooldownSec, c.skillLevel)) * 1000);
     this.ready.set(key, now + cooldownMs);
-    // Who: the caster, and their party members up and within range (a one-ally buff: the one asked for, else the nearest).
-    const near = party.filter((p) => p.member !== c.member && !p.out && cheb(p.at, c.at) <= Number(R.partyRangeTiles));
+    // Who: the caster, their party members up and within range, and the player they've picked if up and within range
+    // (a one-ally buff: the picked one, else the nearest party member).
+    const reach = (p: Nearby) => p.member !== c.member && !p.out && cheb(p.at, c.at) <= Number(R.partyRangeTiles);
+    const near = party.filter(reach);
+    const asked = typeof target === 'string' ? party.find((p) => p.member === target) : target;
+    const picked = asked && reach(asked) ? asked : undefined;
     const to = [c.member];
-    if (b.target === 'party') to.push(...near.map((p) => p.member));
+    if (b.target === 'party') to.push(...near.map((p) => p.member), ...(picked && !near.some((p) => p.member === picked.member) ? [picked.member] : []));
     if (b.target === 'ally+self') {
-      const pick = near.find((p) => p.member === target) ?? [...near].sort((x, y) => cheb(x.at, c.at) - cheb(y.at, c.at))[0];
+      const pick = picked ?? [...near].sort((x, y) => cheb(x.at, c.at) - cheb(y.at, c.at))[0];
       if (pick) to.push(pick.member);
     }
     const stats = buffValue(this.data, name, c.skillLevel);
