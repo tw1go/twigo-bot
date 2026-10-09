@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { WebSocket } from 'ws';
-import { type Hitter, type TownServerMessage, baseCooldown, baseStats, derivedStats, hitDamage, levelGap, mobRules, mobStartSpots, mobStats, skillCooldown, skillPct } from '@mikazuki/shared';
+import { type Hitter, type TownServerMessage, baseCooldown, baseStats, derivedStats, hitDamage, levelGap, mobRules, mobStartSpots, mobStats, skillCooldown, skillPct, targetPriority } from '@mikazuki/shared';
 import { type SavedProgress, freshProgress, killXp } from './progress.js';
 import { loadGear, loadStats } from './stats-data.js';
 import { type AttackResult, type MobEvent, MobRoom, facingTo, loadMobKinds, loadMobMap, loadSkillShapes, packSize } from './town-mobs.js';
@@ -739,4 +739,44 @@ test('Boiling Splash leaves a burning puddle: 3 ticks 300 ms apart from 700 ms, 
   assert.deepEqual([ticks[0].kills, ticks[1].kills], [[], []]);
   assert.deepEqual(ticks[2].kills.map((k) => [k.id, k.to]), [[bag.id, ['m-mara']]]);
   assert.deepEqual(room.burnTick(now + 5000).ticks, [], 'three, then gone');
+});
+
+test('who mobs go for first (stats.json mobBehaviour.targetPriority): the tank over a nearer Slingshot; a fight turns to a tank who comes near; the same priority never steals it', () => {
+  const P = (cls: string) => targetPriority(stats, cls);
+  assert.deepEqual(['potlid', 'greatstick', 'stick', 'hilot', 'slingshot', 'broom'].map(P), [4, 3, 2, 2, 1, 1]);
+  const guard = (cls: string) => ({ def: 0, level: 1, priority: P(cls) });
+  const firstTarget = (room: MobRoom, id: string, players: Map<string, [number, number]>, guards: Map<string, ReturnType<typeof guard>>, from = 0) => {
+    for (let t = from; t < from + 10_000; t += 250) {
+      const hit = room.tick(t, players, guards).find((e) => e.t === 'mob-attack' && e.id === id);
+      if (hit && hit.t === 'mob-attack') return hit.target;
+    }
+    return null;
+  };
+  // An aggressive Tire Roller: a Slingshot right next to it, a Pot lid 3 tiles off: it goes for the Pot lid.
+  {
+    const room = new MobRoom(map, lcg(41), {}, { shapes: {} }, kinds);
+    const tire = room.snapshot(0).find((x) => x.id.startsWith('tire-yard:'))!;
+    const players = new Map([['sling', near(room, tire, 1)], ['pot', near(room, tire, 3)]]);
+    assert.equal(firstTarget(room, tire.id, players, new Map([['sling', guard('slingshot')], ['pot', guard('potlid')]])), 'pot');
+  }
+  // A passive Tin Can hit by a Slingshot: it fights back, until a Pot lid comes within aggroTiles: then the Pot lid.
+  {
+    const room = new MobRoom(map, lcg(42), {}, { shapes: {} }, kinds);
+    const can = room.snapshot(0).find((x) => x.id.startsWith('tin-can-alley:') && !x.mini)!;
+    const slingAt = near(room, can, 1);
+    const guards = new Map([['sling', guard('slingshot')], ['pot', guard('potlid')], ['stick', guard('stick')], ['hilot', guard('hilot')]]);
+    room.attack('sling', slingAt, { cls: 'slingshot', level: 1 }, can.id, 0, 0);
+    assert.equal(firstTarget(room, can.id, new Map([['sling', slingAt]]), guards, 250), 'sling', 'fights back');
+    const potAt = near(room, can, 3);
+    assert.equal(firstTarget(room, can.id, new Map([['sling', slingAt], ['pot', potAt]]), guards, 11_000), 'pot', 'the Pot lid takes it over');
+  }
+  // Same priority (a Stick hit it, a Hilot comes near): it stays on the Stick.
+  {
+    const room = new MobRoom(map, lcg(43), {}, { shapes: {} }, kinds);
+    const can = room.snapshot(0).find((x) => x.id.startsWith('tin-can-alley:') && !x.mini)!;
+    const stickAt = near(room, can, 1);
+    const guards = new Map([['stick', guard('stick')], ['hilot', guard('hilot')]]);
+    room.attack('stick', stickAt, { cls: 'stick', level: 1 }, can.id, 0, 0);
+    assert.equal(firstTarget(room, can.id, new Map([['stick', stickAt], ['hilot', near(room, can, 2)]]), guards, 250), 'stick');
+  }
 });

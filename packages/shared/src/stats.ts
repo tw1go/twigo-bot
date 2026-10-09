@@ -97,6 +97,14 @@ export interface MobBehaviour {
   /** Mob name colours by level gap: "mob 5+ levels below" (grey), "mob 3+ levels above" (red). */
   nameColour: { grey: string; white: string; red: string };
   golem: { leavesPit: boolean; resetAfterSecondsEmpty: number };
+  /** Who mobs go for first, by class (higher first; a repo addition): `note` says how. */
+  targetPriority?: Record<string, number | string>;
+}
+
+/** How much mobs want a player of this class (stats.json mobBehaviour.targetPriority; 0 without a class or a number). */
+export function targetPriority(data: StatsData, cls: string | null | undefined): number {
+  const v = cls ? data.mobBehaviour.targetPriority?.[cls] : undefined;
+  return typeof v === 'number' ? v : 0;
 }
 
 /** The numbers in a formula string, in order ("100 * 1.3^(tier-1)" → 100, 1.3, 1). */
@@ -560,11 +568,12 @@ export interface Hitter {
 }
 
 /** Who's hit: their DEF and level, and their DEF rate (gear and buffs, held to caps.defRate): that share less damage,
- *  after DEF. */
+ *  after DEF. A player's `priority`: how much mobs want them (targetPriority). */
 export interface Target {
   def: number;
   level: number;
   defRate?: number;
+  priority?: number;
 }
 
 /** One hit's damage, before any roll: Power × skill % × (1 + amp) × crit × 100 / (100 + DEF) (DEF taking at most

@@ -121,6 +121,7 @@ const TOPICS: Topic[] = [
       'How the **Slums**’ mobs live.',
       '• About **10** roam each zone (a Bottle Caps pack counts as one). One you defeat is back **30 s** later, somewhere free in its zone',
       '• **Tin Cans**, **Bottle Caps** and **Plastic Bag Spooks** leave you alone until you hit them. **Tire Rollers**, **Wire Tangles** and **Scrap Crabs** come for you within **4 tiles**',
+      '• Mobs go for the **tanks** first: **Pot lid**, then **Greatstick**, then **Stick** and **Hilot**, then **Slingshot** and **Broom**. A mob already fighting turns to a tank who comes within **4 tiles** of it; the Golem too. Let your tank stand in front',
       '• Hit one Bottle Cap and its **whole pack** comes for you',
       '• Lead a mob more than **10 tiles** from where it lives and it gives up: it walks home and **heals to full**',
       '• Mobs attack every **2 s** from the next tile; the Wire Tangle zaps from **4 tiles**. The Scrap Crab keeps its own pace, and its shell blocks every hit except just after it attacks',

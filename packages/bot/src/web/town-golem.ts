@@ -128,6 +128,8 @@ export interface GolemHost {
   /** Its hit on a player (town id) with this multiplier on its ATK: the stats rules' roll, or null (nothing to hit: no
    *  HP known for them). Without it its attacks are harmless. */
   roll?(player: string, mult: number): PlayerHit | null;
+  /** How much it wants a player (stats.json mobBehaviour.targetPriority: the tanks first); all the same without it. */
+  priority?(player: string): number;
 }
 
 /** The next rise after `now`: the next whole `everyMinutes` since the epoch. */
@@ -435,7 +437,8 @@ export class Golem {
     }
   }
 
-  /** In a fight: its target (whoever hit it last, within its leash; else the nearest there), closer, turned, an attack. */
+  /** In a fight: its target (the one it wants most in its fight: targetPriority; then whoever hit it last; then the
+   *  nearest there), closer, turned, an attack. */
   private fight(now: number, players: ReadonlyMap<string, [number, number]>): void {
     const near = [...players].filter(([, p]) => this.inFight(p));
     if (!near.length) {
@@ -445,7 +448,10 @@ export class Golem {
     }
     this.alone = null;
     if (this.path.length || now < this.busyUntil) return;
-    const target = near.find(([id]) => id === this.foe) ?? near.reduce((a, b) => (this.edge(b[1], now) < this.edge(a[1], now) ? b : a));
+    const wanted = (id: string) => this.host.priority?.(id) ?? 0;
+    const top = Math.max(...near.map(([id]) => wanted(id)));
+    const most = near.filter(([id]) => wanted(id) === top);
+    const target = most.find(([id]) => id === this.foe) ?? most.reduce((a, b) => (this.edge(b[1], now) < this.edge(a[1], now) ? b : a));
     const [id, p] = target;
     const d = this.edge(p, now);
     const glare = this.attacks % GLARE_EVERY === GLARE_EVERY - 1;

@@ -134,6 +134,22 @@ test('it waits to be hit; then it goes after whoever hit it last within its leas
   assert.ok(next.length && next.every((a) => a.e.target === 'p1'));
 });
 
+test('the golem goes for the one it wants most in its fight (a Pot lid over whoever hit it last), then the last to hit it', () => {
+  const { golem, host } = lone();
+  const want: Record<string, number> = { sling: 1, pot: 4 };
+  host.priority = (id) => want[id] ?? 0;
+  golem.riseNow(0);
+  const both = new Map([['sling', at(3, 0)], ['pot', at(0, -3)]]);
+  run(golem, 0, 20_000, both);
+  golem.hit('pot', 'Pia', 20, 20_000);
+  golem.hit('sling', 'Sam', 20, 20_100); // the Slingshot hit it last
+  const evs = attacks(run(golem, 20_250, 26_000, both));
+  assert.ok(evs.length && evs.every((a) => a.e.target === 'pot'), 'the tank');
+  want.pot = 1; // all the same: the last to hit it
+  const then = attacks(run(golem, 26_250, 32_000, both));
+  assert.ok(then.length && then.every((a) => a.e.target === 'sling'));
+});
+
 test('attacks: Tire Slam close, Scrap Toss far, a Lamp Glare every 4th at whoever is in its cone; 1.5 s apart, 1 s enraged', () => {
   const { golem } = lone();
   golem.riseNow(0);

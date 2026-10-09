@@ -1334,6 +1334,15 @@
     "golem": {
       "leavesPit": false,
       "resetAfterSecondsEmpty": 30
+    },
+    "targetPriority": {
+      "note": "Repo addition (Mac, 9 Oct 2026): who mobs go for first. An aggressive mob takes the highest within its aggroTiles (then the nearest); any mob in a fight switches to a higher one who comes within aggroTiles of it; the golem takes the highest in its fight (then whoever hit it last, then the nearest). Same priority never steals a mob.",
+      "potlid": 4,
+      "greatstick": 3,
+      "stick": 2,
+      "hilot": 2,
+      "slingshot": 1,
+      "broom": 1
     }
   },
   "bossLoot": {

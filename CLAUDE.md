@@ -371,7 +371,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   shell (`shell`) blocks every hit from any side (`blocked`, 0) except for `shellOpenMs` (1.2 s) from each of its own
   swings (shell down: hit it then; it keeps its own rhythm, mobs.json `attackMs` 2.5 s; the game shows a small shield over a fighting or targeted crab while its shell is up); a hit mob (a `packAssist` kind's whole pack: Bottle Caps) chases its foe; an aggressive kind
   (`mobBehaviour.aggressive`: Tire Roller, Wire Tangle, Scrap Crab; passive: Tin Can, Bottle Caps, Plastic Bag Spook) one who comes within `aggroTiles` (4)
-  (in its zone, on its level; players are sorted per zone once a tick), to the nearest free tile within
+  (in its zone, on its level; players are sorted per zone once a tick; the one it wants most first: stats.json mobBehaviour.targetPriority, a repo addition, Pot lid 4 > Greatstick 3 > Stick/Hilot 2 > Slingshot/Broom 1, then the nearest: `MobRoom.wanted`, the guard's `priority` from town.ts; any mob in a fight turns to a higher one within aggroTiles, never the same; the golem the highest in its fight, then the last to hit it, then the nearest: GolemHost `priority`), to the nearest free tile within
   its reach (`rangeTiles`: melee 1, the Wire Tangle zaps from 4) and attacks every `attackEverySeconds` (2 s) (`mob-attack` with its `dir`, its `hit`
   rolled against the player (Player HP, below) and on a hit the Bag's `slow` ms); it gives up when they leave its zone, are more than `leashTiles` (10) from its spawn (it can't follow further), or (passive) after 12 s without a
   hit: healed to full (`mob-heal` {id, hp}) it walks home; at 0 it dies (`mob-hit` dead: its death pose, gone)

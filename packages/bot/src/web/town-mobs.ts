@@ -429,6 +429,7 @@ export class MobRoom {
         callAdds: (spots, now) => this.callAdds(boss, level, spots, now),
         dropAdds: () => this.dropAdds(),
         roll: (player, mult) => this.rollOn(player, this.statsOf(boss.id), mult),
+        priority: (player) => this.priority(player),
       }, random);
     }
   }
@@ -715,6 +716,23 @@ export class MobRoom {
     return m.pack?.find((x) => !x.respawnAt) ?? null;
   }
 
+  /** How much mobs want a player (their guard's targetPriority; 0 unknown). */
+  private priority(player: string): number {
+    return this.guards.get(player)?.priority ?? 0;
+  }
+
+  /** Among `near` (its zone's players), the one within its aggroRange it wants most, then the nearest; or null. */
+  private wanted(m: Mob, near: [string, [number, number]][] | undefined): { id: string; priority: number } | null {
+    let best: { id: string; priority: number; d: number } | null = null;
+    for (const [id, p] of near ?? []) {
+      const d = cheb(p, [m.col, m.row]);
+      if (d > m.zone.aggroRange!) continue;
+      const priority = this.priority(id);
+      if (!best || priority > best.priority || (priority === best.priority && d < best.d)) best = { id, priority, d };
+    }
+    return best;
+  }
+
   /** Someone it should fight: it (and a `packAssist` kind's whole pack) goes after them. */
   private rally(m: Mob, player: string, now: number): void {
     for (const x of (m.rules.packAssist && m.pack) || [m]) if (!x.respawnAt) x.foe = { id: player, at: now };
@@ -738,10 +756,11 @@ export class MobRoom {
       for (const h of e.hits ?? []) this.landings.push({ at, player: h.id, by: e.id, damage: h.damage, ...(h.miss ? { miss: true } : {}) });
       for (const id of e.blinded ?? []) this.landings.push({ at, player: id, by: e.id, damage: 0, blind: e.blindMs });
     }
-    // Who each aggressive zone's mobs could notice (a few players at most: looked up once a tick, not per mob).
+    // Who each zone's mobs could notice (a few players at most: looked up once a tick, not per mob): an aggressive one
+    // goes for them; any one in a fight may turn to someone it wants more (mobBehaviour.targetPriority).
     const watched = new Map<MobZoneData, [string, [number, number]][]>();
     for (const zone of [...this.zones, ...this.addZones.values()]) {
-      if (!zone.active || zone.aggro !== 'aggressive' || !zone.aggroRange) continue;
+      if (!zone.active || !zone.aggroRange) continue;
       const here = [...players].filter(([, p]) => this.inZone(zone, p));
       if (here.length) watched.set(zone, here);
     }
@@ -761,15 +780,14 @@ export class MobRoom {
         m.restUntil = now + rest[0] + this.random() * (rest[1] - rest[0]);
       }
       if (m.path.length) continue;
-      if (!m.foe) {
-        // The nearest player within its aggroRange.
-        let near: string | null = null;
-        let best = m.zone.aggroRange! + 1;
-        for (const [id, p] of watched.get(m.zone) ?? []) {
-          const d = cheb(p, [m.col, m.row]);
-          if (d < best) [near, best] = [id, d];
-        }
-        if (near) this.rally(m, near, now);
+      if (!m.foe && m.zone.aggro === 'aggressive') {
+        // The player it wants most within its aggroRange (the tanks first: targetPriority), then the nearest.
+        const near = this.wanted(m, watched.get(m.zone));
+        if (near) this.rally(m, near.id, now);
+      } else if (m.foe) {
+        // In a fight: someone it wants more who comes within its aggroRange takes it over (never one it wants as much).
+        const near = this.wanted(m, watched.get(m.zone));
+        if (near && near.priority > this.priority(m.foe.id)) this.rally(m, near.id, now);
       }
       if (m.foe) {
         this.fight(m, now, players, events);
