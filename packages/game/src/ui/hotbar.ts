@@ -249,6 +249,12 @@ export class Hotbar {
     }
     playSound('click');
     this.draw();
+    if (!this.list.hidden) this.drawList(); // (its "(E)" marks follow the bar)
+  }
+
+  /** Whether a skill is on the bar (either row). */
+  private onBar(name: string): boolean {
+    return (['top', 'main', 'util'] as Row[]).some((row) => this.layout[row].some((e) => e?.t === 'skill' && e.name === name));
   }
 
   private draw(): void {
@@ -324,7 +330,10 @@ export class Hotbar {
       const line = el('span', 'sb-line');
       const mp = stats ? mpCostOf(stats, this.cls?.id, s, s.level) : 0;
       const cd = stats ? ` · ${seconds(cooldownOf(stats, s, s.level))}${mp ? ` · ${mp} MP` : ''}` : '';
-      line.append(el('span', 'hb-name', s.name), el('span', 'hb-lv', s.locked ? `Unlocks at Lv ${s.unlock}` : `Lv ${s.level} / ${s.cap}${cd}`));
+      const name = el('span', 'hb-name', s.name);
+      // (E): it's on your hotbar already.
+      if (this.onBar(s.name)) name.append(Object.assign(el('span', 'sb-on', ' (E)'), { title: 'On your hotbar' }));
+      line.append(name, el('span', 'hb-lv', s.locked ? `Unlocks at Lv ${s.unlock}` : `Lv ${s.level} / ${s.cap}${cd}`));
       text.append(line, el('span', 'sb-desc', s.desc));
       const pic = this.iconOf(s.name) ?? el('span', 'hb-initials', initials(s.name));
       row.append(pic, text);
