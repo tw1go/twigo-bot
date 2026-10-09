@@ -49,6 +49,8 @@ export interface QuestDef {
   /** The NPC who gives it (world/npcs.ts id). */
   giver: string;
   summary: string;
+  /** The brief storyline the quest log shows: what's going on and why it matters. */
+  story?: string;
   autoStart?: boolean;
   objectives: QuestObjectiveDef[];
   /** The giver's lines while it's on: talk (in order), remind, complete ({class} = the chosen class's name); give (as

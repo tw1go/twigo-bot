@@ -45,8 +45,9 @@ export interface LevelingData {
   quests: LevelingQuest[];
 }
 
-/** A quests.json entry: a whole quest, or one of the chain (`leveling`: its title, goal, rewards and lines from
- *  leveling.json by its id; the entry keeps its type, giver, item rewards and next). */
+/** A quests.json entry: a whole quest, or one of the chain (`leveling`: its title, goal and XP and Kusing rewards from
+ *  leveling.json by its id; the entry keeps its type, giver, story, the Tanod's lines (leveling.json's are the
+ *  fallback), item rewards and next). */
 export type QuestFileEntry = Omit<QuestDef, 'title' | 'summary' | 'objectives'> & Partial<Pick<QuestDef, 'title' | 'summary' | 'objectives'>> & { leveling?: boolean };
 
 /** quests.json with the chain filled in from leveling.json. */
@@ -63,7 +64,8 @@ export function withLeveling(entries: QuestFileEntry[], L: LevelingData | null |
       objectives: [objectiveOf(q)],
       rewardXP: q.rewardXP,
       rewardKusing: q.rewardKusing,
-      dialogue: { ...rest.dialogue, ...(q.dialogue?.give ? { give: [q.dialogue.give] } : {}), ...(q.dialogue?.report ? { report: [q.dialogue.report] } : {}) },
+      // (quests.json's own lines first; leveling.json's one line each is the fallback.)
+      dialogue: { ...(q.dialogue?.give ? { give: [q.dialogue.give] } : {}), ...(q.dialogue?.report ? { report: [q.dialogue.report] } : {}), ...rest.dialogue },
     }];
   });
 }

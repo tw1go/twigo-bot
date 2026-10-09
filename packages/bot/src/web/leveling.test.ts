@@ -48,7 +48,9 @@ test('the chain: the 12 quests after the class quest, in order, main, kill or mi
     assert.deepEqual([q.objectives[0].type, q.objectives[0].mob, q.objectives[0].count], [l.kind, l.mob, l.kind === 'kill' ? l.count : 1]);
     assert.deepEqual([q.rewardXP, q.rewardKusing], [l.rewardXP, l.rewardKusing]);
     assert.deepEqual(q.rewards, [{ item: 'low-hp-potion', count: 10 }, { item: 'low-mp-potion', count: 10 }]);
-    assert.deepEqual([q.dialogue?.give, q.dialogue?.report], [[l.dialogue!.give], [l.dialogue!.report]]);
+    // The Tanod's own lines (quests.json, over leveling.json's one each) and the log's storyline.
+    assert.ok((q.dialogue?.give?.length ?? 0) >= 2 && (q.dialogue?.report?.length ?? 0) >= 2, `${q.id}: his lines`);
+    assert.ok((q.story?.length ?? 0) > 80, `${q.id}: its story`);
   }
   assert.equal(QUESTS.find((x) => x.id === CHAIN[0])!.objectives[0].text, 'Tin Cans');
   assert.equal(QUESTS.find((x) => x.id === CHAIN[1])!.objectives[0].text, 'Beat a Tin Can mini boss');

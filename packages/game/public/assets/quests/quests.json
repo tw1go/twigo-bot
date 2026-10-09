@@ -1,5 +1,5 @@
 {
-  "note": "The town's quests. type: main (violet) or side (yellow). Objective types so far: talk (talk to `npc`) and chooseClass. autoStart quests start the first time a player is in town (and for anyone who hasn't done them yet). dialogue: lines the giver says instead of their usual ones while the quest is on: talk (in order, while talking is the current objective), remind (talking again before the next objective is done), complete (when the quest is done; {class} is the class's name). rewards: items given into the combat bag when it's completed ({ item: an items.json or equipment.json id, count }); a quest finished before it had rewards gives them on the next visit. Every quest up to Lv 20 gives Low HP and MP Potions. leveling: one of the Tanod's leveling chain (objective types kill and miniBoss, reported over his radio): its title, goal, count, XP and Kusing rewards and his give/report lines come from classes/leveling.json by its id; the entry keeps its type, giver, item rewards and next.",
+  "note": "The town's quests. type: main (violet) or side (yellow). Objective types so far: talk (talk to `npc`) and chooseClass. autoStart quests start the first time a player is in town (and for anyone who hasn't done them yet). dialogue: lines the giver says instead of their usual ones while the quest is on: talk (in order, while talking is the current objective), remind (talking again before the next objective is done), complete (when the quest is done; {class} is the class's name). story: the brief storyline the quest log shows (what's going on and why). rewards: items given into the combat bag when it's completed ({ item: an items.json or equipment.json id, count }); a quest finished before it had rewards gives them on the next visit. Every quest up to Lv 20 gives Low HP and MP Potions. leveling: one of the Tanod's leveling chain (objective types kill and miniBoss, reported over his radio): its title, goal, count and XP and Kusing rewards come from classes/leveling.json by its id; the entry keeps its type, giver, story, the Tanod's give/report lines (his radio toasts; leveling.json's one line each is the fallback), item rewards and next.",
   "quests": [
     {
       "id": "main-01-class",
@@ -7,6 +7,7 @@
       "title": "A Weapon for the Town",
       "giver": "tanod",
       "summary": "The Tanod needs help keeping Mikazuki safe at night. Talk to him and choose how you'll fight.",
+      "story": "Mikazuki sleeps easy because the Tanod keeps watch. But past the town's west gate, in the Slums, the junk has started moving on its own at night, and he can't guard the fence alone. He's looking for a new bantay, and every bantay needs a weapon.",
       "autoStart": true,
       "objectives": [
         {
@@ -47,6 +48,17 @@
       "type": "main",
       "giver": "tanod",
       "leveling": true,
+      "story": "Tin cans are rattling through Tin Can Alley after dark and rolling into the camp where the Slums folk sleep. Nobody knows why junk would wake up, but the Tanod wants the road to the camp clear first: twenty cans, and the camp can breathe again.",
+      "dialogue": {
+        "give": [
+          "Bantay, may problema tayo. Yung mga lata sa Tin Can Alley, gumagalaw na mag-isa tuwing gabi.",
+          "Natatakot na ang mga taga-kampo. Linisin mo ang daan, mga 20 lang. Mag-radyo ka pag tapos na."
+        ],
+        "report": [
+          "Ayos! Malinis na ang daan papunta sa kampo. Heto ang pang-merienda mo.",
+          "Pero teka... may naririnig pa akong kalampag sa eskinita."
+        ]
+      },
       "rewards": [
         { "item": "low-hp-potion", "count": 10 },
         { "item": "low-mp-potion", "count": 10 }
@@ -58,6 +70,17 @@
       "type": "main",
       "giver": "tanod",
       "leveling": true,
+      "story": "The cans didn't wander in by chance: the camp folk saw a can taller than a man herding them, and it has brothers. Beat one of the big cans (Jus Tin, Kris Tin, Mar Tin, Valen Tin or Augus Tin) and the rest of the alley loses its nerve.",
+      "dialogue": {
+        "give": [
+          "Sabi ng mga bata, may malaking lata raw na nag-uutos sa iba. Jus Tin daw ang pangalan.",
+          "Hindi lang siya, may mga kapatid pa. Talunin mo ang isa para matuto sila. Just in time ka!"
+        ],
+        "report": [
+          "Talo ang malaking lata? Ikaw na talaga!",
+          "Napansin mo ba? Parang may hinihila silang mga piraso papuntang kanluran. Babantayan ko 'yan."
+        ]
+      },
       "rewards": [
         { "item": "low-hp-potion", "count": 10 },
         { "item": "low-mp-potion", "count": 10 }
@@ -69,6 +92,17 @@
       "type": "main",
       "giver": "tanod",
       "leveling": true,
+      "story": "North of the alley, in Bottle Cap Lot, bottle caps roll in packs, clinking like loose change, and they've been carrying scraps out of the lot toward the west. Stop thirty of them before the lot is picked clean. Hit one and its whole pack comes for you.",
+      "dialogue": {
+        "give": [
+          "Yung mga tansan sa Bottle Cap Lot, naglalakad na rin! Pa-grupo pa sila kung lumakad.",
+          "May dinadala silang mga piraso papuntang kanluran. Pigilan mo ang 30. Pag tinamaan mo ang isa, susugod ang buong grupo, ha."
+        ],
+        "report": [
+          "Caps off sa'yo, bantay!",
+          "Pero hindi sila basta naglalaro. Parang may nag-uutos sa kanila."
+        ]
+      },
       "rewards": [
         { "item": "low-hp-potion", "count": 10 },
         { "item": "low-mp-potion", "count": 10 }
@@ -80,6 +114,17 @@
       "type": "main",
       "giver": "tanod",
       "leveling": true,
+      "story": "Every pack answers to a captain: a bottle cap the size of a basin that calls the others to march. Take down one of the captains (Kap Tan, Cap Rice, Capu Chino or Escap Ade) and the packs scatter.",
+      "dialogue": {
+        "give": [
+          "May tansan na nagpapa-kapitan sa lote. Si Kap Tan, si Cap Rice... pati si Capu Chino, may sariling grupo.",
+          "Turuan mo ng leksyon ang isa sa kanila. Pag wala nang kapitan, magkakawatak-watak sila."
+        ],
+        "report": [
+          "Wala nang kapitan-kapitan. Salamat!",
+          "May dala-dala ang kapitan: lumang turnilyo mula sa junkyard sa kanluran. Saan kaya nila dinadala lahat 'to?"
+        ]
+      },
       "rewards": [
         { "item": "low-hp-potion", "count": 10 },
         { "item": "low-mp-potion", "count": 10 }
@@ -91,6 +136,17 @@
       "type": "main",
       "giver": "tanod",
       "leveling": true,
+      "story": "South of the camp, the Tire Yard's old tires have started rolling down the road on their own, and these don't wait to be hit: come within a few tiles and they charge. Stop twenty of them before someone gets run over.",
+      "dialogue": {
+        "give": [
+          "Sa Tire Yard naman: mga gulong na gumugulong mag-isa. Ito, hindi naghihintay. Lalapit ka lang, susugurin ka na.",
+          "Bago may masagasaan, pigilan mo ang 20. Ingat sa daan, bantay."
+        ],
+        "report": [
+          "Huminto na ang gulo, este, gulong.",
+          "May napansin ako: lahat sila, iisa ang direksyon. Kanluran ulit."
+        ]
+      },
       "rewards": [
         { "item": "low-hp-potion", "count": 10 },
         { "item": "low-mp-potion", "count": 10 }
@@ -102,6 +158,17 @@
       "type": "main",
       "giver": "tanod",
       "leveling": true,
+      "story": "The worst of the tires roll as a gang: Tire Sa, Ret Tire, Sat Tire, En Tire and Tire Mendous, twice the size of the rest and twice as mean. Flatten one of them and the yard goes quiet.",
+      "dialogue": {
+        "give": [
+          "Si Tire Sa at mga barkada niya: doble ang laki, doble ang yabang.",
+          "Ikaw na bahala. Talunin mo ang isa, para tumahimik ang buong bakuran."
+        ],
+        "report": [
+          "Pagod na sila. Tired na tired!",
+          "Tumatanda na ako sa trabahong 'to. Buti na lang nandito ka."
+        ]
+      },
       "rewards": [
         { "item": "low-hp-potion", "count": 10 },
         { "item": "low-mp-potion", "count": 10 }
@@ -113,6 +180,17 @@
       "type": "main",
       "giver": "tanod",
       "leveling": true,
+      "story": "In Bag Flats, plastic bags drift through the night like ghosts, scaring the camp's children and slowing anyone they touch. They whisper, too: the children swear they hear 'light' and 'west'. Clear twenty of them.",
+      "dialogue": {
+        "give": [
+          "Sa Bag Flats, may mga plastik na multo. Nananakot ng mga bata, tapos pinapabagal ka pag nahawakan ka.",
+          "Sabi ng mga bata, may binubulong daw sila: 'ilaw' at 'kanluran'. 20 lang, kaya mo 'yan."
+        ],
+        "report": [
+          "Wala nang multo sa kanto. Galing!",
+          "'Ilaw sa kanluran'... Ayokong isipin, pero may lumang poste ng ilaw sa junkyard."
+        ]
+      },
       "rewards": [
         { "item": "low-hp-potion", "count": 10 },
         { "item": "low-mp-potion", "count": 10 }
@@ -124,6 +202,17 @@
       "type": "main",
       "giver": "tanod",
       "leveling": true,
+      "story": "Four bags drift above the rest, as big as tents and as strong as a storm: Bag Ets, Bag Yo, Plas Tita and Ba Ghost. Bring one of them down and Bag Flats can sleep.",
+      "dialogue": {
+        "give": [
+          "May mga plastik na parang bagyo ang lakas: si Ba Ghost, si Plas Tita, at iba pa.",
+          "Ingat ka dun. Talunin mo ang isa, at mahimbing na ang tulog ng Bag Flats."
+        ],
+        "report": [
+          "Tahimik na ang kanto. Salamat, bantay!",
+          "Habang nakikipaglaban ka, may kumikislap daw sa Wire Ridge. Aakyat tayo sunod."
+        ]
+      },
       "rewards": [
         { "item": "low-hp-potion", "count": 10 },
         { "item": "low-mp-potion", "count": 10 }
@@ -135,6 +224,17 @@
       "type": "main",
       "giver": "tanod",
       "leveling": true,
+      "story": "Up on Wire Ridge, the old power lines have come loose and come alive: tangles of wire that spark at anyone in reach, even from a few tiles away. Something has been feeding them power. Cut down twenty, and watch where the current runs.",
+      "dialogue": {
+        "give": [
+          "Mga kable na buhay sa Wire Ridge! Kahit malayo ka, kinukuryente ka nila.",
+          "Delikado, pero ikaw pa. 20 piraso. At bantayan mo kung saan dumadaloy ang kuryente nila."
+        ],
+        "report": [
+          "Walang nakuryente? Buti naman.",
+          "Tama ang hinala ko: ang kuryente, dumadaloy pababa sa kanluran. Sa junkyard."
+        ]
+      },
       "rewards": [
         { "item": "low-hp-potion", "count": 10 },
         { "item": "low-mp-potion", "count": 10 }
@@ -146,6 +246,17 @@
       "type": "main",
       "giver": "tanod",
       "leveling": true,
+      "story": "The ridge's biggest knots hum like transformers: Live Wire, Wire Lito, Tangle Lyn and Hay Wire. As long as they're up, the current keeps flowing west to whatever waits in the junkyard. Untangle one of them.",
+      "dialogue": {
+        "give": [
+          "Si Hay Wire at mga kasama niya: sila ang nagpapadaloy ng kuryente pakanluran.",
+          "Ayusin mo. Habang buhay sila, may nagigising sa junkyard."
+        ],
+        "report": [
+          "Untangled na! Ang linis ng trabaho mo.",
+          "Isang lugar na lang bago ang junkyard: ang Crab Basin."
+        ]
+      },
       "rewards": [
         { "item": "low-hp-potion", "count": 10 },
         { "item": "low-mp-potion", "count": 10 }
@@ -157,6 +268,17 @@
       "type": "main",
       "giver": "tanod",
       "leveling": true,
+      "story": "Down in the Crab Basin, crabs of rusted scrap drag every bit of metal they can pinch toward the junkyard. Their shells shrug off every blow except just after they strike. Beat twenty of them and the trail of scrap ends.",
+      "dialogue": {
+        "give": [
+          "Mga alimangong bakal sa Crab Basin. Hinihila nila ang lahat ng bakal papunta sa junkyard.",
+          "Matigas ang shell nila: tamaan mo pagkatapos nilang umatake. 20, tapos balik ka."
+        ],
+        "report": [
+          "Walang crab mentality dito, tulungan tayo!",
+          "Lahat ng dinadala nila, iisa ang patutunguhan: ang Golem Pit."
+        ]
+      },
       "rewards": [
         { "item": "low-hp-potion", "count": 10 },
         { "item": "low-mp-potion", "count": 10 }
@@ -168,6 +290,17 @@
       "type": "main",
       "giver": "tanod",
       "leveling": true,
+      "story": "The basin's crab kings (Scrap Py, Crab Bie, Ali Mango and Sir Pincho) carry the biggest pieces of all. Everything the junk has dragged west for weeks is piled in the Golem Pit, and it has an old street lamp for a head. Beat one crab king and you're ready to face the Scrapheap Golem.",
+      "dialogue": {
+        "give": [
+          "Huling utos ko: talunin mo ang isa sa mga hari ng alimango. Sila ang nagdadala ng pinakamalaking piraso.",
+          "Lahat ng basurang hinila pakanluran, nabuo na bilang isang halimaw sa Golem Pit. May ilaw pa sa ulo."
+        ],
+        "report": [
+          "Handa ka na sa Golem, bantay. Ipinagmamalaki kita.",
+          "Bumabangon siya tuwing dalawang oras. Pag handa ka na, at may mga kasama ka, puntahan mo siya."
+        ]
+      },
       "rewards": [
         { "item": "low-hp-potion", "count": 10 },
         { "item": "low-mp-potion", "count": 10 }

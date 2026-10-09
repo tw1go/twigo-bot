@@ -291,6 +291,15 @@ function renderLog(): void {
       detail.append(who);
     }
     detail.append(el('p', 'ql-summary', q.summary));
+    // The storyline: what's going on, and what the giver said as they gave it.
+    const said = q.dialogue?.give ?? q.dialogue?.talk ?? [];
+    if (q.story || said.length) {
+      const story = el('div', 'ql-story');
+      story.append(el('div', 'ql-story-head', 'Story'));
+      if (q.story) story.append(el('p', 'ql-story-text', q.story));
+      for (const line of said) story.append(el('p', 'ql-story-line', `“${line}”`));
+      detail.append(story);
+    }
     const list = el('ol', 'ql-objectives');
     q.objectives.forEach((o, i) => {
       const state = finished || i < step ? 'done' : i === step ? 'current' : 'later';
@@ -306,9 +315,16 @@ function renderLog(): void {
       const def = D?.defs.get(r.item);
       return def && D ? [newItem(D.stats, def, 'reward', r.count)] : [];
     });
-    if (rewards.length) {
+    if (rewards.length || q.rewardXP || q.rewardKusing) {
       const box = el('div', 'ql-rewards');
       box.append(el('div', 'ql-rewards-head', 'Rewards'));
+      // Its XP and Kusing (the leveling chain's: the same for everyone).
+      for (const [label, n] of [['XP', q.rewardXP], ['Kusing', q.rewardKusing]] as const) {
+        if (!n) continue;
+        const row = el('div', 'ql-reward');
+        row.append(el('span', 'ql-reward-name', `+${n.toLocaleString('en-US')} ${label}`));
+        box.append(row);
+      }
       for (const it of rewards) {
         const row = el('div', 'ql-reward');
         const name = el('span', 'ql-reward-name', nameOf(it));
