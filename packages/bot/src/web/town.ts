@@ -154,7 +154,10 @@ export interface TownOptions {
   /** Leave upgrades to other paths alone (the game's dev server shares its HTTP server with Vite's own socket). */
   shared?: boolean;
   /** Someone said something in town (the Discord bridge passes it on). */
-  onSay?: (userId: string, nickname: string, text: string, megaphone: boolean) => void;
+  onSay?: (userId: string, nickname: string, text: string, megaphone: boolean, gm?: boolean) => void;
+  /** Whether a member is a Game Master (the chat's GM channel: `/gm`, gold, across everyone's screen, free). Without it
+   *  nobody is. */
+  gm?: (userId: string) => boolean;
   /** Uses one of a member's megaphones (`/m` in the chat): how many are left, or null if they have none. Without it
    *  (the game's dev server) megaphones are free. */
   megaphone?: (userId: string) => number | null;
@@ -982,13 +985,17 @@ export function attachTown(server: Server, opts: TownOptions): Town {
           }
           return;
         }
-        const megaphone = m.megaphone === true;
+        // The GM channel: Game Masters only (free); else a megaphone, if asked for, uses one.
+        const gm = m.gm === true;
+        if (gm && !opts.gm?.(c.userId)) return send(c, { t: 'say-refused', reason: 'gm' });
+        const megaphone = !gm && m.megaphone === true;
         if (megaphone && opts.megaphone && opts.megaphone(c.userId) === null) return send(c, { t: 'say-refused', reason: 'megaphone' });
         c.says -= 1;
         // To everyone, the speaker included (their own words come back this way), and on to Discord. Not saved.
-        remember({ name: p.nickname, text, ...(megaphone ? { megaphone } : {}), ...(links.length ? { links } : {}) });
-        opts.onSay?.(c.userId, p.nickname, text, megaphone);
-        return everyone({ t: 'say', id: p.id, name: p.nickname, text, ...(megaphone ? { megaphone } : {}), ...(links.length ? { links } : {}) });
+        const loud = { ...(megaphone ? { megaphone } : {}), ...(gm ? { gm } : {}) };
+        remember({ name: p.nickname, text, ...loud, ...(links.length ? { links } : {}) });
+        opts.onSay?.(c.userId, p.nickname, text, megaphone, gm);
+        return everyone({ t: 'say', id: p.id, name: p.nickname, text, ...loud, ...(links.length ? { links } : {}) });
       }
     }
   };
@@ -1042,7 +1049,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       const loot = loots.get(room);
       if (loot) send(c, { t: 'loot', loot: loot.viewAll(userId, Date.now()) });
     });
-    send(c, { t: 'welcome', you: player.id, players: [...conns.values()].filter((o) => o.room === room).map((o) => o.player), recent, system: systemLines, spawn: [col, row], notice: notice && notice.until > Date.now() ? notice.a : undefined });
+    send(c, { t: 'welcome', you: player.id, players: [...conns.values()].filter((o) => o.room === room).map((o) => o.player), recent, system: systemLines, spawn: [col, row], notice: notice && notice.until > Date.now() ? notice.a : undefined, ...(opts.gm?.(userId) ? { gm: true } : {}) });
     conns.set(userId, c);
     others(c, { t: 'join', player });
     known.set(userId, { nickname: player.nickname, outfit: player.outfit, cls: player.cls, level: player.level });

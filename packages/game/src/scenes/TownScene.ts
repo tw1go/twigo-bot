@@ -1507,7 +1507,7 @@ export class TownScene extends Phaser.Scene {
         ask: (p) => tradeWin.ask(p.id, p.nickname),
       };
     }
-    const chat = new ChatBox((text, channel, links) => link.send({ t: 'say', text, ...(channel === 'megaphone' ? { megaphone: true } : channel === 'party' ? { party: true } : {}), ...(links.length ? { links } : {}) }), tools);
+    const chat = new ChatBox((text, channel, links) => link.send({ t: 'say', text, ...(channel === 'megaphone' ? { megaphone: true } : channel === 'party' ? { party: true } : channel === 'gm' ? { gm: true } : {}), ...(links.length ? { links } : {}) }), tools);
     // Items shown in chat lines: their name in their rarity's colour; a click opens their tooltip beside it (any click
     // elsewhere, or Escape, closes it).
     const itemTip = new SkillTip();
@@ -1621,18 +1621,20 @@ export class TownScene extends Phaser.Scene {
         }
         if (m.reason === 'megaphone') return chat.notice('You have no megaphones. Get one at the sari-sari store (1 Kowen), or /g for general chat.');
         if (m.reason === 'party') return chat.notice("You're not in a party. Invite someone from their menu, or /g for general chat.");
+        if (m.reason === 'gm') return chat.notice('Only Game Masters can use the GM channel.');
         return chat.notice(m.reason === 'slow' ? "You're chatting a bit fast. Wait a moment." : "That message can't be sent.");
       }
       if (m.t === 'say') {
         // Your own words come back from the server like everyone else's, so you see what they see.
         const name = m.id === myId ? (member?.nickname ?? 'You') : (this.others.nameOf(m.id) ?? m.name ?? 'Someone');
-        if (m.megaphone) megaphone.show(name, m.text);
+        if (m.megaphone || m.gm) megaphone.show(name, m.text, !!m.gm);
+        const kind = m.gm ? 'gm' : m.megaphone;
         if (m.id === myId) {
           if (bubbles) this.player.say(m.text, bubbles);
           if (m.megaphone) window.dispatchEvent(new Event('mk-wallet')); // one megaphone fewer in the bag
-          return chat.add(name, m.text, 'me', undefined, m.megaphone, m.links); // (your own words make no sound)
+          return chat.add(name, m.text, 'me', undefined, kind, m.links); // (your own words make no sound)
         }
-        chat.add(name, m.text, 'town', m.id, m.megaphone, m.links);
+        chat.add(name, m.text, 'town', m.id, kind, m.links);
         playSound('chat');
       }
       if (m.t === 'party-say') {
@@ -1923,6 +1925,7 @@ export class TownScene extends Phaser.Scene {
         setParty(null); // the server sends your party (if you're still in one) right after
         // A reconnect (the bot restarted, a blip): what's on screen stays; only what's new is added.
         chat.history(m.recent ?? [], member?.nickname ?? null, arrived);
+        chat.setGm(!!m.gm); // a Game Master: the GM channel
         feed.history(m.system ?? [], arrived);
         if (m.notice && !arrived) announce(m.notice); // a notice still current when you arrive
         // Arriving: go to the free tile the server picked (so people don't land on each other), unless you've

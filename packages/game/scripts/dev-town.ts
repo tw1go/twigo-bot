@@ -380,7 +380,8 @@ export function devTown(): Plugin {
             return r.ok ? { ok: true } : r;
           },
         },
-        onSay: (_id, nickname, text, megaphone) => server.config.logger.info(`[town chat → Discord] ${megaphone ? '📢 ' : ''}${nickname}: ${text}`, { timestamp: true }),
+        onSay: (_id, nickname, text, megaphone, gm) => server.config.logger.info(`[town chat → Discord] ${gm ? '🛡️ [GM] ' : megaphone ? '📢 ' : ''}${nickname}: ${text}`, { timestamp: true }),
+        gm: (name) => /^gm/i.test(name), // dev: players named GM… (?as=GMTwigo) are Game Masters
       });
       server.middlewares.use('/__title', (req, res) => {
         const q = new URL(req.url ?? '/', 'http://localhost').searchParams;

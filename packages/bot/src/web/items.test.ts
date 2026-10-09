@@ -734,3 +734,43 @@ test('/gift item: whetstones, Repair Kits and HP/MP Potions go into the combat b
   assert.ok(giftableById.has('low-hp-potion') && giftableById.has('low-repair-kit'));
   assert.ok(!giftableById.has('agimat-atk') && !giftableById.has('weapon-crude-stick'));
 });
+
+test('over the town\'s socket: the GM channel is for Game Masters only (free, to everyone and Discord, kept with its flag); welcome says who is one', async () => {
+  const server = createServer();
+  const toDiscord: [string, boolean, boolean | undefined][] = [];
+  attachTown(server, {
+    map: { size: [4, 4], spawn: [1, 1], blocked: [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]] },
+    authenticate: async (req) => new URL(req.url ?? '/', 'http://x').searchParams.get('as'),
+    profile: (name) => ({ nickname: name, title: { name: 'Townfolk', color: '#fff' }, outfit: {} as never }),
+    gm: (id) => id === 'Twigo',
+    megaphone: () => null, // nobody has a megaphone: the GM channel never needs one
+    onSay: (_id, _name, text, megaphone, gm) => toDiscord.push([text, megaphone, gm]),
+  });
+  await new Promise<void>((ok) => server.listen(0, '127.0.0.1', ok));
+  const port = (server.address() as AddressInfo).port;
+  const open = (as: string) =>
+    new Promise<{ ws: WebSocket; got: TownServerMessage[] }>((ok) => {
+      const ws = new WebSocket(`ws://127.0.0.1:${port}/ws?as=${as}`);
+      const got: TownServerMessage[] = [];
+      ws.on('message', (d) => got.push(JSON.parse(String(d))));
+      ws.on('open', () => ok({ ws, got }));
+    });
+  const wait = (ms: number) => new Promise((ok) => setTimeout(ok, ms));
+  const [twigo, bob] = [await open('Twigo'), await open('Bob')];
+  await wait(100);
+  const welcome = (c: { got: TownServerMessage[] }) => c.got.find((m): m is Extract<TownServerMessage, { t: 'welcome' }> => m.t === 'welcome')!;
+  assert.deepEqual([welcome(twigo).gm, welcome(bob).gm], [true, undefined]);
+  twigo.ws.send(JSON.stringify({ t: 'say', text: 'Event at the plaza in 5!', gm: true }));
+  bob.ws.send(JSON.stringify({ t: 'say', text: 'me too', gm: true }));
+  await wait(150);
+  const said = (c: { got: TownServerMessage[] }) => c.got.filter((m): m is Extract<TownServerMessage, { t: 'say' }> => m.t === 'say').map((m) => [m.text, m.gm ?? false, m.megaphone ?? false]);
+  for (const c of [twigo, bob]) assert.deepEqual(said(c), [['Event at the plaza in 5!', true, false]]);
+  assert.deepEqual(bob.got.filter((m) => m.t === 'say-refused'), [{ t: 'say-refused', reason: 'gm' }]);
+  assert.deepEqual(toDiscord, [['Event at the plaza in 5!', false, true]]);
+  // Kept for arrivals with its flag.
+  const cy = await open('Cy');
+  await wait(100);
+  assert.deepEqual(welcome(cy).recent.map((l) => [l.text, l.gm]), [['Event at the plaza in 5!', true]]);
+  for (const c of [twigo, bob, cy]) c.ws.close();
+  await new Promise((ok) => server.close(ok));
+});

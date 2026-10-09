@@ -1,13 +1,15 @@
 import type { ChatItemLink, Item } from '@mikazuki/shared';
 import { playSound } from '../audio/sound';
 
-export type ChatChannel = 'general' | 'megaphone' | 'party';
+export type ChatChannel = 'general' | 'megaphone' | 'party' | 'gm';
 const CHANNELS: Record<ChatChannel, { tag: string; hint: string; placeholder: string; key: string }> = {
   general: { tag: 'General', hint: 'General chat (/m for the megaphone, /p for your party)', placeholder: 'Press Enter to chat', key: 'g' },
   megaphone: { tag: 'Megaphone', hint: 'Megaphone: uses one from your bag and runs across everyone’s screen (/g for general)', placeholder: 'Say it to the whole town', key: 'm' },
   party: { tag: 'Party', hint: 'Party chat: only your party sees it (/g for general)', placeholder: 'Say it to your party', key: 'p' },
+  gm: { tag: 'GM', hint: 'Game Master: gold, across everyone’s screen and in Discord, free (/g for general)', placeholder: 'Say it as the Game Master', key: 'gm' },
 };
-const NEXT: Record<ChatChannel, ChatChannel> = { general: 'megaphone', megaphone: 'party', party: 'general' };
+/** The channel tag's order when clicked (the GM channel only for Game Masters). */
+const ORDER: ChatChannel[] = ['general', 'megaphone', 'party', 'gm'];
 
 // 💬 The town's chat box (bottom left): one see-through box with the last messages and names (Discord's mark for
 // people chatting from the linked Discord channel) and the input under them. Enter opens the input, Enter sends (and keeps it open), an empty Enter or Esc closes it. Messages go to everyone in
@@ -16,7 +18,8 @@ const NEXT: Record<ChatChannel, ChatChannel> = { general: 'megaphone', megaphone
 // Three channels: General (white), Megaphone (sky blue: uses a megaphone from the bag and runs across everyone's
 // screen) and Party (pink: your party only, wherever they are; net/party.ts). `/m`, `/g` or `/p message` say it there
 // and stay on that channel; `/m`, `/g` or `/p` alone just switch, and the tag before the input shows (and switches,
-// General → Megaphone → Party) which one you're on.
+// General → Megaphone → Party) which one you're on. Game Masters (the server says so in `welcome`) have a fourth, GM
+// (gold, `/gm`): free, across everyone's screen like a megaphone, with a GM tag in the log.
 // Items: Alt+click one in your bag or equipment panel (the 'mk-chat-item' event) writes "[its name]" into the input; the
 // line goes with its uid and the server checks it's yours. In the log a shown item is its name in its rarity's colour,
 // and a click on it opens its tooltip (`showItem`, set by the town).
@@ -59,6 +62,8 @@ export class ChatBox {
   /** The channel tag before the input: General, Megaphone or Party (click to switch). */
   private readonly channel: HTMLButtonElement;
   private current: ChatChannel = 'general';
+  /** A Game Master: the GM channel is there. */
+  private gmOn = false;
   private readonly log: HTMLElement;
   private readonly input: HTMLInputElement;
   private idleTimer: ReturnType<typeof setTimeout> | undefined;
@@ -91,7 +96,8 @@ export class ChatBox {
     this.channel.className = 'ch-channel';
     this.channel.type = 'button';
     this.channel.addEventListener('click', () => {
-      this.setChannel(NEXT[this.current]);
+      const order = ORDER.filter((c) => c !== 'gm' || this.gmOn);
+      this.setChannel(order[(order.indexOf(this.current) + 1) % order.length]);
       this.input.focus();
     });
     this.setChannel('general');
@@ -131,8 +137,9 @@ export class ChatBox {
         this.input.value = '';
         // Sending keeps the chat open for the next message (so its letters never walk you); an empty Enter closes it.
         if (!text) return this.input.blur();
-        // /m, /g and /p pick the channel (and stay on it); alone they only switch.
-        const pick = /^\/([mgp])(?:\s+|$)/i.exec(text);
+        // /m, /g, /p (and a GM's /gm) pick the channel (and stay on it); alone they only switch.
+        const pick = /^\/(gm|[mgp])(?:\s+|$)/i.exec(text);
+        if (pick?.[1].toLowerCase() === 'gm' && !this.gmOn) return this.notice('Only Game Masters can use /gm.');
         if (pick) this.setChannel((Object.keys(CHANNELS) as ChatChannel[]).find((c) => CHANNELS[c].key === pick[1].toLowerCase())!);
         const said = pick ? text.slice(pick[0].length).trim() : text;
         if (!said) return;
@@ -178,7 +185,14 @@ export class ChatBox {
     this.channel.setAttribute('aria-label', `Channel: ${c.tag}. Switch`);
     this.root.classList.toggle('ch-mega-mode', channel === 'megaphone');
     this.root.classList.toggle('ch-party-mode', channel === 'party');
+    this.root.classList.toggle('ch-gm-mode', channel === 'gm');
     this.input.placeholder = c.placeholder;
+  }
+
+  /** Whether you're a Game Master (the server's `welcome`): the GM channel comes and goes with it. */
+  setGm(on: boolean): void {
+    this.gmOn = on;
+    if (!on && this.current === 'gm') this.setChannel('general');
   }
 
   /** Someone's name in the log was clicked: their town id when the line has it (else just the name), and the name
@@ -215,16 +229,19 @@ export class ChatBox {
 
   /** A message in the log (from Discord: with Discord's mark before the name; through a megaphone: sky blue; to the
    *  party: pink, after a "Party" tag). `id`: the speaker's town id. */
-  add(name: string, text: string, from: 'me' | 'town' | 'discord' = 'town', id?: string, megaphone: boolean | 'party' = false, links: ChatItemLink[] = []): void {
+  add(name: string, text: string, from: 'me' | 'town' | 'discord' = 'town', id?: string, megaphone: boolean | 'party' | 'gm' = false, links: ChatItemLink[] = []): void {
     const party = megaphone === 'party';
+    const gm = megaphone === 'gm';
     if (!party) {
       this.heard.push(heardKey(name, text, from === 'discord'));
       if (this.heard.length > HEARD) this.heard.shift();
     }
     const line = document.createElement('div');
-    line.className = party ? 'ch-line ch-party' : megaphone ? 'ch-line ch-mega' : 'ch-line';
+    line.className = party ? 'ch-line ch-party' : gm ? 'ch-line ch-gm' : megaphone ? 'ch-line ch-mega' : 'ch-line';
     if (megaphone === true) line.title = 'Megaphone';
+    if (gm) line.title = 'Game Master';
     if (party) line.append(Object.assign(document.createElement('span'), { className: 'ch-party-tag', textContent: 'Party' }));
+    if (gm) line.append(Object.assign(document.createElement('span'), { className: 'ch-party-tag ch-gm-tag', textContent: 'GM' }));
     if (from === 'discord') line.append(discordMark());
     const badge = from !== 'discord' ? this.badgeFor?.(from, id) : null;
     if (badge) {
@@ -310,7 +327,7 @@ export class ChatBox {
   /** The conversation so far (as the server remembers it), replacing what's in the log. */
   /** The server's recent lines as you arrive. After a reconnect (`more`, e.g. the bot restarted) what's shown stays and
    *  only lines not shown yet are added. */
-  history(lines: { name: string; text: string; discord?: boolean; megaphone?: boolean; links?: ChatItemLink[] }[], myName: string | null, more = false): void {
+  history(lines: { name: string; text: string; discord?: boolean; megaphone?: boolean; gm?: boolean; links?: ChatItemLink[] }[], myName: string | null, more = false): void {
     if (!more) {
       this.log.replaceChildren();
       this.heard.length = 0;
@@ -324,7 +341,7 @@ export class ChatBox {
         shown.set(k, n - 1);
         continue;
       }
-      this.add(l.name, l.text, l.discord ? 'discord' : l.name === myName ? 'me' : 'town', undefined, l.megaphone, l.links);
+      this.add(l.name, l.text, l.discord ? 'discord' : l.name === myName ? 'me' : 'town', undefined, l.gm ? 'gm' : l.megaphone, l.links);
     }
   }
 

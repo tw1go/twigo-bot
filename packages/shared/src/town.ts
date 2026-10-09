@@ -119,8 +119,9 @@ export type TownClientMessage =
   | { t: 'sit'; col: number; row: number; dir: TownDir }
   | { t: 'stand' }
   /** Say something (1–120 characters after tidying; a few at once, then about one every 2 s). */
-  /** `megaphone`: uses one of the sender's megaphones; the line runs across everyone's screen. */
-  | { t: 'say'; text: string; megaphone?: boolean; /** To your party only (`/p` in the chat; not to Discord). */ party?: boolean;
+  /** `megaphone`: uses one of the sender's megaphones; the line runs across everyone's screen. `gm`: a Game Master's
+   *  (`/gm`; GMs only, free): gold, across everyone's screen too. */
+  | { t: 'say'; text: string; megaphone?: boolean; gm?: boolean; /** To your party only (`/p` in the chat; not to Discord). */ party?: boolean;
       /** Items shown in it (their uids, at most 3; each written in the text as "[its name]"). */ links?: string[] }
   /** An emote over your head (one of TOWN_EMOTES). */
   | { t: 'emote'; emote: TownEmote }
@@ -244,6 +245,8 @@ export interface TownChatLine {
   discord?: boolean;
   /** Said through a megaphone. */
   megaphone?: boolean;
+  /** Said by a Game Master on the GM channel. */
+  gm?: boolean;
 }
 
 /** A line in the town's system feed: something that happened around the server (a dig, a bet). */
@@ -329,6 +332,8 @@ export interface InspectStats {
 export type TownServerMessage =
   /** `spawn`: where you arrive (a free tile near the town's spawn point), unless you're already somewhere (a reconnect). */
   | { t: 'welcome'; you: string; players: TownPlayer[]; recent: TownChatLine[]; system: TownSystemLine[]; spawn: [number, number];
+      /** You're a Game Master: the chat's GM channel is yours. */
+      gm?: boolean;
       /** The owner's latest notice, while it's still current (30 minutes). */
       notice?: TownAnnouncement }
   | { t: 'join'; player: TownPlayer }
@@ -342,7 +347,7 @@ export type TownServerMessage =
   /** That bench is taken (followed by a snap back to where you stood). */
   | { t: 'seat-taken' }
   /** Someone said something (you too: your own words come back this way). */
-  | { t: 'say'; id: string; text: string; megaphone?: boolean; /** The speaker's nickname (they may be in another room). */ name?: string; links?: ChatItemLink[] }
+  | { t: 'say'; id: string; text: string; megaphone?: boolean; gm?: boolean; /** The speaker's nickname (they may be in another room). */ name?: string; links?: ChatItemLink[] }
   /** A banner for everyone in town. */
   | { t: 'announce'; announcement: TownAnnouncement }
   /** Something happened around the server (the system feed). */
@@ -493,7 +498,7 @@ export type TownServerMessage =
   | { t: 'say-discord'; name: string; text: string }
   /** Your message wasn't sent: too fast, empty / too long once tidied, or you're muted (until when, ms). */
   /** 'megaphone': they have none (bought in the shop). */
-  | { t: 'say-refused'; reason: 'slow' | 'invalid' | 'muted' | 'megaphone' | 'party'; until?: number }
+  | { t: 'say-refused'; reason: 'slow' | 'invalid' | 'muted' | 'megaphone' | 'party' | 'gm'; until?: number }
   | ArenaServerMessage;
 
 /** Staying in the web town pays (bot web/town-stay.ts): a Kowen to claim every `every` minutes in town (`minutes`

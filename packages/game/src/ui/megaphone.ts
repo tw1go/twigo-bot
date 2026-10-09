@@ -10,7 +10,8 @@ const PER_CHAR_MS = 40; // a long message stays a little longer…
 const MAX_MS = 9000; // …up to this
 const FADE_MS = 300;
 
-type Shout = { name: string; text: string };
+/** A megaphone's (sky blue, the megaphone's art) or a Game Master's (gold, a GM badge). */
+type Shout = { name: string; text: string; gm: boolean };
 
 export class MegaphoneBanner {
   private readonly root = el('div');
@@ -25,8 +26,8 @@ export class MegaphoneBanner {
     document.body.append(this.root);
   }
 
-  show(name: string, text: string): void {
-    this.queue.push({ name, text });
+  show(name: string, text: string, gm = false): void {
+    this.queue.push({ name, text, gm });
     if (!this.running) this.next();
   }
 
@@ -37,9 +38,10 @@ export class MegaphoneBanner {
       this.root.hidden = true;
       return;
     }
-    const line = el('div', 'mg-line');
+    const line = el('div', `mg-line${s.gm ? ' mg-gm' : ''}`);
     let mark: HTMLElement;
-    if (this.icon) {
+    if (s.gm) mark = el('span', 'mg-gm-badge', 'GM');
+    else if (this.icon) {
       mark = el('img', 'mg-icon') as HTMLImageElement;
       (mark as HTMLImageElement).src = this.icon;
       (mark as HTMLImageElement).alt = '';

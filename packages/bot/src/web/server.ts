@@ -43,7 +43,7 @@ import { adventureOf, combatOf, fighterOf, forgeFor, dropItemFor, killFor, kitOf
 import { renameWithCard } from '../items/rename-card.js';
 import { changeClassWithTicket } from '../items/class-ticket.js';
 import { LAUNCH_REWARD, isPreregistered, launched, preregCount, preregister } from '../prereg/prereg.js';
-import { callback, clearSessionCookie, endSessions, isMember, login, loginEnabled, logout, sessionUser } from './auth.js';
+import { callback, clearSessionCookie, endSessions, isCmsUser, isMember, login, loginEnabled, logout, sessionUser } from './auth.js';
 import { roll } from './finds.js';
 import { type CmsDeps, cms } from './cms.js';
 
@@ -872,12 +872,13 @@ export function startWebServer(client: Client): void {
 
   // The live town (/ws): logged-in members who've made a character, from the game's own page.
   try {
-    let toDiscord: (userId: string, nickname: string, text: string, megaphone: boolean) => void = () => {};
+    let toDiscord: (userId: string, nickname: string, text: string, megaphone: boolean, gm?: boolean) => void = () => {};
     refundHeldBets(); // an arena match the bot didn't finish: both get their stake back
     const slumsMap = loadTownMap('slums'); // the Slums
     town = attachTown(server, {
       arenaBets: arenaBets(),
-      onSay: (userId, nickname, text, megaphone) => toDiscord(userId, nickname, text, megaphone),
+      onSay: (userId, nickname, text, megaphone, gm) => toDiscord(userId, nickname, text, megaphone, gm),
+      gm: isCmsUser, // Game Masters: the gifter and CMS_USER_IDS
       megaphone: useMegaphone,
       moderation: { mutedUntil, kickedUntil, filter: filterText },
       memory: townMemory(),
