@@ -15,6 +15,7 @@ import {
   fragmentsPerWhetstone,
   gearTier,
   isGearDef,
+  newItem,
   lineText,
   repairRefusal,
   statLabel,
@@ -551,6 +552,57 @@ export function confirmDisassemble(item: Item): Promise<boolean> {
     document.addEventListener('keydown', key, true);
     row.append(yes, no);
     box.append(title, el('div', 'fg-confirm-sub', 'You get back:'), list, ...warns, row);
+    back.append(box);
+    document.body.append(back);
+    yes.focus();
+  });
+}
+
+/** The Combine box: the fragments going in (their icon ×how many) » the whetstones they make (icon ×how many), and any
+ *  left over; Combine or Cancel (just OK while there aren't enough). Resolves true if confirmed. */
+export function confirmCombine(item: Item): Promise<boolean> {
+  return new Promise((resolve) => {
+    const D = itemData();
+    const def = anyDef(item.defId);
+    if (!D || !def || isGearDef(def)) return resolve(false);
+    const per = fragmentsPerWhetstone(D.stats);
+    const stone = toolFor(D, 'whetstone', def.tier ?? null);
+    const have = countOf(adventure()?.bag ?? [], item.defId);
+    const n = Math.floor(have / per);
+    const back = el('div', 'fg-confirm-back');
+    const box = el('div', 'fg-confirm');
+    box.setAttribute('role', 'alertdialog');
+    const side = (it: Item, count: number, name: string) => {
+      const s = el('div', 'fg-combine-side');
+      s.append(itemPicture({ ...it, count: 1 }, 'showcase', 2), el('b', 'fg-combine-n', `×${count.toLocaleString()}`), el('span', 'fg-combine-name', name));
+      return s;
+    };
+    const flow = el('div', `fg-combine${n ? '' : ' fg-combine-short'}`);
+    flow.append(side(item, n ? n * per : have, def.name), el('span', 'fg-combine-arrow', '»»»'));
+    if (stone) flow.append(side(newItem(D.stats, stone, 'combine-preview', Math.max(1, n)), n, stone.name));
+    const notes: HTMLElement[] = [];
+    if (!n) notes.push(el('div', 'fg-warn', `It takes ${per} fragments to make a ${stone?.name ?? 'whetstone'}: you have ${have}.`));
+    else if (have - n * per) notes.push(el('div', 'fg-confirm-sub', `${have - n * per} fragment${have - n * per === 1 ? '' : 's'} left over.`));
+    const row = el('div', 'fg-actions');
+    const yes = el('button', 'fg-go fg-ready', n ? 'Combine' : 'OK');
+    const no = el('button', 'fg-go', 'Cancel');
+    const done = (ok: boolean) => {
+      back.remove();
+      document.removeEventListener('keydown', key, true);
+      resolve(ok);
+    };
+    const key = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        done(false);
+      }
+    };
+    yes.addEventListener('click', () => done(n > 0));
+    no.addEventListener('click', () => done(false));
+    back.addEventListener('click', (e) => e.target === back && done(false));
+    document.addEventListener('keydown', key, true);
+    row.append(yes, ...(n ? [no] : []));
+    box.append(el('div', 'fg-confirm-title', 'Combine fragments?'), flow, ...notes, row);
     back.append(box);
     document.body.append(back);
     yes.focus();

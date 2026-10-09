@@ -517,7 +517,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   repair / embed); gear goes in by drag (`application/x-mk-equipment`, worn: `x-mk-worn`) or a click while it's open
   (bag and equipment panel); tools drag as `x-mk-tool`; refusals bounce (shake + toast). Enhance: stone slot, − / +,
   "Whetstones n / N", odds, "Luck +N%", "ATK 48 → 49", a break warning, the item stays in (+ refills the stones once filled).
-  The bag's right-click menu: Wear / Disassemble (`confirmDisassemble`: what comes back, agimats destroyed) and Combine.
+  The bag's right-click menu: Wear / Disassemble (`confirmDisassemble`: what comes back, agimats destroyed) and Combine (`confirmCombine`: the fragment's icon ×how many go in »»» the whetstone's icon ×how many come out, any left over; just OK under ten).
   Effects manifest fx `fx-enhance-success|fail|break`, `fx-agimat-embed`, `fx-disassemble` (fx/progress, DOM strips via
   `setForgeArt`); sounds combat-enhance-success/-fail/-break, combat-repair, combat-agimat-embed, combat-disassemble.
   Dev: ?give= may repeat; a stack's third part is how many, an agimat's fourth its level (`?give=agimat-critdmg::2:20`).

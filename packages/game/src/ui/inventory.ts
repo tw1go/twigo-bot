@@ -11,7 +11,7 @@ import { adventure, anyDef, cantWear, itemData, onAdventure } from '../net/adven
 import { itemPicture, itemTipFor, nameOf, rarityOf } from './item-tip';
 import { potionCooldownKey } from './hotbar';
 import { showRename } from './rename';
-import { type ForgePopup, confirmDisassemble, forgeFromBag, mountForge } from './forge';
+import { type ForgePopup, confirmCombine, confirmDisassemble, forgeFromBag, mountForge } from './forge';
 import { fragmentsPerWhetstone } from '@mikazuki/shared';
 import { inTrade, tradeBlocked, tradeDrag, tradePut, trading } from './trade';
 
@@ -486,9 +486,9 @@ export class Inventory {
     this.render();
   }
 
-  /** Every ten fragments of a stack's kind into a whetstone. */
+  /** Every ten fragments of a stack's kind into a whetstone, once they've said yes in the Combine box. */
   private async combine(it: Item, cell: HTMLElement | null): Promise<void> {
-    if (this.busy) return;
+    if (this.busy || !(await confirmCombine(it))) return;
     this.busy = true;
     const r = await forgeFromBag({ action: 'combine', item: it.uid }, cell);
     this.busy = false;
