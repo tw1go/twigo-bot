@@ -745,7 +745,9 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   "Only on battle maps."), `net/buffs.ts` (yours), the stats box's buff part green, Calm Mind on your auto-cast cooldowns.
 - Buff tray (`ui/buff-tray.ts`, the HUD's `.th-buffs` slot under News/Settings): the server's `buffs`: a row each with icon,
   name, what it gives (`buffStatLines`), time left (Jersey 10; amber under 30 s, the icon fading under 10 s, gone at 0;
-  a stance "On"); past four (and on phones) icons with their time only, the rest on hover; one outdone on every stat it
+  a stance "On"); past four (and on phones) icons with their time only, the rest in a card on hover or tap (`.bt-tip`, name, stats,
+  who outdoes it, time left); right-click one to take it off (`buff-off` → `Buffs.remove`, your stats and most HP follow;
+  tested); one outdone on every stat it
   gives is faded. Dev `?buffs=demo` (pretend ones instead) and `__town.buffs(list?)`. classes.json buffs carry `effect`,
   `minutes`, `permanent` from the guide's class tables.
 - Mobility in town (`world/mobility.ts`): the hotbar's Dash (3 tiles, 2 s) and the class's Lv 8 move: Step Back (2 back,

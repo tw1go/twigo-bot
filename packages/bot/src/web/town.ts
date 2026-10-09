@@ -747,6 +747,10 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         killed(c.room, r.kills);
         return;
       }
+      case 'buff-off':
+        // A buff taken off yourself (right-click in the tray): gone, and your stats and most HP with it.
+        if (buffs && typeof m.buff === 'string' && buffs.remove(c.userId, m.buff)) buffsChanged(c);
+        return;
       case 'buff': {
         // A buff (town-buffs.ts decides): its MP spent, everyone in the room sees the cast; who it reached gets it (their
         // tray, HP's most), or a heal (Soothing Touch) for the caster's Power × its share, green numbers for the room.

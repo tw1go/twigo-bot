@@ -279,3 +279,16 @@ test('the player you\'ve picked gets it too, in your party or not: a one-ally bu
   const solo = new Buffs(stats).cast(caster('greatstick'), 'Hearty Cheer', [], near('stranger', 1), 0);
   assert.ok(solo.ok && solo.to.join() === 'me,stranger');
 });
+
+test('a buff can be taken off by its wearer (right-click in the tray): that one goes, the rest stay; a stance too', () => {
+  const b = new Buffs(stats);
+  b.cast(caster('greatstick'), 'Hearty Cheer', [], undefined, 0);
+  b.cast(caster('greatstick'), 'Battle Roar', [], undefined, 0);
+  assert.equal(b.remove('me', 'Hearty Cheer'), true);
+  assert.deepEqual(b.list('me').map((x) => x.name), ['Battle Roar']);
+  assert.equal(b.remove('me', 'Hearty Cheer'), false, 'not on any more');
+  const s = new Buffs(stats);
+  s.cast(caster('stick'), 'Keen Stance', [], undefined, 0);
+  assert.equal(s.remove('me', 'Keen Stance'), true);
+  assert.equal(s.has('me', 'Keen Stance'), false);
+});

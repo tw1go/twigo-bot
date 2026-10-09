@@ -143,6 +143,8 @@ export type TownClientMessage =
   /** Cast one of your class's buffs (stats.json skills.buffs, by name; battle maps only). `target`: the party member's
    *  town id a one-ally buff should go to (the selected player), if in range. */
   | { t: 'buff'; buff: string; target?: string }
+  /** Takes a buff off yourself (right-click it in the buff tray). */
+  | { t: 'buff-off'; buff: string }
   /** The Arena's jack en poy against another player (bot web/town-arena.ts): join the queue (with an optional bet in
    *  Kowens), leave it, pick a hand for the open round, ask for a rematch or accept one (with a bet), decline one, leave
    *  the match. The stake is the smaller of the two bets. */

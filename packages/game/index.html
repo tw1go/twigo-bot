@@ -249,6 +249,13 @@
       #town-hud .bt-fading .bt-icon { opacity: 0.5; }
       #town-hud .bt-weaker { opacity: 0.55; }
       /* Many at once: a wrapping row of icons, each with its time under it. */
+      .bt-tip { position: fixed; z-index: 7; min-width: 130px; max-width: 220px; padding: 6px 9px; border: 2px solid #7C2AE8; background: #111827; color: #E6E9F2; font: calc(13px * var(--text))/1.35 var(--ui-font); pointer-events: none; } /* an icon-only buff's card */
+      .bt-tip[hidden] { display: none; }
+      .bt-tip-name { display: block; color: #fff; }
+      .bt-tip-stat { color: #A3E635; }
+      .bt-tip-weaker { color: #F8BF27; font-size: calc(12px * var(--text)); }
+      .bt-tip-time { margin-top: 2px; color: #A9B1D6; font-family: 'Mk Numbers', var(--ui-font); }
+      .bt-tip-key { margin-top: 3px; color: #7A8099; font-size: calc(11px * var(--text)); }
       #town-hud .buff-tray.bt-compact { flex-direction: row; flex-wrap: wrap; justify-content: flex-end; max-width: 236px; }
       #town-hud .bt-compact .bt-buff { grid-template-columns: 32px; padding: 3px; gap: 2px; justify-items: center; }
       #town-hud .bt-compact .bt-text { display: none; }

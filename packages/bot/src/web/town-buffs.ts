@@ -142,6 +142,11 @@ export class Buffs {
     return changed;
   }
 
+  /** A buff taken off by its wearer (a right-click in the tray; a stance too). Whether it was on. */
+  remove(member: string, name: string): boolean {
+    return this.keep(member, (b) => b.name !== name);
+  }
+
   /** Leaving the battle map, or knocked out: their timed buffs end (stances stay). Whether any did. */
   endTimed(member: string): boolean {
     return this.keep(member, (b) => b.endsAt === null);

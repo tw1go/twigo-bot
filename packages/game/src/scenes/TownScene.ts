@@ -515,6 +515,12 @@ export class TownScene extends Phaser.Scene {
     const tray = new BuffTray({
       icon: (cls, name) => this.skillIcon(cls, name),
       effect: (cls, name) => classInfo(cls)?.buffs?.find((b) => b.name === name)?.effect ?? null,
+      // Right-click: off you (the server sends your buffs again).
+      remove: (name) => {
+        if (!this.link?.send({ t: 'buff-off', buff: name })) return;
+        playSound('click');
+        toast(`${name} removed.`, 1600);
+      },
     });
     this.buffTray = tray;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => tray.destroy());
