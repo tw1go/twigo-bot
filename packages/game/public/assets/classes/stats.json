@@ -1218,6 +1218,8 @@
       }
     },
     "sharedCooldownSec": 10,
+    "separateCooldowns": true,
+    "separateCooldownsNote": "Repo addition (Mac, 10 Oct 2026): HP and MP Potions each have their own cooldown of sharedCooldownSec (an HP Potion never holds back an MP one); false = one shared",
     "mobDropChance": 0.05
   },
   "regen": {

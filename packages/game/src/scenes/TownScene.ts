@@ -98,11 +98,11 @@ import { myBuffStats, myBuffs, setMyBuffs } from '../net/buffs';
 import { type Bench, type Building, WorldObjects, characterDepth } from '../world/objects';
 import { type SoundTapped, enterArenaSound, enterCasinoSound, hearFrom, leaveCasinoSound, loadSoundSets, playFrom, playSet, playSound, skillSet, soundSets, startTownSound, tapSounds } from '../audio/sound';
 import type { AdventureData } from '../net/adventure';
-import { Hotbar, potionCooldownKey } from '../ui/hotbar';
+import { Hotbar } from '../ui/hotbar';
 import { mountClassSwitch } from '../ui/class-switch';
 import { MOVES, type MoveKind, isMoveKind, moveTiles, playMove } from '../world/mobility';
 import { changeClass, devItemsReady, devQuestKill, questReport, setQuestCounts, devSwitchClass, adventure, adventureData, anyDef, chooseClass, classInfo, initAdventure, itemData, itemDef, loadAdventureData, onAdventure, questDef, questFor, questTalk, setItems, setProgress, skillView, skillViews, buffViews } from '../net/adventure';
-import { dropRefusal, nameColour, type Item, type QuestReward, type TownItems, LOOT_REACH, auraFor, classBuffs, classSkills, countOf, isGearDef, itemAura, itemStats, newItem, tradeRules } from '@mikazuki/shared';
+import { type StatsData, potionCooldownGroup, dropRefusal, nameColour, type Item, type QuestReward, type TownItems, LOOT_REACH, auraFor, classBuffs, classSkills, countOf, isGearDef, itemAura, itemStats, newItem, tradeRules } from '@mikazuki/shared';
 import type { ClassArt } from '../assets/types';
 import { drawRested, loadImages, poseFiles, restFiles } from '../characters/kit-art';
 import { holdQuestBanners, mountQuests } from '../ui/quests';
@@ -187,6 +187,9 @@ const benchApproach = (b: Bench): Tile =>
   ({ se: { col: b.col + 1, row: b.row }, sw: { col: b.col, row: b.row + 1 }, ne: { col: b.col, row: b.row - 1 }, nw: { col: b.col - 1, row: b.row } })[
     b.faces as 'se' | 'sw' | 'ne' | 'nw'
   ] ?? { col: b.col, row: b.row + 1 };
+
+/** The hotbar's cooldown key for an HP or MP Potion: its kind's, or the one they share (stats.json potions). */
+const potionKeyOf = (S: StatsData, heals: 'hp' | 'mp') => `potion-${potionCooldownGroup(S, heals)}`;
 
 export class TownScene extends Phaser.Scene {
   private M!: Manifest;
@@ -777,6 +780,12 @@ export class TownScene extends Phaser.Scene {
       const inv = this.M.ui.inventory;
       const url = (file: string) => `${import.meta.env.BASE_URL}assets/${file}`;
       const hotbar = new Hotbar({
+        // HP and MP Potions: each kind's own cooldown (or the one they share: stats.json potions.separateCooldowns).
+        potionKey: (id) => {
+          const def = anyDef(id);
+          const S = adventureData()?.stats;
+          return S && !isGearDef(def) && def?.kind === 'potion' && def.heals ? potionKeyOf(S, def.heals) : null;
+        },
         slot: inv?.slot && inv.selected && inv.nineSlice ? { url: url(inv.slot), picked: url(inv.selected), slice: inv.nineSlice } : null,
         badge: (cls) => (icons ? url(icons.file.replace('{class}', cls)) : ''),
         onSkill: (name) => this.mobility(name) ?? this.castBuff(name) ?? this.fight(name),
@@ -1042,18 +1051,20 @@ export class TownScene extends Phaser.Scene {
       const d = anyDef(i.defId);
       return !isGearDef(d) && d?.kind === 'potion' && d.heals === 'mp' && i.count > 0;
     });
-    if (potion && v.mp < v.maxMp && now >= this.potionReady && now >= this.autoPotionAt) {
+    const S = adventureData()?.stats;
+    const ready = S ? (this.potionReady.get(potionKeyOf(S, 'mp')) ?? 0) : 0;
+    if (potion && v.mp < v.maxMp && now >= ready && now >= this.autoPotionAt) {
       this.autoPotionAt = now + 1000; // (once a second at most, while the server answers)
       this.link?.send({ t: 'potion', item: potion.defId });
       return;
     }
     if (v.mp < need && (say || now >= this.noMpToldAt)) {
       this.noMpToldAt = now + 4000;
-      toast(potion ? 'Not enough MP. Your potions are cooling down.' : 'Not enough MP.', 1600, 'bad');
+      toast(potion ? 'Not enough MP. Your MP Potions are cooling down.' : 'Not enough MP.', 1600, 'bad');
     }
   }
-  /** When the potions' shared cooldown is over (scene time), as the server last said. */
-  private potionReady = 0;
+  /** When each potion cooldown is over (scene time, by potionKeyOf), as the server last said. */
+  private readonly potionReady = new Map<string, number>();
   private autoPotionAt = 0;
   private noMpToldAt = 0;
 
@@ -1845,9 +1856,11 @@ export class TownScene extends Phaser.Scene {
         ch?.hitNumber(`+${m.amount}`, m.id === myId, m.heals === 'hp' ? '#4ADE80' : '#60A5FA');
         if (m.id === myId) {
           playSound('combat-potion');
-          if (m.cooldown) {
-            this.hotbar?.cooldown(potionCooldownKey, m.cooldown / 1000);
-            this.potionReady = this.time.now + m.cooldown;
+          const S = adventureData()?.stats;
+          if (m.cooldown && S) {
+            const key = potionKeyOf(S, m.heals);
+            this.hotbar?.cooldown(key, m.cooldown / 1000);
+            this.potionReady.set(key, this.time.now + m.cooldown);
           }
         }
         return;
@@ -1902,11 +1915,13 @@ export class TownScene extends Phaser.Scene {
       }
       if (m.t === 'potion-refused') {
         playSound('error');
-        if (m.reason === 'cooldown' && m.ms) {
-          this.hotbar?.cooldown(potionCooldownKey, m.ms / 1000);
-          this.potionReady = this.time.now + m.ms;
+        const S = adventureData()?.stats;
+        if (m.reason === 'cooldown' && m.ms && S && m.heals) {
+          const key = potionKeyOf(S, m.heals);
+          this.hotbar?.cooldown(key, m.ms / 1000);
+          this.potionReady.set(key, this.time.now + m.ms);
         }
-        const why = { cooldown: 'Your potions are cooling down.', none: 'None left.', full: "You're already full.", here: 'HP and MP Potions work in the Slums.' }[m.reason];
+        const why = { cooldown: m.heals ? `Your ${m.heals.toUpperCase()} Potions are cooling down.` : 'Your potions are cooling down.', none: 'None left.', full: "You're already full.", here: 'HP and MP Potions work in the Slums.' }[m.reason];
         return toast(why, 1800, 'bad');
       }
       // Your level, XP and points (a kill's XP, dev's ?xp=): the HUD and everything that shows them follow.

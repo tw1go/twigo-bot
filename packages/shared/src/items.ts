@@ -119,7 +119,7 @@ export interface ItemStats {
   /** onlyIn: agimats that fit only gear of these slots (a repo addition). */
   agimats: { valueAtLevel: Record<string, string | number>; rare: string[]; dropWeight: Record<string, number>; onlyIn?: Record<string, EquipSlot[] | string> };
   currencies: { kusingPerMob: string; kusingPerMobRange?: [number, number]; kowensShop: { whetstone: number; repairKit: number } };
-  potions: { tiers: Record<string, { minLevel: number; hp: number; mp: number; kusing: number }>; sharedCooldownSec: number; mobDropChance: number };
+  potions: { tiers: Record<string, { minLevel: number; hp: number; mp: number; kusing: number }>; sharedCooldownSec: number; separateCooldowns?: boolean; mobDropChance: number };
   inventory: Record<string, unknown> & { slots: number };
   trading: { bindOnWear: string };
   gearTiers: Record<string, unknown>;
@@ -433,6 +433,10 @@ export function sameStack(data: ItemData, a: Item, b: Item): boolean {
   if (a.defId !== b.defId || stackLimit(data.stats, data.defs.get(a.defId)) < 2) return false;
   return a.level === b.level && a.stat === b.stat && (a.lock ?? null) === (b.lock ?? null) && a.bound === b.bound;
 }
+
+/** Which cooldown an HP or MP Potion waits on: its own kind's (stats.json potions.separateCooldowns, a repo addition),
+ *  else the one they share ('all'). Each lasts potions.sharedCooldownSec. */
+export const potionCooldownGroup = (data: StatsData, heals: 'hp' | 'mp'): 'hp' | 'mp' | 'all' => (itemStats(data).potions.separateCooldowns ? heals : 'all');
 
 /** Slots in the combat bag (stats.json inventory.slots). */
 export const bagSlots = (data: StatsData) => itemStats(data).inventory.slots;

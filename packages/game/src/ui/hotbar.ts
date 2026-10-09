@@ -20,7 +20,7 @@ import { buffText } from './buff-text';
 // POST /town/skills), Reset gives every point back (free). Locked skills are greyed with "Unlocks at Lv N" (on the bar
 // too, with a padlock: they can't be used until then). Drag one onto a slot, or click it and then a slot. Potions are
 // dragged in from the bag: HP and MP Potions from the combat bag (onItem uses one: the town asks the server, which
-// keeps their one shared cooldown, shown as a pie on every potion slot; the count you carry in the corner), the
+// keeps their cooldown (each kind its own: stats.json potions.separateCooldowns), shown as a pie on that kind's slots; the count you carry in the corner), the
 // Discord buff potions from the old bag (they're used in Discord). Drag a slot onto another to swap them; drag it off the bar to empty it (right-click leaves it). Per class, saved in this browser (localStorage `mk_hotbar`); a class's first bar has
 // its skills in order. Skills show their icon (manifest ui.skillIcons) where there is one, else their initials over the
 // class badge. Move skills work in town (onSkill: world/mobility.ts) and their slots show the cooldown as a
@@ -28,6 +28,9 @@ import { buffText } from './buff-text';
 // initials over the class badge stand in.
 
 export interface HotbarOptions {
+  /** The cooldown an item on the bar waits on, by its id (HP and MP Potions: their kind's, or the one they share), or
+   *  null: the key it was put on with. */
+  potionKey?: (itemId: string) => string | null;
   /** The bag's slot art (nine-slice), and its selected look. */
   slot: { url: string; picked: string; slice: number } | null;
   /** A class badge (32 px). */
@@ -499,7 +502,7 @@ export class Hotbar {
       for (const row of ['top', 'main', 'util'] as Row[]) {
         this.cells[row].forEach((b, i) => {
           const e = this.layout[row][i];
-          const cd = e?.t === 'skill' ? this.cds.get(e.name) : e?.t === 'item' && e.cooldown ? this.cds.get(e.cooldown) : undefined;
+          const cd = e?.t === 'skill' ? this.cds.get(e.name) : e?.t === 'item' && e.cooldown ? this.cds.get(this.o.potionKey?.(e.id) ?? e.cooldown) : undefined;
           let pie = b.querySelector<HTMLElement>('.hb-cd');
           if (!cd || t >= cd.until) return void pie?.remove();
           if (!pie) {

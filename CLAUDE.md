@@ -505,7 +505,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   viewer (`TownLoot.mine` / `opensIn`), gone after 2 min. Never picked up on its own (not
   walking over it, Kusing neither): only `pick {id?}` within LOOT_REACH (`LootRoom.pickable`: that one, or the nearest you
   may take); full bag → `loot-full`. `items` message (the player's items + `got`). Potions: `potion {item}` → battle maps only,
-  refused when full, one shared cooldown (stats.json potions.sharedCooldownSec) per member, `potion` to the room (heal
+  refused when full, a cooldown of stats.json potions.sharedCooldownSec per member and kind (HP and MP each their own:
+  potions.separateCooldowns, a repo addition; shared `potionCooldownGroup`, the game's `potionKeyOf` / Hotbar `potionKey`; tested), `potion` to the room (heal
   shown), `potion-refused`. Game: `world/loot.ts` (bounces out of the mob: `loot-drop`'s `from` = the kill's tile, each drop an arc from its middle to its tile 70 ms after the one before, a small second hop, the shadow sliding under it; the drop sound as the first lands, LOOT_LAND_MS; the golem's from higher; reduced motion: none; 16 px icon at half size, shadow and bob to match, Kusing amount in white,
   names always over it once landed, in a small font: `nameColour` (Kusing: its amount); half alpha while reserved), click → `pick` (in reach) or walk onto it
   then `pick`; F (keybind 'pickup') or Space (when loot is in reach; else interact) picks the nearest (`LootLayer.nearest`);
@@ -631,7 +632,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   spent once the hit is taken; a `move` without enough isn't passed on; `Vitals.spend`/`hasMp`; `Attacker.moves` = move
   skill levels); the game shows "N MP" in the Skills panel and slot tooltips, auto-cast skips skills it can't pay for, a
   move without MP doesn't go; auto MP Potion (TownScene `lowMp`): under a quarter of your MP, or too little for the skill
-  you're using, an MP Potion from the combat bag is sent as a `potion` when the shared cooldown is ready (once a second at
+  you're using, an MP Potion from the combat bag is sent as a `potion` when the MP Potions' cooldown is ready (once a second at
   most); else "Not enough MP." Skills panel (`#skill-book`): "Skill points: N" + Reset, skills in unlock order with
   icon, name, "Lv N / cap · cooldown", a + while below the cap with points; locked rows greyed "Unlocks at Lv N". Slot
   tooltips "Quick Shot Lv 3 / 10", desc, cooldown, MP cost. The class choice's preview shows "Lv 1 / cap" at your level
@@ -719,7 +720,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   Damage, Mobility and Buffs (classes.json buffs: icon, unlock level, their buff-cast on the stage on hover; not usable
   yet), each with its level and description (see Skills unlock), the hovered one played on the class choice's stage (`TownScene.skillStage`, 1×); drag a
   skill to a slot, or click it then a slot.
-  Potions dragged from the bag (HP/MP Potions from the combat bag: used through the town, shared cooldown); drag between slots swaps, off the bar empties (right-click never does). Per class in localStorage
+  Potions dragged from the bag (HP/MP Potions from the combat bag: used through the town, a cooldown per kind); drag between slots swaps, off the bar empties (right-click never does). Per class in localStorage
   `mk_hotbar` (a class's first bar = its skills in order). Skill icons from manifest ui.skillIcons (`have` lists the ones there are: every class's 7 damage skills and its Lv 8 move; `shared` = one icon for all, Dash); the rest show
   their initials over the class badge. In town the damage skills are dark (grey, dimmed: `usable`); only the move
   skills light up. Where it

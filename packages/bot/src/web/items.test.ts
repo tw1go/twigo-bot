@@ -406,12 +406,12 @@ test('schema v12: every worn and carried training piece becomes an item in the s
   mem.close();
 });
 
-test('over the town\'s socket: a kill drops Kusing (faint for others), nothing picks itself up (not even walking onto it), `pick` takes it within reach; a potion heals, then waits out its shared cooldown', async () => {
+test('over the town\'s socket: a kill drops Kusing (faint for others), nothing picks itself up (not even walking onto it), `pick` takes it within reach; a potion heals, then waits out its kind\'s cooldown (HP and MP each their own)', async () => {
   const map = loadMobMap('slums');
   const room = new MobRoom(map, lcg(16), {}, { shapes: {} }, loadMobKinds());
   const can = room.snapshot(0).find((m) => m.id.startsWith('tin-can-alley:'))!;
   const bags = new Map<string, { equipped: Record<string, never>; bag: Item[]; kusing: number }>();
-  const bagOf = (name: string) => bags.get(name) ?? bags.set(name, { equipped: {}, bag: [newItem(S, thing('low-hp-potion'), uid(), 3)], kusing: 0 }).get(name)!;
+  const bagOf = (name: string) => bags.get(name) ?? bags.set(name, { equipped: {}, bag: [newItem(S, thing('low-hp-potion'), uid(), 3), newItem(S, thing('low-mp-potion'), uid(), 2)], kusing: 0 }).get(name)!;
   let maraLevel = 1;
   const server = createServer();
   const town = attachTown(server, {
@@ -500,8 +500,15 @@ test('over the town\'s socket: a kill drops Kusing (faint for others), nothing p
   const drank = a.got.find((m) => m.t === 'potion') as Extract<TownServerMessage, { t: 'potion' }>;
   assert.deepEqual([drank.heals, drank.amount, drank.cooldown], ['hp', Math.min(150, hurt.maxHp - hurt.hp), 10_000]); // what it restored
   const cd = a.got.find((m) => m.t === 'potion-refused' && m.reason === 'cooldown') as Extract<TownServerMessage, { t: 'potion-refused' }>;
-  assert.ok(cd && (cd.ms ?? 0) > 9000);
+  assert.ok(cd && (cd.ms ?? 0) > 9000 && cd.heals === 'hp');
   assert.equal(bagOf('Mara').bag.find((i) => i.defId === 'low-hp-potion')!.count, 2, 'one used');
+  // An MP Potion right after: its own cooldown (stats.json potions.separateCooldowns), so it goes.
+  if (hurt.mp !== undefined && hurt.maxMp !== undefined && hurt.mp < hurt.maxMp) {
+    a.ws.send(JSON.stringify({ t: 'potion', item: 'low-mp-potion' }));
+    await wait(150);
+    assert.ok(a.got.some((m) => m.t === 'potion' && m.heals === 'mp'), 'the MP Potion isn\'t held back by the HP one');
+    assert.equal(bagOf('Mara').bag.find((i) => i.defId === 'low-mp-potion')!.count, 1);
+  } else assert.fail(`not short of MP to try it: ${JSON.stringify(hurt)}`);
   assert.ok(b.got.some((m) => m.t === 'potion' && m.id === welcome.you), 'Bob sees her heal');
   for (const c of [a, b]) c.ws.close();
   await new Promise((ok) => server.close(ok));

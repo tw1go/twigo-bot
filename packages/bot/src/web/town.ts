@@ -14,7 +14,7 @@ import { type CombatItems, type LootContent, potionOf } from './combat-bag.js';
 import { type Loot, LootRoom, splitKusing } from './town-loot.js';
 import { type HeldOffer, type Trade, Trades, checkOffer } from './trade.js';
 import type { ChatItemLink, CharacterProgress, QuestProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item, TradeEnd, TradeView } from '@mikazuki/shared';
-import { itemName, itemStats, skillMpCost, targetPriority, tradeRules } from '@mikazuki/shared';
+import { itemName, itemStats, potionCooldownGroup, skillMpCost, targetPriority, tradeRules } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
 // messages). The server keeps everyone's tile and checks each step — on the map, not blocked, next to the last
@@ -469,7 +469,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       for (const [room, L] of loots) if (!opts.mobs?.[room]) lootGone(room, L.tick(Date.now()));
     }, 1000).unref?.();
   }
-  /** HP and MP Potions' shared cooldown (ms), and when each member's is over. */
+  /** HP and MP Potions' cooldown (ms), and when each member's is over (by member and kind, or 'all' when shared). */
   const POTION_MS = itemStats(items.stats).potions.sharedCooldownSec * 1000;
   const potionReady = new Map<string, number>();
   /** Their worn items, combat bag and Kusing to them (`got`: what they just picked up). */
@@ -809,19 +809,21 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         if (vitals?.revive(c.userId, Date.now())) respawn(c);
         return;
       case 'potion': {
-        // An HP or MP Potion from their bag: battle maps only, one shared cooldown, never when it'd do nothing.
+        // An HP or MP Potion from their bag: battle maps only, its kind's cooldown (or one shared: potionCooldownGroup),
+        // never when it'd do nothing.
         if (typeof m.item !== 'string' || !opts.items) return;
         const kind = potionOf(items, m.item);
         if (!kind) return;
         const now = Date.now();
         if (!vitals?.get(c.userId) || !battle(c.room)) return send(c, { t: 'potion-refused', reason: 'here' });
-        const ready = potionReady.get(c.userId) ?? 0;
-        if (now < ready) return send(c, { t: 'potion-refused', reason: 'cooldown', ms: ready - now });
+        const cdKey = `${c.userId}:${potionCooldownGroup(items.stats, kind.heals)}`;
+        const ready = potionReady.get(cdKey) ?? 0;
+        if (now < ready) return send(c, { t: 'potion-refused', reason: 'cooldown', ms: ready - now, heals: kind.heals });
         if (vitals.full(c.userId, kind.heals)) return send(c, { t: 'potion-refused', reason: 'full' });
         const used = opts.items.usePotion(c.userId, m.item);
         if (!used) return send(c, { t: 'potion-refused', reason: 'none' });
         const healed = vitals.heal(c.userId, used.heals, used.amount);
-        potionReady.set(c.userId, now + POTION_MS);
+        potionReady.set(cdKey, now + POTION_MS);
         tellItems(c);
         const shownTo: TownServerMessage = { t: 'potion', id: p.id, heals: used.heals, amount: healed };
         others(c, shownTo);
