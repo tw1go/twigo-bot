@@ -2652,11 +2652,9 @@ export class TownScene extends Phaser.Scene {
     }
   }
 
-  /** Off to the other area: a fade, then that page (the town's art is cached, so it's quick). The slums aren't built
-   *  yet: testers hear that, everyone else that only testers may cross. */
+  /** Off to the other area: a fade, then that page (the town's art is cached, so it's quick). The Slums need a login. */
   private travel(to: Gate): void {
-    // The Slums are for testers for now (the server checks too).
-    if (to === 'slums' && !(this.me?.status === 'ok' && this.me.me.tester)) return void toast('Only testers can go into the Slums for now.', 2800);
+    if (to === 'slums' && this.me?.status !== 'ok') return void toast('Log in to go into the Slums.', 2800);
     if (this.travelling) return;
     this.travelling = true;
     playSound('door');

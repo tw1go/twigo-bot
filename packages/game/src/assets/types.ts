@@ -411,8 +411,7 @@ export interface TownMap {
   bridge?: Vec2[];
   /** More bridges, each crossing along `along` (the slums bridge runs along the rows). */
   bridges?: { along: 'col' | 'row'; tiles: Vec2[] }[];
-  /** Walking onto these tiles goes to another area: 'hood' (the neighbourhood), 'town', or 'slums' (testers only, not
-   *  built yet: a note instead). */
+  /** Walking onto these tiles goes to another area: 'hood' (the neighbourhood), 'town' or 'slums'. */
   gates?: Partial<Record<Gate, Vec2[]>>;
   /** Where you appear coming from another area (by where you came from), instead of the spawn point. */
   arrive?: Partial<Record<Gate, Vec2>>;

@@ -141,7 +141,7 @@ export interface TownOptions {
   /** The level a class's movement skill unlocks at (classes.json `mobility`), or null: not one of its moves. A move
    *  before its level, or not theirs, isn't passed on; without it every move goes. */
   moveLevel?: (cls: string | null | undefined, move: TownMove) => number | null;
-  /** Whether a member may join a room (the Slums: testers only); every room when left out. */
+  /** Whether a member may join a room; every room when left out. */
   mayEnter?: (room: string, userId: string) => Promise<boolean>;
   /** Leave upgrades to other paths alone (the game's dev server shares its HTTP server with Vite's own socket). */
   shared?: boolean;

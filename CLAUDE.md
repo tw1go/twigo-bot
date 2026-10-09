@@ -298,8 +298,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
 - South bridge: town.json `bridges` (the south path's end, cols 34–36 over rows 70–71, drawn along the rows by
   `world/bridge.ts`; railings = fence pieces): scenery, the path runs on into the woods (`outskirts.lanes`: path tiles, no
   tree whose crown would hide it). The town's west road runs on west the same way, to the Slums gate.
-- The Slums (testers only: `/me` `tester` from `games/testers.ts`, the bot's `mayEnter` on /ws room 'slums'; dev
-  `&tester=0`): a third area like the neighbourhood (`?area=slums`, `net/hood.ts` areaUrl / resolveArea / cameFrom,
+- The Slums (every member; a guest is told to log in): a third area like the neighbourhood (`?area=slums`, `net/hood.ts` areaUrl / resolveArea / cameFrom,
   BootScene loads maps/slums.json via `slumsTownMap`). Town side: the west road's end, `gates.slums` (col 0, rows 34–36),
   `arrive.slums` [2,35], a "← Slums" sign; back: slums.json `gates.town` on its east edge. The map (256 × 192, from the art
   folder's maps/slums, with its manifest-snippet props, tiles.slums and mobs.tin-can) has raised and low ground:
