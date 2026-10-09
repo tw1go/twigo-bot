@@ -2,11 +2,11 @@ import { type ClassSkill, type StatsData, baseCooldown, skillCooldown, skillMpCo
 import { MOVES, isMoveKind } from '../world/mobility';
 
 // ⏱️ A skill's cooldown (s) at its skill level: a damage skill's base by its unlock level (@mikazuki/shared baseCooldown:
-// 0.8 + 0.15 a level, Lv 1: 1 s … Lv 18: 3.5 s), a move's its own (world/mobility.ts MOVES), 1% less for each skill level
+// stats.json skills.cooldownByUnlock, Lv 1: 1 s … Lv 18: 14 s), a move's its own (world/mobility.ts MOVES), 1% less for each skill level
 // past 1 (skillCooldown, stats.json). The bot enforces the damage skills' (web/town-mobs.ts) by the same functions.
 
 export function cooldownOf(stats: StatsData, skill: ClassSkill, level: number): number {
-  const base = skill.move ? (isMoveKind(skill.move) ? MOVES[skill.move].cooldown : 0) : baseCooldown(skill.unlock);
+  const base = skill.move ? (isMoveKind(skill.move) ? MOVES[skill.move].cooldown : 0) : baseCooldown(stats, skill.unlock);
   return skillCooldown(stats, base, level);
 }
 

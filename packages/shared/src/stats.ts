@@ -66,6 +66,8 @@ export interface StatsData {
     /** MP at skill Lv 1 (the art folder's stats.json): damage skills by tier per class, Dash and the Lv 8 move per class
      *  (buffs too, for later). */
     mpCost?: { damageByTier: Record<string, number[]>; dash: Record<string, number>; mobilityLv8: Record<string, number>; buffs?: Record<string, Record<string, number>> };
+    /** A damage skill's cooldown (s) at skill Lv 1, by its unlock level ("18": 14); `note` says why. */
+    cooldownByUnlock?: Record<string, number | string>;
   };
   caps: Record<string, number>;
   /** MP per second: "1 + 0.05 * INT". */
@@ -419,9 +421,12 @@ export const damageSkillLevels = (c: ClassInfo | null | undefined, p: Pick<Chara
 /** The level a class's movement skill unlocks at (classes.json), or null: not one of its moves. */
 export const moveUnlock = (c: ClassInfo | null | undefined, move: string): number | null => c?.mobility?.find((m) => m.id === move)?.level ?? null;
 
-/** A damage skill's cooldown (s) at Lv 1, by its unlock level: 0.8 + 0.15 a level, to a tenth (Lv 1: 1 s … Lv 18: 3.5 s).
- *  (Today's rule, not in stats.json: the base its skill levels take their −1% off.) */
-export const baseCooldown = (unlockLevel: number) => Math.round((0.8 + 0.15 * Math.max(1, unlockLevel)) * 10) / 10;
+/** A damage skill's cooldown (s) at Lv 1, by its unlock level: stats.json skills.cooldownByUnlock (Lv 1: 1 s … Lv 18:
+ *  14 s), the base its skill levels take their −1% off. A level the table lacks: the old 0.8 + 0.15 a level, to a tenth. */
+export function baseCooldown(data: StatsData, unlockLevel: number): number {
+  const s = data.skills.cooldownByUnlock?.[String(unlockLevel)];
+  return typeof s === 'number' ? s : Math.round((0.8 + 0.15 * Math.max(1, unlockLevel)) * 10) / 10;
+}
 
 /** A cooldown of `seconds` at Lv 1 at a skill level: −1% a level past 1 (stats.json perSkillLevel.cooldown), to a
  *  hundredth. The bot enforces it, the game shows it. */

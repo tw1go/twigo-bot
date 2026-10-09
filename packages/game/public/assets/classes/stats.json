@@ -423,6 +423,24 @@
       "50": 40
      }
     },
+    "cooldownByUnlock": {
+     "note": "Damage skill cooldown (s) at skill Lv 1, by unlock level (Mac, 9 Oct: longer cooldowns so the MP costs hold, a full bar lasts about 30 s of nonstop casting at Lv 20). Tier 1 keeps the game's 1 s. -1% a skill level past 1 (perSkillLevel.cooldown). Mobility moves keep their own cooldowns.",
+     "1": 1.0,
+     "3": 1.5,
+     "6": 4,
+     "9": 6,
+     "12": 8,
+     "15": 10,
+     "18": 14,
+     "21": 12,
+     "25": 15,
+     "28": 18,
+     "32": 20,
+     "36": 24,
+     "40": 26,
+     "45": 30,
+     "50": 40
+    },
     "rule": "higher-tier skill at Lv 5 always beats a lower-tier skill at Lv 20"
   },
   "affixes": {

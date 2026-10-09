@@ -150,10 +150,19 @@ test('each skill has its own cooldown by its unlock level (Lv 1 the quickest)', 
   const at: [number, number] = [mob.col + 1, mob.row];
   const lv18 = { cls: 'stick', level: 18 };
   assert.ok(room.attack('p1', at, lv18, mob.id, 0, 6).ok, 'the Lv 18 skill');
-  assert.deepEqual(room.attack('p1', at, lv18, mob.id, 1000, 6), { ok: false, reason: 'slow' }, '3.5 s: not yet');
+  assert.deepEqual(room.attack('p1', at, lv18, mob.id, 1000, 6), { ok: false, reason: 'slow' }, '14 s: not yet');
   assert.ok(room.attack('p1', at, lv18, mob.id, 1000, 0).ok, 'another skill is ready');
   assert.ok(room.attack('p1', at, lv18, mob.id, 2050, 0).ok, 'Lv 1: 1 s');
-  assert.ok(room.attack('p1', at, lv18, mob.id, 3500, 6).ok, 'the Lv 18 one after 3.5 s');
+  assert.deepEqual(room.attack('p1', at, lv18, mob.id, 13000, 6), { ok: false, reason: 'slow' }, 'still not at 13 s');
+  assert.ok(room.attack('p1', at, lv18, mob.id, 14000, 6).ok, 'the Lv 18 one after 14 s');
+});
+
+test('damage skill cooldowns come from stats.json skills.cooldownByUnlock, −1% a skill level past 1', () => {
+  assert.equal(skillCooldown(stats, baseCooldown(stats, 18)), 14); // tier 7 at skill Lv 1
+  assert.equal(skillCooldown(stats, baseCooldown(stats, 18), 3), 13.72);
+  assert.equal(skillCooldown(stats, baseCooldown(stats, 1), 11), 0.9); // tier 1 keeps its 1 s
+  assert.deepEqual([1, 3, 6, 9, 12, 15].map((l) => baseCooldown(stats, l)), [1, 1.5, 4, 6, 8, 10]);
+  assert.equal(baseCooldown(stats, 7), 1.9); // a level the table lacks: the old 0.8 + 0.15 a level
 });
 
 test('a skill is locked until its unlock level', () => {
@@ -184,7 +193,7 @@ test('skill levels: +2% damage and 1% less cooldown a level past 1; slows and ro
   assert.deepEqual(one.hits[0].slow, { factor: 0.5, ms: 2500 });
   assert.deepEqual(eleven.hits[0].slow, { factor: 0.5, ms: 3750 });
   // Quick Shot's 1 s cooldown: 0.9 s at Lv 11 (the server's 150 ms of slack either way).
-  assert.equal(skillCooldown(stats, baseCooldown(1), 11), 0.9);
+  assert.equal(skillCooldown(stats, baseCooldown(stats, 1), 11), 0.9);
   assert.deepEqual(b.attack('p1', at, who(11), wire.id, 700, 0), { ok: false, reason: 'slow' });
   assert.ok(b.attack('p1', at, who(11), wire.id, 760, 0).ok, 'Lv 11: ready after 0.9 s');
   assert.deepEqual(a.attack('p1', at, who(1), wire.id, 760, 0), { ok: false, reason: 'slow' }, 'Lv 1: still 1 s');

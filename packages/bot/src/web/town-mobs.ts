@@ -70,7 +70,8 @@ import { Golem, type GolemArt, type GolemBoss, type GolemEvent, type PitTiles, p
 // gone, out of its zone or more than `leashTiles` from its spawn (it can't follow further), or (a passive one) haven't
 // hit it for GIVE_UP_MS: it heals to full (`mob-heal`) and walks home. At 0 HP it dies (its XP to whoever killed it:
 // `kills`, which the town turns into levels). A skill can only be used from its unlock level (classes.json; refused
-// 'locked' before). Each has its own cooldown by its unlock level (baseCooldown in @mikazuki/shared: Lv 1 the quickest),
+// 'locked' before). Each has its own cooldown by its unlock level (baseCooldown in @mikazuki/shared, stats.json
+// skills.cooldownByUnlock: Lv 1 the quickest),
 // 1% less for each skill level past 1 (skillCooldown); a skill's slow or root lasts 5% longer a skill level
 // (skillLevelBonus's buff).
 //
@@ -886,7 +887,7 @@ export class MobRoom {
     this.swings.set(player, now + SWING_MS);
     // (A little slack: the game's clock and the message's trip.)
     const skillLevel = a.skills?.[skill] ?? 1;
-    this.swings.set(ready, now + skillCooldown(this.fightData.stats, baseCooldown(unlock), skillLevel) * 1000 - 150);
+    this.swings.set(ready, now + skillCooldown(this.fightData.stats, baseCooldown(this.fightData.stats, unlock), skillLevel) * 1000 - 150);
     // Its slow or root, 5% longer a skill level.
     const effect = parseEffect(cls ? this.shapes.effects?.[cls]?.[skill] : null);
     if (effect) effect.ms = Math.round(effect.ms * skillLevelBonus(this.fightData.stats, skillLevel).buff);
