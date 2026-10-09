@@ -4,7 +4,7 @@ import type { Dir } from '../assets/types';
 import { playSound } from '../audio/sound';
 import { adventure, adventureData, cantWear, classInfo, equipItem, itemDef, onAdventure, placesFor, resetPoints, spendPoint, unequipPlace } from '../net/adventure';
 import { type Rarity, RARITY_COLOUR, RARITY_LABEL, RARITY_TEXT, isRarity } from './item-art';
-import { chatItem, itemPicture, itemTipFor, myMainStat, nameOf, rarityOf } from './item-tip';
+import { chatItem, itemKeys, itemPicture, itemTipFor, myMainStat, nameOf, rarityOf } from './item-tip';
 import { toast } from './toast';
 import { forgeTake } from './forge';
 
@@ -291,7 +291,7 @@ export class EquipmentPanel {
 
   private showTip(place: EquipPlace, at: HTMLElement): void {
     const item = adventure()?.equipped[place];
-    this.tip.replaceChildren(...(item ? itemTipFor(item) : [el('div', 'eq-tip-name', this.placeName(place))]));
+    this.tip.replaceChildren(...(item ? [...itemTipFor(item), itemKeys(item, 'worn')] : [el('div', 'eq-tip-name', this.placeName(place))]));
     this.tip.hidden = false;
     const r = at.getBoundingClientRect();
     const box = this.root.getBoundingClientRect();

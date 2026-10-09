@@ -1,4 +1,4 @@
-import { type EquipSlot, type Item, type StatName, affixTier, agimatSlots, agimatValue, wordList, baseStats, canEquip, enhancedBase, gearKind, gearMismatch, isGearDef, itemAura, itemName, lineText, lineValue, pickupLine, requirements, statLabel } from '@mikazuki/shared';
+import { type EquipPlace, type EquipSlot, type Item, type StatName, affixTier, derivedStats, itemTotals, placesFor, agimatSlots, agimatValue, wordList, baseStats, canEquip, enhancedBase, gearKind, gearMismatch, isGearDef, itemAura, itemName, lineText, lineValue, pickupLine, requirements, statLabel } from '@mikazuki/shared';
 import { adventure, classInfo, itemData } from '../net/adventure';
 import { type Rarity, RARITY_TEXT, isRarity, itemArt, itemArtUrl, placeholderArt } from './item-art';
 import { auraIcon } from '../fx/weaponAura';
@@ -150,4 +150,61 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, t
   if (className) node.className = className;
   if (text !== undefined) node.textContent = text;
   return node;
+}
+
+// ── Comparing and keys ──
+
+/** What you wear in the place(s) an item would go (two for rings and bracers), for the Shift comparison. */
+export function wornFor(item: Item): Item[] {
+  const def = itemData()?.defs.get(item.defId);
+  const s = adventure();
+  if (!s || !isGearDef(def)) return [];
+  return placesFor(def.slot).flatMap((p) => (s.equipped[p] ? [s.equipped[p]!] : []));
+}
+
+/** Wearing it instead of what's worn (where the server would put it: the first free place, else the first): the change to
+ *  your ATK, DEF, HP, MP and crit, each green (more) or red (less); "No change" if none. Null for what can't be worn. */
+export function wearDiff(item: Item): HTMLElement | null {
+  const D = itemData();
+  const def = D?.defs.get(item.defId);
+  const s = adventure();
+  if (!D || !s || !isGearDef(def)) return null;
+  const places = placesFor(def.slot);
+  const to: EquipPlace = places.find((p) => !s.equipped[p]) ?? places[0];
+  const stats = (equipped: Partial<Record<EquipPlace, Item>>) =>
+    derivedStats(D.stats, s.cls, s.progress.level, baseStats(D.stats, s.cls, s.progress.level, s.progress.points), itemTotals(D, Object.values(equipped).filter((i): i is Item => !!i), myMainStat()));
+  const now = stats(s.equipped);
+  const then = stats({ ...s.equipped, [to]: item });
+  const row = el('div', 'eq-tip-diff');
+  row.append(el('span', 'eq-tip-diff-label', s.equipped[to] ? 'Wearing this: ' : 'Wearing this (an empty slot): '));
+  const parts: [string, number, (n: number) => string][] = [
+    ['ATK', then.power - now.power, (n) => String(Math.round(n))],
+    ['DEF', then.def - now.def, (n) => String(Math.round(n))],
+    ['HP', then.hp - now.hp, (n) => String(Math.round(n))],
+    ['MP', then.mp - now.mp, (n) => String(Math.round(n))],
+    ['Crit', then.critRate - now.critRate, (n) => `${+(n * 100).toFixed(1)}%`],
+  ];
+  const shown = parts.filter(([, d, f]) => f(Math.abs(d)) !== '0' && f(Math.abs(d)) !== '0%');
+  if (!shown.length) row.append(el('span', 'eq-tip-diff-same', 'No change'));
+  shown.forEach(([label, d, f], i) => {
+    if (i) row.append(' · ');
+    row.append(el('span', d > 0 ? 'eq-tip-diff-up' : 'eq-tip-diff-down', `${label} ${d > 0 ? '+' : '−'}${f(Math.abs(d))}`));
+  });
+  return row;
+}
+
+/** The Alt key's name here (Option on a Mac). */
+const ALT = /Mac|iPhone|iPad/.test(navigator.platform) ? 'Option' : 'Alt';
+
+/** What the keys do with an item, at the foot of its tooltip: in the bag (`bag`) or worn (`worn`). */
+export function itemKeys(item: Item, where: 'bag' | 'worn'): HTMLElement {
+  const def = itemData()?.defs.get(item.defId);
+  const keys: string[] = [];
+  if (where === 'worn') keys.push('Double-click or right-click: take off');
+  else if (isGearDef(def)) keys.push('Double-click: wear', 'Hold Shift: compare', 'Right-click: more');
+  else if (def?.kind === 'agimat' || def?.forge === 'whetstone' || def?.forge === 'repairKit') keys.push('Click: open the forge');
+  else if (def?.forge === 'fragment') keys.push('Right-click: combine');
+  else if (def?.kind === 'potion') keys.push('Drag onto your hotbar');
+  keys.push(`${ALT}+click: show in chat`);
+  return el('div', 'eq-tip-keys', keys.join(' · '));
 }

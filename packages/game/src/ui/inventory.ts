@@ -8,7 +8,7 @@ import { installPixelTiles } from './pixel-tiles';
 import { coinIcon, kusingIcon } from './reward';
 import type { EquipmentPanel } from './equipment';
 import { adventure, anyDef, cantWear, itemData, onAdventure } from '../net/adventure';
-import { chatItem, itemPicture, itemTipFor, nameOf, rarityOf } from './item-tip';
+import { chatItem, itemKeys, itemPicture, itemTipFor, nameOf, rarityOf, wearDiff, wornFor } from './item-tip';
 import { potionCooldownKey } from './hotbar';
 import { showRename } from './rename';
 import { type ForgePopup, confirmCombine, confirmDisassemble, forgeFromBag, mountForge } from './forge';
@@ -100,6 +100,10 @@ export class Inventory {
   private pickedUid: string | null = null;
   /** The combat bag's hover tooltip. */
   private readonly tip = el('div', 'eq-tip iv-tip');
+  /** Shift held over gear: what you wear in its place, beside its tooltip. */
+  private readonly compareTip = el('div', 'eq-tip iv-tip iv-compare');
+  /** The combat item under the pointer (Shift pressed or let go redraws its tooltip). */
+  private hovered: { it: Item; at: HTMLElement } | null = null;
   /** The forge popup (enhance, repair, embed). */
   private readonly forge: ForgePopup;
   /** The right-click menu (Disassemble, Combine). */
@@ -170,11 +174,16 @@ export class Inventory {
       this.tabs.append(b);
     }
     this.grid.setAttribute('role', 'grid');
-    this.tip.hidden = true;
+    this.hideTip();
     this.root.append(head, this.tabs, this.grid, this.detail, this.wallet);
     this.menu.hidden = true;
     this.menu.setAttribute('role', 'menu');
-    document.body.append(this.root, this.tip, this.menu); // (the tooltip over the equipment panel too)
+    this.compareTip.hidden = true;
+    document.body.append(this.root, this.tip, this.compareTip, this.menu); // (the tooltip over the equipment panel too)
+    // Shift pressed or let go over a combat item: its comparison on or off.
+    const shift = (e: KeyboardEvent) => e.key === 'Shift' && this.hovered && !this.tip.hidden && this.showTip(this.hovered.it, this.hovered.at, e.type === 'keydown');
+    addEventListener('keydown', shift);
+    addEventListener('keyup', shift);
     document.addEventListener('pointerdown', (e) => !this.menu.contains(e.target as Node) && (this.menu.hidden = true));
     this.forge = mountForge(frame, slot);
     this.forge.besides = () => {
@@ -215,7 +224,7 @@ export class Inventory {
 
   toggle(open = this.root.hidden): void {
     this.root.hidden = !open;
-    this.tip.hidden = true;
+    this.hideTip();
     this.menu.hidden = true;
     if (!open) this.forge.close();
     this.button.setAttribute('aria-expanded', String(open));
@@ -269,7 +278,7 @@ export class Inventory {
     }
     this.renderWallet(d);
     if (this.tab === 'combat') return this.renderCombat();
-    this.tip.hidden = true;
+    this.hideTip();
 
     // One slot per item (this tab's; a stacked kind, megaphones, in one with its count), then the free slots, then the
     // locked ones up to the most a bag can have.
@@ -389,8 +398,8 @@ export class Inventory {
       // Anything can be dragged into the trade window.
       cell.draggable = true;
       cell.addEventListener('dragstart', (e) => tradeDrag(e, it.uid));
-      cell.addEventListener('pointerenter', () => this.showTip(it, cell));
-      cell.addEventListener('pointerleave', () => (this.tip.hidden = true));
+      cell.addEventListener('pointerenter', (e) => this.showTip(it, cell, e.shiftKey));
+      cell.addEventListener('pointerleave', () => this.hideTip());
       cell.addEventListener('click', (e) => {
         // Alt+click: shown in the chat (ui/chat.ts).
         if (e.altKey) return chatItem(it);
@@ -443,7 +452,7 @@ export class Inventory {
     else if (def.forge === 'whetstone') this.forge.open('enhance', def.id);
     else if (def.forge === 'repairKit') this.forge.open('repair', def.id);
     else return false;
-    this.tip.hidden = true;
+    this.hideTip();
     return true;
   }
 
@@ -482,7 +491,7 @@ export class Inventory {
       }),
     );
     this.menu.hidden = false;
-    this.tip.hidden = true;
+    this.hideTip();
     this.menu.style.left = `${Math.round(Math.min(x, innerWidth - this.menu.offsetWidth - 8))}px`;
     this.menu.style.top = `${Math.round(Math.min(y, innerHeight - this.menu.offsetHeight - 8))}px`;
   }
@@ -508,13 +517,29 @@ export class Inventory {
     this.render();
   }
 
-  /** A combat item's tooltip beside its slot. */
-  private showTip(it: Item, at: HTMLElement): void {
-    this.tip.replaceChildren(...itemTipFor(it));
+  /** A combat item's tooltip beside its slot, with what its keys do at the foot. `compare` (Shift held, gear): how your
+   *  stats would change wearing it, and what you wear in its place in a box beside it. */
+  private showTip(it: Item, at: HTMLElement, compare = false): void {
+    this.hovered = { it, at };
+    const diff = compare ? wearDiff(it) : null;
+    this.tip.replaceChildren(...itemTipFor(it), ...(diff ? [diff] : []), itemKeys(it, 'bag'));
     this.tip.hidden = false;
     const r = at.getBoundingClientRect();
     this.tip.style.right = `${Math.round(innerWidth - r.left + 6)}px`;
     this.tip.style.top = `${Math.round(Math.max(8, Math.min(r.top, innerHeight - this.tip.offsetHeight - 8)))}px`;
+    const worn = compare ? wornFor(it) : [];
+    this.compareTip.hidden = !worn.length;
+    if (!worn.length) return;
+    this.compareTip.replaceChildren(...worn.flatMap((w, i) => [el('div', 'eq-tip-equipped', worn.length > 1 ? `Equipped (${i + 1})` : 'Equipped'), ...itemTipFor(w)]));
+    const t = this.tip.getBoundingClientRect();
+    this.compareTip.style.right = `${Math.round(innerWidth - t.left + 6)}px`;
+    this.compareTip.style.top = `${Math.round(Math.max(8, Math.min(t.top, innerHeight - this.compareTip.offsetHeight - 8)))}px`;
+  }
+
+  private hideTip(): void {
+    this.hovered = null;
+    this.tip.hidden = true;
+    this.compareTip.hidden = true;
   }
 
   /** Why a piece of gear can't be worn now (its requirements on your base stats, or broken), or null. */
