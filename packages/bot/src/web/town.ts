@@ -376,7 +376,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     opts.mobs?.[c.room]?.forget(c.player.id, true);
     endTrade(c.userId, 'out', { name: c.player.nickname }); // no trading while knocked out
     const m: TownServerMessage = { t: 'knocked-out', id: c.player.id };
-    send(c, m);
+    send(c, { ...m, reviveIn: vitals?.outFor(c.userId, Date.now()) ?? 0 });
     others(c, m);
   };
   /** Back after being knocked out: at the room's way in (where arrivals land), full, seen by everyone there. */
@@ -663,6 +663,10 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       }
       case 'pick':
         if (m.id === undefined || typeof m.id === 'string') pickUp(c, m.id);
+        return;
+      case 'revive':
+        // "Revive now" from the unconscious pop-up: only while knocked out, else nothing happens.
+        if (vitals?.revive(c.userId, Date.now())) respawn(c);
         return;
       case 'potion': {
         // An HP or MP Potion from their bag: battle maps only, one shared cooldown, never when it'd do nothing.

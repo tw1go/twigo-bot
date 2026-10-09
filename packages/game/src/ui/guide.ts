@@ -101,7 +101,7 @@ const TOPICS: Topic[] = [
       '• Defeat mobs in the **Slums** for XP. A mob far below your level gives less (its name is grey); one well above you can make you miss (red)',
       '• The **Scrapheap Golem**\'s XP goes to everyone who did at least 5% of its HP',
       '• Your **HP** (red) and **MP** (blue) sit under the XP bar. Mobs hit back in the Slums (a red bar over your head shows your HP; your party sees it while you\'re hurt); the town and the neighbourhood are safe, and arriving there fills both. 5 s out of a fight, HP slowly comes back',
-      '• At 0 HP you\'re **knocked out**: 3 s later you\'re back at the Slums\' way in from town with full HP and MP. Nothing is lost',
+      '• At 0 HP you go **unconscious**: back at the Slums\' way in from town with full HP and MP after **5 minutes**, or straight away with **Revive now**. Nothing is lost',
       '• The Plastic Bag Spook **slows** you to half speed for a moment; the golem\'s Lamp Glare **blinds** you: for 3 s every attack you make misses',
       '• Each level up earns a **stat point** and **3 skill points**, and everyone nearby sees **Level up!** over you',
       '• Spend stat points in the **Equipment** panel (**B**): the **+** beside your class’s two stats. **Reset** gives them all back, free. Before you have a class they wait for you',

@@ -38,7 +38,7 @@ test('a safe room fills them up; a battle map keeps what they had (a reload), fu
   assert.equal(v.out('u'), false);
 });
 
-test('at 0 HP they are knocked out (nothing more lands), and 3 s later respawn with full HP and MP', () => {
+test('at 0 HP they are knocked out (nothing more lands), and 300 s later respawn with full HP and MP', () => {
   const v = new Vitals(R);
   v.arrive('u', MAX, true, 0);
   assert.equal(v.hurt('u', MAX.hp - 1, 1000), 'hurt');
@@ -46,11 +46,28 @@ test('at 0 HP they are knocked out (nothing more lands), and 3 s later respawn w
   assert.equal(v.out('u'), true);
   assert.equal(shown(v.get('u')!).hp, 0);
   assert.equal(v.hurt('u', 5, 1200), null, 'no more hits while out');
-  assert.equal(RESPAWN_MS, 3000);
-  assert.deepEqual(v.tick(1100 + 2999, ['u']).respawned, []);
-  assert.deepEqual(v.tick(1100 + 3000, ['u']).respawned, ['u']);
+  assert.equal(RESPAWN_MS, 300_000);
+  assert.equal(v.outFor('u', 1100), 300_000);
+  assert.equal(v.outFor('u', 1100 + 60_000), 240_000, 'the countdown the pop-up shows');
+  assert.deepEqual(v.tick(1100 + 299_999, ['u']).respawned, []);
+  assert.deepEqual(v.tick(1100 + 300_000, ['u']).respawned, ['u']);
   assert.deepEqual(shown(v.get('u')!), { hp: MAX.hp, maxHp: MAX.hp, mp: MAX.mp, maxMp: MAX.mp });
   assert.equal(v.out('u'), false);
+  assert.equal(v.outFor('u', 400_000), 0);
+});
+
+test('"Revive now": a knocked-out player comes back early and full; nobody else can use it', () => {
+  const v = new Vitals(R);
+  v.arrive('u', MAX, true, 0);
+  assert.equal(v.revive('u', 500), false, 'not knocked out: nothing to revive');
+  assert.equal(v.revive('nobody', 500), false);
+  v.hurt('u', MAX.hp, 1000);
+  assert.equal(v.out('u'), true);
+  assert.equal(v.revive('u', 5000), true, '4 s in, long before the 300 s are up');
+  assert.equal(v.out('u'), false);
+  assert.deepEqual(shown(v.get('u')!), { hp: MAX.hp, maxHp: MAX.hp, mp: MAX.mp, maxMp: MAX.mp });
+  assert.deepEqual(v.tick(1000 + RESPAWN_MS, ['u']).respawned, [], 'the old timer does not fire a second respawn');
+  assert.equal(v.revive('u', 6000), false, 'only once per knock-out');
 });
 
 test('regen in the Slums: no HP while in combat, from 5 s after it 2% of the most a second; MP 1 + 0.05×INT a second all along', () => {
@@ -305,7 +322,7 @@ const wait = (ms: number) => new Promise((ok) => setTimeout(ok, ms));
 const lastVitals = (got: TownServerMessage[], id: string) => got.filter((m): m is Extract<TownServerMessage, { t: 'vitals' }> => m.t === 'vitals' && m.id === id).at(-1);
 const send = (ws: WebSocket, m: unknown) => ws.send(JSON.stringify(m));
 
-test('knocked out in the Slums: no steps or attacks, everyone there sees it, and 3 s later they respawn at the way in, full', async () => {
+test('knocked out in the Slums: no steps or attacks, everyone there sees it, and "Revive now" brings them back at the way in, full', async () => {
   const { room, slums, open, close } = await townWithSlums();
   const a = await open('Mara', 'slums');
   const b = await open('Bob', 'slums');
@@ -317,8 +334,11 @@ test('knocked out in the Slums: no steps or attacks, everyone there sees it, and
   assert.deepEqual(lastVitals(b.got, a.id), { t: 'vitals', id: a.id, hp: MAX.hp - 10, maxHp: MAX.hp }, 'the room sees the bar (no MP)');
   room.queue.push({ player: a.id, by: 'tin-can-alley:0', damage: 9999 });
   await wait(250);
-  const outAt = Date.now();
-  assert.ok(a.got.some((m) => m.t === 'knocked-out' && m.id === a.id) && b.got.some((m) => m.t === 'knocked-out' && m.id === a.id));
+  const mine = a.got.find((m) => m.t === 'knocked-out' && m.id === a.id);
+  const theirs = b.got.find((m) => m.t === 'knocked-out' && m.id === a.id);
+  assert.ok(mine && theirs, 'everyone there sees it');
+  assert.ok(mine.t === 'knocked-out' && mine.reviveIn! > RESPAWN_MS - 1000 && mine.reviveIn! <= RESPAWN_MS, 'they are told how long the countdown is');
+  assert.ok(theirs.t === 'knocked-out' && theirs.reviveIn === undefined, 'nobody else needs their countdown');
   assert.equal(lastVitals(a.got, a.id)?.hp, 0);
   const before = a.got.length;
   send(a.ws, { t: 'step', col: a.spawn[0] - 1, row: a.spawn[1] });
@@ -327,10 +347,12 @@ test('knocked out in the Slums: no steps or attacks, everyone there sees it, and
   const replies = a.got.slice(before);
   assert.ok(replies.some((m) => m.t === 'snap'), 'no steps');
   assert.ok(replies.some((m) => m.t === 'attack-refused' && m.reason === 'out'), 'no attacks');
+  await wait(300);
+  assert.ok(!a.got.some((m) => m.t === 'respawn'), 'no coming back on their own yet (that takes 300 s)');
+  send(a.ws, { t: 'revive' });
   while (!a.got.some((m) => m.t === 'respawn')) await wait(50);
   const back = a.got.find((m) => m.t === 'respawn')!;
   assert.ok(back.t === 'respawn');
-  assert.ok(Date.now() - outAt >= RESPAWN_MS - 300, 'after 3 s');
   assert.ok(Math.abs(back.col - slums.spawn[0]) <= 3 && Math.abs(back.row - slums.spawn[1]) <= 3, 'at the way in (where arrivals land)');
   assert.ok(b.got.some((m) => m.t === 'respawn' && m.id === a.id), 'everyone there sees them reappear');
   await wait(150);

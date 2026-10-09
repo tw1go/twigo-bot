@@ -119,6 +119,8 @@ export type TownClientMessage =
   /** Pick up loot within LOOT_REACH of you (a click on it, or F / Space): that one, or (no `id`) the nearest you may
    *  take. Nothing is ever picked up on its own (not by walking over it, Kusing neither). */
   | { t: 'pick'; id?: string }
+  /** Knocked out: come back now (at the map's way in, full) instead of waiting out the countdown. */
+  | { t: 'revive' }
   /** Use an HP or MP Potion of this kind (its item id) from your combat bag (battle maps; one shared cooldown). */
   | { t: 'potion'; item: string }
   /** The Arena's jack en poy against another player (bot web/town-arena.ts): join the queue (with an optional bet in
@@ -380,8 +382,9 @@ export type TownServerMessage =
   /** Someone's HP (and yours with your MP) changed: to you (the HUD), to everyone in your room (only a party member's
    *  shows over their head) and to your party (its panel). */
   | { t: 'vitals'; id: string; hp: number; maxHp: number; mp?: number; maxMp?: number }
-  /** Someone in your room (maybe you) was knocked out (0 HP): they fade out and can't act until they respawn. */
-  | { t: 'knocked-out'; id: string }
+  /** Someone in your room (maybe you) was knocked out (0 HP): they fade out and can't act until they respawn.
+   *  `reviveIn` (yours only): ms until you come back on your own; a 'revive' brings you back sooner. */
+  | { t: 'knocked-out'; id: string; reviveIn?: number }
   /** Someone in your room (maybe you) is back after being knocked out, at the map's way in, with full HP and MP. */
   | { t: 'respawn'; id: string; col: number; row: number }
   /** The loot you can see in your room (on arrival): golem loot only its owner's. */

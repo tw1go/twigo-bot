@@ -10,6 +10,7 @@ import { BuildingLabel, UI_FONT } from '../ui/labels';
 import { LOADING_LINES } from '../ui/loading-lines';
 import { TownLink } from '../net/town';
 import { showElsewhere, showKicked } from '../ui/elsewhere';
+import { hideRevive, showRevive } from '../ui/revive';
 import { mountTownHud, setHudAvatar, setHudClass, setHudLevel, setHudName, setHudVitals } from '../ui/townhud';
 import { showParlor } from '../ui/parlor';
 import { type HouseArt, composeHouse, houseFiles, houseStyles, tidyLook } from '../houses/art';
@@ -1653,16 +1654,18 @@ export class TownScene extends Phaser.Scene {
         this.lowMp(0); // under a quarter: an MP Potion drinks itself
         return this.player.setHp(m.hp, m.maxHp);
       }
-      // Knocked out (0 HP): you fade out where you stand and can't act; in 3 s the server puts you back at the way in.
+      // Knocked out (0 HP): you fade out where you stand and can't act. The unconscious pop-up counts down the server's
+      // `reviveIn` (300 s), after which it puts you back at the way in; "Revive now" asks for that straight away.
       if (m.t === 'knocked-out' && m.id === myId) {
         this.knockedOut = true;
         this.stopFight();
         this.pending = null;
         this.player.setKnockedOut(true);
         playSound('casino-lose', 0.1);
-        return toast('You were knocked out.', 2800, 'bad');
+        return showRevive(m.reviveIn ?? 0, () => this.link?.send({ t: 'revive' }));
       }
       if (m.t === 'respawn' && m.id === myId) {
+        hideRevive();
         this.knockedOut = false;
         this.player.place({ col: m.col, row: m.row });
         this.cameras.main.centerOn(this.player.sprite.x, this.player.sprite.y - 24);
@@ -1750,6 +1753,7 @@ export class TownScene extends Phaser.Scene {
         if (this.knockedOut) {
           this.knockedOut = false;
           this.player.setKnockedOut(false);
+          hideRevive();
         }
         setParty(null); // the server sends your party (if you're still in one) right after
         // A reconnect (the bot restarted, a blip): what's on screen stays; only what's new is added.

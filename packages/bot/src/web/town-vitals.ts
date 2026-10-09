@@ -6,12 +6,13 @@ import type { StatsData } from '@mikazuki/shared';
 // fills both up. A reload in the Slums keeps what they had. In the Slums they come back by stats.json `regen`: HP not
 // while in combat (hit, or hitting, in the last outOfCombatAfterSec), else outOfCombatPctPerSec of the most a second; MP
 // its mpPerSec ("1 + 0.05 * INT", derivedStats' mpRegen) all the time; skills spend it (`spend`, stats.json skills.mpCost). At 0 HP they're knocked
-// out for RESPAWN_MS, then the host puts them back at the map's way in with everything full; no penalty. The Bag's slow
+// out ("unconscious") for RESPAWN_MS, or until they choose to revive early (`revive`), then the host puts them back at
+// the map's way in with everything full; no penalty either way. The Bag's slow
 // and the Lamp Glare's blindness are kept here too (the host halves their steps and makes their attacks miss). Pure (the
 // clock is passed in), so it's tested on its own.
 
-/** Knocked out this long before they respawn. */
-export const RESPAWN_MS = 3000;
+/** Knocked out this long before they respawn on their own (unless they revive sooner). */
+export const RESPAWN_MS = 300_000;
 
 /** A character's most HP and MP, and MP a second (their derived stats). */
 export interface VitalMax {
@@ -127,6 +128,20 @@ export class Vitals {
 
   out(user: string): boolean {
     return !!this.all.get(user)?.outUntil;
+  }
+
+  /** How long until they respawn on their own (ms; 0 when up or unknown). */
+  outFor(user: string, now: number): number {
+    const until = this.all.get(user)?.outUntil ?? 0;
+    return until ? Math.max(0, until - now) : 0;
+  }
+
+  /** "Revive now": a knocked-out player comes back early, full (true); anyone else, nothing (false). */
+  revive(user: string, now: number): boolean {
+    const v = this.all.get(user);
+    if (!v?.outUntil) return false;
+    this.fill(user, v.max, now);
+    return true;
   }
 
   slow(user: string, ms: number, now: number): void {
