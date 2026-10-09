@@ -7,7 +7,7 @@
       "title": "A Weapon for the Town",
       "giver": "tanod",
       "summary": "The Tanod needs help keeping Mikazuki safe at night. Talk to him and choose how you'll fight.",
-      "story": "Mikazuki sleeps easy because the Tanod keeps watch. But past the town's west gate, in the Slums, the junk has started moving on its own at night, and he can't guard the fence alone. He's looking for a new bantay, and every bantay needs a weapon.",
+      "story": "Mikazuki sleeps easy because the Tanod keeps watch. But past the town's west gate, in the Slums, the junk has started moving on its own at night, and he can't guard the fence alone. He's looking for a new watchman, and every watchman needs a weapon.",
       "autoStart": true,
       "objectives": [
         {
@@ -51,12 +51,12 @@
       "story": "Tin cans are rattling through Tin Can Alley after dark and rolling into the camp where the Slums folk sleep. Nobody knows why junk would wake up, but the Tanod wants the road to the camp clear first: twenty cans, and the camp can breathe again.",
       "dialogue": {
         "give": [
-          "Bantay, may problema tayo. Yung mga lata sa Tin Can Alley, gumagalaw na mag-isa tuwing gabi.",
-          "Natatakot na ang mga taga-kampo. Linisin mo ang daan, mga 20 lang. Mag-radyo ka pag tapos na."
+          "Watchman, we've got a problem. The tin cans in Tin Can Alley have started moving on their own at night.",
+          "The camp folk are scared. Clear the road for them, just 20 of them. Radio me when you're done."
         ],
         "report": [
-          "Ayos! Malinis na ang daan papunta sa kampo. Heto ang pang-merienda mo.",
-          "Pero teka... may naririnig pa akong kalampag sa eskinita."
+          "Nice! The road to the camp is clear. Here's a little something for your merienda.",
+          "But wait... I can still hear rattling down the alley."
         ]
       },
       "rewards": [
@@ -73,12 +73,12 @@
       "story": "The cans didn't wander in by chance: the camp folk saw a can taller than a man herding them, and it has brothers. Beat one of the big cans (Jus Tin, Kris Tin, Mar Tin, Valen Tin or Augus Tin) and the rest of the alley loses its nerve.",
       "dialogue": {
         "give": [
-          "Sabi ng mga bata, may malaking lata raw na nag-uutos sa iba. Jus Tin daw ang pangalan.",
-          "Hindi lang siya, may mga kapatid pa. Talunin mo ang isa para matuto sila. Just in time ka!"
+          "The kids say there's a giant can bossing the others around. Its name is Jus Tin.",
+          "And it's not alone, it has brothers. Beat one of them so the rest learn their lesson. You're just in time!"
         ],
         "report": [
-          "Talo ang malaking lata? Ikaw na talaga!",
-          "Napansin mo ba? Parang may hinihila silang mga piraso papuntang kanluran. Babantayan ko 'yan."
+          "You beat the big can? You're really something!",
+          "Did you notice? They seem to be dragging scraps off to the west. I'll keep an eye on that."
         ]
       },
       "rewards": [
@@ -95,12 +95,12 @@
       "story": "North of the alley, in Bottle Cap Lot, bottle caps roll in packs, clinking like loose change, and they've been carrying scraps out of the lot toward the west. Stop thirty of them before the lot is picked clean. Hit one and its whole pack comes for you.",
       "dialogue": {
         "give": [
-          "Yung mga tansan sa Bottle Cap Lot, naglalakad na rin! Pa-grupo pa sila kung lumakad.",
-          "May dinadala silang mga piraso papuntang kanluran. Pigilan mo ang 30. Pag tinamaan mo ang isa, susugod ang buong grupo, ha."
+          "Now the bottle caps in Bottle Cap Lot are walking too! And they move in packs.",
+          "They're carrying scraps off to the west. Stop 30 of them. Careful: hit one and the whole pack comes at you."
         ],
         "report": [
-          "Caps off sa'yo, bantay!",
-          "Pero hindi sila basta naglalaro. Parang may nag-uutos sa kanila."
+          "Caps off to you, watchman!",
+          "But they're not just playing around. Something seems to be giving them orders."
         ]
       },
       "rewards": [
@@ -117,12 +117,12 @@
       "story": "Every pack answers to a captain: a bottle cap the size of a basin that calls the others to march. Take down one of the captains (Kap Tan, Cap Rice, Capu Chino or Escap Ade) and the packs scatter.",
       "dialogue": {
         "give": [
-          "May tansan na nagpapa-kapitan sa lote. Si Kap Tan, si Cap Rice... pati si Capu Chino, may sariling grupo.",
-          "Turuan mo ng leksyon ang isa sa kanila. Pag wala nang kapitan, magkakawatak-watak sila."
+          "Some bottle caps are playing captain in the lot. Kap Tan, Cap Rice... even Capu Chino has his own crew.",
+          "Teach one of them a lesson. Without a captain, the packs will scatter."
         ],
         "report": [
-          "Wala nang kapitan-kapitan. Salamat!",
-          "May dala-dala ang kapitan: lumang turnilyo mula sa junkyard sa kanluran. Saan kaya nila dinadala lahat 'to?"
+          "No more captains bossing anyone around. Thank you!",
+          "The captain was carrying an old bolt from the junkyard out west. Where are they taking all of this?"
         ]
       },
       "rewards": [
@@ -139,12 +139,12 @@
       "story": "South of the camp, the Tire Yard's old tires have started rolling down the road on their own, and these don't wait to be hit: come within a few tiles and they charge. Stop twenty of them before someone gets run over.",
       "dialogue": {
         "give": [
-          "Sa Tire Yard naman: mga gulong na gumugulong mag-isa. Ito, hindi naghihintay. Lalapit ka lang, susugurin ka na.",
-          "Bago may masagasaan, pigilan mo ang 20. Ingat sa daan, bantay."
+          "Now it's the Tire Yard: tires rolling around on their own. These ones don't wait. Get close and they'll charge you.",
+          "Stop 20 of them before someone gets run over. Watch the road, watchman."
         ],
         "report": [
-          "Huminto na ang gulo, este, gulong.",
-          "May napansin ako: lahat sila, iisa ang direksyon. Kanluran ulit."
+          "The trouble's stopped rolling. Get it? Rolling?",
+          "I noticed something: they were all heading the same way. West, again."
         ]
       },
       "rewards": [
@@ -161,12 +161,12 @@
       "story": "The worst of the tires roll as a gang: Tire Sa, Ret Tire, Sat Tire, En Tire and Tire Mendous, twice the size of the rest and twice as mean. Flatten one of them and the yard goes quiet.",
       "dialogue": {
         "give": [
-          "Si Tire Sa at mga barkada niya: doble ang laki, doble ang yabang.",
-          "Ikaw na bahala. Talunin mo ang isa, para tumahimik ang buong bakuran."
+          "Tire Sa and his gang: twice the size and twice the attitude.",
+          "It's up to you. Beat one of them and the whole yard will quiet down."
         ],
         "report": [
-          "Pagod na sila. Tired na tired!",
-          "Tumatanda na ako sa trabahong 'to. Buti na lang nandito ka."
+          "They're worn out. Tired, really tired!",
+          "I'm getting too old for this job. Good thing you're here."
         ]
       },
       "rewards": [
@@ -183,12 +183,12 @@
       "story": "In Bag Flats, plastic bags drift through the night like ghosts, scaring the camp's children and slowing anyone they touch. They whisper, too: the children swear they hear 'light' and 'west'. Clear twenty of them.",
       "dialogue": {
         "give": [
-          "Sa Bag Flats, may mga plastik na multo. Nananakot ng mga bata, tapos pinapabagal ka pag nahawakan ka.",
-          "Sabi ng mga bata, may binubulong daw sila: 'ilaw' at 'kanluran'. 20 lang, kaya mo 'yan."
+          "In Bag Flats, plastic bags are drifting around like ghosts. They scare the kids, and if one touches you, you slow down.",
+          "The kids say they whisper: 'light' and 'west'. Just 20 of them. You can do it."
         ],
         "report": [
-          "Wala nang multo sa kanto. Galing!",
-          "'Ilaw sa kanluran'... Ayokong isipin, pero may lumang poste ng ilaw sa junkyard."
+          "No more ghosts on the corner. Great job!",
+          "'A light in the west'... I don't want to think about it, but there's an old street lamp in the junkyard."
         ]
       },
       "rewards": [
@@ -205,12 +205,12 @@
       "story": "Four bags drift above the rest, as big as tents and as strong as a storm: Bag Ets, Bag Yo, Plas Tita and Ba Ghost. Bring one of them down and Bag Flats can sleep.",
       "dialogue": {
         "give": [
-          "May mga plastik na parang bagyo ang lakas: si Ba Ghost, si Plas Tita, at iba pa.",
-          "Ingat ka dun. Talunin mo ang isa, at mahimbing na ang tulog ng Bag Flats."
+          "Some of those bags are as strong as a storm: Ba Ghost, Plas Tita and the others.",
+          "Be careful out there. Beat one of them and Bag Flats can sleep soundly again."
         ],
         "report": [
-          "Tahimik na ang kanto. Salamat, bantay!",
-          "Habang nakikipaglaban ka, may kumikislap daw sa Wire Ridge. Aakyat tayo sunod."
+          "The corner is quiet now. Thank you, watchman!",
+          "While you were fighting, someone saw sparks up on Wire Ridge. That's where we go next."
         ]
       },
       "rewards": [
@@ -227,12 +227,12 @@
       "story": "Up on Wire Ridge, the old power lines have come loose and come alive: tangles of wire that spark at anyone in reach, even from a few tiles away. Something has been feeding them power. Cut down twenty, and watch where the current runs.",
       "dialogue": {
         "give": [
-          "Mga kable na buhay sa Wire Ridge! Kahit malayo ka, kinukuryente ka nila.",
-          "Delikado, pero ikaw pa. 20 piraso. At bantayan mo kung saan dumadaloy ang kuryente nila."
+          "The power lines on Wire Ridge have come alive! They'll zap you even from a distance.",
+          "It's dangerous, but I know you can handle it. 20 of them. And watch where their current flows."
         ],
         "report": [
-          "Walang nakuryente? Buti naman.",
-          "Tama ang hinala ko: ang kuryente, dumadaloy pababa sa kanluran. Sa junkyard."
+          "Nobody got zapped? Good.",
+          "I had a feeling: the current runs downhill to the west. Into the junkyard."
         ]
       },
       "rewards": [
@@ -249,12 +249,12 @@
       "story": "The ridge's biggest knots hum like transformers: Live Wire, Wire Lito, Tangle Lyn and Hay Wire. As long as they're up, the current keeps flowing west to whatever waits in the junkyard. Untangle one of them.",
       "dialogue": {
         "give": [
-          "Si Hay Wire at mga kasama niya: sila ang nagpapadaloy ng kuryente pakanluran.",
-          "Ayusin mo. Habang buhay sila, may nagigising sa junkyard."
+          "Hay Wire and his crew are the ones sending the current west.",
+          "Sort them out. As long as they're up, something in the junkyard keeps waking up."
         ],
         "report": [
-          "Untangled na! Ang linis ng trabaho mo.",
-          "Isang lugar na lang bago ang junkyard: ang Crab Basin."
+          "All untangled! That was clean work.",
+          "Just one place left before the junkyard: the Crab Basin."
         ]
       },
       "rewards": [
@@ -271,12 +271,12 @@
       "story": "Down in the Crab Basin, crabs of rusted scrap drag every bit of metal they can pinch toward the junkyard. Their shells shrug off every blow except just after they strike. Beat twenty of them and the trail of scrap ends.",
       "dialogue": {
         "give": [
-          "Mga alimangong bakal sa Crab Basin. Hinihila nila ang lahat ng bakal papunta sa junkyard.",
-          "Matigas ang shell nila: tamaan mo pagkatapos nilang umatake. 20, tapos balik ka."
+          "There are iron crabs in the Crab Basin. They drag every bit of metal they can find to the junkyard.",
+          "Their shells are tough: hit them right after they attack. Get 20, then come back."
         ],
         "report": [
-          "Walang crab mentality dito, tulungan tayo!",
-          "Lahat ng dinadala nila, iisa ang patutunguhan: ang Golem Pit."
+          "No crab mentality here. We help each other!",
+          "Everything they've been carrying is going to one place: the Golem Pit."
         ]
       },
       "rewards": [
@@ -293,12 +293,12 @@
       "story": "The basin's crab kings (Scrap Py, Crab Bie, Ali Mango and Sir Pincho) carry the biggest pieces of all. Everything the junk has dragged west for weeks is piled in the Golem Pit, and it has an old street lamp for a head. Beat one crab king and you're ready to face the Scrapheap Golem.",
       "dialogue": {
         "give": [
-          "Huling utos ko: talunin mo ang isa sa mga hari ng alimango. Sila ang nagdadala ng pinakamalaking piraso.",
-          "Lahat ng basurang hinila pakanluran, nabuo na bilang isang halimaw sa Golem Pit. May ilaw pa sa ulo."
+          "My last order: beat one of the crab kings. They carry the biggest pieces.",
+          "All the junk dragged west has become a single monster in the Golem Pit. It even has a light for a head."
         ],
         "report": [
-          "Handa ka na sa Golem, bantay. Ipinagmamalaki kita.",
-          "Bumabangon siya tuwing dalawang oras. Pag handa ka na, at may mga kasama ka, puntahan mo siya."
+          "You're ready for the Golem, watchman. I'm proud of you.",
+          "It rises every two hours. When you're ready, and you've got friends with you, go and face it."
         ]
       },
       "rewards": [
