@@ -34,6 +34,12 @@ export const nameOf = (item: Item): string => {
   return D ? itemName(D, item, myMainStat()) : item.defId;
 };
 
+/** Shows an item in the chat: "[its name]" into the input (ui/chat.ts listens), sent with its uid. Alt+click in the bag
+ *  or the equipment panel. */
+export function chatItem(it: Item): void {
+  dispatchEvent(new CustomEvent('mk-chat-item', { detail: { label: nameOf(it), uid: it.uid } }));
+}
+
 export const rarityOf = (item: Pick<Item, 'rarity'>): Rarity => (isRarity(item.rarity) ? item.rarity : 'white');
 
 /** An item's picture at `scale`× ('icon' 16 px, 'showcase' 32 px): its art, else its slot's silhouette (gear), else a

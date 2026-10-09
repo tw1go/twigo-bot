@@ -120,7 +120,8 @@ export type TownClientMessage =
   | { t: 'stand' }
   /** Say something (1–120 characters after tidying; a few at once, then about one every 2 s). */
   /** `megaphone`: uses one of the sender's megaphones; the line runs across everyone's screen. */
-  | { t: 'say'; text: string; megaphone?: boolean; /** To your party only (`/p` in the chat; not to Discord). */ party?: boolean }
+  | { t: 'say'; text: string; megaphone?: boolean; /** To your party only (`/p` in the chat; not to Discord). */ party?: boolean;
+      /** Items shown in it (their uids, at most 3; each written in the text as "[its name]"). */ links?: string[] }
   /** An emote over your head (one of TOWN_EMOTES). */
   | { t: 'emote'; emote: TownEmote }
   /** A damage skill on a mob (battle maps: the Slums): `skill` = its place in the class's list (which pose it plays). */
@@ -220,9 +221,18 @@ export type TownMove = 'dash' | 'step-back' | 'charge' | 'blink';
 export type TownEmote = 'heart' | 'laugh' | 'exclaim' | 'question' | 'kowen' | 'sleep' | 'angry' | 'wave';
 
 /** A line of the town chat, as kept for people arriving (the last few, in memory only). */
+/** An item shown in a chat line: its name as written in the text ("[Hemp Robe +5]" holds `label`) and the item itself
+ *  (the speaker's own, as the server has it), for anyone to click and see. */
+export interface ChatItemLink {
+  label: string;
+  item: Item;
+}
+
 export interface TownChatLine {
   name: string;
   text: string;
+  /** Items shown in it (Alt+click in the bag). */
+  links?: ChatItemLink[];
   /** Said in the town's Discord channel rather than in town. */
   discord?: boolean;
   /** Said through a megaphone. */
@@ -313,7 +323,7 @@ export type TownServerMessage =
   /** That bench is taken (followed by a snap back to where you stood). */
   | { t: 'seat-taken' }
   /** Someone said something (you too: your own words come back this way). */
-  | { t: 'say'; id: string; text: string; megaphone?: boolean; /** The speaker's nickname (they may be in another room). */ name?: string }
+  | { t: 'say'; id: string; text: string; megaphone?: boolean; /** The speaker's nickname (they may be in another room). */ name?: string; links?: ChatItemLink[] }
   /** A banner for everyone in town. */
   | { t: 'announce'; announcement: TownAnnouncement }
   /** Something happened around the server (the system feed). */
@@ -438,7 +448,7 @@ export type TownServerMessage =
   /** The player you invited said no (or let it lapse). */
   | { t: 'party-declined'; name: string }
   /** A party member said something to the party (you too: your own words come back this way). */
-  | { t: 'party-say'; id: string; name: string; text: string }
+  | { t: 'party-say'; id: string; name: string; text: string; links?: ChatItemLink[] }
   /** A party member picked something up (to the rest of the party, wherever they are): their name and what; Kusing
    *  with each one's share (`share`) when it was split. */
   | { t: 'party-loot'; name: string; got: { kusing?: number; item?: Item }; share?: number }

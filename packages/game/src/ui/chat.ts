@@ -1,3 +1,4 @@
+import type { ChatItemLink, Item } from '@mikazuki/shared';
 import { playSound } from '../audio/sound';
 
 export type ChatChannel = 'general' | 'megaphone' | 'party';
@@ -16,6 +17,9 @@ const NEXT: Record<ChatChannel, ChatChannel> = { general: 'megaphone', megaphone
 // screen) and Party (pink: your party only, wherever they are; net/party.ts). `/m`, `/g` or `/p message` say it there
 // and stay on that channel; `/m`, `/g` or `/p` alone just switch, and the tag before the input shows (and switches,
 // General → Megaphone → Party) which one you're on.
+// Items: Alt+click one in your bag or equipment panel (the 'mk-chat-item' event) writes "[its name]" into the input; the
+// line goes with its uid and the server checks it's yours. In the log a shown item is its name in its rarity's colour,
+// and a click on it opens its tooltip (`showItem`, set by the town).
 
 
 const MAX_LINES = 60;
@@ -39,6 +43,8 @@ function discordMark(): SVGSVGElement {
   return svg;
 }
 const MAX_LENGTH = 120;
+/** Items shown in one message at most (the server takes no more). */
+const MAX_LINKS = 3;
 /** Phone-sized screens fold the chat away behind its button. */
 const PHONE = '(max-width: 560px), (max-height: 500px)';
 
@@ -59,9 +65,12 @@ export class ChatBox {
   /** The phone's chat button (hidden on bigger screens). */
   private readonly toggle: HTMLButtonElement;
 
+  /** Items written into the input so far ("[name]" → its uid), sent with the message if still in it. */
+  private readonly pending = new Map<string, string>();
+
   constructor(
-    /** Sends a message on a channel; false if it couldn't go (not connected). */
-    private readonly send: (text: string, channel: ChatChannel) => boolean,
+    /** Sends a message on a channel (with the uids of the items shown in it); false if it couldn't go (not connected). */
+    private readonly send: (text: string, channel: ChatChannel, links: string[]) => boolean,
     /** Extra controls beside the input (the emote picker). */
     tools: HTMLElement | null = null,
   ) {
@@ -127,11 +136,28 @@ export class ChatBox {
         if (pick) this.setChannel((Object.keys(CHANNELS) as ChatChannel[]).find((c) => CHANNELS[c].key === pick[1].toLowerCase())!);
         const said = pick ? text.slice(pick[0].length).trim() : text;
         if (!said) return;
-        if (!this.send(said, this.current)) this.notice('Chat is offline right now.');
+        const links = [...this.pending].filter(([label]) => said.includes(`[${label}]`)).map(([, uid]) => uid).slice(0, MAX_LINKS);
+        this.pending.clear();
+        if (!this.send(said, this.current, links)) this.notice('Chat is offline right now.');
       } else if (e.key === 'Escape') {
         this.input.blur();
       }
       e.stopPropagation(); // typing never walks or opens doors
+    });
+    // An item Alt+clicked in the bag or the equipment panel: "[its name]" where the cursor is.
+    addEventListener('mk-chat-item', (e) => {
+      const { label, uid } = (e as CustomEvent<{ label: string; uid: string }>).detail;
+      if (this.pending.size >= MAX_LINKS && !this.pending.has(label)) return this.notice(`Up to ${MAX_LINKS} items a message.`);
+      const word = `[${label}]`;
+      const at = document.activeElement === this.input ? (this.input.selectionStart ?? this.input.value.length) : this.input.value.length;
+      const before = this.input.value.slice(0, at);
+      const text = `${before}${before && !before.endsWith(' ') ? ' ' : ''}${word} ${this.input.value.slice(at)}`.trimEnd() + ' ';
+      if (text.length > MAX_LENGTH) return this.notice('That won’t fit in this message.');
+      this.pending.set(label, uid);
+      this.setOpen(true);
+      this.input.value = text;
+      this.input.focus();
+      this.input.setSelectionRange(text.length, text.length);
     });
     // Enter anywhere else opens the chat (unless another box or dialog has the focus).
     document.addEventListener('keydown', (e) => {
@@ -189,7 +215,7 @@ export class ChatBox {
 
   /** A message in the log (from Discord: with Discord's mark before the name; through a megaphone: sky blue; to the
    *  party: pink, after a "Party" tag). `id`: the speaker's town id. */
-  add(name: string, text: string, from: 'me' | 'town' | 'discord' = 'town', id?: string, megaphone: boolean | 'party' = false): void {
+  add(name: string, text: string, from: 'me' | 'town' | 'discord' = 'town', id?: string, megaphone: boolean | 'party' = false, links: ChatItemLink[] = []): void {
     const party = megaphone === 'party';
     if (!party) {
       this.heard.push(heardKey(name, text, from === 'discord'));
@@ -209,9 +235,50 @@ export class ChatBox {
       img.title = badge.name;
       line.append(img);
     }
-    line.append(...this.speaker(name, ': ', from === 'me' ? 'ch-me' : 'ch-name', from === 'town', id), text);
+    line.append(...this.speaker(name, ': ', from === 'me' ? 'ch-me' : 'ch-name', from === 'town', id), ...this.withItems(text, links));
     this.push(line);
   }
+
+  /** A shown item was clicked: its tooltip beside the name (set by the town). */
+  showItem: ((item: Item, anchor: HTMLElement) => void) | null = null;
+
+  /** A line's text with each shown item ("[name]") as its name in its rarity's colour, clickable for its tooltip. */
+  private withItems(text: string, links: ChatItemLink[]): Node[] {
+    if (!links.length) return [document.createTextNode(text)];
+    const out: Node[] = [];
+    let rest = text;
+    while (rest) {
+      // The first shown item still in the text.
+      let first: { at: number; l: ChatItemLink } | null = null;
+      for (const l of links) {
+        const at = rest.indexOf(`[${l.label}]`);
+        if (at >= 0 && (!first || at < first.at)) first = { at, l };
+      }
+      if (!first) {
+        out.push(document.createTextNode(rest));
+        break;
+      }
+      if (first.at) out.push(document.createTextNode(rest.slice(0, first.at)));
+      const word = `[${first.l.label}]`;
+      const b = document.createElement('b');
+      b.className = 'ch-item ch-click';
+      b.textContent = word;
+      b.style.color = this.itemColour?.(first.l.item) ?? '';
+      b.setAttribute('role', 'button');
+      b.title = `${first.l.label}: see it`;
+      const item = first.l.item;
+      b.addEventListener('click', (e) => {
+        e.stopPropagation(); // not the log's own click
+        this.showItem?.(item, b);
+      });
+      out.push(b);
+      rest = rest.slice(first.at + word.length);
+    }
+    return out;
+  }
+
+  /** An item's name colour (its rarity's; set by the town). */
+  itemColour: ((item: Item) => string) | null = null;
 
   /** A diss, praise or judge from the player menu: who said it, a coloured tag, and the line. `id`: theirs, when it's
    *  someone else. */
@@ -243,7 +310,7 @@ export class ChatBox {
   /** The conversation so far (as the server remembers it), replacing what's in the log. */
   /** The server's recent lines as you arrive. After a reconnect (`more`, e.g. the bot restarted) what's shown stays and
    *  only lines not shown yet are added. */
-  history(lines: { name: string; text: string; discord?: boolean; megaphone?: boolean }[], myName: string | null, more = false): void {
+  history(lines: { name: string; text: string; discord?: boolean; megaphone?: boolean; links?: ChatItemLink[] }[], myName: string | null, more = false): void {
     if (!more) {
       this.log.replaceChildren();
       this.heard.length = 0;
@@ -257,7 +324,7 @@ export class ChatBox {
         shown.set(k, n - 1);
         continue;
       }
-      this.add(l.name, l.text, l.discord ? 'discord' : l.name === myName ? 'me' : 'town', undefined, l.megaphone);
+      this.add(l.name, l.text, l.discord ? 'discord' : l.name === myName ? 'me' : 'town', undefined, l.megaphone, l.links);
     }
   }
 

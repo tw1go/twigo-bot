@@ -8,7 +8,7 @@ import { installPixelTiles } from './pixel-tiles';
 import { coinIcon, kusingIcon } from './reward';
 import type { EquipmentPanel } from './equipment';
 import { adventure, anyDef, cantWear, itemData, onAdventure } from '../net/adventure';
-import { itemPicture, itemTipFor, nameOf, rarityOf } from './item-tip';
+import { chatItem, itemPicture, itemTipFor, nameOf, rarityOf } from './item-tip';
 import { potionCooldownKey } from './hotbar';
 import { showRename } from './rename';
 import { type ForgePopup, confirmCombine, confirmDisassemble, forgeFromBag, mountForge } from './forge';
@@ -391,7 +391,9 @@ export class Inventory {
       cell.addEventListener('dragstart', (e) => tradeDrag(e, it.uid));
       cell.addEventListener('pointerenter', () => this.showTip(it, cell));
       cell.addEventListener('pointerleave', () => (this.tip.hidden = true));
-      cell.addEventListener('click', () => {
+      cell.addEventListener('click', (e) => {
+        // Alt+click: shown in the chat (ui/chat.ts).
+        if (e.altKey) return chatItem(it);
         // Trading: it goes into the trade.
         if (tradePut(it.uid)) return;
         // A whetstone, Repair Kit or agimat opens the forge popup; gear goes into it while it's open.

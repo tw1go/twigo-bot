@@ -13,8 +13,8 @@ import { loadItemData, loadLeveling, loadStats } from './stats-data.js';
 import { type CombatItems, type LootContent, potionOf } from './combat-bag.js';
 import { type Loot, LootRoom, splitKusing } from './town-loot.js';
 import { type HeldOffer, type Trade, Trades, checkOffer } from './trade.js';
-import type { CharacterProgress, QuestProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item, TradeEnd, TradeView } from '@mikazuki/shared';
-import { itemStats, questDropFor, skillMpCost, tradeRules } from '@mikazuki/shared';
+import type { ChatItemLink, CharacterProgress, QuestProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item, TradeEnd, TradeView } from '@mikazuki/shared';
+import { itemName, itemStats, questDropFor, skillMpCost, tradeRules } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
 // messages). The server keeps everyone's tile and checks each step — on the map, not blocked, next to the last
@@ -528,6 +528,21 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     partyLoot(c, got);
     lootGone(c.room, [l.id]);
   };
+  /** Items a member shows in a chat line (their uids, at most 3): each one theirs (worn or in the combat bag) whose name
+   *  ("[Hemp Robe +5]", named for their main stat) is in the text, as the server has it. */
+  const itemLinks = (c: Conn, uids: unknown, text: string): ChatItemLink[] => {
+    if (!opts.items || !Array.isArray(uids)) return [];
+    const mine = opts.items.state(c.userId);
+    const all = [...Object.values(mine.equipped), ...mine.bag].filter((i): i is Item => !!i);
+    const main = c.player.cls ? (STATS.classes[c.player.cls]?.main ?? null) : null;
+    const out: ChatItemLink[] = [];
+    for (const uid of uids.slice(0, 3)) {
+      const item = typeof uid === 'string' ? all.find((i) => i.uid === uid) : undefined;
+      const label = item ? itemName(items, item, main) : '';
+      if (item && text.includes(`[${label}]`) && !out.some((l) => l.label === label)) out.push({ label, item });
+    }
+    return out;
+  };
   /** What a member picked up, to the rest of their party (their system feed), wherever they are. */
   const partyLoot = (c: Conn, got: { kusing?: number; item?: Item }, share?: number) => {
     const m: TownServerMessage = { t: 'party-loot', name: c.player.nickname, got, ...(share ? { share } : {}) };
@@ -893,6 +908,8 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         c.says = Math.min(SAY_BURST, c.says + ((now - c.saidAt) / 1000) * SAYS_PER_SECOND);
         c.saidAt = now;
         if (c.says < 1) return send(c, { t: 'say-refused', reason: 'slow' });
+        // Items shown in it: theirs (worn or in the combat bag), each written in the text as "[its name]".
+        const links = itemLinks(c, m.links, text);
         // To the party only: its members, wherever they are (not kept, not to Discord).
         if (m.party === true) {
           const party = parties.of(c.userId);
@@ -900,7 +917,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
           c.says -= 1;
           for (const member of party.members) {
             const o = conns.get(member);
-            if (o) send(o, { t: 'party-say', id: p.id, name: p.nickname, text });
+            if (o) send(o, { t: 'party-say', id: p.id, name: p.nickname, text, ...(links.length ? { links } : {}) });
           }
           return;
         }
@@ -908,9 +925,9 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         if (megaphone && opts.megaphone && opts.megaphone(c.userId) === null) return send(c, { t: 'say-refused', reason: 'megaphone' });
         c.says -= 1;
         // To everyone, the speaker included (their own words come back this way), and on to Discord. Not saved.
-        remember({ name: p.nickname, text, ...(megaphone ? { megaphone } : {}) });
+        remember({ name: p.nickname, text, ...(megaphone ? { megaphone } : {}), ...(links.length ? { links } : {}) });
         opts.onSay?.(c.userId, p.nickname, text, megaphone);
-        return everyone({ t: 'say', id: p.id, name: p.nickname, text, ...(megaphone ? { megaphone } : {}) });
+        return everyone({ t: 'say', id: p.id, name: p.nickname, text, ...(megaphone ? { megaphone } : {}), ...(links.length ? { links } : {}) });
       }
     }
   };

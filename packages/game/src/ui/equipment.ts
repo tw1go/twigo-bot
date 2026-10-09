@@ -4,7 +4,7 @@ import type { Dir } from '../assets/types';
 import { playSound } from '../audio/sound';
 import { adventure, adventureData, cantWear, classInfo, equipItem, itemDef, onAdventure, placesFor, resetPoints, spendPoint, unequipPlace } from '../net/adventure';
 import { type Rarity, RARITY_COLOUR, RARITY_LABEL, RARITY_TEXT, isRarity } from './item-art';
-import { itemPicture, itemTipFor, myMainStat, nameOf, rarityOf } from './item-tip';
+import { chatItem, itemPicture, itemTipFor, myMainStat, nameOf, rarityOf } from './item-tip';
 import { toast } from './toast';
 import { forgeTake } from './forge';
 
@@ -246,9 +246,10 @@ export class EquipmentPanel {
     const b = el('button', 'eq-slot');
     b.dataset.place = place;
     b.addEventListener('dblclick', () => void this.takeOff(place));
-    // While the forge popup is open, a click (or a drag) puts the worn item into it.
-    b.addEventListener('click', () => {
+    // While the forge popup is open, a click (or a drag) puts the worn item into it; Alt+click shows it in the chat.
+    b.addEventListener('click', (e) => {
       const worn = adventure()?.equipped[place];
+      if (worn && e.altKey) return chatItem(worn);
       if (worn) forgeTake(worn.uid);
     });
     b.addEventListener('dragstart', (e) => {

@@ -41,6 +41,7 @@ const TOPICS: Topic[] = [
       '• **Emotes**: the face button beside the chat, or keys **F1–F8**',
       '• **N online** beside the chat lists who is in town',
       '• Click a name in the chat to open that player’s menu',
+      '• **Show an item**: **Alt+click** it in your bag or equipment panel (Option+click on a Mac) to put its name in your message. Anyone can click it in the chat to see the item',
       '-# Be kind: mods can mute, kick and filter words.',
     ].join('\n'),
   },

@@ -588,3 +588,42 @@ test('over the town\'s socket: a party member picks up Kusing and everyone in th
   for (const c of [mara, bob, cy, dee]) c.ws.close();
   await new Promise((ok) => server.close(ok));
 });
+
+test('over the town\'s socket: items shown in chat are the speaker\'s own (worn or in the bag) and named in the text; anything else is plain text', async () => {
+  const sling = newItem(S, D.defs.get('weapon-training-slingshot') as never, 'own-1');
+  const pot = newItem(S, thing('low-hp-potion'), 'own-2', 5);
+  const bags = new Map([['Mara', { equipped: { weapon: sling }, bag: [pot], kusing: 0 }], ['Bob', { equipped: {}, bag: [newItem(S, thing('low-mp-potion'), 'bobs', 2)], kusing: 0 }]]);
+  const server = createServer();
+  attachTown(server, {
+    map: { size: [4, 4], spawn: [1, 1], blocked: [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]] },
+    authenticate: async (req) => new URL(req.url ?? '/', 'http://x').searchParams.get('as'),
+    profile: (name) => ({ nickname: name, title: { name: 'Townfolk', color: '#fff' }, outfit: {} as never, cls: 'slingshot' }),
+    items: { take: () => true, usePotion: () => null, state: (name) => bags.get(name)! as never },
+  });
+  await new Promise<void>((ok) => server.listen(0, '127.0.0.1', ok));
+  const port = (server.address() as AddressInfo).port;
+  const open = (as: string) =>
+    new Promise<{ ws: WebSocket; got: TownServerMessage[] }>((ok) => {
+      const ws = new WebSocket(`ws://127.0.0.1:${port}/ws?as=${as}`);
+      const got: TownServerMessage[] = [];
+      ws.on('message', (d) => got.push(JSON.parse(String(d))));
+      ws.on('open', () => ok({ ws, got }));
+    });
+  const wait = (ms: number) => new Promise((ok) => setTimeout(ok, ms));
+  const [mara, bob] = [await open('Mara'), await open('Bob')];
+  await wait(100);
+  const name = (i: Item) => shared.itemName(D, i, 'DEX');
+  mara.ws.send(JSON.stringify({ t: 'say', text: `look [${name(sling)}] and [${name(pot)}]`, links: ['own-1', 'own-2'] }));
+  await wait(600);
+  mara.ws.send(JSON.stringify({ t: 'say', text: `mine now [Low MP Potion ×2]`, links: ['bobs'] })); // Bob's: not hers
+  await wait(600);
+  mara.ws.send(JSON.stringify({ t: 'say', text: 'no name in it', links: ['own-1'] }));
+  await wait(150);
+  const said = bob.got.filter((m): m is Extract<TownServerMessage, { t: 'say' }> => m.t === 'say');
+  assert.equal(said.length, 3);
+  assert.deepEqual(said[0].links?.map((l) => [l.label, l.item.uid]), [[name(sling), 'own-1'], [name(pot), 'own-2']]);
+  assert.equal(said[1].links, undefined, 'someone else\'s item: plain text');
+  assert.equal(said[2].links, undefined, 'not named in the text: no link');
+  for (const c of [mara, bob]) c.ws.close();
+  await new Promise((ok) => server.close(ok));
+});

@@ -51,7 +51,8 @@ import { RARITY_TEXT, addItemArt, isRarity, setItemArt, setRarityColours } from 
 import { setForgeArt } from '../ui/forge';
 import { LOOT_LAND_MS, LootLayer } from '../world/loot';
 import { setKusingArt } from '../ui/reward';
-import { nameOf, pickupOf } from '../ui/item-tip';
+import { itemTipFor, nameOf, pickupOf } from '../ui/item-tip';
+import { SkillTip } from '../ui/skill-tip';
 import { playDig, setDigPanelArt } from '../ui/dig-panel';
 import { showMine } from '../ui/mine';
 import { Inventory } from '../ui/inventory';
@@ -99,7 +100,7 @@ import { Hotbar, potionCooldownKey } from '../ui/hotbar';
 import { mountClassSwitch } from '../ui/class-switch';
 import { MOVES, type MoveKind, isMoveKind, moveTiles, playMove } from '../world/mobility';
 import { changeClass, devItemsReady, devQuestKill, questReport, setQuestCounts, devSwitchClass, adventure, adventureData, anyDef, chooseClass, classInfo, initAdventure, itemData, itemDef, loadAdventureData, onAdventure, questDef, questFor, questTalk, setItems, setProgress, skillView, skillViews, buffViews } from '../net/adventure';
-import { type Item, type QuestReward, type TownItems, LOOT_REACH, auraFor, classBuffs, classSkills, countOf, isGearDef, itemAura, itemStats, newItem, tradeRules } from '@mikazuki/shared';
+import { nameColour, type Item, type QuestReward, type TownItems, LOOT_REACH, auraFor, classBuffs, classSkills, countOf, isGearDef, itemAura, itemStats, newItem, tradeRules } from '@mikazuki/shared';
 import type { ClassArt } from '../assets/types';
 import { drawRested, loadImages, poseFiles, restFiles } from '../characters/kit-art';
 import { holdQuestBanners, mountQuests } from '../ui/quests';
@@ -1471,7 +1472,17 @@ export class TownScene extends Phaser.Scene {
         ask: (p) => tradeWin.ask(p.id, p.nickname),
       };
     }
-    const chat = new ChatBox((text, channel) => link.send({ t: 'say', text, ...(channel === 'megaphone' ? { megaphone: true } : channel === 'party' ? { party: true } : {}) }), tools);
+    const chat = new ChatBox((text, channel, links) => link.send({ t: 'say', text, ...(channel === 'megaphone' ? { megaphone: true } : channel === 'party' ? { party: true } : {}), ...(links.length ? { links } : {}) }), tools);
+    // Items shown in chat lines: their name in their rarity's colour; a click opens their tooltip beside it (any click
+    // elsewhere, or Escape, closes it).
+    const itemTip = new SkillTip();
+    chat.itemColour = (item) => {
+      const D = itemData();
+      return D ? nameColour(D, item) : '#fff';
+    };
+    chat.showItem = (item, anchor) => itemTip.show(itemTipFor(item), anchor);
+    document.addEventListener('pointerdown', (e) => !(e.target as Element | null)?.closest?.('.ch-item') && itemTip.hide(), true);
+    addEventListener('keydown', (e) => e.key === 'Escape' && itemTip.hide());
     // Parties (net/party.ts): the panel on the left for members, pink names for your party (on your screen only).
     setPartyLink(link);
     this.others.inParty = inParty;
@@ -1584,16 +1595,16 @@ export class TownScene extends Phaser.Scene {
         if (m.id === myId) {
           if (bubbles) this.player.say(m.text, bubbles);
           if (m.megaphone) window.dispatchEvent(new Event('mk-wallet')); // one megaphone fewer in the bag
-          return chat.add(name, m.text, 'me', undefined, m.megaphone); // (your own words make no sound)
+          return chat.add(name, m.text, 'me', undefined, m.megaphone, m.links); // (your own words make no sound)
         }
-        chat.add(name, m.text, 'town', m.id, m.megaphone);
+        chat.add(name, m.text, 'town', m.id, m.megaphone, m.links);
         playSound('chat');
       }
       if (m.t === 'party-say') {
         const mine = m.id === myId;
         const char = mine ? this.player : this.others.charOf(m.id);
         if (char && bubbles) char.say(m.text, bubbles);
-        chat.add(mine ? (member?.nickname ?? 'You') : m.name, m.text, mine ? 'me' : 'town', mine ? undefined : m.id, 'party');
+        chat.add(mine ? (member?.nickname ?? 'You') : m.name, m.text, mine ? 'me' : 'town', mine ? undefined : m.id, 'party', m.links);
         if (!mine) playSound('chat');
         return;
       }
