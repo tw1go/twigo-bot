@@ -128,7 +128,7 @@ const TOPICS: Topic[] = [
       '• A mob’s **HP bar** shows while it’s your target and for **5 s** after a hit. Over players you only see your **party**’s bars and your own',
       '• A mob’s name is **grey** 5+ levels below you, **red** 3+ above, else white',
       '• The **Scrapheap Golem** never leaves its pit. If nobody fights it for **30 s** (everyone knocked out or gone), it heals to full',
-      '• **Mini bosses**: each zone has a few big ones with **orange** names (Jus Tin, Kap Tan, Tire Mendous…), a few levels above their mob, each in its own spot and back **3 min** after it falls. Do at least **10%** of one’s HP and you get its XP and your **own loot** (lots of Kusing, a piece of gear, sometimes a whetstone fragment); your party nearby gets them too',
+      '• **Mini bosses**: each zone has a few big ones with **orange** names (Jus Tin, Kap Tan, Tire Mendous…), a few levels above their mob, each in its own spot and back **3 min** after it falls. Do at least **10%** of one’s HP and you get its XP (your party nearby too). It drops **one set of loot** for everyone (lots of Kusing, a piece of gear, sometimes a whetstone fragment): those who fought it get **10 s** to grab it first, then anyone can',
     ].join('\n'),
   },
   {
@@ -155,7 +155,7 @@ const TOPICS: Topic[] = [
       '• In a party, **Kusing** anyone picks up is **split equally** between the party members in the Slums with you (any odd Kusing goes to whoever picked it up)',
       '• Every drop shows its name over it: gear and agimats in their rarity’s colour (brown, white, grey with more agimat slots, light/dark blue, light/dark orange), whetstones and potions in white; Kusing shows its amount',
       '• In a party, what your party members pick up shows in your feed too',
-      '• The **Scrapheap Golem** gives everyone who did 5% of its HP their own loot, only they can see: Kusing, Rough Whetstones, blue or orange gear, sometimes an accessory, an agimat or the Lamp-head Hat',
+      '• The **Scrapheap Golem** drops **one set of loot** for everyone: Kusing, Rough Whetstones, blue or orange gear, sometimes an accessory, an agimat or the Lamp-head Hat. Everyone who did 5% of its HP gets **10 s** to grab it first, then anyone can',
       '• Loot goes in your **combat bag**: the **Combat** tab of your bag (**B**), **40 slots**. Potions stack to 99, whetstones and agimats to 999, gear one a slot. Full: it stays on the ground',
       '• Hover an item for its tooltip: its level and stats needed (red: not yet), its base stat, its **3 affix lines** (blue and orange gear), its agimat slots. **Orange gear binds** the first time you wear it',
       '• **HP and MP Potions**: buy them at the sari-sari store’s **Healing** tab for Kusing, drag them onto your hotbar (the **- = ~** slots) and press the key. They heal at once and share a **10 s** cooldown',

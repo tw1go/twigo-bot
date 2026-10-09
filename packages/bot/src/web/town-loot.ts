@@ -78,17 +78,21 @@ export class LootRoom {
   }
 
   /**
-   * A kill's drops, rolled and laid out: a normal mob's for its killer (and `party`: the members in the room with them),
-   * the golem's for each player who earned it (their own). `spots(at, n)` gives n tiles round where it died to lay them
-   * on. Returns the new loot.
+   * A kill's drops, rolled and laid out, one set that everyone sees: a normal mob's held 10 s for its killer (and
+   * `party`: the members in the room with them), the golem's and a mini boss's for everyone who earned it (`to`); then
+   * anyone's. `spots(at, n)` gives n tiles round where it died to lay them on. Returns the new loot.
    */
   drop(kill: LootKill, party: string[], spots: (at: [number, number], n: number) => [number, number][], now: number): Loot[] {
     const mini = kill.mini && this.minis ? this.minis : null;
-    const lots: { owner: string; contents: LootContent[] }[] = kill.boss
-      ? kill.to.map((owner) => ({ owner, contents: golemLoot(this.data, this.random, this.uid, this.plusRandom) }))
+    // One set for everyone (no personal copies): the golem's, a mini boss's or a mob's.
+    const contents: LootContent[] = kill.boss
+      ? golemLoot(this.data, this.random, this.uid, this.plusRandom)
       : mini
-        ? kill.to.map((owner) => ({ owner, contents: miniLoot(this.data, kill.kind, kill.level, mini, this.random, this.uid, this.plusRandom) }))
-        : kill.to.slice(0, 1).map((owner) => ({ owner, contents: mobDrops(this.data, kill.kind, kill.level, this.random, this.uid, this.plusRandom) }));
+        ? miniLoot(this.data, kill.kind, kill.level, mini, this.random, this.uid, this.plusRandom)
+        : mobDrops(this.data, kill.kind, kill.level, this.random, this.uid, this.plusRandom);
+    // Its head start: everyone who earned a boss's, else the killer and their party.
+    const owners = kill.boss || mini ? [...new Set([...kill.to, ...party])] : [...new Set([...kill.to.slice(0, 1), ...party])];
+    const lots = kill.to.length ? [{ owners, contents }] : [];
     const total = lots.reduce((n, l) => n + l.contents.length, 0);
     const tiles = spots(kill.at, total);
     let i = 0;
@@ -101,9 +105,9 @@ export class LootRoom {
           col,
           row,
           content,
-          owners: kill.boss || mini ? [lot.owner] : [...new Set([lot.owner, ...party])],
-          personal: !!(kill.boss || mini),
-          opensAt: kill.boss || mini ? Infinity : now + this.reserveMs,
+          owners: lot.owners,
+          personal: false,
+          opensAt: now + this.reserveMs,
           goneAt: now + LOOT_MS,
         };
         this.all.set(loot.id, loot);

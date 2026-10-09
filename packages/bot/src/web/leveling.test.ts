@@ -157,7 +157,7 @@ test('mini boss credit: everyone who did 10% of its HP (the killer if nobody did
   assert.deepEqual(both.kills[0].to.sort(), ['m-bob', 'm-mara']);
 });
 
-test('mini boss loot: its mob\'s Kusing × 10, one gear piece at the nearest gear level (brown/white/grey), a fragment 1 in 3; personal', () => {
+test('mini boss loot: its mob\'s Kusing × 10, one gear piece at the nearest gear level (brown/white/grey), a fragment 1 in 3; one set for everyone', () => {
   const random = lcg(11);
   let fragments = 0;
   const N = 3000;
@@ -176,11 +176,12 @@ test('mini boss loot: its mob\'s Kusing × 10, one gear piece at the nearest gea
   }
   assert.ok(Math.abs(fragments / N - 1 / 3) < 0.04, String(fragments / N));
   assert.equal(nearestGearLevel([10, 20], 15), 20);
-  // Each earner's own, never seen by the other.
+  // One set for everyone, held 10 s for those who earned it, then anyone's.
   const room = new LootRoom(D, lcg(2));
   const lots = room.drop({ kind: 'tin-can', level: 4, at: [200, 100], to: ['a', 'b'], mini: 'tin-can-jus-tin' }, [], (_at, n) => Array.from({ length: n }, (_, i) => [200 + i, 100] as [number, number]), 0);
-  assert.ok(lots.every((l) => l.personal && l.owners.length === 1));
-  assert.ok(lots.filter((l) => l.owners[0] === 'a').every((l) => !room.view(l, 'b', 0)));
+  assert.ok(lots.length >= 2 && lots.every((l) => !l.personal && l.owners.includes('a') && l.owners.includes('b')));
+  assert.ok(lots.every((l) => room.view(l, 'c', 0)), 'everyone sees it');
+  assert.deepEqual([room.mayTake(lots[0], 'c', 0), room.mayTake(lots[0], 'c', room.reserveMs)], [false, true]);
 });
 
 test('quest pieces: each mob\'s slot and agimat (classes/leveling.json miniBoss.questDrop), your gear type, grey, +5, bound, no lines', () => {
@@ -247,7 +248,7 @@ async function partyTown(room: InstanceType<typeof MobRoom>, at: [number, number
 }
 const wait = (ms: number) => new Promise((ok) => setTimeout(ok, ms));
 
-test('over the town\'s socket: a party of 2 both get a mini boss\'s XP, their own loot and quest credit; a normal kill counts for both', async () => {
+test('over the town\'s socket: a party of 2 both get a mini boss\'s XP, its one set of loot (either may take it) and quest credit; a normal kill counts for both', async () => {
   const room = new MobRoom(map, lcg(16), {}, { shapes: {} }, loadMobKinds());
   const jus = room.snapshot(0).find((m) => m.mini === 'tin-can-jus-tin')!;
   // Mara alone takes the mini boss down: Bob, in her party nearby, gets its XP and his own loot too.
@@ -259,8 +260,8 @@ test('over the town\'s socket: a party of 2 both get a mini boss\'s XP, their ow
   const mine = t.a.got.find((m) => m.t === 'loot-drop') as Extract<TownServerMessage, { t: 'loot-drop' }>;
   const his = t.b.got.find((m) => m.t === 'loot-drop') as Extract<TownServerMessage, { t: 'loot-drop' }>;
   assert.ok(mine && his, 'each sees loot');
-  assert.ok(mine.loot.every((l) => l.mine) && his.loot.every((l) => l.mine), 'each only their own');
-  assert.ok(!mine.loot.some((l) => his.loot.some((h) => h.id === l.id)));
+  assert.ok(mine.loot.every((l) => l.mine) && his.loot.every((l) => l.mine), 'either may take it at once');
+  assert.deepEqual(mine.loot.map((l) => l.id), his.loot.map((l) => l.id), 'the same one set');
   assert.deepEqual(t.counted.sort(), ['Bob:tin-can:true', 'Mara:tin-can:true']);
   // The quest piece doesn't drop: it comes with the quest's report, into the bag.
   const pieces = (got: TownServerMessage[]) =>

@@ -498,9 +498,9 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
 - Loot (`web/loot.ts` rolls, `web/town-loot.ts` LootRoom per mob room, run by `web/town.ts` with `TownOptions.items`):
   each kill (`MobKill` has kind, `at`, `boss`) drops Kusing (`kusingRange`: 0.6–1.2 × `kusingFor`, stats.json
   currencies.kusingPerMobRange; Tin Can 60–120; the golem's stays bossLoot's) + 3% gear (map level; Wire/Crab Lv 20 30%) + 5% a Low potion;
-  the golem's `golemLoot` per earner, personal. Dropped gear (both) rolls a plus +0–+3 (`dropPlus`, stats.json
-  rarity.dropPlus: 60/25/10/5, placeholder). Kusing a party member picks up (not personal loot) is split equally between the party in the room (`splitKusing` in web/town-loot.ts, the picker gets the remainder; tested). Reserved 10 s for the killer (party: members in the room), shown per
-  viewer (`TownLoot.mine` / `opensIn`; golem loot only to its owner), gone after 2 min. Never picked up on its own (not
+  the golem's `golemLoot` and a mini boss's `miniLoot`: one set for everyone (no personal copies), held 10 s for everyone credited (`kill.to`), then anyone's. Dropped gear (both) rolls a plus +0–+3 (`dropPlus`, stats.json
+  rarity.dropPlus: 60/25/10/5, placeholder). Kusing a party member picks up (not personal loot) is split equally between the party in the room (`splitKusing` in web/town-loot.ts, the picker gets the remainder; tested). Reserved 10 s for the killer (party: members in the room; a boss's: all who earned it), shown per
+  viewer (`TownLoot.mine` / `opensIn`), gone after 2 min. Never picked up on its own (not
   walking over it, Kusing neither): only `pick {id?}` within LOOT_REACH (`LootRoom.pickable`: that one, or the nearest you
   may take); full bag → `loot-full`. `items` message (the player's items + `got`). Potions: `potion {item}` → battle maps only,
   refused when full, one shared cooldown (stats.json potions.sharedCooldownSec) per member, `potion` to the room (heal
@@ -670,7 +670,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   points, 2+ from paths: concrete/plate/planks); the bot's MobRoom places one each (`<zone>:mini:<id>`, its kind's
   rules with leveling.json's level/HP/ATK/DEF/XP, never a pack, outside the zone's count), back at its own spot after
   respawnSeconds; credit = members who did kill_credit's share (`dealt`, cleared on heal/death; the killer if nobody), each
-  its XP and personal loot (`miniLoot` in web/loot.ts: its mob's Kusing × 10, one gear piece at the nearest gear level
+  its XP; one shared set of loot (`miniLoot` in web/loot.ts: its mob's Kusing × 10, one gear piece at the nearest gear level
   (Lv 10 below 15, else 20; brown/white/grey by the mobs' odds, +0–+3), a fragment 1 in 3), plus their party in the room.
   Quest piece (leveling.json miniBoss.questDrop, a repo addition): a mini boss quest's reward, into the combat bag with
   its report (`giveQuestPieces` in shared leveling.ts, marked in `quests.pieces`; no room: a later visit; one finished
