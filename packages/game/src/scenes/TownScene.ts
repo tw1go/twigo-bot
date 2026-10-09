@@ -1964,6 +1964,12 @@ export class TownScene extends Phaser.Scene {
         // A reconnect (the bot restarted, a blip): what's on screen stays; only what's new is added.
         chat.history(m.recent ?? [], member?.nickname ?? null, arrived);
         chat.setGm(!!m.gm); // a Game Master: the GM channel
+        // Jailed or not, as the server has it now (a sentence that ran out while the link was down clears here).
+        if (!!m.jailed !== this.player.jailed) {
+          this.player.setJailed(!!m.jailed);
+          if (this.hood) this.hood.me.jailed = !!m.jailed;
+          window.dispatchEvent(new Event('mk-wallet')); // the HUD's status dot
+        }
         feed.history(m.system ?? [], arrived);
         if (m.notice && !arrived) announce(m.notice); // a notice still current when you arrive
         // Arriving: go to the free tile the server picked (so people don't land on each other), unless you've

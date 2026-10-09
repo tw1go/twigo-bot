@@ -156,6 +156,11 @@ export class Character {
   /** Their HP and most, as last heard. */
   private hp: [number, number] | null = null;
 
+  /** Whether the jail bars are over them. */
+  get jailed(): boolean {
+    return !!this.bars;
+  }
+
   /** Jail bars over the character (manifest fx jailBars, in the same cell, on top of their layers), or off. */
   setJailed(on: boolean): void {
     if (!on) {

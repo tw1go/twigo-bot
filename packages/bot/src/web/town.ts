@@ -1064,7 +1064,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       const loot = loots.get(room);
       if (loot) send(c, { t: 'loot', loot: loot.viewAll(userId, Date.now()) });
     });
-    send(c, { t: 'welcome', you: player.id, players: [...conns.values()].filter((o) => o.room === room).map((o) => o.player), recent, system: systemLines, spawn: [col, row], notice: notice && notice.until > Date.now() ? notice.a : undefined, ...(opts.gm?.(userId) ? { gm: true } : {}) });
+    send(c, { t: 'welcome', you: player.id, players: [...conns.values()].filter((o) => o.room === room).map((o) => o.player), recent, system: systemLines, spawn: [col, row], notice: notice && notice.until > Date.now() ? notice.a : undefined, ...(opts.gm?.(userId) ? { gm: true } : {}), ...(player.jailed ? { jailed: true } : {}) });
     conns.set(userId, c);
     others(c, { t: 'join', player });
     known.set(userId, { nickname: player.nickname, outfit: player.outfit, cls: player.cls, level: player.level });

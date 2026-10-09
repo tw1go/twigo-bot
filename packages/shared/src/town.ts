@@ -336,6 +336,8 @@ export type TownServerMessage =
   | { t: 'welcome'; you: string; players: TownPlayer[]; recent: TownChatLine[]; system: TownSystemLine[]; spawn: [number, number];
       /** You're a Game Master: the chat's GM channel is yours. */
       gm?: boolean;
+      /** You're in jail now (the bars over you; a release while you were away comes with the next welcome). */
+      jailed?: boolean;
       /** The owner's latest notice, while it's still current (30 minutes). */
       notice?: TownAnnouncement }
   | { t: 'join'; player: TownPlayer }
