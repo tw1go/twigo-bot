@@ -1,5 +1,5 @@
 import { keyLabel, matches, onKeybinds } from './keybinds';
-import { type Item, type TownBagActionResponse, type TownBagItem, type TownInventoryResponse, bagSlots, isGearDef } from '@mikazuki/shared';
+import { type Item, type TownBagActionResponse, type TownBagItem, type TownInventoryResponse, bagSlots, isGearDef, trainingSellPrice } from '@mikazuki/shared';
 import { hotbarDragItem, hotbarItem } from './hotbar';
 import { playSound } from '../audio/sound';
 import { fakeLogin, fakeName } from '../session';
@@ -11,7 +11,7 @@ import { adventure, anyDef, cantWear, itemData, onAdventure } from '../net/adven
 import { chatItem, itemKeys, itemPicture, itemTipFor, nameOf, rarityOf, wearDiff, wornFor } from './item-tip';
 import { potionCooldownKey } from './hotbar';
 import { showRename } from './rename';
-import { type ForgePopup, confirmCombine, confirmDisassemble, forgeFromBag, mountForge } from './forge';
+import { type ForgePopup, confirmCombine, confirmDisassemble, confirmSell, forgeFromBag, mountForge } from './forge';
 import { fragmentsPerWhetstone } from '@mikazuki/shared';
 import { inTrade, tradeBlocked, tradeDrag, tradePut, trading } from './trade';
 
@@ -432,7 +432,9 @@ export class Inventory {
       const why = this.cantWearWhy(it);
       if (why) Object.assign(wear, { disabled: true, title: why });
       row.append(wear);
+      const price = def.training ? this.trainingPrice() : null;
       if (!def.training) row.append(this.action('Disassemble', 'iv-sell', () => void this.disassemble(it, null)));
+      else if (price !== null) row.append(this.action(`Sell · ${price} Kusing`, 'iv-sell', () => void this.sell(it, null, price)));
     } else if (def?.kind === 'potion') parts.push(el('div', 'iv-about', 'Drag it onto your hotbar (the - = ~ slots) and use it in the Slums.'));
     else if (def?.forge === 'whetstone') row.append(this.action('Enhance…', 'iv-flex', () => void this.openForge(it)));
     else if (def?.forge === 'repairKit') row.append(this.action('Repair…', 'iv-flex', () => void this.openForge(it)));
@@ -464,11 +466,13 @@ export class Inventory {
     if (isGearDef(def)) {
       if (this.cantWearWhy(it)) off.add(items.length);
       items.push(['Wear', () => void this.equipment?.wear(it.uid)]);
-      if (def.training) {
+      // Training gear sells for Kusing (it can't be taken apart); the rest is taken apart.
+      const price = def.training ? this.trainingPrice() : null;
+      if (def.training && price !== null) items.push([`Sell (${price} Kusing)`, () => void this.sell(it, cell, price)]);
+      else if (def.training) {
         off.add(items.length);
-        items.push(["Training gear can't be taken apart", () => {}]);
-      }
-      else items.push(['Disassemble', () => void this.disassemble(it, cell)]);
+        items.push(["Training gear can't be sold", () => {}]);
+      } else items.push(['Disassemble', () => void this.disassemble(it, cell)]);
     } else if (def?.forge === 'fragment') {
       const D = itemData();
       const per = D ? fragmentsPerWhetstone(D.stats) : 10;
@@ -501,6 +505,23 @@ export class Inventory {
     if (this.busy || !(await confirmDisassemble(it))) return;
     this.busy = true;
     const r = await forgeFromBag({ action: 'disassemble', item: it.uid }, cell ?? this.grid);
+    this.busy = false;
+    if (r) this.message = { text: r.message, ok: r.ok };
+    if (this.pickedUid === it.uid && r?.ok) this.pickedUid = null;
+    this.render();
+  }
+
+  /** What training gear sells for (stats.json trainingGear), or null. */
+  private trainingPrice(): number | null {
+    const D = itemData();
+    return D ? trainingSellPrice(D.stats) : null;
+  }
+
+  /** Training gear sold for Kusing, once they've said yes. */
+  private async sell(it: Item, cell: HTMLElement | null, price: number): Promise<void> {
+    if (this.busy || !(await confirmSell(it, price))) return;
+    this.busy = true;
+    const r = await forgeFromBag({ action: 'sell', item: it.uid }, cell ?? this.grid);
     this.busy = false;
     if (r) this.message = { text: r.message, ok: r.ok };
     if (this.pickedUid === it.uid && r?.ok) this.pickedUid = null;

@@ -19,10 +19,12 @@ export type TownForgeAction =
   | { action: 'repair'; item: string; tool?: string }
   | { action: 'embed'; item: string; agimat: string; slot: number; replace?: boolean }
   | { action: 'disassemble'; item: string }
-  | { action: 'combine'; item: string };
+  | { action: 'combine'; item: string }
+  /** Training gear only: sold from the bag for Kusing (stats.json trainingGear.sellKusing). */
+  | { action: 'sell'; item: string };
 
 /** What happened: an enhance's success, fail or break, a repair, an embed, a disassembly or a combine. */
-export type ForgeOutcome = 'success' | 'fail' | 'break' | 'repaired' | 'embedded' | 'disassembled' | 'combined';
+export type ForgeOutcome = 'success' | 'fail' | 'break' | 'repaired' | 'embedded' | 'disassembled' | 'combined' | 'sold';
 
 export interface TownForgeResponse {
   ok: boolean;
@@ -39,7 +41,13 @@ export interface TownForgeResponse {
 }
 
 /** The parts of a character the forge changes. */
-export type ForgeHolder = Pick<AdventureState, 'equipped' | 'bag'>;
+export type ForgeHolder = Pick<AdventureState, 'equipped' | 'bag'> & { kusing?: number };
+
+/** What a piece of training gear sells for (stats.json trainingGear: sellKusing, unless noSell); null: it doesn't sell. */
+export function trainingSellPrice(stats: StatsData): number | null {
+  const T = (stats as StatsData & { trainingGear?: { noSell?: boolean; sellKusing?: number } }).trainingGear;
+  return T && !T.noSell && typeof T.sellKusing === 'number' && T.sellKusing > 0 ? T.sellKusing : null;
+}
 
 /** An item by uid, worn (its place) or in the combat bag (its index). */
 export function findItem(s: ForgeHolder, uid: string): { item: Item; place?: EquipPlace; index?: number } | null {

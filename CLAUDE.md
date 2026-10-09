@@ -631,8 +631,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   slots): the weapon, then `giveTrainingArmor` (each piece into its place if free, else the bag; `trainingArmorGiven` once
   all five are in; response `gear` → toasts "Received: <weapon>", then "Received: Training gear" with the body piece's
   picture). A class from before: `/me` runs `trainingArmorFor` first (`MeResponse.trainingGear` → "The Tanod left you a
-  set of training gear." after the title card; again next visit only for pieces that had no room). Can't be sold
-  (`sellInTown` refuses), and no path drops, trades, gifts or enhances equipment. Doesn't change the paper doll. Art:
+  set of training gear." after the title card; again next visit only for pieces that had no room). Sells from the combat bag for Kusing (stats.json trainingGear
+  `noSell` false, `sellKusing` 25, repo additions; forge action 'sell', the bag's right-click and detail, a confirm box); never dropped, traded, gifted, enhanced or taken apart. Doesn't change the paper doll. Art:
   `items/armor/item-armor-training-<piece>(-16|-64).png`; an item without `icon`/`showcase` shows its place's silhouette
   (`slotSilhouette` / `gearPicture` in ui/equipment.ts: panel, bag, toasts) — add the fields when the art comes (only
   suit and boots exist so far).

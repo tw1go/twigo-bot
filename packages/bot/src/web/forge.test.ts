@@ -20,6 +20,7 @@ import {
   luckPerFail,
   newAgimat,
   newItem,
+  trainingSellPrice,
   rollGear,
 } from '@mikazuki/shared';
 import { loadItemData } from './stats-data.js';
@@ -351,4 +352,18 @@ test('forge actions: the body checked, then the action', () => {
   const item = sling();
   const s = holder([item], 1);
   assert.equal(forge(D, s, { action: 'enhance', item: item.uid }, always(0), uid).outcome, 'success');
+});
+
+test('training gear sells from the bag for stats.json trainingGear.sellKusing; other gear and worn pieces don\'t', () => {
+  const price = trainingSellPrice(D.stats)!;
+  assert.equal(price, 25);
+  const train = newItem(D.stats, D.defs.get('weapon-training-slingshot') as never, 't1');
+  const crude = newItem(D.stats, D.defs.get('weapon-crude-slingshot') as never, 'c1');
+  const worn = newItem(D.stats, D.defs.get('armor-training-light-head') as never, 'w1');
+  const s = { equipped: { head: worn }, bag: [train, crude], kusing: 10 };
+  assert.deepEqual(forge(D, s, { action: 'sell', item: 'c1' }, Math.random, () => 'x'), { ok: false, message: 'Only training gear sells here.' });
+  assert.deepEqual(forge(D, s, { action: 'sell', item: 'w1' }, Math.random, () => 'x'), { ok: false, message: 'Take it off first.' });
+  const r = forge(D, s, { action: 'sell', item: 't1' }, Math.random, () => 'x');
+  assert.ok(r.ok && r.outcome === 'sold');
+  assert.deepEqual([s.kusing, s.bag.map((i) => i.uid)], [10 + price, ['c1']]);
 });

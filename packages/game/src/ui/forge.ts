@@ -558,6 +558,40 @@ export function confirmDisassemble(item: Item): Promise<boolean> {
   });
 }
 
+/** The Sell box for training gear: "Sell <name> for N Kusing?" (bound gear: it's gone for good). Resolves true if confirmed. */
+export function confirmSell(item: Item, price: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const back = el('div', 'fg-confirm-back');
+    const box = el('div', 'fg-confirm');
+    box.setAttribute('role', 'alertdialog');
+    const title = el('div', 'fg-confirm-title');
+    title.append('Sell ', Object.assign(el('b', undefined, nameOf(item)), { style: `color: ${RARITY_TEXT[rarityOf(item)]}` }), ` for ${price} Kusing?`);
+    const row = el('div', 'fg-actions');
+    const yes = el('button', 'fg-go fg-ready', 'Sell');
+    const no = el('button', 'fg-go', 'Cancel');
+    const done = (ok: boolean) => {
+      back.remove();
+      document.removeEventListener('keydown', key, true);
+      resolve(ok);
+    };
+    const key = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        done(false);
+      }
+    };
+    yes.addEventListener('click', () => done(true));
+    no.addEventListener('click', () => done(false));
+    back.addEventListener('click', (e) => e.target === back && done(false));
+    document.addEventListener('keydown', key, true);
+    row.append(yes, no);
+    box.append(title, el('div', 'fg-warn', 'Training gear is bound: once sold it’s gone.'), row);
+    back.append(box);
+    document.body.append(back);
+    yes.focus();
+  });
+}
+
 /** The Combine box: the fragments going in (their icon ×how many) » the whetstones they make (icon ×how many), and any
  *  left over; Combine or Cancel (just OK while there aren't enough). Resolves true if confirmed. */
 export function confirmCombine(item: Item): Promise<boolean> {
@@ -610,7 +644,7 @@ export function confirmCombine(item: Item): Promise<boolean> {
 }
 
 /** Takes an item apart (asked first) or combines fragments: the server's answer, with the effect and sound. */
-export async function forgeFromBag(a: Extract<TownForgeAction, { action: 'disassemble' | 'combine' }>, at: HTMLElement | null): Promise<TownForgeResponse | null> {
+export async function forgeFromBag(a: Extract<TownForgeAction, { action: 'disassemble' | 'combine' | 'sell' }>, at: HTMLElement | null): Promise<TownForgeResponse | null> {
   const where = at?.getBoundingClientRect(); // (the slot is gone once the bag redraws)
   const r = await forgeAction(a);
   if (!r) {
@@ -626,7 +660,7 @@ export async function forgeFromBag(a: Extract<TownForgeAction, { action: 'disass
   if (r.outcome === 'disassembled') {
     playSound('combat-disassemble');
     if (where) playForgeFx(art.disassemble, where);
-  } else playSound('click');
+  } else playSound(r.outcome === 'sold' ? 'combat-coins' : 'click');
   toast(r.message.replace(/\.$/, ''), 3200, 'good');
   return r;
 }

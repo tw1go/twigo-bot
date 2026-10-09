@@ -1,4 +1,4 @@
-import {
+import { trainingSellPrice,
   type CombatItemDef,
   type ForgeHolder,
   type Item,
@@ -147,6 +147,20 @@ export function combine(data: ItemData, s: ForgeHolder, uid: string, newUid: () 
   return { ok: true, outcome: 'combined', message: `Combined ${n * per} fragments into ${n} ${stone.name}${n === 1 ? '' : 's'}.`, got: [made] };
 }
 
+/** Sells a piece of training gear from the bag for Kusing (stats.json trainingGear.sellKusing); nothing else sells here. */
+export function sell(data: ItemData, s: ForgeHolder, uid: string): Result {
+  const at = s.bag.findIndex((b) => b.uid === uid);
+  const item = s.bag[at];
+  const def = item && data.defs.get(item.defId);
+  const price = trainingSellPrice(data.stats);
+  if (!item) return no(Object.values(s.equipped).some((i) => i?.uid === uid) ? 'Take it off first.' : "You don't have that item.");
+  if (!isGearDef(def) || !def.training) return no('Only training gear sells here.');
+  if (price === null) return no("Training gear can't be sold.");
+  s.bag.splice(at, 1);
+  s.kusing = (s.kusing ?? 0) + price;
+  return { ok: true, outcome: 'sold', message: `Sold ${itemName(data, item)} for ${price} Kusing.` };
+}
+
 /** One forge action. */
 export function forge(data: ItemData, s: ForgeHolder, a: TownForgeAction, random: () => number, newUid: () => string): Result {
   switch (a.action) {
@@ -160,6 +174,8 @@ export function forge(data: ItemData, s: ForgeHolder, a: TownForgeAction, random
       return disassemble(data, s, a.item, random, newUid);
     case 'combine':
       return combine(data, s, a.item, newUid);
+    case 'sell':
+      return sell(data, s, a.item);
   }
 }
 
@@ -172,6 +188,6 @@ export function parseForgeAction(body: unknown): TownForgeAction | null {
   const tool = id(b.tool) ? (b.tool as string) : undefined;
   if (b.action === 'enhance' || b.action === 'repair') return { action: b.action, item, ...(tool ? { tool } : {}) };
   if (b.action === 'embed' && id(b.agimat) && Number.isInteger(b.slot)) return { action: 'embed', item, agimat: b.agimat as string, slot: b.slot as number, ...(b.replace === true ? { replace: true } : {}) };
-  if (b.action === 'disassemble' || b.action === 'combine') return { action: b.action, item };
+  if (b.action === 'disassemble' || b.action === 'combine' || b.action === 'sell') return { action: b.action, item };
   return null;
 }
