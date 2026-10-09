@@ -416,7 +416,11 @@ export class Inventory {
     const parts = itemTipFor(it);
     const row = el('div', 'iv-actions');
     if (isGearDef(def)) {
-      row.append(this.action('Wear', 'iv-flex', () => void this.equipment?.wear(it.uid)));
+      // Gear you can't wear (another class's, above your stats, broken): Wear greyed, the reason on hover.
+      const wear = this.action('Wear', 'iv-flex', () => void this.equipment?.wear(it.uid));
+      const why = this.cantWearWhy(it);
+      if (why) Object.assign(wear, { disabled: true, title: why });
+      row.append(wear);
       if (!def.training) row.append(this.action('Disassemble', 'iv-sell', () => void this.disassemble(it, null)));
     } else if (def?.kind === 'potion') parts.push(el('div', 'iv-about', 'Drag it onto your hotbar (the - = ~ slots) and use it in the Slums.'));
     else if (def?.forge === 'whetstone') row.append(this.action('Enhance…', 'iv-flex', () => void this.openForge(it)));
@@ -445,9 +449,14 @@ export class Inventory {
   private showMenu(it: Item, cell: HTMLElement, x: number, y: number): void {
     const def = anyDef(it.defId);
     const items: [string, () => void][] = [];
+    const off = new Set<number>(); // greyed rows
     if (isGearDef(def)) {
+      if (this.cantWearWhy(it)) off.add(items.length);
       items.push(['Wear', () => void this.equipment?.wear(it.uid)]);
-      if (def.training) items.push(["Training gear can't be taken apart", () => {}]);
+      if (def.training) {
+        off.add(items.length);
+        items.push(["Training gear can't be taken apart", () => {}]);
+      }
       else items.push(['Disassemble', () => void this.disassemble(it, cell)]);
     } else if (def?.forge === 'fragment') {
       const D = itemData();
@@ -461,7 +470,8 @@ export class Inventory {
       ...items.map(([label, run], i) => {
         const b = el('button', 'iv-menu-item', label);
         b.setAttribute('role', 'menuitem');
-        b.disabled = isGearDef(def) && !!def.training && i === 1;
+        b.disabled = off.has(i);
+        if (i === 0 && off.has(0) && isGearDef(def)) b.title = this.cantWearWhy(it) ?? '';
         b.addEventListener('click', () => {
           this.menu.hidden = true;
           run();
@@ -503,6 +513,14 @@ export class Inventory {
     const r = at.getBoundingClientRect();
     this.tip.style.right = `${Math.round(innerWidth - r.left + 6)}px`;
     this.tip.style.top = `${Math.round(Math.max(8, Math.min(r.top, innerHeight - this.tip.offsetHeight - 8)))}px`;
+  }
+
+  /** Why a piece of gear can't be worn now (its requirements on your base stats, or broken), or null. */
+  private cantWearWhy(it: Item): string | null {
+    const def = anyDef(it.defId);
+    if (!isGearDef(def)) return null;
+    if (it.broken) return "It's broken: repair it first.";
+    return cantWear({ ...def, level: it.level });
   }
 
   private action(text: string, cls: string, run: () => void): HTMLButtonElement {
