@@ -211,6 +211,21 @@ export class TargetBox {
   }
 
   /** Shows someone in the box (the menu stays closed until the box is clicked). */
+  /** The box's name and, if known, their level ("Mara  Lv 12"). */
+  private drawName(): void {
+    const p = this.target;
+    if (!p) return;
+    this.name.replaceChildren(p.nickname);
+    if (p.level) this.name.append(el('span', 'tg-lv', `Lv ${p.level}`));
+  }
+
+  /** Someone went up a level: their box shows it if they're the one picked. */
+  levelChanged(id: string, level: number): void {
+    if (this.target?.id !== id) return;
+    this.target.level = level;
+    this.drawName();
+  }
+
   /** Who's selected (their town id), if anyone. */
   get selectedId(): string | null {
     return this.target?.id ?? null;
@@ -222,7 +237,7 @@ export class TargetBox {
     this.target = p;
     this.info = null;
     this.tradeSent = null;
-    this.name.textContent = p.nickname;
+    this.drawName();
     this.box.setAttribute('aria-label', `${p.nickname}: open the menu`);
     this.drawParty(true);
     this.root.hidden = false;

@@ -1716,7 +1716,8 @@ export class TownScene extends Phaser.Scene {
         setHudVitals({ hp: m.hp, maxHp: m.maxHp, mp: m.mp ?? 0, maxMp: m.maxMp ?? 0 });
         this.vitalsNow = { hp: m.hp, maxHp: m.maxHp, mp: m.mp ?? 0, maxMp: m.maxMp ?? 0 };
         this.lowMp(0); // under a quarter: an MP Potion drinks itself
-        return this.player.setHp(m.hp, m.maxHp);
+        // (The bar over your head: battle maps only; in town HP never changes.)
+        return this.battleMap ? this.player.setHp(m.hp, m.maxHp) : this.player.setHp(0, 0);
       }
       // Knocked out (0 HP): you fade out where you stand and can't act. The unconscious pop-up counts down the server's
       // `reviveIn` (300 s), after which it puts you back at the way in; "Revive now" asks for that straight away.
@@ -1837,6 +1838,8 @@ export class TownScene extends Phaser.Scene {
       // you, quieter).
       if (m.t === 'level-up') {
         const mine = m.id === myId;
+        if (!mine) this.others.setLevel(m.id, m.level);
+        this.target?.levelChanged(m.id, m.level);
         const ch = charOf(m.id);
         if (!ch) return;
         ch.levelUp();

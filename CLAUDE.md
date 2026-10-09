@@ -339,7 +339,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   SW for W, NE for N; no mirroring), on a shadow sized per kind (the bag floats over its own and drifts: its drawn place
   eases after its real one), a pack's caps placed and wandering round their leader like the server's; only mobs near the
   camera are drawn and animated (the rest sleep: sprites inactive, hops still walked on paper; `Mob.asleep`); a click shows "Tin Can Lv 1" over
-  it (never a range; grey 5+ levels below you, red 3+ above, else white: `mobTone`, `Mobs.tone`/`TONE`, the info bar's
+  it (gone when it dies: `dropLabel`) (never a range; grey 5+ levels below you, red 3+ above, else white: `mobTone`, `Mobs.tone`/`TONE`, the info bar's
   name too; your level is `Mobs.myLevel`, 1 until levels are saved) and targets it; Z (or the middle mouse button) targets the nearest within 12 tiles (again: the next), a gold ring under it and an info bar at
   the top (`ui/mob-target.ts`: name, level, HP, zone); Escape or 20 tiles away lets go. Battle (battle maps = maps with
   mobs): characters with a class use their class's combat poses there (`characters/battle-art.ts`: every pose composited
@@ -591,7 +591,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   full. `vitals` (id, hp, maxHp; mp/maxMp to yourself) to you, your room and your party elsewhere; `TownPlayer.hp/maxHp/
   out` for arrivals. Golem XP credit by member (`attack`'s `member`, `Golem.hit`; kills' `to` are members). Game: HUD HP
   (red, pulsing under 25%) and MP (blue) bars in `.th-bars` (`setHudVitals`), `Character.setHp` (a 20 px bar over the
-  name: over your own head always (`Character.mine`; vitals come on battle maps only), over your party's members while hurt: `mobBehaviour.hpBar.playersSee`), `hitNumber` (red on you, pale on others, "Miss"), `setKnockedOut` (fade out/in, no death pose);
+  name: over your own head on battle maps only (`Character.mine`; in town it's hidden), over your party's members while hurt: `mobBehaviour.hpBar.playersSee`), `hitNumber` (red on you, pale on others, "Miss"), `setKnockedOut` (fade out/in, no death pose);
   TownScene `knockedOut` blocks walking, keys, skills, moves, E; "You were knocked out." toast; `slowMe` (half
   `SPEED`, the step-budget mirror halved). Dev: the dev server runs it all (`?golemdemo=1` hits whoever is nearest).
 - Stat points (`POST /town/points` { spend, stat } | { reset }, `pointsStep` / `townPoints` in web/adventure.ts,
@@ -742,7 +742,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   the player menu (so also from chat names), party members' names pink only for the party (`Character.setParty`,
   `OtherPlayers.inParty`), party chat `/p` (pink, a "Party" tag; to the party only, never Discord or the kept lines).
   Dev: two windows `?as=Alice` / `?as=Bob`.
-- Player menu (`ui/target.ts`): left click (or tap) someone → their name in a long box top centre (or click their name
+- Player menu (`ui/target.ts`): left click (or tap) someone → their name and level ("Lv 12", kept up to date by `level-up`: `OtherPlayers.setLevel`, `levelChanged`) in a long box top centre (or click their name
   in the chat: the box opens right beside it with the menu open, `selectAt`; a click elsewhere closes it; no ×: a click
   outside the box closes it too, a drag to peek doesn't); clicking it opens
   Give Kowens (/give rules), Balance, Status (as /balance and /status) and Diss / Praise / Judge (/diss etc. lines,

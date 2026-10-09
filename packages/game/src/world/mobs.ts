@@ -703,6 +703,7 @@ export class Mobs {
     m.dead = true;
     m.path = [];
     if (m === this.target) this.setTarget(null);
+    this.dropLabel(m); // (its name goes with it; a mini boss's comes back when it does)
     if (m.asleep) return this.show(m, false);
     this.drawBar(m);
     this.pose(m, 'death', {
@@ -1073,6 +1074,17 @@ export class Mobs {
     const k = m.shield.scale;
     m.shield.setScale(k > 1 ? Math.max(1, k - 0.06) : 1).setVisible(true);
     m.shield.setPosition(Math.round(m.sprite.x - m.lunge.x), Math.round(this.top(m) - 4)).setDepth(LABEL_DEPTH - 1);
+  }
+
+  /** Its name off now (a click's fades; a mini boss's is only hidden, back when it respawns). Dead mobs skip the
+   *  update that times names out, so a name never outlives its mob. */
+  private dropLabel(m: Mob): void {
+    if (!m.label) return;
+    if (m.mini) return void m.label.text.setVisible(false);
+    const l = m.label;
+    m.label = null;
+    l.show(null);
+    this.scene.time.delayedCall(200, () => l.text.destroy());
   }
 
   private showLabel(m: Mob): void {

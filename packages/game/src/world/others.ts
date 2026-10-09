@@ -166,6 +166,12 @@ export class OtherPlayers {
     return null;
   }
 
+  /** Someone went up a level (the player box shows it). */
+  setLevel(id: string, level: number): void {
+    const o = this.all.get(id);
+    if (o) o.state.level = level;
+  }
+
   /** Whether someone is still here. */
   has(id: string): boolean {
     return this.all.has(id);
