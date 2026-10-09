@@ -480,7 +480,8 @@ export class Inventory {
     } else if (def && (def.kind === 'agimat' || def.forge)) {
       items.push([def.kind === 'agimat' ? 'Embed…' : def.forge === 'repairKit' ? 'Repair…' : 'Enhance…', () => void this.openForge(it)]);
     }
-    if (!items.length) return;
+    // Every item: into the chat (as Alt/Option+click does).
+    items.push(['Show in chat', () => chatItem(it)]);
     this.menu.replaceChildren(
       ...items.map(([label, run], i) => {
         const b = el('button', 'iv-menu-item', label);

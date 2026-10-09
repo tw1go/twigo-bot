@@ -207,7 +207,7 @@ export function itemKeys(item: Item, where: 'bag' | 'worn'): HTMLElement {
   else if (def?.kind === 'agimat' || def?.forge === 'whetstone' || def?.forge === 'repairKit') keys.push('Click: open the forge');
   else if (def?.forge === 'fragment') keys.push('Right-click: combine');
   else if (def?.kind === 'potion') keys.push('Drag onto your hotbar');
-  keys.push(`${ALT}+click: show in chat`);
+  keys.push(where === 'bag' ? `${ALT}+click or right-click: show in chat` : `${ALT}+click: show in chat`);
   return el('div', 'eq-tip-keys', keys.join(' · '));
 }
 
