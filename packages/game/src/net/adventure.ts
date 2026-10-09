@@ -39,6 +39,7 @@ import {
   newItem,
   placesFor,
   skillCap,
+  buffSkillCap,
   skillLevelOf,
   skillPointsAt,
   swapTrainingGear,
@@ -349,7 +350,7 @@ export function buffViews(c: ClassInfo | null | undefined): BuffView[] {
   const level = state?.progress?.level ?? 1;
   return [...(c?.buffs ?? [])]
     .sort((a, b) => a.level - b.level)
-    .map((b) => ({ name: b.name, unlock: b.level, level: 1, cap: data ? skillCap(data.stats, level, { unlock: b.level }) : 0, locked: level < b.level }));
+    .map((b) => ({ name: b.name, unlock: b.level, level: 1, cap: data ? buffSkillCap(data.stats, b.name, level) : 0, locked: level < b.level }));
 }
 
 /** One of your class's skills by name. */

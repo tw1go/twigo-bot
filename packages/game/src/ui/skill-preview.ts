@@ -2,14 +2,16 @@ import type { ClassInfo } from '@mikazuki/shared';
 import { playSound } from '../audio/sound';
 import { MOBILITY_PREVIEWS, SKILL_PREVIEWS, buffPreview } from '../combat/skill-previews';
 import { GAP_MS, type NumberKind, type Pt, STAGE_H, STAGE_W, type Skill, type SkillStage } from '../combat/skill-stage';
-import type { BuffView, SkillView } from '../net/adventure';
+import { type BuffView, type SkillView, adventureData } from '../net/adventure';
+import { buffCostText, buffText } from './buff-text';
 import { stats } from './class-choice';
 
 // 🎬 A class's skill preview (over the class choice): on the left a small stage at a whole-number scale with your
 // character in the class's walk-ready pose facing SE and three invisible enemies along that line (combat/skill-stage.ts);
 // under it the class's blurb, weapon, role, damage, stats and gear; on the right its name, its first 7 skills, and under a Mobility
 // heading its two movement skills (classes.json's mobility: Dash and the Lv 8 move), and under a Buffs heading its buffs
-// (classes.json's buffs, with their icons; each plays the class's buff-cast, no FX yet), each with its unlock level and,
+// (classes.json's buffs, with their icons and what they do at that skill level, MP and cooldown from stats.json
+// skills.buffs; each plays the class's buff-cast, no FX yet), each with its unlock level and,
 // once unlocked at your level, its skill level and cap ("Lv 1 / 10"; locked ones say so). All of them play one after
 // another and loop, the one playing lit up in the list; clicking a skill plays it next. Damage numbers rise
 // over the hits in Jersey 10 (its 19 px steps): gold for a crit, small orange for burns, small mint for menthol.
@@ -54,7 +56,13 @@ export function mountSkillPreview(o: SkillPreviewOptions, c: ClassInfo, host: HT
   const moveList = el('ol', 'sp-skills');
   const buffList = el('ol', 'sp-skills');
   const firstBuff = c.skills.length + moves.length;
-  const rows = [...c.skills, ...moves, ...buffs.map((x) => ({ ...x, desc: '' }))].map((s, i) => {
+  // A buff's line: what it does at its shown skill level, its MP and cooldown (stats.json skills.buffs).
+  const S = adventureData()?.stats;
+  const buffDesc = (name: string) => {
+    const lv = levels.get(name)?.level ?? 1;
+    return S ? [buffText(S, name, lv), buffCostText(S, name, lv)].filter(Boolean).join(' · ') : '';
+  };
+  const rows = [...c.skills, ...moves, ...buffs.map((x) => ({ ...x, desc: buffDesc(x.name) }))].map((s, i) => {
     const li = el('li', 'sp-skill');
     const b = el('button', 'sp-skill-button');
     const name = el('span', 'sp-skill-name');

@@ -8,6 +8,7 @@ import { cooldownOf, mpCostOf, seconds } from '../combat/cooldowns';
 import { SkillTip, skillTipLines } from './skill-tip';
 import { type BuffView, type SkillView, adventure, adventureData, buffViews, onAdventure, raiseSkill, resetSkills, skillViews } from '../net/adventure';
 import { toast } from './toast';
+import { buffCostText, buffText } from './buff-text';
 
 // ⚔️ The hotbar, bottom centre (members, not on phones): two rows of slots in the bag's slot art.
 //   Bottom row: 10 skill slots (keys 1–0), then 3 for potions and other usables (keys - = `).
@@ -356,7 +357,9 @@ export class Hotbar {
       const text = el('span', 'sb-text');
       const line = el('span', 'sb-line');
       line.append(el('span', 'hb-name', b.name), el('span', 'hb-lv', b.locked ? `Unlocks at Lv ${b.unlock}` : `Lv ${b.level} / ${b.cap}`));
-      text.append(line, el('span', 'sb-desc', "A buff: can't be used yet"));
+      const S = adventureData()?.stats;
+      const what = S ? [buffText(S, b.name, b.level), buffCostText(S, b.name, b.level)].filter(Boolean).join(' · ') : '';
+      text.append(line, el('span', 'sb-desc', what ? `${what} (can't be used yet)` : "A buff: can't be used yet"));
       row.append(this.iconOf(b.name) ?? el('span', 'hb-initials', initials(b.name)), text);
       row.addEventListener('pointerenter', () => this.preview(buffPreview(b.name)));
       return row;
