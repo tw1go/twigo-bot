@@ -25,6 +25,14 @@ document.addEventListener('click', (e) => {
   const b = (e.target as Element | null)?.closest?.('button, [role="button"], a, [tabindex]');
   if (e.detail > 0 && b instanceof HTMLElement) b.blur();
 });
+// A press or drag that ends without a click (a slot dragged to rearrange the hotbar, a drag off a button) leaves the
+// focus where it began or landed: let go of it too, so Enter or Space don't fire that slot afterwards. (Pop-ups that
+// focus their own button do it after this, as they open.)
+const strayFocus = () => {
+  const a = document.activeElement;
+  if (a instanceof HTMLElement && a !== document.body && !a.closest('input, textarea, select, [contenteditable="true"]')) a.blur();
+};
+for (const type of ['pointerup', 'dragend', 'drop']) document.addEventListener(type, strayFocus, true);
 startGame();
 
 void startHud(document.getElementById('hud')!);
