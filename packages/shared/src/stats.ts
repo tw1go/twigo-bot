@@ -338,6 +338,23 @@ export function needsLine(missing: Missing[]): string {
   return parts.length ? `Needs ${parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}` : parts[0]}` : '';
 }
 
+/** Gear made for another class, said plainly (before its stat requirements, which would only say "Needs DEX 14"): a
+ *  weapon of another class, or armor of another gear type ("Heavy armor, for the Stick and Greatstick. You wear
+ *  Household armor."). Null when it's theirs, or before a class. `nameOf`: a class's name (its id, capitalised, if
+ *  left out). */
+export function gearMismatch(data: StatsData, cls: string | null | undefined, item: GearItem, nameOf: (cls: string) => string = (c) => c[0].toUpperCase() + c.slice(1)): string | null {
+  if (!cls || !data.classes[cls]) return null;
+  const kind = gearKind(item.slot);
+  if (kind === 'weapon' && item.class && item.class !== cls) return `A ${nameOf(item.class)}’s weapon: only a ${nameOf(item.class)} can use it.`;
+  if (kind !== 'armor' || !item.gear) return null;
+  const type = item.gear.toLowerCase();
+  const mine = data.classes[cls].gearType;
+  if (!mine || type === mine) return null;
+  const who = Object.entries(data.classes).filter(([, c]) => c.gearType === type).map(([id]) => nameOf(id));
+  const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
+  return `${cap(type)} armor, for the ${who.length > 1 ? `${who.slice(0, -1).join(', ')} and ${who.at(-1)}` : (who[0] ?? 'other classes')}. You wear ${cap(mine)} armor.`;
+}
+
 /** Whether a character (class, level and stat points spent) can wear an item: canEquip on their base stats. */
 export const wearCheck = (data: StatsData, who: { cls: string | null; progress: { level: number; points: StatPoints } }, item: GearItem) =>
   canEquip(data, baseStats(data, who.cls, who.progress.level, who.progress.points), who.progress.level, item);

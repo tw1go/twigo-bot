@@ -126,7 +126,7 @@ test('quest rewards: HP and MP Potions with the class quest; one finished before
 test('equipment: only what your base stats meet, the old one back to the bag, taking off needs a free slot', () => {
   const [broom, stick, worn1] = [item('weapon-training-broom'), item('weapon-training-stick'), item('weapon-training-stick')];
   const s = { ...freshAdventure(), cls: 'stick', equipped: { weapon: worn1 }, bag: [broom, stick] };
-  assert.deepEqual(equipStep(s, { action: 'equip', item: broom.uid }), { ok: false, message: 'Needs INT 8' });
+  assert.deepEqual(equipStep(s, { action: 'equip', item: broom.uid }), { ok: false, message: 'A Broom’s weapon: only a Broom can use it.' });
   assert.equal(equipStep(s, { action: 'equip', item: 'nope' }).ok, false); // not in the bag
   assert.equal(equipStep(s, { action: 'equip', item: stick.uid, place: 'ring1' }).message, 'Wrong slot.');
   assert.equal(equipStep(s, { action: 'equip', item: stick.uid }).ok, true); // a second stick: swaps (by uid)
@@ -222,7 +222,7 @@ test('stat points: banked before a class, then only into its main or second stat
   assert.deepEqual(parsePointsAction({ action: 'reset' }), { action: 'reset' });
 });
 
-test('wearing checks base stats on the server: another class\'s weapon and armor refused with the line, gear STR never counts', () => {
+test('wearing on the server: another class\'s weapon and armor refused, said plainly; gear STR never counts', () => {
   townQuest('sl', { quest: Q, action: 'talk', npc: 'tanod' });
   townQuest('sl', { quest: Q, action: 'chooseClass', cls: 'slingshot' });
   // Into the bag to try them (a Slingshot: DEX 10, INT 6, STR 4 at Lv 1).
@@ -234,8 +234,10 @@ test('wearing checks base stats on the server: another class\'s weapon and armor
   const [p, h, nk] = [item('weapon-training-plank'), item('armor-training-heavy-head'), item('test-necklace')];
   const put = db.prepare('INSERT INTO items (uid, owner, def_id, level, rarity, slot, created) VALUES (?, ?, ?, 1, ?, ?, 0)');
   for (const [i, x] of [p, h, nk].entries()) put.run(x.uid, 'sl', x.defId, x.rarity, 100 + i); // into the bag to try them
-  assert.deepEqual(townEquip('sl', { action: 'equip', item: p.uid }).message, `Needs STR ${need}`);
-  assert.deepEqual(townEquip('sl', { action: 'equip', item: h.uid }).message, `Needs STR ${S.requirements.armor.bothGearTypeStats.perItemLevel + S.requirements.armor.bothGearTypeStats.plus}`);
+  // Another class's gear is said plainly (gearMismatch) before its stats are checked.
+  void need;
+  assert.deepEqual(townEquip('sl', { action: 'equip', item: p.uid }).message, 'A Greatstick’s weapon: only a Greatstick can use it.');
+  assert.deepEqual(townEquip('sl', { action: 'equip', item: h.uid }).message, 'Heavy armor, for the Stick and Greatstick. You wear Light armor.');
   // +50 STR from a necklace changes nothing.
   assert.ok(townEquip('sl', { action: 'equip', item: nk.uid }).ok);
   assert.equal(townEquip('sl', { action: 'equip', item: p.uid }).ok, false);

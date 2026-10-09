@@ -1,4 +1,4 @@
-import { type EquipSlot, type Item, type StatName, affixTier, agimatSlots, agimatValue, wordList, baseStats, canEquip, enhancedBase, gearKind, isGearDef, itemAura, itemName, lineText, lineValue, pickupLine, requirements, statLabel } from '@mikazuki/shared';
+import { type EquipSlot, type Item, type StatName, affixTier, agimatSlots, agimatValue, wordList, baseStats, canEquip, enhancedBase, gearKind, gearMismatch, isGearDef, itemAura, itemName, lineText, lineValue, pickupLine, requirements, statLabel } from '@mikazuki/shared';
 import { adventure, classInfo, itemData } from '../net/adventure';
 import { type Rarity, RARITY_TEXT, isRarity, itemArt, itemArtUrl, placeholderArt } from './item-art';
 import { auraIcon } from '../fx/weaponAura';
@@ -96,6 +96,10 @@ export function itemTipFor(item: Item): HTMLElement[] {
   const who = def.class ? (classInfo(def.class)?.name ?? def.class) : def.gear;
   // (Its rarity shows in its name's colour; it isn't written out.)
   parts.push(el('div', 'eq-tip-meta', [who, SLOT[def.slot]].filter(Boolean).join(' · ')));
+  // Another class's gear, said plainly (its stat needs below would only say "Needs DEX 14").
+  const D0 = itemData();
+  const other = D0 ? gearMismatch(D0.stats, adventure()?.cls, def, (c) => classInfo(c)?.name ?? c) : null;
+  if (other) parts.push(el('div', 'eq-tip-unmet', other));
   // Lv and what it needs, by your base stats (gear's never count).
   const s = adventure();
   const gearItem = { ...def, level: item.level };

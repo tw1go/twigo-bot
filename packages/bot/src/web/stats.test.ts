@@ -25,6 +25,7 @@ import {
   skillPct,
   skillMpCost,
   buffValue,
+  gearMismatch,
   buffSkillCap,
   buffMpCost,
   skillPointsAt,
@@ -281,4 +282,14 @@ test('buffs: stats.json skills.buffs at a skill level (+5% a level; a heal +2%),
     assert.equal(CLASSES.find((c) => c.id === b.class)?.buffs?.find((x) => x.name === name)?.level, b.unlock, `${name}: classes.json`);
   }
   for (const c of CLASSES) for (const x of c.buffs ?? []) assert.equal(list[x.name]?.class, c.id, `${x.name} in skills.buffs`);
+});
+
+test('another class\'s gear is said plainly: a Pot lid holding Tin (Heavy) or Abaca (Light) armor, or a Broom\'s weapon; its own Hemp (Household) passes on to the stat check', () => {
+  const name = (c: string) => ({ potlid: 'Pot lid', stick: 'Stick', greatstick: 'Greatstick', slingshot: 'Slingshot', broom: 'Broom', hilot: 'Hilot' })[c] ?? c;
+  const piece = (gear: string) => ({ slot: 'hands', level: 10, gear });
+  assert.equal(gearMismatch(data, 'potlid', piece('Heavy'), name), 'Heavy armor, for the Stick and Greatstick. You wear Household armor.');
+  assert.equal(gearMismatch(data, 'potlid', piece('Light'), name), 'Light armor, for the Slingshot and Broom. You wear Household armor.');
+  assert.equal(gearMismatch(data, 'potlid', piece('Household'), name), null);
+  assert.equal(gearMismatch(data, 'potlid', { slot: 'weapon', level: 10, class: 'broom' }, name), 'A Broom’s weapon: only a Broom can use it.');
+  assert.equal(gearMismatch(data, null, piece('Heavy'), name), null, 'before a class: the stat check says');
 });

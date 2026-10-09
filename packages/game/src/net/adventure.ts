@@ -47,6 +47,7 @@ import {
   unequipToBag,
   unspentStatPoints,
   wearCheck,
+  gearMismatch,
   xpToNext,
 } from '@mikazuki/shared';
 import { fakeLogin, fakeName } from '../session';
@@ -356,10 +357,13 @@ export function buffViews(c: ClassInfo | null | undefined): BuffView[] {
 /** One of your class's skills by name. */
 export const skillView = (name: string): SkillView | undefined => skillViews(classInfo(state?.cls)).find((k) => k.name === name);
 
-/** Whether you can wear an item (its requirements on your base stats; gear's STR, DEX and INT never count): null if so,
- *  else the line saying what's missing ("Needs DEX 26"). */
+/** Whether you can wear an item: null if so, else why: another class's gear said plainly ("Heavy armor, for the Stick
+ *  and Greatstick. You wear Household armor."), else its requirements on your base stats (gear's STR, DEX and INT never
+ *  count: "Needs DEX 26"). */
 export function cantWear(item: EquipmentDef): string | null {
   if (!state || !data) return null;
+  const other = gearMismatch(data.stats, state.cls, item, (c) => classInfo(c)?.name ?? c);
+  if (other) return other;
   const r = wearCheck(data.stats, state, item);
   return r.ok ? null : needsLine(r.missing);
 }

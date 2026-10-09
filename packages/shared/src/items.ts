@@ -1,5 +1,5 @@
 import type { AdventureState, EquipmentDef, EquipPlace, EquipSlot, GearRarity, QuestDef, QuestReward } from './adventure.js';
-import { type GearTotals, type StatName, type StatsData, gearKind, numbersIn, placesFor, needsLine, wearCheck } from './stats.js';
+import { type GearTotals, type StatName, type StatsData, gearKind, numbersIn, placesFor, needsLine, gearMismatch, wearCheck } from './stats.js';
 
 // 🎒 Items as things a player owns: each one an instance (its own uid, rolls and history) of a kind from the game's data
 // (items/equipment.json: gear; items/items.json: whetstones, fragments, Repair Kits, HP/MP Potions, agimats, cosmetics).
@@ -517,6 +517,8 @@ export function equipFromBag(data: ItemData, s: Wearer, uid: string, place?: Equ
   if (item.broken) return { ok: false, message: 'It\'s broken: repair it first.' };
   const places = placesFor(def.slot);
   if (place && !places.includes(place)) return { ok: false, message: 'Wrong slot.' };
+  const mismatch = gearMismatch(data.stats, s.cls, def);
+  if (mismatch) return { ok: false, message: mismatch };
   const can = wearCheck(data.stats, s, { ...def, level: item.level });
   if (!can.ok) return { ok: false, message: needsLine(can.missing) };
   const to = place ?? places.find((p) => !s.equipped[p]) ?? places[0];
