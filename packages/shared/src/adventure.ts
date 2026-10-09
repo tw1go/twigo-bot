@@ -164,8 +164,9 @@ export interface CharacterProgress {
 export interface AdventureState {
   cls: string | null;
   /** `rewarded`: done quests whose rewards have been given (one finished before it had rewards gets them on a later
-   *  visit, as does one whose rewards had no room). */
-  quests: { active: QuestProgress[]; done: string[]; rewarded?: string[] };
+   *  visit, as does one whose rewards had no room); `pieces`: done mini boss quests whose +5 piece has been given
+   *  (classes/leveling.json miniBoss.questDrop; no room: a later visit). */
+  quests: { active: QuestProgress[]; done: string[]; rewarded?: string[]; pieces?: string[] };
   /** What's worn in each place. */
   equipped: Partial<Record<EquipPlace, Item>>;
   /** The combat bag (stats.json inventory.slots): gear not worn, whetstones, fragments, Repair Kits, agimats, HP/MP
@@ -204,6 +205,8 @@ export interface TownAdventureResponse {
   completed?: string;
   /** Its rewards, just given. */
   rewards?: QuestReward[];
+  /** A mini boss quest's +5 piece, just given into the combat bag. */
+  pieces?: Item[];
   /** Its XP and Kusing, just given (a report). */
   xp?: number;
   kusing?: number;

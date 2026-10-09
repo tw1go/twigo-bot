@@ -24,9 +24,9 @@ const { miniLoot } = await import('./loot.js');
 const { LootRoom } = await import('./town-loot.js');
 const { MobRoom, loadMobKinds, loadMobMap } = await import('./town-mobs.js');
 const { attachTown } = await import('./town.js');
-const { QUESTS, adventureOf, combatOf, fighterOf, freshAdventure, killFor, questKillFor, questStep, startQuests, takeLootFor, townQuest, usePotionFor } = await import('./adventure.js');
+const { QUESTS, adventureOf, combatOf, fighterOf, freshAdventure, killFor, questKillFor, questPiecesFor, questStep, startQuests, takeLootFor, townQuest, usePotionFor } = await import('./adventure.js');
 const { freshProgress } = await import('./progress.js');
-const { closeDatabase } = await import('../db/db.js');
+const { closeDatabase, db } = await import('../db/db.js');
 
 const D = loadItemData();
 const S = D.stats;
@@ -219,7 +219,7 @@ async function partyTown(room: InstanceType<typeof MobRoom>, at: [number, number
       kill: (name, k) => (kills.push({ who: name, xp: k.xp }), { progress: freshProgress(S, 'slingshot'), gained: k.xp, ups: 0 }),
     },
     items: { take: () => ({ ok: true }) as never, usePotion: () => null as never, state: () => ({ equipped: {}, bag: [], kusing: 0 }) },
-    quests: { kill: (name, k) => (counted.push(`${name}:${k.kind}:${k.mini}`), { active: [{ id: CHAIN[1], step: 0, count: 1 }], questDrop: k.mini, cls: 'slingshot' }) },
+    quests: { kill: (name, k) => (counted.push(`${name}:${k.kind}:${k.mini}`), { active: [{ id: CHAIN[1], step: 0, count: 1 }] }) },
   });
   await new Promise<void>((ok) => server.listen(0, '127.0.0.1', ok));
   const port = (server.address() as AddressInfo).port;
@@ -262,18 +262,10 @@ test('over the town\'s socket: a party of 2 both get a mini boss\'s XP, their ow
   assert.ok(mine.loot.every((l) => l.mine) && his.loot.every((l) => l.mine), 'each only their own');
   assert.ok(!mine.loot.some((l) => his.loot.some((h) => h.id === l.id)));
   assert.deepEqual(t.counted.sort(), ['Bob:tin-can:true', 'Mara:tin-can:true']);
-  // The kill completed both players' mini boss quest: each gets their quest piece too, theirs alone (a Slingshot's Light
-  // body armor at the nearest gear level, grey, +5, bound, an HP agimat in its first slot).
+  // The quest piece doesn't drop: it comes with the quest's report, into the bag.
   const pieces = (got: TownServerMessage[]) =>
-    got.filter((m): m is Extract<TownServerMessage, { t: 'loot-drop' }> => m.t === 'loot-drop').flatMap((m) => m.loot).filter((l) => l.item?.plus === 5);
-  for (const c of [t.a, t.b]) {
-    const [p, ...more] = pieces(c.got);
-    assert.ok(p && !more.length, 'one quest piece each');
-    const def = D.defs.get(p.item!.defId) as { slot: string; gear?: string; level: number };
-    assert.deepEqual([def.slot, def.gear?.toLowerCase(), p.item!.rarity, p.item!.bound, p.item!.lines, p.item!.agimats[0]?.stat, p.item!.agimats.length], ['body', 'light', 'grey', true, [], 'hp', 2]);
-    assert.equal(def.level, 10, 'Jus Tin (Lv 4): the Lv 10 gear');
-  }
-  assert.notEqual(pieces(t.a.got)[0].id, pieces(t.b.got)[0].id);
+    got.filter((m): m is Extract<TownServerMessage, { t: 'loot-drop' }> => m.t === 'loot-drop').flatMap((m) => m.loot).filter((l) => l.item?.plus === 5 && l.item.bound);
+  for (const c of [t.a, t.b]) assert.deepEqual(pieces(c.got), [], 'no quest piece on the ground');
   assert.ok(t.b.got.some((m) => m.t === 'quests'), 'Bob told his counts');
   await t.close();
   // A normal Tin Can she kills counts for Bob's quest too (its XP is hers alone).
@@ -287,7 +279,7 @@ test('over the town\'s socket: a party of 2 both get a mini boss\'s XP, their ow
   await u.close();
 });
 
-test('the real quests: a party on Just In Time kills Jus Tin; each gets their own +5 piece on a tile of its own (never under their other loot), and can pick it up', async () => {
+test('the real quests: a party on Just In Time kills Jus Tin; nothing drops for the quest, each gets their own +5 piece into the bag with the report, once', async () => {
   // Two members on tanod-02 (as on the live server, 9 Oct: the Pot lid's piece fell on its Kusing's tile and hid).
   for (const [u, cls] of [['qPot', 'potlid'], ['qBroom', 'broom']] as const) {
     adventureOf(u);
@@ -330,31 +322,44 @@ test('the real quests: a party on Just In Time kills Jus Tin; each gets their ow
   await wait(150);
   pot.ws.send(JSON.stringify({ t: 'attack', mob: jus.id, skill: 0 }));
   await wait(300);
+  // Nothing drops for the quest; each reports it and the +5 piece is in their bag (their own gear type), once.
   for (const [name, c, gear] of [['qPot', pot, 'household'], ['qBroom', broom, 'light']] as const) {
     const drops = c.got.filter((m): m is Extract<TownServerMessage, { t: 'loot-drop' }> => m.t === 'loot-drop').flatMap((m) => m.loot);
-    const pieces = drops.filter((l) => l.item?.plus === 5 && l.item.bound);
-    assert.equal(pieces.length, 1, `${name}: one quest piece`);
-    const p = pieces[0];
-    assert.equal((D.defs.get(p.item!.defId) as { gear?: string }).gear?.toLowerCase(), gear, `${name}: their own gear type`);
-    assert.ok(!drops.some((l) => l !== p && l.col === p.col && l.row === p.row), `${name}: nothing else on its tile`);
+    assert.ok(!drops.some((l) => l.item?.plus === 5 && l.item.bound), `${name}: no quest piece on the ground`);
+    const r = townQuest(name, { quest: CHAIN[1], action: 'report' } as never);
+    assert.ok(r.ok && r.pieces?.length === 1, JSON.stringify(r).slice(0, 200));
+    const p = r.pieces![0];
+    assert.deepEqual([(D.defs.get(p.defId) as { gear?: string }).gear?.toLowerCase(), p.rarity, p.plus, p.bound, p.agimats[0]?.stat], [gear, 'grey', 5, true, 'hp']);
+    assert.ok(combatOf(name).bag.some((i) => i.uid === p.uid), `${name}: in the bag`);
+    assert.deepEqual(questPiecesFor(name), [], `${name}: not twice`);
   }
-  // The Pot lid walks to it and picks it up: it's in the bag.
-  const p = pot.got.filter((m): m is Extract<TownServerMessage, { t: 'loot-drop' }> => m.t === 'loot-drop').flatMap((m) => m.loot).find((l) => l.item?.plus === 5)!;
-  let [col, row] = (pot.got.find((m) => m.t === 'welcome') as Extract<TownServerMessage, { t: 'welcome' }>).spawn;
-  while (col !== p.col || row !== p.row) {
-    col += Math.sign(p.col - col);
-    row += Math.sign(p.row - row);
-    pot.ws.send(JSON.stringify({ t: 'step', col, row }));
-    await wait(180);
-  }
-  pot.ws.send(JSON.stringify({ t: 'pick', id: p.id }));
-  await wait(150);
-  assert.ok(combatOf('qPot').bag.some((i) => i.uid === p.item!.uid && i.plus === 5), 'in the bag');
-  // Her party's feed says what she picked up.
-  const told = broom.got.find((m) => m.t === 'party-loot') as Extract<TownServerMessage, { t: 'party-loot' }>;
-  assert.ok(told && told.name === 'qPot' && told.got.item?.uid === p.item!.uid, JSON.stringify(told));
   for (const c of [pot, broom]) c.ws.close();
   await new Promise((ok) => server.close(ok));
+});
+
+test('mini boss quests finished before the piece came with the report get it on the next visit: once, and only with room', () => {
+  const u = 'qOld';
+  adventureOf(u);
+  townQuest(u, { quest: 'main-01-class', action: 'talk', npc: 'tanod' } as never);
+  townQuest(u, { quest: 'main-01-class', action: 'chooseClass', cls: 'potlid' } as never);
+  for (let i = 0; i < 20; i++) questKillFor(u, { kind: 'tin-can', mini: false });
+  townQuest(u, { quest: CHAIN[0], action: 'report' } as never);
+  questKillFor(u, { kind: 'tin-can', mini: true });
+  townQuest(u, { quest: CHAIN[1], action: 'report' } as never);
+  // As on the live server before this: done, its potions given, no piece.
+  const s = adventureOf(u);
+  s.quests.pieces = [];
+  s.bag = s.bag.filter((i) => !(i.plus === 5 && i.bound));
+  const full = Array.from({ length: S.inventory.slots }, (_, k) => ({ ...s.bag[0], uid: `f${k}`, count: 99 }));
+  db.prepare('DELETE FROM items WHERE owner = ? AND place IS NULL').run(u);
+  const put = db.prepare('INSERT INTO items (uid, owner, def_id, level, rarity, count, slot, created) VALUES (?, ?, ?, 1, ?, ?, ?, 0)');
+  db.prepare('UPDATE adventurers SET quests = ? WHERE user_id = ?').run(JSON.stringify(s.quests), u);
+  full.forEach((x, k) => put.run(x.uid, u, 'low-hp-potion', 'white', 99, k));
+  assert.deepEqual(questPiecesFor(u), [], 'a full bag: it waits');
+  db.prepare('DELETE FROM items WHERE owner = ? AND slot = 0').run(u);
+  const [piece, ...more] = questPiecesFor(u);
+  assert.ok(piece && !more.length && piece.plus === 5 && (D.defs.get(piece.defId) as { gear?: string }).gear === 'Household');
+  assert.deepEqual(questPiecesFor(u), [], 'once');
 });
 
 test.after(() => {

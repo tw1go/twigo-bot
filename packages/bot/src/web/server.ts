@@ -39,7 +39,7 @@ import { kowen } from '../kowens.js';
 import { filterText, kickedUntil, mutedUntil } from './town-mod.js';
 import { getOutfit, parseOutfit, saveOutfit } from './outfit.js';
 import { parseForgeAction } from './forge.js';
-import { adventureOf, combatOf, fighterOf, forgeFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townEquip, townPoints, townQuest, townSkills, trainingArmorFor, questRewardsFor, questKillFor } from './adventure.js';
+import { adventureOf, combatOf, fighterOf, forgeFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townEquip, townPoints, townQuest, townSkills, trainingArmorFor, questRewardsFor, questPiecesFor, questKillFor } from './adventure.js';
 import { renameWithCard } from '../items/rename-card.js';
 import { changeClassWithTicket } from '../items/class-ticket.js';
 import { LAUNCH_REWARD, isPreregistered, launched, preregCount, preregister } from '../prereg/prereg.js';
@@ -235,8 +235,11 @@ async function me(client: Client, req: IncomingMessage, res: ServerResponse): Pr
   if (trainingGear.length) console.log(`[class] ${userId} got training armor: ${trainingGear.join(', ')}`);
   const questRewards = questRewardsFor(userId);
   if (questRewards.length) console.log(`[quest] ${userId} got quest rewards: ${questRewards.map((r) => `${r.count}× ${r.item}`).join(', ')}`);
+  // Mini boss quests finished before their +5 piece came with the report (or with no room then): given now.
+  const questPieces = questPiecesFor(userId);
+  if (questPieces.length) console.log(`[quest] ${userId} got quest pieces: ${questPieces.map((i) => `${i.defId} +${i.plus}`).join(', ')}`);
   const body: MeResponse = { id: userId, name, avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items, preregistered: isPreregistered(userId), house: !!houseOf(userId), tester: await isTester(client, userId), outfit: getOutfit(userId), nickname: getNickname(userId), title: titleOf(userId), newTitle: newTitle(userId), welcomeGift: welcomeGift(userId), status: await statusOf(client, userId), adventure: adventureOf(userId),
-    dig: digStatus(userId), ...(trainingGear.length ? { trainingGear } : {}), ...(questRewards.length ? { questRewards } : {}) };
+    dig: digStatus(userId), ...(trainingGear.length ? { trainingGear } : {}), ...(questRewards.length ? { questRewards } : {}), ...(questPieces.length ? { questPieces } : {}) };
   send(res, 200, JSON.stringify(body));
 }
 
@@ -615,9 +618,9 @@ export function startWebServer(client: Client): void {
         const { changed, ups, ...reply } = result as typeof result & { ups?: number };
         // A report's XP (and its level-ups: "Level up!" for their room) and Kusing reach the town at once.
         if (reply.xp) town?.progress(userId, reply.adventure.progress, ups ?? 0, reply.xp);
-        if (reply.kusing || reply.rewards?.length) town?.items(userId);
+        if (reply.kusing || reply.rewards?.length || reply.pieces?.length) town?.items(userId);
         if (changed) town?.kit(userId, reply.adventure.cls, reply.adventure.equipped.weapon?.defId ?? null, weaponPlusOf(reply.adventure.equipped.weapon)); // the resting weapon for everyone, their gear's stats in fights
-        if (reply.completed) console.log(`[quests] ${userId} completed ${reply.completed}${reply.adventure.cls ? ` (${reply.adventure.cls})` : ''}`);
+        if (reply.completed) console.log(`[quests] ${userId} completed ${reply.completed}${reply.adventure.cls ? ` (${reply.adventure.cls})` : ''}${reply.pieces?.length ? `, got ${reply.pieces.map((i) => `${i.defId} +${i.plus}`).join(', ')}` : ''}`);
         return send(res, 200, JSON.stringify(reply));
       }
       if (req.method === 'POST' && path === '/town/forge') {

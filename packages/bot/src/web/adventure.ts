@@ -28,6 +28,7 @@ import {
   equipFromBag,
   giveGear,
   giveQuestRewards,
+  giveQuestPieces,
   questKill,
   readyToReport,
   withLeveling,
@@ -160,7 +161,9 @@ function completedWith(s: AdventureState, r: Result): Result & { ups?: number } 
   if (!r.completed) return r;
   const q = QUESTS.find((x) => x.id === r.completed);
   const rewards = giveQuestRewards(loadItemData(), s, QUESTS, newUid);
-  const out: Result & { ups?: number } = rewards.length ? { ...r, rewards } : { ...r };
+  // A mini boss quest's +5 piece, into the bag with them.
+  const pieces = giveQuestPieces(loadItemData(), loadLeveling(), s, newUid);
+  const out: Result & { ups?: number } = { ...r, ...(rewards.length ? { rewards } : {}), ...(pieces.length ? { pieces } : {}) };
   if (q?.rewardKusing) {
     s.kusing += q.rewardKusing;
     out.kusing = q.rewardKusing;
@@ -175,16 +178,12 @@ function completedWith(s: AdventureState, r: Result): Result & { ups?: number } 
 }
 
 /** A kill that counts toward a member's quests (theirs, or their party's nearby): the counts saved; their active quests
- *  if anything moved (the town tells them), else null. `questDrop`: a mini boss kill that completed their miniBoss quest
- *  (its piece drops for them: classes/leveling.json miniBoss.questDrop); `cls`: their class, for the piece's gear type. */
-export function questKillFor(userId: string, kill: { kind: string; mini: boolean }): { active: AdventureState['quests']['active']; questDrop: boolean; cls: string | null } | null {
+ *  if anything moved (the town tells them), else null. (A mini boss quest's +5 piece comes with its report.) */
+export function questKillFor(userId: string, kill: { kind: string; mini: boolean }): { active: AdventureState['quests']['active'] } | null {
   const s = load(userId);
-  const waiting = (p: { id: string; step: number; count?: number }) => QUESTS.find((q) => q.id === p.id)?.objectives[p.step]?.type === 'miniBoss' && !readyToReport(QUESTS.find((q) => q.id === p.id), p);
-  const before = s.quests.active.filter(waiting).map((p) => p.id);
   if (!questKill(s, QUESTS, kill)) return null;
   save(userId, s);
-  const questDrop = kill.mini && before.some((id) => readyToReport(QUESTS.find((q) => q.id === id), s.quests.active.find((p) => p.id === id)));
-  return { active: s.quests.active, questDrop, cls: s.cls };
+  return { active: s.quests.active };
 }
 
 /** Wear an item from the combat bag (by uid; in the place asked for, else the first free one for its kind, else the
@@ -350,6 +349,15 @@ export function trainingArmorFor(userId: string): string[] {
 }
 
 /** Rewards of quests finished before they had any (or that had no room then), saved; what was given. */
+/** Mini boss quests' +5 pieces not given yet (finished before the piece came with the report, or there was no room),
+ *  into their bag now (on /me); what was given. */
+export function questPiecesFor(userId: string): Item[] {
+  const s = load(userId);
+  const given = giveQuestPieces(loadItemData(), loadLeveling(), s, newUid);
+  if (given.length) save(userId, s);
+  return given;
+}
+
 export function questRewardsFor(userId: string): QuestReward[] {
   const s = load(userId);
   const given = giveQuestRewards(loadItemData(), s, QUESTS, newUid);

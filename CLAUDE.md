@@ -655,11 +655,14 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   respawnSeconds; credit = members who did kill_credit's share (`dealt`, cleared on heal/death; the killer if nobody), each
   its XP and personal loot (`miniLoot` in web/loot.ts: its mob's Kusing × 10, one gear piece at the nearest gear level
   (Lv 10 below 15, else 20; brown/white/grey by the mobs' odds, +0–+3), a fragment 1 in 3), plus their party in the room.
-  Quest piece (leveling.json miniBoss.questDrop, a repo addition): the mini boss kill that completes a player's miniBoss
-  quest (`questKillFor`'s questDrop) also drops for them alone (`LootRoom.give`) `questDropFor`'s piece: tin can body + HP,
+  Quest piece (leveling.json miniBoss.questDrop, a repo addition): a mini boss quest's reward, into the combat bag with
+  its report (`giveQuestPieces` in shared leveling.ts, marked in `quests.pieces`; no room: a later visit; one finished
+  before this, on the next /me: `questPiecesFor`, MeResponse `questPieces`; a "Gained …" line and a toast). Never dropped
+  on the ground any more (it once fell on the player's Kusing tile and hid; new loot also lands beside loot already
+  there: `lootSpots` taken tiles). `questPieceOf` = `questDropFor` at the gear level nearest the mob's weakest mini boss: tin can body + HP,
   bottle caps hands + crit rate, tire roller bottoms + attack rate (no lifesteal agimat), bag spook their class's weapon +
   crit damage, wire tangle head + crit damage, scrap crab feet + damage amp; their gear type, the nearest gear level,
-  grey (2 slots, no lines), +5, bound, the agimat in slot 1 (dev: the page's pretend quests ask `/__questdrop`).
+  grey (2 slots, no lines), +5, bound, the agimat in slot 1 (dev: the pretend report gives it the same way).
   Game (`world/mobs.ts` `placeMini`): its mob's art and mobs.json numbers at miniBoss.scale, its fixed look by id, "Jus Tin
   Lv 4" always over it in nameColour, its HP bar always. Dev: `?quest=tanod-05` (pretend store: earlier ones done),
   `?minibosses=now` (`/__minibosses`). Tested: web/leveling.test.ts (Lv 1 → 15 on the quests alone, solo and a party of 2).

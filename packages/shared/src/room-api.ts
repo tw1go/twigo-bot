@@ -2,6 +2,7 @@
 // (and, for the room API, at the old https://twigo-bot.duckdns.org).
 
 import type { AdventureState, QuestReward } from './adventure.js';
+import type { Item } from './items.js';
 
 /** One row of `GET /leaderboard`. */
 export interface LeaderboardRow {
@@ -98,6 +99,8 @@ export interface MeResponse {
   trainingGear?: string[];
   /** Quest rewards just given (a quest finished before it had rewards, or one whose rewards had no room): said once. */
   questRewards?: QuestReward[];
+  /** Mini boss quests' +5 pieces just given (a quest finished before they came with the report, or one with no room). */
+  questPieces?: Item[];
 }
 
 /** The status dots in the art (manifest ui.statusDots). */

@@ -1,5 +1,5 @@
 import type { AdventureState, EquipSlot, GearRarity, QuestDef, QuestObjectiveDef, QuestReward } from './adventure.js';
-import { type AgimatStat, type Item, type ItemData, isGearDef, rollGear } from './items.js';
+import { type AgimatStat, type Item, type ItemData, addToBag, isGearDef, rollGear } from './items.js';
 import { gearKind, numbersIn } from './stats.js';
 
 // 📈 The Tanod's leveling quests and the Slums' mini bosses: the game's classes/leveling.json (the art folder's
@@ -142,6 +142,30 @@ export function questDropFor(data: ItemData, L: LevelingData, kind: string, leve
   item.bound = Q.bound;
   if (item.agimats.length) item.agimats[0] = { stat: k.agimat, level: item.level };
   return item;
+}
+
+/** A mini boss quest's piece for a class (questDropFor), at the gear level nearest its mob's weakest mini boss: null for
+ *  a quest that isn't one of the chain's mini boss quests, or without a fitting piece. */
+export function questPieceOf(data: ItemData, L: LevelingData, questId: string, cls: string | null | undefined, uid: string, random: () => number = Math.random): Item | null {
+  const q = L.quests.find((x) => x.id === questId && x.kind === 'miniBoss');
+  if (!q) return null;
+  const levels = (L.miniBosses[q.mob] ?? []).map((m) => m.level);
+  return questDropFor(data, L, q.mob, levels.length ? Math.min(...levels) : 1, cls, uid, random);
+}
+
+/** The +5 pieces of every done mini boss quest not given yet, into the combat bag (each its own all or nothing: no room,
+ *  it waits for a later try); marked in `quests.pieces`. Needs a class (its gear type). Returns what was given. */
+export function giveQuestPieces(data: ItemData, L: LevelingData, s: Pick<AdventureState, 'cls' | 'quests' | 'bag'>, uid: () => string, random: () => number = Math.random): Item[] {
+  if (!s.cls) return [];
+  const given: Item[] = [];
+  for (const id of s.quests.done) {
+    if (s.quests.pieces?.includes(id)) continue;
+    const piece = questPieceOf(data, L, id, s.cls, uid(), random);
+    if (!piece || !addToBag(data, s.bag, piece, uid)) continue;
+    s.quests.pieces = [...(s.quests.pieces ?? []), id];
+    given.push(piece);
+  }
+  return given;
 }
 
 /** A zone's mini boss id in the room (`<zone>:mini:<id>`), and the other way. */

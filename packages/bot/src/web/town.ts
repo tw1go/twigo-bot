@@ -9,12 +9,12 @@ import type { Attacker, MobKill, MobRoom } from './town-mobs.js';
 import { PARTY_MAX, type PartyChange, Parties } from './town-party.js';
 import { type VitalMax, Vitals, shown } from './town-vitals.js';
 import { Buffs, type Nearby } from './town-buffs.js';
-import { loadItemData, loadLeveling, loadStats } from './stats-data.js';
+import { loadItemData, loadStats } from './stats-data.js';
 import { type CombatItems, type LootContent, potionOf } from './combat-bag.js';
 import { type Loot, LootRoom, splitKusing } from './town-loot.js';
 import { type HeldOffer, type Trade, Trades, checkOffer } from './trade.js';
 import type { ChatItemLink, CharacterProgress, QuestProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item, TradeEnd, TradeView } from '@mikazuki/shared';
-import { itemName, itemStats, questDropFor, skillMpCost, tradeRules } from '@mikazuki/shared';
+import { itemName, itemStats, skillMpCost, tradeRules } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
 // messages). The server keeps everyone's tile and checks each step — on the map, not blocked, next to the last
@@ -120,7 +120,7 @@ export interface TownOptions {
   /** Quests (web/adventure.ts questKillFor): a kill that counts toward a member's (theirs, or their party's nearby), saved;
    *  their active quests if anything moved. Without it (the dev town) the page's pretend store is told the kill
    *  (`quest-kill`) and counts it itself. */
-  quests?: { kill(userId: string, kill: { kind: string; mini: boolean }): { active: QuestProgress[]; questDrop?: boolean; cls?: string | null } | null };
+  quests?: { kill(userId: string, kill: { kind: string; mini: boolean }): { active: QuestProgress[] } | null };
   /** Characters' levels (web/adventure.ts in the bot; in memory on the game's dev server, web/progress.ts either way):
    *  who someone is in a fight, and a kill's XP for them (saved; the level-ups it brought). Without it everyone fights as
    *  their class at Lv 1 and gains nothing. */
@@ -429,7 +429,6 @@ export function attachTown(server: Server, opts: TownOptions): Town {
 
   // Loot on the ground, by battle room (only with somewhere to keep what's picked up).
   const items = loadItemData();
-  const leveling = opts.mobs ? loadLeveling() : null;
   const loots = new Map<string, LootRoom>(opts.items ? Object.keys(opts.mobs ?? {}).map((room) => [room, new LootRoom(items, opts.lootRandom, undefined, opts.lootPlusRandom)]) : []);
   /** HP and MP Potions' shared cooldown (ms), and when each member's is over. */
   const POTION_MS = itemStats(items.stats).potions.sharedCooldownSec * 1000;
@@ -466,15 +465,15 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         if (o && opts.progress) progressed(o, opts.progress.kill(o.userId, k));
       }
       dropFor(room, { ...k, to: credited });
-      questKill(withParty(credited, room), { kind: k.kind, mini: !!k.mini, level: k.level, at: k.at }, room);
+      questKill(withParty(credited, room), { kind: k.kind, mini: !!k.mini, level: k.level });
     }
   };
   /** Members and their party members nearby (in the same room), once each. */
   const withParty = (members: string[], room: string): string[] =>
     [...new Set(members.flatMap((u) => [u, ...(parties.of(u)?.members ?? []).filter((m) => conns.get(m)?.room === room)]))];
-  /** A kill counted toward each member's quests (saved by the bot; told to them). A mini boss kill that completes one's
-   *  miniBoss quest drops its piece for them, theirs alone (classes/leveling.json miniBoss.questDrop). */
-  const questKill = (members: string[], kill: { kind: string; mini: boolean; level: number; at: [number, number] }, room: string) => {
+  /** A kill counted toward each member's quests (saved by the bot; told to them). (A mini boss quest's +5 piece comes
+   *  with its report, into the bag: web/adventure.ts.) */
+  const questKill = (members: string[], kill: { kind: string; mini: boolean; level: number }) => {
     for (const user of members) {
       const o = conns.get(user);
       if (!o) continue;
@@ -485,10 +484,6 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       const r = opts.quests.kill(user, { kind: kill.kind, mini: kill.mini });
       if (!r) continue;
       send(o, { t: 'quests', active: r.active });
-      const L = loots.get(room);
-      const mobs = opts.mobs?.[room];
-      const piece = r.questDrop && leveling ? questDropFor(items, leveling, kill.kind, kill.level, r.cls ?? o.player.cls, randomBytes(8).toString('hex')) : null;
-      if (piece && L && mobs) showLoot(room, L.give(user, [{ item: piece }], kill.at, (at, n) => mobs.lootSpots(at, n, L.taken()), Date.now()), kill.at);
     }
   };
   /** A kill's drops, round where it died: the killer's (and their party's, those in the room), or the golem's or a mini

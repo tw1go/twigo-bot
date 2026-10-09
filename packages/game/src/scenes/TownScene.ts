@@ -745,9 +745,10 @@ export class TownScene extends Phaser.Scene {
       setKusingArt(kusing ? asset(kusing.file) : null);
       const member = this.me?.status === 'ok' ? this.me.me : null;
       if (!member) return; // guests have no quests
-      const { armor, rewards } = initAdventure(member.adventure, member.trainingGear, member.questRewards);
-      // Quest rewards given on this visit (a quest finished before it had any): said after the title card.
-      if (rewards.length) this.time.delayedCall(titleCardMs() + 600, () => this.questRewards(rewards));
+      const { armor, rewards, pieces } = initAdventure(member.adventure, member.trainingGear, member.questRewards, member.questPieces);
+      // Quest rewards given on this visit (a quest finished before it had any, a mini boss quest's piece): said after the
+      // title card.
+      if (rewards.length || pieces.length) this.time.delayedCall(titleCardMs() + 600, () => this.questRewards(rewards, pieces));
       // A class from before training armor: the Tanod's set, said once (after the title card).
       const body = armor.map(itemDef).find((i) => i?.slot === 'body') ?? itemDef(armor[0]);
       if (body) this.time.delayedCall(titleCardMs() + 600, () => toast('The Tanod left you a set of training gear.', 4500, 'good', gearPicture(body, asset)));
@@ -1285,13 +1286,19 @@ export class TownScene extends Phaser.Scene {
 
   /** Quest rewards just given: a "Gained Low HP Potion ×20" line each in your own system feed (as loot's), and the
    *  pickup sound. */
-  private questRewards(rewards: QuestReward[]): void {
+  private questRewards(rewards: QuestReward[], pieces: Item[] = []): void {
     const D = itemData();
     if (!D) return;
     for (const r of rewards) {
       const def = D.defs.get(r.item);
       const line = def && pickupOf({ item: newItem(D.stats, def, 'reward', r.count) });
       if (line) this.feed?.mine(line.parts);
+    }
+    // A mini boss quest's piece: "Gained Hemp Robe +5 (2 slots)", and a toast so it's not missed.
+    for (const p of pieces) {
+      const line = pickupOf({ item: p });
+      if (line) this.feed?.mine(line.parts);
+      toast(`Quest reward: ${nameOf(p)}. It's in your bag (Combat tab).`, 3500, 'good');
     }
     playSound('combat-loot-pickup');
   }
@@ -1529,7 +1536,7 @@ export class TownScene extends Phaser.Scene {
     this.feed = feed;
     // A quest's rewards as it's completed: "Gained" lines, like loot.
     onAdventure((_s, change) => {
-      if (change.rewards?.length) this.questRewards(change.rewards);
+      if (change.rewards?.length || change.pieces?.length) this.questRewards(change.rewards ?? [], change.pieces ?? []);
     });
     // Members earn a Kowen for every 15 minutes in town (claimed from a pop-up above the feed).
     const stay = member ? new StayReward() : null;
