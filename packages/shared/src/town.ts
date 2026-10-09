@@ -176,6 +176,8 @@ export interface PartyMember {
   nickname: string;
   outfit: OutfitData;
   cls?: string | null;
+  /** Their character level (last known). */
+  level?: number;
   area: string | null;
   /** Their HP now and at most (while connected or last known). */
   hp?: number;

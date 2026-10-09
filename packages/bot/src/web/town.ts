@@ -293,7 +293,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   };
   // Parties (town-party.ts): kept by member; what the page sees is each member's party key, town id (while here) and
   // where they are. Last-known names and looks, so a member who stepped away still shows.
-  const known = new Map<string, { nickname: string; outfit: OutfitData; cls?: string | null }>();
+  const known = new Map<string, { nickname: string; outfit: OutfitData; cls?: string | null; level?: number }>();
   const parties = new Parties((u) => known.get(u)?.nickname ?? 'Someone');
   const away = new Map<string, NodeJS.Timeout>();
   const partyFor = (user: string): PartyState | null => {
@@ -307,7 +307,8 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         const o = conns.get(m);
         const k = known.get(m);
         const v = vitals?.get(m);
-        return { key: parties.key(m), id: o?.player.id ?? null, nickname: k?.nickname ?? 'Someone', outfit: k!.outfit, cls: k?.cls ?? null, area: o?.room ?? null, ...(v ? { hp: shown(v).hp, maxHp: v.max.hp } : {}) };
+        const level = o?.player.level ?? k?.level;
+        return { key: parties.key(m), id: o?.player.id ?? null, nickname: k?.nickname ?? 'Someone', outfit: k!.outfit, cls: k?.cls ?? null, ...(level ? { level } : {}), area: o?.room ?? null, ...(v ? { hp: shown(v).hp, maxHp: v.max.hp } : {}) };
       }),
     };
   };
@@ -424,6 +425,9 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       const up: TownServerMessage = { t: 'level-up', id: c.player.id, level: g.progress.level };
       others(c, up);
       send(c, up);
+      const k = known.get(c.userId);
+      if (k) k.level = g.progress.level;
+      tellParty(c.userId); // (the party panel shows levels)
     }
   };
 
@@ -979,7 +983,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     send(c, { t: 'welcome', you: player.id, players: [...conns.values()].filter((o) => o.room === room).map((o) => o.player), recent, system: systemLines, spawn: [col, row], notice: notice && notice.until > Date.now() ? notice.a : undefined });
     conns.set(userId, c);
     others(c, { t: 'join', player });
-    known.set(userId, { nickname: player.nickname, outfit: player.outfit, cls: player.cls });
+    known.set(userId, { nickname: player.nickname, outfit: player.outfit, cls: player.cls, level: player.level });
     clearTimeout(away.get(userId));
     away.delete(userId);
     tellParty(userId); // back (or in another area): their new id and where they are

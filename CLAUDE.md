@@ -739,7 +739,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   them); a member who drops stays for a minute (Away), so reloads and gates keep the party. Messages party-invite /
   -answer / -leave / -disband / -kick, and `party` (state + a toast note), `party-invited`, `party-refused`,
   `party-declined`, `party-say`. Game: `net/party.ts` (state, actions), `ui/party.ts` (the panel under the quest tracker:
-  heads, pink names, class badges, area or Away, crown, "you", an HP bar (`PartyMember.hp/maxHp`, live from `vitals`:
+  heads, pink names, "Lv N" (`PartyMember.level`, sent again on a level-up), class badges, area or Away, crown, "you", an HP bar (`PartyMember.hp/maxHp`, live from `vitals`:
   net/party.ts `setMemberHp`, no redraw); the exit icon opens Leave / Disband (asks twice); the
   leader right-clicks a member for Kick; the invite pop-up, Accept / Decline with a minute's bar), "Invite to party" in
   the player menu (so also from chat names), party members' names pink only for the party (`Character.setParty`,

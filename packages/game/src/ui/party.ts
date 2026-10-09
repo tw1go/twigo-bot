@@ -113,6 +113,7 @@ export class PartyPanel {
       line.append(img);
     }
     line.append(el('b', 'pt-name', m.nickname));
+    if (m.level) line.append(el('span', 'pt-lv', `Lv ${m.level}`));
     if (leader) {
       const crown = el('span', 'pt-crown', '♛');
       crown.title = 'Party leader';
