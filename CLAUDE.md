@@ -501,6 +501,12 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   shown), `potion-refused`. Game: `world/loot.ts` (bounces out of the mob: `loot-drop`'s `from` = the kill's tile, each drop an arc from its middle to its tile 70 ms after the one before, a small second hop, the shadow sliding under it; the drop sound as the first lands, LOOT_LAND_MS; the golem's from higher; reduced motion: none; 16 px icon at half size, shadow and bob to match, Kusing amount in white,
   names always over it once landed, in a small font: `nameColour` (Kusing: its amount); half alpha while reserved), click → `pick` (in reach) or walk onto it
   then `pick`; F (keybind 'pickup') or Space (when loot is in reach; else interact) picks the nearest (`LootLayer.nearest`);
+  Dropping (any map: a LootRoom is made for a room on its first drop, `lootIn`; the LootLayer is on every map): a combat
+  bag item dragged onto the canvas (`application/x-mk-item`, TownScene `setupItemDrop`) → `ui/drop.ts` confirm (how many
+  of a stack; who may take it; gone after 2 min) → `drop {item, count}`; never bound or training gear (shared
+  `dropRefusal`; `dropFromBag` in combat-bag.ts: a whole stack keeps its uid; `TownOptions.items.drop`, saved, `[drop]` log
+  line). It lands at your feet (beside other loot: `lootSpots` / `groundSpot`), bouncing out of you; in a party only the
+  party sees and takes it (`LootRoom.place`: personal to them), else anyone at once. `drop-refused` says why; tested.
   each pickup is a line only you see in your system feed, added by the page (`SystemFeed.mine`, never the server's
   feed, which reaches everyone and Discord; party members get `party-loot` and see "Mara looted …" in theirs; a toast where the feed is hidden), `pickupLine` (coloured runs: only the
   name in its colour): "Gained Sturdy Slingshot of Calamity +1 (1 slot)", "Gained Rough Whetstone ×3", "Gained 120 Kusing"; `ui/item-tip.ts` (tooltips:

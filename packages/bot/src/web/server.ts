@@ -39,7 +39,7 @@ import { kowen } from '../kowens.js';
 import { filterText, kickedUntil, mutedUntil } from './town-mod.js';
 import { getOutfit, parseOutfit, saveOutfit } from './outfit.js';
 import { parseForgeAction } from './forge.js';
-import { adventureOf, combatOf, fighterOf, forgeFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townEquip, townPoints, townQuest, townSkills, trainingArmorFor, questRewardsFor, questPiecesFor, questKillFor } from './adventure.js';
+import { adventureOf, combatOf, fighterOf, forgeFor, dropItemFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townEquip, townPoints, townQuest, townSkills, trainingArmorFor, questRewardsFor, questPiecesFor, questKillFor } from './adventure.js';
 import { renameWithCard } from '../items/rename-card.js';
 import { changeClassWithTicket } from '../items/class-ticket.js';
 import { LAUNCH_REWARD, isPreregistered, launched, preregCount, preregister } from '../prereg/prereg.js';
@@ -892,7 +892,7 @@ export function startWebServer(client: Client): void {
         },
       },
       // Loot, HP/MP Potions and trades: their combat bag and Kusing (saved with the character; trades logged in `trades`).
-      items: { take: takeLootFor, usePotion: usePotionFor, state: combatOf, trade: tradeFor },
+      items: { take: takeLootFor, usePotion: usePotionFor, state: combatOf, drop: dropItemFor, trade: tradeFor },
       // Mobility moves from their unlock level (Dash Lv 5, the class's own move Lv 8).
       moveLevel,
       authenticate: async (req) => {

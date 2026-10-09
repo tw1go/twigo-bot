@@ -44,7 +44,7 @@ import {
 import { db } from '../db/db.js';
 import { type LevelGain, type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView, raiseSkill, refundPoints, resetSkillPoints, resetStatPoints, spendPoint } from './progress.js';
 import type { Attacker } from './town-mobs.js';
-import { type CombatItems, type LootContent, buyCombat, takeLoot, usePotion } from './combat-bag.js';
+import { type CombatItems, type LootContent, buyCombat, dropFromBag, takeLoot, usePotion } from './combat-bag.js';
 import { forge } from './forge.js';
 import { type HeldOffer, settleTrade } from './trade.js';
 import { loadGear, loadItemData, loadLeveling, loadStats } from './stats-data.js';
@@ -381,6 +381,9 @@ export function withItems<T>(userId: string, f: (s: AdventureState) => T, change
 
 /** Loot picked up in the Slums (Kusing, or an item into the bag): false if the bag has no room for it. */
 export const takeLootFor = (userId: string, loot: LootContent): boolean => withItems(userId, (s) => takeLoot(loadItemData(), s, loot, newUid), (ok) => ok);
+
+/** `count` of an item out of their bag to drop on the ground (the town's `drop`): the item, or why not. */
+export const dropItemFor = (userId: string, uid: string, count: number) => withItems(userId, (s) => dropFromBag(loadItemData(), s, uid, count, newUid), (r) => typeof r !== 'string');
 
 /** One HP or MP Potion of a kind used from their bag: what it heals, or null (none). */
 export const usePotionFor = (userId: string, defId: string) => withItems(userId, (s) => usePotion(loadItemData(), s, defId), (r) => !!r);

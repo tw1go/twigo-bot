@@ -132,6 +132,9 @@ export type TownClientMessage =
   /** Pick up loot within LOOT_REACH of you (a click on it, or F / Space): that one, or (no `id`) the nearest you may
    *  take. Nothing is ever picked up on its own (not by walking over it, Kusing neither). */
   | { t: 'pick'; id?: string }
+  /** Drops an item from your combat bag on the ground at your feet (dragged onto the map): `count` of a stack. Never
+   *  training gear or bound items; in a party only the party may pick it up, else anyone. */
+  | { t: 'drop'; item: string; count: number }
   /** Knocked out: come back now (at the map's way in, full) instead of waiting out the countdown. */
   | { t: 'revive' }
   /** Use an HP or MP Potion of this kind (its item id) from your combat bag (battle maps; one shared cooldown). */
@@ -436,6 +439,8 @@ export type TownServerMessage =
   | { t: 'loot-gone'; ids: string[] }
   /** You tried to pick up loot your combat bag has no room for: it stays there. */
   | { t: 'loot-full' }
+  /** An item you tried to drop stayed in your bag: why. */
+  | { t: 'drop-refused'; message: string }
   /** Your worn items, combat bag and Kusing changed on the server (loot picked up, a potion used, dev's ?give=);
    *  `got`: what you just picked up. */
   | { t: 'items'; items: TownItems; got?: { kusing?: number; item?: Item } }

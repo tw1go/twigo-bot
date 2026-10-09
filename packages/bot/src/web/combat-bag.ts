@@ -12,6 +12,7 @@ import {
   rollGear,
   stackLimit,
   takeKind,
+  dropRefusal,
 } from '@mikazuki/shared';
 
 // 💰 A character's combat bag and Kusing wallet, pure (the bot keeps them with the character, web/adventure.ts; the game's
@@ -139,4 +140,19 @@ export function devGive(data: ItemData, c: CombatItems, defId: string, opts: { r
     if (def.kind === 'agimat' && opts.level) item.level = opts.level;
   }
   return addToBag(data, c.bag, item, uid) ? item : null;
+}
+
+/** Takes `count` of an item out of the combat bag to drop on the ground (worn items never): the item (a whole stack keeps
+ *  its uid; part of one leaves as a new item), or why not. */
+export function dropFromBag(data: ItemData, c: CombatItems, uid: string, count: number, newUid: () => string): Item | string {
+  const i = c.bag.findIndex((b) => b.uid === uid);
+  const it = c.bag[i];
+  if (!it) return "That item isn't in your bag.";
+  const why = dropRefusal(data, it);
+  if (why) return why;
+  const n = Math.floor(count);
+  if (!(n >= 1) || n > it.count) return "You don't have that many.";
+  if (n === it.count) return c.bag.splice(i, 1)[0];
+  it.count -= n;
+  return { ...it, uid: newUid(), count: n };
 }

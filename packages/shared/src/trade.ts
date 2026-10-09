@@ -29,6 +29,16 @@ export function tradeRefusal(data: ItemData, item: Item): string | null {
   return null;
 }
 
+/** Why an item can't be dropped on the ground (dragged out of the bag onto the map), or null: it can. The same items as
+ *  trading: never training gear or bound items. */
+export function dropRefusal(data: ItemData, item: Item): string | null {
+  const def = data.defs.get(item.defId);
+  if (!def) return "That item can't be dropped.";
+  if (isGearDef(def) && def.training) return "Training gear can't be dropped.";
+  if (item.bound) return "Bound items can't be dropped.";
+  return null;
+}
+
 /** One item put in: its uid in your combat bag and how many of the stack (gear: 1). */
 export interface TradePut {
   uid: string;

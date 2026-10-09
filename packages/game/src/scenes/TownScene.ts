@@ -64,6 +64,7 @@ import { OtherPlayers } from '../world/others';
 import { fakeLogin, fakeName, loadMe } from '../session';
 import { screenToTile, tileToScreen } from '../iso';
 import { toast } from '../ui/toast';
+import { confirmDrop } from '../ui/drop';
 import { PartyPanel, showPartyInvite } from '../ui/party';
 import { answer as partyAnswer, inParty, onParty, party, refusal as partyRefusal, setMemberHp, setParty, setPartyLink } from '../net/party';
 import { GROUND_SHADOW_DEPTH, LABEL_DEPTH, frontDepth } from '../world/depth';
@@ -101,7 +102,7 @@ import { Hotbar, potionCooldownKey } from '../ui/hotbar';
 import { mountClassSwitch } from '../ui/class-switch';
 import { MOVES, type MoveKind, isMoveKind, moveTiles, playMove } from '../world/mobility';
 import { changeClass, devItemsReady, devQuestKill, questReport, setQuestCounts, devSwitchClass, adventure, adventureData, anyDef, chooseClass, classInfo, initAdventure, itemData, itemDef, loadAdventureData, onAdventure, questDef, questFor, questTalk, setItems, setProgress, skillView, skillViews, buffViews } from '../net/adventure';
-import { nameColour, type Item, type QuestReward, type TownItems, LOOT_REACH, auraFor, classBuffs, classSkills, countOf, isGearDef, itemAura, itemStats, newItem, tradeRules } from '@mikazuki/shared';
+import { dropRefusal, nameColour, type Item, type QuestReward, type TownItems, LOOT_REACH, auraFor, classBuffs, classSkills, countOf, isGearDef, itemAura, itemStats, newItem, tradeRules } from '@mikazuki/shared';
 import type { ClassArt } from '../assets/types';
 import { drawRested, loadImages, poseFiles, restFiles } from '../characters/kit-art';
 import { holdQuestBanners, mountQuests } from '../ui/quests';
@@ -440,11 +441,6 @@ export class TownScene extends Phaser.Scene {
       };
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => box.destroy());
       this.mobs = mobs;
-      // Loot on the ground: a click walks you onto it (the server picks it up as you arrive; a tile away, at once).
-      const sil = this.M.ui.equipSlots;
-      const loot = new LootLayer(this, this.objects, itemData, { kusing: this.M.ui.kusingIcon?.file ?? null, silhouettes: sil ? { file: sil.file, frames: sil.frames } : null });
-      this.loot = loot;
-      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => loot.destroy());
       // Its field boss, once its art is in (loaded in the background: it never holds up arriving).
       const boss = this.map.boss;
       if (boss && this.M.mobs?.[boss.id]) {
@@ -462,6 +458,11 @@ export class TownScene extends Phaser.Scene {
         });
       }
     }
+    // Loot on the ground (mobs' drops, and items players drop on any map): a click walks you to it and picks it up.
+    const sil = this.M.ui.equipSlots;
+    const loot = new LootLayer(this, this.objects, itemData, { kusing: this.M.ui.kusingIcon?.file ?? null, silhouettes: sil ? { file: sil.file, frames: sil.frames } : null });
+    this.loot = loot;
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => loot.destroy());
     // The race box's bet pop-up shows the runners' portraits wherever you are (the neighbourhood too, which has no NPCs).
     const P = this.M.npcs?.portrait;
     if (P) setRacePortraits((id) => `${import.meta.env.BASE_URL}assets/${P.file.replace('{id}', id)}`);
@@ -1794,6 +1795,10 @@ export class TownScene extends Phaser.Scene {
         return;
       }
       if (m.t === 'loot-gone') return this.loot?.remove(m.ids);
+      if (m.t === 'drop-refused') {
+        playSound('error');
+        return toast(m.message, 2400, 'bad');
+      }
       if (m.t === 'loot-full') {
         playSound('error');
         return toast('Inventory full', 1800, 'bad');
@@ -2157,7 +2162,45 @@ export class TownScene extends Phaser.Scene {
     }
   }
 
+  /** A combat bag item dragged onto the map: dropped on the ground at your feet, after a confirm box (how many of a
+   *  stack; your party's or anyone's). Never bound items or training gear (the server checks too). */
+  private setupItemDrop(): void {
+    const canvas = this.game.canvas;
+    const over = (e: DragEvent) => {
+      if (!e.dataTransfer?.types.includes('application/x-mk-item') || !this.link) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+    };
+    const drop = (e: DragEvent) => {
+      const uid = e.dataTransfer?.getData('application/x-mk-item');
+      if (!uid) return;
+      e.preventDefault();
+      void this.dropItem(uid);
+    };
+    canvas.addEventListener('dragover', over);
+    canvas.addEventListener('drop', drop);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      canvas.removeEventListener('dragover', over);
+      canvas.removeEventListener('drop', drop);
+    });
+  }
+
+  private async dropItem(uid: string): Promise<void> {
+    const it = adventure()?.bag.find((b) => b.uid === uid);
+    const D = itemData();
+    if (!it || !D || this.knockedOut || this.inside) return;
+    const why = dropRefusal(D, it);
+    if (why) {
+      playSound('error');
+      return toast(why, 2400, 'bad');
+    }
+    const count = await confirmDrop(it, (party()?.members.length ?? 0) > 1);
+    if (!count) return;
+    if (!this.link?.send({ t: 'drop', item: uid, count })) toast("Couldn't reach the town.", 2400, 'bad');
+  }
+
   private setupInput(): void {
+    this.setupItemDrop();
     // Benches are left-clickable too (sit), so they get the hand cursor.
     for (const b of this.objects.benches) b.sprite.setInteractive({ pixelPerfect: true, cursor: cursor('hand', this.cameras.main.zoom) });
     for (const b of this.objects.buildings) this.wireBuilding(b);

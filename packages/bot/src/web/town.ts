@@ -135,6 +135,9 @@ export interface TownOptions {
     take(userId: string, loot: LootContent): boolean;
     usePotion(userId: string, defId: string): { heals: 'hp' | 'mp'; amount: number } | null;
     state(userId: string): CombatItems;
+    /** `count` of an item out of their combat bag to drop on the ground: the item, or why not (saved). Without it
+     *  nothing can be dropped. */
+    drop?(userId: string, uid: string, count: number): Item | string;
     /** A trade both have confirmed (web/trade.ts settleTrade): checked again and moved in one go, logged; or nothing,
      *  with why. Without it nobody can trade. */
     trade?(users: [string, string], offers: [HeldOffer, HeldOffer], names: [string, string]): { ok: true } | { ok: false; message: string };
@@ -261,6 +264,8 @@ interface Conn {
   invitedAt?: number;
   /** The last trade request sent (ms). */
   askedAt?: number;
+  /** When they last dropped an item on the ground. */
+  droppedAt?: number;
   /** When they last looked at someone's gear (the player menu's Info). */
   inspectAt?: number;
 }
@@ -436,6 +441,29 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   // Loot on the ground, by battle room (only with somewhere to keep what's picked up).
   const items = loadItemData();
   const loots = new Map<string, LootRoom>(opts.items ? Object.keys(opts.mobs ?? {}).map((room) => [room, new LootRoom(items, opts.lootRandom, undefined, opts.lootPlusRandom)]) : []);
+  /** A room's loot, made when something is first dropped there (a player's item off a map without mobs). */
+  const lootIn = (room: string): LootRoom => {
+    let L = loots.get(room);
+    if (!L) loots.set(room, (L = new LootRoom(items, opts.lootRandom, undefined, opts.lootPlusRandom)));
+    return L;
+  };
+  /** Where a dropped item lands on a map without mobs: `at`, else the nearest open tile within 2 with no loot on it. */
+  const groundSpot = (m: TownMap, at: [number, number], taken: ReadonlySet<string>): [number, number] => {
+    const [cols, rows] = m.size;
+    for (let ring = 0; ring <= 2; ring++)
+      for (let dr = -ring; dr <= ring; dr++)
+        for (let dc = -ring; dc <= ring; dc++) {
+          const [c, r] = [at[0] + dc, at[1] + dr];
+          if (Math.max(Math.abs(dc), Math.abs(dr)) === ring && c >= 0 && r >= 0 && c < cols && r < rows && !m.blocked[r]?.[c] && !taken.has(`${c},${r}`)) return [c, r];
+        }
+    return at;
+  };
+  // Dropped items lying too long on maps without mobs go too (the mobs' clock does theirs).
+  if (opts.items?.drop) {
+    setInterval(() => {
+      for (const [room, L] of loots) if (!opts.mobs?.[room]) lootGone(room, L.tick(Date.now()));
+    }, 1000).unref?.();
+  }
   /** HP and MP Potions' shared cooldown (ms), and when each member's is over. */
   const POTION_MS = itemStats(items.stats).potions.sharedCooldownSec * 1000;
   const potionReady = new Map<string, number>();
@@ -749,6 +777,25 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       case 'pick':
         if (m.id === undefined || typeof m.id === 'string') pickUp(c, m.id);
         return;
+      case 'drop': {
+        // An item dragged out of the bag onto the map: on the ground at their feet (bouncing out of them), for their
+        // party alone if they're in one, else for anyone; gone after LOOT_MS like any loot. Never bound items.
+        if (!opts.items?.drop || p.out || typeof m.item !== 'string') return;
+        const now = Date.now();
+        if (now - (c.droppedAt ?? 0) < 300) return send(c, { t: 'drop-refused', message: 'Slow down a little.' });
+        c.droppedAt = now;
+        const r = opts.items.drop(c.userId, m.item, Number(m.count));
+        if (typeof r === 'string') return send(c, { t: 'drop-refused', message: r });
+        const L = lootIn(c.room);
+        const at: [number, number] = [p.col, p.row];
+        const mobs = opts.mobs?.[c.room];
+        const spot = mobs ? (mobs.lootSpots(at, 1, L.taken())[0] ?? at) : groundSpot(mapOf(c.room), at, L.taken());
+        const party = parties.of(c.userId)?.members ?? [];
+        showLoot(c.room, [L.place({ item: r }, spot, party.length > 1 ? [...party] : [], now)], at);
+        tellItems(c);
+        console.log(`[drop] ${c.userId} dropped ${r.defId}${r.count > 1 ? ` ×${r.count}` : ''} (${r.uid}) in ${c.room}${party.length > 1 ? ' for their party' : ''}`);
+        return;
+      }
       case 'revive':
         // "Revive now" from the unconscious pop-up: only while knocked out, else nothing happens.
         if (vitals?.revive(c.userId, Date.now())) respawn(c);

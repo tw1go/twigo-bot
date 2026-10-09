@@ -26,7 +26,7 @@ type EquipmentDef = import('@mikazuki/shared').EquipmentDef;
 type CombatItemDef = import('@mikazuki/shared').CombatItemDef;
 type TownServerMessage = import('@mikazuki/shared').TownServerMessage;
 const { loadItemData } = await import('./stats-data.js');
-const { buyCombat, devGive, takeLoot, usePotion } = await import('./combat-bag.js');
+const { buyCombat, devGive, dropFromBag, takeLoot, usePotion } = await import('./combat-bag.js');
 const { dropPlus, golemLoot, mobDrops, rollAgimatStat } = await import('./loot.js');
 const { LOOT_MS, LootRoom, splitKusing } = await import('./town-loot.js');
 const { MIGRATIONS } = await import('../db/db.js');
@@ -625,5 +625,100 @@ test('over the town\'s socket: items shown in chat are the speaker\'s own (worn 
   assert.equal(said[1].links, undefined, 'someone else\'s item: plain text');
   assert.equal(said[2].links, undefined, 'not named in the text: no link');
   for (const c of [mara, bob]) c.ws.close();
+  await new Promise((ok) => server.close(ok));
+});
+
+test('dropping from the bag: a whole stack keeps its uid, part of one leaves as a new item; never worn, bound or training gear', () => {
+  const potion = { ...newItem(S, D.defs.get('low-hp-potion') as CombatItemDef, 'pot'), count: 5 };
+  const sword = newItem(S, gear('weapon-crude-stick'), 'stick');
+  const tied = { ...newItem(S, gear('weapon-crude-stick'), 'tied'), bound: true };
+  const training = newItem(S, gear('weapon-training-stick'), 'trn');
+  const c = { equipped: { weapon: newItem(S, gear('weapon-crude-stick'), 'worn') }, bag: [potion, sword, tied, training], kusing: 0 };
+  const part = dropFromBag(D, c, 'pot', 2, uid);
+  assert.ok(typeof part !== 'string' && part.count === 2 && part.uid !== 'pot');
+  assert.equal(potion.count, 3, 'the rest stays');
+  assert.equal(dropFromBag(D, c, 'pot', 4, uid), "You don't have that many.");
+  assert.equal((dropFromBag(D, c, 'stick', 1, uid) as Item).uid, 'stick');
+  assert.ok(!c.bag.some((b) => b.uid === 'stick'));
+  assert.equal(dropFromBag(D, c, 'tied', 1, uid), "Bound items can't be dropped.");
+  assert.equal(dropFromBag(D, c, 'trn', 1, uid), "Training gear can't be dropped.");
+  assert.equal(dropFromBag(D, c, 'worn', 1, uid), "That item isn't in your bag.");
+  assert.equal(c.bag.length, 3);
+});
+
+test('over the town\'s socket: a dropped item lands at your feet for anyone (no party) or only your party, on a map without mobs too; bound items stay', async () => {
+  const bags = new Map<string, { equipped: Record<string, never>; bag: Item[]; kusing: number }>();
+  const bagOf = (name: string) => bags.get(name) ?? bags.set(name, { equipped: {}, bag: [], kusing: 0 }).get(name)!;
+  bagOf('Dee').bag.push({ ...newItem(S, D.defs.get('low-hp-potion') as CombatItemDef, 'pot'), count: 5 }, { ...newItem(S, gear('weapon-crude-stick'), 'tied'), bound: true });
+  bagOf('Mara').bag.push(newItem(S, gear('weapon-crude-stick'), 'mstick'));
+  const server = createServer();
+  const open4 = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]];
+  attachTown(server, {
+    map: { size: [4, 4], spawn: [1, 1], blocked: open4 },
+    authenticate: async (req) => new URL(req.url ?? '/', 'http://x').searchParams.get('as'),
+    profile: (name) => ({ nickname: name, title: { name: 'Townfolk', color: '#fff' }, outfit: {} as never }),
+    items: {
+      take: (name, loot) => takeLoot(D, bagOf(name), loot, uid),
+      usePotion: (name, defId) => usePotion(D, bagOf(name), defId),
+      state: (name) => bagOf(name),
+      drop: (name, id, count) => dropFromBag(D, bagOf(name), id, count, uid),
+    },
+  });
+  await new Promise<void>((ok) => server.listen(0, '127.0.0.1', ok));
+  const port = (server.address() as AddressInfo).port;
+  const open = (as: string) =>
+    new Promise<{ ws: WebSocket; got: TownServerMessage[] }>((ok) => {
+      const ws = new WebSocket(`ws://127.0.0.1:${port}/ws?as=${as}`);
+      const got: TownServerMessage[] = [];
+      ws.on('message', (d) => got.push(JSON.parse(String(d))));
+      ws.on('open', () => ok({ ws, got }));
+    });
+  const wait = (ms: number) => new Promise((ok) => setTimeout(ok, ms));
+  const [mara, bob, dee] = [await open('Mara'), await open('Bob'), await open('Dee')];
+  await wait(100);
+  const idOf = (c: { got: TownServerMessage[] }) => (c.got.find((m) => m.t === 'welcome') as Extract<TownServerMessage, { t: 'welcome' }>).you;
+  const spawnOf = (c: { got: TownServerMessage[] }) => (c.got.find((m) => m.t === 'welcome') as Extract<TownServerMessage, { t: 'welcome' }>).spawn;
+  mara.ws.send(JSON.stringify({ t: 'party-invite', to: idOf(bob) }));
+  await wait(100);
+  const inv = bob.got.find((m) => m.t === 'party-invited') as Extract<TownServerMessage, { t: 'party-invited' }>;
+  bob.ws.send(JSON.stringify({ t: 'party-answer', invite: inv.invite, accept: true }));
+  await wait(100);
+  const drops = (c: { got: TownServerMessage[] }) => c.got.filter((m): m is Extract<TownServerMessage, { t: 'loot-drop' }> => m.t === 'loot-drop');
+  // Dee (no party) drops 3 of her 5 potions: everyone sees them and may take them at once, bouncing out of her tile.
+  dee.ws.send(JSON.stringify({ t: 'drop', item: 'pot', count: 3 }));
+  await wait(150);
+  for (const c of [mara, bob, dee]) {
+    const [d] = drops(c);
+    assert.equal(d?.loot[0].item?.count, 3);
+    assert.equal(d.loot[0].mine, true, 'anyone may take it');
+    assert.deepEqual(d.from, spawnOf(dee), 'out of her tile');
+  }
+  assert.equal(bagOf('Dee').bag.find((b) => b.uid === 'pot')?.count, 2);
+  // A bound item stays in her bag.
+  await wait(350);
+  dee.ws.send(JSON.stringify({ t: 'drop', item: 'tied', count: 1 }));
+  await wait(150);
+  assert.deepEqual(dee.got.filter((m) => m.t === 'drop-refused'), [{ t: 'drop-refused', message: "Bound items can't be dropped." }]);
+  assert.ok(bagOf('Dee').bag.some((b) => b.uid === 'tied'));
+  // Mara (in a party with Bob) drops a stick: only Bob and she see it; Bob picks it up from the next tile.
+  mara.ws.send(JSON.stringify({ t: 'drop', item: 'mstick', count: 1 }));
+  await wait(150);
+  const stick = drops(bob)[1]?.loot[0];
+  assert.equal(stick?.item?.uid, 'mstick');
+  const pots = drops(dee)[0].loot[0];
+  assert.notDeepEqual([stick.col, stick.row], [pots.col, pots.row], 'never on other loot');
+  assert.equal(drops(dee).length, 1, 'Dee never sees it');
+  let [col, row] = spawnOf(bob);
+  while (Math.max(Math.abs(stick.col - col), Math.abs(stick.row - row)) > 1) {
+    col += Math.sign(stick.col - col);
+    row += Math.sign(stick.row - row);
+    bob.ws.send(JSON.stringify({ t: 'step', col, row }));
+    await wait(180);
+  }
+  bob.ws.send(JSON.stringify({ t: 'pick', id: stick.id }));
+  await wait(150);
+  assert.ok(bagOf('Bob').bag.some((b) => b.uid === 'mstick'));
+  assert.ok(!bagOf('Mara').bag.some((b) => b.uid === 'mstick'));
+  for (const c of [mara, bob, dee]) c.ws.close();
   await new Promise((ok) => server.close(ok));
 });

@@ -124,6 +124,14 @@ export class LootRoom {
     });
   }
 
+  /** An item a player dropped (dragged out of their bag), at `at`: for `party` (their party: they alone may see and take
+   *  it, ever), or for anyone at once (not in a party). Gone after LOOT_MS like the rest. */
+  place(content: LootContent, at: [number, number], party: string[], now: number): Loot {
+    const loot: Loot = { id: `l${++this.n}`, col: at[0], row: at[1], content, owners: party, personal: party.length > 0, opensAt: party.length ? Infinity : now, goneAt: now + LOOT_MS };
+    this.all.set(loot.id, loot);
+    return loot;
+  }
+
   /** The tiles loot lies on now ("col,row"), so new loot lands beside it rather than on top. */
   taken(): Set<string> {
     return new Set([...this.all.values()].map((l) => `${l.col},${l.row}`));

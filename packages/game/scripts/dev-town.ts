@@ -9,7 +9,7 @@ import { attachTown } from '../../bot/src/web/town.ts';
 import { MobRoom, loadMobKinds, loadSkillShapes } from '../../bot/src/web/town-mobs.ts';
 import { type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView, raiseSkill, resetSkillPoints, resetStatPoints, spendPoint } from '../../bot/src/web/progress.ts';
 import { loadItemData, loadLeveling, loadStats } from '../../bot/src/web/stats-data.ts';
-import { buyCombat, devGive, takeLoot, usePotion } from '../../bot/src/web/combat-bag.ts';
+import { buyCombat, devGive, dropFromBag, takeLoot, usePotion } from '../../bot/src/web/combat-bag.ts';
 import { forge, parseForgeAction } from '../../bot/src/web/forge.ts';
 import { settleTrade } from '../../bot/src/web/trade.ts';
 import { loadGolemArt } from '../../bot/src/web/town-golem.ts';
@@ -371,6 +371,7 @@ export function devTown(): Plugin {
           take: (name, loot) => takeLoot(items, gearOf(name), loot, devUid),
           usePotion: (name, defId) => usePotion(items, gearOf(name), defId),
           state: (name) => gearOf(name),
+          drop: (name, uid, count) => dropFromBag(items, gearOf(name), uid, count, devUid),
           // Trades: the bot's settleTrade on the kept copies (logged here instead of the trades table).
           trade: (users, offers, names) => {
             const r = settleTrade(items, [gearOf(users[0]), gearOf(users[1])], offers, names, devUid);
