@@ -528,7 +528,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   `toolFor` (items.json `forge`: whetstone / fragment / repairKit by `tier`), `enhanceRefusal` ("Needs a Rough Whetstone",
   training gear, broken, +20), `enhanceView` (stones `whetstonesPerTry[target]`, odds `successPct + luck`, `nextStats`:
   ATK/DEF, accessories' lines +1%), `luckPerFail`, `breaksFrom` (+16), `repairRefusal`, `embedRefusal` (gear Lv ≥ agimat, stats.json agimats.onlyIn (repo addition: crit rate / crit damage head and hands only, damage amp feet and body only; disassembly rolls only fitting stats, `rollAgimatStat`'s slot; the agimat tooltip says it),
-  slot lock, two different stats, one rare), `fragmentsFor` (2 + 3 × the stones to its +), `disassemblyYield`, `auraFor` /
+  slot lock, two different stats, rare ones up to stats.json agimats.rarePerItem (repo addition: 2, both slots; was one)), `fragmentsFor` (2 + 3 × the stones to its +), `disassemblyYield`, `auraFor` /
   `itemAura`); rolls in bot `web/forge.ts` (pure, tested `forge.test.ts`): `enhance` (success +1, luck 0; fail: stones
   used, luck += its bracket's; from +16 broken, keeps its +, `unequipBroken`), `repair` (a kit of its tier), `embed` (a full
   slot answers `confirm` until `replace`; the old agimat breaks), `disassemble` (bag only; fragments + from slotted gear an

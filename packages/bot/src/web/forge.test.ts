@@ -21,6 +21,7 @@ import {
   newAgimat,
   newItem,
   trainingSellPrice,
+  rarePerItem,
   rollGear,
 } from '@mikazuki/shared';
 import { loadItemData } from './stats-data.js';
@@ -196,7 +197,7 @@ test('accessories: each line +1% of itself a level (weapons and armor: base ATK 
   assert.equal(view.next[0].to, 49);
 });
 
-test('agimats: gear level, slot lock, two different stats, one rare at most; a full slot asks, then breaks the old one', () => {
+test('agimats: gear level, slot lock, two different stats, rare ones up to rarePerItem; a full slot asks, then breaks the old one', () => {
   const item = rollGear(D.stats, gear('armor-copper-head'), 'darkBlue', uid(), lcg(5)); // Lv 20, 2 slots (crit agimats fit heads)
   assert.equal(item.agimats.length, 2);
   const ag = (id: string, level = 20, count = 1, lock?: Item['lock']) => ({ ...newAgimat(D.stats, thing(id), level, uid(), lock), count });
@@ -213,10 +214,17 @@ test('agimats: gear level, slot lock, two different stats, one rare at most; a f
   assert.equal(embed(D, s, item.uid, critDmg.uid, 0, false).outcome, 'embedded');
   assert.equal(critDmg.count, 2, 'one from the stack');
   assert.deepEqual(item.agimats[0], { stat: 'critDmg', level: 20 });
-  // A second rare one: refused.
-  const r = embed(D, s, item.uid, critRate.uid, 1, false);
-  assert.equal(r.ok, false);
-  assert.match(r.message, /one rare/);
+  // A second rare one (a different stat): fine, both slots may be rare (stats.json agimats.rarePerItem 2)…
+  assert.equal(rarePerItem(D.stats), 2);
+  assert.equal(embedRefusal(D, item, critRate, 1), null);
+  const both = rollGear(D.stats, gear('armor-copper-head'), 'darkBlue', uid(), lcg(6));
+  const t = holder([both, ag('agimat-critdmg'), ag('agimat-critrate')]);
+  assert.equal(embed(D, t, both.uid, t.bag[1].uid, 0, false).outcome, 'embedded');
+  assert.equal(embed(D, t, both.uid, t.bag[1].uid, 1, false).outcome, 'embedded');
+  assert.deepEqual(both.agimats.map((a) => a?.stat), ['critDmg', 'critRate']);
+  // …and with rarePerItem 1, the second is refused.
+  const one = { ...D, stats: { ...D.stats, agimats: { ...(D.stats as never as { agimats: object }).agimats, rarePerItem: 1 } } } as typeof D;
+  assert.match(embed(one, s, item.uid, critRate.uid, 1, false).message, /Only one rare agimat/);
   // The same stat twice: refused.
   assert.match(embed(D, s, item.uid, critDmg.uid, 1, false).message, /differ/);
   assert.equal(embed(D, s, item.uid, hp.uid, 1, false).outcome, 'embedded');

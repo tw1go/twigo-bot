@@ -174,7 +174,7 @@ const TOPICS: Topic[] = [
       '• From **+16** a fail **breaks** the item: it keeps its + but gives nothing (and comes off) until fixed. **Click a Repair Kit** and drag the broken item in',
       '• Weapons and armor gain base ATK or DEF; accessories’ lines grow **1% a +**',
       '• **Weapon auras**: a **+15** weapon glows blue, **+18** gold, **+20** prismatic, in town and in battle, for everyone to see',
-      '• **Agimats**: click one, drag a weapon or armor piece with agimat slots in (white, grey, blue or orange names), pick a slot, **Embed**. Gear of the agimat’s level or higher; an item’s two agimats must be different stats, and only one rare (crit rate, crit damage, damage amp). A full slot asks first: the old agimat breaks. Embedding is for good',
+      '• **Agimats**: click one, drag a weapon or armor piece with agimat slots in (white, grey, blue or orange names), pick a slot, **Embed**. Gear of the agimat’s level or higher; an item’s two agimats must be different stats (both may be rare: crit rate, crit damage, damage amp). A full slot asks first: the old agimat breaks. Embedding is for good',
       '• **Right-click gear → Disassemble**: whetstone fragments (more for a higher +) and, from gear with slots, an agimat that fits that kind of slot only. Its own agimats are destroyed. Training gear can’t be enhanced or taken apart',
       '• **Training gear** and **agimats** sell for Kusing: right-click → Sell (agimats: 20 Kusing a level, rare ones 3×)',
       '• **Many at once**: in the Combat tab, Ctrl/⌘/Shift-click (or **Select**, then **Select all gear**) and **Disassemble** or **Sell** them together',

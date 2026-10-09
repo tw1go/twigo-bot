@@ -1050,7 +1050,9 @@
       "amp": 0.01
     },
     "fitsGearLevel": ">= A",
-    "perItem": "different stats, at most one rare",
+    "perItem": "different stats (rare ones: up to rarePerItem)",
+    "rarePerItem": 2,
+    "rarePerItemNote": "Repo addition (Mac, 9 Oct 2026): how many rare agimats (crit rate, crit damage, damage amp) one item may hold; was 1 (the guide's 'at most one rare')",
     "rare": [
       "critRate",
       "critDmg",

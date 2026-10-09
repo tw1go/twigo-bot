@@ -222,11 +222,15 @@ const SLOT_WORD: Record<EquipSlot, string> = {
   weapon: 'Weapon', head: 'Head', body: 'Body', hands: 'Hands', bottoms: 'Bottoms', feet: 'Feet', necklace: 'Necklace', earrings: 'Earrings', bracers: 'Bracers', ring: 'Ring',
 };
 
+/** How many rare agimats one item may hold (stats.json agimats.rarePerItem, a repo addition; 1 without it). */
+export const rarePerItem = (data: StatsData) => (itemStats(data).agimats as { rarePerItem?: number }).rarePerItem ?? 1;
+
 /** Whether an agimat's stat is one of the rare three (stats.json agimats.rare: crit rate, crit damage, damage amp). */
 export const rareAgimat = (data: StatsData, stat: string) => itemStats(data).agimats.rare.includes(stat);
 
 /** Why this agimat can't go into slot `slot` of this gear, or null (a full slot is allowed: it asks, then breaks the old
- *  one). Gear level ≥ the agimat's, its slot lock matches, the item's two agimats are different stats, at most one rare. */
+ *  one). Gear level ≥ the agimat's, its slot lock matches, the item's two agimats are different stats, and no more rare
+ *  ones than `rarePerItem` (2: both may be). */
 /** "a, b and c". */
 export const wordList = (words: string[]) => (words.length < 2 ? (words[0] ?? '') : `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`);
 
@@ -244,7 +248,9 @@ export function embedRefusal(data: ItemData, gear: Item, agimat: Item, slot?: nu
   if (!Number.isInteger(slot) || slot < 0 || slot >= gear.agimats.length) return 'No such slot.';
   const others = gear.agimats.filter((a, i): a is AgimatSet => !!a && i !== slot);
   if (others.some((a) => a.stat === agimat.stat)) return 'It already has an agimat of that stat: the two must differ.';
-  if (rareAgimat(data.stats, agimat.stat) && others.some((a) => rareAgimat(data.stats, a.stat))) return 'Only one rare agimat (crit rate, crit damage or damage amp) per item.';
+  const most = rarePerItem(data.stats);
+  if (rareAgimat(data.stats, agimat.stat) && others.filter((a) => rareAgimat(data.stats, a.stat)).length >= most)
+    return `Only ${most === 1 ? 'one rare agimat' : `${most} rare agimats`} (crit rate, crit damage or damage amp) per item.`;
   return null;
 }
 
