@@ -99,6 +99,18 @@ export interface PlayerHit {
 }
 
 /** Browser → server. A step is to a neighbouring tile; the server checks it (walkable, adjacent, walking speed). */
+/** Why a buff cast was refused (the game says it like a refused attack). */
+export type BuffRefusal = 'here' | 'skill' | 'locked' | 'out' | 'slow' | 'mp';
+
+/** A buff on you (the buff tray). */
+export interface TownBuff {
+  name: string;
+  cls: string;
+  level: number;
+  stats: Record<string, number>;
+  ms: number | null;
+}
+
 export type TownClientMessage =
   /** Right after the welcome only: where you already are (after a reconnect), instead of the spawn point. */
   | { t: 'here'; col: number; row: number; dir: TownDir }
@@ -123,6 +135,9 @@ export type TownClientMessage =
   | { t: 'revive' }
   /** Use an HP or MP Potion of this kind (its item id) from your combat bag (battle maps; one shared cooldown). */
   | { t: 'potion'; item: string }
+  /** Cast one of your class's buffs (stats.json skills.buffs, by name; battle maps only). `target`: the party member's
+   *  town id a one-ally buff should go to (the selected player), if in range. */
+  | { t: 'buff'; buff: string; target?: string }
   /** The Arena's jack en poy against another player (bot web/town-arena.ts): join the queue (with an optional bet in
    *  Kowens), leave it, pick a hand for the open round, ask for a rematch or accept one (with a bet), decline one, leave
    *  the match. The stake is the smaller of the two bets. */
@@ -403,6 +418,17 @@ export type TownServerMessage =
   | { t: 'potion'; id: string; heals: 'hp' | 'mp'; amount: number; cooldown?: number }
   /** Your potion didn't go: on cooldown (`ms` left), none left, already full, or not here (only in battle maps). */
   | { t: 'potion-refused'; reason: 'cooldown' | 'none' | 'full' | 'here'; ms?: number }
+  /** Your buff didn't go: not on a battle map, not your class's, not unlocked yet, knocked out, still on cooldown (`ms`
+   *  left), or not enough MP. */
+  | { t: 'buff-refused'; buff: string; reason: BuffRefusal; ms?: number }
+  /** Someone in your room (maybe you) cast a buff: they play their class's buff-cast facing `dir`; yours with its
+   *  cooldown (ms). `off`: a stance turned off. */
+  | { t: 'buff-cast'; id: string; buff: string; dir: TownDir; cooldown?: number; off?: boolean }
+  /** A heal from a buff (Soothing Touch): how much each player it reached got back, green over them. */
+  | { t: 'buff-heal'; by: string; heals: { id: string; amount: number }[] }
+  /** The buffs on you now (on any change): each one's name, its caster's class and skill level, its stats at that level
+   *  (stats.json skills.buffs), and the ms left (null: a stance, on until changed). */
+  | { t: 'buffs'; buffs: TownBuff[] }
   /** Your party now (null: none), with a line for a toast when something happened ("Mara joined the party."). */
   | { t: 'party'; party: PartyState | null; note?: string }
   /** Someone invites you: answer with party-answer (it lapses after a minute). */

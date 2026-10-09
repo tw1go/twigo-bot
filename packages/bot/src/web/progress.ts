@@ -20,7 +20,7 @@ import {
 // classes/stats.json). XP comes from kills (the killer's, less for a mob far below them; the golem's for everyone who
 // did 5% of its HP: town-mobs.ts says who); each level-up earns stat points (worked out from the level, minus what's
 // spent) and skill points (kept, since spending them raises skill levels: one a level, unlocked skills only, up to
-// their cap = level − unlock level + 1, at most 20). At the level cap XP stops. The bot saves it
+// their cap = level − unlock level + 1, at most 20; buffs too, kept by name). At the level cap XP stops. The bot saves it
 // with the class (web/adventure.ts); the game's dev server keeps it in memory, through the same functions.
 
 /** What's kept of it; the rest comes from these. */
@@ -43,11 +43,12 @@ export function progressView(data: StatsData, cls: string | null, p: Partial<Sav
   const points: StatPoints = {};
   for (const s of STAT_NAMES) if (whole(p.points?.[s])) points[s] = whole(p.points?.[s]);
   const skills: Record<string, number> = {};
-  // (Mobility moves stay at Lv 1, skillCap: points put into one before that rule come back.)
+  // (Damage skills by place, buffs by name; mobility moves stay at Lv 1, skillCap: points put into one before that rule
+  // come back.)
   let back = 0;
   for (const [k, v] of Object.entries(p.skills ?? {})) {
     if (whole(v) <= 1) continue;
-    if (/^\d+$/.test(k)) skills[k] = whole(v);
+    if (/^\d+$/.test(k) || data.skills.buffs?.list[k]) skills[k] = whole(v);
     else back += whole(v) - 1;
   }
   return { level, xp: next ? Math.min(whole(p.xp), next - 1) : 0, next, points, statPoints: unspentStatPoints(data, cls, level, points), skills, skillPoints: whole(p.skillPoints) + back };

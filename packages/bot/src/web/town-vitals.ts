@@ -5,7 +5,8 @@ import type { StatsData } from '@mikazuki/shared';
 // in battle maps (the Slums), from mobs' and the golem's hits; the town and the neighbourhood are safe, and arriving there
 // fills both up. A reload in the Slums keeps what they had. In the Slums they come back by stats.json `regen`: HP not
 // while in combat (hit, or hitting, in the last outOfCombatAfterSec), else outOfCombatPctPerSec of the most a second; MP
-// its mpPerSec ("1 + 0.05 * INT", derivedStats' mpRegen) all the time; skills spend it (`spend`, stats.json skills.mpCost). At 0 HP they're knocked
+// its mpPerSec ("1 + 0.05 * INT", derivedStats' mpRegen) all the time; a regen buff's share of most HP a second even in
+// combat; a max HP buff raises HP with the most (`setMax` lift), and HP over the most drops to it when it ends; skills spend it (`spend`, stats.json skills.mpCost). At 0 HP they're knocked
 // out ("unconscious") for RESPAWN_MS, or until they choose to revive early (`revive`), then the host puts them back at
 // the map's way in with everything full; no penalty either way. The Bag's slow
 // and the Lamp Glare's blindness are kept here too (the host halves their steps and makes their attacks miss). Pure (the
@@ -14,11 +15,13 @@ import type { StatsData } from '@mikazuki/shared';
 /** Knocked out this long before they respawn on their own (unless they revive sooner). */
 export const RESPAWN_MS = 300_000;
 
-/** A character's most HP and MP, and MP a second (their derived stats). */
+/** A character's most HP and MP, and MP a second (their derived stats); `hpRegenPct`: a buff's share of their most HP
+ *  a second (Steady Breath), in combat too. */
 export interface VitalMax {
   hp: number;
   mp: number;
   mpRegen: number;
+  hpRegenPct?: number;
 }
 
 export interface Vital {
@@ -68,10 +71,12 @@ export class Vitals {
     return this.all.get(user)!;
   }
 
-  /** Their most changed (points, gear): what they have now is kept, under the new most. */
-  setMax(user: string, max: VitalMax): void {
+  /** Their most changed (points, gear, buffs): what they have now is kept, under the new most. `lift` (a buff raising
+   *  their most HP): their HP goes up by as much as the most did (never while knocked out). */
+  setMax(user: string, max: VitalMax, lift = false): void {
     const v = this.all.get(user);
     if (!v) return;
+    if (lift && !v.outUntil && max.hp > v.max.hp) v.hp += max.hp - v.max.hp;
     v.max = max;
     v.hp = Math.min(v.hp, max.hp);
     v.mp = Math.min(v.mp, max.mp);
@@ -184,6 +189,8 @@ export class Vitals {
       // HP from when they left combat (or the last tick, if later); MP over the whole time.
       const calm = Math.max(v.regenAt, v.combatAt + R.outOfCombatAfterSec * 1000);
       if (now > calm) v.hp = Math.min(v.max.hp, v.hp + ((now - calm) / 1000) * R.outOfCombatPctPerSec * v.max.hp);
+      // A regen buff's share a second, in combat too.
+      if (v.max.hpRegenPct) v.hp = Math.min(v.max.hp, v.hp + ((now - v.regenAt) / 1000) * v.max.hpRegenPct * v.max.hp);
       v.mp = Math.min(v.max.mp, v.mp + ((now - v.regenAt) / 1000) * v.max.mpRegen);
       v.regenAt = now;
       const after = shown(v);

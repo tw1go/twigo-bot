@@ -8,6 +8,7 @@ import type { LevelGain } from './progress.js';
 import type { Attacker, MobKill, MobRoom } from './town-mobs.js';
 import { PARTY_MAX, type PartyChange, Parties } from './town-party.js';
 import { type VitalMax, Vitals, shown } from './town-vitals.js';
+import { Buffs, type Nearby } from './town-buffs.js';
 import { loadItemData, loadLeveling, loadStats } from './stats-data.js';
 import { type CombatItems, type LootContent, potionOf } from './combat-bag.js';
 import { type Loot, LootRoom } from './town-loot.js';
@@ -26,6 +27,10 @@ import { itemStats, questDropFor, skillMpCost, tradeRules } from '@mikazuki/shar
 // Rooms: the town, and others the caller adds (the neighbourhood), picked with ?room= on the socket's address (going
 // from one to the other is a new connection). Walking, benches and who you see are per room; chat, the system feed,
 // banners and everything about a member (gifts, looks, jail) reach everyone. Parties (town-party.ts) span every room.
+// Buffs (town-buffs.ts, by member, in memory): `buff` casts one on a battle map (MP, cooldown, its party range), the room
+// sees `buff-cast`, those it reaches get `buffs` (their tray) and the stats (fighterOf puts them on every fight and on
+// their most HP and DEF); Soothing Touch heals instead (`buff-heal`). Timed ones end on time, off the battle map and on
+// a knock-out; a stance on a class change.
 // HP and MP (town-vitals.ts, by member, in memory): where there are mobs (TownOptions.mobs), their hits land here
 // (MobRoom.landed) and come off HP; each change goes to the player, their room (the bar over their head) and their party.
 // At 0 they're knocked out (no steps, moves or attacks; mobs forget them) and after 3 s respawn at the room's way in
@@ -338,14 +343,16 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   const STATS = loadStats();
   const vitals = rules ? new Vitals(STATS.regen) : null;
   const battle = (room: string) => !!opts.mobs?.[room];
+  // Buffs (town-buffs.ts): cast on battle maps, kept by member in memory, put on in every fight and in their most HP.
+  const buffs = vitals ? new Buffs(STATS) : null;
   /** Who they are in a fight: class, level, points, everything worn, skill levels (the class and weapon alone without
-   *  saved levels). */
-  const fighterOf = (c: Conn): Attacker => opts.progress?.fighter(c.userId) ?? { cls: c.player.cls, gear: [c.player.weapon] };
-  /** Their most HP and MP (and their DEF and level, for mobs' hits). */
+   *  saved levels), and the buffs on them. */
+  const fighterOf = (c: Conn): Attacker => ({ ...(opts.progress?.fighter(c.userId) ?? { cls: c.player.cls, gear: [c.player.weapon] }), ...(buffs ? { buffs: buffs.effective(c.userId) } : {}) });
+  /** Their most HP and MP, a regen buff's share (and their DEF, DEF rate and level, for mobs' hits). */
   const maxOf = (c: Conn): VitalMax => {
     const d = rules!.fighter(fighterOf(c));
-    c.guard = { def: d.def, level: d.level };
-    return { hp: d.hp, mp: d.mp, mpRegen: d.mpRegen };
+    c.guard = { def: d.def, level: d.level, defRate: d.defRate };
+    return { hp: d.hp, mp: d.mp, mpRegen: d.mpRegen, hpRegenPct: d.hpRegenPct ?? 0 };
   };
   /** Their HP (and to them, MP) to them, their room and their party (wherever they are). */
   const tellVitals = (c: Conn) => {
@@ -361,18 +368,25 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       if (o && o !== c && o.room !== c.room) send(o, seen);
     }
   };
-  /** Their most changed (points, gear, a level: `full` fills them up). */
-  const refreshVitals = (c: Conn, full = false) => {
+  /** Their most changed (points, gear, a level: `full` fills them up; buffs: `lift` raises their HP with the most). */
+  const refreshVitals = (c: Conn, full = false, lift = false) => {
     if (!vitals?.get(c.userId)) return;
     const max = maxOf(c);
     if (full) vitals.fill(c.userId, max, Date.now());
-    else vitals.setMax(c.userId, max);
+    else vitals.setMax(c.userId, max, lift);
     tellVitals(c);
+  };
+  /** Their buffs changed: the tray, and their most HP and DEF (a max HP buff lifts their HP; ending, HP over it drops). */
+  const buffsChanged = (c: Conn) => {
+    if (!buffs) return;
+    send(c, { t: 'buffs', buffs: buffs.view(c.userId, Date.now()) });
+    refreshVitals(c, false, true);
   };
   /** 0 HP: faded out for everyone there, no mob after them, nothing more lands on them. */
   const knockOut = (c: Conn) => {
     c.player.out = true;
     c.player.sit = false;
+    if (buffs?.endTimed(c.userId)) buffsChanged(c); // (a stance stays)
     opts.mobs?.[c.room]?.forget(c.player.id, true);
     endTrade(c.userId, 'out', { name: c.player.nickname }); // no trading while knocked out
     const m: TownServerMessage = { t: 'knocked-out', id: c.player.id };
@@ -661,6 +675,38 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         killed(c.room, r.kills);
         return;
       }
+      case 'buff': {
+        // A buff (town-buffs.ts decides): its MP spent, everyone in the room sees the cast; who it reached gets it (their
+        // tray, HP's most), or a heal (Soothing Touch) for the caster's Power × its share, green numbers for the room.
+        if (!buffs || !vitals || typeof m.buff !== 'string') return;
+        const now = Date.now();
+        const who = fighterOf(c);
+        const party = (parties.of(c.userId)?.members ?? []).flatMap((u): Nearby[] => {
+          const o = conns.get(u);
+          return o && o.room === c.room ? [{ member: u, at: [o.player.col, o.player.row], out: !!o.player.out }] : [];
+        });
+        const target = typeof m.target === 'string' ? (town.memberOf(m.target) ?? undefined) : undefined;
+        const v = vitals.get(c.userId);
+        const r = buffs.cast({ member: c.userId, cls: who.cls, level: who.level ?? p.level ?? 1, skillLevel: who.buffLevels?.[m.buff] ?? 1, out: !!p.out, battle: battle(c.room), mp: v ? v.mp : 0, at: [p.col, p.row] }, m.buff, party, target, now);
+        if (!r.ok) return send(c, { t: 'buff-refused', buff: m.buff, reason: r.reason, ...(r.ms ? { ms: r.ms } : {}) });
+        if (r.mp > 0) vitals.spend(c.userId, r.mp);
+        const cast: TownServerMessage = { t: 'buff-cast', id: p.id, buff: m.buff, dir: p.dir, ...(r.off ? { off: true } : {}) };
+        others(c, cast);
+        send(c, { ...cast, cooldown: r.cooldownMs });
+        if (r.heal !== null) {
+          const power = rules!.fighter(fighterOf(c)).power;
+          const heals = r.to.flatMap((u) => {
+            const o = conns.get(u);
+            const amount = o ? vitals.heal(u, 'hp', power * r.heal!) : 0;
+            if (o && o !== c) tellVitals(o);
+            return o ? [{ id: o.player.id, amount }] : [];
+          });
+          const healed: TownServerMessage = { t: 'buff-heal', by: p.id, heals };
+          others(c, healed);
+          send(c, healed);
+        } else for (const u of r.to) if (conns.get(u)) buffsChanged(conns.get(u)!);
+        return tellVitals(c);
+      }
       case 'pick':
         if (m.id === undefined || typeof m.id === 'string') pickUp(c, m.id);
         return;
@@ -881,6 +927,8 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     const [col, row] = arrival(room);
     const player: TownPlayer = { id: randomBytes(6).toString('hex'), ...profile, col, row, dir: 's', sit: false };
     const c: Conn = { ws, userId, room, player, tokens: STEP_BURST, refilled: Date.now(), says: SAY_BURST, saidAt: Date.now(), emotes: EMOTE_BURST, emotedAt: Date.now(), alive: true, fresh: true };
+    // Off a battle map, timed buffs are over (a stance stays on; a reload on the same battle map keeps them).
+    if (!battle(room)) buffs?.endTimed(userId);
     // HP and MP: full in a safe room; in a battle map as they were (a reload), full if new there or knocked out.
     if (vitals) {
       const { hp, maxHp } = shown(vitals.arrive(userId, maxOf(c), battle(room), Date.now()));
@@ -902,6 +950,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     tellParty(userId); // back (or in another area): their new id and where they are
     if (raceNow) send(c, { t: 'race', race: { ...raceNow, now: Date.now() } });
     if (vitals) tellVitals(c); // your HP and MP (the HUD), and your party's panel
+    if (buffs) send(c, { t: 'buffs', buffs: buffs.view(userId, Date.now()) }); // the buffs on you (the tray)
 
     ws.on('pong', () => (c.alive = true));
     ws.on('message', (data) => {
@@ -1019,7 +1068,9 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     kit(userId, cls, weapon, weaponPlus = 0) {
       const c = conns.get(userId);
       if (!c) return;
+      const changed = c.player.cls !== cls;
       Object.assign(c.player, { cls, weapon, weaponPlus });
+      if (changed && buffs?.endStances(userId)) send(c, { t: 'buffs', buffs: buffs.view(userId, Date.now()) }); // (a class change ends its stance)
       everyone({ t: 'kit', id: c.player.id, cls, weapon, weaponPlus });
       known.set(userId, { ...known.get(userId)!, cls });
       tellParty(userId);
@@ -1109,6 +1160,11 @@ export function attachTown(server: Server, opts: TownOptions): Town {
           touched.add(o);
           if (r === 'out') knockOut(o);
         }
+      }
+      // Buffs that ran out: off (the tray, the most HP).
+      for (const user of buffs?.tick(now) ?? []) {
+        const o = conns.get(user);
+        if (o) buffsChanged(o);
       }
       const inBattle = [...conns.values()].filter((o) => battle(o.room));
       const { changed, respawned } = vitals.tick(now, inBattle.map((o) => o.userId));

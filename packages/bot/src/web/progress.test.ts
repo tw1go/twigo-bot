@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { type ClassSkill, mobStats, skillCap, skillLevelCap, xpForLevel, xpToNext } from '@mikazuki/shared';
+import { type ClassSkill, buffSkillCap, mobStats, skillCap, skillLevelCap, xpForLevel, xpToNext } from '@mikazuki/shared';
 import { addXp, freshProgress, killXp, levelTo, progressView, raiseSkill, refundPoints, resetSkillPoints } from './progress.js';
 import { loadStats } from './stats-data.js';
 
@@ -113,4 +113,22 @@ test('mobility moves stay at Lv 1: never raised; points put into one before come
   assert.deepEqual(raiseSkill(S, 'slingshot', lv10, dash), { ok: false, message: 'Dash is at Lv 1, its cap for now.' });
   const old = progressView(S, 'slingshot', { ...lv10, skills: { '0': 3, dash: 4, 'step-back': 2 }, skillPoints: 10 });
   assert.deepEqual([old.skills, old.skillPoints], [{ '0': 3 }, 10 + 3 + 1]);
+});
+
+test('buffs take skill points like damage skills: by name, Lv 1 at unlock, the same cap (buffSkillCap), back with a refund', () => {
+  const rally: ClassSkill = { key: 'Rally', name: 'Rally', desc: '', unlock: 10, buff: 'Rally' };
+  const p = levelTo(S, 'slingshot', freshProgress(S, 'slingshot'), 12).progress;
+  assert.equal(skillCap(S, 12, rally), buffSkillCap(S, 'Rally', 12)); // 3
+  let now = p;
+  for (let i = 0; i < 2; i++) {
+    const r = raiseSkill(S, 'slingshot', now, rally);
+    assert.ok(r.ok);
+    now = r.progress;
+  }
+  assert.equal(now.skills.Rally, 3);
+  assert.ok(!raiseSkill(S, 'slingshot', now, rally).ok, 'at its cap');
+  assert.equal(progressView(S, 'slingshot', now).skills.Rally, 3, 'kept by name');
+  assert.ok(!raiseSkill(S, 'slingshot', levelTo(S, 'slingshot', freshProgress(S, 'slingshot'), 9).progress, rally).ok, 'locked before Lv 10');
+  const back = refundPoints(S, 'slingshot', now);
+  assert.deepEqual([back.skills, back.skillPoints], [{}, now.skillPoints + 2]);
 });

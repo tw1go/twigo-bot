@@ -29,6 +29,7 @@ import {
   newItem,
   packSize,
   rollHit,
+  withBuffs,
   seeded,
   skillCooldown,
   skillLevelBonus,
@@ -198,6 +199,10 @@ export interface Attacker {
   skills?: number[];
   /** Their mobility moves' skill levels (by move id; for their MP cost). */
   moves?: Record<string, number>;
+  /** Their buffs' skill levels (by name; what each cast gives) and the buffs on them as one set of stats
+   *  (strongestBuffs; fighterStats puts them on). */
+  buffLevels?: Record<string, number>;
+  buffs?: Record<string, number>;
   blinded?: boolean;
 }
 
@@ -208,7 +213,8 @@ export type FightData = ItemData;
 export const loadFightData = (): FightData => loadItemData();
 
 /** A character's stats as a fight sees them (the stats rules): HP, MP, Power, DEF, crit… from their class, level, points
- *  and worn items (each one's base with its plus, lines and agimats; a broken one nothing), with their level. */
+ *  and worn items (each one's base with its plus, lines and agimats; a broken one nothing), and the buffs on them, with
+ *  their level. */
 export function fighterStats(data: FightData, a: Attacker): DerivedStats & { level: number } {
   const S = data.stats;
   const level = a.level ?? 1;
@@ -218,7 +224,8 @@ export function fighterStats(data: FightData, a: Attacker): DerivedStats & { lev
     return def ? [newItem(S, def, g!)] : [];
   });
   const main = a.cls ? (S.classes[a.cls]?.main ?? null) : null;
-  return { ...derivedStats(S, a.cls, level, baseStats(S, a.cls, level, a.points), itemTotals(data, worn, main)), level };
+  const d = derivedStats(S, a.cls, level, baseStats(S, a.cls, level, a.points), itemTotals(data, worn, main));
+  return { ...(a.buffs ? withBuffs(S, d, a.buffs) : d), level };
 }
 
 /** A blinded attacker's hit: always a miss. */
@@ -887,11 +894,12 @@ export class MobRoom {
     this.swings.set(player, now + SWING_MS);
     // (A little slack: the game's clock and the message's trip.)
     const skillLevel = a.skills?.[skill] ?? 1;
-    this.swings.set(ready, now + skillCooldown(this.fightData.stats, baseCooldown(this.fightData.stats, unlock), skillLevel) * 1000 - 150);
+    const by = { ...this.fighter(a), blinded: a.blinded };
+    // (Calm Mind: its share off.)
+    this.swings.set(ready, now + skillCooldown(this.fightData.stats, baseCooldown(this.fightData.stats, unlock), skillLevel) * (1 - (by.cooldownPct ?? 0)) * 1000 - 150);
     // Its slow or root, 5% longer a skill level.
     const effect = parseEffect(cls ? this.shapes.effects?.[cls]?.[skill] : null);
     if (effect) effect.ms = Math.round(effect.ms * skillLevelBonus(this.fightData.stats, skillLevel).buff);
-    const by = { ...this.fighter(a), blinded: a.blinded };
     const pct = skillPct(this.fightData.stats, skillTier(skill), skillLevel);
     const kills: MobKill[] = [];
     // A burning puddle where it lands (its ticks: burnTick), on the target's tile.

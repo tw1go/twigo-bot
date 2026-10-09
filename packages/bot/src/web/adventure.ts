@@ -21,6 +21,8 @@ import {
   STAT_NAMES,
   bagSlots,
   classSkills,
+  classBuffs,
+  buffSkillLevels,
   damageSkillLevels,
   skillLevelOf,
   equipFromBag,
@@ -213,7 +215,7 @@ export function skillsStep(s: AdventureState, a: TownSkillsAction): Result {
     s.progress = resetSkillPoints(loadStats(), s.cls, s.progress);
     return { ok: true, message: 'Skill points back.' };
   }
-  const r = raiseSkill(loadStats(), s.cls, s.progress, classSkills(classOf(s.cls)).find((k) => k.key === a.skill));
+  const r = raiseSkill(loadStats(), s.cls, s.progress, [...classSkills(classOf(s.cls)), ...classBuffs(classOf(s.cls))].find((k) => k.key === a.skill));
   if (!r.ok) return r;
   s.progress = r.progress;
   return { ok: true };
@@ -427,7 +429,7 @@ export function forgeFor(userId: string, a: TownForgeAction): TownForgeResponse 
 export function fighterOf(userId: string): Attacker {
   const s = load(userId);
   const moves = Object.fromEntries((classOf(s.cls)?.mobility ?? []).map((m) => [m.id, skillLevelOf(s.progress, m.id)]));
-  return { cls: s.cls, level: s.progress.level, points: s.progress.points, gear: Object.values(s.equipped), skills: damageSkillLevels(classOf(s.cls), s.progress), moves };
+  return { cls: s.cls, level: s.progress.level, points: s.progress.points, gear: Object.values(s.equipped), skills: damageSkillLevels(classOf(s.cls), s.progress), moves, buffLevels: buffSkillLevels(classOf(s.cls), s.progress) };
 }
 
 /** Changes their progress through `f` (web/progress.ts) and saves it. */

@@ -1,7 +1,7 @@
 import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ClassesFile, GearRarity, HoodHouse, HouseLook, OutfitData, TownHoodActionResponse, TownHoodResponse, TownItems, TownRace, TownRaceResponse } from '@mikazuki/shared';
-import { addToBag, classSkills, damageSkillLevels, moveUnlock, questDropFor } from '@mikazuki/shared';
+import { addToBag, buffSkillLevels, classBuffs, classSkills, damageSkillLevels, moveUnlock, questDropFor } from '@mikazuki/shared';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { doorSpot, hoodMap, lotTile } from '../../bot/src/web/hood-map.ts';
 import type { Plugin } from 'vite';
@@ -355,7 +355,7 @@ export function devTown(): Plugin {
             const p = levelOf(name);
             const kit = kits.get(name);
             const worn = Object.values(gear.get(name)?.equipped ?? {});
-            return { cls: kit?.cls, level: p.level, points: p.points, gear: worn.length ? worn : [kit?.weapon], skills: damageSkillLevels(classOf(name), p) }; // everything worn (its DEF, HP…)
+            return { cls: kit?.cls, level: p.level, points: p.points, gear: worn.length ? worn : [kit?.weapon], skills: damageSkillLevels(classOf(name), p), buffLevels: buffSkillLevels(classOf(name), p) }; // everything worn (its DEF, HP…)
           },
           kill: (name, mob) => {
             const r = killXp(stats, kits.get(name)?.cls ?? null, levelOf(name), mob);
@@ -496,7 +496,7 @@ export function devTown(): Plugin {
         const q = new URL(req.url ?? '/', 'http://localhost').searchParams;
         const name = q.get('as') ?? '';
         const cls = kits.get(name)?.cls ?? null;
-        const r = q.has('reset') ? { ok: true as const, progress: resetSkillPoints(stats, cls, levelOf(name)) } : raiseSkill(stats, cls, levelOf(name), classSkills(classOf(name)).find((k) => k.key === q.get('skill')));
+        const r = q.has('reset') ? { ok: true as const, progress: resetSkillPoints(stats, cls, levelOf(name)) } : raiseSkill(stats, cls, levelOf(name), [...classSkills(classOf(name)), ...classBuffs(classOf(name))].find((k) => k.key === q.get('skill')));
         if (r.ok) {
           levels.set(name, r.progress);
           town.progress(name, r.progress);

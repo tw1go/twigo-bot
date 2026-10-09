@@ -234,6 +234,11 @@ export interface DerivedStats extends StatBlock {
   lifesteal: number;
   manasteal: number;
   dropRate: number;
+  /** From buffs (withBuffs): points off the miss chance, the share off damage skills' cooldowns, and max HP a second
+   *  (in combat too). */
+  accuracy?: number;
+  cooldownPct?: number;
+  hpRegenPct?: number;
 }
 
 /** Everything that comes from base stats, level and gear: HP, MP, MP regen, Power (gear ATK + its main and second
@@ -416,6 +421,32 @@ export function buffSkillCap(data: StatsData, name: string, characterLevel: numb
   return b ? skillLevelCap(data, characterLevel, b.unlock) : 0;
 }
 
+/** The buffs on someone as one set of stats: for each stat only the strongest of them counts (Rally and Vital Rub both
+ *  raise ATK: only the bigger), different stats add up. */
+export function strongestBuffs(on: Iterable<{ stats: Record<string, number> }>): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const b of on) for (const [k, v] of Object.entries(b.stats)) if (!(k in out) || v > out[k]) out[k] = v;
+  return out;
+}
+
+/** Derived stats with buffs on (strongestBuffs): Power × (1 + atkPct), max HP × (1 + maxHpPct), DEF × (1 + defPct),
+ *  + amp, + crit rate (held to caps.critRate), + DEF rate (gear's and the buff's together, held to caps.defRate), and
+ *  accuracy, cooldownPct and hpRegenPctPerSec as they are. A heal (healPctOfPower) is no lasting stat. */
+export function withBuffs(data: StatsData, d: DerivedStats, b: Record<string, number>): DerivedStats {
+  return {
+    ...d,
+    power: d.power * (1 + (b.atkPct ?? 0)),
+    hp: Math.round(d.hp * (1 + (b.maxHpPct ?? 0))),
+    def: d.def * (1 + (b.defPct ?? 0)),
+    amp: d.amp + (b.amp ?? 0),
+    critRate: capped(data, 'critRate', d.critRate + (b.critRate ?? 0)),
+    defRate: capped(data, 'defRate', d.defRate + (b.defRate ?? 0)),
+    accuracy: (d.accuracy ?? 0) + (b.accuracy ?? 0),
+    cooldownPct: (d.cooldownPct ?? 0) + (b.cooldownPct ?? 0),
+    hpRegenPct: (d.hpRegenPct ?? 0) + (b.hpRegenPctPerSec ?? 0),
+  };
+}
+
 /** A buff's MP at its skill level (stats.json skills.mpCost.buffs, +3% a level past 1, rounded); 0 if none. */
 export function buffMpCost(data: StatsData, name: string, skillLevel = 1): number {
   const b = data.skills.buffs?.list[name];
@@ -448,6 +479,8 @@ export interface ClassSkill {
   unlock: number;
   index?: number;
   move?: string;
+  /** A buff's name (classes.json buffs; its key too). */
+  buff?: string;
 }
 
 /** A class's skills, damage skills and movement skills (classes.json `skills` and `mobility`), in unlock order (a
@@ -458,6 +491,15 @@ export function classSkills(c: ClassInfo | null | undefined): ClassSkill[] {
   const moves = (c.mobility ?? []).map((m): ClassSkill => ({ key: m.id, name: m.name, desc: m.desc, unlock: m.level, move: m.id }));
   return [...damage, ...moves].sort((a, b) => a.unlock - b.unlock);
 }
+
+/** A class's buffs (classes.json `buffs`) as skills, in unlock order: each kept under its name. */
+export function classBuffs(c: ClassInfo | null | undefined): ClassSkill[] {
+  return [...(c?.buffs ?? [])].sort((a, b) => a.level - b.level).map((b) => ({ key: b.name, name: b.name, desc: b.effect ?? '', unlock: b.level, buff: b.name }));
+}
+
+/** A class's buffs' skill levels, by name (a fight's Attacker: what each cast gives). */
+export const buffSkillLevels = (c: ClassInfo | null | undefined, p: Pick<CharacterProgress, 'skills'>): Record<string, number> =>
+  Object.fromEntries(classBuffs(c).map((b) => [b.key, skillLevelOf(p, b.key)]));
 
 /** A skill's level (Lv 1 unless raised; `skills` keeps only those above it). */
 export const skillLevelOf = (p: Pick<CharacterProgress, 'skills'> | null | undefined, key: string) => Math.max(1, Math.floor(p?.skills[key] ?? 1));
@@ -496,26 +538,31 @@ export interface Hitter {
   critRate?: number;
   critDamage?: number;
   amp?: number;
+  /** Points off the level gap's miss chance (buffs), never below 0. */
+  accuracy?: number;
 }
 
-/** Who's hit: their DEF and level. */
+/** Who's hit: their DEF and level, and their DEF rate (gear and buffs, held to caps.defRate): that share less damage,
+ *  after DEF. */
 export interface Target {
   def: number;
   level: number;
+  defRate?: number;
 }
 
 /** One hit's damage, before any roll: Power × skill % × (1 + amp) × crit × 100 / (100 + DEF) (DEF taking at most
- *  caps.damageReduction) × the level gap's multiplier; at least 1. */
+ *  caps.damageReduction) × (1 − DEF rate) × the level gap's multiplier; at least 1. */
 export function hitDamage(data: StatsData, by: Hitter, on: Target, pct: number, crit = false): number {
   const def = Math.max(1 - (data.caps.damageReduction ?? 1), 100 / (100 + Math.max(0, on.def)));
-  const n = by.power * pct * (1 + (by.amp ?? 0)) * (crit ? (by.critDamage ?? 1) : 1) * def * levelGap(data, by.level, on.level).mult;
+  const rate = 1 - capped(data, 'defRate', Math.max(0, on.defRate ?? 0));
+  const n = by.power * pct * (1 + (by.amp ?? 0)) * (crit ? (by.critDamage ?? 1) : 1) * def * rate * levelGap(data, by.level, on.level).mult;
   return Math.max(1, Math.round(n));
 }
 
-/** A hit as it lands: a miss (by the level gap's chance), else a crit or not, and its damage. `random` decides (the
- *  miss first, then the crit). */
+/** A hit as it lands: a miss (by the level gap's chance, less the hitter's accuracy), else a crit or not, and its
+ *  damage. `random` decides (the miss first, then the crit). */
 export function rollHit(data: StatsData, by: Hitter, on: Target, pct: number, random: () => number = Math.random): { damage: number; crit: boolean; miss: boolean } {
-  const { miss } = levelGap(data, by.level, on.level);
+  const miss = Math.max(0, levelGap(data, by.level, on.level).miss - (by.accuracy ?? 0));
   if (miss > 0 && random() < miss) return { damage: 0, crit: false, miss: true };
   const crit = !!by.critRate && random() < by.critRate;
   return { damage: hitDamage(data, by, on, pct, crit), crit, miss: false };

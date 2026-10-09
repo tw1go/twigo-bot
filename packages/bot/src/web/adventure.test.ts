@@ -184,7 +184,7 @@ test('levels are saved: XP and kills level them up (points earned), the fight se
   assert.equal(kitOf('lv').level, 4);
   // What the town passes into a fight: class, level, points, everything worn, the skills' levels (Lv 1 each so far).
   const f = fighterOf('lv');
-  assert.deepEqual({ ...f, gear: kinds(f.gear as Item[]) }, { cls: 'slingshot', level: 4, points: {}, gear: ['weapon-training-slingshot', ...armorOf('light')], skills: Array(CLASSES.find((c) => c.id === 'slingshot')!.skills.length).fill(1), moves: { dash: 1, 'step-back': 1 } });
+  assert.deepEqual({ ...f, gear: kinds(f.gear as Item[]) }, { cls: 'slingshot', level: 4, points: {}, gear: ['weapon-training-slingshot', ...armorOf('light')], skills: Array(CLASSES.find((c) => c.id === 'slingshot')!.skills.length).fill(1), moves: { dash: 1, 'step-back': 1 }, buffLevels: { Rally: 1, 'Steady Aim': 1, 'Second Wind': 1 } });
   // Far below them, a Tin Can gives less (the low-mob penalty).
   gainXpFor('lv', xpForLevel(S, 12) - xpForLevel(S, 4));
   assert.ok(killFor('lv', can).gained < can.xp);
