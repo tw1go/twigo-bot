@@ -590,7 +590,7 @@ export class Character {
     }
     this.hpBar ??= this.scene.add.graphics();
     const w = HP_BAR_W;
-    this.hpBar.clear().fillStyle(0x0b0a1a, 0.85).fillRect(-w / 2 - 1, -1, w + 2, 4).fillStyle(0xdc2626, 1).fillRect(-w / 2, 0, Math.max(1, Math.round((w * hp) / max)), 2);
+    this.hpBar.clear().fillStyle(0x0b0a1a, 0.85).fillRect(-w / 2 - 1, -1, w + 2, 4).fillStyle(0x22c55e, 1).fillRect(-w / 2, 0, Math.max(1, Math.round((w * hp) / max)), 2); // players green (mobs red)
     this.hpBar.setAlpha(this.seen);
     this.sync();
   }

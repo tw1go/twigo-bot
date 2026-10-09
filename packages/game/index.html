@@ -199,12 +199,12 @@
       #town-hud .th-max .th-xp-fill { background: #F8BF27; }
       #town-hud .th-xp-text { min-width: 26px; font-size: calc(13px * var(--text)); text-align: right; }
       #town-hud .th-max .th-xp-text { color: #F8BF27; font-weight: 600; }
-      /* HP (red) and MP (blue) under the XP bar, with their numbers on hover. */
+      /* HP (green) and MP (blue) under the XP bar, with their numbers on hover. */
       #town-hud .th-hp, #town-hud .th-mp { display: block; height: 4px; padding: 1px; background: #1E1B3A; box-shadow: 0 0 0 1px #3D2A52; }
       #town-hud .th-hp[hidden], #town-hud .th-mp[hidden] { display: none; }
       #town-hud .th-hp { height: 5px; }
       #town-hud .th-hp-fill, #town-hud .th-mp-fill { display: block; height: 100%; transition: width 0.25s ease-out; }
-      #town-hud .th-hp-fill { background: #DC2626; }
+      #town-hud .th-hp-fill { background: #22C55E; } /* players' HP green (mobs' red); under 25% it turns red and pulses */
       #town-hud .th-hp.th-low .th-hp-fill { background: #F87171; animation: th-low 0.8s ease-in-out infinite alternate; }
       @keyframes th-low { to { opacity: 0.55; } }
       @media (prefers-reduced-motion: reduce) { #town-hud .th-hp.th-low .th-hp-fill { animation: none; } }
@@ -1484,7 +1484,7 @@
       #party .pt-words { flex: 1; }
       #party .pt-hp { display: block; height: 3px; margin-top: 2px; padding: 1px; background: #1E1B3A; box-shadow: 0 0 0 1px rgba(249, 168, 212, 0.25); }
       #party .pt-hp[hidden] { display: none; }
-      #party .pt-hp-fill { display: block; height: 100%; background: #DC2626; transition: width 0.25s ease-out; }
+      #party .pt-hp-fill { display: block; height: 100%; background: #22C55E; transition: width 0.25s ease-out; }
       .pt-menu { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
       .pt-menu[hidden] { display: none; }
       .pt-kick-menu { position: fixed; z-index: 6; margin: 0; padding: 4px; border: 2px solid #7C2AE8; background: rgba(17, 24, 39, 0.96); font: calc(13px * var(--text))/1.3 var(--ui-font); }
