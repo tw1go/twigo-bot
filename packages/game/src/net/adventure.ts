@@ -27,6 +27,7 @@ import {
   type TownQuestAction,
   type TownSkillsAction,
   classSkills,
+  classBuffs,
   equipFromBag,
   giveGear,
   giveQuestRewards,
@@ -39,7 +40,6 @@ import {
   newItem,
   placesFor,
   skillCap,
-  buffSkillCap,
   skillLevelOf,
   skillPointsAt,
   swapTrainingGear,
@@ -323,12 +323,13 @@ export interface SkillView extends ClassSkill {
   locked: boolean;
 }
 
-/** Your class's skills (or another's, as they'd be for you), in unlock order. */
+/** Your class's skills (or another's, as they'd be for you): damage skills and moves in unlock order, then its buffs
+ *  (`buff`, kept by name). */
 export function skillViews(c: ClassInfo | null | undefined): SkillView[] {
   const p = state?.progress;
   const level = p?.level ?? 1;
   const mine = !!c && c.id === state?.cls;
-  return classSkills(c).map((k) => ({
+  return [...classSkills(c), ...classBuffs(c)].map((k) => ({
     ...k,
     level: mine ? skillLevelOf(p, k.key) : 1,
     cap: data ? skillCap(data.stats, level, k) : 0,
@@ -336,7 +337,7 @@ export function skillViews(c: ClassInfo | null | undefined): SkillView[] {
   }));
 }
 
-/** A buff as the class choice's preview shows it (classes.json buffs; not castable or raised yet: Lv 1 once unlocked). */
+/** A buff as the class choice's preview shows it (classes.json buffs), with its skill level and cap at your level. */
 export interface BuffView {
   name: string;
   unlock: number;
@@ -347,10 +348,9 @@ export interface BuffView {
 
 /** A class's buffs at your level, in unlock order. */
 export function buffViews(c: ClassInfo | null | undefined): BuffView[] {
-  const level = state?.progress?.level ?? 1;
-  return [...(c?.buffs ?? [])]
-    .sort((a, b) => a.level - b.level)
-    .map((b) => ({ name: b.name, unlock: b.level, level: 1, cap: data ? buffSkillCap(data.stats, b.name, level) : 0, locked: level < b.level }));
+  return skillViews(c)
+    .filter((s) => s.buff)
+    .map((s) => ({ name: s.name, unlock: s.unlock, level: s.level, cap: s.cap, locked: s.locked }));
 }
 
 /** One of your class's skills by name. */

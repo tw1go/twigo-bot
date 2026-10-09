@@ -118,6 +118,22 @@ test('a stance: on, and cast again off (no MP); switching waits rules.stanceSwit
   assert.deepEqual(b.list('me'), []);
 });
 
+test('Soothing Touch: an instant heal for the caster\'s Power × healPctOfPower (+2% a level) on them and the party in range; nothing stays on', () => {
+  const b = new Buffs(stats);
+  const r = b.cast(caster('hilot'), 'Soothing Touch', [near('ann', 2), near('far', R.range + 1)], undefined, 0);
+  assert.ok(r.ok && r.heal === B.list['Soothing Touch'].stats.healPctOfPower);
+  assert.deepEqual(r.ok && r.to, ['me', 'ann']);
+  assert.deepEqual([b.list('me'), b.list('ann')], [[], []], 'no buff stays');
+  const lv11 = new Buffs(stats).cast(caster('hilot', { skillLevel: 11 }), 'Soothing Touch', [], undefined, 0);
+  assert.ok(lv11.ok && Math.abs(lv11.heal! - 0.96) < 1e-9);
+  // The host heals each through the vitals: Power × 0.8.
+  const power = fighterStats(fight, { cls: 'hilot', level: 20 }).power;
+  const v = new Vitals(stats.regen);
+  v.fill('ann', { hp: 2000, mp: 100, mpRegen: 0 }, 0);
+  v.hurt('ann', 1500, 0);
+  assert.equal(v.heal('ann', 'hp', power * r.heal!), Math.ceil(500 + power * 0.8) - 500);
+});
+
 test('what buffs do: Rally\'s 8% more damage, DEF rate held to its cap, max HP up with the buff and back down after, regen in combat, accuracy off the miss chance', () => {
   // Rally: Power × 1.08, so a hit 8% bigger (to the rounding).
   const me = { cls: 'slingshot', level: 20, points: {}, gear: ['weapon-training-slingshot'] };

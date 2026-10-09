@@ -3,6 +3,7 @@ import { cooldownOf, mpCostOf, seconds } from '../combat/cooldowns';
 import { type SkillView, adventure, adventureData } from '../net/adventure';
 import { MOVES, isMoveKind } from '../world/mobility';
 import { myMainStat } from './item-tip';
+import { buffText } from './buff-text';
 
 // 📋 A skill's details on hover (the hotbar's skill slots and the Skills panel's rows), in the item tooltip's box: its
 // name and level, what it does, its damage (its % of your ATK at its level, and about what that is with your ATK now,
@@ -93,6 +94,9 @@ export function skillTipLines(cls: ClassInfo, s: SkillView): HTMLElement[] {
     if (effect) lines.push(row('Effect', effect));
   } else if (s.move && isMoveKind(s.move)) {
     lines.push(row('Moves', `${MOVES[s.move].tiles} tiles${MOVES[s.move].back ? ' back' : ' ahead'}`));
+  } else if (s.buff) {
+    const what = buffText(S, s.buff, level);
+    if (what) lines.push(row('Does', what));
   }
   const mp = mpCostOf(S, cls.id, s, level);
   lines.push(row('Cooldown', seconds(cooldownOf(S, s, level))), row('MP', mp ? `${mp} (in the Slums)` : 'None'));
@@ -100,6 +104,7 @@ export function skillTipLines(cls: ClassInfo, s: SkillView): HTMLElement[] {
   if (!s.locked && s.level < s.cap) {
     const next = [
       s.index !== undefined ? `+${Math.round((skillPct(S, skillTier(s.index), level + 1) - skillPct(S, skillTier(s.index), level)) * 100)}% damage` : '',
+      s.buff ? (buffText(S, s.buff, level + 1) ?? '') : '',
       `cooldown ${seconds(cooldownOf(S, s, level + 1))}`,
     ].filter(Boolean);
     lines.push(el('div', 'sk-tip-next', `Next level: ${next.join(', ')}`));

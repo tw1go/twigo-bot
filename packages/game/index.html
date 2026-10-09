@@ -242,6 +242,12 @@
       #town-hud .bt-time { min-width: 32px; text-align: right; font: 17px/1 'Mk Numbers', var(--ui-font); color: #fff; } /* Jersey 10 */
       #town-hud .bt-soon .bt-time { color: #F8BF27; }
       #town-hud .bt-fading .bt-icon { opacity: 0.5; }
+      #town-hud .bt-weaker { opacity: 0.55; }
+      /* Many at once: a wrapping row of icons, each with its time under it. */
+      #town-hud .buff-tray.bt-compact { flex-direction: row; flex-wrap: wrap; justify-content: flex-end; max-width: 236px; }
+      #town-hud .bt-compact .bt-buff { grid-template-columns: 32px; padding: 3px; gap: 2px; justify-items: center; }
+      #town-hud .bt-compact .bt-text { display: none; }
+      #town-hud .bt-compact .bt-time { min-width: 0; text-align: center; font-size: 15px; }
       @media (max-width: 560px), (max-height: 500px) { #town-hud .bt-text { display: none; } #town-hud .bt-buff { grid-template-columns: 32px auto; } }
       #town-hud .th-news-dot { position: absolute; top: -5px; right: -5px; width: 12px; height: 12px; border: 2px solid #111827; border-radius: 50%; background: #F43F5E; }
       /* The jackpot counter (ui/jackpot-timer.ts): a little event board left of News, casino lights on top; gold and
@@ -1629,6 +1635,7 @@
       #equipment .eq-stat { display: flex; justify-content: space-between; align-items: baseline; }
       #equipment .eq-stat-label { font-size: 13px; color: #7A8099; }
       #equipment .eq-stat-value { font: 19px/1.15 'Mk Numbers', var(--ui-font); color: #fff; } /* Jersey 10 */
+      #equipment .eq-buffed { color: #4ADE80; } /* a buff's part of the stat */
       #equipment .eq-stat-label { display: inline-flex; align-items: center; gap: 5px; }
       #equipment .eq-plus { width: 16px; height: 16px; padding: 0; border: 2px solid #A3E635; border-radius: 0; background: #1E1B3A; color: #A3E635; font: 700 13px/1 var(--ui-font); cursor: var(--cur-hand, pointer); }
       #equipment .eq-plus:hover, #equipment .eq-plus:focus-visible { background: #A3E635; color: #1E1B3A; }

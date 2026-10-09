@@ -1,8 +1,9 @@
 // ✨ The buffs on you (top right, under the HUD's buttons; it goes in the HUD's .th-buffs slot): one row each, its icon
 // (manifest ui.skillIcons), its name, what it gives ("+ATK", or the numbers the server sends), and the time left
 // ("4:32", seconds under a minute; a stance, which lasts until changed, says "On"). Amber under 30 s, the icon fading
-// under 10 s, gone at 0. Phones show the icon and time only. Buffs can't be cast yet: nothing calls `set` but the dev
-// demo (?buffs=demo) and the debug hook (__town.buffs).
+// under 10 s, gone at 0. Phones, and more than four at once, show the icon and time only (the rest on hover); a buff
+// another one outdoes on every stat it gives is faded. TownScene sets it from the server's `buffs` message (dev:
+// ?buffs=demo shows pretend ones instead; __town.buffs).
 
 /** A buff on you: whose class's it is and its name (classes.json buffs), when it ends (null: until changed, a stance),
  *  and the stats it gives as lines ("+24 ATK"; empty: its classes.json effect is shown). */
@@ -11,7 +12,12 @@ export interface ActiveBuff {
   name: string;
   endsAt: number | null;
   stats: string[];
+  /** Outdone: every stat it gives, another buff gives more of (only the strongest counts): shown faded. */
+  weaker?: string;
 }
+
+/** More than this many: icons with their time only (what each gives on hover), so the tray stays small. */
+const COMPACT_OVER = 4;
 
 export interface BuffTrayOptions {
   /** A buff's icon (manifest ui.skillIcons), if there is one. */
@@ -56,9 +62,11 @@ export class BuffTray {
       for (const s of stats) text.append(el('div', 'bt-stat', s));
       const time = el('div', 'bt-time');
       row.append(pic, text, time);
-      row.title = [b.name, ...stats].join('\n');
+      if (b.weaker) row.classList.add('bt-weaker');
+      row.title = [b.name, ...stats, ...(b.weaker ? [`(${b.weaker} is stronger: only the strongest counts)`] : [])].join('\n');
       return { b, time, row };
     });
+    this.el.classList.toggle('bt-compact', list.length > COMPACT_OVER);
     this.el.replaceChildren(...this.buffs.map((x) => x.row));
     this.tick();
   }

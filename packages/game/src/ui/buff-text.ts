@@ -26,6 +26,11 @@ const pct = (v: number) => String(Math.round(v * 1000) / 10);
 /** "5 min", or seconds when it isn't whole minutes. */
 const lasts = (s: number) => (s % 60 ? seconds(s) : `${s / 60} min`);
 
+/** A buff's stats as short lines for the tray ("+8% ATK"); a heal has none. */
+export function buffStatLines(stats: Record<string, number>): string[] {
+  return Object.entries(stats).flatMap(([k, n]) => (STAT[k] ? [STAT[k](pct(n))] : []));
+}
+
 /** What a buff does at a skill level, in one line; null for an unknown buff. */
 export function buffText(data: StatsData, name: string, skillLevel = 1): string | null {
   const b = data.skills.buffs?.list[name];

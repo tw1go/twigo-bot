@@ -211,6 +211,11 @@ export class TargetBox {
   }
 
   /** Shows someone in the box (the menu stays closed until the box is clicked). */
+  /** Who's selected (their town id), if anyone. */
+  get selectedId(): string | null {
+    return this.target?.id ?? null;
+  }
+
   select(p: TownPlayer): void {
     this.unplace();
     if (this.target?.id === p.id) return void (this.root.hidden = false);

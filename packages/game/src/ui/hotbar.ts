@@ -6,9 +6,9 @@ import { GAP_MS, STAGE_H, STAGE_W, type Skill, type SkillStage } from '../combat
 import { itemArt, isRarity } from './item-art';
 import { cooldownOf, mpCostOf, seconds } from '../combat/cooldowns';
 import { SkillTip, skillTipLines } from './skill-tip';
-import { type BuffView, type SkillView, adventure, adventureData, buffViews, onAdventure, raiseSkill, resetSkills, skillViews } from '../net/adventure';
+import { type SkillView, adventure, adventureData, onAdventure, raiseSkill, resetSkills, skillViews } from '../net/adventure';
 import { toast } from './toast';
-import { buffCostText, buffText } from './buff-text';
+import { buffText } from './buff-text';
 
 // ⚔️ The hotbar, bottom centre (members, not on phones): two rows of slots in the bag's slot art.
 //   Bottom row: 10 skill slots (keys 1–0), then 3 for potions and other usables (keys - = `).
@@ -282,9 +282,9 @@ export class Hotbar {
   }
 
   /** The Skills panel: a stage on top (the hovered skill plays on it), your skill points and Reset, then your class's
-   *  skills in three lists, Damage, Mobility and Buffs, each in unlock order with their descriptions, levels and
-   *  cooldowns, a + on each you can raise; each to drag (or click, then click a slot). Locked ones are greyed with their
-   *  unlock level. Buffs (classes.json buffs) can't be used yet: shown with their unlock level, their buff-cast on hover. */
+   *  skills in three lists, Damage, Mobility and Buffs (a buff's line: what it does at its level), each in unlock order
+   *  with their descriptions, levels, cooldowns and MP, a + on each you can raise; each to drag (or click, then click a
+   *  slot). Locked ones are greyed with their unlock level. */
   private drawList(): void {
     const skills = this.views();
     const close = el('button', 'sb-close', '×');
@@ -351,24 +351,11 @@ export class Hotbar {
       row.addEventListener('pointerenter', () => this.preview(plays.get(s.name) ?? null));
       return row;
     };
-    // A buff: not usable yet (no slot, no points), its buff-cast on the stage on hover.
-    const buffRow = (b: BuffView) => {
-      const row = el('div', `hb-skill-row sb-buff${b.locked ? ' sb-locked' : ''}`);
-      const text = el('span', 'sb-text');
-      const line = el('span', 'sb-line');
-      line.append(el('span', 'hb-name', b.name), el('span', 'hb-lv', b.locked ? `Unlocks at Lv ${b.unlock}` : `Lv ${b.level} / ${b.cap}`));
-      const S = adventureData()?.stats;
-      const what = S ? [buffText(S, b.name, b.level), buffCostText(S, b.name, b.level)].filter(Boolean).join(' · ') : '';
-      text.append(line, el('span', 'sb-desc', what ? `${what} (can't be used yet)` : "A buff: can't be used yet"));
-      row.append(this.iconOf(b.name) ?? el('span', 'hb-initials', initials(b.name)), text);
-      row.addEventListener('pointerenter', () => this.preview(buffPreview(b.name)));
-      return row;
-    };
     const section = (title: string, rows: HTMLElement[]) => (rows.length ? [el('div', 'sb-section', title), ...rows] : []);
     this.rows.replaceChildren(
-      ...section('Damage', skills.filter((s) => !s.move).map(skillRow)),
+      ...section('Damage', skills.filter((s) => s.index !== undefined).map(skillRow)),
       ...section('Mobility', skills.filter((s) => s.move).map(skillRow)),
-      ...section('Buffs', buffViews(this.cls).map(buffRow)),
+      ...section('Buffs', skills.filter((s) => s.buff).map(skillRow)),
     );
   }
 
@@ -582,6 +569,7 @@ function previewsOf(c: ClassInfo | null): Map<string, Skill> {
     const p = MOBILITY_PREVIEWS[c.id]?.[m.id];
     if (p) out.set(m.name, p);
   }
+  for (const b of c.buffs ?? []) out.set(b.name, buffPreview(b.name)); // (its buff-cast)
   return out;
 }
 

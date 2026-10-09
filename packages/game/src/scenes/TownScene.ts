@@ -90,6 +90,8 @@ import { stopQueue } from '../arena/queue';
 import type { ArenaData } from './ArenaScene';
 import { Minimap } from '../ui/minimap';
 import { type ActiveBuff, BuffTray } from '../ui/buff-tray';
+import { buffStatLines } from '../ui/buff-text';
+import { myBuffStats, myBuffs, setMyBuffs } from '../net/buffs';
 import { type Bench, type Building, WorldObjects, characterDepth } from '../world/objects';
 import { type SoundTapped, enterArenaSound, enterCasinoSound, hearFrom, leaveCasinoSound, loadSoundSets, playFrom, playSet, playSound, skillSet, soundSets, startTownSound, tapSounds } from '../audio/sound';
 import type { AdventureData } from '../net/adventure';
@@ -97,7 +99,7 @@ import { Hotbar, potionCooldownKey } from '../ui/hotbar';
 import { mountClassSwitch } from '../ui/class-switch';
 import { MOVES, type MoveKind, isMoveKind, moveTiles, playMove } from '../world/mobility';
 import { changeClass, devItemsReady, devQuestKill, questReport, setQuestCounts, devSwitchClass, adventure, adventureData, anyDef, chooseClass, classInfo, initAdventure, itemData, itemDef, loadAdventureData, onAdventure, questDef, questFor, questTalk, setItems, setProgress, skillView, skillViews, buffViews } from '../net/adventure';
-import { type Item, type QuestReward, type TownItems, LOOT_REACH, auraFor, classSkills, countOf, isGearDef, itemAura, itemStats, newItem, tradeRules } from '@mikazuki/shared';
+import { type Item, type QuestReward, type TownItems, LOOT_REACH, auraFor, classBuffs, classSkills, countOf, isGearDef, itemAura, itemStats, newItem, tradeRules } from '@mikazuki/shared';
 import type { ClassArt } from '../assets/types';
 import { drawRested, loadImages, poseFiles, restFiles } from '../characters/kit-art';
 import { holdQuestBanners, mountQuests } from '../ui/quests';
@@ -681,9 +683,15 @@ export class TownScene extends Phaser.Scene {
       if (demo === 'title') void showReward({ title: 'New title!', graphic: { kind: 'title', title: { name: 'Game Master', color: 'prismatic' } }, message: 'Congratulations! You are now known as <Game Master>.' });
       // ?buffs=demo: your class's lasting buffs on you (their effect in words, as from classes.json), and a party member's
       // Battle Roar with pretend numbers running out in 40 s.
-      if (new URLSearchParams(location.search).get('buffs') === 'demo') this.demoBuffs();
+      if (new URLSearchParams(location.search).get('buffs') === 'demo') {
+        this.buffDemo = true;
+        this.demoBuffs();
+      }
     }
   }
+
+  /** Dev (?buffs=demo): the tray shows pretend buffs, not the server's. */
+  private buffDemo = false;
 
   /** Dev: pretend buffs in the buff tray (?buffs=demo). */
   demoBuffs(): void {
@@ -757,7 +765,7 @@ export class TownScene extends Phaser.Scene {
       const hotbar = new Hotbar({
         slot: inv?.slot && inv.selected && inv.nineSlice ? { url: url(inv.slot), picked: url(inv.selected), slice: inv.nineSlice } : null,
         badge: (cls) => (icons ? url(icons.file.replace('{class}', cls)) : ''),
-        onSkill: (name) => this.mobility(name) ?? this.fight(name),
+        onSkill: (name) => this.mobility(name) ?? this.castBuff(name) ?? this.fight(name),
         // HP and MP Potions: the server heals and starts their shared cooldown (the town's `potion` message).
         onItem: (id) => {
           const def = anyDef(id);
@@ -981,7 +989,7 @@ export class TownScene extends Phaser.Scene {
   private newSkills(from: number, to: number): void {
     const c = classInfo(adventure()?.cls);
     if (!c || to <= from) return;
-    const fresh = classSkills(c).filter((k) => k.unlock > from && k.unlock <= to);
+    const fresh = [...classSkills(c), ...classBuffs(c)].filter((k) => k.unlock > from && k.unlock <= to);
     if (!fresh.length) return;
     this.hotbar?.markNew();
     fresh.forEach((k, i) =>
@@ -1078,7 +1086,7 @@ export class TownScene extends Phaser.Scene {
       // Its cooldown at its skill level (1% less a level; the server holds it to the same).
       const sk = skillView(name);
       const S = adventureData()?.stats;
-      const cd = sk && S ? cooldownOf(S, sk, sk.level) : 1;
+      const cd = (sk && S ? cooldownOf(S, sk, sk.level) : 1) * (1 - (myBuffStats().cooldownPct ?? 0)); // (Calm Mind)
       this.castReady.set(name, now + cd * 1000);
       this.nextCast = now + CAST_GAP_MS;
       const dir = dirToward(m.sprite.x - this.player.sprite.x, m.sprite.y - this.player.sprite.y);
@@ -1105,6 +1113,40 @@ export class TownScene extends Phaser.Scene {
     }
     toast("Can't reach it from here.", 1800);
     this.stopFight();
+  }
+
+  /** When each buff can be cast again (scene time, ms; the server's word wins). */
+  private buffReady = new Map<string, number>();
+
+  /**
+   * A hotbar buff (stats.json skills.buffs): the server decides (bot web/town-buffs.ts). On a battle map you play your
+   * class's buff-cast facing where you face as it goes; a one-ally buff goes to the selected player if they're in your
+   * party (the server takes the nearest otherwise). Off a battle map it's sent all the same, so the server says why not.
+   * Returns its cooldown in seconds, 'no', or undefined for a skill that isn't one of your buffs.
+   */
+  private castBuff(name: string): number | 'no' | undefined {
+    const c = classInfo(adventure()?.cls);
+    if (!c?.buffs?.some((b) => b.name === name)) return undefined;
+    const sk = skillView(name);
+    if (!sk || sk.locked || this.knockedOut) return 'no'; // (the bar says when it unlocks)
+    const now = this.time.now;
+    if (now < (this.buffReady.get(name) ?? 0)) return 'no';
+    const picked = this.target?.selectedId;
+    const target = picked && inParty(picked) ? picked : undefined;
+    if (!this.battleMap) {
+      this.link?.send({ t: 'buff', buff: name });
+      return 'no';
+    }
+    if (!this.canPay(name)) {
+      this.lowMp(this.mpOf(name), true);
+      return 'no';
+    }
+    const S = adventureData()?.stats;
+    const cd = S ? cooldownOf(S, sk, sk.level) : 1;
+    this.buffReady.set(name, now + cd * 1000);
+    this.player.strike('buff-cast', this.player.facing);
+    this.link?.send({ t: 'buff', buff: name, ...(target ? { target } : {}) });
+    return cd;
   }
 
   /** When each mobility move can be used again (scene time, ms). */
@@ -1732,6 +1774,45 @@ export class TownScene extends Phaser.Scene {
             this.potionReady = this.time.now + m.cooldown;
           }
         }
+        return;
+      }
+      // Buffs: the ones on you (the tray, the stats box), someone's cast (their buff-cast; yours with the server's
+      // cooldown), a heal's green numbers, and a refused cast (why, like a refused attack).
+      if (m.t === 'buffs') {
+        setMyBuffs(m.buffs);
+        if (!this.buffDemo) {
+          // (Each stat counts only from its strongest buff: one outdone on every stat it gives is faded, naming who wins.)
+          const on = myBuffs();
+          const best = myBuffStats();
+          const winner = (k: string) => on.find((x) => x.stats[k] === best[k])?.name;
+          this.buffTray?.set(on.map((b) => {
+            const keys = Object.keys(b.stats);
+            const out = keys.length > 0 && keys.every((k) => b.stats[k] < best[k]);
+            return { cls: b.cls, name: b.name, endsAt: b.endsAt, stats: buffStatLines(b.stats), ...(out ? { weaker: winner(keys[0]) } : {}) };
+          }));
+        }
+        return;
+      }
+      if (m.t === 'buff-cast') {
+        if (m.id !== myId) charOf(m.id)?.strike('buff-cast', m.dir);
+        else if (m.cooldown) {
+          this.buffReady.set(m.buff, this.time.now + m.cooldown);
+          this.hotbar?.cooldown(m.buff, m.cooldown / 1000);
+          if (m.off) toast(`${m.buff} off.`, 1500);
+        }
+        return;
+      }
+      if (m.t === 'buff-heal') {
+        for (const h of m.heals) if (h.amount > 0) charOf(h.id)?.hitNumber(`+${h.amount}`, h.id === myId, '#4ADE80');
+        return;
+      }
+      if (m.t === 'buff-refused') {
+        this.buffReady.set(m.buff, this.time.now + (m.ms ?? 0));
+        this.hotbar?.cooldown(m.buff, (m.ms ?? 0) / 1000);
+        if (m.reason === 'mp') return this.lowMp(Infinity, true);
+        playSound('error');
+        const why = { here: 'Only on battle maps.', skill: "That isn't one of your buffs.", locked: "You can't use that skill yet.", out: "You're knocked out.", slow: 'Not ready.' }[m.reason];
+        toast(why, 1600, 'bad');
         return;
       }
       if (m.t === 'potion-refused') {

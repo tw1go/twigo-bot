@@ -1,4 +1,5 @@
-import { type AdventureState, type EquipPlace, type EquipSlot, type EquipmentDef, type StatName, STAT_NAMES, baseStats, canEquip, derivedStats, itemTotals, pointStats, requirements } from '@mikazuki/shared';
+import { type AdventureState, type EquipPlace, type EquipSlot, type EquipmentDef, type StatName, STAT_NAMES, baseStats, canEquip, derivedStats, itemTotals, pointStats, requirements, withBuffs } from '@mikazuki/shared';
+import { myBuffStats, onMyBuffs } from '../net/buffs';
 import type { Dir } from '../assets/types';
 import { playSound } from '../audio/sound';
 import { adventure, adventureData, cantWear, classInfo, equipItem, itemDef, onAdventure, placesFor, resetPoints, spendPoint, unequipPlace } from '../net/adventure';
@@ -148,6 +149,11 @@ export class EquipmentPanel {
     this.root.append(head, body, this.stats, this.tip);
     document.body.append(this.root);
     onAdventure((s) => this.render(s));
+    // (The buffs on you change the stats box.)
+    onMyBuffs(() => {
+      const s = adventure();
+      if (s) this.renderStats(s);
+    });
   }
 
   /** Called when the panel's × is pressed (the bag closes them both). */
@@ -324,15 +330,23 @@ export class EquipmentPanel {
     this.renderStats(s);
   }
 
-  /** The stats box: ATK (Power), DEF, HP, MP | STR, DEX, INT, Crit, and your stat points. */
+  /** The stats box: ATK (Power), DEF, HP, MP | STR, DEX, INT, Crit (the buffs' part in green), and your stat points. */
   private renderStats(s: AdventureState): void {
     const D = adventureData();
     const S = D?.stats;
     if (!D || !S) return void this.stats.replaceChildren();
     const p = s.progress;
     const st = derivedStats(S, s.cls, p.level, baseStats(S, s.cls, p.level, p.points), itemTotals(D, Object.values(s.equipped).filter((i) => !!i), myMainStat()));
+    // The buffs on you: ATK, DEF, HP and Crit with their part in green ("56 +4").
+    const up = withBuffs(S, st, myBuffStats());
+    const shown = (base: number, buffed: number, f: (n: number) => string = (n) => String(Math.round(n))) => {
+      const v = el('b', 'eq-stat-value', f(base));
+      const extra = f(buffed - base);
+      if (Math.round((buffed - base) * 1000) > 0) v.append(el('span', 'eq-buffed', ` +${extra}`));
+      return v;
+    };
     const plus = s.cls && p.statPoints > 0 ? pointStats(S, s.cls) : [];
-    const row = (label: string, value: string, stat?: StatName) => {
+    const row = (label: string, value: string | HTMLElement, stat?: StatName) => {
       const r = el('div', 'eq-stat');
       const name = el('span', 'eq-stat-label', label);
       if (stat && plus.includes(stat)) {
@@ -342,13 +356,14 @@ export class EquipmentPanel {
         add.addEventListener('click', () => void this.points(stat));
         name.append(add);
       }
-      r.append(name, el('b', 'eq-stat-value', value));
+      r.append(name, typeof value === 'string' ? el('b', 'eq-stat-value', value) : value);
       return r;
     };
     const left = el('div', 'eq-stats-col');
-    left.append(row('ATK', String(st.power)), row('DEF', String(st.def)), row('HP', String(st.hp)), row('MP', String(st.mp)));
+    left.append(row('ATK', shown(st.power, up.power)), row('DEF', shown(st.def, up.def)), row('HP', shown(st.hp, up.hp)), row('MP', String(st.mp)));
     const right = el('div', 'eq-stats-col');
-    right.append(...STAT_NAMES.map((n) => row(n, String(st[n]), n)), row('Crit', `${+(st.critRate * 100).toFixed(1)}%`));
+    const pctOf = (n: number) => `${+(n * 100).toFixed(1)}%`;
+    right.append(...STAT_NAMES.map((n) => row(n, String(st[n]), n)), row('Crit', shown(st.critRate, up.critRate, pctOf)));
     const foot = el('div', 'eq-points');
     foot.append(el('span', 'eq-points-label', 'Points:'), el('b', 'eq-points-n', String(p.statPoints)));
     if (!s.cls) foot.append(el('span', 'eq-points-hint', 'Choose a class to spend points'));
