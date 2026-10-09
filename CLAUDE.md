@@ -702,11 +702,27 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   their initials over the class badge. In town the damage skills are dark (grey, dimmed: `usable`); only the move
   skills light up. Where it
   doesn't fit, the chat, bag button, system feed, stay box and toasts sit higher (body.hotbar-on). Emotes are F1–F8.
-- Buff tray (`ui/buff-tray.ts`, the HUD's `.th-buffs` slot under News/Settings): a row per buff on you: icon, name,
-  what it gives (the server's numbers, else classes.json's `effect`), time left (Jersey 10; amber under 30 s, the icon
-  fading under 10 s, gone at 0; a stance "On"); phones: icon and time only. Buffs can't be cast yet, so nothing feeds
-  it but dev `?buffs=demo` and `__town.buffs(list?)`. classes.json buffs carry `effect`, `minutes`, `permanent` from
-  combat-guide.md's class tables; amounts aren't in the spec yet.
+- Buffs (stats.json `skills.buffs`, combat-guide.md "Buffs"; shared `buffValue`/`buffMpCost`/`buffSkillCap`, `strongestBuffs`,
+  `withBuffs`, `classBuffs`): skill levels like damage skills, kept by name in `progress.skills` (raise, refund). The bot
+  decides (`web/town-buffs.ts` `Buffs`, tested): `buff` {buff, target?} → refused (`buff-refused`: here = not a battle
+  map, skill, locked, out, slow + ms, mp) or MP spent, `buff-cast` to the room (yours with its cooldown: cooldownSec −1% a
+  skill level; a stance rules.stanceSwitchSec), and who it reaches (self; ally+self: the asked-for party member within
+  rules.partyRangeTiles, else the nearest; party: all in range; same room, never the knocked out) gets `buffs` (their
+  tray). Per member in memory: name, caster's level, stats, end; recast restarts; per stat only the strongest counts;
+  timed ones end on time, off a battle map (on arrival elsewhere; a reload on the same map keeps them) and on a knock-out;
+  a stance toggles, stays across maps, ends on a class change (Town.kit). Soothing Touch (durationSec 0) heals the
+  caster's Power × healPctOfPower through the vitals (`buff-heal`, green). Stats: fighterOf adds the buffs (Attacker.buffs
+  → fighterStats `withBuffs`): Power ×(1+atkPct) for hits and heals, amp, crit (cap), DEF ×(1+defPct), DEF rate (gear +
+  buff, cap, `Target.defRate` on incoming hits), accuracy (`Hitter.accuracy` off the miss chance; blindness still
+  misses), cooldownPct (damage skills only, MobRoom), max HP (`Vitals.setMax` lift: HP up with it, down to it when it
+  ends), hpRegenPctPerSec (vitals regen, in combat too). Game: buffs in `skillViews` (`buff`), the Skills panel's Buffs
+  list with + and the hotbar (`TownScene.castBuff`: plays buff-cast facing your way; dark in town and refused there
+  "Only on battle maps."), `net/buffs.ts` (yours), the stats box's buff part green, Calm Mind on your auto-cast cooldowns.
+- Buff tray (`ui/buff-tray.ts`, the HUD's `.th-buffs` slot under News/Settings): the server's `buffs`: a row each with icon,
+  name, what it gives (`buffStatLines`), time left (Jersey 10; amber under 30 s, the icon fading under 10 s, gone at 0;
+  a stance "On"); past four (and on phones) icons with their time only, the rest on hover; one outdone on every stat it
+  gives is faded. Dev `?buffs=demo` (pretend ones instead) and `__town.buffs(list?)`. classes.json buffs carry `effect`,
+  `minutes`, `permanent` from the guide's class tables.
 - Mobility in town (`world/mobility.ts`): the hotbar's Dash (3 tiles, 2 s) and the class's Lv 8 move: Step Back (2 back,
   3 s), Charge (5, 5 s), Blink (4, 4 s), along your facing, stopping where something's in the way. The combat sheets have
   no clothes, so in town it's your outfit with motion and fx (lavender afterimages, fx-mobility-dust / -blink placeholders,
