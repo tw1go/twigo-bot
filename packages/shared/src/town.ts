@@ -365,7 +365,7 @@ export interface TownRaceResponse {
 export interface TownSystemLine {
   /** 'golem': the field boss's lines, only to those in the Slums; 'warrens': a Scrap Warrens run's, only to its room or
    *  its party (neither kept for arrivals, nor in Discord). */
-  kind: 'dig' | 'gamble' | 'jackpot' | 'shop' | 'gift' | 'jail' | 'quest' | 'arena' | 'steal' | 'race' | 'golem' | 'warrens';
+  kind: 'dig' | 'gamble' | 'jackpot' | 'shop' | 'gift' | 'jail' | 'quest' | 'arena' | 'steal' | 'race' | 'golem' | 'warrens' | 'forge';
   text: string;
   /** Colour key: a dig's rarity, win / lose / bust, jackpot, shop, or gift. */
   tone: string;

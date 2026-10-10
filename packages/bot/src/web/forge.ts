@@ -3,9 +3,11 @@ import { sellPrice,
   type ForgeHolder,
   type Item,
   type ItemData,
+  type StatName,
   type TownForgeAction,
   type TownForgeResponse,
   addToBag,
+  auraFor,
   breaksFrom,
   countOf,
   disassembleRefusal,
@@ -224,4 +226,15 @@ export function parseForgeAction(body: unknown): TownForgeAction | null {
   if (b.action === 'embed' && id(b.agimat) && Number.isInteger(b.slot)) return { action: 'embed', item, agimat: b.agimat as string, slot: b.slot as number, ...(b.replace === true ? { replace: true } : {}) };
   if (b.action === 'disassemble' || b.action === 'combine' || b.action === 'sell') return { action: b.action, item };
   return null;
+}
+
+/** A successful enhance worth telling the whole town (the system feed, and Discord's town log): from the first plus that
+ *  gives a weapon an aura (stats.json enhancement.weaponAura: +15), any gear. The line names who and the item at its new
+ *  plus; its colour is the aura's tier (blue: the feed's 'rare', gold: 'legendary', prismatic: 'secret'). Null below it. */
+export function enhanceFeedLine(data: ItemData, who: string, item: Item, mainStat: StatName | null = null): { text: string; tone: string } | null {
+  if (!isGearDef(data.defs.get(item.defId)) || item.broken) return null;
+  const aura = auraFor(data.stats, item.plus)?.aura;
+  if (!aura) return null;
+  const tone = aura === 'prismatic' ? 'secret' : aura === 'gold' ? 'legendary' : 'rare';
+  return { text: `${who} enhanced their ${itemName(data, item, mainStat)}!`, tone };
 }

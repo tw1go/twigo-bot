@@ -10,7 +10,7 @@ import { MobRoom, loadMobKinds, loadSkillShapes } from '../../bot/src/web/town-m
 import { type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView, raiseSkill, resetSkillPoints, resetStatPoints, spendPoint } from '../../bot/src/web/progress.ts';
 import { loadItemData, loadLeveling, loadStats } from '../../bot/src/web/stats-data.ts';
 import { buyCombat, devGive, dropFromBag, takeLoot, usePotion } from '../../bot/src/web/combat-bag.ts';
-import { forge, parseForgeAction } from '../../bot/src/web/forge.ts';
+import { enhanceFeedLine, forge, parseForgeAction } from '../../bot/src/web/forge.ts';
 import { settleTrade } from '../../bot/src/web/trade.ts';
 import { loadGolemArt } from '../../bot/src/web/town-golem.ts';
 import { loadWarrens } from '../../bot/src/web/town-warrens.ts';
@@ -472,6 +472,10 @@ export function devTown(): Plugin {
           town.items(name);
           if (before !== JSON.stringify(g.equipped)) town.kit(name, kits.get(name)?.cls ?? null, g.equipped.weapon?.defId ?? null, plusOf(name));
           server.config.logger.info(`[forge] ${name}: ${action.action} ${r.outcome}: ${r.message}`, { timestamp: true });
+          // +15 and up: the town's system feed, as live.
+          const cls = kits.get(name)?.cls ?? null;
+          const line = r.outcome === 'success' && r.item ? enhanceFeedLine(items, name, r.item, cls ? (items.stats.classes[cls]?.main ?? null) : null) : null;
+          if (line) town.system({ kind: 'forge', text: line.text, tone: line.tone }, name);
         }
         reply(res, { ...r, items: g });
       });
