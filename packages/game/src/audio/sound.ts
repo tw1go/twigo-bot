@@ -69,6 +69,32 @@ const SFX: Record<Sfx, { file: string; volume: number; formats?: string[] }> = {
   // A trade finished (ui/trade.ts), for both players.
   'combat-trade-done': { file: 'sfx/combat-trade-done', volume: 0.18 },
 };
+/** The Scrap Warrens' sounds (sfx/<name>, one file each; volumes by Mac: soft, 0.10–0.25, never over the combat
+ *  sounds), loaded with the Slums and the Warrens (loadWarrensSounds), played by world/warrens.ts on the server's boss
+ *  move events (only for those who can see the boss) and by TownScene at the Warren Gate (only for whoever used it). */
+const WARRENS_SFX = {
+  'warrens-ticket-use': 0.2,
+  'warrens-gate-warp': 0.18,
+  'warrens-shutter-open': 0.2,
+  'celes-tin-lid-slam': 0.22,
+  'tire-ranny-burnout': 0.18,
+  'bag-yani-fog': 0.18,
+  'bag-yani-vanish': 0.15,
+  'wire-wolf-zap': 0.15,
+  'wire-wolf-live-floor': 0.18,
+  'crab-tain-pincer': 0.2,
+  'crab-tain-hunker': 0.18,
+  'barong-fist-fall': 0.15,
+  'barong-fist-slam': 0.25,
+  'barong-roof-rip': 0.2,
+  'barong-roof-land': 0.1,
+  'barong-gutter-sweep': 0.22,
+  'barong-door-burst': 0.2,
+  'barong-enrage': 0.22,
+  'barong-hurt': 0.12,
+  'barong-death': 0.25,
+} as const;
+export type WarrensSfx = keyof typeof WARRENS_SFX;
 const CRICKETS = { key: 'amb:crickets', urls: ['audio/ambient/crickets.mp3'], volume: 0.15 };
 const FOUNTAIN = { key: 'amb:fountain', urls: ['audio/ambient/fountain.ogg', 'audio/ambient/fountain.m4a'], volume: 0.1 };
 /** The Alings' gossip (world/npc-life.ts): one quiet loop for the whole town, as loud as the nearest gossip is near. */
@@ -291,14 +317,36 @@ export function playSound(name: Sfx, volume = SFX[name].volume, pitch = 0): void
   play(name, volume, pitch);
 }
 
-function play(name: string, volume: number, pitch = 0): void {
-  tap?.({ name, volume });
+/** `o.rate`: played at exactly this rate (no random detune); `o.gapMs`: the same sound again sooner is dropped (else
+ *  THROTTLE_MS). */
+function play(name: string, volume: number, pitch = 0, o: { rate?: number; gapMs?: number } = {}): void {
   const s = scene;
-  if (!s || s.sound.locked || settings.muted || settings.sfx === 0 || !s.cache.audio.exists(`sfx:${name}`)) return;
   const now = performance.now();
-  if (now - (lastPlayed.get(name) ?? -Infinity) < THROTTLE_MS) return;
+  if (now - (lastPlayed.get(name) ?? -Infinity) < (o.gapMs ?? THROTTLE_MS)) return; // (before the rest: the debug tap sees what would play)
   lastPlayed.set(name, now);
-  s.sound.play(`sfx:${name}`, { volume: volume * settings.sfx, detune: pitch + Phaser.Math.Between(-DETUNE, DETUNE) });
+  tap?.({ name, volume });
+  if (!s || s.sound.locked || settings.muted || settings.sfx === 0 || !s.cache.audio.exists(`sfx:${name}`)) return;
+  s.sound.play(`sfx:${name}`, { volume: volume * settings.sfx, ...(o.rate ? { rate: o.rate } : { detune: pitch + Phaser.Math.Between(-DETUNE, DETUNE) }) });
+}
+
+/** The Scrap Warrens' sounds: loaded in the background (the Slums, for the gate; the Warrens), each once. */
+export function loadWarrensSounds(): void {
+  const s = scene;
+  if (!s) return;
+  s.load.setPath(`${import.meta.env.BASE_URL}assets/`);
+  let n = 0;
+  for (const name of Object.keys(WARRENS_SFX)) {
+    if (s.cache.audio.exists(`sfx:${name}`)) continue;
+    s.load.audio(`sfx:${name}`, ['ogg', 'm4a'].map((f) => `audio/sfx/${name}.${f}`));
+    n++;
+  }
+  if (n && !s.load.isLoading()) s.load.start();
+}
+
+/** One of the Warrens' sounds at its volume (the caller decides who hears it). `rate`: exactly this rate; `gapMs`: at
+ *  most once this often (0: every time). */
+export function playWarrens(name: WarrensSfx, o: { rate?: number; gapMs?: number } = {}): void {
+  play(name, WARRENS_SFX[name], 0, o);
 }
 
 /** Where a sound comes from (tiles; none: you), and whether it's someone else's (a little quieter). */

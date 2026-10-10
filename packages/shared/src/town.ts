@@ -475,7 +475,7 @@ export type TownServerMessage =
    *  in `ms` (you left the party). */
   | { t: 'warrens'; run: TownWarrensRun }
   | { t: 'warrens-gate'; gate: TownWarrensGate }
-  | { t: 'warrens-go'; run: string }
+  | { t: 'warrens-go'; run: string; ticket?: boolean }
   | { t: 'warrens-invite'; run: string; from: string; ms: number }
   | { t: 'warrens-refused'; reason: 'level' | 'full' | 'ticket' | 'party' | 'gone' | 'slow'; message: string }
   | { t: 'warrens-out'; reason: 'left' | 'closed' | 'party' }

@@ -451,6 +451,7 @@ test("over the town's socket: open at the Warren Gate (a ticket, Lv 15), in the 
   await heard(ana, 'warrens-go');
   const go = ana.last('warrens-go');
   assert.ok(go);
+  assert.equal(go.ticket, true, 'her ticket went (the game plays its sound)');
   assert.equal(T.saved.at(-1)?.[0]?.opener, 'Ana');
   ana.ws.close();
   // In the run: its start room, its tracker, and once she's in, it starts (alone: no waiting).
@@ -514,6 +515,7 @@ test("over the town's socket: a party's run invites its members in the Slums; th
   await wait(80);
   await heard(bob, 'warrens-go');
   assert.equal(bob.last('warrens-go')?.run, invite!.run);
+  assert.equal(bob.last('warrens-go')?.ticket, undefined, 'joining uses no ticket');
   // Ana in first: it waits for Bob.
   const a = await T.open('Ana', 'warrens');
   await wait(1200);

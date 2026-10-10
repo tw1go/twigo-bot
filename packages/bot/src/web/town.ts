@@ -1400,7 +1400,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
           }
           else send(o, { t: 'system', line: { kind: 'warrens', text: `${c.player.nickname} opened the Scrap Warrens for your party. Join at the Warren Gate in the Slums while it lasts.`, tone: 'stir' } });
         }
-        return send(c, { t: 'warrens-go', run: r.run.id });
+        return send(c, { t: 'warrens-go', run: r.run.id, ticket: true }); // (their ticket went: its sound)
       }
       case 'warrens-join': {
         const r = W.join(c.userId, levelOf(c), typeof m.run === 'string' ? m.run : undefined);

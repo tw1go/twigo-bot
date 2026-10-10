@@ -530,6 +530,9 @@ export class Mobs {
 
   /** Kinds whose art waits for `releaseArt` (Barong-Barong's: only near its hall). */
   readonly holdArt = new Set<string>();
+  /** A kind's own hurt and death sounds in place of its sets (Barong-Barong's: world/warrens.ts), the hurt at most every
+   *  `hurtMs`. */
+  readonly kindSounds = new Map<string, { hurtMs: number; hurt(m: Mob): void; death(m: Mob): void }>();
 
   /** A held kind's art may load now: loaded, then its mobs the server told of are made. */
   releaseArt(kind: string): void {
@@ -781,9 +784,11 @@ export class Mobs {
     const now = this.scene.time.now;
     m.fightUntil = now + FIGHT_MS;
     m.hitAt = now; // its HP bar for a while
-    if (damage > 0 && !dead && now - m.hurtAt >= HURT_SOUND_MS) {
+    const own = this.kindSounds.get(m.zone.mob);
+    if (damage > 0 && !dead && now - m.hurtAt >= (own?.hurtMs ?? HURT_SOUND_MS)) {
       m.hurtAt = now;
-      playSet(`combat-mob-hurt-${m.zone.mob}`, { at: this.tileOf(m.id) });
+      if (own) own.hurt(m);
+      else playSet(`combat-mob-hurt-${m.zone.mob}`, { at: this.tileOf(m.id) });
     }
     if (blocked) m.shield?.setScale(1.6); // the shield bounces as it takes the hit
     if (slow && !dead) this.chill(m, slow);
@@ -797,7 +802,9 @@ export class Mobs {
   /** It dies: `onDeath`, let go, its death pose and gone. */
   kill(m: Mob): void {
     if (m.dead) return;
-    playSet(`combat-mob-death-${m.zone.mob}`, { at: this.tileOf(m.id) });
+    const own = this.kindSounds.get(m.zone.mob);
+    if (own) own.death(m);
+    else playSet(`combat-mob-death-${m.zone.mob}`, { at: this.tileOf(m.id) });
     m.path = [];
     m.dead = true;
     this.hooks.onDeath?.(m);

@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { type DungeonsData, type TelegraphShape, type TownServerMessage, type TownWarrensRun, areaAt, inRect } from '@mikazuki/shared';
 import type { FxDef, Manifest, PropDef, TownMap } from '../assets/types';
 import { loadBoss } from '../assets/queue';
-import { type Heard, playFrom, playSet } from '../audio/sound';
+import { type Heard, type WarrensSfx, playSet, playWarrens } from '../audio/sound';
 import { BossBar } from '../ui/boss-bar';
 import { showAreaBanner } from '../ui/warrens';
 import { frontDepth } from './depth';
@@ -26,6 +26,13 @@ import { Telegraphs } from './telegraph';
 //   telegraphs, timers and effects go at once when it resets or falls (`boss-cancel`), all of them when the run ends.
 // - Barong-Barong's art loads only as you near its hall (its enraged set once it enrages), the Scraplings' (the golem's)
 //   with the run. Shakes only for what you can see, never over 0.4 s, none with reduced motion.
+// - Sounds (audio/sound.ts WARRENS_SFX), on the server's move events like the effects (its start, its hit), only for
+//   those who can see the boss (`bossSound`; a shutter: who can see it): Lid Slam's hit; Burnout Charge's rev over its
+//   warning; Smother Fog's hit once a volley; Vanish as it fades out and back in; a zap per Chain Zap jump; Live Floor's
+//   hit once; Pincer Sweep's hit; Hunker as it starts; Barong-Barong's fist falling (FIST_SOUND_MS before it lands) and
+//   slamming, its roof ripping on the rain anim's frame 6, ROOF_SOUNDS of a volley's sheets landing (a little random
+//   pitch), its sweep with the sweep anim, its door bursting on the call anim's frame 2, its enrage, its hurt (at most
+//   every HURT_MS: Mobs.kindSounds) and death. The calls, Scraplings and called mobs keep the golem's and mobs' sounds.
 
 const GOLEM = 'scrapheap-golem';
 const BARONG_NEAR = 16; // tiles from its hall: its art loads
@@ -34,6 +41,9 @@ const FIST_FALL_MS = 350;
 const SHEET_FALL_MS = 500;
 const ZAP_HOP_MS = 80;
 const ZAP_SHOW_MS = 220;
+const FIST_SOUND_MS = 450; // the fist's fall sound starts this long before it lands (it ends as it does)
+const ROOF_SOUNDS = 4; // a Roof Rain volley's landing sounds, at most
+const HURT_MS = 300; // Barong-Barong's hurt sound at most this often
 
 const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 type Move = Extract<TownServerMessage, { t: 'boss-move' }>;
@@ -83,7 +93,12 @@ export class WarrensView {
   ) {
     this.telegraphs = new Telegraphs(scene, fx);
     // Barong-Barong's art waits for its hall; the golem's (the Scraplings, the slams' effects) comes with the run.
-    mobs.holdArt.add(this.D?.warrens.lastBoss.id ?? 'barong-barong');
+    mobs.holdArt.add(this.lastId);
+    mobs.kindSounds.set(this.lastId, {
+      hurtMs: HURT_MS,
+      hurt: (m) => this.bossSound('barong-hurt', m, { gapMs: HURT_MS }),
+      death: (m) => this.bossSound('barong-death', m),
+    });
     void loadBoss(scene, M, GOLEM).then(() => (this.golemArt = true));
     this.makeShutters();
     this.seal(true); // (until the server says the run's under way)
@@ -150,7 +165,7 @@ export class WarrensView {
     this.scene.tweens.add({ targets: s.open, alpha: 1, duration: SHUTTER_MS });
     for (const [c, r] of s.passage) this.fx.play(this.M.fx['dig-dust'], this.mobs.ground(c + 0.5, r + 0.5), { life: SHUTTER_MS + 300, fadeOut: 300 });
     this.fx.play(this.golemFx('fx-golem-rubble-ring'), s.at, { life: 1500, fadeIn: 100, fadeOut: 600, scale: 0.6 });
-    playFrom('combat-repair', { at: this.tileOf(s.at), others: true });
+    if (this.inView(s.at, 96)) playWarrens('warrens-shutter-open');
     this.shake(s.at, 200);
   }
 
@@ -198,26 +213,35 @@ export class WarrensView {
     switch (m.move) {
       case 'lidSlam':
         this.poseFor(boss, 'attack', m.ms);
-        this.later(m.id, m.ms, () => this.slamAt(boss ? this.mobs.feet(boss) : at((m.shape as Extract<TelegraphShape, { kind: 'circle' }>).at), 1, m.id));
+        this.later(m.id, m.ms, () => {
+          this.slamAt(boss ? this.mobs.feet(boss) : at((m.shape as Extract<TelegraphShape, { kind: 'circle' }>).at), 1, m.id);
+          this.bossSound('celes-tin-lid-slam', boss);
+        });
         return;
       case 'burnoutCharge': {
         // Smoke from its back for the warning (streaming away from where it'll roll), then it rolls (the server's hop).
         const line = m.shape as Extract<TelegraphShape, { kind: 'line' }>;
         const left = (line.to[0] - line.to[1]) - (line.from[0] - line.from[1]) < 0;
         if (boss) this.keep(m.id, this.fx.play(this.M.fx['fx-warrens-burnout-smoke'], this.mobs.feet(boss), { flipX: left, life: m.ms, fadeOut: 200, follow: () => this.mobs.feet(boss) }));
+        this.later(m.id, Math.max(0, m.ms - 1000), () => this.bossSound('tire-ranny-burnout', boss)); // (a 1 s rev, ending as it rolls)
         return;
       }
       case 'smotherFog': {
         const circles = (m.shape as Extract<TelegraphShape, { kind: 'circles' }>).circles;
         this.poseFor(boss, 'attack', m.ms);
-        this.later(m.id, m.ms, () => circles.forEach((c) => this.fx.play(this.M.fx['fx-warrens-fog-puff'], at(c.at))));
+        this.later(m.id, m.ms, () => {
+          circles.forEach((c) => this.fx.play(this.M.fx['fx-warrens-fog-puff'], at(c.at)));
+          this.bossSound('bag-yani-fog', boss); // (once a volley)
+        });
         return;
       }
       case 'vanish': {
         const from = d.from as [number, number] | undefined;
         const to = d.to as [number, number] | undefined;
         if (from) this.fx.play(this.M.fx['fx-warrens-fog-puff'], at(from));
+        this.bossSound('bag-yani-vanish', boss); // (fading out…)
         if (to) this.later(m.id, m.ms, () => this.fx.play(this.M.fx['fx-warrens-fog-puff'], at(to)));
+        this.later(m.id, m.ms, () => this.bossSound('bag-yani-vanish', boss)); // (…and back in)
         return;
       }
       case 'chainZap': {
@@ -229,6 +253,7 @@ export class WarrensView {
       case 'liveFloor': {
         const tiles = (m.shape as Extract<TelegraphShape, { kind: 'tiles' }>).tiles;
         this.later(m.id, Math.max(0, m.ms - 60), () => tiles.forEach((t) => this.fx.play(this.M.fx['fx-warrens-live-floor'], at(t))));
+        this.later(m.id, m.ms, () => this.bossSound('wire-wolf-live-floor', boss)); // (once for all its tiles)
         return;
       }
       case 'pincerSweep': {
@@ -238,9 +263,11 @@ export class WarrensView {
         const spot = this.mobs.ground(oc + 0.5 + dc * 1.5, or + 0.5 + dr * 1.5);
         this.poseFor(boss, 'attack', m.ms);
         this.later(m.id, Math.max(0, m.ms - 60), () => this.fx.play(this.M.fx['fx-warrens-pincer-slash'], spot, { flipX: dc - dr < 0 }));
+        this.later(m.id, m.ms, () => this.bossSound('crab-tain-pincer', boss));
         return;
       }
       case 'hunker':
+        this.bossSound('crab-tain-hunker', boss);
         if (boss) {
           const feet = () => this.mobs.feet(boss);
           this.keep(m.id, this.fx.play(this.M.fx['fx-warrens-hunker-shell-back'], feet(), { life: m.ms, fadeIn: 150, fadeOut: 250, follow: feet }));
@@ -261,6 +288,7 @@ export class WarrensView {
         if (boss) this.later(m.id, start + (A ? (2 / A.fps) * 1000 : 200), () => {
           const f = this.mobs.feet(boss);
           this.fx.play(this.M.fx['fx-warrens-door-burst'], { x: f.x + 34, y: f.y - 136 });
+          this.bossSound('barong-door-burst', boss);
         });
         for (const s of (d.spots as [number, number][] | undefined) ?? []) this.later(m.id, m.ms, () => this.fx.play(this.M.fx['dig-dust'], at(s)));
         return;
@@ -278,6 +306,8 @@ export class WarrensView {
         const spot = this.mobs.ground(oc + 0.5 + Math.cos(cone.facing) * 3, or + 0.5 + Math.sin(cone.facing) * 3);
         const frame = this.hitFrame('sweep', 6);
         this.poseFor(boss, 'sweep', m.ms, frame);
+        const sweep = boss?.def.animations.sweep;
+        this.later(m.id, Math.max(0, m.ms - (sweep ? (frame / sweep.fps) * 1000 : 500)), () => this.bossSound('barong-gutter-sweep', boss)); // (with the sweep anim)
         // Its strip's frame 8 on the hit, like the anim's.
         const S = this.M.fx['fx-warrens-gutter-sweep'];
         this.later(m.id, Math.max(0, m.ms - (8 / (S?.fps ?? 16)) * 1000), () => this.fx.play(S, spot));
@@ -341,9 +371,10 @@ export class WarrensView {
       const top = this.scene.cameras.main.worldView.y - 40;
       this.drop(m.id, this.M.fx['fx-barong-fist'], this.M.fx['fx-barong-fist-shadow'], { x: spot.x, y: top }, spot, Math.min(FIST_FALL_MS, m.ms));
     });
+    this.later(m.id, Math.max(0, m.ms - FIST_SOUND_MS), () => this.bossSound('barong-fist-fall', boss)); // (ends as it lands)
     this.later(m.id, m.ms, () => {
       this.slamAt(spot, 1.6, m.id);
-      this.sound('tire-slam', boss);
+      this.bossSound('barong-fist-slam', boss);
     });
   }
 
@@ -352,6 +383,9 @@ export class WarrensView {
     const offsets = (d.offsets as number[] | undefined) ?? [];
     const poses = (d.poses as number[] | undefined) ?? [];
     this.poseFor(boss, 'rain', Math.max(0, m.ms - SHEET_FALL_MS), this.hitFrame('rain', 6)); // (it lets go as they start falling)
+    this.later(m.id, Math.max(0, m.ms - SHEET_FALL_MS), () => this.bossSound('barong-roof-rip', boss)); // (the rain anim's frame 6)
+    // A few of the sheets' landings heard (picked at random), each a little higher or lower.
+    const heard = new Set(circles.map((_, i) => i).sort(() => Math.random() - 0.5).slice(0, ROOF_SOUNDS));
     const S = this.M.fx['fx-roof-sheet'];
     circles.forEach((c, i) => {
       const spot = this.mobs.ground(c.at[0] + 0.5, c.at[1] + 0.5);
@@ -363,7 +397,10 @@ export class WarrensView {
         const frames = Array.from({ length: n }, (_, k) => ((poses[i] ?? 0) + k) % n);
         this.drop(m.id, S, this.M.fx['fx-barong-fist-shadow'], { x: spot.x + ((i % 3) - 1) * 12, y: top }, spot, fall, frames, 0.5);
       });
-      this.later(m.id, land, () => this.fx.play(this.golemFx('fx-golem-scrap-land') ?? this.M.fx['dig-dust'], spot, { scale: 1.2 }));
+      this.later(m.id, land, () => {
+        this.fx.play(this.golemFx('fx-golem-scrap-land') ?? this.M.fx['dig-dust'], spot, { scale: 1.2 });
+        if (heard.has(i)) this.bossSound('barong-roof-land', boss, { rate: 0.95 + Math.random() * 0.1, gapMs: 0 });
+      });
     });
     this.later(m.id, m.ms, () => this.shake(boss ? this.mobs.feet(boss) : { x: 0, y: 0 }, 200));
   }
@@ -378,7 +415,8 @@ export class WarrensView {
     });
     const f = this.mobs.feet(m);
     this.fx.play(this.golemFx('fx-golem-enrage'), { x: f.x, y: f.y - 220 }, { scale: 2 });
-    this.sound('enrage', m);
+    if (m.zone.mob === this.lastId) this.bossSound('barong-enrage', m);
+    else this.sound('enrage', m);
   }
 
   // ── Pieces ──
@@ -411,7 +449,10 @@ export class WarrensView {
       const b = this.hooks.body(id);
       from = b;
       if (!a || !b) return;
-      this.scene.time.delayedCall(i * ZAP_HOP_MS, () => this.fx.drawFx('front', (g) => bolt(g, a, b), ZAP_SHOW_MS, 80));
+      this.scene.time.delayedCall(i * ZAP_HOP_MS, () => {
+        this.fx.drawFx('front', (g) => bolt(g, a, b), ZAP_SHOW_MS, 80);
+        this.bossSound('wire-wolf-zap', boss, { gapMs: 0 }); // (once a jump)
+      });
     });
   }
 
@@ -458,14 +499,28 @@ export class WarrensView {
     if (!reducedMotion() && cam.worldView.contains(at.x, at.y)) cam.shake(Math.min(400, ms), 0.002);
   }
 
+  /** One of a boss's own sounds, only if you can see it (any of its drawn box on screen). */
+  private bossSound(name: WarrensSfx, m: Mob | null, o: { rate?: number; gapMs?: number } = {}): void {
+    if (!m) return;
+    const f = this.mobs.feet(m);
+    const k = m.data?.scale ?? 1;
+    const [w, h] = m.cell.size;
+    const [ax, ay] = m.cell.anchor;
+    const box = new Phaser.Geom.Rectangle(f.x - ax * k, f.y - ay * k, w * k, h * k);
+    if (Phaser.Geom.Rectangle.Overlaps(this.scene.cameras.main.worldView, box)) playWarrens(name, o);
+  }
+
+  /** Whether a point (with `margin` px round it) is on screen. */
+  private inView(p: Pt, margin = 0): boolean {
+    const v = this.scene.cameras.main.worldView;
+    return p.x >= v.x - margin && p.x <= v.right + margin && p.y >= v.y - margin && p.y <= v.bottom + margin;
+  }
+
   private sound(name: string, m: Mob | null): void {
     const heard: Heard = { at: m ? { col: Math.floor(m.col), row: Math.floor(m.row) } : undefined, others: true };
     playSet(`golem-${name}`, heard);
   }
 
-  private tileOf(p: Pt): { col: number; row: number } {
-    return { col: Math.floor((p.y / 8 + p.x / 16) / 2), row: Math.floor((p.y / 8 - p.x / 16) / 2) };
-  }
 }
 
 /** A jagged yellow-white bolt from a to b (re-jagged each frame). */

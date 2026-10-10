@@ -254,7 +254,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   The box is a fixed see-through panel that fades to 0.2 after 15 s quiet. On phones (≤560 px) it folds away behind a Chat button (bottom
   left; a dot for new messages; body.chat-open).
 - Online list (`ui/online.ts`): "N online" beside the chat input opens who's in town (you first, titles in colour).
-- Sound (`audio/sound.ts`, files + credits in `public/assets/audio/`, not in the manifest): crickets that come and go,
+- Sound (`audio/sound.ts`, files + credits in `public/assets/audio/`, not in the manifest; the Scrap Warrens': below): crickets that come and go,
   the fountain louder near the plaza, music off by default (loaded only when switched on), soft one-shots (emote,
   chat from others, door, casino card/chip, coin, button click, error); nothing plays before the first click/key.
   Inside the casino (`enterCasinoSound`/`leaveCasinoSound`) the town music, crickets and fountain go quiet and its own
@@ -532,7 +532,18 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   (shutters and seal on the walk grid, boss bar, walls in front of you faded: `Terrain.fadeFront`, Barong-Barong's art
   near its hall: `Mobs.holdArt` / `releaseArt` / `loadEnraged`, every move's VFX timed to its hit, shakes ≤ 0.4 s and
   none with reduced motion), `world/telegraph.ts` (every red/yellow warning), bosses as mobs in `world/mobs.ts` (red names,
-  the server's scale; Scraplings = the golem's art at 0.6), a fixed navy shade with every lamp on, the Slums' music.
+  the server's scale; Scraplings = the golem's art at 0.6), a fixed navy shade with every lamp on (a lamp dropped with its
+  streamed region leaves `WorldObjects.lamps`), the Slums' music.
+  Sounds (audio/sound.ts `WARRENS_SFX`, 20 single files, 0.10–0.25, loaded with the Slums and the Warrens:
+  `loadWarrensSounds`, `playWarrens`; none louder than the combat sounds): each boss's on the same move event as its VFX
+  (`world/warrens.ts` `bossSound`: only while the boss's drawn box is on your screen): Lid Slam's hit, Burnout Charge's 1 s
+  rev from its warning, Smother Fog's hit once a volley, Vanish out and back in, a zap per Chain Zap jump, Live Floor's hit
+  once, Pincer Sweep's hit, Hunker's start; Barong-Barong's fist falling (450 ms before it lands) and slamming, its roof
+  ripping (the rain anim's frame 6), 4 of a volley's 8 sheets landing (0.95–1.05 rate), its sweep (with the sweep anim),
+  its door bursting (the call anim's frame 2), enrage, hurt (at most every 0.3 s: `Mobs.kindSounds`, which replaces a
+  kind's hurt/death sets) and death. A shutter's slide (if on screen). Yours only: the ticket (`warrens-go` `ticket`, the
+  opener's) then the gate's warp with the fade (TownScene `travel`: a Warrens trip waits WARP_MS for it). The calls,
+  Scraplings and called mobs keep the golem's and mobs' sounds; no sound for the red warnings.
   Barong-Barong's 768×512-cell sheets are trimmed by the build (`scripts/packs.ts` trim: their frames' box, a page each up
   to 4096 px, Phaser trimmed frames; 241 MB decoded → 170). Party XP everywhere: a kill's XP shared between the killer's
   party members in the room within `party.xpRangeTiles` (20), +10% a member up to +30% (`partyXpMult`); bosses keep their

@@ -98,7 +98,7 @@ import { type ActiveBuff, BuffTray } from '../ui/buff-tray';
 import { buffStatLines } from '../ui/buff-text';
 import { myBuffStats, myBuffs, setMyBuffs } from '../net/buffs';
 import { type Bench, type Building, WorldObjects, characterDepth } from '../world/objects';
-import { type SoundTapped, enterArenaSound, enterCasinoSound, hearFrom, leaveCasinoSound, loadSoundSets, playFrom, playSet, playSound, skillSet, soundSets, startTownSound, tapSounds } from '../audio/sound';
+import { type SoundTapped, enterArenaSound, enterCasinoSound, hearFrom, leaveCasinoSound, loadSoundSets, loadWarrensSounds, playFrom, playSet, playSound, playWarrens, skillSet, soundSets, startTownSound, tapSounds } from '../audio/sound';
 import type { AdventureData } from '../net/adventure';
 import { Hotbar } from '../ui/hotbar';
 import { mountClassSwitch } from '../ui/class-switch';
@@ -120,6 +120,10 @@ const EMOTE_ACTIONS = EMOTE_KEYS.map((_, i) => `emote${i + 1}`);
 // The playable town: ground, buildings, props and the player, all placed from manifest.json + maps/town.json.
 // Right click to walk; left click a building to walk to its door, or a bench to sit (a tap does all of these).
 
+/** Through the Warren Gate: the page changes this long after the warp starts (its sound, warrens-gate-warp, is 1 s), and
+ *  after a ticket's sound the warp starts this long later. */
+const WARP_MS = 1000;
+const TICKET_MS = 300;
 const ZOOMS = [2, 3, 4];
 /** A large screen (px): small maps are padded with forest to fill at least this much at the farthest zoom. */
 const BIG_SCREEN = [2560, 1440];
@@ -550,6 +554,7 @@ export class TownScene extends Phaser.Scene {
     this.buffTray = tray;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => tray.destroy());
     startTownSound(this, this.fountainTile(), this.area === 'slums' || this.area === 'warrens' ? 'slums' : 'town'); // (the Slums and the Warrens: the Slums' music, no crickets)
+    if (this.area === 'slums' || this.area === 'warrens') loadWarrensSounds(); // (the gate's in the Slums)
     // A battle map's sounds: each mob kind's hurt and death, the golem's attacks (the classes' skills once their data is in).
     if (this.battleMap) {
       const kinds = new Set([...(this.map.mobZones ?? []).filter((z) => z.active && this.M.mobs?.[z.mob]).map((z) => z.mob), ...(this.map.boss ? [this.map.boss.id] : [])]);
@@ -1723,7 +1728,12 @@ export class TownScene extends Phaser.Scene {
         playSound('error');
         return toast(m.message, 2800, 'bad');
       }
-      if (m.t === 'warrens-go') return this.travel('warrens');
+      if (m.t === 'warrens-go') {
+        // Your ticket used (opening a run: only you hear it), then through the gate.
+        if (m.ticket) playWarrens('warrens-ticket-use');
+        if (!m.ticket) return this.travel('warrens');
+        return void this.time.delayedCall(TICKET_MS, () => this.travel('warrens'));
+      }
       if (m.t === 'warrens-out') {
         if (m.reason === 'closed') toast('The Scrap Warrens closed.', 2600);
         if (m.reason === 'party') toast('You left the party: back to the Slums.', 2600);
@@ -3054,10 +3064,13 @@ export class TownScene extends Phaser.Scene {
     if ((to === 'slums' || to === 'warrens') && this.me?.status !== 'ok' && !fakeLogin()) return void toast('Log in to go into the Slums.', 2800);
     if (this.travelling) return;
     this.travelling = true;
-    playSound('door');
+    // Through the Warren Gate (in or out): its warp with the fade, which waits for it (the page changes after); else a door.
+    const warp = to === 'warrens' || this.area === 'warrens';
+    if (warp) playWarrens('warrens-gate-warp');
+    else playSound('door');
     toast(to === 'hood' ? 'To the neighbourhood…' : to === 'warrens' ? 'Into the Scrap Warrens…' : to === 'slums' ? (this.area === 'warrens' ? 'Back to the Slums…' : 'Into the Slums…') : 'Back to town…');
-    this.cameras.main.fadeOut(400, 0, 0, 0);
-    this.time.delayedCall(420, () => location.assign(areaUrl(to)));
+    this.cameras.main.fadeOut(warp ? WARP_MS - 200 : 400, 0, 0, 0);
+    this.time.delayedCall(warp ? WARP_MS : 420, () => location.assign(areaUrl(to)));
   }
   private travelling = false;
 

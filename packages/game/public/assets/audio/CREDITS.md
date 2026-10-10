@@ -68,3 +68,9 @@ sound has an `.ogg` and an AAC `.m4a`.
 - `music/music-slums.*` — "Old Radio", an original loop composed for Mikazuki (the art folder's
   `scripts/audio/build_slums_music.py`; no source, no credit needed). 66 bpm, a 58.2 s seamless loop; the Slums' music
   in place of the town's, at 0.09 × the music volume.
+
+## Scrap Warrens (10 Oct) in `sfx/`
+
+- `sfx/warrens-*`, `sfx/barong-*`, `sfx/celes-tin-*`, `sfx/tire-ranny-*`, `sfx/bag-yani-*`, `sfx/wire-wolf-*`,
+  `sfx/crab-tain-*` (20 sounds): made by the art folder's `scripts/audio/build_warrens_sfx.py` from Kenney Impact
+  Sounds, Interface Sounds and RPG Audio (CC0), the game's own sounds and original synth tones. No credit needed.
