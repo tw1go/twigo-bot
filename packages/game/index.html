@@ -1480,8 +1480,13 @@
       #warrens-tracker .wr-head { display: flex; align-items: baseline; gap: 6px; }
       #warrens-tracker .wr-title { font-weight: 700; color: #FCA5A5; font-size: calc(13px * var(--text)); }
       #warrens-tracker .wr-title, #warrens-tracker .wr-time { white-space: nowrap; }
-      #warrens-tracker .wr-time { margin-left: auto; color: #F8BF27; font-size: calc(13px * var(--text)); }
-      #warrens-tracker .wr-time.wr-late { color: #F87171; animation: bb-pulse 0.9s ease-in-out infinite alternate; }
+      #warrens-timer { position: fixed; top: 10px; left: 50%; z-index: 3; display: flex; align-items: baseline; gap: 8px; padding: 4px 14px 5px; border: 2px solid #EF4444; background: rgba(17, 24, 39, 0.92); color: #E6E9F2; font: calc(13px * var(--text))/1.2 var(--ui-font); transform: translateX(-50%); pointer-events: none; box-shadow: 0 3px 0 #1E1B3A; white-space: nowrap; }
+      #warrens-timer .wr-clock-label { color: #FCA5A5; letter-spacing: 0.08em; text-transform: uppercase; font-size: calc(11px * var(--text)); }
+      #warrens-timer .wr-time { color: #F8BF27; font-size: calc(22px * var(--text)); }
+      #warrens-timer.wr-late .wr-time { color: #F87171; animation: bb-pulse 0.9s ease-in-out infinite alternate; }
+      /* Under it: the boss bar and the other boxes that sit top centre. */
+      body.warrens-on #boss-bar, body.warrens-on #mob-target, body.warrens-on #target { top: 56px; }
+      body.warrens-on.boss-on #mob-target { top: 118px; }
       #warrens-tracker .wr-pips { display: flex; gap: 4px; margin-top: 6px; }
       #warrens-tracker .wr-pip { width: 14px; height: 14px; box-sizing: border-box; border: 2px solid #EF4444; background: #2A0F14; transform: rotate(45deg) scale(0.75); }
       #warrens-tracker .wr-pip.wr-down { border-color: #6B7280; background: #4ADE80; }
@@ -1508,7 +1513,7 @@
       #warrens-area .wr-area-name { font: 700 calc(30px * var(--text))/1.2 var(--ui-font); }
       #warrens-area.wr-out { opacity: 0; }
       @keyframes wr-in { from { opacity: 0; transform: translate(-50%, -8px); } }
-      @media (prefers-reduced-motion: reduce) { #warrens-area { animation: none; } #warrens-tracker .wr-time.wr-late { animation: none; } }
+      @media (prefers-reduced-motion: reduce) { #warrens-area { animation: none; } #warrens-timer.wr-late .wr-time { animation: none; } }
       #boss-bar .bb-title { display: block; margin-top: -2px; text-align: center; font-size: calc(12px * var(--text)); color: #FCA5A5; font-style: italic; }
       #boss-bar .bb-title:empty { display: none; }
       /* The party (ui/party.ts): under the quest tracker; names in party pink. */

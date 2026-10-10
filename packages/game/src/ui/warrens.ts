@@ -8,9 +8,10 @@ import { toast } from './toast';
 //   party · needs 1 Warren Ticket", your level and tickets, and what you can do: Enter (alone), Open for my party, or
 //   Join my party's run (no ticket), or why not (under Lv 15, the Warrens full, no ticket).
 // - The invite when your party opens a run while you're in the Slums: Join / Not now, with its time running out.
-// - The tracker (top left, where the quest tracker sits: that hides meanwhile, body.warrens-on): "Scrap Warrens", the
-//   time left (counted down here from the server's), a pip per boss that ticks as it falls; while it gathers, who it
-//   waits for and the opener's Start now; Leave.
+// - The run's timer, top centre (the boss bar and the other top-centre boxes move down under it): the time left
+//   (counted down here from the server's; red in the last minute), or while it gathers "Starts in 0:57".
+// - The tracker (top left, where the quest tracker sits: that hides meanwhile, body.warrens-on): "Scrap Warrens", a pip
+//   per boss that ticks as it falls; while it gathers, who it waits for and the opener's Start now; Leave.
 // - The banner with an area's name as you walk into it, and the countdown when you've left the party inside.
 
 const GATE_LINE = 'Lv 15+ · solo or party · needs 1 Warren Ticket';
@@ -84,6 +85,9 @@ const clock = (ms: number) => {
 /** The run's tracker (top left, in the quest tracker's place). */
 export class WarrensTracker {
   private readonly root = el('div');
+  /** The timer, top centre: its label and the time. */
+  private readonly clock = el('div');
+  private readonly clockLabel = el('span', 'wr-clock-label', 'Time left');
   private readonly time = el('span', 'wr-time');
   private readonly pips = el('div', 'wr-pips');
   private readonly note = el('div', 'wr-note');
@@ -97,7 +101,10 @@ export class WarrensTracker {
   constructor(act: { start(): void; leave(): void }) {
     this.root.id = 'warrens-tracker';
     const head = el('div', 'wr-head');
-    head.append(el('span', 'wr-title', 'Scrap Warrens'), this.time);
+    head.append(el('span', 'wr-title', 'Scrap Warrens'));
+    this.clock.id = 'warrens-timer';
+    this.clock.setAttribute('role', 'timer');
+    this.clock.append(this.clockLabel, this.time);
     const buttons = el('div', 'wr-buttons');
     buttons.append(this.start, this.leave);
     this.root.append(head, this.pips, this.note, buttons);
@@ -110,7 +117,7 @@ export class WarrensTracker {
       playSound('click');
       act.leave();
     });
-    document.body.append(this.root);
+    document.body.append(this.root, this.clock);
     document.body.classList.add('warrens-on');
     // In the quest tracker's place (under the top-left corner); the party panel goes under it.
     const place = () => {
@@ -153,13 +160,15 @@ export class WarrensTracker {
     const r = this.run;
     if (!r) return;
     const gone = performance.now() - this.at;
-    this.time.textContent = r.phase === 'gathering' ? `starts in ${clock((r.gatherLeft ?? 0) - gone)}` : clock(r.left - gone);
-    this.time.classList.toggle('wr-late', r.phase === 'running' && r.left - gone < 60_000);
+    this.clockLabel.textContent = r.phase === 'gathering' ? 'Starts in' : r.phase === 'cleared' ? 'Closing in' : 'Time left';
+    this.time.textContent = r.phase === 'gathering' ? clock((r.gatherLeft ?? 0) - gone) : clock(r.left - gone);
+    this.clock.classList.toggle('wr-late', r.phase === 'running' && r.left - gone < 60_000);
   }
 
   destroy(): void {
     clearInterval(this.tick);
     this.root.remove();
+    this.clock.remove();
     document.body.classList.remove('warrens-on');
     dispatchEvent(new Event('resize'));
   }
