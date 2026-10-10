@@ -7,6 +7,9 @@ import Phaser from 'phaser';
 // Inside the casino the town goes quiet (no town music, crickets or fountain) and the casino's own music plays. The
 // Slums (its own page, like every area) has no crickets and its own music in place of the town's, at the same setting;
 // back in town the town's music and crickets play again.
+// The intro card and title screen (BootScene, ui/title-screen.ts) play their own music, Moonlight Lullaby, whatever the
+// music setting (almost nobody turns music on, and this is the one place it should be heard); Mute silences it. It
+// fades out as Start or the Discord login is pressed, and the area's own music takes over as ever.
 // Combat (the Slums): sounds that come in three versions (`<base>-1`…`-3`: a player hurt, each mob kind hurt and dying,
 // each class's first 7 skills, the mobility moves, the golem's attacks) play one at random, never the same twice running
 // (playSet); the mobility moves' load with the town, the rest only on a battle map (loadSoundSets). Your own always; from
@@ -109,6 +112,9 @@ let areaMusic = MUSIC;
 /** The area has crickets (not the Slums). */
 let hasCrickets = true;
 const CASINO = { key: 'music:casino', urls: ['audio/music/casino-shop-theme.ogg', 'audio/music/casino-shop-theme.m4a'], volume: 0.09 };
+/** The title music: at `volume` (× the music volume when that's above 0); faded in over inMs if the browser held sound
+ *  back until the first click or key, out over outMs. */
+const TITLE = { key: 'music:title', urls: ['audio/music/music-title.ogg', 'audio/music/music-title.m4a'], volume: 0.1, inMs: 1500, outMs: 1000 };
 const ARENA = { key: 'music:arena', urls: ['audio/music/arena-battle.ogg', 'audio/music/arena-battle.m4a'], volume: 0.09, inMs: 400, outMs: 500 };
 const JACKPOT = { volume: 0.25, times: 3, gapMs: 260 };
 
@@ -603,6 +609,79 @@ function fade(s: Phaser.Scene, m: Phaser.Sound.BaseSound, to: number, ms: number
       done?.();
     },
   }));
+}
+
+// ── The title music (BootScene's: before any town scene; its fades run on their own clock, so they carry on while
+// BootScene hands over) ──
+
+let titleMusic: Phaser.Sound.BaseSound | null = null;
+let titleLevel = 0;
+let titleRamp = 0;
+let titleWanted = false;
+let titleSound: Phaser.Sound.BaseSoundManager | null = null;
+const titleVolume = () => TITLE.volume * (settings.music > 0 ? settings.music : 1);
+
+/** Loads the title music on `s` and plays it as soon as sound is allowed: at once if it already is, else on the first
+ *  click or key (Phaser's unlock), faded in over TITLE.inMs. */
+export function startTitleMusic(s: Phaser.Scene): void {
+  titleWanted = true;
+  titleSound = s.sound;
+  s.sound.mute = settings.muted;
+  const held = s.sound.locked; // (held back now: it fades in when it's let go)
+  const play = () => {
+    if (!titleWanted || titleMusic || !s.cache.audio.exists(TITLE.key)) return;
+    titleMusic = s.sound.add(TITLE.key, { loop: true, volume: 0 });
+    titleLevel = 0;
+    titleMusic.play();
+    if (held) titleTo(titleVolume(), TITLE.inMs);
+    else titleTo(titleVolume(), 0);
+  };
+  const go = (): void => {
+    if (s.sound.locked) s.sound.once(Phaser.Sound.Events.UNLOCKED, play);
+    else play();
+  };
+  if (s.cache.audio.exists(TITLE.key)) return go();
+  s.load.setPath(`${import.meta.env.BASE_URL}assets/`);
+  s.load.audio(TITLE.key, TITLE.urls);
+  s.load.once(`filecomplete-audio-${TITLE.key}`, go);
+  if (!s.load.isLoading()) s.load.start();
+}
+
+/** The title music fades out (Start, or the Discord login) and stops. */
+export function stopTitleMusic(ms = TITLE.outMs): void {
+  titleWanted = false;
+  const m = titleMusic;
+  if (!m) return;
+  titleTo(0, ms, () => {
+    m.stop();
+    m.destroy();
+    if (titleMusic === m) titleMusic = null;
+  });
+}
+
+/** The title music's volume to `to` over `ms` (0: at once), on the page's clock. */
+function titleTo(to: number, ms: number, done?: () => void): void {
+  cancelAnimationFrame(titleRamp);
+  const m = titleMusic;
+  if (!m) return;
+  const from = titleLevel;
+  const t0 = performance.now();
+  const step = (now: number) => {
+    const k = ms > 0 ? Math.min(1, (now - t0) / ms) : 1;
+    titleLevel = from + (to - from) * k;
+    setVolume(m, titleLevel);
+    if (k < 1) titleRamp = requestAnimationFrame(step);
+    else done?.();
+  };
+  step(t0);
+}
+
+/** Mute on or off from the title screen's speaker (the same setting as Settings → Mute). */
+export function setMuted(on: boolean): void {
+  settings = { ...settings, muted: on };
+  saveSettings();
+  if (titleSound) titleSound.mute = on;
+  applySettings();
 }
 
 /** Starts a stopped track at silence (a fade brings it up). */

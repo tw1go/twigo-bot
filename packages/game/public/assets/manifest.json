@@ -17442,6 +17442,48 @@
         "nineSlice": 6
       }
     },
+    "splashAnim": {
+      "file": "ui/ui-splash-anim.png",
+      "size": [
+        384,
+        216
+      ],
+      "frames": 24,
+      "fps": 8,
+      "columns": 6,
+      "loop": true,
+      "dom": true,
+      "note": "The title screen's background (ui/title-screen.ts): 24 frames of 384x216 in a 6x4 grid (left to right, then down), 8 fps, looped: twinkling stars, chimney smoke, flickering windows and lamps, buzzing neon, the fountain. Drawn on a page canvas at a whole-number scale (dom: never packed)"
+    },
+    "splashBg": {
+      "file": "ui/ui-splash-bg.png",
+      "size": [
+        384,
+        216
+      ],
+      "dom": true,
+      "note": "The title screen's still background: reduced motion, and the first paint before the sheet loads"
+    },
+    "titleButton": {
+      "file": "ui/ui-title-button.png",
+      "size": [
+        72,
+        18
+      ],
+      "frames": 3,
+      "slice": 4,
+      "dom": true,
+      "note": "The title screen's button: normal, hover and pressed in a row, a 9-slice (slice 4 px) at the background's scale"
+    },
+    "logoTwigo": {
+      "file": "ui/ui-logo-twigo.png",
+      "size": [
+        928,
+        565
+      ],
+      "dom": true,
+      "note": "The twigo logo on the intro card: smooth vector art (never pixelated), transparent"
+    },
     "loadingMoon": {
       "file": "ui/ui-loading-moon.png",
       "size": [

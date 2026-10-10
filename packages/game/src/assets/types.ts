@@ -93,6 +93,12 @@ export interface Manifest {
     /** Kusing's coin: 16x16, and 32x32 (showcase). */
     kusingIcon?: { file: string; showcase?: string };
     loadingMoon?: { file: string; size: Vec2; frames: number; fps: number; loopFrames?: Vec2; anchor: Vec2 };
+    /** The title screen (ui/title-screen.ts; `dom`: drawn by the page only, never packed): its animated background (a
+     *  grid of `columns` frames a row), the still, the 9-slice button (normal, hover, pressed), the twigo logo. */
+    splashAnim?: { file: string; size: Vec2; frames: number; fps: number; columns: number };
+    splashBg?: { file: string; size: Vec2 };
+    titleButton?: { file: string; size: Vec2; frames: number; slice: number };
+    logoTwigo?: { file: string; size: Vec2 };
     /** The Mine's dig: played once; the find rises from `hole` (its bottom centre) from cell `itemFrom`. */
     digPanel?: { file: string; size: Vec2; frames: number; fps: number; loop: boolean; anchor: Vec2; hole: Vec2; itemFrom: number };
   };

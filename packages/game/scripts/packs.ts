@@ -127,9 +127,12 @@ export function buildPacks(assetsDir: string): { index: PackIndex; out: { fileNa
   const dirs: string[] = C.directions;
   const groups = new Map<string, Img[]>();
   const cells = mobCells(manifest);
+  // Images only the page draws (manifest ui entries marked `dom`: the title screen's) stay loose: no pack carries them.
+  const dom = new Set(Object.values(manifest.ui ?? {}).flatMap((u) => (u && typeof u === 'object' && (u as { dom?: boolean }).dom ? [(u as { file: string }).file] : [])));
   for (const path of walk(assetsDir)) {
     if (!path.endsWith('.png')) continue;
     const file = relative(assetsDir, path).split('\\').join('/');
+    if (dom.has(file)) continue;
     const png = PNG.sync.read(readFileSync(path));
     if (png.width > MAX_PAGE || png.height > MAX_PAGE) {
       const cell = cells.get(file);

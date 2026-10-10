@@ -74,3 +74,9 @@ sound has an `.ogg` and an AAC `.m4a`.
 - `sfx/warrens-*`, `sfx/barong-*`, `sfx/celes-tin-*`, `sfx/tire-ranny-*`, `sfx/bag-yani-*`, `sfx/wire-wolf-*`,
   `sfx/crab-tain-*` (20 sounds): made by the art folder's `scripts/audio/build_warrens_sfx.py` from Kenney Impact
   Sounds, Interface Sounds and RPG Audio (CC0), the game's own sounds and original synth tones. No credit needed.
+
+## Title music in `music/`
+
+- `music/music-title.*` — "Moonlight Lullaby", an original loop composed for Mikazuki (the art folder's
+  `scripts/audio/build_title_music.py`; no source, no credit needed). Warm pad and music box, 62 bpm, a 61.9 s seamless
+  loop; the intro card's and title screen's music, at 0.10 (× the music volume when that's set above 0).

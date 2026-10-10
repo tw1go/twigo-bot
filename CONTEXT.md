@@ -33,6 +33,24 @@ _Avoid_: wall, rim
 The one gap in the ring, at its bottom right, that leads onto the pit floor.
 _Avoid_: gap, entrance, door
 
+## Screens
+
+**Intro card**:
+The "a game made by twigo" card shown once per browser tab as the game opens.
+_Avoid_: splash (the splash is the title screen's picture)
+
+**Title screen**:
+The screen after the intro card, with MIKAZUKI over the town picture and Start (or the Discord login); the game
+begins when Start is pressed.
+_Avoid_: login screen, title card
+
+**Title card**:
+The black card with the area's name ("MIKAZUKI", "NEIGHBOURHOOD") that opens on every arrival in an area.
+_Avoid_: title screen
+
+**Title** (a player's):
+The name in angle brackets under a character's nickname, like <Townfolk>; it has nothing to do with the screens above.
+
 ## Mobs
 
 **Mob**:
