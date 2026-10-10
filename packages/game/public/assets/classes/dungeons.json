@@ -1,0 +1,530 @@
+{
+ "warrens": {
+  "placeholder": true,
+  "version": 1,
+  "name": "Scrap Warrens",
+  "map": "maps/warrens.json",
+  "about": "A walled junk maze under the Slums. Solo or party instance: each run is its own copy for one player or one party. Five mini bosses each guard the way on; Barong-Barong, the Shanty Titan, waits at the end.",
+  "entry": {
+   "warp": {
+    "map": "slums",
+    "object": "slums-warren-gate",
+    "tile": [
+     46,
+     96
+    ],
+    "footprint": [
+     3,
+     3
+    ],
+    "useRangeTiles": 3,
+    "arrive": [
+     46,
+     99
+    ]
+   },
+   "minLevel": 15,
+   "ticket": "warren-ticket",
+   "ticketsPerRun": 1,
+   "whoPays": "the player who opens the run, for themselves alone or for their whole party",
+   "partyInviteSeconds": 20,
+   "joinLater": "anyone in the party while the run lives can walk into the Warren Gate to join or rejoin it, no ticket",
+   "onePerParty": true,
+   "partyMax": 6
+  },
+  "run": {
+   "timeLimitMinutes": 20,
+   "timeLimitNote": "Repo change (Mac, 10 Oct 2026): 20 minutes from the run's start (was 40); the start waits for the party: gatherSeconds",
+   "gatherSeconds": 60,
+   "closeAfterLastBossMinutes": 3,
+   "closeWhenEmptySeconds": 120,
+   "leavePartyKickSeconds": 10,
+   "onClose": "everyone still inside goes to the Slums at entry.warp.arrive; loot left on the floor is gone",
+   "death": "no penalty; back after 3 s, full, at the checkpoint of the furthest area opened",
+   "bossResetSeconds": 10,
+   "bossReset": "if no living player is inside a boss's arena for this long, it heals to full and its called mobs vanish",
+   "mobRespawn": false,
+   "mobAggro": "all aggressive, 4 tiles, packs assist, leash = their own area",
+   "gate": "a scrap shutter blocks each area's exit passage until that area's mini boss dies; then it opens for good this run"
+  },
+  "scaling": {
+   "about": "n = players inside the run (counted at each pull, and kept up to date like the field golem: HP % stays)",
+   "mobHp": "1 + 0.4 * (n - 1)",
+   "bossHp": "1 + 0.6 * (n - 1)",
+   "atk": "never scales"
+  },
+  "areas": [
+   {
+    "index": 1,
+    "id": "tin",
+    "name": "Can Cellar",
+    "mobs": {
+     "kind": "tin-can",
+     "level": 15,
+     "hp": 360,
+     "atk": 51,
+     "def": 30,
+     "xp": 72,
+     "kusing": 294
+    },
+    "mobCount": 13,
+    "miniBoss": {
+     "id": "celes-tin",
+     "name": "Celes Tin",
+     "kind": "tin-can",
+     "level": 16,
+     "hp": 5059,
+     "atk": 70,
+     "def": 32,
+     "xp": 420,
+     "kusingPile": 3170,
+     "guards": 2,
+     "mechanics": [
+      {
+       "id": "lidSlam",
+       "every": 8,
+       "telegraphMs": 1200,
+       "shape": "circle",
+       "radius": 2,
+       "on": "itself",
+       "atkMult": 1.5
+      },
+      {
+       "id": "canRally",
+       "atHp": [
+        0.66,
+        0.33
+       ],
+       "calls": {
+        "kind": "tin-can",
+        "count": 3,
+        "where": "arena edge"
+       }
+      }
+     ]
+    }
+   },
+   {
+    "index": 2,
+    "id": "tire",
+    "name": "Skid Row",
+    "mobs": {
+     "kind": "tire-roller",
+     "level": 16,
+     "hp": 422,
+     "atk": 54,
+     "def": 32,
+     "xp": 84,
+     "kusing": 317
+    },
+    "mobCount": 12,
+    "miniBoss": {
+     "id": "tire-ranny",
+     "name": "Tire Ranny",
+     "kind": "tire-roller",
+     "level": 17,
+     "hp": 5919,
+     "atk": 74,
+     "def": 34,
+     "xp": 495,
+     "kusingPile": 3430,
+     "guards": 2,
+     "mechanics": [
+      {
+       "id": "burnoutCharge",
+       "every": 10,
+       "telegraphMs": 1000,
+       "shape": "line",
+       "width": 1,
+       "length": 8,
+       "target": "farthest player",
+       "speedTilesPerSec": 12,
+       "atkMult": 2.0,
+       "stopsAtWalls": true
+      },
+      {
+       "id": "pitCrew",
+       "atHp": [
+        0.5
+       ],
+       "calls": {
+        "kind": "tire-roller",
+        "count": 2,
+        "where": "arena edge"
+       }
+      }
+     ]
+    }
+   },
+   {
+    "index": 3,
+    "id": "bag",
+    "name": "Bag Hollow",
+    "mobs": {
+     "kind": "plastic-bag-spook",
+     "level": 17,
+     "hp": 444,
+     "atk": 57,
+     "def": 34,
+     "xp": 89,
+     "kusing": 343
+    },
+    "mobCount": 14,
+    "miniBoss": {
+     "id": "bag-yani",
+     "name": "Bag Yani",
+     "kind": "plastic-bag-spook",
+     "level": 18,
+     "hp": 6232,
+     "atk": 78,
+     "def": 36,
+     "xp": 520,
+     "kusingPile": 3700,
+     "guards": 2,
+     "mechanics": [
+      {
+       "id": "smotherFog",
+       "every": 12,
+       "telegraphMs": 1500,
+       "shape": "circle",
+       "radius": 1.5,
+       "on": "up to 3 players' spots",
+       "atkMult": 1.0,
+       "slow": {
+        "pct": 40,
+        "ms": 3000
+       }
+      },
+      {
+       "id": "vanish",
+       "atHp": [
+        0.6,
+        0.3
+       ],
+       "untargetableMs": 4000,
+       "alpha": 0.3,
+       "calls": {
+        "kind": "plastic-bag-spook",
+        "count": 4,
+        "where": "random arena tiles"
+       },
+       "then": "reappears on a random arena tile"
+      }
+     ]
+    }
+   },
+   {
+    "index": 4,
+    "id": "wire",
+    "name": "Live Coils",
+    "mobs": {
+     "kind": "wire-tangle",
+     "level": 18,
+     "hp": 462,
+     "atk": 60,
+     "def": 36,
+     "xp": 92,
+     "kusing": 370
+    },
+    "mobCount": 14,
+    "miniBoss": {
+     "id": "wire-wolf",
+     "name": "Wire Wolf",
+     "kind": "wire-tangle",
+     "level": 19,
+     "hp": 6482,
+     "atk": 82,
+     "def": 38,
+     "xp": 540,
+     "kusingPile": 4000,
+     "guards": 2,
+     "mechanics": [
+      {
+       "id": "chainZap",
+       "every": 6,
+       "range": 4,
+       "jumps": 2,
+       "jumpRange": 3,
+       "jumpMult": 0.7,
+       "atkMult": 1.0
+      },
+      {
+       "id": "liveFloor",
+       "every": 15,
+       "telegraphMs": 1500,
+       "shape": "tiles",
+       "count": 6,
+       "pick": "random arena floor tiles, 2 under players if any",
+       "atkMult": 1.2,
+       "stunMs": 500
+      },
+      {
+       "id": "sparkCall",
+       "atHp": [
+        0.5
+       ],
+       "calls": {
+        "kind": "wire-tangle",
+        "count": 2,
+        "where": "arena edge"
+       }
+      }
+     ]
+    }
+   },
+   {
+    "index": 5,
+    "id": "crab",
+    "name": "Drain Pools",
+    "mobs": {
+     "kind": "scrap-crab",
+     "level": 19,
+     "hp": 1215,
+     "atk": 63,
+     "def": 38,
+     "xp": 203,
+     "kusing": 400
+    },
+    "mobCount": 9,
+    "miniBoss": {
+     "id": "crab-tain",
+     "name": "Crab Tain",
+     "kind": "scrap-crab",
+     "level": 20,
+     "hp": 9479,
+     "atk": 86,
+     "def": 40,
+     "xp": 1185,
+     "kusingPile": 4320,
+     "guards": 2,
+     "mechanics": [
+      {
+       "id": "shell",
+       "rule": "the Scrap Crab shell: hits from its front quarter are blocked, except for 1.2 s after each of its swings"
+      },
+      {
+       "id": "pincerSweep",
+       "every": 9,
+       "telegraphMs": 1000,
+       "shape": "cone",
+       "angleDeg": 90,
+       "length": 3,
+       "atkMult": 2.0
+      },
+      {
+       "id": "hunker",
+       "atHp": [
+        0.5
+       ],
+       "blockAllMs": 5000,
+       "calls": {
+        "kind": "scrap-crab",
+        "count": 2,
+        "where": "arena edge"
+       }
+      }
+     ]
+    }
+   }
+  ],
+  "scrapling": {
+   "id": "scrapling",
+   "name": "Scrapling",
+   "art": "scrapheap-golem",
+   "drawScale": 0.6,
+   "level": 19,
+   "hp": 2025,
+   "atk": 63,
+   "def": 38,
+   "xp": 203,
+   "kusing": 400,
+   "attacks": {
+    "tireSlam": 1.5
+   },
+   "note": "the field golem's art and Tire Slam only (no toss, no glare), drawn at 0.6 (the field golem is 1.5)"
+  },
+  "lastBoss": {
+   "id": "barong-barong",
+   "name": "Barong-Barong",
+   "title": "the Shanty Titan",
+   "level": 20,
+   "hp": 31597,
+   "atk": 66,
+   "def": 40,
+   "xp": 1580,
+   "art": "mobs/barong-barong/ (PixelLab body by Mac, animations script-built by Claude)",
+   "size": "about 450 px tall on screen (the field golem is about 250)",
+   "facing": "S only",
+   "moves": false,
+   "tile": [
+    8,
+    40
+   ],
+   "body": [
+    2,
+    34,
+    11,
+    43
+   ],
+   "reachRadius": 3.5,
+   "mechanics": [
+    {
+     "id": "fistSlam",
+     "every": 7,
+     "telegraphMs": 1400,
+     "shape": "circle",
+     "radius": 3,
+     "target": "a random player within 10 tiles",
+     "atkMult": 3.0,
+     "hand": "alternates left and right"
+    },
+    {
+     "id": "roofRain",
+     "every": 18,
+     "telegraphMs": 1600,
+     "shape": "circles",
+     "count": 8,
+     "radius": 1.5,
+     "pick": "2 under players, the rest random hall floor",
+     "atkMult": 2.0
+    },
+    {
+     "id": "gutterSweep",
+     "every": 25,
+     "fromHp": 0.7,
+     "telegraphMs": 2000,
+     "shape": "cone",
+     "angleDeg": 140,
+     "length": 6,
+     "facing": "S",
+     "atkMult": 2.5,
+     "about": "the whole band in front of it: get out past 6 tiles or dash"
+    },
+    {
+     "id": "shantyCall",
+     "atHp": [
+      0.75,
+      0.5,
+      0.25
+     ],
+     "calls": {
+      "kind": "scrapling",
+      "count": 2,
+      "where": "climbing out of its body onto the floor in front"
+     }
+    },
+    {
+     "id": "enrage",
+     "atHp": 0.25,
+     "attackSpeed": 1.3,
+     "roofRainEvery": 12,
+     "look": "its windows glow red"
+    }
+   ],
+   "guards": {
+    "kind": "scrapling",
+    "count": 2
+   },
+   "note": "replaces the Rust King (Mac, 9 Oct: a dungeon boss much bigger than the golem)"
+  },
+  "miniBossLook": {
+   "drawScale": 2.5,
+   "nameColour": "#EF4444",
+   "bossBar": "a wide HP bar at the top of the screen while you're in its arena",
+   "note": "same art as the mob, bigger than the leveling mini bosses (2x)"
+  },
+  "loot": {
+   "shared": "everything drops on the floor for the run; anyone in the run picks it up, first come. Kusing picked up in a party is split like other party Kusing.",
+   "gearLevel": 20,
+   "gearClass": "a class picked at random from the classes of the players inside",
+   "plus": "rarity.dropPlus (same as other drops)",
+   "miniBoss": {
+    "rolls": "one per player inside at the kill",
+    "kusingPile": "kusingPile (its level's Kusing x 10), always",
+    "roll": {
+     "affix": {
+      "chance": 0.3,
+      "affix": {
+       "blue": 0.8,
+       "orange": 0.2
+      },
+      "slots": {
+       "1": 0.44,
+       "2": 0.56
+      }
+     },
+     "plain": {
+      "chance": 0.45,
+      "colour": {
+       "white": 0.44,
+       "grey": 0.56
+      }
+     },
+     "unlucky": {
+      "chance": 0.25,
+      "kusingTimes": 3,
+      "roughWhetstones": [
+       3,
+       6
+      ]
+     }
+    }
+   },
+   "lastBoss": {
+    "about": "Mac, 9 Oct: 3 affix items and 2 accessories; Claude: for each player inside",
+    "perPlayerInside": {
+     "affixGear": 3,
+     "affix": {
+      "blue": 0.7,
+      "orange": 0.3
+     },
+     "slots": {
+      "1": 0.44,
+      "2": 0.56
+     },
+     "accessories": 2,
+     "accessoryAffix": {
+      "blue": 0.7,
+      "orange": 0.3
+     },
+     "accessoryLevel": 20,
+     "kusing": 10000,
+     "roughWhetstones": [
+      6,
+      12
+     ],
+     "agimatChance": 0.33,
+     "agimatLevel": 20,
+     "ticketChance": 0.1
+    }
+   }
+  },
+  "ticket": {
+   "id": "warren-ticket",
+   "name": "Warren Ticket",
+   "kind": "consumable",
+   "rarity": "white",
+   "stack": 99,
+   "tradeable": true,
+   "about": "Opens a run of the Scrap Warrens for you, or for your whole party. Use it at the Warren Gate by the golem pit.",
+   "icon": "items/consumables/item-warren-ticket-16.png",
+   "showcase": "items/consumables/item-warren-ticket.png",
+   "large": "items/consumables/item-warren-ticket-64.png",
+   "sources": {
+    "shop": {
+     "where": "sari-sari store, first tab",
+     "kusing": 500000,
+     "tab": "dungeons",
+     "note": "Repo change (Mac, 10 Oct 2026): 500,000 Kusing (was 50,000), in a new Dungeons tab (was the first tab)"
+    },
+    "golemLootChance": 0.25,
+    "lastBossChance": 0.1
+   }
+  },
+  "reference": {
+   "about": "for checking balance, one full clear",
+   "xpSolo": 13749,
+   "kusingSoloExclLastBoss": 43276
+  }
+ }
+}

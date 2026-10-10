@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import type { AnyItemDef, CombatItemsFile, EquipmentDef, EquipmentFile, ItemData, LevelingData, StatsData } from '@mikazuki/shared';
+import type { AnyItemDef, CombatItemsFile, DungeonsData, EquipmentDef, EquipmentFile, ItemData, LevelingData, StatsData } from '@mikazuki/shared';
 
 // 📊 The game's stats rules data (classes/stats.json: levels, stats, requirements, damage, XP, the mob table, items' rolls)
 // and its item kinds (items/equipment.json: gear; items/items.json: whetstones, potions, agimats…), read like the maps;
@@ -18,6 +18,10 @@ export const loadStats = (): StatsData => (stats ??= asset<StatsData>('classes/s
 let leveling: LevelingData | null = null;
 /** classes/leveling.json: the mini bosses and the Tanod's leveling quests (read once). */
 export const loadLeveling = (): LevelingData => (leveling ??= asset<LevelingData>('classes/leveling.json'));
+
+let dungeons: DungeonsData | null = null;
+/** classes/dungeons.json: the Scrap Warrens' rules and numbers (read once). */
+export const loadDungeons = (): DungeonsData => (dungeons ??= asset<DungeonsData>('classes/dungeons.json'));
 
 /** items/equipment.json by item id (read once). */
 export const loadGear = (): Map<string, EquipmentDef> => (gear ??= new Map(asset<EquipmentFile>('items/equipment.json').items.map((i) => [i.id, i])));

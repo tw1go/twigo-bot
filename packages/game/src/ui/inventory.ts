@@ -508,6 +508,11 @@ export class Inventory {
       const price = def.kind === 'agimat' ? this.priceOf(it) : null;
       if (price !== null) items.push([`Sell (${price.toLocaleString()} Kusing)`, () => void this.sell(it, cell, price)]);
     }
+    // A ticket: used where it's for, never from the bag (said, greyed).
+    if (def && !isGearDef(def) && def.kind === 'consumable') {
+      off.add(items.length);
+      items.push(['Use it at the Warren Gate by the golem pit', () => {}]);
+    }
     // Every item: into the chat (as Alt/Option+click does).
     items.push(['Show in chat', () => chatItem(it)]);
     this.menu.replaceChildren(

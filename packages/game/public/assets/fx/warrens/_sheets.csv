@@ -1,0 +1,12 @@
+file,cell_w,cell_h,frames,fps,loop,anchor_x,anchor_y,notes
+fx-roof-sheet.png,32,32,16,12,yes,16,28,a roofing sheet tumbling as it falls (Roof Rain): the code moves it from above the screen to its circle; frames are loose poses, play from a random start
+fx-barong-fist.png,112,128,1,0,no,56,120,Fist Slam: drops from above the screen onto its circle in the last ~0.35 s of the warning (code moves it), then the golem's slam impact + shockwave FX at 1.6x and a 0.2 s screen shake
+fx-barong-fist-shadow.png,64,24,1,0,no,32,12,ground shadow under the falling fist: scale from 0.3 to 1 as it falls (ground FX layer)
+fx-warrens-gutter-sweep.png,207,109,16,16,no,128,48,ground layer; Gutter Sweep: anchor = middle of the band; put it 3 tiles in front of Barong-Barong (the middle of its cone); start it with the sweep anim so frame 8 lands on the hit (both at 0.5 s); never mirrored (its right arm sweeps right to left)
+fx-warrens-door-burst.png,68,76,9,12,no,34,23,front layer; Shanty Call: anchor = the door's centre; put it 34 px right of and 136 px above Barong-Barong's feet; start it on the call anim frame 2; the Scraplings leave the door on its frame 2
+fx-warrens-fog-puff.png,62,50,10,12,no,30,45,front layer; Smother Fog: anchor = bottom middle of the puff; on the circle centre; start it on the hit (biggest on frames 4-6); also where Bag Yani vanishes and where it comes back
+fx-warrens-live-floor.png,57,85,7,16,no,29,80,front layer; Live Floor: anchor = the tile centre where the bolts start; one per flashing tile; start it 60 ms before the hit (frame 1 = hit)
+fx-warrens-pincer-slash.png,121,52,7,16,no,57,22,front layer; Pincer Sweep: anchor = middle of the arcs; put it 1.5 tiles in front of Crab Tain (the middle of its cone); flip x for SW and NW; start it 60 ms before the hit (frame 1 = hit)
+fx-warrens-hunker-shell-back.png,106,66,12,12,yes,53,39,ground layer; Hunker; back half: anchor = Crab Tain's feet; loop for the 5 s; draw behind the crab (same anchor as the front half)
+fx-warrens-hunker-shell-front.png,106,66,12,12,yes,53,39,front layer; Hunker; front half: anchor = Crab Tain's feet; loop for the 5 s; draw in front of the crab
+fx-warrens-burnout-smoke.png,104,56,12,18,yes,101,36,ground layer; Burnout Charge wind-up: anchor = the tire's back where the smoke leaves; the smoke streams left; so flip x when it charges to the left (SW; NW); loop for the 1 s warning; then fade over 0.2 s

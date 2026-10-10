@@ -83,7 +83,7 @@ export function itemTipFor(item: Item, owner?: { cls: string | null }): HTMLElem
     parts[0] = head;
   }
   if (!isGearDef(def)) {
-    const kind = def.kind === 'potion' ? (def.heals === 'mp' ? 'MP Potion' : 'HP Potion') : def.kind === 'agimat' ? 'Agimat' : def.kind === 'cosmetic' ? 'Cosmetic' : 'Material';
+    const kind = def.kind === 'potion' ? (def.heals === 'mp' ? 'MP Potion' : 'HP Potion') : def.kind === 'agimat' ? 'Agimat' : def.kind === 'cosmetic' ? 'Cosmetic' : def.kind === 'consumable' ? 'Ticket' : 'Material';
     parts.push(el('div', 'eq-tip-meta', `${kind}${item.count > 1 ? ` · ×${item.count}` : ''}`));
     if (def.kind === 'agimat' && item.stat) {
       parts.push(el('div', 'eq-tip-line', lineText(item.stat, agimatValue(D.stats, item.stat, item.level))));

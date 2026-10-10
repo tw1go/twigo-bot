@@ -1244,7 +1244,8 @@
       "agimats (same stat, level, slot lock)"
     ],
     "stack99": [
-      "potions"
+      "potions",
+      "consumables (Warren Tickets: repo addition)"
     ],
     "gearStacks": false
   },

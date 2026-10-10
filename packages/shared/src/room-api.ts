@@ -282,7 +282,7 @@ export interface TownShopItem {
   id: string;
   name: string;
   cost: number;
-  kind: 'fence' | 'shovel' | 'key' | 'vault' | 'potion' | 'bag' | 'pass' | 'megaphone' | 'rename' | 'classchange' | 'healing' | 'smithing';
+  kind: 'fence' | 'shovel' | 'key' | 'vault' | 'potion' | 'bag' | 'pass' | 'megaphone' | 'rename' | 'classchange' | 'healing' | 'smithing' | 'dungeons';
   /** Paid in Kusing (the Healing tab's HP/MP Potions); else Kowens. */
   currency?: 'kusing';
   /** What it does. */

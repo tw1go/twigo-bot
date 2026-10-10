@@ -1,5 +1,5 @@
 {
-  "note": "Combat items that aren't worn (gear is equipment.json): kind material (whetstones, fragments, Repair Kits; stack 999), potion (HP/MP Potions; stack 99, `heals` hp or mp by their tier's number in classes/stats.json potions), agimat (`stat`: its stat; the item's level and slot lock are the item's own; stack 999 with the same stat, level and lock), cosmetic (doesn't stack). rarity: its name's colour (stats.json rarity). tier: stats.json gearTiers / potions.tiers (low…). icon 16x16, showcase 32x32, large 64x64. shop: sold at the sari-sari store, priced by stats.json (potion: potions.tiers[tier].kusing in Kusing, the Healing tab; whetstone / repairKit: currencies.kowensShop in Kowens, the Smithing tab). forge: what it does at the forge popup, for its tier's gear (whetstone: enhances; fragment: ten combine into its tier's whetstone; repairKit: repairs a broken item).",
+  "note": "Combat items that aren't worn (gear is equipment.json): kind material (whetstones, fragments, Repair Kits; stack 999), potion (HP/MP Potions; stack 99, `heals` hp or mp by their tier's number in classes/stats.json potions), agimat (`stat`: its stat; the item's level and slot lock are the item's own; stack 999 with the same stat, level and lock), cosmetic (doesn't stack). rarity: its name's colour (stats.json rarity). tier: stats.json gearTiers / potions.tiers (low…). icon 16x16, showcase 32x32, large 64x64. shop: sold at the sari-sari store, priced by stats.json (potion: potions.tiers[tier].kusing in Kusing, the Healing tab; whetstone / repairKit: currencies.kowensShop in Kowens, the Smithing tab). forge: what it does at the forge popup, for its tier's gear (whetstone: enhances; fragment: ten combine into its tier's whetstone; repairKit: repairs a broken item). consumable: used somewhere in the world, not from the bag (the Warren Ticket: at the Warren Gate; stack 99; shop ticket = the Dungeons tab, priced in classes/dungeons.json warrens.ticket.sources.shop).",
   "items": [
     {
       "id": "rough-whetstone",
@@ -194,6 +194,17 @@
       "icon": "items/cosmetics/item-cosmetic-lamp-hat-16.png",
       "showcase": "items/cosmetics/item-cosmetic-lamp-hat.png",
       "large": "items/cosmetics/item-cosmetic-lamp-hat-64.png"
+    },
+    {
+      "id": "warren-ticket",
+      "name": "Warren Ticket",
+      "kind": "consumable",
+      "rarity": "white",
+      "about": "Opens a run of the Scrap Warrens for you, or for your whole party. Use it at the Warren Gate by the golem pit.",
+      "icon": "items/consumables/item-warren-ticket-16.png",
+      "showcase": "items/consumables/item-warren-ticket.png",
+      "large": "items/consumables/item-warren-ticket-64.png",
+      "shop": "ticket"
     }
   ]
 }

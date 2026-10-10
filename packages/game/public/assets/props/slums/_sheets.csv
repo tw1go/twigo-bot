@@ -63,3 +63,5 @@ prop-slums-dead-tree-junk-1.png,64,64,1,0,no,32,54,1x1; dead tree with a bag, ti
 prop-slums-dead-tree-burnt-1.png,64,64,1,0,no,32,54,1x1; charred burnt dead tree (PixelLab, style-matched)
 prop-slums-dead-tree-leaning-1.png,64,64,1,0,no,32,49,1x1; leaning dead tree held up by guy ropes (PixelLab, style-matched)
 prop-slums-dead-tree-fallen-1.png,64,56,1,0,no,32,38,2x2; fallen mossy dead log on a weedy patch (PixelLab, style-matched)
+prop-slums-warren-gate.png,96,96,1,0,no,48,64,3x3; Warren Gate: broken storm-drain pipe in scrap, dark mouth (Mac's PixelLab pick 2, style-matched)
+prop-slums-warren-gate-glow.png,96,96,12,10,yes,48,64,3x3; the gate's portal swirl turning; draw on top of the gate at the same anchor (also the exit warp inside the Warrens)

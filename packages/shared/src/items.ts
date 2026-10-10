@@ -48,7 +48,7 @@ export interface Item {
 }
 
 /** What isn't gear: whetstones, fragments and Repair Kits (material), HP/MP Potions (potion), agimats, cosmetics. */
-export type ItemKind = 'material' | 'potion' | 'agimat' | 'cosmetic';
+export type ItemKind = 'material' | 'potion' | 'agimat' | 'cosmetic' | 'consumable';
 
 /** items/items.json: a kind of item that isn't worn (gear is items/equipment.json). */
 export interface CombatItemDef {
@@ -68,7 +68,7 @@ export interface CombatItemDef {
   /** A cosmetic that can't be worn yet. */
   cosmetic?: boolean;
   /** Sold at the sari-sari store: priced as a potion (its tier's Kusing), a whetstone or a Repair Kit (Kowens). */
-  shop?: 'potion' | 'whetstone' | 'repairKit';
+  shop?: 'potion' | 'whetstone' | 'repairKit' | 'ticket';
   /** What it does at the forge popup for its tier's gear: enhances (whetstone), combines ten into a whetstone
    *  (fragment), repairs (repairKit). */
   forge?: 'whetstone' | 'fragment' | 'repairKit';
@@ -420,7 +420,8 @@ export function giveQuestRewards(data: ItemData, s: AdventureState, quests: Ques
 /** The most of a kind in one slot (stats.json inventory: stackN lists; gear never stacks). */
 export function stackLimit(data: StatsData, def: AnyItemDef | undefined): number {
   if (!def || isGearDef(def) || def.kind === 'cosmetic') return 1;
-  const word = def.kind === 'potion' ? 'potions' : def.kind === 'agimat' ? 'agimats' : 'materials';
+  // (A consumable, the Warren Ticket, stacks like a potion: stats.json inventory.stack99 "potions", or its own word.)
+  const word = def.kind === 'potion' || def.kind === 'consumable' ? (def.kind === 'consumable' ? 'consumables' : 'potions') : def.kind === 'agimat' ? 'agimats' : 'materials';
   for (const [k, v] of Object.entries(itemStats(data).inventory)) {
     const m = /^stack(\d+)$/.exec(k);
     if (m && Array.isArray(v) && v.some((x) => String(x).startsWith(word))) return Number(m[1]);

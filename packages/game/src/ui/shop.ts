@@ -11,14 +11,14 @@ import { coinIcon, el, followWallet, kusingIcon, showPopup } from './reward';
 // that stack, and a Buy button (passes ask again first: they're expensive and sent by hand). Buying goes through
 // the bot (POST /town/shop) with /redeem's checks. Item art: manifest `items` by reward id (ui/item-art.ts), in the
 // common rarity frame.
-// Healing and Smithing are the Slums' (bot web/combat-bag.ts): HP and MP Potions for Kusing, whetstones and Repair Kits
+// Healing, Smithing and Dungeons (the Warren Ticket for Kusing) are the Slums' (bot web/combat-bag.ts): HP and MP Potions for Kusing, whetstones and Repair Kits
 // for Kowens, into the combat bag; only the Low tier until you reach the next one. Buy 1, or type how many (up to a
 // stack, what fits and what you can pay); the server says why not when it can't.
 
 const plural = (n: number, one: string, many: string) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
 const kowens = (n: number) => plural(n, 'Kowen', 'Kowens');
 
-type Tab = 'items' | 'potions' | 'bags' | 'passes' | 'healing' | 'smithing';
+type Tab = 'items' | 'potions' | 'bags' | 'passes' | 'healing' | 'smithing' | 'dungeons';
 const TABS: [Tab, string, TownShopItem['kind'][]][] = [
   ['items', 'Items', ['fence', 'shovel', 'key', 'megaphone', 'rename', 'classchange', 'vault']],
   ['potions', 'Potions', ['potion']],
@@ -26,9 +26,10 @@ const TABS: [Tab, string, TownShopItem['kind'][]][] = [
   ['passes', 'Passes', ['pass']],
   ['healing', 'Healing', ['healing']],
   ['smithing', 'Smithing', ['smithing']],
+  ['dungeons', 'Dungeons', ['dungeons']],
 ];
 /** Combat items (into the combat bag): typed quantities. */
-const combat = (it: TownShopItem) => it.kind === 'healing' || it.kind === 'smithing';
+const combat = (it: TownShopItem) => it.kind === 'healing' || it.kind === 'smithing' || it.kind === 'dungeons';
 const kusing = (n: number) => `${n.toLocaleString()} Kusing`;
 const price = (it: TownShopItem, n: number) => (it.currency === 'kusing' ? kusing(n) : kowens(n));
 /** Item art is 32 px: shown at 2× in the grid. */
@@ -319,6 +320,7 @@ const FAKE_COMBAT: TownShopItem[] = [
   { id: 'low-mp-potion', name: 'Low MP Potion', cost: 50, currency: 'kusing', kind: 'healing', about: 'Heals 80 MP at once. Put it on your hotbar; HP and MP Potions share a 10 s cooldown. For the Slums.', max: 99 },
   { id: 'rough-whetstone', name: 'Rough Whetstone', cost: 3, kind: 'smithing', about: 'Enhances weapons, armor and accessories of item Lv 1-20 (the Low tier).', max: 999 },
   { id: 'low-repair-kit', name: 'Low Repair Kit', cost: 15, kind: 'smithing', about: 'Repairs a broken item of item Lv 1-20 (the Low tier).', max: 999 },
+  { id: 'warren-ticket', name: 'Warren Ticket', cost: 500000, currency: 'kusing', kind: 'dungeons', about: 'Opens a run of the Scrap Warrens for you, or for your whole party. Use it at the Warren Gate by the golem pit.', max: 99 },
 ];
 
 /** Dev: the pretend shop with the combat tabs, your Kusing and what you carry. */

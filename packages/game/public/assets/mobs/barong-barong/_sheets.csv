@@ -1,0 +1,16 @@
+file,cell_w,cell_h,frames,fps,loop,anchor_x,anchor_y,notes
+mob-barong-barong-idle-s.png,768,512,8,6,yes,384,432,grid of 5 frames a row, read left to right then down
+mob-barong-barong-slam-l-s.png,768,512,10,12,no,384,432,hit 6; Fist Slam, left hand: hit frame 6 (0-based) = the fist FX lands; grid of 5 frames a row, read left to right then down
+mob-barong-barong-slam-r-s.png,768,512,10,12,no,384,432,hit 6; Fist Slam, right hand: hit frame 6; grid of 5 frames a row, read left to right then down
+mob-barong-barong-rain-s.png,768,512,10,10,no,384,432,hit 6; Roof Rain: release frame 6 = the sheets start falling; grid of 5 frames a row, read left to right then down
+mob-barong-barong-sweep-s.png,768,512,12,12,no,384,432,hit 6; Gutter Sweep: hit frame 6; grid of 5 frames a row, read left to right then down
+mob-barong-barong-call-s.png,768,512,8,10,no,384,432,hit 3; Shanty Call: frame 3 = Scraplings climb out (door glows); grid of 5 frames a row, read left to right then down
+mob-barong-barong-hit-s.png,768,512,4,16,no,384,432,grid of 5 frames a row, read left to right then down
+mob-barong-barong-enraged-idle-s.png,768,512,8,6,yes,384,432,red windows; grid of 5 frames a row, read left to right then down
+mob-barong-barong-enraged-slam-l-s.png,768,512,10,12,no,384,432,hit 6; Fist Slam, left hand: hit frame 6 (0-based) = the fist FX lands; red windows; grid of 5 frames a row, read left to right then down
+mob-barong-barong-enraged-slam-r-s.png,768,512,10,12,no,384,432,hit 6; Fist Slam, right hand: hit frame 6; red windows; grid of 5 frames a row, read left to right then down
+mob-barong-barong-enraged-rain-s.png,768,512,10,10,no,384,432,hit 6; Roof Rain: release frame 6 = the sheets start falling; red windows; grid of 5 frames a row, read left to right then down
+mob-barong-barong-enraged-sweep-s.png,768,512,12,12,no,384,432,hit 6; Gutter Sweep: hit frame 6; red windows; grid of 5 frames a row, read left to right then down
+mob-barong-barong-enraged-call-s.png,768,512,8,10,no,384,432,hit 3; Shanty Call: frame 3 = Scraplings climb out (door glows); red windows; grid of 5 frames a row, read left to right then down
+mob-barong-barong-enraged-hit-s.png,768,512,4,16,no,384,432,red windows; grid of 5 frames a row, read left to right then down
+mob-barong-barong-death-s.png,768,512,14,10,no,384,432,collapses into its heap; hold the last frame; grid of 5 frames a row, read left to right then down

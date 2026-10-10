@@ -14,6 +14,7 @@ import {
   takeKind,
   dropRefusal,
 } from '@mikazuki/shared';
+import { loadDungeons } from './stats-data.js';
 
 // 💰 A character's combat bag and Kusing wallet, pure (the bot keeps them with the character, web/adventure.ts; the game's
 // dev server in memory): loot picked up (Kusing always fits; an item only if the bag has room), HP and MP Potions used,
@@ -52,12 +53,19 @@ export function usePotion(data: ItemData, c: CombatItems, defId: string): { heal
 
 // ── The sari-sari store's Healing and Smithing tabs ──
 
-/** A combat item on sale: its kind, price and money (Kusing for HP/MP Potions, Kowens for whetstones and Repair Kits). */
+/** A combat item on sale: its kind, price and money (Kusing for HP/MP Potions and the Warren Ticket, Kowens for
+ *  whetstones and Repair Kits). */
 export interface CombatWare {
   def: CombatItemDef;
-  tab: 'healing' | 'smithing';
+  tab: 'healing' | 'smithing' | 'dungeons';
   cost: number;
   currency: 'kusing' | 'kowens';
+}
+
+/** A dungeon ticket's price in Kusing (classes/dungeons.json), or null. */
+function ticketPrice(id: string): number | null {
+  for (const d of Object.values(loadDungeons())) if (d.ticket?.id === id) return d.ticket.sources.shop.kusing;
+  return null;
 }
 
 /** A tier's first level: a potion's minLevel, a gear tier's first item level (stats.json). Low is always open. */
@@ -80,6 +88,10 @@ export function combatWares(data: ItemData, level: number): CombatWare[] {
     if (def.shop === 'potion') {
       const tier = def.tier ? S.potions.tiers[def.tier] : undefined;
       if (tier) out.push({ def, tab: 'healing', cost: tier.kusing, currency: 'kusing' });
+    } else if (def.shop === 'ticket') {
+      // A dungeon's ticket (classes/dungeons.json: its shop price in Kusing), in the Dungeons tab.
+      const price = ticketPrice(def.id);
+      if (price) out.push({ def, tab: 'dungeons', cost: price, currency: 'kusing' });
     } else out.push({ def, tab: 'smithing', cost: S.currencies.kowensShop[def.shop], currency: 'kowens' });
   }
   return out;

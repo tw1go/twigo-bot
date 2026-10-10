@@ -250,3 +250,36 @@ _Avoid_: target (that's a mob you've picked with Z)
 **Game Master**:
 The owner and the CMS users: the CMS, the chat's GM channel (gold, across everyone's screen).
 _Avoid_: admin, mod (those are Discord roles)
+
+## The Scrap Warrens (dungeon)
+
+**Scrap Warrens**:
+A walled junk maze under the Slums for Lv 15+, played as runs; six areas, five mini bosses and Barong-Barong.
+_Avoid_: dungeon (fine in talk, but the place is the Scrap Warrens)
+
+**Run**:
+One copy of the Scrap Warrens for one player or one party, opened with a Warren Ticket; it has its own mobs, bosses,
+loot and timer, and closes for good.
+_Avoid_: instance, session, room (a room is the server's word for any map someone's on)
+
+**Warren Gate**:
+The entrance in the Slums by the golem pit, where a run is opened or joined; the same portal stands inside as the exit
+warp.
+_Avoid_: gate (alone, a gate is a map edge between areas of the world: town ↔ Slums)
+
+**Warren Ticket**:
+The item a run costs, used up by whoever opens it; joining a party's run is free.
+
+**Area**:
+One of the Warrens' six parts (Can Cellar … Shanty Hall), each with its own mobs and, at its end, an arena.
+
+**Arena**:
+The round room at the end of an area where its mini boss (or Barong-Barong) fights; a boss resets when nobody alive
+has been in its arena for a while.
+
+**Shutter**:
+The scrap door on an area's way out; it opens for good when that area's mini boss dies.
+_Avoid_: gate, door
+
+**Checkpoint**:
+Where you come back after dying in a run: the start of the furthest area the run has opened.
