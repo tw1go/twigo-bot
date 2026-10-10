@@ -3,10 +3,12 @@ import { type GolemAttack, type GolemChange, type PlayerHit, type TownGolem, typ
 import { loadStats } from './stats-data.js';
 
 // 🗿 The Scrapheap Golem, the Slums' field boss (the game's maps/slums.json `boss`), run on the server inside the Slums'
-// MobRoom so everyone sees the same fight. It rises in the Golem Pit at minute 0 of every `everyMinutes` (120: the even
-// hours; counted from the epoch, so UTC and Manila agree), its death anim played backwards (riseMs, not hittable
-// meanwhile), with a line `warnMinutes` before and one as it rises; both, and the line when it falls, go only to those in
-// the Slums (never kept for arrivals, never to Discord). Nothing is saved: after a restart it waits for the next rise.
+// MobRoom so everyone sees the same fight. It rises in the Golem Pit `everyMinutes` (120) after it was last gone: killed,
+// or sunk back unbeaten (the very first time, with nothing saved: the next whole `everyMinutes` from the epoch), its death
+// anim played backwards (riseMs, not hittable meanwhile), with a line `warnMinutes` before and one as it rises; both, and
+// the line when it falls, go only to those in the Slums (never kept for arrivals, never to Discord). The host keeps when
+// it rises next (`setSchedule`'s save: the bot's kv), so a restart keeps the countdown; up at a restart, it rises again
+// at once.
 // Left alone it idles in the pit, now and then stomping a tile or three inside it or turning a quarter; 30 min without
 // a hit (since it rose or was last hit) and it sinks again (never mid-fight).
 // Its body is `radius` tiles round its tile: reach to it is measured to that edge (players walk through it). The first
@@ -288,7 +290,7 @@ export class Golem {
         }
         break;
       case 'sinking':
-        if (now >= this.until) this.phase = 'gone';
+        if (now >= this.until) this.gone(this.until);
         break;
       case 'idle':
         if (now - Math.max(this.risenAt, this.lastHit) >= SINK_MS) this.sink(now);
@@ -310,18 +312,32 @@ export class Golem {
     return this.flush();
   }
 
-  /** The warning `warnMinutes` before a rise (if it isn't up), and the rise (if it isn't up still). */
+  /** While it's gone: the warning `warnMinutes` before its rise, and the rise. (None while it's up: its next rise is
+   *  set as it goes, `gone`.) */
   private schedule(now: number): void {
+    if (this.phase !== 'gone') return;
     const { everyMinutes, warnMinutes } = this.boss;
     this.nextRise ??= nextRiseAfter(now, everyMinutes);
     if (now >= this.nextRise - warnMinutes * 60_000 && this.warned !== this.nextRise) {
       this.warned = this.nextRise;
-      if (this.phase === 'gone') this.line('The junk in the golem pit is stirring...', 'stir');
+      this.line('The junk in the golem pit is stirring...', 'stir');
     }
-    if (now >= this.nextRise) {
-      if (this.phase === 'gone') this.rise(now);
-      this.nextRise = nextRiseAfter(now, everyMinutes);
-    }
+    if (now >= this.nextRise) this.rise(now);
+  }
+
+  /** Where its next rise is kept (the host's: the bot's kv), and when that is: a time it was saved at (past: it was up
+   *  then, so it rises at once), or null (nothing saved: the next whole `everyMinutes`). */
+  private save: ((at: number | null) => void) | null = null;
+  setSchedule(at: number | null, save?: (at: number | null) => void): void {
+    if (this.phase === 'gone') this.nextRise = at;
+    this.save = save ?? null;
+  }
+
+  /** It's gone (killed, or sunk back): it rises again `everyMinutes` from now. */
+  private gone(now: number): void {
+    this.phase = 'gone';
+    this.nextRise = now + this.boss.everyMinutes * 60_000;
+    this.save?.(this.nextRise);
   }
 
   /** Its most HP now: the mob table's × hpPerPlayer for each player in the Slums (`scale`). */
@@ -350,6 +366,8 @@ export class Golem {
     this.hitters.clear();
     this.phase = 'rising';
     this.risenAt = now;
+    this.nextRise = null;
+    this.save?.(now); // (up: a restart now brings it straight back)
     this.until = now + this.art.riseMs;
     this.change('rise', now);
     this.line(`The ${this.boss.name} has risen in the junkyard!`, 'rise');
@@ -608,7 +626,7 @@ export class Golem {
   private die(now: number): void {
     this.halt(now);
     this.change('death', now);
-    this.phase = 'gone';
+    this.gone(now);
     this.adds = null;
     this.demoRun = null;
     this.pending.push(...this.host.dropAdds());
@@ -651,9 +669,9 @@ export class Golem {
     };
   }
 
-  /** Its name, and when it rises next on its own (every `everyMinutes`, from the epoch). */
-  plan(now: number): { name: string; nextRise: number; everyMinutes: number } {
-    return { name: this.boss.name, nextRise: this.nextRise ?? nextRiseAfter(now, this.boss.everyMinutes), everyMinutes: this.boss.everyMinutes };
+  /** Its name, and when it rises next on its own (null: it's up now; it rises again `everyMinutes` after it's gone). */
+  plan(now: number): { name: string; nextRise: number | null; everyMinutes: number } {
+    return { name: this.boss.name, nextRise: this.phase === 'gone' ? (this.nextRise ?? nextRiseAfter(now, this.boss.everyMinutes)) : null, everyMinutes: this.boss.everyMinutes };
   }
 
   /** It rises now, if it isn't up (dev's ?golem=now, the CMS's Spawn now). */

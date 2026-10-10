@@ -447,11 +447,12 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `loadGolemArt()`; data: slums.json `boss`, stats.json's mob table (Lv 15, 10,800 HP × stats.json mobBehaviour.golem.hpPerPlayer (repo addition, 1.5) ^ players in the Slums:
   `Golem.scale` each tick from the room's count (the knocked out too), its HP keeping its share, a 'scale' change to the
   room (the game only updates its bar); the 5% XP share is of that; tested), mobs.json `radius`, the
-  manifest's anim and fx lengths): rises at
-  minute 0 of every `everyMinutes` (120: even hours, from the epoch, so UTC = Manila) at its tile, `rising` for its death
+  manifest's anim and fx lengths): rises
+  `everyMinutes` (120) after it was last gone, killed or sunk back unbeaten (the very first time, with nothing kept: the next
+  even hour from the epoch), at its tile; while it's up no rise is due (`plan`'s nextRise null); when it rises next is kept
+  in kv 'golem-next-rise' (server.ts `golemSchedule`; up = the time it rose, so a restart brings it straight back), `rising` for its death
   anim's length (riseMs, not hittable); `warnMinutes` before, a line. Its lines (`system` kind 'golem', tones stir / rise /
-  down) go only to the Slums room through the mob clock: not kept for arrivals, never in Discord. Nothing saved: after a
-  restart, the next even hour. Idle: a quarter turn (`mob-face`) or a 1–3 tile stomp inside the pit (`arena` rect) every
+  down) go only to the Slums room through the mob clock: not kept for arrivals, never in Discord. Idle: a quarter turn (`mob-face`) or a 1–3 tile stomp inside the pit (`arena` rect) every
   5–11 s; 30 min with no hit (since rise or last hit) and not fighting → `sinking` (riseMs) → gone. Reach to it = to its
   body's edge (`edge`: distance from its tile − radius; area skills reach it too, `reached`); the stats rules' hit (its
   DEF and level; a miss still starts its fight), never blocked or slowed. First hit → fight: target = the last to hit it if within `leash` (8, Chebyshev from home), else the nearest

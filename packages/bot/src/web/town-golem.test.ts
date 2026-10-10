@@ -61,25 +61,26 @@ test('the art and rules: its HP and level from the mob table (Lv 15, 10,800), a 
   assert.equal(boss.leash, 11);
 });
 
-test('it rises at minute 0 of every even hour (UTC and Manila alike) with a line 5 minutes before and one as it rises', () => {
+test('with nothing kept it first rises on the next even hour (UTC and Manila alike), a line 5 minutes before and one as it rises; then 2 hours after it sinks back', () => {
   const { golem } = lone();
   const day = Date.UTC(2026, 9, 8, 0, 30); // starts at 00:30: the first rise is 02:00
   const evs: { at: number; e: GolemEvent }[] = [];
   for (let t = day; t <= day + 24 * HOUR; t += 15_000) for (const e of golem.tick(t, new Map())) evs.push({ at: t, e });
-  const rises = evs.filter((x) => x.e.t === 'golem' && x.e.change === 'rise').map((x) => new Date(x.at));
-  assert.equal(rises.length, 12);
-  for (const d of rises) {
-    assert.equal(d.getUTCMinutes(), 0);
-    assert.equal(d.getUTCHours() % 2, 0, d.toISOString());
-    assert.equal((d.getUTCHours() + 8) % 2, 0, 'an even hour in Manila too');
-  }
+  const rises = evs.filter((x) => x.e.t === 'golem' && x.e.change === 'rise').map((x) => x.at);
+  const d = new Date(rises[0]);
+  assert.deepEqual([d.getUTCHours(), d.getUTCMinutes()], [2, 0]);
+  assert.equal((d.getUTCHours() + 8) % 2, 0, 'an even hour in Manila too');
+  // Untouched, each sinks 30 min after it rose (plus its sink anim), and rises again 2 hours after that.
+  const cycle = 30 * 60_000 + art.riseMs + 2 * HOUR;
+  for (let k = 1; k < rises.length; k++) assert.ok(Math.abs(rises[k] - rises[k - 1] - cycle) <= 15_000, `${(rises[k] - rises[k - 1]) / 60_000} min`);
+  assert.equal(rises.length, 1 + Math.floor((day + 24 * HOUR - rises[0]) / cycle));
   const stirs = evs.filter((x) => x.e.t === 'system' && x.e.line.tone === 'stir');
-  assert.equal(stirs.length, 12);
-  for (const [i, s] of stirs.entries()) assert.equal(rises[i].getTime() - s.at, 5 * 60_000);
-  assert.deepEqual(lines(evs.filter((x) => x.at === rises[0].getTime())).map((l) => [l.kind, l.text]), [['golem', 'The Scrapheap Golem has risen in the junkyard!']]);
+  assert.ok(stirs.length === rises.length || stirs.length === rises.length + 1, 'a warning before each (the last maybe still to rise)');
+  for (const [i, s] of stirs.slice(0, rises.length).entries()) assert.ok(Math.abs(rises[i] - s.at - 5 * 60_000) <= 15_000);
+  assert.deepEqual(lines(evs.filter((x) => x.at === rises[0])).map((l) => [l.kind, l.text]), [['golem', 'The Scrapheap Golem has risen in the junkyard!']]);
   assert.equal(lines(evs.filter((x) => x.at === stirs[0].at))[0].text, 'The junk in the golem pit is stirring...');
-  // Each one sank again, 30 min untouched.
-  assert.equal(changes(evs).filter((c) => c === 'sink').length, 12);
+  const sinks = changes(evs).filter((c) => c === 'sink').length;
+  assert.ok(sinks === rises.length || sinks === rises.length - 1, `${sinks} sinks, ${rises.length} rises`); // (the last may still be up)
   assert.equal(nextRiseAfter(Date.UTC(2026, 9, 8, 2, 0), 120), Date.UTC(2026, 9, 8, 4, 0), 'on the hour: the next one');
 });
 
@@ -100,7 +101,7 @@ test('after a restart it waits for the next even hour; while rising it can\'t be
   assert.ok(room.attack('p1', at(3, 0), 'stick', boss.id, t + art.riseMs + 10).ok, 'risen');
 });
 
-test('spawned now (the CMS\'s Spawn now): it rises at once, only when it isn\'t up; its own schedule carries on', () => {
+test('spawned now (the CMS\'s Spawn now): it rises at once, only when it isn\'t up; no rise is due while it\'s up', () => {
   const room = new MobRoom(map, lcg(), {}, { shapes: {} }, kinds, art);
   const t0 = Date.UTC(2026, 9, 8, 3, 10);
   room.tick(t0);
@@ -110,7 +111,51 @@ test('spawned now (the CMS\'s Spawn now): it rises at once, only when it isn\'t 
   assert.ok(rise, 'the rise goes to the room');
   assert.equal(room.golemState(t0)!.state, 'rising');
   assert.equal(room.riseGolem(t0 + 1000), false, 'up already');
-  assert.equal(room.golemPlan(t0 + 1000)!.nextRise, Date.UTC(2026, 9, 8, 4, 0));
+  assert.equal(room.golemPlan(t0 + 1000)!.nextRise, null, 'up: its next rise comes once it is gone');
+});
+
+test('it rises again 2 hours (everyMinutes) after it is killed, or after it sinks back unbeaten; kept for a restart', () => {
+  const H2 = boss.everyMinutes * 60_000;
+  assert.equal(H2, 2 * 60 * 60_000);
+  const saved: (number | null)[] = [];
+  const room = new MobRoom(map, lcg(7), {}, { shapes: {} }, kinds, art);
+  room.golemSchedule(null, (t) => saved.push(t));
+  room.riseGolem(0);
+  room.tick(art.riseMs);
+  assert.equal(saved.at(-1), 0, 'up: saved as due now (a restart brings it straight back)');
+  // Killed at 10 s: back at 10 s + 2 h, not before; its warning warnMinutes before.
+  const huge: Attacker = { cls: 'stick', level: 20, points: { STR: 100_000 } };
+  let killedAt = art.riseMs + 1000;
+  for (let i = 0; i < 50; i++) {
+    const r = room.attack('huge', at(3, 0), huge, boss.id, killedAt);
+    if (r.ok && r.hits[0].dead) break;
+    killedAt += 1000;
+  }
+  assert.equal(room.golemState(killedAt + 1)?.state ?? 'gone', 'gone');
+  assert.equal(room.golemPlan(killedAt)!.nextRise, killedAt + H2);
+  assert.equal(saved.at(-1), killedAt + H2);
+  room.flush();
+  const warn = room.tick(killedAt + H2 - boss.warnMinutes * 60_000);
+  assert.ok(warn.some((e) => e.t === 'system' && /stirring/.test(e.line.text)), 'the warning');
+  room.tick(killedAt + H2 - 1);
+  assert.equal(room.golemState(killedAt + H2 - 1), null, 'not yet');
+  room.tick(killedAt + H2);
+  assert.equal(room.golemState(killedAt + H2)!.state, 'rising');
+  // Left alone 30 min: it sinks back; 2 h after it's gone, up again.
+  const up = killedAt + H2 + art.riseMs;
+  room.tick(up);
+  const sinkAt = up + 30 * 60_000;
+  room.tick(sinkAt);
+  assert.equal(room.golemState(sinkAt)!.state, 'sinking');
+  room.tick(sinkAt + art.riseMs);
+  assert.equal(room.golemPlan(sinkAt + art.riseMs)!.nextRise, sinkAt + art.riseMs + H2);
+  // A restart: the kept time is picked up (a past one: it rises at once).
+  const again = new MobRoom(map, lcg(7), {}, { shapes: {} }, kinds, art);
+  again.golemSchedule(5_000);
+  again.tick(4_999);
+  assert.equal(again.golemState(4_999), null);
+  again.tick(5_000);
+  assert.equal(again.golemState(5_000)!.state, 'rising');
 });
 
 test('its HP grows with the players in the Slums: the mob table\'s × 1.5 ^ players (stats.json hpPerPlayer), keeping its share as they come and go', () => {
@@ -340,7 +385,7 @@ test('it sinks after 30 minutes untouched, never mid-fight', () => {
   assert.equal(after.find((x) => x.e.t === 'golem' && x.e.change === 'sink')!.at, 75 * 60_000);
 });
 
-test('at 0 it dies: a line names everyone who hit it in that fight, its Adds go, it can\'t be hit, and the next even hour it rises again', () => {
+test('at 0 it dies: a line names everyone who hit it in that fight, its Adds go, it can\'t be hit, and 2 hours later it rises again', () => {
   assert.equal(downLine(['Mara', 'Bob', 'Lito']), 'Mara, Bob and Lito brought down the Scrapheap Golem!');
   assert.equal(downLine(['Mara', 'Bob']), 'Mara and Bob brought down the Scrapheap Golem!');
   assert.equal(downLine(['Mara']), 'Mara brought down the Scrapheap Golem!');
@@ -360,8 +405,9 @@ test('at 0 it dies: a line names everyone who hit it in that fight, its Adds go,
   assert.ok(host.dropped >= 1 && evs.some((e) => e.t === 'mob-remove'));
   assert.equal(golem.hit('a', 'Mara', 20, t0 + 3400), null);
   assert.equal(golem.state(t0 + 3400), null);
-  const next = run(golem, t0 + 3500, t0 + 2 * HOUR);
-  assert.equal(next.find((x) => x.e.t === 'golem' && x.e.change === 'rise')!.at, t0 + 2 * HOUR);
+  const next = run(golem, t0 + 3500, t0 + 3300 + 2 * HOUR + 500);
+  const back = next.find((x) => x.e.t === 'golem' && x.e.change === 'rise')!.at;
+  assert.ok(back >= t0 + 3300 + 2 * HOUR && back <= t0 + 3300 + 2 * HOUR + 250, `${back - t0}`);
 });
 
 test('its XP goes to everyone who did at least 5% of its HP in the fight (stats.json xpTo), the killer or not', () => {
