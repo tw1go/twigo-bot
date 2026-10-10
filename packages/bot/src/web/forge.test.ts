@@ -26,7 +26,7 @@ import {
   rollGear,
 } from '@mikazuki/shared';
 import { loadItemData } from './stats-data.js';
-import { combine, disassemble, embed, enhance, forge, parseForgeAction, repair } from './forge.js';
+import { combine, disassemble, embed, enhance, enhanceFeedLine, forge, parseForgeAction, repair } from './forge.js';
 import { rollAgimatStat } from './loot.js';
 
 // The forge (web/forge.ts, with @mikazuki/shared forge.ts's rules) against the game's real data: enhancing (stones per
@@ -430,4 +430,17 @@ test('agimats are drawn darker the lower their level (stats.json agimats.look): 
   for (let l = 10; l < 100; l += 10) assert.ok(at(l + 10) > at(l), `Lv ${l + 10} brighter than Lv ${l}`);
   assert.equal(at(100), 1);
   assert.equal(at(120), 1, 'never brighter than the art');
+});
+
+test('an enhance to +15 and up tells the town (the system feed): blue to +17, gold to +19, prismatic at +20; none below, nor for broken gear', () => {
+  const sling = { ...newItem(D.stats, gear('weapon-sturdy-slingshot'), 'x1', 1), rarity: 'lightBlue' as const };
+  assert.equal(enhanceFeedLine(D, 'Mara', { ...sling, plus: 14 }), null);
+  const at15 = enhanceFeedLine(D, 'Mara', { ...sling, plus: 15 }, 'DEX');
+  assert.equal(at15?.tone, 'rare');
+  assert.match(at15!.text, /^Mara enhanced their .*Slingshot.* \+15!$/);
+  assert.equal(enhanceFeedLine(D, 'Mara', { ...sling, plus: 18 })?.tone, 'legendary');
+  assert.equal(enhanceFeedLine(D, 'Mara', { ...sling, plus: 20 })?.tone, 'secret');
+  assert.equal(enhanceFeedLine(D, 'Mara', { ...sling, plus: 16, broken: true }), null, 'broken: no');
+  const armor = newItem(D.stats, gear('armor-copper-body'), 'x2', 1);
+  assert.equal(enhanceFeedLine(D, 'Mara', { ...armor, plus: 15 })?.tone, 'rare', 'armor too');
 });

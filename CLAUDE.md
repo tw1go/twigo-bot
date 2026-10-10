@@ -692,7 +692,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   used, luck += its bracket's; from +16 broken, keeps its +, `unequipBroken`), `repair` (a kit of its tier), `embed` (a full
   slot answers `confirm` until `replace`; the old agimat breaks), `disassemble` (bag only; fragments + from slotted gear an
   agimat of its level locked to its slot, `rollAgimatStat` × 3 rare weight for two slots; its agimats go; all or nothing),
-  `combine` (every 10 fragments → a whetstone), and several at once: 'disassemble-many' / 'sell-many' {items} (`many`: each by
+  `combine` (every 10 fragments → a whetstone); a success at +15 and up (`enhanceFeedLine`, any gear, from the weapon aura's first tier) is a system feed line for the whole town and Discord's town log (kind 'forge', 🔨; "Mara enhanced their Sturdy Slingshot +15!", coloured by the aura's tier: blue 'rare', gold 'legendary', prismatic 'secret'; the dev town's /__forge too; tested), and several at once: 'disassemble-many' / 'sell-many' {items} (`many`: each by
   the one-item rules on a copy, every one or none, the refusal names the item; one message adding up what came back; tested).
   The bag's Combat tab multi-selects (Select, or Ctrl/⌘/Shift-click; Select all gear) → Disassemble N / Sell N with
   `confirmDisassembleMany` / `confirmSellMany` (every item named, fragments added up, agimats coming back, what's lost).

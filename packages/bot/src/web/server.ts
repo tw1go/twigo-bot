@@ -39,7 +39,8 @@ import { arenaBets, refundHeldBets } from './town-arena-bets.js';
 import { kowen } from '../kowens.js';
 import { filterText, kickedUntil, mutedUntil } from './town-mod.js';
 import { getOutfit, parseOutfit, saveOutfit } from './outfit.js';
-import { parseForgeAction } from './forge.js';
+import { enhanceFeedLine, parseForgeAction } from './forge.js';
+import { loadItemData } from './stats-data.js';
 import { refundTicketFor, warrenTicketsOf, useTicketFor, adventureOf, combatOf, fighterOf, forgeFor, dropItemFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townEquip, townPoints, townQuest, townSkills, trainingArmorFor, questRewardsFor, questPiecesFor, questKillFor } from './adventure.js';
 import { renameWithCard } from '../items/rename-card.js';
 import { changeClassWithTicket } from '../items/class-ticket.js';
@@ -654,6 +655,13 @@ export function startWebServer(client: Client): void {
             town?.kit(userId, k.cls, k.weapon, k.weaponPlus); // the weapon's aura for everyone, their gear's stats in fights
           }
           if (reply.outcome !== 'fail') console.log(`[forge] ${userId}: ${action.action} ${reply.outcome}: ${reply.message}`);
+          // +15 and up (the aura's tiers): the whole town hears of it, Discord's town log too.
+          if (reply.outcome === 'success' && reply.item) {
+            const D = loadItemData();
+            const cls = kitOf(userId).cls;
+            const line = enhanceFeedLine(D, getNickname(userId) ?? 'Someone', reply.item, cls ? (D.stats.classes[cls]?.main ?? null) : null);
+            if (line) feed('forge', line.text, line.tone, { userId });
+          }
         }
         return send(res, 200, JSON.stringify(reply));
       }
