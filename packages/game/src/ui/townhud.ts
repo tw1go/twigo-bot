@@ -147,12 +147,18 @@ export function mountTownHud(o: TownHudOptions): void {
   const who = el('span', 'th-who');
   const level = el('span', 'th-level');
   const lv = el('span', 'th-lv');
-  const cp = el('span', 'th-cp');
+  // Your combat rating in a tab hanging under the profile box (no top edge, over the box's bottom edge: they read as one).
+  const cp = el('div', 'th-cp-tab');
+  const cpValue = el('b', 'th-cp-value');
+  cp.append(el('span', 'th-cp-label', 'CP'), cpValue);
   cp.hidden = true;
   cp.title = 'Combat rating: one number from your ATK, crits, DEF, HP and MP, buffs included';
+  cp.setAttribute('role', 'status');
   setRating = (n) => {
     cp.hidden = n === null;
-    if (n !== null) cp.textContent = `CP ${n.toLocaleString()}`;
+    if (n === null) return;
+    cpValue.textContent = n.toLocaleString();
+    cp.setAttribute('aria-label', `Combat rating ${cpValue.textContent}`);
   };
   const bars = el('span', 'th-bars');
   const xpBar = el('span', 'th-xp');
@@ -179,7 +185,7 @@ export function mountTownHud(o: TownHudOptions): void {
     hpBar.setAttribute('aria-label', hpBar.title);
     mpBar.setAttribute('aria-label', mpBar.title);
   };
-  level.append(lv, cp, bars, xpText);
+  level.append(lv, bars, xpText);
   level.hidden = true;
   setLevel = (p) => {
     level.hidden = !p;
@@ -263,7 +269,10 @@ export function mountTownHud(o: TownHudOptions): void {
   // Top left: the profile with the Kowens and shovel counters beside it; top right: the jackpot counter, the tutorial, News and Settings.
   const left = el('div', 'th-left');
   const row = el('div', 'th-row');
-  row.append(profile);
+  // The profile and its CP tab together (the counters beside them, or under them on phones).
+  const card = el('div', 'th-card');
+  card.append(profile, cp);
+  row.append(card);
   left.append(row);
   // Top right: the jackpot counter and the minimap side by side (ui/minimap.ts fills the slot), the tutorial, News and Settings under
   // the map, and under them the buffs on you (ui/buff-tray.ts).
