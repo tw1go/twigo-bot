@@ -496,6 +496,12 @@ export class WorldObjects {
   setLamps(on: boolean, time?: number): void {
     const onKey = this.M.props['lamp-on'].file;
     const offKey = this.M.props['lamp-off'].file;
+    // (On a streamed map a lamp far away is dropped with its region: it and its glow leave the list; back near, it's new.)
+    for (let i = this.lamps.length - 1; i >= 0; i--) {
+      if (this.lamps[i].sprite.scene) continue;
+      this.lamps[i].glow.destroy();
+      this.lamps.splice(i, 1);
+    }
     for (const l of this.lamps) {
       const f = l.faulty;
       if (f) {
