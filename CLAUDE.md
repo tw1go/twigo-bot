@@ -154,6 +154,15 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   itself on the first frame; mob art loads zone by zone within 30 tiles (`Mobs.near`, twice a second; mobs the server tells
   of before are kept in `unmade` and made where it has them; the golem's Adds load their kind's art), the golem's within
   45 of its pit (`bossNear`). Measured with two headless browsers: a player arriving costs the others no frame over 17 ms.
+  Arriving waits behind the loading screen rather than show a stuttering town: the Slums' mob and golem art loads with the
+  area (assets/queue.ts queueSlums; `near` / loadBoss only for what's missing), and once the scene's own loading screen is
+  done the loading cover (`ui/loading-cover.ts`, the same moon, bar and lines as a page layer; body.title-on) stays over
+  the town until it settles (TownScene `settle`): the world round you streamed in, the server's first word (welcome; on a
+  battle map its mobs; SERVER_WAIT_MS 6 s at most), every other player's look, resting weapon and combat poses built
+  (`world/settle.ts` `settleOn`: others.ts per player, battle-art per build), then SMOOTH_FRAMES (20) frames under 40 ms;
+  SETTLE_MAX_MS (15 s) at most. Then `reveal`: the title card and the opening zoom, and whatever waited (`afterReveal`: the
+  rewards pop-ups, quest toasts, a new house rising). The cover's `data-waiting` says what it still waits for. Measured cold at
+  20 Mbps in a packed build: no frame over 50 ms once it lifts (it used to stutter 100–700 ms through the opening zoom).
 - Characters are paper dolls composited per outfit (`characters/doll.ts`), saved per account (`PUT /outfit`).
   The look is picked in the creator (free, once), then changed at the Parlor (3 Kowens; the wardrobe button is gone).
 - Numbers are Jersey 10 (`assets/font/Jersey_10`, OFL): an `@font-face 'Mk Numbers'` limited to the digits (unicode-range

@@ -1,4 +1,5 @@
 import type Phaser from 'phaser';
+import { settleOn } from '../world/settle';
 import type { CharacterDefs, ClassArt, ClassesDefs, Dir } from '../assets/types';
 import { type Outfit, sheetKey } from './doll';
 import { CELL, drawPose, lookImages, loadImages, poseFiles } from './kit-art';
@@ -32,7 +33,7 @@ export function battleSheets(scene: Phaser.Scene, C: CharacterDefs, K: ClassesDe
   let p = built.get(id);
   if (!p) {
     const files = loadImages(scene, [...poseFiles(art), ...lookImages(C, o, C.directions)]);
-    p = queue.then(() => files).then(() => build(scene, C, K, art, cls, o, id));
+    p = settleOn(queue.then(() => files).then(() => build(scene, C, K, art, cls, o, id)), `poses ${id}`); // (an arrival waits for it)
     queue = p.catch(() => null);
     built.set(id, p);
   }

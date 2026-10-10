@@ -1,4 +1,5 @@
 import type Phaser from 'phaser';
+import { settleOn } from './settle';
 import type { ArenaServerMessage, AuraTier, TownPlayer, TownServerMessage } from '@mikazuki/shared';
 import type { ClassArt, Manifest } from '../assets/types';
 import { Character, dirForStep } from '../characters/character';
@@ -237,7 +238,8 @@ export class OtherPlayers {
     // Unknown items (an older or newer wardrobe) fall back to a look seeded by their id.
     const look = sanitize(C, p.outfit, randomOutfit(C, rng(parseInt(p.id.slice(0, 8), 16) || 1)));
     this.looks.set(p.id, look);
-    void loadOutfit(this.scene, C, look).then(() => {
+    // (Their look, resting weapon and combat poses: one job an arrival's loading screen waits for.)
+    void settleOn(loadOutfit(this.scene, C, look).then(() => {
       if (this.all.get(p.id) !== o) return; // left while loading
       const s = o.state;
       const char = new Character(this.scene, this.M, look, { col: s.col, row: s.row });
@@ -256,8 +258,8 @@ export class OtherPlayers {
       for (const t of char.tintables) this.onSpawn(t);
       char.setAura(this.auraFor(s.weaponPlus));
       o.char = char;
-      void this.dressRest(o);
-    });
+      return this.dressRest(o);
+    }), `player ${p.nickname}`);
   }
 
   /** Their resting weapon (none without a weapon), unless they changed it again meanwhile. */
