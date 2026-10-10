@@ -946,7 +946,8 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         if (now - (c.buffsOfAt ?? 0) < 400 || typeof m.id !== 'string') return;
         c.buffsOfAt = now;
         const of = town.memberOf(m.id);
-        return send(c, { t: 'buffs-of', id: m.id, buffs: of && buffs ? buffs.view(of, now) : [] });
+        const them = of ? conns.get(of) : undefined;
+        return send(c, { t: 'buffs-of', id: m.id, buffs: of && buffs ? buffs.view(of, now) : [], ...(them && rules ? { cp: rules.rating(fighterOf(them)) } : {}) });
       }
       case 'inspect': {
         // Someone's worn gear and stats (the player menu's Info): anyone in town, a few a second at most.
@@ -958,7 +959,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         if (!them) return send(c, { t: 'inspect', id: m.id, gone: true });
         const equipped = opts.items ? opts.items.state(them.userId).equipped : {};
         const d = rules?.fighter(fighterOf(them));
-        const stats = d ? { power: d.power, def: d.def, hp: d.hp, mp: d.mp, STR: d.STR, DEX: d.DEX, INT: d.INT, critRate: d.critRate } : null;
+        const stats = d ? { cp: rules!.rating(fighterOf(them)), power: d.power, def: d.def, hp: d.hp, mp: d.mp, STR: d.STR, DEX: d.DEX, INT: d.INT, critRate: d.critRate } : null;
         return send(c, { t: 'inspect', id: m.id, cls: them.player.cls ?? null, level: d?.level ?? them.player.level ?? 1, equipped, stats });
       }
       case 'trade-ask': {

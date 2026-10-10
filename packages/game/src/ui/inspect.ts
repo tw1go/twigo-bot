@@ -232,7 +232,10 @@ export class InspectWindow {
     left.append(row('ATK', String(Math.round(st.power))), row('DEF', String(Math.round(st.def))), row('HP', String(Math.round(st.hp))), row('MP', String(Math.round(st.mp))));
     const right = el('div', 'eq-stats-col');
     right.append(row('STR', String(st.STR)), row('DEX', String(st.DEX)), row('INT', String(st.INT)), row('Crit', `${+(st.critRate * 100).toFixed(1)}%`));
-    this.stats.replaceChildren(left, right);
+    // Their combat rating on top (the server's, buffs and all), as in your own stats box.
+    const cp = el('div', 'eq-cp');
+    cp.append(el('span', 'eq-cp-label', 'Combat rating'), el('b', 'eq-cp-value', st.cp.toLocaleString()));
+    this.stats.replaceChildren(cp, left, right);
   }
 }
 

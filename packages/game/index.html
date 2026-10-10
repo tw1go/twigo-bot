@@ -206,6 +206,7 @@
       #town-hud .th-level { display: flex; align-items: center; gap: 6px; font-size: calc(14px * var(--text)); line-height: 1; color: #A9B1D6; }
       #town-hud .th-level[hidden] { display: none; }
       #town-hud .th-lv { font-size: calc(16px * var(--text)); font-weight: 600; color: #fff; white-space: nowrap; }
+      #town-hud .th-cp { margin-left: 6px; font-size: calc(13px * var(--text)); font-weight: 600; color: #F8BF27; white-space: nowrap; }
       #town-hud .th-bars { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 76px; }
       #town-hud .th-xp { display: block; height: 4px; padding: 1px; background: #1E1B3A; box-shadow: 0 0 0 1px #4C1D95; }
       #town-hud .th-xp-fill { display: block; height: 100%; background: #A3E635; transition: width 0.4s ease-out; }
@@ -778,6 +779,7 @@
       #target .tg-box:hover .tg-caret, #target .tg-box[aria-expanded='true'] .tg-caret { color: #F8BF27; }
       #target .tg-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       #target .tg-lv { margin-left: 8px; font-size: 0.8em; font-weight: 400; color: #FCDA4A; }
+      #target .tg-cp { margin-left: 8px; font-size: 0.8em; font-weight: 400; color: #F8BF27; }
       #target .tg-caret { font-size: calc(12px * var(--text)); color: #A78BFA; }
       #target .tg-buffs { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; margin-top: 4px; } /* their buffs (TargetBox.setBuffs) */
       #target .tg-buffs[hidden], #target .tg-buff-tip[hidden] { display: none; }
@@ -1768,6 +1770,10 @@
       :is(#equipment, #inspect) .eq-badge { width: 32px; height: 32px; image-rendering: pixelated; } /* the 16x16 badge at 2x */
       :is(#equipment, #inspect) .eq-noclass { color: #7A8099; font-weight: 600; }
       :is(#equipment, #inspect) .eq-stats { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; padding: 8px 12px; border: 2px solid #3D4256; background: rgba(10, 12, 24, 0.5); }
+      /* The combat rating (CP) on top of the stats box, across both columns. */
+      :is(#equipment, #inspect) .eq-cp { grid-column: 1 / -1; display: flex; align-items: baseline; justify-content: space-between; margin: 0 0 6px; padding-bottom: 6px; border-bottom: 1px solid #3D4256; }
+      :is(#equipment, #inspect) .eq-cp-label { color: #A9B1D6; font-size: calc(12px * var(--text)); letter-spacing: 0.06em; text-transform: uppercase; }
+      :is(#equipment, #inspect) .eq-cp-value { color: #F8BF27; font-size: calc(18px * var(--text)); }
       :is(#equipment, #inspect) .eq-stat { display: flex; justify-content: space-between; align-items: baseline; }
       :is(#equipment, #inspect) .eq-stat-label { font-size: calc(13px * var(--text)); color: #7A8099; }
       :is(#equipment, #inspect) .eq-stat-value { font: calc(19px * var(--text))/1.15 'Mk Numbers', var(--ui-font); color: #fff; } /* Jersey 10 */

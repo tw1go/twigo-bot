@@ -94,6 +94,9 @@ export const setHudClass = (cls: { name: string; badge: string } | null) => setC
 
 /** Your level and XP under the name (none: hidden, e.g. a guest). */
 export const setHudLevel = (p: CharacterProgress | null) => setLevel(p);
+let setRating: (cp: number | null) => void = () => {};
+/** Your combat rating beside your level ("CP 1,284"; ui/rating.ts); null hides it. */
+export const setHudRating = (cp: number | null) => setRating(cp);
 
 /** Your HP and MP under the XP bar (the town's `vitals`; none: hidden). */
 export const setHudVitals = (v: HudVitals | null) => setVitals(v);
@@ -144,6 +147,13 @@ export function mountTownHud(o: TownHudOptions): void {
   const who = el('span', 'th-who');
   const level = el('span', 'th-level');
   const lv = el('span', 'th-lv');
+  const cp = el('span', 'th-cp');
+  cp.hidden = true;
+  cp.title = 'Combat rating: one number from your ATK, crits, DEF, HP and MP, buffs included';
+  setRating = (n) => {
+    cp.hidden = n === null;
+    if (n !== null) cp.textContent = `CP ${n.toLocaleString()}`;
+  };
   const bars = el('span', 'th-bars');
   const xpBar = el('span', 'th-xp');
   const xpFill = el('span', 'th-xp-fill');
@@ -169,7 +179,7 @@ export function mountTownHud(o: TownHudOptions): void {
     hpBar.setAttribute('aria-label', hpBar.title);
     mpBar.setAttribute('aria-label', mpBar.title);
   };
-  level.append(lv, bars, xpText);
+  level.append(lv, cp, bars, xpText);
   level.hidden = true;
   setLevel = (p) => {
     level.hidden = !p;

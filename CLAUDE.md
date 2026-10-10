@@ -115,7 +115,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
 Data added in this repo that the owner's `mikazuki-assets` copy doesn't have yet; each says so in a `note` beside it
 where JSON allows. When you add one, add it here (and tell the owner, who copies them back):
 
-- `classes/stats.json`: the golem's mob table `skillMult.junkDrop` / `skillMult.shockwave`, `rarity.nameColour[r].colour`, `rarity.dropPlus`, `affixes.names`,
+- `classes/stats.json`: `combatRating` (the CP weights), the golem's mob table `skillMult.junkDrop` / `skillMult.shockwave`, `rarity.nameColour[r].colour`, `rarity.dropPlus`, `affixes.names`,
   `currencies.kusingPerMobRange`, `skills.mpCost`, `skills.cooldownByUnlock`, `skills.buffs` (numbers) with
   `rules.allyBuffsReachParty`, `rules.stack`, `agimats.onlyIn`, `agimats.rarePerItem`, `agimats.sellKusing`, `agimats.look`, `inventory.agimatSlots`,
   `potions.separateCooldowns`, `trainingGear.noSell` / `sellKusing`, `mobBehaviour.targetPriority`,
@@ -626,7 +626,11 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   (`skillTier`, `skillBasePct`, `skillPct`, `skillLevelCap`, `skillLevelBonus`, `classSkills` (damage + mobility in
   unlock order, keyed '0'…'6' / move id), `skillLevelOf`, `damageSkillLevels`, `moveUnlock`, `baseCooldown`,
   `skillCooldown`), damage (`levelGap`, `hitDamage`,
-  `rollHit`), `mobStats`, `mobXp` (low-mob penalty), `mobTone`. classes.json main/second stats match stats.json (tested).
+  `rollHit`), `mobStats`, `mobXp` (low-mob penalty), `mobTone`, `combatRating` (CP: offense = Power × (1 + crit rate ×
+  (crit damage − 1)) × (1 + amp) × (1 + attack rate), toughness = HP × (100 + DEF) / 100 / (1 − DEF rate), each by stats.json
+  `combatRating`'s weight, + MP; tested). Shown: the HUD beside your level and the stats box's top (`ui/rating.ts` myStats /
+  myRating, buffs in), the player box beside their level (`buffs-of`'s `cp`, the server's with their buffs:
+  `MobRoom.rating`) and Info (`InspectStats.cp`). classes.json main/second stats match stats.json (tested).
   Gear (both sides use them): `wearCheck` (canEquip on a character's base stats), `placesFor`, `trainingGear` (a class's
   training weapon + its gear type's armor). Item name colours are stats.json `rarity.nameColour[r].colour` (brown
   #A0703F … darkOrange #F97316; `setRarityColours` in `ui/item-art.ts`) and affix names `affixes.names` (the guide's

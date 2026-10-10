@@ -11,7 +11,8 @@ import { LOADING_LINES } from '../ui/loading-lines';
 import { TownLink } from '../net/town';
 import { showElsewhere, showKicked } from '../ui/elsewhere';
 import { hideRevive, showRevive } from '../ui/revive';
-import { mountTownHud, setHudAvatar, setHudClass, setHudLevel, setHudName, setHudVitals } from '../ui/townhud';
+import { mountTownHud, setHudAvatar, setHudClass, setHudLevel, setHudName, setHudRating, setHudVitals } from '../ui/townhud';
+import { myRating } from '../ui/rating';
 import { setGolemTimer } from '../ui/golem-timer';
 import { showParlor } from '../ui/parlor';
 import { type HouseArt, composeHouse, houseFiles, houseStyles, tidyLook } from '../houses/art';
@@ -946,6 +947,7 @@ export class TownScene extends Phaser.Scene {
         const c = classInfo(s.cls);
         setHudClass(c && icons ? { name: c.name, badge: asset(icons.small.replace('{class}', c.id)) } : null);
         setHudLevel(s.progress);
+        setHudRating(myRating()); // (gear, points, a level: your CP)
       });
     });
   }
@@ -2034,6 +2036,7 @@ export class TownScene extends Phaser.Scene {
       // cooldown), a heal's green numbers, and a refused cast (why, like a refused attack).
       if (m.t === 'buffs-of') {
         const now = Date.now();
+        this.target?.setRating(m.id, m.cp);
         return this.target?.setBuffs(m.id, m.buffs.map((b) => ({
           name: b.name,
           icon: this.skillIcon(b.cls, b.name),
@@ -2043,6 +2046,7 @@ export class TownScene extends Phaser.Scene {
       }
       if (m.t === 'buffs') {
         setMyBuffs(m.buffs);
+        setHudRating(myRating()); // (your CP with them)
         if (!this.buffDemo) {
           // (Buffs stack. Under the old rule, each stat counted only from its strongest buff: one outdone on every stat it
           // gives was faded, naming who wins.)
