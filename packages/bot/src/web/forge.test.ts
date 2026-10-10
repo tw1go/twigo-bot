@@ -6,6 +6,7 @@ import {
   type ForgeHolder,
   type Item,
   addToBag,
+  agimatBrightness,
   auraFor,
   countOf,
   disassemblyYield,
@@ -419,4 +420,14 @@ test('many at once (the bag\'s multi-select): disassembly and training gear sale
   assert.deepEqual(parseForgeAction({ action: 'sell-many', items: ['a', 'b'] }), { action: 'sell-many', items: ['a', 'b'] });
   assert.equal(parseForgeAction({ action: 'disassemble-many', items: [] }), null);
   assert.equal(parseForgeAction({ action: 'disassemble-many', items: 'a' }), null);
+});
+
+test('agimats are drawn darker the lower their level (stats.json agimats.look): Lv 10 the darkest, brighter each level, the art\'s own at Lv 100', () => {
+  const at = (level: number) => agimatBrightness(D.stats, level);
+  assert.equal(at(10), 0.55);
+  assert.equal(at(1), 0.55, 'never darker than the darkest');
+  assert.ok(at(20) > 0.69 && at(20) < 0.71, `${at(20)}: Lv 20 already clearly brighter`);
+  for (let l = 10; l < 100; l += 10) assert.ok(at(l + 10) > at(l), `Lv ${l + 10} brighter than Lv ${l}`);
+  assert.equal(at(100), 1);
+  assert.equal(at(120), 1, 'never brighter than the art');
 });

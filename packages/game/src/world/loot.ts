@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { type ItemData, type TownLoot, LOOT_REACH, PLAIN_COLOUR, isGearDef, itemAura, itemName, nameColour, rarityColour } from '@mikazuki/shared';
+import { type ItemData, type TownLoot, LOOT_REACH, PLAIN_COLOUR, agimatBrightness, isGearDef, itemAura, itemName, nameColour, rarityColour } from '@mikazuki/shared';
 import { type AuraTrace, WeaponAura, traceAura } from '../fx/weaponAura';
 import { loadImages } from '../characters/kit-art';
 import { CHARACTER_BIAS, HEIGHT_DEPTH, LABEL_DEPTH } from './depth';
@@ -212,6 +212,11 @@ export class LootLayer {
     const feet = (l.col + l.row + 1) * 8 + CHARACTER_BIAS + ground * HEIGHT_DEPTH - 0.4; // on the ground: under whoever stands there
     const shadow = this.scene.add.ellipse(x, y, 12 * ICON_SCALE, 4 * ICON_SCALE, 0x0b0a1a, 0.45);
     const icon = this.scene.add.image(x, y - LIFT, key, frame === undefined ? undefined : String(frame)).setOrigin(0.5, 0.5).setScale(ICON_SCALE);
+    // An agimat as dark as its level makes it (stats.json agimats.look), as in the bag.
+    if (l.item && D && !isGearDef(def) && def?.kind === 'agimat') {
+      const v = Math.round(255 * agimatBrightness(D.stats, l.item.level));
+      if (v < 255) icon.setTint((v << 16) | (v << 8) | v);
+    }
     const depth = characterDepth(this.objects, l.col, l.row, feet, icon.getBounds());
     shadow.setDepth(depth - 0.01);
     icon.setDepth(depth);

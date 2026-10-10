@@ -116,7 +116,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
 
 - `classes/stats.json`: `rarity.nameColour[r].colour`, `rarity.dropPlus`, `affixes.names`,
   `currencies.kusingPerMobRange`, `skills.mpCost`, `skills.cooldownByUnlock`, `skills.buffs` (numbers) with
-  `rules.allyBuffsReachParty`, `agimats.onlyIn`, `agimats.rarePerItem`, `agimats.sellKusing`, `inventory.agimatSlots`,
+  `rules.allyBuffsReachParty`, `agimats.onlyIn`, `agimats.rarePerItem`, `agimats.sellKusing`, `agimats.look`, `inventory.agimatSlots`,
   `potions.separateCooldowns`, `trainingGear.noSell` / `sellKusing`, `mobBehaviour.targetPriority`,
   `mobBehaviour.golem.hpPerPlayer`.
 - `classes/leveling.json`: `miniBoss.questDrop`.
@@ -863,7 +863,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   the count, what the sellable ones bring and Sell selected (`POST /town/sell { items: [{ id, quantity }] }`,
   `sellManyInTown`); tabs All / Dug up / Combat (the combat bag: Items, above) / Agimats (their own pocket: stats.json
   inventory.agimatSlots 40, a repo addition; shared `pocketOf` / `pocketSlots` / `pocketUsed`, `bagRoom` counts each
-  pocket on its own, so agimats never fill the bag's 40 and gear never theirs; 0 = they share Combat's; tested) / Misc; item slots bordered in their
+  pocket on its own, so agimats never fill the bag's 40 and gear never theirs; 0 = they share Combat's; tested; listed
+  highest level first, then by stat) / Misc; an agimat's picture is darker the lower its level everywhere (bag, forge,
+  tooltips' slots, trade, the ground: shared `agimatBrightness`, stats.json agimats.look, a repo addition: 0.55 at Lv 10
+  up to the art's own at Lv 100, fastest at the start; CSS brightness, a grey tint on the ground; tested); item slots bordered in their
   rarity's colour (gear you can't wear, another class's or above your stats: a red slot, `iv-unusable` via `cantWear`); B toggles it; Kowens and Kusing at the bottom; Combat tab: click a whetstone / Repair Kit / agimat for the forge popup, right-click gear (Disassemble) or fragments (Combine): Forge, above. Bot `GET /town/inventory`, `POST /town/sell`, `POST /town/flex`
   (`web/town-bag.ts`; flex shares `flexEmbed` and the cooldown with `/flex`). Dev: a pretend bag (`&slots=18`).
 - Casino: left click the casino → `TownScene.enterCasino` locks the town (body.town-locked: no input; bag, player
