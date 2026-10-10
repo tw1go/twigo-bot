@@ -650,6 +650,23 @@
       #town-hud .th-race .rc-line { font-size: calc(15px * var(--text)); white-space: nowrap; }
       #town-hud .th-race[hidden] { display: none; }
       #town-hud .th-left .th-race { margin-top: 12px; }
+      /* The golem timer (ui/golem-timer.ts, the Slums only): rust while it sleeps, red and pulsing while it's awake. */
+      /* (A div, not a button like the others: fit-content keeps it as wide as its words on phones too.) */
+      #town-hud .th-golem { grid-template-columns: auto; width: fit-content; padding-top: 10px; border-color: #9A3412; }
+      /* Its head (manifest ui.golemHead, 56 px at 1×) on the left, standing on the box's bottom edge. */
+      #town-hud .th-golem.gt-headed { padding-left: 62px; }
+      #town-hud .gt-head { position: absolute; left: 4px; bottom: 0; width: 56px; height: 56px; image-rendering: pixelated; }
+      #town-hud .th-golem .jt-label { color: #FDBA74; }
+      #town-hud .th-golem .gt-line { font-size: calc(15px * var(--text)); white-space: nowrap; }
+      #town-hud .th-golem.gt-awake { border-color: #DC2626; animation: gt-pulse 1.2s ease-in-out infinite; }
+      #town-hud .th-golem.gt-awake .gt-line { color: #FCA5A5; }
+      @keyframes gt-pulse { 50% { box-shadow: 0 0 10px 2px rgba(220, 38, 38, 0.55); } }
+      #town-hud .th-golem[hidden] { display: none; }
+      #town-hud .th-left .th-golem { margin-top: 12px; }
+      /* Phones: the jackpot counter, race box and golem timer in one column (ui/townhud.ts), each as wide as the widest. */
+      #town-hud .th-events { display: grid; width: fit-content; }
+      #town-hud .th-events > .th-jackpot { width: auto; justify-self: stretch; justify-content: start; }
+      @media (prefers-reduced-motion: reduce) { #town-hud .th-golem.gt-awake { animation: none; } }
       #reward .rw-card:has(.rb-body) { width: min(560px, calc(100vw - 32px)); }
       #reward .rb-body { margin-bottom: 12px; }
       #reward .rb-status { margin: 0 0 10px; font-size: calc(14px * var(--text)); color: #3D4256; }

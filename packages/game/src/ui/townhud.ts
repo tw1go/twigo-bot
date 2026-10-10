@@ -3,6 +3,7 @@ import type { CharacterProgress, MeDig, MeResponse, PresenceStatus, PreregStatus
 import { renderPrereg } from '../hud';
 import { fakeLogin, loadMe } from '../session';
 import { playSound } from '../audio/sound';
+import { golemTimer } from './golem-timer';
 import { jackpotTimer } from './jackpot-timer';
 import { raceBox } from './race-box';
 import { hasUnread, loadNews, showNews } from './news';
@@ -35,6 +36,8 @@ export interface TownHudOptions {
   guide: string | null;
   /** The jackpot counter's icon (manifest ui.jackpotIcon); the Kowen coin without it. */
   ticket: string | null;
+  /** The golem timer's picture (manifest ui.golemHead); none: just its words. */
+  golemHead: string | null;
   /** The quest button's scroll (manifest ui.questIcon); its clicks and dot are ui/quests.ts's. */
   quest: string | null;
 }
@@ -278,12 +281,19 @@ export function mountTownHud(o: TownHudOptions): void {
     const timer = jackpotTimer(icon);
     // The Mosang race's box (only while a race is on) goes beside it: left of it on wide screens, under it on phones.
     const race = raceBox();
+    // The golem timer (the Slums only: hidden until the town says when its golem rises) the same way, beside them.
+    const golem = golemTimer(o.golemHead);
+    // On phones the three stack in one column under the Kowens and shovels, all as wide as the widest.
+    const stack = el('div', 'th-events');
     const phone = matchMedia('(max-width: 560px), (max-height: 500px)');
     const place = () => {
-      if (phone.matches) left.insertBefore(timer, row.nextSibling);
-      else top.prepend(timer);
-      if (phone.matches) left.insertBefore(race, timer.nextSibling);
-      else top.prepend(race);
+      if (phone.matches) {
+        stack.append(timer, race, golem);
+        left.insertBefore(stack, row.nextSibling);
+      } else {
+        top.prepend(golem, race, timer);
+        stack.remove();
+      }
     };
     phone.addEventListener('change', place);
     place();

@@ -390,8 +390,9 @@ export type TownServerMessage =
   /** Someone emoted (not sent back to the one who did it: they show it right away). */
   | { t: 'emote'; id: string; emote: TownEmote }
   /** Every mob in your room as you arrive (the Slums; the same for everyone: bot web/town-mobs.ts), the golem's Adds
-   *  included (with their `kind`), and the field boss if it's up (null: not). */
-  | { t: 'mobs'; mobs: TownMob[]; golem?: TownGolem | null }
+   *  included (with their `kind`), and the field boss if it's up (null: not). `riseIn`: ms until the field boss next
+   *  rises on its own (none where there's no golem; ms from now, so a player's clock being off doesn't matter). */
+  | { t: 'mobs'; mobs: TownMob[]; golem?: TownGolem | null; riseIn?: number }
   /** Mobs that weren't there (the golem's Adds, as they crawl out), and mobs that are gone for good (the Adds when the
    *  fight ends). */
   | { t: 'mob-add'; mobs: TownMob[] }
@@ -399,8 +400,9 @@ export type TownServerMessage =
   /** A mob turns where it stands (the golem, slowly: a quarter turn at a time). */
   | { t: 'mob-face'; id: string; dir: TownMobFacing }
   /** The golem changed (its whole state each time: HP, enraged, where it is). 'call': the Junk crawls out at `spots`
-   *  (fx-golem-call-junk on each), its Adds arrive as `mob-add` `ms` later. */
-  | { t: 'golem'; change: GolemChange; golem: TownGolem; spots?: [number, number][]; ms?: number }
+   *  (fx-golem-call-junk on each), its Adds arrive as `mob-add` `ms` later. `riseIn`: ms until it next rises on its own
+   *  (the Slums' golem timer). */
+  | { t: 'golem'; change: GolemChange; golem: TownGolem; spots?: [number, number][]; ms?: number; riseIn?: number }
   /** The golem attacks, turned to `dir`, at `target` (a town id): 'slam' lands its fist at `at` (the warning there from
    *  the start, impact + shockwave on mobs.json attackFrame; a rubble ring after it when `enraged`), 'toss' throws at `at`
    *  (the target's tile: the marker from the start, the scrap leaves on tossFrame), 'glare' lights a cone from its tile

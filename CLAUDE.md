@@ -120,6 +120,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `potions.separateCooldowns`, `trainingGear.noSell` / `sellKusing`, `mobBehaviour.targetPriority`,
   `mobBehaviour.golem.hpPerPlayer`.
 - `classes/leveling.json`: `miniBoss.questDrop`.
+- `ui/ui-golem-head.png` (manifest `ui.golemHead`): the golem timer's head, cut from frame 0 of the golem's idle-se
+  sheet at (80,46), 56 × 56; a stand-in until the art folder has its own.
 - `maps/slums.json`: the Golem Pit v3 changes (the art folder's copy still has the old 6×6 pit; see Scrapheap Golem).
 
 ## The web game (`packages/game`)
@@ -464,7 +466,12 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   once dead). ≤ 25% once: 'enrage'. `mobBehaviour.golem.resetAfterSecondsEmpty` (30 s, `GolemArt.resetMs`) with nobody in its fight (pit floor and way in; the knocked out left out): 'reset' (full HP, phases re-armed, Adds
   `mob-remove`d), walks home. 0: 'death' (state 'dead'), Adds removed, the line naming everyone who hit it that fight
   (`downLine`). Every `golem` message carries the whole `TownGolem` (HP, enraged, state, home/leash/radius for the boss
-  bar); arrivals get it in `mobs` (`golem`). The CMS's Field boss tab spawns it live (above). Dev: `/__golem?now=1` (rise now), `/__golem?demo=1&as=Name` (its fight
+  bar); arrivals get it in `mobs` (`golem`). The CMS's Field boss tab spawns it live (above). Golem timer
+  (`ui/golem-timer.ts`, the Slums' HUD beside the jackpot counter; on phones under it, the jackpot counter, race box and
+  it in one column as wide as the widest, `.th-events`): `mobs` and every `golem` message
+  carry `riseIn` (ms to its next rise on its own, from `golemPlan`; ms, so a player's clock being off doesn't matter;
+  tested); the golem's head on its left (manifest ui.golemHead), "Rises in 1h 23m 05s", pulsing in the last
+  `warnMinutes`, "Awake! Go to the pit" while it's up (TownScene `golemTimer`); hidden elsewhere. Dev: `/__golem?now=1` (rise now), `/__golem?demo=1&as=Name` (its fight
   against the nearest player in the room: slam, toss, glare, the Junk at a pretend half, enrage at a pretend quarter,
   death); the page's `?golem=now` / `?golemdemo=1` (dev, the Slums) call them and put you at the pit's front corner.
   In the game (`world/golem.ts` GolemView; a mob of world/mobs.ts via `makeBoss`): its art (52 sheets + fx, ~660 KB

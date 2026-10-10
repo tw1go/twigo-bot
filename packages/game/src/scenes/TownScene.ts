@@ -12,6 +12,7 @@ import { TownLink } from '../net/town';
 import { showElsewhere, showKicked } from '../ui/elsewhere';
 import { hideRevive, showRevive } from '../ui/revive';
 import { mountTownHud, setHudAvatar, setHudClass, setHudLevel, setHudName, setHudVitals } from '../ui/townhud';
+import { setGolemTimer } from '../ui/golem-timer';
 import { showParlor } from '../ui/parlor';
 import { type HouseArt, composeHouse, houseFiles, houseStyles, tidyLook } from '../houses/art';
 import { areaUrl, cameFrom, hoodAction, loadHood, saveHouse } from '../net/hood';
@@ -35,7 +36,7 @@ import { announce } from '../ui/announce';
 import { OnlineList } from '../ui/online';
 import { EMOTE_KEYS, emotePicker } from '../ui/emotes';
 import { actionOf, held, keyLabel, matches } from '../ui/keybinds';
-import type { ArenaServerMessage, ClassInfo, HoodHouse, OutfitData, TitleData, TownClientMessage, TownEmote, TownHoodResponse, TownServerMessage } from '@mikazuki/shared';
+import type { ArenaServerMessage, ClassInfo, HoodHouse, OutfitData, TitleData, TownClientMessage, TownEmote, TownHoodResponse, TownGolem, TownServerMessage } from '@mikazuki/shared';
 import { type BubbleArt, lightBubble } from '../ui/labels';
 import { type Reward, setRewardArt, showReward } from '../ui/reward';
 import { showMovementTutorial } from '../ui/tutorial';
@@ -658,6 +659,7 @@ export class TownScene extends Phaser.Scene {
       megaphone: this.M.ui.newsIcon?.file ? asset(this.M.ui.newsIcon.file) : null,
       guide: this.M.ui.tutorialIcon?.file ? asset(this.M.ui.tutorialIcon.file) : null,
       ticket: this.M.ui.jackpotIcon?.file ? asset(this.M.ui.jackpotIcon.file) : null,
+      golemHead: this.M.ui.golemHead?.file ? asset(this.M.ui.golemHead.file) : null,
       quest: this.M.ui.questIcon?.file ? asset(this.M.ui.questIcon.file) : null,
     });
   }
@@ -1745,13 +1747,17 @@ export class TownScene extends Phaser.Scene {
       }
       if (m.t === 'mobs') {
         this.mobs?.applySnapshot(m.mobs);
+        this.golemTimer(m.riseIn, m.golem ?? null);
         return this.golem?.snapshot(m.golem ?? null);
       }
       if (m.t === 'mob-move') return this.mobs?.hop(m.id, m.path, m.speed);
       if (m.t === 'mob-add') return this.mobs?.add(m.mobs);
       if (m.t === 'mob-remove') return this.mobs?.remove(m.ids);
       if (m.t === 'mob-face') return this.mobs?.face(m.id, m.dir);
-      if (m.t === 'golem') return this.golem?.change(m.change, m.golem, m.spots);
+      if (m.t === 'golem') {
+        this.golemTimer(m.riseIn, m.golem);
+        return this.golem?.change(m.change, m.golem, m.spots);
+      }
       if (m.t === 'golem-attack') return this.golem?.attack(m);
       if (m.t === 'mob-hit') {
         const ids = m.hits.map((h) => h.id);
@@ -3177,6 +3183,14 @@ export class TownScene extends Phaser.Scene {
       drawn: this.culler.visibleCount,
       objects: this.children.list.length,
     };
+  }
+
+  /** The HUD's golem timer (ui/golem-timer.ts), from a `mobs` or `golem` message: awake while it's up (rising, in its
+   *  pit, fighting, walking home), else the time to its next rise. */
+  private golemTimer(riseIn: number | undefined, g: TownGolem | null): void {
+    const boss = this.map.boss;
+    if (!boss || riseIn === undefined) return;
+    setGolemTimer(boss.name, boss.warnMinutes, riseIn, !!g && g.state !== 'sinking' && g.state !== 'dead');
   }
 
   /** Dev (?golem=now, ?golemdemo=1): on its pit floor 6–7 tiles from its middle on the way in's side, facing it (without

@@ -17486,6 +17486,14 @@
       ],
       "note": "the inventory button beside the chat input (opens the bag on the right)"
     },
+    "golemHead": {
+      "file": "ui/ui-golem-head.png",
+      "size": [
+        56,
+        56
+      ],
+      "note": "the Slums' golem timer (ui/golem-timer.ts): the Scrapheap Golem's head and shoulders, cut from frame 0 of mob-scrapheap-golem-idle-se at (80,46); repo-only, a stand-in until the art folder has its own"
+    },
     "tanodBust": {
       "file": "ui/ui-tanod-bust.png",
       "size": [
