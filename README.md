@@ -37,7 +37,9 @@ A Phaser 4 town everyone in the Discord server logs into with Discord: walk arou
 emote, dig at the Mine, gamble at the Casino, play jack en poy at the Arena, buy a house in the Neighbourhood, and use
 the bank, jackpot booth, sari-sari store, Parlor and notice board, all with the same Kowens as the bot. The Tanod's
 quests give a class (Slingshot, Stick, Greatstick, Broom, Pot lid, Hilot) and lead into **the Slums**: six zones of
-living junk, mini bosses and the Scrapheap Golem field boss, with levels, skills and buffs, parties, loot and Kusing,
+living junk, mini bosses and the Scrapheap Golem field boss, and under it **the Scrap Warrens** (a walled junk maze
+for Lv 15–20, played as 20-minute runs alone or as a party with a Warren Ticket: five mini bosses and Barong-Barong, the
+Shanty Titan), with levels, skills and buffs, parties, loot and Kusing,
 gear with agimats and enhancing to +20, and trading. The bot runs the multiplayer town (`src/web/town.ts`, a WebSocket
 at `/ws`), so fights, loot and items are decided on the server; the game (`packages/game`) only shows them.
 
@@ -321,7 +323,8 @@ Kowens, players, party, levels, Mine, bag, Casino, jackpot, Arena, bank, shop an
 Its numbers are the bot's rules; keep them in step when those change.
 
 **Levels** (`packages/bot/src/web/progress.ts`, rules in `packages/shared/src/stats.ts`, numbers in the game's
-`classes/stats.json`): defeating mobs in the Slums gives XP (the golem's to everyone who did 5% of its HP); each level up
+`classes/stats.json`): defeating mobs in the Slums gives XP (the golem's to everyone who did 5% of its HP; in a party, a
+kill's XP is shared with the members within 20 tiles, +10% a member up to +30%); each level up
 earns a stat point and 3 skill points, up to Lv 20. The HUD shows "Lv N" and an XP bar; everyone nearby sees "Level up!".
 Saved with the class in `adventurers` (schema v11). Stat points go into the class's main or second stat in the equipment
 panel (`POST /town/points`; Reset is free; banked before a class). Skills unlock at their level (Dash at 5, the class's

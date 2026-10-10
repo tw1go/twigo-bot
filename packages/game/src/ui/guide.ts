@@ -100,6 +100,7 @@ const TOPICS: Topic[] = [
     text: [
       '• Your **level** and **XP bar** sit under your name (top left); hover it for the XP numbers',
       '• Defeat mobs in the **Slums** for XP. A mob far below your level gives less (its name is grey); one well above you can make you miss (red)',
+      '• In a **party**, a kill\'s XP is shared between the members within **20 tiles** of whoever got it (on the same map), with **+10%** for each extra member (up to +30%)',
       '• The **Scrapheap Golem**\'s XP goes to everyone who did at least 5% of its HP',
       '• Your **HP** (red) and **MP** (blue) sit under the XP bar. Mobs hit back in the Slums (a red bar over your head shows your HP; your party sees it while you\'re hurt); the town and the neighbourhood are safe, and arriving there fills both. 5 s out of a fight, HP slowly comes back',
       '• At 0 HP you go **unconscious**: back at the Slums\' way in from town with full HP and MP after **5 minutes**, or straight away with **Revive now**. Nothing is lost',
@@ -141,6 +142,21 @@ const TOPICS: Topic[] = [
       '• Every other quest asks you to beat one of that mob’s **mini bosses**',
       '• Done? Press **Report** in the tracker: you report over the Tanod’s **radio**, no walk back to town',
       '• Rewards: the same **XP** and **Kusing** for everyone, whatever your level, plus **HP and MP Potions**. Then the next one starts',
+    ].join('\n'),
+  },
+  {
+    id: 'warrens',
+    icon: '🕳️',
+    label: 'Scrap Warrens',
+    text: [
+      'A walled junk maze under the Slums for **Lv 15 to 20**, behind the **Warren Gate** east of the golem pit. Each run is yours alone, or your whole party\'s.',
+      '• Walk up to the gate (or click it): **Enter** alone, or **Open for my party**. It uses one **Warren Ticket** (the sari-sari store\'s **Dungeons** tab, or the golem\'s loot now and then). Party members in the Slums get a **Join** pop-up; the rest can join at the gate while the run lasts, no ticket needed',
+      '• The run waits in the start room until everyone who joined is in (a minute at most; the opener can press **Start now**), then you have **20 minutes**',
+      '• Six areas, each ending in a **mini boss**\'s arena; its **shutter** opens once it falls. **Barong-Barong, the Shanty Titan** waits in the last hall',
+      '• **Red** shapes on the ground are where a boss is about to hit: the fill grows until the hit. Step out! **Yellow** tiles stun you',
+      '• Mobs never come back. Fall and you\'re back at the furthest area you\'ve opened, no penalty',
+      '• Loot drops on the floor for everyone inside: first come',
+      '• **Leave** on the tracker (or the warp in the start room) takes you out; you can walk back in while the run lasts. Leave the party inside and you\'re out after 10 s',
     ].join('\n'),
   },
   {

@@ -230,6 +230,8 @@ export type TownClientMessage =
   | { t: 'warrens-open' }
   | { t: 'warrens-join'; run?: string }
   | { t: 'warrens-start' }
+  /** Not now, to your party's run's invite (it stops waiting for you). */
+  | { t: 'warrens-decline'; run: string }
   | { t: 'warrens-leave' }
   /** The buffs on another player (the player box shows their icons), by town id. */
   | { t: 'buffs-of'; id: string }

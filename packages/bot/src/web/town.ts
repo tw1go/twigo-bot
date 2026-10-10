@@ -1041,6 +1041,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       case 'warrens-open':
       case 'warrens-join':
       case 'warrens-start':
+      case 'warrens-decline':
       case 'warrens-leave':
         return warrensMessage(c, m);
       case 'arena-queue':
@@ -1392,7 +1393,11 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         for (const member of parties.of(c.userId)?.members ?? []) {
           const o = conns.get(member);
           if (!o || o === c) continue;
-          if (o.room === 'slums') send(o, { t: 'warrens-invite', run: r.run.id, from: c.player.nickname, ms: W.W.entry.partyInviteSeconds * 1000 });
+          if (o.room === 'slums') {
+            const ms = W.W.entry.partyInviteSeconds * 1000;
+            r.run.invite(member, now + ms); // (it waits for them till they answer)
+            send(o, { t: 'warrens-invite', run: r.run.id, from: c.player.nickname, ms });
+          }
           else send(o, { t: 'system', line: { kind: 'warrens', text: `${c.player.nickname} opened the Scrap Warrens for your party. Join at the Warren Gate in the Slums while it lasts.`, tone: 'stir' } });
         }
         return send(c, { t: 'warrens-go', run: r.run.id });
@@ -1403,6 +1408,9 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         tellRun(r.run, now);
         return send(c, { t: 'warrens-go', run: r.run.id });
       }
+      case 'warrens-decline':
+        if (typeof m.run === 'string') W.get(m.run)?.answer(c.userId, false);
+        return;
       case 'warrens-start':
         return void runOf(c.room)?.requestStart(c.userId); // (its clock starts it within a second)
       case 'warrens-leave':

@@ -28,11 +28,12 @@ If `CLAUDE.local.md` isn't in the repo root, you're on a contributor's machine: 
   comments and UI text.
 - **Map:** bot `packages/bot/src/` (Discord commands in `commands/`, the economy in `credits/`, `games/`, `dig/`; the
   web side in `web/`: `server.ts` routes, `town.ts` the WebSocket town, `town-mobs.ts` / `town-golem.ts` /
-  `town-loot.ts` / `town-buffs.ts` / `town-vitals.ts` the Slums' fights, `adventure.ts` characters and items in SQLite,
+  `town-loot.ts` / `town-buffs.ts` / `town-vitals.ts` the Slums' fights, `town-warrens.ts` the Scrap Warrens' runs and
+  bosses, `adventure.ts` characters and items in SQLite,
   `forge.ts`, `trade.ts`, `cms.ts`); game `packages/game/src/` (`scenes/TownScene.ts` the town and its wiring,
   `world/` what's drawn in the world, `ui/` the DOM panels, `characters/` the paper dolls and combat poses, `combat/`
   skill effects, `net/` the client stores); shared rules `packages/shared/src/` (`stats.ts`, `items.ts`, `forge.ts`,
-  `leveling.ts`, `trade.ts`, `town.ts` = the WebSocket protocol). Data the game and bot both read lives in
+  `leveling.ts`, `trade.ts`, `dungeons.ts`, `town.ts` = the WebSocket protocol). Data the game and bot both read lives in
   `packages/game/public/assets/` (`manifest.json`, `classes/stats.json`, `classes/classes.json`, `items/*.json`,
   `mobs/mobs.json`, `maps/*.json`, `quests/quests.json`).
 - **Game data comes from the art folder:** most of `classes/stats.json`, `classes/leveling.json` and the art are
@@ -119,8 +120,16 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `rules.allyBuffsReachParty`, `agimats.onlyIn`, `agimats.rarePerItem`, `agimats.sellKusing`, `inventory.agimatSlots`,
   `potions.separateCooldowns`, `trainingGear.noSell` / `sellKusing`, `mobBehaviour.targetPriority`,
   `mobBehaviour.golem.hpPerPlayer`.
+- `classes/stats.json` (Scrap Warrens): `party.xpRangeTiles` (+ `xpNote`), and consumables in `inventory.stack99`.
 - `classes/leveling.json`: `miniBoss.questDrop`.
-- `maps/slums.json`: the Golem Pit v3 changes (the art folder's copy still has the old 6×6 pit; see Scrapheap Golem).
+- `classes/dungeons.json` (= the art folder's `data/dungeons/warrens.json` as `{ "warrens": … }`): `run.timeLimitMinutes` 20
+  (was 40), `run.gatherSeconds` 60, the ticket's shop price 500,000 Kusing in the `dungeons` tab, `entry.warp.tile`
+  [46,97] / `arrive` [46,100] (a row south of the art's, off the road).
+- `items/items.json`: `warren-ticket`. `mobs/mobs.json`: `barong-barong`.
+- `maps/slums.json`: the Golem Pit v3 changes (the art folder's copy still has the old 6×6 pit; see Scrapheap Golem), and
+  the Warren Gate (object, its blocked tiles, `arrive.warrens`; written by `scripts/build-warrens.ts`).
+- `maps/warrens.json` is built here (`packages/game/scripts/build-warrens.ts` from `scripts/warrens/warrens-layout.json`,
+  the art folder's layout copied in): run it again after changing either.
 
 ## The web game (`packages/game`)
 
@@ -492,6 +501,39 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   Junk spots are floor tiles round it; its Adds keep to the floor and way in; no zone's mob steps on a pit tile
   (`pitTiles` in web/town-golem.ts). The props under the old pits and round them are gone, the old stand-in's blocking
   cleared; the canal's plank crossing sits on the road's rows (93–95; it was a row south) (the art folder's copy still has the 6×6 pit: copy the map over again and this is lost). Packs (`scripts/packs.ts`) are written unfiltered with plain deflate (pngjs's RLE default made them ~5× bigger).
+- Scrap Warrens (a walled junk maze under the Slums for Lv 15–20; rules and numbers in `classes/dungeons.json`, manifest
+  `classes.dungeons`, shared `dungeons.ts`; words in CONTEXT.md: Run, Warren Gate, Area, Arena, Shutter, Checkpoint). Map:
+  `maps/warrens.json` (96 × 64, the Slums' format: junk walls at height 1, floors 0, each area's ground, lamps round the
+  arenas, the exit warp, mob zones with `dungeon: true` and their packs as `groups`, and a `dungeon` block: areas with
+  their arena tiles, boss tile, guards and checkpoint, shutters with their passage tiles, the start room's `seal`, the
+  last boss's body). The Warren Gate is a Slums prop (`slums-warren-gate`, its `portal` strip pulsing over it, also the
+  exit warp `warren-exit`). Bot: `web/town-warrens.ts` (pure, tested): `Warrens` opens runs (Lv 15, one Warren Ticket from
+  the combat bag, one run per party, at most 10; a solo run stays its opener's, a party's lets in anyone in that party
+  while it lives), `Run` per run (room `warrens:<id>`, its own MobRoom on its own copy of the map, its own LootRoom):
+  gathering (start room sealed, waits for the opener and those who pressed Join, 60 s at most, Start now) → running (20
+  min, a minute's warning) → cleared (Barong-Barong down, closes 3 min later) or closed (time up, or 2 min empty; everyone
+  inside back to the Slums at `arrive.warrens`). Mobs never respawn, all aggressive, packs assist, stay in their area;
+  HP × party scaling by who's inside (share kept); each mini boss's shutter opens for good as it falls (checkpoint on); a
+  boss nobody living is in the arena of for 10 s heals and its called mobs go; leaving the party inside → out after 10 s
+  (`warrens-kick`). The run is its MobRoom's director (`MobDirector`): each boss move a `boss-move` (telegraph shape, `ms`
+  to its hit, `data` for its effects) and, when it lands, hits on whoever is in the shape then (`boss-hit`; slows, Live
+  Floor's stun: `stunned`, no steps); the boss holds still while casting (`MobRoom.hold`); HP thresholds via `hurt`
+  (calls, Vanish = untargetable, Hunker = every hit blocked: `mob-flag`; Shanty Call, enrage). Loot is first come for
+  everyone inside (`LootRoom.scatter`; `warrensMiniLoot` / `warrensBossLoot` / `warrensMobDrops` in web/loot.ts); dungeon
+  bosses count for no quest, normal kills do. `web/town.ts`: `?room=warrens` puts you in the run you may be in (else
+  `warrens-out` and close 4002); messages warrens-gate / -open (at the gate) / -join / -start / -leave; a 1 s run clock;
+  `TownOptions.warrens` (server.ts: tickets from the combat bag; the open runs kept in kv 'warrens-open' so a restart
+  refunds the openers' tickets of runs not cleared). Game: area 'warrens' (net/hood.ts, BootScene), `ui/warrens.ts` (gate
+  panel, invite, tracker in the quest tracker's place: body.warrens-on, area banner, kick countdown), `world/warrens.ts`
+  (shutters and seal on the walk grid, boss bar, walls in front of you faded: `Terrain.fadeFront`, Barong-Barong's art
+  near its hall: `Mobs.holdArt` / `releaseArt` / `loadEnraged`, every move's VFX timed to its hit, shakes ≤ 0.4 s and
+  none with reduced motion), `world/telegraph.ts` (every red/yellow warning), bosses as mobs in `world/mobs.ts` (red names,
+  the server's scale; Scraplings = the golem's art at 0.6), a fixed navy shade with every lamp on, the Slums' music.
+  Barong-Barong's 768×512-cell sheets are trimmed by the build (`scripts/packs.ts` trim: their frames' box, a page each up
+  to 4096 px, Phaser trimmed frames; 241 MB decoded → 170). Party XP everywhere: a kill's XP shared between the killer's
+  party members in the room within `party.xpRangeTiles` (20), +10% a member up to +30% (`partyXpMult`); bosses keep their
+  own rule. Dev: `?warrens=solo` (a free run, in at once), `?warrensboss=crab-tain` (every earlier area cleared, you at
+  its arena), the dev server's `/__warrens?as=&boss=`; `?give=warren-ticket::3` for the gate's own flow.
 - NPCs (town only, not the neighbourhood; client-side: never on the server, the online list or the minimap): the
   Tanod and ten Alings, flat pre-baked sheets (manifest `npcs`, art in `assets/npcs/`, one pack per NPC; `Character`
   with `FlatSheets`, never the paper doll). Homes, behaviours, the Tanod's route, voices and portrait facing in

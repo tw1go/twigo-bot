@@ -96,6 +96,32 @@ test('gathering: sealed and still until everyone it waits for is in, the wait is
   assert.equal(all.phase, 'running');
 });
 
+test('gathering waits for party members invited until they answer or the invite lapses; Not now stops waiting', () => {
+  const run = new Run('w', W, map, deps(), { member: 'a', name: 'Ana' }, 'p', 0);
+  run.invite('b', 20_000);
+  run.invite('c', 20_000);
+  run.setInside([me('a', map.arrive.slums)], 0);
+  run.step(1000, () => true);
+  assert.equal(run.phase, 'gathering');
+  assert.deepEqual(run.view(1000, 'a').waiting, ['b', 'c']);
+  run.answer('c', false);
+  run.answer('b', true); // (b joined: waited for past the invite's end, until they're in or the minute's up)
+  run.step(25_000, () => true);
+  assert.equal(run.phase, 'gathering');
+  assert.deepEqual(run.view(25_000, 'a').waiting, ['b']);
+  run.setInside([me('a', map.arrive.slums), me('b', map.arrive.slums)], 26_000);
+  run.step(26_000, () => true);
+  assert.equal(run.phase, 'running');
+  // An invite nobody answers: it starts once it lapses.
+  const lapse = new Run('x', W, map, deps(), { member: 'a', name: 'Ana' }, 'p', 0);
+  lapse.invite('b', 20_000);
+  lapse.setInside([me('a', map.arrive.slums)], 0);
+  lapse.step(19_000, () => true);
+  assert.equal(lapse.phase, 'gathering');
+  lapse.step(20_000, () => true);
+  assert.equal(lapse.phase, 'running');
+});
+
 test('bosses: five mini bosses with two guards each, Barong-Barong still in its corner with two Scraplings', () => {
   const run = started();
   const snap = run.mobs.snapshot(0);

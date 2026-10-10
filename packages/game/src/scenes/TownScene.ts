@@ -1717,7 +1717,7 @@ export class TownScene extends Phaser.Scene {
       if (m.t === 'party-declined') return toast(`${m.name} didn't join the party.`, 2600);
       // The Scrap Warrens: the gate's panel, an invite, going in and out, the run's tracker, its bosses' moves.
       if (m.t === 'warrens-gate') return showWarrensGate(m.gate, (what) => link.send(what === 'open' ? { t: 'warrens-open' } : { t: 'warrens-join' }));
-      if (m.t === 'warrens-invite') return showWarrensInvite(m.from, m.ms, (join) => join && link.send({ t: 'warrens-join', run: m.run }));
+      if (m.t === 'warrens-invite') return showWarrensInvite(m.from, m.ms, (join) => link.send(join ? { t: 'warrens-join', run: m.run } : { t: 'warrens-decline', run: m.run }));
       if (m.t === 'warrens-refused') {
         playSound('error');
         return toast(m.message, 2800, 'bad');
@@ -2510,10 +2510,7 @@ export class TownScene extends Phaser.Scene {
     const t = this.player.tile;
     const d = Math.max(Math.abs(t.col - g.centre[0]), Math.abs(t.row - g.centre[1]));
     if (d > g.range + 2) this.gateAsked = false;
-    else if (d <= g.range && !this.gateAsked && this.me?.status === 'ok') {
-      this.gateAsked = true;
-      this.link?.send({ t: 'warrens-gate' });
-    }
+    else if (d <= g.range && !this.gateAsked && (this.me?.status === 'ok' || fakeLogin())) this.gateAsked = !!this.link?.send({ t: 'warrens-gate' }); // (asked again if the link wasn't up yet)
   }
 
   /** The Warren Gate's centre tile and use range (classes/dungeons.json), if this map has it. */
@@ -2996,7 +2993,7 @@ export class TownScene extends Phaser.Scene {
       const [c, r] = tiles[Math.floor(tiles.length / 2)];
       const t = tileToScreen(c, r);
       const at = { x: t.x, y: t.y - this.objects.heights.at(c, r) * LEVEL_PX };
-      const sign = new BuildingLabel(this, to === 'hood' ? 'Neighbourhood →' : to === 'slums' ? '← Slums' : this.area === 'slums' ? 'Back to town →' : '← Back to town', at.x);
+      const sign = new BuildingLabel(this, to === 'hood' ? 'Neighbourhood →' : to === 'slums' ? (this.area === 'warrens' ? 'Exit to the Slums' : '← Slums') : this.area === 'slums' ? 'Back to town →' : '← Back to town', at.x);
       this.gateLabels.push(sign);
       sign.setZoom(this.cameras.main.zoom);
       // Over the gate, or higher: clear of the roof of any building it would sit on (tall houses by the way in).

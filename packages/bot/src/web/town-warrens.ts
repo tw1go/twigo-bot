@@ -157,6 +157,8 @@ export class Run implements MobDirector {
    *  gathers (the opener and those who said Join). */
   readonly members = new Set<string>();
   readonly expected = new Set<string>();
+  /** Party members invited as it opened (in the Slums): waited for too until they answer or the invite lapses (ms). */
+  private readonly invited = new Map<string, number>();
   /** Who's inside now (member → their town id), and who has been in at all (a late arrival lands at the checkpoint). */
   private inside = new Map<string, Inside>();
   readonly arrived = new Set<string>();
@@ -267,6 +269,24 @@ export class Run implements MobDirector {
     return this.inside.size;
   }
 
+  /** A party member invited as it opened: waited for until `until` (their invite's end) unless they answer first. */
+  invite(member: string, until: number): void {
+    if (!this.expected.has(member)) this.invited.set(member, until);
+  }
+
+  /** They said Join (`yes`: waited for till they're in) or Not now (not waited for). */
+  answer(member: string, yes: boolean): void {
+    this.invited.delete(member);
+    if (yes) this.expected.add(member);
+    else if (member !== this.opener.member) this.expected.delete(member);
+  }
+
+  /** Who it still waits for while it gathers: those who joined and aren't in yet, and invites not yet answered. */
+  private waitingFor(now: number): string[] {
+    const invited = [...this.invited].filter(([m, until]) => until > now && !this.expected.has(m)).map(([m]) => m);
+    return [...[...this.expected].filter((m) => !this.inside.has(m)), ...invited.filter((m) => !this.inside.has(m))];
+  }
+
   /** The opener asks to start now (while it gathers). */
   requestStart(member: string): boolean {
     if (this.phase !== 'gathering' || member !== this.opener.member) return false;
@@ -278,7 +298,7 @@ export class Run implements MobDirector {
   view(now: number, member?: string, names?: (member: string) => string): TownWarrensRun {
     const bosses = [...this.bosses.values()].map((b) => ({ id: b.def.id, name: b.def.name, dead: b.dead }));
     const left = this.phase === 'running' ? Math.max(0, this.endsAt - now) : this.phase === 'cleared' ? Math.max(0, Math.min(this.endsAt, this.clearedAt + this.W.run.closeAfterLastBossMinutes * 60_000) - now) : 0;
-    const waiting = this.phase === 'gathering' ? [...this.expected].filter((m) => !this.inside.has(m)).map((m) => names?.(m) ?? m) : undefined;
+    const waiting = this.phase === 'gathering' ? this.waitingFor(now).map((m) => names?.(m) ?? m) : undefined;
     return {
       id: this.id, phase: this.phase, left, ...(this.phase === 'gathering' ? { gatherLeft: Math.max(0, this.gatherUntil - now) } : {}),
       bosses, opened: [...this.opened], checkpoint: this.checkpoint(), opener: this.opener.name, ...(member === this.opener.member ? { yours: true } : {}),
@@ -295,7 +315,7 @@ export class Run implements MobDirector {
     if (this.phase === 'closed') return out;
     // Gathering: start once everyone it waits for is in (or the wait's up, or the opener says so).
     if (this.phase === 'gathering') {
-      const all = [...this.expected].every((m) => this.inside.has(m));
+      const all = !this.waitingFor(now).length;
       if (this.inside.size && (all || now >= this.gatherUntil || this.startNow)) this.start(now, out);
     }
     // Party scaling: HP for the players inside now (their share kept).
@@ -824,7 +844,7 @@ export class Warrens {
     const run = runId ? this.get(runId) : this.runFor(member);
     if (!run || run.phase === 'closed') return { ok: false, reason: 'gone', message: 'That run has closed.' };
     if (!this.allowed(run, member)) return { ok: false, reason: 'party', message: "That isn't your party's run." };
-    if (run.phase === 'gathering') run.expected.add(member);
+    if (run.phase === 'gathering') run.answer(member, true);
     return { ok: true, run };
   }
 
