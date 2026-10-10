@@ -2,7 +2,7 @@ import type { ItemData, TownLoot } from '@mikazuki/shared';
 import { LOOT_REACH, type LevelingData, itemStats, miniBossRules, numbersIn } from '@mikazuki/shared';
 import type { LootContent } from './combat-bag.js';
 import { golemLoot, miniLoot, mobDrops } from './loot.js';
-import { loadLeveling } from './stats-data.js';
+import { loadDungeons, loadLeveling } from './stats-data.js';
 
 // 🪙 Loot on the ground in a battle map (one LootRoom per room with mobs, run by the town: web/town.ts). A kill's drops
 // (web/loot.ts) land round where it died, each on its own tile. Who may pick each one up (stats.json `party`): a solo
@@ -64,6 +64,8 @@ export class LootRoom {
   /** How long a kill's loot is kept for its killer (or party): stats.json party.solo ("killer only for 10 s"). */
   readonly reserveMs: number;
   private readonly minis: ReturnType<typeof miniBossRules> | null;
+  /** How often the golem's loot has a Warren Ticket (classes/dungeons.json). */
+  private readonly golemTicket = loadDungeons().warrens.ticket.sources.golemLootChance;
 
   constructor(
     private readonly data: ItemData,
@@ -90,7 +92,7 @@ export class LootRoom {
     const lots: { owners: string[]; personal: boolean; contents: LootContent[] }[] = !kill.to.length
       ? []
       : kill.boss
-        ? kill.to.map((owner) => ({ owners: [owner], personal: true, contents: golemLoot(this.data, this.random, this.uid, this.plusRandom) }))
+        ? kill.to.map((owner) => ({ owners: [owner], personal: true, contents: golemLoot(this.data, this.random, this.uid, this.plusRandom, this.golemTicket) }))
         : mini
           ? [{ owners: [...new Set([...kill.to, ...party])], personal: false, contents: miniLoot(this.data, kill.kind, kill.level, mini, this.random, this.uid, this.plusRandom) }]
           : [{ owners: [...new Set([...kill.to.slice(0, 1), ...party])], personal: false, contents: mobDrops(this.data, kill.kind, kill.level, this.random, this.uid, this.plusRandom) }];
@@ -124,6 +126,18 @@ export class LootRoom {
     return contents.map((content, i) => {
       const [col, row] = tiles[i % Math.max(1, tiles.length)] ?? at;
       const loot: Loot = { id: `l${++this.n}`, col, row, content, owners: [owner], personal: true, opensAt: Infinity, goneAt: now + LOOT_MS };
+      this.all.set(loot.id, loot);
+      return loot;
+    });
+  }
+
+  /** A pile everyone in the room may take at once (the Scrap Warrens' loot: only the run's players are there), laid
+   *  round `at`. */
+  scatter(contents: LootContent[], at: [number, number], spots: (at: [number, number], n: number) => [number, number][], now: number): Loot[] {
+    const tiles = spots(at, contents.length);
+    return contents.map((content, i) => {
+      const [col, row] = tiles[i % Math.max(1, tiles.length)] ?? at;
+      const loot: Loot = { id: `l${++this.n}`, col, row, content, owners: [], personal: false, opensAt: now, goneAt: now + LOOT_MS };
       this.all.set(loot.id, loot);
       return loot;
     });

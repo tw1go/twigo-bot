@@ -33,6 +33,59 @@ export interface TownMob {
   /** A mini boss (classes/leveling.json miniBosses id; ids `<zone>:mini:<id>`): its mob's art at miniBoss.scale, its
    *  name in orange, its HP bar always shown. */
   mini?: string;
+  /** A Scrap Warrens boss (classes/dungeons.json): a mini boss (its mob's art at miniBossLook.drawScale, red name, the
+   *  boss bar in its arena) or the last boss; with its `name` and the boss bar's `title`. */
+  boss?: 'mini' | 'last';
+  name?: string;
+  title?: string;
+  /** Drawn at this scale (the Warrens' mini bosses 2.5, Scraplings 0.6); its body's radius in tiles (reach to its edge). */
+  scale?: number;
+  radius?: number;
+  /** Can't be targeted or hit for now (Bag Yani's Vanish); every hit blocked (Crab Tain's Hunker). */
+  untargetable?: boolean;
+  blockAll?: boolean;
+}
+
+/** A boss move's telegraph on the ground (the server decides it; the game draws it from now until its hit, `ms` later):
+ *  tiles in grid space. A cone's `facing` is its middle's angle on the grid (radians, atan2(drow, dcol)), `angle` its
+ *  width in degrees. Yellow: Live Floor (electric), else red. */
+export type TelegraphShape =
+  | { kind: 'circle'; at: [number, number]; radius: number }
+  | { kind: 'circles'; circles: { at: [number, number]; radius: number }[] }
+  | { kind: 'line'; from: [number, number]; to: [number, number]; width: number }
+  | { kind: 'cone'; origin: [number, number]; facing: number; angle: number; length: number }
+  | { kind: 'tiles'; tiles: [number, number][]; colour?: 'yellow' };
+
+/** A Scrap Warrens run as its players see it (bot web/town-warrens.ts). `phase`: gathering (in the start room, waiting
+ *  for the party: `gatherLeft` ms at most), running (`left` ms of the time limit), cleared (Barong-Barong is down:
+ *  `left` ms until it closes) or closed. `bosses`: the five mini bosses and the last boss in order, as they fall;
+ *  `opened`: the areas whose shutter is open; `checkpoint`: where you come back after dying; `waiting`: who it's still
+ *  waiting for (names). */
+export interface TownWarrensRun {
+  id: string;
+  phase: 'gathering' | 'running' | 'cleared' | 'closed';
+  left: number;
+  gatherLeft?: number;
+  bosses: { id: string; name: string; dead: boolean }[];
+  opened: string[];
+  checkpoint: [number, number];
+  opener: string;
+  /** You opened it (you may start it now). */
+  yours?: boolean;
+  waiting?: string[];
+  inside: number;
+}
+
+/** What the Warren Gate offers you (asked as its panel opens): your level and tickets, your party's run (if it has
+ *  one), and why you can't open or join (if so). */
+export interface TownWarrensGate {
+  minLevel: number;
+  level: number;
+  tickets: number;
+  inParty: boolean;
+  partyRun: { id: string; phase: TownWarrensRun['phase']; inside: number; opener: string } | null;
+  /** Why not: 'level' (under minLevel), 'full' (too many runs at once), 'ticket' (none to open with). */
+  blocked?: 'level' | 'full' | 'ticket';
 }
 
 /** The Scrapheap Golem's attacks: Tire Slam, Scrap Toss, Lamp Glare. */
@@ -170,6 +223,14 @@ export type TownClientMessage =
   | { t: 'trade-ask'; to: string }
   /** Another player's worn gear and stats (the player menu's Info), by town id. */
   | { t: 'inspect'; id: string }
+  /** The Scrap Warrens (at the Warren Gate; inside a run): what the gate offers, open a run (a ticket: alone, or for your
+   *  party), join your party's run (an invite's Join, or later at the gate), start it now (its opener, while it
+   *  gathers), leave it. */
+  | { t: 'warrens-gate' }
+  | { t: 'warrens-open' }
+  | { t: 'warrens-join'; run?: string }
+  | { t: 'warrens-start' }
+  | { t: 'warrens-leave' }
   /** The buffs on another player (the player box shows their icons), by town id. */
   | { t: 'buffs-of'; id: string }
   | { t: 'trade-answer'; ask: string; accept: boolean }
@@ -395,6 +456,27 @@ export type TownServerMessage =
   /** Mobs that weren't there (the golem's Adds, as they crawl out), and mobs that are gone for good (the Adds when the
    *  fight ends). */
   | { t: 'mob-add'; mobs: TownMob[] }
+  /** Mobs' most HP changed (a Warrens run's party scaling: their HP keeps its share). */
+  | { t: 'mob-scale'; mobs: { id: string; hp: number; maxHp: number }[] }
+  /** A boss's untargetable or block-all window began or ended. */
+  | { t: 'mob-flag'; id: string; untargetable?: boolean; blockAll?: boolean }
+  /** A boss move (the Warrens): its telegraph now, its hit `ms` from now (`key`: this move's own, for its hit); `data`:
+   *  what its effects need (the hand, a charge's path, a call's spots…). */
+  | { t: 'boss-move'; id: string; move: string; key: string; ms: number; shape?: TelegraphShape; data?: Record<string, unknown> }
+  /** A boss move landing: who it hit (damage or a miss). */
+  | { t: 'boss-hit'; id: string; move: string; key: string; hits: { id: string; damage: number; miss?: boolean }[]; data?: Record<string, unknown> }
+  /** A boss reset (or fell): its telegraphs and anything in flight go. */
+  | { t: 'boss-cancel'; id: string }
+  /** The Scrap Warrens: your run's state (the tracker), what the gate offers (`warrens-gate`), go into a run (`go`: the
+   *  page loads it), an invite to your party's run (`ms` to answer), why not, and out of it (back to the Slums), or out
+   *  in `ms` (you left the party). */
+  | { t: 'warrens'; run: TownWarrensRun }
+  | { t: 'warrens-gate'; gate: TownWarrensGate }
+  | { t: 'warrens-go'; run: string }
+  | { t: 'warrens-invite'; run: string; from: string; ms: number }
+  | { t: 'warrens-refused'; reason: 'level' | 'full' | 'ticket' | 'party' | 'gone' | 'slow'; message: string }
+  | { t: 'warrens-out'; reason: 'left' | 'closed' | 'party' }
+  | { t: 'warrens-kick'; ms: number }
   | { t: 'mob-remove'; ids: string[] }
   /** A mob turns where it stands (the golem, slowly: a quarter turn at a time). */
   | { t: 'mob-face'; id: string; dir: TownMobFacing }
