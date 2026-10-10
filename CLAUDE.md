@@ -569,8 +569,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `TownOptions.warrens` (server.ts: tickets from the combat bag; the open runs kept in kv 'warrens-open' so a restart
   refunds the openers' tickets of runs not cleared). Game: area 'warrens' (net/hood.ts, BootScene), `ui/warrens.ts` (gate
   panel, invite, the run's timer top centre (`#warrens-timer`: Time left / Starts in / Closing in; the boss bar and other top-centre boxes move under it), the tracker in the quest tracker's place (body.warrens-on: boss pips, who it waits for, Start now, Leave), area banner, kick countdown, the cleared pop-up as Barong-Barong falls (`showWarrensCleared`: the run's `clearMs` from its start, `team` = who was inside, the close countdown, Leave now / Stay; once per run per tab, sessionStorage `mk_warrens_cleared`)), `world/warrens.ts`
-  (shutters and seal on the walk grid, boss bar, the boss camera in Barong-Barong's arena while it's up (`bossFrame`: its
-  art's box, mobs.json `frame` [0,10,744,497] over every sheet, and you; TownScene `bossCamera`: the largest of your zoom,
+  (shutters and seal on the walk grid, boss bar, the boss camera in Barong-Barong's arena while it's up (`bossFrame`: centred
+  on its art's box, mobs.json `frame` [0,10,744,497] over every sheet, as wide and tall either way as it takes to take you
+  in, so it sits in the middle of the screen; the camera's bounds off meanwhile (its hall is in the map's corner; the
+  outskirts stream on past the edge), back on as it ends; TownScene `bossCamera`: the largest of your zoom,
   3, 2, 1.5, 1 that fits it between the timer/boss bar (BOSS_TOP 140 px) and the hotbar (BOSS_BOTTOM 130 px), out at once
   as the frame grows, back in only with 12% spare and at most every 1.5 s; too tall even at 1× (laptops): you on the
   lower band and its top cut; the wheel's zoom held until it ends, then eased back; labels sized once each zoom lands),

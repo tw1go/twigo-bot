@@ -2324,6 +2324,9 @@ export class TownScene extends Phaser.Scene {
     const now = this.time.now;
     const want = this.frameZoom(frame);
     const b = this.bossCam;
+    // (Its hall is in the map's corner: the camera may look past the map's edge meanwhile, where the outskirts stream on,
+    // so it sits in the middle of the screen.)
+    cam.useBounds = false;
     if (!b || b.w !== cam.width || b.h !== cam.height || want < b.zoom || (want > b.zoom && now - b.at >= BOSS_ZOOM_IN_MS && this.frameZoom(frame, BOSS_ZOOM_IN_SPARE) > b.zoom)) {
       if (!b || want !== b.zoom) this.easeZoom(want);
       this.bossCam = { zoom: want, w: cam.width, h: cam.height, at: now };
@@ -2351,6 +2354,7 @@ export class TownScene extends Phaser.Scene {
 
   private endBossCamera(): void {
     this.bossCam = null;
+    this.cameras.main.useBounds = true; // (back inside the map: follow eases it there)
     this.easeZoom(ZOOMS[this.zoomIndex]);
   }
 
