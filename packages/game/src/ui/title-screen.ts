@@ -115,7 +115,8 @@ export class TitleScreen {
     this.sound.className = 'ts-sound';
     this.sound.type = 'button';
     this.drawSpeaker();
-    this.sound.addEventListener('click', () => {
+    this.sound.addEventListener('click', (e) => {
+      e.stopPropagation(); // (never a click to start: its icon is redrawn under the pointer, so it can't be looked up later)
       this.mute.set(!this.mute.on);
       this.mute.on = !this.mute.on;
       this.drawSpeaker();
@@ -185,7 +186,7 @@ export class TitleScreen {
   }
 
   private readonly clicked = (e: MouseEvent) => {
-    if ((e.target as Element).closest('.ts-sound, .ts-button')) return;
+    if (e.composedPath().some((n) => n === this.sound || (n instanceof Element && n.classList.contains('ts-button')))) return;
     this.start(); // (a guest's click anywhere does nothing: only the button logs in)
   };
 
