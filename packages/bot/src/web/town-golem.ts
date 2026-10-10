@@ -319,8 +319,8 @@ export class Golem {
       if (this.phase === 'gone') this.line('The junk in the golem pit is stirring...', 'stir');
     }
     if (now >= this.nextRise) {
+      this.nextRise = nextRiseAfter(now, everyMinutes); // first, so the 'rise' already says when the next one is
       if (this.phase === 'gone') this.rise(now);
-      this.nextRise = nextRiseAfter(now, everyMinutes);
     }
   }
 
@@ -628,7 +628,7 @@ export class Golem {
   }
 
   private change(change: GolemChange, now: number, extra: { spots?: [number, number][]; ms?: number } = {}): void {
-    this.pending.push({ t: 'golem', change, golem: this.state(now, change === 'death')!, ...extra });
+    this.pending.push({ t: 'golem', change, golem: this.state(now, change === 'death')!, riseIn: this.plan(now).nextRise - now, ...extra });
   }
 
   /** A line in the Slums' system feed (only there: see town.ts). */

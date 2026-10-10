@@ -1064,7 +1064,11 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     const mobRoom = opts.mobs?.[room];
     queueMicrotask(() => {
       // After the welcome: the mobs, and the loot they can see.
-      if (mobRoom) send(c, { t: 'mobs', mobs: mobRoom.snapshot(Date.now()), golem: mobRoom.golemState(Date.now()) });
+      if (mobRoom) {
+        const now = Date.now();
+        const plan = mobRoom.golemPlan(now);
+        send(c, { t: 'mobs', mobs: mobRoom.snapshot(now), golem: mobRoom.golemState(now), ...(plan ? { riseIn: plan.nextRise - now } : {}) });
+      }
       const loot = loots.get(room);
       if (loot) send(c, { t: 'loot', loot: loot.viewAll(userId, Date.now()) });
     });
