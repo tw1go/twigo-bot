@@ -52,16 +52,29 @@
       #toast.toast-icon { display: flex; align-items: center; gap: 10px; }
       #toast.toast-icon img { width: 32px; height: 32px; image-rendering: pixelated; }
       .hud-prereg-note { margin-top: 6px; max-width: 240px; color: #a9b1d6; }
-      #login { position: fixed; inset: 0; z-index: 3; display: flex; align-items: center; justify-content: center; padding: 16px; background: #000; color: #c0caf5; font: calc(15px * var(--text))/1.5 var(--ui-font); text-align: center; }
-      #login .lg-card { max-width: 360px; }
-      #login h1 { margin: 0 0 6px; font-size: calc(32px * var(--text)); color: #fff; }
-      #login p { margin: 0; }
-      #login .lg-discord { display: inline-block; margin-top: 22px; padding: 12px 22px; border-radius: 10px; background: #5865f2; color: #fff; text-decoration: none; font-weight: 600; font-size: calc(16px * var(--text)); }
-      #login .lg-discord:hover { background: #4752c4; }
-      #login .lg-problem { margin-top: 12px; color: #f7768e; }
-      #login .lg-out { margin-top: 20px; padding: 9px 18px; border: 2px solid #3D4256; border-radius: 2px; background: #1E1B3A; color: #c0caf5; font: inherit; }
-      #login .lg-out:hover { border-color: #B794F6; }
-      #login .lg-hint { margin-top: 14px; color: #565f89; font-size: calc(13px * var(--text)); }
+      /* The boot sequence (ui/title-screen.ts): the intro card, then the title screen (no HUD under them). */
+      #intro-card { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: max(6px, 0.8vh); background: #111827; opacity: 0; transition: opacity 0.5s; cursor: default; }
+      #intro-card.ic-on { opacity: 1; }
+      #intro-card p { margin: 0; color: #7A8099; font: max(12px, 1.5vh)/1.2 'Pixelify Sans', monospace; letter-spacing: 0.04em; }
+      #intro-card img { width: min(30vw, 180px); height: auto; image-rendering: auto; user-select: none; }
+      #title-screen { position: fixed; inset: 0; z-index: 55; overflow: hidden; background: #111827; opacity: 0; transition: opacity 0.5s; cursor: default; --s: 1; }
+      #title-screen.ts-on { opacity: 1; }
+      #title-screen.ts-now { transition: none; }
+      #title-screen:not(.ts-on) { transition-duration: 0.4s; }
+      #title-screen .ts-bg { position: absolute; image-rendering: pixelated; }
+      #title-screen .ts-title { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+      #title-screen .ts-band { position: absolute; left: 0; right: 0; bottom: 0; height: 17%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(var(--s) * 2.5px); background: rgba(17, 24, 39, 0.5); }
+      #title-screen .ts-button { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; height: calc(var(--s) * 14px); padding: 0 calc(var(--s) * 8px); border-style: solid; border-width: calc(var(--s) * 4px); border-image-source: var(--btn-normal); border-image-slice: var(--btn-slice, 4) fill; border-image-repeat: stretch; background: none; image-rendering: pixelated; color: #E6E9F2; font: 400 calc(var(--s) * 7px)/1 'Pixelify Sans', monospace; text-decoration: none; white-space: nowrap; cursor: var(--cur-hand, pointer); }
+      #title-screen .ts-button:hover, #title-screen .ts-button:focus-visible { border-image-source: var(--btn-hover, var(--btn-normal)); outline: none; }
+      #title-screen .ts-button.ts-pressed { border-image-source: var(--btn-pressed, var(--btn-normal)); }
+      #title-screen .ts-button span { text-shadow: 0 calc(var(--s) * 1px) 0 #1E1B3A; }
+      #title-screen .ts-button.ts-pressed span { transform: translateY(calc(var(--s) * 1px)); }
+      #title-screen .ts-hint { margin: 0; color: #A9B1D6; font: max(12px, calc(var(--s) * 4.5px))/1.2 'Pixelify Sans', monospace; text-shadow: 0 1px 0 #1E1B3A; }
+      #title-screen .ts-problem { color: #f7768e; }
+      #title-screen .ts-sound { position: absolute; top: 12px; right: 12px; width: 40px; height: 40px; padding: 8px; border: 2px solid #3D4256; border-radius: 4px; background: rgba(30, 27, 58, 0.75); cursor: var(--cur-hand, pointer); }
+      #title-screen .ts-sound:hover { border-color: #B794F6; }
+      #title-screen .ts-sound svg { display: block; width: 100%; height: 100%; }
+      @media (prefers-reduced-motion: reduce) { #intro-card, #title-screen { transition: none; } }
       #creator { --z: 4; position: fixed; inset: 0; z-index: 1; display: flex; align-items: center; justify-content: center; padding: 72px 16px 24px; box-sizing: border-box; background: #000; color: #c0caf5; font: calc(15px * var(--text))/1.4 var(--ui-font); }
       #creator .cr-box { --px: 3; display: flex; flex-direction: column; width: min(960px, 100%); height: min(680px, 100%); border: 1px solid #3b4261; border-radius: 14px; background: #111827; overflow: hidden; box-sizing: border-box; }
       /* The game's item frame as a pixel border: nine-slice, whole-number scale (--px), corners kept sharp. */
