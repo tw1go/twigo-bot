@@ -171,9 +171,20 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
 - Open beta: `/play/` is the town for every member of the Mikazuki server (no `?preview` gate, no testers-only rule).
   Only members can log in (the OAuth callback checks; `isMember` in the bot's `web/auth.ts`, also on `/me`, `/ws` and
   the town's routes). `/gift launch` (pre-registration reward) hasn't been run.
-- Flow (`BootScene`): not logged in → login screen; logged in without a saved look or nickname → character creator
-  (`CreateScene` + `ui/creator.ts`, town preloads meanwhile); else the town. Login off → straight to the town as a
-  guest. Dev: `?me=anon|new|saved` fakes the login (and stands in when no bot answers /me).
+- Flow (`BootScene`): the boot sequence (`ui/title-screen.ts`, page layers over the canvas while BootScene loads) first:
+  the intro card ("a game made by" + manifest ui.logoTwigo on #111827; 500 ms in, 1.6 s held, 500 ms out; reduced motion
+  1.2 s, no fades; a click or key skips it; once per tab, sessionStorage `mk_intro`; `?intro=1` always), then the title
+  screen: the splash (ui.splashAnim, 24 frames at 8 fps on a 384×216 canvas at a whole-number scale, centred and
+  cropped; ui.splashBg until it loads and under reduced motion), "MIKAZUKI" in Pixelify Sans (gold #FCDA4A, navy shadow and
+  glow, drawn at screen resolution), a band at the bottom with a button (ui.titleButton, a 3-state 9-slice as
+  border-image at the same scale) and a hint, and a speaker top right (= Settings → Mute; never a click to start). No
+  button until /me answers (≤ 2.5 s): logged in or login off → Start ("or click anywhere"; any click, Enter or Space);
+  not logged in → "Log in with Discord" (/auth/login; `loginProblem()` in red under it). Start fades it out (400 ms)
+  and hands on to the routing (`BootScene.route`): without a saved look or nickname → character creator (`CreateScene` +
+  `ui/creator.ts`, town preloads meanwhile); else the town (or the area the tab was in). Arriving through a gate
+  (`?from=`) and `?debug=wardrobe` skip the intro and title (a logged-out arrival still gets the title's login). Title
+  music: Sound, below. Dev: `?me=anon|new|saved` fakes the login (and stands in when no bot answers /me);
+  `&login=not-member` the refusal line.
 - Town HUD (`ui/townhud.ts`, replaces the page's login corner in town): your character's head (`headPortrait`) and
   name top left in the item frame (round pixel avatar + status dot from `/me` status: jailed, else the Discord status when the Presence
   intent is on in the Developer Portal — the bot checks at startup and only asks for it then — else online), under the
@@ -244,7 +255,11 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   The box is a fixed see-through panel that fades to 0.2 after 15 s quiet. On phones (≤560 px) it folds away behind a Chat button (bottom
   left; a dot for new messages; body.chat-open).
 - Online list (`ui/online.ts`): "N online" beside the chat input opens who's in town (you first, titles in colour).
-- Sound (`audio/sound.ts`, files + credits in `public/assets/audio/`, not in the manifest): crickets that come and go,
+- Sound (`audio/sound.ts`, files + credits in `public/assets/audio/`, not in the manifest): the title music on the intro
+  card and title screen (`startTitleMusic`: music-title "Moonlight Lullaby", looped, 0.10 × the music volume when that's
+  above 0, else 0.10: it plays even with music off; Mute silences it; from the first click or key, faded in over 1.5 s
+  if it was held back; `stopTitleMusic` fades it over 1 s on Start or the Discord login; the area's music setting is
+  untouched), crickets that come and go,
   the fountain louder near the plaza, music off by default (loaded only when switched on), soft one-shots (emote,
   chat from others, door, casino card/chip, coin, button click, error); nothing plays before the first click/key.
   Inside the casino (`enterCasinoSound`/`leaveCasinoSound`) the town music, crickets and fountain go quiet and its own

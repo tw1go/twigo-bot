@@ -280,7 +280,8 @@ Every member of the Mikazuki server may play (the open beta; `isMember` in `web/
 else, a session ends when they leave the server, and `/ws` and the town's routes check membership too. `/gift launch`
 (the launch reward for pre-registrations) is separate.
 
-The town itself opens on a login screen (`ui/login.ts`); a member's first visit then goes through the character
+The town itself opens on a short intro card and the title screen (`ui/title-screen.ts`: Start, or Log in with Discord
+when logged out); a member's first visit then goes through the character
 creator (`ui/creator.ts`: a nickname, saved with `PUT /nickname`, unique ignoring case and `space _ - .`; and a
 look, saved with `PUT /outfit`) while the town loads in the background. Under the nickname is the member's title
 (`<Townfolk>` by default; the built-in list and colours are in `web/titles.ts`, given with `/gift title` or in the
