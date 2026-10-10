@@ -11,8 +11,9 @@
     "object": "slums-warren-gate",
     "tile": [
      46,
-     96
+     97
     ],
+    "tileNote": "Repo change (Mac, 10 Oct 2026): one row south of the art folder's 46,96, so its 3x3 stays off the Slums road (rows 93-95)",
     "footprint": [
      3,
      3
@@ -20,7 +21,7 @@
     "useRangeTiles": 3,
     "arrive": [
      46,
-     99
+     100
     ]
    },
    "minLevel": 15,

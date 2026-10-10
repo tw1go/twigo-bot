@@ -13533,6 +13533,24 @@
   },
   "todo": [],
   "props": {
+    "slums-warren-gate": {
+      "file": "props/slums/prop-slums-warren-gate.png",
+      "size": [96, 96],
+      "anchor": [48, 40],
+      "footprint": [3, 3],
+      "walkable": false,
+      "portal": { "file": "props/slums/prop-slums-warren-gate-glow.png", "frames": 12, "frameSize": [96, 96], "fps": 10, "pulse": [0.85, 1, 2000] },
+      "note": "The Warren Gate (the Scrap Warrens' entrance by the golem pit): the pipe, and its portal strip drawn on top at the same anchor (never moved or turned; a soft alpha pulse). Anchor = the top corner of the 3x3 footprint (the art's sheet gives 48,64: the footprint's centre)."
+    },
+    "warren-exit": {
+      "file": "props/slums/prop-slums-warren-gate.png",
+      "size": [96, 96],
+      "anchor": [48, 40],
+      "footprint": [3, 3],
+      "walkable": false,
+      "portal": { "file": "props/slums/prop-slums-warren-gate-glow.png", "frames": 12, "frameSize": [96, 96], "fps": 10, "pulse": [0.85, 1, 2000] },
+      "note": "The Scrap Warrens' exit warp: the Warren Gate's art round the 2x2 warp tiles (walking onto them takes you back to the Slums)."
+    },
     "fence": {
       "nw": "props/prop-fence-nw.png",
       "ne": "props/prop-fence-ne.png",
