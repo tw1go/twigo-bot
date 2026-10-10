@@ -128,6 +128,7 @@ const TOPICS: Topic[] = [
       '• A mob’s **HP bar** shows while it’s your target and for **5 s** after a hit. Over players you only see your **party**’s bars and your own',
       '• A mob’s name is **grey** 5+ levels below you, **red** 3+ above, else white',
       '• The **Scrapheap Golem** never leaves its pit. If nobody fights it for **30 s** (everyone knocked out or gone), it heals to full',
+      '• Watch the ground in its fight: a **red** shape is where something lands in a moment, and only whoever is still inside then gets hit. **Junk Drop**: every few seconds, red circles under players it isn\'t fighting, then scrap falls into them. **Shockwave**: from half HP, each Tire Slam sends a red ring out round its fist; stand right by the fist or well clear',
       '• **Mini bosses**: each zone has a few big ones with **orange** names (Jus Tin, Kap Tan, Tire Mendous…), a few levels above their mob, each in its own spot and back **3 min** after it falls. Do at least **10%** of one’s HP and you get its XP (your party nearby too). It drops **one set of loot** for everyone (lots of Kusing, a piece of gear, sometimes a whetstone fragment): those who fought it get **10 s** to grab it first, then anyone can',
     ].join('\n'),
   },

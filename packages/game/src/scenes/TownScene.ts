@@ -1753,6 +1753,9 @@ export class TownScene extends Phaser.Scene {
       if (m.t === 'mob-face') return this.mobs?.face(m.id, m.dir);
       if (m.t === 'golem') return this.golem?.change(m.change, m.golem, m.spots);
       if (m.t === 'golem-attack') return this.golem?.attack(m);
+      if (m.t === 'boss-move') return this.golem?.move(m);
+      if (m.t === 'boss-hit') return this.golem?.moveHit(m);
+      if (m.t === 'boss-cancel') return this.golem?.cancel(m.id);
       if (m.t === 'mob-hit') {
         const ids = m.hits.map((h) => h.id);
         const at = ids[0] ? this.mobs?.tileOf(ids[0]) : null;

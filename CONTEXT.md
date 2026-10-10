@@ -87,6 +87,10 @@ _Avoid_: minions, summons
 **Enrage**:
 The golem's last phase, from a quarter of its health: red lamp, faster attacks.
 
+**Telegraph**:
+The red shape on the ground warning where a boss's move is about to land; whoever is still inside it when it lands is hit.
+_Avoid_: AoE marker, danger zone
+
 ## Characters
 
 **Level**:

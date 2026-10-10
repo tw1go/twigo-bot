@@ -35,6 +35,18 @@ export interface TownMob {
   mini?: string;
 }
 
+/** A boss move's telegraph on the ground (the server decides it; the game draws it from now until its hit, `ms` later):
+ *  tiles in grid space. A cone's `facing` is its middle's angle on the grid (radians, atan2(drow, dcol)), `angle` its
+ *  width in degrees. A ring: the ground between `inner` and `outer` tiles round `at` (the golem's Shockwave). Yellow:
+ *  Live Floor (electric), else red. */
+export type TelegraphShape =
+  | { kind: 'circle'; at: [number, number]; radius: number }
+  | { kind: 'circles'; circles: { at: [number, number]; radius: number }[] }
+  | { kind: 'ring'; at: [number, number]; inner: number; outer: number }
+  | { kind: 'line'; from: [number, number]; to: [number, number]; width: number }
+  | { kind: 'cone'; origin: [number, number]; facing: number; angle: number; length: number }
+  | { kind: 'tiles'; tiles: [number, number][]; colour?: 'yellow' };
+
 /** The Scrapheap Golem's attacks: Tire Slam, Scrap Toss, Lamp Glare. */
 export type GolemAttack = 'slam' | 'toss' | 'glare';
 
@@ -395,6 +407,13 @@ export type TownServerMessage =
   /** Mobs that weren't there (the golem's Adds, as they crawl out), and mobs that are gone for good (the Adds when the
    *  fight ends). */
   | { t: 'mob-add'; mobs: TownMob[] }
+  /** A boss move (the golem's Junk Drop and Shockwave): its telegraph now, its hit `ms` from now (`key`: this move's
+   *  own, for its hit); `data`: what its effects need. Who it hits is decided as it lands (where everyone stands then). */
+  | { t: 'boss-move'; id: string; move: string; key: string; ms: number; shape?: TelegraphShape; data?: Record<string, unknown> }
+  /** A boss move landing: who it hit (damage or a miss). */
+  | { t: 'boss-hit'; id: string; move: string; key: string; hits: { id: string; damage: number; miss?: boolean }[]; data?: Record<string, unknown> }
+  /** A boss reset (or fell): its telegraphs and anything in flight go. */
+  | { t: 'boss-cancel'; id: string }
   | { t: 'mob-remove'; ids: string[] }
   /** A mob turns where it stands (the golem, slowly: a quarter turn at a time). */
   | { t: 'mob-face'; id: string; dir: TownMobFacing }

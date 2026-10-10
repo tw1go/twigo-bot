@@ -237,9 +237,12 @@
         "xpMult": 20,
         "skillMult": {
           "tireSlam": 3,
-          "scrapToss": 2
+          "scrapToss": 2,
+          "junkDrop": 2,
+          "shockwave": 1.5
         },
-        "xpTo": "everyone who did at least 5% of its HP"
+        "xpTo": "everyone who did at least 5% of its HP",
+        "note": "skillMult junkDrop and shockwave are repo additions (bot web/town-golem.ts): Junk Drop falls in circles under the players it isn't fighting, Shockwave rings out round a Tire Slam from half HP"
       }
     }
   },

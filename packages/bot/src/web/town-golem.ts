@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { type GolemAttack, type GolemChange, type PlayerHit, type TownGolem, type TownMobFacing, type TownServerMessage, golemResetMs, golemHpPerPlayer, mobStats } from '@mikazuki/shared';
+import { type GolemAttack, type GolemChange, type PlayerHit, type TelegraphShape, type TownGolem, type TownMobFacing, type TownServerMessage, golemResetMs, golemHpPerPlayer, mobStats } from '@mikazuki/shared';
 import { loadStats } from './stats-data.js';
 
 // 🗿 The Scrapheap Golem, the Slums' field boss (the game's maps/slums.json `boss`), run on the server inside the Slums'
@@ -19,7 +19,14 @@ import { loadStats } from './stats-data.js';
 // next to it (TOSS_AREA): each a hit by the stats rules with its ATK × the mob table's skillMult (×3, ×2), rolled by the
 // host (`roll`) and sent with the attack (`hits`); the host takes the HP as it lands (`hitMs`). At half HP it calls the
 // Junk once (3–4 spots round the pit; its Adds crawl out there when the fx is done: the host spawns them as real mobs),
-// at a quarter it enrages once. Nobody in its fight (on its pit floor or way in, knocked out players left out) for
+// at a quarter it enrages once.
+// Two moves that keep everyone moving, not only its target (`boss-move`: the red telegraph on the ground now and when it
+// lands; who it hits is decided then, where everyone stands, as `boss-hit`): Junk Drop, every DROP_EVERY_MS of a fight
+// (DROP_ENRAGED_MS enraged, the first DROP_FIRST_MS in), a circle of DROP_RADIUS under up to DROP_TARGETS players in its
+// fight other than its target (its target if nobody else is there), scrap falling into each DROP_MS later; and from half
+// HP a Shockwave after every Tire Slam, a ring WAVE (inner, outer) tiles round where the fist landed, rippling out
+// WAVE_MS after it (whoever's close to the fist, or well clear, is safe). Their damage: the mob table's skillMult
+// (junkDrop, shockwave). A reset or its death takes back whatever is still on its way (`boss-cancel`). Nobody in its fight (on its pit floor or way in, knocked out players left out) for
 // stats.json mobBehaviour.golem.resetAfterSecondsEmpty (`resetMs`): it resets (full HP, Adds gone, both phases again
 // next fight) and walks home; it never leaves its pit. At 0 it dies: its Adds go, and a line names everyone who hit it in that fight; the damage
 // each member did in it (by member, so a reload mid-fight keeps it) goes back with the last hit (its XP: everyone who did
@@ -40,8 +47,16 @@ const SLAM_AREA = 2; // Tire Slam: every player within this of where its fist la
 const TOSS_AREA = 1; // Scrap Toss: its target's tile and the tiles next to it
 /** The scrap's flight (the game's golem.ts FLIGHT_MS): a toss lands this long after it leaves the fist. */
 const FLIGHT_MS = 600;
-/** Each attack's multiplier in the mob table's skillMult. */
-const MULT: Partial<Record<GolemAttack, string>> = { slam: 'tireSlam', toss: 'scrapToss' };
+const DROP_EVERY_MS = 9000;
+const DROP_ENRAGED_MS = 6000;
+const DROP_FIRST_MS = 5000;
+const DROP_RADIUS = 1.5;
+const DROP_MS = 1500;
+const DROP_TARGETS = 2;
+const WAVE: [number, number] = [2.5, 5.5]; // the Shockwave's ring: tiles from where the slam's fist landed
+const WAVE_MS = 1100;
+/** Each attack's (and timed move's) multiplier in the mob table's skillMult. */
+const MULT: Partial<Record<GolemAttack | GolemMove, string>> = { slam: 'tireSlam', toss: 'scrapToss', drop: 'junkDrop', wave: 'shockwave' };
 const SINK_MS = 30 * 60_000;
 
 /** slums.json `boss`. */
@@ -91,7 +106,7 @@ export interface GolemArt {
   attackMs: Record<GolemAttack, number>;
   callMs: number;
   hitMs?: Record<GolemAttack, number>;
-  mult?: Partial<Record<GolemAttack, number>>;
+  mult?: Partial<Record<GolemAttack | GolemMove, number>>;
   /** Nobody in its fight this long (ms): it resets (stats.json mobBehaviour.golem). */
   resetMs: number;
   /** Its HP × this for every player in the Slums (stats.json mobBehaviour.golem.hpPerPlayer; 1 = none). */
@@ -108,7 +123,7 @@ export function loadGolemArt(id = 'scrapheap-golem'): GolemArt {
   const at = (a: Anim, frame: number) => Math.round((frame / a.fps) * 1000);
   const a = art.animations;
   const row = mobStats(loadStats(), id)!;
-  const mult = Object.fromEntries(Object.entries(MULT).map(([k, v]) => [k, row.skillMult?.[v] ?? 1])) as Partial<Record<GolemAttack, number>>;
+  const mult = Object.fromEntries(Object.entries(MULT).map(([k, v]) => [k, row.skillMult?.[v] ?? 1])) as Partial<Record<GolemAttack | GolemMove, number>>;
   return {
     hp: row.hp, resetMs: golemResetMs(loadStats()), hpPerPlayer: golemHpPerPlayer(loadStats()), radius: rules.radius, riseMs: ms(a.death), attackMs: { slam: ms(a.attack), toss: ms(a.toss), glare: ms(a.glare) }, callMs: ms(art.fx['fx-golem-call-junk']),
     hitMs: { slam: at(a.attack, rules.attackFrame ?? 5), toss: at(a.toss, rules.tossFrame ?? 4) + FLIGHT_MS, glare: at(a.glare, rules.glareFrames?.[0] ?? 3) },
@@ -117,7 +132,11 @@ export function loadGolemArt(id = 'scrapheap-golem'): GolemArt {
 }
 
 /** What the golem sends to the room. */
-export type GolemEvent = Extract<TownServerMessage, { t: 'golem' | 'golem-attack' | 'mob-move' | 'mob-face' | 'mob-add' | 'mob-remove' | 'system' }>;
+export type GolemEvent = Extract<TownServerMessage, { t: 'golem' | 'golem-attack' | 'boss-move' | 'boss-hit' | 'boss-cancel' | 'mob-move' | 'mob-face' | 'mob-add' | 'mob-remove' | 'system' }>;
+
+/** Its timed moves: Junk Drop and the Shockwave. */
+export type GolemMove = 'drop' | 'wave';
+const MOVE_NAME: Record<GolemMove, string> = { drop: 'junkDrop', wave: 'shockwave' };
 
 /** What it needs from the room it's in. */
 export interface GolemHost {
@@ -166,6 +185,21 @@ function turnToward(f: TownMobFacing, want: TownMobFacing): TownMobFacing {
   return d === 0 ? f : TURNS[(TURNS.indexOf(f) + (d === 3 ? 3 : 1)) % 4];
 }
 
+/** Whether a tile is in a timed move's telegraph (a little slack: a player on its edge counts). */
+export function inShape(shape: TelegraphShape, p: [number, number]): boolean {
+  const d = (at: [number, number]) => Math.hypot(p[0] - at[0], p[1] - at[1]);
+  switch (shape.kind) {
+    case 'circle':
+      return d(shape.at) <= shape.radius + 0.35;
+    case 'circles':
+      return shape.circles.some((c) => d(c.at) <= c.radius + 0.35);
+    case 'ring':
+      return d(shape.at) >= shape.inner && d(shape.at) <= shape.outer + 0.35; // (no slack inward: by the fist is safe)
+    default:
+      return false; // (the golem has no lines, cones or tiles)
+  }
+}
+
 /** Whether `p` is inside the glare's cone from `from` along `f`. */
 export function inCone(from: [number, number], f: TownMobFacing, p: [number, number], [length, degrees] = CONE): boolean {
   const [dx, dy] = [p[0] - from[0], p[1] - from[1]];
@@ -178,7 +212,7 @@ export function inCone(from: [number, number], f: TownMobFacing, p: [number, num
 type Phase = 'gone' | Exclude<TownGolem['state'], 'dead'>;
 
 /** The dev demo's steps (?golemdemo=1): each attack, the Junk at a pretend half, Enrage at a pretend quarter, death. */
-const DEMO = ['slam', 'toss', 'glare', 'call', 'slam', 'toss', 'glare', 'enrage', 'slam', 'toss', 'glare', 'death'] as const;
+const DEMO = ['slam', 'toss', 'glare', 'drop', 'call', 'slam', 'toss', 'glare', 'drop', 'enrage', 'slam', 'drop', 'death'] as const;
 
 export class Golem {
   readonly id: string;
@@ -214,6 +248,10 @@ export class Golem {
   private adds: { at: number; spots: [number, number][] } | null = null;
   private demoRun: { step: number; at: number; name: string } | null = null;
   private pending: GolemEvent[] = [];
+  /** Its next Junk Drop; its timed moves on their way (each lands, or sends its telegraph, at `at`). */
+  private nextDrop = 0;
+  private timed: { at: number; run: (now: number, players: ReadonlyMap<string, [number, number]>) => void }[] = [];
+  private moves = 0;
 
   constructor(
     private readonly boss: GolemBoss,
@@ -274,6 +312,11 @@ export class Golem {
       this.adds = null;
     }
     if (this.phase === 'gone') return this.flush();
+    const due = this.timed.filter((m) => m.at <= now);
+    if (due.length) {
+      this.timed = this.timed.filter((m) => m.at > now);
+      for (const m of due) m.run(now, players);
+    }
     if (this.path.length && now >= this.hopAt + (this.path.length / SPEED) * 1000) {
       const [a, b] = [this.path.length > 1 ? this.path[this.path.length - 2] : [this.col, this.row], this.path[this.path.length - 1]];
       this.facing = facingTo(b[0] - a[0], b[1] - a[1]) ?? this.facing;
@@ -469,12 +512,14 @@ export class Golem {
       return;
     }
     this.alone = null;
-    if (this.path.length || now < this.busyUntil) return;
     const wanted = (id: string) => this.host.priority?.(id) ?? 0;
     const top = Math.max(...near.map(([id]) => wanted(id)));
     const most = near.filter(([id]) => wanted(id) === top);
     const target = most.find(([id]) => id === this.foe) ?? most.reduce((a, b) => (this.edge(b[1], now) < this.edge(a[1], now) ? b : a));
     const [id, p] = target;
+    // (Junk Drop keeps its own time: it falls mid-stomp and mid-swing too.)
+    if (now >= this.nextDrop) this.drop(now, near, id);
+    if (this.path.length || now < this.busyUntil) return;
     const d = this.edge(p, now);
     const glare = this.attacks % GLARE_EVERY === GLARE_EVERY - 1;
     // Too far to slam: a step closer (while it's still too soon to attack, or too close to toss).
@@ -522,14 +567,61 @@ export class Golem {
         return h ? [{ id, ...h }] : [];
       })
       : [];
+    // From half HP a slam's Shockwave: its telegraph as the fist lands, its ring a moment after.
+    if (attack === 'slam' && this.hp <= this.max / 2) this.timed.push({ at: now + this.hitMs('slam'), run: (t) => this.wave(at, t) });
     this.pending.push({
       t: 'golem-attack', id: this.id, attack, dir: this.facing, target, at, enraged: this.enraged,
       ...(attack === 'glare' ? { blinded, blindMs: BLIND_MS, cone } : {}), ...(hits.length ? { hits } : {}),
     });
   }
 
+  /** Junk Drop: a circle under up to DROP_TARGETS of the players in its fight other than `target` (else under `target`),
+   *  the scrap falling into each DROP_MS later. */
+  private drop(now: number, near: [string, [number, number]][], target: string): void {
+    this.nextDrop = now + (this.enraged ? DROP_ENRAGED_MS : DROP_EVERY_MS);
+    const others = near.filter(([id]) => id !== target);
+    const pool = others.length ? [...others] : near.filter(([id]) => id === target);
+    const picked: [number, number][] = [];
+    while (picked.length < DROP_TARGETS && pool.length) picked.push(pool.splice(Math.floor(this.random() * pool.length), 1)[0][1]);
+    if (!picked.length) return;
+    this.move('drop', { kind: 'circles', circles: picked.map((at) => ({ at: [at[0], at[1]] as [number, number], radius: DROP_RADIUS })) }, DROP_MS, now);
+  }
+
+  /** The Shockwave round where a slam's fist landed. */
+  private wave(at: [number, number], now: number): void {
+    if (this.phase !== 'fight') return;
+    this.move('wave', { kind: 'ring', at, inner: WAVE[0], outer: WAVE[1] }, WAVE_MS, now);
+  }
+
+  /** A timed move: its telegraph to the room now, its hit `ms` later on whoever is in its shape then. */
+  private move(move: GolemMove, shape: TelegraphShape, ms: number, now: number): void {
+    const key = `${this.id}:${++this.moves}`;
+    const name = MOVE_NAME[move];
+    this.pending.push({ t: 'boss-move', id: this.id, move: name, key, ms, shape });
+    this.timed.push({
+      at: now + ms,
+      run: (_t, players) => {
+        const hits = this.host.roll
+          ? [...players].filter(([, q]) => inShape(shape, q)).flatMap(([id]) => {
+            const h = this.host.roll!(id, this.art.mult?.[move] ?? 1);
+            return h ? [{ id, damage: h.damage, ...(h.miss ? { miss: true } : {}) }] : [];
+          })
+          : [];
+        this.pending.push({ t: 'boss-hit', id: this.id, move: name, key, hits });
+      },
+    });
+  }
+
+  /** Whatever of its moves is still on its way is called off (a reset, its death). */
+  private cancelMoves(): void {
+    if (!this.timed.length) return;
+    this.timed = [];
+    this.pending.push({ t: 'boss-cancel', id: this.id });
+  }
+
   /** Nobody stayed: full HP, Adds gone, both phases ready again, and home. */
   private reset(now: number): void {
+    this.cancelMoves();
     Object.assign(this, { hp: this.max, enraged: false, called: false, adds: null, foe: null, alone: null, attacks: 0 });
     this.hitters.clear();
     this.dealt.clear();
@@ -548,7 +640,7 @@ export class Golem {
     if (starts) {
       this.halt(now);
       this.phase = 'fight';
-      Object.assign(this, { alone: null, attacks: 0, nextAttack: Math.max(this.nextAttack, now + FIRST_MS) });
+      Object.assign(this, { alone: null, attacks: 0, nextAttack: Math.max(this.nextAttack, now + FIRST_MS), nextDrop: now + DROP_FIRST_MS });
     }
     this.foe = player;
     this.hitters.set(member, name);
@@ -606,6 +698,7 @@ export class Golem {
 
   /** At 0: its Adds go, and a line names everyone who hit it this fight. */
   private die(now: number): void {
+    this.cancelMoves();
     this.halt(now);
     this.change('death', now);
     this.phase = 'gone';
@@ -685,6 +778,11 @@ export class Golem {
       if (step === 'call') this.callJunk(now);
       else this.enrage(now);
       run.at = now + (step === 'call' ? this.art.callMs + 2500 : 2000);
+      return;
+    }
+    if (step === 'drop') {
+      this.drop(now, [...players], '');
+      run.at = now + DROP_MS + 1200;
       return;
     }
     if (step === 'death') {

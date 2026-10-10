@@ -114,7 +114,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
 Data added in this repo that the owner's `mikazuki-assets` copy doesn't have yet; each says so in a `note` beside it
 where JSON allows. When you add one, add it here (and tell the owner, who copies them back):
 
-- `classes/stats.json`: `rarity.nameColour[r].colour`, `rarity.dropPlus`, `affixes.names`,
+- `classes/stats.json`: the golem's mob table `skillMult.junkDrop` / `skillMult.shockwave`, `rarity.nameColour[r].colour`, `rarity.dropPlus`, `affixes.names`,
   `currencies.kusingPerMobRange`, `skills.mpCost`, `skills.cooldownByUnlock`, `skills.buffs` (numbers) with
   `rules.allyBuffsReachParty`, `agimats.onlyIn`, `agimats.rarePerItem`, `agimats.sellKusing`, `inventory.agimatSlots`,
   `potions.separateCooldowns`, `trainingGear.noSell` / `sellKusing`, `mobBehaviour.targetPriority`,
@@ -461,7 +461,15 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   tile, 60°] in grid space; `blinded` ids, `blindMs`) — `golem-attack`, with `hits` (Player HP, below). ≤ 50% once: `golem` change 'call' with
   3–4 `spots` a tile or two outside the pit, then (`ms` = the call-junk fx) `mob-add`: 2 Tin Cans + a Bottle Caps pack
   (ids `golem-add:<n>[:<k>]`, `TownMob.kind`; aggressive toward the nearest player within the golem's leash; never back
-  once dead). ≤ 25% once: 'enrage'. `mobBehaviour.golem.resetAfterSecondsEmpty` (30 s, `GolemArt.resetMs`) with nobody in its fight (pit floor and way in; the knocked out left out): 'reset' (full HP, phases re-armed, Adds
+  once dead). ≤ 25% once: 'enrage'. Moves that keep everyone moving (decided as they land, where everyone stands then:
+  `boss-move` = its telegraph's `TelegraphShape` + `ms`, then `boss-hit`; `boss-cancel` on a reset or its death; the
+  protocol the Scrap Warrens' bosses share): Junk Drop, 5 s into a fight and every 9 s (6 s enraged), 1.5-tile circles
+  under up to 2 players in its fight other than its target (its target if alone), landing 1.5 s later ×skillMult
+  junkDrop (2); from half HP each Tire Slam's Shockwave, a ring 2.5–5.5 tiles round where the fist landed, 1.1 s after
+  it, ×shockwave (1.5) (`inShape`; tested). The game draws them with `world/telegraph.ts` (red fill growing to the hit,
+  the last 0.2 s blink, a white flash; `lift` for the pit's height): Junk Drop's scrap (fx-golem-scrap) falling into each
+  circle over its last 450 ms with a shadow growing under it, landing as scrap-land; the Shockwave's dust rippling out
+  through its ring (GolemView `move` / `moveHit` / `cancel`). `mobBehaviour.golem.resetAfterSecondsEmpty` (30 s, `GolemArt.resetMs`) with nobody in its fight (pit floor and way in; the knocked out left out): 'reset' (full HP, phases re-armed, Adds
   `mob-remove`d), walks home. 0: 'death' (state 'dead'), Adds removed, the line naming everyone who hit it that fight
   (`downLine`). Every `golem` message carries the whole `TownGolem` (HP, enraged, state, home/leash/radius for the boss
   bar); arrivals get it in `mobs` (`golem`). The CMS's Field boss tab spawns it live (above). Dev: `/__golem?now=1` (rise now), `/__golem?demo=1&as=Name` (its fight
