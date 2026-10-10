@@ -206,7 +206,12 @@
       #town-hud .th-level { display: flex; align-items: center; gap: 6px; font-size: calc(14px * var(--text)); line-height: 1; color: #A9B1D6; }
       #town-hud .th-level[hidden] { display: none; }
       #town-hud .th-lv { font-size: calc(16px * var(--text)); font-weight: 600; color: #fff; white-space: nowrap; }
-      #town-hud .th-cp { margin-left: 6px; font-size: calc(13px * var(--text)); font-weight: 600; color: #F8BF27; white-space: nowrap; }
+      /* Your combat rating: a tab under the profile box, its frame without a top edge, tucked against the box's bottom edge. */
+      #town-hud .th-card { display: flex; flex-direction: column; align-items: flex-start; }
+      #town-hud .th-cp-tab { position: relative; z-index: 1; display: flex; align-items: baseline; gap: 6px; margin: -2px 0 0 14px; padding: 3px 10px 4px; border: 2px solid #7C2AE8; border-top: 0; background: #111827; font-size: calc(13px * var(--text)); line-height: 1.2; white-space: nowrap; }
+      #town-hud .th-cp-tab[hidden] { display: none; }
+      #town-hud .th-cp-label { color: #A9B1D6; font-size: calc(11px * var(--text)); letter-spacing: 0.08em; }
+      #town-hud .th-cp-tab .th-cp-value { color: #F8BF27; font-weight: 600; }
       #town-hud .th-bars { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 76px; }
       #town-hud .th-xp { display: block; height: 4px; padding: 1px; background: #1E1B3A; box-shadow: 0 0 0 1px #4C1D95; }
       #town-hud .th-xp-fill { display: block; height: 100%; background: #A3E635; transition: width 0.4s ease-out; }

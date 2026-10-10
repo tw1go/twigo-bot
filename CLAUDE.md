@@ -628,7 +628,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `skillCooldown`), damage (`levelGap`, `hitDamage`,
   `rollHit`), `mobStats`, `mobXp` (low-mob penalty), `mobTone`, `combatRating` (CP: offense = Power × (1 + crit rate ×
   (crit damage − 1)) × (1 + amp) × (1 + attack rate), toughness = HP × (100 + DEF) / 100 / (1 − DEF rate), each by stats.json
-  `combatRating`'s weight, + MP; tested). Shown: the HUD beside your level and the stats box's top (`ui/rating.ts` myStats /
+  `combatRating`'s weight, + MP; tested). Shown: the HUD in a tab hanging under the profile box (`.th-cp-tab`, the profile and it in `.th-card`) and the stats box's top (`ui/rating.ts` myStats /
   myRating, buffs in), the player box beside their level (`buffs-of`'s `cp`, the server's with their buffs:
   `MobRoom.rating`) and Info (`InspectStats.cp`). classes.json main/second stats match stats.json (tested).
   Gear (both sides use them): `wearCheck` (canEquip on a character's base stats), `placesFor`, `trainingGear` (a class's
