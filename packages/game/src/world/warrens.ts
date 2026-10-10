@@ -19,7 +19,8 @@ import { Telegraphs } from './telegraph';
 //   is shut as well.
 // - The area's name across the top as you walk into one; the boss bar (with Barong-Barong's title) while you're in a
 //   boss's arena; the junk walls just in front of you at half alpha. In Barong-Barong's arena while it's up, `bossFrame`
-//   (its art's box, mobs.json `frame`, and you): TownScene's boss camera keeps it all in view.
+//   (centred on its art's box, mobs.json `frame`, and wide enough to take you in): TownScene's boss camera keeps it in
+//   view, Barong-Barong in the middle of the screen.
 // - Every boss move (`boss-move`): its telegraph on the ground (world/telegraph.ts) from now to its hit, the boss's anim
 //   timed so its hit frame lands on the hit, and its effects on their layers (the brief's 9.3 and 9.4: Lid Slam, Burnout
 //   Charge, Smother Fog, Vanish, Chain Zap, Live Floor, Pincer Sweep, Hunker, the calls, Scrapling slams, Fist Slam, Roof
@@ -198,7 +199,12 @@ export class WarrensView {
       const [ax, ay] = boss.cell.anchor;
       const box = new Phaser.Geom.Rectangle(f.x + (x0 - ax) * k, f.y + (y0 - ay) * k, (x1 - x0) * k, (y1 - y0) * k);
       const mine = this.hooks.myBox();
-      this.frame = mine ? Phaser.Geom.Rectangle.Union(box, mine) : box;
+      // Centred on it (the camera centres the frame: it in the middle of the screen), as wide and tall either way as it
+      // takes to take you in too.
+      const [cx, cy] = [box.centerX, box.centerY];
+      const halfW = Math.max(box.width / 2, ...(mine ? [cx - mine.left, mine.right - cx] : []));
+      const halfH = Math.max(box.height / 2, ...(mine ? [cy - mine.top, mine.bottom - cy] : []));
+      this.frame = new Phaser.Geom.Rectangle(cx - halfW, cy - halfH, halfW * 2, halfH * 2);
     }
     const king = this.mobs.get(`boss:${this.lastId}`);
     if (king && !king.enraged && !king.dead && king.hp / king.maxHp <= (this.enrageAt ?? 0.25)) this.enrage(king);
