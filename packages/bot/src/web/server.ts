@@ -122,6 +122,8 @@ const ALLOWED_ORIGINS = new Set([
 const BAKOD_CHECK_MS = 3_000;
 /** The open Scrap Warrens runs (kv): what a restart refunds. */
 const WARRENS_RUNS = 'warrens-open';
+/** When the Scrapheap Golem rises next (kv): what a restart picks up. */
+const GOLEM_NEXT_RISE = 'golem-next-rise';
 /** Leaderboard responses are reused this long, so a burst of visitors is one lookup. */
 const BOARD_TTL_MS = 30_000;
 /** Names and avatars change rarely; looked up at most this often per member. */
@@ -923,6 +925,8 @@ export function startWebServer(client: Client): void {
       },
     });
     toDiscord = bridgeTownChat(client, town);
+    // The golem rises 2 hours after it was last killed or sank back: when that is, kept (a restart keeps the countdown).
+    slumsRoom?.golemSchedule(kvLoad<number | null>(GOLEM_NEXT_RISE, null), (at) => kvSave(GOLEM_NEXT_RISE, at));
     connectTownFeed(town);
     const live = town;
     // <Richest Among All> follows the leaderboard's #1: the winner's pop-up (the first time) and both name tags.

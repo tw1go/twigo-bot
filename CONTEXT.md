@@ -65,7 +65,7 @@ A single big mob that rises on a schedule rather than on a spawn point: the Scra
 _Avoid_: raid boss, world boss
 
 **Rise**:
-The field boss appearing in the Golem Pit (every two hours, on the even hour).
+The field boss appearing in the Golem Pit (two hours after it was killed, or after it sank back unbeaten).
 _Avoid_: spawn (for the boss)
 
 **Sink**:

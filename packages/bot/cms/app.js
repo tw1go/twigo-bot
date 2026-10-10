@@ -586,7 +586,7 @@ async function boss() {
     body.replaceChildren(h('div', { class: 'card' },
       h('h2', null, b.name),
       h('p', null, h('b', null, STATE[b.state] ?? b.state), b.up ? ` · ${fmt(b.hp)} / ${fmt(b.maxHp)} HP (${pct}%)` : ''),
-      h('p', { class: 'hint' }, `Next rise on its own: ${when(b.nextRise)} (every ${b.everyMinutes} minutes).`),
+      h('p', { class: 'hint' }, b.nextRise ? `Next rise on its own: ${when(b.nextRise)} (${b.everyMinutes} minutes after it was killed or sank back).` : `It rises again ${b.everyMinutes} minutes after it's killed or sinks back.`),
       h('div', { class: 'actions' }, spawn),
     ));
     clearTimeout(timer);

@@ -1349,9 +1349,14 @@ export class MobRoom {
     return down.length;
   }
 
-  /** The golem's name and next rise on its own (null: no golem here). */
-  golemPlan(now: number): { name: string; nextRise: number; everyMinutes: number } | null {
+  /** The golem's name and next rise on its own (nextRise null: it's up; null: no golem here). */
+  golemPlan(now: number): { name: string; nextRise: number | null; everyMinutes: number } | null {
     return this.golem?.plan(now) ?? null;
+  }
+
+  /** When the golem rises next as last kept (null: nothing kept), and where to keep it as that changes (the bot's kv). */
+  golemSchedule(at: number | null, save?: (at: number | null) => void): void {
+    this.golem?.setSchedule(at, save);
   }
 
   /** The golem rises now (dev's ?golem=now, the CMS's Spawn now; false: it's up already, or none); plays its whole
