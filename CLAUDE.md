@@ -124,7 +124,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
 - `classes/leveling.json`: `miniBoss.questDrop`.
 - `classes/dungeons.json` (= the art folder's `data/dungeons/warrens.json` as `{ "warrens": … }`): `run.timeLimitMinutes` 20
   (was 40), `run.gatherSeconds` 60, the ticket's shop price 500,000 Kusing in the `dungeons` tab, `entry.warp.tile`
-  [46,97] / `arrive` [46,100] (a row south of the art's, off the road).
+  [37,85] / `arrive` [37,88] (by the jeepney and taxi wrecks north-east of the golem pit; the art's is [46,96])
+  (`build-warrens.ts` moves the gate's object and blocked tiles in slums.json to it, opening the old ones).
 - `items/items.json`: `warren-ticket`. `mobs/mobs.json`: `barong-barong`.
 - `maps/slums.json`: the Golem Pit v3 changes (the art folder's copy still has the old 6×6 pit; see Scrapheap Golem), and
   the Warren Gate (object, its blocked tiles, `arrive.warrens`; written by `scripts/build-warrens.ts`).

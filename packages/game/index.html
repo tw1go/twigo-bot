@@ -348,6 +348,8 @@
       #reward .rw-ok:hover { background: #B5EE5A; }
       #reward .rw-x { position: absolute; top: 2px; right: 4px; z-index: 1; width: 32px; height: 32px; padding: 0; border: 0; background: none; color: #7A8099; font: 700 calc(26px * var(--text))/1 var(--ui-font); cursor: var(--cur-hand, pointer); }
       #reward .rw-x:hover { color: #1E1B3A; }
+      /* A pop-up with the corner ×: its title keeps clear of it. */
+      #reward .rw-card:has(> .rw-x) .rw-title { padding: 0 30px; }
       #reward .rw-x:focus-visible { outline: 2px solid #7C2AE8; outline-offset: -2px; }
       #reward .rw-ok:active { transform: translateY(4px); box-shadow: inset 0 3px 0 #D9F99D, inset 0 -2px 0 #5A8A5E, 0 1px 0 #1E1B3A; }
       /* Casino lights on the frame's top edge: round bulbs shaded like glass (a highlight top left), alternate ones
@@ -1491,7 +1493,8 @@
       .wr-btn[hidden] { display: none; }
       .wr-btn.wr-go { background: #EF4444; color: #fff; border-color: #1E1B3A; box-shadow: inset 0 -2px 0 #B91C1C; }
       .wr-btn.wr-go:hover { background: #F87171; }
-      .wr-gate-line { margin: 0 0 6px; color: #1E1B3A; font-weight: 700; }
+      #reward .rw-card:has(.wr-gate-line) { width: min(440px, calc(100vw - 32px)); }
+      .wr-gate-line { margin: 0 0 6px; color: #1E1B3A; font-weight: 700; text-wrap: balance; }
       .wr-gate-you, .wr-gate-run { margin: 0 0 6px; color: #3D4256; }
       .wr-gate-why { margin: 6px 0; color: #B91C1C; font-weight: 700; }
       .wr-gate-actions { display: flex; justify-content: center; gap: 8px; margin-top: 10px; }

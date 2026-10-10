@@ -10,18 +10,18 @@
     "map": "slums",
     "object": "slums-warren-gate",
     "tile": [
-     46,
-     97
+     37,
+     85
     ],
-    "tileNote": "Repo change (Mac, 10 Oct 2026): one row south of the art folder's 46,96, so its 3x3 stays off the Slums road (rows 93-95)",
+    "tileNote": "Repo change (Mac, 10 Oct 2026): by the jeepney and taxi wrecks north-east of the golem pit, under the Wire Ridge's ledge (the art folder's is 46,96)",
     "footprint": [
      3,
      3
     ],
     "useRangeTiles": 3,
     "arrive": [
-     46,
-     100
+     37,
+     88
     ]
    },
    "minLevel": 15,

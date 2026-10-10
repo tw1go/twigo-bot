@@ -413,6 +413,7 @@ export class TownScene extends Phaser.Scene {
     // Back through a gate: at its way in (town.json `arrive`), facing into the area, not the spawn point.
     const from = cameFrom();
     const arrive = from ? this.map.arrive?.[from] : undefined;
+    this.gateAsked = from === 'warrens'; // (back out of the Warrens by the gate: its panel waits till you walk up to it again)
     if (arrive) this.player.place({ col: arrive[0], row: arrive[1] }, 'nw');
     // A fresh visit to the neighbourhood with a house there: at your door, facing the street.
     const mine = !from && this.hood?.houses.find((h) => h.mine);

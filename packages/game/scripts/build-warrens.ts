@@ -291,9 +291,15 @@ const gate = dungeons.entry.warp;
 const [gc, gr] = gate.tile;
 const [fw, fh] = gate.footprint;
 const top: Tile = [gc - Math.floor(fw / 2), gr - Math.floor(fh / 2)];
+// (A gate moved: its old tiles open again.)
+for (const o of slums.objects.filter((x) => x.id === 'slums-warren-gate'))
+  for (let r = o.row; r < o.row + o.footprint[1]; r++) for (let c = o.col; c < o.col + o.footprint[0]; c++) slums.blocked[r][c] = 0;
 slums.objects = slums.objects.filter((o) => o.id !== 'slums-warren-gate');
+const onSlums = new Set<string>();
+for (const o of slums.objects) for (let r = o.row; r < o.row + (o.footprint?.[1] ?? 1); r++) for (let c = o.col; c < o.col + (o.footprint?.[0] ?? 1); c++) onSlums.add(`${c},${r}`);
 for (let r = top[1]; r < top[1] + fh; r++)
   for (let c = top[0]; c < top[0] + fw; c++) {
+    if (slums.blocked[r][c] || onSlums.has(`${c},${r}`)) throw new Error(`The Warren Gate's tile ${c},${r} isn't free`);
     if (slums.height[r][c] !== slums.height[gr][gc]) throw new Error(`The Warren Gate's tile ${c},${r} isn't flat ground`);
     if (slums.mobZones.some((z) => z.rect && c >= z.rect[0] && c <= z.rect[2] && r >= z.rect[1] && r <= z.rect[3])) throw new Error(`The Warren Gate's tile ${c},${r} is in a mob zone`);
     slums.blocked[r][c] = 1;
