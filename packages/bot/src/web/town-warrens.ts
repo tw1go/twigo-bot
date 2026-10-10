@@ -108,6 +108,8 @@ export function inShape(shape: TelegraphShape, p: Tile, lineTiles?: Set<string>)
       return inCircle(p, shape.at, shape.radius);
     case 'circles':
       return shape.circles.some((c) => inCircle(p, c.at, c.radius));
+    case 'ring':
+      return hyp(p, shape.at) >= shape.inner && hyp(p, shape.at) <= shape.outer + 0.35; // (the golem's: no slack inward)
     case 'tiles':
       return shape.tiles.some((t) => t[0] === p[0] && t[1] === p[1]);
     case 'line':

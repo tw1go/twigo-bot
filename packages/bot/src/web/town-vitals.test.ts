@@ -201,8 +201,8 @@ test('blinded, every hit misses: on a mob (it still fights back) and on the gole
 // ── The golem's hits ──
 
 test('the golem\'s attacks: Tire Slam ×3 on everyone within 2 tiles of where its fist lands, Scrap Toss ×2 on the target\'s tile and the tiles next to it, Lamp Glare no damage', () => {
-  assert.deepEqual(art.mult, { slam: 3, toss: 2 });
-  assert.deepEqual(mobStats(stats, boss.id)!.skillMult, { tireSlam: 3, scrapToss: 2 });
+  assert.deepEqual(art.mult, { slam: 3, toss: 2, drop: 2, wave: 1.5 });
+  assert.deepEqual(mobStats(stats, boss.id)!.skillMult, { tireSlam: 3, scrapToss: 2, junkDrop: 2, shockwave: 1.5 });
   assert.deepEqual(art.hitMs, { slam: 500, toss: 400 + 600, glare: 300 }, 'its frames at 10 fps; the toss\'s flight');
   const rolled: [string, number][] = [];
   const host: GolemHost = {

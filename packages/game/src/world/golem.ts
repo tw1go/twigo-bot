@@ -1,10 +1,11 @@
 import Phaser from 'phaser';
-import type { GolemChange, TownGolem, TownMobFacing, TownServerMessage } from '@mikazuki/shared';
+import type { GolemChange, TelegraphShape, TownGolem, TownMobFacing, TownServerMessage } from '@mikazuki/shared';
 import type { FxDef, MobZone, TownMap, Vec2 } from '../assets/types';
 import { BossBar } from '../ui/boss-bar';
-import type { FxLayers, Pt } from './fx-layers';
+import type { FxHandle, FxLayers, Pt } from './fx-layers';
 import { GOLEM_PIT, type Mob, type Mobs } from './mobs';
 import { type Heard, playSet } from '../audio/sound';
+import { Telegraphs, ringPoly } from './telegraph';
 
 // 🗿 The Scrapheap Golem in the game (the field boss; the server runs it: bot web/town-golem.ts). It's a mob of world/
 // mobs.ts (drawn, sorted by its feet, sleeping off camera, clicked and targeted like the rest; mobs.json `radius`: reach
@@ -26,6 +27,11 @@ import { type Heard, playSet } from '../audio/sound';
 // for whoever's within its leash. Its sounds (golem-<attack>, GOLEM_SOUNDS: the slam's wind-up as it starts and the slam
 // on its frame, the toss's throw on release and landing, the glare as it lights, the Junk called, the enrage) are heard
 // within range of it, a little quieter than your own (audio/sound.ts).
+// Its moves that keep everyone moving (`boss-move`, decided by the server as they land, `boss-hit`): their red
+// telegraphs on the ground (world/telegraph.ts, at the pit's height) from the move until its hit; Junk Drop's scrap
+// (fx-golem-scrap) falls straight into each circle over its last FALL_MS, its shadow growing under it all along, landing
+// as the hit does (fx-golem-scrap-land, the toss's landing sound, a nudge); the Shockwave's dust ripples out through its
+// ring as it hits (drawn in code, WAVE_FX_MS). `boss-cancel` (a reset, its death) takes them all back.
 
 /** The golem's sound sets (audio/sfx golem-<name>-1…3). */
 export const GOLEM_SOUNDS = ['tire-slam-windup', 'tire-slam', 'scrap-toss-throw', 'scrap-toss-land', 'lamp-glare', 'call-junk', 'enrage'] as const;
@@ -35,6 +41,10 @@ const FLIGHT_MS = 600; // the scrap's flight (the bot's town-golem.ts lands the 
 const GLARE_IN_MS = 100;
 const GLARE_OUT_MS = 220;
 const BLIND_Y = 5; // the blinded sparkles circle a head: this far under its top (px; over it, the name tag hid them)
+const FALL_MS = 450; // Junk Drop: the scrap's fall into its circle
+const FALL_FROM = 150; // px above the ground it falls from
+const WAVE_FX_MS = 380; // the Shockwave's ripple through its ring
+const WAVE_BAND = 0.6; // tiles: the ripple's width
 
 /** Each facing's axis on the grid, as an angle (SE = +col, SW = +row, NW = −col, NE = −row). */
 const AXIS_ANGLE: Record<TownMobFacing, number> = { se: 0, sw: Math.PI / 2, nw: Math.PI, ne: -Math.PI / 2 };
@@ -42,6 +52,8 @@ const AXIS_ANGLE: Record<TownMobFacing, number> = { se: 0, sw: Math.PI / 2, nw: 
 const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 type GolemAttackMessage = Extract<TownServerMessage, { t: 'golem-attack' }>;
+type BossMove = Extract<TownServerMessage, { t: 'boss-move' }>;
+type BossHit = Extract<TownServerMessage, { t: 'boss-hit' }>;
 
 /** What it needs from the scene: where a player's feet and head are (town id; null: not here), and your tile. */
 export interface GolemPlayers {
@@ -57,6 +69,9 @@ export class GolemView {
   private art = false;
   private readonly bar = new BossBar();
   private touchTimer: Phaser.Time.TimerEvent | null = null;
+  private readonly telegraphs: Telegraphs;
+  /** Its moves on their way (by key): their shapes, and the falls and shadows to call off. */
+  private readonly moves = new Map<string, { shape?: TelegraphShape; timers: Phaser.Time.TimerEvent[]; fx: (FxHandle | null)[] }>();
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -65,7 +80,9 @@ export class GolemView {
     private readonly fx: FxLayers,
     /** (The scene fills in `at` once it knows who's who.) */
     readonly players: GolemPlayers,
-  ) {}
+  ) {
+    this.telegraphs = new Telegraphs(scene, fx);
+  }
 
   private get boss() {
     return this.map.boss!;
@@ -241,6 +258,83 @@ export class GolemView {
     }
   }
 
+  /** One of its moves (Junk Drop, Shockwave): its telegraph now, its effects timed to land with its hit `ms` later. */
+  move(e: BossMove): void {
+    if (e.id !== this.boss.id) return;
+    const live = { shape: e.shape, timers: [] as Phaser.Time.TimerEvent[], fx: [] as (FxHandle | null)[] };
+    this.moves.set(e.key, live);
+    if (!e.shape) return;
+    const anchor = e.shape.kind === 'circles' ? e.shape.circles[0]?.at : 'at' in e.shape ? e.shape.at : null;
+    this.telegraphs.show(e.key, e.id, e.shape, e.ms, anchor ? this.lift(anchor) : 0);
+    if (e.move === 'junkDrop' && e.shape.kind === 'circles') for (const c of e.shape.circles) this.fall(live, c.at, e.ms);
+  }
+
+  /** One of its moves landing: everyone it caught (the server's, where they stood then) and, for the Shockwave, its
+   *  ripple. */
+  moveHit(e: BossHit): void {
+    if (e.id !== this.boss.id) return;
+    const live = this.moves.get(e.key);
+    this.moves.delete(e.key);
+    if (e.move === 'shockwave' && live?.shape?.kind === 'ring') this.ripple(live.shape);
+    const m = this.mob;
+    if (m) for (const h of e.hits) this.mobs.hooks.onHit?.(m, h.id, undefined, h);
+  }
+
+  /** It reset or fell: its telegraphs, falling scrap and shadows go at once. */
+  cancel(id: string): void {
+    if (id !== this.boss.id) return;
+    this.telegraphs.cancel(id);
+    for (const live of this.moves.values()) {
+      for (const t of live.timers) t.remove();
+      for (const f of live.fx) f?.kill(150);
+    }
+    this.moves.clear();
+  }
+
+  /** Junk Drop's scrap into the circle at `tile`: its shadow growing under it from now, the scrap falling over the last
+   *  FALL_MS before the hit, landing as it does. */
+  private fall(live: { timers: Phaser.Time.TimerEvent[]; fx: (FxHandle | null)[] }, tile: [number, number], ms: number): void {
+    const at = this.mobs.ground(tile[0] + 0.5, tile[1] + 0.5);
+    const k = this.mob?.data?.scale ?? 1;
+    live.fx.push(this.fx.drawFx('ground', (g, t) => {
+      const p = Math.min(1, t / Math.max(1, ms));
+      g.fillStyle(0x1e1b3a, 0.15 + 0.3 * p).fillEllipse(at.x, at.y, Math.round(8 + 22 * p), Math.round(4 + 11 * p));
+    }, ms + 60, 60));
+    const fallMs = Math.min(FALL_MS, ms);
+    live.timers.push(this.scene.time.delayedCall(ms - fallMs, () => {
+      live.fx.push(this.fx.shot(this.def('fx-golem-scrap'), { x: at.x, y: at.y - FALL_FROM }, at, {
+        speed: 1, flightMs: fallMs, turn: false, spin: this.scene.time.now % 2 ? 6 : -6, scale: k,
+        onArrive: () => {
+          this.fx.play(this.def('fx-golem-scrap-land'), at, { scale: k });
+          this.sound('scrap-toss-land', { col: tile[0], row: tile[1] });
+          this.shake(at);
+        },
+      }));
+    }));
+  }
+
+  /** The Shockwave's dust rippling out through its ring (drawn in code, ground layer), with the slam's sound. */
+  private ripple(s: Extract<TelegraphShape, { kind: 'ring' }>): void {
+    const [c, r] = [s.at[0] + 0.5, s.at[1] + 0.5];
+    const lift = this.lift(s.at);
+    this.fx.drawFx('ground', (g, t) => {
+      g.y = -lift;
+      const p = Math.min(1, t / WAVE_FX_MS);
+      const outer = s.inner + (s.outer - s.inner) * p;
+      const inner = Math.max(s.inner, outer - WAVE_BAND);
+      g.fillStyle(0xd9c79a, 0.55 * (1 - p * 0.7));
+      fill(g, ringPoly(c, r, inner, outer));
+      return t < WAVE_FX_MS;
+    }, WAVE_FX_MS, 120);
+    this.sound('tire-slam', { col: s.at[0], row: s.at[1] });
+    this.shake(this.mobs.ground(c, r));
+  }
+
+  /** How far the ground at a tile is raised (px): the telegraphs are drawn on the flat grid, then lifted. */
+  private lift([c, r]: [number, number]): number {
+    return (c + 0.5 + r + 0.5) * 8 - this.mobs.ground(c + 0.5, r + 0.5).y;
+  }
+
   /** The Lamp Glare's light (drawn in code, front layer, added light): the cone the server tests in grid space (its
    *  tile, `length` tiles along its facing, `degrees` wide) laid on the ground, and a beam from the lamp onto it, brighter
    *  down the middle; in over GLARE_IN_MS, held `hold` ms, out over GLARE_OUT_MS. */
@@ -336,6 +430,8 @@ export class GolemView {
   private fightTiles: Set<string> | null = null;
 
   destroy(): void {
+    this.cancel(this.boss.id);
+    this.telegraphs.clear();
     this.bar.destroy();
   }
 }

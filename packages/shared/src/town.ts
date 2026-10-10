@@ -46,16 +46,6 @@ export interface TownMob {
   blockAll?: boolean;
 }
 
-/** A boss move's telegraph on the ground (the server decides it; the game draws it from now until its hit, `ms` later):
- *  tiles in grid space. A cone's `facing` is its middle's angle on the grid (radians, atan2(drow, dcol)), `angle` its
- *  width in degrees. Yellow: Live Floor (electric), else red. */
-export type TelegraphShape =
-  | { kind: 'circle'; at: [number, number]; radius: number }
-  | { kind: 'circles'; circles: { at: [number, number]; radius: number }[] }
-  | { kind: 'line'; from: [number, number]; to: [number, number]; width: number }
-  | { kind: 'cone'; origin: [number, number]; facing: number; angle: number; length: number }
-  | { kind: 'tiles'; tiles: [number, number][]; colour?: 'yellow' };
-
 /** A Scrap Warrens run as its players see it (bot web/town-warrens.ts). `phase`: gathering (in the start room, waiting
  *  for the party: `gatherLeft` ms at most), running (`left` ms of the time limit), cleared (Barong-Barong is down:
  *  `left` ms until it closes) or closed. `bosses`: the five mini bosses and the last boss in order, as they fall;
@@ -87,6 +77,18 @@ export interface TownWarrensGate {
   /** Why not: 'level' (under minLevel), 'full' (too many runs at once), 'ticket' (none to open with). */
   blocked?: 'level' | 'full' | 'ticket';
 }
+
+/** A boss move's telegraph on the ground (the server decides it; the game draws it from now until its hit, `ms` later):
+ *  tiles in grid space. A cone's `facing` is its middle's angle on the grid (radians, atan2(drow, dcol)), `angle` its
+ *  width in degrees. A ring: the ground between `inner` and `outer` tiles round `at` (the golem's Shockwave). Yellow:
+ *  Live Floor (electric), else red. */
+export type TelegraphShape =
+  | { kind: 'circle'; at: [number, number]; radius: number }
+  | { kind: 'circles'; circles: { at: [number, number]; radius: number }[] }
+  | { kind: 'ring'; at: [number, number]; inner: number; outer: number }
+  | { kind: 'line'; from: [number, number]; to: [number, number]; width: number }
+  | { kind: 'cone'; origin: [number, number]; facing: number; angle: number; length: number }
+  | { kind: 'tiles'; tiles: [number, number][]; colour?: 'yellow' };
 
 /** The Scrapheap Golem's attacks: Tire Slam, Scrap Toss, Lamp Glare. */
 export type GolemAttack = 'slam' | 'toss' | 'glare';
@@ -463,8 +465,9 @@ export type TownServerMessage =
   | { t: 'mob-scale'; mobs: { id: string; hp: number; maxHp: number }[] }
   /** A boss's untargetable or block-all window began or ended. */
   | { t: 'mob-flag'; id: string; untargetable?: boolean; blockAll?: boolean }
-  /** A boss move (the Warrens): its telegraph now, its hit `ms` from now (`key`: this move's own, for its hit); `data`:
-   *  what its effects need (the hand, a charge's path, a call's spots…). */
+  /** A boss move (the Scrap Warrens' bosses; the golem's Junk Drop and Shockwave): its telegraph now, its hit `ms` from
+   *  now (`key`: this move's own, for its hit); `data`: what its effects need (the hand, a charge's path, a call's
+   *  spots…). Who it hits is decided as it lands (where everyone stands then). */
   | { t: 'boss-move'; id: string; move: string; key: string; ms: number; shape?: TelegraphShape; data?: Record<string, unknown> }
   /** A boss move landing: who it hit (damage or a miss). */
   | { t: 'boss-hit'; id: string; move: string; key: string; hits: { id: string; damage: number; miss?: boolean }[]; data?: Record<string, unknown> }

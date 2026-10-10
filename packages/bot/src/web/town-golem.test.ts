@@ -4,7 +4,7 @@ import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { WebSocket } from 'ws';
 import { type TownServerMessage, baseStats, derivedStats, golemResetMs, hitDamage, mobStats, xpEarners, xpShare } from '@mikazuki/shared';
-import { Golem, type GolemEvent, type GolemHost, downLine, inCone, loadGolemArt, nextRiseAfter, pitTiles } from './town-golem.js';
+import { Golem, type GolemEvent, type GolemHost, downLine, inCone, inShape, loadGolemArt, nextRiseAfter, pitTiles } from './town-golem.js';
 import { loadStats } from './stats-data.js';
 import { type Attacker, MobRoom, loadMobKinds, loadMobMap } from './town-mobs.js';
 import { attachTown } from './town.js';
@@ -259,6 +259,128 @@ test('attacks: Tire Slam close, Scrap Toss far, a Lamp Glare every 4th at whoeve
   assert.ok(fast.slice(1).some((a, i) => a.at - fast[i].at === 1000), fast.map((a) => a.at).join());
 });
 
+// ── Junk Drop and the Shockwave: decided where everyone stands as they land ──
+
+const moves = (evs: { at: number; e: GolemEvent }[], move: string) =>
+  evs.filter((x) => x.e.t === 'boss-move' && x.e.move === move) as { at: number; e: Extract<GolemEvent, { t: 'boss-move' }> }[];
+const landings = (evs: { at: number; e: GolemEvent }[], move: string) =>
+  evs.filter((x) => x.e.t === 'boss-hit' && x.e.move === move) as { at: number; e: Extract<GolemEvent, { t: 'boss-hit' }> }[];
+/** A golem whose every hit on a player is 10 (or a miss for `missing`). */
+function hitting(missing = new Set<string>()) {
+  const l = lone();
+  l.host.roll = (id) => (missing.has(id) ? { damage: 0, miss: true } : { damage: 10 });
+  return l;
+}
+
+test('Junk Drop: 5 s into a fight, then every 9 s (6 s enraged), a 1.5-tile circle under up to 2 players it isn\'t fighting; it lands 1.5 s later on whoever is still inside', () => {
+  const { golem } = hitting();
+  golem.riseNow(0);
+  const R = art.radius;
+  const pit = pitTiles(boss)!;
+  const tank = at(R + 1, 0);
+  const [a, b, c] = [at(0, R + 2), at(-(R + 2), 0), at(0, -(R + 2))];
+  for (const t of [tank, a, b, c]) assert.ok(pit.floor.has(`${t[0]},${t[1]}`), 'on the pit floor');
+  run(golem, 0, 1750);
+  golem.hit('p1', 'Tank', 20, 2000);
+  const where = new Map([['p1', tank], ['p2', a], ['p3', b], ['p4', c]]);
+  const evs = run(golem, 2000, 6750, where);
+  assert.equal(moves(evs, 'junkDrop').length, 0, 'not in its first 5 s');
+  const first = moves(run(golem, 7000, 7000, where), 'junkDrop')[0];
+  assert.ok(first, 'at 5 s');
+  assert.deepEqual([first.e.ms, first.e.shape?.kind], [1500, 'circles']);
+  const circles = first.e.shape?.kind === 'circles' ? first.e.shape.circles : [];
+  assert.equal(circles.length, 2);
+  assert.ok(circles.every((x) => x.radius === 1.5 && [a, b, c].some((p) => p[0] === x.at[0] && p[1] === x.at[1])), 'under two of the others, never its target');
+  // One of the two walks out of their circle, the other stays: only the one who stayed is hit.
+  const [stays, walks] = [...where].filter(([, p]) => circles.some((x) => x.at[0] === p[0] && x.at[1] === p[1])).map(([id]) => id);
+  const moved = new Map(where);
+  moved.set(walks, [where.get(walks)![0] + 3, where.get(walks)![1]]);
+  const land = landings(run(golem, 7250, 8500, moved), 'junkDrop');
+  assert.equal(land.length, 1);
+  assert.deepEqual([land[0].at, land[0].e.key, land[0].e.hits], [8500, first.e.key, [{ id: stays, damage: 10 }]]);
+  // The next 9 s after the first.
+  const next = moves(run(golem, 8750, 16_000, where), 'junkDrop');
+  assert.deepEqual(next.map((x) => x.at), [16_000]);
+  // Enraged: 6 s apart (from the one already due, 9 s after the last).
+  golem.hit('p1', 'Tank', Math.ceil((art.hp * 3) / 4), 16_100);
+  const fast = moves(run(golem, 16_250, 38_000, where), 'junkDrop');
+  assert.deepEqual(fast.map((x) => x.at), [25_000, 31_000, 37_000]);
+});
+
+test('Junk Drop with nobody else in its fight falls under its target', () => {
+  const { golem } = hitting();
+  golem.riseNow(0);
+  const tank = at(art.radius + 1, 0);
+  run(golem, 0, 1750);
+  golem.hit('p1', 'Tank', 20, 2000);
+  const drop = moves(run(golem, 2000, 7000, new Map([['p1', tank]])), 'junkDrop')[0];
+  assert.deepEqual(drop.e.shape, { kind: 'circles', circles: [{ at: tank, radius: 1.5 }] });
+});
+
+test('Shockwave: from half HP each Tire Slam rings out round where its fist landed (2.5 to 5.5 tiles), 1.1 s after the fist; close to the fist or well clear is safe', () => {
+  const { golem } = hitting();
+  golem.riseNow(0);
+  const R = art.radius;
+  const tank = at(R + 1, 0);
+  run(golem, 0, 1750);
+  golem.hit('p1', 'Tank', 20, 2000);
+  const early = run(golem, 2000, 6000, new Map([['p1', tank]]));
+  assert.ok(attacks(early).some((a) => a.e.attack === 'slam'));
+  assert.equal(moves(early, 'shockwave').length, 0, 'not above half HP');
+  golem.hit('p1', 'Tank', Math.ceil(art.hp / 2), 6100);
+  const evs = run(golem, 6250, 12_000, new Map([['p1', tank]]));
+  const slam = attacks(evs).find((a) => a.e.attack === 'slam')!;
+  const wave = moves(evs, 'shockwave')[0];
+  assert.ok(slam && wave);
+  assert.ok(wave.at - slam.at >= golem.hitMs('slam') && wave.at - slam.at < golem.hitMs('slam') + 250, 'as the fist lands');
+  assert.deepEqual([wave.e.ms, wave.e.shape], [1100, { kind: 'ring', at: slam.e.at, inner: 2.5, outer: 5.5 }]);
+  // Who's where as it ripples out: next to the fist, in the ring, well clear.
+  const fist = slam.e.at;
+  const spots = new Map([['p1', fist], ['p2', [fist[0], fist[1] + 4] as [number, number]], ['p3', [fist[0], fist[1] - 7] as [number, number]]]);
+  assert.deepEqual([...spots.values()].map((p) => inShape(wave.e.shape!, p)), [false, true, false]);
+  assert.ok(!inShape(wave.e.shape!, [fist[0] + 2, fist[1] + 1]), 'a little over 2 tiles from the fist is still safe (no slack inward)');
+  const hit = landings(evs, 'shockwave').find((x) => x.e.key === wave.e.key);
+  assert.ok(hit && hit.at - wave.at >= 1100 && hit.at - wave.at < 1350);
+  assert.deepEqual(hit.e.hits, [], 'p1 stood by the fist');
+});
+
+test('a reset or its death calls off its moves on their way (boss-cancel): nothing lands after', () => {
+  const { golem } = hitting();
+  golem.riseNow(0);
+  run(golem, 0, 1750);
+  golem.hit('p1', 'Tank', 20, 2000);
+  const where = new Map([['p1', at(art.radius + 1, 0)], ['p2', at(0, art.radius + 2)]]);
+  const evs = run(golem, 2000, 7000, where);
+  assert.equal(moves(evs, 'junkDrop').length, 1);
+  golem.hit('p1', 'Tank', art.hp, 7100); // its death, with the drop still falling
+  const after = [...golem.flush().map((e) => ({ at: 7100, e })), ...run(golem, 7250, 10_000, where)];
+  assert.ok(after.some((x) => x.e.t === 'boss-cancel' && x.e.id === boss.id));
+  assert.equal(landings(after, 'junkDrop').length, 0);
+});
+
+test('its moves\' hits come off HP in the room as they land (MobRoom.landed), rolled against each player\'s DEF', () => {
+  const room = new MobRoom(map, lcg(4), {}, { shapes: {} }, kinds, art);
+  room.riseGolem(0);
+  room.tick(1000);
+  const tank = at(art.radius + 1, 0);
+  const other = at(0, art.radius + 2);
+  const players = new Map([['p1', tank], ['p2', other]]);
+  const guards = new Map([['p1', { def: 10, level: 15 }], ['p2', { def: 10, level: 15 }]]);
+  room.attack('p1', tank, hero('stick'), boss.id, 2000);
+  room.flush();
+  type BossHit = Extract<TownServerMessage, { t: 'boss-hit' }>;
+  let found: { hit: BossHit; t: number } | null = null;
+  for (let t = 2250; t <= 10_000 && !found; t += 250) {
+    const hit = room.tick(t, players, guards).find((e): e is BossHit => e.t === 'boss-hit' && e.move === 'junkDrop');
+    if (hit) found = { hit, t };
+  }
+  assert.ok(found, 'a drop landed');
+  assert.deepEqual(found.hit.hits.map((h) => h.id), ['p2'], 'under the one it wasn\'t fighting');
+  const landed = room.landed(found.t).filter((l) => l.by === boss.id && l.player === 'p2');
+  assert.equal(landed.length, 1);
+  assert.equal(landed[0].damage, found.hit.hits[0].damage);
+});
+
 test('between 2 and 3 tiles of its edge it steps closer (inside its leash), then slams', () => {
   const { golem } = lone();
   golem.riseNow(0);
@@ -442,8 +564,10 @@ test('the dev demo: it rises, slams, tosses and glares at the nearest player, ca
   const room = new MobRoom(map, lcg(3), {}, { shapes: {} }, kinds, art);
   room.golemDemo(0, 'Alice');
   const evs = run(room, 0, 40_000, new Map([['p1', at(6, 2)]]));
-  const seen = evs.flatMap((x) => (x.e.t === 'golem' ? [x.e.change] : x.e.t === 'golem-attack' ? [x.e.attack] : x.e.t === 'mob-add' ? ['adds'] : []));
-  assert.deepEqual(seen, ['rise', 'fight', 'slam', 'toss', 'glare', 'call', 'adds', 'slam', 'toss', 'glare', 'enrage', 'slam', 'toss', 'glare', 'death']);
+  const seen = evs.flatMap((x) => (x.e.t === 'golem' ? [x.e.change] : x.e.t === 'golem-attack' ? [x.e.attack] : x.e.t === 'boss-move' ? [x.e.move] : x.e.t === 'mob-add' ? ['adds'] : []));
+  assert.deepEqual(seen, [
+    'rise', 'fight', 'slam', 'toss', 'glare', 'junkDrop', 'call', 'adds', 'slam', 'shockwave', 'toss', 'glare', 'junkDrop', 'enrage', 'slam', 'shockwave', 'junkDrop', 'death',
+  ]);
   assert.ok(evs.some((x) => x.e.t === 'system' && x.e.line.text === 'Alice brought down the Scrapheap Golem!'));
   assert.ok(evs.some((x) => x.e.t === 'mob-remove'));
 });

@@ -1807,9 +1807,10 @@ export class TownScene extends Phaser.Scene {
         this.warrensTracker.set(m.run);
         return this.warrens?.run(m.run);
       }
-      if (m.t === 'boss-move') return this.warrens?.move(m);
-      if (m.t === 'boss-hit') return this.warrens?.hit(m);
-      if (m.t === 'boss-cancel') return this.warrens?.cancel(m.id);
+      // Boss moves: a Warrens run's bosses there, the field golem's in the Slums (a map has one or the other).
+      if (m.t === 'boss-move') return this.warrens ? this.warrens.move(m) : this.golem?.move(m);
+      if (m.t === 'boss-hit') return this.warrens ? this.warrens.hit(m) : this.golem?.moveHit(m);
+      if (m.t === 'boss-cancel') return this.warrens ? this.warrens.cancel(m.id) : this.golem?.cancel(m.id);
       if (m.t === 'mob-scale') return this.mobs?.scale(m.mobs);
       if (m.t === 'mob-flag') return this.mobs?.flag(m.id, m.untargetable, m.blockAll);
       if (m.t === 'stunned') {

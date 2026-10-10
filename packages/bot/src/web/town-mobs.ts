@@ -87,7 +87,7 @@ import { Golem, type GolemArt, type GolemBoss, type GolemEvent, type PitTiles, p
 // attack() like any mob's (reach to its body's edge; area skills reach it too), and its Adds are mobs of this room (ids
 // `golem-add:<n>`, sent with their `kind` in `mob-add`; aggressive toward the nearest player within its leash, never
 // coming back once dead, all removed with `mob-remove` when the fight ends). Its slams and tosses land like the mobs'
-// attacks (`landed`), its Lamp Glare blinds (`blind` ms: the host makes their attacks miss, `Attacker.blinded`).
+// attacks (`landed`; its Junk Drop and Shockwave as they land: who's in them then), its Lamp Glare blinds (`blind` ms: the host makes their attacks miss, `Attacker.blinded`).
 // Players the host leaves out of a tick (knocked out) are nobody's target: mobs walk home, the golem looks elsewhere.
 
 const SPEED = 2.4; // tiles per second (the game walks them at the same pace)
@@ -836,6 +836,8 @@ export class MobRoom {
     if (this.opts.director) events.push(...this.opts.director.tick(now, players));
     // The golem's slams and tosses land after a moment (its art's), its glare blinds as it lights.
     for (const e of events) {
+      // Its timed moves (Junk Drop, Shockwave) were decided as they landed: off HP now.
+      if (e.t === 'boss-hit') for (const h of e.hits) this.landings.push({ at: now, player: h.id, by: e.id, damage: h.damage, ...(h.miss ? { miss: true } : {}) });
       if (e.t !== 'golem-attack' || !this.golem) continue;
       const at = now + this.golem.hitMs(e.attack as GolemAttack);
       for (const h of e.hits ?? []) this.landings.push({ at, player: h.id, by: e.id, damage: h.damage, ...(h.miss ? { miss: true } : {}) });
