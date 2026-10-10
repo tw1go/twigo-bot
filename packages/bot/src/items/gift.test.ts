@@ -19,6 +19,7 @@ const { inventory, masterKeys, shovelUses, shovelsBoughtToday, SHOVEL_USES } = a
 const { potionCount } = await import('../potions/potions.js');
 const { usedSlots } = await import('../dig/bag.js');
 const { closeDatabase } = await import('../db/db.js');
+const { combatOf } = await import('../web/adventure.js');
 
 test('gifts go straight in: shop items first, then dug-up items', () => {
   assert.deepEqual(GIFTABLE.slice(0, 3).map((g) => g.id), ['shovel', 'master-key', 'megaphone']);
@@ -34,6 +35,15 @@ test('gifts go straight in: shop items first, then dug-up items', () => {
   assert.equal(shovelsBoughtToday('u'), 0); // not counted as bought
   assert.deepEqual(inventory('u'), [['rock', 4]]);
   assert.equal(usedSlots('u'), 4 + 2 + 1 + 1); // rocks, keys, the potion, one slot for the megaphones
+});
+
+test('Warren Tickets go into the combat bag, stacked (/gift item warren-ticket, for everyone)', () => {
+  const ticket = giftableById.get('warren-ticket');
+  assert.ok(ticket?.combat, 'giftable, into the combat bag');
+  assert.equal(ticket.give('w', 5), true);
+  assert.equal(ticket.give('w', 5), true);
+  const held = combatOf('w').bag.filter((i) => i?.defId === 'warren-ticket');
+  assert.deepEqual(held.map((i) => i!.count), [10], 'one stack');
 });
 
 test.after(() => {

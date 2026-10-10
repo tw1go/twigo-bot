@@ -9,7 +9,8 @@ import { newUid, withItems } from '../web/adventure.js';
 import { loadItemData } from '../web/stats-data.js';
 
 // 🎁 What the gifter can give with /gift item: the shop's items (shovels, Master Keys, megaphones, potions), the combat
-// bag's materials and potions (whetstones, fragments, Repair Kits, HP/MP Potions: items.json) and every dug-up item.
+// bag's materials, potions and consumables (whetstones, fragments, Repair Kits, HP/MP Potions, Warren Tickets:
+// items.json) and every dug-up item.
 // Gifts go straight in, ignoring daily shovel limits and bag space (the gifter decides); a combat item only goes into a
 // combat bag with room for it (`give` says false).
 
@@ -36,8 +37,8 @@ const shop: Giftable[] = [
 const combat = (): Giftable[] => {
   const D = loadItemData();
   return [...D.defs.values()].flatMap((d): Giftable[] =>
-    !isGearDef(d) && (d.kind === 'material' || d.kind === 'potion')
-      ? [{ id: d.id, name: d.name, emoji: d.kind === 'potion' ? '🧪' : '🪨', rarity: 'common', combat: true,
+    !isGearDef(d) && (d.kind === 'material' || d.kind === 'potion' || d.kind === 'consumable')
+      ? [{ id: d.id, name: d.name, emoji: d.kind === 'potion' ? '🧪' : d.kind === 'consumable' ? '🎟️' : '🪨', rarity: 'common', combat: true,
           give: (u, n) => withItems(u, (s) => addToBag(D, s.bag, newItem(D.stats, d, newUid(), n), newUid), (ok) => ok) }]
       : [],
   );
