@@ -158,6 +158,26 @@ test('it rises again 2 hours (everyMinutes) after it is killed, or after it sink
   assert.equal(again.golemState(5_000)!.state, 'rising');
 });
 
+test('golem messages say when it next rises on its own (the Slums\' golem timer): none while it\'s up; sinking or killed, 2 hours after it\'s gone', () => {
+  const { golem } = lone();
+  const evs = run(golem, Date.UTC(2026, 9, 8, 3, 59), Date.UTC(2026, 9, 8, 4, 40));
+  // (As ms from when it's sent, so a player's clock being off doesn't matter.)
+  const sent = evs.flatMap((x) => (x.e.t === 'golem' ? [[x.e.change, x.at, x.e.riseIn === undefined ? null : x.at + x.e.riseIn]] : []));
+  assert.deepEqual(sent.map(([c, , next]) => [c, next === null]), [['rise', true], ['sink', false]], 'up: nothing to count down to');
+  const [, sankAt, next] = sent[1] as [string, number, number];
+  assert.equal(sankAt, Date.UTC(2026, 9, 8, 4, 30), 'it sank 30 minutes untouched');
+  assert.equal(next, sankAt + art.riseMs + 2 * HOUR, '2 hours after it has sunk back');
+  // Killed: its death says 2 hours from then.
+  const k = lone().golem;
+  const t0 = Date.UTC(2026, 9, 8, 3, 10);
+  k.tick(t0, new Map());
+  k.riseNow(t0);
+  run(k, t0, t0 + 1500);
+  k.hit('p1', 'Mara', art.hp, t0 + 2000);
+  const death = k.flush().find((e) => e.t === 'golem' && e.change === 'death');
+  assert.equal(death?.t === 'golem' && death.riseIn, 2 * HOUR);
+});
+
 test('its HP grows with the players in the Slums: the mob table\'s × 1.5 ^ players (stats.json hpPerPlayer), keeping its share as they come and go', () => {
   const room = new MobRoom(map, lcg(), {}, { shapes: {} }, kinds, { ...art, hpPerPlayer: 1.5 });
   const t0 = Date.UTC(2026, 9, 8, 3, 10);
@@ -623,6 +643,8 @@ test('its lines reach only those in the Slums: not the town, not the feed kept f
   await new Promise((ok) => setTimeout(ok, 100));
   const snap = inSlums.got.find((m) => m.t === 'mobs');
   assert.ok(snap && snap.t === 'mobs' && snap.golem === null, 'arrivals hear it is not up');
+  const riseIn = nextRiseAfter(Date.now(), boss.everyMinutes) - Date.now();
+  assert.ok(Math.abs(snap.riseIn! - riseIn) < 1000, 'and how long until it next rises (the golem timer)');
   room.riseGolem(Date.now());
   await new Promise((ok) => setTimeout(ok, 400));
   const said = (c: { got: TownServerMessage[] }) => c.got.flatMap((m) => (m.t === 'system' ? [m.line.text] : []));

@@ -75,6 +75,8 @@ export interface Manifest {
     arenaViewers?: { files: string[]; size: Vec2; frames: number; fps: number; anchor: Vec2 };
     /** The jackpot counter's icon (top right; optional: the Kowen coin stands in). */
     jackpotIcon?: { file: string; size: Vec2 };
+    /** The Slums' golem timer's picture: the Scrapheap Golem's head. */
+    golemHead?: { file: string; size: Vec2 };
     /** The Casino's Kara y Krus: the flip for the side the coin lands on (each ending on that face, the coin at rest).
      *  The siren and coin burst are fx (siren, coin-burst). */
     coinFlip?: { sides: Record<'kara' | 'krus', string>; size: Vec2; frames: number; fps: number; anchor: Vec2 };

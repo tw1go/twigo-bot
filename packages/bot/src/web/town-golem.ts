@@ -718,8 +718,8 @@ export class Golem {
   private die(now: number): void {
     this.cancelMoves();
     this.halt(now);
+    this.gone(now); // (first: the death says when it rises next)
     this.change('death', now);
-    this.gone(now);
     this.adds = null;
     this.demoRun = null;
     this.pending.push(...this.host.dropAdds());
@@ -739,7 +739,9 @@ export class Golem {
   }
 
   private change(change: GolemChange, now: number, extra: { spots?: [number, number][]; ms?: number } = {}): void {
-    this.pending.push({ t: 'golem', change, golem: this.state(now, change === 'death')!, ...extra });
+    // (`riseIn` for the golem timer: none while it's up and not sinking, since its next rise comes 2 hours after it's gone.)
+    const next = this.plan(now).nextRise;
+    this.pending.push({ t: 'golem', change, golem: this.state(now, change === 'death')!, ...(next !== null ? { riseIn: next - now } : {}), ...extra });
   }
 
   /** A line in the Slums' system feed (only there: see town.ts). */
@@ -764,7 +766,9 @@ export class Golem {
 
   /** Its name, and when it rises next on its own (null: it's up now; it rises again `everyMinutes` after it's gone). */
   plan(now: number): { name: string; nextRise: number | null; everyMinutes: number } {
-    return { name: this.boss.name, nextRise: this.phase === 'gone' ? (this.nextRise ?? nextRiseAfter(now, this.boss.everyMinutes)) : null, everyMinutes: this.boss.everyMinutes };
+    const every = this.boss.everyMinutes * 60_000;
+    const nextRise = this.phase === 'gone' ? (this.nextRise ?? nextRiseAfter(now, this.boss.everyMinutes)) : this.phase === 'sinking' ? this.until + every : null;
+    return { name: this.boss.name, nextRise, everyMinutes: this.boss.everyMinutes };
   }
 
   /** It rises now, if it isn't up (dev's ?golem=now, the CMS's Spawn now). */
