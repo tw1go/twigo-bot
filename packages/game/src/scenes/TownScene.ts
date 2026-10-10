@@ -102,7 +102,7 @@ import { Hotbar } from '../ui/hotbar';
 import { mountClassSwitch } from '../ui/class-switch';
 import { MOVES, type MoveKind, isMoveKind, moveTiles, playMove } from '../world/mobility';
 import { changeClass, devItemsReady, devQuestKill, questReport, setQuestCounts, devSwitchClass, adventure, adventureData, anyDef, chooseClass, classInfo, initAdventure, itemData, itemDef, loadAdventureData, onAdventure, questDef, questFor, questTalk, setItems, setProgress, skillView, skillViews, buffViews } from '../net/adventure';
-import { type StatsData, potionCooldownGroup, dropRefusal, nameColour, type Item, type QuestReward, type TownItems, LOOT_REACH, auraFor, classBuffs, classSkills, countOf, isGearDef, itemAura, itemStats, newItem, tradeRules } from '@mikazuki/shared';
+import { type StatsData, buffsStack, potionCooldownGroup, dropRefusal, nameColour, type Item, type QuestReward, type TownItems, LOOT_REACH, auraFor, classBuffs, classSkills, countOf, isGearDef, itemAura, itemStats, newItem, tradeRules } from '@mikazuki/shared';
 import type { ClassArt } from '../assets/types';
 import { drawRested, loadImages, poseFiles, restFiles } from '../characters/kit-art';
 import { holdQuestBanners, mountQuests } from '../ui/quests';
@@ -1885,13 +1885,15 @@ export class TownScene extends Phaser.Scene {
       if (m.t === 'buffs') {
         setMyBuffs(m.buffs);
         if (!this.buffDemo) {
-          // (Each stat counts only from its strongest buff: one outdone on every stat it gives is faded, naming who wins.)
+          // (Buffs stack. Under the old rule, each stat counted only from its strongest buff: one outdone on every stat it
+          // gives was faded, naming who wins.)
+          const stack = buffsStack(adventureData()?.stats);
           const on = myBuffs();
           const best = myBuffStats();
           const winner = (k: string) => on.find((x) => x.stats[k] === best[k])?.name;
           this.buffTray?.set(on.map((b) => {
             const keys = Object.keys(b.stats);
-            const out = keys.length > 0 && keys.every((k) => b.stats[k] < best[k]);
+            const out = !stack && keys.length > 0 && keys.every((k) => b.stats[k] < best[k]);
             return { cls: b.cls, name: b.name, endsAt: b.endsAt, stats: buffStatLines(b.stats), ...(out ? { weaker: winner(keys[0]) } : {}) };
           }));
         }

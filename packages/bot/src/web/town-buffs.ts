@@ -1,4 +1,4 @@
-import { type BuffDef, type BuffRefusal, type StatsData, type TownBuff, buffMpCost, buffValue, skillCooldown, strongestBuffs } from '@mikazuki/shared';
+import { type BuffDef, type BuffRefusal, type StatsData, type TownBuff, buffMpCost, buffTotals, buffValue, skillCooldown } from '@mikazuki/shared';
 
 // ✨ Buffs in the web town (stats.json skills.buffs; combat-guide.md "Buffs"): who may cast one and who it reaches, and
 // the buffs on each member (by member, in memory only, like HP: a restart ends them). A cast is refused off a battle map,
@@ -8,8 +8,9 @@ import { type BuffDef, type BuffRefusal, type StatsData, type TownBuff, buffMpCo
 // room, up and within rules.partyRangeTiles (tiles either way, like every tile check). The player you've picked (clicked)
 // counts too, in your party or not: a one-ally buff goes to them first, a party buff reaches them as well. With
 // rules.allyBuffsReachParty (a repo addition), a one-ally buff is shared like a party buff: the whole party in range too. A timed buff on someone is its
-// stats at the caster's skill level (buffValue) until it runs out; casting it again restarts it. For each stat only the
-// strongest buff counts (strongestBuffs). Timed buffs end on time, on leaving the battle map and on a knock-out; a
+// stats at the caster's skill level (buffValue) until it runs out; casting it again restarts it. Buffs on the same stat
+// add up (stats.json rules.stack, a repo addition; off: only the strongest counts): buffTotals; the same buff never
+// stacks with itself. Timed buffs end on time, on leaving the battle map and on a knock-out; a
 // stance (Keen Stance) stays on until cast again (off) or a class change, across maps. Soothing Touch (durationSec 0)
 // is no buff: an instant heal the host gives (the caster's Power × its healPctOfPower). Pure (the clock is passed in).
 
@@ -125,9 +126,9 @@ export class Buffs {
     return this.list(member).map((b) => ({ name: b.name, cls: b.cls, level: b.level, stats: b.stats, ms: b.endsAt === null ? null : Math.max(0, b.endsAt - now) }));
   }
 
-  /** Their buffs as one set of stats: for each stat the strongest. */
+  /** Their buffs as one set of stats (buffTotals: added up, or each stat's strongest). */
   effective(member: string): Record<string, number> {
-    return strongestBuffs(this.list(member));
+    return buffTotals(this.data, this.list(member));
   }
 
   /** Timed buffs that ran out: off, and whose changed. */
