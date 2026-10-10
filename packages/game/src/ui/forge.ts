@@ -415,7 +415,7 @@ export class ForgePopup {
     const dots = el('div', 'fg-dots');
     item.agimats.forEach((a, i) => {
       const b = el('button', `fg-dot${a ? ' fg-dot-on' : ''}${this.slot === i ? ' fg-dot-picked' : ''}`);
-      b.append((a && agimatIcon(a.stat)) || el('span', 'fg-dot-mark'), el('span', undefined, a ? `${lineText(a.stat, agimatValue(D.stats, a.stat, a.level))} (Lv ${a.level})` : 'Empty slot'));
+      b.append((a && agimatIcon(a.stat, a.level)) || el('span', 'fg-dot-mark'), el('span', undefined, a ? `${lineText(a.stat, agimatValue(D.stats, a.stat, a.level))} (Lv ${a.level})` : 'Empty slot'));
       b.addEventListener('click', () => {
         this.slot = i;
         this.asking = false;

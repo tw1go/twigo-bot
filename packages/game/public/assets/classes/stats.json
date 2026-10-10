@@ -1034,6 +1034,11 @@
   },
   "agimats": {
     "placeholder": true,
+    "look": {
+      "note": "Repo addition (Mac, 10 Oct 2026): an agimat's picture is drawn darker the lower its level: `darkest` brightness at the first of `levels`, the art's own at the last (the top gear level), rising fastest at the start (a square root: Lv 20 about 0.70, Lv 50 0.85).",
+      "darkest": 0.55,
+      "levels": [10, 100]
+    },
     "onlyIn": {
       "note": "Repo addition (Mac, 9 Oct 2026): these agimats go only into gear of these slots (embedding refuses the rest; disassembly never rolls one for a slot it can't go in).",
       "critRate": ["weapon", "head", "hands"],

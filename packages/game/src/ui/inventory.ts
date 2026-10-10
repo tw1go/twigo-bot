@@ -369,7 +369,9 @@ export class Inventory {
     if (!D || !s) return void this.grid.replaceChildren(el('div', 'iv-empty', 'Choose a class with the Tanod to fill your combat bag.'));
     // This tab's pocket: the Agimats tab's own, the Combat tab the rest.
     const pocket: Pocket = this.tab === 'agimats' ? 'agimats' : 'bag';
+    // (The Agimats tab: the highest level first, each level's by stat, else as the bag has them.)
     const bag = s.bag.filter((b) => pocketOf(D, b) === pocket);
+    if (pocket === 'agimats') bag.sort((a, b) => b.level - a.level || (a.stat ?? '').localeCompare(b.stat ?? ''));
     const slots = pocketSlots(D, pocket);
     this.slots.textContent = `${bag.length}/${slots}`;
     this.slots.classList.toggle('iv-full', bag.length >= slots);

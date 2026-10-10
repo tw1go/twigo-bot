@@ -60,6 +60,17 @@ export function agimatSellPrice(stats: StatsData, item: Pick<Item, 'level' | 'st
   return Math.round(A.perLevel * item.level * (item.stat && rareAgimat(stats, item.stat) ? (A.rareTimes ?? 1) : 1));
 }
 
+/** How bright an agimat of `level` is drawn (stats.json agimats.look, a repo addition): `darkest` at the first of
+ *  `levels`, the art's own brightness (1) at the last, rising fastest at the start (a square root), so the levels found
+ *  early already look apart; 1 without it. The game draws its picture at this brightness everywhere. */
+export function agimatBrightness(stats: StatsData, level: number): number {
+  const L = (stats as StatsData & { agimats?: { look?: { darkest?: number; levels?: [number, number] } } }).agimats?.look;
+  if (!L || typeof L.darkest !== 'number' || !L.levels) return 1;
+  const [from, to] = L.levels;
+  const k = to > from ? Math.min(1, Math.max(0, (level - from) / (to - from))) : 1;
+  return Math.round((L.darkest + (1 - L.darkest) * Math.sqrt(k)) * 1000) / 1000;
+}
+
 /** What an item in the combat bag sells for in Kusing, the whole of it (a stack: each × how many): training gear and
  *  agimats only; null for anything else. */
 export function sellPrice(data: ItemData, item: Item): number | null {

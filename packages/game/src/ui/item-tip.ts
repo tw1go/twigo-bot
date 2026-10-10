@@ -1,4 +1,4 @@
-import { type EquipPlace, type EquipSlot, type Item, type StatName, affixTier, derivedStats, itemTotals, placesFor, agimatSlots, agimatValue, wordList, baseStats, canEquip, enhancedBase, gearKind, gearMismatch, isGearDef, itemAura, itemName, lineText, lineValue, pickupLine, requirements, statLabel } from '@mikazuki/shared';
+import { type EquipPlace, type EquipSlot, type Item, type StatName, affixTier, agimatBrightness, derivedStats, itemTotals, placesFor, agimatSlots, agimatValue, wordList, baseStats, canEquip, enhancedBase, gearKind, gearMismatch, isGearDef, itemAura, itemName, lineText, lineValue, pickupLine, requirements, statLabel } from '@mikazuki/shared';
 import { adventure, classInfo, itemData } from '../net/adventure';
 import { type Rarity, RARITY_TEXT, isRarity, itemArt, itemArtUrl, placeholderArt } from './item-art';
 import { auraIcon } from '../fx/weaponAura';
@@ -60,6 +60,7 @@ export function itemPicture(item: Item, size: 'icon' | 'showcase' = 'icon', scal
     art.classList.add('it-aura');
     return art;
   }
+  if (art && D && !isGearDef(def) && def?.kind === 'agimat') shade(art.querySelector<HTMLElement>('.it-pic'), agimatBrightness(D.stats, item.level));
   if (art) return art;
   if (isGearDef(def)) return slotSilhouette(def.slot, (size === 'icon' ? 16 : 32) * scale) ?? placeholderArt(rarityOf(item), size, scale);
   return placeholderArt(rarityOf(item), size, scale);
@@ -134,7 +135,7 @@ export function itemTipFor(item: Item, owner?: { cls: string | null }): HTMLElem
   if (item.agimats.length) {
     const dots = el('div', 'eq-tip-dots');
     for (const a of item.agimats) {
-      const dot = (a && agimatIcon(a.stat)) || el('span', `eq-tip-dot${a ? ' eq-tip-dot-on' : ''}`);
+      const dot = (a && agimatIcon(a.stat, a.level)) || el('span', `eq-tip-dot${a ? ' eq-tip-dot-on' : ''}`);
       dots.append(dot, el('span', 'eq-tip-dot-text', a ? `${lineText(a.stat, agimatValue(D.stats, a.stat, a.level))} (Lv ${a.level})` : 'Empty agimat slot'));
     }
     parts.push(dots);
@@ -211,9 +212,14 @@ export function itemKeys(item: Item, where: 'bag' | 'worn'): HTMLElement {
   return el('div', 'eq-tip-keys', keys.join(' · '));
 }
 
-/** An agimat's icon (items.json, the agimat of that stat), 16 px, for its slot in tooltips and the forge; null without
-  *  one (a ring stands in). Drawn at 2× (index.html .agimat-icon). */
-export function agimatIcon(stat: string): HTMLElement | null {
+/** An agimat's picture darker the lower its level (stats.json agimats.look: `agimatBrightness`). */
+function shade(pic: HTMLElement | null, brightness: number): void {
+  if (pic && brightness < 1) pic.style.filter = `brightness(${brightness})`;
+}
+
+/** An agimat's icon (items.json, the agimat of that stat), 16 px, for its slot in tooltips and the forge, as dark as
+ *  its `level` makes it; null without one (a ring stands in). Drawn at 2× (index.html .agimat-icon). */
+export function agimatIcon(stat: string, level: number): HTMLElement | null {
   const def = [...(itemData()?.defs.values() ?? [])].find((d) => !isGearDef(d) && d.kind === 'agimat' && d.stat === stat);
   if (!def || isGearDef(def) || !def.icon) return null;
   const img = el('img', 'agimat-icon');
@@ -221,5 +227,7 @@ export function agimatIcon(stat: string): HTMLElement | null {
   img.alt = '';
   img.width = 16;
   img.height = 16;
+  const D = itemData();
+  if (D) shade(img, agimatBrightness(D.stats, level));
   return img;
 }
