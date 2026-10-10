@@ -6,7 +6,9 @@ Copied from mikazuki-assets on 3 Oct 2026. These are the locked style-test asset
 - Load sheets as Phaser spritesheets with frameWidth 32 and frameHeight 48. Set each sprite's origin to (16/32, 47/48) so the feet anchor sits on the tile.
 - Stack the paper-doll layers in the draw order with zero offset, and play the same frame index on every layer.
 - Recolour the grey key ramps at load time: draw the image to a canvas, swap the exact key colours, and add the result as a new texture.
-- Edit the source files in mikazuki-assets, not these copies, then copy them over again.
+- Edit the source files in mikazuki-assets (the owner's art folder), not these copies, then copy them over again.
+  Contributors without that folder: don't redraw or replace art here; ask the owner. Data files (`*.json`) can be
+  edited here: say what you changed in your pull request (and see "Repo-only data" in the root `CLAUDE.md`).
 
 ## Camera (decided 3 Oct)
 The town is bigger than the screen. The camera follows the player and scrolls as they walk.

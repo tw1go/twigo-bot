@@ -1,11 +1,12 @@
 # Mikazuki
 
-The Mikazuki server's Discord bot (twigo, "the Tanod") and its upcoming web town, in one npm-workspaces monorepo.
+The Mikazuki server's Discord bot (twigo, "the Tanod") and its web game, the town of Mikazuki and the Slums
+(https://twigo.dev/play/), in one npm-workspaces monorepo.
 
 ```
 packages/bot/      Discord bot — discord.js v14 + TypeScript (@mikazuki/bot)
 packages/game/     web town at /play — Vite + Phaser 4 + TypeScript (@mikazuki/game)
-packages/shared/   types shared by bot and game, e.g. the room API responses (@mikazuki/shared)
+packages/shared/   what bot and game share: the WebSocket protocol, room API types and the game's pure rules (stats, items, forge, trading) (@mikazuki/shared)
 deploy/            server scripts: deploy.sh, push-env.sh, systemd unit, Caddyfile (deploys run from .github/workflows)
 .env, data/        bot secrets and live state (untracked; see "Where state lives")
 TERMS.md, PRIVACY.md   public docs linked from the Discord Developer Portal — keep them at the root
@@ -18,11 +19,27 @@ Node **≥ 22.12** (see `.nvmrc`). From the root:
 | `npm install` | installs every workspace |
 | `npm run build` | builds shared → bot → game |
 | `npm run typecheck` | typechecks every workspace |
-| `npm run dev:game` | game dev server at http://localhost:5173/play/ |
+| `npm test` | the bot's tests, which also cover the shared rules (about a minute) |
+| `npm run dev:game` | game dev server at http://localhost:5173/play/, with its own dev town (fake login: `?as=Alice`) |
 | `npm run dev:bot` | ⛔ refuses unless `ALLOW_LOCAL_BOT=1` — the live bot runs on the server |
 | `npm run deploy-commands` | registers the bot's slash commands |
 
 Bot code lives in `packages/bot/src/`; paths like `src/...` below are relative to `packages/bot/`.
+
+**Working on it:** read [`CLAUDE.md`](CLAUDE.md) (how everything works, the conventions, and a "Contributors" section
+for anyone without the owner's private notes) and [`CONTEXT.md`](CONTEXT.md) (the game's words). Contributors branch
+off `dev` and send a pull request into `dev`; only the owner merges and deploys (pushing `main` deploys the live game).
+The game runs fully offline with `npm run dev:game`: no `.env`, bot token or database needed.
+
+## The web game
+
+A Phaser 4 town everyone in the Discord server logs into with Discord: walk around, chat (linked to a Discord channel),
+emote, dig at the Mine, gamble at the Casino, play jack en poy at the Arena, buy a house in the Neighbourhood, and use
+the bank, jackpot booth, sari-sari store, Parlor and notice board, all with the same Kowens as the bot. The Tanod's
+quests give a class (Slingshot, Stick, Greatstick, Broom, Pot lid, Hilot) and lead into **the Slums**: six zones of
+living junk, mini bosses and the Scrapheap Golem field boss, with levels, skills and buffs, parties, loot and Kusing,
+gear with agimats and enhancing to +20, and trading. The bot runs the multiplayer town (`src/web/town.ts`, a WebSocket
+at `/ws`), so fights, loot and items are decided on the server; the game (`packages/game`) only shows them.
 
 ## What it does — Ancient Battlefield (every Saturday)
 

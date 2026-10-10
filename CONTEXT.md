@@ -158,9 +158,12 @@ The money mobs drop in the Slums; spent on HP and MP Potions and traded between 
 _Avoid_: gold, coins
 
 **Combat bag**:
-The 40-slot bag for gear, whetstones, fragments, agimats and HP/MP Potions; the old bag keeps dug-up items, keys,
-buff potions and tickets.
+The bag for gear, whetstones, fragments, agimats and HP/MP Potions: 40 slots (the Combat tab) plus the agimats' own 40
+(the Agimats tab); the old bag keeps dug-up items, keys, buff potions and tickets.
 _Avoid_: inventory (that's both bags together)
+
+**Pocket**:
+One part of the combat bag with its own slots: the bag's (everything but agimats) and the agimats'.
 
 **Item**:
 One particular piece of gear or stuff a player owns, with its own rolls and history; many items share one kind.
@@ -202,12 +205,14 @@ Breaking an item down into whetstone fragments (and, if it had slots, one agimat
 _Avoid_: salvage, dismantle
 
 **Loot**:
-A drop lying on the ground after a kill, for a moment reserved for whoever earned it; it stays there until picked up
-(a click, F or Space within a tile), never by walking over it.
+A drop lying on the ground after a kill (or an item a player dropped), for 10 s reserved for whoever earned it (a mob's
+killer and their party, a mini boss's fighters), then anyone's; the field boss's is personal (each fighter their own,
+seen by nobody else). It stays until picked up (a click, F or Space within a tile), never by walking over it.
 _Avoid_: drop (the act), item (once picked up)
 
 **HP Potion / MP Potion**:
-Bottles that heal at once from the hotbar; never just "potions", which are the Discord buff potions.
+Bottles that heal at once from the hotbar, each kind with its own cooldown; never just "potions", which are the Discord
+buff potions.
 
 **Weapon aura**:
 The glow and rising lines on a weapon at +15 and above: blue, then gold, then prismatic at +20.
@@ -215,3 +220,33 @@ The glow and rising lines on a weapon at +15 and above: blue, then gold, then pr
 **Trade**:
 Two players swapping items and Kusing face to face, both locking then confirming.
 
+
+## Skills and buffs
+
+**Damage skill**:
+One of a class's seven attacks, cast from the hotbar on battle maps; unlocks at its level, raised with skill points.
+
+**Mobility move**:
+Dash or the class's Lv 8 move (Step Back, Charge, Blink): a quick step along your facing, usable anywhere.
+
+**Buff**:
+A class skill that puts stats on you (and others) for a while; only the strongest buff on a stat counts. Cast on
+battle maps only; right-click one in your buff tray to take it off.
+_Avoid_: aura (that's the weapon's glow), effect
+
+**Shared buff**:
+A buff that reaches the caster's whole party in range and the player they've picked (party buffs, and the one-ally
+buffs while stats.json says so).
+
+**Stance**:
+A self buff with no timer (Keen Stance), on until cast again.
+
+**Picked player**:
+The player you've clicked (their name box at the top): the one Info, Trade and buffs aim at.
+_Avoid_: target (that's a mob you've picked with Z)
+
+## People
+
+**Game Master**:
+The owner and the CMS users: the CMS, the chat's GM channel (gold, across everyone's screen).
+_Avoid_: admin, mod (those are Discord roles)

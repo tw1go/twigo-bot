@@ -1,7 +1,43 @@
 # Mikazuki (twigo-bot) — notes for Claude
 
 This repo is **public**. Private details (server address, channel and user IDs, current state) live in
-`CLAUDE.local.md`, which is git-ignored. Read both before starting.
+`CLAUDE.local.md`, which is git-ignored and only on the owner's machine. Read it too if you have it.
+
+## Contributors (no `CLAUDE.local.md`? start here)
+
+If `CLAUDE.local.md` isn't in the repo root, you're on a contributor's machine: you have the code, not the live game.
+
+- **What you don't have, and must not need:** the `.env` (bot token, OAuth secret, backup URL), the server, the live
+  database, the Discord server's admin side, and the owner's art folder (`mikazuki-assets`). Never deploy, push `main`,
+  post in Discord, ssh anywhere or touch production data. Never run the Discord bot (`dev:bot` refuses without
+  `ALLOW_LOCAL_BOT=1`; don't set it).
+- **How to work:** branch off `dev` (`feature/<what>`), small commits, push your branch and open a pull request into
+  `dev`. The owner reviews, merges and deploys (pushing `main` deploys the live game: only the owner does it).
+- **What runs without secrets:** `npm install`, `npm run typecheck`, `npm test` (the bot's tests, which also cover the
+  shared rules: ~240, about a minute), `npm run build`, and `npm run dev:game`: the web game at
+  http://localhost:5173/play/ with its own **dev town** (`packages/game/scripts/dev-town.ts` runs the bot's real
+  `web/town.ts` with a fake login). Open `?as=Alice` and `?as=Bob` in two windows to play together; `?area=slums` for
+  the Slums; `?switch` to pick any class; `?level=20`, `?give=<item>:<rarity>:<plus>`, `?kusing=`, `?whetstones=`;
+  more dev switches are listed with each feature below. The dev town keeps everything in memory (restart = fresh). A
+  fresh browser starts at the character creator (your look is kept in that browser after). The terminal's
+  `http proxy error … 127.0.0.1:8787` lines are normal: a few routes look for a bot there and the page fakes them.
+- **Checking UI work:** drive headless Chrome over the DevTools protocol against the dev server (screenshots plus
+  `window.__town`, the debug API: `state()`, `teleport()`, `scene`, `buffs()`, `mobs()`, `loot()`…), as the notes below
+  describe. Typecheck and tests before every commit.
+- **Words:** `CONTEXT.md` is the glossary (Kowens vs Kusing, item vs kind, plus, agimat…). Use its terms in code,
+  comments and UI text.
+- **Map:** bot `packages/bot/src/` (Discord commands in `commands/`, the economy in `credits/`, `games/`, `dig/`; the
+  web side in `web/`: `server.ts` routes, `town.ts` the WebSocket town, `town-mobs.ts` / `town-golem.ts` /
+  `town-loot.ts` / `town-buffs.ts` / `town-vitals.ts` the Slums' fights, `adventure.ts` characters and items in SQLite,
+  `forge.ts`, `trade.ts`, `cms.ts`); game `packages/game/src/` (`scenes/TownScene.ts` the town and its wiring,
+  `world/` what's drawn in the world, `ui/` the DOM panels, `characters/` the paper dolls and combat poses, `combat/`
+  skill effects, `net/` the client stores); shared rules `packages/shared/src/` (`stats.ts`, `items.ts`, `forge.ts`,
+  `leveling.ts`, `trade.ts`, `town.ts` = the WebSocket protocol). Data the game and bot both read lives in
+  `packages/game/public/assets/` (`manifest.json`, `classes/stats.json`, `classes/classes.json`, `items/*.json`,
+  `mobs/mobs.json`, `maps/*.json`, `quests/quests.json`).
+- **Game data comes from the art folder:** most of `classes/stats.json`, `classes/leveling.json` and the art are
+  copied from the owner's `mikazuki-assets` folder. Edit them here as needed, but say in your PR what you changed, so the
+  owner can copy it back. Additions made here first are listed under "Repo-only data" below; keep that list current.
 
 ## What this is
 
@@ -52,7 +88,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
 
 - Work on `dev` (or a feature branch off `dev`), small ordered commits; "merge and deploy" = fast-forward `main` to
   `dev` and push `main` (that deploys), then watch the Deploy run. End commit messages with the
-  `Co-Authored-By` line Claude Code provides. Commits show as `tw1go` via local git config.
+  `Co-Authored-By` line Claude Code provides. The owner's commits show as `tw1go` via local git config; contributors
+  commit as themselves and send pull requests into `dev` (see Contributors).
 - Big pushes (art) need `git -c http.postBuffer=157286400 push`.
 - Write code like the surrounding code: comment density, naming, small helpers. User-facing bot text says
   "Kowens" ("Kowen" for 1).
@@ -71,6 +108,19 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   change in the bot's log only (never posted in Discord). Content that moves into the CMS keeps its code values as defaults.
 - Messages to Discord: no pings by default (`allowedMentions: { parse: [] }`); de-duplicate user IDs in
   `allowedMentions.users`.
+
+## Repo-only data (not in the art folder yet)
+
+Data added in this repo that the owner's `mikazuki-assets` copy doesn't have yet; each says so in a `note` beside it
+where JSON allows. When you add one, add it here (and tell the owner, who copies them back):
+
+- `classes/stats.json`: `rarity.nameColour[r].colour`, `rarity.dropPlus`, `affixes.names`,
+  `currencies.kusingPerMobRange`, `skills.mpCost`, `skills.cooldownByUnlock`, `skills.buffs` (numbers) with
+  `rules.allyBuffsReachParty`, `agimats.onlyIn`, `agimats.rarePerItem`, `agimats.sellKusing`, `inventory.agimatSlots`,
+  `potions.separateCooldowns`, `trainingGear.noSell` / `sellKusing`, `mobBehaviour.targetPriority`,
+  `mobBehaviour.golem.hpPerPlayer`.
+- `classes/leveling.json`: `miniBoss.questDrop`.
+- `maps/slums.json`: the Golem Pit v3 changes (the art folder's copy still has the old 6×6 pit; see Scrapheap Golem).
 
 ## The web game (`packages/game`)
 
@@ -476,9 +526,9 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   `skillCooldown`), damage (`levelGap`, `hitDamage`,
   `rollHit`), `mobStats`, `mobXp` (low-mob penalty), `mobTone`. classes.json main/second stats match stats.json (tested).
   Gear (both sides use them): `wearCheck` (canEquip on a character's base stats), `placesFor`, `trainingGear` (a class's
-  training weapon + its gear type's armor). stats.json has two repo-only additions (tell the user to add them to the art
-  folder's): `rarity.nameColour[r].colour` (brown #A0703F … darkOrange #F97316; every item name, `setRarityColours` in
-  `ui/item-art.ts`) and `affixes.names` (the guide's Affixes table: [blue, orange] per stat; `stat` by STR/DEX/INT).
+  training weapon + its gear type's armor). Item name colours are stats.json `rarity.nameColour[r].colour` (brown
+  #A0703F … darkOrange #F97316; `setRarityColours` in `ui/item-art.ts`) and affix names `affixes.names` (the guide's
+  Affixes table: [blue, orange] per stat; `stat` by STR/DEX/INT): both repo-only (see Repo-only data).
 - Items (`packages/shared/src/items.ts`, pure, both sides; tested in the bot's `web/items.test.ts`): every item an
   instance (`Item`: uid, defId, level, rarity, plus, broken, bound, luck, agimats (one per slot, null = empty), lines,
   count; an agimat's stat/lock). Kinds: `items/equipment.json` (gear: training, Crude/Sturdy weapons Lv 10/20, Tin/Copper,
@@ -717,8 +767,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   box: Lv / cap, its text, damage as % of ATK and ≈ with your ATK now, what it hits (skill-hits.json shape), range, slow /
   root, cooldown, MP, the next level's gain; a move: its tiles).
   Skills panel on the right of the screen (K or the K button; `#skill-book`): skill points, the skills in three lists,
-  Damage, Mobility and Buffs (classes.json buffs: icon, unlock level, their buff-cast on the stage on hover; not usable
-  yet), each with its level and description (see Skills unlock), the hovered one played on the class choice's stage (`TownScene.skillStage`, 1×); drag a
+  Damage, Mobility and Buffs (classes.json buffs: icon, unlock level, their buff-cast on the stage on hover; cast from
+  the hotbar: Buffs, below), each with its level and description (see Skills unlock), the hovered one played on the class choice's stage (`TownScene.skillStage`, 1×); drag a
   skill to a slot, or click it then a slot.
   Potions dragged from the bag (HP/MP Potions from the combat bag: used through the town, a cooldown per kind); drag between slots swaps, off the bar empties (right-click never does). Per class in localStorage
   `mk_hotbar` (a class's first bar = its skills in order). Skill icons from manifest ui.skillIcons (`have` lists the ones there are: every class's 7 damage skills and its Lv 8 move; `shared` = one icon for all, Dash); the rest show
