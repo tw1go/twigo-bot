@@ -64,6 +64,9 @@ export interface TownWarrensRun {
   yours?: boolean;
   waiting?: string[];
   inside: number;
+  /** Cleared: how long it took (ms from its start to the last boss's fall), and who was inside then (names). */
+  clearMs?: number;
+  team?: string[];
 }
 
 /** What the Warren Gate offers you (asked as its panel opens): your level and tickets, your party's run (if it has

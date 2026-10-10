@@ -82,7 +82,7 @@ import { Mobs, TONE, showSlowed } from '../world/mobs';
 import { GOLEM_SOUNDS, GolemView } from '../world/golem';
 import { loadBoss } from '../assets/queue';
 import { WarrensView } from '../world/warrens';
-import { WarrensTracker, showKickCountdown, showWarrensGate, showWarrensInvite } from '../ui/warrens';
+import { WarrensTracker, showKickCountdown, showWarrensCleared, showWarrensGate, showWarrensInvite } from '../ui/warrens';
 import { FxLayers } from '../world/fx-layers';
 import { SKILL_POSE, battleSheets } from '../characters/battle-art';
 import { cooldownOf, mpCostOf } from '../combat/cooldowns';
@@ -1807,6 +1807,7 @@ export class TownScene extends Phaser.Scene {
       if (m.t === 'warrens') {
         this.warrensTracker ??= new WarrensTracker({ start: () => link.send({ t: 'warrens-start' }), leave: () => link.send({ t: 'warrens-leave' }) });
         this.warrensTracker.set(m.run);
+        showWarrensCleared(m.run, () => link.send({ t: 'warrens-leave' })); // (once per run, as it's cleared)
         return this.warrens?.run(m.run);
       }
       // Boss moves: a Warrens run's bosses there, the field golem's in the Slums (a map has one or the other).

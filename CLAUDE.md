@@ -568,7 +568,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `warrens-out` and close 4002); messages warrens-gate / -open (at the gate) / -join / -start / -leave; a 1 s run clock;
   `TownOptions.warrens` (server.ts: tickets from the combat bag; the open runs kept in kv 'warrens-open' so a restart
   refunds the openers' tickets of runs not cleared). Game: area 'warrens' (net/hood.ts, BootScene), `ui/warrens.ts` (gate
-  panel, invite, the run's timer top centre (`#warrens-timer`: Time left / Starts in / Closing in; the boss bar and other top-centre boxes move under it), the tracker in the quest tracker's place (body.warrens-on: boss pips, who it waits for, Start now, Leave), area banner, kick countdown), `world/warrens.ts`
+  panel, invite, the run's timer top centre (`#warrens-timer`: Time left / Starts in / Closing in; the boss bar and other top-centre boxes move under it), the tracker in the quest tracker's place (body.warrens-on: boss pips, who it waits for, Start now, Leave), area banner, kick countdown, the cleared pop-up as Barong-Barong falls (`showWarrensCleared`: the run's `clearMs` from its start, `team` = who was inside, the close countdown, Leave now / Stay; once per run per tab, sessionStorage `mk_warrens_cleared`)), `world/warrens.ts`
   (shutters and seal on the walk grid, boss bar, walls in front of you faded: `Terrain.fadeFront`, Barong-Barong's art
   near its hall: `Mobs.holdArt` / `releaseArt` / `loadEnraged`, every move's VFX timed to its hit, shakes ≤ 0.4 s and
   none with reduced motion), `world/telegraph.ts` (every red/yellow warning), bosses as mobs in `world/mobs.ts` (red names,

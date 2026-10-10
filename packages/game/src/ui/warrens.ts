@@ -13,6 +13,8 @@ import { toast } from './toast';
 // - The tracker (top left, where the quest tracker sits: that hides meanwhile, body.warrens-on): "Scrap Warrens", a pip
 //   per boss that ticks as it falls; while it gathers, who it waits for and the opener's Start now; Leave.
 // - The banner with an area's name as you walk into it, and the countdown when you've left the party inside.
+// - Cleared (Barong-Barong down): a pop-up with how long the run took, who was in it, the time until it closes (for the
+//   loot on the floor), Leave now and Stay; once per run (sessionStorage CLEARED_KEY: a reload doesn't bring it back).
 
 const GATE_LINE = 'Lv 15+ · solo or party · needs 1 Warren Ticket';
 
@@ -81,6 +83,46 @@ const clock = (ms: number) => {
   const s = Math.max(0, Math.ceil(ms / 1000));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 };
+
+const CLEARED_KEY = 'mk_warrens_cleared';
+
+/** The run's cleared (`run.clearMs`): its pop-up, once per run. `leave`: out of the Warrens now. */
+export function showWarrensCleared(run: TownWarrensRun, leave: () => void): void {
+  if (run.phase !== 'cleared' || run.clearMs === undefined) return;
+  try {
+    if (sessionStorage.getItem(CLEARED_KEY) === run.id) return;
+    sessionStorage.setItem(CLEARED_KEY, run.id);
+  } catch {
+    // (no storage: it may show again after a reload)
+  }
+  const body: HTMLElement[] = [];
+  const time = el('p', 'wr-clear-time');
+  time.append(el('span', 'wr-clear-label', 'Cleared in'), el('b', undefined, clock(run.clearMs)));
+  body.push(time);
+  const down = run.bosses.filter((b) => b.dead).length;
+  body.push(el('p', 'wr-clear-line', `Barong-Barong has fallen · ${down} of ${run.bosses.length} bosses down`));
+  const team = run.team ?? [];
+  if (team.length > 1) body.push(el('p', 'wr-clear-line', `With ${team.slice(0, -1).join(', ')} and ${team[team.length - 1]}`));
+  // The time left to grab what dropped, counting down while it's open.
+  const closes = el('p', 'wr-clear-closes');
+  const until = performance.now() + run.left;
+  const draw = () => (closes.textContent = `Grab your loot: the Warrens close in ${clock(until - performance.now())}`);
+  draw();
+  const ticking = setInterval(draw, 250); // (stopped as it closes)
+  body.push(closes);
+  const actions = el('div', 'wr-gate-actions');
+  const close = () => (document.querySelector('#reward .rw-x') as HTMLButtonElement | null)?.click();
+  const out = el('button', 'wr-btn wr-go', 'Leave now');
+  out.addEventListener('click', () => {
+    close();
+    leave();
+  });
+  const stay = el('button', 'wr-btn', 'Stay');
+  stay.addEventListener('click', close);
+  actions.append(out, stay);
+  body.push(actions);
+  void showPopup({ title: 'Scrap Warrens cleared!', body, button: 'Close', celebrate: true, closeX: true, sound: 'combat-level-up' }).then(() => clearInterval(ticking));
+}
 
 /** The run's tracker (top left, in the quest tracker's place). */
 export class WarrensTracker {

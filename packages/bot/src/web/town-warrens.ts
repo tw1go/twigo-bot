@@ -168,6 +168,8 @@ export class Run implements MobDirector {
   startedAt = 0;
   endsAt = 0;
   clearedAt = 0;
+  /** Who was inside as the last boss fell (members). */
+  private clearTeam: string[] = [];
   private emptySince: number;
   private warned = false;
   private startNow = false;
@@ -305,6 +307,7 @@ export class Run implements MobDirector {
       id: this.id, phase: this.phase, left, ...(this.phase === 'gathering' ? { gatherLeft: Math.max(0, this.gatherUntil - now) } : {}),
       bosses, opened: [...this.opened], checkpoint: this.checkpoint(), opener: this.opener.name, ...(member === this.opener.member ? { yours: true } : {}),
       ...(waiting ? { waiting } : {}), inside: this.inside.size,
+      ...(this.phase === 'cleared' ? { clearMs: this.clearedAt - this.startedAt, team: this.clearTeam.map((m) => names?.(m) ?? m) } : {}),
     };
   }
 
@@ -451,6 +454,7 @@ export class Run implements MobDirector {
       out.room.push(...(this.mobs.removeMobs(scrap) as TownServerMessage[]));
       this.phase = 'cleared';
       this.clearedAt = now;
+      this.clearTeam = [...this.inside.keys()]; // (who brought it down: the cleared pop-up names them)
       out.room.push(this.line(`${b.def.name} has fallen! The Warrens close in ${this.W.run.closeAfterLastBossMinutes} minutes.`, 'down'));
       return out;
     }
