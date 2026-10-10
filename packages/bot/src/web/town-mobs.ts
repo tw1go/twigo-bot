@@ -379,6 +379,8 @@ interface Mob {
   title?: string;
   scale?: number;
   radius?: number;
+  /** A boss casting one of its moves: it holds still until then (its move lands where it stands). */
+  castUntil?: number;
   still?: boolean;
   silent?: boolean;
   untargetable?: boolean;
@@ -864,6 +866,7 @@ export class MobRoom {
       }
       if (m.path.length) continue;
       if (m.still) continue; // (Barong-Barong: its moves are the director's)
+      if (m.castUntil && now < m.castUntil) continue; // (a boss mid-move holds still)
       if (!m.foe && m.zone.aggro === 'aggressive') {
         // The player it wants most within its aggroRange (the tanks first: targetPriority), then the nearest.
         const near = this.wanted(m, watched.get(m.zone));
@@ -1286,6 +1289,18 @@ export class MobRoom {
     m.hopAt = now;
     m.hopSpeed = speed;
     return [{ t: 'mob-move', id, path: [[c0, r0], ...path], speed }];
+  }
+
+  /** A boss starts a move: it stops where it is now (a hop under way cut short) and holds still until `until` (when the
+   *  move lands), neither walking nor swinging meanwhile. */
+  hold(id: string, until: number, now: number): MobEvent[] {
+    const m = this.byId.get(id);
+    if (!m || m.respawnAt) return [];
+    m.castUntil = until;
+    if (!m.path.length) return [];
+    [m.col, m.row] = this.at(m, now);
+    m.path = [];
+    return [{ t: 'mob-move', id, path: [[m.col, m.row]], speed: m.hopSpeed }];
   }
 
   /** A mob's hit on a player (its ATK × `mult` against their DEF and level), or null (no HP known: harmless). */

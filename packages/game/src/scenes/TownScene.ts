@@ -78,6 +78,8 @@ import { Terrain } from '../world/terrain';
 import { Mobs, TONE, showSlowed } from '../world/mobs';
 import { GOLEM_SOUNDS, GolemView } from '../world/golem';
 import { loadBoss } from '../assets/queue';
+import { WarrensView } from '../world/warrens';
+import { WarrensTracker, showKickCountdown, showWarrensGate, showWarrensInvite } from '../ui/warrens';
 import { FxLayers } from '../world/fx-layers';
 import { SKILL_POSE, battleSheets } from '../characters/battle-art';
 import { cooldownOf, mpCostOf } from '../combat/cooldowns';
@@ -176,6 +178,8 @@ const RANGED_CLASSES = new Set(['slingshot', 'broom']);
 const CAST_GAP_MS = 1000;
 /** The golem's art loads once you're this near its pit's middle (tiles). */
 const BOSS_NEAR = 45;
+/** The Scrap Warrens' shade (a navy multiply of about a quarter: a little darker than the Slums). */
+const WARRENS_TINT = 0xbcbbc8;
 /** Only each class's first 7 skills have sounds (audio/sfx skill-<class>-<skill>-1…3); later ones play none yet. */
 const SKILL_SOUNDS = 7;
 const DIR_FOR_KEYS: Record<string, Dir> = {
@@ -461,6 +465,25 @@ export class TownScene extends Phaser.Scene {
         });
       }
     }
+    // A Scrap Warrens run: its shutters, seal, areas, boss moves and effects (world/warrens.ts).
+    if (this.map.dungeon && this.mobs) {
+      const view = new WarrensView(this, this.M, this.map, this.mobs, this.fxLayers, this.grid, this.ground instanceof Terrain ? this.ground : null, {
+        me: () => this.player.tile,
+        myBox: () => this.player.sprite.getBounds(),
+        body: (id) => {
+          const c = id === this.myId ? this.player : this.others.charOf(id);
+          return c ? { x: c.sprite.x, y: c.sprite.y - 14 } : null;
+        },
+        onHit: (boss, target, hit, slow) => this.mobs?.hooks.onHit?.(boss as never, target, slow, hit),
+      });
+      this.warrens = view;
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+        view.destroy();
+        this.warrensTracker?.destroy();
+        this.warrensTracker = null;
+        this.warrens = null;
+      });
+    }
     // Loot on the ground (mobs' drops, and items players drop on any map): a click walks you to it and picks it up.
     const sil = this.M.ui.equipSlots;
     const loot = new LootLayer(this, this.objects, itemData, { kusing: this.M.ui.kusingIcon?.file ?? null, silhouettes: sil ? { file: sil.file, frames: sil.frames } : null });
@@ -484,6 +507,7 @@ export class TownScene extends Phaser.Scene {
       if (name) this.buildingLabels.set(b.id, new BuildingLabel(this, name, b.top.x));
     }
     this.gateSigns();
+    this.warrenGateLabel();
     // Your house, just built: hidden in the ground until the arrival has settled, then it rises.
     const built = this.justBuilt ? this.hood?.houses.find((h) => h.mine) : null;
     const yours = built && this.objects.buildings.find((b) => b.id === `house-${built.lot}`);
@@ -524,11 +548,12 @@ export class TownScene extends Phaser.Scene {
     });
     this.buffTray = tray;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => tray.destroy());
-    startTownSound(this, this.fountainTile(), this.area === 'slums' ? 'slums' : 'town'); // (the Slums: its own music, no crickets)
+    startTownSound(this, this.fountainTile(), this.area === 'slums' || this.area === 'warrens' ? 'slums' : 'town'); // (the Slums and the Warrens: the Slums' music, no crickets)
     // A battle map's sounds: each mob kind's hurt and death, the golem's attacks (the classes' skills once their data is in).
     if (this.battleMap) {
-      const kinds = new Set([...(this.map.mobZones ?? []).filter((z) => z.active).map((z) => z.mob), ...(this.map.boss ? [this.map.boss.id] : [])]);
-      loadSoundSets([...[...kinds].flatMap((k) => [`combat-mob-hurt-${k}`, `combat-mob-death-${k}`]), ...(this.map.boss ? GOLEM_SOUNDS.map((a) => `golem-${a}`) : [])]);
+      const kinds = new Set([...(this.map.mobZones ?? []).filter((z) => z.active && this.M.mobs?.[z.mob]).map((z) => z.mob), ...(this.map.boss ? [this.map.boss.id] : [])]);
+      if (this.map.dungeon) kinds.add('scrapheap-golem'); // (the Scraplings)
+      loadSoundSets([...[...kinds].flatMap((k) => [`combat-mob-hurt-${k}`, `combat-mob-death-${k}`]), ...(this.map.boss || this.map.dungeon ? GOLEM_SOUNDS.map((a) => `golem-${a}`) : [])]);
     }
     if (member || fakeLogin()) this.connect();
     this.zoomIntro(); // last, once the names, labels and building cursors exist
@@ -576,6 +601,11 @@ export class TownScene extends Phaser.Scene {
     }
     this.loot?.update();
     this.golem?.update();
+    this.warrens?.update();
+    if (this.area === 'slums' && time >= this.gateCheckAt) {
+      this.gateCheckAt = time + 250;
+      this.nearWarrenGate();
+    }
     this.fightTick();
     this.fxLayers.update();
     this.raceNews();
@@ -1685,6 +1715,40 @@ export class TownScene extends Phaser.Scene {
       if (m.t === 'party-invited') return showPartyInvite({ invite: m.invite, name: m.name, members: m.members, answer: (yes) => partyAnswer(m.invite, yes) });
       if (m.t === 'party-refused') return toast(partyRefusal(m.reason, m.name), 2600, 'bad');
       if (m.t === 'party-declined') return toast(`${m.name} didn't join the party.`, 2600);
+      // The Scrap Warrens: the gate's panel, an invite, going in and out, the run's tracker, its bosses' moves.
+      if (m.t === 'warrens-gate') return showWarrensGate(m.gate, (what) => link.send(what === 'open' ? { t: 'warrens-open' } : { t: 'warrens-join' }));
+      if (m.t === 'warrens-invite') return showWarrensInvite(m.from, m.ms, (join) => join && link.send({ t: 'warrens-join', run: m.run }));
+      if (m.t === 'warrens-refused') {
+        playSound('error');
+        return toast(m.message, 2800, 'bad');
+      }
+      if (m.t === 'warrens-go') return this.travel('warrens');
+      if (m.t === 'warrens-out') {
+        if (m.reason === 'closed') toast('The Scrap Warrens closed.', 2600);
+        if (m.reason === 'party') toast('You left the party: back to the Slums.', 2600);
+        return this.travel('slums');
+      }
+      if (m.t === 'warrens-kick') return showKickCountdown(m.ms);
+      if (m.t === 'warrens') {
+        this.warrensTracker ??= new WarrensTracker({ start: () => link.send({ t: 'warrens-start' }), leave: () => link.send({ t: 'warrens-leave' }) });
+        this.warrensTracker.set(m.run);
+        return this.warrens?.run(m.run);
+      }
+      if (m.t === 'boss-move') return this.warrens?.move(m);
+      if (m.t === 'boss-hit') return this.warrens?.hit(m);
+      if (m.t === 'boss-cancel') return this.warrens?.cancel(m.id);
+      if (m.t === 'mob-scale') return this.mobs?.scale(m.mobs);
+      if (m.t === 'mob-flag') return this.mobs?.flag(m.id, m.untargetable, m.blockAll);
+      if (m.t === 'stunned') {
+        const ch = charOf(m.id);
+        if (ch) this.fxLayers.drawFx('front', (g, t) => stunStars(g, ch.sprite.x, ch.headY - 4, t), m.ms, 150);
+        if (m.id === myId) {
+          this.stunUntil = performance.now() + m.ms;
+          this.player.walk([this.player.heading]); // (stops after the step under way)
+          this.stopFight();
+        }
+        return;
+      }
       if (m.t === 'say-discord') {
         playSound('chat');
         return chat.add(m.name, m.text, 'discord');
@@ -1960,6 +2024,7 @@ export class TownScene extends Phaser.Scene {
       }
       if (m.t === 'welcome') {
         myId = m.you;
+        this.myId = m.you;
         // (Knocked out when the link dropped: the server has you up again, full.)
         if (this.knockedOut) {
           this.knockedOut = false;
@@ -1985,6 +2050,19 @@ export class TownScene extends Phaser.Scene {
         const q = new URLSearchParams(location.search);
         const golemDev = import.meta.env.DEV && !arrived && !!this.golem && (q.get('golem') === 'now' || q.has('golemdemo'));
         if (golemDev) this.byThePit();
+        // Dev: ?warrens=solo opens a Scrap Warrens run for you (free) and goes in; ?warrensboss=crab-tain too, with every
+        // area before that boss cleared, arriving at its arena (the dev server's /__warrens). Read once, then tidied away.
+        if (import.meta.env.DEV && fakeLogin() && !arrived && this.area !== 'warrens' && (q.has('warrens') || q.has('warrensboss'))) {
+          const boss = q.get('warrensboss');
+          const url = new URL(location.href);
+          url.searchParams.delete('warrens');
+          url.searchParams.delete('warrensboss');
+          history.replaceState(null, '', url.pathname + url.search);
+          void fetch(`/__warrens?${new URLSearchParams({ as: fakeName(), ...(boss ? { boss } : {}) })}`)
+            .then((r) => r.json() as Promise<{ ok: boolean; message?: string }>)
+            .then((r) => (r.ok ? this.travel('warrens') : toast(r.message ?? "Couldn't open a run.", 2600, 'bad')))
+            .catch(() => null);
+        }
         // Dev, in the Slums: ?minibosses=now brings every mini boss that's down back at once (the dev server's /__minibosses).
         if (import.meta.env.DEV && !arrived && this.battleMap && q.get('minibosses') === 'now') void fetch('/__minibosses').catch(() => null);
         const [sc, sr] = this.map.spawn;
@@ -2105,7 +2183,7 @@ export class TownScene extends Phaser.Scene {
    *  reduced motion). */
   private zoomIntro(): void {
     // The title card over it all: the area's name, the world pulling back inside the letters (ui/title-card.ts).
-    void playTitleCard(this.area === 'hood' ? 'Neighbourhood' : this.area === 'slums' ? 'Slums' : 'Mikazuki');
+    void playTitleCard(this.area === 'hood' ? 'Neighbourhood' : this.area === 'slums' ? 'Slums' : this.area === 'warrens' ? 'Scrap Warrens' : 'Mikazuki');
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const cam = this.cameras.main;
     const p = this.player.sprite;
@@ -2348,7 +2426,7 @@ export class TownScene extends Phaser.Scene {
    * the wall through either of its two halves. Pressing into a wall just turns the player.
    */
   private keyStep(): Tile | null {
-    const dir = this.knockedOut ? null : this.heldDir();
+    const dir = this.knockedOut || this.stunned ? null : this.heldDir();
     if (!dir) {
       this.keyWalking = false;
       this.keyDir = null;
@@ -2412,6 +2490,39 @@ export class TownScene extends Phaser.Scene {
 
   /** Knocked out (0 HP): faded out, no walking, moves or skills until the server respawns you. */
   private knockedOut = false;
+  /** Stunned (Wire Wolf's Live Floor) until then (performance.now()): no walking. */
+  private stunUntil = 0;
+  private get stunned(): boolean {
+    return performance.now() < this.stunUntil;
+  }
+  /** Your town id (from the server's welcome). */
+  private myId = '';
+  /** The Scrap Warrens: the run's view and tracker (in a run), and the Warren Gate's panel asked for (the Slums). */
+  private warrens: WarrensView | null = null;
+  private warrensTracker: WarrensTracker | null = null;
+  private gateCheckAt = 0;
+  private gateAsked = false;
+
+  /** The Warren Gate (the Slums): walking up to it (within its use range) asks for its panel, once each time. */
+  private nearWarrenGate(): void {
+    const g = this.warrenGate();
+    if (!g) return;
+    const t = this.player.tile;
+    const d = Math.max(Math.abs(t.col - g.centre[0]), Math.abs(t.row - g.centre[1]));
+    if (d > g.range + 2) this.gateAsked = false;
+    else if (d <= g.range && !this.gateAsked && this.me?.status === 'ok') {
+      this.gateAsked = true;
+      this.link?.send({ t: 'warrens-gate' });
+    }
+  }
+
+  /** The Warren Gate's centre tile and use range (classes/dungeons.json), if this map has it. */
+  private warrenGate(): { centre: [number, number]; range: number } | null {
+    const W = (this.cache.json.get('dungeons') as { warrens?: { entry: { warp: { tile: [number, number]; useRangeTiles: number } } } } | undefined)?.warrens;
+    const o = this.map.objects.find((x) => x.id === 'slums-warren-gate');
+    if (!o) return null;
+    return { centre: W?.entry.warp.tile ?? [o.col + 1, o.row + 1], range: W?.entry.warp.useRangeTiles ?? 3 };
+  }
   /** Slowed by the Bag until then (performance.now(), as the step budget): half walking speed, half the budget. */
   private slowUntil = 0;
   private slowTimer: Phaser.Time.TimerEvent | null = null;
@@ -2635,7 +2746,7 @@ export class TownScene extends Phaser.Scene {
   }
 
   private walkTo(target: Tile): boolean {
-    if (this.knockedOut) return false;
+    if (this.knockedOut || this.stunned) return false;
     const path = this.grid.findPath(this.player.heading, target);
     if (!path) return false;
     this.setBuildingAlert(null); // leaving the door we were at
@@ -2916,13 +3027,37 @@ export class TownScene extends Phaser.Scene {
     }
   }
 
+  /** The Warren Gate (the Slums): "Warren Gate" over it on hover; a click walks up to it (its panel opens there). */
+  private warrenGateLabel(): void {
+    const o = this.map.objects.find((x) => x.id === 'slums-warren-gate');
+    const def = o && this.M.props[o.id];
+    if (!o || !def) return;
+    const top = tileToScreen(o.col, o.row);
+    const lift = this.objects.heights.at(o.col, o.row) * LEVEL_PX;
+    const [w, h] = def.size;
+    const box = this.add.zone(top.x - def.anchor[0] + w / 2, top.y - lift - def.anchor[1] + h / 2, w, h).setDepth(LABEL_DEPTH - 2);
+    const label = new BuildingLabel(this, 'Warren Gate', top.x);
+    label.setZoom(this.cameras.main.zoom);
+    this.gateLabels.push(label);
+    box.setInteractive({ cursor: 'pointer' });
+    box.on('pointerover', () => label.show(top.y - lift - def.anchor[1] - 2));
+    box.on('pointerout', () => label.show(null));
+    box.on('pointerup', (p: Phaser.Input.Pointer) => {
+      if (!p.leftButtonReleased() && !p.wasTouch) return;
+      const at = this.map.arrive?.warrens;
+      if (!at) return;
+      this.gateAsked = false; // (asked again when you get there, or now if you're there)
+      this.goToTile({ col: at[0], row: at[1] });
+    });
+  }
+
   /** Off to the other area: a fade, then that page (the town's art is cached, so it's quick). The Slums need a login. */
   private travel(to: Gate): void {
-    if (to === 'slums' && this.me?.status !== 'ok') return void toast('Log in to go into the Slums.', 2800);
+    if ((to === 'slums' || to === 'warrens') && this.me?.status !== 'ok' && !fakeLogin()) return void toast('Log in to go into the Slums.', 2800);
     if (this.travelling) return;
     this.travelling = true;
     playSound('door');
-    toast(to === 'hood' ? 'To the neighbourhood…' : to === 'slums' ? 'Into the Slums…' : 'Back to town…');
+    toast(to === 'hood' ? 'To the neighbourhood…' : to === 'warrens' ? 'Into the Scrap Warrens…' : to === 'slums' ? (this.area === 'warrens' ? 'Back to the Slums…' : 'Into the Slums…') : 'Back to town…');
     this.cameras.main.fadeOut(400, 0, 0, 0);
     this.time.delayedCall(420, () => location.assign(areaUrl(to)));
   }
@@ -3139,7 +3274,8 @@ export class TownScene extends Phaser.Scene {
   // ── Day / night ──
 
   private updateSky(force: boolean): void {
-    const sky = skyAt(minutesNow());
+    // (Under the Slums it's always dusk: a navy shade over everything, every lamp lit.)
+    const sky = this.area === 'warrens' ? { lampsOn: true, tint: WARRENS_TINT } : skyAt(minutesNow());
     this.lampsOn = sky.lampsOn;
     this.objects.setLamps(sky.lampsOn);
     if (!force && sky.tint === this.tint) return;
@@ -3358,4 +3494,15 @@ function exposeDebug(scene: TownScene): void {
       if (x !== undefined && y !== undefined) cam.centerOn(x, y);
     },
   };
+}
+
+/** Stunned: three small yellow stars circling over a head (`t` ms in). */
+function stunStars(g: Phaser.GameObjects.Graphics, x: number, y: number, t: number): void {
+  for (let i = 0; i < 3; i++) {
+    const a = t / 180 + (i * Math.PI * 2) / 3;
+    const sx = Math.round(x + Math.cos(a) * 7);
+    const sy = Math.round(y + Math.sin(a) * 2.5);
+    g.fillStyle(0x1e1b3a, 0.9).fillRect(sx - 2, sy - 2, 5, 5);
+    g.fillStyle(0xfacc15, 1).fillRect(sx - 1, sy, 3, 1).fillRect(sx, sy - 1, 1, 3);
+  }
 }

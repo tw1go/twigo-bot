@@ -74,8 +74,8 @@ export class PartyPanel {
     this.draw();
     // Under the quest tracker (or, without it, under the profile in the top-left corner).
     const place = () => {
-      const tracker = document.getElementById('quest-tracker');
-      const above = tracker && !tracker.hidden ? tracker : document.querySelector('#town-hud .th-left');
+      const tracker = document.getElementById('warrens-tracker') ?? document.getElementById('quest-tracker'); // (the Warrens' replaces the quests')
+      const above = tracker && !tracker.hidden && getComputedStyle(tracker).display !== 'none' ? tracker : document.querySelector('#town-hud .th-left');
       this.root.style.top = `${Math.round((above?.getBoundingClientRect().bottom ?? 0) + 10)}px`;
     };
     const watch = new ResizeObserver(place);

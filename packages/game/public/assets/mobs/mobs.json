@@ -7,5 +7,6 @@
   "wire-tangle": { "attackFrame": 2, "shadow": [34, 11], "eye": [40, 24] },
   "scrap-crab": { "attackFrame": 2, "shadow": [30, 10], "shell": true, "shellOpenMs": 1200, "attackMs": 2500, "variants": ["blue", "rust", "silver"] },
   "scrapheap-golem": { "attackFrame": 5, "tossFrame": 4, "glareFrames": [3, 5], "shadow": [72, 24], "radius": 3, "scale": 1.5, "top": 37,
-    "lamp": { "se": [108, 71], "sw": [91, 71], "ne": [116, 50], "nw": [83, 50] }, "slamFist": { "se": [148, 154], "sw": [52, 154], "ne": [152, 144], "nw": [48, 144] }, "tossFist": { "se": [147, 45], "sw": [53, 45], "ne": [165, 27], "nw": [35, 27] } }
+    "lamp": { "se": [108, 71], "sw": [91, 71], "ne": [116, 50], "nw": [83, 50] }, "slamFist": { "se": [148, 154], "sw": [52, 154], "ne": [152, 144], "nw": [48, 144] }, "tossFist": { "se": [147, 45], "sw": [53, 45], "ne": [165, 27], "nw": [35, 27] } },
+  "barong-barong": { "attackFrame": 6, "shadow": [200, 40], "radius": 3.5, "top": 12, "note": "Repo addition (Scrap Warrens, 10 Oct 2026): Barong-Barong, the Shanty Titan. S only and never moves (its moves are the run's: bot web/town-warrens.ts, timed from manifest hitFrames); attackFrame = its slams' hit frame; radius = dungeons.json lastBoss.reachRadius; top = its art's top (its name over it); shadow = a wide one under its heap." }
 }

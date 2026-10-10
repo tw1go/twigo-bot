@@ -403,7 +403,10 @@ export class Run implements MobDirector {
       for (const [c, r] of shutter.passage) this.map.blocked[r][c] = 0;
     }
     const area = list[at].area;
-    this.devArrival = [...area.arenaTiles].filter((t) => this.mobs.open(...t)).sort((a, b) => hyp(a, area.checkpoint) - hyp(b, area.checkpoint))[0] ?? area.checkpoint;
+    // (A tile with arena all round it, so the arrival's spread stays inside.)
+    const arena = new Set(area.arenaTiles.map(key));
+    const inner = area.arenaTiles.filter(([c, r]) => this.mobs.open(c, r) && [-1, 0, 1].every((dc) => [-1, 0, 1].every((dr) => arena.has(key([c + dc, r + dr])))));
+    this.devArrival = inner.sort((a, b) => hyp(a, area.checkpoint) - hyp(b, area.checkpoint))[0] ?? area.checkpoint;
     if (this.phase === 'gathering') this.start(now, news());
     return true;
   }
@@ -481,7 +484,9 @@ export class Run implements MobDirector {
         if (now < next) continue;
         const every = (b.enraged && m.id === 'roofRain' ? (this.lastBoss('enrage')?.roofRainEvery ?? m.every) : m.every) * 1000 / (b.enraged ? this.enrageSpeed() : 1);
         b.next.set(m.id, now + every);
-        events.push(...this.startMove(b, m, info.at, near, now));
+        // It stops where it is and holds still till the move lands (Lid Slam's circle stays round it; a cone stays aimed).
+        const hold = this.mobs.hold(b.mob, now + (m.id === 'chainZap' ? (this.deps.kinds[b.def.kind ?? '']?.hitMs ?? 400) : (m.telegraphMs ?? 800)), now);
+        events.push(...hold, ...this.startMove(b, m, this.mobs.mobInfo(b.mob, now)!.at, near, now));
       }
     }
     events.push(...this.scraplings(now, players));
@@ -604,7 +609,8 @@ export class Run implements MobDirector {
       case 'fistSlam': {
         // Under a random player within 10 tiles; the hands take turns.
         const within = near.filter(([, p]) => hyp(p, this.W.lastBoss.tile) <= 10);
-        const target = pickPlayer(within.length ? within : near);
+        if (!within.length) return [];
+        const target = pickPlayer(within);
         const shape: TelegraphShape = { kind: 'circle', at: target[1], radius: m.radius ?? 3 };
         b.hand = b.hand === 'l' ? 'r' : 'l';
         const ev = this.moveEvent(b.mob, m.id, ms, shape, { hand: b.hand, enraged: b.enraged });

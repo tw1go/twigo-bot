@@ -1,3 +1,4 @@
+import type { DungeonMapBlock } from '@mikazuki/shared';
 // Shapes of public/assets/manifest.json and public/assets/maps/town.json — only the parts the game reads.
 // The JSON files are the source of truth; nothing here hard-codes sizes, anchors or positions.
 
@@ -117,6 +118,9 @@ export interface PropDef {
   decor?: boolean;
   animation?: AnimSheet;
   glow?: { file: string };
+  /** A portal drawn over it at the same anchor (the Warren Gate's and the exit warp's): a looping strip, never moved or
+   *  turned, its alpha pulsing between pulse[0] and pulse[1] over pulse[2] ms. */
+  portal?: { file: string; frames: number; frameSize: Vec2; fps: number; pulse?: [number, number, number] };
   /** A prop you walk inside (the Golem Pit): `file` is its back half and this its front, on one canvas and anchor; the
    *  anchor is the ground point of its tile's centre, and each half sorts as if its feet were at anchor y + sortOffsetY. */
   front?: string;
@@ -205,6 +209,8 @@ export interface ClassesDefs {
   stats: string;
   /** classes/leveling.json: the mini bosses and the Tanod's leveling quests (the art folder's data/leveling.json). */
   leveling?: string;
+  /** classes/dungeons.json: the Scrap Warrens (the art folder's data/dungeons/warrens.json, with the repo's changes). */
+  dungeons?: string;
   /** Where the 32x48 body cell sits in a 64x64 weapon cell. */
   bodyOffset: Vec2;
   list: Record<string, ClassArt>;
@@ -299,6 +305,10 @@ export interface MobDef {
   enraged?: { file: string; animations: string[] };
   /** The golem's effects (layer ground: under every player and mob, front: over them). */
   fx?: Record<string, FxDef>;
+  /** Barong-Barong's: each move anim's frame (0-based) where it lands (slams, sweep), lets go (rain) or calls. */
+  hitFrames?: Record<string, number>;
+  /** Its enraged set loads only once it enrages (world/mobs.ts loadEnraged), not with the rest (its art is big). */
+  loadEnragedLater?: boolean;
 }
 
 /** A mob's rules (mobs/mobs.json, manifest mobs.data; the bot reads it too). Frames are 0-based. */
@@ -362,6 +372,8 @@ export interface MobZone {
   spawns: Vec2[];
   /** Its mini bosses' spots (classes/leveling.json miniBosses ids). */
   miniBosses?: { id: string; tile: Vec2 }[];
+  /** A Scrap Warrens area's mobs (maps/warrens.json): only the server places them (packs of its own, `groups`). */
+  dungeon?: boolean;
 }
 
 export interface MapObject {
@@ -398,6 +410,8 @@ export interface TownMap {
   ramps?: Ramp[];
   /** [col0, row0, col1, row1]: no mobs there. */
   safeZone?: [number, number, number, number];
+  /** The Scrap Warrens' block (maps/warrens.json): areas, shutters, the start room and its seal, the exit warp, the boss. */
+  dungeon?: DungeonMapBlock;
   /** Spots for friendly NPCs later. */
   residents?: Vec2[];
   mobZones?: MobZone[];
@@ -417,7 +431,7 @@ export interface TownMap {
   arrive?: Partial<Record<Gate, Vec2>>;
 }
 
-export type Gate = 'hood' | 'town' | 'slums';
+export type Gate = 'hood' | 'town' | 'slums' | 'warrens';
 export type Area = Gate;
 
 /** The forest drawn around the town (world/outskirts.ts). */

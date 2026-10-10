@@ -10,21 +10,70 @@ import type { Plugin } from 'vite';
 //
 // Character layers go one sheet per item (char-top-jacket, char-hair-bob, char-body, …: every animation and
 // direction of it), so an outfit loads only what it wears. Everything else goes one sheet per top folder
-// (tiles, props, buildings, fx, ui); NPC sheets one per NPC. Images too big for a page stay loose. In dev nothing
-// is packed.
+// (tiles, props, buildings, fx, ui); NPC sheets one per NPC. Images too big for a page stay loose, except a mob's sheets
+// drawn on canvases wider than a page (Barong-Barong: 768×512 cells, five a row, most of each cell empty round its body):
+// each is cut to the one box its frames all fit in and laid out again as many a row as fit a page, a page of its own
+// (so a sheet loads only when it's asked for); the index keeps the cell and the box, and the game puts each frame back in
+// its cell (src/assets/packs.ts: trimmed frames, anchors unchanged). Barong-Barong's 241 MB decoded comes to about 152.
+// In dev nothing is packed.
 
 const MAX_PAGE = 2048;
+/** A trimmed sheet's own page may be this big (the untrimmed ones were 3840 wide already). */
+const TRIM_PAGE = 4096;
 const OUT_DIR = 'packs'; // under assets/, which the server caches for good (the names carry a content hash)
 
-/** [page, x, y, w, h] for each packed path, plus the page files (relative to assets/). */
+/** [page, x, y, w, h] for each packed path (a trimmed sheet: + [cellW, cellH, boxX, boxY, boxW, boxH]), plus the page
+ *  files (relative to assets/). */
 export interface PackIndex {
   pages: string[];
-  files: Record<string, [number, number, number, number, number]>;
+  files: Record<string, number[]>;
 }
 
 interface Img {
   file: string; // path under assets/
   png: PNG;
+  /** A trimmed sheet's cell and box (see trim). */
+  trim?: number[];
+}
+
+/** Every mob sheet's cell size and frame count (manifest mobs: its anims × directions, the enraged set), by path. */
+function mobCells(manifest: { mobs?: Record<string, unknown> }): Map<string, [number, number, number]> {
+  const cells = new Map<string, [number, number, number]>();
+  type Def = { file: string; size: [number, number]; directions: string[]; animations: Record<string, { frames: number }>; variants?: Record<string, unknown>; enraged?: { file: string; animations: string[] } };
+  for (const def of Object.values(manifest.mobs ?? {}) as Def[]) {
+    if (typeof def !== 'object' || !def.file || def.variants) continue;
+    for (const [anim, a] of Object.entries(def.animations)) for (const dir of def.directions) cells.set(def.file.replace('{anim}', anim).replace('{dir}', dir), [...def.size, a.frames]);
+    for (const anim of def.enraged?.animations ?? []) for (const dir of def.directions) cells.set(def.enraged!.file.replace('{anim}', anim).replace('{dir}', dir), [...def.size, def.animations[anim]?.frames ?? 0]);
+  }
+  return cells;
+}
+
+/** A sheet of `cw × ch` cells cut to the box all its frames fit in, its `frames` laid out again in that box's size (in
+ *  order, as square as fits). Null: nothing drawn, or still too big. */
+function trim(png: PNG, [cw, ch, frames]: [number, number, number]): { png: PNG; trim: number[] } | null {
+  const [cols, rows] = [Math.floor(png.width / cw), Math.floor(png.height / ch)];
+  let [x0, y0, x1, y1] = [cw, ch, -1, -1];
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < cols; c++)
+      for (let y = 0; y < ch; y++)
+        for (let x = 0; x < cw; x++) {
+          if (!png.data[((r * ch + y) * png.width + c * cw + x) * 4 + 3]) continue;
+          if (x < x0) x0 = x;
+          if (y < y0) y0 = y;
+          if (x > x1) x1 = x;
+          if (y > y1) y1 = y;
+        }
+  if (x1 < 0) return null;
+  const [bw, bh] = [x1 - x0 + 1, y1 - y0 + 1];
+  const n = Math.min(cols * rows, frames || cols * rows);
+  // As square as it can be within a page (a big one on a page of its own up to TRIM_PAGE).
+  let per = Math.max(1, Math.floor(MAX_PAGE / bw));
+  while (per > 1 && Math.ceil(n / per) * bh < (per - 1) * bw) per--;
+  if (Math.ceil(n / per) * bh > MAX_PAGE) per = Math.max(per, Math.ceil(n / Math.floor(TRIM_PAGE / bh)));
+  const out = new PNG({ width: Math.min(n, per) * bw, height: Math.ceil(n / per) * bh });
+  if (out.width > TRIM_PAGE || out.height > TRIM_PAGE) return null;
+  for (let i = 0; i < n; i++) PNG.bitblt(png, out, (i % cols) * cw + x0, Math.floor(i / cols) * ch + y0, bw, bh, (i % per) * bw, Math.floor(i / per) * bh);
+  return { png: out, trim: [cw, ch, x0, y0, bw, bh] };
 }
 
 function walk(dir: string): string[] {
@@ -77,11 +126,17 @@ export function buildPacks(assetsDir: string): { index: PackIndex; out: { fileNa
   const anims = [...new Set([...Object.keys(C.animations), ...Object.keys(manifest.npcs?.animations ?? {})])];
   const dirs: string[] = C.directions;
   const groups = new Map<string, Img[]>();
+  const cells = mobCells(manifest);
   for (const path of walk(assetsDir)) {
     if (!path.endsWith('.png')) continue;
     const file = relative(assetsDir, path).split('\\').join('/');
     const png = PNG.sync.read(readFileSync(path));
-    if (png.width > MAX_PAGE || png.height > MAX_PAGE) continue;
+    if (png.width > MAX_PAGE || png.height > MAX_PAGE) {
+      const cell = cells.get(file);
+      const t = cell && trim(png, cell);
+      if (t) groups.set(`trim-${basename(file, '.png')}`, [{ file, png: t.png, trim: t.trim }]);
+      continue;
+    }
     const g = groupOf(file, anims, dirs);
     groups.set(g, [...(groups.get(g) ?? []), { file, png }]);
   }
@@ -89,7 +144,7 @@ export function buildPacks(assetsDir: string): { index: PackIndex; out: { fileNa
   const index: PackIndex = { pages: [], files: {} };
   const out: { fileName: string; source: Buffer }[] = [];
   for (const [group, imgs] of [...groups].sort(([a], [b]) => a.localeCompare(b))) {
-    const pages = shelves(imgs);
+    const pages = group.startsWith('trim-') ? [[{ img: imgs[0], x: 0, y: 0 }]] : shelves(imgs); // (a trimmed sheet: a page of its own)
     pages.forEach((placed, i) => {
       const w = Math.max(...placed.map((p) => p.x + p.img.png.width));
       const h = Math.max(...placed.map((p) => p.y + p.img.png.height));
@@ -101,7 +156,7 @@ export function buildPacks(assetsDir: string): { index: PackIndex; out: { fileNa
       const hash = createHash('sha256').update(source).digest('hex').slice(0, 8);
       const name = `${group}${pages.length > 1 ? `-${i + 1}` : ''}-${hash}.png`;
       const n = index.pages.push(`${OUT_DIR}/${name}`) - 1;
-      for (const p of placed) index.files[p.img.file] = [n, p.x, p.y, p.img.png.width, p.img.png.height];
+      for (const p of placed) index.files[p.img.file] = [n, p.x, p.y, p.img.png.width, p.img.png.height, ...(p.img.trim ?? [])];
       out.push({ fileName: `assets/${OUT_DIR}/${name}`, source });
     });
   }

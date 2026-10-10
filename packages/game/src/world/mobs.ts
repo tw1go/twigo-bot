@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { type LevelingData, type PlayerHit, type StatsData, type TownMob, type TownMobFacing, miniBossDef, miniBossRules, miniMobId, miniOfMobId, mobBarMs, mobRules, mobStartSpots, mobStats, mobTone, packSize, seeded } from '@mikazuki/shared';
+import { type DungeonsData, type LevelingData, type PlayerHit, type StatsData, type TownMob, type TownMobFacing, areaAt, miniBossDef, miniBossRules, miniMobId, miniOfMobId, mobBarMs, mobRules, mobStartSpots, mobStats, mobTone, packSize, seeded } from '@mikazuki/shared';
 import { playSet } from '../audio/sound';
 import type { Manifest, MobData, MobDef, MobZone, TownMap, Vec2 } from '../assets/types';
 import { mobCell, mobSheet, mobSheets, mobVariants } from '../assets/mob-art';
@@ -44,6 +44,13 @@ import { LABEL_DEPTH } from './depth';
 // along its facing over its charge frames and back (its tile stays). `onDeath` as one dies. The server rolled the hit
 // (`hit`: damage or a miss) and takes the HP as it lands: the hooks show it then (TownScene: the number, the flash). Only the mobs near the camera are drawn and animated; the rest sleep (their
 // sprites off, still walking their hops on paper) and wake right where they should be.
+// The Scrap Warrens (maps/warrens.json, world/warrens.ts): its areas' mobs are only ever the server's (`dungeon` zones:
+// never placed here first); its bosses come as `mob-add`s with their `kind`: a mini boss (its mob's art at the server's
+// `scale`, its name in red always over it with its HP bar), a Scrapling (the golem's art at its `scale`) or
+// Barong-Barong (its own art, S only: `faces`; its body `radius`; no shadow: it stands in its heap), each in the area
+// it's in. Barong-Barong's art is held back (`holdArt`) until the Warrens say so (near its hall: `releaseArt`), and its
+// enraged set until it enrages (manifest `loadEnragedLater`: `loadEnraged`). `mob-scale` (party scaling) and
+// `mob-flag` (Vanish: faded, not to be targeted; Hunker) come through `scale` and `flag`.
 // The field boss (world/golem.ts runs it) is one of these too, made with `makeBoss` once its art is in: its own sheets
 // or its red-lamp set (`enraged`), its rise (its death backwards), a body `radius` (reach and Z measure to its edge;
 // a hit never cuts its attacks short), numbers and a wider bar at its art's `top`. Its Adds come and go with `add` /
@@ -146,6 +153,12 @@ export interface Mob {
   /** Its last hit (scene ms: its HP bar shows for a while after) and its last hurt sound. */
   hitAt: number;
   hurtAt: number;
+  /** The one way its art faces whatever its facing (Barong-Barong: 's'), or null. */
+  faces: string | null;
+  /** Its kind as the server has it (a Scrapling's art is the golem's: `zone.mob`). */
+  kind: string;
+  /** A Warrens boss: every hit blocked for now (Crab Tain's Hunker). */
+  blockAll: boolean;
 }
 
 /** What the scene does with a mob's attack (these show it; the server takes the HP). */
@@ -206,7 +219,7 @@ export class Mobs {
   private artIn(kind: string): boolean {
     if (this.art.get(kind) === true) return true;
     const def = this.M.mobs?.[kind];
-    const ok = !!def && typeof def !== 'string' && mobSheets(def).every((sh) => this.scene.textures.exists(sh.file));
+    const ok = !!def && typeof def !== 'string' && sheetsNow(def).every((sh) => this.scene.textures.exists(sh.file));
     if (ok) this.art.set(kind, true);
     return ok;
   }
@@ -220,7 +233,7 @@ export class Mobs {
     if (!def || typeof def === 'string') return Promise.resolve();
     const load = this.scene.load;
     const p = new Promise<void>((resolve) => {
-      const missing = mobSheets(def).filter((sh) => !this.scene.textures.exists(sh.file));
+      const missing = sheetsNow(def).filter((sh) => !this.scene.textures.exists(sh.file));
       if (!missing.length) return resolve();
       for (const sh of missing) queueSheet(load, this.scene.textures, sh.file, sh.size[0], sh.size[1]);
       // (In a build they come in packed pages: done once the loader is; files queued mid-run load in the same run.)
@@ -263,6 +276,7 @@ export class Mobs {
       }
       return;
     }
+    if (zone.dungeon) return; // (the Warrens' packs are the server's alone)
     const data = (this.scene.cache.json.get('mob-data') ?? {}) as Record<string, MobData | string>;
     const d = typeof data[zone.mob] === 'object' ? (data[zone.mob] as MobData) : null;
     // Where the server starts them (its first snapshot puts them where they are now).
@@ -347,6 +361,7 @@ export class Mobs {
       sprite, shadow, path: [], restUntil: this.scene.time.now + Phaser.Math.Between(0, REST_MS[1]), label: null, labelUntil: 0,
       hp, dead: false, pose: null, bar: null, shield: null, openUntil: 0, fightUntil: 0, speed: data?.drift?.speed ?? SPEED, slowUntil: 0, asleep: false, lunge: { x: 0, y: 0 },
       enraged: false, add: false, mini: null, radius: data?.radius ?? 0, untouchable: false, hitAt: -Infinity, hurtAt: -Infinity,
+      faces: null, kind: zone.mob, blockAll: false,
     };
     // A pack's caps start round the point, each on a tile of its own (the server's place comes with its snapshot).
     if (pack?.length) mob.home = this.besideSpawn(mob, pack, id);
@@ -424,8 +439,8 @@ export class Mobs {
   }
 
   private key(m: Mob, anim: string): string {
-    const v = m.enraged && m.def.enraged?.animations.includes(anim) ? 'enraged' : m.variant;
-    return `mob:${m.zone.mob}:${v}:${anim}:${m.dir}`;
+    const enraged = m.enraged && m.def.enraged?.animations.includes(anim) && this.scene.anims.exists(`mob:${m.zone.mob}:enraged:${anim}:${m.faces ?? m.dir}`);
+    return `mob:${m.zone.mob}:${enraged ? 'enraged' : m.variant}:${anim}:${m.faces ?? m.dir}`;
   }
 
   private play(m: Mob, anim: string): void {
@@ -494,6 +509,7 @@ export class Mobs {
     m.hp = s.hp;
     m.pose = null;
     this.show(m, !s.dead);
+    if (m.mini && !s.dead) this.showLabel(m); // (its level as the server has it)
     this.sync(m);
   }
 
@@ -510,6 +526,71 @@ export class Mobs {
     const slot = data?.pack ? s.id.slice(0, s.id.lastIndexOf(':')) : null;
     const pack = slot ? (this.list.find((x) => x.pack && x.id.startsWith(`${slot}:`))?.pack ?? []) : null;
     return this.place(zone, def, data, { col: s.col, row: s.row }, s.id, pack);
+  }
+
+  /** Kinds whose art waits for `releaseArt` (Barong-Barong's: only near its hall). */
+  readonly holdArt = new Set<string>();
+
+  /** A held kind's art may load now: loaded, then its mobs the server told of are made. */
+  releaseArt(kind: string): void {
+    if (!this.holdArt.delete(kind)) return;
+    void this.loadKind(kind).then(() => this.makeUnmade(kind));
+  }
+
+  /** Its enraged set (a kind with `loadEnragedLater`), loaded now: its anims made, and any of them enraged shown so. */
+  loadEnraged(kind: string): Promise<void> {
+    const def = this.M.mobs?.[kind];
+    if (!def || typeof def === 'string' || !def.enraged) return Promise.resolve();
+    const load = this.scene.load;
+    return new Promise<void>((resolve) => {
+      const missing = def.enraged!.animations.flatMap((a) => def.directions.map((d) => mobSheet(def, '', a, d, true))).filter((f) => !this.scene.textures.exists(f));
+      if (!missing.length) return resolve();
+      for (const f of missing) queueSheet(load, this.scene.textures, f, def.size[0], def.size[1]);
+      load.once(Phaser.Loader.Events.COMPLETE, () => resolve());
+      if (!load.isLoading()) load.start();
+    }).then(() => {
+      this.anims(kind, def);
+      for (const m of this.list) if (m.zone.mob === kind && m.enraged) this.reshow(m);
+    });
+  }
+
+  /** The server's mobs of a kind not made yet (its art wasn't in): made now. */
+  private makeUnmade(kind: string): void {
+    for (const [id, st] of [...this.unmade]) {
+      if (st.kind !== kind || this.byId.has(id)) continue;
+      this.unmade.delete(id);
+      const m = this.makeAdd(st);
+      if (m) this.apply(m, st);
+    }
+  }
+
+  /** Party scaling (`mob-scale`): their most HP and HP. */
+  scale(list: { id: string; hp: number; maxHp: number }[]): void {
+    for (const s of list) {
+      const m = this.byId.get(s.id);
+      const u = !m && this.unmade.get(s.id);
+      if (u) Object.assign(u, { hp: s.hp, maxHp: s.maxHp });
+      if (m) this.setHp(m, s.hp, s.maxHp);
+    }
+  }
+
+  /** A Warrens boss's windows (`mob-flag`): faded and not to be targeted (Vanish), every hit blocked (Hunker). */
+  flag(id: string, untargetable?: boolean, blockAll?: boolean): void {
+    const u = this.unmade.get(id);
+    if (u) Object.assign(u, { untargetable, blockAll });
+    const m = this.byId.get(id);
+    if (!m) return;
+    if (untargetable !== undefined) {
+      m.untouchable = untargetable;
+      if (untargetable && m === this.target) this.setTarget(null);
+      this.scene.tweens.add({ targets: m.sprite, alpha: untargetable ? (this.dungeons?.warrens.areas.flatMap((a) => a.miniBoss.mechanics).find((x) => x.id === 'vanish')?.alpha ?? 0.3) : 1, duration: 300 });
+    }
+    if (blockAll !== undefined) m.blockAll = blockAll;
+  }
+
+  /** classes/dungeons.json, if loaded. */
+  private get dungeons(): DungeonsData | null {
+    return (this.scene.cache.json.get('dungeons') as DungeonsData | undefined) ?? null;
   }
 
   /** The golem's Adds crawling out (`mob-add`): made where the server says, fading in. */
@@ -530,13 +611,17 @@ export class Mobs {
   }
 
   /** An Add of `kind` (its art is a zone's that's on: the Tin Cans' and Bottle Caps'), in a zone of its own made from its
-   *  kind's (its level; it lives where the server puts it). */
+   *  kind's (its level; it lives where the server puts it). In the Warrens also its bosses and their guards and calls (in
+   *  the area they're in): a boss's name in red always over it, the server's `scale` and `radius`, Barong-Barong's one
+   *  facing. */
   private makeAdd(s: TownMob): Mob | null {
-    const def = this.M.mobs?.[s.kind!];
+    const art = this.artKind(s.kind!);
+    const def = this.M.mobs?.[art];
     if (!def || typeof def === 'string') return null;
+    if (this.holdArt.has(art)) return null; // (Barong-Barong: made once the Warrens let its art load)
     // (The golem's Adds are Tin Cans and Bottle Caps: their art may not be in out by the pit. Loaded, then made.)
-    if (!this.artIn(s.kind!)) {
-      void this.loadKind(s.kind!).then(() => {
+    if (!this.artIn(art)) {
+      void this.loadKind(art).then(() => {
         const st = this.unmade.get(s.id);
         if (!st || this.byId.has(s.id)) return;
         this.unmade.delete(s.id);
@@ -545,16 +630,38 @@ export class Mobs {
       });
       return null;
     }
-    this.anims(s.kind!, def);
+    this.anims(art, def);
     const own = this.map.mobZones?.find((z) => z.mob === s.kind);
+    const area = this.map.dungeon ? areaAt(this.map.dungeon, s.col, s.row) : null;
     const zone: MobZone = {
-      id: 'golem-add', name: GOLEM_PIT, mob: s.kind!, level: own?.level ?? s.level, rect: [s.col, s.row, s.col, s.row], height: own?.height ?? 0,
+      id: area?.id ?? 'golem-add', name: area?.name ?? GOLEM_PIT, mob: art, level: own?.level ?? s.level, rect: [s.col, s.row, s.col, s.row], height: own?.height ?? 0,
       pack: 0, aggro: 'aggressive', aggroRange: 0, leash: 0, respawnSec: 0, active: true, spawns: [],
     };
-    const data = (this.scene.cache.json.get('mob-data') ?? {})[s.kind!];
-    const m = this.place(zone, def, typeof data === 'object' ? (data as MobData) : null, { col: s.col, row: s.row }, s.id, null);
+    const raw = (this.scene.cache.json.get('mob-data') ?? {})[art];
+    const base = typeof raw === 'object' ? (raw as MobData) : null;
+    const data = s.scale && base ? ({ ...base, scale: s.scale, pack: undefined } as MobData) : base;
+    const m = this.place(zone, def, data, { col: s.col, row: s.row }, s.id, null);
     m.add = true;
+    m.kind = s.kind!;
+    if (area) m.radius = s.radius ?? 0; // (a Scrapling has the golem's art, not its body)
+    if (def.directions.length === 1) m.faces = def.directions[0];
+    if (s.boss) {
+      m.mini = { name: s.name ?? def.name, colour: this.dungeons?.warrens.miniBossLook.nameColour ?? '#EF4444' };
+      if (!base) {
+        m.shadow?.destroy(); // (Barong-Barong stands in its own heap)
+        m.shadow = null;
+      }
+      this.showLabel(m);
+    }
+    if (s.untargetable) this.flag(s.id, true, s.blockAll);
+    else if (s.blockAll) m.blockAll = true;
     return m;
+  }
+
+  /** The art a server kind is drawn with (a Scrapling: dungeons.json scrapling.art, the golem's). */
+  private artKind(kind: string): string {
+    const S = this.dungeons?.warrens.scrapling;
+    return S && kind === S.id ? S.art : kind;
   }
 
   /** Mobs gone for good (the golem's Adds when its fight ends): faded out (`fade`), then dropped. */
@@ -1116,6 +1223,14 @@ export class Mobs {
   get tintables(): Phaser.GameObjects.Components.Tint[] {
     return this.list.flatMap((m) => (m.shadow ? [m.sprite, m.shadow] : [m.sprite]));
   }
+}
+
+/** The sheets a kind loads with (not its enraged set when that comes later: `loadEnragedLater`). */
+function sheetsNow(def: MobDef): { file: string; size: Vec2 }[] {
+  const all = mobSheets(def);
+  if (!def.loadEnragedLater || !def.enraged) return all;
+  const later = new Set(def.enraged.animations.flatMap((a) => def.directions.map((d) => mobSheet(def, '', a, d, true))));
+  return all.filter((sh) => !later.has(sh.file));
 }
 
 /** A spark's look (around its own origin, pointing along +x): a short jagged line, a yellow glow round a white core,

@@ -8,6 +8,7 @@ import { devKit } from './adventure';
 
 const OPENED_ELSEWHERE = 4000;
 const KICKED = 4001; // the reason is when they may come back (ms)
+const NO_RUN = 4002; // a Scrap Warrens page with no run to be in (its `warrens-out` came first)
 
 export class TownLink {
   private ws: WebSocket | null = null;
@@ -24,7 +25,8 @@ export class TownLink {
   constructor(
     /** Dev only: the fake member's look, for the dev server's town (scripts/dev-town.ts). */
     private readonly devLook: unknown = null,
-    /** The room on the server: the town, the neighbourhood ('hood') or the Slums ('slums'). */
+    /** The room on the server: the town, the neighbourhood ('hood'), the Slums ('slums') or your Scrap Warrens run
+     *  ('warrens': the server finds which). */
     private readonly room: Area = 'town',
   ) {
     this.connect();
@@ -67,6 +69,7 @@ export class TownLink {
       if (this.ws !== ws || this.stopped) return;
       if (e.code === OPENED_ELSEWHERE) return this.onTakenOver();
       if (e.code === KICKED) return this.onKicked(Number(e.reason) || Date.now() + 15 * 60_000);
+      if (e.code === NO_RUN) return;
       this.onStatus(false);
       const wait = Math.min(30_000, 1000 * 2 ** this.retry++);
       setTimeout(() => this.connect(), wait);

@@ -10,15 +10,25 @@ const pageKey = (page: number) => `pack:${index!.pages[page]}`;
 const queued = new Set<number>();
 /** Frame sizes of the images that are sheets, so they can be sliced once cut out. */
 const sheets = new Map<string, [number, number]>();
+/** Sheets the build trimmed (scripts/packs.ts): their cell, and the box of it each frame was cut to. */
+const trims = new Map<string, number[]>();
 let byPage: Map<number, string[]> | null = null;
 
 export const packed = (file: string): boolean => !!index?.files[file];
 
-/** Numbered frames across a sheet, row by row (as Phaser's spritesheet loader names them). */
+/** Numbered frames across a sheet, row by row (as Phaser's spritesheet loader names them). A trimmed sheet's frames are
+ *  its box-sized ones, each put back in its `w × h` cell where it was cut from (Phaser's trim: the anchor's unchanged). */
 export function slice(textures: Phaser.Textures.TextureManager, file: string, w: number, h: number): void {
   const tex = textures.get(file);
   if (tex.has('0')) return;
   const { width, height } = tex.getSourceImage() as HTMLCanvasElement;
+  const t = trims.get(file);
+  if (t) {
+    const [cw, ch, bx, by, bw, bh] = t;
+    const per = Math.max(1, Math.floor(width / bw));
+    for (let i = 0; Math.floor(i / per) * bh + bh <= height; i++) tex.add(i, 0, (i % per) * bw, Math.floor(i / per) * bh, bw, bh)?.setTrim(cw, ch, bx, by, bw, bh);
+    return;
+  }
   let n = 0;
   for (let y = 0; y + h <= height; y += h) for (let x = 0; x + w <= width; x += w) tex.add(n++, 0, x, y, w, h);
 }
@@ -46,7 +56,8 @@ function unpack(textures: Phaser.Textures.TextureManager, page: number): void {
   const img = textures.get(pageKey(page)).getSourceImage() as HTMLImageElement;
   for (const file of byPage.get(page) ?? []) {
     if (textures.exists(file)) continue;
-    const [, x, y, w, h] = index!.files[file];
+    const [, x, y, w, h, ...trim] = index!.files[file];
+    if (trim.length) trims.set(file, trim);
     const canvas = document.createElement('canvas');
     canvas.width = w;
     canvas.height = h;

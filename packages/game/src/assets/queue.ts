@@ -17,12 +17,21 @@ export function queueSheet(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Te
   else if (!textures.exists(file)) load.spritesheet(file, file, { frameWidth: w, frameHeight: h });
 }
 
+/** The Scrap Warrens' own effects (manifest fx). */
+const WARRENS_FX = /^fx-(warrens-|roof-sheet|barong-)/;
+
 export function queueTown(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Textures.TextureManager, M: Manifest, map: TownMap): void {
   const img = (f: string) => queueImage(load, textures, f);
   const T = M.tiles;
   // The stats rules' numbers (net/adventure.ts keeps them; the mobs read their table).
   if (M.classes?.stats) load.json('stats', M.classes.stats);
   if (M.classes?.leveling) load.json('leveling', M.classes.leveling);
+  // The Scrap Warrens: their data, shutters and effects (Barong-Barong's own art loads near its hall: world/warrens.ts).
+  if (map.dungeon) {
+    if (M.classes?.dungeons) load.json('dungeons', M.classes.dungeons);
+    for (const id of ['warrens-shutter-closed', 'warrens-shutter-open']) if (M.props[id]?.file) img(M.props[id].file);
+    for (const [id, f] of Object.entries(M.fx)) if (WARRENS_FX.test(id) && f.file) f.frame ? queueSheet(load, textures, f.file, f.frame[0], f.frame[1]) : img(f.file);
+  }
   if (map.height) queueSlums(load, textures, M, map);
   T.grass.files.forEach(img);
   T.grass.litter.files.forEach(img);
@@ -42,6 +51,7 @@ export function queueTown(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Tex
       const p = M.props[o.id] as PropDef | undefined;
       if (p?.file) img(p.file);
       if (o.animated && p?.animation) queueSheet(load, textures, p.animation.file, p.animation.frameSize[0], p.animation.frameSize[1]);
+      if (p?.portal) queueSheet(load, textures, p.portal.file, p.portal.frameSize[0], p.portal.frameSize[1]);
     }
     if (o.shadow) img(o.shadow);
     if (o.tufts) img(o.tufts);

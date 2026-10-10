@@ -7,6 +7,7 @@ import { castShadow } from './cast-shadow';
 import { Heights, LEVEL_PX } from './heights';
 import { differs, visible } from '../util/pixels';
 import { hash, rng } from './rng';
+import { slice } from '../assets/packs';
 
 // Everything that stands on the ground: buildings, props, trees (with their ground shadow and tufts), the fence,
 // lamps (+ night glow) and looping effects. Each object's manifest anchor sits on the top corner of its tile
@@ -444,6 +445,9 @@ export class WorldObjects {
       }
     }
 
+    // A portal over it (the Warren Gate, the Warrens' exit warp): its strip at the same anchor, just in front.
+    if (def.portal) this.addPortal(def.portal, def.anchor, o, depth);
+
     // Trees: a shadow on the ground under the trunk, and a tufts strip just in front of the trunk base.
     const centre = this.topOf(o.col, o.row);
     centre.y += 8; // trunk tile centre
@@ -453,6 +457,24 @@ export class WorldObjects {
     // A bench: a seat on each tile of its footprint (a long bench seats 2 or 3, side by side).
     if (def.faces) for (let c = 0; c < fc; c++) for (let r = 0; r < fr; r++) this.benches.push({ col: o.col + c, row: o.row + r, faces: def.faces.toLowerCase() as Dir, depth, sprite });
     if (o.id === 'lamp-off' || o.id === 'lamp-on') this.addLamp(sprite);
+  }
+
+  /** A portal's strip played in place over its prop (never moved or turned: the frames only cycle its colours), its
+   *  alpha pulsing softly (`pulse`: low, high, ms a cycle). */
+  private addPortal(p: NonNullable<PropDef['portal']>, anchor: Vec2, o: MapObject, depth: number): void {
+    if (!this.scene.textures.exists(p.file)) return;
+    slice(this.scene.textures, p.file, p.frameSize[0], p.frameSize[1]);
+    const key = `anim:${p.file}`;
+    if (!this.scene.anims.exists(key)) this.scene.anims.create({ key, frames: this.scene.anims.generateFrameNumbers(p.file, { start: 0, end: p.frames - 1 }), frameRate: p.fps, repeat: -1 });
+    const top = this.topOf(o.col, o.row);
+    const s = this.scene.add.sprite(top.x, top.y, p.file, 0).setOrigin(anchor[0] / p.frameSize[0], anchor[1] / p.frameSize[1]).setDepth(depth + 0.01);
+    s.play(key);
+    if (p.pulse) {
+      const [lo, hi, ms] = p.pulse;
+      const tween = this.scene.tweens.add({ targets: s, alpha: { from: hi, to: lo }, duration: ms / 2, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      s.once(Phaser.GameObjects.Events.DESTROY, () => tween.remove());
+    }
+    this.track(s);
   }
 
   /** Lamp glow, centred on the lantern: found by comparing the lit and unlit sprites pixel by pixel. */

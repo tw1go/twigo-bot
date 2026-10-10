@@ -994,6 +994,7 @@
     "data": "classes/classes.json",
     "stats": "classes/stats.json",
     "leveling": "classes/leveling.json",
+    "dungeons": "classes/dungeons.json",
     "bodyOffset": [
       16,
       10
@@ -13533,6 +13534,8 @@
   },
   "todo": [],
   "props": {
+    "warrens-shutter-closed": {"file": "props/warrens/prop-warrens-shutter-closed.png", "size": [96, 96], "anchor": [48, 79], "footprint": [1, 1], "walkable": false, "note": "A Scrap Warrens shutter (world/warrens.ts draws it, not the map): 3 tiles bottom-left to top-right (flipped for the other way); anchor = the middle tile's centre"},
+    "warrens-shutter-open": {"file": "props/warrens/prop-warrens-shutter-open.png", "size": [96, 96], "anchor": [48, 79], "footprint": [1, 1], "walkable": true, "note": "The shutter once its mini boss is down (same anchor)"},
     "slums-warren-gate": {
       "file": "props/slums/prop-slums-warren-gate.png",
       "size": [96, 96],
@@ -15535,6 +15538,17 @@
     }
   },
   "fx": {
+    "fx-roof-sheet": {"file": "fx/warrens/fx-roof-sheet.png", "frame": [32, 32], "frames": 16, "fps": 12, "loop": true, "anchor": [16, 28], "layer": "front", "note": "Roof Rain: a roofing sheet tumbling as it falls (the code moves it from above the screen to its circle); frames are loose poses, play from a random start"},
+    "fx-barong-fist": {"file": "fx/warrens/fx-barong-fist.png", "frame": [112, 128], "frames": 1, "fps": 1, "loop": false, "anchor": [56, 120], "layer": "front", "note": "Fist Slam: drops from above the screen onto its circle in the last ~0.35 s of the warning (code moves it), then the golem's slam impact + shockwave at 1.6x and a 0.2 s shake"},
+    "fx-barong-fist-shadow": {"file": "fx/warrens/fx-barong-fist-shadow.png", "frame": [64, 24], "frames": 1, "fps": 1, "loop": false, "anchor": [32, 12], "layer": "ground", "note": "the falling fist's ground shadow: scaled 0.3 to 1 as it falls"},
+    "fx-warrens-gutter-sweep": {"file": "fx/warrens/fx-warrens-gutter-sweep.png", "frame": [207, 109], "frames": 16, "fps": 16, "loop": false, "anchor": [128, 48], "layer": "ground", "note": "Gutter Sweep: 3 tiles in front of Barong-Barong (the middle of its cone); started with the sweep anim so frame 8 lands on the hit; never mirrored"},
+    "fx-warrens-door-burst": {"file": "fx/warrens/fx-warrens-door-burst.png", "frame": [68, 76], "frames": 9, "fps": 12, "loop": false, "anchor": [34, 23], "layer": "front", "note": "Shanty Call: the door's centre, 34 px right of and 136 px above Barong-Barong's feet; started on the call anim's frame 2"},
+    "fx-warrens-fog-puff": {"file": "fx/warrens/fx-warrens-fog-puff.png", "frame": [62, 50], "frames": 10, "fps": 12, "loop": false, "anchor": [30, 45], "layer": "front", "note": "Smother Fog: on each circle's centre at the hit; also where Bag Yani vanishes and comes back"},
+    "fx-warrens-live-floor": {"file": "fx/warrens/fx-warrens-live-floor.png", "frame": [57, 85], "frames": 7, "fps": 16, "loop": false, "anchor": [29, 80], "layer": "front", "note": "Live Floor: one per flashing tile, 60 ms before the hit (frame 1 = the hit)"},
+    "fx-warrens-pincer-slash": {"file": "fx/warrens/fx-warrens-pincer-slash.png", "frame": [121, 52], "frames": 7, "fps": 16, "loop": false, "anchor": [57, 22], "layer": "front", "note": "Pincer Sweep: 1.5 tiles in front of Crab Tain (the middle of its cone); flipped for SW and NW; 60 ms before the hit"},
+    "fx-warrens-hunker-shell-back": {"file": "fx/warrens/fx-warrens-hunker-shell-back.png", "frame": [106, 66], "frames": 12, "fps": 12, "loop": true, "anchor": [53, 39], "layer": "ground", "note": "Hunker, back half: at Crab Tain's feet, looped for the 5 s"},
+    "fx-warrens-hunker-shell-front": {"file": "fx/warrens/fx-warrens-hunker-shell-front.png", "frame": [106, 66], "frames": 12, "fps": 12, "loop": true, "anchor": [53, 39], "layer": "front", "note": "Hunker, front half: at Crab Tain's feet, looped for the 5 s"},
+    "fx-warrens-burnout-smoke": {"file": "fx/warrens/fx-warrens-burnout-smoke.png", "frame": [104, 56], "frames": 12, "fps": 18, "loop": true, "anchor": [101, 36], "layer": "ground", "note": "Burnout Charge wind-up: at the tire's back, streaming left (flipped charging left: SW, NW); looped for the warning, then a 0.2 s fade"},
     "shadow": {
       "file": "fx/fx-shadow.png",
       "size": [
@@ -18013,6 +18027,84 @@
     "file": "items/items.json"
   },
   "mobs": {
+    "barong-barong": {
+      "name": "Barong-Barong",
+      "file": "mobs/barong-barong/mob-barong-barong-{anim}-{dir}.png",
+      "size": [
+        768,
+        512
+      ],
+      "anchor": [
+        384,
+        432
+      ],
+      "directions": [
+        "s"
+      ],
+      "animations": {
+        "idle": {
+          "frames": 8,
+          "fps": 6,
+          "loop": true
+        },
+        "slam-l": {
+          "frames": 10,
+          "fps": 12,
+          "loop": false
+        },
+        "slam-r": {
+          "frames": 10,
+          "fps": 12,
+          "loop": false
+        },
+        "rain": {
+          "frames": 10,
+          "fps": 10,
+          "loop": false
+        },
+        "sweep": {
+          "frames": 12,
+          "fps": 12,
+          "loop": false
+        },
+        "call": {
+          "frames": 8,
+          "fps": 10,
+          "loop": false
+        },
+        "hit": {
+          "frames": 4,
+          "fps": 16,
+          "loop": false
+        },
+        "death": {
+          "frames": 14,
+          "fps": 10,
+          "loop": false
+        }
+      },
+      "enraged": {
+        "file": "mobs/barong-barong/mob-barong-barong-enraged-{anim}-{dir}.png",
+        "animations": [
+          "idle",
+          "slam-l",
+          "slam-r",
+          "rain",
+          "sweep",
+          "call",
+          "hit"
+        ]
+      },
+      "hitFrames": {
+        "slam-l": 6,
+        "slam-r": 6,
+        "rain": 6,
+        "sweep": 6,
+        "call": 3
+      },
+      "loadEnragedLater": true,
+      "note": "Barong-Barong, the Shanty Titan (the Scrap Warrens' last boss): S only, never moves; cells 768x512 in a grid of 5 a row; hitFrames (0-based, from _sheets.csv): the slams' and sweep's hit, the rain's release, the call's spawn. Builds trim each sheet to its frames' box (scripts/packs.ts); loaded only in the Shanty Hall, the enraged set at its enrage."
+    },
     "note": "Mobs (world/mobs.ts): one sheet per variant, animation and direction, file = pattern with {variant}, {anim} and {dir}; size = the cell, anchor = the pixel between the feet (a variant may have its own size and anchor). `variants` lists the looks (one picked per spawn by the server); none = one look. The golem: `enraged` = its red-lamp set (the anims listed; death is shared), `fx` = its attack effects (layer ground: under every player and mob, front: over them). Rules (attack frame, shadow, floating) in `data`. Only mobs of active zones (and the boss) load.",
     "data": "mobs/mobs.json",
     "tin-can": {

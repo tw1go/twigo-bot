@@ -1472,6 +1472,41 @@
       @media (max-width: 760px), (max-height: 500px) { #hotbar, #skill-book { display: none; } body.hotbar-on #toast { bottom: 24px; } }
       #quest-tracker { position: fixed; left: 12px; z-index: 2; width: 150px; box-sizing: border-box; padding: 6px 8px 8px; border-radius: 6px; background: rgba(10, 12, 24, 0.55); color: #E6E9F2; font: calc(13px * var(--text))/1.3 var(--ui-font); text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6); cursor: var(--cur-hand, pointer); }
       #quest-tracker[hidden] { display: none; }
+      /* The Scrap Warrens (ui/warrens.ts): the tracker in the quest tracker's place, the gate's panel, the area banner. */
+      body.warrens-on #quest-tracker { display: none; }
+      #warrens-tracker { position: fixed; left: 12px; z-index: 2; width: 170px; box-sizing: border-box; padding: 6px 8px 8px; border-radius: 6px; background: rgba(10, 12, 24, 0.7); color: #E6E9F2; font: calc(13px * var(--text))/1.3 var(--ui-font); text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6); box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.35); }
+      #warrens-tracker .wr-head { display: flex; align-items: baseline; gap: 6px; }
+      #warrens-tracker .wr-title { font-weight: 700; color: #FCA5A5; font-size: calc(13px * var(--text)); }
+      #warrens-tracker .wr-time { margin-left: auto; color: #F8BF27; font-size: calc(13px * var(--text)); }
+      #warrens-tracker .wr-time.wr-late { color: #F87171; animation: bb-pulse 0.9s ease-in-out infinite alternate; }
+      #warrens-tracker .wr-pips { display: flex; gap: 4px; margin-top: 6px; }
+      #warrens-tracker .wr-pip { width: 14px; height: 14px; box-sizing: border-box; border: 2px solid #EF4444; background: #2A0F14; transform: rotate(45deg) scale(0.75); }
+      #warrens-tracker .wr-pip.wr-down { border-color: #6B7280; background: #4ADE80; }
+      #warrens-tracker .wr-note { margin-top: 6px; color: #A9B1D6; font-size: calc(12px * var(--text)); }
+      #warrens-tracker .wr-note[hidden] { display: none; }
+      #warrens-tracker .wr-buttons { display: flex; gap: 6px; margin-top: 8px; }
+      .wr-btn { padding: 4px 10px 5px; border: 2px solid #3D4256; border-radius: 0; background: #1E1B3A; color: #c0caf5; font: inherit; font-size: calc(12px * var(--text)); font-weight: 700; cursor: var(--cur-hand, pointer); }
+      .wr-btn:hover { border-color: #c0caf5; }
+      .wr-btn[hidden] { display: none; }
+      .wr-btn.wr-go { background: #EF4444; color: #fff; border-color: #1E1B3A; box-shadow: inset 0 -2px 0 #B91C1C; }
+      .wr-btn.wr-go:hover { background: #F87171; }
+      .wr-gate-line { margin: 0 0 6px; color: #1E1B3A; font-weight: 700; }
+      .wr-gate-you, .wr-gate-run { margin: 0 0 6px; color: #3D4256; }
+      .wr-gate-why { margin: 6px 0; color: #B91C1C; font-weight: 700; }
+      .wr-gate-actions { display: flex; justify-content: center; gap: 8px; margin-top: 10px; }
+      .wr-gate-actions .wr-btn { font-size: calc(14px * var(--text)); padding: 6px 16px 7px; }
+      .wr-invite { border-color: #EF4444; box-shadow: 0 4px 0 #1E1B3A, 0 0 18px rgba(239, 68, 68, 0.3); }
+      .wr-invite .pt-invite-text b { color: #FCA5A5; }
+      .wr-invite .pt-invite-bar { background: #EF4444; }
+      .wr-invite .pt-yes { background: #EF4444; color: #fff; box-shadow: inset 0 -2px 0 #B91C1C; }
+      #warrens-area { position: fixed; top: 18%; left: 50%; z-index: 3; display: flex; flex-direction: column; align-items: center; transform: translateX(-50%); color: #fff; pointer-events: none; text-shadow: 0 2px 0 #1E1B3A, 0 0 12px rgba(0, 0, 0, 0.7); animation: wr-in 0.5s ease-out; transition: opacity 0.6s; }
+      #warrens-area .wr-area-sub { font: calc(13px * var(--text))/1.2 var(--ui-font); letter-spacing: 0.2em; text-transform: uppercase; color: #FCA5A5; }
+      #warrens-area .wr-area-name { font: 700 calc(30px * var(--text))/1.2 var(--ui-font); }
+      #warrens-area.wr-out { opacity: 0; }
+      @keyframes wr-in { from { opacity: 0; transform: translate(-50%, -8px); } }
+      @media (prefers-reduced-motion: reduce) { #warrens-area { animation: none; } #warrens-tracker .wr-time.wr-late { animation: none; } }
+      #boss-bar .bb-title { display: block; margin-top: -2px; text-align: center; font-size: calc(12px * var(--text)); color: #FCA5A5; font-style: italic; }
+      #boss-bar .bb-title:empty { display: none; }
       /* The party (ui/party.ts): under the quest tracker; names in party pink. */
       #party { position: fixed; left: 12px; z-index: 2; width: 170px; box-sizing: border-box; padding: 6px 6px 6px 8px; border-radius: 6px; background: rgba(10, 12, 24, 0.6); color: #E6E9F2; font: calc(13px * var(--text))/1.25 var(--ui-font); text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6); box-shadow: inset 0 0 0 1px rgba(249, 168, 212, 0.25); }
       #party[hidden] { display: none; }

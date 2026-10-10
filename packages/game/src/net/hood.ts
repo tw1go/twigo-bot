@@ -49,7 +49,7 @@ export function areaUrl(to: Area): string {
 /** This tab's area, remembered across reloads (sessionStorage), so the address can stay plain /play/. */
 const AREA_KEY = 'mk_area';
 let area: Area | null = null;
-const isArea = (s: string | null): s is Area => s === 'hood' || s === 'town' || s === 'slums';
+const isArea = (s: string | null): s is Area => s === 'hood' || s === 'town' || s === 'slums' || s === 'warrens';
 let fresh = false;
 
 function remember(a: Area): void {
@@ -108,8 +108,15 @@ export function cameFrom(): Area | null {
   return isArea(from) ? from : null;
 }
 
-/** Which area this page is: the town, the neighbourhood or the Slums (see resolveArea). */
+/** Which area this page is: the town, the neighbourhood, the Slums or a Scrap Warrens run (see resolveArea). */
 export const currentArea = (): Area => resolveArea();
+
+/** Back in the Slums (out of the Warrens, or none to go into): a reload starts there too. */
+export function markSlums(): void {
+  resolveArea();
+  area = 'slums';
+  remember('slums');
+}
 
 /** Back in town after all (the Slums weren't open to you): a reload starts there too. */
 export function markTown(): void {

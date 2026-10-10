@@ -51,6 +51,9 @@ export class Terrain {
   private readonly chunks = new Map<string, Live>();
   private readonly regions = new Map<string, Live>();
   private readonly canal = new Map<Phaser.GameObjects.Image, number>(); // sprite → frames
+  /** Raised tops and their rims by tile ("c,r"), while their region is made: what `fadeFront` fades. */
+  private readonly tops = new Map<string, Phaser.GameObjects.Image[]>();
+  private faded: Phaser.GameObjects.Image[] = [];
   private readonly overlays: { file: string; land: Vec2 }[];
   private frame = -1;
   private lastRange = '';
@@ -209,11 +212,12 @@ export class Terrain {
             if (!isCanal(c + dc, r + dr) && (!corner || (isCanal(c + dc, r) && isCanal(c, r + dr)))) sprite(o.file, c, r, level, T.canal.anchor, T.canal.size, GROUND_DEPTH + 2 + (c + r) * 4);
           }
         } else if (this.raised(c, r)) {
-          sprite(this.groundFile(this.kind(c, r), c, r), c, r, level, T.anchor, T.size, front - 0.32);
+          const top = [sprite(this.groundFile(this.kind(c, r), c, r), c, r, level, T.anchor, T.size, front - 0.32)];
           // Rims on the raised top where the NW / NE neighbour is lower (not where a ramp comes up).
           for (const [key, c2, r2] of [[T.rim.nw, c - 1, r], [T.rim.ne, c, r - 1]] as const) {
-            if (this.level(c2, r2) < level && !this.rampUp(c, r, c2, r2)) sprite(key, c, r, level - 1, T.pieceAnchor, T.pieceSize, front - 0.31);
+            if (this.level(c2, r2) < level && !this.rampUp(c, r, c2, r2)) top.push(sprite(key, c, r, level - 1, T.pieceAnchor, T.pieceSize, front - 0.31));
           }
+          this.tops.set(`${c},${r}`, top);
         }
         const rp = this.H.ramp(c, r);
         if (rp && this.inMap(c, r)) {
@@ -277,6 +281,11 @@ export class Terrain {
 
   private drop(set: Map<string, Live>, key: string, chunk: boolean): void {
     const l = set.get(key)!;
+    if (!chunk) {
+      const [rc, rr] = key.split(',').map(Number);
+      for (let r = rr * REGION; r < (rr + 1) * REGION; r++) for (let c = rc * REGION; c < (rc + 1) * REGION; c++) this.tops.delete(`${c},${r}`);
+      this.faded = this.faded.filter((s) => !l.images.includes(s));
+    }
     for (const img of l.images) {
       this.canal.delete(img);
       const tex = chunk ? img.texture.key : null;
@@ -284,6 +293,23 @@ export class Terrain {
       if (tex && this.scene.textures.exists(tex)) this.scene.textures.remove(tex);
     }
     set.delete(key);
+  }
+
+  /** The raised ground just in front of `tile` (between it and the camera: up to 3 tiles on) that overlaps `box` (a
+   *  player's sprite) at half alpha, and what was faded before back to whole (the Scrap Warrens' junk walls: nobody gets
+   *  lost behind one). Null: nothing faded. */
+  fadeFront(tile: { col: number; row: number } | null, box: Phaser.Geom.Rectangle | null): void {
+    const was = this.faded;
+    this.faded = [];
+    if (tile && box) {
+      for (let dc = 0; dc <= 3; dc++)
+        for (let dr = 0; dr <= 3; dr++) {
+          if (!dc && !dr) continue;
+          for (const s of this.tops.get(`${tile.col + dc},${tile.row + dr}`) ?? []) if (Phaser.Geom.Rectangle.Overlaps(s.getBounds(), box)) this.faded.push(s);
+        }
+    }
+    for (const s of was) if (!this.faded.includes(s)) s.setAlpha(1);
+    for (const s of this.faded) s.setAlpha(0.5);
   }
 
   /** Advances the canal's shared clock. */

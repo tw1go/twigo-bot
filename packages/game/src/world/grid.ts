@@ -115,6 +115,13 @@ export class WalkGrid {
     this.changed();
   }
 
+  /** Opens a tile from now on (a Scrap Warrens shutter going up, the start room's way out as a run starts). */
+  unblock(col: number, row: number): void {
+    if (!this.inBounds(col, row) || !this.blocked[row * this.cols + col]) return;
+    this.blocked[row * this.cols + col] = 0;
+    this.changed();
+  }
+
   walkable(col: number, row: number): boolean {
     return this.inBounds(col, row) && !this.blocked[row * this.cols + col];
   }

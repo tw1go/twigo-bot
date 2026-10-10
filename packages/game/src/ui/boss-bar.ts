@@ -4,6 +4,8 @@
 
 export interface BossInfo {
   name: string;
+  /** Under the name (Barong-Barong's "the Shanty Titan"). */
+  title?: string;
   level: number;
   hp: number;
   maxHp: number;
@@ -21,6 +23,7 @@ export class BossBar {
   private readonly root = el('div');
   private readonly name = el('span', 'bb-name');
   private readonly level = el('span', 'bb-level');
+  private readonly title = el('span', 'bb-title');
   private readonly fill = el('span', 'bb-fill');
   private readonly hp = el('span', 'bb-hp');
   /** What it shows now (so a frame that changes nothing writes nothing). */
@@ -34,18 +37,19 @@ export class BossBar {
     top.append(this.name, this.level);
     const bar = el('div', 'bb-bar');
     bar.append(this.fill, this.hp);
-    this.root.append(top, bar);
+    this.root.append(top, this.title, bar);
     document.body.append(this.root);
   }
 
   show(b: BossInfo | null): void {
-    const key = b ? `${b.name}|${b.level}|${b.hp}|${b.maxHp}|${b.enraged}` : '';
+    const key = b ? `${b.name}|${b.title ?? ''}|${b.level}|${b.hp}|${b.maxHp}|${b.enraged}` : '';
     if (key === this.shown) return;
     this.shown = key;
     this.root.hidden = !b;
     document.body.classList.toggle('boss-on', !!b);
     if (!b) return;
     this.name.textContent = b.name;
+    this.title.textContent = b.title ?? '';
     this.level.textContent = `Lv ${b.level}`;
     this.fill.style.width = `${Math.max(0, Math.min(100, (b.hp / Math.max(1, b.maxHp)) * 100)).toFixed(1)}%`;
     this.hp.textContent = `${b.hp.toLocaleString('en')} / ${b.maxHp.toLocaleString('en')}`;
