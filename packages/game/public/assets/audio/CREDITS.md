@@ -68,3 +68,9 @@ sound has an `.ogg` and an AAC `.m4a`.
 - `music/music-slums.*` — "Old Radio", an original loop composed for Mikazuki (the art folder's
   `scripts/audio/build_slums_music.py`; no source, no credit needed). 66 bpm, a 58.2 s seamless loop; the Slums' music
   in place of the town's, at 0.09 × the music volume.
+
+## Title music in `music/`
+
+- `music/music-title.*` — "Moonlight Lullaby", an original loop composed for Mikazuki (the art folder's
+  `scripts/audio/build_title_music.py`; no source, no credit needed). Warm pad and music box, 62 bpm, a 61.9 s seamless
+  loop; the intro card's and title screen's music, at 0.10 (× the music volume when that's set above 0).
