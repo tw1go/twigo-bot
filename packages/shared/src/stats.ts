@@ -414,7 +414,7 @@ export function skillMpCost(data: StatsData, cls: string | null | undefined, key
 /** stats.json skills.buffs: the rules in words (and a few numbers: party range, cooldowns), each buff by name. */
 export interface BuffsData {
   note?: string;
-  rules: Record<string, string | number>;
+  rules: Record<string, string | number | boolean>;
   list: Record<string, BuffDef>;
   /** What each stat key means, in words. */
   statKeys: Record<string, string>;
@@ -457,7 +457,20 @@ export function strongestBuffs(on: Iterable<{ stats: Record<string, number> }>):
   return out;
 }
 
-/** Derived stats with buffs on (strongestBuffs): Power × (1 + atkPct), max HP × (1 + maxHpPct), DEF × (1 + defPct),
+/** Whether buffs on the same stat add up (stats.json skills.buffs.rules.stack, a repo addition), else only the strongest. */
+export const buffsStack = (data: StatsData | null | undefined): boolean => data?.skills.buffs?.rules.stack === true;
+
+/** The buffs on someone as one set of stats, by the rule (buffsStack): every buff's added up (Rally and Vital Rub both
+ *  count; the caps hold in withBuffs), or each stat's strongest. One buff of a name each (a recast restarts it), so the
+ *  same buff never stacks with itself. */
+export function buffTotals(data: StatsData | null | undefined, on: Iterable<{ stats: Record<string, number> }>): Record<string, number> {
+  if (!buffsStack(data)) return strongestBuffs(on);
+  const out: Record<string, number> = {};
+  for (const b of on) for (const [k, v] of Object.entries(b.stats)) out[k] = (out[k] ?? 0) + v;
+  return out;
+}
+
+/** Derived stats with buffs on (buffTotals): Power × (1 + atkPct), max HP × (1 + maxHpPct), DEF × (1 + defPct),
  *  + amp, + crit rate (held to caps.critRate), + DEF rate (gear's and the buff's together, held to caps.defRate), and
  *  accuracy, cooldownPct and hpRegenPctPerSec as they are. A heal (healPctOfPower) is no lasting stat. */
 export function withBuffs(data: StatsData, d: DerivedStats, b: Record<string, number>): DerivedStats {

@@ -428,6 +428,8 @@
      "note": "Buff numbers (Mac, 9 Oct: 'make it balance'). value is at skill Lv 1; +5% of it per skill level (perSkillLevel.buffDebuff), so a Lv 10 buff at its Lv 20 cap (skill Lv 11) gives 1.5x, a Lv 14 buff 1.3x, a Lv 20 buff 1x. MP costs are in mpCost.buffs. One-ally buffs are stronger than party buffs of the same stat.",
      "rules": {
       "sameStat": "Two buffs on the same stat do not add up: only the stronger one counts (both timers keep running). Different stats stack.",
+      "stack": true,
+      "stackNote": "Repo addition (Mac, 10 Oct 2026): buffs stack. With stack true, different buffs on the same stat add up (Rally and Vital Rub: both count), still held to the caps; the same buff never stacks with itself (casting it again restarts it). false = sameStat's rule.",
       "recast": "Casting a buff again restarts its timer.",
       "where": "Buffs can only be cast on battle maps (like MP); they end when you leave the map or are knocked out.",
       "partyRangeTiles": 6,

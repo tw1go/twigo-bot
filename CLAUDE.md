@@ -117,7 +117,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
 
 - `classes/stats.json`: `rarity.nameColour[r].colour`, `rarity.dropPlus`, `affixes.names`,
   `currencies.kusingPerMobRange`, `skills.mpCost`, `skills.cooldownByUnlock`, `skills.buffs` (numbers) with
-  `rules.allyBuffsReachParty`, `agimats.onlyIn`, `agimats.rarePerItem`, `agimats.sellKusing`, `agimats.look`, `inventory.agimatSlots`,
+  `rules.allyBuffsReachParty`, `rules.stack`, `agimats.onlyIn`, `agimats.rarePerItem`, `agimats.sellKusing`, `agimats.look`, `inventory.agimatSlots`,
   `potions.separateCooldowns`, `trainingGear.noSell` / `sellKusing`, `mobBehaviour.targetPriority`,
   `mobBehaviour.golem.hpPerPlayer`.
 - `classes/stats.json` (Scrap Warrens): `party.xpRangeTiles` (+ `xpNote`), and consumables in `inventory.stack99`.
@@ -840,7 +840,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   or not; the game sends `target` = their town id) within rules.partyRangeTiles, else the nearest party member; party: all
   in range plus the picked player; with rules.allyBuffsReachParty (a repo addition, on) ally+self is shared like party;
   same room, never the knocked out; tested) gets `buffs` (their
-  tray). Per member in memory: name, caster's level, stats, end; recast restarts; per stat only the strongest counts;
+  tray). Per member in memory: name, caster's level, stats, end; recast restarts; buffs on the same stat add up (rules.stack, a repo addition, on; still held to the caps; shared `buffTotals`, the game's `myBuffStats` the same; off: only each stat's strongest, `strongestBuffs`, and the tray fades the outdone ones); the same buff never stacks with itself (one per name);
   timed ones end on time, off a battle map (on arrival elsewhere; a reload on the same map keeps them) and on a knock-out;
   a stance toggles, stays across maps, ends on a class change (Town.kit). Soothing Touch (durationSec 0) heals the
   caster's Power × healPctOfPower through the vitals (`buff-heal`, green). Stats: fighterOf adds the buffs (Attacker.buffs

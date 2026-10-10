@@ -242,7 +242,7 @@ export interface Attacker {
   /** Their mobility moves' skill levels (by move id; for their MP cost). */
   moves?: Record<string, number>;
   /** Their buffs' skill levels (by name; what each cast gives) and the buffs on them as one set of stats
-   *  (strongestBuffs; fighterStats puts them on). */
+   *  (buffTotals; fighterStats puts them on). */
   buffLevels?: Record<string, number>;
   buffs?: Record<string, number>;
   blinded?: boolean;

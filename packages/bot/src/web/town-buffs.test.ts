@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { WebSocket } from 'ws';
-import { type TownServerMessage, baseCooldown, buffMpCost, buffValue, hitDamage, rollHit, skillCooldown, skillPct, withBuffs } from '@mikazuki/shared';
+import { type TownServerMessage, baseCooldown, buffMpCost, buffsStack, buffValue, hitDamage, rollHit, skillCooldown, skillPct, withBuffs } from '@mikazuki/shared';
 import { loadStats } from './stats-data.js';
 import { type Caster, type Nearby, Buffs } from './town-buffs.js';
 import { MobRoom, fighterStats, loadFightData, loadMobKinds, loadMobMap } from './town-mobs.js';
@@ -75,8 +75,28 @@ test('who gets it: self; one ally + self (the one asked for in range, else the n
   assert.deepEqual(['me', 'ann', 'bob', 'cy', 'dee'].map((m) => b.has(m, 'Hearty Cheer')), [true, true, true, false, false]);
 });
 
-test('same stat: only the strongest counts (Rally 8% over Vital Rub 6%); different stats add up; casting again restarts the timer', () => {
+test('buffs stack (rules.stack): Rally and Vital Rub on ATK add up, held to the caps; the same buff never stacks with itself', () => {
+  assert.equal(buffsStack(stats), true);
   const b = new Buffs(stats);
+  const sling = caster('slingshot', { member: 's' });
+  const hilot = caster('hilot', { member: 'h' });
+  b.cast(sling, 'Rally', [near('h', 1)], 'h', 0);
+  b.cast(hilot, 'Vital Rub', [near('s', 1)], undefined, 0);
+  const both = B.list.Rally.stats.atkPct + B.list['Vital Rub'].stats.atkPct;
+  assert.ok(Math.abs(b.effective('h').atkPct - both) < 1e-9, `${b.effective('h').atkPct}`);
+  // Rally from a second Slingshot: still one Rally (it restarts), not two.
+  b.cast(caster('slingshot', { member: 't' }), 'Rally', [near('h', 1)], 'h', 1000);
+  assert.ok(Math.abs(b.effective('h').atkPct - both) < 1e-9);
+  // Crit rate added up is still held to its cap.
+  const d = { power: 100, hp: 100, def: 10, amp: 0, critRate: 0.3, defRate: 0 } as never;
+  const capped = withBuffs(stats, d, { critRate: 5 }).critRate;
+  assert.ok(capped < 1, `${capped}`);
+  assert.equal(withBuffs(stats, d, b.effective('h')).critRate <= capped, true);
+  assert.equal(withBuffs(stats, d, { critRate: 0.4 + 0.4 }).critRate, capped, 'two big crit buffs added up stop at the cap');
+});
+
+test('same stat with rules.stack off: only the strongest counts (Rally 8% over Vital Rub 6%); different stats add up; casting again restarts the timer', () => {
+  const b = new Buffs({ ...stats, skills: { ...stats.skills, buffs: { ...B, rules: { ...B.rules, stack: false } } } } as typeof stats);
   const sling = caster('slingshot', { member: 's' });
   const hilot = caster('hilot', { member: 'h' });
   b.cast(sling, 'Rally', [near('h', 1)], 'h', 0);

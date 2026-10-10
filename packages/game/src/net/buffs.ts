@@ -1,4 +1,5 @@
-import { type TownBuff, strongestBuffs } from '@mikazuki/shared';
+import { type TownBuff, buffTotals } from '@mikazuki/shared';
+import { adventureData } from './adventure';
 
 // ✨ The buffs on you, as the server last said (its `buffs` message): the buff tray, the stats box and your Calm Mind
 // follow them. Each one's end is turned into this clock's time when it comes (null: a stance).
@@ -17,8 +18,8 @@ export function setMyBuffs(list: TownBuff[]): void {
 /** The buffs on you now (those run out dropped). */
 export const myBuffs = (): MyBuff[] => on.filter((b) => b.endsAt === null || b.endsAt > Date.now());
 
-/** As one set of stats: each stat's strongest (the server's rule). */
-export const myBuffStats = (): Record<string, number> => strongestBuffs(myBuffs());
+/** As one set of stats, by the server's rule (buffTotals: added up, or each stat's strongest). */
+export const myBuffStats = (): Record<string, number> => buffTotals(adventureData()?.stats, myBuffs());
 
 /** Calls `f` whenever they change; returns the unsubscribe. */
 export function onMyBuffs(f: () => void): () => void {
