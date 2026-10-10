@@ -30,6 +30,8 @@ import { ChatBox } from '../ui/chat';
 import { StayReward } from '../ui/stay';
 import { MegaphoneBanner } from '../ui/megaphone';
 import { playTitleCard, titleCardMs } from '../ui/title-card';
+import { LoadingCover } from '../ui/loading-cover';
+import { settling, settlingWhat } from '../world/settle';
 import { SystemFeed } from '../ui/system-feed';
 import { announce } from '../ui/announce';
 import { OnlineList } from '../ui/online';
@@ -184,6 +186,12 @@ const CAST_GAP_MS = 1000;
 const BOSS_NEAR = 45;
 /** The Scrap Warrens' shade (a navy multiply of about a quarter: a little darker than the Slums). */
 const WARRENS_TINT = 0xbcbbc8;
+/** Arriving: the loading cover lifts after this many frames in a row under SMOOTH_MS, or after SETTLE_MAX_MS at most. */
+const SMOOTH_FRAMES = 20;
+const SMOOTH_MS = 40;
+const SETTLE_MAX_MS = 15_000;
+/** …and waits this long at most for the server's first word (a slow or unreachable server: on without it). */
+const SERVER_WAIT_MS = 6000;
 /** Only each class's first 7 skills have sounds (audio/sfx skill-<class>-<skill>-1…3); later ones play none yet. */
 const SKILL_SOUNDS = 7;
 const DIR_FOR_KEYS: Record<string, Dir> = {
@@ -370,8 +378,58 @@ export class TownScene extends Phaser.Scene {
     this.load.once(Phaser.Loader.Events.COMPLETE, () => {
       this.load.off(Phaser.Loader.Events.PROGRESS, progress);
       rotate.remove();
+      this.coverUp(); // (the loading screen goes on over the town while it settles)
       parts.forEach((g) => g.destroy());
     });
+  }
+
+  // ── Arriving: the loading screen stays up until the town has settled ──
+
+  /** The loading screen's last stretch over the town (ui/loading-cover.ts), until it lifts (`reveal`); what waits for
+   *  that. Up from the end of the scene's own loading screen (or from create, when there was nothing to load). */
+  private cover: LoadingCover | null = null;
+  private revealed = false;
+  private onReveal: (() => void)[] = [];
+  /** Settling: since when (scene ms), frames in a row that ran smoothly, and the server's first word (welcome; on a
+   *  battle map its mobs) or no server to wait for. */
+  private settleFrom = 0;
+  private smoothFrames = 0;
+  private gotWelcome = false;
+  private gotMobs = false;
+  private linkDown = false;
+
+  private coverUp(): void {
+    if (this.cover || this.revealed) return;
+    const m = this.M.ui.loadingMoon;
+    this.cover = new LoadingCover(m ? { url: `${import.meta.env.BASE_URL}assets/${m.file}`, size: m.size, frames: m.frames, fps: m.fps, loopFrames: m.loopFrames } : null);
+  }
+
+  /** `fn` `ms` after the cover lifts (from now, if it has). */
+  private afterReveal(ms: number, fn: () => void): void {
+    const go = () => void this.time.delayedCall(ms, fn);
+    if (this.revealed) go();
+    else this.onReveal.push(go);
+  }
+
+  /** Each frame while it's covered: lifted once the world round you is in, the server has had its say, other players'
+   *  looks and poses are built (world/settle.ts) and frames have run smoothly for a moment; or SETTLE_MAX_MS at most
+   *  (SERVER_WAIT_MS for the server). */
+  private settle(time: number, delta: number): void {
+    this.smoothFrames = delta < SMOOTH_MS ? this.smoothFrames + 1 : 0;
+    const streaming = ('streaming' in this.ground && this.ground.streaming) || this.objects.streaming;
+    const server = !this.link || this.linkDown || (this.gotWelcome && (!this.battleMap || this.gotMobs)) || time - this.settleFrom > SERVER_WAIT_MS;
+    const ready = !streaming && server && !settling() && this.smoothFrames >= SMOOTH_FRAMES;
+    this.cover?.waiting([...(streaming ? ['world'] : []), ...(server ? [] : ['server']), ...settlingWhat(), ...(this.smoothFrames < SMOOTH_FRAMES ? ['frames'] : [])]);
+    if (ready || time - this.settleFrom > SETTLE_MAX_MS) this.reveal();
+  }
+
+  /** The cover lifts: the title card and the opening zoom, then whatever waited. */
+  private reveal(): void {
+    this.revealed = true;
+    this.cover?.hide();
+    this.cover = null;
+    this.zoomIntro();
+    for (const f of this.onReveal.splice(0)) f();
   }
 
   create(): void {
@@ -518,7 +576,7 @@ export class TownScene extends Phaser.Scene {
     const yours = built && this.objects.buildings.find((b) => b.id === `house-${built.lot}`);
     if (yours) {
       sinkHouse(yours);
-      this.time.delayedCall(titleCardMs() + 300, () => void riseHouse(this.fx(), yours)); // once the title card has opened
+      this.afterReveal(titleCardMs() + 300, () => void riseHouse(this.fx(), yours)); // once the title card has opened
     }
     // Members show their nickname and title; without a login (login off, or the dev server) it's "Guest".
     const member = this.me?.status === 'ok' ? this.me.me : null;
@@ -562,14 +620,17 @@ export class TownScene extends Phaser.Scene {
       loadSoundSets([...[...kinds].flatMap((k) => [`combat-mob-hurt-${k}`, `combat-mob-death-${k}`]), ...(this.map.boss || this.map.dungeon ? GOLEM_SOUNDS.map((a) => `golem-${a}`) : [])]);
     }
     if (member || fakeLogin()) this.connect();
-    this.zoomIntro(); // last, once the names, labels and building cursors exist
-    this.time.delayedCall(1800, () => this.announceRewards()); // once the arrival has settled
+    // Last, once the names, labels and building cursors exist: the cover lifts once the town has settled (`settle`), then
+    // the title card and the opening zoom (`reveal`).
+    this.coverUp();
+    this.settleFrom = this.time.now;
+    this.afterReveal(1800, () => this.announceRewards()); // once the arrival has settled
     exposeDebug(this);
     // Dev: ?arena=bot goes straight into a match against the bot (with &rounds=win,lose,draw… deciding the rounds);
     // ?arena=menu opens the arena's menu.
     const arenaFlag = new URLSearchParams(location.search).get('arena');
     const arenaB = this.objects.buildings.find((b) => b.id === 'arena');
-    if (arenaFlag && arenaB) this.time.delayedCall(2600, () => (arenaFlag === 'bot' ? this.enterArena(arenaB, new BotChannel(this.M.characters, Date.now(), devRounds())) : this.openArena(arenaB)));
+    if (arenaFlag && arenaB) this.afterReveal(2600, () => (arenaFlag === 'bot' ? this.enterArena(arenaB, new BotChannel(this.M.characters, Date.now(), devRounds())) : this.openArena(arenaB)));
     if (assetProblems.size) console.warn('[town] asset problems:\n' + [...assetProblems].join('\n'));
   }
 
@@ -638,6 +699,7 @@ export class TownScene extends Phaser.Scene {
       this.nextSkyCheck = time + 1000;
       this.updateSky(false);
     }
+    if (!this.revealed) this.settle(time, delta);
   }
 
   /** Text is drawn at the zoom it's seen at, so it stays sharp; the cursor is scaled like the world. */
@@ -805,14 +867,14 @@ export class TownScene extends Phaser.Scene {
       const { armor, rewards, pieces } = initAdventure(member.adventure, member.trainingGear, member.questRewards, member.questPieces);
       // Quest rewards given on this visit (a quest finished before it had any, a mini boss quest's piece): said after the
       // title card.
-      if (rewards.length || pieces.length) this.time.delayedCall(titleCardMs() + 600, () => this.questRewards(rewards, pieces));
+      if (rewards.length || pieces.length) this.afterReveal(titleCardMs() + 600, () => this.questRewards(rewards, pieces));
       // A class from before training armor: the Tanod's set, said once (after the title card).
       const body = armor.map(itemDef).find((i) => i?.slot === 'body') ?? itemDef(armor[0]);
-      if (body) this.time.delayedCall(titleCardMs() + 600, () => toast('The Tanod left you a set of training gear.', 4500, 'good', gearPicture(body, asset)));
+      if (body) this.afterReveal(titleCardMs() + 600, () => toast('The Tanod left you a set of training gear.', 4500, 'good', gearPicture(body, asset)));
       const frame = this.M.ui.inventory?.itemFrame;
       mountQuests({ colours: Q.colours, frame: frame ? { url: asset(frame.file), slice: frame.nineSlice } : null, giver: (id) => this.giverOf(id), report: (id) => this.reportQuest(id) });
       // The Tanod's line as each quest of his is given (his leveling chain; also one given while you were away), once.
-      this.time.delayedCall(titleCardMs() + 900, () => {
+      this.afterReveal(titleCardMs() + 900, () => {
         this.giveReady = true;
         this.giveLines();
       });
@@ -1819,6 +1881,7 @@ export class TownScene extends Phaser.Scene {
         return;
       }
       if (m.t === 'mobs') {
+        this.gotMobs = true;
         this.mobs?.applySnapshot(m.mobs);
         return this.golem?.snapshot(m.golem ?? null);
       }
@@ -2038,6 +2101,7 @@ export class TownScene extends Phaser.Scene {
       if (m.t === 'welcome') {
         myId = m.you;
         this.myId = m.you;
+        this.gotWelcome = true;
         // (Knocked out when the link dropped: the server has you up again, full.)
         if (this.knockedOut) {
           this.knockedOut = false;
@@ -2126,7 +2190,10 @@ export class TownScene extends Phaser.Scene {
       }
       this.others.handle(m);
     };
-    link.onStatus = (up) => reconnecting(!up);
+    link.onStatus = (up) => {
+      reconnecting(!up);
+      if (!up) this.linkDown = true; // (no server to wait for while it settles)
+    };
     link.onKicked = (until) => {
       playSound('error');
       this.others.clear();

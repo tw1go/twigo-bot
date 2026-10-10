@@ -278,6 +278,10 @@ export class Terrain {
   }
   private pending = false;
   private first = true;
+  /** Ground still to make round the view. */
+  get streaming(): boolean {
+    return this.pending;
+  }
 
   private drop(set: Map<string, Live>, key: string, chunk: boolean): void {
     const l = set.get(key)!;

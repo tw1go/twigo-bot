@@ -181,6 +181,10 @@ export class WorldObjects {
 
   /** Props waiting to be made (a region's, then that region's done), in order: each batch's big ones first. */
   private readonly queue: ({ k: string; o: MapObject } | { k: string; done: Phaser.Geom.Rectangle })[] = [];
+  /** Props (or their shadows) still to make round the view (a streamed map). */
+  get streaming(): boolean {
+    return this.queue.length > 0 || this.shadows.length > 0;
+  }
   private readonly building = new Map<string, { images: Phaser.GameObjects.Image[]; big: BigObject[] }>();
 
   /** Makes queued props until `budgetMs` is spent, then their shadows for at most `shadowMs`. */

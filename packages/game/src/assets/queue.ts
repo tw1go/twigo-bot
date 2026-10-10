@@ -134,9 +134,17 @@ function queueSlums(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Textures.
     for (const set of Object.values(S.ramps)) Object.values(set).flat().forEach(img);
   }
   for (const [id, p] of Object.entries(M.props)) if (id.startsWith('slums-')) for (const f of [(p as PropDef).file, (p as PropDef).front]) if (f) img(f);
-  // The mobs' sheets load later, a zone's once you come near it (world/mobs.ts `near`; the field boss's near its pit:
-  // loadBoss), so arriving loads only the ground and props. Their rules (attack frames, shadows, floating) now.
-  const ids = new Set((map.mobZones ?? []).filter((z) => z.active).map((z) => z.mob));
+  // Every active zone's mob art and the field boss's (its sheets and fx) load with the area, behind the loading screen:
+  // art arriving mid-play stalled frames as it was decoded and uploaded (world/mobs.ts `near` and loadBoss still load
+  // anything that isn't in yet). Their rules too.
+  const ids = new Set((map.mobZones ?? []).filter((z) => z.active && typeof M.mobs?.[z.mob] === 'object').map((z) => z.mob));
+  if (map.boss) ids.add(map.boss.id);
+  for (const id of ids) {
+    const def = M.mobs?.[id];
+    if (!def || typeof def === 'string') continue;
+    for (const sh of mobSheets(def)) queueSheet(load, textures, sh.file, sh.size[0], sh.size[1]);
+    for (const f of Object.values(def.fx ?? {})) if (f.file) (f.frame ? queueSheet(load, textures, f.file, f.frame[0], f.frame[1]) : img(f.file));
+  }
   if (ids.size && typeof M.mobs?.data === 'string') load.json('mob-data', M.mobs.data);
 }
 
