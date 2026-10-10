@@ -1,12 +1,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import type { Target, TelegraphShape } from '@mikazuki/shared';
-import { loadDungeons, loadItemData } from './stats-data.js';
-import { type MobEvent, type MobKill, loadMobKinds, loadMobMap } from './town-mobs.js';
-import { type Inside, type RunDeps, Run, Warrens, type WarrensMap, inShape } from './town-warrens.js';
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
+import { WebSocket } from 'ws';
+import type { Target, TelegraphShape, TownServerMessage } from '@mikazuki/shared';
+import { type SavedProgress, freshProgress, killXp } from './progress.js';
+import { loadDungeons, loadItemData, loadStats } from './stats-data.js';
+import { type MobEvent, type MobKill, MobRoom, loadMobKinds, loadMobMap } from './town-mobs.js';
+import { type Inside, type RunDeps, Run, Warrens, inShape, loadWarrensMap } from './town-warrens.js';
+import { attachTown, loadTownMap } from './town.js';
 
 const W = loadDungeons().warrens;
-const map = loadMobMap('warrens') as WarrensMap;
+const map = loadWarrensMap();
 const deps = (random = () => 0.5): RunDeps => ({ kinds: loadMobKinds(), levels: {}, shapes: { shapes: {} }, fightData: loadItemData(), leveling: null, slamMs: 500, random });
 const area = (id: string) => map.dungeon.areas.find((a) => a.id === id)!;
 const guard: Target = { def: 10, level: 18 };
@@ -329,4 +334,167 @@ test('loot: a mini boss leaves its Kusing pile and a roll a player; Barong-Baron
   assert.ok(!(last.at[0] >= 2 && last.at[0] <= 11 && last.at[1] >= 34 && last.at[1] <= 43), 'never on its body');
   const mob = run.lootFor({ id: 'tin:0:0', kind: 'tin-can', at: [10, 10], level: 15, xp: 0, to: ['a'] }, ['slingshot'], uid, () => 0.99);
   assert.ok(mob.contents.length >= 1);
+});
+
+// ── Over the town's socket ──
+
+type Msg = TownServerMessage;
+const wait = (ms: number) => new Promise((ok) => setTimeout(ok, ms));
+async function town(opts: { tickets: Record<string, number>; party?: boolean; level?: Record<string, number>; kill?: (name: string, mob: { level: number; xp: number }) => void }) {
+  const stats = loadStats();
+  const slums = loadMobMap('slums');
+  const saved: { id: string; opener: string; cleared: boolean }[][] = [];
+  const progress: Record<string, SavedProgress> = {};
+  const server = createServer();
+  attachTown(server, {
+    map: { size: [4, 4], spawn: [1, 1], blocked: [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]] },
+    rooms: { slums: () => loadTownMap('slums') },
+    mobs: { slums: new MobRoom(slums, () => 0.5, {}, { shapes: {} }, loadMobKinds()) },
+    authenticate: async (req) => new URL(req.url ?? '/', 'http://x').searchParams.get('as'),
+    profile: (name) => ({ nickname: name, title: { name: 'Townfolk', color: '#fff' }, outfit: {} as never, cls: 'slingshot' }),
+    progress: {
+      fighter: (name) => ({ cls: 'slingshot', level: opts.level?.[name] ?? 15, points: name === 'Mara' ? { DEX: 100_000 } : {} }),
+      kill: (name, mob) => {
+        opts.kill?.(name, mob);
+        const r = killXp(stats, 'slingshot', progress[name] ?? freshProgress(stats, 'slingshot'), mob);
+        progress[name] = r.progress;
+        return r;
+      },
+    },
+    warrens: {
+      data: W, map, deps: deps(), gate: W.entry.warp.tile,
+      tickets: { count: (u) => opts.tickets[u] ?? 0, use: (u) => (opts.tickets[u] ?? 0) > 0 && !!(opts.tickets[u]--, true) },
+      saved: (runs) => saved.push(runs),
+    },
+  });
+  await new Promise<void>((ok) => server.listen(0, '127.0.0.1', ok));
+  const port = (server.address() as AddressInfo).port;
+  const open = (as: string, room: string) =>
+    new Promise<{ ws: WebSocket; got: Msg[]; closed: () => boolean; send: (m: object) => void; id: () => string; last: <T extends Msg['t']>(t: T) => Extract<Msg, { t: T }> | undefined }>((ok) => {
+      const ws = new WebSocket(`ws://127.0.0.1:${port}/ws?as=${as}&room=${room}`);
+      const got: Msg[] = [];
+      let shut = false;
+      ws.on('message', (d) => got.push(JSON.parse(String(d))));
+      ws.on('close', () => (shut = true));
+      const c = {
+        ws, got, closed: () => shut, send: (m: object) => ws.send(JSON.stringify(m)),
+        id: () => (got.find((m) => m.t === 'welcome') as Extract<Msg, { t: 'welcome' }>).you,
+        last: <T extends Msg['t']>(t: T) => got.filter((m): m is Extract<Msg, { t: T }> => m.t === t).at(-1),
+      };
+      ws.on('open', () => ok(c));
+      ws.on('unexpected-response', () => ok(c));
+    });
+  return { open, saved, close: () => new Promise((ok) => server.close(ok)) };
+}
+
+test("over the town's socket: open at the Warren Gate (a ticket, Lv 15), in the run, back in after a reload; others are sent back out", async () => {
+  const T = await town({ tickets: { Ana: 1 }, level: { Low: 14 } });
+  const [gc, gr] = W.entry.warp.arrive;
+  const far = await T.open('Far', 'slums');
+  await wait(80);
+  far.send({ t: 'warrens-open' });
+  await wait(80);
+  assert.equal(far.last('warrens-refused')?.reason, 'gone', 'only at the gate');
+  far.ws.close();
+  const ana = await T.open('Ana', 'slums');
+  await wait(80);
+  ana.send({ t: 'here', col: gc, row: gr, dir: 's' });
+  ana.send({ t: 'warrens-gate' });
+  await wait(80);
+  assert.deepEqual(ana.last('warrens-gate')?.gate, { minLevel: 15, level: 15, tickets: 1, inParty: false, partyRun: null });
+  ana.send({ t: 'warrens-open' });
+  await wait(80);
+  const go = ana.last('warrens-go');
+  assert.ok(go);
+  assert.equal(T.saved.at(-1)?.[0]?.opener, 'Ana');
+  ana.ws.close();
+  // In the run: its start room, its tracker, and once she's in, it starts (alone: no waiting).
+  const inside = await T.open('Ana', 'warrens');
+  await wait(1300);
+  const welcome = inside.got.find((m) => m.t === 'welcome') as Extract<Msg, { t: 'welcome' }>;
+  assert.ok(Math.abs(welcome.spawn[0] - map.arrive.slums[0]) <= 1 && Math.abs(welcome.spawn[1] - map.arrive.slums[1]) <= 1);
+  assert.equal(inside.last('warrens')?.run.id, go.run);
+  assert.equal(inside.last('warrens')?.run.phase, 'running');
+  assert.ok(inside.got.some((m) => m.t === 'mobs' && m.mobs.some((x) => x.id === 'boss:celes-tin')));
+  // A reload: back in the same run.
+  inside.ws.close();
+  await wait(50);
+  const again = await T.open('Ana', 'warrens');
+  await wait(80);
+  assert.equal(again.last('warrens')?.run.id, go.run);
+  // Someone else: straight back out.
+  const bob = await T.open('Bob', 'warrens');
+  await wait(80);
+  assert.equal(bob.last('warrens-out')?.reason, 'closed');
+  assert.ok(bob.closed());
+  // Leave: told to go.
+  again.send({ t: 'warrens-leave' });
+  await wait(80);
+  assert.equal(again.last('warrens-out')?.reason, 'left');
+  // Under Lv 15, or no ticket: why not.
+  const low = await T.open('Low', 'slums');
+  low.send({ t: 'here', col: gc, row: gr, dir: 's' });
+  low.send({ t: 'warrens-open' });
+  await wait(80);
+  assert.equal(low.last('warrens-refused')?.reason, 'level');
+  for (const c of [again, low]) c.ws.close();
+  await T.close();
+});
+
+test("over the town's socket: a party's run invites its members in the Slums; they join without a ticket", async () => {
+  const T = await town({ tickets: { Ana: 1 } });
+  const [gc, gr] = W.entry.warp.arrive;
+  const ana = await T.open('Ana', 'slums');
+  const bob = await T.open('Bob', 'slums');
+  await wait(80);
+  ana.send({ t: 'here', col: gc, row: gr, dir: 's' });
+  ana.send({ t: 'party-invite', to: bob.id() });
+  await wait(80);
+  bob.send({ t: 'party-answer', invite: bob.last('party-invited')!.invite, accept: true });
+  await wait(80);
+  ana.send({ t: 'warrens-open' });
+  await wait(100);
+  const invite = bob.last('warrens-invite');
+  assert.equal(invite?.from, 'Ana');
+  assert.equal(invite?.ms, W.entry.partyInviteSeconds * 1000);
+  bob.send({ t: 'warrens-join', run: invite!.run });
+  await wait(80);
+  assert.equal(bob.last('warrens-go')?.run, invite!.run);
+  // Ana in first: it waits for Bob.
+  const a = await T.open('Ana', 'warrens');
+  await wait(1200);
+  const view = a.last('warrens')!.run;
+  assert.equal(view.phase, 'gathering');
+  assert.deepEqual(view.waiting, ['Bob']);
+  const b = await T.open('Bob', 'warrens');
+  await wait(1200);
+  assert.equal(b.last('warrens')?.run.phase, 'running');
+  for (const c of [ana, bob, a, b]) c.ws.close();
+  await T.close();
+});
+
+test("over the town's socket: a kill's XP is shared with party members nearby, raised 10% a member", async () => {
+  const xp: Record<string, number> = {};
+  const T = await town({ tickets: {}, kill: (name, mob) => (xp[name] = mob.xp) });
+  const slums = loadMobMap('slums');
+  const room = new MobRoom(slums, () => 0.5, {}, { shapes: {} }, loadMobKinds());
+  const can = room.snapshot(0).find((m) => m.id.startsWith('tin-can-alley:'))!;
+  const mara = await T.open('Mara', 'slums');
+  const bob = await T.open('Bob', 'slums');
+  await wait(80);
+  const spot = [can.col + 1, can.row];
+  mara.send({ t: 'here', col: spot[0], row: spot[1], dir: 's' });
+  bob.send({ t: 'here', col: spot[0], row: spot[1], dir: 's' });
+  mara.send({ t: 'party-invite', to: bob.id() });
+  await wait(80);
+  bob.send({ t: 'party-answer', invite: bob.last('party-invited')!.invite, accept: true });
+  await wait(80);
+  mara.send({ t: 'attack', mob: can.id, skill: 0 });
+  await wait(200);
+  const hit = mara.last('mob-hit');
+  assert.ok(hit?.hits[0].dead, JSON.stringify(mara.got.filter((m) => m.t === 'attack-refused')));
+  const base = loadStats().mobs.list['tin-can'].xp;
+  assert.deepEqual(xp, { Mara: Math.round((base * 1.1) / 2), Bob: Math.round((base * 1.1) / 2) });
+  for (const c of [mara, bob]) c.ws.close();
+  await T.close();
 });

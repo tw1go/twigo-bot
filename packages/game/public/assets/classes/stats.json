@@ -1160,6 +1160,8 @@
   },
   "party": {
     "xp": "shared among nearby members, +10% per extra member, max +30%",
+    "xpRangeTiles": 20,
+    "xpNote": "Repo addition (10 Oct 2026): every kill's XP is shared equally between the killer's party members in the same map within xpRangeTiles (the knocked out too), the total raised by xp's bonus; bosses keep their own rule (full XP to everyone who did their share)",
     "loot": "first come within the party; opens to all after 10 s",
     "solo": "killer only for 10 s, then anyone",
     "boss": "personal loot for everyone with >=5% damage, visible only to them"

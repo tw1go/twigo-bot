@@ -1,7 +1,7 @@
 import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ClassesFile, GearRarity, HoodHouse, HouseLook, OutfitData, TownHoodActionResponse, TownHoodResponse, TownItems, TownRace, TownRaceResponse } from '@mikazuki/shared';
-import { addToBag, buffSkillLevels, classBuffs, classSkills, damageSkillLevels, moveUnlock } from '@mikazuki/shared';
+import { addToBag, takeKind, buffSkillLevels, classBuffs, classSkills, damageSkillLevels, moveUnlock } from '@mikazuki/shared';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { doorSpot, hoodMap, lotTile } from '../../bot/src/web/hood-map.ts';
 import type { Plugin } from 'vite';
@@ -13,6 +13,7 @@ import { buyCombat, devGive, dropFromBag, takeLoot, usePotion } from '../../bot/
 import { forge, parseForgeAction } from '../../bot/src/web/forge.ts';
 import { settleTrade } from '../../bot/src/web/trade.ts';
 import { loadGolemArt } from '../../bot/src/web/town-golem.ts';
+import { loadWarrens } from '../../bot/src/web/town-warrens.ts';
 import { LANES, finishMs, raceScript } from '../../bot/src/games/race-script.ts';
 import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
 
@@ -27,6 +28,9 @@ import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
 //   GET /__jail?name=Bob&on=1   shows Bob as jailed (on=0: released) to everyone in town
 //   GET /__bakod?name=Mara&on=0 takes down (on=1 puts up) a pretend neighbour's Bakod, live in the neighbourhood
 //   GET /__minibosses   every mini boss that's down comes back now (the page's ?minibosses=now)
+//   GET /__warrens?as=Alice   a Scrap Warrens run for Alice, free, started at once (the page's ?warrens=solo; it then goes
+//       in); &boss=crab-tain: every area before that boss cleared, and she arrives at its arena (?warrensboss=crab-tain).
+//       The Warren Gate itself works as live, with Warren Tickets from her bag here (?give=warren-ticket::5)
 //   GET /__golem?now=1   the Scrapheap Golem rises in the Slums now (the page's ?golem=now); ?demo=1&as=Alice: it rises if
 //       it must and plays its whole fight against the nearest player (?golemdemo=1): each attack, the Junk at a pretend
 //       half, Enrage at a pretend quarter, death (the line names Alice if nobody hit it)
@@ -327,6 +331,15 @@ export function devTown(): Plugin {
           slums: slumsMap,
         },
         mobs: { slums: slumsMobs },
+        // The Scrap Warrens as live; tickets from the kept bag (no refunds: nothing's saved here).
+        warrens: {
+          ...loadWarrens(Object.fromEntries(classes.map((c) => [c.id, c.skills.map((k) => k.level)]))),
+          tickets: {
+            count: (name) => gearOf(name).bag.reduce((n, i) => n + (i?.defId === 'warren-ticket' ? (i.count ?? 1) : 0), 0),
+            use: (name) => takeKind(gearOf(name).bag, 'warren-ticket', 1),
+          },
+          saved: (runs) => server.config.logger.info(`[warrens] open runs: ${runs.map((r) => `${r.id} (${r.opener}${r.cleared ? ', cleared' : ''})`).join(', ') || 'none'}`, { timestamp: true }),
+        },
         moveLevel: (cls, move) => moveUnlock(classes.find((c) => c.id === cls), move),
         shared: true,
         arenaBets,
@@ -534,6 +547,10 @@ export function devTown(): Plugin {
           return void res.end('the golem plays its fight\n');
         }
         res.end(slumsMobs.riseGolem(Date.now()) ? 'the golem rises\n' : 'the golem is up already\n');
+      });
+      server.middlewares.use('/__warrens', (req, res) => {
+        const q = new URL(req.url ?? '/', 'http://localhost').searchParams;
+        reply(res, town.warrensDev(q.get('as') ?? '', q.get('boss') || undefined));
       });
       server.middlewares.use('/__minibosses', (_req, res) => {
         res.end(`${slumsMobs.respawnMinis()} mini bosses back\n`);

@@ -269,13 +269,14 @@ test('over the town\'s socket: a party of 2 both get a mini boss\'s XP, its one 
   for (const c of [t.a, t.b]) assert.deepEqual(pieces(c.got), [], 'no quest piece on the ground');
   assert.ok(t.b.got.some((m) => m.t === 'quests'), 'Bob told his counts');
   await t.close();
-  // A normal Tin Can she kills counts for Bob's quest too (its XP is hers alone).
+  // A normal Tin Can she kills counts for Bob's quest too, and its XP is shared: +10% for the second member, halved.
   const room2 = new MobRoom(map, lcg(16), {}, { shapes: {} }, loadMobKinds());
   const can = room2.snapshot(0).find((m) => m.id.startsWith('tin-can-alley:') && !m.mini)!;
   const u = await partyTown(room2, [can.col + 1, can.row]);
   u.a.ws.send(JSON.stringify({ t: 'attack', mob: can.id, skill: 0 }));
   await wait(200);
-  assert.deepEqual(u.kills.map((k) => k.who), ['Mara']);
+  assert.deepEqual(u.kills.map((k) => k.who).sort(), ['Bob', 'Mara']);
+  assert.ok(u.kills.every((k) => k.xp === Math.round((mobStats(S, 'tin-can')!.xp * 1.1) / 2)), JSON.stringify(u.kills));
   assert.deepEqual(u.counted.sort(), ['Bob:tin-can:false', 'Mara:tin-can:false']);
   await u.close();
 });

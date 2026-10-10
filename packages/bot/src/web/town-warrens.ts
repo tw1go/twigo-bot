@@ -15,7 +15,9 @@ import {
 } from '@mikazuki/shared';
 import type { LootContent } from './combat-bag.js';
 import { warrensBossLoot, warrensMiniLoot, warrensMobDrops } from './loot.js';
-import { type MobDirector, type MobEvent, type MobKill, type MobKinds, type MobMapData, type MobSpec, MobRoom, type SkillLevels, type SkillShapes } from './town-mobs.js';
+import { loadDungeons, loadItemData, loadLeveling } from './stats-data.js';
+import { loadGolemArt } from './town-golem.js';
+import { type MobDirector, type MobEvent, type MobKill, type MobKinds, type MobMapData, type MobSpec, MobRoom, type SkillLevels, type SkillShapes, loadMobKinds, loadMobMap, loadSkillShapes } from './town-mobs.js';
 
 // 🕳️ The Scrap Warrens (classes/dungeons.json warrens; combat-guide-dungeon.md in the art folder): a walled junk maze
 // under the Slums, played as runs. A run is one copy of it for one player or one party (room `warrens:<id>`), with its
@@ -44,6 +46,14 @@ export interface WarrensMap extends MobMapData {
   dungeon: DungeonMapBlock;
   arrive: Record<string, Tile>;
   spawn: Tile;
+  /** Tiles nobody arrives on (the exit warp). */
+  avoid?: Tile[];
+}
+
+/** maps/warrens.json as a run's template (its exit warp's tiles to avoid on arrival). */
+export function loadWarrensMap(): WarrensMap {
+  const m = loadMobMap('warrens') as WarrensMap & { gates?: Record<string, Tile[]> };
+  return { ...m, avoid: Object.values(m.gates ?? {}).flat() };
 }
 
 /** What a run needs to make its mob room. */
@@ -56,6 +66,14 @@ export interface RunDeps {
   /** When a Scrapling's Tire Slam lands after it starts (ms: the golem's slam frame). */
   slamMs: number;
   random: () => number;
+}
+
+/** The Warrens as the town takes them (TownOptions.warrens, the tickets aside): the data, the map, the Warren Gate's
+ *  tile and what a run's mob room needs (classes' skill unlock levels: `levels`). */
+export function loadWarrens(levels: SkillLevels, random: () => number = Math.random) {
+  const data = loadDungeons().warrens;
+  const deps: RunDeps = { kinds: loadMobKinds(), levels, shapes: loadSkillShapes(), fightData: loadItemData(), leveling: loadLeveling(), slamMs: loadGolemArt().hitMs?.slam ?? 500, random };
+  return { data, map: loadWarrensMap(), gate: data.entry.warp.tile, deps };
 }
 
 /** Someone inside: their member id, town id, tile and whether they're knocked out. */
@@ -158,6 +176,8 @@ export class Run implements MobDirector {
   private kicks = new Map<string, number>();
   private scaledFor = 0;
   private lastScraplingSlam = new Map<string, number>();
+  /** Dev (?warrensboss=): where the opener lands the first time. */
+  private devArrival: Tile | null = null;
 
   constructor(
     readonly id: string,
@@ -223,6 +243,7 @@ export class Run implements MobDirector {
 
   /** Where someone lands coming in: the start room the first time (and while it gathers), the checkpoint after. */
   arrivalFor(member: string): Tile {
+    if (this.devArrival && !this.arrived.has(member)) return this.devArrival;
     if (this.phase === 'gathering' || !this.arrived.has(member)) return this.map.arrive.slums ?? this.map.spawn;
     return this.checkpoint();
   }
@@ -328,7 +349,7 @@ export class Run implements MobDirector {
 
   /** A line in the run's system feed (only its room). */
   private line(text: string, tone: string): TownServerMessage {
-    return { t: 'system', line: { kind: 'golem', text, tone } } as TownServerMessage;
+    return { t: 'system', line: { kind: 'warrens', text, tone } };
   }
 
   /** Bosses with no living player in their arena for bossResetSeconds: full HP, their called mobs gone, their moves
@@ -365,6 +386,26 @@ export class Run implements MobDirector {
     events.push(...this.mobs.setFlags(b.mob, { untargetable: false, blockAll: false }));
     events.push(...this.mobs.healFull(b.mob));
     return events;
+  }
+
+  /** Dev (?warrensboss=<id>): every area before that boss's cleared (their bosses gone, shutters open), the run
+   *  started, and the first arrival at the edge of its arena nearest its area's checkpoint. False: no such boss. */
+  skipTo(bossId: string, now: number): boolean {
+    const list = [...this.bosses.values()];
+    const at = list.findIndex((b) => b.def.id === bossId);
+    if (at < 0) return false;
+    for (const b of list.slice(0, at)) {
+      b.dead = true;
+      this.mobs.removeMobs([b.mob]);
+      const shutter = this.map.dungeon.shutters.find((x) => x.area === b.area.id);
+      if (!shutter) continue;
+      this.opened.add(shutter.area);
+      for (const [c, r] of shutter.passage) this.map.blocked[r][c] = 0;
+    }
+    const area = list[at].area;
+    this.devArrival = [...area.arenaTiles].filter((t) => this.mobs.open(...t)).sort((a, b) => hyp(a, area.checkpoint) - hyp(b, area.checkpoint))[0] ?? area.checkpoint;
+    if (this.phase === 'gathering') this.start(now, news());
+    return true;
   }
 
   // ── Kills ──
@@ -721,6 +762,11 @@ export class Warrens {
 
   all(): Run[] {
     return [...this.runs.values()];
+  }
+
+  /** The run a member may be in now (see `allowed`), if any: where a reload or the gate takes them. */
+  runOf(member: string): Run | undefined {
+    return this.all().find((r) => r.phase !== 'closed' && this.allowed(r, member));
   }
 
   /** The run a member may go into (their party's, or their own solo one), if any. */

@@ -13,8 +13,9 @@ import { loadItemData, loadStats } from './stats-data.js';
 import { type CombatItems, type LootContent, potionOf } from './combat-bag.js';
 import { type Loot, LootRoom, splitKusing } from './town-loot.js';
 import { type HeldOffer, type Trade, Trades, checkOffer } from './trade.js';
-import type { ChatItemLink, CharacterProgress, QuestProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item, TradeEnd, TradeView } from '@mikazuki/shared';
-import { itemName, itemStats, potionCooldownGroup, skillMpCost, targetPriority, tradeRules } from '@mikazuki/shared';
+import { type Inside, type Run, type RunDeps, type RunNews, Warrens, type WarrensMap } from './town-warrens.js';
+import type { WarrensData, ChatItemLink, CharacterProgress, QuestProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item, TradeEnd, TradeView } from '@mikazuki/shared';
+import { itemName, itemStats, partyXpMult, partyXpRange, potionCooldownGroup, skillMpCost, targetPriority, tradeRules } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
 // messages). The server keeps everyone's tile and checks each step — on the map, not blocked, next to the last
@@ -45,6 +46,14 @@ import { itemName, itemStats, potionCooldownGroup, skillMpCost, targetPriority, 
 // bag (TownOptions.items.state) and unlock both; with both locked and Trade pressed by both, TownOptions.items.trade
 // checks it all again and moves it in one go (or nothing). Walking (or being moved) out of range, leaving, another tab
 // taking over, a moderator's kick, or being knocked out cancels it.
+// The Scrap Warrens (town-warrens.ts, TownOptions.warrens): each run is a room of its own, `warrens:<id>`, made as it
+// opens and dropped as it closes, with its own mobs (the run's MobRoom, on its own copy of the map) and loot (first come,
+// no head start: only its party is inside). The page joins `?room=warrens` and lands in the run it may be in (its
+// party's, or its own); none → `warrens-out`. The Warren Gate's messages (warrens-gate/-open/-join/-start/-leave) open
+// and join runs; the runs' clock (each second) starts them, scales them, sends who's inside the tracker and sends out
+// those who must go. Wire Wolf's Live Floor stuns (no steps for its ms).
+// Party XP: every kill's XP (bosses aside) is shared equally between the killer's party members in the same room within
+// stats.json party.xpRangeTiles, the knocked out too, the total raised per extra member (partyXpMult).
 
 const DIRS = new Set<TownDir>(['s', 'se', 'e', 'ne', 'n', 'nw', 'w', 'sw']);
 const MOVES = new Set<TownMove>(['dash', 'step-back', 'charge', 'blink']);
@@ -59,8 +68,10 @@ const SLOWED = 0.5;
 /** Mobs' hits land, HP and MP come back and the knocked out respawn on this clock (ms). */
 const VITALS_MS = 100;
 const HEARTBEAT_MS = 30_000;
-/** Arrivals spread over the free tiles this far (in tiles, each way) around the map's spawn point. */
+/** Arrivals spread over the free tiles this far (in tiles, each way) around the map's spawn point (in a Warrens run, its
+ *  start room or checkpoint: a tile each way, so nobody lands past a wall). */
 const SPAWN_SPREAD = 3;
+const RUN_SPREAD = 1;
 /** Chat: up to 120 characters; a burst of 3, then one every 2 s. */
 const SAY_MAX = 120;
 const SAYS_PER_SECOND = 0.5;
@@ -164,6 +175,19 @@ export interface TownOptions {
   /** What to start with after a restart, and where to keep it (web/town-memory.ts in the bot): the last chat lines and
    *  the system feed's. Without it they live in memory only. */
   memory?: { chat: TownChatLine[]; system: TownSystemLine[]; save(chat: TownChatLine[], system: TownSystemLine[]): void };
+  /** The Scrap Warrens (web/town-warrens.ts): its data and map, what a run's mob room needs, the Warren Gate's tile in the
+   *  Slums (opening is done there), the Warren Ticket (how many a member holds; using one: false if none), and `saved`:
+   *  the open runs whenever they change (a restart refunds their openers' tickets). `dev`: open from anywhere. Without
+   *  it, no Warrens. */
+  warrens?: {
+    data: WarrensData;
+    map: WarrensMap;
+    deps: RunDeps;
+    gate: [number, number];
+    tickets: { count(userId: string): number; use(userId: string): boolean };
+    saved?(runs: { id: string; opener: string; cleared: boolean }[]): void;
+    dev?: boolean;
+  };
   /** Chat moderation (web/town-mod.ts in the bot; none in the game's dev server). */
   moderation?: {
     mutedUntil(userId: string): number | null;
@@ -223,6 +247,9 @@ export interface Town {
   flexed(userId: string, item: { id: string; name: string; rarity: string }): void;
   /** A member (if in town) says a diss, praise or judge line: to everyone, the speaker included. */
   verdict(userId: string, kind: 'roast' | 'praise', judged: boolean, text: string): void;
+  /** Dev (?warrens=solo, ?warrensboss=<id>): a run for a member in town, free, at once; with `boss`, every area before
+   *  that boss's cleared and them arriving at its arena. The run's id, or why not. */
+  warrensDev(userId: string, boss?: string): { ok: true; run: string } | { ok: false; message: string };
 }
 
 /** The game's map (packages/game/public/assets/maps/town.json), from the monorepo next to the bot. */
@@ -273,6 +300,10 @@ interface Conn {
   inspectAt?: number;
   /** When they last asked for someone's buffs (the player box). */
   buffsOfAt?: number;
+  /** When they last opened a Warrens run (one a second). */
+  warrensAt?: number;
+  /** Stunned until (ms): no steps (Wire Wolf's Live Floor). */
+  stunnedUntil?: number;
 }
 
 export function attachTown(server: Server, opts: TownOptions): Town {
@@ -349,13 +380,20 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       if (!conns.has(user)) partyChanged(parties.leave(user));
     }, PARTY_AWAY_MS));
   };
-  const mapOf = (room: string): TownMap => (room === 'town' ? map : opts.rooms?.[room]?.() ?? map);
+  // The Scrap Warrens: runs as rooms of their own (a run's party is the Parties' own object for it).
+  const W = opts.warrens ? new Warrens(opts.warrens.data, opts.warrens.map, opts.warrens.deps, (u) => parties.of(u)) : null;
+  const runOf = (room: string): Run | undefined => (W && room.startsWith('warrens:') ? W.get(room) : undefined);
+  /** A room's mobs: the Slums', or a run's. */
+  const mobsOf = (room: string): MobRoom | undefined => opts.mobs?.[room] ?? runOf(room)?.mobs;
+  /** Every room with mobs now. */
+  const battleRooms = (): [string, MobRoom][] => [...Object.entries(opts.mobs ?? {}), ...(W?.all().map((r): [string, MobRoom] => [r.room, r.mobs]) ?? [])];
+  const mapOf = (room: string): TownMap => (room === 'town' ? map : (runOf(room)?.map ?? opts.rooms?.[room]?.() ?? map));
 
   // HP and MP: only where there are mobs (their rules come from a mob room: class, level, points, worn gear).
   const rules = Object.values(opts.mobs ?? {})[0];
   const STATS = loadStats();
   const vitals = rules ? new Vitals(STATS.regen) : null;
-  const battle = (room: string) => !!opts.mobs?.[room];
+  const battle = (room: string) => !!mobsOf(room);
   // Buffs (town-buffs.ts): cast on battle maps, kept by member in memory, put on in every fight and in their most HP.
   const buffs = vitals ? new Buffs(STATS) : null;
   /** Who they are in a fight: class, level, points, everything worn, skill levels (the class and weapon alone without
@@ -400,7 +438,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     c.player.out = true;
     c.player.sit = false;
     if (buffs?.endTimed(c.userId)) buffsChanged(c); // (a stance stays)
-    opts.mobs?.[c.room]?.forget(c.player.id, true);
+    mobsOf(c.room)?.forget(c.player.id, true);
     endTrade(c.userId, 'out', { name: c.player.nickname }); // no trading while knocked out
     const m: TownServerMessage = { t: 'knocked-out', id: c.player.id };
     send(c, { ...m, reviveIn: vitals?.outFor(c.userId, Date.now()) ?? 0 });
@@ -408,7 +446,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   };
   /** Back after being knocked out: at the room's way in (where arrivals land), full, seen by everyone there. */
   const respawn = (c: Conn) => {
-    const [col, row] = arrival(c.room);
+    const [col, row] = arrival(c.room, c.userId);
     Object.assign(c.player, { col, row, sit: false, out: undefined });
     const m: TownServerMessage = { t: 'respawn', id: c.player.id, col, row };
     send(c, m);
@@ -466,7 +504,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   // Dropped items lying too long on maps without mobs go too (the mobs' clock does theirs).
   if (opts.items?.drop) {
     setInterval(() => {
-      for (const [room, L] of loots) if (!opts.mobs?.[room]) lootGone(room, L.tick(Date.now()));
+      for (const [room, L] of loots) if (!mobsOf(room)) lootGone(room, L.tick(Date.now()));
     }, 1000).unref?.();
   }
   /** HP and MP Potions' cooldown (ms), and when each member's is over (by member and kind, or 'all' when shared). */
@@ -497,15 +535,39 @@ export function attachTown(server: Server, opts: TownOptions): Town {
    *  enough, even after a reload mid-fight; a mini boss: everyone who did their share and their party nearby), if still
    *  here, its loot, and quest credit for them and their party nearby. */
   const killed = (room: string, kills: MobKill[]) => {
+    const run = runOf(room);
     for (const k of kills) {
-      const credited = k.mini ? withParty(k.to, room) : k.to;
-      for (const user of credited) {
-        const o = conns.get(user);
-        if (o && opts.progress) progressed(o, opts.progress.kill(o.userId, k));
+      const credited = k.mini || k.warrens ? withParty(k.to, room) : k.to;
+      if (k.boss || k.mini || k.warrens) {
+        for (const user of credited) {
+          const o = conns.get(user);
+          if (o && opts.progress) progressed(o, opts.progress.kill(o.userId, k));
+        }
+      } else shareXp(room, k);
+      if (run) runDrop(run, k);
+      else dropFor(room, { ...k, to: credited });
+      // (A Warrens boss counts for no quest: the Tanod's mini bosses are the Slums' own.)
+      if (!k.warrens) questKill(withParty(credited, room), { kind: k.kind, mini: !!k.mini, level: k.level });
+      if (run && k.warrens) {
+        runNews(run, run.onKill(k, Date.now()));
+        tellRun(run, Date.now());
+        saveRuns();
       }
-      dropFor(room, { ...k, to: credited });
-      questKill(withParty(credited, room), { kind: k.kind, mini: !!k.mini, level: k.level });
     }
+  };
+  /** A kill's XP shared between the killer's party members in the room within reach (the knocked out too): the total
+   *  raised per extra member, split equally (each share then their own level's low-mob rule). Alone: all theirs. */
+  const shareXp = (room: string, k: MobKill) => {
+    const killer = conns.get(k.to[0]);
+    if (!killer || !opts.progress) return;
+    const reach = partyXpRange(STATS);
+    const near = (parties.of(killer.userId)?.members ?? [killer.userId]).flatMap((u) => {
+      const o = conns.get(u);
+      return o && o.room === room && Math.max(Math.abs(o.player.col - killer.player.col), Math.abs(o.player.row - killer.player.row)) <= reach ? [o] : [];
+    });
+    const sharers = near.length ? near : [killer];
+    const xp = sharers.length > 1 ? Math.round((k.xp * partyXpMult(STATS, sharers.length)) / sharers.length) : k.xp;
+    for (const o of sharers) progressed(o, opts.progress.kill(o.userId, { level: k.level, xp }));
   };
   /** Members and their party members nearby (in the same room), once each. */
   const withParty = (members: string[], room: string): string[] =>
@@ -529,11 +591,22 @@ export function attachTown(server: Server, opts: TownOptions): Town {
    *  boss's for each player who earned it (their own). */
   const dropFor = (room: string, kill: { kind: string; level: number; at: [number, number]; to: string[]; boss?: boolean; mini?: string }) => {
     const L = loots.get(room);
-    const mobs = opts.mobs?.[room];
+    const mobs = mobsOf(room);
     if (!L || !mobs || !kill.to.length) return;
     const party = kill.boss || kill.mini ? [] : (parties.of(kill.to[0])?.members ?? []).filter((m) => conns.get(m)?.room === room);
     const fresh = L.drop(kill, party, (at, n) => mobs.lootSpots(at, n, L.taken()), Date.now()); // (beside loot already there, not on it)
     showLoot(room, fresh, kill.at);
+  };
+  /** A kill's drops in a Warrens run: everything on the floor for anyone in it, first come (a mini boss's pile and a roll
+   *  per player inside, Barong-Barong's heap for each, a mob's own). Gear for the classes of those inside. */
+  const runDrop = (run: Run, kill: MobKill) => {
+    if (!opts.items) return;
+    const L = lootIn(run.room);
+    const classes = [...conns.values()].filter((o) => o.room === run.room).map((o) => o.player.cls ?? null);
+    const random = opts.lootRandom ?? Math.random;
+    const { contents, at } = run.lootFor(kill, classes, () => randomBytes(8).toString('hex'), random, opts.lootPlusRandom ?? random);
+    const fresh = L.scatter(contents, at, (a, n) => run.mobs.lootSpots(a, n, L.taken()), Date.now());
+    showLoot(run.room, fresh, kill.at);
   };
   /** Picks up the loot asked for (`id`) or, without one, the nearest they may take, within LOOT_REACH (a click, F or
    *  Space; nothing is picked up on its own). Full bag: it stays, and they're told. */
@@ -666,6 +739,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         others(c, { t: 'join', player: p }); // seen at the spawn point so far: show them where they are
         return tradeRange(c);
       case 'step': {
+        if (c.stunnedUntil && Date.now() < c.stunnedUntil) return send(c, { t: 'snap', col: p.col, row: p.row });
         const dc = (m.col as number) - p.col;
         const dr = (m.row as number) - p.row;
         const ok = inside_(m.col, m.row) && walkable_(m.col, m.row) && Math.abs(dc) <= 1 && Math.abs(dr) <= 1 && (dc || dr) && spend(c);
@@ -727,7 +801,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       }
       case 'attack': {
         // A damage skill on a mob (battle maps only): the mob room decides; everyone there sees the hit.
-        const mobs = opts.mobs?.[c.room];
+        const mobs = mobsOf(c.room);
         if (!mobs || typeof m.mob !== 'string' || !Number.isInteger(m.skill)) return;
         // Their class, level, points, everything worn and skill levels; blinded, every hit misses.
         const now = Date.now();
@@ -800,7 +874,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         if (typeof r === 'string') return send(c, { t: 'drop-refused', message: r });
         const L = lootIn(c.room);
         const at: [number, number] = [p.col, p.row];
-        const mobs = opts.mobs?.[c.room];
+        const mobs = mobsOf(c.room);
         const spot = mobs ? (mobs.lootSpots(at, 1, L.taken())[0] ?? at) : groundSpot(mapOf(c.room), at, L.taken());
         const party = parties.of(c.userId)?.members ?? [];
         showLoot(c.room, [L.place({ item: r }, spot, party.length > 1 ? [...party] : [], now)], at);
@@ -963,6 +1037,12 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       case 'trade-cancel':
         // Closing the window (or Cancel): it ends for both.
         return endTrade(c.userId, 'cancelled', { name: p.nickname });
+      case 'warrens-gate':
+      case 'warrens-open':
+      case 'warrens-join':
+      case 'warrens-start':
+      case 'warrens-leave':
+        return warrensMessage(c, m);
       case 'arena-queue':
         if (p.jailed) return; // no games from jail
         c.seat ??= { key: c.userId, player: p, send: (msg) => send(c, msg) };
@@ -1020,21 +1100,23 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   };
 
   /** A walkable tile near the room's spawn point that nobody's standing on (any walkable one if they're all taken). */
-  const arrival = (room: string): [number, number] => {
+  const arrival = (room: string, userId?: string): [number, number] => {
     const m = mapOf(room);
-    const [sc, sr] = m.spawn;
+    const run = runOf(room);
+    const [sc, sr] = run && userId ? run.arrivalFor(userId) : m.spawn;
+    const spread = run ? RUN_SPREAD : SPAWN_SPREAD;
     const taken = new Set([...conns.values()].filter((o) => o.room === room).map((o) => `${o.player.col},${o.player.row}`));
     const avoid = new Set((m.avoid ?? []).map(([c, r]) => `${c},${r}`));
     const free: [number, number][] = [];
     const open: [number, number][] = [];
-    for (let r = sr - SPAWN_SPREAD; r <= sr + SPAWN_SPREAD; r++) {
-      for (let c = sc - SPAWN_SPREAD; c <= sc + SPAWN_SPREAD; c++) {
+    for (let r = sr - spread; r <= sr + spread; r++) {
+      for (let c = sc - spread; c <= sc + spread; c++) {
         if (!inside(m, c, r) || !walkable(m, c, r) || avoid.has(`${c},${r}`)) continue;
         open.push([c, r]);
         if (!taken.has(`${c},${r}`)) free.push([c, r]);
       }
     }
-    const pool = free.length ? free : open.length ? open : [m.spawn];
+    const pool = free.length ? free : open.length ? open : [[sc, sr] as [number, number]];
     return pool[Math.floor(Math.random() * pool.length)];
   };
 
@@ -1042,6 +1124,15 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     // Kicked by a moderator: told when they may come back, and closed.
     const kicked = opts.moderation?.kickedUntil(userId);
     if (kicked) return ws.close(KICKED, String(kicked));
+    // The Warrens: the run they may be in (their party's, or their own); none (closed, or not theirs) → back out.
+    if (room === 'warrens') {
+      const run = W?.runOf(userId);
+      if (!run) {
+        ws.send(JSON.stringify({ t: 'warrens-out', reason: 'closed' } satisfies TownServerMessage));
+        return ws.close(4002, 'no run');
+      }
+      room = run.room;
+    }
     // A second tab takes over: the first one is told and closed.
     const old = conns.get(userId);
     if (old) {
@@ -1051,7 +1142,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       others(old, { t: 'leave', id: old.player.id });
       old.ws.close(4000, 'opened elsewhere');
     }
-    const [col, row] = arrival(room);
+    const [col, row] = arrival(room, userId);
     const player: TownPlayer = { id: randomBytes(6).toString('hex'), ...profile, col, row, dir: 's', sit: false };
     const c: Conn = { ws, userId, room, player, tokens: STEP_BURST, refilled: Date.now(), says: SAY_BURST, saidAt: Date.now(), emotes: EMOTE_BURST, emotedAt: Date.now(), alive: true, fresh: true };
     // Off a battle map, timed buffs are over (a stance stays on; a reload on the same battle map keeps them).
@@ -1061,7 +1152,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       const { hp, maxHp } = shown(vitals.arrive(userId, maxOf(c), battle(room), Date.now()));
       Object.assign(player, { hp, maxHp });
     }
-    const mobRoom = opts.mobs?.[room];
+    const mobRoom = mobsOf(room);
     queueMicrotask(() => {
       // After the welcome: the mobs, and the loot they can see.
       if (mobRoom) send(c, { t: 'mobs', mobs: mobRoom.snapshot(Date.now()), golem: mobRoom.golemState(Date.now()) });
@@ -1078,6 +1169,11 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     if (raceNow) send(c, { t: 'race', race: { ...raceNow, now: Date.now() } });
     if (vitals) tellVitals(c); // your HP and MP (the HUD), and your party's panel
     if (buffs) send(c, { t: 'buffs', buffs: buffs.view(userId, Date.now()) }); // the buffs on you (the tray)
+    const run = runOf(room);
+    if (run) {
+      run.arrived.add(userId); // (back later: at the checkpoint)
+      send(c, { t: 'warrens', run: run.view(Date.now(), userId, nameOf) });
+    }
 
     ws.on('pong', () => (c.alive = true));
     ws.on('message', (data) => {
@@ -1095,7 +1191,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       arena.leave(userId); // mid-match, the other player wins
       leftTrades(userId); // a trade ends, nothing moved
       others(c, { t: 'leave', id: player.id });
-      opts.mobs?.[room]?.forget(player.id); // no mob goes after someone who left
+      mobsOf(room)?.forget(player.id); // no mob goes after someone who left
       stepAway(userId);
     });
   };
@@ -1104,7 +1200,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     const url = new URL(req.url ?? '/', 'http://localhost');
     if (url.pathname !== '/ws') return void (opts.shared || socket.destroy());
     const room = url.searchParams.get('room') ?? 'town';
-    if (room !== 'town' && !opts.rooms?.[room]) return void socket.destroy();
+    if (room !== 'town' && !opts.rooms?.[room] && !(room === 'warrens' && W)) return void socket.destroy();
     void (async () => {
       const userId = await opts.authenticate(req).catch(() => null);
       const profile = userId ? opts.profile(userId) : null;
@@ -1229,15 +1325,115 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       if (a.kind === 'notice') notice = { a, until: Date.now() + NOTICE_MS };
       everyone({ t: 'announce', announcement: a });
     },
+    warrensDev(userId, boss) {
+      if (!W) return { ok: false, message: 'No Warrens here.' };
+      const now = Date.now();
+      const r = W.runOf(userId) ?? (() => {
+        const o = W.open(userId, nameOf(userId), 99, () => true, now);
+        return o.ok ? o.run : null;
+      })();
+      if (!r) return { ok: false, message: 'Too many runs open.' };
+      if (boss && !r.skipTo(boss, now)) return { ok: false, message: `No boss ${boss}.` };
+      saveRuns();
+      return { ok: true, run: r.id };
+    },
   };
+
+  // ── The Scrap Warrens ──
+
+  /** Their level as a fight sees it. */
+  const levelOf = (c: Conn) => fighterOf(c).level ?? c.player.level ?? 1;
+  /** The open runs to the bot (a restart refunds their openers' tickets). */
+  const saveRuns = () => opts.warrens?.saved?.(W?.openRuns() ?? []);
+  /** Who's inside a run now. */
+  const insideOf = (run: Run): Inside[] =>
+    [...conns.values()].filter((o) => o.room === run.room).map((o) => ({ member: o.userId, id: o.player.id, at: [o.player.col, o.player.row], out: !!o.player.out }));
+  /** What a run's clock or a kill set off: to its room, to members, and out with those who must go. */
+  const runNews = (run: Run, news: RunNews) => {
+    for (const msg of news.room) for (const o of conns.values()) if (o.room === run.room) send(o, msg);
+    for (const [member, msg] of news.to) {
+      const o = conns.get(member);
+      if (o) send(o, msg);
+    }
+    for (const { member, reason } of news.out) {
+      const o = conns.get(member);
+      if (o && o.room === run.room) send(o, { t: 'warrens-out', reason });
+    }
+  };
+  /** The tracker to everyone inside, when it changed (the timer counts down on the page). */
+  const runSeen = new Map<string, string>();
+  const tellRun = (run: Run, now: number) => {
+    const v = run.view(now);
+    const seen = JSON.stringify([v.phase, v.bosses, v.opened, v.inside, v.waiting]);
+    if (runSeen.get(run.id) === seen) return;
+    runSeen.set(run.id, seen);
+    for (const o of conns.values()) if (o.room === run.room) send(o, { t: 'warrens', run: run.view(now, o.userId, nameOf) });
+  };
+  /** The Warren Gate's panel and buttons, the run's Start now and Leave. */
+  const warrensMessage = (c: Conn, m: Extract<TownClientMessage, { t: `warrens-${string}` }>) => {
+    if (!W || !opts.warrens) return;
+    const now = Date.now();
+    const refuse = (reason: Extract<TownServerMessage, { t: 'warrens-refused' }>['reason'], message: string) => send(c, { t: 'warrens-refused', reason, message });
+    const [gc, gr] = opts.warrens.gate;
+    const atGate = opts.warrens.dev || (c.room === 'slums' && Math.max(Math.abs(c.player.col - gc), Math.abs(c.player.row - gr)) <= W.W.entry.warp.useRangeTiles + 2);
+    switch (m.t) {
+      case 'warrens-gate':
+        return send(c, { t: 'warrens-gate', gate: W.gate(c.userId, levelOf(c), opts.warrens.tickets.count(c.userId)) });
+      case 'warrens-open': {
+        if (!atGate) return refuse('gone', 'Walk up to the Warren Gate first.');
+        if (now - (c.warrensAt ?? 0) < 1000) return refuse('slow', 'Slow down a little.');
+        c.warrensAt = now;
+        const r = W.open(c.userId, c.player.nickname, levelOf(c), () => opts.warrens!.tickets.use(c.userId), now);
+        if (!r.ok) return refuse(r.reason, r.message);
+        tellItems(c); // (the ticket's gone)
+        saveRuns();
+        console.log(`[warrens] ${c.userId} opened run ${r.run.id}${r.run.party ? ' for their party' : ''}`);
+        // Their party: an invite for those in the Slums, a line for the rest.
+        for (const member of parties.of(c.userId)?.members ?? []) {
+          const o = conns.get(member);
+          if (!o || o === c) continue;
+          if (o.room === 'slums') send(o, { t: 'warrens-invite', run: r.run.id, from: c.player.nickname, ms: W.W.entry.partyInviteSeconds * 1000 });
+          else send(o, { t: 'system', line: { kind: 'warrens', text: `${c.player.nickname} opened the Scrap Warrens for your party. Join at the Warren Gate in the Slums while it lasts.`, tone: 'stir' } });
+        }
+        return send(c, { t: 'warrens-go', run: r.run.id });
+      }
+      case 'warrens-join': {
+        const r = W.join(c.userId, levelOf(c), typeof m.run === 'string' ? m.run : undefined);
+        if (!r.ok) return refuse(r.reason, r.message);
+        tellRun(r.run, now);
+        return send(c, { t: 'warrens-go', run: r.run.id });
+      }
+      case 'warrens-start':
+        return void runOf(c.room)?.requestStart(c.userId); // (its clock starts it within a second)
+      case 'warrens-leave':
+        if (runOf(c.room)) send(c, { t: 'warrens-out', reason: 'left' });
+        return;
+    }
+  };
+
+  // The runs' clock: started, scaled, sent out, closed (its loot goes with it).
+  if (W) {
+    setInterval(() => {
+      const now = Date.now();
+      for (const { run, news } of W.tick(now, insideOf)) {
+        runNews(run, news);
+        if (news.closed) {
+          loots.delete(run.room);
+          runSeen.delete(run.id);
+          saveRuns();
+          console.log(`[warrens] run ${run.id} closed`);
+        } else tellRun(run, now);
+      }
+    }, 1000).unref?.();
+  }
 
   // The mobs: each room's clock, every quarter second; their hops go to whoever is in that room. So do the golem's lines
   // (`system`, kind 'golem': its warning, rise and fall), which are only for that room: never kept for arrivals like
   // postSystem's, and never passed to the bot's Discord feed (that only hears town.system).
-  if (opts.mobs) {
+  if (opts.mobs || W) {
     setInterval(() => {
       const now = Date.now();
-      for (const [room, mobs] of Object.entries(opts.mobs ?? {})) {
+      for (const [room, mobs] of battleRooms()) {
         const here = [...conns.values()].filter((o) => o.room === room);
         // The knocked out are nobody's target.
         const up = here.filter((o) => !o.player.out);
@@ -1268,7 +1464,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     setInterval(() => {
       const now = Date.now();
       const touched = new Set<Conn>();
-      for (const [room, mobs] of Object.entries(opts.mobs ?? {})) {
+      for (const [room, mobs] of battleRooms()) {
         const landed = mobs.landed(now);
         if (!landed.length) continue;
         const byId = new Map([...conns.values()].filter((o) => o.room === room).map((o) => [o.player.id, o]));
@@ -1282,6 +1478,12 @@ export function attachTown(server: Server, opts: TownOptions): Town {
           vitals.fought(o.userId, now);
           if (l.miss) continue;
           if (l.slow) vitals.slow(o.userId, l.slow, now);
+          if (l.stun) {
+            o.stunnedUntil = now + l.stun;
+            const stun: TownServerMessage = { t: 'stunned', id: o.player.id, ms: l.stun };
+            send(o, stun);
+            others(o, stun);
+          }
           const r = vitals.hurt(o.userId, l.damage, now);
           if (!r) continue;
           touched.add(o);

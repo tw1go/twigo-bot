@@ -38,6 +38,7 @@ import {
   placesFor,
   swapTrainingGear,
   trainingGear,
+  takeKind,
   unequipToBag,
   wearCheck,
 } from '@mikazuki/shared';
@@ -47,7 +48,7 @@ import type { Attacker } from './town-mobs.js';
 import { type CombatItems, type LootContent, buyCombat, dropFromBag, takeLoot, usePotion } from './combat-bag.js';
 import { forge } from './forge.js';
 import { type HeldOffer, settleTrade } from './trade.js';
-import { loadGear, loadItemData, loadLeveling, loadStats } from './stats-data.js';
+import { loadDungeons, loadGear, loadItemData, loadLeveling, loadStats } from './stats-data.js';
 
 // ⚔️ A member's class, quests, equipment and level in the web game (table adventurers, schema v10; level, XP and points
 // v11, by web/progress.ts). The quests, classes and equipment are the game's data files (public/assets/quests/quests.json,
@@ -387,6 +388,22 @@ export const dropItemFor = (userId: string, uid: string, count: number) => withI
 
 /** One HP or MP Potion of a kind used from their bag: what it heals, or null (none). */
 export const usePotionFor = (userId: string, defId: string) => withItems(userId, (s) => usePotion(loadItemData(), s, defId), (r) => !!r);
+
+/** Warren Tickets in their combat bag (the Warren Gate's panel). */
+export const warrenTicketsOf = (userId: string): number => {
+  const id = loadDungeons().warrens.ticket.id;
+  return load(userId).bag.reduce((n, i) => n + (i?.defId === id ? (i.count ?? 1) : 0), 0);
+};
+
+/** One Warren Ticket out of their bag (opening a run): false if they have none. */
+export const useTicketFor = (userId: string): boolean => withItems(userId, (s) => takeKind(s.bag, loadDungeons().warrens.ticket.id, 1), (ok) => ok);
+
+/** A Warren Ticket back into their bag (a restart ended their run before Barong-Barong fell): false if no room. */
+export function refundTicketFor(userId: string): boolean {
+  const data = loadItemData();
+  const def = data.defs.get(loadDungeons().warrens.ticket.id);
+  return !!def && withItems(userId, (s) => takeLoot(data, s, { item: newItem(data.stats, def, newUid()) }, newUid), (ok) => ok);
+}
 
 /** Buys `quantity` of a combat item at the sari-sari store (its Healing and Smithing tabs): HP/MP Potions for Kusing,
  *  whetstones and Repair Kits for Kowens (`kowens`: their wallet). */

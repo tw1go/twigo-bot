@@ -54,6 +54,9 @@ export interface StatsData {
   };
   damage: { levelGap: { perLevelAboveYou: number; missPerLevelAboveYou: number; minMult: number } };
   xp: { toNext: { mult: number; pow: number; round: boolean }; lowMobPenalty: { freeGap: number; perExtraLevel: number; minMult: number } };
+  /** Party rules in words; `xp` read by partyXpMult ("+10% per extra member, max +30%"), `xpRangeTiles` (a repo addition):
+   *  how near a member must be to share. */
+  party?: { xp: string; xpRangeTiles?: number };
   mobs: { list: Record<string, MobStats> };
   skills: {
     levelOnUnlock: number;
@@ -607,6 +610,16 @@ export function mobXp(data: StatsData, mob: { level: number; xp: number }, level
   const mult = extra > 0 ? Math.max(P.minMult, 1 - P.perExtraLevel * extra) : 1;
   return mob.xp > 0 ? Math.max(1, Math.round(mob.xp * mult)) : 0;
 }
+
+/** A party's XP for a kill (stats.json party.xp: "+10% per extra member, max +30%"): the mob's XP × this, shared
+ *  equally between the `n` members near enough (party.xpRangeTiles). */
+export function partyXpMult(data: StatsData, n: number): number {
+  const [per = 0, max = 0] = numbersIn(data.party?.xp ?? '');
+  return 1 + Math.min(max / 100, (per / 100) * Math.max(0, n - 1));
+}
+
+/** How near (tiles, either way) a party member must be to share a kill's XP (stats.json party.xpRangeTiles; 20). */
+export const partyXpRange = (data: StatsData): number => data.party?.xpRangeTiles ?? 20;
 
 /** The share of a mob's HP a player must have done in its fight to get its XP (the mob table's `xpTo`: 5% → 0.05), or
  *  null: its killer gets it. */

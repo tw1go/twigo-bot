@@ -16,6 +16,7 @@ import { attachTown, loadTownMap } from './town.js';
 import { bridgeTownChat } from './town-chat.js';
 import { MobRoom, loadMobKinds, loadMobMap, loadSkillShapes } from './town-mobs.js';
 import { loadGolemArt } from './town-golem.js';
+import { loadWarrens } from './town-warrens.js';
 import { CLASSES } from './adventure.js';
 import { connectTownFeed, feed } from './town-feed.js';
 import { MAX_TICKETS, buyTickets, entries, lastDraw, nextDraw, pot, raidMoney, ticketWord, ticketsOf } from '../games/jackpot.js';
@@ -39,13 +40,14 @@ import { kowen } from '../kowens.js';
 import { filterText, kickedUntil, mutedUntil } from './town-mod.js';
 import { getOutfit, parseOutfit, saveOutfit } from './outfit.js';
 import { parseForgeAction } from './forge.js';
-import { adventureOf, combatOf, fighterOf, forgeFor, dropItemFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townEquip, townPoints, townQuest, townSkills, trainingArmorFor, questRewardsFor, questPiecesFor, questKillFor } from './adventure.js';
+import { refundTicketFor, warrenTicketsOf, useTicketFor, adventureOf, combatOf, fighterOf, forgeFor, dropItemFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townEquip, townPoints, townQuest, townSkills, trainingArmorFor, questRewardsFor, questPiecesFor, questKillFor } from './adventure.js';
 import { renameWithCard } from '../items/rename-card.js';
 import { changeClassWithTicket } from '../items/class-ticket.js';
 import { LAUNCH_REWARD, isPreregistered, launched, preregCount, preregister } from '../prereg/prereg.js';
 import { callback, clearSessionCookie, endSessions, isCmsUser, isMember, login, loginEnabled, logout, sessionUser } from './auth.js';
 import { roll } from './finds.js';
 import { type CmsDeps, cms } from './cms.js';
+import { kvLoad, kvSave } from '../db/db.js';
 
 // A tiny HTTP API for twigo's room (tw1go.github.io). Read-only apart from
 // the find roll, which only ever hands out a claim code — Kowens are
@@ -118,6 +120,8 @@ const ALLOWED_ORIGINS = new Set([
 
 /** How often the neighbourhood's Bakods are looked at (one bought shows within this). */
 const BAKOD_CHECK_MS = 3_000;
+/** The open Scrap Warrens runs (kv): what a restart refunds. */
+const WARRENS_RUNS = 'warrens-open';
 /** Leaderboard responses are reused this long, so a burst of visitors is one lookup. */
 const BOARD_TTL_MS = 30_000;
 /** Names and avatars change rarely; looked up at most this often per member. */
@@ -875,6 +879,12 @@ export function startWebServer(client: Client): void {
     let toDiscord: (userId: string, nickname: string, text: string, megaphone: boolean, gm?: boolean) => void = () => {};
     refundHeldBets(); // an arena match the bot didn't finish: both get their stake back
     const slumsMap = loadTownMap('slums'); // the Slums
+    const skillLevels = Object.fromEntries(CLASSES.map((c) => [c.id, c.skills.map((k) => k.level)]));
+    // The Scrap Warrens: runs a restart ended before Barong-Barong fell give their openers' tickets back.
+    for (const r of kvLoad<{ id: string; opener: string; cleared: boolean }[]>(WARRENS_RUNS, [])) {
+      if (!r.cleared) console.log(`[warrens] run ${r.id} ended by a restart: ${refundTicketFor(r.opener) ? 'ticket back to' : 'NO ROOM for the ticket of'} ${r.opener}`);
+    }
+    kvSave(WARRENS_RUNS, []);
     town = attachTown(server, {
       arenaBets: arenaBets(),
       onSay: (userId, nickname, text, megaphone, gm) => toDiscord(userId, nickname, text, megaphone, gm),
@@ -884,7 +894,9 @@ export function startWebServer(client: Client): void {
       memory: townMemory(),
       map: loadTownMap(),
       rooms: { hood: hoodTownMap, slums: () => slumsMap },
-      mobs: { slums: (slumsRoom = new MobRoom(loadMobMap('slums'), Math.random, Object.fromEntries(CLASSES.map((c) => [c.id, c.skills.map((k) => k.level)])), loadSkillShapes(), loadMobKinds(), loadGolemArt())) },
+      mobs: { slums: (slumsRoom = new MobRoom(loadMobMap('slums'), Math.random, skillLevels, loadSkillShapes(), loadMobKinds(), loadGolemArt())) },
+      // Runs of the Scrap Warrens: the ticket from the combat bag, the open runs kept (refunds after a restart).
+      warrens: { ...loadWarrens(skillLevels), tickets: { count: warrenTicketsOf, use: useTicketFor }, saved: (runs) => kvSave(WARRENS_RUNS, runs) },
       quests: { kill: questKillFor },
       // Levels: who they are in a fight, and kills' XP (saved with the class).
       progress: {

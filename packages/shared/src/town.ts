@@ -359,8 +359,9 @@ export interface TownRaceResponse {
 }
 
 export interface TownSystemLine {
-  /** 'golem': the field boss's lines, only to those in the Slums (never kept for arrivals, never in Discord). */
-  kind: 'dig' | 'gamble' | 'jackpot' | 'shop' | 'gift' | 'jail' | 'quest' | 'arena' | 'steal' | 'race' | 'golem';
+  /** 'golem': the field boss's lines, only to those in the Slums; 'warrens': a Scrap Warrens run's, only to its room or
+   *  its party (neither kept for arrivals, nor in Discord). */
+  kind: 'dig' | 'gamble' | 'jackpot' | 'shop' | 'gift' | 'jail' | 'quest' | 'arena' | 'steal' | 'race' | 'golem' | 'warrens';
   text: string;
   /** Colour key: a dig's rarity, win / lose / bust, jackpot, shop, or gift. */
   tone: string;
@@ -477,6 +478,8 @@ export type TownServerMessage =
   | { t: 'warrens-refused'; reason: 'level' | 'full' | 'ticket' | 'party' | 'gone' | 'slow'; message: string }
   | { t: 'warrens-out'; reason: 'left' | 'closed' | 'party' }
   | { t: 'warrens-kick'; ms: number }
+  /** A player stunned for `ms` (Wire Wolf's Live Floor): no walking meanwhile. */
+  | { t: 'stunned'; id: string; ms: number }
   | { t: 'mob-remove'; ids: string[] }
   /** A mob turns where it stands (the golem, slowly: a quarter turn at a time). */
   | { t: 'mob-face'; id: string; dir: TownMobFacing }
