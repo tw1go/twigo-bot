@@ -7,6 +7,7 @@ import {
   STAT_NAMES,
   baseStats,
   canEquip,
+  combatRating,
   derivedStats,
   gainXp,
   hitDamage,
@@ -292,4 +293,16 @@ test('another class\'s gear is said plainly: a Pot lid holding Tin (Heavy) or Ab
   assert.equal(gearMismatch(data, 'potlid', piece('Household'), name), null);
   assert.equal(gearMismatch(data, 'potlid', { slot: 'weapon', level: 10, class: 'broom' }, name), 'A Broom’s weapon: only a Broom can use it.');
   assert.equal(gearMismatch(data, null, piece('Heavy'), name), null, 'before a class: the stat check says');
+});
+
+test('combat rating (CP): Power with crits averaged in x5, HP stretched by DEF x1, MP x0.5 (stats.json combatRating); anything stronger raises it', () => {
+  const lv1 = derivedStats(data, null, 1, baseStats(data, null, 1));
+  const cp = combatRating(data, lv1);
+  const offense = lv1.power * (1 + lv1.critRate * (lv1.critDamage - 1));
+  assert.equal(cp, Math.round(offense * 5 + (lv1.hp * (100 + lv1.def)) / 100 + lv1.mp * 0.5));
+  for (const [stat, more] of [['power', 10], ['def', 5], ['hp', 50], ['mp', 20], ['critRate', 0.05], ['amp', 0.1], ['atkRate', 0.05], ['defRate', 0.05]] as const)
+    assert.ok(combatRating(data, { ...lv1, [stat]: lv1[stat] + more }) > cp, `more ${stat}, a higher rating`);
+  const lv20 = derivedStats(data, 'potlid', 20, baseStats(data, 'potlid', 20));
+  assert.ok(combatRating(data, lv20) > cp * 2, 'a level 20 character far above a new one');
+  assert.equal(combatRating({ ...data, combatRating: undefined } as typeof data, lv1), 0, 'none without its weights');
 });

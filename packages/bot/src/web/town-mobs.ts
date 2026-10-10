@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import {
+  combatRating,
   type DerivedStats,
   type GolemAttack,
   type LevelingData,
@@ -540,6 +541,11 @@ export class MobRoom {
   /** A player's stats as a fight sees them (HP, MP, DEF… and level), from their class, level, points and worn gear. */
   fighter(a: Attacker): DerivedStats & { level: number } {
     return fighterStats(this.fightData, a);
+  }
+
+  /** Their combat rating (CP), buffs and all. */
+  rating(a: Attacker): number {
+    return combatRating(this.fightData.stats, this.fighter(a));
   }
 
   /** A kind's row in the mob table (a kind without one is a data problem: loud, at start). */

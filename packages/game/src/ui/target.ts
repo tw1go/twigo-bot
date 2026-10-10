@@ -265,7 +265,16 @@ export class TargetBox {
     if (!p) return;
     this.name.replaceChildren(p.nickname);
     if (p.level) this.name.append(el('span', 'tg-lv', `Lv ${p.level}`));
+    if (this.cp !== null) this.name.append(el('span', 'tg-cp', `CP ${this.cp.toLocaleString()}`));
   }
+
+  /** Their combat rating (the server's, with their buffs; asked with their buffs while they're picked). */
+  setRating(id: string, cp: number | undefined): void {
+    if (id !== this.target?.id || (cp ?? null) === this.cp) return;
+    this.cp = cp ?? null;
+    this.drawName();
+  }
+  private cp: number | null = null;
 
   /** Someone went up a level: their box shows it if they're the one picked. */
   levelChanged(id: string, level: number): void {
@@ -283,6 +292,7 @@ export class TargetBox {
     this.unplace();
     if (this.target?.id === p.id) return void (this.root.hidden = false);
     this.target = p;
+    this.cp = null; // (theirs comes with their buffs)
     this.info = null;
     this.tradeSent = null;
     this.drawName();
@@ -309,6 +319,7 @@ export class TargetBox {
   clear(): void {
     this.unplace();
     this.target = null;
+    this.cp = null;
     this.info = null;
     this.root.hidden = true;
     this.closeMenu();

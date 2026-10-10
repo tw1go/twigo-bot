@@ -389,6 +389,8 @@ export interface TownAnnouncement {
 /** Server → browser. */
 /** What the player menu's Info shows of someone's stats (the stats rules: class, level, points, worn gear, buffs). */
 export interface InspectStats {
+  /** Their combat rating (shared combatRating, with their buffs). */
+  cp: number;
   power: number;
   def: number;
   hp: number;
@@ -577,7 +579,8 @@ export type TownServerMessage =
    *  with each one's share (`share`) when it was split. */
   | { t: 'party-loot'; name: string; got: { kusing?: number; item?: Item }; share?: number }
   /** The buffs on another player (an answer to `buffs-of`). */
-  | { t: 'buffs-of'; id: string; buffs: TownBuff[] }
+  /** `cp`: their combat rating now (with their buffs; none for someone gone or with no stats here). */
+  | { t: 'buffs-of'; id: string; buffs: TownBuff[]; cp?: number }
   /** Another player's worn gear and stats (an answer to `inspect`); `gone`: they left. */
   | { t: 'inspect'; id: string; gone?: boolean; cls?: string | null; level?: number; equipped?: Partial<Record<EquipPlace, Item>>; stats?: InspectStats | null }
   /** Someone used a mobility move (their steps follow). */

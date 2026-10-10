@@ -140,6 +140,10 @@ The character level at which a skill can first be used.
 A character's attack strength from their stats and weapon; ATK on the stats box.
 _Avoid_: attack (a mob's is its ATK)
 
+**Combat rating** (CP):
+One number for how strong a character is overall: their Power (with crits), toughness and MP, buffs included.
+_Avoid_: power (that's ATK), gear score
+
 **Gear type**:
 Which armor a class wears: Heavy, Light or Household.
 

@@ -1037,6 +1037,12 @@
     "accessories": "field boss only, blue/orange; about 1 in 3 golem loots",
     "trainingArmor": "brown"
   },
+  "combatRating": {
+    "note": "Repo addition (Mac, 10 Oct 2026): the combat rating (CP) shown in the HUD, the stats box, the player box and Info: offense (Power, crits averaged in, x damage amp x attack rate) x offense + toughness (HP x (100 + DEF) / 100, / (1 - DEF rate)) x toughness + MP x mp. A Lv 1 Slingshot in training gear is about 440, a Lv 20 Pot lid in training gear about 1,700.",
+    "offense": 5,
+    "toughness": 1,
+    "mp": 0.5
+  },
   "agimats": {
     "placeholder": true,
     "look": {

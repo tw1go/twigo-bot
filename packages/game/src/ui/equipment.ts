@@ -1,5 +1,6 @@
-import { type AdventureState, type EquipPlace, type EquipSlot, type EquipmentDef, type StatName, STAT_NAMES, baseStats, canEquip, derivedStats, itemTotals, pointStats, requirements, withBuffs } from '@mikazuki/shared';
-import { myBuffStats, onMyBuffs } from '../net/buffs';
+import { type AdventureState, type EquipPlace, type EquipSlot, type EquipmentDef, type StatName, STAT_NAMES, canEquip, combatRating, pointStats, requirements } from '@mikazuki/shared';
+import { onMyBuffs } from '../net/buffs';
+import { myStats } from './rating';
 import type { Dir } from '../assets/types';
 import { playSound } from '../audio/sound';
 import { adventure, adventureData, cantWear, classInfo, equipItem, itemDef, onAdventure, placesFor, resetPoints, spendPoint, unequipPlace } from '../net/adventure';
@@ -337,9 +338,10 @@ export class EquipmentPanel {
     const S = D?.stats;
     if (!D || !S) return void this.stats.replaceChildren();
     const p = s.progress;
-    const st = derivedStats(S, s.cls, p.level, baseStats(S, s.cls, p.level, p.points), itemTotals(D, Object.values(s.equipped).filter((i) => !!i), myMainStat()));
+    const mine = myStats();
+    if (!mine) return void this.stats.replaceChildren();
     // The buffs on you: ATK, DEF, HP and Crit with their part in green ("56 +4").
-    const up = withBuffs(S, st, myBuffStats());
+    const { st, up } = mine;
     const shown = (base: number, buffed: number, f: (n: number) => string = (n) => String(Math.round(n))) => {
       const v = el('b', 'eq-stat-value', f(base));
       const extra = f(buffed - base);
@@ -375,7 +377,11 @@ export class EquipmentPanel {
       reset.addEventListener('click', () => void this.points(null));
       foot.append(reset);
     }
-    this.stats.replaceChildren(left, right, foot);
+    // Your combat rating on top, buffs and all (ui/rating.ts).
+    const cp = el('div', 'eq-cp');
+    cp.append(el('span', 'eq-cp-label', 'Combat rating'), el('b', 'eq-cp-value', combatRating(S, up).toLocaleString()));
+    cp.title = 'CP: one number from your ATK, crits, DEF, HP and MP, buffs included. Better gear, levels and points raise it.';
+    this.stats.replaceChildren(cp, left, right, foot);
   }
 }
 
