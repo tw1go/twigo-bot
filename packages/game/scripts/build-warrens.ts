@@ -13,6 +13,12 @@
 // Cellar dirt-junk, 2 Skid Row mud, 3 Bag Hollow concrete, 4 Live Coils plate, 5 Drain Pools planks with some mud,
 // 6 Shanty Hall concrete with plate in its middle. Street lamps stand on wall tops round each arena (the dungeon is
 // darker: the game dims it).
+//
+// The gap: the layout's top half (areas 1–3) and bottom half (4–6, Barong-Barong's hall right under the start room)
+// meet only through Bag Hollow's way out, down a 4-row band of wall. GAP_ROWS more rows of junk wall go into that band,
+// that way out carrying on down them as a long tunnel into Live Coils (its area), so nothing of the bottom half (the
+// hall least of all) is in view from the top. Everything below moves down with it (the last boss's tile and body from
+// dungeons.json too); the art folder's layout file stays as it is.
 
 import { readFileSync, writeFileSync } from 'node:fs';
 
@@ -52,6 +58,38 @@ const ROOT = new URL('../', import.meta.url);
 const read = <T>(path: string): T => JSON.parse(readFileSync(new URL(path, ROOT), 'utf8')) as T;
 const layout = read<Layout>('scripts/warrens/warrens-layout.json');
 const dungeons = read<{ warrens: { areas: { id: string; mobs: { kind: string; level: number } }[]; lastBoss: { id: string; tile: Tile; body: Rect; reachRadius: number }; entry: { warp: { tile: Tile; footprint: [number, number]; arrive: Tile } } } }>('public/assets/classes/dungeons.json').warrens;
+
+/** Rows of junk wall added between the top and bottom halves (see the gap, above), and the layout's row they go in
+ *  before (the bottom half's first). */
+const GAP_ROWS = 40;
+const GAP_AT = layout.areaRows.reduce((last, row, r) => (/[123]/.test(row) ? r : last), 0) + 1; // (the row after the top half's last, its way down included)
+{
+  const below = (r: number) => (r >= GAP_AT ? r + GAP_ROWS : r);
+  const tile = ([c, r]: Tile): Tile => [c, below(r)];
+  // The band's way down: the columns of the row just above that aren't wall, carried on as corridor of the area below.
+  const above = layout.rows[GAP_AT - 1];
+  const open = [...above].map((ch, c) => (ch !== '#' ? c : -1)).filter((c) => c >= 0);
+  const into = Number(layout.areaRows[GAP_AT]?.[open[0]]) || layout.areaRows[GAP_AT - 1][open[0]];
+  const row = [...'#'.repeat(above.length)].map((ch, c) => (open.includes(c) ? '.' : ch)).join('');
+  const areaRow = [...'-'.repeat(above.length)].map((ch, c) => (open.includes(c) ? String(into) : ch)).join('');
+  layout.rows.splice(GAP_AT, 0, ...Array.from({ length: GAP_ROWS }, () => row));
+  layout.areaRows.splice(GAP_AT, 0, ...Array.from({ length: GAP_ROWS }, () => areaRow));
+  layout.size = [layout.size[0], layout.size[1] + GAP_ROWS];
+  for (const a of layout.areas) {
+    a.rect = [a.rect[0], below(a.rect[1]), a.rect[2], below(a.rect[3])];
+    // A bottom area's rect starts below the gap, unless the way down is in it (Live Coils: the tunnel is its).
+    if (a.index >= 4 && a.rect[1] < GAP_AT && !open.some((c) => c >= a.rect[0] && c <= a.rect[2])) a.rect[1] += GAP_ROWS;
+    a.arena = [a.arena[0], below(a.arena[1]), a.arena[2], below(a.arena[3])];
+    a.bossTile = tile(a.bossTile);
+    a.guards = a.guards.map(tile);
+    a.checkpoint = tile(a.checkpoint);
+    for (const p of a.packs) p.spawns = p.spawns.map(tile);
+    if (a.gate) a.gate = { ...a.gate, shutter: a.gate.shutter.map(tile), passage: a.gate.passage.map(tile) };
+    if (a.bossBody) a.bossBody = [a.bossBody[0], below(a.bossBody[1]), a.bossBody[2], below(a.bossBody[3])];
+  }
+  const B = dungeons.lastBoss;
+  dungeons.lastBoss = { ...B, tile: tile(B.tile), body: [B.body[0], below(B.body[1]), B.body[2], below(B.body[3])] };
+}
 
 const [COLS, ROWS] = layout.size;
 const at = (c: number, r: number) => (r >= 0 && r < ROWS && c >= 0 && c < COLS ? layout.rows[r][c] : '#');

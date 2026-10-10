@@ -197,7 +197,7 @@ export class Run implements MobDirector {
     for (const [c, r] of template.dungeon.seal) this.map.blocked[r][c] = 1;
     const zoneStats: Record<string, { level: number; hp: number; atk: number; def: number; xp: number }> = {};
     for (const a of W.areas) zoneStats[a.id] = { level: a.mobs.level, hp: a.mobs.hp, atk: a.mobs.atk, def: a.mobs.def, xp: a.mobs.xp };
-    const last = template.dungeon.areas.find((a) => inRect(a.rect, ...W.lastBoss.tile));
+    const last = template.dungeon.areas.find((a) => inRect(a.rect, ...template.dungeon.boss.tile));
     if (last) zoneStats[last.id] = this.scraplingStats();
     this.mobs = new MobRoom(this.map, deps.random, deps.levels, deps.shapes, deps.kinds, undefined, deps.fightData, deps.leveling, { zoneStats, director: this, dungeonAggro: 4 });
     this.members.add(opener.member);
@@ -223,7 +223,7 @@ export class Run implements MobDirector {
       const mob = `boss:${boss.id}`;
       const stats = { level: boss.level, hp: boss.hp, atk: boss.atk, def: boss.def, xp: boss.xp };
       if (last) {
-        specs.push({ id: mob, kind: boss.id, zone: a.id, tile: this.W.lastBoss.tile, stats, boss: 'last', name: boss.name, title: boss.title, radius: this.W.lastBoss.reachRadius, still: true, silent: true });
+        specs.push({ id: mob, kind: boss.id, zone: a.id, tile: this.map.dungeon.boss.tile, stats, boss: 'last', name: boss.name, title: boss.title, radius: this.map.dungeon.boss.reachRadius, still: true, silent: true });
         a.guards.forEach((t, k) => specs.push(this.scrapling(`guard:${boss.id}:${k}`, a.id, t)));
       } else {
         specs.push({ id: mob, kind: def.kind ?? a.mob, zone: a.id, tile: a.bossTile, stats, boss: 'mini', name: def.name, scale: look.drawScale });
@@ -477,7 +477,7 @@ export class Run implements MobDirector {
 
   /** In front of Barong-Barong (south of its body, on open floor). */
   private lootSpot(): Tile {
-    const [, , c1, r1] = this.W.lastBoss.body;
+    const [, , c1, r1] = this.map.dungeon.boss.body;
     return [c1 + 1, r1 + 1];
   }
 
@@ -628,7 +628,7 @@ export class Run implements MobDirector {
       }
       case 'fistSlam': {
         // Under a random player within 10 tiles; the hands take turns.
-        const within = near.filter(([, p]) => hyp(p, this.W.lastBoss.tile) <= 10);
+        const within = near.filter(([, p]) => hyp(p, this.map.dungeon.boss.tile) <= 10);
         if (!within.length) return [];
         const target = pickPlayer(within);
         const shape: TelegraphShape = { kind: 'circle', at: target[1], radius: m.radius ?? 3 };
@@ -647,7 +647,7 @@ export class Run implements MobDirector {
       }
       case 'gutterSweep': {
         // In front of it (S on the screen: +col +row on the grid).
-        const shape: TelegraphShape = { kind: 'cone', origin: this.W.lastBoss.tile, facing: Math.PI / 4, angle: m.angleDeg ?? 140, length: m.length ?? 6 };
+        const shape: TelegraphShape = { kind: 'cone', origin: this.map.dungeon.boss.tile, facing: Math.PI / 4, angle: m.angleDeg ?? 140, length: m.length ?? 6 };
         const ev = this.moveEvent(b.mob, m.id, ms, shape, { enraged: b.enraged });
         return queue(ev, (t, players) => this.landHits(b.mob, m.id, (ev as { key: string }).key, players, (p) => inShape(shape, p), mult, t));
       }
@@ -754,7 +754,7 @@ export class Run implements MobDirector {
       }
       case 'shantyCall': {
         // Out of its doors onto open hall floor in front of it (the call anim's frame 3, then a hop).
-        const front = b.area.arenaTiles.filter((t) => t[0] + t[1] > this.W.lastBoss.tile[0] + this.W.lastBoss.tile[1] + 3 && hyp(t, this.W.lastBoss.tile) <= 8 && this.mobs.open(...t) && !this.mobs.occupied(...t));
+        const front = b.area.arenaTiles.filter((t) => t[0] + t[1] > this.map.dungeon.boss.tile[0] + this.map.dungeon.boss.tile[1] + 3 && hyp(t, this.map.dungeon.boss.tile) <= 8 && this.mobs.open(...t) && !this.mobs.occupied(...t));
         const spots = this.draw(front, m.calls?.count ?? 2, (t, drawn) => drawn.every((x) => hyp(x, t) >= 2));
         return this.call(b, 'scrapling', spots, now, 750, 'shantyCall');
       }

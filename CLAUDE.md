@@ -503,7 +503,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   cleared; the canal's plank crossing sits on the road's rows (93–95; it was a row south) (the art folder's copy still has the 6×6 pit: copy the map over again and this is lost). Packs (`scripts/packs.ts`) are written unfiltered with plain deflate (pngjs's RLE default made them ~5× bigger).
 - Scrap Warrens (a walled junk maze under the Slums for Lv 15–20; rules and numbers in `classes/dungeons.json`, manifest
   `classes.dungeons`, shared `dungeons.ts`; words in CONTEXT.md: Run, Warren Gate, Area, Arena, Shutter, Checkpoint). Map:
-  `maps/warrens.json` (96 × 64, the Slums' format: junk walls at height 1, floors 0, each area's ground, lamps round the
+  `maps/warrens.json` (96 × 104: the layout's 96 × 64 with `GAP_ROWS` (40) rows of junk wall put between its top half
+  (areas 1–3) and bottom half (4–6), Bag Hollow's way out carried on as a tunnel down through them into Live Coils, so
+  nothing of the bottom half, Barong-Barong least of all, is in view from the start; everything below moved down, the last
+  boss's tile and body too: read them from the map's `dungeon.boss`, never dungeons.json's `lastBoss.tile`; the Slums' format: junk walls at height 1, floors 0, each area's ground, lamps round the
   arenas, the exit warp, mob zones with `dungeon: true` and their packs as `groups`, and a `dungeon` block: areas with
   their arena tiles, boss tile, guards and checkpoint, shutters with their passage tiles, the start room's `seal`, the
   last boss's body). The Warren Gate is a Slums prop (`slums-warren-gate`, its `portal` strip pulsing over it, also the

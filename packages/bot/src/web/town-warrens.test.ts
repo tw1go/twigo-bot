@@ -134,10 +134,21 @@ test('bosses: five mini bosses with two guards each, Barong-Barong still in its 
     assert.equal(snap.filter((m) => m.id.startsWith(`guard:${a.miniBoss.id}:`)).length, 2);
   }
   const king = snap.find((m) => m.id === 'boss:barong-barong')!;
-  assert.deepEqual([king.col, king.row], [8, 40]);
+  assert.deepEqual([king.col, king.row], map.dungeon.boss.tile); // (the map's: below the gap)
   assert.equal(king.boss, 'last');
   assert.equal(king.title, 'the Shanty Titan');
   assert.equal(snap.filter((m) => m.id.startsWith('guard:barong-barong:')).length, 2);
+});
+
+test("the map: the bottom half (Barong-Barong's hall) is far below the start room, down the tunnel from Bag Hollow", () => {
+  const hall = area('king');
+  assert.ok(hall.rect[1] - map.arrive.slums[1] >= 50, `${hall.rect[1]}`);
+  assert.ok(map.dungeon.boss.tile[1] > hall.rect[1] && map.blocked[map.dungeon.boss.tile[1]][map.dungeon.boss.tile[0]] === 1, 'its body is blocked');
+  // Bag Hollow's shutter opens onto the tunnel: open floor down to Live Coils.
+  const s = map.dungeon.shutters.find((x) => x.area === 'bag')!;
+  const [c] = s.passage[0];
+  const below = Math.max(...s.passage.map((t) => t[1])) + 1;
+  for (let r = below; r < area('wire').checkpoint[1]; r++) assert.equal(map.blocked[r][c], 0, `${c},${r}`);
 });
 
 test('a mini boss down opens its shutter for good and moves the checkpoint on', () => {
@@ -357,7 +368,8 @@ test('loot: a mini boss leaves its Kusing pile and a roll a player; Barong-Baron
   assert.ok(mini.contents.some((c) => 'kusing' in c && c.kusing === W.areas[0].miniBoss.kusingPile));
   const last = run.lootFor({ id: 'boss:barong-barong', kind: 'barong-barong', at: [8, 40], level: 20, xp: 0, to: ['a'] }, ['slingshot'], uid, Math.random);
   assert.ok(last.contents.some((c) => 'kusing' in c && c.kusing === 10_000));
-  assert.ok(!(last.at[0] >= 2 && last.at[0] <= 11 && last.at[1] >= 34 && last.at[1] <= 43), 'never on its body');
+  const [b0, b1, b2, b3] = map.dungeon.boss.body;
+  assert.ok(!(last.at[0] >= b0 && last.at[0] <= b2 && last.at[1] >= b1 && last.at[1] <= b3), 'never on its body');
   const mob = run.lootFor({ id: 'tin:0:0', kind: 'tin-can', at: [10, 10], level: 15, xp: 0, to: ['a'] }, ['slingshot'], uid, () => 0.99);
   assert.ok(mob.contents.length >= 1);
 });
@@ -366,6 +378,10 @@ test('loot: a mini boss leaves its Kusing pile and a roll a player; Barong-Baron
 
 type Msg = TownServerMessage;
 const wait = (ms: number) => new Promise((ok) => setTimeout(ok, ms));
+/** Waits (2 s at most) for a client to have heard a message of type `t`. */
+const heard = async (c: { last: (t: never) => unknown }, t: string) => {
+  for (let k = 0; k < 80 && !c.last(t as never); k++) await wait(25);
+};
 async function town(opts: { tickets: Record<string, number>; party?: boolean; level?: Record<string, number>; kill?: (name: string, mob: { level: number; xp: number }) => void }) {
   const stats = loadStats();
   const slums = loadMobMap('slums');
@@ -420,6 +436,7 @@ test("over the town's socket: open at the Warren Gate (a ticket, Lv 15), in the 
   await wait(80);
   far.send({ t: 'warrens-open' });
   await wait(80);
+  await heard(far, 'warrens-refused');
   assert.equal(far.last('warrens-refused')?.reason, 'gone', 'only at the gate');
   far.ws.close();
   const ana = await T.open('Ana', 'slums');
@@ -427,9 +444,11 @@ test("over the town's socket: open at the Warren Gate (a ticket, Lv 15), in the 
   ana.send({ t: 'here', col: gc, row: gr, dir: 's' });
   ana.send({ t: 'warrens-gate' });
   await wait(80);
+  await heard(ana, 'warrens-gate');
   assert.deepEqual(ana.last('warrens-gate')?.gate, { minLevel: 15, level: 15, tickets: 1, inParty: false, partyRun: null });
   ana.send({ t: 'warrens-open' });
   await wait(80);
+  await heard(ana, 'warrens-go');
   const go = ana.last('warrens-go');
   assert.ok(go);
   assert.equal(T.saved.at(-1)?.[0]?.opener, 'Ana');
@@ -439,7 +458,9 @@ test("over the town's socket: open at the Warren Gate (a ticket, Lv 15), in the 
   await wait(1300);
   const welcome = inside.got.find((m) => m.t === 'welcome') as Extract<Msg, { t: 'welcome' }>;
   assert.ok(Math.abs(welcome.spawn[0] - map.arrive.slums[0]) <= 1 && Math.abs(welcome.spawn[1] - map.arrive.slums[1]) <= 1);
+  await heard(inside, 'warrens');
   assert.equal(inside.last('warrens')?.run.id, go.run);
+  await heard(inside, 'warrens');
   assert.equal(inside.last('warrens')?.run.phase, 'running');
   assert.ok(inside.got.some((m) => m.t === 'mobs' && m.mobs.some((x) => x.id === 'boss:celes-tin')));
   // A reload: back in the same run.
@@ -447,21 +468,25 @@ test("over the town's socket: open at the Warren Gate (a ticket, Lv 15), in the 
   await wait(50);
   const again = await T.open('Ana', 'warrens');
   await wait(80);
+  await heard(again, 'warrens');
   assert.equal(again.last('warrens')?.run.id, go.run);
   // Someone else: straight back out.
   const bob = await T.open('Bob', 'warrens');
   await wait(80);
+  await heard(bob, 'warrens-out');
   assert.equal(bob.last('warrens-out')?.reason, 'closed');
   assert.ok(bob.closed());
   // Leave: told to go.
   again.send({ t: 'warrens-leave' });
   await wait(80);
+  await heard(again, 'warrens-out');
   assert.equal(again.last('warrens-out')?.reason, 'left');
   // Under Lv 15, or no ticket: why not.
   const low = await T.open('Low', 'slums');
   low.send({ t: 'here', col: gc, row: gr, dir: 's' });
   low.send({ t: 'warrens-open' });
   await wait(80);
+  await heard(low, 'warrens-refused');
   assert.equal(low.last('warrens-refused')?.reason, 'level');
   for (const c of [again, low]) c.ws.close();
   await T.close();
@@ -476,24 +501,29 @@ test("over the town's socket: a party's run invites its members in the Slums; th
   ana.send({ t: 'here', col: gc, row: gr, dir: 's' });
   ana.send({ t: 'party-invite', to: bob.id() });
   await wait(80);
+  await heard(bob, 'party-invited');
   bob.send({ t: 'party-answer', invite: bob.last('party-invited')!.invite, accept: true });
   await wait(80);
   ana.send({ t: 'warrens-open' });
   await wait(100);
+  await heard(bob, 'warrens-invite');
   const invite = bob.last('warrens-invite');
   assert.equal(invite?.from, 'Ana');
   assert.equal(invite?.ms, W.entry.partyInviteSeconds * 1000);
   bob.send({ t: 'warrens-join', run: invite!.run });
   await wait(80);
+  await heard(bob, 'warrens-go');
   assert.equal(bob.last('warrens-go')?.run, invite!.run);
   // Ana in first: it waits for Bob.
   const a = await T.open('Ana', 'warrens');
   await wait(1200);
+  await heard(a, 'warrens');
   const view = a.last('warrens')!.run;
   assert.equal(view.phase, 'gathering');
   assert.deepEqual(view.waiting, ['Bob']);
   const b = await T.open('Bob', 'warrens');
   await wait(1200);
+  await heard(b, 'warrens');
   assert.equal(b.last('warrens')?.run.phase, 'running');
   for (const c of [ana, bob, a, b]) c.ws.close();
   await T.close();
@@ -512,11 +542,14 @@ test("over the town's socket: a kill's XP is shared with party members nearby, r
   mara.send({ t: 'here', col: spot[0], row: spot[1], dir: 's' });
   bob.send({ t: 'here', col: spot[0], row: spot[1], dir: 's' });
   mara.send({ t: 'party-invite', to: bob.id() });
-  await wait(80);
+  await heard(bob, 'party-invited');
+  for (let k = 0; k < 20 && !bob.last('party-invited'); k++) await wait(50);
+  await heard(bob, 'party-invited');
   bob.send({ t: 'party-answer', invite: bob.last('party-invited')!.invite, accept: true });
   await wait(80);
   mara.send({ t: 'attack', mob: can.id, skill: 0 });
   await wait(200);
+  await heard(mara, 'mob-hit');
   const hit = mara.last('mob-hit');
   assert.ok(hit?.hits[0].dead, JSON.stringify(mara.got.filter((m) => m.t === 'attack-refused')));
   const base = loadStats().mobs.list['tin-can'].xp;
