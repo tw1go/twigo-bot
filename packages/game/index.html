@@ -1528,12 +1528,18 @@
       .wr-btn[hidden] { display: none; }
       .wr-btn.wr-go { background: #EF4444; color: #fff; border-color: #1E1B3A; box-shadow: inset 0 -2px 0 #B91C1C; }
       .wr-btn.wr-go:hover { background: #F87171; }
-      #reward .rw-card:has(.wr-gate-line) { width: min(440px, calc(100vw - 32px)); }
+      #reward .rw-card:has(.wr-gate-line), #reward .rw-card:has(.wr-clear-time) { width: min(440px, calc(100vw - 32px)); }
       .wr-gate-line { margin: 0 0 6px; color: #1E1B3A; font-weight: 700; text-wrap: balance; }
       .wr-gate-you, .wr-gate-run { margin: 0 0 6px; color: #3D4256; }
       .wr-gate-why { margin: 6px 0; color: #B91C1C; font-weight: 700; }
       .wr-gate-actions { display: flex; justify-content: center; gap: 8px; margin-top: 10px; }
       .wr-gate-actions .wr-btn { font-size: calc(14px * var(--text)); padding: 6px 16px 7px; }
+      /* The cleared pop-up (showWarrensCleared): the time big, then the details. */
+      .wr-clear-time { display: flex; flex-direction: column; align-items: center; margin: 2px 0 8px; color: #1E1B3A; }
+      .wr-clear-time .wr-clear-label { font-size: calc(12px * var(--text)); letter-spacing: 0.12em; text-transform: uppercase; color: #3D4256; }
+      .wr-clear-time b { font-size: calc(34px * var(--text)); line-height: 1.1; color: #B45309; }
+      .wr-clear-line { margin: 0 0 4px; color: #1E1B3A; text-wrap: balance; }
+      .wr-clear-closes { margin: 8px 0 0; color: #3D4256; font-size: calc(13px * var(--text)); }
       .wr-invite { border-color: #EF4444; box-shadow: 0 4px 0 #1E1B3A, 0 0 18px rgba(239, 68, 68, 0.3); }
       .wr-invite .pt-invite-text b { color: #FCA5A5; }
       .wr-invite .pt-invite-bar { background: #EF4444; }

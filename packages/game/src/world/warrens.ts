@@ -18,7 +18,8 @@ import { Telegraphs } from './telegraph';
 //   its open art over 0.6 s with dust and a clank, and the passage opens. While the run gathers, the start room's way out
 //   is shut as well.
 // - The area's name across the top as you walk into one; the boss bar (with Barong-Barong's title) while you're in a
-//   boss's arena; the junk walls just in front of you at half alpha.
+//   boss's arena; the junk walls just in front of you at half alpha. In Barong-Barong's arena while it's up, `bossFrame`
+//   (its art's box, mobs.json `frame`, and you): TownScene's boss camera keeps it all in view.
 // - Every boss move (`boss-move`): its telegraph on the ground (world/telegraph.ts) from now to its hit, the boss's anim
 //   timed so its hit frame lands on the hit, and its effects on their layers (the brief's 9.3 and 9.4: Lid Slam, Burnout
 //   Charge, Smother Fog, Vanish, Chain Zap, Live Floor, Pincer Sweep, Hunker, the calls, Scrapling slams, Fist Slam, Roof
@@ -188,11 +189,28 @@ export class WarrensView {
       const [c0, r0, c1, r1] = hall.rect;
       if (Math.max(c0 - me.col, me.col - c1, r0 - me.row, me.row - r1, 0) <= BARONG_NEAR) this.mobs.releaseArt(this.lastId);
     }
+    // Barong-Barong's arena with it up: what the camera keeps in view (its whole art and you).
+    this.frame = null;
+    if (boss && boss.kind === this.lastId) {
+      const f = this.mobs.feet(boss);
+      const k = boss.data?.scale ?? 1;
+      const [x0, y0, x1, y1] = boss.data?.frame ?? [0, 0, boss.cell.size[0], boss.cell.size[1]];
+      const [ax, ay] = boss.cell.anchor;
+      const box = new Phaser.Geom.Rectangle(f.x + (x0 - ax) * k, f.y + (y0 - ay) * k, (x1 - x0) * k, (y1 - y0) * k);
+      const mine = this.hooks.myBox();
+      this.frame = mine ? Phaser.Geom.Rectangle.Union(box, mine) : box;
+    }
     const king = this.mobs.get(`boss:${this.lastId}`);
     if (king && !king.enraged && !king.dead && king.hp / king.maxHp <= (this.enrageAt ?? 0.25)) this.enrage(king);
     // The junk walls just in front of you, faded.
     this.terrain?.fadeFront(me, this.hooks.myBox());
   }
+
+  /** What the camera should keep in view now (Barong-Barong's arena with it up), or null: follow as ever. */
+  bossFrame(): Phaser.Geom.Rectangle | null {
+    return this.frame;
+  }
+  private frame: Phaser.Geom.Rectangle | null = null;
 
   private get lastId(): string {
     return this.D?.warrens.lastBoss.id ?? 'barong-barong';

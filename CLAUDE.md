@@ -568,8 +568,13 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `warrens-out` and close 4002); messages warrens-gate / -open (at the gate) / -join / -start / -leave; a 1 s run clock;
   `TownOptions.warrens` (server.ts: tickets from the combat bag; the open runs kept in kv 'warrens-open' so a restart
   refunds the openers' tickets of runs not cleared). Game: area 'warrens' (net/hood.ts, BootScene), `ui/warrens.ts` (gate
-  panel, invite, the run's timer top centre (`#warrens-timer`: Time left / Starts in / Closing in; the boss bar and other top-centre boxes move under it), the tracker in the quest tracker's place (body.warrens-on: boss pips, who it waits for, Start now, Leave), area banner, kick countdown), `world/warrens.ts`
-  (shutters and seal on the walk grid, boss bar, walls in front of you faded: `Terrain.fadeFront`, Barong-Barong's art
+  panel, invite, the run's timer top centre (`#warrens-timer`: Time left / Starts in / Closing in; the boss bar and other top-centre boxes move under it), the tracker in the quest tracker's place (body.warrens-on: boss pips, who it waits for, Start now, Leave), area banner, kick countdown, the cleared pop-up as Barong-Barong falls (`showWarrensCleared`: the run's `clearMs` from its start, `team` = who was inside, the close countdown, Leave now / Stay; once per run per tab, sessionStorage `mk_warrens_cleared`)), `world/warrens.ts`
+  (shutters and seal on the walk grid, boss bar, the boss camera in Barong-Barong's arena while it's up (`bossFrame`: its
+  art's box, mobs.json `frame` [0,10,744,497] over every sheet, and you; TownScene `bossCamera`: the largest of your zoom,
+  3, 2, 1.5, 1 that fits it between the timer/boss bar (BOSS_TOP 140 px) and the hotbar (BOSS_BOTTOM 130 px), out at once
+  as the frame grows, back in only with 12% spare and at most every 1.5 s; too tall even at 1× (laptops): you on the
+  lower band and its top cut; the wheel's zoom held until it ends, then eased back; labels sized once each zoom lands),
+  walls in front of you faded: `Terrain.fadeFront`, Barong-Barong's art
   near its hall: `Mobs.holdArt` / `releaseArt` / `loadEnraged`, every move's VFX timed to its hit, shakes ≤ 0.4 s and
   none with reduced motion), `world/telegraph.ts` (every red/yellow warning), bosses as mobs in `world/mobs.ts` (red names,
   the server's scale; Scraplings = the golem's art at 0.6), a fixed navy shade with every lamp on (a lamp dropped with its

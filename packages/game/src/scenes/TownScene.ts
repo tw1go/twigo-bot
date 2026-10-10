@@ -82,7 +82,7 @@ import { Mobs, TONE, showSlowed } from '../world/mobs';
 import { GOLEM_SOUNDS, GolemView } from '../world/golem';
 import { loadBoss } from '../assets/queue';
 import { WarrensView } from '../world/warrens';
-import { WarrensTracker, showKickCountdown, showWarrensGate, showWarrensInvite } from '../ui/warrens';
+import { WarrensTracker, showKickCountdown, showWarrensCleared, showWarrensGate, showWarrensInvite } from '../ui/warrens';
 import { FxLayers } from '../world/fx-layers';
 import { SKILL_POSE, battleSheets } from '../characters/battle-art';
 import { cooldownOf, mpCostOf } from '../combat/cooldowns';
@@ -128,6 +128,15 @@ const EMOTE_ACTIONS = EMOTE_KEYS.map((_, i) => `emote${i + 1}`);
 const WARP_MS = 1000;
 const TICKET_MS = 300;
 const ZOOMS = [2, 3, 4];
+/** The boss camera (Barong-Barong's hall): the zooms it may pull back to (your own, or the first of these that fits), the
+ *  screen px kept clear at the top (the run's timer and the boss bar) and bottom (the hotbar), and how long it eases. */
+const BOSS_ZOOMS = [3, 2, 1.5, 1];
+const BOSS_TOP = 140;
+const BOSS_BOTTOM = 130;
+const BOSS_EASE_MS = 600;
+/** It zooms back in only with this much room to spare, at most this often (no flicker as you walk about). */
+const BOSS_ZOOM_IN_SPARE = 0.12;
+const BOSS_ZOOM_IN_MS = 1500;
 /** A large screen (px): small maps are padded with forest to fill at least this much at the farthest zoom. */
 const BIG_SCREEN = [2560, 1440];
 /** Arriving in town, the camera fades in from black, starting this close on the player and easing out to the
@@ -637,7 +646,7 @@ export class TownScene extends Phaser.Scene {
 
   update(time: number, delta: number): void {
     const zoom = this.cameras.main.zoom;
-    if (zoom !== this.labelZoom && !this.intro && !this.inside) this.sizeForZoom(zoom);
+    if (zoom !== this.labelZoom && !this.intro && !this.inside && !this.zooming) this.sizeForZoom(zoom);
     this.ground.tick(time);
     this.streamWorld();
     this.keyTurn();
@@ -687,7 +696,11 @@ export class TownScene extends Phaser.Scene {
     }
     hearFrom(this.player.tile);
     this.tellServer();
-    if (this.follow && !this.intro && !this.inside && !this.peek) this.followPlayer();
+    // Barong-Barong's hall with it up: the boss camera frames it and you; else the camera follows you as ever.
+    const frame = !this.intro && !this.inside ? (this.warrens?.bossFrame() ?? null) : null;
+    if (frame) this.bossCamera(frame);
+    else if (this.bossCam) this.endBossCamera();
+    if (!frame && this.follow && !this.intro && !this.inside && !this.peek) this.followPlayer();
     this.culler.update(this.cameras.main.worldView);
     this.objects.setLamps(this.lampsOn, time); // glows follow their lamp's visibility; faulty lamps act up
     this.nightLife.update(time, this.lampsOn, this.cameras.main.worldView); // fireflies and moths, from dusk to dawn
@@ -1807,6 +1820,7 @@ export class TownScene extends Phaser.Scene {
       if (m.t === 'warrens') {
         this.warrensTracker ??= new WarrensTracker({ start: () => link.send({ t: 'warrens-start' }), leave: () => link.send({ t: 'warrens-leave' }) });
         this.warrensTracker.set(m.run);
+        showWarrensCleared(m.run, () => link.send({ t: 'warrens-leave' })); // (once per run, as it's cleared)
         return this.warrens?.run(m.run);
       }
       // Boss moves: a Warrens run's bosses there, the field golem's in the Slums (a map has one or the other).
@@ -2292,6 +2306,66 @@ export class TownScene extends Phaser.Scene {
     });
   }
 
+  /** The boss camera: as it starts, the zoom it pulls back to; while it's on, the camera eases to keep `frame` (the boss's
+   *  art and you) between the top and bottom bands of the screen (BOSS_TOP, BOSS_BOTTOM). Your zoom (the wheel's) comes
+   *  back when it ends. */
+  private bossCam: { zoom: number; w: number; h: number; at: number } | null = null;
+  /** The camera is easing to a zoom (labels are sized once it lands). */
+  private zooming = false;
+
+  private bossCamera(frame: Phaser.Geom.Rectangle): void {
+    const cam = this.cameras.main;
+    // Its zoom: picked as it starts (and if the window changes size); out at once when the frame outgrows it (you walk
+    // away from it), back in only with room to spare and not too often.
+    const now = this.time.now;
+    const want = this.frameZoom(frame);
+    const b = this.bossCam;
+    if (!b || b.w !== cam.width || b.h !== cam.height || want < b.zoom || (want > b.zoom && now - b.at >= BOSS_ZOOM_IN_MS && this.frameZoom(frame, BOSS_ZOOM_IN_SPARE) > b.zoom)) {
+      if (!b || want !== b.zoom) this.easeZoom(want);
+      this.bossCam = { zoom: want, w: cam.width, h: cam.height, at: now };
+    }
+    if (this.peek) return;
+    // The frame's middle between the bands (below the screen's middle by half their difference); taller than the room
+    // between them even at its farthest zoom (a small screen): its bottom (you) on the lower band, its top (the boss's
+    // top) cut instead.
+    const z = cam.zoom;
+    const cx = frame.centerX;
+    const room = cam.height - BOSS_TOP - BOSS_BOTTOM;
+    const cy = frame.height * z <= room ? frame.centerY - (BOSS_TOP - BOSS_BOTTOM) / 2 / z : frame.bottom - (cam.height / 2 - BOSS_BOTTOM) / z;
+    const ease = (from: number, to: number) => (to === from ? from : from + Math.sign(to - from) * Math.min(Math.abs(to - from), Math.max(1, Math.round(Math.abs(to - from) * 0.12))));
+    cam.scrollX = Math.round(ease(cam.scrollX, cx - cam.width / 2));
+    cam.scrollY = Math.round(ease(cam.scrollY, cy - cam.height / 2));
+  }
+
+  /** The largest zoom (no closer than yours) that fits `frame` between the bands (with `spare` of the room left over). */
+  private frameZoom(frame: Phaser.Geom.Rectangle, spare = 0): number {
+    const cam = this.cameras.main;
+    const mine = ZOOMS[this.zoomIndex];
+    const fits = (z: number) => frame.width * z <= (cam.width - 32) * (1 - spare) && frame.height * z <= (cam.height - BOSS_TOP - BOSS_BOTTOM) * (1 - spare);
+    return [mine, ...BOSS_ZOOMS.filter((z) => z < mine)].find(fits) ?? BOSS_ZOOMS[BOSS_ZOOMS.length - 1];
+  }
+
+  private endBossCamera(): void {
+    this.bossCam = null;
+    this.easeZoom(ZOOMS[this.zoomIndex]);
+  }
+
+  /** Eases the camera's zoom to `z` (about its middle); labels and the cursor are sized for it as it lands. */
+  private easeZoom(z: number): void {
+    const cam = this.cameras.main;
+    if (cam.zoom === z) return;
+    if (reducedMotion()) {
+      cam.setZoom(z);
+      return this.sizeForZoom(z);
+    }
+    this.zooming = true;
+    cam.zoomTo(z, BOSS_EASE_MS, 'Sine.easeInOut', true, (_c: Phaser.Cameras.Scene2D.Camera, p: number) => {
+      if (p < 1) return;
+      this.zooming = false;
+      this.sizeForZoom(z);
+    });
+  }
+
   /**
    * Camera follow: holds still while the player is inside a deadzone of 1/5 of the view, then glides (12% of the
    * gap per frame) in whole-pixel steps, so the scroll is always rounded and sprites never shimmer. The camera's
@@ -2496,6 +2570,7 @@ export class TownScene extends Phaser.Scene {
     this.input.on(Phaser.Input.Events.POINTER_WHEEL, (_p: unknown, _o: unknown, _dx: number, dy: number) => {
       this.intro?.complete(); // the wheel takes over from the arrival zoom
       this.zoomIndex = Phaser.Math.Clamp(this.zoomIndex + (dy < 0 ? 1 : -1), 0, ZOOMS.length - 1);
+      if (this.bossCam) return; // (the boss camera holds its zoom; yours comes back after)
       this.cameras.main.setZoom(ZOOMS[this.zoomIndex]);
     });
   }

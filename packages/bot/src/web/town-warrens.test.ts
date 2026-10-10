@@ -174,6 +174,9 @@ test('Barong-Barong down: cleared, its Scraplings fall apart, closed 3 minutes l
   const run = started();
   const news = run.onKill({ id: 'boss:barong-barong', kind: 'barong-barong', at: [8, 40], level: 20, xp: 0, to: ['a'], warrens: { id: 'barong-barong', boss: 'last' } }, 10_000);
   assert.equal(run.phase, 'cleared');
+  // The tracker's state says how long it took (from its start) and who was inside (the cleared pop-up).
+  const v = run.view(10_000, 'a', (m) => (m === 'a' ? 'Ana' : m));
+  assert.deepEqual([v.clearMs, v.team], [10_000 - run.startedAt, ['Ana']]);
   assert.ok(news.room.some((m) => m.t === 'mob-remove'));
   assert.ok(!run.mobs.snapshot(10_000).some((m) => m.id.startsWith('guard:barong-barong')));
   assert.equal(run.step(10_000 + 179_000, () => true).closed, undefined);
