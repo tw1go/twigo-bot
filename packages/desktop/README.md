@@ -69,7 +69,8 @@ Turning old apps away (after a change they can't follow): set `MIN_DESKTOP_VERSI
 ## How it works
 
 - `src-tauri/`: the Tauri 2 shell (Rust): one window (Mikazuki, 1280 × 720, resizable) opening `play/index.html` from
-  the staged build; plugins: opener (the browser), deep-link (`mikazuki://`), single-instance (one copy; a login link
+  the staged build, its own file drag-and-drop off (`dragDropEnabled: false`: on, it swallows the page's drags, so skills,
+  potions and items couldn't be dragged); plugins: opener (the browser), deep-link (`mikazuki://`), single-instance (one copy; a login link
   reaches it).
 - The game knows it's in the app (`packages/game/src/net/platform.ts`) and then talks to https://twigo.dev
   (`net/endpoints.ts`): its session token as `Authorization: Bearer` and, on the town's WebSocket, the subprotocol
