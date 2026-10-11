@@ -13554,6 +13554,16 @@
       "portal": { "file": "props/slums/prop-slums-warren-gate-glow.png", "frames": 12, "frameSize": [96, 96], "fps": 10, "pulse": [0.85, 1, 2000] },
       "note": "The Scrap Warrens' exit warp: the Warren Gate's art round the 2x2 warp tiles (walking onto them takes you back to the Slums)."
     },
+    "lantern-post": {
+      "file": "props/prop-town-lantern-post.png",
+      "size": [64, 96],
+      "anchor": [32, 76],
+      "anchorMeaning": "top corner of the footprint diamond (the art's sheet gives 32,84: its tile's ground centre)",
+      "footprint": [1, 1],
+      "collision": "footprint",
+      "animation": { "file": "props/prop-town-lantern-post-idle.png", "frames": 6, "frameSize": [64, 96], "fps": 6, "loop": true, "note": "same anchor and footprint as the still (the fallback)" },
+      "note": "A Lantern Post (the Town's plaza, the middle of the Slums): click it, or E beside it, for the Map menu (ui/map-menu.ts); teleports with a Return Lantern"
+    },
     "fence": {
       "nw": "props/prop-fence-nw.png",
       "ne": "props/prop-fence-ne.png",
@@ -17314,6 +17324,16 @@
       "layer": "ground",
       "note": "a level up (TownScene levelUpFx): gold ring flat on the ground under the player, with fx-level-up-sparks and \"Level up!\"; plays once"
     },
+    "fx-lantern-teleport": {
+      "file": "fx/teleport/fx-lantern-teleport.png",
+      "frame": [48, 64],
+      "frames": 8,
+      "fps": 12,
+      "loop": false,
+      "anchor": [24, 56],
+      "layer": "front",
+      "note": "A Lantern Post teleport, on the traveller's feet: as they go (hidden from frame 5) and as they arrive (shown from frame 3); plays once"
+    },
     "fx-level-up-sparks": {
       "file": "fx/progress/fx-level-up-sparks.png",
       "frame": [
@@ -17591,6 +17611,24 @@
         56
       ],
       "note": "the Slums' golem timer (ui/golem-timer.ts): the Scrapheap Golem's head and shoulders, cut from frame 0 of mob-scrapheap-golem-idle-se at (80,46); repo-only, a stand-in until the art folder has its own"
+    },
+    "mapWorld": {
+      "file": "ui/map/ui-map-world.png",
+      "size": [428, 220],
+      "layout": "ui/map/map-layout.json",
+      "note": "The Map menu (ui/map-menu.ts): the Slums and the Town drawn together; map-layout.json says where each map sits and where the Lantern Posts are"
+    },
+    "mapTeleporter": {
+      "file": "ui/map/ui-map-teleporter.png",
+      "size": [15, 18],
+      "frames": ["normal", "hover", "here"],
+      "anchor": [7, 15],
+      "note": "A Lantern Post's icon on the Map menu"
+    },
+    "mapPin": {
+      "file": "ui/map/ui-map-pin.png",
+      "size": [9, 12],
+      "note": "\"You are here\" over your own post's icon"
     },
     "tanodBust": {
       "file": "ui/ui-tanod-bust.png",

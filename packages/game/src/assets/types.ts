@@ -77,6 +77,11 @@ export interface Manifest {
     jackpotIcon?: { file: string; size: Vec2 };
     /** The Slums' golem timer's picture: the Scrapheap Golem's head. */
     golemHead?: { file: string; size: Vec2 };
+    /** The Map menu (ui/map-menu.ts): the Slums and the Town drawn together (`layout`: ui/map/map-layout.json), a
+     *  Lantern Post's icon (frames normal, hover, here) and the "You are here" pin. */
+    mapWorld?: { file: string; size: Vec2; layout: string };
+    mapTeleporter?: { file: string; size: Vec2; frames: string[]; anchor: Vec2 };
+    mapPin?: { file: string; size: Vec2 };
     /** The Casino's Kara y Krus: the flip for the side the coin lands on (each ending on that face, the coin at rest).
      *  The siren and coin burst are fx (siren, coin-burst). */
     coinFlip?: { sides: Record<'kara' | 'krus', string>; size: Vec2; frames: number; fps: number; anchor: Vec2 };
@@ -440,8 +445,9 @@ export interface TownMap {
   bridges?: { along: 'col' | 'row'; tiles: Vec2[] }[];
   /** Walking onto these tiles goes to another area: 'hood' (the neighbourhood), 'town' or 'slums'. */
   gates?: Partial<Record<Gate, Vec2[]>>;
-  /** Where you appear coming from another area (by where you came from), instead of the spawn point. */
-  arrive?: Partial<Record<Gate, Vec2>>;
+  /** Where you appear coming from another area (by where you came from), instead of the spawn point; `lanternPost`: where
+   *  a teleport to this map's Lantern Post lands. */
+  arrive?: Partial<Record<Gate | 'lanternPost', Vec2>>;
 }
 
 export type Gate = 'hood' | 'town' | 'slums' | 'warrens';

@@ -131,6 +131,12 @@ export class Vitals {
     if (v && !v.outUntil) v.combatAt = now;
   }
 
+  /** In combat: hit, missed or hitting something in the last outOfCombatAfterSec (no HP back meanwhile; no teleport). */
+  inCombat(user: string, now: number): boolean {
+    const v = this.all.get(user);
+    return !!v && now < v.combatAt + this.regen.outOfCombatAfterSec * 1000;
+  }
+
   out(user: string): boolean {
     return !!this.all.get(user)?.outUntil;
   }

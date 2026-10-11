@@ -161,6 +161,19 @@ const TOPICS: Topic[] = [
     ].join('\n'),
   },
   {
+    id: 'travel',
+    icon: '🏮',
+    label: 'Lantern Posts',
+    text: [
+      'A **Lantern Post** stands in the middle of the Town (on the fountain plaza) and in the middle of the Slums. From one, you can **teleport** to the other.',
+      '• Click the post (or press **E** beside it): you walk up and the **Map** opens, the Slums and the Town side by side',
+      '• Click the other post\'s icon, then **Teleport**. It uses one **Return Lantern** (the sari-sari store\'s **Travel** tab)',
+      '• Not during a fight: wait a few seconds after your last hit',
+      '• Each player goes alone; your party isn\'t pulled along',
+      '• Press **M** anywhere to look at the map (travel only works from a post)',
+    ].join('\n'),
+  },
+  {
     id: 'loot',
     icon: '🪙',
     label: 'Loot',

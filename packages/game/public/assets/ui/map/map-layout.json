@@ -1,0 +1,74 @@
+{
+ "image": "ui-map-world.png",
+ "tilePx": 1.6,
+ "origin": [
+  159.60000000000002,
+  6
+ ],
+ "formula": "x = origin.x + (c - r) * tilePx / 2, y = origin.y + (c + r) * tilePx / 4, with c = col + 0.5 + maps[id].col, r = row + 0.5 + maps[id].row",
+ "maps": {
+  "slums": {
+   "col": 0,
+   "row": 0,
+   "size": [
+    256,
+    192
+   ],
+   "label": [
+    97,
+    9
+   ]
+  },
+  "town": {
+   "col": 256,
+   "row": 59,
+   "size": [
+    72,
+    72
+   ],
+   "label": [
+    30,
+    -7
+   ]
+  }
+ },
+ "posts": {
+  "slums": {
+   "tile": [
+    128,
+    96
+   ],
+   "px": [
+    185.2,
+    96.0
+   ]
+  },
+  "town": {
+   "tile": [
+    39,
+    39
+   ],
+   "px": [
+    317.2,
+    163.6
+   ]
+  }
+ },
+ "icon": {
+  "file": "ui-map-teleporter.png",
+  "cell": [
+   15,
+   18
+  ],
+  "frames": [
+   "normal",
+   "hover",
+   "here"
+  ],
+  "anchor": [
+   7,
+   15
+  ]
+ },
+ "labelNote": "repo-only: maps[id].label = the tile where the Map menu writes the map's name (from the mockup; may lie past the map's edge)"
+}

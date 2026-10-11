@@ -17,7 +17,7 @@ import { myRating } from '../ui/rating';
 import { setGolemTimer } from '../ui/golem-timer';
 import { showParlor } from '../ui/parlor';
 import { type HouseArt, composeHouse, houseFiles, houseStyles, tidyLook } from '../houses/art';
-import { areaUrl, cameFrom, hoodAction, loadHood, saveHouse } from '../net/hood';
+import { areaUrl, cameByLantern, cameFrom, hoodAction, loadHood, saveHouse } from '../net/hood';
 import { showHouseMenu } from '../ui/house-menu';
 import { closeNpcDialog, setNpcDialogArt } from '../ui/npc-dialog';
 import { race as currentRace, raceNow, setRace } from '../net/race';
@@ -69,6 +69,7 @@ import { OtherPlayers } from '../world/others';
 import { fakeLogin, fakeName, loadMe } from '../session';
 import { screenToTile, tileToScreen } from '../iso';
 import { toast } from '../ui/toast';
+import { MapMenu } from '../ui/map-menu';
 import { confirmDrop } from '../ui/drop';
 import { PartyPanel, showPartyInvite } from '../ui/party';
 import { answer as partyAnswer, inParty, onParty, party, refusal as partyRefusal, setMemberHp, setParty, setPartyLink } from '../net/party';
@@ -109,7 +110,7 @@ import { Hotbar } from '../ui/hotbar';
 import { mountClassSwitch } from '../ui/class-switch';
 import { MOVES, type MoveKind, isMoveKind, moveTiles, playMove } from '../world/mobility';
 import { changeClass, devItemsReady, devQuestKill, questReport, setQuestCounts, devSwitchClass, adventure, adventureData, anyDef, chooseClass, classInfo, initAdventure, itemData, itemDef, loadAdventureData, onAdventure, questDef, questFor, questTalk, setItems, setProgress, skillView, skillViews, buffViews } from '../net/adventure';
-import { type StatsData, buffsStack, potionCooldownGroup, dropRefusal, nameColour, type Item, type QuestReward, type TownItems, LOOT_REACH, auraFor, classBuffs, classSkills, countOf, isGearDef, itemAura, itemStats, newItem, tradeRules } from '@mikazuki/shared';
+import { type LanternMap, type LanternPost, LANTERN_USE_TILES, LANTERN_WALK_TILES, RETURN_LANTERN, isLanternMap, lanternPostOf, nearPost, type StatsData, buffsStack, potionCooldownGroup, dropRefusal, nameColour, type Item, type QuestReward, type TownItems, LOOT_REACH, auraFor, classBuffs, classSkills, countOf, isGearDef, itemAura, itemStats, newItem, tradeRules } from '@mikazuki/shared';
 import type { ClassArt } from '../assets/types';
 import { drawRested, poseFiles, restFiles } from '../characters/kit-art';
 import { loadImages } from '../characters/loading';
@@ -490,6 +491,14 @@ export class TownScene extends Phaser.Scene {
     const arrive = from ? this.map.arrive?.[from] : undefined;
     this.gateAsked = from === 'warrens'; // (back out of the Warrens by the gate: its panel waits till you walk up to it again)
     if (arrive) this.player.place({ col: arrive[0], row: arrive[1] }, 'nw');
+    // Through a Lantern Post (a teleport): by this map's post, unseen until its light brings you in (after the cover).
+    this.lanternPost = lanternPostOf(this.map);
+    if (cameByLantern() && this.lanternPost) {
+      const [c, r] = this.lanternPost.arrive;
+      this.player.place({ col: c, row: r }, 'se');
+      this.player.setGone(true);
+      this.afterReveal(titleCardMs() + 300, () => this.lanternFx(this.player, 'in'));
+    }
     // A fresh visit to the neighbourhood with a house there: at your door, facing the street.
     const mine = !from && this.hood?.houses.find((h) => h.mine);
     const door = mine && this.map.doors[`house-${mine.lot}`];
@@ -584,6 +593,7 @@ export class TownScene extends Phaser.Scene {
     }
     this.gateSigns();
     this.warrenGateLabel();
+    this.lanternPostLabel();
     // Your house, just built: hidden in the ground until the arrival has settled, then it rises.
     const built = this.justBuilt ? this.hood?.houses.find((h) => h.mine) : null;
     const yours = built && this.objects.buildings.find((b) => b.id === `house-${built.lot}`);
@@ -686,6 +696,7 @@ export class TownScene extends Phaser.Scene {
       this.gateCheckAt = time + 250;
       this.nearWarrenGate();
     }
+    this.lanternTick(time);
     this.fightTick();
     this.fxLayers.update();
     this.raceNews();
@@ -1815,6 +1826,19 @@ export class TownScene extends Phaser.Scene {
         if (!m.ticket) return this.travel('warrens');
         return void this.time.delayedCall(TICKET_MS, () => this.travel('warrens'));
       }
+      // Lantern Posts: off you go (the light, then the other map), why not, and someone else's teleport.
+      if (m.t === 'lantern-go') return this.lanternGo(m.to);
+      if (m.t === 'lantern-refused') {
+        playSound('error');
+        return toast(m.message, 2800, 'bad');
+      }
+      if (m.t === 'lantern-fx') {
+        const ch = this.others.charOf(m.id);
+        if (ch) return this.lanternFx(ch, m.phase);
+        const top = tileToScreen(m.col, m.row);
+        this.fxLayers.play(this.M.fx['fx-lantern-teleport'], { x: top.x, y: top.y + 8 - this.objects.heights.at(m.col, m.row) * LEVEL_PX });
+        return;
+      }
       if (m.t === 'warrens-out') {
         if (m.reason === 'closed') toast('The Scrap Warrens closed.', 2600);
         if (m.reason === 'party') toast('You left the party: back to the Slums.', 2600);
@@ -1920,6 +1944,7 @@ export class TownScene extends Phaser.Scene {
         const ids = m.hits.map((h) => h.id);
         const at = ids[0] ? this.mobs?.tileOf(ids[0]) : null;
         const mine = m.by === myId;
+        if (mine) this.combatAt = performance.now();
         const ch = mine ? this.player : this.others.charOf(m.by);
         const cls = mine ? (adventure()?.cls ?? null) : this.others.classOf(m.by);
         // Each mob's number and HP land when the effect's hit does (the rest with the first; all after 1.5 s at most).
@@ -1950,11 +1975,15 @@ export class TownScene extends Phaser.Scene {
         for (const h of m.hits) this.mobs?.hit(h.id, h.damage, h.crit, h.hp, h.dead, undefined, h.blocked, h.miss, true);
         return;
       }
-      if (m.t === 'mob-attack') return this.mobs?.strike(m.id, m.target, m.dir, m.slow, m.hit);
+      if (m.t === 'mob-attack') {
+        if (m.target === myId) this.combatAt = performance.now();
+        return this.mobs?.strike(m.id, m.target, m.dir, m.slow, m.hit);
+      }
       // HP (and yours with MP): the HUD's bars, the bar over your head and a hurt party member's, the party panel.
       if (m.t === 'vitals') {
         setMemberHp(m.id, m.hp, m.maxHp);
         if (m.id !== myId) return this.others.handle(m);
+        if (this.vitalsNow && m.hp < this.vitalsNow.hp) this.combatAt = performance.now(); // hurt (a boss's hit too)
         setHudVitals({ hp: m.hp, maxHp: m.maxHp, mp: m.mp ?? 0, maxMp: m.maxMp ?? 0 });
         this.vitalsNow = { hp: m.hp, maxHp: m.maxHp, mp: m.mp ?? 0, maxMp: m.maxMp ?? 0 };
         this.lowMp(0); // under a quarter: an MP Potion drinks itself
@@ -2564,6 +2593,11 @@ export class TownScene extends Phaser.Scene {
       else if (matches('interact', e) && !(e.code === 'Space' && !e.repeat && this.pickUpNearest())) this.interact();
       // Target (Z, or the middle button): the nearest mob (again: the next nearest); Escape lets it go.
       if (this.mobs && matches('target', e) && !e.repeat) this.mobs.targetNext(this.player.tile);
+      // The Map menu (M): to look at; again closes it.
+      if (matches('map', e) && !e.repeat) {
+        if (this.mapView?.isOpen) this.mapView.close();
+        else this.openMap(false);
+      }
       if (this.mobs && e.key === 'Escape') {
         this.stopFight();
         this.mobs.setTarget(null);
@@ -2718,7 +2752,9 @@ export class TownScene extends Phaser.Scene {
       const spot = benchApproach(b);
       return spot.col === t.col && spot.row === t.row;
     });
-    if (bench) this.sitOn(bench);
+    if (bench) return this.sitOn(bench);
+    // Beside a Lantern Post: its Map menu.
+    if (this.lanternPost && nearPost(this.lanternPost, t.col, t.row, LANTERN_WALK_TILES)) this.toLanternPost();
   }
 
   /** The town's NPCs: on the walkable tiles away from doors, gates, benches and the spawn (world/npcs.ts), with the
@@ -3221,19 +3257,154 @@ export class TownScene extends Phaser.Scene {
   }
 
   /** Off to the other area: a fade, then that page (the town's art is cached, so it's quick). The Slums need a login. */
-  private travel(to: Gate): void {
+  private travel(to: Gate, via?: 'lantern'): void {
     if ((to === 'slums' || to === 'warrens') && this.me?.status !== 'ok' && !fakeLogin()) return void toast('Log in to go into the Slums.', 2800);
     if (this.travelling) return;
     this.travelling = true;
-    // Through the Warren Gate (in or out): its warp with the fade, which waits for it (the page changes after); else a door.
+    // Through the Warren Gate (in or out): its warp with the fade, which waits for it (the page changes after); a
+    // Lantern Post's light has had its sound; else a door.
     const warp = to === 'warrens' || this.area === 'warrens';
     if (warp) playWarrens('warrens-gate-warp');
-    else playSound('door');
+    else if (!via) playSound('door');
     toast(to === 'hood' ? 'To the neighbourhood…' : to === 'warrens' ? 'Into the Scrap Warrens…' : to === 'slums' ? (this.area === 'warrens' ? 'Back to the Slums…' : 'Into the Slums…') : 'Back to town…');
     this.cameras.main.fadeOut(warp ? WARP_MS - 200 : 400, 0, 0, 0);
-    this.time.delayedCall(warp ? WARP_MS : 420, () => location.assign(areaUrl(to)));
+    this.time.delayedCall(warp ? WARP_MS : 420, () => location.assign(areaUrl(to, via)));
   }
   private travelling = false;
+
+  // ── Lantern Posts: the Map menu, and teleporting (a Return Lantern) ──
+
+  /** This map's Lantern Post (its object and `arrive.lanternPost`), if it has one. */
+  private lanternPost: LanternPost | null = null;
+  /** A click on the post sent you walking to it (the scene's time): its Map menu opens once you're near. */
+  private lanternWanted = 0;
+  /** When you last hit something, were attacked or were hurt (performance.now()). */
+  private combatAt = -Infinity;
+  private mapView: MapMenu | null = null;
+
+  /** In combat, as the server counts it (stats.json regen.outOfCombatAfterSec): no teleport. */
+  private inCombat(): boolean {
+    const sec = (this.cache.json.get('stats') as StatsData | undefined)?.regen?.outOfCombatAfterSec ?? 5;
+    return performance.now() - this.combatAt < sec * 1000;
+  }
+
+  /** The Lantern Post: "Lantern Post" over it on hover; a click walks you near it, then its Map menu opens. */
+  private lanternPostLabel(): void {
+    const post = this.lanternPost;
+    const def = this.M.props['lantern-post'];
+    if (!post || !def) return;
+    const [col, row] = post.tile;
+    const top = tileToScreen(col, row);
+    const lift = this.objects.heights.at(col, row) * LEVEL_PX;
+    // (Its art fills rows ART_TOP–ART_BOTTOM of the cell: the post and its plinth, the lantern hanging off its arm.)
+    const [ART_TOP, ART_BOTTOM] = [33, 94];
+    const y0 = top.y - lift - def.anchor[1];
+    const box = this.add.zone(top.x - def.anchor[0] + def.size[0] / 2, y0 + (ART_TOP + ART_BOTTOM) / 2, def.size[0] / 2, ART_BOTTOM - ART_TOP).setDepth(LABEL_DEPTH - 2);
+    const label = new BuildingLabel(this, 'Lantern Post', top.x);
+    label.setZoom(this.cameras.main.zoom);
+    this.gateLabels.push(label);
+    box.setInteractive({ cursor: 'pointer' });
+    box.on('pointerover', () => label.show(y0 + ART_TOP - 2));
+    box.on('pointerout', () => label.show(null));
+    box.on('pointerup', (p: Phaser.Input.Pointer) => {
+      if (!p.leftButtonReleased() && !p.wasTouch) return;
+      this.toLanternPost();
+    });
+  }
+
+  /** To the post: its Map menu if you're near, else a walk there first (never during a fight). */
+  private toLanternPost(): void {
+    const post = this.lanternPost;
+    if (!post || this.knockedOut) return;
+    if (this.inCombat()) {
+      playSound('error');
+      return toast("Can't travel during a fight.", 2400, 'bad');
+    }
+    const t = this.player.tile;
+    if (nearPost(post, t.col, t.row, LANTERN_WALK_TILES)) return this.openMap(true);
+    this.lanternWanted = this.time.now;
+    this.goToTile({ col: post.arrive[0], row: post.arrive[1] });
+  }
+
+  /** Each frame: there after a click on the post (its menu opens), or stopped elsewhere (forgotten); walked away from the
+   *  post with its menu open (it closes). */
+  private lanternTick(time: number): void {
+    const post = this.lanternPost;
+    if (!post) return;
+    const t = this.player.tile;
+    if (this.lanternWanted) {
+      if (nearPost(post, t.col, t.row, LANTERN_WALK_TILES)) {
+        this.lanternWanted = 0;
+        this.toLanternPost();
+      } else if (this.player.isIdle && time - this.lanternWanted > 400) this.lanternWanted = 0;
+    }
+    if (this.mapView?.atPost && !nearPost(post, t.col, t.row, LANTERN_USE_TILES)) this.mapView.close();
+  }
+
+  /** The Map menu: from a post (its icons teleport) or just to look (M; anywhere, even without a post). */
+  private openMap(fromPost: boolean): void {
+    const asset = (file: string) => `${import.meta.env.BASE_URL}assets/${file}`;
+    if (!this.mapView) {
+      const U = this.M.ui;
+      const frame = U.inventory?.itemFrame;
+      const def = itemData()?.defs.get(RETURN_LANTERN);
+      this.mapView = new MapMenu({
+        world: asset(U.mapWorld?.file ?? 'ui/map/ui-map-world.png'),
+        layout: asset(U.mapWorld?.layout ?? 'ui/map/map-layout.json'),
+        teleporter: asset(U.mapTeleporter?.file ?? 'ui/map/ui-map-teleporter.png'),
+        pin: asset(U.mapPin?.file ?? 'ui/map/ui-map-pin.png'),
+        lantern: asset((def && !isGearDef(def) && def.icon) || 'items/consumables/item-return-lantern-16.png'),
+        frame: frame ? { url: asset(frame.file), slice: frame.nineSlice } : null,
+        slums: asset('maps/slums.json'),
+        town: asset('maps/town.json'),
+      });
+      onAdventure(() => this.mapView?.refresh());
+    }
+    void this.mapView.open({
+      here: isLanternMap(this.area) ? this.area : null,
+      fromPost: fromPost && !!this.lanternPost,
+      lanterns: () => countOf(adventure()?.bag ?? [], RETURN_LANTERN),
+      travel: (to) => this.lanternTo(to),
+    });
+  }
+
+  /** The Teleport box's yes: the server checks again and takes the lantern (lantern-go), or says why not. */
+  private lanternTo(to: LanternMap): void {
+    if (this.inCombat()) {
+      playSound('error');
+      return toast("Can't travel during a fight.", 2400, 'bad');
+    }
+    if (!this.link?.send({ t: 'lantern', to })) toast('Not connected right now. Try again in a moment.', 2600, 'bad');
+  }
+
+  /** Your lantern lit: its light on you (gone from its 5th frame), then the other map. */
+  private lanternGo(to: LanternMap): void {
+    this.mapView?.close();
+    this.stopFight();
+    this.pending = null;
+    this.player.cancelPath();
+    const fx = this.M.fx['fx-lantern-teleport'];
+    const ms = this.lanternFx(this.player, 'out');
+    this.time.delayedCall(ms + 60, () => this.travel(to, 'lantern'));
+    if (!fx) this.player.setGone(true);
+  }
+
+  /** A teleport's light on someone, from their feet (fx-lantern-teleport, in front): leaving, they're gone from its 5th
+   *  frame; arriving, back from its 3rd. Its blink sound with it (others' within hearing). How long it plays (ms). */
+  private lanternFx(who: Character, phase: 'out' | 'in'): number {
+    const fx = this.M.fx['fx-lantern-teleport'];
+    const frameMs = 1000 / (fx?.fps ?? 12);
+    const feet = () => ({ x: who.sprite.x, y: who.sprite.y });
+    this.fxLayers.play(fx, feet(), { follow: feet });
+    const mine = who === this.player;
+    playSet(phase === 'out' ? 'skill-blink-out' : 'skill-blink-in', mine ? {} : { at: who.tile, others: true });
+    if (phase === 'out') this.time.delayedCall(5 * frameMs, () => who.setGone(true));
+    else {
+      who.setGone(true);
+      this.time.delayedCall(3 * frameMs, () => who.setGone(false));
+    }
+    return (fx?.frames ?? 8) * frameMs;
+  }
 
   // ── The Parlor: a new look (Kowens) or another of your titles ──
 

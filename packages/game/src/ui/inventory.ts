@@ -1,7 +1,8 @@
 import { keyLabel, matches, onKeybinds } from './keybinds';
-import { type Item, type Pocket, type TownBagActionResponse, type TownBagItem, type TownInventoryResponse, agimatPocket, bagSlots, isGearDef, pocketOf, pocketSlots, pocketUsed, sellPrice } from '@mikazuki/shared';
+import { type Item, type Pocket, type TownBagActionResponse, type TownBagItem, type TownInventoryResponse, RETURN_LANTERN, agimatPocket, bagSlots, isGearDef, pocketOf, pocketSlots, pocketUsed, sellPrice } from '@mikazuki/shared';
 import { hotbarDragItem, hotbarItem } from './hotbar';
 import { playSound } from '../audio/sound';
+import { toast } from './toast';
 import { fakeLogin, fakeName } from '../session';
 import { type Rarity, RARITY_COLOUR, RARITY_LABEL as LABEL, RARITY_TEXT, isRarity, itemArt } from './item-art';
 import { installPixelTiles } from './pixel-tiles';
@@ -409,6 +410,9 @@ export class Inventory {
         // HP and MP Potions go on the hotbar (its - = ~ slots or the top row).
         cell.draggable = true;
         cell.addEventListener('dragstart', (e) => hotbarDragItem(e, { id: it.defId, name: def.name, emoji: '🧪', rarity: it.rarity, cooldown: potionCooldownKey }));
+      } else if (def?.kind === 'consumable' && def.id === RETURN_LANTERN) {
+        // A Return Lantern does nothing from the bag: it says where it's used.
+        cell.addEventListener('dblclick', () => toast(def.useAt ?? 'Use it at a Lantern Post.', 2400));
       }
       // Anything can be dragged into the trade window.
       cell.draggable = true;
@@ -510,10 +514,14 @@ export class Inventory {
       const price = def.kind === 'agimat' ? this.priceOf(it) : null;
       if (price !== null) items.push([`Sell (${price.toLocaleString()} Kusing)`, () => void this.sell(it, cell, price)]);
     }
-    // A ticket: used where it's for, never from the bag (said, greyed).
+    // A consumable: used where it's for, never from the bag. A ticket says where (greyed); a Return Lantern's Use says so.
     if (def && !isGearDef(def) && def.kind === 'consumable') {
-      off.add(items.length);
-      items.push(['Use it at the Warren Gate by the golem pit', () => {}]);
+      const where = def.useAt ?? 'Use it where it’s for';
+      if (def.id === RETURN_LANTERN) items.push(['Use', () => toast(where, 2400)]);
+      else {
+        off.add(items.length);
+        items.push([where, () => {}]);
+      }
     }
     // Every item: into the chat (as Alt/Option+click does).
     items.push(['Show in chat', () => chatItem(it)]);

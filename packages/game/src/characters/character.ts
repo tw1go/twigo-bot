@@ -637,6 +637,13 @@ export class Character {
     });
   }
 
+  /** Gone from sight at once, name and all (a Lantern Post teleport: leaving, or not yet arrived); `false`: back. */
+  setGone(on: boolean): void {
+    this.seenTween?.stop();
+    this.seenTween = null;
+    this.setSeen(on ? 0 : 1);
+  }
+
   private setSeen(seen: number): void {
     this.seen = seen;
     this.sprite.setAlpha(seen);

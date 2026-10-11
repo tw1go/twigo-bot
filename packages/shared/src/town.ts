@@ -238,6 +238,8 @@ export type TownClientMessage =
   /** Not now, to your party's run's invite (it stops waiting for you). */
   | { t: 'warrens-decline'; run: string }
   | { t: 'warrens-leave' }
+  /** Teleport from the Lantern Post you're by to another map's (uses a Return Lantern; shared travel.ts's rules). */
+  | { t: 'lantern'; to: string }
   /** The buffs on another player (the player box shows their icons), by town id. */
   | { t: 'buffs-of'; id: string }
   | { t: 'trade-answer'; ask: string; accept: boolean }
@@ -489,6 +491,12 @@ export type TownServerMessage =
   | { t: 'warrens-refused'; reason: 'level' | 'full' | 'ticket' | 'party' | 'gone' | 'slow'; message: string }
   | { t: 'warrens-out'; reason: 'left' | 'closed' | 'party' }
   | { t: 'warrens-kick'; ms: number }
+  /** Lantern Posts: off you go (the page loads that map, at its post); why not (your lantern kept); and someone's
+   *  teleport seen where it happens (`out`: leaving from there, hidden from its 5th frame; `in`: arriving, shown from its
+   *  3rd). */
+  | { t: 'lantern-go'; to: 'town' | 'slums' }
+  | { t: 'lantern-refused'; message: string }
+  | { t: 'lantern-fx'; id: string; col: number; row: number; phase: 'out' | 'in' }
   /** A player stunned for `ms` (Wire Wolf's Live Floor): no walking meanwhile. */
   | { t: 'stunned'; id: string; ms: number }
   | { t: 'mob-remove'; ids: string[] }

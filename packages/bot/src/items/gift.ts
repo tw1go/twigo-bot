@@ -4,12 +4,12 @@ import { POTIONS, POTION_IDS, addPotions } from '../potions/potions.js';
 import { addMegaphones } from './megaphone.js';
 import { addRenameCards } from './rename-card.js';
 import { addClassTickets } from './class-ticket.js';
-import { addToBag, isGearDef, newItem } from '@mikazuki/shared';
+import { RETURN_LANTERN, addToBag, isGearDef, newItem } from '@mikazuki/shared';
 import { newUid, withItems } from '../web/adventure.js';
 import { loadItemData } from '../web/stats-data.js';
 
 // 🎁 What the gifter can give with /gift item: the shop's items (shovels, Master Keys, megaphones, potions), the combat
-// bag's materials, potions and consumables (whetstones, fragments, Repair Kits, HP/MP Potions, Warren Tickets:
+// bag's materials, potions and consumables (whetstones, fragments, Repair Kits, HP/MP Potions, Warren Tickets, Return Lanterns:
 // items.json) and every dug-up item.
 // Gifts go straight in, ignoring daily shovel limits and bag space (the gifter decides); a combat item only goes into a
 // combat bag with room for it (`give` says false).
@@ -38,7 +38,7 @@ const combat = (): Giftable[] => {
   const D = loadItemData();
   return [...D.defs.values()].flatMap((d): Giftable[] =>
     !isGearDef(d) && (d.kind === 'material' || d.kind === 'potion' || d.kind === 'consumable')
-      ? [{ id: d.id, name: d.name, emoji: d.kind === 'potion' ? '🧪' : d.kind === 'consumable' ? '🎟️' : '🪨', rarity: 'common', combat: true,
+      ? [{ id: d.id, name: d.name, emoji: d.kind === 'potion' ? '🧪' : d.id === RETURN_LANTERN ? '🏮' : d.kind === 'consumable' ? '🎟️' : '🪨', rarity: 'common', combat: true,
           give: (u, n) => withItems(u, (s) => addToBag(D, s.bag, newItem(D.stats, d, newUid(), n), newUid), (ok) => ok) }]
       : [],
   );

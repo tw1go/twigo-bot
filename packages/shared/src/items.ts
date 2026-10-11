@@ -67,8 +67,13 @@ export interface CombatItemDef {
   about?: string;
   /** A cosmetic that can't be worn yet. */
   cosmetic?: boolean;
-  /** Sold at the sari-sari store: priced as a potion (its tier's Kusing), a whetstone or a Repair Kit (Kowens). */
-  shop?: 'potion' | 'whetstone' | 'repairKit' | 'ticket';
+  /** Sold at the sari-sari store: priced as a potion (its tier's Kusing), a whetstone or a Repair Kit (Kowens), a dungeon
+   *  ticket (its dungeon's price), or a travel item (its own `price`). */
+  shop?: 'potion' | 'whetstone' | 'repairKit' | 'ticket' | 'travel';
+  /** Its own shop price (a travel item's). */
+  price?: { kusing: number };
+  /** A consumable used somewhere, never from the bag: where (the bag says so). */
+  useAt?: string;
   /** What it does at the forge popup for its tier's gear: enhances (whetstone), combines ten into a whetstone
    *  (fragment), repairs (repairKit). */
   forge?: 'whetstone' | 'fragment' | 'repairKit';

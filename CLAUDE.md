@@ -121,12 +121,16 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `potions.separateCooldowns`, `trainingGear.noSell` / `sellKusing`, `mobBehaviour.targetPriority`,
   `mobBehaviour.golem.hpPerPlayer`.
 - `classes/stats.json` (Scrap Warrens): `party.xpRangeTiles` (+ `xpNote`), and consumables in `inventory.stack99`.
+- Lantern Posts: `items/items.json` `return-lantern` (its `shop: travel`, `price`, `useAt`; `useAt` on `warren-ticket` too),
+  the `lantern-post` object, its blocked tile and `arrive.lanternPost` in `maps/town.json` (39,39 → 40,40) and
+  `maps/slums.json` (128,96 → 129,97), and `ui/map/map-layout.json` `maps[id].label` (where the Map menu writes each
+  map's name). Copying either map over again from the art folder loses the post.
 - `classes/leveling.json`: `miniBoss.questDrop`.
 - `classes/dungeons.json` (= the art folder's `data/dungeons/warrens.json` as `{ "warrens": … }`): `run.timeLimitMinutes` 20
   (was 40), `run.gatherSeconds` 60, the ticket's shop price 500,000 Kusing in the `dungeons` tab, `entry.warp.tile`
   [37,85] / `arrive` [37,88] (by the jeepney and taxi wrecks north-east of the golem pit; the art's is [46,96])
   (`build-warrens.ts` moves the gate's object and blocked tiles in slums.json to it, opening the old ones).
-- `items/items.json`: `warren-ticket`. `mobs/mobs.json`: `barong-barong`.
+- `items/items.json`: `warren-ticket`, `return-lantern`. `mobs/mobs.json`: `barong-barong`.
 - `ui/ui-golem-head.png` (manifest `ui.golemHead`): the golem timer's head, cut from frame 0 of the golem's idle-se
   sheet at (80,46), 56 × 56; a stand-in until the art folder has its own.
 - `maps/slums.json`: the Golem Pit v3 changes (the art folder's copy still has the old 6×6 pit; see Scrapheap Golem), and
@@ -611,6 +615,30 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   party members in the room within `party.xpRangeTiles` (20), +10% a member up to +30% (`partyXpMult`); bosses keep their
   own rule. Dev: `?warrens=solo` (a free run, in at once), `?warrensboss=crab-tain` (every earlier area cleared, you at
   its arena), the dev server's `/__warrens?as=&boss=`; `?give=warren-ticket::3` for the gate's own flow.
+- Lantern Posts (teleporting between maps; words in CONTEXT.md: Map, Lantern Post, Return Lantern, Map menu, Teleport,
+  In combat): a post (manifest props `lantern-post`, its 6-frame idle as the map object's `animated`) in the middle of
+  the Town and of the Slums, each map's `lantern-post` object + `arrive.lanternPost` (shared `travel.ts`: `lanternPostOf`,
+  `nearPost`, `lanternRefusal`, LANTERN_WALK_TILES 2 / LANTERN_USE_TILES 3, `isLanternMap`). Click it (or E beside it):
+  you walk to its landing, then the Map menu opens; never in combat (the client's `combatAt`: you hit, were attacked or
+  hurt, stats.json regen.outOfCombatAfterSec; toast "Can't travel during a fight."). Map menu (`ui/map-menu.ts`, the
+  Equipment panel's frame; M anywhere: keybind 'map', again closes; read-only away from a post: an icon says "Go to a
+  Lantern Post to travel."): manifest ui.mapWorld (its picture at 2× where it fits, else 1×, `--k`) placed by
+  `ui/map/map-layout.json` (formula, maps, posts, icon), with the Slums' zone names, "Golem Pit", "Camp" and "Hood ›"
+  written from the maps (slums.json fetched once), each map's name at its `label` tile, a teleporter icon per post
+  (ui.mapTeleporter: normal / hover with "Lantern Post" / here with ui.mapPin and "You are here", flipped left if it would
+  overlap a label), the bar "Return Lanterns: N"; closes with Esc, ×, or walking more than 3 tiles from the post. The
+  other post's icon → the Teleport box (Travel to the Slums?, its cost; 0 lanterns: "You need a Return Lantern", Teleport
+  greyed; Enter / Esc) → `lantern` {to} → the server (`web/town.ts` lanternMessage: `lanternRefusal` on its own tiles,
+  `Vitals.inCombat`, knocked out, `TownOptions.lanterns` count/use: a Return Lantern from the combat bag) answers
+  `lantern-refused` (a toast, the lantern kept) or `lantern-go` and shows the others there `lantern-fx` 'out'; the page
+  plays fx-lantern-teleport on you (front layer, `Character.setGone` from its 5th frame; blink-out), then loads the other
+  map (`areaUrl(to, 'lantern')`: ?via=lantern, `cameByLantern`): you land on `arrive.lanternPost`, unseen until after the
+  title card, where the same light brings you in (shown from its 3rd frame; blink-in), and the server, its trip kept 2
+  min (`trips`), shows the others there `lantern-fx` 'in' on your first 'here'. Each player alone (a party isn't pulled
+  along). The Return Lantern (items.json, consumable, stacks to 99, tradeable, 200 Kusing in the sari-sari store's
+  Travel tab: combat-bag.ts `combatWares` 'travel'; the store's box is 740 px wide for its eight tabs, each as wide as its name): the bag's Use and
+  double-click only say "Use it at a Lantern Post." (`useAt`). Guide tab Lantern Posts. Tested: `web/travel.test.ts`.
+  Dev: `?give=return-lantern::5`; the dev town's maps carry their posts (dev-town.ts).
 - NPCs (town only, not the neighbourhood; client-side: never on the server, the online list or the minimap): the
   Tanod and ten Alings, flat pre-baked sheets (manifest `npcs`, art in `assets/npcs/`, one pack per NPC; `Character`
   with `FlatSheets`, never the paper doll). Homes, behaviours, the Tanod's route, voices and portrait facing in

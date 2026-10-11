@@ -15,7 +15,7 @@ import { type Loot, LootRoom, splitKusing } from './town-loot.js';
 import { type HeldOffer, type Trade, Trades, checkOffer } from './trade.js';
 import { type Inside, type Run, type RunDeps, type RunNews, Warrens, type WarrensMap } from './town-warrens.js';
 import type { WarrensData, ChatItemLink, CharacterProgress, QuestProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item, TradeEnd, TradeView } from '@mikazuki/shared';
-import { itemName, itemStats, partyXpMult, partyXpRange, potionCooldownGroup, skillMpCost, targetPriority, tradeRules } from '@mikazuki/shared';
+import { type LanternPost, isLanternMap, itemName, itemStats, lanternPostOf, lanternRefusal, partyXpMult, partyXpRange, potionCooldownGroup, skillMpCost, targetPriority, tradeRules } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
 // messages). The server keeps everyone's tile and checks each step — on the map, not blocked, next to the last
@@ -102,6 +102,8 @@ export interface TownMap {
   blocked: number[][]; // [row][col], 1 = blocked
   /** Tiles nobody arrives on (the gates to other areas: stepping on one there would take you straight back). */
   avoid?: [number, number][];
+  /** Its Lantern Post (shared travel.ts), if it has one. */
+  lantern?: LanternPost | null;
 }
 
 export interface TownProfile {
@@ -188,6 +190,9 @@ export interface TownOptions {
     saved?(runs: { id: string; opener: string; cleared: boolean }[]): void;
     dev?: boolean;
   };
+  /** Return Lanterns (a teleport between Lantern Posts uses one): how many a member holds, and using one (false: none).
+   *  Without it, no teleports. */
+  lanterns?: { count(userId: string): number; use(userId: string): boolean };
   /** Chat moderation (web/town-mod.ts in the bot; none in the game's dev server). */
   moderation?: {
     mutedUntil(userId: string): number | null;
@@ -195,6 +200,9 @@ export interface TownOptions {
     filter(text: string): string;
   };
 }
+
+/** How long a teleport's arrival may take (the page loading the other map) to still be shown as one. */
+const TRIP_MS = 2 * 60_000;
 
 /** Close code for a moderator's kick (the reason is when they may come back, in ms). */
 export const KICKED = 4001;
@@ -256,8 +264,12 @@ export interface Town {
 /** A map from the game's assets (maps/<name>.json: the town, the Slums), as far as the server needs it. (Raised ground
  *  isn't checked here, like fences: the game keeps to its ramps.) */
 export function loadTownMap(name = 'town'): TownMap {
-  const json = JSON.parse(readFileSync(new URL(`../../../game/public/assets/maps/${name}.json`, import.meta.url), 'utf8')) as TownMap & { gates?: Record<string, [number, number][]> };
-  return { size: json.size, spawn: json.spawn, blocked: json.blocked, avoid: Object.values(json.gates ?? {}).flat() };
+  const json = JSON.parse(readFileSync(new URL(`../../../game/public/assets/maps/${name}.json`, import.meta.url), 'utf8')) as TownMap & {
+    gates?: Record<string, [number, number][]>;
+    objects?: { id: string; col: number; row: number }[];
+    arrive?: Record<string, [number, number]>;
+  };
+  return { size: json.size, spawn: json.spawn, blocked: json.blocked, avoid: Object.values(json.gates ?? {}).flat(), lantern: lanternPostOf(json) };
 }
 
 /** Facing for one grid step (as the game's dirForStep: col runs screen right-down, row runs screen left-down). */
@@ -302,6 +314,8 @@ interface Conn {
   buffsOfAt?: number;
   /** When they last opened a Warrens run (one a second). */
   warrensAt?: number;
+  /** When they last asked to teleport (ms). */
+  lanternAt?: number;
   /** Stunned until (ms): no steps (Wire Wolf's Live Floor). */
   stunnedUntil?: number;
 }
@@ -737,6 +751,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         if (!fresh || !inside_(m.col, m.row) || !walkable_(m.col, m.row) || !DIRS.has(m.dir)) return send(c, { t: 'snap', col: p.col, row: p.row });
         Object.assign(p, { col: m.col, row: m.row, dir: m.dir });
         others(c, { t: 'join', player: p }); // seen at the spawn point so far: show them where they are
+        landed(c);
         return tradeRange(c);
       case 'step': {
         if (c.stunnedUntil && Date.now() < c.stunnedUntil) return send(c, { t: 'snap', col: p.col, row: p.row });
@@ -1045,6 +1060,8 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       case 'warrens-decline':
       case 'warrens-leave':
         return warrensMessage(c, m);
+      case 'lantern':
+        return lanternMessage(c, m.to);
       case 'arena-queue':
         if (p.jailed) return; // no games from jail
         c.seat ??= { key: c.userId, player: p, send: (msg) => send(c, msg) };
@@ -1343,6 +1360,44 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       saveRuns();
       return { ok: true, run: r.id };
     },
+  };
+
+  // ── Lantern Posts ──
+
+  /** Teleports on their way: who's going where (until when), so their arrival there is shown as one. */
+  const trips = new Map<string, { to: string; until: number }>();
+  /** A teleport from the post they're by: checked (shared travel.ts), a Return Lantern used, everyone there sees them
+   *  go, and their page loads the other map. */
+  const lanternMessage = (c: Conn, to: unknown) => {
+    if (!opts.lanterns) return;
+    const now = Date.now();
+    const refuse = (message: string) => send(c, { t: 'lantern-refused', message });
+    if (now - (c.lanternAt ?? 0) < 1000) return refuse('Slow down a little.');
+    c.lanternAt = now;
+    const p = c.player;
+    const why = lanternRefusal({
+      from: c.room,
+      to,
+      post: mapOf(c.room).lantern ?? null,
+      at: [p.col, p.row],
+      inCombat: !!vitals?.inCombat(c.userId, now),
+      out: !!p.out || !!vitals?.out(c.userId),
+      lanterns: opts.lanterns.count(c.userId),
+    });
+    if (why || !isLanternMap(to)) return refuse(why ?? "There's no Lantern Post there.");
+    if (!opts.lanterns.use(c.userId)) return refuse('You need a Return Lantern.');
+    tellItems(c); // (one fewer)
+    trips.set(c.userId, { to, until: now + TRIP_MS });
+    others(c, { t: 'lantern-fx', id: p.id, col: p.col, row: p.row, phase: 'out' });
+    console.log(`[lantern] ${c.userId}: ${c.room} → ${to}`);
+    send(c, { t: 'lantern-go', to });
+  };
+  /** Arrived where they teleported to (their first 'here' there): everyone there sees them come. */
+  const landed = (c: Conn) => {
+    const trip = trips.get(c.userId);
+    if (!trip) return;
+    trips.delete(c.userId);
+    if (trip.to === c.room && Date.now() < trip.until) others(c, { t: 'lantern-fx', id: c.player.id, col: c.player.col, row: c.player.row, phase: 'in' });
   };
 
   // ── The Scrap Warrens ──

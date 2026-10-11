@@ -5,13 +5,34 @@ covers the words the game and the bot share.
 
 ## Places
 
+**Map**:
+A place in the world you can stand in and travel to: the Town or the Slums (the Map menu shows both, side by side).
+_Avoid_: area (that's a part of the Scrap Warrens), zone (a part of the Slums where one kind of mob lives)
+
 **Town**:
-The main area of the web town (the plaza, shops, casino, Arena, Mine).
+The main map of the web town (the plaza, shops, casino, Arena, Mine).
 _Avoid_: hub, lobby
 
 **Slums**:
-The battle area west of the town, reached through its gate; where mobs live.
+The map west of the town, reached through its gate; where mobs live.
 _Avoid_: battle map, dungeon, junkyard (only flavour in its lines)
+
+**Lantern Post**:
+A stone plinth with a glowing lantern on a post, in the middle of the Town and of the Slums; standing by one, you can
+teleport to another map's Lantern Post.
+_Avoid_: teleporter, waypoint (the map shows a teleporter icon on it, but the thing is a Lantern Post)
+
+**Return Lantern**:
+The item a teleport costs: one is used up each time, at a Lantern Post.
+
+**Map menu**:
+The window showing the Town and the Slums together with every Lantern Post on them; opened from a post it travels, opened
+anywhere else (M) it's only to look at.
+
+**Teleport**:
+Going from one Lantern Post to another map's, for one Return Lantern; never during a fight, and each player alone (a
+party isn't pulled along).
+_Avoid_: warp (the Warren Gate's portal), gate (a gate is walked through)
 
 **Arena**:
 The jack en poy building in the town, and only that.
@@ -160,6 +181,10 @@ An item that stays with its owner: it can't be traded.
 **HP / MP**:
 A character's health and mana; HP only goes down in the Slums, and both refill in the town and the neighbourhood.
 
+**In combat**:
+Hit, missed, or hitting something in the last few seconds; no HP comes back meanwhile and nobody can teleport. Nobody is
+ever in combat in the Town.
+
 **Knocked out**:
 A character at 0 HP: out of the fight for a moment, then back at the gate they came in by, with no penalty.
 _Avoid_: dead, killed (mobs die; players are knocked out)
@@ -291,7 +316,7 @@ _Avoid_: instance, session, room (a room is the server's word for any map someon
 **Warren Gate**:
 The entrance in the Slums by the golem pit, where a run is opened or joined; the same portal stands inside as the exit
 warp.
-_Avoid_: gate (alone, a gate is a map edge between areas of the world: town ↔ Slums)
+_Avoid_: gate (alone, a gate is a map edge between maps: town ↔ Slums)
 
 **Warren Ticket**:
 The item a run costs, used up by whoever opens it; joining a party's run is free.
