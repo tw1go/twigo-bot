@@ -595,9 +595,70 @@ async function boss() {
   await draw();
 }
 
+// ── Beta applications (the front page's close beta form) ──
+
+async function beta() {
+  page('Beta applications', 'Close beta applications from the front page, newest first. One per Discord username: a repeat updates it (its status is kept). Contact them on Discord, then mark how far it got.');
+  const q = h('input', { type: 'search', placeholder: 'Search by Discord username' });
+  const status = h('select', null, h('option', { value: '' }, 'Any status'));
+  const cls = h('select', null, h('option', { value: '' }, 'Any class'));
+  const csv = h('a', { class: 'btn', href: 'api/beta.csv', download: '' }, 'Export CSV');
+  const count = h('p', { class: 'hint' });
+  const table = h('tbody');
+  main().append(h('div', { class: 'card' },
+    h('div', { class: 'filters' }, q, status, cls, csv),
+    count,
+    h('div', { class: 'table-wrap' }, h('table', null, h('thead', null, h('tr', null, h('th', null, 'Discord'), h('th', null, 'Class'), h('th', null, 'Note'), h('th', null, 'Sent'), h('th', null, 'Status'))), table)),
+  ));
+
+  const query = () => {
+    const p = new URLSearchParams();
+    if (q.value.trim()) p.set('q', q.value.trim());
+    if (status.value) p.set('status', status.value);
+    if (cls.value) p.set('class', cls.value);
+    return p.toString();
+  };
+  let options = null;
+  async function draw() {
+    const data = await api(`beta${query() ? `?${query()}` : ''}`);
+    if (!options) {
+      options = data;
+      status.append(...data.statuses.map((s) => h('option', { value: s }, s)));
+      cls.append(...data.classes.map((c) => h('option', { value: c }, c)));
+    }
+    csv.href = `api/beta.csv${query() ? `?${query()}` : ''}`;
+    count.textContent = data.applications.length === 1 ? '1 application' : `${fmt(data.applications.length)} applications`;
+    table.replaceChildren(...(data.applications.length
+      ? data.applications.map((a) => {
+        const pick = h('select', { 'aria-label': `Status of ${a.discordUsername}`, class: a.status === 'new' ? 'status-new' : '' }, ...options.statuses.map((s) => h('option', { value: s }, s)));
+        pick.value = a.status;
+        pick.addEventListener('change', () => act(pick, async () => {
+          const { application } = await api('beta/status', { id: a.id, status: pick.value });
+          pick.className = application.status === 'new' ? 'status-new' : '';
+          toast(`${a.discordUsername}: ${application.status}.`);
+        }));
+        return h('tr', null,
+          h('td', null, h('div', null, a.discordUsername), a.discordId ? h('div', { class: 'sub' }, a.discordId) : null),
+          h('td', null, a.cls),
+          h('td', { class: 'note' }, a.note || '—'),
+          h('td', null, when(a.createdAt), a.updatedAt !== a.createdAt ? h('div', { class: 'sub' }, `updated ${when(a.updatedAt)}`) : null),
+          h('td', null, pick));
+      })
+      : [h('tr', null, h('td', { colspan: 5 }, h('p', { class: 'hint' }, 'No applications yet.')))]));
+  }
+  let timer = 0;
+  q.addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => act(null, draw), 250);
+  });
+  status.addEventListener('change', () => act(null, draw));
+  cls.addEventListener('change', () => act(null, draw));
+  await draw();
+}
+
 // ── Tabs ──
 
-const TABS = { overview, news, titles, shop, rewards, minewars, boss, items, players };
+const TABS = { overview, news, titles, shop, rewards, minewars, boss, items, players, beta };
 
 function route() {
   const tab = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'overview';

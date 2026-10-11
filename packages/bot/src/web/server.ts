@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import type { LeaderboardResponse, LeaderboardRow, MeDig, MeResponse, PresenceStatus, PreregResponse, PreregStatus, TownJackpotBuyResponse, TownJackpotResponse, TownLeaderboardResponse, TownRaceResponse } from '@mikazuki/shared';
-import { GatewayIntentBits, type Client } from 'discord.js';
+import { EmbedBuilder, GatewayIntentBits, escapeMarkdown, type Client } from 'discord.js';
 import { config } from '../config.js';
 import { VOICE_DAILY_CAP, VOICE_MINUTES_PER_CREDIT, balance, rankOf, setWalletHook, topBalances, totalKowens, vaultBalance, voiceCreditsToday, voiceProgress } from '../credits/store.js';
 import { DIGS_PER_DAY, digsToday, inventory, LUCKY_EVERY, serverDigProgress, SHOVEL_COST, SHOVEL_USES, SHOVELS_PER_DAY, shovelsBoughtToday, shovelUses } from '../dig/store.js';
@@ -8,6 +8,7 @@ import { ITEM_BY_ID } from '../dig/items.js';
 import { getNickname, parseNickname, setNickname } from './nickname.js';
 import { RICHEST, TITLES, newTitle, titleOf, titleSeen } from './titles.js';
 import { welcome, welcomeEveryone, welcomeGift, welcomeSeen } from './welcome.js';
+import { type BetaApplication, BetaRateLimit, ipHash, parseBetaForm, saveBetaApplication } from './beta.js';
 import { townMemory } from './town-memory.js';
 import { MAX_BET as RACE_MAX_BET, PAYOUT as RACE_PAYOUT, openRaceInTown, placeBet, raceFor } from '../games/race.js';
 import { isTester } from '../games/testers.js';
@@ -63,7 +64,8 @@ import { kvLoad, kvSave } from '../db/db.js';
 //   GET  /health        "ok"
 //
 // Web game (/play, same origin, so no CORS): Discord login (see auth.ts) and
-//   GET  /me            the logged-in member: name, avatar, Kowens, items (401 if not logged in or not in the server)
+//   GET  /me            the logged-in member: name, Discord username, avatar, Kowens, items (401 if not logged in or not in the server)
+//   POST /api/beta/apply { discord, class, note? } a close beta application from the front page (web/beta.ts; a few an hour per address)
 //   GET  /prereg        pre-registration status: open, count, reward (public)
 //   POST /prereg        pre-register the logged-in member (from the game's page only)
 //   PUT  /outfit        save the logged-in member's first character look, in the creator (from the game's page only)
@@ -132,12 +134,34 @@ const PROFILE_TTL_MS = 60 * 60_000;
 
 interface Profile {
   name: string;
+  /** Their Discord username (the handle; the front page's beta form fills it in). */
+  username: string;
   avatar: string;
   at: number;
 }
 
 const profiles = new Map<string, Profile>();
 let board: { at: number; body: string } | null = null;
+
+/** Close beta applications: a few an hour per address (web/beta.ts). */
+const betaLimit = new BetaRateLimit();
+
+/** An application in the staff channel (BETA_APPLICATIONS_CHANNEL_ID; none set, nothing), as a short embed; no pings. */
+async function postBetaApplication(client: Client, a: BetaApplication, updated: boolean): Promise<void> {
+  if (!config.betaApplicationsChannelId) return;
+  const channel = await client.channels.fetch(config.betaApplicationsChannelId).catch(() => null);
+  if (!channel?.isSendable()) return;
+  const embed = new EmbedBuilder()
+    .setTitle(updated ? '🎟️ Close beta application (updated)' : '🎟️ Close beta application')
+    .setColor(0xfcda4a)
+    .addFields(
+      { name: 'Discord', value: `${escapeMarkdown(a.discordUsername)}${a.discordId ? ` · <@${a.discordId}>` : ''}`, inline: true },
+      { name: 'Class', value: a.cls, inline: true },
+      ...(a.note ? [{ name: 'Note', value: escapeMarkdown(a.note).slice(0, 1000) }] : []),
+    )
+    .setFooter({ text: `#${a.id} · status in the CMS: ${a.status}` });
+  await channel.send({ embeds: [embed], allowedMentions: { parse: [] } }).catch((err) => console.error('[beta] post failed:', err));
+}
 
 async function profile(client: Client, id: string): Promise<Profile> {
   const cached = profiles.get(id);
@@ -150,6 +174,7 @@ async function profile(client: Client, id: string): Promise<Profile> {
   const user = member?.user ?? (await client.users.fetch(id).catch(() => null));
   const fresh = {
     name: member?.displayName ?? user?.globalName ?? user?.username ?? 'someone',
+    username: user?.username ?? '',
     avatar: (member ?? user)?.displayAvatarURL({ size: 64, extension: 'png' }) ?? '',
     at: Date.now(),
   };
@@ -232,7 +257,7 @@ async function me(client: Client, req: IncomingMessage, res: ServerResponse): Pr
     endSessions(userId); // left the server
     return send(res, 401, '{"error":"not logged in"}', 'application/json', { 'Set-Cookie': clearSessionCookie() });
   }
-  const { name, avatar } = await profile(client, userId);
+  const { name, username, avatar } = await profile(client, userId);
   const items = inventory(userId).map(([id, count]) => {
     const item = ITEM_BY_ID.get(id)!;
     return { id, name: item.name, emoji: item.emoji, rarity: item.rarity, count };
@@ -245,7 +270,7 @@ async function me(client: Client, req: IncomingMessage, res: ServerResponse): Pr
   // Mini boss quests finished before their +5 piece came with the report (or with no room then): given now.
   const questPieces = questPiecesFor(userId);
   if (questPieces.length) console.log(`[quest] ${userId} got quest pieces: ${questPieces.map((i) => `${i.defId} +${i.plus}`).join(', ')}`);
-  const body: MeResponse = { id: userId, name, avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items, preregistered: isPreregistered(userId), house: !!houseOf(userId), tester: await isTester(client, userId), outfit: getOutfit(userId), nickname: getNickname(userId), title: titleOf(userId), newTitle: newTitle(userId), welcomeGift: welcomeGift(userId), status: await statusOf(client, userId), adventure: adventureOf(userId),
+  const body: MeResponse = { id: userId, name, ...(username ? { username } : {}), avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items, preregistered: isPreregistered(userId), house: !!houseOf(userId), tester: await isTester(client, userId), outfit: getOutfit(userId), nickname: getNickname(userId), title: titleOf(userId), newTitle: newTitle(userId), welcomeGift: welcomeGift(userId), status: await statusOf(client, userId), adventure: adventureOf(userId),
     dig: digStatus(userId), ...(trainingGear.length ? { trainingGear } : {}), ...(questRewards.length ? { questRewards } : {}), ...(questPieces.length ? { questPieces } : {}) };
   send(res, 200, JSON.stringify(body));
 }
@@ -834,6 +859,27 @@ export function startWebServer(client: Client): void {
         }
         titleSeen(userId, typeof body?.id === 'string' ? body.id : undefined);
         return send(res, 200, '{"ok":true}');
+      }
+      if (path === '/api/beta/apply') {
+        // The front page's close beta application (web/beta.ts): checked, a few an hour per address, saved (a repeat
+        // updates the same row), and posted to the staff channel if there is one. Logged in: their Discord id too.
+        if (req.method !== 'POST') return send(res, 405, '{"error":"POST only"}');
+        if (!fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
+        let body: unknown = null;
+        try {
+          body = JSON.parse((await readBody(req)) || 'null');
+        } catch {
+          // invalid JSON → rejected below
+        }
+        const parsed = parseBetaForm(body);
+        if (!parsed.ok) return send(res, 400, JSON.stringify({ error: parsed.error }));
+        const ip = clientIp(req);
+        if (!betaLimit.allow(ipHash(ip))) return send(res, 429, JSON.stringify({ error: 'That is a lot of applications from here. Try again in an hour.' }));
+        const discordId = loginEnabled() ? sessionUser(req) : null;
+        const { application, updated } = saveBetaApplication(parsed.form, discordId, ip);
+        console.log(`[beta] application #${application.id} ${updated ? 'updated' : 'new'}: ${application.discordUsername} (${application.cls})${discordId ? ` · ${discordId}` : ''}`);
+        void postBetaApplication(client, application, updated);
+        return send(res, 200, JSON.stringify({ ok: true, updated }));
       }
       if (req.method === 'POST' && path === '/welcome/seen') {
         if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');

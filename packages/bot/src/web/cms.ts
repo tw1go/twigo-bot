@@ -26,6 +26,7 @@ import { loadItemData } from './stats-data.js';
 import { renameCards } from '../items/rename-card.js';
 import { classTickets } from '../items/class-ticket.js';
 import { mineWarsNight, mineWarsPlan, payMineWars } from '../minewars/payout.js';
+import { BETA_CLASSES, BETA_STATUSES, betaCsv, listBetaApplications, setBetaStatus } from './beta.js';
 
 // 🛠️ The CMS: a page for the gifter (and CMS_USER_IDS) to run the game's content without a deploy or a slash command:
 // the town's own news posts, titles (make, change, give), the rewards shop's prices and what's on sale, reward amounts
@@ -46,6 +47,9 @@ import { mineWarsNight, mineWarsPlan, payMineWars } from '../minewars/payout.js'
 //   GET  <path>/api/members?q=   Discord members by name (or one ID), for Mine Wars, who may have no town nickname
 //   GET  <path>/api/boss         the field boss (Scrapheap Golem): up or not, its HP, its next rise
 //                                POST /api/boss/spawn {} it rises now in the Slums (if it isn't up)
+//   GET  <path>/api/beta?q=&status=&class=   close beta applications from the front page (web/beta.ts), newest first
+//                                POST /api/beta/status { id, status: new|contacted|invited|declined }
+//                                GET /api/beta.csv?q=&status=&class= the same list as a CSV download
 //   GET  <path>/api/minewars     tonight's (the latest 9 PM's) payout so far · POST /api/minewars/plan { attended, top }
 //                                POST /api/minewars/pay { night, attended, top } (as /gift minewars: ledger, games channel post)
 
@@ -76,8 +80,9 @@ const file = (name: string) => files.get(name) ?? files.set(name, readFileSync(n
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const SNOWFLAKE = /^\d{17,20}$/;
 
-function send(res: ServerResponse, status: number, body: unknown, type = 'application/json'): void {
+function send(res: ServerResponse, status: number, body: unknown, type = 'application/json', extra: Record<string, string> = {}): void {
   res.writeHead(status, {
+    ...extra,
     'Content-Type': type,
     'Cache-Control': 'no-store',
     // The path is the secret: never sent on as a referrer, never indexed, never framed.
@@ -233,6 +238,25 @@ export async function cms(client: Client, req: IncomingMessage, res: ServerRespo
     }
     case 'GET /api/me':
       return send(res, 200, { id: userId, name: who, nickname: getNickname(userId) });
+
+    // Close beta applications (the front page's form): the list, a status change, the CSV.
+    case 'GET /api/beta': {
+      const filter = { q: url.searchParams.get('q') ?? '', status: url.searchParams.get('status') ?? '', cls: url.searchParams.get('class') ?? '' };
+      return send(res, 200, { applications: listBetaApplications(filter), statuses: BETA_STATUSES, classes: BETA_CLASSES });
+    }
+    case 'POST /api/beta/status': {
+      const id = Number(body!.id);
+      const status = str(body!.status);
+      const a = Number.isInteger(id) ? setBetaStatus(id, status) : null;
+      if (!a) return bad('No such application, or not a status.');
+      await log(client, who, `set beta application #${a.id} (${a.discordUsername}) to ${a.status}`);
+      return send(res, 200, { application: a });
+    }
+    case 'GET /api/beta.csv': {
+      const filter = { q: url.searchParams.get('q') ?? '', status: url.searchParams.get('status') ?? '', cls: url.searchParams.get('class') ?? '' };
+      const day = new Date().toISOString().slice(0, 10);
+      return send(res, 200, betaCsv(listBetaApplications(filter)), 'text/csv; charset=utf-8', { 'Content-Disposition': `attachment; filename="beta-applications-${day}.csv"` });
+    }
 
     case 'GET /api/overview': {
       const ids = accountIds();

@@ -18,6 +18,7 @@ import { today } from '../time.js';
 //  • v10, the web game's classes, quests and equipment: adventurers. v11: their level, XP and points.
 //  • v12, the web game's items as instances: items (worn, or in the combat bag), and adventurers.kusing.
 //  • v13, the web game's finished trades (a log: who gave whom what): trades.
+//  • v14, the front page's close beta applications (web/beta.ts; the CMS's Beta applications): beta_applications.
 //  • kv: small singleton documents keyed by their old file name (e.g. 'race.json', 'rotation.json').
 // Stores cache their state in memory (the bot is the only writer) and save through db/sync.ts, which writes only
 // the rows that changed.
@@ -295,6 +296,23 @@ export const MIGRATIONS: string[] = [
   );
   CREATE INDEX trades_a ON trades (a);
   CREATE INDEX trades_b ON trades (b);
+  `,
+  /* v14: applications to the close beta from the front page (web/beta.ts, POST /api/beta/apply), one per Discord
+     username (a repeat updates it), worked through in the CMS (Beta applications: status new → contacted → invited, or
+     declined). The IP only as a salted hash (the rate limit's key; never the address itself). */ `
+  CREATE TABLE beta_applications (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    discord_username TEXT NOT NULL,                 -- how staff contact them (as typed, trimmed)
+    discord_id       TEXT,                          -- their Discord id when they applied logged in
+    class            TEXT NOT NULL,                 -- the class they'd main, or 'Not sure yet'
+    note             TEXT NOT NULL DEFAULT '',
+    status           TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'contacted', 'invited', 'declined')),
+    created_at       INTEGER NOT NULL,              -- ms
+    updated_at       INTEGER NOT NULL,              -- ms
+    ip_hash          TEXT                           -- sha256 of a salt (kv 'beta-salt') and their IP
+  );
+  CREATE UNIQUE INDEX beta_applications_username ON beta_applications (lower(discord_username));
+  CREATE INDEX beta_applications_discord_id ON beta_applications (discord_id);
   `,
 ];
 

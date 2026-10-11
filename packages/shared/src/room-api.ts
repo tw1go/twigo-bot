@@ -63,6 +63,8 @@ export interface MeResponse {
   id: string;
   /** Server nickname, or Discord display name. */
   name: string;
+  /** Their Discord username (the handle), when known: the front page's close beta form fills it in. */
+  username?: string;
   /** Avatar URL (64px PNG), or '' if unknown. */
   avatar: string;
   /** Wallet Kowens (not counting the vault). */
