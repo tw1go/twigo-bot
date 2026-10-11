@@ -16,6 +16,7 @@
     "build": "npm run build -w @mikazuki/shared && npm run build -w @mikazuki/bot && npm run build -w @mikazuki/game",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
-    "deploy-commands": "npm run deploy-commands -w @mikazuki/bot"
+    "deploy-commands": "npm run deploy-commands -w @mikazuki/bot",
+    "desktop:publish": "node packages/desktop/scripts/publish.mjs"
   }
 }

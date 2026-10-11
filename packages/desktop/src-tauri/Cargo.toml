@@ -19,6 +19,9 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
 [target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
+# Updates in the app: download, check the signature against the public key in tauri.conf.json, install, restart.
+tauri-plugin-process = "2"
+tauri-plugin-updater = "2"
 # One app at a time: a mikazuki:// login link reaches the window that's already open (on Windows a link starts a
 # second copy otherwise).
 tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }

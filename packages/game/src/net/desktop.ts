@@ -1,7 +1,9 @@
 import { onOpenUrl, getCurrent } from '@tauri-apps/plugin-deep-link';
 import { openUrl } from '@tauri-apps/plugin-opener';
+import { relaunch } from '@tauri-apps/plugin-process';
+import { type Update, check } from '@tauri-apps/plugin-updater';
 import { api, setAppToken } from './endpoints';
-import { notifyDownload } from '../ui/version';
+import { notifyDownload, notifyUpdate } from '../ui/version';
 import { startWindow, toggleFullscreen } from './window-mode';
 
 // 🖥️ The desktop app's own parts (packages/desktop, Tauri 2): only ever loaded inside it (net/platform.ts isDesktopApp),
@@ -12,8 +14,11 @@ import { startWindow, toggleFullscreen } from './window-mode';
 //   logged in. mikazuki://auth?error=… says why not.
 // - The window: Settings → Display → Window (net/window-mode.ts), applied as it opens; F11 (Windows) or Ctrl+Cmd+F
 //   (Mac) swaps Full screen and the last other mode.
-// - Updates: on start, twigo.dev/downloads/latest.json; a newer version shows the version notice with a Download button
-//   (this system's file, in the browser). No auto-updater. The server turning this version away (/me's 426) shows it too.
+// - Updates: on start, twigo.dev/downloads/latest.json (the updater plugin reads its `platforms`, signed by
+//   packages/desktop/scripts/publish.mjs): a newer version shows "A new version of Mikazuki is ready" with Update now,
+//   which downloads it, installs it and restarts the app. If the updater can't (no signed release for this system, a
+//   failed download), the notice's Download opens this system's installer in the browser instead. The server turning
+//   this version away (/me's 426) shows it too.
 
 declare const __BUILD__: { version: string };
 
@@ -79,21 +84,46 @@ interface Latest {
   mac?: string;
 }
 
-/** A newer version on twigo.dev/downloads: the notice with Download. */
-async function checkForNewVersion(): Promise<void> {
+async function latestRelease(): Promise<Latest | null> {
   const r = await fetch(`${SERVER}/downloads/latest.json`, { cache: 'no-store' }).catch(() => null);
-  const latest = r?.ok ? ((await r.json().catch(() => null)) as Latest | null) : null;
-  if (!latest?.version || !newer(latest.version, __BUILD__.version)) return;
-  const link = isMac() ? latest.mac : latest.windows;
-  if (link) notifyDownload(latest.version, () => void openUrl(link));
+  return r?.ok ? ((await r.json().catch(() => null)) as Latest | null) : null;
 }
 
-/** The server no longer takes this version (/me answered 426): the notice, with this system's download if there is one. */
+/** This system's installer, in the browser (the front page if there's none). */
+const downloadFrom = (latest: Latest | null) => () => void openUrl((isMac() ? latest?.mac : latest?.windows) ?? `${SERVER}/`);
+
+/** The updater's word: an update, null (up to date), or undefined (it couldn't tell: no signed release for this system,
+ *  no network). */
+const askUpdater = (): Promise<Update | null | undefined> => check().catch(() => undefined);
+
+/** Downloads and installs an update, saying how far it got, then restarts into it (on Windows the installer closes the
+ *  app and opens the new one itself). */
+async function install(update: Update, say: (text: string) => void): Promise<void> {
+  let total = 0;
+  let got = 0;
+  await update.downloadAndInstall((e) => {
+    if (e.event === 'Started') total = e.data.contentLength ?? 0;
+    else if (e.event === 'Progress') {
+      got += e.data.chunkLength;
+      if (total) say(`Downloading the update… ${Math.min(100, Math.floor((got * 100) / total))}%`);
+    } else if (e.event === 'Finished') say('Installing… Mikazuki restarts in a moment.');
+  });
+  await relaunch();
+}
+
+/** A newer version on twigo.dev/downloads: Update now (the updater), else the notice with Download. */
+async function checkForNewVersion(): Promise<void> {
+  const [update, latest] = await Promise.all([askUpdater(), latestRelease()]);
+  if (update) return notifyUpdate(update.version, (say) => install(update, say), downloadFrom(latest));
+  if (update === null || !latest?.version || !newer(latest.version, __BUILD__.version)) return;
+  if (isMac() ? latest.mac : latest.windows) notifyDownload(latest.version, downloadFrom(latest));
+}
+
+/** The server no longer takes this version (/me answered 426): Update now if the updater has one, else Download. */
 export async function tooOld(): Promise<void> {
-  const r = await fetch(`${SERVER}/downloads/latest.json`, { cache: 'no-store' }).catch(() => null);
-  const latest = r?.ok ? ((await r.json().catch(() => null)) as Latest | null) : null;
-  const link = (isMac() ? latest?.mac : latest?.windows) ?? `${SERVER}/`;
-  notifyDownload(latest?.version ?? null, () => void openUrl(link), 'This version of Mikazuki is too old');
+  const [update, latest] = await Promise.all([askUpdater(), latestRelease()]);
+  if (update) return notifyUpdate(update.version, (say) => install(update, say), downloadFrom(latest));
+  notifyDownload(latest?.version ?? null, downloadFrom(latest), 'This version of Mikazuki is too old');
 }
 
 /** Whether version a ("v0.1.560") is newer than b. */

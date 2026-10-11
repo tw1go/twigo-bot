@@ -39,6 +39,12 @@
     }
   },
   "plugins": {
-    "deep-link": { "desktop": { "schemes": ["mikazuki"] } }
+    "deep-link": { "desktop": { "schemes": ["mikazuki"] } },
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IENGNTFDOTYxODRBN0YwQ0YKUldUUDhLZUVZY2xSejA2WnI4TkV1bG5rbjdBeUVaY1NFNUVLRW1sdHZINjV6YjZHMEM5SDVPQVkK",
+      "endpoints": ["https://twigo.dev/downloads/latest.json"],
+      "requireSignedVersion": true,
+      "windows": { "installMode": "passive" }
+    }
   }
 }

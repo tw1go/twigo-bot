@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "What the game's page may ask of the app: open the browser (logging in, downloads), its login links, the window (full screen, borderless, its size).",
+  "description": "What the game's page may ask of the app: open the browser (logging in, downloads), its login links, the window (full screen, borderless, its size), and updating itself (download, install, restart).",
   "windows": [
     "main"
   ],
@@ -15,6 +15,8 @@
     "core:window:allow-set-size",
     "core:window:allow-center",
     "opener:default",
-    "deep-link:default"
+    "deep-link:default",
+    "updater:default",
+    "process:allow-restart"
   ]
 }

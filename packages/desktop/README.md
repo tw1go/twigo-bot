@@ -29,8 +29,9 @@ open Mikazuki: say yes, and you're in.
 pick, or your screen's size) or **Windowed** (a normal window, at a size you pick or drag it to). The app remembers it.
 **F11** on Windows, **Ctrl+Cmd+F** on a Mac, goes full screen and back.
 
-**New versions**: when there's a newer one, the app says so at the top with a **Download** button. Download it and
-install it over the old one.
+**New versions**: when there's a newer one, the app says **A new version of Mikazuki is ready** at the top. Press
+**Update now**: it downloads, installs and restarts by itself. (If that ever fails, it offers **Download** instead:
+install the download over the old one.)
 
 ## For the owner: making and sharing a build
 
@@ -42,26 +43,25 @@ install it over the old one.
 - Windows and both Macs (Apple silicon and Intel): **Actions → Desktop app → Run workflow** on GitHub
   (`.github/workflows/desktop.yml`); the installers are the run's artifacts.
 
-Publishing a version:
+Publishing a version (on the owner's Mac, which has the updater's signing key):
 
-1. Put the installers in `/opt/twigo-bot/web/downloads/` on the server (deploys never touch that folder), e.g.
-   `scp Mikazuki_0.1.560_universal.dmg ubuntu@<server>:/tmp/` then `sudo mv /tmp/Mikazuki_* /opt/twigo-bot/web/downloads/`
-   and `sudo chmod a+r /opt/twigo-bot/web/downloads/*`.
-2. Write `/opt/twigo-bot/web/downloads/latest.json` next to them (sizes in bytes; leave a system out if it has no file
-   yet: the front page then says "Coming soon" for it):
+1. Run the Desktop app workflow and download both artifacts (`mikazuki-windows-<v>.zip`, `mikazuki-mac-<v>.zip`) into
+   `~/Downloads`.
+2. `npm run desktop:publish -- <ssh-target>` (`--dry` first to see what it makes; a version as the second argument picks
+   one other than the newest). It packs the Mac update (`Mikazuki_<v>_universal.app.tar.gz`, from the .dmg), signs it
+   and the Windows setup .exe for the updater, writes `latest.json` and uploads everything to
+   `/opt/twigo-bot/web/downloads/` (deploys never touch that folder), `latest.json` last, then removes older versions.
+3. Open apps see it as they start: "A new version of Mikazuki is ready", Update now. The front page's buttons point at
+   the new files at once.
 
-   ```json
-   {
-     "version": "v0.1.560",
-     "windows": "https://twigo.dev/downloads/Mikazuki_0.1.560_x64-setup.exe",
-     "mac": "https://twigo.dev/downloads/Mikazuki_0.1.560_universal.dmg",
-     "windowsSize": 9123456,
-     "macSize": 12345678
-   }
-   ```
+`latest.json` is both the front page's ({ version, windows, mac, windowsSize, macSize }; a system left out says "Coming
+soon") and the updater's (`platforms`: windows-x86_64 → the setup .exe, darwin-aarch64 and darwin-x86_64 → the Mac
+update, each with its signature; `pub_date`).
 
-3. Open apps see it within a start: older ones show "A new version of Mikazuki is out" with Download. The front page's
-   buttons point at the new files at once.
+**The updater's key**: `~/.tauri/mikazuki-updater.key` on the owner's Mac (no password; its public half is
+`plugins.updater.pubkey` in `src-tauri/tauri.conf.json`). Every update is signed with it, bound to its version
+(`requireSignedVersion`): the apps refuse anything else. Keep a copy somewhere safe: without it no installed app can
+update itself again (a new key means everyone downloads the app by hand once). Never put it in the repo.
 
 Turning old apps away (after a change they can't follow): set `MIN_DESKTOP_VERSION` in the bot's `web/server.ts`
 (e.g. `'v0.1.560'`) and deploy; older apps get the update notice instead of the town.
@@ -71,7 +71,8 @@ Turning old apps away (after a change they can't follow): set `MIN_DESKTOP_VERSI
 - `src-tauri/`: the Tauri 2 shell (Rust): one window (Mikazuki, 1280 × 720, resizable) opening `play/index.html` from
   the staged build, its own file drag-and-drop off (`dragDropEnabled: false`: on, it swallows the page's drags, so skills,
   potions and items couldn't be dragged); plugins: opener (the browser), deep-link (`mikazuki://`), single-instance (one copy; a login link
-  reaches it).
+  reaches it), updater (twigo.dev/downloads/latest.json, signatures checked; Windows installs in passive mode, a progress
+  window only) and process (the restart).
 - The game knows it's in the app (`packages/game/src/net/platform.ts`) and then talks to https://twigo.dev
   (`net/endpoints.ts`): its session token as `Authorization: Bearer` and, on the town's WebSocket, the subprotocol
   `mk-token.<token>`; the login goes through the browser and comes back as `mikazuki://auth?code=…`
