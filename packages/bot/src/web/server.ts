@@ -965,9 +965,10 @@ export function startWebServer(client: Client): void {
     refundHeldBets(); // an arena match the bot didn't finish: both get their stake back
     const slumsMap = loadTownMap('slums'); // the Slums
     const skillLevels = Object.fromEntries(CLASSES.map((c) => [c.id, c.skills.map((k) => k.level)]));
-    // The Scrap Warrens: runs a restart ended before Barong-Barong fell give their openers' tickets back.
-    for (const r of kvLoad<{ id: string; opener: string; cleared: boolean }[]>(WARRENS_RUNS, [])) {
-      if (!r.cleared) console.log(`[warrens] run ${r.id} ended by a restart: ${refundTicketFor(r.opener) ? 'ticket back to' : 'NO ROOM for the ticket of'} ${r.opener}`);
+    // The Scrap Warrens: runs a restart ended before any boss fell there give their openers' tickets back (a boss down
+    // spends it; runs saved before `spent` existed: unless Barong-Barong fell, as then).
+    for (const r of kvLoad<{ id: string; opener: string; cleared: boolean; spent?: boolean }[]>(WARRENS_RUNS, [])) {
+      if (!(r.spent ?? r.cleared)) console.log(`[warrens] run ${r.id} ended by a restart: ${refundTicketFor(r.opener) ? 'ticket back to' : 'NO ROOM for the ticket of'} ${r.opener}`);
     }
     kvSave(WARRENS_RUNS, []);
     town = attachTown(server, {
@@ -980,8 +981,9 @@ export function startWebServer(client: Client): void {
       map: loadTownMap(),
       rooms: { hood: hoodTownMap, slums: () => slumsMap },
       mobs: { slums: (slumsRoom = new MobRoom(loadMobMap('slums'), Math.random, skillLevels, loadSkillShapes(), loadMobKinds(), loadGolemArt())) },
-      // Runs of the Scrap Warrens: the ticket from the combat bag, the open runs kept (refunds after a restart).
-      warrens: { ...loadWarrens(skillLevels), tickets: { count: warrenTicketsOf, use: useTicketFor }, saved: (runs) => kvSave(WARRENS_RUNS, runs) },
+      // Runs of the Scrap Warrens: the ticket from the combat bag (back if a run ends before a boss falls), the open runs
+      // kept (refunds after a restart).
+      warrens: { ...loadWarrens(skillLevels), tickets: { count: warrenTicketsOf, use: useTicketFor, refund: refundTicketFor }, saved: (runs) => kvSave(WARRENS_RUNS, runs) },
       // Lantern Posts: a Return Lantern from the combat bag for each teleport.
       lanterns: { count: (userId) => kindCountOf(userId, RETURN_LANTERN), use: (userId) => useKindFor(userId, RETURN_LANTERN) },
       quests: { kill: questKillFor },

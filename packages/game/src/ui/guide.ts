@@ -151,7 +151,7 @@ const TOPICS: Topic[] = [
     label: 'Scrap Warrens',
     text: [
       'A walled junk maze under the Slums for **Lv 15 to 20**, behind the **Warren Gate** east of the golem pit. Each run is yours alone, or your whole party\'s.',
-      '• Walk up to the gate (or click it): **Enter** alone, or **Open for my party**. It uses one **Warren Ticket** (the sari-sari store\'s **Dungeons** tab, or the golem\'s loot now and then). Party members in the Slums get a **Join** pop-up; the rest can join at the gate while the run lasts, no ticket needed',
+      '• Walk up to the gate (or click it): **Enter** alone, or **Open for my party**. It uses one **Warren Ticket** (the sari-sari store\'s **Dungeons** tab, or the golem\'s loot now and then), spent once the first mini boss falls: if the run ends before that, the ticket comes back to whoever opened it (and its mobs give no XP or loot until then). Party members in the Slums get a **Join** pop-up; the rest can join at the gate while the run lasts, no ticket needed',
       '• The run waits in the start room until everyone who joined is in (a minute at most; the opener can press **Start now**), then you have **20 minutes**',
       '• Six areas, each ending in a **mini boss**\'s arena; its **shutter** opens once it falls. **Barong-Barong, the Shanty Titan** waits in the last hall',
       '• **Red** shapes on the ground are where a boss is about to hit: the fill grows until the hit. Step out! **Yellow** tiles stun you',

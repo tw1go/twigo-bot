@@ -178,16 +178,17 @@ export interface TownOptions {
    *  the system feed's. Without it they live in memory only. */
   memory?: { chat: TownChatLine[]; system: TownSystemLine[]; save(chat: TownChatLine[], system: TownSystemLine[]): void };
   /** The Scrap Warrens (web/town-warrens.ts): its data and map, what a run's mob room needs, the Warren Gate's tile in the
-   *  Slums (opening is done there), the Warren Ticket (how many a member holds; using one: false if none), and `saved`:
-   *  the open runs whenever they change (a restart refunds their openers' tickets). `dev`: open from anywhere. Without
-   *  it, no Warrens. */
+   *  Slums (opening is done there), the Warren Ticket (how many a member holds; using one: false if none; giving one
+   *  back to the opener of a run that ended before any boss fell: false if their bag had no room), and `saved`: the
+   *  open runs whenever they change (a restart refunds the openers' tickets of runs not yet spent). `dev`: open from
+   *  anywhere. Without it, no Warrens. */
   warrens?: {
     data: WarrensData;
     map: WarrensMap;
     deps: RunDeps;
     gate: [number, number];
-    tickets: { count(userId: string): number; use(userId: string): boolean };
-    saved?(runs: { id: string; opener: string; cleared: boolean }[]): void;
+    tickets: { count(userId: string): number; use(userId: string): boolean; refund?(userId: string): boolean };
+    saved?(runs: { id: string; opener: string; cleared: boolean; spent: boolean }[]): void;
     dev?: boolean;
   };
   /** Return Lanterns (a teleport between Lantern Posts uses one): how many a member holds, and using one (false: none).
@@ -552,6 +553,8 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   const killed = (room: string, kills: MobKill[]) => {
     const run = runOf(room);
     for (const k of kills) {
+      // (A run's mobs give nothing until a boss has fallen there: its ticket comes back until then.)
+      if (run && !k.warrens && !run.ticketSpent) continue;
       const credited = k.mini || k.warrens ? withParty(k.to, room) : k.to;
       if (k.boss || k.mini || k.warrens) {
         for (const user of credited) {
@@ -1418,7 +1421,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   const insideOf = (run: Run): Inside[] =>
     [...conns.values()].filter((o) => o.room === run.room).map((o) => ({ member: o.userId, id: o.player.id, at: [o.player.col, o.player.row], out: !!o.player.out }));
   /** What a run's clock or a kill set off: to its room, to members, and out with those who must go. */
-  const runNews = (run: Run, news: RunNews) => {
+  const runNews = (run: Run, news: RunNews, ticketBack?: string) => {
     for (const msg of news.room) for (const o of conns.values()) if (o.room === run.room) send(o, msg);
     for (const [member, msg] of news.to) {
       const o = conns.get(member);
@@ -1426,8 +1429,24 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     }
     for (const { member, reason } of news.out) {
       const o = conns.get(member);
-      if (o && o.room === run.room) send(o, { t: 'warrens-out', reason });
+      if (o && o.room === run.room) send(o, { t: 'warrens-out', reason, ...(member === ticketBack ? { ticketBack: true } : {}) });
     }
+  };
+  /** A run that ended before any boss fell: its opener's ticket back (told: in their bag, and as they come out, or a
+   *  line in their feed if they're elsewhere). The opener's member id if it went back. */
+  const refundRun = (run: Run): string | undefined => {
+    const member = run.opener.member;
+    const back = !!opts.warrens?.tickets.refund?.(member);
+    console.log(`[warrens] run ${run.id} ended before a boss fell: ${back ? 'ticket back to' : 'NO ROOM for the ticket of'} ${member}`);
+    const o = conns.get(member);
+    if (o) {
+      tellItems(o);
+      if (o.room !== run.room) {
+        const text = back ? 'Your Warren Ticket is back: the run ended before a mini boss fell.' : "The run ended before a mini boss fell, but your bag had no room for your Warren Ticket.";
+        send(o, { t: 'system', line: { kind: 'warrens', text, tone: back ? 'stir' : 'down' } });
+      }
+    }
+    return back ? member : undefined;
   };
   /** The tracker to everyone inside, when it changed (the timer counts down on the page). */
   const runSeen = new Map<string, string>();
@@ -1492,7 +1511,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     setInterval(() => {
       const now = Date.now();
       for (const { run, news } of W.tick(now, insideOf)) {
-        runNews(run, news);
+        runNews(run, news, news.closed && !run.ticketSpent ? refundRun(run) : undefined);
         if (news.closed) {
           loots.delete(run.room);
           runSeen.delete(run.id);

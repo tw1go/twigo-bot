@@ -626,7 +626,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   their arena tiles, boss tile, guards and checkpoint, shutters with their passage tiles, the start room's `seal`, the
   last boss's body). The Warren Gate is a Slums prop (`slums-warren-gate`, its `portal` strip pulsing over it, also the
   exit warp `warren-exit`). Bot: `web/town-warrens.ts` (pure, tested): `Warrens` opens runs (Lv 15, one Warren Ticket from
-  the combat bag, one run per party, at most 10; a solo run stays its opener's, a party's lets in anyone in that party
+  the combat bag, spent once a boss falls (`Run.ticketSpent`): until then the run's mobs give no XP, loot or quest
+  credit, and a run ending gives the opener the ticket back (`tickets.refund`; told as they come out, `warrens-out`
+  ticketBack, or in their feed); one run per party, at most 10; a solo run stays its opener's, a party's lets in anyone in that party
   while it lives), `Run` per run (room `warrens:<id>`, its own MobRoom on its own copy of the map, its own LootRoom):
   gathering (start room sealed, waits for the opener and those who pressed Join, 60 s at most, Start now) → running (20
   min, a minute's warning) → cleared (Barong-Barong down, closes 3 min later) or closed (time up, or 2 min empty; everyone
@@ -641,7 +643,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   bosses count for no quest, normal kills do. `web/town.ts`: `?room=warrens` puts you in the run you may be in (else
   `warrens-out` and close 4002); messages warrens-gate / -open (at the gate) / -join / -start / -leave; a 1 s run clock;
   `TownOptions.warrens` (server.ts: tickets from the combat bag; the open runs kept in kv 'warrens-open' so a restart
-  refunds the openers' tickets of runs not cleared). Game: area 'warrens' (net/hood.ts, BootScene), `ui/warrens.ts` (gate
+  refunds the openers' tickets of runs not yet spent). Game: area 'warrens' (net/hood.ts, BootScene), `ui/warrens.ts` (gate
   panel, invite, the run's timer top centre (`#warrens-timer`: Time left / Starts in / Closing in; the boss bar and other top-centre boxes move under it), the tracker in the quest tracker's place (body.warrens-on: boss pips, who it waits for, Start now, Leave), area banner, kick countdown, the cleared pop-up as Barong-Barong falls (`showWarrensCleared`: the run's `clearMs` from its start, `team` = who was inside, the close countdown, Leave now / Stay; once per run per tab, sessionStorage `mk_warrens_cleared`)), `world/warrens.ts`
   (shutters and seal on the walk grid, boss bar, the boss camera in Barong-Barong's arena while it's up (`bossFrame`: centred
   on its art's box, mobs.json `frame` [0,10,744,497] over every sheet, as wide and tall either way as it takes to take you

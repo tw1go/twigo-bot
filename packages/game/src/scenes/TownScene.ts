@@ -87,7 +87,7 @@ import { Mobs, TONE, showSlowed } from '../world/mobs';
 import { GOLEM_SOUNDS, GolemView } from '../world/golem';
 import { loadBoss } from '../assets/queue';
 import { WarrensView } from '../world/warrens';
-import { WarrensTracker, showKickCountdown, showWarrensCleared, showWarrensGate, showWarrensInvite } from '../ui/warrens';
+import { WarrensTracker, noteTicketBack, showKickCountdown, showWarrensCleared, showWarrensGate, showWarrensInvite, tellTicketBack } from '../ui/warrens';
 import { FxLayers } from '../world/fx-layers';
 import { SKILL_POSE, battleSheets } from '../characters/battle-art';
 import { cooldownOf, mpCostOf } from '../combat/cooldowns';
@@ -656,6 +656,7 @@ export class TownScene extends Phaser.Scene {
     this.coverUp();
     this.settleFrom = this.time.now;
     this.afterReveal(1800, () => this.announceRewards()); // once the arrival has settled
+    this.afterReveal(2200, tellTicketBack); // (out of a Warrens run that ended before a boss fell)
     exposeDebug(this);
     // Dev: ?arena=bot goes straight into a match against the bot (with &rounds=win,lose,draw… deciding the rounds);
     // ?arena=menu opens the arena's menu.
@@ -1848,6 +1849,7 @@ export class TownScene extends Phaser.Scene {
         return;
       }
       if (m.t === 'warrens-out') {
+        if (m.ticketBack) noteTicketBack();
         if (m.reason === 'closed') toast('The Scrap Warrens closed.', 2600);
         if (m.reason === 'party') toast('You left the party: back to the Slums.', 2600);
         return this.travel('slums');

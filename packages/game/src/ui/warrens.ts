@@ -16,7 +16,7 @@ import { toast } from './toast';
 // - Cleared (Barong-Barong down): a pop-up with how long the run took, who was in it, the time until it closes (for the
 //   loot on the floor), Leave now and Stay; once per run (sessionStorage CLEARED_KEY: a reload doesn't bring it back).
 
-const GATE_LINE = 'Lv 15+ · solo or party · needs 1 Warren Ticket';
+const GATE_LINE = 'Lv 15+ · solo or party · needs 1 Warren Ticket (back if no mini boss falls)';
 
 /** The gate's panel: `act` opens (alone or for the party) or joins. */
 export function showWarrensGate(g: TownWarrensGate, act: (what: 'open' | 'join') => void): void {
@@ -85,6 +85,8 @@ const clock = (ms: number) => {
 };
 
 const CLEARED_KEY = 'mk_warrens_cleared';
+/** The opener's ticket came back (the run ended before a boss fell): told once they're back in the Slums. */
+const TICKET_BACK_KEY = 'mk_warrens_ticket_back';
 
 /** The run's cleared (`run.clearMs`): its pop-up, once per run. `leave`: out of the Warrens now. */
 export function showWarrensCleared(run: TownWarrensRun, leave: () => void): void {
@@ -236,4 +238,25 @@ export function showKickCountdown(ms: number): void {
     if (s > 1) setTimeout(say, 1000);
   };
   say();
+}
+
+/** The run ended before a boss fell and the opener's ticket went back (`warrens-out`'s ticketBack): kept through the
+ *  trip back to the Slums (a page load), then told there (`tellTicketBack`). */
+export function noteTicketBack(): void {
+  try {
+    sessionStorage.setItem(TICKET_BACK_KEY, '1');
+  } catch {
+    /* (no storage: untold) */
+  }
+}
+
+/** On arrival: the ticket-back toast, once. */
+export function tellTicketBack(): void {
+  try {
+    if (!sessionStorage.getItem(TICKET_BACK_KEY)) return;
+    sessionStorage.removeItem(TICKET_BACK_KEY);
+  } catch {
+    return;
+  }
+  toast('Your Warren Ticket is back: the run ended before a mini boss fell.', 4500);
 }

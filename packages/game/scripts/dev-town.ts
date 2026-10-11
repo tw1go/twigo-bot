@@ -337,8 +337,9 @@ export function devTown(): Plugin {
           tickets: {
             count: (name) => gearOf(name).bag.reduce((n, i) => n + (i?.defId === 'warren-ticket' ? (i.count ?? 1) : 0), 0),
             use: (name) => takeKind(gearOf(name).bag, 'warren-ticket', 1),
+            refund: (name) => !!devGive(items, gearOf(name), 'warren-ticket', {}, devUid),
           },
-          saved: (runs) => server.config.logger.info(`[warrens] open runs: ${runs.map((r) => `${r.id} (${r.opener}${r.cleared ? ', cleared' : ''})`).join(', ') || 'none'}`, { timestamp: true }),
+          saved: (runs) => server.config.logger.info(`[warrens] open runs: ${runs.map((r) => `${r.id} (${r.opener}${r.cleared ? ', cleared' : r.spent ? ', ticket spent' : ''})`).join(', ') || 'none'}`, { timestamp: true }),
         },
         // Lantern Posts: the dev town's kept items (?give=return-lantern::5).
         lanterns: {

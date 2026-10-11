@@ -25,6 +25,8 @@ import { type MobDirector, type MobEvent, type MobKill, type MobKinds, type MobM
 // LootRoom for the room) and this controller: it gathers in the start room (its way out shut) until the opener and
 // everyone who said Join are in (at most run.gatherSeconds, or the opener's Start now), then runs for the time limit;
 // each area's mini boss keeps its shutter shut until it dies (then it opens for good and the checkpoint moves on);
+// the opener's ticket counts as spent only once a boss has fallen (`ticketSpent`): until then the run's mobs give
+// nothing (no XP, loot or quest credit: the host's job) and a run ending gives the ticket back;
 // mobs never respawn; a boss with no living player in its arena for bossResetSeconds heals to full and its called mobs
 // go; mob and boss HP follow the players inside (scaling); it closes 3 minutes after Barong-Barong falls, when the time
 // is up, or when nobody has been inside for closeWhenEmptySeconds (everyone left inside goes back to the Slums).
@@ -175,6 +177,9 @@ export class Run implements MobDirector {
   private startNow = false;
   /** The areas whose shutter is open, and the bosses. */
   readonly opened = new Set<string>();
+  /** A boss has fallen, so the opener's ticket is spent. Until then its mobs give nothing (no XP, loot or quest
+   *  credit), and the run ending (time up, empty, a restart) gives the ticket back: leaving early never farms area 1. */
+  ticketSpent = false;
   private readonly bosses = new Map<string, BossState>();
   private pending: Pending[] = [];
   private moveSeq = 0;
@@ -421,6 +426,7 @@ export class Run implements MobDirector {
     if (at < 0) return false;
     for (const b of list.slice(0, at)) {
       b.dead = true;
+      this.ticketSpent = true;
       this.mobs.removeMobs([b.mob]);
       const shutter = this.map.dungeon.shutters.find((x) => x.area === b.area.id);
       if (!shutter) continue;
@@ -444,6 +450,7 @@ export class Run implements MobDirector {
     const b = this.bosses.get(kill.id);
     if (!b || b.dead) return out;
     b.dead = true;
+    this.ticketSpent = true;
     this.pending = this.pending.filter((p) => p.boss !== b.mob);
     out.room.push({ t: 'boss-cancel', id: b.mob });
     out.room.push(...(this.mobs.setFlags(b.mob, { untargetable: false, blockAll: false }) as TownServerMessage[]));
@@ -866,8 +873,8 @@ export class Warrens {
     return out;
   }
 
-  /** The open runs (to refund their openers' tickets if a restart ends them before Barong-Barong falls). */
-  openRuns(): { id: string; opener: string; cleared: boolean }[] {
-    return this.all().map((r) => ({ id: r.id, opener: r.opener.member, cleared: r.phase === 'cleared' }));
+  /** The open runs (a restart gives back the tickets of those no boss has fallen in yet). */
+  openRuns(): { id: string; opener: string; cleared: boolean; spent: boolean }[] {
+    return this.all().map((r) => ({ id: r.id, opener: r.opener.member, cleared: r.phase === 'cleared', spent: r.ticketSpent }));
   }
 }

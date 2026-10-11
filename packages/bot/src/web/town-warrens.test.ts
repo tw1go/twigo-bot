@@ -158,7 +158,9 @@ test('a mini boss down opens its shutter for good and moves the checkpoint on', 
   assert.equal(run.map.blocked[r][c], 1);
   assert.deepEqual(run.checkpoint(), area('tin').checkpoint);
   const kill: MobKill = { id: 'boss:celes-tin', kind: 'tin-can', at: area('tin').bossTile, level: 16, xp: 0, to: ['a'], warrens: { id: 'celes-tin', boss: 'mini' } };
+  assert.equal(run.ticketSpent, false, 'no boss down yet: the ticket would come back');
   const news = run.onKill(kill, 5000);
+  assert.equal(run.ticketSpent, true, 'a boss down spends it');
   assert.equal(run.map.blocked[r][c], 0);
   assert.deepEqual(run.checkpoint(), area('tire').checkpoint);
   assert.ok(run.opened.has('tin'));
@@ -385,10 +387,11 @@ const wait = (ms: number) => new Promise((ok) => setTimeout(ok, ms));
 const heard = async (c: { last: (t: never) => unknown }, t: string) => {
   for (let k = 0; k < 80 && !c.last(t as never); k++) await wait(25);
 };
-async function town(opts: { tickets: Record<string, number>; party?: boolean; level?: Record<string, number>; kill?: (name: string, mob: { level: number; xp: number }) => void }) {
+async function town(opts: { tickets: Record<string, number>; party?: boolean; level?: Record<string, number>; kill?: (name: string, mob: { level: number; xp: number }) => void; data?: typeof W }) {
   const stats = loadStats();
   const slums = loadMobMap('slums');
-  const saved: { id: string; opener: string; cleared: boolean }[][] = [];
+  const saved: { id: string; opener: string; cleared: boolean; spent: boolean }[][] = [];
+  const refunds: string[] = [];
   const progress: Record<string, SavedProgress> = {};
   const server = createServer();
   attachTown(server, {
@@ -407,8 +410,12 @@ async function town(opts: { tickets: Record<string, number>; party?: boolean; le
       },
     },
     warrens: {
-      data: W, map, deps: deps(), gate: W.entry.warp.tile,
-      tickets: { count: (u) => opts.tickets[u] ?? 0, use: (u) => (opts.tickets[u] ?? 0) > 0 && !!(opts.tickets[u]--, true) },
+      data: opts.data ?? W, map, deps: deps(), gate: W.entry.warp.tile,
+      tickets: {
+        count: (u) => opts.tickets[u] ?? 0,
+        use: (u) => (opts.tickets[u] ?? 0) > 0 && !!(opts.tickets[u]--, true),
+        refund: (u) => (refunds.push(u), (opts.tickets[u] = (opts.tickets[u] ?? 0) + 1), true),
+      },
       saved: (runs) => saved.push(runs),
     },
   });
@@ -429,7 +436,7 @@ async function town(opts: { tickets: Record<string, number>; party?: boolean; le
       ws.on('open', () => ok(c));
       ws.on('unexpected-response', () => ok(c));
     });
-  return { open, saved, close: () => new Promise((ok) => server.close(ok)) };
+  return { open, saved, refunds, close: () => new Promise((ok) => server.close(ok)) };
 }
 
 test("over the town's socket: open at the Warren Gate (a ticket, Lv 15), in the run, back in after a reload; others are sent back out", async () => {
@@ -560,5 +567,49 @@ test("over the town's socket: a kill's XP is shared with party members nearby, r
   const base = loadStats().mobs.list['tin-can'].xp;
   assert.deepEqual(xp, { Mara: Math.round((base * 1.1) / 2), Bob: Math.round((base * 1.1) / 2) });
   for (const c of [mara, bob]) c.ws.close();
+  await T.close();
+});
+
+test("over the town's socket: until a boss falls a run's mobs give nothing, and a run ending then gives the opener's ticket back", async () => {
+  const xp: Record<string, number> = {};
+  const tickets = { Mara: 1 };
+  // (Closed a second after it's empty, so the test needn't wait two minutes.)
+  const T = await town({ tickets, kill: (name, mob) => (xp[name] = mob.xp), data: { ...W, run: { ...W.run, closeWhenEmptySeconds: 1 } } });
+  const [gc, gr] = W.entry.warp.arrive;
+  const gate = await T.open('Mara', 'slums');
+  await wait(80);
+  gate.send({ t: 'here', col: gc, row: gr, dir: 's' });
+  gate.send({ t: 'warrens-open' });
+  await heard(gate, 'warrens-go');
+  assert.equal(tickets.Mara, 0, 'taken at the door');
+  gate.ws.close();
+  const inside = await T.open('Mara', 'warrens');
+  await wait(1300);
+  await heard(inside, 'warrens');
+  assert.equal(inside.last('warrens')?.run.phase, 'running');
+  // One of the first area's mobs (not a boss or its guards), one-shot beside it: no XP, no loot.
+  const snap = inside.got.find((m) => m.t === 'mobs') as Extract<Msg, { t: 'mobs' }>;
+  const mob = snap.mobs.find((m) => !m.id.startsWith('boss:') && !m.id.startsWith('guard:'))!;
+  assert.ok(mob, 'a mob in the run');
+  inside.send({ t: 'here', col: mob.col + 1, row: mob.row, dir: 's' });
+  await wait(80);
+  inside.send({ t: 'attack', mob: mob.id, skill: 0 });
+  await heard(inside, 'mob-hit');
+  assert.ok(inside.last('mob-hit')?.hits[0].dead, JSON.stringify(inside.got.filter((m) => m.t === 'attack-refused')));
+  await wait(150);
+  assert.deepEqual(xp, {}, 'no XP before a boss falls');
+  assert.ok(!inside.got.some((m) => m.t === 'loot-drop'), 'no loot either');
+  assert.equal(T.saved.at(-1)?.[0]?.spent, false);
+  // She leaves; the run, empty, closes: her ticket comes back, and she hears it in the Slums.
+  inside.send({ t: 'warrens-leave' });
+  await heard(inside, 'warrens-out');
+  inside.ws.close();
+  const back = await T.open('Mara', 'slums');
+  for (let k = 0; k < 120 && !T.refunds.length; k++) await wait(25);
+  await wait(100);
+  assert.deepEqual(T.refunds, ['Mara']);
+  assert.equal(tickets.Mara, 1);
+  assert.ok(back.got.some((m) => m.t === 'system' && m.line.kind === 'warrens' && m.line.text.startsWith('Your Warren Ticket is back')));
+  back.ws.close();
   await T.close();
 });
