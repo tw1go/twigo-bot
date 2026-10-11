@@ -115,6 +115,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
 Data added in this repo that the owner's `mikazuki-assets` copy doesn't have yet; each says so in a `note` beside it
 where JSON allows. When you add one, add it here (and tell the owner, who copies them back):
 
+- `classes/stats.json`: `enhancement.cost.repairKits` (Repair Kits by the broken item's +, 11 Oct 2026).
 - `classes/stats.json`: `derived.critRate.perDEX` 0.003 (was 0.001, 11 Oct 2026: DEX worth a point like STR and INT).
 - `classes/stats.json` enhancement (11 Oct 2026, `buffNote`): `perLevel` 3% / 8% / 15% at +16 / 20% from +17 (was 2/3/5%),
   `armorMinDEF`, `accessories.perLevel` as tiers (2% to +16, 5% from +17; was 1%), the `totalAt20`s.
@@ -738,7 +739,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   ATK/DEF, accessories' lines), `luckPerFail`, `breaksFrom` (+16), `repairRefusal`, `embedRefusal` (gear Lv ≥ agimat, stats.json agimats.onlyIn (repo addition: crit rate / crit damage head and hands only, damage amp feet and body only; disassembly rolls only fitting stats, `rollAgimatStat`'s slot; the agimat tooltip says it),
   slot lock, two different stats, rare ones up to stats.json agimats.rarePerItem (repo addition: 2, both slots; was one)), `fragmentsFor` (2 + 3 × the stones to its +), `disassemblyYield`, `auraFor` /
   `itemAura`); rolls in bot `web/forge.ts` (pure, tested `forge.test.ts`): `enhance` (success +1, luck 0; fail: stones
-  used, luck += its bracket's; from +16 broken, keeps its +, `unequipBroken`), `repair` (a kit of its tier), `embed` (a full
+  used, luck += its bracket's; from +16 broken, keeps its +, `unequipBroken`), `repair` (kits of its tier, as many as the + it kept takes: stats.json enhancement.cost.repairKits, a repo addition, +15 1, +16/+17 2, +18 3, +19 4; shared `repairKitsFor` / `repairKitsText`; the Repair window shows "Repair Kits n / N"), `embed` (a full
   slot answers `confirm` until `replace`; the old agimat breaks), `disassemble` (bag only; fragments + from slotted gear an
   agimat of its level locked to its slot, `rollAgimatStat` × 3 rare weight for two slots; its agimats go; all or nothing),
   `combine` (every 10 fragments → a whetstone); a success at +15 and up (`enhanceFeedLine`, any gear, from the weapon aura's first tier) is a system feed line for the whole town and Discord's town log (kind 'forge', 🔨; "Mara enhanced their Sturdy Slingshot +15!", coloured by the aura's tier: blue 'rare', gold 'legendary', prismatic 'secret'; the dev town's /__forge too; tested), and several at once: 'disassemble-many' / 'sell-many' {items} (`many`: each by

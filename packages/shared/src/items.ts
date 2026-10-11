@@ -112,7 +112,7 @@ export interface ItemStats {
     armorMinDEF?: { from: number; to: number; def: number }[];
     /** Accessories' lines: tiers like perLevel's (or one % for every plus). */
     accessories: { perLevel: PlusTier[] | number };
-    cost: { successPct: (number | null)[]; whetstonesPerTry: (number | null)[]; luckPerFail: Record<string, number>; breaks: string };
+    cost: { successPct: (number | null)[]; whetstonesPerTry: (number | null)[]; luckPerFail: Record<string, number>; breaks: string; repairKits?: Record<string, number | string> };
     weaponAura: { tiers: { from: number; to: number; aura: string; colours?: string[]; cycle?: string[]; glints?: number }[]; smoke: { count: Record<string, string> } };
   };
   disassembly: { fragments: { formula: string; craft: string }; agimat: { rareWeight: Record<string, string> } };

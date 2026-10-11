@@ -201,7 +201,7 @@ const TOPICS: Topic[] = [
       '• **Click a whetstone** in your combat bag: the **Enhance** window opens. Drag (or click) a weapon, armor piece or accessory in: only gear of the whetstone’s tier (Rough: item **Lv 1–20**). Worn gear works too',
       '• Add whetstones with **+** or drag the stack in. A try takes more as the + rises (**1** for +1 … **20** for +20); the window shows the odds and what the next + gives',
       '• A fail uses the whetstones but adds **luck** to your next try at that step (**Luck +10%**…); a success resets it. An item **never loses a +**',
-      '• From **+16** a fail **breaks** the item: it keeps its + but gives nothing (and comes off) until fixed. **Click a Repair Kit** and drag the broken item in',
+      '• From **+16** a fail **breaks** the item: it keeps its + but gives nothing (and comes off) until fixed. **Click a Repair Kit** and drag the broken item in. A broken **+15** takes **1** kit, **+16** and **+17** take **2**, **+18** takes **3**, **+19** takes **4**',
       '• Weapons and armor gain base ATK or DEF: **+3%** a + up to +10, **+8%** up to +15, **+15%** at +16 and **+20%** each from **+17 to +20** (about 2.6× the base at +20). Armor gains at least **1 DEF** a + from +11 and **2** from +17',
       '• Accessories’ lines grow **2%** a + up to +16, then **5%** each from +17',
       '• **Weapon auras**: a **+15** weapon glows blue, **+18** gold, **+20** prismatic, in town and in battle, for everyone to see',
