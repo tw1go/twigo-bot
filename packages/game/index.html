@@ -1312,9 +1312,9 @@
       #reward .op-bail { flex: none; padding: 5px 10px; border: 2px solid #1E1B3A; border-radius: 0; background: #7DD3FC; color: #1E1B3A; font: inherit; font-size: calc(13px * var(--text)); font-weight: 700; box-shadow: inset 0 2px 0 #E0F2FE, inset 0 -3px 0 #0284C7, 0 3px 0 #1E1B3A; }
       #reward .op-bail:hover:not(:disabled) { background: #BAE6FD; }
       #reward .op-bail:disabled { opacity: 0.5; }
-      /* Sari-sari store (ui/shop.ts; tabs share the bank's .bk-tabs): six tabs, a little narrower. */
-      #reward .sh-tabs .bk-tab { min-width: 0; padding: 6px 4px 5px; font-size: calc(14px * var(--text)); }
-      #reward .rw-card:has(.sh-body) { width: min(660px, calc(100vw - 32px)); }
+      /* Sari-sari store (ui/shop.ts; tabs share the bank's .bk-tabs): eight tabs, each as wide as its name, sharing the rest. */
+      #reward .sh-tabs .bk-tab { flex: 1 1 auto; min-width: 0; padding: 6px 8px 5px; white-space: nowrap; font-size: calc(14px * var(--text)); }
+      #reward .rw-card:has(.sh-body) { width: min(740px, calc(100vw - 32px)); }
       /* A fixed size: the grid scrolls, the details and the message keep their room, so nothing jumps. */
       #reward .sh-body { margin-bottom: 14px; text-align: left; }
       #reward .sh-wallet { display: flex; align-items: center; justify-content: center; gap: 6px; margin: -4px 0 10px; font-size: calc(14px * var(--text)); color: #3D4256; }

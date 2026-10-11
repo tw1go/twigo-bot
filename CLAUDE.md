@@ -636,7 +636,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   title card, where the same light brings you in (shown from its 3rd frame; blink-in), and the server, its trip kept 2
   min (`trips`), shows the others there `lantern-fx` 'in' on your first 'here'. Each player alone (a party isn't pulled
   along). The Return Lantern (items.json, consumable, stacks to 99, tradeable, 200 Kusing in the sari-sari store's
-  Travel tab: combat-bag.ts `combatWares` 'travel'; the store's box is 660 px wide for its eight tabs): the bag's Use and
+  Travel tab: combat-bag.ts `combatWares` 'travel'; the store's box is 740 px wide for its eight tabs, each as wide as its name): the bag's Use and
   double-click only say "Use it at a Lantern Post." (`useAt`). Guide tab Lantern Posts. Tested: `web/travel.test.ts`.
   Dev: `?give=return-lantern::5`; the dev town's maps carry their posts (dev-town.ts).
 - NPCs (town only, not the neighbourhood; client-side: never on the server, the online list or the minimap): the
