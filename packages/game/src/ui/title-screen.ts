@@ -10,8 +10,8 @@ import { desktopLogin, loginWaits, waitingLogin } from '../net/login';
 //   coming back from the Discord login go straight to the title screen; ?intro=1 always plays it.
 // - The title screen: the pixel-art town (manifest ui.splashAnim, 24 frames at 8 fps drawn on a canvas; the still,
 //   ui.splashBg, until the sheet is in, and only the still under reduced motion), at the smallest whole-number scale that
-//   covers the screen, centred and cropped; "MIKAZUKI" in Pixelify Sans, Kowen gold with a navy drop shadow and glow, at
-//   screen resolution in the sky; a dark band at the bottom with the button (ui.titleButton as a 9-slice at the same
+//   covers the screen, centred and cropped; the game's logo (manifest ui.logoMikazuki, pixel art) in the sky: part of
+//   the art at its scale (top-left at art px LOGO_AT), else centred at a scale that fits (drawTitle); a dark band at the bottom with the button (ui.titleButton as a 9-slice at the same
 //   whole-number scale: normal, hover, pressed) and a hint. Logged in (or login off): Start, "or click anywhere"; click
 //   anywhere, Enter or Space starts. Logged out: Log in with Discord (/auth/login) and "Members of the Mikazuki server
 //   only" (or the login's problem in red); only the button logs in. No button until /me has answered. A speaker in the
@@ -26,6 +26,10 @@ const CLOSE_MS = 400;
 /** The button's height and the hint's size (art px, at the scale; the CSS draws them: index.html #title-screen). */
 const BUTTON_H = 14;
 const HINT = 4.5;
+/** The logo's top-left in the 384x216 background art (the brand kit's title mock). */
+const LOGO_AT = [95, 6] as const;
+/** The button band's top (index.html #title-screen .ts-band: 17% high), which the logo stays above. */
+const BAND_TOP = 0.83;
 
 const asset = (f: string) => `${import.meta.env.BASE_URL}assets/${f}`;
 const still = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -96,6 +100,9 @@ export class TitleScreen {
   private readonly splash: Splash;
   private readonly bg: HTMLCanvasElement;
   private readonly title = document.createElement('canvas');
+  /** The game's logo (ui.logoMikazuki): shown once loaded; if it can't load, the drawn title instead. */
+  private readonly logo = new Image();
+  private logoState: 'loading' | 'ready' | 'failed' = 'loading';
   private readonly band = document.createElement('div');
   private readonly sound = document.createElement('button');
   /** Top left: "Install Mikazuki" (the browser offers it), or on iPhone Safari a one-time Add to Home Screen hint. */
@@ -136,7 +143,18 @@ export class TitleScreen {
     this.extra.addEventListener('click', (e) => e.stopPropagation()); // (never a click to start)
     this.unwatch = onInstallable(() => this.renderExtra());
     this.renderExtra();
-    this.root.append(this.bg, this.title, this.band, this.sound, this.extra);
+    this.logo.className = 'ts-logo';
+    this.logo.alt = '';
+    this.logo.setAttribute('aria-hidden', 'true'); // (the title's aria-label says it)
+    this.logo.hidden = true;
+    this.logo.draggable = false;
+    const L = M.ui.logoMikazuki;
+    if (L) {
+      this.logo.onload = () => ((this.logoState = 'ready'), this.drawTitle());
+      this.logo.onerror = () => ((this.logoState = 'failed'), this.drawTitle());
+      this.logo.src = asset(L.file);
+    } else this.logoState = 'failed';
+    this.root.append(this.bg, this.title, this.logo, this.band, this.sound, this.extra);
     this.root.addEventListener('click', this.clicked);
     addEventListener('keydown', this.keyed);
     addEventListener('resize', this.layout);
@@ -266,7 +284,7 @@ export class TitleScreen {
   private readonly layout = () => {
     const W = innerWidth;
     const H = innerHeight;
-    const k = this.splash.fit(W, H);
+    const k = (this.artScale = this.splash.fit(W, H));
     // The button and hint at the same scale, a step smaller if the button wouldn't fit the screen's width or the band.
     let s = k;
     this.root.style.setProperty('--s', String(s));
@@ -299,9 +317,41 @@ export class TitleScreen {
     img.src = asset(B.file);
   }
 
-  /** "MIKAZUKI": Pixelify Sans, gold, a navy drop shadow and a soft navy glow; about 40% of the screen's width (80% on
-   *  a tall screen), its top at 7% of the height; drawn at the screen's resolution. */
+  /** The background's whole-number scale (layout). */
+  private artScale = 1;
+
+  /** The logo, once loaded: at the background's scale with its top-left on art px LOGO_AT, so it moves and crops with
+   *  the town; where that would put any of it off screen (a phone held upright, a narrow or short window), centred at
+   *  the largest whole-number scale no wider than 90% of the screen (never above the background's), its top at 6% of
+   *  the height, above the button band. Nothing until it loads; the drawn title if it can't. */
   private drawTitle(): void {
+    if (this.logoState === 'failed') return this.drawText();
+    this.title.width = this.title.height = 0;
+    if (this.logoState !== 'ready') return;
+    const L = this.M.ui.logoMikazuki!;
+    const [w, h] = L.size;
+    const W = innerWidth;
+    const H = innerHeight;
+    const k = this.artScale;
+    // (Where Splash.fit put the background in the title screen, which the logo shares.)
+    let x = Math.round(parseFloat(this.bg.style.left || '0') + LOGO_AT[0] * k);
+    let y = Math.round(parseFloat(this.bg.style.top || '0') + LOGO_AT[1] * k);
+    let s = k;
+    if (x < 0 || y < 0 || x + w * k > W || y + h * k > H * BAND_TOP) {
+      const top = Math.round(H * 0.06);
+      s = Math.max(1, Math.min(k, Math.floor((W * 0.9) / w), Math.floor((H * BAND_TOP - top) / h)));
+      x = Math.round((W - w * s) / 2);
+      y = top;
+    }
+    Object.assign(this.logo.style, { left: `${x}px`, top: `${y}px`, width: `${w * s}px`, height: `${h * s}px` });
+    this.logo.hidden = false;
+  }
+
+  /** The title as text, when the logo can't load: "MIKAZUKI" in Pixelify Sans, gold, a navy drop shadow and a soft
+   *  navy glow; about 40% of the screen's width (80% on a tall screen), its top at 7% of the height; drawn at the
+   *  screen's resolution. */
+  private drawText(): void {
+    this.logo.hidden = true;
     const dpr = Math.min(2, devicePixelRatio || 1);
     const W = innerWidth;
     const H = innerHeight;

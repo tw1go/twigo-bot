@@ -17484,6 +17484,15 @@
       "dom": true,
       "note": "The title screen's still background: reduced motion, and the first paint before the sheet loads"
     },
+    "logoMikazuki": {
+      "file": "ui/ui-logo-mikazuki.png",
+      "size": [
+        193,
+        53
+      ],
+      "dom": true,
+      "note": "The game's logo on the title screen (the brand kit's logo/mikazuki-logo-primary.png): pixel art, transparent, drawn at whole-number scales only"
+    },
     "buttonViolet": {
       "file": "ui/ui-button-violet-normal.png",
       "hover": "ui/ui-button-violet-hover.png",
