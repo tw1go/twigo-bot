@@ -124,7 +124,8 @@
     },
     "critRate": {
       "base": 0.05,
-      "perDEX": 0.001
+      "perDEX": 0.003,
+      "note": "Repo addition (Mac, 11 Oct 2026): perDEX 0.001 -> 0.003, so DEX is worth a point like STR (HP, DEF) and INT (MP): a Lv 20 DEX main reaches about 25% crit rate (was about 12%); still held to caps.critRate."
     },
     "critDamage": 1.5
   },

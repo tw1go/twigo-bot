@@ -126,7 +126,7 @@ test('derived stats: HP, MP, MP regen, Power with the weapon\'s ATK, DEF, crit (
   assert.equal(h.mp, 30 + 5 + 4 * 10);
   assert.ok(Math.abs(h.mpRegen - (1 + 0.05 * 10)) < 1e-9);
   const s = derivedStats(data, 'slingshot', 1, baseStats(data, 'slingshot', 1));
-  assert.ok(Math.abs(s.critRate - 0.06) < 1e-9 && s.critDamage === 1.5);
+  assert.ok(Math.abs(s.critRate - 0.08) < 1e-9 && s.critDamage === 1.5, '5% + 0.3% a DEX (10)');
   assert.equal(derivedStats(data, 'slingshot', 1, baseStats(data, 'slingshot', 1), { critRate: 0.9 }).critRate, data.caps.critRate, 'capped');
   // Gear's stats count here (a necklace's STR is HP), never for requirements (below).
   assert.equal(derivedStats(data, 'slingshot', 1, baseStats(data, 'slingshot', 1), { STR: 5 }).hp, 119 + 6 * 5);
