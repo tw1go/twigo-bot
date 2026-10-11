@@ -33,7 +33,10 @@ jobs:
       - uses: swatinem/rust-cache@v2
         with:
           workspaces: packages/desktop/src-tauri -> target
-      - run: npm ci --no-audit --no-fund
+      # No install scripts: the app's build never loads the bot's better-sqlite3 (only its types, for tsc), whose native
+      # build fails on Windows runners (node-gyp can't use their Visual Studio); esbuild's binary comes from its platform
+      # package either way.
+      - run: npm ci --no-audit --no-fund --ignore-scripts
       - name: Stage the game (its production build) into the app
         run: node packages/desktop/scripts/stage.mjs
       - name: The game's version, for the app
