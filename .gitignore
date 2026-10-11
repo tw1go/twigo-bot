@@ -4,3 +4,7 @@ dist/
 data/
 .DS_Store
 CLAUDE.local.md
+# The desktop app's build output (packages/desktop): the staged game, Rust's target and Tauri's generated schemas.
+packages/desktop/web/
+packages/desktop/src-tauri/target/
+packages/desktop/src-tauri/gen/

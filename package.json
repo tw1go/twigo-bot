@@ -11,6 +11,8 @@
   "scripts": {
     "dev:bot": "npm run dev -w @mikazuki/bot",
     "dev:game": "npm run dev -w @mikazuki/game",
+    "desktop:dev": "npm run dev -w @mikazuki/desktop",
+    "desktop:build": "npm run app -w @mikazuki/desktop --",
     "build": "npm run build -w @mikazuki/shared && npm run build -w @mikazuki/bot && npm run build -w @mikazuki/game",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",

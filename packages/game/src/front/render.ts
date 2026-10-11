@@ -43,11 +43,11 @@ export function renderHead({ content: c }: RenderInput): string {
     `<meta name="twitter:image" content="${esc(h.image)}">`,
     `<meta name="twitter:image:alt" content="${esc(h.imageAlt)}">`,
     // (Root-relative: Vite puts the base in front of <img> and <link> paths itself.)
-    `<link rel="icon" href="/brand/favicon.ico" sizes="any">`,
-    `<link rel="icon" type="image/png" sizes="32x32" href="/brand/twigo-icon-navy-32.png">`,
-    `<link rel="icon" type="image/png" sizes="192x192" href="/brand/twigo-icon-navy-192.png">`,
-    `<link rel="icon" type="image/png" sizes="512x512" href="/brand/twigo-icon-navy-512.png">`,
-    `<link rel="apple-touch-icon" href="/brand/apple-touch-icon.png">`,
+    // (The game's icons, the brand kit's: public/favicon.ico, public/icons/, public/apple-touch-icon.png.)
+    `<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">`,
+    `<link rel="icon" type="image/png" sizes="32x32" href="/icons/mikazuki-icon-32.png">`,
+    `<link rel="icon" type="image/png" sizes="16x16" href="/icons/mikazuki-icon-16.png">`,
+    `<link rel="apple-touch-icon" href="/apple-touch-icon.png">`,
   ].join('\n    ');
 }
 
@@ -80,24 +80,37 @@ export function renderBody(input: RenderInput): string {
   const nav = `
 <nav class="nav" aria-label="Main">
   <div class="wrap">
-    <a class="brand" href="#top"><img class="pixel" src="/brand/twigo-icon-navy-32.png" width="24" height="24" alt="">${esc(c.nav.brand)}</a>
+    <a class="brand" href="#top"><img class="pixel" src="/icons/mikazuki-icon-32.png" srcset="/icons/mikazuki-icon-32.png 1x, /icons/mikazuki-icon-64.png 2x" width="32" height="32" alt="">${esc(c.nav.brand)}</a>
     <ul>${c.nav.links.map((l) => `<li><a href="${l.href}">${esc(l.label)}</a></li>`).join('')}</ul>
     ${button(c.nav.play, { href: play, small: true })}
   </div>
 </nav>`;
 
   const logo = M.ui.logoTwigo;
+  /** The game's logo (pixel art, 193x53) as the hero's title: the brand kit's own 3x, 2x and 1x files, each shown at its
+   *  own size (a step down a whole number as the screen narrows; front.css .title), never scaled in between. */
+  const heroLogo = (alt: string) => {
+    const L = M.ui.logoMikazuki!;
+    const [w, h] = L.size;
+    const at = (n: number) => (n === 1 ? `/assets/${L.file}` : `/assets/${L.file.replace(/\.png$/, `@${n}x.png`)}`);
+    return `<picture>
+      <source media="(min-width: 1000px)" srcset="${at(3)}" width="${w * 3}" height="${h * 3}">
+      <source media="(min-width: 420px)" srcset="${at(2)}" width="${w * 2}" height="${h * 2}">
+      <img class="pixel" src="${at(1)}" width="${w}" height="${h}" alt="${esc(alt)}">
+    </picture>`;
+  };
   const hero = `
 <header class="hero" id="top">
   <div class="sky" aria-hidden="true"></div>
   <div class="wrap">
     <span class="badge">${esc(c.hero.badge)}</span>
-    <h1 class="title">${esc(c.hero.title)}</h1>
+    <h1 class="title">${heroLogo(c.hero.title)}</h1>
     <p class="tagline">${esc(c.hero.tagline)}</p>
     <div class="cta">
       ${button(c.hero.apply, { gold: true, attrs: ' data-apply' })}
-      ${button(c.hero.play, { href: play })}
+      ${button(c.hero.play, { href: play, attrs: ' data-play' })}
     </div>
+    <p class="play-alt" hidden></p>
     <div class="madeby">${esc(c.hero.madeBy)} <img src="/assets/${logo.file}" width="64" height="${Math.round((64 * logo.size[1]) / logo.size[0])}" alt="twigo"></div>
   </div>
 </header>`;
@@ -206,9 +219,34 @@ export function renderBody(input: RenderInput): string {
   <div class="wrap">
     <h2>${esc(c.closing.title)}</h2>
     <p class="lede">${esc(c.closing.lede)}</p>
-    <div class="cta">${button(c.hero.apply, { gold: true, attrs: ' data-apply' })}${button(c.hero.play, { href: play })}</div>
+    <div class="cta">${button(c.hero.apply, { gold: true, attrs: ' data-apply' })}${button(c.hero.play, { href: play, attrs: ' data-play' })}</div>
+    <p class="play-alt" hidden></p>
   </div>
 </div>`;
+
+  // Get the game: Windows and Mac (their downloads from /downloads/latest.json, filled in by main.ts; "Coming soon"
+  // until then) and the phone (the website, added to the home screen).
+  const g = c.get;
+  const system = (id: 'windows' | 'mac', x: { name: string; button: string; note: string }) => `
+      <div class="panel get" data-get="${id}">
+        <h3>${esc(x.name)}</h3>
+        <div class="get-do"><span class="tag soon">${esc(g.soon)}</span></div>
+        <p class="get-meta" hidden></p>
+        <p class="note" hidden>${esc(x.note)}</p>
+      </div>`;
+  const get = `
+<section id="get">
+  <div class="wrap">
+    <div class="head"><span class="eyebrow">${esc(g.eyebrow)}</span><h2>${esc(g.title)}</h2></div>
+    <div class="gets">${system('windows', g.windows)}${system('mac', g.mac)}
+      <div class="panel get" data-get="phone">
+        <h3>${esc(g.phone.name)}</h3>
+        <p>${esc(g.phone.text)}</p>
+        <div class="get-do">${button(g.phone.button, { href: play, small: true })}</div>
+      </div>
+    </div>
+  </div>
+</section>`;
 
   const footer = `
 <footer>
@@ -238,11 +276,12 @@ export function renderBody(input: RenderInput): string {
     <div class="done" id="apply-done" hidden>
       <h2 tabindex="-1">${esc(a.doneTitle)}</h2>
       <p class="lede small" id="apply-done-text">${esc(a.doneText)}</p>
-      <div class="row center">${button(a.close, { small: true, attrs: ' data-close' })}${button(a.play, { href: play, gold: true, small: true })}</div>
+      <div class="row center">${button(a.close, { small: true, attrs: ' data-close' })}${button(a.play, { href: play, gold: true, small: true, attrs: ' data-play' })}</div>
+      <p class="play-alt" hidden></p>
     </div>
   </div>
 </div>
-<script type="application/json" id="front-text">${JSON.stringify({ sending: a.sending, send: a.send, offline: a.offline, doneText: a.doneText, doneUpdated: a.doneUpdated }).replace(/</g, '\\u003c')}</script>`;
+<script type="application/json" id="front-text">${JSON.stringify({ sending: a.sending, send: a.send, offline: a.offline, doneText: a.doneText, doneUpdated: a.doneUpdated, devices: c.devices, get: { soon: g.soon, windows: g.windows.button, mac: g.mac.button } }).replace(/</g, '\\u003c')}</script>`;
 
-  return [nav, hero, '<main>', about, classes, slums, boss, dungeon, town, '</main>', closing, footer, dialog].join('\n');
+  return [nav, hero, '<main>', about, classes, slums, boss, dungeon, town, get, '</main>', closing, footer, dialog].join('\n');
 }

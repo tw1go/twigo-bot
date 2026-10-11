@@ -1,4 +1,5 @@
 import type { TownBankAction, TownBankActionResponse, TownBankResponse } from '@mikazuki/shared';
+import { api } from '../net/endpoints';
 import { playSound } from '../audio/sound';
 import { fakeLogin } from '../session';
 import { coinIcon, el, followWallet, showPopup } from './reward';
@@ -23,13 +24,13 @@ function timeLeft(ms: number): string {
 
 async function load(): Promise<TownBankResponse | null> {
   if (fakeLogin()) return structuredClone(fake);
-  const res = await fetch('/town/bank', { credentials: 'same-origin' }).catch(() => null);
+  const res = await api('/town/bank', { credentials: 'same-origin' }).catch(() => null);
   return res?.ok ? ((await res.json()) as TownBankResponse) : null;
 }
 
 async function act(action: TownBankAction, amount?: number): Promise<TownBankActionResponse | null> {
   if (fakeLogin()) return fakeAct(action, amount);
-  const res = await fetch('/town/bank', {
+  const res = await api('/town/bank', {
     method: 'POST',
     credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },

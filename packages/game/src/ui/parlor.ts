@@ -1,4 +1,5 @@
 import type { OutfitData, TitleData, TownParlorActionResponse, TownParlorResponse } from '@mikazuki/shared';
+import { api } from '../net/endpoints';
 import type { CharacterDefs, Dir } from '../assets/types';
 import type { Outfit } from '../characters/doll';
 import { sanitize } from '../characters/looks';
@@ -30,7 +31,7 @@ const result = (r: TownParlorActionResponse): ParlorResult => ({ ok: r.ok, messa
 
 async function load(): Promise<TownParlorResponse | null> {
   if (fakeLogin()) return structuredClone(fake);
-  const res = await fetch('/town/parlor', { credentials: 'same-origin' }).catch(() => null);
+  const res = await api('/town/parlor', { credentials: 'same-origin' }).catch(() => null);
   return res?.ok ? ((await res.json()) as TownParlorResponse) : null;
 }
 
@@ -38,7 +39,7 @@ type Change = { action: 'look'; outfit: OutfitData } | { action: 'title' | 'open
 
 async function post(body: Change, name: string): Promise<ParlorResult> {
   if (fakeLogin()) return result(fakeAction(body, name));
-  const res = await fetch('/town/parlor', {
+  const res = await api('/town/parlor', {
     method: 'POST',
     credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },

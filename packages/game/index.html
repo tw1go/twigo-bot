@@ -2,10 +2,19 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- The home screen app (vite.config.ts homeScreenApp: manifest.webmanifest, sw.js): full screen on iPhone too. -->
+    <meta name="theme-color" content="#1E1B3A" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Mikazuki" />
     <title>Mikazuki</title>
-    <!-- The crescent moon (public/favicon.ico: 16, 32 and 64 px; the home-screen icon on navy). -->
-    <link rel="icon" href="/play/favicon.ico" sizes="16x16 32x32 64x64" />
+    <!-- The Mikazuki icon (the brand kit's: the moon over a serif M on a night tile; public/favicon.ico 16, 32 and 48 px,
+         public/icons/, public/apple-touch-icon.png 180 px). -->
+    <link rel="icon" href="/play/favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/play/icons/mikazuki-icon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/play/icons/mikazuki-icon-16.png" />
     <link rel="apple-touch-icon" href="/play/apple-touch-icon.png" />
     <link rel="preload" href="/play/assets/font/Pixelify_Sans/PixelifySans-VariableFont_wght.ttf" as="font" type="font/ttf" crossorigin />
     <style>
@@ -22,6 +31,10 @@
       input, textarea { cursor: text; }
       input[type=range], input[type=checkbox], label.st-row { cursor: var(--cur-hand, pointer); }
       html, body { margin: 0; height: 100%; background: #1a1b26; overflow: hidden; }
+      /* A phone with a notch (viewport-fit=cover, the home screen app): the whole page, game and HUD, inside the safe area,
+         the strips beside it navy. The body holds every fixed panel (contain: layout), so they all keep clear of the notch
+         with no rule of their own. Everywhere else the insets are 0: nothing moves. */
+      body { position: fixed; top: env(safe-area-inset-top, 0px); right: env(safe-area-inset-right, 0px); bottom: env(safe-area-inset-bottom, 0px); left: env(safe-area-inset-left, 0px); height: auto; contain: layout; }
       /* Nothing on the page highlights when a drag sweeps over it (the map, the HUD, pop-ups, images); typing fields
          stay selectable, and images never get dragged out as pictures (main.ts stops that drag). */
       body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
@@ -63,12 +76,18 @@
       #title-screen:not(.ts-on) { transition-duration: 0.4s; }
       #title-screen .ts-bg { position: absolute; image-rendering: pixelated; }
       #title-screen .ts-title { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+      #title-screen .ts-logo { position: absolute; image-rendering: pixelated; pointer-events: none; user-select: none; } /* whole-number scales only (title-screen.ts drawTitle) */
       #title-screen .ts-band { position: absolute; left: 0; right: 0; bottom: 0; height: 17%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(var(--s) * 2.5px); background: rgba(17, 24, 39, 0.5); }
       #title-screen .ts-button { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; height: calc(var(--s) * 14px); padding: 0 calc(var(--s) * 8px); border-style: solid; border-width: calc(var(--s) * 4px); border-image-source: var(--btn-normal); border-image-slice: var(--btn-slice, 4) fill; border-image-repeat: stretch; background: none; image-rendering: pixelated; color: #E6E9F2; font: 400 calc(var(--s) * 7px)/1 'Pixelify Sans', monospace; text-decoration: none; white-space: nowrap; cursor: var(--cur-hand, pointer); }
       #title-screen .ts-button:hover, #title-screen .ts-button:focus-visible { border-image-source: var(--btn-hover, var(--btn-normal)); outline: none; }
       #title-screen .ts-button.ts-pressed { border-image-source: var(--btn-pressed, var(--btn-normal)); }
       #title-screen .ts-button span { text-shadow: 0 calc(var(--s) * 1px) 0 #1E1B3A; }
       #title-screen .ts-button.ts-pressed span { transform: translateY(calc(var(--s) * 1px)); }
+      #title-screen .ts-extra { position: absolute; top: calc(12px + env(safe-area-inset-top)); left: calc(12px + env(safe-area-inset-left)); max-width: min(360px, calc(100vw - 96px)); }
+      #title-screen .ts-install { padding: 8px 12px; border: 2px solid #7C2AE8; border-radius: 4px; background: rgba(30, 27, 58, 0.85); color: #F1EEFB; font: 700 calc(14px * var(--text))/1.2 'Pixelify Sans', monospace; cursor: var(--cur-hand, pointer); }
+      #title-screen .ts-install:hover { background: #7C2AE8; }
+      #title-screen .ts-ios { position: relative; margin: 0; padding: 8px 34px 8px 12px; border: 2px solid #3D4256; border-radius: 4px; background: rgba(30, 27, 58, 0.85); color: #E5E7F2; font: calc(13px * var(--text))/1.35 'Pixelify Sans', monospace; }
+      #title-screen .ts-ios-x { position: absolute; top: 2px; right: 4px; width: 26px; height: 26px; padding: 0; border: 0; background: none; color: #A9B1D6; font: 20px/1 'Pixelify Sans', monospace; cursor: var(--cur-hand, pointer); }
       #title-screen .ts-hint { margin: 0; color: #A9B1D6; font: max(12px, calc(var(--s) * 4.5px))/1.2 'Pixelify Sans', monospace; text-shadow: 0 1px 0 #1E1B3A; }
       #title-screen .ts-problem { color: #f7768e; }
       #title-screen .ts-sound { position: absolute; top: 12px; right: 12px; width: 40px; height: 40px; padding: 8px; border: 2px solid #3D4256; border-radius: 4px; background: rgba(30, 27, 58, 0.75); cursor: var(--cur-hand, pointer); }
@@ -248,6 +267,7 @@
       #town-hud .th-pop-note { margin-top: 10px; color: #7A8099; font-size: calc(13px * var(--text)); }
       #town-hud .th-settings { display: block; padding: 4px; border: 2px solid #7C2AE8; border-radius: 2px; background: #111827; color: #E6E9F2; font: inherit; font-size: calc(22px * var(--text)); line-height: 32px; min-width: 44px; }
       #town-hud .th-gear { display: block; width: 32px; height: 32px; image-rendering: pixelated; }
+      #town-hud .th-fs-icon { display: block; width: 24px; height: 24px; margin: 4px; shape-rendering: crispEdges; } /* the full screen toggle: 12 px drawn at 2x */
       #town-hud .th-settings:hover { border-color: #B794F6; background: #1E1B3A; }
       #town-hud .th-corner { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
       #town-hud .th-top, #town-hud .th-buttons { display: flex; align-items: flex-start; gap: 8px; }
@@ -325,6 +345,9 @@
       #settings .st-size { flex: 1; padding: 5px 4px; border: 2px solid #1E1B3A; border-radius: 0; background: #fff; color: #1E1B3A; font-family: inherit; font-weight: 600; box-shadow: 0 3px 0 #1E1B3A; }
       #settings .st-size:hover { background: #EDE9FE; }
       #settings .st-size[aria-checked='true'] { background: #7C2AE8; color: #fff; }
+      #settings .st-window { margin-top: 8px; } /* the desktop app's Window and Resolution (ui/window-settings.ts) */
+      #settings .st-busy { opacity: 0.6; pointer-events: none; }
+      #settings .st-select { flex: 1; padding: 4px 6px; border: 2px solid #1E1B3A; border-radius: 0; background: #fff; color: #1E1B3A; font: inherit; font-weight: 600; box-shadow: 0 3px 0 #1E1B3A; }
       #settings .st-buttons { display: flex; justify-content: space-between; gap: 10px; }
       #settings .st-key-note { margin: 0 0 8px; color: #7A8099; font-size: calc(13px * var(--text)); }
       #settings .st-key-list { max-height: min(52vh, 420px); overflow-y: auto; margin: 0 -4px 10px; padding: 0 4px; border-top: 2px solid #E2DDF3; border-bottom: 2px solid #E2DDF3; }

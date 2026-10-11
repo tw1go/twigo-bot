@@ -1,4 +1,5 @@
 import type { TownShopBuyResponse, TownShopItem, TownShopResponse } from '@mikazuki/shared';
+import { api } from '../net/endpoints';
 import { playSound } from '../audio/sound';
 import { bagSlots, countOf, pocketUsed } from '@mikazuki/shared';
 import { fakeLogin, fakeName } from '../session';
@@ -38,13 +39,13 @@ const ART_SCALE = 2;
 
 async function load(): Promise<TownShopResponse | null> {
   if (fakeLogin()) return withCombat(structuredClone(fake));
-  const res = await fetch('/town/shop', { credentials: 'same-origin' }).catch(() => null);
+  const res = await api('/town/shop', { credentials: 'same-origin' }).catch(() => null);
   return res?.ok ? ((await res.json()) as TownShopResponse) : null;
 }
 
 async function buy(id: string, quantity: number): Promise<TownShopBuyResponse | null> {
   if (fakeLogin()) return FAKE_COMBAT.some((x) => x.id === id) ? fakeCombatBuy(id, quantity) : fakeBuy(id, quantity);
-  const res = await fetch('/town/shop', {
+  const res = await api('/town/shop', {
     method: 'POST',
     credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },

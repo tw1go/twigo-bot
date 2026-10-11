@@ -40,6 +40,7 @@ rsync -az --delete \
   --exclude /.env --exclude '/.env.bak*' --exclude /CLAUDE.local.md --exclude /packages/game/_to_delete \
   --exclude 'packages/*/src' --exclude 'packages/*/scripts' --exclude 'packages/*/tsconfig.json' \
   --exclude 'packages/game/dist' --exclude 'packages/game/index.html' --exclude 'packages/game/front.html' --exclude 'packages/game/vite.config.ts' \
+  --exclude 'packages/desktop/src-tauri' --exclude 'packages/desktop/web' \
   --rsync-path="sudo rsync" \
   ./ "$TARGET:/opt/twigo-bot/"
 

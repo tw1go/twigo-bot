@@ -1,4 +1,5 @@
 import type { TownCoinSide, TownGambleResponse } from '@mikazuki/shared';
+import { api } from '../net/endpoints';
 import { playSound } from '../audio/sound';
 import { fakeLogin, loadMe } from '../session';
 import { coinIcon } from './reward';
@@ -54,7 +55,7 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, t
 
 async function gamble(bet: number, call: TownCoinSide): Promise<TownGambleResponse | null> {
   if (fakeLogin()) return fakeGamble(bet, call);
-  const res = await fetch('/town/gamble', {
+  const res = await api('/town/gamble', {
     method: 'POST',
     credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },

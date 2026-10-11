@@ -8,6 +8,7 @@ import { setMuted, soundSettings, startTitleMusic, stopTitleMusic } from '../aud
 import { loadHouseArt } from '../houses/art';
 import { currentArea, freshVisit, markHood, markSlums, markTown, slumsTownMap } from '../net/hood';
 import { bootHood } from './HouseScene';
+import { isDesktopApp } from '../net/platform';
 
 // Loads the two source-of-truth files and, meanwhile, plays the boot sequence (ui/title-screen.ts): the intro card
 // (once per tab), then the title screen with its music (audio/sound.ts startTitleMusic). Once /me has answered, the title
@@ -46,13 +47,25 @@ export class BootScene extends Phaser.Scene {
       this.load.once(Phaser.Loader.Events.COMPLETE, () => done());
       this.load.start();
     });
-    const ready = Promise.all([Promise.race([loadMe(), timeout]), font, cursors, moon]).then(([me]) => me);
+    // (The desktop app waits for /me's own answer, which gives up after 10 s: without the server it can't play.)
+    const app = isDesktopApp();
+    const ready = Promise.all([app ? loadMe() : Promise.race([loadMe(), timeout]), font, cursors, moon]).then(([me]) => me);
+    /** The desktop app with no server answering: never the town as a guest, but Try again. */
+    const unreachable = (me: MeResult | null) => app && (me === null || me.status === 'off');
     const through = new URLSearchParams(location.search).has('from') || debug === 'wardrobe'; // (through a gate: no title)
     let title: TitleScreen | null = null;
     const titleUp = (fadeIn: boolean): TitleScreen =>
       (title ??= new TitleScreen(manifest, { on: soundSettings().muted, set: setMuted }, fadeIn));
     /** The title screen's button, once /me has answered: Start (then on), or the Discord login. */
     const offer = (t: TitleScreen, me: MeResult | null) => {
+      if (unreachable(me)) {
+        t.setOffer({ kind: 'offline' });
+        t.onRetry = () => {
+          t.setOffer({ kind: 'offline', trying: true });
+          void loadMe(true).then((again) => offer(t, again));
+        };
+        return;
+      }
       if (me?.status === 'anon') {
         t.setOffer({ kind: 'guest', problem: loginProblem() });
         t.onLogin = () => stopTitleMusic();
@@ -67,7 +80,7 @@ export class BootScene extends Phaser.Scene {
     };
     if (through) {
       void ready.then((me) => {
-        if (me?.status !== 'anon') return this.route(manifest, town, me, debug);
+        if (me?.status !== 'anon' && !unreachable(me)) return this.route(manifest, town, me, debug);
         startTitleMusic(this);
         offer(titleUp(false), me);
       });

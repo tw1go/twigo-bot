@@ -1,4 +1,5 @@
 import { keyLabel, matches, onKeybinds } from './keybinds';
+import { api } from '../net/endpoints';
 import type { CharacterProgress, MeDig, MeResponse, PresenceStatus, PreregStatus } from '@mikazuki/shared';
 import { renderPrereg } from '../hud';
 import { fakeLogin, loadMe } from '../session';
@@ -9,6 +10,7 @@ import { raceBox } from './race-box';
 import { hasUnread, loadNews, showNews } from './news';
 import { showGuide } from './guide';
 import { showSettings } from './settings';
+import { isDesktopApp, isHomeScreenApp } from '../net/platform';
 
 // The town's HUD (replaces the page's login corner while you're in town): your character's head and name top left,
 // in the game's pixel frame, with your level ("Lv N") and a thin XP bar under the name (full and "MAX" at the cap), your
@@ -281,6 +283,9 @@ export function mountTownHud(o: TownHudOptions): void {
   top.append(el('div', 'th-map'));
   const buttons = el('div', 'th-buttons');
   buttons.append(quest, guide, news, settings);
+  // Full screen (the website in a browser tab, where the browser allows it: not iPhone Safari; the home screen app and the
+  // desktop app are full screen already).
+  if (document.fullscreenEnabled && !isHomeScreenApp() && !isDesktopApp()) buttons.append(fullscreenButton());
   corner.append(top, buttons, el('div', 'th-buffs')); // (ui/buff-tray.ts fills the buffs slot)
   root.append(left, corner);
 
@@ -319,7 +324,7 @@ export function mountTownHud(o: TownHudOptions): void {
   }
 
   if (o.me) {
-    void fetch('/prereg')
+    void api('/prereg')
       .then((r) => (r.ok ? (r.json() as Promise<PreregStatus>) : null))
       .catch(() => null)
       .then((prereg) => o.me && renderPrereg(left, o.me, prereg));
@@ -462,4 +467,35 @@ function shovelIcon(url: string | null): HTMLElement {
   img.src = url;
   img.alt = '';
   return img;
+}
+
+/** The HUD's full screen toggle: four corners pointing out (in) while it's (not) full screen, drawn in pixels. */
+function fullscreenButton(): HTMLButtonElement {
+  const b = document.createElement('button');
+  b.className = 'th-settings th-fullscreen';
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 12 12');
+  svg.setAttribute('class', 'th-fs-icon');
+  svg.setAttribute('aria-hidden', 'true');
+  const path = document.createElementNS(NS, 'path');
+  path.setAttribute('fill', 'currentColor');
+  svg.append(path);
+  b.append(svg);
+  // (Corners out: 3-pixel brackets at each corner; in: the same turned inward.)
+  const OUT = 'M0 0h4v1H1v3H0zM8 0h4v4h-1V1H8zM0 8h1v3h3v1H0zM11 8h1v4H8v-1h3z';
+  const IN = 'M3 0h1v4H0V3h3zM8 0h1v3h3v1H8zM0 8h4v4H3V9H0zM8 8h4v1H9v3H8z';
+  const draw = () => {
+    const on = !!document.fullscreenElement;
+    path.setAttribute('d', on ? IN : OUT);
+    b.title = on ? 'Leave full screen' : 'Full screen';
+    b.setAttribute('aria-label', b.title);
+  };
+  draw();
+  document.addEventListener('fullscreenchange', draw);
+  b.addEventListener('click', () => {
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => null);
+    else void document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => null);
+  });
+  return b;
 }

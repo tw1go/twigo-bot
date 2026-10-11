@@ -1,4 +1,5 @@
 import type { TownBailResponse, TownOutpostResponse } from '@mikazuki/shared';
+import { api } from '../net/endpoints';
 import { playSound } from '../audio/sound';
 import { fakeLogin, fakeName } from '../session';
 import { el, followWallet, showPopup } from './reward';
@@ -23,13 +24,13 @@ const TABS: [Tab, string][] = [['jail', 'Jail'], ['patrol', 'Patrol']];
 
 async function load(): Promise<TownOutpostResponse | null> {
   if (fakeLogin()) return structuredClone(fake);
-  const res = await fetch('/town/outpost', { credentials: 'same-origin' }).catch(() => null);
+  const res = await api('/town/outpost', { credentials: 'same-origin' }).catch(() => null);
   return res?.ok ? ((await res.json()) as TownOutpostResponse) : null;
 }
 
 async function bail(id: string): Promise<TownBailResponse | null> {
   if (fakeLogin()) return fakeBail(id);
-  const res = await fetch('/town/bail', {
+  const res = await api('/town/bail', {
     method: 'POST',
     credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },

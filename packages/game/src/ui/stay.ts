@@ -1,4 +1,5 @@
 import type { TownDailyClaim, TownStayClaim, TownStayInfo } from '@mikazuki/shared';
+import { api } from '../net/endpoints';
 import { playSound } from '../audio/sound';
 import { fakeLogin } from '../session';
 import { coinIcon, el, showPopup, showReward } from './reward';
@@ -21,13 +22,13 @@ const OFFER_KEY = 'mk_daily_offer';
 
 async function load(): Promise<TownStayInfo | null> {
   if (fakeLogin()) return { ...pretend, ready: new URLSearchParams(location.search).get('stay') === 'ready' };
-  const res = await fetch('/town/stay', { credentials: 'same-origin' }).catch(() => null);
+  const res = await api('/town/stay', { credentials: 'same-origin' }).catch(() => null);
   return res?.ok ? ((await res.json()) as TownStayInfo) : null;
 }
 
 async function claim(): Promise<TownStayClaim | null> {
   if (fakeLogin()) return { ok: true, kowens: 0, stay: { ...pretend, ready: false, minutes: 0, claimed: pretend.claimed + 1 } };
-  const res = await fetch('/town/stay', { method: 'POST', credentials: 'same-origin' }).catch(() => null);
+  const res = await api('/town/stay', { method: 'POST', credentials: 'same-origin' }).catch(() => null);
   return res?.ok ? ((await res.json()) as TownStayClaim) : null;
 }
 
@@ -36,7 +37,7 @@ async function claimDaily(): Promise<TownDailyClaim | null> {
     pretend.daily = { claimed: true, amount: 5 };
     return { ok: true, amount: 5, kowens: 1255, christmas: false };
   }
-  const res = await fetch('/town/daily', { method: 'POST', credentials: 'same-origin' }).catch(() => null);
+  const res = await api('/town/daily', { method: 'POST', credentials: 'same-origin' }).catch(() => null);
   return res?.ok ? ((await res.json()) as TownDailyClaim) : null;
 }
 

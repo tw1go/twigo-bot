@@ -1,4 +1,5 @@
 import type { HouseLook, TownHoodActionResponse, TownHoodResponse } from '@mikazuki/shared';
+import { api } from './endpoints';
 import type { Area, TownMap } from '../assets/types';
 
 // 🏘️ The neighbourhood's API (bot web/hood.ts; in dev the dev server answers with pretend houses, scripts/dev-town.ts),
@@ -8,10 +9,10 @@ async function json<T>(res: Response | null): Promise<T | null> {
   return res?.ok ? ((await res.json()) as T) : null;
 }
 
-export const loadHood = () => fetch('/town/hood', { credentials: 'same-origin' }).catch(() => null).then((r) => json<TownHoodResponse>(r));
+export const loadHood = () => api('/town/hood', { credentials: 'same-origin' }).catch(() => null).then((r) => json<TownHoodResponse>(r));
 
 const post = (path: string, body: unknown) =>
-  fetch(path, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+  api(path, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     .catch(() => null)
     .then((r) => json<TownHoodActionResponse>(r));
 

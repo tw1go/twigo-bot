@@ -145,6 +145,14 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
 
 ## The web game (`packages/game`)
 
+- Logo and icons (CONTEXT.md "Logo"; the owner's `mikazuki-assets/brand/mikazuki-brand-kit`, its README): pixel art, so
+  only ever at whole-number scales, nearest neighbour (`image-rendering: pixelated`). Title screen and front page hero:
+  the logo (manifest ui.logoMikazuki; the front page also its @2x/@3x). Icons: `public/favicon.ico` (16/32/48),
+  `public/icons/` (mikazuki-icon-16/32/64/192/512, maskable 192/512), `public/apple-touch-icon.png`, on the game page,
+  the front page and the home screen app's manifest; theme colour Night Navy #1E1B3A. The desktop app's in
+  `packages/desktop/src-tauri/icons/` (`tauri icon` from mikazuki-icon-1024, then icon.icns from the macOS tile and
+  icon.ico = mikazuki-app.ico). The twigo logo (ui.logoTwigo) means the studio: the intro card and "a game by twigo".
+
 - Source of truth: `public/assets/manifest.json` and `public/assets/maps/town.json` (72×72). Don't hard-code
   sizes, anchors or positions. Pixel anchors are measured on the real image size.
   `manifest.json` only exists here (not in the separate `mikazuki-assets` art folder) — when copying art over,
@@ -207,12 +215,49 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   are in `characters/loading.ts`, so the page never loads the pack index); mobs, golem, Warren Gate and Barong from the
   manifest, loaded lazily and paused off screen, still under reduced motion. Buttons: manifest `ui.buttonViolet` /
   `buttonGold` (9-slices with hover/pressed, `dom: true`: never packed). Fonts Pixelify Sans, Jersey 10, Nunito
-  (`assets/font/Nunito`, OFL); favicons in `public/brand/`, `public/og-image.png`. Apply dialog → `POST /api/beta/apply`
+  (`assets/font/Nunito`, OFL); the hero's title is the logo (`heroLogo` in render.ts: the brand kit's 3x, 2x from 420 px,
+  1x on the smallest phones, each at its own size), the nav the 32 px icon (its 64 px file on sharp screens); the game's
+  icons (below), link previews `public/mikazuki-og-1200x630.png`, theme-color #1E1B3A; the twigo credits stay. Apply dialog → `POST /api/beta/apply`
   (bot `web/beta.ts`, tested: username 2–32, a class from the list or "Not sure yet", note ≤ 500, 5 an hour per address;
   one row per username or logged-in Discord id, a repeat updates it; schema v14 `beta_applications`, the IP only as a
   salted hash (kv 'beta-salt'); an embed in `BETA_APPLICATIONS_CHANNEL_ID` if set, no pings); `/me` carries `username`
   to prefill it. CMS tab Beta applications (`GET /api/beta`, `POST /api/beta/status`, `GET /api/beta.csv`). Dev:
   http://localhost:5173/play/front.html (the apply form needs a bot on 8787: Vite proxies `/api`).
+- Ways to play (CONTEXT.md): the website (/play/ in a tab, as ever), the home screen app and the desktop app. Home screen
+  app (a PWA; `vite.config.ts` homeScreenApp, vite-plugin-pwa, the game page only: front.html loses the manifest link):
+  manifest.webmanifest (Mikazuki, /play/, fullscreen then standalone, landscape, #1E1B3A, the Mikazuki brand kit's 192/512
+  as `any` and maskable 192/512 in `public/icons/`), sw.js (registered by `net/pwa.ts`, never in dev or the desktop app): precaches what the
+  title screen needs (about 4 MB: the page, its scripts, the game's manifest, town.json, fonts, the title art); the rest of
+  /play/assets/ is cached as first loaded (hashed scripts and packs cache-first, the rest stale-while-revalidate); nothing
+  else (logins, /me, /town/*, /api/*, /ws, version.json). Updates install in the background and wait: ui/version.ts's
+  notice (version.json, or the worker's `newVersionReady`) applies them on Reload now (`applyUpdate`: the waiting worker
+  takes over, then a reload; never on its own). First open (no worker yet: `firstOpen`): a percentage beside the town's
+  loading bar. Title screen: "Install Mikazuki" (the browser's beforeinstallprompt, `canInstall`) or on iPhone Safari a
+  one-time "Tap Share, then Add to Home Screen" hint (localStorage `mk_ios_hint`). HUD: a full screen button in a browser
+  tab where the Fullscreen API works (not iPhone Safari, not the apps). iPhone tags and viewport-fit=cover: the body is
+  inset by the safe area and holds every fixed panel (contain: layout), so nothing sits under a notch. Logging in from the
+  iPhone home screen app (`net/login.ts`): Discord opens in a browser sheet (/auth/login?client=wait&nonce=…) while the app
+  asks GET /auth/wait every 2 s; the code (only for the address the login finished from) goes to POST /auth/exchange for
+  the cookie (bot `web/auth.ts`, tested). Android's home screen app uses the website's redirect. First-load numbers:
+  `packages/game/APPS-NOTES.md`.
+  Desktop app (`packages/desktop`, Tauri 2, Windows and Mac, unsigned; its README for players and publishing): the game's
+  production build staged into `web/play/` (`scripts/stage.mjs`: the page and assets/, no front page or service worker)
+  in one window; the app's version = the game's (v0.1.N → 0.1.N). Every server call goes through `net/endpoints.ts`
+  (`api()`, `serverUrl`, `townSocket`): relative on the website, https://twigo.dev in the app with its token
+  (Authorization: Bearer; on /ws the subprotocol `mk-token.<token>`) and X-Mikazuki-Client: desktop/<version>, so write
+  new server fetches with `api()`, never a bare fetch('/…'). `net/desktop.ts` (loaded only in the app: its own chunk):
+  login in the system browser → mikazuki://auth?code=… (deep-link + single-instance plugins) → POST /auth/exchange;
+  the window (Settings → Display → Window, the app only: `ui/window-settings.ts` + `net/window-mode.ts`, both in the
+  app's chunks): Full screen / Borderless (no title bar; a 16:9 size that fits the screen, or the screen's own size,
+  on a Mac simple full screen: no new Space) / Windowed (title bar, resizable; the same sizes within the work area, a
+  dragged size kept), saved (localStorage `mk_window`) and applied as it opens; F11 / Ctrl+Cmd+F swaps Full screen and
+  the last other mode, and the system's own full screen button is noticed (capabilities/default.json allows the window
+  calls); no server answering /me (10 s at most) → the title screen's Try again ("Can't reach the
+  Mikazuki server"), never the town as a guest (BootScene `unreachable`); twigo.dev/downloads/latest.json (Caddy `/downloads/*` = /opt/twigo-bot/web/downloads,
+  by hand) → the version notice's Download; /me's 426 (bot `MIN_DESKTOP_VERSION`) → "too old". The front page's
+  Windows / Mac buttons read the same latest.json. Builds: `npm run desktop:build` (Mac, needs Rust), or Actions →
+  Desktop app (`.github/workflows/desktop.yml`, by hand: both Macs and Windows as artifacts; never deploys).
+  `npm run desktop:dev`: the window on the dev town.
 - Open beta: `/play/` is the town for every member of the Mikazuki server (no `?preview` gate, no testers-only rule).
   Only members can log in (the OAuth callback checks; `isMember` in the bot's `web/auth.ts`, also on `/me`, `/ws` and
   the town's routes). `/gift launch` (pre-registration reward) hasn't been run.
@@ -220,8 +265,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   the intro card ("a game made by" + manifest ui.logoTwigo on #111827; 500 ms in, 1.6 s held, 500 ms out; reduced motion
   1.2 s, no fades; a click or key skips it; once per tab, sessionStorage `mk_intro`; `?intro=1` always), then the title
   screen: the splash (ui.splashAnim, 24 frames at 8 fps on a 384×216 canvas at a whole-number scale, centred and
-  cropped; ui.splashBg until it loads and under reduced motion), "MIKAZUKI" in Pixelify Sans (gold #FCDA4A, navy shadow and
-  glow, drawn at screen resolution), a band at the bottom with a button (ui.titleButton, a 3-state 9-slice as
+  cropped; ui.splashBg until it loads and under reduced motion), the Mikazuki logo (ui.logoMikazuki, 193×53 pixel art,
+  `dom`: never packed; `drawTitle`): part of the art at its scale, top-left on art px (95, 6) (5× at 1920×1080), or where
+  that would go off screen centred at the largest whole-number scale no wider than 90% of the screen (never above the
+  art's), 6% down, above the band; nothing until it loads, Pixelify text if it can't), a band at the bottom with a button (ui.titleButton, a 3-state 9-slice as
   border-image at the same scale) and a hint, and a speaker top right (= Settings → Mute; never a click to start). No
   button until /me answers (≤ 2.5 s): logged in or login off → Start ("or click anywhere"; any click, Enter or Space);
   not logged in → "Log in with Discord" (/auth/login; `loginProblem()` in red under it). Start fades it out (400 ms)

@@ -1,4 +1,5 @@
 import { keyLabel, matches, onKeybinds } from './keybinds';
+import { api } from '../net/endpoints';
 import { type Item, type Pocket, type TownBagActionResponse, type TownBagItem, type TownInventoryResponse, RETURN_LANTERN, agimatPocket, bagSlots, isGearDef, pocketOf, pocketSlots, pocketUsed, sellPrice } from '@mikazuki/shared';
 import { hotbarDragItem, hotbarItem } from './hotbar';
 import { playSound } from '../audio/sound';
@@ -71,7 +72,7 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, t
 
 async function load(): Promise<TownInventoryResponse | null> {
   if (fakeLogin()) return structuredClone(fake);
-  const res = await fetch('/town/inventory', { credentials: 'same-origin' }).catch(() => null);
+  const res = await api('/town/inventory', { credentials: 'same-origin' }).catch(() => null);
   return res?.ok ? ((await res.json()) as TownInventoryResponse) : null;
 }
 
@@ -79,7 +80,7 @@ type ActBody = { id: string; quantity?: number } | { items: { id: string; quanti
 
 async function post(path: '/town/sell' | '/town/flex', body: ActBody): Promise<TownBagActionResponse | null> {
   if (fakeLogin()) return fakeAction(path, body);
-  const res = await fetch(path, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => null);
+  const res = await api(path, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => null);
   return res?.ok ? ((await res.json()) as TownBagActionResponse) : null;
 }
 

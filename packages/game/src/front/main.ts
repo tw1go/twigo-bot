@@ -12,7 +12,15 @@ import { Splash } from '../ui/splash';
 // dialog (POST /api/beta/apply). No Phaser: it loads fast.
 
 const M = JSON.parse(document.getElementById('front-data')!.textContent!) as Manifest;
-const TEXT = JSON.parse(document.getElementById('front-text')!.textContent!) as { sending: string; send: string; offline: string; doneText: string; doneUpdated: string };
+const TEXT = JSON.parse(document.getElementById('front-text')!.textContent!) as {
+  sending: string;
+  send: string;
+  offline: string;
+  doneText: string;
+  doneUpdated: string;
+  devices: { windows: string; mac: string; otherMac: string; otherWindows: string; browser: string; phone: string };
+  get: { soon: string; windows: string; mac: string };
+};
 const base = import.meta.env.BASE_URL;
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const NEAR = '800px'; // big sheets start loading this far before their section scrolls in
@@ -278,3 +286,83 @@ form.addEventListener('submit', async (e) => {
     send.firstElementChild!.textContent = TEXT.send;
   }
 });
+
+// ── The right way to play, by device ──
+// Windows and Mac: the Play buttons (the hero's, the closing call's, the sent dialog's; never the nav's) become this
+// system's download, with the other system's and the website under them. Phones: Play, and how to put it on the home
+// screen. The downloads come from /downloads/latest.json ({ version, windows, mac, windowsSize, macSize }); without it, or
+// without this system's file, the plain Play button stays. The Get the game section's panels fill in the same way.
+
+type Device = 'windows' | 'mac' | 'phone' | 'other';
+interface Latest {
+  version?: string;
+  windows?: string;
+  mac?: string;
+  windowsSize?: number;
+  macSize?: number;
+}
+
+function device(): Device {
+  const ua = navigator.userAgent;
+  if (/Android|iPhone|iPad|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) return 'phone';
+  if (/Windows/i.test(ua)) return 'windows';
+  if (/Macintosh|Mac OS X/i.test(ua)) return 'mac';
+  return 'other';
+}
+
+/** A download link we'll show: https on this site only. */
+const safeLink = (x: unknown): string | null => (typeof x === 'string' && /^https:\/\/twigo\.dev\/downloads\/[\w.-]+$/.test(x) ? x : null);
+
+const link = (href: string, text: string) => {
+  const a = document.createElement('a');
+  a.href = href;
+  a.textContent = text;
+  return a;
+};
+
+function showDevices(latest: Latest | null): void {
+  const d = device();
+  const win = safeLink(latest?.windows);
+  const mac = safeLink(latest?.mac);
+  for (const play of document.querySelectorAll<HTMLAnchorElement>('a[data-play]')) {
+    const alt = play.closest('.cta, .row')?.nextElementSibling;
+    const under = alt instanceof HTMLElement && alt.classList.contains('play-alt') ? alt : null;
+    const mine = d === 'windows' ? win : d === 'mac' ? mac : null;
+    if (mine) {
+      play.href = mine;
+      play.firstElementChild!.textContent = d === 'windows' ? TEXT.devices.windows : TEXT.devices.mac;
+      play.setAttribute('download', '');
+      const other = d === 'windows' ? mac : win;
+      if (under) {
+        under.replaceChildren(...(other ? [link(other, d === 'windows' ? TEXT.devices.otherMac : TEXT.devices.otherWindows), document.createTextNode(' · ')] : []), link(base, TEXT.devices.browser));
+        under.hidden = false;
+      }
+    } else if (d === 'phone' && under) {
+      under.textContent = TEXT.devices.phone;
+      under.hidden = false;
+    }
+  }
+  // Get the game: each system's panel, its download with size and version (else "Coming soon").
+  for (const [id, href, size] of [['windows', win, latest?.windowsSize], ['mac', mac, latest?.macSize]] as const) {
+    const panel = document.querySelector<HTMLElement>(`[data-get="${id}"]`);
+    if (!panel || !href) continue;
+    const button = document.createElement('a');
+    button.className = 'btn sm';
+    button.href = href;
+    button.setAttribute('download', '');
+    const label = document.createElement('span');
+    label.textContent = id === 'windows' ? TEXT.get.windows : TEXT.get.mac;
+    button.append(label);
+    panel.querySelector('.get-do')!.replaceChildren(button);
+    const meta = panel.querySelector<HTMLElement>('.get-meta')!;
+    meta.textContent = [typeof size === 'number' && size > 0 ? `${(size / 1048576).toFixed(1)} MB` : '', latest?.version ?? ''].filter(Boolean).join(' · ');
+    meta.hidden = !meta.textContent;
+    panel.querySelector<HTMLElement>('.note')!.hidden = false;
+  }
+}
+
+void fetch('/downloads/latest.json', { cache: 'no-store' })
+  .then((r) => (r.ok ? (r.json() as Promise<Latest>) : null))
+  .catch(() => null)
+  .then((latest) => showDevices(latest));
+

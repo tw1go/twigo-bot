@@ -1,0 +1,16 @@
+{
+  "name": "@mikazuki/desktop",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "The desktop app (Windows, Mac): the game's production build in a Tauri 2 window. See README.md.",
+  "scripts": {
+    "stage": "node scripts/stage.mjs",
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "app": "node scripts/build.mjs"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.12.2"
+  }
+}

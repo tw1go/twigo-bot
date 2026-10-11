@@ -3,6 +3,20 @@
 The Mikazuki Discord server's economy bot and its web town, where members walk around, play and fight. This glossary
 covers the words the game and the bot share.
 
+## Ways to play
+
+**Website**:
+The game at twigo.dev/play in a browser tab, nothing installed.
+
+**Home screen app**:
+The game installed from the website onto a phone's home screen (technically a PWA): full screen, its art kept on the
+phone after the first load.
+_Avoid_: phone app, mobile app (it's not from an app store)
+
+**Desktop app**:
+The Windows or Mac download with the game and its art inside, signed in through the system browser.
+_Avoid_: installed app (the home screen app is installed too), client
+
 ## Places
 
 **Map**:
@@ -61,13 +75,18 @@ The "a game made by twigo" card shown once per browser tab as the game opens.
 _Avoid_: splash (the splash is the title screen's picture)
 
 **Title screen**:
-The screen after the intro card, with MIKAZUKI over the town picture and Start (or the Discord login); the game
-begins when Start is pressed.
+The screen after the intro card, with the Mikazuki logo over the town picture and Start (or the Discord login); the
+game begins when Start is pressed.
 _Avoid_: login screen, title card
 
 **Title card**:
 The black card with the area's name ("MIKAZUKI", "NEIGHBOURHOOD") that opens on every arrival in an area.
 _Avoid_: title screen
+
+**Logo** (the game's):
+The Mikazuki logo (the brand kit's: "MIKAZUKI" in a carved pixel serif with a gold crescent and rule) and its icon (the
+moon over an M on a night tile). The twigo logo is the studio's: only on the intro card and in "a game by twigo" credits.
+_Avoid_: twigo logo (for the game)
 
 **Title** (a player's):
 The name in angle brackets under a character's nickname, like <Townfolk>; it has nothing to do with the screens above.

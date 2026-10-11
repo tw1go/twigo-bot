@@ -334,7 +334,8 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   };
   let notice: { a: TownAnnouncement; until: number } | null = null;
   let raceNow: TownRace | null = null;
-  const wss = new WebSocketServer({ noServer: true, maxPayload: 1024 });
+  // (The desktop app sends its session token as a subprotocol, `mikazuki` and `mk-token.<token>`: the first is agreed to.)
+  const wss = new WebSocketServer({ noServer: true, maxPayload: 1024, handleProtocols: (protocols) => (protocols.has('mikazuki') ? 'mikazuki' : false) });
   const arena = new Arena(undefined, undefined, opts.arenaBets ?? null, (r) => postSystem({ kind: 'arena', text: arenaLine(r, Math.random()), tone: r.bot === 'loser' ? 'win' : 'lose' })); // mocking the loser (in the loss colour; beating the bot in the win colour)
 
   const send = (c: Conn, m: TownServerMessage) => c.ws.readyState === WebSocket.OPEN && c.ws.send(JSON.stringify(m));

@@ -12,12 +12,16 @@
   },
   "dependencies": {
     "@mikazuki/shared": "0.1.0",
+    "@tauri-apps/api": "^2.12.3",
+    "@tauri-apps/plugin-deep-link": "^2.6.1",
+    "@tauri-apps/plugin-opener": "^2.7.1",
     "phaser": "^4.2.1"
   },
   "devDependencies": {
     "@types/pngjs": "^6.0.5",
     "pngjs": "^7.0.0",
     "typescript": "^7.0.2",
-    "vite": "^8.3.2"
+    "vite": "^8.3.2",
+    "vite-plugin-pwa": "^2.0.0"
   }
 }

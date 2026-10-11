@@ -1,5 +1,8 @@
 import type { Manifest } from '../assets/types';
 import { Splash } from './splash';
+import { canInstall, install, onInstallable } from '../net/pwa';
+import { isDesktopApp, isHomeScreenApp, isIos } from '../net/platform';
+import { desktopLogin, loginWaits, waitingLogin } from '../net/login';
 
 // 🌙 The boot sequence's two page layers (BootScene runs them while it loads):
 // - The intro card: "a game made by" and the twigo logo, small and centred on ink. Fades in, holds, fades out (reduced
@@ -7,8 +10,8 @@ import { Splash } from './splash';
 //   coming back from the Discord login go straight to the title screen; ?intro=1 always plays it.
 // - The title screen: the pixel-art town (manifest ui.splashAnim, 24 frames at 8 fps drawn on a canvas; the still,
 //   ui.splashBg, until the sheet is in, and only the still under reduced motion), at the smallest whole-number scale that
-//   covers the screen, centred and cropped; "MIKAZUKI" in Pixelify Sans, Kowen gold with a navy drop shadow and glow, at
-//   screen resolution in the sky; a dark band at the bottom with the button (ui.titleButton as a 9-slice at the same
+//   covers the screen, centred and cropped; the game's logo (manifest ui.logoMikazuki, pixel art) in the sky: part of
+//   the art at its scale (top-left at art px LOGO_AT), else centred at a scale that fits (drawTitle); a dark band at the bottom with the button (ui.titleButton as a 9-slice at the same
 //   whole-number scale: normal, hover, pressed) and a hint. Logged in (or login off): Start, "or click anywhere"; click
 //   anywhere, Enter or Space starts. Logged out: Log in with Discord (/auth/login) and "Members of the Mikazuki server
 //   only" (or the login's problem in red); only the button logs in. No button until /me has answered. A speaker in the
@@ -23,6 +26,10 @@ const CLOSE_MS = 400;
 /** The button's height and the hint's size (art px, at the scale; the CSS draws them: index.html #title-screen). */
 const BUTTON_H = 14;
 const HINT = 4.5;
+/** The logo's top-left in the 384x216 background art (the brand kit's title mock). */
+const LOGO_AT = [95, 6] as const;
+/** The button band's top (index.html #title-screen .ts-band: 17% high), which the logo stays above. */
+const BAND_TOP = 0.83;
 
 const asset = (f: string) => `${import.meta.env.BASE_URL}assets/${f}`;
 const still = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -83,9 +90,9 @@ export function playIntro(M: Manifest): Promise<void> {
   });
 }
 
-/** What the title screen offers: Start (logged in, or login off), or the Discord login (logged out; `problem`: why the
- *  last try didn't work). */
-export type TitleOffer = { kind: 'start' } | { kind: 'guest'; problem: string | null };
+/** What the title screen offers: Start (logged in, or login off), the Discord login (logged out; `problem`: why the
+ *  last try didn't work), or in the desktop app with no server answering, Try again (`trying`: asking it now). */
+export type TitleOffer = { kind: 'start' } | { kind: 'guest'; problem: string | null } | { kind: 'offline'; trying?: boolean };
 
 export class TitleScreen {
   private readonly root = document.createElement('div');
@@ -93,14 +100,22 @@ export class TitleScreen {
   private readonly splash: Splash;
   private readonly bg: HTMLCanvasElement;
   private readonly title = document.createElement('canvas');
+  /** The game's logo (ui.logoMikazuki): shown once loaded; if it can't load, the drawn title instead. */
+  private readonly logo = new Image();
+  private logoState: 'loading' | 'ready' | 'failed' = 'loading';
   private readonly band = document.createElement('div');
   private readonly sound = document.createElement('button');
+  /** Top left: "Install Mikazuki" (the browser offers it), or on iPhone Safari a one-time Add to Home Screen hint. */
+  private readonly extra = document.createElement('div');
+  private readonly unwatch: () => void;
   private offer: TitleOffer | null = null;
   private closing = false;
   /** Start (the button, a click anywhere, Enter or Space). */
   onStart: () => void = () => {};
   /** The Discord login was pressed (the page goes there). */
   onLogin: () => void = () => {};
+  /** Try again (the server didn't answer: the desktop app). */
+  onRetry: () => void = () => {};
 
   constructor(
     private readonly M: Manifest,
@@ -124,7 +139,22 @@ export class TitleScreen {
       this.mute.on = !this.mute.on;
       this.drawSpeaker();
     });
-    this.root.append(this.bg, this.title, this.band, this.sound);
+    this.extra.className = 'ts-extra';
+    this.extra.addEventListener('click', (e) => e.stopPropagation()); // (never a click to start)
+    this.unwatch = onInstallable(() => this.renderExtra());
+    this.renderExtra();
+    this.logo.className = 'ts-logo';
+    this.logo.alt = '';
+    this.logo.setAttribute('aria-hidden', 'true'); // (the title's aria-label says it)
+    this.logo.hidden = true;
+    this.logo.draggable = false;
+    const L = M.ui.logoMikazuki;
+    if (L) {
+      this.logo.onload = () => ((this.logoState = 'ready'), this.drawTitle());
+      this.logo.onerror = () => ((this.logoState = 'failed'), this.drawTitle());
+      this.logo.src = asset(L.file);
+    } else this.logoState = 'failed';
+    this.root.append(this.bg, this.title, this.logo, this.band, this.sound, this.extra);
     this.root.addEventListener('click', this.clicked);
     addEventListener('keydown', this.keyed);
     addEventListener('resize', this.layout);
@@ -142,13 +172,29 @@ export class TitleScreen {
     const button = offer.kind === 'start' ? document.createElement('button') : document.createElement('a');
     button.className = 'ts-button';
     const label = document.createElement('span');
-    label.textContent = offer.kind === 'start' ? 'Start' : 'Log in with Discord';
+    label.textContent = offer.kind === 'start' ? 'Start' : offer.kind === 'offline' ? 'Try again' : 'Log in with Discord';
     button.append(label);
     if (button instanceof HTMLAnchorElement) {
       button.href = '/auth/login';
-      button.addEventListener('click', () => this.onLogin());
+      button.addEventListener('click', (e) => {
+        this.onLogin();
+        const say = (text: string, problem?: boolean) => {
+          hint.textContent = text;
+          hint.classList.toggle('ts-problem', !!problem);
+        };
+        // The desktop app: the system browser, back through mikazuki://auth. The iPhone home screen app: Discord in a
+        // browser sheet while this waits for it (net/login.ts). The website: the link goes to Discord.
+        if (isDesktopApp()) {
+          e.preventDefault();
+          return desktopLogin(say);
+        }
+        if (!loginWaits()) return;
+        e.preventDefault();
+        waitingLogin(say);
+      });
     } else {
       button.type = 'button';
+      if (offer.kind === 'offline' && offer.trying) button.disabled = true;
       button.addEventListener('click', (e) => {
         e.stopPropagation();
         this.start();
@@ -158,17 +204,51 @@ export class TitleScreen {
     button.addEventListener('pointerdown', () => button.classList.add('ts-pressed'));
     for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) button.addEventListener(ev, () => button.classList.remove('ts-pressed'));
     const hint = document.createElement('p');
-    hint.className = offer.kind === 'guest' && offer.problem ? 'ts-hint ts-problem' : 'ts-hint';
-    hint.textContent = offer.kind === 'start' ? 'or click anywhere' : (offer.problem ?? 'Members of the Mikazuki server only');
+    const problem = (offer.kind === 'guest' && offer.problem) || (offer.kind === 'offline' && !offer.trying);
+    hint.className = problem ? 'ts-hint ts-problem' : 'ts-hint';
+    hint.textContent =
+      offer.kind === 'start' ? 'or click anywhere'
+      : offer.kind === 'offline' ? (offer.trying ? 'Connecting…' : "Can't reach the Mikazuki server. Check your connection.")
+      : (offer.problem ?? 'Members of the Mikazuki server only');
     this.band.append(button, hint);
     this.layout();
-    if (offer.kind === 'guest') button.focus({ preventScroll: true });
+    if (offer.kind !== 'start') button.focus({ preventScroll: true });
+  }
+
+  /** The install button or the iPhone hint (neither once installed, nor in the desktop app). */
+  private renderExtra(): void {
+    this.extra.replaceChildren();
+    if (canInstall()) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'ts-install';
+      b.textContent = 'Install Mikazuki';
+      b.title = 'Play it full screen from your home screen or desktop';
+      b.addEventListener('click', () => void install());
+      this.extra.append(b);
+    } else if (isIos() && !isHomeScreenApp() && !isDesktopApp() && !iosHintClosed()) {
+      const hint = document.createElement('p');
+      hint.className = 'ts-ios';
+      hint.textContent = 'Tap Share, then Add to Home Screen to play full screen';
+      const x = document.createElement('button');
+      x.type = 'button';
+      x.className = 'ts-ios-x';
+      x.textContent = '×';
+      x.setAttribute('aria-label', 'Close');
+      x.addEventListener('click', () => {
+        closeIosHint();
+        this.renderExtra();
+      });
+      hint.append(x);
+      this.extra.append(hint);
+    }
   }
 
   /** Fades out (CLOSE_MS; at once with reduced motion) and goes; resolves when it's gone. */
   close(): Promise<void> {
     this.closing = true;
     this.splash.destroy();
+    this.unwatch();
     removeEventListener('keydown', this.keyed);
     removeEventListener('resize', this.layout);
     this.root.classList.remove('ts-on');
@@ -182,6 +262,7 @@ export class TitleScreen {
   }
 
   private start(): void {
+    if (this.offer?.kind === 'offline' && !this.offer.trying) return this.onRetry();
     if (this.closing || this.offer?.kind !== 'start') return;
     this.closing = true;
     this.onStart();
@@ -189,7 +270,7 @@ export class TitleScreen {
 
   private readonly clicked = (e: MouseEvent) => {
     if (e.composedPath().some((n) => n === this.sound || (n instanceof Element && n.classList.contains('ts-button')))) return;
-    this.start(); // (a guest's click anywhere does nothing: only the button logs in)
+    this.start(); // (a guest's click anywhere does nothing: only the button logs in; offline, it tries again)
   };
 
   private readonly keyed = (e: KeyboardEvent) => {
@@ -203,7 +284,7 @@ export class TitleScreen {
   private readonly layout = () => {
     const W = innerWidth;
     const H = innerHeight;
-    const k = this.splash.fit(W, H);
+    const k = (this.artScale = this.splash.fit(W, H));
     // The button and hint at the same scale, a step smaller if the button wouldn't fit the screen's width or the band.
     let s = k;
     this.root.style.setProperty('--s', String(s));
@@ -236,9 +317,41 @@ export class TitleScreen {
     img.src = asset(B.file);
   }
 
-  /** "MIKAZUKI": Pixelify Sans, gold, a navy drop shadow and a soft navy glow; about 40% of the screen's width (80% on
-   *  a tall screen), its top at 7% of the height; drawn at the screen's resolution. */
+  /** The background's whole-number scale (layout). */
+  private artScale = 1;
+
+  /** The logo, once loaded: at the background's scale with its top-left on art px LOGO_AT, so it moves and crops with
+   *  the town; where that would put any of it off screen (a phone held upright, a narrow or short window), centred at
+   *  the largest whole-number scale no wider than 90% of the screen (never above the background's), its top at 6% of
+   *  the height, above the button band. Nothing until it loads; the drawn title if it can't. */
   private drawTitle(): void {
+    if (this.logoState === 'failed') return this.drawText();
+    this.title.width = this.title.height = 0;
+    if (this.logoState !== 'ready') return;
+    const L = this.M.ui.logoMikazuki!;
+    const [w, h] = L.size;
+    const W = innerWidth;
+    const H = innerHeight;
+    const k = this.artScale;
+    // (Where Splash.fit put the background in the title screen, which the logo shares.)
+    let x = Math.round(parseFloat(this.bg.style.left || '0') + LOGO_AT[0] * k);
+    let y = Math.round(parseFloat(this.bg.style.top || '0') + LOGO_AT[1] * k);
+    let s = k;
+    if (x < 0 || y < 0 || x + w * k > W || y + h * k > H * BAND_TOP) {
+      const top = Math.round(H * 0.06);
+      s = Math.max(1, Math.min(k, Math.floor((W * 0.9) / w), Math.floor((H * BAND_TOP - top) / h)));
+      x = Math.round((W - w * s) / 2);
+      y = top;
+    }
+    Object.assign(this.logo.style, { left: `${x}px`, top: `${y}px`, width: `${w * s}px`, height: `${h * s}px` });
+    this.logo.hidden = false;
+  }
+
+  /** The title as text, when the logo can't load: "MIKAZUKI" in Pixelify Sans, gold, a navy drop shadow and a soft
+   *  navy glow; about 40% of the screen's width (80% on a tall screen), its top at 7% of the height; drawn at the
+   *  screen's resolution. */
+  private drawText(): void {
+    this.logo.hidden = true;
     const dpr = Math.min(2, devicePixelRatio || 1);
     const W = innerWidth;
     const H = innerHeight;
@@ -280,5 +393,22 @@ export class TitleScreen {
     this.sound.innerHTML = `<svg viewBox="0 0 16 16" aria-hidden="true" shape-rendering="crispEdges"><path fill="#E6E9F2" d="M2 6h3l4-3v10l-4-3H2z"/>${
       on ? '<path fill="none" stroke="#E6E9F2" stroke-width="1.5" d="M11 5.5q1.6 2.5 0 5M12.8 3.8q3 4.2 0 8.4"/>' : '<path stroke="#f7768e" stroke-width="1.5" d="M11 6l4 4M15 6l-4 4"/>'
     }</svg>`;
+  }
+}
+
+/** The iPhone's Add to Home Screen hint, closed once and for all (this browser: localStorage `mk_ios_hint`). */
+const IOS_HINT = 'mk_ios_hint';
+function iosHintClosed(): boolean {
+  try {
+    return localStorage.getItem(IOS_HINT) === 'closed';
+  } catch {
+    return false;
+  }
+}
+function closeIosHint(): void {
+  try {
+    localStorage.setItem(IOS_HINT, 'closed');
+  } catch {
+    /* private mode: it shows again next time */
   }
 }

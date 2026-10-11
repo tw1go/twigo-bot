@@ -101,9 +101,11 @@ export interface Manifest {
     kusingIcon?: { file: string; showcase?: string };
     loadingMoon?: { file: string; size: Vec2; frames: number; fps: number; loopFrames?: Vec2; anchor: Vec2 };
     /** The title screen (ui/title-screen.ts; `dom`: drawn by the page only, never packed): its animated background (a
-     *  grid of `columns` frames a row), the still, the 9-slice button (normal, hover, pressed), the twigo logo. */
+     *  grid of `columns` frames a row), the still, the game's logo (pixel art), the 9-slice button (normal, hover,
+     *  pressed), the twigo logo (the intro card). */
     splashAnim?: { file: string; size: Vec2; frames: number; fps: number; columns: number };
     splashBg?: { file: string; size: Vec2 };
+    logoMikazuki?: { file: string; size: Vec2 };
     titleButton?: { file: string; size: Vec2; frames: number; slice: number };
     /** The front page's buttons: the title button's states as separate 9-slice images (violet; gold for the beta). */
     buttonViolet?: { file: string; hover: string; pressed: string; size: Vec2; slice: number };
