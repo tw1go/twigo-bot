@@ -17464,6 +17464,30 @@
       "dom": true,
       "note": "The title screen's still background: reduced motion, and the first paint before the sheet loads"
     },
+    "buttonViolet": {
+      "file": "ui/ui-button-violet-normal.png",
+      "hover": "ui/ui-button-violet-hover.png",
+      "pressed": "ui/ui-button-violet-pressed.png",
+      "size": [
+        72,
+        18
+      ],
+      "slice": 4,
+      "dom": true,
+      "note": "The front page's buttons (src/front): the title button's three states as separate images (normal, hover, pressed), each a 9-slice (border-image, slice 4, fill) at a whole-number scale. dom: drawn by the page, never packed."
+    },
+    "buttonGold": {
+      "file": "ui/ui-button-gold-normal.png",
+      "hover": "ui/ui-button-gold-hover.png",
+      "pressed": "ui/ui-button-gold-pressed.png",
+      "size": [
+        72,
+        18
+      ],
+      "slice": 4,
+      "dom": true,
+      "note": "The front page's Apply to close beta button: the title button recoloured from the Mikazuki gold ramp, its three states (as buttonViolet)."
+    },
     "titleButton": {
       "file": "ui/ui-title-button.png",
       "size": [
