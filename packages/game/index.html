@@ -1774,7 +1774,7 @@
       :is(#equipment, #inspect) .eq-who { display: flex; align-items: center; gap: 6px; font-size: calc(15px * var(--text)); font-weight: 700; color: #A3E635; white-space: nowrap; }
       :is(#equipment, #inspect) .eq-badge { width: 32px; height: 32px; image-rendering: pixelated; } /* the 16x16 badge at 2x */
       :is(#equipment, #inspect) .eq-noclass { color: #7A8099; font-weight: 600; }
-      :is(#equipment, #inspect) .eq-stats { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; padding: 8px 12px; border: 2px solid #3D4256; background: rgba(10, 12, 24, 0.5); }
+      :is(#equipment, #inspect) .eq-stats { flex: 0 1 auto; min-height: 0; overflow-y: auto; scrollbar-width: thin; display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; padding: 8px 12px; border: 2px solid #3D4256; background: rgba(10, 12, 24, 0.5); }
       /* The combat rating (CP) on top of the stats box, across both columns. */
       :is(#equipment, #inspect) .eq-cp { grid-column: 1 / -1; display: flex; align-items: baseline; justify-content: space-between; margin: 0 0 6px; padding-bottom: 6px; border-bottom: 1px solid #3D4256; }
       :is(#equipment, #inspect) .eq-cp-label { color: #A9B1D6; font-size: calc(12px * var(--text)); letter-spacing: 0.06em; text-transform: uppercase; }
@@ -1786,6 +1786,11 @@
       :is(#equipment, #inspect) .eq-stat-label { display: inline-flex; align-items: center; gap: 5px; }
       :is(#equipment, #inspect) .eq-plus { width: 16px; height: 16px; padding: 0; border: 2px solid #A3E635; border-radius: 0; background: #1E1B3A; color: #A3E635; font: 700 calc(13px * var(--text))/1 var(--ui-font); cursor: var(--cur-hand, pointer); }
       :is(#equipment, #inspect) .eq-plus:hover, :is(#equipment, #inspect) .eq-plus:focus-visible { background: #A3E635; color: #1E1B3A; }
+      :is(#equipment, #inspect) .eq-more-toggle { grid-column: 1 / -1; justify-self: start; margin-top: 4px; padding: 2px 0; border: 0; background: none; color: #A9B1D6; font: 700 calc(12px * var(--text))/1.3 var(--ui-font); letter-spacing: 0.06em; text-transform: uppercase; cursor: var(--cur-hand, pointer); }
+      :is(#equipment, #inspect) .eq-more-toggle:hover { color: #fff; }
+      :is(#equipment, #inspect) .eq-more { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; padding-top: 4px; border-top: 1px solid #3D4256; }
+      :is(#equipment, #inspect) .eq-more[hidden] { display: none; }
+      :is(#equipment, #inspect) .eq-more .eq-stat-label { font-size: calc(13px * var(--text)); }
       :is(#equipment, #inspect) .eq-points { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; margin-top: 4px; padding-top: 4px; border-top: 1px solid #3D4256; font-size: calc(13px * var(--text)); color: #A9B1D6; }
       :is(#equipment, #inspect) .eq-points-label { font-weight: 700; color: #E6E9F2; }
       :is(#equipment, #inspect) .eq-points-n { margin-left: -4px; font: calc(17px * var(--text))/1 'Mk Numbers', var(--ui-font); color: #fff; } /* Jersey 10 */

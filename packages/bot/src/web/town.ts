@@ -959,7 +959,14 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         if (!them) return send(c, { t: 'inspect', id: m.id, gone: true });
         const equipped = opts.items ? opts.items.state(them.userId).equipped : {};
         const d = rules?.fighter(fighterOf(them));
-        const stats = d ? { cp: rules!.rating(fighterOf(them)), power: d.power, def: d.def, hp: d.hp, mp: d.mp, STR: d.STR, DEX: d.DEX, INT: d.INT, critRate: d.critRate } : null;
+        const stats = d
+          ? {
+              cp: rules!.rating(fighterOf(them)),
+              ...{ power: d.power, def: d.def, hp: d.hp, mp: d.mp, STR: d.STR, DEX: d.DEX, INT: d.INT, critRate: d.critRate },
+              ...{ critDamage: d.critDamage, amp: d.amp, atkRate: d.atkRate, defRate: d.defRate, lifesteal: d.lifesteal, manasteal: d.manasteal },
+              ...{ hpRegen: d.hpRegen, hpRegenPct: d.hpRegenPct, mpRegen: d.mpRegen, dropRate: d.dropRate, accuracy: d.accuracy, cooldownPct: d.cooldownPct },
+            }
+          : null;
         return send(c, { t: 'inspect', id: m.id, cls: them.player.cls ?? null, level: d?.level ?? them.player.level ?? 1, equipped, stats });
       }
       case 'trade-ask': {

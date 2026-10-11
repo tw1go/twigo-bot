@@ -252,6 +252,42 @@ export interface DerivedStats extends StatBlock {
   hpRegenPct?: number;
 }
 
+/** One of the stats box's lower rows: past ATK, DEF, HP, MP, STR, DEX, INT and Crit rate. */
+export interface MoreStat {
+  id: string;
+  label: string;
+  /** What it does (the row's tooltip). */
+  about: string;
+  value: number;
+  text: string;
+}
+
+const pctText = (n: number) => `${+(n * 100).toFixed(1)}%`;
+
+/** The stats box's lower part (yours and Info's): crit damage, damage amp, attack rate, DEF rate, lifesteal, manasteal,
+ *  HP and MP regen, drop rate; accuracy and cooldown only when a buff gives them. `d` may be a part of DerivedStats (an
+ *  older server's Info): what's missing is left out. */
+export function moreStats(d: Partial<DerivedStats>): MoreStat[] {
+  const rows: MoreStat[] = [];
+  const add = (id: string, label: string, about: string, value: number | undefined, text: (n: number) => string, onlyIf = false) => {
+    if (value === undefined || !Number.isFinite(value) || (onlyIf && value <= 0)) return;
+    rows.push({ id, label, about, value, text: text(value) });
+  };
+  add('critDamage', 'Crit damage', 'How hard a crit hits (150% = half again)', d.critDamage, (n) => `${Math.round(n * 100)}%`);
+  add('amp', 'Damage amp', 'More damage on every hit', d.amp, pctText);
+  add('atkRate', 'Attack rate', 'Faster attacks', d.atkRate, pctText);
+  add('defRate', 'DEF rate', 'Less damage from every hit', d.defRate, pctText);
+  add('lifesteal', 'Lifesteal', 'HP back from the damage you deal', d.lifesteal, pctText);
+  add('manasteal', 'Manasteal', 'MP back from the damage you deal', d.manasteal, pctText);
+  const hpRegen = d.hpRegen === undefined ? undefined : d.hpRegen + (d.hpRegenPct ?? 0) * (d.hp ?? 0);
+  add('hpRegen', 'HP regen', 'HP a second (out of combat the Slums give more)', hpRegen, (n) => `${+n.toFixed(1)}/s`);
+  add('mpRegen', 'MP regen', 'MP a second, in combat too', d.mpRegen, (n) => `${+n.toFixed(1)}/s`);
+  add('dropRate', 'Drop rate', 'More loot from mobs', d.dropRate, pctText);
+  add('accuracy', 'Accuracy', 'Less chance to miss (a buff)', d.accuracy, pctText, true);
+  add('cooldownPct', 'Cooldown', 'Shorter damage skill cooldowns (a buff)', d.cooldownPct, (n) => `−${pctText(n)}`, true);
+  return rows;
+}
+
 /** A character's combat rating (CP: the player box, the HUD, the stats box, the Info window): one number from everything
  *  that makes them stronger, so a better weapon or armor, a level, a point or a buff always raises it. Offense = Power
  *  with crits averaged in, × damage amp × attack rate; toughness = HP stretched by what DEF and DEF rate take off a hit

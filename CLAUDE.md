@@ -790,7 +790,11 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `spendPoint` / `resetStatPoints` in progress.ts, tested; `Town.progress` after, so fights use them): one point into
   the class's main or second stat only; Reset free, all back (skills stay); none before a class (banked; choosing a class
   applies its growth at once, base stats being computed). Equipment panel's stats box (`renderStats`): ATK (Power), DEF,
-  HP, MP | STR, DEX, INT, Crit from the stats rules (class, level, points, worn gear), "Points: N", a + on the main and
+  HP, MP | STR, DEX, INT, Crit rate from the stats rules (class, level, points, worn gear), then a "More stats" fold
+  (`ui/more-stats.ts`, shared `moreStats`; Info's too, `InspectStats` carries them): crit damage, damage amp, attack rate,
+  DEF rate, lifesteal, manasteal, HP regen (gear + a buff's % of max HP), MP regen, drop rate, and accuracy / cooldown
+  while a buff gives them; a buff's part in green; open at first on screens 900 px tall or more, remembered (localStorage
+  `mk_more_stats`); the stats box scrolls inside the panel when it's too tall, "Points: N", a + on the main and
   second stat while N > 0, Reset; classless: "Choose a class to spend points". Dev: `/__points?as=&stat=|reset=1`
   (progress.ts in the dev server; the page's pretend store calls it).
 - Skills unlock at their classes.json `level` (damage skills; mobility: Dash 5, the Lv 8 move 8): before it the server
