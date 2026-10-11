@@ -143,13 +143,22 @@ test('the pickup line: "Gained ", the name (plus after it) in its colour, its sl
   assert.equal(nameColour(D, newItem(S, thing('lamp-hat'), uid())), rarityColour(S, 'darkOrange'));
 });
 
-test('what an item gives: base ATK/DEF by its level with its plus (the guide\'s table), accessories +1% a plus on their lines, agimats fixed', () => {
+test('what an item gives: base ATK/DEF by its level with its plus, armor never under its least DEF a plus, accessories\' lines by their tiers, agimats fixed', () => {
+  // +3% of base a plus to +10, +8% to +15, +15% at +16, +20% from +17 (165% at +20).
   const w = gear('weapon-sturdy-stick');
   const at = (plus: number) => enhancedBase(S, w, { level: 20, plus }).atk;
-  assert.deepEqual([at(0), at(1), at(3), at(10), at(15), at(20)], [40, 41, 42, 48, 54, 64]);
-  assert.deepEqual([0, 20].map((plus) => enhancedBase(S, gear('armor-copper-body'), { level: 20, plus }).def), [12, 19]);
+  assert.deepEqual([at(0), at(1), at(3), at(10), at(15), at(16), at(17), at(20)], [40, 41, 44, 52, 68, 74, 82, 106]);
+  assert.deepEqual([0, 20].map((plus) => enhancedBase(S, gear('armor-copper-body'), { level: 20, plus }).def), [12, 32]);
+  // A small base (light armor, Lv 10: 3 DEF): at least +1 DEF a plus from +11, +2 from +17.
+  const light = gear('armor-abaca-body');
+  const lightDef = (plus: number) => enhancedBase(S, light, { level: 10, plus }).def!;
+  const base = lightDef(0);
+  assert.ok(lightDef(12) >= base + 2 && lightDef(16) >= base + 6 && lightDef(20) >= base + 14);
+  for (let p = 11; p <= 20; p++) assert.ok(lightDef(p) >= lightDef(p - 1) + 1, `+${p} adds at least 1`);
   assert.equal(enhancedBase(S, gear('weapon-training-stick'), { level: 1, plus: 0 }).atk, 5, 'training: its own');
-  assert.equal(lineValue(S, gear('acc-bone-ring'), { plus: 20 }, { stat: 'critDmg', value: 0.05 }), 0.06);
+  // Accessories: +2% of a line a plus to +16, +5% from +17 (52% at +20).
+  assert.equal(lineValue(S, gear('acc-bone-ring'), { plus: 16 }, { stat: 'critDmg', value: 0.05 }), 0.066);
+  assert.equal(lineValue(S, gear('acc-bone-ring'), { plus: 20 }, { stat: 'critDmg', value: 0.05 }), 0.076);
   assert.deepEqual([agimatValue(S, 'hp', 10), agimatValue(S, 'STR', 10), agimatValue(S, 'critDmg', 20), agimatValue(S, 'def', 20)], [5, 2, 0.04, 6]);
 });
 
@@ -161,7 +170,7 @@ test('stats: worn items add base (+plus), lines (a stat line to the main stat) a
   const pants = rollGear(S, gear('armor-copper-bottoms'), 'lightBlue', uid(), lcg(7));
   pants.lines = [{ stat: 'mp', value: 4 }, { stat: 'hp', value: 5 }, { stat: 'stat', value: 2 }];
   const t = itemTotals(D, [sword, pants], 'STR');
-  assert.deepEqual([t.atk, t.def, t.hp, t.mp, t.STR, t.critRate, t.critDamage], [48 + 4 + 3, 12, 15, 4, 2, 0.014, 0.04]);
+  assert.deepEqual([t.atk, t.def, t.hp, t.mp, t.STR, t.critRate, t.critDamage], [52 + 4 + 3, 12, 15, 4, 2, 0.014, 0.04]);
   sword.broken = true;
   assert.equal(itemTotals(D, [sword], 'STR').atk, 0, 'broken: nothing');
   // Lifesteal past its cap is held there.

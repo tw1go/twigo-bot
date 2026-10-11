@@ -102,8 +102,11 @@ export interface ItemStats {
   gearBase: { weaponATK: string; armorDEFPerPiece: Record<string, number | string> };
   enhancement: {
     max: number;
-    perLevel: { from: number; to: number; pct: number }[];
-    accessories: { perLevel: number };
+    perLevel: PlusTier[];
+    /** Armor's least DEF a plus (its base is small: a plus would round to nothing). */
+    armorMinDEF?: { from: number; to: number; def: number }[];
+    /** Accessories' lines: tiers like perLevel's (or one % for every plus). */
+    accessories: { perLevel: PlusTier[] | number };
     cost: { successPct: (number | null)[]; whetstonesPerTry: (number | null)[]; luckPerFail: Record<string, number>; breaks: string };
     weaponAura: { tiers: { from: number; to: number; aura: string; colours?: string[]; cycle?: string[]; glints?: number }[]; smoke: { count: Record<string, string> } };
   };
@@ -258,10 +261,35 @@ export function newAgimat(data: StatsData, def: CombatItemDef, level: number, ui
 
 // ── What an item gives ──
 
-/** Enhancement's total on base at `plus` (stats.json enhancement.perLevel: +2% a level to +10, +3% to +15, +5% to +20). */
-export function enhanceTotal(data: StatsData, plus: number): number {
+/** A range of pluses and what each of them adds (stats.json enhancement). */
+export interface PlusTier {
+  from: number;
+  to: number;
+  pct: number;
+}
+
+/** What the pluses up to `plus` add up to, tier by tier (a single number: that much every plus). */
+function plusTotal(tiers: PlusTier[] | number, plus: number): number {
+  if (typeof tiers === 'number') return tiers * plus;
   let total = 0;
-  for (const b of itemStats(data).enhancement.perLevel) total += Math.max(0, Math.min(plus, b.to) - b.from + 1) * b.pct;
+  for (const b of tiers) total += Math.max(0, Math.min(plus, b.to) - b.from + 1) * b.pct;
+  return total;
+}
+
+/** Enhancement's total on base at `plus` (stats.json enhancement.perLevel: +3% a level to +10, +8% to +15, +15% at +16,
+ *  +20% from +17). */
+export function enhanceTotal(data: StatsData, plus: number): number {
+  return plusTotal(itemStats(data).enhancement.perLevel, plus);
+}
+
+/** Armor's least DEF at `plus` (stats.json enhancement.armorMinDEF: +1 a plus from +11, +2 from +17): what it had just
+ *  before those tiers, and their DEF a plus on top. */
+function armorFloor(data: StatsData, base: number, plus: number): number {
+  const tiers = itemStats(data).enhancement.armorMinDEF ?? [];
+  if (!tiers.length) return 0;
+  const before = Math.min(plus, Math.min(...tiers.map((b) => b.from)) - 1);
+  let total = Math.round(base * (1 + enhanceTotal(data, before)));
+  for (const b of tiers) total += Math.max(0, Math.min(plus, b.to) - b.from + 1) * b.def;
   return total;
 }
 
@@ -277,17 +305,22 @@ export function baseOf(data: StatsData, def: EquipmentDef, level = def.level): {
   return { def: Math.round(per * level) };
 }
 
-/** Its base stat with its plus (rounded): "ATK 48 → 49" is this at plus and plus + 1. */
+/** Its base stat with its plus (rounded; armor never under its least DEF a plus): "ATK 48 → 49" is this at plus and
+ *  plus + 1. */
 export function enhancedBase(data: StatsData, def: EquipmentDef, item: Pick<Item, 'level' | 'plus'>): { atk?: number; def?: number } {
   const b = baseOf(data, def, item.level);
   const m = 1 + enhanceTotal(data, item.plus);
-  return { ...(b.atk !== undefined ? { atk: Math.round(b.atk * m) } : {}), ...(b.def !== undefined ? { def: Math.round(b.def * m) } : {}) };
+  return {
+    ...(b.atk !== undefined ? { atk: Math.round(b.atk * m) } : {}),
+    ...(b.def !== undefined ? { def: Math.max(Math.round(b.def * m), armorFloor(data, b.def, item.plus)) } : {}),
+  };
 }
 
-/** A line's value on its item: an accessory's lines grow +1% of themselves a plus (enhancement.accessories). */
+/** A line's value on its item: an accessory's lines grow by a share of themselves a plus (enhancement.accessories: +2%
+ *  a plus to +16, +5% from +17). */
 export function lineValue(data: StatsData, def: EquipmentDef, item: Pick<Item, 'plus'>, line: AffixLine): number {
   if (gearKind(def.slot) !== 'accessory' || !item.plus) return line.value;
-  return tidyValue(line.stat, line.value * (1 + itemStats(data).enhancement.accessories.perLevel * item.plus));
+  return tidyValue(line.stat, line.value * (1 + plusTotal(itemStats(data).enhancement.accessories.perLevel, item.plus)));
 }
 
 /** An agimat's value at its level (stats.json agimats.valueAtLevel; STR, DEX and INT are its `stat`). */

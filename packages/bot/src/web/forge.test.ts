@@ -178,7 +178,7 @@ test('enhance: only its tier\'s whetstone ("Needs a … Whetstone"), not trainin
   assert.equal(item.plus, 4);
 });
 
-test('accessories: each line +1% of itself a level (weapons and armor: base ATK / DEF)', () => {
+test('accessories: each line +2% of itself a plus to +16, +5% from +17 (weapons and armor: base ATK / DEF)', () => {
   const ring = rollGear(D.stats, gear('acc-bone-ring'), 'darkOrange', uid(), lcg(9));
   const s = holder([ring], 999);
   const at0 = ring.lines.map((l) => lineValue(D.stats, gear('acc-bone-ring'), ring, l));
@@ -188,14 +188,14 @@ test('accessories: each line +1% of itself a level (weapons and armor: base ATK 
   // (+16–20 at a 0 roll never fail.)
   assert.equal(ring.plus, 20);
   ring.lines.forEach((l, i) => {
-    const want = l.stat === 'hp' || l.stat === 'stat' || l.stat === 'atk' || l.stat === 'mp' || l.stat === 'def' || l.stat === 'hpRegen' ? Math.max(1, Math.round(at0[i] * 1.2)) : Math.round(at0[i] * 1.2 * 1000) / 1000;
+    const want = l.stat === 'hp' || l.stat === 'stat' || l.stat === 'atk' || l.stat === 'mp' || l.stat === 'def' || l.stat === 'hpRegen' ? Math.max(1, Math.round(at0[i] * 1.52)) : Math.round(at0[i] * 1.52 * 1000) / 1000;
     assert.equal(lineValue(D.stats, gear('acc-bone-ring'), ring, l), want, l.stat);
   });
   const w = sling('grey', 10);
   const view = enhanceView(D, w, [])!;
   assert.deepEqual(view.next.map((x) => x.stat), ['atk']);
-  assert.equal(view.next[0].from, 48); // base 40 at +10 (+20%)
-  assert.equal(view.next[0].to, 49);
+  assert.equal(view.next[0].from, 52); // base 40 at +10 (+30%)
+  assert.equal(view.next[0].to, 55); // +11: +8% more
 });
 
 test('agimats: gear level, slot lock, two different stats, rare ones up to rarePerItem; a full slot asks, then breaks the old one', () => {
