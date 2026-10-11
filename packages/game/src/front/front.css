@@ -47,7 +47,7 @@ p { margin: 0; }
 .nav { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--ink) 88%, transparent); border-bottom: 2px solid var(--night); backdrop-filter: blur(6px); }
 .nav .wrap { display: flex; align-items: center; gap: 24px; min-height: 60px; }
 .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--gold); font: 700 22px var(--f-display); letter-spacing: .04em; }
-.brand img { width: 24px; height: 24px; border-radius: 6px; }
+.brand img { width: 32px; height: 32px; } /* (the icon at 1x or its 2x file: never scaled in between) */
 .nav ul { display: flex; gap: 20px; list-style: none; margin: 0 0 0 auto; padding: 0; }
 .nav ul a { color: var(--muted); text-decoration: none; font: 500 15px var(--f-display); }
 .nav ul a:hover { color: var(--daisy); }
@@ -76,7 +76,8 @@ p { margin: 0; }
 .hero::after { content: ''; position: absolute; inset: auto 0 0 0; height: 46%; z-index: -1; background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--ink) 92%, transparent) 70%, var(--ink)); }
 .hero .wrap { height: 100%; display: flex; flex-direction: column; align-items: center; text-align: center; padding-block: 6vh 40px; }
 .badge { font: 600 13px/1 var(--f-display); letter-spacing: .12em; text-transform: uppercase; color: var(--night); background: var(--sage); padding: 7px 10px; box-shadow: 0 0 0 2px var(--night); }
-.title { margin-top: 18px; font-size: clamp(56px, 11vw, 132px); color: var(--gold); letter-spacing: .04em; text-shadow: .06em .06em 0 var(--night), 0 0 24px rgba(30, 27, 58, .8); }
+.title { margin: 18px 0 0; line-height: 0; } /* the logo (render.ts heroLogo): 3x, 2x from 420 px, 1x below */
+.title img { display: block; max-width: none; width: auto; height: auto; }
 .hero .tagline { margin-top: auto; font: 500 clamp(18px, 2.4vw, 24px)/1.35 var(--f-display); max-width: 30ch; text-shadow: 2px 2px 0 var(--night); }
 .cta { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px 18px; margin-top: 22px; }
 .madeby { margin-top: 18px; display: flex; align-items: center; gap: 10px; color: var(--dim); font: 400 13px var(--f-display); }

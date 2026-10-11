@@ -33,7 +33,7 @@ export default defineConfig(({ command }) => {
  *  else is ever cached: logins, /me, /town/*, /api/*, /ws and version.json go to the network as they always did. The
  *  page registers it itself (src/net/pwa.ts: never in the desktop app). */
 function homeScreenApp() {
-  const NAVY = '#1a1b26'; // (the page's background)
+  const NAVY = '#1E1B3A'; // (the brand kit's Night Navy)
   return VitePWA({
     injectRegister: false,
     registerType: 'prompt',
@@ -53,9 +53,11 @@ function homeScreenApp() {
       background_color: NAVY,
       theme_color: NAVY,
       icons: [
-        { src: '/play/pwa/icon-192.png', sizes: '192x192', type: 'image/png' },
-        { src: '/play/pwa/icon-512.png', sizes: '512x512', type: 'image/png' },
-        { src: '/play/pwa/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        // (The brand kit's icons, public/icons/: the tile as it is, and Android's maskable with its safe-zone margin.)
+        { src: '/play/icons/mikazuki-icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+        { src: '/play/icons/mikazuki-icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+        { src: '/play/icons/mikazuki-icon-maskable-192.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
+        { src: '/play/icons/mikazuki-icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
       ],
     },
     workbox: {
@@ -69,8 +71,10 @@ function homeScreenApp() {
         'assets/packs/ui-*.png',
         'assets/ui/ui-splash-*.png',
         'assets/ui/ui-logo-twigo.png',
+        'assets/ui/ui-logo-mikazuki.png',
         'favicon.ico',
-        'pwa/*.png',
+        'apple-touch-icon.png',
+        'icons/*.png',
       ],
       maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // (the game's script is about 2.4 MB)
       navigateFallback: '/play/index.html',

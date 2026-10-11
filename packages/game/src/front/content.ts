@@ -10,8 +10,8 @@ export const content = {
     title: 'Mikazuki | twigo',
     description: 'A cosy night-time pixel town. Hang out with friends, then grab a slingshot and clear the Slums.',
     url: 'https://twigo.dev/',
-    image: 'https://twigo.dev/play/og-image.png',
-    imageAlt: 'MIKAZUKI over the night-time pixel town: close beta open at twigo.dev',
+    image: 'https://twigo.dev/play/mikazuki-og-1200x630.png',
+    imageAlt: 'The Mikazuki logo over the night-time pixel town',
   },
 
   nav: {
@@ -29,7 +29,8 @@ export const content = {
 
   hero: {
     badge: 'Close beta',
-    title: 'MIKAZUKI',
+    /** The logo's alt text (the hero shows the logo: render.ts). */
+    title: 'Mikazuki',
     tagline: 'A cosy night-time pixel town. Hang out with friends, then grab a slingshot and clear the Slums.',
     apply: 'Apply to close beta',
     play: 'Play',
