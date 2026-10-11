@@ -3296,13 +3296,15 @@ export class TownScene extends Phaser.Scene {
     const [col, row] = post.tile;
     const top = tileToScreen(col, row);
     const lift = this.objects.heights.at(col, row) * LEVEL_PX;
-    const [w, h] = def.size;
-    const box = this.add.zone(top.x - def.anchor[0] + w / 2, top.y - lift - def.anchor[1] + h / 2, w / 2, h).setDepth(LABEL_DEPTH - 2);
+    // (Its art fills rows ART_TOP–ART_BOTTOM of the cell: the post and its plinth, the lantern hanging off its arm.)
+    const [ART_TOP, ART_BOTTOM] = [33, 94];
+    const y0 = top.y - lift - def.anchor[1];
+    const box = this.add.zone(top.x - def.anchor[0] + def.size[0] / 2, y0 + (ART_TOP + ART_BOTTOM) / 2, def.size[0] / 2, ART_BOTTOM - ART_TOP).setDepth(LABEL_DEPTH - 2);
     const label = new BuildingLabel(this, 'Lantern Post', top.x);
     label.setZoom(this.cameras.main.zoom);
     this.gateLabels.push(label);
     box.setInteractive({ cursor: 'pointer' });
-    box.on('pointerover', () => label.show(top.y - lift - def.anchor[1] + 6));
+    box.on('pointerover', () => label.show(y0 + ART_TOP - 2));
     box.on('pointerout', () => label.show(null));
     box.on('pointerup', (p: Phaser.Input.Pointer) => {
       if (!p.leftButtonReleased() && !p.wasTouch) return;

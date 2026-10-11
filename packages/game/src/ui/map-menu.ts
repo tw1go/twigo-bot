@@ -220,6 +220,7 @@ export class MapMenu {
         pin.style.top = `${(y - ah - 13) * k}px`;
         this.stage.append(pin);
         label('You are here', [x + 9, y - 7], 'mm-here', true);
+        this.clearOf(this.stage.lastElementChild as HTMLElement, (x - 9) * k);
         continue;
       }
       const tag = el('span', 'mm-label mm-post-tag', 'Lantern Post');
@@ -246,6 +247,16 @@ export class MapMenu {
       });
     }
     this.footText();
+  }
+
+  /** A label written right of its spot that runs into another: written left of it instead, ending at `right`. */
+  private clearOf(t: HTMLElement, right: number): void {
+    const box = t.getBoundingClientRect();
+    const hits = (b: DOMRect) => !(b.right < box.left || b.left > box.right || b.bottom < box.top || b.top > box.bottom);
+    if (![...this.stage.querySelectorAll<HTMLElement>('.mm-label')].some((o) => o !== t && !o.hidden && hits(o.getBoundingClientRect()))) return;
+    t.classList.remove('mm-left');
+    t.classList.add('mm-right');
+    t.style.left = `${right}px`;
   }
 
   private footText(): void {

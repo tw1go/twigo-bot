@@ -1,7 +1,7 @@
 import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ClassesFile, GearRarity, HoodHouse, HouseLook, OutfitData, TownHoodActionResponse, TownHoodResponse, TownItems, TownRace, TownRaceResponse } from '@mikazuki/shared';
-import { RETURN_LANTERN, addToBag, takeKind, buffSkillLevels, classBuffs, classSkills, damageSkillLevels, moveUnlock } from '@mikazuki/shared';
+import { type LanternPost, RETURN_LANTERN, addToBag, lanternPostOf, takeKind, buffSkillLevels, classBuffs, classSkills, damageSkillLevels, moveUnlock } from '@mikazuki/shared';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { doorSpot, hoodMap, lotTile } from '../../bot/src/web/hood-map.ts';
 import type { Plugin } from 'vite';
@@ -301,13 +301,13 @@ export function devTown(): Plugin {
       // The Slums' map, read again whenever the file changes (a new map from the art folder needs no restart).
       const slumsFile = join(server.config.publicDir, 'assets/maps/slums.json');
       let slumsAt = 0;
-      let slums = { size: [0, 0] as [number, number], spawn: [0, 0] as [number, number], blocked: [] as number[][], avoid: [] as [number, number][] };
+      let slums: { size: [number, number]; spawn: [number, number]; blocked: number[][]; avoid: [number, number][]; lantern?: LanternPost | null } = { size: [0, 0], spawn: [0, 0], blocked: [], avoid: [] };
       const slumsMap = () => {
         const at = statSync(slumsFile).mtimeMs;
         if (at !== slumsAt) {
           slumsAt = at;
           const sj = JSON.parse(readFileSync(slumsFile, 'utf8'));
-          slums = { size: sj.size, spawn: sj.spawn, blocked: sj.blocked, avoid: Object.values((sj.gates ?? {}) as Record<string, [number, number][]>).flat() };
+          slums = { size: sj.size, spawn: sj.spawn, blocked: sj.blocked, avoid: Object.values((sj.gates ?? {}) as Record<string, [number, number][]>).flat(), lantern: lanternPostOf(sj) };
         }
         return slums;
       };
@@ -322,7 +322,7 @@ export function devTown(): Plugin {
         loadGolemArt(),
       );
       const town = attachTown(httpServer as Parameters<typeof attachTown>[0], {
-        map: { size: json.size, spawn: json.spawn, blocked: json.blocked, avoid: Object.values((json.gates ?? {}) as Record<string, [number, number][]>).flat() },
+        map: { size: json.size, spawn: json.spawn, blocked: json.blocked, avoid: Object.values((json.gates ?? {}) as Record<string, [number, number][]>).flat(), lantern: lanternPostOf(json) },
         rooms: {
           hood: () => {
             const m = hoodMap(houses.length);
