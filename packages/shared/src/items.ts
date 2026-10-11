@@ -68,15 +68,17 @@ export interface CombatItemDef {
   /** A cosmetic that can't be worn yet. */
   cosmetic?: boolean;
   /** Sold at the sari-sari store: priced as a potion (its tier's Kusing), a whetstone or a Repair Kit (Kowens), a dungeon
-   *  ticket (its dungeon's price), or a travel item (its own `price`). */
-  shop?: 'potion' | 'whetstone' | 'repairKit' | 'ticket' | 'travel';
-  /** Its own shop price (a travel item's). */
-  price?: { kusing: number };
+   *  ticket (its dungeon's price), a travel item, or a smithing tool with its own price (`price`). */
+  shop?: 'potion' | 'whetstone' | 'repairKit' | 'ticket' | 'travel' | 'smithing';
+  /** Its own shop price: Kusing (a travel item) or Kowens (Agimat Pliers, Temper Stones). */
+  price?: { kusing?: number; kowens?: number };
   /** A consumable used somewhere, never from the bag: where (the bag says so). */
   useAt?: string;
   /** What it does at the forge popup for its tier's gear: enhances (whetstone), combines ten into a whetstone
    *  (fragment), repairs (repairKit). */
-  forge?: 'whetstone' | 'fragment' | 'repairKit';
+  forge?: 'whetstone' | 'fragment' | 'repairKit' | 'pliers' | 'temper' | 'tempered';
+  /** Never stacks (a filled Temper Stone: each one holds its own +, item level and type). */
+  noStack?: boolean;
   icon?: string;
   showcase?: string;
   large?: string;
@@ -393,6 +395,8 @@ export function itemName(data: ItemData, item: Item, mainStat: StatName | null =
   if (!def) return item.defId;
   if (!isGearDef(def)) {
     if (def.kind === 'agimat') return `${def.name} Lv ${item.level}${item.lock ? ` (${SLOT_WORD[item.lock]} only)` : ''}`;
+    // A filled Temper Stone: the + it holds, and the item level and type it fits ("Temper Stone (+7, Lv 10 Weapon)").
+    if (def.forge === 'tempered') return `${def.name} (+${item.plus}, Lv ${item.level}${item.lock ? ` ${SLOT_WORD[item.lock]}` : ''})`;
     return def.name;
   }
   const tier = affixTier(data.stats, item.rarity);
@@ -457,7 +461,7 @@ export function giveQuestRewards(data: ItemData, s: AdventureState, quests: Ques
 
 /** The most of a kind in one slot (stats.json inventory: stackN lists; gear never stacks). */
 export function stackLimit(data: StatsData, def: AnyItemDef | undefined): number {
-  if (!def || isGearDef(def) || def.kind === 'cosmetic') return 1;
+  if (!def || isGearDef(def) || def.kind === 'cosmetic' || def.noStack) return 1;
   // (A consumable, the Warren Ticket, stacks like a potion: stats.json inventory.stack99 "potions", or its own word.)
   const word = def.kind === 'potion' || def.kind === 'consumable' ? (def.kind === 'consumable' ? 'consumables' : 'potions') : def.kind === 'agimat' ? 'agimats' : 'materials';
   for (const [k, v] of Object.entries(itemStats(data).inventory)) {

@@ -2222,14 +2222,15 @@ export class TownScene extends Phaser.Scene {
           if (q.has('kusing')) first.set('kusing', q.get('kusing')!);
           if (q.has('whetstones')) first.set('whetstones', q.get('whetstones')!);
           asks.push(first);
-          for (const g of q.getAll('give')) {
-            const [def, rarity, plus, level] = g.split(':');
-            if (!def) continue;
-            const isGear = isGearDef(anyDef(def));
-            asks.push(new URLSearchParams({ as: fakeName(), def, rarity: rarity ?? '', ...(isGear ? { plus: plus || '0' } : { count: plus || '1' }), ...(level ? { level } : {}) }));
-          }
           void devItemsReady
             .then(async () => {
+              // (Gear or not is known once the item data is in: a gear's third part is its plus, a stack's how many.)
+              for (const g of q.getAll('give')) {
+                const [def, rarity, plus, level] = g.split(':');
+                if (!def) continue;
+                const isGear = isGearDef(anyDef(def));
+                asks.push(new URLSearchParams({ as: fakeName(), def, rarity: rarity ?? '', ...(isGear ? { plus: plus || '0' } : { count: plus || '1' }), ...(level ? { level } : {}) }));
+              }
               for (const ask of asks) {
                 const r = await fetch(`/__give?${ask}`).then((x) => (x.ok ? (x.json() as Promise<{ items?: TownItems }>) : null));
                 if (r?.items) setItems(r.items);
@@ -3832,7 +3833,7 @@ function exposeDebug(scene: TownScene): void {
     /** Your items and Kusing as the page has them (names as shown). */
     items: () => {
       const s = adventure();
-      const view = (i: Item) => ({ uid: i.uid, defId: i.defId, name: nameOf(i), rarity: i.rarity, plus: i.plus, luck: i.luck, broken: i.broken, count: i.count, bound: i.bound, level: i.level, lock: i.lock, lines: i.lines, agimats: i.agimats });
+      const view = (i: Item) => ({ uid: i.uid, defId: i.defId, name: nameOf(i), rarity: i.rarity, stat: i.stat, plus: i.plus, luck: i.luck, broken: i.broken, count: i.count, bound: i.bound, level: i.level, lock: i.lock, lines: i.lines, agimats: i.agimats });
       return s && { kusing: s.kusing, bag: s.bag.map(view), equipped: Object.fromEntries(Object.entries(s.equipped).map(([p, i]) => [p, view(i!)])) };
     },
     /** Loot on the ground as shown, with where each is on the screen. */

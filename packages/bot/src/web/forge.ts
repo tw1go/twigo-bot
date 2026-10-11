@@ -12,7 +12,11 @@ import { sellPrice,
   countOf,
   disassembleRefusal,
   disassemblyYield,
+  applyRefusal,
+  drawRefusal,
   embedRefusal,
+  removeRefusal,
+  toolOf,
   enhanceRefusal,
   findItem,
   fragmentsPerWhetstone,
@@ -99,6 +103,67 @@ export function embed(data: ItemData, s: ForgeHolder, gearUid: string, agimatUid
   stack.count -= 1;
   if (stack.count <= 0) s.bag.splice(s.bag.indexOf(stack), 1);
   return { ok: true, outcome: 'embedded', message: `Set ${itemName(data, { ...stack, count: 1 })} into ${itemName(data, gear)}${old ? ` (the old ${agimatWords(data, old)} broke)` : ''}.`, item: gear };
+}
+
+/** Agimat Pliers: the agimat in a gear piece's `slot` back into the bag just as it was (stat, level, slot lock; an agimat
+ *  is never bound), for one pliers. Broken gear too. Refused (nothing changes) when the bag has no room for it. */
+export function removeAgimat(data: ItemData, s: ForgeHolder, uid: string, slot: number, newUid: () => string): Result {
+  const gear = findItem(s, uid)?.item;
+  if (!gear) return no("You don't have that item.");
+  const why = removeRefusal(data, gear, slot);
+  if (why) return no(why);
+  const pliers = toolOf(data, 'pliers');
+  if (!pliers || countOf(s.bag, pliers.id) < 1) return no('You need Agimat Pliers.');
+  const a = gear.agimats[slot]!;
+  const def = [...data.defs.values()].find((d): d is CombatItemDef => !isGearDef(d) && d.kind === 'agimat' && d.stat === a.stat);
+  if (!def) return no("That agimat can't come out.");
+  const back = newAgimat(data.stats, def, a.level, newUid(), a.lock);
+  // (Tried on a copy first: all or nothing.)
+  const room = structuredClone(s.bag);
+  takeKind(room, pliers.id, 1);
+  if (!addToBag(data, room, structuredClone(back), newUid)) return no('Make room in your bag first.');
+  takeKind(s.bag, pliers.id, 1);
+  addToBag(data, s.bag, back, newUid);
+  gear.agimats[slot] = null;
+  return { ok: true, outcome: 'removed', message: `Pulled ${an(itemName(data, back))} out of ${itemName(data, gear)}.`, item: gear, got: [back] };
+}
+
+/** An empty Temper Stone draws an item's +: the item goes back to +0 and a filled stone holds the +, the item's level and
+ *  type (bound if the item was). Refused (nothing changes) when the bag has no room for it. */
+export function drawPlus(data: ItemData, s: ForgeHolder, uid: string, newUid: () => string): Result {
+  const item = findItem(s, uid)?.item;
+  const def = item && data.defs.get(item.defId);
+  if (!item || !isGearDef(def)) return no("You don't have that item.");
+  const why = drawRefusal(data, item);
+  if (why) return no(why);
+  const empty = toolOf(data, 'temper');
+  const filled = toolOf(data, 'tempered');
+  if (!empty || !filled || countOf(s.bag, empty.id) < 1) return no('You need an empty Temper Stone.');
+  const stone: Item = { ...newItem(data.stats, filled, newUid()), level: item.level, plus: item.plus, lock: def.slot, bound: item.bound };
+  const room = structuredClone(s.bag);
+  takeKind(room, empty.id, 1);
+  if (!addToBag(data, room, structuredClone(stone), newUid)) return no('Make room in your bag first.');
+  takeKind(s.bag, empty.id, 1);
+  addToBag(data, s.bag, stone, newUid);
+  const was = item.plus;
+  item.plus = 0;
+  item.luck = 0;
+  return { ok: true, outcome: 'drawn', message: `Drew +${was} out of ${itemName(data, item)}: it's back to +0.`, item, got: [stone] };
+}
+
+/** A filled Temper Stone's + onto an item of its type and item level with a lower +: the item takes the stone's + (its
+ *  own is lost) and the stone is used up. Its agimats, lines, rarity and binding stay as they were. */
+export function applyPlus(data: ItemData, s: ForgeHolder, uid: string, stoneUid: string): Result {
+  const item = findItem(s, uid)?.item;
+  const stone = s.bag.find((b) => b.uid === stoneUid);
+  if (!item || !stone) return no("You don't have that item.");
+  const why = applyRefusal(data, item, stone);
+  if (why) return no(why);
+  const was = item.plus;
+  item.plus = stone.plus;
+  item.luck = 0;
+  s.bag.splice(s.bag.indexOf(stone), 1);
+  return { ok: true, outcome: 'applied', message: `${itemName(data, item)}: +${was} → +${item.plus}.`, item };
 }
 
 /** "Crit Damage Agimat Lv 20". */
@@ -203,6 +268,12 @@ export function forge(data: ItemData, s: ForgeHolder, a: TownForgeAction, random
       return repair(data, s, a.item, a.tool);
     case 'embed':
       return embed(data, s, a.item, a.agimat, a.slot, !!a.replace);
+    case 'remove':
+      return removeAgimat(data, s, a.item, a.slot, newUid);
+    case 'draw':
+      return drawPlus(data, s, a.item, newUid);
+    case 'apply':
+      return applyPlus(data, s, a.item, a.stone);
     case 'disassemble':
       return disassemble(data, s, a.item, random, newUid);
     case 'combine':
@@ -227,6 +298,9 @@ export function parseForgeAction(body: unknown): TownForgeAction | null {
   const tool = id(b.tool) ? (b.tool as string) : undefined;
   if (b.action === 'enhance' || b.action === 'repair') return { action: b.action, item, ...(tool ? { tool } : {}) };
   if (b.action === 'embed' && id(b.agimat) && Number.isInteger(b.slot)) return { action: 'embed', item, agimat: b.agimat as string, slot: b.slot as number, ...(b.replace === true ? { replace: true } : {}) };
+  if (b.action === 'remove' && Number.isInteger(b.slot)) return { action: 'remove', item, slot: b.slot as number };
+  if (b.action === 'draw') return { action: 'draw', item };
+  if (b.action === 'apply' && id(b.stone)) return { action: 'apply', item, stone: b.stone as string };
   if (b.action === 'disassemble' || b.action === 'combine' || b.action === 'sell') return { action: b.action, item };
   return null;
 }

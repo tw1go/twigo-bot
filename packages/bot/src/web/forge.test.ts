@@ -25,8 +25,10 @@ import {
   trainingSellPrice,
   rarePerItem,
   rollGear,
+  pocketSlots,
 } from '@mikazuki/shared';
 import { loadItemData } from './stats-data.js';
+import { combatWares } from './combat-bag.js';
 import { combine, disassemble, embed, enhance, enhanceFeedLine, forge, parseForgeAction, repair } from './forge.js';
 import { rollAgimatStat } from './loot.js';
 
@@ -455,4 +457,96 @@ test('an enhance to +15 and up tells the town (the system feed): blue to +17, go
   assert.equal(enhanceFeedLine(D, 'Mara', { ...sling, plus: 16, broken: true }), null, 'broken: no');
   const armor = newItem(D.stats, gear('armor-copper-body'), 'x2', 1);
   assert.equal(enhanceFeedLine(D, 'Mara', { ...armor, plus: 15 })?.tone, 'rare', 'armor too');
+});
+
+// ── Agimat Pliers and Temper Stones ──
+
+const tools = (s: ForgeHolder, id: string, n: number) => addToBag(D, s.bag, newItem(D.stats, thing(id), uid(), n), uid);
+/** Gear of `id` (its own level) at `plus`, its rolls seeded. */
+const piece = (id: string, plus = 0, rarity: Item['rarity'] = 'darkBlue') => ({ ...rollGear(D.stats, gear(id), rarity, uid(), lcg(7)), plus });
+
+test('Agimat Pliers: the agimat back in the bag just as it was (and it embeds again); broken and bound gear too; a full bag refuses', () => {
+  const head = piece('armor-copper-head'); // Lv 20, two slots
+  head.bound = true;
+  head.broken = true;
+  const s = holder([head]);
+  tools(s, 'agimat-pliers', 2);
+  head.agimats[1] = { stat: 'critDmg', level: 20, lock: 'head' };
+  assert.match(forge(D, s, { action: 'remove', item: head.uid, slot: 0 }, always(0), uid).message, /empty/);
+  const r = forge(D, s, { action: 'remove', item: head.uid, slot: 1 }, always(0), uid);
+  assert.equal(r.outcome, 'removed', r.message);
+  assert.equal(head.agimats[1], null);
+  assert.equal(countOf(s.bag, 'agimat-pliers'), 1, 'one pliers used');
+  const back = s.bag.find((b) => b.defId === 'agimat-critdmg')!;
+  assert.deepEqual([back.stat, back.level, back.lock, back.bound], ['critDmg', 20, 'head', false], 'as it was, never bound');
+  assert.equal(head.bound, true, 'still bound');
+  head.broken = false;
+  assert.equal(forge(D, s, { action: 'embed', item: head.uid, agimat: back.uid, slot: 1 }, always(0), uid).outcome, 'embedded', 'embeds again');
+  // A full bag (no room in the agimat pocket either): refused, the pliers kept.
+  const full = holder([head]);
+  tools(full, 'agimat-pliers', 1);
+  const slots = pocketSlots(D, 'agimats');
+  for (let i = 0; i < slots; i++) full.bag.push(newAgimat(D.stats, thing('agimat-hp'), 10 + (i % 10), uid(), i % 2 ? 'body' : 'feet'));
+  for (let i = full.bag.length; i < 200; i++) full.bag.push(sling());
+  const no = forge(D, full, { action: 'remove', item: head.uid, slot: 1 }, always(0), uid);
+  assert.equal(no.message, 'Make room in your bag first.');
+  assert.equal(countOf(full.bag, 'agimat-pliers'), 1);
+  assert.ok(head.agimats[1]);
+});
+
+test('Temper Stone: draw +7 from a Lv 10 weapon (it goes to +0), apply it to another class\'s +2 Lv 10 weapon (+7); the wrong level, type or a higher + refused', () => {
+  const sling10 = piece('weapon-crude-slingshot', 7);
+  const s = holder([sling10]);
+  tools(s, 'temper-stone', 2);
+  assert.match(forge(D, s, { action: 'draw', item: piece('weapon-crude-stick', 0).uid }, always(0), uid).message, /have that/);
+  const r = forge(D, s, { action: 'draw', item: sling10.uid }, always(0), uid);
+  assert.equal(r.outcome, 'drawn', r.message);
+  assert.equal(sling10.plus, 0, 'back to +0');
+  assert.equal(countOf(s.bag, 'temper-stone'), 1);
+  const stone = s.bag.find((b) => b.defId === 'temper-stone-filled')!;
+  assert.deepEqual([stone.plus, stone.level, stone.lock, stone.bound], [7, 10, 'weapon', false]);
+  assert.equal(itemName(D, stone), 'Temper Stone (+7, Lv 10 Weapon)');
+  // Refused: a Lv 20 weapon, a body piece, a +9 weapon (nothing changes).
+  const lv20 = piece('weapon-sturdy-stick', 2);
+  const body = piece('armor-hemp-body', 0);
+  body.level = 10;
+  const nine = piece('weapon-crude-greatstick', 9);
+  s.bag.push(lv20, body, nine);
+  assert.equal(forge(D, s, { action: 'apply', item: lv20.uid, stone: stone.uid }, always(0), uid).message, 'Needs a Lv 10 item.');
+  assert.equal(forge(D, s, { action: 'apply', item: body.uid, stone: stone.uid }, always(0), uid).message, 'Needs a Weapon.');
+  assert.equal(forge(D, s, { action: 'apply', item: nine.uid, stone: stone.uid }, always(0), uid).message, 'This item is already +7 or higher.');
+  // Another class's Lv 10 weapon at +2: +7, the stone used up; its agimats and lines stay.
+  const stick = piece('weapon-crude-stick', 2);
+  stick.agimats[0] = { stat: 'atk', level: 10 };
+  const lines = structuredClone(stick.lines);
+  s.bag.push(stick);
+  const a = forge(D, s, { action: 'apply', item: stick.uid, stone: stone.uid }, always(0), uid);
+  assert.equal(a.outcome, 'applied', a.message);
+  assert.equal(stick.plus, 7);
+  assert.deepEqual([stick.agimats[0], stick.lines], [{ stat: 'atk', level: 10 }, lines]);
+  assert.equal(s.bag.some((b) => b.uid === stone.uid), false, 'used up');
+  // Broken: repair it first. Bound: the stone is bound too. Filled stones never stack.
+  const broken = piece('weapon-crude-hilot', 3);
+  broken.broken = true;
+  s.bag.push(broken);
+  assert.equal(forge(D, s, { action: 'draw', item: broken.uid }, always(0), uid).message, 'Repair it first.');
+  const bound = piece('weapon-crude-broom', 4);
+  bound.bound = true;
+  s.bag.push(bound);
+  tools(s, 'temper-stone', 1);
+  assert.equal(forge(D, s, { action: 'draw', item: bound.uid }, always(0), uid).outcome, 'drawn');
+  tools(s, 'temper-stone', 1);
+  const again = piece('weapon-crude-potlid', 5);
+  s.bag.push(again);
+  forge(D, s, { action: 'draw', item: again.uid }, always(0), uid);
+  const filled = s.bag.filter((b) => b.defId === 'temper-stone-filled');
+  assert.deepEqual(filled.map((f) => [f.plus, f.bound, f.count]), [[4, true, 1], [5, false, 1]], 'one slot each; bound from bound gear');
+});
+
+test('the sari-sari store: Agimat Pliers and empty Temper Stones in Smithing for Kowens (their own prices); filled stones aren\'t sold', () => {
+  const w = combatWares(D, 1);
+  const of = (id: string) => w.find((x) => x.def.id === id);
+  assert.deepEqual([of('agimat-pliers')?.tab, of('agimat-pliers')?.currency, of('agimat-pliers')?.cost], ['smithing', 'kowens', thing('agimat-pliers').price!.kowens]);
+  assert.deepEqual([of('temper-stone')?.tab, of('temper-stone')?.currency, of('temper-stone')?.cost], ['smithing', 'kowens', thing('temper-stone').price!.kowens]);
+  assert.equal(of('temper-stone-filled'), undefined);
 });

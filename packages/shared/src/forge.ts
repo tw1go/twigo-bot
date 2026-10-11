@@ -9,8 +9,9 @@ import type { TownItems } from './town.js';
 // slot, and what taking gear apart gives back. Pure and shared: the game shows these (and refuses at once), the bot
 // checks them again and rolls (bot web/forge.ts). Training gear is never enhanced or taken apart.
 
-/** What the forge popup does: enhance (a whetstone), repair (a Repair Kit) or embed (an agimat). */
-export type ForgeMode = 'enhance' | 'repair' | 'embed';
+/** What the forge popup does: enhance (a whetstone), repair (a Repair Kit), embed (an agimat), remove (Agimat Pliers),
+ *  draw (an empty Temper Stone) or apply (a filled one). */
+export type ForgeMode = 'enhance' | 'repair' | 'embed' | 'remove' | 'draw' | 'apply';
 
 /** POST /town/forge. `item`: the gear's uid (worn or in the combat bag; disassembly: in the bag); `tool`: the whetstone
  *  or Repair Kit kind used (the one the popup was opened with); combine: `item` is a fragment stack's uid. */
@@ -18,6 +19,12 @@ export type TownForgeAction =
   | { action: 'enhance'; item: string; tool?: string }
   | { action: 'repair'; item: string; tool?: string }
   | { action: 'embed'; item: string; agimat: string; slot: number; replace?: boolean }
+  /** Agimat Pliers: the agimat in `slot` back into the bag, whole. */
+  | { action: 'remove'; item: string; slot: number }
+  /** An empty Temper Stone: the item's + into a filled one (the item back to +0). */
+  | { action: 'draw'; item: string }
+  /** A filled Temper Stone (`stone`: its uid): its + onto the item. */
+  | { action: 'apply'; item: string; stone: string }
   | { action: 'disassemble'; item: string }
   | { action: 'combine'; item: string }
   /** Training gear only: sold from the bag for Kusing (stats.json trainingGear.sellKusing). */
@@ -27,7 +34,7 @@ export type TownForgeAction =
   | { action: 'sell-many'; items: string[] };
 
 /** What happened: an enhance's success, fail or break, a repair, an embed, a disassembly or a combine. */
-export type ForgeOutcome = 'success' | 'fail' | 'break' | 'repaired' | 'embedded' | 'disassembled' | 'combined' | 'sold';
+export type ForgeOutcome = 'success' | 'fail' | 'break' | 'repaired' | 'embedded' | 'removed' | 'drawn' | 'applied' | 'disassembled' | 'combined' | 'sold';
 
 export interface TownForgeResponse {
   ok: boolean;
@@ -260,6 +267,43 @@ export const rareAgimat = (data: StatsData, stat: string) => itemStats(data).agi
  *  ones than `rarePerItem` (2: both may be). */
 /** "a, b and c". */
 export const wordList = (words: string[]) => (words.length < 2 ? (words[0] ?? '') : `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`);
+
+/** The Agimat Pliers' and Temper Stones' item ids (items/items.json `forge`: pliers, temper, tempered). */
+export const toolOf = (data: ItemData, forge: 'pliers' | 'temper' | 'tempered'): CombatItemDef | undefined =>
+  [...data.defs.values()].find((d): d is CombatItemDef => !isGearDef(d) && d.forge === forge);
+
+/** Why the pliers can't pull the agimat out of this gear's `slot` (any filled one when left out), or null. Broken gear
+ *  works too. */
+export function removeRefusal(data: ItemData, gear: Item, slot?: number): string | null {
+  if (!isGearDef(data.defs.get(gear.defId))) return 'Only gear holds agimats.';
+  if (!gear.agimats.some((a) => !!a)) return 'It has no agimats.';
+  if (slot !== undefined && !gear.agimats[slot]) return 'That slot is empty: pick one with an agimat.';
+  return null;
+}
+
+/** Why an empty Temper Stone can't draw this item's +, or null. */
+export function drawRefusal(data: ItemData, item: Item): string | null {
+  const def = data.defs.get(item.defId);
+  if (!isGearDef(def)) return 'Only gear has a + to draw.';
+  if (item.broken) return 'Repair it first.';
+  if (item.plus < 1) return 'It has no + to draw.';
+  return null;
+}
+
+/** Why a filled Temper Stone can't go onto this item, or null: the same type (slot) and item level, not broken, and a
+ *  lower + than the stone's. */
+export function applyRefusal(data: ItemData, item: Item, stone: Item): string | null {
+  const def = data.defs.get(item.defId);
+  const sdef = data.defs.get(stone.defId);
+  if (isGearDef(sdef) || sdef?.forge !== 'tempered' || !stone.lock) return "That isn't a filled Temper Stone.";
+  if (!isGearDef(def)) return `Needs ${an(SLOT_WORD[stone.lock])}.`;
+  if (def.training) return "Training gear can't take a +.";
+  if (def.slot !== stone.lock) return `Needs ${an(SLOT_WORD[stone.lock])}.`;
+  if (item.level !== stone.level) return `Needs a Lv ${stone.level} item.`;
+  if (item.broken) return 'Repair it first.';
+  if (item.plus >= stone.plus) return `This item is already +${stone.plus} or higher.`;
+  return null;
+}
 
 export function embedRefusal(data: ItemData, gear: Item, agimat: Item, slot?: number): string | null {
   const def = data.defs.get(gear.defId);

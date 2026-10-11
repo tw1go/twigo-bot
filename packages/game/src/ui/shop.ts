@@ -321,6 +321,8 @@ const FAKE_COMBAT: TownShopItem[] = [
   { id: 'low-mp-potion', name: 'Low MP Potion', cost: 50, currency: 'kusing', kind: 'healing', about: 'Heals 80 MP at once. Put it on your hotbar; HP and MP Potions share a 10 s cooldown. For the Slums.', max: 99 },
   { id: 'rough-whetstone', name: 'Rough Whetstone', cost: 3, kind: 'smithing', about: 'Enhances weapons, armor and accessories of item Lv 1-20 (the Low tier).', max: 999 },
   { id: 'low-repair-kit', name: 'Low Repair Kit', cost: 15, kind: 'smithing', about: 'Repairs a broken item of item Lv 1-20 (the Low tier).', max: 999 },
+  { id: 'agimat-pliers', name: 'Agimat Pliers', cost: 10, kind: 'smithing', about: 'Pulls one agimat out of a weapon or armor piece without breaking it.', max: 99 },
+  { id: 'temper-stone', name: 'Temper Stone', cost: 30, kind: 'smithing', about: "Draws an item's + into the stone, to put onto another item of the same type and item level.", max: 99 },
   { id: 'warren-ticket', name: 'Warren Ticket', cost: 500000, currency: 'kusing', kind: 'dungeons', about: 'Opens a run of the Scrap Warrens for you, or for your whole party. Use it at the Warren Gate by the golem pit.', max: 99 },
   { id: 'return-lantern', name: 'Return Lantern', cost: 200, currency: 'kusing', kind: 'travel', about: 'Light it at a Lantern Post to travel to another map.', max: 99 },
 ];
