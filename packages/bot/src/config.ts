@@ -63,6 +63,8 @@ export const config = {
   patchNotesChannelId: process.env.PATCH_NOTES_CHANNEL_ID || undefined,
   /** Every line of the web town's system feed (and its banners) is posted here too (optional). */
   townFeedChannelId: process.env.TOWN_FEED_CHANNEL_ID || undefined,
+  /** Optional: where each close beta application from the front page is posted (web/beta.ts); none, no post. */
+  betaApplicationsChannelId: process.env.BETA_APPLICATIONS_CHANNEL_ID || undefined,
   /** The Discord channel linked to the web town's chat (optional; needs the Message Content intent). */
   townChatChannelId: process.env.TOWN_CHAT_CHANNEL_ID || undefined,
   // The CMS (src/web/cms.ts) at this hard-to-guess path on the web game's address. Empty = CMS off. Only the gifter

@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
 import { queueTown } from '../assets/queue';
 import type { Manifest, TownMap } from '../assets/types';
-import { assetProblems, headTop, loadOutfit, sheetKey } from '../characters/doll';
+import { assetProblems, headTop, sheetKey } from '../characters/doll';
+import { loadOutfit } from '../characters/loading';
 import { saveOutfit, startingOutfit } from '../characters/looks';
 import { saveNickname, suggestNickname } from '../characters/nickname';
 import type { MeResult } from '../session';

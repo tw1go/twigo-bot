@@ -100,6 +100,9 @@ export interface Manifest {
     splashAnim?: { file: string; size: Vec2; frames: number; fps: number; columns: number };
     splashBg?: { file: string; size: Vec2 };
     titleButton?: { file: string; size: Vec2; frames: number; slice: number };
+    /** The front page's buttons: the title button's states as separate 9-slice images (violet; gold for the beta). */
+    buttonViolet?: { file: string; hover: string; pressed: string; size: Vec2; slice: number };
+    buttonGold?: { file: string; hover: string; pressed: string; size: Vec2; slice: number };
     logoTwigo?: { file: string; size: Vec2 };
     /** The Mine's dig: played once; the find rises from `hole` (its bottom centre) from cell `itemFrom`. */
     digPanel?: { file: string; size: Vec2; frames: number; fps: number; loop: boolean; anchor: Vec2; hole: Vec2; itemFrom: number };

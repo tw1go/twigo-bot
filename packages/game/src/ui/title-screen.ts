@@ -1,4 +1,5 @@
 import type { Manifest } from '../assets/types';
+import { Splash } from './splash';
 
 // 🌙 The boot sequence's two page layers (BootScene runs them while it loads):
 // - The intro card: "a game made by" and the twigo logo, small and centred on ink. Fades in, holds, fades out (reduced
@@ -88,12 +89,12 @@ export type TitleOffer = { kind: 'start' } | { kind: 'guest'; problem: string | 
 
 export class TitleScreen {
   private readonly root = document.createElement('div');
-  private readonly bg = document.createElement('canvas');
+  /** The town behind it (ui/splash.ts). */
+  private readonly splash: Splash;
+  private readonly bg: HTMLCanvasElement;
   private readonly title = document.createElement('canvas');
   private readonly band = document.createElement('div');
   private readonly sound = document.createElement('button');
-  private timer = 0;
-  private frame = 0;
   private offer: TitleOffer | null = null;
   private closing = false;
   /** Start (the button, a click anywhere, Enter or Space). */
@@ -107,6 +108,8 @@ export class TitleScreen {
     fadeIn = true,
   ) {
     this.root.id = 'title-screen';
+    this.splash = new Splash(M);
+    this.bg = this.splash.canvas;
     this.bg.className = 'ts-bg';
     this.title.className = 'ts-title';
     this.title.setAttribute('role', 'img');
@@ -128,7 +131,6 @@ export class TitleScreen {
     document.body.append(this.root);
     if (fadeIn && !still()) requestAnimationFrame(() => requestAnimationFrame(() => this.root.classList.add('ts-on')));
     else this.root.classList.add('ts-on', 'ts-now');
-    this.loadArt();
     this.layout();
     void document.fonts.load(`700 40px ${FONT}`).then(() => this.drawTitle()).catch(() => {});
   }
@@ -166,7 +168,7 @@ export class TitleScreen {
   /** Fades out (CLOSE_MS; at once with reduced motion) and goes; resolves when it's gone. */
   close(): Promise<void> {
     this.closing = true;
-    clearInterval(this.timer);
+    this.splash.destroy();
     removeEventListener('keydown', this.keyed);
     removeEventListener('resize', this.layout);
     this.root.classList.remove('ts-on');
@@ -197,45 +199,11 @@ export class TitleScreen {
     this.start();
   };
 
-  /** The still at once, then the sheet (its frames once it's in), unless motion is reduced. */
-  private loadArt(): void {
-    const S = this.M.ui.splashBg;
-    const A = this.M.ui.splashAnim;
-    const size = A?.size ?? S?.size ?? [384, 216];
-    [this.bg.width, this.bg.height] = size;
-    const ctx = this.bg.getContext('2d')!;
-    ctx.imageSmoothingEnabled = false;
-    if (S) {
-      const img = new Image();
-      img.onload = () => {
-        if (!this.timer) ctx.drawImage(img, 0, 0);
-      };
-      img.src = asset(S.file);
-    }
-    if (!A || still()) return;
-    const sheet = new Image();
-    sheet.onload = () => {
-      if (this.closing) return;
-      const draw = () => {
-        const [w, h] = A.size;
-        const f = this.frame;
-        ctx.clearRect(0, 0, w, h);
-        ctx.drawImage(sheet, (f % A.columns) * w, Math.floor(f / A.columns) * h, w, h, 0, 0, w, h);
-        this.frame = (f + 1) % A.frames;
-      };
-      draw();
-      this.timer = window.setInterval(draw, 1000 / A.fps);
-    };
-    sheet.src = asset(A.file);
-  }
-
   /** The whole-number scale that covers the screen: the background at it, centred and cropped; the title and the band. */
   private readonly layout = () => {
-    const [w, h] = this.M.ui.splashAnim?.size ?? this.M.ui.splashBg?.size ?? [384, 216];
     const W = innerWidth;
     const H = innerHeight;
-    const k = Math.ceil(Math.max(W / w, H / h));
-    Object.assign(this.bg.style, { width: `${w * k}px`, height: `${h * k}px`, left: `${Math.round((W - w * k) / 2)}px`, top: `${Math.round((H - h * k) / 2)}px` });
+    const k = this.splash.fit(W, H);
     // The button and hint at the same scale, a step smaller if the button wouldn't fit the screen's width or the band.
     let s = k;
     this.root.style.setProperty('--s', String(s));

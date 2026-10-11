@@ -78,6 +78,10 @@
   .row.off { opacity: .55; }
   .filters { display: flex; gap: 8px; margin-bottom: 10px; }
   .filters select { width: auto; }
+  .filters input[type=search] { flex: 1; }
+  td.note { max-width: 320px; white-space: pre-wrap; word-break: break-word; color: var(--muted); font-size: 13px; }
+  td select { width: auto; }
+  .status-new { color: var(--accent); font-weight: 600; }
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
   .check { display: flex; align-items: center; gap: 8px; margin-top: 14px; color: var(--text); font-size: 14px; }
 
@@ -147,6 +151,7 @@
     <a href="#boss" data-tab="boss">Field boss</a>
     <a href="#items" data-tab="items">Dig items</a>
     <a href="#players" data-tab="players">Players</a>
+    <a href="#beta" data-tab="beta">Beta applications</a>
     <div class="me" id="me"></div>
   </nav>
   <main id="main"></main>

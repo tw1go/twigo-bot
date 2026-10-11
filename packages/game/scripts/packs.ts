@@ -128,7 +128,12 @@ export function buildPacks(assetsDir: string): { index: PackIndex; out: { fileNa
   const groups = new Map<string, Img[]>();
   const cells = mobCells(manifest);
   // Images only the page draws (manifest ui entries marked `dom`: the title screen's) stay loose: no pack carries them.
-  const dom = new Set(Object.values(manifest.ui ?? {}).flatMap((u) => (u && typeof u === 'object' && (u as { dom?: boolean }).dom ? [(u as { file: string }).file] : [])));
+  const dom = new Set(
+    Object.values(manifest.ui ?? {}).flatMap((u) => {
+      const d = u as { dom?: boolean; file?: string; hover?: string; pressed?: string } | null;
+      return d && typeof d === 'object' && d.dom ? [d.file, d.hover, d.pressed].filter((f): f is string => !!f) : []; // (a button's states too)
+    }),
+  );
   for (const path of walk(assetsDir)) {
     if (!path.endsWith('.png')) continue;
     const file = relative(assetsDir, path).split('\\').join('/');
