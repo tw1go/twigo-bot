@@ -1,4 +1,4 @@
-import Phaser from 'phaser';
+import type Phaser from 'phaser';
 import { queueImage } from '../assets/queue';
 import type { CharacterDefs, Dir, Vec2 } from '../assets/types';
 import { isColour, visible } from '../util/pixels';
@@ -27,6 +27,12 @@ export interface Outfit {
 }
 
 export const ANIMS = ['rot', 'walk', 'idle', 'sit', 'wave', 'cheer'] as const;
+
+/** Where loaded images are found by their path: a Phaser scene's textures, or anything shaped like them (the front
+ *  page's image store), so the drawing here (dressLayer, kit-art's drawPose) never needs Phaser itself. */
+export interface ImageHost {
+  textures: { exists(key: string): boolean; get(key: string): { getSourceImage(): unknown } };
+}
 export type Anim = (typeof ANIMS)[number];
 
 const hex = (s: string) => parseInt(s.replace('#', ''), 16);
@@ -165,7 +171,7 @@ function swapsFor(C: CharacterDefs, o: Outfit, layer: string): Map<number, numbe
 
 /** A texture's pixels, read back once (a canvas readback is slow) and copied for each use: the layers never change. */
 const read = new Map<string, ImageData>();
-function pixels(scene: Phaser.Scene, key: string): ImageData | null {
+function pixels(scene: ImageHost, key: string): ImageData | null {
   if (!scene.textures.exists(key)) return null;
   let r = read.get(key);
   if (!r) {
@@ -360,7 +366,7 @@ export function loadOutfit(scene: Phaser.Scene, C: CharacterDefs, o: Outfit): Pr
     const done = () => void buildOutfitSlowly(scene, C, o).then(resolve);
     if (!missing.length) return done();
     for (const f of missing) queueImage(scene.load, scene.textures, f);
-    scene.load.once(Phaser.Loader.Events.COMPLETE, done);
+    scene.load.once('complete', done); // (Phaser.Loader.Events.COMPLETE)
     scene.load.start();
   });
 }
@@ -393,7 +399,7 @@ export function randomOutfit(C: CharacterDefs, random: () => number): Outfit {
 
 /** One layer sheet in someone's colours (the class combat poses' body and face: only those exist for them), made once
  *  per look. Null if the sheet isn't loaded. */
-export function dressLayer(scene: Phaser.Scene, C: CharacterDefs, o: Outfit, file: string, layer: string, clip?: string): HTMLCanvasElement | null {
+export function dressLayer(scene: ImageHost, C: CharacterDefs, o: Outfit, file: string, layer: string, clip?: string): HTMLCanvasElement | null {
   const key = `${file}:${clip ?? ''}:${outfitKey(o)}`;
   const done = dressed.get(key);
   if (done) return done;

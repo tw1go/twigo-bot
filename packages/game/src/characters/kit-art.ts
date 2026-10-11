@@ -1,7 +1,7 @@
-import Phaser from 'phaser';
+import type Phaser from 'phaser';
 import { queueImage } from '../assets/queue';
 import type { CharacterDefs, ClassArt, ClassLayer, ClassesDefs, Dir } from '../assets/types';
-import { type Outfit, clothesFiles, dressLayer, headFiles, sheetKey } from './doll';
+import { type ImageHost, type Outfit, clothesFiles, dressLayer, headFiles, sheetKey } from './doll';
 
 // ⚔️ A class's weapon on a character, drawn onto a canvas (the class cards, the skill preview, the equipment panel):
 // the resting weapon over the doll's idle or walk (the same frame, or the Hilot's balm on its own clock), and the
@@ -35,12 +35,12 @@ export function loadImages(scene: Phaser.Scene, files: string[]): Promise<void> 
   if (!missing.length) return Promise.resolve();
   return new Promise((resolve) => {
     for (const f of missing) queueImage(scene.load, scene.textures, f);
-    scene.load.once(Phaser.Loader.Events.COMPLETE, () => resolve());
+    scene.load.once('complete', () => resolve()); // (Phaser.Loader.Events.COMPLETE: Phaser stays out of what draws, for the front page)
     if (!scene.load.isLoading()) scene.load.start();
   });
 }
 
-const source = (scene: Phaser.Scene, file: string) => (scene.textures.exists(file) ? (scene.textures.get(file).getSourceImage() as CanvasImageSource) : null);
+const source = (scene: ImageHost, file: string) => (scene.textures.exists(file) ? (scene.textures.get(file).getSourceImage() as CanvasImageSource) : null);
 
 /** Frame `f` of a strip whose cells are `w`×`h`, at (x, y). */
 function drawCell(ctx: CanvasRenderingContext2D, img: CanvasImageSource | null, w: number, h: number, f: number, x: number, y: number): void {
@@ -48,7 +48,7 @@ function drawCell(ctx: CanvasRenderingContext2D, img: CanvasImageSource | null, 
 }
 
 /** A weapon layer's frame, placed in the 64x64 cell (32x48 ones at the body's spot). */
-function drawLayer(ctx: CanvasRenderingContext2D, scene: Phaser.Scene, K: ClassesDefs, l: ClassLayer, f: number, x: number, y: number): void {
+function drawLayer(ctx: CanvasRenderingContext2D, scene: ImageHost, K: ClassesDefs, l: ClassLayer, f: number, x: number, y: number): void {
   const [w, h] = l.size;
   const at = w === CELL ? [0, 0] : K.bodyOffset;
   drawCell(ctx, source(scene, l.file), w, h, f, x + at[0], y + at[1]);
@@ -63,7 +63,7 @@ export function lookImages(C: CharacterDefs, o: Outfit, dirs: Dir[]): string[] {
 }
 
 const alphas = new Map<string, ImageData | null>();
-function imageData(scene: Phaser.Scene, file: string): ImageData | null {
+function imageData(scene: ImageHost, file: string): ImageData | null {
   if (alphas.has(file)) return alphas.get(file)!;
   const img = source(scene, file) as HTMLImageElement | HTMLCanvasElement | null;
   let data: ImageData | null = null;
@@ -108,7 +108,7 @@ function rememberShifts(): void {
 
 /** A sheet's pixels as one number each: its colour (0xRRGGBB), or -1 where it's see-through (read once a sheet). */
 const colours = new Map<string, Int32Array | null>();
-function colourData(scene: Phaser.Scene, file: string): { c: Int32Array; width: number } | null {
+function colourData(scene: ImageHost, file: string): { c: Int32Array; width: number } | null {
   const d = imageData(scene, file);
   if (!d) return null;
   let c = colours.get(file);
@@ -128,7 +128,7 @@ function topRow(d: ImageData, w: number, h: number): number {
 /** How far a band of the town idle's body (rows y0 to y1 of its first frame) is in frame `f` of a combat body sheet:
  *  the shift that lays the band best over the pose's pixels, same colours counting most (raised arms and weapons can't
  *  pull it off). Within 10 px; none when either sheet is missing. */
-function bandShift(scene: Phaser.Scene, C: CharacterDefs, idleBody: string, poseBody: string, f: number, y0: number, y1: number): [number, number] {
+function bandShift(scene: ImageHost, C: CharacterDefs, idleBody: string, poseBody: string, f: number, y0: number, y1: number): [number, number] {
   const id = `${idleBody}|${poseBody}|${f}|${y0}|${y1}`;
   const known = shifts.get(id);
   if (known) return known;
@@ -176,7 +176,7 @@ function bandShift(scene: Phaser.Scene, C: CharacterDefs, idleBody: string, pose
 
 const bands = new Map<string, [number, number, number][] | null>();
 /** The idle body's pixels in rows y0 to y1 of its first frame: x, y, rgb. */
-function bandOf(scene: Phaser.Scene, C: CharacterDefs, idleBody: string, y0: number, y1: number): [number, number, number][] | null {
+function bandOf(scene: ImageHost, C: CharacterDefs, idleBody: string, y0: number, y1: number): [number, number, number][] | null {
   const id = `${idleBody}|${y0}|${y1}`;
   if (bands.has(id)) return bands.get(id)!;
   const a = imageData(scene, idleBody);
@@ -194,14 +194,14 @@ function bandOf(scene: Phaser.Scene, C: CharacterDefs, idleBody: string, y0: num
 }
 
 /** The head's shift: the idle's top 13 rows. */
-function headShift(scene: Phaser.Scene, C: CharacterDefs, idleBody: string, poseBody: string, f: number): [number, number] {
+function headShift(scene: ImageHost, C: CharacterDefs, idleBody: string, poseBody: string, f: number): [number, number] {
   const a = imageData(scene, idleBody);
   const top = a ? topRow(a, C.cell[0], C.cell[1]) : -1;
   return top < 0 ? [0, 0] : bandShift(scene, C, idleBody, poseBody, f, top, top + 13);
 }
 
 /** A piece of clothing's shift: the idle body's band its own pixels cover (the top's rows, the bottom's, the shoes'). */
-function clothShift(scene: Phaser.Scene, C: CharacterDefs, idleBody: string, poseBody: string, f: number, cloth: string): [number, number] {
+function clothShift(scene: ImageHost, C: CharacterDefs, idleBody: string, poseBody: string, f: number, cloth: string): [number, number] {
   const [w, h] = C.cell;
   const c = imageData(scene, cloth);
   if (!c) return [0, 0];
@@ -239,7 +239,7 @@ function drawTrimmed(ctx: CanvasRenderingContext2D, layer: CanvasImageSource | n
  *  `t` (ms) drives the Hilot's balm, which floats on its own clock. Without `art`, just the doll. */
 export function drawRested(
   ctx: CanvasRenderingContext2D,
-  scene: Phaser.Scene,
+  scene: ImageHost,
   C: CharacterDefs,
   K: ClassesDefs,
   o: Outfit,
@@ -263,7 +263,7 @@ export function drawRested(
  *  layers. `hide`: weapon layers left out (a thrown lid or plank in flight), by a part of their file name. */
 export function drawPose(
   ctx: CanvasRenderingContext2D,
-  scene: Phaser.Scene,
+  scene: ImageHost,
   C: CharacterDefs,
   K: ClassesDefs,
   o: Outfit,
