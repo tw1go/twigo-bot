@@ -6,7 +6,8 @@ import { WardrobeScene } from './scenes/WardrobeScene';
 import { ArenaScene } from './scenes/ArenaScene';
 import { HouseScene } from './scenes/HouseScene';
 import { startHud } from './hud';
-import { showVersion } from './ui/version';
+import { newVersionReady, showVersion } from './ui/version';
+import { startHomeScreenApp } from './net/pwa';
 import { setTextSize, textSize } from './ui/text-size';
 
 setTextSize(textSize(), false); // Settings → Text size, before anything is drawn
@@ -51,6 +52,7 @@ startGame();
 
 void startHud(document.getElementById('hud')!);
 showVersion();
+startHomeScreenApp(newVersionReady); // the home screen app's service worker (the website only), and the install prompt
 
 function startGame(): void {
   // The login corner stays out of the way while the game starts (the creator shows it; the town has its own HUD).

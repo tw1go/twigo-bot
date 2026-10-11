@@ -213,6 +213,23 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   salted hash (kv 'beta-salt'); an embed in `BETA_APPLICATIONS_CHANNEL_ID` if set, no pings); `/me` carries `username`
   to prefill it. CMS tab Beta applications (`GET /api/beta`, `POST /api/beta/status`, `GET /api/beta.csv`). Dev:
   http://localhost:5173/play/front.html (the apply form needs a bot on 8787: Vite proxies `/api`).
+- Ways to play (CONTEXT.md): the website (/play/ in a tab, as ever), the home screen app and the desktop app. Home screen
+  app (a PWA; `vite.config.ts` homeScreenApp, vite-plugin-pwa, the game page only: front.html loses the manifest link):
+  manifest.webmanifest (Mikazuki, /play/, fullscreen then standalone, landscape, #1a1b26, the brand kit's navy 192/512 and
+  maskable 512 in `public/pwa/`), sw.js (registered by `net/pwa.ts`, never in dev or the desktop app): precaches what the
+  title screen needs (about 4 MB: the page, its scripts, the game's manifest, town.json, fonts, the title art); the rest of
+  /play/assets/ is cached as first loaded (hashed scripts and packs cache-first, the rest stale-while-revalidate); nothing
+  else (logins, /me, /town/*, /api/*, /ws, version.json). Updates install in the background and wait: ui/version.ts's
+  notice (version.json, or the worker's `newVersionReady`) applies them on Reload now (`applyUpdate`: the waiting worker
+  takes over, then a reload; never on its own). First open (no worker yet: `firstOpen`): a percentage beside the town's
+  loading bar. Title screen: "Install Mikazuki" (the browser's beforeinstallprompt, `canInstall`) or on iPhone Safari a
+  one-time "Tap Share, then Add to Home Screen" hint (localStorage `mk_ios_hint`). HUD: a full screen button in a browser
+  tab where the Fullscreen API works (not iPhone Safari, not the apps). iPhone tags and viewport-fit=cover: the body is
+  inset by the safe area and holds every fixed panel (contain: layout), so nothing sits under a notch. Logging in from the
+  iPhone home screen app (`net/login.ts`): Discord opens in a browser sheet (/auth/login?client=wait&nonce=…) while the app
+  asks GET /auth/wait every 2 s; the code (only for the address the login finished from) goes to POST /auth/exchange for
+  the cookie (bot `web/auth.ts`, tested). Android's home screen app uses the website's redirect. First-load numbers:
+  `packages/game/APPS-NOTES.md`.
 - Open beta: `/play/` is the town for every member of the Mikazuki server (no `?preview` gate, no testers-only rule).
   Only members can log in (the OAuth callback checks; `isMember` in the bot's `web/auth.ts`, also on `/me`, `/ws` and
   the town's routes). `/gift launch` (pre-registration reward) hasn't been run.

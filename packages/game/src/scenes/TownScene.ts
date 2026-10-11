@@ -70,6 +70,7 @@ import { fakeLogin, fakeName, loadMe } from '../session';
 import { screenToTile, tileToScreen } from '../iso';
 import { toast } from '../ui/toast';
 import { MapMenu } from '../ui/map-menu';
+import { firstOpen } from '../net/pwa';
 import { confirmDrop } from '../ui/drop';
 import { PartyPanel, showPartyInvite } from '../ui/party';
 import { answer as partyAnswer, inParty, onParty, party, refusal as partyRefusal, setMemberHp, setParty, setPartyLink } from '../net/party';
@@ -386,7 +387,13 @@ export class TownScene extends Phaser.Scene {
     next();
     const rotate = this.time.addEvent({ delay: 4500, loop: true, callback: next });
 
-    const progress = (p: number) => bar.clear().fillStyle(0xa3e635).fillRect(x, y, Math.round(w * p), 8);
+    // The very first open (nothing kept on the device yet: net/pwa.ts): how far along, in per cent beside the bar.
+    const pct = firstOpen ? this.add.text(x + w + 10, y + 4, '0%', { fontFamily: UI_FONT, fontSize: '14px', color: '#a9b1d6' }).setOrigin(0, 0.5).setScrollFactor(0) : null;
+    if (pct) parts.push(pct);
+    const progress = (p: number) => {
+      bar.clear().fillStyle(0xa3e635).fillRect(x, y, Math.round(w * p), 8);
+      pct?.setText(`${Math.floor(p * 100)}%`);
+    };
     this.load.on(Phaser.Loader.Events.PROGRESS, progress);
     // Only for the first load: later ones (a new outfit's layers) would update a destroyed bar.
     this.load.once(Phaser.Loader.Events.COMPLETE, () => {

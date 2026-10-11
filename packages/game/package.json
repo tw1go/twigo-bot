@@ -18,6 +18,7 @@
     "@types/pngjs": "^6.0.5",
     "pngjs": "^7.0.0",
     "typescript": "^7.0.2",
-    "vite": "^8.3.2"
+    "vite": "^8.3.2",
+    "vite-plugin-pwa": "^2.0.0"
   }
 }

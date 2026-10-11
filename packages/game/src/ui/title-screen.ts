@@ -1,5 +1,8 @@
 import type { Manifest } from '../assets/types';
 import { Splash } from './splash';
+import { canInstall, install, onInstallable } from '../net/pwa';
+import { isDesktopApp, isHomeScreenApp, isIos } from '../net/platform';
+import { loginWaits, waitingLogin } from '../net/login';
 
 // 🌙 The boot sequence's two page layers (BootScene runs them while it loads):
 // - The intro card: "a game made by" and the twigo logo, small and centred on ink. Fades in, holds, fades out (reduced
@@ -95,6 +98,9 @@ export class TitleScreen {
   private readonly title = document.createElement('canvas');
   private readonly band = document.createElement('div');
   private readonly sound = document.createElement('button');
+  /** Top left: "Install Mikazuki" (the browser offers it), or on iPhone Safari a one-time Add to Home Screen hint. */
+  private readonly extra = document.createElement('div');
+  private readonly unwatch: () => void;
   private offer: TitleOffer | null = null;
   private closing = false;
   /** Start (the button, a click anywhere, Enter or Space). */
@@ -124,7 +130,11 @@ export class TitleScreen {
       this.mute.on = !this.mute.on;
       this.drawSpeaker();
     });
-    this.root.append(this.bg, this.title, this.band, this.sound);
+    this.extra.className = 'ts-extra';
+    this.extra.addEventListener('click', (e) => e.stopPropagation()); // (never a click to start)
+    this.unwatch = onInstallable(() => this.renderExtra());
+    this.renderExtra();
+    this.root.append(this.bg, this.title, this.band, this.sound, this.extra);
     this.root.addEventListener('click', this.clicked);
     addEventListener('keydown', this.keyed);
     addEventListener('resize', this.layout);
@@ -146,7 +156,16 @@ export class TitleScreen {
     button.append(label);
     if (button instanceof HTMLAnchorElement) {
       button.href = '/auth/login';
-      button.addEventListener('click', () => this.onLogin());
+      button.addEventListener('click', (e) => {
+        this.onLogin();
+        if (!loginWaits()) return; // (the website: the link goes to Discord)
+        // The iPhone home screen app: Discord in a browser sheet while this waits for it (net/login.ts).
+        e.preventDefault();
+        waitingLogin((text, problem) => {
+          hint.textContent = text;
+          hint.classList.toggle('ts-problem', !!problem);
+        });
+      });
     } else {
       button.type = 'button';
       button.addEventListener('click', (e) => {
@@ -165,10 +184,40 @@ export class TitleScreen {
     if (offer.kind === 'guest') button.focus({ preventScroll: true });
   }
 
+  /** The install button or the iPhone hint (neither once installed, nor in the desktop app). */
+  private renderExtra(): void {
+    this.extra.replaceChildren();
+    if (canInstall()) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'ts-install';
+      b.textContent = 'Install Mikazuki';
+      b.title = 'Play it full screen from your home screen or desktop';
+      b.addEventListener('click', () => void install());
+      this.extra.append(b);
+    } else if (isIos() && !isHomeScreenApp() && !isDesktopApp() && !iosHintClosed()) {
+      const hint = document.createElement('p');
+      hint.className = 'ts-ios';
+      hint.textContent = 'Tap Share, then Add to Home Screen to play full screen';
+      const x = document.createElement('button');
+      x.type = 'button';
+      x.className = 'ts-ios-x';
+      x.textContent = '×';
+      x.setAttribute('aria-label', 'Close');
+      x.addEventListener('click', () => {
+        closeIosHint();
+        this.renderExtra();
+      });
+      hint.append(x);
+      this.extra.append(hint);
+    }
+  }
+
   /** Fades out (CLOSE_MS; at once with reduced motion) and goes; resolves when it's gone. */
   close(): Promise<void> {
     this.closing = true;
     this.splash.destroy();
+    this.unwatch();
     removeEventListener('keydown', this.keyed);
     removeEventListener('resize', this.layout);
     this.root.classList.remove('ts-on');
@@ -280,5 +329,22 @@ export class TitleScreen {
     this.sound.innerHTML = `<svg viewBox="0 0 16 16" aria-hidden="true" shape-rendering="crispEdges"><path fill="#E6E9F2" d="M2 6h3l4-3v10l-4-3H2z"/>${
       on ? '<path fill="none" stroke="#E6E9F2" stroke-width="1.5" d="M11 5.5q1.6 2.5 0 5M12.8 3.8q3 4.2 0 8.4"/>' : '<path stroke="#f7768e" stroke-width="1.5" d="M11 6l4 4M15 6l-4 4"/>'
     }</svg>`;
+  }
+}
+
+/** The iPhone's Add to Home Screen hint, closed once and for all (this browser: localStorage `mk_ios_hint`). */
+const IOS_HINT = 'mk_ios_hint';
+function iosHintClosed(): boolean {
+  try {
+    return localStorage.getItem(IOS_HINT) === 'closed';
+  } catch {
+    return false;
+  }
+}
+function closeIosHint(): void {
+  try {
+    localStorage.setItem(IOS_HINT, 'closed');
+  } catch {
+    /* private mode: it shows again next time */
   }
 }

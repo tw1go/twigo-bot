@@ -47,7 +47,7 @@ import { refundTicketFor, warrenTicketsOf, useTicketFor, kindCountOf, useKindFor
 import { renameWithCard } from '../items/rename-card.js';
 import { changeClassWithTicket } from '../items/class-ticket.js';
 import { LAUNCH_REWARD, isPreregistered, launched, preregCount, preregister } from '../prereg/prereg.js';
-import { callback, clearSessionCookie, endSessions, isCmsUser, isMember, login, loginEnabled, logout, sessionUser } from './auth.js';
+import { callback, clearSessionCookie, endSessions, exchange, isCmsUser, isMember, login, loginClient, loginEnabled, logout, sessionUser, waitForLogin } from './auth.js';
 import { roll } from './finds.js';
 import { type CmsDeps, cms } from './cms.js';
 import { kvLoad, kvSave } from '../db/db.js';
@@ -114,7 +114,26 @@ import { kvLoad, kvSave } from '../db/db.js';
 //   CMS_PATH/*          the CMS, for the gifter (see cms.ts)
 //   WS   /ws            the live town: who else is there and where (see town.ts; from the game's page only)
 
+/** The desktop app's pages (Tauri: tauri://localhost on a Mac, http(s)://tauri.localhost on Windows). They talk to the
+ *  server like the game's own page does (fromGame), with a token instead of the cookie. */
+const APP_ORIGINS = new Set(['tauri://localhost', 'http://tauri.localhost', 'https://tauri.localhost']);
+
+/** The oldest desktop app the server still takes ('' = every one). A newer one is needed after a change old apps can't
+ *  follow: older apps get 426 from /me and show the update notice. The app says which it is in X-Mikazuki-Client
+ *  ("desktop/v0.1.550"). */
+const MIN_DESKTOP_VERSION = '';
+
+/** Whether an app's X-Mikazuki-Client is older than MIN_DESKTOP_VERSION. */
+function tooOld(req: IncomingMessage): boolean {
+  const m = /^desktop\/v?(\d+)\.(\d+)\.(\d+)/.exec(String(req.headers['x-mikazuki-client'] ?? ''));
+  const min = /^v?(\d+)\.(\d+)\.(\d+)/.exec(MIN_DESKTOP_VERSION);
+  if (!m || !min) return false;
+  for (let i = 1; i <= 3; i++) if (Number(m[i]) !== Number(min[i])) return Number(m[i]) < Number(min[i]);
+  return false;
+}
+
 const ALLOWED_ORIGINS = new Set([
+  ...APP_ORIGINS,
   'https://tw1go.github.io',
   'http://localhost:5173',
   'http://localhost:4173',
@@ -252,6 +271,7 @@ function digStatus(userId: string): MeDig {
 }
 
 async function me(client: Client, req: IncomingMessage, res: ServerResponse): Promise<void> {
+  if (tooOld(req)) return send(res, 426, '{"error":"update","message":"This version of Mikazuki is too old: download the new one."}');
   const userId = sessionUser(req);
   if (!userId) return send(res, 401, '{"error":"not logged in"}');
   if (!(await isMember(client, userId))) {
@@ -341,7 +361,7 @@ async function buyFromTown(client: Client, userId: string, count: number): Promi
 }
 
 /** Logout and pre-registration must come from the game's own page (SameSite=Lax already keeps other sites' POSTs cookie-less). */
-const fromGame = (req: IncomingMessage) => !!config.publicUrl && req.headers.origin === config.publicUrl;
+const fromGame = (req: IncomingMessage) => !!config.publicUrl && (req.headers.origin === config.publicUrl || APP_ORIGINS.has(req.headers.origin ?? ''));
 
 export function startWebServer(client: Client): void {
   const port = config.webPort;
@@ -383,7 +403,7 @@ export function startWebServer(client: Client): void {
       res.setHeader('Access-Control-Allow-Origin', origin);
       res.setHeader('Vary', 'Origin');
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Mikazuki-Client');
     }
 
     const url = new URL(req.url ?? '/', 'http://localhost');
@@ -910,8 +930,15 @@ export function startWebServer(client: Client): void {
       }
       if (path.startsWith('/auth/') || path === '/me') {
         if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
-        if (req.method === 'GET' && path === '/auth/login') return login(res, url.searchParams.get('next'));
-        if (req.method === 'GET' && path === '/auth/callback') return await callback(client, req, res, url.searchParams);
+        if (req.method === 'GET' && path === '/auth/login') return login(res, url.searchParams.get('next'), loginClient(url.searchParams.get('client'), url.searchParams.get('nonce')));
+        if (req.method === 'GET' && path === '/auth/callback') return await callback(client, req, res, url.searchParams, clientIp(req));
+        // The apps' logins: the iPhone home screen app waits for its code; a code is swapped for a session.
+        if (req.method === 'GET' && path === '/auth/wait') return waitForLogin(res, url.searchParams.get('nonce'), clientIp(req));
+        if (req.method === 'POST' && path === '/auth/exchange') {
+          if (!fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
+          const body = JSON.parse((await readBody(req)) || '{}') as { code?: unknown };
+          return exchange(res, body.code);
+        }
         if (req.method === 'POST' && path === '/auth/logout') return fromGame(req) ? logout(req, res) : send(res, 403, '{"error":"forbidden"}');
         if (req.method === 'GET' && path === '/me') return await me(client, req, res);
       }

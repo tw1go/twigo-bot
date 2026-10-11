@@ -1,5 +1,9 @@
+import { applyUpdate, checkForUpdate } from '../net/pwa';
+
 // The game's version (bottom right, faint), and a notice at the top when a newer one has been deployed: the build
-// publishes version.json (scripts/version.ts), and an open game checks it every minute. Dev: shows "dev", no checks.
+// publishes version.json (scripts/version.ts), and an open game checks it every minute; the home screen app's service
+// worker says so too when it has the new version ready (net/pwa.ts). Reload now applies it (never on its own, so never
+// in the middle of a game). Dev: shows "dev", no checks.
 
 declare const __BUILD__: { version: string; commit: string; built: string };
 
@@ -13,13 +17,12 @@ export function showVersion(): void {
   document.body.append(label);
   if (__BUILD__.version === 'dev') return;
 
-  let told = false;
   const check = async () => {
     if (told) return;
     const res = await fetch(`${import.meta.env.BASE_URL}version.json`, { cache: 'no-store' }).catch(() => null);
     const live = res?.ok ? ((await res.json().catch(() => null)) as { version?: string } | null) : null;
     if (live?.version && live.version !== __BUILD__.version) {
-      told = true;
+      checkForUpdate(); // (the home screen app fetches it meanwhile)
       notify(live.version);
     }
   };
@@ -28,17 +31,29 @@ export function showVersion(): void {
   document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && void check());
 }
 
-/** "New version available" at the top centre, with Reload now (and ×). */
-function notify(version: string): void {
+let told = false;
+
+/** The home screen app's service worker has a new version ready. */
+export function newVersionReady(): void {
+  notify(null);
+}
+
+/** "New version available" at the top centre, with Reload now (and ×); once. */
+function notify(version: string | null): void {
+  if (told) return;
+  told = true;
   const box = document.createElement('div');
   box.id = 'new-version';
   box.setAttribute('role', 'status');
   const text = document.createElement('span');
-  text.textContent = `New version available (${version})`;
+  text.textContent = version ? `New version available (${version})` : 'New version available';
   const reload = document.createElement('button');
   reload.className = 'nv-reload';
   reload.textContent = 'Reload now';
-  reload.addEventListener('click', () => location.reload());
+  reload.addEventListener('click', () => {
+    reload.disabled = true;
+    void applyUpdate();
+  });
   const close = document.createElement('button');
   close.className = 'nv-close';
   close.setAttribute('aria-label', 'Later');
