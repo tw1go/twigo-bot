@@ -230,6 +230,24 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   asks GET /auth/wait every 2 s; the code (only for the address the login finished from) goes to POST /auth/exchange for
   the cookie (bot `web/auth.ts`, tested). Android's home screen app uses the website's redirect. First-load numbers:
   `packages/game/APPS-NOTES.md`.
+  Desktop app (`packages/desktop`, Tauri 2, Windows and Mac, unsigned; its README for players and publishing): the game's
+  production build staged into `web/play/` (`scripts/stage.mjs`: the page and assets/, no front page or service worker)
+  in one window; the app's version = the game's (v0.1.N → 0.1.N). Every server call goes through `net/endpoints.ts`
+  (`api()`, `serverUrl`, `townSocket`): relative on the website, https://twigo.dev in the app with its token
+  (Authorization: Bearer; on /ws the subprotocol `mk-token.<token>`) and X-Mikazuki-Client: desktop/<version>, so write
+  new server fetches with `api()`, never a bare fetch('/…'). `net/desktop.ts` (loaded only in the app: its own chunk):
+  login in the system browser → mikazuki://auth?code=… (deep-link + single-instance plugins) → POST /auth/exchange;
+  the window (Settings → Display → Window, the app only: `ui/window-settings.ts` + `net/window-mode.ts`, both in the
+  app's chunks): Full screen / Borderless (no title bar; a 16:9 size that fits the screen, or the screen's own size,
+  on a Mac simple full screen: no new Space) / Windowed (title bar, resizable; the same sizes within the work area, a
+  dragged size kept), saved (localStorage `mk_window`) and applied as it opens; F11 / Ctrl+Cmd+F swaps Full screen and
+  the last other mode, and the system's own full screen button is noticed (capabilities/default.json allows the window
+  calls); no server answering /me (10 s at most) → the title screen's Try again ("Can't reach the
+  Mikazuki server"), never the town as a guest (BootScene `unreachable`); twigo.dev/downloads/latest.json (Caddy `/downloads/*` = /opt/twigo-bot/web/downloads,
+  by hand) → the version notice's Download; /me's 426 (bot `MIN_DESKTOP_VERSION`) → "too old". The front page's
+  Windows / Mac buttons read the same latest.json. Builds: `npm run desktop:build` (Mac, needs Rust), or Actions →
+  Desktop app (`.github/workflows/desktop.yml`, by hand: both Macs and Windows as artifacts; never deploys).
+  `npm run desktop:dev`: the window on the dev town.
 - Open beta: `/play/` is the town for every member of the Mikazuki server (no `?preview` gate, no testers-only rule).
   Only members can log in (the OAuth callback checks; `isMember` in the bot's `web/auth.ts`, also on `/me`, `/ws` and
   the town's routes). `/gift launch` (pre-registration reward) hasn't been run.

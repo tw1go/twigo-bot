@@ -1,4 +1,5 @@
 import type { TownJackpotBuyResponse, TownJackpotResponse } from '@mikazuki/shared';
+import { api } from '../net/endpoints';
 import { playSound } from '../audio/sound';
 import { fakeLogin, fakeName } from '../session';
 import { coinIcon, el, followWallet, showPopup } from './reward';
@@ -25,13 +26,13 @@ const clock = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: 'numer
 /** The booth as the viewer sees it (dev: the pretend booth). */
 export async function loadJackpot(): Promise<TownJackpotResponse | null> {
   if (fakeLogin()) return { ...fake };
-  const res = await fetch('/town/jackpot', { credentials: 'same-origin' }).catch(() => null);
+  const res = await api('/town/jackpot', { credentials: 'same-origin' }).catch(() => null);
   return res?.ok ? ((await res.json()) as TownJackpotResponse) : null;
 }
 
 async function buy(tickets: number): Promise<TownJackpotBuyResponse | null> {
   if (fakeLogin()) return fakeBuy(tickets);
-  const res = await fetch('/town/jackpot', {
+  const res = await api('/town/jackpot', {
     method: 'POST',
     credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },

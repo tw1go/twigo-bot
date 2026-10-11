@@ -1,4 +1,5 @@
 import { applyUpdate, checkForUpdate } from '../net/pwa';
+import { isDesktopApp } from '../net/platform';
 
 // The game's version (bottom right, faint), and a notice at the top when a newer one has been deployed: the build
 // publishes version.json (scripts/version.ts), and an open game checks it every minute; the home screen app's service
@@ -15,7 +16,8 @@ export function showVersion(): void {
   label.textContent = __BUILD__.version;
   if (__BUILD__.commit) label.title = `${__BUILD__.version} · ${__BUILD__.commit} · built ${new Date(__BUILD__.built).toLocaleString()}`;
   document.body.append(label);
-  if (__BUILD__.version === 'dev') return;
+  // (The desktop app's own version.json is always its own: it looks at twigo.dev/downloads instead, net/desktop.ts.)
+  if (__BUILD__.version === 'dev' || isDesktopApp()) return;
 
   const check = async () => {
     if (told) return;
@@ -42,18 +44,30 @@ export function newVersionReady(): void {
 function notify(version: string | null): void {
   if (told) return;
   told = true;
+  showNotice(version ? `New version available (${version})` : 'New version available', 'Reload now', (b) => {
+    b.disabled = true;
+    void applyUpdate();
+  });
+}
+
+/** The desktop app's notice: a newer version to download (or this one is too old), and Download. */
+export function notifyDownload(version: string | null, download: () => void, text = 'A new version of Mikazuki is out'): void {
+  if (told) return;
+  told = true;
+  showNotice(version ? `${text} (${version})` : text, 'Download', () => download());
+}
+
+/** The notice at the top centre: its text, its button, and × (later). */
+function showNotice(message: string, label: string, act: (button: HTMLButtonElement) => void): void {
   const box = document.createElement('div');
   box.id = 'new-version';
   box.setAttribute('role', 'status');
   const text = document.createElement('span');
-  text.textContent = version ? `New version available (${version})` : 'New version available';
+  text.textContent = message;
   const reload = document.createElement('button');
   reload.className = 'nv-reload';
-  reload.textContent = 'Reload now';
-  reload.addEventListener('click', () => {
-    reload.disabled = true;
-    void applyUpdate();
-  });
+  reload.textContent = label;
+  reload.addEventListener('click', () => act(reload));
   const close = document.createElement('button');
   close.className = 'nv-close';
   close.setAttribute('aria-label', 'Later');

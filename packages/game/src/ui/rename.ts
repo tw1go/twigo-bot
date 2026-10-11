@@ -1,4 +1,5 @@
 import { playSound } from '../audio/sound';
+import { api } from '../net/endpoints';
 import { NICKNAME_RULE, parseNickname } from '../characters/nickname';
 import { fakeLogin } from '../session';
 import { itemArt } from './item-art';
@@ -39,7 +40,7 @@ export function showRename(done: (nickname: string) => void): void {
     go.disabled = true;
     const res: Reply | null = fakeLogin()
       ? { ok: true, nickname, cards: 0 }
-      : await fetch('/town/rename', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nickname }) })
+      : await api('/town/rename', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nickname }) })
           .then((r) => (r.ok ? (r.json() as Promise<Reply>) : null))
           .catch(() => null);
     busy = false;

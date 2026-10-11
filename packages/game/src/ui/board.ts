@@ -1,4 +1,5 @@
 import type { TownBoardAction, TownBoardActionResponse, TownBoardResponse, TownQuest } from '@mikazuki/shared';
+import { api } from '../net/endpoints';
 import { playSound } from '../audio/sound';
 import { fakeLogin, fakeName } from '../session';
 import { installPixelTiles } from './pixel-tiles';
@@ -22,13 +23,13 @@ const TABS: [Tab, string][] = [['quests', 'Quests'], ['post', 'Post a quest']];
 
 async function load(): Promise<TownBoardResponse | null> {
   if (fakeLogin()) return structuredClone(fake);
-  const res = await fetch('/town/board', { credentials: 'same-origin' }).catch(() => null);
+  const res = await api('/town/board', { credentials: 'same-origin' }).catch(() => null);
   return res?.ok ? ((await res.json()) as TownBoardResponse) : null;
 }
 
 async function act(body: { action: TownBoardAction; id?: string; task?: string; reward?: number }): Promise<TownBoardActionResponse | null> {
   if (fakeLogin()) return fakeAct(body);
-  const res = await fetch('/town/board', {
+  const res = await api('/town/board', {
     method: 'POST',
     credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },

@@ -1,7 +1,8 @@
 # Caddy config for the Mikazuki server (Caddy gets the HTTPS certificates itself).
 #   twigo.dev            the front page and the web game: / → the front page (the game build's front.html),
 #                        /play/* → the game's static files (built by deploy.sh into /opt/twigo-bot/web/play; the front
-#                        page's images and script are there too), anything else → the bot on 127.0.0.1:8787
+#                        page's images and script are there too), /downloads/* → the desktop app's installers
+#                        (/opt/twigo-bot/web/downloads, by hand), anything else → the bot on 127.0.0.1:8787
 #   www.twigo.dev        → twigo.dev
 #   twigo-bot.duckdns.org the old address: the room API that tw1go.github.io calls (GET /leaderboard, POST /find,
 #                        GET /health) stays; everything else (the game, login) moves to twigo.dev, because the bot
@@ -34,6 +35,17 @@ twigo.dev {
 		@fresh not path /assets/index-* /assets/packs/* /assets/*.js /assets/*.css
 		header @fresh Cache-Control "no-cache"
 		try_files {path} /index.html
+		file_server
+	}
+
+	# The desktop app's installers and latest.json ({ version, windows, mac, windowsSize, macSize }): put there by hand,
+	# in /opt/twigo-bot/web/downloads (deploys never touch it). latest.json is asked again each time (the front page and
+	# the app read it; the app from its own origin, so it may be read from anywhere); installers are plain files.
+	handle_path /downloads/* {
+		root * /opt/twigo-bot/web/downloads
+		@latest path /latest.json
+		header @latest Cache-Control "no-cache"
+		header @latest Access-Control-Allow-Origin "*"
 		file_server
 	}
 

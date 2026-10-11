@@ -1,4 +1,5 @@
 import type { PresenceStatus, TownGiveResponse, TownPlayer, TownPlayerInfo, TownVerdictMode } from '@mikazuki/shared';
+import { api } from '../net/endpoints';
 import { playSound } from '../audio/sound';
 import { inParty, invite, mayInvite, onParty } from '../net/party';
 import { fakeLogin } from '../session';
@@ -35,12 +36,12 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, t
 
 async function load(player: TownPlayer): Promise<TownPlayerInfo | null> {
   if (fakeLogin()) return fakeInfo(player);
-  const res = await fetch(`/town/player?id=${encodeURIComponent(player.id)}`, { credentials: 'same-origin' }).catch(() => null);
+  const res = await api(`/town/player?id=${encodeURIComponent(player.id)}`, { credentials: 'same-origin' }).catch(() => null);
   return res?.ok ? ((await res.json()) as TownPlayerInfo) : null;
 }
 
 async function post(path: string, body: object): Promise<TownGiveResponse | null> {
-  const res = await fetch(path, {
+  const res = await api(path, {
     method: 'POST',
     credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },

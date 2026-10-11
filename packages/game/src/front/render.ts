@@ -96,8 +96,9 @@ export function renderBody(input: RenderInput): string {
     <p class="tagline">${esc(c.hero.tagline)}</p>
     <div class="cta">
       ${button(c.hero.apply, { gold: true, attrs: ' data-apply' })}
-      ${button(c.hero.play, { href: play })}
+      ${button(c.hero.play, { href: play, attrs: ' data-play' })}
     </div>
+    <p class="play-alt" hidden></p>
     <div class="madeby">${esc(c.hero.madeBy)} <img src="/assets/${logo.file}" width="64" height="${Math.round((64 * logo.size[1]) / logo.size[0])}" alt="twigo"></div>
   </div>
 </header>`;
@@ -206,9 +207,34 @@ export function renderBody(input: RenderInput): string {
   <div class="wrap">
     <h2>${esc(c.closing.title)}</h2>
     <p class="lede">${esc(c.closing.lede)}</p>
-    <div class="cta">${button(c.hero.apply, { gold: true, attrs: ' data-apply' })}${button(c.hero.play, { href: play })}</div>
+    <div class="cta">${button(c.hero.apply, { gold: true, attrs: ' data-apply' })}${button(c.hero.play, { href: play, attrs: ' data-play' })}</div>
+    <p class="play-alt" hidden></p>
   </div>
 </div>`;
+
+  // Get the game: Windows and Mac (their downloads from /downloads/latest.json, filled in by main.ts; "Coming soon"
+  // until then) and the phone (the website, added to the home screen).
+  const g = c.get;
+  const system = (id: 'windows' | 'mac', x: { name: string; button: string; note: string }) => `
+      <div class="panel get" data-get="${id}">
+        <h3>${esc(x.name)}</h3>
+        <div class="get-do"><span class="tag soon">${esc(g.soon)}</span></div>
+        <p class="get-meta" hidden></p>
+        <p class="note" hidden>${esc(x.note)}</p>
+      </div>`;
+  const get = `
+<section id="get">
+  <div class="wrap">
+    <div class="head"><span class="eyebrow">${esc(g.eyebrow)}</span><h2>${esc(g.title)}</h2></div>
+    <div class="gets">${system('windows', g.windows)}${system('mac', g.mac)}
+      <div class="panel get" data-get="phone">
+        <h3>${esc(g.phone.name)}</h3>
+        <p>${esc(g.phone.text)}</p>
+        <div class="get-do">${button(g.phone.button, { href: play, small: true })}</div>
+      </div>
+    </div>
+  </div>
+</section>`;
 
   const footer = `
 <footer>
@@ -238,11 +264,12 @@ export function renderBody(input: RenderInput): string {
     <div class="done" id="apply-done" hidden>
       <h2 tabindex="-1">${esc(a.doneTitle)}</h2>
       <p class="lede small" id="apply-done-text">${esc(a.doneText)}</p>
-      <div class="row center">${button(a.close, { small: true, attrs: ' data-close' })}${button(a.play, { href: play, gold: true, small: true })}</div>
+      <div class="row center">${button(a.close, { small: true, attrs: ' data-close' })}${button(a.play, { href: play, gold: true, small: true, attrs: ' data-play' })}</div>
+      <p class="play-alt" hidden></p>
     </div>
   </div>
 </div>
-<script type="application/json" id="front-text">${JSON.stringify({ sending: a.sending, send: a.send, offline: a.offline, doneText: a.doneText, doneUpdated: a.doneUpdated }).replace(/</g, '\\u003c')}</script>`;
+<script type="application/json" id="front-text">${JSON.stringify({ sending: a.sending, send: a.send, offline: a.offline, doneText: a.doneText, doneUpdated: a.doneUpdated, devices: c.devices, get: { soon: g.soon, windows: g.windows.button, mac: g.mac.button } }).replace(/</g, '\\u003c')}</script>`;
 
-  return [nav, hero, '<main>', about, classes, slums, boss, dungeon, town, '</main>', closing, footer, dialog].join('\n');
+  return [nav, hero, '<main>', about, classes, slums, boss, dungeon, town, get, '</main>', closing, footer, dialog].join('\n');
 }

@@ -1,0 +1,55 @@
+# The desktop app's installers (packages/desktop): Windows (msi, exe) and Mac (dmg, Apple silicon and Intel), unsigned.
+# Run by hand (Actions → Desktop app → Run workflow); the files come out as the run's artifacts, to download and put in
+# /opt/twigo-bot/web/downloads on the server with latest.json (packages/desktop/README.md). It never deploys anything.
+name: Desktop app
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: --target universal-apple-darwin
+            name: mac
+          - platform: windows-latest
+            args: ''
+            name: windows
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # (the game's version counts the commits on main)
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.name == 'mac' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: packages/desktop/src-tauri -> target
+      - run: npm ci --no-audit --no-fund
+      - name: Stage the game (its production build) into the app
+        run: node packages/desktop/scripts/stage.mjs
+      - name: The game's version, for the app
+        id: version
+        shell: bash
+        run: echo "semver=$(node -e "console.log(require('./packages/desktop/web/play/version.json').version.replace(/^v/,'').replace(/\+$/,''))")" >> "$GITHUB_OUTPUT"
+      - uses: tauri-apps/tauri-action@v0
+        with:
+          projectPath: packages/desktop
+          tauriScript: npx tauri
+          args: ${{ matrix.args }} --config '{"version":"${{ steps.version.outputs.semver }}","build":{"beforeBuildCommand":""}}'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mikazuki-${{ matrix.name }}-${{ steps.version.outputs.semver }}
+          path: |
+            packages/desktop/src-tauri/target/**/release/bundle/dmg/*.dmg
+            packages/desktop/src-tauri/target/**/release/bundle/msi/*.msi
+            packages/desktop/src-tauri/target/**/release/bundle/nsis/*.exe
+          if-no-files-found: error

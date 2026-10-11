@@ -1,4 +1,5 @@
 import type { OutfitData } from '@mikazuki/shared';
+import { api } from '../net/endpoints';
 import type { CharacterDefs } from '../assets/types';
 import { rng } from '../world/rng';
 import { type Outfit, randomOutfit } from './doll';
@@ -103,7 +104,7 @@ export async function saveOutfit(o: Outfit, loggedIn: boolean): Promise<'account
   saveLocal(o);
   if (fakeLogin()) return 'account'; // dev: no room API to save to
   if (!loggedIn) return 'browser';
-  const res = await fetch('/outfit', {
+  const res = await api('/outfit', {
     method: 'PUT',
     credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },

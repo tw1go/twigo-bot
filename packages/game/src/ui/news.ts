@@ -1,4 +1,5 @@
 import type { TownNewsPost, TownNewsResponse } from '@mikazuki/shared';
+import { api } from '../net/endpoints';
 import { fakeLogin } from '../session';
 import { el, showPopup } from './reward';
 
@@ -22,7 +23,7 @@ export function loadNews(): Promise<TownNewsResponse | null> {
   if (cache && Date.now() - cache.at < CACHE_MS) return cache.news;
   const news = fakeLogin()
     ? Promise.resolve(structuredClone(fake)) // dev: no bot to ask
-    : fetch('/town/news', { credentials: 'same-origin' })
+    : api('/town/news', { credentials: 'same-origin' })
         .then((r) => (r.ok ? (r.json() as Promise<TownNewsResponse>) : null))
         .catch(() => null);
   cache = { at: Date.now(), news };

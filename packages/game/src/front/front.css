@@ -169,6 +169,20 @@ section { padding-block: 88px 0; }
 @media (max-width: 520px) { .features { grid-template-columns: 1fr; } }
 
 /* Closing call and footer */
+/* The small line under a Play button (main.ts: the other system's download, the website, or the home screen tip). */
+.play-alt { margin: 10px 0 0; font-size: 14px; color: var(--muted, #A9B1D6); text-align: center; }
+.play-alt a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+.closing .play-alt { margin-top: 0; }
+.dialog .play-alt { margin-top: 12px; }
+/* Get the game: Windows, Mac and the phone side by side (one under the other on phones). */
+.gets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.get { padding: 22px; display: grid; gap: 10px; align-content: start; }
+.get h3 { margin: 0; }
+.get p { margin: 0; }
+.get .get-do { margin-top: 4px; }
+.get .tag.soon { display: inline-block; font: 600 11px/1 var(--f-display); letter-spacing: .1em; text-transform: uppercase; padding: 6px 8px; background: var(--dim); color: var(--ink); }
+.get .get-meta { font-size: 13px; color: var(--muted, #A9B1D6); }
+@media (max-width: 860px) { .gets { grid-template-columns: 1fr; } }
 .closing { margin-top: 96px; padding-block: 64px; text-align: center; background: linear-gradient(var(--ink), var(--night)); border-top: 2px solid var(--night); }
 .closing .wrap { display: grid; gap: 14px; justify-items: center; }
 footer { background: var(--night); color: var(--dim); font-size: 13px; padding-block: 28px; }

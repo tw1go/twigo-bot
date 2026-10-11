@@ -1,4 +1,5 @@
 import type { OutfitData, TownLeaderboardResponse, TownLeaderboardRow } from '@mikazuki/shared';
+import { api } from '../net/endpoints';
 import { fakeLogin, fakeName } from '../session';
 import { el, showPopup } from './reward';
 
@@ -10,7 +11,7 @@ const MEDALS = ['lb-gold', 'lb-silver', 'lb-bronze'];
 
 async function load(): Promise<TownLeaderboardResponse | null> {
   if (fakeLogin()) return sample(); // dev: no bot to ask
-  const res = await fetch('/town/leaderboard', { credentials: 'same-origin' }).catch(() => null);
+  const res = await api('/town/leaderboard', { credentials: 'same-origin' }).catch(() => null);
   return res?.ok ? ((await res.json()) as TownLeaderboardResponse) : null;
 }
 

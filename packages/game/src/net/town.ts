@@ -1,4 +1,5 @@
 import type { Area } from '../assets/types';
+import { townSocket } from './endpoints';
 import type { TownClientMessage, TownServerMessage } from '@mikazuki/shared';
 import { fakeLogin, fakeName } from '../session';
 import { devKit } from './adventure';
@@ -52,7 +53,8 @@ export class TownLink {
   }
 
   private connect(): void {
-    const ws = new WebSocket(townUrl(this.devLook, this.room));
+    const { url, protocols } = townUrl(this.devLook, this.room);
+    const ws = new WebSocket(url, protocols);
     this.ws = ws;
     ws.onopen = () => {
       this.retry = 0;
@@ -77,15 +79,15 @@ export class TownLink {
   }
 }
 
-/** /ws on this site (in dev, the fake login's name, look, class and weapon ride along for the dev server's town). */
-function townUrl(look: unknown, room: string): string {
-  const url = new URL('/ws', location.href);
-  url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  if (room !== 'town') url.searchParams.set('room', room);
+/** /ws on this site, or the desktop app's (net/endpoints.ts); in dev, the fake login's name, look, class and weapon ride
+ *  along for the dev server's town. */
+function townUrl(look: unknown, room: string): { url: string; protocols?: string[] } {
+  const q = new URLSearchParams();
+  if (room !== 'town') q.set('room', room);
   if (fakeLogin()) {
-    url.searchParams.set('dev', fakeName());
-    if (look) url.searchParams.set('look', JSON.stringify(look));
-    url.searchParams.set('kit', JSON.stringify(devKit()));
+    q.set('dev', fakeName());
+    if (look) q.set('look', JSON.stringify(look));
+    q.set('kit', JSON.stringify(devKit()));
   }
-  return url.toString();
+  return townSocket(q);
 }

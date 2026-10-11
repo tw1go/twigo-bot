@@ -1,6 +1,9 @@
 import type { MeResponse, PresenceStatus } from '@mikazuki/shared';
+import { api } from './net/endpoints';
+import { isDesktopApp } from './net/platform';
 
-// One /me request shared by the HUD and the game. "anon" = not logged in; "off" = login disabled or API down.
+// One /me request shared by the HUD and the game. "anon" = not logged in; "off" = login disabled or API down (the desktop
+// app: the server can't be reached, so the title screen offers Try again instead of the town).
 export type MeResult = { status: 'ok'; me: MeResponse } | { status: 'anon' } | { status: 'off' };
 
 let cached: Promise<MeResult> | null = null;
@@ -55,8 +58,17 @@ export function loadMe(refresh = false): Promise<MeResult> {
   const fake = fakeLogin();
   if (fake) return Promise.resolve(fakeMe(fake));
   if (!cached || refresh) {
-    cached = fetch('/me', { credentials: 'same-origin' })
-      .then(async (r): Promise<MeResult> => (r.ok ? { status: 'ok', me: (await r.json()) as MeResponse } : r.status === 401 ? { status: 'anon' } : { status: 'off' }))
+    // (The desktop app gives up after 10 s: the title screen then says it can't reach the server.)
+    cached = api('/me', { credentials: 'same-origin', signal: isDesktopApp() ? AbortSignal.timeout(10_000) : undefined })
+      .then(async (r): Promise<MeResult> => {
+        if (r.ok) return { status: 'ok', me: (await r.json()) as MeResponse };
+        // The desktop app the server no longer takes: the update notice (net/desktop.ts), and the title's login.
+        if (r.status === 426) {
+          void import('./net/desktop').then((d) => d.tooOld());
+          return { status: 'anon' };
+        }
+        return r.status === 401 ? { status: 'anon' } : { status: 'off' };
+      })
       .catch((): MeResult => ({ status: 'off' }))
       .then((me) => {
         if (me.status !== 'off' || !import.meta.env.DEV) return me;

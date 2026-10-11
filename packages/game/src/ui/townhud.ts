@@ -1,4 +1,5 @@
 import { keyLabel, matches, onKeybinds } from './keybinds';
+import { api } from '../net/endpoints';
 import type { CharacterProgress, MeDig, MeResponse, PresenceStatus, PreregStatus } from '@mikazuki/shared';
 import { renderPrereg } from '../hud';
 import { fakeLogin, loadMe } from '../session';
@@ -323,7 +324,7 @@ export function mountTownHud(o: TownHudOptions): void {
   }
 
   if (o.me) {
-    void fetch('/prereg')
+    void api('/prereg')
       .then((r) => (r.ok ? (r.json() as Promise<PreregStatus>) : null))
       .catch(() => null)
       .then((prereg) => o.me && renderPrereg(left, o.me, prereg));

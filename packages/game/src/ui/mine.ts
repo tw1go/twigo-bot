@@ -1,4 +1,5 @@
 import type { MeDig, TownDigItemsResponse, TownDigResponse } from '@mikazuki/shared';
+import { api } from '../net/endpoints';
 import { playSound } from '../audio/sound';
 import { fakeLogin, fakeName, loadMe } from '../session';
 import { type Rarity, RARITY_COLOUR, RARITY_LABEL as LABEL, isRarity, itemArt } from './item-art';
@@ -31,7 +32,7 @@ function findCard(item: NonNullable<TownDigResponse['item']>): HTMLElement {
 
 async function dig(): Promise<TownDigResponse | null> {
   if (fakeLogin()) return fakeDig();
-  const res = await fetch('/town/dig', { method: 'POST', credentials: 'same-origin' }).catch(() => null);
+  const res = await api('/town/dig', { method: 'POST', credentials: 'same-origin' }).catch(() => null);
   return res?.ok ? ((await res.json()) as TownDigResponse) : null;
 }
 
@@ -159,7 +160,7 @@ function tierList(data: TownDigItemsResponse): HTMLElement {
 
 async function loadDigItems(): Promise<TownDigItemsResponse | null> {
   if (fakeLogin()) return FAKE_ITEMS;
-  const res = await fetch('/town/dig-items', { credentials: 'same-origin' }).catch(() => null);
+  const res = await api('/town/dig-items', { credentials: 'same-origin' }).catch(() => null);
   return res?.ok ? ((await res.json()) as TownDigItemsResponse) : null;
 }
 

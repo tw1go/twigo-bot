@@ -1,4 +1,7 @@
 import type { MeResponse, PreregResponse, PreregStatus } from '@mikazuki/shared';
+import { isDesktopApp } from './net/platform';
+import { desktopLogin } from './net/login';
+import { api, setAppToken } from './net/endpoints';
 import { loadMe, loginProblem } from './session';
 
 // The login corner of the web game. The room API is on the same origin (the game is served at /play/), so the
@@ -18,7 +21,7 @@ export async function startHud(root: HTMLElement): Promise<void> {
   const problem = loginProblem();
   const [me, prereg] = await Promise.all([
     loadMe(),
-    fetch('/prereg')
+    api('/prereg')
       .then((r) => (r.ok ? (r.json() as Promise<PreregStatus>) : null))
       .catch(() => null),
   ]);
@@ -28,6 +31,8 @@ export async function startHud(root: HTMLElement): Promise<void> {
 
   const button = el('a', 'hud-login', 'Log in with Discord');
   button.href = '/auth/login';
+  // (The desktop app logs in through the system browser: net/desktop.ts.)
+  if (isDesktopApp()) button.addEventListener('click', (e) => (e.preventDefault(), desktopLogin(() => {})));
   root.append(button);
   if (problem) root.append(el('div', 'hud-note', problem));
   if (prereg?.open) root.append(el('div', 'hud-prereg-note', `Log in to pre-register: +${prereg.reward} Kowens at launch · ${prereg.count} signed up`));
@@ -43,7 +48,7 @@ export function renderPrereg(root: HTMLElement, me: MeResponse, prereg: PreregSt
     const join = el('button', 'hud-prereg-join', `Pre-register · +${prereg.reward} Kowens at launch`);
     join.addEventListener('click', async () => {
       join.disabled = true;
-      const r = await fetch('/prereg', { method: 'POST', credentials: 'same-origin' }).catch(() => null);
+      const r = await api('/prereg', { method: 'POST', credentials: 'same-origin' }).catch(() => null);
       const body = r?.ok ? ((await r.json()) as PreregResponse) : null;
       if (body && body.result !== 'closed') {
         box.replaceChildren(el('span', 'hud-prereg-done', `Pre-registered! +${prereg.reward} Kowens at launch · ${body.count} signed up`));
@@ -75,7 +80,8 @@ function renderMember(root: HTMLElement, me: MeResponse, prereg: PreregStatus | 
 
   const out = el('button', 'hud-logout', 'Log out');
   out.addEventListener('click', async () => {
-    await fetch('/auth/logout', { method: 'POST', credentials: 'same-origin' }).catch(() => null);
+    await api('/auth/logout', { method: 'POST', credentials: 'same-origin' }).catch(() => null);
+    setAppToken(null); // (the desktop app's token: forgotten too)
     location.reload();
   });
   card.append(out);

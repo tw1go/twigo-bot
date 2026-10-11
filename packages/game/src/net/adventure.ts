@@ -51,6 +51,7 @@ import {
   gearMismatch,
   xpToNext,
 } from '@mikazuki/shared';
+import { api } from './endpoints';
 import { fakeLogin, fakeName } from '../session';
 
 // ⚔️ Your class, quests and equipment in the game (the bot keeps them: web/adventure.ts; /me brings them, POST
@@ -146,7 +147,7 @@ export function setItems(items: TownItems, got?: AdventureChange['got']): void {
 export async function forgeAction(a: TownForgeAction): Promise<TownForgeResponse | null> {
   const path = fakeLogin() ? `/__forge?${new URLSearchParams({ as: fakeName() })}` : '/town/forge';
   if (fakeLogin()) await devItemsReady;
-  const res = await fetch(path, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(a) }).catch(() => null);
+  const res = await api(path, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(a) }).catch(() => null);
   const r = res?.ok ? ((await res.json()) as TownForgeResponse) : null;
   if (r?.items) setItems(r.items);
   return r;
@@ -252,7 +253,7 @@ type Path = '/town/quest' | '/town/equip' | '/town/points' | '/town/skills';
 type Body = TownQuestAction | TownEquipAction | TownPointsAction | TownSkillsAction;
 
 async function post(path: Path, body: Body): Promise<TownAdventureResponse | null> {
-  const res = await fetch(path, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => null);
+  const res = await api(path, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => null);
   return res?.ok ? ((await res.json()) as TownAdventureResponse) : null;
 }
 
@@ -421,7 +422,7 @@ export async function changeClass(cls: string): Promise<{ ok: boolean; error?: s
     devSwitchClass(cls);
     return { ok: true, adventure: state! };
   }
-  const res = await fetch('/town/class-change', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cls }) }).catch(() => null);
+  const res = await api('/town/class-change', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cls }) }).catch(() => null);
   const r = res?.ok ? ((await res.json()) as { ok: boolean; error?: string; adventure?: AdventureState }) : null;
   if (!r) return null;
   if (r.ok && r.adventure) set(r.adventure, {});

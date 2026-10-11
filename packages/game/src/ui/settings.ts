@@ -1,8 +1,10 @@
 import { playSound, setSound, soundSettings } from '../audio/sound';
+import { api, setAppToken } from '../net/endpoints';
 import { ACTIONS, bindings, comboOf, keyName, resetKeybinds, setBinding } from './keybinds';
 import { el, popupFrame } from './reward';
 import { toast } from './toast';
 import { TEXT_SIZES, setTextSize, textSize } from './text-size';
+import { isDesktopApp } from '../net/platform';
 
 // ⚙️ The settings box (from the Settings button under your profile): centred over the dimmed town, white in the
 // game's pixel frame like the reward pop-up. Audio (music and sound-effect volumes, mute), for members logging
@@ -123,7 +125,8 @@ function audio(): HTMLElement {
   return section;
 }
 
-/** Text size for the whole UI (ui/text-size.ts), one of four, applied at once. */
+/** Text size for the whole UI (ui/text-size.ts), one of four, applied at once; in the desktop app, the window too
+ *  (ui/window-settings.ts, its own chunk). */
 function display(): HTMLElement {
   const section = el('section', 'st-section');
   const row = el('div', 'st-sizes');
@@ -148,6 +151,7 @@ function display(): HTMLElement {
   const label = el('div', 'st-row');
   label.append(el('span', 'st-label', 'Text size'));
   section.append(el('h3', 'st-heading', 'Display'), label, row);
+  if (isDesktopApp()) void import('./window-settings').then((w) => section.append(w.windowRows()));
   return section;
 }
 
@@ -287,7 +291,8 @@ function account(): HTMLElement {
   const out = el('button', 'st-logout', 'Log out');
   out.addEventListener('click', async () => {
     out.disabled = true;
-    await fetch('/auth/logout', { method: 'POST', credentials: 'same-origin' }).catch(() => null);
+    await api('/auth/logout', { method: 'POST', credentials: 'same-origin' }).catch(() => null);
+    setAppToken(null); // (the desktop app's token: forgotten too)
     location.reload();
   });
   section.append(el('h3', 'st-heading', 'Account'), out);

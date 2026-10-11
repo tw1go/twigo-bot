@@ -2,7 +2,7 @@ import type { Manifest } from '../assets/types';
 import { Splash } from './splash';
 import { canInstall, install, onInstallable } from '../net/pwa';
 import { isDesktopApp, isHomeScreenApp, isIos } from '../net/platform';
-import { loginWaits, waitingLogin } from '../net/login';
+import { desktopLogin, loginWaits, waitingLogin } from '../net/login';
 
 // 🌙 The boot sequence's two page layers (BootScene runs them while it loads):
 // - The intro card: "a game made by" and the twigo logo, small and centred on ink. Fades in, holds, fades out (reduced
@@ -86,9 +86,9 @@ export function playIntro(M: Manifest): Promise<void> {
   });
 }
 
-/** What the title screen offers: Start (logged in, or login off), or the Discord login (logged out; `problem`: why the
- *  last try didn't work). */
-export type TitleOffer = { kind: 'start' } | { kind: 'guest'; problem: string | null };
+/** What the title screen offers: Start (logged in, or login off), the Discord login (logged out; `problem`: why the
+ *  last try didn't work), or in the desktop app with no server answering, Try again (`trying`: asking it now). */
+export type TitleOffer = { kind: 'start' } | { kind: 'guest'; problem: string | null } | { kind: 'offline'; trying?: boolean };
 
 export class TitleScreen {
   private readonly root = document.createElement('div');
@@ -107,6 +107,8 @@ export class TitleScreen {
   onStart: () => void = () => {};
   /** The Discord login was pressed (the page goes there). */
   onLogin: () => void = () => {};
+  /** Try again (the server didn't answer: the desktop app). */
+  onRetry: () => void = () => {};
 
   constructor(
     private readonly M: Manifest,
@@ -152,22 +154,29 @@ export class TitleScreen {
     const button = offer.kind === 'start' ? document.createElement('button') : document.createElement('a');
     button.className = 'ts-button';
     const label = document.createElement('span');
-    label.textContent = offer.kind === 'start' ? 'Start' : 'Log in with Discord';
+    label.textContent = offer.kind === 'start' ? 'Start' : offer.kind === 'offline' ? 'Try again' : 'Log in with Discord';
     button.append(label);
     if (button instanceof HTMLAnchorElement) {
       button.href = '/auth/login';
       button.addEventListener('click', (e) => {
         this.onLogin();
-        if (!loginWaits()) return; // (the website: the link goes to Discord)
-        // The iPhone home screen app: Discord in a browser sheet while this waits for it (net/login.ts).
-        e.preventDefault();
-        waitingLogin((text, problem) => {
+        const say = (text: string, problem?: boolean) => {
           hint.textContent = text;
           hint.classList.toggle('ts-problem', !!problem);
-        });
+        };
+        // The desktop app: the system browser, back through mikazuki://auth. The iPhone home screen app: Discord in a
+        // browser sheet while this waits for it (net/login.ts). The website: the link goes to Discord.
+        if (isDesktopApp()) {
+          e.preventDefault();
+          return desktopLogin(say);
+        }
+        if (!loginWaits()) return;
+        e.preventDefault();
+        waitingLogin(say);
       });
     } else {
       button.type = 'button';
+      if (offer.kind === 'offline' && offer.trying) button.disabled = true;
       button.addEventListener('click', (e) => {
         e.stopPropagation();
         this.start();
@@ -177,11 +186,15 @@ export class TitleScreen {
     button.addEventListener('pointerdown', () => button.classList.add('ts-pressed'));
     for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) button.addEventListener(ev, () => button.classList.remove('ts-pressed'));
     const hint = document.createElement('p');
-    hint.className = offer.kind === 'guest' && offer.problem ? 'ts-hint ts-problem' : 'ts-hint';
-    hint.textContent = offer.kind === 'start' ? 'or click anywhere' : (offer.problem ?? 'Members of the Mikazuki server only');
+    const problem = (offer.kind === 'guest' && offer.problem) || (offer.kind === 'offline' && !offer.trying);
+    hint.className = problem ? 'ts-hint ts-problem' : 'ts-hint';
+    hint.textContent =
+      offer.kind === 'start' ? 'or click anywhere'
+      : offer.kind === 'offline' ? (offer.trying ? 'Connecting…' : "Can't reach the Mikazuki server. Check your connection.")
+      : (offer.problem ?? 'Members of the Mikazuki server only');
     this.band.append(button, hint);
     this.layout();
-    if (offer.kind === 'guest') button.focus({ preventScroll: true });
+    if (offer.kind !== 'start') button.focus({ preventScroll: true });
   }
 
   /** The install button or the iPhone hint (neither once installed, nor in the desktop app). */
@@ -231,6 +244,7 @@ export class TitleScreen {
   }
 
   private start(): void {
+    if (this.offer?.kind === 'offline' && !this.offer.trying) return this.onRetry();
     if (this.closing || this.offer?.kind !== 'start') return;
     this.closing = true;
     this.onStart();
@@ -238,7 +252,7 @@ export class TitleScreen {
 
   private readonly clicked = (e: MouseEvent) => {
     if (e.composedPath().some((n) => n === this.sound || (n instanceof Element && n.classList.contains('ts-button')))) return;
-    this.start(); // (a guest's click anywhere does nothing: only the button logs in)
+    this.start(); // (a guest's click anywhere does nothing: only the button logs in; offline, it tries again)
   };
 
   private readonly keyed = (e: KeyboardEvent) => {

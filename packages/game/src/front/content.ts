@@ -22,6 +22,7 @@ export const content = {
       { href: '#boss', label: 'Field boss' },
       { href: '#warrens', label: 'Dungeon' },
       { href: '#town', label: 'Town life' },
+      { href: '#get', label: 'Get the game' },
     ],
     play: 'Play',
   },
@@ -35,10 +36,31 @@ export const content = {
     madeBy: 'a game made by',
   },
 
+  /** The Play buttons by device (main.ts: the hero's, the closing call's and the sent dialog's; the nav's stays Play). The
+   *  downloads come from /downloads/latest.json: without it, or without this system's file, the plain Play button. */
+  devices: {
+    windows: 'Download for Windows',
+    mac: 'Download for Mac',
+    otherMac: 'Mac? Download here',
+    otherWindows: 'Windows? Download here',
+    browser: 'or play in your browser',
+    phone: 'Add it to your home screen to play full screen',
+  },
+
+  /** The "Get the game" section, just before the closing call. */
+  get: {
+    eyebrow: 'Get the game',
+    title: 'Play it your way',
+    soon: 'Coming soon',
+    windows: { name: 'Windows', button: 'Download for Windows', note: 'Windows may say it protected your PC. Click More info, then Run anyway.' },
+    mac: { name: 'Mac', button: 'Download for Mac', note: 'The first time, open System Settings, then Privacy & Security, and click Open Anyway.' },
+    phone: { name: 'Phone', text: 'Open twigo.dev/play on your phone. On Android, tap Install. On iPhone, tap Share, then Add to Home Screen.', button: 'Play' },
+  },
+
   about: {
     eyebrow: 'What is Mikazuki',
     title: 'A town that stays up late',
-    lede: 'Mikazuki is a multiplayer town you play in the browser. Walk the plaza under the lamps, dress your character, play a round in the Arena, and when you are ready, head out to the Slums where the junk has come alive.',
+    lede: 'Mikazuki is a multiplayer town you can play on your computer or your phone. Walk the plaza under the lamps, dress your character, play a round in the Arena, and when you are ready, head out to the Slums where the junk has come alive.',
     pillars: [
       { title: 'Hang out', text: 'Chat, wave and sit by the fountain. Dress up at the Parlor and build a house of your own.' },
       { title: 'Fight the junk', text: 'Choose one of 6 classes, level to 20 with the Tanod’s quests, and hunt rare loot with blue and orange affixes.' },

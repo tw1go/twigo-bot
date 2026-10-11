@@ -1,4 +1,5 @@
 import { fakeLogin } from '../session';
+import { api } from '../net/endpoints';
 
 // The member's nickname in the town. Same rule as the bot (packages/bot/src/web/nickname.ts), which has the final
 // say (and checks that no one else has it).
@@ -24,7 +25,7 @@ export function suggestNickname(name: string): string {
 
 export async function saveNickname(nick: string): Promise<'ok' | 'taken' | 'invalid' | 'error'> {
   if (fakeLogin()) return 'ok'; // dev: no room API to save to
-  const res = await fetch('/nickname', {
+  const res = await api('/nickname', {
     method: 'PUT',
     credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },

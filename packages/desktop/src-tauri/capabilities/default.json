@@ -1,0 +1,20 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "What the game's page may ask of the app: open the browser (logging in, downloads), its login links, the window (full screen, borderless, its size).",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    "core:window:allow-set-fullscreen",
+    "core:window:allow-set-simple-fullscreen",
+    "core:window:allow-set-decorations",
+    "core:window:allow-set-resizable",
+    "core:window:allow-set-maximizable",
+    "core:window:allow-set-size",
+    "core:window:allow-center",
+    "opener:default",
+    "deep-link:default"
+  ]
+}

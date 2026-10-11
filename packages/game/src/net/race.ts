@@ -1,4 +1,5 @@
 import type { TownRace, TownRaceResponse } from '@mikazuki/shared';
+import { api } from './endpoints';
 
 // 🏁 The Mosang race as this page knows it (bot games/race.ts; the same race as Discord's /race): the latest state
 // from the town's connection (`race` messages, also on arrival), the bot's clock (raceNow), and the calls to start one
@@ -27,7 +28,7 @@ export function onRace(fn: (race: TownRace | null) => void): () => void {
 }
 
 async function call(body?: unknown): Promise<TownRaceResponse | null> {
-  const res = await fetch('/town/race', body ? { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : { credentials: 'same-origin' }).catch(() => null);
+  const res = await api('/town/race', body ? { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : { credentials: 'same-origin' }).catch(() => null);
   const r = res?.ok ? ((await res.json()) as TownRaceResponse) : null;
   if (r) setRace(r.race);
   return r;

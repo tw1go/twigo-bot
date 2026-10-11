@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { api } from '../net/endpoints';
 import { queueImage, queueNpcs, queueTown } from '../assets/queue';
 import type { Area, Dir, Gate, Manifest, TownMap } from '../assets/types';
 import { Character, SPEED, dirForStep, dirToward } from '../characters/character';
@@ -3743,7 +3744,7 @@ function showNewTitle(id: string, title: TitleData, wearing: TitleData): void {
   const worn = wearing.name === title.name && wearing.color === title.color;
   const message = worn ? `Congratulations! You are now known as <${title.name}>.` : `Congratulations! <${title.name}> is yours. Show it under your name at the Parlor.`;
   void showReward({ title: 'New title!', graphic: { kind: 'title', title }, message }).then(() =>
-    fakeLogin() ? null : fetch('/title/seen', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }).catch(() => null),
+    fakeLogin() ? null : api('/title/seen', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }).catch(() => null),
   );
 }
 
@@ -3769,7 +3770,7 @@ const RECONNECT_NOTE_MS = 2_000;
 function showWelcomeGift(amount: number): void {
   window.dispatchEvent(new Event('mk-wallet')); // the HUD's Kowens (given before this page asked)
   void showReward({ title: 'Welcome gift!', graphic: { kind: 'kowens', amount }, message: `Welcome to Mikazuki town! Every player gets ${amount} Kowens to start with. Enjoy!` }).then(() =>
-    fakeLogin() ? null : fetch('/welcome/seen', { method: 'POST', credentials: 'same-origin' }).catch(() => null),
+    fakeLogin() ? null : api('/welcome/seen', { method: 'POST', credentials: 'same-origin' }).catch(() => null),
   );
 }
 
