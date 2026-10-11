@@ -3,6 +3,20 @@
 The Mikazuki Discord server's economy bot and its web town, where members walk around, play and fight. This glossary
 covers the words the game and the bot share.
 
+## Ways to play
+
+**Website**:
+The game at twigo.dev/play in a browser tab, nothing installed.
+
+**Home screen app**:
+The game installed from the website onto a phone's home screen (technically a PWA): full screen, its art kept on the
+phone after the first load.
+_Avoid_: phone app, mobile app (it's not from an app store)
+
+**Desktop app**:
+The Windows or Mac download with the game and its art inside, signed in through the system browser.
+_Avoid_: installed app (the home screen app is installed too), client
+
 ## Places
 
 **Map**:
