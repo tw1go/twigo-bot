@@ -622,7 +622,8 @@ let titleSound: Phaser.Sound.BaseSoundManager | null = null;
 const titleVolume = () => TITLE.volume * (settings.music > 0 ? settings.music : 1);
 
 /** Loads the title music on `s` and plays it as soon as sound is allowed: at once if it already is, else on the first
- *  click or key (Phaser's unlock), faded in over TITLE.inMs. */
+ *  click or key (Phaser's unlock), faded in over TITLE.inMs. While sound is still locked it isn't even fetched until that
+ *  first click or key (it couldn't play before: the title screen comes up without waiting on its 300 KB). */
 export function startTitleMusic(s: Phaser.Scene): void {
   titleWanted = true;
   titleSound = s.sound;
@@ -641,10 +642,15 @@ export function startTitleMusic(s: Phaser.Scene): void {
     else play();
   };
   if (s.cache.audio.exists(TITLE.key)) return go();
-  s.load.setPath(`${import.meta.env.BASE_URL}assets/`);
-  s.load.audio(TITLE.key, TITLE.urls);
-  s.load.once(`filecomplete-audio-${TITLE.key}`, go);
-  if (!s.load.isLoading()) s.load.start();
+  const load = () => {
+    if (!titleWanted || s.cache.audio.exists(TITLE.key)) return go();
+    s.load.setPath(`${import.meta.env.BASE_URL}assets/`);
+    s.load.audio(TITLE.key, TITLE.urls);
+    s.load.once(`filecomplete-audio-${TITLE.key}`, go);
+    if (!s.load.isLoading()) s.load.start();
+  };
+  if (s.sound.locked) s.sound.once(Phaser.Sound.Events.UNLOCKED, load);
+  else load();
 }
 
 /** The title music fades out (Start, or the Discord login) and stops. */

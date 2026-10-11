@@ -101,8 +101,8 @@ export function queueTown(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Tex
     if (a.anim) queueSheet(load, textures, a.anim.file, a.anim.frame[0], a.anim.frame[1]);
   }
 
-  for (const fx of Object.values(M.fx)) {
-    if (!fx.file) continue;
+  for (const [id, fx] of Object.entries(M.fx)) {
+    if (!fx.file || WARRENS_FX.test(id)) continue; // (the Warrens' own load with a run: queueWarrens above)
     if (fx.frame) queueSheet(load, textures, fx.file, fx.frame[0], fx.frame[1]);
     else img(fx.file);
   }
