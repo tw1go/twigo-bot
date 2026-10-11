@@ -545,7 +545,7 @@ export class MobRoom {
 
   /** Their combat rating (CP), buffs and all. */
   rating(a: Attacker): number {
-    return combatRating(this.fightData.stats, this.fighter(a));
+    return combatRating(this.fightData.stats, this.fighter(a), a.cls);
   }
 
   /** A kind's row in the mob table (a kind without one is a data problem: loud, at start). */

@@ -1038,10 +1038,12 @@
     "trainingArmor": "brown"
   },
   "combatRating": {
-    "note": "Repo addition (Mac, 10 Oct 2026): the combat rating (CP) shown in the HUD, the stats box, the player box and Info: offense (Power, crits averaged in, x damage amp x attack rate) x offense + toughness (HP x (100 + DEF) / 100, / (1 - DEF rate)) x toughness + MP x mp. A Lv 1 Slingshot in training gear is about 440, a Lv 20 Pot lid in training gear about 1,700.",
+    "note": "Repo addition (Mac, 10 Oct 2026): the combat rating (CP) shown in the HUD, the stats box, the player box and Info: offense (Power, crits averaged in, x damage amp x attack rate) x offense + toughness (HP x (100 + DEF) / 100, / (1 - DEF rate)) x toughness + MP x mp, a class's offense x its reach. At Lv 20 in training gear (points in the main stat) every class is about 1,200 to 1,450.",
     "offense": 5,
-    "toughness": 1,
-    "mp": 0.5
+    "toughness": 0.4,
+    "mp": 0.5,
+    "reach": { "slingshot": 1.25, "broom": 1.25 },
+    "balanceNote": "Repo addition (Mac, 11 Oct 2026): toughness 1 -> 0.4 and the ranged classes' offense x reach (they hit from 5 tiles, so they take fewer hits than the rating's HP shows): the classes' spread at Lv 20 in training gear went from 47% to 20%."
   },
   "agimats": {
     "placeholder": true,
