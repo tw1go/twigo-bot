@@ -158,6 +158,8 @@ const FADE_MS = 1100;
 /** Dragging the map peeks around: it gives with resistance up to about this far (screen px), then snaps back. */
 const PEEK_PX = 320;
 const PEEK_BACK_MS = 220;
+/** Touch held longer than this (ms) with movement switches from a tap to continuous hold-walk. */
+const TAP_MS = 200;
 
 /** Everyone's title until they're given another (the bot's web/titles.ts has the list). */
 const TOWNFOLK = { name: 'Townfolk', color: '#B794F6' }; // whole steps only; 1× showed too much of the town at once
@@ -270,6 +272,10 @@ export class TownScene extends Phaser.Scene {
   follow = true;
   /** Where the last press started, any button (Phaser's own down/up positions only follow the left button). */
   private pressAt = { x: 0, y: 0 };
+  /** performance.now() when the current touch started (0 = no touch). */
+  private touchDownAt = 0;
+  /** The tile being walked to by a hold-touch (null = not in hold-walk mode). */
+  private touchHoldTile: { col: number; row: number } | null = null;
   /** A drag on the map peeking around (the camera stops following till it has snapped back). */
   private peek: { x: number; y: number; scrollX: number; scrollY: number; dragging: boolean; back: Phaser.Tweens.Tween | null } | null = null;
 
@@ -2466,7 +2472,7 @@ export class TownScene extends Phaser.Scene {
       });
     };
     this.input.on(Phaser.Input.Events.POINTER_DOWN, (p: Phaser.Input.Pointer) => {
-      if (this.peek || this.intro || this.inside || (!p.wasTouch && !p.leftButtonDown())) return;
+      if (this.peek || this.intro || this.inside || !p.leftButtonDown()) return; // touch drag walks instead of panning
       this.peek = { x: p.x, y: p.y, scrollX: cam.scrollX, scrollY: cam.scrollY, dragging: false, back: null };
     });
     this.input.on(Phaser.Input.Events.POINTER_MOVE, (p: Phaser.Input.Pointer) => {
@@ -2554,6 +2560,8 @@ export class TownScene extends Phaser.Scene {
     this.setupPeek();
     this.input.on(Phaser.Input.Events.POINTER_DOWN, (p: Phaser.Input.Pointer) => {
       this.pressAt = { x: p.x, y: p.y };
+      if (p.wasTouch) { this.touchDownAt = performance.now(); this.touchHoldTile = null; }
+      if (import.meta.env.DEV) console.log('[touch] down wasTouch=%s leftButton=%s', p.wasTouch, p.leftButtonDown());
       // The middle button: as Z (the nearest mob, again: the next). Never the browser's autoscroll.
       if (p.middleButtonDown()) {
         p.event.preventDefault();
@@ -2561,32 +2569,48 @@ export class TownScene extends Phaser.Scene {
       }
     });
     watchClicks(this.game.canvas);
+    // Touch hold-walk: after TAP_MS of holding, dragging the finger walks continuously toward the pointer tile.
+    this.input.on(Phaser.Input.Events.POINTER_MOVE, (p: Phaser.Input.Pointer) => {
+      if (!p.wasTouch || !p.isDown || this.intro || this.knockedOut || this.inside) return;
+      if (performance.now() - this.touchDownAt < TAP_MS) return;
+      const world = this.cameras.main.getWorldPoint(p.x, p.y);
+      const { col, row } = this.pickTile(world.x, world.y);
+      if (this.touchHoldTile?.col === col && this.touchHoldTile?.row === row) return;
+      this.touchHoldTile = { col, row };
+      this.moveTo({ col, row });
+    });
     this.input.on(Phaser.Input.Events.POINTER_UP, (p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
       if (p.button === 1) return; // the middle button only targets
       if (!onMap(p, this.game.canvas)) return; // (pressed or let go on a panel over the map: not the map's)
-      // A drag, not a click. (Measured from our own press: p.getDistance() only follows the left button, so after a
-      // left drag every right click looked like a drag.)
-      if (Math.hypot(p.x - this.pressAt.x, p.y - this.pressAt.y) > 8) return;
-      // Loot: left click (or a tap) goes and picks it up.
-      const lootHit = this.loot?.pick(over);
-      if (lootHit && (p.wasTouch || p.leftButtonReleased())) return this.goToLoot(lootHit.id, { col: lootHit.col, row: lootHit.row });
-      // Someone else's character: left click (or a tap) picks them for the player menu.
-      const other = this.others.pick(over);
-      if (other && this.target && (p.wasTouch || p.leftButtonReleased())) {
-        this.mobs?.setTarget(null); // one target at a time
-        return this.target.select(other);
+      if (p.wasTouch) {
+        const wasHold = this.touchHoldTile !== null;
+        this.touchHoldTile = null;
+        if (wasHold) return; // hold ended: stop walking, no tap action
+        // Quick tap: act on whatever is under the finger (no distance filter — time is the discriminator).
+        const lootHit = this.loot?.pick(over);
+        if (lootHit) return this.goToLoot(lootHit.id, { col: lootHit.col, row: lootHit.row });
+        const other = this.others.pick(over);
+        if (other && this.target) { this.mobs?.setTarget(null); return this.target.select(other); }
+        const npc = this.npcs?.pick(over);
+        if (npc) return this.talkTo(npc);
+        const world = this.cameras.main.getWorldPoint(p.x, p.y);
+        const { col, row } = this.pickTile(world.x, world.y);
+        const building = this.objects.buildings.find((b) => b.parts.some((part) => over.includes(part)));
+        if (building) return this.goToBuilding(building);
+        return this.goToTile({ col, row });
       }
-      // An NPC: left click (or a tap) talks to them (walking over first if they're far).
+      // Mouse: keep the existing 8px drag filter to distinguish a click from a pan.
+      if (Math.hypot(p.x - this.pressAt.x, p.y - this.pressAt.y) > 8) return;
+      const lootHit = this.loot?.pick(over);
+      if (lootHit && p.leftButtonReleased()) return this.goToLoot(lootHit.id, { col: lootHit.col, row: lootHit.row });
+      const other = this.others.pick(over);
+      if (other && this.target && p.leftButtonReleased()) { this.mobs?.setTarget(null); return this.target.select(other); }
       const npc = this.npcs?.pick(over);
-      if (npc && (p.wasTouch || p.leftButtonReleased())) return this.talkTo(npc);
+      if (npc && p.leftButtonReleased()) return this.talkTo(npc);
       const building = this.objects.buildings.find((b) => b.parts.some((part) => over.includes(part)));
       const world = this.cameras.main.getWorldPoint(p.x, p.y);
       const { col, row } = this.pickTile(world.x, world.y);
       const bench = this.seatOn(over, { col, row }) ?? this.benchAt({ col, row });
-      if (p.wasTouch) {
-        if (building) return this.goToBuilding(building);
-        return this.goToTile({ col, row });
-      }
       if (p.rightButtonReleased()) return void (this.clickTo = { col, row }); // (walked to in the next update: one search a frame)
       if (building) return this.goToBuilding(building);
       if (bench) return this.goToBench(bench);
