@@ -28,6 +28,7 @@ import { NpcLife, TALK_LEAVE, TALK_RANGE } from '../world/npc-life';
 import { mountHouseCreator } from '../ui/house-creator';
 import { playBusted } from '../ui/casino';
 import { drawBridge } from '../world/bridge';
+import { onMap, watchClicks } from '../world/clicks';
 import { playKalawang, playMasterKey } from '../world/bakod-fx';
 import { puffHouse, riseHouse, sinkHouse } from '../world/house-rise';
 import { ChatBox } from '../ui/chat';
@@ -2559,8 +2560,10 @@ export class TownScene extends Phaser.Scene {
         if (this.mobs && !this.intro && !this.inside) this.mobs.targetNext(this.player.tile);
       }
     });
+    watchClicks(this.game.canvas);
     this.input.on(Phaser.Input.Events.POINTER_UP, (p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
       if (p.button === 1) return; // the middle button only targets
+      if (!onMap(p, this.game.canvas)) return; // (pressed or let go on a panel over the map: not the map's)
       // A drag, not a click. (Measured from our own press: p.getDistance() only follows the left button, so after a
       // left drag every right click looked like a drag.)
       if (Math.hypot(p.x - this.pressAt.x, p.y - this.pressAt.y) > 8) return;
@@ -3259,7 +3262,7 @@ export class TownScene extends Phaser.Scene {
     box.on('pointerover', () => label.show(top.y - lift - def.anchor[1] - 2));
     box.on('pointerout', () => label.show(null));
     box.on('pointerup', (p: Phaser.Input.Pointer) => {
-      if (!p.leftButtonReleased() && !p.wasTouch) return;
+      if ((!p.leftButtonReleased() && !p.wasTouch) || !onMap(p, this.game.canvas)) return;
       const at = this.map.arrive?.warrens;
       if (!at) return;
       this.gateAsked = false; // (asked again when you get there, or now if you're there)
@@ -3318,7 +3321,7 @@ export class TownScene extends Phaser.Scene {
     box.on('pointerover', () => label.show(y0 + ART_TOP - 2));
     box.on('pointerout', () => label.show(null));
     box.on('pointerup', (p: Phaser.Input.Pointer) => {
-      if (!p.leftButtonReleased() && !p.wasTouch) return;
+      if ((!p.leftButtonReleased() && !p.wasTouch) || !onMap(p, this.game.canvas)) return;
       this.toLanternPost();
     });
   }

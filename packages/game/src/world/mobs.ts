@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { type DungeonsData, type LevelingData, type PlayerHit, type StatsData, type TownMob, type TownMobFacing, areaAt, miniBossDef, miniBossRules, miniMobId, miniOfMobId, mobBarMs, mobRules, mobStartSpots, mobStats, mobTone, packSize, seeded } from '@mikazuki/shared';
 import { playSet } from '../audio/sound';
+import { onMap } from './clicks';
 import type { Manifest, MobData, MobDef, MobZone, TownMap, Vec2 } from '../assets/types';
 import { mobCell, mobSheet, mobSheets, mobVariants } from '../assets/mob-art';
 import { queueSheet } from '../assets/queue';
@@ -374,7 +375,7 @@ export class Mobs {
     if (shadow) this.onSpawn(shadow);
     // A click: its name and level over its head for a moment.
     sprite.setInteractive({ cursor: 'pointer', pixelPerfect: true }).on('pointerup', (p: Phaser.Input.Pointer) => {
-      if (!p.leftButtonReleased() && !p.wasTouch) return;
+      if ((!p.leftButtonReleased() && !p.wasTouch) || !onMap(p, this.scene.game.canvas)) return;
       this.showLabel(mob);
       this.setTarget(mob);
     });

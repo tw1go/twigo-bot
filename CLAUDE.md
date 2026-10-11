@@ -1156,6 +1156,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   fake login), so two windows `?as=Alice` / `?as=Bob` see and chat with each other;
   `/__discord?name=&text=` fakes a #town-chat line and town lines print in the dev server's terminal. Dev: with no bot behind the dev server, plain `/play/` acts as `?me=saved`; `?me=anon|new&as=Alice` fakes a member (test values: `&kowens=` `&shovels=` `&digs=` `&status=online|idle|busy|offline|jailed`); to test,
   run only the compiled `web/town.js` on 127.0.0.1:8787 with a fake `authenticate` (never the whole bot).
+- Map clicks (`world/clicks.ts` `onMap`): every click handler on the map (the scene's POINTER_UP, the Warren Gate's and
+  Lantern Post's boxes, mobs) counts a release only if it was pressed and let go on the canvas itself: Phaser hears
+  releases on the whole window and hit-tests them, so a click on a panel over the map (the player box) reached what was
+  under it (the Warren Gate walked you there). New map click handlers ask it too.
 - Movement: right-click-to-move (tap on touch screens; A* on `blocked`; only the latest right-click of a frame is walked to, `clickTo`; `WalkGrid` keeps each tile's allowed steps as bits, its search memory and typed heap between searches, and the reach from where you are (moves go both ways), all warmed a few ms a frame after the map loads (`warmUp`) and reset when a fence or house changes the map: a far click in the Slums ~0.3 ms, the worst ~12 ms; a tile you can't reach goes to the nearest reachable one without a search), WASD/arrows (screen directions; from a
   standstill a tap only turns, holding walks; a new direction while walking turns mid-step at once, `Character.turnMidStep`:
   once per step, one step message, within a mirror of the server's step budget so it never snaps), E/Space to enter or sit. Left-click/touch drag on the map peeks around
