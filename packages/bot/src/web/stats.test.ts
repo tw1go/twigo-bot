@@ -6,6 +6,7 @@ import {
   type GearItem,
   STAT_NAMES,
   baseStats,
+  moreStats,
   canEquip,
   combatRating,
   derivedStats,
@@ -305,4 +306,18 @@ test('combat rating (CP): Power with crits averaged in x5, HP stretched by DEF x
   const lv20 = derivedStats(data, 'potlid', 20, baseStats(data, 'potlid', 20));
   assert.ok(combatRating(data, lv20) > cp * 2, 'a level 20 character far above a new one');
   assert.equal(combatRating({ ...data, combatRating: undefined } as typeof data, lv1), 0, 'none without its weights');
+});
+
+test('the stats box\'s lower part: crit damage, amp, rates, steals, regen and drop rate; buff-only rows only when a buff gives them', () => {
+  const lv1 = derivedStats(data, 'slingshot', 1, baseStats(data, 'slingshot', 1));
+  const rows = moreStats(lv1);
+  assert.deepEqual(rows.map((r) => r.id), ['critDamage', 'amp', 'atkRate', 'defRate', 'lifesteal', 'manasteal', 'hpRegen', 'mpRegen', 'dropRate']);
+  assert.equal(rows.find((r) => r.id === 'critDamage')!.text, `${Math.round(data.derived.critDamage * 100)}%`);
+  assert.equal(rows.find((r) => r.id === 'amp')!.text, '0%');
+  const buffed = moreStats({ ...lv1, amp: 0.1, accuracy: 0.05, cooldownPct: 0.1, hpRegenPct: 0.01 });
+  assert.equal(buffed.find((r) => r.id === 'amp')!.text, '10%');
+  assert.equal(buffed.find((r) => r.id === 'accuracy')!.text, '5%');
+  assert.equal(buffed.find((r) => r.id === 'cooldownPct')!.text, '−10%');
+  assert.equal(buffed.find((r) => r.id === 'hpRegen')!.value, lv1.hpRegen + 0.01 * lv1.hp, 'a % of max HP a second counts in');
+  assert.deepEqual(moreStats({ critRate: 0.1 }), [], "an older server's Info without them: none");
 });

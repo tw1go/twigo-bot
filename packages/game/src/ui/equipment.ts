@@ -1,6 +1,7 @@
 import { type AdventureState, type EquipPlace, type EquipSlot, type EquipmentDef, type StatName, STAT_NAMES, canEquip, combatRating, pointStats, requirements } from '@mikazuki/shared';
 import { onMyBuffs } from '../net/buffs';
 import { myStats } from './rating';
+import { moreStatsSection } from './more-stats';
 import type { Dir } from '../assets/types';
 import { playSound } from '../audio/sound';
 import { adventure, adventureData, cantWear, classInfo, equipItem, itemDef, onAdventure, placesFor, resetPoints, spendPoint, unequipPlace } from '../net/adventure';
@@ -366,7 +367,7 @@ export class EquipmentPanel {
     left.append(row('ATK', shown(st.power, up.power)), row('DEF', shown(st.def, up.def)), row('HP', shown(st.hp, up.hp)), row('MP', String(st.mp)));
     const right = el('div', 'eq-stats-col');
     const pctOf = (n: number) => `${+(n * 100).toFixed(1)}%`;
-    right.append(...STAT_NAMES.map((n) => row(n, String(st[n]), n)), row('Crit', shown(st.critRate, up.critRate, pctOf)));
+    right.append(...STAT_NAMES.map((n) => row(n, String(st[n]), n)), row('Crit rate', shown(st.critRate, up.critRate, pctOf)));
     const foot = el('div', 'eq-points');
     foot.append(el('span', 'eq-points-label', 'Points:'), el('b', 'eq-points-n', String(p.statPoints)));
     if (!s.cls) foot.append(el('span', 'eq-points-hint', 'Choose a class to spend points'));
@@ -381,7 +382,7 @@ export class EquipmentPanel {
     const cp = el('div', 'eq-cp');
     cp.append(el('span', 'eq-cp-label', 'Combat rating'), el('b', 'eq-cp-value', combatRating(S, up).toLocaleString()));
     cp.title = 'CP: one number from your ATK, crits, DEF, HP and MP, buffs included. Better gear, levels and points raise it.';
-    this.stats.replaceChildren(cp, left, right, foot);
+    this.stats.replaceChildren(cp, left, right, ...moreStatsSection(up, st), foot);
   }
 }
 

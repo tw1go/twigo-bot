@@ -5,6 +5,7 @@ import { classInfo } from '../net/adventure';
 import { RARITY_COLOUR } from './item-art';
 import { itemPicture, itemTipFor, rarityOf } from './item-tip';
 import { slotSilhouette } from './equipment';
+import { moreStatsSection } from './more-stats';
 
 // 🔍 Someone else's character (the player menu's Info, ui/target.ts): a window like your equipment panel, in the middle
 // of the screen: their name and title, their character idling (a drag turns it) with its resting weapon, their class
@@ -231,11 +232,11 @@ export class InspectWindow {
     const left = el('div', 'eq-stats-col');
     left.append(row('ATK', String(Math.round(st.power))), row('DEF', String(Math.round(st.def))), row('HP', String(Math.round(st.hp))), row('MP', String(Math.round(st.mp))));
     const right = el('div', 'eq-stats-col');
-    right.append(row('STR', String(st.STR)), row('DEX', String(st.DEX)), row('INT', String(st.INT)), row('Crit', `${+(st.critRate * 100).toFixed(1)}%`));
+    right.append(row('STR', String(st.STR)), row('DEX', String(st.DEX)), row('INT', String(st.INT)), row('Crit rate', `${+(st.critRate * 100).toFixed(1)}%`));
     // Their combat rating on top (the server's, buffs and all), as in your own stats box.
     const cp = el('div', 'eq-cp');
     cp.append(el('span', 'eq-cp-label', 'Combat rating'), el('b', 'eq-cp-value', st.cp.toLocaleString()));
-    this.stats.replaceChildren(cp, left, right);
+    this.stats.replaceChildren(cp, left, right, ...moreStatsSection(st));
   }
 }
 

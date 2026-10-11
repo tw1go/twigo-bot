@@ -404,6 +404,19 @@ export interface InspectStats {
   DEX: number;
   INT: number;
   critRate: number;
+  /** The stats box's lower part (shared moreStats), as their DerivedStats has it. */
+  critDamage?: number;
+  amp?: number;
+  atkRate?: number;
+  defRate?: number;
+  lifesteal?: number;
+  manasteal?: number;
+  hpRegen?: number;
+  hpRegenPct?: number;
+  mpRegen?: number;
+  dropRate?: number;
+  accuracy?: number;
+  cooldownPct?: number;
 }
 
 export type TownServerMessage =
