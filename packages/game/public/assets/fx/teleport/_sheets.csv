@@ -1,0 +1,2 @@
+file,cell_w,cell_h,frames,fps,loop,anchor_x,anchor_y,notes
+fx-lantern-teleport.png,48,64,8,12,no,24,56,Lantern travel FX on the player; hide the player from frame 5

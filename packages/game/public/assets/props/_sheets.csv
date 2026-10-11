@@ -5,3 +5,5 @@ prop-fence-post.png,32,32,1,0,no,16,24,single post at the tile's top corner; cap
 prop-fence-nw-rust.png,32,32,1,0,no,16,24,rusted copy of prop-fence-nw (Kalawang Potion); cross-fade over the normal piece
 prop-fence-ne-rust.png,32,32,1,0,no,16,24,rusted copy of prop-fence-ne
 prop-fence-post-rust.png,32,32,1,0,no,16,24,rusted copy of prop-fence-post
+prop-town-lantern-post.png,64,96,1,0,no,32,84,Lantern Post (teleporter) still; town and Slums middle; fallback for the idle sheet
+prop-town-lantern-post-idle.png,64,96,6,6,yes,32,84,Lantern Post idle glow loop (spiral turns; motes rise; ground ring twinkles)

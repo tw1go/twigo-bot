@@ -1,7 +1,7 @@
 import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ClassesFile, GearRarity, HoodHouse, HouseLook, OutfitData, TownHoodActionResponse, TownHoodResponse, TownItems, TownRace, TownRaceResponse } from '@mikazuki/shared';
-import { addToBag, takeKind, buffSkillLevels, classBuffs, classSkills, damageSkillLevels, moveUnlock } from '@mikazuki/shared';
+import { RETURN_LANTERN, addToBag, takeKind, buffSkillLevels, classBuffs, classSkills, damageSkillLevels, moveUnlock } from '@mikazuki/shared';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { doorSpot, hoodMap, lotTile } from '../../bot/src/web/hood-map.ts';
 import type { Plugin } from 'vite';
@@ -339,6 +339,11 @@ export function devTown(): Plugin {
             use: (name) => takeKind(gearOf(name).bag, 'warren-ticket', 1),
           },
           saved: (runs) => server.config.logger.info(`[warrens] open runs: ${runs.map((r) => `${r.id} (${r.opener}${r.cleared ? ', cleared' : ''})`).join(', ') || 'none'}`, { timestamp: true }),
+        },
+        // Lantern Posts: the dev town's kept items (?give=return-lantern::5).
+        lanterns: {
+          count: (name) => gearOf(name).bag.reduce((n, i) => n + (i?.defId === RETURN_LANTERN ? (i.count ?? 1) : 0), 0),
+          use: (name) => takeKind(gearOf(name).bag, RETURN_LANTERN, 1),
         },
         moveLevel: (cls, move) => moveUnlock(classes.find((c) => c.id === cls), move),
         shared: true,

@@ -53,11 +53,11 @@ export function usePotion(data: ItemData, c: CombatItems, defId: string): { heal
 
 // ── The sari-sari store's Healing and Smithing tabs ──
 
-/** A combat item on sale: its kind, price and money (Kusing for HP/MP Potions and the Warren Ticket, Kowens for
- *  whetstones and Repair Kits). */
+/** A combat item on sale: its kind, price and money (Kusing for HP/MP Potions, the Warren Ticket and the Return Lantern,
+ *  Kowens for whetstones and Repair Kits). */
 export interface CombatWare {
   def: CombatItemDef;
-  tab: 'healing' | 'smithing' | 'dungeons';
+  tab: 'healing' | 'smithing' | 'dungeons' | 'travel';
   cost: number;
   currency: 'kusing' | 'kowens';
 }
@@ -92,6 +92,9 @@ export function combatWares(data: ItemData, level: number): CombatWare[] {
       // A dungeon's ticket (classes/dungeons.json: its shop price in Kusing), in the Dungeons tab.
       const price = ticketPrice(def.id);
       if (price) out.push({ def, tab: 'dungeons', cost: price, currency: 'kusing' });
+    } else if (def.shop === 'travel') {
+      // A travel item (the Return Lantern): its own price in Kusing (items.json), in the Travel tab.
+      if (def.price?.kusing) out.push({ def, tab: 'travel', cost: def.price.kusing, currency: 'kusing' });
     } else out.push({ def, tab: 'smithing', cost: S.currencies.kowensShop[def.shop], currency: 'kowens' });
   }
   return out;

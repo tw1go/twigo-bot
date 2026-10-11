@@ -1313,8 +1313,8 @@
       #reward .op-bail:hover:not(:disabled) { background: #BAE6FD; }
       #reward .op-bail:disabled { opacity: 0.5; }
       /* Sari-sari store (ui/shop.ts; tabs share the bank's .bk-tabs): six tabs, a little narrower. */
-      #reward .sh-tabs .bk-tab { min-width: 0; padding: 6px 4px 5px; font-size: calc(13px * var(--text)); }
-      #reward .rw-card:has(.sh-body) { width: min(460px, calc(100vw - 32px)); }
+      #reward .sh-tabs .bk-tab { min-width: 0; padding: 6px 4px 5px; font-size: calc(14px * var(--text)); }
+      #reward .rw-card:has(.sh-body) { width: min(660px, calc(100vw - 32px)); }
       /* A fixed size: the grid scrolls, the details and the message keep their room, so nothing jumps. */
       #reward .sh-body { margin-bottom: 14px; text-align: left; }
       #reward .sh-wallet { display: flex; align-items: center; justify-content: center; gap: 6px; margin: -4px 0 10px; font-size: calc(14px * var(--text)); color: #3D4256; }
@@ -1748,6 +1748,47 @@
         #class-choice .sp-body { grid-template-columns: 1fr; }
         #class-choice .sp-stage { min-width: 0; align-self: center; }
       }
+      /* ── The Map menu (ui/map-menu.ts): the Equipment panel's window, centred; the picture at --k (1 or 2) ── */
+      #map-menu { --k: 2; position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 6; display: flex; flex-direction: column; gap: 10px; max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); box-sizing: border-box; padding: 10px 14px 14px; border: 2px solid #7C2AE8; background: rgba(17, 24, 39, 0.97); color: #c0caf5; font: calc(15px * var(--text))/1.35 var(--ui-font); }
+      #map-menu[hidden], #map-menu .mm-dim[hidden], #map-menu .mm-label[hidden] { display: none; }
+      :is(#map-menu, .mm-confirm).mm-framed { --px: 2; border-style: solid; border-width: calc(var(--slice) * var(--px) * 1px); border-image-source: var(--frame); border-image-slice: var(--slice) fill; border-image-width: calc(var(--slice) * var(--px) * 1px); border-image-repeat: round; image-rendering: pixelated; background: none; padding: 2px 4px 4px; }
+      #map-menu .mm-head { position: relative; flex: none; display: flex; align-items: center; justify-content: center; min-height: 36px; padding-bottom: 6px; border-bottom: 2px solid #7C2AE8; }
+      #map-menu .mm-title { font-size: calc(22px * var(--text)); font-weight: 700; color: #fff; }
+      #map-menu .mm-close { position: absolute; right: 0; top: 0; width: 32px; height: 32px; padding: 0; border: 0; background: none; color: #7A8099; font: calc(26px * var(--text))/1 var(--ui-font); cursor: var(--cur-hand, pointer); }
+      #map-menu .mm-close:hover { color: #fff; }
+      #map-menu .mm-inset { flex: none; overflow: auto; padding: calc(4px * var(--k)); border: 2px solid #3D4256; background: #0A0F1E; }
+      #map-menu .mm-stage { position: relative; width: calc(428px * var(--k)); height: calc(220px * var(--k)); }
+      #map-menu .mm-world { display: block; width: 100%; height: 100%; image-rendering: pixelated; user-select: none; }
+      #map-menu .mm-label { position: absolute; transform: translate(-50%, -50%); white-space: nowrap; pointer-events: none; font: calc(6px * var(--k))/1 'Pixelify Sans', var(--ui-font); color: #9AA0B8; text-shadow: 0 1px 0 #0A0F1E, 1px 0 0 #0A0F1E, 0 -1px 0 #0A0F1E, -1px 0 0 #0A0F1E; }
+      #map-menu .mm-left { transform: translate(0, -50%); }
+      #map-menu .mm-map { font-size: calc(10px * var(--k)); font-weight: 700; color: #F1EEFB; }
+      #map-menu .mm-pit { color: #F59E0B; }
+      #map-menu .mm-camp, #map-menu .mm-here { color: #C4B5FD; }
+      #map-menu .mm-hood { color: #C8CCDA; }
+      #map-menu .mm-post-tag { color: #F9A8D4; }
+      #map-menu .mm-post { position: absolute; width: calc(15px * var(--k)); height: calc(18px * var(--k)); padding: 0; border: 0; background: no-repeat 0 0 / calc(45px * var(--k)) calc(18px * var(--k)); image-rendering: pixelated; cursor: var(--cur-hand, pointer); }
+      #map-menu .mm-post:focus-visible { outline: 2px solid #F9A8D4; outline-offset: 2px; }
+      #map-menu .mm-pin { position: absolute; width: calc(9px * var(--k)); height: calc(12px * var(--k)); image-rendering: pixelated; pointer-events: none; }
+      #map-menu .mm-foot { flex: none; display: flex; align-items: center; gap: 10px; padding: 6px 12px; border: 2px solid #3D4256; background: rgba(10, 12, 24, 0.5); color: #A9B1D6; }
+      #map-menu .mm-foot-icon, #map-menu .mm-cost-icon { width: 32px; height: 32px; image-rendering: pixelated; }
+      #map-menu .mm-dim { position: absolute; inset: 0; z-index: 1; display: flex; align-items: center; justify-content: center; background: rgba(8, 10, 22, 0.62); }
+      #map-menu .mm-confirm { display: flex; flex-direction: column; gap: 10px; width: min(360px, calc(100vw - 32px)); box-sizing: border-box; padding: 10px 14px 14px; border: 2px solid #7C2AE8; background: rgba(17, 24, 39, 0.98); }
+      #map-menu .mm-confirm.mm-framed { padding: 2px 6px 6px; }
+      #map-menu .mm-where { display: flex; align-items: center; gap: 12px; }
+      #map-menu .mm-where-icon { flex: none; width: 30px; height: 36px; background: no-repeat 0 0 / 90px 36px; image-rendering: pixelated; }
+      #map-menu .mm-where-name { font-size: calc(16px * var(--text)); font-weight: 700; color: #fff; }
+      #map-menu .mm-where-post { font-size: calc(13px * var(--text)); color: #7A8099; }
+      #map-menu .mm-rule { height: 2px; background: #3D4256; }
+      #map-menu .mm-cost { display: flex; align-items: center; gap: 10px; font-size: calc(14px * var(--text)); color: #C4B5FD; }
+      #map-menu .mm-cost-none { color: #7A8099; }
+      #map-menu .mm-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 2px; }
+      #map-menu .mm-buttons button { height: 40px; border: 2px solid; border-radius: 0; font: 700 calc(16px * var(--text))/1 var(--ui-font); cursor: var(--cur-hand, pointer); }
+      #map-menu .mm-cancel { border-color: #5A6178; background: #3D4256; color: #E5E7F2; }
+      #map-menu .mm-cancel:hover { background: #4A5068; }
+      #map-menu .mm-go { border-color: #A78BFA; background: #7C2AE8; color: #fff; }
+      #map-menu .mm-go:hover:not(:disabled) { background: #8B3DF0; }
+      #map-menu .mm-go:disabled { border-color: #4A5068; background: #2A2F42; color: #6B7189; cursor: default; }
+      #map-menu .mm-buttons button:focus-visible { outline: 2px solid #F9A8D4; outline-offset: 2px; }
       /* ── The equipment panel (ui/equipment.ts): on the bag's left, top to top, as tall as its slots ── */
       :is(#equipment, #inspect) { position: fixed; top: 72px; right: 442px; z-index: 3; display: flex; flex-direction: column; gap: 10px; width: 380px; max-height: calc(100vh - 96px); box-sizing: border-box; padding: 12px 14px 14px; border: 2px solid #7C2AE8; background: rgba(17, 24, 39, 0.96); color: #c0caf5; font: calc(15px * var(--text))/1.35 var(--ui-font); }
       :is(#equipment, #inspect)[hidden] { display: none; }

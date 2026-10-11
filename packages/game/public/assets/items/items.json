@@ -204,7 +204,24 @@
       "icon": "items/consumables/item-warren-ticket-16.png",
       "showcase": "items/consumables/item-warren-ticket.png",
       "large": "items/consumables/item-warren-ticket-64.png",
-      "shop": "ticket"
+      "shop": "ticket",
+      "useAt": "Use it at the Warren Gate by the golem pit"
+    },
+    {
+      "id": "return-lantern",
+      "name": "Return Lantern",
+      "kind": "consumable",
+      "rarity": "white",
+      "about": "Light it at a Lantern Post to travel to another map.",
+      "useAt": "Use it at a Lantern Post.",
+      "icon": "items/consumables/item-return-lantern-16.png",
+      "showcase": "items/consumables/item-return-lantern.png",
+      "large": "items/consumables/item-return-lantern-64.png",
+      "shop": "travel",
+      "price": {
+        "kusing": 200
+      },
+      "note": "repo-only: the Lantern Posts' travel item; price a placeholder (the sari-sari store's Travel tab)"
     }
   ]
 }

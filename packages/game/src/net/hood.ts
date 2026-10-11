@@ -37,10 +37,13 @@ export function hoodTownMap(hood: TownHoodResponse, town: TownMap): TownMap {
 }
 
 /** Where a gate leads: this page again with ?area=hood|slums (or without it, for the town) and ?from= (so you arrive at
- *  the way in from there), dev flags kept. Both are tidied out of the address once the page has read them. */
-export function areaUrl(to: Area): string {
+ *  the way in from there), dev flags kept; `via` 'lantern': a teleport (?via=lantern: you arrive at the Lantern Post).
+ *  They're tidied out of the address once the page has read them. */
+export function areaUrl(to: Area, via?: 'lantern'): string {
   const url = new URL(location.href);
   url.searchParams.set('from', currentArea());
+  if (via) url.searchParams.set('via', via);
+  else url.searchParams.delete('via');
   if (to !== 'town') url.searchParams.set('area', to);
   else url.searchParams.delete('area');
   return url.pathname + url.search;
@@ -106,6 +109,16 @@ export function cameFrom(): Area | null {
   url.searchParams.delete('from');
   history.replaceState(null, '', url.pathname + url.search + url.hash);
   return isArea(from) ? from : null;
+}
+
+/** Whether you came by a Lantern Post (?via=lantern, set by a teleport), read once: then tidied out of the address. */
+export function cameByLantern(): boolean {
+  const url = new URL(location.href);
+  const via = url.searchParams.get('via');
+  if (!via) return false;
+  url.searchParams.delete('via');
+  history.replaceState(null, '', url.pathname + url.search + url.hash);
+  return via === 'lantern';
 }
 
 /** Which area this page is: the town, the neighbourhood, the Slums or a Scrap Warrens run (see resolveArea). */

@@ -390,13 +390,16 @@ export const dropItemFor = (userId: string, uid: string, count: number) => withI
 export const usePotionFor = (userId: string, defId: string) => withItems(userId, (s) => usePotion(loadItemData(), s, defId), (r) => !!r);
 
 /** Warren Tickets in their combat bag (the Warren Gate's panel). */
-export const warrenTicketsOf = (userId: string): number => {
-  const id = loadDungeons().warrens.ticket.id;
-  return load(userId).bag.reduce((n, i) => n + (i?.defId === id ? (i.count ?? 1) : 0), 0);
-};
+/** How many of a kind they hold in their combat bag. */
+export const kindCountOf = (userId: string, defId: string): number => load(userId).bag.reduce((n, i) => n + (i?.defId === defId ? (i.count ?? 1) : 0), 0);
+
+/** One of a kind out of their bag (a ticket, a Return Lantern): false if they have none. */
+export const useKindFor = (userId: string, defId: string): boolean => withItems(userId, (s) => takeKind(s.bag, defId, 1), (ok) => ok);
+
+export const warrenTicketsOf = (userId: string): number => kindCountOf(userId, loadDungeons().warrens.ticket.id);
 
 /** One Warren Ticket out of their bag (opening a run): false if they have none. */
-export const useTicketFor = (userId: string): boolean => withItems(userId, (s) => takeKind(s.bag, loadDungeons().warrens.ticket.id, 1), (ok) => ok);
+export const useTicketFor = (userId: string): boolean => useKindFor(userId, loadDungeons().warrens.ticket.id);
 
 /** A Warren Ticket back into their bag (a restart ended their run before Barong-Barong fell): false if no room. */
 export function refundTicketFor(userId: string): boolean {

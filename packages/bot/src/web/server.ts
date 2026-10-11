@@ -1,5 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import type { LeaderboardResponse, LeaderboardRow, MeDig, MeResponse, PresenceStatus, PreregResponse, PreregStatus, TownJackpotBuyResponse, TownJackpotResponse, TownLeaderboardResponse, TownRaceResponse } from '@mikazuki/shared';
+import { RETURN_LANTERN } from '@mikazuki/shared';
 import { EmbedBuilder, GatewayIntentBits, escapeMarkdown, type Client } from 'discord.js';
 import { config } from '../config.js';
 import { VOICE_DAILY_CAP, VOICE_MINUTES_PER_CREDIT, balance, rankOf, setWalletHook, topBalances, totalKowens, vaultBalance, voiceCreditsToday, voiceProgress } from '../credits/store.js';
@@ -42,7 +43,7 @@ import { filterText, kickedUntil, mutedUntil } from './town-mod.js';
 import { getOutfit, parseOutfit, saveOutfit } from './outfit.js';
 import { enhanceFeedLine, parseForgeAction } from './forge.js';
 import { loadItemData } from './stats-data.js';
-import { refundTicketFor, warrenTicketsOf, useTicketFor, adventureOf, combatOf, fighterOf, forgeFor, dropItemFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townEquip, townPoints, townQuest, townSkills, trainingArmorFor, questRewardsFor, questPiecesFor, questKillFor } from './adventure.js';
+import { refundTicketFor, warrenTicketsOf, useTicketFor, kindCountOf, useKindFor, adventureOf, combatOf, fighterOf, forgeFor, dropItemFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townEquip, townPoints, townQuest, townSkills, trainingArmorFor, questRewardsFor, questPiecesFor, questKillFor } from './adventure.js';
 import { renameWithCard } from '../items/rename-card.js';
 import { changeClassWithTicket } from '../items/class-ticket.js';
 import { LAUNCH_REWARD, isPreregistered, launched, preregCount, preregister } from '../prereg/prereg.js';
@@ -953,6 +954,8 @@ export function startWebServer(client: Client): void {
       mobs: { slums: (slumsRoom = new MobRoom(loadMobMap('slums'), Math.random, skillLevels, loadSkillShapes(), loadMobKinds(), loadGolemArt())) },
       // Runs of the Scrap Warrens: the ticket from the combat bag, the open runs kept (refunds after a restart).
       warrens: { ...loadWarrens(skillLevels), tickets: { count: warrenTicketsOf, use: useTicketFor }, saved: (runs) => kvSave(WARRENS_RUNS, runs) },
+      // Lantern Posts: a Return Lantern from the combat bag for each teleport.
+      lanterns: { count: (userId) => kindCountOf(userId, RETURN_LANTERN), use: (userId) => useKindFor(userId, RETURN_LANTERN) },
       quests: { kill: questKillFor },
       // Levels: who they are in a fight, and kills' XP (saved with the class).
       progress: {
