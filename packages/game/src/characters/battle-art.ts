@@ -2,7 +2,8 @@ import type Phaser from 'phaser';
 import { settleOn } from '../world/settle';
 import type { CharacterDefs, ClassArt, ClassesDefs, Dir } from '../assets/types';
 import { type Outfit, sheetKey } from './doll';
-import { CELL, drawPose, lookImages, loadImages, poseFiles } from './kit-art';
+import { CELL, drawPose, lookImages, poseFiles } from './kit-art';
+import { loadImages } from './loading';
 
 // ⚔️ Battle poses (maps with mobs: the Slums): a character with a class is drawn in its class's combat sheets there
 // instead of the town doll, every pose composited once per class and look (back weapon layers, the body and face in

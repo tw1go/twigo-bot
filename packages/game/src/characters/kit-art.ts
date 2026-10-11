@@ -1,5 +1,4 @@
 import type Phaser from 'phaser';
-import { queueImage } from '../assets/queue';
 import type { CharacterDefs, ClassArt, ClassLayer, ClassesDefs, Dir } from '../assets/types';
 import { type ImageHost, type Outfit, clothesFiles, dressLayer, headFiles, sheetKey } from './doll';
 
@@ -27,17 +26,6 @@ export function poseFiles(art: ClassArt): string[] {
   return Object.values(art.anims).flatMap((a) =>
     Object.values(a.dirs).flatMap((d) => (d ? [d.body, ...(d.face ? [d.face] : []), ...d.back.map((l) => l.file), ...d.front.map((l) => l.file)] : [])),
   );
-}
-
-/** Loads whichever of `files` aren't loaded yet. */
-export function loadImages(scene: Phaser.Scene, files: string[]): Promise<void> {
-  const missing = [...new Set(files)].filter((f) => !scene.textures.exists(f));
-  if (!missing.length) return Promise.resolve();
-  return new Promise((resolve) => {
-    for (const f of missing) queueImage(scene.load, scene.textures, f);
-    scene.load.once('complete', () => resolve()); // (Phaser.Loader.Events.COMPLETE: Phaser stays out of what draws, for the front page)
-    if (!scene.load.isLoading()) scene.load.start();
-  });
 }
 
 const source = (scene: ImageHost, file: string) => (scene.textures.exists(file) ? (scene.textures.get(file).getSourceImage() as CanvasImageSource) : null);

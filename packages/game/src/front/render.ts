@@ -1,5 +1,5 @@
-import type { Content } from './content';
-import { type Facts, fill } from './facts';
+import type { Content } from './content.ts';
+import { type Facts, fill } from './facts.ts';
 
 // 🏗️ The front page's markup, built from content.ts and the game's facts when the page is built (vite.config.ts
 // frontPage): the page arrives whole, readable without its script, nothing moving once it loads. Every sprite is a

@@ -1,4 +1,4 @@
-import type { Outfit } from '../characters/doll';
+import type { Outfit } from '../characters/doll.ts';
 
 // 📝 Everything the front page says, and which classes, mobs and features it shows. Edit the words here; the layout is
 // in render.ts and front.css. `{name}` tokens are filled from the game's own data when the page is built (facts.ts:

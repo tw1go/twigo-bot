@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { type ItemData, type TownLoot, LOOT_REACH, PLAIN_COLOUR, agimatBrightness, isGearDef, itemAura, itemName, nameColour, rarityColour } from '@mikazuki/shared';
 import { type AuraTrace, WeaponAura, traceAura } from '../fx/weaponAura';
-import { loadImages } from '../characters/kit-art';
+import { loadImages } from '../characters/loading';
 import { CHARACTER_BIAS, HEIGHT_DEPTH, LABEL_DEPTH } from './depth';
 import { type WorldObjects, characterDepth } from './objects';
 

@@ -1,5 +1,4 @@
 import type Phaser from 'phaser';
-import { queueImage } from '../assets/queue';
 import type { CharacterDefs, Dir, Vec2 } from '../assets/types';
 import { isColour, visible } from '../util/pixels';
 
@@ -357,18 +356,6 @@ export function headPortrait(scene: Phaser.Scene, C: CharacterDefs, o: Outfit, s
   c.height = size;
   c.getContext('2d')!.drawImage(src, Math.round((cw - size) / 2), top, size, h, 0, 0, size, h);
   return c;
-}
-
-/** Loads any layers an outfit still needs (with the scene's loader), then builds it a few sheets a frame. */
-export function loadOutfit(scene: Phaser.Scene, C: CharacterDefs, o: Outfit): Promise<void> {
-  const missing = outfitFiles(C, o).filter((f) => !scene.textures.exists(f));
-  return new Promise((resolve) => {
-    const done = () => void buildOutfitSlowly(scene, C, o).then(resolve);
-    if (!missing.length) return done();
-    for (const f of missing) queueImage(scene.load, scene.textures, f);
-    scene.load.once('complete', done); // (Phaser.Loader.Events.COMPLETE)
-    scene.load.start();
-  });
 }
 
 /** A starter outfit: seeded, so the same seed always dresses the same way. */

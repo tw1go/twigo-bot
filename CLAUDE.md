@@ -189,6 +189,21 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
 - Town text (`ui/labels.ts`): each character's white name + `<Title>` in the title's colour ('prismatic' = drifting
   rainbow; list in the bot's `web/titles.ts`), and building names that fade up on hover. Drawn
   over everything, never at less than 3 screen px per art px. Zoom is 2×–4×.
+- Front page (`twigo.dev/`, Caddy `handle /` serves the game build's `front.html`; the game stays at `/play/`, deep paths
+  and the login's return unchanged): a light page without Phaser (`front.html` + `src/front/`: `content.ts` every word,
+  `facts.ts` its numbers from the game's data (classes, mobs, golem, dungeon, quests, wardrobe), `render.ts` the HTML,
+  built by the `frontPage` Vite plugin in `scripts/front-page.ts`; `main.ts` the runtime, ~20 KB of JS). The hero is the
+  title screen's splash (`ui/splash.ts`, shared); classes are dressed with the paper doll in idle-ready SE
+  (`drawPose` through an `ImageHost`: doll.ts and kit-art.ts only draw and import Phaser for types; the Phaser loaders
+  are in `characters/loading.ts`, so the page never loads the pack index); mobs, golem, Warren Gate and Barong from the
+  manifest, loaded lazily and paused off screen, still under reduced motion. Buttons: manifest `ui.buttonViolet` /
+  `buttonGold` (9-slices with hover/pressed, `dom: true`: never packed). Fonts Pixelify Sans, Jersey 10, Nunito
+  (`assets/font/Nunito`, OFL); favicons in `public/brand/`, `public/og-image.png`. Apply dialog → `POST /api/beta/apply`
+  (bot `web/beta.ts`, tested: username 2–32, a class from the list or "Not sure yet", note ≤ 500, 5 an hour per address;
+  one row per username or logged-in Discord id, a repeat updates it; schema v14 `beta_applications`, the IP only as a
+  salted hash (kv 'beta-salt'); an embed in `BETA_APPLICATIONS_CHANNEL_ID` if set, no pings); `/me` carries `username`
+  to prefill it. CMS tab Beta applications (`GET /api/beta`, `POST /api/beta/status`, `GET /api/beta.csv`). Dev:
+  http://localhost:5173/play/front.html (the apply form needs a bot on 8787: Vite proxies `/api`).
 - Open beta: `/play/` is the town for every member of the Mikazuki server (no `?preview` gate, no testers-only rule).
   Only members can log in (the OAuth callback checks; `isMember` in the bot's `web/auth.ts`, also on `/me`, `/ws` and
   the town's routes). `/gift launch` (pre-registration reward) hasn't been run.
