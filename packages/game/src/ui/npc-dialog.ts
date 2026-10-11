@@ -3,7 +3,7 @@ import { playVoice } from '../audio/sound';
 
 // 💬 Talking to an NPC (world/npc-life.ts): a box at the bottom, in the chat window's nine-slice (manifest
 // ui.chatWindow) at the HUD's scale (2 screen px per art px), 320 art px wide (narrower on small screens): centred
-// when it fits, else slid along or lifted as little as it takes never to cover a HUD panel (chat, bag, the stay box…).
+// when it fits, else slid along or lifted as little as it takes never to cover a HUD panel (the hotbar, chat, bag…).
 // The NPC's portrait in the item frame (ui.inventory.itemFrame) at 3× (mirrored for some: world/npcs.ts) stands on the box's top-right corner (just over
 // its edge), blinking now and then (its frame 1 for a moment); the box holds the name, the characteristic, and the line,
 // typed out letter by letter in their voice (a soft blip every few letters, pitched per NPC). One line per talk: a
@@ -48,8 +48,10 @@ const TEXT_PX = 17; // the line's text size, shrunk for a line that wouldn't fit
 const MIN_TEXT_PX = 11; // every line fits two rows at 17 px on a computer; on a phone the longest need 11
 const BLINK_MS = 150;
 const MARGIN = 12; // from the screen's edges and from HUD panels
-/** HUD panels the box keeps clear of (whichever are showing). */
-const HUD = ['#chat', '#chat-button', '#bag-button', '#inventory', '#stay', '#system-feed', '#arena-queue'];
+/** HUD panels the box keeps clear of (whichever are showing): the hotbar, so it sits just above it, and what you use.
+ *  Of the chat only its typing row: the see-through log above it (it fades when quiet) may be covered for a line, as
+ *  may the stay box and the system feed; dodging those lifted it to the middle of a small window, off centre. */
+const HUD = ['#hotbar', '#chat .ch-row', '#chat-button', '#bag-button', '#inventory', '#skill-book', '#arena-queue'];
 
 interface Art {
   box: { url: string; slice: number } | null;
@@ -172,7 +174,8 @@ export function openNpcDialog(t: NpcTalk): void {
     }, 3000 + Math.random() * 2000);
   };
 
-  // ── clear of the HUD: as low as it can sit without covering a panel, as near the centre as that allows ──
+  // ── clear of the HUD: centred, as low as it can sit without covering a panel; slid beside one only when staying
+  // centred would lift it into the top half of the screen ──
   const place = () => {
     const { width, height } = root.getBoundingClientRect();
     const panels = HUD.map((sel) => document.querySelector(sel)?.getBoundingClientRect()).filter((r): r is DOMRect => !!r && r.width > 0 && r.height > 0);
@@ -194,6 +197,7 @@ export function openNpcDialog(t: NpcTalk): void {
         }
       }
       if (bottom < best.bottom || (bottom === best.bottom && Math.abs(x - centre) < Math.abs(best.x - centre))) best = { x, bottom };
+      if (x === xs[0] && innerHeight - bottom - height >= innerHeight / 2) break; // (centred, low enough: that's it)
     }
     root.style.left = `${Math.round(best.x)}px`;
     root.style.bottom = `${Math.round(best.bottom)}px`;
