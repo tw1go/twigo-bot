@@ -57,8 +57,28 @@ export function notifyDownload(version: string | null, download: () => void, tex
   showNotice(version ? `${text} (${version})` : text, 'Download', () => download());
 }
 
-/** The notice at the top centre: its text, its button, and × (later). */
-function showNotice(message: string, label: string, act: (button: HTMLButtonElement) => void): void {
+/** The desktop app's self-update: "A new version of Mikazuki is ready", Update now → `install` (it reports its progress
+ *  in the notice through `say`; the app restarts when done). If it fails, the notice offers `download` instead. */
+export function notifyUpdate(version: string, install: (say: (text: string) => void) => Promise<void>, download: () => void): void {
+  if (told) return;
+  told = true;
+  const n = showNotice(`A new version of Mikazuki is ready (${version})`, 'Update now', (b) => {
+    b.disabled = true;
+    n.close.hidden = true;
+    const say = (t: string) => (n.text.textContent = t);
+    say('Downloading the update…');
+    install(say).catch(() => {
+      say("The update didn't work. Download it instead:");
+      n.close.hidden = false;
+      b.disabled = false;
+      b.textContent = 'Download';
+      n.act = () => download();
+    });
+  });
+}
+
+/** The notice at the top centre: its text, its button, and × (later). `act` can be swapped while it's up. */
+function showNotice(message: string, label: string, act: (button: HTMLButtonElement) => void): { text: HTMLElement; close: HTMLButtonElement; act: (button: HTMLButtonElement) => void } {
   const box = document.createElement('div');
   box.id = 'new-version';
   box.setAttribute('role', 'status');
@@ -67,12 +87,14 @@ function showNotice(message: string, label: string, act: (button: HTMLButtonElem
   const reload = document.createElement('button');
   reload.className = 'nv-reload';
   reload.textContent = label;
-  reload.addEventListener('click', () => act(reload));
   const close = document.createElement('button');
   close.className = 'nv-close';
   close.setAttribute('aria-label', 'Later');
   close.textContent = '×';
   close.addEventListener('click', () => box.remove());
+  const notice = { text, close, act };
+  reload.addEventListener('click', () => notice.act(reload));
   box.append(text, reload, close);
   document.body.append(box);
+  return notice;
 }

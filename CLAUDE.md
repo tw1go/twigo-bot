@@ -253,8 +253,11 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   dragged size kept), saved (localStorage `mk_window`) and applied as it opens; F11 / Ctrl+Cmd+F swaps Full screen and
   the last other mode, and the system's own full screen button is noticed (capabilities/default.json allows the window
   calls); no server answering /me (10 s at most) → the title screen's Try again ("Can't reach the
-  Mikazuki server"), never the town as a guest (BootScene `unreachable`); twigo.dev/downloads/latest.json (Caddy `/downloads/*` = /opt/twigo-bot/web/downloads,
-  by hand) → the version notice's Download; /me's 426 (bot `MIN_DESKTOP_VERSION`) → "too old". The front page's
+  Mikazuki server"), never the town as a guest (BootScene `unreachable`); twigo.dev/downloads/latest.json (Caddy `/downloads/*` = /opt/twigo-bot/web/downloads)
+  → it updates itself (Tauri's updater reads its `platforms`, signed with the owner's `~/.tauri/mikazuki-updater.key`
+  and bound to the version; `npm run desktop:publish -- <ssh-target>` packs, signs and uploads the workflow's artifacts
+  from ~/Downloads): "A new version of Mikazuki is ready" → Update now (download, install, restart; the notice over the
+  title screen), Download if that fails; /me's 426 (bot `MIN_DESKTOP_VERSION`) → "too old". The front page's
   Windows / Mac buttons read the same latest.json. Builds: `npm run desktop:build` (Mac, needs Rust), or Actions →
   Desktop app (`.github/workflows/desktop.yml`, by hand: both Macs and Windows as artifacts; never deploys).
   `npm run desktop:dev`: the window on the dev town.
