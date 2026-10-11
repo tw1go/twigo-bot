@@ -145,6 +145,14 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
 
 ## The web game (`packages/game`)
 
+- Logo and icons (CONTEXT.md "Logo"; the owner's `mikazuki-assets/brand/mikazuki-brand-kit`, its README): pixel art, so
+  only ever at whole-number scales, nearest neighbour (`image-rendering: pixelated`). Title screen and front page hero:
+  the logo (manifest ui.logoMikazuki; the front page also its @2x/@3x). Icons: `public/favicon.ico` (16/32/48),
+  `public/icons/` (mikazuki-icon-16/32/64/192/512, maskable 192/512), `public/apple-touch-icon.png`, on the game page,
+  the front page and the home screen app's manifest; theme colour Night Navy #1E1B3A. The desktop app's in
+  `packages/desktop/src-tauri/icons/` (`tauri icon` from mikazuki-icon-1024, then icon.icns from the macOS tile and
+  icon.ico = mikazuki-app.ico). The twigo logo (ui.logoTwigo) means the studio: the intro card and "a game by twigo".
+
 - Source of truth: `public/assets/manifest.json` and `public/assets/maps/town.json` (72×72). Don't hard-code
   sizes, anchors or positions. Pixel anchors are measured on the real image size.
   `manifest.json` only exists here (not in the separate `mikazuki-assets` art folder) — when copying art over,
@@ -207,7 +215,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   are in `characters/loading.ts`, so the page never loads the pack index); mobs, golem, Warren Gate and Barong from the
   manifest, loaded lazily and paused off screen, still under reduced motion. Buttons: manifest `ui.buttonViolet` /
   `buttonGold` (9-slices with hover/pressed, `dom: true`: never packed). Fonts Pixelify Sans, Jersey 10, Nunito
-  (`assets/font/Nunito`, OFL); favicons in `public/brand/`, `public/og-image.png`. Apply dialog → `POST /api/beta/apply`
+  (`assets/font/Nunito`, OFL); the hero's title is the logo (`heroLogo` in render.ts: the brand kit's 3x, 2x from 420 px,
+  1x on the smallest phones, each at its own size), the nav the 32 px icon (its 64 px file on sharp screens); the game's
+  icons (below), link previews `public/mikazuki-og-1200x630.png`, theme-color #1E1B3A; the twigo credits stay. Apply dialog → `POST /api/beta/apply`
   (bot `web/beta.ts`, tested: username 2–32, a class from the list or "Not sure yet", note ≤ 500, 5 an hour per address;
   one row per username or logged-in Discord id, a repeat updates it; schema v14 `beta_applications`, the IP only as a
   salted hash (kv 'beta-salt'); an embed in `BETA_APPLICATIONS_CHANNEL_ID` if set, no pings); `/me` carries `username`
@@ -215,8 +225,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   http://localhost:5173/play/front.html (the apply form needs a bot on 8787: Vite proxies `/api`).
 - Ways to play (CONTEXT.md): the website (/play/ in a tab, as ever), the home screen app and the desktop app. Home screen
   app (a PWA; `vite.config.ts` homeScreenApp, vite-plugin-pwa, the game page only: front.html loses the manifest link):
-  manifest.webmanifest (Mikazuki, /play/, fullscreen then standalone, landscape, #1a1b26, the brand kit's navy 192/512 and
-  maskable 512 in `public/pwa/`), sw.js (registered by `net/pwa.ts`, never in dev or the desktop app): precaches what the
+  manifest.webmanifest (Mikazuki, /play/, fullscreen then standalone, landscape, #1E1B3A, the Mikazuki brand kit's 192/512
+  as `any` and maskable 192/512 in `public/icons/`), sw.js (registered by `net/pwa.ts`, never in dev or the desktop app): precaches what the
   title screen needs (about 4 MB: the page, its scripts, the game's manifest, town.json, fonts, the title art); the rest of
   /play/assets/ is cached as first loaded (hashed scripts and packs cache-first, the rest stale-while-revalidate); nothing
   else (logins, /me, /town/*, /api/*, /ws, version.json). Updates install in the background and wait: ui/version.ts's
@@ -255,8 +265,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   the intro card ("a game made by" + manifest ui.logoTwigo on #111827; 500 ms in, 1.6 s held, 500 ms out; reduced motion
   1.2 s, no fades; a click or key skips it; once per tab, sessionStorage `mk_intro`; `?intro=1` always), then the title
   screen: the splash (ui.splashAnim, 24 frames at 8 fps on a 384×216 canvas at a whole-number scale, centred and
-  cropped; ui.splashBg until it loads and under reduced motion), "MIKAZUKI" in Pixelify Sans (gold #FCDA4A, navy shadow and
-  glow, drawn at screen resolution), a band at the bottom with a button (ui.titleButton, a 3-state 9-slice as
+  cropped; ui.splashBg until it loads and under reduced motion), the Mikazuki logo (ui.logoMikazuki, 193×53 pixel art,
+  `dom`: never packed; `drawTitle`): part of the art at its scale, top-left on art px (95, 6) (5× at 1920×1080), or where
+  that would go off screen centred at the largest whole-number scale no wider than 90% of the screen (never above the
+  art's), 6% down, above the band; nothing until it loads, Pixelify text if it can't), a band at the bottom with a button (ui.titleButton, a 3-state 9-slice as
   border-image at the same scale) and a hint, and a speaker top right (= Settings → Mute; never a click to start). No
   button until /me answers (≤ 2.5 s): logged in or login off → Start ("or click anywhere"; any click, Enter or Space);
   not logged in → "Log in with Discord" (/auth/login; `loginProblem()` in red under it). Start fades it out (400 ms)
