@@ -22,6 +22,8 @@ import { sellPrice,
   luckPerFail,
   newAgimat,
   newItem,
+  repairKitsFor,
+  repairKitsText,
   repairRefusal,
   stonesFor,
   successFor,
@@ -70,14 +72,15 @@ export function enhance(data: ItemData, s: ForgeHolder, uid: string, tool: strin
   return { ok: true, outcome: 'fail', message: `It failed. The whetstones are used up; luck +${Math.round(luckPerFail(data.stats, target) * 100)}% for the next try.`, item };
 }
 
-/** Repairs a broken item (worn or in the bag) with one Repair Kit of its tier. */
+/** Repairs a broken item (worn or in the bag) with Repair Kits of its tier: as many as its + takes (repairKitsFor). */
 export function repair(data: ItemData, s: ForgeHolder, uid: string, tool: string | undefined): Result {
   const found = findItem(s, uid);
   if (!found) return no("You don't have that item.");
   const why = repairRefusal(data, found.item, tool);
   if (why) return no(why);
   const kit = toolFor(data, 'repairKit', gearTier(data.stats, found.item.level));
-  if (!kit || !takeKind(s.bag, kit.id, 1)) return no(`You need ${kit ? `a ${kit.name}` : 'a Repair Kit of its tier'}.`);
+  const n = repairKitsFor(data.stats, found.item.plus);
+  if (!kit || countOf(s.bag, kit.id) < n || !takeKind(s.bag, kit.id, n)) return no(`You need ${kit ? repairKitsText(data, found.item) : 'a Repair Kit of its tier'} to repair it.`);
   found.item.broken = false;
   return { ok: true, outcome: 'repaired', message: `Repaired ${itemName(data, found.item)}!`, item: found.item };
 }

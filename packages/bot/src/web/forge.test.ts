@@ -19,6 +19,7 @@ import {
   itemTotals,
   lineValue,
   luckPerFail,
+  repairKitsFor,
   newAgimat,
   newItem,
   trainingSellPrice,
@@ -117,6 +118,17 @@ test('enhance: from +16 a fail breaks the item (keeps its +, taken off, gives no
   assert.equal(item.plus, 15);
   assert.equal(countOf(s.bag, 'low-repair-kit'), 1);
   assert.match(repair(D, s, item.uid, 'low-repair-kit').message, /isn't broken/);
+  // How many kits by the + it kept: +15 1, +16 and +17 2, +18 3, +19 4.
+  assert.deepEqual([15, 16, 17, 18, 19].map((p) => repairKitsFor(D.stats, p)), [1, 2, 2, 3, 4]);
+  const high = sling('grey', 18);
+  high.broken = true;
+  const kits = holder([high], 999);
+  addToBag(D, kits.bag, newItem(D.stats, thing('low-repair-kit'), uid(), 2), uid);
+  assert.match(repair(D, kits, high.uid, 'low-repair-kit').message, /3 Low Repair Kits/, '+18: three, two are too few');
+  assert.equal(countOf(kits.bag, 'low-repair-kit'), 2, 'none taken');
+  addToBag(D, kits.bag, newItem(D.stats, thing('low-repair-kit'), uid(), 2), uid);
+  assert.equal(repair(D, kits, high.uid, 'low-repair-kit').outcome, 'repaired');
+  assert.equal(countOf(kits.bag, 'low-repair-kit'), 1, 'three taken');
   // A fail at +1–15 never breaks (luck piles up until a try can't fail).
   const low = sling('grey', 10);
   const t = holder([low], 999);
@@ -139,7 +151,7 @@ test('enhance: seeded runs to +20 never lose a level, break only from +16, and l
   while (item.plus < 20 && tries < 2000) {
     addToBag(D, s.bag, newItem(D.stats, thing('rough-whetstone'), uid(), 20), uid);
     if (item.broken) {
-      addToBag(D, s.bag, newItem(D.stats, thing('low-repair-kit'), uid(), 1), uid);
+      addToBag(D, s.bag, newItem(D.stats, thing('low-repair-kit'), uid(), repairKitsFor(D.stats, item.plus)), uid);
       assert.equal(repair(D, s, item.uid, undefined).ok, true);
     }
     const before = item.plus;

@@ -215,6 +215,22 @@ export function nextStats(data: ItemData, def: EquipmentDef, item: Item): NextSt
 
 // ── Repair ──
 
+/** How many Repair Kits (of its tier) mending a broken item takes, by the + it kept (stats.json enhancement.cost.repairKits:
+ *  +15 1, +16 and +17 2, +18 3, +19 4); 1 without it. */
+export function repairKitsFor(data: StatsData, plus: number): number {
+  const K = itemStats(data).enhancement.cost.repairKits ?? {};
+  const at = Object.keys(K).map(Number).filter((p) => Number.isFinite(p) && p <= plus).sort((a, b) => b - a)[0];
+  const n = at === undefined ? 1 : Number(K[String(at)]);
+  return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1;
+}
+
+/** "a Low Repair Kit" / "2 Low Repair Kits". */
+export const repairKitsText = (data: ItemData, item: Item): string => {
+  const n = repairKitsFor(data.stats, item.plus);
+  const name = toolName(data, 'repairKit', gearTier(data.stats, item.level));
+  return n === 1 ? an(name) : `${n} ${name}s`;
+};
+
 /** Why a Repair Kit (of `tool`'s kind; any of the item's tier when left out) can't repair this item, or null. */
 export function repairRefusal(data: ItemData, item: Item, tool?: string): string | null {
   const def = data.defs.get(item.defId);

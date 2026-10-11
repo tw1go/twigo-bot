@@ -13,14 +13,14 @@ import {
   enhanceView,
   findItem,
   fragmentsPerWhetstone,
-  gearTier,
   isGearDef,
   newItem,
   lineText,
+  repairKitsFor,
+  repairKitsText,
   repairRefusal,
   statLabel,
   toolFor,
-  toolName,
 } from '@mikazuki/shared';
 import { playSound } from '../audio/sound';
 import { adventure, anyDef, forgeAction, itemData, onAdventure } from '../net/adventure';
@@ -365,7 +365,7 @@ export class ForgePopup {
     parts.push(odds);
     if (v.luck > 0) parts.push(el('div', 'fg-luck', `Luck +${Math.round(v.luck * 100)}%`));
     for (const n of v.next) parts.push(el('div', 'fg-next', nextLine(n)));
-    if (v.breaks) parts.push(el('div', 'fg-warn', `A fail now breaks it (it keeps its +; fix it with ${/^[aeiou]/i.test(toolName(D, 'repairKit', gearTier(D.stats, item!.level))) ? 'an' : 'a'} ${toolName(D, 'repairKit', gearTier(D.stats, item!.level))}).`));
+    if (v.breaks) parts.push(el('div', 'fg-warn', `A fail now breaks it (it keeps its +; fixing it takes ${repairKitsText(D, item!)}).`));
     this.enhanceButton(parts, this.stones >= need && have >= need);
   }
 
@@ -381,15 +381,19 @@ export class ForgePopup {
     const D = itemData()!;
     const have = countOf(adventure()!.bag, this.tool);
     const def = D.defs.get(this.tool);
-    toolSlot.append(this.toolPicture(this.tool, have), el('span', 'fg-count', String(have ? 1 : 0)));
+    // As many kits as its + takes (stats.json enhancement.cost.repairKits: +15 1 … +19 4).
+    const need = item ? repairKitsFor(D.stats, item.plus) : 1;
+    const put = Math.min(have, need);
+    toolSlot.append(this.toolPicture(this.tool, have), el('span', 'fg-count', String(put)));
     const row = el('div', 'fg-row');
     const label = el('span', 'fg-label');
-    label.append('Repair Kits ', el('b', 'fg-num', `${have ? 1 : 0} / 1`));
+    label.append('Repair Kits ', el('b', 'fg-num', `${put} / ${need}`));
     row.append(label);
     parts.push(row, el('div', 'fg-have', `You have ${have} ${def?.name ?? 'Repair Kit'}${have === 1 ? '' : 's'}`));
     const why = item ? repairRefusal(D, item, this.tool) : null;
     if (why && !this.message?.ok) parts.push(el('div', 'fg-warn', why)); // (not right after repairing it)
-    const ready = !!item && !why && have > 0;
+    if (item && !why && have < need) parts.push(el('div', 'fg-warn', `It needs ${repairKitsText(D, item)}.`));
+    const ready = !!item && !why && have >= need;
     const b = el('button', 'fg-go', this.busy ? 'Repairing…' : 'Repair');
     b.disabled = !ready || this.busy;
     b.classList.toggle('fg-ready', ready);

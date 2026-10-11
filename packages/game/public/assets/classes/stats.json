@@ -883,6 +883,7 @@
       },
       "luckResetsOnSuccess": true,
       "breaks": "from +16, needs Repair Kit",
+      "repairKits": { "15": 1, "16": 2, "17": 2, "18": 3, "19": 4, "note": "Repo addition (Mac, 11 Oct 2026): Repair Kits of its tier a broken item takes, by the + it kept (a fail trying for +16 leaves it broken at +15, …, for +20 at +19)." },
       "index": "array index = target + level",
       "luckPerFail": {
         "1-5": 0.1,
