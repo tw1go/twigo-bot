@@ -115,6 +115,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
 Data added in this repo that the owner's `mikazuki-assets` copy doesn't have yet; each says so in a `note` beside it
 where JSON allows. When you add one, add it here (and tell the owner, who copies them back):
 
+- `classes/stats.json` enhancement (11 Oct 2026, `buffNote`): `perLevel` 3% / 8% / 15% at +16 / 20% from +17 (was 2/3/5%),
+  `armorMinDEF`, `accessories.perLevel` as tiers (2% to +16, 5% from +17; was 1%), the `totalAt20`s.
 - `classes/stats.json`: `combatRating` (the CP weights), the golem's mob table `skillMult.junkDrop` / `skillMult.shockwave`, `rarity.nameColour[r].colour`, `rarity.dropPlus`, `affixes.names`,
   `currencies.kusingPerMobRange`, `skills.mpCost`, `skills.cooldownByUnlock`, `skills.buffs` (numbers) with
   `rules.allyBuffsReachParty`, `rules.stack`, `agimats.onlyIn`, `agimats.rarePerItem`, `agimats.sellKusing`, `agimats.look`, `inventory.agimatSlots`,
@@ -687,7 +689,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `stats`) and `items/items.json` (manifest `combatItems`: whetstone, fragment, Low Repair Kit, Low HP/MP Potion
   (`heals`, `shop`), 11 agimats, the Lamp-head Hat cosmetic). `rollGear` / `rollLines` (3 lines: slot stat, HP, a pool
   stat at rareRollWeight; 80–100% of the line's max), `slotCount`, `bindsOnWear` (orange), `enhancedBase`, `lineValue`
-  (accessories +1%/plus), `agimatValue`, `itemTotals` (base+plus, lines, agimats; broken = nothing) → `derivedStats` (caps:
+  (accessories by stats.json enhancement.accessories' tiers: +2%/plus to +16, +5% from +17; armor's least DEF a plus: enhancement.armorMinDEF), `agimatValue`, `itemTotals` (base+plus, lines, agimats; broken = nothing) → `derivedStats` (caps:
   attack/DEF rate, lifesteal, manasteal, drop rate too), `itemName` ("Sturdy Slingshot of Calamity +7 (Broken)": the plus after the name everywhere; agimats
   "… Lv 20 (Body only)"), `nameColour` (rarity colour; materials and potions white), `pickupLine`, `LOOT_REACH` (1), `stackLimit` / `addToBag` (all or nothing) / `takeKind` / `bagRoom`, `kusingFor`,
   `equipFromBag` / `unequipToBag` (by uid), `giveGear` / `missingTraining` / `swapTrainingGear` (fresh training items).
@@ -731,7 +733,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   agimats, disassembly, gearTiers): rules and refusals in `packages/shared/src/forge.ts` (pure, both sides: `gearTier`,
   `toolFor` (items.json `forge`: whetstone / fragment / repairKit by `tier`), `enhanceRefusal` ("Needs a Rough Whetstone",
   training gear, broken, +20), `enhanceView` (stones `whetstonesPerTry[target]`, odds `successPct + luck`, `nextStats`:
-  ATK/DEF, accessories' lines +1%), `luckPerFail`, `breaksFrom` (+16), `repairRefusal`, `embedRefusal` (gear Lv ≥ agimat, stats.json agimats.onlyIn (repo addition: crit rate / crit damage head and hands only, damage amp feet and body only; disassembly rolls only fitting stats, `rollAgimatStat`'s slot; the agimat tooltip says it),
+  ATK/DEF, accessories' lines), `luckPerFail`, `breaksFrom` (+16), `repairRefusal`, `embedRefusal` (gear Lv ≥ agimat, stats.json agimats.onlyIn (repo addition: crit rate / crit damage head and hands only, damage amp feet and body only; disassembly rolls only fitting stats, `rollAgimatStat`'s slot; the agimat tooltip says it),
   slot lock, two different stats, rare ones up to stats.json agimats.rarePerItem (repo addition: 2, both slots; was one)), `fragmentsFor` (2 + 3 × the stones to its +), `disassemblyYield`, `auraFor` /
   `itemAura`); rolls in bot `web/forge.ts` (pure, tested `forge.test.ts`): `enhance` (success +1, luck 0; fail: stones
   used, luck += its bracket's; from +16 broken, keeps its +, `unequipBroken`), `repair` (a kit of its tier), `embed` (a full
