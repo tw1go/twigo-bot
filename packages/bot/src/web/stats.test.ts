@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   type ClassesFile,
+  type EquipmentDef,
   type GearItem,
   STAT_NAMES,
   baseStats,
@@ -32,12 +33,13 @@ import {
   buffMpCost,
   skillPointsAt,
   statPointsAt,
+  trainingGear,
   unspentStatPoints,
   xpForLevel,
   xpToNext,
 } from '@mikazuki/shared';
 import { loadGear, loadStats } from './stats-data.js';
-import { loadMobMap } from './town-mobs.js';
+import { fighterStats, loadFightData, loadMobMap } from './town-mobs.js';
 
 // The shared stats rules (@mikazuki/shared stats.ts) on the game's real classes/stats.json, against the combat guide's
 // tables ("Stats, levels and scaling").
@@ -296,11 +298,14 @@ test('another class\'s gear is said plainly: a Pot lid holding Tin (Heavy) or Ab
   assert.equal(gearMismatch(data, null, piece('Heavy'), name), null, 'before a class: the stat check says');
 });
 
-test('combat rating (CP): Power with crits averaged in x5, HP stretched by DEF x1, MP x0.5 (stats.json combatRating); anything stronger raises it', () => {
+test('combat rating (CP): Power with crits averaged in x5 (x a ranged class\'s reach), HP stretched by DEF x0.4, MP x0.5 (stats.json combatRating); anything stronger raises it', () => {
   const lv1 = derivedStats(data, null, 1, baseStats(data, null, 1));
   const cp = combatRating(data, lv1);
   const offense = lv1.power * (1 + lv1.critRate * (lv1.critDamage - 1));
-  assert.equal(cp, Math.round(offense * 5 + (lv1.hp * (100 + lv1.def)) / 100 + lv1.mp * 0.5));
+  const toughness = (lv1.hp * (100 + lv1.def)) / 100;
+  assert.equal(cp, Math.round(offense * 5 + toughness * 0.4 + lv1.mp * 0.5));
+  assert.equal(combatRating(data, lv1, 'slingshot'), Math.round(offense * 5 * 1.25 + toughness * 0.4 + lv1.mp * 0.5), 'ranged: offense x1.25');
+  assert.equal(combatRating(data, lv1, 'stick'), cp, 'melee: as it is');
   for (const [stat, more] of [['power', 10], ['def', 5], ['hp', 50], ['mp', 20], ['critRate', 0.05], ['amp', 0.1], ['atkRate', 0.05], ['defRate', 0.05]] as const)
     assert.ok(combatRating(data, { ...lv1, [stat]: lv1[stat] + more }) > cp, `more ${stat}, a higher rating`);
   const lv20 = derivedStats(data, 'potlid', 20, baseStats(data, 'potlid', 20));
@@ -320,4 +325,15 @@ test('the stats box\'s lower part: crit damage, amp, rates, steals, regen and dr
   assert.equal(buffed.find((r) => r.id === 'cooldownPct')!.text, '−10%');
   assert.equal(buffed.find((r) => r.id === 'hpRegen')!.value, lv1.hpRegen + 0.01 * lv1.hp, 'a % of max HP a second counts in');
   assert.deepEqual(moreStats({ critRate: 0.1 }), [], "an older server's Info without them: none");
+});
+
+test('combat rating: at Lv 20 in training gear (points in the main stat) the six classes are within 25% of each other', () => {
+  const F = loadFightData();
+  const gear = [...F.defs.values()].filter((d) => 'slot' in d) as EquipmentDef[];
+  const cps = Object.keys(data.classes).map((cls) => {
+    const t = trainingGear(data, gear, cls);
+    const d = fighterStats(F, { cls, level: 20, points: { [data.classes[cls].main]: statPointsAt(data, 20) }, gear: [t.weapon, ...t.armor].filter((x) => !!x).map((x) => x!.id) });
+    return combatRating(data, d, cls);
+  });
+  assert.ok(Math.max(...cps) / Math.min(...cps) <= 1.25, `CPs ${cps.join(', ')}`);
 });

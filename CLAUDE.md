@@ -117,7 +117,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
 
 - `classes/stats.json` enhancement (11 Oct 2026, `buffNote`): `perLevel` 3% / 8% / 15% at +16 / 20% from +17 (was 2/3/5%),
   `armorMinDEF`, `accessories.perLevel` as tiers (2% to +16, 5% from +17; was 1%), the `totalAt20`s.
-- `classes/stats.json`: `combatRating` (the CP weights), the golem's mob table `skillMult.junkDrop` / `skillMult.shockwave`, `rarity.nameColour[r].colour`, `rarity.dropPlus`, `affixes.names`,
+- `classes/stats.json`: `combatRating` (the CP weights; toughness 0.4 and `reach` since 11 Oct 2026), the golem's mob table `skillMult.junkDrop` / `skillMult.shockwave`, `rarity.nameColour[r].colour`, `rarity.dropPlus`, `affixes.names`,
   `currencies.kusingPerMobRange`, `skills.mpCost`, `skills.cooldownByUnlock`, `skills.buffs` (numbers) with
   `rules.allyBuffsReachParty`, `rules.stack`, `agimats.onlyIn`, `agimats.rarePerItem`, `agimats.sellKusing`, `agimats.look`, `inventory.agimatSlots`,
   `potions.separateCooldowns`, `trainingGear.noSell` / `sellKusing`, `mobBehaviour.targetPriority`,
@@ -674,8 +674,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   unlock order, keyed '0'…'6' / move id), `skillLevelOf`, `damageSkillLevels`, `moveUnlock`, `baseCooldown`,
   `skillCooldown`), damage (`levelGap`, `hitDamage`,
   `rollHit`), `mobStats`, `mobXp` (low-mob penalty), `mobTone`, `combatRating` (CP: offense = Power × (1 + crit rate ×
-  (crit damage − 1)) × (1 + amp) × (1 + attack rate), toughness = HP × (100 + DEF) / 100 / (1 − DEF rate), each by stats.json
-  `combatRating`'s weight, + MP; tested). Shown: the HUD in a tab hanging under the profile box (`.th-cp-tab`, the profile and it in `.th-card`) and the stats box's top (`ui/rating.ts` myStats /
+  (crit damage − 1)) × (1 + amp) × (1 + attack rate) × the class's `reach` (Slingshot, Broom 1.25: they hit from afar),
+  toughness = HP × (100 + DEF) / 100 / (1 − DEF rate), each by stats.json `combatRating`'s weight (offense 5, toughness
+  0.4, MP 0.5); the class passed by every caller; tested: the six classes at Lv 20 in training gear within 25%). Shown: the HUD in a tab hanging under the profile box (`.th-cp-tab`, the profile and it in `.th-card`) and the stats box's top (`ui/rating.ts` myStats /
   myRating, buffs in), the player box beside their level (`buffs-of`'s `cp`, the server's with their buffs:
   `MobRoom.rating`) and Info (`InspectStats.cp`). classes.json main/second stats match stats.json (tested).
   Gear (both sides use them): `wearCheck` (canEquip on a character's base stats), `placesFor`, `trainingGear` (a class's

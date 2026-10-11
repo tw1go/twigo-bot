@@ -380,7 +380,7 @@ export class EquipmentPanel {
     }
     // Your combat rating on top, buffs and all (ui/rating.ts).
     const cp = el('div', 'eq-cp');
-    cp.append(el('span', 'eq-cp-label', 'Combat rating'), el('b', 'eq-cp-value', combatRating(S, up).toLocaleString()));
+    cp.append(el('span', 'eq-cp-label', 'Combat rating'), el('b', 'eq-cp-value', combatRating(S, up, s.cls).toLocaleString()));
     cp.title = 'CP: one number from your ATK, crits, DEF, HP and MP, buffs included. Better gear, levels and points raise it.';
     this.stats.replaceChildren(cp, left, right, ...moreStatsSection(up, st), foot);
   }

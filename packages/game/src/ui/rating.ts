@@ -22,7 +22,7 @@ export function myStats(): { st: DerivedStats; up: DerivedStats } | null {
 export function myRating(): number | null {
   const m = myStats();
   const S = adventureData()?.stats;
-  return m && S ? combatRating(S, m.up) : null;
+  return m && S ? combatRating(S, m.up, adventure()?.cls) : null;
 }
 
 /** "CP 1,284". */

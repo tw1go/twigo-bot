@@ -290,13 +290,14 @@ export function moreStats(d: Partial<DerivedStats>): MoreStat[] {
 
 /** A character's combat rating (CP: the player box, the HUD, the stats box, the Info window): one number from everything
  *  that makes them stronger, so a better weapon or armor, a level, a point or a buff always raises it. Offense = Power
- *  with crits averaged in, × damage amp × attack rate; toughness = HP stretched by what DEF and DEF rate take off a hit
- *  (the damage rule's 100 / (100 + DEF)); each by its weight in stats.json `combatRating` (a repo addition), MP too. 0
- *  without it. */
-export function combatRating(data: StatsData, d: DerivedStats): number {
-  const W = (data as StatsData & { combatRating?: { offense: number; toughness: number; mp: number } }).combatRating;
+ *  with crits averaged in, × damage amp × attack rate, × the class's reach (the ranged classes: they hit from afar, so
+ *  they're hit less than their HP shows); toughness = HP stretched by what DEF and DEF rate take off a hit (the damage
+ *  rule's 100 / (100 + DEF)); each by its weight in stats.json `combatRating` (a repo addition), MP too. 0 without it. */
+export function combatRating(data: StatsData, d: DerivedStats, cls?: string | null): number {
+  const W = (data as StatsData & { combatRating?: { offense: number; toughness: number; mp: number; reach?: Record<string, number> } }).combatRating;
   if (!W) return 0;
-  const offense = d.power * (1 + d.critRate * (d.critDamage - 1)) * (1 + (d.amp ?? 0)) * (1 + (d.atkRate ?? 0));
+  const reach = (cls && W.reach?.[cls]) || 1;
+  const offense = d.power * (1 + d.critRate * (d.critDamage - 1)) * (1 + (d.amp ?? 0)) * (1 + (d.atkRate ?? 0)) * reach;
   const toughness = (d.hp * (100 + d.def)) / 100 / Math.max(0.05, 1 - (d.defRate ?? 0));
   return Math.round(offense * W.offense + toughness * W.toughness + d.mp * W.mp);
 }
