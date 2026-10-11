@@ -16,6 +16,9 @@ import { type ForgePopup, confirmCombine, confirmDisassemble, confirmDisassemble
 import { fragmentsPerWhetstone } from '@mikazuki/shared';
 import { inTrade, tradeBlocked, tradeDrag, tradePut, trading } from './trade';
 
+/** What a forge tool's button and menu say (the popup's mode it opens). */
+const FORGE_LABEL: Record<string, string> = { whetstone: 'Enhance…', repairKit: 'Repair…', pliers: 'Remove an agimat…', temper: 'Draw a +…', tempered: 'Apply its +…' };
+
 // 🎒 The inventory: a bag button just right of the chat box (or B) opens the bag on the right of the screen. The bag shows every
 // slot a bag can ever have (5 × 10): the ones unlocked so far (bags from the shop add more) hold your items, one slot
 // each — dug-up items, Master Keys, potions and equipment not being worn, as the bot counts them — and the rest are
@@ -402,7 +405,7 @@ export class Inventory {
         cell.draggable = true;
         cell.addEventListener('dragstart', (e) => e.dataTransfer?.setData('application/x-mk-equipment', it.uid));
         cell.addEventListener('dblclick', () => !this.forge.isOpen && !trading() && void this.equipment?.wear(it.uid));
-      } else if (def && (def.kind === 'agimat' || def.forge === 'whetstone' || def.forge === 'repairKit')) {
+      } else if (def && (def.kind === 'agimat' || (def.forge && def.forge !== 'fragment'))) {
         // Forge tools: dragged onto the forge popup's slots.
         cell.draggable = true;
         cell.addEventListener('dragstart', (e) => e.dataTransfer?.setData('application/x-mk-tool', it.uid));
@@ -464,8 +467,7 @@ export class Inventory {
       if (!def.training) row.append(this.action('Disassemble', 'iv-sell', () => void this.disassemble(it, null)));
       else if (price !== null) row.append(this.action(`Sell · ${price} Kusing`, 'iv-sell', () => void this.sell(it, null, price)));
     } else if (def?.kind === 'potion') parts.push(el('div', 'iv-about', 'Drag it onto your hotbar (the - = ~ slots) and use it in the Slums.'));
-    else if (def?.forge === 'whetstone') row.append(this.action('Enhance…', 'iv-flex', () => void this.openForge(it)));
-    else if (def?.forge === 'repairKit') row.append(this.action('Repair…', 'iv-flex', () => void this.openForge(it)));
+    else if (def?.forge && def.forge !== 'fragment') row.append(this.action(FORGE_LABEL[def.forge], 'iv-flex', () => void this.openForge(it)));
     else if (def?.kind === 'agimat') {
       row.append(this.action('Embed…', 'iv-flex', () => void this.openForge(it)));
       const price = this.priceOf(it);
@@ -485,6 +487,9 @@ export class Inventory {
     if (def.kind === 'agimat') this.forge.open('embed', it.uid);
     else if (def.forge === 'whetstone') this.forge.open('enhance', def.id);
     else if (def.forge === 'repairKit') this.forge.open('repair', def.id);
+    else if (def.forge === 'pliers') this.forge.open('remove', def.id);
+    else if (def.forge === 'temper') this.forge.open('draw', def.id);
+    else if (def.forge === 'tempered') this.forge.open('apply', it.uid); // (each filled stone its own)
     else return false;
     this.hideTip();
     return true;
@@ -510,12 +515,12 @@ export class Inventory {
       const per = D ? fragmentsPerWhetstone(D.stats) : 10;
       items.push([`Combine (${per} → 1 whetstone)`, () => void this.combine(it, cell)]);
     } else if (def && (def.kind === 'agimat' || def.forge)) {
-      items.push([def.kind === 'agimat' ? 'Embed…' : def.forge === 'repairKit' ? 'Repair…' : 'Enhance…', () => void this.openForge(it)]);
+      items.push([def.kind === 'agimat' ? 'Embed…' : FORGE_LABEL[def.forge!], () => void this.openForge(it)]);
       const price = def.kind === 'agimat' ? this.priceOf(it) : null;
       if (price !== null) items.push([`Sell (${price.toLocaleString()} Kusing)`, () => void this.sell(it, cell, price)]);
     }
     // A consumable: used where it's for, never from the bag. A ticket says where (greyed); a Return Lantern's Use says so.
-    if (def && !isGearDef(def) && def.kind === 'consumable') {
+    if (def && !isGearDef(def) && def.kind === 'consumable' && !def.forge) {
       const where = def.useAt ?? 'Use it where it’s for';
       if (def.id === RETURN_LANTERN) items.push(['Use', () => toast(where, 2400)]);
       else {

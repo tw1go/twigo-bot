@@ -8,8 +8,11 @@ import {
   agimatValue,
   countOf,
   disassemblyYield,
+  applyRefusal,
+  drawRefusal,
   embedRefusal,
   enhanceRefusal,
+  removeRefusal,
   enhanceView,
   findItem,
   fragmentsPerWhetstone,
@@ -153,7 +156,7 @@ export class ForgePopup {
       this.stones = 0;
       this.keepFull = false;
       const kept = this.current();
-      this.slot = mode === 'embed' && kept ? Math.max(0, kept.agimats.findIndex((a) => !a)) : null;
+      this.slot = mode === 'embed' && kept ? Math.max(0, kept.agimats.findIndex((a) => !a)) : mode === 'remove' && kept ? firstFilled(kept) : null;
     }
     this.mode = mode;
     this.tool = tool;
@@ -198,10 +201,10 @@ export class ForgePopup {
       this.bounce(why);
       return true;
     }
-    if (this.item !== uid || (this.mode === 'embed' && this.slot === null)) {
+    if (this.item !== uid || ((this.mode === 'embed' || this.mode === 'remove') && this.slot === null)) {
       this.item = uid;
-      // Embed: the first empty slot to start with (else the first).
-      this.slot = this.mode === 'embed' ? Math.max(0, found.item.agimats.findIndex((a) => !a)) : null;
+      // Embed: the first empty slot to start with (else the first); remove: the first with an agimat.
+      this.slot = this.mode === 'embed' ? Math.max(0, found.item.agimats.findIndex((a) => !a)) : this.mode === 'remove' ? firstFilled(found.item) : null;
       this.message = null;
       this.asking = false;
       if (this.mode === 'enhance' && this.keepFull) this.fillStones();
@@ -218,6 +221,9 @@ export class ForgePopup {
     if (!it || !def || isGearDef(def)) return;
     if (def.kind === 'agimat') return this.open('embed', uid);
     if (def.forge === 'repairKit') return this.open('repair', def.id);
+    if (def.forge === 'pliers') return this.open('remove', def.id);
+    if (def.forge === 'temper') return this.open('draw', def.id);
+    if (def.forge === 'tempered') return this.open('apply', uid);
     if (def.forge !== 'whetstone') return this.bounce("That's not something the forge uses.");
     if (this.mode !== 'enhance' || this.tool !== def.id) this.open('enhance', def.id);
     this.keepFull = true;
@@ -230,6 +236,12 @@ export class ForgePopup {
     const D = itemData()!;
     if (this.mode === 'enhance') return enhanceRefusal(D, item, this.tool);
     if (this.mode === 'repair') return repairRefusal(D, item, this.tool);
+    if (this.mode === 'remove') return removeRefusal(D, item);
+    if (this.mode === 'draw') return drawRefusal(D, item);
+    if (this.mode === 'apply') {
+      const stone = adventure()?.bag.find((b) => b.uid === this.tool);
+      return stone ? applyRefusal(D, item, stone) : 'That Temper Stone is gone.';
+    }
     const ag = adventure()?.bag.find((b) => b.uid === this.tool);
     return ag ? embedRefusal(D, item, ag) : 'That agimat is gone.';
   }
@@ -280,7 +292,7 @@ export class ForgePopup {
     const D = itemData();
     const s = adventure();
     if (!D || !s) return;
-    this.title.textContent = this.mode === 'enhance' ? 'Enhance' : this.mode === 'repair' ? 'Repair' : 'Embed an agimat';
+    this.title.textContent = TITLE[this.mode];
     this.root.dataset.mode = this.mode;
     const item = this.current();
     if (this.item && !item) this.item = null;
@@ -304,12 +316,15 @@ export class ForgePopup {
     this.dropTarget(toolSlot, (kind, uid) => (kind === 'gear' ? this.put(uid) : this.putTool(uid)));
     row.append(toolSlot);
     parts.push(row);
-    const name = el('div', 'fg-name', item ? nameOf(item) : this.mode === 'embed' ? 'Drag a slotted weapon or armor piece in.' : this.mode === 'repair' ? 'Drag a broken item in.' : 'Drag a weapon, armor piece or accessory in.');
+    const name = el('div', 'fg-name', item ? nameOf(item) : this.hint());
     if (item) name.style.color = item.broken ? '#9CA3AF' : RARITY_TEXT[rarityOf(item)];
     parts.push(name);
 
     if (this.mode === 'enhance') this.renderEnhance(toolSlot, item, parts);
     else if (this.mode === 'repair') this.renderRepair(toolSlot, item, parts);
+    else if (this.mode === 'remove') this.renderRemove(toolSlot, item, parts);
+    else if (this.mode === 'draw') this.renderDraw(toolSlot, item, parts);
+    else if (this.mode === 'apply') this.renderApply(toolSlot, item, parts);
     else this.renderEmbed(toolSlot, item, parts);
     if (this.message) parts.push(el('div', `fg-note${this.message.ok ? '' : ' fg-bad'}`, this.message.text));
     this.body.replaceChildren(...parts);
@@ -401,6 +416,97 @@ export class ForgePopup {
     parts.push(b);
   }
 
+  /** What to drag in, while the item slot is empty. */
+  private hint(): string {
+    if (this.mode === 'embed') return 'Drag a slotted weapon or armor piece in.';
+    if (this.mode === 'repair') return 'Drag a broken item in.';
+    if (this.mode === 'remove') return 'Drag a weapon or armor piece with an agimat in.';
+    if (this.mode === 'draw') return 'Drag an item with a + in.';
+    if (this.mode === 'apply') {
+      const stone = adventure()?.bag.find((b) => b.uid === this.tool);
+      return stone?.lock ? `Drag a Lv ${stone.level} ${SLOT_NAME[stone.lock]} below +${stone.plus} in.` : 'Drag an item in.';
+    }
+    return 'Drag a weapon, armor piece or accessory in.';
+  }
+
+  /** Agimat Pliers: the item's slot dots (the filled ones), pick one, Remove: back into the bag, whole. */
+  private renderRemove(toolSlot: HTMLElement, item: Item | null, parts: HTMLElement[]): void {
+    const D = itemData()!;
+    const have = countOf(adventure()!.bag, this.tool);
+    const def = D.defs.get(this.tool);
+    toolSlot.append(this.toolPicture(this.tool, have), el('span', 'fg-count', String(have)));
+    parts.push(el('div', 'fg-have', `You have ${have} ${def?.name ?? 'Agimat Pliers'}`));
+    if (!item) return;
+    const dots = el('div', 'fg-dots');
+    item.agimats.forEach((a, i) => {
+      const b = el('button', `fg-dot${a ? ' fg-dot-on' : ''}${this.slot === i ? ' fg-dot-picked' : ''}`);
+      b.append((a && agimatIcon(a.stat, a.level)) || el('span', 'fg-dot-mark'), el('span', undefined, a ? `${lineText(a.stat, agimatValue(D.stats, a.stat, a.level))} (Lv ${a.level})` : 'Empty slot'));
+      b.disabled = !a;
+      b.addEventListener('click', () => {
+        this.slot = i;
+        this.message = null;
+        this.render();
+      });
+      dots.append(b);
+    });
+    parts.push(dots);
+    const why = removeRefusal(D, item, this.slot ?? undefined) ?? (this.slot === null ? 'Pick a slot with an agimat.' : have < 1 ? 'You need Agimat Pliers.' : null);
+    if (why && !this.message?.ok) parts.push(el('div', 'fg-warn', why));
+    const ready = !why;
+    const b = el('button', 'fg-go', this.busy ? 'Removing…' : 'Remove');
+    b.disabled = !ready || this.busy;
+    b.classList.toggle('fg-ready', ready);
+    b.addEventListener('click', () => void this.run({ action: 'remove', item: item.uid, slot: this.slot! }));
+    parts.push(b, el('div', 'fg-have', 'The agimat comes back whole; the slot is empty again.'));
+  }
+
+  /** An empty Temper Stone: "Draws +7 out of Crude Stick. The stick goes back to +0." */
+  private renderDraw(toolSlot: HTMLElement, item: Item | null, parts: HTMLElement[]): void {
+    const D = itemData()!;
+    const have = countOf(adventure()!.bag, this.tool);
+    toolSlot.append(this.toolPicture(this.tool, have), el('span', 'fg-count', String(have)));
+    parts.push(el('div', 'fg-have', `You have ${have} empty Temper Stone${have === 1 ? '' : 's'}`));
+    if (!item) return;
+    const why = drawRefusal(D, item) ?? (have < 1 ? 'You need an empty Temper Stone.' : null);
+    const def = D.defs.get(item.defId);
+    if (!why && def) {
+      const plain = nameOf({ ...item, plus: 0 });
+      parts.push(el('div', 'fg-next', `Draws +${item.plus} out of ${plain}. The ${def.name.split(' ').pop()!.toLowerCase()} goes back to +0.`));
+    }
+    if (why && !this.message?.ok) parts.push(el('div', 'fg-warn', why));
+    const b = el('button', 'fg-go', this.busy ? 'Drawing…' : 'Draw');
+    b.disabled = !!why || this.busy;
+    b.classList.toggle('fg-ready', !why);
+    b.addEventListener('click', () => void this.run({ action: 'draw', item: item.uid }));
+    parts.push(b);
+  }
+
+  /** A filled Temper Stone: "Crude Stick +2 → +7"; the item's own + is lost. */
+  private renderApply(toolSlot: HTMLElement, item: Item | null, parts: HTMLElement[]): void {
+    const D = itemData()!;
+    const stone = adventure()!.bag.find((b) => b.uid === this.tool);
+    if (!stone) {
+      parts.push(el('div', 'fg-warn', this.message?.ok ? 'The stone is used up.' : 'That Temper Stone is gone: pick another in your bag.'));
+      return;
+    }
+    toolSlot.append(itemPicture(stone, 'showcase', 2));
+    const what = el('div', 'fg-agimat');
+    what.append(el('b', undefined, nameOf(stone)));
+    parts.push(what);
+    if (!item) return;
+    const why = applyRefusal(D, item, stone);
+    if (!why) {
+      parts.push(el('div', 'fg-next', `${nameOf({ ...item, plus: 0 })} +${item.plus} → +${stone.plus}`));
+      if (item.plus > 0) parts.push(el('div', 'fg-warn', `Its own +${item.plus} is lost.`));
+    }
+    if (why && !this.message?.ok) parts.push(el('div', 'fg-warn', why));
+    const b = el('button', 'fg-go', this.busy ? 'Applying…' : 'Apply');
+    b.disabled = !!why || this.busy;
+    b.classList.toggle('fg-ready', !why);
+    b.addEventListener('click', () => void this.run({ action: 'apply', item: item.uid, stone: stone.uid }));
+    parts.push(b);
+  }
+
   private renderEmbed(toolSlot: HTMLElement, item: Item | null, parts: HTMLElement[]): void {
     const D = itemData()!;
     const ag = adventure()!.bag.find((b) => b.uid === this.tool);
@@ -486,9 +592,16 @@ export class ForgePopup {
     } else if (r.outcome === 'repaired') {
       playSound('combat-repair');
       playForgeFx(art.success, slot);
-    } else if (r.outcome === 'embedded') {
+    } else if (r.outcome === 'embedded' || r.outcome === 'removed') {
       playSound('combat-agimat-embed');
       playForgeFx(art.embed, this.root.querySelector<HTMLElement>('.fg-dot-picked') ?? slot);
+    } else if (r.outcome === 'drawn' || r.outcome === 'applied') {
+      playSound('combat-enhance-success');
+      playForgeFx(art.success, slot);
+    }
+    if (r.outcome === 'removed') {
+      const left = this.current();
+      this.slot = left ? firstFilled(left) : null;
     }
     if (this.mode === 'enhance' && this.keepFull) this.fillStones();
     else if (this.mode === 'enhance') this.stones = 0;
@@ -496,6 +609,15 @@ export class ForgePopup {
     this.render();
   }
 }
+
+/** Each mode's title. */
+const TITLE: Record<ForgeMode, string> = { enhance: 'Enhance', repair: 'Repair', embed: 'Embed an agimat', remove: 'Remove an agimat', draw: 'Draw a +', apply: 'Apply a +' };
+const SLOT_NAME: Record<string, string> = { weapon: 'Weapon', head: 'Head', body: 'Body', hands: 'Hands', bottoms: 'Bottoms', feet: 'Feet', necklace: 'Necklace', earrings: 'Earrings', bracers: 'Bracers', ring: 'Ring' };
+/** Its first slot with an agimat (null: none). */
+const firstFilled = (item: Item): number | null => {
+  const i = item.agimats.findIndex((a) => !!a);
+  return i < 0 ? null : i;
+};
 
 // ── The forge's single popup (the bag makes it) ──
 

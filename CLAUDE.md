@@ -134,7 +134,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   (was 40), `run.gatherSeconds` 60, the ticket's shop price 500,000 Kusing in the `dungeons` tab, `entry.warp.tile`
   [37,85] / `arrive` [37,88] (by the jeepney and taxi wrecks north-east of the golem pit; the art's is [46,96])
   (`build-warrens.ts` moves the gate's object and blocked tiles in slums.json to it, opening the old ones).
-- `items/items.json`: `warren-ticket`, `return-lantern`. `mobs/mobs.json`: `barong-barong`.
+- `items/items.json`: `warren-ticket`, `return-lantern`, `agimat-pliers`, `temper-stone`, `temper-stone-filled` (prices in
+  `price: { kowens }`, the Smithing tab). `mobs/mobs.json`: `barong-barong`.
 - `ui/ui-golem-head.png` (manifest `ui.golemHead`): the golem timer's head, cut from frame 0 of the golem's idle-se
   sheet at (80,46), 56 × 56; a stand-in until the art folder has its own.
 - `maps/slums.json`: the Golem Pit v3 changes (the art folder's copy still has the old 6×6 pit; see Scrapheap Golem), and
@@ -742,7 +743,16 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   used, luck += its bracket's; from +16 broken, keeps its +, `unequipBroken`), `repair` (kits of its tier, as many as the + it kept takes: stats.json enhancement.cost.repairKits, a repo addition, +15 1, +16/+17 2, +18 3, +19 4; shared `repairKitsFor` / `repairKitsText`; the Repair window shows "Repair Kits n / N"), `embed` (a full
   slot answers `confirm` until `replace`; the old agimat breaks), `disassemble` (bag only; fragments + from slotted gear an
   agimat of its level locked to its slot, `rollAgimatStat` × 3 rare weight for two slots; its agimats go; all or nothing),
-  `combine` (every 10 fragments → a whetstone); a success at +15 and up (`enhanceFeedLine`, any gear, from the weapon aura's first tier) is a system feed line for the whole town and Discord's town log (kind 'forge', 🔨; "Mara enhanced their Sturdy Slingshot +15!", coloured by the aura's tier: blue 'rare', gold 'legendary', prismatic 'secret'; the dev town's /__forge too; tested), and several at once: 'disassemble-many' / 'sell-many' {items} (`many`: each by
+  `combine` (every 10 fragments → a whetstone), `removeAgimat` (Agimat Pliers, items.json `forge: pliers`: the agimat in a
+  slot back into the bag as it was, stat / level / lock, never bound; broken gear too; one pliers; all or nothing: "Make
+  room in your bag first."), `drawPlus` (an empty Temper Stone, `forge: temper`: the item's + into a filled stone,
+  `temper-stone-filled` (`forge: tempered`, `noStack`; its Item's `plus` = the + held, `level` = the item level, `lock` =
+  the type, an equipment slot; bound if the item was; named "Temper Stone (+7, Lv 10 Weapon)"), the item to +0; broken:
+  "Repair it first.") and `applyPlus` (a filled stone onto gear of its type and item level with a lower +: it takes the
+  stone's +, its own is lost; "Needs a Weapon" / "Needs a Lv 10 item" / "This item is already +7 or higher."; training gear
+  never) (shared `removeRefusal` / `drawRefusal` / `applyRefusal`, `toolOf`; actions 'remove' {item, slot}, 'draw' {item},
+  'apply' {item, stone}; the popup's Remove / Draw / Apply modes, opened from the tool in the bag; fx-agimat-embed or
+  fx-enhance-success with their sounds; tested); a success at +15 and up (`enhanceFeedLine`, any gear, from the weapon aura's first tier) is a system feed line for the whole town and Discord's town log (kind 'forge', 🔨; "Mara enhanced their Sturdy Slingshot +15!", coloured by the aura's tier: blue 'rare', gold 'legendary', prismatic 'secret'; the dev town's /__forge too; tested), and several at once: 'disassemble-many' / 'sell-many' {items} (`many`: each by
   the one-item rules on a copy, every one or none, the refusal names the item; one message adding up what came back; tested).
   The bag's Combat tab multi-selects (Select, or Ctrl/⌘/Shift-click; Select all gear) → Disassemble N / Sell N with
   `confirmDisassembleMany` / `confirmSellMany` (every item named, fragments added up, agimats coming back, what's lost).

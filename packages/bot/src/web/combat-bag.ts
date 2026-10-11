@@ -92,10 +92,13 @@ export function combatWares(data: ItemData, level: number): CombatWare[] {
       // A dungeon's ticket (classes/dungeons.json: its shop price in Kusing), in the Dungeons tab.
       const price = ticketPrice(def.id);
       if (price) out.push({ def, tab: 'dungeons', cost: price, currency: 'kusing' });
-    } else if (def.shop === 'travel') {
-      // A travel item (the Return Lantern): its own price in Kusing (items.json), in the Travel tab.
-      if (def.price?.kusing) out.push({ def, tab: 'travel', cost: def.price.kusing, currency: 'kusing' });
-    } else out.push({ def, tab: 'smithing', cost: S.currencies.kowensShop[def.shop], currency: 'kowens' });
+    } else if (def.price) {
+      // Its own price (items.json): Kusing (the Travel tab's Return Lantern) or Kowens (Smithing's Agimat Pliers and
+      // Temper Stones).
+      const tab = def.shop === 'travel' ? 'travel' : 'smithing';
+      if (def.price.kusing) out.push({ def, tab, cost: def.price.kusing, currency: 'kusing' });
+      else if (def.price.kowens) out.push({ def, tab, cost: def.price.kowens, currency: 'kowens' });
+    } else if (def.shop === 'whetstone' || def.shop === 'repairKit') out.push({ def, tab: 'smithing', cost: S.currencies.kowensShop[def.shop], currency: 'kowens' });
   }
   return out;
 }

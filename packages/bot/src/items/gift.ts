@@ -37,7 +37,7 @@ const shop: Giftable[] = [
 const combat = (): Giftable[] => {
   const D = loadItemData();
   return [...D.defs.values()].flatMap((d): Giftable[] =>
-    !isGearDef(d) && (d.kind === 'material' || d.kind === 'potion' || d.kind === 'consumable')
+    !isGearDef(d) && (d.kind === 'material' || d.kind === 'potion' || d.kind === 'consumable') && d.forge !== 'tempered' // (a filled stone holds an item's +)
       ? [{ id: d.id, name: d.name, emoji: d.kind === 'potion' ? '🧪' : d.id === RETURN_LANTERN ? '🏮' : d.kind === 'consumable' ? '🎟️' : '🪨', rarity: 'common', combat: true,
           give: (u, n) => withItems(u, (s) => addToBag(D, s.bag, newItem(D.stats, d, newUid(), n), newUid), (ok) => ok) }]
       : [],

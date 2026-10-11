@@ -40,6 +40,51 @@
       "forge": "repairKit"
     },
     {
+      "id": "agimat-pliers",
+      "name": "Agimat Pliers",
+      "kind": "consumable",
+      "rarity": "white",
+      "about": "Pulls one agimat out of a weapon or armor piece without breaking it.",
+      "icon": "items/consumables/item-agimat-pliers-16.png",
+      "showcase": "items/consumables/item-agimat-pliers.png",
+      "large": "items/consumables/item-agimat-pliers-64.png",
+      "forge": "pliers",
+      "shop": "smithing",
+      "price": {
+        "kowens": 10
+      },
+      "note": "repo-only: the forge's Remove mode; price a placeholder (the sari-sari store's Smithing tab)"
+    },
+    {
+      "id": "temper-stone",
+      "name": "Temper Stone",
+      "kind": "consumable",
+      "rarity": "white",
+      "about": "Draws an item's + into the stone, to put onto another item of the same type and item level.",
+      "icon": "items/consumables/item-temper-stone-empty-16.png",
+      "showcase": "items/consumables/item-temper-stone-empty.png",
+      "large": "items/consumables/item-temper-stone-empty-64.png",
+      "forge": "temper",
+      "shop": "smithing",
+      "price": {
+        "kowens": 30
+      },
+      "note": "repo-only: an empty Temper Stone (the forge's Draw mode); price a placeholder (the Smithing tab)"
+    },
+    {
+      "id": "temper-stone-filled",
+      "name": "Temper Stone",
+      "kind": "consumable",
+      "rarity": "white",
+      "about": "Holds a +: put it onto an item of the same type and item level with a lower +. That item's own + is lost.",
+      "icon": "items/consumables/item-temper-stone-filled-16.png",
+      "showcase": "items/consumables/item-temper-stone-filled.png",
+      "large": "items/consumables/item-temper-stone-filled-64.png",
+      "forge": "tempered",
+      "noStack": true,
+      "note": "repo-only: a filled Temper Stone (the forge's Apply mode): the item's plus is the + it holds, its level the item level, its lock the type (an equipment slot); bound if the item it came from was; never stacks"
+    },
+    {
       "id": "low-hp-potion",
       "name": "Low HP Potion",
       "kind": "potion",
