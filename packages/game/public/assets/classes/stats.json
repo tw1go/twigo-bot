@@ -1161,7 +1161,12 @@
       "craft": "10 fragments = 1 whetstone of that tier"
     },
     "agimat": {
-      "from": "slotted items only, always 1",
+      "from": "affix items (blue, orange) with agimat slots only, at most 1: chance by affix tier",
+      "chance": {
+        "blue": 0.5,
+        "orange": 1,
+        "note": "Repo-only (11 Oct 2026; was: every slotted item, always 1): brown, white and grey give none"
+      },
       "rareWeight": {
         "oneSlot": "normal",
         "twoSlots": "3x"

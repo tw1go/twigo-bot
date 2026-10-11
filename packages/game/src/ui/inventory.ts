@@ -451,7 +451,7 @@ export class Inventory {
     }
     this.grid.style.setProperty('--cols', String(COLS));
     this.grid.replaceChildren(...cells);
-    if (!bag.length) this.grid.append(el('div', 'iv-empty-note', pocket === 'agimats' ? 'No agimats yet. Take slotted gear apart, or find them on the golem.' : 'Nothing in your combat bag. Loot from the Slums lands here; what you wear is in Equipment.'));
+    if (!bag.length) this.grid.append(el('div', 'iv-empty-note', pocket === 'agimats' ? 'No agimats yet. Take blue or orange gear with slots apart, or find them on the golem.' : 'Nothing in your combat bag. Loot from the Slums lands here; what you wear is in Equipment.'));
     if (this.pickedMany.size > 1 || (this.multi && !this.pickedUid)) return this.renderCombatMany(bag);
     const it = s.bag.find((b) => b.uid === this.pickedUid);
     if (!it) return void this.detail.replaceChildren(this.note() ?? el('div', 'iv-hint', 'Pick an item for what it is. Double-click gear to wear it; drag HP and MP Potions onto your hotbar.'));

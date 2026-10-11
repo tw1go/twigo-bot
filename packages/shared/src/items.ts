@@ -117,7 +117,7 @@ export interface ItemStats {
     cost: { successPct: (number | null)[]; whetstonesPerTry: (number | null)[]; luckPerFail: Record<string, number>; breaks: string; repairKits?: Record<string, number | string> };
     weaponAura: { tiers: { from: number; to: number; aura: string; colours?: string[]; cycle?: string[]; glints?: number }[]; smoke: { count: Record<string, string> } };
   };
-  disassembly: { fragments: { formula: string; craft: string }; agimat: { rareWeight: Record<string, string> } };
+  disassembly: { fragments: { formula: string; craft: string }; agimat: { rareWeight: Record<string, string>; chance?: Record<string, number | string> } };
   rarity: {
     nameColour: Record<string, { affix: string | null; slots: number; colour?: string }>;
     slotsOn: string[];

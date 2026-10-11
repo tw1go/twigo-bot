@@ -276,7 +276,7 @@ test('agimats: gear level, slot lock, two different stats, rare ones up to rareP
   assert.ok((itemTotals(D, [item], 'STR').critDamage ?? 0) > 0);
 });
 
-test('disassembly: fragments 2 + 3 × the stones to its +, a slot-locked agimat of its level from slotted gear, agimats destroyed', () => {
+test('disassembly: fragments 2 + 3 × the stones to its +, a slot-locked agimat of its level from slotted affix gear (orange always, blue half the time), agimats destroyed', () => {
   assert.equal(fragmentsFor(D.stats, 0), 2);
   assert.equal(fragmentsFor(D.stats, 5), 29);
   assert.equal(fragmentsFor(D.stats, 10), 92);
@@ -287,7 +287,7 @@ test('disassembly: fragments 2 + 3 × the stones to its +, a slot-locked agimat 
   const s = holder([item]);
   const y = disassemblyYield(D, item);
   assert.equal(y.fragments, 2 + 3 * (1 + 1 + 2 + 2 + 3 + 3 + 4 + 4 + 5 + 5 + 6 + 7));
-  assert.deepEqual(y.agimat, { level: 20, lock: 'hands', rareTimes: 3 });
+  assert.deepEqual(y.agimat, { level: 20, lock: 'hands', rareTimes: 3, chance: 1 });
   assert.equal(y.destroys.length, 1);
   const r = disassemble(D, s, item.uid, lcg(7), uid);
   assert.equal(r.outcome, 'disassembled', r.message);
@@ -297,11 +297,31 @@ test('disassembly: fragments 2 + 3 × the stones to its +, a slot-locked agimat 
   assert.equal(got.level, 20);
   assert.equal(got.lock, 'hands');
   assert.match(itemName(D, got), / Lv 20 \(Hands only\)$/);
-  // Brown gear and accessories: fragments only.
+  // Gear without affix lines (brown; white and grey, slots or not) and accessories (no slots): fragments only.
   const brown = rollGear(D.stats, gear('armor-tin-head'), 'brown', uid(), lcg(1));
   const ring = rollGear(D.stats, gear('acc-shell-ring'), 'lightBlue', uid(), lcg(1));
   assert.equal(disassemblyYield(D, brown).agimat, null);
   assert.equal(disassemblyYield(D, ring).agimat, null);
+  for (const rarity of ['white', 'grey'] as const) {
+    const plain = rollGear(D.stats, gear('armor-copper-hands'), rarity, uid(), lcg(3));
+    assert.ok(plain.agimats.length > 0, `${rarity} has slots`);
+    assert.equal(disassemblyYield(D, plain).agimat, null, `${rarity}: no affix lines, no agimat`);
+    const p = holder([plain]);
+    disassemble(D, p, plain.uid, () => 0, uid);
+    assert.ok(!p.bag.some((b) => thing(b.defId)?.kind === 'agimat'), `${rarity}: none even on the luckiest roll`);
+  }
+  // Blue: half the time (a roll under 0.5 gives it).
+  const blue = () => rollGear(D.stats, gear('armor-copper-hands'), 'darkBlue', uid(), lcg(4));
+  assert.equal(disassemblyYield(D, blue()).agimat?.chance, 0.5);
+  const agimatsFrom = (roll: number) => {
+    const b = blue();
+    const h = holder([b]);
+    let first = true;
+    disassemble(D, h, b.uid, () => (first ? ((first = false), roll) : 0.3), uid);
+    return h.bag.filter((x) => thing(x.defId)?.kind === 'agimat').length;
+  };
+  assert.equal(agimatsFrom(0.49), 1);
+  assert.equal(agimatsFrom(0.5), 0);
   // Training gear can't; worn gear comes off first.
   const training = newItem(D.stats, gear('armor-training-light-body'), uid());
   const t = holder([training]);
@@ -327,7 +347,7 @@ test('disassembly: two slots make the rare three 3× as likely (about 1 in 7 aga
 });
 
 test('disassembly: refused (nothing lost) when what comes back has no room', () => {
-  const item = rollGear(D.stats, gear('armor-copper-feet'), 'grey', uid(), lcg(4)); // fragments + an agimat
+  const item = rollGear(D.stats, gear('armor-copper-feet'), 'lightOrange', uid(), lcg(4)); // fragments + an agimat (orange: always)
   const s = holder([item]);
   while (s.bag.length < 40) s.bag.push(rollGear(D.stats, gear('armor-tin-head'), 'brown', uid(), lcg(1)));
   // The agimats' own pocket full too (40 kinds that don't stack), so the agimat has nowhere to go.
@@ -398,7 +418,7 @@ test('many at once (the bag\'s multi-select): disassembly and training gear sale
   // Three pieces taken apart: their fragments added up, one message; the bag keeps the rest.
   const a = sling('brown', 0);
   const b = sling('brown', 5);
-  const c = sling('grey', 0); // slotted: an agimat too
+  const c = sling('darkOrange', 0); // slotted affix gear (orange): an agimat too
   const keep = newItem(D.stats, thing('low-hp-potion'), 'pot', 3);
   const s = holder([a, b, c, keep]);
   const r = forge(D, s, { action: 'disassemble-many', items: [a.uid, b.uid, c.uid, a.uid] }, lcg(5), uid);

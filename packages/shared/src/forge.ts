@@ -1,5 +1,5 @@
 import type { AdventureState, EquipPlace, EquipmentDef, EquipSlot } from './adventure.js';
-import { type AgimatSet, type CombatItemDef, type Item, type ItemData, agimatSlots, enhancedBase, isGearDef, itemStats, lineValue } from './items.js';
+import { type AgimatSet, type CombatItemDef, type Item, type ItemData, affixTier, agimatSlots, enhancedBase, isGearDef, itemStats, lineValue } from './items.js';
 import { type StatsData, gearKind, numbersIn } from './stats.js';
 import type { TownItems } from './town.js';
 
@@ -353,15 +353,25 @@ export function disassembleRefusal(data: ItemData, s: ForgeHolder, uid: string):
   return null;
 }
 
-/** What taking an item apart gives back: its tier's fragments, and from slotted gear one agimat of its level locked to
- *  its slot type (its stat rolled; two slots: the rare three 3× as likely). Its agimats are destroyed. */
-export function disassemblyYield(data: ItemData, item: Item): { fragments: number; fragment: CombatItemDef | undefined; agimat: { level: number; lock: EquipSlot; rareTimes: number } | null; destroys: AgimatSet[] } {
+/** How likely taking apart an item of this rarity gives an agimat (stats.json disassembly.agimat.chance by affix tier,
+ *  a repo addition: blue 0.5, orange 1); 0 without affix lines (brown, white, grey). */
+export function agimatChance(data: StatsData, rarity: string): number {
+  const tier = affixTier(data, rarity);
+  const p = tier ? itemStats(data).disassembly.agimat.chance?.[tier] : 0;
+  return typeof p === 'number' ? Math.max(0, Math.min(1, p)) : tier ? 1 : 0;
+}
+
+/** What taking an item apart gives back: its tier's fragments, and from affix gear with agimat slots (blue, orange) maybe
+ *  one agimat of its level locked to its slot type (`chance`: agimatChance; its stat rolled; two slots: the rare three 3×
+ *  as likely). Its agimats are destroyed. */
+export function disassemblyYield(data: ItemData, item: Item): { fragments: number; fragment: CombatItemDef | undefined; agimat: { level: number; lock: EquipSlot; rareTimes: number; chance: number } | null; destroys: AgimatSet[] } {
   const def = data.defs.get(item.defId);
-  const slotted = isGearDef(def) && item.agimats.length > 0;
+  const chance = agimatChance(data.stats, item.rarity);
+  const slotted = isGearDef(def) && item.agimats.length > 0 && chance > 0;
   return {
     fragments: fragmentsFor(data.stats, item.plus),
     fragment: toolFor(data, 'fragment', gearTier(data.stats, item.level)),
-    agimat: slotted ? { level: item.level, lock: (def as EquipmentDef).slot, rareTimes: item.agimats.length >= 2 ? twoSlotRareTimes(data.stats) : 1 } : null,
+    agimat: slotted ? { level: item.level, lock: (def as EquipmentDef).slot, rareTimes: item.agimats.length >= 2 ? twoSlotRareTimes(data.stats) : 1, chance } : null,
     destroys: item.agimats.filter((a): a is AgimatSet => !!a),
   };
 }

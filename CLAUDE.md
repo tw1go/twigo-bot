@@ -116,6 +116,8 @@ Data added in this repo that the owner's `mikazuki-assets` copy doesn't have yet
 where JSON allows. When you add one, add it here (and tell the owner, who copies them back):
 
 - `classes/stats.json`: `enhancement.cost.repairKits` (Repair Kits by the broken item's +, 11 Oct 2026).
+- `classes/stats.json`: `disassembly.agimat.chance` (blue 0.5, orange 1; brown, white and grey none; 11 Oct 2026: was
+  every slotted item, always one) and its `from` text.
 - `classes/stats.json`: `derived.critRate.perDEX` 0.003 (was 0.001, 11 Oct 2026: DEX worth a point like STR and INT).
 - `classes/stats.json` enhancement (11 Oct 2026, `buffNote`): `perLevel` 3% / 8% / 15% at +16 / 20% from +17 (was 2/3/5%),
   `armorMinDEF`, `accessories.perLevel` as tiers (2% to +16, 5% from +17; was 1%), the `totalAt20`s.
@@ -793,8 +795,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   slot lock, two different stats, rare ones up to stats.json agimats.rarePerItem (repo addition: 2, both slots; was one)), `fragmentsFor` (2 + 3 × the stones to its +), `disassemblyYield`, `auraFor` /
   `itemAura`); rolls in bot `web/forge.ts` (pure, tested `forge.test.ts`): `enhance` (success +1, luck 0; fail: stones
   used, luck += its bracket's; from +16 broken, keeps its +, `unequipBroken`), `repair` (kits of its tier, as many as the + it kept takes: stats.json enhancement.cost.repairKits, a repo addition, +15 1, +16/+17 2, +18 3, +19 4; shared `repairKitsFor` / `repairKitsText`; the Repair window shows "Repair Kits n / N"), `embed` (a full
-  slot answers `confirm` until `replace`; the old agimat breaks), `disassemble` (bag only; fragments + from slotted gear an
-  agimat of its level locked to its slot, `rollAgimatStat` × 3 rare weight for two slots; its agimats go; all or nothing),
+  slot answers `confirm` until `replace`; the old agimat breaks), `disassemble` (bag only; fragments + from slotted affix gear (blue, orange) maybe an
+  agimat of its level locked to its slot: stats.json disassembly.agimat.chance by affix tier, a repo addition, blue 0.5,
+  orange 1, `agimatChance`; brown, white and grey none; `rollAgimatStat` × 3 rare weight for two slots; its agimats go; all or nothing),
   `combine` (every 10 fragments → a whetstone), `removeAgimat` (Agimat Pliers, items.json `forge: pliers`: the agimat in a
   slot back into the bag as it was, stat / level / lock, never bound; broken gear too; one pliers; all or nothing: "Make
   room in your bag first."), `drawPlus` (an empty Temper Stone, `forge: temper`: the item's + into a filled stone,

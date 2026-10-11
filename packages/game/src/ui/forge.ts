@@ -638,7 +638,7 @@ export function disassemblyLines(item: Item): { gives: string[]; warn: string[] 
   const gives: string[] = [];
   if (y.fragment) gives.push(`${y.fragments.toLocaleString()} ${y.fragment.name}${y.fragments === 1 ? '' : 's'} (${fragmentsPerWhetstone(D.stats)} make a ${toolFor(D, 'whetstone', y.fragment.tier ?? null)?.name ?? 'whetstone'})`);
   const SLOT: Record<string, string> = { weapon: 'Weapon', head: 'Head', body: 'Body', hands: 'Hands', bottoms: 'Bottoms', feet: 'Feet' };
-  if (y.agimat) gives.push(`1 agimat, Lv ${y.agimat.level}, ${SLOT[y.agimat.lock] ?? y.agimat.lock} only (its stat is rolled${y.agimat.rareTimes > 1 ? `; two slots: the rare ones ${y.agimat.rareTimes}× as likely` : ''})`);
+  if (y.agimat) gives.push(`${y.agimat.chance < 1 ? `A ${Math.round(y.agimat.chance * 100)}% chance of 1 agimat` : '1 agimat'}, Lv ${y.agimat.level}, ${SLOT[y.agimat.lock] ?? y.agimat.lock} only (its stat is rolled${y.agimat.rareTimes > 1 ? `; two slots: the rare ones ${y.agimat.rareTimes}× as likely` : ''})`);
   const warn: string[] = [];
   if (y.destroys.length) warn.push(`Its agimats are destroyed: ${y.destroys.map((a) => `${lineText(a.stat, agimatValue(D.stats, a.stat, a.level))} (Lv ${a.level})`).join(', ')}.`);
   if (item.plus) warn.push(`Its +${item.plus} is lost (the fragments give back part of it).`);
@@ -765,19 +765,22 @@ export function confirmDisassembleMany(items: Item[]): Promise<boolean> {
   const D = itemData();
   if (!D) return Promise.resolve(false);
   const frags = new Map<string, number>();
-  let agimats = 0;
+  let agimats = 0; // sure
+  const maybe: number[] = []; // each one's chance
   let destroyed = 0;
   let plussed = 0;
   for (const it of items) {
     const y = disassemblyYield(D, it);
     if (y.fragment) frags.set(y.fragment.name, (frags.get(y.fragment.name) ?? 0) + y.fragments);
-    if (y.agimat) agimats++;
+    if (y.agimat && y.agimat.chance >= 1) agimats++;
+    else if (y.agimat) maybe.push(y.agimat.chance);
     destroyed += y.destroys.length;
     if (it.plus) plussed++;
   }
   const gives = [
     ...[...frags].map(([name, n]) => `${n.toLocaleString()} ${name}${n === 1 ? '' : 's'}`),
     ...(agimats ? [`${agimats} agimat${agimats === 1 ? '' : 's'} (each rolled, locked to its piece's slot)`] : []),
+    ...(maybe.length ? [`${agimats ? 'And maybe' : 'Maybe'} ${maybe.length} ${agimats ? 'more' : `agimat${maybe.length === 1 ? '' : 's'}`} (${[...new Set(maybe)].map((p) => `${Math.round(p * 100)}%`).join(' / ')} chance each)`] : []),
   ];
   const warn = [
     ...(destroyed ? [`${destroyed} agimat${destroyed === 1 ? '' : 's'} set in them ${destroyed === 1 ? 'is' : 'are'} destroyed.`] : []),
