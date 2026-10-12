@@ -57,14 +57,13 @@ export function showSettings(o: { loggedIn: boolean; onClose?: () => void }): vo
     creditsPage.page.hidden = which !== 'credits';
     card.classList.toggle('st-wide', which === 'keys');
     title.textContent = which === 'keys' ? 'Keybinds' : which === 'credits' ? 'Credits' : 'Settings';
-    (which === 'keys' ? keysPage.back : which === 'credits' ? creditsPage.back : which === null ? openKeys : open).focus();
   };
   openKeys.addEventListener('click', () => show('keys'));
   open.addEventListener('click', () => show('credits'));
   card.append(x, title, main, keysPage.page, creditsPage.page);
   root.append(card);
   document.body.append(root);
-  x.focus();
+  // (No button takes the focus: Space and Enter are the game's keys, and a focused Close would go off on them.)
 
   const close = () => {
     document.removeEventListener('keydown', keys);

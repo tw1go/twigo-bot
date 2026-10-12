@@ -191,7 +191,8 @@ function next(): void {
   root.append(stage);
   document.body.append(root);
   playSound(popup.sound ?? 'click');
-  button.focus();
+  // (The button never takes the focus: Space is a game key and a focused button would go off on it; Enter and Escape
+  // close through `keys` below.)
 
   const close = () => {
     document.removeEventListener('keydown', keys);

@@ -319,7 +319,6 @@ export function openCasino(leave: () => void): void {
       say("You're in jail. No gambling till you're out.", 'bad');
     }
   });
-  leaveButton.focus();
 }
 
 /** Removes the casino screen (the town has faded to navy over it first). */

@@ -280,7 +280,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `dom`: never packed; `drawTitle`): part of the art at its scale, top-left on art px (95, 6) (5× at 1920×1080), or where
   that would go off screen centred at the largest whole-number scale no wider than 90% of the screen (never above the
   art's), 6% down, above the band; nothing until it loads, Pixelify text if it can't), a band at the bottom with a button (ui.titleButton, a 3-state 9-slice as
-  border-image at the same scale) and a hint, and a speaker top right (= Settings → Mute; never a click to start). No
+  border-image at the same scale) and a hint, and a speaker top right (= Settings → Mute; never a click to start), and under it, in the desktop app only, Exit game (`.ts-exit`: full screen and borderless have no close button; net/desktop `exitApp`). No
   button until /me answers (≤ 2.5 s): logged in or login off → Start ("or click anywhere"; any click, Enter or Space);
   not logged in → "Log in with Discord" (/auth/login; `loginProblem()` in red under it). Start fades it out (400 ms)
   and hands on to the routing (`BootScene.route`): without a saved look or nickname → character creator (`CreateScene` +
@@ -1206,12 +1206,14 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   Lantern Post's boxes, mobs) counts a release only if it was pressed and let go on the canvas itself: Phaser hears
   releases on the whole window and hit-tests them, so a click on a panel over the map (the player box) reached what was
   under it (the Warren Gate walked you there). New map click handlers ask it too.
-- Movement: right-click-to-move (tap on touch screens; A* on `blocked`; only the latest right-click of a frame is walked to, `clickTo`; `WalkGrid` keeps each tile's allowed steps as bits, its search memory and typed heap between searches, and the reach from where you are (moves go both ways), all warmed a few ms a frame after the map loads (`warmUp`) and reset when a fence or house changes the map: a far click in the Slums ~0.3 ms, the worst ~12 ms; a tile you can't reach goes to the nearest reachable one without a search), WASD/arrows (screen directions; from a
+- Movement: right-click-to-move (tap on touch screens; A* on `blocked`; only the latest right-click of a frame is walked to, `clickTo`; `WalkGrid` keeps each tile's allowed steps as bits, its search memory and typed heap between searches, and the reach from where you are (moves go both ways), all warmed a few ms a frame after the map loads (`warmUp`) and reset when a fence or house changes the map: a far click in the Slums ~0.3 ms, the worst ~12 ms; a tile you can't reach goes to the nearest reachable one without a search; sitting on a bench (the seat is a blocked tile, the server's tile for you too), a click walks out from it: `reachableFrom` a blocked start is its neighbours' reach, worked out each time, the seat left out), WASD/arrows (screen directions; from a
   standstill a tap only turns, holding walks; a new direction while walking turns mid-step at once, `Character.turnMidStep`:
   once per step, one step message, within a mirror of the server's step budget so it never snaps), E/Space to enter or sit. Left-click/touch drag on the map peeks around
   (rubber band up to ~320 screen px, follow paused) and snaps back on release (`setupPeek`; drags are never clicks).
 - No highlighting: the page selects nothing (body `user-select: none`, main.ts `selectstart`), except typing fields;
-  images and links never drag out as pictures (main.ts `dragstart`), while the game's `[draggable]` drags still work.
+  images and links never drag out as pictures (main.ts `dragstart`), while the game's `[draggable]` drags still work. No focus rings either: Tab is dead, a mouse-clicked button is blurred
+  (main.ts), and no pop-up or panel focuses its Close (the reward box, Settings, the casino): Space and Enter are game
+  keys, and a focused Close went off on them. Only choice boxes focus their Yes (forge, drop, class choice, Teleport).
 - Checking work: run the dev server and drive headless Chrome over the DevTools protocol (screenshots +
   `window.__town` debug API: `state()`, `teleport()`, `walk()`, `time()`, `view()`, `outfit()`). Use
   `--use-angle=metal` for real frame rates; SwiftShader under-reports.

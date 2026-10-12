@@ -213,7 +213,7 @@ export function mountTownHud(o: TownHudOptions): void {
   settings.setAttribute('aria-label', 'Settings');
   settings.setAttribute('aria-haspopup', 'dialog');
   onKeybinds(() => (settings.title = keyLabel('settings') ? `Settings (${keyLabel('settings')})` : 'Settings'));
-  settings.addEventListener('click', () => showSettings({ loggedIn: !!o.me, onClose: () => settings.focus() }));
+  settings.addEventListener('click', () => showSettings({ loggedIn: !!o.me }));
   // Its key (O by default: ui/keybinds.ts) opens and closes it, unless you're typing (its own sliders and boxes don't count).
   document.addEventListener('keydown', (e) => {
     if (e.repeat || !matches('settings', e) || !root.isConnected) return;

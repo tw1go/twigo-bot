@@ -105,6 +105,8 @@ export class TitleScreen {
   private logoState: 'loading' | 'ready' | 'failed' = 'loading';
   private readonly band = document.createElement('div');
   private readonly sound = document.createElement('button');
+  /** Under the speaker, the desktop app only (full screen or borderless has no close button): Exit game. */
+  private readonly exit = document.createElement('button');
   /** Top left: "Install Mikazuki" (the browser offers it), or on iPhone Safari a one-time Add to Home Screen hint. */
   private readonly extra = document.createElement('div');
   private readonly unwatch: () => void;
@@ -139,6 +141,15 @@ export class TitleScreen {
       this.mute.on = !this.mute.on;
       this.drawSpeaker();
     });
+    this.exit.className = 'ts-exit';
+    this.exit.type = 'button';
+    this.exit.textContent = 'Exit game';
+    this.exit.hidden = !isDesktopApp();
+    this.exit.addEventListener('click', (e) => {
+      e.stopPropagation(); // (never a click to start)
+      this.exit.disabled = true;
+      void import('../net/desktop').then((d) => d.exitApp());
+    });
     this.extra.className = 'ts-extra';
     this.extra.addEventListener('click', (e) => e.stopPropagation()); // (never a click to start)
     this.unwatch = onInstallable(() => this.renderExtra());
@@ -154,7 +165,7 @@ export class TitleScreen {
       this.logo.onerror = () => ((this.logoState = 'failed'), this.drawTitle());
       this.logo.src = asset(L.file);
     } else this.logoState = 'failed';
-    this.root.append(this.bg, this.title, this.logo, this.band, this.sound, this.extra);
+    this.root.append(this.bg, this.title, this.logo, this.band, this.sound, this.exit, this.extra);
     this.root.addEventListener('click', this.clicked);
     addEventListener('keydown', this.keyed);
     addEventListener('resize', this.layout);
@@ -269,7 +280,7 @@ export class TitleScreen {
   }
 
   private readonly clicked = (e: MouseEvent) => {
-    if (e.composedPath().some((n) => n === this.sound || (n instanceof Element && n.classList.contains('ts-button')))) return;
+    if (e.composedPath().some((n) => n === this.sound || n === this.exit || (n instanceof Element && n.classList.contains('ts-button')))) return;
     this.start(); // (a guest's click anywhere does nothing: only the button logs in; offline, it tries again)
   };
 

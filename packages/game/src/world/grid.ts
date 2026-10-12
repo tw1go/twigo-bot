@@ -284,7 +284,10 @@ export class WalkGrid {
     const i0 = from.row * cols + from.col;
     if (this.reach?.[i0]) return this.reach;
     const seen = new Uint8Array(cols * this.rows);
-    if (!this.walkable(from.col, from.row)) return seen;
+    // A blocked start (sitting on a bench: the seat is a blocked tile): its reach is its walkable neighbours' (stepsOf
+    // allows steps out of any tile), worked out each time and never kept, with the seat itself left out of it (a click
+    // on the bench then walks to the floor beside it, never "to" the seat).
+    const fromSeat = !this.walkable(from.col, from.row);
     const queue = new Int32Array(cols * this.rows);
     let tail = 0;
     queue[tail++] = i0;
@@ -299,6 +302,10 @@ export class WalkGrid {
         seen[ni] = 1;
         queue[tail++] = ni;
       }
+    }
+    if (fromSeat) {
+      seen[i0] = 0;
+      return seen;
     }
     this.reach = seen;
     return seen;
