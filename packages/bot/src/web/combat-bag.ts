@@ -19,7 +19,8 @@ import { loadDungeons } from './stats-data.js';
 // 💰 A character's combat bag and Kusing wallet, pure (the bot keeps them with the character, web/adventure.ts; the game's
 // dev server in memory): loot picked up (Kusing always fits; an item only if the bag has room), HP and MP Potions used,
 // the sari-sari store's Healing tab (HP/MP Potions for Kusing) and Smithing tab (whetstones and Repair Kits for Kowens),
-// by stats.json's prices; only the Low tier is sold until a character reaches the next tier's level. And dev's ?give=.
+// by stats.json's prices; only the Low tier is sold until a character reaches the next tier's level (Medium from Lv 10).
+// And dev's ?give=.
 
 /** The parts of a character that hold items and money. */
 export type CombatItems = Pick<AdventureState, 'equipped' | 'cosmetics' | 'bag' | 'kusing'>;
@@ -42,6 +43,14 @@ export function potionOf(data: ItemData, defId: string): { heals: 'hp' | 'mp'; a
   if (isGearDef(def) || def?.kind !== 'potion' || !def.heals || !def.tier) return null;
   const tier = itemStats(data.stats).potions.tiers[def.tier];
   return tier ? { heals: def.heals, amount: tier[def.heals] } : null;
+}
+
+/** The level a potion kind can be used from (its tier's minLevel; 1 for anything else). The town refuses it below that:
+ *  a trade can hand a Medium Potion to someone under Lv 10. */
+export function potionMinLevel(data: ItemData, defId: string): number {
+  const def = data.defs.get(defId);
+  if (isGearDef(def) || def?.kind !== 'potion' || !def.tier) return 1;
+  return itemStats(data.stats).potions.tiers[def.tier]?.minLevel ?? 1;
 }
 
 /** Uses one HP or MP Potion of a kind from the bag: what it heals, or null (not a potion, or none left). */

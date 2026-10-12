@@ -320,6 +320,8 @@ function fakeBuy(id: string, quantity: number): TownShopBuyResponse {
 const FAKE_COMBAT: TownShopItem[] = [
   { id: 'low-hp-potion', name: 'Low HP Potion', cost: 50, currency: 'kusing', kind: 'healing', about: 'Heals 150 HP at once. Put it on your hotbar; HP and MP Potions share a 10 s cooldown. For the Slums.', max: 99 },
   { id: 'low-mp-potion', name: 'Low MP Potion', cost: 50, currency: 'kusing', kind: 'healing', about: 'Heals 80 MP at once. Put it on your hotbar; HP and MP Potions share a 10 s cooldown. For the Slums.', max: 99 },
+  { id: 'mid-hp-potion', name: 'Medium HP Potion', cost: 150, currency: 'kusing', kind: 'healing', about: 'Heals 250 HP at once. Put it on your hotbar; HP and MP Potions share a 10 s cooldown. For the Slums.', max: 99 },
+  { id: 'mid-mp-potion', name: 'Medium MP Potion', cost: 150, currency: 'kusing', kind: 'healing', about: 'Heals 140 MP at once. Put it on your hotbar; HP and MP Potions share a 10 s cooldown. For the Slums.', max: 99 },
   { id: 'rough-whetstone', name: 'Rough Whetstone', cost: 3, kind: 'smithing', about: 'Enhances weapons, armor and accessories of item Lv 1-20 (the Low tier).', max: 999 },
   { id: 'low-repair-kit', name: 'Low Repair Kit', cost: 15, kind: 'smithing', about: 'Repairs a broken item of item Lv 1-20 (the Low tier).', max: 999 },
   { id: 'agimat-pliers', name: 'Agimat Pliers', cost: 10, kind: 'smithing', about: 'Pulls one agimat out of a weapon or armor piece without breaking it.', max: 99 },

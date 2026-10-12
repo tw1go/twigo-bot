@@ -109,6 +109,30 @@
       "shop": "potion"
     },
     {
+      "id": "mid-hp-potion",
+      "name": "Medium HP Potion",
+      "kind": "potion",
+      "rarity": "white",
+      "tier": "mid",
+      "heals": "hp",
+      "icon": "items/potions/item-potion-mid-hp-16.png",
+      "showcase": "items/potions/item-potion-mid-hp.png",
+      "large": "items/potions/item-potion-mid-hp-64.png",
+      "shop": "potion"
+    },
+    {
+      "id": "mid-mp-potion",
+      "name": "Medium MP Potion",
+      "kind": "potion",
+      "rarity": "white",
+      "tier": "mid",
+      "heals": "mp",
+      "icon": "items/potions/item-potion-mid-mp-16.png",
+      "showcase": "items/potions/item-potion-mid-mp.png",
+      "large": "items/potions/item-potion-mid-mp-64.png",
+      "shop": "potion"
+    },
+    {
       "id": "agimat-atk",
       "name": "ATK Agimat",
       "kind": "agimat",

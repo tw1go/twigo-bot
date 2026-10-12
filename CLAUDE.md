@@ -118,6 +118,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
 - `classes/stats.json`: `enhancement.cost.repairKits` (Repair Kits by the broken item's +, 11 Oct 2026).
 - `classes/stats.json`: `disassembly.agimat.chance` (blue 0.5, orange 1; brown, white and grey none; 11 Oct 2026: was
   every slotted item, always one) and its `from` text.
+- `classes/stats.json`: `potions.tiers.mid.minLevel` 10 (was 30; 12 Oct 2026: the Medium HP/MP Potions sold from Lv 10).
+  `items/items.json`: `mid-hp-potion`, `mid-mp-potion` (the art folder's items/potions/item-potion-mid-* icons).
 - `classes/stats.json`: `lootRoll` (rare loot a party rolls for: which items, 10 s, 1..1000; 12 Oct 2026) and
   `agimats.perItem` "any stats, the same one in both slots too" (was "different stats"; 12 Oct 2026).
 - `classes/stats.json`: `derived.critRate.perDEX` 0.003 (was 0.001, 11 Oct 2026: DEX worth a point like STR and INT).
@@ -749,8 +751,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   instance (`Item`: uid, defId, level, rarity, plus, broken, bound, luck, agimats (one per slot, null = empty), lines,
   count; an agimat's stat/lock). Kinds: `items/equipment.json` (gear: training, Crude/Sturdy weapons Lv 10/20, Tin/Copper,
   Abaca/Cotton, Hemp/Jute armor, Shell/Bone accessories; base from stats.json gearBase unless a training piece's own
-  `stats`) and `items/items.json` (manifest `combatItems`: whetstone, fragment, Low Repair Kit, Low HP/MP Potion
-  (`heals`, `shop`), 11 agimats, the Lamp-head Hat cosmetic). `rollGear` / `rollLines` (3 lines: slot stat, HP, a pool
+  `stats`) and `items/items.json` (manifest `combatItems`: whetstone, fragment, Low Repair Kit, Low and Medium HP/MP Potions
+  (`heals`, `shop`; a tier is sold from its `potions.tiers` minLevel, Medium from Lv 10, and the town refuses a potion
+  under its level: 'level', "You can use this from Lv 10."; the auto MP Potion drinks the strongest your level allows), 11 agimats, the Lamp-head Hat cosmetic). `rollGear` / `rollLines` (3 lines: slot stat, HP, a pool
   stat at rareRollWeight; 80–100% of the line's max), `slotCount`, `bindsOnWear` (orange), `enhancedBase`, `lineValue`
   (accessories by stats.json enhancement.accessories' tiers: +2%/plus to +16, +5% from +17; armor's least DEF a plus: enhancement.armorMinDEF), `agimatValue`, `itemTotals` (base+plus, lines, agimats; broken = nothing) → `derivedStats` (caps:
   attack/DEF rate, lifesteal, manasteal, drop rate too), `itemName` ("Sturdy Slingshot of Calamity +7 (Broken)": the plus after the name everywhere; agimats

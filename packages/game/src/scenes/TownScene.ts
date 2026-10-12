@@ -1207,11 +1207,17 @@ export class TownScene extends Phaser.Scene {
     if (!this.battleMap || !v || this.knockedOut) return;
     if (v.mp >= need && v.mp >= v.maxMp / 4) return;
     const now = this.time.now;
-    const potion = (adventure()?.bag ?? []).find((i) => {
-      const d = anyDef(i.defId);
-      return !isGearDef(d) && d?.kind === 'potion' && d.heals === 'mp' && i.count > 0;
-    });
+    // The strongest MP Potion your level allows (Medium before Low), else any MP Potion.
     const S = adventureData()?.stats;
+    const tiers = S ? itemStats(S).potions.tiers : {};
+    const level = adventure()?.progress.level ?? 1;
+    const mpPotions = (adventure()?.bag ?? []).flatMap((i) => {
+      const d = anyDef(i.defId);
+      if (isGearDef(d) || d?.kind !== 'potion' || d.heals !== 'mp' || i.count <= 0) return [];
+      const tier = d.tier ? tiers[d.tier] : undefined;
+      return [{ i, mp: tier?.mp ?? 0, from: tier?.minLevel ?? 1 }];
+    });
+    const potion = (mpPotions.filter((p) => p.from <= level).sort((a, b) => b.mp - a.mp)[0] ?? mpPotions[0])?.i;
     const ready = S ? (this.potionReady.get(potionKeyOf(S, 'mp')) ?? 0) : 0;
     if (potion && v.mp < v.maxMp && now >= ready && now >= this.autoPotionAt) {
       this.autoPotionAt = now + 1000; // (once a second at most, while the server answers)
@@ -2181,7 +2187,7 @@ export class TownScene extends Phaser.Scene {
           this.hotbar?.cooldown(key, m.ms / 1000);
           this.potionReady.set(key, this.time.now + m.ms);
         }
-        const why = { cooldown: m.heals ? `Your ${m.heals.toUpperCase()} Potions are cooling down.` : 'Your potions are cooling down.', none: 'None left.', full: "You're already full.", here: 'HP and MP Potions work in the Slums.' }[m.reason];
+        const why = { cooldown: m.heals ? `Your ${m.heals.toUpperCase()} Potions are cooling down.` : 'Your potions are cooling down.', none: 'None left.', full: "You're already full.", here: 'HP and MP Potions work in the Slums.', level: `You can use this from Lv ${m.level ?? '?'}.` }[m.reason];
         return toast(why, 1800, 'bad');
       }
       // Your level, XP and points (a kill's XP, dev's ?xp=): the HUD and everything that shows them follow.

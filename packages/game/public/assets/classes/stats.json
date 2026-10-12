@@ -1220,7 +1220,7 @@
         "kusing": 50
       },
       "mid": {
-        "minLevel": 30,
+        "minLevel": 10,
         "hp": 250,
         "mp": 140,
         "kusing": 150
