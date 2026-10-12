@@ -32,6 +32,9 @@ export function golemTimer(head: string | null): HTMLElement {
   box.hidden = true;
   const label = el('span', 'jt-label');
   const line = el('span', 'jt-time gt-line');
+  const lineLong = el('span', 'gt-long');  // desktop: "Rises in 1h 23m 05s" / "Awake! Go to the pit"
+  const lineShort = el('span', 'gt-short'); // mobile: "1h 23m 05s" / "Awake"
+  line.append(lineLong, lineShort);
   if (head) {
     const img = el('img', 'gt-head');
     img.src = head;
@@ -46,10 +49,12 @@ export function golemTimer(head: string | null): HTMLElement {
     const left = state.riseAt - Date.now();
     label.textContent = state.name;
     // Past its time without word yet: it's rising (the 'rise' message is on its way).
-    line.textContent = state.awake ? 'Awake! Go to the pit' :left > 0 ? `Rises in ${countdown(left)}` : 'Rising…';
+    const long = state.awake ? 'Awake! Go to the pit' : left > 0 ? `Rises in ${countdown(left)}` : 'Rising…';
+    lineLong.textContent = long;
+    lineShort.textContent = state.awake ? 'Awake!' : left > 0 ? countdown(left) : 'Rising…';
     box.classList.toggle('gt-awake', state.awake);
     box.classList.toggle('jt-soon', !state.awake && left > 0 && left <= state.warnMs);
-    box.title = state.awake ? `${state.name} is awake in the Golem Pit` : `${state.name}: ${line.textContent}`;
+    box.title = state.awake ? `${state.name} is awake in the Golem Pit` : `${state.name}: ${long}`;
     box.setAttribute('aria-label', box.title);
   };
   const ticking = setInterval(() => (box.isConnected ? render() : clearInterval(ticking)), 1000);
