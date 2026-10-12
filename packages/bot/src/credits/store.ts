@@ -25,6 +25,8 @@ interface Account {
   hasVault?: boolean; // bought the Vault in /redeem
   vault?: number; // Kowens stored in the vault (safe from /steal and bail)
   voiceWeekMinutes?: number; // eligible voice minutes this week (for the weekly rewards)
+  voiceLastWeek?: string; // the Monday of the week before (kept through the rollover, so Monday's payout still sees it)
+  voiceLastWeekMinutes?: number;
   giveDay?: string; // YYYY-MM-DD that giveSentToday counts
   giveSentToday?: number;
 }
@@ -44,6 +46,8 @@ type AccountRow = {
   voice_credits_today: number | null;
   voice_week: string | null;
   voice_week_minutes: number | null;
+  voice_last_week: string | null;
+  voice_last_week_minutes: number | null;
   has_vault: number | null;
   vault: number | null;
   give_day: string | null;
@@ -62,6 +66,8 @@ const fromRow = (r: AccountRow): Account => ({
   voiceCreditsToday: opt(r.voice_credits_today),
   voiceWeek: opt(r.voice_week),
   voiceWeekMinutes: opt(r.voice_week_minutes),
+  voiceLastWeek: opt(r.voice_last_week),
+  voiceLastWeekMinutes: opt(r.voice_last_week_minutes),
   hasVault: r.has_vault ? true : undefined,
   vault: opt(r.vault),
   giveDay: opt(r.give_day),
@@ -70,14 +76,15 @@ const fromRow = (r: AccountRow): Account => ({
 
 const table = tableSync<AccountRow>('accounts', ['user_id'], ['balance', 'last_claim', 'voice_minutes', 'voice_total_minutes',
   'last_steal', 'last_active', 'fence_until', 'voice_credits_day', 'voice_credits_today', 'voice_week', 'voice_week_minutes',
-  'has_vault', 'vault', 'give_day', 'give_sent_today']);
+  'voice_last_week', 'voice_last_week_minutes', 'has_vault', 'vault', 'give_day', 'give_sent_today']);
 let accounts: Record<string, Account> = Object.fromEntries(table.load().map((r) => [r.user_id, fromRow(r)]));
 
 const toRow = (id: string, a: Account): AccountRow => ({
   user_id: id, balance: a.balance, last_claim: a.lastClaim ?? null, voice_minutes: a.voiceMinutes ?? null,
   voice_total_minutes: a.voiceTotalMinutes ?? null, last_steal: a.lastSteal ?? null, last_active: a.lastActive ?? null,
   fence_until: a.fenceUntil ?? null, voice_credits_day: a.voiceCreditsDay ?? null, voice_credits_today: a.voiceCreditsToday ?? null,
-  voice_week: a.voiceWeek ?? null, voice_week_minutes: a.voiceWeekMinutes ?? null, has_vault: a.hasVault ? 1 : null,
+  voice_week: a.voiceWeek ?? null, voice_week_minutes: a.voiceWeekMinutes ?? null,
+  voice_last_week: a.voiceLastWeek ?? null, voice_last_week_minutes: a.voiceLastWeekMinutes ?? null, has_vault: a.hasVault ? 1 : null,
   vault: a.vault ?? null, give_day: a.giveDay ?? null, give_sent_today: a.giveSentToday ?? null,
 });
 
@@ -152,10 +159,9 @@ export function voiceProgress(userId: string): number {
 }
 
 /** Adds one voice minute to each user; awards a credit every VOICE_MINUTES_PER_CREDIT, up to VOICE_DAILY_CAP a day.
- *  Returns who earned one. Time past the cap still counts for /leaderboard and activity. */
-export function addVoiceMinute(userIds: string[]): string[] {
+ *  Returns who earned one. Time past the cap still counts for /leaderboard and activity. (`day`: tests.) */
+export function addVoiceMinute(userIds: string[], day = today()): string[] {
   const earned: string[] = [];
-  const day = today();
   for (const id of userIds) {
     const account = (accounts[id] ??= { balance: 0 });
     account.voiceTotalMinutes = (account.voiceTotalMinutes ?? 0) + 1;
@@ -164,9 +170,15 @@ export function addVoiceMinute(userIds: string[]): string[] {
       account.voiceCreditsDay = day;
       account.voiceCreditsToday = 0;
     }
-    // Weekly ranking counts every eligible voice minute (no daily cap — only the Kowen earnings are capped).
+    // Weekly ranking counts every eligible voice minute (no daily cap — only the Kowen earnings are capped). A new
+    // week keeps the old one's count aside: the payout runs Monday noon, and a member in voice before it would have had
+    // their whole week wiped (the week of 2026-10-05 was paid to the wrong people that way).
     const week = weekStart(day);
     if (account.voiceWeek !== week) {
+      if (account.voiceWeek) {
+        account.voiceLastWeek = account.voiceWeek;
+        account.voiceLastWeekMinutes = account.voiceWeekMinutes ?? 0;
+      }
       account.voiceWeek = week;
       account.voiceWeekMinutes = 0;
     }
@@ -339,13 +351,17 @@ export function give(fromId: string, toId: string, amount: number): { ok: true }
   return { ok: true };
 }
 
+/** A member's eligible voice minutes in the week starting `week`: the current week's, or the one kept from before it. */
+const voiceMinutesIn = (a: Account, week: string): number =>
+  a.voiceWeek === week ? (a.voiceWeekMinutes ?? 0) : a.voiceLastWeek === week ? (a.voiceLastWeekMinutes ?? 0) : 0;
+
 /** Top members by eligible voice minutes in the week starting `week` (a Monday, YYYY-MM-DD). */
 export function topVoiceWeek(week: string, limit: number): [string, number][] {
   return Object.entries(accounts)
-    .filter(([, a]) => a.voiceWeek === week && (a.voiceWeekMinutes ?? 0) > 0)
-    .sort(([, a], [, b]) => (b.voiceWeekMinutes ?? 0) - (a.voiceWeekMinutes ?? 0))
-    .slice(0, limit)
-    .map(([id, a]) => [id, a.voiceWeekMinutes ?? 0]);
+    .map(([id, a]) => [id, voiceMinutesIn(a, week)] as [string, number])
+    .filter(([, m]) => m > 0)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, limit);
 }
 
 // 🔐 Vault: stores up to VAULT_CAP of your total Kowens, safe from /steal and bail (which only see the wallet).

@@ -16,9 +16,9 @@ const paidWeeks: string[] = kvLoad(KEY, []);
 const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)}h ${min % 60}m` : `${min}m`);
 const medal = (i: number) => ['🥇', '🥈', '🥉'][i] ?? `**${i + 1}.**`;
 
-/** Monday noon: pays last week's top 10 (once per week). */
-export async function payWeeklyVoice(client: Client): Promise<void> {
-  const lastWeek = addDays(weekStart(), -7);
+/** Monday noon: pays last week's top 10 (once per week). (`day`: tests.) */
+export async function payWeeklyVoice(client: Client, day?: string): Promise<void> {
+  const lastWeek = addDays(weekStart(day), -7);
   if (lastWeek < WEEKLY_VC_START || paidWeeks.includes(lastWeek)) return;
   const top = topVoiceWeek(lastWeek, WEEKLY_VC_REWARDS.length);
   paidWeeks.push(lastWeek);

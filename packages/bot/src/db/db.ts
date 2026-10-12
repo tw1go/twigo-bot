@@ -19,6 +19,7 @@ import { today } from '../time.js';
 //  • v12, the web game's items as instances: items (worn, or in the combat bag), and adventurers.kusing.
 //  • v13, the web game's finished trades (a log: who gave whom what): trades.
 //  • v14, the front page's close beta applications (web/beta.ts; the CMS's Beta applications): beta_applications.
+//  • v15, accounts.voice_last_week(_minutes): the week before's voice minutes, kept for Monday's payout.
 //  • kv: small singleton documents keyed by their old file name (e.g. 'race.json', 'rotation.json').
 // Stores cache their state in memory (the bot is the only writer) and save through db/sync.ts, which writes only
 // the rows that changed.
@@ -313,6 +314,11 @@ export const MIGRATIONS: string[] = [
   );
   CREATE UNIQUE INDEX beta_applications_username ON beta_applications (lower(discord_username));
   CREATE INDEX beta_applications_discord_id ON beta_applications (discord_id);
+  `,
+  /* v15: the week before's eligible voice minutes, kept aside as the week rolls over (credits/store.ts addVoiceMinute), so
+     the weekly voice payout (Monday noon) can still rank a member who was in voice since midnight. */ `
+  ALTER TABLE accounts ADD COLUMN voice_last_week TEXT;           -- Monday YYYY-MM-DD
+  ALTER TABLE accounts ADD COLUMN voice_last_week_minutes INTEGER;
   `,
 ];
 
