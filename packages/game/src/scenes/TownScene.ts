@@ -2364,7 +2364,9 @@ export class TownScene extends Phaser.Scene {
   /** The town's pixel extent: the tile diamond, grown to include anything that sticks out (tall trees, roofs). */
   private townBounds(): Phaser.Geom.Rectangle {
     const [cols, rows] = this.map.size;
-    const bounds = new Phaser.Geom.Rectangle(-rows * 16, 0, (cols + rows) * 16, (cols + rows) * 8);
+    // (Raised ground along the back edges rises above the map's top corner: room for the highest level.)
+    const lift = this.objects.heights.max * LEVEL_PX;
+    const bounds = new Phaser.Geom.Rectangle(-rows * 16, -lift, (cols + rows) * 16, (cols + rows) * 8 + lift);
     for (const s of this.objects.sprites) Phaser.Geom.Rectangle.Union(bounds, s.getBounds(), bounds);
     // A small map (the neighbourhood) on a big window: the camera would see past its bounds, where no forest was grown.
     // Pad them (centred) to the most the camera can show, at the farthest zoom on a large screen.

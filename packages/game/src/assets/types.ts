@@ -299,9 +299,15 @@ export interface SlumsTiles {
   canal: { file: string; size: Vec2; frames: number; fps: number; anchor: Vec2 };
   pieceSize: Vec2;
   pieceAnchor: Vec2;
-  cliffs: Record<string, { l: string[]; r: string[] }>;
+  /** Wall pieces by material (map.walls names one per tile; 'chasm' and 'chasm-deep' are a void's walls, one level and
+   *  two levels down). `lower`: the pieces for every step below a wall's top one (rock, scrap), where there is such art. */
+  cliffs: Record<string, { l: string[]; r: string[]; lower?: { l: string[]; r: string[] } }>;
   rim: { nw: string; ne: string };
   cap: { w: string; e: string };
+  /** The foot line on a wall's lowest step (high terrain). */
+  foot?: { l: string; r: string };
+  /** A chasm's lip: on a tile whose NW / NE neighbour is void, in place of the rim (variants). */
+  lip?: { nw: string[]; ne: string[] };
   ramps: Record<string, Record<RampDir, [string, string]>>;
 }
 

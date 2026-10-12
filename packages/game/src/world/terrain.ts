@@ -7,16 +7,23 @@ import { LEVEL_PX, RAMP_STEP } from './heights';
 import type { SlumsOutskirts } from './outskirts';
 import { pick, seedOf, tileRandom, variantAt } from './rng';
 
-// 🏚️ The ground of a map with raised and low ground (the Slums: manifest tiles.slums, rules in mikazuki-assets
-// tiles/slums/slums-elevation-README.md). Each tile's floor is drawn 16 px × its level higher; a raised tile shows a wall
-// (cliff-<material>-l|r, a variant seeded by col,row) for every level its SW / SE neighbour is lower, stacked 16 px
-// apart, a navy rim where its NW / NE neighbour is lower, and caps on corners; ramps are pieces over their two tiles.
+// 🏚️ The ground of a map with raised and low ground (the Slums and the Scrap Warrens: manifest tiles.slums, rules in
+// mikazuki-assets tiles/slums/slums-elevation-README.md and slums-high-terrain-README.md; words in CONTEXT.md "Ground").
+// Each tile's floor is drawn 16 px × its level higher; levels run from the map's lowest to its highest (Heights.min /
+// max), below 0 being void (a chasm's floor). A tile shows a wall (cliff-<material>-l|r, a variant seeded by col,row)
+// for every level its SW / SE neighbour is lower, stacked 16 px apart: the top step in the material's own pieces, every
+// step below it in its `lower` pieces where it has them (rock, scrap), the foot line on the lowest step (`foot`); steps
+// below 0 are a chasm's walls ('chasm' one level down, 'chasm-deep' below that), whatever the tile's material. A navy
+// rim where its NW / NE neighbour is lower, a chasm lip (`lip`, variants) where that neighbour is void, and caps on
+// corners above ground; ramps are pieces over their two tiles.
 //
-// Baked into CHUNK-sized canvases (under everything), in the README's order (per level from low to high: floors, then
-// the walls of the step up; back to front): every floor, wall and cap. Kept as sprites sorted with the characters and
-// objects (so the ground in front can hide them): the floor (and rims) of every tile that rises over a tile just behind
-// it (one level over the 3 tiles behind, two over the 6), and the ramps. The canal is animated sprites with the river's
-// bank overlays, like the town's water. Past the map: its outskirts' dirt, canal and road (world/outskirts.ts).
+// Drawn in two ways. Flat ground (level 0 and below: floors, the walls down into chasms, lips) is baked into CHUNK-sized
+// canvases under everything, in the README's order (per level from low to high: floors, then the walls of the step up;
+// back to front). Every raised tile (level 1 and up) is a column of sprites (its floor, its walls down to each lower
+// neighbour, rims, lips and caps) sorted with the characters and objects at its own front corner, like an object: so a
+// player or mob behind a bluff, mesa or Warrens wall is hidden by it, and one on its top is drawn over it (`fadeFront`
+// then fades a column that hides the local player). The canal is animated sprites with the river's bank overlays, like
+// the town's water. Past the map: its outskirts' dirt, canal and road (world/outskirts.ts).
 //
 // The map is big (256 × 192), so all of it is made only near the camera (stream): chunks and 16 × 16-tile regions of
 // sprites as they come within reach, dropped again once well away.
@@ -25,7 +32,6 @@ const CHUNK = 512; // px of world per baked canvas
 const REGION = 16; // tiles per side of a region of sprites
 const NEAR = 256; // px round the view: made by then
 const FAR = 1024; // px round the view: dropped past this
-const MAX_LEVEL = 2;
 const BAKES_PER_FRAME = 3;
 
 interface Piece {
@@ -35,6 +41,16 @@ interface Piece {
   ox: number;
   oy: number;
   order: number;
+}
+
+/** A sprite of a raised column: its piece, where (the tile and level it's anchored at) and its depth under the column's. */
+interface ColumnPiece {
+  key: string;
+  level: number;
+  anchor: Vec2;
+  size: Vec2;
+  /** Taken off the column's front depth: walls lowest, then caps, the floor, then rims and lips on top. */
+  under: number;
 }
 
 interface Live {
@@ -51,7 +67,7 @@ export class Terrain {
   private readonly chunks = new Map<string, Live>();
   private readonly regions = new Map<string, Live>();
   private readonly canal = new Map<Phaser.GameObjects.Image, number>(); // sprite → frames
-  /** Raised tops and their rims by tile ("c,r"), while their region is made: what `fadeFront` fades. */
+  /** Every raised column's sprites by tile ("c,r"), while its region is made: what `fadeFront` fades. */
   private readonly tops = new Map<string, Phaser.GameObjects.Image[]>();
   private faded: Phaser.GameObjects.Image[] = [];
   private readonly overlays: { file: string; land: Vec2 }[];
@@ -102,16 +118,6 @@ export class Terrain {
     return { x: t.x, y: t.y + 8 - level * LEVEL_PX };
   }
 
-  /** Rises over a tile just behind it, so it must sort with what stands there. */
-  private raised(c: number, r: number): boolean {
-    const level = this.level(c, r);
-    if (level === 0 || !this.inMap(c, r)) return false;
-    return (
-      [[1, 0], [0, 1], [1, 1]].some(([dc, dr]) => this.level(c - dc, r - dr) < level) ||
-      [[2, 1], [1, 2], [2, 2]].some(([dc, dr]) => this.level(c - dc, r - dr) <= level - 2)
-    );
-  }
-
   /** The edge from (c, r) to (c2, r2) is where a ramp's part 2 meets the high tile it leads up to: no wall or rim. */
   private rampUp(c: number, r: number, c2: number, r2: number): boolean {
     const rp = this.H.ramp(c2, r2);
@@ -120,39 +126,84 @@ export class Terrain {
     return c2 + dc === c && r2 + dr === r;
   }
 
-  /** A tile's baked pieces: its floor (unless it's a sprite), its walls and caps. */
+  /** The wall piece for one step of a tile's wall: step `S` (the level it stands on) of a wall whose top step is `top`,
+   *  on side `side`; chasm pieces below 0, else the tile's material (its `lower` pieces under the top step). */
+  private wallPiece(c: number, r: number, side: 'l' | 'r', S: number, top: number): string {
+    const T = this.T;
+    const name = S < -1 ? 'chasm-deep' : S < 0 ? 'chasm' : this.map.walls?.[r]?.[c] || 'earth';
+    const mat = T.cliffs[name] ?? T.cliffs.earth ?? Object.values(T.cliffs)[0];
+    const set = S < top && mat.lower ? mat.lower : mat;
+    return pick(set[side], tileRandom(c, r, (side === 'l' ? 32 : 36) + S + 8));
+  }
+
+  /** Every piece of a tile besides its floor and ramp: its walls (with their foot), caps, rims and lips. `add` takes
+   *  the piece, the level it's anchored at, its phase in the baked order (1 walls, 2 rims) and its depth under a
+   *  column's front depth (sprites). */
+  private edgePieces(c: number, r: number, add: (key: string, L: number, phase: number, under: number) => void): void {
+    const T = this.T;
+    const level = this.level(c, r);
+    const wall = (side: 'l' | 'r', c2: number, r2: number) => {
+      const below = this.level(c2, r2);
+      if (below >= level || this.rampUp(c, r, c2, r2)) return false;
+      for (let S = below; S < level; S++) add(this.wallPiece(c, r, side, S, level - 1), S, 1, 0.34);
+      // The foot line where the wall meets the ground (not a chasm's floor).
+      if (T.foot && below >= 0) add(T.foot[side], below, 1, 0.33);
+      return true;
+    };
+    const left = wall('l', c, r + 1);
+    const right = wall('r', c + 1, r);
+    // Corner edges, above ground.
+    if (left && this.level(c - 1, r) < level && this.level(c - 1, r + 1) < level) {
+      for (let S = Math.max(0, this.level(c, r + 1)); S < level; S++) add(T.cap.w, S, 1, 0.32);
+    }
+    if (right && this.level(c, r - 1) < level && this.level(c + 1, r - 1) < level) {
+      for (let S = Math.max(0, this.level(c + 1, r)); S < level; S++) add(T.cap.e, S, 1, 0.32);
+    }
+    // Rims on the top where the NW / NE neighbour is lower (not where a ramp comes up); a chasm lip where it's void.
+    for (const [which, c2, r2] of [['nw', c - 1, r], ['ne', c, r - 1]] as const) {
+      const n = this.level(c2, r2);
+      if (n >= level || this.rampUp(c, r, c2, r2)) continue;
+      const lips = T.lip?.[which];
+      const key = n < 0 && lips?.length ? pick(lips, tileRandom(c, r, which === 'nw' ? 40 : 41)) : T.rim[which];
+      add(key, level - 1, 2, 0.3);
+    }
+  }
+
+  /** A flat tile's baked pieces (level 0 and below): its floor, its walls down into a chasm, caps, lips. */
   private bakedPieces(c: number, r: number, out: Piece[]): void {
     const T = this.T;
     const level = this.level(c, r);
+    if (level > 0) return; // (a raised tile is a column of sprites)
     const kind = this.kind(c, r);
     const order = (L: number, phase: number) => L * 1e6 + phase * 1e5 + (c + r + 1000) * 10;
     const add = (key: string, L: number, phase: number, anchor: Vec2) => {
       const p = this.at(c, r, L);
       out.push({ key, x: p.x, y: p.y, ox: anchor[0], oy: anchor[1], order: order(L, phase) });
     };
-    if (kind !== 'canal' && !this.raised(c, r)) add(this.groundFile(kind, c, r), level, 0, T.anchor);
-    const mat = T.cliffs[this.map.walls?.[r]?.[c] || 'earth'] ?? Object.values(T.cliffs)[0];
-    const wall = (side: 'l' | 'r', c2: number, r2: number) => {
-      const below = this.level(c2, r2);
-      if (below >= level || this.rampUp(c, r, c2, r2)) return false;
-      for (let L = below; L < level; L++) add(pick(mat[side], tileRandom(c, r, side === 'l' ? 32 + L : 36 + L)), L, 1, T.pieceAnchor);
-      return true;
-    };
-    const left = wall('l', c, r + 1);
-    const right = wall('r', c + 1, r);
-    if (left && this.level(c - 1, r) < level && this.level(c - 1, r + 1) < level) for (let L = this.level(c, r + 1); L < level; L++) add(T.cap.w, L, 1, T.pieceAnchor);
-    if (right && this.level(c, r - 1) < level && this.level(c + 1, r - 1) < level) for (let L = this.level(c + 1, r); L < level; L++) add(T.cap.e, L, 1, T.pieceAnchor);
+    if (kind !== 'canal') add(this.groundFile(kind, c, r), level, 0, T.anchor);
+    if (!this.inMap(c, r)) return; // (the outskirts: a floor, nothing else)
+    this.edgePieces(c, r, (key, L, phase) => add(key, L, phase, T.pieceAnchor));
   }
 
-  /** Bakes one chunk: every tile whose pieces can reach it, in the global order. */
+  /** A raised tile's column (level 1 and up): its floor, walls, caps, rims and lips, as sorted sprites. */
+  private columnPieces(c: number, r: number): ColumnPiece[] {
+    const T = this.T;
+    const level = this.level(c, r);
+    const out: ColumnPiece[] = [{ key: this.groundFile(this.kind(c, r), c, r), level, anchor: T.anchor, size: T.size, under: 0.31 }];
+    this.edgePieces(c, r, (key, L, _phase, under) => out.push({ key, level: L, anchor: T.pieceAnchor, size: T.pieceSize, under }));
+    return out;
+  }
+
+  /** Bakes one chunk: every flat tile whose pieces can reach it, in the global order. */
   private bake(cx: number, cy: number): Live {
     const x0 = cx * CHUNK;
     const y0 = cy * CHUNK;
-    // A tile (c, r) draws within x (c − r)·16 ± 16 and y (c + r)·8 − 16·MAX_LEVEL − 16 … (c + r)·8 + 16.
+    // A tile (c, r) draws within x (c − r)·16 ± 16 and y (c + r)·8 − 24 … (c + r)·8 + 24 + 16·(its depth into a chasm).
+    const down = 16 * Math.max(0, -this.H.min);
     const d0 = Math.floor((x0 - 16) / 16) - 1;
     const d1 = Math.ceil((x0 + CHUNK + 16) / 16) + 1;
-    const s0 = Math.floor((y0 - 16) / 8) - 1;
-    const s1 = Math.ceil((y0 + CHUNK + 16 + 16 * MAX_LEVEL + 16) / 8) + 1;
+    const s0 = Math.floor((y0 - 24 - down) / 8) - 1;
+    const s1 = Math.ceil((y0 + CHUNK + 24) / 8) + 1;
     const pieces: Piece[] = [];
     for (let s = s0; s <= s1; s++) {
       for (let d = d0; d <= d1; d++) {
@@ -186,7 +237,7 @@ export class Terrain {
     return { images: [image], rect: new Phaser.Geom.Rectangle(x0, y0, CHUNK, CHUNK) };
   }
 
-  /** The sprites of one region: raised floors and their rims, ramps, the canal and its banks. */
+  /** The sprites of one region: raised columns, ramps, the canal and its banks. */
   private region(rc: number, rr: number): Live {
     const T = this.T;
     const images: Phaser.GameObjects.Image[] = [];
@@ -211,13 +262,10 @@ export class Terrain {
             const corner = dc !== 0 && dr !== 0;
             if (!isCanal(c + dc, r + dr) && (!corner || (isCanal(c + dc, r) && isCanal(c, r + dr)))) sprite(o.file, c, r, level, T.canal.anchor, T.canal.size, GROUND_DEPTH + 2 + (c + r) * 4);
           }
-        } else if (this.raised(c, r)) {
-          const top = [sprite(this.groundFile(this.kind(c, r), c, r), c, r, level, T.anchor, T.size, front - 0.32)];
-          // Rims on the raised top where the NW / NE neighbour is lower (not where a ramp comes up).
-          for (const [key, c2, r2] of [[T.rim.nw, c - 1, r], [T.rim.ne, c, r - 1]] as const) {
-            if (this.level(c2, r2) < level && !this.rampUp(c, r, c2, r2)) top.push(sprite(key, c, r, level - 1, T.pieceAnchor, T.pieceSize, front - 0.31));
-          }
-          this.tops.set(`${c},${r}`, top);
+        } else if (level > 0 && this.inMap(c, r)) {
+          // A raised column: sorted at its front corner, so what stands behind it is hidden and what stands on it shows.
+          const column = this.columnPieces(c, r).map((p) => sprite(p.key, c, r, p.level, p.anchor, p.size, front - p.under));
+          this.tops.set(`${c},${r}`, column);
         }
         const rp = this.H.ramp(c, r);
         if (rp && this.inMap(c, r)) {
@@ -226,7 +274,20 @@ export class Terrain {
         }
       }
     }
-    return { images, rect: regionRect(rc, rr) };
+    return { images, rect: this.regionRect(rc, rr) };
+  }
+
+  /** A region's screen box, with room for its tallest column and its ramps. */
+  private regionRect(rc: number, rr: number): Phaser.Geom.Rectangle {
+    const c0 = rc * REGION;
+    const r0 = rr * REGION;
+    const c1 = c0 + REGION - 1;
+    const r1 = r0 + REGION - 1;
+    const x0 = (c0 - r1) * 16 - 16;
+    const x1 = (c1 - r0) * 16 + 16;
+    const y0 = (c0 + r0) * 8 - 16 * this.H.max - 32;
+    const y1 = (c1 + r1) * 8 + 32;
+    return new Phaser.Geom.Rectangle(x0, y0, x1 - x0, y1 - y0);
   }
 
   /** Makes what has come near the view and drops what's far from it (cheap while the view stays in the same cells):
@@ -259,12 +320,12 @@ export class Terrain {
     let left = want.length > baked;
     if (this.first && left) this.lastRange = ''; // (the margin's still to come)
     // Regions whose screen box meets the near view (one at least, then while there's time).
-    const t0 = screenToTileRange(near);
+    const t0 = screenToTileRange(near, this.H.max);
     let made = 0;
     for (let rr = Math.floor(t0.r0 / REGION); rr <= Math.floor(t0.r1 / REGION); rr++) {
       for (let rc = Math.floor(t0.c0 / REGION); rc <= Math.floor(t0.c1 / REGION); rc++) {
         const k = `${rc},${rr}`;
-        if (this.regions.has(k) || !Phaser.Geom.Rectangle.Overlaps(near, regionRect(rc, rr))) continue;
+        if (this.regions.has(k) || !Phaser.Geom.Rectangle.Overlaps(near, this.regionRect(rc, rr))) continue;
         if (!this.first && made && spent()) {
           left = true;
           continue;
@@ -299,15 +360,17 @@ export class Terrain {
     set.delete(key);
   }
 
-  /** The raised ground just in front of `tile` (between it and the camera: up to 3 tiles on) that overlaps `box` (a
-   *  player's sprite) at half alpha, and what was faded before back to whole (the Scrap Warrens' junk walls: nobody gets
-   *  lost behind one). Null: nothing faded. */
+  /** The raised columns just in front of `tile` (between it and the camera: as many tiles on as the map's highest level
+   *  is tall, since a column one level tall covers one tile behind it) that overlap `box` (a player's sprite) at half
+   *  alpha, and what was faded before back to whole (a bluff, a mesa, the Scrap Warrens' junk walls: nobody gets lost
+   *  behind one). Null: nothing faded. */
   fadeFront(tile: { col: number; row: number } | null, box: Phaser.Geom.Rectangle | null): void {
     const was = this.faded;
     this.faded = [];
     if (tile && box) {
-      for (let dc = 0; dc <= 3; dc++)
-        for (let dr = 0; dr <= 3; dr++) {
+      const reach = Math.max(3, this.H.max + 1);
+      for (let dc = 0; dc <= reach; dc++)
+        for (let dr = 0; dr <= reach; dr++) {
           if (!dc && !dr) continue;
           for (const s of this.tops.get(`${tile.col + dc},${tile.row + dr}`) ?? []) if (Phaser.Geom.Rectangle.Overlaps(s.getBounds(), box)) this.faded.push(s);
         }
@@ -328,23 +391,12 @@ export class Terrain {
   refresh(_sprite: Phaser.GameObjects.Image): void {}
 }
 
-/** A region's screen box, with room for raised pieces and the tallest wall. */
-function regionRect(rc: number, rr: number): Phaser.Geom.Rectangle {
-  const c0 = rc * REGION;
-  const r0 = rr * REGION;
-  const c1 = c0 + REGION - 1;
-  const r1 = r0 + REGION - 1;
-  const x0 = (c0 - r1) * 16 - 16;
-  const x1 = (c1 - r0) * 16 + 16;
-  const y0 = (c0 + r0) * 8 - 16 * MAX_LEVEL - 32;
-  const y1 = (c1 + r1) * 8 + 32;
-  return new Phaser.Geom.Rectangle(x0, y0, x1 - x0, y1 - y0);
-}
-
-/** The tile ranges (cols and rows) that can show in a screen box. */
-export function screenToTileRange(b: Phaser.Geom.Rectangle): { c0: number; c1: number; r0: number; r1: number } {
+/** The tile ranges (cols and rows) that can show in a screen box: a column `maxLevel` high draws that many tiles' worth
+ *  (two per level) above its own. */
+export function screenToTileRange(b: Phaser.Geom.Rectangle, maxLevel = 2): { c0: number; c1: number; r0: number; r1: number } {
   // col = (y/8 + x/16) / 2, row = (y/8 − x/16) / 2, over the box's corners.
   const cs = [b.x / 16 + b.y / 8, b.right / 16 + b.y / 8, b.x / 16 + b.bottom / 8, b.right / 16 + b.bottom / 8].map((v) => v / 2);
   const rs = [b.y / 8 - b.x / 16, b.y / 8 - b.right / 16, b.bottom / 8 - b.x / 16, b.bottom / 8 - b.right / 16].map((v) => v / 2);
-  return { c0: Math.floor(Math.min(...cs)) - 2, c1: Math.ceil(Math.max(...cs)) + 4, r0: Math.floor(Math.min(...rs)) - 2, r1: Math.ceil(Math.max(...rs)) + 4 };
+  const up = 2 + 2 * Math.max(0, maxLevel);
+  return { c0: Math.floor(Math.min(...cs)) - 2, c1: Math.ceil(Math.max(...cs)) + up, r0: Math.floor(Math.min(...rs)) - 2, r1: Math.ceil(Math.max(...rs)) + up };
 }

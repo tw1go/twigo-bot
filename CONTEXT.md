@@ -68,6 +68,51 @@ _Avoid_: wall, rim
 The one gap in the ring, at its bottom right, that leads onto the pit floor.
 _Avoid_: gap, entrance, door
 
+## Ground
+
+**Level**:
+A tile's height, in steps of 16 px on screen; a map's levels run from its lowest to its highest (the Slums −2 to 5).
+Nobody crosses between levels except on a ramp.
+_Avoid_: elevation, height (fine for the number in a map file, not for talking about the ground), floor
+
+**Ramp**:
+Two tiles joining two levels, the only way between them; named by the way you walk up.
+_Avoid_: slope, stairs
+
+**Void**:
+Ground nobody can ever stand on: the floor of a chasm. Always blocked, for players, mobs, loot and effects alike.
+_Avoid_: hole, gap, abyss
+
+**Chasm**:
+Void tiles with walls down from the ground round them: a sinkhole (one hollow, one level deep) or a canyon (a long one,
+two levels deep).
+_Avoid_: pit (that's the Warrens'), crevasse
+
+**Land bridge**:
+Walkable ground left across a canyon.
+
+**Bluff**:
+Tall raised ground along a map's back edges; nobody climbs it.
+_Avoid_: cliff (a cliff is the wall art), mountain
+
+**Mesa**:
+A raised block with a flat top, anywhere on a map.
+_Avoid_: platform, plateau, hill
+
+**Lookout**:
+A mesa with a ramp up: its top is player ground. Mobs stay on their zone's level and never climb one.
+
+**Crest**:
+The raised line along the top of Wire Ridge.
+
+**Cracked ground**:
+Ordinary walkable floor that looks broken. Rubble, slabs and boulders stand on it and are blocked.
+_Avoid_: rubble field (that's the whole patch, with its props), debris
+
+**Pit**:
+The Scrap Warrens' void: where the floor has collapsed along a wall or in an arena's corner.
+_Avoid_: chasm (the Slums'), hole
+
 ## Screens
 
 **Intro card**:
