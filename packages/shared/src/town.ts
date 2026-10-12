@@ -588,7 +588,7 @@ export type TownServerMessage =
    *  cooldown (ms). */
   | { t: 'potion'; id: string; heals: 'hp' | 'mp'; amount: number; cooldown?: number }
   /** Your potion didn't go: on cooldown (`ms` left), none left, already full, or not here (only in battle maps). */
-  | { t: 'potion-refused'; reason: 'cooldown' | 'none' | 'full' | 'here'; ms?: number; /** The kind asked for. */ heals?: 'hp' | 'mp' }
+  | { t: 'potion-refused'; reason: 'cooldown' | 'none' | 'full' | 'here' | 'level'; ms?: number; /** The kind asked for. */ heals?: 'hp' | 'mp'; /** 'level': the level it can be used from. */ level?: number }
   /** Your buff didn't go: not on a battle map, not your class's, not unlocked yet, knocked out, still on cooldown (`ms`
    *  left), or not enough MP. */
   | { t: 'buff-refused'; buff: string; reason: BuffRefusal; ms?: number }

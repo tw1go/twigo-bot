@@ -189,7 +189,7 @@ const TOPICS: Topic[] = [
       '• The **Scrapheap Golem** gives everyone who did 5% of its HP **their own loot**, only they can see: Kusing, Rough Whetstones, blue or orange gear, sometimes an accessory, an agimat or the Lamp-head Hat',
       '• Loot goes in your **combat bag**: the **Combat** tab of your bag (**B**), **40 slots**; agimats go in their own **Agimats** tab (40 more). Potions stack to 99, whetstones and agimats to 999, gear one a slot. Full: it stays on the ground',
       '• Hover an item for its tooltip: its level and stats needed (red: not yet), its base stat, its **3 affix lines** (blue and orange gear), its agimat slots. **Orange gear binds** the first time you wear it',
-      '• **HP and MP Potions**: buy them at the sari-sari store’s **Healing** tab for Kusing, drag them onto your hotbar (the **- = ~** slots) and press the key. They heal at once; HP and MP Potions each have their own **10 s** cooldown',
+      '• **HP and MP Potions**: buy them at the sari-sari store’s **Healing** tab for Kusing, drag them onto your hotbar (the **- = ~** slots) and press the key. They heal at once; HP and MP Potions each have their own **10 s** cooldown. **Low** potions (150 HP / 80 MP, 50 Kusing) from the start; **Medium** (250 HP / 140 MP, 150 Kusing) from **Lv 10**',
       '• In the Slums skills cost **MP** (the first skill is free; the stronger ones and the moves cost more; each skill level 3% more: the Skills panel shows it). Without enough MP a skill waits. When your MP runs low (under a quarter, or too little for a skill), an **MP Potion** from your combat bag drinks itself if the potions’ cooldown is ready',
     ].join('\n'),
   },

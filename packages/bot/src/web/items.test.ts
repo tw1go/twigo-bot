@@ -26,7 +26,7 @@ type EquipmentDef = import('@mikazuki/shared').EquipmentDef;
 type CombatItemDef = import('@mikazuki/shared').CombatItemDef;
 type TownServerMessage = import('@mikazuki/shared').TownServerMessage;
 const { loadItemData } = await import('./stats-data.js');
-const { buyCombat, devGive, dropFromBag, takeLoot, usePotion } = await import('./combat-bag.js');
+const { buyCombat, combatWares, devGive, dropFromBag, potionMinLevel, takeLoot, usePotion } = await import('./combat-bag.js');
 const { dropPlus, golemLoot, mobDrops, rollAgimatStat } = await import('./loot.js');
 const { LOOT_MS, LootRoom, splitKusing } = await import('./town-loot.js');
 const { MIGRATIONS } = await import('../db/db.js');
@@ -810,4 +810,22 @@ test('agimats have their own pocket (stats.json inventory.agimatSlots): a full b
   bag.splice(0, 1);
   const w = { equipped: { weapon: newItem(S, gear('weapon-crude-stick'), 'worn') }, bag } as never as Parameters<typeof unequipToBag>[1];
   assert.equal(unequipToBag(D, w, 'weapon').ok, true);
+});
+
+test('Medium HP and MP Potions: sold from Lv 10 at 150 Kusing (not at Lv 9), heal 250 / 140, usable from Lv 10', () => {
+  const potions = (level: number) => combatWares(D, level).filter((w) => w.tab === 'healing').map((w) => `${w.def.id}:${w.cost}`);
+  assert.deepEqual(potions(9), ['low-hp-potion:50', 'low-mp-potion:50']);
+  assert.deepEqual(potions(10), ['low-hp-potion:50', 'low-mp-potion:50', 'mid-hp-potion:150', 'mid-mp-potion:150']);
+  const c = { equipped: {}, bag: [] as Item[], kusing: 10_000 };
+  const wallet = () => ({ have: 0, spend: () => false });
+  assert.equal(buyCombat(D, c, 9, 'mid-hp-potion', 1, wallet(), uid).ok, false, 'not sold at Lv 9');
+  assert.ok(buyCombat(D, c, 10, 'mid-hp-potion', 2, wallet(), uid).ok);
+  assert.ok(buyCombat(D, c, 10, 'mid-mp-potion', 1, wallet(), uid).ok);
+  assert.equal(c.kusing, 10_000 - 3 * 150);
+  assert.deepEqual(usePotion(D, c, 'mid-hp-potion'), { heals: 'hp', amount: 250 });
+  assert.deepEqual(usePotion(D, c, 'mid-mp-potion'), { heals: 'mp', amount: 140 });
+  assert.equal(c.bag.find((i) => i.defId === 'mid-hp-potion')!.count, 1);
+  assert.equal(potionMinLevel(D, 'mid-hp-potion'), 10);
+  assert.equal(potionMinLevel(D, 'low-hp-potion'), 1);
+  assert.equal(potionMinLevel(D, 'rough-whetstone'), 1);
 });

@@ -10,7 +10,7 @@ import { PARTY_MAX, type PartyChange, Parties } from './town-party.js';
 import { type VitalMax, Vitals, shown } from './town-vitals.js';
 import { Buffs, type Nearby } from './town-buffs.js';
 import { loadItemData, loadStats } from './stats-data.js';
-import { type CombatItems, type LootContent, potionOf } from './combat-bag.js';
+import { type CombatItems, type LootContent, potionMinLevel, potionOf } from './combat-bag.js';
 import { type Loot, LootRoom, splitKusing } from './town-loot.js';
 import { type LootRoll, LootRolls } from './town-roll.js';
 import { type HeldOffer, type Trade, Trades, checkOffer } from './trade.js';
@@ -977,6 +977,8 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         if (!kind) return;
         const now = Date.now();
         if (!vitals?.get(c.userId) || !battle(c.room)) return send(c, { t: 'potion-refused', reason: 'here' });
+        const from = potionMinLevel(items, m.item); // (a Medium Potion traded to someone under its level)
+        if (levelOf(c) < from) return send(c, { t: 'potion-refused', reason: 'level', level: from });
         const cdKey = `${c.userId}:${potionCooldownGroup(items.stats, kind.heals)}`;
         const ready = potionReady.get(cdKey) ?? 0;
         if (now < ready) return send(c, { t: 'potion-refused', reason: 'cooldown', ms: ready - now, heals: kind.heals });
