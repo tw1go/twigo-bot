@@ -35,6 +35,7 @@ const TOPICS: Topic[] = [
     label: 'Chat & emotes',
     text: [
       '• **Enter** opens the chat; Enter again sends. Esc or a click outside closes it',
+      '• The **–** at the end of the chat’s input row collapses the chat into a **Chat** button (bottom left) until you press that button; a dot on it means something new. Enter still opens the chat to type, and it folds away again when you’re done',
       '• The chat is linked to Discord: lines from there show with the Discord mark',
       '• **Megaphone** (bought at the sari-sari store): `/m your message` shouts it across the whole screen for everyone; `/g` goes back to General',
       '• **Party chat**: `/p your message`, to your party only',

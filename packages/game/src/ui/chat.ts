@@ -14,7 +14,10 @@ const ORDER: ChatChannel[] = ['general', 'megaphone', 'party', 'gm'];
 // 💬 The town's chat box (bottom left): one see-through box with the last messages and names (Discord's mark for
 // people chatting from the linked Discord channel) and the input under them. Enter opens the input, Enter sends (and keeps it open), an empty Enter or Esc closes it. Messages go to everyone in
 // town as speech bubbles too (TownScene). DOM text only: names and messages are never parsed as HTML. On phones the box
-// folds away behind a chat button (bottom left; a dot when something new arrives while it's closed).
+// folds away behind a chat button (bottom left; a dot when something new arrives while it's closed). On any screen the
+// "–" at the end of the input row collapses the box into that same button for good (remembered per browser,
+// localStorage `mk_chat_folded`; the dot the same); Enter still opens it to type, and it folds back as you're done. The
+// Chat button unfolds it.
 // Three channels: General (white), Megaphone (sky blue: uses a megaphone from the bag and runs across everyone's
 // screen) and Party (pink: your party only, wherever they are; net/party.ts). `/m`, `/g` or `/p message` say it there
 // and stay on that channel; `/m`, `/g` or `/p` alone just switch, and the tag before the input shows (and switches,
@@ -50,6 +53,8 @@ const MAX_LENGTH = 120;
 const MAX_LINKS = 3;
 /** Phone-sized screens fold the chat away behind its button. */
 const PHONE = '(max-width: 560px), (max-height: 500px)';
+/** Collapsed into the Chat button by choice (any screen), remembered per browser. */
+const FOLDED_KEY = 'mk_chat_folded';
 
 /** Lines remembered for a reconnect (more than the server keeps). */
 const HEARD = 40;
@@ -67,8 +72,10 @@ export class ChatBox {
   private readonly log: HTMLElement;
   private readonly input: HTMLInputElement;
   private idleTimer: ReturnType<typeof setTimeout> | undefined;
-  /** The phone's chat button (hidden on bigger screens). */
+  /** The chat button (phones; bigger screens while the box is folded). */
   private readonly toggle: HTMLButtonElement;
+  /** Collapsed into the Chat button by choice (the "–" in the input row). */
+  private folded = false;
 
   /** Items written into the input so far ("[name]" → its uid), sent with the message if still in it. */
   private readonly pending = new Map<string, string>();
@@ -105,14 +112,39 @@ export class ChatBox {
     row.className = 'ch-row';
     row.append(this.channel, this.input);
     if (tools) row.append(tools);
+    // The fold button: collapses the box into the Chat button. It never takes the focus, so typing isn't cut short by
+    // a press on it (the box would hide under the pointer before the click landed).
+    const fold = document.createElement('button');
+    fold.className = 'ch-fold';
+    fold.type = 'button';
+    fold.textContent = '–';
+    fold.title = 'Collapse the chat (the Chat button brings it back)';
+    fold.setAttribute('aria-label', 'Collapse the chat');
+    fold.tabIndex = -1;
+    fold.addEventListener('pointerdown', (e) => e.preventDefault());
+    fold.addEventListener('click', () => {
+      playSound('click');
+      this.setFolded(true);
+    });
+    row.append(fold);
     this.root.append(this.log, row);
     this.toggle = document.createElement('button');
     this.toggle.id = 'chat-toggle';
     this.toggle.textContent = 'Chat';
     this.toggle.setAttribute('aria-controls', 'chat');
     this.toggle.setAttribute('aria-expanded', 'false');
-    this.toggle.addEventListener('click', () => this.setOpen(!document.body.classList.contains('chat-open')));
+    this.toggle.addEventListener('click', () => {
+      if (this.folded) {
+        this.setFolded(false);
+        if (matchMedia(PHONE).matches) this.setOpen(true);
+      } else this.setOpen(!document.body.classList.contains('chat-open'));
+    });
     document.body.append(this.root, this.toggle);
+    try {
+      if (localStorage.getItem(FOLDED_KEY) === '1') this.setFolded(true);
+    } catch {
+      /* no storage: shown */
+    }
     // Clicking the log opens the chat too; pressing anywhere outside the box closes it (the town's canvas stops the
     // browser doing that by itself, as Phaser cancels the default of presses on it).
     this.log.addEventListener('click', () => this.input.focus());
@@ -127,7 +159,10 @@ export class ChatBox {
     this.root.addEventListener('mouseenter', () => this.wake());
     this.root.addEventListener('mouseleave', () => this.wake());
     this.input.addEventListener('focus', () => this.wake());
-    this.input.addEventListener('blur', () => this.wake());
+    this.input.addEventListener('blur', () => {
+      this.wake();
+      document.body.classList.remove('chat-peek'); // folded: the box shows only while you type
+    });
     this.wake();
 
     this.input.addEventListener('keydown', (e) => {
@@ -342,6 +377,8 @@ export class ChatBox {
       }
       this.add(l.name, l.text, l.discord ? 'discord' : l.name === myName ? 'me' : 'town', undefined, l.gm ? 'gm' : l.megaphone, l.links);
     }
+    // Arriving: the remembered lines are old news, no dot for them (a reconnect's `more` are new).
+    if (!more) this.toggle.classList.remove('ch-unread');
   }
 
   /** A note from the game (refused, offline…). */
@@ -354,11 +391,13 @@ export class ChatBox {
   }
 
   /** A friendly line from the town itself (the welcome). */
-  system(text: string): void {
+  /** A line from the game (lilac). `quiet`: no dot on the Chat button for it (the welcome line as you arrive). */
+  system(text: string, quiet = false): void {
     const line = document.createElement('div');
     line.className = 'ch-line ch-system';
     line.textContent = text;
     this.push(line);
+    if (quiet) this.toggle.classList.remove('ch-unread');
   }
 
   /** Full opacity now, and fade again after IDLE_MS unless the box is being used. */
@@ -371,20 +410,49 @@ export class ChatBox {
     }, IDLE_MS);
   }
 
-  /** Phones: shows or folds away the chat (bigger screens always show it). */
+  /** Phones: shows or folds away the chat (bigger screens always show it). A folded chat shows while it's open to type
+   *  (`chat-peek`, until the input loses the focus). */
   private setOpen(open: boolean): void {
     document.body.classList.toggle('chat-open', open);
     this.toggle.setAttribute('aria-expanded', String(open));
     if (open) {
+      if (this.folded) document.body.classList.add('chat-peek');
       this.toggle.classList.remove('ch-unread');
       this.log.scrollTop = this.log.scrollHeight;
       this.wake();
     } else if (document.activeElement === this.input) this.input.blur();
   }
 
+  /** Collapsed into the Chat button (any screen), or back; remembered. */
+  private setFolded(on: boolean): void {
+    this.folded = on;
+    document.body.classList.toggle('chat-folded', on);
+    if (on) {
+      if (document.activeElement === this.input) this.input.blur();
+      document.body.classList.remove('chat-peek');
+      this.toggle.setAttribute('aria-expanded', 'false');
+    } else {
+      this.toggle.classList.remove('ch-unread');
+      this.log.scrollTop = this.log.scrollHeight;
+      this.wake();
+    }
+    try {
+      if (on) localStorage.setItem(FOLDED_KEY, '1');
+      else localStorage.removeItem(FOLDED_KEY);
+    } catch {
+      /* no storage: this visit only */
+    }
+  }
+
+  /** Out of sight: folded (and not open to type), or closed on a phone. */
+  private hidden(): boolean {
+    const body = document.body.classList;
+    return (this.folded && !body.contains('chat-peek')) || (matchMedia(PHONE).matches && !body.contains('chat-open'));
+  }
+
   private push(line: HTMLElement): void {
     this.wake();
-    if (matchMedia(PHONE).matches && !document.body.classList.contains('chat-open')) this.toggle.classList.add('ch-unread');
+    if (this.hidden()) this.toggle.classList.add('ch-unread');
     const atBottom = this.log.scrollTop + this.log.clientHeight >= this.log.scrollHeight - 4;
     this.log.append(line);
     while (this.log.childElementCount > MAX_LINES) this.log.firstElementChild?.remove();

@@ -2247,7 +2247,7 @@ export class TownScene extends Phaser.Scene {
           this.player.place({ col: m.spawn[0], row: m.spawn[1] });
           this.cameras.main.centerOn(this.player.sprite.x, this.player.sprite.y - 24);
         }
-        if (!arrived) chat.system(`Welcome to Mikazuki town${member ? `, ${member.nickname}` : ''}! Be kind and respectful in chat: everyone here is a neighbour.`);
+        if (!arrived) chat.system(`Welcome to Mikazuki town${member ? `, ${member.nickname}` : ''}! Be kind and respectful in chat: everyone here is a neighbour.`, true);
         arrived = true;
         // After a reconnect, stay where you are rather than back at the spawn point.
         const t = this.player.tile;

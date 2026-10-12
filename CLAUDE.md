@@ -352,7 +352,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   tested; `TownOptions.memory`, flushed at shutdown); after a reconnect the page keeps what it shows and only adds what's
   new (`history(…, more)`), no second welcome line, and a quiet "Reconnecting…" while the link is down (`onStatus`).
   The box is a fixed see-through panel that fades to 0.2 after 15 s quiet. On phones (≤560 px) it folds away behind a Chat button (bottom
-  left; a dot for new messages; body.chat-open).
+  left; a dot for new messages; body.chat-open). On any screen the "–" at the end of the input row collapses it into that
+  Chat button for good (`setFolded`, body.chat-folded, localStorage `mk_chat_folded`; the bag button moves beside the
+  button; the dot the same): Enter still opens it to type (body.chat-peek while the input has the focus), the Chat
+  button unfolds it.
 - Online list (`ui/online.ts`): "N online" beside the chat input opens who's in town (you first, titles in colour).
 - Sound (`audio/sound.ts`, files + credits in `public/assets/audio/`, not in the manifest; the Scrap Warrens': below): the title music on the intro
   card and title screen (`startTitleMusic`: music-title "Moonlight Lullaby", looped, 0.10 × the music volume when that's
