@@ -191,6 +191,21 @@ const areas = layout.areas.map((a) => {
   for (let r = a.arena[1]; r <= a.arena[3]; r++) for (let c = a.arena[0]; c <= a.arena[2]; c++) if (at(c, r) === 'B') arenaTiles.push([c, r]);
   return { index: a.index, id: a.id, name: a.name, mob: a.mob, rect: a.rect, arena: a.arena, arenaTiles, bossTile: a.bossTile, guards: a.guards, checkpoint: a.checkpoint };
 });
+// The clear warp: a 2x2 of the last boss's hall (its arena's south-east corner, arena floor all round it for the gate's
+// art) that opens as Barong-Barong falls: the game draws the Warren Gate there then and walking onto it takes you out
+// (TownScene gateOn; the server never places arrivals on it). No object here: nothing's there before.
+const lastHall = areas.reduce((best, a) => (a.index > best.index ? a : best), areas[0]);
+const clearWarp = ((): Tile[] => {
+  const [x1, y1, x2, y2] = lastHall.arena;
+  const floor = (c: number, r: number) => at(c, r) === 'B';
+  for (let r = y2 - 1; r >= y1 + 1; r--)
+    for (let c = x2 - 1; c >= x1 + 1; c--) {
+      let ok = true;
+      for (let dr = -1; dr <= 2 && ok; dr++) for (let dc = -1; dc <= 2 && ok; dc++) if (!floor(c + dc, r + dr)) ok = false;
+      if (ok) return [[c, r], [c + 1, r], [c, r + 1], [c + 1, r + 1]];
+    }
+  throw new Error(`No room for the clear warp in ${lastHall.name}`);
+})();
 const shutters = layout.areas
   .filter((a) => a.gate)
   .map((a) => {
@@ -238,7 +253,7 @@ const map = {
   spawn: layout.arrive,
   safeZone: [Math.min(...startTiles.map((t) => t[0])), Math.min(...startTiles.map((t) => t[1])), Math.max(...startTiles.map((t) => t[0])), Math.max(...startTiles.map((t) => t[1]))],
   mobZones,
-  dungeon: { areas, shutters, startTiles, seal, exitWarp: warp, boss: { id: boss.id, tile: boss.tile, body: boss.body, reachRadius: boss.reachRadius } },
+  dungeon: { areas, shutters, startTiles, seal, exitWarp: warp, clearWarp, boss: { id: boss.id, tile: boss.tile, body: boss.body, reachRadius: boss.reachRadius } },
   notes: 'The Scrap Warrens: built by scripts/build-warrens.ts from scripts/warrens/warrens-layout.json (the art folder\'s maps/warrens). Each run is its own copy; the shutters (dungeon.shutters, their passage tiles blocked here) open as each area\'s mini boss dies.',
 };
 

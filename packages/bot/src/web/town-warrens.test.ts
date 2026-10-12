@@ -151,6 +151,20 @@ test("the map: the bottom half (Barong-Barong's hall) is far below the start roo
   for (let r = below; r < area('wire').checkpoint[1]; r++) assert.equal(map.blocked[r][c], 0, `${c},${r}`);
 });
 
+test("the clear warp: a 2x2 of the last hall's floor with floor all round, off the boss and its guards; nobody arrives on it", () => {
+  const warp = map.dungeon.clearWarp!;
+  assert.equal(warp.length, 4);
+  const hall = map.dungeon.areas.reduce((best, a) => (a.index > best.index ? a : best), map.dungeon.areas[0]);
+  const floor = new Set(hall.arenaTiles.map(([c, r]) => `${c},${r}`));
+  for (const [c, r] of warp) for (let dc = -1; dc <= 1; dc++) for (let dr = -1; dr <= 1; dr++) assert.ok(floor.has(`${c + dc},${r + dr}`), `${c + dc},${r + dr} is hall floor`);
+  const b = map.dungeon.boss.body;
+  for (const [c, r] of warp) {
+    assert.ok(!(c >= b[0] && c <= b[2] && r >= b[1] && r <= b[3]), 'off the boss');
+    assert.ok(!hall.guards.some(([gc, gr]) => gc === c && gr === r), 'off its guards');
+    assert.ok(map.avoid!.some(([ac, ar]) => ac === c && ar === r), 'nobody arrives on it');
+  }
+});
+
 test('a mini boss down opens its shutter for good and moves the checkpoint on', () => {
   const run = started();
   const shutter = map.dungeon.shutters.find((s) => s.area === 'tin')!;

@@ -88,7 +88,9 @@ const CLEARED_KEY = 'mk_warrens_cleared';
 /** The opener's ticket came back (the run ended before a boss fell): told once they're back in the Slums. */
 const TICKET_BACK_KEY = 'mk_warrens_ticket_back';
 
-/** The run's cleared (`run.clearMs`): its pop-up, once per run. `leave`: out of the Warrens now. */
+/** The run's end (`warrens` with phase cleared), once per run: a banner under the timer, top centre, with how long it
+ *  took, the bosses down, who was there and the close countdown. The way out is the warp that opened in the last hall
+ *  (or Leave now here); × closes the banner, and it goes with the page as the run closes. */
 export function showWarrensCleared(run: TownWarrensRun, leave: () => void): void {
   if (run.phase !== 'cleared' || run.clearMs === undefined) return;
   try {
@@ -97,33 +99,43 @@ export function showWarrensCleared(run: TownWarrensRun, leave: () => void): void
   } catch {
     // (no storage: it may show again after a reload)
   }
-  const body: HTMLElement[] = [];
-  const time = el('p', 'wr-clear-time');
-  time.append(el('span', 'wr-clear-label', 'Cleared in'), el('b', undefined, clock(run.clearMs)));
-  body.push(time);
+  document.getElementById('warrens-cleared')?.remove();
+  const box = el('div');
+  box.id = 'warrens-cleared';
+  box.setAttribute('role', 'status');
+  const head = el('div', 'wr-cleared-head');
+  const x = el('button', 'wr-cleared-x', '×');
+  x.setAttribute('aria-label', 'Close');
+  head.append(el('span', 'wr-cleared-title', 'Scrap Warrens cleared!'), x);
+  const time = el('div', 'wr-cleared-time');
+  time.append(el('span', 'wr-cleared-label', 'Cleared in'), el('b', undefined, clock(run.clearMs)));
   const down = run.bosses.filter((b) => b.dead).length;
-  body.push(el('p', 'wr-clear-line', `Barong-Barong has fallen · ${down} of ${run.bosses.length} bosses down`));
+  const lines = [`${down} of ${run.bosses.length} bosses down`];
   const team = run.team ?? [];
-  if (team.length > 1) body.push(el('p', 'wr-clear-line', `With ${team.slice(0, -1).join(', ')} and ${team[team.length - 1]}`));
+  if (team.length > 1) lines.push(`with ${team.slice(0, -1).join(', ')} and ${team[team.length - 1]}`);
+  const info = el('p', 'wr-cleared-line', lines.join(' · '));
   // The time left to grab what dropped, counting down while it's open.
-  const closes = el('p', 'wr-clear-closes');
+  const closes = el('p', 'wr-cleared-closes');
   const until = performance.now() + run.left;
   const draw = () => (closes.textContent = `Grab your loot: the Warrens close in ${clock(until - performance.now())}`);
   draw();
-  const ticking = setInterval(draw, 250); // (stopped as it closes)
-  body.push(closes);
-  const actions = el('div', 'wr-gate-actions');
-  const close = () => (document.querySelector('#reward .rw-x') as HTMLButtonElement | null)?.click();
+  const ticking = setInterval(draw, 250);
+  const way = el('p', 'wr-cleared-way', 'A warp opened in the hall: step into it to leave.');
+  const actions = el('div', 'wr-cleared-actions');
   const out = el('button', 'wr-btn wr-go', 'Leave now');
+  const gone = () => {
+    clearInterval(ticking);
+    box.remove();
+  };
   out.addEventListener('click', () => {
-    close();
+    gone();
     leave();
   });
-  const stay = el('button', 'wr-btn', 'Stay');
-  stay.addEventListener('click', close);
-  actions.append(out, stay);
-  body.push(actions);
-  void showPopup({ title: 'Scrap Warrens cleared!', body, button: 'Close', celebrate: true, closeX: true, sound: 'combat-level-up' }).then(() => clearInterval(ticking));
+  x.addEventListener('click', gone);
+  actions.append(out);
+  box.append(head, time, info, closes, way, actions);
+  document.body.append(box);
+  playSound('combat-level-up');
 }
 
 /** The run's tracker (top left, in the quest tracker's place). */

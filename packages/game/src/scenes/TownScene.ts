@@ -72,6 +72,7 @@ import { fakeLogin, fakeName, loadMe } from '../session';
 import { screenToTile, tileToScreen } from '../iso';
 import { toast } from '../ui/toast';
 import { lootRolls, rollEndLine } from '../ui/loot-roll';
+import type { TownWarrensRun } from '@mikazuki/shared';
 import { MapMenu } from '../ui/map-menu';
 import { firstOpen } from '../net/pwa';
 import { confirmDrop } from '../ui/drop';
@@ -310,6 +311,10 @@ export class TownScene extends Phaser.Scene {
   private art: HouseArt | null = null;
   /** Gate tiles (town.json / the neighbourhood's `gates`): walking onto one goes to that area. */
   private gateAt = new Map<string, Gate>();
+  /** The Scrap Warrens' clear warp tiles (dungeon.clearWarp): a gate out once the run is cleared. */
+  private clearWarp = new Set<string>();
+  private warrensRun: TownWarrensRun | null = null;
+  private clearWarpToldAt = 0;
   private bridges: (Phaser.GameObjects.Image | null)[] = [];
   /** The gates' signs (always shown, unlike the buildings' names). */
   private readonly gateLabels: BuildingLabel[] = [];
@@ -472,6 +477,7 @@ export class TownScene extends Phaser.Scene {
     if (this.map.bridge) this.bridges.push(drawBridge(this, this.map.bridge));
     this.map.bridges?.forEach((b, i) => this.bridges.push(drawBridge(this, b.tiles, b.along, `bridge-${i}`)));
     for (const [to, tiles] of Object.entries(this.map.gates ?? {}) as [Gate, [number, number][]][]) for (const [c, r] of tiles) this.gateAt.set(`${c},${r}`, to);
+    for (const [c, r] of this.map.dungeon?.clearWarp ?? []) this.clearWarp.add(`${c},${r}`);
     // The forest around the town fills what the camera can see past the map, without widening that view.
     const bounds = this.townBounds();
     // (The Slums: their junk and shanties instead, streamed, and raised ground: world/terrain.ts.)
@@ -1364,8 +1370,21 @@ export class TownScene extends Phaser.Scene {
     const t = this.player.tile;
     const building = this.doorAt.get(`${t.col},${t.row}`);
     this.setBuildingAlert(building ?? null);
-    const gate = this.gateAt.get(`${t.col},${t.row}`);
+    const gate = this.gateOn(t.col, t.row);
     if (gate) this.travel(gate);
+  }
+
+  /** The gate a tile is: the map's (`gates`), or the Warrens' clear warp once the run is cleared (before that, a word). */
+  private gateOn(col: number, row: number): Gate | undefined {
+    const k = `${col},${row}`;
+    const gate = this.gateAt.get(k);
+    if (gate || !this.clearWarp.has(k)) return gate;
+    if (this.warrensRun?.phase === 'cleared') return 'slums';
+    if (this.time.now >= this.clearWarpToldAt) {
+      this.clearWarpToldAt = this.time.now + 3000;
+      toast('The way out opens when Barong-Barong falls.', 2200);
+    }
+    return undefined;
   }
 
   /** A quest giver's name and portrait (for the quest log). */
@@ -1860,7 +1879,8 @@ export class TownScene extends Phaser.Scene {
       if (m.t === 'warrens') {
         this.warrensTracker ??= new WarrensTracker({ start: () => link.send({ t: 'warrens-start' }), leave: () => link.send({ t: 'warrens-leave' }) });
         this.warrensTracker.set(m.run);
-        showWarrensCleared(m.run, () => link.send({ t: 'warrens-leave' })); // (once per run, as it's cleared)
+        this.warrensRun = m.run;
+        showWarrensCleared(m.run, () => link.send({ t: 'warrens-leave' })); // (the banner, once per run, as it's cleared)
         return this.warrens?.run(m.run);
       }
       // Boss moves: a Warrens run's bosses there, the field golem's in the Slums (a map has one or the other).
@@ -2986,7 +3006,7 @@ export class TownScene extends Phaser.Scene {
   }
 
   private arrived(tile: Tile): void {
-    const gate = this.gateAt.get(`${tile.col},${tile.row}`);
+    const gate = this.gateOn(tile.col, tile.row);
     if (gate) return this.travel(gate);
     if (this.pending?.npc) {
       const id = this.pending.npc;

@@ -48,14 +48,14 @@ export interface WarrensMap extends MobMapData {
   dungeon: DungeonMapBlock;
   arrive: Record<string, Tile>;
   spawn: Tile;
-  /** Tiles nobody arrives on (the exit warp). */
+  /** Tiles nobody arrives on (the exit warp, the clear warp). */
   avoid?: Tile[];
 }
 
 /** maps/warrens.json as a run's template (its exit warp's tiles to avoid on arrival). */
 export function loadWarrensMap(): WarrensMap {
   const m = loadMobMap('warrens') as WarrensMap & { gates?: Record<string, Tile[]> };
-  return { ...m, avoid: Object.values(m.gates ?? {}).flat() };
+  return { ...m, avoid: [...Object.values(m.gates ?? {}).flat(), ...(m.dungeon.clearWarp ?? [])] };
 }
 
 /** What a run needs to make its mob room. */

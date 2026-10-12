@@ -170,6 +170,9 @@ export interface DungeonMapBlock {
   startTiles: Tile[];
   seal: Tile[];
   exitWarp: Tile[];
+  /** The way out that opens as the last boss falls: a 2x2 in its hall (the game draws the gate there then; walking
+   *  onto it leaves). */
+  clearWarp?: Tile[];
   /** The last boss: its feet tile, its body's tiles (blocked) and its reach (to a circle of this radius round its tile). */
   boss: { id: string; tile: Tile; body: Rect; reachRadius: number };
 }

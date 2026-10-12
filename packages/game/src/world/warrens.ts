@@ -5,6 +5,7 @@ import { loadBoss } from '../assets/queue';
 import { type Heard, type WarrensSfx, playSet, playWarrens } from '../audio/sound';
 import { BossBar } from '../ui/boss-bar';
 import { showAreaBanner } from '../ui/warrens';
+import { slice } from '../assets/packs';
 import { frontDepth } from './depth';
 import { FX_DEPTH, type FxHandle, type FxLayers, type Pt } from './fx-layers';
 import type { Tile, WalkGrid } from './grid';
@@ -75,6 +76,8 @@ export class WarrensView {
   private readonly bar = new BossBar();
   private readonly shutters: ShutterView[] = [];
   private opened = new Set<string>();
+  /** The way out in the last hall (dungeon.clearWarp), drawn as the run is cleared. */
+  private clearWarp: { gate: Phaser.GameObjects.Image; portal: Phaser.GameObjects.Sprite | null } | null = null;
   private sealed = false;
   private area: string | null = null;
   private seen = false;
@@ -151,6 +154,7 @@ export class WarrensView {
       this.openShutter(s, this.seen);
     }
     this.opened = new Set(r.opened);
+    if (r.phase === 'cleared') this.openClearWarp(this.seen);
     this.seen = true;
     if (r.phase === 'closed') this.clear();
   }
@@ -169,6 +173,42 @@ export class WarrensView {
     this.fx.play(this.golemFx('fx-golem-rubble-ring'), s.at, { life: 1500, fadeIn: 100, fadeOut: 600, scale: 0.6 });
     if (this.inView(s.at, 96)) playWarrens('warrens-shutter-open');
     this.shake(s.at, 200);
+  }
+
+  /** The clear warp as the run is cleared: the Warren Gate's art and its pulsing portal over the 2x2 (the gate's anchor
+   *  is the top corner of its 3x3), fading in with dust and a rumble when it happens while you watch. TownScene makes
+   *  its tiles a gate out then (`gateOn`). */
+  private openClearWarp(animate: boolean): void {
+    const tiles = this.block.clearWarp;
+    const def = this.M.props['warren-exit'] as PropDef | undefined;
+    if (this.clearWarp || !tiles?.length || !def || !this.scene.textures.exists(def.file)) return;
+    const c0 = Math.min(...tiles.map((t) => t[0])) - 1;
+    const r0 = Math.min(...tiles.map((t) => t[1])) - 1;
+    const top = this.mobs.ground(c0, r0);
+    const depth = frontDepth(c0, r0, 3, 3);
+    const gate = this.scene.add.image(top.x, top.y, def.file).setOrigin(def.anchor[0] / def.size[0], def.anchor[1] / def.size[1]).setDepth(depth);
+    let portal: Phaser.GameObjects.Sprite | null = null;
+    const p = def.portal;
+    if (p && this.scene.textures.exists(p.file)) {
+      slice(this.scene.textures, p.file, p.frameSize[0], p.frameSize[1]);
+      const key = `anim:${p.file}`;
+      if (!this.scene.anims.exists(key)) this.scene.anims.create({ key, frames: this.scene.anims.generateFrameNumbers(p.file, { start: 0, end: p.frames - 1 }), frameRate: p.fps, repeat: -1 });
+      portal = this.scene.add.sprite(top.x, top.y, p.file, 0).setOrigin(def.anchor[0] / p.frameSize[0], def.anchor[1] / p.frameSize[1]).setDepth(depth + 0.01);
+      portal.play(key);
+      if (p.pulse) {
+        const [lo, hi, ms] = p.pulse;
+        this.scene.tweens.add({ targets: portal, alpha: { from: hi, to: lo }, duration: ms / 2, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      }
+    }
+    this.clearWarp = { gate, portal };
+    if (!animate || reducedMotion()) return;
+    const at = this.mobs.ground(c0 + 1.5, r0 + 1.5);
+    gate.setAlpha(0);
+    this.scene.tweens.add({ targets: gate, alpha: 1, duration: SHUTTER_MS });
+    this.fx.play(this.golemFx('fx-golem-rubble-ring'), at, { life: 1500, fadeIn: 100, fadeOut: 600, scale: 0.6 });
+    for (const [c, r] of tiles) this.fx.play(this.M.fx['dig-dust'], this.mobs.ground(c + 0.5, r + 0.5), { life: SHUTTER_MS + 300, fadeOut: 300 });
+    if (this.inView(at, 96)) playWarrens('warrens-shutter-open');
+    this.shake(at, 200);
   }
 
   // ── Every frame ──
