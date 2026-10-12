@@ -105,7 +105,13 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   code's defaults), the Mine Wars payout (pick Discord members found by name or ID as attended / Top 10, see who gets what, pay:
   `payMineWars` in `minewars/payout.ts`, shared with `/gift minewars`, same ledger and games channel post) players' Kowens, titles and class (shown with quests, gear, Rename Cards; Reset class), and the Field boss (the
   Scrapheap Golem: up or not, HP, next rise; Spawn now = `MobRoom.riseGolem`, only when it isn't up, its schedule carries on;
-  `CmsDeps.slums`, GET /api/boss, POST /api/boss/spawn); logs each
+  `CmsDeps.slums`, GET /api/boss, POST /api/boss/spawn), and Maintenance (`web/maintenance.ts`, kv 'maintenance', tested:
+  on with a note (≤ 200, `DEFAULT_NOTE` when empty) = everyone but the CMS's users is closed out of the town with code
+  `MAINTENANCE` 4003 (`Town.closeForMaintenance`; `TownOptions.maintenance` refuses them at the door after) and `/me`
+  carries `maintenance { note, allowed }`: the title screen shows "Under maintenance: note" with Try again instead of
+  Start (a CMS user: Start with a staff line); in town the page shows `showMaintenance` (ui/elsewhere.ts) with Try
+  again; a deploy's restart keeps it on until it's turned off; GET/POST /api/maintenance { on, note }; dev
+  `?maintenance=<note>` (+ `&staff=1`)); logs each
   change in the bot's log only (never posted in Discord). Content that moves into the CMS keeps its code values as defaults.
 - Messages to Discord: no pings by default (`allowedMentions: { parse: [] }`); de-duplicate user IDs in
   `allowedMentions.users`.
@@ -287,7 +293,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `ui/creator.ts`, town preloads meanwhile); else the town (or the area the tab was in). Arriving through a gate
   (`?from=`) and `?debug=wardrobe` skip the intro and title (a logged-out arrival still gets the title's login). Title
   music: Sound, below. Dev: `?me=anon|new|saved` fakes the login (and stands in when no bot answers /me);
-  `&login=not-member` the refusal line.
+  `&login=not-member` the refusal line; `&maintenance=<note>` the maintenance line (no Start), `&staff=1` with it a
+  CMS user's Start.
 - Town HUD (`ui/townhud.ts`, replaces the page's login corner in town): your character's head (`headPortrait`) and
   name top left in the item frame (round pixel avatar + status dot from `/me` status: jailed, else the Discord status when the Presence
   intent is on in the Developer Portal — the bot checks at startup and only asks for it then — else online), under the

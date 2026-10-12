@@ -174,6 +174,9 @@ export interface TownOptions {
   /** Whether a member is a Game Master (the chat's GM channel: `/gm`, gold, across everyone's screen, free). Without it
    *  nobody is. */
   gm?: (userId: string) => boolean;
+  /** Maintenance mode (web/maintenance.ts, the CMS): while `on`, only members `allowed` (the CMS's users) may be in
+   *  the town; the rest are closed with MAINTENANCE and the note as the reason. Without it, never. */
+  maintenance?: { on(): boolean; allowed(userId: string): boolean; note(): string };
   /** Uses one of a member's megaphones (`/m` in the chat): how many are left, or null if they have none. Without it
    *  (the game's dev server) megaphones are free. */
   megaphone?: (userId: string) => number | null;
@@ -210,6 +213,8 @@ const TRIP_MS = 2 * 60_000;
 
 /** Close code for a moderator's kick (the reason is when they may come back, in ms). */
 export const KICKED = 4001;
+/** Close code while maintenance is on (the reason is its note): the game shows it and doesn't come back on its own. */
+export const MAINTENANCE = 4003;
 
 /** What the rest of the bot can do with the town. */
 export interface Town {
@@ -222,6 +227,8 @@ export interface Town {
   announce(a: TownAnnouncement): void;
   /** Removes a member from the town now (they're kept out by moderation.kickedUntil). */
   kick(userId: string, until: number): boolean;
+  /** Maintenance went on: everyone not allowed in is closed with MAINTENANCE (how many were). */
+  closeForMaintenance(): number;
   /** The member behind a town player id, if they're here (ids are random per visit: Discord ids never reach the page). */
   memberOf(playerId: string): string | null;
   /** Tells a member, if they're in town, that someone gave them Kowens. */
@@ -1222,6 +1229,8 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     // Kicked by a moderator: told when they may come back, and closed.
     const kicked = opts.moderation?.kickedUntil(userId);
     if (kicked) return ws.close(KICKED, String(kicked));
+    // Maintenance: only the CMS's users come in.
+    if (opts.maintenance?.on() && !opts.maintenance.allowed(userId)) return ws.close(MAINTENANCE, opts.maintenance.note().slice(0, 120));
     // The Warrens: the run they may be in (their party's, or their own); none (closed, or not theirs) → back out.
     if (room === 'warrens') {
       const run = W?.runOf(userId);
@@ -1347,6 +1356,22 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       c.ws.close(KICKED, String(until));
       stepAway(userId);
       return true;
+    },
+    closeForMaintenance() {
+      const M = opts.maintenance;
+      if (!M?.on()) return 0;
+      let n = 0;
+      for (const [userId, c] of [...conns]) {
+        if (M.allowed(userId)) continue;
+        conns.delete(userId);
+        arena.leave(userId);
+        leftTrades(userId);
+        others(c, { t: 'leave', id: c.player.id });
+        c.ws.close(MAINTENANCE, M.note().slice(0, 120));
+        stepAway(userId);
+        n++;
+      }
+      return n;
     },
     memberOf(playerId) {
       for (const c of conns.values()) if (c.player.id === playerId) return c.userId;

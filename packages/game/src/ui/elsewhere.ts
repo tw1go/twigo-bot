@@ -48,3 +48,28 @@ export function showKicked(until: number): void {
   root.append(card);
   document.body.append(root);
 }
+
+/** Maintenance mode went on while you were in town (net/town.ts MAINTENANCE): out until it's off; Try again reloads
+ *  (the title screen then says when it's still on). */
+export function showMaintenance(note: string): void {
+  document.getElementById('elsewhere')?.remove();
+  const root = document.createElement('div');
+  root.id = 'elsewhere';
+  root.setAttribute('role', 'dialog');
+  root.setAttribute('aria-label', 'Under maintenance');
+  const card = document.createElement('div');
+  card.className = 'ew-card';
+  const title = document.createElement('h2');
+  title.textContent = '🚧 Under maintenance';
+  const line = document.createElement('p');
+  line.textContent = note || 'Mikazuki is being worked on. Back soon!';
+  const more = document.createElement('p');
+  more.textContent = 'The town is closed for a moment. Nothing is lost: come back in a bit.';
+  const button = document.createElement('button');
+  button.className = 'ew-play';
+  button.textContent = 'Try again';
+  button.addEventListener('click', () => location.reload());
+  card.append(title, line, more, button);
+  root.append(card);
+  document.body.append(root);
+}

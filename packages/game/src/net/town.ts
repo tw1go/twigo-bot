@@ -10,6 +10,7 @@ import { devKit } from './adventure';
 const OPENED_ELSEWHERE = 4000;
 const KICKED = 4001; // the reason is when they may come back (ms)
 const NO_RUN = 4002; // a Scrap Warrens page with no run to be in (its `warrens-out` came first)
+const MAINTENANCE = 4003; // maintenance mode went on (the reason is its note): shown, no coming back on its own
 
 export class TownLink {
   private ws: WebSocket | null = null;
@@ -20,6 +21,8 @@ export class TownLink {
   onTakenOver: () => void = () => {};
   /** A moderator removed you from the town, until then (ms). */
   onKicked: (until: number) => void = () => {};
+  /** Maintenance mode went on (the CMS): out of the town until it's off, with the note. */
+  onMaintenance: (note: string) => void = () => {};
   /** Connected (true) or dropped and trying again (false: a bot restart, a network blip). */
   onStatus: (up: boolean) => void = () => {};
 
@@ -71,6 +74,7 @@ export class TownLink {
       if (this.ws !== ws || this.stopped) return;
       if (e.code === OPENED_ELSEWHERE) return this.onTakenOver();
       if (e.code === KICKED) return this.onKicked(Number(e.reason) || Date.now() + 15 * 60_000);
+      if (e.code === MAINTENANCE) return this.onMaintenance(e.reason);
       if (e.code === NO_RUN) return;
       this.onStatus(false);
       const wait = Math.min(30_000, 1000 * 2 ** this.retry++);

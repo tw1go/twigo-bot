@@ -58,6 +58,7 @@ import { LAUNCH_REWARD, isPreregistered, launched, preregCount, preregister } fr
 import { callback, clearSessionCookie, endSessions, exchange, isCmsUser, isMember, login, loginClient, loginEnabled, logout, sessionUser, waitForLogin } from './auth.js';
 import { roll } from './finds.js';
 import { type CmsDeps, cms } from './cms.js';
+import { maintenance, maintenanceNote } from './maintenance.js';
 import { kvLoad, kvSave } from '../db/db.js';
 
 // A tiny HTTP API for twigo's room (tw1go.github.io). Read-only apart from
@@ -299,7 +300,8 @@ async function me(client: Client, req: IncomingMessage, res: ServerResponse): Pr
   // Mini boss quests finished before their +5 piece came with the report (or with no room then): given now.
   const questPieces = questPiecesFor(userId);
   if (questPieces.length) console.log(`[quest] ${userId} got quest pieces: ${questPieces.map((i) => `${i.defId} +${i.plus}`).join(', ')}`);
-  const body: MeResponse = { id: userId, name, ...(username ? { username } : {}), avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items, preregistered: isPreregistered(userId), house: !!houseOf(userId), tester: await isTester(client, userId), outfit: getOutfit(userId), nickname: getNickname(userId), title: titleOf(userId), newTitle: newTitle(userId), welcomeGift: welcomeGift(userId), status: await statusOf(client, userId), adventure: adventureOf(userId),
+  const upkeep = maintenance().on ? { maintenance: { note: maintenanceNote(), allowed: isCmsUser(userId) } } : {};
+  const body: MeResponse = { ...upkeep, id: userId, name, ...(username ? { username } : {}), avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items, preregistered: isPreregistered(userId), house: !!houseOf(userId), tester: await isTester(client, userId), outfit: getOutfit(userId), nickname: getNickname(userId), title: titleOf(userId), newTitle: newTitle(userId), welcomeGift: welcomeGift(userId), status: await statusOf(client, userId), adventure: adventureOf(userId),
     dig: digStatus(userId), ...(trainingGear.length ? { trainingGear } : {}), ...(questRewards.length ? { questRewards } : {}), ...(questPieces.length ? { questPieces } : {}) };
   send(res, 200, JSON.stringify(body));
 }
@@ -988,6 +990,7 @@ export function startWebServer(client: Client): void {
       arenaBets: arenaBets(),
       onSay: (userId, nickname, text, megaphone, gm) => toDiscord(userId, nickname, text, megaphone, gm),
       gm: isCmsUser, // Game Masters: the gifter and CMS_USER_IDS
+      maintenance: { on: () => maintenance().on, allowed: isCmsUser, note: maintenanceNote }, // the CMS's Maintenance tab
       megaphone: useMegaphone,
       moderation: { mutedUntil, kickedUntil, filter: filterText },
       memory: townMemory(),

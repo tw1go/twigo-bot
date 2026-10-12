@@ -92,7 +92,11 @@ export function playIntro(M: Manifest): Promise<void> {
 
 /** What the title screen offers: Start (logged in, or login off), the Discord login (logged out; `problem`: why the
  *  last try didn't work), or in the desktop app with no server answering, Try again (`trying`: asking it now). */
-export type TitleOffer = { kind: 'start' } | { kind: 'guest'; problem: string | null } | { kind: 'offline'; trying?: boolean };
+export type TitleOffer =
+  | { kind: 'start'; staff?: string } // (`staff`: maintenance is on, you may go in anyway: its note)
+  | { kind: 'guest'; problem: string | null }
+  | { kind: 'offline'; trying?: boolean }
+  | { kind: 'maintenance'; note: string; trying?: boolean }; // (the CMS's maintenance mode: no way in; Try again)
 
 export class TitleScreen {
   private readonly root = document.createElement('div');
@@ -183,7 +187,7 @@ export class TitleScreen {
     const button = offer.kind === 'start' ? document.createElement('button') : document.createElement('a');
     button.className = 'ts-button';
     const label = document.createElement('span');
-    label.textContent = offer.kind === 'start' ? 'Start' : offer.kind === 'offline' ? 'Try again' : 'Log in with Discord';
+    label.textContent = offer.kind === 'start' ? 'Start' : offer.kind === 'offline' || offer.kind === 'maintenance' ? 'Try again' : 'Log in with Discord';
     button.append(label);
     if (button instanceof HTMLAnchorElement) {
       button.href = '/auth/login';
@@ -205,7 +209,7 @@ export class TitleScreen {
       });
     } else {
       button.type = 'button';
-      if (offer.kind === 'offline' && offer.trying) button.disabled = true;
+      if ((offer.kind === 'offline' || offer.kind === 'maintenance') && offer.trying) button.disabled = true;
       button.addEventListener('click', (e) => {
         e.stopPropagation();
         this.start();
@@ -216,10 +220,12 @@ export class TitleScreen {
     for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) button.addEventListener(ev, () => button.classList.remove('ts-pressed'));
     const hint = document.createElement('p');
     const problem = (offer.kind === 'guest' && offer.problem) || (offer.kind === 'offline' && !offer.trying);
-    hint.className = problem ? 'ts-hint ts-problem' : 'ts-hint';
+    const upkeep = offer.kind === 'maintenance' || (offer.kind === 'start' && !!offer.staff);
+    hint.className = problem ? 'ts-hint ts-problem' : upkeep ? 'ts-hint ts-upkeep' : 'ts-hint';
     hint.textContent =
-      offer.kind === 'start' ? 'or click anywhere'
+      offer.kind === 'start' ? (offer.staff ? `🚧 Maintenance is on (staff only): ${offer.staff}` : 'or click anywhere')
       : offer.kind === 'offline' ? (offer.trying ? 'Connecting…' : "Can't reach the Mikazuki server. Check your connection.")
+      : offer.kind === 'maintenance' ? (offer.trying ? 'Checking…' : `🚧 Under maintenance: ${offer.note}`)
       : (offer.problem ?? 'Members of the Mikazuki server only');
     this.band.append(button, hint);
     this.layout();
@@ -273,6 +279,7 @@ export class TitleScreen {
   }
 
   private start(): void {
+    if (this.offer?.kind === 'maintenance') return void (this.offer.trying || this.onRetry());
     if (this.offer?.kind === 'offline' && !this.offer.trying) return this.onRetry();
     if (this.closing || this.offer?.kind !== 'start') return;
     this.closing = true;

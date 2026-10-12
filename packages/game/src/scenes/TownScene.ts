@@ -11,7 +11,7 @@ import { cursor } from '../ui/cursor';
 import { BuildingLabel, UI_FONT } from '../ui/labels';
 import { LOADING_LINES } from '../ui/loading-lines';
 import { TownLink } from '../net/town';
-import { showElsewhere, showKicked } from '../ui/elsewhere';
+import { showElsewhere, showKicked, showMaintenance } from '../ui/elsewhere';
 import { hideRevive, showRevive } from '../ui/revive';
 import { mountTownHud, setHudAvatar, setHudClass, setHudLevel, setHudName, setHudRating, setHudVitals } from '../ui/townhud';
 import { myRating } from '../ui/rating';
@@ -2323,6 +2323,10 @@ export class TownScene extends Phaser.Scene {
     link.onTakenOver = () => {
       this.others.clear();
       showElsewhere(() => link.reconnect());
+    };
+    link.onMaintenance = (note) => {
+      this.others.clear();
+      showMaintenance(note);
     };
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => link.close());
   }

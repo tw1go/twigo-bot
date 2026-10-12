@@ -595,6 +595,43 @@ async function boss() {
   await draw();
 }
 
+// ── Maintenance mode (web/maintenance.ts) ──
+
+async function maintenance() {
+  page('Maintenance', 'Turn it on before a deploy or a fix: everyone in the town is sent out and kept out, and the game’s title screen shows the note instead of Start. Only CMS users (you) can go in meanwhile. A deploy’s restart keeps it on: turn it off here when you’re done.');
+  const body = h('div', { class: 'sections' });
+  main().append(body);
+  let timer = 0;
+  async function draw() {
+    const m = await api('maintenance');
+    const note = h('textarea', { rows: 2, maxlength: m.noteMax, placeholder: m.defaultNote }, m.note || '');
+    const turn = h('button', { class: m.on ? 'btn' : 'btn primary' }, m.on ? 'Turn maintenance off' : 'Turn maintenance on');
+    turn.addEventListener('click', () => act(turn, async () => {
+      const on = !m.on;
+      if (on && !confirm(`Turn maintenance on? ${m.inTown - m.staffInTown} player(s) in town will be sent out, and nobody but CMS users can come in until it’s off.`)) return;
+      const r = await api('maintenance', { on, note: note.value });
+      toast(on ? `Maintenance is on: ${r.sentOut} sent out.` : 'Maintenance is off: the town is open again.');
+      draw();
+    }));
+    const update = h('button', { class: 'btn' }, 'Update the note');
+    update.addEventListener('click', () => act(update, async () => {
+      await api('maintenance', { on: true, note: note.value });
+      toast('Note updated.');
+      draw();
+    }));
+    body.replaceChildren(h('div', { class: 'card' },
+      h('h2', null, m.on ? '🚧 Maintenance is on' : 'The town is open'),
+      h('p', null, m.on ? `Since ${when(m.since)}, turned on by ${m.by}. ` : '', `In town now: ${fmt(m.inTown)}`, m.on ? ` (staff ${fmt(m.staffInTown)})` : ''),
+      h('label', null, 'Note on the title screen', note),
+      h('p', { class: 'hint' }, `Up to ${m.noteMax} characters; empty shows “${m.defaultNote}”.`),
+      h('div', { class: 'actions' }, turn, ...(m.on ? [update] : [])),
+    ));
+    clearTimeout(timer);
+    if (location.hash === '#maintenance') timer = setTimeout(() => act(null, draw), 5000); // (who's in town, kept fresh)
+  }
+  await draw();
+}
+
 // ── Beta applications (the front page's close beta form) ──
 
 async function beta() {
@@ -658,7 +695,7 @@ async function beta() {
 
 // ── Tabs ──
 
-const TABS = { overview, news, titles, shop, rewards, minewars, boss, items, players, beta };
+const TABS = { overview, news, titles, shop, rewards, minewars, boss, maintenance, items, players, beta };
 
 function route() {
   const tab = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'overview';

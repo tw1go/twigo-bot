@@ -27,6 +27,7 @@ import { renameCards } from '../items/rename-card.js';
 import { classTickets } from '../items/class-ticket.js';
 import { mineWarsNight, mineWarsPlan, payMineWars } from '../minewars/payout.js';
 import { BETA_CLASSES, BETA_STATUSES, betaCsv, listBetaApplications, setBetaStatus } from './beta.js';
+import { DEFAULT_NOTE, NOTE_MAX, maintenance, setMaintenance } from './maintenance.js';
 
 // 🛠️ The CMS: a page for the gifter (and CMS_USER_IDS) to run the game's content without a deploy or a slash command:
 // the town's own news posts, titles (make, change, give), the rewards shop's prices and what's on sale, reward amounts
@@ -45,6 +46,9 @@ import { BETA_CLASSES, BETA_STATUSES, betaCsv, listBetaApplications, setBetaStat
 //   GET  <path>/api/player?id=   POST /api/player/kowens { id, amount, reason? } · POST /api/player/title { id, title }
 //                                POST /api/player/reset-class { id } (class, quests and equipment start over)
 //   GET  <path>/api/members?q=   Discord members by name (or one ID), for Mine Wars, who may have no town nickname
+//   GET  <path>/api/maintenance  maintenance mode (web/maintenance.ts): on or off, its note, who's in town
+//                                POST /api/maintenance { on, note? } on: everyone but the CMS's users is sent out of the
+//                                town and kept out, and the game's title screen shows the note instead of Start
 //   GET  <path>/api/boss         the field boss (Scrapheap Golem): up or not, its HP, its next rise
 //                                POST /api/boss/spawn {} it rises now in the Slums (if it isn't up)
 //   GET  <path>/api/beta?q=&status=&class=   close beta applications from the front page (web/beta.ts), newest first
@@ -71,6 +75,13 @@ function boss(deps: CmsDeps) {
   if (!room || !plan) return { running: false };
   const g = room.golemState(now);
   return { running: true, name: plan.name, everyMinutes: plan.everyMinutes, nextRise: plan.nextRise, up: !!g && g.state !== 'dead', state: g?.state ?? 'gone', hp: g?.hp ?? 0, maxHp: g?.maxHp ?? 0 };
+}
+
+/** Maintenance mode as the CMS shows it, with who's in the town now (while it's on: the CMS's users only). */
+function upkeep(deps: CmsDeps) {
+  const m = maintenance();
+  const here = deps.town()?.here() ?? [];
+  return { on: m.on, note: m.note, defaultNote: DEFAULT_NOTE, noteMax: NOTE_MAX, since: m.since ?? null, by: m.by ?? null, inTown: here.length, staffInTown: here.filter(isCmsUser).length };
 }
 
 /** The page and its script (packages/bot/cms/, beside src/ and dist/), read once. */
@@ -227,6 +238,17 @@ export async function cms(client: Client, req: IncomingMessage, res: ServerRespo
   const route = `${req.method} ${sub}`;
 
   switch (route) {
+    case 'GET /api/maintenance':
+      return send(res, 200, upkeep(deps));
+    case 'POST /api/maintenance': {
+      const on = body!.on === true;
+      const note = str(body!.note ?? '');
+      if (note.length > NOTE_MAX) return bad(`The note can be ${NOTE_MAX} characters at most.`);
+      setMaintenance(on, note, who);
+      const out = on ? (deps.town()?.closeForMaintenance() ?? 0) : 0;
+      await log(client, who, on ? `turned maintenance on (${out} sent out)${note ? `: ${note}` : ''}` : 'turned maintenance off');
+      return send(res, 200, { ...upkeep(deps), sentOut: out });
+    }
     case 'GET /api/boss':
       return send(res, 200, boss(deps));
     case 'POST /api/boss/spawn': {

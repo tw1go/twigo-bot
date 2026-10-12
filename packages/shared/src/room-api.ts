@@ -59,6 +59,9 @@ export interface OutfitData {
 
 /** `GET /me` — the member logged in to the web game (401 when not logged in). */
 export interface MeResponse {
+  /** Maintenance mode is on (the CMS): the title screen says so with `note` instead of Start, unless `allowed` (a CMS
+   *  user, who may go in meanwhile). Left out while it's off. */
+  maintenance?: { note: string; allowed: boolean };
   /** Discord user ID. */
   id: string;
   /** Server nickname, or Discord display name. */

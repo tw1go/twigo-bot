@@ -71,7 +71,17 @@ export class BootScene extends Phaser.Scene {
         t.onLogin = () => stopTitleMusic();
         return;
       }
-      t.setOffer({ kind: 'start' });
+      // Maintenance mode (the CMS): no way in, Try again; a CMS user goes in with a line saying so.
+      const upkeep = me?.status === 'ok' ? me.me.maintenance : undefined;
+      if (upkeep && !upkeep.allowed) {
+        t.setOffer({ kind: 'maintenance', note: upkeep.note });
+        t.onRetry = () => {
+          t.setOffer({ kind: 'maintenance', note: upkeep.note, trying: true });
+          void loadMe(true).then((again) => offer(t, again));
+        };
+        return;
+      }
+      t.setOffer({ kind: 'start', ...(upkeep ? { staff: upkeep.note } : {}) });
       t.onStart = () => {
         if (this.sound.locked) this.sound.unlock(); // (the first gesture: anything waiting on one may play)
         stopTitleMusic();
