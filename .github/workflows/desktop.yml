@@ -1,13 +1,38 @@
 # The desktop app's installers (packages/desktop): Windows (msi, exe) and Mac (dmg, Apple silicon and Intel), unsigned.
-# Run by hand (Actions → Desktop app → Run workflow); the files come out as the run's artifacts, to download and put in
-# /opt/twigo-bot/web/downloads on the server with latest.json (packages/desktop/README.md). It never deploys anything.
+# Runs after every successful Deploy (so the app is never ahead of the site) and by hand (Actions → Desktop app → Run
+# workflow). The files come out as the run's artifacts, and the publish job then signs the Windows setup .exe and the
+# Mac app (packed as the update) with the updater's key, writes latest.json and uploads them to
+# /opt/twigo-bot/web/downloads on the server (packages/desktop/scripts/publish.mjs, the same as `npm run
+# desktop:publish` on the owner's Mac; older versions there go). Open apps then offer "Update now".
+#
+# Secrets: TAURI_UPDATER_KEY (the owner's ~/.tauri/mikazuki-updater.key, the whole file; never a password), and the
+# Deploy workflow's DEPLOY_TARGET / DEPLOY_SSH_KEY / DEPLOY_KNOWN_HOSTS. Without TAURI_UPDATER_KEY the publish job is
+# skipped and the artifacts are published by hand as before.
 name: Desktop app
 
 on:
+  workflow_run:
+    workflows: [Deploy]
+    types: [completed]
   workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish to the server (sign, upload, latest.json)
+        type: boolean
+        default: true
+
+# One at a time; a newer deploy's build waits for the running one.
+concurrency:
+  group: desktop
+  cancel-in-progress: false
+
+permissions:
+  contents: read
 
 jobs:
   build:
+    # After a Deploy only if it succeeded (the site has the same commit); by hand always.
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     strategy:
       fail-fast: false
       matrix:
@@ -19,9 +44,14 @@ jobs:
             args: ''
             name: windows
     runs-on: ${{ matrix.platform }}
+    timeout-minutes: 45
+    outputs:
+      semver: ${{ steps.version.outputs.semver }}
     steps:
       - uses: actions/checkout@v4
         with:
+          # The deployed commit (a workflow_run's checkout would be main's tip, which may have moved on).
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           fetch-depth: 0 # (the game's version counts the commits on main)
       - uses: actions/setup-node@v4
         with:
@@ -56,3 +86,41 @@ jobs:
             packages/desktop/src-tauri/target/**/release/bundle/msi/*.msi
             packages/desktop/src-tauri/target/**/release/bundle/nsis/*.exe
           if-no-files-found: error
+
+  publish:
+    name: Sign and publish
+    needs: build
+    # A Mac: publish.mjs opens the .dmg (hdiutil) to pack the app as the update.
+    runs-on: macos-latest
+    timeout-minutes: 15
+    if: (github.event_name == 'workflow_run' || inputs.publish) && vars.DESKTOP_PUBLISH != 'off'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund --ignore-scripts # (for `npx tauri signer`)
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: mikazuki-*-${{ needs.build.outputs.semver }}
+          path: artifacts
+      - name: Keys
+        env:
+          TAURI_UPDATER_KEY: ${{ secrets.TAURI_UPDATER_KEY }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          test -n "$TAURI_UPDATER_KEY" || { echo "::error::TAURI_UPDATER_KEY secret missing: the update can't be signed"; exit 1; }
+          install -m 700 -d ~/.tauri ~/.ssh
+          printf '%s\n' "$TAURI_UPDATER_KEY" > ~/.tauri/mikazuki-updater.key
+          chmod 600 ~/.tauri/mikazuki-updater.key
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+      - name: Publish
+        env:
+          DEPLOY_TARGET: ${{ secrets.DEPLOY_TARGET }}
+        run: node packages/desktop/scripts/publish.mjs "$DEPLOY_TARGET" "${{ needs.build.outputs.semver }}" --from=artifacts

@@ -264,8 +264,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   and bound to the version; `npm run desktop:publish -- <ssh-target>` packs, signs and uploads the workflow's artifacts
   from ~/Downloads): "A new version of Mikazuki is ready" → Update now (download, install, restart; the notice over the
   title screen), Download if that fails; /me's 426 (bot `MIN_DESKTOP_VERSION`) → "too old". The front page's
-  Windows / Mac buttons read the same latest.json. Builds: `npm run desktop:build` (Mac, needs Rust), or Actions →
-  Desktop app (`.github/workflows/desktop.yml`, by hand: both Macs and Windows as artifacts; never deploys).
+  Windows / Mac buttons read the same latest.json. Builds: `npm run desktop:build` (Mac, needs Rust), or the Desktop app
+  workflow (`.github/workflows/desktop.yml`: after every successful Deploy, on the deployed commit, and by hand; both
+  Macs and Windows as artifacts, then its publish job signs with the `TAURI_UPDATER_KEY` secret and uploads to the
+  server with the Deploy secrets: `publish.mjs --from=artifacts`; repository variable `DESKTOP_PUBLISH=off` stops it).
   `npm run desktop:dev`: the window on the dev town.
 - Open beta: `/play/` is the town for every member of the Mikazuki server (no `?preview` gate, no testers-only rule).
   Only members can log in (the OAuth callback checks; `isMember` in the bot's `web/auth.ts`, also on `/me`, `/ws` and

@@ -40,19 +40,23 @@ install the download over the old one.)
 - `npm run desktop:build`: builds the game, copies its page and `assets/` into `packages/desktop/web/play/`, and builds
   the app with the game's version (v0.1.N → 0.1.N). On a Mac: `src-tauri/target/release/bundle/dmg/Mikazuki_0.1.N_aarch64.dmg`
   (and `macos/Mikazuki.app`). Needs Rust (rustup) and the Xcode command line tools.
-- Windows and both Macs (Apple silicon and Intel): **Actions → Desktop app → Run workflow** on GitHub
-  (`.github/workflows/desktop.yml`); the installers are the run's artifacts.
+- Windows and both Macs (Apple silicon and Intel): the **Desktop app** workflow (`.github/workflows/desktop.yml`); the
+  installers are the run's artifacts.
 
-Publishing a version (on the owner's Mac, which has the updater's signing key):
+Publishing a version happens on its own: after every successful Deploy the Desktop app workflow builds the deployed
+commit and its publish job (a Mac runner) packs the Mac update (`Mikazuki_<v>_universal.app.tar.gz`, from the .dmg),
+signs it and the Windows setup .exe for the updater with the `TAURI_UPDATER_KEY` secret (the owner's
+`~/.tauri/mikazuki-updater.key`, the whole file), writes `latest.json` and uploads everything to
+`/opt/twigo-bot/web/downloads/` with the Deploy workflow's SSH secrets (deploys never touch that folder), `latest.json`
+last, then removes older versions. About 15 minutes after a deploy, open apps see it as they start: "A new version of
+Mikazuki is ready", Update now; the front page's buttons point at the new files at once. **Actions → Desktop app → Run
+workflow** builds (and, unless Publish is unticked, publishes) by hand; the repository variable `DESKTOP_PUBLISH=off`
+turns publishing off.
 
-1. Run the Desktop app workflow and download both artifacts (`mikazuki-windows-<v>.zip`, `mikazuki-mac-<v>.zip`) into
-   `~/Downloads`.
-2. `npm run desktop:publish -- <ssh-target>` (`--dry` first to see what it makes; a version as the second argument picks
-   one other than the newest). It packs the Mac update (`Mikazuki_<v>_universal.app.tar.gz`, from the .dmg), signs it
-   and the Windows setup .exe for the updater, writes `latest.json` and uploads everything to
-   `/opt/twigo-bot/web/downloads/` (deploys never touch that folder), `latest.json` last, then removes older versions.
-3. Open apps see it as they start: "A new version of Mikazuki is ready", Update now. The front page's buttons point at
-   the new files at once.
+By hand (the owner's Mac, which has the key): download both artifacts (`mikazuki-windows-<v>.zip`,
+`mikazuki-mac-<v>.zip`) into `~/Downloads` and run `npm run desktop:publish -- <ssh-target>` (`--dry` first to see what
+it makes; a version as the second argument picks one other than the newest; `--from=<dir>` reads the artifacts, zipped
+or unzipped, from another folder, as the workflow does). The same `scripts/publish.mjs`.
 
 `latest.json` is both the front page's ({ version, windows, mac, windowsSize, macSize }; a system left out says "Coming
 soon") and the updater's (`platforms`: windows-x86_64 → the setup .exe, darwin-aarch64 and darwin-x86_64 → the Mac

@@ -1,9 +1,11 @@
-// npm run desktop:publish -- <ssh-target> [version] [--dry]: publishes the desktop app's installers from the Desktop app
-// workflow's artifacts (mikazuki-windows-<v>.zip and mikazuki-mac-<v>.zip in ~/Downloads; the newest version there unless
-// one is given). On a Mac (it opens the .dmg): packs Mikazuki.app as the Mac update (Mikazuki.app.tar.gz), signs it and
-// the Windows setup .exe with the updater's key (~/.tauri/mikazuki-updater.key, bound to the version: the app's updater
-// requires it), writes latest.json (the front page's buttons, and `platforms` for the updater) and uploads them to
-// /opt/twigo-bot/web/downloads, latest.json last, then removes older versions there. --dry stops before uploading.
+// npm run desktop:publish -- <ssh-target> [version] [--dry] [--from=<dir>]: publishes the desktop app's installers from the
+// Desktop app workflow's artifacts (mikazuki-windows-<v>.zip and mikazuki-mac-<v>.zip in ~/Downloads, or the unzipped
+// folders of the same names in --from's directory, as the workflow's own publish job has them; the newest version there
+// unless one is given). On a Mac (it opens the .dmg): packs Mikazuki.app as the Mac update (Mikazuki.app.tar.gz), signs it
+// and the Windows setup .exe with the updater's key (~/.tauri/mikazuki-updater.key, or the file MIKAZUKI_UPDATER_KEY names;
+// bound to the version: the app's updater requires it), writes latest.json (the front page's buttons, and `platforms` for
+// the updater) and uploads them to /opt/twigo-bot/web/downloads, latest.json last, then removes older versions there.
+// --dry stops before uploading.
 import { execFileSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
@@ -11,17 +13,18 @@ import { join } from 'node:path';
 
 const args = process.argv.slice(2);
 const dry = args.includes('--dry');
+const from = args.find((a) => a.startsWith('--from='))?.slice('--from='.length);
 const [target, wanted] = args.filter((a) => !a.startsWith('--'));
-if (!target && !dry) throw new Error('Usage: npm run desktop:publish -- <ssh-target> [version] [--dry]');
-const KEY = join(homedir(), '.tauri', 'mikazuki-updater.key');
+if (!target && !dry) throw new Error('Usage: npm run desktop:publish -- <ssh-target> [version] [--dry] [--from=<dir>]');
+const KEY = process.env.MIKAZUKI_UPDATER_KEY || join(homedir(), '.tauri', 'mikazuki-updater.key');
 if (!existsSync(KEY)) throw new Error(`No updater key at ${KEY}: updates can't be signed without it.`);
 const SITE = 'https://twigo.dev/downloads';
 const DIR = '/opt/twigo-bot/web/downloads';
 const run = (cmd, a, o = {}) => execFileSync(cmd, a, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'], ...o });
 
-// The artifacts.
-const downloads = join(homedir(), 'Downloads');
-const zipOf = (os) => readdirSync(downloads).map((f) => new RegExp(`^mikazuki-${os}-(\\d+\\.\\d+\\.\\d+)\\.zip$`).exec(f)).filter(Boolean);
+// The artifacts: zips, or folders already unzipped (the workflow's publish job).
+const downloads = from ?? join(homedir(), 'Downloads');
+const zipOf = (os) => readdirSync(downloads).map((f) => new RegExp(`^mikazuki-${os}-(\\d+\\.\\d+\\.\\d+)(\\.zip)?$`).exec(f)).filter(Boolean);
 const versions = [...new Set([...zipOf('windows'), ...zipOf('mac')].map((m) => m[1]))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 const version = wanted?.replace(/^v/, '') ?? versions.at(-1);
 if (!version) throw new Error(`No mikazuki-windows-<v>.zip / mikazuki-mac-<v>.zip in ${downloads}`);
@@ -35,7 +38,9 @@ const find = (dir, re) => {
   return null;
 };
 const unzip = (os) => {
-  const zip = join(downloads, `mikazuki-${os}-${version}.zip`);
+  const folder = join(downloads, `mikazuki-${os}-${version}`);
+  if (existsSync(folder) && statSync(folder).isDirectory()) return folder;
+  const zip = `${folder}.zip`;
   if (!existsSync(zip)) return null;
   const to = join(work, os);
   run('unzip', ['-q', '-o', zip, '-d', to]);
