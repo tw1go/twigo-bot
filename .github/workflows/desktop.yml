@@ -115,7 +115,7 @@ jobs:
         run: |
           test -n "$TAURI_UPDATER_KEY" || { echo "::error::TAURI_UPDATER_KEY secret missing: the update can't be signed"; exit 1; }
           install -m 700 -d ~/.tauri ~/.ssh
-          printf '%s\n' "$TAURI_UPDATER_KEY" > ~/.tauri/mikazuki-updater.key
+          printf '%s' "$TAURI_UPDATER_KEY" > ~/.tauri/mikazuki-updater.key # (no newline: the key is one base64 line, and the signer decodes it whole)
           chmod 600 ~/.tauri/mikazuki-updater.key
           printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
