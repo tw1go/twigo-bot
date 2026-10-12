@@ -11,3 +11,4 @@ export * from './trade.js';
 export * from './leveling.js';
 export * from './dungeons.js';
 export * from './travel.js';
+export * from './loot-roll.js';

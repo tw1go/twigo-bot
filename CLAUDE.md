@@ -118,6 +118,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
 - `classes/stats.json`: `enhancement.cost.repairKits` (Repair Kits by the broken item's +, 11 Oct 2026).
 - `classes/stats.json`: `disassembly.agimat.chance` (blue 0.5, orange 1; brown, white and grey none; 11 Oct 2026: was
   every slotted item, always one) and its `from` text.
+- `classes/stats.json`: `lootRoll` (rare loot a party rolls for: which items, 10 s, 1..1000; 12 Oct 2026) and
+  `agimats.perItem` "any stats, the same one in both slots too" (was "different stats"; 12 Oct 2026).
 - `classes/stats.json`: `derived.critRate.perDEX` 0.003 (was 0.001, 11 Oct 2026: DEX worth a point like STR and INT).
 - `classes/stats.json` enhancement (11 Oct 2026, `buffNote`): `perLevel` 3% / 8% / 15% at +16 / 20% from +17 (was 2/3/5%),
   `armorMinDEF`, `accessories.perLevel` as tiers (2% to +16, 5% from +17; was 1%), the `totalAt20`s.
@@ -787,12 +789,29 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   Dev: the dev town keeps each player's items (`/__items`, the page's copy wins only after a restart), `?give=<defId>:
   <rarity>:<plus>`, `?kusing=`, `?whetstones=` (`/__give`), `/__shop`, `/__loot?rich=1` (nearly every kill drops gear
   and a potion; the plus at its real odds: `TownOptions.lootPlusRandom`); `__town.items()`, `__town.loot()`.
+- Loot rolls (stats.json `lootRoll`, a repo addition; shared `loot-roll.ts` `rollWorthy` / `lootRollRules`; bot
+  `web/town-roll.ts` `LootRolls`, pure, tested in `town-roll.test.ts` with a socket test): an orange item whose third line
+  is critRate / critDmg / amp ("of Calamity", "of Flamboyance") with 2+ agimat slots, or an orange accessory named by
+  critRate / critDmg / lifesteal ("of Calamity", "of Bloodlust"), dropping for two or more (a kill's owners in the room:
+  the killer's party, a mini boss's credited; a Warrens run: everyone inside) is taken off the ground and rolled for
+  (town.ts `startRolls` in dropFor / runDrop; never golem loot, which is personal, nor dropped items): `loot-roll` {id,
+  item, ms, players} to each, `loot-roll` {id, roll} back (once each), `loot-rolled` {name, roll | null, you} to all,
+  then (all answered, or `seconds` 10 up on a 250 ms clock: the silent passed) `loot-roll-end`: the highest roll 1..`max`
+  1000 (a tie: the earlier) gets it in their bag (`items.take`; full: `L.place` personal to them + `full`), everyone
+  passing → `LootRoom.add` for them all (a kill's head start). `Town.rollLoot(userId, item)` drops an item at a member's
+  feet through the same path (dev `/__roll?as=Alice`, tests). Game `ui/loot-roll.ts` (`lootRolls`): the party invite's
+  box in gold in `#party-invites`: icon + name, "Dropped for N of you", Roll / Pass, the bar, everyone's answers as they
+  come, the winner line, closed 3.5 s later; `rollEndLine` for the losers' feed. `TownOptions.rollRandom` (tests).
+- Agimats in slots: both slots may hold the same stat (they add up; stats.json agimats.perItem, a repo change 12 Oct
+  2026: was "different stats"); the rare cap (`rarePerItem` 2) still applies.
+- Settings → Game → Exit game (`ui/settings.ts` `leave`): the desktop app quits (`net/desktop.ts` `exitApp`, the
+  process plugin's exit, `process:allow-exit`); the website and the home screen app go to the front page.
 - Forge (combat-guide.md How to enhance, Enhancement cost and odds, Agimats, Disassembly; stats.json enhancement.cost,
   agimats, disassembly, gearTiers): rules and refusals in `packages/shared/src/forge.ts` (pure, both sides: `gearTier`,
   `toolFor` (items.json `forge`: whetstone / fragment / repairKit by `tier`), `enhanceRefusal` ("Needs a Rough Whetstone",
   training gear, broken, +20), `enhanceView` (stones `whetstonesPerTry[target]`, odds `successPct + luck`, `nextStats`:
   ATK/DEF, accessories' lines), `luckPerFail`, `breaksFrom` (+16), `repairRefusal`, `embedRefusal` (gear Lv ≥ agimat, stats.json agimats.onlyIn (repo addition: crit rate / crit damage head and hands only, damage amp feet and body only; disassembly rolls only fitting stats, `rollAgimatStat`'s slot; the agimat tooltip says it),
-  slot lock, two different stats, rare ones up to stats.json agimats.rarePerItem (repo addition: 2, both slots; was one)), `fragmentsFor` (2 + 3 × the stones to its +), `disassemblyYield`, `auraFor` /
+  slot lock, any stats (the same one twice too), rare ones up to stats.json agimats.rarePerItem (repo addition: 2, both slots; was one)), `fragmentsFor` (2 + 3 × the stones to its +), `disassemblyYield`, `auraFor` /
   `itemAura`); rolls in bot `web/forge.ts` (pure, tested `forge.test.ts`): `enhance` (success +1, luck 0; fail: stones
   used, luck += its bracket's; from +16 broken, keeps its +, `unequipBroken`), `repair` (kits of its tier, as many as the + it kept takes: stats.json enhancement.cost.repairKits, a repo addition, +15 1, +16/+17 2, +18 3, +19 4; shared `repairKitsFor` / `repairKitsText`; the Repair window shows "Repair Kits n / N"), `embed` (a full
   slot answers `confirm` until `replace`; the old agimat breaks), `disassemble` (bag only; fragments + from slotted affix gear (blue, orange) maybe an

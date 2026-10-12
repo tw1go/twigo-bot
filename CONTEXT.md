@@ -245,6 +245,11 @@ An item's grade, from brown to dark orange; it sets the name colour and how many
 **Affix line**:
 One of the three extra stats a blue or orange item rolls; the third names it ("of Calamity").
 
+**Loot roll**:
+The Roll / Pass pop-up when a rare drop (an orange item of Calamity, Flamboyance or Bloodlust) lands for a party or a
+Scrap Warrens run: everyone it dropped for rolls 1 to 1,000 or passes, and the highest roll takes it.
+_Avoid_: need/greed, dice roll
+
 **Plus**:
 How many times an item has been enhanced, 0 to 20, written after its name ("Sturdy Slingshot of Calamity +7"); dropped
 gear may already have +1 to +3.

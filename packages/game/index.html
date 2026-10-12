@@ -2003,6 +2003,17 @@
       #trade .tr-go:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 #0B0A1A; }
       #trade .tr-hint { text-align: center; font-size: calc(12px * var(--text)); color: #7A8099; }
       /* A trade request: the party invite's box in the trade's lime. */
+      /* A roll for rare loot (ui/loot-roll.ts): the invite's box in gold. */
+      .pt-invite.lr-roll { border-color: #FCDA4A; box-shadow: 0 4px 0 #1E1B3A, 0 0 18px rgba(252, 218, 74, 0.22); }
+      .lr-roll .pt-yes { background: #FCDA4A; box-shadow: inset 0 -2px 0 #C9A227; }
+      .lr-roll .pt-yes:hover { background: #FDE68A; }
+      .lr-roll .pt-invite-bar { background: #FCDA4A; }
+      .lr-item { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; }
+      .lr-item .lr-name { font-size: calc(14px * var(--text)); }
+      .lr-list { margin: 6px 0 0; padding: 0; list-style: none; font-size: calc(13px * var(--text)); color: #A9B1D6; }
+      .lr-list b { color: #E6E9F2; }
+      .lr-you { color: #A9B1D6; font-size: calc(13px * var(--text)); }
+      .lr-list .lr-win { margin-top: 4px; color: #FCDA4A; font-weight: 700; }
       .pt-invite.tr-ask { border-color: #A3E635; box-shadow: 0 4px 0 #1E1B3A, 0 0 18px rgba(163, 230, 53, 0.22); }
       .pt-invite.tr-ask .pt-invite-text b { color: #A3E635; }
       .pt-invite.tr-ask .pt-yes { background: #A3E635; box-shadow: inset 0 -2px 0 #65A30D; }

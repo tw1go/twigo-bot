@@ -1069,7 +1069,8 @@
       "amp": 0.01
     },
     "fitsGearLevel": ">= A",
-    "perItem": "different stats (rare ones: up to rarePerItem)",
+    "perItem": "any stats, the same one in both slots too (rare ones: up to rarePerItem)",
+    "perItemNote": "Repo addition (12 Oct 2026): was 'different stats'; two of the same stat add up",
     "rarePerItem": 2,
     "rarePerItemNote": "Repo addition (Mac, 9 Oct 2026): how many rare agimats (crit rate, crit damage, damage amp) one item may hold; was 1 (the guide's 'at most one rare')",
     "rare": [
@@ -1386,6 +1387,14 @@
       "slingshot": 1,
       "broom": 1
     }
+  },
+  "lootRoll": {
+    "note": "Repo addition (12 Oct 2026): rare loot dropped for several players (a party's kill, a Scrap Warrens run) is rolled for instead of lying there: a pop-up each, Roll or Pass, `seconds` to decide, rolls 1..max, the highest wins it (in their bag); everyone passing leaves it on the ground for them. Which items: `tier` affix items named by one of these stats (the third line names an item: of Calamity = critRate/critDmg, of Flamboyance = amp, of Bloodlust = lifesteal) with `gear.minSlots` agimat slots, or accessories named by `accessories.stats`.",
+    "tier": "orange",
+    "gear": { "minSlots": 2, "stats": ["critRate", "critDmg", "amp"] },
+    "accessories": { "stats": ["critRate", "critDmg", "lifesteal"] },
+    "seconds": 10,
+    "max": 1000
   },
   "bossLoot": {
     "placeholder": true,

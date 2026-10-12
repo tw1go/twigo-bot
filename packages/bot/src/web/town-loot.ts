@@ -120,6 +120,14 @@ export class LootRoom {
     return out;
   }
 
+  /** Loot laid at `at` for `owners` (a roll everyone passed on; dev's rolls): theirs for the head start, then anyone's,
+   *  like a kill's. */
+  add(content: LootContent, at: [number, number], owners: string[], now: number): Loot {
+    const loot: Loot = { id: `l${++this.n}`, col: at[0], row: at[1], content, owners, personal: false, opensAt: now + this.reserveMs, goneAt: now + LOOT_MS };
+    this.all.set(loot.id, loot);
+    return loot;
+  }
+
   /** Personal loot for one member (theirs alone, never opening to anyone: a mini boss's quest piece), laid round `at`. */
   give(owner: string, contents: LootContent[], at: [number, number], spots: (at: [number, number], n: number) => [number, number][], now: number): Loot[] {
     const tiles = spots(at, contents.length);

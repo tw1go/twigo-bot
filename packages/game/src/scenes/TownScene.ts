@@ -71,6 +71,7 @@ import { OtherPlayers } from '../world/others';
 import { fakeLogin, fakeName, loadMe } from '../session';
 import { screenToTile, tileToScreen } from '../iso';
 import { toast } from '../ui/toast';
+import { lootRolls, rollEndLine } from '../ui/loot-roll';
 import { MapMenu } from '../ui/map-menu';
 import { firstOpen } from '../net/pwa';
 import { confirmDrop } from '../ui/drop';
@@ -2031,6 +2032,17 @@ export class TownScene extends Phaser.Scene {
         return;
       }
       if (m.t === 'loot-gone') return this.loot?.remove(m.ids);
+      // Rare loot rolled for (ui/loot-roll.ts): the box, everyone's answers, and the end (the winner's bag gets it: the
+      // items line; the rest see who won it in their feed).
+      if (m.t === 'loot-roll') return lootRolls.show({ id: m.id, item: m.item, ms: m.ms, players: m.players, answer: (roll) => link.send({ t: 'loot-roll', id: m.id, roll }) });
+      if (m.t === 'loot-rolled') return lootRolls.rolled(m);
+      if (m.t === 'loot-roll-end') {
+        lootRolls.end(m);
+        const line = rollEndLine(m);
+        if (line) feed.mine(line);
+        if (m.full) toast("Inventory full: it's on the ground for you", 2600, 'bad');
+        return;
+      }
       if (m.t === 'drop-refused') {
         playSound('error');
         return toast(m.message, 2400, 'bad');

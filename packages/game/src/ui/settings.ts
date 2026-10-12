@@ -31,6 +31,7 @@ export function showSettings(o: { loggedIn: boolean; onClose?: () => void }): vo
   const main = el('div');
   main.append(audio(), display());
   if (o.loggedIn) main.append(account());
+  main.append(leave());
   // Pages: Settings, and from its buttons Keybinds and Credits (each with Back).
   const pageOf = (body: HTMLElement, ...extra: HTMLElement[]) => {
     const page = el('div');
@@ -152,6 +153,20 @@ function display(): HTMLElement {
   label.append(el('span', 'st-label', 'Text size'));
   section.append(el('h3', 'st-heading', 'Display'), label, row);
   if (isDesktopApp()) void import('./window-settings').then((w) => section.append(w.windowRows()));
+  return section;
+}
+
+/** Exit game: the desktop app quits (net/desktop.ts); the website (and the home screen app) goes back to the front page. */
+function leave(): HTMLElement {
+  const section = el('section', 'st-section');
+  const out = el('button', 'st-logout st-exit', 'Exit game');
+  out.addEventListener('click', () => {
+    out.disabled = true;
+    playSound('click');
+    if (isDesktopApp()) void import('../net/desktop').then((d) => d.exitApp());
+    else location.href = '/';
+  });
+  section.append(el('h3', 'st-heading', 'Game'), out);
   return section;
 }
 

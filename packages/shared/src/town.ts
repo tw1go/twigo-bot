@@ -191,6 +191,8 @@ export type TownClientMessage =
   /** Pick up loot within LOOT_REACH of you (a click on it, or F / Space): that one, or (no `id`) the nearest you may
    *  take. Nothing is ever picked up on its own (not by walking over it, Kusing neither). */
   | { t: 'pick'; id?: string }
+  /** Your answer to a `loot-roll`: roll for it, or pass. */
+  | { t: 'loot-roll'; id: string; roll: boolean }
   /** Drops an item from your combat bag on the ground at your feet (dragged onto the map): `count` of a stack. Never
    *  training gear or bound items; in a party only the party may pick it up, else anyone. */
   | { t: 'drop'; item: string; count: number }
@@ -569,6 +571,14 @@ export type TownServerMessage =
   | { t: 'loot-gone'; ids: string[] }
   /** You tried to pick up loot your combat bag has no room for: it stays there. */
   | { t: 'loot-full' }
+  /** Rare loot several of you may take (shared loot-roll.ts): rolled for. The item, `ms` to decide, who's asked (names).
+   *  Answer with `loot-roll`. */
+  | { t: 'loot-roll'; id: string; item: Item; ms: number; players: string[] }
+  /** Someone asked decided: their roll, or null (passed); `you` when it's your own. */
+  | { t: 'loot-rolled'; id: string; name: string; roll: number | null; you?: boolean }
+  /** The roll is over: the winner (name and roll) and the item; `yours` for the winner (`full`: no room in their bag, so
+   *  it's on the ground for them alone); no winner: everyone passed, it's on the ground for them all. */
+  | { t: 'loot-roll-end'; id: string; item: Item; winner?: string; roll?: number; yours?: boolean; full?: boolean }
   /** An item you tried to drop stayed in your bag: why. */
   | { t: 'drop-refused'; message: string }
   /** Your worn items, combat bag and Kusing changed on the server (loot picked up, a potion used, dev's ?give=);

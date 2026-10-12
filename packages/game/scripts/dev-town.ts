@@ -1,7 +1,7 @@
 import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ClassesFile, GearRarity, HoodHouse, HouseLook, OutfitData, TownHoodActionResponse, TownHoodResponse, TownItems, TownRace, TownRaceResponse } from '@mikazuki/shared';
-import { type LanternPost, RETURN_LANTERN, addToBag, lanternPostOf, takeKind, buffSkillLevels, classBuffs, classSkills, damageSkillLevels, moveUnlock } from '@mikazuki/shared';
+import { type LanternPost, RETURN_LANTERN, addToBag, isGearDef, lanternPostOf, rollGear, rollWorthy, takeKind, buffSkillLevels, classBuffs, classSkills, damageSkillLevels, moveUnlock } from '@mikazuki/shared';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { doorSpot, hoodMap, lotTile } from '../../bot/src/web/hood-map.ts';
 import type { Plugin } from 'vite';
@@ -50,6 +50,7 @@ import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
 //   (the page's ?give=<defId>:<rarity>:<plus>, ?kusing=, ?whetstones= call it on arrival)
 //   POST /__forge?as=Alice {action, item, …}   the forge popup (enhance, repair, embed, disassemble, combine) on her
 //   items here, rolled by the bot's web/forge.ts (the page's pretend /town/forge); sends her `items` (and `kit` for her aura)
+//   GET /__roll?as=Alice   a rare orange item drops for Alice's party: the loot roll pop-up (alone: it just lies there)
 //   GET /__loot?rich=1   nearly every kill drops gear (the first kind, brown, +0 to +3) and a potion, to try loot (rich=0: as ever)
 //   POST /__shop?as=Alice {id, quantity, kowens}   buys a combat item (the sari-sari store's Healing and Smithing tabs)
 //   with her Kusing here, or the pretend shop's Kowens (sent along; what's left comes back)
@@ -453,6 +454,19 @@ export function devTown(): Plugin {
         town.items(name);
         server.config.logger.info(`[items] ${name}: ${said.join(', ')}`, { timestamp: true });
         reply(res, { said, items: g }); // (the page takes them from here too, in case its socket isn't up yet)
+      });
+      // GET /__roll?as=Alice   a rare item (orange, two slots, of Calamity or Flamboyance) drops for Alice and her party in
+      // the room: the roll pop-up for them all (alone: it just lies there for her).
+      server.middlewares.use('/__roll', (req, res) => {
+        const q = new URL(req.url ?? '/', 'http://x').searchParams;
+        const name = q.get('as') ?? 'Dev tester';
+        const def = [...items.defs.values()].find((d) => isGearDef(d) && d.slot === 'weapon' && !d.training);
+        let item = null;
+        for (let i = 0; i < 400 && def && isGearDef(def) && !item; i++) {
+          const it = rollGear(items.stats, def, 'darkOrange', devUid());
+          if (rollWorthy(items, it)) item = it;
+        }
+        res.end(item && town.rollLoot(name, item) ? `rolling ${item.defId} for ${name}` : 'no roll (no such player in town?)');
       });
       server.middlewares.use('/__loot', (req, res) => {
         richLoot = new URL(req.url ?? '/', 'http://localhost').searchParams.get('rich') === '1';

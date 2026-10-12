@@ -1,6 +1,6 @@
 import { onOpenUrl, getCurrent } from '@tauri-apps/plugin-deep-link';
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { relaunch } from '@tauri-apps/plugin-process';
+import { exit, relaunch } from '@tauri-apps/plugin-process';
 import { type Update, check } from '@tauri-apps/plugin-updater';
 import { api, setAppToken } from './endpoints';
 import { notifyDownload, notifyUpdate } from '../ui/version';
@@ -118,6 +118,9 @@ async function checkForNewVersion(): Promise<void> {
   if (update === null || !latest?.version || !newer(latest.version, __BUILD__.version)) return;
   if (isMac() ? latest.mac : latest.windows) notifyDownload(latest.version, downloadFrom(latest));
 }
+
+/** Settings → Exit game: the app quits. */
+export const exitApp = (): Promise<void> => exit(0);
 
 /** The server no longer takes this version (/me answered 426): Update now if the updater has one, else Download. */
 export async function tooOld(): Promise<void> {

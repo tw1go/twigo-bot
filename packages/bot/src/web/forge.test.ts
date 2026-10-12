@@ -212,7 +212,7 @@ test('accessories: each line +2% of itself a plus to +16, +5% from +17 (weapons 
   assert.equal(view.next[0].to, 55); // +11: +8% more
 });
 
-test('agimats: gear level, slot lock, two different stats, rare ones up to rarePerItem; a full slot asks, then breaks the old one', () => {
+test('agimats: gear level, slot lock, the same stat twice is fine, rare ones up to rarePerItem; a full slot asks, then breaks the old one', () => {
   const item = rollGear(D.stats, gear('armor-copper-head'), 'darkBlue', uid(), lcg(5)); // Lv 20, 2 slots (crit agimats fit heads)
   assert.equal(item.agimats.length, 2);
   const ag = (id: string, level = 20, count = 1, lock?: Item['lock']) => ({ ...newAgimat(D.stats, thing(id), level, uid(), lock), count });
@@ -240,8 +240,8 @@ test('agimats: gear level, slot lock, two different stats, rare ones up to rareP
   // …and with rarePerItem 1, the second is refused.
   const one = { ...D, stats: { ...D.stats, agimats: { ...(D.stats as never as { agimats: object }).agimats, rarePerItem: 1 } } } as typeof D;
   assert.match(embed(one, s, item.uid, critRate.uid, 1, false).message, /Only one rare agimat/);
-  // The same stat twice: refused.
-  assert.match(embed(D, s, item.uid, critDmg.uid, 1, false).message, /differ/);
+  // The same stat twice: fine (both count), as long as the rare cap allows it.
+  assert.equal(embedRefusal(D, item, critDmg, 1), null, 'crit damage beside crit damage');
   assert.equal(embed(D, s, item.uid, hp.uid, 1, false).outcome, 'embedded');
   assert.ok(!s.bag.includes(hp), 'the last of a stack goes');
   // Full slot: asks first, then breaks the old one.

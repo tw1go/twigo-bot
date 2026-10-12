@@ -12,10 +12,11 @@ import { Buffs, type Nearby } from './town-buffs.js';
 import { loadItemData, loadStats } from './stats-data.js';
 import { type CombatItems, type LootContent, potionOf } from './combat-bag.js';
 import { type Loot, LootRoom, splitKusing } from './town-loot.js';
+import { type LootRoll, LootRolls } from './town-roll.js';
 import { type HeldOffer, type Trade, Trades, checkOffer } from './trade.js';
 import { type Inside, type Run, type RunDeps, type RunNews, Warrens, type WarrensMap } from './town-warrens.js';
 import type { WarrensData, ChatItemLink, CharacterProgress, QuestProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item, TradeEnd, TradeView } from '@mikazuki/shared';
-import { type LanternPost, isLanternMap, itemName, itemStats, lanternPostOf, lanternRefusal, partyXpMult, partyXpRange, potionCooldownGroup, skillMpCost, targetPriority, tradeRules } from '@mikazuki/shared';
+import { type LanternPost, isLanternMap, itemName, itemStats, lanternPostOf, lanternRefusal, lootRollRules, rollWorthy, partyXpMult, partyXpRange, potionCooldownGroup, skillMpCost, targetPriority, tradeRules } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
 // messages). The server keeps everyone's tile and checks each step — on the map, not blocked, next to the last
@@ -159,6 +160,8 @@ export interface TownOptions {
   lootRandom?: () => number;
   /** Rolls dropped gear's plus (lootRandom if left out). */
   lootPlusRandom?: () => number;
+  /** Rolls loot rolls (Math.random if left out: never the dev server's rich loot random). */
+  rollRandom?: () => number;
   /** The level a class's movement skill unlocks at (classes.json `mobility`), or null: not one of its moves. A move
    *  before its level, or not theirs, isn't passed on; without it every move goes. */
   moveLevel?: (cls: string | null | undefined, move: TownMove) => number | null;
@@ -244,6 +247,9 @@ export interface Town {
   kit(userId: string, cls: string | null, weapon: string | null, weaponPlus?: number): void;
   /** A member's worn items, combat bag or Kusing changed outside the town (the shop, dev's ?give=): theirs to them. */
   items(userId: string, got?: { kusing?: number; item?: Item }): void;
+  /** Dev and tests: `item` drops at a member's feet for them and their party in the room, as a kill's would (rolled for
+   *  when it's rare and they're two or more). False: not in town. */
+  rollLoot(userId: string, item: Item): boolean;
   /** A member's level, XP or points changed outside a fight (points refunded, dev's ?xp=): theirs to them, and with
    *  `ups` levels gained "Level up!" over them for their room. */
   progress(userId: string, progress: CharacterProgress, ups?: number, gained?: number): void;
@@ -547,6 +553,53 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     const m: TownServerMessage = { t: 'loot-gone', ids };
     for (const o of conns.values()) if (o.room === room) send(o, m);
   };
+  // ── Rolls for rare loot (shared loot-roll.ts says which; web/town-roll.ts) ──
+  const rollRules = lootRollRules(STATS);
+  const rolls = new LootRolls(rollRules.max);
+  /** New loot several may take (a party's kill, a run's) that's worth a roll: taken off the ground and rolled for by
+   *  whoever it dropped for who's in the room (fewer than two: it just lies there). Returns the loot that stays. */
+  const startRolls = (room: string, L: LootRoom, fresh: Loot[], candidatesOf: (l: Loot) => string[]): Loot[] => {
+    const rest: Loot[] = [];
+    for (const l of fresh) {
+      const item = 'item' in l.content ? l.content.item : null;
+      const who = item && !l.personal && rollWorthy(items, item) ? [...new Set(candidatesOf(l))].filter((u) => conns.get(u)?.room === room) : [];
+      if (!item || who.length < 2) {
+        rest.push(l);
+        continue;
+      }
+      L.remove(l.id);
+      const ms = rollRules.seconds * 1000;
+      const r = rolls.start(room, item, [l.col, l.row], who.map((u) => ({ member: u, name: conns.get(u)!.player.nickname })), Date.now(), ms);
+      for (const u of who) send(conns.get(u)!, { t: 'loot-roll', id: r.id, item: r.item, ms, players: r.members.map((m) => m.name) });
+    }
+    return rest;
+  };
+  /** A roll over: the winner gets the item in their bag (on the ground for them alone if it's full); everyone passed: on
+   *  the ground for them all, as a kill's loot. Everyone asked hears how it ended. */
+  const endRoll = (r: LootRoll) => {
+    const L = lootIn(r.room);
+    const now = Date.now();
+    const win = rolls.winner(r);
+    const spot = () => mobsOf(r.room)?.lootSpots(r.at, 1, L.taken())[0] ?? r.at;
+    let full = false;
+    if (win && opts.items) {
+      const o = conns.get(win.member);
+      if (opts.items.take(win.member, { item: r.item })) {
+        if (o) tellItems(o, { item: r.item });
+      } else {
+        full = true;
+        showLoot(r.room, [L.place({ item: r.item }, spot(), [win.member], now)], r.at);
+      }
+      console.log(`[loot] ${win.member} won ${itemName(items, r.item)} with a roll of ${win.value} (${r.members.length} asked)`);
+    } else {
+      showLoot(r.room, [L.add({ item: r.item }, spot(), r.members.map((m) => m.member), now)], r.at);
+    }
+    for (const { member } of r.members) {
+      const o = conns.get(member);
+      if (o) send(o, { t: 'loot-roll-end', id: r.id, item: r.item, ...(win ? { winner: win.name, roll: win.value } : {}), ...(win?.member === member ? { yours: true, ...(full ? { full: true } : {}) } : {}) });
+    }
+  };
+
   /** What a hit (or a burn's tick) killed: its XP for whoever earns it (the killer; the golem's for every member who did
    *  enough, even after a reload mid-fight; a mini boss: everyone who did their share and their party nearby), if still
    *  here, its loot, and quest credit for them and their party nearby. */
@@ -613,7 +666,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     if (!L || !mobs || !kill.to.length) return;
     const party = kill.boss || kill.mini ? [] : (parties.of(kill.to[0])?.members ?? []).filter((m) => conns.get(m)?.room === room);
     const fresh = L.drop(kill, party, (at, n) => mobs.lootSpots(at, n, L.taken()), Date.now()); // (beside loot already there, not on it)
-    showLoot(room, fresh, kill.at);
+    showLoot(room, startRolls(room, L, fresh, (l) => l.owners), kill.at);
   };
   /** A kill's drops in a Warrens run: everything on the floor for anyone in it, first come (a mini boss's pile and a roll
    *  per player inside, Barong-Barong's heap for each, a mob's own). Gear for the classes of those inside. */
@@ -624,7 +677,8 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     const random = opts.lootRandom ?? Math.random;
     const { contents, at } = run.lootFor(kill, classes, () => randomBytes(8).toString('hex'), random, opts.lootPlusRandom ?? random);
     const fresh = L.scatter(contents, at, (a, n) => run.mobs.lootSpots(a, n, L.taken()), Date.now());
-    showLoot(run.room, fresh, kill.at);
+    const inside = [...conns.values()].filter((o) => o.room === run.room).map((o) => o.userId);
+    showLoot(run.room, startRolls(run.room, L, fresh, () => inside), kill.at);
   };
   /** Picks up the loot asked for (`id`) or, without one, the nearest they may take, within LOOT_REACH (a click, F or
    *  Space; nothing is picked up on its own). Full bag: it stays, and they're told. */
@@ -878,6 +932,16 @@ export function attachTown(server: Server, opts: TownOptions): Town {
           send(c, healed);
         } else for (const u of r.to) if (conns.get(u)) buffsChanged(conns.get(u)!);
         return tellVitals(c);
+      }
+      case 'loot-roll': {
+        const r = rolls.answer(String(m.id), c.userId, m.roll === true, opts.rollRandom ?? Math.random);
+        if (!r) return;
+        for (const { member } of r.roll.members) {
+          const o = conns.get(member);
+          if (o) send(o, { t: 'loot-rolled', id: r.roll.id, name: c.player.nickname, roll: r.value, ...(o === c ? { you: true } : {}) });
+        }
+        if (r.done) endRoll(rolls.finish(r.roll.id)!);
+        return;
       }
       case 'pick':
         if (m.id === undefined || typeof m.id === 'string') pickUp(c, m.id);
@@ -1251,6 +1315,15 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   });
 
   const town: Town = {
+    rollLoot(userId, item) {
+      const c = conns.get(userId);
+      if (!c || !opts.items) return false;
+      const L = lootIn(c.room);
+      const at: [number, number] = [c.player.col, c.player.row];
+      const fresh = L.add({ item }, mobsOf(c.room)?.lootSpots(at, 1, L.taken())[0] ?? at, withParty([userId], c.room), Date.now());
+      showLoot(c.room, startRolls(c.room, L, [fresh], (l) => l.owners), at);
+      return true;
+    },
     fromDiscord(name, raw) {
       const tidied = tidy(raw.length > DISCORD_MAX ? `${[...raw].slice(0, DISCORD_MAX - 1).join('')}…` : raw, DISCORD_MAX);
       const text = tidied && opts.moderation ? opts.moderation.filter(tidied) : tidied;
@@ -1601,6 +1674,11 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       for (const o of touched) tellVitals(o);
     }, VITALS_MS).unref?.();
   }
+
+  // Loot rolls whose time is up: decided (the silent passed).
+  setInterval(() => {
+    for (const r of rolls.due(Date.now())) endRoll(r);
+  }, 250).unref();
 
   // Party invites nobody answered in time: the inviter hears no.
   setInterval(() => {
