@@ -2,7 +2,7 @@
 // JSON messages, one per frame. Players are identified by a random id per connection, never their Discord ID.
 // A moderator's kick closes the socket with code 4001 and the time (ms) they may come back as the reason.
 
-import type { AdventureState, CharacterProgress, EquipPlace, QuestProgress } from './adventure.js';
+import type { AdventureState, CharacterProgress, EquipPlace, QuestProgress, CosmeticPlace } from './adventure.js';
 import type { Item } from './items.js';
 import type { TradeEnd, TradeRefusal, TradeView, TradePut } from './trade.js';
 import type { HoodHouse, HoodMap, OutfitData, TitleData } from './room-api.js';
@@ -617,7 +617,7 @@ export type TownServerMessage =
   /** `cp`: their combat rating now (with their buffs; none for someone gone or with no stats here). */
   | { t: 'buffs-of'; id: string; buffs: TownBuff[]; cp?: number }
   /** Another player's worn gear and stats (an answer to `inspect`); `gone`: they left. */
-  | { t: 'inspect'; id: string; gone?: boolean; cls?: string | null; level?: number; equipped?: Partial<Record<EquipPlace, Item>>; stats?: InspectStats | null }
+  | { t: 'inspect'; id: string; gone?: boolean; cls?: string | null; level?: number; equipped?: Partial<Record<EquipPlace, Item>>; cosmetics?: Partial<Record<CosmeticPlace, Item>>; stats?: InspectStats | null }
   /** Someone used a mobility move (their steps follow). */
   | { t: 'move'; id: string; move: TownMove; col: number; row: number }
   /** Someone (`from`, a town id) asks you to trade: answer with trade-answer within `ms`. */
@@ -665,7 +665,7 @@ export interface TownDailyInfo {
 export type TownDailyClaim = { ok: true; amount: number; kowens: number; christmas: boolean } | { ok: false; error: string };
 
 /** A character's worn items, combat bag and Kusing (the server's; the town's `items` message). */
-export type TownItems = Pick<AdventureState, 'equipped' | 'bag' | 'kusing'>;
+export type TownItems = Pick<AdventureState, 'equipped' | 'cosmetics' | 'bag' | 'kusing'>;
 
 /** Loot on the ground as one player sees it: Kusing (its amount) or an item; `mine`: you may pick it up now (else it's
  *  drawn faint: someone's for `opensIn` ms more, or for good: golem loot is only ever shown to its owner). */

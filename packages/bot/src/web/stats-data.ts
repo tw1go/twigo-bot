@@ -15,6 +15,11 @@ let items: ItemData | null = null;
 /** classes/stats.json (read once). */
 export const loadStats = (): StatsData => (stats ??= asset<StatsData>('classes/stats.json'));
 
+let cosmeticHats: Record<string, string> | undefined;
+/** Cosmetic hats (manifest characters.wardrobe.cosmeticHats: item id → hat key; the Lamp-head Hat's lamp): what a worn
+ *  head cosmetic puts on a look, and what a saved look may never hold. */
+export const loadCosmeticHats = (): Record<string, string> => (cosmeticHats ??= asset<{ characters?: { wardrobe?: { cosmeticHats?: Record<string, string> } } }>('manifest.json').characters?.wardrobe?.cosmeticHats ?? {});
+
 let leveling: LevelingData | null = null;
 /** classes/leveling.json: the mini bosses and the Tanod's leveling quests (read once). */
 export const loadLeveling = (): LevelingData => (leveling ??= asset<LevelingData>('classes/leveling.json'));

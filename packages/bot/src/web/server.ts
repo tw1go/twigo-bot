@@ -41,9 +41,17 @@ import { arenaBets, refundHeldBets } from './town-arena-bets.js';
 import { kowen } from '../kowens.js';
 import { filterText, kickedUntil, mutedUntil } from './town-mod.js';
 import { getOutfit, parseOutfit, saveOutfit } from './outfit.js';
+import { type OutfitData, cosmeticHatOf, withCosmetics } from '@mikazuki/shared';
+import { loadCosmeticHats } from './stats-data.js';
+
+/** The look a member shows everyone: their saved look with a worn head cosmetic's hat on it (shared cosmetics.ts). */
+const lookOf = (userId: string): OutfitData | null => {
+  const o = getOutfit(userId);
+  return o && withCosmetics(o, cosmeticHatOf(loadCosmeticHats(), cosmeticsOf(userId)));
+};
 import { enhanceFeedLine, parseForgeAction } from './forge.js';
 import { loadItemData } from './stats-data.js';
-import { refundTicketFor, warrenTicketsOf, useTicketFor, kindCountOf, useKindFor, adventureOf, combatOf, fighterOf, forgeFor, dropItemFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townEquip, townPoints, townQuest, townSkills, trainingArmorFor, questRewardsFor, questPiecesFor, questKillFor } from './adventure.js';
+import { refundTicketFor, warrenTicketsOf, useTicketFor, kindCountOf, useKindFor, adventureOf, cosmeticsOf, combatOf, fighterOf, forgeFor, dropItemFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townEquip, townPoints, townQuest, townSkills, trainingArmorFor, questRewardsFor, questPiecesFor, questKillFor } from './adventure.js';
 import { renameWithCard } from '../items/rename-card.js';
 import { changeClassWithTicket } from '../items/class-ticket.js';
 import { LAUNCH_REWARD, isPreregistered, launched, preregCount, preregister } from '../prereg/prereg.js';
@@ -305,7 +313,7 @@ async function townLeaderboard(client: Client, userId: string): Promise<TownLead
       title: titleOf(id),
       kowens,
       ...(id === userId ? { me: true } : {}),
-      ...(i < 3 ? { outfit: getOutfit(id) } : {}), // the podium shows the top 3's characters
+      ...(i < 3 ? { outfit: lookOf(id) } : {}), // the podium shows the top 3's characters
     })),
   );
   return { rows, me: { rank: rankOf(userId), kowens: totalKowens(userId) } };
@@ -672,7 +680,12 @@ export function startWebServer(client: Client): void {
           if (!action) return send(res, 400, '{"error":"invalid equip action"}');
           result = townEquip(userId, action);
         }
-        const { changed, ups, ...reply } = result as typeof result & { ups?: number };
+        const { changed, ups, costume, ...reply } = result as typeof result & { ups?: number; costume?: boolean };
+        // A cosmetic worn or taken off: the look everyone sees (their hat) changes at once.
+        if (costume) {
+          const look = lookOf(userId);
+          if (look) town?.restyle(userId, look, titleOf(userId));
+        }
         // A report's XP (and its level-ups: "Level up!" for their room) and Kusing reach the town at once.
         if (reply.xp) town?.progress(userId, reply.adventure.progress, ups ?? 0, reply.xp);
         if (reply.kusing || reply.rewards?.length || reply.pieces?.length) town?.items(userId);
@@ -785,7 +798,7 @@ export function startWebServer(client: Client): void {
         }
         if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
         if (req.method === 'GET') return send(res, 200, JSON.stringify(townParlor(userId)));
-        const result = body && parlorAction(userId, body, (id, outfit) => town?.restyle(id, outfit, titleOf(id)));
+        const result = body && parlorAction(userId, body, (id, outfit) => town?.restyle(id, withCosmetics(outfit, cosmeticHatOf(loadCosmeticHats(), cosmeticsOf(id))), titleOf(id)));
         if (!result) return send(res, 400, '{"error":"invalid change"}');
         return send(res, 200, JSON.stringify(result));
       }
@@ -1007,7 +1020,7 @@ export function startWebServer(client: Client): void {
       },
       profile: (userId) => {
         const nickname = getNickname(userId);
-        const outfit = getOutfit(userId);
+        const outfit = lookOf(userId);
         return nickname && outfit ? { nickname, outfit, title: titleOf(userId), ...kitOf(userId), ...(jailedUntil(userId) ? { jailed: true } : {}) } : null;
       },
     });
@@ -1021,7 +1034,7 @@ export function startWebServer(client: Client): void {
       const change = checkRichest();
       if (!change) return;
       for (const id of [change.won?.userId, change.lost]) {
-        const outfit = id && getOutfit(id);
+        const outfit = id && lookOf(id);
         if (id && outfit) live.restyle(id, outfit, titleOf(id));
       }
       if (change.won?.first) live.newTitle(change.won.userId, RICHEST, { name: TITLES[RICHEST].name, color: TITLES[RICHEST].color });

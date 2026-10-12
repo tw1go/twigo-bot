@@ -83,7 +83,7 @@ export function devTown(): Plugin {
       // Each player's items (the page's copy, sent with /__items): loot, potions, the shop and ?give= change them here.
       const items = loadItemData();
       const gear = new Map<string, TownItems>();
-      const gearOf = (name: string) => gear.get(name) ?? gear.set(name, { equipped: {}, bag: [], kusing: 0 }).get(name)!;
+      const gearOf = (name: string) => gear.get(name) ?? gear.set(name, { equipped: {}, cosmetics: {}, bag: [], kusing: 0 }).get(name)!;
       const devUid = () => `dev-${Math.random().toString(16).slice(2, 14)}`;
       /** Their worn weapon's + as its aura shows it (none when broken). */
       const plusOf = (name: string) => {
@@ -436,7 +436,7 @@ export function devTown(): Plugin {
         const name = new URL(req.url ?? '/', 'http://localhost').searchParams.get('as') ?? '';
         if (req.method !== 'POST') return reply(res, gear.has(name) ? { known: true, ...gearOf(name) } : { known: false });
         const body = (await readJson(req)) as unknown as TownItems;
-        if (body && typeof body === 'object' && Array.isArray(body.bag)) gear.set(name, { equipped: body.equipped ?? {}, bag: body.bag, kusing: Number(body.kusing) || 0 });
+        if (body && typeof body === 'object' && Array.isArray(body.bag)) gear.set(name, { equipped: body.equipped ?? {}, cosmetics: body.cosmetics ?? {}, bag: body.bag, kusing: Number(body.kusing) || 0 });
         town.kit(name, kits.get(name)?.cls ?? null, gearOf(name).equipped.weapon?.defId ?? kits.get(name)?.weapon ?? null, plusOf(name)); // its HP and DEF in fights, its aura
         reply(res, { ok: true });
       });

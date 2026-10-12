@@ -50,6 +50,11 @@ import {
   wearCheck,
   gearMismatch,
   xpToNext,
+  type CosmeticPlace,
+  cosmeticHatOf,
+  withCosmetics,
+  wearCosmetic,
+  unwearCosmetic,
 } from '@mikazuki/shared';
 import { api } from './endpoints';
 import { fakeLogin, fakeName } from '../session';
@@ -161,7 +166,7 @@ export let devItemsReady: Promise<unknown> = Promise.resolve();
 
 /** Dev: the dev town's copy of your items (its loot, potions, shop and fights use it). */
 function pushItems(s: AdventureState): Promise<unknown> {
-  return fetch(`/__items?${new URLSearchParams({ as: fakeName() })}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ equipped: s.equipped, bag: s.bag, kusing: s.kusing }) }).catch(() => null);
+  return fetch(`/__items?${new URLSearchParams({ as: fakeName() })}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ equipped: s.equipped, cosmetics: s.cosmetics, bag: s.bag, kusing: s.kusing }) }).catch(() => null);
 }
 
 /** Loads the data files (once); `stats` is loaded already (the scene's json cache). */
@@ -204,7 +209,7 @@ export function initAdventure(fromMe: AdventureState | undefined, trainingArmor:
       .then((r) => (r.ok ? (r.json() as Promise<{ known: boolean } & Partial<TownItems>>) : null))
       .then((r) => {
         if (!r?.known || !r.bag) return state && pushItems(state);
-        setItems({ equipped: r.equipped ?? {}, bag: r.bag, kusing: r.kusing ?? 0 });
+        setItems({ equipped: r.equipped ?? {}, cosmetics: r.cosmetics ?? {}, bag: r.bag, kusing: r.kusing ?? 0 });
         // Quest rewards (and pieces) just given here go into the dev town's copy too.
         if ((!rewards.length && !pieces.length) || !state || !data) return;
         const s = structuredClone(state);
@@ -309,6 +314,21 @@ export const chooseClass = (quest: string, cls: string) => act('/town/quest', { 
 /** Wear an item from the combat bag (by uid; in `place`, or the first free place for its kind). */
 export const equipItem = (uid: string, place?: EquipPlace) => act('/town/equip', { action: 'equip', item: uid, ...(place ? { place } : {}) });
 export const unequipPlace = (place: EquipPlace) => act('/town/equip', { action: 'unequip', place });
+/** Wear a cosmetic from the Costume tab (by uid; in `place`, or its own), or take one off into the Costume tab. */
+export const wearCosmeticItem = (uid: string, place?: CosmeticPlace) => act('/town/equip', { action: 'wear-cosmetic', item: uid, ...(place ? { place } : {}) });
+export const takeOffCosmetic = (place: CosmeticPlace) => act('/town/equip', { action: 'take-off-cosmetic', place });
+
+/** The look you show, from your saved one: a worn head cosmetic's hat on it (shared cosmetics.ts; the manifest's
+ *  cosmeticHats). */
+export function lookWithCosmetics<O extends { hat?: string; hatColour?: string }>(outfit: O, hats: Record<string, string>): O {
+  return withCosmetics(outfit, cosmeticHatOf(hats, state?.cosmetics));
+}
+
+/** The name of the head cosmetic worn (the Parlor's Hat row says so), or null. */
+export const wornHeadCosmetic = (): string | null => {
+  const it = state?.cosmetics.head;
+  return it ? (anyDef(it.defId)?.name ?? it.defId) : null;
+};
 
 /** One stat point into `stat` (your class's main or second stat), or every stat point back (free). */
 export const spendPoint = (stat: StatName) => act('/town/points', { action: 'spend', stat });
@@ -464,7 +484,7 @@ async function fakePoints(path: Path, body: TownPointsAction | TownSkillsAction)
   return { ok: r.ok, message: r.message, adventure: r.progress ? { ...state, progress: r.progress } : state };
 }
 
-const fresh = (): AdventureState => ({ cls: null, quests: { active: [], done: [] }, equipped: {}, bag: [], kusing: 0, progress: freshProgress(), trainingArmorGiven: false });
+const fresh = (): AdventureState => ({ cls: null, quests: { active: [], done: [] }, equipped: {}, cosmetics: {}, bag: [], kusing: 0, progress: freshProgress(), trainingArmorGiven: false });
 const fakeKey = () => `mk_adventure:${fakeName()}`;
 
 function loadFake(): AdventureState {
@@ -564,8 +584,12 @@ function fakeAct(body: TownQuestAction | TownEquipAction): TownAdventureResponse
     const pieces = completed && data?.leveling ? giveQuestPieces(data, data.leveling, s, devUid) : [];
     return { ok: true, adventure: s, given, ...(gear.length ? { gear } : {}), completed, ...(rewards.length ? { rewards } : {}), ...(pieces.length ? { pieces } : {}), ...(xp ? { xp } : {}), ...(q.rewardKusing && completed ? { kusing: q.rewardKusing } : {}) };
   }
-  // Wearing and taking off: the bot's rules (@mikazuki/shared items.ts), by uid.
+  // Wearing and taking off (gear and cosmetics): the bot's rules (@mikazuki/shared items.ts), by uid.
   if (!data) return no("Couldn't load the items.");
-  const r = body.action === 'equip' ? equipFromBag(data, s, body.item, body.place) : unequipToBag(data, s, body.place);
+  const r =
+    body.action === 'equip' ? equipFromBag(data, s, body.item, body.place)
+    : body.action === 'unequip' ? unequipToBag(data, s, body.place)
+    : body.action === 'wear-cosmetic' ? wearCosmetic(data, s, body.item, body.place)
+    : unwearCosmetic(data, s, body.place);
   return r.ok ? { ok: true, message: r.message, adventure: s } : no(r.message);
 }

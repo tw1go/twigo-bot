@@ -92,7 +92,7 @@ async function town(opts: { rollRandom: () => number; take: (user: string, item:
     items: {
       take: (user, loot) => ('item' in loot ? opts.take(user, loot.item) : true),
       usePotion: () => null,
-      state: () => ({ equipped: {}, bag: [], kusing: 0 }),
+      state: () => ({ equipped: {}, cosmetics: {}, bag: [], kusing: 0 }),
     },
     rollRandom: opts.rollRandom,
   });

@@ -14,7 +14,8 @@ for (const name of ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'ADMIN_ROLE_ID', 'ADMI
   'GAMBLING_CHANNEL_ID', 'GAMES_CHANNEL_ID', 'JAIL_ROLE_ID', 'REWARD_OWNER_ID', 'ROOM_FINDS_CHANNEL_ID']) process.env[name] = 'test';
 process.env.TIMEZONE = 'Asia/Manila';
 
-const { CLASSES, EQUIPMENT, QUESTS, adventureOf, equipStep, fighterOf, freshAdventure, gainXpFor, giveTrainingArmor, killFor, kitOf, levelFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, placesFor, questStep, resetAdventure, startQuests, townEquip, townPoints, townQuest, townSkills, moveLevel, trainingArmorFor, questRewardsFor } =
+const { parseOutfit } = await import('./outfit.js');
+const { CLASSES, EQUIPMENT, QUESTS, adventureOf, cosmeticsOf, withItems, equipStep, fighterOf, freshAdventure, gainXpFor, giveTrainingArmor, killFor, kitOf, levelFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, placesFor, questStep, resetAdventure, startQuests, townEquip, townPoints, townQuest, townSkills, moveLevel, trainingArmorFor, questRewardsFor } =
   await import('./adventure.js');
 const { usedSlots } = await import('../dig/bag.js');
 const { sellInTown, sellManyInTown } = await import('./town-bag.js');
@@ -337,4 +338,37 @@ test('request bodies are checked', () => {
 test.after(() => {
   closeDatabase();
   rmSync(dir, { recursive: true, force: true });
+});
+
+test('cosmetics are saved with the character: worn through /town/equip, kept by place, back to the Costume tab; a saved look never holds a cosmetic hat', () => {
+  const D = loadItemData();
+  const userId = 'cosmetic-tester';
+  adventureOf(userId);
+  const hat = newItem(S, D.defs.get('lamp-hat')! as never, 'lamp-1');
+  assert.equal(townEquip(userId, { action: 'wear-cosmetic', item: hat.uid }).ok, false, 'not theirs yet');
+  withItems(userId, (s) => {
+    s.bag.push(hat);
+    return true;
+  });
+  const r = townEquip(userId, { action: 'wear-cosmetic', item: hat.uid });
+  assert.equal(r.ok, true, r.message ?? '');
+  assert.equal(r.costume, true);
+  assert.equal(r.changed, false, 'no gear changed: no kit message');
+  const again = adventureOf(userId);
+  assert.equal(again.cosmetics.head?.uid, 'lamp-1', 'loaded back by place');
+  assert.equal(again.cosmetics.head?.bound, true);
+  assert.ok(!again.bag.some((i) => i.uid === 'lamp-1'), 'out of the bag');
+  assert.deepEqual(cosmeticsOf(userId).head?.uid, 'lamp-1');
+  assert.deepEqual(parseEquipAction({ action: 'wear-cosmetic', item: 'x', place: 'head' }), { action: 'wear-cosmetic', item: 'x', place: 'head' });
+  assert.equal(parseEquipAction({ action: 'wear-cosmetic', item: 'x', place: 'ring1' }), null);
+  assert.deepEqual(parseEquipAction({ action: 'take-off-cosmetic', place: 'head' }), { action: 'take-off-cosmetic', place: 'head' });
+  const off = townEquip(userId, { action: 'take-off-cosmetic', place: 'head' });
+  assert.equal(off.ok, true, off.message ?? '');
+  const back = adventureOf(userId);
+  assert.equal(back.cosmetics.head, undefined);
+  assert.ok(back.bag.some((i) => i.uid === 'lamp-1'), 'in the Costume tab again');
+  // A saved look may never carry the cosmetic's hat itself.
+  const look = { skin: 'light', hair: 'crop', hairColour: 'black', top: 'tshirt', topColour: 'red', topTrim: 'red', bottom: 'pants', bottomColour: 'navy', bottomTrim: 'navy', shoes: 'sneakers', shoesColour: 'black' };
+  assert.ok(parseOutfit({ ...look, hat: 'beanie', hatColour: 'red' }));
+  assert.equal(parseOutfit({ ...look, hat: 'lamp' }), null);
 });

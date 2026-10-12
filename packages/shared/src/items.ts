@@ -1,4 +1,4 @@
-import type { AdventureState, EquipmentDef, EquipPlace, EquipSlot, GearRarity, QuestDef, QuestReward } from './adventure.js';
+import type { AdventureState, CosmeticPlace, EquipPlace, EquipSlot, EquipmentDef, GearRarity, QuestDef, QuestReward } from './adventure.js';
 import { type GearTotals, type StatName, type StatsData, gearKind, numbersIn, placesFor, needsLine, gearMismatch, wearCheck } from './stats.js';
 
 // 🎒 Items as things a player owns: each one an instance (its own uid, rolls and history) of a kind from the game's data
@@ -65,8 +65,10 @@ export interface CombatItemDef {
   stat?: AgimatStat;
   /** What it's for (the tooltip). */
   about?: string;
-  /** A cosmetic that can't be worn yet. */
+  /** A cosmetic (worn for looks from the Costume tab, never stats). */
   cosmetic?: boolean;
+  /** Where a cosmetic is worn (none yet: it can't be worn). */
+  cosmeticPlace?: CosmeticPlace;
   /** Sold at the sari-sari store: priced as a potion (its tier's Kusing), a whetstone or a Repair Kit (Kowens), a dungeon
    *  ticket (its dungeon's price), a travel item, or a smithing tool with its own price (`price`). */
   shop?: 'potion' | 'whetstone' | 'repairKit' | 'ticket' | 'travel' | 'smithing';
@@ -490,15 +492,23 @@ export const bagSlots = (data: StatsData) => itemStats(data).inventory.slots;
  *  0: agimats share the bag's slots. */
 export const agimatPocket = (data: StatsData): number => (itemStats(data).inventory as { agimatSlots?: number }).agimatSlots ?? 0;
 
-/** The pocket an item takes a slot in: agimats their own (when there is one), everything else the bag's. */
-export type Pocket = 'bag' | 'agimats';
+/** Slots in the cosmetics' own pocket (stats.json inventory.costumeSlots, a repo addition; the inventory's Costume tab),
+ *  or 0: cosmetics share the bag's slots. */
+export const costumePocket = (data: StatsData): number => (itemStats(data).inventory as { costumeSlots?: number }).costumeSlots ?? 0;
+
+/** The pocket an item takes a slot in: agimats their own, cosmetics their own (when there is one), everything else the
+ *  bag's. */
+export type Pocket = 'bag' | 'agimats' | 'costume';
 export function pocketOf(data: ItemData, item: Pick<Item, 'defId'>): Pocket {
   const def = data.defs.get(item.defId);
-  return agimatPocket(data.stats) > 0 && def && !isGearDef(def) && def.kind === 'agimat' ? 'agimats' : 'bag';
+  if (!def || isGearDef(def)) return 'bag';
+  if (def.kind === 'agimat' && agimatPocket(data.stats) > 0) return 'agimats';
+  if (def.kind === 'cosmetic' && costumePocket(data.stats) > 0) return 'costume';
+  return 'bag';
 }
 
 /** A pocket's slots, and how many of them its items take. */
-export const pocketSlots = (data: ItemData, pocket: Pocket) => (pocket === 'agimats' ? agimatPocket(data.stats) : bagSlots(data.stats));
+export const pocketSlots = (data: ItemData, pocket: Pocket) => (pocket === 'agimats' ? agimatPocket(data.stats) : pocket === 'costume' ? costumePocket(data.stats) : bagSlots(data.stats));
 export const pocketUsed = (data: ItemData, bag: Item[], pocket: Pocket) => bag.filter((b) => pocketOf(data, b) === pocket).length;
 
 /** How many of `item` the bag could take: what fits on its stacks plus free slots' worth (in its pocket). */
@@ -578,7 +588,7 @@ export function equipFromBag(data: ItemData, s: Wearer, uid: string, place?: Equ
   const item = s.bag[at];
   const def = item && data.defs.get(item.defId);
   if (!item || !def) return { ok: false, message: "You don't have that item." };
-  if (!isGearDef(def)) return { ok: false, message: def.kind === 'cosmetic' ? "Can't be worn yet." : "That can't be worn." };
+  if (!isGearDef(def)) return { ok: false, message: def.kind === 'cosmetic' ? (def.cosmeticPlace ? OTHER_TAB : "Can't be worn yet.") : "That can't be worn." };
   if (item.broken) return { ok: false, message: 'It\'s broken: repair it first.' };
   const places = placesFor(def.slot);
   if (place && !places.includes(place)) return { ok: false, message: 'Wrong slot.' };
@@ -600,6 +610,44 @@ export function unequipToBag(data: ItemData, s: Wearer, place: EquipPlace): { ok
   if (!item) return { ok: false, message: 'Nothing to take off there.' };
   if (pocketUsed(data, s.bag, 'bag') >= bagSlots(data.stats)) return { ok: false, message: 'Your bag is full.' };
   delete s.equipped[place];
+  s.bag.push(item);
+  return { ok: true, message: `Took off ${itemName(data, item)}.` };
+}
+
+/** The Costume tab's places, in the panel's order (shared adventure.ts CosmeticPlace). */
+export const COSMETIC_PLACES: CosmeticPlace[] = ['weapon', 'head', 'body'];
+/** Gear dragged onto a Costume place, or a cosmetic onto a gear place. */
+export const OTHER_TAB = 'That goes in the other tab.';
+
+/** The parts of a character wearing a cosmetic needs. */
+export type CostumeWearer = Pick<AdventureState, 'cosmetics' | 'bag'>;
+
+/** Wears a cosmetic from the Costume tab (by uid) in `place` (its own when none is given); what was there goes back to
+ *  the Costume tab. It binds as it's worn (never traded, dropped or sold again). Refused: not a cosmetic (gear: "That
+ *  goes in the other tab."), one that can't be worn yet, the wrong place. */
+export function wearCosmetic(data: ItemData, s: CostumeWearer, uid: string, place?: CosmeticPlace): { ok: boolean; message: string } {
+  const at = s.bag.findIndex((b) => b.uid === uid);
+  const item = s.bag[at];
+  const def = item && data.defs.get(item.defId);
+  if (!item || !def) return { ok: false, message: "You don't have that item." };
+  if (isGearDef(def) || def.kind !== 'cosmetic') return { ok: false, message: isGearDef(def) ? OTHER_TAB : "That can't be worn." };
+  if (!def.cosmeticPlace) return { ok: false, message: "Can't be worn yet." };
+  if (place && place !== def.cosmeticPlace) return { ok: false, message: 'Wrong slot.' };
+  const to = def.cosmeticPlace;
+  const old = s.cosmetics[to];
+  s.bag.splice(at, 1, ...(old ? [old] : []));
+  item.bound = true;
+  s.cosmetics[to] = item;
+  return { ok: true, message: `Wearing ${itemName(data, item)}.` };
+}
+
+/** Takes a cosmetic off, into the Costume tab: refused when that's full. */
+export function unwearCosmetic(data: ItemData, s: CostumeWearer, place: CosmeticPlace): { ok: boolean; message: string } {
+  if (!COSMETIC_PLACES.includes(place)) return { ok: false, message: 'No such slot.' };
+  const item = s.cosmetics[place];
+  if (!item) return { ok: false, message: 'Nothing to take off there.' };
+  if (pocketUsed(data, s.bag, 'costume') >= pocketSlots(data, 'costume')) return { ok: false, message: 'Make room in your Costume tab first.' };
+  delete s.cosmetics[place];
   s.bag.push(item);
   return { ok: true, message: `Took off ${itemName(data, item)}.` };
 }

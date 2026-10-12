@@ -218,6 +218,13 @@ export class OtherPlayers {
     return [...this.all.values()].flatMap((o) => o.char?.tintables ?? []);
   }
 
+  /** The lamps are on (dusk to dawn, the Warrens): lit hats show their light. */
+  setNight(on: boolean): void {
+    this.night = on;
+    for (const o of this.all.values()) o.char?.setNight(on);
+  }
+  private night = false;
+
   get count(): number {
     return this.all.size;
   }
@@ -258,6 +265,7 @@ export class OtherPlayers {
       char.setZoom(this.zoom);
       for (const t of char.tintables) this.onSpawn(t);
       char.setAura(this.auraFor(s.weaponPlus));
+      char.setNight(this.night);
       o.char = char;
       return this.dressRest(o);
     }), `player ${p.nickname}`);

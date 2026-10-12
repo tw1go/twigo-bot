@@ -3,9 +3,9 @@ import type { CharacterDefs, ClassArt, ClassLayer, Dir, Manifest } from '../asse
 import { slice } from '../assets/packs';
 import { restLayers } from './kit-art';
 import type { BattleSheets } from './battle-art';
-import { CHARACTER_BIAS, HEIGHT_DEPTH, LABEL_DEPTH } from '../world/depth';
+import { CHARACTER_BIAS, GLOW_DEPTH, HEIGHT_DEPTH, LABEL_DEPTH } from '../world/depth';
 import type { Tile } from '../world/grid';
-import { type Outfit, headTop, sheetKey } from './doll';
+import { type Outfit, headTop, litHat, sheetKey } from './doll';
 import type { AuraTier, TitleData } from '@mikazuki/shared';
 import { type AuraTrace, WeaponAura, traceAura } from '../fx/weaponAura';
 import { type BubbleArt, EmotePop, LevelUpPop, NameTag, QuestMarker, SpeechBubble } from '../ui/labels';
@@ -79,6 +79,13 @@ export class Character {
   private aura: WeaponAura | null = null;
   private zoom = 1;
   private head = 0; // rows of empty cell above the head (headTop)
+  /** A lit hat (the Lamp-head Hat): its night overlay (the glass and bulb, untinted, on the doll's frame) and glow (ADD,
+   *  over the world, a slow flicker), shown while the lamps are on (`setNight`); neither is tinted with the world. */
+  private lit: ReturnType<typeof litHat> = null;
+  private litSprite: Phaser.GameObjects.Sprite | null = null;
+  private glow: Phaser.GameObjects.Image | null = null;
+  private night = false;
+  private readonly flickerPhase = Math.random() * Math.PI * 2;
   private col: number; // tile-space position of the feet (tile centre = integer + 0.5)
   private row: number;
   private path: Tile[] = [];
@@ -419,6 +426,7 @@ export class Character {
 
   update(deltaMs: number): void {
     if (this.busy) return;
+    if (this.lit && this.night && !this.path.length) this.sync(); // (the overlay follows the idle frames; the glow flickers)
     if (!this.path.length) this.takeNextStep();
     if (this.path.length) {
       let budget = (this.speed * deltaMs) / 1000;
@@ -475,13 +483,78 @@ export class Character {
     return true;
   }
 
-  /** Switch to another (already built) look, keeping position, facing and animation. */
+  /** Switch to another (already built) look, keeping position, facing and animation. A lit hat's overlay and glow come
+   *  and go with it. */
   setOutfit(o: Outfit): void {
     this.outfit = o;
     this.head = headTop(this.scene, o);
     const anim = this.anim;
     this.sprite.anims.stop();
     this.play(anim);
+    this.setLit(this.flat ? null : litHat(this.M.characters, o));
+  }
+
+  /** The lit hat's overlay and glow for this look (null: none). Made here, never passed to onSpawn: never night-tinted. */
+  private setLit(lit: ReturnType<typeof litHat>): void {
+    this.lit = lit;
+    if (!lit) {
+      this.litSprite?.destroy();
+      this.glow?.destroy();
+      this.litSprite = this.glow = null;
+      return;
+    }
+    this.litSprite ??= this.scene.add.sprite(0, 0, '__DEFAULT').setVisible(false);
+    if (this.glow?.texture.key !== lit.glow.file) {
+      this.glow?.destroy();
+      this.glow = this.scene.textures.exists(lit.glow.file) ? this.scene.add.image(0, 0, lit.glow.file).setBlendMode(Phaser.BlendModes.ADD).setDepth(GLOW_DEPTH).setVisible(false) : null;
+    }
+    this.sync();
+  }
+
+  /** The lamps are on (dusk to dawn; always in the Warrens): a lit hat shows its light. */
+  setNight(on: boolean): void {
+    if (on === this.night) return;
+    this.night = on;
+    this.sync();
+  }
+
+  /** The lit hat's overlay on this frame of the doll (the matching night sheet, the same frame, just in front; in battle
+   *  the idle sheet facing the same way, as the head is laid on the poses), and its glow centred on the glass. */
+  private syncLit(x: number, y: number, depth: number): void {
+    const lit = this.lit;
+    const sp = this.litSprite;
+    if (!lit || !sp) return;
+    const C = this.M.characters;
+    const show = this.night && this.sprite.visible && this.seen > 0;
+    if (!show) {
+      sp.setVisible(false);
+      this.glow?.setVisible(false);
+      return;
+    }
+    const anim = this.battle ? 'idle' : this.anim;
+    const dirs = C.animations[anim]?.directions ?? C.directions;
+    const dir = dirs.includes(this.dir) ? this.dir : dirs[0];
+    const file = lit.sheet(anim, dir);
+    if (!this.scene.textures.exists(file)) {
+      sp.setVisible(false);
+      this.glow?.setVisible(false);
+      return;
+    }
+    slice(this.scene.textures, file, C.cell[0], C.cell[1]);
+    const frame = this.battle ? 0 : Number(this.sprite.frame.name) || 0;
+    const frames = this.scene.textures.get(file).frameTotal - 1;
+    sp.setTexture(file, Math.min(frame, Math.max(0, frames - 1)))
+      .setOrigin(C.anchor[0] / C.cell[0], C.anchor[1] / C.cell[1])
+      .setPosition(x, y)
+      .setAngle(this.sprite.angle)
+      .setDepth(depth + 0.02)
+      .setVisible(true)
+      .setAlpha(this.sprite.alpha);
+    if (this.glow) {
+      const t = this.scene.time.now;
+      const flicker = 0.925 + 0.075 * Math.sin(t / 900 + this.flickerPhase) * Math.cos(t / 2300 + this.flickerPhase);
+      this.glow.setPosition(x, y - C.anchor[1] + this.head + lit.glow.offset).setVisible(true).setAlpha(flicker * this.seen);
+    }
   }
 
   /**
@@ -678,6 +751,7 @@ export class Character {
     if (this.rest && !this.battle) this.syncRest(Math.round(x), Math.round(y - this.lift), depth);
     else if (this.rest) for (const sp of [...this.rest.back, ...this.rest.front]) sp.setVisible(false);
     if (this.aura?.on) this.syncAura(depth);
+    if (this.lit) this.syncLit(Math.round(x), Math.round(y - this.lift), depth);
     // The name sits just over the head (2 px above its first visible row); an alert goes above it.
     const plateBottom = Math.round(y) - this.M.characters.anchor[1] + this.head - 2;
     this.tag?.place(Math.round(x), plateBottom);
@@ -808,6 +882,8 @@ export class Character {
 
   destroy(): void {
     this.sprite.destroy();
+    this.litSprite?.destroy();
+    this.glow?.destroy();
     this.shadow?.destroy();
     this.alert?.destroy();
     this.bars?.destroy();

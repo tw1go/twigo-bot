@@ -1,4 +1,5 @@
 import type { OutfitData } from '@mikazuki/shared';
+import { loadCosmeticHats } from './stats-data.js';
 import { db } from '../db/db.js';
 
 // Character looks for the web game. The bot doesn't know the wardrobe (that's the game's manifest), so it checks
@@ -24,6 +25,8 @@ export function parseOutfit(body: unknown): OutfitData | null {
     if (typeof o[k] !== 'string' || !NAME.test(o[k] as string)) return null;
     out[k] = o[k] as string;
   }
+  // A cosmetic hat (the Lamp-head Hat's) is never saved on a look: only wearing the item puts it there.
+  if (out.hat && Object.values(loadCosmeticHats()).includes(out.hat)) return null;
   return out as unknown as OutfitData;
 }
 

@@ -15,6 +15,8 @@ import { toast } from './toast';
 
 export interface ParlorOptions {
   C: CharacterDefs;
+  /** The head cosmetic worn (its name), if any: the Hat row says so (ui/creator.ts). */
+  wornHat?: string | null;
   nickname: string;
   title: TitleData;
   outfit: Outfit;
@@ -66,6 +68,7 @@ export async function showParlor(o: ParlorOptions): Promise<void> {
     nickname: o.nickname,
     title: worn,
     initial: parlor.outfit ? sanitize(o.C, parlor.outfit, o.outfit) : o.outfit,
+    wornHat: o.wornHat ?? null,
     apply: o.apply,
     sheet: o.sheet,
     head: o.head,

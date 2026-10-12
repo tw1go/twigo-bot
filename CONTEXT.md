@@ -233,7 +233,17 @@ The bag for gear, whetstones, fragments, agimats and HP/MP Potions: 40 slots (th
 _Avoid_: inventory (that's both bags together)
 
 **Pocket**:
-One part of the combat bag with its own slots: the bag's (everything but agimats) and the agimats'.
+One part of the combat bag with its own slots: the bag's (everything but agimats and cosmetics), the agimats' and the
+cosmetics' (Costume).
+
+**Cosmetic**:
+An item worn for looks only, never for stats: the Lamp-head Hat. Bound once worn.
+_Avoid_: skin, costume item
+
+**Costume**:
+The bag's pocket for cosmetics, and the equipment panel's tab with the three places they're worn in (Weapon, Head,
+Body). A worn head cosmetic replaces the hat chosen at the creator until it's taken off.
+_Avoid_: cosmetics tab, wardrobe (that's the look chosen at the creator)
 
 **Item**:
 One particular piece of gear or stuff a player owns, with its own rolls and history; many items share one kind.

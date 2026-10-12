@@ -22,7 +22,7 @@ import { loadDungeons } from './stats-data.js';
 // by stats.json's prices; only the Low tier is sold until a character reaches the next tier's level. And dev's ?give=.
 
 /** The parts of a character that hold items and money. */
-export type CombatItems = Pick<AdventureState, 'equipped' | 'bag' | 'kusing'>;
+export type CombatItems = Pick<AdventureState, 'equipped' | 'cosmetics' | 'bag' | 'kusing'>;
 
 /** What lies on the ground: Kusing, or an item. */
 export type LootContent = { kusing: number } | { item: Item };

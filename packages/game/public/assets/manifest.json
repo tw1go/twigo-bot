@@ -893,14 +893,33 @@
       ],
       "hatPattern": "characters/layers/hat/char-hat-{item}-{anim}-{dir}.png",
       "hatClipPattern": "characters/layers/hat/char-hatclip-{item}-{anim}-{dir}.png",
-      "hatNote": "Hats are recoloured on the MAIN ramp (DCDCF0,A8A8C8,74749A,48486A). beanie and cap ship a clip mask per frame: white pixels = hide the hair layer there (erase hair under the hat) before drawing the hat. ribbon has no clip mask and hides no hair. When a clipping hat is worn with 'buns', draw 'crop' instead (hatHairFallback).",
+      "hatNote": "Hats are recoloured on the MAIN ramp (DCDCF0,A8A8C8,74749A,48486A). beanie and cap ship a clip mask per frame: white pixels = hide the hair layer there (erase hair under the hat) before drawing the hat. ribbon has no clip mask and hides no hair. When a clipping hat is worn with 'buns', draw 'crop' instead (hatHairFallback). Cosmetic hats (cosmeticHats: item id → hat key, the Lamp-head Hat's lamp) are never in hats: the creator, the Parlor, randomOutfit and the NPCs never offer them; only wearing the item puts one on a look. fixedColourHats use their own colours (no hat ramp swap). litHats ship a hatlit sheet per frame (hatLitPattern: the glass and bulb only), drawn untinted over the doll at night with litGlow (fx) centred on the glass, offset px below the head's top.",
       "hatHairFallback": {
         "buns": "crop"
       },
       "hatClips": {
         "beanie": true,
         "cap": true,
-        "ribbon": false
+        "ribbon": false,
+        "lamp": true
+      },
+      "cosmeticHats": {
+        "lamp-hat": "lamp"
+      },
+      "fixedColourHats": [
+        "lamp"
+      ],
+      "hatLitPattern": "characters/layers/hat/char-hatlit-{item}-{anim}-{dir}.png",
+      "litHats": [
+        "lamp"
+      ],
+      "litGlow": {
+        "file": "fx/fx-lamp-hat-glow.png",
+        "size": [
+          32,
+          22
+        ],
+        "offset": 6
       }
     },
     "colourPresets": {

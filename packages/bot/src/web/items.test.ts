@@ -20,8 +20,9 @@ for (const name of ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'ADMIN_ROLE_ID', 'ADMI
 process.env.TIMEZONE = 'Asia/Manila';
 
 const shared = await import('@mikazuki/shared');
-const { LOOT_REACH, PLAIN_COLOUR, addToBag, affixTier, agimatValue, bagRoom, enhancedBase, equipFromBag, itemName, itemTotals, kusingFor, kusingRange, lineMax, lineValue, nameColour, newAgimat, newItem, pickupLine, rarityColour, rollGear, rollLines, stackLimit } = shared;
+const { LOOT_REACH, OTHER_TAB, PLAIN_COLOUR, addToBag, affixTier, agimatValue, bagRoom, cosmeticHatOf, dropRefusal, enhancedBase, equipFromBag, itemName, itemTotals, kusingFor, kusingRange, lineMax, lineValue, nameColour, newAgimat, newItem, pickupLine, pocketOf, pocketSlots, pocketUsed, rarityColour, rollGear, rollLines, stackLimit, tradeRefusal, unwearCosmetic, wearCosmetic, withCosmetics } = shared;
 type Item = import('@mikazuki/shared').Item;
+type AdventureState = import('@mikazuki/shared').AdventureState;
 type EquipmentDef = import('@mikazuki/shared').EquipmentDef;
 type CombatItemDef = import('@mikazuki/shared').CombatItemDef;
 type TownServerMessage = import('@mikazuki/shared').TownServerMessage;
@@ -194,7 +195,7 @@ test('wearing: an orange item binds the first time; a broken one or a cosmetic c
   assert.ok(equipFromBag(D, s, blue.uid).ok);
   assert.equal(s.equipped.head!.bound, false, 'blue stays tradeable');
   assert.deepEqual(equipFromBag(D, s, broken.uid), { ok: false, message: "It's broken: repair it first." });
-  assert.deepEqual(equipFromBag(D, s, hat.uid), { ok: false, message: "Can't be worn yet." });
+  assert.deepEqual(equipFromBag(D, s, hat.uid), { ok: false, message: 'That goes in the other tab.' });
 });
 
 test('the combat bag: 40 slots; potions stack to 99, whetstones and agimats (same stat, level, lock) to 999, gear never', () => {
@@ -363,7 +364,7 @@ test('loot on the ground: one set for everyone; a solo kill\'s held 10 s for its
 });
 
 test('the sari-sari store: HP/MP Potions for Kusing, whetstones and Repair Kits for Kowens; refused without the money or room', () => {
-  const c = { equipped: {}, bag: [] as Item[], kusing: 120 };
+  const c = { equipped: {}, cosmetics: {}, bag: [] as Item[], kusing: 120 };
   let kowens = 10;
   const wallet = () => ({ have: kowens, spend: (k: number) => (kowens >= k ? ((kowens -= k), true) : false) });
   assert.deepEqual(buyCombat(D, c, 1, 'low-hp-potion', 3, wallet(), uid).message, 'You need 150 Kusing but have 120 Kusing. You can afford 2.');
@@ -390,7 +391,7 @@ test('the sari-sari store: HP/MP Potions for Kusing, whetstones and Repair Kits 
 });
 
 test('dev ?give=: gear rolled at its rarity and plus, into the bag', () => {
-  const c = { equipped: {}, bag: [] as Item[], kusing: 0 };
+  const c = { equipped: {}, cosmetics: {}, bag: [] as Item[], kusing: 0 };
   const it = devGive(D, c, 'weapon-sturdy-slingshot', { rarity: 'darkOrange', plus: 7 }, uid, lcg(15))!;
   assert.deepEqual([it.rarity, it.plus, it.lines.length, it.agimats.length, c.bag.length], ['darkOrange', 7, 3, 2, 1]);
   assert.ok(/^Sturdy Slingshot of \w+ \+7$/.test(itemName(D, it)));
@@ -420,8 +421,8 @@ test('over the town\'s socket: a kill drops Kusing (faint for others), nothing p
   const map = loadMobMap('slums');
   const room = new MobRoom(map, lcg(16), {}, { shapes: {} }, loadMobKinds());
   const can = room.snapshot(0).find((m) => m.id.startsWith('tin-can-alley:'))!;
-  const bags = new Map<string, { equipped: Record<string, never>; bag: Item[]; kusing: number }>();
-  const bagOf = (name: string) => bags.get(name) ?? bags.set(name, { equipped: {}, bag: [newItem(S, thing('low-hp-potion'), uid(), 3), newItem(S, thing('low-mp-potion'), uid(), 2)], kusing: 0 }).get(name)!;
+  const bags = new Map<string, { equipped: Record<string, never>; cosmetics: Record<string, never>; bag: Item[]; kusing: number }>();
+  const bagOf = (name: string) => bags.get(name) ?? bags.set(name, { equipped: {}, cosmetics: {}, bag: [newItem(S, thing('low-hp-potion'), uid(), 3), newItem(S, thing('low-mp-potion'), uid(), 2)], kusing: 0 }).get(name)!;
   let maraLevel = 1;
   const server = createServer();
   const town = attachTown(server, {
@@ -542,8 +543,8 @@ test('over the town\'s socket: a party member picks up Kusing and everyone in th
   const map = loadMobMap('slums');
   const room = new MobRoom(map, lcg(16), {}, { shapes: {} }, loadMobKinds());
   const can = room.snapshot(0).find((m) => m.id.startsWith('tin-can-alley:'))!;
-  const bags = new Map<string, { equipped: Record<string, never>; bag: Item[]; kusing: number }>();
-  const bagOf = (name: string) => bags.get(name) ?? bags.set(name, { equipped: {}, bag: [], kusing: 0 }).get(name)!;
+  const bags = new Map<string, { equipped: Record<string, never>; cosmetics: Record<string, never>; bag: Item[]; kusing: number }>();
+  const bagOf = (name: string) => bags.get(name) ?? bags.set(name, { equipped: {}, cosmetics: {}, bag: [], kusing: 0 }).get(name)!;
   const server = createServer();
   attachTown(server, {
     map: { size: [4, 4], spawn: [1, 1], blocked: [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]] },
@@ -609,7 +610,7 @@ test('over the town\'s socket: a party member picks up Kusing and everyone in th
 test('over the town\'s socket: items shown in chat are the speaker\'s own (worn or in the bag) and named in the text; anything else is plain text', async () => {
   const sling = newItem(S, D.defs.get('weapon-training-slingshot') as never, 'own-1');
   const pot = newItem(S, thing('low-hp-potion'), 'own-2', 5);
-  const bags = new Map([['Mara', { equipped: { weapon: sling }, bag: [pot], kusing: 0 }], ['Bob', { equipped: {}, bag: [newItem(S, thing('low-mp-potion'), 'bobs', 2)], kusing: 0 }]]);
+  const bags = new Map([['Mara', { equipped: { weapon: sling }, bag: [pot], kusing: 0 }], ['Bob', { equipped: {}, cosmetics: {}, bag: [newItem(S, thing('low-mp-potion'), 'bobs', 2)], kusing: 0 }]]);
   const server = createServer();
   attachTown(server, {
     map: { size: [4, 4], spawn: [1, 1], blocked: [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]] },
@@ -650,7 +651,7 @@ test('dropping from the bag: a whole stack keeps its uid, part of one leaves as 
   const sword = newItem(S, gear('weapon-crude-stick'), 'stick');
   const tied = { ...newItem(S, gear('weapon-crude-stick'), 'tied'), bound: true };
   const training = newItem(S, gear('weapon-training-stick'), 'trn');
-  const c = { equipped: { weapon: newItem(S, gear('weapon-crude-stick'), 'worn') }, bag: [potion, sword, tied, training], kusing: 0 };
+  const c = { equipped: { weapon: newItem(S, gear('weapon-crude-stick'), 'worn') }, cosmetics: {}, bag: [potion, sword, tied, training], kusing: 0 };
   const part = dropFromBag(D, c, 'pot', 2, uid);
   assert.ok(typeof part !== 'string' && part.count === 2 && part.uid !== 'pot');
   assert.equal(potion.count, 3, 'the rest stays');
@@ -664,8 +665,8 @@ test('dropping from the bag: a whole stack keeps its uid, part of one leaves as 
 });
 
 test('over the town\'s socket: a dropped item lands at your feet for anyone (no party) or only your party, on a map without mobs too; bound items stay', async () => {
-  const bags = new Map<string, { equipped: Record<string, never>; bag: Item[]; kusing: number }>();
-  const bagOf = (name: string) => bags.get(name) ?? bags.set(name, { equipped: {}, bag: [], kusing: 0 }).get(name)!;
+  const bags = new Map<string, { equipped: Record<string, never>; cosmetics: Record<string, never>; bag: Item[]; kusing: number }>();
+  const bagOf = (name: string) => bags.get(name) ?? bags.set(name, { equipped: {}, cosmetics: {}, bag: [], kusing: 0 }).get(name)!;
   bagOf('Dee').bag.push({ ...newItem(S, D.defs.get('low-hp-potion') as CombatItemDef, 'pot'), count: 5 }, { ...newItem(S, gear('weapon-crude-stick'), 'tied'), bound: true });
   bagOf('Mara').bag.push(newItem(S, gear('weapon-crude-stick'), 'mstick'));
   const server = createServer();
@@ -810,4 +811,46 @@ test('agimats have their own pocket (stats.json inventory.agimatSlots): a full b
   bag.splice(0, 1);
   const w = { equipped: { weapon: newItem(S, gear('weapon-crude-stick'), 'worn') }, bag } as never as Parameters<typeof unequipToBag>[1];
   assert.equal(unequipToBag(D, w, 'weapon').ok, true);
+});
+
+test('cosmetics: the Lamp-head Hat has its own pocket (Costume), is worn from it and binds, comes back to it, and refuses the other tab', () => {
+  const hat = newItem(S, thing('lamp-hat'), 'hat1');
+  const other = newItem(S, thing('lamp-hat'), 'hat2');
+  const sling = rollGear(S, gear('weapon-sturdy-slingshot'), 'grey', uid(), lcg(2));
+  assert.equal(pocketOf(D, hat), 'costume');
+  assert.equal(pocketSlots(D, 'costume'), 20);
+  const c = { equipped: {}, cosmetics: {}, bag: [hat, other, sling], kusing: 0 } as AdventureState;
+  assert.equal(pocketUsed(D, c.bag, 'costume'), 2, 'its own slots');
+  assert.equal(pocketUsed(D, c.bag, 'bag'), 1, "not the combat bag's");
+  // Gear onto a Costume place, a cosmetic onto a gear place: the other tab.
+  assert.equal(wearCosmetic(D, c, sling.uid).message, OTHER_TAB);
+  assert.equal(equipFromBag(D, { ...c, cls: 'slingshot', progress: freshProgress(S, 'slingshot') }, hat.uid).message, OTHER_TAB);
+  assert.equal(wearCosmetic(D, c, hat.uid, 'body').message, 'Wrong slot.');
+  // Worn: out of the bag, bound (never traded or dropped again), the old one back to the Costume tab.
+  assert.equal(hat.bound, false);
+  assert.deepEqual(wearCosmetic(D, c, hat.uid), { ok: true, message: 'Wearing Lamp-head Hat.' });
+  assert.equal(c.cosmetics.head?.uid, 'hat1');
+  assert.equal(hat.bound, true);
+  assert.deepEqual(c.bag.map((i) => i.uid), ['hat2', sling.uid]);
+  assert.equal(tradeRefusal(D, hat), "Bound items can't be traded.");
+  assert.ok(dropRefusal(D, hat));
+  assert.equal(tradeRefusal(D, other), null, 'an unworn one trades');
+  assert.ok(wearCosmetic(D, c, other.uid).ok);
+  assert.deepEqual(c.bag.map((i) => i.uid), ['hat1', sling.uid], 'the first back where the second was');
+  assert.equal(c.cosmetics.head?.uid, 'hat2');
+  // Off: into the Costume tab, which must have room.
+  for (let i = c.bag.filter((b) => pocketOf(D, b) === 'costume').length; i < 20; i++) c.bag.push(newItem(S, thing('lamp-hat'), uid()));
+  assert.equal(unwearCosmetic(D, c, 'head').message, 'Make room in your Costume tab first.');
+  c.bag.pop();
+  assert.deepEqual(unwearCosmetic(D, c, 'head'), { ok: true, message: 'Took off Lamp-head Hat.' });
+  assert.equal(c.cosmetics.head, undefined);
+  assert.equal(unwearCosmetic(D, c, 'head').ok, false, 'nothing there');
+  assert.equal(unwearCosmetic(D, c, 'weapon').message, 'Nothing to take off there.');
+  // The look: a worn hat replaces the saved one and leaves its colour out; off, the saved look is as it was.
+  const hats = { 'lamp-hat': 'lamp' };
+  const look = { skin: 'a', hair: 'crop', hat: 'beanie', hatColour: 'red' } as never;
+  assert.equal(cosmeticHatOf(hats, { head: hat }), 'lamp');
+  assert.equal(cosmeticHatOf(hats, {}), null);
+  assert.deepEqual(withCosmetics(look, 'lamp'), { skin: 'a', hair: 'crop', hat: 'lamp' });
+  assert.deepEqual(withCosmetics(look, null), look);
 });

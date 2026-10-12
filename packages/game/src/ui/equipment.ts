@@ -1,10 +1,10 @@
-import { type AdventureState, type EquipPlace, type EquipSlot, type EquipmentDef, type StatName, STAT_NAMES, canEquip, combatRating, pointStats, requirements } from '@mikazuki/shared';
+import { type CosmeticPlace, type AdventureState, type EquipPlace, type EquipSlot, type EquipmentDef, type StatName, STAT_NAMES, canEquip, combatRating, pointStats, requirements, COSMETIC_PLACES, OTHER_TAB, isGearDef, pocketSlots, pocketUsed } from '@mikazuki/shared';
 import { onMyBuffs } from '../net/buffs';
 import { myStats } from './rating';
 import { moreStatsSection } from './more-stats';
 import type { Dir } from '../assets/types';
 import { playSound } from '../audio/sound';
-import { adventure, adventureData, cantWear, classInfo, equipItem, itemDef, onAdventure, placesFor, resetPoints, spendPoint, unequipPlace } from '../net/adventure';
+import { adventure, adventureData, anyDef, cantWear, classInfo, equipItem, itemData, itemDef, onAdventure, placesFor, resetPoints, spendPoint, takeOffCosmetic, unequipPlace, wearCosmeticItem } from '../net/adventure';
 import { type Rarity, RARITY_COLOUR, RARITY_LABEL, RARITY_TEXT, isRarity } from './item-art';
 import { chatItem, itemKeys, itemPicture, itemTipFor, myMainStat, nameOf, rarityOf } from './item-tip';
 import { toast } from './toast';
@@ -28,6 +28,8 @@ const KIND: Record<EquipPlace, EquipSlot> = {
   weapon: 'weapon', head: 'head', body: 'body', hands: 'hands', bottoms: 'bottoms', feet: 'feet', necklace: 'necklace', earrings: 'earrings',
   bracers1: 'bracers', bracers2: 'bracers', ring1: 'ring', ring2: 'ring',
 };
+/** The Costume tab's places (shared COSMETIC_PLACES) and their names when empty. */
+const COSTUME_NAME: Record<CosmeticPlace, string> = { weapon: 'Weapon cosmetic', head: 'Head cosmetic', body: 'Body cosmetic' };
 const NAME: Record<EquipSlot, string> = {
   weapon: 'Weapon', head: 'Head', body: 'Body', hands: 'Hands', bottoms: 'Bottoms', feet: 'Feet', necklace: 'Necklace', earrings: 'Earrings', bracers: 'Bracers', ring: 'Ring',
 };
@@ -81,6 +83,12 @@ export interface EquipmentOptions {
 export class EquipmentPanel {
   private readonly root = el('div');
   private readonly slots = new Map<EquipPlace, HTMLButtonElement>();
+  private readonly cslots = new Map<CosmeticPlace, HTMLButtonElement>();
+  /** Gear (the twelve places) or Costume (Weapon, Head, Body: cosmetics, never stats). */
+  private tab: 'gear' | 'costume' = 'gear';
+  private readonly tabs = el('div', 'eq-tabs');
+  private gearCols: HTMLElement[] = [];
+  private costumeCols: HTMLElement[] = [];
   private readonly doll = el('canvas', 'eq-doll');
   private readonly ctx = this.doll.getContext('2d')!;
   private readonly who = el('div', 'eq-who');
@@ -146,9 +154,25 @@ export class EquipmentPanel {
     turns.append(this.who);
     middle.append(stage, turns);
     const body = el('div', 'eq-body');
-    body.append(column(LEFT, 'left'), middle, column(RIGHT, 'right'));
+    // The Costume tab's places on the left (its right column is empty: the doll stays in the middle).
+    const costumeLeft = el('div', 'eq-col eq-left');
+    for (const p of COSMETIC_PLACES) costumeLeft.append(this.cslot(p));
+    const costumeRight = el('div', 'eq-col eq-right eq-spacer');
+    for (const _ of COSMETIC_PLACES) costumeRight.append(el('span', 'eq-gap'));
+    this.gearCols = [column(LEFT, 'left'), column(RIGHT, 'right')];
+    this.costumeCols = [costumeLeft, costumeRight];
+    body.append(this.gearCols[0], costumeLeft, middle, this.gearCols[1], costumeRight);
+    for (const [tab, label] of [['gear', 'Gear'], ['costume', 'Costume']] as const) {
+      const b = el('button', 'eq-tab', label);
+      b.dataset.tab = tab;
+      b.setAttribute('role', 'tab');
+      b.addEventListener('click', () => this.setTab(tab));
+      this.tabs.append(b);
+    }
+    this.tabs.setAttribute('role', 'tablist');
+    this.setTab('gear');
     this.tip.hidden = true;
-    this.root.append(head, body, this.stats, this.tip);
+    this.root.append(head, this.tabs, body, this.stats, this.tip);
     document.body.append(this.root);
     onAdventure((s) => this.render(s));
     // (The buffs on you change the stats box.)
@@ -189,6 +213,48 @@ export class EquipmentPanel {
     }
     this.root.style.top = `${Math.round(bag.top)}px`;
     this.root.style.right = `${Math.round(innerWidth - bag.left + 10)}px`;
+  }
+
+  /** Gear or Costume: the places shown (the doll and the stats box stay: cosmetics never change stats). */
+  setTab(tab: 'gear' | 'costume'): void {
+    this.tab = tab;
+    for (const c of this.gearCols) c.hidden = tab !== 'gear';
+    for (const c of this.costumeCols) c.hidden = tab !== 'costume';
+    for (const b of this.tabs.children) b.setAttribute('aria-selected', String((b as HTMLElement).dataset.tab === tab));
+    this.tip.hidden = true;
+  }
+
+  /** Wears a cosmetic from the Costume tab (by uid): in `place` (a drop) or its own (a double-click). Gear here is
+   *  refused ("That goes in the other tab."); the Costume tab opens to show it on. */
+  async wearCosmetic(uid: string, place?: CosmeticPlace): Promise<void> {
+    const it = adventure()?.bag.find((b) => b.uid === uid);
+    const def = anyDef(it?.defId);
+    if (!it || this.busy) return;
+    const at = place ?? (def && !isGearDef(def) ? def.cosmeticPlace : undefined) ?? 'head';
+    if (!def || isGearDef(def) || def.kind !== 'cosmetic') return this.refuseAt(this.cslots.get(at), isGearDef(def) ? OTHER_TAB.replace(/\.$/, '') : "That can't be worn");
+    if (!def.cosmeticPlace) return this.refuseAt(this.cslots.get(at), "Can't be worn yet");
+    if (place && place !== def.cosmeticPlace) return this.refuseAt(this.cslots.get(place), 'Wrong slot');
+    this.setTab('costume');
+    this.busy = true;
+    const r = await wearCosmeticItem(uid, place);
+    this.busy = false;
+    if (!r?.ok) return this.refuseAt(this.cslots.get(at), r?.message?.replace(/\.$/, '') ?? "Couldn't reach the bot");
+    playSound('click');
+    window.dispatchEvent(new Event('mk-wallet')); // the bag reloads
+  }
+
+  /** Takes a cosmetic off, into the Costume tab (which must have room). */
+  private async takeOffCosmetic(place: CosmeticPlace): Promise<void> {
+    const s = adventure();
+    const D = itemData();
+    if (this.busy || !s?.cosmetics[place]) return;
+    if (D && pocketUsed(D, s.bag, 'costume') >= pocketSlots(D, 'costume')) return this.refuseAt(this.cslots.get(place), 'Make room in your Costume tab first');
+    this.busy = true;
+    const r = await takeOffCosmetic(place);
+    this.busy = false;
+    if (!r?.ok) return this.refuseAt(this.cslots.get(place), r?.message?.replace(/\.$/, '') ?? "Couldn't reach the bot");
+    playSound('click');
+    window.dispatchEvent(new Event('mk-wallet'));
   }
 
   /** Wears an item from the combat bag (by uid): in `place` (a drop) or the first place for its kind (a double-click). */
@@ -236,12 +302,69 @@ export class EquipmentPanel {
 
   /** The place flashes warm orange and says why. */
   private refuse(place: EquipPlace, why: string): void {
+    this.refuseAt(this.slots.get(place), why);
+  }
+
+  private refuseAt(b: HTMLElement | undefined, why: string): void {
     playSound('error');
-    const b = this.slots.get(place);
     b?.classList.remove('eq-refused');
     void b?.offsetWidth; // restart the flash
     b?.classList.add('eq-refused');
     toast(why, 2200, 'bad');
+  }
+
+  /** A Costume place: double-click or right-click takes its cosmetic off; a cosmetic dropped from the bag goes on (its
+   *  own place only); gear dropped here is refused. */
+  private cslot(place: CosmeticPlace): HTMLButtonElement {
+    const b = el('button', 'eq-slot eq-cslot');
+    b.dataset.place = place;
+    b.addEventListener('dblclick', () => void this.takeOffCosmetic(place));
+    b.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      void this.takeOffCosmetic(place);
+    });
+    b.addEventListener('click', (e) => {
+      const worn = adventure()?.cosmetics[place];
+      if (worn && e.altKey) chatItem(worn);
+    });
+    b.addEventListener('dragstart', (e) => {
+      const worn = adventure()?.cosmetics[place];
+      if (worn) e.dataTransfer?.setData('application/x-mk-worn-cosmetic', worn.uid);
+    });
+    b.addEventListener('pointerenter', () => this.showCostumeTip(place, b));
+    b.addEventListener('pointerleave', () => (this.tip.hidden = true));
+    b.addEventListener('focus', () => this.showCostumeTip(place, b));
+    b.addEventListener('blur', () => (this.tip.hidden = true));
+    b.addEventListener('dragover', (e) => {
+      const t = e.dataTransfer?.types ?? [];
+      if (!t.includes('application/x-mk-cosmetic') && !t.includes('application/x-mk-equipment')) return;
+      e.preventDefault();
+      b.classList.add('eq-over');
+    });
+    b.addEventListener('dragleave', () => b.classList.remove('eq-over'));
+    b.addEventListener('drop', (e) => {
+      b.classList.remove('eq-over');
+      const id = e.dataTransfer?.getData('application/x-mk-cosmetic');
+      if (e.dataTransfer?.getData('application/x-mk-equipment')) {
+        e.preventDefault();
+        return this.refuseAt(b, OTHER_TAB.replace(/\.$/, ''));
+      }
+      if (!id) return;
+      e.preventDefault();
+      void this.wearCosmetic(id, place);
+    });
+    this.cslots.set(place, b);
+    return b;
+  }
+
+  private showCostumeTip(place: CosmeticPlace, at: HTMLElement): void {
+    const item = adventure()?.cosmetics[place];
+    this.tip.replaceChildren(...(item ? [...itemTipFor(item), itemKeys(item, 'worn')] : [el('div', 'eq-tip-name', COSTUME_NAME[place])]));
+    this.tip.hidden = false;
+    const r = at.getBoundingClientRect();
+    const box = this.root.getBoundingClientRect();
+    this.tip.style.left = `${r.right - box.left + 6}px`;
+    this.tip.style.top = `${r.top - box.top}px`;
   }
 
   private slot(place: EquipPlace): HTMLButtonElement {
@@ -266,15 +389,20 @@ export class EquipmentPanel {
     b.addEventListener('pointerleave', () => (this.tip.hidden = true));
     b.addEventListener('focus', () => this.showTip(place, b));
     b.addEventListener('blur', () => (this.tip.hidden = true));
-    // Drops from the bag.
+    // Drops from the bag (a cosmetic dropped here: the other tab).
     b.addEventListener('dragover', (e) => {
-      if (!e.dataTransfer?.types.includes('application/x-mk-equipment')) return;
+      const t = e.dataTransfer?.types ?? [];
+      if (!t.includes('application/x-mk-equipment') && !t.includes('application/x-mk-cosmetic')) return;
       e.preventDefault();
       b.classList.add('eq-over');
     });
     b.addEventListener('dragleave', () => b.classList.remove('eq-over'));
     b.addEventListener('drop', (e) => {
       b.classList.remove('eq-over');
+      if (e.dataTransfer?.getData('application/x-mk-cosmetic')) {
+        e.preventDefault();
+        return this.refuse(place, OTHER_TAB.replace(/\.$/, ''));
+      }
       const id = e.dataTransfer?.getData('application/x-mk-equipment');
       if (!id) return;
       e.preventDefault();
@@ -305,6 +433,21 @@ export class EquipmentPanel {
 
   private render(s: AdventureState): void {
     const sil = this.o.silhouettes;
+    for (const [place, b] of this.cslots) {
+      const item = s.cosmetics[place];
+      b.replaceChildren();
+      b.classList.toggle('eq-worn', !!item);
+      b.draggable = !!item;
+      b.setAttribute('aria-label', item ? `${COSTUME_NAME[place]}: ${nameOf(item)}` : `${COSTUME_NAME[place]} (empty)`);
+      if (item) {
+        b.style.setProperty('--rarity', RARITY_COLOUR[rarityOf(item)]);
+        b.append(itemPicture(item, 'icon', 2));
+      } else if (sil) {
+        const icon = slotSilhouette(place)!;
+        icon.classList.add('eq-silhouette');
+        b.append(icon);
+      }
+    }
     for (const [place, b] of this.slots) {
       const item = s.equipped[place];
       const kind = KIND[place];

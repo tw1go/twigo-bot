@@ -1,47 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import type {
-  AdventureState,
-  ClassesFile,
-  EquipPlace,
-  Item,
-  QuestDef,
-  QuestReward,
-  QuestsFile,
-  StatName,
-  TownAdventureResponse,
-  TownEquipAction,
-  TownForgeAction,
-  TownForgeResponse,
-  TownPointsAction,
-  TownQuestAction,
-  TownSkillsAction,
-} from '@mikazuki/shared';
-import {
-  STAT_NAMES,
-  bagSlots,
-  classSkills,
-  classBuffs,
-  buffSkillLevels,
-  damageSkillLevels,
-  skillLevelOf,
-  equipFromBag,
-  giveGear,
-  giveQuestRewards,
-  giveQuestPieces,
-  questKill,
-  readyToReport,
-  withLeveling,
-  missingTraining,
-  moveUnlock,
-  newItem,
-  placesFor,
-  swapTrainingGear,
-  trainingGear,
-  takeKind,
-  unequipToBag,
-  wearCheck,
-} from '@mikazuki/shared';
+import type { AdventureState, ClassesFile, EquipPlace, Item, QuestDef, QuestReward, QuestsFile, StatName, TownAdventureResponse, TownEquipAction, TownForgeAction, TownForgeResponse, TownPointsAction, TownQuestAction, TownSkillsAction, CosmeticPlace } from '@mikazuki/shared';
+import { STAT_NAMES, bagSlots, classSkills, classBuffs, buffSkillLevels, damageSkillLevels, skillLevelOf, equipFromBag, giveGear, giveQuestRewards, giveQuestPieces, questKill, readyToReport, withLeveling, missingTraining, moveUnlock, newItem, placesFor, swapTrainingGear, trainingGear, takeKind, unequipToBag, wearCheck, COSMETIC_PLACES, wearCosmetic, unwearCosmetic } from '@mikazuki/shared';
 import { db } from '../db/db.js';
 import { type LevelGain, type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView, raiseSkill, refundPoints, resetSkillPoints, resetStatPoints, spendPoint } from './progress.js';
 import type { Attacker } from './town-mobs.js';
@@ -71,7 +31,9 @@ const PLACES = new Set<EquipPlace>(['weapon', 'head', 'body', 'hands', 'bottoms'
 
 export { placesFor };
 
-export const freshAdventure = (): AdventureState => ({ cls: null, quests: { active: [], done: [] }, equipped: {}, bag: [], kusing: 0, progress: freshProgress(loadStats()), trainingArmorGiven: false });
+export const freshAdventure = (): AdventureState => ({ cls: null, quests: { active: [], done: [] }, equipped: {}, cosmetics: {}, bag: [], kusing: 0, progress: freshProgress(loadStats()), trainingArmorGiven: false });
+/** How a worn cosmetic's place is kept in the items table's `place` ("costume:head"). */
+const COSTUME_PLACE = 'costume:';
 
 /** A new item's uid. */
 export const newUid = () => randomBytes(8).toString('hex');
@@ -191,6 +153,8 @@ export function questKillFor(userId: string, kill: { kind: string; mini: boolean
  *  first), or take one off into the bag (refused when it's full). An orange item binds as it's first worn. */
 export function equipStep(s: AdventureState, a: TownEquipAction): Result {
   if (a.action === 'equip') return equipFromBag(loadItemData(), s, a.item, a.place);
+  if (a.action === 'wear-cosmetic') return wearCosmetic(loadItemData(), s, a.item, a.place);
+  if (a.action === 'take-off-cosmetic') return unwearCosmetic(loadItemData(), s, a.place);
   if (!PLACES.has(a.place)) return { ok: false, message: 'No such slot.' };
   return unequipToBag(loadItemData(), s, a.place);
 }
@@ -292,17 +256,19 @@ const fromRow = (r: ItemRow): Item => ({
   ...(r.lock ? { lock: r.lock as Item['lock'] } : {}),
 });
 
-/** Their items: worn by place, and the combat bag in order. */
-function loadItems(userId: string): Pick<AdventureState, 'equipped' | 'bag'> {
+/** Their items: worn by place (gear, and cosmetics as "costume:<place>"), and the combat bag in order. */
+function loadItems(userId: string): Pick<AdventureState, 'equipped' | 'cosmetics' | 'bag'> {
   const equipped: AdventureState['equipped'] = {};
+  const cosmetics: AdventureState['cosmetics'] = {};
   const bag: Item[] = [];
   const worn = new Map<string, Item>();
   for (const r of itemsStmt.all(userId)) {
     if (r.place && PLACES.has(r.place as EquipPlace)) worn.set(r.place, fromRow(r));
+    else if (r.place?.startsWith(COSTUME_PLACE) && COSMETIC_PLACES.includes(r.place.slice(COSTUME_PLACE.length) as CosmeticPlace)) cosmetics[r.place.slice(COSTUME_PLACE.length) as CosmeticPlace] = fromRow(r);
     else bag.push(fromRow(r));
   }
   for (const p of PLACES) if (worn.has(p)) equipped[p] = worn.get(p); // in the panel's order
-  return { equipped, bag };
+  return { equipped, cosmetics, bag };
 }
 
 function load(userId: string): AdventureState {
@@ -329,6 +295,7 @@ const save = db.transaction((userId: string, s: AdventureState): void => {
   const put = (i: Item, place: string | null, slot: number | null) =>
     addItemStmt.run(i.uid, userId, i.defId, i.level, i.rarity, i.plus, i.broken ? 1 : 0, i.bound ? 1 : 0, i.luck, JSON.stringify(i.agimats), JSON.stringify(i.lines), i.stat ?? null, i.lock ?? null, i.count, place, slot, now);
   for (const [place, item] of Object.entries(s.equipped)) if (item) put(item, place, null);
+  for (const [place, item] of Object.entries(s.cosmetics)) if (item) put(item, COSTUME_PLACE + place, null);
   s.bag.forEach((item, i) => put(item, null, i));
 });
 
@@ -368,8 +335,13 @@ export function questRewardsFor(userId: string): QuestReward[] {
 
 /** Their worn items, combat bag and Kusing (the town's `items` message). */
 export function combatOf(userId: string): CombatItems {
-  const { equipped, bag, kusing } = load(userId);
-  return { equipped, bag, kusing };
+  const { equipped, cosmetics, bag, kusing } = load(userId);
+  return { equipped, cosmetics, bag, kusing };
+}
+
+/** The cosmetics a member wears (the look they show: shared cosmetics.ts). */
+export function cosmeticsOf(userId: string): AdventureState['cosmetics'] {
+  return load(userId).cosmetics;
 }
 
 /** Changes their items or Kusing through `f` and saves it if it says so; what `f` returned. */
@@ -452,7 +424,7 @@ export function forgeFor(userId: string, a: TownForgeAction): TownForgeResponse 
   const r = forge(loadItemData(), s, a, Math.random, newUid);
   // (A refused one changes nothing; an enhance that failed still used its stones.)
   if (r.ok) save(userId, s);
-  return { ...r, items: { equipped: s.equipped, bag: s.bag, kusing: s.kusing }, worn: r.ok && before !== JSON.stringify(s.equipped) };
+  return { ...r, items: { equipped: s.equipped, cosmetics: s.cosmetics, bag: s.bag, kusing: s.kusing }, worn: r.ok && before !== JSON.stringify(s.equipped) };
 }
 
 /** Who they are in a fight (MobRoom.attack's Attacker): class, level, stat points spent, everything worn, and their damage
@@ -516,6 +488,12 @@ export function parseEquipAction(body: unknown): TownEquipAction | null {
     return place(b.place) ? { action: 'equip', item: b.item, place: place(b.place)! } : null;
   }
   if (b?.action === 'unequip' && place(b.place)) return { action: 'unequip', place: place(b.place)! };
+  const cplace = (p: unknown) => (typeof p === 'string' && COSMETIC_PLACES.includes(p as CosmeticPlace) ? (p as CosmeticPlace) : null);
+  if (b?.action === 'wear-cosmetic' && typeof b.item === 'string') {
+    if (b.place === undefined) return { action: 'wear-cosmetic', item: b.item };
+    return cplace(b.place) ? { action: 'wear-cosmetic', item: b.item, place: cplace(b.place)! } : null;
+  }
+  if (b?.action === 'take-off-cosmetic' && cplace(b.place)) return { action: 'take-off-cosmetic', place: cplace(b.place)! };
   return null;
 }
 
@@ -530,11 +508,12 @@ export function townQuest(userId: string, a: TownQuestAction): TownAdventureResp
 }
 
 /** POST /town/equip for a member. `changed`: their worn gear changed (the town shows the weapon, fights the rest). */
-export function townEquip(userId: string, a: TownEquipAction): TownAdventureResponse & { changed: boolean } {
+export function townEquip(userId: string, a: TownEquipAction): TownAdventureResponse & { changed: boolean; costume: boolean } {
   const s = load(userId);
   const r = equipStep(s, a);
   if (r.ok) save(userId, s);
-  return { ...r, adventure: s, changed: r.ok };
+  const costume = a.action === 'wear-cosmetic' || a.action === 'take-off-cosmetic';
+  return { ...r, adventure: s, changed: r.ok && !costume, costume: r.ok && costume };
 }
 
 /** POST /town/points for a member. */

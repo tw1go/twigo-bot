@@ -127,6 +127,7 @@
       #creator .cr-side { display: flex; flex-direction: column; min-height: 0; }
       #creator .cr-settings { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 16px 4px; scrollbar-color: #5B21B6 transparent; }
       #creator .cr-section { padding: 18px 0; }
+      #creator .cr-worn { margin: 0; color: #A9B1D6; font-size: calc(13px * var(--text)); } /* a head cosmetic worn: no hat to pick */
       #creator .cr-section:first-child { padding-top: 4px; }
       #creator .cr-section + .cr-section, #creator .cr-choices > .cr-section:first-child { padding-top: 18px; border-top: 2px solid #1E1B3A; }
       #creator h2 { margin: 0 0 12px; font-size: calc(13px * var(--text)); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #B794F6; }
@@ -517,7 +518,7 @@
       @media (max-width: 760px), (max-height: 500px) { #bag-button { left: auto; right: 12px; bottom: auto; top: 148px; width: 48px; height: 48px; } } /* under the minimap and the buttons */
       /* The inventory (ui/inventory.ts): the bag on the right, in the item frame; 5 × 10 slots (the slot art, 2×),
          locked ones marked with an X; the picked item's Flex / Sell; Kowens at the bottom. */
-      #inventory { position: fixed; right: 12px; top: 72px; z-index: 3; display: flex; flex-direction: column; gap: 10px; width: 420px; max-width: calc(100vw - 24px); max-height: calc(100vh - 96px); box-sizing: border-box; padding: 12px 14px 14px; border: 2px solid #7C2AE8; background: rgba(17, 24, 39, 0.96); color: #c0caf5; font: calc(15px * var(--text))/1.35 var(--ui-font); }
+      #inventory { position: fixed; right: 12px; top: 72px; z-index: 3; display: flex; flex-direction: column; gap: 10px; width: 500px; max-width: calc(100vw - 24px); max-height: calc(100vh - 96px); box-sizing: border-box; padding: 12px 14px 14px; border: 2px solid #7C2AE8; background: rgba(17, 24, 39, 0.96); color: #c0caf5; font: calc(15px * var(--text))/1.35 var(--ui-font); }
       #inventory[hidden] { display: none; }
       #inventory.iv-framed { --px: 2; border-style: solid; border-width: calc(var(--slice) * var(--px) * 1px); border-image-source: var(--frame); border-image-slice: var(--slice) fill; border-image-width: calc(var(--slice) * var(--px) * 1px); border-image-repeat: round; image-rendering: pixelated; background: none; padding: 2px 4px 4px; }
       #inventory .iv-head { flex: none; display: flex; align-items: center; gap: 8px; }
@@ -538,7 +539,7 @@
       #inventory .iv-multi { margin-left: auto; margin-right: 8px; padding: 3px 10px 4px; border: 2px solid #3D4256; border-radius: 0; background: #1E1B3A; color: #A9B1D6; font: inherit; font-size: calc(13px * var(--text)); font-weight: 700; }
       #inventory .iv-multi:hover { color: #fff; }
       #inventory .iv-multi[aria-pressed='true'] { border-color: #7C2AE8; background: #7C2AE8; color: #fff; }
-      #inventory .iv-tab { flex: 1; padding: 6px 8px 5px; border: 2px solid #3D4256; border-bottom: 0; border-radius: 0; background: #1E1B3A; color: #A9B1D6; font: inherit; font-size: calc(14px * var(--text)); font-weight: 700; }
+      #inventory .iv-tab { flex: 1; min-width: 0; white-space: nowrap; padding: 6px 4px 5px; border: 2px solid #3D4256; border-bottom: 0; border-radius: 0; background: #1E1B3A; color: #A9B1D6; font: inherit; font-size: calc(14px * var(--text)); font-weight: 700; }
       #inventory .iv-tab:hover { color: #fff; }
       #inventory .iv-tab[aria-selected='true'] { border-color: #7C2AE8; background: #7C2AE8; color: #fff; box-shadow: inset 0 2px 0 #A78BFA; }
       #inventory .iv-cell .it-frame { margin: -12px; }
@@ -617,7 +618,7 @@
       .agimat-icon { display: block; flex: none; width: 32px; height: 32px; margin: -4px 0; image-rendering: pixelated; }
       .eq-tip-binds, #inventory .eq-tip-binds, :is(#equipment, #inspect) .eq-tip-binds, .iv-tip .eq-tip-binds { color: #FDBA74; }
       :is(#equipment, #inspect) .eq-broken > :first-child { filter: grayscale(1) brightness(0.7); }
-      @media (max-width: 760px), (max-height: 500px) { #inventory { top: 132px; right: 8px; max-height: calc(100vh - 150px); } #inventory .iv-grid { grid-template-columns: repeat(var(--cols, 5), minmax(0, 60px)); grid-auto-rows: 60px; } #inventory .iv-cell { width: 100%; height: 60px; } }
+      @media (max-width: 760px), (max-height: 500px) { #inventory { top: 132px; right: 8px; max-height: calc(100vh - 150px); } #inventory .iv-tab { font-size: calc(12px * var(--text)); padding: 6px 2px 5px; } #inventory .iv-tabs { overflow-x: auto; scrollbar-width: none; } #inventory .iv-grid { grid-template-columns: repeat(var(--cols, 5), minmax(0, 60px)); grid-auto-rows: 60px; } #inventory .iv-cell { width: 100%; height: 60px; } }
       @media (max-height: 500px) and (min-width: 561px) { #inventory .iv-detail { padding: 6px 6px 0; min-height: 0; } #inventory .iv-name { font-size: calc(15px * var(--text)); } #inventory .iv-meta, #inventory .iv-hint, #inventory .iv-about, #inventory .iv-note { font-size: calc(11px * var(--text)); } #inventory .iv-actions { gap: 4px; margin-top: 4px; } #inventory .iv-act { padding: 4px 10px; font-size: calc(12px * var(--text)); border-width: 2px; box-shadow: 0 2px 0 #0B0A1A; } }
       #chat .em-open { height: 100%; min-width: 38px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 4px; background: rgba(0, 0, 0, 0.35); padding: 0 6px; }
       #chat .em-open:hover, #chat .em-open[aria-expanded='true'] { background: rgba(0, 0, 0, 0.55); box-shadow: 0 0 0 1px rgba(183, 148, 246, 0.6); }
@@ -1927,7 +1928,7 @@
       #map-menu .mm-go:disabled { border-color: #4A5068; background: #2A2F42; color: #6B7189; cursor: default; }
       #map-menu .mm-buttons button:focus-visible { outline: 2px solid #F9A8D4; outline-offset: 2px; }
       /* ── The equipment panel (ui/equipment.ts): on the bag's left, top to top, as tall as its slots ── */
-      :is(#equipment, #inspect) { position: fixed; top: 72px; right: 442px; z-index: 3; display: flex; flex-direction: column; gap: 10px; width: 380px; max-height: calc(100vh - 96px); box-sizing: border-box; padding: 12px 14px 14px; border: 2px solid #7C2AE8; background: rgba(17, 24, 39, 0.96); color: #c0caf5; font: calc(15px * var(--text))/1.35 var(--ui-font); }
+      :is(#equipment, #inspect) { position: fixed; top: 72px; right: 522px; z-index: 3; display: flex; flex-direction: column; gap: 10px; width: 380px; max-height: calc(100vh - 96px); box-sizing: border-box; padding: 12px 14px 14px; border: 2px solid #7C2AE8; background: rgba(17, 24, 39, 0.96); color: #c0caf5; font: calc(15px * var(--text))/1.35 var(--ui-font); }
       :is(#equipment, #inspect)[hidden] { display: none; }
       :is(#equipment, #inspect).eq-framed { --px: 2; border-style: solid; border-width: calc(var(--slice) * var(--px) * 1px); border-image-source: var(--frame); border-image-slice: var(--slice) fill; border-image-width: calc(var(--slice) * var(--px) * 1px); border-image-repeat: round; image-rendering: pixelated; background: none; padding: 2px 4px 4px; }
       :is(#equipment, #inspect) .eq-head { flex: none; display: flex; align-items: center; gap: 8px; }
@@ -1935,6 +1936,13 @@
       :is(#equipment, #inspect) .eq-close { margin-left: auto; width: 32px; height: 32px; padding: 0; border: 0; background: none; color: #7A8099; font: calc(26px * var(--text))/1 var(--ui-font); }
       :is(#equipment, #inspect) .eq-close:hover { color: #fff; }
       :is(#equipment, #inspect) .eq-body { flex: none; display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+      /* Gear / Costume tabs (ui/equipment.ts, ui/inspect.ts): the Costume tab shows three places on the left, a spacer on the right. */
+      :is(#equipment, #inspect) .eq-tabs { flex: none; display: flex; gap: 4px; border-bottom: 3px solid #1E1B3A; }
+      :is(#equipment, #inspect) .eq-tab { flex: 1; padding: 5px 8px 4px; border: 2px solid #3D4256; border-bottom: 0; border-radius: 0; background: #1E1B3A; color: #A9B1D6; font: inherit; font-size: calc(13px * var(--text)); font-weight: 700; cursor: var(--cur-hand, pointer); }
+      :is(#equipment, #inspect) .eq-tab:hover { color: #fff; }
+      :is(#equipment, #inspect) .eq-tab[aria-selected='true'] { border-color: #7C2AE8; background: #7C2AE8; color: #fff; }
+      :is(#equipment, #inspect) .eq-col[hidden] { display: none; }
+      :is(#equipment, #inspect) .eq-gap { display: block; width: 60px; height: 60px; }
       :is(#equipment, #inspect) .eq-col { display: flex; flex-direction: column; gap: 4px; }
       :is(#equipment, #inspect) .eq-slot { position: relative; display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; box-sizing: border-box; padding: 0; border-style: solid; border-width: 12px; border-image: var(--slot) var(--slot-slice, 4) fill / 12px round; background: none; image-rendering: pixelated; cursor: var(--cur-hand, pointer); }
       :is(#equipment, #inspect) .eq-slot:hover, :is(#equipment, #inspect) .eq-slot:focus-visible, :is(#equipment, #inspect) .eq-over { border-image-source: var(--slot-picked); outline: 3px solid #A3E635; outline-offset: -3px; } /* the lime selected-slot look */

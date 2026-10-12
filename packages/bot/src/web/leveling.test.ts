@@ -219,7 +219,7 @@ async function partyTown(room: InstanceType<typeof MobRoom>, at: [number, number
       fighter: (name) => ({ cls: 'slingshot', level: 20, points: name === 'Mara' ? { DEX: 100_000 } : {} }),
       kill: (name, k) => (kills.push({ who: name, xp: k.xp }), { progress: freshProgress(S, 'slingshot'), gained: k.xp, ups: 0 }),
     },
-    items: { take: () => ({ ok: true }) as never, usePotion: () => null as never, state: () => ({ equipped: {}, bag: [], kusing: 0 }) },
+    items: { take: () => ({ ok: true }) as never, usePotion: () => null as never, state: () => ({ equipped: {}, cosmetics: {}, bag: [], kusing: 0 }) },
     quests: { kill: (name, k) => (counted.push(`${name}:${k.kind}:${k.mini}`), { active: [{ id: CHAIN[1], step: 0, count: 1 }] }) },
   });
   await new Promise<void>((ok) => server.listen(0, '127.0.0.1', ok));

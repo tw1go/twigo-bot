@@ -84,6 +84,9 @@ export type EquipSlot = 'weapon' | 'head' | 'body' | 'hands' | 'bottoms' | 'feet
 /** Where equipment is worn: one place per kind, but two for bracers and two for rings. The panel shows Weapon, Head,
  *  Body, Hands, Bottoms and Feet on the left; Necklace, Earrings, both Bracers and both Rings on the right. */
 export type EquipPlace = Exclude<EquipSlot, 'bracers' | 'ring'> | 'bracers1' | 'bracers2' | 'ring1' | 'ring2';
+/** Where a cosmetic is worn (the equipment panel's Costume tab): over the weapon, the head or the body. A worn head
+ *  cosmetic replaces the look's hat (shared cosmetics.ts). */
+export type CosmeticPlace = 'weapon' | 'head' | 'body';
 
 export interface EquipStats {
   atk?: number;
@@ -169,6 +172,8 @@ export interface AdventureState {
   quests: { active: QuestProgress[]; done: string[]; rewarded?: string[]; pieces?: string[] };
   /** What's worn in each place. */
   equipped: Partial<Record<EquipPlace, Item>>;
+  /** The cosmetics worn (the Costume tab): out of the bag, bound, never stats. */
+  cosmetics: Partial<Record<CosmeticPlace, Item>>;
   /** The combat bag (stats.json inventory.slots): gear not worn, whetstones, fragments, Repair Kits, agimats, HP/MP
    *  Potions and cosmetics, one slot each (a stack in one). */
   bag: Item[];
@@ -184,7 +189,12 @@ export type TownQuestAction = { quest: string; action: 'talk'; npc: string } | {
 
 /** POST /town/equip: wear an item from the combat bag (by uid; in `place`, or the first free place for its kind, else the
  *  first one; what was there goes back to the bag), or take one off (needs a free bag slot). */
-export type TownEquipAction = { action: 'equip'; item: string; place?: EquipPlace } | { action: 'unequip'; place: EquipPlace };
+export type TownEquipAction =
+  | { action: 'equip'; item: string; place?: EquipPlace }
+  | { action: 'unequip'; place: EquipPlace }
+  /** A cosmetic from the Costume tab onto its place (its kind's, when none is given), or off into the Costume tab. */
+  | { action: 'wear-cosmetic'; item: string; place?: CosmeticPlace }
+  | { action: 'take-off-cosmetic'; place: CosmeticPlace };
 
 /** POST /town/points: one stat point into the class's main or second stat, or every stat point back (free). */
 export type TownPointsAction = { action: 'spend'; stat: StatName } | { action: 'reset' };
