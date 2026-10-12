@@ -275,6 +275,13 @@ export interface CharacterDefs {
     hatClipPattern: string;
     hatHairFallback: Record<string, string>;
     hatClips: Record<string, boolean>;
+    /** Cosmetic hats (never offered at the creator): item id → hat key; those with fixed colours (no ramp swap); those
+     *  lit at night (`hatLitPattern` sheets, `litGlow` over the glass, `offset` px below the head's top). */
+    cosmeticHats: Record<string, string>;
+    fixedColourHats: string[];
+    hatLitPattern?: string;
+    litHats?: string[];
+    litGlow?: { file: string; size: Vec2; offset?: number };
   };
   colourPresets: Record<string, string[]>;
   skinTones: Record<string, string[]> & { faceTweak?: Record<string, Record<string, string>> };

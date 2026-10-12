@@ -16,6 +16,8 @@ export interface CreatorHooks {
   /** Their title, shown under the nickname as <Title>, in its colour. */
   title: TitleData;
   initial: Outfit;
+  /** A head cosmetic worn (its name, the Lamp-head Hat): the Hat row says so instead of offering hats and colours. */
+  wornHat?: string | null;
   /** Loads and builds a look (resolves once its sheets exist). */
   apply: (o: Outfit) => Promise<void>;
   /** The composited idle sheet for a built look, facing `dir`. */
@@ -434,7 +436,9 @@ export function mountCreator(C: CharacterDefs, hooks: CreatorHooks): void {
       section('Bottom', items('bottom', c.bottom), sub('Colour', colours('bottomColour', 'Bottom colour')), sub('Trim', colours('bottomTrim', 'Bottom trim'))),
       section('Shoes', items('shoes', c.shoes), colours('shoesColour', 'Shoes colour')),
       section('Glasses', items('glasses', c.glasses, true), ...(draft.glasses ? [colours('glassesColour', 'Glasses colour')] : [])),
-      section('Hat', items('hat', c.hats, true), ...(draft.hat ? [colours('hatColour', 'Hat colour')] : [])),
+      hooks.wornHat
+        ? section('Hat', el('p', 'cr-worn', `${hooks.wornHat} (worn). Take it off in the equipment panel's Costume tab to change your hat.`))
+        : section('Hat', items('hat', c.hats, true), ...(draft.hat ? [colours('hatColour', 'Hat colour')] : [])),
     );
     settings.scrollTop = scroll;
   };

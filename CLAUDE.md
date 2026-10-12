@@ -840,6 +840,24 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   Effects manifest fx `fx-enhance-success|fail|break`, `fx-agimat-embed`, `fx-disassemble` (fx/progress, DOM strips via
   `setForgeArt`); sounds combat-enhance-success/-fail/-break, combat-repair, combat-agimat-embed, combat-disassemble.
   Dev: ?give= may repeat; a stack's third part is how many, an agimat's fourth its level (`?give=agimat-critdmg::2:20`).
+- Cosmetics (CONTEXT.md Cosmetic, Costume; the Lamp-head Hat, items.json `lamp-hat`, `kind: cosmetic`, `cosmeticPlace:
+  head`; the golem's 1-in-50 drop): their own pocket, the bag's **Costume** tab (stats.json inventory.costumeSlots 20, a
+  repo addition; shared `pocketOf` 'costume'), never the Combat tab's slots. Worn from the equipment panel's Costume tab
+  (places Weapon / Head / Body: shared `COSMETIC_PLACES`; `AdventureState.cosmetics`, saved in the items table's `place`
+  as `costume:<place>`): shared `wearCosmetic` (binds as worn: never traded, dropped or sold after; the old one back to
+  the Costume tab) / `unwearCosmetic` ("Make room in your Costume tab first."), `POST /town/equip` actions
+  `wear-cosmetic` / `take-off-cosmetic`; gear onto a Costume place or a cosmetic onto a gear place: "That goes in the
+  other tab." (`OTHER_TAB`). The look: a worn head cosmetic's hat replaces the saved look's (manifest
+  `characters.wardrobe.cosmeticHats` item id → hat key, `fixedColourHats` never recoloured, `hatClips`; shared
+  `cosmetics.ts` `withCosmetics` / `cosmeticHatOf`): the server resolves what everyone sees (`lookOf` in server.ts:
+  the town's profile, `restyle` after a wear / take-off, the Parlor, the podium), the game its own
+  (`lookWithCosmetics`, TownScene `refreshLook`; `savedOutfit` is the creator's, `outfit` what's drawn), and the bot's
+  `parseOutfit` refuses a cosmetic hat in a saved look (the creator, randomOutfit and NPCs never offer one; the Parlor's
+  Hat row says "Lamp-head Hat (worn)" meanwhile). Night: wardrobe `litHats` / `hatLitPattern` / `litGlow`: the
+  Character draws the hat's lit sheet (glass and bulb) untinted over the doll on the same frame (battle: the idle sheet
+  facing the same way) and the glow (ADD, GLOW_DEPTH, a slow flicker) over the glass while `setNight` (lampsOn: dusk to
+  dawn, always in the Warrens); never in `tintables`. The Info window shows a Costume tab (the `inspect` message's
+  `cosmetics`). Tested (items.test.ts, adventure.test.ts).
 - Weapon auras (`src/fx/weaponAura.ts`, guide "Weapon auras", stats.json enhancement.weaponAura; matches the art folder's
   items/weapon-aura/weapon-aura-preview-v6.gif): +15–17 blue, +18–19 gold (2 glints), +20 prismatic (4 glints, the cycle by
   angle, turning; each spiral its own colour); weapons only, never broken. `traceAura(key, src)` traces a frame once
@@ -1105,7 +1123,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   all, `dig/bag.ts` `usedSlots`), unlocked = `capacity`, the rest marked X; dug-up items offer Flex / Sell, keys and
   potions say how they're used; multi-select (Ctrl/⌘/Shift-click, or the Select toggle for every click; Select all on the tab):
   the count, what the sellable ones bring and Sell selected (`POST /town/sell { items: [{ id, quantity }] }`,
-  `sellManyInTown`); tabs All / Dug up / Combat (the combat bag: Items, above) / Agimats (their own pocket: stats.json
+  `sellManyInTown`); tabs All / Dug up / Combat (the combat bag: Items, above) / Costume (the cosmetics' own pocket, stats.json inventory.costumeSlots 20: Cosmetics, below; the bag is 500 px
+  wide, six columns, so its six tabs sit on one row; on phones the tabs shrink and the row scrolls) / Agimats (their own pocket: stats.json
   inventory.agimatSlots 40, a repo addition; shared `pocketOf` / `pocketSlots` / `pocketUsed`, `bagRoom` counts each
   pocket on its own, so agimats never fill the bag's 40 and gear never theirs; 0 = they share Combat's; tested; listed
   highest level first, then by stat) / Misc; an agimat's picture is darker the lower its level everywhere (bag, forge,

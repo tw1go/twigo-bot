@@ -114,7 +114,7 @@ import type { AdventureData } from '../net/adventure';
 import { Hotbar } from '../ui/hotbar';
 import { mountClassSwitch } from '../ui/class-switch';
 import { MOVES, type MoveKind, isMoveKind, moveTiles, playMove } from '../world/mobility';
-import { changeClass, devItemsReady, devQuestKill, questReport, setQuestCounts, devSwitchClass, adventure, adventureData, anyDef, chooseClass, classInfo, initAdventure, itemData, itemDef, loadAdventureData, onAdventure, questDef, questFor, questTalk, setItems, setProgress, skillView, skillViews, buffViews } from '../net/adventure';
+import { changeClass, devItemsReady, devQuestKill, questReport, setQuestCounts, devSwitchClass, adventure, adventureData, anyDef, chooseClass, classInfo, initAdventure, itemData, itemDef, loadAdventureData, lookWithCosmetics, onAdventure, questDef, questFor, questTalk, setItems, setProgress, skillView, skillViews, buffViews, wornHeadCosmetic } from '../net/adventure';
 import { type LanternMap, type LanternPost, LANTERN_USE_TILES, LANTERN_WALK_TILES, RETURN_LANTERN, isLanternMap, lanternPostOf, nearPost, type StatsData, buffsStack, potionCooldownGroup, dropRefusal, nameColour, type Item, type QuestReward, type TownItems, LOOT_REACH, auraFor, classBuffs, classSkills, countOf, isGearDef, itemAura, itemStats, newItem, tradeRules } from '@mikazuki/shared';
 import type { ClassArt } from '../assets/types';
 import { drawRested, poseFiles, restFiles } from '../characters/kit-art';
@@ -335,7 +335,10 @@ export class TownScene extends Phaser.Scene {
     this.hood = data.hood ?? null;
     this.area = data.area ?? (this.hood ? 'hood' : 'town');
     this.art = data.art ?? null;
-    this.outfit = startingOutfit(this.M.characters, data.me);
+    this.savedOutfit = startingOutfit(this.M.characters, data.me);
+    this.outfit = lookWithCosmetics(this.savedOutfit, this.M.characters.wardrobe.cosmeticHats ?? {});
+    // A cosmetic worn or taken off (the Costume tab): the look you show follows (shared cosmetics.ts).
+    onAdventure(() => void this.refreshLook());
   }
 
   preload(): void {
@@ -1932,7 +1935,13 @@ export class TownScene extends Phaser.Scene {
       if (m.t === 'new-title') return showNewTitle(m.id, m.title, member?.title ?? TOWNFOLK);
       if (m.t === 'house') return this.houseNews(m);
       if (m.t === 'race') return setRace(m.race);
-      if (m.t === 'look' && m.id === myId) return void this.restyle(sanitize(this.M.characters, m.outfit, this.outfit), m.title);
+      if (m.t === 'look' && m.id === myId) {
+        // The server's look for you carries a worn cosmetic's hat: the saved look underneath keeps its own.
+        const W = this.M.characters.wardrobe;
+        const look = sanitize(this.M.characters, m.outfit, this.savedOutfit);
+        const cosmetic = !!look.hat && Object.values(W.cosmeticHats ?? {}).includes(look.hat);
+        return void this.restyle(cosmetic ? { ...look, hat: this.savedOutfit.hat, hatColour: this.savedOutfit.hatColour } : look, m.title);
+      }
       if (m.t === 'jailed' && m.id === myId) {
         this.player.setJailed(m.on);
         if (this.hood) this.hood.me.jailed = m.on; // the house menu (it asks again when it opens, too)
@@ -3463,7 +3472,8 @@ export class TownScene extends Phaser.Scene {
       C,
       nickname: member.nickname ?? member.name,
       title: member.title ?? TOWNFOLK,
-      outfit: this.outfit,
+      outfit: this.savedOutfit,
+      wornHat: wornHeadCosmetic(),
       frame: frame ? { url: `${import.meta.env.BASE_URL}assets/${frame.file}`, slice: frame.nineSlice } : null,
       apply: (o) => loadOutfit(this, C, o),
       sheet: (o, dir) => {
@@ -3476,15 +3486,35 @@ export class TownScene extends Phaser.Scene {
     });
   }
 
-  /** Your new look and/or title (the Parlor, or the town's `look` message): on your character, name tag and HUD. */
+  /** The look chosen at the creator (saved); `outfit` is what's drawn: it with a worn head cosmetic's hat. */
+  private savedOutfit!: Outfit;
+
+  /** Your new look and/or title (the Parlor, or the town's `look` message): on your character, name tag and HUD. `o` is
+   *  the saved look; a worn cosmetic goes on it here. */
   private async restyle(o: Outfit | null, title: TitleData): Promise<void> {
     const member = this.me?.status === 'ok' ? this.me.me : null;
     if (member) member.title = title;
     this.player.setNameTag(member?.nickname ?? 'Guest', title);
-    if (!o || sameOutfit(o, this.outfit)) return;
+    if (!o) return;
+    this.savedOutfit = o;
     if (member) member.outfit = o;
-    await this.setOutfit(o);
-    setHudAvatar(headPortrait(this, this.M.characters, o));
+    await this.refreshLook();
+  }
+
+  /** Dev (`__town.outfit`): a change to the saved look (a worn cosmetic stays on top of it). */
+  debugSetOutfit(o: Partial<Outfit>): Promise<void> {
+    this.savedOutfit = { ...this.savedOutfit, ...o } as Outfit;
+    return this.refreshLook();
+  }
+
+  /** The look you show, from the saved one and the cosmetics worn: drawn when it changed (the Parlor, wearing or
+   *  taking off a cosmetic), and in dev told to the dev town so the other window sees it. */
+  private async refreshLook(): Promise<void> {
+    const look = lookWithCosmetics(this.savedOutfit, this.M.characters.wardrobe.cosmeticHats ?? {});
+    if (sameOutfit(look, this.outfit)) return;
+    await this.setOutfit(look);
+    setHudAvatar(headPortrait(this, this.M.characters, look));
+    if (fakeLogin()) void fetch(`/__look?${new URLSearchParams({ as: fakeName(), look: JSON.stringify(look), title: this.me?.status === 'ok' ? (this.me.me.title?.name ?? 'Townfolk') : 'Townfolk', color: this.me?.status === 'ok' ? (this.me.me.title?.color ?? '#B794F6') : '#B794F6' })}`).catch(() => {});
   }
 
   // ── The arena: jack en poy ──
@@ -3667,6 +3697,8 @@ export class TownScene extends Phaser.Scene {
     const sky = this.area === 'warrens' ? { lampsOn: true, tint: WARRENS_TINT } : skyAt(minutesNow());
     this.lampsOn = sky.lampsOn;
     this.objects.setLamps(sky.lampsOn);
+    this.player.setNight(sky.lampsOn); // (a lit hat's light: yours and everyone's)
+    this.others.setNight(sky.lampsOn);
     if (!force && sky.tint === this.tint) return;
     this.tint = sky.tint;
     const all = [...this.ground.sprites, ...this.objects.sprites, ...this.player.tintables, ...this.others.tintables, ...(this.npcs?.tintables ?? []), ...(this.mobs?.tintables ?? []), ...this.bridges.filter((b) => !!b)];
@@ -3755,6 +3787,7 @@ export class TownScene extends Phaser.Scene {
     return loadOutfit(this, this.M.characters, o).then(() => {
       this.outfit = o;
       this.player.setOutfit(o);
+      this.player.setNight(this.lampsOn);
       if (this.tint >= 0) this.player.sprite.setTint(this.tint);
     });
   }
@@ -3848,7 +3881,7 @@ function exposeDebug(scene: TownScene): void {
       if (b) scene.goToBuilding(b);
     },
     time: (hhmm: string | null) => scene.debugSetTime(hhmm),
-    outfit: (o: Partial<Outfit>) => scene.setOutfit({ ...scene.debugState().outfit, ...o }),
+    outfit: (o: Partial<Outfit>) => scene.debugSetOutfit(o),
     emote: (a: 'wave' | 'cheer') => scene.debugPlayer.emote(a),
     reward: (r: Reward) => scene.debugReward(r),
     /** The NPCs' tiles, or talk to one (walking over if needed). */

@@ -1,6 +1,6 @@
 import { keyLabel, matches, onKeybinds } from './keybinds';
 import { api } from '../net/endpoints';
-import { type Item, type Pocket, type TownBagActionResponse, type TownBagItem, type TownInventoryResponse, RETURN_LANTERN, agimatPocket, bagSlots, isGearDef, pocketOf, pocketSlots, pocketUsed, sellPrice } from '@mikazuki/shared';
+import { type Item, type Pocket, type TownBagActionResponse, type TownBagItem, type TownInventoryResponse, RETURN_LANTERN, agimatPocket, bagSlots, costumePocket, isGearDef, pocketOf, pocketSlots, pocketUsed, sellPrice } from '@mikazuki/shared';
 import { hotbarDragItem, hotbarItem } from './hotbar';
 import { playSound } from '../audio/sound';
 import { toast } from './toast';
@@ -46,9 +46,11 @@ const FORGE_LABEL: Record<string, string> = { whetstone: 'Enhance…', repairKit
 // The equipment panel (ui/equipment.ts) opens on its left with it (B or I): double-click or drag a piece of equipment
 // onto its place to wear it. On phones there's no room for both: Equipment / Bag in their heads switch between them.
 
-const COLS = 5;
-type Tab = 'all' | 'dug' | 'combat' | 'agimats' | 'misc';
-const TABS: [Tab, string][] = [['all', 'All'], ['dug', 'Dug up'], ['combat', 'Combat'], ['agimats', 'Agimats'], ['misc', 'Misc']];
+const COLS = 6;
+type Tab = 'all' | 'dug' | 'combat' | 'agimats' | 'costume' | 'misc';
+const TABS: [Tab, string][] = [['all', 'All'], ['dug', 'Dug up'], ['combat', 'Combat'], ['agimats', 'Agimats'], ['costume', 'Costume'], ['misc', 'Misc']];
+/** The combat bag's tabs, each a pocket of it (shared pocketOf): Combat the bag's own, Agimats and Costume their own. */
+const POCKET_TABS: Partial<Record<Tab, Pocket>> = { combat: 'bag', agimats: 'agimats', costume: 'costume' };
 /** Which tab shows an item of the old bag: dug-up items, the rest (keys, potions, megaphones) in Misc. (Combat is the
  *  combat bag's own.) */
 const tabOf = (it: TownBagItem): Tab => (it.kind === 'dig' ? 'dug' : 'misc');
@@ -285,13 +287,15 @@ export class Inventory {
       const t = b.dataset.tab as Tab;
       const D = itemData();
       const a = adventure();
-      const n = t === 'combat' || t === 'agimats' ? (D && a ? pocketUsed(D, a.bag, t === 'agimats' ? 'agimats' : 'bag') : 0) : d.items.filter((it) => inTab(t, it)).reduce((sum, it) => sum + (it.stacked ? 1 : it.count), 0);
+      const pocket = POCKET_TABS[t];
+      const n = pocket ? (D && a ? pocketUsed(D, a.bag, pocket) : 0) : d.items.filter((it) => inTab(t, it)).reduce((sum, it) => sum + (it.stacked ? 1 : it.count), 0);
       if (t === 'agimats') b.hidden = !D || !agimatPocket(D.stats); // (no pocket of their own: agimats are in Combat)
+      if (t === 'costume') b.hidden = !D || !costumePocket(D.stats); // (likewise cosmetics)
       b.textContent = `${TABS.find(([x]) => x === t)![1]} ${n}`;
       b.setAttribute('aria-selected', String(t === this.tab));
     }
     this.renderWallet(d);
-    if (this.tab === 'combat' || this.tab === 'agimats') return this.renderCombat();
+    if (POCKET_TABS[this.tab]) return this.renderCombat();
     this.hideTip();
 
     // One slot per item (this tab's; a stacked kind, megaphones, in one with its count), then the free slots, then the
@@ -372,8 +376,8 @@ export class Inventory {
     const D = itemData();
     const s = adventure();
     if (!D || !s) return void this.grid.replaceChildren(el('div', 'iv-empty', 'Choose a class with the Tanod to fill your combat bag.'));
-    // This tab's pocket: the Agimats tab's own, the Combat tab the rest.
-    const pocket: Pocket = this.tab === 'agimats' ? 'agimats' : 'bag';
+    // This tab's pocket: the Agimats and Costume tabs' own, the Combat tab the rest.
+    const pocket: Pocket = POCKET_TABS[this.tab] ?? 'bag';
     // (The Agimats tab: the highest level first, each level's by stat, else as the bag has them.)
     const bag = s.bag.filter((b) => pocketOf(D, b) === pocket);
     if (pocket === 'agimats') bag.sort((a, b) => b.level - a.level || (a.stat ?? '').localeCompare(b.stat ?? ''));
@@ -410,6 +414,11 @@ export class Inventory {
         // Forge tools: dragged onto the forge popup's slots.
         cell.draggable = true;
         cell.addEventListener('dragstart', (e) => e.dataTransfer?.setData('application/x-mk-tool', it.uid));
+      } else if (def?.kind === 'cosmetic') {
+        // A cosmetic: worn by a double-click, or dragged onto its place in the equipment panel's Costume tab.
+        cell.draggable = true;
+        cell.addEventListener('dragstart', (e) => e.dataTransfer?.setData('application/x-mk-cosmetic', it.uid));
+        cell.addEventListener('dblclick', () => !this.forge.isOpen && !trading() && void this.equipment?.wearCosmetic(it.uid));
       } else if (def?.kind === 'potion') {
         // HP and MP Potions go on the hotbar (its - = ~ slots or the top row).
         cell.draggable = true;
@@ -451,7 +460,7 @@ export class Inventory {
     }
     this.grid.style.setProperty('--cols', String(COLS));
     this.grid.replaceChildren(...cells);
-    if (!bag.length) this.grid.append(el('div', 'iv-empty-note', pocket === 'agimats' ? 'No agimats yet. Take blue or orange gear with slots apart, or find them on the golem.' : 'Nothing in your combat bag. Loot from the Slums lands here; what you wear is in Equipment.'));
+    if (!bag.length) this.grid.append(el('div', 'iv-empty-note', pocket === 'agimats' ? 'No agimats yet. Take blue or orange gear with slots apart, or find them on the golem.' : pocket === 'costume' ? 'No cosmetics yet. The Scrapheap Golem drops the Lamp-head Hat now and then.' : 'Nothing in your combat bag. Loot from the Slums lands here; what you wear is in Equipment.'));
     if (this.pickedMany.size > 1 || (this.multi && !this.pickedUid)) return this.renderCombatMany(bag);
     const it = s.bag.find((b) => b.uid === this.pickedUid);
     if (!it) return void this.detail.replaceChildren(this.note() ?? el('div', 'iv-hint', 'Pick an item for what it is. Double-click gear to wear it; drag HP and MP Potions onto your hotbar.'));
@@ -467,6 +476,11 @@ export class Inventory {
       const price = this.priceOf(it);
       if (!def.training) row.append(this.action('Disassemble', 'iv-sell', () => void this.disassemble(it, null)));
       else if (price !== null) row.append(this.action(`Sell · ${price} Kusing`, 'iv-sell', () => void this.sell(it, null, price)));
+    } else if (def?.kind === 'cosmetic') {
+      // A cosmetic: Wear (greyed until it can be worn: no place yet).
+      const wear = this.action('Wear', 'iv-flex', () => void this.equipment?.wearCosmetic(it.uid));
+      if (!def.cosmeticPlace) Object.assign(wear, { disabled: true, title: "Can't be worn yet." });
+      row.append(wear);
     } else if (def?.kind === 'potion') parts.push(el('div', 'iv-about', 'Drag it onto your hotbar (the - = ~ slots) and use it in the Slums.'));
     else if (def?.forge && def.forge !== 'fragment') row.append(this.action(FORGE_LABEL[def.forge], 'iv-flex', () => void this.openForge(it)));
     else if (def?.kind === 'agimat') {
@@ -511,6 +525,9 @@ export class Inventory {
         off.add(items.length);
         items.push(["Training gear can't be sold", () => {}]);
       } else items.push(['Disassemble', () => void this.disassemble(it, cell)]);
+    } else if (def?.kind === 'cosmetic') {
+      if (!def.cosmeticPlace) off.add(items.length);
+      items.push(['Wear', () => void this.equipment?.wearCosmetic(it.uid)]);
     } else if (def?.forge === 'fragment') {
       const D = itemData();
       const per = D ? fragmentsPerWhetstone(D.stats) : 10;

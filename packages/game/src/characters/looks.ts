@@ -55,7 +55,7 @@ export function sanitize(C: CharacterDefs, saved: Partial<OutfitData> | null | u
     shoesColour: one(saved.shoesColour, c.colours, fallback.shoesColour),
     glasses: opt(saved.glasses, c.glasses),
     glassesColour: one(saved.glassesColour, c.colours, fallback.glassesColour ?? c.colours[0]),
-    hat: opt(saved.hat, c.hats),
+    hat: opt(saved.hat, [...c.hats, ...Object.values(C.wardrobe.cosmeticHats ?? {})]), // (a worn cosmetic's hat too)
     hatColour: one(saved.hatColour, c.colours, fallback.hatColour ?? c.colours[0]),
   };
 }

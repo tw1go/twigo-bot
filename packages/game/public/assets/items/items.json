@@ -235,7 +235,8 @@
       "kind": "cosmetic",
       "rarity": "darkOrange",
       "cosmetic": true,
-      "about": "The Scrapheap Golem's lamp, as a hat. Can't be worn yet.",
+      "cosmeticPlace": "head",
+      "about": "The Scrapheap Golem's lamp, as a hat that lights up at night. Wear it from the Costume tab.",
       "icon": "items/cosmetics/item-cosmetic-lamp-hat-16.png",
       "showcase": "items/cosmetics/item-cosmetic-lamp-hat.png",
       "large": "items/cosmetics/item-cosmetic-lamp-hat-64.png"

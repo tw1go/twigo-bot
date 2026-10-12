@@ -1040,7 +1040,9 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         const to = town.memberOf(m.id);
         const them = to ? conns.get(to) : undefined;
         if (!them) return send(c, { t: 'inspect', id: m.id, gone: true });
-        const equipped = opts.items ? opts.items.state(them.userId).equipped : {};
+        const state = opts.items?.state(them.userId);
+        const equipped = state?.equipped ?? {};
+        const cosmetics = state?.cosmetics ?? {};
         const d = rules?.fighter(fighterOf(them));
         const stats = d
           ? {
@@ -1050,7 +1052,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
               ...{ hpRegen: d.hpRegen, hpRegenPct: d.hpRegenPct, mpRegen: d.mpRegen, dropRate: d.dropRate, accuracy: d.accuracy, cooldownPct: d.cooldownPct },
             }
           : null;
-        return send(c, { t: 'inspect', id: m.id, cls: them.player.cls ?? null, level: d?.level ?? them.player.level ?? 1, equipped, stats });
+        return send(c, { t: 'inspect', id: m.id, cls: them.player.cls ?? null, level: d?.level ?? them.player.level ?? 1, equipped, cosmetics, stats });
       }
       case 'trade-ask': {
         // Ask someone near you to trade (the player menu): they have the timeout to answer.

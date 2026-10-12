@@ -1,4 +1,5 @@
-import { type EquipPlace, type EquipSlot, type InspectStats, type Item, type TownPlayer } from '@mikazuki/shared';
+import type { CosmeticPlace } from '@mikazuki/shared';
+import { type EquipPlace, type EquipSlot, type InspectStats, type Item, type TownPlayer, COSMETIC_PLACES } from '@mikazuki/shared';
 import type { Dir } from '../assets/types';
 import { playSound } from '../audio/sound';
 import { classInfo } from '../net/adventure';
@@ -51,6 +52,11 @@ export class InspectWindow {
   private raf = 0;
   private player: TownPlayer | null = null;
   private equipped: Partial<Record<EquipPlace, Item>> = {};
+  private cosmetics: Partial<Record<CosmeticPlace, Item>> = {};
+  private readonly cslots = new Map<CosmeticPlace, HTMLButtonElement>();
+  private readonly tabs = el('div', 'eq-tabs');
+  private gearCols: HTMLElement[] = [];
+  private costumeCols: HTMLElement[] = [];
   private cls: string | null = null;
 
   constructor(private readonly o: InspectOptions) {
@@ -100,9 +106,24 @@ export class InspectWindow {
     turns.append(this.who);
     middle.append(stage, turns);
     const body = el('div', 'eq-body');
-    body.append(column(LEFT, 'left'), middle, column(RIGHT, 'right'));
+    const costumeLeft = el('div', 'eq-col eq-left');
+    for (const p of COSMETIC_PLACES) costumeLeft.append(this.cslot(p));
+    const costumeRight = el('div', 'eq-col eq-right eq-spacer');
+    for (const _ of COSMETIC_PLACES) costumeRight.append(el('span', 'eq-gap'));
+    this.gearCols = [column(LEFT, 'left'), column(RIGHT, 'right')];
+    this.costumeCols = [costumeLeft, costumeRight];
+    body.append(this.gearCols[0], costumeLeft, middle, this.gearCols[1], costumeRight);
+    for (const [tab, label] of [['gear', 'Gear'], ['costume', 'Costume']] as const) {
+      const b = el('button', 'eq-tab', label);
+      b.dataset.tab = tab;
+      b.setAttribute('role', 'tab');
+      b.addEventListener('click', () => this.setTab(tab));
+      this.tabs.append(b);
+    }
+    this.tabs.setAttribute('role', 'tablist');
+    this.setTab('gear');
     this.tip.hidden = true;
-    this.root.append(head, body, this.stats, this.tip);
+    this.root.append(head, this.tabs, body, this.stats, this.tip);
     document.body.append(this.root);
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && !this.root.hidden) this.close();
@@ -148,12 +169,40 @@ export class InspectWindow {
     this.raf = requestAnimationFrame(tick);
   }
 
+  private setTab(tab: 'gear' | 'costume'): void {
+    for (const c of this.gearCols) c.hidden = tab !== 'gear';
+    for (const c of this.costumeCols) c.hidden = tab !== 'costume';
+    for (const b of this.tabs.children) b.setAttribute('aria-selected', String((b as HTMLElement).dataset.tab === tab));
+    this.tip.hidden = true;
+  }
+
+  /** A Costume place (read-only): the cosmetic worn there, or its name when empty. */
+  private cslot(place: CosmeticPlace): HTMLButtonElement {
+    const b = el('button', 'eq-slot eq-cslot');
+    b.dataset.place = place;
+    const names: Record<CosmeticPlace, string> = { weapon: 'Weapon cosmetic', head: 'Head cosmetic', body: 'Body cosmetic' };
+    const tip = () => {
+      const item = this.cosmetics[place];
+      this.tip.replaceChildren(...(item ? itemTipFor(item, { cls: this.cls }) : [el('div', 'eq-tip-name', names[place])]));
+      this.tip.hidden = false;
+      const r = b.getBoundingClientRect();
+      const box = this.root.getBoundingClientRect();
+      this.tip.style.left = `${r.right - box.left + 6}px`;
+      this.tip.style.top = `${r.top - box.top}px`;
+    };
+    b.addEventListener('pointerenter', tip);
+    b.addEventListener('pointerleave', () => (this.tip.hidden = true));
+    this.cslots.set(place, b);
+    return b;
+  }
+
   /** The server's answer (only for the one shown). */
-  answer(m: { id: string; gone?: boolean; cls?: string | null; level?: number; equipped?: Partial<Record<EquipPlace, Item>>; stats?: InspectStats | null }): void {
+  answer(m: { id: string; gone?: boolean; cls?: string | null; level?: number; equipped?: Partial<Record<EquipPlace, Item>>; cosmetics?: Partial<Record<CosmeticPlace, Item>>; stats?: InspectStats | null }): void {
     if (this.root.hidden || m.id !== this.player?.id) return;
     if (m.gone) return void this.stats.replaceChildren(el('div', 'in-wait', 'They left.'));
     this.cls = m.cls ?? null;
     this.equipped = m.equipped ?? {};
+    this.cosmetics = m.cosmetics ?? {};
     this.renderSlots();
     this.renderWho(m.level ?? 1);
     this.renderStats(m.stats ?? null);
@@ -195,6 +244,18 @@ export class InspectWindow {
   }
 
   private renderSlots(): void {
+    for (const [place, b] of this.cslots) {
+      const item = this.cosmetics[place];
+      b.replaceChildren();
+      b.classList.toggle('eq-worn', !!item);
+      if (item) {
+        b.style.setProperty('--rarity', RARITY_COLOUR[rarityOf(item)]);
+        b.append(itemPicture(item, 'icon', 2));
+      } else {
+        const icon = slotSilhouette(place);
+        if (icon) b.append(Object.assign(icon, { className: `${icon.className} eq-silhouette` }));
+      }
+    }
     for (const [place, b] of this.slots) {
       const item = this.equipped[place];
       b.replaceChildren();

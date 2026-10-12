@@ -103,7 +103,7 @@ export function clothesFiles(C: CharacterDefs, o: Outfit, dir: Dir): LayerFile[]
   return layerFiles(C, o, 'idle', dir).filter((l) => l.layer === 'shoes' || l.layer === 'bottom' || l.layer === 'top');
 }
 
-/** Every image an outfit needs, for the loader. */
+/** Every image an outfit needs, for the loader (a lit hat's night sheets and glow too). */
 export function outfitFiles(C: CharacterDefs, o: Outfit): string[] {
   const files = new Set<string>();
   for (const anim of ANIMS) {
@@ -114,6 +114,29 @@ export function outfitFiles(C: CharacterDefs, o: Outfit): string[] {
       }
     }
   }
+  for (const f of litFiles(C, o)) files.add(f);
+  return [...files];
+}
+
+/** A lit hat on a look (wardrobe.litHats: the Lamp-head Hat's lamp): the night overlay's sheet for an animation and
+ *  direction (wardrobe.hatLitPattern: the glass and bulb only), and its glow; null without one. */
+export function litHat(C: CharacterDefs, o: Outfit): { sheet: (anim: string, dir: Dir) => string; glow: { file: string; size: Vec2; offset: number } } | null {
+  const W = C.wardrobe;
+  if (!o.hat || !W.hatLitPattern || !W.litHats?.includes(o.hat) || !W.litGlow) return null;
+  const hat = o.hat;
+  const pattern = W.hatLitPattern;
+  return {
+    sheet: (anim, dir) => pattern.replace(/\{(\w+)\}/g, (_, k: string) => ({ item: hat, anim, dir })[k] ?? `{${k}}`),
+    glow: { file: W.litGlow.file, size: W.litGlow.size, offset: W.litGlow.offset ?? 6 },
+  };
+}
+
+/** The night sheets and glow a lit hat needs (none for other hats). */
+export function litFiles(C: CharacterDefs, o: Outfit): string[] {
+  const lit = litHat(C, o);
+  if (!lit) return [];
+  const files = new Set<string>([lit.glow.file]);
+  for (const anim of ANIMS) for (const dir of dirsFor(C, anim)) files.add(lit.sheet(anim, dir));
   return [...files];
 }
 
@@ -162,7 +185,7 @@ function swapsFor(C: CharacterDefs, o: Outfit, layer: string): Map<number, numbe
       ramp(K.clothMain, preset(o.glassesColour));
       break;
     case 'hat':
-      ramp(K.clothMain, preset(o.hatColour));
+      if (!o.hat || !C.wardrobe.fixedColourHats?.includes(o.hat)) ramp(K.clothMain, preset(o.hatColour)); // (a cosmetic hat keeps its own colours)
       break;
   }
   return m;
