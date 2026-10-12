@@ -618,6 +618,7 @@
       .eq-tip-binds, #inventory .eq-tip-binds, :is(#equipment, #inspect) .eq-tip-binds, .iv-tip .eq-tip-binds { color: #FDBA74; }
       :is(#equipment, #inspect) .eq-broken > :first-child { filter: grayscale(1) brightness(0.7); }
       @media (max-width: 760px), (max-height: 500px) { #inventory { top: 132px; right: 8px; max-height: calc(100vh - 150px); } #inventory .iv-grid { grid-template-columns: repeat(var(--cols, 5), minmax(0, 60px)); grid-auto-rows: 60px; } #inventory .iv-cell { width: 100%; height: 60px; } }
+      @media (max-height: 500px) and (min-width: 561px) { #inventory .iv-detail { padding: 6px 6px 0; min-height: 0; } #inventory .iv-name { font-size: calc(15px * var(--text)); } #inventory .iv-meta, #inventory .iv-hint, #inventory .iv-about, #inventory .iv-note { font-size: calc(11px * var(--text)); } #inventory .iv-actions { gap: 4px; margin-top: 4px; } #inventory .iv-act { padding: 4px 10px; font-size: calc(12px * var(--text)); border-width: 2px; box-shadow: 0 2px 0 #0B0A1A; } }
       #chat .em-open { height: 100%; min-width: 38px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 4px; background: rgba(0, 0, 0, 0.35); padding: 0 6px; }
       #chat .em-open:hover, #chat .em-open[aria-expanded='true'] { background: rgba(0, 0, 0, 0.55); box-shadow: 0 0 0 1px rgba(183, 148, 246, 0.6); }
       #chat .em-palette { position: absolute; right: 0; bottom: calc(100% + 8px); display: flex; gap: 4px; padding: 6px; border-radius: 6px; background: rgba(10, 12, 24, 0.85); }
@@ -712,6 +713,7 @@
       #town-hud .gt-head { position: absolute; left: 4px; bottom: 0; width: 56px; height: 56px; image-rendering: pixelated; }
       #town-hud .th-golem .jt-label { color: #FDBA74; }
       #town-hud .th-golem .gt-line { font-size: calc(15px * var(--text)); white-space: nowrap; }
+      #town-hud .th-golem .gt-short { display: none; } /* phones swap long↔short in the media block below */
       #town-hud .th-golem.gt-awake { border-color: #DC2626; animation: gt-pulse 1.2s ease-in-out infinite; }
       #town-hud .th-golem.gt-awake .gt-line { color: #FCA5A5; }
       @keyframes gt-pulse { 50% { box-shadow: 0 0 10px 2px rgba(220, 38, 38, 0.55); } }
@@ -721,6 +723,36 @@
       #town-hud .th-events { display: grid; width: fit-content; }
       #town-hud .th-events > .th-jackpot { width: auto; justify-self: stretch; justify-content: start; }
       @media (prefers-reduced-motion: reduce) { #town-hud .th-golem.gt-awake { animation: none; } }
+      /* In the Warrens on phones, hide the town-specific event counters (jackpot + race; golem is already hidden there)
+         and the stay/daily-Kowens popup (it clutters the bottom of the screen during a run). */
+      @media (max-width: 560px), (max-height: 500px) { body.warrens-on #town-hud .th-events, body.warrens-on #stay { display: none; } }
+      /* On phones (portrait ≤560 px, landscape ≤500 px tall): square icon tiles in a horizontal row.
+         jackpot = coin icon + time, race = 🏁 + status, golem = head + time.
+         The warrens rule above hides them entirely inside dungeons. */
+      @media (max-width: 560px), (max-height: 500px) {
+        /* Flip the column into a horizontal row */
+        #town-hud .th-events { display: flex; flex-direction: row; align-items: flex-start; gap: 6px; width: auto; }
+        /* Each tile: ~60 × 60 px square, flex column, icon fills the top, time at the bottom */
+        #town-hud .th-events .th-jackpot { display: flex; flex-direction: column; align-items: center; justify-content: space-between; width: 60px; height: 60px; min-width: 0; padding: 6px 4px 5px; box-sizing: border-box; text-align: center; margin-top: 0; }
+        /* Hide the lights row and text labels */
+        #town-hud .th-events .jt-lights { display: none; }
+        #town-hud .th-events .jt-label { display: none; }
+        /* Jackpot tile: pot-row becomes icon-only (coin centred, amount hidden) */
+        #town-hud .th-events .th-jackpot:not(.th-golem):not(.th-race) .jt-pot { display: none; }
+        #town-hud .th-events .th-jackpot:not(.th-golem):not(.th-race) .jt-pot-row { flex: 1; display: flex; align-items: center; justify-content: center; }
+        /* Race tile: 🏁 emoji fills the icon slot via ::before */
+        #town-hud .th-events .th-race::before { content: "🏁"; font-size: 22px; flex: 1; display: flex; align-items: center; justify-content: center; }
+        /* Time text: small single line; clip with ellipsis if too long */
+        #town-hud .th-events .jt-time { font-size: calc(9px * var(--text)); font-weight: 600; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
+        /* Golem tile: bring the head into the flex flow (was absolute), no left-padding indent */
+        #town-hud .th-events .th-golem { width: 60px; }
+        #town-hud .th-events .th-golem.gt-headed { padding-left: 0; }
+        #town-hud .th-events .gt-head { position: static; width: 32px; height: 32px; flex: 1; display: block; object-fit: contain; }
+        #town-hud .th-events .th-golem .gt-line { white-space: nowrap; font-size: calc(9px * var(--text)); }
+        /* Golem text: swap to the short form (countdown / "Awake") on mobile */
+        #town-hud .th-events .th-golem .gt-long { display: none; }
+        #town-hud .th-events .th-golem .gt-short { display: inline; }
+      }
       #reward .rw-card:has(.rb-body) { width: min(560px, calc(100vw - 32px)); }
       #reward .rb-body { margin-bottom: 12px; }
       #reward .rb-status { margin: 0 0 10px; font-size: calc(14px * var(--text)); color: #3D4256; }
@@ -1500,6 +1532,7 @@
       #hotbar .hb-book { width: var(--hb); height: var(--hb); flex: none; padding: 0; border: 2px solid #7C2AE8; background: #111827; color: #C4B5FD; font: 700 calc(15px * var(--text)) var(--ui-font); cursor: var(--cur-hand, pointer); }
       #hotbar .hb-book:hover, #hotbar .hb-book[aria-expanded='true'] { background: #7C2AE8; color: #fff; }
       #hotbar .hb-book { position: relative; }
+      #hotbar .hb-expand { display: none; } /* portrait-phone only; shown in the media block below */
       #hotbar .hb-book.hb-new::after { content: ''; position: absolute; top: -4px; right: -4px; width: 8px; height: 8px; border-radius: 50%; background: #FCDA4A; box-shadow: 0 0 0 2px #0B0A1A; }
       #skill-book { position: fixed; right: 12px; top: 50%; z-index: 3; display: flex; flex-direction: column; width: 336px; max-height: calc(100vh - 220px); box-sizing: border-box; padding: 10px 12px 12px; border: 2px solid #7C2AE8; background: rgba(17, 24, 39, 0.97); color: #E6E9F2; font: calc(13px * var(--text))/1.3 var(--ui-font); transform: translateY(-50%); }
       #skill-book[hidden] { display: none; }
@@ -1542,6 +1575,67 @@
       @media (min-width: 761px) and (max-width: 1380px) and (min-height: 501px) { body.hotbar-on #system-feed { bottom: 118px; } body.hotbar-on #stay { bottom: 276px; } }
       body.hotbar-on #toast { bottom: 118px; }
       @media (max-width: 760px), (max-height: 500px) { #hotbar, #skill-book { display: none; } body.hotbar-on #toast { bottom: 24px; } }
+      /* Portrait phones (body.hotbar-on, ≤560 px wide): compact 2-row hotbar spanning full device width.
+         #stay stays at bottom: 12 px; its max height ~88 px, so hotbar at bottom: 108 px clears it.
+         CSS grid: 7 columns × 2 rows → K + 6 skills on row 1, 4 skills + 3 util on row 2.
+         Hotbar height: 2 × 40 px rows + 4 px gap = 84 px → top at 192 px from bottom.
+         Toast, inventory and skills panel sit above that (bottom: 200 px). */
+      @media (max-width: 560px) {
+        body.hotbar-on #hotbar { display: flex; bottom: 108px; left: 0; right: 0; width: 100%; transform: none; padding: 0 6px; box-sizing: border-box; --hb: 28px; }
+        body.hotbar-on #hotbar .hb-key { display: none; }
+        body.hotbar-on #hotbar .hb-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; width: 100%; }
+        /* .hb-toprow has both classes; higher specificity hides it collapsed; hb-top-open on body reveals it */
+        body.hotbar-on #hotbar .hb-row.hb-toprow { display: none; }
+        body.hb-top-open #hotbar .hb-row.hb-toprow { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; width: 100%; }
+        /* Expand toggle: small tab above the hotbar's right edge */
+        body.hotbar-on #hotbar .hb-expand { display: block; position: absolute; top: -26px; right: 0; padding: 2px 14px 3px; border: 1px solid #3D4256; border-bottom: none; border-radius: 3px 3px 0 0; background: #111827; color: #C4B5FD; font: 700 calc(12px * var(--text))/1 var(--ui-font); cursor: var(--cur-hand, pointer); }
+        body.hotbar-on #hotbar .hb-expand:hover { background: #1E1B3A; color: #E6E9F2; }
+        body.hotbar-on #hotbar .hb-slot, body.hotbar-on #hotbar .hb-book { width: 100%; height: 40px; box-sizing: border-box; }
+        body.hotbar-on #hotbar .hb-slot { border-width: 4px; border-image-width: 4px; }
+        body.hotbar-on #hotbar .hb-slot .it-frame { margin: -4px; }
+        body.hotbar-on #toast { bottom: 200px; }
+        body.hotbar-on #skill-book:not([hidden]) {
+          display: flex; left: 12px; right: 12px; width: auto;
+          top: 140px; bottom: 200px; transform: none; max-height: none;
+        }
+        body.hotbar-on #skill-book .sb-stage { display: none; }
+        /* Inventory: cap its bottom so it doesn't cover the hotbar */
+        body.hotbar-on #inventory:not([hidden]) { bottom: 200px; max-height: none; overflow: hidden; }
+        body.hotbar-on #inventory .iv-grid { min-height: 0; }
+        /* When top row is expanded (~171 px tall hotbar): push overlapping panels up */
+        body.hb-top-open.hotbar-on #toast { bottom: 290px; }
+        body.hb-top-open.hotbar-on #skill-book:not([hidden]) { bottom: 290px; }
+        body.hb-top-open.hotbar-on #inventory:not([hidden]) { bottom: 290px; }
+      }
+      /* Landscape phones / PWA forced-landscape (body.hotbar-on, ≤500 px tall and ≥561 px wide):
+         PC-style centred hotbar, --hb: 36 px. Top row collapsed by default, expandable with ▲.
+         Collapsed hotbar top: 8 + 36 = 44 px from bottom. Expanded: 8 + 75 = 83 px. */
+      @media (max-height: 500px) and (min-width: 561px) {
+        body.hotbar-on #hotbar { display: flex; --hb: 36px; }
+        body.hotbar-on #hotbar .hb-row.hb-toprow { display: none; }
+        body.hb-top-open #hotbar .hb-row.hb-toprow { display: flex; }
+        body.hotbar-on #hotbar .hb-key { display: none; }
+        body.hotbar-on #hotbar .hb-expand { display: block; position: absolute; top: -26px; right: 0; padding: 2px 14px 3px; border: 1px solid #3D4256; border-bottom: none; border-radius: 3px 3px 0 0; background: #111827; color: #C4B5FD; font: 700 calc(12px * var(--text))/1 var(--ui-font); cursor: var(--cur-hand, pointer); }
+        body.hotbar-on #hotbar .hb-expand:hover { background: #1E1B3A; color: #E6E9F2; }
+        body.hotbar-on #skill-book:not([hidden]) { display: flex; }
+        body.hotbar-on #chat, body.hotbar-on #bag-button { bottom: 52px; }
+        body.hotbar-on #toast { bottom: 52px; }
+        /* Inventory: full-screen overlay from top to just above the hotbar */
+        body.hotbar-on #inventory:not([hidden]) { top: 8px; left: 8px; right: 8px; bottom: 60px; width: auto; max-width: none; max-height: none; overflow: hidden; font-size: calc(13px * var(--text)); padding: 10px 12px 12px; gap: 8px; }
+        body.hotbar-on #inventory .iv-grid { min-height: 0; grid-template-columns: repeat(auto-fill, 72px); grid-auto-rows: 72px; }
+        body.hotbar-on #inventory .iv-cell { height: 72px; }
+        body.hotbar-on #inventory .iv-tab { font-size: calc(12px * var(--text)); padding: 4px 6px 3px; }
+        body.hotbar-on #inventory .iv-detail { min-height: 0; padding: 6px 6px 0; }
+        body.hotbar-on #inventory .iv-wallet { padding: 4px 6px 0; font-size: calc(13px * var(--text)); }
+        /* When top row is expanded (75 px tall hotbar): push overlapping panels up */
+        body.hb-top-open.hotbar-on #chat, body.hb-top-open.hotbar-on #bag-button { bottom: 90px; }
+        body.hb-top-open.hotbar-on #toast { bottom: 90px; }
+        body.hb-top-open.hotbar-on #inventory:not([hidden]) { bottom: 98px; }
+        /* Settings: scrollable overlay, wider card, 2-column section layout */
+        #settings { align-items: flex-start; overflow-y: auto; }
+        #settings .st-card, #settings .st-wide { width: min(560px, calc(100vw - 32px)); }
+        #settings .st-card > div:first-of-type { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; align-items: start; }
+      }
       #quest-tracker { position: fixed; left: 12px; z-index: 2; width: 150px; box-sizing: border-box; padding: 6px 8px 8px; border-radius: 6px; background: rgba(10, 12, 24, 0.55); color: #E6E9F2; font: calc(13px * var(--text))/1.3 var(--ui-font); text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6); cursor: var(--cur-hand, pointer); }
       #quest-tracker[hidden] { display: none; }
       /* The Scrap Warrens (ui/warrens.ts): the tracker in the quest tracker's place, the gate's panel, the area banner. */

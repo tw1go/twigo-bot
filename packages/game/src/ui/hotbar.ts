@@ -84,6 +84,7 @@ export function hotbarDragItem(e: DragEvent, it: { id: string; name: string; emo
 export class Hotbar {
   readonly root = el('div');
   private readonly book = el('button', 'hb-book');
+  private readonly expandBtn = el('button', 'hb-expand');
   private readonly list = el('div');
   private readonly rows = el('div', 'sb-rows');
   private readonly stageBox = el('div', 'sb-stage');
@@ -135,7 +136,11 @@ export class Hotbar {
     }
     top.prepend(el('span', 'hb-spacer')); // (lines the top row up with the bottom's)
     bottom.prepend(this.book);
-    this.root.append(top, bottom);
+    this.expandBtn.textContent = '▲';
+    this.expandBtn.setAttribute('aria-label', 'Alt-key row');
+    this.expandBtn.setAttribute('aria-expanded', 'false');
+    this.expandBtn.addEventListener('click', () => this.toggleTop());
+    this.root.append(top, bottom, this.expandBtn);
     document.body.append(this.root, this.list);
     // Dropped off the bar: that slot empties.
     this.root.addEventListener('dragend', (e) => {
@@ -172,6 +177,9 @@ export class Hotbar {
     this.cls = c;
     this.root.hidden = false;
     document.body.classList.add('hotbar-on');
+    document.body.classList.remove('hb-top-open');
+    this.expandBtn.textContent = '▲';
+    this.expandBtn.setAttribute('aria-expanded', 'false');
     this.root.style.setProperty('--badge', c ? `url("${this.o.badge(c.id)}")` : 'none');
     const saved = c ? load()[c.id] : undefined;
     if (c && saved) this.layout = tidy(saved, c);
@@ -461,6 +469,12 @@ export class Hotbar {
   /** A new skill unlocked: a dot on the Skills button until the panel is opened. */
   markNew(): void {
     this.book.classList.add('hb-new');
+  }
+
+  private toggleTop(): void {
+    const open = document.body.classList.toggle('hb-top-open');
+    this.expandBtn.textContent = open ? '▼' : '▲';
+    this.expandBtn.setAttribute('aria-expanded', String(open));
   }
 
   private toggleList(show = this.list.hidden): void {
