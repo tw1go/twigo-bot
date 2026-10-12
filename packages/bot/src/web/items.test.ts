@@ -859,7 +859,7 @@ test('Medium HP and MP Potions: sold from Lv 10 at 150 Kusing (not at Lv 9), hea
   const potions = (level: number) => combatWares(D, level).filter((w) => w.tab === 'healing').map((w) => `${w.def.id}:${w.cost}`);
   assert.deepEqual(potions(9), ['low-hp-potion:50', 'low-mp-potion:50']);
   assert.deepEqual(potions(10), ['low-hp-potion:50', 'low-mp-potion:50', 'mid-hp-potion:150', 'mid-mp-potion:150']);
-  const c = { equipped: {}, bag: [] as Item[], kusing: 10_000 };
+  const c = { equipped: {}, cosmetics: {}, bag: [] as Item[], kusing: 10_000 };
   const wallet = () => ({ have: 0, spend: () => false });
   assert.equal(buyCombat(D, c, 9, 'mid-hp-potion', 1, wallet(), uid).ok, false, 'not sold at Lv 9');
   assert.ok(buyCombat(D, c, 10, 'mid-hp-potion', 2, wallet(), uid).ok);
