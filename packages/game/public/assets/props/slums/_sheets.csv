@@ -65,3 +65,18 @@ prop-slums-dead-tree-leaning-1.png,64,64,1,0,no,32,49,1x1; leaning dead tree hel
 prop-slums-dead-tree-fallen-1.png,64,56,1,0,no,32,38,2x2; fallen mossy dead log on a weedy patch (PixelLab, style-matched)
 prop-slums-warren-gate.png,96,96,1,0,no,48,64,3x3; Warren Gate: broken storm-drain pipe in scrap, dark mouth (Mac's PixelLab pick 2, style-matched)
 prop-slums-warren-gate-glow.png,96,96,12,10,yes,48,64,3x3; the gate's portal swirl turning; draw on top of the gate at the same anchor (also the exit warp inside the Warrens)
+prop-slums-rubble-1.png,32,32,1,0,no,16,24,1x1; PLACEHOLDER (scripts/terrain/placeholders.ts): rubble: a low heap of broken stone; blocked
+prop-slums-rubble-2.png,32,32,1,0,no,16,24,1x1; PLACEHOLDER (scripts/terrain/placeholders.ts): rubble: a low heap of broken stone; blocked
+prop-slums-rubble-3.png,32,32,1,0,no,16,24,1x1; PLACEHOLDER (scripts/terrain/placeholders.ts): rubble: a low heap of broken stone; blocked
+prop-slums-rubble-4.png,32,32,1,0,no,16,24,1x1; PLACEHOLDER (scripts/terrain/placeholders.ts): rubble: a low heap of broken stone; blocked
+prop-slums-rubble-5.png,32,32,1,0,no,16,24,1x1; PLACEHOLDER (scripts/terrain/placeholders.ts): rubble: a low heap of broken stone; blocked
+prop-slums-rubble-6.png,32,32,1,0,no,16,24,1x1; PLACEHOLDER (scripts/terrain/placeholders.ts): rubble: a low heap of broken stone; blocked
+prop-slums-slab-1.png,64,48,1,0,no,32,36,2x2; PLACEHOLDER (scripts/terrain/placeholders.ts): heaved road slab: a concrete slab tilted up out of the ground; blocked
+prop-slums-slab-2.png,64,48,1,0,no,32,36,2x2; PLACEHOLDER (scripts/terrain/placeholders.ts): heaved road slab: a concrete slab tilted up out of the ground; blocked
+prop-slums-slab-3.png,64,48,1,0,no,32,36,2x2; PLACEHOLDER (scripts/terrain/placeholders.ts): heaved road slab: a concrete slab tilted up out of the ground; blocked
+prop-slums-boulder-1.png,32,40,1,0,no,16,32,1x1; PLACEHOLDER (scripts/terrain/placeholders.ts): boulder: a big round stone; blocked
+prop-slums-boulder-2.png,32,40,1,0,no,16,32,1x1; PLACEHOLDER (scripts/terrain/placeholders.ts): boulder: a big round stone; blocked
+prop-slums-boulder-3.png,32,40,1,0,no,16,32,1x1; PLACEHOLDER (scripts/terrain/placeholders.ts): boulder: a big round stone; blocked
+prop-slums-junk-spire-1.png,32,64,1,0,no,16,56,1x1; PLACEHOLDER (scripts/terrain/placeholders.ts): junk spire: a tall spike of scrap on a Warrens wall top; blocked
+prop-slums-junk-spire-2.png,32,64,1,0,no,16,56,1x1; PLACEHOLDER (scripts/terrain/placeholders.ts): junk spire: a tall spike of scrap on a Warrens wall top; blocked
+prop-slums-junk-spire-3.png,32,64,1,0,no,16,56,1x1; PLACEHOLDER (scripts/terrain/placeholders.ts): junk spire: a tall spike of scrap on a Warrens wall top; blocked

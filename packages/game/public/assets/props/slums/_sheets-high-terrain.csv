@@ -1,0 +1,16 @@
+file,cell_w,cell_h,frames,fps,loop,anchor_x,anchor_y,notes
+prop-slums-rubble-1.png,32,32,1,0,no,16,24,1x1; PLACEHOLDER (scripts/terrain/placeholders.ts): rubble: a low heap of broken stone; blocked
+prop-slums-rubble-2.png,32,32,1,0,no,16,24,1x1; PLACEHOLDER (scripts/terrain/placeholders.ts): rubble: a low heap of broken stone; blocked
+prop-slums-rubble-3.png,32,32,1,0,no,16,24,1x1; PLACEHOLDER (scripts/terrain/placeholders.ts): rubble: a low heap of broken stone; blocked
+prop-slums-rubble-4.png,32,32,1,0,no,16,24,1x1; PLACEHOLDER (scripts/terrain/placeholders.ts): rubble: a low heap of broken stone; blocked
+prop-slums-rubble-5.png,32,32,1,0,no,16,24,1x1; PLACEHOLDER (scripts/terrain/placeholders.ts): rubble: a low heap of broken stone; blocked
+prop-slums-rubble-6.png,32,32,1,0,no,16,24,1x1; PLACEHOLDER (scripts/terrain/placeholders.ts): rubble: a low heap of broken stone; blocked
+prop-slums-slab-1.png,64,48,1,0,no,32,36,2x2; PLACEHOLDER (scripts/terrain/placeholders.ts): heaved road slab: a concrete slab tilted up out of the ground; blocked
+prop-slums-slab-2.png,64,48,1,0,no,32,36,2x2; PLACEHOLDER (scripts/terrain/placeholders.ts): heaved road slab: a concrete slab tilted up out of the ground; blocked
+prop-slums-slab-3.png,64,48,1,0,no,32,36,2x2; PLACEHOLDER (scripts/terrain/placeholders.ts): heaved road slab: a concrete slab tilted up out of the ground; blocked
+prop-slums-boulder-1.png,32,40,1,0,no,16,32,1x1; PLACEHOLDER (scripts/terrain/placeholders.ts): boulder: a big round stone; blocked
+prop-slums-boulder-2.png,32,40,1,0,no,16,32,1x1; PLACEHOLDER (scripts/terrain/placeholders.ts): boulder: a big round stone; blocked
+prop-slums-boulder-3.png,32,40,1,0,no,16,32,1x1; PLACEHOLDER (scripts/terrain/placeholders.ts): boulder: a big round stone; blocked
+prop-slums-junk-spire-1.png,32,64,1,0,no,16,56,1x1; PLACEHOLDER (scripts/terrain/placeholders.ts): junk spire: a tall spike of scrap on a Warrens wall top; blocked
+prop-slums-junk-spire-2.png,32,64,1,0,no,16,56,1x1; PLACEHOLDER (scripts/terrain/placeholders.ts): junk spire: a tall spike of scrap on a Warrens wall top; blocked
+prop-slums-junk-spire-3.png,32,64,1,0,no,16,56,1x1; PLACEHOLDER (scripts/terrain/placeholders.ts): junk spire: a tall spike of scrap on a Warrens wall top; blocked
