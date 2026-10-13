@@ -53,6 +53,9 @@ async function breathe(): Promise<void> {
   sliceFrom = performance.now();
 }
 
+/** Draws a class's sheets for a look: standing and walking first, then (resolving as soon as those are in, so a new look
+ *  shows at once: a cosmetic put on, someone arriving) the attack poses, a few ms at a time, after it. An attack pose not
+ *  drawn yet just doesn't play (Character.strike skips it); `queue` waits for the whole of it, so builds never overlap. */
 async function build(scene: Phaser.Scene, C: CharacterDefs, K: ClassesDefs, art: ClassArt, cls: string, o: Outfit, id: string): Promise<BattleSheets | null> {
   if (!art.anims['walk-ready']) return null;
   const tag = `battle:${id}`;
@@ -60,10 +63,10 @@ async function build(scene: Phaser.Scene, C: CharacterDefs, K: ClassesDefs, art:
   const directions = dirsOf('walk-ready');
   const lit = litHat(C, o);
   sliceFrom = performance.now();
-  // Standing and walking first, then the attacks.
-  const first = (a: string) => Number(a.startsWith('walk') || a === 'idle-ready');
-  const anims = Object.entries(art.anims).sort(([a], [b]) => first(b) - first(a));
-  for (const [anim, a] of anims) {
+  const first = (a: string) => a.startsWith('walk') || a === 'idle-ready';
+  const all = Object.entries(art.anims);
+  /** One pose's sheets, every way it faces (false: the scene went away meanwhile). */
+  const draw = async ([anim, a]: [string, ClassArt['anims'][string]]): Promise<boolean> => {
     for (const dir of dirsOf(anim)) {
       const key = `${tag}:${anim}:${dir}`;
       if (scene.textures.exists(key)) continue;
@@ -74,7 +77,7 @@ async function build(scene: Phaser.Scene, C: CharacterDefs, K: ClassesDefs, art:
       ctx.imageSmoothingEnabled = false;
       for (let f = 0; f < a.frames; f++) {
         await breathe();
-        if (!scene.sys.textures) return null; // the scene went away meanwhile
+        if (!scene.sys.textures) return false; // the scene went away meanwhile
         drawPose(ctx, scene, C, K, o, art, anim, dir, f, f * CELL, 0);
       }
       if (scene.textures.exists(key)) continue;
@@ -96,7 +99,14 @@ async function build(scene: Phaser.Scene, C: CharacterDefs, K: ClassesDefs, art:
       // Standing: the combat-stance idle (idle-ready, breathing, looped); a class without it holds walk-ready's first frame.
       if (anim === 'walk-ready' && !art.anims['idle-ready']) scene.anims.create({ key: `${tag}:idle:${dir}`, frames: [frames[0]], frameRate: 1, repeat: -1 });
     }
-  }
+    return true;
+  };
+  for (const pose of all.filter(([a]) => first(a))) if (!(await draw(pose))) return null;
+  // The attacks after, in the background (the next build waits for them).
+  const rest = (async () => {
+    for (const pose of all.filter(([a]) => !first(a))) if (!(await draw(pose))) return;
+  })();
+  queue = queue.then(() => rest).catch(() => null);
   const walk = art.anims['walk-hunt'] ? 'walk-hunt' : 'walk-ready';
   return {
     cls,
