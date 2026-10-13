@@ -20,6 +20,7 @@
 // hall least of all) is in view from the top. Everything below moves down with it (the last boss's tile and body from
 // dungeons.json too); the art folder's layout file stays as it is.
 
+import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 
 type Tile = [number, number];
@@ -291,6 +292,9 @@ if (out.length) throw new Error(`With the shutters shut, ${out.length} tiles out
 for (const o of objects) if (o.id !== 'warren-exit' && at(o.col, o.row) !== '#') throw new Error(`${o.id} on a floor tile ${o.col},${o.row}`);
 
 writeFileSync(new URL('public/assets/maps/warrens.json', ROOT), JSON.stringify(map));
+// The high terrain (taller stepped walls, pits along them and in the arena corners: scripts/terrain/apply_high_terrain.py,
+// which checks the same things again on its result), as the last step, so a rebuild keeps it.
+execFileSync('python3', ['scripts/terrain/apply_high_terrain.py', 'warrens', 'public/assets/maps/warrens.json', 'scripts/warrens/warrens-layout.json', 'public/assets/maps/warrens.json', '--protect', 'scripts/terrain/protect-warrens.json'], { cwd: new URL('.', ROOT), stdio: 'inherit' });
 console.log(`maps/warrens.json: ${COLS}x${ROWS}, ${floor.length} floor tiles (all reachable with the shutters open, ${shut.size} with them shut, all in area 1), ${objects.length} objects, ${shutters.length} shutters, ${mobZones.reduce((n, z) => n + z.spawns.length, 0)} mob spawns, seal ${seal.length} tiles`);
 
 // ── The Warren Gate in the Slums ──

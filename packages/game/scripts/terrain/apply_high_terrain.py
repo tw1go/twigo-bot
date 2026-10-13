@@ -679,14 +679,23 @@ def warrens(data, layout, protect, rnd):
                 corners += 1
     added.append(f'arena corner pits: {corners}')
     along = 0
-    candidates = [t for t in floor if any(is_wall(t[0] + dc, t[1] + dr) for dc, dr in DIRS4) and t not in pit_clear]
+    # Along walls: only where the floor runs at least 3 tiles out from the wall (rooms and wide corridors; a 3-wide tunnel
+    # never loses a tile, so its every column stays open).
+    def roomy(t):
+        for dc, dr in DIRS4:
+            if is_wall(t[0] + dc, t[1] + dr):
+                if all((t[0] - dc * k, t[1] - dr * k) in floor and M.H[t[1] - dr * k][t[0] - dc * k] >= 0 for k in range(1, 4)):
+                    return True
+        return False
+
+    candidates = [t for t in floor if t not in pit_clear and roomy(t)]
     rnd.shuffle(candidates)
     for c, r in candidates:
         if along >= 40 or M.H[r][c] < 0:
             continue
         direction = rnd.choice(DIRS4)
         run = [(c + direction[0] * k, r + direction[1] * k) for k in range(rnd.randint(2, 4))]
-        if any(not any(is_wall(x + dc, y + dr) for dc, dr in DIRS4) for x, y in run):
+        if any(not roomy(t) for t in run):
             continue
         if pit(run):
             along += 1
