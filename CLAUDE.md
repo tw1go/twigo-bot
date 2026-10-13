@@ -134,7 +134,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
 - `classes/stats.json`: `combatRating` (the CP weights; toughness 0.4 and `reach` since 11 Oct 2026), the golem's mob table `skillMult.junkDrop` / `skillMult.shockwave`, `rarity.nameColour[r].colour`, `rarity.dropPlus`, `affixes.names`,
   `currencies.kusingPerMobRange`, `skills.mpCost`, `skills.cooldownByUnlock`, `skills.buffs` (numbers) with
   `rules.allyBuffsReachParty`, `rules.stack`, `agimats.onlyIn`, `agimats.rarePerItem`, `agimats.sellKusing`, `agimats.look`, `inventory.agimatSlots`,
-  `potions.separateCooldowns`, `trainingGear.noSell` / `sellKusing`, `mobBehaviour.targetPriority`,
+  `potions.separateCooldowns`, `potions.sellShare` (13 Oct 2026), `trainingGear.noSell` / `sellKusing`, `mobBehaviour.targetPriority`,
   `mobBehaviour.golem.hpPerPlayer`.
 - `classes/stats.json` (Scrap Warrens): `party.xpRangeTiles` (+ `xpNote`), and consumables in `inventory.stack99`.
 - Lantern Posts: `items/items.json` `return-lantern` (its `shop: travel`, `price`, `useAt`; `useAt` on `warren-ticket` too),
@@ -979,7 +979,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   picture). A class from before: `/me` runs `trainingArmorFor` first (`MeResponse.trainingGear` → "The Tanod left you a
   set of training gear." after the title card; again next visit only for pieces that had no room). Sells from the combat bag for Kusing (stats.json trainingGear
   `noSell` false, `sellKusing` 25, repo additions; forge action 'sell', the bag's right-click and detail, a confirm box; agimats sell too: stats.json
-  agimats.sellKusing (repo addition: perLevel 20 × level, rare ×3, a stack all at once; shared `agimatSellPrice` / `sellPrice`)); never dropped, traded, gifted, enhanced or taken apart. Doesn't change the paper doll. Art:
+  agimats.sellKusing (repo addition: perLevel 20 × level, rare ×3, a stack all at once; shared `agimatSellPrice` / `sellPrice`); HP/MP Potions too: stats.json potions.sellShare (repo addition, 0.5 of their tier's kusing: Low 25, Medium 75 each; shared `potionSellPrice`), the Sell box asking how many of the stack (forge action 'sell' `count`, the rest staying with its uid; `confirmSell`'s `each`); tested); never dropped, traded, gifted, enhanced or taken apart. Doesn't change the paper doll. Art:
   `items/armor/item-armor-training-<piece>(-16|-64).png`; an item without `icon`/`showcase` shows its place's silhouette
   (`slotSilhouette` / `gearPicture` in ui/equipment.ts: panel, bag, toasts) — add the fields when the art comes (only
   suit and boots exist so far).

@@ -685,36 +685,66 @@ export function confirmDisassemble(item: Item): Promise<boolean> {
 }
 
 /** The Sell box for training gear: "Sell <name> for N Kusing?" (bound gear: it's gone for good). Resolves true if confirmed. */
-export function confirmSell(item: Item, price: number): Promise<boolean> {
+/** The Sell box: what goes and for how much. `each`: a potion stack's price apiece, so it asks how many (a number box,
+ *  all of them to start with) and the total follows. Resolves how many to sell, or 0 (Cancel). */
+export function confirmSell(item: Item, price: number, each?: number): Promise<number> {
   return new Promise((resolve) => {
     const back = el('div', 'fg-confirm-back');
     const box = el('div', 'fg-confirm');
     box.setAttribute('role', 'alertdialog');
     const title = el('div', 'fg-confirm-title');
-    title.append('Sell ', item.count > 1 ? `${item.count}× ` : '', Object.assign(el('b', undefined, nameOf({ ...item, count: 1 })), { style: `color: ${RARITY_TEXT[rarityOf(item)]}` }), ` for ${price.toLocaleString()} Kusing?`);
+    const ask = each !== undefined && item.count > 1;
+    const count = Object.assign(el('input', 'dr-count'), { type: 'number', min: '1', max: String(item.count), value: String(item.count) });
+    const total = el('b');
+    const how = () => Math.floor(Number(count.value));
+    const sum = () => {
+      const n = how();
+      total.textContent = n >= 1 && n <= item.count ? `${((each ?? 0) * n).toLocaleString()} Kusing` : '…';
+    };
+    const name = Object.assign(el('b', undefined, nameOf({ ...item, count: 1 })), { style: `color: ${RARITY_TEXT[rarityOf(item)]}` });
+    if (ask) title.append('Sell ', name, ' for ', total, '?');
+    else title.append('Sell ', item.count > 1 ? `${item.count}× ` : '', name, ` for ${price.toLocaleString()} Kusing?`);
+    const parts: HTMLElement[] = [title];
+    if (ask) {
+      const row = el('label', 'fg-confirm-sub dr-row');
+      row.append('How many ', count, ` of ${item.count} (${(each ?? 0).toLocaleString()} each)`);
+      parts.push(row);
+      count.addEventListener('input', sum);
+      sum();
+    }
     const row = el('div', 'fg-actions');
     const yes = el('button', 'fg-go fg-ready', 'Sell');
     const no = el('button', 'fg-go', 'Cancel');
-    const done = (ok: boolean) => {
+    const done = (n: number) => {
       back.remove();
       document.removeEventListener('keydown', key, true);
-      resolve(ok);
+      resolve(n);
+    };
+    const go = () => {
+      const n = ask ? how() : item.count;
+      if (n >= 1 && n <= item.count) done(n);
+      else count.focus();
     };
     const key = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation();
-        done(false);
+        done(0);
+      } else if (e.key === 'Enter' && ask) {
+        e.preventDefault();
+        e.stopPropagation();
+        go();
       }
     };
-    yes.addEventListener('click', () => done(true));
-    no.addEventListener('click', () => done(false));
-    back.addEventListener('click', (e) => e.target === back && done(false));
+    yes.addEventListener('click', go);
+    no.addEventListener('click', () => done(0));
+    back.addEventListener('click', (e) => e.target === back && done(0));
     document.addEventListener('keydown', key, true);
     row.append(yes, no);
-    box.append(title, el('div', 'fg-warn', isGearDef(anyDef(item.defId)) ? 'Training gear is bound: once sold it’s gone.' : 'Once sold it’s gone.'), row);
+    box.append(...parts, el('div', 'fg-warn', isGearDef(anyDef(item.defId)) ? 'Training gear is bound: once sold it’s gone.' : 'Once sold it’s gone.'), row);
     back.append(box);
     document.body.append(back);
-    yes.focus();
+    if (ask) count.select();
+    else yes.focus();
   });
 }
 

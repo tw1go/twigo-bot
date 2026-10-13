@@ -211,7 +211,7 @@ const TOPICS: Topic[] = [
       '• **Agimat Pliers** (Smithing, Kowens): click them, drag in a weapon or armor piece, pick a filled slot and **Remove**: the agimat comes back to your bag whole (broken gear works too)',
       '• **Temper Stone** (Smithing, Kowens): click an empty one and drag in gear with a + to **Draw** it into the stone (the gear goes back to +0). Click the filled stone and drag in gear of the **same type and item level** with a lower + to **Apply** it (that gear\'s own + is lost). A stone from bound gear is bound',
       '• **Right-click gear → Disassemble**: whetstone fragments (more for a higher +) and, from blue or orange gear with slots, maybe an agimat that fits that kind of slot only (always from orange, half the time from blue; brown, white and grey gear never give one). Its own agimats are destroyed. Training gear can’t be enhanced or taken apart',
-      '• **Training gear** and **agimats** sell for Kusing: right-click → Sell (agimats: 20 Kusing a level, rare ones 3×)',
+      '• **Training gear**, **agimats** and **HP/MP Potions** sell for Kusing: right-click → Sell (agimats: 20 Kusing a level, rare ones 3×; potions: half what the store asks, as many of a stack as you pick)',
       '• **Many at once**: in the Combat tab, Ctrl/⌘/Shift-click (or **Select**, then **Select all gear**) and **Disassemble** or **Sell** them together',
       '• **Right-click fragments → Combine**: every **10** make a whetstone',
     ].join('\n'),

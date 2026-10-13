@@ -217,17 +217,21 @@ export function combine(data: ItemData, s: ForgeHolder, uid: string, newUid: () 
   return { ok: true, outcome: 'combined', message: `Combined ${n * per} fragments into ${n} ${stone.name}${n === 1 ? '' : 's'}.`, got: [made] };
 }
 
-/** Sells training gear or an agimat (a whole stack) from the bag for Kusing (stats.json trainingGear.sellKusing,
- *  agimats.sellKusing: `sellPrice`); nothing else sells here. */
-export function sell(data: ItemData, s: ForgeHolder, uid: string): Result {
+/** Sells training gear, an agimat or HP/MP Potions from the bag for Kusing (stats.json trainingGear.sellKusing,
+ *  agimats.sellKusing, potions.sellShare: `sellPrice`); `count` of a stack (all of it without; the rest stays, its
+ *  uid kept); nothing else sells here. */
+export function sell(data: ItemData, s: ForgeHolder, uid: string, count?: number): Result {
   const at = s.bag.findIndex((b) => b.uid === uid);
   const item = s.bag[at];
   if (!item) return no(Object.values(s.equipped).some((i) => i?.uid === uid) ? 'Take it off first.' : "You don't have that item.");
-  const price = sellPrice(data, item);
-  if (price === null) return no('Only training gear and agimats sell here.');
-  s.bag.splice(at, 1);
+  const n = count ?? item.count;
+  if (!Number.isInteger(n) || n < 1 || n > item.count) return no(`Sell 1 to ${item.count} of them.`);
+  const price = sellPrice(data, item, n);
+  if (price === null) return no('Only training gear, agimats and potions sell here.');
+  if (n < item.count) item.count -= n;
+  else s.bag.splice(at, 1);
   s.kusing = (s.kusing ?? 0) + price;
-  return { ok: true, outcome: 'sold', message: `Sold ${item.count > 1 ? `${item.count}× ` : ''}${itemName(data, { ...item, count: 1 })} for ${price.toLocaleString('en-US')} Kusing.` };
+  return { ok: true, outcome: 'sold', message: `Sold ${n > 1 ? `${n}× ` : ''}${itemName(data, { ...item, count: 1 })} for ${price.toLocaleString('en-US')} Kusing.` };
 }
 
 /** Several items taken apart or sold at once (the bag's multi-select): each by the one-item rules, in turn on a copy;
@@ -279,7 +283,7 @@ export function forge(data: ItemData, s: ForgeHolder, a: TownForgeAction, random
     case 'combine':
       return combine(data, s, a.item, newUid);
     case 'sell':
-      return sell(data, s, a.item);
+      return sell(data, s, a.item, a.count);
     case 'disassemble-many':
       return many(data, s, a.items, (h, uid) => disassemble(data, h, uid, random, newUid), 'disassembled');
     case 'sell-many':
@@ -301,7 +305,8 @@ export function parseForgeAction(body: unknown): TownForgeAction | null {
   if (b.action === 'remove' && Number.isInteger(b.slot)) return { action: 'remove', item, slot: b.slot as number };
   if (b.action === 'draw') return { action: 'draw', item };
   if (b.action === 'apply' && id(b.stone)) return { action: 'apply', item, stone: b.stone as string };
-  if (b.action === 'disassemble' || b.action === 'combine' || b.action === 'sell') return { action: b.action, item };
+  if (b.action === 'sell') return { action: 'sell', item, ...(Number.isInteger(b.count) && (b.count as number) >= 1 && (b.count as number) <= 999 ? { count: b.count as number } : {}) };
+  if (b.action === 'disassemble' || b.action === 'combine') return { action: b.action, item };
   return null;
 }
 

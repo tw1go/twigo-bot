@@ -1212,6 +1212,8 @@
   },
   "potions": {
     "placeholder": true,
+    "sellShare": 0.5,
+    "sellShareNote": "Repo addition (13 Oct 2026): HP and MP Potions sell from the combat bag for this share of their tier's kusing (Low 25, Medium 75 each), as many of a stack as you pick",
     "tiers": {
       "low": {
         "minLevel": 1,

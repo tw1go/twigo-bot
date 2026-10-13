@@ -27,8 +27,9 @@ export type TownForgeAction =
   | { action: 'apply'; item: string; stone: string }
   | { action: 'disassemble'; item: string }
   | { action: 'combine'; item: string }
-  /** Training gear only: sold from the bag for Kusing (stats.json trainingGear.sellKusing). */
-  | { action: 'sell'; item: string }
+  /** Training gear, agimats and potions sold from the bag for Kusing (`sellPrice`); `count`: how many of a stack (all of
+   *  it without). */
+  | { action: 'sell'; item: string; count?: number }
   /** Several at once (the bag's multi-select): every one or none. */
   | { action: 'disassemble-many'; items: string[] }
   | { action: 'sell-many'; items: string[] };
@@ -78,14 +79,22 @@ export function agimatBrightness(stats: StatsData, level: number): number {
   return Math.round((L.darkest + (1 - L.darkest) * Math.sqrt(k)) * 1000) / 1000;
 }
 
-/** What an item in the combat bag sells for in Kusing, the whole of it (a stack: each × how many): training gear and
- *  agimats only; null for anything else. */
-export function sellPrice(data: ItemData, item: Item): number | null {
+/** What an HP or MP Potion sells for, each (stats.json potions.sellShare, a repo addition: that share of its tier's
+ *  kusing, rounded; Low 25, Medium 75); null without the setting or a price. */
+export function potionSellPrice(stats: StatsData, def: CombatItemDef): number | null {
+  const P = (stats as StatsData & { potions?: { sellShare?: number; tiers?: Record<string, { kusing?: number }> } }).potions;
+  const buy = def.tier ? P?.tiers?.[def.tier]?.kusing : undefined;
+  if (!P || typeof P.sellShare !== 'number' || P.sellShare <= 0 || typeof buy !== 'number') return null;
+  return Math.max(1, Math.round(buy * P.sellShare));
+}
+
+/** What an item in the combat bag sells for in Kusing (a stack: each × `count`, all of it without): training gear,
+ *  agimats and HP/MP Potions; null for anything else. */
+export function sellPrice(data: ItemData, item: Item, count = item.count): number | null {
   const def = data.defs.get(item.defId);
   if (isGearDef(def)) return def.training ? trainingSellPrice(data.stats) : null;
-  if (def?.kind !== 'agimat') return null;
-  const each = agimatSellPrice(data.stats, item);
-  return each === null ? null : each * item.count;
+  const each = def?.kind === 'agimat' ? agimatSellPrice(data.stats, item) : def?.kind === 'potion' ? potionSellPrice(data.stats, def) : null;
+  return each === null ? null : each * count;
 }
 
 /** An item by uid, worn (its place) or in the combat bag (its index). */
