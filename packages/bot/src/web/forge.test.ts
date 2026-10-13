@@ -23,6 +23,8 @@ import {
   newAgimat,
   newItem,
   trainingSellPrice,
+  potionSellPrice,
+  sellPrice,
   rarePerItem,
   rollGear,
   pocketSlots,
@@ -406,11 +408,34 @@ test('training gear sells from the bag for stats.json trainingGear.sellKusing; o
   const crude = newItem(D.stats, D.defs.get('weapon-crude-slingshot') as never, 'c1');
   const worn = newItem(D.stats, D.defs.get('armor-training-light-head') as never, 'w1');
   const s = { equipped: { head: worn }, bag: [train, crude], kusing: 10 };
-  assert.deepEqual(forge(D, s, { action: 'sell', item: 'c1' }, Math.random, () => 'x'), { ok: false, message: 'Only training gear and agimats sell here.' });
+  assert.deepEqual(forge(D, s, { action: 'sell', item: 'c1' }, Math.random, () => 'x'), { ok: false, message: 'Only training gear, agimats and potions sell here.' });
   assert.deepEqual(forge(D, s, { action: 'sell', item: 'w1' }, Math.random, () => 'x'), { ok: false, message: 'Take it off first.' });
   const r = forge(D, s, { action: 'sell', item: 't1' }, Math.random, () => 'x');
   assert.ok(r.ok && r.outcome === 'sold');
   assert.deepEqual([s.kusing, s.bag.map((i) => i.uid)], [10 + price, ['c1']]);
+});
+
+test('HP and MP Potions sell for half their tier\'s price (stats.json potions.sellShare), as many of a stack as asked; the rest stays', () => {
+  assert.deepEqual(['low-hp-potion', 'low-mp-potion', 'mid-hp-potion', 'mid-mp-potion'].map((id) => potionSellPrice(D.stats, thing(id))), [25, 25, 75, 75]);
+  const low = newItem(D.stats, thing('low-hp-potion'), 'low', 10);
+  const mid = newItem(D.stats, thing('mid-mp-potion'), 'mid', 4);
+  assert.equal(sellPrice(D, low), 250, 'the whole stack');
+  assert.equal(sellPrice(D, low, 3), 75);
+  const s = { equipped: {}, bag: [low, mid], kusing: 0 };
+  // Part of a stack: those go, the rest stays as it was (its uid kept).
+  const r = forge(D, s, { action: 'sell', item: 'low', count: 3 }, Math.random, () => 'x');
+  assert.deepEqual([r.ok, r.message, s.kusing], [true, 'Sold 3× Low HP Potion for 75 Kusing.', 75]);
+  assert.deepEqual(s.bag.map((i) => [i.uid, i.count]), [['low', 7], ['mid', 4]]);
+  // More than there are, or none: refused, nothing moves.
+  assert.equal(forge(D, s, { action: 'sell', item: 'low', count: 8 }, Math.random, () => 'x').message, 'Sell 1 to 7 of them.');
+  assert.equal(forge(D, s, { action: 'sell', item: 'low', count: 0 }, Math.random, () => 'x').message, 'Sell 1 to 7 of them.');
+  // Without a count, the whole stack.
+  assert.ok(forge(D, s, { action: 'sell', item: 'mid' }, Math.random, () => 'x').ok);
+  assert.deepEqual([s.kusing, s.bag.map((i) => i.uid)], [75 + 4 * 75, ['low']]);
+  // The request: a count is kept only when it's a whole number from 1 to 999.
+  assert.deepEqual(parseForgeAction({ action: 'sell', item: 'low', count: 2 }), { action: 'sell', item: 'low', count: 2 });
+  assert.deepEqual(parseForgeAction({ action: 'sell', item: 'low', count: 1.5 }), { action: 'sell', item: 'low' });
+  assert.deepEqual(parseForgeAction({ action: 'sell', item: 'low' }), { action: 'sell', item: 'low' });
 });
 
 test('many at once (the bag\'s multi-select): disassembly and training gear sales, every one or none', () => {
@@ -449,7 +474,7 @@ test('many at once (the bag\'s multi-select): disassembly and training gear sale
   const ag = forge(D, v, { action: 'sell-many', items: ['ag1', 'ag2'] }, Math.random, uid);
   assert.deepEqual([ag.ok, v.kusing, v.bag.length], [true, 2 * 20 * 10 + 20 * 20 * 3, 0]);
   assert.match(forge(D, { ...holder([{ ...mp, uid: 'ag3' }]), kusing: 0 }, { action: 'sell', item: 'ag3' }, Math.random, uid).message, /^Sold 2× Mana Agimat Lv 10 for 400 Kusing\.$/);
-  assert.equal(forge(D, holder([newItem(D.stats, thing('low-hp-potion'), 'p1')]), { action: 'sell', item: 'p1' }, Math.random, uid).message, 'Only training gear and agimats sell here.');
+  assert.equal(forge(D, holder([newItem(D.stats, thing('rough-whetstone'), 'w1')]), { action: 'sell', item: 'w1' }, Math.random, uid).message, 'Only training gear, agimats and potions sell here.');
   // The body: a list of ids.
   assert.deepEqual(parseForgeAction({ action: 'sell-many', items: ['a', 'b'] }), { action: 'sell-many', items: ['a', 'b'] });
   assert.equal(parseForgeAction({ action: 'disassemble-many', items: [] }), null);

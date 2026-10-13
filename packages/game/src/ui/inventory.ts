@@ -481,7 +481,11 @@ export class Inventory {
       const wear = this.action('Wear', 'iv-flex', () => void this.equipment?.wearCosmetic(it.uid));
       if (!def.cosmeticPlace) Object.assign(wear, { disabled: true, title: "Can't be worn yet." });
       row.append(wear);
-    } else if (def?.kind === 'potion') parts.push(el('div', 'iv-about', 'Drag it onto your hotbar (the - = ~ slots) and use it in the Slums.'));
+    } else if (def?.kind === 'potion') {
+      parts.push(el('div', 'iv-about', 'Drag it onto your hotbar (the - = ~ slots) and use it in the Slums.'));
+      const price = this.priceOf(it);
+      if (price !== null) row.append(this.action(`Sell · ${(price / it.count).toLocaleString()} Kusing each`, 'iv-sell', () => void this.sell(it, null, price)));
+    }
     else if (def?.forge && def.forge !== 'fragment') row.append(this.action(FORGE_LABEL[def.forge], 'iv-flex', () => void this.openForge(it)));
     else if (def?.kind === 'agimat') {
       row.append(this.action('Embed…', 'iv-flex', () => void this.openForge(it)));
@@ -536,6 +540,9 @@ export class Inventory {
       items.push([def.kind === 'agimat' ? 'Embed…' : FORGE_LABEL[def.forge!], () => void this.openForge(it)]);
       const price = def.kind === 'agimat' ? this.priceOf(it) : null;
       if (price !== null) items.push([`Sell (${price.toLocaleString()} Kusing)`, () => void this.sell(it, cell, price)]);
+    } else if (def?.kind === 'potion') {
+      const price = this.priceOf(it);
+      if (price !== null) items.push([`Sell… (${(price / it.count).toLocaleString()} Kusing each)`, () => void this.sell(it, cell, price)]);
     }
     // A consumable: used where it's for, never from the bag. A ticket says where (greyed); a Return Lantern's Use says so.
     if (def && !isGearDef(def) && def.kind === 'consumable' && !def.forge) {
@@ -578,7 +585,7 @@ export class Inventory {
     this.render();
   }
 
-  /** What an item sells for in Kusing (training gear, agimats: the whole stack), or null. */
+  /** What an item sells for in Kusing (training gear, agimats, potions: the whole stack), or null. */
   private priceOf(it: Item): number | null {
     const D = itemData();
     return D ? sellPrice(D, it) : null;
@@ -648,11 +655,15 @@ export class Inventory {
     this.render();
   }
 
-  /** Training gear sold for Kusing, once they've said yes. */
+  /** Training gear, an agimat or potions sold for Kusing, once they've said yes (a potion stack: as many as they pick). */
   private async sell(it: Item, cell: HTMLElement | null, price: number): Promise<void> {
-    if (this.busy || !(await confirmSell(it, price))) return;
+    if (this.busy) return;
+    const def = anyDef(it.defId);
+    const potion = !!def && !isGearDef(def) && def.kind === 'potion';
+    const n = await confirmSell(it, price, potion ? price / it.count : undefined);
+    if (!n) return;
     this.busy = true;
-    const r = await forgeFromBag({ action: 'sell', item: it.uid }, cell ?? this.grid);
+    const r = await forgeFromBag({ action: 'sell', item: it.uid, ...(n < it.count ? { count: n } : {}) }, cell ?? this.grid);
     this.busy = false;
     if (r) this.message = { text: r.message, ok: r.ok };
     if (this.pickedUid === it.uid && r?.ok) this.pickedUid = null;
