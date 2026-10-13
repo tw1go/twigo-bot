@@ -6,6 +6,7 @@ import { type Heard, type WarrensSfx, playSet, playWarrens } from '../audio/soun
 import { BossBar } from '../ui/boss-bar';
 import { showAreaBanner } from '../ui/warrens';
 import { slice } from '../assets/packs';
+import { onMap } from './clicks';
 import { frontDepth } from './depth';
 import { FX_DEPTH, type FxHandle, type FxLayers, type Pt } from './fx-layers';
 import type { Tile, WalkGrid } from './grid';
@@ -61,6 +62,8 @@ export interface WarrensHooks {
   body(id: string): Pt | null;
   /** A boss move's hit on a player: the number over them (and a slow's ms). */
   onHit(boss: Mob | null, target: string, hit: { damage: number; miss?: boolean }, slow?: number): void;
+  /** The clear warp clicked (pressed and let go on the map, `onMap`): walk onto it, the way out. */
+  toWarp(tiles: [number, number][]): void;
 }
 
 interface ShutterView {
@@ -175,13 +178,16 @@ export class WarrensView {
     this.shake(s.at, 200);
   }
 
-  /** The clear warp as the run is cleared: the Warren Gate's art and its pulsing portal over the 2x2 (the gate's anchor
-   *  is the top corner of its 3x3), fading in with dust and a rumble when it happens while you watch. TownScene makes
+  /** The clear warp as the run is cleared, where Barong-Barong stood (its body's tiles open on the walk grid, as on the
+   *  server): the Warren Gate's art and its pulsing portal over the 2x2 (the gate's anchor is the top corner of its 3x3),
+   *  fading in with dust and a rumble when it happens while you watch. A click on it walks you onto it; TownScene makes
    *  its tiles a gate out then (`gateOn`). */
   private openClearWarp(animate: boolean): void {
     const tiles = this.block.clearWarp;
     const def = this.M.props['warren-exit'] as PropDef | undefined;
     if (this.clearWarp || !tiles?.length || !def || !this.scene.textures.exists(def.file)) return;
+    const [b0, b1, b2, b3] = this.block.boss.body;
+    for (let r = b1; r <= b3; r++) for (let c = b0; c <= b2; c++) this.grid.unblock(c, r);
     const c0 = Math.min(...tiles.map((t) => t[0])) - 1;
     const r0 = Math.min(...tiles.map((t) => t[1])) - 1;
     const top = this.mobs.ground(c0, r0);
@@ -201,6 +207,11 @@ export class WarrensView {
       }
     }
     this.clearWarp = { gate, portal };
+    gate.setInteractive({ pixelPerfect: true, cursor: 'pointer' });
+    gate.on('pointerup', (p: Phaser.Input.Pointer) => {
+      if ((!p.leftButtonReleased() && !p.wasTouch) || !onMap(p, this.scene.game.canvas)) return;
+      this.hooks.toWarp(tiles);
+    });
     if (!animate || reducedMotion()) return;
     const at = this.mobs.ground(c0 + 1.5, r0 + 1.5);
     gate.setAlpha(0);

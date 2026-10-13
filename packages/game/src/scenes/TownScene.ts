@@ -585,6 +585,11 @@ export class TownScene extends Phaser.Scene {
           return c ? { x: c.sprite.x, y: c.sprite.y - 14 } : null;
         },
         onHit: (boss, target, hit, slow) => this.mobs?.hooks.onHit?.(boss as never, target, slow, hit),
+        toWarp: (tiles) => {
+          const me = this.player.tile;
+          const [c, r] = tiles.reduce((a, b) => (Math.hypot(b[0] - me.col, b[1] - me.row) < Math.hypot(a[0] - me.col, a[1] - me.row) ? b : a));
+          this.goToTile({ col: c, row: r }); // (stepping on it leaves: gateOn)
+        },
       });
       this.warrens = view;
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {

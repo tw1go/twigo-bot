@@ -30,6 +30,7 @@ import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
 //   GET /__minibosses   every mini boss that's down comes back now (the page's ?minibosses=now)
 //   GET /__warrens?as=Alice   a Scrap Warrens run for Alice, free, started at once (the page's ?warrens=solo; it then goes
 //       in); &boss=crab-tain: every area before that boss cleared, and she arrives at its arena (?warrensboss=crab-tain).
+//       &hp=1 with it: that boss down to 1 HP, so one hit fells it (Barong-Barong: the run clears, its warp rises).
 //       The Warren Gate itself works as live, with Warren Tickets from her bag here (?give=warren-ticket::5)
 //   GET /__golem?now=1   the Scrapheap Golem rises in the Slums now (the page's ?golem=now); ?demo=1&as=Alice: it rises if
 //       it must and plays its whole fight against the nearest player (?golemdemo=1): each attack, the Junk at a pretend
@@ -574,7 +575,8 @@ export function devTown(): Plugin {
       });
       server.middlewares.use('/__warrens', (req, res) => {
         const q = new URL(req.url ?? '/', 'http://localhost').searchParams;
-        reply(res, town.warrensDev(q.get('as') ?? '', q.get('boss') || undefined));
+        const hp = Number(q.get('hp'));
+        reply(res, town.warrensDev(q.get('as') ?? '', q.get('boss') || undefined, hp > 0 ? hp : undefined));
       });
       server.middlewares.use('/__minibosses', (_req, res) => {
         res.end(`${slumsMobs.respawnMinis()} mini bosses back\n`);

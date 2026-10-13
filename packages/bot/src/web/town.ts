@@ -271,7 +271,7 @@ export interface Town {
   verdict(userId: string, kind: 'roast' | 'praise', judged: boolean, text: string): void;
   /** Dev (?warrens=solo, ?warrensboss=<id>): a run for a member in town, free, at once; with `boss`, every area before
    *  that boss's cleared and them arriving at its arena. The run's id, or why not. */
-  warrensDev(userId: string, boss?: string): { ok: true; run: string } | { ok: false; message: string };
+  warrensDev(userId: string, boss?: string, hp?: number): { ok: true; run: string } | { ok: false; message: string };
 }
 
 /** The game's map (packages/game/public/assets/maps/town.json), from the monorepo next to the bot. */
@@ -1461,7 +1461,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       if (a.kind === 'notice') notice = { a, until: Date.now() + NOTICE_MS };
       everyone({ t: 'announce', announcement: a });
     },
-    warrensDev(userId, boss) {
+    warrensDev(userId, boss, hp) {
       if (!W) return { ok: false, message: 'No Warrens here.' };
       const now = Date.now();
       const r = W.runOf(userId) ?? (() => {
@@ -1469,7 +1469,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         return o.ok ? o.run : null;
       })();
       if (!r) return { ok: false, message: 'Too many runs open.' };
-      if (boss && !r.skipTo(boss, now)) return { ok: false, message: `No boss ${boss}.` };
+      if (boss && !r.skipTo(boss, now, hp)) return { ok: false, message: `No boss ${boss}.` };
       saveRuns();
       return { ok: true, run: r.id };
     },
