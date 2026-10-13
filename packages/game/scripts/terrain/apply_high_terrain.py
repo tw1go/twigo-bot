@@ -288,24 +288,32 @@ def slums(data, protect, rnd):
             return None
         c0, r0, c1, r1 = ridge['rect']
         base = ridge['height']
-        placed = []
-        for r in range(r0 + 10, r0 + 13):
-            for c in range(c0 + 6, c1 - 6):
-                if open_ground(c, r, base) and (c, r) not in {(s[0], s[1]) for s in ridge.get('spawns', [])}:
-                    placed.append((c, r))
-        if len(placed) < 30:
+        taken = {(s[0], s[1]) for s in ridge.get('spawns', [])} | {tuple(m['tile']) for m in ridge.get('miniBosses', [])}
+        # The longest run of open tiles on a band of 3 rows, tried down the ridge's back half.
+        best = None
+        for r in range(r0 + 4, r0 + (r1 - r0) // 2, 2):
+            placed = []
+            for c in range(c0 + 4, c1 - 4):
+                col = [(c, rr) for rr in range(r, r + 3)]
+                if all(open_ground(x, y, base) and (x, y) not in taken and not any((x + dc, y + dr) in taken for dc, dr in DIRS8) for x, y in col):
+                    placed.extend(col)
+            if not best or len(placed) > len(best[1]):
+                best = (r, placed)
+        if not best or len(best[1]) < 30:
             return None
-        for c, r in placed:
-            M.H[r][c] = base + 1
-            M.W[r][c] = 'rock'
+        r, placed = best
+        for c, rr in placed:
+            M.H[rr][c] = base + 1
+            M.W[rr][c] = 'rock'
         drop_small_props(placed)
         ramps = 0
-        for c in range(c0 + 10, c1 - 10, 24):
-            if add_ramp(c, r0 + 13, 'ne', 'dirt', base, set(placed)):
+        cols_on = sorted({c for c, _ in placed})
+        for c in cols_on[::12]:
+            if ramps < 3 and add_ramp(c, r + 4, 'ne', 'dirt', base, set(placed)):
                 ramps += 1
         if not ramps:
             return None
-        return f'{len(placed)} tiles, {ramps} ramps'
+        return f'{len(placed)} tiles on rows {r}-{r + 2}, {ramps} ramps'
 
     def add_ramp(c, r, direction, surface, low, top_tiles):
         """A ramp whose part 1 is at (c, r): part 2 one step up, the high tile after it must be in top_tiles."""
@@ -539,6 +547,9 @@ def slums(data, protect, rnd):
     lost = check()
     if lost:
         raise SystemExit(f'[terrain] after everything, {lost} is unreachable: this should not happen')
+    data.setdefault('groundKey', {})
+    data['groundKey']['void'] = "a chasm's floor: never walked on (tile-slums-void-N)"
+    data['groundKey']['cracked'] = 'cracked ground: broken concrete, walkable (tile-slums-cracked-N)'
     data['heightNote'] = 'Ground level per tile: -2 canyon floor, -1 sinkhole floor (both void: never walked on), 0 = Crab Basin floor, 1 = normal ground, 2 = Wire Ridge and junk mounds, 3 = the ridge crest and mesa tops, up to 5 = the bluffs along the back edges. One level = 16 px. Walking between tiles of different height is only possible on ramps. Draw rules: tiles/slums/slums-elevation-README.md and slums-high-terrain-README.md (scripts/terrain/apply_high_terrain.py adds the high terrain).'
     return added, skipped, moved
 

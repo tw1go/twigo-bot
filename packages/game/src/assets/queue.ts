@@ -129,8 +129,8 @@ function queueSlums(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Textures.
   if (S) {
     Object.values(S.ground).flat().forEach(img);
     queueSheet(load, textures, S.canal.file, S.canal.size[0], S.canal.size[1]);
-    for (const m of Object.values(S.cliffs)) [...m.l, ...m.r].forEach(img);
-    [S.rim.nw, S.rim.ne, S.cap.w, S.cap.e].forEach(img);
+    for (const m of Object.values(S.cliffs)) [...m.l, ...m.r, ...(m.lower?.l ?? []), ...(m.lower?.r ?? [])].forEach(img);
+    [S.rim.nw, S.rim.ne, S.cap.w, S.cap.e, ...(S.foot ? [S.foot.l, S.foot.r] : []), ...(S.lip?.nw ?? []), ...(S.lip?.ne ?? [])].forEach(img);
     for (const set of Object.values(S.ramps)) Object.values(set).flat().forEach(img);
   }
   for (const [id, p] of Object.entries(M.props)) if (id.startsWith('slums-')) for (const f of [(p as PropDef).file, (p as PropDef).front]) if (f) img(f);
