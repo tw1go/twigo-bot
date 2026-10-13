@@ -723,6 +723,9 @@ export class TownScene extends Phaser.Scene {
     this.loot?.update();
     this.golem?.update();
     this.warrens?.update();
+    // Raised ground that hides you (a bluff, a mesa, the crest) fades to half, as the Warrens' walls do (WarrensView
+    // fades its own there).
+    if (!this.warrens && this.ground instanceof Terrain) this.ground.fadeFront(this.player.tile, this.player.sprite.getBounds());
     if (this.area === 'slums' && time >= this.gateCheckAt) {
       this.gateCheckAt = time + 250;
       this.nearWarrenGate();
