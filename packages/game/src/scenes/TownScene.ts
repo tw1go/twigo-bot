@@ -836,10 +836,19 @@ export class TownScene extends Phaser.Scene {
   private pickTile(x: number, y: number): Tile {
     const H = this.objects.heights;
     if (!H.flat) {
-      for (let level = 2; level >= 0; level--) {
+      // Every level the map has (its lowest to its highest): of the tiles whose ground, drawn at its level, is under the
+      // point, the one nearest the camera (the largest col + row) that can be walked on; else the nearest of any (a wall
+      // top: walked to its nearest floor). So a click on a tall wall's top (the Warrens' junk walls, up to 64 px) reaches
+      // the floor it covers there.
+      let best: Tile | null = null;
+      let walk: Tile | null = null;
+      for (let level = H.max; level >= H.min; level--) {
         const t = screenToTile(x, y + level * LEVEL_PX);
-        if (this.grid.inBounds(t.col, t.row) && H.at(t.col, t.row) === level) return t;
+        if (!this.grid.inBounds(t.col, t.row) || H.at(t.col, t.row) !== level) continue;
+        if (!best || t.col + t.row > best.col + best.row) best = t;
+        if (this.grid.walkable(t.col, t.row) && (!walk || t.col + t.row > walk.col + walk.row)) walk = t;
       }
+      if (walk ?? best) return (walk ?? best)!;
     }
     return screenToTile(x, y);
   }
@@ -3012,7 +3021,10 @@ export class TownScene extends Phaser.Scene {
     const [w, h] = fx.frame ?? [32, 32];
     const [ax, ay] = fx.anchor ?? [w / 2, h / 2];
     const lift = this.objects.heights.at(tile.col, tile.row) * LEVEL_PX; // (raised ground: on its top)
-    const marker = this.add.sprite(top.x, top.y + 8 - lift, fx.file).setOrigin(ax / w, ay / h).setDepth(GROUND_SHADOW_DEPTH + 1); // the tile's centre
+    // On the ground (under everyone) on a flat map; with raised ground, over the terrain (under the name plates), so it
+    // shows where you're going even when a wall or bluff hides that tile.
+    const depth = this.objects.heights.flat ? GROUND_SHADOW_DEPTH + 1 : LABEL_DEPTH - 3;
+    const marker = this.add.sprite(top.x, top.y + 8 - lift, fx.file).setOrigin(ax / w, ay / h).setDepth(depth); // the tile's centre
     if (this.tint >= 0) marker.setTint(this.tint);
     marker.play(key).once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => marker.destroy());
     this.marker = marker;
