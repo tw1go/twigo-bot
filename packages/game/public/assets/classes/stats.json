@@ -817,13 +817,17 @@
     ],
     "totalAt20": 1.65,
     "armorMinDEF": [
-      { "from": 11, "to": 16, "def": 1 },
-      { "from": 17, "to": 20, "def": 2 }
+      { "from": 1, "to": 10, "def": 1 },
+      { "from": 11, "to": 15, "def": 3 },
+      { "from": 16, "to": 18, "def": 5 },
+      { "from": 19, "to": 20, "def": 7 }
     ],
     "accessories": {
       "perLevel": [
-        { "from": 1, "to": 16, "pct": 0.02 },
-        { "from": 17, "to": 20, "pct": 0.05 }
+        { "from": 1, "to": 10, "pct": 0.02 },
+        { "from": 11, "to": 15, "pct": 0.04 },
+        { "from": 16, "to": 16, "pct": 0.10 },
+        { "from": 17, "to": 20, "pct": 0.12 }
       ],
       "totalAt20": 0.52,
       "of": "affix value"
@@ -1258,8 +1262,8 @@
     "outOfCombatPctPerSec": 0.02
   },
   "inventory": {
-    "slots": 40,
-    "agimatSlots": 40,
+    "slots": 60,
+    "agimatSlots": 60,
     "agimatSlotsNote": "Repo addition (Mac, 9 Oct 2026): agimats have their own pocket of this many slots (the inventory's Agimats tab) and don't take the bag's; 0 = they share the bag's slots",
     "costumeSlots": 20,
     "costumeSlotsNote": "Repo addition (Mac, 12 Oct 2026): cosmetics (the Lamp-head Hat) have their own pocket of this many slots (the inventory's Costume tab) and don't take the bag's; 0 = they share the bag's slots",
