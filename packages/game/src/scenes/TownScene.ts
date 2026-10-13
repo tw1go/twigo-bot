@@ -3823,6 +3823,8 @@ export class TownScene extends Phaser.Scene {
       this.player.setOutfit(o);
       this.player.setNight(this.lampsOn);
       if (this.tint >= 0) this.player.sprite.setTint(this.tint);
+      // On a battle map, the poses in the new look (a cosmetic worn or taken off, a Parlor change): they're baked per look.
+      void this.applyBattle(adventure()?.cls ?? null);
     });
   }
 

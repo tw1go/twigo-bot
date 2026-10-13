@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import type { CharacterDefs, ClassArt, ClassLayer, Dir, Manifest } from '../assets/types';
+import type { CharacterDefs, ClassArt, ClassLayer, Dir, Manifest, Vec2 } from '../assets/types';
 import { slice } from '../assets/packs';
 import { restLayers } from './kit-art';
 import type { BattleSheets } from './battle-art';
@@ -139,6 +139,7 @@ export class Character {
     this.shadow = sh?.file ? scene.add.image(0, 0, sh.file).setOrigin((sh.anchor?.[0] ?? 0) / (sh.size?.[0] ?? 1), (sh.anchor?.[1] ?? 0) / (sh.size?.[1] ?? 1)) : null;
     this.head = flat ? flat.head : headTop(scene, outfit);
     this.play('idle');
+    if (!flat) this.setLit(litHat(C, outfit)); // (everyone's lit hat, not only a look changed later: setOutfit)
     this.sync();
   }
 
@@ -518,43 +519,54 @@ export class Character {
     this.sync();
   }
 
-  /** The lit hat's overlay on this frame of the doll (the matching night sheet, the same frame, just in front; in battle
-   *  the idle sheet facing the same way, as the head is laid on the poses), and its glow centred on the glass. */
+  /** The lit hat's overlay on the frame showing, just in front: in town the matching night sheet's same frame; in battle
+   *  the pose's own lit sheet (battle-art: the glass and bulb laid where the hat is on each frame), frame for frame. The
+   *  glow sits on the middle of that frame's lit pixels, so it follows the head through every bob, step, sit and pose. */
   private syncLit(x: number, y: number, depth: number): void {
     const lit = this.lit;
     const sp = this.litSprite;
     if (!lit || !sp) return;
     const C = this.M.characters;
-    const show = this.night && this.sprite.visible && this.seen > 0;
-    if (!show) {
+    const off = () => {
       sp.setVisible(false);
       this.glow?.setVisible(false);
-      return;
+    };
+    if (!(this.night && this.sprite.visible && this.seen > 0)) return off();
+    let file: string | null;
+    let frame: number;
+    let anchor: Vec2;
+    let cell: Vec2;
+    if (this.battle) {
+      file = this.battle.litOf(this.sprite.frame.texture.key);
+      frame = Number(this.sprite.frame.name) || 0;
+      [anchor, cell] = [this.battle.anchor, this.battle.cell];
+    } else {
+      const dirs = C.animations[this.anim]?.directions ?? C.directions;
+      file = lit.sheet(this.anim, dirs.includes(this.dir) ? this.dir : dirs[0]);
+      if (this.scene.textures.exists(file)) slice(this.scene.textures, file, C.cell[0], C.cell[1]);
+      frame = Number(this.sprite.frame.name) || 0;
+      [anchor, cell] = [C.anchor, C.cell];
     }
-    const anim = this.battle ? 'idle' : this.anim;
-    const dirs = C.animations[anim]?.directions ?? C.directions;
-    const dir = dirs.includes(this.dir) ? this.dir : dirs[0];
-    const file = lit.sheet(anim, dir);
-    if (!this.scene.textures.exists(file)) {
-      sp.setVisible(false);
-      this.glow?.setVisible(false);
-      return;
-    }
-    slice(this.scene.textures, file, C.cell[0], C.cell[1]);
-    const frame = this.battle ? 0 : Number(this.sprite.frame.name) || 0;
+    if (!file || !this.scene.textures.exists(file)) return off();
     const frames = this.scene.textures.get(file).frameTotal - 1;
-    sp.setTexture(file, Math.min(frame, Math.max(0, frames - 1)))
-      .setOrigin(C.anchor[0] / C.cell[0], C.anchor[1] / C.cell[1])
+    frame = Math.min(frame, Math.max(0, frames - 1));
+    sp.setTexture(file, frame)
+      .setOrigin(anchor[0] / cell[0], anchor[1] / cell[1])
       .setPosition(x, y)
       .setAngle(this.sprite.angle)
+      .setScale(this.sprite.scaleX, this.sprite.scaleY) // (a Blink's squash and stretch)
       .setDepth(depth + 0.02)
       .setVisible(true)
       .setAlpha(this.sprite.alpha);
-    if (this.glow) {
-      const t = this.scene.time.now;
-      const flicker = 0.925 + 0.075 * Math.sin(t / 900 + this.flickerPhase) * Math.cos(t / 2300 + this.flickerPhase);
-      this.glow.setPosition(x, y - C.anchor[1] + this.head + lit.glow.offset).setVisible(true).setAlpha(flicker * this.seen);
-    }
+    if (!this.glow) return;
+    const at = litCentre(this.scene, file, frame);
+    if (!at) return void this.glow.setVisible(false); // (no glass showing on this frame)
+    const t = this.scene.time.now;
+    const flicker = 0.925 + 0.075 * Math.sin(t / 900 + this.flickerPhase) * Math.cos(t / 2300 + this.flickerPhase);
+    this.glow
+      .setPosition(Math.round(x - sp.displayOriginX + at[0]), Math.round(y - sp.displayOriginY + at[1]))
+      .setVisible(true)
+      .setAlpha(flicker * this.seen * this.sprite.alpha);
   }
 
   /**
@@ -912,4 +924,35 @@ export class Character {
   get tintables(): Phaser.GameObjects.Components.Tint[] {
     return [this.sprite, ...(this.shadow ? [this.shadow] : []), ...(this.bars ? [this.bars] : []), ...(this.rest ? [...this.rest.back, ...this.rest.front] : [])];
   }
+}
+
+/** Where a lit layer's frame shows light: the middle of its lit pixels' box, from the frame's top left (null: none on
+ *  that frame). Worked out once per frame. */
+const litCentres = new Map<string, Vec2 | null>();
+function litCentre(scene: Phaser.Scene, key: string, frame: number): Vec2 | null {
+  const id = `${key}#${frame}`;
+  if (litCentres.has(id)) return litCentres.get(id)!;
+  const f = scene.textures.getFrame(key, frame);
+  let out: Vec2 | null = null;
+  if (f) {
+    const c = document.createElement('canvas');
+    c.width = f.cutWidth;
+    c.height = f.cutHeight;
+    const g = c.getContext('2d', { willReadFrequently: true })!;
+    g.drawImage(f.source.image as CanvasImageSource, f.cutX, f.cutY, f.cutWidth, f.cutHeight, 0, 0, f.cutWidth, f.cutHeight);
+    const d = g.getImageData(0, 0, c.width, c.height).data;
+    let [x0, y0, x1, y1] = [Infinity, Infinity, -1, -1];
+    for (let y = 0; y < c.height; y++)
+      for (let x = 0; x < c.width; x++)
+        if (d[(y * c.width + x) * 4 + 3] >= 128) {
+          if (x < x0) x0 = x;
+          if (x > x1) x1 = x;
+          if (y < y0) y0 = y;
+          if (y > y1) y1 = y;
+        }
+    // (A trimmed frame's pixels start f.x, f.y into it.)
+    if (x1 >= 0) out = [f.x + (x0 + x1 + 1) / 2, f.y + (y0 + y1 + 1) / 2];
+  }
+  litCentres.set(id, out);
+  return out;
 }

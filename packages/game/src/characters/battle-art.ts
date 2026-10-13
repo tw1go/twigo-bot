@@ -1,8 +1,8 @@
 import type Phaser from 'phaser';
 import { settleOn } from '../world/settle';
 import type { CharacterDefs, ClassArt, ClassesDefs, Dir } from '../assets/types';
-import { type Outfit, sheetKey } from './doll';
-import { CELL, drawPose, lookImages, poseFiles } from './kit-art';
+import { type Outfit, litHat, sheetKey } from './doll';
+import { CELL, drawLitHead, drawPose, lookImages, poseFiles } from './kit-art';
 import { loadImages } from './loading';
 
 // ⚔️ Battle poses (maps with mobs: the Slums): a character with a class is drawn in its class's combat sheets there
@@ -20,6 +20,8 @@ export interface BattleSheets {
   anchor: [number, number];
   cell: [number, number];
   anims: string[];
+  /** A lit hat's night layer for a pose's sheet (its texture key, frame for frame the same; null without a lit hat). */
+  litOf: (sheet: string) => string | null;
 }
 
 const built = new Map<string, Promise<BattleSheets | null>>();
@@ -56,6 +58,7 @@ async function build(scene: Phaser.Scene, C: CharacterDefs, K: ClassesDefs, art:
   const tag = `battle:${id}`;
   const dirsOf = (anim: string) => Object.keys(art.anims[anim]?.dirs ?? {}) as Dir[];
   const directions = dirsOf('walk-ready');
+  const lit = litHat(C, o);
   sliceFrom = performance.now();
   // Standing and walking first, then the attacks.
   const first = (a: string) => Number(a.startsWith('walk') || a === 'idle-ready');
@@ -77,6 +80,17 @@ async function build(scene: Phaser.Scene, C: CharacterDefs, K: ClassesDefs, art:
       if (scene.textures.exists(key)) continue;
       const tex = scene.textures.addCanvas(key, canvas)!;
       for (let f = 0; f < a.frames; f++) tex.add(f, 0, f * CELL, 0, CELL, CELL);
+      // A lit hat: its glass and bulb on each frame, where the hat is (Character draws it untinted over the pose at night).
+      if (lit && !scene.textures.exists(`${tag}:lit:${anim}:${dir}`)) {
+        const glass = document.createElement('canvas');
+        glass.width = CELL * a.frames;
+        glass.height = CELL;
+        const g = glass.getContext('2d')!;
+        g.imageSmoothingEnabled = false;
+        for (let f = 0; f < a.frames; f++) drawLitHead(g, scene, C, K, art, anim, dir, f, lit.sheet('idle', dir), f * CELL, 0);
+        const lt = scene.textures.addCanvas(`${tag}:lit:${anim}:${dir}`, glass)!;
+        for (let f = 0; f < a.frames; f++) lt.add(f, 0, f * CELL, 0, CELL, CELL);
+      }
       const frames = Array.from({ length: a.frames }, (_, f) => ({ key, frame: f }));
       scene.anims.create({ key, frames, frameRate: a.fps, repeat: a.loop ? -1 : 0 });
       // Standing: the combat-stance idle (idle-ready, breathing, looped); a class without it holds walk-ready's first frame.
@@ -96,6 +110,7 @@ async function build(scene: Phaser.Scene, C: CharacterDefs, K: ClassesDefs, art:
     anchor: [K.bodyOffset[0] + C.anchor[0], K.bodyOffset[1] + C.anchor[1]],
     cell: [CELL, CELL],
     anims: Object.keys(art.anims),
+    litOf: (sheet) => (lit && sheet.startsWith(`${tag}:`) ? `${tag}:lit:${sheet.slice(tag.length + 1)}` : null),
   };
 }
 

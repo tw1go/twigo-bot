@@ -869,9 +869,13 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   (`lookWithCosmetics`, TownScene `refreshLook`; `savedOutfit` is the creator's, `outfit` what's drawn), and the bot's
   `parseOutfit` refuses a cosmetic hat in a saved look (the creator, randomOutfit and NPCs never offer one; the Parlor's
   Hat row says "Lamp-head Hat (worn)" meanwhile). Night: wardrobe `litHats` / `hatLitPattern` / `litGlow`: the
-  Character draws the hat's lit sheet (glass and bulb) untinted over the doll on the same frame (battle: the idle sheet
-  facing the same way) and the glow (ADD, GLOW_DEPTH, a slow flicker) over the glass while `setNight` (lampsOn: dusk to
-  dawn, always in the Warrens); never in `tintables`. The Info window shows a Costume tab (the `inspect` message's
+  Character draws the hat's lit sheet (glass and bulb) untinted over the doll on the same frame (every Character, from
+  its constructor: other players' too; battle: battle-art builds a lit sheet beside each pose, kit-art `drawLitHead`
+  laying the glass exactly where drawPose lays the hat, and `BattleSheets.litOf` gives it frame for frame) and the glow
+  (ADD, GLOW_DEPTH, a slow flicker) on the middle of that frame's lit pixels (`litCentre`, once per frame: it follows
+  every bob, step, sit and pose) while `setNight` (lampsOn: dusk to dawn, always in the Warrens); never in
+  `tintables`. A worn or removed cosmetic rebuilds your battle poses on a battle map (TownScene `setOutfit` →
+  `applyBattle`: they're baked per look). The Info window shows a Costume tab (the `inspect` message's
   `cosmetics`). Tested (items.test.ts, adventure.test.ts).
 - Weapon auras (`src/fx/weaponAura.ts`, guide "Weapon auras", stats.json enhancement.weaponAura; matches the art folder's
   items/weapon-aura/weapon-aura-preview-v6.gif): +15–17 blue, +18–19 gold (2 glints), +20 prismatic (4 glints, the cycle by

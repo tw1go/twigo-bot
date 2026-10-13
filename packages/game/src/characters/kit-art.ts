@@ -1,6 +1,6 @@
 import type Phaser from 'phaser';
 import type { CharacterDefs, ClassArt, ClassLayer, ClassesDefs, Dir } from '../assets/types';
-import { type ImageHost, type Outfit, clothesFiles, dressLayer, headFiles, sheetKey } from './doll';
+import { type ImageHost, type Outfit, clothesFiles, dressLayer, headFiles, litHat, sheetKey } from './doll';
 
 // ⚔️ A class's weapon on a character, drawn onto a canvas (the class cards, the skill preview, the equipment panel):
 // the resting weapon over the doll's idle or walk (the same frame, or the Hilot's balm on its own clock), and the
@@ -47,7 +47,18 @@ export function lookImages(C: CharacterDefs, o: Outfit, dirs: Dir[]): string[] {
   return dirs.flatMap((dir) => [
     C.layers.body.replaceAll('{anim}', 'idle').replaceAll('{dir}', dir),
     ...[...clothesFiles(C, o, dir), ...headFiles(C, o, dir)].flatMap((l) => (l.clip ? [l.file, l.clip] : [l.file])),
+    ...(litHat(C, o) ? [litHat(C, o)!.sheet('idle', dir)] : []), // (a lit hat's night layer: drawLitHead)
   ]);
+}
+
+/** A lit hat's night layer (the glass and bulb, doll.ts litHat) on a combat pose's frame at (x, y), the 64x64 cell's top
+ *  left: the idle sheet's first frame moved to the pose's head, exactly where drawPose lays the look's hat. */
+export function drawLitHead(ctx: CanvasRenderingContext2D, scene: ImageHost, C: CharacterDefs, K: ClassesDefs, art: ClassArt, anim: string, dir: Dir, frame: number, litFile: string, x = 0, y = 0): void {
+  const d = art.anims[anim]?.dirs[dir];
+  if (!d) return;
+  const idleBody = C.layers.body.replaceAll('{anim}', 'idle').replaceAll('{dir}', dir);
+  const [dx, dy] = headShift(scene, C, idleBody, d.body, frame);
+  drawCell(ctx, source(scene, litFile), C.cell[0], C.cell[1], 0, x + K.bodyOffset[0] + dx, y + K.bodyOffset[1] + dy);
 }
 
 const alphas = new Map<string, ImageData | null>();
