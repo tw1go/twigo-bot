@@ -11,6 +11,7 @@ const GROUND: Record<string, string> = {
   dirt: '#4E3424', 'dirt-junk': '#553A28', weeds: '#4C3D26', mud: '#3B2A20', concrete: '#5A6078', plate: '#6E4836', planks: '#7A5634', canal: '#2E5A3E',
 };
 const BUILDING = '#7C2AE8';
+const VOID = '#111827'; // a chasm's floor (level below 0): near black
 const OTHER = '#22C55E';
 const PARTY = '#F9A8D4'; // your party's pink (their names in town, the party panel)
 const YOU = '#FCDA4A';
@@ -66,12 +67,16 @@ export class Minimap {
       g.fillRect(x - hw, y - hw / 2, hw * 2, hw); // a little diamond's bounding box: the tiles mesh into the town's shape
     };
     const H = this.map.height;
+    // The map's usual level (its most common one above void) is the ground's own colour; each level up a shade lighter,
+    // each level down darker; void (below 0: a chasm's floor) near black.
+    const count = new Map<number, number>();
+    if (H) for (const row of H) for (const v of row) if (v >= 0) count.set(v, (count.get(v) ?? 0) + 1);
+    const base = [...count].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 0;
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const colour = GROUND[this.map.ground[r][c]] ?? GROUND.grass;
-        // Raised ground (level 2) a shade lighter, low ground (level 0) darker; level 1 is the Slums' normal ground.
-        const level = H?.[r]?.[c] ?? 1;
-        tile(c, r, level > 1 ? shade(colour, 0.18) : level < 1 ? shade(colour, -0.35) : colour);
+        const level = H?.[r]?.[c] ?? base;
+        tile(c, r, level < 0 ? VOID : level === base ? colour : shade(colour, level > base ? 0.18 * (level - base) : -0.35 + 0.1 * (level - base + 1)));
       }
     }
     for (const o of this.map.objects) {

@@ -1,11 +1,14 @@
 import type { Ramp, RampDir, TownMap } from '../assets/types';
 import type { Tile } from './grid';
 
-// ⛰️ Raised and low ground (the Slums' map.height, map.ramps): one level = 16 px. Everything on a tile is drawn 16 px ×
-// its height higher. A step between two tiles of different heights is only possible along a ramp: 2 tiles, part 1
-// (low) then part 2, both at the low level, then the high tile; a ramp tile links only to the tile before part 1, the
-// other part and the tile after part 2 (its sides are walls). Someone on a ramp rises smoothly from 0 to 16 px across
-// its two tiles. Maps without heights (the town, the neighbourhood) are flat: every answer is 0 / allowed.
+// ⛰️ Raised and low ground (the Slums' map.height, map.ramps; CONTEXT.md "Ground"): one level = 16 px. Everything on a
+// tile is drawn 16 px × its level higher. Levels run from the map's lowest to its highest (`min` / `max`: the Slums −2
+// to 5; nothing in the code assumes 0 to 2). Below 0 is void: a chasm's floor, where nobody ever stands (the map has it
+// in `blocked` too, so the server refuses it as well). A step between two tiles of different levels is only possible
+// along a ramp: 2 tiles, part 1 (low) then part 2, both at the low level, then the high tile; a ramp tile links only to
+// the tile before part 1, the other part and the tile after part 2 (its sides are walls). Someone on a ramp rises
+// smoothly from 0 to 16 px across its two tiles. Maps without heights (the town, the neighbourhood) are flat: every
+// answer is 0 / allowed.
 
 export const LEVEL_PX = 16;
 
@@ -14,34 +17,59 @@ export const RAMP_STEP: Record<RampDir, [number, number]> = { ne: [0, -1], nw: [
 
 export class Heights {
   readonly flat: boolean;
+  /** The map's lowest and highest level (0 and 0 on a flat map). */
+  readonly min: number;
+  readonly max: number;
   private readonly cols: number;
   private readonly rows: number;
-  private readonly h: Uint8Array;
+  private readonly h: Int8Array;
   private readonly ramps = new Map<string, Ramp>();
 
   constructor(map: TownMap) {
     [this.cols, this.rows] = map.size;
     this.flat = !map.height;
-    this.h = new Uint8Array(this.cols * this.rows);
-    if (map.height) for (let r = 0; r < this.rows; r++) for (let c = 0; c < this.cols; c++) this.h[r * this.cols + c] = map.height[r]?.[c] ?? 0;
+    this.h = new Int8Array(this.cols * this.rows);
+    let min = 0;
+    let max = 0;
+    if (map.height) {
+      for (let r = 0; r < this.rows; r++) {
+        for (let c = 0; c < this.cols; c++) {
+          const v = map.height[r]?.[c] ?? 0;
+          this.h[r * this.cols + c] = v;
+          if (v < min) min = v;
+          if (v > max) max = v;
+        }
+      }
+    }
+    this.min = min;
+    this.max = max;
     for (const rp of map.ramps ?? []) this.ramps.set(`${rp.col},${rp.row}`, rp);
   }
 
-  /** A tile's level (off the map: its nearest edge tile's, so the outskirts sit level with the map's edge). */
+  /** A tile's level (off the map: its nearest edge tile's, never below 0, so the outskirts sit level with the map's
+   *  edge and a chasm touching the edge stops there). */
   at(col: number, row: number): number {
     if (this.flat) return 0;
+    const inside = col >= 0 && row >= 0 && col < this.cols && row < this.rows;
     const c = Math.min(this.cols - 1, Math.max(0, col));
     const r = Math.min(this.rows - 1, Math.max(0, row));
-    return this.h[r * this.cols + c];
+    const v = this.h[r * this.cols + c];
+    return inside ? v : Math.max(0, v);
+  }
+
+  /** Void: a chasm's floor (below 0), where nobody stands. */
+  isVoid(col: number, row: number): boolean {
+    return this.at(col, row) < 0;
   }
 
   ramp(col: number, row: number): Ramp | undefined {
     return this.ramps.get(`${col},${row}`);
   }
 
-  /** Whether a straight or diagonal step from a to the next tile b is allowed by the ground's levels. */
+  /** Whether a straight or diagonal step from a to the next tile b is allowed by the ground's levels (never into void). */
   canStep(a: Tile, b: Tile): boolean {
     if (this.flat) return true;
+    if (this.isVoid(b.col, b.row)) return false;
     const ra = this.ramp(a.col, a.row);
     const rb = this.ramp(b.col, b.row);
     if (!ra && !rb) return this.at(a.col, a.row) === this.at(b.col, b.row);

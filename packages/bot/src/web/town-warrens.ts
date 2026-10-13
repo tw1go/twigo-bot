@@ -628,7 +628,7 @@ export class Run implements MobDirector {
         );
       }
       case 'liveFloor': {
-        const floor = b.area.arenaTiles;
+        const floor = this.floorOf(b.area);
         const under = [...near].sort(() => random() - 0.5).slice(0, 2).map(([, p]) => p);
         const tiles: Tile[] = [...under, ...this.draw(floor, (m.count ?? 6) - under.length, (t) => !under.some((x) => key(x) === key(t)))];
         const shape: TelegraphShape = { kind: 'tiles', tiles, colour: 'yellow' };
@@ -654,7 +654,7 @@ export class Run implements MobDirector {
         return queue(ev, (t, players) => this.landHits(b.mob, m.id, (ev as { key: string }).key, players, (p) => inShape(shape, p), mult, t));
       }
       case 'roofRain': {
-        const floor = b.area.arenaTiles;
+        const floor = this.floorOf(b.area);
         const under = [...near].sort(() => random() - 0.5).slice(0, 2).map(([, p]) => p);
         const rest = this.draw(floor, (m.count ?? 8) - under.length, (t, drawn) => [...under, ...drawn].every((c) => hyp(c, t) >= 2));
         const circles = [...under, ...rest].map((t) => ({ at: t, radius: m.radius ?? 1.5 }));
@@ -725,6 +725,11 @@ export class Run implements MobDirector {
   }
 
   /** Up to `n` of `list` drawn at random, no repeats, each passing `ok` (given those drawn so far). */
+  /** An arena's open floor: its tiles that are walkable at the floor's level (never a pit, a wall or anything blocked). */
+  private floorOf(area: { arenaTiles: Tile[] }): Tile[] {
+    return area.arenaTiles.filter(([c, r]) => !this.map.blocked[r]?.[c] && (this.map.height?.[r]?.[c] ?? 0) === 0);
+  }
+
   private draw<T>(list: T[], n: number, ok: (t: T, drawn: T[]) => boolean = () => true): T[] {
     const left = [...list];
     const out: T[] = [];
@@ -771,7 +776,7 @@ export class Run implements MobDirector {
       }
       case 'shantyCall': {
         // Out of its doors onto open hall floor in front of it (the call anim's frame 3, then a hop).
-        const front = b.area.arenaTiles.filter((t) => t[0] + t[1] > this.map.dungeon.boss.tile[0] + this.map.dungeon.boss.tile[1] + 3 && hyp(t, this.map.dungeon.boss.tile) <= 8 && this.mobs.open(...t) && !this.mobs.occupied(...t));
+        const front = this.floorOf(b.area).filter((t) => t[0] + t[1] > this.map.dungeon.boss.tile[0] + this.map.dungeon.boss.tile[1] + 3 && hyp(t, this.map.dungeon.boss.tile) <= 8 && this.mobs.open(...t) && !this.mobs.occupied(...t));
         const spots = this.draw(front, m.calls?.count ?? 2, (t, drawn) => drawn.every((x) => hyp(x, t) >= 2));
         return this.call(b, 'scrapling', spots, now, 750, 'shantyCall');
       }

@@ -92,3 +92,57 @@ tile-slums-ramp-planks-sw-1.png,32,32,1,0,no,16,24,planks ramp walking up toward
 tile-slums-ramp-planks-sw-2.png,32,32,1,0,no,16,24,planks ramp walking up toward SW; part 2 of 2 (high cell)
 tile-slums-ramp-planks-se-1.png,32,32,1,0,no,16,24,planks ramp walking up toward SE; part 1 of 2 (low cell)
 tile-slums-ramp-planks-se-2.png,32,32,1,0,no,16,24,planks ramp walking up toward SE; part 2 of 2 (high cell)
+tile-slums-cliff-rock-l-1.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): rock bluff face (grey stone) on the SW (left) side; draw when that neighbour is lower
+tile-slums-cliff-rock-lower-l-1.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): rock face, lower step (darker) on the SW side: every step below the top one
+tile-slums-cliff-rock-l-2.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): rock bluff face (grey stone) on the SW (left) side; draw when that neighbour is lower
+tile-slums-cliff-rock-lower-l-2.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): rock face, lower step (darker) on the SW side: every step below the top one
+tile-slums-cliff-rock-l-3.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): rock bluff face (grey stone) on the SW (left) side; draw when that neighbour is lower
+tile-slums-cliff-rock-lower-l-3.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): rock face, lower step (darker) on the SW side: every step below the top one
+tile-slums-cliff-rock-r-1.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): rock bluff face (grey stone) on the SE (right) side; draw when that neighbour is lower
+tile-slums-cliff-rock-lower-r-1.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): rock face, lower step (darker) on the SE side: every step below the top one
+tile-slums-cliff-rock-r-2.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): rock bluff face (grey stone) on the SE (right) side; draw when that neighbour is lower
+tile-slums-cliff-rock-lower-r-2.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): rock face, lower step (darker) on the SE side: every step below the top one
+tile-slums-cliff-rock-r-3.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): rock bluff face (grey stone) on the SE (right) side; draw when that neighbour is lower
+tile-slums-cliff-rock-lower-r-3.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): rock face, lower step (darker) on the SE side: every step below the top one
+tile-slums-cliff-scrap-l-1.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): stacked scrap wall face (rust) on the SW (left) side; draw when that neighbour is lower
+tile-slums-cliff-scrap-lower-l-1.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): scrap face, lower step (darker) on the SW side: every step below the top one
+tile-slums-cliff-scrap-l-2.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): stacked scrap wall face (rust) on the SW (left) side; draw when that neighbour is lower
+tile-slums-cliff-scrap-lower-l-2.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): scrap face, lower step (darker) on the SW side: every step below the top one
+tile-slums-cliff-scrap-l-3.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): stacked scrap wall face (rust) on the SW (left) side; draw when that neighbour is lower
+tile-slums-cliff-scrap-lower-l-3.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): scrap face, lower step (darker) on the SW side: every step below the top one
+tile-slums-cliff-scrap-r-1.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): stacked scrap wall face (rust) on the SE (right) side; draw when that neighbour is lower
+tile-slums-cliff-scrap-lower-r-1.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): scrap face, lower step (darker) on the SE side: every step below the top one
+tile-slums-cliff-scrap-r-2.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): stacked scrap wall face (rust) on the SE (right) side; draw when that neighbour is lower
+tile-slums-cliff-scrap-lower-r-2.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): scrap face, lower step (darker) on the SE side: every step below the top one
+tile-slums-cliff-scrap-r-3.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): stacked scrap wall face (rust) on the SE (right) side; draw when that neighbour is lower
+tile-slums-cliff-scrap-lower-r-3.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): scrap face, lower step (darker) on the SE side: every step below the top one
+tile-slums-cliff-chasm-l-1.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): chasm wall, one level below the ground round a void on the SW (left) side; draw when that neighbour is lower
+tile-slums-cliff-chasm-l-2.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): chasm wall, one level below the ground round a void on the SW (left) side; draw when that neighbour is lower
+tile-slums-cliff-chasm-l-3.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): chasm wall, one level below the ground round a void on the SW (left) side; draw when that neighbour is lower
+tile-slums-cliff-chasm-r-1.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): chasm wall, one level below the ground round a void on the SE (right) side; draw when that neighbour is lower
+tile-slums-cliff-chasm-r-2.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): chasm wall, one level below the ground round a void on the SE (right) side; draw when that neighbour is lower
+tile-slums-cliff-chasm-r-3.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): chasm wall, one level below the ground round a void on the SE (right) side; draw when that neighbour is lower
+tile-slums-cliff-chasm-deep-l-1.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): chasm wall two levels down (under the chasm piece) on the SW (left) side; draw when that neighbour is lower
+tile-slums-cliff-chasm-deep-l-2.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): chasm wall two levels down (under the chasm piece) on the SW (left) side; draw when that neighbour is lower
+tile-slums-cliff-chasm-deep-l-3.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): chasm wall two levels down (under the chasm piece) on the SW (left) side; draw when that neighbour is lower
+tile-slums-cliff-chasm-deep-r-1.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): chasm wall two levels down (under the chasm piece) on the SE (right) side; draw when that neighbour is lower
+tile-slums-cliff-chasm-deep-r-2.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): chasm wall two levels down (under the chasm piece) on the SE (right) side; draw when that neighbour is lower
+tile-slums-cliff-chasm-deep-r-3.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): chasm wall two levels down (under the chasm piece) on the SE (right) side; draw when that neighbour is lower
+tile-slums-cliff-foot-l.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): foot line under a wall's lowest step on the SW side; anchored on the lower ground
+tile-slums-cliff-foot-r.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): foot line under a wall's lowest step on the SE side; anchored on the lower ground
+tile-slums-chasm-lip-nw-1.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): chasm lip on a tile whose NW neighbour is void, in place of the rim
+tile-slums-chasm-lip-nw-2.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): chasm lip on a tile whose NW neighbour is void, in place of the rim
+tile-slums-chasm-lip-ne-1.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): chasm lip on a tile whose NE neighbour is void, in place of the rim
+tile-slums-chasm-lip-ne-2.png,32,32,1,0,no,16,24,PLACEHOLDER (scripts/terrain/placeholders.ts): chasm lip on a tile whose NE neighbour is void, in place of the rim
+tile-slums-void-1.png,32,16,1,0,no,16,8,PLACEHOLDER (scripts/terrain/placeholders.ts): void: a chasm's floor, never walked on
+tile-slums-void-2.png,32,16,1,0,no,16,8,PLACEHOLDER (scripts/terrain/placeholders.ts): void: a chasm's floor, never walked on
+tile-slums-void-3.png,32,16,1,0,no,16,8,PLACEHOLDER (scripts/terrain/placeholders.ts): void: a chasm's floor, never walked on
+tile-slums-void-4.png,32,16,1,0,no,16,8,PLACEHOLDER (scripts/terrain/placeholders.ts): void: a chasm's floor, never walked on
+tile-slums-cracked-1.png,32,16,1,0,no,16,8,PLACEHOLDER (scripts/terrain/placeholders.ts): cracked ground: broken concrete, walkable
+tile-slums-cracked-2.png,32,16,1,0,no,16,8,PLACEHOLDER (scripts/terrain/placeholders.ts): cracked ground: broken concrete, walkable
+tile-slums-cracked-3.png,32,16,1,0,no,16,8,PLACEHOLDER (scripts/terrain/placeholders.ts): cracked ground: broken concrete, walkable
+tile-slums-cracked-4.png,32,16,1,0,no,16,8,PLACEHOLDER (scripts/terrain/placeholders.ts): cracked ground: broken concrete, walkable
+tile-slums-cracked-5.png,32,16,1,0,no,16,8,PLACEHOLDER (scripts/terrain/placeholders.ts): cracked ground: broken concrete, walkable
+tile-slums-cracked-6.png,32,16,1,0,no,16,8,PLACEHOLDER (scripts/terrain/placeholders.ts): cracked ground: broken concrete, walkable
+tile-slums-cracked-7.png,32,16,1,0,no,16,8,PLACEHOLDER (scripts/terrain/placeholders.ts): cracked ground: broken concrete, walkable
+tile-slums-cracked-8.png,32,16,1,0,no,16,8,PLACEHOLDER (scripts/terrain/placeholders.ts): cracked ground: broken concrete, walkable

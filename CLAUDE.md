@@ -35,7 +35,7 @@ If `CLAUDE.local.md` isn't in the repo root, you're on a contributor's machine: 
   skill effects, `net/` the client stores); shared rules `packages/shared/src/` (`stats.ts`, `items.ts`, `forge.ts`,
   `leveling.ts`, `trade.ts`, `dungeons.ts`, `town.ts` = the WebSocket protocol). Data the game and bot both read lives in
   `packages/game/public/assets/` (`manifest.json`, `classes/stats.json`, `classes/classes.json`, `items/*.json`,
-  `mobs/mobs.json`, `maps/*.json`, `quests/quests.json`).
+  `mobs/mobs.json`, `maps/*.json`, `quests/quests.json`); the map scripts in `packages/game/scripts/` (`build-warrens.ts`, `terrain/`).
 - **Game data comes from the art folder:** most of `classes/stats.json`, `classes/leveling.json` and the art are
   copied from the owner's `mikazuki-assets` folder. Edit them here as needed, but say in your PR what you changed, so the
   owner can copy it back. Additions made here first are listed under "Repo-only data" below; keep that list current.
@@ -157,6 +157,13 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   the Warren Gate (object, its blocked tiles, `arrive.warrens`; written by `scripts/build-warrens.ts`).
 - `maps/warrens.json` is built here (`packages/game/scripts/build-warrens.ts` from `scripts/warrens/warrens-layout.json`,
   the art folder's layout copied in): run it again after changing either.
+- High terrain (13 Oct 2026, all of it repo-only, PLACEHOLDER art): `tiles/slums` cliff-rock / -scrap (+ -lower) / -chasm /
+  -chasm-deep l|r 1–3, cliff-foot-l|r, chasm-lip-nw|ne 1–2, void 1–4, cracked 1–8 and `props/slums` rubble 1–6, slab 1–3,
+  boulder 1–3, junk-spire 1–3 (made by `scripts/terrain/placeholders.ts`; each folder's `_sheets-high-terrain.csv` and
+  the rows appended to `_sheets.csv`), their manifest entries (tiles.slums ground void / cracked, cliffs rock / scrap with
+  `lower`, chasm, chasm-deep, foot, lip; the 15 props), `maps/slums.json`'s terrain (levels −2 to 5, 28 ramps, the new
+  ground and props: copying the art folder's map over again loses it; `apply_high_terrain.py slums` puts it back on a
+  map without it) and `scripts/terrain/README.md` (the draw rules: the art folder's slums-high-terrain-README.md to be).
 
 ## The web game (`packages/game`)
 
@@ -489,13 +496,13 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   BootScene loads maps/slums.json via `slumsTownMap`). Town side: the west road's end, `gates.slums` (col 0, rows 34–36),
   `arrive.slums` [2,35], a "← Slums" sign; back: slums.json `gates.town` on its east edge. The map (256 × 192, from the art
   folder's maps/slums, with its manifest-snippet props, tiles.slums and mobs.tin-can) has raised and low ground:
-  `height` (0 basin, 1 ground, 2 ridge; 16 px a level), `walls` (cliff material), `ramps` (2 tiles; `world/heights.ts`:
+  `height` (−2 to 5: −2 canyon and −1 sinkhole floors = void, never walked on and in `blocked` too; 0 basin, 1 ground, 2 ridge and junk mounds, 3 the ridge's crest and mesa tops, 4–5 the bluffs along the back edges; 16 px a level; `Heights.min` / `max`: nothing assumes 0 to 2; CONTEXT.md "Ground"), `walls` (cliff material: earth, concrete, sheet, rock, scrap), `ramps` (2 tiles; `world/heights.ts`:
   steps only along a ramp, a smooth lift on it, the walk grid and A* use it; characters `elevation`, objects raised,
   `HEIGHT_DEPTH` in depth; clicks pick the raised tile under the pointer). `world/terrain.ts` draws it by the art's
   elevation README (each ground tile one of its kind's variants, tiles.slums.ground listed from the art's _sheets.csv,
   picked by `rng.ts` `variantAt`: a murmur3 mix of col,row seeded per kind, so repeats never line up in stripes): floors, walls, rims, caps baked per 512 px chunk in the README's order; tiles that rise over the tile
   just behind (and ramps) are sprites sorted with characters, so the ground in front hides what stands behind (Wire
-  Ridge, the Crab Basin's lip); the canal is animated with the river's bank overlays. Props cast their own shadow there (`world/cast-shadow.ts`, WorldObjects `castShadows`: each image's
+  Ridge, the Crab Basin's lip); the canal is animated with the river's bank overlays. High terrain (`scripts/terrain/README.md` = the draw rules, the art folder's slums-high-terrain-README.md to be; `scripts/terrain/apply_high_terrain.py` put it in maps/slums.json, seeded: bluffs, the crest with its ramps, mesas and lookouts, sinkholes and canyons with land bridges, rubble fields of `cracked` ground with rubble and boulders, heaved slabs beside the road; it keeps everything the game needs clear and checks reachability as it goes; `protect-slums.json` for tiles code names): every raised tile (level ≥ 1) is a column of sprites (floor, walls down to each lower neighbour with the material's `lower` pieces under the top step and the `foot` line on the lowest, caps, rims, chasm `lip`s next to void) sorted at its front corner like an object, so what stands behind a bluff, mesa or wall is hidden and `fadeFront` fades the columns that hide you (as far as the highest level); flat ground (≤ 0, with the chasm / chasm-deep walls down into voids) stays baked. The minimap shades each level from the map's usual one, void near black. The art for all this is PLACEHOLDER (`scripts/terrain/placeholders.ts`; Repo-only data) until the art folder has its own. Props cast their own shadow there (`world/cast-shadow.ts`, WorldObjects `castShadows`: each image's
   silhouette laid down-right on the ground from its foot, the sun in the north-west, baked once per image; not floors). Everything is streamed round the
   camera (terrain chunks a few a frame, 16 × 16-tile regions of sprites, `WorldObjects` stream mode for the ~2,100
   props; dropped far away), A* is capped (a long click walks to the closest tile found). Outskirts: `SlumsOutskirts` in
@@ -642,7 +649,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `maps/warrens.json` (96 × 104: the layout's 96 × 64 with `GAP_ROWS` (40) rows of junk wall put between its top half
   (areas 1–3) and bottom half (4–6), Bag Hollow's way out carried on as a tunnel down through them into Live Coils, so
   nothing of the bottom half, Barong-Barong least of all, is in view from the start; everything below moved down, the last
-  boss's tile and body too: read them from the map's `dungeon.boss`, never dungeons.json's `lastBoss.tile`; the Slums' format: junk walls at height 1, floors 0, each area's ground, lamps round the
+  boss's tile and body too: read them from the map's `dungeon.boss`, never dungeons.json's `lastBoss.tile`; the Slums' format: junk walls stepped to levels 2–4 (scrap, the further from the floor the taller, junk spires on some tops), floors 0 with pits (void, −1, blocked) in each arena's corners and along the walls of rooms and wide corridors (never a tunnel under 4 wide, never the start room, warps, shutters, hall, boss tiles, guards, checkpoints or pack spawns; the arenas' `arenaTiles` lose them, and the director's draws (`floorOf`) skip blocked and off-level tiles anyway): `scripts/terrain/apply_high_terrain.py`, run by `build-warrens.ts` as its last step; each area's ground, lamps round the
   arenas, the exit warp, mob zones with `dungeon: true` and their packs as `groups`, and a `dungeon` block: areas with
   their arena tiles, boss tile, guards and checkpoint, shutters with their passage tiles, the start room's `seal`, the
   last boss's body, the `clearWarp`). The Warren Gate is a Slums prop (`slums-warren-gate`, its `portal` strip pulsing over it, also the

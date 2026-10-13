@@ -331,6 +331,22 @@
           "tiles/slums/tile-slums-planks-4.png",
           "tiles/slums/tile-slums-planks-5.png",
           "tiles/slums/tile-slums-planks-6.png"
+        ],
+        "void": [
+          "tiles/slums/tile-slums-void-1.png",
+          "tiles/slums/tile-slums-void-2.png",
+          "tiles/slums/tile-slums-void-3.png",
+          "tiles/slums/tile-slums-void-4.png"
+        ],
+        "cracked": [
+          "tiles/slums/tile-slums-cracked-1.png",
+          "tiles/slums/tile-slums-cracked-2.png",
+          "tiles/slums/tile-slums-cracked-3.png",
+          "tiles/slums/tile-slums-cracked-4.png",
+          "tiles/slums/tile-slums-cracked-5.png",
+          "tiles/slums/tile-slums-cracked-6.png",
+          "tiles/slums/tile-slums-cracked-7.png",
+          "tiles/slums/tile-slums-cracked-8.png"
         ]
       },
       "canal": {
@@ -387,6 +403,78 @@
             "tiles/slums/tile-slums-cliff-sheet-r-1.png",
             "tiles/slums/tile-slums-cliff-sheet-r-2.png"
           ]
+        },
+        "rock": {
+          "l": [
+            "tiles/slums/tile-slums-cliff-rock-l-1.png",
+            "tiles/slums/tile-slums-cliff-rock-l-2.png",
+            "tiles/slums/tile-slums-cliff-rock-l-3.png"
+          ],
+          "r": [
+            "tiles/slums/tile-slums-cliff-rock-r-1.png",
+            "tiles/slums/tile-slums-cliff-rock-r-2.png",
+            "tiles/slums/tile-slums-cliff-rock-r-3.png"
+          ],
+          "lower": {
+            "l": [
+              "tiles/slums/tile-slums-cliff-rock-lower-l-1.png",
+              "tiles/slums/tile-slums-cliff-rock-lower-l-2.png",
+              "tiles/slums/tile-slums-cliff-rock-lower-l-3.png"
+            ],
+            "r": [
+              "tiles/slums/tile-slums-cliff-rock-lower-r-1.png",
+              "tiles/slums/tile-slums-cliff-rock-lower-r-2.png",
+              "tiles/slums/tile-slums-cliff-rock-lower-r-3.png"
+            ]
+          }
+        },
+        "scrap": {
+          "l": [
+            "tiles/slums/tile-slums-cliff-scrap-l-1.png",
+            "tiles/slums/tile-slums-cliff-scrap-l-2.png",
+            "tiles/slums/tile-slums-cliff-scrap-l-3.png"
+          ],
+          "r": [
+            "tiles/slums/tile-slums-cliff-scrap-r-1.png",
+            "tiles/slums/tile-slums-cliff-scrap-r-2.png",
+            "tiles/slums/tile-slums-cliff-scrap-r-3.png"
+          ],
+          "lower": {
+            "l": [
+              "tiles/slums/tile-slums-cliff-scrap-lower-l-1.png",
+              "tiles/slums/tile-slums-cliff-scrap-lower-l-2.png",
+              "tiles/slums/tile-slums-cliff-scrap-lower-l-3.png"
+            ],
+            "r": [
+              "tiles/slums/tile-slums-cliff-scrap-lower-r-1.png",
+              "tiles/slums/tile-slums-cliff-scrap-lower-r-2.png",
+              "tiles/slums/tile-slums-cliff-scrap-lower-r-3.png"
+            ]
+          }
+        },
+        "chasm": {
+          "l": [
+            "tiles/slums/tile-slums-cliff-chasm-l-1.png",
+            "tiles/slums/tile-slums-cliff-chasm-l-2.png",
+            "tiles/slums/tile-slums-cliff-chasm-l-3.png"
+          ],
+          "r": [
+            "tiles/slums/tile-slums-cliff-chasm-r-1.png",
+            "tiles/slums/tile-slums-cliff-chasm-r-2.png",
+            "tiles/slums/tile-slums-cliff-chasm-r-3.png"
+          ]
+        },
+        "chasm-deep": {
+          "l": [
+            "tiles/slums/tile-slums-cliff-chasm-deep-l-1.png",
+            "tiles/slums/tile-slums-cliff-chasm-deep-l-2.png",
+            "tiles/slums/tile-slums-cliff-chasm-deep-l-3.png"
+          ],
+          "r": [
+            "tiles/slums/tile-slums-cliff-chasm-deep-r-1.png",
+            "tiles/slums/tile-slums-cliff-chasm-deep-r-2.png",
+            "tiles/slums/tile-slums-cliff-chasm-deep-r-3.png"
+          ]
         }
       },
       "rim": {
@@ -434,7 +522,22 @@
             "tiles/slums/tile-slums-ramp-planks-se-2.png"
           ]
         }
-      }
+      },
+      "foot": {
+        "l": "tiles/slums/tile-slums-cliff-foot-l.png",
+        "r": "tiles/slums/tile-slums-cliff-foot-r.png"
+      },
+      "lip": {
+        "nw": [
+          "tiles/slums/tile-slums-chasm-lip-nw-1.png",
+          "tiles/slums/tile-slums-chasm-lip-nw-2.png"
+        ],
+        "ne": [
+          "tiles/slums/tile-slums-chasm-lip-ne-1.png",
+          "tiles/slums/tile-slums-chasm-lip-ne-2.png"
+        ]
+      },
+      "highTerrainNote": "High terrain (tiles/slums/slums-high-terrain-README.md): ground void (a chasm floor, below level 0) and cracked (walkable); cliffs rock and scrap with `lower` (every step below the top one), chasm (one level below the ground) and chasm-deep (two); foot l/r = the line on a wall's lowest step; lip nw/ne = the chasm lip in place of the rim next to a void. PLACEHOLDER art until the art folder has its own (scripts/terrain/placeholders.ts)."
     }
   },
   "buildings": {
@@ -13553,34 +13656,129 @@
   },
   "todo": [],
   "props": {
-    "warrens-shutter-closed": {"file": "props/warrens/prop-warrens-shutter-closed.png", "size": [96, 96], "anchor": [48, 79], "footprint": [1, 1], "walkable": false, "note": "A Scrap Warrens shutter (world/warrens.ts draws it, not the map): 3 tiles bottom-left to top-right (flipped for the other way); anchor = the middle tile's centre"},
-    "warrens-shutter-open": {"file": "props/warrens/prop-warrens-shutter-open.png", "size": [96, 96], "anchor": [48, 79], "footprint": [1, 1], "walkable": true, "note": "The shutter once its mini boss is down (same anchor)"},
+    "warrens-shutter-closed": {
+      "file": "props/warrens/prop-warrens-shutter-closed.png",
+      "size": [
+        96,
+        96
+      ],
+      "anchor": [
+        48,
+        79
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "A Scrap Warrens shutter (world/warrens.ts draws it, not the map): 3 tiles bottom-left to top-right (flipped for the other way); anchor = the middle tile's centre"
+    },
+    "warrens-shutter-open": {
+      "file": "props/warrens/prop-warrens-shutter-open.png",
+      "size": [
+        96,
+        96
+      ],
+      "anchor": [
+        48,
+        79
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": true,
+      "note": "The shutter once its mini boss is down (same anchor)"
+    },
     "slums-warren-gate": {
       "file": "props/slums/prop-slums-warren-gate.png",
-      "size": [96, 96],
-      "anchor": [48, 40],
-      "footprint": [3, 3],
+      "size": [
+        96,
+        96
+      ],
+      "anchor": [
+        48,
+        40
+      ],
+      "footprint": [
+        3,
+        3
+      ],
       "walkable": false,
-      "portal": { "file": "props/slums/prop-slums-warren-gate-glow.png", "frames": 12, "frameSize": [96, 96], "fps": 10, "pulse": [0.85, 1, 2000] },
+      "portal": {
+        "file": "props/slums/prop-slums-warren-gate-glow.png",
+        "frames": 12,
+        "frameSize": [
+          96,
+          96
+        ],
+        "fps": 10,
+        "pulse": [
+          0.85,
+          1,
+          2000
+        ]
+      },
       "note": "The Warren Gate (the Scrap Warrens' entrance by the golem pit): the pipe, and its portal strip drawn on top at the same anchor (never moved or turned; a soft alpha pulse). Anchor = the top corner of the 3x3 footprint (the art's sheet gives 48,64: the footprint's centre)."
     },
     "warren-exit": {
       "file": "props/slums/prop-slums-warren-gate.png",
-      "size": [96, 96],
-      "anchor": [48, 40],
-      "footprint": [3, 3],
+      "size": [
+        96,
+        96
+      ],
+      "anchor": [
+        48,
+        40
+      ],
+      "footprint": [
+        3,
+        3
+      ],
       "walkable": false,
-      "portal": { "file": "props/slums/prop-slums-warren-gate-glow.png", "frames": 12, "frameSize": [96, 96], "fps": 10, "pulse": [0.85, 1, 2000] },
+      "portal": {
+        "file": "props/slums/prop-slums-warren-gate-glow.png",
+        "frames": 12,
+        "frameSize": [
+          96,
+          96
+        ],
+        "fps": 10,
+        "pulse": [
+          0.85,
+          1,
+          2000
+        ]
+      },
       "note": "The Scrap Warrens' exit warp: the Warren Gate's art round the 2x2 warp tiles (walking onto them takes you back to the Slums)."
     },
     "lantern-post": {
       "file": "props/prop-town-lantern-post.png",
-      "size": [64, 96],
-      "anchor": [32, 76],
+      "size": [
+        64,
+        96
+      ],
+      "anchor": [
+        32,
+        76
+      ],
       "anchorMeaning": "top corner of the footprint diamond (the art's sheet gives 32,84: its tile's ground centre)",
-      "footprint": [1, 1],
+      "footprint": [
+        1,
+        1
+      ],
       "collision": "footprint",
-      "animation": { "file": "props/prop-town-lantern-post-idle.png", "frames": 6, "frameSize": [64, 96], "fps": 6, "loop": true, "note": "same anchor and footprint as the still (the fallback)" },
+      "animation": {
+        "file": "props/prop-town-lantern-post-idle.png",
+        "frames": 6,
+        "frameSize": [
+          64,
+          96
+        ],
+        "fps": 6,
+        "loop": true,
+        "note": "same anchor and footprint as the still (the fallback)"
+      },
       "note": "A Lantern Post (the Town's plaza, the middle of the Slums): click it, or E beside it, for the Map menu (ui/map-menu.ts); teleports with a Return Lantern"
     },
     "fence": {
@@ -15431,10 +15629,22 @@
       "note": "The Golem Pit (v3): two halves on one canvas and anchor; the anchor is the ground point of the pit floor's centre tile (slums.json boss.tile), not a footprint corner. Each half sorts as if its feet were at anchor y + sortOffsetY (back behind everyone on the pit floor, front in front of them). Its tiles (ring, floor, way in) are in slums.json boss.pit.",
       "file": "props/slums/prop-slums-golem-pit-3-back.png",
       "front": "props/slums/prop-slums-golem-pit-3-front.png",
-      "size": [591, 453],
-      "anchor": [298, 235],
-      "sortOffsetY": { "back": -144, "front": 231 },
-      "footprint": [1, 1],
+      "size": [
+        591,
+        453
+      ],
+      "anchor": [
+        298,
+        235
+      ],
+      "sortOffsetY": {
+        "back": -144,
+        "front": 231
+      },
+      "footprint": [
+        1,
+        1
+      ],
       "walkable": true
     },
     "slums-dead-tree-big-1": {
@@ -15564,20 +15774,440 @@
         2
       ],
       "walkable": false
+    },
+    "slums-rubble-1": {
+      "file": "props/slums/prop-slums-rubble-1.png",
+      "size": [
+        32,
+        32
+      ],
+      "anchor": [
+        16,
+        16
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "PLACEHOLDER high-terrain prop (scripts/terrain/placeholders.ts); anchor = the footprint's top corner (the csv gives its centre)."
+    },
+    "slums-rubble-2": {
+      "file": "props/slums/prop-slums-rubble-2.png",
+      "size": [
+        32,
+        32
+      ],
+      "anchor": [
+        16,
+        16
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "PLACEHOLDER high-terrain prop (scripts/terrain/placeholders.ts); anchor = the footprint's top corner (the csv gives its centre)."
+    },
+    "slums-rubble-3": {
+      "file": "props/slums/prop-slums-rubble-3.png",
+      "size": [
+        32,
+        32
+      ],
+      "anchor": [
+        16,
+        16
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "PLACEHOLDER high-terrain prop (scripts/terrain/placeholders.ts); anchor = the footprint's top corner (the csv gives its centre)."
+    },
+    "slums-rubble-4": {
+      "file": "props/slums/prop-slums-rubble-4.png",
+      "size": [
+        32,
+        32
+      ],
+      "anchor": [
+        16,
+        16
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "PLACEHOLDER high-terrain prop (scripts/terrain/placeholders.ts); anchor = the footprint's top corner (the csv gives its centre)."
+    },
+    "slums-rubble-5": {
+      "file": "props/slums/prop-slums-rubble-5.png",
+      "size": [
+        32,
+        32
+      ],
+      "anchor": [
+        16,
+        16
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "PLACEHOLDER high-terrain prop (scripts/terrain/placeholders.ts); anchor = the footprint's top corner (the csv gives its centre)."
+    },
+    "slums-rubble-6": {
+      "file": "props/slums/prop-slums-rubble-6.png",
+      "size": [
+        32,
+        32
+      ],
+      "anchor": [
+        16,
+        16
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "PLACEHOLDER high-terrain prop (scripts/terrain/placeholders.ts); anchor = the footprint's top corner (the csv gives its centre)."
+    },
+    "slums-slab-1": {
+      "file": "props/slums/prop-slums-slab-1.png",
+      "size": [
+        64,
+        48
+      ],
+      "anchor": [
+        32,
+        20
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false,
+      "note": "PLACEHOLDER high-terrain prop (scripts/terrain/placeholders.ts); anchor = the footprint's top corner (the csv gives its centre)."
+    },
+    "slums-slab-2": {
+      "file": "props/slums/prop-slums-slab-2.png",
+      "size": [
+        64,
+        48
+      ],
+      "anchor": [
+        32,
+        20
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false,
+      "note": "PLACEHOLDER high-terrain prop (scripts/terrain/placeholders.ts); anchor = the footprint's top corner (the csv gives its centre)."
+    },
+    "slums-slab-3": {
+      "file": "props/slums/prop-slums-slab-3.png",
+      "size": [
+        64,
+        48
+      ],
+      "anchor": [
+        32,
+        20
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false,
+      "note": "PLACEHOLDER high-terrain prop (scripts/terrain/placeholders.ts); anchor = the footprint's top corner (the csv gives its centre)."
+    },
+    "slums-boulder-1": {
+      "file": "props/slums/prop-slums-boulder-1.png",
+      "size": [
+        32,
+        40
+      ],
+      "anchor": [
+        16,
+        24
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "PLACEHOLDER high-terrain prop (scripts/terrain/placeholders.ts); anchor = the footprint's top corner (the csv gives its centre)."
+    },
+    "slums-boulder-2": {
+      "file": "props/slums/prop-slums-boulder-2.png",
+      "size": [
+        32,
+        40
+      ],
+      "anchor": [
+        16,
+        24
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "PLACEHOLDER high-terrain prop (scripts/terrain/placeholders.ts); anchor = the footprint's top corner (the csv gives its centre)."
+    },
+    "slums-boulder-3": {
+      "file": "props/slums/prop-slums-boulder-3.png",
+      "size": [
+        32,
+        40
+      ],
+      "anchor": [
+        16,
+        24
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "PLACEHOLDER high-terrain prop (scripts/terrain/placeholders.ts); anchor = the footprint's top corner (the csv gives its centre)."
+    },
+    "slums-junk-spire-1": {
+      "file": "props/slums/prop-slums-junk-spire-1.png",
+      "size": [
+        32,
+        64
+      ],
+      "anchor": [
+        16,
+        48
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "PLACEHOLDER high-terrain prop (scripts/terrain/placeholders.ts); anchor = the footprint's top corner (the csv gives its centre)."
+    },
+    "slums-junk-spire-2": {
+      "file": "props/slums/prop-slums-junk-spire-2.png",
+      "size": [
+        32,
+        64
+      ],
+      "anchor": [
+        16,
+        48
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "PLACEHOLDER high-terrain prop (scripts/terrain/placeholders.ts); anchor = the footprint's top corner (the csv gives its centre)."
+    },
+    "slums-junk-spire-3": {
+      "file": "props/slums/prop-slums-junk-spire-3.png",
+      "size": [
+        32,
+        64
+      ],
+      "anchor": [
+        16,
+        48
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "PLACEHOLDER high-terrain prop (scripts/terrain/placeholders.ts); anchor = the footprint's top corner (the csv gives its centre)."
     }
   },
   "fx": {
-    "fx-roof-sheet": {"file": "fx/warrens/fx-roof-sheet.png", "frame": [32, 32], "frames": 16, "fps": 12, "loop": true, "anchor": [16, 28], "layer": "front", "note": "Roof Rain: a roofing sheet tumbling as it falls (the code moves it from above the screen to its circle); frames are loose poses, play from a random start"},
-    "fx-barong-fist": {"file": "fx/warrens/fx-barong-fist.png", "frame": [112, 128], "frames": 1, "fps": 1, "loop": false, "anchor": [56, 120], "layer": "front", "note": "Fist Slam: drops from above the screen onto its circle in the last ~0.35 s of the warning (code moves it), then the golem's slam impact + shockwave at 1.6x and a 0.2 s shake"},
-    "fx-barong-fist-shadow": {"file": "fx/warrens/fx-barong-fist-shadow.png", "frame": [64, 24], "frames": 1, "fps": 1, "loop": false, "anchor": [32, 12], "layer": "ground", "note": "the falling fist's ground shadow: scaled 0.3 to 1 as it falls"},
-    "fx-warrens-gutter-sweep": {"file": "fx/warrens/fx-warrens-gutter-sweep.png", "frame": [207, 109], "frames": 16, "fps": 16, "loop": false, "anchor": [128, 48], "layer": "ground", "note": "Gutter Sweep: 3 tiles in front of Barong-Barong (the middle of its cone); started with the sweep anim so frame 8 lands on the hit; never mirrored"},
-    "fx-warrens-door-burst": {"file": "fx/warrens/fx-warrens-door-burst.png", "frame": [68, 76], "frames": 9, "fps": 12, "loop": false, "anchor": [34, 23], "layer": "front", "note": "Shanty Call: the door's centre, 34 px right of and 136 px above Barong-Barong's feet; started on the call anim's frame 2"},
-    "fx-warrens-fog-puff": {"file": "fx/warrens/fx-warrens-fog-puff.png", "frame": [62, 50], "frames": 10, "fps": 12, "loop": false, "anchor": [30, 45], "layer": "front", "note": "Smother Fog: on each circle's centre at the hit; also where Bag Yani vanishes and comes back"},
-    "fx-warrens-live-floor": {"file": "fx/warrens/fx-warrens-live-floor.png", "frame": [57, 85], "frames": 7, "fps": 16, "loop": false, "anchor": [29, 80], "layer": "front", "note": "Live Floor: one per flashing tile, 60 ms before the hit (frame 1 = the hit)"},
-    "fx-warrens-pincer-slash": {"file": "fx/warrens/fx-warrens-pincer-slash.png", "frame": [121, 52], "frames": 7, "fps": 16, "loop": false, "anchor": [57, 22], "layer": "front", "note": "Pincer Sweep: 1.5 tiles in front of Crab Tain (the middle of its cone); flipped for SW and NW; 60 ms before the hit"},
-    "fx-warrens-hunker-shell-back": {"file": "fx/warrens/fx-warrens-hunker-shell-back.png", "frame": [106, 66], "frames": 12, "fps": 12, "loop": true, "anchor": [53, 39], "layer": "ground", "note": "Hunker, back half: at Crab Tain's feet, looped for the 5 s"},
-    "fx-warrens-hunker-shell-front": {"file": "fx/warrens/fx-warrens-hunker-shell-front.png", "frame": [106, 66], "frames": 12, "fps": 12, "loop": true, "anchor": [53, 39], "layer": "front", "note": "Hunker, front half: at Crab Tain's feet, looped for the 5 s"},
-    "fx-warrens-burnout-smoke": {"file": "fx/warrens/fx-warrens-burnout-smoke.png", "frame": [104, 56], "frames": 12, "fps": 18, "loop": true, "anchor": [101, 36], "layer": "ground", "note": "Burnout Charge wind-up: at the tire's back, streaming left (flipped charging left: SW, NW); looped for the warning, then a 0.2 s fade"},
+    "fx-roof-sheet": {
+      "file": "fx/warrens/fx-roof-sheet.png",
+      "frame": [
+        32,
+        32
+      ],
+      "frames": 16,
+      "fps": 12,
+      "loop": true,
+      "anchor": [
+        16,
+        28
+      ],
+      "layer": "front",
+      "note": "Roof Rain: a roofing sheet tumbling as it falls (the code moves it from above the screen to its circle); frames are loose poses, play from a random start"
+    },
+    "fx-barong-fist": {
+      "file": "fx/warrens/fx-barong-fist.png",
+      "frame": [
+        112,
+        128
+      ],
+      "frames": 1,
+      "fps": 1,
+      "loop": false,
+      "anchor": [
+        56,
+        120
+      ],
+      "layer": "front",
+      "note": "Fist Slam: drops from above the screen onto its circle in the last ~0.35 s of the warning (code moves it), then the golem's slam impact + shockwave at 1.6x and a 0.2 s shake"
+    },
+    "fx-barong-fist-shadow": {
+      "file": "fx/warrens/fx-barong-fist-shadow.png",
+      "frame": [
+        64,
+        24
+      ],
+      "frames": 1,
+      "fps": 1,
+      "loop": false,
+      "anchor": [
+        32,
+        12
+      ],
+      "layer": "ground",
+      "note": "the falling fist's ground shadow: scaled 0.3 to 1 as it falls"
+    },
+    "fx-warrens-gutter-sweep": {
+      "file": "fx/warrens/fx-warrens-gutter-sweep.png",
+      "frame": [
+        207,
+        109
+      ],
+      "frames": 16,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        128,
+        48
+      ],
+      "layer": "ground",
+      "note": "Gutter Sweep: 3 tiles in front of Barong-Barong (the middle of its cone); started with the sweep anim so frame 8 lands on the hit; never mirrored"
+    },
+    "fx-warrens-door-burst": {
+      "file": "fx/warrens/fx-warrens-door-burst.png",
+      "frame": [
+        68,
+        76
+      ],
+      "frames": 9,
+      "fps": 12,
+      "loop": false,
+      "anchor": [
+        34,
+        23
+      ],
+      "layer": "front",
+      "note": "Shanty Call: the door's centre, 34 px right of and 136 px above Barong-Barong's feet; started on the call anim's frame 2"
+    },
+    "fx-warrens-fog-puff": {
+      "file": "fx/warrens/fx-warrens-fog-puff.png",
+      "frame": [
+        62,
+        50
+      ],
+      "frames": 10,
+      "fps": 12,
+      "loop": false,
+      "anchor": [
+        30,
+        45
+      ],
+      "layer": "front",
+      "note": "Smother Fog: on each circle's centre at the hit; also where Bag Yani vanishes and comes back"
+    },
+    "fx-warrens-live-floor": {
+      "file": "fx/warrens/fx-warrens-live-floor.png",
+      "frame": [
+        57,
+        85
+      ],
+      "frames": 7,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        29,
+        80
+      ],
+      "layer": "front",
+      "note": "Live Floor: one per flashing tile, 60 ms before the hit (frame 1 = the hit)"
+    },
+    "fx-warrens-pincer-slash": {
+      "file": "fx/warrens/fx-warrens-pincer-slash.png",
+      "frame": [
+        121,
+        52
+      ],
+      "frames": 7,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        57,
+        22
+      ],
+      "layer": "front",
+      "note": "Pincer Sweep: 1.5 tiles in front of Crab Tain (the middle of its cone); flipped for SW and NW; 60 ms before the hit"
+    },
+    "fx-warrens-hunker-shell-back": {
+      "file": "fx/warrens/fx-warrens-hunker-shell-back.png",
+      "frame": [
+        106,
+        66
+      ],
+      "frames": 12,
+      "fps": 12,
+      "loop": true,
+      "anchor": [
+        53,
+        39
+      ],
+      "layer": "ground",
+      "note": "Hunker, back half: at Crab Tain's feet, looped for the 5 s"
+    },
+    "fx-warrens-hunker-shell-front": {
+      "file": "fx/warrens/fx-warrens-hunker-shell-front.png",
+      "frame": [
+        106,
+        66
+      ],
+      "frames": 12,
+      "fps": 12,
+      "loop": true,
+      "anchor": [
+        53,
+        39
+      ],
+      "layer": "front",
+      "note": "Hunker, front half: at Crab Tain's feet, looped for the 5 s"
+    },
+    "fx-warrens-burnout-smoke": {
+      "file": "fx/warrens/fx-warrens-burnout-smoke.png",
+      "frame": [
+        104,
+        56
+      ],
+      "frames": 12,
+      "fps": 18,
+      "loop": true,
+      "anchor": [
+        101,
+        36
+      ],
+      "layer": "ground",
+      "note": "Burnout Charge wind-up: at the tire's back, streaming left (flipped charging left: SW, NW); looped for the warning, then a 0.2 s fade"
+    },
     "shadow": {
       "file": "fx/fx-shadow.png",
       "size": [
@@ -17345,11 +17975,17 @@
     },
     "fx-lantern-teleport": {
       "file": "fx/teleport/fx-lantern-teleport.png",
-      "frame": [48, 64],
+      "frame": [
+        48,
+        64
+      ],
       "frames": 8,
       "fps": 12,
       "loop": false,
-      "anchor": [24, 56],
+      "anchor": [
+        24,
+        56
+      ],
       "layer": "front",
       "note": "A Lantern Post teleport, on the traveller's feet: as they go (hidden from frame 5) and as they arrive (shown from frame 3); plays once"
     },
@@ -17642,20 +18278,36 @@
     },
     "mapWorld": {
       "file": "ui/map/ui-map-world.png",
-      "size": [428, 220],
+      "size": [
+        428,
+        220
+      ],
       "layout": "ui/map/map-layout.json",
       "note": "The Map menu (ui/map-menu.ts): the Slums and the Town drawn together; map-layout.json says where each map sits and where the Lantern Posts are"
     },
     "mapTeleporter": {
       "file": "ui/map/ui-map-teleporter.png",
-      "size": [15, 18],
-      "frames": ["normal", "hover", "here"],
-      "anchor": [7, 15],
+      "size": [
+        15,
+        18
+      ],
+      "frames": [
+        "normal",
+        "hover",
+        "here"
+      ],
+      "anchor": [
+        7,
+        15
+      ],
       "note": "A Lantern Post's icon on the Map menu"
     },
     "mapPin": {
       "file": "ui/map/ui-map-pin.png",
-      "size": [9, 12],
+      "size": [
+        9,
+        12
+      ],
       "note": "\"You are here\" over your own post's icon"
     },
     "tanodBust": {
@@ -17804,16 +18456,84 @@
         32
       ],
       "have": {
-        "slingshot": ["quick-shot", "double-tap", "pebble-spray", "ricochet", "piercing-shot", "knee-shot", "volley", "step-back", "rally", "steady-aim", "second-wind"],
-        "stick": ["quick-jab", "twin-strike", "low-sweep", "rising-swat", "flurry", "spinning-stick", "lunge", "step-back", "keen-stance"],
-        "greatstick": ["quick-chop", "shove", "wide-swing", "overhead-slam", "ground-pound", "plank-toss", "splinter-burst", "charge", "hearty-cheer", "steady-breath", "battle-roar"],
-        "broom": ["dust-flick", "leaf-dart", "gust", "spark-sweep", "dust-devil", "ember-leaves", "static-bristles", "blink", "warding-dust"],
-        "potlid": ["lid-bonk", "ladle-smack", "clang", "lid-toss", "steam-burst", "boiling-splash", "rebound", "charge", "dinner-bell"],
-        "hilot": ["menthol-flick", "herb-pinch", "menthol-puff", "stinging-rub", "root-snare", "camphor-cloud", "hot-compress", "blink", "vital-rub", "calm-mind", "soothing-touch"]
+        "slingshot": [
+          "quick-shot",
+          "double-tap",
+          "pebble-spray",
+          "ricochet",
+          "piercing-shot",
+          "knee-shot",
+          "volley",
+          "step-back",
+          "rally",
+          "steady-aim",
+          "second-wind"
+        ],
+        "stick": [
+          "quick-jab",
+          "twin-strike",
+          "low-sweep",
+          "rising-swat",
+          "flurry",
+          "spinning-stick",
+          "lunge",
+          "step-back",
+          "keen-stance"
+        ],
+        "greatstick": [
+          "quick-chop",
+          "shove",
+          "wide-swing",
+          "overhead-slam",
+          "ground-pound",
+          "plank-toss",
+          "splinter-burst",
+          "charge",
+          "hearty-cheer",
+          "steady-breath",
+          "battle-roar"
+        ],
+        "broom": [
+          "dust-flick",
+          "leaf-dart",
+          "gust",
+          "spark-sweep",
+          "dust-devil",
+          "ember-leaves",
+          "static-bristles",
+          "blink",
+          "warding-dust"
+        ],
+        "potlid": [
+          "lid-bonk",
+          "ladle-smack",
+          "clang",
+          "lid-toss",
+          "steam-burst",
+          "boiling-splash",
+          "rebound",
+          "charge",
+          "dinner-bell"
+        ],
+        "hilot": [
+          "menthol-flick",
+          "herb-pinch",
+          "menthol-puff",
+          "stinging-rub",
+          "root-snare",
+          "camphor-cloud",
+          "hot-compress",
+          "blink",
+          "vital-rub",
+          "calm-mind",
+          "soothing-touch"
+        ]
       },
       "shared": {
         "file": "ui/skills/shared/ui-skill-{skill}.png",
-        "skills": ["dash"]
+        "skills": [
+          "dash"
+        ]
       },
       "note": "skill icons on the shared navy rounded-square frame, 32x32 (the hotbar and the Skills panel at 1x). {skill} = the skill's name from classes.json in lower case, words joined by '-' (Quick Shot = quick-shot). have: the icons there are per class; shared: one icon for every class (Dash), used when the class has none of its own. Skills without one show their initials. Every skill has one now."
     },
