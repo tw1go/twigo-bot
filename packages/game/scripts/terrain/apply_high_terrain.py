@@ -700,6 +700,9 @@ def warrens(data, layout, protect, rnd):
         if pit(run):
             along += 1
     added.append(f'pits along walls: {along}')
+    # The arenas' tile lists lose their pits: boss moves (Live Floor, the roof rain) and calls draw from them.
+    for a in D['areas']:
+        a['arenaTiles'] = [t for t in a['arenaTiles'] if M.H[t[1]][t[0]] >= 0]
     data['heightNote'] = 'Ground level per tile: -1 a pit (void: never walked on), 0 = the maze floor, 1-4 = its junk walls (raised, blocked; taller the further from the floor). No ramps. scripts/terrain/apply_high_terrain.py adds the pits and the stepped walls after the build.'
     return added, skipped
 
