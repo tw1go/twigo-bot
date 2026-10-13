@@ -122,6 +122,7 @@ Data added in this repo that the owner's `mikazuki-assets` copy doesn't have yet
 where JSON allows. When you add one, add it here (and tell the owner, who copies them back):
 
 - `classes/stats.json`: `enhancement.cost.repairKits` (Repair Kits by the broken item's +, 11 Oct 2026).
+- `classes/stats.json`: `disassembly.fragments.formula` "0 + 3 * …" (+ `formulaNote`: no fragments from +0 gear; was 2 + …, 13 Oct 2026).
 - `classes/stats.json`: `disassembly.agimat.chance` (blue 0.5, orange 1; brown, white and grey none; 11 Oct 2026: was
   every slotted item, always one) and its `from` text.
 - `classes/stats.json`: `potions.tiers.mid.minLevel` 10 (was 30; 12 Oct 2026: the Medium HP/MP Potions sold from Lv 10).
@@ -836,7 +837,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `toolFor` (items.json `forge`: whetstone / fragment / repairKit by `tier`), `enhanceRefusal` ("Needs a Rough Whetstone",
   training gear, broken, +20), `enhanceView` (stones `whetstonesPerTry[target]`, odds `successPct + luck`, `nextStats`:
   ATK/DEF, accessories' lines), `luckPerFail`, `breaksFrom` (+16), `repairRefusal`, `embedRefusal` (gear Lv ≥ agimat, stats.json agimats.onlyIn (repo addition: crit rate / crit damage head and hands only, damage amp feet and body only; disassembly rolls only fitting stats, `rollAgimatStat`'s slot; the agimat tooltip says it),
-  slot lock, any stats (the same one twice too), rare ones up to stats.json agimats.rarePerItem (repo addition: 2, both slots; was one)), `fragmentsFor` (2 + 3 × the stones to its +), `disassemblyYield`, `auraFor` /
+  slot lock, any stats (the same one twice too), rare ones up to stats.json agimats.rarePerItem (repo addition: 2, both slots; was one)), `fragmentsFor` (3 × the stones to its +: only gear with a + gives any; stats.json disassembly.fragments.formula, a repo change 13 Oct 2026, was 2 + that; the confirm boxes say "Nothing" when nothing comes back), `disassemblyYield`, `auraFor` /
   `itemAura`); rolls in bot `web/forge.ts` (pure, tested `forge.test.ts`): `enhance` (success +1, luck 0; fail: stones
   used, luck += its bracket's; from +16 broken, keeps its +, `unequipBroken`), `repair` (kits of its tier, as many as the + it kept takes: stats.json enhancement.cost.repairKits, a repo addition, +15 1, +16/+17 2, +18 3, +19 4; shared `repairKitsFor` / `repairKitsText`; the Repair window shows "Repair Kits n / N"), `embed` (a full
   slot answers `confirm` until `replace`; the old agimat breaks), `disassemble` (bag only; fragments + from slotted affix gear (blue, orange) maybe an

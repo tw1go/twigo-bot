@@ -337,6 +337,8 @@ export function embedRefusal(data: ItemData, gear: Item, agimat: Item, slot?: nu
 
 /** Fragments taking an item at `plus` apart gives: 2 + 3 × the whetstones one try a step costs up to its + (stats.json
  *  disassembly.fragments.formula). */
+/** Fragments a piece of gear gives when taken apart (stats.json disassembly.fragments.formula: 0 + 3 × the whetstones its
+ *  plus took, so only gear with a + gives any). */
 export function fragmentsFor(data: StatsData, plus: number): number {
   const [base, times] = numbersIn(itemStats(data).disassembly.fragments.formula);
   let stones = 0;
