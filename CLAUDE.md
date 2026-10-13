@@ -130,7 +130,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `agimats.perItem` "any stats, the same one in both slots too" (was "different stats"; 12 Oct 2026).
 - `classes/stats.json`: `derived.critRate.perDEX` 0.003 (was 0.001, 11 Oct 2026: DEX worth a point like STR and INT).
 - `classes/stats.json` enhancement (11 Oct 2026, `buffNote`): `perLevel` 3% / 8% / 15% at +16 / 20% from +17 (was 2/3/5%),
-  `armorMinDEF`, `accessories.perLevel` as tiers (2% to +16, 5% from +17; was 1%), the `totalAt20`s.
+  `armorMinDEF` (13 Oct 2026: +1 a plus to +10, +3 to +15, +5 to +18, +7 at +19 / +20), `accessories.perLevel` as tiers
+  (13 Oct 2026: 2% to +10, 4% to +15, 10% at +16, 12% from +17; was 2% / 5%, before that 1%), the `totalAt20`s.
+- `classes/stats.json`: `inventory.slots` 60 (was 40; the art folder's) and `inventory.agimatSlots` 60 (13 Oct 2026).
 - `classes/stats.json`: `combatRating` (the CP weights; toughness 0.4 and `reach` since 11 Oct 2026), the golem's mob table `skillMult.junkDrop` / `skillMult.shockwave`, `rarity.nameColour[r].colour`, `rarity.dropPlus`, `affixes.names`,
   `currencies.kusingPerMobRange`, `skills.mpCost`, `skills.cooldownByUnlock`, `skills.buffs` (numbers) with
   `rules.allyBuffsReachParty`, `rules.stack`, `agimats.onlyIn`, `agimats.rarePerItem`, `agimats.sellKusing`, `agimats.look`, `inventory.agimatSlots`,
@@ -764,14 +766,14 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   (`heals`, `shop`; a tier is sold from its `potions.tiers` minLevel, Medium from Lv 10, and the town refuses a potion
   under its level: 'level', "You can use this from Lv 10."; the auto MP Potion drinks the strongest your level allows), 11 agimats, the Lamp-head Hat cosmetic). `rollGear` / `rollLines` (3 lines: slot stat, HP, a pool
   stat at rareRollWeight; 80–100% of the line's max), `slotCount`, `bindsOnWear` (orange), `enhancedBase`, `lineValue`
-  (accessories by stats.json enhancement.accessories' tiers: +2%/plus to +16, +5% from +17; armor's least DEF a plus: enhancement.armorMinDEF), `agimatValue`, `itemTotals` (base+plus, lines, agimats; broken = nothing) → `derivedStats` (caps:
+  (accessories by stats.json enhancement.accessories' tiers: +2%/plus to +10, +4% to +15, +10% at +16, +12% from +17; armor's least DEF a plus: enhancement.armorMinDEF), `agimatValue`, `itemTotals` (base+plus, lines, agimats; broken = nothing) → `derivedStats` (caps:
   attack/DEF rate, lifesteal, manasteal, drop rate too), `itemName` ("Sturdy Slingshot of Calamity +7 (Broken)": the plus after the name everywhere; agimats
   "… Lv 20 (Body only)"), `nameColour` (rarity colour; materials and potions white), `pickupLine`, `LOOT_REACH` (1), `stackLimit` / `addToBag` (all or nothing) / `takeKind` / `bagRoom`, `kusingFor`,
   `equipFromBag` / `unequipToBag` (by uid), `giveGear` / `missingTraining` / `swapTrainingGear` (fresh training items).
   Bot: schema v12 `items` table (one row each; `place` = worn place, `slot` = combat bag order; migration: every old
   equipped/bag id became a Lv 1 brown bound item in place; the old JSON columns are left unread) + `adventurers.kusing`;
   `web/adventure.ts` saves all of a member's items with the character (`combatOf`, `withItems`, `takeLootFor`,
-  `usePotionFor`, `buyCombatFor`); `loadItemData()` in stats-data.ts. Combat bag = `AdventureState.bag` (40, stats.json
+  `usePotionFor`, `buyCombatFor`); `loadItemData()` in stats-data.ts. Combat bag = `AdventureState.bag` (60, stats.json
   inventory.slots); the old bag (dig/bag.ts) no longer counts gear. `web/combat-bag.ts` (pure): `takeLoot`, `usePotion`,
   `combatWares` / `buyCombat` (Healing: potions for Kusing; Smithing: whetstones / kits for Kowens; Low tier until the
   next tier's level), `devGive`.
@@ -1144,7 +1146,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   the count, what the sellable ones bring and Sell selected (`POST /town/sell { items: [{ id, quantity }] }`,
   `sellManyInTown`); tabs All / Dug up / Combat (the combat bag: Items, above) / Costume (the cosmetics' own pocket, stats.json inventory.costumeSlots 20: Cosmetics, below; the bag is 500 px
   wide, six columns, so its six tabs sit on one row; on phones the tabs shrink and the row scrolls) / Agimats (their own pocket: stats.json
-  inventory.agimatSlots 40, a repo addition; shared `pocketOf` / `pocketSlots` / `pocketUsed`, `bagRoom` counts each
+  inventory.agimatSlots 60, a repo addition; shared `pocketOf` / `pocketSlots` / `pocketUsed`, `bagRoom` counts each
   pocket on its own, so agimats never fill the bag's 40 and gear never theirs; 0 = they share Combat's; tested; listed
   highest level first, then by stat) / Misc; an agimat's picture is darker the lower its level everywhere (bag, forge,
   tooltips' slots, trade, the ground: shared `agimatBrightness`, stats.json agimats.look, a repo addition: 0.55 at Lv 10

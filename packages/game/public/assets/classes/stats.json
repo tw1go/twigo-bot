@@ -817,18 +817,22 @@
     ],
     "totalAt20": 1.65,
     "armorMinDEF": [
-      { "from": 11, "to": 16, "def": 1 },
-      { "from": 17, "to": 20, "def": 2 }
+      { "from": 1, "to": 10, "def": 1 },
+      { "from": 11, "to": 15, "def": 3 },
+      { "from": 16, "to": 18, "def": 5 },
+      { "from": 19, "to": 20, "def": 7 }
     ],
     "accessories": {
       "perLevel": [
-        { "from": 1, "to": 16, "pct": 0.02 },
-        { "from": 17, "to": 20, "pct": 0.05 }
+        { "from": 1, "to": 10, "pct": 0.02 },
+        { "from": 11, "to": 15, "pct": 0.04 },
+        { "from": 16, "to": 16, "pct": 0.10 },
+        { "from": 17, "to": 20, "pct": 0.12 }
       ],
-      "totalAt20": 0.52,
+      "totalAt20": 0.98,
       "of": "affix value"
     },
-    "buffNote": "Repo addition (Mac, 11 Oct 2026): the high pluses give more. Weapons and armor +3% of base a plus to +10, +8% to +15, +15% at +16, +20% from +17 to +20 (165% at +20; was 2/3/5%, 60%); armor at least +1 DEF a plus from +11 and +2 from +17 (armorMinDEF: its small base made a plus worth nothing); accessories' lines +2% a plus to +16, +5% from +17 (52% at +20; was +1%, 20%). The odds and whetstones are unchanged.",
+    "buffNote": "Repo addition (Mac, 11 Oct 2026): the high pluses give more. Weapons and armor +3% of base a plus to +10, +8% to +15, +15% at +16, +20% from +17 to +20 (165% at +20; was 2/3/5%, 60%); armor at least +1 DEF a plus to +10, +3 to +15, +5 to +18, +7 at +19 and +20 (armorMinDEF, 13 Oct 2026; was +1 from +11, +2 from +17: its small base made a plus worth nothing); accessories' lines +2% a plus to +10, +4% to +15, +10% at +16, +12% from +17 (98% at +20; 13 Oct 2026, was +2% to +16, +5% from +17, 52%; before that +1%, 20%). The odds and whetstones are unchanged.",
     "cost": {
       "placeholder": true,
       "successPct": [
@@ -1260,8 +1264,8 @@
     "outOfCombatPctPerSec": 0.02
   },
   "inventory": {
-    "slots": 40,
-    "agimatSlots": 40,
+    "slots": 60,
+    "agimatSlots": 60,
     "agimatSlotsNote": "Repo addition (Mac, 9 Oct 2026): agimats have their own pocket of this many slots (the inventory's Agimats tab) and don't take the bag's; 0 = they share the bag's slots",
     "costumeSlots": 20,
     "costumeSlotsNote": "Repo addition (Mac, 12 Oct 2026): cosmetics (the Lamp-head Hat) have their own pocket of this many slots (the inventory's Costume tab) and don't take the bag's; 0 = they share the bag's slots",

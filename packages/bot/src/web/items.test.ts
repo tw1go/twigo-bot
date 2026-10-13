@@ -145,21 +145,21 @@ test('the pickup line: "Gained ", the name (plus after it) in its colour, its sl
 });
 
 test('what an item gives: base ATK/DEF by its level with its plus, armor never under its least DEF a plus, accessories\' lines by their tiers, agimats fixed', () => {
-  // +3% of base a plus to +10, +8% to +15, +15% at +16, +20% from +17 (165% at +20).
+  // +3% of base a plus to +10, +8% to +15, +15% at +16, +20% from +17 (165% at +20); armor never under its least DEF a plus.
   const w = gear('weapon-sturdy-stick');
   const at = (plus: number) => enhancedBase(S, w, { level: 20, plus }).atk;
   assert.deepEqual([at(0), at(1), at(3), at(10), at(15), at(16), at(17), at(20)], [40, 41, 44, 52, 68, 74, 82, 106]);
-  assert.deepEqual([0, 20].map((plus) => enhancedBase(S, gear('armor-copper-body'), { level: 20, plus }).def), [12, 32]);
-  // A small base (light armor, Lv 10: 3 DEF): at least +1 DEF a plus from +11, +2 from +17.
+  assert.deepEqual([0, 20].map((plus) => enhancedBase(S, gear('armor-copper-body'), { level: 20, plus }).def), [12, 66], 'its least DEF a plus: 12 + 10 + 15 + 15 + 14');
+  // A small base (light armor, Lv 10: 3 DEF): at least +1 DEF a plus to +10, +3 to +15, +5 to +18, +7 at +19 and +20.
   const light = gear('armor-abaca-body');
   const lightDef = (plus: number) => enhancedBase(S, light, { level: 10, plus }).def!;
   const base = lightDef(0);
-  assert.ok(lightDef(12) >= base + 2 && lightDef(16) >= base + 6 && lightDef(20) >= base + 14);
-  for (let p = 11; p <= 20; p++) assert.ok(lightDef(p) >= lightDef(p - 1) + 1, `+${p} adds at least 1`);
+  assert.deepEqual([1, 10, 11, 15, 16, 18, 19, 20].map(lightDef), [base + 1, base + 10, base + 13, base + 25, base + 30, base + 40, base + 47, base + 54]);
+  for (let p = 1; p <= 20; p++) assert.ok(lightDef(p) >= lightDef(p - 1) + 1, `+${p} adds at least 1`);
   assert.equal(enhancedBase(S, gear('weapon-training-stick'), { level: 1, plus: 0 }).atk, 5, 'training: its own');
-  // Accessories: +2% of a line a plus to +16, +5% from +17 (52% at +20).
-  assert.equal(lineValue(S, gear('acc-bone-ring'), { plus: 16 }, { stat: 'critDmg', value: 0.05 }), 0.066);
-  assert.equal(lineValue(S, gear('acc-bone-ring'), { plus: 20 }, { stat: 'critDmg', value: 0.05 }), 0.076);
+  // Accessories: +2% of a line a plus to +10, +4% to +15, +10% at +16, +12% from +17 (98% at +20).
+  assert.equal(lineValue(S, gear('acc-bone-ring'), { plus: 16 }, { stat: 'critDmg', value: 0.05 }), 0.075);
+  assert.equal(lineValue(S, gear('acc-bone-ring'), { plus: 20 }, { stat: 'critDmg', value: 0.05 }), 0.099);
   assert.deepEqual([agimatValue(S, 'hp', 10), agimatValue(S, 'STR', 10), agimatValue(S, 'critDmg', 20), agimatValue(S, 'def', 20)], [5, 2, 0.04, 6]);
 });
 
@@ -198,7 +198,7 @@ test('wearing: an orange item binds the first time; a broken one or a cosmetic c
   assert.deepEqual(equipFromBag(D, s, hat.uid), { ok: false, message: 'That goes in the other tab.' });
 });
 
-test('the combat bag: 40 slots; potions stack to 99, whetstones and agimats (same stat, level, lock) to 999, gear never', () => {
+test('the combat bag: stats.json inventory.slots; potions stack to 99, whetstones and agimats (same stat, level, lock) to 999, gear never', () => {
   assert.deepEqual([stackLimit(S, thing('low-hp-potion')), stackLimit(S, thing('rough-whetstone')), stackLimit(S, thing('agimat-atk')), stackLimit(S, thing('lamp-hat')), stackLimit(S, gear('weapon-crude-stick'))], [99, 999, 999, 1, 1]);
   const bag: Item[] = [];
   assert.ok(addToBag(D, bag, newItem(S, thing('low-hp-potion'), uid(), 150), uid));
@@ -211,12 +211,12 @@ test('the combat bag: 40 slots; potions stack to 99, whetstones and agimats (sam
   addToBag(D, bag, newAgimat(S, thing('agimat-atk'), 20, uid()), uid);
   addToBag(D, bag, newAgimat(S, thing('agimat-atk'), 10, uid(), 'hands'), uid);
   assert.deepEqual(bag.slice(2).map((i) => [i.level, i.lock ?? null, i.count]), [[10, null, 2], [20, null, 1], [10, 'hands', 1]]);
-  // (Agimats are in their own pocket: the bag's 40 slots are for the rest.)
-  while (shared.pocketUsed(D, bag, 'bag') < 40) assert.ok(addToBag(D, bag, newItem(S, gear('weapon-crude-stick'), uid()), uid));
+  // (Agimats are in their own pocket: the bag's slots are for the rest.)
+  while (shared.pocketUsed(D, bag, 'bag') < shared.pocketSlots(D, 'bag')) assert.ok(addToBag(D, bag, newItem(S, gear('weapon-crude-stick'), uid()), uid));
   assert.equal(addToBag(D, bag, newItem(S, gear('weapon-crude-stick'), uid()), uid), false, 'full: refused');
   assert.equal(bagRoom(D, bag, newItem(S, thing('low-hp-potion'), uid())), 0);
   assert.equal(addToBag(D, bag, newAgimat(S, thing('agimat-atk'), 10, uid()), uid), true, 'onto its stack still');
-  assert.equal(bag.length, 43);
+  assert.equal(bag.length, shared.pocketSlots(D, 'bag') + 3, 'the full bag and the 3 agimat stacks in their own pocket');
 });
 
 test('drops: Kusing every kill, a random 0.6–1.2 × its level\'s (Tin Can 60–120); gear about 3% (brown 20 / white 35 / grey 45, map level, Wire and Crab Lv 20 30%); potions about 5%', () => {
@@ -376,7 +376,7 @@ test('the sari-sari store: HP/MP Potions for Kusing, whetstones and Repair Kits 
   assert.equal(buyCombat(D, c, 1, 'rough-whetstone-fragment', 1, wallet(), uid).message, "That isn't for sale.");
   assert.equal(buyCombat(D, c, 1, 'low-hp-potion', 100, wallet(), uid).message, 'Buy 1 to 99 at a time.');
   // A full bag: only onto its stack.
-  while (c.bag.length < 40) c.bag.push(newItem(S, gear('weapon-crude-stick'), uid()));
+  while (c.bag.length < shared.pocketSlots(D, 'bag')) c.bag.push(newItem(S, gear('weapon-crude-stick'), uid()));
   c.kusing = 10_000;
   assert.equal(buyCombat(D, c, 1, 'low-mp-potion', 1, wallet(), uid).message, 'Your combat bag is full.');
   assert.ok(buyCombat(D, c, 1, 'low-hp-potion', 5, wallet(), uid).ok, 'onto the stack it has');
@@ -795,19 +795,21 @@ test('over the town\'s socket: the GM channel is for Game Masters only (free, to
 
 test('agimats have their own pocket (stats.json inventory.agimatSlots): a full bag still takes them, and they never fill the bag', () => {
   const { agimatPocket, bagRoom, pocketOf, pocketUsed, unequipToBag } = shared;
-  assert.equal(agimatPocket(S), 40);
+  const BAG = shared.pocketSlots(D, 'bag');
+  const AG = agimatPocket(S);
+  assert.ok(AG > 0, 'agimats have a pocket of their own');
   const ag = (stat: string, level: number, id = `ag-${stat}-${level}`) => shared.newAgimat(S, [...D.defs.values()].find((d) => !('slot' in d) && (d as CombatItemDef).kind === 'agimat' && (d as CombatItemDef).stat === stat) as CombatItemDef, level, id);
-  // 40 pieces of gear: the bag is full; an agimat still fits, a 41st piece of gear doesn't.
-  const bag: Item[] = Array.from({ length: 40 }, (_, i) => newItem(S, gear('weapon-crude-stick'), `g${i}`));
+  // A bag full of gear; an agimat still fits, one more piece of gear doesn't.
+  const bag: Item[] = Array.from({ length: BAG }, (_, i) => newItem(S, gear('weapon-crude-stick'), `g${i}`));
   assert.equal(pocketOf(D, ag('hp', 10)), 'agimats');
   assert.equal(bagRoom(D, bag, newItem(S, gear('weapon-crude-stick'), 'one-more')), 0);
   assert.ok(addToBag(D, bag, ag('hp', 10), uid));
-  // 40 different agimats fill their pocket; the 41st kind is refused, while one of a kind already there stacks.
-  for (let lv = 11; lv < 50; lv++) assert.ok(addToBag(D, bag, ag('hp', lv), uid), `agimat Lv ${lv}`);
-  assert.deepEqual([pocketUsed(D, bag, 'bag'), pocketUsed(D, bag, 'agimats')], [40, 40]);
+  // As many different agimats as the pocket has slots fill it; one more kind is refused, while one already there stacks.
+  for (let lv = 11; lv < 10 + AG; lv++) assert.ok(addToBag(D, bag, ag('hp', lv), uid), `agimat Lv ${lv}`);
+  assert.deepEqual([pocketUsed(D, bag, 'bag'), pocketUsed(D, bag, 'agimats')], [BAG, AG]);
   assert.equal(addToBag(D, bag, ag('mp', 10), uid), false);
   assert.ok(addToBag(D, bag, ag('hp', 10, 'again'), uid), 'onto its stack');
-  // Taking off gear only needs a bag slot: with 39 pieces and 40 agimats it goes in.
+  // Taking off gear only needs a bag slot: with one piece out and the pocket full, it goes in.
   bag.splice(0, 1);
   const w = { equipped: { weapon: newItem(S, gear('weapon-crude-stick'), 'worn') }, bag } as never as Parameters<typeof unequipToBag>[1];
   assert.equal(unequipToBag(D, w, 'weapon').ok, true);
