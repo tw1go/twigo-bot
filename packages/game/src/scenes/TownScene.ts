@@ -3011,7 +3011,8 @@ export class TownScene extends Phaser.Scene {
     const top = tileToScreen(tile.col, tile.row);
     const [w, h] = fx.frame ?? [32, 32];
     const [ax, ay] = fx.anchor ?? [w / 2, h / 2];
-    const marker = this.add.sprite(top.x, top.y + 8, fx.file).setOrigin(ax / w, ay / h).setDepth(GROUND_SHADOW_DEPTH + 1); // the tile's centre
+    const lift = this.objects.heights.at(tile.col, tile.row) * LEVEL_PX; // (raised ground: on its top)
+    const marker = this.add.sprite(top.x, top.y + 8 - lift, fx.file).setOrigin(ax / w, ay / h).setDepth(GROUND_SHADOW_DEPTH + 1); // the tile's centre
     if (this.tint >= 0) marker.setTint(this.tint);
     marker.play(key).once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => marker.destroy());
     this.marker = marker;
