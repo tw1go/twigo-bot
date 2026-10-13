@@ -20,7 +20,7 @@ for (const name of ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'ADMIN_ROLE_ID', 'ADMI
   'GAMBLING_CHANNEL_ID', 'GAMES_CHANNEL_ID', 'JAIL_ROLE_ID', 'REWARD_OWNER_ID', 'ROOM_FINDS_CHANNEL_ID']) process.env[name] = 'test';
 process.env.TIMEZONE = 'Asia/Manila';
 
-const { equipFromBag, newItem, rollGear, tradeRefusal, tradeRules } = await import('@mikazuki/shared');
+const { equipFromBag, newItem, pocketSlots, rollGear, tradeRefusal, tradeRules } = await import('@mikazuki/shared');
 type Item = import('@mikazuki/shared').Item;
 type EquipmentDef = import('@mikazuki/shared').EquipmentDef;
 type CombatItemDef = import('@mikazuki/shared').CombatItemDef;
@@ -172,30 +172,31 @@ test('settling: items and Kusing change hands; a whole stack keeps its uid, part
 
 test('settling is all or nothing: no room, Kusing spent, an item gone, changed or bound since moves nothing at all', () => {
   const fill = (k: number) => Array.from({ length: k }, () => sword('brown'));
+  const BAG = pocketSlots(D, 'bag'); // (stats.json inventory.slots)
   const check = (a: ReturnType<typeof holder>, b: ReturnType<typeof holder>, offers: [HeldOffer, HeldOffer], want: RegExp) => {
     const before = structuredClone([a, b]);
     const r = settleTrade(D, [a, b], offers, ['Alice', 'Bob'], uid);
     assert.ok(!r.ok && want.test(r.message), r.ok ? 'went through' : r.message);
     assert.deepEqual([a, b], before, 'neither touched');
   };
-  // Bob's bag is full (40); Alice's sword can't go in, though his stones go out to her.
+  // Bob's bag is full; Alice's sword can't go in, though his stones go out to her.
   const blue = sword();
   {
     const a = holder([blue], 0);
-    const bob = holder(fill(40), 0);
+    const bob = holder(fill(BAG), 0);
     check(a, bob, [held([[blue, 1]]), held([])], /Bob's combat bag has no room/);
     // …but it fits if something of his goes out in its place.
     const r = settleTrade(D, [a, bob], [held([[blue, 1]]), held([[bob.bag[0], 1]])], ['Alice', 'Bob'], uid);
     assert.ok(r.ok);
-    assert.deepEqual([a.bag.length, bob.bag.length], [1, 40]);
+    assert.deepEqual([a.bag.length, bob.bag.length], [1, BAG]);
   }
   // Stacks count: a full bag with room on its stone stack takes stones, not more than that.
   {
     const a = holder([stones(500)], 0);
-    const bob = holder([...fill(39), stones(990)], 0);
+    const bob = holder([...fill(BAG - 1), stones(990)], 0);
     check(a, bob, [held([[a.bag[0], 10]]), held([])], /no room/);
     assert.ok(settleTrade(D, [a, bob], [held([[a.bag[0], 9]]), held([])], ['Alice', 'Bob'], uid).ok);
-    assert.equal(bob.bag[39].count, 999);
+    assert.equal(bob.bag[BAG - 1].count, 999);
   }
   // Kusing spent meanwhile.
   {

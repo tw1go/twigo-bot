@@ -21,7 +21,7 @@ const { usedSlots } = await import('../dig/bag.js');
 const { sellInTown, sellManyInTown } = await import('./town-bag.js');
 const { closeDatabase, db } = await import('../db/db.js');
 const { loadItemData, loadStats } = await import('./stats-data.js');
-const { baseStats, mobStats, newItem, skillPointsAt, xpForLevel, xpToNext, giveQuestRewards } = await import('@mikazuki/shared');
+const { baseStats, mobStats, newItem, pocketSlots, skillPointsAt, xpForLevel, xpToNext, giveQuestRewards } = await import('@mikazuki/shared');
 const S = loadStats();
 type Item = import('@mikazuki/shared').Item;
 
@@ -32,7 +32,9 @@ let n = 0;
 /** A plain item of a kind. */
 const item = (id: string) => newItem(S, EQUIPMENT.get(id)!, `t${++n}`);
 /** A combat bag with only `free` slots left (filled with plain whetstones… no: training sticks, which don't stack). */
-const fullBag = (free: number) => Array.from({ length: 40 - free }, () => item('weapon-training-stick'));
+const fullBag = (free: number) => Array.from({ length: BAG - free }, () => item('weapon-training-stick'));
+/** The combat bag's slots (stats.json inventory.slots). */
+const BAG = pocketSlots(loadItemData(), 'bag');
 
 const Q = 'main-01-class';
 
@@ -133,7 +135,7 @@ test('equipment: only what your base stats meet, the old one back to the bag, ta
   assert.equal(equipStep(s, { action: 'equip', item: stick.uid }).ok, true); // a second stick: swaps (by uid)
   assert.equal(s.equipped.weapon!.uid, stick.uid);
   assert.deepEqual(s.bag.map((i) => i.uid), [broom.uid, worn1.uid]); // where it was
-  s.bag.push(...fullBag(2)); // 40 in the bag
+  s.bag.push(...fullBag(2)); // the bag full
   assert.equal(equipStep(s, { action: 'unequip', place: 'weapon' }).message, 'Your bag is full.');
   s.bag.pop();
   assert.equal(equipStep(s, { action: 'unequip', place: 'weapon' }).ok, true);
@@ -263,7 +265,7 @@ test('a class from before training armor gets the set once, on a visit; the rest
   assert.equal(adventureOf('vet').trainingArmorGiven, true);
   assert.deepEqual(adventureOf('vet').bag, []); // all worn
   // Their feet taken and no room in the combat bag: the boots wait for a later visit.
-  row('vet2', { weapon: 'weapon-training-broom', feet: 'armor-training-heavy-feet' }, Array(40).fill('weapon-training-stick'));
+  row('vet2', { weapon: 'weapon-training-broom', feet: 'armor-training-heavy-feet' }, Array(BAG).fill('weapon-training-stick'));
   assert.deepEqual(trainingArmorFor('vet2'), armorOf('light').slice(0, 4));
   assert.equal(adventureOf('vet2').trainingArmorGiven, false);
   db.prepare("DELETE FROM items WHERE uid = 'vet2-bag0'").run();

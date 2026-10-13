@@ -371,7 +371,7 @@ export class Inventory {
     this.wallet.replaceChildren(kowens, kusing);
   }
 
-  /** The combat bag: its 40 slots, items in order, then the empty ones; the picked one's tooltip and what it can do. */
+  /** The combat bag: its slots (stats.json inventory.slots), items in order, then the empty ones; the picked one's tooltip and what it can do. */
   private renderCombat(): void {
     const D = itemData();
     const s = adventure();

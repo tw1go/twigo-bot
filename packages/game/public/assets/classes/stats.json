@@ -829,10 +829,10 @@
         { "from": 16, "to": 16, "pct": 0.10 },
         { "from": 17, "to": 20, "pct": 0.12 }
       ],
-      "totalAt20": 0.52,
+      "totalAt20": 0.98,
       "of": "affix value"
     },
-    "buffNote": "Repo addition (Mac, 11 Oct 2026): the high pluses give more. Weapons and armor +3% of base a plus to +10, +8% to +15, +15% at +16, +20% from +17 to +20 (165% at +20; was 2/3/5%, 60%); armor at least +1 DEF a plus from +11 and +2 from +17 (armorMinDEF: its small base made a plus worth nothing); accessories' lines +2% a plus to +16, +5% from +17 (52% at +20; was +1%, 20%). The odds and whetstones are unchanged.",
+    "buffNote": "Repo addition (Mac, 11 Oct 2026): the high pluses give more. Weapons and armor +3% of base a plus to +10, +8% to +15, +15% at +16, +20% from +17 to +20 (165% at +20; was 2/3/5%, 60%); armor at least +1 DEF a plus to +10, +3 to +15, +5 to +18, +7 at +19 and +20 (armorMinDEF, 13 Oct 2026; was +1 from +11, +2 from +17: its small base made a plus worth nothing); accessories' lines +2% a plus to +10, +4% to +15, +10% at +16, +12% from +17 (98% at +20; 13 Oct 2026, was +2% to +16, +5% from +17, 52%; before that +1%, 20%). The odds and whetstones are unchanged.",
     "cost": {
       "placeholder": true,
       "successPct": [

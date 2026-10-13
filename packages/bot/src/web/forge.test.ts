@@ -192,7 +192,7 @@ test('enhance: only its tier\'s whetstone ("Needs a … Whetstone"), not trainin
   assert.equal(item.plus, 4);
 });
 
-test('accessories: each line +2% of itself a plus to +16, +5% from +17 (weapons and armor: base ATK / DEF)', () => {
+test('accessories: each line grows by its tiers, +2% of itself a plus to +10, +4% to +15, +10% at +16, +12% from +17 (98% at +20; weapons and armor: base ATK / DEF)', () => {
   const ring = rollGear(D.stats, gear('acc-bone-ring'), 'darkOrange', uid(), lcg(9));
   const s = holder([ring], 999);
   const at0 = ring.lines.map((l) => lineValue(D.stats, gear('acc-bone-ring'), ring, l));
@@ -202,7 +202,7 @@ test('accessories: each line +2% of itself a plus to +16, +5% from +17 (weapons 
   // (+16–20 at a 0 roll never fail.)
   assert.equal(ring.plus, 20);
   ring.lines.forEach((l, i) => {
-    const want = l.stat === 'hp' || l.stat === 'stat' || l.stat === 'atk' || l.stat === 'mp' || l.stat === 'def' || l.stat === 'hpRegen' ? Math.max(1, Math.round(at0[i] * 1.52)) : Math.round(at0[i] * 1.52 * 1000) / 1000;
+    const want = l.stat === 'hp' || l.stat === 'stat' || l.stat === 'atk' || l.stat === 'mp' || l.stat === 'def' || l.stat === 'hpRegen' ? Math.max(1, Math.round(at0[i] * 1.98)) : Math.round(at0[i] * 1.98 * 1000) / 1000;
     assert.equal(lineValue(D.stats, gear('acc-bone-ring'), ring, l), want, l.stat);
   });
   const w = sling('grey', 10);
@@ -349,9 +349,9 @@ test('disassembly: two slots make the rare three 3× as likely (about 1 in 7 aga
 test('disassembly: refused (nothing lost) when what comes back has no room', () => {
   const item = rollGear(D.stats, gear('armor-copper-feet'), 'lightOrange', uid(), lcg(4)); // fragments + an agimat (orange: always)
   const s = holder([item]);
-  while (s.bag.length < 40) s.bag.push(rollGear(D.stats, gear('armor-tin-head'), 'brown', uid(), lcg(1)));
-  // The agimats' own pocket full too (40 kinds that don't stack), so the agimat has nowhere to go.
-  for (let lv = 1; lv <= 40; lv++) s.bag.push(newAgimat(D.stats, thing('agimat-mp'), lv, uid(), 'body'));
+  while (s.bag.length < pocketSlots(D, 'bag')) s.bag.push(rollGear(D.stats, gear('armor-tin-head'), 'brown', uid(), lcg(1)));
+  // The agimats' own pocket full too (as many kinds as it has slots, which don't stack), so the agimat has nowhere to go.
+  for (let lv = 1; lv <= pocketSlots(D, 'agimats'); lv++) s.bag.push(newAgimat(D.stats, thing('agimat-mp'), lv, uid(), 'body'));
   const r = disassemble(D, s, item.uid, lcg(1), uid);
   assert.equal(r.ok, false);
   assert.ok(s.bag.includes(item));
