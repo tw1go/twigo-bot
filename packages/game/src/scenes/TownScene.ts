@@ -1024,8 +1024,9 @@ export class TownScene extends Phaser.Scene {
   /** Your class's battle poses on a battle map (the doll without a class, or elsewhere). */
   private async applyBattle(cls: string | null): Promise<void> {
     if (!this.battleMap) return;
-    const b = cls ? await battleSheets(this, this.M.characters, this.M.classes!, cls, this.outfit) : null;
-    if ((adventure()?.cls ?? null) === cls) this.player.setBattle(b);
+    const look = this.outfit;
+    const b = cls ? await battleSheets(this, this.M.characters, this.M.classes!, cls, look) : null;
+    if ((adventure()?.cls ?? null) === cls && this.outfit === look) this.player.setBattle(b); // (not a look changed again meanwhile)
   }
 
   /**
@@ -3834,7 +3835,9 @@ export class TownScene extends Phaser.Scene {
       this.player.setOutfit(o);
       this.player.setNight(this.lampsOn);
       if (this.tint >= 0) this.player.sprite.setTint(this.tint);
-      // On a battle map, the poses in the new look (a cosmetic worn or taken off, a Parlor change): they're baked per look.
+      // On a battle map, the poses in the new look (a cosmetic worn or taken off, a Parlor change): they're baked per look,
+      // so meanwhile you show the new look in town clothes (already built), not the old one in the old poses.
+      if (this.player.inBattle) this.player.setBattle(null);
       void this.applyBattle(adventure()?.cls ?? null);
     });
   }

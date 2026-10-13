@@ -135,6 +135,7 @@ export class OtherPlayers {
         const look = sanitize(C, m.outfit, randomOutfit(C, rng(parseInt(m.id.slice(0, 8), 16) || 1)));
         void loadOutfit(this.scene, C, look).then(() => {
           if (this.all.get(m.id) !== o || o.state.outfit !== m.outfit) return; // left, or changed again meanwhile
+          if (o.char?.inBattle) o.char.setBattle(null); // (the new look at once; its poses follow: dressRest)
           o.char?.setOutfit(look);
           this.looks.set(m.id, look);
           void this.dressRest(o); // battle poses in the new skin
