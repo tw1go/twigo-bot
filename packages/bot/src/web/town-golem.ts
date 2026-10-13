@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { type GolemAttack, type GolemChange, type PlayerHit, type TelegraphShape, type TownGolem, type TownMobFacing, type TownServerMessage, golemResetMs, golemHpPerPlayer, mobStats } from '@mikazuki/shared';
+import { type GolemAttack, type GolemChange, type PlayerHit, type TelegraphShape, type TownGolem, type TownMobFacing, type TownServerMessage, golemResetMs, golemHpPerPlayer, golemHpMin, mobStats } from '@mikazuki/shared';
 import { loadStats } from './stats-data.js';
 
 // 🗿 The Scrapheap Golem, the Slums' field boss (the game's maps/slums.json `boss`), run on the server inside the Slums'
@@ -113,6 +113,8 @@ export interface GolemArt {
   resetMs: number;
   /** Its HP × this for every player in the Slums (stats.json mobBehaviour.golem.hpPerPlayer; 1 = none). */
   hpPerPlayer?: number;
+  /** Its most HP is never under this, however few are in the Slums (stats.json mobBehaviour.golem.hpMin; 0 = none). */
+  hpMin?: number;
 }
 
 /** The game's manifest, mobs.json and stats.json, for the golem `id`. */
@@ -127,7 +129,7 @@ export function loadGolemArt(id = 'scrapheap-golem'): GolemArt {
   const row = mobStats(loadStats(), id)!;
   const mult = Object.fromEntries(Object.entries(MULT).map(([k, v]) => [k, row.skillMult?.[v] ?? 1])) as Partial<Record<GolemAttack | GolemMove, number>>;
   return {
-    hp: row.hp, resetMs: golemResetMs(loadStats()), hpPerPlayer: golemHpPerPlayer(loadStats()), radius: rules.radius, riseMs: ms(a.death), attackMs: { slam: ms(a.attack), toss: ms(a.toss), glare: ms(a.glare) }, callMs: ms(art.fx['fx-golem-call-junk']),
+    hp: row.hp, resetMs: golemResetMs(loadStats()), hpPerPlayer: golemHpPerPlayer(loadStats()), hpMin: golemHpMin(loadStats()), radius: rules.radius, riseMs: ms(a.death), attackMs: { slam: ms(a.attack), toss: ms(a.toss), glare: ms(a.glare) }, callMs: ms(art.fx['fx-golem-call-junk']),
     hitMs: { slam: at(a.attack, rules.attackFrame ?? 5), toss: at(a.toss, rules.tossFrame ?? 4) + FLIGHT_MS, glare: at(a.glare, rules.glareFrames?.[0] ?? 3) },
     mult,
   };
@@ -383,13 +385,14 @@ export class Golem {
     this.save?.(this.nextRise);
   }
 
-  /** Its most HP now: the mob table's × hpPerPlayer for each player in the Slums (`scale`). */
+  /** Its most HP now: the mob table's × hpPerPlayer for each player in the Slums, never under hpMin (`scale`). */
   private max: number;
 
-  /** Its most HP for `players` in the Slums (stats.json mobBehaviour.golem.hpPerPlayer ^ players). When that changes,
-   *  its HP keeps its share of it (never 0 while it stands), and the room hears ('scale') while it's up. */
+  /** Its most HP for `players` in the Slums (stats.json mobBehaviour.golem.hpPerPlayer ^ players, never under hpMin).
+   *  When that changes, its HP keeps its share of it (never 0 while it stands), and the room hears ('scale') while it's
+   *  up. */
   private scale(players: number, now: number): void {
-    const max = Math.round(this.art.hp * (this.art.hpPerPlayer ?? 1) ** players);
+    const max = Math.max(this.art.hpMin ?? 0, Math.round(this.art.hp * (this.art.hpPerPlayer ?? 1) ** players));
     if (max === this.max) return;
     const share = this.hp / this.max;
     this.max = max;
