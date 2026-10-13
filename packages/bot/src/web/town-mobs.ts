@@ -1271,6 +1271,12 @@ export class MobRoom {
   }
 
   /** Full HP again, its fight over, its damage tally cleared (a boss resetting). */
+  /** Dev (the dev town's /__warrens &hp=): a mob down to `hp` at most, so one hit fells it. */
+  devWound(id: string, hp: number): void {
+    const m = this.byId.get(id);
+    if (m && !m.respawnAt) m.hp = Math.max(1, Math.min(m.maxHp, Math.round(hp)));
+  }
+
   healFull(id: string): MobEvent[] {
     const m = this.byId.get(id);
     if (!m || m.respawnAt) return [];

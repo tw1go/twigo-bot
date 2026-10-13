@@ -151,18 +151,23 @@ test("the map: the bottom half (Barong-Barong's hall) is far below the start roo
   for (let r = below; r < area('wire').checkpoint[1]; r++) assert.equal(map.blocked[r][c], 0, `${c},${r}`);
 });
 
-test("the clear warp: a 2x2 of the last hall's floor with floor all round, off the boss and its guards; nobody arrives on it", () => {
+test("the clear warp: a 2x2 where Barong-Barong stands (on its body, blocked while it stands); nobody arrives on it; its body opens as it falls", () => {
   const warp = map.dungeon.clearWarp!;
   assert.equal(warp.length, 4);
-  const hall = map.dungeon.areas.reduce((best, a) => (a.index > best.index ? a : best), map.dungeon.areas[0]);
-  const floor = new Set(hall.arenaTiles.map(([c, r]) => `${c},${r}`));
-  for (const [c, r] of warp) for (let dc = -1; dc <= 1; dc++) for (let dr = -1; dr <= 1; dr++) assert.ok(floor.has(`${c + dc},${r + dr}`), `${c + dc},${r + dr} is hall floor`);
+  const [bc, br] = map.dungeon.boss.tile;
   const b = map.dungeon.boss.body;
+  assert.deepEqual(warp, [[bc, br], [bc + 1, br], [bc, br + 1], [bc + 1, br + 1]], 'from its tile');
   for (const [c, r] of warp) {
-    assert.ok(!(c >= b[0] && c <= b[2] && r >= b[1] && r <= b[3]), 'off the boss');
-    assert.ok(!hall.guards.some(([gc, gr]) => gc === c && gr === r), 'off its guards');
+    assert.ok(c >= b[0] && c <= b[2] && r >= b[1] && r <= b[3], 'on its body');
+    assert.equal(map.blocked[r][c], 1, 'blocked while it stands');
     assert.ok(map.avoid!.some(([ac, ar]) => ac === c && ar === r), 'nobody arrives on it');
   }
+  // It falls: the run's copy of the map opens the whole body (the warp on it), the template stays as it was.
+  const run = started();
+  run.onKill({ id: 'boss:barong-barong', kind: 'barong-barong', at: [bc, br], level: 20, xp: 0, to: ['a'], warrens: { id: 'barong-barong', boss: 'last' } }, 10_000);
+  assert.equal(run.phase, 'cleared');
+  for (let r = b[1]; r <= b[3]; r++) for (let c = b[0]; c <= b[2]; c++) assert.equal(run.map.blocked[r][c], 0, `${c},${r} open`);
+  assert.equal(map.blocked[br][bc], 1, "the template's untouched");
 });
 
 test('a mini boss down opens its shutter for good and moves the checkpoint on', () => {

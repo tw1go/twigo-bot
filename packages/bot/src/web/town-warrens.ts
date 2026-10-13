@@ -420,10 +420,11 @@ export class Run implements MobDirector {
 
   /** Dev (?warrensboss=<id>): every area before that boss's cleared (their bosses gone, shutters open), the run
    *  started, and the first arrival at the edge of its arena nearest its area's checkpoint. False: no such boss. */
-  skipTo(bossId: string, now: number): boolean {
+  skipTo(bossId: string, now: number, hp?: number): boolean {
     const list = [...this.bosses.values()];
     const at = list.findIndex((b) => b.def.id === bossId);
     if (at < 0) return false;
+    if (hp !== undefined) this.mobs.devWound(list[at].mob, hp); // (dev: that boss down to `hp`)
     for (const b of list.slice(0, at)) {
       b.dead = true;
       this.ticketSpent = true;
@@ -461,6 +462,9 @@ export class Run implements MobDirector {
       out.room.push(...(this.mobs.removeMobs(scrap) as TownServerMessage[]));
       this.phase = 'cleared';
       this.clearedAt = now;
+      // Its body opens (the clear warp rises where it stood: the way out of the hall).
+      const [b0, b1, b2, b3] = this.map.dungeon.boss.body;
+      for (let r = b1; r <= b3; r++) for (let c = b0; c <= b2; c++) this.map.blocked[r][c] = 0;
       this.clearTeam = [...this.inside.keys()]; // (who brought it down: the cleared pop-up names them)
       out.room.push(this.line(`${b.def.name} has fallen! The Warrens close in ${this.W.run.closeAfterLastBossMinutes} minutes.`, 'down'));
       return out;

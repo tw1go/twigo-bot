@@ -196,15 +196,13 @@ const areas = layout.areas.map((a) => {
 // (TownScene gateOn; the server never places arrivals on it). No object here: nothing's there before.
 const lastHall = areas.reduce((best, a) => (a.index > best.index ? a : best), areas[0]);
 const clearWarp = ((): Tile[] => {
-  const [x1, y1, x2, y2] = lastHall.arena;
-  const floor = (c: number, r: number) => at(c, r) === 'B';
-  for (let r = y2 - 1; r >= y1 + 1; r--)
-    for (let c = x2 - 1; c >= x1 + 1; c--) {
-      let ok = true;
-      for (let dr = -1; dr <= 2 && ok; dr++) for (let dc = -1; dc <= 2 && ok; dc++) if (!floor(c + dc, r + dr)) ok = false;
-      if (ok) return [[c, r], [c + 1, r], [c, r + 1], [c + 1, r + 1]];
-    }
-  throw new Error(`No room for the clear warp in ${lastHall.name}`);
+  // Where Barong-Barong stood: a 2x2 from its tile, inside its body (blocked while it stands; the run opens the body as it
+  // falls, server and game alike), so the way out rises where it fell.
+  const [c, r] = dungeons.lastBoss.tile;
+  const [b0, b1, b2, b3] = dungeons.lastBoss.body;
+  const tiles: Tile[] = [[c, r], [c + 1, r], [c, r + 1], [c + 1, r + 1]];
+  for (const [tc, tr] of tiles) if (tc < b0 || tc > b2 || tr < b1 || tr > b3) throw new Error(`The clear warp's tile ${tc},${tr} isn't on Barong-Barong's body`);
+  return tiles;
 })();
 const shutters = layout.areas
   .filter((a) => a.gate)
