@@ -278,17 +278,18 @@ test('agimats: gear level, slot lock, the same stat twice is fine, rare ones up 
   assert.ok((itemTotals(D, [item], 'STR').critDamage ?? 0) > 0);
 });
 
-test('disassembly: fragments 2 + 3 × the stones to its +, a slot-locked agimat of its level from slotted affix gear (orange always, blue half the time), agimats destroyed', () => {
-  assert.equal(fragmentsFor(D.stats, 0), 2);
-  assert.equal(fragmentsFor(D.stats, 5), 29);
-  assert.equal(fragmentsFor(D.stats, 10), 92);
-  assert.equal(fragmentsFor(D.stats, 15), 212);
-  assert.equal(fragmentsFor(D.stats, 20), 452);
+test('disassembly: fragments 3 × the stones to its + (none from +0), a slot-locked agimat of its level from slotted affix gear (orange always, blue half the time), agimats destroyed', () => {
+  assert.equal(fragmentsFor(D.stats, 0), 0, 'no + : no fragments');
+  assert.equal(fragmentsFor(D.stats, 1), 3);
+  assert.equal(fragmentsFor(D.stats, 5), 27);
+  assert.equal(fragmentsFor(D.stats, 10), 90);
+  assert.equal(fragmentsFor(D.stats, 15), 210);
+  assert.equal(fragmentsFor(D.stats, 20), 450);
   const item = { ...rollGear(D.stats, gear('armor-copper-hands'), 'darkOrange', uid(), lcg(2)), plus: 12, bound: true };
   item.agimats[0] = { stat: 'atk', level: 20 };
   const s = holder([item]);
   const y = disassemblyYield(D, item);
-  assert.equal(y.fragments, 2 + 3 * (1 + 1 + 2 + 2 + 3 + 3 + 4 + 4 + 5 + 5 + 6 + 7));
+  assert.equal(y.fragments, 3 * (1 + 1 + 2 + 2 + 3 + 3 + 4 + 4 + 5 + 5 + 6 + 7));
   assert.deepEqual(y.agimat, { level: 20, lock: 'hands', rareTimes: 3, chance: 1 });
   assert.equal(y.destroys.length, 1);
   const r = disassemble(D, s, item.uid, lcg(7), uid);
@@ -299,6 +300,12 @@ test('disassembly: fragments 2 + 3 × the stones to its +, a slot-locked agimat 
   assert.equal(got.level, 20);
   assert.equal(got.lock, 'hands');
   assert.match(itemName(D, got), / Lv 20 \(Hands only\)$/);
+  // A +0 piece with nothing else to give: taken apart all the same, nothing comes back.
+  const bare = rollGear(D.stats, gear('armor-tin-head'), 'brown', uid(), lcg(1));
+  const b0 = holder([bare]);
+  assert.equal(disassemblyYield(D, bare).fragments, 0);
+  assert.equal(disassemble(D, b0, bare.uid, lcg(7), uid).outcome, 'disassembled');
+  assert.deepEqual(b0.bag, [], 'gone, and no fragments');
   // Gear without affix lines (brown; white and grey, slots or not) and accessories (no slots): fragments only.
   const brown = rollGear(D.stats, gear('armor-tin-head'), 'brown', uid(), lcg(1));
   const ring = rollGear(D.stats, gear('acc-shell-ring'), 'lightBlue', uid(), lcg(1));
