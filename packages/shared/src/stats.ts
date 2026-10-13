@@ -99,7 +99,7 @@ export interface MobBehaviour {
   hpBar: { showOn: string; hideAfterSeconds: number; playersSee: string };
   /** Mob name colours by level gap: "mob 5+ levels below" (grey), "mob 3+ levels above" (red). */
   nameColour: { grey: string; white: string; red: string };
-  golem: { leavesPit: boolean; resetAfterSecondsEmpty: number };
+  golem: { leavesPit: boolean; resetAfterSecondsEmpty: number, hpMin:number };
   /** Who mobs go for first, by class (higher first; a repo addition): `note` says how. */
   targetPriority?: Record<string, number | string>;
 }
@@ -748,6 +748,10 @@ export const mobBarMs = (data: StatsData): number => data.mobBehaviour.hpBar.hid
 
 /** How long the golem waits with nobody fighting it before it resets to full (ms). */
 export const golemResetMs = (data: StatsData): number => data.mobBehaviour.golem.resetAfterSecondsEmpty * 1000;
+
+/** The least HP the golem has, whoever is in the Slums (stats.json mobBehaviour.golem.hpMin, a repo addition): its HP is
+ *  the mob table's × hpPerPlayer ^ players, but never under this. 0 (no floor) without it. */
+export const golemHpMin = (data: StatsData): number => (data.mobBehaviour.golem as { hpMin?: number }).hpMin ?? 0;
 
 /** The golem's HP multiplier per player in the Slums (stats.json mobBehaviour.golem.hpPerPlayer, a repo addition): its HP
  *  is the mob table's × this ^ players. 1 without it. */

@@ -14,7 +14,7 @@ import { attachTown } from './town.js';
 
 const map = loadMobMap('slums');
 const boss = map.boss!;
-const art = { ...loadGolemArt(), hpPerPlayer: 1 }; // (its HP the mob table's: the scaling with players has its own test)
+const art = { ...loadGolemArt(), hpPerPlayer: 1, hpMin: 0 }; // (its HP the mob table's: the scaling with players and its floor have their own tests)
 const kinds = loadMobKinds();
 const HOUR = 3_600_000;
 const lcg = (seed = 11) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
@@ -196,6 +196,25 @@ test('its HP grows with the players in the Slums: the mob table\'s × 1.5 ^ play
   plain.tick(t0, new Map(), new Map(), 5);
   plain.riseGolem(t0);
   assert.equal(plain.golemState(t0)!.maxHp, art.hp);
+});
+
+test('its HP never goes under hpMin (stats.json mobBehaviour.golem.hpMin): few in the Slums get the floor, enough go past it', () => {
+  assert.ok((loadGolemArt().hpMin ?? 0) > 0, 'stats.json sets a floor');
+  const floor = Math.round(art.hp * 1.5 ** 3); // (between 2 and 4 players' HP)
+  const room = new MobRoom(map, lcg(), {}, { shapes: {} }, kinds, { ...art, hpPerPlayer: 1.5, hpMin: floor });
+  const t0 = Date.UTC(2026, 9, 8, 3, 10);
+  room.tick(t0, new Map(), new Map(), 1);
+  room.riseGolem(t0);
+  assert.equal(room.golemState(t0)!.maxHp, floor, 'one in the Slums: the floor, not 1.5x');
+  room.flush();
+  // Two: still under the floor, so nothing changes; four: past it, the usual scaling (its HP keeping its share).
+  assert.ok(!room.tick(t0 + 250, new Map(), new Map(), 2).some((e) => e.t === 'golem' && e.change === 'scale'));
+  const evs = room.tick(t0 + 500, new Map(), new Map(), 4);
+  const scale = evs.find((e) => e.t === 'golem' && e.change === 'scale') as { golem: { hp: number; maxHp: number } } | undefined;
+  assert.equal(scale?.golem.maxHp, Math.round(art.hp * 1.5 ** 4));
+  // Down to one again: back to the floor.
+  const back = room.tick(t0 + 750, new Map(), new Map(), 1).find((e) => e.t === 'golem' && e.change === 'scale') as { golem: { maxHp: number } } | undefined;
+  assert.equal(back?.golem.maxHp, floor);
 });
 
 test('reach to it is measured to its body\'s edge: a melee player a tile past its edge hits, three past doesn\'t', () => {

@@ -135,7 +135,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `currencies.kusingPerMobRange`, `skills.mpCost`, `skills.cooldownByUnlock`, `skills.buffs` (numbers) with
   `rules.allyBuffsReachParty`, `rules.stack`, `agimats.onlyIn`, `agimats.rarePerItem`, `agimats.sellKusing`, `agimats.look`, `inventory.agimatSlots`,
   `potions.separateCooldowns`, `trainingGear.noSell` / `sellKusing`, `mobBehaviour.targetPriority`,
-  `mobBehaviour.golem.hpPerPlayer`.
+  `mobBehaviour.golem.hpPerPlayer`, `mobBehaviour.golem.hpMin` (the least HP it has, whoever is in the Slums; 13 Oct
+  2026).
 - `classes/stats.json` (Scrap Warrens): `party.xpRangeTiles` (+ `xpNote`), and consumables in `inventory.stack99`.
 - Lantern Posts: `items/items.json` `return-lantern` (its `shop: travel`, `price`, `useAt`; `useAt` on `warren-ticket` too),
   the `lantern-post` object, its blocked tile and `arrive.lanternPost` in `maps/town.json` (39,39 → 40,40) and
@@ -572,7 +573,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `?switch` (pretend login: a row of class badges, bottom left, to become any class at once: `devSwitchClass` in
   net/adventure.ts, its training weapon, the class choice done), `__town.mobs()`; the dev server reads maps/slums.json again when it changes.
 - Scrapheap Golem (field boss; bot `web/town-golem.ts` `Golem`, tested, run by the Slums' MobRoom on its clock when given
-  `loadGolemArt()`; data: slums.json `boss`, stats.json's mob table (Lv 15, 10,800 HP × stats.json mobBehaviour.golem.hpPerPlayer (repo addition, 1.5) ^ players in the Slums:
+  `loadGolemArt()`; data: slums.json `boss`, stats.json's mob table (Lv 15, 10,800 HP × stats.json mobBehaviour.golem.hpPerPlayer (repo addition, 1.5) ^ players in the Slums, never under mobBehaviour.golem.hpMin (repo addition, 180,000; 0 = no floor):
   `Golem.scale` each tick from the room's count (the knocked out too), its HP keeping its share, a 'scale' change to the
   room (the game only updates its bar); the 5% XP share is of that; tested), mobs.json `radius`, the
   manifest's anim and fx lengths): rises
