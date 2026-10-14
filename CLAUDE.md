@@ -864,8 +864,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   no stop-start; never a sprint), stopping once they've stopped and it's within it; straight on its screen quarter's move
   sheet (se/sw/ne/nw; straight east or west: se or sw); only heading north or south on screen, where no sheet fits, it
   zigzags along the sheets' own diagonals (a column, then a row: it always moves the way it faces, never a slide), legs of
-  `zigzagEverySteps` (3) tiles at ZIGZAG_PACE 1.25 × their pace (√2 when well behind), (while walking a pet changes sheet only on its walk's first frame, so a hop or
-  stride is never cut short: Croakyangs' hop is 13 frames, about a second); more than FAR_TILES (5) behind (a dash, a teleport), it fades out and back in
+  `zigzagEverySteps` (3) tiles at ZIGZAG_PACE 1.25 × their pace (√2 when well behind); while walking a pet changes sheet only on its walk's first frame, so a
+  hop or stride is never cut short (Croakyangs' hop is 13 frames, about a second, so its legs come to about 4 tiles); more than FAR_TILES (5) behind (a dash, a teleport), it fades out and back in
   behind them (FADE_MS 220 each way), walking on if they still are; on a new map it's put behind them; stopped: idle se (heading east-ish) or sw; your own pet clicked (the scene's click asks `Pets.pick`): its special.
   Equipment panel's third tab **Pet** (`ui/pet-tab.ts` `PetTab`): the slot (drop `application/x-mk-pet`; a box,
   `x-mk-petbox`: "Open the box first"), name, Lv, Pet XP bar, pet points, the tree (manifest pets.node / nodeLocked, 32 px
