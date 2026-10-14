@@ -3780,6 +3780,7 @@ export class TownScene extends Phaser.Scene {
     const pets = new Pets(this, this.M.pets, sheets, R, SPEED);
     pets.onSpawn = (obj) => this.tint >= 0 && obj.setTint(this.tint);
     pets.elevation = (c, r) => this.objects.heights.lift(c, r);
+    pets.shadowArt = this.M.fx.shadow?.file ?? null;
     this.pets = pets;
     const off = onAdventure((s) => pets.set('me', this.petIdOf(s.pet), () => this.petOwner(this.player), true));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
