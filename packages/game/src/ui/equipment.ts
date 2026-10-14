@@ -494,7 +494,7 @@ export class EquipmentPanel {
         b.append(icon);
       }
     }
-    this.petTab.render(s);
+    this.petTab.render(s.pet ?? null);
     const c = classInfo(s.cls);
     this.who.replaceChildren();
     if (c) {

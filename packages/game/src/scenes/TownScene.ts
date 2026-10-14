@@ -1704,6 +1704,7 @@ export class TownScene extends Phaser.Scene {
         },
         idle: { frames: C.animations.idle.frames, fps: C.animations.idle.fps },
         ask: (id) => !!this.link?.send({ t: 'inspect', id }),
+        pets: this.M.pets ? { node: (node, locked) => url((locked ? this.M.pets!.nodeLocked : this.M.pets!.node).replace('{stat}', this.M.pets!.nodeStats[node] ?? node)) } : null,
       });
       this.inspect = inspect;
       if (this.target) this.target.onInfo = (p) => inspect.show(p);

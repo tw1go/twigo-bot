@@ -1085,7 +1085,8 @@ export function attachTown(server: Server, opts: TownOptions): Town {
               ...{ hpRegen: d.hpRegen, hpRegenPct: d.hpRegenPct, mpRegen: d.mpRegen, dropRate: d.dropRate, accuracy: d.accuracy, cooldownPct: d.cooldownPct },
             }
           : null;
-        return send(c, { t: 'inspect', id: m.id, cls: them.player.cls ?? null, level: d?.level ?? them.player.level ?? 1, equipped, cosmetics, stats });
+        // (Their pet out too: the Info window's Pet tab.)
+        return send(c, { t: 'inspect', id: m.id, cls: them.player.cls ?? null, level: d?.level ?? them.player.level ?? 1, equipped, cosmetics, pet: state?.pet ?? null, stats });
       }
       case 'trade-ask': {
         // Ask someone near you to trade (the player menu): they have the timeout to answer.

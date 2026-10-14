@@ -158,7 +158,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   the Warren Gate (object, its blocked tiles, `arrive.warrens`; written by `scripts/build-warrens.ts`).
 - Pets (14 Oct 2026): `pets/` (the art folder's pets/: box, icons, sheets with pets.json, tree), the manifest's `pets`
   block, `classes/stats.json` `pets` (the art folder's pets/pets-stats-block.json merged in as a new key), and
-  `items/items.json` `pet-box-<id>` / `pet-<id>` (kind `pet`; boxes `opens`, `shop: pets`). Changed from the block:
+  `items/items.json` `pet-box-<id>` / `pet-<id>` (kind `pet`; boxes `opens`, `shop: pets`), and `pets.list['fairy-cha'].glow`. Changed from the block:
   `pets.follow.zigzagEverySteps` 2 tiles and `zigzagEveryStepsHover` 1 (was 3 half-tile steps; + `zigzagNote`: the zigzag only heading north or south).
 - `maps/warrens.json` is built here (`packages/game/scripts/build-warrens.ts` from `scripts/warrens/warrens-layout.json`,
   the art folder's layout copied in): run it again after changing either.
@@ -858,7 +858,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `pets.sheetDirs` (an art problem: in all seven pets se faces left and sw right; remove the map once the art folder swaps
   the files), and Dr. Pittuki's and Wonwuu's ne and nw by `pets.sheetDirsByPet`, depth as a character's; every pet on a ground shadow (manifest pets.shadow 22 × 8,
   shadowHover 14 × 5, shadows' own sizes, a pixel ellipse in shadowColour #0B0A18 at shadowAlpha 0.55: the characters'
-  navy one hardly shows on the town's dark cobbles; tinted at night), Kislap a glow (ADD). Rests while its owner is near (a click a tile or two away never sets it off); once they're
+  navy one hardly shows on the town's dark cobbles; tinted at night), Kislap and Fairy Cha a glow (ADD; pets.list's `glow`: Fairy Cha's #F5A8FF is a repo addition). Rests while its owner is near (a click a tile or two away never sets it off); once they're
   `follow.distanceTiles` + START_EXTRA (1.8) off, it walks toward them (never to a set spot beside them: no sliding across
   to their other side), keeping about `distanceTiles` behind while they walk (a touch quicker outside it, slower inside:
   no stop-start; never a sprint), stopping once they've stopped and it's within it; straight on its screen quarter's move
@@ -876,7 +876,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `x-mk-petbox`: "Open the box first"), name, Lv, Pet XP bar, pet points, the tree (manifest pets.node / nodeLocked, 32 px
   at 1×, an SVG's lines lit gold once their way is open, n/max, a + while a point can go in, tooltips), Reset. Its part of
   your stats shows as "+N Pet" in lime (ATK/DEF/HP/Crit rate and More stats: `myStats().bare`, `moreStatsSection`'s third
-  argument). Tooltips: a box's `about`; a pet's Lv, Pet XP, points per node, Bound. Guide tab Pets. Dev: `?petbox=<id>` (the
+  argument). The player menu's Info window has a Pet tab too (`ui/inspect.ts`: the same `PetTab`, read only: their pet
+  out, level, Pet XP, points and tree, nothing to drag, spend or reset; the server's `inspect` carries `pet`). Tooltips: a
+  box's `about`; a pet's Lv, Pet XP, points per node, Bound. Guide tab Pets. Dev: `?petbox=<id>` (the
   dev town's /__give; may repeat), `?petlevel=12&petxp=500` (`/__pet` GET: the pet out, else the first in the bag),
   `?give=pet-croakyangs:::5` (a pet straight away at Lv 5), POST `/__pet?as=` (the page's pretend /town/pet);
   `__town.pets()`, `__town.items().pet`.
