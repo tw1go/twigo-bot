@@ -156,6 +156,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   sheet at (80,46), 56 × 56; a stand-in until the art folder has its own.
 - `maps/slums.json`: the Golem Pit v3 changes (the art folder's copy still has the old 6×6 pit; see Scrapheap Golem), and
   the Warren Gate (object, its blocked tiles, `arrive.warrens`; written by `scripts/build-warrens.ts`).
+- Pets (14 Oct 2026): `pets/` (the art folder's pets/: box, icons, sheets with pets.json, tree), the manifest's `pets`
+  block, `classes/stats.json` `pets` (the art folder's pets/pets-stats-block.json merged in as a new key), and
+  `items/items.json` `pet-box-<id>` / `pet-<id>` (kind `pet`; boxes `opens`, `shop: pets`).
 - `maps/warrens.json` is built here (`packages/game/scripts/build-warrens.ts` from `scripts/warrens/warrens-layout.json`,
   the art folder's layout copied in): run it again after changing either.
 - High terrain (13 Oct 2026, all of it repo-only, PLACEHOLDER art): `tiles/slums` cliff-rock / -scrap (+ -lower) / -chasm /
@@ -830,6 +833,38 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   come, the winner line, closed 3.5 s later; `rollEndLine` for the losers' feed. `TownOptions.rollRandom` (tests).
 - Agimats in slots: both slots may hold the same stat (they add up; stats.json agimats.perItem, a repo change 12 Oct
   2026: was "different stats"); the rare cap (`rarePerItem` 2) still applies.
+- Pets (CONTEXT.md "Pets"; stats.json `pets`, the art folder's pets/pets-plan.md; shared `pets.ts`, pure, tested in the
+  bot's `web/pets.test.ts` with one over the town's socket): seven pets (`pets.list`; Fairy Cha rare, +2.3% drop rate
+  always). A **pet box** (items.json `pet-box-<id>`, a consumable with `opens`, stacks to 99, tradable and droppable, never
+  sold back; the sari-sari store's **Pets** tab: `combatWares` 'pets', `boxPrice` by rarity: 100 / 200 Kowens) is **opened**
+  (`openPetBox`; the bag's double-click / Open / right-click, a confirm in `ui/pet-tab.ts` `openBox`) into a bound pet item
+  `pet-<id>` (kind `pet`, never stacks) at Lv 1: its `level` is the item's, `xp` and `points` ({node: n}) too (schema v16
+  items.xp / items.points). One pet **out** at a time: `AdventureState.pet` (items place 'pet'); POST /town/pet
+  {open | out | back | spend | reset} (shared `petAction`, `parsePetAction`; bot `townPet`), a swap (out or back) never in a
+  fight (`Town.inCombat`, the vitals' rule) nor within `follow.swapCooldownSeconds` (30) of the last (in memory), then the
+  town's `pet` message (everyone; `TownPlayer.pet` for arrivals; `kitOf` gives the profile its pet). Stats: a pet out goes
+  in with the worn items (`fighterOf`; shared `itemTotals` adds `petTotals`: its pet tree, rates as fractions, its kind's
+  bonus), so fights, HP, CP and the caps take it; never STR/DEX/INT (requirements). Pet tree (`pets.tree`): HP and DEF,
+  ATK needs both maxed, Attack rate → Damage amp and Crit rate → Crit damage from ATK; a node opens once every node it
+  `requires` is at its max (`nodeOpen`); one pet point a level, Lv 1's too (20 fill it); Reset free. Pet XP: town.ts
+  `petXp` after every `attack` that lands (not a miss) gives the highest level among the monsters it hit
+  (`petXpForHit`), at most once `xp.throttleSeconds` (1) a member (`PetXpClock`); `TownOptions.pets.xp` = `petXpFor` (one
+  row updated); `pet-xp` to you, a level-up `pet` {up} to everyone (a sparkle) and a toast "Croakyangs reached Lv 5!".
+  `xp.table` (2,600 at Lv 1 … 215,300 at Lv 19; 1,745,600 in all), the cap 20 (XP 0, "MAX"). World (`world/pets.ts`
+  `Pets`, made in TownScene `makePets`; everyone's, keyed 'me' or a town id, drawn once its owner is): sheets
+  pets/sheets/pet-<id>-<anim>-<dir>.png (40 × 40, anchor (20, 35), frames per pet in pets.json; loaded the first time a
+  pet shows), depth as a character's; hover pets a soft shadow, Kislap a glow (ADD). Follows `follow.distanceTiles` behind
+  its owner's facing, only along a column or a row (the move sheets' diagonals), so heading straight n/s/e/w on screen it
+  zigzags, legs of `zigzagEverySteps` half-tile steps; faster when behind, put back at their side past 8 tiles or on a new
+  map; stopped: idle se (heading east-ish) or sw; your own pet clicked (the scene's click asks `Pets.pick`): its special.
+  Equipment panel's third tab **Pet** (`ui/pet-tab.ts` `PetTab`): the slot (drop `application/x-mk-pet`; a box,
+  `x-mk-petbox`: "Open the box first"), name, Lv, Pet XP bar, pet points, the tree (manifest pets.node / nodeLocked, 32 px
+  at 1×, an SVG's lines lit gold once their way is open, n/max, a + while a point can go in, tooltips), Reset. Its part of
+  your stats shows as "+N Pet" in lime (ATK/DEF/HP/Crit rate and More stats: `myStats().bare`, `moreStatsSection`'s third
+  argument). Tooltips: a box's `about`; a pet's Lv, Pet XP, points per node, Bound. Guide tab Pets. Dev: `?petbox=<id>` (the
+  dev town's /__give; may repeat), `?petlevel=12&petxp=500` (`/__pet` GET: the pet out, else the first in the bag),
+  `?give=pet-croakyangs:::5` (a pet straight away at Lv 5), POST `/__pet?as=` (the page's pretend /town/pet);
+  `__town.pets()`, `__town.items().pet`.
 - Settings → Game → Exit game (`ui/settings.ts` `leave`): the desktop app quits (`net/desktop.ts` `exitApp`, the
   process plugin's exit, `process:allow-exit`); the website and the home screen app go to the front page.
 - Forge (combat-guide.md How to enhance, Enhancement cost and odds, Agimats, Disassembly; stats.json enhancement.cost,
