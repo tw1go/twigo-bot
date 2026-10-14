@@ -42,7 +42,8 @@ export interface PetRules {
   xp: { throttleSeconds: number; toNext: { mult: number; pow: number; roundTo: number }; table?: Record<string, number>; total?: number };
   tree: Record<PetNode, PetNodeRule>;
   list: Record<string, PetKind>;
-  follow: { distanceTiles: number; zigzagEverySteps: number; swapCooldownSeconds: number };
+  /** zigzagEveryStepsHover: a hovering pet's zigzag legs (tiles), when it has its own. */
+  follow: { distanceTiles: number; zigzagEverySteps: number; zigzagEveryStepsHover?: number; swapCooldownSeconds: number };
   boxPrice: { currency: 'kowens'; common: number; rare: number };
 }
 

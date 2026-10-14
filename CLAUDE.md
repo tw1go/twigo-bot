@@ -159,7 +159,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
 - Pets (14 Oct 2026): `pets/` (the art folder's pets/: box, icons, sheets with pets.json, tree), the manifest's `pets`
   block, `classes/stats.json` `pets` (the art folder's pets/pets-stats-block.json merged in as a new key), and
   `items/items.json` `pet-box-<id>` / `pet-<id>` (kind `pet`; boxes `opens`, `shop: pets`). Changed from the block:
-  `pets.follow.zigzagEverySteps` 3 tiles (was 3 half-tile steps; + `zigzagNote`: the zigzag only heading north or south).
+  `pets.follow.zigzagEverySteps` 2 tiles and `zigzagEveryStepsHover` 1 (was 3 half-tile steps; + `zigzagNote`: the zigzag only heading north or south).
 - `maps/warrens.json` is built here (`packages/game/scripts/build-warrens.ts` from `scripts/warrens/warrens-layout.json`,
   the art folder's layout copied in): run it again after changing either.
 - High terrain (13 Oct 2026, all of it repo-only, PLACEHOLDER art): `tiles/slums` cliff-rock / -scrap (+ -lower) / -chasm /
@@ -855,20 +855,23 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `Pets`, made in TownScene `makePets`; everyone's, keyed 'me' or a town id, drawn once its owner is): sheets
   pets/sheets/pet-<id>-<anim>-<dir>.png (40 × 40, anchor (20, 35), frames per pet in pets.json; loaded the first time a
   pet shows), drawn at the manifest's `pets.scale` (0.6: the owner found 40 × 40 too big), the art's se and sw sheets swapped by
-  `pets.sheetDirs` (an art problem: in all seven pets se faces left and sw right; ne and nw are right; remove the map once
-  the art folder swaps the files), depth as a character's; every pet on a ground shadow (manifest pets.shadow 22 × 8,
+  `pets.sheetDirs` (an art problem: in all seven pets se faces left and sw right; remove the map once the art folder swaps
+  the files), and Dr. Pittuki's and Wonwuu's ne and nw by `pets.sheetDirsByPet`, depth as a character's; every pet on a ground shadow (manifest pets.shadow 22 × 8,
   shadowHover 14 × 5, shadows' own sizes, a pixel ellipse in shadowColour #0B0A18 at shadowAlpha 0.55: the characters'
   navy one hardly shows on the town's dark cobbles; tinted at night), Kislap a glow (ADD). Rests while its owner is near (a click a tile or two away never sets it off); once they're
   `follow.distanceTiles` + START_EXTRA (1.8) off, it walks toward them (never to a set spot beside them: no sliding across
   to their other side), keeping about `distanceTiles` behind while they walk (a touch quicker outside it, slower inside:
   no stop-start; never a sprint), stopping once they've stopped and it's within it; straight on its screen quarter's move
-  sheet (se/sw/ne/nw; straight east or west: se or sw); only heading north or south on screen, where no sheet fits, it
-  zigzags along the sheets' own diagonals (a column, then a row: it always moves the way it faces, never a slide), legs of
-  `zigzagEverySteps` (3) tiles at ZIGZAG_PACE 1.25 × their pace (√2 when well behind); while walking a pet changes sheet only on its walk's first frame, so a
-  hop or stride is never cut short (Croakyangs' hop is 13 frames, about a second, so its legs come to about 4 tiles),
-  and meanwhile it goes on the way it faces (`AXIS_OF`) while that still brings it nearer: it never moves one way while
-  facing another (a slide); more than FAR_TILES (5) behind (a dash, a teleport), it fades out and back in
-  behind them (FADE_MS 220 each way), walking on if they still are; on a new map it's put behind them; stopped: idle se (heading east-ish) or sw; your own pet clicked (the scene's click asks `Pets.pick`): its special.
+  sheet it only ever moves along the four ways it has sheets for (a column or a row, tile space: se, nw, sw, ne), so it always
+  moves the way it faces, never a slide: a leg one way toward them, turning once it's `zigzagEverySteps` (2) tiles long
+  (`zigzagEveryStepsHover` (1) for Fork of Jord, Kislap and Fairy Cha) and its walk is on its first frame (a hop or stride
+  is never cut short), or at once when it's level with them that way; walking along a column or row with them it just goes
+  straight; a little quicker than them (the longer way round); by the walk grid's rules, as a player (`Pets.grid`:
+  `canStep`, so never on water, walls or fences and another level only by a ramp): the next tile shut, its other way if
+  that's open, else a route (`findPath` to their tile, or beside it when they sit on a bench seat, its diagonal steps taken
+  as two straight ones; found again at most every 500 ms as they move); more than FAR_TILES (5) behind (a dash, a teleport), it fades out and back in
+  behind them (FADE_MS 220 each way; landing on a walkable tile within 3 grid steps of theirs, else on their spot),
+  walking on if they still are; on a new map it's put behind them; stopped: idle facing its owner's side (se if they're to its right on screen, else sw); your own pet clicked (the scene's click asks `Pets.pick`): its special.
   Equipment panel's third tab **Pet** (`ui/pet-tab.ts` `PetTab`): the slot (drop `application/x-mk-pet`; a box,
   `x-mk-petbox`: "Open the box first"), name, Lv, Pet XP bar, pet points, the tree (manifest pets.node / nodeLocked, 32 px
   at 1×, an SVG's lines lit gold once their way is open, n/max, a + while a point can go in, tooltips), Reset. Its part of

@@ -1561,8 +1561,9 @@
     },
     "follow": {
       "distanceTiles": 1.5,
-      "zigzagEverySteps": 3,
-      "zigzagNote": "Repo change (owner, 14 Oct 2026): a leg of the zigzag is this many tiles (was 3 half-tile steps), and pets zigzag only when heading north or south on screen; anywhere else they walk straight on the nearest move sheet.",
+      "zigzagEverySteps": 2,
+      "zigzagEveryStepsHover": 1,
+      "zigzagNote": "Repo change (owner, 14 Oct 2026): a leg of the zigzag is this many tiles (was 3 half-tile steps; zigzagEveryStepsHover for the hovering pets: Fork of Jord, Kislap, Fairy Cha), and pets zigzag only when heading north or south on screen; anywhere else they walk straight on the nearest move sheet.",
       "swapCooldownSeconds": 30
     },
     "boxPrice": {

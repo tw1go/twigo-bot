@@ -3,6 +3,7 @@ import type { PetRules } from '@mikazuki/shared';
 import { queueSheet } from '../assets/queue';
 import { slice } from '../assets/packs';
 import { CHARACTER_BIAS, GLOW_DEPTH, HEIGHT_DEPTH } from './depth';
+import type { WalkGrid } from './grid';
 
 // 🐾 Pets in the world (CONTEXT.md "Pets"): everyone's pet out follows them, in town and on battle maps alike. A pet is
 // scenery: it never blocks anyone, can't be targeted and takes no hits. Art (manifest `pets`, the frame data in
@@ -45,6 +46,8 @@ export interface PetManifest {
   scale?: number;
   /** The sheet to draw for a way, where the art's names don't match where it faces (way → sheet's direction). */
   sheetDirs?: Record<string, string>;
+  /** A pet's own, over `sheetDirs` (Dr. Pittuki's ne and nw are swapped too). */
+  sheetDirsByPet?: Record<string, Record<string, string>>;
   /** The ground shadow under a pet (world px, w × h), under a hovering one, and a pet's own size by id. */
   shadow?: [number, number];
   shadowHover?: [number, number];
@@ -63,12 +66,10 @@ const FAR_TILES = 5;
 const FADE_MS = 220;
 /** How far to one side of the spot right behind its owner a pet keeps. */
 const SIDE_TILES = 0.9;
-/** Within this much of straight north or south on screen (|x| ≤ this × |y|, in screen px), a pet zigzags. */
-const NORTH_SOUTH = 0.4;
-/** The way each move sheet faces, in tile space (screen x = (col − row) × 16, y = (col + row) × 8). */
-const AXIS_OF: Record<MoveDir, [number, number]> = { se: [1, 0], nw: [-1, 0], sw: [0, 1], ne: [0, -1] };
-/** A zigzag's pace against its owner's (it's the longer way: √2 would keep up exactly heading north or south). */
-const ZIGZAG_PACE = 1.25;
+/** Put back beside its owner, a pet lands on a tile at most this many grid steps from theirs. */
+const LANDING_STEPS = 3;
+/** A route to its owner is found again at most this often while they move (ms). */
+const ROUTE_MS = 500;
 /** A resting pet sets off once its owner is this many tiles past `distanceTiles`. */
 const START_EXTRA = 1.8;
 
@@ -99,6 +100,11 @@ class PetView {
   private leg: { axis: 0 | 1; sign: number; left: number } | null = null;
   /** Walking toward its owner (else resting where it stopped). */
   private following = false;
+  /** A route on the walk grid (tiles, each one step along a column or a row), when its own way was shut; for which tile
+   *  of its owner's, and when it was found. */
+  private route: { col: number; row: number }[] | null = null;
+  private routeFor = '';
+  private routeAt = 0;
   /** Fading out to come back behind its owner ('out'), or in again ('in'); its parts' alpha follows `seen`. */
   private fade: 'out' | 'in' | null = null;
   private seen = 1;
@@ -185,12 +191,37 @@ class PetView {
 
   /** Puts it right behind its owner (arriving, a new map, fallen too far behind). */
   placeBehind(o: PetOwner): void {
-    const t = this.behind(o);
+    const t = this.landing(o);
     this.col = t.col;
     this.row = t.row;
     this.leg = null;
+    this.route = null;
     this.following = false;
     this.stop();
+  }
+
+  /** Where it's put back: its spot behind them if that's a tile they can walk to, else the nearest of the tiles round
+   *  them that is (the middle of it; within LANDING_STEPS on the grid, so never below a cliff they stand on), else their
+   *  own spot: never in water, in a wall or up a cliff. */
+  private landing(o: PetOwner): { col: number; row: number } {
+    const spot = this.behind(o);
+    const grid = this.host.grid;
+    if (!grid) return spot;
+    const home = { col: Math.floor(o.spot.col), row: Math.floor(o.spot.row) };
+    // (A few steps from them on the grid: not just reachable, which a tile below a cliff is, the long way round by a ramp.)
+    const ok = (c: number, r: number) => {
+      if (!grid.walkable(c, r)) return false;
+      const path = grid.findPath(home, { col: c, row: r }, 200);
+      return !!path && path.length - 1 <= LANDING_STEPS && path[path.length - 1].col === c && path[path.length - 1].row === r;
+    };
+    if (ok(Math.floor(spot.col), Math.floor(spot.row))) return spot;
+    const near: [number, number][] = [];
+    for (let dr = -2; dr <= 2; dr++) for (let dc = -2; dc <= 2; dc++) if (dc || dr) near.push([home.col + dc, home.row + dr]);
+    near.sort((a, b) => Math.hypot(a[0] + 0.5 - spot.col, a[1] + 0.5 - spot.row) - Math.hypot(b[0] + 0.5 - spot.col, b[1] + 0.5 - spot.row));
+    const at = near.find(([c, r]) => ok(c, r));
+    if (at) return { col: at[0] + 0.5, row: at[1] + 0.5 };
+    // (Nowhere near them it may stand: on their own spot, so it never fades out again and again.)
+    return { ...o.spot };
   }
 
   /** Its spot: `distanceTiles` behind its owner's facing and SIDE_TILES to one side, so standing still facing the camera
@@ -225,55 +256,72 @@ class PetView {
     if (this.following && !o.walking && dist <= F.distanceTiles) {
       this.following = false;
       this.leg = null;
+      this.route = null;
     }
-    if (!this.following) return this.stop();
-    // Its way on screen (px): x = (col − row) × 16, y = (col + row) × 8. A little quicker than them until it's at its
-    // distance, a little slower inside it; never more.
-    const x = (d[0] - d[1]) * 16;
-    const y = (d[0] + d[1]) * 8;
+    if (!this.following) return this.stop(d);
+    // It only ever moves along the four ways it has sheets for (in tile space: along a column or a row), so it always
+    // moves exactly the way it faces: never a slide. A leg goes one way toward them; it changes way once the leg is its
+    // length (`zigzagEverySteps`, a hovering pet's `zigzagEveryStepsHover`) and its walk cycle is at its first frame (a
+    // hop or stride is never cut short), or as soon as it's level with them that way (never running past their line and
+    // back). The new way is the one with more still
+    // to go (the same way again if the other has almost nothing: walking along a column or row with them, it just goes
+    // straight). The longer way round (Manhattan), so a little quicker than them; inside its distance a little slower.
     const gap = dist - F.distanceTiles;
-    const pace = speed * (gap > 0.5 ? 1.1 : gap > 0 ? 1 : 0.85) * (dt / 1000);
-    // Where it wants to go this frame: a sheet, a way (tile space, a unit vector) and how far.
-    let dir: MoveDir;
-    let way: [number, number];
-    let step: number;
-    // (A zigzag under way carries on while the way stays roughly north or south: no flicking between the two.)
-    const weaving = Math.abs(x) <= (this.leg ? 0.8 : NORTH_SOUTH) * Math.abs(y);
-    if (weaving) {
-      // North or south, where no move sheet fits: a zigzag along the sheets' own diagonals (a column, then a row, toward
-      // them), so it always moves the way it faces: legs of `zigzagEverySteps` tiles, each one also waiting for the
-      // walk cycle under way to end (Croakyangs' hop is 13 frames, about a second). The zigzag is the longer way, so it
-      // goes ZIGZAG_PACE × their pace, a little more when behind.
-      if (!this.leg || (this.leg.left <= 0 && (this.cycleStart || this.anim !== 'move'))) {
-        let axis: 0 | 1 = this.leg ? (this.leg.axis === 0 ? 1 : 0) : Math.abs(d[0]) >= Math.abs(d[1]) ? 0 : 1;
-        if (Math.abs(d[axis]) < 0.2) axis = axis === 0 ? 1 : 0;
-        this.leg = { axis, sign: Math.sign(d[axis]) || 1, left: F.zigzagEverySteps };
-      }
-      const leg = this.leg;
-      step = pace * (gap > 1.5 ? Math.SQRT2 : ZIGZAG_PACE);
-      way = leg.axis === 0 ? [leg.sign, 0] : [0, leg.sign];
-      leg.left -= step;
-      dir = leg.axis === 0 ? (leg.sign > 0 ? 'se' : 'nw') : leg.sign > 0 ? 'sw' : 'ne';
-    } else {
-      // Anywhere else: straight toward them, on its screen quarter's sheet (on the level: the camera-facing one).
-      this.leg = null;
-      step = Math.min(pace, dist);
-      way = [d[0] / dist, d[1] / dist];
-      const south = Math.abs(y) < 0.35 * Math.abs(x) || y > 0;
-      dir = x >= 0 ? (south ? 'se' : 'ne') : south ? 'sw' : 'nw';
+    const step = speed * (gap > 1.5 ? 1.65 : gap > 0.5 ? 1.45 : gap > 0 ? 1.2 : 1) * (dt / 1000);
+    const leg = this.leg;
+    const along = leg ? d[leg.axis] * leg.sign : 0; // still to go on its way (negative: past their line)
+    const turn =
+      !leg ||
+      this.anim !== 'move' ||
+      along <= 0.3 ||
+      (leg.left <= 0 && this.cycleStart);
+    // On a route (the greedy way was shut): its next tile, one step along a column or a row at a time.
+    if (this.route) return this.walkRoute(o, step);
+    if (turn) {
+      const [a, b] = [Math.abs(d[0]), Math.abs(d[1])];
+      let axis: 0 | 1 = a >= b ? 0 : 1;
+      // (The same way again while the other has almost nothing to go.)
+      if (leg && leg.axis !== axis && Math.abs(d[leg.axis]) * Math.sign(d[leg.axis]) * leg.sign > 0.3 && Math.min(a, b) < 0.5) axis = leg.axis;
+      if (!leg || axis !== leg.axis || Math.sign(d[axis]) !== leg.sign) this.leg = { axis, sign: Math.sign(d[axis]) || 1, left: this.legTiles };
     }
-    // Setting off: its way's sheet at once. Already walking: a new way's sheet waits for the cycle under way to end (a
-    // hop or a stride is never cut short), then starts at its first frame. Meanwhile it goes on the way it faces, as long
-    // as that still brings it nearer (never moving one way while it faces another: that's a slide); else it turns now.
-    if (this.anim === 'move' && dir !== this.dir && !this.cycleStart) {
-      const [fc, fr] = AXIS_OF[this.dir];
-      if (fc * d[0] + fr * d[1] > 0) {
-        way = [fc, fr];
-        dir = this.dir;
-      }
+    // The walk grid's rules, as a player's (blocked tiles: water, walls, fences; another level only by a ramp): the step
+    // into the next tile shut, it takes its other way toward them at once if that's open, else a route on the grid.
+    if (!this.canGo(this.leg!, step)) {
+      const other: 0 | 1 = this.leg!.axis === 0 ? 1 : 0;
+      const alt = { axis: other, sign: Math.sign(d[other]) || 1, left: this.legTiles };
+      if (Math.abs(d[other]) > 0.3 && this.canGo(alt, step)) this.leg = alt;
+      else return this.startRoute(o, step);
     }
-    this.col += way[0] * step;
-    this.row += way[1] * step;
+    this.go(this.leg!, step);
+  }
+
+  /** A zigzag leg's length: a hovering pet's own (stats.json pets.follow.zigzagEveryStepsHover), else everyone's. */
+  private get legTiles(): number {
+    const F = this.host.rules.follow;
+    return (this.host.rules.list[this.petId]?.hover ? F.zigzagEveryStepsHover : undefined) ?? F.zigzagEverySteps;
+  }
+
+  /** The tile it stands on. */
+  private get tile(): { col: number; row: number } {
+    return { col: Math.floor(this.col), row: Math.floor(this.row) };
+  }
+
+  /** Whether `step` along a leg keeps to tiles it may walk (no grid: anywhere). */
+  private canGo(leg: { axis: 0 | 1; sign: number }, step: number): boolean {
+    const grid = this.host.grid;
+    if (!grid) return true;
+    const from = this.tile;
+    const pos = (leg.axis === 0 ? this.col : this.row) + leg.sign * step;
+    const to = leg.axis === 0 ? { col: Math.floor(pos), row: from.row } : { col: from.col, row: Math.floor(pos) };
+    return (to.col === from.col && to.row === from.row) || grid.canStep(from, to);
+  }
+
+  /** Moves `step` along a leg, on its sheet. */
+  private go(leg: NonNullable<PetView['leg']>, step: number): void {
+    if (leg.axis === 0) this.col += leg.sign * step;
+    else this.row += leg.sign * step;
+    leg.left -= step;
+    const dir: MoveDir = leg.axis === 0 ? (leg.sign > 0 ? 'se' : 'nw') : leg.sign > 0 ? 'sw' : 'ne';
     if (this.anim !== 'move' || dir !== this.dir) {
       this.dir = dir;
       this.anim = 'move';
@@ -281,11 +329,71 @@ class PetView {
     }
   }
 
-  /** Stopped: idle, facing the camera on the side it was heading (east-ish se, west-ish sw); a special plays out first. */
-  private stop(): void {
+  /** A route on the walk grid to its owner's tile (a diagonal step taken as two straight ones, by a corner it may walk);
+   *  none at all (it's somewhere it can't get to them from): back behind them. */
+  private startRoute(o: PetOwner, step: number): void {
+    const grid = this.host.grid;
+    const home = { col: Math.floor(o.spot.col), row: Math.floor(o.spot.row) };
+    // (Their own tile, or, on a bench seat (a blocked tile), the nearest beside it it can get to.)
+    const to = grid?.walkable(home.col, home.row) ? home : (grid?.nearestReachable(this.tile, home) ?? home);
+    const path = grid?.findPath(this.tile, to);
+    if (!grid || !path || path.length < 2) return void (this.fade = 'out');
+    const route: { col: number; row: number }[] = [];
+    for (let i = 1; i < path.length; i++) {
+      const [a, b] = [path[i - 1], path[i]];
+      if (a.col !== b.col && a.row !== b.row) route.push(grid.canStep(a, { col: b.col, row: a.row }) ? { col: b.col, row: a.row } : { col: a.col, row: b.row });
+      route.push(b);
+    }
+    this.route = route;
+    this.routeFor = `${home.col},${home.row}`;
+    this.walkRoute(o, step);
+  }
+
+  /** Walks its route: to the middle of each next tile, along the one way it differs (a column or a row). Done, or their
+   *  tile moved on (a new route then, at most every ROUTE_MS), back to its own way of following. */
+  private walkRoute(o: PetOwner, step: number): void {
+    const route = this.route!;
+    const now = this.host.scene.time.now;
+    const ownerTile = `${Math.floor(o.spot.col)},${Math.floor(o.spot.row)}`;
+    if (ownerTile !== this.routeFor && now - this.routeAt > ROUTE_MS) {
+      this.routeAt = now;
+      this.route = null;
+      return this.startRoute(o, step);
+    }
+    const next = route[0];
+    if (!next) {
+      this.route = null;
+      return;
+    }
+    // Within its tile first (off the middle on the other way), then into the next one.
+    const here = this.tile;
+    const target = { col: next.col + 0.5, row: next.row + 0.5 };
+    const dc = target.col - this.col;
+    const dr = target.row - this.row;
+    const axis: 0 | 1 = here.col !== next.col ? 0 : here.row !== next.row ? 1 : Math.abs(dc) >= Math.abs(dr) ? 0 : 1;
+    const left = axis === 0 ? dc : dr;
+    const leg = { axis, sign: Math.sign(left) || 1, left: Math.abs(left) };
+    this.leg = leg;
+    // (The other way's offset inside its tile is walked once it's in the tile it heads for.)
+    this.go(leg, Math.min(step, Math.abs(left)));
+    if (Math.abs(target.col - this.col) < 0.05 && Math.abs(target.row - this.row) < 0.05) route.shift();
+    else if (Math.abs(left) < 0.05) {
+      // In the right column (or row): now the other way, to the tile's middle.
+      const other: 0 | 1 = axis === 0 ? 1 : 0;
+      const rest = other === 0 ? target.col - this.col : target.row - this.row;
+      if (Math.abs(rest) >= 0.05) this.go({ axis: other, sign: Math.sign(rest), left: Math.abs(rest) }, Math.min(step, Math.abs(rest)));
+      if (Math.abs(target.col - this.col) < 0.05 && Math.abs(target.row - this.row) < 0.05) route.shift();
+    }
+    if (!route.length) this.route = null;
+  }
+
+  /** Stopped: idle, facing the camera on its owner's side (`toward`: the way to them, tile space; to their right on
+   *  screen se, else sw; without it, the side it was heading); a special plays out first. */
+  private stop(toward?: [number, number]): void {
     this.leg = null;
     if (this.anim === 'special' && this.host.scene.time.now < this.specialEnds) return;
-    const face: MoveDir = this.dir === 'se' || this.dir === 'ne' ? 'se' : 'sw';
+    const right = toward ? toward[0] - toward[1] > 0.05 || (Math.abs(toward[0] - toward[1]) <= 0.05 && (this.dir === 'se' || this.dir === 'ne')) : this.dir === 'se' || this.dir === 'ne';
+    const face: MoveDir = right ? 'se' : 'sw';
     if (this.anim !== 'idle' || this.dir !== face) {
       this.dir = face;
       this.anim = 'idle';
@@ -336,6 +444,8 @@ export class Pets {
   shadowArt: string | null = null;
   /** Tints a new sprite with the world (night). */
   onSpawn: ((s: Phaser.GameObjects.Sprite) => void) | null = null;
+  /** The walk grid (blocked tiles, fences, ramps): pets walk by its rules too. */
+  grid: WalkGrid | null = null;
   /** How high the ground is at a point (raised ground), px. */
   elevation: ((col: number, row: number) => number) | null = null;
 
@@ -352,16 +462,16 @@ export class Pets {
 
   /** A pet's frames in a sheet (pets.json), or 0. */
   frames(pet: string, anim: Anim, dir: string): number {
-    return this.sheets.pets[pet]?.[anim]?.[this.sheetDir(dir)] ?? 0;
+    return this.sheets.pets[pet]?.[anim]?.[this.sheetDir(dir, pet)] ?? 0;
   }
 
   /** The sheet drawn for a way (manifest pets.sheetDirs: the art's se and sw sheets face the other way). */
-  private sheetDir(dir: string): string {
-    return this.M.sheetDirs?.[dir] ?? dir;
+  private sheetDir(dir: string, pet?: string): string {
+    return (pet && this.M.sheetDirsByPet?.[pet]?.[dir]) ?? this.M.sheetDirs?.[dir] ?? dir;
   }
 
   private fileOf(pet: string, anim: Anim, dir: string): string {
-    return this.M.file.replace('{id}', pet).replace('{anim}', anim).replace('{dir}', this.sheetDir(dir));
+    return this.M.file.replace('{id}', pet).replace('{anim}', anim).replace('{dir}', this.sheetDir(dir, pet));
   }
 
   /** The animation for a pet's sheet, made once it's loaded (null meanwhile: it's being loaded). */

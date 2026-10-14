@@ -18903,6 +18903,17 @@
       "se": "sw",
       "sw": "se"
     },
+    "sheetDirsByPet": {
+      "pittuki": {
+        "ne": "nw",
+        "nw": "ne"
+      },
+      "wonwuu": {
+        "ne": "nw",
+        "nw": "ne"
+      }
+    },
+    "sheetDirsByPetNote": "Art problem (14 Oct 2026): Dr. Pittuki's and Wonwuu's ne and nw sheets are swapped too (on top of every pet's se / sw). Remove once the art folder fixes them.",
     "sheetDirsNote": "Art problem (14 Oct 2026): in all seven pets the se sheets (move, idle, special) face left on screen and the sw sheets face right, the opposite of their names; ne and nw are right. So the game draws the sw sheet for se and the se sheet for sw. Remove this once the art folder's se and sw files are swapped.",
     "scale": 0.6,
     "shadow": [
