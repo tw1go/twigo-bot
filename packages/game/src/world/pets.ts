@@ -16,7 +16,8 @@ import { CHARACTER_BIAS, GLOW_DEPTH, HEIGHT_DEPTH } from './depth';
 // touch quicker than them. Fallen behind past FAR_TILES (a dash, a teleport), it fades out and fades back in right behind
 // them (FADE_MS each way), walking on if they still are; on a new map it's simply put there. It walks straight, on the move sheet of its screen quarter (se, sw, ne, nw; straight east or west: se or sw);
 // only heading north or south on screen, where no sheet fits, it weaves: mostly straight at them at their pace, drifting
-// to one side for `zigzagEverySteps` tiles, then the other, on the diagonal sheet of the side it drifts to. Drawn at the manifest's pets.scale (smaller than its 40 × 40
+// to one side for `zigzagEverySteps` tiles (and the walk cycle under way: a hop is never cut short), then the other, on
+// the diagonal sheet of the side it drifts to. Drawn at the manifest's pets.scale (smaller than its 40 × 40
 // art). Stopped, it turns to the camera: se if it was heading east-ish, sw if west-ish. Every pet stands on a ground
 // shadow like the characters' and mobs' (the shadow art's colour as a pixel ellipse; manifest pets.shadow, smaller under a
 // hovering pet, a pet's own in pets.shadows), tinted with the world at night; one with a `glow` a soft light round it. A click on your own pet plays its special (others' pets ignore
@@ -98,6 +99,10 @@ class PetView {
   /** Fading out to come back behind its owner ('out'), or in again ('in'); its parts' alpha follows `seen`. */
   private fade: 'out' | 'in' | null = null;
   private seen = 1;
+  /** The walk is on its first frame: a cycle just ended (or began), the only time it changes sheet. */
+  private get cycleStart(): boolean {
+    return !!this.sprite.anims.currentFrame?.isFirst;
+  }
   private specialEnds = 0;
   private sparkle: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
 
@@ -231,7 +236,8 @@ class PetView {
     if (weaving) {
       // North or south, where no move sheet fits: a gentle weave at their pace, mostly straight at them, drifting to one
       // side then the other every `zigzagEverySteps` tiles, on the diagonal sheet of the side it drifts to.
-      if (!this.leg || this.leg.left <= 0) {
+      // (A side that's done waits for the walk cycle under way to end: Croakyangs' hop is 13 frames, about a second.)
+      if (!this.leg || (this.leg.left <= 0 && (this.cycleStart || this.anim !== 'move'))) {
         this.leg = { side: this.leg ? -this.leg.side : 1, left: F.zigzagEverySteps };
       }
       const leg = this.leg;
@@ -254,7 +260,9 @@ class PetView {
       const south = Math.abs(y) < 0.35 * Math.abs(x) || y > 0;
       dir = x >= 0 ? (south ? 'se' : 'ne') : south ? 'sw' : 'nw';
     }
-    if (this.anim !== 'move' || dir !== this.dir) {
+    // Setting off: its way's sheet at once. Already walking: a new way's sheet waits for the cycle under way to end (a
+    // hop or a stride is never cut short), then starts at its first frame.
+    if (this.anim !== 'move' || (dir !== this.dir && this.cycleStart)) {
       this.dir = dir;
       this.anim = 'move';
       this.play('move');
