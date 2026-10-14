@@ -1989,6 +1989,44 @@
       :is(#equipment, #inspect) .eq-reset { margin-left: auto; padding: 1px 8px 2px; border: 2px solid #3D4256; border-radius: 0; background: #1E1B3A; color: #A9B1D6; font: inherit; font-size: calc(12px * var(--text)); font-weight: 700; cursor: var(--cur-hand, pointer); }
       :is(#equipment, #inspect) .eq-reset:hover:not(:disabled) { border-color: #A3E635; color: #A3E635; }
       :is(#equipment, #inspect) .eq-reset:disabled { opacity: 0.45; cursor: default; }
+      /* The Pet tab (ui/pet-tab.ts): the pet slot and its name, level, Pet XP bar and points; then its pet tree (32x32 node art
+         at 1x, n/max under each, lines lit gold once their way is open) and Reset. A pet's part of a stat: lime with "Pet". */
+      :is(#equipment, #inspect) .eq-pet-part { color: #B6F05A; white-space: nowrap; }
+      :is(#equipment, #inspect) .eq-pet-word { font: 700 calc(10px * var(--text))/1 var(--ui-font); letter-spacing: 0.04em; color: #8BBE45; }
+      #equipment .pt-root { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; min-height: 236px; }
+      #equipment .pt-root[hidden] { display: none; }
+      #equipment .pt-top { display: flex; align-items: center; gap: 12px; align-self: stretch; padding: 0 6px; }
+      #equipment .pt-slot { width: 88px; height: 88px; } /* a 32x32 pet at 2x */
+      #equipment .pt-info { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+      #equipment .pt-hint { color: #A9B1D6; font-size: calc(13px * var(--text)); }
+      #equipment .pt-name { font-size: calc(17px * var(--text)); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      #equipment .pt-level { color: #E6E9F2; font: calc(17px * var(--text))/1 'Mk Numbers', var(--ui-font); }
+      #equipment .pt-xp { position: relative; height: 14px; border: 2px solid #3D4256; background: #1E1B3A; }
+      #equipment .pt-xp-fill { position: absolute; left: 0; top: 0; bottom: 0; background: #7C2AE8; }
+      #equipment .pt-xp.pt-max .pt-xp-fill { background: #F8BF27; }
+      #equipment .pt-xp-text { position: relative; display: block; text-align: center; color: #fff; font: calc(13px * var(--text))/12px 'Mk Numbers', var(--ui-font); text-shadow: 0 1px 0 #000; }
+      #equipment .pt-points { color: #A9B1D6; font-size: calc(13px * var(--text)); }
+      #equipment .pt-points-on { color: #A3E635; font-weight: 700; }
+      #equipment .pt-tree-title { align-self: stretch; padding: 4px 6px 0; border-top: 1px solid #3D4256; color: #A9B1D6; font-size: calc(12px * var(--text)); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+      #equipment .pt-tree-title[hidden], #equipment .pt-tree[hidden] { display: none; }
+      #equipment .pt-tree { position: relative; flex: none; margin-bottom: 14px; }
+      #equipment .pt-lines { position: absolute; left: 0; top: 0; overflow: visible; }
+      #equipment .pt-line { fill: none; stroke: #3D4256; stroke-width: 2; shape-rendering: crispEdges; }
+      #equipment .pt-line.pt-lit { stroke: #F8BF27; }
+      #equipment .pt-node { position: absolute; width: 32px; height: 32px; padding: 0; border: 0; background: none; cursor: var(--cur-hand, pointer); }
+      #equipment .pt-node-art { display: block; width: 32px; height: 32px; image-rendering: pixelated; }
+      #equipment .pt-node-word { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 2px solid #3D4256; box-sizing: border-box; color: #A9B1D6; font-size: 11px; }
+      #equipment .pt-node:hover .pt-node-art, #equipment .pt-node:focus-visible .pt-node-art { outline: 2px solid #A3E635; outline-offset: 1px; }
+      #equipment .pt-locked { cursor: default; }
+      #equipment .pt-count { position: absolute; left: 50%; top: 33px; transform: translateX(-50%); color: #A9B1D6; font: calc(13px * var(--text))/1 'Mk Numbers', var(--ui-font); white-space: nowrap; }
+      #equipment .pt-full .pt-count { color: #F8BF27; }
+      #equipment .pt-plus { position: absolute; right: -6px; top: -6px; width: 14px; height: 14px; border: 2px solid #A3E635; background: #1E1B3A; color: #A3E635; font: 700 11px/10px var(--ui-font); text-align: center; }
+      #equipment .pt-can:hover .pt-plus { background: #A3E635; color: #1E1B3A; }
+      #equipment .pt-foot { display: flex; align-items: center; gap: 8px; align-self: stretch; padding: 0 6px; font-size: calc(12px * var(--text)); color: #7A8099; }
+      #equipment .pt-foot:empty { display: none; }
+      :is(#equipment, #inspect) .eq-tip-need { color: #F7768E; }
+      :is(#equipment, #inspect) .eq-tip-sub { margin-top: 3px; color: #A9B1D6; font-size: calc(12px * var(--text)); }
+      :is(#equipment, #inspect) .eq-middle[hidden] { display: none; }
       :is(#equipment, #inspect) .eq-tip { position: absolute; z-index: 1; min-width: 130px; max-width: 220px; padding: 8px 10px; border: 2px solid #7C2AE8; background: #111827; color: #E6E9F2; font-size: calc(13px * var(--text)); pointer-events: none; --px: 2; border-style: solid; border-width: calc(var(--slice, 1) * var(--px) * 1px); border-image-source: var(--frame); border-image-slice: var(--slice) fill; border-image-width: calc(var(--slice, 1) * var(--px) * 1px); border-image-repeat: round; image-rendering: pixelated; }
       :is(#equipment, #inspect) .eq-tip[hidden] { display: none; }
       :is(#equipment, #inspect) .eq-tip-left { transform: translateX(-100%); }

@@ -26,6 +26,8 @@ import {
   type TownPointsAction,
   type TownQuestAction,
   type TownSkillsAction,
+  type TownPetAction,
+  petRules,
   classSkills,
   classBuffs,
   equipFromBag,
@@ -103,6 +105,8 @@ export interface AdventureChange {
   /** A report's XP and Kusing. */
   xp?: number;
   kusing?: number;
+  /** Your pet out went up a level (its name and new level: the toast). */
+  petUp?: { name: string; level: number };
 }
 
 let data: AdventureData | null = null;
@@ -127,8 +131,8 @@ export function onAdventure(fn: (s: AdventureState, change: AdventureChange) => 
 function set(s: AdventureState, change: AdventureChange = {}, fromServer = false): void {
   // Dev: the banked stat points follow the pretend class (the bot works them out as it saves).
   if (fakeLogin() && data) s = { ...s, progress: { ...s.progress, next: xpToNext(data.stats, s.progress.level), statPoints: unspentStatPoints(data.stats, s.cls, s.progress.level, s.progress.points) } };
-  const items = JSON.stringify([s.equipped, s.bag, s.kusing]);
-  const changed = items !== JSON.stringify([state?.equipped, state?.bag, state?.kusing]);
+  const items = JSON.stringify([s.equipped, s.bag, s.kusing, s.pet ?? null]);
+  const changed = items !== JSON.stringify([state?.equipped, state?.bag, state?.kusing, state?.pet ?? null]);
   // Quests that weren't on before (not on the first state: those were on already).
   if (state && !change.started) {
     const started = s.quests.active.filter((p) => !state!.quests.active.some((x) => x.id === p.id)).map((p) => p.id);
@@ -146,6 +150,32 @@ function set(s: AdventureState, change: AdventureChange = {}, fromServer = false
 export function setItems(items: TownItems, got?: AdventureChange['got']): void {
   if (state) set({ ...state, ...items }, got ? { got } : {}, true);
 }
+
+/** Your pet out gained Pet XP (the town's `pet-xp`: a hit on a monster): the pet as it is now; a level-up's toast. */
+export function setPetXp(pet: Item, ups: number): void {
+  if (!state || state.pet?.uid !== pet.uid) return;
+  const name = anyDef(pet.defId)?.name ?? 'Your pet';
+  set({ ...state, pet }, ups ? { petUp: { name, level: pet.level } } : {}, true);
+}
+
+/** A pet action (POST /town/pet; dev: the dev town's /__pet, the same shared rules): open a pet box, send a pet out
+ *  (the one out goes back), call it back, a pet point into a node, or all of them back. Your items come back with it. */
+export async function petAct(a: TownPetAction): Promise<{ ok: boolean; message?: string } | null> {
+  if (fakeLogin()) {
+    await devItemsReady;
+    const res = await fetch(`/__pet?${new URLSearchParams({ as: fakeName() })}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(a) }).catch(() => null);
+    const r = res?.ok ? ((await res.json()) as { ok: boolean; message?: string; items?: TownItems }) : null;
+    if (r?.items) setItems(r.items);
+    return r;
+  }
+  const res = await api('/town/pet', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(a) }).catch(() => null);
+  const r = res?.ok ? ((await res.json()) as TownAdventureResponse) : null;
+  if (r?.ok) set(r.adventure, {}, true);
+  return r;
+}
+
+/** The pets block (classes/stats.json `pets`), or null. */
+export const pets = () => (data ? petRules(data.stats) : null);
 
 /** A forge action (the popup's enhance, repair and embed; the bag's disassemble and combine), rolled by the bot (POST
  *  /town/forge; dev: the dev town's /__forge, the same code). Your items come back with the answer. */
@@ -166,7 +196,7 @@ export let devItemsReady: Promise<unknown> = Promise.resolve();
 
 /** Dev: the dev town's copy of your items (its loot, potions, shop and fights use it). */
 function pushItems(s: AdventureState): Promise<unknown> {
-  return fetch(`/__items?${new URLSearchParams({ as: fakeName() })}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ equipped: s.equipped, cosmetics: s.cosmetics, bag: s.bag, kusing: s.kusing }) }).catch(() => null);
+  return fetch(`/__items?${new URLSearchParams({ as: fakeName() })}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ equipped: s.equipped, cosmetics: s.cosmetics, bag: s.bag, kusing: s.kusing, pet: s.pet ?? null }) }).catch(() => null);
 }
 
 /** Loads the data files (once); `stats` is loaded already (the scene's json cache). */
@@ -209,7 +239,7 @@ export function initAdventure(fromMe: AdventureState | undefined, trainingArmor:
       .then((r) => (r.ok ? (r.json() as Promise<{ known: boolean } & Partial<TownItems>>) : null))
       .then((r) => {
         if (!r?.known || !r.bag) return state && pushItems(state);
-        setItems({ equipped: r.equipped ?? {}, cosmetics: r.cosmetics ?? {}, bag: r.bag, kusing: r.kusing ?? 0 });
+        setItems({ equipped: r.equipped ?? {}, cosmetics: r.cosmetics ?? {}, bag: r.bag, kusing: r.kusing ?? 0, pet: r.pet ?? null });
         // Quest rewards (and pieces) just given here go into the dev town's copy too.
         if ((!rewards.length && !pieces.length) || !state || !data) return;
         const s = structuredClone(state);
@@ -484,7 +514,7 @@ async function fakePoints(path: Path, body: TownPointsAction | TownSkillsAction)
   return { ok: r.ok, message: r.message, adventure: r.progress ? { ...state, progress: r.progress } : state };
 }
 
-const fresh = (): AdventureState => ({ cls: null, quests: { active: [], done: [] }, equipped: {}, cosmetics: {}, bag: [], kusing: 0, progress: freshProgress(), trainingArmorGiven: false });
+const fresh = (): AdventureState => ({ cls: null, quests: { active: [], done: [] }, equipped: {}, cosmetics: {}, pet: null, bag: [], kusing: 0, progress: freshProgress(), trainingArmorGiven: false });
 const fakeKey = () => `mk_adventure:${fakeName()}`;
 
 function loadFake(): AdventureState {
