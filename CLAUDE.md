@@ -159,7 +159,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
 - Pets (14 Oct 2026): `pets/` (the art folder's pets/: box, icons, sheets with pets.json, tree), the manifest's `pets`
   block, `classes/stats.json` `pets` (the art folder's pets/pets-stats-block.json merged in as a new key), and
   `items/items.json` `pet-box-<id>` / `pet-<id>` (kind `pet`; boxes `opens`, `shop: pets`). Changed from the block:
-  `pets.follow.zigzagEverySteps` 2 tiles (was 3 steps; + `zigzagNote`: the zigzag only heading north or south).
+  `pets.follow.zigzagEverySteps` 3 tiles (was 3 half-tile steps; + `zigzagNote`: the zigzag only heading north or south).
 - `maps/warrens.json` is built here (`packages/game/scripts/build-warrens.ts` from `scripts/warrens/warrens-layout.json`,
   the art folder's layout copied in): run it again after changing either.
 - High terrain (13 Oct 2026, all of it repo-only, PLACEHOLDER art): `tiles/slums` cliff-rock / -scrap (+ -lower) / -chasm /
@@ -863,8 +863,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   to their other side), keeping about `distanceTiles` behind while they walk (a touch quicker outside it, slower inside:
   no stop-start; never a sprint), stopping once they've stopped and it's within it; straight on its screen quarter's move
   sheet (se/sw/ne/nw; straight east or west: se or sw); only heading north or south on screen, where no sheet fits, it
-  weaves: mostly straight at them at their pace, drifting about 27° to one side for `zigzagEverySteps` (2) tiles, then the
-  other, on that side's diagonal sheet (while walking a pet changes sheet only on its walk's first frame, so a hop or
+  zigzags along the sheets' own diagonals (a column, then a row: it always moves the way it faces, never a slide), legs of
+  `zigzagEverySteps` (3) tiles at ZIGZAG_PACE 1.25 × their pace (√2 when well behind), (while walking a pet changes sheet only on its walk's first frame, so a hop or
   stride is never cut short: Croakyangs' hop is 13 frames, about a second); more than FAR_TILES (5) behind (a dash, a teleport), it fades out and back in
   behind them (FADE_MS 220 each way), walking on if they still are; on a new map it's put behind them; stopped: idle se (heading east-ish) or sw; your own pet clicked (the scene's click asks `Pets.pick`): its special.
   Equipment panel's third tab **Pet** (`ui/pet-tab.ts` `PetTab`): the slot (drop `application/x-mk-pet`; a box,

@@ -15,9 +15,9 @@ import { CHARACTER_BIAS, GLOW_DEPTH, HEIGHT_DEPTH } from './depth';
 // and stops once they've stopped and it's within it: so it trails behind them as they go. It never sprints: at most a
 // touch quicker than them. Fallen behind past FAR_TILES (a dash, a teleport), it fades out and fades back in right behind
 // them (FADE_MS each way), walking on if they still are; on a new map it's simply put there. It walks straight, on the move sheet of its screen quarter (se, sw, ne, nw; straight east or west: se or sw);
-// only heading north or south on screen, where no sheet fits, it weaves: mostly straight at them at their pace, drifting
-// to one side for `zigzagEverySteps` tiles (and the walk cycle under way: a hop is never cut short), then the other, on
-// the diagonal sheet of the side it drifts to. Drawn at the manifest's pets.scale (smaller than its 40 × 40
+// only heading north or south on screen, where no sheet fits, it zigzags along the sheets' own diagonals (a column,
+// then a row), so it always moves the way it faces: legs of `zigzagEverySteps` tiles (and the walk cycle under way: a
+// hop is never cut short). Drawn at the manifest's pets.scale (smaller than its 40 × 40
 // art). Stopped, it turns to the camera: se if it was heading east-ish, sw if west-ish. Every pet stands on a ground
 // shadow like the characters' and mobs' (the shadow art's colour as a pixel ellipse; manifest pets.shadow, smaller under a
 // hovering pet, a pet's own in pets.shadows), tinted with the world at night; one with a `glow` a soft light round it. A click on your own pet plays its special (others' pets ignore
@@ -65,8 +65,8 @@ const FADE_MS = 220;
 const SIDE_TILES = 0.9;
 /** Within this much of straight north or south on screen (|x| ≤ this × |y|, in screen px), a pet zigzags. */
 const NORTH_SOUTH = 0.4;
-/** How far a weave leans off the straight way (tile space; 0.25 ≈ 27° on screen). */
-const WEAVE = 0.25;
+/** A zigzag's pace against its owner's (it's the longer way: √2 would keep up exactly heading north or south). */
+const ZIGZAG_PACE = 1.25;
 /** A resting pet sets off once its owner is this many tiles past `distanceTiles`. */
 const START_EXTRA = 1.8;
 
@@ -92,8 +92,9 @@ class PetView {
   private anim: Anim = 'idle';
   private dir: MoveDir = 'se';
   /** The leg it's walking: along a column or a row, how much of it is left (tiles). */
-  /** The weave under way (heading north or south): which side it drifts to and how much of its leg is left (tiles). */
-  private leg: { side: number; left: number } | null = null;
+  /** The zigzag leg under way (heading north or south): along a column (0) or a row (1), which way, and how much of it is
+   *  left (tiles). */
+  private leg: { axis: 0 | 1; sign: number; left: number } | null = null;
   /** Walking toward its owner (else resting where it stopped). */
   private following = false;
   /** Fading out to come back behind its owner ('out'), or in again ('in'); its parts' alpha follows `seen`. */
@@ -231,26 +232,24 @@ class PetView {
     const gap = dist - F.distanceTiles;
     const pace = speed * (gap > 0.5 ? 1.1 : gap > 0 ? 1 : 0.85) * (dt / 1000);
     let dir: MoveDir;
-    // (A weave under way carries on while the way stays roughly north or south: no flicking between the two.)
+    // (A zigzag under way carries on while the way stays roughly north or south: no flicking between the two.)
     const weaving = Math.abs(x) <= (this.leg ? 0.8 : NORTH_SOUTH) * Math.abs(y);
     if (weaving) {
-      // North or south, where no move sheet fits: a gentle weave at their pace, mostly straight at them, drifting to one
-      // side then the other every `zigzagEverySteps` tiles, on the diagonal sheet of the side it drifts to.
-      // (A side that's done waits for the walk cycle under way to end: Croakyangs' hop is 13 frames, about a second.)
+      // North or south, where no move sheet fits: a zigzag along the sheets' own diagonals (a column, then a row, toward
+      // them), so it always moves the way it faces: legs of `zigzagEverySteps` tiles, each one also waiting for the
+      // walk cycle under way to end (Croakyangs' hop is 13 frames, about a second). The zigzag is the longer way, so it
+      // goes ZIGZAG_PACE × their pace, a little more when behind.
       if (!this.leg || (this.leg.left <= 0 && (this.cycleStart || this.anim !== 'move'))) {
-        this.leg = { side: this.leg ? -this.leg.side : 1, left: F.zigzagEverySteps };
+        let axis: 0 | 1 = this.leg ? (this.leg.axis === 0 ? 1 : 0) : Math.abs(d[0]) >= Math.abs(d[1]) ? 0 : 1;
+        if (Math.abs(d[axis]) < 0.2) axis = axis === 0 ? 1 : 0;
+        this.leg = { axis, sign: Math.sign(d[axis]) || 1, left: F.zigzagEverySteps };
       }
       const leg = this.leg;
-      const u: [number, number] = [d[0] / dist, d[1] / dist];
-      const v: [number, number] = [u[0] - WEAVE * leg.side * u[1], u[1] + WEAVE * leg.side * u[0]];
-      const n = Math.hypot(v[0], v[1]);
-      const step = Math.min(pace * (n / (u[0] * v[0] + u[1] * v[1])), dist);
-      this.col += (v[0] / n) * step;
-      this.row += (v[1] / n) * step;
+      const step = pace * (gap > 1.5 ? Math.SQRT2 : ZIGZAG_PACE);
+      if (leg.axis === 0) this.col += leg.sign * step;
+      else this.row += leg.sign * step;
       leg.left -= step;
-      const axis = Math.abs(v[0]) >= Math.abs(v[1]) ? 0 : 1;
-      const sign = Math.sign(v[axis]);
-      dir = axis === 0 ? (sign > 0 ? 'se' : 'nw') : sign > 0 ? 'sw' : 'ne';
+      dir = leg.axis === 0 ? (leg.sign > 0 ? 'se' : 'nw') : leg.sign > 0 ? 'sw' : 'ne';
     } else {
       // Anywhere else: straight toward them, on its screen quarter's sheet (on the level: the camera-facing one).
       this.leg = null;
