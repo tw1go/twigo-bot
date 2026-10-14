@@ -863,7 +863,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   no stop-start), stopping once they've stopped and it's within it; straight on its screen quarter's move sheet
   (se/sw/ne/nw; straight east or west: se or sw); only heading north or south on screen, where no sheet fits, it zigzags:
   legs of `zigzagEverySteps` (2) tiles along a column, then a row; quicker when well behind, put back behind them past 8
-  tiles or on a map; stopped: idle se (heading east-ish) or sw; your own pet clicked (the scene's click asks `Pets.pick`): its special.
+  tiles or on a new map; stopped: idle se (heading east-ish) or sw; your own pet clicked (the scene's click asks `Pets.pick`): its special.
   Equipment panel's third tab **Pet** (`ui/pet-tab.ts` `PetTab`): the slot (drop `application/x-mk-pet`; a box,
   `x-mk-petbox`: "Open the box first"), name, Lv, Pet XP bar, pet points, the tree (manifest pets.node / nodeLocked, 32 px
   at 1×, an SVG's lines lit gold once their way is open, n/max, a + while a point can go in, tooltips), Reset. Its part of
