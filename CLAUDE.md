@@ -857,11 +857,13 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   pet shows), drawn at the manifest's `pets.scale` (0.6: the owner found 40 × 40 too big), the art's se and sw sheets swapped by
   `pets.sheetDirs` (an art problem: in all seven pets se faces left and sw right; ne and nw are right; remove the map once
   the art folder swaps the files), depth as a character's; hover
-  pets a soft shadow, Kislap a glow (ADD). Follows `follow.distanceTiles` behind its owner's facing (and 0.9 to one side),
-  straight at that spot on its owner's way's move sheet (se/sw/ne/nw; straight east or west: se or sw; never a frame of
-  idle while they walk); only while they walk north or south on screen, where no sheet fits, it zigzags: legs of
-  `zigzagEverySteps` (2) tiles along a column, then a row; faster when behind, put back at their side past 8 tiles or on a
-  new map; stopped: idle se (heading east-ish) or sw; your own pet clicked (the scene's click asks `Pets.pick`): its special.
+  pets a soft shadow, Kislap a glow (ADD). Rests while its owner is near (a click a tile or two away never sets it off); once they're
+  `follow.distanceTiles` + START_EXTRA (1.8) off, it walks toward them (never to a set spot beside them: no sliding across
+  to their other side), keeping about `distanceTiles` behind while they walk (a touch quicker outside it, slower inside:
+  no stop-start), stopping once they've stopped and it's within it; straight on its screen quarter's move sheet
+  (se/sw/ne/nw; straight east or west: se or sw); only heading north or south on screen, where no sheet fits, it zigzags:
+  legs of `zigzagEverySteps` (2) tiles along a column, then a row; quicker when well behind, put back behind them past 8
+  tiles or on a map; stopped: idle se (heading east-ish) or sw; your own pet clicked (the scene's click asks `Pets.pick`): its special.
   Equipment panel's third tab **Pet** (`ui/pet-tab.ts` `PetTab`): the slot (drop `application/x-mk-pet`; a box,
   `x-mk-petbox`: "Open the box first"), name, Lv, Pet XP bar, pet points, the tree (manifest pets.node / nodeLocked, 32 px
   at 1×, an SVG's lines lit gold once their way is open, n/max, a + while a point can go in, tooltips), Reset. Its part of

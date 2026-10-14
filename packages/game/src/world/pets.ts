@@ -9,14 +9,16 @@ import { CHARACTER_BIAS, GLOW_DEPTH, HEIGHT_DEPTH } from './depth';
 // pets/sheets/pets.json): 40 × 40 cells, the anchor (20, 35) the ground point under it; idle and special exist facing se
 // and sw only, move se, sw, ne and nw (sw and nw already drawn mirrored). Each sheet loads the first time it's needed.
 //
-// Following (stats.json pets.follow): a pet keeps about `distanceTiles` behind its owner (a little to one side), walking while they walk and
-// hurrying when it falls behind; past TELEPORT_TILES (or on a new map) it's put straight at their side. It walks
-// straight at its spot, on the move sheet nearest its way (se, sw, ne, nw by the screen's quarters; straight east or west
-// on the level: se or sw). Only while its owner walks north or south on screen, where no sheet fits, it zigzags:
-// a leg of `zigzagEverySteps` tiles along one of the sheets' diagonals (a column or a row), then the other. Drawn at the manifest's
-// pets.scale (smaller than its 40 × 40 art). Stopped, it turns to the camera: se if it was heading east-ish,
-// sw if west-ish. Hovering pets get a soft shadow under them; one with a `glow` a soft light round it. A click on your
-// own pet plays its special (others' pets ignore clicks).
+// Following (stats.json pets.follow): a pet rests while its owner is near, however they move about (a click a tile or
+// two away never sets it off). Once they're `distanceTiles` + START_EXTRA off it walks toward them (never to a set spot
+// beside them, so it never slides across to their other side), keeping about `distanceTiles` behind while they walk on,
+// and stops once they've stopped and it's within it: so it trails behind them as they go. Past TELEPORT_TILES (or on a new map) it's put straight behind
+// them. It walks straight, on the move sheet of its screen quarter (se, sw, ne, nw; straight east or west: se or sw);
+// only heading north or south on screen, where no sheet fits, it zigzags: a leg of `zigzagEverySteps` tiles along one of
+// the sheets' diagonals (a column or a row), then the other. Drawn at the manifest's pets.scale (smaller than its 40 × 40
+// art). Stopped, it turns to the camera: se if it was heading east-ish, sw if west-ish. Hovering pets get a soft shadow
+// under them; one with a `glow` a soft light round it. A click on your own pet plays its special (others' pets ignore
+// clicks).
 
 /** pets/sheets/pets.json. */
 export interface PetSheetData {
@@ -49,8 +51,10 @@ type MoveDir = 'se' | 'sw' | 'ne' | 'nw';
 const TELEPORT_TILES = 8;
 /** How far to one side of the spot right behind its owner a pet keeps. */
 const SIDE_TILES = 0.9;
-/** Close enough to where it's going. */
-const THERE = 0.12;
+/** Within this much of straight north or south on screen (|x| ≤ this × |y|, in screen px), a pet zigzags. */
+const NORTH_SOUTH = 0.4;
+/** A resting pet sets off once its owner is this many tiles past `distanceTiles`. */
+const START_EXTRA = 1.8;
 
 /** Who a pet follows: where their feet are (tile space), which way they face, and whether they're walking. */
 export interface PetOwner {
@@ -76,8 +80,8 @@ class PetView {
   /** The leg it's walking: along a column or a row, how much of it is left (tiles). */
   private leg: { axis: 0 | 1; sign: number; left: number } | null = null;
   private lastAxis: 0 | 1 = 0;
-  /** Where it's going (behind its owner), kept while they stand still. */
-  private target: { col: number; row: number } | null = null;
+  /** Walking toward its owner (else resting where it stopped). */
+  private following = false;
   private specialEnds = 0;
   private sparkle: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
 
@@ -153,7 +157,7 @@ class PetView {
     this.col = t.col;
     this.row = t.row;
     this.leg = null;
-    this.target = null;
+    this.following = false;
     this.stop();
   }
 
@@ -166,70 +170,55 @@ class PetView {
   }
 
   update(dt: number, o: PetOwner, speed: number): void {
-    const far = Math.hypot(o.spot.col - this.col, o.spot.row - this.row);
-    if (far > TELEPORT_TILES) return this.placeBehind(o);
-    // While they walk it heads for the spot behind them; standing still, it stays put unless it's well off.
-    if (o.walking || !this.target || far > this.host.rules.follow.distanceTiles + 1.5) this.target = this.behind(o);
-    const t = this.target;
-    const d: [number, number] = [t.col - this.col, t.row - this.row];
+    const F = this.host.rules.follow;
+    const d: [number, number] = [o.spot.col - this.col, o.spot.row - this.row];
     const dist = Math.hypot(d[0], d[1]);
-    const northSouth = o.walking && (o.facing === 'n' || o.facing === 's');
-    if (dist < THERE && !northSouth) {
-      // There: walking along with them while they walk (on their way's sheet; never a flicker of idle), else stopped.
-      if (!o.walking) return this.stop();
-      this.col = t.col;
-      this.row = t.row;
-      const way = this.wayOf(o.facing);
-      if (this.anim !== 'move' || way !== this.dir) {
-        this.dir = way;
-        this.anim = 'move';
-        this.play('move');
-      }
-      return;
+    if (dist > TELEPORT_TILES) return this.placeBehind(o);
+    // Resting while they're near; off once they're START_EXTRA past its distance; stopping again within it.
+    if (!this.following && dist > F.distanceTiles + START_EXTRA) this.following = true;
+    // (While they walk on it keeps going, easing to their pace at its distance: never a stop-start.)
+    if (this.following && !o.walking && dist <= F.distanceTiles) {
+      this.following = false;
+      this.leg = null;
     }
+    if (!this.following) return this.stop();
+    // Its way on screen (px): x = (col − row) × 16, y = (col + row) × 8. A little quicker than them until it's at its
+    // distance, a little slower inside it; well behind, quicker still.
+    const x = (d[0] - d[1]) * 16;
+    const y = (d[0] + d[1]) * 8;
+    const gap = dist - F.distanceTiles;
+    const pace = speed * (gap > 3 ? 1.5 : gap > 0.5 ? 1.15 : gap > 0 ? 1 : 0.85) * (dt / 1000);
     let dir: MoveDir;
-    if (northSouth) {
-      // Their heading is north or south on screen, where no move sheet fits: legs of `zigzagEverySteps` tiles along a
-      // column, then a row, both the way they're heading; a little quicker or slower to keep its distance.
-      const sign = o.facing === 's' ? 1 : -1;
-      if (!this.leg || this.leg.left <= 0 || this.leg.sign !== sign) {
-        const axis: 0 | 1 = this.leg?.sign === sign ? (this.lastAxis === 0 ? 1 : 0) : Math.abs(d[0]) >= Math.abs(d[1]) ? 0 : 1;
-        this.leg = { axis, sign, left: this.host.rules.follow.zigzagEverySteps };
+    const legOn = !!this.leg && this.leg.left > 0 && Math.sign(d[this.leg.axis]) === this.leg.sign;
+    if (legOn || Math.abs(x) <= NORTH_SOUTH * Math.abs(y)) {
+      // North or south, where no move sheet fits: legs of `zigzagEverySteps` tiles along a column, then a row (the
+      // zigzag is the longer way: a little quicker).
+      if (!legOn) {
+        let axis: 0 | 1 = this.lastAxis === 0 ? 1 : 0;
+        if (Math.abs(d[axis]) < 0.2) axis = axis === 0 ? 1 : 0;
+        this.leg = { axis, sign: Math.sign(d[axis]) || 1, left: F.zigzagEverySteps };
         this.lastAxis = axis;
       }
-      const leg = this.leg;
-      const ahead = (d[0] + d[1]) * sign < -0.5; // past its spot: easy
-      const pace = speed * Math.SQRT2 * (far > this.host.rules.follow.distanceTiles + 1 ? 1.35 : ahead ? 0.8 : 1.02);
-      const step = Math.min(pace * (dt / 1000), leg.left);
-      if (leg.axis === 0) this.col += sign * step;
-      else this.row += sign * step;
+      const leg = this.leg!;
+      const step = Math.min(pace * Math.SQRT2, leg.left);
+      if (leg.axis === 0) this.col += leg.sign * step;
+      else this.row += leg.sign * step;
       leg.left -= step;
-      dir = leg.axis === 0 ? (sign > 0 ? 'se' : 'nw') : sign > 0 ? 'sw' : 'ne';
+      dir = leg.axis === 0 ? (leg.sign > 0 ? 'se' : 'nw') : leg.sign > 0 ? 'sw' : 'ne';
     } else {
-      // Anywhere else: straight there, on the sheet of its screen quarter (on the level, the half it had).
+      // Anywhere else: straight toward them, on its screen quarter's sheet (on the level: the camera-facing one).
       this.leg = null;
-      const x = (d[0] - d[1]) * 16;
-      const y = (d[0] + d[1]) * 8;
-      const step = Math.min(speed * (far > this.host.rules.follow.distanceTiles + 1 ? 1.6 : 1.05) * (dt / 1000), dist);
+      const step = Math.min(pace, dist);
       this.col += (d[0] / dist) * step;
       this.row += (d[1] / dist) * step;
-      // (While they walk, their way's sheet: the small turns of catching up never flip it.)
-      const south = Math.abs(y) < 0.35 * Math.abs(x) ? this.dir === 'se' || this.dir === 'sw' || this.anim !== 'move' : y > 0;
-      dir = o.walking ? this.wayOf(o.facing) : x >= 0 ? (south ? 'se' : 'ne') : south ? 'sw' : 'nw';
+      const south = Math.abs(y) < 0.35 * Math.abs(x) || y > 0;
+      dir = x >= 0 ? (south ? 'se' : 'ne') : south ? 'sw' : 'nw';
     }
     if (this.anim !== 'move' || dir !== this.dir) {
       this.dir = dir;
       this.anim = 'move';
       this.play('move');
     }
-  }
-
-  /** The move sheet for an owner's way (east or west on the level: the camera-facing se or sw; never asked for north or
-   *  south). */
-  private wayOf(facing: string): MoveDir {
-    if (facing === 'e') return 'se';
-    if (facing === 'w') return 'sw';
-    return facing === 'se' || facing === 'sw' || facing === 'ne' || facing === 'nw' ? facing : this.dir;
   }
 
   /** Stopped: idle, facing the camera on the side it was heading (east-ish se, west-ish sw); a special plays out first. */
