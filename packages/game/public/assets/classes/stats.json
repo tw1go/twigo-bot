@@ -1554,6 +1554,8 @@
         "name": "Fairy Cha",
         "rarity": "rare",
         "hover": true,
+        "glow": "#F5A8FF",
+        "glowNote": "Repo addition (owner, 14 Oct 2026): a soft pink glow, like Kislap's.",
         "bonus": {
           "dropRate": 2.3
         }

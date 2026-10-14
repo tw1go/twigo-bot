@@ -623,7 +623,7 @@ export type TownServerMessage =
   /** `cp`: their combat rating now (with their buffs; none for someone gone or with no stats here). */
   | { t: 'buffs-of'; id: string; buffs: TownBuff[]; cp?: number }
   /** Another player's worn gear and stats (an answer to `inspect`); `gone`: they left. */
-  | { t: 'inspect'; id: string; gone?: boolean; cls?: string | null; level?: number; equipped?: Partial<Record<EquipPlace, Item>>; cosmetics?: Partial<Record<CosmeticPlace, Item>>; stats?: InspectStats | null }
+  | { t: 'inspect'; id: string; gone?: boolean; cls?: string | null; level?: number; equipped?: Partial<Record<EquipPlace, Item>>; cosmetics?: Partial<Record<CosmeticPlace, Item>>; pet?: Item | null; stats?: InspectStats | null }
   /** Someone used a mobility move (their steps follow). */
   | { t: 'move'; id: string; move: TownMove; col: number; row: number }
   /** Someone (`from`, a town id) asks you to trade: answer with trade-answer within `ms`. */

@@ -7,6 +7,7 @@ import { RARITY_COLOUR } from './item-art';
 import { itemPicture, itemTipFor, rarityOf } from './item-tip';
 import { slotSilhouette } from './equipment';
 import { moreStatsSection } from './more-stats';
+import { type PetArt, PetTab } from './pet-tab';
 
 // 🔍 Someone else's character (the player menu's Info, ui/target.ts): a window like your equipment panel, in the middle
 // of the screen: their name and title, their character idling (a drag turns it) with its resting weapon, their class
@@ -36,6 +37,8 @@ export interface InspectOptions {
   idle: { frames: number; fps: number };
   /** Asks the server for their gear and stats (false: no connection). */
   ask: (id: string) => boolean;
+  /** The pet tree's node art (manifest pets), if there are pets. */
+  pets?: PetArt | null;
 }
 
 export class InspectWindow {
@@ -57,9 +60,13 @@ export class InspectWindow {
   private readonly tabs = el('div', 'eq-tabs');
   private gearCols: HTMLElement[] = [];
   private costumeCols: HTMLElement[] = [];
+  private middle: HTMLElement | null = null;
+  /** Their pet out (ui/pet-tab.ts, read only). */
+  private readonly petTab: PetTab;
   private cls: string | null = null;
 
   constructor(private readonly o: InspectOptions) {
+    this.petTab = new PetTab(o.pets ?? null, (lines, at) => this.placeTip(lines, at), true);
     this.root.id = 'inspect';
     this.root.hidden = true;
     this.root.setAttribute('role', 'dialog');
@@ -112,8 +119,9 @@ export class InspectWindow {
     for (const _ of COSMETIC_PLACES) costumeRight.append(el('span', 'eq-gap'));
     this.gearCols = [column(LEFT, 'left'), column(RIGHT, 'right')];
     this.costumeCols = [costumeLeft, costumeRight];
-    body.append(this.gearCols[0], costumeLeft, middle, this.gearCols[1], costumeRight);
-    for (const [tab, label] of [['gear', 'Gear'], ['costume', 'Costume']] as const) {
+    this.middle = middle;
+    body.append(this.gearCols[0], costumeLeft, middle, this.gearCols[1], costumeRight, this.petTab.root);
+    for (const [tab, label] of [['gear', 'Gear'], ['costume', 'Costume'], ['pet', 'Pet']] as const) {
       const b = el('button', 'eq-tab', label);
       b.dataset.tab = tab;
       b.setAttribute('role', 'tab');
@@ -169,11 +177,25 @@ export class InspectWindow {
     this.raf = requestAnimationFrame(tick);
   }
 
-  private setTab(tab: 'gear' | 'costume'): void {
+  private setTab(tab: 'gear' | 'costume' | 'pet'): void {
     for (const c of this.gearCols) c.hidden = tab !== 'gear';
     for (const c of this.costumeCols) c.hidden = tab !== 'costume';
+    if (this.middle) this.middle.hidden = tab === 'pet';
+    this.petTab.root.hidden = tab !== 'pet';
     for (const b of this.tabs.children) b.setAttribute('aria-selected', String((b as HTMLElement).dataset.tab === tab));
     this.tip.hidden = true;
+  }
+
+  /** The tooltip beside `at` (the Pet tab's slot and nodes), or hidden (null). */
+  private placeTip(lines: HTMLElement[] | null, at?: HTMLElement): void {
+    if (!lines || !at) return void (this.tip.hidden = true);
+    this.tip.replaceChildren(...lines);
+    this.tip.hidden = false;
+    this.tip.classList.remove('eq-tip-left');
+    const r = at.getBoundingClientRect();
+    const box = this.root.getBoundingClientRect();
+    this.tip.style.left = `${Math.round(r.right - box.left + 6)}px`;
+    this.tip.style.top = `${Math.round(r.top - box.top)}px`;
   }
 
   /** A Costume place (read-only): the cosmetic worn there, or its name when empty. */
@@ -197,12 +219,13 @@ export class InspectWindow {
   }
 
   /** The server's answer (only for the one shown). */
-  answer(m: { id: string; gone?: boolean; cls?: string | null; level?: number; equipped?: Partial<Record<EquipPlace, Item>>; cosmetics?: Partial<Record<CosmeticPlace, Item>>; stats?: InspectStats | null }): void {
+  answer(m: { id: string; gone?: boolean; cls?: string | null; level?: number; equipped?: Partial<Record<EquipPlace, Item>>; cosmetics?: Partial<Record<CosmeticPlace, Item>>; pet?: Item | null; stats?: InspectStats | null }): void {
     if (this.root.hidden || m.id !== this.player?.id) return;
     if (m.gone) return void this.stats.replaceChildren(el('div', 'in-wait', 'They left.'));
     this.cls = m.cls ?? null;
     this.equipped = m.equipped ?? {};
     this.cosmetics = m.cosmetics ?? {};
+    this.petTab.render(m.pet ?? null);
     this.renderSlots();
     this.renderWho(m.level ?? 1);
     this.renderStats(m.stats ?? null);
