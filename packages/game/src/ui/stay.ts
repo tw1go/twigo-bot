@@ -12,8 +12,10 @@ import { coinIcon, el, showPopup, showReward } from './reward';
 // Kowens (/get-kowens; GET /town/stay's `daily`, POST /town/daily): a Claim button until they're claimed (here or in
 // Discord), and on the first visit of the day a pop-up offering them. Dev: pretend, with &stay=ready to start with one
 // ready, &voice=N for N voice Kowens already earned, &daily=claimed for the daily Kowens already claimed.
+// On mobile: positioned below the quest/warrens tracker on the left (like quests), with a collapsible header.
 
 const TICK_MS = 60_000;
+const FOLD_KEY = 'mk_stay_fold';
 
 const q = new URLSearchParams(location.search);
 const pretend: TownStayInfo = { ready: false, minutes: 14, every: 15, claimed: 3, max: 20, voice: { earned: Number(q.get('voice') ?? 5), max: 12, minutes: 7, every: 15 }, daily: { claimed: q.get('daily') === 'claimed', amount: 5 } };
@@ -45,13 +47,58 @@ const kowens = (n: number) => `${n} ${n === 1 ? 'Kowen' : 'Kowens'}`;
 
 export class StayReward {
   private readonly root = el('div');
+  private readonly body = el('div', 'st-body');
+  private readonly foldBtn = el('button', 'st-fold', '−');
   private info: TownStayInfo | null = null;
   private busy = false;
 
   constructor() {
     this.root.id = 'stay';
     this.root.hidden = true;
+
+    // Header with fold toggle (only visible on mobile, see CSS).
+    const head = el('div', 'st-head');
+    head.append(el('span', 'st-head-label', 'DAILY'), this.foldBtn);
+    this.foldBtn.setAttribute('aria-label', 'Toggle daily reward');
+    this.foldBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.setFolded(!this.root.classList.contains('st-folded'));
+    });
+    let folded = false;
+    try { folded = localStorage.getItem(FOLD_KEY) === '1'; } catch {}
+    this.setFolded(folded, false);
+
+    this.root.append(head, this.body);
     document.body.append(this.root);
+
+    // Mobile: sit below the quest or warrens tracker on the left (CSS sets left:12px; top is set here).
+    const place = () => {
+      if (window.innerWidth > 560 && window.innerHeight > 500) { this.root.style.top = ''; this.body.style.maxHeight = ''; return; }
+      const wt = document.getElementById('warrens-tracker');
+      const qt = document.getElementById('quest-tracker');
+      const active = (wt && !wt.hidden ? wt : null) ?? (qt && !qt.hidden ? qt : null);
+      if (!active) return; // no visible tracker yet — keep CSS default top until one appears
+      const top = Math.round(active.getBoundingClientRect().bottom + 8);
+      this.root.style.top = `${top}px`;
+      const chatBtn = document.getElementById('chat-toggle');
+      const stopAt = chatBtn ? Math.round(chatBtn.getBoundingClientRect().top - 8) : (window.innerHeight - 66);
+      this.body.style.maxHeight = `${Math.max(60, stopAt - top - 28)}px`; // 28 px for the header row
+    };
+    for (const id of ['quest-tracker', 'warrens-tracker']) {
+      const tracked = document.getElementById(id);
+      if (tracked) {
+        new ResizeObserver(place).observe(tracked);
+        new MutationObserver(place).observe(tracked, { attributes: true, attributeFilter: ['hidden', 'style'] });
+      }
+    }
+    // The Slums' golem timer lives inside .th-left and makes it taller; observe it directly so place()
+    // re-runs when that happens and the quest tracker (repositioned by quests.ts) gives the right bottom.
+    const thLeft = document.querySelector('#town-hud .th-left');
+    if (thLeft) new ResizeObserver(place).observe(thLeft);
+    addEventListener('resize', place);
+    place();
+    setTimeout(place, 300); // re-place after the trackers have set their own positions
+
     // A minute here is a minute counted there (the server says when one is ready; this is only the countdown shown).
     // Voice time is counted in Discord, so that's asked again each minute.
     setInterval(() => {
@@ -83,12 +130,13 @@ export class StayReward {
     const s = this.info;
     if (!s) return;
     this.root.hidden = false;
-    this.root.className = s.ready ? 'st-ready' : 'st-wait';
+    this.root.classList.toggle('st-ready', s.ready);
+    this.root.classList.toggle('st-wait', !s.ready);
     const today = el('span', 'st-today', `${s.claimed}/${s.max} today`);
     if (!s.ready) {
       const left = s.every - s.minutes;
       const text = s.claimed >= s.max ? 'All of today’s stay Kowens claimed. Back tomorrow!' : `Staying in town: next Kowen in ${left <= 1 ? 'under a minute' : `${left} min`}`;
-      this.root.replaceChildren(el('span', 'st-clock', '⏳'), el('span', 'st-text', text), today, ...this.voiceLine(), ...this.dailyLine());
+      this.body.replaceChildren(el('span', 'st-clock', '⏳'), el('span', 'st-text', text), today, ...this.voiceLine(), ...this.dailyLine());
       this.root.title = 'A Kowen for every 15 minutes in town, up to 20 a day';
       return;
     }
@@ -96,8 +144,15 @@ export class StayReward {
     button.addEventListener('click', () => void this.claim(button));
     const words = el('span', 'st-words');
     words.append(el('b', undefined, '+1 Kowen'), el('span', undefined, `for staying ${s.every} minutes`));
-    this.root.replaceChildren(coinIcon(2), words, today, button, ...this.voiceLine(), ...this.dailyLine());
+    this.body.replaceChildren(coinIcon(2), words, today, button, ...this.voiceLine(), ...this.dailyLine());
     this.root.title = '';
+  }
+
+  private setFolded(on: boolean, remember = true): void {
+    this.root.classList.toggle('st-folded', on);
+    this.foldBtn.textContent = on ? '+' : '−';
+    if (!remember) return;
+    try { localStorage.setItem(FOLD_KEY, on ? '1' : '0'); } catch {}
   }
 
   /** How many voice chat Kowens are left today, and the minutes in voice to the next. */
@@ -108,7 +163,7 @@ export class StayReward {
     const line = el('div', 'st-voice');
     line.title = `Voice chat in Discord: 1 Kowen per ${v.every} min (with someone else, not deafened), up to ${v.max} a day`;
     line.append(
-      el('span', 'st-clock', '🎙️'),
+      el('span', 'st-clock', '🎤'),
       el('span', 'st-text', left ? `Voice chat: ${left} ${left === 1 ? 'Kowen' : 'Kowens'} left today · next after ${v.every - v.minutes} min in voice` : 'Voice chat: all of today’s Kowens earned. Back tomorrow!'),
       el('span', 'st-today', `${v.earned}/${v.max} today`),
     );

@@ -195,14 +195,16 @@
         #creator.cr-parlor { padding: 8px; }
         #creator .cr-tabs { padding: 10px 10px 0; }
         #creator .cr-title-pick { min-height: 80px; padding: 10px; }
-        /* The house creator: the whole box scrolls (the house goes up out of view), the buttons stay at the bottom. */
+        /* The house creator: preview at the top (auto row), settings scroll in the 1fr row below it, button always visible. */
         #creator.cr-house:not(.cr-parlor) { padding-top: 72px; }
-        #creator.cr-house .cr-box { overflow-y: auto; overscroll-behavior: contain; }
-        #creator.cr-house .cr-panel, #creator.cr-house .cr-side { display: block; flex: none; }
-        #creator.cr-house .cr-settings { overflow: visible; }
-        #creator.cr-house .cr-actions { position: sticky; bottom: 0; z-index: 1; background: #111827; }
-        #creator.cr-house .cr-note { background: #111827; }
         #creator .cr-title-name { font-size: calc(15px * var(--text)); }
+      }
+      /* House creator on a landscape phone: strip outer padding, force the desktop side-by-side layout back (overrides
+         the single-column that max-width:720px sets) and restore the desktop preview column. Canvas scaling is in JS. */
+      @media (max-height: 500px) and (min-width: 561px) {
+        #creator.cr-house:not(.cr-parlor) { padding: 8px; }
+        #creator.cr-house:not(.cr-parlor) .cr-panel { grid-template-columns: minmax(180px, 240px) 1fr; grid-template-rows: unset; }
+        #creator.cr-house:not(.cr-parlor) .cr-preview { flex-direction: column; gap: 16px; padding: 16px 12px; border-right: calc(var(--px) * 1px) solid #2A2D3E; border-bottom: 0; }
       }
       #elsewhere { position: fixed; inset: 0; z-index: 3; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0, 0, 0, 0.65); color: #c0caf5; font: calc(15px * var(--text))/1.45 var(--ui-font); text-align: center; }
       #elsewhere .ew-card { max-width: 340px; padding: 20px 22px; border: 3px solid #7C2AE8; background: #111827; }
@@ -366,8 +368,15 @@
       @media (max-width: 420px) { #settings .st-key-row { grid-template-columns: 1fr 76px 76px; font-size: calc(13px * var(--text)); } }
       #town-hud .hud-prereg { margin-top: 8px; text-align: left; font-size: calc(13px * var(--text)); }
       @media (max-width: 560px), (max-height: 500px) {
-        #town-hud .th-name { max-width: 110px; font-size: calc(15px * var(--text)); }
-        #town-hud .th-avatar, #town-hud .th-avatar canvas { width: 45px; height: 45px; }
+        #town-hud .th-avatar, #town-hud .th-avatar canvas { width: 40px; height: 40px; }
+        #town-hud .th-profile { gap: 6px; padding: 4px 8px 4px 4px; }
+        #town-hud .th-name { max-width: 100px; font-size: calc(13px * var(--text)); }
+        #town-hud .th-cp-tab { display: none; }
+        #town-hud .th-counter { padding: 2px 2px 2px 6px; }
+        #town-hud .th-coin, #town-hud .th-shovel { width: 20px; height: 20px; font-size: calc(15px * var(--text)); line-height: 20px; }
+        #town-hud .th-shovel-img { width: 26px; height: 26px; margin: -3px -1px -3px -3px; }
+        #town-hud .th-count { font-size: calc(14px * var(--text)); min-width: 20px; }
+        #town-hud .th-plus { width: 22px; height: 22px; font-size: calc(15px * var(--text)); }
         /* The tutorial, News and Settings stacked under the minimap (the bag under them), so the Kowens and shovels
            fit on one row beside them. */
         #town-hud .th-corner { gap: 6px; }
@@ -510,6 +519,7 @@
         #chat .ch-fold { display: none; } /* the Chat button already folds it here */
         #chat-toggle { display: block; }
         body.chat-open #chat-toggle { background: #7C2AE8; color: #fff; }
+        body.chat-open #chat { z-index: 3; }
       }
       #chat .ch-row { display: flex; gap: 6px; align-items: stretch; }
       #chat .ch-row .ch-input { flex: 1; min-width: 0; }
@@ -551,7 +561,7 @@
       #inventory .iv-locked::after { content: ''; position: absolute; inset: 0; margin: auto; width: 30px; height: 30px; background: var(--px-lock) 0 0 / 30px 30px; image-rendering: pixelated; opacity: 0.9; }
       #inventory .iv-emoji { font-size: calc(30px * var(--text)); line-height: 1; }
       #inventory .iv-empty-note { position: absolute; left: 0; right: 0; top: 14px; text-align: center; font-size: calc(14px * var(--text)); color: #A9B1D6; pointer-events: none; }
-      #inventory .iv-detail { flex: none; min-height: 80px; padding: 10px 6px 0; border-top: 2px solid #1E1B3A; }
+      #inventory .iv-detail { flex: 0 1 auto; overflow-y: auto; min-height: 80px; padding: 10px 6px 0; border-top: 2px solid #1E1B3A; }
       #inventory .iv-name { font-size: calc(21px * var(--text)); font-weight: 700; }
       #inventory .iv-meta, #inventory .iv-hint { font-size: calc(14px * var(--text)); color: #A9B1D6; }
       #inventory .iv-about { margin-top: 6px; font-size: calc(14px * var(--text)); color: #c0caf5; }
@@ -623,7 +633,7 @@
       .agimat-icon { display: block; flex: none; width: 32px; height: 32px; margin: -4px 0; image-rendering: pixelated; }
       .eq-tip-binds, #inventory .eq-tip-binds, :is(#equipment, #inspect) .eq-tip-binds, .iv-tip .eq-tip-binds { color: #FDBA74; }
       :is(#equipment, #inspect) .eq-broken > :first-child { filter: grayscale(1) brightness(0.7); }
-      @media (max-width: 760px), (max-height: 500px) { #inventory { top: 132px; right: 8px; max-height: calc(100vh - 150px); } #inventory .iv-tab { font-size: calc(12px * var(--text)); padding: 6px 2px 5px; } #inventory .iv-tabs { overflow-x: auto; scrollbar-width: none; } #inventory .iv-grid { grid-template-columns: repeat(var(--cols, 5), minmax(0, 60px)); grid-auto-rows: 60px; } #inventory .iv-cell { width: 100%; height: 60px; } }
+      @media (max-width: 760px), (max-height: 500px) { #inventory { top: 132px; right: 8px; max-height: calc(100vh - 150px); } #inventory .iv-tab { font-size: calc(12px * var(--text)); padding: 6px 2px 5px; } #inventory .iv-tabs { overflow-x: auto; scrollbar-width: none; } #inventory .iv-grid { grid-template-columns: repeat(var(--cols, 5), minmax(0, 60px)); grid-auto-rows: 60px; flex: 0 1 auto; max-height: 26%; min-height: 0; } #inventory .iv-cell { width: 100%; height: 60px; } #inventory .iv-detail { min-height: 60px; } }
       @media (max-height: 500px) and (min-width: 561px) { #inventory .iv-detail { padding: 6px 6px 0; min-height: 0; } #inventory .iv-name { font-size: calc(15px * var(--text)); } #inventory .iv-meta, #inventory .iv-hint, #inventory .iv-about, #inventory .iv-note { font-size: calc(11px * var(--text)); } #inventory .iv-actions { gap: 4px; margin-top: 4px; } #inventory .iv-act { padding: 4px 10px; font-size: calc(12px * var(--text)); border-width: 2px; box-shadow: 0 2px 0 #0B0A1A; } }
       #chat .em-open { height: 100%; min-width: 38px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 4px; background: rgba(0, 0, 0, 0.35); padding: 0 6px; }
       #chat .em-open:hover, #chat .em-open[aria-expanded='true'] { background: rgba(0, 0, 0, 0.55); box-shadow: 0 0 0 1px rgba(183, 148, 246, 0.6); }
@@ -682,6 +692,12 @@
          offering them on the day's first visit. */
       #stay .st-daily-ready { color: #FDE68A; }
       #stay .st-daily-claim { padding: 3px 10px 5px; font-size: calc(12px * var(--text)); animation: none; }
+      /* Collapsible header: hidden on desktop, shown on mobile above the body. */
+      #stay .st-head { display: none; align-items: center; gap: 6px; color: #7A8099; font-size: calc(11px * var(--text)); letter-spacing: 0.08em; text-transform: uppercase; }
+      #stay .st-head-label { flex: 1; }
+      #stay .st-fold { width: 18px; height: 18px; padding: 0; border: 0; background: none; color: #7A8099; font: 700 calc(15px * var(--text))/1 var(--ui-font); cursor: var(--cur-hand, pointer); }
+      #stay .st-fold:hover { color: #fff; }
+      #stay .st-body { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; width: 100%; }
       #reward .dk-coin { display: flex; justify-content: center; margin: 4px 0 8px; }
       #reward .dk-claim { display: block; margin: 0 auto 12px; padding: 8px 18px 10px; border: 2px solid #1E1B3A; border-radius: 0; background: #F8BF27; color: #1E1B3A; font: inherit; font-size: calc(16px * var(--text)); font-weight: 700; box-shadow: inset 0 2px 0 #FDE68A, inset 0 -3px 0 #B45309, 0 3px 0 #1E1B3A; }
       #reward .dk-claim:hover { background: #FACC15; }
@@ -690,9 +706,16 @@
       /* Phones: beside the Chat button, out of the way while the chat is open; only what needs doing (the voice line
          and a claimed daily line wait for a bigger screen). */
       @media (max-width: 560px), (max-height: 500px) {
-        #stay { left: 90px; right: 12px; bottom: 12px; width: auto; max-width: 340px; margin-left: auto; }
-        body.chat-open #stay { display: none; }
+        /* Position set by JS (below the quest/warrens tracker on the left); column layout for header + content. */
+        #stay { left: 12px; right: auto; bottom: auto; top: 320px; width: min(210px, calc(100vw - 24px)); flex-direction: column; align-items: stretch; gap: 4px; }
+        #stay .st-head { display: flex; }
+        #stay .st-body { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; overflow-y: auto; }
+        #stay.st-folded .st-body { display: none; }
         #stay .st-voice:not(.st-daily-ready) { display: none; }
+        #stay.st-ready .st-claim:not(.st-daily-claim) { flex: 1 0 100%; }
+        #stay.st-ready { padding: 5px 8px 6px 8px; }
+        #stay.st-ready .st-claim { padding: 3px 14px 4px; font-size: calc(13px * var(--text)); }
+        #stay.st-ready .st-words b { font-size: calc(14px * var(--text)); }
         #bag-button { top: 234px; width: 40px; height: 40px; } /* under the HUD's column of buttons */
       }
       /* Talking to an NPC (ui/npc-dialog.ts): bottom centre, the chat window's nine-slice at the HUD's scale (--px),
@@ -1633,10 +1656,14 @@
         body.hotbar-on #inventory .iv-tab { font-size: calc(12px * var(--text)); padding: 4px 6px 3px; }
         body.hotbar-on #inventory .iv-detail { min-height: 0; padding: 6px 6px 0; }
         body.hotbar-on #inventory .iv-wallet { padding: 4px 6px 0; font-size: calc(13px * var(--text)); }
+        /* Equipment: same full-screen treatment as inventory in landscape */
+        body.hotbar-on #equipment:not([hidden]) { top: 8px; left: 8px; right: 8px; bottom: auto; width: auto; max-width: none; max-height: calc(100vh - 68px); overflow-y: auto; padding: 10px 12px 12px; gap: 8px; }
+        body.hotbar-on #equipment .eq-stats { flex: none; }
         /* When top row is expanded (75 px tall hotbar): push overlapping panels up */
         body.hb-top-open.hotbar-on #chat, body.hb-top-open.hotbar-on #bag-button { bottom: 90px; }
         body.hb-top-open.hotbar-on #toast { bottom: 90px; }
         body.hb-top-open.hotbar-on #inventory:not([hidden]) { bottom: 98px; }
+        body.hb-top-open.hotbar-on #equipment:not([hidden]) { max-height: calc(100vh - 106px); }
         /* Settings: scrollable overlay, wider card, 2-column section layout */
         #settings { align-items: flex-start; overflow-y: auto; }
         #settings .st-card, #settings .st-wide { width: min(560px, calc(100vw - 32px)); }

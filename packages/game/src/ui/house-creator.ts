@@ -194,6 +194,18 @@ export function mountHouseCreator(h: HouseCreatorHooks): void {
   root.append(box);
   document.body.append(root);
 
+  const fitCanvas = () => {
+    const cs = getComputedStyle(preview);
+    const aw = preview.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const ah = Math.min(preview.clientHeight, panel.clientHeight) - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    const scale = Math.min(aw / w, ah / hgt, PREVIEW_ZOOM);
+    if (scale <= 0) return;
+    canvas.style.width = `${Math.round(w * scale)}px`;
+    canvas.style.height = `${Math.round(hgt * scale)}px`;
+  };
+  const canvasRo = new ResizeObserver(fitCanvas);
+  canvasRo.observe(panel);
+
   const keys = (e: KeyboardEvent) => {
     if (e.key !== 'Escape' || building) return;
     e.stopPropagation();
@@ -203,6 +215,7 @@ export function mountHouseCreator(h: HouseCreatorHooks): void {
   if (!building) root.addEventListener('pointerdown', (e) => e.target === root && shut());
   function shut(): void {
     document.removeEventListener('keydown', keys, true);
+    canvasRo.disconnect();
     root.remove();
     h.onClose?.();
   }
