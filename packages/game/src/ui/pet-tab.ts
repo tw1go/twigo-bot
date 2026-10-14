@@ -1,4 +1,4 @@
-import { type AdventureState, type Item, type PetNode, type PetRules, PET_NODES, PET_NODE_NAMES, boxOpens, isGearDef, nodeOpen, nodePoints, nodeText, petPointsLeft, petXp, petXpToNext } from '@mikazuki/shared';
+import { type Item, type PetNode, type PetRules, PET_NODES, PET_NODE_NAMES, boxOpens, isGearDef, nodeOpen, nodePoints, nodeText, petPointsLeft, petXp, petXpToNext } from '@mikazuki/shared';
 import { adventure, anyDef, itemData, petAct, pets } from '../net/adventure';
 import { playSound } from '../audio/sound';
 import { RARITY_COLOUR, RARITY_TEXT } from './item-art';
@@ -98,11 +98,15 @@ export class PetTab {
   private readonly tree = el('div', 'pt-tree');
   private readonly foot = el('div', 'pt-foot');
   private busy = false;
+  /** The pet shown (yours out, or theirs in the Info window). */
+  private pet: Item | null = null;
 
   constructor(
     private readonly art: PetArt | null,
     /** The panel's tooltip: shown beside `at` with these lines, or hidden (null). */
     private readonly tip: (lines: HTMLElement[] | null, at?: HTMLElement) => void,
+    /** Someone else's pet (the player menu's Info): shown only, nothing to drag, spend or reset. */
+    private readonly readOnly = false,
   ) {
     const top = el('div', 'pt-top');
     top.append(this.slot, this.info);
@@ -111,6 +115,9 @@ export class PetTab {
     this.root.append(top, el('div', 'pt-tree-title', 'Pet tree'), this.tree, this.foot);
     const s = this.slot;
     s.setAttribute('aria-label', 'Pet slot');
+    s.addEventListener('pointerenter', () => this.slotTip());
+    s.addEventListener('pointerleave', () => this.tip(null));
+    if (readOnly) return;
     s.addEventListener('dblclick', () => void this.callBack());
     s.addEventListener('contextmenu', (e) => {
       e.preventDefault();
@@ -120,8 +127,6 @@ export class PetTab {
       const pet = adventure()?.pet;
       if (pet && e.altKey) chatItem(pet);
     });
-    s.addEventListener('pointerenter', () => this.slotTip());
-    s.addEventListener('pointerleave', () => this.tip(null));
     s.addEventListener('dragover', (e) => {
       const t = e.dataTransfer?.types ?? [];
       if (!t.some((x) => x.startsWith('application/x-mk-'))) return;
@@ -189,13 +194,14 @@ export class PetTab {
   }
 
   private slotTip(): void {
-    const pet = adventure()?.pet;
-    this.tip(pet ? [...itemTipFor(pet), itemKeys(pet, 'worn')] : [el('div', 'eq-tip-name', 'Pet')], this.slot);
+    const pet = this.pet;
+    this.tip(pet ? [...itemTipFor(pet), ...(this.readOnly ? [] : [itemKeys(pet, 'worn')])] : [el('div', 'eq-tip-name', 'Pet')], this.slot);
   }
 
-  render(s: AdventureState): void {
+  /** Shows a pet (yours out, or theirs), or the empty slot (null). */
+  render(pet: Item | null): void {
     const R = pets();
-    const pet = s.pet ?? null;
+    this.pet = pet;
     this.slot.replaceChildren();
     this.slot.classList.toggle('eq-worn', !!pet);
     this.slot.setAttribute('aria-label', pet ? `Pet: ${nameOf(pet)}` : 'Pet slot (empty)');
@@ -205,7 +211,7 @@ export class PetTab {
     }
     this.info.replaceChildren();
     if (!pet || !R) {
-      this.info.append(el('div', 'pt-hint', 'Drag a pet here. Pet boxes are sold at the sari-sari store.'));
+      this.info.append(el('div', 'pt-hint', this.readOnly ? 'No pet out.' : 'Drag a pet here. Pet boxes are sold at the sari-sari store.'));
       this.tree.hidden = true;
       this.foot.replaceChildren();
       (this.root.querySelector('.pt-tree-title') as HTMLElement).hidden = true;
@@ -221,10 +227,11 @@ export class PetTab {
     fill.style.width = next ? `${Math.min(100, (petXp(pet) / next) * 100)}%` : '100%';
     bar.classList.toggle('pt-max', !next);
     bar.append(fill, el('span', 'pt-xp-text', next ? `${petXp(pet).toLocaleString()} / ${next.toLocaleString()}` : 'MAX'));
-    bar.title = next ? 'Pet XP: your hits on monsters while it’s out (the monster’s level, at most once a second)' : 'Lv 20: the most a pet reaches';
+    bar.title = next ? 'Pet XP: hits on monsters while it’s out (the monster’s level, at most once a second)' : 'Lv 20: the most a pet reaches';
     const left = petPointsLeft(R, pet);
-    this.info.append(name, el('div', 'pt-level', `Lv ${pet.level}`), bar, el('div', `pt-points${left ? ' pt-points-on' : ''}`, `Pet points: ${left}`));
+    this.info.append(name, el('div', 'pt-level', `Lv ${pet.level}`), bar, el('div', `pt-points${left && !this.readOnly ? ' pt-points-on' : ''}`, `Pet points: ${left}`));
     this.renderTree(R, pet, left);
+    if (this.readOnly) return void this.foot.replaceChildren();
     const reset = el('button', 'eq-reset', 'Reset');
     reset.title = 'Get every pet point back (free)';
     reset.disabled = !Object.values(pet.points ?? {}).some((n) => n);
@@ -257,7 +264,7 @@ export class PetTab {
       const rule = R.tree[node];
       const n = nodePoints(pet, node);
       const open = nodeOpen(R, pet, node);
-      const can = open && n < rule.max && left > 0;
+      const can = !this.readOnly && open && n < rule.max && left > 0;
       const b = el('button', `pt-node${open ? '' : ' pt-locked'}${n >= rule.max ? ' pt-full' : ''}${can ? ' pt-can' : ''}`);
       b.style.left = `${AT[node][0]}px`;
       b.style.top = `${AT[node][1]}px`;
@@ -267,7 +274,9 @@ export class PetTab {
       else b.append(el('span', 'pt-node-word', PET_NODE_NAMES[node].slice(0, 3)));
       if (can) b.append(el('span', 'pt-plus', '+'));
       b.append(el('span', 'pt-count', `${n}/${rule.max}`));
+      if (this.readOnly) b.classList.add('pt-view');
       b.addEventListener('click', () => {
+        if (this.readOnly) return;
         if (can) return void this.spend(node);
         playSound('error');
         toast(!open ? `Needs ${rule.requires.map((r) => `${PET_NODE_NAMES[r]} ${R.tree[r].max}/${R.tree[r].max}`).join(' and ')} first` : n >= rule.max ? `${PET_NODE_NAMES[node]} is maxed` : 'No pet points left', 2000, 'bad');
