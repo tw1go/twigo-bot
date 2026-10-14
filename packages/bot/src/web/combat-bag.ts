@@ -13,17 +13,19 @@ import {
   stackLimit,
   takeKind,
   dropRefusal,
+  boxPrice,
+  petRules,
 } from '@mikazuki/shared';
 import { loadDungeons } from './stats-data.js';
 
 // 💰 A character's combat bag and Kusing wallet, pure (the bot keeps them with the character, web/adventure.ts; the game's
 // dev server in memory): loot picked up (Kusing always fits; an item only if the bag has room), HP and MP Potions used,
 // the sari-sari store's Healing tab (HP/MP Potions for Kusing) and Smithing tab (whetstones and Repair Kits for Kowens),
-// by stats.json's prices; only the Low tier is sold until a character reaches the next tier's level (Medium from Lv 10).
+// the Pets tab (pet boxes for Kowens, stats.json pets.boxPrice), by stats.json's prices; only the Low tier is sold until a character reaches the next tier's level (Medium from Lv 10).
 // And dev's ?give=.
 
 /** The parts of a character that hold items and money. */
-export type CombatItems = Pick<AdventureState, 'equipped' | 'cosmetics' | 'bag' | 'kusing'>;
+export type CombatItems = Pick<AdventureState, 'equipped' | 'cosmetics' | 'bag' | 'kusing' | 'pet'>;
 
 /** What lies on the ground: Kusing, or an item. */
 export type LootContent = { kusing: number } | { item: Item };
@@ -66,7 +68,7 @@ export function usePotion(data: ItemData, c: CombatItems, defId: string): { heal
  *  Kowens for whetstones and Repair Kits). */
 export interface CombatWare {
   def: CombatItemDef;
-  tab: 'healing' | 'smithing' | 'dungeons' | 'travel';
+  tab: 'healing' | 'smithing' | 'dungeons' | 'travel' | 'pets';
   cost: number;
   currency: 'kusing' | 'kowens';
 }
@@ -97,6 +99,10 @@ export function combatWares(data: ItemData, level: number): CombatWare[] {
     if (def.shop === 'potion') {
       const tier = def.tier ? S.potions.tiers[def.tier] : undefined;
       if (tier) out.push({ def, tab: 'healing', cost: tier.kusing, currency: 'kusing' });
+    } else if (def.shop === 'pets') {
+      // A pet box (stats.json pets.boxPrice by its pet's rarity, in Kowens), in the Pets tab.
+      const price = boxPrice(data, def.id);
+      if (price) out.push({ def, tab: 'pets', cost: price, currency: 'kowens' });
     } else if (def.shop === 'ticket') {
       // A dungeon's ticket (classes/dungeons.json: its shop price in Kusing), in the Dungeons tab.
       const price = ticketPrice(def.id);
@@ -165,6 +171,8 @@ export function devGive(data: ItemData, c: CombatItems, defId: string, opts: { r
   } else {
     item = newItem(data.stats, def, uid(), opts.count ?? 1);
     if (def.kind === 'agimat' && opts.level) item.level = opts.level;
+    // A pet straight away (as a box opens: bound, Lv 1, or ?give=pet-croakyangs:::5's level).
+    if (def.kind === 'pet') Object.assign(item, { bound: true, xp: 0, points: {}, level: Math.max(1, Math.min(petRules(data.stats)?.levelCap ?? 20, opts.level ?? 1)) });
   }
   return addToBag(data, c.bag, item, uid) ? item : null;
 }

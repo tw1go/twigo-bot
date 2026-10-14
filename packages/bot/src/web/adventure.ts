@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import type { AdventureState, ClassesFile, EquipPlace, Item, QuestDef, QuestReward, QuestsFile, StatName, TownAdventureResponse, TownEquipAction, TownForgeAction, TownForgeResponse, TownPointsAction, TownQuestAction, TownSkillsAction, CosmeticPlace } from '@mikazuki/shared';
-import { STAT_NAMES, bagSlots, classSkills, classBuffs, buffSkillLevels, damageSkillLevels, skillLevelOf, equipFromBag, giveGear, giveQuestRewards, giveQuestPieces, questKill, readyToReport, withLeveling, missingTraining, moveUnlock, newItem, placesFor, swapTrainingGear, trainingGear, takeKind, unequipToBag, wearCheck, COSMETIC_PLACES, wearCosmetic, unwearCosmetic } from '@mikazuki/shared';
+import type { AdventureState, ClassesFile, EquipPlace, Item, QuestDef, QuestReward, QuestsFile, StatName, TownAdventureResponse, TownEquipAction, TownForgeAction, TownForgeResponse, TownPointsAction, TownQuestAction, TownSkillsAction, CosmeticPlace, TownPetAction, PetNode } from '@mikazuki/shared';
+import { STAT_NAMES, bagSlots, classSkills, classBuffs, buffSkillLevels, damageSkillLevels, skillLevelOf, equipFromBag, giveGear, giveQuestRewards, giveQuestPieces, questKill, readyToReport, withLeveling, missingTraining, moveUnlock, newItem, placesFor, swapTrainingGear, trainingGear, takeKind, unequipToBag, wearCheck, COSMETIC_PLACES, wearCosmetic, unwearCosmetic, PET_NODES, callBackPet, gainPetXp, openPetBox, petIdOf, petRules, petSwapRefusal, resetPetPoints, sendOutPet, spendPetPoint } from '@mikazuki/shared';
 import { db } from '../db/db.js';
 import { type LevelGain, type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView, raiseSkill, refundPoints, resetSkillPoints, resetStatPoints, spendPoint } from './progress.js';
 import type { Attacker } from './town-mobs.js';
@@ -31,9 +31,11 @@ const PLACES = new Set<EquipPlace>(['weapon', 'head', 'body', 'hands', 'bottoms'
 
 export { placesFor };
 
-export const freshAdventure = (): AdventureState => ({ cls: null, quests: { active: [], done: [] }, equipped: {}, cosmetics: {}, bag: [], kusing: 0, progress: freshProgress(loadStats()), trainingArmorGiven: false });
+export const freshAdventure = (): AdventureState => ({ cls: null, quests: { active: [], done: [] }, equipped: {}, cosmetics: {}, pet: null, bag: [], kusing: 0, progress: freshProgress(loadStats()), trainingArmorGiven: false });
 /** How a worn cosmetic's place is kept in the items table's `place` ("costume:head"). */
 const COSTUME_PLACE = 'costume:';
+/** The pet out's place in the items table. */
+const PET_PLACE = 'pet';
 
 /** A new item's uid. */
 export const newUid = () => randomBytes(8).toString('hex');
@@ -221,6 +223,8 @@ type ItemRow = {
   count: number;
   place: string | null;
   slot: number | null;
+  xp: number;
+  points: string | null;
 };
 const getStmt = db.prepare<[string], Row>(
   'SELECT class, quests, level, xp, str_points, dex_points, int_points, skill_levels, skill_points, training_armor_given, kusing FROM adventurers WHERE user_id = ?',
@@ -234,10 +238,10 @@ const setStmt = db.prepare(
      skill_levels = excluded.skill_levels, skill_points = excluded.skill_points, training_armor_given = excluded.training_armor_given, kusing = excluded.kusing,
      updated = excluded.updated`,
 );
-const itemsStmt = db.prepare<[string], ItemRow>('SELECT uid, def_id, level, rarity, plus, broken, bound, luck, agimats, lines, stat, lock, count, place, slot FROM items WHERE owner = ? ORDER BY slot, created, uid');
+const itemsStmt = db.prepare<[string], ItemRow>('SELECT uid, def_id, level, rarity, plus, broken, bound, luck, agimats, lines, stat, lock, count, place, slot, xp, points FROM items WHERE owner = ? ORDER BY slot, created, uid');
 const dropItemsStmt = db.prepare('DELETE FROM items WHERE owner = ?');
 const addItemStmt = db.prepare(
-  `INSERT INTO items (uid, owner, def_id, level, rarity, plus, broken, bound, luck, agimats, lines, stat, lock, count, place, slot, created) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  `INSERT INTO items (uid, owner, def_id, level, rarity, plus, broken, bound, luck, agimats, lines, stat, lock, count, place, slot, created, xp, points) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 );
 
 const fromRow = (r: ItemRow): Item => ({
@@ -254,21 +258,24 @@ const fromRow = (r: ItemRow): Item => ({
   count: r.count,
   ...(r.stat ? { stat: r.stat as Item['stat'] } : {}),
   ...(r.lock ? { lock: r.lock as Item['lock'] } : {}),
+  ...(r.points !== null ? { xp: r.xp, points: JSON.parse(r.points) } : {}),
 });
 
 /** Their items: worn by place (gear, and cosmetics as "costume:<place>"), and the combat bag in order. */
-function loadItems(userId: string): Pick<AdventureState, 'equipped' | 'cosmetics' | 'bag'> {
+function loadItems(userId: string): Pick<AdventureState, 'equipped' | 'cosmetics' | 'bag' | 'pet'> {
   const equipped: AdventureState['equipped'] = {};
   const cosmetics: AdventureState['cosmetics'] = {};
   const bag: Item[] = [];
   const worn = new Map<string, Item>();
+  let pet: Item | null = null;
   for (const r of itemsStmt.all(userId)) {
-    if (r.place && PLACES.has(r.place as EquipPlace)) worn.set(r.place, fromRow(r));
+    if (r.place === PET_PLACE) pet = fromRow(r);
+    else if (r.place && PLACES.has(r.place as EquipPlace)) worn.set(r.place, fromRow(r));
     else if (r.place?.startsWith(COSTUME_PLACE) && COSMETIC_PLACES.includes(r.place.slice(COSTUME_PLACE.length) as CosmeticPlace)) cosmetics[r.place.slice(COSTUME_PLACE.length) as CosmeticPlace] = fromRow(r);
     else bag.push(fromRow(r));
   }
   for (const p of PLACES) if (worn.has(p)) equipped[p] = worn.get(p); // in the panel's order
-  return { equipped, cosmetics, bag };
+  return { equipped, cosmetics, bag, pet };
 }
 
 function load(userId: string): AdventureState {
@@ -293,9 +300,11 @@ const save = db.transaction((userId: string, s: AdventureState): void => {
   dropItemsStmt.run(userId);
   const now = Date.now();
   const put = (i: Item, place: string | null, slot: number | null) =>
-    addItemStmt.run(i.uid, userId, i.defId, i.level, i.rarity, i.plus, i.broken ? 1 : 0, i.bound ? 1 : 0, i.luck, JSON.stringify(i.agimats), JSON.stringify(i.lines), i.stat ?? null, i.lock ?? null, i.count, place, slot, now);
+    addItemStmt.run(i.uid, userId, i.defId, i.level, i.rarity, i.plus, i.broken ? 1 : 0, i.bound ? 1 : 0, i.luck, JSON.stringify(i.agimats), JSON.stringify(i.lines), i.stat ?? null, i.lock ?? null, i.count, place, slot, now,
+      i.xp ?? 0, i.points ? JSON.stringify(i.points) : null);
   for (const [place, item] of Object.entries(s.equipped)) if (item) put(item, place, null);
   for (const [place, item] of Object.entries(s.cosmetics)) if (item) put(item, COSTUME_PLACE + place, null);
+  if (s.pet) put(s.pet, PET_PLACE, null);
   s.bag.forEach((item, i) => put(item, null, i));
 });
 
@@ -335,8 +344,8 @@ export function questRewardsFor(userId: string): QuestReward[] {
 
 /** Their worn items, combat bag and Kusing (the town's `items` message). */
 export function combatOf(userId: string): CombatItems {
-  const { equipped, cosmetics, bag, kusing } = load(userId);
-  return { equipped, cosmetics, bag, kusing };
+  const { equipped, cosmetics, bag, kusing, pet } = load(userId);
+  return { equipped, cosmetics, bag, kusing, pet: pet ?? null };
 }
 
 /** The cosmetics a member wears (the look they show: shared cosmetics.ts). */
@@ -406,11 +415,11 @@ export const tradeFor = db.transaction((users: [string, string], offers: [HeldOf
   return { ok: true };
 });
 
-/** Their class, worn weapon (its kind and its + for the aura: 0 when broken) and level, for the town (the chat's badge,
+/** Their class, worn weapon (its kind and its + for the aura: 0 when broken), level and pet out, for the town (the chat's badge,
  *  the resting weapon). */
-export function kitOf(userId: string): { cls: string | null; weapon: string | null; weaponPlus: number; level: number } {
+export function kitOf(userId: string): { cls: string | null; weapon: string | null; weaponPlus: number; level: number; pet: string | null } {
   const s = load(userId);
-  return { cls: s.cls, weapon: s.equipped.weapon?.defId ?? null, weaponPlus: weaponPlusOf(s.equipped.weapon), level: s.progress.level };
+  return { cls: s.cls, weapon: s.equipped.weapon?.defId ?? null, weaponPlus: weaponPlusOf(s.equipped.weapon), level: s.progress.level, pet: petIdOf(loadItemData(), s.pet) };
 }
 
 /** A worn weapon's + as its aura shows it (none when broken). */
@@ -424,7 +433,7 @@ export function forgeFor(userId: string, a: TownForgeAction): TownForgeResponse 
   const r = forge(loadItemData(), s, a, Math.random, newUid);
   // (A refused one changes nothing; an enhance that failed still used its stones.)
   if (r.ok) save(userId, s);
-  return { ...r, items: { equipped: s.equipped, cosmetics: s.cosmetics, bag: s.bag, kusing: s.kusing }, worn: r.ok && before !== JSON.stringify(s.equipped) };
+  return { ...r, items: { equipped: s.equipped, cosmetics: s.cosmetics, bag: s.bag, kusing: s.kusing, pet: s.pet ?? null }, worn: r.ok && before !== JSON.stringify(s.equipped) };
 }
 
 /** Who they are in a fight (MobRoom.attack's Attacker): class, level, stat points spent, everything worn, and their damage
@@ -432,7 +441,8 @@ export function forgeFor(userId: string, a: TownForgeAction): TownForgeResponse 
 export function fighterOf(userId: string): Attacker {
   const s = load(userId);
   const moves = Object.fromEntries((classOf(s.cls)?.mobility ?? []).map((m) => [m.id, skillLevelOf(s.progress, m.id)]));
-  return { cls: s.cls, level: s.progress.level, points: s.progress.points, gear: Object.values(s.equipped), skills: damageSkillLevels(classOf(s.cls), s.progress), moves, buffLevels: buffSkillLevels(classOf(s.cls), s.progress) };
+  // (The pet out counts like gear: its pet tree and its kind's bonus, shared items.ts itemTotals.)
+  return { cls: s.cls, level: s.progress.level, points: s.progress.points, gear: [...Object.values(s.equipped), ...(s.pet ? [s.pet] : [])], skills: damageSkillLevels(classOf(s.cls), s.progress), moves, buffLevels: buffSkillLevels(classOf(s.cls), s.progress) };
 }
 
 /** Changes their progress through `f` (web/progress.ts) and saves it. */
@@ -452,6 +462,64 @@ export const gainXpFor = (userId: string, n: number): LevelGain => progress(user
 
 /** Sets their level (nothing in the bot calls it yet: the game's dev server's ?level= has its own). */
 export const levelFor = (userId: string, level: number): LevelGain => progress(userId, (cls, p) => levelTo(loadStats(), cls, p, level));
+
+// ── Pets (@mikazuki/shared pets.ts) ──
+
+/** When each member last sent a pet out or called one back (the swap cooldown), in memory: a restart forgets it. */
+const petChanges = new Map<string, number>();
+
+/** A pet action on their state: a box opened into a bound pet, a pet sent out or called back (never in combat, nor
+ *  within the swap cooldown of the last change: `inCombat` is the town's rule), a pet point spent or every one back. */
+export function petStep(userId: string, s: AdventureState, a: TownPetAction, inCombat: boolean, now = Date.now()): Result & { changed?: boolean } {
+  const D = loadItemData();
+  const R = petRules(D.stats);
+  if (!R) return { ok: false, message: 'No pets yet.' };
+  if (a.action === 'open') return openPetBox(D, s, a.item, newUid);
+  if (a.action === 'out' || a.action === 'back') {
+    const no = petSwapRefusal(R, petChanges.get(userId), now, inCombat);
+    if (no) return { ok: false, message: no };
+    const r = a.action === 'out' ? sendOutPet(D, s, a.item) : callBackPet(D, s);
+    if (r.ok) petChanges.set(userId, now);
+    return { ...r, changed: r.ok };
+  }
+  if (!s.pet) return { ok: false, message: 'No pet is out.' };
+  if (a.action === 'reset') return resetPetPoints(s.pet) ? { ok: true, message: 'Pet points back.' } : { ok: false, message: 'No pet points spent.' };
+  const no = spendPetPoint(R, s.pet, a.node);
+  return no ? { ok: false, message: no } : { ok: true };
+}
+
+/** POST /town/pet for a member. `changed`: the pet out changed (everyone sees it; fights use its stats). */
+export function townPet(userId: string, a: TownPetAction, inCombat: boolean): TownAdventureResponse & { changed: boolean } {
+  const s = load(userId);
+  const r = petStep(userId, s, a, inCombat);
+  if (r.ok) save(userId, s);
+  return { ...r, adventure: s, changed: !!r.changed };
+}
+
+const petRowStmt = db.prepare<[string], ItemRow>("SELECT uid, def_id, level, rarity, plus, broken, bound, luck, agimats, lines, stat, lock, count, place, slot, xp, points FROM items WHERE owner = ? AND place = 'pet'");
+const petXpStmt = db.prepare('UPDATE items SET level = ?, xp = ? WHERE uid = ? AND owner = ?');
+
+/** `n` Pet XP for the pet a member has out (the town: a hit on a monster, at most once a second), saved by itself (one
+ *  row: this comes often); the pet as it is now and how many levels it went up, or null: no pet out (or it's maxed). */
+export function petXpFor(userId: string, n: number): { pet: Item; ups: number } | null {
+  const R = petRules(loadStats());
+  const row = petRowStmt.get(userId);
+  if (!R || !row) return null;
+  const pet = fromRow(row);
+  const g = gainPetXp(R, pet, n);
+  if (!g.gained) return null;
+  petXpStmt.run(pet.level, pet.xp ?? 0, pet.uid, userId);
+  return { pet, ups: g.ups };
+}
+
+/** The body of POST /town/pet, if it's a valid one. */
+export function parsePetAction(body: unknown): TownPetAction | null {
+  const b = body as Record<string, unknown> | null;
+  if ((b?.action === 'open' || b?.action === 'out') && typeof b.item === 'string' && b.item.length <= 40) return { action: b.action, item: b.item };
+  if (b?.action === 'back' || b?.action === 'reset') return { action: b.action };
+  if (b?.action === 'spend' && PET_NODES.includes(b.node as PetNode)) return { action: 'spend', node: b.node as PetNode };
+  return null;
+}
 
 /** The body of POST /town/quest, if it's a valid one. */
 export function parseQuestAction(body: unknown): TownQuestAction | null {

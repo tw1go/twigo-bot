@@ -5,7 +5,7 @@ import type { Duplex } from 'node:stream';
 import { WebSocket, WebSocketServer } from 'ws';
 import { Arena, type ArenaBets, type ArenaSeat, arenaLine } from './town-arena.js';
 import type { LevelGain } from './progress.js';
-import type { Attacker, MobKill, MobRoom } from './town-mobs.js';
+import type { Attacker, MobHit, MobKill, MobRoom } from './town-mobs.js';
 import { PARTY_MAX, type PartyChange, Parties } from './town-party.js';
 import { type VitalMax, Vitals, shown } from './town-vitals.js';
 import { Buffs, type Nearby } from './town-buffs.js';
@@ -16,7 +16,7 @@ import { type LootRoll, LootRolls } from './town-roll.js';
 import { type HeldOffer, type Trade, Trades, checkOffer } from './trade.js';
 import { type Inside, type Run, type RunDeps, type RunNews, Warrens, type WarrensMap } from './town-warrens.js';
 import type { WarrensData, ChatItemLink, CharacterProgress, QuestProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item, TradeEnd, TradeView } from '@mikazuki/shared';
-import { type LanternPost, isLanternMap, itemName, itemStats, lanternPostOf, lanternRefusal, lootRollRules, rollWorthy, partyXpMult, partyXpRange, potionCooldownGroup, skillMpCost, targetPriority, tradeRules } from '@mikazuki/shared';
+import { type LanternPost, PetXpClock, petRules, petXpForHit, isLanternMap, itemName, itemStats, lanternPostOf, lanternRefusal, lootRollRules, rollWorthy, partyXpMult, partyXpRange, potionCooldownGroup, skillMpCost, targetPriority, tradeRules } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
 // messages). The server keeps everyone's tile and checks each step — on the map, not blocked, next to the last
@@ -117,6 +117,8 @@ export interface TownProfile {
   weapon?: string | null;
   weaponPlus?: number;
   level?: number;
+  /** The pet they have out (stats.json pets.list key), if any. */
+  pet?: string | null;
 }
 
 export interface TownOptions {
@@ -156,6 +158,10 @@ export interface TownOptions {
      *  with why. Without it nobody can trade. */
     trade?(users: [string, string], offers: [HeldOffer, HeldOffer], names: [string, string]): { ok: true } | { ok: false; message: string };
   };
+  /** Pets (web/adventure.ts petXpFor): Pet XP for the pet a member has out (saved): the pet now and the levels it went
+   *  up, or null (none out, or maxed). A hit on a monster gives its level, at most once a stats.json pets.xp.throttleSeconds
+   *  a member. Without it pets gain nothing. */
+  pets?: { xp(userId: string, n: number): { pet: Item; ups: number } | null };
   /** Rolls drops (Math.random if left out; the game's dev server can make loot rich to try it). */
   lootRandom?: () => number;
   /** Rolls dropped gear's plus (lootRandom if left out). */
@@ -252,6 +258,11 @@ export interface Town {
   /** A member chose a class or changed their weapon (or its +: the aura): everyone in town sees it (the resting weapon,
    *  the chat's badge). */
   kit(userId: string, cls: string | null, weapon: string | null, weaponPlus?: number): void;
+  /** A member sent a pet out or called it back (null): everyone in town sees it follow them (or go). */
+  pet(userId: string, pet: string | null): void;
+  /** Whether a member is in a fight now (hit, hitting or missed within a few seconds on a battle map): pets can't be
+   *  changed then. */
+  inCombat(userId: string): boolean;
   /** A member's worn items, combat bag or Kusing changed outside the town (the shop, dev's ?give=): theirs to them. */
   items(userId: string, got?: { kusing?: number; item?: Item }): void;
   /** Dev and tests: `item` drops at a member's feet for them and their party in the room, as a kill's would (rolled for
@@ -428,6 +439,18 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   /** Who they are in a fight: class, level, points, everything worn, skill levels (the class and weapon alone without
    *  saved levels), and the buffs on them. */
   const fighterOf = (c: Conn): Attacker => ({ ...(opts.progress?.fighter(c.userId) ?? { cls: c.player.cls, gear: [c.player.weapon] }), ...(buffs ? { buffs: buffs.effective(c.userId) } : {}) });
+  /** Pet XP (shared pets.ts): a swing that landed on a monster (not a miss) gives the pet out the level of the highest
+   *  monster it hit, at most once a throttle per member. A level-up: the sparkle for everyone, the toast for them. */
+  const petClock = new PetXpClock((petRules(STATS)?.xp.throttleSeconds ?? 1) * 1000);
+  const petXp = (c: Conn, mobs: MobRoom, hits: MobHit[], now: number) => {
+    if (!opts.pets || !c.player.pet) return;
+    const n = petXpForHit(hits.flatMap((h) => (h.miss ? [] : [mobs.levelOf(h.id) ?? 0])));
+    if (n <= 0 || !petClock.take(c.userId, now)) return;
+    const g = opts.pets.xp(c.userId, n);
+    if (!g) return;
+    send(c, { t: 'pet-xp', pet: g.pet, gained: n, ups: g.ups });
+    if (g.ups) everyone({ t: 'pet', id: c.player.id, pet: c.player.pet, up: g.pet.level });
+  };
   /** Their most HP and MP, a regen buff's share (and their DEF, DEF rate and level, for mobs' hits). */
   const maxOf = (c: Conn): VitalMax => {
     const d = rules!.fighter(fighterOf(c));
@@ -899,6 +922,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
           send(c, e);
         }
         killed(c.room, r.kills);
+        petXp(c, mobs, r.hits, now);
         return;
       }
       case 'buff-off':
@@ -1423,6 +1447,16 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       everyone({ t: 'rename', id: c.player.id, nickname });
       known.set(userId, { ...known.get(userId)!, nickname });
       tellParty(userId);
+    },
+    pet(userId, pet) {
+      const c = conns.get(userId);
+      if (!c) return;
+      c.player.pet = pet;
+      everyone({ t: 'pet', id: c.player.id, pet });
+      refreshVitals(c); // its HP
+    },
+    inCombat(userId) {
+      return !!vitals?.inCombat(userId, Date.now());
     },
     kit(userId, cls, weapon, weaponPlus = 0) {
       const c = conns.get(userId);

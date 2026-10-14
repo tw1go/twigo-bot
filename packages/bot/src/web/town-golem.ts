@@ -220,6 +220,10 @@ const DEMO = ['slam', 'toss', 'glare', 'drop', 'call', 'slam', 'toss', 'glare', 
 
 export class Golem {
   readonly id: string;
+  /** Its level (the mob table's). */
+  get level(): number {
+    return this.boss.level;
+  }
   private phase: Phase = 'gone';
   private col: number;
   private row: number;

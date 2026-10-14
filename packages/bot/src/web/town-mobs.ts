@@ -1209,6 +1209,12 @@ export class MobRoom {
 
   // ── The director's hands (a Warrens run, town-warrens.ts) ──
 
+  /** A mob's level (the golem's too), or null: no such mob. (A hit on it gives the hitter's pet that much Pet XP.) */
+  levelOf(id: string): number | null {
+    if (this.golem?.id === id) return this.golem.level;
+    return this.byId.get(id)?.level ?? null;
+  }
+
   /** A mob as the director sees it (where it is now, its HP, its foe), or null. */
   mobInfo(id: string, now: number): { id: string; at: [number, number]; hp: number; maxHp: number; dead: boolean; foe: string | null; facing: TownMobFacing; zone: string; kind: string } | null {
     const m = this.byId.get(id);
