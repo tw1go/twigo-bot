@@ -65,6 +65,8 @@ const FADE_MS = 220;
 const SIDE_TILES = 0.9;
 /** Within this much of straight north or south on screen (|x| ≤ this × |y|, in screen px), a pet zigzags. */
 const NORTH_SOUTH = 0.4;
+/** The way each move sheet faces, in tile space (screen x = (col − row) × 16, y = (col + row) × 8). */
+const AXIS_OF: Record<MoveDir, [number, number]> = { se: [1, 0], nw: [-1, 0], sw: [0, 1], ne: [0, -1] };
 /** A zigzag's pace against its owner's (it's the longer way: √2 would keep up exactly heading north or south). */
 const ZIGZAG_PACE = 1.25;
 /** A resting pet sets off once its owner is this many tiles past `distanceTiles`. */
@@ -231,7 +233,10 @@ class PetView {
     const y = (d[0] + d[1]) * 8;
     const gap = dist - F.distanceTiles;
     const pace = speed * (gap > 0.5 ? 1.1 : gap > 0 ? 1 : 0.85) * (dt / 1000);
+    // Where it wants to go this frame: a sheet, a way (tile space, a unit vector) and how far.
     let dir: MoveDir;
+    let way: [number, number];
+    let step: number;
     // (A zigzag under way carries on while the way stays roughly north or south: no flicking between the two.)
     const weaving = Math.abs(x) <= (this.leg ? 0.8 : NORTH_SOUTH) * Math.abs(y);
     if (weaving) {
@@ -245,23 +250,31 @@ class PetView {
         this.leg = { axis, sign: Math.sign(d[axis]) || 1, left: F.zigzagEverySteps };
       }
       const leg = this.leg;
-      const step = pace * (gap > 1.5 ? Math.SQRT2 : ZIGZAG_PACE);
-      if (leg.axis === 0) this.col += leg.sign * step;
-      else this.row += leg.sign * step;
+      step = pace * (gap > 1.5 ? Math.SQRT2 : ZIGZAG_PACE);
+      way = leg.axis === 0 ? [leg.sign, 0] : [0, leg.sign];
       leg.left -= step;
       dir = leg.axis === 0 ? (leg.sign > 0 ? 'se' : 'nw') : leg.sign > 0 ? 'sw' : 'ne';
     } else {
       // Anywhere else: straight toward them, on its screen quarter's sheet (on the level: the camera-facing one).
       this.leg = null;
-      const step = Math.min(pace, dist);
-      this.col += (d[0] / dist) * step;
-      this.row += (d[1] / dist) * step;
+      step = Math.min(pace, dist);
+      way = [d[0] / dist, d[1] / dist];
       const south = Math.abs(y) < 0.35 * Math.abs(x) || y > 0;
       dir = x >= 0 ? (south ? 'se' : 'ne') : south ? 'sw' : 'nw';
     }
     // Setting off: its way's sheet at once. Already walking: a new way's sheet waits for the cycle under way to end (a
-    // hop or a stride is never cut short), then starts at its first frame.
-    if (this.anim !== 'move' || (dir !== this.dir && this.cycleStart)) {
+    // hop or a stride is never cut short), then starts at its first frame. Meanwhile it goes on the way it faces, as long
+    // as that still brings it nearer (never moving one way while it faces another: that's a slide); else it turns now.
+    if (this.anim === 'move' && dir !== this.dir && !this.cycleStart) {
+      const [fc, fr] = AXIS_OF[this.dir];
+      if (fc * d[0] + fr * d[1] > 0) {
+        way = [fc, fr];
+        dir = this.dir;
+      }
+    }
+    this.col += way[0] * step;
+    this.row += way[1] * step;
+    if (this.anim !== 'move' || dir !== this.dir) {
       this.dir = dir;
       this.anim = 'move';
       this.play('move');
