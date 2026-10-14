@@ -18899,6 +18899,8 @@
       "critRate": "critrate",
       "critDmg": "critdmg"
     },
+    "scale": 0.6,
+    "scaleNote": "Pets are drawn at 0.6 of their art (owner, 14 Oct 2026: they looked too big beside the players).",
     "ids": [
       "fork-of-jord",
       "croakyangs",

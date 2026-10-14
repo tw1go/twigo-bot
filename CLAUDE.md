@@ -158,7 +158,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   the Warren Gate (object, its blocked tiles, `arrive.warrens`; written by `scripts/build-warrens.ts`).
 - Pets (14 Oct 2026): `pets/` (the art folder's pets/: box, icons, sheets with pets.json, tree), the manifest's `pets`
   block, `classes/stats.json` `pets` (the art folder's pets/pets-stats-block.json merged in as a new key), and
-  `items/items.json` `pet-box-<id>` / `pet-<id>` (kind `pet`; boxes `opens`, `shop: pets`).
+  `items/items.json` `pet-box-<id>` / `pet-<id>` (kind `pet`; boxes `opens`, `shop: pets`). Changed from the block:
+  `pets.follow.zigzagEverySteps` 2 tiles (was 3 steps; + `zigzagNote`: the zigzag only heading north or south).
 - `maps/warrens.json` is built here (`packages/game/scripts/build-warrens.ts` from `scripts/warrens/warrens-layout.json`,
   the art folder's layout copied in): run it again after changing either.
 - High terrain (13 Oct 2026, all of it repo-only, PLACEHOLDER art): `tiles/slums` cliff-rock / -scrap (+ -lower) / -chasm /
@@ -853,10 +854,12 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `xp.table` (2,600 at Lv 1 … 215,300 at Lv 19; 1,745,600 in all), the cap 20 (XP 0, "MAX"). World (`world/pets.ts`
   `Pets`, made in TownScene `makePets`; everyone's, keyed 'me' or a town id, drawn once its owner is): sheets
   pets/sheets/pet-<id>-<anim>-<dir>.png (40 × 40, anchor (20, 35), frames per pet in pets.json; loaded the first time a
-  pet shows), depth as a character's; hover pets a soft shadow, Kislap a glow (ADD). Follows `follow.distanceTiles` behind
-  its owner's facing, only along a column or a row (the move sheets' diagonals), so heading straight n/s/e/w on screen it
-  zigzags, legs of `zigzagEverySteps` half-tile steps; faster when behind, put back at their side past 8 tiles or on a new
-  map; stopped: idle se (heading east-ish) or sw; your own pet clicked (the scene's click asks `Pets.pick`): its special.
+  pet shows), drawn at the manifest's `pets.scale` (0.6: the owner found 40 × 40 too big), depth as a character's; hover
+  pets a soft shadow, Kislap a glow (ADD). Follows `follow.distanceTiles` behind its owner's facing (and 0.9 to one side),
+  straight at that spot on its owner's way's move sheet (se/sw/ne/nw; east or west keeps the half it had; never a frame of
+  idle while they walk); only while they walk north or south on screen, where no sheet fits, it zigzags: legs of
+  `zigzagEverySteps` (2) tiles along a column, then a row; faster when behind, put back at their side past 8 tiles or on a
+  new map; stopped: idle se (heading east-ish) or sw; your own pet clicked (the scene's click asks `Pets.pick`): its special.
   Equipment panel's third tab **Pet** (`ui/pet-tab.ts` `PetTab`): the slot (drop `application/x-mk-pet`; a box,
   `x-mk-petbox`: "Open the box first"), name, Lv, Pet XP bar, pet points, the tree (manifest pets.node / nodeLocked, 32 px
   at 1×, an SVG's lines lit gold once their way is open, n/max, a + while a point can go in, tooltips), Reset. Its part of
