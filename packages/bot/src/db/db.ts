@@ -20,6 +20,7 @@ import { today } from '../time.js';
 //  • v13, the web game's finished trades (a log: who gave whom what): trades.
 //  • v14, the front page's close beta applications (web/beta.ts; the CMS's Beta applications): beta_applications.
 //  • v15, accounts.voice_last_week(_minutes): the week before's voice minutes, kept for Monday's payout.
+//  • v16, items.xp and items.points: a pet's Pet XP and pet points (the pet out: place 'pet').
 //  • kv: small singleton documents keyed by their old file name (e.g. 'race.json', 'rotation.json').
 // Stores cache their state in memory (the bot is the only writer) and save through db/sync.ts, which writes only
 // the rows that changed.
@@ -319,6 +320,11 @@ export const MIGRATIONS: string[] = [
      the weekly voice payout (Monday noon) can still rank a member who was in voice since midnight. */ `
   ALTER TABLE accounts ADD COLUMN voice_last_week TEXT;           -- Monday YYYY-MM-DD
   ALTER TABLE accounts ADD COLUMN voice_last_week_minutes INTEGER;
+  `,
+  /* v16: pets (web/adventure.ts, @mikazuki/shared pets.ts): a pet item's Pet XP into its level (its level is the item's
+     own) and its pet points by node; the pet out is the item with place 'pet'. */ `
+  ALTER TABLE items ADD COLUMN xp INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE items ADD COLUMN points TEXT;                       -- JSON: a pet's pet points { node: n }
   `,
 ];
 

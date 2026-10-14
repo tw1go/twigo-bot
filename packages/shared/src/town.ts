@@ -143,6 +143,8 @@ export interface TownPlayer {
   weaponPlus?: number;
   /** Their character level (stats rules), if they have one saved. */
   level?: number;
+  /** The pet they have out (its pet: stats.json pets.list key), if any: everyone draws it following them. */
+  pet?: string | null;
   /** Their HP now and at most (bot web/town-vitals.ts; a bar over a hurt player's head), and knocked out (faded out until
    *  they respawn). */
   hp?: number;
@@ -465,6 +467,10 @@ export type TownServerMessage =
   | { t: 'rename'; id: string; nickname: string }
   /** Someone chose a class or changed their weapon (you too: `id` is yours). */
   | { t: 'kit'; id: string; cls: string | null; weapon: string | null; weaponPlus?: number }
+  /** A player sent a pet out or called it back (`pet` null), or theirs went up a level (`up`: a sparkle on it). */
+  | { t: 'pet'; id: string; pet: string | null; up?: number }
+  /** Your pet out gained Pet XP (a hit on a monster): the pet as it is now, and the levels it went up. */
+  | { t: 'pet-xp'; pet: Item; gained: number; ups: number }
   /** Someone was jailed or released (you too: `id` is yours). */
   | { t: 'jailed'; id: string; on: boolean }
   /** Someone flexed an item from their bag (`id` says it; to everyone, them included). */
@@ -665,7 +671,7 @@ export interface TownDailyInfo {
 export type TownDailyClaim = { ok: true; amount: number; kowens: number; christmas: boolean } | { ok: false; error: string };
 
 /** A character's worn items, combat bag and Kusing (the server's; the town's `items` message). */
-export type TownItems = Pick<AdventureState, 'equipped' | 'cosmetics' | 'bag' | 'kusing'>;
+export type TownItems = Pick<AdventureState, 'equipped' | 'cosmetics' | 'bag' | 'kusing' | 'pet'>;
 
 /** Loot on the ground as one player sees it: Kusing (its amount) or an item; `mine`: you may pick it up now (else it's
  *  drawn faint: someone's for `opensIn` ms more, or for good: golem loot is only ever shown to its owner). */

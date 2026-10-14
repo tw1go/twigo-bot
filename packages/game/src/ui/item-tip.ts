@@ -1,4 +1,5 @@
 import { type EquipPlace, type EquipSlot, type Item, type StatName, affixTier, agimatBrightness, derivedStats, itemTotals, placesFor, agimatSlots, agimatValue, wordList, baseStats, canEquip, enhancedBase, gearKind, gearMismatch, isGearDef, itemAura, itemName, lineText, lineValue, pickupLine, requirements, statLabel } from '@mikazuki/shared';
+import { petTipLines } from './pet-tab';
 import { adventure, classInfo, itemData } from '../net/adventure';
 import { type Rarity, RARITY_TEXT, isRarity, itemArt, itemArtUrl, placeholderArt } from './item-art';
 import { auraIcon } from '../fx/weaponAura';
@@ -84,13 +85,19 @@ export function itemTipFor(item: Item, owner?: { cls: string | null }): HTMLElem
     parts[0] = head;
   }
   if (!isGearDef(def)) {
-    const kind = def.kind === 'potion' ? (def.heals === 'mp' ? 'MP Potion' : 'HP Potion') : def.kind === 'agimat' ? 'Agimat' : def.kind === 'cosmetic' ? 'Cosmetic' : def.kind === 'consumable' ? (/ticket/i.test(def.name) ? 'Ticket' : 'Consumable') : 'Material';
+    const kind = def.kind === 'potion' ? (def.heals === 'mp' ? 'MP Potion' : 'HP Potion') : def.kind === 'agimat' ? 'Agimat' : def.kind === 'cosmetic' ? 'Cosmetic' : def.kind === 'pet' ? 'Pet' : def.opens ? 'Pet box' : def.kind === 'consumable' ? (/ticket/i.test(def.name) ? 'Ticket' : 'Consumable') : 'Material';
     parts.push(el('div', 'eq-tip-meta', `${kind}${item.count > 1 ? ` · ×${item.count}` : ''}`));
     if (def.kind === 'agimat' && item.stat) {
       parts.push(el('div', 'eq-tip-line', lineText(item.stat, agimatValue(D.stats, item.stat, item.level))));
       const only = agimatSlots(D.stats, item.stat);
       const where = item.lock ? `, ${SLOT[item.lock].toLowerCase()} only` : only ? `, ${wordList(only.map((x) => SLOT[x].toLowerCase()))} only` : '';
       parts.push(el('div', 'eq-tip-meta', `Fits gear of Lv ${item.level} or higher${where}`));
+    }
+    // A pet: its level, Pet XP and the points in each node (ui/pet-tab.ts); always bound.
+    if (def.kind === 'pet') {
+      parts.push(...petTipLines(item));
+      parts.push(el('div', 'eq-tip-meta', 'Bound'));
+      return parts;
     }
     if (def.about) parts.push(el('div', 'eq-tip-about', def.about));
     if (def.kind === 'cosmetic') parts.push(el('div', 'eq-tip-unmet', "Can't be worn yet"));

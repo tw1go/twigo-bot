@@ -41,7 +41,7 @@ import { arenaBets, refundHeldBets } from './town-arena-bets.js';
 import { kowen } from '../kowens.js';
 import { filterText, kickedUntil, mutedUntil } from './town-mod.js';
 import { getOutfit, parseOutfit, saveOutfit } from './outfit.js';
-import { type OutfitData, cosmeticHatOf, withCosmetics } from '@mikazuki/shared';
+import { type OutfitData, cosmeticHatOf, parsePetAction, withCosmetics } from '@mikazuki/shared';
 import { loadCosmeticHats } from './stats-data.js';
 
 /** The look a member shows everyone: their saved look with a worn head cosmetic's hat on it (shared cosmetics.ts). */
@@ -51,7 +51,7 @@ const lookOf = (userId: string): OutfitData | null => {
 };
 import { enhanceFeedLine, parseForgeAction } from './forge.js';
 import { loadItemData } from './stats-data.js';
-import { refundTicketFor, warrenTicketsOf, useTicketFor, kindCountOf, useKindFor, adventureOf, cosmeticsOf, combatOf, fighterOf, forgeFor, dropItemFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townEquip, townPoints, townQuest, townSkills, trainingArmorFor, questRewardsFor, questPiecesFor, questKillFor } from './adventure.js';
+import { refundTicketFor, warrenTicketsOf, useTicketFor, kindCountOf, useKindFor, adventureOf, cosmeticsOf, combatOf, fighterOf, forgeFor, petXpFor, dropItemFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townPet, townEquip, townPoints, townQuest, townSkills, trainingArmorFor, questRewardsFor, questPiecesFor, questKillFor } from './adventure.js';
 import { renameWithCard } from '../items/rename-card.js';
 import { changeClassWithTicket } from '../items/class-ticket.js';
 import { LAUNCH_REWARD, isPreregistered, launched, preregCount, preregister } from '../prereg/prereg.js';
@@ -648,7 +648,7 @@ export function startWebServer(client: Client): void {
         }
         return send(res, 200, JSON.stringify(result));
       }
-      if (req.method === 'POST' && (path === '/town/quest' || path === '/town/equip' || path === '/town/points' || path === '/town/skills')) {
+      if (req.method === 'POST' && (path === '/town/quest' || path === '/town/equip' || path === '/town/points' || path === '/town/skills' || path === '/town/pet')) {
         if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
         if (!fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
         const userId = sessionUser(req);
@@ -676,6 +676,17 @@ export function startWebServer(client: Client): void {
           if (!action) return send(res, 400, '{"error":"invalid skills action"}');
           const r = townSkills(userId, action);
           if (r.ok) town?.progress(userId, r.adventure.progress); // (fights read the saved levels: the next cast uses them)
+          return send(res, 200, JSON.stringify(r));
+        } else if (path === '/town/pet') {
+          // Pets: a box opened, a pet sent out or called back (never in a fight: the town's rule), its pet points.
+          const action = parsePetAction(body);
+          if (!action) return send(res, 400, '{"error":"invalid pet action"}');
+          const { changed, ...r } = townPet(userId, action, !!town?.inCombat(userId));
+          if (r.ok) {
+            if (changed) town?.pet(userId, kitOf(userId).pet); // everyone sees it follow them (or go), its stats in fights
+            else if (action.action === 'spend' || action.action === 'reset') town?.progress(userId, r.adventure.progress); // (its HP)
+            if (action.action === 'open') console.log(`[pets] ${userId} opened ${action.item}`);
+          }
           return send(res, 200, JSON.stringify(r));
         } else {
           const action = parseEquipAction(body);
@@ -1014,6 +1025,14 @@ export function startWebServer(client: Client): void {
       },
       // Loot, HP/MP Potions and trades: their combat bag and Kusing (saved with the character; trades logged in `trades`).
       items: { take: takeLootFor, usePotion: usePotionFor, state: combatOf, drop: dropItemFor, trade: tradeFor },
+      // Pets: Pet XP for the pet out from hits on monsters (saved on the pet item).
+      pets: {
+        xp: (userId, n) => {
+          const r = petXpFor(userId, n);
+          if (r?.ups) console.log(`[pets] ${userId}'s ${r.pet.defId} reached Lv ${r.pet.level}`);
+          return r;
+        },
+      },
       // Mobility moves from their unlock level (Dash Lv 5, the class's own move Lv 8).
       moveLevel,
       authenticate: async (req) => {

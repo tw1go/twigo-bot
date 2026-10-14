@@ -175,6 +175,21 @@ const TOPICS: Topic[] = [
     ].join('\n'),
   },
   {
+    id: 'pets',
+    icon: '🐸',
+    label: 'Pets',
+    text: [
+      'A **pet** follows you everywhere, in town and on battle maps, and adds a little to your stats. It never fights and nothing can hit it.',
+      '• Pets come in **pet boxes**: the sari-sari store’s **Pets** tab sells all seven. Boxes stack, and you can trade or drop them like other items',
+      '• **Open** a box from your bag (double-click, or **Open**): the box goes and the pet comes. It’s **bound** to your character from then on: it can’t be traded, sold or dropped',
+      '• **Send it out** from the Equipment panel’s **Pet** tab: drag it onto the pet slot, or double-click it in your bag. One pet out at a time. Double-click the slot to **call it back**. Not during a fight, and only once every 30 s',
+      '• Click your own pet to see its trick. Everyone sees everyone’s pet',
+      '• **Pet XP**: while it’s out, every hit you land on a monster gives your pet XP equal to that monster’s level, at most once a second. Pets go from **Lv 1 to 20**',
+      '• Each level gives a **pet point** (Lv 1 too). Spend them in the **pet tree**: **HP** and **DEF** first; **ATK** opens once both are 3/3; then **Attack rate** leads to **Damage amp**, and **Crit rate** to **Crit damage**. 20 points fill the tree. **Reset** gives them all back, free',
+      '• What your pet gives shows in your stats as **Pet**. **Fairy Cha**, the rare one, also gives **+2.3% drop rate**',
+    ].join('\n'),
+  },
+  {
     id: 'loot',
     icon: '🪙',
     label: 'Loot',
@@ -321,6 +336,7 @@ const TOPICS: Topic[] = [
     text: [
       '**Sari-sari store**: items (megaphones, Master Keys), potions, bigger bags and passes (passes: testers only). Click an item, pick how many, buy.',
       '• **Healing**: HP and MP Potions for **Kusing**. **Smithing**: Rough Whetstones and Repair Kits for Kowens. Type how many in the box',
+      '• **Pets**: the seven pet boxes for Kowens (Fairy Cha’s, the rare one, costs more). Each needs a free slot in your bag',
       '',
       '**Parlor** (north of the shop):',
       '• **Appearance**: a new look for your character, **3 Kowens**',

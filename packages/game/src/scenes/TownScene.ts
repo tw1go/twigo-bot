@@ -68,6 +68,7 @@ import { EquipmentPanel, gearPicture } from '../ui/equipment';
 import { closeCasino, openCasino, setCasinoArt } from '../ui/casino';
 import { fadeNavy } from '../ui/fade';
 import { OtherPlayers } from '../world/others';
+import { type PetOwner, type PetSheetData, Pets } from '../world/pets';
 import { fakeLogin, fakeName, loadMe } from '../session';
 import { screenToTile, tileToScreen } from '../iso';
 import { toast } from '../ui/toast';
@@ -114,8 +115,8 @@ import type { AdventureData } from '../net/adventure';
 import { Hotbar } from '../ui/hotbar';
 import { mountClassSwitch } from '../ui/class-switch';
 import { MOVES, type MoveKind, isMoveKind, moveTiles, playMove } from '../world/mobility';
-import { changeClass, devItemsReady, devQuestKill, questReport, setQuestCounts, devSwitchClass, adventure, adventureData, anyDef, chooseClass, classInfo, initAdventure, itemData, itemDef, loadAdventureData, lookWithCosmetics, onAdventure, questDef, questFor, questTalk, setItems, setProgress, skillView, skillViews, buffViews, wornHeadCosmetic } from '../net/adventure';
-import { type LanternMap, type LanternPost, LANTERN_USE_TILES, LANTERN_WALK_TILES, RETURN_LANTERN, isLanternMap, lanternPostOf, nearPost, type StatsData, buffsStack, potionCooldownGroup, dropRefusal, nameColour, type Item, type QuestReward, type TownItems, LOOT_REACH, auraFor, classBuffs, classSkills, countOf, isGearDef, itemAura, itemStats, newItem, tradeRules } from '@mikazuki/shared';
+import { changeClass, devItemsReady, devQuestKill, questReport, setQuestCounts, devSwitchClass, adventure, adventureData, anyDef, chooseClass, classInfo, initAdventure, itemData, itemDef, loadAdventureData, lookWithCosmetics, onAdventure, questDef, questFor, questTalk, setItems, setProgress, skillView, skillViews, buffViews, wornHeadCosmetic, setPetXp } from '../net/adventure';
+import { type LanternMap, type LanternPost, LANTERN_USE_TILES, LANTERN_WALK_TILES, RETURN_LANTERN, isLanternMap, lanternPostOf, nearPost, type StatsData, buffsStack, potionCooldownGroup, dropRefusal, nameColour, type Item, type QuestReward, type TownItems, LOOT_REACH, auraFor, classBuffs, classSkills, countOf, isGearDef, itemAura, itemStats, newItem, tradeRules, petRules } from '@mikazuki/shared';
 import type { ClassArt } from '../assets/types';
 import { drawRested, poseFiles, restFiles } from '../characters/kit-art';
 import { loadImages } from '../characters/loading';
@@ -298,6 +299,8 @@ export class TownScene extends Phaser.Scene {
   /** Plays an emote and tells the server (set once connected). */
   private emoteKeys: ((e: TownEmote) => void) | null = null;
   private others!: OtherPlayers;
+  /** Everyone's pet out, following them (world/pets.ts). */
+  private pets: Pets | null = null;
   /** The town's ambient NPCs (not in the neighbourhood). */
   private npcs: NpcLife | null = null;
   private link: TownLink | null = null;
@@ -547,6 +550,7 @@ export class TownScene extends Phaser.Scene {
         })
         .catch(() => null);
     if (this.area === 'town') this.npcs = this.makeNpcs();
+    this.makePets();
     // The Slums' mobs (the zones that are on), sorted and tinted like everyone else.
     if (this.map.mobZones?.length) {
       const mobs = new Mobs(this, this.M, this.map, this.grid, this.objects, (obj) => this.tint >= 0 && obj.setTint(this.tint), this.fxLayers);
@@ -712,6 +716,7 @@ export class TownScene extends Phaser.Scene {
       }
     }
     this.others.update(delta);
+    this.pets?.update(delta);
     this.mobs?.update(delta);
     this.mobs?.check(this.player.tile);
     // Mob art (and the golem's) loads zone by zone as you come near (a quick look twice a second).
@@ -1684,6 +1689,7 @@ export class TownScene extends Phaser.Scene {
           drawDoll: (ctx, dir, f, t) => drawRested(ctx, this, C, K, this.outfit, this.wornArt, 'idle', dir, f, t),
           idle: { frames: C.animations.idle.frames, fps: C.animations.idle.fps },
           freeSlots: () => bag.free,
+          pets: this.M.pets ? { node: (node, locked) => url((locked ? this.M.pets!.nodeLocked : this.M.pets!.node).replace('{stat}', this.M.pets!.nodeStats[node] ?? node)) } : null,
         }),
       );
       // The player menu's Info: someone's character, gear and stats (ui/inspect.ts; the server answers `inspect`).
@@ -1834,6 +1840,7 @@ export class TownScene extends Phaser.Scene {
     };
     link.onMessage = (m) => {
       if (isArena(m)) return void this.arenaChannel?.push(m); // a jack en poy match (or the queue for one)
+      if (this.petMessage(m, myId)) return;
       if (m.t === 'snap') return this.player.place({ col: m.col, row: m.row });
       if (m.t === 'seat-taken') return this.seatTaken();
       if (m.t === 'say-refused') {
@@ -2296,8 +2303,8 @@ export class TownScene extends Phaser.Scene {
         // Dev: ?kusing=5000, ?whetstones=200, ?give=<defId>:<rarity>:<plus> (the dev server's /__give: rolled there as
         // drops are; your items come back as an `items` message). Once a visit. ?give= may come more than once; for a
         // stack the third part is how many (?give=low-repair-kit::3), an agimat's fourth its level
-        // (?give=agimat-critdmg::2:20).
-        if (import.meta.env.DEV && fakeLogin() && !this.devGiven && (q.has('kusing') || q.has('whetstones') || q.has('give'))) {
+        // (?give=agimat-critdmg::2:20). ?petbox=croakyangs gives that pet's box (?petbox= may come more than once too).
+        if (import.meta.env.DEV && fakeLogin() && !this.devGiven && (q.has('kusing') || q.has('whetstones') || q.has('give') || q.has('petbox'))) {
           this.devGiven = true;
           const asks: URLSearchParams[] = [];
           const first = new URLSearchParams({ as: fakeName() });
@@ -2313,11 +2320,22 @@ export class TownScene extends Phaser.Scene {
                 const isGear = isGearDef(anyDef(def));
                 asks.push(new URLSearchParams({ as: fakeName(), def, rarity: rarity ?? '', ...(isGear ? { plus: plus || '0' } : { count: plus || '1' }), ...(level ? { level } : {}) }));
               }
+              for (const pet of q.getAll('petbox')) asks.push(new URLSearchParams({ as: fakeName(), def: `pet-box-${pet}`, count: '1' }));
               for (const ask of asks) {
                 const r = await fetch(`/__give?${ask}`).then((x) => (x.ok ? (x.json() as Promise<{ items?: TownItems }>) : null));
                 if (r?.items) setItems(r.items);
               }
             })
+            .catch(() => null);
+        }
+        // Dev: ?petlevel=12 (&petxp=500) sets your pet out (else the first in your bag) to that level and Pet XP (the dev
+        // server's /__pet), to try the pet tree.
+        if (import.meta.env.DEV && fakeLogin() && (q.has('petlevel') || q.has('petxp')) && !this.devPetLevelled) {
+          this.devPetLevelled = true;
+          void devItemsReady
+            .then(() => fetch(`/__pet?${new URLSearchParams({ as: fakeName(), ...(q.has('petlevel') ? { level: q.get('petlevel')! } : {}), xp: q.get('petxp') ?? '0' })}`))
+            .then((x) => (x.ok ? (x.json() as Promise<{ items?: TownItems }>) : null))
+            .then((r) => r?.items && setItems(r.items))
             .catch(() => null);
         }
         // Dev: ?xp=500 gives you XP, ?level=10 sets your level (the dev server's /__xp: its level-ups as from kills).
@@ -2664,6 +2682,7 @@ export class TownScene extends Phaser.Scene {
         if (other && this.target) { this.mobs?.setTarget(null); return this.target.select(other); }
         const npc = this.npcs?.pick(over);
         if (npc) return this.talkTo(npc);
+        if (this.pets?.pick(over)) return this.pets.special('me'); // your own pet: its special
         const world = this.cameras.main.getWorldPoint(p.x, p.y);
         const { col, row } = this.pickTile(world.x, world.y);
         const building = this.objects.buildings.find((b) => b.parts.some((part) => over.includes(part)));
@@ -2678,6 +2697,7 @@ export class TownScene extends Phaser.Scene {
       if (other && this.target && p.leftButtonReleased()) { this.mobs?.setTarget(null); return this.target.select(other); }
       const npc = this.npcs?.pick(over);
       if (npc && p.leftButtonReleased()) return this.talkTo(npc);
+      if (p.leftButtonReleased() && this.pets?.pick(over)) return this.pets.special('me'); // your own pet: its special
       const building = this.objects.buildings.find((b) => b.parts.some((part) => over.includes(part)));
       const world = this.cameras.main.getWorldPoint(p.x, p.y);
       const { col, row } = this.pickTile(world.x, world.y);
@@ -2812,6 +2832,7 @@ export class TownScene extends Phaser.Scene {
   }
   /** Your town id (from the server's welcome). */
   private myId = '';
+  private devPetLevelled = false;
   /** The Scrap Warrens: the run's view and tracker (in a run), and the Warren Gate's panel asked for (the Slums). */
   private warrens: WarrensView | null = null;
   private warrensTracker: WarrensTracker | null = null;
@@ -3748,6 +3769,64 @@ export class TownScene extends Phaser.Scene {
     for (const g of this.gateSpots) g.sign.show(named.some((id) => id && g.over.has(id)) ? null : g.y);
   }
 
+  // ── Pets ──
+
+  /** Everyone's pet out (world/pets.ts): yours from your items (sent out or called back), the others' from the town. */
+  private makePets(): void {
+    const sheets = this.cache.json.get('pet-sheets') as PetSheetData | undefined;
+    const S = this.cache.json.get('stats') as StatsData | undefined;
+    const R = S ? petRules(S) : null;
+    if (!this.M.pets || !sheets || !R) return;
+    const pets = new Pets(this, this.M.pets, sheets, R, SPEED);
+    pets.onSpawn = (obj) => this.tint >= 0 && obj.setTint(this.tint);
+    pets.elevation = (c, r) => this.objects.heights.lift(c, r);
+    pets.shadowArt = this.M.fx.shadow?.file ?? null;
+    pets.grid = this.grid; // (water, walls, fences, cliffs: by the players' rules)
+    this.pets = pets;
+    const off = onAdventure((s) => pets.set('me', this.petIdOf(s.pet), () => this.petOwner(this.player), true));
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      off();
+      pets.clear();
+    });
+  }
+
+  /** The pet a pet item is (stats.json pets.list key), or null. */
+  private petIdOf(item: Item | null | undefined): string | null {
+    const def = anyDef(item?.defId);
+    return def && !isGearDef(def) && def.kind === 'pet' ? (def.pet ?? null) : null;
+  }
+
+  /** Who a pet follows, as world/pets.ts reads them; null: not drawn (or gone: a pet waits out a knock-out unseen). */
+  private petOwner(c: Character | null): PetOwner | null {
+    if (!c || !c.sprite.visible) return null;
+    return { spot: c.spot, facing: c.facing, walking: !c.isIdle };
+  }
+
+  /** The town's word on pets: who has one out (arrivals, the list, `pet`), and your pet's Pet XP (`pet-xp`: its toast as
+   *  it levels up). True: the message was only for pets. */
+  private petMessage(m: TownServerMessage, myId: string): boolean {
+    const pets = this.pets;
+    const other = (id: string) => () => this.petOwner(this.others.charOf(id));
+    if (m.t === 'welcome') {
+      pets?.clearOthers();
+      for (const p of m.players) if (p.id !== m.you) pets?.set(p.id, p.pet ?? null, other(p.id));
+    } else if (m.t === 'join' && m.player.id !== myId) pets?.set(m.player.id, m.player.pet ?? null, other(m.player.id));
+    else if (m.t === 'leave') pets?.set(m.id, null, () => null);
+    else if (m.t === 'pet') {
+      if (m.id !== myId) pets?.set(m.id, m.pet, other(m.id));
+      if (m.up) pets?.levelUp(m.id === myId ? 'me' : m.id);
+      return true;
+    } else if (m.t === 'pet-xp') {
+      setPetXp(m.pet, m.ups);
+      if (m.ups) {
+        toast(`${anyDef(m.pet.defId)?.name ?? 'Your pet'} reached Lv ${m.pet.level}!`, 3200, 'good');
+        playSound('click');
+      }
+      return true;
+    }
+    return false;
+  }
+
   // ── Day / night ──
 
   private updateSky(force: boolean): void {
@@ -3759,11 +3838,15 @@ export class TownScene extends Phaser.Scene {
     this.others.setNight(sky.lampsOn);
     if (!force && sky.tint === this.tint) return;
     this.tint = sky.tint;
-    const all = [...this.ground.sprites, ...this.objects.sprites, ...this.player.tintables, ...this.others.tintables, ...(this.npcs?.tintables ?? []), ...(this.mobs?.tintables ?? []), ...this.bridges.filter((b) => !!b)];
+    const all = [...this.ground.sprites, ...this.objects.sprites, ...this.player.tintables, ...this.others.tintables, ...(this.npcs?.tintables ?? []), ...(this.mobs?.tintables ?? []), ...(this.pets?.tintables ?? []), ...this.bridges.filter((b) => !!b)];
     for (const s of all) s.setTint(sky.tint);
   }
 
   // ── For debugging and the headless check ──
+
+  get debugPets() {
+    return this.pets?.debug() ?? [];
+  }
 
   get debugNpcs() {
     return this.npcs;
@@ -3948,6 +4031,8 @@ function exposeDebug(scene: TownScene): void {
     reward: (r: Reward) => scene.debugReward(r),
     /** The NPCs' tiles, or talk to one (walking over if needed). */
     npcs: () => scene.debugNpcs?.positions,
+    /** Everyone's pet: where it is (tile space) and what it plays. */
+    pets: () => scene.debugPets,
     talk: (id: string) => scene.debugTalk(id),
     /** The Mosang race as this page has it, and the bot's clock. */
     race: () => ({ race: currentRace(), now: raceNow() }),
@@ -3973,8 +4058,8 @@ function exposeDebug(scene: TownScene): void {
     /** Your items and Kusing as the page has them (names as shown). */
     items: () => {
       const s = adventure();
-      const view = (i: Item) => ({ uid: i.uid, defId: i.defId, name: nameOf(i), rarity: i.rarity, stat: i.stat, plus: i.plus, luck: i.luck, broken: i.broken, count: i.count, bound: i.bound, level: i.level, lock: i.lock, lines: i.lines, agimats: i.agimats });
-      return s && { kusing: s.kusing, bag: s.bag.map(view), equipped: Object.fromEntries(Object.entries(s.equipped).map(([p, i]) => [p, view(i!)])) };
+      const view = (i: Item) => ({ uid: i.uid, defId: i.defId, name: nameOf(i), rarity: i.rarity, stat: i.stat, plus: i.plus, luck: i.luck, broken: i.broken, count: i.count, bound: i.bound, level: i.level, lock: i.lock, lines: i.lines, agimats: i.agimats, xp: i.xp, points: i.points });
+      return s && { kusing: s.kusing, bag: s.bag.map(view), equipped: Object.fromEntries(Object.entries(s.equipped).map(([p, i]) => [p, view(i!)])), pet: s.pet ? view(s.pet) : null };
     },
     /** Loot on the ground as shown, with where each is on the screen. */
     loot: () => {

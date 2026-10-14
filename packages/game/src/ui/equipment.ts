@@ -1,7 +1,7 @@
 import { type CosmeticPlace, type AdventureState, type EquipPlace, type EquipSlot, type EquipmentDef, type StatName, STAT_NAMES, canEquip, combatRating, pointStats, requirements, COSMETIC_PLACES, OTHER_TAB, isGearDef, pocketSlots, pocketUsed } from '@mikazuki/shared';
 import { onMyBuffs } from '../net/buffs';
 import { myStats } from './rating';
-import { moreStatsSection } from './more-stats';
+import { moreStatsSection, petPart } from './more-stats';
 import type { Dir } from '../assets/types';
 import { playSound } from '../audio/sound';
 import { adventure, adventureData, anyDef, cantWear, classInfo, equipItem, itemData, itemDef, onAdventure, placesFor, resetPoints, spendPoint, takeOffCosmetic, unequipPlace, wearCosmeticItem } from '../net/adventure';
@@ -9,6 +9,7 @@ import { type Rarity, RARITY_COLOUR, RARITY_LABEL, RARITY_TEXT, isRarity } from 
 import { chatItem, itemKeys, itemPicture, itemTipFor, myMainStat, nameOf, rarityOf } from './item-tip';
 import { toast } from './toast';
 import { forgeTake } from './forge';
+import { type PetArt, PetTab } from './pet-tab';
 
 // 🛡️ The equipment panel, on the left of the bag (it opens and closes with it; I or B). Twelve places in the
 // inventory's slot art: Weapon, Head, Body, Hands, Bottoms and Feet on the left; Necklace, Earrings, two Bracers and two
@@ -21,6 +22,7 @@ import { forgeTake } from './forge';
 // before a class they're banked. Double-click or drag an item from the bag onto its place to wear it (if its
 // requirements are met: base stats only; refused with what's missing, "Needs DEX 26"); right-click or double-click a
 // worn one to take it off. While the forge popup (ui/forge.ts) is open, a click or a drag puts a worn item into it.
+// Three tabs: Gear (the twelve places), Costume (cosmetics) and Pet (the pet out and its pet tree: ui/pet-tab.ts).
 
 const LEFT: EquipPlace[] = ['weapon', 'head', 'body', 'hands', 'bottoms', 'feet'];
 const RIGHT: EquipPlace[] = ['necklace', 'earrings', 'bracers1', 'bracers2', 'ring1', 'ring2'];
@@ -78,14 +80,19 @@ export interface EquipmentOptions {
   idle: { frames: number; fps: number };
   /** The bag's free slots, to say a full bag can't take a worn item back. */
   freeSlots: () => number;
+  /** The pet tree's node art (manifest pets), if there are pets. */
+  pets?: PetArt | null;
 }
 
 export class EquipmentPanel {
   private readonly root = el('div');
   private readonly slots = new Map<EquipPlace, HTMLButtonElement>();
   private readonly cslots = new Map<CosmeticPlace, HTMLButtonElement>();
-  /** Gear (the twelve places) or Costume (Weapon, Head, Body: cosmetics, never stats). */
-  private tab: 'gear' | 'costume' = 'gear';
+  /** Gear (the twelve places), Costume (Weapon, Head, Body: cosmetics, never stats) or Pet (the pet out and its pet
+   *  tree: ui/pet-tab.ts). */
+  private tab: 'gear' | 'costume' | 'pet' = 'gear';
+  private middle: HTMLElement | null = null;
+  private readonly petTab: PetTab;
   private readonly tabs = el('div', 'eq-tabs');
   private gearCols: HTMLElement[] = [];
   private costumeCols: HTMLElement[] = [];
@@ -100,6 +107,7 @@ export class EquipmentPanel {
 
   constructor(private readonly o: EquipmentOptions) {
     silhouettes = o.silhouettes;
+    this.petTab = new PetTab(o.pets ?? null, (lines, at) => this.placeTip(lines, at));
     this.root.id = 'equipment';
     this.root.hidden = true;
     this.root.setAttribute('role', 'dialog');
@@ -161,8 +169,9 @@ export class EquipmentPanel {
     for (const _ of COSMETIC_PLACES) costumeRight.append(el('span', 'eq-gap'));
     this.gearCols = [column(LEFT, 'left'), column(RIGHT, 'right')];
     this.costumeCols = [costumeLeft, costumeRight];
-    body.append(this.gearCols[0], costumeLeft, middle, this.gearCols[1], costumeRight);
-    for (const [tab, label] of [['gear', 'Gear'], ['costume', 'Costume']] as const) {
+    this.middle = middle;
+    body.append(this.gearCols[0], costumeLeft, middle, this.gearCols[1], costumeRight, this.petTab.root);
+    for (const [tab, label] of [['gear', 'Gear'], ['costume', 'Costume'], ['pet', 'Pet']] as const) {
       const b = el('button', 'eq-tab', label);
       b.dataset.tab = tab;
       b.setAttribute('role', 'tab');
@@ -216,12 +225,32 @@ export class EquipmentPanel {
   }
 
   /** Gear or Costume: the places shown (the doll and the stats box stay: cosmetics never change stats). */
-  setTab(tab: 'gear' | 'costume'): void {
+  setTab(tab: 'gear' | 'costume' | 'pet'): void {
     this.tab = tab;
     for (const c of this.gearCols) c.hidden = tab !== 'gear';
     for (const c of this.costumeCols) c.hidden = tab !== 'costume';
+    if (this.middle) this.middle.hidden = tab === 'pet';
+    this.petTab.root.hidden = tab !== 'pet';
     for (const b of this.tabs.children) b.setAttribute('aria-selected', String((b as HTMLElement).dataset.tab === tab));
     this.tip.hidden = true;
+  }
+
+  /** Sends a pet out from the bag (a double-click, or Send out): the Pet tab opens to show it. */
+  sendOutPet(uid: string): void {
+    this.setTab('pet');
+    void this.petTab.sendOut(uid);
+  }
+
+  /** The tooltip beside `at` with these lines (the Pet tab's slot and nodes), or hidden (null). */
+  private placeTip(lines: HTMLElement[] | null, at?: HTMLElement): void {
+    if (!lines || !at) return void (this.tip.hidden = true);
+    this.tip.replaceChildren(...lines);
+    this.tip.hidden = false;
+    this.tip.classList.remove('eq-tip-left');
+    const r = at.getBoundingClientRect();
+    const box = this.root.getBoundingClientRect();
+    this.tip.style.left = `${Math.round(r.right - box.left + 6)}px`;
+    this.tip.style.top = `${Math.round(r.top - box.top)}px`;
   }
 
   /** Wears a cosmetic from the Costume tab (by uid): in `place` (a drop) or its own (a double-click). Gear here is
@@ -465,6 +494,7 @@ export class EquipmentPanel {
         b.append(icon);
       }
     }
+    this.petTab.render(s);
     const c = classInfo(s.cls);
     this.who.replaceChildren();
     if (c) {
@@ -485,11 +515,12 @@ export class EquipmentPanel {
     const mine = myStats();
     if (!mine) return void this.stats.replaceChildren();
     // The buffs on you: ATK, DEF, HP and Crit with their part in green ("56 +4").
-    const { st, up } = mine;
-    const shown = (base: number, buffed: number, f: (n: number) => string = (n) => String(Math.round(n))) => {
-      const v = el('b', 'eq-stat-value', f(base));
-      const extra = f(buffed - base);
-      if (Math.round((buffed - base) * 1000) > 0) v.append(el('span', 'eq-buffed', ` +${extra}`));
+    // Your pet out's part in its own colour ("56 +9 Pet"), then the buffs'.
+    const { st, up, bare } = mine;
+    const shown = (own: number, base: number, buffed: number, f: (n: number) => string = (n) => String(Math.round(n))) => {
+      const v = el('b', 'eq-stat-value', f(own));
+      if (Math.round((base - own) * 1000) > 0) v.append(petPart(` +${f(base - own)}`));
+      if (Math.round((buffed - base) * 1000) > 0) v.append(el('span', 'eq-buffed', ` +${f(buffed - base)}`));
       return v;
     };
     const plus = s.cls && p.statPoints > 0 ? pointStats(S, s.cls) : [];
@@ -507,10 +538,10 @@ export class EquipmentPanel {
       return r;
     };
     const left = el('div', 'eq-stats-col');
-    left.append(row('ATK', shown(st.power, up.power)), row('DEF', shown(st.def, up.def)), row('HP', shown(st.hp, up.hp)), row('MP', String(st.mp)));
+    left.append(row('ATK', shown(bare.power, st.power, up.power)), row('DEF', shown(bare.def, st.def, up.def)), row('HP', shown(bare.hp, st.hp, up.hp)), row('MP', String(st.mp)));
     const right = el('div', 'eq-stats-col');
     const pctOf = (n: number) => `${+(n * 100).toFixed(1)}%`;
-    right.append(...STAT_NAMES.map((n) => row(n, String(st[n]), n)), row('Crit rate', shown(st.critRate, up.critRate, pctOf)));
+    right.append(...STAT_NAMES.map((n) => row(n, String(st[n]), n)), row('Crit rate', shown(bare.critRate, st.critRate, up.critRate, pctOf)));
     const foot = el('div', 'eq-points');
     foot.append(el('span', 'eq-points-label', 'Points:'), el('b', 'eq-points-n', String(p.statPoints)));
     if (!s.cls) foot.append(el('span', 'eq-points-hint', 'Choose a class to spend points'));
@@ -525,7 +556,7 @@ export class EquipmentPanel {
     const cp = el('div', 'eq-cp');
     cp.append(el('span', 'eq-cp-label', 'Combat rating'), el('b', 'eq-cp-value', combatRating(S, up, s.cls).toLocaleString()));
     cp.title = 'CP: one number from your ATK, crits, DEF, HP and MP, buffs included. Better gear, levels and points raise it.';
-    this.stats.replaceChildren(cp, left, right, ...moreStatsSection(up, st), foot);
+    this.stats.replaceChildren(cp, left, right, ...moreStatsSection(up, st, bare), foot);
   }
 }
 

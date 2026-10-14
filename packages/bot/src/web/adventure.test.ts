@@ -149,16 +149,16 @@ test('saved per member: /me starts the quest, the routes save, unworn gear goes 
   const done = townQuest('m1', { quest: Q, action: 'chooseClass', cls: 'hilot' });
   assert.equal(done.changed, true);
   assert.equal(done.given, 'weapon-training-balm');
-  assert.deepEqual(kitOf('m1'), { cls: 'hilot', weapon: 'weapon-training-balm', weaponPlus: 0, level: 1 });
+  assert.deepEqual(kitOf('m1'), { cls: 'hilot', weapon: 'weapon-training-balm', weaponPlus: 0, level: 1, pet: null });
   const uid = adventureOf('m1').equipped.weapon!.uid;
   assert.equal(townEquip('m1', { action: 'unequip', place: 'weapon' }).changed, true);
   assert.equal(usedSlots('m1'), 0); // the old bag never counts gear
   assert.deepEqual(adventureOf('m1').bag.map((i) => i.uid).slice(2), [uid]); // the same item, saved (after the quest's potions)
-  assert.deepEqual(kitOf('m1'), { cls: 'hilot', weapon: null, weaponPlus: 0, level: 1 });
+  assert.deepEqual(kitOf('m1'), { cls: 'hilot', weapon: null, weaponPlus: 0, level: 1, pet: null });
   assert.equal(adventureOf('m1').quests.done[0], Q); // kept
   // The CMS can start it all over: no class, the class quest again, the training gear gone (other items kept).
   resetAdventure('m1');
-  assert.deepEqual(kitOf('m1'), { cls: null, weapon: null, weaponPlus: 0, level: 1 });
+  assert.deepEqual(kitOf('m1'), { cls: null, weapon: null, weaponPlus: 0, level: 1, pet: null });
   assert.deepEqual(adventureOf('m1').quests, { active: [{ id: Q, step: 0 }], done: [], rewarded: [Q] }); // its rewards not again
   assert.deepEqual(kinds(adventureOf('m1').bag), ['low-hp-potion', 'low-mp-potion']);
 });

@@ -1,6 +1,7 @@
 // Classes, quests and equipment: the shapes of the game's data files (classes/classes.json, quests/quests.json,
 // items/equipment.json under the game's public/assets/, read by the bot too) and of each member's saved state.
 
+import type { PetNode } from './pets.js';
 import type { Item } from './items.js';
 import type { StatName, StatPoints } from './stats.js';
 
@@ -174,6 +175,8 @@ export interface AdventureState {
   equipped: Partial<Record<EquipPlace, Item>>;
   /** The cosmetics worn (the Costume tab): out of the bag, bound, never stats. */
   cosmetics: Partial<Record<CosmeticPlace, Item>>;
+  /** The pet out (the Equipment panel's Pet tab; shared pets.ts): out of the bag, its stats added to theirs. */
+  pet?: Item | null;
   /** The combat bag (stats.json inventory.slots): gear not worn, whetstones, fragments, Repair Kits, agimats, HP/MP
    *  Potions and cosmetics, one slot each (a stack in one). */
   bag: Item[];
@@ -195,6 +198,15 @@ export type TownEquipAction =
   /** A cosmetic from the Costume tab onto its place (its kind's, when none is given), or off into the Costume tab. */
   | { action: 'wear-cosmetic'; item: string; place?: CosmeticPlace }
   | { action: 'take-off-cosmetic'; place: CosmeticPlace };
+
+/** POST /town/pet: open a pet box from the combat bag (by uid), send a pet out (by uid; the one out goes back), call
+ *  the pet back, one pet point into a node of the pet out's pet tree, or all its pet points back (free). */
+export type TownPetAction =
+  | { action: 'open'; item: string }
+  | { action: 'out'; item: string }
+  | { action: 'back' }
+  | { action: 'spend'; node: PetNode }
+  | { action: 'reset' };
 
 /** POST /town/points: one stat point into the class's main or second stat, or every stat point back (free). */
 export type TownPointsAction = { action: 'spend'; stat: StatName } | { action: 'reset' };

@@ -156,6 +156,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   sheet at (80,46), 56 × 56; a stand-in until the art folder has its own.
 - `maps/slums.json`: the Golem Pit v3 changes (the art folder's copy still has the old 6×6 pit; see Scrapheap Golem), and
   the Warren Gate (object, its blocked tiles, `arrive.warrens`; written by `scripts/build-warrens.ts`).
+- Pets (14 Oct 2026): `pets/` (the art folder's pets/: box, icons, sheets with pets.json, tree), the manifest's `pets`
+  block, `classes/stats.json` `pets` (the art folder's pets/pets-stats-block.json merged in as a new key), and
+  `items/items.json` `pet-box-<id>` / `pet-<id>` (kind `pet`; boxes `opens`, `shop: pets`). Changed from the block:
+  `pets.follow.zigzagEverySteps` 2 tiles and `zigzagEveryStepsHover` 1 (was 3 half-tile steps; + `zigzagNote`: the zigzag only heading north or south).
 - `maps/warrens.json` is built here (`packages/game/scripts/build-warrens.ts` from `scripts/warrens/warrens-layout.json`,
   the art folder's layout copied in): run it again after changing either.
 - High terrain (13 Oct 2026, all of it repo-only, PLACEHOLDER art): `tiles/slums` cliff-rock / -scrap (+ -lower) / -chasm /
@@ -722,7 +726,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   title card, where the same light brings you in (shown from its 3rd frame; blink-in), and the server, its trip kept 2
   min (`trips`), shows the others there `lantern-fx` 'in' on your first 'here'. Each player alone (a party isn't pulled
   along). The Return Lantern (items.json, consumable, stacks to 99, tradeable, 200 Kusing in the sari-sari store's
-  Travel tab: combat-bag.ts `combatWares` 'travel'; the store's box is 740 px wide for its eight tabs, each as wide as its name): the bag's Use and
+  Travel tab: combat-bag.ts `combatWares` 'travel'; the store's box is 960 px wide (at most the screen less 32 px) for its nine tabs, each as wide as its name, and a row of eight cards): the bag's Use and
   double-click only say "Use it at a Lantern Post." (`useAt`). Guide tab Lantern Posts. Tested: `web/travel.test.ts`.
   Dev: `?give=return-lantern::5`; the dev town's maps carry their posts (dev-town.ts).
 - NPCs (town only, not the neighbourhood; client-side: never on the server, the online list or the minimap): the
@@ -830,6 +834,52 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   come, the winner line, closed 3.5 s later; `rollEndLine` for the losers' feed. `TownOptions.rollRandom` (tests).
 - Agimats in slots: both slots may hold the same stat (they add up; stats.json agimats.perItem, a repo change 12 Oct
   2026: was "different stats"); the rare cap (`rarePerItem` 2) still applies.
+- Pets (CONTEXT.md "Pets"; stats.json `pets`, the art folder's pets/pets-plan.md; shared `pets.ts`, pure, tested in the
+  bot's `web/pets.test.ts` with one over the town's socket): seven pets (`pets.list`; Fairy Cha rare, +2.3% drop rate
+  always). A **pet box** (items.json `pet-box-<id>`, a consumable with `opens`, stacks to 99, tradable and droppable, never
+  sold back; the sari-sari store's **Pets** tab: `combatWares` 'pets', `boxPrice` by rarity: 100 / 200 Kowens) is **opened**
+  (`openPetBox`; the bag's double-click / Open / right-click, a confirm in `ui/pet-tab.ts` `openBox`) into a bound pet item
+  `pet-<id>` (kind `pet`, never stacks) at Lv 1: its `level` is the item's, `xp` and `points` ({node: n}) too (schema v16
+  items.xp / items.points). One pet **out** at a time: `AdventureState.pet` (items place 'pet'); POST /town/pet
+  {open | out | back | spend | reset} (shared `petAction`, `parsePetAction`; bot `townPet`), a swap (out or back) never in a
+  fight (`Town.inCombat`, the vitals' rule) nor within `follow.swapCooldownSeconds` (30) of the last (in memory), then the
+  town's `pet` message (everyone; `TownPlayer.pet` for arrivals; `kitOf` gives the profile its pet). Stats: a pet out goes
+  in with the worn items (`fighterOf`; shared `itemTotals` adds `petTotals`: its pet tree, rates as fractions, its kind's
+  bonus), so fights, HP, CP and the caps take it; never STR/DEX/INT (requirements). Pet tree (`pets.tree`): HP and DEF,
+  ATK needs both maxed, Attack rate → Damage amp and Crit rate → Crit damage from ATK; a node opens once every node it
+  `requires` is at its max (`nodeOpen`); one pet point a level, Lv 1's too (20 fill it); Reset free. Pet XP: town.ts
+  `petXp` after every `attack` that lands (not a miss) gives the highest level among the monsters it hit
+  (`petXpForHit`), at most once `xp.throttleSeconds` (1) a member (`PetXpClock`); `TownOptions.pets.xp` = `petXpFor` (one
+  row updated); `pet-xp` to you, a level-up `pet` {up} to everyone (a sparkle) and a toast "Croakyangs reached Lv 5!".
+  `xp.table` (2,600 at Lv 1 … 215,300 at Lv 19; 1,745,600 in all), the cap 20 (XP 0, "MAX"). World (`world/pets.ts`
+  `Pets`, made in TownScene `makePets`; everyone's, keyed 'me' or a town id, drawn once its owner is): sheets
+  pets/sheets/pet-<id>-<anim>-<dir>.png (40 × 40, anchor (20, 35), frames per pet in pets.json; loaded the first time a
+  pet shows), drawn at the manifest's `pets.scale` (0.6: the owner found 40 × 40 too big), the art's se and sw sheets swapped by
+  `pets.sheetDirs` (an art problem: in all seven pets se faces left and sw right; remove the map once the art folder swaps
+  the files), and Dr. Pittuki's and Wonwuu's ne and nw by `pets.sheetDirsByPet`, depth as a character's; every pet on a ground shadow (manifest pets.shadow 22 × 8,
+  shadowHover 14 × 5, shadows' own sizes, a pixel ellipse in shadowColour #0B0A18 at shadowAlpha 0.55: the characters'
+  navy one hardly shows on the town's dark cobbles; tinted at night), Kislap a glow (ADD). Rests while its owner is near (a click a tile or two away never sets it off); once they're
+  `follow.distanceTiles` + START_EXTRA (1.8) off, it walks toward them (never to a set spot beside them: no sliding across
+  to their other side), keeping about `distanceTiles` behind while they walk (a touch quicker outside it, slower inside:
+  no stop-start; never a sprint), stopping once they've stopped and it's within it; straight on its screen quarter's move
+  sheet it only ever moves along the four ways it has sheets for (a column or a row, tile space: se, nw, sw, ne), so it always
+  moves the way it faces, never a slide: a leg one way toward them, turning once it's `zigzagEverySteps` (2) tiles long
+  (`zigzagEveryStepsHover` (1) for Fork of Jord, Kislap and Fairy Cha) and its walk is on its first frame (a hop or stride
+  is never cut short), or at once when it's level with them that way; walking along a column or row with them it just goes
+  straight; a little quicker than them (the longer way round); by the walk grid's rules, as a player (`Pets.grid`:
+  `canStep`, so never on water, walls or fences and another level only by a ramp): the next tile shut, its other way if
+  that's open, else a route (`findPath` to their tile, or beside it when they sit on a bench seat, its diagonal steps taken
+  as two straight ones; found again at most every 500 ms as they move); more than FAR_TILES (5) behind (a dash, a teleport), it fades out and back in
+  behind them (FADE_MS 220 each way; landing on a walkable tile within 3 grid steps of theirs, else on their spot),
+  walking on if they still are; on a new map it's put behind them; stopped: idle facing its owner's side (se if they're to its right on screen, else sw); your own pet clicked (the scene's click asks `Pets.pick`): its special.
+  Equipment panel's third tab **Pet** (`ui/pet-tab.ts` `PetTab`): the slot (drop `application/x-mk-pet`; a box,
+  `x-mk-petbox`: "Open the box first"), name, Lv, Pet XP bar, pet points, the tree (manifest pets.node / nodeLocked, 32 px
+  at 1×, an SVG's lines lit gold once their way is open, n/max, a + while a point can go in, tooltips), Reset. Its part of
+  your stats shows as "+N Pet" in lime (ATK/DEF/HP/Crit rate and More stats: `myStats().bare`, `moreStatsSection`'s third
+  argument). Tooltips: a box's `about`; a pet's Lv, Pet XP, points per node, Bound. Guide tab Pets. Dev: `?petbox=<id>` (the
+  dev town's /__give; may repeat), `?petlevel=12&petxp=500` (`/__pet` GET: the pet out, else the first in the bag),
+  `?give=pet-croakyangs:::5` (a pet straight away at Lv 5), POST `/__pet?as=` (the page's pretend /town/pet);
+  `__town.pets()`, `__town.items().pet`.
 - Settings → Game → Exit game (`ui/settings.ts` `leave`): the desktop app quits (`net/desktop.ts` `exitApp`, the
   process plugin's exit, `process:allow-exit`); the website and the home screen app go to the front page.
 - Forge (combat-guide.md How to enhance, Enhancement cost and odds, Agimats, Disassembly; stats.json enhancement.cost,

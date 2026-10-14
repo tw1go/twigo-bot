@@ -13,6 +13,7 @@ import { adventure, anyDef, cantWear, itemData, onAdventure } from '../net/adven
 import { chatItem, itemKeys, itemPicture, itemTipFor, nameOf, rarityOf, wearDiff, wornFor } from './item-tip';
 import { potionCooldownKey } from './hotbar';
 import { showRename } from './rename';
+import { openBox } from './pet-tab';
 import { type ForgePopup, confirmCombine, confirmDisassemble, confirmDisassembleMany, confirmSell, confirmSellMany, forgeFromBag, mountForge } from './forge';
 import { fragmentsPerWhetstone } from '@mikazuki/shared';
 import { inTrade, tradeBlocked, tradeDrag, tradePut, trading } from './trade';
@@ -423,6 +424,16 @@ export class Inventory {
         // HP and MP Potions go on the hotbar (its - = ~ slots or the top row).
         cell.draggable = true;
         cell.addEventListener('dragstart', (e) => hotbarDragItem(e, { id: it.defId, name: def.name, emoji: '🧪', rarity: it.rarity, cooldown: potionCooldownKey }));
+      } else if (def && !isGearDef(def) && def.opens) {
+        // A pet box: opened by a double-click (a confirm: the pet binds); dragged onto the Pet slot it's refused there.
+        cell.draggable = true;
+        cell.addEventListener('dragstart', (e) => e.dataTransfer?.setData('application/x-mk-petbox', it.uid));
+        cell.addEventListener('dblclick', () => !this.forge.isOpen && !trading() && void openBox(it));
+      } else if (def?.kind === 'pet') {
+        // A pet: sent out by a double-click, or dragged onto the equipment panel's Pet slot.
+        cell.draggable = true;
+        cell.addEventListener('dragstart', (e) => e.dataTransfer?.setData('application/x-mk-pet', it.uid));
+        cell.addEventListener('dblclick', () => !this.forge.isOpen && !trading() && this.equipment?.sendOutPet(it.uid));
       } else if (def?.kind === 'consumable' && def.id === RETURN_LANTERN) {
         // A Return Lantern does nothing from the bag: it says where it's used.
         cell.addEventListener('dblclick', () => toast(def.useAt ?? 'Use it at a Lantern Post.', 2400));
@@ -481,6 +492,10 @@ export class Inventory {
       const wear = this.action('Wear', 'iv-flex', () => void this.equipment?.wearCosmetic(it.uid));
       if (!def.cosmeticPlace) Object.assign(wear, { disabled: true, title: "Can't be worn yet." });
       row.append(wear);
+    } else if (def && !isGearDef(def) && def.opens) {
+      row.append(this.action('Open', 'iv-flex', () => void openBox(it)));
+    } else if (def?.kind === 'pet') {
+      row.append(this.action('Send out', 'iv-flex', () => this.equipment?.sendOutPet(it.uid)));
     } else if (def?.kind === 'potion') {
       parts.push(el('div', 'iv-about', 'Drag it onto your hotbar (the - = ~ slots) and use it in the Slums.'));
       const price = this.priceOf(it);
@@ -532,6 +547,10 @@ export class Inventory {
     } else if (def?.kind === 'cosmetic') {
       if (!def.cosmeticPlace) off.add(items.length);
       items.push(['Wear', () => void this.equipment?.wearCosmetic(it.uid)]);
+    } else if (def && !isGearDef(def) && def.opens) {
+      items.push(['Open', () => void openBox(it)]);
+    } else if (def?.kind === 'pet') {
+      items.push(['Send out', () => this.equipment?.sendOutPet(it.uid)]);
     } else if (def?.forge === 'fragment') {
       const D = itemData();
       const per = D ? fragmentsPerWhetstone(D.stats) : 10;
@@ -545,7 +564,7 @@ export class Inventory {
       if (price !== null) items.push([`Sell… (${(price / it.count).toLocaleString()} Kusing each)`, () => void this.sell(it, cell, price)]);
     }
     // A consumable: used where it's for, never from the bag. A ticket says where (greyed); a Return Lantern's Use says so.
-    if (def && !isGearDef(def) && def.kind === 'consumable' && !def.forge) {
+    if (def && !isGearDef(def) && def.kind === 'consumable' && !def.forge && !def.opens) {
       const where = def.useAt ?? 'Use it where it’s for';
       if (def.id === RETURN_LANTERN) items.push(['Use', () => toast(where, 2400)]);
       else {

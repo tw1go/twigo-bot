@@ -18882,6 +18882,68 @@
     "note": "Equipment items (items/equipment.json): id, name, slot, who can use it, level, rarity, stats and icons. The training weapons are the first.",
     "file": "items/equipment.json"
   },
+  "pets": {
+    "note": "Pets (the art folder's pets/; repo addition 14 Oct 2026). `data` = sheets/pets.json: the cell, the anchor (the ground point under the pet: its feet, or its shadow's spot for a hovering pet), each animation's fps, loop and directions, and every pet's frame count per animation and direction (they differ). Sheets are horizontal strips of `cell` frames; idle and special exist for se and sw only, move for se, sw, ne and nw (sw and nw already mirrored). Pet kinds and numbers: classes/stats.json pets; items: items/items.json pet-<id> and pet-box-<id>.",
+    "data": "pets/sheets/pets.json",
+    "file": "pets/sheets/pet-{id}-{anim}-{dir}.png",
+    "icon": "pets/icons/pet-{id}.png",
+    "box": "pets/box/pet-box-{id}.png",
+    "node": "pets/tree/ui-pet-node-{stat}.png",
+    "nodeLocked": "pets/tree/ui-pet-node-{stat}-locked.png",
+    "nodeStats": {
+      "hp": "hp",
+      "def": "def",
+      "atk": "atk",
+      "atkRate": "atkrate",
+      "amp": "amp",
+      "critRate": "critrate",
+      "critDmg": "critdmg"
+    },
+    "sheetDirs": {
+      "se": "sw",
+      "sw": "se"
+    },
+    "sheetDirsByPet": {
+      "pittuki": {
+        "ne": "nw",
+        "nw": "ne"
+      },
+      "wonwuu": {
+        "ne": "nw",
+        "nw": "ne"
+      }
+    },
+    "sheetDirsByPetNote": "Art problem (14 Oct 2026): Dr. Pittuki's and Wonwuu's ne and nw sheets are swapped too (on top of every pet's se / sw). Remove once the art folder fixes them.",
+    "sheetDirsNote": "Art problem (14 Oct 2026): in all seven pets the se sheets (move, idle, special) face left on screen and the sw sheets face right, the opposite of their names; ne and nw are right. So the game draws the sw sheet for se and the se sheet for sw. Remove this once the art folder's se and sw files are swapped.",
+    "scale": 0.6,
+    "shadow": [
+      22,
+      8
+    ],
+    "shadowHover": [
+      14,
+      5
+    ],
+    "shadows": {
+      "fork-of-jord": [
+        10,
+        4
+      ]
+    },
+    "shadowColour": "#0B0A18",
+    "shadowAlpha": 0.55,
+    "shadowNote": "The ground shadow under each pet (world px, like mobs.json shadow: a pixel ellipse in shadowColour at shadowAlpha (darker than the characters' navy one, which hardly shows on the town's dark cobbles)): a little wider than a pet's body; smaller under a hovering pet (it floats over it); Fork of Jord its own (it's narrow).",
+    "scaleNote": "Pets are drawn at 0.6 of their art (owner, 14 Oct 2026: they looked too big beside the players).",
+    "ids": [
+      "fork-of-jord",
+      "croakyangs",
+      "wonwuu",
+      "pittuki",
+      "tamtam",
+      "kislap",
+      "fairy-cha"
+    ]
+  },
   "combatItems": {
     "note": "Combat items that aren't worn (items/items.json): whetstones, fragments, Repair Kits, HP/MP Potions, agimats, cosmetics; their icons beside the gear's under items/.",
     "file": "items/items.json"

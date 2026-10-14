@@ -1,10 +1,10 @@
 import type { TownShopBuyResponse, TownShopItem, TownShopResponse } from '@mikazuki/shared';
 import { api } from '../net/endpoints';
 import { playSound } from '../audio/sound';
-import { bagSlots, countOf, pocketUsed } from '@mikazuki/shared';
+import { bagSlots, boxPrice, countOf, isGearDef, pocketUsed } from '@mikazuki/shared';
 import { fakeLogin, fakeName } from '../session';
-import { adventure, itemData, onAdventure } from '../net/adventure';
-import { itemArt } from './item-art';
+import { adventure, anyDef, itemData, onAdventure } from '../net/adventure';
+import { RARITY_TEXT, itemArt } from './item-art';
 import { coinIcon, el, followWallet, kusingIcon, showPopup } from './reward';
 
 // 🎁 The sari-sari store (left click the store): what /redeem sells, in the reward box with tabs (Items, Potions, Bags,
@@ -12,14 +12,14 @@ import { coinIcon, el, followWallet, kusingIcon, showPopup } from './reward';
 // that stack, and a Buy button (passes ask again first: they're expensive and sent by hand). Buying goes through
 // the bot (POST /town/shop) with /redeem's checks. Item art: manifest `items` by reward id (ui/item-art.ts), in the
 // common rarity frame.
-// Healing, Smithing, Dungeons (the Warren Ticket for Kusing) and Travel (the Return Lantern for Kusing) are the Slums' (bot web/combat-bag.ts): HP and MP Potions for Kusing, whetstones and Repair Kits
+// Healing, Smithing, Dungeons (the Warren Ticket for Kusing), Travel (the Return Lantern for Kusing) and Pets (the pet boxes for Kowens, stats.json pets.boxPrice) are the Slums' (bot web/combat-bag.ts): HP and MP Potions for Kusing, whetstones and Repair Kits
 // for Kowens, into the combat bag; only the Low tier until you reach the next one. Buy 1, or type how many (up to a
 // stack, what fits and what you can pay); the server says why not when it can't.
 
 const plural = (n: number, one: string, many: string) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
 const kowens = (n: number) => plural(n, 'Kowen', 'Kowens');
 
-type Tab = 'items' | 'potions' | 'bags' | 'passes' | 'healing' | 'smithing' | 'dungeons' | 'travel';
+type Tab = 'items' | 'potions' | 'bags' | 'passes' | 'healing' | 'smithing' | 'dungeons' | 'travel' | 'pets';
 const TABS: [Tab, string, TownShopItem['kind'][]][] = [
   ['items', 'Items', ['fence', 'shovel', 'key', 'megaphone', 'rename', 'classchange', 'vault']],
   ['potions', 'Potions', ['potion']],
@@ -29,9 +29,10 @@ const TABS: [Tab, string, TownShopItem['kind'][]][] = [
   ['smithing', 'Smithing', ['smithing']],
   ['dungeons', 'Dungeons', ['dungeons']],
   ['travel', 'Travel', ['travel']],
+  ['pets', 'Pets', ['pets']],
 ];
 /** Combat items (into the combat bag): typed quantities. */
-const combat = (it: TownShopItem) => it.kind === 'healing' || it.kind === 'smithing' || it.kind === 'dungeons' || it.kind === 'travel';
+const combat = (it: TownShopItem) => it.kind === 'healing' || it.kind === 'smithing' || it.kind === 'dungeons' || it.kind === 'travel' || it.kind === 'pets';
 const kusing = (n: number) => `${n.toLocaleString()} Kusing`;
 const price = (it: TownShopItem, n: number) => (it.currency === 'kusing' ? kusing(n) : kowens(n));
 /** Item art is 32 px: shown at 2× in the grid. */
@@ -44,7 +45,7 @@ async function load(): Promise<TownShopResponse | null> {
 }
 
 async function buy(id: string, quantity: number): Promise<TownShopBuyResponse | null> {
-  if (fakeLogin()) return FAKE_COMBAT.some((x) => x.id === id) ? fakeCombatBuy(id, quantity) : fakeBuy(id, quantity);
+  if (fakeLogin()) return fakeCombat().some((x) => x.id === id) ? fakeCombatBuy(id, quantity) : fakeBuy(id, quantity);
   const res = await api('/town/shop', {
     method: 'POST',
     credentials: 'same-origin',
@@ -143,7 +144,11 @@ export function showShop(): void {
         card.setAttribute('aria-label', `${it.name}, ${price(it, it.cost)}`);
         const tag = el('span', 'sh-price');
         tag.append(it.currency === 'kusing' ? kusingIcon(1) : coinIcon(1), it.cost.toLocaleString());
-        card.append(picture(it.id, ART_SCALE), el('span', 'sh-name', it.name), tag);
+        // (A pet box's name in its rarity's colour: Fairy Cha's is rare.)
+        const name = el('span', 'sh-name', it.name);
+        const def = it.kind === 'pets' ? anyDef(it.id) : undefined;
+        if (def && def.rarity !== 'white') name.style.color = RARITY_TEXT[def.rarity];
+        card.append(picture(it.id, ART_SCALE), name, tag);
         if (it.owned) card.append(el('span', 'sh-badge', 'Owned'));
         else if (it.testersOnly) card.append(el('span', 'sh-badge', 'Testers'));
         else if (it.have) card.append(el('span', 'sh-badge sh-have', `×${it.have}`));
@@ -330,13 +335,23 @@ const FAKE_COMBAT: TownShopItem[] = [
   { id: 'return-lantern', name: 'Return Lantern', cost: 200, currency: 'kusing', kind: 'travel', about: 'Light it at a Lantern Post to travel to another map.', max: 99 },
 ];
 
+/** Dev: the pretend combat wares, the pet boxes with them (their prices from stats.json pets.boxPrice, as the bot's). */
+function fakeCombat(): TownShopItem[] {
+  const D = itemData();
+  const boxes = D ? [...D.defs.values()].flatMap((d): TownShopItem[] => {
+    const cost = !isGearDef(d) && d.opens ? boxPrice(D, d.id) : null;
+    return cost ? [{ id: d.id, name: d.name, cost, kind: 'pets', about: !isGearDef(d) ? (d.about ?? '') : '', max: 99 }] : [];
+  }) : [];
+  return [...FAKE_COMBAT, ...boxes];
+}
+
 /** Dev: the pretend shop with the combat tabs, your Kusing and what you carry. */
 function withCombat(s: TownShopResponse): TownShopResponse {
   const a = adventure();
   const D = itemData();
   const room = a && D ? bagSlots(D.stats) - pocketUsed(D, a.bag, 'bag') : 40;
   const items = s.items.filter((it) => !combat(it));
-  return { ...s, kusing: a?.kusing ?? 0, items: [...items, ...FAKE_COMBAT.map((it) => ({ ...it, have: a ? countOf(a.bag, it.id) : 0, max: room > 0 || (a && countOf(a.bag, it.id)) ? it.max : 0 }))] };
+  return { ...s, kusing: a?.kusing ?? 0, items: [...items, ...fakeCombat().map((it) => ({ ...it, have: a ? countOf(a.bag, it.id) : 0, max: room > 0 || (a && countOf(a.bag, it.id)) ? it.max : 0 }))] };
 }
 
 async function fakeCombatBuy(id: string, quantity: number): Promise<TownShopBuyResponse | null> {

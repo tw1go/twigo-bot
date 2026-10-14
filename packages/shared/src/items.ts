@@ -1,4 +1,5 @@
 import type { AdventureState, CosmeticPlace, EquipPlace, EquipSlot, EquipmentDef, GearRarity, QuestDef, QuestReward } from './adventure.js';
+import { type PetNode, petRules, petTotals } from './pets.js';
 import { type GearTotals, type StatName, type StatsData, gearKind, numbersIn, placesFor, needsLine, gearMismatch, wearCheck } from './stats.js';
 
 // 🎒 Items as things a player owns: each one an instance (its own uid, rolls and history) of a kind from the game's data
@@ -45,10 +46,14 @@ export interface Item {
   count: number;
   stat?: AgimatStat;
   lock?: EquipSlot;
+  /** A pet (kind 'pet'): Pet XP into its level (its `level` is the pet's), and its pet points by node (shared pets.ts). */
+  xp?: number;
+  points?: Partial<Record<PetNode, number>>;
 }
 
-/** What isn't gear: whetstones, fragments and Repair Kits (material), HP/MP Potions (potion), agimats, cosmetics. */
-export type ItemKind = 'material' | 'potion' | 'agimat' | 'cosmetic' | 'consumable';
+/** What isn't gear: whetstones, fragments and Repair Kits (material), HP/MP Potions (potion), agimats, cosmetics,
+ *  consumables (pet boxes among them) and pets. */
+export type ItemKind = 'material' | 'potion' | 'agimat' | 'cosmetic' | 'consumable' | 'pet';
 
 /** items/items.json: a kind of item that isn't worn (gear is items/equipment.json). */
 export interface CombatItemDef {
@@ -71,7 +76,11 @@ export interface CombatItemDef {
   cosmeticPlace?: CosmeticPlace;
   /** Sold at the sari-sari store: priced as a potion (its tier's Kusing), a whetstone or a Repair Kit (Kowens), a dungeon
    *  ticket (its dungeon's price), a travel item, or a smithing tool with its own price (`price`). */
-  shop?: 'potion' | 'whetstone' | 'repairKit' | 'ticket' | 'travel' | 'smithing';
+  shop?: 'potion' | 'whetstone' | 'repairKit' | 'ticket' | 'travel' | 'smithing' | 'pets';
+  /** A pet box: the pet item it opens into (shared pets.ts). */
+  opens?: string;
+  /** A pet item: which pet it is (stats.json pets.list). */
+  pet?: string;
   /** Its own shop price: Kusing (a travel item) or Kowens (Agimat Pliers, Temper Stones). */
   price?: { kusing?: number; kowens?: number };
   /** A consumable used somewhere, never from the bag: where (the bag says so). */
@@ -351,6 +360,9 @@ export function itemTotals(data: ItemData, items: Item[], mainStat: StatName | n
   };
   for (const item of items) {
     const def = data.defs.get(item.defId);
+    // A pet out: its pet tree and its kind's bonus (shared pets.ts), added like lines.
+    const R = def && !isGearDef(def) && def.kind === 'pet' ? petRules(data.stats) : null;
+    if (R) for (const [k, v] of Object.entries(petTotals(R, item, def && !isGearDef(def) ? (def.pet ?? null) : null))) t[k as keyof GearTotals] += v ?? 0;
     if (!isGearDef(def) || item.broken) continue;
     const b = enhancedBase(data.stats, def, item);
     if (b.atk) t.atk += b.atk;
@@ -465,7 +477,7 @@ export function giveQuestRewards(data: ItemData, s: AdventureState, quests: Ques
 
 /** The most of a kind in one slot (stats.json inventory: stackN lists; gear never stacks). */
 export function stackLimit(data: StatsData, def: AnyItemDef | undefined): number {
-  if (!def || isGearDef(def) || def.kind === 'cosmetic' || def.noStack) return 1;
+  if (!def || isGearDef(def) || def.kind === 'cosmetic' || def.kind === 'pet' || def.noStack) return 1;
   // (A consumable, the Warren Ticket, stacks like a potion: stats.json inventory.stack99 "potions", or its own word.)
   const word = def.kind === 'potion' || def.kind === 'consumable' ? (def.kind === 'consumable' ? 'consumables' : 'potions') : def.kind === 'agimat' ? 'agimats' : 'materials';
   for (const [k, v] of Object.entries(itemStats(data).inventory)) {

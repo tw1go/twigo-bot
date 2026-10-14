@@ -40,7 +40,8 @@ quests give a class (Slingshot, Stick, Greatstick, Broom, Pot lid, Hilot) and le
 living junk, mini bosses and the Scrapheap Golem field boss, and under it **the Scrap Warrens** (a walled junk maze
 for Lv 15–20, played as 20-minute runs alone or as a party with a Warren Ticket: five mini bosses and Barong-Barong, the
 Shanty Titan), with levels, skills and buffs, parties, loot and Kusing,
-gear with agimats and enhancing to +20, and trading. The bot runs the multiplayer town (`src/web/town.ts`, a WebSocket
+gear with agimats and enhancing to +20, trading, and pets (seven to collect from pet boxes, each levelling up with its own
+pet tree of small stat boosts). The bot runs the multiplayer town (`src/web/town.ts`, a WebSocket
 at `/ws`), so fights, loot and items are decided on the server; the game (`packages/game`) only shows them.
 
 ## What it does — Ancient Battlefield (every Saturday)

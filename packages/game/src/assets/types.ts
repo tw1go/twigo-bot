@@ -1,3 +1,4 @@
+import type { PetManifest } from '../world/pets';
 import type { DungeonMapBlock } from '@mikazuki/shared';
 // Shapes of public/assets/manifest.json and public/assets/maps/town.json — only the parts the game reads.
 // The JSON files are the source of truth; nothing here hard-codes sizes, anchors or positions.
@@ -48,6 +49,8 @@ export interface Manifest {
   combatItems?: { file: string };
   /** The town's ambient NPCs (world/npcs.ts): flat pre-baked sheets, not paper dolls. */
   npcs?: NpcDefs;
+  /** Pets (world/pets.ts): their sheets, icons, boxes and pet tree nodes; `data` = the frame counts (pets/sheets/pets.json). */
+  pets?: PetManifest;
   fx: Record<string, FxDef>;
   /** Mobs (world/mobs.ts): sheets per variant, animation and direction; `data` = their rules file (mobs/mobs.json). */
   mobs?: Record<string, MobDef | string>;
