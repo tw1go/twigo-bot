@@ -14,7 +14,7 @@ import { startWindow, toggleFullscreen } from './window-mode';
 //   logged in. mikazuki://auth?error=… says why not.
 // - The window: Settings → Display → Window (net/window-mode.ts), applied as it opens; F11 (Windows) or Ctrl+Cmd+F
 //   (Mac) swaps Full screen and the last other mode.
-// - Updates: on start, twigo.dev/downloads/latest.json (the updater plugin reads its `platforms`, signed by
+// - Updates: on start and every minute after (until it has told the player), twigo.dev/downloads/latest.json (the updater plugin reads its `platforms`, signed by
 //   packages/desktop/scripts/publish.mjs): a newer version shows "A new version of Mikazuki is ready" with Update now,
 //   which downloads it, installs it and restarts the app. If the updater can't (no signed release for this system, a
 //   failed download), the notice's Download opens this system's installer in the browser instead. The server turning
@@ -23,6 +23,8 @@ import { startWindow, toggleFullscreen } from './window-mode';
 declare const __BUILD__: { version: string };
 
 const SERVER = 'https://twigo.dev';
+/** How often an open app asks whether there's a new version (ms). */
+const CHECK_EVERY_MS = 60_000;
 const isMac = () => /Mac/.test(navigator.platform);
 
 /** Everything the desktop app sets up as it opens (main.ts). */
@@ -37,7 +39,19 @@ export function startDesktopApp(): void {
   // A login link that opened the app (or came while it was open).
   void getCurrent().then((urls) => urls && void handleLinks(urls)).catch(() => null);
   void onOpenUrl((urls) => void handleLinks(urls)).catch(() => null);
-  void checkForNewVersion();
+  // A new version: asked on start and every minute after (as the website's open games ask version.json), so an app left
+  // open hears of one as soon as it's published (the desktop build lands about 10 minutes after a deploy), until it has
+  // told the player once.
+  let checking = false;
+  const ask = async () => {
+    if (checking) return;
+    checking = true;
+    const told = await checkForNewVersion().catch(() => false);
+    checking = false;
+    if (told) clearInterval(every);
+  };
+  const every = setInterval(() => void ask(), CHECK_EVERY_MS);
+  void ask();
 }
 
 let say: (text: string, problem?: boolean) => void = () => {};
@@ -111,12 +125,18 @@ async function install(update: Update, say: (text: string) => void): Promise<voi
   await relaunch();
 }
 
-/** A newer version on twigo.dev/downloads: Update now (the updater), else the notice with Download. */
-async function checkForNewVersion(): Promise<void> {
+/** A newer version on twigo.dev/downloads: Update now (the updater), else the notice with Download. True: the player was
+ *  told (no need to ask again). */
+async function checkForNewVersion(): Promise<boolean> {
   const [update, latest] = await Promise.all([askUpdater(), latestRelease()]);
-  if (update) return notifyUpdate(update.version, (say) => install(update, say), downloadFrom(latest));
-  if (update === null || !latest?.version || !newer(latest.version, __BUILD__.version)) return;
-  if (isMac() ? latest.mac : latest.windows) notifyDownload(latest.version, downloadFrom(latest));
+  if (update) {
+    notifyUpdate(update.version, (say) => install(update, say), downloadFrom(latest));
+    return true;
+  }
+  if (update === null || !latest?.version || !newer(latest.version, __BUILD__.version)) return false;
+  if (!(isMac() ? latest.mac : latest.windows)) return false;
+  notifyDownload(latest.version, downloadFrom(latest));
+  return true;
 }
 
 /** Settings → Exit game: the app quits. */
