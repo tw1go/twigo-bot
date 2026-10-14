@@ -1,4 +1,4 @@
-import type { AdventureState } from './adventure.js';
+import type { AdventureState, TownPetAction } from './adventure.js';
 import type { GearTotals, StatsData } from './stats.js';
 import { type Item, type ItemData, type CombatItemDef, addToBag, bagSlots, isGearDef, newItem, pocketUsed } from './items.js';
 
@@ -264,4 +264,37 @@ export function callBackPet(data: ItemData, s: Pick<AdventureState, 'bag' | 'pet
   s.pet = null;
   s.bag.push(pet);
   return { ok: true, message: `${data.defs.get(pet.defId)?.name ?? 'Your pet'} is back in your bag.` };
+}
+
+/** A pet action (POST /town/pet; the dev town's /__pet) on a character: a box opened, a pet sent out or called back
+ *  (refused in a fight or within the swap cooldown of `lastChange`), a pet point spent on the pet out, or every one back.
+ *  `changed`: the pet out changed (the caller notes the time, and everyone sees it). */
+export function petAction(
+  data: ItemData,
+  s: Pick<AdventureState, 'bag' | 'pet'>,
+  a: TownPetAction,
+  ctx: { lastChange?: number; now: number; inCombat: boolean; newUid: () => string },
+): { ok: boolean; message?: string; changed?: boolean } {
+  const R = petRules(data.stats);
+  if (!R) return { ok: false, message: 'No pets yet.' };
+  if (a.action === 'open') return openPetBox(data, s, a.item, ctx.newUid);
+  if (a.action === 'out' || a.action === 'back') {
+    const no = petSwapRefusal(R, ctx.lastChange, ctx.now, ctx.inCombat);
+    if (no) return { ok: false, message: no };
+    const r = a.action === 'out' ? sendOutPet(data, s, a.item) : callBackPet(data, s);
+    return { ...r, changed: r.ok };
+  }
+  if (!s.pet) return { ok: false, message: 'No pet is out.' };
+  if (a.action === 'reset') return resetPetPoints(s.pet) ? { ok: true, message: 'Pet points back.' } : { ok: false, message: 'No pet points spent.' };
+  const no = spendPetPoint(R, s.pet, a.node);
+  return no ? { ok: false, message: no } : { ok: true };
+}
+
+/** The body of POST /town/pet, if it's a valid one. */
+export function parsePetAction(body: unknown): TownPetAction | null {
+  const b = body as Record<string, unknown> | null;
+  if ((b?.action === 'open' || b?.action === 'out') && typeof b.item === 'string' && b.item.length <= 40) return { action: b.action, item: b.item };
+  if (b?.action === 'back' || b?.action === 'reset') return { action: b.action };
+  if (b?.action === 'spend' && PET_NODES.includes(b.node as PetNode)) return { action: 'spend', node: b.node as PetNode };
+  return null;
 }

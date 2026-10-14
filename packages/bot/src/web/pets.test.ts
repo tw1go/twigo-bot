@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -20,7 +20,7 @@ for (const name of ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'ADMIN_ROLE_ID', 'ADMI
 process.env.TIMEZONE = 'Asia/Manila';
 
 const shared = await import('@mikazuki/shared');
-const { PetXpClock, baseStats, boxPrice, callBackPet, derivedStats, dropRefusal, gainPetXp, itemTotals, newItem, nodeOpen, openPetBox, petPointsLeft, petRules, petSwapRefusal, petTotals, petXpForHit, petXpToNext, resetPetPoints, sendOutPet, setPetLevel, spendPetPoint, stackLimit, tradeRefusal, OPEN_BOX_FIRST } = shared;
+const { PetXpClock, bagSlots, baseStats, boxPrice, callBackPet, derivedStats, dropRefusal, gainPetXp, itemTotals, newItem, nodeOpen, openPetBox, petPointsLeft, petRules, petSwapRefusal, petTotals, petXpForHit, petXpToNext, resetPetPoints, sendOutPet, setPetLevel, spendPetPoint, stackLimit, tradeRefusal, OPEN_BOX_FIRST } = shared;
 type Item = import('@mikazuki/shared').Item;
 type AdventureState = import('@mikazuki/shared').AdventureState;
 type CombatItemDef = import('@mikazuki/shared').CombatItemDef;
@@ -28,10 +28,11 @@ type TownServerMessage = import('@mikazuki/shared').TownServerMessage;
 const { loadItemData } = await import('./stats-data.js');
 const { combatWares, buyCombat } = await import('./combat-bag.js');
 const { sellPrice } = shared;
-const { MIGRATIONS } = await import('../db/db.js');
+const { MIGRATIONS, closeDatabase } = await import('../db/db.js');
 const { MobRoom, loadMobKinds, loadMobMap } = await import('./town-mobs.js');
 const { attachTown } = await import('./town.js');
-const { freshAdventure, parsePetAction } = await import('./adventure.js');
+const { freshAdventure } = await import('./adventure.js');
+const { parsePetAction } = shared;
 const { freshProgress } = await import('./progress.js');
 
 const D = loadItemData();
@@ -85,7 +86,7 @@ test('opening a box: the box goes, a bound Lv 1 pet with no XP or points comes; 
   assert.ok(openPetBox(D, t, b.uid, uid).ok);
   assert.equal(t.bag.find((i) => i.defId === 'pet-box-wonwuu')!.count, 2);
   assert.equal(t.bag.filter((i) => i.defId === 'pet-wonwuu').length, 1);
-  const full = bagWith(box('tamtam', 2), ...Array.from({ length: S.inventory.slots - 1 }, () => newItem(S, D.defs.get('low-hp-potion')!, uid(), 99)));
+  const full = bagWith(box('tamtam', 2), ...Array.from({ length: bagSlots(S) - 1 }, () => newItem(S, D.defs.get('low-hp-potion')!, uid(), 99)));
   const before = JSON.stringify(full.bag);
   assert.deepEqual(openPetBox(D, full, full.bag[0].uid, uid), { ok: false, message: 'Make room in your bag first.' });
   assert.equal(JSON.stringify(full.bag), before);
@@ -107,7 +108,7 @@ test('sending out and calling back: a box is refused ("Open the box first."), th
   assert.ok(callBackPet(D, s).ok);
   assert.equal(s.pet, null);
   assert.equal(callBackPet(D, s).ok, false);
-  const full = { ...bagWith(...Array.from({ length: S.inventory.slots }, () => newItem(S, D.defs.get('low-hp-potion')!, uid(), 99))), pet: kislap };
+  const full = { ...bagWith(...Array.from({ length: bagSlots(S) }, () => newItem(S, D.defs.get('low-hp-potion')!, uid(), 99))), pet: kislap };
   assert.deepEqual(callBackPet(D, full), { ok: false, message: 'Your bag is full.' });
   assert.equal(petSwapRefusal(R, undefined, 0, false), null);
   assert.equal(petSwapRefusal(R, undefined, 0, true), "Can't change pets during a fight.");
@@ -206,7 +207,7 @@ test('the sari-sari store\'s Pets tab: each common box 100 Kowens, Fairy Cha\'s 
   assert.equal(wallet, 50);
   assert.equal(s.bag[0].defId, 'pet-box-fairy-cha');
   assert.equal(s.bag[0].bound, false, 'a box is tradable');
-  const full = bagWith(...Array.from({ length: S.inventory.slots }, () => newItem(S, D.defs.get('low-hp-potion')!, uid(), 99)));
+  const full = bagWith(...Array.from({ length: bagSlots(S) }, () => newItem(S, D.defs.get('low-hp-potion')!, uid(), 99)));
   wallet = 500;
   assert.equal(buyCombat(D, full, 1, 'pet-box-tamtam', 1, kowens, uid).ok, false);
   assert.equal(wallet, 500);
@@ -293,4 +294,9 @@ test('over the town\'s socket: hits on monsters give the pet out their level, at
   mara.ws.close();
   bob.ws.close();
   await new Promise<void>((ok) => server.close(() => ok()));
+});
+
+test.after(() => {
+  closeDatabase();
+  rmSync(dir, { recursive: true, force: true });
 });

@@ -1,7 +1,7 @@
 import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ClassesFile, GearRarity, HoodHouse, HouseLook, OutfitData, TownHoodActionResponse, TownHoodResponse, TownItems, TownRace, TownRaceResponse } from '@mikazuki/shared';
-import { type LanternPost, RETURN_LANTERN, addToBag, isGearDef, lanternPostOf, rollGear, rollWorthy, takeKind, buffSkillLevels, classBuffs, classSkills, damageSkillLevels, moveUnlock } from '@mikazuki/shared';
+import { type LanternPost, RETURN_LANTERN, gainPetXp, parsePetAction, petAction, petIdOf, petRules, setPetLevel, addToBag, isGearDef, lanternPostOf, rollGear, rollWorthy, takeKind, buffSkillLevels, classBuffs, classSkills, damageSkillLevels, moveUnlock } from '@mikazuki/shared';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { doorSpot, hoodMap, lotTile } from '../../bot/src/web/hood-map.ts';
 import type { Plugin } from 'vite';
@@ -51,6 +51,9 @@ import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
 //   (the page's ?give=<defId>:<rarity>:<plus>, ?kusing=, ?whetstones= call it on arrival)
 //   POST /__forge?as=Alice {action, item, …}   the forge popup (enhance, repair, embed, disassemble, combine) on her
 //   items here, rolled by the bot's web/forge.ts (the page's pretend /town/forge); sends her `items` (and `kit` for her aura)
+//   POST /__pet?as=Alice {action: open|out|back|spend|reset, …}   a pet action on her items here (the page's pretend
+//   /town/pet), by the shared rules (the swap cooldown and fights too); GET /__pet?as=Alice&level=12&xp=500: her pet out
+//   (else the first in her bag) at that level and XP (the page's ?petlevel= / ?petxp=)
 //   GET /__roll?as=Alice   a rare orange item drops for Alice's party: the loot roll pop-up (alone: it just lies there)
 //   GET /__loot?rich=1   nearly every kill drops gear (the first kind, brown, +0 to +3) and a potion, to try loot (rich=0: as ever)
 //   POST /__shop?as=Alice {id, quantity, kowens}   buys a combat item (the sari-sari store's Healing and Smithing tabs)
@@ -84,7 +87,10 @@ export function devTown(): Plugin {
       // Each player's items (the page's copy, sent with /__items): loot, potions, the shop and ?give= change them here.
       const items = loadItemData();
       const gear = new Map<string, TownItems>();
-      const gearOf = (name: string) => gear.get(name) ?? gear.set(name, { equipped: {}, cosmetics: {}, bag: [], kusing: 0 }).get(name)!;
+      const gearOf = (name: string) => gear.get(name) ?? gear.set(name, { equipped: {}, cosmetics: {}, bag: [], kusing: 0, pet: null }).get(name)!;
+      /** The pet each player has out (its pet id), and when they last changed it (the swap cooldown). */
+      const petOf = (name: string) => petIdOf(items, gear.get(name)?.pet);
+      const petChanges = new Map<string, number>();
       const devUid = () => `dev-${Math.random().toString(16).slice(2, 14)}`;
       /** Their worn weapon's + as its aura shows it (none when broken). */
       const plusOf = (name: string) => {
@@ -369,12 +375,13 @@ export function devTown(): Plugin {
           }
           return name;
         },
-        profile: (name) => ({ nickname: name, title: { name: 'Townfolk', color: '#B794F6' }, outfit: looks.get(name) ?? ({} as OutfitData), cls: kits.get(name)?.cls, weapon: kits.get(name)?.weapon, weaponPlus: plusOf(name), level: levelOf(name).level }),
+        profile: (name) => ({ nickname: name, title: { name: 'Townfolk', color: '#B794F6' }, outfit: looks.get(name) ?? ({} as OutfitData), cls: kits.get(name)?.cls, weapon: kits.get(name)?.weapon, weaponPlus: plusOf(name), level: levelOf(name).level, pet: petOf(name) }),
         progress: {
           fighter: (name) => {
             const p = levelOf(name);
             const kit = kits.get(name);
-            const worn = Object.values(gear.get(name)?.equipped ?? {});
+            const pet = gear.get(name)?.pet;
+            const worn = [...Object.values(gear.get(name)?.equipped ?? {}), ...(pet ? [pet] : [])];
             return { cls: kit?.cls, level: p.level, points: p.points, gear: worn.length ? worn : [kit?.weapon], skills: damageSkillLevels(classOf(name), p), buffLevels: buffSkillLevels(classOf(name), p) }; // everything worn (its DEF, HP…)
           },
           kill: (name, mob) => {
@@ -399,6 +406,17 @@ export function devTown(): Plugin {
             const list = (i: 0 | 1) => [...offers[i].items.map((x) => `${x.defId}${x.count > 1 ? ` ×${x.count}` : ''}`), ...(offers[i].kusing ? [`${offers[i].kusing} Kusing`] : [])].join(', ') || 'nothing';
             server.config.logger.info(r.ok ? `[trade] ${users[0]} gave ${list(0)}; ${users[1]} gave ${list(1)}` : `[trade] refused: ${r.message}`, { timestamp: true });
             return r.ok ? { ok: true } : r;
+          },
+        },
+        // Pet XP on the kept copy's pet out (sent to the page as 'pet-xp').
+        pets: {
+          xp: (name, n) => {
+            const pet = gear.get(name)?.pet;
+            const R = petRules(stats);
+            if (!pet || !R) return null;
+            const g = gainPetXp(R, pet, n);
+            if (g.ups) server.config.logger.info(`[pets] ${name}'s ${pet.defId} reached Lv ${pet.level}`, { timestamp: true });
+            return g.gained ? { pet, ups: g.ups } : null;
           },
         },
         onSay: (_id, nickname, text, megaphone, gm) => server.config.logger.info(`[town chat → Discord] ${!gm && megaphone ? '📢 ' : ''}${nickname}: ${text}`, { timestamp: true }),
@@ -437,7 +455,9 @@ export function devTown(): Plugin {
         const name = new URL(req.url ?? '/', 'http://localhost').searchParams.get('as') ?? '';
         if (req.method !== 'POST') return reply(res, gear.has(name) ? { known: true, ...gearOf(name) } : { known: false });
         const body = (await readJson(req)) as unknown as TownItems;
-        if (body && typeof body === 'object' && Array.isArray(body.bag)) gear.set(name, { equipped: body.equipped ?? {}, cosmetics: body.cosmetics ?? {}, bag: body.bag, kusing: Number(body.kusing) || 0 });
+        const petBefore = petOf(name);
+        if (body && typeof body === 'object' && Array.isArray(body.bag)) gear.set(name, { equipped: body.equipped ?? {}, cosmetics: body.cosmetics ?? {}, bag: body.bag, kusing: Number(body.kusing) || 0, pet: body.pet ?? null });
+        if (petOf(name) !== petBefore) town.pet(name, petOf(name));
         town.kit(name, kits.get(name)?.cls ?? null, gearOf(name).equipped.weapon?.defId ?? kits.get(name)?.weapon ?? null, plusOf(name)); // its HP and DEF in fights, its aura
         reply(res, { ok: true });
       });
@@ -498,6 +518,33 @@ export function devTown(): Plugin {
           const line = r.outcome === 'success' && r.item ? enhanceFeedLine(items, name, r.item, cls ? (items.stats.classes[cls]?.main ?? null) : null) : null;
           if (line) town.system({ kind: 'forge', text: line.text, tone: line.tone }, name);
         }
+        reply(res, { ...r, items: g });
+      });
+      // POST /__pet?as=Alice {action, …}   a pet action on her kept items (the page's pretend /town/pet): shared petAction,
+      // the swap cooldown and the town's fight rule as live.
+      server.middlewares.use('/__pet', async (req, res) => {
+        const q = new URL(req.url ?? '/', 'http://localhost').searchParams;
+        const name = q.get('as') ?? '';
+        const g = gearOf(name);
+        // GET ?level=N&xp=M: her pet out (else the first in her bag) set to that level and XP (the page's ?petlevel= / ?petxp=).
+        if (req.method !== 'POST') {
+          const pet = g.pet ?? g.bag.find((i) => petIdOf(items, i));
+          const R = petRules(stats);
+          if (!pet || !R) return reply(res, { ok: false, message: 'No pet.' });
+          setPetLevel(R, pet, Number(q.get('level') ?? pet.level), Number(q.get('xp') ?? 0));
+          town.items(name);
+          return reply(res, { ok: true, items: g });
+        }
+        const action = parsePetAction(await readJson(req));
+        if (!action) return reply(res, { ok: false, message: 'Invalid pet action.' });
+        const now = Date.now();
+        const r = petAction(items, g, action, { lastChange: petChanges.get(name), now, inCombat: town.inCombat(name), newUid: devUid });
+        if (r.changed) {
+          petChanges.set(name, now);
+          town.pet(name, petOf(name));
+        }
+        if (r.ok) town.items(name);
+        server.config.logger.info(`[pets] ${name}: ${action.action} ${r.ok ? 'ok' : `refused: ${r.message}`}`, { timestamp: true });
         reply(res, { ...r, items: g });
       });
       server.middlewares.use('/__xp', (req, res) => {

@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import type { AdventureState, ClassesFile, EquipPlace, Item, QuestDef, QuestReward, QuestsFile, StatName, TownAdventureResponse, TownEquipAction, TownForgeAction, TownForgeResponse, TownPointsAction, TownQuestAction, TownSkillsAction, CosmeticPlace, TownPetAction, PetNode } from '@mikazuki/shared';
-import { STAT_NAMES, bagSlots, classSkills, classBuffs, buffSkillLevels, damageSkillLevels, skillLevelOf, equipFromBag, giveGear, giveQuestRewards, giveQuestPieces, questKill, readyToReport, withLeveling, missingTraining, moveUnlock, newItem, placesFor, swapTrainingGear, trainingGear, takeKind, unequipToBag, wearCheck, COSMETIC_PLACES, wearCosmetic, unwearCosmetic, PET_NODES, callBackPet, gainPetXp, openPetBox, petIdOf, petRules, petSwapRefusal, resetPetPoints, sendOutPet, spendPetPoint } from '@mikazuki/shared';
+import type { AdventureState, ClassesFile, EquipPlace, Item, QuestDef, QuestReward, QuestsFile, StatName, TownAdventureResponse, TownEquipAction, TownForgeAction, TownForgeResponse, TownPointsAction, TownQuestAction, TownSkillsAction, CosmeticPlace, TownPetAction } from '@mikazuki/shared';
+import { STAT_NAMES, bagSlots, classSkills, classBuffs, buffSkillLevels, damageSkillLevels, skillLevelOf, equipFromBag, giveGear, giveQuestRewards, giveQuestPieces, questKill, readyToReport, withLeveling, missingTraining, moveUnlock, newItem, placesFor, swapTrainingGear, trainingGear, takeKind, unequipToBag, wearCheck, COSMETIC_PLACES, wearCosmetic, unwearCosmetic, gainPetXp, petAction, petIdOf, petRules } from '@mikazuki/shared';
 import { db } from '../db/db.js';
 import { type LevelGain, type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView, raiseSkill, refundPoints, resetSkillPoints, resetStatPoints, spendPoint } from './progress.js';
 import type { Attacker } from './town-mobs.js';
@@ -468,24 +468,12 @@ export const levelFor = (userId: string, level: number): LevelGain => progress(u
 /** When each member last sent a pet out or called one back (the swap cooldown), in memory: a restart forgets it. */
 const petChanges = new Map<string, number>();
 
-/** A pet action on their state: a box opened into a bound pet, a pet sent out or called back (never in combat, nor
- *  within the swap cooldown of the last change: `inCombat` is the town's rule), a pet point spent or every one back. */
+/** A pet action on their state (shared petAction): never a swap in a fight (`inCombat`: the town's rule) or within the
+ *  cooldown of their last one. */
 export function petStep(userId: string, s: AdventureState, a: TownPetAction, inCombat: boolean, now = Date.now()): Result & { changed?: boolean } {
-  const D = loadItemData();
-  const R = petRules(D.stats);
-  if (!R) return { ok: false, message: 'No pets yet.' };
-  if (a.action === 'open') return openPetBox(D, s, a.item, newUid);
-  if (a.action === 'out' || a.action === 'back') {
-    const no = petSwapRefusal(R, petChanges.get(userId), now, inCombat);
-    if (no) return { ok: false, message: no };
-    const r = a.action === 'out' ? sendOutPet(D, s, a.item) : callBackPet(D, s);
-    if (r.ok) petChanges.set(userId, now);
-    return { ...r, changed: r.ok };
-  }
-  if (!s.pet) return { ok: false, message: 'No pet is out.' };
-  if (a.action === 'reset') return resetPetPoints(s.pet) ? { ok: true, message: 'Pet points back.' } : { ok: false, message: 'No pet points spent.' };
-  const no = spendPetPoint(R, s.pet, a.node);
-  return no ? { ok: false, message: no } : { ok: true };
+  const r = petAction(loadItemData(), s, a, { lastChange: petChanges.get(userId), now, inCombat, newUid });
+  if (r.changed) petChanges.set(userId, now);
+  return r;
 }
 
 /** POST /town/pet for a member. `changed`: the pet out changed (everyone sees it; fights use its stats). */
@@ -510,15 +498,6 @@ export function petXpFor(userId: string, n: number): { pet: Item; ups: number } 
   if (!g.gained) return null;
   petXpStmt.run(pet.level, pet.xp ?? 0, pet.uid, userId);
   return { pet, ups: g.ups };
-}
-
-/** The body of POST /town/pet, if it's a valid one. */
-export function parsePetAction(body: unknown): TownPetAction | null {
-  const b = body as Record<string, unknown> | null;
-  if ((b?.action === 'open' || b?.action === 'out') && typeof b.item === 'string' && b.item.length <= 40) return { action: b.action, item: b.item };
-  if (b?.action === 'back' || b?.action === 'reset') return { action: b.action };
-  if (b?.action === 'spend' && PET_NODES.includes(b.node as PetNode)) return { action: 'spend', node: b.node as PetNode };
-  return null;
 }
 
 /** The body of POST /town/quest, if it's a valid one. */
