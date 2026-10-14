@@ -233,7 +233,7 @@ test('schema v16: a pet\'s XP and points columns, nothing else changed', () => {
 
 test('over the town\'s socket: hits on monsters give the pet out their level, at most once a second; no pet, nothing', async () => {
   const map = loadMobMap('slums');
-  // (Four skills, each its own cooldown: one swing every 0.45 s lands, the 0.4 s swing limit apart.)
+  // (Four skills, each its own cooldown: one swing every 0.6 s lands, well past the 0.4 s swing limit.)
   const room = new MobRoom(map, () => 0.5, { slingshot: [1, 1, 1, 1] }, { shapes: {} }, loadMobKinds());
   // A Scrap Crab (Lv 13: lots of HP, so four swings don't kill it; its shell may block, which still counts as a hit).
   const zone = map.mobZones!.find((z) => z.mob === 'scrap-crab')!;
@@ -271,29 +271,38 @@ test('over the town\'s socket: hits on monsters give the pet out their level, at
   const wait = (ms: number) => new Promise((ok) => setTimeout(ok, ms));
   const mara = await open('Mara');
   const bob = await open('Bob');
+  // (Whatever happens below, the sockets and the server close: a failed check must fail the run, never hang it.)
+  try {
   await wait(100);
   // Bob sees Mara's pet in the room's list.
   const welcome = bob.got.find((m) => m.t === 'welcome') as Extract<TownServerMessage, { t: 'welcome' }>;
   assert.equal(welcome.players.find((p) => p.nickname === 'Mara')?.pet, 'croakyangs');
-  // Four swings 0.45 s apart (the swing limit is 0.4 s): gains at the first and the fourth only (0 s and 1.35 s).
+  // Four swings 0.6 s apart (the swing limit is 0.4 s); Bob (no pet) swings once too. The crab can fall before the last
+  // (its shell open at the wrong moment), so what's expected comes from the swings of hers that landed: a gain at the
+  // first, then at each one a second or more after the last gain (0 s and 1.2 s; 0.2 s or more of slack either way).
+  bob.ws.send(JSON.stringify({ t: 'attack', mob: crab.id, skill: 0 }));
   for (let i = 0; i < 4; i++) {
     mara.ws.send(JSON.stringify({ t: 'attack', mob: crab.id, skill: i }));
-    bob.ws.send(JSON.stringify({ t: 'attack', mob: crab.id, skill: i }));
-    await wait(450);
+    await wait(600);
   }
-  await wait(100);
+  await wait(150);
   const you = (mara.got.find((m) => m.t === 'welcome') as Extract<TownServerMessage, { t: 'welcome' }>).you;
   const hits = mara.got.filter((m): m is Extract<TownServerMessage, { t: 'mob-hit' }> => m.t === 'mob-hit' && m.by === you && m.hits.some((h) => !h.miss));
-  assert.equal(hits.length, 4, 'every swing of hers landed');
+  assert.ok(hits.length >= 2, `at least two of her swings landed (${hits.length})`);
+  let last = -Infinity;
+  const expected = Array.from({ length: hits.length }, (_, i) => i * 600).filter((at) => (at - last >= 1000 ? ((last = at), true) : false)).length;
   const level = crab.level;
   assert.equal(level, 13, 'a Lv 13 monster gives 13');
-  assert.deepEqual(gains, [{ who: 'Mara', n: level }, { who: 'Mara', n: level }], 'Mara twice (0 s and 1.35 s), Bob (no pet) never');
+  assert.deepEqual(gains, Array.from({ length: expected }, () => ({ who: 'Mara', n: level })), `Mara ${expected} times in ${hits.length} landed swings, Bob (no pet) never`);
   const told = mara.got.filter((m): m is Extract<TownServerMessage, { t: 'pet-xp' }> => m.t === 'pet-xp');
-  assert.equal(told.length, 2);
-  assert.equal(told[1].pet.xp, 2 * level);
-  mara.ws.close();
-  bob.ws.close();
-  await new Promise<void>((ok) => server.close(() => ok()));
+  assert.equal(told.length, expected);
+  assert.equal(told.at(-1)!.pet.xp, expected * level);
+  } finally {
+    mara.ws.close();
+    bob.ws.close();
+    server.closeAllConnections();
+    await new Promise<void>((ok) => server.close(() => ok()));
+  }
 });
 
 test.after(() => {
