@@ -1430,5 +1430,145 @@
     },
     "eligible": "did >= 5% of golem HP",
     "agimatSources": "golem loot and disassembly only"
+  },
+  "pets": {
+    "note": "Pets (Mac, 14 Oct 2026). Values marked default are Claude's; Mac set the tree layout, Lv cap 20, Lv 1 start, XP from attacking monsters scaled by level, 20-30 days to max, Fairy Cha +2.3% drop rate, boxes sold in the sari-sari store for 100 Kowens (common) / 200 (Fairy Cha). Mac set the maxed values for ATK +9, damage amp +3.5%, crit damage +9%.",
+    "levelCap": 20,
+    "startLevel": 1,
+    "pointsPerLevel": 1,
+    "pointAtLevel1": true,
+    "xp": {
+      "perGain": "the hit monster's level",
+      "throttleSeconds": 1,
+      "toNext": {
+        "mult": 2600,
+        "pow": 1.5,
+        "roundTo": 100
+      },
+      "table": {
+        "1": 2600,
+        "2": 7400,
+        "3": 13500,
+        "4": 20800,
+        "5": 29100,
+        "6": 38200,
+        "7": 48200,
+        "8": 58800,
+        "9": 70200,
+        "10": 82200,
+        "11": 94900,
+        "12": 108100,
+        "13": 121900,
+        "14": 136200,
+        "15": 151000,
+        "16": 166400,
+        "17": 182200,
+        "18": 198600,
+        "19": 215300
+      },
+      "total": 1745600,
+      "target": "about 25 days of 2 h hunting at Lv 20 on Scrap Crabs (Lv 13), 1 gain/s at 75% of the time; Lv 11 mobs about 30 days"
+    },
+    "tree": {
+      "hp": {
+        "max": 3,
+        "per": 4,
+        "requires": []
+      },
+      "def": {
+        "max": 3,
+        "per": 2,
+        "requires": []
+      },
+      "atk": {
+        "max": 3,
+        "per": 3,
+        "requires": [
+          "hp",
+          "def"
+        ]
+      },
+      "atkRate": {
+        "max": 3,
+        "per": 0.5,
+        "unit": "%",
+        "requires": [
+          "atk"
+        ]
+      },
+      "amp": {
+        "max": 2,
+        "per": 1.75,
+        "unit": "%",
+        "requires": [
+          "atkRate"
+        ]
+      },
+      "critRate": {
+        "max": 3,
+        "per": 0.5,
+        "unit": "%",
+        "requires": [
+          "atk"
+        ]
+      },
+      "critDmg": {
+        "max": 3,
+        "per": 3,
+        "unit": "%",
+        "requires": [
+          "critRate"
+        ]
+      }
+    },
+    "requiresMeans": "every listed node at its max",
+    "list": {
+      "fork-of-jord": {
+        "name": "Fork of Jord",
+        "rarity": "common",
+        "hover": true
+      },
+      "croakyangs": {
+        "name": "Croakyangs",
+        "rarity": "common"
+      },
+      "wonwuu": {
+        "name": "Wonwuu the Rat",
+        "rarity": "common"
+      },
+      "pittuki": {
+        "name": "Dr. Pittuki",
+        "rarity": "common"
+      },
+      "tamtam": {
+        "name": "Tamtam",
+        "rarity": "common"
+      },
+      "kislap": {
+        "name": "Kislap",
+        "rarity": "common",
+        "hover": true,
+        "glow": "#B6F05A"
+      },
+      "fairy-cha": {
+        "name": "Fairy Cha",
+        "rarity": "rare",
+        "hover": true,
+        "bonus": {
+          "dropRate": 2.3
+        }
+      }
+    },
+    "follow": {
+      "distanceTiles": 1.5,
+      "zigzagEverySteps": 3,
+      "swapCooldownSeconds": 30
+    },
+    "boxPrice": {
+      "currency": "kowens",
+      "common": 100,
+      "rare": 200,
+      "shop": "sari-sari store, own Pets tab"
+    }
   }
 }

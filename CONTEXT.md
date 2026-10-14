@@ -351,6 +351,42 @@ The glow and rising lines on a weapon at +15 and above: blue, then gold, then pr
 Two players swapping items and Kusing face to face, both locking then confirming.
 
 
+## Pets
+
+**Pet**:
+A small creature that follows its owner on every map and gives a small stat bonus; never fights, blocks anyone or
+takes damage. Also the bound item that carries it: its own level (1–20), XP and spent pet points, so two of the same
+kind are two pets.
+_Avoid_: companion, familiar, minion (the golem's are Adds)
+
+**Pet box**:
+The unopened, tradable item a pet comes in (one per kind of pet); it stacks, and opening it gives a bound Lv 1 pet.
+_Avoid_: egg, crate, capsule
+
+**Open** (a pet box):
+Using a pet box: the box is gone and its pet, bound to this character, is in the bag.
+_Avoid_: hatch, unbox, activate
+
+**Send out / Call back**:
+Putting a pet in the Pet tab's slot (it follows and its stats count) and taking it back to the bag. One pet out at a
+time; not in combat, and not again for a while after a change.
+_Avoid_: summon, equip, wear (gear and cosmetics are worn)
+
+**Pet point**:
+One a pet level, Lv 1 included; spent on a node of the pet tree. A Lv 20 pet has 20, enough for the whole tree.
+_Avoid_: skill point (that's the character's)
+
+**Pet tree**:
+The seven nodes a pet's points go into: HP and DEF first, then ATK, then attack rate and damage amp on one side, crit
+rate and crit damage on the other. A node opens when every node before it is at its max.
+_Avoid_: skill tree (Skills are the class's)
+
+**Node**:
+One stat of the pet tree, with its points spent out of its max (HP 2/3).
+
+**Pet XP**:
+What a pet earns while out: each time its owner's attack hits a monster, that monster's level, at most once a second.
+
 ## Skills and buffs
 
 **Damage skill**:

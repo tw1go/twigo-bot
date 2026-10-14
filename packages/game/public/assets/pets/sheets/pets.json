@@ -1,0 +1,158 @@
+{
+ "cell": [
+  40,
+  40
+ ],
+ "anchor": [
+  20,
+  35
+ ],
+ "anchorMeaning": "ground point under the pet (feet, or the shadow spot for hovering pets)",
+ "mirror": {
+  "sw": "se",
+  "nw": "ne"
+ },
+ "zigzag": "heading n/s/e/w, alternate the two nearest diagonals every few steps; on stop, turn to se or sw",
+ "animations": {
+  "idle": {
+   "fps": 8,
+   "loop": true,
+   "dirs": [
+    "se",
+    "sw"
+   ]
+  },
+  "move": {
+   "fps": 12,
+   "loop": true,
+   "dirs": [
+    "se",
+    "ne",
+    "sw",
+    "nw"
+   ]
+  },
+  "special": {
+   "fps": 12,
+   "loop": false,
+   "dirs": [
+    "se",
+    "sw"
+   ]
+  }
+ },
+ "pets": {
+  "fork-of-jord": {
+   "idle": {
+    "se": 8,
+    "sw": 8
+   },
+   "move": {
+    "se": 16,
+    "sw": 16,
+    "ne": 16,
+    "nw": 16
+   },
+   "special": {
+    "se": 16,
+    "sw": 16
+   }
+  },
+  "croakyangs": {
+   "idle": {
+    "se": 16,
+    "sw": 16
+   },
+   "move": {
+    "se": 13,
+    "sw": 13,
+    "ne": 13,
+    "nw": 13
+   },
+   "special": {
+    "se": 16,
+    "sw": 16
+   }
+  },
+  "wonwuu": {
+   "idle": {
+    "se": 16,
+    "sw": 16
+   },
+   "move": {
+    "se": 16,
+    "sw": 16,
+    "ne": 9,
+    "nw": 9
+   },
+   "special": {
+    "se": 16,
+    "sw": 16
+   }
+  },
+  "pittuki": {
+   "idle": {
+    "se": 16,
+    "sw": 16
+   },
+   "move": {
+    "se": 16,
+    "sw": 16,
+    "ne": 16,
+    "nw": 16
+   },
+   "special": {
+    "se": 16,
+    "sw": 16
+   }
+  },
+  "tamtam": {
+   "idle": {
+    "se": 16,
+    "sw": 16
+   },
+   "move": {
+    "se": 16,
+    "sw": 16,
+    "ne": 16,
+    "nw": 16
+   },
+   "special": {
+    "se": 16,
+    "sw": 16
+   }
+  },
+  "kislap": {
+   "idle": {
+    "se": 16,
+    "sw": 16
+   },
+   "move": {
+    "se": 16,
+    "sw": 16,
+    "ne": 16,
+    "nw": 16
+   },
+   "special": {
+    "se": 16,
+    "sw": 16
+   }
+  },
+  "fairy-cha": {
+   "idle": {
+    "se": 16,
+    "sw": 16
+   },
+   "move": {
+    "se": 16,
+    "sw": 16,
+    "ne": 16,
+    "nw": 16
+   },
+   "special": {
+    "se": 16,
+    "sw": 16
+   }
+  }
+ }
+}

@@ -18882,6 +18882,33 @@
     "note": "Equipment items (items/equipment.json): id, name, slot, who can use it, level, rarity, stats and icons. The training weapons are the first.",
     "file": "items/equipment.json"
   },
+  "pets": {
+    "note": "Pets (the art folder's pets/; repo addition 14 Oct 2026). `data` = sheets/pets.json: the cell, the anchor (the ground point under the pet: its feet, or its shadow's spot for a hovering pet), each animation's fps, loop and directions, and every pet's frame count per animation and direction (they differ). Sheets are horizontal strips of `cell` frames; idle and special exist for se and sw only, move for se, sw, ne and nw (sw and nw already mirrored). Pet kinds and numbers: classes/stats.json pets; items: items/items.json pet-<id> and pet-box-<id>.",
+    "data": "pets/sheets/pets.json",
+    "file": "pets/sheets/pet-{id}-{anim}-{dir}.png",
+    "icon": "pets/icons/pet-{id}.png",
+    "box": "pets/box/pet-box-{id}.png",
+    "node": "pets/tree/ui-pet-node-{stat}.png",
+    "nodeLocked": "pets/tree/ui-pet-node-{stat}-locked.png",
+    "nodeStats": {
+      "hp": "hp",
+      "def": "def",
+      "atk": "atk",
+      "atkRate": "atkrate",
+      "amp": "amp",
+      "critRate": "critrate",
+      "critDmg": "critdmg"
+    },
+    "ids": [
+      "fork-of-jord",
+      "croakyangs",
+      "wonwuu",
+      "pittuki",
+      "tamtam",
+      "kislap",
+      "fairy-cha"
+    ]
+  },
   "combatItems": {
     "note": "Combat items that aren't worn (items/items.json): whetstones, fragments, Repair Kits, HP/MP Potions, agimats, cosmetics; their icons beside the gear's under items/.",
     "file": "items/items.json"
