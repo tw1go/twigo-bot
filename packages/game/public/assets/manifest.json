@@ -18905,6 +18905,23 @@
     },
     "sheetDirsNote": "Art problem (14 Oct 2026): in all seven pets the se sheets (move, idle, special) face left on screen and the sw sheets face right, the opposite of their names; ne and nw are right. So the game draws the sw sheet for se and the se sheet for sw. Remove this once the art folder's se and sw files are swapped.",
     "scale": 0.6,
+    "shadow": [
+      22,
+      8
+    ],
+    "shadowHover": [
+      14,
+      5
+    ],
+    "shadows": {
+      "fork-of-jord": [
+        10,
+        4
+      ]
+    },
+    "shadowColour": "#0B0A18",
+    "shadowAlpha": 0.55,
+    "shadowNote": "The ground shadow under each pet (world px, like mobs.json shadow: a pixel ellipse in shadowColour at shadowAlpha (darker than the characters' navy one, which hardly shows on the town's dark cobbles)): a little wider than a pet's body; smaller under a hovering pet (it floats over it); Fork of Jord its own (it's narrow).",
     "scaleNote": "Pets are drawn at 0.6 of their art (owner, 14 Oct 2026: they looked too big beside the players).",
     "ids": [
       "fork-of-jord",

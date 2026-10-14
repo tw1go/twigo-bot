@@ -12,12 +12,14 @@ import { CHARACTER_BIAS, GLOW_DEPTH, HEIGHT_DEPTH } from './depth';
 // Following (stats.json pets.follow): a pet rests while its owner is near, however they move about (a click a tile or
 // two away never sets it off). Once they're `distanceTiles` + START_EXTRA off it walks toward them (never to a set spot
 // beside them, so it never slides across to their other side), keeping about `distanceTiles` behind while they walk on,
-// and stops once they've stopped and it's within it: so it trails behind them as they go. Past TELEPORT_TILES (or on a new map) it's put straight behind
-// them. It walks straight, on the move sheet of its screen quarter (se, sw, ne, nw; straight east or west: se or sw);
-// only heading north or south on screen, where no sheet fits, it zigzags: a leg of `zigzagEverySteps` tiles along one of
-// the sheets' diagonals (a column or a row), then the other. Drawn at the manifest's pets.scale (smaller than its 40 × 40
-// art). Stopped, it turns to the camera: se if it was heading east-ish, sw if west-ish. Hovering pets get a soft shadow
-// under them; one with a `glow` a soft light round it. A click on your own pet plays its special (others' pets ignore
+// and stops once they've stopped and it's within it: so it trails behind them as they go. It never sprints: at most a
+// touch quicker than them. Fallen behind past FAR_TILES (a dash, a teleport), it fades out and fades back in right behind
+// them (FADE_MS each way), walking on if they still are; on a new map it's simply put there. It walks straight, on the move sheet of its screen quarter (se, sw, ne, nw; straight east or west: se or sw);
+// only heading north or south on screen, where no sheet fits, it weaves: mostly straight at them at their pace, drifting
+// to one side for `zigzagEverySteps` tiles, then the other, on the diagonal sheet of the side it drifts to. Drawn at the manifest's pets.scale (smaller than its 40 × 40
+// art). Stopped, it turns to the camera: se if it was heading east-ish, sw if west-ish. Every pet stands on a ground
+// shadow like the characters' and mobs' (the shadow art's colour as a pixel ellipse; manifest pets.shadow, smaller under a
+// hovering pet, a pet's own in pets.shadows), tinted with the world at night; one with a `glow` a soft light round it. A click on your own pet plays its special (others' pets ignore
 // clicks).
 
 /** pets/sheets/pets.json. */
@@ -42,17 +44,28 @@ export interface PetManifest {
   scale?: number;
   /** The sheet to draw for a way, where the art's names don't match where it faces (way → sheet's direction). */
   sheetDirs?: Record<string, string>;
+  /** The ground shadow under a pet (world px, w × h), under a hovering one, and a pet's own size by id. */
+  shadow?: [number, number];
+  shadowHover?: [number, number];
+  shadows?: Record<string, [number, number]>;
+  /** The shadow's colour (else the shadow art's) and its opacity (at least this). */
+  shadowColour?: string;
+  shadowAlpha?: number;
 }
 
 type Anim = 'idle' | 'move' | 'special';
 type MoveDir = 'se' | 'sw' | 'ne' | 'nw';
 
-/** Past this many tiles from its owner a pet is put back at their side. */
-const TELEPORT_TILES = 8;
+/** Past this many tiles from its owner a pet fades out and back in behind them. */
+const FAR_TILES = 5;
+/** How long that fade takes each way (ms). */
+const FADE_MS = 220;
 /** How far to one side of the spot right behind its owner a pet keeps. */
 const SIDE_TILES = 0.9;
 /** Within this much of straight north or south on screen (|x| ≤ this × |y|, in screen px), a pet zigzags. */
 const NORTH_SOUTH = 0.4;
+/** How far a weave leans off the straight way (tile space; 0.25 ≈ 27° on screen). */
+const WEAVE = 0.25;
 /** A resting pet sets off once its owner is this many tiles past `distanceTiles`. */
 const START_EXTRA = 1.8;
 
@@ -71,17 +84,20 @@ const DIR_VEC: Record<string, [number, number]> = {
 
 class PetView {
   readonly sprite: Phaser.GameObjects.Sprite;
-  private readonly shadow: Phaser.GameObjects.Ellipse | null;
+  private readonly shadow: Phaser.GameObjects.Image | null;
   private readonly glow: Phaser.GameObjects.Image | null;
   col: number;
   row: number;
   private anim: Anim = 'idle';
   private dir: MoveDir = 'se';
   /** The leg it's walking: along a column or a row, how much of it is left (tiles). */
-  private leg: { axis: 0 | 1; sign: number; left: number } | null = null;
-  private lastAxis: 0 | 1 = 0;
+  /** The weave under way (heading north or south): which side it drifts to and how much of its leg is left (tiles). */
+  private leg: { side: number; left: number } | null = null;
   /** Walking toward its owner (else resting where it stopped). */
   private following = false;
+  /** Fading out to come back behind its owner ('out'), or in again ('in'); its parts' alpha follows `seen`. */
+  private fade: 'out' | 'in' | null = null;
+  private seen = 1;
   private specialEnds = 0;
   private sparkle: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
 
@@ -97,7 +113,10 @@ class PetView {
     this.col = at.col;
     this.row = at.row;
     const kind = host.rules.list[petId];
-    this.shadow = kind?.hover ? scene.add.ellipse(0, 0, Math.round(14 * host.scale), Math.max(2, Math.round(5 * host.scale)), 0x000000, 0.22) : null;
+    const size = host.M.shadows?.[petId] ?? (kind?.hover ? host.M.shadowHover : host.M.shadow);
+    const shadowKey = size ? host.shadowTexture(size[0], size[1]) : null;
+    this.shadow = shadowKey ? scene.add.image(0, 0, shadowKey) : null;
+    if (this.shadow) host.onSpawn?.(this.shadow as unknown as Phaser.GameObjects.Sprite);
     this.glow = kind?.glow ? scene.add.image(0, 0, host.glowTexture()).setScale(host.scale).setBlendMode(Phaser.BlendModes.ADD).setTint(Phaser.Display.Color.HexStringToColor(kind.glow).color).setAlpha(0.5) : null;
     this.sprite = scene.add.sprite(0, 0, '__DEFAULT').setOrigin(ax / cw, ay / ch).setScale(host.scale).setVisible(false);
     host.onSpawn?.(this.sprite);
@@ -139,6 +158,11 @@ class PetView {
     });
   }
 
+  /** Its parts the world's tint reaches besides the sprite (its shadow). */
+  get tintables(): Phaser.GameObjects.Sprite[] {
+    return this.shadow ? [this.shadow as unknown as Phaser.GameObjects.Sprite] : [];
+  }
+
   /** Plays what it's doing again (its sheets just loaded). */
   refresh(): void {
     this.play(this.anim, true);
@@ -173,7 +197,20 @@ class PetView {
     const F = this.host.rules.follow;
     const d: [number, number] = [o.spot.col - this.col, o.spot.row - this.row];
     const dist = Math.hypot(d[0], d[1]);
-    if (dist > TELEPORT_TILES) return this.placeBehind(o);
+    // Too far behind: fade out where it is, then in again behind them (walking on if they still are).
+    if (this.fade === 'out') {
+      this.seen = Math.max(0, this.seen - dt / FADE_MS);
+      if (this.seen > 0) return;
+      this.placeBehind(o);
+      this.fade = 'in';
+      this.following = o.walking;
+    } else if (this.fade === 'in') {
+      this.seen = Math.min(1, this.seen + dt / FADE_MS);
+      if (this.seen >= 1) this.fade = null;
+    } else if (dist > FAR_TILES) {
+      this.fade = 'out';
+      return;
+    }
     // Resting while they're near; off once they're START_EXTRA past its distance; stopping again within it.
     if (!this.following && dist > F.distanceTiles + START_EXTRA) this.following = true;
     // (While they walk on it keeps going, easing to their pace at its distance: never a stop-start.)
@@ -183,28 +220,31 @@ class PetView {
     }
     if (!this.following) return this.stop();
     // Its way on screen (px): x = (col − row) × 16, y = (col + row) × 8. A little quicker than them until it's at its
-    // distance, a little slower inside it; well behind, quicker still.
+    // distance, a little slower inside it; never more.
     const x = (d[0] - d[1]) * 16;
     const y = (d[0] + d[1]) * 8;
     const gap = dist - F.distanceTiles;
-    const pace = speed * (gap > 3 ? 1.5 : gap > 0.5 ? 1.15 : gap > 0 ? 1 : 0.85) * (dt / 1000);
+    const pace = speed * (gap > 0.5 ? 1.1 : gap > 0 ? 1 : 0.85) * (dt / 1000);
     let dir: MoveDir;
-    const legOn = !!this.leg && this.leg.left > 0 && Math.sign(d[this.leg.axis]) === this.leg.sign;
-    if (legOn || Math.abs(x) <= NORTH_SOUTH * Math.abs(y)) {
-      // North or south, where no move sheet fits: legs of `zigzagEverySteps` tiles along a column, then a row (the
-      // zigzag is the longer way: a little quicker).
-      if (!legOn) {
-        let axis: 0 | 1 = this.lastAxis === 0 ? 1 : 0;
-        if (Math.abs(d[axis]) < 0.2) axis = axis === 0 ? 1 : 0;
-        this.leg = { axis, sign: Math.sign(d[axis]) || 1, left: F.zigzagEverySteps };
-        this.lastAxis = axis;
+    // (A weave under way carries on while the way stays roughly north or south: no flicking between the two.)
+    const weaving = Math.abs(x) <= (this.leg ? 0.8 : NORTH_SOUTH) * Math.abs(y);
+    if (weaving) {
+      // North or south, where no move sheet fits: a gentle weave at their pace, mostly straight at them, drifting to one
+      // side then the other every `zigzagEverySteps` tiles, on the diagonal sheet of the side it drifts to.
+      if (!this.leg || this.leg.left <= 0) {
+        this.leg = { side: this.leg ? -this.leg.side : 1, left: F.zigzagEverySteps };
       }
-      const leg = this.leg!;
-      const step = Math.min(pace * Math.SQRT2, leg.left);
-      if (leg.axis === 0) this.col += leg.sign * step;
-      else this.row += leg.sign * step;
+      const leg = this.leg;
+      const u: [number, number] = [d[0] / dist, d[1] / dist];
+      const v: [number, number] = [u[0] - WEAVE * leg.side * u[1], u[1] + WEAVE * leg.side * u[0]];
+      const n = Math.hypot(v[0], v[1]);
+      const step = Math.min(pace * (n / (u[0] * v[0] + u[1] * v[1])), dist);
+      this.col += (v[0] / n) * step;
+      this.row += (v[1] / n) * step;
       leg.left -= step;
-      dir = leg.axis === 0 ? (leg.sign > 0 ? 'se' : 'nw') : leg.sign > 0 ? 'sw' : 'ne';
+      const axis = Math.abs(v[0]) >= Math.abs(v[1]) ? 0 : 1;
+      const sign = Math.sign(v[axis]);
+      dir = axis === 0 ? (sign > 0 ? 'se' : 'nw') : sign > 0 ? 'sw' : 'ne';
     } else {
       // Anywhere else: straight toward them, on its screen quarter's sheet (on the level: the camera-facing one).
       this.leg = null;
@@ -257,11 +297,11 @@ class PetView {
     const x = Math.round((this.col - this.row) * 16);
     const y = Math.round((this.col + this.row) * 8 - ground);
     const depth = (this.col + this.row + 1) * 8 + CHARACTER_BIAS + ground * HEIGHT_DEPTH - 0.01;
-    this.sprite.setPosition(x, y).setDepth(depth);
-    this.shadow?.setPosition(x, y).setDepth(depth - 0.2);
+    this.sprite.setPosition(x, y).setDepth(depth).setAlpha(this.seen);
+    this.shadow?.setPosition(x, y).setDepth(depth - 0.2).setAlpha(this.seen);
     if (this.glow) {
       this.glow.setPosition(x, y - Math.round(14 * this.host.scale)).setDepth(GLOW_DEPTH - 1);
-      this.glow.setAlpha(0.42 + 0.12 * Math.sin(this.host.scene.time.now / 420));
+      this.glow.setAlpha((0.42 + 0.12 * Math.sin(this.host.scene.time.now / 420)) * this.seen);
     }
   }
 }
@@ -272,6 +312,8 @@ export class Pets {
   private readonly loading = new Set<string>();
   /** How big a pet is drawn against its art (manifest pets.scale; 1 without it). */
   readonly scale: number;
+  /** The shadow art (manifest fx.shadow), whose colour the pets' shadows take. */
+  shadowArt: string | null = null;
   /** Tints a new sprite with the world (night). */
   onSpawn: ((s: Phaser.GameObjects.Sprite) => void) | null = null;
   /** How high the ground is at a point (raised ground), px. */
@@ -279,7 +321,7 @@ export class Pets {
 
   constructor(
     readonly scene: Phaser.Scene,
-    private readonly M: PetManifest,
+    readonly M: PetManifest,
     readonly sheets: PetSheetData,
     readonly rules: PetRules,
     /** An owner's walking pace (tiles a second). */
@@ -386,12 +428,34 @@ export class Pets {
 
   /** Every sprite the world's tint reaches. */
   get tintables(): Phaser.GameObjects.Sprite[] {
-    return [...this.views.values()].flatMap((v) => (v.view ? [v.view.sprite] : []));
+    return [...this.views.values()].flatMap((v) => (v.view ? [v.view.sprite, ...v.view.tintables] : []));
   }
 
   clear(): void {
     for (const v of this.views.values()) v.view?.destroy();
     this.views.clear();
+  }
+
+  /** A `w × h` ground shadow like the shadow art (a pixel ellipse in its colour, taken from its middle), made once: the
+   *  mobs' look (world/mobs.ts shadowSheet). */
+  shadowTexture(w: number, h: number): string {
+    const key = `pet-shadow:${w}x${h}`;
+    if (this.scene.textures.exists(key)) return key;
+    const art = this.shadowArt && this.scene.textures.exists(this.shadowArt) ? this.shadowArt : null;
+    const src = art ? (this.scene.textures.get(art).getSourceImage() as HTMLImageElement) : null;
+    const c = art && src ? this.scene.textures.getPixel(Math.floor(src.width / 2), Math.floor(src.height / 2), art) : null;
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d')!;
+    // (The manifest's colour if it gives one, else the shadow art's; its opacity at least shadowAlpha.)
+    const own = this.M.shadowColour ? Phaser.Display.Color.HexStringToColor(this.M.shadowColour) : null;
+    const rgb = own ? [own.red, own.green, own.blue] : c ? [c.red, c.green, c.blue] : [30, 27, 58];
+    const alpha = Math.max(own ? 0 : c ? c.alpha / 255 : 0.4, this.M.shadowAlpha ?? 0);
+    ctx.fillStyle = `rgba(${rgb.join(', ')}, ${alpha})`;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (((x + 0.5 - w / 2) / (w / 2)) ** 2 + ((y + 0.5 - h / 2) / (h / 2)) ** 2 <= 1) ctx.fillRect(x, y, 1, 1);
+    this.scene.textures.addCanvas(key, canvas);
+    return key;
   }
 
   /** A soft round light (made once): the glow round a pet with a `glow`. */
