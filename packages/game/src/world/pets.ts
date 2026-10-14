@@ -11,8 +11,8 @@ import { CHARACTER_BIAS, GLOW_DEPTH, HEIGHT_DEPTH } from './depth';
 //
 // Following (stats.json pets.follow): a pet keeps about `distanceTiles` behind its owner (a little to one side), walking while they walk and
 // hurrying when it falls behind; past TELEPORT_TILES (or on a new map) it's put straight at their side. It walks
-// straight at its spot, on the move sheet nearest its way (se, sw, ne, nw by the screen's quarters; east or west on the
-// level keeps the half it had). Only while its owner walks north or south on screen, where no sheet fits, it zigzags:
+// straight at its spot, on the move sheet nearest its way (se, sw, ne, nw by the screen's quarters; straight east or west
+// on the level: se or sw). Only while its owner walks north or south on screen, where no sheet fits, it zigzags:
 // a leg of `zigzagEverySteps` tiles along one of the sheets' diagonals (a column or a row), then the other. Drawn at the manifest's
 // pets.scale (smaller than its 40 × 40 art). Stopped, it turns to the camera: se if it was heading east-ish,
 // sw if west-ish. Hovering pets get a soft shadow under them; one with a `glow` a soft light round it. A click on your
@@ -38,6 +38,8 @@ export interface PetManifest {
   ids: string[];
   /** How big a pet is drawn against its art (1 = 40 × 40 art px). */
   scale?: number;
+  /** The sheet to draw for a way, where the art's names don't match where it faces (way → sheet's direction). */
+  sheetDirs?: Record<string, string>;
 }
 
 type Anim = 'idle' | 'move' | 'special';
@@ -222,11 +224,11 @@ class PetView {
     }
   }
 
-  /** The move sheet for an owner's way (east or west on the level: the half it had; never asked for north or south). */
+  /** The move sheet for an owner's way (east or west on the level: the camera-facing se or sw; never asked for north or
+   *  south). */
   private wayOf(facing: string): MoveDir {
-    const south = this.dir === 'se' || this.dir === 'sw';
-    if (facing === 'e') return south ? 'se' : 'ne';
-    if (facing === 'w') return south ? 'sw' : 'nw';
+    if (facing === 'e') return 'se';
+    if (facing === 'w') return 'sw';
     return facing === 'se' || facing === 'sw' || facing === 'ne' || facing === 'nw' ? facing : this.dir;
   }
 
@@ -299,11 +301,16 @@ export class Pets {
 
   /** A pet's frames in a sheet (pets.json), or 0. */
   frames(pet: string, anim: Anim, dir: string): number {
-    return this.sheets.pets[pet]?.[anim]?.[dir] ?? 0;
+    return this.sheets.pets[pet]?.[anim]?.[this.sheetDir(dir)] ?? 0;
+  }
+
+  /** The sheet drawn for a way (manifest pets.sheetDirs: the art's se and sw sheets face the other way). */
+  private sheetDir(dir: string): string {
+    return this.M.sheetDirs?.[dir] ?? dir;
   }
 
   private fileOf(pet: string, anim: Anim, dir: string): string {
-    return this.M.file.replace('{id}', pet).replace('{anim}', anim).replace('{dir}', dir);
+    return this.M.file.replace('{id}', pet).replace('{anim}', anim).replace('{dir}', this.sheetDir(dir));
   }
 
   /** The animation for a pet's sheet, made once it's loaded (null meanwhile: it's being loaded). */

@@ -18899,6 +18899,11 @@
       "critRate": "critrate",
       "critDmg": "critdmg"
     },
+    "sheetDirs": {
+      "se": "sw",
+      "sw": "se"
+    },
+    "sheetDirsNote": "Art problem (14 Oct 2026): in all seven pets the se sheets (move, idle, special) face left on screen and the sw sheets face right, the opposite of their names; ne and nw are right. So the game draws the sw sheet for se and the se sheet for sw. Remove this once the art folder's se and sw files are swapped.",
     "scale": 0.6,
     "scaleNote": "Pets are drawn at 0.6 of their art (owner, 14 Oct 2026: they looked too big beside the players).",
     "ids": [

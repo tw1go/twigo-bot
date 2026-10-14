@@ -854,9 +854,11 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `xp.table` (2,600 at Lv 1 … 215,300 at Lv 19; 1,745,600 in all), the cap 20 (XP 0, "MAX"). World (`world/pets.ts`
   `Pets`, made in TownScene `makePets`; everyone's, keyed 'me' or a town id, drawn once its owner is): sheets
   pets/sheets/pet-<id>-<anim>-<dir>.png (40 × 40, anchor (20, 35), frames per pet in pets.json; loaded the first time a
-  pet shows), drawn at the manifest's `pets.scale` (0.6: the owner found 40 × 40 too big), depth as a character's; hover
+  pet shows), drawn at the manifest's `pets.scale` (0.6: the owner found 40 × 40 too big), the art's se and sw sheets swapped by
+  `pets.sheetDirs` (an art problem: in all seven pets se faces left and sw right; ne and nw are right; remove the map once
+  the art folder swaps the files), depth as a character's; hover
   pets a soft shadow, Kislap a glow (ADD). Follows `follow.distanceTiles` behind its owner's facing (and 0.9 to one side),
-  straight at that spot on its owner's way's move sheet (se/sw/ne/nw; east or west keeps the half it had; never a frame of
+  straight at that spot on its owner's way's move sheet (se/sw/ne/nw; straight east or west: se or sw; never a frame of
   idle while they walk); only while they walk north or south on screen, where no sheet fits, it zigzags: legs of
   `zigzagEverySteps` (2) tiles along a column, then a row; faster when behind, put back at their side past 8 tiles or on a
   new map; stopped: idle se (heading east-ish) or sw; your own pet clicked (the scene's click asks `Pets.pick`): its special.
