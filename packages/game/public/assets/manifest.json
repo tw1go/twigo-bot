@@ -18276,6 +18276,24 @@
       ],
       "note": "the Slums' golem timer (ui/golem-timer.ts): the Scrapheap Golem's head and shoulders, cut from frame 0 of mob-scrapheap-golem-idle-se at (80,46); repo-only, a stand-in until the art folder has its own"
     },
+    "houseProtected": {
+      "file": "ui/ui-house-protected.png",
+      "showcase": "ui/ui-house-protected@32.png",
+      "size": [
+        16,
+        16
+      ],
+      "note": "the neighbourhood: a Protected house's moon charm, hung just over its door (world/rogue-signs.ts); @32 for the house menu"
+    },
+    "rogueMask": {
+      "file": "ui/ui-rogue-mask.png",
+      "showcase": "ui/ui-rogue-mask@32.png",
+      "size": [
+        16,
+        16
+      ],
+      "note": "the neighbourhood: a Marked house's rogue mask, in the protected charm's spot (world/rogue-signs.ts); @32 for the house menu"
+    },
     "mapWorld": {
       "file": "ui/map/ui-map-world.png",
       "size": [

@@ -152,6 +152,25 @@ export function composeHouse(scene: Phaser.Scene, art: HouseArt, look: HouseLook
   return out;
 }
 
+/** Where a house type's door is drawn (its `door` layer's visible box, art px: x0, y0, x1, y1); null until loaded. */
+export function doorBox(scene: Phaser.Scene, art: HouseArt, style: string): [number, number, number, number] | null {
+  const l = art.parts.houses[style]?.layers.find((x) => x.slot === 'door');
+  const layer = l && layerPixels(scene, art, art.dir + l.file);
+  if (!layer) return null;
+  const { data, width, height } = layer.data;
+  let [x0, y0, x1, y1] = [width, height, -1, -1];
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (!data[(y * width + x) * 4 + 3]) continue;
+      x0 = Math.min(x0, x);
+      x1 = Math.max(x1, x);
+      y0 = Math.min(y0, y);
+      y1 = Math.max(y1, y);
+    }
+  }
+  return x1 < 0 ? null : [x0, y0, x1, y1];
+}
+
 /** A swatch's two main shades (for the picker's buttons). */
 export function swatchShades(art: HouseArt, slot: string, name: string): [string, string] {
   const kind = swatchKind(slot);

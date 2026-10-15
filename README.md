@@ -131,8 +131,14 @@ All in `GAMES_CHANNEL_ID` / wherever the command is used. Jailed members can't p
 
 - `/gamble amount` — 45% win (double); otherwise lose. Busted by the Tanod (lose bet + 5 min jail) 3% of the time in
   `GAMBLING_CHANNEL_ID`, 20% anywhere else. 3s cooldown.
-- `/steal @user` — 35% steal 2–5% of the target's Kowens (min 1–3, max 50); otherwise pay them a fine of half that (min 2) + 5 min jail. 1 hour cooldown;
+- `/steal @user` — rogues only. 35% steal 2–5% of the target's Kowens (min 1–3, max 50); otherwise pay them a fine of half that (min 2) + 5 min jail. 1 hour cooldown;
   you need 2+ Kowens and the target needs 3+.
+- `/rogue join|quit|status` — rogues (`src/games/rogue.ts`, CONTEXT.md "Rogues and stealing"): only rogues steal or throw a
+  Kalawang Potion. Joining is free (not from jail) and ends your protection; quitting works any time. A member robbed while
+  open (not a rogue, not marked) is **protected**: no rogue can rob them, not even with a Master Key, until they turn
+  rogue. A rogue who has made a steal attempt is **marked**: any rogue can rob them, any number of times (it never protects
+  them), while they're a rogue and for 2 days after their last attempt. Kept on the account (schema v17); the update
+  started everyone open.
 - `/jackpot tickets:N` — 1 Kowen per ticket, max 5 per person per draw. Drawn twice a day (10 AM & 10 PM), weighted by tickets;
   fewer than 2 players = refund. 70% of every bet the Tanod confiscates (a `/gamble` or Casino bust, rounded down) goes into
   the pot too and is won with it; it rolls over when nobody wins. `/twigo game:jackpot` draws now.
@@ -306,7 +312,8 @@ someone overtakes them. After the character creator, a look can only be changed 
 `ui/house-menu.ts`): over the bridge at the end of the town's east road. Every member builds one house, free (five types,
 coloured part by part; a new look later is 3 Kowens), on the next lot: rows of 5 and 4 houses along streets, the
 neighbourhood growing as houses are built. Members there see each other live (the town's /ws, room `hood`). Clicking
-someone's house robs it with `/steal`'s rules (`games/steal.ts`, shared); a house with a Bakod is fenced in and only a
+someone's house robs it with `/steal`'s rules (`games/steal.ts`, shared; rogues only, and never a protected house: a moon
+charm by its door; a marked one has a mask; your own house's menu turns you rogue or back, POST /town/rogue); a house with a Bakod is fenced in and only a
 Master Key gets in (50% it snaps), or a Kalawang Potion halves the Bakod. Caught = the Tanod's bust, a fine and jail.
 
 **News** (`packages/bot/src/web/town-news.ts`): the megaphone beside Settings lists the latest posts from

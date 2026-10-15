@@ -81,6 +81,8 @@ export function queueTown(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Tex
   if (on?.glow?.file) img(on.glow.file);
   const F = M.props.fence;
   if (F) [F.nw, F.ne, F.post, F.nwRust, F.neRust, F.postRust].forEach((f) => f && img(f));
+  // The neighbourhood's rogue signs by a house's door (world/rogue-signs.ts).
+  for (const s of [M.ui.houseProtected, M.ui.rogueMask]) if (s) img(s.file);
 
   // Speech bubbles (the box and its tail), and the emote icons.
   const B = M.ui.speechBubble;

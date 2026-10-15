@@ -1,6 +1,6 @@
 # twigo bot — Privacy Policy
 
-_Last updated: October 11, 2026 (close beta applications on the front page)_
+_Last updated: October 15, 2026 (rogues: whether you're a rogue, marked or protected)_
 
 This policy explains what information the twigo Discord bot ("the bot", "we") collects, why, and how it is handled. By using the bot or being a member of a server where it runs, you agree to this policy.
 
@@ -29,6 +29,7 @@ The bot only handles the minimum it needs to work.
 | Your jackpot tickets | You use `/jackpot` | To run the next draw (10 AM or 10 PM) | Until the draw, then deleted |
 | Jail status, release time, and reason | You're jailed by an admin or a game | To give and remove the jail role on time | Until you're released |
 | Time of your last `/steal` | You use `/steal` | To enforce the cooldown | Yes, with your Kowens |
+| When you became a rogue, your last steal attempt as a rogue, and when you were robbed and protected | You use `/rogue` or the house menu, steal as a rogue, or are robbed | To decide who may steal and who can be robbed. Other members see whether your house is protected or marked, and whether you're a rogue, in the neighbourhood | Yes, with your Kowens |
 | Your lifetime and this week's voice minutes | You're counted for voice Kowens | To show the `/leaderboard` and pay weekly voice rewards | Yes, with your Kowens (the weekly count resets every Monday) |
 | How many Kowens you gave today | You use `/give` | To enforce the daily limit | Yes, with your Kowens (resets daily) |
 | Mine Wars rewards you received each night | The gifter pays out a 9 PM Mine Wars | So nobody is paid twice for the same night | Yes |

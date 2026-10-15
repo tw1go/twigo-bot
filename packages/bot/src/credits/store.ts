@@ -29,6 +29,9 @@ interface Account {
   voiceLastWeekMinutes?: number;
   giveDay?: string; // YYYY-MM-DD that giveSentToday counts
   giveSentToday?: number;
+  rogueSince?: number; // ms: became a rogue (none: not a rogue). games/rogue.ts
+  rogueMarkedAt?: number; // ms: their last steal attempt as a rogue (marks them)
+  protectedAt?: number; // ms: robbed while open, so protected (none: not protected)
 }
 
 // Accounts live in the `accounts` table (see db/db.ts). They're cached in memory (the bot is the only writer);
@@ -52,6 +55,9 @@ type AccountRow = {
   vault: number | null;
   give_day: string | null;
   give_sent_today: number | null;
+  rogue_since: number | null;
+  rogue_marked_at: number | null;
+  protected_at: number | null;
 };
 const opt = <T>(v: T | null): T | undefined => (v === null ? undefined : v);
 const fromRow = (r: AccountRow): Account => ({
@@ -72,11 +78,15 @@ const fromRow = (r: AccountRow): Account => ({
   vault: opt(r.vault),
   giveDay: opt(r.give_day),
   giveSentToday: opt(r.give_sent_today),
+  rogueSince: opt(r.rogue_since),
+  rogueMarkedAt: opt(r.rogue_marked_at),
+  protectedAt: opt(r.protected_at),
 });
 
 const table = tableSync<AccountRow>('accounts', ['user_id'], ['balance', 'last_claim', 'voice_minutes', 'voice_total_minutes',
   'last_steal', 'last_active', 'fence_until', 'voice_credits_day', 'voice_credits_today', 'voice_week', 'voice_week_minutes',
-  'voice_last_week', 'voice_last_week_minutes', 'has_vault', 'vault', 'give_day', 'give_sent_today']);
+  'voice_last_week', 'voice_last_week_minutes', 'has_vault', 'vault', 'give_day', 'give_sent_today', 'rogue_since', 'rogue_marked_at',
+  'protected_at']);
 let accounts: Record<string, Account> = Object.fromEntries(table.load().map((r) => [r.user_id, fromRow(r)]));
 
 const toRow = (id: string, a: Account): AccountRow => ({
@@ -86,6 +96,7 @@ const toRow = (id: string, a: Account): AccountRow => ({
   voice_week: a.voiceWeek ?? null, voice_week_minutes: a.voiceWeekMinutes ?? null,
   voice_last_week: a.voiceLastWeek ?? null, voice_last_week_minutes: a.voiceLastWeekMinutes ?? null, has_vault: a.hasVault ? 1 : null,
   vault: a.vault ?? null, give_day: a.giveDay ?? null, give_sent_today: a.giveSentToday ?? null,
+  rogue_since: a.rogueSince ?? null, rogue_marked_at: a.rogueMarkedAt ?? null, protected_at: a.protectedAt ?? null,
 });
 
 // Whose Kowens (wallet or vault) changed since the last save: told to the web town, so the HUD stays right whatever
@@ -227,6 +238,20 @@ export function lastSteal(userId: string): number {
 
 export function markSteal(userId: string): void {
   (accounts[userId] ??= { balance: 0 }).lastSteal = Date.now();
+  save();
+}
+
+/** A member's rogue fields as saved (games/rogue.ts reads and sets them; ms, or undefined). */
+export type RogueFields = Pick<Account, 'rogueSince' | 'rogueMarkedAt' | 'protectedAt'>;
+
+export function rogueFields(userId: string): RogueFields {
+  const a = accounts[userId];
+  return { rogueSince: a?.rogueSince, rogueMarkedAt: a?.rogueMarkedAt, protectedAt: a?.protectedAt };
+}
+
+/** Sets some of a member's rogue fields (undefined clears one) and saves. */
+export function setRogueFields(userId: string, fields: RogueFields): void {
+  Object.assign((accounts[userId] ??= { balance: 0 }), fields);
   save();
 }
 

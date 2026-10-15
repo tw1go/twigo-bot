@@ -18,6 +18,8 @@ const post = (path: string, body: unknown) =>
 
 export const saveHouse = (look: HouseLook) => post('/town/house', look);
 export const hoodAction = (action: 'steal' | 'key' | 'kalawang', lot: number) => post('/town/hood', { action, lot });
+/** Become a rogue (`on`) or quit being one. */
+export const rogueAction = (on: boolean) => post('/town/rogue', { on });
 
 /** The neighbourhood's map in town.json's shape: its own ground, objects and fences, the town's forest round it (no
  *  river), and its exit as the gate back to town. */

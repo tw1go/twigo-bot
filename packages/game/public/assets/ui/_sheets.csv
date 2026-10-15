@@ -30,3 +30,5 @@ ui-vs.png,72,44,4,12,no,36,22,VS: plain + glint
 ui-jnp-pips.png,8,8,3,0,no,0,0,round pips: empty/you/opponent
 ui-arena-modes.png,24,24,2,0,no,0,0,arena menu: vs bot / vs player
 ui-rain.png,32,32,9,8,yes,16,27,arena loss: rain cloud over the loser's head (manifest fx lose-cloud)
+ui-house-protected.png,16,16,1,0,no,8,16,a Protected house's moon charm hung by the door (neighbourhood); @32 copy for the house menu
+ui-rogue-mask.png,16,16,1,0,no,8,16,a Marked house's rogue mask by the door (neighbourhood); @32 copy for the house menu

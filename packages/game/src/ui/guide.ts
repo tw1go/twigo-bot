@@ -363,8 +363,11 @@ const TOPICS: Topic[] = [
       'Follow the road to the **bridge** over the river (**Neighbourhood →**).',
       '• Your first house is **free**: pick a house and its colours. A new look later is **3 Kowens**',
       '• Next visit you start at your own door',
+      '• **Rogues**: only rogues steal. Become one at your own house (free, not from jail); quit any time',
       '• **Steal**: click someone’s house. **35%** to take 2–5% of their Kowens; caught = a fine and **5 minutes** in jail. Once an hour',
-      '• **Bakod**: a fence that keeps thieves out (sari-sari store). Only a **Master Key** gets past it (**50%** it snaps), or a **Kalawang Potion** rusts half of it away',
+      '• **Protected** 🌙: robbed while not a rogue, your house is safe from every rogue (a moon charm by the door) until you turn rogue',
+      '• **Marked** 🎭: once you steal, any rogue can rob you again and again, as long as you’re a rogue and for **2 days** after your last steal (a mask by the door)',
+      '• **Bakod**: a fence that keeps rogues out (sari-sari store). Only a **Master Key** gets past it (**50%** it snaps), or a **Kalawang Potion** rusts half of it away',
     ].join('\n'),
   },
   {

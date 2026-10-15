@@ -1,11 +1,14 @@
 import { add, balance, fencedUntil, lastSteal, markSteal, take } from '../credits/store.js';
 import { masterKeys, useMasterKey } from '../dig/store.js';
 import { jail } from './jail.js';
+import { isProtected, isRogue, markRogue, protect } from './rogue.js';
 
 // 🥷 Stealing, shared by /steal and the neighbourhood's houses (web/hood.ts): 35% chance to steal 2–5% of the target's
 // Kowens (at least 1–3, at most MAX_STEAL). Otherwise the Tanod catches you: pay the target a fine of half what you
 // tried to take (at least MIN_FINE) and go to jail, so robbing the rich is a real gamble, not free money. A Bakod
 // blocks it, unless you use a Master Key: 50% it breaks in (then the normal roll), 50% it snaps.
+// Only rogues steal (games/rogue.ts): every attempt that goes ahead marks the thief, a protected target is refused before
+// any Master Key is used, and a successful robbery protects an open target (not a rogue, not marked).
 
 const KEY_CHANCE = 0.5;
 const SUCCESS_CHANCE = 0.35;
@@ -29,12 +32,14 @@ function attemptAmount(targetBalance: number): number {
 
 export type StealResult =
   | { ok: false; reason: 'self' }
+  | { ok: false; reason: 'not-rogue' } // only rogues steal
   | { ok: false; reason: 'cooldown'; until: number }
   | { ok: false; reason: 'broke' } // the thief can't cover a fine
   | { ok: false; reason: 'poor'; have: number } // the target has next to nothing
+  | { ok: false; reason: 'protected' } // robbed already: safe until they turn rogue
   | { ok: false; reason: 'fenced'; until: number; keys: number } // a Bakod, and no key used
   | { ok: true; outcome: 'key-snapped' } // the Master Key broke on the Bakod
-  | { ok: true; outcome: 'stole'; amount: number; key: boolean }
+  | { ok: true; outcome: 'stole'; amount: number; key: boolean; protected: boolean } // protected: the target just was
   | { ok: true; outcome: 'caught'; fine: number; minutes: number; key: boolean };
 
 /** When the thief may steal again (ms), or null now. */
@@ -43,28 +48,37 @@ export const stealCooldown = (thief: string): number | null => {
   return until > Date.now() ? until : null;
 };
 
-/** One attempt. `useKey`: break through a Bakod with a Master Key if there's one (/steal always does). */
+/** An attempt goes ahead: the cooldown starts, and the rogue is marked. */
+function attempted(thief: string): void {
+  markSteal(thief);
+  markRogue(thief);
+}
+
+/** One attempt. `useKey`: break through a Bakod with a Master Key if there's one (/steal always does). The checks, in
+ *  order: self, not a rogue, cooldown, broke, poor, protected, fenced. */
 export async function stealFrom(thief: string, target: string, useKey: boolean, caughtReason: string): Promise<StealResult> {
   if (thief === target) return { ok: false, reason: 'self' };
+  if (!isRogue(thief)) return { ok: false, reason: 'not-rogue' };
   const wait = stealCooldown(thief);
   if (wait) return { ok: false, reason: 'cooldown', until: wait };
   if (balance(thief) < STEAL_FINE) return { ok: false, reason: 'broke' };
   if (balance(target) < MIN_TARGET_BALANCE) return { ok: false, reason: 'poor', have: balance(target) };
+  if (isProtected(target)) return { ok: false, reason: 'protected' };
 
   // Checked last, so a Master Key is only used on an attempt that would otherwise go ahead.
   const fence = fencedUntil(target);
   if (fence) {
     if (!useKey || masterKeys(thief) <= 0) return { ok: false, reason: 'fenced', until: fence, keys: masterKeys(thief) };
     useMasterKey(thief);
-    markSteal(thief);
+    attempted(thief);
     if (Math.random() >= KEY_CHANCE) return { ok: true, outcome: 'key-snapped' };
-  } else markSteal(thief);
+  } else attempted(thief);
 
   const attempt = attemptAmount(balance(target));
   if (Math.random() < SUCCESS_CHANCE) {
     const amount = take(target, attempt);
     add(thief, amount);
-    return { ok: true, outcome: 'stole', amount, key: !!fence };
+    return { ok: true, outcome: 'stole', amount, key: !!fence, protected: protect(target) };
   }
   const fine = take(thief, Math.max(MIN_FINE, Math.ceil(attempt / 2)));
   add(target, fine);
