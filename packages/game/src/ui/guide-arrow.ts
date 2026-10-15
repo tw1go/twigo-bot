@@ -21,6 +21,8 @@ export interface GuideAim {
   tip?: string;
   /** The tip box's ×. */
   onClose?: () => void;
+  /** It can't wait (the race lesson: betting only lasts minutes): it comes before the quest guide's arrow. */
+  urgent?: boolean;
 }
 
 /** Asked every few frames: what to point at now, or nothing. */
@@ -119,10 +121,13 @@ function place(): void {
     showing = null;
     return;
   }
-  const quest = owners.quest?.() ?? null;
+  // An urgent lesson first (the quest arrow waits for it), else the quest guide's, else a lesson's.
+  const first = owners.lesson?.() ?? null;
+  const urgent = first?.urgent && uncovered(first.target) ? first : null;
+  const quest = urgent ? null : (owners.quest?.() ?? null);
   const questOn = !!quest && uncovered(quest.target);
-  const lesson = questOn ? null : (owners.lesson?.() ?? null);
-  const aim = questOn ? quest : lesson && uncovered(lesson.target) ? lesson : null;
+  const lesson = urgent ?? (questOn ? null : first);
+  const aim = urgent ?? (questOn ? quest : lesson && uncovered(lesson.target) ? lesson : null);
   showing = aim ? (aim === quest ? 'quest' : 'lesson') : null;
   if (!aim) {
     arrow.hidden = true;

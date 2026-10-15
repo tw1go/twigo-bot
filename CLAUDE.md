@@ -1129,8 +1129,12 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   the world map (`ui/world-map.ts`, shared with the Map menu) with you and every active hunt (`ui/quest-marks.ts`, the M
   map draws them too); a touch screen's tracker rows get a pin (`qt-pin`) that opens it until the next tap. Lessons
   (`ui/lessons.ts` = every step and line, run by `ui/lesson-runner.ts`): potions onto the hotbar, wearing the quest
-  piece, combining fragments, enhancing the quest weapon; the furthest step that applies shows; one at a time, after
-  the quest arrow, not in a fight or while typing (3 s calm); a lesson waiting on the player (`blocked`: a piece they
+  piece, combining fragments, enhancing the quest weapon, and the race (the first Mosang race this character starts from
+  an Aling's dialog box: net/race.ts `raceStartedHere`; the race box, the runner cards, the amount (from the bot's
+  `maxBet` / `payout`: `raceRules`), Bet, then "They're off soon!" and the result by the race box for 6 s each from when
+  the box is in view, or "Betting's closed" if no bet; `urgent`: it runs at once, ahead of the quest arrow, the queue and
+  the calm wait); the furthest step that applies shows; one at a time, after the quest arrow, not in a fight or while
+  typing (3 s calm); a lesson waiting on the player (`blocked`: a piece they
   can't wear yet) lets the next run; done or × for good, per character (`mk_guide_done` by /me id; a character first
   seen past Just In Time gets none). Potions also go on the hotbar by Put on hotbar (the bag) then a slot tap
   (`pickForHotbar`), and the hotbar rises over the panels while one is carried (`hb-dragging`, `hb-picking`,

@@ -1,8 +1,9 @@
 import { type AdventureState, type Item, type ItemData, type TownForgeAction, type TownForgeResponse, breaksFrom, enhanceView, fragmentsPerWhetstone, isGearDef, itemStats } from '@mikazuki/shared';
 import { cantWear } from '../net/adventure';
+import { myBet, race, raceNow, raceRules, raceStartedHere } from '../net/race';
 import { hotbarItemIds } from './hotbar';
 import { keyLabel } from './keybinds';
-import type { GuideSide } from './guide-arrow';
+import { type GuideSide, uncovered } from './guide-arrow';
 
 // 🎓 The lessons (CONTEXT.md "Lesson"): four one-time walkthroughs of a new player's first items, each a list of steps;
 // ui/lesson-runner.ts runs them (one at a time, after the quest guide's arrow, never in a fight). Every line a player
@@ -43,6 +44,9 @@ export interface Lesson {
   goal: (c: LessonCtx) => boolean;
   /** Waiting on the player (a piece they can't wear yet): the next lesson in the queue may run meanwhile. */
   blocked?: (c: LessonCtx) => boolean;
+  /** It can't wait (the race: betting lasts minutes): it runs at once, ahead of the queue, the quest arrow and the calm
+   *  wait; the others pause meanwhile. */
+  urgent?: boolean;
   steps: LessonStep[];
   /** After the goal: a tip at something for a moment, or a toast. */
   after?: (c: LessonCtx) => { target: HTMLElement | null; line: string } | { toast: string } | null;
@@ -114,7 +118,40 @@ const whetstonesOf = (c: LessonCtx, w: Item | undefined) => {
   return v?.whetstone ? c.s.bag.find((it) => it.defId === v.whetstone!.id) : undefined;
 };
 
-// ── The four lessons ──
+// ── The race (lesson 5) ──
+
+/** "1:52" */
+const clock = (ms: number) => {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+};
+const raceBox = () => $('#town-hud .th-race');
+const betPopup = () => shown($('#reward .rb-body'));
+/** The race the lesson is about, while it's the one on. */
+const theRace = (c: LessonCtx) => {
+  const r = race();
+  return r && r.id === c.memo.race ? r : null;
+};
+const betting = (c: LessonCtx) => {
+  const r = theRace(c);
+  return !!r && !r.run && raceNow() < r.closesAt;
+};
+const ended = (c: LessonCtx) => {
+  const r = theRace(c);
+  return !!r?.run && raceNow() >= r.run.endsAt;
+};
+const betOn = (c: LessonCtx) => myBet(c.memo.race);
+/** How long a timed tip by the race box has shown (from when the box was first in view for it: the bet pop-up over it
+ *  doesn't count), so it lasts its 6 s. */
+const since = (c: LessonCtx, key: string) => {
+  const box = raceBox();
+  if (!c.memo[key] && box && uncovered(box)) c.memo[key] = String(Date.now());
+  return c.memo[key] ? Date.now() - Number(c.memo[key]) : 0;
+};
+const TIP_MS = 6000;
+const mosangPicked = () => !!$('#reward .rb-card[aria-checked="true"]');
+
+// ── The five lessons ──
 
 export const LESSONS: Lesson[] = [
   {
@@ -245,6 +282,73 @@ export const LESSONS: Lesson[] = [
     ],
   },
 ];
+
+// 5. The first Mosang race you start from an Aling's dialog box: how to bet on it, then how it went. It can't wait (the
+//    bets close in minutes), so it runs at once.
+LESSONS.push({
+  id: 'race',
+  urgent: true,
+  starts: () => !!raceStartedHere(),
+  note: () => ({ race: raceStartedHere() ?? '', start: String(raceNow()) }),
+  // Done once its result has shown its 6 s (or the race is gone).
+  goal: (c) => !theRace(c) || (!!c.memo.result && Date.now() - Number(c.memo.result) >= TIP_MS),
+  // (Its tips by the race box count their 6 s from when the box is in view: `since`.)
+  steps: [
+    {
+      applies: (c) => betting(c) && !betOn(c),
+      target: raceBox,
+      line: (c) => `Your race is on! Click the Mosang race box to bet. Bets close in ${clock((theRace(c)?.closesAt ?? 0) - raceNow())}.`,
+      sides: ['below', 'left'],
+    },
+    { applies: (c) => betting(c) && !betOn(c) && betPopup(), target: () => $('#reward .rb-cards'), line: () => 'Pick a Mosang. They all have the same chance.', sides: ['right', 'left', 'below'] },
+    { applies: (c) => betting(c) && !betOn(c) && betPopup() && mosangPicked(), target: () => $('#reward .rb-go'), line: () => 'Press Bet. One bet per race.', sides: ['right', 'below', 'left'] },
+    {
+      // The amount for a few seconds after a pick (or while its box has the focus), then Bet.
+      applies: (c) => {
+        if (!(betting(c) && !betOn(c) && betPopup() && mosangPicked())) return false;
+        const focus = document.activeElement?.closest('#reward .bet-field');
+        c.memo.picked ??= String(Date.now());
+        return !!focus || Date.now() - Number(c.memo.picked) < 4000;
+      },
+      target: () => $('#reward .rb-controls .bet-field'),
+      line: () => {
+        const input = $<HTMLInputElement>('#reward .bet-input');
+        const { maxBet, payout } = raceRules();
+        return `Bet ${input?.min || 1} to ${maxBet} Kowens. If she wins, you get ${payout}× back.`;
+      },
+      sides: ['right', 'below', 'left'],
+    },
+    // Bet: they're off soon (6 s).
+    { applies: (c) => !!betOn(c) && !ended(c) && since(c, 'off') < TIP_MS, target: raceBox, line: () => "They're off soon! Watch them run east along the main road to the bridge.", sides: ['below', 'left'] },
+    // Betting closed before a bet: until the race is run.
+    {
+      applies: (c) => !betOn(c) && !!theRace(c) && !betting(c) && !ended(c),
+      target: raceBox,
+      line: (c) => {
+        const r = theRace(c);
+        const minutes = r ? Math.max(1, Math.round((r.closesAt - Number(c.memo.start)) / 60_000)) : 2;
+        return `Betting's closed for this one. Next time, bet within ${minutes} ${minutes === 1 ? 'minute' : 'minutes'}.`;
+      },
+      sides: ['below', 'left'],
+    },
+    // The result (6 s): won, lost, or (no bet) how to race again.
+    {
+      applies: (c) => {
+        if (!ended(c)) return false;
+        since(c, 'result');
+        return true;
+      },
+      target: raceBox,
+      line: (c) => {
+        const r = theRace(c);
+        const bet = betOn(c);
+        if (!bet) return 'Talk to any Aling to start another race.';
+        return r?.run && (bet.lane === r.run.winner || bet.lane === r.run.tie) ? 'She won! Your Kowens are in your wallet.' : 'Not this time. Talk to any Aling to start another race.';
+      },
+      sides: ['below', 'left'],
+    },
+  ],
+});
 
 const fragUid = (c: LessonCtx) => c.s.bag.find((it) => it.defId === c.memo.fragment)?.uid;
 const weaponOf = (c: LessonCtx) => [c.s.equipped.weapon, ...c.s.bag].find((it) => it?.uid === c.memo.weapon) ?? undefined;

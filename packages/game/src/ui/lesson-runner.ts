@@ -104,8 +104,9 @@ export function mountLessons(h: LessonRunnerHooks): () => void {
       const c = ctx(s, D, {}, now);
       if (lesson.starts(c)) queue.push({ lesson, memo: lesson.note?.(c) ?? {}, since: now, running: false });
     }
-    // The first in the queue, unless it waits on the player (and another can run meanwhile).
-    const free = queue.find((q) => !q.lesson.blocked?.(ctx(s, D, q.memo, q.since)));
+    // An urgent one first (the race); else the first in the queue, unless it waits on the player (and another can run
+    // meanwhile).
+    const free = queue.find((q) => q.lesson.urgent) ?? queue.find((q) => !q.lesson.blocked?.(ctx(s, D, q.memo, q.since)));
     const cur = free ?? queue[0];
     aim = null;
     if (!cur) return void (ghost.stop(), pulse(null));
@@ -119,12 +120,12 @@ export function mountLessons(h: LessonRunnerHooks): () => void {
       if (!cur.running) return;
       const then = cur.lesson.after?.(c);
       if (then && 'toast' in then) toast(then.toast, 3200, 'good');
-      else if (then?.target) after = { aim: { target: then.target, type: 'main', sides: ['left', 'right', 'below', 'above'], tip: then.line }, until: now + AFTER_MS };
+      else if (then?.target) after = { aim: { target: then.target, type: 'main', sides: ['left', 'right', 'below', 'above'], tip: then.line, ...(cur.lesson.urgent ? { urgent: true } : {}) }, until: now + AFTER_MS };
       return;
     }
     if (!cur.running) {
       const calm = h.calmSince();
-      if (calm === null || now - calm < CALM_MS || typing() || questArrowShowing()) return void (ghost.stop(), pulse(null));
+      if (!cur.lesson.urgent && (calm === null || now - calm < CALM_MS || typing() || questArrowShowing())) return void (ghost.stop(), pulse(null));
       cur.running = true;
     }
     // The furthest step that applies, with a target to point at.
@@ -134,6 +135,7 @@ export function mountLessons(h: LessonRunnerHooks): () => void {
     aim = {
       target,
       type: 'main',
+      ...(cur.lesson.urgent ? { urgent: true } : {}),
       sides: step.sides ?? ['right', 'left', 'below', 'above'],
       tip: step.line(c),
       onClose: () => {
