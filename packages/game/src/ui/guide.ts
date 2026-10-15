@@ -143,6 +143,7 @@ const TOPICS: Topic[] = [
       '• Each is in your tracker (top left), with its count: **Tin Cans 12/20**. Your party’s kills nearby count for you too',
       '• Every other quest asks you to beat one of that mob’s **mini bosses**',
       '• Done? Press **Report** in the tracker: you report over the Tanod’s **radio**, no walk back to town',
+      '• Where to go: hold **Tab** for the **quest map** (each hunt’s area in the quest’s colour, with its count). On a phone, tap the pin on the tracker. Your first hunts also get a sparkling **trail** on the ground (Settings → Game turns it off)',
       '• Rewards: the same **XP** and **Kusing** for everyone, whatever your level, plus **HP and MP Potions**. Then the next one starts',
     ].join('\n'),
   },

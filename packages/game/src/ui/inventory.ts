@@ -11,7 +11,7 @@ import { coinIcon, kusingIcon } from './reward';
 import type { EquipmentPanel } from './equipment';
 import { adventure, anyDef, cantWear, itemData, onAdventure } from '../net/adventure';
 import { chatItem, itemKeys, itemPicture, itemTipFor, nameOf, rarityOf, wearDiff, wornFor } from './item-tip';
-import { potionCooldownKey } from './hotbar';
+import { pickForHotbar, potionCooldownKey } from './hotbar';
 import { showRename } from './rename';
 import { openBox } from './pet-tab';
 import { type ForgePopup, confirmCombine, confirmDisassemble, confirmDisassembleMany, confirmSell, confirmSellMany, forgeFromBag, mountForge } from './forge';
@@ -423,7 +423,11 @@ export class Inventory {
       } else if (def?.kind === 'potion') {
         // HP and MP Potions go on the hotbar (its - = ~ slots or the top row).
         cell.draggable = true;
-        cell.addEventListener('dragstart', (e) => hotbarDragItem(e, { id: it.defId, name: def.name, emoji: '🧪', rarity: it.rarity, cooldown: potionCooldownKey }));
+        cell.addEventListener('dragstart', (e) => {
+          hotbarDragItem(e, { id: it.defId, name: def.name, emoji: '🧪', rarity: it.rarity, cooldown: potionCooldownKey });
+          document.body.classList.add('hb-dragging'); // (the hotbar over the panels while it's carried: index.html)
+        });
+        cell.addEventListener('dragend', () => document.body.classList.remove('hb-dragging'));
       } else if (def && !isGearDef(def) && def.opens) {
         // A pet box: opened by a double-click (a confirm: the pet binds); dragged onto the Pet slot it's refused there.
         cell.draggable = true;
@@ -497,7 +501,13 @@ export class Inventory {
     } else if (def?.kind === 'pet') {
       row.append(this.action('Send out', 'iv-flex', () => this.equipment?.sendOutPet(it.uid)));
     } else if (def?.kind === 'potion') {
-      parts.push(el('div', 'iv-about', 'Drag it onto your hotbar (the - = ~ slots) and use it in the Slums.'));
+      parts.push(el('div', 'iv-about', 'Drag it onto your hotbar (the - = ~ slots), or press Put on hotbar and tap a slot. Use it in the Slums.'));
+      // (A touch screen can't drag: picked here, a hotbar slot tapped next.)
+      row.append(this.action('Put on hotbar', 'iv-flex iv-to-bar', () => {
+        pickForHotbar({ id: it.defId, name: def.name, emoji: '🧪', rarity: it.rarity, cooldown: potionCooldownKey });
+        // (A lesson's tip says it already.)
+        if (document.getElementById('guide-tip')?.hidden !== false) toast('Now tap a slot on your hotbar (the - = ~ slots or the top row).', 2600);
+      }));
       const price = this.priceOf(it);
       if (price !== null) row.append(this.action(`Sell · ${(price / it.count).toLocaleString()} Kusing each`, 'iv-sell', () => void this.sell(it, null, price)));
     }

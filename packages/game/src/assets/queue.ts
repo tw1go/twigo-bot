@@ -83,6 +83,9 @@ export function queueTown(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Tex
   if (F) [F.nw, F.ne, F.post, F.nwRust, F.neRust, F.postRust].forEach((f) => f && img(f));
   // The neighbourhood's rogue signs by a house's door (world/rogue-signs.ts).
   for (const s of [M.ui.houseProtected, M.ui.rogueMask]) if (s) img(s.file);
+  // The quest trail's dash and sparkle (world/quest-trail.ts), both colours.
+  const G = M.guide;
+  if (G) for (const type of ['main', 'side']) for (const s of [G.trail, G.sparkle]) queueSheet(load, textures, s.file.replace('{type}', type), s.frame[0], s.frame[1]);
 
   // Speech bubbles (the box and its tail), and the emote icons.
   const B = M.ui.speechBubble;

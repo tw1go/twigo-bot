@@ -1,3 +1,4 @@
+import { setTrailOn, trailOn } from '../world/quest-trail';
 import { playSound, setSound, soundSettings } from '../audio/sound';
 import { api, setAppToken } from '../net/endpoints';
 import { ACTIONS, bindings, comboOf, keyName, resetKeybinds, setBinding } from './keybinds';
@@ -165,7 +166,17 @@ function leave(): HTMLElement {
     if (isDesktopApp()) void import('../net/desktop').then((d) => d.exitApp());
     else location.href = '/';
   });
-  section.append(el('h3', 'st-heading', 'Game'), out);
+  // The quest trail on the ground (world/quest-trail.ts); the guide arrows always show.
+  const trail = el('label', 'st-row st-check');
+  const trailBox = el('input');
+  trailBox.type = 'checkbox';
+  trailBox.checked = trailOn();
+  trailBox.addEventListener('change', () => {
+    setTrailOn(trailBox.checked);
+    playSound('click');
+  });
+  trail.append(trailBox, el('span', undefined, 'Show the quest trail'));
+  section.append(el('h3', 'st-heading', 'Game'), trail, out);
   return section;
 }
 

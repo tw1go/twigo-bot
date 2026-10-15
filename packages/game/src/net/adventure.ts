@@ -185,7 +185,16 @@ export async function forgeAction(a: TownForgeAction): Promise<TownForgeResponse
   const res = await api(path, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(a) }).catch(() => null);
   const r = res?.ok ? ((await res.json()) as TownForgeResponse) : null;
   if (r?.items) setItems(r.items);
+  if (r) for (const fn of forgeListeners) fn(a, r);
   return r;
+}
+
+const forgeListeners = new Set<(a: TownForgeAction, r: TownForgeResponse) => void>();
+
+/** Hears every forge answer (the lessons: a combine done, an enhance try over). Returns the off switch. */
+export function onForge(fn: (a: TownForgeAction, r: TownForgeResponse) => void): () => void {
+  forgeListeners.add(fn);
+  return () => forgeListeners.delete(fn);
 }
 
 /** Every item kind and the stats rules (the items module's data). */
@@ -269,6 +278,20 @@ export function unseenQuest(): 'main' | 'side' | null {
   }
   const fresh = state.quests.active.filter((p) => seen[p.id] !== p.step).map((p) => questDef(p.id)?.type);
   return fresh.includes('main') ? 'main' : fresh.includes('side') ? 'side' : null;
+}
+
+/** A guided quest that started since the log was last opened (the guide arrow at the quest button, once a quest: a
+ *  guided quest whose objective moves on doesn't bring it back, unlike the dot), main first; or null. */
+export function newGuidedQuest(): QuestDef | null {
+  if (!state) return null;
+  let seen: Record<string, number> = {};
+  try {
+    seen = JSON.parse(localStorage.getItem(SEEN_KEY) ?? '{}');
+  } catch {
+    // nothing seen yet
+  }
+  const fresh = state.quests.active.filter((p) => seen[p.id] === undefined).map((p) => questDef(p.id)).filter((q): q is QuestDef => !!q?.guided);
+  return fresh.find((q) => q.type === 'main') ?? fresh[0] ?? null;
 }
 
 /** The log was opened: everything in it now has been seen. */

@@ -32,3 +32,7 @@ ui-arena-modes.png,24,24,2,0,no,0,0,arena menu: vs bot / vs player
 ui-rain.png,32,32,9,8,yes,16,27,arena loss: rain cloud over the loser's head (manifest fx lose-cloud)
 ui-house-protected.png,16,16,1,0,no,8,16,a Protected house's moon charm hung by the door (neighbourhood); @32 copy for the house menu
 ui-rogue-mask.png,16,16,1,0,no,8,16,a Marked house's rogue mask by the door (neighbourhood); @32 copy for the house menu
+guide/ui-guide-arrow-main.png,24,24,4,6,yes,0,0,guide arrow (violet: main quests); rows down / up / left / right; the bob baked in; the tip on the edge it points to
+guide/ui-guide-arrow-side.png,24,24,4,6,yes,0,0,guide arrow (yellow: side quests); as the main set
+guide/ui-guide-pin-main.png,13,18,4,3,yes,6,17,quest map pins (violet): kill 0 / kill 1 / mini boss 0 / mini boss 1
+guide/ui-guide-pin-side.png,13,18,4,3,yes,6,17,quest map pins (yellow): as the main set
