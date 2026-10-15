@@ -24,7 +24,15 @@ export interface QuestUiOptions {
   giver: (npc: string) => { name: string; portrait: string; mirror: boolean } | null;
   /** Report a quest whose count is reached (the tracker's Report): false if it didn't go through. */
   report: (quest: string) => Promise<boolean>;
+  /** The quest map's pin (manifest guide.pin, by the quest's type: frame 0 is the kill pin), for a touch screen's tracker
+   *  rows, and what tapping one does (opens the quest map: ui/quest-map.ts). */
+  pin?: { url: (type: QuestDef['type']) => string; open: () => void };
 }
+
+/** A touch screen (no Tab to hold): the tracker's rows get the quest map's pin. */
+const touch = () => matchMedia('(hover: none) and (pointer: coarse)').matches;
+/** A hunt: a kill or mini boss objective (the quest map marks its area; a guided one gets the quest trail). */
+const hunting = (o: QuestObjectiveDef | undefined) => o?.type === 'kill' || o?.type === 'miniBoss';
 
 /** An objective as it shows: its text, and "12/20" after a count's; a collect's in the tracker its label and how many
  *  are in the bag ("Binoculars 0/1"). */
@@ -173,10 +181,11 @@ class Tracker {
       .filter((x): x is { p: { id: string; step: number; count?: number }; q: QuestDef } => !!x.q)
       .sort((a, b) => (a.q.type === b.q.type ? 0 : a.q.type === 'main' ? -1 : 1));
     // A quest that just finished stays a moment with its last objective ticked.
-    const rows: { id: string; title: string; type: QuestDef['type']; text: string; done: boolean; report?: boolean }[] = [];
+    const rows: { id: string; title: string; type: QuestDef['type']; text: string; done: boolean; report?: boolean; hunt?: boolean }[] = [];
     for (const { p, q } of active) {
       const tick = this.ticks.get(q.id);
-      rows.push({ id: q.id, title: q.title, type: q.type, text: tick?.text ?? objectiveText(q.objectives[p.step], (p as { count?: number }).count, false, true), done: !!tick, report: !tick && readyToReport(q, p) });
+      const report = !tick && readyToReport(q, p);
+      rows.push({ id: q.id, title: q.title, type: q.type, text: tick?.text ?? objectiveText(q.objectives[p.step], (p as { count?: number }).count, false, true), done: !!tick, report, hunt: !tick && !report && hunting(q.objectives[p.step]) });
     }
     for (const [id, t] of this.ticks) if (!rows.some((r) => r.id === id)) rows.push({ id, title: t.title, type: t.type, text: t.text, done: true });
     rows.sort((a, b) => (a.type === b.type ? 0 : a.type === 'main' ? -1 : 1));
@@ -184,6 +193,7 @@ class Tracker {
     this.list.replaceChildren(
       ...rows.slice(0, TRACKED).map((r) => {
         const row = el('div', 'qt-quest');
+        row.dataset.quest = r.id;
         const title = el('div', 'qt-title', r.title);
         title.style.color = r.type === 'side' ? opts.colours.side : opts.colours.main;
         const step = el('div', `qt-step${r.done ? ' qt-done' : ''}`);
@@ -200,6 +210,20 @@ class Tracker {
               if (!ok) b.disabled = false;
             });
           });
+          row.append(b);
+        }
+        // A touch screen has no Tab: its pin opens the quest map (where to go).
+        const pin = opts.pin;
+        if (r.hunt && pin && touch()) {
+          const b = el('button', 'qt-pin');
+          b.type = 'button';
+          b.setAttribute('aria-label', 'Show where to go');
+          b.style.backgroundImage = `url("${pin.url(r.type)}")`;
+          b.addEventListener('click', (e) => {
+            e.stopPropagation(); // (not the log)
+            pin.open();
+          });
+          row.classList.add('qt-has-pin');
           row.append(b);
         }
         return row;
@@ -322,6 +346,11 @@ function renderLog(): void {
       list.append(li);
     });
     detail.append(list);
+    // A guided hunt: how to see where to go (the quest map: hold its key, or tap the tracker's pin).
+    if (q.guided && !finished && q.objectives.some(hunting)) {
+      const key = keyLabel('questMap');
+      detail.append(el('p', 'ql-tip', touch() || !key ? 'Tip: tap the pin to see where to go.' : `Tip: hold ${key} to see where to go.`));
+    }
     // What it gives: each item's picture and name in its colour, ×count.
     const D = itemData();
     const rewards = (q.rewards ?? []).flatMap((r) => {

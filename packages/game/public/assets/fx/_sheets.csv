@@ -16,3 +16,7 @@ fx-rust-fizz.png,32,32,6,8,yes,16,28,bubbles over a rusting fence piece; play ~2
 fx-key-turn.png,32,32,6,10,no,16,30,Master Key into the padlock and turning; both endings continue from frame 6
 fx-key-unlock.png,32,32,7,12,no,16,30,success: shackle pops open + gold sparkles; last frame = open padlock
 fx-key-snap.png,32,32,8,12,no,16,30,failure: key snaps, head falls to the ground, tip stays in the lock
+guide/fx-guide-trail-main.png,12,6,4,0,no,6,3,quest trail dash (violet): brightness steps 0 dim to 3 lit; one per path tile on the ground
+guide/fx-guide-trail-side.png,12,6,4,0,no,6,3,quest trail dash (yellow): as the main set
+guide/fx-guide-sparkle-main.png,9,9,7,10,no,4,4,quest trail sparkle (violet): twinkles once; the last frame empty
+guide/fx-guide-sparkle-side.png,9,9,7,10,no,4,4,quest trail sparkle (yellow): as the main set

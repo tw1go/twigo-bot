@@ -1136,6 +1136,32 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   players' names in the chat. Combat poses have no clothes or hair of their own: the look's (town idle's first frame) are laid on each pose (kit-art
   `bandShift`: a band of the idle body matched to the pose's pixels; the top, bottom and shoes each by their own rows,
   trimmed to the pose's body so sleeves never float; hair, glasses and hat by the head).
+- New player guide (CONTEXT.md "Quests and the new player guide"; art: manifest `guide` (ui/guide, fx/guide: main violet,
+  side yellow, by the quest's type), the art folder's docs/new-player-guide). Guided quests are quests.json `guided`
+  (A Weapon for the Town, Lata Patrol, Just In Time). The guide arrow (`ui/guide-arrow.ts`): one bobbing arrow (+ a lesson's
+  tip box in the item frame), placed from its target's box every 120 ms, hidden while anything covers the target
+  (`uncovered`: what's on top at its middle) or the quest map / loading cover / casino is up; owners: the quest guide
+  (`ui/quest-guide.ts`: a guided quest's Report, or the tracker's + while folded; else the quest button while one is new
+  since the log was opened, `newGuidedQuest` in net/adventure.ts: once a quest, not on objective moves) first, a lesson
+  second. The quest trail (`world/quest-trail.ts`, TownScene `trailGoal` / `trailTick`, 4 times a second): a guided
+  hunt not yet reached, in town to the Slums gate, in the Slums to its zone's nearest tile or nearest mini boss spot
+  (none once inside, or within 6 of the spot); the walk grid's path, its first 40 tiles; ground layer, a brightness
+  wave, sparkles; Settings → Game → Show the quest trail (`mk_guide_trail`). The quest map (`ui/quest-map.ts`, keybind
+  `questMap` = Tab, rebindable: Tab left keybinds.ts's reserved keys, main.ts still stops its focus moves): hold to see
+  the world map (`ui/world-map.ts`, shared with the Map menu) with you and every active hunt (`ui/quest-marks.ts`, the M
+  map draws them too); a touch screen's tracker rows get a pin (`qt-pin`) that opens it until the next tap. Lessons
+  (`ui/lessons.ts` = every step and line, run by `ui/lesson-runner.ts`): potions onto the hotbar, wearing the quest
+  piece, combining fragments, enhancing the quest weapon, and the race (the first Mosang race this character starts from
+  an Aling's dialog box: net/race.ts `raceStartedHere`; the race box, the runner cards, the amount (from the bot's
+  `maxBet` / `payout`: `raceRules`), Bet, then "They're off soon!" and the result by the race box for 6 s each from when
+  the box is in view, or "Betting's closed" if no bet; `urgent`: it runs at once, ahead of the quest arrow, the queue and
+  the calm wait); the furthest step that applies shows; one at a time, after the quest arrow, not in a fight or while
+  typing (3 s calm); a lesson waiting on the player (`blocked`: a piece they
+  can't wear yet) lets the next run; done or × for good, per character (`mk_guide_done` by /me id; a character first
+  seen past Just In Time gets none). Potions also go on the hotbar by Put on hotbar (the bag) then a slot tap
+  (`pickForHotbar`), and the hotbar rises over the panels while one is carried (`hb-dragging`, `hb-picking`,
+  `hb-lesson`). Forge answers reach listeners (`onForge`). Dev: each pretend login has its own id (`dev:<name>`);
+  `?quest=tanod-01`, `?give=rough-whetstone-fragment::10`, `__town.scene.trail`.
 - Hotbar (`ui/hotbar.ts`, bottom centre, members, hidden on phones and in the casino/arena): bottom row 10 skill slots
   (keys 1–0) and 3 for potions/usables (- = `, shown ~), evenly spaced; top row 13 more (Alt + the same keys, labelled "Alt+1"…) for either.
   A level-up that unlocks skills (the town's `progress`, TownScene `newSkills`): a toast each with its icon ("New skill

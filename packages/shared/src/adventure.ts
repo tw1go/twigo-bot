@@ -63,6 +63,8 @@ export interface QuestDef {
   autoStart?: boolean;
   /** Offered (not autoStart) once a character reaches this level: its giver shows its "!", talking to them starts it. */
   minLevel?: number;
+  /** A guided quest (CONTEXT.md): the new player guide points the way (the guide arrow, the quest trail). */
+  guided?: boolean;
   objectives: QuestObjectiveDef[];
   /** The giver's lines while it's on: talk (in order), remind, complete ({class} = the chosen class's name); give (as
    *  it starts) and report (as it's reported over the radio): the leveling chain's. */

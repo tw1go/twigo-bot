@@ -1,9 +1,10 @@
 {
-  "note": "The town's quests. type: main (violet) or side (yellow). Objective types so far: talk (talk to `npc`) and chooseClass. autoStart quests start the first time a player is in town (and for anyone who hasn't done them yet). dialogue: lines the giver says instead of their usual ones while the quest is on: talk (in order, while talking is the current objective), remind (talking again before the next objective is done), complete (when the quest is done; {class} is the class's name). story: the brief storyline the quest log shows (what's going on and why). rewards: items given into the combat bag when it's completed ({ item: an items.json or equipment.json id, count }); a quest finished before it had rewards gives them on the next visit. Every quest up to Lv 20 gives Low HP and MP Potions. leveling: one of the Tanod's leveling chain (objective types kill and miniBoss, reported over his radio): its title, goal, count and XP and Kusing rewards come from classes/leveling.json by its id; the entry keeps its type, giver, story, the Tanod's give/report lines (his radio toasts; leveling.json's one line each is the fallback), item rewards and next. minLevel (no autoStart): offered from that level, its giver shows the \"!\" and talking starts it. Objective types collect (`item` \u00d7 `count` in the combat bag: done as it is there; `label` is what the tracker writes before the count) and deliver (talk to `npc` with the item: they take it). rewardKowens: Kowens into the wallet. (Aling Nena's quest, 15 Oct 2026.)",
+  "note": "The town's quests. type: main (violet) or side (yellow). Objective types so far: talk (talk to `npc`) and chooseClass. autoStart quests start the first time a player is in town (and for anyone who hasn't done them yet). dialogue: lines the giver says instead of their usual ones while the quest is on: talk (in order, while talking is the current objective), remind (talking again before the next objective is done), complete (when the quest is done; {class} is the class's name). story: the brief storyline the quest log shows (what's going on and why). rewards: items given into the combat bag when it's completed ({ item: an items.json or equipment.json id, count }); a quest finished before it had rewards gives them on the next visit. Every quest up to Lv 20 gives Low HP and MP Potions. leveling: one of the Tanod's leveling chain (objective types kill and miniBoss, reported over his radio): its title, goal, count and XP and Kusing rewards come from classes/leveling.json by its id; the entry keeps its type, giver, story, the Tanod's give/report lines (his radio toasts; leveling.json's one line each is the fallback), item rewards and next. guided: the new player guide points the way (the guide arrow at the quest button and Report; the quest trail on the ground for a kill or miniBoss objective: game ui/quest-guide.ts, world/quest-trail.ts). minLevel (no autoStart): offered from that level, its giver shows the \"!\" and talking starts it. Objective types collect (`item` \u00d7 `count` in the combat bag: done as it is there; `label` is what the tracker writes before the count) and deliver (talk to `npc` with the item: they take it). rewardKowens: Kowens into the wallet. (Aling Nena's quest, 15 Oct 2026.)",
   "quests": [
     {
       "id": "main-01-class",
       "type": "main",
+      "guided": true,
       "title": "A Weapon for the Town",
       "giver": "tanod",
       "summary": "The Tanod needs help keeping Mikazuki safe at night. Talk to him and choose how you'll fight.",
@@ -46,6 +47,7 @@
     {
       "id": "tanod-01",
       "type": "main",
+      "guided": true,
       "giver": "tanod",
       "leveling": true,
       "story": "Tin cans are rattling through Tin Can Alley after dark and rolling into the camp where the Slums folk sleep. Nobody knows why junk would wake up, but the Tanod wants the road to the camp clear first: twenty cans, and the camp can breathe again.",
@@ -68,6 +70,7 @@
     {
       "id": "tanod-02",
       "type": "main",
+      "guided": true,
       "giver": "tanod",
       "leveling": true,
       "story": "The cans didn't wander in by chance: the camp folk saw a can taller than a man herding them, and it has brothers. Beat one of the big cans (Jus Tin, Kris Tin, Mar Tin, Valen Tin or Augus Tin) and the rest of the alley loses its nerve.",

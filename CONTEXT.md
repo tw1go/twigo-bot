@@ -417,6 +417,49 @@ _Avoid_: target (that's a mob you've picked with Z)
 The owner and the CMS users: the CMS, the chat's GM channel (gold, across everyone's screen).
 _Avoid_: admin, mod (those are Discord roles)
 
+## Quests and the new player guide
+
+**Guided quest**:
+One of the first quests a new player is walked through (marked `guided` in the quests' data): A Weapon for the Town,
+Lata Patrol and Just In Time. It gets the guide arrows and, while it's a hunt, the quest trail.
+_Avoid_: tutorial quest, starter quest
+
+**Guide arrow**:
+The bobbing arrow beside something to press: the quest button while a guided quest is new, Report once one is done, and
+each step of a lesson. One shows at a time, in the quest's colour (violet main, yellow side).
+_Avoid_: pointer, hint arrow
+
+**Quest trail**:
+The sparkling line on the ground from you toward a guided quest's hunt: to the Slums gate in town, then to its mob's
+area (or the nearest mini boss spot) in the Slums. It stops once you're there; Settings can turn it off.
+_Avoid_: path, breadcrumbs, guide line
+
+**Quest map**:
+The world map shown while you hold its key (Tab) or tap a tracker row's pin: you and every active quest's hunting area
+in the quest's colour, with its count. Only for looking.
+_Avoid_: Tab map, world map overlay; not the Map menu (M, with its frame and teleporting)
+
+**Lesson**:
+A one-time walkthrough of a new player's firsts (potions onto the hotbar, wearing a quest piece, combining fragments,
+enhancing, betting on the first Mosang race they start): steps, each a guide arrow and a tip box, moving on by
+themselves as you do them. Each runs once a character; × ends one for good.
+_Avoid_: item tip (a tooltip), tutorial (the "?" guide), hint
+
+**Quest piece**:
+The bound grey +5 gear (an agimat already in its first slot) a mini boss quest gives as it's reported: the "free" piece
+or weapon.
+_Avoid_: free piece, free weapon, quest drop (it never drops on the ground)
+
+**Offered quest**:
+A quest a character can start now (they've reached its level and haven't started or finished it): its giver shows the
+"!" and talking to them starts it. Aling Nena's binoculars quest, from Lv 16.
+_Avoid_: available quest (fine in the log's words), pending quest
+
+**Quest item**:
+An item a quest needs, like Aling Nena's Binoculars: never sold, traded, dropped, taken apart or banked, one a slot, and
+gone once it's handed over.
+_Avoid_: key item
+
 ## Rogues and stealing
 
 **Steal** (a steal attempt):
@@ -485,15 +528,3 @@ _Avoid_: gate, door
 
 **Checkpoint**:
 Where you come back after dying in a run: the start of the furthest area the run has opened.
-
-## Quests
-
-**Offered quest**:
-A quest a character can start now (they've reached its level and haven't started or finished it): its giver shows the
-"!" and talking to them starts it. Aling Nena's binoculars quest, from Lv 16.
-_Avoid_: available quest (fine in the log's words), pending quest
-
-**Quest item**:
-An item a quest needs, like Aling Nena's Binoculars: never sold, traded, dropped, taken apart or banked, one a slot, and
-gone once it's handed over.
-_Avoid_: key item

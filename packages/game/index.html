@@ -1134,6 +1134,16 @@
         #casino-screen .cz-table { padding-bottom: 76px; }
         #casino-screen .cz-rules { position: absolute; left: 70px; right: 8px; bottom: 8px; max-width: none; font-size: calc(12px * var(--text)); text-align: left; }
       }
+      /* The guide arrow and a lesson's tip box (ui/guide-arrow.ts): over the HUD, every panel and box (it hides whenever
+         something covers its target, so it never shows over a window), never taking a click (the tip's × does). The arrow: 24 × 24 frames at 2×, 4 across (6 fps), its row the way it points. */
+      #guide-arrow { position: fixed; z-index: 66; width: 48px; height: 48px; background-repeat: no-repeat; background-size: 192px 192px; background-position-y: calc(var(--row, 0) * -48px); image-rendering: pixelated; pointer-events: none; animation: ga-bob 0.667s steps(4) infinite; }
+      #guide-arrow[hidden], #guide-tip[hidden] { display: none; }
+      #guide-drag { position: fixed; left: 0; top: 0; z-index: 66; opacity: 0; pointer-events: none; image-rendering: pixelated; }
+      @keyframes ga-bob { from { background-position-x: 0; } to { background-position-x: -192px; } }
+      #guide-tip { position: fixed; z-index: 66; box-sizing: border-box; max-width: 220px; padding: 8px 22px 8px 10px; border: 2px solid var(--quest, #B794F6); background: #111827; color: #E6E9F2; font: calc(13px * var(--text))/1.35 var(--ui-font); pointer-events: none; }
+      #guide-tip.gt-framed { --px: 2; border-style: solid; border-width: calc(var(--slice) * var(--px) * 1px); border-image-source: var(--frame); border-image-slice: var(--slice) fill; border-image-width: calc(var(--slice) * var(--px) * 1px); border-image-repeat: round; image-rendering: pixelated; background: none; color: #E6E9F2; padding: 2px 16px 2px 2px; }
+      #guide-tip .gt-close { position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; padding: 0; border: 0; background: none; color: #7A8099; font: 700 calc(15px * var(--text))/1 var(--ui-font); pointer-events: auto; cursor: var(--cur-hand, pointer); }
+      #guide-tip .gt-close:hover { color: #fff; }
       /* A house in the neighbourhood (ui/house-menu.ts), in the reward box. */
       #reward .hm-title { margin: -6px 0 14px; font-size: calc(17px * var(--text)); font-weight: 700; filter: drop-shadow(1px 0 0 #1E1B3A) drop-shadow(-1px 0 0 #1E1B3A) drop-shadow(0 1px 0 #1E1B3A) drop-shadow(0 -1px 0 #1E1B3A); }
       #reward .hm-actions { display: flex; flex-direction: column; gap: 8px; margin-bottom: 4px; }
@@ -1539,6 +1549,14 @@
       #hotbar .hb-row { display: flex; gap: 3px; }
       #hotbar .hb-spacer { display: flex; align-items: center; justify-content: center; width: var(--hb); flex: none; font-size: calc(12px * var(--text)); font-weight: 700; color: #C4B5FD; text-shadow: 0 1px 0 #0B0A1A; }
       #hotbar .hb-slot { position: relative; display: flex; align-items: center; justify-content: center; width: var(--hb); height: var(--hb); flex: none; box-sizing: border-box; padding: 0; border-style: solid; border-width: 8px; border-image: var(--slot) var(--slot-slice, 4) fill / 8px round; background: none; image-rendering: pixelated; color: inherit; font: inherit; cursor: var(--cur-hand, pointer); }
+      /* A slot a potion can go in while one is picked (Put on hotbar), and a lesson's slot (ui/lessons.ts): pulsing in
+         the selected slot's lime. */
+      #hotbar.hb-picking .hb-slot.hb-free:is(.hb-util, .hb-top), #hotbar .hb-slot.gd-pulse { border-image: var(--slot-picked) var(--slot-slice, 4) fill / 8px round; animation: gd-pulse 0.7s ease-in-out infinite alternate; }
+      /* The hotbar over the bag and equipment panel (which cover it on a short screen) while a potion is carried to it:
+         dragged, picked with Put on hotbar, or a lesson's slot pulsing. */
+      body:is(.hb-dragging, .hb-lesson) #hotbar, #hotbar.hb-picking { z-index: 4; }
+      @keyframes gd-pulse { from { filter: brightness(0.85); } to { filter: brightness(1.35) drop-shadow(0 0 4px #A3E635); } }
+      @media (prefers-reduced-motion: reduce) { #hotbar.hb-picking .hb-slot.hb-free:is(.hb-util, .hb-top), #hotbar .hb-slot.gd-pulse { animation: none; filter: drop-shadow(0 0 3px #A3E635); } }
       #hotbar .hb-slot.hb-top { opacity: 0.85; }
       #hotbar .hb-slot:hover, #hotbar .hb-over { border-image-source: var(--slot-picked); filter: brightness(1.15); }
       #hotbar .hb-slot[draggable='true'] { cursor: grab; }
@@ -1809,6 +1827,10 @@
       #quest-tracker .qt-step { display: flex; gap: 5px; margin-top: 2px; font-size: calc(12px * var(--text)); color: #c0caf5; }
       #quest-tracker .qt-report { margin: 4px 0 0 18px; padding: 2px 10px; border: 2px solid #A3E635; border-radius: 4px; background: #1E1B3A; color: #A3E635; font: 600 calc(13px * var(--text)) var(--ui-font); cursor: var(--cur-hand, pointer); pointer-events: auto; }
       #quest-tracker .qt-report:hover { background: #A3E635; color: #1E1B3A; }
+      /* A touch screen's pin on a hunting quest's row (the quest map: ui/quest-map.ts): the kill pin, 13 × 18 at 2×. */
+      #quest-tracker .qt-quest { position: relative; }
+      #quest-tracker .qt-has-pin { padding-right: 28px; }
+      #quest-tracker .qt-pin { position: absolute; top: 0; right: -4px; width: 26px; height: 36px; padding: 0; border: 0; background-color: transparent; background-repeat: no-repeat; background-size: 104px 36px; background-position: 0 0; image-rendering: pixelated; pointer-events: auto; cursor: var(--cur-hand, pointer); }
       #quest-tracker .qt-report:disabled { opacity: 0.5; }
       #quest-tracker .qt-mark { flex: none; color: #A9B1D6; }
       #quest-tracker .qt-done, #quest-tracker .qt-done .qt-mark { color: #A3E635; }
@@ -1846,6 +1868,7 @@
       #quest-log .ql-offered { opacity: 0.7; }
       #quest-log .ql-available { margin-left: auto; padding-left: 6px; color: #A9B1D6; font-size: calc(10px * var(--text)); text-transform: uppercase; letter-spacing: 0.06em; }
       #quest-log .ql-available-note { color: #FCDA4A; }
+      #quest-log .ql-tip { margin: 8px 0 0; color: #A9B1D6; font: calc(13px * var(--text))/1.35 var(--ui-font); }
       #quest-log .ql-rewards { margin: 12px 0 0; }
       #quest-log .ql-rewards-head { color: #fff; font-weight: 600; font-size: calc(14px * var(--text)); margin-bottom: 4px; }
       #quest-log .ql-reward { display: flex; align-items: center; gap: 8px; margin: 3px 0; font-size: calc(14px * var(--text)); }
@@ -1940,6 +1963,25 @@
       #map-menu .mm-inset { flex: none; overflow: auto; padding: calc(4px * var(--k)); border: 2px solid #3D4256; background: #0A0F1E; }
       #map-menu .mm-stage { position: relative; width: calc(428px * var(--k)); height: calc(220px * var(--k)); }
       #map-menu .mm-world { display: block; width: 100%; height: 100%; image-rendering: pixelated; user-select: none; }
+      /* Quest marks on the world map's picture (ui/quest-marks.ts: the Map menu and the quest map): the hunting areas, their
+         pins (13 × 18 at the picture's scale, 2 frames at 3 fps) and names with the count. */
+      /* The quest map (ui/quest-map.ts): the world map over the game while its key is held; only for looking. */
+      #quest-map { position: fixed; inset: 0; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: rgba(30, 27, 58, 0.7); pointer-events: none; }
+      #quest-map[hidden], #quest-map .qmap-foot[hidden] { display: none; }
+      #quest-map.qmap-tap { pointer-events: auto; } /* (opened by a tap: the next tap closes it) */
+      #quest-map .qmap-stage { position: relative; flex: none; }
+      #quest-map .qmap-world { display: block; width: 100%; height: 100%; image-rendering: pixelated; user-select: none; }
+      #quest-map .qmap-you { position: absolute; image-rendering: pixelated; }
+      #quest-map .qmap-foot { color: #E6E9F2; font: calc(14px * var(--text))/1.3 var(--ui-font); text-shadow: 0 1px 0 #0A0F1E; }
+      .qm-areas { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+      .qm-edge { animation: qm-march 2.4s linear infinite; }
+      @keyframes qm-march { to { stroke-dashoffset: -20; } }
+      .qm-pin { position: absolute; width: calc(var(--pw) * var(--k)); height: calc(var(--ph) * var(--k)); background-repeat: no-repeat; background-size: calc(var(--pw) * 4 * var(--k)) calc(var(--ph) * var(--k)); image-rendering: pixelated; pointer-events: none; animation: qm-bob 0.667s steps(1) infinite; }
+      .qm-pin.qm-kill { --f: 0; }
+      .qm-pin.qm-miniBoss { --f: 2; }
+      @keyframes qm-bob { 0% { background-position-x: calc(var(--f) * var(--pw) * var(--k) * -1); } 50% { background-position-x: calc((var(--f) + 1) * var(--pw) * var(--k) * -1); } }
+      .qm-label { position: absolute; transform: translateX(-50%); white-space: nowrap; pointer-events: none; font: 700 calc(7px * var(--k, 1))/1 var(--ui-font); text-shadow: 0 1px 0 #0A0F1E, 1px 0 0 #0A0F1E, 0 -1px 0 #0A0F1E, -1px 0 0 #0A0F1E; }
+      @media (prefers-reduced-motion: reduce) { .qm-edge { animation: none; } }
       #map-menu .mm-label { position: absolute; transform: translate(-50%, -50%); white-space: nowrap; pointer-events: none; font: calc(6px * var(--k))/1 'Pixelify Sans', var(--ui-font); color: #9AA0B8; text-shadow: 0 1px 0 #0A0F1E, 1px 0 0 #0A0F1E, 0 -1px 0 #0A0F1E, -1px 0 0 #0A0F1E; }
       #map-menu .mm-left { transform: translate(0, -50%); }
       #map-menu .mm-right { transform: translate(-100%, -50%); }

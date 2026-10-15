@@ -19633,5 +19633,63 @@
         }
       }
     }
+  },
+  "guide": {
+    "note": "The new player guide (ui/guide-arrow.ts, ui/quest-guide.ts, world/quest-trail.ts, ui/quest-map.ts, ui/lessons.ts; the art folder's docs/new-player-guide: guide-assets.json, preview-v1.png). Every piece comes in main (violet) and side (yellow): picked by the quest's type, like quests.colours. Drawn at whole-number scales, nearest neighbour.",
+    "arrow": {
+      "file": "ui/guide/ui-guide-arrow-{type}.png",
+      "frame": [
+        24,
+        24
+      ],
+      "frames": 4,
+      "fps": 6,
+      "rows": [
+        "down",
+        "up",
+        "left",
+        "right"
+      ],
+      "note": "the bob is baked in; the tip sits on the frame edge it points to"
+    },
+    "trail": {
+      "file": "fx/guide/fx-guide-trail-{type}.png",
+      "frame": [
+        12,
+        6
+      ],
+      "frames": 4,
+      "note": "an iso dash on each path tile's centre, brightness steps 0 (dim) to 3 (lit)"
+    },
+    "sparkle": {
+      "file": "fx/guide/fx-guide-sparkle-{type}.png",
+      "frame": [
+        9,
+        9
+      ],
+      "frames": 7,
+      "fps": 10,
+      "note": "twinkles once, the last frame empty; 2 to 6 px above a dash, in front"
+    },
+    "pin": {
+      "file": "ui/guide/ui-guide-pin-{type}.png",
+      "frame": [
+        13,
+        18
+      ],
+      "frames": 4,
+      "fps": 3,
+      "anchor": [
+        6,
+        17
+      ],
+      "order": [
+        "kill 0",
+        "kill 1",
+        "miniBoss 0",
+        "miniBoss 1"
+      ],
+      "note": "the quest map's pins: kill (a target ring) and mini boss (a crown), each 2 frames bobbing; anchor bottom centre on the spot"
+    }
   }
 }

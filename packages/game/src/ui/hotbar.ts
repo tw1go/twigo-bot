@@ -81,6 +81,15 @@ export function hotbarDragItem(e: DragEvent, it: { id: string; name: string; emo
   e.dataTransfer?.setData(DRAG, JSON.stringify({ entry: { t: 'item', id: it.id, name: it.name, emoji: it.emoji, rarity: it.rarity, ...(it.cooldown ? { cooldown: it.cooldown } : {}) } }));
 }
 
+/** The hotbar on screen (one a page), for the lessons (ui/lessons.ts): which items are on it. */
+let current: Hotbar | null = null;
+export const hotbarItemIds = (): Set<string> => current?.itemIds() ?? new Set();
+
+/** A potion's Put on hotbar: picks it for the next slot tap (as a skill clicked in the list is). */
+export function pickForHotbar(it: Omit<ItemEntry, 't'>): void {
+  window.dispatchEvent(new CustomEvent('mk-hotbar-pick', { detail: it }));
+}
+
 export class Hotbar {
   readonly root = el('div');
   private readonly book = el('button', 'hb-book');
@@ -101,8 +110,8 @@ export class Hotbar {
   private readonly cells: Record<Row, HTMLButtonElement[]> = { top: [], main: [], util: [] };
   private cls: ClassInfo | null = null;
   private layout: Layout = blank();
-  /** A skill clicked in the list, waiting for a slot click. */
-  private picked: SkillEntry | null = null;
+  /** A skill clicked in the list (or a potion's Put on hotbar in the bag), waiting for a slot click. */
+  private picked: SkillEntry | ItemEntry | null = null;
   private nagged = 0;
 
   private raising = false;
@@ -123,6 +132,13 @@ export class Hotbar {
       this.draw();
     });
     this.book.addEventListener('click', () => this.toggleList());
+    // A potion's Put on hotbar (the bag; a touch screen can't drag): picked, the slots it fits glow until one's tapped.
+    addEventListener('mk-hotbar-pick', (e) => {
+      const it = (e as CustomEvent<Omit<ItemEntry, 't'>>).detail;
+      this.picked = { t: 'item', ...it };
+      this.root.classList.add('hb-picking');
+    });
+    current = this;
     this.list.id = 'skill-book';
     this.list.hidden = true;
     const top = el('div', 'hb-row hb-toprow');
@@ -208,9 +224,10 @@ export class Hotbar {
     b.addEventListener('pointerdown', () => this.skillTip.hide());
     b.addEventListener('click', () => {
       if (this.picked) {
-        if (!fits(row, this.picked)) return toast('Skills go in the first ten slots or the top row.', 2400);
+        if (!fits(row, this.picked)) return toast(this.picked.t === 'item' ? 'Potions go in the - = ~ slots or the top row.' : 'Skills go in the first ten slots or the top row.', 2400);
         this.put(row, i, this.picked);
         this.picked = null;
+        this.root.classList.remove('hb-picking');
         this.drawList();
         return;
       }
@@ -261,6 +278,12 @@ export class Hotbar {
     playSound('click');
     this.draw();
     if (!this.list.hidden) this.drawList(); // (its "(E)" marks follow the bar)
+    window.dispatchEvent(new Event('mk-hotbar'));
+  }
+
+  /** The item kinds on the bar (any row). */
+  itemIds(): Set<string> {
+    return new Set((['top', 'main', 'util'] as Row[]).flatMap((row) => this.layout[row].flatMap((e) => (e?.t === 'item' ? [e.id] : []))));
   }
 
   /** Whether a skill is on the bar (either row). */
@@ -292,6 +315,7 @@ export class Hotbar {
           if (n !== undefined) b.append(el('span', `hb-count${n ? '' : ' hb-none'}`, String(n)));
           b.classList.toggle('hb-empty', n === 0);
         } else b.title = `Empty${named}`;
+        b.classList.toggle('hb-free', !entry);
         if (key) b.append(el('span', key.length > 2 ? 'hb-key hb-key-alt' : 'hb-key', key));
         b.setAttribute('aria-label', b.title.replace(/\n/g, ' '));
       });
@@ -329,7 +353,7 @@ export class Hotbar {
     const stats = adventureData()?.stats;
     const spare = p?.skillPoints ?? 0;
     const skillRow = (s: SkillView) => {
-      const row = el('div', `hb-skill-row${this.picked?.name === s.name ? ' hb-picked' : ''}${s.locked ? ' sb-locked' : ''}`);
+      const row = el('div', `hb-skill-row${this.picked?.t === 'skill' && this.picked.name === s.name ? ' hb-picked' : ''}${s.locked ? ' sb-locked' : ''}`);
       row.tabIndex = 0;
       row.setAttribute('role', 'button');
       row.draggable = true;
@@ -364,7 +388,8 @@ export class Hotbar {
         e.dataTransfer?.setDragImage(pic, pic.offsetWidth / 2, pic.offsetHeight / 2); // just the icon follows the pointer
       });
       const pick = () => {
-        this.picked = this.picked?.name === s.name ? null : { t: 'skill', name: s.name };
+        this.picked = this.picked?.t === 'skill' && this.picked.name === s.name ? null : { t: 'skill', name: s.name };
+        this.root.classList.remove('hb-picking');
         this.drawList();
       };
       row.addEventListener('click', pick);
@@ -484,7 +509,7 @@ export class Hotbar {
     this.hovered = null;
     if (show) void this.openStage();
     else cancelAnimationFrame(this.stageRaf);
-    if (!show && this.picked) {
+    if (!show && this.picked?.t === 'skill') {
       this.picked = null;
       this.drawList();
     }
