@@ -1,7 +1,7 @@
 import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ClassesFile, GearRarity, HoodHouse, HouseLook, OutfitData, RogueState, TownHoodActionResponse, TownHoodResponse, TownItems, TownRace, TownRaceResponse } from '@mikazuki/shared';
-import { type LanternPost, RETURN_LANTERN, gainPetXp, parsePetAction, petAction, petIdOf, petRules, setPetLevel, addToBag, isGearDef, lanternPostOf, rollGear, rollWorthy, takeKind, buffSkillLevels, classBuffs, classSkills, damageSkillLevels, moveUnlock } from '@mikazuki/shared';
+import { type LanternPost, RETURN_LANTERN, gainPetXp, parsePetAction, petAction, petIdOf, petRules, setPetLevel, addToBag, isGearDef, lanternPostOf, newItem, rollGear, rollWorthy, takeKind, buffSkillLevels, classBuffs, classSkills, damageSkillLevels, moveUnlock } from '@mikazuki/shared';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { doorSpot, hoodMap, lotTile } from '../../bot/src/web/hood-map.ts';
 import type { Plugin } from 'vite';
@@ -86,6 +86,8 @@ export function devTown(): Plugin {
       const json = JSON.parse(readFileSync(join(server.config.publicDir, 'assets/maps/town.json'), 'utf8'));
       const looks = new Map<string, OutfitData>();
       const kits = new Map<string, { cls: string | null; weapon: string | null }>(); // class and worn weapon (the pretend quests and equipment)
+      /** Each player's pretend quests (the page sends them: on connect with &kit=, then /__quests), for the Warren Gate. */
+      const questsOf = new Map<string, { active: { id: string; step: number }[]; done: string[] }>();
       // Each player's items (the page's copy, sent with /__items): loot, potions, the shop and ?give= change them here.
       const items = loadItemData();
       const gear = new Map<string, TownItems>();
@@ -388,6 +390,7 @@ export function devTown(): Plugin {
         loadMobKinds(),
         loadGolemArt(),
       );
+      const warrensLive = loadWarrens(Object.fromEntries(classes.map((c) => [c.id, c.skills.map((k) => k.level)])));
       const town = attachTown(httpServer as Parameters<typeof attachTown>[0], {
         map: { size: json.size, spawn: json.spawn, blocked: json.blocked, avoid: Object.values((json.gates ?? {}) as Record<string, [number, number][]>).flat(), lantern: lanternPostOf(json) },
         rooms: {
@@ -398,9 +401,30 @@ export function devTown(): Plugin {
           slums: slumsMap,
         },
         mobs: { slums: slumsMobs },
-        // The Scrap Warrens as live; tickets from the kept bag (no refunds: nothing's saved here).
+        // The Scrap Warrens as live; tickets from the kept bag (no refunds: nothing's saved here); Aling Nena's quest from the
+        // page's pretend quests (a real run needs it done; a practice run, her ticket; its last boss, her binoculars).
         warrens: {
-          ...loadWarrens(Object.fromEntries(classes.map((c) => [c.id, c.skills.map((k) => k.level)]))),
+          ...warrensLive,
+          access: (name) => {
+            const W = warrensLive.data;
+            const rq = W.entry.requiresQuest;
+            const P = W.practice;
+            if (!rq || !P) return { done: true };
+            const q = questsOf.get(name);
+            const bag = gearOf(name).bag;
+            const count = (id?: string) => bag.reduce((n, i) => n + (i?.defId === id ? (i.count ?? 1) : 0), 0);
+            const p = q?.active.find((x) => x.id === rq);
+            // (The collect objective is its second: the binoculars not in the bag yet.)
+            return { done: !!q?.done.includes(rq), needs: !!p && p.step === 1 && !count(P.drop), practiceTickets: count(P.ticket) };
+          },
+          practice: {
+            use: (name) => !!warrensLive.data.practice && takeKind(gearOf(name).bag, warrensLive.data.practice.ticket, 1),
+            drop: (name) => {
+              const id = warrensLive.data.practice?.drop;
+              const def = id ? items.defs.get(id) : undefined;
+              return def ? newItem(items.stats, def, devUid()) : null;
+            },
+          },
           tickets: {
             count: (name) => gearOf(name).bag.reduce((n, i) => n + (i?.defId === 'warren-ticket' ? (i.count ?? 1) : 0), 0),
             use: (name) => takeKind(gearOf(name).bag, 'warren-ticket', 1),
@@ -421,8 +445,9 @@ export function devTown(): Plugin {
           const name = q.get('dev')?.slice(0, 16);
           if (!name) return null;
           try {
-            const kit = (JSON.parse(q.get('kit') ?? 'null') ?? {}) as { cls?: string | null; weapon?: string | null; progress?: SavedProgress };
+            const kit = (JSON.parse(q.get('kit') ?? 'null') ?? {}) as { cls?: string | null; weapon?: string | null; progress?: SavedProgress; quests?: { active: { id: string; step: number }[]; done: string[] } };
             kits.set(name, { cls: kit.cls ?? null, weapon: kit.weapon ?? null });
+            if (kit.quests) questsOf.set(name, kit.quests);
             if (kit.progress) levels.set(name, progressView(stats, kit.cls ?? null, kit.progress));
           } catch {
             // no class yet
@@ -496,6 +521,20 @@ export function devTown(): Plugin {
         }
         town.restyle(name, looks.get(name) ?? ({} as OutfitData), { name: q.get('title') ?? 'Townfolk', color: q.get('color') ?? '#B794F6' });
         res.end(`${name} restyled\n`);
+      });
+      // POST /__quests?as=Alice {active, done}: her pretend quests changed (the Warren Gate asks about Aling Nena's).
+      server.middlewares.use('/__quests', async (req, res) => {
+        const name = new URL(req.url ?? '/', 'http://localhost').searchParams.get('as') ?? '';
+        try {
+          questsOf.set(name, JSON.parse(await new Promise<string>((ok) => {
+            let s = '';
+            req.on('data', (d) => (s += d));
+            req.on('end', () => ok(s));
+          })));
+        } catch {
+          // keep what was known
+        }
+        res.end('ok');
       });
       server.middlewares.use('/__kit', (req, res) => {
         const q = new URL(req.url ?? '/', 'http://localhost').searchParams;

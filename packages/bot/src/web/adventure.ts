@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { AdventureState, ClassesFile, EquipPlace, Item, QuestDef, QuestReward, QuestsFile, StatName, TownAdventureResponse, TownEquipAction, TownForgeAction, TownForgeResponse, TownPointsAction, TownQuestAction, TownSkillsAction, CosmeticPlace, TownPetAction } from '@mikazuki/shared';
+import { addToBag, advanceCollects, heldCount, objectiveCount, offeredBy, takeFromBag } from '@mikazuki/shared';
 import { STAT_NAMES, bagSlots, classSkills, classBuffs, buffSkillLevels, damageSkillLevels, skillLevelOf, equipFromBag, giveGear, giveQuestRewards, giveQuestPieces, questKill, readyToReport, withLeveling, missingTraining, moveUnlock, newItem, placesFor, swapTrainingGear, trainingGear, takeKind, unequipToBag, wearCheck, COSMETIC_PLACES, wearCosmetic, unwearCosmetic, gainPetXp, petAction, petIdOf, petRules } from '@mikazuki/shared';
 import { db } from '../db/db.js';
 import { type LevelGain, type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView, raiseSkill, refundPoints, resetSkillPoints, resetStatPoints, spendPoint } from './progress.js';
@@ -50,9 +51,10 @@ export function giveTrainingArmor(s: AdventureState): string[] {
   return given;
 }
 
-/** Starts the autoStart quests they haven't started or finished (a class quest only for someone without a class).
- *  Returns the ones started. */
+/** Starts the autoStart quests they haven't started or finished (a class quest only for someone without a class), and
+ *  moves on any collect objective whose item is in the bag. Returns the ones started. */
 export function startQuests(s: AdventureState): QuestDef[] {
+  advanceCollects(s, QUESTS);
   const started: QuestDef[] = [];
   for (const q of QUESTS) {
     if (!q.autoStart || s.quests.done.includes(q.id) || s.quests.active.some((p) => p.id === q.id)) continue;
@@ -86,20 +88,69 @@ function advance(s: AdventureState, q: QuestDef): string | undefined {
 
 type Result = Omit<TownAdventureResponse, 'adventure'>;
 
-/** An objective done in the game: checked against the quest's current objective. */
-export function questStep(s: AdventureState, a: TownQuestAction): Result & { ups?: number } {
+/** What the host knows for a quest step: whether they have a practice run open (Aling Nena hands over no ticket then),
+ *  and the time. */
+export interface QuestCtx {
+  inPracticeRun?: boolean;
+  now?: number;
+}
+
+/** The practice run's quest (dungeons.json entry.requiresQuest) and its ticket (warrens.practice), if there are both. */
+function practiceQuest(): { quest: string; ticket: string; drop?: string; retryMs: number } | null {
+  const W = loadDungeons().warrens;
+  const P = W.practice;
+  return W.entry.requiresQuest && P ? { quest: W.entry.requiresQuest, ticket: P.ticket, drop: P.drop, retryMs: (P.retryHours ?? 0) * 3_600_000 } : null;
+}
+
+/** Aling Nena hands over a Practice Warren Ticket for her quest (into the bag: false if it has no room). */
+function handTicket(s: AdventureState, p: { givenAt?: number }, ticket: string, now: number): boolean {
+  const data = loadItemData();
+  const def = data.defs.get(ticket);
+  if (!def || !addToBag(data, s.bag, newItem(data.stats, def, newUid()), newUid)) return false;
+  p.givenAt = now;
+  return true;
+}
+
+/** An objective done in the game: checked against the quest's current objective. Talking to an offered quest's giver
+ *  starts it (CONTEXT.md "Offered quest"). */
+export function questStep(s: AdventureState, a: TownQuestAction, ctx: QuestCtx = {}): Result & { ups?: number } {
+  const now = ctx.now ?? Date.now();
+  advanceCollects(s, QUESTS);
   const q = QUESTS.find((x) => x.id === a.quest);
+  if (q && a.action === 'talk' && !s.quests.active.some((x) => x.id === q.id) && offeredBy(s, QUESTS, a.npc)?.id === q.id) s.quests.active.push({ id: q.id, step: 0 });
   const p = s.quests.active.find((x) => x.id === a.quest);
   if (!q || !p) return { ok: false, message: "That quest isn't under way." };
   const o = q.objectives[p.step];
+  const P = practiceQuest()?.quest === q.id ? practiceQuest() : null;
   if (a.action === 'report') {
     // Its count reached (kills, a mini boss): reported over the Tanod's radio, wherever they are.
     if (!readyToReport(q, p)) return { ok: false, message: 'Not done yet.' };
     return completedWith(s, { ok: true, completed: advance(s, q) });
   }
   if (a.action === 'talk') {
+    // Its giver while you hunt for its item (Aling Nena, the binoculars): her reminder, and another Practice Warren Ticket
+    // when you have none, nor the item, nor a practice run going (once retryHours have passed since the last one).
+    if (o?.type === 'collect' && q.giver === a.npc) {
+      if (!P || heldCount(s.bag, P.ticket) || heldCount(s.bag, o.item) || ctx.inPracticeRun) return { ok: true };
+      if (p.givenAt !== undefined && now - p.givenAt < P.retryMs) {
+        const hours = Math.ceil((p.givenAt + P.retryMs - now) / 3_600_000);
+        return { ok: true, message: `Aling Nena has no ticket for you yet. Come back in ${hours} ${hours === 1 ? 'hour' : 'hours'}.` };
+      }
+      if (!handTicket(s, p, P.ticket, now)) return { ok: false, message: 'Make room in your bag: Aling Nena has a ticket for you.' };
+      return { ok: true, handed: P.ticket };
+    }
+    // A deliver objective: they take the item (all of it, or nothing), and it's done.
+    if (o?.type === 'deliver' && o.npc === a.npc) {
+      if (!o.item || !takeFromBag(s.bag, o.item, objectiveCount(o))) return { ok: false, message: "You don't have it yet." };
+      const r = completedWith(s, { ok: true, taken: o.item, completed: advance(s, q) });
+      // Aling Nena's quest done: any Practice Warren Ticket left goes.
+      if (r.completed && P) s.bag = s.bag.filter((it) => it.defId !== P.ticket);
+      return r;
+    }
     if (o?.type !== 'talk' || o.npc !== a.npc) return { ok: false, message: 'Not yet.' };
-    return completedWith(s, { ok: true, completed: advance(s, q) });
+    // Aling Nena's first talk: her Practice Warren Ticket (no room: she gives it next time).
+    const handed = P && handTicket(s, p, P.ticket, now) ? P.ticket : undefined;
+    return completedWith(s, { ok: true, ...(handed ? { handed } : {}), completed: advance(s, q) });
   }
   if (o?.type !== 'chooseClass') return { ok: false, message: 'Not yet.' };
   if (s.cls) return { ok: false, message: 'You already have a class.' };
@@ -133,6 +184,8 @@ function completedWith(s: AdventureState, r: Result): Result & { ups?: number } 
     s.kusing += q.rewardKusing;
     out.kusing = q.rewardKusing;
   }
+  // (Its Kowens go into the wallet where the request is answered: web/server.ts.)
+  if (q?.rewardKowens) out.kowens = q.rewardKowens;
   if (q?.rewardXP) {
     const g = addXp(loadStats(), s.cls, s.progress, q.rewardXP);
     s.progress = g.progress;
@@ -353,12 +406,41 @@ export function cosmeticsOf(userId: string): AdventureState['cosmetics'] {
   return load(userId).cosmetics;
 }
 
-/** Changes their items or Kusing through `f` and saves it if it says so; what `f` returned. */
+/** Changes their items or Kusing through `f` and saves it if it says so; what `f` returned. A collect objective whose
+ *  item just came in moves on with it. */
 export function withItems<T>(userId: string, f: (s: AdventureState) => T, changed: (r: T) => boolean = () => true): T {
   const s = load(userId);
   const r = f(s);
-  if (changed(r)) save(userId, s);
+  if (changed(r)) {
+    advanceCollects(s, QUESTS);
+    save(userId, s);
+  }
   return r;
+}
+
+/** Aling Nena's quest, for the Warren Gate (town-warrens.ts WarrensAccess): done (a real run may open), needing its item
+ *  still (a practice run may open), and their Practice Warren Tickets. */
+export function warrensAccessOf(userId: string): { done: boolean; needs: boolean; practiceTickets: number } {
+  const P = practiceQuest();
+  if (!P) return { done: true, needs: false, practiceTickets: 0 };
+  const s = load(userId);
+  const p = s.quests.active.find((x) => x.id === P.quest);
+  const o = p && QUESTS.find((q) => q.id === P.quest)?.objectives[p.step];
+  return { done: s.quests.done.includes(P.quest), needs: o?.type === 'collect' && !heldCount(s.bag, o.item), practiceTickets: heldCount(s.bag, P.ticket) };
+}
+
+/** One Practice Warren Ticket out of their bag (opening a practice run): false if they have none. */
+export const usePracticeTicketFor = (userId: string): boolean => {
+  const P = practiceQuest();
+  return !!P && useKindFor(userId, P.ticket);
+};
+
+/** The quest item a practice run's last boss drops for them (warrens.practice.drop), while their quest needs it. */
+export function practiceDropFor(userId: string): Item | null {
+  const P = practiceQuest();
+  const data = loadItemData();
+  const def = P?.drop ? data.defs.get(P.drop) : undefined;
+  return def && warrensAccessOf(userId).needs ? newItem(data.stats, def, newUid()) : null;
 }
 
 /** Loot picked up in the Slums (Kusing, or an item into the bag): false if the bag has no room for it. */
@@ -545,11 +627,11 @@ export function parseEquipAction(body: unknown): TownEquipAction | null {
 }
 
 /** POST /town/quest for a member: the step checked and saved. `changed`: their class or weapon changed (the town shows it). */
-export function townQuest(userId: string, a: TownQuestAction): TownAdventureResponse & { changed: boolean; ups?: number } {
+export function townQuest(userId: string, a: TownQuestAction, ctx: QuestCtx = {}): TownAdventureResponse & { changed: boolean; ups?: number } {
   const s = load(userId);
   startQuests(s);
   const before = `${s.cls}|${s.equipped.weapon?.defId}`;
-  const r = questStep(s, a);
+  const r = questStep(s, a, ctx);
   if (r.ok) save(userId, s);
   return { ...r, adventure: s, changed: r.ok && before !== `${s.cls}|${s.equipped.weapon?.defId}` };
 }

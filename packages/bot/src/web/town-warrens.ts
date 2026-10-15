@@ -10,6 +10,7 @@ import {
   type TownWarrensGate,
   type TownWarrensRun,
   type WarrensData,
+  type WarrensPractice,
   inRect,
   partyHpScale,
 } from '@mikazuki/shared';
@@ -37,8 +38,12 @@ import { type MobDirector, type MobEvent, type MobKill, type MobKinds, type MobM
 // for the game's numbers). HP thresholds (calls, Vanish, Hunker, Shanty Call, enrage) come through `hurt`.
 //
 // Who may come in: the opener, and (a party's run) anyone in that party while it lives, joining later too; one who
-// leaves the party while inside is sent out after leavePartyKickSeconds. A solo run stays the opener's. Pure (the host
-// gives the clock, who's where and the party), tested in town-warrens.test.ts.
+// leaves the party while inside is sent out after leavePartyKickSeconds. A solo run stays the opener's. A real run needs
+// entry.requiresQuest done (Aling Nena's: `access`, from the host). A practice run (CONTEXT.md; warrens.practice, opened
+// with a Practice Warren Ticket for Aling Nena's quest) is always solo, even for someone in a party: its mobs' and
+// bosses' HP, ATK and XP × the practice block's, its Kusing × kusingMult, its own time limit; the same map, areas,
+// shutters, moves and loot rolls otherwise, and its ticket is never given back. Pure (the host gives the clock, who's
+// where, the party and the quest), tested in town-warrens.test.ts.
 
 type Tile = [number, number];
 export type RunPhase = TownWarrensRun['phase'];
@@ -199,13 +204,15 @@ export class Run implements MobDirector {
     /** The opener's party (the host's own key for it), or null: a solo run. */
     readonly party: unknown,
     now: number,
+    /** A practice run's numbers (warrens.practice), or null: a real run. */
+    readonly practice: WarrensPractice | null = null,
   ) {
     this.room = `warrens:${id}`;
     // Its own copy of the map: the shutters' passages and (while it gathers) the start room's seal are blocked here.
     this.map = { ...template, blocked: template.blocked.map((row) => [...row]) };
     for (const [c, r] of template.dungeon.seal) this.map.blocked[r][c] = 1;
     const zoneStats: Record<string, { level: number; hp: number; atk: number; def: number; xp: number }> = {};
-    for (const a of W.areas) zoneStats[a.id] = { level: a.mobs.level, hp: a.mobs.hp, atk: a.mobs.atk, def: a.mobs.def, xp: a.mobs.xp };
+    for (const a of W.areas) zoneStats[a.id] = this.weaker({ level: a.mobs.level, hp: a.mobs.hp, atk: a.mobs.atk, def: a.mobs.def, xp: a.mobs.xp });
     const last = template.dungeon.areas.find((a) => inRect(a.rect, ...template.dungeon.boss.tile));
     if (last) zoneStats[last.id] = this.scraplingStats();
     this.mobs = new MobRoom(this.map, deps.random, deps.levels, deps.shapes, deps.kinds, undefined, deps.fightData, deps.leveling, { zoneStats, director: this, dungeonAggro: 4 });
@@ -218,7 +225,15 @@ export class Run implements MobDirector {
 
   private scraplingStats() {
     const s = this.W.scrapling;
-    return { level: s.level, hp: s.hp, atk: s.atk, def: s.def, xp: s.xp };
+    return this.weaker({ level: s.level, hp: s.hp, atk: s.atk, def: s.def, xp: s.xp });
+  }
+
+  /** A mob's or boss's numbers in this run: a practice run's HP, ATK and XP × its block's (rounded, at least 1). */
+  private weaker<T extends { hp: number; atk: number; xp: number }>(s: T): T {
+    const P = this.practice;
+    if (!P) return s;
+    const by = (n: number, k: number) => Math.max(1, Math.round(n * k));
+    return { ...s, hp: by(s.hp, P.hpMult), atk: by(s.atk, P.atkMult), xp: by(s.xp, P.xpMult) };
   }
 
   /** Each area's mini boss on its boss tile with its two guards, and Barong-Barong in its hall with its Scraplings. */
@@ -230,14 +245,14 @@ export class Run implements MobDirector {
       const last = !def;
       const boss = last ? this.W.lastBoss : def;
       const mob = `boss:${boss.id}`;
-      const stats = { level: boss.level, hp: boss.hp, atk: boss.atk, def: boss.def, xp: boss.xp };
+      const stats = this.weaker({ level: boss.level, hp: boss.hp, atk: boss.atk, def: boss.def, xp: boss.xp });
       if (last) {
         specs.push({ id: mob, kind: boss.id, zone: a.id, tile: this.map.dungeon.boss.tile, stats, boss: 'last', name: boss.name, title: boss.title, radius: this.map.dungeon.boss.reachRadius, still: true, silent: true });
         a.guards.forEach((t, k) => specs.push(this.scrapling(`guard:${boss.id}:${k}`, a.id, t)));
       } else {
         specs.push({ id: mob, kind: def.kind ?? a.mob, zone: a.id, tile: a.bossTile, stats, boss: 'mini', name: def.name, scale: look.drawScale });
         const area = this.W.areas.find((x) => x.id === a.id)!;
-        a.guards.forEach((t, k) => specs.push({ id: `guard:${def.id}:${k}`, kind: a.mob, zone: a.id, tile: t, stats: { level: area.mobs.level, hp: area.mobs.hp, atk: area.mobs.atk, def: area.mobs.def, xp: area.mobs.xp } }));
+        a.guards.forEach((t, k) => specs.push({ id: `guard:${def.id}:${k}`, kind: a.mob, zone: a.id, tile: t, stats: this.weaker({ level: area.mobs.level, hp: area.mobs.hp, atk: area.mobs.atk, def: area.mobs.def, xp: area.mobs.xp }) }));
       }
       this.bosses.set(mob, { def: boss, mob, last, area: a, lastInside: 0, engaged: false, next: new Map(), crossed: new Set(), enraged: false, hand: 'l', dead: false });
     }
@@ -313,6 +328,7 @@ export class Run implements MobDirector {
       bosses, opened: [...this.opened], checkpoint: this.checkpoint(), opener: this.opener.name, ...(member === this.opener.member ? { yours: true } : {}),
       ...(waiting ? { waiting } : {}), inside: this.inside.size,
       ...(this.phase === 'cleared' ? { clearMs: this.clearedAt - this.startedAt, team: this.clearTeam.map((m) => names?.(m) ?? m) } : {}),
+      ...(this.practice ? { practice: true } : {}),
     };
   }
 
@@ -365,7 +381,7 @@ export class Run implements MobDirector {
   private start(now: number, out: RunNews): void {
     this.phase = 'running';
     this.startedAt = now;
-    this.endsAt = now + this.W.run.timeLimitMinutes * 60_000;
+    this.endsAt = now + (this.practice?.timeLimitMinutes ?? this.W.run.timeLimitMinutes) * 60_000;
     for (const [c, r] of this.map.dungeon.seal) this.map.blocked[r][c] = 0;
     out.room.push(this.line('The Scrap Warrens wake up. Good luck!', 'rise'));
   }
@@ -482,6 +498,19 @@ export class Run implements MobDirector {
   /** A kill's loot (everything on the floor for the run, first come): a mini boss's pile, Barong-Barong's for each player
    *  inside, or a mob's drops. `classes`: the classes of the players inside. */
   lootFor(kill: MobKill, classes: (string | null)[], uid: () => string, random: () => number, plusRandom = random): { contents: LootContent[]; at: Tile } {
+    const r = this.rolledLoot(kill, classes, uid, random, plusRandom);
+    // A practice run: the same rolls, its Kusing × kusingMult.
+    const P = this.practice;
+    if (P) r.contents = r.contents.map((c) => ('kusing' in c ? { kusing: Math.max(1, Math.round(c.kusing * P.kusingMult)) } : c));
+    return r;
+  }
+
+  /** Whether this kill is the last boss's (a practice run's quest item drops with it: the host). */
+  isLastBoss(id: string): boolean {
+    return !!this.bosses.get(id)?.last;
+  }
+
+  private rolledLoot(kill: MobKill, classes: (string | null)[], uid: () => string, random: () => number, plusRandom = random): { contents: LootContent[]; at: Tile } {
     const data = this.deps.fightData;
     const n = Math.max(1, this.inside.size);
     const b = this.bosses.get(kill.id);
@@ -745,7 +774,7 @@ export class Run implements MobDirector {
   /** Mobs a boss calls: the golem's call-junk on each spot first, then they appear (`ms` later). */
   private call(b: BossState, kind: string, spots: Tile[], now: number, ms = 600, move = 'call'): MobEvent[] {
     const area = this.W.areas.find((a) => a.mobs.kind === kind);
-    const stats = area ? { level: area.mobs.level, hp: area.mobs.hp, atk: area.mobs.atk, def: area.mobs.def, xp: area.mobs.xp } : this.scraplingStats();
+    const stats = area ? this.weaker({ level: area.mobs.level, hp: area.mobs.hp, atk: area.mobs.atk, def: area.mobs.def, xp: area.mobs.xp }) : this.scraplingStats();
     const specs: MobSpec[] = spots.map((t) => (kind === 'scrapling' ? this.scrapling(`called:${b.def.id}:${++this.callCount}`, b.area.id, t, b.mob) : { id: `called:${b.def.id}:${++this.callCount}`, kind, zone: b.area.id, tile: t, stats, calledBy: b.mob }));
     const ev = this.moveEvent(b.mob, move, ms, undefined, { spots, kind });
     this.pending.push({ boss: b.mob, at: now + ms, land: (t) => this.mobs.addMobs(specs, t) });
@@ -789,6 +818,19 @@ export class Run implements MobDirector {
 }
 
 /** All the runs: opening, joining, who may come in, the clock, closing. */
+/** What the host knows of a member for the gate (their quests and bag): whether they've done entry.requiresQuest, and for
+ *  a practice run, whether its quest needs its item still and how many Practice Warren Tickets they hold; for a party's
+ *  opener, the members in the Slums who can't come in yet (names). */
+export interface WarrensAccess {
+  done: boolean;
+  needs?: boolean;
+  practiceTickets?: number;
+  notReady?: string[];
+}
+
+/** Everyone may come in (no quest asked: a host without quests, tests of other things). */
+const ANYONE: WarrensAccess = { done: true };
+
 export class Warrens {
   private readonly runs = new Map<string, Run>();
   /** The most open at once. */
@@ -836,20 +878,37 @@ export class Warrens {
     return !alive && run.members.has(member);
   }
 
+  /** Why a member can't come into a real run, or null (under entry.minLevel; entry.requiresQuest not done). */
+  private entryRefusal(level: number, a: WarrensAccess): { reason: 'level' | 'quest'; message: string } | null {
+    const E = this.W.entry;
+    if (level < E.minLevel) return { reason: 'level', message: E.requiresQuest ? `Reach Lv ${E.minLevel}, then help Aling Nena on the plaza.` : `The Scrap Warrens are for Lv ${E.minLevel} and up.` };
+    if (E.requiresQuest && !a.done) return { reason: 'quest', message: "Help Aling Nena first: she's lost something in the Warrens." };
+    return null;
+  }
+
   /** What the Warren Gate offers a member. */
-  gate(member: string, level: number, tickets: number): TownWarrensGate {
+  gate(member: string, level: number, tickets: number, a: WarrensAccess = ANYONE): TownWarrensGate {
     const run = this.runFor(member);
-    const blocked = level < this.W.entry.minLevel ? 'level' : !run && this.runs.size >= Warrens.MAX_RUNS ? 'full' : !run && tickets < 1 ? 'ticket' : undefined;
+    const no = this.entryRefusal(level, a);
+    const full = this.runs.size >= Warrens.MAX_RUNS;
+    const blocked = no ? no.reason : !run && full ? 'full' : !run && tickets < 1 ? 'ticket' : undefined;
+    const P = this.W.practice;
+    const practice = P && a.needs && (a.practiceTickets ?? 0) > 0 ? { tickets: a.practiceTickets!, minLevel: P.minLevel, ...(level < P.minLevel ? { blocked: 'level' as const } : this.runOf(member) ? { blocked: 'run' as const } : full ? { blocked: 'full' as const } : {}) } : undefined;
     return {
       minLevel: this.W.entry.minLevel, level, tickets, inParty: !!this.partyOf(member),
       partyRun: run ? { id: run.id, phase: run.phase, inside: run.insideCount, opener: run.opener.name } : null,
       ...(blocked ? { blocked } : {}),
+      ...(no?.reason === 'quest' || no?.reason === 'level' ? { questLine: no.message } : {}),
+      ...(practice ? { practice } : {}),
+      ...(a.notReady?.length ? { notReady: a.notReady } : {}),
     };
   }
 
   /** Opens a run (a ticket: `useTicket` takes it, false if they have none), or says why not. */
-  open(member: string, name: string, level: number, useTicket: () => boolean, now: number): { ok: true; run: Run } | { ok: false; reason: 'level' | 'full' | 'ticket' | 'party'; message: string } {
-    if (level < this.W.entry.minLevel) return { ok: false, reason: 'level', message: `The Scrap Warrens are for Lv ${this.W.entry.minLevel} and up.` };
+  open(member: string, name: string, level: number, useTicket: () => boolean, now: number, a: WarrensAccess = ANYONE): { ok: true; run: Run } | { ok: false; reason: 'level' | 'quest' | 'full' | 'ticket' | 'party'; message: string } {
+    const no = this.entryRefusal(level, a);
+    if (no) return { ok: false, ...no };
+    if (this.runOf(member) && !this.runFor(member)) return { ok: false, reason: 'party', message: "You're in a run already." };
     if (this.runFor(member)) return { ok: false, reason: 'party', message: 'Your party already has a run open: join it instead.' };
     if (this.runs.size >= Warrens.MAX_RUNS) return { ok: false, reason: 'full', message: 'The Warrens are full. Try again in a few minutes.' };
     if (!useTicket()) return { ok: false, reason: 'ticket', message: 'You need a Warren Ticket to open the Scrap Warrens.' };
@@ -859,11 +918,28 @@ export class Warrens {
     return { ok: true, run };
   }
 
+  /** A practice run (warrens.practice: Aling Nena's quest) for one member alone, even in a party: their Practice Warren
+   *  Ticket (`useTicket`), or why not. Nobody joins it. */
+  openPractice(member: string, name: string, level: number, useTicket: () => boolean, now: number): { ok: true; run: Run } | { ok: false; reason: 'level' | 'full' | 'ticket' | 'party'; message: string } {
+    const P = this.W.practice;
+    if (!P) return { ok: false, reason: 'ticket', message: 'There are no practice runs.' };
+    if (level < P.minLevel) return { ok: false, reason: 'level', message: `Practice runs are for Lv ${P.minLevel} and up.` };
+    if (this.runOf(member)) return { ok: false, reason: 'party', message: "You're in a run already." };
+    if (this.runs.size >= Warrens.MAX_RUNS) return { ok: false, reason: 'full', message: 'The Warrens are full. Try again in a few minutes.' };
+    if (!useTicket()) return { ok: false, reason: 'ticket', message: 'You need a Practice Warren Ticket for a practice run.' };
+    const run = new Run(this.newId(), this.W, this.template, this.deps, { member, name }, null, now, P);
+    this.runs.set(run.id, run);
+    return { ok: true, run };
+  }
+
   /** A party member joins their party's run (an invite's Join, or later at the gate): no ticket; it waits for them while
-   *  it gathers. */
-  join(member: string, level: number, runId?: string): { ok: true; run: Run } | { ok: false; reason: 'level' | 'gone' | 'party'; message: string } {
-    if (level < this.W.entry.minLevel) return { ok: false, reason: 'level', message: `The Scrap Warrens are for Lv ${this.W.entry.minLevel} and up.` };
-    const run = runId ? this.get(runId) : this.runFor(member);
+   *  it gathers. A practice run takes nobody, and a real one only those who may come in. */
+  join(member: string, level: number, runId?: string, a: WarrensAccess = ANYONE): { ok: true; run: Run } | { ok: false; reason: 'level' | 'quest' | 'gone' | 'party'; message: string } {
+    const asked = runId ? this.get(runId) : undefined;
+    if (asked?.practice && asked.opener.member !== member) return { ok: false, reason: 'party', message: 'Practice runs are solo.' };
+    const no = this.entryRefusal(level, a);
+    if (no && !asked?.practice) return { ok: false, ...no };
+    const run = asked ?? this.runFor(member);
     if (!run || run.phase === 'closed') return { ok: false, reason: 'gone', message: 'That run has closed.' };
     if (!this.allowed(run, member)) return { ok: false, reason: 'party', message: "That isn't your party's run." };
     if (run.phase === 'gathering') run.answer(member, true);

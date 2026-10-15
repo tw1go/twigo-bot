@@ -149,7 +149,11 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
 - `classes/dungeons.json` (= the art folder's `data/dungeons/warrens.json` as `{ "warrens": … }`): `run.timeLimitMinutes` 20
   (was 40), `run.gatherSeconds` 60, the ticket's shop price 500,000 Kusing in the `dungeons` tab, `entry.warp.tile`
   [37,85] / `arrive` [37,88] (by the jeepney and taxi wrecks north-east of the golem pit; the art's is [46,96])
-  (`build-warrens.ts` moves the gate's object and blocked tiles in slums.json to it, opening the old ones).
+  (`build-warrens.ts` moves the gate's object and blocked tiles in slums.json to it, opening the old ones);
+  `entry.minLevel` 16 (was 15) with `entry.requiresQuest` and the `practice` block (Aling Nena's quest, Mac 15 Oct 2026;
+  its `drop` and `retryHours` are ours).
+- Aling Nena's quest (15 Oct 2026): `quests/quests.json` `side-nena-binoculars`; `items/items.json` `practice-warren-ticket`
+  and `nena-binoculars` (kind `quest`) with their pictures from the art folder's items/consumables and items/quest.
 - `items/items.json`: `warren-ticket`, `return-lantern`, `agimat-pliers`, `temper-stone`, `temper-stone-filled` (prices in
   `price: { kowens }`, the Smithing tab). `mobs/mobs.json`: `barong-barong`.
 - `ui/ui-golem-head.png` (manifest `ui.golemHead`): the golem timer's head, cut from frame 0 of the golem's idle-se
@@ -660,7 +664,25 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   Junk spots are floor tiles round it; its Adds keep to the floor and way in; no zone's mob steps on a pit tile
   (`pitTiles` in web/town-golem.ts). The props under the old pits and round them are gone, the old stand-in's blocking
   cleared; the canal's plank crossing sits on the road's rows (93–95; it was a row south) (the art folder's copy still has the 6×6 pit: copy the map over again and this is lost). Packs (`scripts/packs.ts`) are written unfiltered with plain deflate (pngjs's RLE default made them ~5× bigger).
-- Scrap Warrens (a walled junk maze under the Slums for Lv 15–20; rules and numbers in `classes/dungeons.json`, manifest
+- Aling Nena's binoculars (CONTEXT.md Offered quest, Quest item, Practice run, Practice Warren Ticket; quests.json
+  `side-nena-binoculars`, dungeons.json `practice`): from Lv 16 the quest is offered (QuestDef `minLevel`, not autoStart:
+  shared `quests.ts` `offeredQuests` / `offeredBy`): Nena's yellow "!", the quest button's dot, the log's Available row;
+  talking starts it (the bot's `questStep` 'talk' on an offered quest) and hands over a Practice Warren Ticket (bound).
+  Objectives `collect` (done as the item is in the bag: `advanceCollects`, on every change to a member's items in the bot
+  (`withItems`) and the page; the tracker writes `label` n/1) and `deliver` (talking with the item: `takeFromBag`, then
+  the completion: XP, Kusing and `rewardKowens`, which web/server.ts adds to the wallet; the reward pop-up with the Kowen;
+  her tickets go). Talking during collect: her reminder, and another ticket with none held, no binoculars and no practice
+  run open (`Town.inPracticeRun`), once `practice.retryHours` (24) have passed (QuestProgress `givenAt`). Quest items
+  (items.json kind `quest`): one a slot, never sold, traded, dropped, taken apart or multi-picked (shared `tradeRefusal`,
+  `dropRefusal`; tooltip "Quest item"). The Warrens: a real run needs `entry.requiresQuest` done (town-warrens.ts
+  `WarrensAccess`, from web/adventure.ts `warrensAccessOf`; `open` / `join` refuse 'quest', the gate box says why, and
+  lists party members in the Slums who can't come yet, who get no invite); `warrens-practice` opens a practice run
+  (`Warrens.openPractice`: solo even in a party, nobody joins: "Practice runs are solo."; `Run.practice`: HP, ATK and XP ×
+  its mults, Kusing × kusingMult, its own time limit, the same loot rolls; its ticket is never given back; its last boss's
+  `practice.drop` goes straight into the bag, or at its feet for them alone; "Practice" under the timer). Tested in
+  `web/nena-quest.test.ts`. Dev: the page tells the dev town its quests (`&kit=`, POST `/__quests`); `?give=nena-binoculars`,
+  `?area=slums&from=warrens` lands at the gate; `/__warrens?as=&boss=barong-barong&hp=1` works inside a practice run.
+- Scrap Warrens (a walled junk maze under the Slums for Lv 16–20, after Aling Nena's quest; rules and numbers in `classes/dungeons.json`, manifest
   `classes.dungeons`, shared `dungeons.ts`; words in CONTEXT.md: Run, Warren Gate, Area, Arena, Shutter, Checkpoint). Map:
   `maps/warrens.json` (96 × 104: the layout's 96 × 64 with `GAP_ROWS` (40) rows of junk wall put between its top half
   (areas 1–3) and bottom half (4–6), Bag Hollow's way out carried on as a tunnel down through them into Live Coils, so

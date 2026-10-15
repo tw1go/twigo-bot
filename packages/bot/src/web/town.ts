@@ -14,7 +14,7 @@ import { type CombatItems, type LootContent, potionMinLevel, potionOf } from './
 import { type Loot, LootRoom, splitKusing } from './town-loot.js';
 import { type LootRoll, LootRolls } from './town-roll.js';
 import { type HeldOffer, type Trade, Trades, checkOffer } from './trade.js';
-import { type Inside, type Run, type RunDeps, type RunNews, Warrens, type WarrensMap } from './town-warrens.js';
+import { type Inside, type Run, type RunDeps, type RunNews, Warrens, type WarrensAccess, type WarrensMap } from './town-warrens.js';
 import type { WarrensData, ChatItemLink, CharacterProgress, QuestProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item, TradeEnd, TradeView } from '@mikazuki/shared';
 import { type LanternPost, PetXpClock, petRules, petXpForHit, isLanternMap, itemName, itemStats, lanternPostOf, lanternRefusal, lootRollRules, rollWorthy, partyXpMult, partyXpRange, potionCooldownGroup, skillMpCost, targetPriority, tradeRules } from '@mikazuki/shared';
 
@@ -200,6 +200,11 @@ export interface TownOptions {
     deps: RunDeps;
     gate: [number, number];
     tickets: { count(userId: string): number; use(userId: string): boolean; refund?(userId: string): boolean };
+    /** Aling Nena's quest (entry.requiresQuest, warrens.practice): what a member may do (town-warrens.ts WarrensAccess),
+     *  using a Practice Warren Ticket, and the quest item its last boss drops for them (null: none now). Without it,
+     *  anyone may come in and there are no practice runs. */
+    access?(userId: string): WarrensAccess;
+    practice?: { use(userId: string): boolean; drop(userId: string): Item | null };
     saved?(runs: { id: string; opener: string; cleared: boolean; spent: boolean }[]): void;
     dev?: boolean;
   };
@@ -263,6 +268,8 @@ export interface Town {
   /** Whether a member is in a fight now (hit, hitting or missed within a few seconds on a battle map): pets can't be
    *  changed then. */
   inCombat(userId: string): boolean;
+  /** Whether a member has a practice run open (Aling Nena won't hand over another ticket meanwhile). */
+  inPracticeRun(userId: string): boolean;
   /** A member's worn items, combat bag or Kusing changed outside the town (the shop, dev's ?give=): theirs to them. */
   items(userId: string, got?: { kusing?: number; item?: Item }): void;
   /** Dev and tests: `item` drops at a member's feet for them and their party in the room, as a kill's would (rolled for
@@ -709,6 +716,19 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     const fresh = L.scatter(contents, at, (a, n) => run.mobs.lootSpots(a, n, L.taken()), Date.now());
     const inside = [...conns.values()].filter((o) => o.room === run.room).map((o) => o.userId);
     showLoot(run.room, startRolls(run.room, L, fresh, () => inside), kill.at);
+    // A practice run's last boss: the quest's item, straight into each one's bag inside (it's solo: the opener), with
+    // the item toast; a full bag, at its feet for them alone.
+    if (run.practice && run.isLastBoss(kill.id) && opts.warrens?.practice) {
+      for (const member of inside) {
+        const item = opts.warrens.practice.drop(member);
+        if (!item) continue;
+        const o = conns.get(member);
+        if (opts.items.take(member, { item })) {
+          if (o) tellItems(o, { item });
+        } else showLoot(run.room, [L.place({ item }, at, [member], Date.now())], kill.at);
+        console.log(`[warrens] ${member} got ${item.defId} from practice run ${run.id}`);
+      }
+    }
   };
   /** Picks up the loot asked for (`id`) or, without one, the nearest they may take, within LOOT_REACH (a click, F or
    *  Space; nothing is picked up on its own). Full bag: it stays, and they're told. */
@@ -1166,6 +1186,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         return endTrade(c.userId, 'cancelled', { name: p.nickname });
       case 'warrens-gate':
       case 'warrens-open':
+      case 'warrens-practice':
       case 'warrens-join':
       case 'warrens-start':
       case 'warrens-decline':
@@ -1459,6 +1480,10 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     inCombat(userId) {
       return !!vitals?.inCombat(userId, Date.now());
     },
+    inPracticeRun(userId) {
+      const run = W?.runOf(userId);
+      return !!run?.practice && run.phase !== 'closed';
+    },
     kit(userId, cls, weapon, weaponPlus = 0) {
       const c = conns.get(userId);
       if (!c) return;
@@ -1601,23 +1626,43 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     const refuse = (reason: Extract<TownServerMessage, { t: 'warrens-refused' }>['reason'], message: string) => send(c, { t: 'warrens-refused', reason, message });
     const [gc, gr] = opts.warrens.gate;
     const atGate = opts.warrens.dev || (c.room === 'slums' && Math.max(Math.abs(c.player.col - gc), Math.abs(c.player.row - gr)) <= W.W.entry.warp.useRangeTiles + 2);
+    const access = (member: string): WarrensAccess => opts.warrens?.access?.(member) ?? { done: true };
+    /** Party members in the Slums who can't come into a real run yet (Aling Nena's quest not done). */
+    const notReady = () => (parties.of(c.userId)?.members ?? []).filter((m) => m !== c.userId && conns.get(m)?.room === 'slums' && !access(m).done);
     switch (m.t) {
-      case 'warrens-gate':
-        return send(c, { t: 'warrens-gate', gate: W.gate(c.userId, levelOf(c), opts.warrens.tickets.count(c.userId)) });
+      case 'warrens-gate': {
+        const a = access(c.userId);
+        return send(c, { t: 'warrens-gate', gate: W.gate(c.userId, levelOf(c), opts.warrens.tickets.count(c.userId), { ...a, notReady: notReady().map(nameOf) }) });
+      }
+      case 'warrens-practice': {
+        // A practice run (Aling Nena's quest): theirs alone, with a Practice Warren Ticket while the quest needs it.
+        if (!atGate) return refuse('gone', 'Walk up to the Warren Gate first.');
+        if (now - (c.warrensAt ?? 0) < 1000) return refuse('slow', 'Slow down a little.');
+        c.warrensAt = now;
+        if (!opts.warrens.practice || !access(c.userId).needs) return refuse('ticket', "There's nothing to practise for now.");
+        const r = W.openPractice(c.userId, c.player.nickname, levelOf(c), () => opts.warrens!.practice!.use(c.userId), now);
+        if (!r.ok) return refuse(r.reason, r.message);
+        tellItems(c); // (the ticket's gone)
+        saveRuns();
+        console.log(`[warrens] ${c.userId} opened practice run ${r.run.id}`);
+        return send(c, { t: 'warrens-go', run: r.run.id, ticket: true });
+      }
       case 'warrens-open': {
         if (!atGate) return refuse('gone', 'Walk up to the Warren Gate first.');
         if (now - (c.warrensAt ?? 0) < 1000) return refuse('slow', 'Slow down a little.');
         c.warrensAt = now;
-        const r = W.open(c.userId, c.player.nickname, levelOf(c), () => opts.warrens!.tickets.use(c.userId), now);
+        const r = W.open(c.userId, c.player.nickname, levelOf(c), () => opts.warrens!.tickets.use(c.userId), now, access(c.userId));
         if (!r.ok) return refuse(r.reason, r.message);
         tellItems(c); // (the ticket's gone)
         saveRuns();
         console.log(`[warrens] ${c.userId} opened run ${r.run.id}${r.run.party ? ' for their party' : ''}`);
-        // Their party: an invite for those in the Slums, a line for the rest.
+        // Their party: an invite for those in the Slums, a line for the rest (and those who can't come in yet).
+        const waiting = new Set(notReady());
         for (const member of parties.of(c.userId)?.members ?? []) {
           const o = conns.get(member);
           if (!o || o === c) continue;
-          if (o.room === 'slums') {
+          if (waiting.has(member)) send(o, { t: 'system', line: { kind: 'warrens', text: `${c.player.nickname} opened the Scrap Warrens for your party, but you can't come in yet: help Aling Nena on the plaza first.`, tone: 'down' } });
+          else if (o.room === 'slums') {
             const ms = W.W.entry.partyInviteSeconds * 1000;
             r.run.invite(member, now + ms); // (it waits for them till they answer)
             send(o, { t: 'warrens-invite', run: r.run.id, from: c.player.nickname, ms });
@@ -1627,7 +1672,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         return send(c, { t: 'warrens-go', run: r.run.id, ticket: true }); // (their ticket went: its sound)
       }
       case 'warrens-join': {
-        const r = W.join(c.userId, levelOf(c), typeof m.run === 'string' ? m.run : undefined);
+        const r = W.join(c.userId, levelOf(c), typeof m.run === 'string' ? m.run : undefined, access(c.userId));
         if (!r.ok) return refuse(r.reason, r.message);
         tellRun(r.run, now);
         return send(c, { t: 'warrens-go', run: r.run.id });
@@ -1648,7 +1693,8 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     setInterval(() => {
       const now = Date.now();
       for (const { run, news } of W.tick(now, insideOf)) {
-        runNews(run, news, news.closed && !run.ticketSpent ? refundRun(run) : undefined);
+        // (A practice run's ticket is never given back: Aling Nena hands over another.)
+        runNews(run, news, news.closed && !run.ticketSpent && !run.practice ? refundRun(run) : undefined);
         if (news.closed) {
           loots.delete(run.room);
           runSeen.delete(run.id);

@@ -24,7 +24,9 @@
      88
     ]
    },
-   "minLevel": 15,
+   "minLevel": 16,
+   "requiresQuest": "side-nena-binoculars",
+   "requiresNote": "Mac, 15 Oct 2026: a real run needs Aling Nena's quest done (was Lv 15, no quest).",
    "ticket": "warren-ticket",
    "ticketsPerRun": 1,
    "whoPays": "the player who opens the run, for themselves alone or for their whole party",
@@ -47,6 +49,21 @@
    "mobRespawn": false,
    "mobAggro": "all aggressive, 4 tiles, packs assist, leash = their own area",
    "gate": "a scrap shutter blocks each area's exit passage until that area's mini boss dies; then it opens for good this run"
+  },
+  "practice": {
+   "note": "Aling Nena's quest (Mac, 15 Oct 2026): the same map, mobs and bosses, weaker, solo only, opened with a Practice Warren Ticket.",
+   "ticket": "practice-warren-ticket",
+   "minLevel": 16,
+   "solo": true,
+   "hpMult": 0.4,
+   "atkMult": 0.6,
+   "xpMult": 0.5,
+   "kusingMult": 0.5,
+   "loot": "the normal Warrens loot (Mac, 15 Oct): mini bosses and Barong-Barong roll their usual gear, accessories, agimats, whetstones and Warren Ticket chance; only their Kusing is x kusingMult. Barong-Barong also drops the quest's binoculars (to the player, straight into the bag)",
+   "timeLimitMinutes": 20,
+   "drop": "nena-binoculars",
+   "retryHours": 24,
+   "repoNote": "drop and retryHours are repo additions (15 Oct 2026): the item Barong-Barong drops for the quest, and how long Aling Nena waits before giving another ticket after one was used without finding it"
   },
   "scaling": {
    "about": "n = players inside the run (counted at each pull, and kept up to date like the field golem: HP % stays)",

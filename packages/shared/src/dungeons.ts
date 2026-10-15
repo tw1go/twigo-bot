@@ -75,12 +75,29 @@ export interface DungeonArea {
 /** Odds by key (they add up to 1). */
 export type Odds = Record<string, number>;
 
+export interface WarrensPractice {
+  ticket: string;
+  minLevel: number;
+  solo: boolean;
+  hpMult: number;
+  atkMult: number;
+  xpMult: number;
+  kusingMult: number;
+  timeLimitMinutes: number;
+  /** How long the quest's giver waits before handing over another ticket (the last one used, the item not found). */
+  retryHours?: number;
+  /** The item its last boss drops for the quest (into the bag). */
+  drop?: string;
+}
+
 export interface WarrensData {
   name: string;
   map: string;
   entry: {
     warp: { map: string; object: string; tile: [number, number]; footprint: [number, number]; useRangeTiles: number; arrive: [number, number] };
     minLevel: number;
+    /** A quest a character must have finished to open or join a real run (Aling Nena's). */
+    requiresQuest?: string;
     ticket: string;
     ticketsPerRun: number;
     partyInviteSeconds: number;
@@ -97,6 +114,8 @@ export interface WarrensData {
     mobRespawn: boolean;
   };
   scaling: { mobHp: string; bossHp: string };
+  /** A practice run (Aling Nena's quest): the same map, mobs and bosses, solo, its numbers × these; its own ticket. */
+  practice?: WarrensPractice;
   areas: DungeonArea[];
   scrapling: { id: string; name: string; art: string; drawScale: number; level: number; hp: number; atk: number; def: number; xp: number; kusing: number; attacks: { tireSlam: number } };
   lastBoss: DungeonBossDef & { tile: [number, number]; body: [number, number, number, number]; reachRadius: number; guards: { kind: string; count: number } };

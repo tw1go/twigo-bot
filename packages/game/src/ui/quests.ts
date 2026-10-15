@@ -2,7 +2,7 @@ import { keyLabel, matches, onKeybinds } from './keybinds';
 import { type AdventureState, type QuestDef, type QuestObjectiveDef, newItem, nameColour, objectiveCount, readyToReport } from '@mikazuki/shared';
 import { itemPicture, nameOf } from './item-tip';
 import { playSound } from '../audio/sound';
-import { type AdventureChange, adventure, itemData, markQuestsSeen, onAdventure, questDef, unseenQuest } from '../net/adventure';
+import { type AdventureChange, adventure, heldOf, itemData, markQuestsSeen, offeredNow, onAdventure, questDef, unseenQuest } from '../net/adventure';
 
 // 📜 Quests on screen (the state: net/adventure.ts, the quests: quests/quests.json). Main quests are violet and side
 // quests yellow everywhere they show (manifest quests.colours):
@@ -34,9 +34,13 @@ const touch = () => matchMedia('(hover: none) and (pointer: coarse)').matches;
 /** A hunt: a kill or mini boss objective (the quest map marks its area; a guided one gets the quest trail). */
 const hunting = (o: QuestObjectiveDef | undefined) => o?.type === 'kill' || o?.type === 'miniBoss';
 
-/** An objective as it shows: its text, and "12/20" after a count's. */
-const objectiveText = (o: QuestObjectiveDef | undefined, count: number | undefined, done = false) =>
-  !o ? '' : o.type === 'kill' || o.type === 'miniBoss' ? `${o.text} ${done ? objectiveCount(o) : Math.min(count ?? 0, objectiveCount(o))}/${objectiveCount(o)}` : o.text;
+/** An objective as it shows: its text, and "12/20" after a count's; a collect's in the tracker its label and how many
+ *  are in the bag ("Binoculars 0/1"). */
+const objectiveText = (o: QuestObjectiveDef | undefined, count: number | undefined, done = false, short = false) =>
+  !o ? ''
+  : o.type === 'kill' || o.type === 'miniBoss' ? `${o.text} ${done ? objectiveCount(o) : Math.min(count ?? 0, objectiveCount(o))}/${objectiveCount(o)}`
+  : o.type === 'collect' && short ? `${o.label ?? o.text} ${done ? objectiveCount(o) : Math.min(heldOf(o.item), objectiveCount(o))}/${objectiveCount(o)}`
+  : o.text;
 
 const TRACKED = 3;
 const TICK_MS = 1300; // an objective's ✓ before the next shows
@@ -162,7 +166,7 @@ class Tracker {
       const q = questDef(change.advanced.quest);
       const o = q?.objectives.find((x) => x.id === change.advanced!.objective);
       if (q && o) {
-        this.ticks.set(q.id, { text: objectiveText(o, 0, true), title: q.title, type: q.type, until: performance.now() + TICK_MS });
+        this.ticks.set(q.id, { text: objectiveText(o, 0, true, true), title: q.title, type: q.type, until: performance.now() + TICK_MS });
         setTimeout(() => this.render(), TICK_MS + 20);
       }
     }
@@ -181,7 +185,7 @@ class Tracker {
     for (const { p, q } of active) {
       const tick = this.ticks.get(q.id);
       const report = !tick && readyToReport(q, p);
-      rows.push({ id: q.id, title: q.title, type: q.type, text: tick?.text ?? objectiveText(q.objectives[p.step], (p as { count?: number }).count), done: !!tick, report, hunt: !tick && !report && hunting(q.objectives[p.step]) });
+      rows.push({ id: q.id, title: q.title, type: q.type, text: tick?.text ?? objectiveText(q.objectives[p.step], (p as { count?: number }).count, false, true), done: !!tick, report, hunt: !tick && !report && hunting(q.objectives[p.step]) });
     }
     for (const [id, t] of this.ticks) if (!rows.some((r) => r.id === id)) rows.push({ id, title: t.title, type: t.type, text: t.text, done: true });
     rows.sort((a, b) => (a.type === b.type ? 0 : a.type === 'main' ? -1 : 1));
@@ -256,7 +260,8 @@ function renderLog(): void {
   const s = adventure();
   const active = (s?.quests.active ?? []).map((p) => ({ q: questDef(p.id), step: p.step, count: p.count })).filter((x): x is { q: QuestDef; step: number; count: number | undefined } => !!x.q);
   const done = (s?.quests.done ?? []).map((id) => questDef(id)).filter((q): q is QuestDef => !!q);
-  const all = [...active.map((a) => a.q), ...done];
+  const offered = offeredNow();
+  const all = [...active.map((a) => a.q), ...offered, ...done];
   if (!picked || !all.some((q) => q.id === picked)) picked = (active.find((a) => a.q.type === 'main') ?? active[0])?.q.id ?? done[0]?.id ?? null;
 
   const side = el('div', 'ql-list');
@@ -275,7 +280,14 @@ function renderLog(): void {
     const h = el('div', 'ql-section', label);
     h.style.color = opts.colours[type];
     const mine = active.filter((a) => a.q.type === type);
-    side.append(h, ...(mine.length ? mine.map((a) => item(a.q, false)) : [el('div', 'ql-none', empty)]));
+    // (An offered quest: greyed, "Available", until its giver starts it.)
+    const open = offered.filter((q) => q.type === type).map((q) => {
+      const b = item(q, false);
+      b.classList.add('ql-offered');
+      b.append(el('span', 'ql-available', 'Available'));
+      return b;
+    });
+    side.append(h, ...(mine.length || open.length ? [...mine.map((a) => item(a.q, false)), ...open] : [el('div', 'ql-none', empty)]));
   };
   section('main', 'Main', 'No main quests right now.');
   section('side', 'Side', 'No side quests yet.');
@@ -294,7 +306,8 @@ function renderLog(): void {
   if (!q) detail.append(el('div', 'ql-none', 'No quests yet.'));
   else {
     const finished = done.includes(q);
-    const step = active.find((a) => a.q === q)?.step ?? q.objectives.length;
+    const available = offered.includes(q);
+    const step = active.find((a) => a.q === q)?.step ?? (available ? -1 : q.objectives.length);
     const title = el('div', 'ql-title', q.title);
     title.style.color = colour(q);
     detail.append(title);
@@ -344,11 +357,11 @@ function renderLog(): void {
       const def = D?.defs.get(r.item);
       return def && D ? [newItem(D.stats, def, 'reward', r.count)] : [];
     });
-    if (rewards.length || q.rewardXP || q.rewardKusing) {
+    if (rewards.length || q.rewardXP || q.rewardKusing || q.rewardKowens) {
       const box = el('div', 'ql-rewards');
       box.append(el('div', 'ql-rewards-head', 'Rewards'));
       // Its XP and Kusing (the leveling chain's: the same for everyone).
-      for (const [label, n] of [['XP', q.rewardXP], ['Kusing', q.rewardKusing]] as const) {
+      for (const [label, n] of [['XP', q.rewardXP], ['Kusing', q.rewardKusing], [q.rewardKowens === 1 ? 'Kowen' : 'Kowens', q.rewardKowens]] as const) {
         if (!n) continue;
         const row = el('div', 'ql-reward');
         row.append(el('span', 'ql-reward-name', `+${n.toLocaleString('en-US')} ${label}`));
@@ -364,6 +377,7 @@ function renderLog(): void {
       detail.append(box);
     }
     if (finished) detail.append(el('div', 'ql-finished-note', 'Completed'));
+    if (available) detail.append(el('div', 'ql-finished-note ql-available-note', `Available: talk to ${giver?.name ?? 'its giver'} to start it.`));
   }
   logRoot.querySelector('.ql-body')!.replaceChildren(side, detail);
 }

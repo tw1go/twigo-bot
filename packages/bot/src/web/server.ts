@@ -3,7 +3,7 @@ import type { LeaderboardResponse, LeaderboardRow, MeDig, MeResponse, PresenceSt
 import { RETURN_LANTERN } from '@mikazuki/shared';
 import { EmbedBuilder, GatewayIntentBits, escapeMarkdown, type Client } from 'discord.js';
 import { config } from '../config.js';
-import { VOICE_DAILY_CAP, VOICE_MINUTES_PER_CREDIT, balance, rankOf, setWalletHook, topBalances, totalKowens, vaultBalance, voiceCreditsToday, voiceProgress } from '../credits/store.js';
+import { VOICE_DAILY_CAP, VOICE_MINUTES_PER_CREDIT, add, balance, rankOf, setWalletHook, topBalances, totalKowens, vaultBalance, voiceCreditsToday, voiceProgress } from '../credits/store.js';
 import { DIGS_PER_DAY, digsToday, inventory, LUCKY_EVERY, serverDigProgress, SHOVEL_COST, SHOVEL_USES, SHOVELS_PER_DAY, shovelsBoughtToday, shovelUses } from '../dig/store.js';
 import { ITEM_BY_ID } from '../dig/items.js';
 import { getNickname, parseNickname, setNickname } from './nickname.js';
@@ -51,7 +51,7 @@ const lookOf = (userId: string): OutfitData | null => {
 };
 import { enhanceFeedLine, parseForgeAction } from './forge.js';
 import { loadItemData } from './stats-data.js';
-import { refundTicketFor, warrenTicketsOf, useTicketFor, kindCountOf, useKindFor, adventureOf, cosmeticsOf, combatOf, fighterOf, forgeFor, petXpFor, dropItemFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townPet, townEquip, townPoints, townQuest, townSkills, trainingArmorFor, questRewardsFor, questPiecesFor, questKillFor } from './adventure.js';
+import { practiceDropFor, usePracticeTicketFor, warrensAccessOf, refundTicketFor, warrenTicketsOf, useTicketFor, kindCountOf, useKindFor, adventureOf, cosmeticsOf, combatOf, fighterOf, forgeFor, petXpFor, dropItemFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townPet, townEquip, townPoints, townQuest, townSkills, trainingArmorFor, questRewardsFor, questPiecesFor, questKillFor } from './adventure.js';
 import { renameWithCard } from '../items/rename-card.js';
 import { changeClassWithTicket } from '../items/class-ticket.js';
 import { LAUNCH_REWARD, isPreregistered, launched, preregCount, preregister } from '../prereg/prereg.js';
@@ -665,7 +665,12 @@ export function startWebServer(client: Client): void {
         if (path === '/town/quest') {
           const action = parseQuestAction(body);
           if (!action) return send(res, 400, '{"error":"invalid quest action"}');
-          result = townQuest(userId, action);
+          result = townQuest(userId, action, { inPracticeRun: !!town?.inPracticeRun(userId) });
+          // A quest's Kowens into their wallet (the HUD follows: the wallet hook).
+          if (result.ok && result.kowens) {
+            add(userId, result.kowens);
+            console.log(`[quests] ${userId} got ${result.kowens} ${kowen(result.kowens)} for ${result.completed}`);
+          }
         } else if (path === '/town/points') {
           const action = parsePointsAction(body);
           if (!action) return send(res, 400, '{"error":"invalid points action"}');
@@ -702,7 +707,7 @@ export function startWebServer(client: Client): void {
         }
         // A report's XP (and its level-ups: "Level up!" for their room) and Kusing reach the town at once.
         if (reply.xp) town?.progress(userId, reply.adventure.progress, ups ?? 0, reply.xp);
-        if (reply.kusing || reply.rewards?.length || reply.pieces?.length) town?.items(userId);
+        if (reply.kusing || reply.rewards?.length || reply.pieces?.length || reply.handed || reply.taken) town?.items(userId);
         if (changed) town?.kit(userId, reply.adventure.cls, reply.adventure.equipped.weapon?.defId ?? null, weaponPlusOf(reply.adventure.equipped.weapon)); // the resting weapon for everyone, their gear's stats in fights
         if (reply.completed) console.log(`[quests] ${userId} completed ${reply.completed}${reply.adventure.cls ? ` (${reply.adventure.cls})` : ''}${reply.pieces?.length ? `, got ${reply.pieces.map((i) => `${i.defId} +${i.plus}`).join(', ')}` : ''}`);
         return send(res, 200, JSON.stringify(reply));
@@ -1016,7 +1021,15 @@ export function startWebServer(client: Client): void {
       mobs: { slums: (slumsRoom = new MobRoom(loadMobMap('slums'), Math.random, skillLevels, loadSkillShapes(), loadMobKinds(), loadGolemArt())) },
       // Runs of the Scrap Warrens: the ticket from the combat bag (back if a run ends before a boss falls), the open runs
       // kept (refunds after a restart).
-      warrens: { ...loadWarrens(skillLevels), tickets: { count: warrenTicketsOf, use: useTicketFor, refund: refundTicketFor }, saved: (runs) => kvSave(WARRENS_RUNS, runs) },
+      // Aling Nena's quest: a real run needs it done; a practice run uses her Practice Warren Ticket and its last boss drops
+      // her binoculars.
+      warrens: {
+        ...loadWarrens(skillLevels),
+        tickets: { count: warrenTicketsOf, use: useTicketFor, refund: refundTicketFor },
+        access: warrensAccessOf,
+        practice: { use: usePracticeTicketFor, drop: practiceDropFor },
+        saved: (runs) => kvSave(WARRENS_RUNS, runs),
+      },
       // Lantern Posts: a Return Lantern from the combat bag for each teleport.
       lanterns: { count: (userId) => kindCountOf(userId, RETURN_LANTERN), use: (userId) => useKindFor(userId, RETURN_LANTERN) },
       quests: { kill: questKillFor },
