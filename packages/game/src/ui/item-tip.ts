@@ -100,7 +100,6 @@ export function itemTipFor(item: Item, owner?: { cls: string | null }): HTMLElem
       return parts;
     }
     if (def.about) parts.push(el('div', 'eq-tip-about', def.about));
-    if (def.kind === 'cosmetic') parts.push(el('div', 'eq-tip-unmet', "Can't be worn yet"));
     // A quest item (CONTEXT.md): what it can't do, in grey; a bound one (the Practice Warren Ticket) says so.
     if (def.kind === 'quest') parts.push(el('div', 'eq-tip-meta', "Quest item: it can't be sold, traded, dropped or banked"));
     else if (item.bound) parts.push(el('div', 'eq-tip-meta', "Bound: it can't be sold, traded or dropped"));
