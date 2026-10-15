@@ -80,6 +80,10 @@ export interface Manifest {
     jackpotIcon?: { file: string; size: Vec2 };
     /** The Slums' golem timer's picture: the Scrapheap Golem's head. */
     golemHead?: { file: string; size: Vec2 };
+    /** The neighbourhood's rogue signs by a house's door (world/rogue-signs.ts): a Protected house's moon charm and a
+     *  Marked one's mask (16 px; `showcase` 32 px, the house menu). */
+    houseProtected?: { file: string; showcase?: string; size: Vec2 };
+    rogueMask?: { file: string; showcase?: string; size: Vec2 };
     /** The Map menu (ui/map-menu.ts): the Slums and the Town drawn together (`layout`: ui/map/map-layout.json), a
      *  Lantern Post's icon (frames normal, hover, here) and the "You are here" pin. */
     mapWorld?: { file: string; size: Vec2; layout: string };

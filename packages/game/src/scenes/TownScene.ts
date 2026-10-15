@@ -18,7 +18,7 @@ import { myRating } from '../ui/rating';
 import { setGolemTimer } from '../ui/golem-timer';
 import { showParlor } from '../ui/parlor';
 import { type HouseArt, composeHouse, houseFiles, houseStyles, tidyLook } from '../houses/art';
-import { areaUrl, cameByLantern, cameFrom, hoodAction, loadHood, saveHouse } from '../net/hood';
+import { areaUrl, cameByLantern, cameFrom, hoodAction, loadHood, rogueAction, saveHouse } from '../net/hood';
 import { showHouseMenu } from '../ui/house-menu';
 import { closeNpcDialog, setNpcDialogArt } from '../ui/npc-dialog';
 import { race as currentRace, raceNow, setRace } from '../net/race';
@@ -31,6 +31,7 @@ import { drawBridge } from '../world/bridge';
 import { onMap, watchClicks } from '../world/clicks';
 import { playKalawang, playMasterKey } from '../world/bakod-fx';
 import { puffHouse, riseHouse, sinkHouse } from '../world/house-rise';
+import { RogueSigns } from '../world/rogue-signs';
 import { ChatBox } from '../ui/chat';
 import { StayReward } from '../ui/stay';
 import { MegaphoneBanner } from '../ui/megaphone';
@@ -633,7 +634,11 @@ export class TownScene extends Phaser.Scene {
     const yours = built && this.objects.buildings.find((b) => b.id === `house-${built.lot}`);
     if (yours) {
       sinkHouse(yours);
-      this.afterReveal(titleCardMs() + 300, () => void riseHouse(this.fx(), yours)); // once the title card has opened
+      this.afterReveal(titleCardMs() + 300, () => void riseHouse(this.fx(), yours).then(() => this.refreshSigns())); // once the title card has opened
+    }
+    if (this.hood && this.art) {
+      this.rogueSigns = new RogueSigns(this, this.M, this.art, (o) => this.tint >= 0 && o.setTint(this.tint));
+      this.refreshSigns(yours ? built!.lot : null); // (yours, just built: once it has risen)
     }
     // Members show their nickname and title; without a login (login off, or the dev server) it's "Guest".
     const member = this.me?.status === 'ok' ? this.me.me : null;
@@ -3187,8 +3192,9 @@ export class TownScene extends Phaser.Scene {
       hood.me = fresh.me;
       for (const h of fresh.houses) {
         const known = hood.houses.find((x) => x.lot === h.lot);
-        if (known) known.fenced = h.fenced;
+        if (known) Object.assign(known, { fenced: h.fenced, state: h.state, rogue: h.rogue });
       }
+      this.refreshSigns();
     }
     const house = hood.houses.find((x) => x.lot === clicked.lot) ?? clicked;
     showHouseMenu({
@@ -3197,6 +3203,13 @@ export class TownScene extends Phaser.Scene {
       act: async (action) => {
         const r = await hoodAction(action, house.lot);
         if (r) this.hood = r;
+        this.refreshSigns();
+        return r;
+      },
+      rogue: async (on) => {
+        const r = await rogueAction(on);
+        if (r) this.hood = r;
+        this.refreshSigns();
         return r;
       },
       repaint: () => this.repaintHouse(house),
@@ -3212,6 +3225,17 @@ export class TownScene extends Phaser.Scene {
   }
 
   private openingHouse = false;
+  /** The neighbourhood's moon charms and masks by the houses' doors (world/rogue-signs.ts). */
+  private rogueSigns: RogueSigns | null = null;
+
+  /** Every house's sign as this.hood has it now (after an answer from the bot, which may have changed some). */
+  private refreshSigns(skip: number | null = null): void {
+    if (!this.hood || !this.rogueSigns) return;
+    for (const h of this.hood.houses) {
+      const b = h.lot !== skip && this.objects.buildings.find((x) => x.id === `house-${h.lot}`);
+      if (b) this.rogueSigns.set(h, b);
+    }
+  }
 
   /** Your house, a new look (the house creator over the town); its sprite is redrawn when it's saved. */
   private repaintHouse(house: HoodHouse): void {
@@ -3251,6 +3275,7 @@ export class TownScene extends Phaser.Scene {
   /** Someone else's house, live: built (it rises on its lot, if this map already has room for it) or a new look. */
   private houseNews(m: Extract<TownServerMessage, { t: 'house' }>): void {
     if (m.change === 'fence') return this.bakodNews(m);
+    if (m.change === 'state') return this.stateNews(m);
     const hood = this.hood;
     const H = this.M.houses;
     if (!hood || !this.art || !H) return;
@@ -3263,6 +3288,7 @@ export class TownScene extends Phaser.Scene {
     if (m.change === 'look') {
       const key = known && this.houseTexture(m.house);
       if (key) puffHouse(this.fx(), known, key);
+      if (known) this.rogueSigns?.set(m.house, known); // (another type's door is elsewhere)
       return;
     }
     if (known) return;
@@ -3291,8 +3317,18 @@ export class TownScene extends Phaser.Scene {
     label.setZoom(this.cameras.main.zoom);
     this.buildingLabels.set(id, label);
     sinkHouse(b);
-    void riseHouse(this.fx(), b);
+    void riseHouse(this.fx(), b).then(() => this.rogueSigns?.set(m.house, b));
     toast(`${m.house.owner} built a house in the neighbourhood!`, 3000);
+  }
+
+  /** A house's rogue state changed (robbed and protected, its owner marked, turned rogue, or a mark ran out), yours
+   *  included: its charm or mask by the door, for everyone in the neighbourhood. */
+  private stateNews(m: Extract<TownServerMessage, { t: 'house' }>): void {
+    const known = this.hood?.houses.find((h) => h.lot === m.house.lot);
+    if (!known) return;
+    Object.assign(known, { state: m.house.state, rogue: m.house.rogue });
+    const b = this.objects.buildings.find((x) => x.id === `house-${m.house.lot}`);
+    if (b) this.rogueSigns?.set(known, b);
   }
 
   /** A Bakod went up (bought) or came down (ran out, rusted away) on a house here, yours included: the fence is drawn
@@ -3839,7 +3875,7 @@ export class TownScene extends Phaser.Scene {
     this.others.setNight(sky.lampsOn);
     if (!force && sky.tint === this.tint) return;
     this.tint = sky.tint;
-    const all = [...this.ground.sprites, ...this.objects.sprites, ...this.player.tintables, ...this.others.tintables, ...(this.npcs?.tintables ?? []), ...(this.mobs?.tintables ?? []), ...(this.pets?.tintables ?? []), ...this.bridges.filter((b) => !!b)];
+    const all = [...this.ground.sprites, ...this.objects.sprites, ...this.player.tintables, ...this.others.tintables, ...(this.npcs?.tintables ?? []), ...(this.mobs?.tintables ?? []), ...(this.pets?.tintables ?? []), ...(this.rogueSigns?.tintables ?? []), ...this.bridges.filter((b) => !!b)];
     for (const s of all) s.setTint(sky.tint);
   }
 
@@ -3847,6 +3883,10 @@ export class TownScene extends Phaser.Scene {
 
   get debugPets() {
     return this.pets?.debug() ?? [];
+  }
+
+  get debugRogueSigns() {
+    return this.rogueSigns?.debug() ?? [];
   }
 
   get debugNpcs() {
@@ -4034,6 +4074,8 @@ function exposeDebug(scene: TownScene): void {
     npcs: () => scene.debugNpcs?.positions,
     /** Everyone's pet: where it is (tile space) and what it plays. */
     pets: () => scene.debugPets,
+    /** The neighbourhood's rogue signs: each lot's moon charm or mask (world/rogue-signs.ts). */
+    rogueSigns: () => scene.debugRogueSigns,
     talk: (id: string) => scene.debugTalk(id),
     /** The Mosang race as this page has it, and the bot's clock. */
     race: () => ({ race: currentRace(), now: raceNow() }),
