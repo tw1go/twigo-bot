@@ -495,6 +495,16 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   (someone standing in that yard can still walk out: `fenceLater`). Dev: `/__bakod?name=Mara&on=0|1`.
   The house menu asks GET /town/hood again as it opens (jail, cooldown, keys, potions, Bakods are never stale), and
   `jailed` messages update it too.
+  Rogues (CONTEXT.md "Rogues and stealing"; bot `games/rogue.ts`, tested in `games/rogue.test.ts`; schema v17 accounts
+  rogue_since / rogue_marked_at / protected_at, empty at the update: the one fresh start, nothing ever resets them): only
+  rogues steal or throw a Kalawang Potion (`stealFrom`: self → not-rogue → cooldown → broke → poor → protected → fenced);
+  every attempt marks the thief (`markRogue` beside `markSteal`), robbing an open member protects them. `/rogue
+  join|quit|status`; POST /town/rogue { on } (`rogueAction` in web/hood.ts; jail blocks joining only); GET /town/hood's
+  houses carry `state` / `rogue`, `me` rogue / marked / markedUntil / protected; the web server's 3 s Bakod poll also runs
+  `stateChanges` (protected, marked, a mark running out) → `house` change 'state'. Game: the house menu (Become a rogue /
+  Quit, each asking first; "Become a rogue to steal"; a protected house offers nothing) and `world/rogue-signs.ts` (manifest
+  ui.houseProtected moon charm / ui.rogueMask over the door: the house type's door layer's box). Dev: Jun is protected and
+  Lola a marked rogue; `/__rogue?name=Jun&state=open|protected|marked`; `__town.rogueSigns()`.
 - South bridge: town.json `bridges` (the south path's end, cols 34–36 over rows 70–71, drawn along the rows by
   `world/bridge.ts`; railings = fence pieces): scenery, the path runs on into the woods (`outskirts.lanes`: path tiles, no
   tree whose crown would hide it). The town's west road runs on west the same way, to the Slums gate.
