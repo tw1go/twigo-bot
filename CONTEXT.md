@@ -446,7 +446,8 @@ _Avoid_: wanted, exposed, flagged
 ## The Scrap Warrens (dungeon)
 
 **Scrap Warrens**:
-A walled junk maze under the Slums for Lv 15+, played as runs; six areas, five mini bosses and Barong-Barong.
+A walled junk maze under the Slums for Lv 16+ who have helped Aling Nena, played as runs; six areas, five mini bosses
+and Barong-Barong.
 _Avoid_: dungeon (fine in talk, but the place is the Scrap Warrens)
 
 **Run**:
@@ -462,6 +463,15 @@ _Avoid_: gate (alone, a gate is a map edge between maps: town ↔ Slums)
 **Warren Ticket**:
 The item a run costs, used up by whoever opens it; joining a party's run is free.
 
+**Practice run**:
+A run for one player alone, opened with a Practice Warren Ticket during Aling Nena's quest: the same map, mobs and
+bosses with weaker numbers and less Kusing; nobody else can join it. Barong-Barong drops her binoculars in it.
+_Avoid_: tutorial run, easy mode
+
+**Practice Warren Ticket**:
+Aling Nena's free ticket for a practice run (bound: never sold, traded or dropped); it opens no real run, and a Warren
+Ticket opens no practice run.
+
 **Area**:
 One of the Warrens' six parts (Can Cellar … Shanty Hall), each with its own mobs and, at its end, an arena.
 
@@ -475,3 +485,15 @@ _Avoid_: gate, door
 
 **Checkpoint**:
 Where you come back after dying in a run: the start of the furthest area the run has opened.
+
+## Quests
+
+**Offered quest**:
+A quest a character can start now (they've reached its level and haven't started or finished it): its giver shows the
+"!" and talking to them starts it. Aling Nena's binoculars quest, from Lv 16.
+_Avoid_: available quest (fine in the log's words), pending quest
+
+**Quest item**:
+An item a quest needs, like Aling Nena's Binoculars: never sold, traded, dropped, taken apart or banked, one a slot, and
+gone once it's handed over.
+_Avoid_: key item

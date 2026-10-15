@@ -1,5 +1,5 @@
 {
-  "note": "The town's quests. type: main (violet) or side (yellow). Objective types so far: talk (talk to `npc`) and chooseClass. autoStart quests start the first time a player is in town (and for anyone who hasn't done them yet). dialogue: lines the giver says instead of their usual ones while the quest is on: talk (in order, while talking is the current objective), remind (talking again before the next objective is done), complete (when the quest is done; {class} is the class's name). story: the brief storyline the quest log shows (what's going on and why). rewards: items given into the combat bag when it's completed ({ item: an items.json or equipment.json id, count }); a quest finished before it had rewards gives them on the next visit. Every quest up to Lv 20 gives Low HP and MP Potions. leveling: one of the Tanod's leveling chain (objective types kill and miniBoss, reported over his radio): its title, goal, count and XP and Kusing rewards come from classes/leveling.json by its id; the entry keeps its type, giver, story, the Tanod's give/report lines (his radio toasts; leveling.json's one line each is the fallback), item rewards and next.",
+  "note": "The town's quests. type: main (violet) or side (yellow). Objective types so far: talk (talk to `npc`) and chooseClass. autoStart quests start the first time a player is in town (and for anyone who hasn't done them yet). dialogue: lines the giver says instead of their usual ones while the quest is on: talk (in order, while talking is the current objective), remind (talking again before the next objective is done), complete (when the quest is done; {class} is the class's name). story: the brief storyline the quest log shows (what's going on and why). rewards: items given into the combat bag when it's completed ({ item: an items.json or equipment.json id, count }); a quest finished before it had rewards gives them on the next visit. Every quest up to Lv 20 gives Low HP and MP Potions. leveling: one of the Tanod's leveling chain (objective types kill and miniBoss, reported over his radio): its title, goal, count and XP and Kusing rewards come from classes/leveling.json by its id; the entry keeps its type, giver, story, the Tanod's give/report lines (his radio toasts; leveling.json's one line each is the fallback), item rewards and next. minLevel (no autoStart): offered from that level, its giver shows the \"!\" and talking starts it. Objective types collect (`item` \u00d7 `count` in the combat bag: done as it is there; `label` is what the tracker writes before the count) and deliver (talk to `npc` with the item: they take it). rewardKowens: Kowens into the wallet. (Aling Nena's quest, 15 Oct 2026.)",
   "quests": [
     {
       "id": "main-01-class",
@@ -305,6 +305,59 @@
         { "item": "low-hp-potion", "count": 10 },
         { "item": "low-mp-potion", "count": 10 }
       ],
+      "next": null
+    },
+    {
+      "id": "side-nena-binoculars",
+      "type": "side",
+      "giver": "nena",
+      "title": "Aling Nena's Binoculars",
+      "summary": "Aling Nena's good binoculars were stolen. The kids say the Barong-Barong took them down into the Scrap Warrens.",
+      "story": "Aling Nena never misses anything on the plaza, thanks to her late husband's brass binoculars. She left them on the bench while buying pandesal, and they were gone. The kids say a shanty giant under the Slums, the Barong-Barong, has been dragging off anything shiny. She's using an old cracked pair until you bring hers back.",
+      "minLevel": 16,
+      "objectives": [
+        {
+          "id": "talk",
+          "type": "talk",
+          "npc": "nena",
+          "text": "Talk to Aling Nena"
+        },
+        {
+          "id": "find",
+          "type": "collect",
+          "item": "nena-binoculars",
+          "count": 1,
+          "label": "Binoculars",
+          "text": "Get the binoculars back from Barong-Barong (practice Warrens)"
+        },
+        {
+          "id": "give",
+          "type": "deliver",
+          "npc": "nena",
+          "item": "nena-binoculars",
+          "count": 1,
+          "text": "Bring the binoculars to Aling Nena"
+        }
+      ],
+      "dialogue": {
+        "talk": [
+          "Psst, anak! Come here. Level 16 ka na? Ang lakas mo na, ha!",
+          "My good binoculars, the brass ones from my late husband, nawala! I left them on the bench while I was buying pandesal.",
+          "The kids say the Barong-Barong took them. A shanty monster under the Slums, in the Scrap Warrens daw.",
+          "Here, a practice ticket. Use it at the Warren Gate by the golem pit, alone. Bring them back to me, ha?"
+        ],
+        "remind": [
+          "Nasaan na ang binoculars ko? The Warren Gate is by the golem pit, near the old jeepney."
+        ],
+        "complete": [
+          "Ay, salamat, anak! Now I can see everything again. Everyone, too. Hehe.",
+          "Here, for your trouble. And don't tell the Tanod I'm watching him."
+        ]
+      },
+      "rewardXP": 3200,
+      "rewardKusing": 500,
+      "rewardKowens": 10,
+      "rewards": [],
       "next": null
     }
   ]

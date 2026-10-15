@@ -35,15 +35,20 @@ export interface ClassesFile {
 
 export type QuestType = 'main' | 'side';
 
-/** An objective: talk (to `npc`), chooseClass, kill (`count` of `mob`; its mini bosses don't count) or miniBoss (one
- *  of `mob`'s mini bosses). Kill and miniBoss are reported to the giver when reached (the tracker's Report). */
+/** An objective: talk (to `npc`), chooseClass, kill (`count` of `mob`; its mini bosses don't count), miniBoss (one
+ *  of `mob`'s mini bosses), collect (`count` of `item` in the combat bag: done as it's there) or deliver (talk to `npc`
+ *  with `count` of `item`: they take it). Kill and miniBoss are reported to the giver when reached (the tracker's
+ *  Report). */
 export interface QuestObjectiveDef {
   id: string;
   type: string;
   text: string;
   npc?: string;
   mob?: string;
+  item?: string;
   count?: number;
+  /** What the tracker writes before a count ("Binoculars" 0/1); `text` in the log. */
+  label?: string;
 }
 
 export interface QuestDef {
@@ -56,6 +61,8 @@ export interface QuestDef {
   /** The brief storyline the quest log shows: what's going on and why it matters. */
   story?: string;
   autoStart?: boolean;
+  /** Offered (not autoStart) once a character reaches this level: its giver shows its "!", talking to them starts it. */
+  minLevel?: number;
   objectives: QuestObjectiveDef[];
   /** The giver's lines while it's on: talk (in order), remind, complete ({class} = the chosen class's name); give (as
    *  it starts) and report (as it's reported over the radio): the leveling chain's. */
@@ -65,6 +72,8 @@ export interface QuestDef {
   /** XP and Kusing given when it's completed (the leveling chain's: the same for everyone). */
   rewardXP?: number;
   rewardKusing?: number;
+  /** Kowens into the member's wallet when it's completed. */
+  rewardKowens?: number;
   next: string | null;
 }
 
@@ -142,6 +151,8 @@ export interface QuestProgress {
   step: number;
   /** How many so far of the current objective's count (kill, miniBoss). */
   count?: number;
+  /** When its giver last handed over the item it needs to go on (Aling Nena's Practice Warren Ticket), ms. */
+  givenAt?: number;
 }
 
 /** A character's level, XP and points (bot web/progress.ts, by the stats rules; saved with the class). Only `level`,
@@ -229,7 +240,11 @@ export interface TownAdventureResponse {
   rewards?: QuestReward[];
   /** A mini boss quest's +5 piece, just given into the combat bag. */
   pieces?: Item[];
-  /** Its XP and Kusing, just given (a report). */
+  /** Its XP and Kusing, just given (a report), and Kowens (into the wallet). */
   xp?: number;
   kusing?: number;
+  kowens?: number;
+  /** An item its giver just handed over (a Practice Warren Ticket: its kind), or one they took (the binoculars). */
+  handed?: string;
+  taken?: string;
 }

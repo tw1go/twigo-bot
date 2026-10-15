@@ -52,8 +52,9 @@ export interface Item {
 }
 
 /** What isn't gear: whetstones, fragments and Repair Kits (material), HP/MP Potions (potion), agimats, cosmetics,
- *  consumables (pet boxes among them) and pets. */
-export type ItemKind = 'material' | 'potion' | 'agimat' | 'cosmetic' | 'consumable' | 'pet';
+ *  consumables (pet boxes among them), pets and quest items (CONTEXT.md "Quest item": never sold, traded, dropped,
+ *  taken apart or banked; one a slot; gone once handed over). */
+export type ItemKind = 'material' | 'potion' | 'agimat' | 'cosmetic' | 'consumable' | 'pet' | 'quest';
 
 /** items/items.json: a kind of item that isn't worn (gear is items/equipment.json). */
 export interface CombatItemDef {
@@ -90,6 +91,8 @@ export interface CombatItemDef {
   forge?: 'whetstone' | 'fragment' | 'repairKit' | 'pliers' | 'temper' | 'tempered';
   /** Never stacks (a filled Temper Stone: each one holds its own +, item level and type). */
   noStack?: boolean;
+  /** Bound as it's made (the Practice Warren Ticket, the quest items): never traded or dropped. */
+  bound?: boolean;
   icon?: string;
   showcase?: string;
   large?: string;
@@ -250,7 +253,7 @@ export function newItem(data: StatsData, def: AnyItemDef, uid: string, count = 1
     rarity: def.rarity,
     plus: 0,
     broken: false,
-    bound: gear ? def.bound : false,
+    bound: gear ? def.bound : !!def.bound,
     luck: 0,
     agimats: gear ? Array(slotCount(data, def.rarity, def.slot)).fill(null) : [],
     lines: [],
@@ -477,7 +480,7 @@ export function giveQuestRewards(data: ItemData, s: AdventureState, quests: Ques
 
 /** The most of a kind in one slot (stats.json inventory: stackN lists; gear never stacks). */
 export function stackLimit(data: StatsData, def: AnyItemDef | undefined): number {
-  if (!def || isGearDef(def) || def.kind === 'cosmetic' || def.kind === 'pet' || def.noStack) return 1;
+  if (!def || isGearDef(def) || def.kind === 'cosmetic' || def.kind === 'pet' || def.kind === 'quest' || def.noStack) return 1;
   // (A consumable, the Warren Ticket, stacks like a potion: stats.json inventory.stack99 "potions", or its own word.)
   const word = def.kind === 'potion' || def.kind === 'consumable' ? (def.kind === 'consumable' ? 'consumables' : 'potions') : def.kind === 'agimat' ? 'agimats' : 'materials';
   for (const [k, v] of Object.entries(itemStats(data).inventory)) {
