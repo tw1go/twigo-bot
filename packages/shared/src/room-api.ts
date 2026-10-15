@@ -365,7 +365,15 @@ export interface HoodHouse extends HouseLook {
   /** A Bakod: a fence round it, open only to a Master Key. */
   fenced: boolean;
   mine?: boolean;
+  /** Its owner's rogue state (bot games/rogue.ts): open (rogues may rob them once), protected (robbed already: nobody
+   *  may), marked (a rogue's: any rogue may, again and again). The house shows a moon charm or a mask by its door. */
+  state: RogueState;
+  /** Its owner is a rogue. */
+  rogue: boolean;
 }
+
+/** A member's rogue state (CONTEXT.md "Rogues and stealing"). */
+export type RogueState = 'open' | 'protected' | 'marked';
 
 export interface TownHoodResponse {
   map: HoodMap;
@@ -380,10 +388,19 @@ export interface TownHoodResponse {
     jailed: boolean;
     /** What changing your house's look costs (the first one is free). */
     repaintCost: number;
+    /** You're a rogue (only rogues steal or throw a Kalawang Potion). */
+    rogue: boolean;
+    /** Marked: rogues can rob you; until when (ms), or null while you're a rogue who has stolen (quitting starts the 2
+     *  days) or not marked. */
+    marked: boolean;
+    markedUntil: number | null;
+    /** Protected: you were robbed, so no rogue can rob you until you become one. */
+    protected: boolean;
   };
 }
 
-/** POST /town/house { style, colours } (build or repaint) and POST /town/hood { action: steal | key | kalawang, lot }:
+/** POST /town/house { style, colours } (build or repaint), POST /town/hood { action: steal | key | kalawang, lot } and
+ *  POST /town/rogue { on } (become a rogue, or quit):
  *  the neighbourhood afterwards, and what happened. `busted`: caught by the Tanod (the game plays the bust, then jail). */
 export type TownHoodActionResponse = TownHoodResponse & { ok: boolean; message: string; busted?: boolean; stole?: number };
 

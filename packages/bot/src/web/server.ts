@@ -31,7 +31,7 @@ import { bailFromTown, townOutpost } from './town-outpost.js';
 import { digInTown, townDigItems } from './town-mine.js';
 import { gambleInTown } from './town-casino.js';
 import { parlorAction, townParlor } from './town-parlor.js';
-import { bakodChanges, hoodAction, hoodTownMap, houseOf, parseHouseLook, saveHouse, townHood } from './hood.js';
+import { bakodChanges, hoodAction, hoodTownMap, houseOf, parseHouseLook, rogueAction, saveHouse, stateChanges, townHood } from './hood.js';
 import { flexInTown, sellInTown, sellManyInTown, townInventory } from './town-bag.js';
 import { boardAction, townBoard } from './town-board.js';
 import { townNews } from './town-news.js';
@@ -110,6 +110,7 @@ import { kvLoad, kvSave } from '../db/db.js';
 //   GET  /town/hood     the neighbourhood: its map, everyone's houses, the viewer's keys, potions and steal cooldown (members)
 //   POST /town/house    { style, colours } build your house (free) or give it a new look (from the game's page only; members)
 //   POST /town/hood     { action: steal|key|kalawang, lot } rob a house (/steal's rules) or rust its Bakod (from the game's page only; members)
+//   POST /town/rogue    { on } become a rogue (not while in jail) or quit, as /rogue does (from the game's page only; members)
 //   GET  /town/parlor   the Parlor: the viewer's look, Kowens, and the titles they have (members)
 //   POST /town/parlor   { action: look, outfit } (3 Kowens) | { action: title, id } (free) (from the game's page only; members)
 //   GET  /town/stay     staying in town (a Kowen every 15 min, claimed), voice chat and the daily Kowens today (members); POST claims one
@@ -768,12 +769,12 @@ export function startWebServer(client: Client): void {
         if (typeof quantity !== 'number' || !Number.isInteger(quantity) || quantity < 1 || quantity > 1000) return send(res, 400, '{"error":"invalid quantity"}');
         return send(res, 200, JSON.stringify(sellInTown(userId, body.id, quantity)));
       }
-      if ((req.method === 'GET' && path === '/town/hood') || (req.method === 'POST' && (path === '/town/hood' || path === '/town/house'))) {
+      if ((req.method === 'GET' && path === '/town/hood') || (req.method === 'POST' && (path === '/town/hood' || path === '/town/house' || path === '/town/rogue'))) {
         if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
         if (req.method === 'POST' && !fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
         const userId = sessionUser(req);
         if (!userId) return send(res, 401, '{"error":"not logged in"}');
-        let body: { action?: unknown; lot?: unknown } | null = null;
+        let body: { action?: unknown; lot?: unknown; on?: unknown } | null = null;
         if (req.method === 'POST') {
           try {
             body = JSON.parse((await readBody(req)) || 'null');
@@ -788,6 +789,11 @@ export function startWebServer(client: Client): void {
           const look = parseHouseLook(body);
           if (!look) return send(res, 400, '{"error":"invalid house"}');
           return send(res, 200, JSON.stringify(await saveHouse(userId, look, names, (change, house, at) => town?.house(change, house, at))));
+        }
+        if (path === '/town/rogue') {
+          // Become a rogue (not while in jail) or quit (any time): games/rogue.ts.
+          if (typeof body?.on !== 'boolean') return send(res, 400, '{"error":"invalid rogue"}');
+          return send(res, 200, JSON.stringify(await rogueAction(userId, body.on, names)));
         }
         const action = body?.action;
         const lot = body?.lot;
@@ -1076,9 +1082,15 @@ export function startWebServer(client: Client): void {
     // A Bakod bought, run out or rusted away: the neighbourhood sees its fence go up or come down.
     const names = (id: string) => nameOf(client, id);
     void bakodChanges(names);
+    void stateChanges(names);
     setInterval(() => {
       void bakodChanges(names).then((changes) => {
         for (const { house, at } of changes) live.house('fence', house, at);
+      });
+      // Rogue states too (protected after a robbery, marked after an attempt, open again as they turn rogue or a mark
+      // runs out): each house's sign, live for everyone in the neighbourhood.
+      void stateChanges(names).then((changes) => {
+        for (const { house, at } of changes) live.house('state', house, at);
       });
     }, BAKOD_CHECK_MS).unref();
   } catch (err) {

@@ -19,6 +19,7 @@ const { add, addFence, balance, fencedUntil } = await import('../credits/store.j
 const { addMasterKey } = await import('../dig/store.js');
 const { addPotions, potionCount } = await import('../potions/potions.js');
 const { closeDatabase } = await import('../db/db.js');
+const { setRogue } = await import('../games/rogue.js');
 
 const names = async (id: string) => `name-${id}`;
 const client = { channels: { fetch: async () => null } } as never;
@@ -76,9 +77,14 @@ test('a Bakod fences the house: stealing needs a Master Key, a Kalawang Potion h
   assert.equal(h.houses[0].fenced, true);
   assert.equal(h.map.fence.length, 20); // round the yard: 5 a side
   assert.deepEqual(h.map.doors['house-0'], [2 + 3 + 1, 5 + 1]); // reached from the street, outside the fence
+  addPotions('b', 'kalawang', 1);
+  const notRogue = await hoodAction(client, 'b', 'kalawang', 0, names);
+  assert.equal(notRogue.ok, false); // only rogues throw one
+  assert.match(notRogue.message, /Only rogues/);
+  assert.equal(potionCount('b', 'kalawang'), 1, 'not used');
+  setRogue('b', true);
   assert.equal((await hoodAction(client, 'b', 'steal', 0, names)).ok, false); // the fence
   assert.equal((await hoodAction(client, 'b', 'key', 0, names)).ok, false); // no key
-  addPotions('b', 'kalawang', 1);
   const before = fencedUntil('a')!;
   assert.ok((await hoodAction(client, 'b', 'kalawang', 0, names)).ok);
   assert.ok(fencedUntil('a')! < before && potionCount('b', 'kalawang') === 0);

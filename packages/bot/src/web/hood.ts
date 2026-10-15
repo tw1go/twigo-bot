@@ -5,6 +5,7 @@ import { db } from '../db/db.js';
 import { balance, fencedUntil, halveFence, take } from '../credits/store.js';
 import { masterKeys } from '../dig/store.js';
 import { jailedUntil } from '../games/jail.js';
+import { isProtected, isRogue, markedUntil, rogueState, turnRogue } from '../games/rogue.js';
 import { stealCooldown, stealFrom } from '../games/steal.js';
 import { kowen } from '../kowens.js';
 import { potionCount, usePotion } from '../potions/potions.js';
@@ -19,7 +20,9 @@ import type { TownMap } from './town.js';
 // is /steal on them (games/steal.ts, same odds, cooldown, fine and jail): a house with a Bakod has a fence round it,
 // open only to a Master Key (50% it snaps), or rusted with a Kalawang Potion (halves the Bakod, as /potion use).
 // Each attempt is posted in the games channel like /steal's, and shows in the town's feed. Houses can be robbed
-// whether their owner is around or not.
+// whether their owner is around or not. Only rogues steal or throw a Kalawang Potion (games/rogue.ts; POST /town/rogue
+// to become one, or quit); a protected house can't be robbed or rusted; each house shows its owner's state, and the
+// web server tells the neighbourhood when one changes (stateChanges, polled with bakodChanges).
 
 export const REPAINT_COST = 3;
 
@@ -77,6 +80,8 @@ export async function townHood(userId: string, names: (id: string) => Promise<st
       ...lookOf(r),
       fenced: fenced.has(r.lot),
       ...(r.user_id === userId ? { mine: true } : {}),
+      state: rogueState(r.user_id),
+      rogue: isRogue(r.user_id),
     })),
   );
   const mine = rows.find((r) => r.user_id === userId);
@@ -91,6 +96,10 @@ export async function townHood(userId: string, names: (id: string) => Promise<st
       stealAt: stealCooldown(userId),
       jailed: !!jailedUntil(userId),
       repaintCost: REPAINT_COST,
+      rogue: isRogue(userId),
+      marked: rogueState(userId) === 'marked',
+      markedUntil: markedUntil(userId),
+      protected: isProtected(userId),
     },
   };
 }
@@ -101,14 +110,15 @@ export type HouseAt = { col: number; row: number; door: [number, number]; fence:
 /** Every Bakod's fence in the neighbourhood now (neighbouring yards share a line: both are kept, as hood-map does). */
 const allFences = (): HoodMap['fence'] => allStmt.all().filter((r) => fencedUntil(r.user_id)).flatMap((r) => fenceRing(r.lot));
 
-/** Tells the neighbourhood (those in it now) that a house was built, got a new look, or its Bakod went up or down. */
-export type HouseNews = (change: 'built' | 'look' | 'fence', house: HoodHouse, at: HouseAt) => void;
+/** Tells the neighbourhood (those in it now) that a house was built, got a new look, its Bakod went up or down, or its
+ *  owner's rogue state changed. */
+export type HouseNews = (change: 'built' | 'look' | 'fence' | 'state', house: HoodHouse, at: HouseAt) => void;
 
 /** A house as the neighbourhood shows it (for HouseNews). */
 async function shown(r: Row, names: (id: string) => Promise<string>): Promise<{ house: HoodHouse; at: HouseAt }> {
   const { col, row } = lotTile(r.lot);
   const fenced = !!fencedUntil(r.user_id);
-  const house: HoodHouse = { lot: r.lot, owner: getNickname(r.user_id) ?? (await names(r.user_id)), title: titleOf(r.user_id), ...lookOf(r), fenced };
+  const house: HoodHouse = { lot: r.lot, owner: getNickname(r.user_id) ?? (await names(r.user_id)), title: titleOf(r.user_id), ...lookOf(r), fenced, state: rogueState(r.user_id), rogue: isRogue(r.user_id) };
   return { house, at: { col, row, door: doorSpot(r.lot, fenced), fence: allFences() } };
 }
 
@@ -131,6 +141,43 @@ export async function bakodChanges(names: (id: string) => Promise<string>): Prom
   if (!before) return [];
   return Promise.all(rows.filter((r) => now.has(r.lot) !== before.has(r.lot)).map((r) => shown(r, names)));
 }
+
+/** Each lot's owner's rogue state at the last look (null: not looked yet). */
+let statesBefore: Map<number, string> | null = null;
+
+/** Houses whose owner's rogue state changed since the last call (protected after a robbery, marked after an attempt,
+ *  open again as they turn rogue or their mark runs out), the first call only looks. Polled with bakodChanges; mark
+ *  expiry has no event of its own, so this is how it's noticed. */
+export async function stateChanges(names: (id: string) => Promise<string>): Promise<{ house: HoodHouse; at: HouseAt }[]> {
+  const rows = allStmt.all();
+  const now = new Map(rows.map((r) => [r.lot, `${rogueState(r.user_id)}|${isRogue(r.user_id)}`]));
+  const before = statesBefore;
+  statesBefore = now;
+  if (!before) return [];
+  return Promise.all(rows.filter((r) => before.has(r.lot) && before.get(r.lot) !== now.get(r.lot)).map((r) => shown(r, names)));
+}
+
+/** Becomes a rogue (on) or quits (POST /town/rogue): not joining while in jail; quitting any time (the mark keeps its 2
+ *  days). Shown in the town's feed, as /rogue does. */
+export async function rogueAction(userId: string, on: boolean, names: (id: string) => Promise<string>): Promise<TownHoodActionResponse> {
+  const done = async (ok: boolean, message: string) => ({ ...(await townHood(userId, names)), ok, message });
+  const r = turnRogue(userId, on, jailedUntil(userId));
+  if (!r.ok) {
+    if (r.reason === 'jailed') return done(false, "You're in jail. You can become a rogue once you're out.");
+    return done(false, on ? "You're a rogue already." : "You're not a rogue.");
+  }
+  const me = getNickname(userId) ?? (await names(userId));
+  if (on) {
+    feed('steal', `${me} became a rogue`, 'lose');
+    return done(true, "You're a rogue! Rogues can steal from anyone who isn't protected. Once you steal, other rogues can rob your house.");
+  }
+  feed('steal', `${me} quit being a rogue`, 'shop');
+  const until = markedUntil(userId);
+  return done(true, until ? `You quit being a rogue. You stay marked until ${when(until)}: rogues can still rob you till then.` : "You quit being a rogue. You're open again.");
+}
+
+/** A time of day and date, the bot's time zone ("Oct 17, 9:05 PM"). */
+const when = (ms: number) => new Date(ms).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: config.timezone });
 
 /** Builds the member's house (free, on the next lot) or gives it a new look (REPAINT_COST Kowens). */
 export async function saveHouse(userId: string, look: HouseLook, names: (id: string) => Promise<string>, news: HouseNews = () => {}): Promise<TownHoodActionResponse> {
@@ -172,7 +219,12 @@ export async function hoodAction(client: Client, userId: string, action: 'steal'
   const me = getNickname(userId) ?? (await names(userId));
   const them = getNickname(owner) ?? (await names(owner));
 
+  // Only rogues steal or throw a Kalawang Potion; a protected house is never rusted (nor robbed: stealFrom refuses it in
+  // its own order, after the cooldown).
+  if (!isRogue(userId)) return done(false, 'Only rogues can steal. Become a rogue first: your house becomes fair game for other rogues once you steal.');
+
   if (action === 'kalawang') {
+    if (isProtected(owner)) return done(false, `${them} was robbed already, so their house is protected. It stays safe unless they turn rogue.`);
     const until = fencedUntil(owner);
     if (!until) return done(false, `${them}'s house has no Bakod to rust.`);
     if (!usePotion(userId, 'kalawang')) return done(false, 'You have no Kalawang Potion. Get one at the sari-sari store.');
@@ -189,6 +241,8 @@ export async function hoodAction(client: Client, userId: string, action: 'steal'
       case 'broke': return done(false, 'You need at least 2 Kowens to try (in case you get caught).');
       case 'poor': return done(false, `${them} only has ${result.have} ${kowen(result.have)}. Pick on someone richer.`);
       case 'fenced': return done(false, result.keys ? `${them}'s house has a Bakod. Use a Master Key to get past it.` : `${them}'s house has a Bakod. You need a Master Key to get past it.`);
+      case 'not-rogue': return done(false, 'Only rogues can steal. Become a rogue first: your house becomes fair game for other rogues once you steal.');
+      case 'protected': return done(false, `${them} was robbed already, so their house is protected. It stays safe unless they turn rogue.`);
       default: return done(false, "You can't rob yourself.");
     }
   }
@@ -202,7 +256,8 @@ export async function hoodAction(client: Client, userId: string, action: 'steal'
   if (result.outcome === 'stole') {
     await post(client, `${intro}🥷 <@${userId}> sneaked into <@${owner}>'s house in the neighbourhood and stole **${result.amount}** ${kowen(result.amount)}! 💰`, pings);
     feed('steal', result.key ? `${me} broke through ${them}'s Bakod with a Master Key and robbed the house: ${result.amount} ${kowen(result.amount)}` : `${me} robbed ${them}'s house: ${result.amount} ${kowen(result.amount)}`, 'win', { userId });
-    return done(true, `You got away with ${result.amount} ${kowen(result.amount)}!`, { stole: result.amount });
+    if (result.protected) feed('steal', `${them}'s house is now protected`, 'win');
+    return done(true, `You got away with ${result.amount} ${kowen(result.amount)}!${result.protected ? ` ${them}'s house is protected now.` : ''}`, { stole: result.amount });
   }
   await post(client, `${intro}🚨 **CAUGHT!** The Tanod caught <@${userId}> breaking into <@${owner}>'s house! <@${userId}> pays <@${owner}> a fine of **${result.fine}** ${kowen(result.fine)} and spends **${result.minutes} minutes** in jail. 🚔`, pings);
   feed('steal', result.key ? `${me} broke through ${them}'s Bakod with a Master Key, but the Tanod caught them` : `The Tanod caught ${me} breaking into ${them}'s house`, 'bust', { userId });

@@ -460,7 +460,7 @@ export type TownServerMessage =
    *  new look ('look'). Only to those in the neighbourhood. */
   /** A house in the neighbourhood: built, a new look, or its Bakod up or down (`door`: its door spot now, outside the
    *  fence with a Bakod; `fence`: every Bakod's fence in the neighbourhood now, as HoodMap's). */
-  | { t: 'house'; change: 'built' | 'look' | 'fence'; house: HoodHouse; col: number; row: number; door: [number, number]; fence: HoodMap['fence'] }
+  | { t: 'house'; change: 'built' | 'look' | 'fence' | 'state'; house: HoodHouse; col: number; row: number; door: [number, number]; fence: HoodMap['fence'] }
   /** Someone changed their look or title at the Parlor (you too: `id` is yours). */
   | { t: 'look'; id: string; outfit: OutfitData; title: TitleData }
   /** Someone changed their nickname with a Rename Card (you too: `id` is yours). */

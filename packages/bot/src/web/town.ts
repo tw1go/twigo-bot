@@ -275,7 +275,7 @@ export interface Town {
    *  puffs into its new look, or its fence goes up or comes down). */
   /** The Mosang race (games/race.ts) changed: to everyone in town and the neighbourhood, and to arrivals while it's on. */
   race(state: TownRace | null): void;
-  house(change: 'built' | 'look' | 'fence', house: HoodHouse, at: { col: number; row: number; door: [number, number]; fence: HoodMap['fence'] }): void;
+  house(change: 'built' | 'look' | 'fence' | 'state', house: HoodHouse, at: { col: number; row: number; door: [number, number]; fence: HoodMap['fence'] }): void;
   /** A member (if in town) flexed an item from their bag: to everyone, them included (chat line + bubble). */
   flexed(userId: string, item: { id: string; name: string; rarity: string }): void;
   /** A member (if in town) says a diss, praise or judge line: to everyone, the speaker included. */
