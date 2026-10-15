@@ -1,6 +1,6 @@
 import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import type { ClassesFile, GearRarity, HoodHouse, HouseLook, OutfitData, TownHoodActionResponse, TownHoodResponse, TownItems, TownRace, TownRaceResponse } from '@mikazuki/shared';
+import type { ClassesFile, GearRarity, HoodHouse, HouseLook, OutfitData, RogueState, TownHoodActionResponse, TownHoodResponse, TownItems, TownRace, TownRaceResponse } from '@mikazuki/shared';
 import { type LanternPost, RETURN_LANTERN, gainPetXp, parsePetAction, petAction, petIdOf, petRules, setPetLevel, addToBag, isGearDef, lanternPostOf, rollGear, rollWorthy, takeKind, buffSkillLevels, classBuffs, classSkills, damageSkillLevels, moveUnlock } from '@mikazuki/shared';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { doorSpot, hoodMap, lotTile } from '../../bot/src/web/hood-map.ts';
@@ -66,7 +66,9 @@ import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
 //   up!" for her room, her HUD (the page's ?xp= / ?level= call it). Levels live here in memory (bot web/progress.ts),
 //   from what the page sent on connect; kills in the Slums give XP the same way.
 //   The neighbourhood (?area=hood): GET /town/hood, POST /town/house, POST /town/hood answered here with pretend
-//   neighbours (one with a Bakod) and your house (by ?as=, from the page's address); &steal=win|bust|snap decides a
+//   neighbours (one with a Bakod, Jun protected, Lola a marked rogue) and your house (by ?as=, from the page's address),
+//   POST /town/rogue too (become a rogue or quit; GET /__rogue?name=Jun&state=open|protected|marked sets a neighbour's
+//   state live); &steal=win|bust|snap decides a
 //   steal (else it's random). Each page load refills your Master Keys and Kalawang Potions (3 each, or &keys=N
 //   &kalawang=N) and there's no steal cooldown unless &cooldown=1. Its room on the town server uses the bot's own
 //   layout (web/hood-map.ts).
@@ -124,18 +126,35 @@ export function devTown(): Plugin {
         paySolo: (who, stake, won) => void (won && move(who, stake * 2)),
       };
       // ── The pretend neighbourhood ──
-      const neighbours: { name: string; style: string; colours: Record<string, string>; fenced: boolean }[] = [
-        { name: 'Kiko', style: 'kubo', colours: {}, fenced: false },
-        { name: 'Mara', style: 'cottage', colours: { walls: 'rose', roof: 'berry' }, fenced: true },
-        { name: 'Tess', style: 'townhouse', colours: {}, fenced: false },
-        { name: 'Jun', style: 'modern', colours: { walls: 'sun', trim: 'harbour' }, fenced: false },
-        { name: 'Lola', style: 'aframe', colours: { roof: 'moss' }, fenced: false },
-        { name: 'Ben', style: 'cottage', colours: { walls: 'harbour', roof: 'white' }, fenced: false },
+      // (Jun was robbed: protected, a moon charm by the door; Lola is a rogue who has stolen: marked, a mask.)
+      const neighbours: { name: string; style: string; colours: Record<string, string>; fenced: boolean; state: RogueState; rogue: boolean }[] = [
+        { name: 'Kiko', style: 'kubo', colours: {}, fenced: false, state: 'open', rogue: false },
+        { name: 'Mara', style: 'cottage', colours: { walls: 'rose', roof: 'berry' }, fenced: true, state: 'open', rogue: false },
+        { name: 'Tess', style: 'townhouse', colours: {}, fenced: false, state: 'open', rogue: false },
+        { name: 'Jun', style: 'modern', colours: { walls: 'sun', trim: 'harbour' }, fenced: false, state: 'protected', rogue: false },
+        { name: 'Lola', style: 'aframe', colours: { roof: 'moss' }, fenced: false, state: 'marked', rogue: true },
+        { name: 'Ben', style: 'cottage', colours: { walls: 'harbour', roof: 'white' }, fenced: false, state: 'open', rogue: false },
       ];
       const houses: (HoodHouse & { name: string })[] = neighbours.map((h, lot) => ({ ...h, lot, owner: h.name, title: { name: 'Townfolk', color: '#B794F6' } }));
       /** Each pretend player's keys, potions and Kowens (by ?as=), refilled on each page load. */
-      const mes = new Map<string, { keys: number; kalawang: number; kowens: number; stealAt: number }>();
-      const meOf = (who: string) => mes.get(who) ?? mes.set(who, { keys: 3, kalawang: 3, kowens: 50, stealAt: 0 }).get(who)!;
+      const mes = new Map<string, { keys: number; kalawang: number; kowens: number; stealAt: number; rogue: boolean; state: RogueState }>();
+      const meOf = (who: string) => mes.get(who) ?? mes.set(who, { keys: 3, kalawang: 3, kowens: 50, stealAt: 0, rogue: false, state: 'open' }).get(who)!;
+      /** A pretend house's rogue state changed: the neighbourhood redraws its charm or mask (as the bot's poll sends). */
+      const tellState = (h: HoodHouse & { name: string }) => {
+        const { col, row } = lotTile(h.lot);
+        const { name: _name, ...shown } = h;
+        town.house('state', shown, { col, row, door: doorSpot(h.lot, h.fenced), fence: fences() });
+      };
+      /** Your state, on you and on your house if you've built one. */
+      const setMine = (who: string, state: RogueState, rogue: boolean) => {
+        const me = meOf(who);
+        Object.assign(me, { state, rogue });
+        const h = houses.find((x) => x.name === who);
+        if (h && (h.state !== state || h.rogue !== rogue)) {
+          Object.assign(h, { state, rogue });
+          tellState(h);
+        }
+      };
       const count = (q: URLSearchParams, key: string) => (q.has(key) ? Math.max(0, Math.floor(Number(q.get(key))) || 0) : 3);
       const asOf = (req: IncomingMessage) => {
         try {
@@ -152,7 +171,10 @@ export function devTown(): Plugin {
         return {
           map: hoodMap(houses.length, new Set(houses.filter((h) => h.fenced).map((h) => h.lot))),
           houses: houses.map(({ name, ...h }) => ({ ...h, ...(name === who ? { mine: true } : {}) })),
-          me: { house: mine ? { style: mine.style, colours: mine.colours } : null, kowens: me.kowens, keys: me.keys, kalawang: me.kalawang, stealAt: me.stealAt > Date.now() ? me.stealAt : null, jailed: false, repaintCost: 3 },
+          me: {
+            house: mine ? { style: mine.style, colours: mine.colours } : null, kowens: me.kowens, keys: me.keys, kalawang: me.kalawang, stealAt: me.stealAt > Date.now() ? me.stealAt : null, jailed: false, repaintCost: 3,
+            rogue: me.rogue, marked: me.state === 'marked', markedUntil: me.state === 'marked' && !me.rogue ? Date.now() + 2 * 86_400_000 : null, protected: me.state === 'protected',
+          },
         };
       };
       const reply = (res: ServerResponse, body: unknown) => {
@@ -181,7 +203,7 @@ export function devTown(): Plugin {
           me.kowens -= 3;
           Object.assign(mine, { style: look.style, colours: look.colours });
           message = 'Your house has a new look! (−3 Kowens)';
-        } else houses.push({ name: who, lot: houses.length, owner: who, title: { name: 'Townfolk', color: '#B794F6' }, style: look.style, colours: look.colours, fenced: false });
+        } else houses.push({ name: who, lot: houses.length, owner: who, title: { name: 'Townfolk', color: '#B794F6' }, style: look.style, colours: look.colours, fenced: false, state: me.state, rogue: me.rogue });
         server.config.logger.info(`[hood] ${who}: ${mine ? 'new look' : 'built a house'} (${look.style})`, { timestamp: true });
         // Everyone in the neighbourhood sees it go up (or puff into its new look), as from the bot.
         const h = houses.find((x) => x.name === who)!;
@@ -265,6 +287,31 @@ export function devTown(): Plugin {
         town.house('fence', shown, { col, row, door: doorSpot(h.lot, h.fenced), fence: fences() });
         reply(res, { ok: true, fenced: h.fenced });
       });
+      // GET /__rogue?name=Jun&state=open|protected|marked: a pretend neighbour's rogue state, live in the neighbourhood.
+      server.middlewares.use('/__rogue', (req, res) => {
+        const q = new URL(req.url ?? '/', 'http://localhost').searchParams;
+        const h = houses.find((x) => x.name === q.get('name'));
+        const state = q.get('state') as RogueState;
+        if (!h || !['open', 'protected', 'marked'].includes(state)) return reply(res, { ok: false, error: 'no such house or state' });
+        Object.assign(h, { state, rogue: state === 'marked' });
+        tellState(h);
+        reply(res, { ok: true, state });
+      });
+      // POST /town/rogue { on }: become a rogue (your protection goes) or quit (a mark stays: here, until the restart).
+      server.middlewares.use('/town/rogue', async (req, res, next) => {
+        if (req.method !== 'POST') return next();
+        const who = asOf(req).get('as') ?? 'Dev tester';
+        const me = meOf(who);
+        const { on } = (await readJson(req)) as { on?: boolean };
+        const done = (ok: boolean, message: string) => reply(res, { ...hood(who), ok, message } satisfies TownHoodActionResponse);
+        if (typeof on !== 'boolean') return done(false, 'Bad request');
+        if (on === me.rogue) return done(false, on ? "You're a rogue already." : "You're not a rogue.");
+        setMine(who, me.state === 'protected' ? 'open' : me.state, on);
+        town.system({ kind: 'steal', text: on ? `${who} became a rogue` : `${who} quit being a rogue`, tone: on ? 'lose' : 'shop' }, who);
+        server.config.logger.info(`[hood] ${who} ${on ? 'became a rogue' : 'quit being a rogue'}`, { timestamp: true });
+        if (on) return done(true, "You're a rogue! Rogues can steal from anyone who isn't protected. Once you steal, other rogues can rob your house.");
+        return done(true, me.state === 'marked' ? 'You quit being a rogue. You stay marked until 2 days after your last steal.' : "You quit being a rogue. You're open again.");
+      });
       server.middlewares.use('/town/hood', async (req, res) => {
         const q = asOf(req);
         const who = q.get('as') ?? 'Dev tester';
@@ -278,6 +325,9 @@ export function devTown(): Plugin {
         const done = (ok: boolean, message: string, extra = {}) => reply(res, { ...hood(who), ok, message, ...extra } satisfies TownHoodActionResponse);
         // The system feed's line, as the bot's web/hood.ts posts it.
         const line = (text: string, tone: string) => town.system({ kind: 'steal', text, tone }, who);
+        // Only rogues steal or throw a Kalawang Potion; a protected house is never robbed or rusted (the bot's rules).
+        if (!me.rogue) return done(false, 'Only rogues can steal. Become a rogue first: your house becomes fair game for other rogues once you steal.');
+        if (house.state === 'protected') return done(false, `${house.owner} was robbed already, so their house is protected. It stays safe unless they turn rogue.`);
         if (action === 'kalawang') {
           if (me.kalawang < 1) return done(false, 'You have no Kalawang Potion.');
           me.kalawang--;
@@ -293,6 +343,8 @@ export function devTown(): Plugin {
         const roll = q.get('steal') ?? (['win', 'bust', 'snap'] as const)[Math.floor(Math.random() * 3)];
         server.config.logger.info(`[hood] ${who} → ${house.owner}'s house: ${roll}`, { timestamp: true });
         const key = action === 'key';
+        // The attempt goes ahead: you're marked (and your house shows the mask).
+        setMine(who, 'marked', true);
         if (key && roll === 'snap') {
           line(`${who}'s Master Key snapped on ${house.owner}'s Bakod`, 'lose');
           return done(true, 'Your Master Key snapped! The Bakod holds.');
@@ -303,7 +355,14 @@ export function devTown(): Plugin {
         }
         me.kowens += 4;
         line(key ? `${who} broke through ${house.owner}'s Bakod with a Master Key and robbed the house: 4 Kowens` : `${who} robbed ${house.owner}'s house: 4 Kowens`, 'win');
-        return done(true, 'You got away with 4 Kowens!', { stole: 4 });
+        // An open house whose owner isn't a rogue is protected now (a marked one never is).
+        const protects = house.state === 'open' && !house.rogue;
+        if (protects) {
+          house.state = 'protected';
+          tellState(house);
+          line(`${house.owner}'s house is now protected`, 'win');
+        }
+        return done(true, `You got away with 4 Kowens!${protects ? ` ${house.owner}'s house is protected now.` : ''}`, { stole: 4 });
       });
 
       // The Slums' map, read again whenever the file changes (a new map from the art folder needs no restart).
