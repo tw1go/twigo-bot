@@ -63,3 +63,15 @@ export function protect(userId: string, now = Date.now()): boolean {
   setRogueFields(userId, { protectedAt: now });
   return true;
 }
+
+/** Joining or quitting, as /rogue and the house menu (POST /town/rogue) do it: not joining while in jail (`jailedUntil`,
+ *  from games/jail.ts: the callers pass it), and no change refused. Quitting always works, jailed or not: the mark keeps
+ *  its 2 days, so it hides nothing. */
+export type RogueTurn = { ok: true; on: boolean } | { ok: false; reason: 'jailed'; until: number } | { ok: false; reason: 'already'; on: boolean };
+
+export function turnRogue(userId: string, on: boolean, jailedUntil: number | null, now = Date.now()): RogueTurn {
+  if (on === isRogue(userId)) return { ok: false, reason: 'already', on };
+  if (on && jailedUntil) return { ok: false, reason: 'jailed', until: jailedUntil };
+  setRogue(userId, on, now);
+  return { ok: true, on };
+}
