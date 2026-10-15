@@ -6,7 +6,7 @@ import { kowen } from '../kowens.js';
 import { feed, townName } from '../web/town-feed.js';
 
 // /steal: the rules are in games/steal.ts (shared with the neighbourhood's houses). In Discord a Master Key is used
-// by itself on a Bakod.
+// by itself on a Bakod. Only rogues steal (/rogue join; games/rogue.ts), and robbing an open member protects them.
 
 export { STEAL_COOLDOWN_MS };
 
@@ -27,6 +27,10 @@ export const steal: Command = {
       switch (result.reason) {
         case 'self':
           return void (await reply("You can't rob yourself. 🤔"));
+        case 'not-rogue':
+          return void (await reply('Only rogues can steal. Use `/rogue join` first. Your house becomes fair game for other rogues once you steal. 🎭'));
+        case 'protected':
+          return void (await reply(`${target} was robbed already, so their house is protected. It stays safe unless they turn rogue. 🌙`));
         case 'cooldown':
           return void (await reply(`You're laying low. Try again <t:${Math.floor(result.until / 1000)}:R>. 🕶️`));
         case 'broke':
@@ -43,13 +47,14 @@ export const steal: Command = {
     if (result.outcome === 'key-snapped') feed('steal', `${me}'s Master Key snapped on ${them}'s Bakod`, 'lose');
     else if (result.key && result.outcome === 'stole') feed('steal', `${me} broke through ${them}'s Bakod with a Master Key and stole ${result.amount} ${kowen(result.amount)}`, 'win', { userId: thief.id });
     else if (result.key) feed('steal', `${me} broke through ${them}'s Bakod with a Master Key, but the Tanod caught them`, 'bust', { userId: thief.id });
+    if (result.outcome === 'stole' && result.protected) feed('steal', `${them}'s house is now protected`, 'win');
     if (result.outcome === 'key-snapped') {
       await interaction.reply({ content: `🗝️💥 ${thief} tried a **Master Key** on ${target}'s 🧱 Bakod… and the key **snapped**! The Bakod holds. 🔒`, allowedMentions: mentions });
       return;
     }
     const intro = result.key ? `🗝️🔓 ${thief} used a **Master Key** to break through ${target}'s Bakod!\n` : '';
     const content = result.outcome === 'stole'
-      ? `🥷 ${thief} sneaked into ${target}'s house and stole **${result.amount}** ${kowen(result.amount)}! 💰`
+      ? `🥷 ${thief} sneaked into ${target}'s house and stole **${result.amount}** ${kowen(result.amount)}! 💰${result.protected ? `\n-# 🌙 ${target} is now protected: no rogue can rob them unless they turn rogue.` : ''}`
       : `🚨 **CAUGHT!** The Tanod caught ${thief} trying to rob ${target}! ${thief} pays ${target} a fine of **${result.fine}** ${kowen(result.fine)} and spends **${result.minutes} minutes** in jail. 🚔`;
     await interaction.reply({ content: intro + content, allowedMentions: mentions });
   },
