@@ -45,7 +45,7 @@ function fakeMe(fake: string): MeResult {
   } catch {
     // no saved look: the creator shows
   }
-  return { status: 'ok', me: { id: '0', name: fakeName(), avatar: '', kowens: devNumber('kowens', 1250), vault: 0, rank: null, items: [], preregistered: false, outfit, nickname: fake === 'saved' ? fakeName() : null, title: { name: 'Townfolk', color: '#B794F6' },
+  return { status: 'ok', me: { id: `dev:${fakeName()}`, name: fakeName(), avatar: '', kowens: devNumber('kowens', 1250), vault: 0, rank: null, items: [], preregistered: false, outfit, nickname: fake === 'saved' ? fakeName() : null, title: { name: 'Townfolk', color: '#B794F6' },
       // dev: &maintenance=<note> shows the title screen's maintenance line (with &staff=1, as a CMS user: Start stays)
       ...(new URLSearchParams(location.search).has('maintenance') ? { maintenance: { note: new URLSearchParams(location.search).get('maintenance') || 'Mikazuki is being worked on. Back soon!', allowed: new URLSearchParams(location.search).has('staff') } } : {}),
       newTitle: null,

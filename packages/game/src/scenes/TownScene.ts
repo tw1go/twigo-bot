@@ -35,6 +35,7 @@ import { RogueSigns } from '../world/rogue-signs';
 import { QuestTrail, TRAIL_TILES, trailOn } from '../world/quest-trail';
 import { mountGuideArrow } from '../ui/guide-arrow';
 import { mountQuestGuide } from '../ui/quest-guide';
+import { mountLessons } from '../ui/lesson-runner';
 import { QuestMap } from '../ui/quest-map';
 import type { QuestMarkArt } from '../ui/quest-marks';
 import { ChatBox } from '../ui/chat';
@@ -989,6 +990,12 @@ export class TownScene extends Phaser.Scene {
       if (G) {
         mountGuideArrow(G, asset, frame ? { url: asset(frame.file), slice: frame.nineSlice } : null, Q.colours);
         mountQuestGuide();
+        // The lessons (ui/lessons.ts): a new player's first items, per character, never in a fight.
+        const who = this.me?.status === 'ok' ? this.me.me.id : null;
+        if (who) {
+          const off = mountLessons({ who, calmSince: () => (this.inCombat() ? null : this.combatAt + this.outOfCombatMs()) });
+          this.events.once(Phaser.Scenes.Events.SHUTDOWN, off);
+        }
       }
       // The Tanod's line as each quest of his is given (his leveling chain; also one given while you were away), once.
       this.afterReveal(titleCardMs() + 900, () => {
@@ -3579,8 +3586,11 @@ export class TownScene extends Phaser.Scene {
 
   /** In combat, as the server counts it (stats.json regen.outOfCombatAfterSec): no teleport. */
   private inCombat(): boolean {
-    const sec = (this.cache.json.get('stats') as StatsData | undefined)?.regen?.outOfCombatAfterSec ?? 5;
-    return performance.now() - this.combatAt < sec * 1000;
+    return performance.now() - this.combatAt < this.outOfCombatMs();
+  }
+
+  private outOfCombatMs(): number {
+    return ((this.cache.json.get('stats') as StatsData | undefined)?.regen?.outOfCombatAfterSec ?? 5) * 1000;
   }
 
   /** The Lantern Post: "Lantern Post" over it on hover; a click walks you near it, then its Map menu opens. */

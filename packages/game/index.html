@@ -1134,15 +1134,16 @@
         #casino-screen .cz-table { padding-bottom: 76px; }
         #casino-screen .cz-rules { position: absolute; left: 70px; right: 8px; bottom: 8px; max-width: none; font-size: calc(12px * var(--text)); text-align: left; }
       }
-      /* The guide arrow and a lesson's tip box (ui/guide-arrow.ts): over the HUD and every panel, never taking a click
-         (the tip's × does). The arrow: 24 × 24 frames at 2×, 4 across (6 fps), its row the way it points. */
-      #guide-arrow { position: fixed; z-index: 5; width: 48px; height: 48px; background-repeat: no-repeat; background-size: 192px 192px; background-position-y: calc(var(--row, 0) * -48px); image-rendering: pixelated; pointer-events: none; animation: ga-bob 0.667s steps(4) infinite; }
+      /* The guide arrow and a lesson's tip box (ui/guide-arrow.ts): over the HUD, every panel and box (it hides whenever
+         something covers its target, so it never shows over a window), never taking a click (the tip's × does). The arrow: 24 × 24 frames at 2×, 4 across (6 fps), its row the way it points. */
+      #guide-arrow { position: fixed; z-index: 66; width: 48px; height: 48px; background-repeat: no-repeat; background-size: 192px 192px; background-position-y: calc(var(--row, 0) * -48px); image-rendering: pixelated; pointer-events: none; animation: ga-bob 0.667s steps(4) infinite; }
       #guide-arrow[hidden], #guide-tip[hidden] { display: none; }
+      #guide-drag { position: fixed; left: 0; top: 0; z-index: 66; opacity: 0; pointer-events: none; image-rendering: pixelated; }
       @keyframes ga-bob { from { background-position-x: 0; } to { background-position-x: -192px; } }
-      #guide-tip { position: fixed; z-index: 5; box-sizing: border-box; max-width: 220px; padding: 8px 22px 8px 10px; border: 2px solid var(--quest, #B794F6); background: #111827; color: #E6E9F2; font: calc(13px * var(--text))/1.35 var(--ui-font); pointer-events: none; }
-      #guide-tip.gt-framed { --px: 2; border-style: solid; border-width: calc(var(--slice) * var(--px) * 1px); border-image-source: var(--frame); border-image-slice: var(--slice) fill; border-image-width: calc(var(--slice) * var(--px) * 1px); border-image-repeat: round; image-rendering: pixelated; background: none; color: #1E1B3A; padding: 2px 16px 2px 2px; }
+      #guide-tip { position: fixed; z-index: 66; box-sizing: border-box; max-width: 220px; padding: 8px 22px 8px 10px; border: 2px solid var(--quest, #B794F6); background: #111827; color: #E6E9F2; font: calc(13px * var(--text))/1.35 var(--ui-font); pointer-events: none; }
+      #guide-tip.gt-framed { --px: 2; border-style: solid; border-width: calc(var(--slice) * var(--px) * 1px); border-image-source: var(--frame); border-image-slice: var(--slice) fill; border-image-width: calc(var(--slice) * var(--px) * 1px); border-image-repeat: round; image-rendering: pixelated; background: none; color: #E6E9F2; padding: 2px 16px 2px 2px; }
       #guide-tip .gt-close { position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; padding: 0; border: 0; background: none; color: #7A8099; font: 700 calc(15px * var(--text))/1 var(--ui-font); pointer-events: auto; cursor: var(--cur-hand, pointer); }
-      #guide-tip .gt-close:hover { color: #1E1B3A; }
+      #guide-tip .gt-close:hover { color: #fff; }
       /* A house in the neighbourhood (ui/house-menu.ts), in the reward box. */
       #reward .hm-title { margin: -6px 0 14px; font-size: calc(17px * var(--text)); font-weight: 700; filter: drop-shadow(1px 0 0 #1E1B3A) drop-shadow(-1px 0 0 #1E1B3A) drop-shadow(0 1px 0 #1E1B3A) drop-shadow(0 -1px 0 #1E1B3A); }
       #reward .hm-actions { display: flex; flex-direction: column; gap: 8px; margin-bottom: 4px; }
@@ -1548,6 +1549,14 @@
       #hotbar .hb-row { display: flex; gap: 3px; }
       #hotbar .hb-spacer { display: flex; align-items: center; justify-content: center; width: var(--hb); flex: none; font-size: calc(12px * var(--text)); font-weight: 700; color: #C4B5FD; text-shadow: 0 1px 0 #0B0A1A; }
       #hotbar .hb-slot { position: relative; display: flex; align-items: center; justify-content: center; width: var(--hb); height: var(--hb); flex: none; box-sizing: border-box; padding: 0; border-style: solid; border-width: 8px; border-image: var(--slot) var(--slot-slice, 4) fill / 8px round; background: none; image-rendering: pixelated; color: inherit; font: inherit; cursor: var(--cur-hand, pointer); }
+      /* A slot a potion can go in while one is picked (Put on hotbar), and a lesson's slot (ui/lessons.ts): pulsing in
+         the selected slot's lime. */
+      #hotbar.hb-picking .hb-slot.hb-free:is(.hb-util, .hb-top), #hotbar .hb-slot.gd-pulse { border-image: var(--slot-picked) var(--slot-slice, 4) fill / 8px round; animation: gd-pulse 0.7s ease-in-out infinite alternate; }
+      /* The hotbar over the bag and equipment panel (which cover it on a short screen) while a potion is carried to it:
+         dragged, picked with Put on hotbar, or a lesson's slot pulsing. */
+      body:is(.hb-dragging, .hb-lesson) #hotbar, #hotbar.hb-picking { z-index: 4; }
+      @keyframes gd-pulse { from { filter: brightness(0.85); } to { filter: brightness(1.35) drop-shadow(0 0 4px #A3E635); } }
+      @media (prefers-reduced-motion: reduce) { #hotbar.hb-picking .hb-slot.hb-free:is(.hb-util, .hb-top), #hotbar .hb-slot.gd-pulse { animation: none; filter: drop-shadow(0 0 3px #A3E635); } }
       #hotbar .hb-slot.hb-top { opacity: 0.85; }
       #hotbar .hb-slot:hover, #hotbar .hb-over { border-image-source: var(--slot-picked); filter: brightness(1.15); }
       #hotbar .hb-slot[draggable='true'] { cursor: grab; }

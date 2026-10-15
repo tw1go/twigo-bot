@@ -185,7 +185,16 @@ export async function forgeAction(a: TownForgeAction): Promise<TownForgeResponse
   const res = await api(path, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(a) }).catch(() => null);
   const r = res?.ok ? ((await res.json()) as TownForgeResponse) : null;
   if (r?.items) setItems(r.items);
+  if (r) for (const fn of forgeListeners) fn(a, r);
   return r;
+}
+
+const forgeListeners = new Set<(a: TownForgeAction, r: TownForgeResponse) => void>();
+
+/** Hears every forge answer (the lessons: a combine done, an enhance try over). Returns the off switch. */
+export function onForge(fn: (a: TownForgeAction, r: TownForgeResponse) => void): () => void {
+  forgeListeners.add(fn);
+  return () => forgeListeners.delete(fn);
 }
 
 /** Every item kind and the stats rules (the items module's data). */

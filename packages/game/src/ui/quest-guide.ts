@@ -6,7 +6,8 @@ import { type GuideAim, setGuide } from './guide-arrow';
 //   • Report: a guided quest ready to report (readyToReport): the arrow right of its Report button in the tracker, or
 //     of the tracker's + while the tracker is folded (that unfolds it). It goes once it's reported.
 //   • The quest button: a guided quest that started since the log was last opened (net/adventure.ts newGuidedQuest);
-//     below the button when it's near the top of the screen, else left of it. Opening the log (J, the button, a click
+//     below the button when it's near the top of the screen (left of it where the HUD's buttons stack in a column),
+//     else left of it. Opening the log (J, the button, a click
 //     on the tracker) sees it, so the arrow goes: once for each guided quest as it starts.
 // Report wins when both apply. Lessons (ui/lessons.ts) wait while this arrow shows.
 
@@ -27,7 +28,12 @@ export function mountQuestGuide(): void {
     }
     const button = document.getElementById('quest-button');
     if (!fresh || !button) return null;
-    const near = button.getBoundingClientRect().top < innerHeight * 0.3;
-    return { target: button, type: fresh.type, sides: near ? ['below', 'left'] : ['left', 'below'] };
+    // Below it near the top of the screen, unless the HUD's buttons stack in a column there (phones: the next one is
+    // under it); else left of it.
+    const r = button.getBoundingClientRect();
+    const next = (button.nextElementSibling as HTMLElement | null)?.getBoundingClientRect();
+    const column = !!next && next.width > 0 && next.top >= r.bottom - 2;
+    const below = r.top < innerHeight * 0.3 && !column;
+    return { target: button, type: fresh.type, sides: below ? ['below', 'left'] : ['left', 'below'] };
   });
 }

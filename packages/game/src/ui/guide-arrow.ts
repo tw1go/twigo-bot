@@ -107,8 +107,9 @@ export function uncovered(el: HTMLElement): boolean {
   return !!top && (top === el || el.contains(top) || top.contains(el));
 }
 
-/** Over the whole game and taking no clicks, so `uncovered` can't see it: the quest map (Tab). */
-const overlaid = () => !!document.querySelector('#quest-map:not([hidden])');
+/** Covering the game while taking no clicks, so `uncovered` can't see it: the quest map (Tab), the loading cover and
+ *  title card (body.title-on), the casino and the arena (body.town-locked). */
+const overlaid = () => !!document.querySelector('#quest-map:not([hidden])') || document.body.classList.contains('title-on') || document.body.classList.contains('town-locked');
 
 function place(): void {
   if (!arrow || !tip || !art) return;

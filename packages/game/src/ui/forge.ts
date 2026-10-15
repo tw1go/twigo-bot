@@ -301,6 +301,7 @@ export class ForgePopup {
     // The item slot (gear), and the tool's slot beside it.
     const row = el('div', 'fg-slots');
     const slot = el('button', `fg-slot fg-item${item ? ' fg-full' : ''}${item?.broken ? ' fg-broken' : ''}`);
+    if (item) slot.dataset.uid = item.uid; // (which item it holds: the lessons, ui/lessons.ts)
     slot.setAttribute('aria-label', item ? nameOf(item) : 'Item slot: drag gear here');
     if (item) slot.append(itemPicture(item, 'showcase', 2));
     else slot.append(el('span', 'fg-hint', 'Drag gear here'));
