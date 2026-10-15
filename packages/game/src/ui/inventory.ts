@@ -448,6 +448,8 @@ export class Inventory {
         if (e.altKey) return chatItem(it);
         // Several at once (Select, or Ctrl/⌘/Shift-click): picked or let go, to take apart or sell together.
         if (!trading() && (this.multi || e.ctrlKey || e.metaKey || e.shiftKey)) {
+          // (A quest item is never sold or taken apart, so never picked with others to be.)
+          if (!isGearDef(def) && def?.kind === 'quest') return toast("Quest items can't be sold or taken apart.", 2400);
           if (this.pickedUid && this.pickedUid !== it.uid) this.pickedMany.add(this.pickedUid);
           this.pickedUid = null;
           if (!this.pickedMany.delete(it.uid)) this.pickedMany.add(it.uid);

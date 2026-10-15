@@ -57,6 +57,12 @@ import {
   withCosmetics,
   wearCosmetic,
   unwearCosmetic,
+  type WarrensData,
+  advanceCollects,
+  heldCount,
+  offeredBy,
+  offeredQuests,
+  takeFromBag,
 } from '@mikazuki/shared';
 import { api } from './endpoints';
 import { fakeLogin, fakeName } from '../session';
@@ -102,9 +108,12 @@ export interface AdventureChange {
   pieces?: Item[];
   /** Quests that just started (the Tanod's lines as each is given). */
   started?: string[];
-  /** A report's XP and Kusing. */
+  /** A report's XP and Kusing, and a quest's Kowens (into the wallet). */
   xp?: number;
   kusing?: number;
+  kowens?: number;
+  /** An item a quest giver just handed over (Aling Nena's Practice Warren Ticket: its kind). */
+  handed?: string;
   /** Your pet out went up a level (its name and new level: the toast). */
   petUp?: { name: string; level: number };
 }
@@ -138,6 +147,8 @@ function set(s: AdventureState, change: AdventureChange = {}, fromServer = false
     const started = s.quests.active.filter((p) => !state!.quests.active.some((x) => x.id === p.id)).map((p) => p.id);
     if (started.length) change = { ...change, started };
   }
+  // A collect objective whose item is in the bag (Aling Nena's binoculars) moves on, as the bot's does.
+  if (data && advanceCollects(s, data.quests) && fakeLogin()) tellDevQuests(s);
   state = s;
   if (fakeLogin()) {
     saveFake(s);
@@ -200,14 +211,27 @@ function pushItems(s: AdventureState): Promise<unknown> {
 }
 
 /** Loads the data files (once); `stats` is loaded already (the scene's json cache). */
-export async function loadAdventureData(url: (path: string) => string, files: { quests: string; classes: string; equipment: string; items?: string }, stats: StatsData | undefined, leveling?: LevelingData): Promise<AdventureData | null> {
+/** Dev: Aling Nena's quest and its practice ticket (dungeons.json), for the pretend store. */
+let practice: { quest: string; ticket: string; retryMs: number } | null = null;
+
+export async function loadAdventureData(url: (path: string) => string, files: { quests: string; classes: string; equipment: string; items?: string; dungeons?: string }, stats: StatsData | undefined, leveling?: LevelingData): Promise<AdventureData | null> {
   if (data) return data;
   const get = <T>(path: string) => fetch(url(path)).then((r) => (r.ok ? (r.json() as Promise<T>) : null)).catch(() => null);
   const [q, c, e, i] = await Promise.all([get<QuestsFile>(files.quests), get<ClassesFile>(files.classes), get<EquipmentFile>(files.equipment), files.items ? get<CombatItemsFile>(files.items) : null]);
   if (!q || !c || !e || !stats) return null;
   const equipment = new Map(e.items.map((x) => [x.id, x]));
   data = { quests: withLeveling(q.quests, leveling), leveling: leveling ?? null, classes: c.classes, equipment, stats, defs: new Map<string, AnyItemDef>([...equipment, ...(i?.items ?? []).map((x): [string, AnyItemDef] => [x.id, x])]) };
+  // (Dev: the practice ticket's rules for the pretend store; the bot reads its own.)
+  if (fakeLogin() && files.dungeons) {
+    const W = (await get<{ warrens: WarrensData }>(files.dungeons))?.warrens;
+    if (W?.entry.requiresQuest && W.practice) practice = { quest: W.entry.requiresQuest, ticket: W.practice.ticket, retryMs: (W.practice.retryHours ?? 0) * 3_600_000 };
+  }
   return data;
+}
+
+/** Dev: the pretend quests to the dev town (the Warren Gate asks whether Aling Nena's quest is done). */
+function tellDevQuests(s: AdventureState): void {
+  void fetch(`/__quests?${new URLSearchParams({ as: fakeName() })}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(s.quests) }).catch(() => null);
 }
 
 /** Your state from /me (or, in dev, this browser's pretend one, with the autoStart quests started as the bot would).
@@ -268,6 +292,8 @@ export function unseenQuest(): 'main' | 'side' | null {
     // nothing seen yet
   }
   const fresh = state.quests.active.filter((p) => seen[p.id] !== p.step).map((p) => questDef(p.id)?.type);
+  // (An offered quest the log hasn't shown yet, as step -1.)
+  for (const q of offeredNow()) if (seen[q.id] !== -1) fresh.push(q.type);
   return fresh.includes('main') ? 'main' : fresh.includes('side') ? 'side' : null;
 }
 
@@ -275,7 +301,7 @@ export function unseenQuest(): 'main' | 'side' | null {
 export function markQuestsSeen(): void {
   if (!state) return;
   try {
-    localStorage.setItem(SEEN_KEY, JSON.stringify(Object.fromEntries(state.quests.active.map((p) => [p.id, p.step]))));
+    localStorage.setItem(SEEN_KEY, JSON.stringify(Object.fromEntries([...state.quests.active.map((p) => [p.id, p.step]), ...offeredNow().map((q) => [q.id, -1])])));
   } catch {
     // private window: the dot comes back next time
   }
@@ -303,11 +329,14 @@ async function act(path: Path, body: Body): Promise<TownAdventureResponse | null
   if (res.ok) {
     let advanced: AdventureChange['advanced'];
     if ('quest' in body) {
-      const p = before?.quests.active.find((x) => x.id === body.quest);
-      const o = p && questDef(body.quest)?.objectives[p.step];
+      // The objective it was on, if it moved on (an offered quest just started: its first; a reminder: none).
+      const from = before?.quests.active.find((x) => x.id === body.quest)?.step ?? 0;
+      const now = res.adventure.quests.active.find((x) => x.id === body.quest)?.step;
+      const o = (now === undefined ? !!res.completed : now > from) ? questDef(body.quest)?.objectives[from] : undefined;
       if (o) advanced = { quest: body.quest, objective: o.id };
+      if (fakeLogin()) tellDevQuests(res.adventure);
     }
-    set(res.adventure, { advanced, completed: res.completed, given: res.given, gear: res.gear, rewards: res.rewards, pieces: res.pieces, xp: res.xp, kusing: res.kusing });
+    set(res.adventure, { advanced, completed: res.completed, given: res.given, gear: res.gear, rewards: res.rewards, pieces: res.pieces, xp: res.xp, kusing: res.kusing, kowens: res.kowens, handed: res.handed });
     if (fakeLogin() && (before?.cls !== res.adventure.cls || JSON.stringify(before?.equipped) !== JSON.stringify(res.adventure.equipped))) {
       void fetch(`/__kit?${new URLSearchParams({ as: fakeName(), cls: res.adventure.cls ?? '', weapon: res.adventure.equipped.weapon?.defId ?? '' })}`).catch(() => null);
     }
@@ -423,15 +452,23 @@ export function cantWear(item: EquipmentDef): string | null {
 export { placesFor };
 
 /** The quest under way whose current objective is to talk to this NPC, or choose a class after talking to them. */
-export function questFor(npc: string): { quest: QuestDef; step: number } | null {
+export function questFor(npc: string): { quest: QuestDef; step: number; offered?: boolean } | null {
   for (const p of state?.quests.active ?? []) {
     const q = questDef(p.id);
     const o = q?.objectives[p.step];
     if (!q || !o) continue;
-    if ((o.type === 'talk' && o.npc === npc) || (o.type === 'chooseClass' && q.giver === npc)) return { quest: q, step: p.step };
+    if ((o.type === 'talk' && o.npc === npc) || (o.type === 'chooseClass' && q.giver === npc) || (o.type === 'deliver' && o.npc === npc) || (o.type === 'collect' && q.giver === npc)) return { quest: q, step: p.step };
   }
-  return null;
+  // An offered quest (CONTEXT.md): its giver's "!"; talking starts it.
+  const q = state && data ? offeredBy(state, data.quests, npc) : null;
+  return q ? { quest: q, step: 0, offered: true } : null;
 }
+
+/** How many of an item kind are in your combat bag (a collect objective's count). */
+export const heldOf = (defId: string | undefined): number => heldCount(state?.bag ?? [], defId);
+
+/** Quests you can start now (offered), for the log. */
+export const offeredNow = (): QuestDef[] => (state && data ? offeredQuests(state, data.quests) : []);
 
 /**
  * Dev (?switch): become another class at once (null: none), its training gear in place of the old (the bot's
@@ -481,9 +518,9 @@ export async function changeClass(cls: string): Promise<{ ok: boolean; error?: s
 
 /** Dev: your class, weapon and level for the dev town (sent on connect; it keeps the level from there; your items go
  *  to it apart, /__items). */
-export function devKit(): { cls: string | null; weapon: string | null; progress: CharacterProgress } {
+export function devKit(): { cls: string | null; weapon: string | null; progress: CharacterProgress; quests: AdventureState['quests'] } {
   const s = state ?? loadFake();
-  return { cls: s.cls, weapon: s.equipped.weapon?.defId ?? null, progress: s.progress };
+  return { cls: s.cls, weapon: s.equipped.weapon?.defId ?? null, progress: s.progress, quests: s.quests };
 }
 
 // ── Dev: the bot's rules, here (web/adventure.ts) ──
@@ -573,20 +610,46 @@ function fakeAct(body: TownQuestAction | TownEquipAction): TownAdventureResponse
   const no = (message: string): TownAdventureResponse => ({ ok: false, message, adventure: state ?? fresh() });
   if ('quest' in body) {
     const q = questDef(body.quest);
+    // An offered quest: talking to its giver starts it (the bot's questStep).
+    if (q && data && body.action === 'talk' && !s.quests.active.some((x) => x.id === q.id) && offeredBy(s, data.quests, body.npc)?.id === q.id) s.quests.active.push({ id: q.id, step: 0 });
     const p = s.quests.active.find((x) => x.id === body.quest);
     const o = p && q?.objectives[p.step];
     if (!q || !p || !o) return no("That quest isn't under way.");
     let given: string | undefined;
     let gear: string[] = [];
     let xp = 0;
+    let handed: string | undefined;
+    let taken: string | undefined;
+    const P = practice && practice.quest === q.id ? practice : null;
+    const hand = () => {
+      const def = P && data?.defs.get(P.ticket);
+      if (!def || !data || !addToBag(data, s.bag, newItem(data.stats, def, devUid()), devUid)) return false;
+      p.givenAt = Date.now();
+      handed = P!.ticket;
+      return true;
+    };
+    if (body.action === 'talk' && o.type === 'collect' && q.giver === body.npc) {
+      // Her reminder; another ticket with none, no binoculars and retryHours since the last (dev: no run is asked about).
+      if (!P || heldCount(s.bag, P.ticket) || heldCount(s.bag, o.item)) return { ok: true, adventure: s };
+      if (p.givenAt !== undefined && Date.now() - p.givenAt < P.retryMs) return { ok: true, adventure: s, message: `Aling Nena has no ticket for you yet. Come back in ${Math.ceil((p.givenAt + P.retryMs - Date.now()) / 3_600_000)} hours.` };
+      return hand() ? { ok: true, adventure: s, handed } : no('Make room in your bag: Aling Nena has a ticket for you.');
+    }
     if (body.action === 'report') {
       if (!readyToReport(q, p)) return no('Not done yet.');
       // Its XP from the dev town (levels live there: it sends the level-ups), its Kusing here (sent with the items).
       xp = q.rewardXP ?? 0;
       if (xp) void fetch(`/__xp?${new URLSearchParams({ as: fakeName(), xp: String(xp) })}`).catch(() => null);
       s.kusing += q.rewardKusing ?? 0;
+    } else if (body.action === 'talk' && o.type === 'deliver' && o.npc === body.npc) {
+      if (!o.item || !takeFromBag(s.bag, o.item, Math.max(1, o.count ?? 1))) return no("You don't have it yet.");
+      taken = o.item;
+      xp = q.rewardXP ?? 0;
+      if (xp) void fetch(`/__xp?${new URLSearchParams({ as: fakeName(), xp: String(xp) })}`).catch(() => null);
+      s.kusing += q.rewardKusing ?? 0;
+      if (P) s.bag = s.bag.filter((it) => it.defId !== P.ticket);
     } else if (body.action === 'talk') {
       if (o.type !== 'talk' || o.npc !== body.npc) return no('Not yet.');
+      if (P) hand();
     } else {
       if (o.type !== 'chooseClass' || s.cls || !classInfo(body.cls) || !data) return no('Not yet.');
       s.cls = body.cls;
@@ -612,7 +675,10 @@ function fakeAct(body: TownQuestAction | TownEquipAction): TownAdventureResponse
     }
     const rewards = completed && data ? giveQuestRewards(data, s, data.quests, devUid) : [];
     const pieces = completed && data?.leveling ? giveQuestPieces(data, data.leveling, s, devUid) : [];
-    return { ok: true, adventure: s, given, ...(gear.length ? { gear } : {}), completed, ...(rewards.length ? { rewards } : {}), ...(pieces.length ? { pieces } : {}), ...(xp ? { xp } : {}), ...(q.rewardKusing && completed ? { kusing: q.rewardKusing } : {}) };
+    return {
+      ok: true, adventure: s, given, ...(gear.length ? { gear } : {}), completed, ...(rewards.length ? { rewards } : {}), ...(pieces.length ? { pieces } : {}), ...(xp ? { xp } : {}),
+      ...(q.rewardKusing && completed ? { kusing: q.rewardKusing } : {}), ...(q.rewardKowens && completed ? { kowens: q.rewardKowens } : {}), ...(handed ? { handed } : {}), ...(taken ? { taken } : {}),
+    };
   }
   // Wearing and taking off (gear and cosmetics): the bot's rules (@mikazuki/shared items.ts), by uid.
   if (!data) return no("Couldn't load the items.");

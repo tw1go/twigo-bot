@@ -182,7 +182,7 @@ export const content = {
     eyebrow: 'Dungeon',
     title: 'The Scrap Warrens',
     lede: 'Under the Slums is a maze for you and up to {partyFriends} friends. Each area is sealed until its mini boss falls, and at the very bottom something enormous is waiting.',
-    gate: 'Enter through the Warren Gate near the golem pit from <b>Lv {dungeonLevel}</b>. One Warren Ticket opens a {dungeonMinutes}-minute run for the whole party.',
+    gate: 'Enter through the Warren Gate near the golem pit from <b>Lv {dungeonLevel}</b>, once you\'ve found Aling Nena\'s binoculars in a practice run. One Warren Ticket opens a {dungeonMinutes}-minute run for the whole party.',
     titan: {
       eyebrow: 'Last boss',
       text: 'A shack-built giant rising out of a junk heap. It rains roof sheets, slams its fists and calls Scraplings to its side.',

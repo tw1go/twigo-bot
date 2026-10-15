@@ -85,7 +85,7 @@ export function itemTipFor(item: Item, owner?: { cls: string | null }): HTMLElem
     parts[0] = head;
   }
   if (!isGearDef(def)) {
-    const kind = def.kind === 'potion' ? (def.heals === 'mp' ? 'MP Potion' : 'HP Potion') : def.kind === 'agimat' ? 'Agimat' : def.kind === 'cosmetic' ? 'Cosmetic' : def.kind === 'pet' ? 'Pet' : def.opens ? 'Pet box' : def.kind === 'consumable' ? (/ticket/i.test(def.name) ? 'Ticket' : 'Consumable') : 'Material';
+    const kind = def.kind === 'potion' ? (def.heals === 'mp' ? 'MP Potion' : 'HP Potion') : def.kind === 'agimat' ? 'Agimat' : def.kind === 'cosmetic' ? 'Cosmetic' : def.kind === 'pet' ? 'Pet' : def.kind === 'quest' ? 'Quest item' : def.opens ? 'Pet box' : def.kind === 'consumable' ? (/ticket/i.test(def.name) ? 'Ticket' : 'Consumable') : 'Material';
     parts.push(el('div', 'eq-tip-meta', `${kind}${item.count > 1 ? ` · ×${item.count}` : ''}`));
     if (def.kind === 'agimat' && item.stat) {
       parts.push(el('div', 'eq-tip-line', lineText(item.stat, agimatValue(D.stats, item.stat, item.level))));
@@ -101,6 +101,9 @@ export function itemTipFor(item: Item, owner?: { cls: string | null }): HTMLElem
     }
     if (def.about) parts.push(el('div', 'eq-tip-about', def.about));
     if (def.kind === 'cosmetic') parts.push(el('div', 'eq-tip-unmet', "Can't be worn yet"));
+    // A quest item (CONTEXT.md): what it can't do, in grey; a bound one (the Practice Warren Ticket) says so.
+    if (def.kind === 'quest') parts.push(el('div', 'eq-tip-meta', "Quest item: it can't be sold, traded, dropped or banked"));
+    else if (item.bound) parts.push(el('div', 'eq-tip-meta', "Bound: it can't be sold, traded or dropped"));
     return parts;
   }
   const who = def.class ? (classInfo(def.class)?.name ?? def.class) : def.gear;

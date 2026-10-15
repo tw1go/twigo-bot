@@ -1686,6 +1686,8 @@
       #warrens-timer { position: fixed; top: 10px; left: 50%; z-index: 3; display: flex; align-items: baseline; gap: 8px; padding: 4px 14px 5px; border: 2px solid #EF4444; background: rgba(17, 24, 39, 0.92); color: #E6E9F2; font: calc(13px * var(--text))/1.2 var(--ui-font); transform: translateX(-50%); pointer-events: none; box-shadow: 0 3px 0 #1E1B3A; white-space: nowrap; }
       #warrens-timer .wr-clock-label { color: #FCA5A5; letter-spacing: 0.08em; text-transform: uppercase; font-size: calc(11px * var(--text)); }
       #warrens-timer .wr-time { color: #F8BF27; font-size: calc(22px * var(--text)); }
+      #warrens-timer .wr-practice { position: absolute; top: calc(100% + 3px); left: 50%; padding: 1px 8px; border: 2px solid #60A5FA; background: rgba(17, 24, 39, 0.92); color: #93C5FD; font-size: calc(11px * var(--text)); letter-spacing: 0.08em; text-transform: uppercase; transform: translateX(-50%); }
+      #warrens-timer .wr-practice[hidden] { display: none; }
       #warrens-timer.wr-late .wr-time { color: #F87171; animation: bb-pulse 0.9s ease-in-out infinite alternate; }
       /* Under it: the boss bar and the other boxes that sit top centre. */
       body.warrens-on #boss-bar, body.warrens-on #mob-target, body.warrens-on #target { top: 56px; }
@@ -1840,6 +1842,10 @@
       #quest-log .ql-story-text { margin: 0 0 6px; color: #c0caf5; font-size: calc(13px * var(--text)); line-height: 1.4; }
       #quest-log .ql-story-line { margin: 2px 0; color: #E2DDF3; font-size: calc(13px * var(--text)); font-style: italic; }
       #quest-log .ql-objectives { margin: 0; padding: 0; list-style: none; }
+      /* An offered quest (not started yet): greyed in the list with "Available". */
+      #quest-log .ql-offered { opacity: 0.7; }
+      #quest-log .ql-available { margin-left: auto; padding-left: 6px; color: #A9B1D6; font-size: calc(10px * var(--text)); text-transform: uppercase; letter-spacing: 0.06em; }
+      #quest-log .ql-available-note { color: #FCDA4A; }
       #quest-log .ql-rewards { margin: 12px 0 0; }
       #quest-log .ql-rewards-head { color: #fff; font-weight: 600; font-size: calc(14px * var(--text)); margin-bottom: 4px; }
       #quest-log .ql-reward { display: flex; align-items: center; gap: 8px; margin: 3px 0; font-size: calc(14px * var(--text)); }

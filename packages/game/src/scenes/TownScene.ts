@@ -60,7 +60,7 @@ import { RARITY_TEXT, addItemArt, isRarity, setItemArt, setRarityColours } from 
 import { setForgeArt } from '../ui/forge';
 import { LOOT_LAND_MS, LootLayer } from '../world/loot';
 import { setKusingArt } from '../ui/reward';
-import { itemTipFor, nameOf, pickupOf } from '../ui/item-tip';
+import { itemPicture, itemTipFor, nameOf, pickupOf } from '../ui/item-tip';
 import { SkillTip } from '../ui/skill-tip';
 import { playDig, setDigPanelArt } from '../ui/dig-panel';
 import { showMine } from '../ui/mine';
@@ -934,7 +934,7 @@ export class TownScene extends Phaser.Scene {
     const E = this.M.equipment;
     if (!Q || !K || !E) return Promise.resolve();
     const asset = (f: string) => `${import.meta.env.BASE_URL}assets/${f}`;
-    this.adventureReady ??= loadAdventureData(asset, { quests: Q.file, classes: K.data, equipment: E.file, items: this.M.combatItems?.file }, this.cache.json.get('stats'), this.cache.json.get('leveling'));
+    this.adventureReady ??= loadAdventureData(asset, { quests: Q.file, classes: K.data, equipment: E.file, items: this.M.combatItems?.file, dungeons: K.dungeons }, this.cache.json.get('stats'), this.cache.json.get('leveling'));
     return this.adventureReady.then((data) => {
       if (!data) return void console.warn('[quests] the quests, classes, equipment or stats data is missing');
       // Each class's first 7 skills' sounds (heard from others too), on a battle map.
@@ -1438,13 +1438,15 @@ export class TownScene extends Phaser.Scene {
     return { name: text?.name ?? id, portrait: `${import.meta.env.BASE_URL}assets/${P.file.replace('{id}', id)}`, mirror: NPC_PLACES.find((p) => p.id === id)?.portrait === 'sw' };
   }
 
-  /** A "!" over an NPC you're to talk to for a quest, a "…" over one waiting on you, in the quest's colour. */
+  /** A "!" over an NPC you're to talk to for a quest (or who offers one), a "…" over one waiting on you (a class to
+   *  choose, an item to hand over), in the quest's colour. None while you're out collecting what a quest needs. */
   private questMarkers(): void {
     if (!this.npcs || !this.M.quests) return;
     for (const id of Object.keys(this.npcs.positions)) {
       const q = questFor(id);
       const o = q && q.quest.objectives[q.step];
-      this.npcs.setMarker(id, q && o ? { symbol: o.type === 'talk' ? '!' : '…', color: this.M.quests.colours[q.quest.type] } : null);
+      const symbol = !o || o.type === 'collect' ? null : o.type === 'talk' ? '!' : '…';
+      this.npcs.setMarker(id, q && symbol ? { symbol, color: this.M.quests.colours[q.quest.type] } : null);
     }
   }
 
@@ -1456,18 +1458,53 @@ export class TownScene extends Phaser.Scene {
     const o = quest.objectives[step];
     const d = quest.dialogue ?? {};
     const chooseNext = () => quest.objectives[step + 1]?.type === 'chooseClass' && this.openClasses(quest.id, id);
+    // What a giver hands over or says back (Aling Nena's ticket, "come back later"), after their lines.
+    const answered = (r: Awaited<ReturnType<typeof questTalk>>) => {
+      if (!r?.ok) return void toast(r?.message ?? "Couldn't reach the bot. Try again in a moment.", 3000, 'bad');
+      if (r.handed) this.handedToast(r.handed);
+      else if (r.message) toast(r.message, 3500);
+    };
     if (o.type === 'talk' && d.talk?.length) {
       return {
         lines: d.talk,
         onDone: () =>
           void questTalk(quest.id, id).then((r) => {
-            if (!r?.ok) return toast(r?.message ?? "Couldn't reach the bot. Try again in a moment.", 3000, 'bad');
-            chooseNext();
+            answered(r);
+            if (r?.ok) chooseNext();
+          }),
+      };
+    }
+    // Out after its item: the reminder (and another ticket, when she may hand one over).
+    if (o.type === 'collect') return { lines: d.remind?.length ? d.remind : ['…'], onDone: () => void questTalk(quest.id, id).then(answered) };
+    // Bringing it back: their thanks, they take it, then the rewards.
+    if (o.type === 'deliver') {
+      return {
+        lines: d.complete?.length ? d.complete : ['Salamat!'],
+        onDone: () =>
+          void questTalk(quest.id, id).then((r) => {
+            if (!r?.ok) return answered(r);
+            this.questRewardPopup(quest, r);
           }),
       };
     }
     if (o.type === 'chooseClass') return { lines: d.remind?.length ? d.remind : ['…'], onDone: () => void this.openClasses(quest.id, id) };
     return null;
+  }
+
+  /** "Received: Practice Warren Ticket", with its picture (a quest giver's hand-over). */
+  private handedToast(defId: string): void {
+    const def = anyDef(defId);
+    const D = itemData();
+    toast(`Received: ${def?.name ?? 'an item'}`, 3500, 'good', def && D ? itemPicture(newItem(D.stats, def, 'handed'), 'icon', 2) : null);
+    dispatchEvent(new Event('mk-bag-changed'));
+  }
+
+  /** A quest handed in to its giver: the reward pop-up with what it gave (XP, Kusing, and Kowens with the Kowen coin). */
+  private questRewardPopup(quest: import('@mikazuki/shared').QuestDef, r: { xp?: number; kusing?: number; kowens?: number }): void {
+    const parts = [r.xp ? `+${r.xp.toLocaleString('en-US')} XP` : '', r.kusing ? `+${r.kusing.toLocaleString('en-US')} Kusing` : '', r.kowens ? `+${r.kowens} ${r.kowens === 1 ? 'Kowen' : 'Kowens'}` : ''].filter(Boolean);
+    if (!r.kowens) return void toast(`${quest.title}: ${parts.join(', ') || 'done'}`, 4000, 'good');
+    void showReward({ title: quest.title, graphic: { kind: 'kowens', amount: r.kowens }, message: parts.join(' · ') });
+    window.dispatchEvent(new Event('mk-wallet')); // the HUD's Kowens
   }
 
   /** The class choice window, with `onChoose` deciding what a choice does (true once it's done). */
@@ -1890,7 +1927,7 @@ export class TownScene extends Phaser.Scene {
       if (m.t === 'party-refused') return toast(partyRefusal(m.reason, m.name), 2600, 'bad');
       if (m.t === 'party-declined') return toast(`${m.name} didn't join the party.`, 2600);
       // The Scrap Warrens: the gate's panel, an invite, going in and out, the run's tracker, its bosses' moves.
-      if (m.t === 'warrens-gate') return showWarrensGate(m.gate, (what) => link.send(what === 'open' ? { t: 'warrens-open' } : { t: 'warrens-join' }));
+      if (m.t === 'warrens-gate') return showWarrensGate(m.gate, (what) => link.send(what === 'open' ? { t: 'warrens-open' } : what === 'practice' ? { t: 'warrens-practice' } : { t: 'warrens-join' }));
       if (m.t === 'warrens-invite') return showWarrensInvite(m.from, m.ms, (join) => link.send(join ? { t: 'warrens-join', run: m.run } : { t: 'warrens-decline', run: m.run }));
       if (m.t === 'warrens-refused') {
         playSound('error');

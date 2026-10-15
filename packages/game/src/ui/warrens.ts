@@ -4,9 +4,11 @@ import { el, showPopup } from './reward';
 import { toast } from './toast';
 
 // 🕳️ The Scrap Warrens on the page (DOM; world/warrens.ts and TownScene drive them):
-// - The Warren Gate's panel (the Slums: a click on the gate, or walking up to it): "Scrap Warrens · Lv 15+ · solo or
+// - The Warren Gate's panel (the Slums: a click on the gate, or walking up to it): "Scrap Warrens · Lv 16+ · solo or
 //   party · needs 1 Warren Ticket", your level and tickets, and what you can do: Enter (alone), Open for my party, or
-//   Join my party's run (no ticket), or why not (under Lv 15, the Warrens full, no ticket).
+//   Join my party's run (no ticket), or why not (under its level or Aling Nena's quest not done: the server's line; the
+//   Warrens full, no ticket); party members in the Slums who can't come in yet; and during Aling Nena's quest, with a
+//   Practice Warren Ticket, Practice run (alone).
 // - The invite when your party opens a run while you're in the Slums: Join / Not now, with its time running out.
 // - The run's timer, top centre (the boss bar and the other top-centre boxes move down under it): the time left
 //   (counted down here from the server's; red in the last minute), or while it gathers "Starts in 0:57".
@@ -16,15 +18,15 @@ import { toast } from './toast';
 // - Cleared (Barong-Barong down): a pop-up with how long the run took, who was in it, the time until it closes (for the
 //   loot on the floor), Leave now and Stay; once per run (sessionStorage CLEARED_KEY: a reload doesn't bring it back).
 
-const GATE_LINE = 'Lv 15+ · solo or party · needs 1 Warren Ticket (back if no mini boss falls)';
+const gateLine = (minLevel: number) => `Lv ${minLevel}+ · solo or party · needs 1 Warren Ticket (back if no mini boss falls)`;
 
-/** The gate's panel: `act` opens (alone or for the party) or joins. */
-export function showWarrensGate(g: TownWarrensGate, act: (what: 'open' | 'join') => void): void {
-  const body: HTMLElement[] = [el('p', 'wr-gate-line', GATE_LINE)];
-  body.push(el('p', 'wr-gate-you', `You: Lv ${g.level} · Warren Tickets: ${g.tickets}`));
+/** The gate's panel: `act` opens (alone or for the party), joins, or opens a practice run. */
+export function showWarrensGate(g: TownWarrensGate, act: (what: 'open' | 'join' | 'practice') => void): void {
+  const body: HTMLElement[] = [el('p', 'wr-gate-line', gateLine(g.minLevel))];
+  body.push(el('p', 'wr-gate-you', `You: Lv ${g.level} · Warren Tickets: ${g.tickets}${g.practice ? ` · Practice Warren Tickets: ${g.practice.tickets}` : ''}`));
   const actions = el('div', 'wr-gate-actions');
   const close = () => (document.querySelector('#reward .rw-x') as HTMLButtonElement | null)?.click();
-  const button = (label: string, what: 'open' | 'join', primary = true) => {
+  const button = (label: string, what: 'open' | 'join' | 'practice', primary = true) => {
     const b = el('button', primary ? 'wr-btn wr-go' : 'wr-btn', label);
     b.addEventListener('click', () => {
       close();
@@ -33,13 +35,23 @@ export function showWarrensGate(g: TownWarrensGate, act: (what: 'open' | 'join')
     actions.append(b);
   };
   const why = (text: string) => body.push(el('p', 'wr-gate-why', text));
-  if (g.level < g.minLevel) why(`You need Lv ${g.minLevel} to go in.`);
+  if (g.blocked === 'level' || g.blocked === 'quest') why(g.questLine ?? `You need Lv ${g.minLevel} to go in.`);
   else if (g.partyRun) {
     body.push(el('p', 'wr-gate-run', `${g.partyRun.opener} opened a run for your party (${g.partyRun.inside} inside, ${g.partyRun.phase === 'gathering' ? 'gathering' : 'under way'}).`));
     button("Join my party's run", 'join');
   } else if (g.blocked === 'full') why('The Warrens are full. Try again in a few minutes.');
   else if (g.blocked === 'ticket') why('You need a Warren Ticket. The sari-sari store sells them in its Dungeons tab.');
   else button(g.inParty ? 'Open for my party' : 'Enter', 'open');
+  // Party members who can't come in yet (Aling Nena's quest): the run still opens for the rest.
+  for (const name of g.notReady ?? []) body.push(el('p', 'wr-gate-why', `${name} hasn't helped Aling Nena yet.`));
+  // Aling Nena's quest: a practice run, alone (even in a party).
+  if (g.practice) {
+    const P = g.practice;
+    if (P.blocked === 'run') why("You're in a run already: a practice run waits until it's over.");
+    else if (P.blocked === 'full') why('The Warrens are full. Try again in a few minutes.');
+    else if (P.blocked === 'level') why(`Practice runs are for Lv ${P.minLevel} and up.`);
+    else button('Practice run (alone)', 'practice', !actions.childElementCount);
+  }
   if (actions.childElementCount) body.push(actions);
   void showPopup({ title: 'Scrap Warrens', body, button: 'Close', celebrate: false, closeX: true });
 }
@@ -145,6 +157,8 @@ export class WarrensTracker {
   private readonly clock = el('div');
   private readonly clockLabel = el('span', 'wr-clock-label', 'Time left');
   private readonly time = el('span', 'wr-time');
+  /** "Practice" under the timer (a practice run: Aling Nena's quest). */
+  private readonly practice = el('span', 'wr-practice', 'Practice');
   private readonly pips = el('div', 'wr-pips');
   private readonly note = el('div', 'wr-note');
   private readonly start = el('button', 'wr-btn wr-go wr-start', 'Start now');
@@ -160,7 +174,8 @@ export class WarrensTracker {
     head.append(el('span', 'wr-title', 'Scrap Warrens'));
     this.clock.id = 'warrens-timer';
     this.clock.setAttribute('role', 'timer');
-    this.clock.append(this.clockLabel, this.time);
+    this.clock.append(this.clockLabel, this.time, this.practice);
+    this.practice.hidden = true;
     const buttons = el('div', 'wr-buttons');
     buttons.append(this.start, this.leave);
     this.root.append(head, this.pips, this.note, buttons);
@@ -217,6 +232,7 @@ export class WarrensTracker {
     if (!r) return;
     const gone = performance.now() - this.at;
     this.clockLabel.textContent = r.phase === 'gathering' ? 'Starts in' : r.phase === 'cleared' ? 'Closing in' : 'Time left';
+    this.practice.hidden = !r.practice;
     this.time.textContent = r.phase === 'gathering' ? clock((r.gatherLeft ?? 0) - gone) : clock(r.left - gone);
     this.clock.classList.toggle('wr-late', r.phase === 'running' && r.left - gone < 60_000);
   }
