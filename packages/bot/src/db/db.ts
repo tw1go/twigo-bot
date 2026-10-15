@@ -21,6 +21,8 @@ import { today } from '../time.js';
 //  • v14, the front page's close beta applications (web/beta.ts; the CMS's Beta applications): beta_applications.
 //  • v15, accounts.voice_last_week(_minutes): the week before's voice minutes, kept for Monday's payout.
 //  • v16, items.xp and items.points: a pet's Pet XP and pet points (the pet out: place 'pet').
+//  • v17, accounts.rogue_since, rogue_marked_at, protected_at: rogues and stealing (games/rogue.ts). Added empty: the
+//    one fresh start (nobody a rogue, marked or protected); nothing after ever clears them.
 //  • kv: small singleton documents keyed by their old file name (e.g. 'race.json', 'rotation.json').
 // Stores cache their state in memory (the bot is the only writer) and save through db/sync.ts, which writes only
 // the rows that changed.
@@ -325,6 +327,13 @@ export const MIGRATIONS: string[] = [
      own) and its pet points by node; the pet out is the item with place 'pet'. */ `
   ALTER TABLE items ADD COLUMN xp INTEGER NOT NULL DEFAULT 0;
   ALTER TABLE items ADD COLUMN points TEXT;                       -- JSON: a pet's pet points { node: n }
+  `,
+  /* v17: rogues (games/rogue.ts): only rogues steal; a steal attempt marks the rogue (any rogue may rob them, for as long
+     as they're a rogue and 2 days after their last attempt); being robbed while open protects. The columns start empty:
+     the one fresh start, at this update (attempts from before it never mark anyone: last_steal isn't used). */ `
+  ALTER TABLE accounts ADD COLUMN rogue_since INTEGER;            -- ms: became a rogue; NULL = not a rogue
+  ALTER TABLE accounts ADD COLUMN rogue_marked_at INTEGER;        -- ms: the last steal attempt made as a rogue
+  ALTER TABLE accounts ADD COLUMN protected_at INTEGER;           -- ms: robbed while open; NULL = not protected
   `,
 ];
 

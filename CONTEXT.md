@@ -417,6 +417,32 @@ _Avoid_: target (that's a mob you've picked with Z)
 The owner and the CMS users: the CMS, the chat's GM channel (gold, across everyone's screen).
 _Avoid_: admin, mod (those are Discord roles)
 
+## Rogues and stealing
+
+**Steal** (a steal attempt):
+Trying to take Kowens from another member: `/steal` in Discord, or clicking their house in the neighbourhood. An attempt
+goes ahead (and counts) once it's past the checks: it steals, gets caught, or snaps a Master Key on a Bakod.
+_Avoid_: raid (a Tanod raid is the casino's bust), heist
+
+**Rogue**:
+A member who has chosen to steal: only rogues can steal or throw a Kalawang Potion. Free to become (not while in jail),
+free to quit; becoming one ends their protection.
+_Avoid_: thief (as a status), outlaw, bandit
+
+**Open**:
+The default state: rogues can rob them. Robbed while not a rogue and not marked, they become protected.
+_Avoid_: unprotected, vulnerable
+
+**Protected**:
+Robbed once, so no rogue can rob them (not even with a Master Key) and no Kalawang Potion can be thrown at their Bakod,
+until they become a rogue. Their house hangs a moon charm by its door.
+_Avoid_: safe, immune, shielded
+
+**Marked**:
+A rogue who has made a steal attempt since becoming one, or anyone whose last steal attempt (as a rogue) was under 2
+days ago: any rogue can rob them, any number of times, and it never protects them. Their house shows a rogue mask.
+_Avoid_: wanted, exposed, flagged
+
 ## The Scrap Warrens (dungeon)
 
 **Scrap Warrens**:
