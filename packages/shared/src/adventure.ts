@@ -56,6 +56,8 @@ export interface QuestDef {
   /** The brief storyline the quest log shows: what's going on and why it matters. */
   story?: string;
   autoStart?: boolean;
+  /** A guided quest (CONTEXT.md): the new player guide points the way (the guide arrow, the quest trail). */
+  guided?: boolean;
   objectives: QuestObjectiveDef[];
   /** The giver's lines while it's on: talk (in order), remind, complete ({class} = the chosen class's name); give (as
    *  it starts) and report (as it's reported over the radio): the leveling chain's. */

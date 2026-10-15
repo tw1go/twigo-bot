@@ -43,6 +43,8 @@ export interface Manifest {
   classes?: ClassesDefs;
   /** The quests file, and the colour of each quest type. */
   quests?: { file: string; colours: Record<'main' | 'side', string> };
+  /** The new player guide's art (each file has {type}: main or side, the quest's colour). */
+  guide?: GuideManifest;
   /** Equipment items (items/equipment.json). */
   equipment?: { file: string };
   /** Combat items that aren't worn (items/items.json). */
@@ -486,4 +488,12 @@ export interface Outskirts {
   treeChance: number; // per 2 × 2 cell
   undergrowth: string[]; // prop ids
   undergrowthChance: number; // per tile
+}
+
+/** manifest guide: the guide arrow, the quest trail's dash and sparkle, the quest map's pins. */
+export interface GuideManifest {
+  arrow: { file: string; frame: Vec2; frames: number; fps: number; rows: ('down' | 'up' | 'left' | 'right')[] };
+  trail: { file: string; frame: Vec2; frames: number };
+  sparkle: { file: string; frame: Vec2; frames: number; fps: number };
+  pin: { file: string; frame: Vec2; frames: number; fps: number; anchor: Vec2 };
 }

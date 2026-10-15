@@ -1,7 +1,8 @@
 // ⌨️ Keybinds: every game key is an action with up to two keys (a key = its event.code, plus Ctrl/Alt/Shift if held,
 // so a keyboard layout or Caps Lock doesn't change what it does), saved in this browser (localStorage `mk_keys`, only
 // what differs from the defaults). Settings → Keybinds changes them (ui/settings.ts keybindsPage). Enter (the chat),
-// Escape, Tab and the arena's 1–3 stay as they are. Everything that listens for a key asks here (`matches`,
+// Escape and the arena's 1–3 stay as they are (Tab, the quest map's, can be rebound; main.ts still keeps it from moving
+// the focus round the page's buttons). Everything that listens for a key asks here (`matches`,
 // `held`), and every label showing a key reads `keyLabel` again on the 'mk-keys' event.
 
 export interface ActionDef {
@@ -27,6 +28,7 @@ export const ACTIONS: ActionDef[] = [
   { id: 'bag', label: 'Bag and equipment', group: 'Actions', keys: ['KeyB', 'KeyI'] },
   { id: 'quests', label: 'Quest log', group: 'Actions', keys: ['KeyJ'] },
   { id: 'map', label: 'Map', group: 'Actions', keys: ['KeyM'] },
+  { id: 'questMap', label: 'Quest map', group: 'Actions', keys: ['Tab'] },
   { id: 'settings', label: 'Settings', group: 'Actions', keys: ['KeyO'] },
   ...slotCodes.map((code, i): ActionDef => ({ id: i < 10 ? `main${i + 1}` : `util${i - 9}`, label: `Slot ${i + 1}`, group: 'Hotbar', keys: [code] })),
   ...slotCodes.map((code, i): ActionDef => ({ id: `top${i + 1}`, label: `Top slot ${i + 1}`, group: 'Hotbar (top row)', keys: [`Alt+${code}`] })),
@@ -36,7 +38,7 @@ export const ACTIONS: ActionDef[] = [
 const STORE = 'mk_keys';
 const byId = new Map(ACTIONS.map((a) => [a.id, a]));
 /** Keys the page keeps for itself (never bound). */
-const RESERVED = new Set(['Enter', 'NumpadEnter', 'Escape', 'Tab']);
+const RESERVED = new Set(['Enter', 'NumpadEnter', 'Escape']);
 const MODIFIERS = new Set(['ShiftLeft', 'ShiftRight', 'ControlLeft', 'ControlRight', 'AltLeft', 'AltRight', 'MetaLeft', 'MetaRight', 'CapsLock', 'Fn']);
 
 let saved: Record<string, (string | null)[]> = load();
