@@ -65,7 +65,7 @@ export const content = {
     pillars: [
       { title: 'Hang out', text: 'Chat, wave and sit by the fountain. Dress up at the Parlor and build a house of your own.' },
       { title: 'Fight the junk', text: 'Choose one of 6 classes, level to 20 with the Tanod’s quests, and hunt rare loot with blue and orange affixes.' },
-      { title: 'Play the town', text: 'Jack en poy in the Arena, flip coins at Kara y Krus, and break into a neighbour’s house to steal from it.' },
+      { title: 'Play the town', text: 'Jack en poy in the Arena, flip coins at Kara y Krus, and turn rogue and break into a neighbour’s house.' },
     ],
   },
 
@@ -199,9 +199,9 @@ export const content = {
       { tag: 'Party', title: 'Party up and trade', text: 'Parties of up to 6 share XP and Kusing. Trade gear and Kusing with other players.', live: true },
       { tag: 'Minigame', title: 'Jack en poy Arena', text: 'Bato, papel, gunting. First to two wins, against a bot or a real player, for Kowens.', live: true },
       { tag: 'Minigame', title: 'Kara y Krus', text: 'Call heads or tails on the gold coin and test your luck. Watch out for the Tanod.', live: true },
-      { tag: 'Heist', title: 'Bakod heist', text: 'Sneak into a neighbour’s house and try to pocket a few percent of their Kowens. Get caught (it happens more often than not) and you pay them a fine and cool off in jail. A Bakod keeps thieves out: rust it with a Kalawang Potion, or gamble a Master Key on its lock.', live: true },
+      { tag: 'Heist', title: 'Bakod heist', text: 'Turn rogue, sneak into a neighbour’s house and try to pocket a few percent of their Kowens. Get caught (it happens more often than not) and you pay them a fine and cool off in jail. Once you steal, other rogues can rob you back, and a house that’s been robbed is safe. A Bakod keeps rogues out: rust it with a Kalawang Potion, or gamble a Master Key on its lock.', live: true },
       { tag: 'Style', title: 'Dress up', text: 'Paper-doll outfits: {skins} skin tones, {hairs} hairstyles, hats, glasses, tops, bottoms and shoes. Restyle any time at the Parlor.', live: true },
-      { tag: 'Housing', title: 'Houses and the Parlor', text: 'Build a house on your own street and give it a new look whenever you like. Wear your titles at the Parlor. Put up a Bakod, because other players can break in.', live: true },
+      { tag: 'Housing', title: 'Houses and the Parlor', text: 'Build a house on your own street and give it a new look whenever you like. Wear your titles at the Parlor. Put up a Bakod, because rogues can break in.', live: true },
     ],
     soon: 'Coming soon',
   },
