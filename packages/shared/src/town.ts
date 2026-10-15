@@ -67,6 +67,8 @@ export interface TownWarrensRun {
   /** Cleared: how long it took (ms from its start to the last boss's fall), and who was inside then (names). */
   clearMs?: number;
   team?: string[];
+  /** A practice run (Aling Nena's quest): "Practice" under its timer. */
+  practice?: boolean;
 }
 
 /** What the Warren Gate offers you (asked as its panel opens): your level and tickets, your party's run (if it has
@@ -77,8 +79,15 @@ export interface TownWarrensGate {
   tickets: number;
   inParty: boolean;
   partyRun: { id: string; phase: TownWarrensRun['phase']; inside: number; opener: string } | null;
-  /** Why not: 'level' (under minLevel), 'full' (too many runs at once), 'ticket' (none to open with). */
-  blocked?: 'level' | 'full' | 'ticket';
+  /** Why not: 'level' (under minLevel), 'quest' (Aling Nena's quest not done: `questLine` says so), 'full' (too many runs
+   *  at once), 'ticket' (none to open with). */
+  blocked?: 'level' | 'quest' | 'full' | 'ticket';
+  questLine?: string;
+  /** A practice run (Aling Nena's quest needs its binoculars, and a Practice Warren Ticket is held): Practice run
+   *  (alone). `blocked` its reason, if it can't open now. */
+  practice?: { tickets: number; minLevel: number; blocked?: 'level' | 'full' | 'run' };
+  /** Party members in the Slums who can't come into a real run yet (names), for the opener. */
+  notReady?: string[];
 }
 
 /** A boss move's telegraph on the ground (the server decides it; the game draws it from now until its hit, `ms` later):
@@ -237,6 +246,8 @@ export type TownClientMessage =
    *  gathers), leave it. */
   | { t: 'warrens-gate' }
   | { t: 'warrens-open' }
+  /** Open a practice run (Aling Nena's quest), alone, with a Practice Warren Ticket. */
+  | { t: 'warrens-practice' }
   | { t: 'warrens-join'; run?: string }
   | { t: 'warrens-start' }
   /** Not now, to your party's run's invite (it stops waiting for you). */
@@ -509,7 +520,7 @@ export type TownServerMessage =
   | { t: 'warrens-gate'; gate: TownWarrensGate }
   | { t: 'warrens-go'; run: string; ticket?: boolean }
   | { t: 'warrens-invite'; run: string; from: string; ms: number }
-  | { t: 'warrens-refused'; reason: 'level' | 'full' | 'ticket' | 'party' | 'gone' | 'slow'; message: string }
+  | { t: 'warrens-refused'; reason: 'level' | 'quest' | 'full' | 'ticket' | 'party' | 'gone' | 'slow'; message: string }
   /** Out of a run, back to the Slums; `ticketBack`: (the opener) the run ended before a boss fell, its ticket returned. */
   | { t: 'warrens-out'; reason: 'left' | 'closed' | 'party'; ticketBack?: boolean }
   | { t: 'warrens-kick'; ms: number }

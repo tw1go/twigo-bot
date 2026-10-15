@@ -31,26 +31,26 @@ const setHp = (run: Run, id: string, hp: number) => {
 };
 const of = <T extends MobEvent['t']>(events: MobEvent[], t: T) => events.filter((e): e is Extract<MobEvent, { t: T }> => e.t === t);
 
-test('opening: Lv 15, a ticket, one run per party, at most ten at once', () => {
+test('opening: Lv 16, a ticket, one run per party, at most ten at once', () => {
   const parties: Record<string, string> = { b: 'p1', c: 'p1' };
   const w = new Warrens(W, map, deps(), (m) => parties[m] ?? null);
   let used = 0;
   const ticket = () => (used++, true);
-  assert.deepEqual(w.open('a', 'Ana', 14, ticket, 0), { ok: false, reason: 'level', message: 'The Scrap Warrens are for Lv 15 and up.' });
-  assert.equal(w.open('a', 'Ana', 15, () => false, 0).ok, false);
+  assert.deepEqual(w.open('a', 'Ana', 15, ticket, 0), { ok: false, reason: 'level', message: 'Reach Lv 16, then help Aling Nena on the plaza.' });
+  assert.equal(w.open('a', 'Ana', 16, () => false, 0).ok, false);
   assert.equal(used, 0);
-  const solo = w.open('a', 'Ana', 15, ticket, 0);
+  const solo = w.open('a', 'Ana', 16, ticket, 0);
   assert.ok(solo.ok);
   assert.equal(solo.run.party, null);
-  assert.equal(w.open('a', 'Ana', 15, ticket, 0).ok, false, 'one at a time');
+  assert.equal(w.open('a', 'Ana', 16, ticket, 0).ok, false, 'one at a time');
   const party = w.open('b', 'Ben', 16, ticket, 0);
   assert.ok(party.ok);
   assert.equal(w.open('c', 'Cy', 16, ticket, 0).ok, false, "the party's run is open: join it");
   assert.equal(used, 2);
   // Joining needs no ticket; a party member's run, not someone else's.
-  assert.ok(w.join('c', 15).ok);
+  assert.ok(w.join('c', 16).ok);
   assert.ok(party.run.expected.has('c'));
-  assert.equal(w.join('a', 15, party.run.id).ok, false);
+  assert.equal(w.join('a', 16, party.run.id).ok, false);
   assert.equal(w.join('c', 12).ok, false);
   assert.ok(w.allowed(solo.run, 'a') && !w.allowed(solo.run, 'b'));
   for (let k = 0; k < 8; k++) assert.ok(w.open(`x${k}`, 'X', 20, ticket, 0).ok);
@@ -234,7 +234,7 @@ test('leaving the party while inside: a 10 s warning, then out', () => {
 test('a party, once over, keeps whoever was in it; a solo run stays solo', () => {
   let party: string | null = 'p';
   const w = new Warrens(W, map, deps(), () => party);
-  const opened = w.open('a', 'Ana', 15, () => true, 0);
+  const opened = w.open('a', 'Ana', 16, () => true, 0);
   assert.ok(opened.ok);
   assert.ok(w.allowed(opened.run, 'a'));
   party = null;
@@ -420,7 +420,7 @@ async function town(opts: { tickets: Record<string, number>; party?: boolean; le
     authenticate: async (req) => new URL(req.url ?? '/', 'http://x').searchParams.get('as'),
     profile: (name) => ({ nickname: name, title: { name: 'Townfolk', color: '#fff' }, outfit: {} as never, cls: 'slingshot' }),
     progress: {
-      fighter: (name) => ({ cls: 'slingshot', level: opts.level?.[name] ?? 15, points: name === 'Mara' ? { DEX: 100_000 } : {} }),
+      fighter: (name) => ({ cls: 'slingshot', level: opts.level?.[name] ?? 16, points: name === 'Mara' ? { DEX: 100_000 } : {} }),
       kill: (name, mob) => {
         opts.kill?.(name, mob);
         const r = killXp(stats, 'slingshot', progress[name] ?? freshProgress(stats, 'slingshot'), mob);
@@ -458,7 +458,7 @@ async function town(opts: { tickets: Record<string, number>; party?: boolean; le
   return { open, saved, refunds, close: () => new Promise((ok) => server.close(ok)) };
 }
 
-test("over the town's socket: open at the Warren Gate (a ticket, Lv 15), in the run, back in after a reload; others are sent back out", async () => {
+test("over the town's socket: open at the Warren Gate (a ticket, Lv 16), in the run, back in after a reload; others are sent back out", async () => {
   const T = await town({ tickets: { Ana: 1 }, level: { Low: 14 } });
   const [gc, gr] = W.entry.warp.arrive;
   const far = await T.open('Far', 'slums');
@@ -474,7 +474,7 @@ test("over the town's socket: open at the Warren Gate (a ticket, Lv 15), in the 
   ana.send({ t: 'warrens-gate' });
   await wait(80);
   await heard(ana, 'warrens-gate');
-  assert.deepEqual(ana.last('warrens-gate')?.gate, { minLevel: 15, level: 15, tickets: 1, inParty: false, partyRun: null });
+  assert.deepEqual(ana.last('warrens-gate')?.gate, { minLevel: 16, level: 16, tickets: 1, inParty: false, partyRun: null });
   ana.send({ t: 'warrens-open' });
   await wait(80);
   await heard(ana, 'warrens-go');
@@ -511,7 +511,7 @@ test("over the town's socket: open at the Warren Gate (a ticket, Lv 15), in the 
   await wait(80);
   await heard(again, 'warrens-out');
   assert.equal(again.last('warrens-out')?.reason, 'left');
-  // Under Lv 15, or no ticket: why not.
+  // Under Lv 16, or no ticket: why not.
   const low = await T.open('Low', 'slums');
   low.send({ t: 'here', col: gc, row: gr, dir: 's' });
   low.send({ t: 'warrens-open' });
