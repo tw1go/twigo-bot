@@ -555,7 +555,8 @@ function startQuests(s: AdventureState): void {
   }
 }
 
-/** Dev (?quest=tanod-05): straight to that quest of the chain, every one before it done. */
+/** Dev (?quest=tanod-05): straight to that quest of the chain, every one before it done.
+ *  ?quest=done: all quests done, none active (for testing UI without a quest tracker). */
 function jumpToQuest(s: AdventureState, id: string): void {
   const quests = data?.quests ?? [];
   const chain: string[] = [];
@@ -566,6 +567,7 @@ function jumpToQuest(s: AdventureState, id: string): void {
     }
     chain.push(q.id);
   }
+  if (id === 'done') s.quests = { active: [], done: chain, rewarded: [...chain] };
 }
 
 function fakeAct(body: TownQuestAction | TownEquipAction): TownAdventureResponse {

@@ -71,14 +71,15 @@ export class StayReward {
     this.root.append(head, this.body);
     document.body.append(this.root);
 
-    // Mobile: sit below the quest or warrens tracker on the left (CSS sets left:12px; top is set here).
+    // Mobile: sit below the quest/warrens tracker on the left, or below the HUD panel if no tracker is up (CSS sets left:12px; top is set here).
     const place = () => {
       if (window.innerWidth > 560 && window.innerHeight > 500) { this.root.style.top = ''; this.body.style.maxHeight = ''; return; }
       const wt = document.getElementById('warrens-tracker');
       const qt = document.getElementById('quest-tracker');
       const active = (wt && !wt.hidden ? wt : null) ?? (qt && !qt.hidden ? qt : null);
-      if (!active) return; // no visible tracker yet — keep CSS default top until one appears
-      const top = Math.round(active.getBoundingClientRect().bottom + 8);
+      const anchor = active ?? document.querySelector<HTMLElement>('#town-hud .th-left');
+      if (!anchor) return;
+      const top = Math.round(anchor.getBoundingClientRect().bottom + 8);
       this.root.style.top = `${top}px`;
       const chatBtn = document.getElementById('chat-toggle');
       const stopAt = chatBtn ? Math.round(chatBtn.getBoundingClientRect().top - 8) : (window.innerHeight - 66);

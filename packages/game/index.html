@@ -199,9 +199,16 @@
         #creator.cr-house:not(.cr-parlor) { padding-top: 72px; }
         #creator .cr-title-name { font-size: calc(15px * var(--text)); }
       }
-      /* House creator on a landscape phone: strip outer padding, force the desktop side-by-side layout back (overrides
+      /* Creator on a landscape phone: pin the card to the top and let the overlay scroll so the card is never clipped.
+         House creator: strip outer padding, force the desktop side-by-side layout back (overrides
          the single-column that max-width:720px sets) and restore the desktop preview column. Canvas scaling is in JS. */
       @media (max-height: 500px) and (min-width: 561px) {
+        #creator { align-items: flex-start; overflow-y: auto; }
+        /* Character creator: shrink the doll to --z:2 (96px tall vs 192px) and tighten spacing so the box fits in ~310px. */
+        #creator:not(.cr-house):not(.cr-parlor) { --z: 2; padding: 72px 8px 8px; }
+        #creator:not(.cr-house):not(.cr-parlor) .cr-head { padding: 6px 10px 8px; }
+        #creator:not(.cr-house):not(.cr-parlor) .cr-preview { padding: 8px; gap: 8px; }
+        #creator:not(.cr-house):not(.cr-parlor) .cr-turn { width: 30px; height: 30px; font-size: calc(12px * var(--text)); }
         #creator.cr-house:not(.cr-parlor) { padding: 8px; }
         #creator.cr-house:not(.cr-parlor) .cr-panel { grid-template-columns: minmax(180px, 240px) 1fr; grid-template-rows: unset; }
         #creator.cr-house:not(.cr-parlor) .cr-preview { flex-direction: column; gap: 16px; padding: 16px 12px; border-right: calc(var(--px) * 1px) solid #2A2D3E; border-bottom: 0; }
