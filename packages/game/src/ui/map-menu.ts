@@ -1,28 +1,16 @@
 import { type LanternMap, isLanternMap } from '@mikazuki/shared';
 import { playSound } from '../audio/sound';
+import { type QuestMarkArt, drawQuestMarks } from './quest-marks';
 import { toast } from './toast';
+import { type MapLayout, type SlumsPlaces, loadWorldMap, middleOf, worldPx } from './world-map';
 
 // 🗺️ The Map menu (M anywhere; a Lantern Post's click): the Slums and the Town drawn together (manifest ui.mapWorld,
 // placed by ui/map/map-layout.json), their names and places written over it from the maps themselves (the Slums' zones,
 // the Golem Pit, the Camp, the way to the neighbourhood), and every Lantern Post as a teleporter icon. Opened from a
 // post, another post's icon asks to teleport there (the Teleport box: one Return Lantern); opened anywhere else it's only
 // to look at. Built like the Equipment panel: its frame, a title bar with ×, the UI font. The picture is drawn at a
-// whole-number scale (2× where it fits, else 1×), its labels with it.
-
-interface MapLayout {
-  tilePx: number;
-  origin: [number, number];
-  maps: Record<string, { col: number; row: number; size: [number, number]; label?: [number, number] }>;
-  posts: Record<string, { tile: [number, number]; px: [number, number] }>;
-  icon: { cell: [number, number]; anchor: [number, number] };
-}
-
-/** What the Slums' map says that the menu writes on the picture. */
-interface SlumsPlaces {
-  mobZones?: { name?: string; rect: [number, number, number, number] }[];
-  boss?: { tile?: [number, number] };
-  safeZone?: [number, number, number, number];
-}
+// whole-number scale (2× where it fits, else 1×), its labels with it. Under the posts and labels, every active quest's
+// hunting area in the quest's colour (ui/quest-marks.ts, the quest map's marks).
 
 export interface MapMenuArt {
   /** URLs: the picture, the teleporter icon (3 frames: normal, hover, here), the pin, the Return Lantern's 16 px icon. */
@@ -35,6 +23,8 @@ export interface MapMenuArt {
   /** The two maps' files (the labels come from them). */
   slums: string;
   town: string;
+  /** The quest marks' art (the quest map's pins, the quests' colours). */
+  marks?: QuestMarkArt;
 }
 
 export interface MapOpen {
@@ -144,31 +134,15 @@ export class MapMenu {
 
   private async load(): Promise<void> {
     if (this.layout && this.places) return;
-    const json = async <T>(url: string): Promise<T | null> => {
-      const r = await fetch(url).catch(() => null);
-      return r?.ok ? ((await r.json()) as T) : null;
-    };
-    const [layout, slums, town] = await Promise.all([
-      json<MapLayout>(this.art.layout),
-      json<SlumsPlaces>(this.art.slums),
-      json<{ gates?: Record<string, [number, number][]> }>(this.art.town),
-    ]);
-    this.layout = layout;
-    const hood = town?.gates?.hood;
-    this.places = {
-      slums: slums ?? {},
-      townHood: hood?.length ? [hood.reduce((n, t) => n + t[0], 0) / hood.length, hood.reduce((n, t) => n + t[1], 0) / hood.length] : null,
-    };
+    const world = await loadWorldMap(this.art);
+    if (!world) return;
+    this.layout = world.layout;
+    this.places = { slums: world.slums, townHood: middleOf(world.town.gates?.hood) };
   }
 
   /** A map's tile as a pixel of the picture (map-layout.json's formula). */
   private px(map: string, col: number, row: number): [number, number] | null {
-    const L = this.layout;
-    const m = L?.maps[map];
-    if (!L || !m) return null;
-    const c = col + 0.5 + m.col;
-    const r = row + 0.5 + m.row;
-    return [L.origin[0] + ((c - r) * L.tilePx) / 2, L.origin[1] + ((c + r) * L.tilePx) / 4];
+    return this.layout ? worldPx(this.layout, map, col, row) : null;
   }
 
   private draw(): void {
@@ -181,6 +155,7 @@ export class MapMenu {
     img.draggable = false;
     this.stage.append(img);
     if (!L) return void this.footText();
+    if (this.art.marks && this.places) drawQuestMarks(this.stage, { layout: L, slums: this.places.slums, town: {} }, k, this.art.marks);
     // Writing on the picture: centred on its pixel (`left`: starting there instead).
     const label = (text: string, at: [number, number] | null, cls: string, left = false) => {
       if (!at) return;

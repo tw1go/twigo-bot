@@ -271,6 +271,20 @@ export function unseenQuest(): 'main' | 'side' | null {
   return fresh.includes('main') ? 'main' : fresh.includes('side') ? 'side' : null;
 }
 
+/** A guided quest that started since the log was last opened (the guide arrow at the quest button, once a quest: a
+ *  guided quest whose objective moves on doesn't bring it back, unlike the dot), main first; or null. */
+export function newGuidedQuest(): QuestDef | null {
+  if (!state) return null;
+  let seen: Record<string, number> = {};
+  try {
+    seen = JSON.parse(localStorage.getItem(SEEN_KEY) ?? '{}');
+  } catch {
+    // nothing seen yet
+  }
+  const fresh = state.quests.active.filter((p) => seen[p.id] === undefined).map((p) => questDef(p.id)).filter((q): q is QuestDef => !!q?.guided);
+  return fresh.find((q) => q.type === 'main') ?? fresh[0] ?? null;
+}
+
 /** The log was opened: everything in it now has been seen. */
 export function markQuestsSeen(): void {
   if (!state) return;

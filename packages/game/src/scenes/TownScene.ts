@@ -32,6 +32,11 @@ import { onMap, watchClicks } from '../world/clicks';
 import { playKalawang, playMasterKey } from '../world/bakod-fx';
 import { puffHouse, riseHouse, sinkHouse } from '../world/house-rise';
 import { RogueSigns } from '../world/rogue-signs';
+import { QuestTrail, TRAIL_TILES, trailOn } from '../world/quest-trail';
+import { mountGuideArrow } from '../ui/guide-arrow';
+import { mountQuestGuide } from '../ui/quest-guide';
+import { QuestMap } from '../ui/quest-map';
+import type { QuestMarkArt } from '../ui/quest-marks';
 import { ChatBox } from '../ui/chat';
 import { StayReward } from '../ui/stay';
 import { MegaphoneBanner } from '../ui/megaphone';
@@ -117,7 +122,7 @@ import { Hotbar } from '../ui/hotbar';
 import { mountClassSwitch } from '../ui/class-switch';
 import { MOVES, type MoveKind, isMoveKind, moveTiles, playMove } from '../world/mobility';
 import { changeClass, devItemsReady, devQuestKill, questReport, setQuestCounts, devSwitchClass, adventure, adventureData, anyDef, chooseClass, classInfo, initAdventure, itemData, itemDef, loadAdventureData, lookWithCosmetics, onAdventure, questDef, questFor, questTalk, setItems, setProgress, skillView, skillViews, buffViews, wornHeadCosmetic, setPetXp } from '../net/adventure';
-import { type LanternMap, type LanternPost, LANTERN_USE_TILES, LANTERN_WALK_TILES, RETURN_LANTERN, isLanternMap, lanternPostOf, nearPost, type StatsData, buffsStack, potionCooldownGroup, dropRefusal, nameColour, type Item, type QuestReward, type TownItems, LOOT_REACH, auraFor, classBuffs, classSkills, countOf, isGearDef, itemAura, itemStats, newItem, tradeRules, petRules } from '@mikazuki/shared';
+import { readyToReport, type LanternMap, type LanternPost, LANTERN_USE_TILES, LANTERN_WALK_TILES, RETURN_LANTERN, isLanternMap, lanternPostOf, nearPost, type StatsData, buffsStack, potionCooldownGroup, dropRefusal, nameColour, type Item, type QuestReward, type TownItems, LOOT_REACH, auraFor, classBuffs, classSkills, countOf, isGearDef, itemAura, itemStats, newItem, tradeRules, petRules } from '@mikazuki/shared';
 import type { ClassArt } from '../assets/types';
 import { drawRested, poseFiles, restFiles } from '../characters/kit-art';
 import { loadImages } from '../characters/loading';
@@ -137,6 +142,9 @@ const EMOTE_ACTIONS = EMOTE_KEYS.map((_, i) => `emote${i + 1}`);
 /** Through the Warren Gate: the page changes this long after the warp starts (its sound, warrens-gate-warp, is 1 s), and
  *  after a ticket's sound the warp starts this long later. */
 const WARP_MS = 1000;
+/** The quest trail: how often it looks again (TownScene trailTick), and how near a mini boss spot counts as there. */
+const TRAIL_MS = 250;
+const MINI_NEAR = 6;
 const TICKET_MS = 300;
 const ZOOMS = [2, 3, 4];
 /** The boss camera (Barong-Barong's hall): the zooms it may pull back to (your own, or the first of these that fits), the
@@ -552,6 +560,18 @@ export class TownScene extends Phaser.Scene {
         .catch(() => null);
     if (this.area === 'town') this.npcs = this.makeNpcs();
     this.makePets();
+    // The quest trail (world/quest-trail.ts): only where a guided quest's hunt is led (the Town and the Slums).
+    if (this.M.guide && (this.area === 'town' || this.area === 'slums')) {
+      const trail = new QuestTrail(this, this.M.guide, (c, r) => this.objects.heights.lift(c, r));
+      this.trail = trail;
+      const again = () => (this.trailFor = '__'); // (Settings: looked at again on the next tick)
+      addEventListener('mk-guide-trail', again);
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+        removeEventListener('mk-guide-trail', again);
+        trail.destroy();
+        this.trail = null;
+      });
+    }
     // The Slums' mobs (the zones that are on), sorted and tinted like everyone else.
     if (this.map.mobZones?.length) {
       const mobs = new Mobs(this, this.M, this.map, this.grid, this.objects, (obj) => this.tint >= 0 && obj.setTint(this.tint), this.fxLayers);
@@ -722,6 +742,7 @@ export class TownScene extends Phaser.Scene {
     }
     this.others.update(delta);
     this.pets?.update(delta);
+    this.trailTick(time);
     this.mobs?.update(delta);
     this.mobs?.check(this.player.tile);
     // Mob art (and the golem's) loads zone by zone as you come near (a quick look twice a second).
@@ -954,7 +975,21 @@ export class TownScene extends Phaser.Scene {
       const body = armor.map(itemDef).find((i) => i?.slot === 'body') ?? itemDef(armor[0]);
       if (body) this.afterReveal(titleCardMs() + 600, () => toast('The Tanod left you a set of training gear.', 4500, 'good', gearPicture(body, asset)));
       const frame = this.M.ui.inventory?.itemFrame;
-      mountQuests({ colours: Q.colours, frame: frame ? { url: asset(frame.file), slice: frame.nineSlice } : null, giver: (id) => this.giverOf(id), report: (id) => this.reportQuest(id) });
+      const marks = this.questMarkArt();
+      this.questMap = marks ? this.makeQuestMap(marks) : null;
+      const G = this.M.guide;
+      mountQuests({
+        colours: Q.colours,
+        frame: frame ? { url: asset(frame.file), slice: frame.nineSlice } : null,
+        giver: (id) => this.giverOf(id),
+        report: (id) => this.reportQuest(id),
+        pin: marks && this.questMap ? { url: marks.pin, open: () => void this.questMap?.show('tap') } : undefined,
+      });
+      // The new player guide: the guide arrow (the quest button, Report) for guided quests.
+      if (G) {
+        mountGuideArrow(G, asset, frame ? { url: asset(frame.file), slice: frame.nineSlice } : null, Q.colours);
+        mountQuestGuide();
+      }
       // The Tanod's line as each quest of his is given (his leveling chain; also one given while you were away), once.
       this.afterReveal(titleCardMs() + 900, () => {
         this.giveReady = true;
@@ -3225,6 +3260,95 @@ export class TownScene extends Phaser.Scene {
   }
 
   private openingHouse = false;
+
+  // ── The new player guide's world parts: the quest map (Tab) and the quest trail ──
+
+  private questMap: QuestMap | null = null;
+  private trail: QuestTrail | null = null;
+  /** When the trail is looked at again, and what it was drawn for (your tile and its goal). */
+  private trailAt = 0;
+  private trailFor = '';
+
+  /** The quest marks' art (the quest map, the Map menu), or null without the guide's art. */
+  private questMarkArt(): QuestMarkArt | null {
+    const G = this.M.guide;
+    const Q = this.M.quests;
+    if (!G || !Q) return null;
+    const asset = (file: string) => `${import.meta.env.BASE_URL}assets/${file}`;
+    return { pin: (type) => asset(G.pin.file.replace('{type}', type)), pinFrame: G.pin.frame, pinAnchor: G.pin.anchor, colours: Q.colours };
+  }
+
+  private makeQuestMap(marks: QuestMarkArt): QuestMap {
+    const U = this.M.ui;
+    const asset = (file: string) => `${import.meta.env.BASE_URL}assets/${file}`;
+    const qm = new QuestMap(
+      {
+        world: asset(U.mapWorld?.file ?? 'ui/map/ui-map-world.png'),
+        worldSize: U.mapWorld?.size ?? [428, 220],
+        layout: asset(U.mapWorld?.layout ?? 'ui/map/map-layout.json'),
+        slums: asset('maps/slums.json'),
+        town: asset('maps/town.json'),
+        pin: asset(U.mapPin?.file ?? 'ui/map/ui-map-pin.png'),
+        pinSize: U.mapPin?.size ?? [9, 12],
+        marks,
+      },
+      () => ({ area: this.area, ...this.player.tile }),
+    );
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => qm.hide());
+    return qm;
+  }
+
+  /** Where the quest trail leads now: a guided quest's hunt (a kill or mini boss objective not yet reached), in town to
+   *  the Slums gate, in the Slums to its mob's zone (its tile nearest you) or the nearest of its mini boss spots; null
+   *  once you're there (inside the zone, within MINI_NEAR of the spot), elsewhere, with no such quest or the trail off. */
+  private trailGoal(): { tile: Tile; type: 'main' | 'side' } | null {
+    if (!trailOn() || (this.area !== 'town' && this.area !== 'slums')) return null;
+    const s = adventure();
+    const hunt = (s?.quests.active ?? [])
+      .map((p) => ({ p, q: questDef(p.id) }))
+      .map(({ p, q }) => ({ q, o: q?.objectives[p.step], ready: readyToReport(q, p) }))
+      .filter((x) => x.q?.guided && !x.ready && (x.o?.type === 'kill' || x.o?.type === 'miniBoss'))
+      .sort((a, b) => (a.q!.type === b.q!.type ? 0 : a.q!.type === 'main' ? -1 : 1))[0];
+    if (!hunt) return null;
+    const type = hunt.q!.type;
+    const me = this.player.tile;
+    if (this.area === 'town') {
+      const gate = this.map.gates?.slums;
+      return gate?.length ? { tile: { col: gate[Math.floor(gate.length / 2)][0], row: gate[Math.floor(gate.length / 2)][1] }, type } : null;
+    }
+    const zone = this.map.mobZones?.find((z) => z.mob === hunt.o!.mob && !z.dungeon);
+    if (!zone) return null;
+    const [c0, r0, c1, r1] = zone.rect;
+    if (hunt.o!.type === 'kill') {
+      if (me.col >= c0 && me.col <= c1 && me.row >= r0 && me.row <= r1) return null; // (there)
+      return { tile: { col: Math.min(Math.max(me.col, c0), c1), row: Math.min(Math.max(me.row, r0), r1) }, type };
+    }
+    const spots = (zone.miniBosses ?? []).map((b) => ({ col: b.tile[0], row: b.tile[1] }));
+    const dist = (t: Tile) => Math.hypot(t.col - me.col, t.row - me.row);
+    const near = spots.sort((a, b) => dist(a) - dist(b))[0];
+    if (!near || dist(near) <= MINI_NEAR) return null;
+    return { tile: near, type };
+  }
+
+  /** The quest trail, a few times a second (never every frame): the walk grid's path from your tile to its goal, its
+   *  first TRAIL_TILES tiles; found again only when your tile or the goal moved. */
+  private trailTick(time: number): void {
+    const trail = this.trail;
+    if (!trail) return;
+    trail.update(time);
+    if (time < this.trailAt) return;
+    this.trailAt = time + TRAIL_MS;
+    const goal = this.trailGoal();
+    const me = this.player.tile;
+    const key = goal ? `${me.col},${me.row}>${goal.tile.col},${goal.tile.row}:${goal.type}` : '';
+    if (key === this.trailFor) return;
+    this.trailFor = key;
+    if (!goal) return trail.hide();
+    const to = this.grid.walkable(goal.tile.col, goal.tile.row) ? goal.tile : this.grid.nearestReachable(me, goal.tile);
+    const path = to && this.grid.findPath(me, to);
+    if (!path || path.length < 2) return trail.hide();
+    trail.show(path.slice(1, TRAIL_TILES + 1), goal.type);
+  }
   /** The neighbourhood's moon charms and masks by the houses' doors (world/rogue-signs.ts). */
   private rogueSigns: RogueSigns | null = null;
 
@@ -3528,6 +3652,7 @@ export class TownScene extends Phaser.Scene {
         frame: frame ? { url: asset(frame.file), slice: frame.nineSlice } : null,
         slums: asset('maps/slums.json'),
         town: asset('maps/town.json'),
+        marks: this.questMarkArt() ?? undefined,
       });
       onAdventure(() => this.mapView?.refresh());
     }
