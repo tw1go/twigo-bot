@@ -350,6 +350,21 @@ The glow and rising lines on a weapon at +15 and above: blue, then gold, then pr
 **Trade**:
 Two players swapping items and Kusing face to face, both locking then confirming.
 
+**Mail**:
+A letter from the game or its Game Masters to one member's mailbox, kept 30 days; players never send it.
+_Avoid_: message (that's chat), gift (that's /gift, straight in)
+
+**Mailbox**:
+Where a member reads their mail: the HUD's mail button, or a mailbox in town.
+_Avoid_: inbox
+
+**Attachment**:
+What a mail carries for its member: items, Kusing and Kowens, taken all at once by claiming it.
+
+**Claim**:
+Taking a mail's attachments: items and Kusing into the combat bag (all of them, or none while it's full), Kowens into
+the wallet; once.
+
 
 ## Pets
 
