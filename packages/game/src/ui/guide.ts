@@ -275,6 +275,18 @@ const TOPICS: Topic[] = [
     ].join('\n'),
   },
   {
+    id: 'mail',
+    icon: '✉️',
+    label: 'Mail',
+    text: [
+      'The **mail button** (✉ beside News) opens your mailbox; a red dot means a letter you haven’t opened.',
+      '• Letters come from the **Tanod** and the **Game Masters**: news, apologies, event rewards. Players can’t send mail',
+      '• A 📎 means something is attached: items, **Kusing** or **Kowens**. Press **Claim** to take it all (items go to your **combat bag**: make room first if it’s full), or **Claim all** for every letter',
+      '• Mail stays **30 days**, claimed or not, so claim what’s attached in time',
+      '• **Delete** a letter once it’s read and claimed, or **Delete read** to tidy up',
+    ].join('\n'),
+  },
+  {
     id: 'casino',
     icon: '🎰',
     label: 'Casino',

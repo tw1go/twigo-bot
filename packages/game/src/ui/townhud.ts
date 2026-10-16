@@ -9,6 +9,8 @@ import { jackpotTimer } from './jackpot-timer';
 import { raceBox } from './race-box';
 import { hasUnread, loadNews, showNews } from './news';
 import { showGuide } from './guide';
+import { showMail } from './mail';
+import { loadMail, onUnreadMail } from '../net/mail';
 import { showSettings } from './settings';
 import { isDesktopApp, isHomeScreenApp } from '../net/platform';
 
@@ -36,6 +38,8 @@ export interface TownHudOptions {
   megaphone: string | null;
   /** The tutorial button's icon (manifest ui.tutorialIcon); a "?" without it. */
   guide: string | null;
+  /** The mail button's envelope (manifest ui.mailIcon); a ✉ without it. */
+  mail?: string | null;
   /** The jackpot counter's icon (manifest ui.jackpotIcon); the Kowen coin without it. */
   ticket: string | null;
   /** The golem timer's picture (manifest ui.golemHead); none: just its words. */
@@ -253,6 +257,26 @@ export function mountTownHud(o: TownHudOptions): void {
   guide.setAttribute('aria-haspopup', 'dialog');
   guide.title = 'Tutorial';
   guide.addEventListener('click', () => showGuide());
+  // Mail (ui/mail.ts), with a dot while a letter isn't opened yet (members only: guests have no mailbox).
+  const mail = el('button', 'th-settings th-news th-mail');
+  if (o.mail) {
+    const icon = el('img', 'th-gear');
+    icon.src = o.mail;
+    icon.alt = '';
+    mail.append(icon);
+  } else mail.textContent = '✉';
+  const mailDot = el('span', 'th-news-dot th-mail-dot');
+  mailDot.hidden = true;
+  mail.append(mailDot);
+  mail.setAttribute('aria-label', 'Mail');
+  mail.setAttribute('aria-haspopup', 'dialog');
+  mail.title = 'Mail';
+  mail.addEventListener('click', () => showMail());
+  onUnreadMail((n) => {
+    mailDot.hidden = !n;
+    mail.title = n ? `Mail (${n} new)` : 'Mail';
+  });
+  if (fakeLogin()) void loadMail(); // (dev: /me has no count; the dev town's pretend mailbox does)
   // Quests (ui/quests.ts opens the log; the dot shows a quest started or moved on since it was last opened).
   const quest = el('button', 'th-settings th-news th-quest');
   quest.id = 'quest-button';
@@ -282,7 +306,7 @@ export function mountTownHud(o: TownHudOptions): void {
   const top = el('div', 'th-top');
   top.append(el('div', 'th-map'));
   const buttons = el('div', 'th-buttons');
-  buttons.append(quest, guide, news, settings);
+  buttons.append(quest, guide, ...(o.me || fakeLogin() ? [mail] : []), news, settings);
   // Full screen (the website in a browser tab, where the browser allows it: not iPhone Safari; the home screen app and the
   // desktop app are full screen already).
   if (document.fullscreenEnabled && !isHomeScreenApp() && !isDesktopApp()) buttons.append(fullscreenButton());

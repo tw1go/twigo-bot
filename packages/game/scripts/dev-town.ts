@@ -1,7 +1,7 @@
 import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ClassesFile, GearRarity, HoodHouse, HouseLook, OutfitData, RogueState, TownHoodActionResponse, TownHoodResponse, TownItems, TownRace, TownRaceResponse } from '@mikazuki/shared';
-import { type LanternPost, RETURN_LANTERN, gainPetXp, parsePetAction, petAction, petIdOf, petRules, setPetLevel, addToBag, isGearDef, lanternPostOf, newItem, rollGear, rollWorthy, takeKind, buffSkillLevels, classBuffs, classSkills, damageSkillLevels, moveUnlock } from '@mikazuki/shared';
+import { type LanternPost, type TownMail, MAIL_RULES, claimInto, hasAttachments, parseMailAction, RETURN_LANTERN, gainPetXp, parsePetAction, petAction, petIdOf, petRules, setPetLevel, addToBag, isGearDef, lanternPostOf, newItem, rollGear, rollWorthy, takeKind, buffSkillLevels, classBuffs, classSkills, damageSkillLevels, moveUnlock } from '@mikazuki/shared';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { doorSpot, hoodMap, lotTile } from '../../bot/src/web/hood-map.ts';
 import type { Plugin } from 'vite';
@@ -9,7 +9,7 @@ import { attachTown } from '../../bot/src/web/town.ts';
 import { MobRoom, loadMobKinds, loadSkillShapes } from '../../bot/src/web/town-mobs.ts';
 import { type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView, raiseSkill, resetSkillPoints, resetStatPoints, spendPoint } from '../../bot/src/web/progress.ts';
 import { loadItemData, loadLeveling, loadStats } from '../../bot/src/web/stats-data.ts';
-import { buyCombat, devGive, dropFromBag, takeLoot, usePotion } from '../../bot/src/web/combat-bag.ts';
+import { buyCombat, devGive, dropFromBag, makeItem, takeLoot, usePotion } from '../../bot/src/web/combat-bag.ts';
 import { enhanceFeedLine, forge, parseForgeAction } from '../../bot/src/web/forge.ts';
 import { settleTrade } from '../../bot/src/web/trade.ts';
 import { loadGolemArt } from '../../bot/src/web/town-golem.ts';
@@ -54,6 +54,9 @@ import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
 //   POST /__pet?as=Alice {action: open|out|back|spend|reset, …}   a pet action on her items here (the page's pretend
 //   /town/pet), by the shared rules (the swap cooldown and fights too); GET /__pet?as=Alice&level=12&xp=500: her pet out
 //   (else the first in her bag) at that level and XP (the page's ?petlevel= / ?petxp=)
+//   GET /__mail?as=Alice&title=Sorry&body=…&from=The%20Tanod&kusing=500&kowens=5&give=weapon-sturdy-slingshot:darkBlue:7
+//       a mail for Alice (give= may repeat: defId:rarity:plus:count, as ?give=), shown to her at once; her mailbox
+//       (GET/POST /town/mail, by ?as= from the page's address) is answered here by the same rules, claims into her items
 //   GET /__roll?as=Alice   a rare orange item drops for Alice's party: the loot roll pop-up (alone: it just lies there)
 //   GET /__loot?rich=1   nearly every kill drops gear (the first kind, brown, +0 to +3) and a potion, to try loot (rich=0: as ever)
 //   POST /__shop?as=Alice {id, quantity, kowens}   buys a combat item (the sari-sari store's Healing and Smithing tabs)
@@ -573,6 +576,80 @@ export function devTown(): Plugin {
         town.items(name);
         server.config.logger.info(`[items] ${name}: ${said.join(', ')}`, { timestamp: true });
         reply(res, { said, items: g }); // (the page takes them from here too, in case its socket isn't up yet)
+      });
+      // ── Pretend mail (the bot's web/mail.ts in memory, by name): /__mail sends, /town/mail reads, claims, deletes ──
+      const mailboxes = new Map<string, TownMail[]>();
+      let mailSeq = 0;
+      const mailOf = (name: string) => {
+        const list = (mailboxes.get(name) ?? []).filter((m) => m.expires > Date.now());
+        mailboxes.set(name, list);
+        return list;
+      };
+      const mailView = (name: string) => ({ mail: mailOf(name), unread: mailOf(name).filter((m) => !m.read).length });
+      server.middlewares.use('/__mail', (req, res) => {
+        const q = new URL(req.url ?? '/', 'http://localhost').searchParams;
+        const name = q.get('as') ?? 'Dev tester';
+        const made = q.getAll('give').flatMap((g) => {
+          const [defId, rarity, plus, count] = g.split(':');
+          const it = makeItem(items, defId, { rarity: (rarity || undefined) as GearRarity | undefined, plus: Number(plus || 0), count: Number(count || 1) }, devUid);
+          return it ? [it] : [];
+        });
+        const now = Date.now();
+        const m: TownMail = {
+          id: ++mailSeq, from: q.get('from') || 'The Tanod', title: q.get('title') || 'A letter from the Tanod', body: q.get('body') || 'Salamat for playing, citizen. Here is a little something.',
+          at: now, expires: now + MAIL_RULES.days * 86_400_000, read: false, claimed: false,
+          kowens: Math.max(0, Number(q.get('kowens')) || 0), kusing: Math.max(0, Number(q.get('kusing')) || 0), items: made,
+        };
+        m.claimed = !hasAttachments(m);
+        mailOf(name).unshift(m);
+        town.mail(name, mailView(name).unread, m.from, m.title);
+        server.config.logger.info(`[mail] to ${name}: ${m.title}`, { timestamp: true });
+        reply(res, mailView(name));
+      });
+      server.middlewares.use('/town/mail', async (req, res) => {
+        const name = asOf(req).get('as') ?? 'Dev tester';
+        if (req.method !== 'POST') return reply(res, mailView(name));
+        const a = parseMailAction(await readJson(req));
+        const done = (ok: boolean, extra: Record<string, unknown> = {}) => reply(res, { ...mailView(name), ok, ...extra });
+        if (!a) return done(false, { message: 'invalid action' });
+        const claim = (m: TownMail): string | null => {
+          if (!hasAttachments(m)) return 'Nothing left to claim.';
+          const why = claimInto(items, gearOf(name), m, devUid);
+          if (why) return why;
+          m.claimed = m.read = true;
+          return null;
+        };
+        const sum = (list: TownMail[]) => ({ kowens: list.reduce((n, m) => n + m.kowens, 0), kusing: list.reduce((n, m) => n + m.kusing, 0), items: list.flatMap((m) => m.items) });
+        if (a.action === 'claim-all') {
+          const got: TownMail[] = [];
+          let why: string | null = null;
+          for (const m of [...mailOf(name)].reverse().filter(hasAttachments)) {
+            why = claim(m);
+            if (why) break;
+            got.push(m);
+          }
+          if (got.length) town.items(name);
+          return done(!!got.length || !why, { ...(got.length ? { got: sum(got) } : {}), ...(why ? { message: why } : {}) });
+        }
+        if (a.action === 'delete-read') {
+          mailboxes.set(name, mailOf(name).filter((m) => !m.read || hasAttachments(m)));
+          return done(true);
+        }
+        const m = mailOf(name).find((x) => x.id === a.id);
+        if (!m) return done(false, { message: 'That mail is gone.' });
+        if (a.action === 'read') {
+          m.read = true;
+          return done(true);
+        }
+        if (a.action === 'claim') {
+          const why = claim(m);
+          if (why) return done(false, { message: why });
+          town.items(name);
+          return done(true, { got: sum([m]) });
+        }
+        if (hasAttachments(m)) return done(false, { message: 'Claim what’s attached first.' });
+        mailboxes.set(name, mailOf(name).filter((x) => x !== m));
+        return done(true);
       });
       // GET /__roll?as=Alice   a rare item (orange, two slots, of Calamity or Flamboyance) drops for Alice and her party in
       // the room: the roll pop-up for them all (alone: it just lies there for her).
