@@ -1573,6 +1573,24 @@
       "common": 100,
       "rare": 200,
       "shop": "sari-sari store, own Pets tab"
+    },
+    "petCube": {
+      "note": "repo-only (16 Oct 2026): pet cubes, a bound item opened into a bound Lv 1 pet of the owner's choice (shared pets.ts openPetCube; the popup and the server both read `choices`). One entry a tier: a rare cube would be a second.",
+      "common": {
+        "itemId": "pet-cube-common",
+        "choices": [
+          "fork-of-jord",
+          "croakyangs",
+          "wonwuu",
+          "pittuki",
+          "tamtam",
+          "kislap"
+        ],
+        "gives": "bound pet",
+        "tradable": false,
+        "bound": true,
+        "stack": 99
+      }
     }
   }
 }

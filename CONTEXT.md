@@ -378,8 +378,13 @@ _Avoid_: companion, familiar, minion (the golem's are Adds)
 The unopened, tradable item a pet comes in (one per kind of pet); it stacks, and opening it gives a bound Lv 1 pet.
 _Avoid_: egg, crate, capsule
 
-**Open** (a pet box):
-Using a pet box: the box is gone and its pet, bound to this character, is in the bag.
+**Pet cube**:
+A bound item that is opened into the pet its owner chooses from the cube's list (the common cube: the six common
+pets); it stacks. Its name in the game is Pet Selection Cube.
+_Avoid_: selector, voucher, token
+
+**Open** (a pet box or pet cube):
+Using a pet box or pet cube: it is gone (one of its stack) and its pet, bound to this character, is in the bag.
 _Avoid_: hatch, unbox, activate
 
 **Send out / Call back**:

@@ -1,6 +1,6 @@
 import { keyLabel, matches, onKeybinds } from './keybinds';
 import { api } from '../net/endpoints';
-import { type Item, type Pocket, type TownBagActionResponse, type TownBagItem, type TownInventoryResponse, RETURN_LANTERN, agimatPocket, bagSlots, costumePocket, isGearDef, pocketOf, pocketSlots, pocketUsed, sellPrice } from '@mikazuki/shared';
+import { type Item, type Pocket, type TownBagActionResponse, type TownBagItem, type TownInventoryResponse, RETURN_LANTERN, agimatPocket, bagSlots, costumePocket, cubeOf, isGearDef, pocketOf, pocketSlots, pocketUsed, sellPrice } from '@mikazuki/shared';
 import { hotbarDragItem, hotbarItem } from './hotbar';
 import { playSound } from '../audio/sound';
 import { toast } from './toast';
@@ -14,6 +14,7 @@ import { chatItem, itemKeys, itemPicture, itemTipFor, nameOf, rarityOf, wearDiff
 import { pickForHotbar, potionCooldownKey } from './hotbar';
 import { showRename } from './rename';
 import { openBox } from './pet-tab';
+import { openCube } from './pet-cube';
 import { type ForgePopup, confirmCombine, confirmDisassemble, confirmDisassembleMany, confirmSell, confirmSellMany, forgeFromBag, mountForge } from './forge';
 import { fragmentsPerWhetstone } from '@mikazuki/shared';
 import { inTrade, tradeBlocked, tradeDrag, tradePut, trading } from './trade';
@@ -63,6 +64,11 @@ function typing(): boolean {
   const el = document.activeElement as HTMLElement | null;
   return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
 }
+/** A pet cube (stats.json pets.petCube): opened into the pet picked. */
+const isCube = (it: Item): boolean => {
+  const D = itemData();
+  return !!D && !!cubeOf(D, it);
+};
 const plural = (n: number, one: string, many: string) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
 const kowens = (n: number) => plural(n, 'Kowen', 'Kowens');
 
@@ -428,6 +434,9 @@ export class Inventory {
           document.body.classList.add('hb-dragging'); // (the hotbar over the panels while it's carried: index.html)
         });
         cell.addEventListener('dragend', () => document.body.classList.remove('hb-dragging'));
+      } else if (isCube(it)) {
+        // A pet cube: opened by a double-click (the picker: which pet).
+        cell.addEventListener('dblclick', () => !this.forge.isOpen && !trading() && void openCube(it));
       } else if (def && !isGearDef(def) && def.opens) {
         // A pet box: opened by a double-click (a confirm: the pet binds); dragged onto the Pet slot it's refused there.
         cell.draggable = true;
@@ -498,6 +507,8 @@ export class Inventory {
       const wear = this.action('Wear', 'iv-flex', () => void this.equipment?.wearCosmetic(it.uid));
       if (!def.cosmeticPlace) Object.assign(wear, { disabled: true, title: "Can't be worn yet." });
       row.append(wear);
+    } else if (isCube(it)) {
+      row.append(this.action('Open', 'iv-flex', () => void openCube(it)));
     } else if (def && !isGearDef(def) && def.opens) {
       row.append(this.action('Open', 'iv-flex', () => void openBox(it)));
     } else if (def?.kind === 'pet') {
@@ -559,6 +570,8 @@ export class Inventory {
     } else if (def?.kind === 'cosmetic') {
       if (!def.cosmeticPlace) off.add(items.length);
       items.push(['Wear', () => void this.equipment?.wearCosmetic(it.uid)]);
+    } else if (isCube(it)) {
+      items.push(['Open', () => void openCube(it)]);
     } else if (def && !isGearDef(def) && def.opens) {
       items.push(['Open', () => void openBox(it)]);
     } else if (def?.kind === 'pet') {
@@ -576,7 +589,7 @@ export class Inventory {
       if (price !== null) items.push([`Sell… (${(price / it.count).toLocaleString()} Kusing each)`, () => void this.sell(it, cell, price)]);
     }
     // A consumable: used where it's for, never from the bag. A ticket says where (greyed); a Return Lantern's Use says so.
-    if (def && !isGearDef(def) && def.kind === 'consumable' && !def.forge && !def.opens) {
+    if (def && !isGearDef(def) && def.kind === 'consumable' && !def.forge && !def.opens && !isCube(it)) {
       const where = def.useAt ?? 'Use it where it’s for';
       if (def.id === RETURN_LANTERN) items.push(['Use', () => toast(where, 2400)]);
       else {

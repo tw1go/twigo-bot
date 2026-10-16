@@ -685,7 +685,7 @@ export function startWebServer(client: Client): void {
           if (r.ok) town?.progress(userId, r.adventure.progress); // (fights read the saved levels: the next cast uses them)
           return send(res, 200, JSON.stringify(r));
         } else if (path === '/town/pet') {
-          // Pets: a box opened, a pet sent out or called back (never in a fight: the town's rule), its pet points.
+          // Pets: a box opened, a cube opened into the pet picked, a pet sent out or called back (never in a fight: the town's rule), its pet points.
           const action = parsePetAction(body);
           if (!action) return send(res, 400, '{"error":"invalid pet action"}');
           const { changed, ...r } = townPet(userId, action, !!town?.inCombat(userId));
@@ -693,6 +693,7 @@ export function startWebServer(client: Client): void {
             if (changed) town?.pet(userId, kitOf(userId).pet); // everyone sees it follow them (or go), its stats in fights
             else if (action.action === 'spend' || action.action === 'reset') town?.progress(userId, r.adventure.progress); // (its HP)
             if (action.action === 'open') console.log(`[pets] ${userId} opened ${action.item}`);
+            if (action.action === 'cube') console.log(`[pets] ${userId} opened pet cube ${action.item} into ${action.pet}`);
           }
           return send(res, 200, JSON.stringify(r));
         } else {

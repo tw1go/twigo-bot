@@ -2236,6 +2236,22 @@
       .fg-combine-name { color: #A9B1D6; font-size: calc(12px * var(--text)); }
       .fg-combine-arrow { color: #A3E635; font-size: calc(22px * var(--text)); letter-spacing: -4px; }
       .fg-combine-short { opacity: 0.55; }
+      /* The pet cube's picker (ui/pet-cube.ts): the confirm box, wider, with a 3 × 2 grid of pet cards; the pick in gold. */
+      .pc-pick { position: relative; width: min(460px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow-y: auto; box-sizing: border-box; }
+      .pc-pick .pc-x { position: absolute; top: 2px; right: 4px; width: 30px; height: 30px; padding: 0; border: 0; background: none; color: #7A8099; font: 700 calc(24px * var(--text))/1 var(--ui-font); cursor: var(--cur-hand, pointer); }
+      .pc-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 4px 0 2px; transition: opacity 0.15s; }
+      .pc-grid.pc-dim { opacity: 0.45; pointer-events: none; }
+      .pc-card { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 4px 8px; border: 2px solid #3B4261; border-radius: 0; background: #1A2033; color: #E6E9F2; font: inherit; font-size: calc(13px * var(--text)); cursor: var(--cur-hand, pointer); }
+      .pc-card:hover { border-color: #7C2AE8; }
+      .pc-card.pc-picked { border-color: #FACC15; box-shadow: 0 0 0 2px #FACC15, 0 0 10px rgba(250, 204, 21, 0.45); }
+      .pc-stage { display: flex; align-items: center; justify-content: center; width: 80px; height: 80px; }
+      .pc-sprite { background-repeat: no-repeat; image-rendering: pixelated; }
+      .pc-name { text-align: center; line-height: 1.2; }
+      .pc-pick .fg-go:disabled { background: #3D4256; color: #7A8099; opacity: 0.7; cursor: default; }
+      .pc-ask { display: flex; flex-direction: column; gap: 10px; text-align: center; }
+      .pc-ask[hidden], .pc-pick .fg-actions[hidden] { display: none; }
+      .pc-ask-text { color: #fff; }
+      @media (max-width: 380px) { .pc-stage { width: 64px; height: 64px; } .pc-sprite { transform: scale(0.8); } }
       .fg-confirm .fg-warn { font-size: calc(13px * var(--text)); color: #FDBA74; }
       .fg-confirm .fg-actions { display: flex; gap: 8px; justify-content: center; margin-top: 4px; }
       .fg-confirm .dr-title { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; } /* dropping an item (ui/drop.ts) */
