@@ -490,6 +490,8 @@ export type TownServerMessage =
   | { t: 'gift'; from: string; amount: number }
   /** The gifter gave them an item (/gift item): a pop-up with its picture. */
   | { t: 'gift-item'; from: string; item: { id: string; name: string; rarity: string }; quantity: number }
+  /** New mail came (`from`, `title`: the newest), or their mailbox changed elsewhere: how many aren't opened yet. */
+  | { t: 'mail'; unread: number; from?: string; title?: string }
   /** Your Kowens changed (anywhere: a command, voice rewards, a draw…): the HUD reloads them. */
   | { t: 'wallet' }
   /** Someone emoted (not sent back to the one who did it: they show it right away). */

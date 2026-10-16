@@ -159,9 +159,9 @@ export function buyCombat(
   return { ok: true, message: `Bought ${n > 1 ? `${n}× ` : ''}${ware.def.name}!`, ware, quantity: n };
 }
 
-/** Dev (?give=): an item of a kind, rolled as the server rolls drops (gear of `rarity` with its lines, at `plus`), or a
- *  stack of anything else; into the bag if it fits. */
-export function devGive(data: ItemData, c: CombatItems, defId: string, opts: { rarity?: GearRarity; plus?: number; count?: number; level?: number }, uid: () => string, random: () => number = Math.random): Item | null {
+/** An item of a kind, rolled as the server rolls drops (gear of `rarity` with its lines, at `plus`), or a stack of
+ *  anything else (an agimat at `level`; a pet at `level`, bound, as a box opens). Null: no such kind. */
+export function makeItem(data: ItemData, defId: string, opts: { rarity?: GearRarity; plus?: number; count?: number; level?: number }, uid: () => string, random: () => number = Math.random): Item | null {
   const def = data.defs.get(defId);
   if (!def) return null;
   let item: Item;
@@ -174,7 +174,13 @@ export function devGive(data: ItemData, c: CombatItems, defId: string, opts: { r
     // A pet straight away (as a box opens: bound, Lv 1, or ?give=pet-croakyangs:::5's level).
     if (def.kind === 'pet') Object.assign(item, { bound: true, xp: 0, points: {}, level: Math.max(1, Math.min(petRules(data.stats)?.levelCap ?? 20, opts.level ?? 1)) });
   }
-  return addToBag(data, c.bag, item, uid) ? item : null;
+  return item;
+}
+
+/** Dev (?give=): `makeItem`'s item into the bag if it fits. */
+export function devGive(data: ItemData, c: CombatItems, defId: string, opts: { rarity?: GearRarity; plus?: number; count?: number; level?: number }, uid: () => string, random: () => number = Math.random): Item | null {
+  const item = makeItem(data, defId, opts, uid, random);
+  return item && addToBag(data, c.bag, item, uid) ? item : null;
 }
 
 /** Takes `count` of an item out of the combat bag to drop on the ground (worn items never): the item (a whole stack keeps
