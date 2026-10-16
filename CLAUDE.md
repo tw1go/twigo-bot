@@ -1177,7 +1177,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   the world map (`ui/world-map.ts`, shared with the Map menu) with you and every active hunt (`ui/quest-marks.ts`, the M
   map draws them too); a touch screen's tracker rows get a pin (`qt-pin`) that opens it until the next tap. Lessons
   (`ui/lessons.ts` = every step and line, run by `ui/lesson-runner.ts`): potions onto the hotbar, wearing the quest
-  piece, combining fragments, enhancing the quest weapon, and the race (the first Mosang race this character starts from
+  piece, combining fragments, enhancing the quest weapon,
+  spending stat points (`stats`: once a class has some, the bag → Equipment → Gear tab → the main stat's +, then
+  Reset pointed at) and skill points (`skills`: K → a skill's +; waiting while the hotbar's K button isn't on screen,
+  phones), and the race (the first Mosang race this character starts from
   an Aling's dialog box: net/race.ts `raceStartedHere`; the race box, the runner cards, the amount (from the bot's
   `maxBet` / `payout`: `raceRules`), Bet, then "They're off soon!" and the result by the race box for 6 s each from when
   the box is in view, or "Betting's closed" if no bet; `urgent`: it runs at once, ahead of the quest arrow, the queue and

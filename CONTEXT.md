@@ -456,8 +456,8 @@ _Avoid_: Tab map, world map overlay; not the Map menu (M, with its frame and tel
 
 **Lesson**:
 A one-time walkthrough of a new player's firsts (potions onto the hotbar, wearing a quest piece, combining fragments,
-enhancing, betting on the first Mosang race they start): steps, each a guide arrow and a tip box, moving on by
-themselves as you do them. Each runs once a character; × ends one for good.
+enhancing, spending stat and skill points, betting on the first Mosang race they start): steps, each a guide arrow and
+a tip box, moving on by themselves as you do them. Each runs once a character; × ends one for good.
 _Avoid_: item tip (a tooltip), tutorial (the "?" guide), hint
 
 **Quest piece**:

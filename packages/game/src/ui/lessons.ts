@@ -5,7 +5,7 @@ import { hotbarItemIds } from './hotbar';
 import { keyLabel } from './keybinds';
 import { type GuideSide, uncovered } from './guide-arrow';
 
-// 🎓 The lessons (CONTEXT.md "Lesson"): four one-time walkthroughs of a new player's first items, each a list of steps;
+// 🎓 The lessons (CONTEXT.md "Lesson"): one-time walkthroughs of a new player's first items, each a list of steps;
 // ui/lesson-runner.ts runs them (one at a time, after the quest guide's arrow, never in a fight). Every line a player
 // reads is here, so they're easy to change. A step says when it applies (from what's on screen and in the bag) and what
 // it points at; the runner shows the furthest step that applies now, so a player who goes off and does something else
@@ -281,6 +281,48 @@ export const LESSONS: Lesson[] = [
       },
     ],
   },
+  {
+    // 6. Spend stat points: the stats box under the Equipment panel (opened with the bag), its + on the class's main stat.
+    id: 'stats',
+    starts: (c) => !!c.s.cls && c.s.progress.statPoints > 0,
+    note: (c) => ({ spent: String(statsSpent(c)) }),
+    goal: (c) => statsSpent(c) > Number(c.memo.spent) || c.s.progress.statPoints <= 0,
+    steps: [
+      { applies: () => true, target: bagButton, line: (c) => `You have ${pts(c.s.progress.statPoints, 'stat point')} to spend. Open your bag${bagKey()}.`, sides: ['above', 'right', 'left'] },
+      // (Phones: the equipment panel shows in the bag's place.)
+      { applies: () => bagOpen() && !shown($('#equipment')), target: () => $('#inventory .iv-to-equip'), line: () => 'Open your Equipment.', sides: ['below', 'left'] },
+      { applies: () => shown($('#equipment')) && !shown(statPlus()), target: () => $('#equipment .eq-tab[data-tab="gear"]'), line: () => 'Your stats are on the Gear tab.', sides: ['below', 'above'] },
+      {
+        applies: () => shown(statPlus()),
+        target: (c) => statPlus(mainStat(c)),
+        line: (c) => {
+          const m = mainStat(c);
+          return `Press + to put a point into ${m ?? 'a stat'}${m ? `, your class's main stat` : ''}. Every level gives you more.`;
+        },
+        sides: ['left', 'below', 'right'],
+      },
+    ],
+    after: () => ({ target: $('#equipment .eq-reset'), line: 'Changed your mind? Reset gives every point back, free.' }),
+  },
+  {
+    // 7. Spend skill points: the Skills panel (K, the button at the hotbar's left), a + on a skill.
+    id: 'skills',
+    starts: (c) => !!c.s.cls && c.s.progress.skillPoints > 0,
+    note: (c) => ({ spent: String(skillsSpent(c)) }),
+    goal: (c) => skillsSpent(c) > Number(c.memo.spent) || c.s.progress.skillPoints <= 0,
+    // (No K button on screen, the hotbar hidden (phones, the casino): it waits, and the next lesson may run meanwhile.)
+    blocked: () => !shown($('#hotbar .hb-book')),
+    steps: [
+      { applies: () => !shown($('#skill-book')), target: () => $('#hotbar .hb-book'), line: (c) => `You have ${pts(c.s.progress.skillPoints, 'skill point')}. Open your skills${keyLabel('skills') ? ` (${keyLabel('skills')})` : ''}.`, sides: ['above', 'right'] },
+      {
+        applies: () => shown($('#skill-book')),
+        target: () => [...document.querySelectorAll<HTMLElement>('#skill-book .sb-plus')].find(shown) ?? null,
+        line: () => 'Press + to raise a skill: more damage and a shorter cooldown each level.',
+        sides: ['left', 'below', 'above'],
+      },
+    ],
+    after: () => ({ toast: 'Every level gives you more skill points. Reset is free.' }),
+  },
 ];
 
 // 5. The first Mosang race you start from an Aling's dialog box: how to bet on it, then how it went. It can't wait (the
@@ -351,6 +393,20 @@ LESSONS.push({
 });
 
 const fragUid = (c: LessonCtx) => c.s.bag.find((it) => it.defId === c.memo.fragment)?.uid;
+// ── Points (lessons 6 and 7) ──
+
+/** "3 stat points", "1 skill point" */
+const pts = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`;
+const statsSpent = (c: LessonCtx) => Object.values(c.s.progress.points).reduce((n, v) => n + (v ?? 0), 0);
+const skillsSpent = (c: LessonCtx) => Object.values(c.s.progress.skills).reduce((n, v) => n + (v ?? 0), 0);
+/** The class's main stat (stats.json classes[cls].main). */
+const mainStat = (c: LessonCtx) => (c.s.cls ? (c.D.stats.classes[c.s.cls] as { main?: string } | undefined)?.main : undefined);
+/** The stats box's + for a stat (else the first one showing). */
+const statPlus = (stat?: string) => {
+  const all = [...document.querySelectorAll<HTMLElement>('#equipment .eq-plus')].filter(shown);
+  return all.find((b) => !!stat && b.getAttribute('aria-label')?.endsWith(` ${stat}`)) ?? all[0] ?? null;
+};
+
 const weaponOf = (c: LessonCtx) => [c.s.equipped.weapon, ...c.s.bag].find((it) => it?.uid === c.memo.weapon) ?? undefined;
 const plural = (name: string) => (name.endsWith('s') ? name : `${name}s`);
 /** The weapon's picture: its equipment slot while it's worn and the panel shows, else its bag cell. */
