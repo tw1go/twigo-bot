@@ -38,8 +38,9 @@ export interface TownHudOptions {
   megaphone: string | null;
   /** The tutorial button's icon (manifest ui.tutorialIcon); a "?" without it. */
   guide: string | null;
-  /** The mail button's envelope (manifest ui.mailIcon); a ✉ without it. */
+  /** The mail button's envelope (manifest ui.mailIcon); a ✉ without it. `mailNew`: its look while a letter is unread. */
   mail?: string | null;
+  mailNew?: string | null;
   /** The jackpot counter's icon (manifest ui.jackpotIcon); the Kowen coin without it. */
   ticket: string | null;
   /** The golem timer's picture (manifest ui.golemHead); none: just its words. */
@@ -259,11 +260,11 @@ export function mountTownHud(o: TownHudOptions): void {
   guide.addEventListener('click', () => showGuide());
   // Mail (ui/mail.ts), with a dot while a letter isn't opened yet (members only: guests have no mailbox).
   const mail = el('button', 'th-settings th-news th-mail');
+  const envelope = el('img', 'th-gear');
   if (o.mail) {
-    const icon = el('img', 'th-gear');
-    icon.src = o.mail;
-    icon.alt = '';
-    mail.append(icon);
+    envelope.src = o.mail;
+    envelope.alt = '';
+    mail.append(envelope);
   } else mail.textContent = '✉';
   const mailDot = el('span', 'th-news-dot th-mail-dot');
   mailDot.hidden = true;
@@ -274,6 +275,7 @@ export function mountTownHud(o: TownHudOptions): void {
   mail.addEventListener('click', () => showMail());
   onUnreadMail((n) => {
     mailDot.hidden = !n;
+    if (o.mail) envelope.src = n && o.mailNew ? o.mailNew : o.mail;
     mail.title = n ? `Mail (${n} new)` : 'Mail';
   });
   if (fakeLogin()) void loadMail(); // (dev: /me has no count; the dev town's pretend mailbox does)

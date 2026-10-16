@@ -60,7 +60,7 @@ import { showOutpost } from '../ui/outpost';
 import { showBoard } from '../ui/board';
 import { showShop } from '../ui/shop';
 import { showMail } from '../ui/mail';
-import { setUnreadMail } from '../net/mail';
+import { onUnreadMail, setUnreadMail } from '../net/mail';
 import { InspectWindow } from '../ui/inspect';
 import { TargetBox } from '../ui/target';
 import { TradeWindow, trading } from '../ui/trade';
@@ -499,6 +499,13 @@ export class TownScene extends Phaser.Scene {
     const junk = big ? new SlumsOutskirts(this.M, this.map) : null;
     if (junk) this.objects.extra = (c0, r0, c1, r1) => junk.objectsIn(c0, r0, c1, r1);
     this.objects.onSpawn = (o) => this.tint >= 0 && o.setTint(this.tint);
+    // The town mailbox raises its flag while you have an unread letter (your own view only).
+    const box = this.M.buildings.mailbox;
+    if (box?.flagUp) {
+      const flag = box.flagUp;
+      const off = onUnreadMail((n) => this.objects.setBuildingLook('mailbox', n ? flag : box.file));
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, off);
+    }
     if (this.map.bridge) this.bridges.push(drawBridge(this, this.map.bridge));
     this.map.bridges?.forEach((b, i) => this.bridges.push(drawBridge(this, b.tiles, b.along, `bridge-${i}`)));
     for (const [to, tiles] of Object.entries(this.map.gates ?? {}) as [Gate, [number, number][]][]) for (const [c, r] of tiles) this.gateAt.set(`${c},${r}`, to);
@@ -857,6 +864,7 @@ export class TownScene extends Phaser.Scene {
       megaphone: this.M.ui.newsIcon?.file ? asset(this.M.ui.newsIcon.file) : null,
       guide: this.M.ui.tutorialIcon?.file ? asset(this.M.ui.tutorialIcon.file) : null,
       mail: this.M.ui.mailIcon?.file ? asset(this.M.ui.mailIcon.file) : null,
+      mailNew: this.M.ui.mailIcon?.fileNew ? asset(this.M.ui.mailIcon.fileNew) : null,
       ticket: this.M.ui.jackpotIcon?.file ? asset(this.M.ui.jackpotIcon.file) : null,
       golemHead: this.M.ui.golemHead?.file ? asset(this.M.ui.golemHead.file) : null,
       quest: this.M.ui.questIcon?.file ? asset(this.M.ui.questIcon.file) : null,
@@ -3251,7 +3259,7 @@ export class TownScene extends Phaser.Scene {
     if (b.id === 'tanod-outpost') return showOutpost();
     if (b.id === 'notice-board') return showBoard();
     if (b.id === 'sari-sari-store') return showShop();
-    if (b.id === 'mailbox') return showMail();
+    if (b.id === 'mailbox') return this.me?.status === 'ok' || fakeLogin() ? showMail() : toast('Log in to get mail.');
     if (b.id === 'parlor') return this.openParlor();
     const house = this.houseFor(b.id);
     if (house) return void this.openHouse(house);

@@ -374,6 +374,11 @@ export class WorldObjects {
     if (SPARKLE_BUILDINGS.includes(o.id)) this.sparkle(sprite, front);
   }
 
+  /** Swaps a building's picture for another of the same size and anchor (the mailbox's flag going up and down). */
+  setBuildingLook(id: string, file: string): void {
+    for (const b of this.buildings) if (b.id === id && b.sprite.texture.key !== file && this.scene.textures.exists(file)) b.sprite.setTexture(file);
+  }
+
   /** A prop you walk inside (the Golem Pit): its back and front halves on one anchor, the ground point of its tile's
    *  centre. The back half sorts as if its feet were at that point + its sortOffsetY.back (behind everyone on the floor).
    *  The front half is cut into STRIP-px columns, each sorting at its own lowest heap pixel (where that bit of heap meets

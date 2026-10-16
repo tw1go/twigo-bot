@@ -70,8 +70,8 @@ export interface Manifest {
     newsIcon?: { file: string; size: Vec2 };
     /** The tutorial button's icon (ui/guide.ts); a "?" without it. */
     tutorialIcon?: { file: string; size: Vec2 };
-    /** The mail button's envelope (ui/mail.ts); a ✉ without it. */
-    mailIcon?: { file: string; size: Vec2 };
+    /** The mail button's envelope (ui/mail.ts), `fileNew` while a letter is unread; a ✉ without it. */
+    mailIcon?: { file: string; fileNew?: string; size: Vec2 };
     /** The Arena's jack en poy (scenes/ArenaScene.ts): hands, VS, round pips, menu icons, speed lines. */
     jnpHands?: { file: string; size: Vec2; frames: number };
     vs?: { file: string; size: Vec2; frames: number; fps: number };
@@ -135,6 +135,8 @@ export interface BuildingDef {
   footprintBottomCorner: Vec2;
   collision: string;
   interaction?: string;
+  /** The mailbox's look while its player has an unread letter (the same size and anchor; ui/mail.ts). */
+  flagUp?: string;
 }
 
 export interface PropDef {

@@ -779,6 +779,29 @@
         "front": "buildings/building-arena-front.png",
         "rule": "same canvas and anchor as the full image. Draw \"back\" (stands, inner walls, sand floor) at the depth of the footprint top corner so everyone on the sand is in front of it; draw \"front\" (the two front walls, front tower, base plinth) at the normal front-corner depth so players on the sand go behind its rim. back + front together equal building-arena.png exactly."
       }
+    },
+    "mailbox": {
+      "file": "props/mailbox/prop-town-mailbox.png",
+      "flagUp": "props/mailbox/prop-town-mailbox-flag-up.png",
+      "size": [
+        40,
+        64
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "footprintTopCorner": [
+        20,
+        48
+      ],
+      "footprintBottomCorner": [
+        20,
+        64
+      ],
+      "collision": "block its one tile",
+      "interaction": "opens the mailbox (ui/mail.ts); flagUp while the player has an unread letter (their own view only)",
+      "note": "the town mailbox (the art folder's props/mailbox, 16 Oct 2026): its stone plinth centred on the tile, measured from the art (its lowest pixel row 61, centre x 20)"
     }
   },
   "characters": {
@@ -18572,6 +18595,15 @@
         64
       ],
       "note": "round class badges: 32 by default, 16 redrawn for the chat and the avatar, 64 for the class cards"
+    },
+    "mailIcon": {
+      "file": "ui/mail/ui-mail-envelope.png",
+      "fileNew": "ui/mail/ui-mail-envelope-new.png",
+      "size": [
+        32,
+        32
+      ],
+      "note": "the mail button's envelope (HUD, between the tutorial and News; ui/mail.ts): fileNew (a sparkle) while a letter is unread. The art folder's ui/mail also has -16 and -64 cuts"
     }
   },
   "notes_ui": "All UI is drawn at 1x and scaled by the same whole-number zoom as the world. Text is never baked in: draw it with Minecraft.ttf.",
