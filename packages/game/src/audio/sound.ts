@@ -165,6 +165,15 @@ const DEFAULTS: SoundSettings = { music: 0, sfx: 1, muted: false, npcsMuted: fal
 let settings = loadSettings();
 let scene: Phaser.Scene | null = null;
 const lastPlayed = new Map<string, number>();
+
+/** The window has lost the focus (alt-tab, another window clicked): Phaser suspends the audio then (pauseOnBlur). */
+let blurred = false;
+window.addEventListener('blur', () => (blurred = true));
+window.addEventListener('focus', () => (blurred = false));
+/** Nothing can be heard now: the window is in the background or hidden, or the audio isn't running. A short sound asked
+ *  for meanwhile (the fight goes on: auto-cast, the server's hits) would wait on the stopped audio clock and play with
+ *  every other one at once on the way back, so it's dropped. (Music and the loops just pause and carry on.) */
+const unheard = (s: Phaser.Scene) => blurred || document.hidden || ((s.sound as Partial<Phaser.Sound.WebAudioSoundManager>).context?.state ?? 'running') !== 'running';
 /** The sets asked for (base → its volume); and where you are (tiles), for hearing range. */
 const sets = new Map<string, number>();
 let listener: { col: number; row: number } | null = null;
@@ -311,13 +320,14 @@ export function hearGossip(distance: number | null, talking: boolean): void {
  *  doesn't sound robotic. Silent while sound is locked, muted or turned down to 0. */
 export function playVoice(rate: number): void {
   const s = scene;
-  if (!s || s.sound.locked || settings.muted || settings.sfx === 0) return;
+  if (!s || s.sound.locked || unheard(s) || settings.muted || settings.sfx === 0) return;
   const v = VOICE.keys[Math.floor(Math.random() * VOICE.keys.length)];
   if (!s.cache.audio.exists(v.key)) return;
   s.sound.play(v.key, { volume: VOICE.volume * settings.sfx, rate: rate * (1 + (Math.random() * 2 - 1) * VOICE.detune) });
 }
 
-/** A short sound (dropped while sound is locked, muted or turned down to 0, or if the same one just played).
+/** A short sound (dropped while sound is locked, can't be heard (`unheard`), is muted or turned down to 0, or if the
+ *  same one just played).
  *  `pitch`: cents up or down (e.g. -300, a little lower), on top of the usual small random detune. */
 export function playSound(name: Sfx, volume = SFX[name].volume, pitch = 0): void {
   play(name, volume, pitch);
@@ -331,7 +341,7 @@ function play(name: string, volume: number, pitch = 0, o: { rate?: number; gapMs
   if (now - (lastPlayed.get(name) ?? -Infinity) < (o.gapMs ?? THROTTLE_MS)) return; // (before the rest: the debug tap sees what would play)
   lastPlayed.set(name, now);
   tap?.({ name, volume });
-  if (!s || s.sound.locked || settings.muted || settings.sfx === 0 || !s.cache.audio.exists(`sfx:${name}`)) return;
+  if (!s || s.sound.locked || unheard(s) || settings.muted || settings.sfx === 0 || !s.cache.audio.exists(`sfx:${name}`)) return;
   s.sound.play(`sfx:${name}`, { volume: volume * settings.sfx, ...(o.rate ? { rate: o.rate } : { detune: pitch + Phaser.Math.Between(-DETUNE, DETUNE) }) });
 }
 
