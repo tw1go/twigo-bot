@@ -32,8 +32,13 @@ export const pickupOf = (got: { kusing?: number; item?: Item }): ReturnType<type
 
 export const nameOf = (item: Item): string => {
   const D = itemData();
+  if (D && !D.defs.has(item.defId)) return UNKNOWN;
   return D ? itemName(D, item, myMainStat()) : item.defId;
 };
+
+/** An item this version of the game doesn't know yet (it came with a newer one: a reload shows it). */
+const UNKNOWN = 'New item';
+const UNKNOWN_LINE = 'New in the game: reload to see it.';
 
 /** Shows an item in the chat: "[its name]" into the input (ui/chat.ts listens), sent with its uid. Alt+click in the bag
  *  or the equipment panel. */
@@ -76,6 +81,7 @@ export function itemTipFor(item: Item, owner?: { cls: string | null }): HTMLElem
   const main = owner ? (owner.cls && D?.stats.classes[owner.cls]?.main) || null : myMainStat();
   const name = el('div', 'eq-tip-name', D ? itemName(D, item, main) : item.defId);
   name.style.color = item.broken ? '#9CA3AF' : RARITY_TEXT[rarity];
+  if (D && !def) return [Object.assign(name, { textContent: UNKNOWN }), el('div', 'eq-tip-line', UNKNOWN_LINE)];
   if (!D || !def) return [name];
   const parts: HTMLElement[] = [name];
   if (isGearDef(def) && itemAura(D, item)) {
