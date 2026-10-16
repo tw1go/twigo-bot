@@ -49,6 +49,7 @@ export function queueTown(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Tex
       // Hollow buildings (the arena) are drawn from their back and front layers instead of the full image.
       if (b?.layers?.back && b.layers.front) [b.layers.back, b.layers.front].forEach(img);
       else if (b) img(b.file);
+      if (b?.flagUp) img(b.flagUp); // (the mailbox with a letter waiting)
     } else {
       const p = M.props[o.id] as PropDef | undefined;
       if (p?.file) img(p.file);

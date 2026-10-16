@@ -98,7 +98,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   handling changes, and the README.
 - CMS (`packages/bot/src/web/cms.ts`, page `packages/bot/cms/`, plain DOM, no build): at `CMS_PATH` (secret, in `.env`;
   never write its value in the repo), gifter + `CMS_USER_IDS` only, Discord login (`/auth/login?next=cms`). Edits town
-  news posts, titles (with descriptions, shown at the Parlor), shop prices/on sale, dig items (name, emoji, sell value,
+  news posts, titles (with descriptions, shown at the Parlor), mail to players (the Mail tab: see Mail, below), shop prices/on sale, dig items (name, emoji, sell value,
   rarity, in the ground or not, new ones; `dig/items.ts`, tested: every rarity keeps an item in the ground; odds shown per
   item), Rewards (Mine Wars attend/top 3 pay, daily Kowens, welcome gift, stay minutes and daily cap; `games/settings.ts`, kv
   `settings`, min/max per setting, Reset = the default) (kv `town-posts`, `titles`, `shop`, `dig-items`, `settings` over the
@@ -146,6 +146,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `maps/slums.json` (128,96 → 129,97), and `ui/map/map-layout.json` `maps[id].label` (where the Map menu writes each
   map's name). Copying either map over again from the art folder loses the post.
 - `classes/leveling.json`: `miniBoss.questDrop`.
+- The mailbox (16 Oct 2026): `maps/town.json`'s `mailbox` object at (33,28), its blocked tile and `doors.mailbox` (33,29)
+  (copying the art folder's town map over again loses it); the art is the art folder's ui/mail and props/mailbox.
 - `classes/dungeons.json` (= the art folder's `data/dungeons/warrens.json` as `{ "warrens": … }`): `run.timeLimitMinutes` 20
   (was 40), `run.gatherSeconds` 60, the ticket's shop price 500,000 Kusing in the `dungeons` tab, `entry.warp.tile`
   [37,85] / `arrive` [37,88] (by the jeepney and taxi wrecks north-east of the golem pit; the art's is [46,96])
@@ -387,6 +389,26 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   Chat button for good (`setFolded`, body.chat-folded, localStorage `mk_chat_folded`; the bag button moves beside the
   button; the dot the same): Enter still opens it to type (body.chat-peek while the input has the focus), the Chat
   button unfolds it.
+- Mail (CONTEXT.md Mail, Mailbox, Attachment, Claim; shared `mail.ts`: `MAIL_RULES` (30 days, title 60, letter 1,000, 8
+  items), `claimInto` (items and Kusing into the combat bag, all or nothing: "Make room in your bag first."),
+  `mailRefusal` (no training gear, quest items or filled Temper Stones), `parseMailAction`; bot `web/mail.ts`, tested in
+  `mail.test.ts`: schema v18 `mail`, a row per member (`batch` per send), items made as it's sent (`makeItem` in
+  combat-bag.ts, shared with dev's ?give=: gear rolled like a drop at the rarity and + picked), `sendMail` (the CMS, or
+  the bot's own code with `sentBy` null), `mailboxOf`, `mailAction` (read / claim / delete, claim-all oldest first,
+  delete-read; a letter with something still attached can't be deleted; Kowens into the wallet with `add`),
+  `purgeMail` hourly; every send and claim in the bot's log). Only the game and its GMs send: the CMS's Mail tab (to
+  everyone with a character, `mailMembers` = the nicknames table, or picked players; from, title, the letter in the
+  news board's markdown, Kowens, Kusing, items with rarity / + / count / level; the latest sends with how many read and
+  claimed: GET /api/mail, POST /api/mail/send). Game: GET/POST `/town/mail`, `/me` `mailUnread`, the town's `mail`
+  message (`Town.mail`, `onMail`: the dot and a toast "New mail from …"); `net/mail.ts` (the unread count);
+  `ui/mail.ts` (the reward box: the list, the open letter with its attachments' tooltips and Claim, Claim all and
+  Delete read; on narrow phones one or the other with Back; opening marks it read; a claim's 'mk-mail-got' → "Gained …"
+  lines in your feed, TownScene `mailGot`); the HUD's mail button between "?" and News (members only; manifest
+  `ui.mailIcon`, its `fileNew` (a sparkle) and a dot while unread; ✉ without it); the town mailbox (manifest buildings
+  `mailbox`, the art folder's props/mailbox, 1×1, at (33,28) by the north road into the plaza, its door (33,29)) opens
+  it too, its `flagUp` look while you have an unread letter (your own view: TownScene with `WorldObjects.setBuildingLook`).
+  Guide tab Mail. Dev: the dev town's pretend mailbox, `/__mail?as=Alice&title=
+  &body=&from=&kusing=&kowens=&give=<defId>:<rarity>:<plus>:<count>` (give may repeat).
 - Online list (`ui/online.ts`): "N online" beside the chat input opens who's in town (you first, titles in colour).
 - Sound (`audio/sound.ts`, files + credits in `public/assets/audio/`, not in the manifest; the Scrap Warrens': below): the title music on the intro
   card and title screen (`startTitleMusic`: music-title "Moonlight Lullaby", looped, 0.10 × the music volume when that's

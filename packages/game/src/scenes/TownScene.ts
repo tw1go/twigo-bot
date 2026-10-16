@@ -59,6 +59,8 @@ import { showBank } from '../ui/bank';
 import { showOutpost } from '../ui/outpost';
 import { showBoard } from '../ui/board';
 import { showShop } from '../ui/shop';
+import { showMail } from '../ui/mail';
+import { onUnreadMail, setUnreadMail } from '../net/mail';
 import { InspectWindow } from '../ui/inspect';
 import { TargetBox } from '../ui/target';
 import { TradeWindow, trading } from '../ui/trade';
@@ -191,6 +193,7 @@ const BUILDINGS: Record<string, string> = {
   'notice-board': 'Notice board',
   'leaderboard-monument': 'Leaderboard',
   'jackpot-booth': 'Jackpot booth',
+  mailbox: 'Mailbox',
   'twigos-house': "twigo's house",
 };
 /** Walking into (and out of) the casino: the camera's pan and zoom. */
@@ -496,6 +499,13 @@ export class TownScene extends Phaser.Scene {
     const junk = big ? new SlumsOutskirts(this.M, this.map) : null;
     if (junk) this.objects.extra = (c0, r0, c1, r1) => junk.objectsIn(c0, r0, c1, r1);
     this.objects.onSpawn = (o) => this.tint >= 0 && o.setTint(this.tint);
+    // The town mailbox raises its flag while you have an unread letter (your own view only).
+    const box = this.M.buildings.mailbox;
+    if (box?.flagUp) {
+      const flag = box.flagUp;
+      const off = onUnreadMail((n) => this.objects.setBuildingLook('mailbox', n ? flag : box.file));
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, off);
+    }
     if (this.map.bridge) this.bridges.push(drawBridge(this, this.map.bridge));
     this.map.bridges?.forEach((b, i) => this.bridges.push(drawBridge(this, b.tiles, b.along, `bridge-${i}`)));
     for (const [to, tiles] of Object.entries(this.map.gates ?? {}) as [Gate, [number, number][]][]) for (const [c, r] of tiles) this.gateAt.set(`${c},${r}`, to);
@@ -680,6 +690,10 @@ export class TownScene extends Phaser.Scene {
     const ticket = () => this.openClassTicket();
     addEventListener('mk-class-ticket', ticket);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => removeEventListener('mk-class-ticket', ticket));
+    // Mail claimed (ui/mail.ts): "Gained …" lines in your own feed, as loot's; the wallet's Kowens a toast too.
+    const mailGot = (e: Event) => this.mailGot((e as CustomEvent<{ kowens: number; kusing: number; items: Item[] }>).detail);
+    addEventListener('mk-mail-got', mailGot);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => removeEventListener('mk-mail-got', mailGot));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => removeEventListener('mk-renamed', renamed));
     this.minimap = new Minimap(this.map); // in the HUD's corner, above its buttons
     const tray = new BuffTray({
@@ -849,6 +863,8 @@ export class TownScene extends Phaser.Scene {
       gear: this.M.ui.settingsIcon?.file ? asset(this.M.ui.settingsIcon.file) : null,
       megaphone: this.M.ui.newsIcon?.file ? asset(this.M.ui.newsIcon.file) : null,
       guide: this.M.ui.tutorialIcon?.file ? asset(this.M.ui.tutorialIcon.file) : null,
+      mail: this.M.ui.mailIcon?.file ? asset(this.M.ui.mailIcon.file) : null,
+      mailNew: this.M.ui.mailIcon?.fileNew ? asset(this.M.ui.mailIcon.fileNew) : null,
       ticket: this.M.ui.jackpotIcon?.file ? asset(this.M.ui.jackpotIcon.file) : null,
       golemHead: this.M.ui.golemHead?.file ? asset(this.M.ui.golemHead.file) : null,
       quest: this.M.ui.questIcon?.file ? asset(this.M.ui.questIcon.file) : null,
@@ -968,6 +984,7 @@ export class TownScene extends Phaser.Scene {
       setKusingArt(kusing ? asset(kusing.file) : null);
       const member = this.me?.status === 'ok' ? this.me.me : null;
       if (!member) return; // guests have no quests
+      setUnreadMail(member.mailUnread ?? 0); // the mail button's dot
       const { armor, rewards, pieces } = initAdventure(member.adventure, member.trainingGear, member.questRewards, member.questPieces);
       // Quest rewards given on this visit (a quest finished before it had any, a mini boss quest's piece): said after the
       // title card.
@@ -1613,6 +1630,20 @@ export class TownScene extends Phaser.Scene {
   }
   private feed: SystemFeed | null = null;
 
+  /** What a mail's claim gave: a line each in your own feed (Kowens a toast where the feed is hidden), and the HUD. */
+  private mailGot(got: { kowens: number; kusing: number; items: Item[] }): void {
+    for (const it of got.items) {
+      const line = pickupOf({ item: it });
+      if (line) this.feed?.mine(line.parts);
+    }
+    if (got.kusing) {
+      const line = pickupOf({ kusing: got.kusing });
+      if (line) this.feed?.mine(line.parts);
+    }
+    if (got.kowens) toast(`+${got.kowens.toLocaleString()} ${got.kowens === 1 ? 'Kowen' : 'Kowens'} from your mail`, 3000, 'good');
+    window.dispatchEvent(new Event('mk-wallet')); // the HUD's Kowens, an open bag
+  }
+
   /** The class choice (for a quest's chooseClass objective, given by `giver`). */
   private async openClasses(questId: string, giver: string): Promise<void> {
     const asset = (f: string) => `${import.meta.env.BASE_URL}assets/${f}`;
@@ -2076,6 +2107,14 @@ export class TownScene extends Phaser.Scene {
       if (m.t === 'gift') {
         window.dispatchEvent(new Event('mk-wallet')); // the HUD's Kowens
         return void showReward({ title: 'Gift', graphic: { kind: 'kowens', amount: m.amount }, message: `${m.from} gave you ${m.amount} ${m.amount === 1 ? 'Kowen' : 'Kowens'}!` });
+      }
+      if (m.t === 'mail') {
+        setUnreadMail(m.unread);
+        if (m.from) {
+          playSound('coin');
+          toast(`New mail from ${m.from}${m.title ? `: ${m.title}` : ''}`, 3500, 'good');
+        }
+        return;
       }
       if (m.t === 'gift-item') {
         window.dispatchEvent(new Event('mk-wallet')); // the HUD (a gifted shovel) and an open bag
@@ -3220,6 +3259,7 @@ export class TownScene extends Phaser.Scene {
     if (b.id === 'tanod-outpost') return showOutpost();
     if (b.id === 'notice-board') return showBoard();
     if (b.id === 'sari-sari-store') return showShop();
+    if (b.id === 'mailbox') return this.me?.status === 'ok' || fakeLogin() ? showMail() : toast('Log in to get mail.');
     if (b.id === 'parlor') return this.openParlor();
     const house = this.houseFor(b.id);
     if (house) return void this.openHouse(house);

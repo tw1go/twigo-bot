@@ -273,6 +273,8 @@ export interface Town {
   inPracticeRun(userId: string): boolean;
   /** A member's worn items, combat bag or Kusing changed outside the town (the shop, dev's ?give=): theirs to them. */
   items(userId: string, got?: { kusing?: number; item?: Item }): void;
+  /** A member got mail (`from`, `title`), or their mailbox changed elsewhere: how many aren't opened yet, to them. */
+  mail(userId: string, unread: number, from?: string, title?: string): void;
   /** Dev and tests: `item` drops at a member's feet for them and their party in the room, as a kill's would (rolled for
    *  when it's rare and they're two or more). False: not in town. */
   rollLoot(userId: string, item: Item): boolean;
@@ -1507,6 +1509,10 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     items(userId, got) {
       const c = conns.get(userId);
       if (c) tellItems(c, got);
+    },
+    mail(userId, unread, from, title) {
+      const c = conns.get(userId);
+      if (c) send(c, { t: 'mail', unread, ...(from ? { from } : {}), ...(title ? { title } : {}) });
     },
     progress(userId, progress, ups = 0, gained = 0) {
       const c = conns.get(userId);

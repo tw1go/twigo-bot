@@ -93,6 +93,8 @@ export interface MeResponse {
   newTitle: (TitleData & { id: string }) | null;
   /** The welcome gift (Kowens) not shown yet: the game shows it in a reward pop-up, then calls `POST /welcome/seen`. */
   welcomeGift?: number | null;
+  /** Mail not opened yet (the HUD's mail button shows a dot; ui/mail.ts). */
+  mailUnread?: number;
   /** Digging today (see /dig and /redeem reward:Shovel). */
   dig: MeDig;
   /** Their Discord status, shown on the avatar (not sent yet: needs the Presence intent; dev fakes it). */

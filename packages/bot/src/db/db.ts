@@ -335,6 +335,29 @@ export const MIGRATIONS: string[] = [
   ALTER TABLE accounts ADD COLUMN rogue_marked_at INTEGER;        -- ms: the last steal attempt made as a rogue
   ALTER TABLE accounts ADD COLUMN protected_at INTEGER;           -- ms: robbed while open; NULL = not protected
   `,
+  /* v18: mail (web/mail.ts, @mikazuki/shared mail.ts): letters from the game and its Game Masters (the CMS), one row per
+     member it went to (a send to everyone: a row each, the same batch), with what's attached (items as they were made,
+     Kusing, Kowens) until it's claimed. Gone MAIL_RULES.days after it was sent, claimed or not. */ `
+  CREATE TABLE mail (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    member      TEXT NOT NULL,                  -- who it's for
+    batch       TEXT NOT NULL,                  -- one send (the CMS lists sends by it)
+    sender      TEXT NOT NULL,                  -- who it says it's from, as written
+    sent_by     TEXT,                           -- the CMS user who sent it; NULL = the game itself
+    title       TEXT NOT NULL,
+    body        TEXT NOT NULL,
+    kowens      INTEGER NOT NULL DEFAULT 0,
+    kusing      INTEGER NOT NULL DEFAULT 0,
+    items       TEXT NOT NULL DEFAULT '[]',     -- JSON: Item[] (each with its own uid)
+    sent_at     INTEGER NOT NULL,               -- ms
+    expires_at  INTEGER NOT NULL,               -- ms
+    read_at     INTEGER,                        -- ms: opened
+    claimed_at  INTEGER                         -- ms: its attachments taken
+  );
+  CREATE INDEX mail_member ON mail (member, sent_at);
+  CREATE INDEX mail_batch ON mail (batch);
+  CREATE INDEX mail_expires ON mail (expires_at);
+  `,
 ];
 
 function migrate(): void {

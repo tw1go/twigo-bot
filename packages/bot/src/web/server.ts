@@ -9,6 +9,7 @@ import { ITEM_BY_ID } from '../dig/items.js';
 import { getNickname, parseNickname, setNickname } from './nickname.js';
 import { RICHEST, TITLES, newTitle, titleOf, titleSeen } from './titles.js';
 import { welcome, welcomeEveryone, welcomeGift, welcomeSeen } from './welcome.js';
+import { mailAction, mailboxOf, onMail, purgeMail, unreadMail } from './mail.js';
 import { type BetaApplication, BetaRateLimit, ipHash, parseBetaForm, saveBetaApplication } from './beta.js';
 import { townMemory } from './town-memory.js';
 import { MAX_BET as RACE_MAX_BET, PAYOUT as RACE_PAYOUT, openRaceInTown, placeBet, raceFor } from '../games/race.js';
@@ -41,7 +42,7 @@ import { arenaBets, refundHeldBets } from './town-arena-bets.js';
 import { kowen } from '../kowens.js';
 import { filterText, kickedUntil, mutedUntil } from './town-mod.js';
 import { getOutfit, parseOutfit, saveOutfit } from './outfit.js';
-import { type OutfitData, cosmeticHatOf, parsePetAction, withCosmetics } from '@mikazuki/shared';
+import { type OutfitData, cosmeticHatOf, parseMailAction, parsePetAction, withCosmetics } from '@mikazuki/shared';
 import { loadCosmeticHats } from './stats-data.js';
 
 /** The look a member shows everyone: their saved look with a worn head cosmetic's hat on it (shared cosmetics.ts). */
@@ -302,7 +303,7 @@ async function me(client: Client, req: IncomingMessage, res: ServerResponse): Pr
   const questPieces = questPiecesFor(userId);
   if (questPieces.length) console.log(`[quest] ${userId} got quest pieces: ${questPieces.map((i) => `${i.defId} +${i.plus}`).join(', ')}`);
   const upkeep = maintenance().on ? { maintenance: { note: maintenanceNote(), allowed: isCmsUser(userId) } } : {};
-  const body: MeResponse = { ...upkeep, id: userId, name, ...(username ? { username } : {}), avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items, preregistered: isPreregistered(userId), house: !!houseOf(userId), tester: await isTester(client, userId), outfit: getOutfit(userId), nickname: getNickname(userId), title: titleOf(userId), newTitle: newTitle(userId), welcomeGift: welcomeGift(userId), status: await statusOf(client, userId), adventure: adventureOf(userId),
+  const body: MeResponse = { ...upkeep, id: userId, name, ...(username ? { username } : {}), avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items, preregistered: isPreregistered(userId), house: !!houseOf(userId), tester: await isTester(client, userId), outfit: getOutfit(userId), nickname: getNickname(userId), title: titleOf(userId), newTitle: newTitle(userId), welcomeGift: welcomeGift(userId), mailUnread: unreadMail(userId), status: await statusOf(client, userId), adventure: adventureOf(userId),
     dig: digStatus(userId), ...(trainingGear.length ? { trainingGear } : {}), ...(questRewards.length ? { questRewards } : {}), ...(questPieces.length ? { questPieces } : {}) };
   send(res, 200, JSON.stringify(body));
 }
@@ -845,6 +846,26 @@ export function startWebServer(client: Client): void {
         }
         return send(res, 200, JSON.stringify(await gambleInTown(client, userId, await nameOf(client, userId), bet, call)));
       }
+      if (path === '/town/mail' && (req.method === 'GET' || req.method === 'POST')) {
+        // Mail (web/mail.ts): the mailbox; read, claim or delete.
+        if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
+        if (req.method === 'POST' && !fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
+        const userId = sessionUser(req);
+        if (!userId) return send(res, 401, '{"error":"not logged in"}');
+        if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
+        if (req.method === 'GET') return send(res, 200, JSON.stringify(mailboxOf(userId)));
+        let body: unknown = null;
+        try {
+          body = JSON.parse((await readBody(req)) || 'null');
+        } catch {
+          // invalid JSON → rejected below
+        }
+        const action = parseMailAction(body);
+        if (!action) return send(res, 400, '{"error":"invalid action"}');
+        const result = mailAction(userId, action);
+        if (result.got && (result.got.items.length || result.got.kusing)) town?.items(userId); // the bag and Kusing in town
+        return send(res, 200, JSON.stringify(result));
+      }
       if (path === '/town/stay' && (req.method === 'GET' || req.method === 'POST')) {
         if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
         if (req.method === 'POST' && !fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
@@ -1071,6 +1092,10 @@ export function startWebServer(client: Client): void {
     slumsRoom?.golemSchedule(kvLoad<number | null>(GOLEM_NEXT_RISE, null), (at) => kvSave(GOLEM_NEXT_RISE, at));
     connectTownFeed(town);
     const live = town;
+    // Mail: a new one shows in town at once (the mail button's dot and a toast); old mail goes after its days.
+    onMail((member, unread, from, title) => live.mail(member, unread, from, title));
+    purgeMail();
+    setInterval(() => purgeMail(), 3_600_000).unref();
     // <Richest Among All> follows the leaderboard's #1: the winner's pop-up (the first time) and both name tags.
     const richest = () => {
       const change = checkRichest();

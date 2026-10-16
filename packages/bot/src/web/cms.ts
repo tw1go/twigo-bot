@@ -28,6 +28,8 @@ import { classTickets } from '../items/class-ticket.js';
 import { mineWarsNight, mineWarsPlan, payMineWars } from '../minewars/payout.js';
 import { BETA_CLASSES, BETA_STATUSES, betaCsv, listBetaApplications, setBetaStatus } from './beta.js';
 import { DEFAULT_NOTE, NOTE_MAX, maintenance, setMaintenance } from './maintenance.js';
+import { mailKinds, mailMembers, parseMailDraft, recentSends, sendMail } from './mail.js';
+import { MAIL_RULES } from '@mikazuki/shared';
 
 // 🛠️ The CMS: a page for the gifter (and CMS_USER_IDS) to run the game's content without a deploy or a slash command:
 // the town's own news posts, titles (make, change, give), the rewards shop's prices and what's on sale, reward amounts
@@ -54,6 +56,9 @@ import { DEFAULT_NOTE, NOTE_MAX, maintenance, setMaintenance } from './maintenan
 //   GET  <path>/api/beta?q=&status=&class=   close beta applications from the front page (web/beta.ts), newest first
 //                                POST /api/beta/status { id, status: new|contacted|invited|declined }
 //                                GET /api/beta.csv?q=&status=&class= the same list as a CSV download
+//   GET  <path>/api/mail         mail (web/mail.ts): what can be attached, the latest sends (read / claimed), how many
+//                                "everyone" is · POST /api/mail/send { to: 'everyone' | [ids], from, title, body, kowens,
+//                                kusing, items: [{ defId, count?, rarity?, plus?, level? }] }
 //   GET  <path>/api/minewars     tonight's (the latest 9 PM's) payout so far · POST /api/minewars/plan { attended, top }
 //                                POST /api/minewars/pay { night, attended, top } (as /gift minewars: ledger, games channel post)
 
@@ -413,6 +418,19 @@ export async function cms(client: Client, req: IncomingMessage, res: ServerRespo
       return send(res, 200, { player: await player(id, deps) });
     }
 
+    case 'GET /api/mail':
+      return send(res, 200, { kinds: mailKinds(), sends: recentSends(), everyone: mailMembers().length, rules: MAIL_RULES });
+    case 'POST /api/mail/send': {
+      const parsed = parseMailDraft(body);
+      if (!parsed.ok) return bad(parsed.error);
+      const everyone = body!.to === 'everyone';
+      const to = everyone ? mailMembers() : Array.isArray(body!.to) ? [...new Set(body!.to.map(str))].filter(known) : [];
+      if (!to.length) return bad(everyone ? 'Nobody has a character yet.' : 'Pick who it goes to.');
+      if (!everyone && to.length > 200) return bad('200 players at most: send it to everyone instead.');
+      const { sent } = sendMail(to, parsed.draft, userId);
+      await log(client, who, `sent the mail **${parsed.draft.title}** to ${everyone ? `everyone (${sent})` : to.map((id) => getNickname(id) ?? id).join(', ')}`);
+      return send(res, 200, { sent, sends: recentSends() });
+    }
     case 'GET /api/members': {
       const q = str(url.searchParams.get('q')).trim().slice(0, 32);
       const found = q ? await deps.searchMembers(q) : [];

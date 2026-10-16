@@ -1255,6 +1255,46 @@
       #reward .nw-code { padding: 0 4px; border-radius: 2px; background: #EDE9FE; font: calc(13px * var(--text))/1.3 ui-monospace, Menlo, monospace; color: #5B21B6; }
       #reward .nw-link { color: #6D28D9; }
       @media (max-width: 560px), (max-height: 500px) { #reward .nw-panel { height: min(420px, 46vh); } } /* clear of the HUD's top buttons */
+      /* Mail (ui/mail.ts, the HUD's mail button or a town mailbox): the list on the left, the open letter on the right, Claim
+         all and Delete read under both; on phones one or the other (.reading), with Back. A fixed size, like News. */
+      #reward .rw-card:has(.ml-body) { width: min(680px, calc(100vw - 32px)); }
+      @media (min-width: 761px) and (min-height: 501px) { #reward:has(.ml-body) { padding-top: 96px; } } /* wide: clear of the jackpot counter and minimap above */
+      body:has(#reward .ml-body) #town-hud .th-corner { z-index: 5; } /* over the dimmed town, so the mail button closes it again */
+      #reward .ml-body { display: grid; grid-template-columns: 220px 1fr; grid-template-rows: min(400px, 52vh, calc(100vh - 360px)) auto auto; gap: 10px 12px; margin-bottom: 14px; text-align: left; font-size: calc(14px * var(--text)); color: #3D4256; }
+      #reward .ml-list, #reward .ml-read { min-height: 0; overflow-x: hidden; overflow-y: auto; overflow-wrap: anywhere; }
+      #reward .ml-list { display: flex; flex-direction: column; gap: 4px; }
+      #reward .ml-row { display: block; width: 100%; padding: 6px 8px 7px; border: 2px solid #E2DDF3; border-radius: 2px; background: #FBFAFF; color: #3D4256; font: inherit; text-align: left; }
+      #reward .ml-row:hover { border-color: #C4B5FD; }
+      #reward .ml-row.on { border-color: #7C2AE8; background: #F5F3FF; }
+      #reward .ml-row-top { display: flex; gap: 6px; align-items: baseline; font-size: calc(12px * var(--text)); color: #7A8099; }
+      #reward .ml-from { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      #reward .ml-row.unread .ml-from { color: #5B21B6; font-weight: 700; }
+      #reward .ml-row.unread .ml-from::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 5px; background: #F43F5E; box-shadow: 0 0 0 1px #1E1B3A; vertical-align: 1px; }
+      #reward .ml-title { margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #1E1B3A; }
+      #reward .ml-row.unread .ml-title { font-weight: 700; }
+      #reward .ml-clip { margin-right: 4px; }
+      #reward .ml-empty { padding: 12px 4px; color: #7A8099; }
+      #reward .ml-back { display: none; margin-bottom: 8px; }
+      #reward .ml-subject { font-size: calc(17px * var(--text)); font-weight: 700; color: #1E1B3A; }
+      #reward .ml-meta { margin: 2px 0 8px; font-size: calc(12px * var(--text)); color: #7A8099; }
+      #reward .ml-text { padding: 0 0 8px; }
+      #reward .ml-att { margin: 4px 0 8px; padding: 8px 10px; border: 2px solid #E2DDF3; border-radius: 2px; background: #F5F3FF; }
+      #reward .ml-att.claimed .ml-things { opacity: 0.45; }
+      #reward .ml-att-label { margin-bottom: 6px; font-size: calc(12px * var(--text)); font-weight: 700; color: #5B21B6; text-transform: uppercase; letter-spacing: 0.06em; }
+      #reward .ml-things { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
+      #reward .ml-cell { position: relative; display: flex; }
+      #reward .ml-count { position: absolute; right: -2px; bottom: -4px; padding: 0 2px; background: #1E1B3A; color: #fff; font-size: calc(11px * var(--text)); line-height: 1.2; }
+      #reward .ml-money { display: flex; align-items: center; gap: 5px; padding: 2px 6px; }
+      #reward .ml-money b { color: #BA7F05; }
+      #reward .ml-foot { grid-column: 1 / -1; display: flex; gap: 8px; }
+      #reward .ml-note { grid-column: 1 / -1; min-height: 18px; margin-top: 0; }
+      #reward .ml-body button:disabled { opacity: 0.5; pointer-events: none; }
+      @media (max-width: 560px) {
+        #reward .ml-body { grid-template-columns: 1fr; grid-template-rows: min(400px, 46vh) auto auto; }
+        #reward .ml-body.reading .ml-list, #reward .ml-body:not(.reading) .ml-read { display: none; }
+        #reward .ml-back { display: inline-block; }
+      }
+      @media (max-height: 500px) { #reward .ml-body { grid-template-rows: min(400px, 46vh) auto auto; } }
       /* Tutorial (ui/guide.ts, the "?" beside News): a tab per feature down the left, the page on the right (the news
          board's markdown classes); on phones the tabs become a scrolling row over the page. A fixed size, like News. */
       #reward .rw-card:has(.gd-body) { width: min(720px, calc(100vw - 32px)); }

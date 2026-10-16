@@ -41,7 +41,8 @@ living junk, mini bosses and the Scrapheap Golem field boss, and under it **the 
 for Lv 16–20, played as 20-minute runs alone or as a party with a Warren Ticket: five mini bosses and Barong-Barong, the
 Shanty Titan; first Aling Nena's side quest, a practice run alone to get her binoculars back from Barong-Barong), with levels, skills and buffs, parties, loot and Kusing,
 gear with agimats and enhancing to +20, trading, and pets (seven to collect from pet boxes, each levelling up with its own
-pet tree of small stat boosts). The bot runs the multiplayer town (`src/web/town.ts`, a WebSocket
+pet tree of small stat boosts), and a mailbox for letters from the Game Masters (with items, Kusing and Kowens to
+claim; sent from the admin page). The bot runs the multiplayer town (`src/web/town.ts`, a WebSocket
 at `/ws`), so fights, loot and items are decided on the server; the game (`packages/game`) only shows them.
 
 ## What it does — Ancient Battlefield (every Saturday)
@@ -300,6 +301,11 @@ In town, logged-in members see each other live over a WebSocket at `/ws` (`packa
 in `packages/shared/src/town.ts`). The bot checks every step (on the map, not blocked, next to the last one, at walking
 speed) and keeps nothing once you leave. Chat goes the same way (`say`: tidied, up to 120 characters, rate-limited,
 never saved) and shows as speech bubbles and in the chat box (`packages/game/src/ui/chat.ts`).
+
+**Mail** (`packages/game/src/ui/mail.ts`, bot `packages/bot/src/web/mail.ts`): letters from the game and its Game
+Masters, sent from the admin page's Mail tab to everyone or to picked players, opened from the HUD's mail button. A
+letter can carry items (made for each player as it's sent), Kusing and Kowens, claimed all at once into the combat bag
+and wallet. Mail is kept 30 days; players can't send it.
 
 **Parlor** (`packages/game/src/ui/parlor.ts`, bot `packages/bot/src/web/town-parlor.ts`): the building beside the
 rewards shop. Your character on the left; on the right an Appearance tab (the creator's choices, a new look costs 3
