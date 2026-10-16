@@ -956,6 +956,11 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   CSS background frames at 2×), a pick in gold playing its special once; Choose (greyed until a pick) → "Take X? …"
   Confirm / Back in the same box; Cancel, ×, Escape or a click outside keep the cube; "X joined you!" and the coin
   sound. Dev: `?petcube=N` (N cubes, the dev town's /__give).
+  The pet cube gift (bot `web/pet-cube-gift.ts`, tested; kv 'pet-cube-gift' = when and to how many): once ever, at the
+  first bot start with it (server.ts, after the welcome gift), a letter from the Tanod to everyone with a character
+  (`mailMembers`): a Pet Selection Cube, or 100 Kowens (`KOWENS`) for those who already have a pet (a pet item, out or
+  in the bag, or an unopened pet box: `petOwners`); all the letters and the kv mark in one transaction. A character made
+  later gets nothing.
 - Settings → Game → Exit game (`ui/settings.ts` `leave`): the desktop app quits (`net/desktop.ts` `exitApp`, the
   process plugin's exit, `process:allow-exit`); the website and the home screen app go to the front page.
 - Forge (combat-guide.md How to enhance, Enhancement cost and odds, Agimats, Disassembly; stats.json enhancement.cost,
