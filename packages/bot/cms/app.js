@@ -693,9 +693,144 @@ async function beta() {
   await draw();
 }
 
+// ── Mail (letters to players' mailboxes in the game, with items, Kusing and Kowens to claim) ──
+
+const RARITY_NAMES = { brown: 'Brown', white: 'White', grey: 'Grey', lightBlue: 'Light blue', darkBlue: 'Dark blue', lightOrange: 'Light orange', darkOrange: 'Dark orange' };
+
+async function mail() {
+  page('Mail', `A letter to players’ mailboxes in the game (the mail button and the town mailbox), with anything attached for them to claim: items go into their combat bag, Kusing and Kowens too. Players can’t send mail. Mail goes after its days, claimed or not.`);
+  let data = await api('mail');
+  const R = data.rules;
+  const to = new Map(); // id → name
+  const items = []; // { defId, count?, rarity?, plus?, level?, label }
+
+  // Who it goes to.
+  const everyone = h('input', { type: 'checkbox' });
+  const q = h('input', { type: 'search', placeholder: 'Town nickname or Discord ID' });
+  const found = h('div', { class: 'list' });
+  const picked = h('div', { class: 'chips' });
+  // The letter.
+  const from = h('input', { maxlength: R.fromMax, value: 'Mikazuki' });
+  const title = h('input', { maxlength: R.titleMax, placeholder: 'Sorry for the downtime!' });
+  const body = h('textarea', { rows: 6, maxlength: R.bodyMax, placeholder: 'What the letter says.' });
+  // What's attached.
+  const kowensIn = h('input', { type: 'number', min: 0, max: R.kowensMax, step: 1, placeholder: '0' });
+  const kusingIn = h('input', { type: 'number', min: 0, max: R.kusingMax, step: 1, placeholder: '0' });
+  const kind = h('select', null, h('option', { value: '' }, 'Pick an item…'), ...groups(data.kinds));
+  const rarity = h('select', null, ...Object.entries(RARITY_NAMES).map(([id, n]) => h('option', { value: id }, n)));
+  const plus = h('input', { type: 'number', min: 0, max: 20, step: 1, value: 0 });
+  const count = h('input', { type: 'number', min: 1, max: R.countMax, step: 1, value: 1 });
+  const level = h('input', { type: 'number', min: 1, max: 100, step: 1, value: 1 });
+  const extra = h('div', { class: 'mail-extra' });
+  const addItem = h('button', { class: 'btn', disabled: true }, '+ Attach');
+  const attached = h('div', { class: 'chips' });
+  const sendBtn = h('button', { class: 'btn primary' }, 'Send');
+  const sends = h('div');
+
+  function groups(kinds) {
+    const by = new Map();
+    for (const k of kinds) (by.get(k.kind) ?? by.set(k.kind, []).get(k.kind)).push(k);
+    return [...by].map(([g, list]) => h('optgroup', { label: g }, ...list.map((k) => h('option', { value: k.id }, k.name))));
+  }
+  const kindOf = (id) => data.kinds.find((k) => k.id === id);
+  const field = (label, input) => h('label', null, label, input);
+  function drawExtra() {
+    const k = kindOf(kind.value);
+    addItem.disabled = !k || items.length >= R.itemsMax;
+    if (k?.gear) rarity.value = k.rarity;
+    extra.replaceChildren(...(!k ? [] : k.gear ? [field('Rarity', rarity), field('+', plus)] : [field('How many', count), ...(k.level ? [field('Level', level)] : [])]));
+  }
+  kind.addEventListener('change', drawExtra);
+  addItem.addEventListener('click', () => {
+    const k = kindOf(kind.value);
+    if (!k) return;
+    const spec = k.gear
+      ? { defId: k.id, rarity: rarity.value, plus: Number(plus.value) || 0, label: `${k.name} (${RARITY_NAMES[rarity.value]}${Number(plus.value) ? ` +${plus.value}` : ''})` }
+      : { defId: k.id, count: Number(count.value) || 1, ...(k.level ? { level: Number(level.value) || 1 } : {}), label: `${k.name}${k.level ? ` Lv ${level.value}` : ''} ×${count.value}` };
+    items.push(spec);
+    drawAttached();
+    drawExtra();
+  });
+  function drawAttached() {
+    attached.replaceChildren(...(items.length
+      ? items.map((it, i) => h('span', { class: 'tag' }, it.label, ' ', h('button', { class: 'x', title: 'Remove', onclick: () => (items.splice(i, 1), drawAttached(), drawExtra()) }, '×')))
+      : [h('p', { class: 'hint' }, `No items (${R.itemsMax} at most).`)]));
+  }
+  function drawTo() {
+    q.disabled = everyone.checked;
+    picked.replaceChildren(...(everyone.checked
+      ? [h('p', { class: 'hint' }, `Everyone with a character: ${fmt(data.everyone)} player(s).`)]
+      : to.size
+        ? [...to].map(([id, name]) => h('span', { class: 'tag' }, name, ' ', h('button', { class: 'x', title: 'Remove', onclick: () => (to.delete(id), drawTo()) }, '×')))
+        : [h('p', { class: 'hint' }, 'Nobody yet: search for a player.')]));
+    if (everyone.checked) found.replaceChildren();
+  }
+  everyone.addEventListener('change', drawTo);
+  let timer = 0;
+  q.addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => act(null, async () => {
+      const text = q.value.trim();
+      if (!text) return found.replaceChildren();
+      const { players: list } = await api(`players?q=${encodeURIComponent(text)}`);
+      found.replaceChildren(...(list.length
+        ? list.filter((p) => p.nickname).map((p) => h('button', { class: 'row', onclick: () => (to.set(p.id, p.nickname), drawTo()) }, h('div', null, p.nickname), h('div', { class: 'sub' }, p.id)))
+        : [h('p', { class: 'hint' }, 'Nobody found.')]));
+    }), 250);
+  });
+
+  sendBtn.addEventListener('click', () => act(sendBtn, async () => {
+    const who = everyone.checked ? `everyone (${fmt(data.everyone)} players)` : `${to.size} player(s)`;
+    const k = Number(kowensIn.value) || 0;
+    const ku = Number(kusingIn.value) || 0;
+    const what = [k && kowens(k), ku && `${fmt(ku)} Kusing`, ...items.map((i) => i.label)].filter(Boolean);
+    if (!confirm(`Send “${title.value.trim()}” to ${who}?${what.length ? `\n\nEach gets: ${what.join(', ')}` : ''}`)) return;
+    const r = await api('mail/send', {
+      to: everyone.checked ? 'everyone' : [...to.keys()], from: from.value, title: title.value, body: body.value, kowens: k, kusing: ku,
+      items: items.map(({ label, ...spec }) => spec),
+    });
+    toast(`Sent to ${fmt(r.sent)} player(s).`);
+    data = { ...data, sends: r.sends };
+    title.value = body.value = kowensIn.value = kusingIn.value = '';
+    items.length = 0;
+    to.clear();
+    drawTo();
+    drawAttached();
+    drawSends();
+  }));
+
+  function drawSends() {
+    sends.replaceChildren(h('h2', null, 'Sent'), ...(data.sends.length
+      ? data.sends.map((m) => h('div', { class: 'setting' },
+          h('div', null, h('b', null, m.title), ` · from ${m.from}`),
+          h('p', { class: 'hint' }, `${when(m.at)} · to ${fmt(m.sent)} · read ${fmt(m.read)}${m.attached ? ` · claimed ${fmt(m.claimed)}` : ''}`),
+          m.attachments.length ? h('p', { class: 'hint' }, `Attached: ${m.attachments.join(', ')}`) : null))
+      : [h('p', { class: 'hint' }, 'No mail sent yet.')]));
+  }
+
+  main().append(h('div', { class: 'split' },
+    h('div', { class: 'card' },
+      h('h2', null, 'To'),
+      h('label', { class: 'check' }, everyone, ' Everyone with a character'),
+      q, h('div', { style: 'height:8px' }), found, h('div', { style: 'height:8px' }), picked),
+    h('div', { class: 'sections' },
+      h('div', { class: 'card' },
+        h('h2', null, 'Letter'),
+        field('From', from), field(`Title (up to ${R.titleMax})`, title), field(`Letter (up to ${R.bodyMax})`, body),
+        h('h2', null, 'Attached'),
+        h('div', { class: 'mail-money' }, field('Kowens', kowensIn), field('Kusing', kusingIn)),
+        field('Item', kind), extra, h('div', { class: 'actions' }, addItem), attached,
+        h('div', { class: 'actions' }, sendBtn)),
+      h('div', { class: 'card' }, sends))));
+  drawTo();
+  drawExtra();
+  drawAttached();
+  drawSends();
+}
+
 // ── Tabs ──
 
-const TABS = { overview, news, titles, shop, rewards, minewars, boss, maintenance, items, players, beta };
+const TABS = { overview, news, titles, shop, rewards, minewars, boss, maintenance, items, players, mail, beta };
 
 function route() {
   const tab = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'overview';
