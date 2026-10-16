@@ -75,7 +75,7 @@ const TOPICS: Topic[] = [
     text: [
       'Left click (or tap) another player to open their menu:',
       '• **Give Kowens** (up to 20 a day)',
-      '• **Balance** and **Status**: how they’re doing',
+      '• **Balance** and **Status**: how they’re doing, unless they hide them from you',
       '• **Diss**, **Praise** or **Judge**: 1 Kowen; your character says it out loud',
       '• **Invite to party**: see the Party tab',
       '• **Add friend**: see the Friends tab',
@@ -110,6 +110,7 @@ const TOPICS: Topic[] = [
       '• **Whisper** a friend who’s online, or **Invite** one in town to your party, right from the list. **Remove** takes them off both lists',
       '• When a friend comes online, a line in your feed says so',
       '• **Block**: in someone’s menu, with `/block Name`, or in the list’s **Blocked** tab (where **Unblock** is too). Blocking a friend ends the friendship',
+      '• **Who can see** your Balance and your Status: Settings → Privacy, **Everyone**, **Friends** or **Only me**. It counts in town, in Discord’s `/balance` and `/status` and on the leaderboards (where your amount shows as Hidden)',
       '-# Up to 100 friends, and up to 20 requests waiting at once.',
     ].join('\n'),
   },

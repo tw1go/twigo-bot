@@ -4,6 +4,7 @@ import { topBalances, topVoice, topVoiceWeek } from '../credits/store.js';
 import { weekStart } from '../time.js';
 import { WEEKLY_VC_REWARDS, WEEKLY_VC_START } from '../games/voice-weekly.js';
 import { kowen } from '../kowens.js';
+import { maySee } from '../web/privacy.js';
 
 const medal = (i: number) => ['🥇', '🥈', '🥉'][i] ?? `**${i + 1}.**`;
 const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)}h ${min % 60}m` : `${min}m`);
@@ -21,7 +22,8 @@ export const leaderboard: Command = {
       .addFields(
         {
           name: '💰 Richest',
-          value: rich.map(([id, n], i) => `${medal(i)} <@${id}> — ${n} ${kowen(n)}`).join('\n') || '_Nobody has Kowens yet._',
+          // (Everyone sees this post: only amounts their owners show everyone; the rest "Hidden".)
+          value: rich.map(([id, n], i) => `${medal(i)} <@${id}> — ${maySee(null, id, 'balance') ? `${n} ${kowen(n)}` : '_Hidden_'}`).join('\n') || '_Nobody has Kowens yet._',
           inline: true,
         },
         {

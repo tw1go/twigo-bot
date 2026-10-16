@@ -11,7 +11,8 @@ export interface LeaderboardRow {
   name: string;
   /** Avatar URL (64px PNG), or '' if unknown. */
   avatar: string;
-  kowens: number;
+  /** 'Hidden': they show their balance to friends or only themselves (CONTEXT.md Who can see), so never here. */
+  kowens: number | 'Hidden';
 }
 
 /** `GET /leaderboard` */
@@ -217,7 +218,8 @@ export interface TownLeaderboardRow {
   /** Their town nickname, or their Discord name. */
   name: string;
   title: TitleData;
-  kowens: number;
+  /** Null: hidden from the viewer (CONTEXT.md Who can see); their rank and name still show. */
+  kowens: number | null;
   /** This row is the viewer. */
   me?: boolean;
   /** Their character's look (top 3 only, for the podium; null if they haven't made one). */
@@ -438,6 +440,8 @@ export interface TownPlayerInfo {
   inactiveDays: number | null;
   /** The viewer's gifting: how many more Kowens they can give today, of the daily limit, and their wallet. */
   give: { left: number; limit: number; wallet: number; inDebt: boolean };
+  /** What they don't show the viewer (CONTEXT.md Who can see): its numbers come as 0 / null. */
+  hidden?: { balance?: true; status?: true };
 }
 
 /** POST /town/verdict { to, mode }: /diss, /praise or /judge on a player in town (1 Kowen). */

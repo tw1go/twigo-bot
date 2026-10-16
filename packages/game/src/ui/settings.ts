@@ -128,7 +128,8 @@ function audio(): HTMLElement {
   return section;
 }
 
-/** Privacy (CONTEXT.md Friends-only whispers): who may whisper you, kept by the town's server (net/privacy.ts). */
+/** Privacy (CONTEXT.md Friends-only whispers, Who can see): who may whisper you, and who can see your Balance and
+ *  your Status, kept by the town's server (net/privacy.ts). */
 function privacySection(): HTMLElement {
   const section = el('section', 'st-section');
   const row = el('label', 'st-row st-check');
@@ -146,6 +147,32 @@ function privacySection(): HTMLElement {
   });
   row.append(box, el('span', undefined, 'Only friends can whisper me'));
   section.append(el('h3', 'st-heading', 'Privacy'), row, el('p', 'st-note', 'Game Masters can always whisper you.'));
+  // Who can see your Balance and your Status (CONTEXT.md Who can see), each Everyone / Friends / Only me.
+  for (const [what, label] of [['balance', 'Who can see my Balance'], ['status', 'Who can see my Status']] as const) {
+    const choices = el('div', 'st-sizes st-seen');
+    choices.setAttribute('role', 'radiogroup');
+    choices.setAttribute('aria-label', label);
+    const draw = () => {
+      for (const b of choices.children) b.setAttribute('aria-checked', String((b as HTMLElement).dataset.v === privacy()?.[what]));
+    };
+    for (const [v, text] of [['everyone', 'Everyone'], ['friends', 'Friends'], ['me', 'Only me']] as const) {
+      const b = el('button', 'st-size', text);
+      b.dataset.v = v;
+      b.setAttribute('role', 'radio');
+      b.addEventListener('click', () => {
+        playSound('click');
+        if (!changePrivacy({ [what]: v })) return toast('Can’t reach the town right now.', 2600, 'bad');
+        // (Drawn at once; the server's answer, the settings now, follows.)
+        for (const o of choices.children) o.setAttribute('aria-checked', String(o === b));
+      });
+      choices.append(b);
+    }
+    draw();
+    const head = el('div', 'st-row');
+    head.append(el('span', 'st-label', label));
+    section.append(head, choices);
+  }
+  section.append(el('p', 'st-note', 'In town, in Discord’s /balance and /status, and on the leaderboards (as “Hidden”). Jail, your Bakod and your rogue mark still show in town; Game Masters always see both.'));
   return section;
 }
 

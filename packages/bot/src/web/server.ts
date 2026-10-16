@@ -8,7 +8,7 @@ import { DIGS_PER_DAY, digsToday, inventory, LUCKY_EVERY, serverDigProgress, SHO
 import { ITEM_BY_ID } from '../dig/items.js';
 import { getNickname, memberByNickname, parseNickname, setNickname } from './nickname.js';
 import { friendSaves, loadFriends } from './friends-db.js';
-import { privacyOf, setPrivacy } from './privacy.js';
+import { maySee, privacyOf, seeFriendsBy, setPrivacy } from './privacy.js';
 import { RICHEST, TITLES, newTitle, titleOf, titleSeen } from './titles.js';
 import { welcome, welcomeEveryone, welcomeGift, welcomeSeen } from './welcome.js';
 import { mailAction, mailboxOf, onMail, purgeMail, unreadMail } from './mail.js';
@@ -221,7 +221,8 @@ async function leaderboard(client: Client): Promise<string> {
   const rows = await Promise.all(
     top.map(async ([id, kowens], i) => {
       const { name, avatar } = await profile(client, id);
-      return { rank: i + 1, name, avatar, kowens } satisfies LeaderboardRow;
+      // (Public: only an amount its owner shows everyone; CONTEXT.md Who can see.)
+      return { rank: i + 1, name, avatar, kowens: maySee(null, id, 'balance') ? kowens : 'Hidden' } satisfies LeaderboardRow;
     }),
   );
   const body = JSON.stringify({ updated: Date.now(), rows } satisfies LeaderboardResponse);
@@ -317,7 +318,7 @@ async function townLeaderboard(client: Client, userId: string): Promise<TownLead
       rank: i + 1,
       name: getNickname(id) ?? (await profile(client, id)).name,
       title: titleOf(id),
-      kowens,
+      kowens: maySee(userId, id, 'balance') ? kowens : null, // (their rank and name stay; CONTEXT.md Who can see)
       ...(id === userId ? { me: true } : {}),
       ...(i < 3 ? { outfit: lookOf(id) } : {}), // the podium shows the top 3's characters
     })),
@@ -1099,6 +1100,8 @@ export function startWebServer(client: Client): void {
     slumsRoom?.golemSchedule(kvLoad<number | null>(GOLEM_NEXT_RISE, null), (at) => kvSave(GOLEM_NEXT_RISE, at));
     connectTownFeed(town);
     const live = town;
+    // Who can see a friends-only Balance or Status (web/privacy.ts): the town keeps friends.
+    seeFriendsBy((a, b) => live.areFriends(a, b));
     // Mail: a new one shows in town at once (the mail button's dot and a toast); old mail goes after its days.
     onMail((member, unread, from, title) => live.mail(member, unread, from, title));
     purgeMail();

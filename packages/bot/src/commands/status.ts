@@ -11,6 +11,7 @@ import { MAX_ACTIVE, acceptedCount, activeCount } from '../quests/board.js';
 import { STEAL_COOLDOWN_MS } from './steal.js';
 import { BANK, debtOf } from '../loans/loans.js';
 import { swerteLeft, tagoUntil } from '../potions/potions.js';
+import { hiddenLine } from '../web/privacy.js';
 
 // Protections, cooldowns and daily limits in one place. /balance is for Kowens.
 const at = (ms: number) => `<t:${Math.floor(ms / 1000)}:f> (<t:${Math.floor(ms / 1000)}:R>)`;
@@ -23,6 +24,9 @@ export const status: Command = {
   async execute(interaction) {
     const target = interaction.options.getUser('user') ?? interaction.user;
     const id = target.id;
+    // Someone else's: only as their Who can see setting allows (web game Settings → Privacy).
+    const hidden = hiddenLine(interaction.user.id, id, target.displayName, 'status');
+    if (hidden) return void (await interaction.reply({ content: hidden, flags: MessageFlags.Ephemeral }));
 
     const fence = fencedUntil(id);
     const jail = jailedUntil(id);

@@ -8,6 +8,7 @@ import { jailedUntil } from '../games/jail.js';
 import { kowen } from '../kowens.js';
 import { debtOf } from '../loans/loans.js';
 import { feed } from './town-feed.js';
+import { maySee } from './privacy.js';
 import { titleOf } from './titles.js';
 
 // 👤 Another player in town (GET /town/player, POST /town/give): what /balance and /status show about them, and
@@ -35,19 +36,25 @@ const kowens = (n: number) => `${n.toLocaleString('en-US')} ${kowen(n)}`;
 
 export async function playerInfo(viewer: string, userId: string, deps: PlayerDeps): Promise<TownPlayerInfo> {
   const idle = daysInactive(userId);
+  // Their Balance (wallet, vault, rank) and Status (Bakod, jail, loan, jackpot tickets, activity) only as their Who can
+  // see setting allows (web/privacy.ts maySee); what's hidden comes as nothing (0, null) and says so.
+  const balanceOk = maySee(viewer, userId, 'balance');
+  const statusOk = maySee(viewer, userId, 'status');
+  const hidden = { ...(balanceOk ? {} : { balance: true as const }), ...(statusOk ? {} : { status: true as const }) };
   return {
     name: await deps.nameOf(userId),
     title: titleOf(userId),
     status: await deps.statusOf(userId),
-    wallet: balance(userId),
-    vault: hasVault(userId) ? vaultBalance(userId) : null,
-    rank: rankOf(userId),
-    bakodUntil: fencedUntil(userId),
-    jailedUntil: jailedUntil(userId),
-    loan: debtOf(userId)?.owed ?? null,
-    jackpotTickets: ticketsOf(userId),
-    inactiveDays: idle !== null && idle > INACTIVE_GRACE_DAYS ? idle : null,
+    wallet: balanceOk ? balance(userId) : 0,
+    vault: balanceOk && hasVault(userId) ? vaultBalance(userId) : null,
+    rank: balanceOk ? rankOf(userId) : null,
+    bakodUntil: statusOk ? fencedUntil(userId) : null,
+    jailedUntil: statusOk ? jailedUntil(userId) : null,
+    loan: statusOk ? (debtOf(userId)?.owed ?? null) : null,
+    jackpotTickets: statusOk ? ticketsOf(userId) : 0,
+    inactiveDays: statusOk && idle !== null && idle > INACTIVE_GRACE_DAYS ? idle : null,
     give: { left: Math.max(0, DAILY_GIVE_LIMIT - givenToday(viewer)), limit: DAILY_GIVE_LIMIT, wallet: balance(viewer), inDebt: !!debtOf(viewer) },
+    ...(balanceOk && statusOk ? {} : { hidden }),
   };
 }
 

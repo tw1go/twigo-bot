@@ -20,6 +20,7 @@ import { jailedUntil } from '../games/jail.js';
 import { ticketsOf } from '../games/jackpot.js';
 import { rewards } from '../games/rewards.js';
 import { kowen } from '../kowens.js';
+import { hiddenLine } from '../web/privacy.js';
 
 const fmt = (n: number) => n.toLocaleString('en-US');
 const ts = (ms: number) => `<t:${Math.floor(ms / 1000)}:f>`;
@@ -32,6 +33,9 @@ export const balanceCommand: Command = {
   async execute(interaction) {
     const target = interaction.options.getUser('user') ?? interaction.user;
     const id = target.id;
+    // Someone else's: only as their Who can see setting allows (web game Settings → Privacy).
+    const hidden = hiddenLine(interaction.user.id, id, target.displayName, 'balance');
+    if (hidden) return void (await interaction.reply({ content: hidden, flags: MessageFlags.Ephemeral }));
     const have = balance(id);
     const rank = rankOf(id);
 

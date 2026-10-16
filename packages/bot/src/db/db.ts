@@ -27,6 +27,7 @@ import { today } from '../time.js';
 //  • v19, friends, friend_requests, last_seen: the web game's friends (web/town-friends.ts, web/friends-db.ts).
 //  • v20, privacy: members' privacy settings (web/privacy.ts): who may whisper them.
 //  • v21, blocks: who blocked whom in the web game (web/town-friends.ts, web/friends-db.ts).
+//  • v22, privacy.balance, privacy.status: who can see a member's Balance and Status (web/privacy.ts).
 //  • kv: small singleton documents keyed by their old file name (e.g. 'race.json', 'rotation.json').
 // Stores cache their state in memory (the bot is the only writer) and save through db/sync.ts, which writes only
 // the rows that changed.
@@ -397,6 +398,11 @@ export const MIGRATIONS: string[] = [
     at          INTEGER NOT NULL,               -- ms
     PRIMARY KEY (user_id, blocked_id)
   );
+  `,
+  /* v22: who can see a member's Balance and Status (web/privacy.ts; CONTEXT.md Who can see): 'everyone' (the default),
+     'friends' or 'me', in town, in Discord's /balance and /status, and on the leaderboards. */ `
+  ALTER TABLE privacy ADD COLUMN balance TEXT NOT NULL DEFAULT 'everyone';
+  ALTER TABLE privacy ADD COLUMN status TEXT NOT NULL DEFAULT 'everyone';
   `,
 ];
 

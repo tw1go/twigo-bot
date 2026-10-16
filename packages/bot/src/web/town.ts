@@ -17,7 +17,7 @@ import { type LootRoll, LootRolls } from './town-roll.js';
 import { type HeldOffer, type Trade, Trades, checkOffer } from './trade.js';
 import { type Inside, type Run, type RunDeps, type RunNews, Warrens, type WarrensAccess, type WarrensMap } from './town-warrens.js';
 import type { FriendAsk, FriendView, FriendsState, PrivacySettings, WarrensData, ChatItemLink, CharacterProgress, QuestProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item, TradeEnd, TradeView } from '@mikazuki/shared';
-import { type LanternPost, PetXpClock, petRules, petXpForHit, isLanternMap, itemName, itemStats, lanternPostOf, lanternRefusal, lootRollRules, rollWorthy, partyXpMult, partyXpRange, potionCooldownGroup, skillMpCost, targetPriority, tradeRules } from '@mikazuki/shared';
+import { type LanternPost, type Visibility, VISIBILITIES, PetXpClock, petRules, petXpForHit, isLanternMap, itemName, itemStats, lanternPostOf, lanternRefusal, lootRollRules, rollWorthy, partyXpMult, partyXpRange, potionCooldownGroup, skillMpCost, targetPriority, tradeRules } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
 // messages). The server keeps everyone's tile and checks each step — on the map, not blocked, next to the last
@@ -270,6 +270,8 @@ export interface Town {
   wallet(userId: string): void;
   /** The members in town right now. */
   here(): string[];
+  /** Whether two members are friends (CONTEXT.md Friend; who can see a friends-only Balance or Status). */
+  areFriends(a: string, b: string): boolean;
   /** Tells a member, if they're in town, where their stay reward is (a Kowen ready to claim). */
   stay(userId: string, stay: TownStayInfo): void;
   /** A member was jailed or released: everyone in town sees it under their name (them included). */
@@ -1426,8 +1428,13 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         return send(c, { t: 'whisper', id: to.player.id, name: to.player.nickname, text: said.text, sent: true, ...extra });
       }
       case 'privacy': {
-        if (!opts.privacy || (m.whispers !== 'everyone' && m.whispers !== 'friends')) return;
-        return send(c, { t: 'privacy', privacy: opts.privacy.set(c.userId, { whispers: m.whispers }) });
+        // Only what's given and valid changes (whispers: everyone / friends; balance and status: everyone / friends / me).
+        if (!opts.privacy) return;
+        const change: Partial<PrivacySettings> = {};
+        if (m.whispers === 'everyone' || m.whispers === 'friends') change.whispers = m.whispers;
+        for (const what of ['balance', 'status'] as const) if (VISIBILITIES.includes(m[what] as Visibility)) change[what] = m[what];
+        if (!Object.keys(change).length) return;
+        return send(c, { t: 'privacy', privacy: opts.privacy.set(c.userId, change) });
       }
     }
   };
@@ -1622,6 +1629,9 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         n++;
       }
       return n;
+    },
+    areFriends(a, b) {
+      return !!F?.areFriends(a, b);
     },
     memberOf(playerId) {
       for (const c of conns.values()) if (c.player.id === playerId) return c.userId;
