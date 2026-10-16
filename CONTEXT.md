@@ -437,6 +437,39 @@ _Avoid_: target (that's a mob you've picked with Z)
 The owner and the CMS users: the CMS, the chat's GM channel (gold, across everyone's screen).
 _Avoid_: admin, mod (those are Discord roles)
 
+**Friend**:
+A player you and they both agreed to keep on your Friends list; it goes both ways, and removing a friend removes it
+for both.
+_Avoid_: buddy, follower, contact
+
+**Friend request**:
+The ask to become friends, which the other player accepts or declines.
+
+**Whisper**:
+A chat line to one player only, who must be online; never posted in Discord or kept anywhere.
+_Avoid_: DM, PM, private message (Discord's words), mail (that's from the game)
+
+**Friends-only whispers**:
+A player's own setting: only their friends may whisper them.
+
+**Balance** (a player's):
+What their Kowens look like to others: wallet, vault, leaderboard rank, loan owed and jackpot tickets.
+
+**Status** (a player's):
+Their protections and limits as others see them: Bakod, jail, Master Keys, steal cooldown, gifts left today.
+_Avoid_: presence, online status (the dot on their portrait: online, idle, busy)
+
+**Who can see**:
+A player's setting for their Balance and for their Status, each on its own: Everyone (the default), Friends, or
+Only me. It holds in town, in Discord and on the leaderboard, where an amount it hides from you shows as Hidden.
+Game Masters always see both.
+_Avoid_: privacy level, visibility
+
+**Block**:
+Stopping one player from whispering you, sending you a friend request, inviting you to a party or asking you to
+trade. Their General chat still shows.
+_Avoid_: ignore, mute (that's a moderator's)
+
 ## Quests and the new player guide
 
 **Guided quest**:

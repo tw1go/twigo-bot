@@ -46,7 +46,8 @@ import { LoadingCover } from '../ui/loading-cover';
 import { settling, settlingWhat } from '../world/settle';
 import { SystemFeed } from '../ui/system-feed';
 import { announce } from '../ui/announce';
-import { OnlineList } from '../ui/online';
+import { OnlineList, showFriendRequest } from '../ui/online';
+import { answer as friendAnswer, askByName, refusal as friendRefusal, setFriends, setFriendsLink } from '../net/friends';
 import { EMOTE_KEYS, emotePicker } from '../ui/emotes';
 import { actionOf, held, keyLabel, matches } from '../ui/keybinds';
 import type { ArenaServerMessage, ClassInfo, HoodHouse, OutfitData, TitleData, TownClientMessage, TownEmote, TownHoodResponse, TownGolem, TownServerMessage } from '@mikazuki/shared';
@@ -1864,21 +1865,30 @@ export class TownScene extends Phaser.Scene {
     addEventListener('keydown', (e) => e.key === 'Escape' && itemTip.hide());
     // Parties (net/party.ts): the panel on the left for members, pink names for your party (on your screen only).
     setPartyLink(link);
+    setFriendsLink(link);
     this.others.inParty = inParty;
     if (member) {
       const C = this.M.characters;
-      new PartyPanel({
-        portrait: async (o) => {
+      // Heads and class badges: the party panel's rows and the Friends list's.
+      const art = {
+        portrait: async (o: OutfitData) => {
           const look = sanitize(C, o, this.outfit);
           await loadOutfit(this, C, look);
           return headPortrait(this, C, look, 20);
         },
-        badge: (cls) => {
+        badge: (cls: string | null | undefined) => {
           const c = classInfo(cls);
           const icons = this.M.ui.classIcons;
           return c && icons ? { url: `${import.meta.env.BASE_URL}assets/${icons.small.replace('{class}', c.id)}`, name: c.name } : null;
         },
-      });
+      };
+      new PartyPanel(art);
+      online.art = art;
+      // `/friend Mara` asks Mara; `/friend` alone opens the Friends list.
+      chat.onCommand = (_cmd, rest) => {
+        if (!rest) return online.open('friends');
+        if (!askByName(rest)) chat.notice('Chat is offline right now.');
+      };
     }
     onParty(() => {
       this.others.refreshParty();
@@ -2000,6 +2010,18 @@ export class TownScene extends Phaser.Scene {
       if (m.t === 'party-invited') return showPartyInvite({ invite: m.invite, name: m.name, members: m.members, answer: (yes) => partyAnswer(m.invite, yes) });
       if (m.t === 'party-refused') return toast(partyRefusal(m.reason, m.name), 2600, 'bad');
       if (m.t === 'party-declined') return toast(`${m.name} didn't join the party.`, 2600);
+      // Friends (net/friends.ts): the list, what happened, a friend coming online (your feed), a request arriving.
+      if (m.t === 'friends') {
+        setFriends(m.friends);
+        if (m.note) toast(m.note, 3000, 'good');
+        if (m.online) feed.mine([{ text: m.online, colour: '#C4B5FD' }, { text: ' is online.', colour: '#B8BED2' }]);
+        if (m.asked) {
+          const key = m.asked.key;
+          showFriendRequest({ name: m.asked.name, answer: (yes) => friendAnswer(key, yes) });
+        }
+        return;
+      }
+      if (m.t === 'friend-refused') return toast(friendRefusal(m.reason, m.name), 2600, 'bad');
       // The Scrap Warrens: the gate's panel, an invite, going in and out, the run's tracker, its bosses' moves.
       if (m.t === 'warrens-gate') return showWarrensGate(m.gate, (what) => link.send(what === 'open' ? { t: 'warrens-open' } : what === 'practice' ? { t: 'warrens-practice' } : { t: 'warrens-join' }));
       if (m.t === 'warrens-invite') return showWarrensInvite(m.from, m.ms, (join) => link.send(join ? { t: 'warrens-join', run: m.run } : { t: 'warrens-decline', run: m.run }));

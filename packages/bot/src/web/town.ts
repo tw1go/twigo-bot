@@ -7,6 +7,7 @@ import { Arena, type ArenaBets, type ArenaSeat, arenaLine } from './town-arena.j
 import type { LevelGain } from './progress.js';
 import type { Attacker, MobHit, MobKill, MobRoom } from './town-mobs.js';
 import { PARTY_MAX, type PartyChange, Parties } from './town-party.js';
+import { type FriendStore, Friends } from './town-friends.js';
 import { type VitalMax, Vitals, shown } from './town-vitals.js';
 import { Buffs, type Nearby } from './town-buffs.js';
 import { loadItemData, loadStats } from './stats-data.js';
@@ -15,7 +16,7 @@ import { type Loot, LootRoom, splitKusing } from './town-loot.js';
 import { type LootRoll, LootRolls } from './town-roll.js';
 import { type HeldOffer, type Trade, Trades, checkOffer } from './trade.js';
 import { type Inside, type Run, type RunDeps, type RunNews, Warrens, type WarrensAccess, type WarrensMap } from './town-warrens.js';
-import type { WarrensData, ChatItemLink, CharacterProgress, QuestProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item, TradeEnd, TradeView } from '@mikazuki/shared';
+import type { FriendAsk, FriendView, FriendsState, WarrensData, ChatItemLink, CharacterProgress, QuestProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item, TradeEnd, TradeView } from '@mikazuki/shared';
 import { type LanternPost, PetXpClock, petRules, petXpForHit, isLanternMap, itemName, itemStats, lanternPostOf, lanternRefusal, lootRollRules, rollWorthy, partyXpMult, partyXpRange, potionCooldownGroup, skillMpCost, targetPriority, tradeRules } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
@@ -89,6 +90,15 @@ const DISCORD_MAX = 200;
 const PARTY_AWAY_MS = 60_000;
 /** Party invites: one a second. */
 const INVITE_GAP_MS = 1000;
+/** A friend who disconnects is still shown online this long (a reload, a gate), and only one gone longer is announced
+ *  as coming online. */
+const FRIEND_AWAY_MS = 60_000;
+/** Friend requests and actions: one a second. */
+const FRIEND_GAP_MS = 1000;
+/** While they're here, when members were last online is saved this often. */
+const SEEN_EVERY_MS = 5 * 60_000;
+/** The title shown for a friend without a character anymore. */
+const TOWNFOLK: TitleData = { name: 'Townfolk', color: '#B794F6' };
 
 /** A chat message tidied up: no control characters, single spaces, trimmed; null if empty or too long. */
 function tidy(text: unknown, max = SAY_MAX): string | null {
@@ -212,6 +222,9 @@ export interface TownOptions {
   /** Return Lanterns (a teleport between Lantern Posts uses one): how many a member holds, and using one (false: none).
    *  Without it, no teleports. */
   lanterns?: { count(userId: string): number; use(userId: string): boolean };
+  /** Friends (web/town-friends.ts): where they're kept (web/friends-db.ts in the bot; in memory on the game's dev
+   *  server), and the member who goes by a nickname (any case), for a request by name. Without it, no friends. */
+  friends?: { store: FriendStore; byName(name: string): string | null };
   /** Chat moderation (web/town-mod.ts in the bot; none in the game's dev server). */
   moderation?: {
     mutedUntil(userId: string): number | null;
@@ -339,6 +352,8 @@ interface Conn {
   seat?: ArenaSeat;
   /** The last party invite sent (ms). */
   invitedAt?: number;
+  /** The last friend request or action (ms). */
+  friendAt?: number;
   /** The last trade request sent (ms). */
   askedAt?: number;
   /** When they last dropped an item on the ground. */
@@ -422,6 +437,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   };
   /** A member disconnected: still in their party for a minute (shown away), then out. */
   const stepAway = (user: string) => {
+    friendLeft(user);
     if (!parties.of(user)) return;
     tellParty(user);
     clearTimeout(away.get(user));
@@ -429,6 +445,73 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       away.delete(user);
       if (!conns.has(user)) partyChanged(parties.leave(user));
     }, PARTY_AWAY_MS));
+  };
+  // Friends (town-friends.ts, kept by opts.friends.store): by member; the page sees each friend's friend key, town id
+  // (while here), where they are, level, class and look, and while they're away when they were last online. Someone who
+  // drops is still online for FRIEND_AWAY_MS (a reload, a gate to another area); only one gone longer is announced.
+  const F = opts.friends ? new Friends(opts.friends.store.load(), opts.friends.store) : null;
+  const leaving = new Map<string, NodeJS.Timeout>();
+  /** Where each member last was (shown while they're online but between rooms). */
+  const lastRoom = new Map<string, string>();
+  const friendName = (user: string) => conns.get(user)?.player.nickname ?? opts.profile(user)?.nickname ?? known.get(user)?.nickname ?? 'Someone';
+  const friendView = (user: string): FriendView => {
+    const c = conns.get(user);
+    const p = c?.player ?? opts.profile(user);
+    const online = !!c || leaving.has(user);
+    const seen = F!.seenAt(user);
+    return {
+      key: F!.key(user),
+      name: p?.nickname ?? known.get(user)?.nickname ?? 'Someone',
+      title: p?.title ?? TOWNFOLK,
+      outfit: p?.outfit ?? null,
+      online,
+      ...(c ? { id: c.player.id } : {}),
+      ...(online ? { area: c?.room ?? lastRoom.get(user) ?? 'town' } : seen !== undefined ? { lastSeen: seen } : {}),
+      cls: p?.cls ?? null,
+      ...(p?.level ? { level: p.level } : {}),
+    };
+  };
+  const friendsState = (user: string, now = Date.now()): FriendsState => ({
+    friends: F!.friendsOf(user).map(friendView).sort((a, b) => Number(b.online) - Number(a.online) || a.name.localeCompare(b.name)),
+    incoming: F!.incoming(user, now).map((r): FriendAsk => ({ key: F!.key(r.from), name: friendName(r.from), at: r.at })),
+    outgoing: F!.outgoing(user, now).map((r): FriendAsk => ({ key: F!.key(r.to), name: friendName(r.to), at: r.at })),
+  });
+  /** A member's friends and requests, to them if they're here (with what happened). */
+  const tellFriendList = (user: string, extra: { note?: string; online?: string; asked?: FriendAsk } = {}) => {
+    const c = conns.get(user);
+    if (c && F) send(c, { t: 'friends', friends: friendsState(user), ...extra });
+  };
+  /** What a member's friends see of them changed (here or not, where, level, look, name): their lists again
+   *  (`online`: they just came online). */
+  const tellFriends = (user: string, online?: string) => {
+    if (F) for (const f of F.friendsOf(user)) tellFriendList(f, online ? { online } : {});
+  };
+  const befriended = (a: string, b: string) => {
+    tellFriendList(a, { note: `You and ${friendName(b)} are friends now.` });
+    tellFriendList(b, { note: `You and ${friendName(a)} are friends now.` });
+  };
+  /** A member arrived (a new tab, a reload or a gate: `back`, not announced). */
+  const friendArrived = (user: string, room: string, back: boolean) => {
+    if (!F) return;
+    back ||= leaving.has(user);
+    clearTimeout(leaving.get(user));
+    leaving.delete(user);
+    lastRoom.set(user, room);
+    F.seen(user, Date.now());
+    tellFriendList(user);
+    tellFriends(user, back ? undefined : friendName(user));
+  };
+  /** A member's last connection closed: online a moment longer, then offline (when, saved). */
+  const friendLeft = (user: string) => {
+    if (!F || conns.has(user)) return;
+    clearTimeout(leaving.get(user));
+    leaving.set(user, setTimeout(() => {
+      leaving.delete(user);
+      if (conns.has(user)) return;
+      F.seen(user, Date.now());
+      tellFriends(user);
+    }, FRIEND_AWAY_MS).unref());
+    tellFriends(user); // (no town id now: no invite or player menu from the list)
   };
   // The Scrap Warrens: runs as rooms of their own (a run's party is the Parties' own object for it).
   const W = opts.warrens ? new Warrens(opts.warrens.data, opts.warrens.map, opts.warrens.deps, (u) => parties.of(u)) : null;
@@ -540,6 +623,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       const k = known.get(c.userId);
       if (k) k.level = g.progress.level;
       tellParty(c.userId); // (the party panel shows levels)
+      tellFriends(c.userId);
     }
   };
 
@@ -1087,6 +1171,46 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         if (r.ok && r.change.out[0]) W?.leftParty(r.change.out[0].user, party);
         return r.ok ? partyChanged(r.change) : send(c, { t: 'party-refused', reason: r.reason });
       }
+      case 'friend-ask': {
+        if (!F || !opts.friends) return;
+        const now = Date.now();
+        if (now - (c.friendAt ?? 0) < FRIEND_GAP_MS) return send(c, { t: 'friend-refused', reason: 'slow' });
+        c.friendAt = now;
+        // Someone here (their town id), or anyone by nickname (offline too: they see it next time).
+        const asked = typeof m.name === 'string' ? m.name.slice(0, 32) : undefined;
+        const to = typeof m.to === 'string' ? town.memberOf(m.to) : asked ? opts.friends.byName(asked) : null;
+        if (!to || !opts.profile(to)) return send(c, { t: 'friend-refused', reason: 'gone', ...(asked ? { name: asked } : {}) });
+        const r = F.ask(c.userId, to, now);
+        if (!r.ok) return send(c, { t: 'friend-refused', reason: r.reason, name: friendName(to) });
+        if (r.friends) return befriended(c.userId, to); // (they'd asked you already)
+        tellFriendList(c.userId, { note: `Friend request sent to ${friendName(to)}.` });
+        return tellFriendList(to, { asked: { key: F.key(c.userId), name: p.nickname, at: now } });
+      }
+      case 'friend-answer': {
+        if (!F || typeof m.key !== 'string') return;
+        const from = F.member(m.key);
+        const r = from ? F.answer(c.userId, from, m.accept === true, Date.now()) : null;
+        if (!from || !r?.ok) return send(c, { t: 'friend-refused', reason: r && !r.ok ? r.reason : 'expired', ...(from ? { name: friendName(from) } : {}) });
+        if (r.friends) return befriended(c.userId, from);
+        tellFriendList(c.userId);
+        return tellFriendList(from); // (declined: their request is simply gone)
+      }
+      case 'friend-cancel': {
+        if (!F || typeof m.key !== 'string') return;
+        const to = F.member(m.key);
+        const r = to ? F.cancel(c.userId, to, Date.now()) : null;
+        if (!to || !r?.ok) return send(c, { t: 'friend-refused', reason: 'expired' });
+        tellFriendList(c.userId);
+        return tellFriendList(to);
+      }
+      case 'friend-remove': {
+        if (!F || typeof m.key !== 'string') return;
+        const other = F.member(m.key);
+        const r = other ? F.remove(c.userId, other) : null;
+        if (!other || !r?.ok) return send(c, { t: 'friend-refused', reason: 'gone' });
+        tellFriendList(c.userId, { note: `${friendName(other)} is no longer your friend.` });
+        return tellFriendList(other);
+      }
       case 'buffs-of': {
         // The buffs on someone (the player box's icons, asked every couple of seconds while it's open).
         const now = Date.now();
@@ -1334,6 +1458,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     clearTimeout(away.get(userId));
     away.delete(userId);
     tellParty(userId); // back (or in another area): their new id and where they are
+    friendArrived(userId, room, !!old);
     if (raceNow) send(c, { t: 'race', race: { ...raceNow, now: Date.now() } });
     if (vitals) tellVitals(c); // your HP and MP (the HUD), and your party's panel
     if (buffs) send(c, { t: 'buffs', buffs: buffs.view(userId, Date.now()) }); // the buffs on you (the tray)
@@ -1472,6 +1597,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       everyone({ t: 'look', id: c.player.id, outfit, title });
       known.set(userId, { ...known.get(userId)!, outfit });
       tellParty(userId);
+      tellFriends(userId);
     },
     renamed(userId, nickname) {
       const c = conns.get(userId);
@@ -1480,6 +1606,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       everyone({ t: 'rename', id: c.player.id, nickname });
       known.set(userId, { ...known.get(userId)!, nickname });
       tellParty(userId);
+      tellFriends(userId);
     },
     pet(userId, pet) {
       const c = conns.get(userId);
@@ -1504,6 +1631,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       everyone({ t: 'kit', id: c.player.id, cls, weapon, weaponPlus });
       known.set(userId, { ...known.get(userId)!, cls });
       tellParty(userId);
+      tellFriends(userId);
       refreshVitals(c); // their gear's HP, MP and DEF
     },
     items(userId, got) {
@@ -1806,11 +1934,15 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     for (const r of rolls.due(Date.now())) endRoll(r);
   }, 250).unref();
 
-  // Party invites nobody answered in time: the inviter hears no.
+  // Party invites nobody answered in time: the inviter hears no. Friend requests that lapsed: gone from both lists.
   setInterval(() => {
     for (const i of parties.prune(Date.now())) {
       const from = conns.get(i.from);
       if (from) send(from, { t: 'party-declined', name: known.get(i.to)?.nickname ?? 'They' });
+    }
+    for (const r of F?.prune(Date.now()) ?? []) {
+      tellFriendList(r.from);
+      tellFriendList(r.to);
     }
   }, 5000).unref();
 
@@ -1826,9 +1958,11 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     }, 1000).unref();
   }
 
-  // Drop connections that stopped answering pings (closed laptops, lost Wi-Fi).
+  // Drop connections that stopped answering pings (closed laptops, lost Wi-Fi). Those here: when they were last online.
   setInterval(() => {
+    const now = Date.now();
     for (const c of conns.values()) {
+      if (F && now - (F.seenAt(c.userId) ?? 0) >= SEEN_EVERY_MS) F.seen(c.userId, now);
       if (!c.alive) {
         c.ws.terminate();
         continue;

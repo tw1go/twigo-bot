@@ -442,6 +442,11 @@ export function devTown(): Plugin {
           use: (name) => takeKind(gearOf(name).bag, RETURN_LANTERN, 1),
         },
         moveLevel: (cls, move) => moveUnlock(classes.find((c) => c.id === cls), move),
+        // Friends in memory (a restart forgets them); a request by name finds anyone who has logged in since it started.
+        friends: {
+          store: { load: () => ({ friends: [], requests: [], seen: [] }), friend: () => {}, request: () => {}, seen: () => {} },
+          byName: (name) => [...kits.keys()].find((n) => n.toLowerCase() === name.trim().toLowerCase()) ?? null,
+        },
         shared: true,
         arenaBets,
         authenticate: async (req) => {

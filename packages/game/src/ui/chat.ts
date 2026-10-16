@@ -172,6 +172,9 @@ export class ChatBox {
         this.input.value = '';
         // Sending keeps the chat open for the next message (so its letters never walk you); an empty Enter closes it.
         if (!text) return this.input.blur();
+        // A command the town handles (`/friend Mara`): never said.
+        const cmd = /^\/(friend)(?:\s+(.*))?$/i.exec(text);
+        if (cmd && this.onCommand) return void this.onCommand('friend', (cmd[2] ?? '').trim());
         // /m, /g, /p (and a GM's /gm) pick the channel (and stay on it); alone they only switch.
         const pick = /^\/(gm|[mgp])(?:\s+|$)/i.exec(text);
         if (pick?.[1].toLowerCase() === 'gm' && !this.gmOn) return this.notice('Only Game Masters can use /gm.');
@@ -292,6 +295,8 @@ export class ChatBox {
 
   /** A shown item was clicked: its tooltip beside the name (set by the town). */
   showItem: ((item: Item, anchor: HTMLElement) => void) | null = null;
+  /** A chat command the town handles (`/friend <nickname>`): its name and what follows. */
+  onCommand: ((name: 'friend', rest: string) => void) | null = null;
 
   /** A line's text with each shown item ("[name]") as its name in its rarity's colour, clickable for its tooltip. */
   private withItems(text: string, links: ChatItemLink[]): Node[] {

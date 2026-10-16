@@ -23,6 +23,8 @@ import { today } from '../time.js';
 //  • v16, items.xp and items.points: a pet's Pet XP and pet points (the pet out: place 'pet').
 //  • v17, accounts.rogue_since, rogue_marked_at, protected_at: rogues and stealing (games/rogue.ts). Added empty: the
 //    one fresh start (nobody a rogue, marked or protected); nothing after ever clears them.
+//  • v18, mail: letters from the game and its Game Masters (web/mail.ts).
+//  • v19, friends, friend_requests, last_seen: the web game's friends (web/town-friends.ts, web/friends-db.ts).
 //  • kv: small singleton documents keyed by their old file name (e.g. 'race.json', 'rotation.json').
 // Stores cache their state in memory (the bot is the only writer) and save through db/sync.ts, which writes only
 // the rows that changed.
@@ -357,6 +359,26 @@ export const MIGRATIONS: string[] = [
   CREATE INDEX mail_member ON mail (member, sent_at);
   CREATE INDEX mail_batch ON mail (batch);
   CREATE INDEX mail_expires ON mail (expires_at);
+  `,
+  /* v19: friends (web/town-friends.ts, web/friends-db.ts; CONTEXT.md Friend): each friendship once (the smaller member id
+     first), the friend requests waiting (gone once answered, taken back or lapsed), and when each member was last online
+     in the web game (their friends see it while they're away). */ `
+  CREATE TABLE friends (
+    a      TEXT NOT NULL,
+    b      TEXT NOT NULL,
+    since  INTEGER NOT NULL,                    -- ms
+    PRIMARY KEY (a, b)
+  );
+  CREATE TABLE friend_requests (
+    from_id  TEXT NOT NULL,
+    to_id    TEXT NOT NULL,
+    at       INTEGER NOT NULL,                  -- ms: sent
+    PRIMARY KEY (from_id, to_id)
+  );
+  CREATE TABLE last_seen (
+    user_id  TEXT PRIMARY KEY,
+    at       INTEGER NOT NULL                   -- ms: last online in the web game
+  );
   `,
 ];
 

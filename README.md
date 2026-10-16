@@ -39,7 +39,7 @@ the bank, jackpot booth, sari-sari store, Parlor and notice board, all with the 
 quests give a class (Slingshot, Stick, Greatstick, Broom, Pot lid, Hilot) and lead into **the Slums**: six zones of
 living junk, mini bosses and the Scrapheap Golem field boss, and under it **the Scrap Warrens** (a walled junk maze
 for Lv 16–20, played as 20-minute runs alone or as a party with a Warren Ticket: five mini bosses and Barong-Barong, the
-Shanty Titan; first Aling Nena's side quest, a practice run alone to get her binoculars back from Barong-Barong), with levels, skills and buffs, parties, loot and Kusing,
+Shanty Titan; first Aling Nena's side quest, a practice run alone to get her binoculars back from Barong-Barong), with levels, skills and buffs, parties, friends, loot and Kusing,
 gear with agimats and enhancing to +20, trading, and pets (seven to collect from pet boxes, each levelling up with its own
 pet tree of small stat boosts), and a mailbox for letters from the Game Masters (with items, Kusing and Kowens to
 claim; sent from the admin page). The bot runs the multiplayer town (`src/web/town.ts`, a WebSocket
@@ -336,6 +336,10 @@ voice blips and a gossip murmur nearby.
 **Tutorial** (`packages/game/src/ui/guide.ts`): the "?" beside News opens a guide with a tab per feature (moving, chat,
 Kowens, players, party, levels, Mine, bag, Casino, jackpot, Arena, bank, shop and Parlor, quests, neighbourhood, jail, news and settings).
 Its numbers are the bot's rules; keep them in step when those change.
+
+**Friends** (`packages/bot/src/web/town-friends.ts`, saved by `web/friends-db.ts`; the game's `net/friends.ts` and
+`ui/online.ts`): both ways (a request, accepted), up to 100, by nickname even to someone offline; the "N online" list's
+Friends tab shows who's online, where and their level, or when they were last online.
 
 **Levels** (`packages/bot/src/web/progress.ts`, rules in `packages/shared/src/stats.ts`, numbers in the game's
 `classes/stats.json`): defeating mobs in the Slums gives XP (the golem's to everyone who did 5% of its HP; in a party, a
