@@ -3,7 +3,8 @@ import type { GearTotals, StatsData } from './stats.js';
 import { type Item, type ItemData, type CombatItemDef, addToBag, bagSlots, isGearDef, newItem, pocketUsed } from './items.js';
 
 // 🐾 Pets (CONTEXT.md "Pets"): a pet box (items.json pet-box-<id>, a consumable that stacks and can be traded) is opened
-// into a bound pet item (pet-<id>) with its own level, Pet XP and pet points. One pet is out at a time (the Equipment
+// into a bound pet item (pet-<id>) with its own level, Pet XP and pet points; a pet cube (pet-cube-<tier>, bound) is opened
+// into the pet its owner picks from its tier's list. One pet is out at a time (the Equipment
 // panel's Pet tab); while it's out, its pet tree's stats add to the owner's like gear lines do, and every hit the owner
 // lands on a monster gives it Pet XP (the server's, at most once a throttle). Every number is classes/stats.json `pets`
 // (a repo addition: the art folder's pets/pets-stats-block.json). Pure, for both sides; the bot saves, the game shows.
@@ -45,6 +46,14 @@ export interface PetRules {
   /** zigzagEveryStepsHover: a hovering pet's zigzag legs (tiles), when it has its own. */
   follow: { distanceTiles: number; zigzagEverySteps: number; zigzagEveryStepsHover?: number; swapCooldownSeconds: number };
   boxPrice: { currency: 'kowens'; common: number; rare: number };
+  /** Pet cubes by tier (common): the cube's item and the pets it can open into (pets.list keys, in the picker's order). */
+  petCube?: Record<string, PetCube>;
+}
+
+/** A tier of pet cube (stats.json pets.petCube.<tier>). */
+export interface PetCube {
+  itemId: string;
+  choices: string[];
 }
 
 /** The pets block, or null (an older stats.json). */
@@ -62,6 +71,20 @@ export function boxOpens(data: ItemData, item: Pick<Item, 'defId'> | null | unde
   if (!def || isGearDef(def) || !def.opens) return null;
   const pet = data.defs.get(def.opens);
   return pet && !isGearDef(pet) && pet.kind === 'pet' ? pet : null;
+}
+
+/** The pet cube an item is (its tier's rule), or null: not a pet cube. */
+export function cubeOf(data: ItemData, item: Pick<Item, 'defId'> | null | undefined): PetCube | null {
+  const cubes = petRules(data.stats)?.petCube ?? {};
+  for (const c of Object.values(cubes)) if (c && typeof c === 'object' && c.itemId === item?.defId) return c;
+  return null;
+}
+
+/** The pet item a pet cube can open into for `petId`, or null: not one of its choices (another tier's pet, or none). */
+export function cubeChoice(data: ItemData, cube: PetCube, petId: string): CombatItemDef | null {
+  if (!cube.choices.includes(petId) || !petRules(data.stats)?.list[petId]) return null;
+  const pet = data.defs.get(`pet-${petId}`);
+  return pet && !isGearDef(pet) && pet.kind === 'pet' && pet.pet === petId ? pet : null;
 }
 
 /** A pet box's price in Kowens (pets.boxPrice by its pet's rarity), or null: not a pet box. */
@@ -211,19 +234,53 @@ export function petTotals(R: PetRules, pet: Pick<Item, 'points'>, petId: string 
 
 export const OPEN_BOX_FIRST = 'Open the box first.';
 
+const BAG_FULL = 'Your bag is full.';
+
+type Opened = { ok: true; pet: Item; message: string } | { ok: false; message: string };
+
 /** Opens one pet box from the combat bag (by uid): the box goes (one of its stack), a new bound pet at Lv 1 comes in its
  *  place (no XP, no points). Refused: not a box, no room (a stack of several needs a free slot). */
-export function openPetBox(data: ItemData, s: Pick<AdventureState, 'bag'>, uid: string, newUid: () => string): { ok: true; pet: Item; message: string } | { ok: false; message: string } {
-  const R = petRules(data.stats);
+export function openPetBox(data: ItemData, s: Pick<AdventureState, 'bag'>, uid: string, newUid: () => string): Opened {
   const box = s.bag.find((b) => b.uid === uid);
   const petDef = boxOpens(data, box);
-  if (!R || !box || !petDef) return { ok: false, message: "That isn't a pet box." };
+  if (!petRules(data.stats) || !box || !petDef) return { ok: false, message: "That isn't a pet box." };
+  const r = openInto(data, s, uid, petDef, newUid);
+  return r.ok ? { ...r, message: `${petDef.name} is yours!` } : { ok: false, message: 'Make room in your bag first.' };
+}
+
+/** Why a pet cube in the bag (by uid) can't be opened now, or null: it can. A lone cube's slot is the pet's, a stack of
+ *  several needs a free slot (the popup asks before it opens, the server again). */
+export function cubeRefusal(data: ItemData, bag: Item[], uid: string): string | null {
+  const cube = bag.find((b) => b.uid === uid);
+  if (!cube || !cubeOf(data, cube)) return "That isn't a pet cube.";
+  if (cube.count > 1 && pocketUsed(data, bag, 'bag') >= bagSlots(data.stats)) return BAG_FULL;
+  return null;
+}
+
+/** Opens one pet cube from the combat bag (by uid) into the pet chosen (pets.list key): the cube goes (one of its stack),
+ *  the pet comes in as a box's does (bound, Lv 1, no XP, no points), both in one change of the bag. Refused: not a cube,
+ *  a pet not on its list (Fairy Cha off the common cube's, an unknown id), no room. */
+export function openPetCube(data: ItemData, s: Pick<AdventureState, 'bag'>, uid: string, petId: string, newUid: () => string): Opened {
+  const cube = cubeOf(data, s.bag.find((b) => b.uid === uid));
+  const no = cubeRefusal(data, s.bag, uid);
+  if (!cube || no) return { ok: false, message: no ?? "That isn't a pet cube." };
+  const petDef = cubeChoice(data, cube, petId);
+  if (!petDef) return { ok: false, message: "That pet isn't in this cube." };
+  const r = openInto(data, s, uid, petDef, newUid);
+  return r.ok ? { ...r, message: `${petDef.name} joined you!` } : { ok: false, message: BAG_FULL };
+}
+
+/** One of a stack (by uid) spent on a new bound Lv 1 pet of `petDef`: in the bag, in the stack's place when that was its
+ *  last; the bag untouched when it has no room. */
+function openInto(data: ItemData, s: Pick<AdventureState, 'bag'>, uid: string, petDef: CombatItemDef, newUid: () => string): { ok: true; pet: Item } | { ok: false } {
+  const R = petRules(data.stats)!;
+  const box = s.bag.find((b) => b.uid === uid)!;
   const bag = s.bag.map((b) => ({ ...b }));
   const at = bag.findIndex((b) => b.uid === uid);
   if (bag[at].count > 1) bag[at].count--;
   else bag.splice(at, 1);
   const pet: Item = { ...newItem(data.stats, petDef, newUid()), level: R.startLevel, bound: true, xp: 0, points: {} };
-  if (!addToBag(data, bag, pet, newUid)) return { ok: false, message: 'Make room in your bag first.' };
+  if (!addToBag(data, bag, pet, newUid)) return { ok: false };
   // (The pet takes the box's place when that was the box's last.)
   if (box.count <= 1) {
     const i = bag.findIndex((b) => b.uid === pet.uid);
@@ -231,7 +288,7 @@ export function openPetBox(data: ItemData, s: Pick<AdventureState, 'bag'>, uid: 
     bag.splice(Math.min(at, bag.length), 0, pet);
   }
   s.bag = bag;
-  return { ok: true, pet, message: `${petDef.name} is yours!` };
+  return { ok: true, pet };
 }
 
 /** Why a pet can't be sent out, called back or swapped now, or null: in combat (the town's rule), or within the swap
@@ -267,7 +324,10 @@ export function callBackPet(data: ItemData, s: Pick<AdventureState, 'bag' | 'pet
   return { ok: true, message: `${data.defs.get(pet.defId)?.name ?? 'Your pet'} is back in your bag.` };
 }
 
-/** A pet action (POST /town/pet; the dev town's /__pet) on a character: a box opened, a pet sent out or called back
+export const CUBE_IN_FIGHT = "Can't open that during a fight.";
+
+/** A pet action (POST /town/pet; the dev town's /__pet) on a character: a box opened, a cube opened into the pet picked
+ *  (never in a fight), a pet sent out or called back
  *  (refused in a fight or within the swap cooldown of `lastChange`), a pet point spent on the pet out, or every one back.
  *  `changed`: the pet out changed (the caller notes the time, and everyone sees it). */
 export function petAction(
@@ -279,6 +339,7 @@ export function petAction(
   const R = petRules(data.stats);
   if (!R) return { ok: false, message: 'No pets yet.' };
   if (a.action === 'open') return openPetBox(data, s, a.item, ctx.newUid);
+  if (a.action === 'cube') return ctx.inCombat ? { ok: false, message: CUBE_IN_FIGHT } : openPetCube(data, s, a.item, a.pet, ctx.newUid);
   if (a.action === 'out' || a.action === 'back') {
     const no = petSwapRefusal(R, ctx.lastChange, ctx.now, ctx.inCombat);
     if (no) return { ok: false, message: no };
@@ -295,6 +356,7 @@ export function petAction(
 export function parsePetAction(body: unknown): TownPetAction | null {
   const b = body as Record<string, unknown> | null;
   if ((b?.action === 'open' || b?.action === 'out') && typeof b.item === 'string' && b.item.length <= 40) return { action: b.action, item: b.item };
+  if (b?.action === 'cube' && typeof b.item === 'string' && b.item.length <= 40 && typeof b.pet === 'string' && b.pet.length <= 40) return { action: 'cube', item: b.item, pet: b.pet };
   if (b?.action === 'back' || b?.action === 'reset') return { action: b.action };
   if (b?.action === 'spend' && PET_NODES.includes(b.node as PetNode)) return { action: 'spend', node: b.node as PetNode };
   return null;
