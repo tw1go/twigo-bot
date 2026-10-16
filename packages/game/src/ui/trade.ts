@@ -472,6 +472,8 @@ function refusal(reason: string, name?: string): string {
       return `${who} declined the trade.`;
     case 'timeout':
       return `${who} didn't answer the trade request.`;
+    case 'closed':
+      return "Couldn't send that trade request.";
     default:
       return 'That trade request is gone.';
   }

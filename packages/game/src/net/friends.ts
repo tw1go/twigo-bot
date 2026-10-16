@@ -1,10 +1,10 @@
 import type { FriendRefusal, FriendView, FriendsState, TownClientMessage } from '@mikazuki/shared';
 
-// 🤝 Your friends and the requests waiting either way, as the town's connection last said (bot web/town-friends.ts;
+// 🤝 Your friends, the requests waiting either way and who you've blocked, as the town's connection last said (bot web/town-friends.ts;
 // CONTEXT.md Friend). The Friends list (ui/online.ts), the player menu's Add friend and `/friend` read it here; actions
 // go out through the town's link.
 
-let state: FriendsState = { friends: [], incoming: [], outgoing: [] };
+let state: FriendsState = { friends: [], incoming: [], outgoing: [], blocked: [] };
 const listeners = new Set<() => void>();
 let link: { send(m: TownClientMessage): boolean } | null = null;
 
@@ -28,9 +28,12 @@ export function onFriends(fn: () => void): () => void {
 /** A town player (by their id) who is your friend. */
 export const friendHere = (playerId: string): FriendView | undefined => state.friends.find((f) => f.id === playerId);
 
-/** Where you stand with someone by nickname: friends, you asked them, they asked you (its key), or none. */
-export function standing(name: string): { is: 'friend' | 'sent' | 'none' } | { is: 'asked'; key: string } {
+/** Where you stand with someone by nickname: friends, you asked them, they asked you (its key), you blocked them (its
+ *  key), or none. */
+export function standing(name: string): { is: 'friend' | 'sent' | 'none' } | { is: 'asked' | 'blocked'; key: string } {
   const same = (n: string) => n.toLowerCase() === name.toLowerCase();
+  const blocked = state.blocked.find((b) => same(b.name));
+  if (blocked) return { is: 'blocked', key: blocked.key };
   if (state.friends.some((f) => same(f.name))) return { is: 'friend' };
   const asked = state.incoming.find((r) => same(r.name));
   if (asked) return { is: 'asked', key: asked.key };
@@ -45,6 +48,10 @@ export const askByName = (name: string) => send({ t: 'friend-ask', name });
 export const answer = (key: string, accept: boolean) => send({ t: 'friend-answer', key, accept });
 export const cancel = (key: string) => send({ t: 'friend-cancel', key });
 export const remove = (key: string) => send({ t: 'friend-remove', key });
+/** Block a player here (their town id), or anyone by nickname (CONTEXT.md Block). */
+export const blockHere = (playerId: string) => send({ t: 'block', to: playerId });
+export const blockByName = (name: string) => send({ t: 'block', name });
+export const unblock = (key: string) => send({ t: 'unblock', key });
 
 /** Why a friend request or action didn't go through, as a toast. */
 export function refusal(reason: FriendRefusal, name?: string): string {
@@ -68,5 +75,13 @@ export function refusal(reason: FriendRefusal, name?: string): string {
       return 'That friend request isn’t open anymore.';
     case 'slow':
       return 'One a second.';
+    case 'closed':
+      return "Couldn't send that request.";
+    case 'blocked':
+      return `You've blocked ${who}. Unblock them first (the Blocked list beside the chat).`;
+    case 'blocks':
+      return 'You’ve blocked 200 players already. Unblock some first.';
+    case 'gm':
+      return "Game Masters can't be blocked.";
   }
 }

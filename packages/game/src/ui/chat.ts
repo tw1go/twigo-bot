@@ -199,9 +199,9 @@ export class ChatBox {
           if (!this.send(rest, 'whisper', links)) this.notice('Chat is offline right now.');
           return;
         }
-        // A command the town handles (`/friend Mara`): never said.
-        const cmd = /^\/(friend)(?:\s+(.*))?$/i.exec(text);
-        if (cmd && this.onCommand) return void this.onCommand('friend', (cmd[2] ?? '').trim());
+        // A command the town handles (`/friend Mara`, `/block Mara`): never said.
+        const cmd = /^\/(friend|block)(?:\s+(.*))?$/i.exec(text);
+        if (cmd && this.onCommand) return void this.onCommand(cmd[1].toLowerCase() as 'friend' | 'block', (cmd[2] ?? '').trim());
         // /m, /g, /p (and a GM's /gm) pick the channel (and stay on it); alone they only switch.
         const pick = /^\/(gm|[mgp])(?:\s+|$)/i.exec(text);
         if (pick?.[1].toLowerCase() === 'gm' && !this.gmOn) return this.notice('Only Game Masters can use /gm.');
@@ -367,8 +367,8 @@ export class ChatBox {
 
   /** A shown item was clicked: its tooltip beside the name (set by the town). */
   showItem: ((item: Item, anchor: HTMLElement) => void) | null = null;
-  /** A chat command the town handles (`/friend <nickname>`): its name and what follows. */
-  onCommand: ((name: 'friend', rest: string) => void) | null = null;
+  /** A chat command the town handles (`/friend <nickname>`, `/block <nickname>`): its name and what follows. */
+  onCommand: ((name: 'friend' | 'block', rest: string) => void) | null = null;
 
   /** A line's text with each shown item ("[name]") as its name in its rarity's colour, clickable for its tooltip. */
   private withItems(text: string, links: ChatItemLink[]): Node[] {

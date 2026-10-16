@@ -1,6 +1,6 @@
 import { type FriendView, type OutfitData, type TitleData, lastOnline } from '@mikazuki/shared';
 import { playSound } from '../audio/sound';
-import { answer, askByName, cancel, friends, onFriends, remove } from '../net/friends';
+import { answer, askByName, blockByName, cancel, friends, onFriends, remove, unblock } from '../net/friends';
 import { inParty, invite, mayInvite, onParty } from '../net/party';
 import { areaName } from './party';
 
@@ -8,7 +8,8 @@ import { areaName } from './party';
 // panel with three tabs. Here: everyone in this area — you first — with their titles in their colours. Friends (CONTEXT.md
 // Friend): add one by nickname, then each friend with their head, class badge, level and where they are while online
 // (Whisper; Invite to party while they're in town), or when they were last online, and Remove (asks twice). Requests: those sent
-// to you (Accept / Decline) and yours waiting (Cancel). A dot on the button and the tab while a request waits for you.
+// to you (Accept / Decline) and yours waiting (Cancel). Blocked (CONTEXT.md Block): block someone by nickname, and those
+// you've blocked with Unblock. A dot on the button and the tab while a request waits for you.
 // Plus the pop-up for a request that arrives while you're here. DOM text only; net/friends.ts has the state.
 
 export interface OnlinePlayer {
@@ -31,7 +32,7 @@ export interface FriendArt {
   badge: (cls: string | null | undefined) => { url: string; name: string } | null;
 }
 
-type Tab = 'here' | 'friends' | 'requests';
+type Tab = 'here' | 'friends' | 'requests' | 'blocked';
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag);
@@ -49,6 +50,8 @@ export class OnlineList {
   private readonly body = el('div', 'on-body');
   /** Add a friend by nickname (kept as it is while the rows under it are redrawn: what's typed stays). */
   private readonly addForm = el('form', 'on-add');
+  /** Block someone by nickname (the Blocked tab's, kept the same way). */
+  private readonly blockForm = el('form', 'on-add');
   private readonly tabButtons = new Map<Tab, HTMLButtonElement>();
   private tab: Tab = 'here';
   private players: OnlinePlayer[] = [];
@@ -79,7 +82,7 @@ export class OnlineList {
     this.list = document.createElement('div');
     this.list.className = 'on-list';
     this.list.hidden = true;
-    for (const [t, label] of [['here', 'Here'], ['friends', 'Friends'], ['requests', 'Requests']] as [Tab, string][]) {
+    for (const [t, label] of [['here', 'Here'], ['friends', 'Friends'], ['requests', 'Requests'], ['blocked', 'Blocked']] as [Tab, string][]) {
       const b = el('button', 'on-tab', label);
       b.addEventListener('click', () => {
         playSound('click');
@@ -90,23 +93,9 @@ export class OnlineList {
       this.tabButtons.set(t, b);
       this.tabs.append(b);
     }
-    const input = el('input', 'on-add-name');
-    input.placeholder = 'Add a friend by nickname';
-    input.maxLength = 16;
-    input.setAttribute('aria-label', 'Nickname to add as a friend');
-    input.addEventListener('keydown', (e) => e.stopPropagation()); // (typing never walks or opens doors)
-    const add = el('button', 'on-add-go', 'Add');
-    add.type = 'submit';
-    this.addForm.append(input, add);
-    this.addForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const name = input.value.trim();
-      if (!name) return;
-      playSound('click');
-      askByName(name);
-      input.value = '';
-    });
-    this.list.append(this.tabs, this.addForm, this.body);
+    nameForm(this.addForm, 'Add a friend by nickname', 'Add', askByName);
+    nameForm(this.blockForm, 'Block someone by nickname', 'Block', blockByName);
+    this.list.append(this.tabs, this.addForm, this.blockForm, this.body);
     this.button.addEventListener('click', () => this.toggle());
     document.addEventListener('click', (e) => {
       if (!this.el.contains(e.target as Node)) this.toggle(false);
@@ -143,8 +132,10 @@ export class OnlineList {
     this.tabButtons.get('requests')!.classList.toggle('on-asked', asks > 0);
     for (const [t, b] of this.tabButtons) b.setAttribute('aria-pressed', String(t === this.tab));
     this.addForm.hidden = this.tab !== 'friends';
+    this.blockForm.hidden = this.tab !== 'blocked';
     if (this.list.hidden) return; // (the rows, heads and all, only while it's open)
-    this.body.replaceChildren(...(this.tab === 'here' ? this.here() : this.tab === 'friends' ? this.friendRows() : this.requestRows()));
+    const rows = { here: () => this.here(), friends: () => this.friendRows(), requests: () => this.requestRows(), blocked: () => this.blockedRows() }[this.tab];
+    this.body.replaceChildren(...rows());
   }
 
   private here(): HTMLElement[] {
@@ -249,6 +240,25 @@ export class OnlineList {
     return rows;
   }
 
+  private blockedRows(): HTMLElement[] {
+    const list = friends().blocked;
+    if (!list.length) return [el('p', 'on-empty', 'Nobody blocked. A player you block can’t whisper you, send you friend requests, invite you to a party or ask you to trade. Their chat in General still shows.')];
+    return list.map((b) => {
+      const r = el('div', 'on-req');
+      const words = el('span', 'on-words');
+      words.append(el('b', 'on-fname', b.name), el('span', 'on-where', `Blocked ${lastOnline(b.at, Date.now()).toLowerCase()}`));
+      const out = el('button', 'on-act', 'Unblock');
+      out.addEventListener('click', () => {
+        playSound('click');
+        unblock(b.key);
+      });
+      const acts = el('span', 'on-acts');
+      acts.append(out);
+      r.append(words, acts);
+      return r;
+    });
+  }
+
   private toggle(show = this.list.hidden): void {
     this.list.hidden = !show;
     this.button.setAttribute('aria-expanded', String(show));
@@ -259,6 +269,26 @@ export class OnlineList {
     const left = this.list.getBoundingClientRect().left;
     if (left < 8) this.list.style.right = `${left - 8}px`;
   }
+}
+
+/** A nickname box with its button (`go` with what's typed); typing never walks or opens doors. */
+function nameForm(form: HTMLFormElement, placeholder: string, label: string, go: (name: string) => void): void {
+  const input = el('input', 'on-add-name');
+  input.placeholder = placeholder;
+  input.maxLength = 16;
+  input.setAttribute('aria-label', placeholder);
+  input.addEventListener('keydown', (e) => e.stopPropagation());
+  const button = el('button', 'on-add-go', label);
+  button.type = 'submit';
+  form.append(input, button);
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = input.value.trim();
+    if (!name) return;
+    playSound('click');
+    go(name);
+    input.value = '';
+  });
 }
 
 /** A friend request arriving while you're here: who, Accept / Decline, or × to answer later (in the Requests tab). */

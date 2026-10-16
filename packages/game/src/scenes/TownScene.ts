@@ -47,7 +47,7 @@ import { settling, settlingWhat } from '../world/settle';
 import { SystemFeed } from '../ui/system-feed';
 import { announce } from '../ui/announce';
 import { OnlineList, showFriendRequest } from '../ui/online';
-import { answer as friendAnswer, askByName, friends, refusal as friendRefusal, setFriends, setFriendsLink } from '../net/friends';
+import { answer as friendAnswer, askByName, blockByName, friends, refusal as friendRefusal, setFriends, setFriendsLink } from '../net/friends';
 import { setPrivacy, setPrivacyLink } from '../net/privacy';
 import { EMOTE_KEYS, emotePicker } from '../ui/emotes';
 import { actionOf, held, keyLabel, matches } from '../ui/keybinds';
@@ -1900,10 +1900,10 @@ export class TownScene extends Phaser.Scene {
       };
       new PartyPanel(art);
       online.art = art;
-      // `/friend Mara` asks Mara; `/friend` alone opens the Friends list.
-      chat.onCommand = (_cmd, rest) => {
-        if (!rest) return online.open('friends');
-        if (!askByName(rest)) chat.notice('Chat is offline right now.');
+      // `/friend Mara` asks Mara, `/block Mara` blocks her; alone, they open the Friends or Blocked list.
+      chat.onCommand = (cmd, rest) => {
+        if (!rest) return online.open(cmd === 'friend' ? 'friends' : 'blocked');
+        if (!(cmd === 'friend' ? askByName(rest) : blockByName(rest))) chat.notice('Chat is offline right now.');
       };
     }
     onParty(() => {
