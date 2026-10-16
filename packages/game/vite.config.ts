@@ -88,7 +88,15 @@ function homeScreenApp() {
           options: { cacheName: 'mk-hashed', expiration: { maxEntries: 600, purgeOnQuotaError: true } },
         },
         {
-          // The rest of the art, maps, sounds and data: from the device at once, refreshed behind the scenes.
+          // The game's data (items, stats, quests, maps, mobs…): from the server first, the device's copy only when it
+          // can't be reached. Stale-while-revalidate gave the first load after a deploy last version's data (a new item
+          // showed as its bare id, without its art, until the next load).
+          urlPattern: ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith('/play/assets/') && url.pathname.endsWith('.json'),
+          handler: 'NetworkFirst',
+          options: { cacheName: 'mk-data', networkTimeoutSeconds: 5, expiration: { maxEntries: 200, purgeOnQuotaError: true } },
+        },
+        {
+          // The rest of the art, maps, sounds: from the device at once, refreshed behind the scenes.
           urlPattern: ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith('/play/assets/'),
           handler: 'StaleWhileRevalidate',
           options: { cacheName: 'mk-assets', expiration: { maxEntries: 4000, purgeOnQuotaError: true } },

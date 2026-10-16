@@ -263,7 +263,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   manifest.webmanifest (Mikazuki, /play/, fullscreen then standalone, landscape, #1E1B3A, the Mikazuki brand kit's 192/512
   as `any` and maskable 192/512 in `public/icons/`), sw.js (registered by `net/pwa.ts`, never in dev or the desktop app): precaches what the
   title screen needs (about 4 MB: the page, its scripts, the game's manifest, town.json, fonts, the title art); the rest of
-  /play/assets/ is cached as first loaded (hashed scripts and packs cache-first, the rest stale-while-revalidate); nothing
+  /play/assets/ is cached as first loaded (hashed scripts and packs cache-first; the data, every .json, network-first with the cached copy only
+  when the server can't be reached in 5 s, so a deploy's new items and stats reach the first load after it; the rest stale-while-revalidate); nothing
   else (logins, /me, /town/*, /api/*, /ws, version.json). Updates install in the background and wait: ui/version.ts's
   notice (version.json, or the worker's `newVersionReady`) applies them on Reload now (`applyUpdate`: the waiting worker
   takes over, then a reload; never on its own). First open (no worker yet: `firstOpen`): a percentage beside the town's
