@@ -51,7 +51,7 @@ const lookOf = (userId: string): OutfitData | null => {
 };
 import { enhanceFeedLine, parseForgeAction } from './forge.js';
 import { loadItemData } from './stats-data.js';
-import { practiceDropFor, usePracticeTicketFor, warrensAccessOf, refundTicketFor, warrenTicketsOf, useTicketFor, kindCountOf, useKindFor, adventureOf, cosmeticsOf, combatOf, fighterOf, forgeFor, petXpFor, dropItemFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townPet, townEquip, townPoints, townQuest, townSkills, trainingArmorFor, questRewardsFor, questPiecesFor, questKillFor } from './adventure.js';
+import { practiceDropFor, refundPracticeTicketFor, usePracticeTicketFor, warrensAccessOf, refundTicketFor, warrenTicketsOf, useTicketFor, kindCountOf, useKindFor, adventureOf, cosmeticsOf, combatOf, fighterOf, forgeFor, petXpFor, dropItemFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townPet, townEquip, townPoints, townQuest, townSkills, trainingArmorFor, questRewardsFor, questPiecesFor, questKillFor } from './adventure.js';
 import { renameWithCard } from '../items/rename-card.js';
 import { changeClassWithTicket } from '../items/class-ticket.js';
 import { LAUNCH_REWARD, isPreregistered, launched, preregCount, preregister } from '../prereg/prereg.js';
@@ -1004,8 +1004,9 @@ export function startWebServer(client: Client): void {
     const skillLevels = Object.fromEntries(CLASSES.map((c) => [c.id, c.skills.map((k) => k.level)]));
     // The Scrap Warrens: runs a restart ended before any boss fell there give their openers' tickets back (a boss down
     // spends it; runs saved before `spent` existed: unless Barong-Barong fell, as then).
-    for (const r of kvLoad<{ id: string; opener: string; cleared: boolean; spent?: boolean }[]>(WARRENS_RUNS, [])) {
-      if (!(r.spent ?? r.cleared)) console.log(`[warrens] run ${r.id} ended by a restart: ${refundTicketFor(r.opener) ? 'ticket back to' : 'NO ROOM for the ticket of'} ${r.opener}`);
+    // (A practice run's: its Practice Warren Ticket.)
+    for (const r of kvLoad<{ id: string; opener: string; cleared: boolean; spent?: boolean; practice?: boolean }[]>(WARRENS_RUNS, [])) {
+      if (!(r.spent ?? r.cleared)) console.log(`[warrens] ${r.practice ? 'practice ' : ''}run ${r.id} ended by a restart: ${(r.practice ? refundPracticeTicketFor : refundTicketFor)(r.opener) ? 'ticket back to' : 'NO ROOM for the ticket of'} ${r.opener}`);
     }
     kvSave(WARRENS_RUNS, []);
     town = attachTown(server, {
@@ -1027,7 +1028,7 @@ export function startWebServer(client: Client): void {
         ...loadWarrens(skillLevels),
         tickets: { count: warrenTicketsOf, use: useTicketFor, refund: refundTicketFor },
         access: warrensAccessOf,
-        practice: { use: usePracticeTicketFor, drop: practiceDropFor },
+        practice: { use: usePracticeTicketFor, drop: practiceDropFor, refund: refundPracticeTicketFor },
         saved: (runs) => kvSave(WARRENS_RUNS, runs),
       },
       // Lantern Posts: a Return Lantern from the combat bag for each teleport.

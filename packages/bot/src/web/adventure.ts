@@ -464,12 +464,18 @@ export const warrenTicketsOf = (userId: string): number => kindCountOf(userId, l
 /** One Warren Ticket out of their bag (opening a run): false if they have none. */
 export const useTicketFor = (userId: string): boolean => useKindFor(userId, loadDungeons().warrens.ticket.id);
 
-/** A Warren Ticket back into their bag (a restart ended their run before Barong-Barong fell): false if no room. */
-export function refundTicketFor(userId: string): boolean {
+/** One of a kind back into their bag (a ticket of a run that ended before a boss fell): false if no room. */
+function refundKindFor(userId: string, defId: string | undefined): boolean {
   const data = loadItemData();
-  const def = data.defs.get(loadDungeons().warrens.ticket.id);
+  const def = defId ? data.defs.get(defId) : undefined;
   return !!def && withItems(userId, (s) => takeLoot(data, s, { item: newItem(data.stats, def, newUid()) }, newUid), (ok) => ok);
 }
+
+/** A Warren Ticket back into their bag (their run ended before a boss fell): false if no room. */
+export const refundTicketFor = (userId: string): boolean => refundKindFor(userId, loadDungeons().warrens.ticket.id);
+
+/** A Practice Warren Ticket back into their bag (their practice run ended before a boss fell): false if no room. */
+export const refundPracticeTicketFor = (userId: string): boolean => refundKindFor(userId, practiceQuest()?.ticket);
 
 /** Buys `quantity` of a combat item at the sari-sari store (its Healing and Smithing tabs): HP/MP Potions for Kusing,
  *  whetstones and Repair Kits for Kowens (`kowens`: their wallet). */

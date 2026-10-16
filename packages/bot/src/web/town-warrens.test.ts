@@ -406,7 +406,9 @@ const wait = (ms: number) => new Promise((ok) => setTimeout(ok, ms));
 const heard = async (c: { last: (t: never) => unknown }, t: string) => {
   for (let k = 0; k < 80 && !c.last(t as never); k++) await wait(25);
 };
-async function town(opts: { tickets: Record<string, number>; party?: boolean; level?: Record<string, number>; kill?: (name: string, mob: { level: number; xp: number }) => void; data?: typeof W }) {
+/** `practice`: Aling Nena's quest for those named in it (not done, needing the binoculars; their Practice Warren
+ *  Tickets), done for everyone else; `refunds` gets "practice:<name>" for a practice ticket back. */
+async function town(opts: { tickets: Record<string, number>; party?: boolean; level?: Record<string, number>; kill?: (name: string, mob: { level: number; xp: number }) => void; data?: typeof W; practice?: Record<string, number> }) {
   const stats = loadStats();
   const slums = loadMobMap('slums');
   const saved: { id: string; opener: string; cleared: boolean; spent: boolean }[][] = [];
@@ -436,6 +438,16 @@ async function town(opts: { tickets: Record<string, number>; party?: boolean; le
         refund: (u) => (refunds.push(u), (opts.tickets[u] = (opts.tickets[u] ?? 0) + 1), true),
       },
       saved: (runs) => saved.push(runs),
+      ...(opts.practice
+        ? {
+            access: (u: string) => (u in opts.practice! ? { done: false, needs: true, practiceTickets: opts.practice![u] } : { done: true }),
+            practice: {
+              use: (u: string) => (opts.practice![u] ?? 0) > 0 && !!(opts.practice![u]--, true),
+              drop: () => null,
+              refund: (u: string) => (refunds.push(`practice:${u}`), (opts.practice![u] = (opts.practice![u] ?? 0) + 1), true),
+            },
+          }
+        : {}),
     },
   });
   await new Promise<void>((ok) => server.listen(0, '127.0.0.1', ok));
@@ -630,5 +642,108 @@ test("over the town's socket: until a boss falls a run's mobs give nothing, and 
   assert.equal(tickets.Mara, 1);
   assert.ok(back.got.some((m) => m.t === 'system' && m.line.kind === 'warrens' && m.line.text.startsWith('Your Warren Ticket is back')));
   back.ws.close();
+  await T.close();
+});
+
+test('a party run: opening the gate is no way in; leaving the party is for good; your own practice run comes first', () => {
+  const parties: Record<string, string | undefined> = { a: 'p', b: 'p', c: 'p' };
+  const w = new Warrens(W, map, deps(), (m) => parties[m] ?? null);
+  const real = w.open('a', 'Ana', 16, () => true, 0);
+  assert.ok(real.ok);
+  assert.ok(w.join('b', 16).ok);
+  // Cy, still in the party, only opens the gate's panel (her practice run blocked by the party's): not one of its members.
+  assert.equal(w.gate('c', 16, 0, { done: false, needs: true, practiceTickets: 1 }).practice?.blocked, 'run');
+  assert.deepEqual([...real.run.members].sort(), ['a', 'b']);
+  // She leaves the party and opens her practice run; then the party ends: she still goes to hers, never theirs.
+  delete parties.c;
+  w.leftParty('c', 'p');
+  const practice = w.openPractice('c', 'Cy', 16, () => true, 0);
+  assert.ok(practice.ok);
+  delete parties.a;
+  delete parties.b;
+  assert.equal(w.runOf('c'), practice.run);
+  assert.ok(!w.allowed(real.run, 'c'));
+  assert.equal(w.runOf('a'), real.run, 'those who were in it keep it');
+  assert.equal(w.runOf('b'), real.run);
+});
+
+test('leaving a party drops you from its runs, even once you were inside; the opener too', () => {
+  const parties: Record<string, string | undefined> = { a: 'p', b: 'p', c: 'p' };
+  const w = new Warrens(W, map, deps(), (m) => parties[m] ?? null);
+  const real = w.open('a', 'Ana', 16, () => true, 0);
+  assert.ok(real.ok);
+  assert.ok(w.join('c', 16).ok);
+  delete parties.c;
+  w.leftParty('c', 'p');
+  assert.ok(!w.allowed(real.run, 'c'), 'not while the party lives (its kick)');
+  delete parties.a;
+  w.leftParty('a', 'p');
+  delete parties.b; // (down to one: it ends)
+  assert.ok(!w.allowed(real.run, 'c') && !w.allowed(real.run, 'a'), 'nor once it ends');
+  // Ana's own practice run over the party run she opened.
+  parties.a = 'q';
+  const r2 = w.open('a', 'Ana', 16, () => true, 0);
+  assert.ok(r2.ok);
+  const P = w.openPractice('b', 'Ben', 16, () => true, 0);
+  assert.ok(P.ok);
+  assert.equal(w.runOf('b'), P.run);
+});
+
+test("over the town's socket: a member who left the party for a practice run lands in it, not the party's; it ends before a boss falls: the practice ticket back", async () => {
+  const tickets = { Ana: 1 };
+  const practice = { Cy: 1 };
+  const T = await town({ tickets, practice, data: { ...W, run: { ...W.run, closeWhenEmptySeconds: 1 } } });
+  const [gc, gr] = W.entry.warp.arrive;
+  const ana = await T.open('Ana', 'slums');
+  const bob = await T.open('Bob', 'slums');
+  const cy = await T.open('Cy', 'slums');
+  await wait(80);
+  for (const c of [ana, bob, cy]) c.send({ t: 'here', col: gc, row: gr, dir: 's' });
+  for (const c of [bob, cy]) {
+    ana.send({ t: 'party-invite', to: c.id() });
+    await heard(c, 'party-invited');
+    c.send({ t: 'party-answer', invite: c.last('party-invited')!.invite, accept: true });
+    await wait(1100); // (an invite a second)
+  }
+  // Ana opens the party's run; Bob joins it; Cy (her quest not done) looks at the gate: practice blocked by it.
+  ana.send({ t: 'warrens-open' });
+  await heard(ana, 'warrens-go');
+  const party = ana.last('warrens-go')!.run;
+  await heard(bob, 'warrens-invite');
+  bob.send({ t: 'warrens-join', run: party });
+  await heard(bob, 'warrens-go');
+  cy.send({ t: 'warrens-gate' });
+  await heard(cy, 'warrens-gate');
+  assert.equal(cy.last('warrens-gate')?.gate.practice?.blocked, 'run');
+  // Cy leaves the party and opens her practice run (her ticket goes); then Bob leaves too, and the party is over.
+  cy.send({ t: 'party-leave' });
+  await wait(80);
+  await wait(1000); // (the gate's one-a-second)
+  cy.send({ t: 'warrens-practice' });
+  await heard(cy, 'warrens-go');
+  const mine = cy.last('warrens-go')!.run;
+  assert.notEqual(mine, party);
+  assert.equal(practice.Cy, 0);
+  bob.send({ t: 'party-leave' });
+  await wait(80);
+  // Through the gate: her own practice run.
+  cy.ws.close();
+  const inside = await T.open('Cy', 'warrens');
+  await wait(1300);
+  await heard(inside, 'warrens');
+  assert.equal(inside.last('warrens')?.run.id, mine);
+  assert.equal(inside.last('warrens')?.run.practice, true);
+  // She leaves before any boss falls: the run closes, her Practice Warren Ticket comes back.
+  inside.send({ t: 'warrens-leave' });
+  await heard(inside, 'warrens-out');
+  inside.ws.close();
+  const back = await T.open('Cy', 'slums');
+  for (let k = 0; k < 120 && !T.refunds.includes('practice:Cy'); k++) await wait(25);
+  await wait(100);
+  assert.ok(T.refunds.includes('practice:Cy'));
+  assert.equal(practice.Cy, 1);
+  assert.equal(T.refunds.filter((r) => r.endsWith('Cy')).length, 1, 'her practice ticket only, never a Warren Ticket');
+  assert.ok(back.got.some((m) => m.t === 'system' && m.line.kind === 'warrens' && m.line.text.startsWith('Your Practice Warren Ticket is back')));
+  for (const c of [ana, bob, back]) c.ws.close();
   await T.close();
 });

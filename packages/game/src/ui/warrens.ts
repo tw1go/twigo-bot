@@ -270,9 +270,9 @@ export function showKickCountdown(ms: number): void {
 
 /** The run ended before a boss fell and the opener's ticket went back (`warrens-out`'s ticketBack): kept through the
  *  trip back to the Slums (a page load), then told there (`tellTicketBack`). */
-export function noteTicketBack(): void {
+export function noteTicketBack(practice = false): void {
   try {
-    sessionStorage.setItem(TICKET_BACK_KEY, '1');
+    sessionStorage.setItem(TICKET_BACK_KEY, practice ? 'practice' : '1');
   } catch {
     /* (no storage: untold) */
   }
@@ -280,11 +280,13 @@ export function noteTicketBack(): void {
 
 /** On arrival: the ticket-back toast, once. */
 export function tellTicketBack(): void {
+  let back: string | null;
   try {
-    if (!sessionStorage.getItem(TICKET_BACK_KEY)) return;
+    back = sessionStorage.getItem(TICKET_BACK_KEY);
+    if (!back) return;
     sessionStorage.removeItem(TICKET_BACK_KEY);
   } catch {
     return;
   }
-  toast('Your Warren Ticket is back: the run ended before a mini boss fell.', 4500);
+  toast(`Your ${back === 'practice' ? 'Practice Warren Ticket' : 'Warren Ticket'} is back: the run ended before a mini boss fell.`, 4500);
 }
