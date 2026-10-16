@@ -45,8 +45,16 @@ rsync -az --delete \
   ./ "$TARGET:/opt/twigo-bot/"
 
 # The web game, as static files for Caddy.
-# rsync only creates one missing folder level, so make sure web/play exists first.
-rsync -az --delete --rsync-path="sudo mkdir -p /opt/twigo-bot/web/play && sudo rsync" packages/game/dist/ "$TARGET:/opt/twigo-bot/web/play/"
+# rsync only creates one missing folder level, so make sure web/play exists first. The files named by their content
+# (art sheets, scripts, stylesheets) are kept from --delete: a game still on an older build (an iPhone keeps one until
+# Reload now) asks for its own, and finding them gone left it without its art (pets, looks).
+rsync -az --delete --filter='P /assets/packs/*' --filter='P /assets/*.js' --filter='P /assets/*.css' \
+  --rsync-path="sudo mkdir -p /opt/twigo-bot/web/play && sudo rsync" packages/game/dist/ "$TARGET:/opt/twigo-bot/web/play/"
+# Those older builds' files go once no deploy has carried them for 14 days (their time is the last build that did).
+(cd packages/game/dist && find assets/packs -type f && find assets -maxdepth 1 -type f \( -name '*.js' -o -name '*.css' \)) |
+  ssh "$TARGET" 'cd /opt/twigo-bot/web/play && keep=$(mktemp) && cat >"$keep" && test -s "$keep" &&
+    { find assets/packs -type f -mtime +14; find assets -maxdepth 1 -type f \( -name "*.js" -o -name "*.css" \) -mtime +14; } |
+    { grep -vxFf "$keep" || true; } | sudo xargs -r rm -f; rm -f "$keep"'
 
 ssh "$TARGET" 'set -e
   cd /opt/twigo-bot

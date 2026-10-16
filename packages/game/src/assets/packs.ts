@@ -13,6 +13,15 @@ const sheets = new Map<string, [number, number]>();
 /** Sheets the build trimmed (scripts/packs.ts): their cell, and the box of it each frame was cut to. */
 const trims = new Map<string, number[]>();
 let byPage: Map<number, string[]> | null = null;
+/** Loaders already told what to do when a page fails. */
+const watched = new WeakSet<Phaser.Loader.LoaderPlugin>();
+let missing: (() => void) | null = null;
+
+/** `fn` whenever a page can't be loaded (main.ts: look for a newer version, whose notice says to reload: a game left on an
+ *  older build asks for pages a deploy has since replaced). */
+export function onPackMissing(fn: () => void): void {
+  missing = fn;
+}
 
 export const packed = (file: string): boolean => !!index?.files[file];
 
@@ -43,8 +52,22 @@ export function queuePacked(load: Phaser.Loader.LoaderPlugin, textures: Phaser.T
   const page = index!.files[file][0];
   if (queued.has(page)) return;
   queued.add(page);
+  watch(load);
   load.image(pageKey(page), index!.pages[page]);
   load.once(`filecomplete-image-${pageKey(page)}`, () => unpack(textures, page));
+}
+
+/** A page that fails is forgotten (asked for again by whoever needs it next) and reported. */
+function watch(load: Phaser.Loader.LoaderPlugin): void {
+  if (watched.has(load)) return;
+  watched.add(load);
+  load.on('loaderror', (file: Phaser.Loader.File) => {
+    const page = file.key.startsWith('pack:') ? index!.pages.indexOf(file.key.slice('pack:'.length)) : -1;
+    if (page < 0) return;
+    load.off(`filecomplete-image-${file.key}`);
+    queued.delete(page);
+    missing?.();
+  });
 }
 
 /** Cuts every image on a loaded page into its own texture, then drops the page. */
