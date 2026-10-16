@@ -212,10 +212,12 @@ export type TownEquipAction =
   | { action: 'wear-cosmetic'; item: string; place?: CosmeticPlace }
   | { action: 'take-off-cosmetic'; place: CosmeticPlace };
 
-/** POST /town/pet: open a pet box from the combat bag (by uid), send a pet out (by uid; the one out goes back), call
+/** POST /town/pet: open a pet box from the combat bag (by uid), open a pet cube (by uid) into the pet picked (pets.list
+ *  key; never in a fight), send a pet out (by uid; the one out goes back), call
  *  the pet back, one pet point into a node of the pet out's pet tree, or all its pet points back (free). */
 export type TownPetAction =
   | { action: 'open'; item: string }
+  | { action: 'cube'; item: string; pet: string }
   | { action: 'out'; item: string }
   | { action: 'back' }
   | { action: 'spend'; node: PetNode }

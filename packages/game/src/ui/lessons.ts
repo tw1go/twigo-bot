@@ -1,4 +1,4 @@
-import { type AdventureState, type Item, type ItemData, type TownForgeAction, type TownForgeResponse, breaksFrom, enhanceView, fragmentsPerWhetstone, isGearDef, itemStats } from '@mikazuki/shared';
+import { type AdventureState, type Item, type ItemData, type TownForgeAction, type TownForgeResponse, breaksFrom, enhanceView, fragmentsPerWhetstone, isGearDef, itemName, itemStats } from '@mikazuki/shared';
 import { cantWear } from '../net/adventure';
 import { myBet, race, raceNow, raceRules, raceStartedHere } from '../net/race';
 import { hotbarItemIds } from './hotbar';
@@ -102,6 +102,28 @@ const fragments = (c: LessonCtx) => c.s.bag.find((it) => {
   const d = defOf(c, it);
   return !!d && !isGearDef(d) && d.forge === 'fragment' && it.count >= fragmentsPerWhetstone(c.D.stats);
 });
+/** The places quest pieces go, in the Tanod's chain's order (the mini boss quests: Tin Can body, Bottle Caps hands, Tire
+ *  Roller bottoms, Plastic Bag Spook weapon, Wire Tangle head, Scrap Crab feet). */
+const PIECE_PLACES = ['body', 'hands', 'bottoms', 'weapon', 'head', 'feet'] as const;
+/** Quest pieces up to this level get a lesson: the Lv 10 ones replace the training gear. (The Scrap Crab's Lv 20 boots
+ *  come late in the chain, when a player knows the bag by now.) */
+const GUIDED_UP_TO = 10;
+/** The quest piece for a place in the bag that can be worn now and would replace training gear (or fill the empty place
+ *  there), up to GUIDED_UP_TO. */
+const wearablePiece = (c: LessonCtx, place: string) => {
+  const worn = c.s.equipped[place as keyof AdventureState['equipped']];
+  if (worn && !(defOf(c, worn) as { training?: boolean } | undefined)?.training) return undefined;
+  return c.s.bag.find((it) => {
+    const d = defOf(c, it);
+    return isQuestPiece(c, it, false) && isGearDef(d) && d.slot === place && it.level <= GUIDED_UP_TO && !cantWear({ ...d, level: it.level });
+  });
+};
+/** Training gear (or nothing) still in a place. */
+const trainingIn = (c: LessonCtx, place: string) => {
+  const worn = c.s.equipped[place as keyof AdventureState['equipped']];
+  return !worn || !!(defOf(c, worn) as { training?: boolean } | undefined)?.training;
+};
+
 /** The quest piece that's a weapon, worn or in the bag. */
 const questWeapon = (c: LessonCtx) => {
   const worn = c.s.equipped.weapon;
@@ -117,6 +139,48 @@ const whetstonesOf = (c: LessonCtx, w: Item | undefined) => {
   const v = w && enhanceView(c.D, w, c.s.bag);
   return v?.whetstone ? c.s.bag.find((it) => it.defId === v.whetstone!.id) : undefined;
 };
+
+/** Wearing a place's quest piece (lesson 2, one for each place): it starts once the piece can be worn (its level and
+ *  stats met: Just In Time's Lv 10 body waits for Lv 10) while training gear (or nothing) is in its place, and ends once
+ *  it's on, or it left the bag, or something else replaced the training gear. */
+function wearLesson(place: (typeof PIECE_PLACES)[number]): Lesson {
+  const piece = (c: LessonCtx) => c.s.bag.find((it) => it.uid === c.memo.piece);
+  return {
+    id: `wear-${place}`,
+    starts: (c) => !!wearablePiece(c, place),
+    note: (c) => ({ piece: wearablePiece(c, place)?.uid ?? '' }),
+    goal: (c) => Object.values(c.s.equipped).some((it) => it?.uid === c.memo.piece) || !piece(c) || !trainingIn(c, place),
+    blocked: (c) => {
+      const d = defOf(c, piece(c));
+      return isGearDef(d) && !!cantWear(d);
+    },
+    steps: [
+      ...openTheBag(
+        (c) => {
+          const it = piece(c);
+          return `${it ? itemName(c.D, it) : 'Your mini boss gear'} fits you now: wear it in place of your training gear. Open your bag${bagKey()}.`;
+        },
+        (c) => shown(cellOf(c.memo.piece)),
+        "It's in the Combat tab.",
+      ),
+      { applies: (c) => shown(cellOf(c.memo.piece)), target: (c) => cellOf(c.memo.piece), line: () => 'Click it to see what it does.', sides: ['left', 'below'] },
+      {
+        applies: (c) => picked(c.memo.piece) && !!action('Wear'),
+        target: () => action('Wear'),
+        // (Not wearable after all: a stat point reset since. The game's own reason, and the lesson waits.)
+        line: () => {
+          const b = action('Wear');
+          return b?.disabled && b.title ? `${b.title.replace(/[.!]?$/, '.')} It goes on once you can wear it.` : 'Press Wear to put it on.';
+        },
+        sides: ['right', 'below', 'above'],
+      },
+    ],
+    after: (c) => {
+      const at = Object.entries(c.s.equipped).find(([, it]) => it?.uid === c.memo.piece)?.[0];
+      return { target: at ? $(`#equipment .eq-slot[data-place="${CSS.escape(at)}"]`) : null, line: "It's on! Its agimat is already filled in." };
+    },
+  };
+}
 
 // ── The race (lesson 5) ──
 
@@ -188,35 +252,8 @@ export const LESSONS: Lesson[] = [
     ],
     after: (c) => ({ toast: itemStats(c.D.stats).potions.separateCooldowns ? 'Potions ready. HP and MP each have a short cooldown.' : 'Potions ready. They share a short cooldown.' }),
   },
-  {
-    // 2. Wear the quest piece (Just In Time's, the first mini boss quest).
-    id: 'wear',
-    starts: (c) => c.s.bag.some((it) => isQuestPiece(c, it)),
-    note: (c) => ({ piece: c.s.bag.find((it) => isQuestPiece(c, it))?.uid ?? '' }),
-    goal: (c) => Object.values(c.s.equipped).some((it) => it?.uid === c.memo.piece) || !c.s.bag.some((it) => it.uid === c.memo.piece),
-    blocked: (c) => {
-      const d = defOf(c, c.s.bag.find((it) => it.uid === c.memo.piece));
-      return isGearDef(d) && !!cantWear(d);
-    },
-    steps: [
-      ...openTheBag(() => `The mini boss dropped gear for you! Open your bag${bagKey()}.`, (c) => shown(cellOf(c.memo.piece)), 'It\'s in the Combat tab.'),
-      { applies: (c) => shown(cellOf(c.memo.piece)), target: (c) => cellOf(c.memo.piece), line: () => 'Click it to see what it does.', sides: ['left', 'below'] },
-      {
-        applies: (c) => picked(c.memo.piece) && !!action('Wear'),
-        target: () => action('Wear'),
-        // Not wearable yet (a stat short): the game's own reason, and the lesson waits.
-        line: () => {
-          const b = action('Wear');
-          return b?.disabled && b.title ? `${b.title.replace(/[.!]?$/, '.')} It goes on once you can wear it.` : 'Press Wear to put it on.';
-        },
-        sides: ['right', 'below', 'above'],
-      },
-    ],
-    after: (c) => {
-      const place = Object.entries(c.s.equipped).find(([, it]) => it?.uid === c.memo.piece)?.[0];
-      return { target: place ? $(`#equipment .eq-slot[data-place="${CSS.escape(place)}"]`) : null, line: "It's on! Its agimat is already filled in." };
-    },
-  },
+  // 2. Wear each quest piece in place of training gear, once it can be worn (below: wearLesson).
+  ...PIECE_PLACES.map(wearLesson),
   {
     // 3. Fragments into a whetstone.
     id: 'combine',

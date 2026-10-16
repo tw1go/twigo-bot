@@ -408,6 +408,18 @@
       "note": "repo-only: a pet box (the art folder's pets/box; 32x32 only, so icon and showcase are the same file). Its price is stats.json pets.boxPrice by its pet's rarity (the sari-sari store's Pets tab). Never sold back to the store."
     },
     {
+      "id": "pet-cube-common",
+      "name": "Pet Selection Cube",
+      "kind": "consumable",
+      "rarity": "white",
+      "bound": true,
+      "about": "Open to choose one common pet. Bound.",
+      "icon": "pets/cube/item-pet-cube-common-16.png",
+      "showcase": "pets/cube/item-pet-cube-common.png",
+      "large": "pets/cube/item-pet-cube-common-64.png",
+      "note": "repo-only (16 Oct 2026): a pet cube (the art folder's pets/cube). Opened into a bound Lv 1 pet of the owner's choice from stats.json pets.petCube.common.choices. Bound when made: never traded, sold or dropped. No shop, drop or quest gives it yet (GMs can: /gift item, the CMS's Mail)."
+    },
+    {
       "id": "pet-fork-of-jord",
       "name": "Fork of Jord",
       "kind": "pet",
