@@ -26,6 +26,11 @@ export function getNickname(userId: string): string | null {
   return getStmt.get(userId)?.nickname ?? null;
 }
 
+/** The member who goes by a nickname (any case, the separators ignored, as uniqueness is), or null. */
+export function memberByNickname(nick: string): string | null {
+  return ownerStmt.get(fold(nick.trim()))?.user_id ?? null;
+}
+
 /** Saves a (parsed) nickname; 'taken' if another member has it. */
 export function setNickname(userId: string, nick: string): 'ok' | 'taken' {
   const owner = ownerStmt.get(fold(nick));

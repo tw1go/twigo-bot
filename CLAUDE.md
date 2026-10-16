@@ -1275,6 +1275,22 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   the player menu (so also from chat names), party members' names pink only for the party (`Character.setParty`,
   `OtherPlayers.inParty`), party chat `/p` (pink, a "Party" tag; to the party only, never Discord or the kept lines).
   Dev: two windows `?as=Alice` / `?as=Bob`.
+- Friends (CONTEXT.md Friend, Friend request; shared `friends.ts` FRIEND_RULES: 100 friends, 20 requests out, 14 days to
+  answer, `lastOnline`; bot `web/town-friends.ts` `Friends`, pure, tested in `town-friends.test.ts` with a socket test;
+  schema v19 `friends` (each pair once, smaller id first), `friend_requests`, `last_seen`, saved by `web/friends-db.ts`;
+  `TownOptions.friends` { store, byName } (`memberByNickname` in web/nickname.ts)): both ways (asked, then accepted; two
+  asking each other are friends at once; Remove is for both). `web/town.ts`: `friend-ask` {to: town id | name: nickname,
+  offline too} / `-answer` {key, accept} / `-cancel` / `-remove` (one a second) → `friends` (your list and requests, on
+  arrival and every change; `note` a toast, `online` a friend just came online: a line in your feed, `asked` a new request:
+  its pop-up) or `friend-refused`. A friend's row (`FriendView`): friend key (random per process, never a Discord id),
+  name, title, look, online, town id while here, area, class, level, and `lastSeen` while away (saved on arrival, every 5
+  min while here and when they go); someone who drops stays online FRIEND_AWAY_MS (60 s) and only one gone longer is
+  announced. Game: `net/friends.ts` (state, `standing(name)`, actions, refusals), `ui/online.ts` (the "N online" list's
+  tabs Here / Friends / Requests: add by nickname, rows with head, badge, Lv, where or "Last online: Yesterday", Invite to
+  party while they're here, Remove asking twice; a lavender dot while a request waits; `showFriendRequest`, the party
+  invite's box in lavender, × = later), the player menu's Add friend (Request sent / Accept friend request / Friends ✓),
+  `/friend Name` in the chat (`ChatBox.onCommand`; alone: opens the list). Guide tab Friends. Dev: two windows
+  `?as=Alice` / `?as=Bob`; the dev town keeps friends in memory and finds anyone logged in since it started by name.
 - Player menu (`ui/target.ts`): left click (or tap) someone → their name and level ("Lv 12", kept up to date by `level-up`: `OtherPlayers.setLevel`, `levelChanged`) in a long box top centre (or click their name
   in the chat: the box opens right beside it with the menu open, `selectAt`; a click elsewhere closes it; no ×: a click
   outside the box closes it too, a drag to peek doesn't); clicking it opens

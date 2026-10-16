@@ -76,6 +76,7 @@ const TOPICS: Topic[] = [
       '• **Balance** and **Status**: how they’re doing',
       '• **Diss**, **Praise** or **Judge**: 1 Kowen; your character says it out loud',
       '• **Invite to party**: see the Party tab',
+      '• **Add friend**: see the Friends tab',
       '• **Trade**: within 5 tiles; see the Trading tab',
     ].join('\n'),
   },
@@ -92,6 +93,20 @@ const TOPICS: Topic[] = [
       '• The icon on the party box: **Leave party**, or for the leader **Disband party**. A leader who leaves passes the lead to the next member',
       '• The leader can **right-click** a member to kick them',
       '-# Drop out (a reload, a gate) and you keep your place for a minute.',
+    ].join('\n'),
+  },
+  {
+    id: 'friends',
+    icon: '🤝',
+    label: 'Friends',
+    text: [
+      'Friends go both ways: you send a request, they accept it.',
+      '• **Add a friend**: click them (or their name in the chat) and press **Add friend**, or type `/friend Name` in the chat. It works for players who aren’t online too: they see it next time',
+      '• **Your Friends list**: the **N online** button beside the chat, then **Friends**: who’s online, where they are and their level, or when they were last online',
+      '• **Requests**: answer the ones sent to you, or cancel yours. A request nobody answers goes after **14 days**',
+      '• **Invite** a friend in town to your party right from the list. **Remove** takes them off both lists',
+      '• When a friend comes online, a line in your feed says so',
+      '-# Up to 100 friends, and up to 20 requests waiting at once.',
     ].join('\n'),
   },
   {

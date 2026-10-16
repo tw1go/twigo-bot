@@ -10,6 +10,8 @@ import { disband, kick, leading, leave, onMemberHp, onParty, party } from '../ne
 // after a minute). DOM only; net/party.ts has the state and sends the actions.
 
 const AREAS: Record<string, string> = { town: 'Town', hood: 'Neighbourhood', slums: 'Slums' };
+/** Where someone is, in words ('warrens:<run>' is a Scrap Warrens run). */
+export const areaName = (area: string | null | undefined): string => (area?.startsWith('warrens:') ? 'Scrap Warrens' : (AREAS[area ?? ''] ?? 'Town'));
 const INVITE_MS = 60_000;
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
@@ -125,7 +127,7 @@ export class PartyPanel {
     hp.hidden = true;
     if (m.maxHp) setHp(hp, m.hp ?? m.maxHp, m.maxHp);
     this.hpBars.set(m.key, hp);
-    words.append(line, el('span', 'pt-where', m.id ? (m.area?.startsWith('warrens:') ? 'Scrap Warrens' : (AREAS[m.area ?? ''] ?? 'Town')) : 'Away'), hp);
+    words.append(line, el('span', 'pt-where', m.id ? areaName(m.area) : 'Away'), hp);
     row.append(face, words);
     row.setAttribute('aria-label', `${m.nickname}${leader ? ', leader' : ''}${you ? ', you' : ''}`);
     // The leader: right-click a member to kick them.

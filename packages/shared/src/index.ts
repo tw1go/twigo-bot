@@ -13,6 +13,7 @@ export * from './quests.js';
 export * from './dungeons.js';
 export * from './travel.js';
 export * from './loot-roll.js';
+export * from './friends.js';
 export * from './cosmetics.js';
 export * from './pets.js';
 export * from './mail.js';

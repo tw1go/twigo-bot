@@ -235,6 +235,14 @@ export type TownClientMessage =
   | { t: 'party-leave' }
   | { t: 'party-disband' }
   | { t: 'party-kick'; member: string }
+  /** A friend request to a player here (`to`: their town id) or anyone by nickname (`name`, any case; offline too). */
+  | { t: 'friend-ask'; to?: string; name?: string }
+  /** Answer a friend request (by the asker's friend key). */
+  | { t: 'friend-answer'; key: string; accept: boolean }
+  /** Take back a friend request you sent. */
+  | { t: 'friend-cancel'; key: string }
+  /** Remove a friend (for both of you). */
+  | { t: 'friend-remove'; key: string }
   /** Trading (bot web/trade.ts; stats.json trading): ask a player within range (by town id), answer a request, put your
    *  side in (the whole side each time: items from your combat bag and Kusing; any change unlocks both), lock or unlock
    *  it, press Trade (both locked), or cancel (closing the window). */
@@ -287,6 +295,44 @@ export interface PartyState {
   members: PartyMember[];
   max: number;
 }
+
+/** A friend as your Friends list shows them (CONTEXT.md Friend): `key` is their friend key (random per server start,
+ *  never a Discord id); `id` their town id while they're here. */
+export interface FriendView {
+  key: string;
+  name: string;
+  title: TitleData;
+  outfit: OutfitData | null;
+  online: boolean;
+  /** Their town id, while they're in town (for the player menu, a party invite). */
+  id?: string;
+  /** Where they are while online: 'town', 'hood', 'slums' or 'warrens:<run>'. */
+  area?: string;
+  cls?: string | null;
+  level?: number;
+  /** When they were last online (ms), while they're offline; none if never seen since friends began. */
+  lastSeen?: number;
+}
+
+/** A friend request waiting, to you or from you. */
+export interface FriendAsk {
+  key: string;
+  name: string;
+  /** When it was sent (ms); it lapses `FRIEND_RULES.requestDays` after (friends.ts). */
+  at: number;
+}
+
+/** Your friends and the requests waiting either way. */
+export interface FriendsState {
+  friends: FriendView[];
+  incoming: FriendAsk[];
+  outgoing: FriendAsk[];
+}
+
+/** Why a friend request or action didn't go through. `gone`: no such player; `already`: you're friends; `asked`: you
+ *  asked already; `full` / `their-full`: one of you has FRIEND_RULES.max friends; `asks`: you have FRIEND_RULES.asks
+ *  out; `expired`: that request isn't open anymore; `slow`: one a second. */
+export type FriendRefusal = 'self' | 'gone' | 'already' | 'asked' | 'full' | 'their-full' | 'asks' | 'expired' | 'slow';
 
 export type PartyRefusal = 'self' | 'gone' | 'not-leader' | 'full' | 'in-party' | 'already' | 'invited' | 'expired' | 'slow';
 
@@ -633,6 +679,11 @@ export type TownServerMessage =
   /** A party member picked something up (to the rest of the party, wherever they are): their name and what; Kusing
    *  with each one's share (`share`) when it was split. */
   | { t: 'party-loot'; name: string; got: { kusing?: number; item?: Item }; share?: number }
+  /** Your friends and requests (on arrival and on every change). `note`: what happened, as a toast; `online`: a friend
+   *  who just came online (a line in your feed); `asked`: a new request to you from them (its pop-up). */
+  | { t: 'friends'; friends: FriendsState; note?: string; online?: string; asked?: FriendAsk }
+  /** Your friend request or action didn't go through (`name`: who it was about). */
+  | { t: 'friend-refused'; reason: FriendRefusal; name?: string }
   /** The buffs on another player (an answer to `buffs-of`). */
   /** `cp`: their combat rating now (with their buffs; none for someone gone or with no stats here). */
   | { t: 'buffs-of'; id: string; buffs: TownBuff[]; cp?: number }

@@ -6,7 +6,8 @@ import { config } from '../config.js';
 import { VOICE_DAILY_CAP, VOICE_MINUTES_PER_CREDIT, add, balance, rankOf, setWalletHook, topBalances, totalKowens, vaultBalance, voiceCreditsToday, voiceProgress } from '../credits/store.js';
 import { DIGS_PER_DAY, digsToday, inventory, LUCKY_EVERY, serverDigProgress, SHOVEL_COST, SHOVEL_USES, SHOVELS_PER_DAY, shovelsBoughtToday, shovelUses } from '../dig/store.js';
 import { ITEM_BY_ID } from '../dig/items.js';
-import { getNickname, parseNickname, setNickname } from './nickname.js';
+import { getNickname, memberByNickname, parseNickname, setNickname } from './nickname.js';
+import { friendSaves, loadFriends } from './friends-db.js';
 import { RICHEST, TITLES, newTitle, titleOf, titleSeen } from './titles.js';
 import { welcome, welcomeEveryone, welcomeGift, welcomeSeen } from './welcome.js';
 import { mailAction, mailboxOf, onMail, purgeMail, unreadMail } from './mail.js';
@@ -1075,6 +1076,8 @@ export function startWebServer(client: Client): void {
           return r;
         },
       },
+      // Friends: saved as they change (friends, friend_requests, last_seen); a request by nickname finds its member.
+      friends: { store: { load: loadFriends, ...friendSaves }, byName: memberByNickname },
       // Mobility moves from their unlock level (Dash Lv 5, the class's own move Lv 8).
       moveLevel,
       authenticate: async (req) => {

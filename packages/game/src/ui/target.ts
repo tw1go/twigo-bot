@@ -2,6 +2,7 @@ import type { PresenceStatus, TownGiveResponse, TownPlayer, TownPlayerInfo, Town
 import { api } from '../net/endpoints';
 import { playSound } from '../audio/sound';
 import { inParty, invite, mayInvite, onParty } from '../net/party';
+import { answer as answerFriend, askHere, onFriends, standing } from '../net/friends';
 import { fakeLogin } from '../session';
 import { coinIcon } from './reward';
 
@@ -12,7 +13,8 @@ import { coinIcon } from './reward';
 // peek doesn't count; clicking someone else picks them instead). Clicking a name in the chat opens the same box and
 // menu right beside that name instead (selectAt); a press anywhere else closes it. Under it, Invite to party (net/party.ts:
 // shown while you lead a party or are in none, and they're not in yours) and Trade (ui/trade.ts: only within 5 tiles,
-// "Too far to trade" otherwise; the server checks again by its own positions). DOM text only.
+// "Too far to trade" otherwise; the server checks again by its own positions), and Add friend (net/friends.ts: Request
+// sent, Accept friend request, or Friends ✓ as it stands). DOM text only.
 
 type View = 'give' | 'balance' | 'status';
 const VIEWS: [View, string][] = [['give', 'Give Kowens'], ['balance', 'Balance'], ['status', 'Status']];
@@ -62,6 +64,8 @@ export class TargetBox {
   private readonly partyRow = el('div', 'tg-party');
   private readonly partyButton = el('button', 'tg-party-invite', 'Invite to party');
   private readonly tradeRow = el('div', 'tg-trade');
+  private readonly friendRow = el('div', 'tg-friend');
+  private readonly friendButton = el('button', 'tg-friend-ask', 'Add friend');
   private readonly tradeButton = el('button', 'tg-trade-ask', 'Trade');
   /** The buffs on them: icons under the box, a card on hover (TownScene asks the server and calls setBuffs). */
   private readonly buffRow = el('div', 'tg-buffs');
@@ -129,6 +133,20 @@ export class TargetBox {
     });
     this.tradeRow.append(this.tradeButton);
     this.tradeRow.hidden = true;
+    // Add friend: a request to them (or, if they asked you, accepting it).
+    this.friendButton.addEventListener('click', () => {
+      const p = this.target;
+      if (!p || this.friendButton.disabled) return;
+      playSound('click');
+      const s = standing(p.nickname);
+      if (s.is === 'asked') answerFriend(s.key, true);
+      else if (s.is === 'none' && askHere(p.id)) {
+        this.friendButton.disabled = true;
+        this.friendButton.textContent = 'Request sent';
+      }
+    });
+    this.friendRow.append(this.friendButton);
+    onFriends(() => this.drawFriend());
     setInterval(() => !this.menu.hidden && this.drawTrade(), 400);
     // A trade opened or ended: the button is ready again.
     addEventListener('mk-trade', () => {
@@ -136,7 +154,7 @@ export class TargetBox {
       if (!this.menu.hidden) this.drawTrade();
     });
     this.menu.hidden = true;
-    this.menu.append(this.views, this.panel, this.actions, this.partyRow, this.tradeRow);
+    this.menu.append(this.views, this.panel, this.actions, this.partyRow, this.tradeRow, this.friendRow);
     this.infoButton.title = 'Info: their character, gear and stats';
     this.infoButton.setAttribute('aria-label', 'Info');
     this.infoButton.addEventListener('click', () => this.target && this.onInfo(this.target));
@@ -299,6 +317,7 @@ export class TargetBox {
     this.drawName();
     this.box.setAttribute('aria-label', `${p.nickname}: open the menu`);
     this.drawParty(true);
+    this.drawFriend();
     this.root.hidden = false;
     this.closeMenu();
     this.buffRow.hidden = this.buffTip.hidden = true;
@@ -315,6 +334,16 @@ export class TargetBox {
       this.partyButton.disabled = false;
       this.partyButton.textContent = 'Invite to party';
     }
+  }
+
+  /** Add friend for whoever's picked, as you stand with them. */
+  private drawFriend(): void {
+    const p = this.target;
+    if (!p) return;
+    const s = standing(p.nickname);
+    const label = { friend: 'Friends ✓', sent: 'Request sent', asked: 'Accept friend request', none: 'Add friend' }[s.is];
+    this.friendButton.textContent = label;
+    this.friendButton.disabled = s.is === 'friend' || s.is === 'sent';
   }
 
   clear(): void {
