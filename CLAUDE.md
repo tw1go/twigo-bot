@@ -166,6 +166,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   block, `classes/stats.json` `pets` (the art folder's pets/pets-stats-block.json merged in as a new key), and
   `items/items.json` `pet-box-<id>` / `pet-<id>` (kind `pet`; boxes `opens`, `shop: pets`), and `pets.list['fairy-cha'].glow`. Changed from the block:
   `pets.follow.zigzagEverySteps` 2 tiles and `zigzagEveryStepsHover` 1 (was 3 half-tile steps; + `zigzagNote`: the zigzag only heading north or south).
+- Pet cube (16 Oct 2026): `classes/stats.json` `pets.petCube` (the common cube's item and its six `choices`), `items/items.json`
+  `pet-cube-common` (bound consumable) and its art in `pets/cube/` (the art folder's pets/cube).
 - `maps/warrens.json` is built here (`packages/game/scripts/build-warrens.ts` from `scripts/warrens/warrens-layout.json`,
   the art folder's layout copied in): run it again after changing either.
 - High terrain (13 Oct 2026, all of it repo-only, PLACEHOLDER art): `tiles/slums` cliff-rock / -scrap (+ -lower) / -chasm /
@@ -900,7 +902,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   (`openPetBox`; the bag's double-click / Open / right-click, a confirm in `ui/pet-tab.ts` `openBox`) into a bound pet item
   `pet-<id>` (kind `pet`, never stacks) at Lv 1: its `level` is the item's, `xp` and `points` ({node: n}) too (schema v16
   items.xp / items.points). One pet **out** at a time: `AdventureState.pet` (items place 'pet'); POST /town/pet
-  {open | out | back | spend | reset} (shared `petAction`, `parsePetAction`; bot `townPet`), a swap (out or back) never in a
+  {open | cube | out | back | spend | reset} (shared `petAction`, `parsePetAction`; bot `townPet`), a swap (out or back) never in a
   fight (`Town.inCombat`, the vitals' rule) nor within `follow.swapCooldownSeconds` (30) of the last (in memory), then the
   town's `pet` message (everyone; `TownPlayer.pet` for arrivals; `kitOf` gives the profile its pet). Stats: a pet out goes
   in with the worn items (`fighterOf`; shared `itemTotals` adds `petTotals`: its pet tree, rates as fractions, its kind's
@@ -941,6 +943,19 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   dev town's /__give; may repeat), `?petlevel=12&petxp=500` (`/__pet` GET: the pet out, else the first in the bag),
   `?give=pet-croakyangs:::5` (a pet straight away at Lv 5), POST `/__pet?as=` (the page's pretend /town/pet);
   `__town.pets()`, `__town.items().pet`.
+  The **pet cube** (CONTEXT.md "Pet cube"; items.json `pet-cube-common`, "Pet Selection Cube": a consumable, `bound: true`
+  as it's made, so never traded, sold or dropped; stacks to 99; no shop, drop or quest gives it yet, only GMs: /gift item,
+  the CMS's Mail) is opened into the pet its owner picks from stats.json `pets.petCube.<tier>.choices` (common: the six
+  common pets, never Fairy Cha; a rare cube would be another entry): shared `cubeOf`, `cubeChoice`, `cubeRefusal` (a lone
+  cube's slot is the pet's, a stack of several needs a free slot: "Your bag is full."), `openPetCube` (shares `openInto`
+  with `openPetBox`: the cube goes, a bound Lv 1 pet with no XP or points comes, one change of the bag, saved in one
+  transaction); POST /town/pet `{ action: 'cube', item: <cube uid>, pet: <pets.list id> }`, never in a fight
+  (`CUBE_IN_FIGHT`; no swap cooldown); tested in `web/pet-cube.test.ts`. Game: `ui/pet-cube.ts` `openCube` (the bag's
+  double-click / Open / right-click; a full bag is refused before it opens): the picker, the confirm box widened with a
+  3 × 2 grid of cards, each pet's idle facing SE as the world draws it (`petSheetDir`, set by TownScene `setPetCubeArt`;
+  CSS background frames at 2×), a pick in gold playing its special once; Choose (greyed until a pick) → "Take X? …"
+  Confirm / Back in the same box; Cancel, ×, Escape or a click outside keep the cube; "X joined you!" and the coin
+  sound. Dev: `?petcube=N` (N cubes, the dev town's /__give).
 - Settings → Game → Exit game (`ui/settings.ts` `leave`): the desktop app quits (`net/desktop.ts` `exitApp`, the
   process plugin's exit, `process:allow-exit`); the website and the home screen app go to the front page.
 - Forge (combat-guide.md How to enhance, Enhancement cost and odds, Agimats, Disassembly; stats.json enhancement.cost,

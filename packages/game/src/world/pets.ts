@@ -58,6 +58,10 @@ export interface PetManifest {
 }
 
 type Anim = 'idle' | 'move' | 'special';
+
+/** The sheet drawn for a way (manifest pets.sheetDirs, a pet's own sheetDirsByPet over it: the art's se and sw sheets
+ *  face the other way). */
+export const petSheetDir = (M: PetManifest, dir: string, pet?: string): string => (pet && M.sheetDirsByPet?.[pet]?.[dir]) ?? M.sheetDirs?.[dir] ?? dir;
 type MoveDir = 'se' | 'sw' | 'ne' | 'nw';
 
 /** Past this many tiles from its owner a pet fades out and back in behind them. */
@@ -467,7 +471,7 @@ export class Pets {
 
   /** The sheet drawn for a way (manifest pets.sheetDirs: the art's se and sw sheets face the other way). */
   private sheetDir(dir: string, pet?: string): string {
-    return (pet && this.M.sheetDirsByPet?.[pet]?.[dir]) ?? this.M.sheetDirs?.[dir] ?? dir;
+    return petSheetDir(this.M, dir, pet);
   }
 
   private fileOf(pet: string, anim: Anim, dir: string): string {

@@ -77,7 +77,8 @@ import { EquipmentPanel, gearPicture } from '../ui/equipment';
 import { closeCasino, openCasino, setCasinoArt } from '../ui/casino';
 import { fadeNavy } from '../ui/fade';
 import { OtherPlayers } from '../world/others';
-import { type PetOwner, type PetSheetData, Pets } from '../world/pets';
+import { type PetOwner, type PetSheetData, Pets, petSheetDir } from '../world/pets';
+import { setPetCubeArt } from '../ui/pet-cube';
 import { fakeLogin, fakeName, loadMe } from '../session';
 import { screenToTile, tileToScreen } from '../iso';
 import { toast } from '../ui/toast';
@@ -2427,8 +2428,9 @@ export class TownScene extends Phaser.Scene {
         // Dev: ?kusing=5000, ?whetstones=200, ?give=<defId>:<rarity>:<plus> (the dev server's /__give: rolled there as
         // drops are; your items come back as an `items` message). Once a visit. ?give= may come more than once; for a
         // stack the third part is how many (?give=low-repair-kit::3), an agimat's fourth its level
-        // (?give=agimat-critdmg::2:20). ?petbox=croakyangs gives that pet's box (?petbox= may come more than once too).
-        if (import.meta.env.DEV && fakeLogin() && !this.devGiven && (q.has('kusing') || q.has('whetstones') || q.has('give') || q.has('petbox'))) {
+        // (?give=agimat-critdmg::2:20). ?petbox=croakyangs gives that pet's box (?petbox= may come more than once too);
+        // ?petcube=1 gives that many Pet Selection Cubes (bound, as they always are).
+        if (import.meta.env.DEV && fakeLogin() && !this.devGiven && (q.has('kusing') || q.has('whetstones') || q.has('give') || q.has('petbox') || q.has('petcube'))) {
           this.devGiven = true;
           const asks: URLSearchParams[] = [];
           const first = new URLSearchParams({ as: fakeName() });
@@ -2445,6 +2447,7 @@ export class TownScene extends Phaser.Scene {
                 asks.push(new URLSearchParams({ as: fakeName(), def, rarity: rarity ?? '', ...(isGear ? { plus: plus || '0' } : { count: plus || '1' }), ...(level ? { level } : {}) }));
               }
               for (const pet of q.getAll('petbox')) asks.push(new URLSearchParams({ as: fakeName(), def: `pet-box-${pet}`, count: '1' }));
+              if (q.has('petcube')) asks.push(new URLSearchParams({ as: fakeName(), def: 'pet-cube-common', count: String(Math.max(1, Number(q.get('petcube')) || 1)) }));
               for (const ask of asks) {
                 const r = await fetch(`/__give?${ask}`).then((x) => (x.ok ? (x.json() as Promise<{ items?: TownItems }>) : null));
                 if (r?.items) setItems(r.items);
@@ -4026,7 +4029,18 @@ export class TownScene extends Phaser.Scene {
     const S = this.cache.json.get('stats') as StatsData | undefined;
     const R = S ? petRules(S) : null;
     if (!this.M.pets || !sheets || !R) return;
-    const pets = new Pets(this, this.M.pets, sheets, R, SPEED);
+    const M = this.M.pets;
+    const url = (file: string) => `${import.meta.env.BASE_URL}assets/${file}`;
+    // The pet cube's picker (ui/pet-cube.ts): each pet facing SE as the world draws it.
+    setPetCubeArt({
+      cell: sheets.cell,
+      sheet: (pet, anim) => {
+        const dir = petSheetDir(M, 'se', pet);
+        const frames = sheets.pets[pet]?.[anim]?.[dir] ?? 0;
+        return frames ? { url: url(M.file.replace('{id}', pet).replace('{anim}', anim).replace('{dir}', dir)), frames, fps: sheets.animations[anim].fps } : null;
+      },
+    });
+    const pets = new Pets(this, M, sheets, R, SPEED);
     pets.onSpawn = (obj) => this.tint >= 0 && obj.setTint(this.tint);
     pets.elevation = (c, r) => this.objects.heights.lift(c, r);
     pets.shadowArt = this.M.fx.shadow?.file ?? null;
