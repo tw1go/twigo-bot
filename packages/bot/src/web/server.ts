@@ -9,6 +9,7 @@ import { ITEM_BY_ID } from '../dig/items.js';
 import { getNickname, parseNickname, setNickname } from './nickname.js';
 import { RICHEST, TITLES, newTitle, titleOf, titleSeen } from './titles.js';
 import { welcome, welcomeEveryone, welcomeGift, welcomeSeen } from './welcome.js';
+import { sendPetCubeGift } from './pet-cube-gift.js';
 import { mailAction, mailboxOf, onMail, purgeMail, unreadMail } from './mail.js';
 import { type BetaApplication, BetaRateLimit, ipHash, parseBetaForm, saveBetaApplication } from './beta.js';
 import { townMemory } from './town-memory.js';
@@ -1140,5 +1141,8 @@ export function startWebServer(client: Client): void {
   // The welcome gift for everyone who already has a character (once each; new ones get it in the creator).
   const welcomed = welcomeEveryone();
   if (welcomed) console.log(`[welcome] gave the welcome gift to ${welcomed} member(s) with a character`);
+  // The pet cube gift (once ever): a Pet Selection Cube in the mail for everyone with a character, 100 Kowens for those
+  // who already have a pet.
+  sendPetCubeGift();
   server.listen(port, '127.0.0.1', () => console.log(`[web] room API on 127.0.0.1:${port}`));
 }
