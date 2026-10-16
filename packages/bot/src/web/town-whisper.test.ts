@@ -63,9 +63,10 @@ async function until<M extends Msg>(c: { got: Msg[] }, ok: (m: Msg) => m is M): 
 const whisper = (m: Msg): m is Extract<Msg, { t: 'whisper' }> => m.t === 'whisper';
 const refused = (m: Msg): m is Extract<Msg, { t: 'whisper-refused' }> => m.t === 'whisper-refused';
 
-test("whispers: to one player only, the sender's copy, never to Discord or the kept lines; refusals; friends-only; Game Masters; mutes", async () => {
+test("whispers: to one player only, the sender's copy, never to Discord or the kept lines; refusals; friends-only; Game Masters; mutes", async (t) => {
   const T = await town();
   const [mara, bob, cleo, gemma, muted] = await Promise.all(['Mara', 'Bob', 'Cleo', 'Gemma', 'Muted'].map(T.open));
+  t.after(() => [mara, bob, cleo, gemma, muted].forEach((c) => c.ws.terminate())); // (a failure never leaves the run hanging)
   await wait(100);
   assert.deepEqual((await until(bob, (m): m is Extract<Msg, { t: 'privacy' }> => m.t === 'privacy')).privacy, DEFAULT_PRIVACY, 'the setting on arrival');
 
@@ -88,8 +89,8 @@ test("whispers: to one player only, the sender's copy, never to Discord or the k
 
   // Friends only: Bob's refused, Cleo (Mara's friend) and a Game Master still get through.
   mara.send({ t: 'privacy', whispers: 'friends' });
-  assert.deepEqual((await until(mara, (m): m is Extract<Msg, { t: 'privacy' }> => m.t === 'privacy' && m.privacy.whispers === 'friends')).privacy, { whispers: 'friends' });
-  assert.deepEqual(T.privacy.get('Mara'), { whispers: 'friends' }, 'kept');
+  assert.deepEqual((await until(mara, (m): m is Extract<Msg, { t: 'privacy' }> => m.t === 'privacy' && m.privacy.whispers === 'friends')).privacy, { ...DEFAULT_PRIVACY, whispers: 'friends' });
+  assert.deepEqual(T.privacy.get('Mara'), { ...DEFAULT_PRIVACY, whispers: 'friends' }, 'kept');
   bob.got.length = 0;
   bob.send({ t: 'whisper', to: 'Mara', text: 'you there?' });
   assert.deepEqual(await until(bob, refused), { t: 'whisper-refused', reason: 'closed', name: 'Mara' });

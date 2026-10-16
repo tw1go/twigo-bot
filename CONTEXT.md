@@ -453,10 +453,11 @@ _Avoid_: DM, PM, private message (Discord's words), mail (that's from the game)
 A player's own setting: only their friends may whisper them.
 
 **Balance** (a player's):
-What their Kowens look like to others: wallet, vault, leaderboard rank, loan owed and jackpot tickets.
+What others can look up about their Kowens: wallet, vault and leaderboard rank (in Discord, the whole /balance card).
 
 **Status** (a player's):
-Their protections and limits as others see them: Bakod, jail, Master Keys, steal cooldown, gifts left today.
+What others can look up about their standing: Bakod, jail, loan, jackpot tickets and activity (in Discord, the whole
+/status card).
 _Avoid_: presence, online status (the dot on their portrait: online, idle, busy)
 
 **Who can see**:

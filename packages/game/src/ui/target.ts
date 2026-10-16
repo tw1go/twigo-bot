@@ -448,7 +448,11 @@ export class TargetBox {
     else title.style.color = i.title.color;
     const out: HTMLElement[] = [title];
 
-    if (this.view === 'balance') {
+    // Not shown to you (their Who can see setting): a line saying so instead (Status keeps the Discord dot).
+    const hiddenNote = (what: string) => el('div', 'tg-note', `${i.name} doesn’t show their ${what} to you.`);
+    if (this.view === 'balance' && i.hidden?.balance) out.push(hiddenNote('balance'));
+    else if (this.view === 'status' && i.hidden?.status) out.push(row('Discord', STATUS[i.status]), hiddenNote('status'));
+    else if (this.view === 'balance') {
       const wallet = el('span', 'tg-value tg-kowens');
       wallet.append(coinIcon(1), kowens(i.wallet));
       out.push(row('Wallet', wallet), row('Vault', i.vault === null ? 'None' : kowens(i.vault)), row('Rank', i.rank ? `#${i.rank}` : 'No Kowens yet'));

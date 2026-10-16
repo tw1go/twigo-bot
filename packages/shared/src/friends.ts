@@ -12,13 +12,20 @@ export const FRIEND_RULES = {
   blocks: 200,
 } as const;
 
-/** A player's privacy settings (Settings → Privacy; CONTEXT.md Friends-only whispers): who may whisper them. */
+/** Who can see a player's Balance or Status (CONTEXT.md Who can see): everyone, their friends, or only themselves. */
+export type Visibility = 'everyone' | 'friends' | 'me';
+export const VISIBILITIES: readonly Visibility[] = ['everyone', 'friends', 'me'];
+
+/** A player's privacy settings (Settings → Privacy; CONTEXT.md Friends-only whispers, Who can see): who may whisper
+ *  them, and who can see their Balance and their Status. */
 export interface PrivacySettings {
   whispers: 'everyone' | 'friends';
+  balance: Visibility;
+  status: Visibility;
 }
 
 /** What a player who never changed them has. */
-export const DEFAULT_PRIVACY: PrivacySettings = { whispers: 'everyone' };
+export const DEFAULT_PRIVACY: PrivacySettings = { whispers: 'everyone', balance: 'everyone', status: 'everyone' };
 
 /** "Today", "Yesterday", "3 days ago": when a friend was last online, by calendar day where `now` is. */
 export function lastOnline(at: number, now: number): string {

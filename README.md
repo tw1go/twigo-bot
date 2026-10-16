@@ -342,7 +342,9 @@ Its numbers are the bot's rules; keep them in step when those change.
 Friends tab shows who's online, where and their level, or when they were last online. **Whispers** (`/w Name`, `/r`;
 `whisper` over the town's socket): to one player who's online, never to Discord or kept; Settings → Privacy can let only
 friends whisper you (`web/privacy.ts`). **Block** (`/block Name`, the player menu, the list's Blocked tab): no whispers,
-friend requests, party invites or trade requests from them, refused without saying why.
+friend requests, party invites or trade requests from them, refused without saying why. **Who can see** (Settings →
+Privacy, `maySee` in `web/privacy.ts`): each member's Balance and Status for everyone, friends or only them, in town,
+`/balance` and `/status`, and the leaderboards ("Hidden").
 
 **Levels** (`packages/bot/src/web/progress.ts`, rules in `packages/shared/src/stats.ts`, numbers in the game's
 `classes/stats.json`): defeating mobs in the Slums gives XP (the golem's to everyone who did 5% of its HP; in a party, a

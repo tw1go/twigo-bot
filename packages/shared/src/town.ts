@@ -253,7 +253,7 @@ export type TownClientMessage =
    *  to Discord, never kept. `links`: items shown in it, as in `say`. */
   | { t: 'whisper'; to: string; text: string; links?: string[] }
   /** Change your privacy settings (Settings → Privacy): only what's given changes. */
-  | { t: 'privacy'; whispers?: PrivacySettings['whispers'] }
+  | { t: 'privacy'; whispers?: PrivacySettings['whispers']; balance?: PrivacySettings['balance']; status?: PrivacySettings['status'] }
   /** Trading (bot web/trade.ts; stats.json trading): ask a player within range (by town id), answer a request, put your
    *  side in (the whole side each time: items from your combat bag and Kusing; any change unlocks both), lock or unlock
    *  it, press Trade (both locked), or cancel (closing the window). */

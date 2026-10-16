@@ -1308,6 +1308,15 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   (PartyRefusal 'closed') and trade request (TradeRefusal 'closed') are refused without saying "blocked"; their General
   chat still shows. Game: the list's Blocked tab (block by nickname, Unblock), the player menu's Block (asks twice) /
   Unblock and Add friend "Blocked", `/block Name` (alone: the Blocked tab).
+- Who can see (CONTEXT.md Who can see, Balance, Status): PrivacySettings `balance` / `status` (shared Visibility
+  'everyone' | 'friends' | 'me', default everyone; schema v22 privacy.balance / .status). `web/privacy.ts` `maySee(viewer
+  | null, owner, what)`: your own and Game Masters (isCmsUser) always; null = the public, who see only 'everyone';
+  friends from the town (`seeFriendsBy` ← `Town.areFriends`, connected in server.ts). Used by the player menu
+  (`playerInfo`: hidden numbers as 0 / null + `hidden` {balance?, status?}; the menu says "X doesn't show their balance
+  to you", Status keeps the Discord dot), Discord's `/balance` and `/status` for someone else (`hiddenLine`, private),
+  the town leaderboard (`kowens: null` → "Hidden" per viewer) and the public ones (`/leaderboard` in Discord, the room
+  API's GET /leaderboard: `'Hidden'` unless 'everyone'; twigo's room shows the word as it is). Settings → Privacy: two
+  rows of Everyone / Friends / Only me. Dev: the pretend leaderboard's 6th place is Hidden.
 - Player menu (`ui/target.ts`): left click (or tap) someone → their name and level ("Lv 12", kept up to date by `level-up`: `OtherPlayers.setLevel`, `levelChanged`) in a long box top centre (or click their name
   in the chat: the box opens right beside it with the menu open, `selectAt`; a click elsewhere closes it; no ×: a click
   outside the box closes it too, a drag to peek doesn't); clicking it opens

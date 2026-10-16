@@ -23,7 +23,10 @@ function row(r: TownLeaderboardRow): HTMLElement {
   if (r.title.color === 'prismatic') title.classList.add('prismatic');
   else title.style.color = r.title.color;
   who.append(title);
-  line.append(el('span', 'lb-rank', `#${r.rank}`), who, el('span', 'lb-kowens', r.kowens.toLocaleString()));
+  // (Hidden: they don't show you their balance; CONTEXT.md Who can see. Their place and name still show.)
+  const amount = el('span', r.kowens === null ? 'lb-kowens lb-hidden' : 'lb-kowens', r.kowens === null ? 'Hidden' : r.kowens.toLocaleString());
+  if (r.kowens === null) amount.title = `${r.name} doesn't show their balance to you`;
+  line.append(el('span', 'lb-rank', `#${r.rank}`), who, amount);
   return line;
 }
 
@@ -111,10 +114,10 @@ function sample(): TownLeaderboardResponse {
     rank: i + 1,
     name,
     title: titles[i] ?? { name: 'Townfolk', color: '#B794F6' },
-    kowens: Math.round(2400 / (i + 1)),
+    kowens: i === 5 ? null : Math.round(2400 / (i + 1)), // (6th shows their balance only to friends: "Hidden")
     ...(i === 3 ? { me: true } : {}),
     // 1st and 2nd have looks (made up from their names), 3rd hasn't made a character: the "?".
     ...(i < 3 ? { outfit: i < 2 ? ({} as OutfitData) : null } : {}),
   }));
-  return { rows, me: { rank: 4, kowens: rows[3].kowens } };
+  return { rows, me: { rank: 4, kowens: rows[3].kowens ?? 0 } };
 }
