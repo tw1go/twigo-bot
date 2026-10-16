@@ -151,7 +151,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   [37,85] / `arrive` [37,88] (by the jeepney and taxi wrecks north-east of the golem pit; the art's is [46,96])
   (`build-warrens.ts` moves the gate's object and blocked tiles in slums.json to it, opening the old ones);
   `entry.minLevel` 16 (was 15) with `entry.requiresQuest` and the `practice` block (Aling Nena's quest, Mac 15 Oct 2026;
-  its `drop` and `retryHours` are ours).
+  its `drop` and `retryHours` are ours; its `atkMult` 0.35, was 0.6, 16 Oct 2026).
 - Aling Nena's quest (15 Oct 2026): `quests/quests.json` `side-nena-binoculars`; `items/items.json` `practice-warren-ticket`
   and `nena-binoculars` (kind `quest`) with their pictures from the art folder's items/consumables and items/quest.
 - `items/items.json`: `warren-ticket`, `return-lantern`, `agimat-pliers`, `temper-stone`, `temper-stone-filled` (prices in

@@ -56,14 +56,14 @@
    "minLevel": 16,
    "solo": true,
    "hpMult": 0.4,
-   "atkMult": 0.6,
+   "atkMult": 0.35,
    "xpMult": 0.5,
    "kusingMult": 0.5,
    "loot": "the normal Warrens loot (Mac, 15 Oct): mini bosses and Barong-Barong roll their usual gear, accessories, agimats, whetstones and Warren Ticket chance; only their Kusing is x kusingMult. Barong-Barong also drops the quest's binoculars (to the player, straight into the bag)",
    "timeLimitMinutes": 20,
    "drop": "nena-binoculars",
    "retryHours": 24,
-   "repoNote": "drop and retryHours are repo additions (15 Oct 2026): the item Barong-Barong drops for the quest, and how long Aling Nena waits before giving another ticket after one was used without finding it"
+   "repoNote": "drop and retryHours are repo additions (15 Oct 2026): the item Barong-Barong drops for the quest, and how long Aling Nena waits before giving another ticket after one was used without finding it; atkMult 0.35 (was 0.6, 16 Oct 2026: mobs and bosses hit too hard for a solo practice run)"
   },
   "scaling": {
    "about": "n = players inside the run (counted at each pull, and kept up to date like the field golem: HP % stays)",
