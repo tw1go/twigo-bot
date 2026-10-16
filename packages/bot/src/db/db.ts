@@ -25,6 +25,7 @@ import { today } from '../time.js';
 //    one fresh start (nobody a rogue, marked or protected); nothing after ever clears them.
 //  • v18, mail: letters from the game and its Game Masters (web/mail.ts).
 //  • v19, friends, friend_requests, last_seen: the web game's friends (web/town-friends.ts, web/friends-db.ts).
+//  • v20, privacy: members' privacy settings (web/privacy.ts): who may whisper them.
 //  • kv: small singleton documents keyed by their old file name (e.g. 'race.json', 'rotation.json').
 // Stores cache their state in memory (the bot is the only writer) and save through db/sync.ts, which writes only
 // the rows that changed.
@@ -378,6 +379,13 @@ export const MIGRATIONS: string[] = [
   CREATE TABLE last_seen (
     user_id  TEXT PRIMARY KEY,
     at       INTEGER NOT NULL                   -- ms: last online in the web game
+  );
+  `,
+  /* v20: privacy settings (web/privacy.ts; Settings → Privacy in the web game), a row only for members who changed one:
+     who may whisper them ('everyone' or 'friends'). */ `
+  CREATE TABLE privacy (
+    user_id   TEXT PRIMARY KEY,
+    whispers  TEXT NOT NULL DEFAULT 'everyone'
   );
   `,
 ];

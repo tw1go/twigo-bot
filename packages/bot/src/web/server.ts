@@ -8,6 +8,7 @@ import { DIGS_PER_DAY, digsToday, inventory, LUCKY_EVERY, serverDigProgress, SHO
 import { ITEM_BY_ID } from '../dig/items.js';
 import { getNickname, memberByNickname, parseNickname, setNickname } from './nickname.js';
 import { friendSaves, loadFriends } from './friends-db.js';
+import { privacyOf, setPrivacy } from './privacy.js';
 import { RICHEST, TITLES, newTitle, titleOf, titleSeen } from './titles.js';
 import { welcome, welcomeEveryone, welcomeGift, welcomeSeen } from './welcome.js';
 import { mailAction, mailboxOf, onMail, purgeMail, unreadMail } from './mail.js';
@@ -1078,6 +1079,8 @@ export function startWebServer(client: Client): void {
       },
       // Friends: saved as they change (friends, friend_requests, last_seen); a request by nickname finds its member.
       friends: { store: { load: loadFriends, ...friendSaves }, byName: memberByNickname },
+      // Privacy settings (Settings → Privacy): friends-only whispers, saved per member.
+      privacy: { get: privacyOf, set: setPrivacy },
       // Mobility moves from their unlock level (Dash Lv 5, the class's own move Lv 8).
       moveLevel,
       authenticate: async (req) => {

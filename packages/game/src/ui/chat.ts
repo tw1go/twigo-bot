@@ -1,15 +1,16 @@
 import type { ChatItemLink, Item } from '@mikazuki/shared';
 import { playSound } from '../audio/sound';
 
-export type ChatChannel = 'general' | 'megaphone' | 'party' | 'gm';
+export type ChatChannel = 'general' | 'megaphone' | 'party' | 'gm' | 'whisper';
 const CHANNELS: Record<ChatChannel, { tag: string; hint: string; placeholder: string; key: string }> = {
   general: { tag: 'General', hint: 'General chat (/m for the megaphone, /p for your party)', placeholder: 'Press Enter to chat', key: 'g' },
   megaphone: { tag: 'Megaphone', hint: 'Megaphone: uses one from your bag and runs across everyone’s screen (/g for general)', placeholder: 'Say it to the whole town', key: 'm' },
   party: { tag: 'Party', hint: 'Party chat: only your party sees it (/g for general)', placeholder: 'Say it to your party', key: 'p' },
   gm: { tag: 'GM', hint: 'Game Master: gold, across everyone’s screen and in Discord, free (/g for general)', placeholder: 'Say it as the Game Master', key: 'gm' },
+  whisper: { tag: 'Whisper', hint: 'Whisper: only they see it (/r replies to your last whisper, /g for general)', placeholder: 'Whisper it', key: 'w' },
 };
-/** The channel tag's order when clicked (the GM channel only for Game Masters). */
-const ORDER: ChatChannel[] = ['general', 'megaphone', 'party', 'gm'];
+/** The channel tag's order when clicked (the GM channel only for Game Masters; Whisper once you've whispered someone). */
+const ORDER: ChatChannel[] = ['general', 'megaphone', 'party', 'whisper', 'gm'];
 
 // 💬 The town's chat box (bottom left): one see-through box with the last messages and names (Discord's mark for
 // people chatting from the linked Discord channel) and the input under them. Enter opens the input, Enter sends (and keeps it open), an empty Enter or Esc closes it. Messages go to everyone in
@@ -22,7 +23,10 @@ const ORDER: ChatChannel[] = ['general', 'megaphone', 'party', 'gm'];
 // screen) and Party (pink: your party only, wherever they are; net/party.ts). `/m`, `/g` or `/p message` say it there
 // and stay on that channel; `/m`, `/g` or `/p` alone just switch, and the tag before the input shows (and switches,
 // General → Megaphone → Party) which one you're on. Game Masters (the server says so in `welcome`) have a fourth, GM
-// (gold, `/gm`): free, across everyone's screen like a megaphone, gold in the log.
+// (gold, `/gm`): free, across everyone's screen like a megaphone, gold in the log. And Whisper (lavender; CONTEXT.md
+// Whisper): `/w Name message` to one player who's online (the longest name it knows that the line starts with, or
+// "Two Words" in quotes), staying on it, the tag showing who to; `/r message` to whoever whispered you last. Lines read
+// "To Mara:" and "From Mara:" (a Game Master's in gold).
 // Items: Alt+click one in your bag or equipment panel (the 'mk-chat-item' event) writes "[its name]" into the input; the
 // line goes with its uid and the server checks it's yours. In the log a shown item is its name in its rarity's colour,
 // and a click on it opens its tooltip (`showItem`, set by the town).
@@ -67,6 +71,9 @@ export class ChatBox {
   /** The channel tag before the input: General, Megaphone or Party (click to switch). */
   private readonly channel: HTMLButtonElement;
   private current: ChatChannel = 'general';
+  /** Who the Whisper channel goes to (the last one you whispered), and who whispered you last (`/r`). */
+  private whisperTo: string | null = null;
+  private lastFrom: string | null = null;
   /** A Game Master: the GM channel is there. */
   private gmOn = false;
   private readonly log: HTMLElement;
@@ -103,7 +110,7 @@ export class ChatBox {
     this.channel.className = 'ch-channel';
     this.channel.type = 'button';
     this.channel.addEventListener('click', () => {
-      const order = ORDER.filter((c) => c !== 'gm' || this.gmOn);
+      const order = ORDER.filter((c) => (c !== 'gm' || this.gmOn) && (c !== 'whisper' || this.whisperTo));
       this.setChannel(order[(order.indexOf(this.current) + 1) % order.length]);
       this.input.focus();
     });
@@ -172,6 +179,26 @@ export class ChatBox {
         this.input.value = '';
         // Sending keeps the chat open for the next message (so its letters never walk you); an empty Enter closes it.
         if (!text) return this.input.blur();
+        // A whisper: `/w Name message` (or `/w Name` to switch), `/r message` to whoever whispered you last.
+        const w = /^\/(w|whisper|r)(?:\s+(.*))?$/i.exec(text);
+        if (w) {
+          let rest = (w[2] ?? '').trim();
+          if (w[1].toLowerCase() === 'r') {
+            if (!this.lastFrom) return this.notice('Nobody has whispered you yet.');
+            this.whisperTo = this.lastFrom;
+          } else {
+            const split = this.splitName(rest);
+            if (!split) return this.notice('Whisper to whom? Type /w Name message');
+            this.whisperTo = split.name;
+            rest = split.rest;
+          }
+          this.setChannel('whisper');
+          if (!rest) return;
+          const links = [...this.pending].filter(([label]) => rest.includes(`[${label}]`)).map(([, uid]) => uid).slice(0, MAX_LINKS);
+          this.pending.clear();
+          if (!this.send(rest, 'whisper', links)) this.notice('Chat is offline right now.');
+          return;
+        }
         // A command the town handles (`/friend Mara`): never said.
         const cmd = /^\/(friend)(?:\s+(.*))?$/i.exec(text);
         if (cmd && this.onCommand) return void this.onCommand('friend', (cmd[2] ?? '').trim());
@@ -214,17 +241,62 @@ export class ChatBox {
     });
   }
 
-  /** General (white), Megaphone (sky blue) or Party (pink): the tag, the input's colour and its hint. */
+  /** General (white), Megaphone (sky blue), Party (pink), GM (gold) or Whisper (lavender, to `whisperTo`): the tag,
+   *  the input's colour and its hint. */
   private setChannel(channel: ChatChannel): void {
     const c = CHANNELS[channel];
     this.current = channel;
-    this.channel.textContent = c.tag;
+    const tag = channel === 'whisper' && this.whisperTo ? `To ${this.whisperTo}` : c.tag;
+    this.channel.textContent = tag;
     this.channel.title = c.hint;
-    this.channel.setAttribute('aria-label', `Channel: ${c.tag}. Switch`);
+    this.channel.setAttribute('aria-label', `Channel: ${tag}. Switch`);
     this.root.classList.toggle('ch-mega-mode', channel === 'megaphone');
     this.root.classList.toggle('ch-party-mode', channel === 'party');
     this.root.classList.toggle('ch-gm-mode', channel === 'gm');
-    this.input.placeholder = c.placeholder;
+    this.root.classList.toggle('ch-whisper-mode', channel === 'whisper');
+    this.input.placeholder = channel === 'whisper' && this.whisperTo ? `Whisper to ${this.whisperTo}` : c.placeholder;
+  }
+
+  /** Who the Whisper channel goes to now. */
+  get whisperTarget(): string | null {
+    return this.whisperTo;
+  }
+
+  /** Opens the chat on a whisper to someone (the player menu's or the Friends list's Whisper). */
+  startWhisper(name: string): void {
+    this.whisperTo = name;
+    this.setChannel('whisper');
+    this.setOpen(true);
+    this.input.focus();
+  }
+
+  /** Nicknames the chat knows (players here, friends, whoever whispered): `/w` finds the one a line starts with. */
+  knownNames: (() => string[]) | null = null;
+
+  /** `/w`'s rest, split into who and what: "Two Words" in quotes, else the longest known name it starts with (followed
+   *  by a space or nothing), else its first word. */
+  private splitName(rest: string): { name: string; rest: string } | null {
+    const quoted = /^"([^"]+)"\s*(.*)$/.exec(rest);
+    if (quoted) return { name: quoted[1].trim(), rest: quoted[2].trim() };
+    if (!rest) return null;
+    const lower = rest.toLowerCase();
+    const names = [...new Set([...(this.knownNames?.() ?? []), ...(this.lastFrom ? [this.lastFrom] : [])])].sort((a, b) => b.length - a.length);
+    const known = names.find((n) => lower.startsWith(n.toLowerCase()) && (rest.length === n.length || rest[n.length] === ' '));
+    if (known) return { name: rest.slice(0, known.length), rest: rest.slice(known.length).trim() };
+    const [first, ...more] = rest.split(' ');
+    return { name: first, rest: more.join(' ').trim() };
+  }
+
+  /** A whisper in the log, lavender: yours "To Mara:", theirs "From Mara:" (a Game Master's gold). `id`: their town id
+   *  (their name opens the player menu). */
+  addWhisper(name: string, text: string, sent: boolean, id?: string, gm = false, links: ChatItemLink[] = []): void {
+    if (!sent) this.lastFrom = name;
+    const line = document.createElement('div');
+    line.className = `ch-line ch-whisper${gm ? ' ch-gm' : ''}`;
+    line.title = gm ? 'Whisper from a Game Master' : 'Whisper: only the two of you see it';
+    line.append(Object.assign(document.createElement('span'), { className: 'ch-whisper-tag', textContent: sent ? 'To' : 'From' }));
+    line.append(...this.speaker(name, ': ', 'ch-name', !!id, id), ...this.withItems(text, links));
+    this.push(line);
   }
 
   /** Whether you're a Game Master (the server's `welcome`): the GM channel comes and goes with it. */

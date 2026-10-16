@@ -1291,6 +1291,15 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   invite's box in lavender, × = later), the player menu's Add friend (Request sent / Accept friend request / Friends ✓),
   `/friend Name` in the chat (`ChatBox.onCommand`; alone: opens the list). Guide tab Friends. Dev: two windows
   `?as=Alice` / `?as=Bob`; the dev town keeps friends in memory and finds anyone logged in since it started by name.
+- Whispers (CONTEXT.md Whisper, Friends-only whispers): `whisper` {to: nickname, any case, text, links} through the same
+  checks as `say` (`speaking` in web/town.ts: mute, tidy, word filter, pace, item links) to one player who's online
+  anywhere: theirs `whisper` {id, name, text, gm?}, yours back with `sent`; never to Discord, the kept lines or the bot's
+  log; refused `whisper-refused` 'self' / 'offline' / 'closed' (friends-only whispers, unless friends or a Game Master).
+  Privacy settings (shared `friends.ts` PrivacySettings, DEFAULT_PRIVACY; schema v20 `privacy`, a row once changed;
+  `web/privacy.ts`; `TownOptions.privacy`): `privacy` on arrival and after a `privacy` change. Game: the chat's Whisper
+  channel (lavender, its tag "To Mara"; `/w Name message`, the longest known name the line starts with or "Two Words" in
+  quotes, `/r` the last whisperer; `ChatBox.addWhisper` "To" / "From" lines, a Game Master's gold; `startWhisper` from the
+  player menu's and the Friends list's Whisper), `net/privacy.ts`, Settings → Privacy ("Only friends can whisper me").
 - Player menu (`ui/target.ts`): left click (or tap) someone → their name and level ("Lv 12", kept up to date by `level-up`: `OtherPlayers.setLevel`, `levelChanged`) in a long box top centre (or click their name
   in the chat: the box opens right beside it with the menu open, `selectAt`; a click elsewhere closes it; no ×: a click
   outside the box closes it too, a drag to peek doesn't); clicking it opens

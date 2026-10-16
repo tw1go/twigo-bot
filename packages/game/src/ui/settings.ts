@@ -6,10 +6,11 @@ import { el, popupFrame } from './reward';
 import { toast } from './toast';
 import { TEXT_SIZES, setTextSize, textSize } from './text-size';
 import { isDesktopApp } from '../net/platform';
+import { changePrivacy, privacy } from '../net/privacy';
 
 // ⚙️ The settings box (from the Settings button under your profile): centred over the dimmed town, white in the
 // game's pixel frame like the reward pop-up. Audio (music and sound-effect volumes, mute), for members logging
-// out, a Keybinds page (every game key, two per action: ui/keybinds.ts) and a Credits page for the music, sounds and font. Closes with ×, Escape or a click outside. Its buttons make the soft button click (audio/sound.ts),
+// out, Privacy (in town: friends-only whispers, saved for you by the town's server), a Keybinds page (every game key, two per action: ui/keybinds.ts) and a Credits page for the music, sounds and font. Closes with ×, Escape or a click outside. Its buttons make the soft button click (audio/sound.ts),
 // like every other button. DOM text only.
 
 export function showSettings(o: { loggedIn: boolean; onClose?: () => void }): void {
@@ -31,6 +32,7 @@ export function showSettings(o: { loggedIn: boolean; onClose?: () => void }): vo
   const title = el('h2', 'st-title', 'Settings');
   const main = el('div');
   main.append(audio(), display());
+  if (o.loggedIn && privacy()) main.append(privacySection());
   if (o.loggedIn) main.append(account());
   main.append(leave());
   // Pages: Settings, and from its buttons Keybinds and Credits (each with Back).
@@ -123,6 +125,27 @@ function audio(): HTMLElement {
   folk.append(folkBox, el('span', undefined, 'Mute gossip murmur'));
 
   section.append(el('h3', 'st-heading', 'Audio'), music.row, sfx.row, mute, folk);
+  return section;
+}
+
+/** Privacy (CONTEXT.md Friends-only whispers): who may whisper you, kept by the town's server (net/privacy.ts). */
+function privacySection(): HTMLElement {
+  const section = el('section', 'st-section');
+  const row = el('label', 'st-row st-check');
+  const box = el('input');
+  box.type = 'checkbox';
+  const draw = () => (box.checked = privacy()?.whispers === 'friends');
+  draw();
+  // (The box is drawn as the town last said: the server answers a change with the settings now, net/privacy.ts.)
+  box.addEventListener('change', () => {
+    playSound('click');
+    if (!changePrivacy({ whispers: box.checked ? 'friends' : 'everyone' })) {
+      toast('Can’t reach the town right now.', 2600, 'bad');
+      draw();
+    }
+  });
+  row.append(box, el('span', undefined, 'Only friends can whisper me'));
+  section.append(el('h3', 'st-heading', 'Privacy'), row, el('p', 'st-note', 'Game Masters can always whisper you.'));
   return section;
 }
 

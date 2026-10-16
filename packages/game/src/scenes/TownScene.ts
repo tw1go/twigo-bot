@@ -47,7 +47,8 @@ import { settling, settlingWhat } from '../world/settle';
 import { SystemFeed } from '../ui/system-feed';
 import { announce } from '../ui/announce';
 import { OnlineList, showFriendRequest } from '../ui/online';
-import { answer as friendAnswer, askByName, refusal as friendRefusal, setFriends, setFriendsLink } from '../net/friends';
+import { answer as friendAnswer, askByName, friends, refusal as friendRefusal, setFriends, setFriendsLink } from '../net/friends';
+import { setPrivacy, setPrivacyLink } from '../net/privacy';
 import { EMOTE_KEYS, emotePicker } from '../ui/emotes';
 import { actionOf, held, keyLabel, matches } from '../ui/keybinds';
 import type { ArenaServerMessage, ClassInfo, HoodHouse, OutfitData, TitleData, TownClientMessage, TownEmote, TownHoodResponse, TownGolem, TownServerMessage } from '@mikazuki/shared';
@@ -1852,7 +1853,21 @@ export class TownScene extends Phaser.Scene {
         ask: (p) => tradeWin.ask(p.id, p.nickname),
       };
     }
-    const chat = new ChatBox((text, channel, links) => link.send({ t: 'say', text, ...(channel === 'megaphone' ? { megaphone: true } : channel === 'party' ? { party: true } : channel === 'gm' ? { gm: true } : {}), ...(links.length ? { links } : {}) }), tools);
+    const chat = new ChatBox(
+      (text, channel, links) =>
+        channel === 'whisper'
+          ? !!chat.whisperTarget && link.send({ t: 'whisper', to: chat.whisperTarget, text, ...(links.length ? { links } : {}) })
+          : link.send({ t: 'say', text, ...(channel === 'megaphone' ? { megaphone: true } : channel === 'party' ? { party: true } : channel === 'gm' ? { gm: true } : {}), ...(links.length ? { links } : {}) }),
+      tools,
+    );
+    // `/w` finds a nickname with spaces among those it knows: players here and your friends.
+    chat.knownNames = () => [...this.others.players.map((p) => p.nickname), ...friends().friends.map((f) => f.name)];
+    // Whisper from the player menu and the Friends list: the chat on a whisper to them.
+    if (member) {
+      const whisper = (name: string) => chat.startWhisper(name);
+      if (this.target) this.target.whisper = whisper;
+      online.whisper = whisper;
+    }
     // Items shown in chat lines: their name in their rarity's colour; a click opens their tooltip beside it (any click
     // elsewhere, or Escape, closes it).
     const itemTip = new SkillTip();
@@ -1866,6 +1881,7 @@ export class TownScene extends Phaser.Scene {
     // Parties (net/party.ts): the panel on the left for members, pink names for your party (on your screen only).
     setPartyLink(link);
     setFriendsLink(link);
+    setPrivacyLink(link);
     this.others.inParty = inParty;
     if (member) {
       const C = this.M.characters;
@@ -2022,6 +2038,14 @@ export class TownScene extends Phaser.Scene {
         return;
       }
       if (m.t === 'friend-refused') return toast(friendRefusal(m.reason, m.name), 2600, 'bad');
+      // Whispers (CONTEXT.md Whisper): yours back as "To …", theirs "From …"; why one didn't go, in the chat.
+      if (m.t === 'whisper') {
+        chat.addWhisper(m.name, m.text, !!m.sent, m.id, !!m.gm, m.links);
+        if (!m.sent) playSound('chat');
+        return;
+      }
+      if (m.t === 'whisper-refused') return chat.notice(m.reason === 'self' ? "You can't whisper yourself." : m.reason === 'offline' ? `${m.name} isn't online.` : `${m.name} isn't taking whispers.`);
+      if (m.t === 'privacy') return setPrivacy(m.privacy);
       // The Scrap Warrens: the gate's panel, an invite, going in and out, the run's tracker, its bosses' moves.
       if (m.t === 'warrens-gate') return showWarrensGate(m.gate, (what) => link.send(what === 'open' ? { t: 'warrens-open' } : what === 'practice' ? { t: 'warrens-practice' } : { t: 'warrens-join' }));
       if (m.t === 'warrens-invite') return showWarrensInvite(m.from, m.ms, (join) => link.send(join ? { t: 'warrens-join', run: m.run } : { t: 'warrens-decline', run: m.run }));

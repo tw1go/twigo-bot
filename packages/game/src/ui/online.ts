@@ -7,7 +7,7 @@ import { areaName } from './party';
 // 👥 Who's around: a small "N online" button beside the chat input (with the art's green status dot) that opens a
 // panel with three tabs. Here: everyone in this area — you first — with their titles in their colours. Friends (CONTEXT.md
 // Friend): add one by nickname, then each friend with their head, class badge, level and where they are while online
-// (Invite to party while they're in town), or when they were last online, and Remove (asks twice). Requests: those sent
+// (Whisper; Invite to party while they're in town), or when they were last online, and Remove (asks twice). Requests: those sent
 // to you (Accept / Decline) and yours waiting (Cancel). A dot on the button and the tab while a request waits for you.
 // Plus the pop-up for a request that arrives while you're here. DOM text only; net/friends.ts has the state.
 
@@ -56,6 +56,8 @@ export class OnlineList {
   private removing: string | null = null;
   /** Heads and badges for the Friends tab (members only: without it, only the Here tab). */
   art: FriendArt | null = null;
+  /** Whisper: the chat on a whisper to a friend who's online (set by the town). */
+  whisper: ((name: string) => void) | null = null;
 
   constructor(dot: DotArt | null) {
     this.el = document.createElement('div');
@@ -182,6 +184,15 @@ export class OnlineList {
     const where = f.online ? areaName(f.area) : f.lastSeen ? `Last online: ${lastOnline(f.lastSeen, Date.now())}` : 'Offline';
     words.append(line, el('span', 'on-where', where));
     const acts = el('span', 'on-acts');
+    if (f.online && this.whisper) {
+      const w = el('button', 'on-act', 'Whisper');
+      w.addEventListener('click', () => {
+        playSound('click');
+        this.toggle(false);
+        this.whisper?.(f.name);
+      });
+      acts.append(w);
+    }
     if (f.id && !inParty(f.id) && mayInvite()) {
       const b = el('button', 'on-act', 'Invite');
       b.title = 'Invite to party';

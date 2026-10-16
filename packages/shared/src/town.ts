@@ -6,6 +6,7 @@ import type { AdventureState, CharacterProgress, EquipPlace, QuestProgress, Cosm
 import type { Item } from './items.js';
 import type { TradeEnd, TradeRefusal, TradeView, TradePut } from './trade.js';
 import type { HoodHouse, HoodMap, OutfitData, TitleData } from './room-api.js';
+import type { PrivacySettings } from './friends.js';
 
 export type TownDir = 's' | 'se' | 'e' | 'ne' | 'n' | 'nw' | 'w' | 'sw';
 
@@ -243,6 +244,11 @@ export type TownClientMessage =
   | { t: 'friend-cancel'; key: string }
   /** Remove a friend (for both of you). */
   | { t: 'friend-remove'; key: string }
+  /** Whisper to one player who's online (`to`: their nickname, any case; CONTEXT.md Whisper): checked like `say`, never
+   *  to Discord, never kept. `links`: items shown in it, as in `say`. */
+  | { t: 'whisper'; to: string; text: string; links?: string[] }
+  /** Change your privacy settings (Settings → Privacy): only what's given changes. */
+  | { t: 'privacy'; whispers?: PrivacySettings['whispers'] }
   /** Trading (bot web/trade.ts; stats.json trading): ask a player within range (by town id), answer a request, put your
    *  side in (the whole side each time: items from your combat bag and Kusing; any change unlocks both), lock or unlock
    *  it, press Trade (both locked), or cancel (closing the window). */
@@ -333,6 +339,10 @@ export interface FriendsState {
  *  asked already; `full` / `their-full`: one of you has FRIEND_RULES.max friends; `asks`: you have FRIEND_RULES.asks
  *  out; `expired`: that request isn't open anymore; `slow`: one a second. */
 export type FriendRefusal = 'self' | 'gone' | 'already' | 'asked' | 'full' | 'their-full' | 'asks' | 'expired' | 'slow';
+
+/** Why a whisper didn't go: to yourself, they aren't online, or they take whispers from friends only (CONTEXT.md
+ *  Friends-only whispers; the same answer a block will give, so neither is told apart). */
+export type WhisperRefusal = 'self' | 'offline' | 'closed';
 
 export type PartyRefusal = 'self' | 'gone' | 'not-leader' | 'full' | 'in-party' | 'already' | 'invited' | 'expired' | 'slow';
 
@@ -684,6 +694,13 @@ export type TownServerMessage =
   | { t: 'friends'; friends: FriendsState; note?: string; online?: string; asked?: FriendAsk }
   /** Your friend request or action didn't go through (`name`: who it was about). */
   | { t: 'friend-refused'; reason: FriendRefusal; name?: string }
+  /** A whisper: to you from them, or (`sent`) yours to them, back to you. `id` / `name`: the other player (their town id,
+   *  wherever they are). `gm`: from a Game Master (gold). */
+  | { t: 'whisper'; id: string; name: string; text: string; sent?: true; gm?: true; links?: ChatItemLink[] }
+  /** Your whisper didn't go (`name`: who to). */
+  | { t: 'whisper-refused'; reason: WhisperRefusal; name: string }
+  /** Your privacy settings (on arrival and after a change). */
+  | { t: 'privacy'; privacy: PrivacySettings }
   /** The buffs on another player (an answer to `buffs-of`). */
   /** `cp`: their combat rating now (with their buffs; none for someone gone or with no stats here). */
   | { t: 'buffs-of'; id: string; buffs: TownBuff[]; cp?: number }
