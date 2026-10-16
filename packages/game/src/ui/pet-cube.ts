@@ -1,6 +1,7 @@
-import { type Item, cubeOf, cubeRefusal, petRules } from '@mikazuki/shared';
+import { type Item, cubeOf, cubeRefusal, isGearDef, newItem, petRules } from '@mikazuki/shared';
 import { adventure, anyDef, itemData, petAct } from '../net/adventure';
 import { playSound } from '../audio/sound';
+import { itemPicture } from './item-tip';
 import { toast } from './toast';
 
 // 🎲 The pet cube's picker (CONTEXT.md "Pet cube"): the cube's pets (stats.json pets.petCube.<tier>.choices, in that
@@ -149,27 +150,50 @@ function pick(choices: string[]): Promise<string | null> {
 }
 
 /** A pet in a card: its idle looping, its special once on a pick (then idle again), a sheet's frames as a CSS
- *  background stepped by the picker's clock. Nothing until the art is in. */
+ *  background stepped by the picker's clock. Its sheets not to be had (no art from the scene, or an image that won't
+ *  load): the pet's own picture (its item's icon) in their place, so a card is never empty. */
 class PetSprite {
   private readonly box = el('div', 'pc-sprite');
   private anim: 'idle' | 'special' = 'idle';
   private since = performance.now();
+  private still = false;
 
-  constructor(stage: HTMLElement, private readonly pet: string) {
+  constructor(private readonly stage: HTMLElement, private readonly pet: string) {
     stage.append(this.box);
     const [w, h] = art?.cell ?? [40, 40];
     this.box.style.width = `${w * SCALE}px`;
     this.box.style.height = `${h * SCALE}px`;
+    if (!art?.sheet(pet, 'idle')) {
+      console.warn(`[pet-cube] no idle sheet for ${pet}: ${art ? 'not in pets.json' : 'no art from the town'}`);
+      this.picture();
+      return;
+    }
     // (Both sheets fetched now, so the special starts at once.)
     for (const a of ['idle', 'special'] as const) {
-      const s = art?.sheet(pet, a);
-      if (s) new Image().src = s.url;
+      const s = art.sheet(pet, a);
+      if (!s) continue;
+      const img = new Image();
+      img.onerror = () => {
+        console.warn(`[pet-cube] ${s.url} didn't load`);
+        this.picture();
+      };
+      img.src = s.url;
     }
     this.show('idle');
   }
 
+  /** The pet's item icon instead of its animation. */
+  private picture(): void {
+    if (this.still) return;
+    this.still = true;
+    const D = itemData();
+    const def = D?.defs.get(`pet-${this.pet}`);
+    this.box.remove();
+    if (D && def && !isGearDef(def)) this.stage.append(itemPicture(newItem(D.stats, def, `cube-${this.pet}`), 'showcase', 2));
+  }
+
   special(): void {
-    if (art?.sheet(this.pet, 'special')) this.show('special');
+    if (!this.still && art?.sheet(this.pet, 'special')) this.show('special');
   }
 
   private show(anim: 'idle' | 'special'): void {
@@ -185,7 +209,7 @@ class PetSprite {
 
   draw(now: number): void {
     const s = art?.sheet(this.pet, this.anim);
-    if (!s || !art || s.frames < 1) return;
+    if (this.still || !s || !art || s.frames < 1) return;
     let f = Math.floor(((now - this.since) / 1000) * s.fps);
     if (this.anim === 'special' && f >= s.frames) {
       this.show('idle');
