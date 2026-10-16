@@ -13,7 +13,7 @@ import { attachTown } from './town.js';
 // announced.
 
 const DAY = 86_400_000;
-const empty = (): FriendData => ({ friends: [], requests: [], seen: [] });
+const empty = (): FriendData => ({ friends: [], requests: [], seen: [], blocks: [] });
 
 /** Friends whose saves are written down, to check what's kept. */
 function friends(data = empty()) {
@@ -22,6 +22,7 @@ function friends(data = empty()) {
     friend: (a, b, since) => log.push(`friend ${a} ${b} ${since === null ? 'gone' : 'on'}`),
     request: (from, to, at) => log.push(`request ${from} ${to} ${at === null ? 'gone' : 'on'}`),
     seen: (user) => log.push(`seen ${user}`),
+    block: (by, who, at) => log.push(`block ${by} ${who} ${at === null ? 'gone' : 'on'}`),
   };
   return { F: new Friends(data, saves), log };
 }
@@ -75,7 +76,7 @@ test('limits: friends each, requests out, and a request lapses after its days', 
 });
 
 test('keys: random, the same for a member, and back to them; what was saved comes back', () => {
-  const { F } = friends({ friends: [['a', 'b', 5]], requests: [{ from: 'c', to: 'a', at: 7 }], seen: [['b', 9]] });
+  const { F } = friends({ friends: [['a', 'b', 5]], requests: [{ from: 'c', to: 'a', at: 7 }], seen: [['b', 9]], blocks: [] });
   const k = F.key('b');
   assert.equal(F.key('b'), k);
   assert.notEqual(F.key('a'), k);
@@ -105,7 +106,7 @@ async function town() {
     authenticate: async (req) => new URL(req.url ?? '/', 'http://x').searchParams.get('as'),
     profile: (name) => (names.includes(name) ? { nickname: name, title: { name: 'Townfolk', color: '#fff' }, outfit: {} as never, cls: 'broom', level: 7 } : null),
     friends: {
-      store: { load: () => ({ ...empty(), friends: [['Dan', 'Mara', 0]] }), friend: (a, b) => saved.push(`friend ${a} ${b}`), request: (f, t, at) => saved.push(`request ${f} ${t} ${at === null ? 'gone' : 'on'}`), seen: () => {} },
+      store: { load: () => ({ ...empty(), friends: [['Dan', 'Mara', 0]] }), friend: (a, b) => saved.push(`friend ${a} ${b}`), request: (f, t, at) => saved.push(`request ${f} ${t} ${at === null ? 'gone' : 'on'}`), seen: () => {}, block: () => {} },
       byName: (n) => names.find((x) => x.toLowerCase() === n.toLowerCase()) ?? null,
     },
   });

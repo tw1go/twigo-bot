@@ -445,7 +445,7 @@ export function devTown(): Plugin {
         moveLevel: (cls, move) => moveUnlock(classes.find((c) => c.id === cls), move),
         // Friends in memory (a restart forgets them); a request by name finds anyone who has logged in since it started.
         friends: {
-          store: { load: () => ({ friends: [], requests: [], seen: [] }), friend: () => {}, request: () => {}, seen: () => {} },
+          store: { load: () => ({ friends: [], requests: [], seen: [], blocks: [] }), friend: () => {}, request: () => {}, seen: () => {}, block: () => {} },
           byName: (name) => [...kits.keys()].find((n) => n.toLowerCase() === name.trim().toLowerCase()) ?? null,
         },
         // Privacy settings in memory (a restart forgets them).

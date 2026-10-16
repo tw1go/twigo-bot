@@ -4,7 +4,9 @@ import { FRIEND_RULES, type FriendRefusal } from '@mikazuki/shared';
 // 🤝 Friends (CONTEXT.md Friend, Friend request): both ways. One player asks, the other accepts (or declines); two
 // players who ask each other are friends at once. Removing a friend removes it for both. At most FRIEND_RULES.max
 // friends each and FRIEND_RULES.asks requests out; a request nobody answers lapses after FRIEND_RULES.requestDays.
-// Also when each member was last online (their friends see it while they're away). Kept by member (Discord ids stay
+// Blocks (CONTEXT.md Block): a player blocked can't ask the one who blocked them (web/town.ts also keeps their
+// whispers, party invites and trade requests out); blocking ends a friendship and any request either way; at most
+// FRIEND_RULES.blocks each. Also when each member was last online (their friends see it while they're away). Kept by member (Discord ids stay
 // here: the page sees each member's friend key, made per process). Pure: what was saved comes in, every change goes out
 // through `saves` (web/friends-db.ts in the bot; nothing on the game's dev server); web/town.ts sends the messages.
 
@@ -15,6 +17,8 @@ export interface FriendData {
   friends: [a: string, b: string, since: number][];
   requests: { from: string; to: string; at: number }[];
   seen: [user: string, at: number][];
+  /** Who blocked whom, and when. */
+  blocks: { by: string; who: string; at: number }[];
 }
 
 /** Writes each change (`null`: it's gone). */
@@ -22,6 +26,7 @@ export interface FriendSaves {
   friend(a: string, b: string, since: number | null): void;
   request(from: string, to: string, at: number | null): void;
   seen(user: string, at: number): void;
+  block(by: string, who: string, at: number | null): void;
 }
 
 /** Where friends are kept: loaded once, each change written. */
@@ -37,6 +42,8 @@ export class Friends {
   /** Requests waiting: from → to → when sent. */
   private readonly asks = new Map<string, Map<string, number>>();
   private readonly lastSeen = new Map<string, number>();
+  /** Blocks: by → who → when. */
+  private readonly blocks = new Map<string, Map<string, number>>();
   private readonly keys = new Map<string, string>();
   private readonly members = new Map<string, string>();
 
@@ -44,6 +51,7 @@ export class Friends {
     for (const [a, b, since] of data.friends) this.link(a, b, since);
     for (const r of data.requests) this.put(this.asks, r.from, r.to, r.at);
     for (const [user, at] of data.seen) this.lastSeen.set(user, at);
+    for (const b of data.blocks) this.put(this.blocks, b.by, b.who, b.at);
   }
 
   /** A member's friend key (random, the same for this process's lifetime). */
@@ -88,6 +96,8 @@ export class Friends {
   /** `from` asks `to` to be friends. `friends`: they'd asked `from` already, so they're friends now. */
   ask(from: string, to: string, now: number): FriendResult<{ friends: boolean }> {
     if (from === to) return { ok: false, reason: 'self' };
+    if (this.hasBlocked(to, from)) return { ok: false, reason: 'closed' };
+    if (this.hasBlocked(from, to)) return { ok: false, reason: 'blocked' };
     if (this.areFriends(from, to)) return { ok: false, reason: 'already' };
     if (this.waiting(from, to, now)) return { ok: false, reason: 'asked' };
     const room = this.room(from, to);
@@ -130,6 +140,37 @@ export class Friends {
     this.lists.get(b)!.delete(a);
     this.saves.friend(...pair(a, b), null);
     return { ok: true };
+  }
+
+  /** `by` blocks `who`: no longer friends, and no request left either way. */
+  block(by: string, who: string, now: number): FriendResult {
+    if (by === who) return { ok: false, reason: 'self' };
+    if (this.hasBlocked(by, who)) return { ok: false, reason: 'blocked' };
+    if ((this.blocks.get(by)?.size ?? 0) >= FRIEND_RULES.blocks) return { ok: false, reason: 'blocks' };
+    if (this.areFriends(by, who)) this.remove(by, who);
+    this.drop(by, who);
+    this.drop(who, by);
+    this.put(this.blocks, by, who, now);
+    this.saves.block(by, who, now);
+    return { ok: true };
+  }
+
+  unblock(by: string, who: string): FriendResult {
+    const m = this.blocks.get(by);
+    if (!m?.delete(who)) return { ok: false, reason: 'gone' };
+    if (!m.size) this.blocks.delete(by);
+    this.saves.block(by, who, null);
+    return { ok: true };
+  }
+
+  /** Whether `by` has blocked `who`. */
+  hasBlocked(by: string, who: string): boolean {
+    return !!this.blocks.get(by)?.has(who);
+  }
+
+  /** The players `by` has blocked, longest ago first. */
+  blockedBy(by: string): { who: string; at: number }[] {
+    return [...(this.blocks.get(by) ?? [])].map(([who, at]) => ({ who, at })).sort((x, y) => x.at - y.at);
   }
 
   /** A member was online at `at`. */

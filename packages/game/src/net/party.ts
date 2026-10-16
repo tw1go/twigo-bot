@@ -77,5 +77,7 @@ export function refusal(reason: PartyRefusal, name?: string): string {
       return 'That invite isn’t open anymore.';
     case 'slow':
       return 'One invite a second.';
+    case 'closed':
+      return "Couldn't send that invite.";
   }
 }

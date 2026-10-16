@@ -74,7 +74,8 @@ export interface TradeView {
 
 /** Why a request or trade didn't go: yourself, they left, too far (or another area), one of you is already trading or
  *  asked, too many requests, knocked out, they said no, no answer in time, the request is gone. */
-export type TradeRefusal = 'self' | 'gone' | 'far' | 'busy' | 'asked' | 'slow' | 'out' | 'declined' | 'timeout' | 'expired';
+/** (`closed`: they don't take trade requests from you: a block, never named as one.) */
+export type TradeRefusal = 'self' | 'gone' | 'far' | 'busy' | 'asked' | 'slow' | 'out' | 'declined' | 'timeout' | 'expired' | 'closed';
 
 /** How a trade ended: done, cancelled by one side (`name`), too far apart, one left, one knocked out, or the last check
  *  failed (`message` says why; nothing moved). */

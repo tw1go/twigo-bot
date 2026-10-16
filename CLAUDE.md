@@ -1300,6 +1300,14 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   channel (lavender, its tag "To Mara"; `/w Name message`, the longest known name the line starts with or "Two Words" in
   quotes, `/r` the last whisperer; `ChatBox.addWhisper` "To" / "From" lines, a Game Master's gold; `startWhisper` from the
   player menu's and the Friends list's Whisper), `net/privacy.ts`, Settings → Privacy ("Only friends can whisper me").
+- Blocks (CONTEXT.md Block; in `Friends`: `block` / `unblock` / `hasBlocked` / `blockedBy`, FRIEND_RULES.blocks 200;
+  schema v21 `blocks`, saved by `web/friends-db.ts`; tested in `town-block.test.ts` with a socket test): `block` {to: town
+  id | name} / `unblock` {key} → `friends` (FriendsState `blocked`) or `friend-refused` ('gm': Game Masters can't be
+  blocked; 'blocked', 'blocks'). Blocking ends a friendship and any request either way (a party or trade under way
+  stays). A blocked player's whisper ('closed', the friends-only answer), friend request ('closed'), party invite
+  (PartyRefusal 'closed') and trade request (TradeRefusal 'closed') are refused without saying "blocked"; their General
+  chat still shows. Game: the list's Blocked tab (block by nickname, Unblock), the player menu's Block (asks twice) /
+  Unblock and Add friend "Blocked", `/block Name` (alone: the Blocked tab).
 - Player menu (`ui/target.ts`): left click (or tap) someone → their name and level ("Lv 12", kept up to date by `level-up`: `OtherPlayers.setLevel`, `levelChanged`) in a long box top centre (or click their name
   in the chat: the box opens right beside it with the menu open, `selectAt`; a click elsewhere closes it; no ×: a click
   outside the box closes it too, a drag to peek doesn't); clicking it opens

@@ -2,7 +2,7 @@ import type { PresenceStatus, TownGiveResponse, TownPlayer, TownPlayerInfo, Town
 import { api } from '../net/endpoints';
 import { playSound } from '../audio/sound';
 import { inParty, invite, mayInvite, onParty } from '../net/party';
-import { answer as answerFriend, askHere, onFriends, standing } from '../net/friends';
+import { answer as answerFriend, askHere, blockHere, onFriends, standing, unblock } from '../net/friends';
 import { fakeLogin } from '../session';
 import { coinIcon } from './reward';
 
@@ -67,6 +67,10 @@ export class TargetBox {
   private readonly friendRow = el('div', 'tg-friend');
   private readonly friendButton = el('button', 'tg-friend-ask', 'Add friend');
   private readonly whisperButton = el('button', 'tg-whisper', 'Whisper');
+  private readonly blockRow = el('div', 'tg-block-row');
+  private readonly blockButton = el('button', 'tg-block', 'Block');
+  /** Block pressed once: the second press blocks. */
+  private blockArmed = false;
   /** Whisper: the chat on a whisper to them (set by the town). */
   whisper: ((name: string) => void) | null = null;
   private readonly tradeButton = el('button', 'tg-trade-ask', 'Trade');
@@ -156,6 +160,23 @@ export class TargetBox {
       this.whisper(p.nickname);
     });
     this.friendRow.append(this.whisperButton, this.friendButton);
+    // Block (asks twice), or Unblock if you have (CONTEXT.md Block).
+    this.blockButton.addEventListener('click', () => {
+      const p = this.target;
+      if (!p) return;
+      playSound('click');
+      const s = standing(p.nickname);
+      if (s.is === 'blocked') return void unblock(s.key);
+      if (!this.blockArmed) {
+        this.blockArmed = true;
+        this.blockButton.textContent = `Sure? Block ${p.nickname}`;
+        return;
+      }
+      this.blockArmed = false;
+      blockHere(p.id);
+    });
+    this.blockButton.title = 'They won’t be able to whisper you, send you friend requests, invite you to a party or ask you to trade';
+    this.blockRow.append(this.blockButton);
     onFriends(() => this.drawFriend());
     setInterval(() => !this.menu.hidden && this.drawTrade(), 400);
     // A trade opened or ended: the button is ready again.
@@ -164,7 +185,7 @@ export class TargetBox {
       if (!this.menu.hidden) this.drawTrade();
     });
     this.menu.hidden = true;
-    this.menu.append(this.views, this.panel, this.actions, this.partyRow, this.tradeRow, this.friendRow);
+    this.menu.append(this.views, this.panel, this.actions, this.partyRow, this.tradeRow, this.friendRow, this.blockRow);
     this.infoButton.title = 'Info: their character, gear and stats';
     this.infoButton.setAttribute('aria-label', 'Info');
     this.infoButton.addEventListener('click', () => this.target && this.onInfo(this.target));
@@ -351,9 +372,11 @@ export class TargetBox {
     const p = this.target;
     if (!p) return;
     const s = standing(p.nickname);
-    const label = { friend: 'Friends ✓', sent: 'Request sent', asked: 'Accept friend request', none: 'Add friend' }[s.is];
+    const label = { friend: 'Friends ✓', sent: 'Request sent', asked: 'Accept friend request', blocked: 'Blocked', none: 'Add friend' }[s.is];
     this.friendButton.textContent = label;
-    this.friendButton.disabled = s.is === 'friend' || s.is === 'sent';
+    this.friendButton.disabled = s.is === 'friend' || s.is === 'sent' || s.is === 'blocked';
+    this.blockArmed = false;
+    this.blockButton.textContent = s.is === 'blocked' ? 'Unblock' : 'Block';
     this.whisperButton.hidden = !this.whisper;
   }
 

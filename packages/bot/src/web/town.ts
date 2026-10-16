@@ -481,7 +481,11 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     friends: F!.friendsOf(user).map(friendView).sort((a, b) => Number(b.online) - Number(a.online) || a.name.localeCompare(b.name)),
     incoming: F!.incoming(user, now).map((r): FriendAsk => ({ key: F!.key(r.from), name: friendName(r.from), at: r.at })),
     outgoing: F!.outgoing(user, now).map((r): FriendAsk => ({ key: F!.key(r.to), name: friendName(r.to), at: r.at })),
+    blocked: F!.blockedBy(user).map((b): FriendAsk => ({ key: F!.key(b.who), name: friendName(b.who), at: b.at })),
   });
+  /** Whether `who` is blocked by `by` (CONTEXT.md Block: no whispers, friend requests, party invites or trade requests
+   *  from them; they're told as if they'd simply been turned away). */
+  const blockedBy = (by: string, who: string) => !!F?.hasBlocked(by, who);
   /** A member's friends and requests, to them if they're here (with what happened). */
   const tellFriendList = (user: string, extra: { note?: string; online?: string; asked?: FriendAsk } = {}) => {
     const c = conns.get(user);
@@ -1145,6 +1149,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         const to = typeof m.to === 'string' ? town.memberOf(m.to) : null;
         const them = to ? conns.get(to) : undefined;
         if (!to || !them) return send(c, { t: 'party-refused', reason: 'gone' });
+        if (blockedBy(to, c.userId)) return send(c, { t: 'party-refused', reason: 'closed', name: them.player.nickname });
         const r = parties.invite(c.userId, to, now);
         if (!r.ok) return send(c, { t: 'party-refused', reason: r.reason, name: them.player.nickname });
         return send(them, { t: 'party-invited', invite: r.invite, from: p.id, name: p.nickname, members: r.members });
@@ -1217,6 +1222,27 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         tellFriendList(c.userId, { note: `${friendName(other)} is no longer your friend.` });
         return tellFriendList(other);
       }
+      case 'block': {
+        if (!F || !opts.friends) return;
+        const now = Date.now();
+        if (now - (c.friendAt ?? 0) < FRIEND_GAP_MS) return send(c, { t: 'friend-refused', reason: 'slow' });
+        c.friendAt = now;
+        const asked = typeof m.name === 'string' ? m.name.slice(0, 32) : undefined;
+        const who = typeof m.to === 'string' ? town.memberOf(m.to) : asked ? opts.friends.byName(asked) : null;
+        if (!who || !opts.profile(who)) return send(c, { t: 'friend-refused', reason: 'gone', ...(asked ? { name: asked } : {}) });
+        if (opts.gm?.(who)) return send(c, { t: 'friend-refused', reason: 'gm', name: friendName(who) });
+        const r = F.block(c.userId, who, now);
+        if (!r.ok) return send(c, { t: 'friend-refused', reason: r.reason, name: friendName(who) });
+        tellFriendList(c.userId, { note: `You blocked ${friendName(who)}.` });
+        return tellFriendList(who); // (a friendship or request with you is gone from their list; nothing says why)
+      }
+      case 'unblock': {
+        if (!F || typeof m.key !== 'string') return;
+        const who = F.member(m.key);
+        const r = who ? F.unblock(c.userId, who) : null;
+        if (!who || !r?.ok) return send(c, { t: 'friend-refused', reason: 'gone' });
+        return tellFriendList(c.userId, { note: `You unblocked ${friendName(who)}.` });
+      }
       case 'buffs-of': {
         // The buffs on someone (the player box's icons, asked every couple of seconds while it's open).
         const now = Date.now();
@@ -1261,6 +1287,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         const name = them.player.nickname;
         if (p.out || them.player.out) return send(c, { t: 'trade-refused', reason: 'out', name });
         if (!nearEnough(c, them)) return send(c, { t: 'trade-refused', reason: 'far', name });
+        if (blockedBy(to, c.userId)) return send(c, { t: 'trade-refused', reason: 'closed', name });
         const r = trades.ask(c.userId, to, now);
         if (!r.ok) return send(c, { t: 'trade-refused', reason: r.reason, name });
         return send(them, { t: 'trade-asked', ask: r.ask.id, from: p.id, name: p.nickname, ms: TR.timeoutMs });
@@ -1389,9 +1416,9 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         const to = [...conns.values()].find((o) => fold(o.player.nickname) === fold(name));
         if (to === c) return send(c, { t: 'whisper-refused', reason: 'self', name: p.nickname });
         if (!to) return send(c, { t: 'whisper-refused', reason: 'offline', name });
-        // Friends-only whispers: theirs to set; Game Masters may always whisper.
+        // Blocked, or friends-only whispers (theirs to set): the same answer either way. Game Masters may always whisper.
         const gm = !!opts.gm?.(c.userId);
-        const closed = opts.privacy?.get(to.userId).whispers === 'friends' && !F?.areFriends(c.userId, to.userId);
+        const closed = blockedBy(to.userId, c.userId) || (opts.privacy?.get(to.userId).whispers === 'friends' && !F?.areFriends(c.userId, to.userId));
         if (closed && !gm) return send(c, { t: 'whisper-refused', reason: 'closed', name: to.player.nickname });
         c.says -= 1;
         const extra = { ...(gm ? { gm: true as const } : {}), ...(said.links.length ? { links: said.links } : {}) };

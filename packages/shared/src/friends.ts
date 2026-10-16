@@ -1,4 +1,5 @@
-// 🤝 Friends (CONTEXT.md Friend, Friend request): both ways, asked and accepted. How many, and how long a request waits.
+// 🤝 Friends (CONTEXT.md Friend, Friend request, Block): both ways, asked and accepted. How many, how long a request
+// waits, and how many players one may block.
 
 export const FRIEND_RULES = {
   /** Friends a player may have. */
@@ -7,6 +8,8 @@ export const FRIEND_RULES = {
   asks: 20,
   /** A request nobody answers lapses after this many days. */
   requestDays: 14,
+  /** Players one player may have blocked (CONTEXT.md Block). */
+  blocks: 200,
 } as const;
 
 /** A player's privacy settings (Settings → Privacy; CONTEXT.md Friends-only whispers): who may whisper them. */

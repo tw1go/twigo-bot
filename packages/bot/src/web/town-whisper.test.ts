@@ -28,7 +28,7 @@ async function town() {
     gm: (name) => name === 'Gemma',
     moderation: { mutedUntil: (name) => (name === 'Muted' ? Date.now() + 60_000 : null), kickedUntil: () => null, filter: (t) => t.replace(/darn/g, '****') },
     friends: {
-      store: { load: () => ({ friends: [['Cleo', 'Mara', 0]], requests: [], seen: [] }), friend: () => {}, request: () => {}, seen: () => {} },
+      store: { load: () => ({ friends: [['Cleo', 'Mara', 0]], requests: [], seen: [], blocks: [] }), friend: () => {}, request: () => {}, seen: () => {}, block: () => {} },
       byName: () => null,
     },
     privacy: {

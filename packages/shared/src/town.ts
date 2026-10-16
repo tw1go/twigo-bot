@@ -244,6 +244,11 @@ export type TownClientMessage =
   | { t: 'friend-cancel'; key: string }
   /** Remove a friend (for both of you). */
   | { t: 'friend-remove'; key: string }
+  /** Block a player here (`to`: their town id) or anyone by nickname (CONTEXT.md Block): no whispers, friend requests,
+   *  party invites or trade requests from them; a friendship with them ends. */
+  | { t: 'block'; to?: string; name?: string }
+  /** Unblock a player (by their friend key). */
+  | { t: 'unblock'; key: string }
   /** Whisper to one player who's online (`to`: their nickname, any case; CONTEXT.md Whisper): checked like `say`, never
    *  to Discord, never kept. `links`: items shown in it, as in `say`. */
   | { t: 'whisper'; to: string; text: string; links?: string[] }
@@ -333,18 +338,23 @@ export interface FriendsState {
   friends: FriendView[];
   incoming: FriendAsk[];
   outgoing: FriendAsk[];
+  /** The players you've blocked (`at`: when). */
+  blocked: FriendAsk[];
 }
 
 /** Why a friend request or action didn't go through. `gone`: no such player; `already`: you're friends; `asked`: you
  *  asked already; `full` / `their-full`: one of you has FRIEND_RULES.max friends; `asks`: you have FRIEND_RULES.asks
- *  out; `expired`: that request isn't open anymore; `slow`: one a second. */
-export type FriendRefusal = 'self' | 'gone' | 'already' | 'asked' | 'full' | 'their-full' | 'asks' | 'expired' | 'slow';
+ *  out; `expired`: that request isn't open anymore; `slow`: one a second. Blocks: `closed` they don't take requests from
+ *  you (a block, never named as one); `blocked` you've blocked them (or already had); `blocks` you've blocked
+ *  FRIEND_RULES.blocks; `gm` Game Masters can't be blocked. */
+export type FriendRefusal = 'self' | 'gone' | 'already' | 'asked' | 'full' | 'their-full' | 'asks' | 'expired' | 'slow' | 'closed' | 'blocked' | 'blocks' | 'gm';
 
 /** Why a whisper didn't go: to yourself, they aren't online, or they take whispers from friends only (CONTEXT.md
  *  Friends-only whispers; the same answer a block will give, so neither is told apart). */
 export type WhisperRefusal = 'self' | 'offline' | 'closed';
 
-export type PartyRefusal = 'self' | 'gone' | 'not-leader' | 'full' | 'in-party' | 'already' | 'invited' | 'expired' | 'slow';
+/** (`closed`: they don't take invites from you: a block, never named as one.) */
+export type PartyRefusal = 'self' | 'gone' | 'not-leader' | 'full' | 'in-party' | 'already' | 'invited' | 'expired' | 'slow' | 'closed';
 
 /** Jack en poy: bato (rock) beats gunting (scissors), gunting beats papel (paper), papel beats bato. */
 export type ArenaHand = 'bato' | 'papel' | 'gunting';
