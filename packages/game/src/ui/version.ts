@@ -19,7 +19,7 @@ export function showVersion(): void {
   // (The desktop app's own version.json is always its own: it looks at twigo.dev/downloads instead, net/desktop.ts.)
   if (__BUILD__.version === 'dev' || isDesktopApp()) return;
 
-  const check = async () => {
+  const look = async () => {
     if (told) return;
     const res = await fetch(`${import.meta.env.BASE_URL}version.json`, { cache: 'no-store' }).catch(() => null);
     const live = res?.ok ? ((await res.json().catch(() => null)) as { version?: string } | null) : null;
@@ -28,12 +28,21 @@ export function showVersion(): void {
       notify(live.version);
     }
   };
-  setInterval(() => void check(), CHECK_MS);
+  check = look;
+  setInterval(() => void look(), CHECK_MS);
   // Coming back to the tab is a good moment to look too.
-  document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && void check());
+  document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && void look());
 }
 
 let told = false;
+/** Asks version.json whether a newer build is out (set once showVersion has run on a build). */
+let check: (() => Promise<void>) | null = null;
+
+/** Something of this build couldn't be loaded (an art sheet a deploy removed): look for a newer version now, not in a
+ *  minute, so its notice says to reload. */
+export function checkVersionNow(): void {
+  void check?.();
+}
 
 /** The home screen app's service worker has a new version ready. */
 export function newVersionReady(): void {

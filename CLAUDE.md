@@ -65,6 +65,10 @@ State is one SQLite database, `data/mikazuki.db` (better-sqlite3, WAL), schema i
 - Deploys: pushing `main` deploys (GitHub Actions, `.github/workflows/deploy.yml` → `deploy/deploy.sh`: backup, upload,
   restart, slash commands, health check). `./deploy/deploy.sh <ssh-target>` is the by-hand fallback; `.env` lives on the
   server only (`./deploy/push-env.sh <ssh-target>` replaces it on purpose). See `CLAUDE.local.md`.
+  The game's files named by their content (art sheets in assets/packs, scripts, stylesheets) outlive the build that made
+  them by 14 days on the server (a game still on an older build, as an iPhone keeps one until Reload now, finds its art),
+  and a missing file under /play/assets/ is a plain uncached 404 (deploy/Caddyfile), never index.html. A sheet that still
+  fails asks version.json at once (`onPackMissing` → `checkVersionNow`), so the "New version available" notice says why.
 
 ## Versions
 
