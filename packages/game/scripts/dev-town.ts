@@ -1,7 +1,7 @@
 import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import type { ClassesFile, GearRarity, HoodHouse, HouseLook, OutfitData, RogueState, TownHoodActionResponse, TownHoodResponse, TownItems, TownRace, TownRaceResponse } from '@mikazuki/shared';
-import { type LanternPost, type TownMail, MAIL_RULES, claimInto, hasAttachments, parseMailAction, RETURN_LANTERN, gainPetXp, parsePetAction, petAction, petIdOf, petRules, setPetLevel, addToBag, isGearDef, lanternPostOf, newItem, rollGear, rollWorthy, takeKind, buffSkillLevels, classBuffs, classSkills, damageSkillLevels, moveUnlock } from '@mikazuki/shared';
+import type { ClassesFile, GearRarity, HoodHouse, HouseLook, OutfitData, PrivacySettings, RogueState, TownHoodActionResponse, TownHoodResponse, TownItems, TownRace, TownRaceResponse } from '@mikazuki/shared';
+import { type LanternPost, type TownMail, DEFAULT_PRIVACY, MAIL_RULES, claimInto, hasAttachments, parseMailAction, RETURN_LANTERN, gainPetXp, parsePetAction, petAction, petIdOf, petRules, setPetLevel, addToBag, isGearDef, lanternPostOf, newItem, rollGear, rollWorthy, takeKind, buffSkillLevels, classBuffs, classSkills, damageSkillLevels, moveUnlock } from '@mikazuki/shared';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { doorSpot, hoodMap, lotTile } from '../../bot/src/web/hood-map.ts';
 import type { Plugin } from 'vite';
@@ -88,6 +88,7 @@ export function devTown(): Plugin {
       if (!httpServer) return;
       const json = JSON.parse(readFileSync(join(server.config.publicDir, 'assets/maps/town.json'), 'utf8'));
       const looks = new Map<string, OutfitData>();
+      const privacy = new Map<string, PrivacySettings>(); // Settings → Privacy, by name
       const kits = new Map<string, { cls: string | null; weapon: string | null }>(); // class and worn weapon (the pretend quests and equipment)
       /** Each player's pretend quests (the page sends them: on connect with &kit=, then /__quests), for the Warren Gate. */
       const questsOf = new Map<string, { active: { id: string; step: number }[]; done: string[] }>();
@@ -446,6 +447,15 @@ export function devTown(): Plugin {
         friends: {
           store: { load: () => ({ friends: [], requests: [], seen: [] }), friend: () => {}, request: () => {}, seen: () => {} },
           byName: (name) => [...kits.keys()].find((n) => n.toLowerCase() === name.trim().toLowerCase()) ?? null,
+        },
+        // Privacy settings in memory (a restart forgets them).
+        privacy: {
+          get: (name) => privacy.get(name) ?? DEFAULT_PRIVACY,
+          set: (name, change) => {
+            const next = { ...(privacy.get(name) ?? DEFAULT_PRIVACY), ...change };
+            privacy.set(name, next);
+            return next;
+          },
         },
         shared: true,
         arenaBets,

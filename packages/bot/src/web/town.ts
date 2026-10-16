@@ -16,7 +16,7 @@ import { type Loot, LootRoom, splitKusing } from './town-loot.js';
 import { type LootRoll, LootRolls } from './town-roll.js';
 import { type HeldOffer, type Trade, Trades, checkOffer } from './trade.js';
 import { type Inside, type Run, type RunDeps, type RunNews, Warrens, type WarrensAccess, type WarrensMap } from './town-warrens.js';
-import type { FriendAsk, FriendView, FriendsState, WarrensData, ChatItemLink, CharacterProgress, QuestProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item, TradeEnd, TradeView } from '@mikazuki/shared';
+import type { FriendAsk, FriendView, FriendsState, PrivacySettings, WarrensData, ChatItemLink, CharacterProgress, QuestProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item, TradeEnd, TradeView } from '@mikazuki/shared';
 import { type LanternPost, PetXpClock, petRules, petXpForHit, isLanternMap, itemName, itemStats, lanternPostOf, lanternRefusal, lootRollRules, rollWorthy, partyXpMult, partyXpRange, potionCooldownGroup, skillMpCost, targetPriority, tradeRules } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
@@ -106,6 +106,9 @@ function tidy(text: unknown, max = SAY_MAX): string | null {
   const t = text.replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2066-\u2069]/g, ' ').replace(/\s+/g, ' ').trim();
   return t && [...t].length <= max ? t : null;
 }
+
+/** What makes two nicknames the same one (as web/nickname.ts: any case, the separators ignored). */
+const fold = (nick: string) => nick.toLowerCase().replace(/[ _.-]/g, '');
 
 export interface TownMap {
   size: [number, number]; // [cols, rows]
@@ -225,6 +228,9 @@ export interface TownOptions {
   /** Friends (web/town-friends.ts): where they're kept (web/friends-db.ts in the bot; in memory on the game's dev
    *  server), and the member who goes by a nickname (any case), for a request by name. Without it, no friends. */
   friends?: { store: FriendStore; byName(name: string): string | null };
+  /** Members' privacy settings (web/privacy.ts in the bot; in memory on the game's dev server): who may whisper them.
+   *  Without it, everyone may whisper everyone. */
+  privacy?: { get(userId: string): PrivacySettings; set(userId: string, change: Partial<PrivacySettings>): PrivacySettings };
   /** Chat moderation (web/town-mod.ts in the bot; none in the game's dev server). */
   moderation?: {
     mutedUntil(userId: string): number | null;
@@ -1348,17 +1354,9 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       case 'arena-leave':
         return arena.leave(c.userId);
       case 'say': {
-        const muted = opts.moderation?.mutedUntil(c.userId);
-        if (muted) return send(c, { t: 'say-refused', reason: 'muted', until: muted });
-        const tidied = tidy(m.text);
-        if (!tidied) return send(c, { t: 'say-refused', reason: 'invalid' });
-        const text = opts.moderation ? opts.moderation.filter(tidied) : tidied;
-        const now = Date.now();
-        c.says = Math.min(SAY_BURST, c.says + ((now - c.saidAt) / 1000) * SAYS_PER_SECOND);
-        c.saidAt = now;
-        if (c.says < 1) return send(c, { t: 'say-refused', reason: 'slow' });
-        // Items shown in it: theirs (worn or in the combat bag), each written in the text as "[its name]".
-        const links = itemLinks(c, m.links, text);
+        const said = speaking(c, m.text, m.links);
+        if (!said) return;
+        const { text, links } = said;
         // To the party only: its members, wherever they are (not kept, not to Discord).
         if (m.party === true) {
           const party = parties.of(c.userId);
@@ -1382,7 +1380,49 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         opts.onSay?.(c.userId, p.nickname, text, megaphone, gm);
         return everyone({ t: 'say', id: p.id, name: p.nickname, text, ...loud, ...(links.length ? { links } : {}) });
       }
+      case 'whisper': {
+        // To one player who's online, anywhere (CONTEXT.md Whisper): never to Discord, never kept, never in the log.
+        if (typeof m.to !== 'string') return;
+        const name = m.to.slice(0, 32);
+        const said = speaking(c, m.text, m.links);
+        if (!said) return;
+        const to = [...conns.values()].find((o) => fold(o.player.nickname) === fold(name));
+        if (to === c) return send(c, { t: 'whisper-refused', reason: 'self', name: p.nickname });
+        if (!to) return send(c, { t: 'whisper-refused', reason: 'offline', name });
+        // Friends-only whispers: theirs to set; Game Masters may always whisper.
+        const gm = !!opts.gm?.(c.userId);
+        const closed = opts.privacy?.get(to.userId).whispers === 'friends' && !F?.areFriends(c.userId, to.userId);
+        if (closed && !gm) return send(c, { t: 'whisper-refused', reason: 'closed', name: to.player.nickname });
+        c.says -= 1;
+        const extra = { ...(gm ? { gm: true as const } : {}), ...(said.links.length ? { links: said.links } : {}) };
+        send(to, { t: 'whisper', id: p.id, name: p.nickname, text: said.text, ...extra });
+        return send(c, { t: 'whisper', id: to.player.id, name: to.player.nickname, text: said.text, sent: true, ...extra });
+      }
+      case 'privacy': {
+        if (!opts.privacy || (m.whispers !== 'everyone' && m.whispers !== 'friends')) return;
+        return send(c, { t: 'privacy', privacy: opts.privacy.set(c.userId, { whispers: m.whispers }) });
+      }
     }
+  };
+
+  /** A line someone says (in chat or a whisper): not muted, tidied, through the word filter, and within their pace (the
+   *  caller takes one off `says` once it goes), with the items shown in it. Null: refused (they're told why). */
+  const speaking = (c: Conn, raw: unknown, rawLinks: unknown): { text: string; links: ChatItemLink[] } | null => {
+    const refuse = (m: TownServerMessage) => {
+      send(c, m);
+      return null;
+    };
+    const muted = opts.moderation?.mutedUntil(c.userId);
+    if (muted) return refuse({ t: 'say-refused', reason: 'muted', until: muted });
+    const tidied = tidy(raw);
+    if (!tidied) return refuse({ t: 'say-refused', reason: 'invalid' });
+    const text = opts.moderation ? opts.moderation.filter(tidied) : tidied;
+    const now = Date.now();
+    c.says = Math.min(SAY_BURST, c.says + ((now - c.saidAt) / 1000) * SAYS_PER_SECOND);
+    c.saidAt = now;
+    if (c.says < 1) return refuse({ t: 'say-refused', reason: 'slow' });
+    // Items shown in it: theirs (worn or in the combat bag), each written in the text as "[its name]".
+    return { text, links: itemLinks(c, rawLinks, text) };
   };
 
   /** A walkable tile near the room's spawn point that nobody's standing on (any walkable one if they're all taken). */
@@ -1459,6 +1499,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     away.delete(userId);
     tellParty(userId); // back (or in another area): their new id and where they are
     friendArrived(userId, room, !!old);
+    if (opts.privacy) send(c, { t: 'privacy', privacy: opts.privacy.get(userId) });
     if (raceNow) send(c, { t: 'race', race: { ...raceNow, now: Date.now() } });
     if (vitals) tellVitals(c); // your HP and MP (the HUD), and your party's panel
     if (buffs) send(c, { t: 'buffs', buffs: buffs.view(userId, Date.now()) }); // the buffs on you (the tray)

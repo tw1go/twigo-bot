@@ -346,6 +346,7 @@
       #settings .st-label { min-width: 56px; }
       #settings .st-volume { flex: 1; accent-color: #7C2AE8; }
       #settings .st-check input { margin: 0; accent-color: #7C2AE8; }
+      #settings .st-note { margin: 2px 0 0; color: #6B7280; font-size: calc(12px * var(--text)); }
       #settings .st-credit { margin: 4px 0; color: #3D4256; font-size: calc(13px * var(--text)); }
       #settings .st-credit a { color: #5B21B6; }
       #settings .st-licence { color: #7A8099; }
@@ -458,6 +459,14 @@
       #chat.ch-party-mode .ch-channel { color: #F9A8D4; box-shadow: 0 0 0 1px rgba(249, 168, 212, 0.6); }
       #chat.ch-party-mode .ch-input { color: #F9A8D4; }
       #chat.ch-party-mode .ch-input:focus { box-shadow: 0 0 0 1px rgba(249, 168, 212, 0.7); }
+      /* Whispers (ui/chat.ts): lavender, "To" / "From" before the name; a Game Master's in gold. */
+      #chat .ch-whisper, #chat .ch-whisper .ch-name { color: #C4B5FD; }
+      #chat .ch-whisper-tag { margin-right: 4px; padding: 0 4px; border-radius: 3px; background: rgba(196, 181, 253, 0.18); color: #C4B5FD; font-size: calc(11px * var(--text)); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+      #chat .ch-whisper.ch-gm, #chat .ch-whisper.ch-gm .ch-name { color: #F8BF27; }
+      #chat .ch-whisper.ch-gm .ch-whisper-tag { background: rgba(248, 191, 39, 0.18); color: #F8BF27; }
+      #chat.ch-whisper-mode .ch-channel { color: #C4B5FD; box-shadow: 0 0 0 1px rgba(196, 181, 253, 0.6); max-width: 9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      #chat.ch-whisper-mode .ch-input { color: #C4B5FD; }
+      #chat.ch-whisper-mode .ch-input:focus { box-shadow: 0 0 0 1px rgba(196, 181, 253, 0.7); }
       #chat .ch-gm, #chat .ch-gm .ch-name, #chat .ch-gm .ch-me { color: #F8BF27; } /* a Game Master's line */
       #chat.ch-gm-mode .ch-channel { color: #F8BF27; box-shadow: 0 0 0 1px rgba(248, 191, 39, 0.7); }
       #chat.ch-gm-mode .ch-input { color: #F8BF27; }
@@ -2367,8 +2376,12 @@
       #target .tg-trade-ask { width: 100%; padding: 6px 4px; border: 2px solid #65A30D; border-radius: 0; background: #1A2E12; color: #A3E635; font: inherit; font-size: calc(13px * var(--text)); font-weight: 700; cursor: var(--cur-hand, pointer); }
       #target .tg-trade-ask:hover:not(:disabled) { border-color: #A3E635; color: #fff; }
       #target .tg-trade-ask:disabled { border-color: #3D4256; background: #1E1B3A; color: #7A8099; cursor: default; }
-      #target .tg-friend { margin-top: 6px; }
-      #target .tg-friend-ask { width: 100%; padding: 6px 4px; border: 2px solid #7C6BD6; border-radius: 0; background: #2A2350; color: #C4B5FD; font: inherit; font-size: calc(13px * var(--text)); font-weight: 700; cursor: var(--cur-hand, pointer); }
+      #target .tg-friend { margin-top: 6px; display: flex; gap: 6px; }
+      #target .tg-friend > button { flex: 1; }
+      #target .tg-whisper { padding: 6px 4px; border: 2px solid #7C6BD6; border-radius: 0; background: #1E1B3A; color: #C4B5FD; font: inherit; font-size: calc(13px * var(--text)); font-weight: 700; cursor: var(--cur-hand, pointer); }
+      #target .tg-whisper:hover { border-color: #C4B5FD; color: #fff; }
+      #target .tg-whisper[hidden] { display: none; }
+      #target .tg-friend-ask { padding: 6px 4px; border: 2px solid #7C6BD6; border-radius: 0; background: #2A2350; color: #C4B5FD; font: inherit; font-size: calc(13px * var(--text)); font-weight: 700; cursor: var(--cur-hand, pointer); }
       #target .tg-friend-ask:hover:not(:disabled) { border-color: #C4B5FD; color: #fff; }
       #target .tg-friend-ask:disabled { opacity: 0.7; cursor: default; }
       /* A friend request arriving (ui/online.ts showFriendRequest): the party invite's box in lavender, × for later. */

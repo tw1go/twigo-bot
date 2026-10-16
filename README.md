@@ -339,7 +339,9 @@ Its numbers are the bot's rules; keep them in step when those change.
 
 **Friends** (`packages/bot/src/web/town-friends.ts`, saved by `web/friends-db.ts`; the game's `net/friends.ts` and
 `ui/online.ts`): both ways (a request, accepted), up to 100, by nickname even to someone offline; the "N online" list's
-Friends tab shows who's online, where and their level, or when they were last online.
+Friends tab shows who's online, where and their level, or when they were last online. **Whispers** (`/w Name`, `/r`;
+`whisper` over the town's socket): to one player who's online, never to Discord or kept; Settings → Privacy can let only
+friends whisper you (`web/privacy.ts`).
 
 **Levels** (`packages/bot/src/web/progress.ts`, rules in `packages/shared/src/stats.ts`, numbers in the game's
 `classes/stats.json`): defeating mobs in the Slums gives XP (the golem's to everyone who did 5% of its HP; in a party, a

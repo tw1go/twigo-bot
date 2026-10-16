@@ -14,7 +14,7 @@ import { coinIcon } from './reward';
 // menu right beside that name instead (selectAt); a press anywhere else closes it. Under it, Invite to party (net/party.ts:
 // shown while you lead a party or are in none, and they're not in yours) and Trade (ui/trade.ts: only within 5 tiles,
 // "Too far to trade" otherwise; the server checks again by its own positions), and Add friend (net/friends.ts: Request
-// sent, Accept friend request, or Friends ✓ as it stands). DOM text only.
+// sent, Accept friend request, or Friends ✓ as it stands) beside Whisper (the chat on a whisper to them). DOM text only.
 
 type View = 'give' | 'balance' | 'status';
 const VIEWS: [View, string][] = [['give', 'Give Kowens'], ['balance', 'Balance'], ['status', 'Status']];
@@ -66,6 +66,9 @@ export class TargetBox {
   private readonly tradeRow = el('div', 'tg-trade');
   private readonly friendRow = el('div', 'tg-friend');
   private readonly friendButton = el('button', 'tg-friend-ask', 'Add friend');
+  private readonly whisperButton = el('button', 'tg-whisper', 'Whisper');
+  /** Whisper: the chat on a whisper to them (set by the town). */
+  whisper: ((name: string) => void) | null = null;
   private readonly tradeButton = el('button', 'tg-trade-ask', 'Trade');
   /** The buffs on them: icons under the box, a card on hover (TownScene asks the server and calls setBuffs). */
   private readonly buffRow = el('div', 'tg-buffs');
@@ -145,7 +148,14 @@ export class TargetBox {
         this.friendButton.textContent = 'Request sent';
       }
     });
-    this.friendRow.append(this.friendButton);
+    this.whisperButton.addEventListener('click', () => {
+      const p = this.target;
+      if (!p || !this.whisper) return;
+      playSound('click');
+      this.closeMenu();
+      this.whisper(p.nickname);
+    });
+    this.friendRow.append(this.whisperButton, this.friendButton);
     onFriends(() => this.drawFriend());
     setInterval(() => !this.menu.hidden && this.drawTrade(), 400);
     // A trade opened or ended: the button is ready again.
@@ -344,6 +354,7 @@ export class TargetBox {
     const label = { friend: 'Friends ✓', sent: 'Request sent', asked: 'Accept friend request', none: 'Add friend' }[s.is];
     this.friendButton.textContent = label;
     this.friendButton.disabled = s.is === 'friend' || s.is === 'sent';
+    this.whisperButton.hidden = !this.whisper;
   }
 
   clear(): void {

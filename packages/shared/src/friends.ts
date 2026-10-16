@@ -9,6 +9,14 @@ export const FRIEND_RULES = {
   requestDays: 14,
 } as const;
 
+/** A player's privacy settings (Settings → Privacy; CONTEXT.md Friends-only whispers): who may whisper them. */
+export interface PrivacySettings {
+  whispers: 'everyone' | 'friends';
+}
+
+/** What a player who never changed them has. */
+export const DEFAULT_PRIVACY: PrivacySettings = { whispers: 'everyone' };
+
 /** "Today", "Yesterday", "3 days ago": when a friend was last online, by calendar day where `now` is. */
 export function lastOnline(at: number, now: number): string {
   const day = (ms: number) => {
