@@ -42,7 +42,8 @@ import { type MobDirector, type MobEvent, type MobKill, type MobKinds, type MobM
 // entry.requiresQuest done (Aling Nena's: `access`, from the host). A practice run (CONTEXT.md; warrens.practice, opened
 // with a Practice Warren Ticket for Aling Nena's quest) is always solo, even for someone in a party: its mobs' and
 // bosses' HP, ATK and XP × the practice block's, its Kusing × kusingMult, its own time limit; the same map, areas,
-// shutters, moves and loot rolls otherwise, and its ticket is never given back. Pure (the host gives the clock, who's
+// shutters, moves and loot rolls otherwise; its ticket, like a real run's, comes back only if it ends before a boss
+// falls. Leaving a party for good drops them from its runs (`leftParty`). Pure (the host gives the clock, who's
 // where, the party and the quest), tested in town-warrens.test.ts.
 
 type Tile = [number, number];
@@ -162,8 +163,9 @@ export class Run implements MobDirector {
   readonly map: WarrensMap;
   readonly mobs: MobRoom;
   phase: RunPhase = 'gathering';
-  /** Everyone who may come in (the opener; a party's members as they come and go), and who it waits for while it
-   *  gathers (the opener and those who said Join). */
+  /** Everyone who has come in or joined (the opener; a party's members as they join or are inside; never one only
+   *  looked up, and not one who left its party), and who it waits for while it gathers (the opener and those who said
+   *  Join). */
   readonly members = new Set<string>();
   readonly expected = new Set<string>();
   /** Party members invited as it opened (in the Slums): waited for too until they answer or the invite lapses (ms). */
@@ -854,9 +856,11 @@ export class Warrens {
     return [...this.runs.values()];
   }
 
-  /** The run a member may be in now (see `allowed`), if any: where a reload or the gate takes them. */
+  /** The run a member may be in now (see `allowed`), if any: where a reload or the gate takes them. Their own practice
+   *  run first, then one they opened, then a party's. */
   runOf(member: string): Run | undefined {
-    return this.all().find((r) => r.phase !== 'closed' && this.allowed(r, member));
+    const rank = (r: Run) => (r.opener.member !== member ? 2 : r.practice ? 0 : 1);
+    return this.all().filter((r) => r.phase !== 'closed' && this.allowed(r, member, false)).sort((a, b) => rank(a) - rank(b))[0];
   }
 
   /** The run a member may go into (their party's, or their own solo one), if any. */
@@ -866,16 +870,24 @@ export class Warrens {
   }
 
   /** Whether a member may be in a run now: the opener of a solo run; anyone in its party (while it lives; once it's
-   *  gone, those who were in it). */
-  allowed(run: Run, member: string): boolean {
+   *  gone, those who joined or were inside). `record`: they're joining or inside, so kept among its members (a look-up,
+   *  such as the gate's, never is: a party member who only opened the gate's panel isn't one of them). */
+  allowed(run: Run, member: string, record = true): boolean {
     if (!run.party) return member === run.opener.member;
     const party = this.partyOf(member);
     if (party === run.party) {
-      run.members.add(member);
+      if (record) run.members.add(member);
       return true;
     }
     const alive = [...run.members].some((m) => this.partyOf(m) === run.party);
     return !alive && run.members.has(member);
+  }
+
+  /** A member left (or was removed from) `party`: no longer one of its runs' members, so they never come back in once
+   *  the party is over (inside one now: its kick, as before). */
+  leftParty(member: string, party: unknown) {
+    if (!party) return;
+    for (const r of this.runs.values()) if (r.party === party) r.members.delete(member);
   }
 
   /** Why a member can't come into a real run, or null (under entry.minLevel; entry.requiresQuest not done). */
@@ -959,7 +971,7 @@ export class Warrens {
   }
 
   /** The open runs (a restart gives back the tickets of those no boss has fallen in yet). */
-  openRuns(): { id: string; opener: string; cleared: boolean; spent: boolean }[] {
-    return this.all().map((r) => ({ id: r.id, opener: r.opener.member, cleared: r.phase === 'cleared', spent: r.ticketSpent }));
+  openRuns(): { id: string; opener: string; cleared: boolean; spent: boolean; practice?: boolean }[] {
+    return this.all().map((r) => ({ id: r.id, opener: r.opener.member, cleared: r.phase === 'cleared', spent: r.ticketSpent, ...(r.practice ? { practice: true } : {}) }));
   }
 }

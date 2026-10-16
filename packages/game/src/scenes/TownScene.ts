@@ -1995,7 +1995,7 @@ export class TownScene extends Phaser.Scene {
         return;
       }
       if (m.t === 'warrens-out') {
-        if (m.ticketBack) noteTicketBack();
+        if (m.ticketBack) noteTicketBack(m.ticketBack === 'practice');
         if (m.reason === 'closed') toast('The Scrap Warrens closed.', 2600);
         if (m.reason === 'party') toast('You left the party: back to the Slums.', 2600);
         return this.travel('slums');

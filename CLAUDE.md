@@ -678,8 +678,12 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `WarrensAccess`, from web/adventure.ts `warrensAccessOf`; `open` / `join` refuse 'quest', the gate box says why, and
   lists party members in the Slums who can't come yet, who get no invite); `warrens-practice` opens a practice run
   (`Warrens.openPractice`: solo even in a party, nobody joins: "Practice runs are solo."; `Run.practice`: HP, ATK and XP ×
-  its mults, Kusing × kusingMult, its own time limit, the same loot rolls; its ticket is never given back; its last boss's
-  `practice.drop` goes straight into the bag, or at its feet for them alone; "Practice" under the timer). Tested in
+  its mults, Kusing × kusingMult, its own time limit, the same loot rolls; its ticket comes back only if it ends before a
+  boss falls, like a real run's (`practice.refund`; a restart too: `openRuns` `practice`); its last boss's
+  `practice.drop` goes to its opener (straight into the bag, or at its feet for them alone); "Practice" under the timer).
+  A reload or the gate takes a member to their own practice run first, then one they opened, then a party's
+  (`Warrens.runOf`); a run's `members` are those who joined or were inside (a look-up never adds one), and leaving or
+  being kicked from a party drops them from its runs (`Warrens.leftParty`), so they never come back in once it's over. Tested in
   `web/nena-quest.test.ts`. Dev: the page tells the dev town its quests (`&kit=`, POST `/__quests`); `?give=nena-binoculars`,
   `?area=slums&from=warrens` lands at the gate; `/__warrens?as=&boss=barong-barong&hp=1` works inside a practice run.
 - Scrap Warrens (a walled junk maze under the Slums for Lv 16–20, after Aling Nena's quest; rules and numbers in `classes/dungeons.json`, manifest

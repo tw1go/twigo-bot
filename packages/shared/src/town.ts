@@ -521,8 +521,9 @@ export type TownServerMessage =
   | { t: 'warrens-go'; run: string; ticket?: boolean }
   | { t: 'warrens-invite'; run: string; from: string; ms: number }
   | { t: 'warrens-refused'; reason: 'level' | 'quest' | 'full' | 'ticket' | 'party' | 'gone' | 'slow'; message: string }
-  /** Out of a run, back to the Slums; `ticketBack`: (the opener) the run ended before a boss fell, its ticket returned. */
-  | { t: 'warrens-out'; reason: 'left' | 'closed' | 'party'; ticketBack?: boolean }
+  /** Out of a run, back to the Slums; `ticketBack`: (the opener) the run ended before a boss fell, its ticket returned
+   *  ('practice': a practice run's Practice Warren Ticket). */
+  | { t: 'warrens-out'; reason: 'left' | 'closed' | 'party'; ticketBack?: boolean | 'practice' }
   | { t: 'warrens-kick'; ms: number }
   /** Lantern Posts: off you go (the page loads that map, at its post); why not (your lantern kept); and someone's
    *  teleport seen where it happens (`out`: leaving from there, hidden from its 5th frame; `in`: arriving, shown from its

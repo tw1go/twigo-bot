@@ -424,6 +424,7 @@ export function devTown(): Plugin {
               const def = id ? items.defs.get(id) : undefined;
               return def ? newItem(items.stats, def, devUid()) : null;
             },
+            refund: (name) => !!warrensLive.data.practice && !!devGive(items, gearOf(name), warrensLive.data.practice.ticket, {}, devUid),
           },
           tickets: {
             count: (name) => gearOf(name).bag.reduce((n, i) => n + (i?.defId === 'warren-ticket' ? (i.count ?? 1) : 0), 0),
