@@ -530,12 +530,12 @@ export class MobRoom {
   }
 
   /** The attacks that land now (the host takes them off players' HP), in the order they land. */
-  landed(now: number): PlayerLanding[] {
+  landed(now: number): (PlayerLanding & { at: number })[] {
     if (!this.landings.length) return [];
     const due = this.landings.filter((l) => l.at <= now).sort((a, b) => a.at - b.at);
     if (!due.length) return [];
     this.landings = this.landings.filter((l) => l.at > now);
-    return due.map(({ at: _at, ...l }) => l);
+    return due; // (each with when it landed: a Step Back's dodge is measured to that)
   }
 
   /** A player's stats as a fight sees them (HP, MP, DEF… and level), from their class, level, points and worn gear. */

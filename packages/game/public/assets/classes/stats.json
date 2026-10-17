@@ -603,6 +603,10 @@
      "45": 30,
      "50": 40
     },
+    "moveDodge": {
+      "note": "Repo addition (17 Oct 2026, Mac): a mobility move that dodges every hit landing within its ms of being used (100% dodge: no damage, slow, stun or blindness; shown as Dodge). Step Back: the Slingshot's and Stick's Lv 8 move.",
+      "ms": { "step-back": 500 }
+    },
     "rule": "higher-tier skill at Lv 5 always beats a lower-tier skill at Lv 20"
   },
   "affixes": {

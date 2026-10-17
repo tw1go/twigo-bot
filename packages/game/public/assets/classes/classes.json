@@ -63,7 +63,7 @@
      "id": "step-back",
      "level": 8,
      "name": "Step Back",
-     "desc": "Hop backwards"
+     "desc": "Hop backwards, dodging every hit for half a second"
     }
    ],
    "buffs": [
@@ -149,7 +149,7 @@
      "id": "step-back",
      "level": 8,
      "name": "Step Back",
-     "desc": "Hop backwards"
+     "desc": "Hop backwards, dodging every hit for half a second"
     }
    ],
    "buffs": [

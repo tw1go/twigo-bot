@@ -166,6 +166,8 @@ export interface TownPlayer {
 export interface PlayerHit {
   damage: number;
   miss?: boolean;
+  /** Dodged (a Step Back just before it landed; boss moves' hits say so): shown as Dodge. */
+  dodge?: true;
 }
 
 /** Browser → server. A step is to a neighbouring tile; the server checks it (walkable, adjacent, walking speed). */
@@ -578,7 +580,7 @@ export type TownServerMessage =
    *  spots…). Who it hits is decided as it lands (where everyone stands then). */
   | { t: 'boss-move'; id: string; move: string; key: string; ms: number; shape?: TelegraphShape; data?: Record<string, unknown> }
   /** A boss move landing: who it hit (damage or a miss). */
-  | { t: 'boss-hit'; id: string; move: string; key: string; hits: { id: string; damage: number; miss?: boolean }[]; data?: Record<string, unknown> }
+  | { t: 'boss-hit'; id: string; move: string; key: string; hits: { id: string; damage: number; miss?: boolean; /** Dodged (a Step Back's): shown as Dodge. */ dodge?: true }[]; data?: Record<string, unknown> }
   /** A boss reset (or fell): its telegraphs and anything in flight go. */
   | { t: 'boss-cancel'; id: string }
   /** The Scrap Warrens: your run's state (the tracker), what the gate offers (`warrens-gate`), go into a run (`go`: the
