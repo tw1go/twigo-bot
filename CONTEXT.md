@@ -262,6 +262,11 @@ Caught in the golem's Lamp Glare: for a few seconds every attack you make misses
 **Miss**:
 An attack that does nothing (shown as "Miss"): when you're blinded, or now and then against a mob above your level.
 
+**Dodge**:
+A hit on you that does nothing because you used Step Back just before it landed (shown as "Dodge"): no damage, slow,
+stun or blindness, whatever hit you.
+_Avoid_: miss (that's the attacker's), block (a Scrap Crab's shell), invincible
+
 ## Items and money
 
 **Kowens**:

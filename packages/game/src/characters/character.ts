@@ -111,6 +111,9 @@ export class Character {
   speed = SPEED;
   /** A mobility move (world/mobility.ts) is moving this character: walking and steps wait. */
   busy = false;
+  /** Dodging every hit landing before this (Date.now() ms): a Step Back (stats.json skills.moveDodge; the server
+   *  decides, this only shows it). */
+  dodgeUntil = 0;
   /** Pixels the body is lifted off the ground (a hop); the shadow stays down. */
   lift = 0;
   /** Drawn this far (px) off its tile for now, its shadow too: a skill's dash (combat/world-skills.ts), back to 0 after. */

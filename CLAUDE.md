@@ -150,6 +150,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `maps/slums.json` (128,96 → 129,97), and `ui/map/map-layout.json` `maps[id].label` (where the Map menu writes each
   map's name). Copying either map over again from the art folder loses the post.
 - `classes/leveling.json`: `miniBoss.questDrop`.
+- `classes/stats.json`: `skills.moveDodge` (Step Back dodges every hit for 500 ms; 17 Oct 2026) and `classes/classes.json`
+  Step Back's `desc` saying so.
 - The mailbox (16 Oct 2026): `maps/town.json`'s `mailbox` object at (33,28), its blocked tile and `doors.mailbox` (33,29)
   (copying the art folder's town map over again loses it); the art is the art folder's ui/mail and props/mailbox.
 - `classes/dungeons.json` (= the art folder's `data/dungeons/warrens.json` as `{ "warrens": … }`): `run.timeLimitMinutes` 20
@@ -1256,6 +1258,11 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   tested); one outdone on every stat it
   gives is faded. Dev `?buffs=demo` (pretend ones instead) and `__town.buffs(list?)`. classes.json buffs carry `effect`,
   `minutes`, `permanent` from the guide's class tables.
+- Dodge (CONTEXT.md Dodge; stats.json skills.moveDodge, shared `moveDodgeMs`): a Step Back on a battle map dodges every
+  hit landing within 500 ms of the server hearing it (web/town.ts `dodgeUntil`, checked against each landing's own time:
+  no damage, slow, stun or blindness; a boss move's `boss-hit` marks the hit `dodge`); the game shows "Dodge" (pale cyan)
+  for hits in its own window (`startDodge`: yours as you press it, others' as their `move` arrives). Tested in
+  town-vitals.test.ts.
 - Mobility in town (`world/mobility.ts`): the hotbar's Dash (3 tiles, 2 s) and the class's Lv 8 move: Step Back (2 back,
   3 s), Charge (5, 5 s), Blink (4, 4 s), along your facing, stopping where something's in the way. The combat sheets have
   no clothes, so in town it's your outfit with motion and fx (lavender afterimages, fx-mobility-dust / -blink placeholders,

@@ -136,7 +136,7 @@ test('a mob\'s hit on a player: its ATK as Power against their DEF, the level ga
   const hitMs = kinds['tin-can'].hitMs!;
   assert.equal(hitMs, Math.round((2 / 12) * 1000));
   assert.deepEqual(room.landed(a.at + hitMs - 1), []);
-  assert.deepEqual(room.landed(a.at + hitMs), [{ player: 'p1', by: m.id, damage: a.e.hit!.damage }]);
+  assert.deepEqual(room.landed(a.at + hitMs), [{ at: a.at + hitMs, player: 'p1', by: m.id, damage: a.e.hit!.damage }]);
   // A player 5 levels above it: less damage, and a 25% miss chance.
   const high: Target = { def: 2, level: can.level + 5 };
   const gap = levelGap(stats, can.level, high.level);
@@ -283,8 +283,8 @@ test('the golem\'s XP credit is by member: a reload mid-fight (a new town id) ke
 /** A Slums room whose landings a test adds by hand (as if mobs had hit). */
 class Scripted extends MobRoom {
   readonly queue: PlayerLanding[] = [];
-  override landed(now: number): PlayerLanding[] {
-    return [...super.landed(now), ...this.queue.splice(0)];
+  override landed(now: number): (PlayerLanding & { at: number })[] {
+    return [...super.landed(now), ...this.queue.splice(0).map((l) => ({ ...l, at: now }))];
   }
 }
 
@@ -321,6 +321,30 @@ async function townWithSlums() {
 const wait = (ms: number) => new Promise((ok) => setTimeout(ok, ms));
 const lastVitals = (got: TownServerMessage[], id: string) => got.filter((m): m is Extract<TownServerMessage, { t: 'vitals' }> => m.t === 'vitals' && m.id === id).at(-1);
 const send = (ws: WebSocket, m: unknown) => ws.send(JSON.stringify(m));
+
+test("Step Back dodges every hit landing within its 0.5 s (stats.json skills.moveDodge), slows and all; Dash doesn't; after it, hits land", async () => {
+  const { room, open, close } = await townWithSlums();
+  const a = await open('Mara', 'slums');
+  await wait(150);
+  const [col, row] = a.spawn;
+  send(a.ws, { t: 'move', move: 'step-back', col, row: row + 1 });
+  await wait(50);
+  room.queue.push({ player: a.id, by: 'tin-can-alley:0', damage: 10, slow: 2000 });
+  await wait(200);
+  assert.equal(lastVitals(a.got, a.id)?.hp, MAX.hp, 'dodged: no damage');
+  await wait(500); // (its window over)
+  room.queue.push({ player: a.id, by: 'tin-can-alley:0', damage: 10 });
+  await wait(200);
+  assert.equal(lastVitals(a.got, a.id)?.hp, MAX.hp - 10, 'after the window: it lands');
+  await wait(300); // (a move every 0.8 s)
+  send(a.ws, { t: 'move', move: 'dash', col, row: row + 1 });
+  await wait(50);
+  room.queue.push({ player: a.id, by: 'tin-can-alley:0', damage: 10 });
+  await wait(200);
+  assert.equal(lastVitals(a.got, a.id)?.hp, MAX.hp - 20, 'a Dash dodges nothing');
+  a.ws.close();
+  await close();
+});
 
 test('knocked out in the Slums: no steps or attacks, everyone there sees it, and "Revive now" brings them back at the way in, full', async () => {
   const { room, slums, open, close } = await townWithSlums();

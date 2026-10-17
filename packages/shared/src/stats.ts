@@ -73,6 +73,8 @@ export interface StatsData {
     cooldownByUnlock?: Record<string, number | string>;
     /** The buffs' numbers (Mac, 9 Oct; combat-guide.md "Buffs"): each one's stats at skill Lv 1, duration, cooldown. */
     buffs?: BuffsData;
+    /** Mobility moves that dodge every hit landing within `ms` of being used (repo addition: Step Back 500). */
+    moveDodge?: { note?: string; ms: Record<string, number> };
   };
   caps: Record<string, number>;
   /** MP per second: "1 + 0.05 * INT". */
@@ -597,6 +599,9 @@ export const skillLevelOf = (p: Pick<CharacterProgress, 'skills'> | null | undef
 
 /** A class's damage skills' levels, in their order (a fight's Attacker). */
 export const damageSkillLevels = (c: ClassInfo | null | undefined, p: Pick<CharacterProgress, 'skills'>) => (c?.skills ?? []).map((_, i) => skillLevelOf(p, String(i)));
+
+/** How long (ms) a mobility move dodges every hit after it's used (stats.json skills.moveDodge: Step Back), or 0. */
+export const moveDodgeMs = (data: StatsData, move: string): number => data.skills.moveDodge?.ms[move] ?? 0;
 
 /** The level a class's movement skill unlocks at (classes.json), or null: not one of its moves. */
 export const moveUnlock = (c: ClassInfo | null | undefined, move: string): number | null => c?.mobility?.find((m) => m.id === move)?.level ?? null;

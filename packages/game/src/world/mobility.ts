@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import type { Dir, Manifest } from '../assets/types';
 import type { Character } from '../characters/character';
 import type { Tile, WalkGrid } from './grid';
+import { type StatsData, moveDodgeMs } from '@mikazuki/shared';
 
 // 💨 Mobility moves in town (the hotbar's Dash, and each class's Lv 8 move: Step Back, Charge or Blink).
 // The combat sheets for them have no clothes or hair yet, so in town the character keeps its outfit and the move is
@@ -12,6 +13,14 @@ import type { Tile, WalkGrid } from './grid';
 // town's `move` message (and skip the steps it brings).
 
 export type MoveKind = 'dash' | 'step-back' | 'charge' | 'blink';
+
+/** A dodging move (Step Back: stats.json skills.moveDodge): from now, its window on the character, so a hit landing
+ *  in it shows as Dodge (the server takes it off nothing). Others' as their `move` arrives. */
+export function startDodge(scene: Phaser.Scene, char: Character, kind: MoveKind): void {
+  const stats = scene.cache.json.get('stats') as StatsData | undefined;
+  const ms = stats ? moveDodgeMs(stats, kind) : 0;
+  if (ms) char.dodgeUntil = Date.now() + ms;
+}
 
 interface MoveDef {
   /** Tiles at most (fewer where something's in the way). */

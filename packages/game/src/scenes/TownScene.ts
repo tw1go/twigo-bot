@@ -126,7 +126,7 @@ import { type SoundTapped, enterArenaSound, enterCasinoSound, hearFrom, leaveCas
 import type { AdventureData } from '../net/adventure';
 import { Hotbar } from '../ui/hotbar';
 import { mountClassSwitch } from '../ui/class-switch';
-import { MOVES, type MoveKind, isMoveKind, moveTiles, playMove } from '../world/mobility';
+import { MOVES, type MoveKind, isMoveKind, moveTiles, playMove, startDodge } from '../world/mobility';
 import { changeClass, devItemsReady, devQuestKill, questReport, setQuestCounts, devSwitchClass, adventure, adventureData, anyDef, chooseClass, classInfo, initAdventure, itemData, itemDef, loadAdventureData, lookWithCosmetics, onAdventure, questDef, questFor, questTalk, setItems, setProgress, skillView, skillViews, buffViews, wornHeadCosmetic, setPetXp } from '../net/adventure';
 import { readyToReport, type LanternMap, type LanternPost, LANTERN_USE_TILES, LANTERN_WALK_TILES, RETURN_LANTERN, isLanternMap, lanternPostOf, nearPost, type StatsData, buffsStack, potionCooldownGroup, dropRefusal, nameColour, type Item, type QuestReward, type TownItems, LOOT_REACH, auraFor, classBuffs, classSkills, countOf, isGearDef, itemAura, itemStats, newItem, tradeRules, petRules } from '@mikazuki/shared';
 import type { ClassArt } from '../assets/types';
@@ -244,6 +244,9 @@ const benchApproach = (b: Bench): Tile =>
 
 /** The hotbar's cooldown key for an HP or MP Potion: its kind's, or the one they share (stats.json potions). */
 const potionKeyOf = (S: StatsData, heals: 'hp' | 'mp') => `potion-${potionCooldownGroup(S, heals)}`;
+
+/** A dodged hit's word over the player (a Step Back's window). */
+const DODGE_COLOUR = '#A5F3FC';
 
 export class TownScene extends Phaser.Scene {
   private M!: Manifest;
@@ -1461,6 +1464,7 @@ export class TownScene extends Phaser.Scene {
     this.byKeys = true; // landing on a door waits for E
     this.setBuildingAlert(null);
     this.link?.send({ t: 'move', move: kind, col: end.col, row: end.row });
+    startDodge(this, this.player, kind); // (Step Back: hits landing in its window show as Dodge)
     for (const t of tiles) this.player.onStep?.(t);
     void playMove(this, this.M, this.player, kind, end, tiles.length, dir, (o) => this.tint >= 0 && o.setTint(this.tint), (set) => playSet(set)).then(() => this.arrivedQuietly());
     // Its cooldown at its skill level (1% less a level).
@@ -1959,6 +1963,8 @@ export class TownScene extends Phaser.Scene {
         const who = charOf(target);
         if (!who || who.knockedOut) return;
         const mine = target === myId;
+        // Dodged (a Step Back's window: the server takes nothing off; boss moves' hits say so themselves).
+        if (hit?.dodge || (hit && who.dodgeUntil > Date.now())) return who.hitNumber('Dodge', mine, DODGE_COLOUR);
         if (hit?.miss) return who.hitNumber('Miss', mine);
         who.hurt();
         if (hit) who.hitNumber(String(hit.damage), mine);

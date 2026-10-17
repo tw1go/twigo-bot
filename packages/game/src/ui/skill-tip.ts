@@ -1,4 +1,4 @@
-import { type ClassInfo, baseStats, derivedStats, itemTotals, skillLevelBonus, skillPct, skillTier } from '@mikazuki/shared';
+import { type ClassInfo, baseStats, derivedStats, itemTotals, moveDodgeMs, skillLevelBonus, skillPct, skillTier } from '@mikazuki/shared';
 import { cooldownOf, mpCostOf, seconds } from '../combat/cooldowns';
 import { type SkillView, adventure, adventureData } from '../net/adventure';
 import { MOVES, isMoveKind } from '../world/mobility';
@@ -94,6 +94,9 @@ export function skillTipLines(cls: ClassInfo, s: SkillView): HTMLElement[] {
     if (effect) lines.push(row('Effect', effect));
   } else if (s.move && isMoveKind(s.move)) {
     lines.push(row('Moves', `${MOVES[s.move].tiles} tiles${MOVES[s.move].back ? ' back' : ' ahead'}`));
+    // A dodging move (Step Back: stats.json skills.moveDodge).
+    const dodge = S ? moveDodgeMs(S, s.move) : 0;
+    if (dodge && S) lines.push(row('Dodge', `Every hit for ${seconds(dodge / 1000)}`));
   } else if (s.buff) {
     const what = buffText(S, s.buff, level);
     if (what) lines.push(row('Does', what));

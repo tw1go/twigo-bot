@@ -3,7 +3,7 @@ import { settleOn } from './settle';
 import type { ArenaServerMessage, AuraTier, TownPlayer, TownServerMessage } from '@mikazuki/shared';
 import type { ClassArt, Manifest } from '../assets/types';
 import { Character, dirForStep } from '../characters/character';
-import { MOVES, isMoveKind, playMove } from './mobility';
+import { MOVES, isMoveKind, playMove, startDodge } from './mobility';
 import { playSet } from '../audio/sound';
 import { type Outfit, randomOutfit } from '../characters/doll';
 import { loadOutfit } from '../characters/loading';
@@ -84,6 +84,7 @@ export class OtherPlayers {
         const n = Math.max(Math.abs(m.col - t.col), Math.abs(m.row - t.row));
         if (!n) return;
         const dir = MOVES[m.move].back ? dirForStep(-dc, -dr) : dirForStep(dc, dr);
+        startDodge(this.scene, ch, m.move); // (their Step Back: hits on them in its window show as Dodge)
         // (Its sounds from where they are: within hearing, a little quieter than yours.)
         return void playMove(this.scene, this.M, ch, m.move, { col: m.col, row: m.row }, n, dir, this.onSpawn, (set) => playSet(set, { at: ch.tile, others: true })).then(() => {
           // Where the server has them now (the steps landed while it played).

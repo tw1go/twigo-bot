@@ -17,7 +17,7 @@ import { type LootRoll, LootRolls } from './town-roll.js';
 import { type HeldOffer, type Trade, Trades, checkOffer } from './trade.js';
 import { type Inside, type Run, type RunDeps, type RunNews, Warrens, type WarrensAccess, type WarrensMap } from './town-warrens.js';
 import type { FriendAsk, FriendView, FriendsState, PrivacySettings, WarrensData, ChatItemLink, CharacterProgress, QuestProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item, TradeEnd, TradeView } from '@mikazuki/shared';
-import { type LanternPost, type Visibility, VISIBILITIES, PetXpClock, petRules, petXpForHit, isLanternMap, itemName, itemStats, lanternPostOf, lanternRefusal, lootRollRules, rollWorthy, partyXpMult, partyXpRange, potionCooldownGroup, skillMpCost, targetPriority, tradeRules } from '@mikazuki/shared';
+import { type LanternPost, type Visibility, VISIBILITIES, PetXpClock, moveDodgeMs, petRules, petXpForHit, isLanternMap, itemName, itemStats, lanternPostOf, lanternRefusal, lootRollRules, rollWorthy, partyXpMult, partyXpRange, potionCooldownGroup, skillMpCost, targetPriority, tradeRules } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
 // messages). The server keeps everyone's tile and checks each step — on the map, not blocked, next to the last
@@ -376,6 +376,8 @@ interface Conn {
   lanternAt?: number;
   /** Stunned until (ms): no steps (Wire Wolf's Live Floor). */
   stunnedUntil?: number;
+  /** Dodging every hit that lands before this (ms): a Step Back (stats.json skills.moveDodge). */
+  dodgeUntil?: number;
 }
 
 export function attachTown(server: Server, opts: TownOptions): Town {
@@ -1020,6 +1022,9 @@ export function attachTown(server: Server, opts: TownOptions): Town {
           tellVitals(c);
         }
         c.movedAt = now;
+        // A dodging move (Step Back: stats.json skills.moveDodge): every hit landing in its window misses.
+        const dodge = moveDodgeMs(STATS, m.move);
+        if (dodge && battle(c.room)) c.dodgeUntil = now + dodge;
         return others(c, { t: 'move', id: p.id, move: m.move, col: m.col, row: m.row });
       }
       case 'attack': {
@@ -1949,6 +1954,9 @@ export function attachTown(server: Server, opts: TownOptions): Town {
           killed(room, burn.kills);
         }
         if (!events.length) continue;
+        // A boss move landing on someone dodging (a Step Back): shown as Dodge (it comes off nothing: the landings above).
+        const dodging = new Set(here.filter((o) => (o.dodgeUntil ?? 0) > now).map((o) => o.player.id));
+        if (dodging.size) for (const e of events) if (e.t === 'boss-hit') e.hits = e.hits.map((h) => (dodging.has(h.id) ? { id: h.id, damage: 0, miss: true, dodge: true } : h));
         const listeners = here.filter((o) => o.ws.readyState === WebSocket.OPEN);
         for (const e of events) {
           const text = JSON.stringify(e satisfies TownServerMessage);
@@ -1971,6 +1979,11 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         for (const l of landed) {
           const o = byId.get(l.player);
           if (!o || o.player.out) continue;
+          // Dodged (a Step Back just before it landed): nothing, not even a slow, stun or blindness.
+          if (l.at < (o.dodgeUntil ?? 0)) {
+            vitals.fought(o.userId, now);
+            continue;
+          }
           if (l.blind) {
             vitals.blind(o.userId, l.blind, now);
             continue;
