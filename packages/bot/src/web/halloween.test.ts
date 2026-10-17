@@ -154,9 +154,10 @@ test("decorations: the Kapre: one tree of the town's trees listed in kapre.json,
   assert.equal(kapreTree(0, slot), -1, 'no trees, no Kapre');
 });
 
-test("the potions' names match the bot's (potions/potions.ts)", async () => {
-  const { POTIONS } = await import('../potions/potions.js');
-  for (const [id, p] of Object.entries(EVENT_POTIONS)) assert.equal(POTIONS[id as keyof typeof POTIONS].name, p.name);
+test("the potions' names match the bot's (potions/potions.ts)", () => {
+  // (Read from its source: importing it opens the database, which needs the bot's .env.)
+  const src = readFileSync(new URL('../potions/potions.ts', import.meta.url), 'utf8');
+  for (const [id, p] of Object.entries(EVENT_POTIONS)) assert.equal(src.match(new RegExp(`\\b${id}: \\{ name: '([^']+)'`))?.[1], p.name, id);
 });
 
 test("Mikko's hiding tiles: right beside cover, never on the plaza, a path or road, a door, gate, the camp or the pit", () => {
