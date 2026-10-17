@@ -53,9 +53,6 @@ interface LayerFile {
   canvas?: { size: Vec2; offset: Vec2 };
 }
 
-/** Whether a hat is a head cosmetic's (wardrobe.cosmeticHats: the Lamp-head Hat's, the Witch Hat's): no hair under it at
- *  all (Mac's rule), for everyone's look. */
-export const cosmeticHat = (C: CharacterDefs, hat: string | undefined): boolean => !!hat && Object.values(C.wardrobe.cosmeticHats ?? {}).includes(hat);
 /** Whether a top is a body cosmetic's (wardrobe.cosmeticTops: the Witch Robe's): its own colours. */
 const cosmeticTop = (C: CharacterDefs, top: string): boolean => Object.values(C.wardrobe.cosmeticTops ?? {}).includes(top);
 
@@ -84,7 +81,6 @@ export function layerFiles(C: CharacterDefs, o: Outfit, anim: string, dir: Dir):
         out.push({ layer, file: slot('top', o.top) });
         break;
       case 'hair':
-        if (cosmeticHat(C, o.hat)) break; // (no hair at all under a head cosmetic)
         out.push({
           layer,
           file: fill(W.hairPattern, { item: hairDrawn(C, o), anim, dir }),

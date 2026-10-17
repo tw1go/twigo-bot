@@ -1000,7 +1000,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   (timed items only, the bag's Destroy…). Drawing: a hat with `hatCanvas` (the witch's 48 × 64 cell at offset 8,16)
   is cropped into the doll's 32 × 48 composite and drawn whole by a Character overlay in town (`bigHat`, `syncBigHat`)
   and by kit-art in the 64 × 64 combat poses; `cosmeticTops` (the robe) draws in the top's place, fixed colours, and
-  `cosmeticHidesBottom` skips the bottom layer; any head cosmetic hides the hair. Game: `world/halloween.ts` (Mikko,
+  `cosmeticHidesBottom` skips the bottom layer; a head cosmetic's hat clips the hair with its masks like any clipping hat
+  (long hair still shows below it). Game: `world/halloween.ts` (Mikko,
   the legs with their shadow and hover name, the dazed upper half's `carried` anim a tile behind its carrier, the
   bursts), Biikko in `world/mobs.ts` (`MobDef.glow`: its glow sheet additive over it, flickering; its name in the
   darkest orange with its "Legendary" line; `Mobs.events`) with a `BossBar` near it, `ui/halloween.ts` (the HUD's
