@@ -1,0 +1,157 @@
+{
+ "note": "Halloween, neighbourhood houses: draw the -70-halloween layer on top of the house (fixed colours, never recoloured). Spiders use props/halloween/prop-spider-dangle-*.png the same way as the trees (sheet top middle 5,0 on attach). Bats: only some houses get them: each house rolls once from a stable hash of its plot id (so it never changes on reload or between players) and has batChance of getting bats, batCount [min,max] of them. fx/halloween/fx-bat-fly.png, 12x8 cells, 4 frames at 10 fps; each bat flies an ellipse around centre (radius x, y in px) at its own speed and phase, drawn above the house.",
+ "bat": {
+  "file": "fx/halloween/fx-bat-fly.png",
+  "cell": [
+   12,
+   8
+  ],
+  "frames": 4,
+  "fps": 10
+ },
+ "houses": {
+  "kubo": {
+   "layer": "buildings/houses/kubo/building-house-kubo-70-halloween.png",
+   "spiders": [
+    {
+     "attach": [
+      14,
+      66
+     ],
+     "sheet": "short"
+    },
+    {
+     "attach": [
+      95,
+      67
+     ],
+     "sheet": "long"
+    }
+   ],
+   "bats": {
+    "centre": [
+     54,
+     17
+    ],
+    "radius": [
+     16,
+     5
+    ]
+   }
+  },
+  "cottage": {
+   "layer": "buildings/houses/cottage/building-house-cottage-70-halloween.png",
+   "spiders": [
+    {
+     "attach": [
+      16,
+      75
+     ],
+     "sheet": "short"
+    },
+    {
+     "attach": [
+      91,
+      72
+     ],
+     "sheet": "long"
+    }
+   ],
+   "bats": {
+    "centre": [
+     53,
+     25
+    ],
+    "radius": [
+     16,
+     5
+    ]
+   }
+  },
+  "townhouse": {
+   "layer": "buildings/houses/townhouse/building-house-townhouse-70-halloween.png",
+   "spiders": [
+    {
+     "attach": [
+      20,
+      41
+     ],
+     "sheet": "short"
+    },
+    {
+     "attach": [
+      89,
+      40
+     ],
+     "sheet": "long"
+    }
+   ],
+   "bats": {
+    "centre": [
+     54,
+     6
+    ],
+    "radius": [
+     16,
+     5
+    ]
+   }
+  },
+  "modern": {
+   "layer": "buildings/houses/modern/building-house-modern-70-halloween.png",
+   "spiders": [
+    {
+     "attach": [
+      19,
+      78
+     ],
+     "sheet": "short"
+    },
+    {
+     "attach": [
+      90,
+      76
+     ],
+     "sheet": "long"
+    }
+   ],
+   "bats": {
+    "centre": [
+     54,
+     15
+    ],
+    "radius": [
+     16,
+     5
+    ]
+   }
+  },
+  "aframe": {
+   "layer": "buildings/houses/aframe/building-house-aframe-70-halloween.png",
+   "spiders": [
+    {
+     "attach": [
+      72,
+      56
+     ],
+     "sheet": "long"
+    }
+   ],
+   "bats": {
+    "centre": [
+     54,
+     23
+    ],
+    "radius": [
+     16,
+     5
+    ]
+   }
+  }
+ },
+ "batChance": 0.35,
+ "batCount": [
+  1,
+  3
+ ]
+}

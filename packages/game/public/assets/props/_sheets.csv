@@ -9,3 +9,13 @@ prop-town-lantern-post.png,64,96,1,0,no,32,84,Lantern Post (teleporter) still; t
 prop-town-lantern-post-idle.png,64,96,6,6,yes,32,84,Lantern Post idle glow loop (spiral turns; motes rise; ground ring twinkles)
 prop-manananggal-lower.png,64,64,8,8,yes,32,58,Manananggal lower half (Halloween): stands still among the trees while two lilac wisps circle its legs (back half of each orbit behind the cloak)
 prop-mikko-kalabasa.png,24,24,6,8,yes,12,22,Mikko Kalabasa (Halloween): golden pumpkin hidden by trees and junk; a glint sweeps across it with a small sparkle on frames 1-3
+halloween/webs/prop-web-corner-small.png,12,12,1,0,no,0,0,"small corner web, top-left corner at 0,0 (flip for other corners)"
+halloween/webs/prop-web-corner-medium.png,20,20,1,0,no,0,0,"medium corner web, top-left corner at 0,0"
+halloween/webs/prop-web-corner-large.png,32,32,1,0,no,0,0,"big corner web with a resting spider, top-left corner at 0,0"
+halloween/webs/prop-web-drape-long.png,40,16,1,0,no,0,0,"long sagging web strung between two points at 0,1 and 39,1"
+halloween/webs/prop-web-drape-very-long.png,72,20,1,0,no,0,0,"very long droopy web between two points at 0,1 and 71,1, with a hanging wrapped bug"
+halloween/webs/prop-web-orb.png,24,24,1,0,no,12,0,"round orb web, hang it by its top middle (12,0)"
+halloween/webs/prop-web-orb-big-spider.png,40,40,1,0,no,20,0,"big orb web with a spider waiting in the middle, hang by top middle (20,0)"
+halloween/webs/prop-web-torn.png,28,28,1,0,no,14,0,"old torn orb web with a big hole and loose strands, hang by top middle (14,0)"
+halloween/webs/prop-web-strands.png,18,30,1,0,no,0,0,"loose hanging wisps, tie the top edge to a branch or eave"
+halloween/webs/prop-web-spider-house.png,56,44,1,0,no,0,0,"full spider house: a dense tangle of webs with a funnel nest, egg sacks, wrapped bugs and three spiders; top edge ties to a roof or branch"

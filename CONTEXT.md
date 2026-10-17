@@ -634,3 +634,18 @@ not an item.
 **Reunite**:
 Bringing the dazed upper half to the lower half and clicking it within reach: the round's reward.
 _Avoid_: return, deliver (that's a quest objective)
+
+**Decoration**:
+Something an event draws only for its looks (cobwebs, dangling spiders, bats, the Kapre): no collision, nothing to
+click, and gone outside its event window.
+_Avoid_: prop (a prop is part of the map and can block or be clicked), deco
+
+**Event look**:
+A building's alternate art while an event is on (the Halloween bank with its cobwebs): the same place, size, doors
+and clicks as ever; its normal art comes back when the event ends.
+_Avoid_: skin, reskin
+
+**Kapre**:
+The Halloween tree-sitter: one for the whole town, in one of its trees at a time, the same tree for every player; he
+moves to another tree every half hour. A decoration, not a mob.
+_Avoid_: tree spirit, NPC
