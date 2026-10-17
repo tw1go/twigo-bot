@@ -177,7 +177,7 @@ const INTRO_MS = 1600;
 /** The zoom-out lands this long before the title card is gone (as its letters swell open). */
 const TITLE_LANDS_EARLY_MS = 500;
 /** From a standstill, a direction key held shorter than this only turns the player. */
-const TURN_HOLD_MS = 150;
+const TURN_HOLD_MS = 50;
 const FADE_MS = 1100;
 /** Dragging the map peeks around: it gives with resistance up to about this far (screen px), then snaps back. */
 const PEEK_PX = 320;
