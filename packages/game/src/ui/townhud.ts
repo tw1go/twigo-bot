@@ -312,7 +312,7 @@ export function mountTownHud(o: TownHudOptions): void {
   // Full screen (the website in a browser tab, where the browser allows it: not iPhone Safari; the home screen app and the
   // desktop app are full screen already).
   if (document.fullscreenEnabled && !isHomeScreenApp() && !isDesktopApp()) buttons.append(fullscreenButton());
-  corner.append(top, buttons, el('div', 'th-buffs')); // (ui/buff-tray.ts fills the buffs slot)
+  corner.append(top, buttons, el('div', 'th-event'), el('div', 'th-buffs')); // (ui/halloween.ts fills the event slot, ui/buff-tray.ts the buffs one)
   root.append(left, corner);
 
   if (o.me || fakeLogin()) {

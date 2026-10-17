@@ -67,6 +67,7 @@ export const twigoHelp: Command = {
           '💎 **Boost the server**: +20 Kowens per boost, and 20 × your boosts every month while boosting',
           '`/claim code` — found a Kowen in [twigo\'s room](https://tw1go.github.io)? Claim it here (3 a day)',
           '`/play-web` — 🌙 open Mikazuki town, the web game (everyone in the server can play)',
+          '🎃 **Halloween** in the web town (until Nov 4): find **Mikko Kalabasa** hiding in town or the Slums, fell **Biikko Kalabasa** with your party, and reunite the **Manananggal**, for Kowens, Kusing, potions and a 5-day Witch Hat or Robe (the 🎃 badge top right says what\'s on)',
           '🤝 **Friends** (web town): add someone with `/friend Name` in the town chat, or from their menu; see who\'s online and where. `/w Name message` whispers someone online (only they see it); `/block Name` stops someone\'s whispers and requests; Settings → Privacy: who can see your balance and status',
           `\`/preregister\` — 🎮 sign up for the Mikazuki web game: +${LAUNCH_REWARD} Kowens when it launches`,
           '-# ⚠️ Inactive for 3+ days? You lose a growing % of Kowens each day until you\'re back.',

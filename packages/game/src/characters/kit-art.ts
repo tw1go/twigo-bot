@@ -289,6 +289,11 @@ export function drawPose(
     drawTrimmed(ctx, dressLayer(scene, C, o, l.file, l.layer), poseBody, C.cell[0], C.cell[1], frame, cx, cy, x + K.bodyOffset[0], y + K.bodyOffset[1]);
   }
   const [dx, dy] = headShift(scene, C, idleBody, d.body, frame);
-  for (const l of headFiles(C, o, dir)) drawCell(ctx, dressLayer(scene, C, o, l.file, l.layer, l.clip), C.cell[0], C.cell[1], 0, x + K.bodyOffset[0] + dx, y + K.bodyOffset[1] + dy);
+  for (const l of headFiles(C, o, dir)) {
+    // (A big hat from its own cell, at the doll's cell less its offset: the 64x64 pose cell has room for it.)
+    const [w, h] = l.canvas?.size ?? C.cell;
+    const [ox, oy] = l.canvas?.offset ?? [0, 0];
+    drawCell(ctx, dressLayer(scene, C, o, l.file, l.layer, l.clip), w, h, 0, x + K.bodyOffset[0] + dx - ox, y + K.bodyOffset[1] + dy - oy);
+  }
   for (const l of d.front.filter(shown)) drawLayer(ctx, scene, K, l, frame, x, y);
 }

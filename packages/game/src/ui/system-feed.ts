@@ -38,10 +38,11 @@ export class SystemFeed {
   }
 
   /** A line only you see, added by the page, in coloured runs (what you picked up: "Gained " in white, the item's name
-   *  in its rarity's colour). Where the feed is hidden (phones) it's a short toast instead. */
-  mine(parts: { text: string; colour: string }[]): void {
+   *  in its rarity's colour). Where the feed is hidden (phones) it's a short toast instead; `toastToo`: a toast as well. */
+  mine(parts: { text: string; colour: string }[], toastToo = false): void {
     const text = parts.map((p) => p.text).join('');
-    if (getComputedStyle(this.root).display === 'none') return toast(text, 1800);
+    if (toastToo || getComputedStyle(this.root).display === 'none') toast(text, toastToo ? 3200 : 1800);
+    if (getComputedStyle(this.root).display === 'none') return;
     const row = document.createElement('div');
     row.className = 'sf-line sf-mine';
     row.dataset.key = `mine|${text}`; // never matches a server line: a reconnect's history keeps it

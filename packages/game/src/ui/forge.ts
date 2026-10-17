@@ -1,4 +1,4 @@
-import {
+import { itemName,
   type ForgeMode,
   type Item,
   type NextStat,
@@ -880,8 +880,44 @@ export function confirmCombine(item: Item): Promise<boolean> {
   });
 }
 
+/** "Destroy your Witch Hat?": a timed item thrown away for good (it can't be sold, traded or dropped). */
+export function confirmDestroy(item: Item): Promise<boolean> {
+  return new Promise((resolve) => {
+    const D = itemData();
+    if (!D) return resolve(false);
+    const back = el('div', 'fg-confirm-back');
+    const box = el('div', 'fg-confirm');
+    box.setAttribute('role', 'alertdialog');
+    const row = el('div', 'fg-actions');
+    const yes = el('button', 'fg-go fg-ready', 'Destroy');
+    const no = el('button', 'fg-go', 'Cancel');
+    const done = (ok: boolean) => {
+      back.remove();
+      document.removeEventListener('keydown', key, true);
+      resolve(ok);
+    };
+    const key = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        done(false);
+      }
+    };
+    yes.addEventListener('click', () => done(true));
+    no.addEventListener('click', () => done(false));
+    back.addEventListener('click', (e) => e.target === back && done(false));
+    document.addEventListener('keydown', key, true);
+    row.append(yes, no);
+    const flow = el('div', 'fg-combine fg-combine-short');
+    flow.append(itemPicture({ ...item, count: 1 }, 'showcase', 2));
+    box.append(el('div', 'fg-confirm-title', `Destroy your ${itemName(D, item)}?`), flow, el('div', 'fg-confirm-sub', 'It’s gone for good.'), row);
+    back.append(box);
+    document.body.append(back);
+    yes.focus();
+  });
+}
+
 /** Takes an item apart (asked first) or combines fragments: the server's answer, with the effect and sound. */
-export async function forgeFromBag(a: Extract<TownForgeAction, { action: 'disassemble' | 'combine' | 'sell' | 'disassemble-many' | 'sell-many' }>, at: HTMLElement | null): Promise<TownForgeResponse | null> {
+export async function forgeFromBag(a: Extract<TownForgeAction, { action: 'disassemble' | 'combine' | 'sell' | 'destroy' | 'disassemble-many' | 'sell-many' }>, at: HTMLElement | null): Promise<TownForgeResponse | null> {
   const where = at?.getBoundingClientRect(); // (the slot is gone once the bag redraws)
   const r = await forgeAction(a);
   if (!r) {

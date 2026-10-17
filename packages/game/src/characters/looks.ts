@@ -45,7 +45,7 @@ export function sanitize(C: CharacterDefs, saved: Partial<OutfitData> | null | u
     skin: one(saved.skin, c.skin, fallback.skin),
     hair: one(saved.hair, c.hair, fallback.hair),
     hairColour: one(saved.hairColour, c.colours, fallback.hairColour),
-    top: one(saved.top, c.top, fallback.top),
+    top: one(saved.top, [...c.top, ...Object.values(C.wardrobe.cosmeticTops ?? {})], fallback.top), // (a worn cosmetic's top too)
     topColour: one(saved.topColour, c.colours, fallback.topColour),
     topTrim: one(saved.topTrim, c.colours, fallback.topTrim),
     bottom: one(saved.bottom, c.bottom, fallback.bottom),

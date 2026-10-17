@@ -1,4 +1,4 @@
-import { type EquipPlace, type EquipSlot, type Item, type StatName, affixTier, agimatBrightness, derivedStats, itemTotals, placesFor, agimatSlots, agimatValue, wordList, baseStats, canEquip, enhancedBase, gearKind, gearMismatch, isGearDef, itemAura, itemName, lineText, lineValue, pickupLine, requirements, statLabel } from '@mikazuki/shared';
+import { type LootGot, type EquipPlace, type EquipSlot, type Item, type StatName, affixTier, agimatBrightness, derivedStats, itemTotals, placesFor, agimatSlots, agimatValue, wordList, baseStats, canEquip, enhancedBase, gearKind, gearMismatch, isGearDef, itemAura, itemName, lineText, lineValue, pickupLine, requirements, statLabel, timeLeftText } from '@mikazuki/shared';
 import { petTipLines } from './pet-tab';
 import { adventure, classInfo, itemData } from '../net/adventure';
 import { type Rarity, RARITY_TEXT, isRarity, itemArt, itemArtUrl, placeholderArt } from './item-art';
@@ -109,6 +109,9 @@ export function itemTipFor(item: Item, owner?: { cls: string | null }): HTMLElem
     // A quest item (CONTEXT.md): what it can't do, in grey; a bound one (the Practice Warren Ticket) says so.
     if (def.kind === 'quest') parts.push(el('div', 'eq-tip-meta', "Quest item: it can't be sold, traded, dropped or banked"));
     else if (item.bound) parts.push(el('div', 'eq-tip-meta', "Bound: it can't be sold, traded or dropped"));
+    // A timed cosmetic (CONTEXT.md): how long it has left ("4d 12h left"), or how long it lasts once picked up.
+    if (item.expiresAt !== undefined) parts.push(el('div', 'eq-tip-timed', timeLeftText(item.expiresAt, Date.now())));
+    else if (def.lastsDays) parts.push(el('div', 'eq-tip-timed', `Lasts ${def.lastsDays} days once picked up`));
     return parts;
   }
   const who = def.class ? (classInfo(def.class)?.name ?? def.class) : def.gear;

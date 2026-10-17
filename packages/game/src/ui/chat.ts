@@ -477,6 +477,20 @@ export class ChatBox {
     if (quiet) this.toggle.classList.remove('ch-unread');
   }
 
+  /** An event's line (CONTEXT.md Event line: orange, with its icon if it has one). */
+  event(text: string, icon: string | null = null): void {
+    const line = document.createElement('div');
+    line.className = 'ch-line ch-event';
+    if (icon) {
+      const img = document.createElement('img');
+      img.src = icon;
+      img.alt = '';
+      line.append(img);
+    }
+    line.append(text);
+    this.push(line);
+  }
+
   /** Full opacity now, and fade again after IDLE_MS unless the box is being used. */
   private wake(): void {
     this.root.classList.remove('ch-idle');

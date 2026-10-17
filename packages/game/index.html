@@ -346,6 +346,7 @@
       #settings .st-label { min-width: 56px; }
       #settings .st-volume { flex: 1; accent-color: #7C2AE8; }
       #settings .st-check input { margin: 0; accent-color: #7C2AE8; }
+      #equipment .eq-tip-timed, .eq-tip-timed { margin-top: 4px; color: #FDBA74; font-size: calc(12px * var(--text)); }
       #settings .st-note { margin: 2px 0 0; color: #6B7280; font-size: calc(12px * var(--text)); }
       #settings .st-seen { margin-bottom: 6px; }
       #settings .st-seen .st-size { font-size: calc(13px * var(--text)); }
@@ -770,6 +771,21 @@
       #town-hud .th-left .th-golem { margin-top: 12px; }
       /* Phones: the jackpot counter, race box and golem timer in one column (ui/townhud.ts), each as wide as the widest. */
       #town-hud .th-events { display: grid; width: fit-content; }
+      /* The event badge (ui/halloween.ts) under the buttons: the 16 px Mikko at 1× and its line. */
+      #town-hud .th-event:empty { display: none; }
+      #town-hud .th-halloween { display: flex; align-items: center; gap: 6px; padding: 4px 10px 4px 6px; border: 2px solid #C2410C; border-radius: 4px; background: rgba(28, 16, 10, 0.82); color: #FED7AA; font: 600 calc(13px * var(--text))/1.2 var(--ui-font); cursor: var(--cur-hand, pointer); box-shadow: 0 0 8px rgba(249, 115, 22, 0.35); }
+      #town-hud .th-halloween:hover { border-color: #F97316; color: #FFEDD5; }
+      #town-hud .th-halloween .hw-icon { width: 16px; height: 16px; image-rendering: pixelated; }
+      @media (max-width: 560px), (max-height: 500px) { #town-hud .th-halloween .hw-text { display: none; } #town-hud .th-halloween { padding: 4px; } #town-hud .th-halloween .hw-icon { width: 32px; height: 32px; } }
+      #reward .hw-pic { image-rendering: pixelated; }
+      #reward .hw-ends { margin: 0; color: #9A3412; font-weight: 600; }
+      #reward .hw-line { margin: 0 0 10px; text-align: left; color: #3D4256; }
+      #reward .hw-line b { color: #C2410C; }
+      #reward .hw-rewards { list-style: none; margin: -6px 0 18px; padding: 0; display: grid; gap: 6px; justify-content: center; text-align: left; }
+      #reward .hw-rewards li { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+      #reward .hw-rewards li > :first-child { flex: none; width: 16px; height: 16px; image-rendering: pixelated; background-size: contain; }
+      #chat .ch-event { color: #FDBA74; }
+      #chat .ch-event img { width: 16px; height: 16px; vertical-align: -3px; margin-right: 4px; image-rendering: pixelated; }
       #town-hud .th-events > .th-jackpot { width: auto; justify-self: stretch; justify-content: start; }
       @media (prefers-reduced-motion: reduce) { #town-hud .th-golem.gt-awake { animation: none; } }
       /* In the Warrens on phones, hide the town-specific event counters (jackpot + race; golem is already hidden there)

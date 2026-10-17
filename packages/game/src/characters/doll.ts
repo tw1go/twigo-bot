@@ -49,7 +49,15 @@ interface LayerFile {
   layer: string;
   file: string;
   clip?: string; // hat clip mask, for the hair layer
+  /** A hat from a bigger cell (wardrobe.hatCanvas): its cell size, and where the doll's cell sits inside it. */
+  canvas?: { size: Vec2; offset: Vec2 };
 }
+
+/** Whether a hat is a head cosmetic's (wardrobe.cosmeticHats: the Lamp-head Hat's, the Witch Hat's): no hair under it at
+ *  all (Mac's rule), for everyone's look. */
+export const cosmeticHat = (C: CharacterDefs, hat: string | undefined): boolean => !!hat && Object.values(C.wardrobe.cosmeticHats ?? {}).includes(hat);
+/** Whether a top is a body cosmetic's (wardrobe.cosmeticTops: the Witch Robe's): its own colours. */
+const cosmeticTop = (C: CharacterDefs, top: string): boolean => Object.values(C.wardrobe.cosmeticTops ?? {}).includes(top);
 
 /** The files drawn for one (anim, dir), in draw order. */
 export function layerFiles(C: CharacterDefs, o: Outfit, anim: string, dir: Dir): LayerFile[] {
@@ -70,12 +78,13 @@ export function layerFiles(C: CharacterDefs, o: Outfit, anim: string, dir: Dir):
         out.push({ layer, file: slot('shoes', o.shoes) });
         break;
       case 'bottom':
-        out.push({ layer, file: slot('bottom', o.bottom) });
+        if (!W.cosmeticHidesBottom?.includes(o.top)) out.push({ layer, file: slot('bottom', o.bottom) }); // (a robe covers the legs)
         break;
       case 'top':
         out.push({ layer, file: slot('top', o.top) });
         break;
       case 'hair':
+        if (cosmeticHat(C, o.hat)) break; // (no hair at all under a head cosmetic)
         out.push({
           layer,
           file: fill(W.hairPattern, { item: hairDrawn(C, o), anim, dir }),
@@ -86,11 +95,21 @@ export function layerFiles(C: CharacterDefs, o: Outfit, anim: string, dir: Dir):
         if (o.glasses && hasFace(C, dir)) out.push({ layer, file: slot('glasses', o.glasses) });
         break;
       case 'hat':
-        if (o.hat) out.push({ layer, file: fill(W.hatPattern, { item: o.hat, anim, dir }) });
+        if (o.hat) out.push({ layer, file: fill(W.hatPattern, { item: o.hat, anim, dir }), ...(W.hatCanvas?.[o.hat] ? { canvas: W.hatCanvas[o.hat] } : {}) });
         break;
     }
   }
   return out;
+}
+
+/** A look's big hat (wardrobe.hatCanvas: the Witch Hat), as the town draws it whole over the doll: its sheet for an
+ *  animation and direction, its cell and where the doll's cell sits in it; null for any other hat. */
+export function bigHat(C: CharacterDefs, o: Outfit): { sheet: (anim: string, dir: Dir) => string; size: Vec2; offset: Vec2 } | null {
+  const W = C.wardrobe;
+  const canvas = o.hat ? W.hatCanvas?.[o.hat] : undefined;
+  if (!o.hat || !canvas) return null;
+  const hat = o.hat;
+  return { sheet: (anim, dir) => W.hatPattern.replace(/\{(\w+)\}/g, (_, k: string) => ({ item: hat, anim, dir })[k] ?? `{${k}}`), size: canvas.size, offset: canvas.offset };
 }
 
 /** What a look wears on its head facing `dir` (hair, glasses, hat): the town idle's files, laid over the combat poses. */
@@ -171,6 +190,7 @@ function swapsFor(C: CharacterDefs, o: Outfit, layer: string): Map<number, numbe
       ramp(K.hair, preset(o.hairColour));
       break;
     case 'top':
+      if (cosmeticTop(C, o.top)) break; // (a cosmetic top keeps its own colours)
       ramp(K.clothMain, preset(o.topColour));
       ramp(K.clothTrim, preset(o.topTrim));
       break;
@@ -296,7 +316,8 @@ function buildSheet(scene: Phaser.Scene, C: CharacterDefs, o: Outfit, anim: stri
       assetProblems.add(`missing layer ${l.file}`);
       continue;
     }
-    if (data.width !== width || data.height !== ch) assetProblems.add(`${l.file} is ${data.width}×${data.height}, expected ${width}×${ch}`);
+    const [lw, lh] = l.canvas?.size ?? [cw, ch];
+    if (data.width !== spec.frames * lw || data.height !== lh) assetProblems.add(`${l.file} is ${data.width}×${data.height}, expected ${spec.frames * lw}×${lh}`);
     const d = data.data;
     swapPixels(d, swapsFor(C, o, l.layer));
     if (l.clip) {
@@ -311,7 +332,20 @@ function buildSheet(scene: Phaser.Scene, C: CharacterDefs, o: Outfit, anim: stri
     }
     const layer = scratchFor(data.width, data.height);
     layer.putImageData(data, 0, 0);
-    ctx.drawImage(layer.canvas, 0, 0);
+    if (!l.canvas) ctx.drawImage(layer.canvas, 0, 0);
+    else {
+      // A big hat: each frame at the doll's cell less its offset, kept to that frame (the town draws the rest of it:
+      // Character's hat overlay; this keeps it on still pictures, avatars and the Info window).
+      const [ox, oy] = l.canvas.offset;
+      for (let f = 0; f < spec.frames; f++) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(f * cw, 0, cw, ch);
+        ctx.clip();
+        ctx.drawImage(layer.canvas, f * lw, 0, lw, lh, f * cw - ox, -oy, lw, lh);
+        ctx.restore();
+      }
+    }
   }
   const tex = scene.textures.addCanvas(key, canvas)!;
   for (let f = 0; f < spec.frames; f++) tex.add(f, 0, f * cw, 0, cw, ch);

@@ -26,5 +26,6 @@ export function mobSheets(def: MobDef): { file: string; size: Vec2 }[] {
     for (const anim of Object.keys(def.animations)) for (const dir of def.directions) out.push({ file: mobSheet(def, v, anim, dir), size });
   }
   for (const anim of def.enraged?.animations ?? []) for (const dir of def.directions) out.push({ file: mobSheet(def, '', anim, dir, true), size: def.size });
+  if (def.glow) for (const anim of Object.keys(def.animations)) for (const dir of def.directions) out.push({ file: def.glow.file.replace('{anim}', anim).replace('{dir}', dir), size: def.size });
   return out;
 }
