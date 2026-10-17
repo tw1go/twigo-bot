@@ -56,8 +56,8 @@
     "name": "Manananggal",
     "everyMinutes": [60, 180],
     "lowerStaysMinutes": 60,
-    "lowerSpots": [[51, 60], [26, 63], [24, 5], [17, 13], [66, 13], [9, 58]],
-    "lowerSpotsNote": "town tiles beside groves, away from the plaza (checked walkable in maps/town.json); Claude Code re-checks each and drops any that are blocked or behind a building",
+    "lowerSpots": [[52, 63], [24, 65], [21, 7], [19, 14], [62, 10], [8, 60]],
+    "lowerSpotsNote": "town tiles beside groves, away from the plaza (checked walkable in maps/town.json); Claude Code re-checks each and drops any that are blocked or behind a building. Repo copy (17 Oct 2026): the art folder's six ([51,60], [26,63], [24,5], [17,13], [66,13], [9,58]) all stood behind tree crowns (73-100% hidden), so each moved to the nearest open grass tile nothing draws over (a bot test keeps them so).",
     "upper": {
       "map": "slums",
       "level": 14,

@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { type EventPotion, type HalloweenData, type HalloweenReward, type HalloweenView, type ItemData, eventStart, isEventOn, linear, mobStats, newItem, pickOne, rollRange } from '@mikazuki/shared';
+import { type EventPotion, type HalloweenData, type HalloweenReward, type HalloweenView, type ItemData, HALLOWEEN_MOBS, eventStart, halloweenRules, mobRules, isEventOn, linear, mobStats, newItem, pickOne, rollRange } from '@mikazuki/shared';
 import type { LootContent } from './combat-bag.js';
 import { type GolemBoss, pitTiles } from './town-golem.js';
 import { type MobDirector, type MobEvent, type MobRoom, type MobZoneData, facingTo } from './town-mobs.js';
@@ -28,21 +28,10 @@ import { type MobDirector, type MobEvent, type MobRoom, type MobZoneData, facing
 // Pure apart from its clock and `random`: web/town.ts sends the messages and gives the rewards.
 
 export const EVENT_ZONE = 'halloween';
-export const BIIKKO_KIND = 'biikko-kalabasa';
-export const UPPER_KIND = 'manananggal-upper';
+export const BIIKKO_KIND = HALLOWEEN_MOBS.biikko;
+export const UPPER_KIND = HALLOWEEN_MOBS.upper;
 export const BIIKKO_ID = 'halloween:biikko';
 export const UPPER_ID = 'halloween:upper';
-/** Mikko never hides this close to a player (tiles, either way). */
-const MIKKO_CLEAR = 6;
-/** The first Biikko and the first Manananggal round this long after the event starts (ms). */
-const FIRST_MS = 10 * 60_000;
-/** Biikko walks to a spot this far away (tiles), then rests this long (ms). */
-const WANDER: [number, number] = [4, 10];
-const PAUSE: [number, number] = [3000, 8000];
-/** The upper half: its Claw Swipe's pace (ms), reach (tiles) and how far it follows (tiles from where it came out). */
-const UPPER_ATTACK_MS = 1800;
-const UPPER_REACH = 1;
-const UPPER_LEASH = 12;
 /** A carrier gone longer than this (ms): the upper half flies away. */
 export const CARRIER_AWAY_MS = 60_000;
 const MIN = 60_000;
@@ -137,6 +126,9 @@ export class Halloween {
   private upperNext = 0;
   /** Biikko's walking tiles (height 1, open, outside the camp and the pit). */
   private readonly wanderTiles: [number, number][];
+  /** The numbers halloween.json writes in words (Mikko's clearance, Biikko's walks and rests, the first spawns, the
+   *  Claw Swipe's pace). */
+  private readonly rules: ReturnType<typeof halloweenRules>;
 
   constructor(
     readonly data: HalloweenData,
@@ -146,6 +138,7 @@ export class Halloween {
     private readonly random: () => number = Math.random,
   ) {
     this.saved = { ...fresh(), ...(saved ?? {}) };
+    this.rules = halloweenRules(data);
     for (const name of data.mikko.maps) if (maps[name]) this.hides.set(name, hideTiles(maps[name]));
     const slums = maps[data.biikko.map];
     const pit = pitTiles(slums?.boss)?.all ?? new Set<string>();
@@ -153,7 +146,7 @@ export class Halloween {
     if (slums) {
       const [cols, rows] = slums.size;
       for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
-        if (slums.blocked[r]?.[c] || (slums.height?.[r]?.[c] ?? 0) !== 1 || inRect(slums.safeZone, c, r) || pit.has(key(c, r))) continue;
+        if (slums.blocked[r]?.[c] || (slums.height?.[r]?.[c] ?? 0) !== this.rules.biikkoHeight || inRect(slums.safeZone, c, r) || pit.has(key(c, r))) continue;
         this.wanderTiles.push([c, r]);
       }
     }
@@ -208,8 +201,8 @@ export class Halloween {
       const start = this.startedAt(now);
       // (Its schedules from the start, unless a restart brought them back.)
       if (this.saved.mikkoAt === null && !this.saved.mikko) this.saved.mikkoAt = now;
-      if (this.saved.biikkoAt === null && !this.room?.mobInfo(BIIKKO_ID, now)) this.saved.biikkoAt = Math.max(now, start + FIRST_MS);
-      if (this.saved.roundAt === null && !this.saved.round) this.saved.roundAt = Math.max(now, start + FIRST_MS);
+      if (this.saved.biikkoAt === null && !this.room?.mobInfo(BIIKKO_ID, now)) this.saved.biikkoAt = Math.max(now, start + this.rules.firstMs);
+      if (this.saved.roundAt === null && !this.saved.round) this.saved.roundAt = Math.max(now, start + this.rules.firstMs);
       this.keep();
     }
     // Mikko hides (where nobody stands near).
@@ -242,13 +235,13 @@ export class Halloween {
     return out;
   }
 
-  /** A spot for Mikko: a hiding tile of a random map of its maps, none within MIKKO_CLEAR of a player there. */
+  /** A spot for Mikko: a hiding tile of a random map of its maps, none within mikkoClear of a player there. */
   private hideSpot(players: HerePlayer[]): { map: string; col: number; row: number } | null {
     const maps = [...this.hides.keys()].filter((m) => this.hides.get(m)!.length);
     for (let tries = 0; tries < 8 && maps.length; tries++) {
       const map = pickOne(maps, this.random);
       const near = players.filter((p) => p.map === map);
-      const free = this.hides.get(map)!.filter((t) => near.every((p) => cheb(p.at, t) > MIKKO_CLEAR));
+      const free = this.hides.get(map)!.filter((t) => near.every((p) => cheb(p.at, t) > this.rules.mikkoClear));
       if (free.length) {
         const [col, row] = pickOne(free, this.random);
         return { map, col, row };
@@ -372,6 +365,46 @@ export class Halloween {
 
   // ── The director (the Slums' mob room: Biikko and the upper half) ──
 
+  /** Dev (the dev town's /__halloween, the page's ?halloween=on): on from now; Mikko hidden beside `at` on `room` (the
+   *  nearest hiding tile to it); Biikko out now (or, out, down to `wound` HP); a round now; the upper half carried by
+   *  `member`. What was done. */
+  dev(o: { mikko?: boolean; biikko?: boolean; wound?: number; round?: boolean; carry?: boolean; member?: string; room?: string; at: [number, number] | null }, now: number): string {
+    this.force(now);
+    const said = ['on'];
+    const tiles = o.room ? this.hides.get(o.room) : undefined;
+    if (o.mikko && o.at && tiles?.length) {
+      const at = o.at;
+      const [col, row] = tiles.reduce((best, t) => (cheb(t, at) >= 2 && cheb(t, at) < cheb(best, at) ? t : best), tiles[0]);
+      this.saved.mikko = { map: o.room!, col, row };
+      this.saved.mikkoAt = null;
+      said.push(`Mikko at ${col},${row} (${o.room})`);
+    }
+    if (o.biikko && !this.room?.mobInfo(BIIKKO_ID, now)) {
+      this.saved.biikkoAt = now;
+      if (o.room === this.data.biikko.map) this.devNear = o.at; // (out by them)
+      said.push('Biikko now');
+    }
+    if (o.wound !== undefined && this.room?.mobInfo(BIIKKO_ID, now)) {
+      this.room.devWound(BIIKKO_ID, o.wound);
+      said.push(`Biikko down to ${o.wound} HP`);
+    }
+    if ((o.round || o.carry) && !this.saved.round) {
+      const spot = this.lowerSpot();
+      if (spot) this.saved.round = { lower: spot, until: now + this.data.manananggal.lowerStaysMinutes * MIN, carrier: null };
+      this.saved.roundAt = null;
+      said.push(spot ? `a round: the legs at ${spot.join(',')}` : 'no spot for the legs');
+    }
+    if (o.carry && o.member && this.saved.round) {
+      this.saved.round.carrier = o.member;
+      said.push(`${o.member} carries the upper half`);
+    }
+    this.keep();
+    return said.join('; ');
+  }
+
+  /** Dev: where the next Biikko comes out (beside whoever asked), or null: anywhere. */
+  private devNear: [number, number] | null = null;
+
   /** Hands the director its mob room (the Slums'): its zone for the event mobs is the room's, given at its making
    *  (`eventZone`). */
   attach(room: MobRoom): void {
@@ -400,7 +433,10 @@ export class Halloween {
     }
     // Biikko: out when it's due; wandering; full again after a while unhit.
     if (!biikko && this.saved.biikkoAt !== null && now >= this.saved.biikkoAt && this.wanderTiles.length) {
-      events.push(...room.addMobs([{ id: BIIKKO_ID, kind: BIIKKO_KIND, zone: EVENT_ZONE, tile: pickOne(this.wanderTiles, this.random), stats: this.biikkoStats(), name: this.data.biikko.name, title: this.data.biikko.title, still: true, silent: true }], now));
+      const near = this.devNear;
+      this.devNear = null;
+      const tile = near ? this.wanderTiles.reduce((a, b) => (cheb(b, near) < cheb(a, near) ? b : a)) : pickOne(this.wanderTiles, this.random);
+      events.push(...room.addMobs([{ id: BIIKKO_ID, kind: BIIKKO_KIND, zone: EVENT_ZONE, tile, stats: this.biikkoStats(), name: this.data.biikko.name, title: this.data.biikko.title, still: true, silent: true }], now));
       this.saved.biikkoAt = null;
       this.biikkoHitAt = now;
       this.biikkoNext = now + 2000;
@@ -439,16 +475,17 @@ export class Halloween {
     return { level: U.level, hp: U.hp, atk: at(f?.atk), def: at(f?.def), xp: 0 };
   }
 
-  /** Biikko sets off: a spot WANDER tiles away on its walking tiles, walked at its pace; then a pause. */
+  /** Biikko sets off: a spot wanderTiles away on its walking tiles, walked at its pace; then a pause. */
   private biikkoWalk(room: MobRoom, from: [number, number], now: number): MobEvent[] {
-    const [lo, hi] = WANDER;
+    const [lo, hi] = this.rules.wanderTiles;
     const near = this.wanderTiles.filter((t) => {
       const d = cheb(t, from);
       return d >= lo && d <= hi;
     });
     const to = near.length ? pickOne(near, this.random) : null;
     const path = to ? this.walkPath(from, to) : null;
-    const pause = PAUSE[0] + this.random() * (PAUSE[1] - PAUSE[0]);
+    const [p0, p1] = this.rules.pauseMs;
+    const pause = p0 + this.random() * (p1 - p0);
     if (!path?.length) {
       this.biikkoNext = now + pause;
       return [];
@@ -489,15 +526,15 @@ export class Halloween {
     const home = this.upperHome ?? upper.at;
     const speed = this.data.manananggal.upper.speedTilesPerSec;
     const foe = upper.foe ? players.get(upper.foe) : undefined;
-    if (upper.foe && (!foe || cheb(foe, home) > UPPER_LEASH)) {
+    if (upper.foe && (!foe || cheb(foe, home) > mobRules(room.statsData(), UPPER_KIND).leashTiles)) {
       // Lost them: healed and back where it came out.
       const events = room.healFull(UPPER_ID);
       return [...events, ...room.moveMob(UPPER_ID, this.flight(upper.at, home), now, speed)];
     }
     if (foe) {
-      if (cheb(foe, upper.at) <= UPPER_REACH) {
+      if (cheb(foe, upper.at) <= mobRules(room.statsData(), UPPER_KIND).reach) {
         if (now < this.upperSwing) return [];
-        this.upperSwing = now + UPPER_ATTACK_MS;
+        this.upperSwing = now + this.rules.upperAttackMs;
         const dir = facingTo(foe[0] - upper.at[0], foe[1] - upper.at[1]) ?? upper.facing;
         const hit = room.rollFor(upper.foe!, UPPER_ID);
         if (hit) room.land(upper.foe!, UPPER_ID, hit, now + (room.kindHitMs(UPPER_KIND) ?? 0));

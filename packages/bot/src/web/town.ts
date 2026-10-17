@@ -322,6 +322,10 @@ export interface Town {
   /** Dev (?warrens=solo, ?warrensboss=<id>): a run for a member in town, free, at once; with `boss`, every area before
    *  that boss's cleared and them arriving at its arena. The run's id, or why not. */
   warrensDev(userId: string, boss?: string, hp?: number): { ok: true; run: string } | { ok: false; message: string };
+  /** Dev (?halloween=on): the Halloween event on now; `mikko`: Mikko hidden two tiles from the member; `biikko` / `round`:
+   *  Biikko out and a Manananggal round started now; `wound`: Biikko down to that HP; `carry`: the dazed upper half theirs
+   *  (a round started for it). What was done. */
+  halloweenDev(userId: string, o: { mikko?: boolean; biikko?: boolean; wound?: number; round?: boolean; carry?: boolean }): string;
 }
 
 /** The game's map (packages/game/public/assets/maps/town.json), from the monorepo next to the bot. */
@@ -470,6 +474,9 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   const F = opts.friends ? new Friends(opts.friends.store.load(), opts.friends.store) : null;
   /** The Halloween event, if there is one (web/halloween.ts). */
   const H = opts.halloween?.event ?? null;
+  // (Its mobs live in Biikko's map's mob room, made with its director: the director's hands are that room.)
+  const hwRoom = H && opts.mobs?.[H.data.biikko.map];
+  if (hwRoom) H.attach(hwRoom);
   /** Since when the member carrying the dazed upper half has been gone (none: here). */
   let carrierAwaySince: number | null = null;
   /** Timed items of a member's that ran out (CONTEXT.md Timed cosmetic): a line each in their feed, their items again,
@@ -1686,6 +1693,15 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   });
 
   const town: Town = {
+    halloweenDev(userId, o) {
+      if (!H) return 'no Halloween event here';
+      const now = Date.now();
+      const c = conns.get(userId);
+      const at = c ? ([c.player.col, c.player.row] as [number, number]) : null;
+      const said = H.dev({ ...o, member: userId, room: c?.room, at }, now);
+      tellHalloween();
+      return said;
+    },
     rollLoot(userId, item) {
       const c = conns.get(userId);
       if (!c || !opts.items) return false;

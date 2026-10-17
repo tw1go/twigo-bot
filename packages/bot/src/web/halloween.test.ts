@@ -1,9 +1,10 @@
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { WebSocket } from 'ws';
-import { EVENT_POTIONS, type HalloweenData, type HalloweenReward, type Item, type TownServerMessage, addToBag, expireItems, isEventOn, mobStats, newItem, timeLeftText } from '@mikazuki/shared';
+import { EVENT_POTIONS, type HalloweenData, type HalloweenReward, type Item, type TownServerMessage, addToBag, expireItems, halloweenRules, isEventOn, mobStats, newItem, timeLeftText } from '@mikazuki/shared';
 import { BIIKKO_ID, BIIKKO_KIND, Halloween, type HalloweenMap, type HalloweenSaved, UPPER_ID, hideTiles, loadHalloween } from './halloween.js';
 import { loadItemData, loadStats } from './stats-data.js';
 import { LootRoom, gotOf, splitKusing } from './town-loot.js';
@@ -60,6 +61,47 @@ test('timed cosmetics: days from when one first enters a bag, bound then; gone w
   for (const [id, c] of Object.entries(DATA.cosmetics)) {
     const def = ITEMS.defs.get(id);
     assert.ok(def && 'lastsDays' in def && def.lastsDays === c.days, `${id}'s days match halloween.json`);
+  }
+});
+
+test("the numbers halloween.json writes in words are read out: Mikko's clearance, Biikko's walks and rests, the first spawns, the Claw Swipe", () => {
+  assert.deepEqual(halloweenRules(loadHalloween().data), { mikkoClear: 6, biikkoHeight: 1, wanderTiles: [4, 10], pauseMs: [3000, 8000], firstMs: 10 * 60_000, upperAttackMs: 1800 });
+});
+
+test("the Manananggal's lower half: every one of its spots is open floor and in view (nothing in front draws over her)", () => {
+  type Obj = { kind?: string; id: string; col: number; row: number; footprint?: [number, number] };
+  type Art = { size?: [number, number]; anchor?: [number, number]; footprint?: [number, number]; footprintTopCorner?: [number, number] };
+  const asset = <T>(f: string) => JSON.parse(readFileSync(new URL(`../../../game/public/assets/${f}`, import.meta.url), 'utf8')) as T;
+  const town = asset<{ objects: Obj[] }>('maps/town.json');
+  const M = asset<{ props: Record<string, Art>; buildings: Record<string, Art> }>('manifest.json');
+  // Each object's picture on screen (x = (col − row) × 16, y = (col + row) × 8) and the depth it's drawn at.
+  const drawn = town.objects.flatMap((o) => {
+    const b = o.kind === 'building' ? M.buildings[o.id] : undefined;
+    if (b?.size && b.footprintTopCorner) {
+      const [fw, fh] = o.footprint ?? b.footprint ?? [1, 1];
+      const x = (o.col - o.row) * 16 - b.footprintTopCorner[0];
+      const y = (o.col + o.row) * 8 - b.footprintTopCorner[1];
+      return [{ box: [x, y, x + b.size[0], y + b.size[1]], depth: o.col + fw - 1 + o.row + fh - 1 }];
+    }
+    const p = M.props[o.id];
+    if (!p?.size) return [];
+    const [w, h] = p.size;
+    const [ax, ay] = p.anchor ?? [w / 2, h];
+    const x = (o.col - o.row) * 16 - ax;
+    const y = (o.col + o.row + 1) * 8 - ay;
+    return [{ box: [x, y, x + w, y + h], depth: o.col + o.row }];
+  });
+  const H = new Halloween(DATA, MAPS, null);
+  assert.equal(H.lowerSpots().length, DATA.manananggal.lowerSpots.length, 'every spot open floor');
+  for (const [c, r] of DATA.manananggal.lowerSpots) {
+    // Her body: about 28 × 50 px over her feet.
+    const x = (c - r) * 16;
+    const y = (c + r + 1) * 8;
+    const her = [x - 14, y - 50, x + 14, y];
+    const covered = drawn
+      .filter((d) => d.depth > c + r)
+      .reduce((n, { box }) => n + Math.max(0, Math.min(her[2], box[2]) - Math.max(her[0], box[0])) * Math.max(0, Math.min(her[3], box[3]) - Math.max(her[1], box[1])), 0);
+    assert.ok(covered / (28 * 50) < 0.05, `[${c}, ${r}] is ${Math.round((covered / (28 * 50)) * 100)}% hidden`);
   }
 });
 
