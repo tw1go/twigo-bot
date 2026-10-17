@@ -85,6 +85,8 @@ import { fakeLogin, fakeName, loadMe } from '../session';
 import { screenToTile, tileToScreen } from '../iso';
 import { toast } from '../ui/toast';
 import { HalloweenWorld } from '../world/halloween';
+import { HalloweenDecor } from '../world/halloween-deco';
+import { serverNow, setServerNow } from '../net/server-clock';
 import { mikkoIcon16, setHalloweenArt, setHalloweenBadge, showHalloweenReward } from '../ui/halloween';
 import { BossBar } from '../ui/boss-bar';
 import { HALLOWEEN_MOBS, type HalloweenData } from '@mikazuki/shared';
@@ -274,6 +276,7 @@ export class TownScene extends Phaser.Scene {
    *  Kalabasa's boss bar while you're near it. */
   private hwData: HalloweenData | null = null;
   private halloween: HalloweenWorld | null = null;
+  private decor: HalloweenDecor | null = null;
   private biikkoBar: BossBar | null = null;
   /** Which area this page is: the town, the neighbourhood or the Slums. */
   private area: Area = 'town';
@@ -780,6 +783,7 @@ export class TownScene extends Phaser.Scene {
     this.others.update(delta);
     this.pets?.update(delta);
     this.halloween?.update(delta);
+    this.decor?.update(delta);
     this.showBiikkoBar();
     this.trailTick(time);
     this.mobs?.update(delta);
@@ -2443,6 +2447,7 @@ export class TownScene extends Phaser.Scene {
       if (m.t === 'welcome') {
         myId = m.you;
         this.myId = m.you;
+        setServerNow(m.now); // (the server's clock: the Kapre's tree)
         this.gotWelcome = true;
         // (Knocked out when the link dropped: the server has you up again, full.)
         if (this.knockedOut) {
@@ -4165,8 +4170,23 @@ export class TownScene extends Phaser.Scene {
     });
     hw.onSpawn = (obj) => this.tint >= 0 && obj.setTint(this.tint);
     this.halloween = hw;
+    // Its decorations (world/halloween-deco.ts): looks only, up while the server says the event is on.
+    const decor = new HalloweenDecor(this, this.M, this.map, this.objects, {
+      area: this.area,
+      data,
+      me: () => this.player.tile,
+      now: serverNow,
+      houseOf: (id) => {
+        const h = this.houseFor(id);
+        return h ? { lot: h.lot, style: h.style } : null;
+      },
+    });
+    decor.onSpawn = (obj) => this.tint >= 0 && obj.setTint(this.tint);
+    this.decor = decor;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       hw.destroy();
+      decor.destroy();
+      this.decor = null;
       this.halloween = null;
       this.biikkoBar?.destroy();
       this.biikkoBar = null;
@@ -4205,6 +4225,7 @@ export class TownScene extends Phaser.Scene {
     const hw = this.halloween;
     if (m.t === 'halloween') {
       hw?.set(m.view);
+      this.decor?.setOn(!!m.view);
       setHalloweenBadge(this.hwData, !!m.view);
     } else if (m.t === 'mikko-found') hw?.found(m.col, m.row);
     else if (m.t === 'reunited') hw?.reunited(m.id, m.col, m.row);
@@ -4254,11 +4275,16 @@ export class TownScene extends Phaser.Scene {
     this.others.setNight(sky.lampsOn);
     if (!force && sky.tint === this.tint) return;
     this.tint = sky.tint;
-    const all = [...this.ground.sprites, ...this.objects.sprites, ...this.player.tintables, ...this.others.tintables, ...(this.npcs?.tintables ?? []), ...(this.mobs?.tintables ?? []), ...(this.pets?.tintables ?? []), ...(this.halloween?.tintables ?? []), ...(this.rogueSigns?.tintables ?? []), ...this.bridges.filter((b) => !!b)];
+    const all = [...this.ground.sprites, ...this.objects.sprites, ...this.player.tintables, ...this.others.tintables, ...(this.npcs?.tintables ?? []), ...(this.mobs?.tintables ?? []), ...(this.pets?.tintables ?? []), ...(this.halloween?.tintables ?? []), ...(this.decor?.tintables ?? []), ...(this.rogueSigns?.tintables ?? []), ...this.bridges.filter((b) => !!b)];
     for (const s of all) s.setTint(sky.tint);
   }
 
   // ── For debugging and the headless check ──
+
+  /** The Halloween decorations up now (counts, the Kapre's tree), or null without them. */
+  get debugDecor() {
+    return this.decor ? { on: this.decor.active, ...this.decor.counts } : null;
+  }
 
   get debugPets() {
     return this.pets?.debug() ?? [];
@@ -4440,6 +4466,7 @@ function exposeDebug(scene: TownScene): void {
     scene,
     state: () => scene.debugState(),
     teleport: (c: number, r: number, dir?: Dir) => scene.debugTeleport(c, r, dir),
+    deco: () => scene.debugDecor,
     walk: (c: number, r: number) => scene.goToTile({ col: c, row: r }),
     building: (id: string) => {
       const b = scene.debugWorld.objects.buildings.find((x) => x.id === id);

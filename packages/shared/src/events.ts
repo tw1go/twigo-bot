@@ -124,4 +124,45 @@ export interface HalloweenData extends EventWindow {
     announceReunite: string;
   };
   cosmetics: Record<string, { name: string; place: 'head' | 'body'; days: number; hatKey?: string; topKey?: string; hidesBottom?: boolean }>;
+  /** Its decorations (CONTEXT.md Decoration): the spiders, bats and the Kapre aren't drawn past this many tiles from you. */
+  decorationNearTiles: number;
+  /** The town's bats: flocks circling over a building (`over`, its id) or a tile, `lift` px up, on an ellipse. */
+  townBats: { over?: string; tile?: [number, number]; lift: number; radius: [number, number]; count: number }[];
+  /** The extra cobwebs in town: a web of props/halloween/webs (`web`: its name), its tile's top corner + `offset` px,
+   *  `flip` for another corner ('x', 'y' or 'xy'). */
+  webSpots: { tile: [number, number]; web: string; flip?: 'x' | 'y' | 'xy'; offset?: [number, number]; note?: string }[];
+}
+
+/** A house's bats this event (CONTEXT.md Decoration): from one stable hash of the event and its lot, so every player
+ *  sees the same and a reload never changes it; `chance` of having any, then `count[0]`..`count[1]` of them (the same
+ *  hash, spread over what's left). 0: none. */
+export function houseBats(eventId: string, lot: number, chance: number, [lo, hi]: [number, number]): number {
+  const h = hash01(`${eventId}:bats:${lot}`);
+  if (h >= chance) return 0;
+  return lo + Math.min(hi - lo, Math.floor((h / chance) * (hi - lo + 1)));
+}
+
+/** The Kapre's half-hour (`hopMinutes`) at `now` (ms, the server's clock): his tree changes with it. */
+export const kapreSlot = (now: number, hopMinutes: number): number => Math.floor(now / (hopMinutes * 60_000));
+
+/** The trees he may sit in: every one of the map's objects whose prop is one of `kinds`, sorted by tile (row, then
+ *  column), so every player lists them alike. */
+export function kapreTrees<T extends { id: string; col: number; row: number }>(objects: readonly T[], kinds: readonly string[]): T[] {
+  return objects.filter((o) => kinds.includes(o.id)).sort((a, b) => a.row - b.row || a.col - b.col);
+}
+
+/** His tree in `slot` (an index into kapreTrees' list), or -1 with none: the same for everyone in that slot. */
+export function kapreTree(count: number, slot: number): number {
+  return count ? Math.min(count - 1, Math.floor(hash01(`kapre:${slot}`) * count)) : -1;
+}
+
+/** A string's FNV-1a hash, as a fraction in [0, 1) (fine-grained: the full 32 bits). */
+function hash01(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
+  // (A final mix, so strings differing only in their last digits spread over the whole range.)
+  h ^= h >>> 15;
+  h = Math.imul(h, 2246822507);
+  h ^= h >>> 13;
+  return (h >>> 0) / 4294967296;
 }

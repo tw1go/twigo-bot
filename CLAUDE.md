@@ -182,6 +182,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `mobs` `biikko-kalabasa` (with `glow`) and `manananggal-upper`, `props` `mikko-kalabasa` / `manananggal-lower` (its `scale`
   0.6, and mobs.json's upper half `scale` 0.65 + `top`: both were too big beside a character, Mac), `fx`
   `fx-mikko-found` / `fx-manananggal-reunite`, `ui.eventHalloween`, `events`, and `mobs/mobs.json`'s two kinds.
+  Its decorations (17 Oct 2026; the art and its jsons are the art folder's events/halloween, halloween-deco-v8): the
+  manifest's `halloweenDeco` block, `events/halloween.json` `decorationNearTiles`, `townBats` and `webSpots` (placed
+  here), the webs' rows in `props/_sheets.csv` (as `halloween/webs/…`), and `scripts/packs.ts`'s `halloween-deco` sheet.
 - `maps/warrens.json` is built here (`packages/game/scripts/build-warrens.ts` from `scripts/warrens/warrens-layout.json`,
   the art folder's layout copied in): run it again after changing either.
 - High terrain (13 Oct 2026, all of it repo-only, PLACEHOLDER art): `tiles/slums` cliff-rock / -scrap (+ -lower) / -chasm /
@@ -1006,6 +1009,20 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   tab Halloween. Dev: `?halloween=on` (the dev town's `/__halloween`: forced on in memory), `,mikko` (hidden two tiles
   from you), `,biikko` (out beside you in the Slums), `,round`, `,carry` (the upper half yours); `/__halloween?as=
   &biikkohp=1`.
+- Halloween decorations (CONTEXT.md Decoration, Event look, Kapre; `world/halloween-deco.ts` `HalloweenDecor`, made by
+  TownScene's `makeHalloween`, `setOn` from the `halloween` view: looks only, no collision, nothing to click). Its art packs
+  into one sheet of its own (`scripts/packs.ts` `halloween-deco`), loaded the first time the event is on; it all comes down
+  as it ends. Event looks: manifest `halloweenDeco.buildings` (normal file → its Halloween one, the arena's back and front
+  too), swapped in once loaded; clicks keep testing the normal picture's pixels (a cobweb never becomes part of a door).
+  Props (props/halloween/halloween-deco.json): a web over every map object with an entry (by manifest key or file name:
+  its `town-lantern-post` is `lantern-post`; never the outskirts' forest), a dangling spider tied at its attach point, a
+  lamp's following it on and off. Houses (buildings/houses/house-halloween-deco.json): the type's fixed-colour top layer,
+  spiders, bats from shared `houseBats` (one stable hash of the event id and the lot: `batChance`, `batCount`). Town:
+  `townBats` flocks over a building (`over`) or a tile, the 25 `webSpots` (two spider houses tucked behind the mine and in
+  the south-east grove), and the Kapre (props/halloween/kapre.json): one, in the town tree shared `kapreTree` picks from
+  `kapreSlot` of the server's clock (the welcome's `now`: `net/server-clock.ts`), a 0.4 s fade as he moves, his tree's
+  leaves over his lower half on the thick ones. Spiders, bats and the Kapre only within `decorationNearTiles` (12) of you;
+  everything night-tinted. Tested in `halloween.test.ts`. Debug `__town.deco()`.
 - Settings → Game → Exit game (`ui/settings.ts` `leave`): the desktop app quits (`net/desktop.ts` `exitApp`, the
   process plugin's exit, `process:allow-exit`); the website and the home screen app go to the front page.
 - Forge (combat-guide.md How to enhance, Enhancement cost and odds, Agimats, Disassembly; stats.json enhancement.cost,

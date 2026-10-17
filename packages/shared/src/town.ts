@@ -530,6 +530,9 @@ export interface InspectStats {
 export type TownServerMessage =
   /** `spawn`: where you arrive (a free tile near the town's spawn point), unless you're already somewhere (a reconnect). */
   | { t: 'welcome'; you: string; players: TownPlayer[]; recent: TownChatLine[]; system: TownSystemLine[]; spawn: [number, number];
+      /** The server's clock as it sent this (ms): the page keeps its offset, so clock-driven things (the Kapre's tree)
+       *  agree for everyone whatever their own clock says. */
+      now?: number;
       /** You're a Game Master: the chat's GM channel is yours. */
       gm?: boolean;
       /** You're in jail now (the bars over you; a release while you were away comes with the next welcome). */
