@@ -10,3 +10,16 @@ building-tanod-outpost.png,128,136,1,0,no,56,80,4x3 (4 along the right edge); wa
 building-casino.png,144,160,1,0,no,72,96,4x4; two-storey violet casino; blank neon marquee for game text; entrance under the canopy on the SW face
 building-mine-entrance.png,112,104,1,0,no,56,56,3x3; rocky hill with timber tunnel mouth on the SW face
 building-arena.png,208,184,1,0,no,104,88,6x6 including its stone plinth; open arena with corner towers; gate on the SW face
+building-jackpot-booth-halloween.png,112,128,1,0,no,56,80,"Halloween version of building-jackpot-booth.png; same canvas, anchor and footprint; swap in while the event is on"
+building-jackpot-booth-nobase-halloween.png,112,128,1,0,no,56,80,"Halloween version of building-jackpot-booth-nobase.png; same canvas, anchor and footprint; swap in while the event is on"
+building-twigos-house-halloween.png,120,120,1,0,no,60,72,"Halloween version of building-twigos-house.png; same canvas, anchor and footprint; swap in while the event is on"
+building-notice-board-halloween.png,80,80,1,0,no,40,48,"Halloween version of building-notice-board.png; same canvas, anchor and footprint; swap in while the event is on"
+building-leaderboard-monument-halloween.png,80,104,1,0,no,40,72,"Halloween version of building-leaderboard-monument.png; same canvas, anchor and footprint; swap in while the event is on"
+building-sari-sari-store-halloween.png,112,120,1,0,no,56,72,"Halloween version of building-sari-sari-store.png; same canvas, anchor and footprint; swap in while the event is on"
+building-bank-halloween.png,136,136,1,0,no,68,88,"Halloween version of building-bank.png; same canvas, anchor and footprint; swap in while the event is on"
+building-tanod-outpost-halloween.png,128,136,1,0,no,56,80,"Halloween version of building-tanod-outpost.png; same canvas, anchor and footprint; swap in while the event is on"
+building-casino-halloween.png,144,160,1,0,no,72,96,"Halloween version of building-casino.png; same canvas, anchor and footprint; swap in while the event is on"
+building-mine-entrance-halloween.png,112,104,1,0,no,56,56,"Halloween version of building-mine-entrance.png; same canvas, anchor and footprint; swap in while the event is on"
+building-arena-halloween.png,208,184,1,0,no,104,88,"Halloween version of building-arena.png; same canvas, anchor and footprint; swap in while the event is on"
+building-arena-front-halloween.png,208,184,1,0,no,104,88,Halloween arena front layer; draws like building-arena-front.png
+building-arena-back-halloween.png,208,184,1,0,no,104,88,Halloween arena back layer; draws like building-arena-back.png

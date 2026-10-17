@@ -530,6 +530,9 @@ export interface InspectStats {
 export type TownServerMessage =
   /** `spawn`: where you arrive (a free tile near the town's spawn point), unless you're already somewhere (a reconnect). */
   | { t: 'welcome'; you: string; players: TownPlayer[]; recent: TownChatLine[]; system: TownSystemLine[]; spawn: [number, number];
+      /** The server's clock as it sent this (ms): the page keeps its offset, so clock-driven things (the Kapre's tree)
+       *  agree for everyone whatever their own clock says. */
+      now?: number;
       /** You're a Game Master: the chat's GM channel is yours. */
       gm?: boolean;
       /** You're in jail now (the bars over you; a release while you were away comes with the next welcome). */
@@ -738,8 +741,9 @@ export type TownServerMessage =
   | { t: 'whisper-refused'; reason: WhisperRefusal; name: string }
   /** Your privacy settings (on arrival and after a change). */
   | { t: 'privacy'; privacy: PrivacySettings }
-  /** The Halloween event as you see it (on arrival and on every change; null: it's off). */
-  | { t: 'halloween'; view: HalloweenView | null }
+  /** The Halloween event as you see it (on arrival and on every change; null: it's off), and whether its decorations
+   *  are up (their own window: from before the event starts). */
+  | { t: 'halloween'; view: HalloweenView | null; decorations?: boolean }
   /** Mikko Kalabasa was found where it hid on your map: its burst plays there once. */
   | { t: 'mikko-found'; col: number; row: number }
   /** The Manananggal was reunited at its lower half (town): its burst on the legs, then it flies off. `id`: whoever

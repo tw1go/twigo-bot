@@ -56,6 +56,14 @@ export interface Manifest {
   fx: Record<string, FxDef>;
   /** Each event's rules file (events/<id>.json, the bot reads it too). */
   events?: Record<string, string>;
+  /** The Halloween decorations (world/halloween-deco.ts): building event looks, the deco jsons, the extra cobwebs. */
+  halloweenDeco?: {
+    buildings: Record<string, string>;
+    props: string;
+    houses: string;
+    kapre: string;
+    webs: Record<string, { file: string; size: Vec2; anchor: Vec2 }>;
+  };
   /** Mobs (world/mobs.ts): sheets per variant, animation and direction; `data` = their rules file (mobs/mobs.json). */
   mobs?: Record<string, MobDef | string>;
   /** Item art by id (dig items and /redeem rewards), only for the ids that have art. */

@@ -19937,5 +19937,149 @@
   "events": {
     "halloween": "events/halloween.json",
     "note": "Each event’s rules (the bot reads them too: web/halloween.ts); its window turns everything of it on and off."
+  },
+  "halloweenDeco": {
+    "note": "Halloween decorations (CONTEXT.md Decoration: looks only, no collision, nothing to click; only while the event is on, the server's `halloween` view; world/halloween-deco.ts). `buildings`: each building image -> its event look, same canvas, anchor and footprint (clicks still test the normal image). `props`: webs and dangling spiders per prop (matched by manifest key or by the prop's file name prop-<name>.png: the deco's `town-lantern-post` is the `lantern-post` prop). `houses`: the neighbourhood houses' top layer, spiders and bats. `kapre`: the one tree-sitter. `webs`: the extra cobwebs (events/halloween.json `webSpots`). All of it packs into one sheet of its own (scripts/packs.ts), loaded only once the event is on. Repo addition (Halloween 2026).",
+    "buildings": {
+      "buildings/building-arena.png": "buildings/building-arena-halloween.png",
+      "buildings/building-arena-front.png": "buildings/building-arena-front-halloween.png",
+      "buildings/building-arena-back.png": "buildings/building-arena-back-halloween.png",
+      "buildings/building-bank.png": "buildings/building-bank-halloween.png",
+      "buildings/building-casino.png": "buildings/building-casino-halloween.png",
+      "buildings/building-jackpot-booth.png": "buildings/building-jackpot-booth-halloween.png",
+      "buildings/building-jackpot-booth-nobase.png": "buildings/building-jackpot-booth-nobase-halloween.png",
+      "buildings/building-leaderboard-monument.png": "buildings/building-leaderboard-monument-halloween.png",
+      "buildings/building-mine-entrance.png": "buildings/building-mine-entrance-halloween.png",
+      "buildings/building-notice-board.png": "buildings/building-notice-board-halloween.png",
+      "buildings/building-sari-sari-store.png": "buildings/building-sari-sari-store-halloween.png",
+      "buildings/building-parlor.png": "buildings/building-parlor-halloween.png",
+      "buildings/building-tanod-outpost.png": "buildings/building-tanod-outpost-halloween.png",
+      "buildings/building-twigos-house.png": "buildings/building-twigos-house-halloween.png"
+    },
+    "props": "props/halloween/halloween-deco.json",
+    "houses": "buildings/houses/house-halloween-deco.json",
+    "kapre": "props/halloween/kapre.json",
+    "webs": {
+      "corner-small": {
+        "file": "props/halloween/webs/prop-web-corner-small.png",
+        "size": [
+          12,
+          12
+        ],
+        "anchor": [
+          0,
+          0
+        ],
+        "note": "small corner web, top-left corner at 0,0 (flip for other corners)"
+      },
+      "corner-medium": {
+        "file": "props/halloween/webs/prop-web-corner-medium.png",
+        "size": [
+          20,
+          20
+        ],
+        "anchor": [
+          0,
+          0
+        ],
+        "note": "medium corner web, top-left corner at 0,0"
+      },
+      "corner-large": {
+        "file": "props/halloween/webs/prop-web-corner-large.png",
+        "size": [
+          32,
+          32
+        ],
+        "anchor": [
+          0,
+          0
+        ],
+        "note": "big corner web with a resting spider, top-left corner at 0,0"
+      },
+      "drape-long": {
+        "file": "props/halloween/webs/prop-web-drape-long.png",
+        "size": [
+          40,
+          16
+        ],
+        "anchor": [
+          0,
+          0
+        ],
+        "note": "long sagging web strung between two points at 0,1 and 39,1"
+      },
+      "drape-very-long": {
+        "file": "props/halloween/webs/prop-web-drape-very-long.png",
+        "size": [
+          72,
+          20
+        ],
+        "anchor": [
+          0,
+          0
+        ],
+        "note": "very long droopy web between two points at 0,1 and 71,1, with a hanging wrapped bug"
+      },
+      "orb": {
+        "file": "props/halloween/webs/prop-web-orb.png",
+        "size": [
+          24,
+          24
+        ],
+        "anchor": [
+          12,
+          0
+        ],
+        "note": "round orb web, hang it by its top middle (12,0)"
+      },
+      "orb-big-spider": {
+        "file": "props/halloween/webs/prop-web-orb-big-spider.png",
+        "size": [
+          40,
+          40
+        ],
+        "anchor": [
+          20,
+          0
+        ],
+        "note": "big orb web with a spider waiting in the middle, hang by top middle (20,0)"
+      },
+      "torn": {
+        "file": "props/halloween/webs/prop-web-torn.png",
+        "size": [
+          28,
+          28
+        ],
+        "anchor": [
+          14,
+          0
+        ],
+        "note": "old torn orb web with a big hole and loose strands, hang by top middle (14,0)"
+      },
+      "strands": {
+        "file": "props/halloween/webs/prop-web-strands.png",
+        "size": [
+          18,
+          30
+        ],
+        "anchor": [
+          0,
+          0
+        ],
+        "note": "loose hanging wisps, tie the top edge to a branch or eave"
+      },
+      "spider-house": {
+        "file": "props/halloween/webs/prop-web-spider-house.png",
+        "size": [
+          56,
+          44
+        ],
+        "anchor": [
+          0,
+          0
+        ],
+        "note": "full spider house: a dense tangle of webs with a funnel nest, egg sacks, wrapped bugs and three spiders; top edge ties to a roof or branch"
+      }
+    }
   }
 }

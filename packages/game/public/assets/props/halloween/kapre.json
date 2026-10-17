@@ -1,0 +1,52 @@
+{
+  "kapre": {
+    "sheet": "props/halloween/prop-kapre.png",
+    "sheetMirrored": "props/halloween/prop-kapre-w.png",
+    "cell": [
+      64,
+      64
+    ],
+    "frames": 16,
+    "fps": 8,
+    "loop": true,
+    "note": "drawn in front of the tree at the tree image top-left + offset; depth = tree depth + small bump. Trees with \"leaves\": draw that tree-sized leaf overlay right after the kapre at the tree position, so his lower half is tucked into the leaves.",
+    "trees": {
+      "tree-green-1": {
+        "side": "e",
+        "offset": [
+          27,
+          3
+        ],
+        "leaves": "props/halloween/prop-kapre-leaves-tree-green-1.png"
+      },
+      "tree-green-3": {
+        "side": "w",
+        "offset": [
+          7,
+          3
+        ],
+        "leaves": "props/halloween/prop-kapre-leaves-tree-green-3.png"
+      },
+      "tree-green-5": {
+        "side": "e",
+        "offset": [
+          30,
+          5
+        ],
+        "leaves": "props/halloween/prop-kapre-leaves-tree-green-5.png"
+      },
+      "tree-green-7": {
+        "side": "w",
+        "offset": [
+          22,
+          22
+        ]
+      }
+    },
+    "placement": {
+      "kapres": 1,
+      "hopMinutes": 30,
+      "rule": "Only one kapre in the whole town. He sits in one random tree out of every placed tree whose prop is listed in \"trees\". Everyone sees the same tree: pick it from floor(serverTime / hopMinutes) as the seed over the list of those trees sorted by tile, so he hops to a new random tree every hopMinutes with no server state."
+    }
+  }
+}

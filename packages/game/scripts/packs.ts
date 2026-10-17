@@ -82,9 +82,11 @@ function walk(dir: string): string[] {
 
 /** Character layers group by item (the name without -{anim}-{dir}); a class's combat poses by class and anim
  *  (characters/classes/<class>/<anim>), the class fx by their folder (fx/<class>), mobs by mob (mobs/<mob>, its fx
- *  folder apart); the rest by top folder. */
+ *  folder apart), the Halloween decorations together; the rest by top folder. */
 function groupOf(file: string, anims: string[], dirs: string[]): string {
   const parts = file.split('/');
+  // The Halloween decorations (CONTEXT.md Decoration): one sheet of their own, loaded only while the event is on.
+  if (((parts[0] === 'props' || parts[0] === 'fx') && parts[1] === 'halloween') || (parts[0] === 'buildings' && file.endsWith('-halloween.png'))) return 'halloween-deco';
   if (parts[0] === 'characters' && parts[1] === 'classes' && parts.length > 4) return `class-${parts[2]}-${parts[3]}`;
   if (parts[0] === 'fx' && parts.length > 2) return `fx-${parts[1]}`;
   if (parts[0] === 'mobs' && parts.length > 2) return parts.length > 3 ? `mobs-${parts[1]}-${parts[2]}` : `mobs-${parts[1]}`;

@@ -1,0 +1,348 @@
+{
+ "note": "Halloween: draw web right after its prop, same position and anchor as the prop. Spider: the sheet's top middle (5,0) goes at attach (prop pixel coords), 8 frames at 6 fps, looping, drawn in front of the prop; start each on a random frame.",
+ "spiderSheets": {
+  "short": {
+   "file": "props/halloween/prop-spider-dangle-short.png",
+   "cell": [
+    11,
+    20
+   ],
+   "frames": 8,
+   "fps": 6,
+   "attach": [
+    5,
+    0
+   ]
+  },
+  "long": {
+   "file": "props/halloween/prop-spider-dangle-long.png",
+   "cell": [
+    11,
+    26
+   ],
+   "frames": 8,
+   "fps": 6,
+   "attach": [
+    5,
+    0
+   ]
+  }
+ },
+ "props": {
+  "lamp-off": {
+   "web": "props/halloween/prop-lamp-off-web.png",
+   "size": [
+    23,
+    64
+   ],
+   "spider": {
+    "attach": [
+     17,
+     15
+    ],
+    "sheet": "short"
+   }
+  },
+  "lamp-on": {
+   "web": "props/halloween/prop-lamp-on-web.png",
+   "size": [
+    23,
+    64
+   ],
+   "spider": {
+    "attach": [
+     17,
+     15
+    ],
+    "sheet": "short"
+   }
+  },
+  "town-lantern-post": {
+   "web": "props/halloween/prop-town-lantern-post-web.png",
+   "size": [
+    64,
+    96
+   ]
+  },
+  "tree-green-1": {
+   "web": "props/halloween/prop-tree-green-1-web.png",
+   "size": [
+    98,
+    111
+   ],
+   "spider": {
+    "attach": [
+     57,
+     59
+    ],
+    "sheet": "long"
+   }
+  },
+  "tree-green-2": {
+   "web": "props/halloween/prop-tree-green-2-web.png",
+   "size": [
+    79,
+    103
+   ],
+   "spider": {
+    "attach": [
+     32,
+     46
+    ],
+    "sheet": "short"
+   }
+  },
+  "tree-green-3": {
+   "web": "props/halloween/prop-tree-green-3-web.png",
+   "size": [
+    98,
+    110
+   ],
+   "spider": {
+    "attach": [
+     25,
+     48
+    ],
+    "sheet": "short"
+   }
+  },
+  "tree-green-4": {
+   "web": "props/halloween/prop-tree-green-4-web.png",
+   "size": [
+    106,
+    103
+   ],
+   "spider": {
+    "attach": [
+     50,
+     43
+    ],
+    "sheet": "long"
+   }
+  },
+  "tree-green-5": {
+   "web": "props/halloween/prop-tree-green-5-web.png",
+   "size": [
+    101,
+    110
+   ],
+   "spider": {
+    "attach": [
+     41,
+     62
+    ],
+    "sheet": "long"
+   }
+  },
+  "tree-green-6": {
+   "web": "props/halloween/prop-tree-green-6-web.png",
+   "size": [
+    52,
+    115
+   ],
+   "spider": {
+    "attach": [
+     20,
+     80
+    ],
+    "sheet": "short"
+   }
+  },
+  "tree-green-7": {
+   "web": "props/halloween/prop-tree-green-7-web.png",
+   "size": [
+    99,
+    111
+   ],
+   "spider": {
+    "attach": [
+     50,
+     18
+    ],
+    "sheet": "long"
+   }
+  },
+  "tree-green-8": {
+   "web": "props/halloween/prop-tree-green-8-web.png",
+   "size": [
+    108,
+    99
+   ],
+   "spider": {
+    "attach": [
+     72,
+     42
+    ],
+    "sheet": "long"
+   }
+  },
+  "tree-green-planter-1": {
+   "web": "props/halloween/prop-tree-green-planter-1-web.png",
+   "size": [
+    85,
+    119
+   ],
+   "spider": {
+    "attach": [
+     51,
+     58
+    ],
+    "sheet": "short"
+   }
+  },
+  "tree-green-planter-2": {
+   "web": "props/halloween/prop-tree-green-planter-2-web.png",
+   "size": [
+    111,
+    108
+   ],
+   "spider": {
+    "attach": [
+     35,
+     48
+    ],
+    "sheet": "long"
+   }
+  },
+  "tree-green-planter-3": {
+   "web": "props/halloween/prop-tree-green-planter-3-web.png",
+   "size": [
+    89,
+    104
+   ],
+   "spider": {
+    "attach": [
+     69,
+     24
+    ],
+    "sheet": "short"
+   }
+  },
+  "tree-green-planter-4": {
+   "web": "props/halloween/prop-tree-green-planter-4-web.png",
+   "size": [
+    89,
+    110
+   ],
+   "spider": {
+    "attach": [
+     40,
+     39
+    ],
+    "sheet": "long"
+   }
+  },
+  "tree-green-planter-5": {
+   "web": "props/halloween/prop-tree-green-planter-5-web.png",
+   "size": [
+    87,
+    116
+   ],
+   "spider": {
+    "attach": [
+     65,
+     29
+    ],
+    "sheet": "short"
+   }
+  },
+  "tree-green-planter-6": {
+   "web": "props/halloween/prop-tree-green-planter-6-web.png",
+   "size": [
+    94,
+    111
+   ],
+   "spider": {
+    "attach": [
+     62,
+     46
+    ],
+    "sheet": "long"
+   }
+  },
+  "tree-green-planter-7": {
+   "web": "props/halloween/prop-tree-green-planter-7-web.png",
+   "size": [
+    76,
+    116
+   ],
+   "spider": {
+    "attach": [
+     45,
+     43
+    ],
+    "sheet": "long"
+   }
+  },
+  "tree-green-planter-8": {
+   "web": "props/halloween/prop-tree-green-planter-8-web.png",
+   "size": [
+    78,
+    111
+   ],
+   "spider": {
+    "attach": [
+     20,
+     40
+    ],
+    "sheet": "short"
+   }
+  },
+  "tree-violet-1": {
+   "web": "props/halloween/prop-tree-violet-1-web.png",
+   "size": [
+    97,
+    104
+   ],
+   "spider": {
+    "attach": [
+     59,
+     78
+    ],
+    "sheet": "long"
+   }
+  },
+  "tree-violet-2": {
+   "web": "props/halloween/prop-tree-violet-2-web.png",
+   "size": [
+    95,
+    101
+   ],
+   "spider": {
+    "attach": [
+     61,
+     73
+    ],
+    "sheet": "short"
+   }
+  },
+  "tree-violet-3": {
+   "web": "props/halloween/prop-tree-violet-3-web.png",
+   "size": [
+    88,
+    97
+   ],
+   "spider": {
+    "attach": [
+     57,
+     69
+    ],
+    "sheet": "long"
+   }
+  },
+  "tree-violet-4": {
+   "web": "props/halloween/prop-tree-violet-4-web.png",
+   "size": [
+    93,
+    100
+   ],
+   "spider": {
+    "attach": [
+     59,
+     70
+    ],
+    "sheet": "long"
+   }
+  }
+ }
+}

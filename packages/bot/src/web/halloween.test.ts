@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { WebSocket } from 'ws';
-import { EVENT_POTIONS, type HalloweenData, type HalloweenReward, type Item, type TownServerMessage, addToBag, expireItems, halloweenRules, isEventOn, mobStats, newItem, timeLeftText } from '@mikazuki/shared';
+import { EVENT_POTIONS, type HalloweenData, type HalloweenReward, type Item, type TownServerMessage, addToBag, decorationsOn, expireItems, halloweenRules, houseBats, isEventOn, kapreSlot, kapreTree, kapreTrees, mobStats, newItem, timeLeftText } from '@mikazuki/shared';
 import { BIIKKO_ID, BIIKKO_KIND, Halloween, type HalloweenMap, type HalloweenSaved, UPPER_ID, hideTiles, loadHalloween } from './halloween.js';
 import { loadItemData, loadStats } from './stats-data.js';
 import { LootRoom, gotOf, splitKusing } from './town-loot.js';
@@ -29,7 +29,7 @@ test('the window: off with no start; on from its start to its end, both instants
   const end = Date.parse(DATA.endsAt);
   assert.equal(end, Date.UTC(2026, 10, 4, 15, 59, 59), 'Nov 4 23:59:59 in +08:00 is 15:59:59 UTC');
   assert.equal(START, Date.UTC(2026, 9, 25, 10, 0, 0));
-  assert.equal(isEventOn(DATA, START), false, 'startsAt null: off');
+  assert.equal(isEventOn({ ...DATA, startsAt: null }, START), false, 'startsAt null: off');
   const ev = on();
   assert.equal(isEventOn(ev, START - 1), false, 'before');
   assert.equal(isEventOn(ev, START), true, 'from its start');
@@ -103,6 +103,55 @@ test("the Manananggal's lower half: every one of its spots is open floor and in 
       .reduce((n, { box }) => n + Math.max(0, Math.min(her[2], box[2]) - Math.max(her[0], box[0])) * Math.max(0, Math.min(her[3], box[3]) - Math.max(her[1], box[1])), 0);
     assert.ok(covered / (28 * 50) < 0.05, `[${c}, ${r}] is ${Math.round((covered / (28 * 50)) * 100)}% hidden`);
   }
+});
+
+test('decorations: their own window, from decorationsStartsAt (before the event) to the event\'s end; with the event when it has none; forced on with it', () => {
+  const ev = { ...DATA, decorationsStartsAt: '2026-10-17T00:00:00+08:00', startsAt: '2026-10-19T00:00:00+08:00' };
+  const at = (iso: string) => Date.parse(iso);
+  assert.equal(decorationsOn(ev, at('2026-10-16T23:59:59+08:00')), false, 'before theirs');
+  assert.equal(decorationsOn(ev, at('2026-10-17T00:00:00+08:00')), true, 'from theirs');
+  assert.equal(isEventOn(ev, at('2026-10-18T12:00:00+08:00')), false, 'the event not yet');
+  assert.equal(decorationsOn(ev, at('2026-10-18T12:00:00+08:00')), true, 'the decorations already');
+  assert.equal(decorationsOn(ev, Date.parse(ev.endsAt)), false, 'gone with the event');
+  assert.equal(decorationsOn({ ...ev, decorationsStartsAt: null }, at('2026-10-18T12:00:00+08:00')), false, 'none of their own: with the event');
+  assert.equal(decorationsOn({ ...ev, decorationsStartsAt: null, startsAt: null }, at('2026-10-18T12:00:00+08:00'), true), true, 'forced on (dev)');
+  const H = new Halloween(ev, MAPS, null);
+  assert.equal(H.decorations(at('2026-10-18T12:00:00+08:00')), true);
+  assert.equal(H.on(at('2026-10-18T12:00:00+08:00')), false);
+  assert.equal(H.tick(at('2026-10-18T12:00:00+08:00'), []).changed, true, 'their window opening is a change (everyone told)');
+  assert.equal(H.tick(at('2026-10-18T12:00:01+08:00'), []).changed, false);
+});
+
+test("decorations: a house's bats come from one stable hash of the event and its lot (the same every time), about a third of the lots have them, 1 to 3 each", () => {
+  const H = JSON.parse(readFileSync(new URL('../../../game/public/assets/buildings/houses/house-halloween-deco.json', import.meta.url), 'utf8')) as { batChance: number; batCount: [number, number] };
+  const lots = Array.from({ length: 4000 }, (_, i) => i);
+  const rolls = lots.map((lot) => houseBats(DATA.id, lot, H.batChance, H.batCount));
+  assert.deepEqual(lots.map((lot) => houseBats(DATA.id, lot, H.batChance, H.batCount)), rolls, 'the same every time');
+  const share = rolls.filter((n) => n > 0).length / lots.length;
+  assert.ok(Math.abs(share - H.batChance) < 0.03, `${(share * 100).toFixed(1)}% of lots have bats`);
+  for (const n of rolls.filter((n) => n > 0)) assert.ok(n >= H.batCount[0] && n <= H.batCount[1], `${n} bats`);
+  for (let n = H.batCount[0]; n <= H.batCount[1]; n++) assert.ok(rolls.filter((x) => x === n).length > lots.length * 0.05, `some houses have ${n}`);
+  assert.notDeepEqual(lots.map((lot) => houseBats('halloween-2027', lot, H.batChance, H.batCount)), rolls, 'another event reshuffles them');
+});
+
+test("decorations: the Kapre: one tree of the town's trees listed in kapre.json, the same for everyone in a half hour, another tree in time", () => {
+  const K = JSON.parse(readFileSync(new URL('../../../game/public/assets/props/halloween/kapre.json', import.meta.url), 'utf8')).kapre as { trees: Record<string, unknown>; placement: { kapres: number; hopMinutes: number } };
+  const town = JSON.parse(readFileSync(new URL('../../../game/public/assets/maps/town.json', import.meta.url), 'utf8')) as { objects: { id: string; col: number; row: number }[] };
+  const kinds = Object.keys(K.trees);
+  const trees = kapreTrees(town.objects, kinds);
+  assert.ok(trees.length > 10 && trees.every((t) => kinds.includes(t.id)), 'only the trees kapre.json lists');
+  assert.deepEqual(kapreTrees([...town.objects].reverse(), kinds), trees, 'listed alike whatever the order they come in');
+  assert.equal(K.placement.kapres, 1);
+  const at = Date.UTC(2026, 9, 25, 10, 0);
+  const slot = kapreSlot(at, K.placement.hopMinutes);
+  const i = kapreTree(trees.length, slot);
+  assert.ok(i >= 0 && i < trees.length);
+  assert.equal(kapreSlot(at + 29 * 60_000, K.placement.hopMinutes), slot, 'the same half hour');
+  assert.equal(kapreTree(trees.length, kapreSlot(at + 29 * 60_000, K.placement.hopMinutes)), i, 'the same tree');
+  assert.equal(kapreSlot(at + 30 * 60_000, K.placement.hopMinutes), slot + 1, 'the next half hour');
+  const seen = new Set(Array.from({ length: 200 }, (_, k) => kapreTree(trees.length, slot + k)));
+  assert.ok(seen.size > trees.length / 2, `he moves about (${seen.size} of ${trees.length} trees in 100 hours)`);
+  assert.equal(kapreTree(0, slot), -1, 'no trees, no Kapre');
 });
 
 test("the potions' names match the bot's (potions/potions.ts)", async () => {
