@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { WebSocket } from 'ws';
-import { EVENT_POTIONS, type HalloweenData, type HalloweenReward, type Item, type TownServerMessage, addToBag, expireItems, halloweenRules, houseBats, isEventOn, kapreSlot, kapreTree, kapreTrees, mobStats, newItem, timeLeftText } from '@mikazuki/shared';
+import { EVENT_POTIONS, type HalloweenData, type HalloweenReward, type Item, type TownServerMessage, addToBag, decorationsOn, expireItems, halloweenRules, houseBats, isEventOn, kapreSlot, kapreTree, kapreTrees, mobStats, newItem, timeLeftText } from '@mikazuki/shared';
 import { BIIKKO_ID, BIIKKO_KIND, Halloween, type HalloweenMap, type HalloweenSaved, UPPER_ID, hideTiles, loadHalloween } from './halloween.js';
 import { loadItemData, loadStats } from './stats-data.js';
 import { LootRoom, gotOf, splitKusing } from './town-loot.js';
@@ -103,6 +103,23 @@ test("the Manananggal's lower half: every one of its spots is open floor and in 
       .reduce((n, { box }) => n + Math.max(0, Math.min(her[2], box[2]) - Math.max(her[0], box[0])) * Math.max(0, Math.min(her[3], box[3]) - Math.max(her[1], box[1])), 0);
     assert.ok(covered / (28 * 50) < 0.05, `[${c}, ${r}] is ${Math.round((covered / (28 * 50)) * 100)}% hidden`);
   }
+});
+
+test('decorations: their own window, from decorationsStartsAt (before the event) to the event\'s end; with the event when it has none; forced on with it', () => {
+  const ev = { ...DATA, decorationsStartsAt: '2026-10-17T00:00:00+08:00', startsAt: '2026-10-19T00:00:00+08:00' };
+  const at = (iso: string) => Date.parse(iso);
+  assert.equal(decorationsOn(ev, at('2026-10-16T23:59:59+08:00')), false, 'before theirs');
+  assert.equal(decorationsOn(ev, at('2026-10-17T00:00:00+08:00')), true, 'from theirs');
+  assert.equal(isEventOn(ev, at('2026-10-18T12:00:00+08:00')), false, 'the event not yet');
+  assert.equal(decorationsOn(ev, at('2026-10-18T12:00:00+08:00')), true, 'the decorations already');
+  assert.equal(decorationsOn(ev, Date.parse(ev.endsAt)), false, 'gone with the event');
+  assert.equal(decorationsOn({ ...ev, decorationsStartsAt: null }, at('2026-10-18T12:00:00+08:00')), false, 'none of their own: with the event');
+  assert.equal(decorationsOn({ ...ev, decorationsStartsAt: null, startsAt: null }, at('2026-10-18T12:00:00+08:00'), true), true, 'forced on (dev)');
+  const H = new Halloween(ev, MAPS, null);
+  assert.equal(H.decorations(at('2026-10-18T12:00:00+08:00')), true);
+  assert.equal(H.on(at('2026-10-18T12:00:00+08:00')), false);
+  assert.equal(H.tick(at('2026-10-18T12:00:00+08:00'), []).changed, true, 'their window opening is a change (everyone told)');
+  assert.equal(H.tick(at('2026-10-18T12:00:01+08:00'), []).changed, false);
 });
 
 test("decorations: a house's bats come from one stable hash of the event and its lot (the same every time), about a third of the lots have them, 1 to 3 each", () => {

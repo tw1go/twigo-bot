@@ -741,8 +741,9 @@ export type TownServerMessage =
   | { t: 'whisper-refused'; reason: WhisperRefusal; name: string }
   /** Your privacy settings (on arrival and after a change). */
   | { t: 'privacy'; privacy: PrivacySettings }
-  /** The Halloween event as you see it (on arrival and on every change; null: it's off). */
-  | { t: 'halloween'; view: HalloweenView | null }
+  /** The Halloween event as you see it (on arrival and on every change; null: it's off), and whether its decorations
+   *  are up (their own window: from before the event starts). */
+  | { t: 'halloween'; view: HalloweenView | null; decorations?: boolean }
   /** Mikko Kalabasa was found where it hid on your map: its burst plays there once. */
   | { t: 'mikko-found'; col: number; row: number }
   /** The Manananggal was reunited at its lower half (town): its burst on the legs, then it flies off. `id`: whoever

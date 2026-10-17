@@ -4225,7 +4225,7 @@ export class TownScene extends Phaser.Scene {
     const hw = this.halloween;
     if (m.t === 'halloween') {
       hw?.set(m.view);
-      this.decor?.setOn(!!m.view);
+      this.decor?.setOn(!!m.decorations); // (their own window: up before the event itself starts)
       setHalloweenBadge(this.hwData, !!m.view);
     } else if (m.t === 'mikko-found') hw?.found(m.col, m.row);
     else if (m.t === 'reunited') hw?.reunited(m.id, m.col, m.row);

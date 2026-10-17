@@ -1,6 +1,7 @@
 // 🕸️ The Halloween decorations (CONTEXT.md Decoration, Event look, Kapre): looks only, no collision, nothing to click,
-// and only while the event is on (the server's `halloween` view; dev's ?halloween=on forces it there). Their art loads
-// the first time the event is on (one pack of its own in builds), and everything goes when it ends.
+// and only within their own window (halloween.json `decorationsStartsAt`, earlier than the event's start, to its end:
+// the server's `halloween` message says, `decorations`; dev's ?halloween=on forces it there). Their art loads the first
+// time they're up (one pack of its own in builds), and everything goes when the window ends.
 //   • Event looks: each building's picture swapped for its Halloween one (manifest halloweenDeco.buildings, by file);
 //     clicks still test the normal picture's pixels, so a cobweb never becomes a door. A missing one keeps the normal.
 //   • Webs and spiders on props (props/halloween/halloween-deco.json): a web the prop's size at its position, anchor and
@@ -142,7 +143,8 @@ export class HalloweenDecor {
     private readonly hooks: DecorHooks,
   ) {}
 
-  /** The event on or off (the server's word): on, its art loads (once) and it's all put up; off, it all comes down. */
+  /** The decorations up or not (the server's word): up, their art loads (once) and it's all put up; not, it all comes
+   *  down. */
   setOn(on: boolean): void {
     if (on === this.on) return;
     this.on = on;

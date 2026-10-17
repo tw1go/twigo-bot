@@ -183,7 +183,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   0.6, and mobs.json's upper half `scale` 0.65 + `top`: both were too big beside a character, Mac), `fx`
   `fx-mikko-found` / `fx-manananggal-reunite`, `ui.eventHalloween`, `events`, and `mobs/mobs.json`'s two kinds.
   Its decorations (17 Oct 2026; the art and its jsons are the art folder's events/halloween, halloween-deco-v8): the
-  manifest's `halloweenDeco` block, `events/halloween.json` `decorationNearTiles`, `townBats` and `webSpots` (placed
+  manifest's `halloweenDeco` block, `events/halloween.json` `decorationsStartsAt`, `decorationNearTiles`, `townBats` and `webSpots` (placed
   here), the webs' rows in `props/_sheets.csv` (as `halloween/webs/…`), and `scripts/packs.ts`'s `halloween-deco` sheet.
 - `maps/warrens.json` is built here (`packages/game/scripts/build-warrens.ts` from `scripts/warrens/warrens-layout.json`,
   the art folder's layout copied in): run it again after changing either.
@@ -1010,7 +1010,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   from you), `,biikko` (out beside you in the Slums), `,round`, `,carry` (the upper half yours); `/__halloween?as=
   &biikkohp=1`.
 - Halloween decorations (CONTEXT.md Decoration, Event look, Kapre; `world/halloween-deco.ts` `HalloweenDecor`, made by
-  TownScene's `makeHalloween`, `setOn` from the `halloween` view: looks only, no collision, nothing to click). Its art packs
+  TownScene's `makeHalloween`, `setOn` from the `halloween` message's `decorations`: their own window, halloween.json
+  `decorationsStartsAt` (17 Oct 2026, up from the deploy) to `endsAt`, shared `decorationsOn`, while the event itself
+  starts at `startsAt` (19 Oct 2026); looks only, no collision, nothing to click). Its art packs
   into one sheet of its own (`scripts/packs.ts` `halloween-deco`), loaded the first time the event is on; it all comes down
   as it ends. Event looks: manifest `halloweenDeco.buildings` (normal file → its Halloween one, the arena's back and front
   too), swapped in once loaded; clicks keep testing the normal picture's pixels (a cobweb never becomes part of a door).

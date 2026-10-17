@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { type EventPotion, type HalloweenData, type HalloweenReward, type HalloweenView, type ItemData, HALLOWEEN_MOBS, eventStart, halloweenRules, mobRules, isEventOn, linear, mobStats, newItem, pickOne, rollRange } from '@mikazuki/shared';
+import { type EventPotion, type HalloweenData, type HalloweenReward, type HalloweenView, type ItemData, HALLOWEEN_MOBS, decorationsOn, eventStart, halloweenRules, mobRules, isEventOn, linear, mobStats, newItem, pickOne, rollRange } from '@mikazuki/shared';
 import type { LootContent } from './combat-bag.js';
 import { type GolemBoss, pitTiles } from './town-golem.js';
 import { type MobDirector, type MobEvent, type MobRoom, type MobZoneData, facingTo } from './town-mobs.js';
@@ -115,6 +115,7 @@ export class Halloween {
   /** Dev (?halloween=on): on whatever its start, from this moment. */
   private forcedAt: number | undefined;
   private wasOn = false;
+  private wasDeco = false;
   /** The Slums' mob room (the director's hands), once attached. */
   private room: MobRoom | null = null;
   /** Biikko: its last hit (ms), when its walk ends and it may set off again. */
@@ -161,6 +162,11 @@ export class Halloween {
     return isEventOn(this.data, now, this.forcedAt !== undefined);
   }
 
+  /** Whether its decorations are up (their own start, the event's end; forced on with it). */
+  decorations(now: number): boolean {
+    return decorationsOn(this.data, now, this.forcedAt !== undefined);
+  }
+
   /** The tiles Mikko may hide on, by map (tests). */
   hideTilesOf(map: string): [number, number][] {
     return this.hides.get(map) ?? [];
@@ -184,6 +190,12 @@ export class Halloween {
   tick(now: number, players: HerePlayer[]): HalloweenTick {
     const on = this.on(now);
     const out: HalloweenTick = { changed: false, flew: [] };
+    // (The decorations' own window opening or closing: everyone's told.)
+    const deco = this.decorations(now);
+    if (deco !== this.wasDeco) {
+      this.wasDeco = deco;
+      out.changed = true;
+    }
     if (!on) {
       if (this.wasOn || this.saved.mikko || this.saved.round) {
         // Closed: everything of it goes, no reward for anything under way; the schedules stop.

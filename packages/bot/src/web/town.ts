@@ -827,7 +827,8 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   const tellHalloween = () => {
     if (!H) return;
     const now = Date.now();
-    for (const o of conns.values()) send(o, { t: 'halloween', view: H.view(o.room, now, (u) => conns.get(u)?.player.id) });
+    const decorations = H.decorations(now);
+    for (const o of conns.values()) send(o, { t: 'halloween', view: H.view(o.room, now, (u) => conns.get(u)?.player.id), decorations });
   };
   /** A Halloween reward to a member here: given (the bot's give), its pop-up. */
   const rewardHalloween = (c: Conn, kind: 'mikko' | 'reunite', reward: HalloweenReward) => {
@@ -1638,7 +1639,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     friendArrived(userId, room, !!old);
     if (opts.privacy) send(c, { t: 'privacy', privacy: opts.privacy.get(userId) });
     if (H) {
-      send(c, { t: 'halloween', view: H.view(room, Date.now(), (u) => conns.get(u)?.player.id) });
+      send(c, { t: 'halloween', view: H.view(room, Date.now(), (u) => conns.get(u)?.player.id), decorations: H.decorations(Date.now()) });
       if (H.carrier === userId) tellHalloween(); // (back: their dazed upper half shows behind them again)
     }
     if (opts.items?.expire) queueMicrotask(() => expireFor(c)); // (timed items that ran out while they were away)

@@ -19,6 +19,12 @@ export function isEventOn(event: EventWindow, now: number, force = false): boole
   return Number.isFinite(start) && start <= now;
 }
 
+/** Whether an event's decorations are up at `now` (CONTEXT.md Decoration): from their own start (`decorationsStartsAt`;
+ *  none = the event's) to the event's end; `force` as isEventOn's. */
+export function decorationsOn(event: EventWindow & { decorationsStartsAt?: string | null }, now: number, force = false): boolean {
+  return isEventOn({ startsAt: event.decorationsStartsAt ?? event.startsAt, endsAt: event.endsAt }, now, force);
+}
+
 /** When an event began (ms), or null while it's off (forced on: `forcedAt`, when that was). */
 export function eventStart(event: EventWindow, forcedAt?: number): number | null {
   if (forcedAt !== undefined) return forcedAt;
@@ -124,7 +130,10 @@ export interface HalloweenData extends EventWindow {
     announceReunite: string;
   };
   cosmetics: Record<string, { name: string; place: 'head' | 'body'; days: number; hatKey?: string; topKey?: string; hidesBottom?: boolean }>;
-  /** Its decorations (CONTEXT.md Decoration): the spiders, bats and the Kapre aren't drawn past this many tiles from you. */
+  /** Its decorations (CONTEXT.md Decoration) go up from this instant (+08:00) to the event's end, whenever the event
+   *  itself starts; none: with the event. */
+  decorationsStartsAt?: string | null;
+  /** The spiders, bats and the Kapre aren't drawn past this many tiles from you. */
   decorationNearTiles: number;
   /** The town's bats: flocks circling over a building (`over`, its id) or a tile, `lift` px up, on an ellipse. */
   townBats: { over?: string; tile?: [number, number]; lift: number; radius: [number, number]; count: number }[];
