@@ -25,7 +25,7 @@ export const myMainStat = (): StatName | null => {
 /** An item's name as you see it. */
 /** The line in your own system feed as you pick something up ("Gained Sturdy Slingshot of Calamity +1 (1 slot)",
  *  "Gained 120 Kusing"): its text and coloured runs. */
-export const pickupOf = (got: { kusing?: number; item?: Item }): ReturnType<typeof pickupLine> | null => {
+export const pickupOf = (got: LootGot): ReturnType<typeof pickupLine> | null => {
   const D = itemData();
   return D ? pickupLine(D, got, myMainStat()) : null;
 };

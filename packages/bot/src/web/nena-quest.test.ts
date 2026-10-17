@@ -207,7 +207,7 @@ test("a practice run's numbers: HP, ATK and XP Ã— the practice block's; Kusing Ã
   a.forEach((x, i) => {
     const y = b[i];
     if ('kusing' in x) assert.equal((y as { kusing: number }).kusing, Math.max(1, Math.round(x.kusing * P.kusingMult)));
-    else assert.equal((y as { item: { defId: string } }).item.defId, x.item.defId);
+    else if ('item' in x) assert.equal((y as { item: { defId: string } }).item.defId, x.item.defId);
   });
   assert.ok(practice.isLastBoss(boss));
 });

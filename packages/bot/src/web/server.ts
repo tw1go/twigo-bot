@@ -11,7 +11,10 @@ import { friendSaves, loadFriends } from './friends-db.js';
 import { maySee, privacyOf, seeFriendsBy, setPrivacy } from './privacy.js';
 import { RICHEST, TITLES, newTitle, titleOf, titleSeen } from './titles.js';
 import { welcome, welcomeEveryone, welcomeGift, welcomeSeen } from './welcome.js';
-import { mailAction, mailboxOf, onMail, purgeMail, unreadMail } from './mail.js';
+import { mailAction, mailboxOf, onMail, purgeMail, sendMail, unreadMail } from './mail.js';
+import { Halloween, type HalloweenSaved, loadHalloween } from './halloween.js';
+import type { LootContent } from './combat-bag.js';
+import { addPotions } from '../potions/potions.js';
 import { type BetaApplication, BetaRateLimit, ipHash, parseBetaForm, saveBetaApplication } from './beta.js';
 import { townMemory } from './town-memory.js';
 import { MAX_BET as RACE_MAX_BET, PAYOUT as RACE_PAYOUT, openRaceInTown, placeBet, raceFor } from '../games/race.js';
@@ -22,7 +25,7 @@ import { bridgeTownChat } from './town-chat.js';
 import { MobRoom, loadMobKinds, loadMobMap, loadSkillShapes } from './town-mobs.js';
 import { loadGolemArt } from './town-golem.js';
 import { loadWarrens } from './town-warrens.js';
-import { CLASSES } from './adventure.js';
+import { CLASSES, withItems, newUid, expiredFor } from './adventure.js';
 import { connectTownFeed, feed } from './town-feed.js';
 import { MAX_TICKETS, buyTickets, entries, lastDraw, nextDraw, pot, raidMoney, ticketWord, ticketsOf } from '../games/jackpot.js';
 import { jailedUntil } from '../games/jail.js';
@@ -44,13 +47,46 @@ import { arenaBets, refundHeldBets } from './town-arena-bets.js';
 import { kowen } from '../kowens.js';
 import { filterText, kickedUntil, mutedUntil } from './town-mod.js';
 import { getOutfit, parseOutfit, saveOutfit } from './outfit.js';
-import { type OutfitData, cosmeticHatOf, parseMailAction, parsePetAction, withCosmetics } from '@mikazuki/shared';
-import { loadCosmeticHats } from './stats-data.js';
+import { type OutfitData, cosmeticHatOf, cosmeticTopOf, parseMailAction, parsePetAction, withCosmetics, type HalloweenReward, addToBag, newItem } from '@mikazuki/shared';
+import { loadCosmeticHats, loadCosmeticTops } from './stats-data.js';
 
-/** The look a member shows everyone: their saved look with a worn head cosmetic's hat on it (shared cosmetics.ts). */
+/** A saved look with what a member wears as cosmetics on it: a head cosmetic's hat, a body cosmetic's top (shared
+ *  cosmetics.ts). */
+const withWorn = (userId: string, o: OutfitData): OutfitData => {
+  const worn = cosmeticsOf(userId);
+  return withCosmetics(o, cosmeticHatOf(loadCosmeticHats(), worn), cosmeticTopOf(loadCosmeticTops(), worn));
+};
+
+/** Where the Halloween event's schedules are kept (kv). */
+const HALLOWEEN_KV = 'halloween';
+
+/** Loot picked up: Kusing and items into the combat bag; an event's Kowens into the wallet, its potion into the stock. */
+const takeAnyLoot = (userId: string, loot: LootContent): boolean => {
+  if ('kowens' in loot) return (add(userId, loot.kowens), true);
+  if ('potion' in loot) return (addPotions(userId, loot.potion, 1), true);
+  return takeLootFor(userId, loot);
+};
+
+/** A Halloween reward (a Mikko find, a reunite): Kowens into the wallet, Kusing and Low Repair Kits into the combat bag
+ *  (the kits by mail from `from` when it's full), a potion into the stock. Whether the kits went by mail. */
+function giveHalloween(userId: string, reward: HalloweenReward, from: string): { kitsByMail: boolean } {
+  if (reward.kowens) add(userId, reward.kowens);
+  if (reward.potion) addPotions(userId, reward.potion, 1);
+  const data = loadItemData();
+  const kit = data.defs.get('low-repair-kit');
+  const fitted = withItems(userId, (st) => {
+    st.kusing += reward.kusing;
+    return !reward.repairKits || !kit || addToBag(data, st.bag, newItem(data.stats, kit, newUid(), reward.repairKits), newUid);
+  });
+  if (fitted || !kit) return { kitsByMail: false };
+  sendMail([userId], { from, title: 'Your Low Repair Kit', body: 'Your bag was full, so it came by mail.', kowens: 0, kusing: 0, items: [{ defId: 'low-repair-kit', count: reward.repairKits }] }, null);
+  return { kitsByMail: true };
+}
+
+/** The look a member shows everyone: their saved look with their worn cosmetics on it. */
 const lookOf = (userId: string): OutfitData | null => {
   const o = getOutfit(userId);
-  return o && withCosmetics(o, cosmeticHatOf(loadCosmeticHats(), cosmeticsOf(userId)));
+  return o && withWorn(userId, o);
 };
 import { enhanceFeedLine, parseForgeAction } from './forge.js';
 import { loadItemData } from './stats-data.js';
@@ -827,7 +863,7 @@ export function startWebServer(client: Client): void {
         }
         if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
         if (req.method === 'GET') return send(res, 200, JSON.stringify(townParlor(userId)));
-        const result = body && parlorAction(userId, body, (id, outfit) => town?.restyle(id, withCosmetics(outfit, cosmeticHatOf(loadCosmeticHats(), cosmeticsOf(id))), titleOf(id)));
+        const result = body && parlorAction(userId, body, (id, outfit) => town?.restyle(id, withWorn(id, outfit), titleOf(id)));
         if (!result) return send(res, 400, '{"error":"invalid change"}');
         return send(res, 200, JSON.stringify(result));
       }
@@ -1026,6 +1062,10 @@ export function startWebServer(client: Client): void {
     let toDiscord: (userId: string, nickname: string, text: string, megaphone: boolean, gm?: boolean) => void = () => {};
     refundHeldBets(); // an arena match the bot didn't finish: both get their stake back
     const slumsMap = loadTownMap('slums'); // the Slums
+    const H = loadHalloween();
+    const halloween = new Halloween(H.data, H.maps, kvLoad<HalloweenSaved | null>(HALLOWEEN_KV, null), (st) => kvSave(HALLOWEEN_KV, st));
+    const slumsMobMap = loadMobMap('slums');
+    slumsMobMap.mobZones = [...(slumsMobMap.mobZones ?? []), Halloween.eventZone(slumsMobMap.size)];
     const skillLevels = Object.fromEntries(CLASSES.map((c) => [c.id, c.skills.map((k) => k.level)]));
     // The Scrap Warrens: runs a restart ended before any boss fell there give their openers' tickets back (a boss down
     // spends it; runs saved before `spent` existed: unless Barong-Barong fell, as then).
@@ -1044,7 +1084,11 @@ export function startWebServer(client: Client): void {
       memory: townMemory(),
       map: loadTownMap(),
       rooms: { hood: hoodTownMap, slums: () => slumsMap },
-      mobs: { slums: (slumsRoom = new MobRoom(loadMobMap('slums'), Math.random, skillLevels, loadSkillShapes(), loadMobKinds(), loadGolemArt())) },
+      // (The Halloween event's mobs live in the Slums' room too: its director runs them, in a zone of their own.)
+      mobs: { slums: (slumsRoom = new MobRoom(slumsMobMap, Math.random, skillLevels, loadSkillShapes(), loadMobKinds(), loadGolemArt(), undefined, undefined, { director: halloween.director })) },
+      // The Halloween event (events/halloween.json; its schedules kept in kv 'halloween'): rewards into the wallet, the
+      // combat bag (the kits by mail when it's full) and the potion stock.
+      halloween: { event: halloween, give: giveHalloween },
       // Runs of the Scrap Warrens: the ticket from the combat bag (back if a run ends before a boss falls), the open runs
       // kept (refunds after a restart).
       // Aling Nena's quest: a real run needs it done; a practice run uses her Practice Warren Ticket and its last boss drops
@@ -1069,7 +1113,8 @@ export function startWebServer(client: Client): void {
         },
       },
       // Loot, HP/MP Potions and trades: their combat bag and Kusing (saved with the character; trades logged in `trades`).
-      items: { take: takeLootFor, usePotion: usePotionFor, state: combatOf, drop: dropItemFor, trade: tradeFor },
+      // (An event's Kowens and potions on the ground go to the wallet and the potion stock; timed items run out.)
+      items: { take: takeAnyLoot, usePotion: usePotionFor, state: combatOf, drop: dropItemFor, trade: tradeFor, expire: expiredFor },
       // Pets: Pet XP for the pet out from hits on monsters (saved on the pet item).
       pets: {
         xp: (userId, n) => {

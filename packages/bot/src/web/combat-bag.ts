@@ -1,21 +1,4 @@
-import {
-  type AdventureState,
-  type CombatItemDef,
-  type GearRarity,
-  type Item,
-  type ItemData,
-  addToBag,
-  bagRoom,
-  isGearDef,
-  itemStats,
-  newItem,
-  rollGear,
-  stackLimit,
-  takeKind,
-  dropRefusal,
-  boxPrice,
-  petRules,
-} from '@mikazuki/shared';
+import { type AdventureState, type CombatItemDef, type GearRarity, type Item, type ItemData, addToBag, bagRoom, isGearDef, itemStats, newItem, rollGear, stackLimit, takeKind, dropRefusal, boxPrice, petRules, type EventPotion } from '@mikazuki/shared';
 import { loadDungeons } from './stats-data.js';
 
 // 💰 A character's combat bag and Kusing wallet, pure (the bot keeps them with the character, web/adventure.ts; the game's
@@ -27,15 +10,17 @@ import { loadDungeons } from './stats-data.js';
 /** The parts of a character that hold items and money. */
 export type CombatItems = Pick<AdventureState, 'equipped' | 'cosmetics' | 'bag' | 'kusing' | 'pet'>;
 
-/** What lies on the ground: Kusing, or an item. */
-export type LootContent = { kusing: number } | { item: Item };
+/** What lies on the ground: Kusing, an item, or (an event's: Biikko Kalabasa's) Kowens or a Discord buff potion. */
+export type LootContent = { kusing: number } | { item: Item } | { kowens: number } | { potion: EventPotion };
 
-/** Picks loot up: Kusing into the wallet, an item into the bag (false, nothing taken, when it has no room). */
+/** Picks loot up: Kusing into the wallet, an item into the bag (false, nothing taken, when it has no room). Kowens and
+ *  potions aren't the combat bag's: the bot's wallet and potion stock take them (web/server.ts), never this (false). */
 export function takeLoot(data: ItemData, c: CombatItems, loot: LootContent, uid: () => string): boolean {
   if ('kusing' in loot) {
     c.kusing += Math.max(0, Math.floor(loot.kusing));
     return true;
   }
+  if (!('item' in loot)) return false;
   return addToBag(data, c.bag, structuredClone(loot.item), uid);
 }
 

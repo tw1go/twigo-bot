@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "note": "Halloween 2026 event (spec for twigo-bot data/events/halloween.json). Times are Philippine time (UTC+8). Numbers marked in halloween-event-plan.md as Claude defaults are waiting on Mac's OK.",
+  "id": "halloween-2026",
+  "name": "Halloween in Mikazuki",
+  "startsAt": null,
+  "startsAtNote": "ISO time with +08:00, e.g. \"2026-10-25T18:00:00+08:00\". null = the event is off (dev: ?halloween=on turns it on locally).",
+  "endsAt": "2026-11-04T23:59:59+08:00",
+  "potions": ["swerte", "tago", "kalawang"],
+  "repoNote": "Repo copy (17 Oct 2026, Mac): no spawn announcements, so biikko.announceSpawn and manananggal.announceAppear are left out; mirror this in the art folder's copy.",
+  "potionsNote": "The bot's existing potions (packages/bot/src/potions/potions.ts POTIONS: Swerte Elixir, Tago Tonic, Kalawang Potion), given with addPotions. One is picked at random, equal chances.",
+
+  "mikko": {
+    "name": "Mikko Kalabasa",
+    "maps": ["town", "slums"],
+    "oneAtATime": true,
+    "respawnMinutes": [15, 30],
+    "hideRules": "a walkable tile right next to a tree, bush, fern, rock or junk prop; never on the plaza, a path, a door tile, inside the Slums' safe zone or within 6 tiles of a player when it hides",
+    "clickReach": 2,
+    "rewards": {
+      "kowens": [3, 5],
+      "kusing": 100000,
+      "lowRepairKit": { "chance": 0.30, "count": 1 },
+      "potion": { "chance": 1.0, "count": 1 }
+    },
+    "announce": "{name} found Mikko Kalabasa!"
+  },
+
+  "biikko": {
+    "name": "Biikko Kalabasa",
+    "title": "Legendary",
+    "map": "slums",
+    "level": 15,
+    "hp": 100000,
+    "def": "same as the Scrapheap Golem's",
+    "attacks": false,
+    "speedTilesPerSec": 0.6,
+    "wander": "anywhere walkable on height 1 outside the safe zone and the golem pit; picks a spot 4-10 tiles away, walks there, pauses 3-8 s",
+    "healAfterSecondsUnhit": 300,
+    "respawnMinutes": [60, 180],
+    "firstSpawn": "10 minutes after the event starts (or after a restart while it's down: keep the saved schedule)",
+    "loot": {
+      "owners": "the last hitter and their party members in the Slums",
+      "openAfterSeconds": 10,
+      "kowens": [20, 30],
+      "kusing": 500000,
+      "lowRepairKit": { "chance": 0.50, "count": [2, 3] },
+      "potion": { "chance": 1.0, "count": 1 },
+      "warrenTicket": { "chance": 0.25, "count": 1 },
+      "witchCosmetic": { "chance": 0.50, "pick": ["witch-hat-5d", "witch-robe-5d"], "days": 5 }
+    },
+    "announceKill": "{name} landed the last hit on Biikko Kalabasa!"
+  },
+
+  "manananggal": {
+    "name": "Manananggal",
+    "everyMinutes": [60, 180],
+    "lowerStaysMinutes": 60,
+    "lowerSpots": [[51, 60], [26, 63], [24, 5], [17, 13], [66, 13], [9, 58]],
+    "lowerSpotsNote": "town tiles beside groves, away from the plaza (checked walkable in maps/town.json); Claude Code re-checks each and drops any that are blocked or behind a building",
+    "upper": {
+      "map": "slums",
+      "level": 14,
+      "hp": 30000,
+      "aggro": "passive until hit",
+      "flies": true,
+      "speedTilesPerSec": 2.2,
+      "attack": "Claw Swipe: one target in front, every 1.8 s, the mob table's normal ATK for its level"
+    },
+    "carry": "the killer gets the dazed upper half floating behind them (not an item); it follows them across maps until they reach the lower half, log out, or the lower half's time runs out",
+    "reuniteReach": 2,
+    "rewards": {
+      "kowens": [5, 10],
+      "kusing": 100000,
+      "lowRepairKit": { "chance": 1.0, "count": 1 }
+    },
+    "announceReunite": "{name} reunited the Manananggal! It flew off into the night."
+  },
+
+  "cosmetics": {
+    "witch-hat-5d": { "name": "Witch Hat", "place": "head", "hatKey": "witch", "days": 5 },
+    "witch-robe-5d": { "name": "Witch Robe", "place": "body", "topKey": "witchrobe", "hidesBottom": true, "days": 5 }
+  }
+}

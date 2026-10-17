@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { AdventureState, ClassesFile, EquipPlace, Item, QuestDef, QuestReward, QuestsFile, StatName, TownAdventureResponse, TownEquipAction, TownForgeAction, TownForgeResponse, TownPointsAction, TownQuestAction, TownSkillsAction, CosmeticPlace, TownPetAction } from '@mikazuki/shared';
-import { addToBag, advanceCollects, heldCount, objectiveCount, offeredBy, takeFromBag } from '@mikazuki/shared';
+import { addToBag, advanceCollects, expireItems, itemName, heldCount, objectiveCount, offeredBy, takeFromBag } from '@mikazuki/shared';
 import { STAT_NAMES, bagSlots, classSkills, classBuffs, buffSkillLevels, damageSkillLevels, skillLevelOf, equipFromBag, giveGear, giveQuestRewards, giveQuestPieces, questKill, readyToReport, withLeveling, missingTraining, moveUnlock, newItem, placesFor, swapTrainingGear, trainingGear, takeKind, unequipToBag, wearCheck, COSMETIC_PLACES, wearCosmetic, unwearCosmetic, gainPetXp, petAction, petIdOf, petRules } from '@mikazuki/shared';
 import { db } from '../db/db.js';
 import { type LevelGain, type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView, raiseSkill, refundPoints, resetSkillPoints, resetStatPoints, spendPoint } from './progress.js';
@@ -278,6 +278,7 @@ type ItemRow = {
   slot: number | null;
   xp: number;
   points: string | null;
+  expires_at: number | null;
 };
 const getStmt = db.prepare<[string], Row>(
   'SELECT class, quests, level, xp, str_points, dex_points, int_points, skill_levels, skill_points, training_armor_given, kusing FROM adventurers WHERE user_id = ?',
@@ -291,10 +292,10 @@ const setStmt = db.prepare(
      skill_levels = excluded.skill_levels, skill_points = excluded.skill_points, training_armor_given = excluded.training_armor_given, kusing = excluded.kusing,
      updated = excluded.updated`,
 );
-const itemsStmt = db.prepare<[string], ItemRow>('SELECT uid, def_id, level, rarity, plus, broken, bound, luck, agimats, lines, stat, lock, count, place, slot, xp, points FROM items WHERE owner = ? ORDER BY slot, created, uid');
+const itemsStmt = db.prepare<[string], ItemRow>('SELECT uid, def_id, level, rarity, plus, broken, bound, luck, agimats, lines, stat, lock, count, place, slot, xp, points, expires_at FROM items WHERE owner = ? ORDER BY slot, created, uid');
 const dropItemsStmt = db.prepare('DELETE FROM items WHERE owner = ?');
 const addItemStmt = db.prepare(
-  `INSERT INTO items (uid, owner, def_id, level, rarity, plus, broken, bound, luck, agimats, lines, stat, lock, count, place, slot, created, xp, points) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  `INSERT INTO items (uid, owner, def_id, level, rarity, plus, broken, bound, luck, agimats, lines, stat, lock, count, place, slot, created, xp, points, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 );
 
 const fromRow = (r: ItemRow): Item => ({
@@ -312,6 +313,7 @@ const fromRow = (r: ItemRow): Item => ({
   ...(r.stat ? { stat: r.stat as Item['stat'] } : {}),
   ...(r.lock ? { lock: r.lock as Item['lock'] } : {}),
   ...(r.points !== null ? { xp: r.xp, points: JSON.parse(r.points) } : {}),
+  ...(r.expires_at !== null ? { expiresAt: r.expires_at } : {}),
 });
 
 /** Their items: worn by place (gear, and cosmetics as "costume:<place>"), and the combat bag in order. */
@@ -341,7 +343,28 @@ function load(userId: string): AdventureState {
     skills: JSON.parse(row.skill_levels),
     skillPoints: row.skill_points,
   });
-  return { cls: row.class, quests: JSON.parse(row.quests), ...loadItems(userId), kusing: row.kusing, progress, trainingArmorGiven: !!row.training_armor_given };
+  const s: AdventureState = { cls: row.class, quests: JSON.parse(row.quests), ...loadItems(userId), kusing: row.kusing, progress, trainingArmorGiven: !!row.training_armor_given };
+  // Timed items that ran out (CONTEXT.md Timed cosmetic): gone wherever they are, on every load; the member is told on
+  // their next look (expiredFor: login, the town's sweep).
+  const gone = expireItems(s, Date.now());
+  if (gone.length) {
+    const data = loadItemData();
+    expired.set(userId, [...(expired.get(userId) ?? []), ...gone.map((g) => ({ name: itemName(data, g.item), worn: !!g.place }))]);
+    save(userId, s);
+  }
+  return s;
+}
+
+/** Timed items taken out since a member was last told, by member. */
+const expired = new Map<string, { name: string; worn: boolean }[]>();
+
+/** The timed items of a member's that have run out since they were last told (each once: the town's sweep and /me tell
+ *  them), anything due taken out now. */
+export function expiredFor(userId: string): { name: string; worn: boolean }[] {
+  load(userId);
+  const gone = expired.get(userId) ?? [];
+  expired.delete(userId);
+  return gone;
 }
 
 /** Saves it (and works out its progress's banked points again: a class may have come or gone), its items with it (all of
@@ -354,7 +377,7 @@ const save = db.transaction((userId: string, s: AdventureState): void => {
   const now = Date.now();
   const put = (i: Item, place: string | null, slot: number | null) =>
     addItemStmt.run(i.uid, userId, i.defId, i.level, i.rarity, i.plus, i.broken ? 1 : 0, i.bound ? 1 : 0, i.luck, JSON.stringify(i.agimats), JSON.stringify(i.lines), i.stat ?? null, i.lock ?? null, i.count, place, slot, now,
-      i.xp ?? 0, i.points ? JSON.stringify(i.points) : null);
+      i.xp ?? 0, i.points ? JSON.stringify(i.points) : null, i.expiresAt ?? null);
   for (const [place, item] of Object.entries(s.equipped)) if (item) put(item, place, null);
   for (const [place, item] of Object.entries(s.cosmetics)) if (item) put(item, COSTUME_PLACE + place, null);
   if (s.pet) put(s.pet, PET_PLACE, null);

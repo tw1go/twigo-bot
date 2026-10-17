@@ -588,3 +588,49 @@ _Avoid_: gate, door
 
 **Checkpoint**:
 Where you come back after dying in a run: the start of the furthest area the run has opened.
+
+## Events
+
+**Event**:
+A limited-time happening in the game with its own activities and rewards (Halloween in Mikazuki); everything of it
+exists only during its event window.
+_Avoid_: season, festival
+
+**Event window**:
+The span an event is on: from its start time (none yet = off) to its end time, both fixed instants in Philippine time.
+
+**Event line**:
+An event's announcement in the town chat (gold, with the event's icon), seen in every area; never posted in Discord,
+never kept for people arriving.
+_Avoid_: system line (the system feed's, which also goes to Discord), banner
+
+**Timed cosmetic**:
+A cosmetic that lasts a set number of days from the moment it first enters your bag, then disappears wherever it is
+(Costume tab or worn). Bound from that moment; it can be destroyed but never traded, dropped or sold.
+_Avoid_: rental, temporary item
+
+**Event mob**:
+A mob that exists only during an event window: Biikko Kalabasa and the Manananggal's upper half. Not a field boss.
+_Avoid_: field boss (that's the Scrapheap Golem), event boss
+
+**Mikko Kalabasa**:
+The Halloween event's small golden pumpkin, hidden in the Town or the Slums, one at a time for the whole server; the
+first player to click it within reach finds it.
+_Avoid_: pumpkin (alone), Mikko (fine in talk)
+
+**Biikko Kalabasa**:
+The Halloween event's big jack-o'-lantern event mob in the Slums: it wanders and never fights back; its loot is held
+for the last hitter and their party, then anyone's.
+
+**Manananggal**:
+The Halloween event's split creature: its **lower half** stands among the trees in town for a while, its **upper half**
+flies in the Slums as an event mob. A round ends when they're reunited, or when it flies away.
+_Avoid_: ghost, witch
+
+**Dazed** (the upper half):
+The Manananggal's upper half after it's beaten, floating behind the player who landed the last hit, wherever they go;
+not an item.
+
+**Reunite**:
+Bringing the dazed upper half to the lower half and clicking it within reach: the round's reward.
+_Avoid_: return, deliver (that's a quest objective)

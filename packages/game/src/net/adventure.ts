@@ -101,7 +101,7 @@ export interface AdventureChange {
   /** Training armor given with it. */
   gear?: string[];
   /** Picked up (loot): Kusing, or an item. */
-  got?: { kusing?: number; item?: Item };
+  got?: LootGot;
   /** A quest's rewards, just given (the quest just completed, or one finished before it had any). */
   rewards?: QuestReward[];
   /** Mini boss quests' +5 pieces, just given (with the report, or on a visit for one finished before). */

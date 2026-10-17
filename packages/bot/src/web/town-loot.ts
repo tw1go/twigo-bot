@@ -1,4 +1,4 @@
-import type { ItemData, TownLoot } from '@mikazuki/shared';
+import type { ItemData, LootGot, TownLoot } from '@mikazuki/shared';
 import { LOOT_REACH, type LevelingData, itemStats, miniBossRules, numbersIn } from '@mikazuki/shared';
 import type { LootContent } from './combat-bag.js';
 import { golemLoot, miniLoot, mobDrops } from './loot.js';
@@ -30,6 +30,9 @@ export function splitKusing(amount: number, members: string[]): Map<string, numb
 
 /** Loot lies on the ground this long. */
 export const LOOT_MS = 2 * 60_000;
+
+/** A piece of loot's content as a pickup line and the ground show it (one of Kusing, an item, Kowens, a potion). */
+export const gotOf = (c: LootContent): LootGot => ('kusing' in c ? { kusing: c.kusing } : 'kowens' in c ? { kowens: c.kowens } : 'potion' in c ? { potion: c.potion } : { item: c.item });
 
 export interface Loot {
   id: string;
@@ -120,10 +123,10 @@ export class LootRoom {
     return out;
   }
 
-  /** Loot laid at `at` for `owners` (a roll everyone passed on; dev's rolls): theirs for the head start, then anyone's,
-   *  like a kill's. */
-  add(content: LootContent, at: [number, number], owners: string[], now: number): Loot {
-    const loot: Loot = { id: `l${++this.n}`, col: at[0], row: at[1], content, owners, personal: false, opensAt: now + this.reserveMs, goneAt: now + LOOT_MS };
+  /** Loot laid at `at` for `owners` (a roll everyone passed on; dev's rolls; an event mob's set): theirs for the head start
+   *  (`reserveMs`: a kill's, unless given), then anyone's, like a kill's. */
+  add(content: LootContent, at: [number, number], owners: string[], now: number, reserveMs = this.reserveMs): Loot {
+    const loot: Loot = { id: `l${++this.n}`, col: at[0], row: at[1], content, owners, personal: false, opensAt: now + reserveMs, goneAt: now + LOOT_MS };
     this.all.set(loot.id, loot);
     return loot;
   }
@@ -186,7 +189,7 @@ export class LootRoom {
       id: l.id,
       col: l.col,
       row: l.row,
-      ...('kusing' in l.content ? { kusing: l.content.kusing } : { item: l.content.item }),
+      ...gotOf(l.content),
       mine,
       ...(!mine && Number.isFinite(l.opensAt) ? { opensIn: Math.max(0, l.opensAt - now) } : {}),
     };
