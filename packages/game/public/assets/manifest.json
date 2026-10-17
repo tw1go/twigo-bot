@@ -1019,7 +1019,7 @@
       ],
       "hatPattern": "characters/layers/hat/char-hat-{item}-{anim}-{dir}.png",
       "hatClipPattern": "characters/layers/hat/char-hatclip-{item}-{anim}-{dir}.png",
-      "hatNote": "Hats are recoloured on the MAIN ramp (DCDCF0,A8A8C8,74749A,48486A). beanie and cap ship a clip mask per frame: white pixels = hide the hair layer there (erase hair under the hat) before drawing the hat. ribbon has no clip mask and hides no hair. When a clipping hat is worn with 'buns', draw 'crop' instead (hatHairFallback). Cosmetic hats (cosmeticHats: item id → hat key, the Lamp-head Hat's lamp) are never in hats: the creator, the Parlor, randomOutfit and the NPCs never offer them; only wearing the item puts one on a look. fixedColourHats use their own colours (no hat ramp swap). litHats ship a hatlit sheet per frame (hatLitPattern: the glass and bulb only), drawn untinted over the doll at night with litGlow (fx) centred on the glass, offset px below the head's top. A hat with a hatCanvas entry (the Witch Hat's witch) is drawn from a bigger cell (size) with the doll's 32x48 cell at offset inside it: each frame goes at the doll's position less offset; its clip masks stay 32x48, zero offset. Hats without an entry are 32x48 at zero offset. While any head cosmetic's hat is worn (cosmeticHats: the Lamp-head Hat, the Witch Hat) the hair layer isn't drawn at all (Mac's rule); the creator's hats keep clipping hair with their masks.",
+      "hatNote": "Hats are recoloured on the MAIN ramp (DCDCF0,A8A8C8,74749A,48486A). beanie and cap ship a clip mask per frame: white pixels = hide the hair layer there (erase hair under the hat) before drawing the hat. ribbon has no clip mask and hides no hair. When a clipping hat is worn with 'buns', draw 'crop' instead (hatHairFallback). Cosmetic hats (cosmeticHats: item id → hat key, the Lamp-head Hat's lamp) are never in hats: the creator, the Parlor, randomOutfit and the NPCs never offer them; only wearing the item puts one on a look. fixedColourHats use their own colours (no hat ramp swap). litHats ship a hatlit sheet per frame (hatLitPattern: the glass and bulb only), drawn untinted over the doll at night with litGlow (fx) centred on the glass, offset px below the head's top. A hat with a hatCanvas entry (the Witch Hat's witch) is drawn from a bigger cell (size) with the doll's 32x48 cell at offset inside it: each frame goes at the doll's position less offset; its clip masks stay 32x48, zero offset. Hats without an entry are 32x48 at zero offset. Head cosmetics' hats draw over the hair like any other hat, so long hair still shows below them (Mac, 17 Oct 2026): the lamp clips it with its masks; the witch doesn't (hatClips false: the art folder's char-hatclip-witch-* masks are solid white, made when head cosmetics hid all the hair; its big hat drawn over the head covers what it should).",
       "hatHairFallback": {
         "buns": "crop"
       },
@@ -1028,7 +1028,7 @@
         "cap": true,
         "ribbon": false,
         "lamp": true,
-        "witch": true
+        "witch": false
       },
       "cosmeticHats": {
         "lamp-hat": "lamp",
