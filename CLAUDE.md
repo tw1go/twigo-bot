@@ -1000,7 +1000,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   the legs with their shadow and hover name, the dazed upper half's `carried` anim a tile behind its carrier, the
   bursts), Biikko in `world/mobs.ts` (`MobDef.glow`: its glow sheet additive over it, flickering; its name in the
   darkest orange with its "Legendary" line; `Mobs.events`) with a `BossBar` near it, `ui/halloween.ts` (the HUD's
-  `.th-event` badge "Halloween · ends Nov 4" and its panel, the pop-ups), chat `event` lines with the 16 px Mikko. Guide
+  Halloween board `halloweenTimer`, beside the jackpot counter and made like it: lights, "Halloween", Mikko, "Ends Nov 4"
+  and the time left; a phone tile with the rest; its panel 600 px wide, a row per activity; the pop-ups), chat `event` lines with the 16 px Mikko. Guide
   tab Halloween. Dev: `?halloween=on` (the dev town's `/__halloween`: forced on in memory), `,mikko` (hidden two tiles
   from you), `,biikko` (out beside you in the Slums), `,round`, `,carry` (the upper half yours); `/__halloween?as=
   &biikkohp=1`.

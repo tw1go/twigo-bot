@@ -5,6 +5,7 @@ import { renderPrereg } from '../hud';
 import { fakeLogin, loadMe } from '../session';
 import { playSound } from '../audio/sound';
 import { golemTimer } from './golem-timer';
+import { halloweenTimer } from './halloween';
 import { jackpotTimer } from './jackpot-timer';
 import { raceBox } from './race-box';
 import { hasUnread, loadNews, showNews } from './news';
@@ -312,7 +313,7 @@ export function mountTownHud(o: TownHudOptions): void {
   // Full screen (the website in a browser tab, where the browser allows it: not iPhone Safari; the home screen app and the
   // desktop app are full screen already).
   if (document.fullscreenEnabled && !isHomeScreenApp() && !isDesktopApp()) buttons.append(fullscreenButton());
-  corner.append(top, buttons, el('div', 'th-event'), el('div', 'th-buffs')); // (ui/halloween.ts fills the event slot, ui/buff-tray.ts the buffs one)
+  corner.append(top, buttons, el('div', 'th-buffs')); // (ui/buff-tray.ts fills the buffs slot)
   root.append(left, corner);
 
   if (o.me || fakeLogin()) {
@@ -333,15 +334,17 @@ export function mountTownHud(o: TownHudOptions): void {
     const race = raceBox();
     // The golem timer (the Slums only: hidden until the town says when its golem rises) the same way, beside them.
     const golem = golemTimer(o.golemHead);
-    // On phones the three stack in one column under the Kowens and shovels, all as wide as the widest.
+    // The Halloween board (ui/halloween.ts: only while the event is on) the same way, beside them.
+    const halloween = halloweenTimer();
+    // On phones they stack in one row of tiles under the Kowens and shovels.
     const stack = el('div', 'th-events');
     const phone = matchMedia('(max-width: 560px), (max-height: 500px)');
     const place = () => {
       if (phone.matches) {
-        stack.append(timer, race, golem);
+        stack.append(timer, race, golem, halloween);
         left.insertBefore(stack, row.nextSibling);
       } else {
-        top.prepend(golem, race, timer);
+        top.prepend(halloween, golem, race, timer);
         stack.remove();
       }
     };
