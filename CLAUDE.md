@@ -179,7 +179,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   each to the nearest open grass tile nothing draws over: the art folder's six stood behind tree crowns, `lowerSpotsNote`),
   `items/items.json` `witch-hat-5d` / `witch-robe-5d` (`lastsDays`), the manifest's `characters.wardrobe` `hatCanvas`,
   `cosmeticTops`, `cosmeticHidesBottom` and the witch entries in `cosmeticHats` / `fixedColourHats` / `hatClips`, its
-  `mobs` `biikko-kalabasa` (with `glow`) and `manananggal-upper`, `props` `mikko-kalabasa` / `manananggal-lower`, `fx`
+  `mobs` `biikko-kalabasa` (with `glow`) and `manananggal-upper`, `props` `mikko-kalabasa` / `manananggal-lower` (its `scale`
+  0.6, and mobs.json's upper half `scale` 0.65 + `top`: both were too big beside a character, Mac), `fx`
   `fx-mikko-found` / `fx-manananggal-reunite`, `ui.eventHalloween`, `events`, and `mobs/mobs.json`'s two kinds.
 - `maps/warrens.json` is built here (`packages/game/scripts/build-warrens.ts` from `scripts/warrens/warrens-layout.json`,
   the art folder's layout copied in): run it again after changing either.

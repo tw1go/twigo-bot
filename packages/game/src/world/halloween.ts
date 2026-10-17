@@ -50,6 +50,8 @@ interface PropArt {
   anchor: Vec2;
   animation?: { frames: number; fps: number; loop: boolean };
   shadow?: Vec2;
+  /** Drawn at this scale (the lower half: 0.6), its shadow too. */
+  scale?: number;
 }
 
 export class HalloweenWorld {
@@ -91,7 +93,14 @@ export class HalloweenWorld {
     }
     const U = this.upperDef;
     if (U) for (const dir of U.directions) queueSheet(L, T, this.carriedFile(U, dir), U.size[0], U.size[1]);
+    // (The mobs' rules, for the upper half's scale: the Slums load them anyway, the town doesn't.)
+    if (!this.scene.cache.json.exists('mob-data') && typeof this.M.mobs?.data === 'string') L.json('mob-data', this.M.mobs.data);
     if (!L.isLoading()) L.start();
+  }
+
+  /** The upper half's scale (mobs.json, as it's drawn fighting), once its rules are in. */
+  private get upperScale(): number {
+    return ((this.scene.cache.json.get('mob-data') ?? {})[UPPER] as { scale?: number } | undefined)?.scale ?? 1;
   }
 
   private carriedFile(U: MobDef, dir: string): string {
@@ -149,7 +158,7 @@ export class HalloweenWorld {
   private sprite(id: string, col: number, row: number): Phaser.GameObjects.Sprite | null {
     const p = this.prop(id);
     if (!p) return null;
-    const s = this.scene.add.sprite(0, 0, p.file).setOrigin(p.anchor[0] / p.size[0], p.anchor[1] / p.size[1]);
+    const s = this.scene.add.sprite(0, 0, p.file).setOrigin(p.anchor[0] / p.size[0], p.anchor[1] / p.size[1]).setScale(p.scale ?? 1);
     if (!this.scene.textures.exists(p.file)) s.setVisible(false); // (shown once its sheet is in: update)
     this.place(s, col + 0.5, row + 0.5);
     this.onSpawn(s);
@@ -187,13 +196,14 @@ export class HalloweenWorld {
     const s = this.sprite('manananggal-lower', col, row);
     if (!s) return;
     const p = this.prop('manananggal-lower')!;
-    const shadow = p.shadow ? this.shadowImage(p.shadow) : null;
+    const k = p.scale ?? 1;
+    const shadow = p.shadow ? this.shadowImage([Math.round(p.shadow[0] * k), Math.round(p.shadow[1] * k)]) : null;
     if (shadow) {
       this.place(shadow, col + 0.5, row + 0.5);
       shadow.setDepth(s.depth - 0.2);
     }
     const label = new BuildingLabel(this.scene, 'Manananggal (lower half)', s.x);
-    s.on('pointerover', () => label.show(s.y - p.anchor[1] + 6));
+    s.on('pointerover', () => label.show(s.y - (p.anchor[1] - 6) * k));
     s.on('pointerout', () => label.show(null));
     this.lower = { sprite: s, shadow, label, col, row };
     this.animate(s, 'manananggal-lower');
@@ -328,7 +338,7 @@ export class HalloweenWorld {
       const key = this.anim(`hw:carried:${dir}`, this.carriedFile(U, dir), U.size, carried);
       if (!key) continue;
       if (d.sprite.anims.currentAnim?.key !== key) d.sprite.play(key, true);
-      d.sprite.setVisible(true);
+      d.sprite.setScale(this.upperScale).setVisible(true);
       this.place(d.sprite, d.col, d.row);
     }
   }

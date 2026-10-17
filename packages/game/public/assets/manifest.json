@@ -16121,7 +16121,8 @@
         22,
         7
       ],
-      "note": "Halloween 2026: the Manananggal's lower half (its wisps circle in the art; no bob). The anchor is the ground point under her (the art's _sheets.csv: 32,58); a small shadow there."
+      "scale": 0.6,
+      "note": "Halloween 2026: the Manananggal's lower half (its wisps circle in the art; no bob). The anchor is the ground point under her (the art's _sheets.csv: 32,58); a small shadow there. Drawn at scale 0.6 (its art is 53 px tall, a character about 37: Mac found it too tall); its shadow scales with it."
     }
   },
   "fx": {
