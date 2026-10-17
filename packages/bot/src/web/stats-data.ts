@@ -20,6 +20,11 @@ let cosmeticHats: Record<string, string> | undefined;
  *  head cosmetic puts on a look, and what a saved look may never hold. */
 export const loadCosmeticHats = (): Record<string, string> => (cosmeticHats ??= asset<{ characters?: { wardrobe?: { cosmeticHats?: Record<string, string> } } }>('manifest.json').characters?.wardrobe?.cosmeticHats ?? {});
 
+let cosmeticTops: Record<string, string> | undefined;
+/** Cosmetic tops (wardrobe.cosmeticTops: item id → top key; the Witch Robe's witchrobe): what a worn body cosmetic puts
+ *  on a look, and what a saved look may never hold. */
+export const loadCosmeticTops = (): Record<string, string> => (cosmeticTops ??= asset<{ characters?: { wardrobe?: { cosmeticTops?: Record<string, string> } } }>('manifest.json').characters?.wardrobe?.cosmeticTops ?? {});
+
 let leveling: LevelingData | null = null;
 /** classes/leveling.json: the mini bosses and the Tanod's leveling quests (read once). */
 export const loadLeveling = (): LevelingData => (leveling ??= asset<LevelingData>('classes/leveling.json'));

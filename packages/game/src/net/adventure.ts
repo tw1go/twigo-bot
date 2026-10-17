@@ -1,4 +1,4 @@
-import {
+import { type LootGot,
   type AdventureState,
   type AnyItemDef,
   type CharacterProgress,
@@ -53,7 +53,7 @@ import {
   gearMismatch,
   xpToNext,
   type CosmeticPlace,
-  cosmeticHatOf,
+  cosmeticHatOf, cosmeticTopOf,
   withCosmetics,
   wearCosmetic,
   unwearCosmetic,
@@ -101,7 +101,7 @@ export interface AdventureChange {
   /** Training armor given with it. */
   gear?: string[];
   /** Picked up (loot): Kusing, or an item. */
-  got?: { kusing?: number; item?: Item };
+  got?: LootGot;
   /** A quest's rewards, just given (the quest just completed, or one finished before it had any). */
   rewards?: QuestReward[];
   /** Mini boss quests' +5 pieces, just given (with the report, or on a visit for one finished before). */
@@ -402,8 +402,8 @@ export const takeOffCosmetic = (place: CosmeticPlace) => act('/town/equip', { ac
 
 /** The look you show, from your saved one: a worn head cosmetic's hat on it (shared cosmetics.ts; the manifest's
  *  cosmeticHats). */
-export function lookWithCosmetics<O extends { hat?: string; hatColour?: string }>(outfit: O, hats: Record<string, string>): O {
-  return withCosmetics(outfit, cosmeticHatOf(hats, state?.cosmetics));
+export function lookWithCosmetics<O extends { hat?: string; hatColour?: string; top: string }>(outfit: O, hats: Record<string, string>, tops?: Record<string, string>): O {
+  return withCosmetics(outfit, cosmeticHatOf(hats, state?.cosmetics), cosmeticTopOf(tops, state?.cosmetics));
 }
 
 /** The name of the head cosmetic worn (the Parlor's Hat row says so), or null. */

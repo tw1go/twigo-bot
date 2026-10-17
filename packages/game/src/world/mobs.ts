@@ -11,6 +11,7 @@ import type { FxLayers, Pt } from './fx-layers';
 import type { Tile, WalkGrid } from './grid';
 import { type WorldObjects, characterDepth } from './objects';
 import { BuildingLabel } from '../ui/labels';
+import { RARITY_COLOUR } from '../ui/item-art';
 import { LABEL_DEPTH } from './depth';
 
 // Mini bosses (classes/leveling.json; each zone's `miniBosses` spots in the map): their mob's art at miniBoss.scale (its
@@ -160,6 +161,12 @@ export interface Mob {
   kind: string;
   /** A Warrens boss: every hit blocked for now (Crab Tain's Hunker). */
   blockAll: boolean;
+  /** Its glow over it (manifest `glow`: Biikko Kalabasa's candle), its flicker's alpha and when that changes next. */
+  glow: Phaser.GameObjects.Sprite | null;
+  flicker: number;
+  flickerAt: number;
+  /** A line under its name (an event mob's "Legendary"), or null. */
+  subtitle: string | null;
 }
 
 /** What the scene does with a mob's attack (these show it; the server takes the HP). */
@@ -177,6 +184,10 @@ export class Mobs {
   readonly list: Mob[] = [];
   private zoom = 2;
   private target: Mob | null = null;
+  /** Your target now, or null. */
+  get targeted(): Mob | null {
+    return this.target;
+  }
   private ring: Phaser.GameObjects.Graphics | null = null;
   /** The targeted mob changed (null: none): the scene shows the info bar. */
   onTarget: ((m: Mob | null) => void) | null = null;
@@ -362,7 +373,7 @@ export class Mobs {
       sprite, shadow, path: [], restUntil: this.scene.time.now + Phaser.Math.Between(0, REST_MS[1]), label: null, labelUntil: 0,
       hp, dead: false, pose: null, bar: null, shield: null, openUntil: 0, fightUntil: 0, speed: data?.drift?.speed ?? SPEED, slowUntil: 0, asleep: false, lunge: { x: 0, y: 0 },
       enraged: false, add: false, mini: null, radius: data?.radius ?? 0, untouchable: false, hitAt: -Infinity, hurtAt: -Infinity,
-      faces: null, kind: zone.mob, blockAll: false,
+      faces: null, kind: zone.mob, blockAll: false, glow: null, flicker: 1, flickerAt: 0, subtitle: null,
     };
     // A pack's caps start round the point, each on a tile of its own (the server's place comes with its snapshot).
     if (pack?.length) mob.home = this.besideSpawn(mob, pack, id);
@@ -657,9 +668,45 @@ export class Mobs {
       }
       this.showLabel(m);
     }
+    if (this.events?.kinds.has(s.kind!)) {
+      // An event mob (CONTEXT.md Event mob): its event's name as its place; with a title (Biikko Kalabasa's
+      // "Legendary") its name always over it in the darkest orange, the title under it, its HP bar always.
+      zone.name = this.events.name;
+      if (s.title) {
+        m.mini = { name: s.name ?? def.name, colour: RARITY_COLOUR.darkOrange };
+        m.subtitle = s.title;
+        this.showLabel(m);
+      }
+    }
+    if (def.glow) {
+      m.glow = this.scene.add.sprite(0, 0, m.sprite.texture.key).setBlendMode(Phaser.BlendModes.ADD).setScale(m.sprite.scaleX);
+      this.syncGlow(m);
+    }
     if (s.untargetable) this.flag(s.id, true, s.blockAll);
     else if (s.blockAll) m.blockAll = true;
     return m;
+  }
+
+  /** The event mobs' kinds (events/<id>.json) and the event's name, which the target bar shows as where they are. */
+  events: { kinds: Set<string>; name: string } | null = null;
+
+  /** Its glow on the same sheet and frame as its body, where it is, its alpha a candle's flicker (manifest glow.alpha,
+   *  a new one every glow.everyMs) times the body's own (its death fade). */
+  private syncGlow(m: Mob): void {
+    const g = m.glow;
+    const G = m.def.glow;
+    if (!g || !G) return;
+    const shown = m.sprite.visible && !m.asleep;
+    g.setVisible(shown);
+    if (!shown) return;
+    const now = this.scene.time.now;
+    if (now >= m.flickerAt) {
+      m.flicker = Phaser.Math.FloatBetween(G.alpha[0], G.alpha[1]);
+      m.flickerAt = now + G.everyMs;
+    }
+    const key = m.sprite.texture.key.replace(m.def.file.split('{anim}')[0], G.file.split('{anim}')[0]);
+    if (this.scene.textures.exists(key)) g.setTexture(key, m.sprite.frame.name);
+    g.setOrigin(m.sprite.originX, m.sprite.originY).setPosition(m.sprite.x, m.sprite.y).setDepth(m.sprite.depth + 0.01).setAlpha(m.flicker * m.sprite.alpha);
   }
 
   /** The art a server kind is drawn with (a Scrapling: dungeons.json scrapling.art, the golem's). */
@@ -679,6 +726,8 @@ export class Mobs {
       if (m === this.target) this.setTarget(null);
       const parts = [m.sprite, ...(m.shadow ? [m.shadow] : [])];
       this.scene.tweens.killTweensOf(parts);
+      m.glow?.destroy();
+      m.glow = null;
       const drop = () => {
         parts.forEach((p) => p.destroy());
         m.bar?.destroy();
@@ -1005,6 +1054,7 @@ export class Mobs {
         m.sprite.anims.timeScale = 1;
         this.onSpawn(m.sprite); // the night's tint again
       }
+      this.syncGlow(m);
       if (m.dead) continue;
       if (!this.server && !m.path.length && now >= m.restUntil) {
         this.wander(m);
@@ -1203,10 +1253,11 @@ export class Mobs {
   }
 
   private showLabel(m: Mob): void {
-    const name = `${m.mini?.name ?? m.def.name} Lv ${m.level}`;
+    const name = `${m.mini?.name ?? m.def.name} Lv ${m.level}${m.subtitle ? `\n${m.subtitle}` : ''}`;
     if (!m.label) {
       m.label = new BuildingLabel(this.scene, name, m.sprite.x);
       m.label.setZoom(this.zoom);
+      m.label.text.setAlign('center');
     }
     m.label.text.setText(name).setColor(m.mini?.colour ?? TONE[this.tone(m)]);
     m.label.show(this.top(m) + (m.radius ? -10 : 4));

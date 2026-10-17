@@ -30,12 +30,14 @@ export type TownForgeAction =
   /** Training gear, agimats and potions sold from the bag for Kusing (`sellPrice`); `count`: how many of a stack (all of
    *  it without). */
   | { action: 'sell'; item: string; count?: number }
+  /** A timed item (CONTEXT.md Timed cosmetic) thrown away from the bag: it can't be sold, traded or dropped. */
+  | { action: 'destroy'; item: string }
   /** Several at once (the bag's multi-select): every one or none. */
   | { action: 'disassemble-many'; items: string[] }
   | { action: 'sell-many'; items: string[] };
 
 /** What happened: an enhance's success, fail or break, a repair, an embed, a disassembly or a combine. */
-export type ForgeOutcome = 'success' | 'fail' | 'break' | 'repaired' | 'embedded' | 'removed' | 'drawn' | 'applied' | 'disassembled' | 'combined' | 'sold';
+export type ForgeOutcome = 'success' | 'fail' | 'break' | 'repaired' | 'embedded' | 'removed' | 'drawn' | 'applied' | 'disassembled' | 'combined' | 'sold' | 'destroyed';
 
 export interface TownForgeResponse {
   ok: boolean;

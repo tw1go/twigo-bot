@@ -28,6 +28,8 @@ export function queueTown(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Tex
   if (M.classes?.leveling) load.json('leveling', M.classes.leveling);
   // Pets' frame counts (world/pets.ts; their sheets load as a pet first shows).
   if (M.pets?.data) load.json('pet-sheets', M.pets.data);
+  // The Halloween event's rules (world/halloween.ts and ui/halloween.ts; the server says whether it's on).
+  if (M.events?.halloween) load.json('halloween', M.events.halloween);
   // The Scrap Warrens: their data, shutters and effects (Barong-Barong's own art loads near its hall: world/warrens.ts).
   if (map.dungeon) {
     if (M.classes?.dungeons) load.json('dungeons', M.classes.dungeons);

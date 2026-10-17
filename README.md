@@ -42,7 +42,9 @@ for Lv 16–20, played as 20-minute runs alone or as a party with a Warren Ticke
 Shanty Titan; first Aling Nena's side quest, a practice run alone to get her binoculars back from Barong-Barong), with levels, skills and buffs, parties, friends, loot and Kusing,
 gear with agimats and enhancing to +20, trading, and pets (seven to collect from pet boxes, each levelling up with its own
 pet tree of small stat boosts), and a mailbox for letters from the Game Masters (with items, Kusing and Kowens to
-claim; sent from the admin page). The bot runs the multiplayer town (`src/web/town.ts`, a WebSocket
+claim; sent from the admin page). Events switch on for a while: **Halloween** (until Nov 4, 2026; `events/halloween.json`)
+hides Mikko Kalabasa, a golden pumpkin, for the first to find; sends Biikko Kalabasa, a pumpkin that never fights back,
+wandering the Slums; and splits the Manananggal in two, to be reunited; with a 5-day Witch Hat and Witch Robe to drop. The bot runs the multiplayer town (`src/web/town.ts`, a WebSocket
 at `/ws`), so fights, loot and items are decided on the server; the game (`packages/game`) only shows them.
 
 ## What it does — Ancient Battlefield (every Saturday)

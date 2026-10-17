@@ -15,7 +15,7 @@ import { pickForHotbar, potionCooldownKey } from './hotbar';
 import { showRename } from './rename';
 import { openBox } from './pet-tab';
 import { openCube } from './pet-cube';
-import { type ForgePopup, confirmCombine, confirmDisassemble, confirmDisassembleMany, confirmSell, confirmSellMany, forgeFromBag, mountForge } from './forge';
+import { type ForgePopup, confirmCombine, confirmDestroy, confirmDisassemble, confirmDisassembleMany, confirmSell, confirmSellMany, forgeFromBag, mountForge } from './forge';
 import { fragmentsPerWhetstone } from '@mikazuki/shared';
 import { inTrade, tradeBlocked, tradeDrag, tradePut, trading } from './trade';
 
@@ -570,6 +570,8 @@ export class Inventory {
     } else if (def?.kind === 'cosmetic') {
       if (!def.cosmeticPlace) off.add(items.length);
       items.push(['Wear', () => void this.equipment?.wearCosmetic(it.uid)]);
+      // A timed cosmetic can't be sold, traded or dropped: only thrown away (asked first).
+      if (it.expiresAt !== undefined) items.push(['Destroy…', () => void this.destroy(it, cell)]);
     } else if (isCube(it)) {
       items.push(['Open', () => void openCube(it)]);
     } else if (def && !isGearDef(def) && def.opens) {
@@ -711,6 +713,16 @@ export class Inventory {
     this.busy = false;
     if (r) this.message = { text: r.message, ok: r.ok };
     if (this.pickedUid === it.uid && r?.ok) this.pickedUid = null;
+    this.render();
+  }
+
+  /** A timed item thrown away, once they've said yes. */
+  private async destroy(it: Item, cell: HTMLElement | null): Promise<void> {
+    if (this.busy || !(await confirmDestroy(it))) return;
+    this.busy = true;
+    const r = await forgeFromBag({ action: 'destroy', item: it.uid }, cell);
+    this.busy = false;
+    if (r) this.message = { text: r.message, ok: r.ok };
     this.render();
   }
 

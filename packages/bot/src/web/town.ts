@@ -8,15 +8,16 @@ import type { LevelGain } from './progress.js';
 import type { Attacker, MobHit, MobKill, MobRoom } from './town-mobs.js';
 import { PARTY_MAX, type PartyChange, Parties } from './town-party.js';
 import { type FriendStore, Friends } from './town-friends.js';
+import { BIIKKO_KIND, CARRIER_AWAY_MS, type Halloween, UPPER_KIND } from './halloween.js';
 import { type VitalMax, Vitals, shown } from './town-vitals.js';
 import { Buffs, type Nearby } from './town-buffs.js';
 import { loadItemData, loadStats } from './stats-data.js';
 import { type CombatItems, type LootContent, potionMinLevel, potionOf } from './combat-bag.js';
-import { type Loot, LootRoom, splitKusing } from './town-loot.js';
+import { type Loot, LootRoom, gotOf, splitKusing } from './town-loot.js';
 import { type LootRoll, LootRolls } from './town-roll.js';
 import { type HeldOffer, type Trade, Trades, checkOffer } from './trade.js';
 import { type Inside, type Run, type RunDeps, type RunNews, Warrens, type WarrensAccess, type WarrensMap } from './town-warrens.js';
-import type { FriendAsk, FriendView, FriendsState, PrivacySettings, WarrensData, ChatItemLink, CharacterProgress, QuestProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item, TradeEnd, TradeView } from '@mikazuki/shared';
+import type { FriendAsk, FriendView, FriendsState, HalloweenReward, LootGot, PrivacySettings, WarrensData, ChatItemLink, CharacterProgress, QuestProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item, TradeEnd, TradeView } from '@mikazuki/shared';
 import { type LanternPost, type Visibility, VISIBILITIES, PetXpClock, moveDodgeMs, petRules, petXpForHit, isLanternMap, itemName, itemStats, lanternPostOf, lanternRefusal, lootRollRules, rollWorthy, partyXpMult, partyXpRange, potionCooldownGroup, skillMpCost, targetPriority, tradeRules } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
@@ -170,6 +171,9 @@ export interface TownOptions {
     /** A trade both have confirmed (web/trade.ts settleTrade): checked again and moved in one go, logged; or nothing,
      *  with why. Without it nobody can trade. */
     trade?(users: [string, string], offers: [HeldOffer, HeldOffer], names: [string, string]): { ok: true } | { ok: false; message: string };
+    /** Timed items of a member's that ran out since they were last told (each named once; worn ones changed their look),
+     *  taken out now (web/adventure.ts expiredFor). Without it nothing runs out. */
+    expire?(userId: string): { name: string; worn: boolean }[];
   };
   /** Pets (web/adventure.ts petXpFor): Pet XP for the pet a member has out (saved): the pet now and the levels it went
    *  up, or null (none out, or maxed). A hit on a monster gives its level, at most once a stats.json pets.xp.throttleSeconds
@@ -231,6 +235,10 @@ export interface TownOptions {
   /** Members' privacy settings (web/privacy.ts in the bot; in memory on the game's dev server): who may whisper them.
    *  Without it, everyone may whisper everyone. */
   privacy?: { get(userId: string): PrivacySettings; set(userId: string, change: Partial<PrivacySettings>): PrivacySettings };
+  /** The Halloween event (web/halloween.ts: its window, Mikko Kalabasa, Biikko Kalabasa, the Manananggal; its director
+   *  runs on the Slums' mob room), and giving a find's or reunite's reward (Kowens, Kusing, Low Repair Kits by mail when
+   *  the bag is full, a potion): whether the kits went by mail. Without it, no event. */
+  halloween?: { event: Halloween; give(userId: string, reward: HalloweenReward, from: string): { kitsByMail: boolean } };
   /** Chat moderation (web/town-mod.ts in the bot; none in the game's dev server). */
   moderation?: {
     mutedUntil(userId: string): number | null;
@@ -293,7 +301,7 @@ export interface Town {
   /** Whether a member has a practice run open (Aling Nena won't hand over another ticket meanwhile). */
   inPracticeRun(userId: string): boolean;
   /** A member's worn items, combat bag or Kusing changed outside the town (the shop, dev's ?give=): theirs to them. */
-  items(userId: string, got?: { kusing?: number; item?: Item }): void;
+  items(userId: string, got?: LootGot): void;
   /** A member got mail (`from`, `title`), or their mailbox changed elsewhere: how many aren't opened yet, to them. */
   mail(userId: string, unread: number, from?: string, title?: string): void;
   /** Dev and tests: `item` drops at a member's feet for them and their party in the room, as a kill's would (rolled for
@@ -314,6 +322,10 @@ export interface Town {
   /** Dev (?warrens=solo, ?warrensboss=<id>): a run for a member in town, free, at once; with `boss`, every area before
    *  that boss's cleared and them arriving at its arena. The run's id, or why not. */
   warrensDev(userId: string, boss?: string, hp?: number): { ok: true; run: string } | { ok: false; message: string };
+  /** Dev (?halloween=on): the Halloween event on now; `mikko`: Mikko hidden two tiles from the member; `biikko` / `round`:
+   *  Biikko out and a Manananggal round started now; `wound`: Biikko down to that HP; `carry`: the dazed upper half theirs
+   *  (a round started for it). What was done. */
+  halloweenDev(userId: string, o: { mikko?: boolean; biikko?: boolean; wound?: number; round?: boolean; carry?: boolean }): string;
 }
 
 /** The game's map (packages/game/public/assets/maps/town.json), from the monorepo next to the bot. */
@@ -460,6 +472,25 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   // (while here), where they are, level, class and look, and while they're away when they were last online. Someone who
   // drops is still online for FRIEND_AWAY_MS (a reload, a gate to another area); only one gone longer is announced.
   const F = opts.friends ? new Friends(opts.friends.store.load(), opts.friends.store) : null;
+  /** The Halloween event, if there is one (web/halloween.ts). */
+  const H = opts.halloween?.event ?? null;
+  // (Its mobs live in Biikko's map's mob room, made with its director: the director's hands are that room.)
+  const hwRoom = H && opts.mobs?.[H.data.biikko.map];
+  if (hwRoom) H.attach(hwRoom);
+  /** Since when the member carrying the dazed upper half has been gone (none: here). */
+  let carrierAwaySince: number | null = null;
+  /** Timed items of a member's that ran out (CONTEXT.md Timed cosmetic): a line each in their feed, their items again,
+   *  and their look if one was worn. */
+  const expireFor = (c: Conn) => {
+    const gone = opts.items?.expire?.(c.userId) ?? [];
+    if (!gone.length || conns.get(c.userId) !== c) return;
+    send(c, { t: 'expired', items: gone });
+    tellItems(c);
+    if (gone.some((g) => g.worn)) {
+      const prof = opts.profile(c.userId);
+      if (prof) town.restyle(c.userId, prof.outfit, prof.title);
+    }
+  };
   const leaving = new Map<string, NodeJS.Timeout>();
   /** Where each member last was (shown while they're online but between rooms). */
   const lastRoom = new Map<string, string>();
@@ -671,7 +702,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   const POTION_MS = itemStats(items.stats).potions.sharedCooldownSec * 1000;
   const potionReady = new Map<string, number>();
   /** Their worn items, combat bag and Kusing to them (`got`: what they just picked up). */
-  const tellItems = (c: Conn, got?: { kusing?: number; item?: Item }) => {
+  const tellItems = (c: Conn, got?: LootGot) => {
     if (opts.items) send(c, { t: 'items', items: opts.items.state(c.userId) as TownItems, ...(got ? { got } : {}) });
   };
   /** New loot to everyone in the room who can see it (each their own view of it), bouncing out of `from`. */
@@ -744,6 +775,11 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   const killed = (room: string, kills: MobKill[]) => {
     const run = runOf(room);
     for (const k of kills) {
+      // (The Halloween event mobs: no XP or quest credit; Biikko's own set, the upper half dazed behind its killer.)
+      if (H && (k.kind === BIIKKO_KIND || k.kind === UPPER_KIND)) {
+        eventKill(room, k);
+        continue;
+      }
       // (A run's mobs give nothing until a boss has fallen there: its ticket comes back until then.)
       if (run && !k.warrens && !run.ticketSpent) continue;
       const credited = k.mini || k.warrens ? withParty(k.to, room) : k.to;
@@ -763,6 +799,42 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         saveRuns();
       }
     }
+  };
+  /** An event mob's kill (Halloween): Biikko's set, one roll, each piece its own loot round where it fell, held
+   *  openAfterSeconds for its last hitter and their party here (then anyone's), and its line; the upper half dazed
+   *  behind whoever landed the last hit. */
+  const eventKill = (room: string, k: MobKill) => {
+    const killer = k.to[0];
+    if (!H || !killer) return;
+    const now = Date.now();
+    if (k.kind === UPPER_KIND) {
+      H.upperKilled(killer);
+      return tellHalloween();
+    }
+    H.biikkoKilled(now);
+    const L = lootIn(room);
+    const mobs = mobsOf(room);
+    const contents = H.biikkoLoot(items, () => randomBytes(8).toString('hex'));
+    const spots = mobs?.lootSpots(k.at, contents.length, L.taken()) ?? [];
+    const owners = withParty([killer], room);
+    const fresh = contents.map((content, i) => L.add(content, spots[i] ?? k.at, owners, now, H.data.biikko.loot.openAfterSeconds * 1000));
+    showLoot(room, fresh, k.at);
+    eventLine(H.data.biikko.announceKill.replace('{name}', nameOf(killer)));
+  };
+  /** An event line in everyone's chat, every area (CONTEXT.md Event line): never Discord, never kept. */
+  const eventLine = (text: string, icon?: 'mikko') => everyone({ t: 'event-line', text, ...(icon ? { icon } : {}) });
+  /** Everyone's view of the Halloween event, each as their room has it. */
+  const tellHalloween = () => {
+    if (!H) return;
+    const now = Date.now();
+    for (const o of conns.values()) send(o, { t: 'halloween', view: H.view(o.room, now, (u) => conns.get(u)?.player.id) });
+  };
+  /** A Halloween reward to a member here: given (the bot's give), its pop-up. */
+  const rewardHalloween = (c: Conn, kind: 'mikko' | 'reunite', reward: HalloweenReward) => {
+    const from = kind === 'mikko' ? H!.data.mikko.name : H!.data.manananggal.name;
+    const r = opts.halloween!.give(c.userId, reward, from);
+    send(c, { t: 'halloween-reward', kind, reward: { ...reward, ...(r.kitsByMail ? { kitsByMail: true } : {}) } });
+    tellItems(c);
   };
   /** A kill's XP shared between the killer's party members in the room within reach (the knocked out too): the total
    *  raised per extra member, split equally (each share then their own level's low-mob rule). Alone: all theirs. */
@@ -839,22 +911,25 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     if (!L || !opts.items || c.player.out) return;
     const l = L.pickable(c.userId, c.player.col, c.player.row, Date.now(), id);
     if (!l) return;
-    // Kusing in a party (not personal loot): split equally between the party members in this room, the picker first.
-    if ('kusing' in l.content && !l.personal) {
-      const shares = splitKusing(l.content.kusing, withParty([c.userId], c.room));
+    // Kusing (and an event's Kowens) in a party (not personal loot): split equally between the party members in this
+    // room, the picker first.
+    const money = 'kusing' in l.content ? { kind: 'kusing' as const, n: l.content.kusing } : 'kowens' in l.content ? { kind: 'kowens' as const, n: l.content.kowens } : null;
+    if (money && !l.personal) {
+      const shares = splitKusing(money.n, withParty([c.userId], c.room));
       if (shares.size > 1) {
         L.remove(l.id);
-        for (const [user, kusing] of shares) {
+        for (const [user, n] of shares) {
           const o = conns.get(user);
-          if (o && opts.items.take(user, { kusing })) tellItems(o, { kusing });
+          const share = money.kind === 'kusing' ? { kusing: n } : { kowens: n };
+          if (o && opts.items.take(user, share)) tellItems(o, share);
         }
-        partyLoot(c, { kusing: l.content.kusing }, Math.min(...shares.values()));
+        partyLoot(c, money.kind === 'kusing' ? { kusing: money.n } : { kowens: money.n }, Math.min(...shares.values()));
         return lootGone(c.room, [l.id]);
       }
     }
     if (!opts.items.take(c.userId, l.content)) return send(c, { t: 'loot-full' });
     L.remove(l.id);
-    const got = 'kusing' in l.content ? { kusing: l.content.kusing } : { item: l.content.item };
+    const got = gotOf(l.content);
     tellItems(c, got);
     partyLoot(c, got);
     lootGone(c.room, [l.id]);
@@ -875,7 +950,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     return out;
   };
   /** What a member picked up, to the rest of their party (their system feed), wherever they are. */
-  const partyLoot = (c: Conn, got: { kusing?: number; item?: Item }, share?: number) => {
+  const partyLoot = (c: Conn, got: LootGot, share?: number) => {
     const m: TownServerMessage = { t: 'party-loot', name: c.player.nickname, got, ...(share ? { share } : {}) };
     for (const user of parties.of(c.userId)?.members ?? []) {
       const o = conns.get(user);
@@ -1432,6 +1507,29 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         send(to, { t: 'whisper', id: p.id, name: p.nickname, text: said.text, ...extra });
         return send(c, { t: 'whisper', id: to.player.id, name: to.player.nickname, text: said.text, sent: true, ...extra });
       }
+      case 'mikko-claim': {
+        // A click on Mikko Kalabasa: theirs if it hides here within reach (the server's tiles decide; first wins).
+        if (!H || p.out) return;
+        const now = Date.now();
+        const r = H.claimMikko(c.room, [p.col, p.row], now);
+        if (!r) return;
+        rewardHalloween(c, 'mikko', r.reward);
+        const fx: TownServerMessage = { t: 'mikko-found', col: r.where[0], row: r.where[1] };
+        for (const o of conns.values()) if (o.room === c.room) send(o, fx);
+        eventLine(H.data.mikko.announce.replace('{name}', p.nickname), 'mikko');
+        return tellHalloween();
+      }
+      case 'reunite': {
+        // A click on the Manananggal's lower half while carrying its upper half (town, within reach).
+        if (!H || c.room !== 'town') return;
+        const r = H.reunite(c.userId, [p.col, p.row], Date.now());
+        if (!r) return;
+        rewardHalloween(c, 'reunite', r.reward);
+        const fx: TownServerMessage = { t: 'reunited', id: p.id, col: r.where[0], row: r.where[1] };
+        for (const o of conns.values()) if (o.room === 'town') send(o, fx);
+        eventLine(H.data.manananggal.announceReunite.replace('{name}', p.nickname));
+        return tellHalloween();
+      }
       case 'privacy': {
         // Only what's given and valid changes (whispers: everyone / friends; balance and status: everyone / friends / me).
         if (!opts.privacy) return;
@@ -1539,6 +1637,11 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     tellParty(userId); // back (or in another area): their new id and where they are
     friendArrived(userId, room, !!old);
     if (opts.privacy) send(c, { t: 'privacy', privacy: opts.privacy.get(userId) });
+    if (H) {
+      send(c, { t: 'halloween', view: H.view(room, Date.now(), (u) => conns.get(u)?.player.id) });
+      if (H.carrier === userId) tellHalloween(); // (back: their dazed upper half shows behind them again)
+    }
+    if (opts.items?.expire) queueMicrotask(() => expireFor(c)); // (timed items that ran out while they were away)
     if (raceNow) send(c, { t: 'race', race: { ...raceNow, now: Date.now() } });
     if (vitals) tellVitals(c); // your HP and MP (the HUD), and your party's panel
     if (buffs) send(c, { t: 'buffs', buffs: buffs.view(userId, Date.now()) }); // the buffs on you (the tray)
@@ -1590,6 +1693,15 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   });
 
   const town: Town = {
+    halloweenDev(userId, o) {
+      if (!H) return 'no Halloween event here';
+      const now = Date.now();
+      const c = conns.get(userId);
+      const at = c ? ([c.player.col, c.player.row] as [number, number]) : null;
+      const said = H.dev({ ...o, member: userId, room: c?.room, at }, now);
+      tellHalloween();
+      return said;
+    },
     rollLoot(userId, item) {
       const c = conns.get(userId);
       if (!c || !opts.items) return false;
@@ -2048,6 +2160,33 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       }
     }, 1000).unref();
   }
+
+  // The Halloween event's clock: its window, Mikko hiding, the rounds, a carrier gone too long (then the upper half flies
+  // away: a line to them alone, if they're back). Its mob room's part is its director's (the Slums' clock).
+  if (H) {
+    setInterval(() => {
+      const now = Date.now();
+      const here = [...conns.values()].map((o) => ({ member: o.userId, map: o.room, at: [o.player.col, o.player.row] as [number, number] }));
+      const r = H.tick(now, here);
+      const carrier = H.carrier;
+      if (carrier && !conns.has(carrier)) {
+        carrierAwaySince ??= now;
+        if (now - carrierAwaySince > CARRIER_AWAY_MS && H.carrierGone(carrier, now)) {
+          r.changed = true;
+          r.flew.push(carrier);
+        }
+      } else carrierAwaySince = null;
+      for (const member of r.flew) {
+        const o = conns.get(member);
+        if (o) send(o, { t: 'manananggal-flew' });
+      }
+      if (r.changed) tellHalloween();
+    }, 1000).unref();
+  }
+  // Timed items: once a minute, anything of anyone's here that ran out is taken out (and they're told).
+  if (opts.items?.expire) setInterval(() => {
+    for (const c of conns.values()) expireFor(c);
+  }, 60_000).unref();
 
   // Drop connections that stopped answering pings (closed laptops, lost Wi-Fi). Those here: when they were last online.
   setInterval(() => {

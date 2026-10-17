@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { type ItemData, type TownLoot, LOOT_REACH, PLAIN_COLOUR, agimatBrightness, isGearDef, itemAura, itemName, nameColour, rarityColour } from '@mikazuki/shared';
+import { EVENT_POTIONS, type ItemData, type TownLoot, LOOT_REACH, PLAIN_COLOUR, agimatBrightness, isGearDef, itemAura, itemName, nameColour, rarityColour } from '@mikazuki/shared';
 import { type AuraTrace, WeaponAura, traceAura } from '../fx/weaponAura';
 import { loadImages } from '../characters/loading';
 import { CHARACTER_BIAS, HEIGHT_DEPTH, LABEL_DEPTH } from './depth';
@@ -59,6 +59,8 @@ interface Drop {
 export interface LootArt {
   /** Kusing's 16x16 coin (manifest ui.kusingIcon). */
   kusing: string | null;
+  /** The Kowen coin (an event's Kowens on the ground): the emote sheet's kowen frame, as the town shows it. */
+  kowen?: { file: string; frame: number } | null;
   /** The empty-slot silhouettes (16x16 frames, in `frames` order), for gear without an icon yet. */
   silhouettes: { file: string; frames: string[] } | null;
 }
@@ -173,6 +175,8 @@ export class LootLayer {
 
   private iconFile(l: TownLoot): string | null {
     if (l.kusing !== undefined) return this.art.kusing;
+    if (l.kowens !== undefined) return this.art.kowen?.file ?? null;
+    if (l.potion) return EVENT_POTIONS[l.potion].icon; // (its 32 px picture, drawn at 16)
     const def = l.item ? this.data()?.defs.get(l.item.defId) : undefined;
     return def?.icon ?? null;
   }
@@ -200,7 +204,7 @@ export class LootLayer {
     const def = l.item ? D?.defs.get(l.item.defId) : undefined;
     const colour = l.item && D ? rarityColour(D.stats, l.item.rarity) : '#FCDA4A'; // a placeholder's square
     let key = this.iconFile(l);
-    let frame: number | undefined;
+    let frame: number | undefined = l.kowens !== undefined ? this.art.kowen?.frame : undefined;
     if (!key || !this.scene.textures.exists(key)) {
       const sil = this.art.silhouettes;
       if (isGearDef(def) && sil && this.scene.textures.exists(sil.file)) {
@@ -211,7 +215,8 @@ export class LootLayer {
     }
     const feet = (l.col + l.row + 1) * 8 + CHARACTER_BIAS + ground * HEIGHT_DEPTH - 0.4; // on the ground: under whoever stands there
     const shadow = this.scene.add.ellipse(x, y, 12 * ICON_SCALE, 4 * ICON_SCALE, 0x0b0a1a, 0.45);
-    const icon = this.scene.add.image(x, y - LIFT, key, frame === undefined ? undefined : String(frame)).setOrigin(0.5, 0.5).setScale(ICON_SCALE);
+    const icon = this.scene.add.image(x, y - LIFT, key, frame === undefined ? undefined : frame).setOrigin(0.5, 0.5);
+    icon.setScale((ICON_SCALE * 16) / Math.max(16, icon.width)); // (a 32 px potion at the 16 px icons' size)
     // An agimat as dark as its level makes it (stats.json agimats.look), as in the bag.
     if (l.item && D && !isGearDef(def) && def?.kind === 'agimat') {
       const v = Math.round(255 * agimatBrightness(D.stats, l.item.level));
@@ -225,8 +230,9 @@ export class LootLayer {
     const text = (s: string, colour: string) =>
       this.scene.add.text(x, y, s, { fontFamily: '"Mk Numbers", "Pixelify Sans", monospace', fontSize: `${LABEL_PX}px`, color: colour, stroke: '#1E1B3A', strokeThickness: 2, resolution: 8 }).setOrigin(0.5, 1);
     let amount: Phaser.GameObjects.Text | null = null;
-    if (l.kusing !== undefined) amount = text(l.kusing.toLocaleString(), PLAIN_COLOUR).setDepth(depth + 0.01);
-    const label = l.kusing !== undefined ? `${l.kusing.toLocaleString()} Kusing` : l.item && D ? itemName(D, l.item) : 'Loot';
+    const money = l.kusing ?? l.kowens;
+    if (money !== undefined) amount = text(money.toLocaleString(), PLAIN_COLOUR).setDepth(depth + 0.01);
+    const label = l.kusing !== undefined ? `${l.kusing.toLocaleString()} Kusing` : l.kowens !== undefined ? `${l.kowens.toLocaleString()} Kowens` : l.potion ? EVENT_POTIONS[l.potion].name : l.item && D ? itemName(D, l.item) : 'Loot';
     const name = text(label, l.item && D ? nameColour(D, l.item) : PLAIN_COLOUR)
       .setDepth(LABEL_DEPTH)
       .setVisible(false);
@@ -255,7 +261,7 @@ export class LootLayer {
 
   private syncName(d: Drop): void {
     // (Always, once landed; Kusing's amount is its name.)
-    const on = !d.flight && d.loot.kusing === undefined;
+    const on = !d.flight && d.loot.kusing === undefined && d.loot.kowens === undefined;
     d.name.setVisible(on).setY(d.y - LIFT - (d.amount ? 11 : 5));
   }
 

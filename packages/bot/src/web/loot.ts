@@ -265,4 +265,5 @@ export function warrensMobDrops(data: ItemData, W: WarrensData, kind: string, le
 }
 
 /** What a piece of loot is called (for logs and tests). */
-export const lootLabel = (l: LootContent): string => ('kusing' in l ? `${l.kusing} Kusing` : `${(l.item as Item).defId}${l.item.count > 1 ? ` ×${l.item.count}` : ''}`);
+export const lootLabel = (l: LootContent): string =>
+  'kusing' in l ? `${l.kusing} Kusing` : 'kowens' in l ? `${l.kowens} Kowens` : 'potion' in l ? `potion ${l.potion}` : `${(l.item as Item).defId}${l.item.count > 1 ? ` ×${l.item.count}` : ''}`;

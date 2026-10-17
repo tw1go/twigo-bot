@@ -1,0 +1,6 @@
+file,cell_w,cell_h,frames,fps,loop,anchor_x,anchor_y,notes
+mob-biikko-kalabasa-idle-{dir}.png,64,64,4,6,yes,32,60,Biikko Kalabasa idle: slow squash breathing (dirs se ne sw nw)
+mob-biikko-kalabasa-move-{dir}.png,64,64,8,8,yes,32,60,waddle: bob and lean
+mob-biikko-kalabasa-hit-{dir}.png,64,64,2,12,no,32,60,flash + squash
+mob-biikko-kalabasa-death-{dir}.png,64,64,8,8,no,32,60,squashes flat and fades
+mob-biikko-kalabasa-glow-{anim}-{dir}.png,64,64,same,same,same,32,60,the face's candle glow alone with the same frames: draw additive over the body and flicker its alpha (0.6-1.0 random every ~120 ms); brighter at night

@@ -84,6 +84,10 @@ import { setPetCubeArt } from '../ui/pet-cube';
 import { fakeLogin, fakeName, loadMe } from '../session';
 import { screenToTile, tileToScreen } from '../iso';
 import { toast } from '../ui/toast';
+import { HalloweenWorld } from '../world/halloween';
+import { mikkoIcon16, setHalloweenArt, setHalloweenBadge, showHalloweenReward } from '../ui/halloween';
+import { BossBar } from '../ui/boss-bar';
+import { HALLOWEEN_MOBS, type HalloweenData } from '@mikazuki/shared';
 import { lootRolls, rollEndLine } from '../ui/loot-roll';
 import type { TownWarrensRun } from '@mikazuki/shared';
 import { MapMenu } from '../ui/map-menu';
@@ -222,6 +226,8 @@ const RANGED_CLASSES = new Set(['slingshot', 'broom']);
 const CAST_GAP_MS = 1000;
 /** The golem's art loads once you're this near its pit's middle (tiles). */
 const BOSS_NEAR = 45;
+/** Biikko Kalabasa's boss bar shows within this many tiles of it (while it's hurt or your target). */
+const BIIKKO_BAR_TILES = 16;
 /** The Scrap Warrens' shade (a navy multiply of about a quarter: a little darker than the Slums). */
 const WARRENS_TINT = 0xbcbbc8;
 /** Arriving: the loading cover lifts after this many frames in a row under SMOOTH_MS, or after SETTLE_MAX_MS at most. */
@@ -264,13 +270,18 @@ export class TownScene extends Phaser.Scene {
   }
   /** The Slums' field boss (world/golem.ts), drawn as one of the mobs. */
   private golem: GolemView | null = null;
+  /** The Halloween event (world/halloween.ts): its rules (events/halloween.json), its things in the world, and Biikko
+   *  Kalabasa's boss bar while you're near it. */
+  private hwData: HalloweenData | null = null;
+  private halloween: HalloweenWorld | null = null;
+  private biikkoBar: BossBar | null = null;
   /** Which area this page is: the town, the neighbourhood or the Slums. */
   private area: Area = 'town';
   private objects!: WorldObjects;
   private grid!: WalkGrid;
   private player!: Character;
   private doorAt = new Map<string, Building>();
-  private pending: { sit?: Bench; npc?: string; loot?: string } | null = null;
+  private pending: { sit?: Bench; npc?: string; loot?: string; halloween?: 'mikko' | 'lower' } | null = null;
   private buildingAlert: Phaser.GameObjects.Sprite | null = null;
   private zoomIndex = 1;
   /** The arrival zoom-out while it runs (follow and label sizing wait for it). */
@@ -364,7 +375,7 @@ export class TownScene extends Phaser.Scene {
     this.area = data.area ?? (this.hood ? 'hood' : 'town');
     this.art = data.art ?? null;
     this.savedOutfit = startingOutfit(this.M.characters, data.me);
-    this.outfit = lookWithCosmetics(this.savedOutfit, this.M.characters.wardrobe.cosmeticHats ?? {});
+    this.outfit = lookWithCosmetics(this.savedOutfit, this.M.characters.wardrobe.cosmeticHats ?? {}, this.M.characters.wardrobe.cosmeticTops);
     // A cosmetic worn or taken off (the Costume tab): the look you show follows (shared cosmetics.ts).
     onAdventure(() => void this.refreshLook());
   }
@@ -577,6 +588,7 @@ export class TownScene extends Phaser.Scene {
         .catch(() => null);
     if (this.area === 'town') this.npcs = this.makeNpcs();
     this.makePets();
+    this.makeHalloween();
     // The quest trail (world/quest-trail.ts): only where a guided quest's hunt is led (the Town and the Slums).
     if (this.M.guide && (this.area === 'town' || this.area === 'slums')) {
       const trail = new QuestTrail(this, this.M.guide, (c, r) => this.objects.heights.lift(c, r));
@@ -593,9 +605,11 @@ export class TownScene extends Phaser.Scene {
     if (this.map.mobZones?.length) {
       const mobs = new Mobs(this, this.M, this.map, this.grid, this.objects, (obj) => this.tint >= 0 && obj.setTint(this.tint), this.fxLayers);
       mobs.myLevel = () => adventure()?.progress.level ?? 1; // name colours by the level gap
+      const hw = this.cache.json.get('halloween') as HalloweenData | undefined;
+      if (hw) mobs.events = { kinds: new Set(Object.values(HALLOWEEN_MOBS)), name: hw.name };
       const box = new MobTargetBox();
       mobs.onTarget = (m) => {
-        box.show(m && { name: m.def.name, level: m.level, colour: TONE[mobs.tone(m)], zone: m.zone.name, hp: m.hp / m.maxHp, boss: m.radius > 0 });
+        box.show(m && { name: m.def.name, level: m.level, colour: m.subtitle && m.mini ? m.mini.colour : TONE[mobs.tone(m)], zone: m.zone.name, hp: m.hp / m.maxHp, boss: m.radius > 0 || !!m.subtitle }); // (an event mob's own colour; its boss bar shows instead)
         if (m) this.target?.clear(); // one target at a time
       };
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => box.destroy());
@@ -643,7 +657,9 @@ export class TownScene extends Phaser.Scene {
     }
     // Loot on the ground (mobs' drops, and items players drop on any map): a click walks you to it and picks it up.
     const sil = this.M.ui.equipSlots;
-    const loot = new LootLayer(this, this.objects, itemData, { kusing: this.M.ui.kusingIcon?.file ?? null, silhouettes: sil ? { file: sil.file, frames: sil.frames } : null });
+    const E = this.M.ui.emotes;
+    const kowenFrame = Array.isArray(E?.frames) ? E.frames.indexOf('kowen') : -1;
+    const loot = new LootLayer(this, this.objects, itemData, { kusing: this.M.ui.kusingIcon?.file ?? null, kowen: E?.file && kowenFrame >= 0 ? { file: E.file, frame: kowenFrame } : null, silhouettes: sil ? { file: sil.file, frames: sil.frames } : null });
     this.loot = loot;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => loot.destroy());
     // The race box's bet pop-up shows the runners' portraits wherever you are (the neighbourhood too, which has no NPCs).
@@ -763,6 +779,8 @@ export class TownScene extends Phaser.Scene {
     }
     this.others.update(delta);
     this.pets?.update(delta);
+    this.halloween?.update(delta);
+    this.showBiikkoBar();
     this.trailTick(time);
     this.mobs?.update(delta);
     this.mobs?.check(this.player.tile);
@@ -988,6 +1006,7 @@ export class TownScene extends Phaser.Scene {
       setRarityColours(Object.fromEntries(Object.entries(itemStats(data.stats).rarity.nameColour).map(([r, c]) => [r, c.colour])));
       const kusing = this.M.ui.kusingIcon;
       setKusingArt(kusing ? asset(kusing.file) : null);
+      setHalloweenArt(this.M.ui.eventHalloween ?? null);
       const member = this.me?.status === 'ok' ? this.me.me : null;
       if (!member) return; // guests have no quests
       setUnreadMail(member.mailUnread ?? 0); // the mail button's dot
@@ -1990,6 +2009,7 @@ export class TownScene extends Phaser.Scene {
     link.onMessage = (m) => {
       if (isArena(m)) return void this.arenaChannel?.push(m); // a jack en poy match (or the queue for one)
       if (this.petMessage(m, myId)) return;
+      if (this.halloweenMessage(m, myId, chat, feed)) return;
       if (m.t === 'snap') return this.player.place({ col: m.col, row: m.row });
       if (m.t === 'seat-taken') return this.seatTaken();
       if (m.t === 'say-refused') {
@@ -2449,6 +2469,7 @@ export class TownScene extends Phaser.Scene {
         const q = new URLSearchParams(location.search);
         const golemDev = import.meta.env.DEV && !arrived && !!this.golem && (q.get('golem') === 'now' || q.has('golemdemo'));
         if (golemDev) this.byThePit();
+        const hw = import.meta.env.DEV && !arrived ? q.get('halloween') : null; // (Halloween, below)
         // Dev: ?warrens=solo opens a Scrap Warrens run for you (free) and goes in; ?warrensboss=crab-tain too, with every
         // area before that boss cleared, arriving at its arena (the dev server's /__warrens). Read once, then tidied away.
         if (import.meta.env.DEV && fakeLogin() && !arrived && this.area !== 'warrens' && (q.has('warrens') || q.has('warrensboss'))) {
@@ -2476,6 +2497,10 @@ export class TownScene extends Phaser.Scene {
         const t = this.player.tile;
         link.send({ t: 'here', col: t.col, row: t.row, dir: this.player.facing });
         this.sent = { dir: this.player.facing, sit: false };
+        // Dev: ?halloween=on turns the Halloween event on (the dev server's /__halloween); more after a comma: mikko (Mikko
+        // hidden two tiles from you), biikko (Biikko out now), round (a Manananggal round now), carry (the dazed upper
+        // half yours). On every arrival, so a reload or a gate keeps it on.
+        if (hw) void fetch(`/__halloween?${new URLSearchParams({ as: fakeName(), ...Object.fromEntries(hw.split(',').filter((x) => x !== 'on').map((x) => [x, '1'])) })}`).catch(() => null);
         if (golemDev) void fetch(q.has('golemdemo') ? `/__golem?${new URLSearchParams({ demo: '1', as: fakeName() })}` : '/__golem?now=1').catch(() => null);
         // Dev: ?kusing=5000, ?whetstones=200, ?give=<defId>:<rarity>:<plus> (the dev server's /__give: rolled there as
         // drops are; your items come back as an `items` message). Once a visit. ?give= may come more than once; for a
@@ -2862,6 +2887,8 @@ export class TownScene extends Phaser.Scene {
         const npc = this.npcs?.pick(over);
         if (npc) return this.talkTo(npc);
         if (this.pets?.pick(over)) return this.pets.special('me'); // your own pet: its special
+        const hw = this.halloween?.pick(over);
+        if (hw) return this.goToHalloween(hw);
         const world = this.cameras.main.getWorldPoint(p.x, p.y);
         const { col, row } = this.pickTile(world.x, world.y);
         const building = this.objects.buildings.find((b) => b.parts.some((part) => over.includes(part)));
@@ -2877,6 +2904,8 @@ export class TownScene extends Phaser.Scene {
       const npc = this.npcs?.pick(over);
       if (npc && p.leftButtonReleased()) return this.talkTo(npc);
       if (p.leftButtonReleased() && this.pets?.pick(over)) return this.pets.special('me'); // your own pet: its special
+      const hw = this.halloween?.pick(over);
+      if (hw && p.leftButtonReleased()) return this.goToHalloween(hw);
       const building = this.objects.buildings.find((b) => b.parts.some((part) => over.includes(part)));
       const world = this.cameras.main.getWorldPoint(p.x, p.y);
       const { col, row } = this.pickTile(world.x, world.y);
@@ -3284,6 +3313,11 @@ export class TownScene extends Phaser.Scene {
       const id = this.pending.loot;
       this.pending = null;
       return void this.link?.send({ t: 'pick', id }); // the loot you clicked (the server checks it's in reach)
+    }
+    if (this.pending?.halloween) {
+      const what = this.pending.halloween;
+      this.pending = null;
+      return void this.link?.send({ t: what === 'mikko' ? 'mikko-claim' : 'reunite' }); // (the server checks the reach)
     }
     if (this.pending?.sit) {
       const b = this.pending.sit;
@@ -3893,7 +3927,7 @@ export class TownScene extends Phaser.Scene {
   /** The look you show, from the saved one and the cosmetics worn: drawn when it changed (the Parlor, wearing or
    *  taking off a cosmetic), and in dev told to the dev town so the other window sees it. */
   private async refreshLook(): Promise<void> {
-    const look = lookWithCosmetics(this.savedOutfit, this.M.characters.wardrobe.cosmeticHats ?? {});
+    const look = lookWithCosmetics(this.savedOutfit, this.M.characters.wardrobe.cosmeticHats ?? {}, this.M.characters.wardrobe.cosmeticTops);
     if (sameOutfit(look, this.outfit)) return;
     await this.setOutfit(look);
     setHudAvatar(headPortrait(this, this.M.characters, look));
@@ -4117,6 +4151,73 @@ export class TownScene extends Phaser.Scene {
     return { spot: c.spot, facing: c.facing, walking: !c.isIdle };
   }
 
+  /** The Halloween event's things in the world (any map: Mikko hides in the Town or the Slums, the lower half stands in
+   *  town, a dazed upper half follows its carrier everywhere), if its rules are in. Nothing shows until the server says
+   *  it's on. */
+  private makeHalloween(): void {
+    const data = this.cache.json.get('halloween') as HalloweenData | undefined;
+    if (!data) return;
+    this.hwData = data;
+    setHalloweenArt(this.M.ui.eventHalloween ?? null);
+    const hw = new HalloweenWorld(this, this.M, this.objects, this.fxLayers, (id) => {
+      const c = id === this.myId ? this.player : this.others.charOf(id);
+      return c ? { spot: c.spot, facing: c.facing, visible: c.sprite.visible } : null;
+    });
+    hw.onSpawn = (obj) => this.tint >= 0 && obj.setTint(this.tint);
+    this.halloween = hw;
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      hw.destroy();
+      this.halloween = null;
+      this.biikkoBar?.destroy();
+      this.biikkoBar = null;
+      setHalloweenBadge(null, false);
+    });
+  }
+
+  /** Mikko or the lower half clicked: within reach, asked for at once; else walk over first (the server decides, first
+   *  come). */
+  private goToHalloween(what: 'mikko' | 'lower'): void {
+    const hw = this.halloween;
+    const d = this.hwData;
+    const at = what === 'mikko' ? hw?.mikkoAt : hw?.lowerAt;
+    if (!at || !d) return;
+    this.byKeys = false;
+    const reach = what === 'mikko' ? d.mikko.clickReach : d.manananggal.reuniteReach;
+    const me = this.player.tile;
+    if (Math.max(Math.abs(at.col - me.col), Math.abs(at.row - me.row)) <= reach) return void this.link?.send({ t: what === 'mikko' ? 'mikko-claim' : 'reunite' });
+    this.moveTo(at);
+    this.pending = { halloween: what };
+  }
+
+  /** Biikko Kalabasa's boss bar (like the golem's) while it's alive within its view of you and either your target or
+   *  hurt. */
+  private showBiikkoBar(): void {
+    const m = this.halloween && this.mobs?.get('halloween:biikko');
+    const me = this.player.tile;
+    const near = m && !m.dead && Math.max(Math.abs(m.col - me.col), Math.abs(m.row - me.row)) <= BIIKKO_BAR_TILES && (m.hp < m.maxHp || this.mobs?.targeted === m);
+    if (!near) return void this.biikkoBar?.show(null);
+    this.biikkoBar ??= new BossBar();
+    this.biikkoBar.show({ name: m.mini?.name ?? m.def.name, title: m.subtitle ?? undefined, level: m.level, hp: m.hp, maxHp: m.maxHp, enraged: false });
+  }
+
+  /** The town's word on the Halloween event. True: the message was only for it. */
+  private halloweenMessage(m: TownServerMessage, myId: string, chat: ChatBox, feed: SystemFeed): boolean {
+    const hw = this.halloween;
+    if (m.t === 'halloween') {
+      hw?.set(m.view);
+      setHalloweenBadge(this.hwData, !!m.view);
+    } else if (m.t === 'mikko-found') hw?.found(m.col, m.row);
+    else if (m.t === 'reunited') hw?.reunited(m.id, m.col, m.row);
+    else if (m.t === 'halloween-reward') void showHalloweenReward(m.kind, m.reward, this.hwData);
+    else if (m.t === 'manananggal-flew') {
+      hw?.flew(myId);
+      chat.event(`The ${this.hwData?.manananggal.name ?? 'Manananggal'} flew away.`, mikkoIcon16());
+    } else if (m.t === 'event-line') chat.event(m.text, m.icon === 'mikko' ? mikkoIcon16() : null);
+    else if (m.t === 'expired') for (const it of m.items) feed.mine([{ text: `Your ${it.name} ran out.`, colour: '#FDBA74' }], true);
+    else return false;
+    return true;
+  }
+
   /** The town's word on pets: who has one out (arrivals, the list, `pet`), and your pet's Pet XP (`pet-xp`: its toast as
    *  it levels up). True: the message was only for pets. */
   private petMessage(m: TownServerMessage, myId: string): boolean {
@@ -4153,7 +4254,7 @@ export class TownScene extends Phaser.Scene {
     this.others.setNight(sky.lampsOn);
     if (!force && sky.tint === this.tint) return;
     this.tint = sky.tint;
-    const all = [...this.ground.sprites, ...this.objects.sprites, ...this.player.tintables, ...this.others.tintables, ...(this.npcs?.tintables ?? []), ...(this.mobs?.tintables ?? []), ...(this.pets?.tintables ?? []), ...(this.rogueSigns?.tintables ?? []), ...this.bridges.filter((b) => !!b)];
+    const all = [...this.ground.sprites, ...this.objects.sprites, ...this.player.tintables, ...this.others.tintables, ...(this.npcs?.tintables ?? []), ...(this.mobs?.tintables ?? []), ...(this.pets?.tintables ?? []), ...(this.halloween?.tintables ?? []), ...(this.rogueSigns?.tintables ?? []), ...this.bridges.filter((b) => !!b)];
     for (const s of all) s.setTint(sky.tint);
   }
 

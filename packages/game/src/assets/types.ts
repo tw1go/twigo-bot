@@ -54,6 +54,8 @@ export interface Manifest {
   /** Pets (world/pets.ts): their sheets, icons, boxes and pet tree nodes; `data` = the frame counts (pets/sheets/pets.json). */
   pets?: PetManifest;
   fx: Record<string, FxDef>;
+  /** Each event's rules file (events/<id>.json, the bot reads it too). */
+  events?: Record<string, string>;
   /** Mobs (world/mobs.ts): sheets per variant, animation and direction; `data` = their rules file (mobs/mobs.json). */
   mobs?: Record<string, MobDef | string>;
   /** Item art by id (dig items and /redeem rewards), only for the ids that have art. */
@@ -84,6 +86,8 @@ export interface Manifest {
     jackpotIcon?: { file: string; size: Vec2 };
     /** The Slums' golem timer's picture: the Scrapheap Golem's head. */
     golemHead?: { file: string; size: Vec2 };
+    /** The Halloween event's Mikko Kalabasa at 16, 32 and 64 px (the badge and event lines, the pop-ups). */
+    eventHalloween?: { icon16: string; icon32: string; icon64: string };
     /** The neighbourhood's rogue signs by a house's door (world/rogue-signs.ts): a Protected house's moon charm and a
      *  Marked one's mask (16 px; `showcase` 32 px, the house menu). */
     houseProtected?: { file: string; showcase?: string; size: Vec2 };
@@ -295,6 +299,13 @@ export interface CharacterDefs {
     hatLitPattern?: string;
     litHats?: string[];
     litGlow?: { file: string; size: Vec2; offset?: number };
+    /** A hat drawn from a bigger cell than the doll's (the Witch Hat's 48x64): the doll's 32x48 cell sits at `offset`
+     *  inside it. Hats without one are the doll's own cell at zero offset. */
+    hatCanvas?: Record<string, { size: Vec2; offset: Vec2 }>;
+    /** Cosmetic tops (never offered at the creator): item id → top key (the Witch Robe's witchrobe), drawn in their own
+     *  colours; those that cover the legs (no bottom layer while worn). */
+    cosmeticTops?: Record<string, string>;
+    cosmeticHidesBottom?: string[];
   };
   colourPresets: Record<string, string[]>;
   skinTones: Record<string, string[]> & { faceTweak?: Record<string, Record<string, string>> };
@@ -353,6 +364,9 @@ export interface MobDef {
   hitFrames?: Record<string, number>;
   /** Its enraged set loads only once it enrages (world/mobs.ts loadEnraged), not with the rest (its art is big). */
   loadEnragedLater?: boolean;
+  /** A glow drawn additive over it, frame for frame (Biikko Kalabasa's candle): its sheets (same {anim}/{dir} and cells),
+   *  its alpha flickering between alpha[0] and alpha[1] about every everyMs. */
+  glow?: { file: string; alpha: [number, number]; everyMs: number };
 }
 
 /** A mob's rules (mobs/mobs.json, manifest mobs.data; the bot reads it too). Frames are 0-based. */

@@ -174,6 +174,14 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `pets.follow.zigzagEverySteps` 2 tiles and `zigzagEveryStepsHover` 1 (was 3 half-tile steps; + `zigzagNote`: the zigzag only heading north or south).
 - Pet cube (16 Oct 2026): `classes/stats.json` `pets.petCube` (the common cube's item and its six `choices`), `items/items.json`
   `pet-cube-common` (bound consumable) and its art in `pets/cube/` (the art folder's pets/cube).
+- Halloween (17 Oct 2026; the art and its numbers are the art folder's events/halloween): `events/halloween.json` (its
+  `biikko.announceSpawn` and `manananggal.announceAppear` left out: no spawn lines, Mac; `manananggal.lowerSpots` moved,
+  each to the nearest open grass tile nothing draws over: the art folder's six stood behind tree crowns, `lowerSpotsNote`),
+  `items/items.json` `witch-hat-5d` / `witch-robe-5d` (`lastsDays`), the manifest's `characters.wardrobe` `hatCanvas`,
+  `cosmeticTops`, `cosmeticHidesBottom` and the witch entries in `cosmeticHats` / `fixedColourHats` / `hatClips`, its
+  `mobs` `biikko-kalabasa` (with `glow`) and `manananggal-upper`, `props` `mikko-kalabasa` / `manananggal-lower` (its `scale`
+  0.6, and mobs.json's upper half `scale` 0.65 + `top`: both were too big beside a character, Mac), `fx`
+  `fx-mikko-found` / `fx-manananggal-reunite`, `ui.eventHalloween`, `events`, and `mobs/mobs.json`'s two kinds.
 - `maps/warrens.json` is built here (`packages/game/scripts/build-warrens.ts` from `scripts/warrens/warrens-layout.json`,
   the art folder's layout copied in): run it again after changing either.
 - High terrain (13 Oct 2026, all of it repo-only, PLACEHOLDER art): `tiles/slums` cliff-rock / -scrap (+ -lower) / -chasm /
@@ -966,6 +974,38 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   sound. Dev: `?petcube=N` (N cubes, the dev town's /__give).
   The pet cube gift went out once with v0.1.683 (16 Oct 2026: 27 cubes, 8 × 100 Kowens for those who had a pet; kv
   'pet-cube-gift' records it); its one-off script is gone.
+- Halloween event (CONTEXT.md Events: Event, Event window, Event line, Timed cosmetic, Event mob, Mikko Kalabasa, Biikko
+  Kalabasa, Manananggal, Dazed, Reunite; `events/halloween.json`, manifest `events.halloween`; every number from it, the ones
+  in its sentences read by shared `halloweenRules`): shared `events.ts` (`isEventOn`: startsAt ≤ now < endsAt, both
+  +08:00 instants; startsAt null = off), bot `web/halloween.ts` `Halloween` (pure, tested in `halloween.test.ts`: kv
+  'halloween' keeps Mikko's spot, Biikko's and the next round's times and the carrier, so restarts keep them; `tick` on
+  town.ts's 1 s clock; its `director` runs Biikko and the upper half in the Slums' MobRoom, in a zone of its own,
+  `Halloween.eventZone`; town.ts attaches it to that room). Mikko Kalabasa: one hides at a time (`hideTiles`: walkable,
+  next to cover, never open ground, a door, gate, the camp or the pit, never within 6 of a player), `mikko-claim` →
+  first within 2 wins (`halloween-reward`, `mikko-found` to its map, an `event-line` for everyone in every area: never
+  Discord, never kept). Biikko Kalabasa: Lv 15, 100k HP, the golem's DEF, still and silent (never attacks), walks its
+  height-1 tiles, full after 300 s unhit, no XP or quest credit; one set of loot (`biikkoLoot`, new loot contents
+  `{ kowens }` and `{ potion }`, Kowens split like Kusing) held 10 s for the last hitter's party. The Manananggal: a
+  round every 60–180 min, the legs at a `lowerSpots` tile in town up to 60 min, the upper half a flying mob in the
+  Slums (passive until hit, Claw Swipe every 1.8 s); its last hitter carries it dazed (HalloweenView `dazed`: everyone
+  sees it behind them, any map); `reunite` within 2 of the legs → rewards (kits by mail when the bag is full); gone
+  60 s or the legs' time up → `manananggal-flew`. Server.ts `giveHalloween`: Kowens to the wallet, Kusing and Low
+  Repair Kits to the combat bag, the potion with addPotions. Timed cosmetics: items.json `lastsDays` → `Item.expiresAt`
+  stamped as it first enters a bag (`addToBag` → shared `stampTimed`), bound then; `expireItems` on every load
+  (adventure.ts, schema v23 `items.expires_at`) and town.ts's once-a-minute sweep (`expired` message: a line in your
+  feed and a toast; a worn one changes the look); the tooltip's time left (`timeLeftText`); forge action 'destroy'
+  (timed items only, the bag's Destroy…). Drawing: a hat with `hatCanvas` (the witch's 48 × 64 cell at offset 8,16)
+  is cropped into the doll's 32 × 48 composite and drawn whole by a Character overlay in town (`bigHat`, `syncBigHat`)
+  and by kit-art in the 64 × 64 combat poses; `cosmeticTops` (the robe) draws in the top's place, fixed colours, and
+  `cosmeticHidesBottom` skips the bottom layer; any head cosmetic hides the hair. Game: `world/halloween.ts` (Mikko,
+  the legs with their shadow and hover name, the dazed upper half's `carried` anim a tile behind its carrier, the
+  bursts), Biikko in `world/mobs.ts` (`MobDef.glow`: its glow sheet additive over it, flickering; its name in the
+  darkest orange with its "Legendary" line; `Mobs.events`) with a `BossBar` near it, `ui/halloween.ts` (the HUD's
+  Halloween board `halloweenTimer`, beside the jackpot counter and made like it: lights, "Halloween", Mikko, "Ends Nov 4"
+  and the time left; a phone tile with the rest; its panel 600 px wide, a row per activity; the pop-ups), chat `event` lines with the 16 px Mikko. Guide
+  tab Halloween. Dev: `?halloween=on` (the dev town's `/__halloween`: forced on in memory), `,mikko` (hidden two tiles
+  from you), `,biikko` (out beside you in the Slums), `,round`, `,carry` (the upper half yours); `/__halloween?as=
+  &biikkohp=1`.
 - Settings → Game → Exit game (`ui/settings.ts` `leave`): the desktop app quits (`net/desktop.ts` `exitApp`, the
   process plugin's exit, `process:allow-exit`); the website and the home screen app go to the front page.
 - Forge (combat-guide.md How to enhance, Enhancement cost and odds, Agimats, Disassembly; stats.json enhancement.cost,

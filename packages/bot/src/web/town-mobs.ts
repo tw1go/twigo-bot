@@ -557,10 +557,10 @@ export class MobRoom {
 
   /** A spawn point's mob (or pack: `point:<n>` each), its look seeded from its id, its level and HP its kind's; the Adds'
    *  too. */
-  private place(zone: MobZoneData, kind: MobKind, point: string, [col, row]: [number, number], add = false): Mob[] {
+  private place(zone: MobZoneData, kind: MobKind, point: string, [col, row]: [number, number], add = false, given?: MobStats): Mob[] {
     const variants = kind.variants ?? [];
     const n = kind.pack ? packSize(point, kind.pack) : 1;
-    const own = this.opts.zoneStats?.[zone.id];
+    const own = given ?? this.opts.zoneStats?.[zone.id];
     const stats: MobStats = own ? { ...own } : this.statsOf(zone.mob);
     const base = mobRules(this.fightData.stats, zone.mob);
     const rules = zone.dungeon ? { ...base, aggressive: true, packAssist: true, aggroTiles: zone.aggroRange ?? base.aggroTiles } : base;
@@ -1215,6 +1215,16 @@ export class MobRoom {
     return this.byId.get(id)?.level ?? null;
   }
 
+  /** The stats rules' data (the mob table and its formula: an event's director works its mobs' numbers out from them). */
+  statsData() {
+    return this.fightData.stats;
+  }
+
+  /** When a kind's attack lands after it starts (ms: mobs.json attackFrame at its art's fps), if it has one. */
+  kindHitMs(kind: string): number | undefined {
+    return this.kinds[kind]?.hitMs;
+  }
+
   /** A mob as the director sees it (where it is now, its HP, its foe), or null. */
   mobInfo(id: string, now: number): { id: string; at: [number, number]; hp: number; maxHp: number; dead: boolean; foe: string | null; facing: TownMobFacing; zone: string; kind: string } | null {
     const m = this.byId.get(id);
@@ -1235,7 +1245,7 @@ export class MobRoom {
       const zone = this.zones.find((z) => z.id === s.zone);
       if (!zone || this.byId.has(s.id)) continue;
       const kind = { ...(this.kinds[s.kind] ?? {}), pack: undefined };
-      const [m] = this.place(zone, kind, s.id, s.tile, !!s.calledBy);
+      const [m] = this.place(zone, kind, s.id, s.tile, !!s.calledBy, s.stats);
       Object.assign(m, {
         stats: { ...m.stats, ...s.stats }, level: s.stats.level, maxHp: s.stats.hp, hp: s.stats.hp, baseHp: s.stats.hp, kindId: s.kind,
         rules: { ...m.rules, ...(s.kind === zone.mob ? {} : mobRules(this.fightData.stats, s.kind)), aggressive: true, packAssist: false },

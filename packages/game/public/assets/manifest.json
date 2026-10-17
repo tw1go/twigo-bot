@@ -1019,7 +1019,7 @@
       ],
       "hatPattern": "characters/layers/hat/char-hat-{item}-{anim}-{dir}.png",
       "hatClipPattern": "characters/layers/hat/char-hatclip-{item}-{anim}-{dir}.png",
-      "hatNote": "Hats are recoloured on the MAIN ramp (DCDCF0,A8A8C8,74749A,48486A). beanie and cap ship a clip mask per frame: white pixels = hide the hair layer there (erase hair under the hat) before drawing the hat. ribbon has no clip mask and hides no hair. When a clipping hat is worn with 'buns', draw 'crop' instead (hatHairFallback). Cosmetic hats (cosmeticHats: item id → hat key, the Lamp-head Hat's lamp) are never in hats: the creator, the Parlor, randomOutfit and the NPCs never offer them; only wearing the item puts one on a look. fixedColourHats use their own colours (no hat ramp swap). litHats ship a hatlit sheet per frame (hatLitPattern: the glass and bulb only), drawn untinted over the doll at night with litGlow (fx) centred on the glass, offset px below the head's top.",
+      "hatNote": "Hats are recoloured on the MAIN ramp (DCDCF0,A8A8C8,74749A,48486A). beanie and cap ship a clip mask per frame: white pixels = hide the hair layer there (erase hair under the hat) before drawing the hat. ribbon has no clip mask and hides no hair. When a clipping hat is worn with 'buns', draw 'crop' instead (hatHairFallback). Cosmetic hats (cosmeticHats: item id → hat key, the Lamp-head Hat's lamp) are never in hats: the creator, the Parlor, randomOutfit and the NPCs never offer them; only wearing the item puts one on a look. fixedColourHats use their own colours (no hat ramp swap). litHats ship a hatlit sheet per frame (hatLitPattern: the glass and bulb only), drawn untinted over the doll at night with litGlow (fx) centred on the glass, offset px below the head's top. A hat with a hatCanvas entry (the Witch Hat's witch) is drawn from a bigger cell (size) with the doll's 32x48 cell at offset inside it: each frame goes at the doll's position less offset; its clip masks stay 32x48, zero offset. Hats without an entry are 32x48 at zero offset. While any head cosmetic's hat is worn (cosmeticHats: the Lamp-head Hat, the Witch Hat) the hair layer isn't drawn at all (Mac's rule); the creator's hats keep clipping hair with their masks.",
       "hatHairFallback": {
         "buns": "crop"
       },
@@ -1027,13 +1027,16 @@
         "beanie": true,
         "cap": true,
         "ribbon": false,
-        "lamp": true
+        "lamp": true,
+        "witch": true
       },
       "cosmeticHats": {
-        "lamp-hat": "lamp"
+        "lamp-hat": "lamp",
+        "witch-hat-5d": "witch"
       },
       "fixedColourHats": [
-        "lamp"
+        "lamp",
+        "witch"
       ],
       "hatLitPattern": "characters/layers/hat/char-hatlit-{item}-{anim}-{dir}.png",
       "litHats": [
@@ -1046,7 +1049,26 @@
           22
         ],
         "offset": 6
-      }
+      },
+      "hatCanvas": {
+        "witch": {
+          "size": [
+            48,
+            64
+          ],
+          "offset": [
+            8,
+            16
+          ]
+        }
+      },
+      "cosmeticTops": {
+        "witch-robe-5d": "witchrobe"
+      },
+      "cosmeticHidesBottom": [
+        "witchrobe"
+      ],
+      "cosmeticTopsNote": "Cosmetic tops (cosmeticTops: item id → top key, the Witch Robe's witchrobe): a worn body cosmetic draws characters/layers/top/char-top-<key>-* in the top's place in its own colours (no ramp swap); one in cosmeticHidesBottom covers the legs, so the bottom layer isn't drawn while it's worn (shoes still are). Never in top: the creator, the Parlor, randomOutfit and the NPCs never offer them, and a saved look never holds one."
     },
     "colourPresets": {
       "violet": [
@@ -16052,6 +16074,55 @@
       ],
       "walkable": false,
       "note": "PLACEHOLDER high-terrain prop (scripts/terrain/placeholders.ts); anchor = the footprint's top corner (the csv gives its centre)."
+    },
+    "mikko-kalabasa": {
+      "file": "props/prop-mikko-kalabasa.png",
+      "size": [
+        24,
+        24
+      ],
+      "anchor": [
+        12,
+        22
+      ],
+      "animation": {
+        "file": "props/prop-mikko-kalabasa.png",
+        "frames": 6,
+        "frameSize": [
+          24,
+          24
+        ],
+        "fps": 8,
+        "loop": true
+      },
+      "note": "Halloween 2026: Mikko Kalabasa where it hides (no footprint, never blocks); placed by the server (bot web/halloween.ts)."
+    },
+    "manananggal-lower": {
+      "file": "props/prop-manananggal-lower.png",
+      "size": [
+        64,
+        64
+      ],
+      "anchor": [
+        32,
+        58
+      ],
+      "animation": {
+        "file": "props/prop-manananggal-lower.png",
+        "frames": 8,
+        "frameSize": [
+          64,
+          64
+        ],
+        "fps": 8,
+        "loop": true
+      },
+      "shadow": [
+        22,
+        7
+      ],
+      "scale": 0.6,
+      "note": "Halloween 2026: the Manananggal's lower half (its wisps circle in the art; no bob). The anchor is the ground point under her (the art's _sheets.csv: 32,58); a small shadow there. Drawn at scale 0.6 (its art is 53 px tall, a character about 37: Mac found it too tall); its shadow scales with it."
     }
   },
   "fx": {
@@ -18027,6 +18098,38 @@
       ],
       "layer": "front",
       "note": "a level up: gold and cream sparks rising off the player; anchor = the player's feet; plays once"
+    },
+    "fx-mikko-found": {
+      "file": "fx/fx-mikko-found.png",
+      "frame": [
+        48,
+        48
+      ],
+      "frames": 8,
+      "fps": 12,
+      "loop": false,
+      "anchor": [
+        24,
+        40
+      ],
+      "layer": "front",
+      "note": "Halloween: Mikko Kalabasa found, once where it was"
+    },
+    "fx-manananggal-reunite": {
+      "file": "fx/fx-manananggal-reunite.png",
+      "frame": [
+        48,
+        48
+      ],
+      "frames": 8,
+      "fps": 12,
+      "loop": false,
+      "anchor": [
+        24,
+        40
+      ],
+      "layer": "front",
+      "note": "Halloween: the Manananggal reunited, once at the legs"
     }
   },
   "ui": {
@@ -18604,6 +18707,12 @@
         32
       ],
       "note": "the mail button's envelope (HUD, between the tutorial and News; ui/mail.ts): fileNew (a sparkle) while a letter is unread. The art folder's ui/mail also has -16 and -64 cuts"
+    },
+    "eventHalloween": {
+      "icon16": "ui/events/halloween/mikko-kalabasa-16.png",
+      "icon32": "ui/events/halloween/mikko-kalabasa.png",
+      "icon64": "ui/events/halloween/mikko-kalabasa-64.png",
+      "note": "Halloween 2026: the HUD badge and event lines (16), the pop-ups (64)"
     }
   },
   "notes_ui": "All UI is drawn at 1x and scaled by the same whole-number zoom as the world. Text is never baked in: draw it with Minecraft.ttf.",
@@ -19664,6 +19773,107 @@
           "note": "Scrap Toss projectile (the junk pile from the front view): flown by the game in an arc from the fist to the marker, the trail behind it; anchor = its middle"
         }
       }
+    },
+    "biikko-kalabasa": {
+      "name": "Biikko Kalabasa",
+      "file": "mobs/biikko-kalabasa/mob-biikko-kalabasa-{anim}-{dir}.png",
+      "size": [
+        64,
+        64
+      ],
+      "anchor": [
+        32,
+        60
+      ],
+      "directions": [
+        "se",
+        "ne",
+        "sw",
+        "nw"
+      ],
+      "animations": {
+        "idle": {
+          "frames": 4,
+          "fps": 6,
+          "loop": true
+        },
+        "move": {
+          "frames": 8,
+          "fps": 8,
+          "loop": true
+        },
+        "hit": {
+          "frames": 2,
+          "fps": 12,
+          "loop": false
+        },
+        "death": {
+          "frames": 8,
+          "fps": 8,
+          "loop": false
+        }
+      },
+      "glow": {
+        "file": "mobs/biikko-kalabasa/mob-biikko-kalabasa-glow-{anim}-{dir}.png",
+        "alpha": [
+          0.6,
+          1.0
+        ],
+        "everyMs": 120,
+        "note": "the face's candle glow alone, the body's frames: drawn additive over it, its alpha flickering 0.6 to 1 about every 120 ms"
+      },
+      "note": "Halloween 2026 event mob (events/halloween.json biikko): never attacks (no attack anim)."
+    },
+    "manananggal-upper": {
+      "name": "Manananggal",
+      "file": "mobs/manananggal-upper/mob-manananggal-upper-{anim}-{dir}.png",
+      "size": [
+        64,
+        64
+      ],
+      "anchor": [
+        32,
+        62
+      ],
+      "directions": [
+        "se",
+        "ne",
+        "sw",
+        "nw"
+      ],
+      "animations": {
+        "idle": {
+          "frames": 6,
+          "fps": 6,
+          "loop": true
+        },
+        "move": {
+          "frames": 6,
+          "fps": 10,
+          "loop": true
+        },
+        "attack": {
+          "frames": 5,
+          "fps": 12,
+          "loop": false
+        },
+        "hit": {
+          "frames": 2,
+          "fps": 12,
+          "loop": false
+        },
+        "death": {
+          "frames": 6,
+          "fps": 10,
+          "loop": false
+        },
+        "carried": {
+          "frames": 6,
+          "fps": 6,
+          "loop": true
+        }
+      },
+      "note": "Halloween 2026 event mob (events/halloween.json manananggal.upper): the anchor is the ground point under her; she floats ~12 px above it in the art. carried: dazed, behind whoever beat her (pick the dir from their facing)."
     }
   },
   "guide": {
@@ -19723,5 +19933,9 @@
       ],
       "note": "the quest map's pins: kill (a target ring) and mini boss (a crown), each 2 frames bobbing; anchor bottom centre on the spot"
     }
+  },
+  "events": {
+    "halloween": "events/halloween.json",
+    "note": "Each event’s rules (the bot reads them too: web/halloween.ts); its window turns everything of it on and off."
   }
 }

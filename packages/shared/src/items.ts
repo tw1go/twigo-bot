@@ -1,3 +1,4 @@
+import { EVENT_POTIONS, type EventPotion } from './events.js';
 import type { AdventureState, CosmeticPlace, EquipPlace, EquipSlot, EquipmentDef, GearRarity, QuestDef, QuestReward } from './adventure.js';
 import { type PetNode, petRules, petTotals } from './pets.js';
 import { type GearTotals, type StatName, type StatsData, gearKind, numbersIn, placesFor, needsLine, gearMismatch, wearCheck } from './stats.js';
@@ -49,6 +50,9 @@ export interface Item {
   /** A pet (kind 'pet'): Pet XP into its level (its `level` is the pet's), and its pet points by node (shared pets.ts). */
   xp?: number;
   points?: Partial<Record<PetNode, number>>;
+  /** A timed cosmetic (CONTEXT.md Timed cosmetic; its kind's `lastsDays`): when it runs out (ms), set as it first enters
+   *  a bag. Gone wherever it is once it's past (expireItems). */
+  expiresAt?: number;
 }
 
 /** What isn't gear: whetstones, fragments and Repair Kits (material), HP/MP Potions (potion), agimats, cosmetics,
@@ -75,6 +79,8 @@ export interface CombatItemDef {
   cosmetic?: boolean;
   /** Where a cosmetic is worn (none yet: it can't be worn). */
   cosmeticPlace?: CosmeticPlace;
+  /** A timed cosmetic: how many days it lasts from when it first enters a bag (bound from then on). */
+  lastsDays?: number;
   /** Sold at the sari-sari store: priced as a potion (its tier's Kusing), a whetstone or a Repair Kit (Kowens), a dungeon
    *  ticket (its dungeon's price), a travel item, or a smithing tool with its own price (`price`). */
   shop?: 'potion' | 'whetstone' | 'repairKit' | 'ticket' | 'travel' | 'smithing' | 'pets';
@@ -444,13 +450,23 @@ export interface LinePart {
   colour: string;
 }
 
+/** What a pickup gave (one of): Kusing, an item, Kowens or a Discord buff potion (an event's: Biikko Kalabasa's loot). */
+export interface LootGot {
+  kusing?: number;
+  item?: Item;
+  kowens?: number;
+  potion?: EventPotion;
+}
+
 /** The line in your own system feed (only you see it) as you pick something up: "Gained Sturdy Slingshot of Calamity +1
  *  (1 slot)", "Gained Crude Stick +3" (no slot part without slots), "Gained Rough Whetstone ×3", "Gained 120 Kusing".
  *  Only the item's name is in its colour (`nameColour`); the rest is white. `text`: all of it. `mainStat`: the viewer's. */
-export function pickupLine(data: ItemData, got: { kusing?: number; item?: Item }, mainStat: StatName | null = null): { text: string; parts: LinePart[] } {
+export function pickupLine(data: ItemData, got: LootGot, mainStat: StatName | null = null): { text: string; parts: LinePart[] } {
   const plain = (text: string): LinePart => ({ text, colour: PLAIN_COLOUR });
   let parts: LinePart[];
-  if (!got.item) parts = [plain(`Gained ${(got.kusing ?? 0).toLocaleString('en-US')} Kusing`)];
+  if (got.kowens !== undefined) parts = [plain(`Gained ${got.kowens.toLocaleString('en-US')} ${got.kowens === 1 ? 'Kowen' : 'Kowens'}`)];
+  else if (got.potion) parts = [plain('Gained '), { text: EVENT_POTIONS[got.potion].name, colour: PLAIN_COLOUR }];
+  else if (!got.item) parts = [plain(`Gained ${(got.kusing ?? 0).toLocaleString('en-US')} Kusing`)];
   else {
     const it = got.item;
     const slots = isGearDef(data.defs.get(it.defId)) ? it.agimats.length : 0;
@@ -536,8 +552,9 @@ export function bagRoom(data: ItemData, bag: Item[], item: Item): number {
 
 /** Puts an item (or a stack) into the bag: onto its stacks first, then new slots (new uids from `uid` for the extra ones).
  *  All or nothing: false (and the bag untouched) if it doesn't all fit. */
-export function addToBag(data: ItemData, bag: Item[], item: Item, uid: () => string): boolean {
+export function addToBag(data: ItemData, bag: Item[], item: Item, uid: () => string, now = Date.now()): boolean {
   if (bagRoom(data, bag, item) < item.count) return false;
+  item = stampTimed(data, item, now); // (a timed cosmetic's days start now, the first time)
   const limit = stackLimit(data.stats, data.defs.get(item.defId));
   let left = item.count;
   for (const b of bag) {
@@ -633,6 +650,46 @@ export function unequipToBag(data: ItemData, s: Wearer, place: EquipPlace): { ok
 export const COSMETIC_PLACES: CosmeticPlace[] = ['weapon', 'head', 'body'];
 /** Gear dragged onto a Costume place, or a cosmetic onto a gear place. */
 export const OTHER_TAB = 'That goes in the other tab.';
+
+// ── Timed cosmetics (CONTEXT.md Timed cosmetic) ──
+
+const DAY_MS = 86_400_000;
+
+/** A timed kind's item as it first enters a bag: its clock started (`lastsDays` from now) and bound from then on (never
+ *  traded, dropped or sold). Anything else, or one already started, as it is. */
+export function stampTimed(data: ItemData, item: Item, now: number): Item {
+  const def = data.defs.get(item.defId);
+  const days = def && !isGearDef(def) ? def.lastsDays : undefined;
+  if (!days || item.expiresAt) return item;
+  return { ...item, expiresAt: now + days * DAY_MS, bound: true };
+}
+
+/** Whether an item has run out. */
+export const isExpired = (item: Pick<Item, 'expiresAt'>, now: number): boolean => item.expiresAt !== undefined && item.expiresAt <= now;
+
+/** Takes out every item that has run out, wherever it is (the bag, its pockets, worn as a cosmetic): those taken, each
+ *  with where it was (`place`: a cosmetic place, when worn). */
+export function expireItems(s: Pick<AdventureState, 'bag' | 'cosmetics'>, now: number): { item: Item; place?: CosmeticPlace }[] {
+  const gone: { item: Item; place?: CosmeticPlace }[] = [];
+  for (let i = s.bag.length - 1; i >= 0; i--) if (isExpired(s.bag[i], now)) gone.unshift({ item: s.bag.splice(i, 1)[0] });
+  for (const place of COSMETIC_PLACES) {
+    const worn = s.cosmetics[place];
+    if (worn && isExpired(worn, now)) {
+      delete s.cosmetics[place];
+      gone.push({ item: worn, place });
+    }
+  }
+  return gone;
+}
+
+/** What's left of a timed item's time, in words: "4d 12h left", "5h 20m left", under an hour "35m left". */
+export function timeLeftText(expiresAt: number, now: number): string {
+  const m = Math.max(0, Math.ceil((expiresAt - now) / 60_000));
+  if (m < 60) return `${m}m left`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ${m % 60}m left`;
+  return `${Math.floor(h / 24)}d ${h % 24}h left`;
+}
 
 /** The parts of a character wearing a cosmetic needs. */
 export type CostumeWearer = Pick<AdventureState, 'cosmetics' | 'bag'>;

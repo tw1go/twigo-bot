@@ -266,6 +266,34 @@
       "large": "items/cosmetics/item-cosmetic-lamp-hat-64.png"
     },
     {
+      "id": "witch-hat-5d",
+      "name": "Witch Hat",
+      "kind": "cosmetic",
+      "rarity": "darkOrange",
+      "cosmetic": true,
+      "cosmeticPlace": "head",
+      "lastsDays": 5,
+      "about": "A tall pointed witch hat from the Halloween event. Lasts 5 days.",
+      "icon": "items/cosmetics/item-cosmetic-witch-hat-16.png",
+      "showcase": "items/cosmetics/item-cosmetic-witch-hat.png",
+      "large": "items/cosmetics/item-cosmetic-witch-hat-64.png",
+      "note": "Repo addition (Halloween 2026): a timed cosmetic, its days from events/halloween.json cosmetics (a test keeps them the same)."
+    },
+    {
+      "id": "witch-robe-5d",
+      "name": "Witch Robe",
+      "kind": "cosmetic",
+      "rarity": "darkOrange",
+      "cosmetic": true,
+      "cosmeticPlace": "body",
+      "lastsDays": 5,
+      "about": "A long purple witch robe from the Halloween event. Lasts 5 days.",
+      "icon": "items/cosmetics/item-cosmetic-witch-robe-16.png",
+      "showcase": "items/cosmetics/item-cosmetic-witch-robe.png",
+      "large": "items/cosmetics/item-cosmetic-witch-robe-64.png",
+      "note": "Repo addition (Halloween 2026): the first Body cosmetic, a timed one (see witch-hat-5d)."
+    },
+    {
       "id": "warren-ticket",
       "name": "Warren Ticket",
       "kind": "consumable",

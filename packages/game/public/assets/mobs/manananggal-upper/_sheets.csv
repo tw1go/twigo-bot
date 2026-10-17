@@ -1,0 +1,7 @@
+file,cell_w,cell_h,frames,fps,loop,anchor_x,anchor_y,notes
+mob-manananggal-upper-idle-{dir}.png,64,64,6,6,yes,32,62,Manananggal upper half hovering: bob + wing flap (dirs se ne sw nw); anchor is the ground point under her (she floats ~12 px above it)
+mob-manananggal-upper-move-{dir}.png,64,64,6,10,yes,32,62,flying (same frames as idle, faster)
+mob-manananggal-upper-attack-{dir}.png,64,64,5,12,no,32,62,Claw Swipe: wind-up then lunge toward her facing; the hit lands on frame 3
+mob-manananggal-upper-hit-{dir}.png,64,64,2,12,no,32,62,flash + knocked back 1 px
+mob-manananggal-upper-death-{dir}.png,64,64,6,10,no,32,62,rises and fades
+mob-manananggal-upper-carried-{dir}.png,64,64,6,6,yes,32,62,dazed with wings folded and dizzy stars: floats behind the player who killed her; pick the dir from the carrier's facing

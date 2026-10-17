@@ -346,6 +346,7 @@
       #settings .st-label { min-width: 56px; }
       #settings .st-volume { flex: 1; accent-color: #7C2AE8; }
       #settings .st-check input { margin: 0; accent-color: #7C2AE8; }
+      #equipment .eq-tip-timed, .eq-tip-timed { margin-top: 4px; color: #FDBA74; font-size: calc(12px * var(--text)); }
       #settings .st-note { margin: 2px 0 0; color: #6B7280; font-size: calc(12px * var(--text)); }
       #settings .st-seen { margin-bottom: 6px; }
       #settings .st-seen .st-size { font-size: calc(13px * var(--text)); }
@@ -770,6 +771,28 @@
       #town-hud .th-left .th-golem { margin-top: 12px; }
       /* Phones: the jackpot counter, race box and golem timer in one column (ui/townhud.ts), each as wide as the widest. */
       #town-hud .th-events { display: grid; width: fit-content; }
+      /* The Halloween board (ui/halloween.ts): the jackpot counter's box in pumpkin orange. */
+      #town-hud .th-halloween { border-color: #C2410C; }
+      #town-hud .th-halloween:hover { border-color: #F97316; background: #1E1B3A; }
+      #town-hud .th-halloween .jt-label { color: #FDBA74; }
+      #town-hud .th-halloween .jt-icon { width: 32px; height: 32px; margin: -4px 0; }
+      #town-hud .th-halloween .jt-pot { font-size: calc(17px * var(--text)); color: #FED7AA; white-space: nowrap; }
+      #town-hud .th-halloween .jt-time { white-space: nowrap; }
+      #town-hud .th-halloween[hidden] { display: none; }
+      /* Its panel: wider than the reward box, a row per activity. */
+      #reward .rw-card:has(.hw-panel) { width: min(600px, calc(100vw - 32px)); }
+      #reward .hw-panel { display: grid; gap: 10px; margin-bottom: 16px; text-align: left; }
+      #reward .hw-panel .rw-graphic { margin: 0 0 4px; }
+      #reward .hw-act { padding: 8px 12px; border-left: 4px solid #F97316; background: #FFF7ED; }
+      #reward .hw-act b { display: block; color: #C2410C; font-size: calc(16px * var(--text)); }
+      #reward .hw-act p { margin: 2px 0 0; color: #3D4256; }
+      #reward .hw-pic { image-rendering: pixelated; }
+      #reward .hw-ends { margin: 0; color: #9A3412; font-weight: 600; }
+      #reward .hw-rewards { list-style: none; margin: -6px 0 18px; padding: 0; display: grid; gap: 6px; justify-content: center; text-align: left; }
+      #reward .hw-rewards li { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+      #reward .hw-rewards li > :first-child { flex: none; width: 16px; height: 16px; image-rendering: pixelated; background-size: contain; }
+      #chat .ch-event { color: #FDBA74; }
+      #chat .ch-event img { width: 16px; height: 16px; vertical-align: -3px; margin-right: 4px; image-rendering: pixelated; }
       #town-hud .th-events > .th-jackpot { width: auto; justify-self: stretch; justify-content: start; }
       @media (prefers-reduced-motion: reduce) { #town-hud .th-golem.gt-awake { animation: none; } }
       /* In the Warrens on phones, hide the town-specific event counters (jackpot + race; golem is already hidden there)
@@ -783,6 +806,7 @@
         #town-hud .th-events { display: flex; flex-direction: row; align-items: flex-start; gap: 6px; width: auto; }
         /* Each tile: ~60 × 60 px square, flex column, icon fills the top, time at the bottom */
         #town-hud .th-events .th-jackpot { display: flex; flex-direction: column; align-items: center; justify-content: space-between; width: 60px; height: 60px; min-width: 0; padding: 6px 4px 5px; box-sizing: border-box; text-align: center; margin-top: 0; }
+        #town-hud .th-events .th-jackpot[hidden] { display: none; } /* (the golem timer and Halloween board off: not a tile) */
         /* Hide the lights row and text labels */
         #town-hud .th-events .jt-lights { display: none; }
         #town-hud .th-events .jt-label { display: none; }

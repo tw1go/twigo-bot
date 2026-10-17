@@ -1,7 +1,7 @@
 import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ClassesFile, GearRarity, HoodHouse, HouseLook, OutfitData, PrivacySettings, RogueState, TownHoodActionResponse, TownHoodResponse, TownItems, TownRace, TownRaceResponse } from '@mikazuki/shared';
-import { type LanternPost, type TownMail, DEFAULT_PRIVACY, MAIL_RULES, claimInto, hasAttachments, parseMailAction, RETURN_LANTERN, gainPetXp, parsePetAction, petAction, petIdOf, petRules, setPetLevel, addToBag, isGearDef, lanternPostOf, newItem, rollGear, rollWorthy, takeKind, buffSkillLevels, classBuffs, classSkills, damageSkillLevels, moveUnlock } from '@mikazuki/shared';
+import { type LanternPost, type TownMail, DEFAULT_PRIVACY, expireItems, MAIL_RULES, claimInto, hasAttachments, parseMailAction, RETURN_LANTERN, gainPetXp, parsePetAction, petAction, petIdOf, petRules, setPetLevel, addToBag, isGearDef, lanternPostOf, newItem, rollGear, rollWorthy, takeKind, buffSkillLevels, classBuffs, classSkills, damageSkillLevels, moveUnlock } from '@mikazuki/shared';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { doorSpot, hoodMap, lotTile } from '../../bot/src/web/hood-map.ts';
 import type { Plugin } from 'vite';
@@ -9,6 +9,7 @@ import { attachTown } from '../../bot/src/web/town.ts';
 import { MobRoom, loadMobKinds, loadSkillShapes } from '../../bot/src/web/town-mobs.ts';
 import { type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView, raiseSkill, resetSkillPoints, resetStatPoints, spendPoint } from '../../bot/src/web/progress.ts';
 import { loadItemData, loadLeveling, loadStats } from '../../bot/src/web/stats-data.ts';
+import { Halloween, loadHalloween } from '../../bot/src/web/halloween.ts';
 import { buyCombat, devGive, dropFromBag, makeItem, takeLoot, usePotion } from '../../bot/src/web/combat-bag.ts';
 import { enhanceFeedLine, forge, parseForgeAction } from '../../bot/src/web/forge.ts';
 import { settleTrade } from '../../bot/src/web/trade.ts';
@@ -35,6 +36,11 @@ import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
 //   GET /__golem?now=1   the Scrapheap Golem rises in the Slums now (the page's ?golem=now); ?demo=1&as=Alice: it rises if
 //       it must and plays its whole fight against the nearest player (?golemdemo=1): each attack, the Junk at a pretend
 //       half, Enrage at a pretend quarter, death (the line names Alice if nobody hit it)
+//   GET /__halloween?as=Alice   the Halloween event on now (the page's ?halloween=on calls it); &mikko=1 hides Mikko
+//       Kalabasa two tiles from Alice, &biikko=1 brings Biikko Kalabasa out in the Slums now, &round=1 starts a Manananggal
+//       round (the legs in town, the upper half in the Slums), &carry=1 hands Alice the dazed upper half (a round for it),
+//       &biikkohp=500 puts Biikko (once out) down to 500 HP.
+//       In memory only (a restart: off again). Its rewards go into her items here (Kowens and potions only printed).
 //   GET /__flex?as=Bob&itemId=rock&itemName=Rock&rarity=junk   Bob flexes an item (chat line + bubble)
 //   GET /__gift?as=Alice&amount=50   Alice gets the gift pop-up (as from /gift kowens); &wallet=1: only her HUD's Kowens reload
 //   GET /__gift?as=Alice&item=megaphone&name=Megaphone&qty=3   Alice gets the item gift pop-up (as from /gift item)
@@ -386,13 +392,22 @@ export function devTown(): Plugin {
       };
       const classes = (JSON.parse(readFileSync(join(server.config.publicDir, 'assets/classes/classes.json'), 'utf8')) as ClassesFile).classes;
       const classOf = (name: string) => classes.find((c) => c.id === kits.get(name)?.cls);
+      // The Halloween event, off until the page's ?halloween=on (/__halloween): its mobs live in the Slums' room, in a
+      // zone of their own, run by its director (as the bot's server.ts).
+      const hwLoaded = loadHalloween();
+      const halloween = new Halloween(hwLoaded.data, hwLoaded.maps, null);
+      const slumsJson = JSON.parse(readFileSync(slumsFile, 'utf8'));
+      slumsJson.mobZones = [...(slumsJson.mobZones ?? []), Halloween.eventZone(slumsJson.size)];
       const slumsMobs = new MobRoom(
-        JSON.parse(readFileSync(slumsFile, 'utf8')),
+        slumsJson,
         Math.random,
         Object.fromEntries(classes.map((c) => [c.id, c.skills.map((k) => k.level)])),
         loadSkillShapes(),
         loadMobKinds(),
         loadGolemArt(),
+        undefined,
+        undefined,
+        { director: halloween.director },
       );
       const warrensLive = loadWarrens(Object.fromEntries(classes.map((c) => [c.id, c.skills.map((k) => k.level)])));
       const town = attachTown(httpServer as Parameters<typeof attachTown>[0], {
@@ -405,6 +420,26 @@ export function devTown(): Plugin {
           slums: slumsMap,
         },
         mobs: { slums: slumsMobs },
+        // Its rewards: Kusing and Low Repair Kits into the kept items (the kits by pretend mail when the bag is full),
+        // Kowens into the pretend wallet, the potion only printed.
+        halloween: {
+          event: halloween,
+          give: (name, r, from) => {
+            const g = gearOf(name);
+            g.kusing += r.kusing;
+            if (r.kowens) move(name, r.kowens);
+            const fitted = !r.repairKits || !!devGive(items, g, 'low-repair-kit', { count: r.repairKits }, devUid);
+            if (!fitted) {
+              const kit = makeItem(items, 'low-repair-kit', { count: r.repairKits }, devUid);
+              const now = Date.now();
+              const m: TownMail = { id: ++mailSeq, from, title: 'Your Low Repair Kit', body: 'Your bag was full, so it came by mail.', at: now, expires: now + MAIL_RULES.days * 86_400_000, read: false, claimed: false, kowens: 0, kusing: 0, items: kit ? [kit] : [] };
+              mailOf(name).unshift(m);
+              town.mail(name, mailView(name).unread, m.from, m.title);
+            }
+            server.config.logger.info(`[halloween] ${name} got ${r.kowens} Kowens, ${r.kusing} Kusing, ${r.repairKits} kits${fitted ? '' : ' (by mail)'}${r.potion ? `, a ${r.potion} potion` : ''}`, { timestamp: true });
+            return { kitsByMail: !fitted };
+          },
+        },
         // The Scrap Warrens as live; tickets from the kept bag (no refunds: nothing's saved here); Aling Nena's quest from the
         // page's pretend quests (a real run needs it done; a practice run, her ticket; its last boss, her binoculars).
         warrens: {
@@ -499,7 +534,14 @@ export function devTown(): Plugin {
         lootRandom: () => (richLoot ? Math.random() * 0.04 : Math.random()),
         lootPlusRandom: Math.random,
         items: {
-          take: (name, loot) => takeLoot(items, gearOf(name), loot, devUid),
+          take: (name, loot) => {
+            // (An event's Kowens into the pretend wallet, its potion only printed.)
+            if ('kowens' in loot) return (move(name, loot.kowens), true);
+            if ('potion' in loot) return (server.config.logger.info(`[halloween] ${name} picked up a ${loot.potion} potion`, { timestamp: true }), true);
+            return takeLoot(items, gearOf(name), loot, devUid);
+          },
+          // Timed items that ran out: gone from the kept items (the page's copy follows the `items` sent after).
+          expire: (name) => expireItems(gearOf(name), Date.now()).map((g) => ({ name: items.defs.get(g.item.defId)?.name ?? g.item.defId, worn: !!g.place })),
           usePotion: (name, defId) => usePotion(items, gearOf(name), defId),
           state: (name) => gearOf(name),
           drop: (name, uid, count) => dropFromBag(items, gearOf(name), uid, count, devUid),
@@ -524,6 +566,12 @@ export function devTown(): Plugin {
         },
         onSay: (_id, nickname, text, megaphone, gm) => server.config.logger.info(`[town chat → Discord] ${!gm && megaphone ? '📢 ' : ''}${nickname}: ${text}`, { timestamp: true }),
         gm: (name) => /^gm/i.test(name), // dev: players named GM… (?as=GMTwigo) are Game Masters
+      });
+      server.middlewares.use('/__halloween', (req, res) => {
+        const q = new URL(req.url ?? '/', 'http://localhost').searchParams;
+        const said = town.halloweenDev(q.get('as') ?? '', { mikko: q.has('mikko'), biikko: q.has('biikko'), round: q.has('round'), carry: q.has('carry'), ...(q.has('biikkohp') ? { wound: Number(q.get('biikkohp')) } : {}) });
+        server.config.logger.info(`[halloween] ${said}`, { timestamp: true });
+        res.end(`${said}\n`);
       });
       server.middlewares.use('/__title', (req, res) => {
         const q = new URL(req.url ?? '/', 'http://localhost').searchParams;

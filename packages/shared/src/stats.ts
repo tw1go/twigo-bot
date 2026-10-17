@@ -57,7 +57,7 @@ export interface StatsData {
   /** Party rules in words; `xp` read by partyXpMult ("+10% per extra member, max +30%"), `xpRangeTiles` (a repo addition):
    *  how near a member must be to share. */
   party?: { xp: string; xpRangeTiles?: number };
-  mobs: { list: Record<string, MobStats> };
+  mobs: { list: Record<string, MobStats>; /** Each number at a mob's level ("6 + 3 * lv"). */ formula?: Record<'hp' | 'atk' | 'def' | 'xp', string> };
   skills: {
     levelOnUnlock: number;
     skillPointsPerLevelUp: number;

@@ -220,6 +220,16 @@ export function combine(data: ItemData, s: ForgeHolder, uid: string, newUid: () 
 /** Sells training gear, an agimat or HP/MP Potions from the bag for Kusing (stats.json trainingGear.sellKusing,
  *  agimats.sellKusing, potions.sellShare: `sellPrice`); `count` of a stack (all of it without; the rest stays, its
  *  uid kept); nothing else sells here. */
+/** Throws a timed item away from the bag (a timed cosmetic can't be sold, traded or dropped); nothing else. */
+export function destroy(data: ItemData, s: ForgeHolder, uid: string): Result {
+  const at = s.bag.findIndex((b) => b.uid === uid);
+  const item = s.bag[at];
+  if (!item) return no("You don't have that item.");
+  if (item.expiresAt === undefined) return no("That can't be destroyed.");
+  s.bag.splice(at, 1);
+  return { ok: true, outcome: 'destroyed', message: `Destroyed your ${itemName(data, item)}.` };
+}
+
 export function sell(data: ItemData, s: ForgeHolder, uid: string, count?: number): Result {
   const at = s.bag.findIndex((b) => b.uid === uid);
   const item = s.bag[at];
@@ -284,6 +294,8 @@ export function forge(data: ItemData, s: ForgeHolder, a: TownForgeAction, random
       return combine(data, s, a.item, newUid);
     case 'sell':
       return sell(data, s, a.item, a.count);
+    case 'destroy':
+      return destroy(data, s, a.item);
     case 'disassemble-many':
       return many(data, s, a.items, (h, uid) => disassemble(data, h, uid, random, newUid), 'disassembled');
     case 'sell-many':
@@ -306,7 +318,7 @@ export function parseForgeAction(body: unknown): TownForgeAction | null {
   if (b.action === 'draw') return { action: 'draw', item };
   if (b.action === 'apply' && id(b.stone)) return { action: 'apply', item, stone: b.stone as string };
   if (b.action === 'sell') return { action: 'sell', item, ...(Number.isInteger(b.count) && (b.count as number) >= 1 && (b.count as number) <= 999 ? { count: b.count as number } : {}) };
-  if (b.action === 'disassemble' || b.action === 'combine') return { action: b.action, item };
+  if (b.action === 'disassemble' || b.action === 'combine' || b.action === 'destroy') return { action: b.action, item };
   return null;
 }
 

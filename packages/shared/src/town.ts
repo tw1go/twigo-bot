@@ -3,10 +3,11 @@
 // A moderator's kick closes the socket with code 4001 and the time (ms) they may come back as the reason.
 
 import type { AdventureState, CharacterProgress, EquipPlace, QuestProgress, CosmeticPlace } from './adventure.js';
-import type { Item } from './items.js';
+import type { Item, LootGot } from './items.js';
 import type { TradeEnd, TradeRefusal, TradeView, TradePut } from './trade.js';
 import type { HoodHouse, HoodMap, OutfitData, TitleData } from './room-api.js';
 import type { PrivacySettings } from './friends.js';
+import type { EventPotion } from './events.js';
 
 export type TownDir = 's' | 'se' | 'e' | 'ne' | 'n' | 'nw' | 'w' | 'sw';
 
@@ -254,6 +255,10 @@ export type TownClientMessage =
   /** Whisper to one player who's online (`to`: their nickname, any case; CONTEXT.md Whisper): checked like `say`, never
    *  to Discord, never kept. `links`: items shown in it, as in `say`. */
   | { t: 'whisper'; to: string; text: string; links?: string[] }
+  /** Halloween: a click on Mikko Kalabasa where it hides (the server checks it's there and within reach: first wins). */
+  | { t: 'mikko-claim' }
+  /** Halloween: a click on the Manananggal's lower half while carrying its dazed upper half (within reach). */
+  | { t: 'reunite' }
   /** Change your privacy settings (Settings → Privacy): only what's given changes. */
   | { t: 'privacy'; whispers?: PrivacySettings['whispers']; balance?: PrivacySettings['balance']; status?: PrivacySettings['status'] }
   /** Trading (bot web/trade.ts; stats.json trading): ask a player within range (by town id), answer a request, put your
@@ -356,6 +361,26 @@ export type FriendRefusal = 'self' | 'gone' | 'already' | 'asked' | 'full' | 'th
 export type WhisperRefusal = 'self' | 'offline' | 'closed';
 
 /** (`closed`: they don't take invites from you: a block, never named as one.) */
+/** The Halloween event as a player sees it (CONTEXT.md Event; bot web/halloween.ts): when it ends, Mikko Kalabasa where
+ *  it hides if that's your map, the Manananggal's lower half while it stands (town), and who's carrying its dazed upper
+ *  half (town ids, anywhere). Null: the event is off. */
+export interface HalloweenView {
+  endsAt: number;
+  mikko?: { col: number; row: number };
+  lower?: { col: number; row: number; until: number };
+  dazed: string[];
+}
+
+/** What a Halloween find or reunite gave: Kowens, Kusing, Low Repair Kits (by mail when the bag had no room) and a
+ *  Discord buff potion. */
+export interface HalloweenReward {
+  kowens: number;
+  kusing: number;
+  repairKits: number;
+  kitsByMail?: boolean;
+  potion?: EventPotion;
+}
+
 export type PartyRefusal = 'self' | 'gone' | 'not-leader' | 'full' | 'in-party' | 'already' | 'invited' | 'expired' | 'slow' | 'closed';
 
 /** Jack en poy: bato (rock) beats gunting (scissors), gunting beats papel (paper), papel beats bato. */
@@ -671,7 +696,7 @@ export type TownServerMessage =
   | { t: 'drop-refused'; message: string }
   /** Your worn items, combat bag and Kusing changed on the server (loot picked up, a potion used, dev's ?give=);
    *  `got`: what you just picked up. */
-  | { t: 'items'; items: TownItems; got?: { kusing?: number; item?: Item } }
+  | { t: 'items'; items: TownItems; got?: LootGot }
   /** Someone in your room (maybe you) drank an HP or MP Potion: what it restored, over them; yours with its shared
    *  cooldown (ms). */
   | { t: 'potion'; id: string; heals: 'hp' | 'mp'; amount: number; cooldown?: number }
@@ -700,7 +725,7 @@ export type TownServerMessage =
   | { t: 'party-say'; id: string; name: string; text: string; links?: ChatItemLink[] }
   /** A party member picked something up (to the rest of the party, wherever they are): their name and what; Kusing
    *  with each one's share (`share`) when it was split. */
-  | { t: 'party-loot'; name: string; got: { kusing?: number; item?: Item }; share?: number }
+  | { t: 'party-loot'; name: string; got: LootGot; share?: number }
   /** Your friends and requests (on arrival and on every change). `note`: what happened, as a toast; `online`: a friend
    *  who just came online (a line in your feed); `asked`: a new request to you from them (its pop-up). */
   | { t: 'friends'; friends: FriendsState; note?: string; online?: string; asked?: FriendAsk }
@@ -713,6 +738,21 @@ export type TownServerMessage =
   | { t: 'whisper-refused'; reason: WhisperRefusal; name: string }
   /** Your privacy settings (on arrival and after a change). */
   | { t: 'privacy'; privacy: PrivacySettings }
+  /** The Halloween event as you see it (on arrival and on every change; null: it's off). */
+  | { t: 'halloween'; view: HalloweenView | null }
+  /** Mikko Kalabasa was found where it hid on your map: its burst plays there once. */
+  | { t: 'mikko-found'; col: number; row: number }
+  /** The Manananggal was reunited at its lower half (town): its burst on the legs, then it flies off. `id`: whoever
+   *  carried it (their town id). */
+  | { t: 'reunited'; id: string; col: number; row: number }
+  /** Your Halloween reward: you found Mikko Kalabasa or reunited the Manananggal (its pop-up). */
+  | { t: 'halloween-reward'; kind: 'mikko' | 'reunite'; reward: HalloweenReward }
+  /** The dazed upper half you carried flew away (you left too long, or the lower half's time ran out): no reward. */
+  | { t: 'manananggal-flew' }
+  /** An event's line in the chat for everyone (CONTEXT.md Event line): never in Discord, never kept. */
+  | { t: 'event-line'; text: string; icon?: 'mikko' }
+  /** Timed items of yours that ran out (CONTEXT.md Timed cosmetic): a line in your feed each; `worn` ones change your look. */
+  | { t: 'expired'; items: { name: string; worn: boolean }[] }
   /** The buffs on another player (an answer to `buffs-of`). */
   /** `cp`: their combat rating now (with their buffs; none for someone gone or with no stats here). */
   | { t: 'buffs-of'; id: string; buffs: TownBuff[]; cp?: number }
@@ -775,6 +815,9 @@ export interface TownLoot {
   row: number;
   kusing?: number;
   item?: Item;
+  /** Kowens or a Discord buff potion lying there (an event's loot). */
+  kowens?: number;
+  potion?: EventPotion;
   mine: boolean;
   opensIn?: number;
 }
