@@ -922,7 +922,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `xp.table` (2,600 at Lv 1 … 215,300 at Lv 19; 1,745,600 in all), the cap 20 (XP 0, "MAX"). World (`world/pets.ts`
   `Pets`, made in TownScene `makePets`; everyone's, keyed 'me' or a town id, drawn once its owner is): sheets
   pets/sheets/pet-<id>-<anim>-<dir>.png (40 × 40, anchor (20, 35), frames per pet in pets.json; loaded the first time a
-  pet shows), drawn at the manifest's `pets.scale` (0.6: the owner found 40 × 40 too big), the art's se and sw sheets swapped by
+  pet shows; an unseen pet looks every 500 ms whether its own sheets are in and shows then, never waiting for the scene's
+  whole loader, where one stuck file kept every pet hidden; asked for again every 10 s while missing), drawn at the manifest's `pets.scale` (0.6: the owner found 40 × 40 too big), the art's se and sw sheets swapped by
   `pets.sheetDirs` (an art problem: in all seven pets se faces left and sw right; remove the map once the art folder swaps
   the files), and Dr. Pittuki's and Wonwuu's ne and nw by `pets.sheetDirsByPet`, depth as a character's; every pet on a ground shadow (manifest pets.shadow 22 × 8,
   shadowHover 14 × 5, shadows' own sizes, a pixel ellipse in shadowColour #0B0A18 at shadowAlpha 0.55: the characters'

@@ -76,9 +76,12 @@ const LANDING_STEPS = 3;
 const ROUTE_MS = 500;
 /** A resting pet sets off once its owner is this many tiles past `distanceTiles`. */
 const START_EXTRA = 1.8;
-/** A pet whose sheets didn't all load (a dropped connection, a page an older build asks for) is tried again after this
+/** A pet whose sheets haven't come (a dropped connection, a page an older build asks for) is asked for again after this
  *  long (ms): one failed load used to leave it unseen for good. */
 const RETRY_MS = 10_000;
+/** An unseen pet looks this often (ms) whether its sheets are in: they show as soon as they are, never waiting for the
+ *  scene's whole loader (one other file stuck in it kept every pet hidden, theirs and everyone else's). */
+const CHECK_MS = 500;
 
 /** Who a pet follows: where their feet are (tile space), which way they face, and whether they're walking. */
 export interface PetOwner {
@@ -444,9 +447,10 @@ class PetView {
 export class Pets {
   /** Each owner's pet (made once the owner is drawn: someone arriving takes a moment to build). */
   private readonly views = new Map<string, { pet: string; owner: () => PetOwner | null; mine: boolean; view: PetView | null }>();
-  private readonly loading = new Set<string>();
-  /** When a pet's sheets may be asked for again (its last load left some missing). */
-  private readonly retryAt = new Map<string, number>();
+  /** When each pet's sheets were last asked for (scene time, ms). */
+  private readonly asked = new Map<string, number>();
+  /** When unseen pets next look whether their sheets are in (scene time, ms). */
+  private nextCheck = 0;
   /** How big a pet is drawn against its art (manifest pets.scale; 1 without it). */
   readonly scale: number;
   /** The shadow art (manifest fx.shadow), whose colour the pets' shadows take. */
@@ -500,23 +504,15 @@ export class Pets {
     return key;
   }
 
-  /** Loads every sheet of a pet (in the background), then starts its views over. */
+  /** Asks for every sheet of a pet (in the background; at most every RETRY_MS). Its views show it as its sheets come in
+   *  (`update` looks), whatever else the scene's loader is still busy with. */
   private load(pet: string): void {
-    if (!this.mayLoad(pet)) return;
-    this.loading.add(pet);
+    const now = this.scene.time.now;
+    if (now - (this.asked.get(pet) ?? -Infinity) < RETRY_MS) return;
+    this.asked.set(pet, now);
     const [w, h] = this.sheets.cell;
     for (const anim of ['idle', 'move', 'special'] as Anim[]) for (const dir of this.sheets.animations[anim].dirs) queueSheet(this.scene.load, this.scene.textures, this.fileOf(pet, anim, dir), w, h);
-    this.scene.load.once(Phaser.Loader.Events.COMPLETE, () => {
-      this.loading.delete(pet);
-      this.retryAt.set(pet, this.scene.time.now + RETRY_MS); // (only asked again if a sheet is still missing)
-      for (const { view } of this.views.values()) if (view?.petId === pet) view.refresh();
-    });
     if (!this.scene.load.isLoading()) this.scene.load.start();
-  }
-
-  /** Not loading a pet's sheets now, nor waiting to try again. */
-  private mayLoad(pet: string): boolean {
-    return !this.loading.has(pet) && this.scene.time.now >= (this.retryAt.get(pet) ?? 0);
   }
 
   /** A pet for an owner (by key: 'me', or a town player's id), or none (null). */
@@ -557,6 +553,9 @@ export class Pets {
   }
 
   update(delta: number): void {
+    const now = this.scene.time.now;
+    const check = now >= this.nextCheck;
+    if (check) this.nextCheck = now + CHECK_MS;
     for (const v of this.views.values()) {
       const o = v.owner();
       if (!o) {
@@ -568,8 +567,8 @@ export class Pets {
         v.view = new PetView(this, v.pet, v.mine, o.spot);
         v.view.placeBehind(o);
       } else v.view.update(Math.min(delta, 100), o, this.speed);
-      // (Unseen for want of a sheet, even resting: its sheets asked for again once it may.)
-      if (!v.view.sprite.visible && this.mayLoad(v.pet)) v.view.refresh();
+      // (Unseen for want of a sheet, even resting: shown once its sheets are in, else they're asked for again.)
+      if (check && !v.view.sprite.visible) v.view.refresh();
       v.view.sync();
     }
   }
