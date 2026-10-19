@@ -53,6 +53,26 @@ export function lookImages(C: CharacterDefs, o: Outfit, dirs: Dir[]): string[] {
   ]);
 }
 
+/** Each class's art's id in classes.list (drawPose gets the art, the pose sheets' names need the id). */
+const classIds = new WeakMap<ClassArt, string>();
+function classOf(K: ClassesDefs, art: ClassArt): string | null {
+  if (!classIds.has(art)) for (const [id, a] of Object.entries(K.list)) classIds.set(a, id);
+  return classIds.get(art) ?? null;
+}
+
+/** A cosmetic top's sheet fitted to a combat pose (wardrobe.cosmeticPoseTops, cosmeticPosePattern: the whole body piece,
+ *  wings, tail and gown included, in the pose's own 64x64 cell, frame for frame), or null: a top without pose art. */
+export function cosmeticPoseFile(C: CharacterDefs, K: ClassesDefs, o: Outfit, art: ClassArt, anim: string, dir: Dir): string | null {
+  const W = C.wardrobe;
+  const cls = W.cosmeticPoseTops?.includes(o.top) && W.cosmeticPosePattern ? classOf(K, art) : null;
+  return cls ? W.cosmeticPosePattern!.replaceAll('{class}', cls).replaceAll('{anim}', anim).replaceAll('{item}', o.top).replaceAll('{dir}', dir) : null;
+}
+
+/** Every pose sheet of a class a look's cosmetic top has (to load with the class's poses): none for any other top. */
+export function cosmeticPoseFiles(C: CharacterDefs, K: ClassesDefs, o: Outfit, art: ClassArt): string[] {
+  return Object.entries(art.anims).flatMap(([anim, a]) => (Object.keys(a.dirs) as Dir[]).flatMap((dir) => cosmeticPoseFile(C, K, o, art, anim, dir) ?? []));
+}
+
 /** A cosmetic top's body clip (wardrobe.cosmeticBodyClip: the Velvet Nightwing's legs) on the town idle facing `dir`. */
 function bodyClipOf(C: CharacterDefs, o: Outfit, dir: Dir): string | null {
   const W = C.wardrobe;
@@ -324,13 +344,16 @@ export function drawPose(
   for (const l of d.back.filter(shown)) drawLayer(ctx, scene, K, l, frame, x, y);
   // The look's clothes, hair, glasses and hat (the combat sheets have none): the town idle's first frame, each piece
   // moved to its part of the pose (clothes trimmed to the pose's body; a cosmetic top keeps what sticks out past the
-  // body: wings, hems, tails), the head's to the pose's head.
+  // body: wings, hems, tails), the head's to the pose's head. A cosmetic top with pose art (cosmeticPoseTops) draws its
+  // own sheet's frame instead, fitted to this pose; without that sheet loaded, the laid-on piece as for any top.
   const idleBody = C.layers.body.replaceAll('{anim}', 'idle').replaceAll('{dir}', dir);
   const poseBody = dressLayer(scene, C, o, d.body, 'body');
   const clothes = clothesFiles(C, o, dir);
   const top = clothes.find((l) => l.layer === 'top');
   const fixedTop = !!top && Object.values(C.wardrobe.cosmeticTops ?? {}).includes(o.top);
   const [tx, ty] = fixedTop ? clothShift(scene, C, idleBody, d.body, frame, top.file) : [0, 0];
+  const poseFile = cosmeticPoseFile(C, K, o, art, anim, dir);
+  const poseTop = poseFile ? source(scene, poseFile) : null;
   // (a body clip, the Velvet Nightwing's legs: the pose's body from its idle mask's top down, moved with the top)
   const bodyClip = bodyClipOf(C, o, dir);
   const clip = bodyClip ? imageData(scene, bodyClip) : null;
@@ -338,12 +361,15 @@ export function drawPose(
   drawCell(ctx, from >= 0 ? clippedBody(poseBody, C.cell[0], C.cell[1], frame, from + ty) : poseBody, C.cell[0], C.cell[1], from >= 0 ? 0 : frame, x + K.bodyOffset[0], y + K.bodyOffset[1]);
   if (d.face) drawCell(ctx, dressLayer(scene, C, o, d.face, 'face'), C.cell[0], C.cell[1], frame, x + K.bodyOffset[0], y + K.bodyOffset[1]);
   for (const l of clothes) {
+    if (poseTop && l === top) continue; // (its pose sheet, below)
     const cosmetic = fixedTop && l === top;
     const [cx, cy] = cosmetic ? [tx, ty] : clothShift(scene, C, idleBody, d.body, frame, l.file);
     drawTrimmed(ctx, dressLayer(scene, C, o, l.file, l.layer), poseBody, C.cell[0], C.cell[1], frame, cx, cy, x + K.bodyOffset[0], y + K.bodyOffset[1], cosmetic ? source(scene, idleBody) : undefined);
   }
-  // A cosmetic top's topover (what reaches past the doll's cell), whole, moved with the top.
-  const over = fixedTop ? bigTop(C, o) : null;
+  // A cosmetic top's pose sheet (the whole piece, in the pose's own cell), or its topover (what reaches past the doll's
+  // cell), whole, moved with the top.
+  if (poseTop) drawCell(ctx, poseTop, CELL, CELL, frame, x, y);
+  const over = fixedTop && !poseTop ? bigTop(C, o) : null;
   if (over) {
     ctx.save(); // (kept to this frame's cell: the sheet's next frame is beside it)
     ctx.beginPath();

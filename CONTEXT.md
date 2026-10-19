@@ -196,6 +196,11 @@ _Avoid_: AoE marker, danger zone
 
 ## Characters
 
+**Combat pose**:
+A class's own body art for fighting (idle-ready, walk-ready, the attacks, the moves), one sheet per direction in a 64×64
+cell; worn clothes are laid onto it, and a cosmetic with pose art has its own sheet fitted to each one.
+_Avoid_: battle sprite, attack anim
+
 **Level**:
 A character's level, 1 to 20, raised by XP from kills.
 _Avoid_: rank, tier (tier is a skill's place in its class's order)

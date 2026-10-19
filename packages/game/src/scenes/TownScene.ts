@@ -136,7 +136,7 @@ import { MOVES, type MoveKind, isMoveKind, moveTiles, playMove, startDodge } fro
 import { changeClass, devItemsReady, devQuestKill, questReport, setQuestCounts, devSwitchClass, adventure, adventureData, anyDef, chooseClass, classInfo, initAdventure, itemData, itemDef, loadAdventureData, lookWithCosmetics, onAdventure, questDef, questFor, questTalk, setItems, setProgress, skillView, skillViews, buffViews, wornHeadCosmetic, setPetXp } from '../net/adventure';
 import { readyToReport, type LanternMap, type LanternPost, LANTERN_USE_TILES, LANTERN_WALK_TILES, RETURN_LANTERN, isLanternMap, lanternPostOf, nearPost, type StatsData, buffsStack, potionCooldownGroup, dropRefusal, nameColour, type Item, type QuestReward, type TownItems, LOOT_REACH, auraFor, classBuffs, classSkills, countOf, isGearDef, itemAura, itemStats, newItem, tradeRules, petRules } from '@mikazuki/shared';
 import type { ClassArt } from '../assets/types';
-import { drawRested, poseFiles, restFiles } from '../characters/kit-art';
+import { cosmeticPoseFiles, drawRested, poseFiles, restFiles } from '../characters/kit-art';
 import { loadImages } from '../characters/loading';
 import { holdQuestBanners, mountQuests } from '../ui/quests';
 import { openClassChoice } from '../ui/class-choice';
@@ -1705,7 +1705,7 @@ export class TownScene extends Phaser.Scene {
     const asset = (f: string) => `${import.meta.env.BASE_URL}assets/${f}`;
     // The class's fx, and the mobility moves' (shared by every class).
     const fx = Object.values(this.M.fx).filter((f) => f.file?.startsWith(`${fxFolder}/`) || f.file?.startsWith('fx/mobility/')).map((f) => f.file!);
-    await loadImages(this, [...poseFiles(art), ...fx, ...this.M.tiles.grass.files]);
+    await loadImages(this, [...poseFiles(art), ...cosmeticPoseFiles(this.M.characters, K, this.outfit, art), ...fx, ...this.M.tiles.grass.files]); // (a cosmetic top's pose sheets too)
     const launch = art.launch
       ? await fetch(asset(art.launch)).then((r) => (r.ok ? r.json() : null)).then((j) => j?.points ?? null).catch(() => null)
       : null;

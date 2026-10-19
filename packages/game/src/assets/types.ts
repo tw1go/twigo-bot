@@ -324,6 +324,10 @@ export interface CharacterDefs {
      *  Velvet Nightwing floats with no legs). */
     cosmeticBodyClip?: string[];
     bodyClipPattern?: string;
+    /** Cosmetic tops with a body-piece sheet fitted to every combat pose (`cosmeticPosePattern`: {class}, {anim}, {item},
+     *  {dir}; 64x64 cells in the pose's own cell), drawn in place of the idle top and topover laid onto the pose. */
+    cosmeticPoseTops?: string[];
+    cosmeticPosePattern?: string;
   };
   colourPresets: Record<string, string[]>;
   skinTones: Record<string, string[]> & { faceTweak?: Record<string, Record<string, string>> };

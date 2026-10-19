@@ -1205,6 +1205,15 @@
         "nightwing"
       ],
       "bodyClipPattern": "characters/layers/top/char-bodyclip-{item}-{anim}-{dir}.png",
+      "cosmeticPosePattern": "characters/classes/{class}/{anim}/char-cosmetic-{item}-{anim}-{dir}.png",
+      "cosmeticPoseTops": [
+        "nightwing",
+        "emberimp",
+        "gremlin",
+        "gravecaller",
+        "sylph"
+      ],
+      "cosmeticPoseNote": "A top in cosmeticPoseTops has a sheet fitted to every combat pose (cosmeticPosePattern: each class, anim and direction of classes.list, 64x64 cells in the pose's own cell, the pose body's frame count; the art folder's cosmetics/custom/poses), drawn over the pose's body in place of its idle top and topover; its shoes and bottom stay hidden, the hair and hat are laid on as for any look.",
       "cosmeticTopsNote": "Cosmetic tops (cosmeticTops: item id → top key, the Witch Robe's witchrobe): a worn body cosmetic draws characters/layers/top/char-top-<key>-* in the top's place in its own colours (no ramp swap); one in cosmeticHidesBottom covers the legs, so the bottom layer isn't drawn while it's worn (shoes still are). One in cosmeticHidesShoes draws its own feet, so the shoes aren't drawn either; one in topCanvas also has a topover sheet (topOverPattern, a bigger cell with the doll's at offset, like hatCanvas) holding only what reaches past the doll's cell (wings, tails, a wide hem), drawn whole just above the doll; one in cosmeticBodyClip ships a 32x48 mask per frame (bodyClipPattern): white = the body layer isn't drawn there (the Velvet Nightwing floats with no legs). Never in top: the creator, the Parlor, randomOutfit and the NPCs never offer them, and a saved look never holds one."
     },
     "colourPresets": {

@@ -6,7 +6,7 @@ import { loadHalloween } from './halloween.js';
 import { loadItemData } from './stats-data.js';
 
 // The sari-sari store's Cosmetics tab (shared cosmetic-shop.ts; CONTEXT.md Cosmetic, Set): the five Sets' ten pieces and
-// their art on the doll (every animation and direction), prices from stats.json cosmeticShop, the Witch Hat and Robe only
+// their art on the doll (every animation and direction) and on every combat pose, prices from stats.json cosmeticShop, the Witch Hat and Robe only
 // during Halloween, one of each at a time, and a Set for less than its two pieces.
 
 const D = loadItemData();
@@ -67,6 +67,33 @@ test('the five Sets: ten cosmetic pieces with their icons, and every hat, top, t
       assert.ok(place === 'head' ? W.hatCanvas[key] : W.topCanvas[key], `${key}: drawn from its 64x64 cell`);
     }
   }
+});
+
+test('pose art: every cosmeticPoseTops key has a sheet for each class, combat pose and direction, frame for frame', () => {
+  const C = JSON.parse(readFileSync(asset('manifest.json'), 'utf8')) as {
+    characters: { wardrobe: { cosmeticPoseTops: string[]; cosmeticPosePattern: string; cosmeticTops: Record<string, string> } };
+    classes: { list: Record<string, { anims: Record<string, { dirs: Record<string, { body: string }> }> }> };
+  };
+  const { cosmeticPoseTops: keys, cosmeticPosePattern: pattern, cosmeticTops } = C.characters.wardrobe;
+  assert.deepEqual([...keys].sort(), SETS.map((s) => cosmeticTops[`${s}-body`]).sort(), "the five Sets' tops");
+  /** A PNG's width and height (its IHDR). */
+  const size = (file: string) => {
+    const b = readFileSync(asset(file));
+    return [b.readUInt32BE(16), b.readUInt32BE(20)];
+  };
+  let n = 0;
+  for (const [cls, art] of Object.entries(C.classes.list))
+    for (const [anim, a] of Object.entries(art.anims))
+      for (const [dir, d] of Object.entries(a.dirs)) {
+        const frames = size(d.body)[0] / 32;
+        for (const key of keys) {
+          const file = pattern.replace('{class}', cls).replaceAll('{anim}', anim).replace('{item}', key).replace('{dir}', dir);
+          assert.ok(existsSync(asset(file)), file);
+          assert.deepEqual(size(file), [frames * 64, 64], `${file}: ${frames} frames of 64x64`);
+          n++;
+        }
+      }
+  assert.equal(n, 2200);
 });
 
 test('prices come from stats.json cosmeticShop: a Head, a Body, a Set', () => {

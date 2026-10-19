@@ -2,7 +2,7 @@ import type Phaser from 'phaser';
 import { settleOn } from '../world/settle';
 import type { CharacterDefs, ClassArt, ClassesDefs, Dir } from '../assets/types';
 import { type Outfit, litHat, sheetKey } from './doll';
-import { CELL, drawLitHead, drawPose, lookImages, poseFiles } from './kit-art';
+import { CELL, cosmeticPoseFiles, drawLitHead, drawPose, lookImages, poseFiles } from './kit-art';
 import { loadImages } from './loading';
 
 // ⚔️ Battle poses (maps with mobs: the Slums): a character with a class is drawn in its class's combat sheets there
@@ -35,7 +35,7 @@ export function battleSheets(scene: Phaser.Scene, C: CharacterDefs, K: ClassesDe
   const id = `${cls}|${sheetKey(o, 'idle', 's')}`;
   let p = built.get(id);
   if (!p) {
-    const files = loadImages(scene, [...poseFiles(art), ...lookImages(C, o, C.directions)]);
+    const files = loadImages(scene, [...poseFiles(art), ...lookImages(C, o, C.directions), ...cosmeticPoseFiles(C, K, o, art)]);
     p = settleOn(queue.then(() => files).then(() => build(scene, C, K, art, cls, o, id)), `poses ${id}`); // (an arrival waits for it)
     queue = p.catch(() => null);
     built.set(id, p);
