@@ -8,9 +8,9 @@ import { RARITY_TEXT, itemArt } from './item-art';
 import { coinIcon, el, followWallet, kusingIcon, showPopup } from './reward';
 import { halloweenShopEvents } from './halloween';
 
-// 🎁 The sari-sari store (left click the store): what /redeem sells, in the reward box with tabs (Items, Potions, Bags,
-// Passes). Each tab is a grid of the item art with prices; picking one shows what it does, a quantity for the ones
-// that stack, and a Buy button (passes ask again first: they're expensive and sent by hand). Buying goes through
+// 🎁 The sari-sari store (left click the store): what /redeem sells, in the reward box with tabs (Items, Potions, Bags).
+// Each tab is a grid of the item art with prices; picking one shows what it does, a quantity for the ones that stack,
+// and a Buy button. Buying goes through
 // the bot (POST /town/shop) with /redeem's checks. Item art: manifest `items` by reward id (ui/item-art.ts), in the
 // common rarity frame.
 // Healing, Smithing, Dungeons (the Warren Ticket for Kusing), Travel (the Return Lantern for Kusing) and Pets (the pet boxes for Kowens, stats.json pets.boxPrice) are the Slums' (bot web/combat-bag.ts): HP and MP Potions for Kusing, whetstones and Repair Kits
@@ -24,12 +24,11 @@ import { halloweenShopEvents } from './halloween';
 const plural = (n: number, one: string, many: string) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
 const kowens = (n: number) => plural(n, 'Kowen', 'Kowens');
 
-type Tab = 'items' | 'potions' | 'bags' | 'passes' | 'healing' | 'smithing' | 'dungeons' | 'travel' | 'pets' | 'cosmetics';
+type Tab = 'items' | 'potions' | 'bags' | 'healing' | 'smithing' | 'dungeons' | 'travel' | 'pets' | 'cosmetics';
 const TABS: [Tab, string, TownShopItem['kind'][]][] = [
   ['items', 'Items', ['fence', 'shovel', 'key', 'megaphone', 'rename', 'classchange', 'vault']],
   ['potions', 'Potions', ['potion']],
   ['bags', 'Bags', ['bag']],
-  ['passes', 'Passes', ['pass']],
   ['healing', 'Healing', ['healing']],
   ['smithing', 'Smithing', ['smithing']],
   ['dungeons', 'Dungeons', ['dungeons']],
@@ -104,7 +103,6 @@ export function showShop(): void {
   const previews = new Map<string, HTMLCanvasElement | 'loading' | null>();
   let picked: string | null = null;
   let quantity = 1;
-  let confirming = false;
   let busy = false;
 
   const picture = (id: string, scale: number) => {
@@ -145,7 +143,6 @@ export function showShop(): void {
       tab = t;
       picked = null;
       note.textContent = '';
-      note.classList.remove('sh-ask');
       render();
     });
     b.addEventListener('keydown', (e) => {
@@ -174,9 +171,7 @@ export function showShop(): void {
       return purse(s, it) < it.cost ? `You need ${price(it, it.cost - purse(s, it))} more.` : null;
     }
     if (it.owned) return it.kind === 'vault' ? 'You have a vault. Use it at the bank.' : 'You have this bag.';
-    if (it.testersOnly) return 'Passes are for testers only (the Tester role in Discord).';
     if (it.max === 0) return it.kind === 'shovel' ? 'No more shovels today. More tomorrow!' : it.kind === 'key' || it.kind === 'potion' || it.kind === 'megaphone' || it.kind === 'rename' || it.kind === 'classchange' ? 'Your bag is full.' : 'Not available right now.';
-    if (it.kind === 'pass' && s.inDebt) return 'Pay off your loan at the bank first.';
     if (s.kowens < it.cost) return `You need ${kowens(it.cost - s.kowens)} more.`;
     return null;
   };
@@ -197,7 +192,6 @@ export function showShop(): void {
     if (!picked || !items.some((it) => it.id === picked)) {
       picked = items[0]?.id ?? null;
       quantity = 1;
-      confirming = false;
     }
 
     grid.replaceChildren(
@@ -215,15 +209,12 @@ export function showShop(): void {
         if (it.pieces) card.append(el('span', 'sh-badge sh-set', 'Set'));
         if (it.owned) card.append(el('span', 'sh-badge', 'Owned'));
         else if (it.limited) card.append(el('span', 'sh-badge sh-limited', 'Limited'));
-        else if (it.testersOnly) card.append(el('span', 'sh-badge', 'Testers'));
         else if (it.have) card.append(el('span', 'sh-badge sh-have', `×${it.have}`));
         card.addEventListener('click', () => {
           if (picked === it.id) return;
           picked = it.id;
           quantity = 1;
-          confirming = false;
-          note.textContent = '';
-          note.classList.remove('sh-ask');
+              note.textContent = '';
           render();
         });
         return card;
@@ -283,16 +274,9 @@ export function showShop(): void {
       row.append(step);
     }
     const total = it.cost * quantity;
-    const buyButton = el('button', `sh-buy${confirming ? ' sh-confirm' : ''}`, why ? why : confirming ? `Confirm · ${price(it, total)}` : `${it.kind === 'pass' ? 'Redeem' : 'Buy'} · ${price(it, total)}`);
+    const buyButton = el('button', 'sh-buy', why ? why : `Buy · ${price(it, total)}`);
     buyButton.disabled = !!why || busy;
     buyButton.addEventListener('click', () => {
-      if (it.kind === 'pass' && !confirming) {
-        confirming = true;
-        note.textContent = `${it.name} for ${kowens(total)}? Press again to confirm.`;
-        note.classList.remove('bk-refused');
-        note.classList.add('sh-ask');
-        return render();
-      }
       void purchase(it, quantity);
     });
     // A piece of a Set you have neither of: the Set too.
@@ -328,7 +312,6 @@ export function showShop(): void {
   const purchase = async (it: TownShopItem, n: number) => {
     if (busy) return;
     busy = true;
-    confirming = false;
     render();
     const res = await buy(it.id, n);
     busy = false;
@@ -342,7 +325,6 @@ export function showShop(): void {
     quantity = 1;
     render();
     note.textContent = res.message;
-    note.classList.remove('sh-ask');
     note.classList.toggle('bk-refused', !res.ok);
     playSound(res.ok ? (it.currency === 'kusing' ? 'combat-coins' : 'coin') : 'error');
     if (res.ok && it.currency !== 'kusing') window.dispatchEvent(new Event('mk-wallet')); // the HUD's Kowens (and shovels)
@@ -368,10 +350,6 @@ export function showShop(): void {
 
 // ── Dev: a pretend shop (no bot behind the dev server) ──
 
-/** Dev: &tester=0 shows the shop as a member without the Tester role sees it (passes locked). */
-const notTester = new URLSearchParams(location.search).get('tester') === '0';
-const testerMax = notTester ? 0 : 1;
-const testerFlag = notTester ? { testersOnly: true } : {};
 
 const fake: TownShopResponse = {
   kowens: Number(new URLSearchParams(location.search).get('kowens') ?? 1250),
@@ -394,9 +372,6 @@ const fake: TownShopResponse = {
     { id: 'bag-backpack', name: 'School Backpack', cost: 20, kind: 'bag', about: '+8 inventory slots for what you dig up. Each bag once.', max: 1 },
     { id: 'bag-balikbayan', name: 'Balikbayan Box', cost: 35, kind: 'bag', about: '+8 inventory slots for what you dig up. Each bag once.', max: 1 },
     { id: 'bag-lola', name: "Lola's Bottomless Bag", cost: 50, kind: 'bag', about: '+8 inventory slots for what you dig up. Each bag once.', max: 1 },
-    { id: 'phantasium', name: 'Phantasium Pass', cost: 1_700, kind: 'pass', about: 'A Crystal of Atlan Phantasium Pass, sent to you by hand. Testers only; not while you have a loan.', max: testerMax, ...testerFlag },
-    { id: 'basic-bp', name: 'Basic Battle Pass', cost: 2_450, kind: 'pass', about: 'A Crystal of Atlan Basic Battle Pass, sent to you by hand. Testers only; not while you have a loan.', max: testerMax, ...testerFlag },
-    { id: 'advanced-bp', name: 'Advanced Battle Pass', cost: 3_650, kind: 'pass', about: 'A Crystal of Atlan Advanced Battle Pass, sent to you by hand. Testers only; not while you have a loan.', max: testerMax, ...testerFlag },
   ],
 };
 
@@ -411,7 +386,7 @@ function fakeBuy(id: string, quantity: number): TownShopBuyResponse {
   }
   if (it.kind === 'shovel') it.max -= quantity;
   if (it.kind === 'potion' || it.kind === 'key' || it.kind === 'megaphone' || it.kind === 'rename' || it.kind === 'classchange') it.have = (it.have ?? 0) + quantity;
-  return { ...structuredClone(fake), ok: true, message: it.kind === 'pass' ? `Redeemed the ${it.name}! The owner has been told and will send it over.` : `Bought ${quantity > 1 ? `${quantity}× ` : ''}${it.name}!` };
+  return { ...structuredClone(fake), ok: true, message: `Bought ${quantity > 1 ? `${quantity}× ` : ''}${it.name}!` };
 }
 
 // ── Dev: the Healing and Smithing tabs (the dev town buys them from your items there: /__shop) ──

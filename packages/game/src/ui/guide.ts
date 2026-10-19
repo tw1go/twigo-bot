@@ -382,7 +382,7 @@ const TOPICS: Topic[] = [
     icon: '🎁',
     label: 'Shop & Parlor',
     text: [
-      '**Sari-sari store**: items (megaphones, Master Keys), potions, bigger bags and passes (passes: testers only). Click an item, pick how many, buy.',
+      '**Sari-sari store**: items (megaphones, Master Keys), potions and bigger bags. Click an item, pick how many, buy.',
       '• **Healing**: HP and MP Potions for **Kusing**. **Smithing**: Rough Whetstones and Repair Kits for Kowens. Type how many in the box',
       '• **Pets**: the seven pet boxes for Kowens (Fairy Cha’s, the rare one, costs more). Each needs a free slot in your bag',
       '• **Cosmetics**: Head and Body costumes for Kowens, or both together as a **Set** for less. The picture shows it on your own character. They go into your bag’s **Costume** tab, bound to you, one of each; wear them from there. **Limited** ones (the Witch Hat and Robe) are sold only during their event',

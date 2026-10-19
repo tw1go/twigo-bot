@@ -506,12 +506,11 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   tabs), Vault (store/take out), Loan (pay / pay all, or borrow from the Tanod Bank; loans you gave); bot `GET/POST /town/bank` (`web/town-bank.ts`, same stores and rules as `/vault`
   and `/loan`; town borrowing is posted in the games channel). Lending to members stays in Discord. Dev: a pretend
   bank (`&vault=0`, `&loan=1`).
-- Sari-sari store (`ui/shop.ts`, building id `sari-sari-store`, was the rewards shop; left click the store): what `/redeem` sells, tabs Items / Potions / Bags / Passes (+ Cosmetics: Cosmetics, below; + Healing / Smithing: Items, above), a grid
+- Sari-sari store (`ui/shop.ts`, building id `sari-sari-store`, was the rewards shop; left click the store): what `/redeem` sells, tabs Items / Potions / Bags (+ Cosmetics: Cosmetics, below; + Healing / Smithing: Items, above), a grid
   of item art (manifest `items`, keyed by reward id; dug-up items there too) with a quantity stepper for stackables and
-  a second press to confirm passes. Bot `GET/POST /town/shop` (`web/town-shop.ts`); `/redeem` and the shop share
-  `games/redeem.ts` (checks + purchase, the public Discord post `redeemPost`, the feed line). Passes are for testers only
-  (the Tester role, `GAME_TESTER_ROLE_ID`, `games/testers.ts`; the shop marks them "Testers"; dev `&tester=0`). Passes ping the reward
-  owner like `/redeem`. Dev: a pretend shop.
+  a Buy button. Bot `GET/POST /town/shop` (`web/town-shop.ts`); `/redeem` and the shop share `games/redeem.ts` (checks +
+  purchase, the public Discord post `redeemPost`, the feed line). The Crystal of Atlan passes were stopped on 19 Oct 2026
+  (Mac): gone from /redeem, the store and `/balance`. Dev: a pretend shop.
 - Parlor (`ui/parlor.ts`, left click the parlor, north of the sari-sari store; door (34,9)): the creator's box over the dimmed
   town (`mountCreator` with `parlor` hooks: no nickname; ×/Escape/click outside closes), the character on the left, tabs on
   the right: Appearance (the creator's choices; "Save look · 3 Kowens" only once it differs) and Title (your titles as

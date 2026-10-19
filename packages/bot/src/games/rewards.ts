@@ -1,11 +1,9 @@
 import { db, kvLoad, kvSave } from '../db/db.js';
 
-// Credit rewards (Crystal of Atlan passes). Redeeming deducts credits and pings the reward owner, who delivers it manually.
-// Priced for an active member (~16 Kowens/day: daily claim + ~2h voice + some patrols + nightly Mine Wars),
-// saving from zero: Phantasium ~3.5 months, Basic ~5 months, Advanced ~7.5 months.
-export const GAME_NAME = 'Crystal of Atlan';
+// What Kowens buy (/redeem and the town's sari-sari store), each applied at once by the bot. (The Crystal of Atlan passes,
+// sent by hand, were stopped on 19 Oct 2026.)
 
-// kind 'pass' = delivered by hand (owner is pinged); 'fence' / 'shovel' / 'bag' / 'key' / 'vault' / 'potion' / 'megaphone' / 'rename' / 'classchange' = applied instantly by the bot.
+// kinds 'fence' / 'shovel' / 'bag' / 'key' / 'vault' / 'potion' / 'megaphone' / 'rename' / 'classchange', applied instantly by the bot.
 // Bags add BAG_SLOTS inventory slots each (10 base + 5 bags × 8 = 50 max); each bag can be bought once.
 // These are the defaults: the CMS can change a price or take a reward off sale (kv 'shop', see setShopEntry).
 const CATALOGUE = [
@@ -25,9 +23,6 @@ const CATALOGUE = [
   { id: 'bag-backpack', name: 'School Backpack', cost: 20, emoji: '🎒', kind: 'bag' },
   { id: 'bag-balikbayan', name: 'Balikbayan Box', cost: 35, emoji: '🧳', kind: 'bag' },
   { id: 'bag-lola', name: "Lola's Bottomless Bag", cost: 50, emoji: '👜', kind: 'bag' },
-  { id: 'phantasium', name: 'Phantasium Pass', cost: 1_700, emoji: '🎟️', kind: 'pass' },
-  { id: 'basic-bp', name: 'Basic Battle Pass', cost: 2_450, emoji: '⚔️', kind: 'pass' },
-  { id: 'advanced-bp', name: 'Advanced Battle Pass', cost: 3_650, emoji: '👑', kind: 'pass' },
 ] as const;
 
 export type RewardId = (typeof CATALOGUE)[number]['id'];

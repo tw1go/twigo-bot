@@ -18,7 +18,6 @@ import {
 } from '../credits/store.js';
 import { jailedUntil } from '../games/jail.js';
 import { ticketsOf } from '../games/jackpot.js';
-import { rewards } from '../games/rewards.js';
 import { kowen } from '../kowens.js';
 import { hiddenLine } from '../web/privacy.js';
 
@@ -39,7 +38,6 @@ export const balanceCommand: Command = {
     const have = balance(id);
     const rank = rankOf(id);
 
-    const nextPass = rewards.filter((r) => r.kind === 'pass').find((r) => r.cost > have);
     const status: string[] = [];
     const fence = fencedUntil(id);
     if (fence) status.push(`🧱 Bakod up until ${ts(fence)}`);
@@ -66,12 +64,6 @@ export const balanceCommand: Command = {
             `🎙️ Voice: **${voiceCreditsToday(id)}/${VOICE_DAILY_CAP}** ${kowen(VOICE_DAILY_CAP)} (${VOICE_DAILY_CAP - voiceCreditsToday(id)} left today) · ${voiceProgress(id)}/${VOICE_MINUTES_PER_CREDIT} min to the next`,
             `🎁 Give: **${DAILY_GIVE_LIMIT - givenToday(id)}/${DAILY_GIVE_LIMIT}** ${kowen(DAILY_GIVE_LIMIT)} left to give today (resets at midnight)`,
           ].join('\n'),
-        },
-        {
-          name: 'Next reward',
-          value: nextPass
-            ? `${nextPass.emoji} **${nextPass.name}** — ${fmt(nextPass.cost - have)} more to go (${Math.floor((have / nextPass.cost) * 100)}%)`
-            : '👑 You can afford every pass! `/redeem`',
         },
       );
     if (status.length) embed.addFields({ name: 'Status', value: status.join('\n') });

@@ -569,7 +569,7 @@ export function startWebServer(client: Client): void {
           }
         }
         if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
-        if (req.method === 'GET') return send(res, 200, JSON.stringify(townShop(userId, await isTester(client, userId))));
+        if (req.method === 'GET') return send(res, 200, JSON.stringify(townShop(userId)));
         const id = body?.id;
         const quantity = body?.quantity ?? 1;
         if (typeof id !== 'string' || typeof quantity !== 'number' || !Number.isInteger(quantity) || quantity < 1 || quantity > 999) {

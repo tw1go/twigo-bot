@@ -100,12 +100,12 @@ Each use on someone else costs 1 Kowen. Ways to get Kowens:
 - Staying in the web town — 1 per 15 minutes there, **max 20 per day**, each claimed from a pop-up above the town's system
   feed; the count to the next waits until it's claimed (`src/web/town-stay.ts`)
 
-**Boosts:** +20 Kowens per boost right away, then 20 × boost count on the 1st of every month while boosting.
+**Boosts:** +90 Kowens per boost right away, then 90 × boost count on the 1st of every month while boosting.
 Boost counts come from the system channel's "just boosted" messages (Discord doesn't expose per-member counts);
 existing boosters were counted and paid once on first start. Fix a count with `/gift boosts`. See `src/games/boosts.ts`.
 **Loans:** `/loan take amount` (Tanod Bank; limit 20, +10 per on-time repayment, max 100) · `/loan offer user amount`
 (member loan, max 50, max 3 out, Accept/Decline buttons) · `/loan pay [amount]` · `/loan status`. Owed = +10%, due in 3 days.
-Once overdue, 50% of earnings are garnished to the lender (bank repayments are removed). While owing, passes, `/give`
+Once overdue, 50% of earnings are garnished to the lender (bank repayments are removed). While owing, `/give`
 and quests are blocked. Overdue: +10% of the loan per day with a public "text message" from the lender in general; 3 days overdue =
 default (balance seized, 1 h no-bail utang jail, 30-day blacklist). Checked hourly. See `src/loans/loans.ts`.
 **Quests:** `/request task reward` posts a quest (1–100 Kowens, held in escrow, max 3 active). Buttons: Accept (pings the
@@ -194,7 +194,7 @@ still reach it (wallet first). The leaderboard and `/balance` count wallet + vau
 everyone's screen and goes to the town-chat channel with 📢 (`/g` is general chat again; `src/items/megaphone.ts`, kv 'megaphones').
 **🗝️ Master Key** — 5 Kowens; on `/steal` against a Bakod, 50% it breaks in (then the normal
 steal roll), 50% it snaps. Only used up against a Bakod. **🧱 Bakod (Fence)** — 5 Kowens, blocks `/steal` against you for 1.5 days (stacks up to 7), applied instantly.
-Crystal of Atlan passes: `/redeem reward:<name>` deducts the Kowens and pings `REWARD_OWNER_ID`, who delivers it manually.
+The Crystal of Atlan passes (delivered by hand) were stopped on 19 Oct 2026.
 Rewards and prices are in `src/games/rewards.ts`. Redemptions are logged in the database.
 
 ## Setup

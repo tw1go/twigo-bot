@@ -64,7 +64,7 @@ export const twigoHelp: Command = {
           '🎙️ **1 Kowen per 15 min** in voice chat, **max 12 a day** (with 1+ other person, not deafened, not AFK)',
           '🌙 **1 Kowen per 15 min** in the web town, **max 20 a day**: claim each one from the pop-up above the system feed',
           '🏆 **Weekly voice rewards** (Mondays 12 PM): top 10 get 50 · 30 · 20 · 10 Kowens (`/leaderboard`)',
-          '💎 **Boost the server**: +20 Kowens per boost, and 20 × your boosts every month while boosting',
+          '💎 **Boost the server**: +90 Kowens per boost, and 90 × your boosts every month while boosting',
           '`/claim code` — found a Kowen in [twigo\'s room](https://tw1go.github.io)? Claim it here (3 a day)',
           '`/play-web` — 🌙 open Mikazuki town, the web game (everyone in the server can play)',
           '🎃 **Halloween** in the web town (until Nov 4): find **Mikko Kalabasa** hiding in town or the Slums, fell **Biikko Kalabasa** with your party, and reunite the **Manananggal**, for Kowens, Kusing, potions and a 5-day Witch Hat or Robe (the 🎃 badge top right says what\'s on)',
@@ -73,7 +73,7 @@ export const twigoHelp: Command = {
           '-# ⚠️ Inactive for 3+ days? You lose a growing % of Kowens each day until you\'re back.',
         ]),
         ...section('💳 Spend & manage', [
-          '`/redeem` — 🧱 Bakod, 🪏 Shovel, 🗝️ Master Key, 📢 Megaphone (`/m message` in the web town\'s chat runs it across everyone\'s screen), 🔐 Vault, 🧪 potions, 🎒 bags, or Crystal of Atlan passes 🎁 (testers only)',
+          '`/redeem` — 🧱 Bakod, 🪏 Shovel, 🗝️ Master Key, 📢 Megaphone (`/m message` in the web town\'s chat runs it across everyone\'s screen), 🔐 Vault, 🧪 potions, 🎒 bags',
           `💇 **Parlor** (web town, beside the sari-sari store): a new look for **${LOOK_COST}** Kowens, or show another of your titles (free)`,
           '`/potion use|list` — 🧪 Kalawang (rust a Bakod) · 🫥 Tago (no busts 30 min) · 🍀 Swerte (better digs) · 🍵 Marites (hints)',
           '`/give @someone amount` — give a friend Kowens (max 20 per day)',
