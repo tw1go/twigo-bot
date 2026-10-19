@@ -222,7 +222,7 @@ const TOPICS: Topic[] = [
       '• **Biikko Kalabasa**, a **Legendary** pumpkin (Lv 15, 100,000 HP), wanders the Slums. It never fights back, and heals to full after 5 minutes without a hit. Its loot goes to whoever lands the **last hit** and their party in the Slums (10 s, then anyone’s): **20–30 Kowens** and **500,000 Kusing** (split in a party), a potion, maybe **Low Repair Kits**, a **Warren Ticket**, or a **Witch Hat** or **Witch Robe**. It comes back 1–3 hours after it falls',
       '• **The Manananggal**: now and then her **lower half** stands in town (for up to an hour) while her **upper half** flies over the Slums (Lv 14; it fights back once hit). Defeat the upper half and it floats along behind you, dazed. Carry it to the lower half and **click** her to **reunite** them: **5–10 Kowens**, **100,000 Kusing** and a **Low Repair Kit**. Leave the game for over a minute, or let her time run out, and she flies away',
       '• The town dresses up for it: cobwebs, dangling spiders and bats everywhere, and somewhere in the trees sits a **Kapre**. He moves to another tree every half hour. Can you find him?',
-      '• **Witch Hat** and **Witch Robe**: costumes that last **5 days** from when you pick them up (the tooltip says how long is left), then they’re gone. Wear them from your bag’s **Costume** tab. They’re bound: no trading or selling, but you can **Destroy** one from its right-click menu',
+      '• **Witch Hat** and **Witch Robe**: costumes that last **5 days** from when you pick them up (the tooltip says how long is left), then they’re gone. Biikko drops them, and the sari-sari store’s **Cosmetics** tab sells them (or both as the Witch Set) while the event is on. Wear them from your bag’s **Costume** tab. They’re bound: no trading or selling, but you can **Destroy** one from its right-click menu',
     ].join('\n'),
   },
   {
@@ -385,6 +385,7 @@ const TOPICS: Topic[] = [
       '**Sari-sari store**: items (megaphones, Master Keys), potions, bigger bags and passes (passes: testers only). Click an item, pick how many, buy.',
       '• **Healing**: HP and MP Potions for **Kusing**. **Smithing**: Rough Whetstones and Repair Kits for Kowens. Type how many in the box',
       '• **Pets**: the seven pet boxes for Kowens (Fairy Cha’s, the rare one, costs more). Each needs a free slot in your bag',
+      '• **Cosmetics**: Head and Body costumes for Kowens, or both together as a **Set** for less. The picture shows it on your own character. They go into your bag’s **Costume** tab, bound to you, one of each; wear them from there. **Limited** ones (the Witch Hat and Robe) are sold only during their event',
       '',
       '**Parlor** (north of the shop):',
       '• **Appearance**: a new look for your character, **3 Kowens**',

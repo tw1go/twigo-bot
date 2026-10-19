@@ -1535,9 +1535,27 @@
       #reward .op-bail { flex: none; padding: 5px 10px; border: 2px solid #1E1B3A; border-radius: 0; background: #7DD3FC; color: #1E1B3A; font: inherit; font-size: calc(13px * var(--text)); font-weight: 700; box-shadow: inset 0 2px 0 #E0F2FE, inset 0 -3px 0 #0284C7, 0 3px 0 #1E1B3A; }
       #reward .op-bail:hover:not(:disabled) { background: #BAE6FD; }
       #reward .op-bail:disabled { opacity: 0.5; }
-      /* Sari-sari store (ui/shop.ts; tabs share the bank's .bk-tabs): nine tabs, each as wide as its name, sharing the rest. */
+      /* Sari-sari store (ui/shop.ts; tabs share the bank's .bk-tabs): ten tabs, each as wide as its name, sharing the rest. */
       #reward .sh-tabs .bk-tab { flex: 1 1 auto; min-width: 0; padding: 6px 8px 5px; white-space: nowrap; font-size: calc(14px * var(--text)); }
-      #reward .rw-card:has(.sh-body) { width: min(960px, calc(100vw - 32px)); } /* nine tabs, and a row of eight cards */
+      #reward .rw-card:has(.sh-body) { width: min(1000px, calc(100vw - 32px)); } /* ten tabs, and a row of eight cards */
+      /* The Cosmetics tab's sub-tabs (All / Head / Body / Weapon), the Set cards (the Body with the Head over its corner),
+         the Limited and Set tags, the worn preview in the detail. */
+      #reward .sh-subtabs { display: flex; gap: 6px; margin: -2px 0 8px; }
+      #reward .sh-subtabs[hidden] { display: none; }
+      #reward .sh-subtab { padding: 3px 12px; border: 2px solid #C4B5FD; border-radius: 0; background: #F5F3FF; color: #5B21B6; font: inherit; font-size: calc(13px * var(--text)); font-weight: 700; }
+      #reward .sh-subtab:hover { border-color: #7C2AE8; }
+      #reward .sh-subtab[aria-selected='true'] { border-color: #7C2AE8; background: #7C2AE8; color: #fff; }
+      #reward .sh-set-art { position: relative; display: inline-block; }
+      #reward .sh-set-art > .sh-art { display: block; }
+      #reward .sh-set-art > .sh-set-head { position: absolute; top: -4px; left: -6px; }
+      #reward .sh-badge.sh-limited { background: #F97316; color: #fff; }
+      #reward .sh-badge.sh-set { top: auto; right: auto; bottom: 4px; left: 4px; background: #C4B5FD; }
+      #reward .sh-limited-line { color: #C2410C; font-weight: 700; }
+      #reward .sh-empty { grid-column: 1 / -1; padding: 24px 0; text-align: center; color: #7A8099; font-size: calc(13px * var(--text)); }
+      #reward .sh-preview { flex: none; margin-left: auto; }
+      #reward .sh-preview canvas { display: block; width: 128px; height: 128px; margin: -24px -8px -20px 0; image-rendering: pixelated; }
+      #reward .sh-buy-set { background: #E9D5FF; box-shadow: inset 0 2px 0 #F5EBFF, inset 0 -3px 0 #A78BFA, 0 3px 0 #1E1B3A; }
+      #reward .sh-buy-set:hover:not(:disabled) { background: #F3E8FF; }
       /* A fixed size: the grid scrolls, the details and the message keep their room, so nothing jumps. */
       #reward .sh-body { margin-bottom: 14px; text-align: left; }
       #reward .sh-wallet { display: flex; align-items: center; justify-content: center; gap: 6px; margin: -4px 0 10px; font-size: calc(14px * var(--text)); color: #3D4256; }
