@@ -1,11 +1,8 @@
 import type { MessageMentionOptions } from 'discord.js';
-import { config } from '../config.js';
-import { kowen } from '../kowens.js';
 import { addFence, balance, fencedUntil, giveVault, hasVault, take } from '../credits/store.js';
 import { SHOVELS_PER_DAY, addBag, addMasterKey, addShovel, capacity, ownedBags, shovelsBoughtToday } from '../dig/store.js';
-import { debtOf } from '../loans/loans.js';
 import { POTIONS, addPotions, hintsLeft, type PotionId } from '../potions/potions.js';
-import { FENCE_DAYS, FENCE_MAX_DAYS, GAME_NAME, type Reward, recordRedemption } from './rewards.js';
+import { FENCE_DAYS, FENCE_MAX_DAYS, type Reward } from './rewards.js';
 import { feed } from '../web/town-feed.js';
 import { freeSlots } from '../dig/bag.js';
 import { addMegaphones, megaphones } from '../items/megaphone.js';
@@ -23,10 +20,9 @@ export const stackable = (r: Reward) => r.kind === 'shovel' || r.kind === 'key' 
 /** Rewards kept in the bag: one slot each (megaphones all share one, and so do Rename Cards and Bagong Buhay Tickets). */
 export const inBag = (r: Reward) => r.kind === 'key' || r.kind === 'potion' || r.kind === 'megaphone' || r.kind === 'rename' || r.kind === 'classchange';
 
-const fmt = (n: number) => n.toLocaleString('en-US');
 
 export type RedeemResult =
-  | { ok: false; reward: Reward; reason: 'quantity' | 'loan' | 'owned' | 'shovels-today' | 'marites' | 'testers' }
+  | { ok: false; reward: Reward; reason: 'quantity' | 'owned' | 'shovels-today' | 'marites' }
   | { ok: false; reward: Reward; reason: 'kowens'; quantity: number; total: number; have: number; canAfford: number }
   | { ok: false; reward: Reward; reason: 'fence-max'; until: number }
   | { ok: false; reward: Reward; reason: 'bag-full'; free: number }
@@ -54,12 +50,10 @@ export const owns = (userId: string, r: Reward) =>
 /** Shovels the member can still buy today. */
 export const shovelsLeftToday = (userId: string) => Math.max(0, SHOVELS_PER_DAY - shovelsBoughtToday(userId));
 
-/** `tester`: whether they have the Tester role (games/testers.ts): passes are for testers only. */
-export function redeemReward(userId: string, reward: Reward, asked: number, tester: boolean): RedeemResult {
+/** Buys `asked` of a reward (fewer shovels if today's run out), with every check. */
+export function redeemReward(userId: string, reward: Reward, asked: number): RedeemResult {
   const have = balance(userId);
   if (asked > 1 && !stackable(reward)) return { ok: false, reward, reason: 'quantity' };
-  if (reward.kind === 'pass' && !tester) return { ok: false, reward, reason: 'testers' };
-  if (reward.kind === 'pass' && debtOf(userId)) return { ok: false, reward, reason: 'loan' };
   if (owns(userId, reward)) return { ok: false, reward, reason: 'owned' };
 
   // How many can actually be bought: Shovels are limited per day.
@@ -118,18 +112,13 @@ export function redeemReward(userId: string, reward: Reward, asked: number, test
       take(userId, total);
       return { ...done, fenceUntil: addFence(userId, FENCE_DAYS * 86_400_000, FENCE_MAX_DAYS * 86_400_000) };
     }
-    case 'pass':
-      take(userId, total);
-      recordRedemption(userId, reward.id, reward.cost);
-      console.log(`[redeem] ${userId} redeemed ${reward.id} for ${reward.cost}`);
-      return done;
   }
 }
 
 /** What a potion does, for the shop. */
 export const potionEffect = (r: Reward) => POTIONS[r.id.replace('potion-', '') as PotionId].effect;
 
-/** The public Discord message for a redemption (passes ping the reward owner, who sends them by hand). */
+/** The public Discord message for a redemption. */
 export function redeemPost(userId: string, result: Extract<RedeemResult, { ok: true }>): { content: string; allowedMentions: MessageMentionOptions } {
   const { reward, quantity, asked } = result;
   const who = `<@${userId}>`;
@@ -164,16 +153,11 @@ export function redeemPost(userId: string, result: Extract<RedeemResult, { ok: t
       return pub(`${reward.emoji} ${who} got a **${reward.name}**! Inventory is now **${result.slots}** slots. 🎒`);
     case 'fence':
       return pub(`🧱 ${who} built a **Bakod**! Nobody can steal from them until <t:${Math.floor(result.fenceUntil! / 1000)}:f>. 🛡️`);
-    case 'pass':
-      return {
-        content: `🎉 ${who} redeemed the ${reward.emoji} **${GAME_NAME} ${reward.name}** for **${fmt(reward.cost)}** ${kowen(reward.cost)}!\n<@${config.rewardOwnerId}> — please send it over. 🫡`,
-        allowedMentions: { users: [config.rewardOwnerId] },
-      };
   }
 }
 
-/** The town's feed line for a redemption (passes in gold). */
+/** The town's feed line for a redemption. */
 export function redeemFeed(name: string, result: Extract<RedeemResult, { ok: true }>): void {
   const n = result.quantity;
-  feed('shop', `${name} bought ${n > 1 ? `${n}× ` : 'a '}${result.reward.name}`, result.reward.kind === 'pass' ? 'legendary' : 'shop');
+  feed('shop', `${name} bought ${n > 1 ? `${n}× ` : 'a '}${result.reward.name}`, 'shop');
 }

@@ -291,7 +291,7 @@ export interface TownShopItem {
   id: string;
   name: string;
   cost: number;
-  kind: 'fence' | 'shovel' | 'key' | 'vault' | 'potion' | 'bag' | 'pass' | 'megaphone' | 'rename' | 'classchange' | 'healing' | 'smithing' | 'dungeons' | 'travel' | 'pets' | 'cosmetic';
+  kind: 'fence' | 'shovel' | 'key' | 'vault' | 'potion' | 'bag' | 'megaphone' | 'rename' | 'classchange' | 'healing' | 'smithing' | 'dungeons' | 'travel' | 'pets' | 'cosmetic';
   /** Paid in Kusing (the Healing tab's HP/MP Potions); else Kowens. */
   currency?: 'kusing';
   /** What it does. */
@@ -300,8 +300,6 @@ export interface TownShopItem {
   max: number;
   /** A one-time reward the viewer already has. */
   owned?: boolean;
-  /** A pass the viewer can't redeem: passes are for members with the Tester role only. */
-  testersOnly?: boolean;
   /** How many the viewer has (potions, Master Keys). */
   have?: number;
   /** A cosmetic (kind 'cosmetic', shared cosmetic-shop.ts): where it's worn (a Set has none), its Set, a Set's pieces

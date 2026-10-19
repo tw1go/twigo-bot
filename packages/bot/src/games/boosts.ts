@@ -8,7 +8,7 @@ import { kowen } from '../kowens.js';
 // Server boost rewards: BOOST_CREDITS per boost right away, then BOOST_CREDITS × boost count on the 1st of every month
 // while they keep boosting. Discord doesn't give bots per-member boost counts, so we count the "just boosted"
 // system messages since the member's current boost started.
-export const BOOST_CREDITS = 20;
+export const BOOST_CREDITS = 90;
 const BOOST_TYPES = new Set([MessageType.GuildBoost, MessageType.GuildBoostTier1, MessageType.GuildBoostTier2, MessageType.GuildBoostTier3]);
 
 interface Booster {
