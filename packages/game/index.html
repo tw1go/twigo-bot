@@ -335,7 +335,13 @@
       @media (prefers-reduced-motion: reduce) { #town-hud .jt-bulb, #town-hud .jt-soon { animation: none; } }
       body:has(#reward .nw-body) #town-hud .th-corner { z-index: 5; } /* over the dimmed town, so the megaphone closes it again */
       #settings { position: fixed; inset: 0; z-index: 4; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(4, 4, 12, 0.6); font: calc(15px * var(--text))/1.4 var(--ui-font); }
-      #settings .st-card { position: relative; width: min(340px, calc(100vw - 32px)); box-sizing: border-box; padding: 20px 22px; border: 3px solid #7C2AE8; background: #fff; color: #1E1B3A; }
+      #settings .st-card { position: relative; width: min(680px, calc(100vw - 32px)); box-sizing: border-box; padding: 20px 22px; border: 3px solid #7C2AE8; background: #fff; color: #1E1B3A; }
+      /* Two columns of sections (ui/settings.ts: Audio, Display | Game, Privacy, Account), Keybinds and Credits across the
+         bottom; one column on phones. */
+      #settings .st-main { display: grid; grid-template-columns: 1fr 1fr; column-gap: 28px; align-items: start; }
+      #settings .st-main[hidden] { display: none; }
+      #settings .st-main > .st-more { grid-column: 1 / -1; }
+      @media (max-width: 640px) { #settings { align-items: flex-start; overflow-y: auto; } #settings .st-main { grid-template-columns: 1fr; } }
       #settings .st-framed { --px: 4; border-style: solid; border-width: calc(var(--slice) * var(--px) * 1px); border-image-source: var(--frame); border-image-slice: var(--slice) fill; border-image-width: calc(var(--slice) * var(--px) * 1px); border-image-repeat: round; image-rendering: pixelated; padding: 6px 8px 4px; background: none; }
       #settings .st-title { margin: 0 0 10px; font-size: calc(22px * var(--text)); color: #5B21B6; letter-spacing: 0.06em; text-transform: uppercase; text-align: center; }
       #settings .st-close { position: absolute; top: 0; right: 0; width: 30px; height: 30px; padding: 0; border: 0; background: none; color: #7A8099; font: 700 calc(24px * var(--text))/1 var(--ui-font); }
@@ -358,7 +364,6 @@
       #settings .st-logout { padding: 8px 16px; border: 2px solid #1E1B3A; border-radius: 0; background: #fff; color: #1E1B3A; font: inherit; font-weight: 600; box-shadow: 0 3px 0 #1E1B3A; }
       #settings .st-logout:hover { background: #FEE2E2; }
       #settings .st-logout:disabled { opacity: 0.6; }
-      #settings .st-wide { width: min(460px, calc(100vw - 32px)); }
       #settings .st-more { display: flex; gap: 10px; }
       #settings .st-sizes { display: flex; gap: 6px; } /* Text size: Small / Normal / Large / Larger */
       #settings .st-size { flex: 1; padding: 5px 4px; border: 2px solid #1E1B3A; border-radius: 0; background: #fff; color: #1E1B3A; font-family: inherit; font-weight: 600; box-shadow: 0 3px 0 #1E1B3A; }
@@ -1819,10 +1824,8 @@
         body.hb-top-open.hotbar-on #toast { bottom: 90px; }
         body.hb-top-open.hotbar-on #inventory:not([hidden]) { bottom: 98px; }
         body.hb-top-open.hotbar-on #equipment:not([hidden]) { max-height: calc(100vh - 106px); }
-        /* Settings: scrollable overlay, wider card, 2-column section layout */
+        /* Settings: a scrollable overlay (its two columns are everywhere wider than a phone held upright) */
         #settings { align-items: flex-start; overflow-y: auto; }
-        #settings .st-card, #settings .st-wide { width: min(560px, calc(100vw - 32px)); }
-        #settings .st-card > div:first-of-type { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; align-items: start; }
       }
       #quest-tracker { position: fixed; left: 12px; z-index: 2; width: 150px; box-sizing: border-box; padding: 6px 8px 8px; border-radius: 6px; background: rgba(10, 12, 24, 0.55); color: #E6E9F2; font: calc(13px * var(--text))/1.3 var(--ui-font); text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6); cursor: var(--cur-hand, pointer); }
       #quest-tracker[hidden] { display: none; }

@@ -30,11 +30,15 @@ export function showSettings(o: { loggedIn: boolean; onClose?: () => void }): vo
   const x = el('button', 'st-close', '×');
   x.setAttribute('aria-label', 'Close');
   const title = el('h2', 'st-title', 'Settings');
-  const main = el('div');
-  main.append(audio(), display());
-  if (o.loggedIn && privacy()) main.append(privacySection());
-  if (o.loggedIn) main.append(account());
-  main.append(leave());
+  // Two columns (one on a phone): Audio and Display; Game, Privacy and Account; Keybinds and Credits across the bottom.
+  const main = el('div', 'st-main');
+  const left = el('div', 'st-col');
+  const right = el('div', 'st-col');
+  left.append(audio(), display());
+  right.append(leave());
+  if (o.loggedIn && privacy()) right.append(privacySection());
+  if (o.loggedIn) right.append(account());
+  main.append(left, right);
   // Pages: Settings, and from its buttons Keybinds and Credits (each with Back).
   const pageOf = (body: HTMLElement, ...extra: HTMLElement[]) => {
     const page = el('div');
@@ -53,7 +57,7 @@ export function showSettings(o: { loggedIn: boolean; onClose?: () => void }): vo
   const openKeys = el('button', 'st-button', 'Keybinds');
   const open = el('button', 'st-button', 'Credits');
   more.append(openKeys, open);
-  main.append(more);
+  main.append(more); // (across both columns)
   const show = (which: 'keys' | 'credits' | null) => {
     main.hidden = which !== null;
     keysPage.page.hidden = which !== 'keys';
