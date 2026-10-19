@@ -266,6 +266,7 @@ export function initAdventure(fromMe: AdventureState | undefined, trainingArmor:
     const rewards = data ? giveQuestRewards(data, s, data.quests, devUid) : [];
     const pieces = data?.leveling ? giveQuestPieces(data, data.leveling, s, devUid) : [];
     set(s, {}, true); // (not sent yet: the dev town's copy may be newer)
+    applyEarly();
     // The dev town's copy wins while it runs (a page closed in a hurry may not have saved its last items); after a
     // restart it has none, and gets this browser's.
     devItemsReady = fetch(`/__items?${new URLSearchParams({ as: fakeName() })}`)
@@ -284,6 +285,7 @@ export function initAdventure(fromMe: AdventureState | undefined, trainingArmor:
     return { armor: given, rewards, pieces };
   }
   set(fromMe ?? fresh());
+  applyEarly();
   return { armor: trainingArmor, rewards: questRewards, pieces: questPieces };
 }
 
@@ -370,7 +372,18 @@ async function act(path: Path, body: Body): Promise<TownAdventureResponse | null
 /** Your level, XP and points from the server (the town's `progress` message). */
 export function setProgress(progress: CharacterProgress): void {
   if (state) set({ ...state, progress });
+  else early = progress; // (before your state is in: kept for initAdventure)
 }
+
+/** Your level from the town before your state was in (the town connects first; dev's ?level= answers at once), put on
+ *  it as it comes: the town's is the newer. */
+let early: CharacterProgress | null = null;
+const applyEarly = () => {
+  if (!early || !state) return;
+  const progress = early;
+  early = null;
+  set({ ...state, progress }, {}, true);
+};
 
 /** Your quests' counts from the town (`quests`: a kill counted, saved by the bot). */
 export function setQuestCounts(active: QuestProgress[]): void {
