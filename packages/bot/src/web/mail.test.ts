@@ -15,7 +15,7 @@ for (const name of ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'ADMIN_ROLE_ID', 'ADMI
   'GAMBLING_CHANNEL_ID', 'GAMES_CHANNEL_ID', 'JAIL_ROLE_ID', 'REWARD_OWNER_ID', 'ROOM_FINDS_CHANNEL_ID']) process.env[name] = 'test';
 process.env.TIMEZONE = 'Asia/Manila';
 
-const { mailAction, mailboxOf, onMail, parseMailDraft, purgeMail, sendMail, unreadMail } = await import('./mail.js');
+const { mailAction, mailKinds, mailboxOf, onMail, parseMailDraft, purgeMail, sendMail, unreadMail } = await import('./mail.js');
 const { adventureOf, newUid, withItems } = await import('./adventure.js');
 const { makeItem } = await import('./combat-bag.js');
 const { balance } = await import('../credits/store.js');
@@ -123,6 +123,14 @@ test(`mail lasts ${MAIL_RULES.days} days, claimed or not`, () => {
   assert.equal(mailboxOf('dee').mail.length, 1);
   assert.equal(mailboxOf('dee', Date.now() + 2000).mail.length, 0, 'not shown once it has run out');
   assert.equal(purgeMail(Date.now() + 2000), 1);
+});
+
+test("the CMS's item list tells a timed kind from the permanent one of the same name", () => {
+  const name = (id: string) => mailKinds().find((k) => k.id === id)?.name;
+  assert.equal(name('witch-hat-5d'), 'Witch Hat (5 days)');
+  assert.equal(name('witch-hat'), 'Witch Hat');
+  assert.equal(name('witch-robe-5d'), 'Witch Robe (5 days)');
+  assert.equal(name('witch-robe'), 'Witch Robe');
 });
 
 test.after(() => {
