@@ -244,7 +244,8 @@ export function mailKinds(): { id: string; name: string; kind: string; gear: boo
   const data = loadItemData();
   return [...data.defs.values()]
     .filter((d) => !mailRefusal(d))
-    .map((d) => ({ id: d.id, name: d.name, kind: isGearDef(d) ? 'gear' : d.kind, gear: isGearDef(d), rarity: d.rarity, ...(!isGearDef(d) && (d.kind === 'agimat' || d.kind === 'pet') ? { level: true } : {}) }))
+    // (a timed kind says how long it lasts: the store's permanent Witch Hat and Biikko's 5-day one share a name)
+    .map((d) => ({ id: d.id, name: !isGearDef(d) && d.lastsDays ? `${d.name} (${d.lastsDays} days)` : d.name, kind: isGearDef(d) ? 'gear' : d.kind, gear: isGearDef(d), rarity: d.rarity, ...(!isGearDef(d) && (d.kind === 'agimat' || d.kind === 'pet') ? { level: true } : {}) }))
     .sort((a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name));
 }
 
