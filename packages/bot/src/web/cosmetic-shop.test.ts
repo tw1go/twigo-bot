@@ -109,26 +109,33 @@ test('prices come from stats.json cosmeticShop: a Head, a Body, a Set', () => {
   assert.deepEqual(wares.map((w) => w.id), [...SETS.flatMap((s) => [`${s}-head`, `${s}-body`]), ...SETS.map((s) => `set:${s}`)]);
 });
 
-test('the Witch Hat, Robe and Set: only while Halloween is on, Limited until its end, refused outside it', () => {
+test('the Witch Hat, Robe and Set: only while Halloween is on, Limited until its end, refused outside it, and permanent', () => {
   assert.ok(!cosmeticWares(D, fresh(), OFF, NOW).some((w) => w.id.includes('witch')));
   const on = cosmeticWares(D, fresh(), ON, NOW);
-  const hat = on.find((w) => w.id === 'witch-hat-5d');
+  const hat = on.find((w) => w.id === 'witch-hat');
   assert.equal(hat?.cost, R.headPrice);
   assert.equal(hat?.limited, 'Halloween only, until Nov 4');
-  assert.equal(on.find((w) => w.id === 'witch-robe-5d')?.cost, R.bodyPrice);
+  assert.equal(on.find((w) => w.id === 'witch-robe')?.cost, R.bodyPrice);
+  assert.deepEqual(on.find((w) => w.id === 'set:witch')?.pieces, ['witch-hat', 'witch-robe']);
   assert.equal(on.find((w) => w.id === 'set:witch')?.limited, 'Halloween only, until Nov 4');
+  assert.ok(!on.some((w) => w.id.endsWith('-5d')), "Biikko's 5-day ones are never sold");
   const s = fresh();
   const w = wallet(500);
-  assert.deepEqual(buyCosmetic(D, s, 'witch-hat-5d', OFF, w, uid, NOW), { ok: false, message: "That isn't for sale." });
+  assert.deepEqual(buyCosmetic(D, s, 'witch-hat', OFF, w, uid, NOW), { ok: false, message: "That isn't for sale." });
   assert.equal(w.spent, 0);
-  // Bought during the event: timed as the event gives it (its 5 days from now), bound.
-  const r = buyCosmetic(D, s, 'witch-hat-5d', ON, w, uid, NOW);
+  // Bought during the event: theirs for good (no clock), bound.
+  const r = buyCosmetic(D, s, 'witch-hat', ON, w, uid, NOW);
   assert.equal(r.ok, true);
-  assert.equal(s.bag[0].expiresAt, NOW + 5 * 86_400_000);
+  assert.equal(s.bag[0].expiresAt, undefined);
   assert.equal(s.bag[0].bound, true);
-  assert.equal(buyCosmetic(D, s, 'witch-hat-5d', ON, w, uid, NOW).message, 'You already have the Witch Hat.');
-  // Once it has run out, another may be bought.
-  assert.equal(buyCosmetic(D, s, 'witch-hat-5d', ON, w, uid, NOW + 6 * 86_400_000).ok, true);
+  assert.equal(buyCosmetic(D, s, 'witch-hat', ON, w, uid, NOW).message, 'You already have the Witch Hat.');
+  // A 5-day one from Biikko doesn't count: the permanent one can still be bought.
+  const dropped = fresh();
+  dropped.cosmetics.body = { ...item('witch-robe-5d'), expiresAt: NOW + 86_400_000 };
+  assert.equal(buyCosmetic(D, dropped, 'witch-robe', ON, wallet(500), uid, NOW).ok, true);
+  // Both look the same on the doll.
+  assert.equal(W.cosmeticHats['witch-hat'], W.cosmeticHats['witch-hat-5d']);
+  assert.equal(W.cosmeticTops['witch-robe'], W.cosmeticTops['witch-robe-5d']);
 });
 
 test('one at a time: bought into the Costume tab, bound; one already had (in the tab or worn) is refused', () => {
