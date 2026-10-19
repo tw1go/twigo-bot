@@ -52,19 +52,23 @@ export function startHomeScreenApp(onUpdate: () => void): void {
 let entered = false;
 export const enteredGame = (): void => void (entered = true);
 
-/** A newer build live while the title screen is still up: its service worker takes over and the page reloads on it, so
- *  the game opens on what's deployed rather than on what this device kept. Once per version a tab (never a loop). */
+/** On the title screen (before Start), the device catches up at once: a newer build that's live, or a service worker
+ *  that has installed and waits (a deploy's files, the data among them, ready but not in use yet), takes over and the
+ *  page reloads on it, so the game opens on what's deployed rather than on what this device kept. Once per version a
+ *  tab (never a loop); after Start, the notice's Reload now. */
 async function freshStart(r: ServiceWorkerRegistration): Promise<void> {
   const res = await fetch(`${import.meta.env.BASE_URL}version.json`, { cache: 'no-store' }).catch(() => null);
   const live = res?.ok ? ((await res.json().catch(() => null)) as { version?: string } | null)?.version : null;
-  if (!live || live === __BUILD__.version || entered) return;
+  await r.update().catch(() => null); // (sw.js asked again: a deploy's worker installs)
+  const newer = !!live && live !== __BUILD__.version;
+  if (entered || (!newer && !r.waiting && !r.installing)) return;
+  const tried = newer ? live! : `waiting:${__BUILD__.version}`;
   try {
-    if (sessionStorage.getItem('mk_fresh') === live) return;
-    sessionStorage.setItem('mk_fresh', live);
+    if (sessionStorage.getItem('mk_fresh') === tried) return;
+    sessionStorage.setItem('mk_fresh', tried);
   } catch {
     return; // (no way to know we've tried: leave it to the notice)
   }
-  await r.update().catch(() => null);
   const waiting = r.waiting ?? (await installed(r, 20_000));
   if (!waiting || entered) return;
   navigator.serviceWorker.addEventListener('controllerchange', () => location.reload(), { once: true });

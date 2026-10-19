@@ -80,6 +80,11 @@ function homeScreenApp() {
       navigateFallback: '/play/index.html',
       navigateFallbackAllowlist: [/^\/play\/(index\.html)?$/],
       cleanupOutdatedCaches: true,
+      // Only files named by their content (the art sheets in packs/, the scripts and stylesheets) are kept as they are:
+      // the plugin's default (everything under assets/) gave the precached manifest.json, town.json, fonts and title art
+      // no revision, so a device kept the copy it first stored through every later deploy (a pre-Halloween manifest:
+      // nobody's witch cosmetics drawn).
+      dontCacheBustURLsMatching: /^assets\/(?:packs\/|[^/]+-[A-Za-z0-9_-]{8}\.(?:js|css)$)/,
       runtimeCaching: [
         {
           // Files whose names carry a content hash: kept for good.
