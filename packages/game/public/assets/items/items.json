@@ -277,9 +277,6 @@
       "icon": "items/cosmetics/item-cosmetic-witch-hat-16.png",
       "showcase": "items/cosmetics/item-cosmetic-witch-hat.png",
       "large": "items/cosmetics/item-cosmetic-witch-hat-64.png",
-      "set": "witch",
-      "shop": "cosmetic",
-      "event": "halloween",
       "note": "Repo addition (Halloween 2026): a timed cosmetic, its days from events/halloween.json cosmetics (a test keeps them the same)."
     },
     {
@@ -294,10 +291,38 @@
       "icon": "items/cosmetics/item-cosmetic-witch-robe-16.png",
       "showcase": "items/cosmetics/item-cosmetic-witch-robe.png",
       "large": "items/cosmetics/item-cosmetic-witch-robe-64.png",
-      "set": "witch",
+      "note": "Repo addition (Halloween 2026): the first Body cosmetic, a timed one (see witch-hat-5d)."
+    },
+    {
+      "id": "witch-hat",
+      "name": "Witch Hat",
+      "kind": "cosmetic",
+      "rarity": "darkOrange",
+      "cosmetic": true,
+      "cosmeticPlace": "head",
+      "about": "A tall pointed witch hat, yours for good: bought in the store's Cosmetics tab during Halloween. Wear it from the Costume tab.",
+      "icon": "items/cosmetics/item-cosmetic-witch-hat-16.png",
+      "showcase": "items/cosmetics/item-cosmetic-witch-hat.png",
+      "large": "items/cosmetics/item-cosmetic-witch-hat-64.png",
       "shop": "cosmetic",
       "event": "halloween",
-      "note": "Repo addition (Halloween 2026): the first Body cosmetic, a timed one (see witch-hat-5d). Also sold in the store's Cosmetics tab while the event is on (`event`), with the hat as the Witch Set (`set`; Mac, 19 Oct 2026)."
+      "set": "witch",
+      "note": "Repo addition (Mac, 19 Oct 2026): the store's Witch Hat and Robe are permanent (no lastsDays), sold in the Cosmetics tab only while Halloween is on (`event`), with the robe as the Witch Set (`set`); Biikko still drops the 5-day ones (witch-hat-5d, witch-robe-5d)."
+    },
+    {
+      "id": "witch-robe",
+      "name": "Witch Robe",
+      "kind": "cosmetic",
+      "rarity": "darkOrange",
+      "cosmetic": true,
+      "cosmeticPlace": "body",
+      "about": "A long purple witch robe, yours for good: bought in the store's Cosmetics tab during Halloween. Wear it from the Costume tab.",
+      "icon": "items/cosmetics/item-cosmetic-witch-robe-16.png",
+      "showcase": "items/cosmetics/item-cosmetic-witch-robe.png",
+      "large": "items/cosmetics/item-cosmetic-witch-robe-64.png",
+      "shop": "cosmetic",
+      "event": "halloween",
+      "set": "witch"
     },
     {
       "id": "velvet-nightwing-head",

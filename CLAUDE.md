@@ -151,8 +151,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   map's name). Copying either map over again from the art folder loses the post.
 - `classes/leveling.json`: `miniBoss.questDrop`.
 - The store's Cosmetics (19 Oct 2026, Mac): `classes/stats.json` `cosmeticShop` (headPrice 50, bodyPrice 100, setPrice 130);
-  `items/items.json` the five Sets' ten pieces (`<set>-head` / `<set>-body`, `shop: "cosmetic"`, `set`) and the Witch Hat
-  and Robe's `shop`, `event: "halloween"` and `set: "witch"`; the manifest's wardrobe entries for them (`cosmeticHats`,
+  `items/items.json` the five Sets' ten pieces (`<set>-head` / `<set>-body`, `shop: "cosmetic"`, `set`) and the store's
+  permanent `witch-hat` / `witch-robe` (`shop`, `event: "halloween"`, `set: "witch"`, no `lastsDays`; Biikko still drops
+  the 5-day `witch-hat-5d` / `witch-robe-5d`; Mac, 19 Oct 2026); the manifest's wardrobe entries for them (`cosmeticHats`,
   `fixedColourHats`, `hatClips`, `hatCanvas`, `cosmeticTops`, `cosmeticHidesBottom`) and the new `cosmeticHidesShoes`,
   `topCanvas`, `topOverPattern`, `cosmeticBodyClip`, `bodyClipPattern`, `cosmeticPoseTops`, `cosmeticPosePattern`. The art
   is the art folder's cosmetics/custom (and its poses/ zip) as it is.
@@ -1102,7 +1103,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   Gremlin, Gravecaller, Moonlit Sylph, art from the art folder's cosmetics/custom) for stats.json `cosmeticShop`
   headPrice / bodyPrice Kowens, and each `set` (a Head and a Body) as `set:<set>` for setPrice; one with an `event` only
   while it's on (the Witch Hat and Robe: Halloween, `setShopEvents` = the live town's `Halloween.on`, so dev's
-  ?halloween=on too; Limited, "Halloween only, until Nov 4"), timed as the event gives them. One at a time, never one
+  ?halloween=on too; Limited, "Halloween only, until Nov 4"), permanent (their own kinds `witch-hat` / `witch-robe`, the
+  doll's same witch art; Biikko's drops are the 5-day ones). One at a time, never one
   you have (Costume tab or worn, a timed one until it runs out; a Set once you have either piece: "You already have the
   Ember Imp Horns. Buy the Ember Imp Suit on its own."), into the Costume pocket bound (`buyCosmeticFor`, `[shop]` log
   line). Page: sub-tabs All / Head / Body / Weapon, Set cards (the Body's picture, the Head's over its corner), a piece's

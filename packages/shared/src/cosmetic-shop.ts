@@ -6,8 +6,8 @@ import { type CombatItemDef, type Item, type ItemData, addToBag, isExpired, isGe
 // 👘 The sari-sari store's Cosmetics tab (CONTEXT.md Cosmetic, Set): every cosmetic kind with `shop: "cosmetic"`
 // (items.json), a Head for stats.json cosmeticShop.headPrice and a Body for bodyPrice in Kowens, and each Set (the Head and
 // Body sharing a `set`) for setPrice. One with an `event` is sold only while that event is on (the Witch Hat and Robe:
-// Halloween), timed as the event gives it (its days start as it enters the bag). Bought one at a time, into the Costume
-// pocket, bound; never one you already have (in the Costume tab or worn; a timed one only until it runs out).
+// Halloween; the store's are permanent kinds of their own, Biikko's drops the 5-day ones). Bought one at a time, into the
+// Costume pocket, bound; never one you already have (in the Costume tab or worn; a timed one only until it runs out).
 
 /** stats.json cosmeticShop: Kowens for a Head, a Body, or both as a Set. */
 export interface CosmeticShopRules {
