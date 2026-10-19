@@ -5,6 +5,10 @@ import { isDesktopApp, isHomeScreenApp } from './platform';
 // art is inside it already, nor in dev). An update installs in the background and waits: the "New version available"
 // notice (ui/version.ts) applies it when the player presses Reload now, never in the middle of a game. Installing: the
 // browser's own prompt (Android Chrome, desktop Chrome) is caught here for the title screen's "Install Mikazuki" button.
+// Opening the game on the title screen while a newer build is live switches to it at once (freshStart), and the first
+// open of a build drops what that deploy changed from the device (tidyCaches), so nothing old outlives a deploy.
+
+declare const __BUILD__: { version: string; commit: string; built: string };
 
 type InstallPrompt = Event & { prompt(): Promise<void>; userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }> };
 
@@ -32,6 +36,7 @@ export function startHomeScreenApp(onUpdate: () => void): void {
     .register(`${BASE}sw.js`, { scope: BASE })
     .then((r) => {
       reg = r;
+      if (navigator.serviceWorker.controller) void freshStart(r);
       if (r.waiting && navigator.serviceWorker.controller) onUpdate();
       r.addEventListener('updatefound', () => {
         const w = r.installing;
@@ -41,6 +46,72 @@ export function startHomeScreenApp(onUpdate: () => void): void {
       });
     })
     .catch(() => null);
+}
+
+/** Pressed Start (or came through a gate): from now on a newer build waits for Reload now, never mid-game. */
+let entered = false;
+export const enteredGame = (): void => void (entered = true);
+
+/** A newer build live while the title screen is still up: its service worker takes over and the page reloads on it, so
+ *  the game opens on what's deployed rather than on what this device kept. Once per version a tab (never a loop). */
+async function freshStart(r: ServiceWorkerRegistration): Promise<void> {
+  const res = await fetch(`${import.meta.env.BASE_URL}version.json`, { cache: 'no-store' }).catch(() => null);
+  const live = res?.ok ? ((await res.json().catch(() => null)) as { version?: string } | null)?.version : null;
+  if (!live || live === __BUILD__.version || entered) return;
+  try {
+    if (sessionStorage.getItem('mk_fresh') === live) return;
+    sessionStorage.setItem('mk_fresh', live);
+  } catch {
+    return; // (no way to know we've tried: leave it to the notice)
+  }
+  await r.update().catch(() => null);
+  const waiting = r.waiting ?? (await installed(r, 20_000));
+  if (!waiting || entered) return;
+  navigator.serviceWorker.addEventListener('controllerchange', () => location.reload(), { once: true });
+  waiting.postMessage({ type: 'SKIP_WAITING' });
+}
+
+/** The build's file list (scripts/version.ts assetFiles): each loose file's content hash, and the hashed files. */
+interface AssetFiles {
+  version: string;
+  files: Record<string, string>;
+  hashed: string[];
+}
+
+/** The first open of a build: whatever the device kept that this build changed or no longer has is dropped (the
+ *  service worker's mk-assets and mk-data by each file's hash, mk-hashed by the build's list: an older build's sheets and
+ *  scripts), so it's fetched fresh; what's the same stays. The list it compared with is kept (cache mk-meta). Nothing
+ *  to do on a build already tidied (localStorage mk_cache_build), nor without the service worker's caches. */
+export async function tidyCaches(): Promise<void> {
+  if (!import.meta.env.PROD || isDesktopApp() || !('caches' in window)) return;
+  const BASE = import.meta.env.BASE_URL;
+  try {
+    if (localStorage.getItem('mk_cache_build') === __BUILD__.version) return;
+  } catch {
+    // (no localStorage: look each time)
+  }
+  const res = await fetch(`${BASE}asset-files.json`, { cache: 'no-store' }).catch(() => null);
+  const now = res?.ok ? ((await res.json().catch(() => null)) as AssetFiles | null) : null;
+  if (!now?.files || now.version !== __BUILD__.version) return; // (a newer build is live: freshStart goes to it, and tidies there)
+  const meta = await caches.open('mk-meta');
+  const before = (await meta.match('asset-files').then((r) => r?.json()).catch(() => null)) as AssetFiles | null;
+  const pathOf = (req: Request) => new URL(req.url).pathname.slice(BASE.length);
+  for (const name of ['mk-assets', 'mk-data']) {
+    const c = await caches.open(name);
+    for (const req of await c.keys()) {
+      const path = pathOf(req);
+      if (!before?.files || !now.files[path] || before.files[path] !== now.files[path]) await c.delete(req);
+    }
+  }
+  const hashed = new Set(now.hashed);
+  const h = await caches.open('mk-hashed');
+  for (const req of await h.keys()) if (!hashed.has(pathOf(req))) await h.delete(req);
+  await meta.put('asset-files', new Response(JSON.stringify(now), { headers: { 'Content-Type': 'application/json' } }));
+  try {
+    localStorage.setItem('mk_cache_build', __BUILD__.version);
+  } catch {
+    // (it looks again next time)
+  }
 }
 
 /** Asks the server for a newer service worker (version.json said there's a new build). */

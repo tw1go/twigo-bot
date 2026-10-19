@@ -9,6 +9,7 @@ import { loadHouseArt } from '../houses/art';
 import { currentArea, freshVisit, markHood, markSlums, markTown, slumsTownMap } from '../net/hood';
 import { bootHood } from './HouseScene';
 import { isDesktopApp } from '../net/platform';
+import { enteredGame } from '../net/pwa';
 
 // Loads the two source-of-truth files and, meanwhile, plays the boot sequence (ui/title-screen.ts): the intro card
 // (once per tab), then the title screen with its music (audio/sound.ts startTitleMusic). Once /me has answered, the title
@@ -105,6 +106,7 @@ export class BootScene extends Phaser.Scene {
 
   /** Where BootScene goes once you've pressed Start (or came through a gate). */
   private route(manifest: Manifest, town: TownMap, me: MeResult | null, debug: string | null): void {
+    enteredGame(); // (a newer build waits for Reload now from here on: net/pwa.ts)
     if (debug === 'wardrobe') return void this.scene.start('wardrobe', { manifest });
     if (me?.status === 'ok' && (!me.me.outfit || !me.me.nickname)) return void this.scene.start('create', { manifest, town, me });
     // A fresh visit with a house of your own: the neighbourhood, at your door (not after a gate, which led to the town,

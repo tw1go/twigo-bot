@@ -282,9 +282,15 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   title screen needs (about 4 MB: the page, its scripts, the game's manifest, town.json, fonts, the title art); the rest of
   /play/assets/ is cached as first loaded (hashed scripts and packs cache-first; the data, every .json, network-first with the cached copy only
   when the server can't be reached in 5 s, so a deploy's new items and stats reach the first load after it; the rest stale-while-revalidate); nothing
-  else (logins, /me, /town/*, /api/*, /ws, version.json). Updates install in the background and wait: ui/version.ts's
-  notice (version.json, or the worker's `newVersionReady`) applies them on Reload now (`applyUpdate`: the waiting worker
-  takes over, then a reload; never on its own). First open (no worker yet: `firstOpen`): a percentage beside the town's
+  else (logins, /me, /town/*, /api/*, /ws, version.json, asset-files.json). Updates install in the background and wait:
+  ui/version.ts's notice (version.json, or the worker's `newVersionReady`) applies them on Reload now (`applyUpdate`: the
+  waiting worker takes over, then a reload; never mid-game); on the title screen (before Start: `enteredGame` in
+  BootScene.route) a newer live build is switched to at once (net/pwa.ts `freshStart`: once per version a tab,
+  sessionStorage `mk_fresh`). Each build writes `asset-files.json` (scripts/version.ts `assetFiles`: every loose file
+  under assets/ with its content's short SHA-1, packed art left out, and the hashed files); a build's first open
+  (`tidyCaches`, awaited ≤ 3 s before the game starts; localStorage `mk_cache_build`) drops from mk-assets / mk-data
+  each file whose hash changed or that's gone (against the list kept in cache mk-meta) and from mk-hashed every file
+  the build doesn't have, so what a deploy changed is fetched fresh and the rest stays. First open (no worker yet: `firstOpen`): a percentage beside the town's
   loading bar. Title screen: "Install Mikazuki" (the browser's beforeinstallprompt, `canInstall`) or on iPhone Safari a
   one-time "Tap Share, then Add to Home Screen" hint (localStorage `mk_ios_hint`). HUD: a full screen button in a browser
   tab where the Fullscreen API works (not iPhone Safari, not the apps). iPhone tags and viewport-fit=cover: the body is

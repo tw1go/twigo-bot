@@ -8,7 +8,7 @@ import { HouseScene } from './scenes/HouseScene';
 import { startHud } from './hud';
 import { checkVersionNow, newVersionReady, showVersion } from './ui/version';
 import { onPackMissing } from './assets/packs';
-import { startHomeScreenApp } from './net/pwa';
+import { startHomeScreenApp, tidyCaches } from './net/pwa';
 import { isDesktopApp } from './net/platform';
 import { setTextSize, textSize } from './ui/text-size';
 
@@ -50,7 +50,8 @@ const strayFocus = () => {
   if (a instanceof HTMLElement && a !== document.body && !a.closest('input, textarea, select, [contenteditable="true"]')) a.blur();
 };
 for (const type of ['pointerup', 'dragend', 'drop']) document.addEventListener(type, strayFocus, true);
-startGame();
+// The first open of a new build drops what it changed from the device first (net/pwa.ts; 3 s at most).
+void Promise.race([tidyCaches().catch(() => {}), new Promise((ok) => setTimeout(ok, 3000))]).then(startGame);
 
 void startHud(document.getElementById('hud')!);
 showVersion();
