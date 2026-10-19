@@ -1383,7 +1383,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   (`playerInfo`: hidden numbers as 0 / null + `hidden` {balance?, status?}; the menu says "X doesn't show their balance
   to you", Status keeps the Discord dot), Discord's `/balance` and `/status` for someone else (`hiddenLine`, private),
   the town leaderboard (`kowens: null` → "Hidden" per viewer) and the public ones (`/leaderboard` in Discord, the room
-  API's GET /leaderboard: `'Hidden'` unless 'everyone'; twigo's room shows the word as it is). Settings → Privacy: two
+  API's GET /leaderboard: `'Hidden'` unless 'everyone'; twigo's room shows the word as it is), and every public Discord
+  reply that names a balance (`maySee(null, …)`: `/gamble`'s Balance line, then sent to the gambler alone; `/diss`
+  `/praise` `/judge`'s "has N left"; `/gift kowens`' "They now have"), and a steal refused as 'poor' (Discord and the
+  neighbourhood: the amount only for a viewer who may see it). Settings → Privacy: two
   rows of Everyone / Friends / Only me. Dev: the pretend leaderboard's 6th place is Hidden.
 - Player menu (`ui/target.ts`): left click (or tap) someone → their name and level ("Lv 12", kept up to date by `level-up`: `OtherPlayers.setLevel`, `levelChanged`) in a long box top centre (or click their name
   in the chat: the box opens right beside it with the menu open, `selectAt`; a click elsewhere closes it; no ×: a click

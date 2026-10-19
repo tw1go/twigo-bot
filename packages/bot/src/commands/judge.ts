@@ -5,6 +5,7 @@ import { botComebacks, botPraises, disses, praises } from '../judge/lines.js';
 import { shuffleBag } from '../shuffle-bag.js';
 import { onPraiseBot } from '../games/secrets.js';
 import { kowen } from '../kowens.js';
+import { maySee } from '../web/privacy.js';
 
 // /diss always roasts, /praise always praises, /judge flips a coin. All share the same line rotation.
 // Costs 1 credit (see /get-credits); targeting yourself or the bot is free.
@@ -54,7 +55,8 @@ function verdictCommand(name: string, description: string, mode: Mode): Command 
         }
         const left = balance(interaction.user.id);
         line = verdict.next().replace('{u}', `${target}`);
-        footer = `\n-# ${interaction.user.username} has ${left} ${kowen(left)} left`;
+        // (what they have left: only when they show their balance to everyone, Settings → Privacy)
+        if (maySee(null, interaction.user.id, 'balance')) footer = `\n-# ${interaction.user.username} has ${left} ${kowen(left)} left`;
       }
 
       const header = mode === 'random' ? `🎲 The Tanod has judged ${target}...\n${verdict.header}\n` : '';

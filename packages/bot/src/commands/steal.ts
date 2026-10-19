@@ -4,6 +4,7 @@ import { blockIfJailed } from '../games/jail.js';
 import { STEAL_COOLDOWN_MS, STEAL_FINE, stealFrom } from '../games/steal.js';
 import { kowen } from '../kowens.js';
 import { feed, townName } from '../web/town-feed.js';
+import { maySee } from '../web/privacy.js';
 
 // /steal: the rules are in games/steal.ts (shared with the neighbourhood's houses). In Discord a Master Key is used
 // by itself on a Bakod. Only rogues steal (/rogue join; games/rogue.ts), and robbing an open member protects them.
@@ -36,7 +37,8 @@ export const steal: Command = {
         case 'broke':
           return void (await reply(`You need at least **${STEAL_FINE}** ${kowen(STEAL_FINE)} to try (in case you get caught). 🪙`));
         case 'poor':
-          return void (await reply(`${target} only has ${result.have} ${kowen(result.have)}. Pick on someone richer. 💸`));
+          // (how much, only if they let the thief see their balance)
+          return void (await reply(maySee(thief.id, target.id, 'balance') ? `${target} only has ${result.have} ${kowen(result.have)}. Pick on someone richer. 💸` : `${target} doesn't have enough Kowens worth stealing. Pick on someone richer. 💸`));
         case 'fenced':
           return void (await reply(`🧱 ${target} has a **Bakod**! You can't steal from them until <t:${Math.floor(result.until / 1000)}:f>.\n-# A 🗝️ Master Key from \`/redeem\` has a 50% chance to break in.`));
       }
