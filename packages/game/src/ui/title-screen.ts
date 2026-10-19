@@ -240,7 +240,7 @@ export class TitleScreen {
       b.type = 'button';
       b.className = 'ts-install';
       b.textContent = 'Install Mikazuki';
-      b.title = 'Play it full screen from your home screen or desktop';
+      b.title = 'Play it full screen from your home screen';
       b.addEventListener('click', () => void install());
       this.extra.append(b);
     } else if (isIos() && !isHomeScreenApp() && !isDesktopApp() && !iosHintClosed()) {
