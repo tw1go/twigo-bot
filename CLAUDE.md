@@ -301,7 +301,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   (`tidyCaches`, awaited ≤ 3 s before the game starts; localStorage `mk_cache_build`) drops from mk-assets / mk-data
   each file whose hash changed or that's gone (against the list kept in cache mk-meta) and from mk-hashed every file
   the build doesn't have, so what a deploy changed is fetched fresh and the rest stays. First open (no worker yet: `firstOpen`): a percentage beside the town's
-  loading bar. Title screen: "Install Mikazuki" (the browser's beforeinstallprompt, `canInstall`) or on iPhone Safari a
+  loading bar. Title screen: "Install Mikazuki" on phones and tablets only (the browser's beforeinstallprompt and a coarse pointer, `canInstall`; computers have the desktop app) or on iPhone Safari a
   one-time "Tap Share, then Add to Home Screen" hint (localStorage `mk_ios_hint`). HUD: a full screen button in a browser
   tab where the Fullscreen API works (not iPhone Safari, not the apps). iPhone tags and viewport-fit=cover: the body is
   inset by the safe area and holds every fixed panel (contain: layout), so nothing sits under a notch. Logging in from the

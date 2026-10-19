@@ -145,8 +145,12 @@ function installed(r: ServiceWorkerRegistration, ms: number): Promise<ServiceWor
   });
 }
 
-/** The browser offers to install it (and it isn't installed, nor the desktop app). */
-export const canInstall = (): boolean => !!installEvent && !isHomeScreenApp() && !isDesktopApp();
+/** A phone or a tablet: touch is the main way in (an iPad says it's a Mac, but has touch points). Computers have the
+ *  desktop app instead, so the title screen offers installing only here (Mac, 19 Oct 2026). */
+const touchDevice = (): boolean => matchMedia('(pointer: coarse)').matches || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+
+/** The browser offers to install it on a phone or tablet (and it isn't installed, nor the desktop app). */
+export const canInstall = (): boolean => !!installEvent && touchDevice() && !isHomeScreenApp() && !isDesktopApp();
 
 /** `fn` whenever that changes; returns the unsubscribe. */
 export function onInstallable(fn: () => void): () => void {
