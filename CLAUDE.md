@@ -170,6 +170,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   and `nena-binoculars` (kind `quest`) with their pictures from the art folder's items/consumables and items/quest.
 - `items/items.json`: `warren-ticket`, `return-lantern`, `agimat-pliers`, `temper-stone`, `temper-stone-filled` (prices in
   `price: { kowens }`, the Smithing tab). `mobs/mobs.json`: `barong-barong`.
+- `ui/events/halloween/manananggal-64.png` (manifest `ui.eventHalloween.manananggal64`, 19 Oct 2026): the reunite pop-up's
+  picture, frame 0 of the upper half's idle-se centred in 64 × 64; a stand-in until the art folder has its own.
 - `ui/ui-golem-head.png` (manifest `ui.golemHead`): the golem timer's head, cut from frame 0 of the golem's idle-se
   sheet at (80,46), 56 × 56; a stand-in until the art folder has its own.
 - `maps/slums.json`: the Golem Pit v3 changes (the art folder's copy still has the old 6×6 pit; see Scrapheap Golem), and

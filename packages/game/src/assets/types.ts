@@ -95,7 +95,7 @@ export interface Manifest {
     /** The Slums' golem timer's picture: the Scrapheap Golem's head. */
     golemHead?: { file: string; size: Vec2 };
     /** The Halloween event's Mikko Kalabasa at 16, 32 and 64 px (the badge and event lines, the pop-ups). */
-    eventHalloween?: { icon16: string; icon32: string; icon64: string };
+    eventHalloween?: { icon16: string; icon32: string; icon64: string; /** The Manananggal's 64 px picture (the reunite pop-up). */ manananggal64?: string };
     /** The neighbourhood's rogue signs by a house's door (world/rogue-signs.ts): a Protected house's moon charm and a
      *  Marked one's mask (16 px; `showcase` 32 px, the house menu). */
     houseProtected?: { file: string; showcase?: string; size: Vec2 };
