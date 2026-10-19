@@ -8,6 +8,7 @@ import { jailedUntil } from '../games/jail.js';
 import { isProtected, isRogue, markedUntil, rogueState, turnRogue } from '../games/rogue.js';
 import { stealCooldown, stealFrom } from '../games/steal.js';
 import { kowen } from '../kowens.js';
+import { maySee } from './privacy.js';
 import { potionCount, usePotion } from '../potions/potions.js';
 import { doorSpot, fenceRing, hoodMap, lotTile } from './hood-map.js';
 import { getNickname } from './nickname.js';
@@ -239,7 +240,7 @@ export async function hoodAction(client: Client, userId: string, action: 'steal'
     switch (result.reason) {
       case 'cooldown': return done(false, `You're laying low. Try again in ${Math.ceil((result.until - Date.now()) / 60_000)} min.`);
       case 'broke': return done(false, 'You need at least 2 Kowens to try (in case you get caught).');
-      case 'poor': return done(false, `${them} only has ${result.have} ${kowen(result.have)}. Pick on someone richer.`);
+      case 'poor': return done(false, maySee(userId, owner, 'balance') ? `${them} only has ${result.have} ${kowen(result.have)}. Pick on someone richer.` : `${them} doesn't have enough Kowens worth stealing. Pick on someone richer.`); // (how much: only if they let you see their balance)
       case 'fenced': return done(false, result.keys ? `${them}'s house has a Bakod. Use a Master Key to get past it.` : `${them}'s house has a Bakod. You need a Master Key to get past it.`);
       case 'not-rogue': return done(false, 'Only rogues can steal. Become a rogue first: your house becomes fair game for other rogues once you steal.');
       case 'protected': return done(false, `${them} was robbed already, so their house is protected. It stays safe unless they turn rogue.`);

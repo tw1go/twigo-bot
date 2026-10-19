@@ -5,6 +5,7 @@ import { BUST_JAIL_MINUTES, SIXTY_SEVEN_BONUS, gambleFor } from '../games/gamble
 import { kowen } from '../kowens.js';
 import { config } from '../config.js';
 import { feed, townName } from '../web/town-feed.js';
+import { maySee } from '../web/privacy.js';
 
 // Coin flip: 45% win (double). Otherwise you lose the bet — and sometimes the Tanod busts you (5 minutes in jail).
 // The bust chance depends on where you gamble: low in the gambling channel, high anywhere else. The rules live in
@@ -44,9 +45,15 @@ export const gamble: Command = {
       content = `🎲 ${interaction.user} bet **${bet}** and **lost** it all. 💸`;
       feed('gamble', `${townName(interaction.user)} lost ${bet} ${kowen(bet)} gambling`, 'lose', { userId: who, amount: bet });
     }
-    content += `\n-# Balance: ${result.balance} ${kowen(result.balance)}`;
-    if (result.hidden) content += ' · 🫥 Tago Tonic active (the Tanod can\'t see you)';
-    else if (!inChannel) content += ` · 👀 The Tanod patrols here. Gamble in <#${config.gamblingChannelId}> to lower your risk.`;
+    // Their balance in the post only if they show it to everyone (Settings → Privacy); else just to them, privately.
+    const balanceLine = `Balance: ${result.balance} ${kowen(result.balance)}`;
+    const shown = maySee(null, who, 'balance');
+    const notes = [
+      ...(shown ? [balanceLine] : []),
+      ...(result.hidden ? ['🫥 Tago Tonic active (the Tanod can\'t see you)'] : !inChannel ? [`👀 The Tanod patrols here. Gamble in <#${config.gamblingChannelId}> to lower your risk.`] : []),
+    ];
+    if (notes.length) content += `\n-# ${notes.join(' · ')}`;
     await interaction.reply({ content, allowedMentions: { parse: [] } });
+    if (!shown) await interaction.followUp({ content: `🔒 ${balanceLine}`, flags: MessageFlags.Ephemeral }).catch(() => {});
   },
 };

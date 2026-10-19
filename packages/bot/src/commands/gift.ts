@@ -11,6 +11,7 @@ import { kowen } from '../kowens.js';
 import { LAUNCH_REWARD, launchPayout, launched, preregPanel } from '../prereg/prereg.js';
 import { TITLES, giveTitle } from '../web/titles.js';
 import { townGift, townGiftItem, townItems } from '../web/town-feed.js';
+import { maySee } from '../web/privacy.js';
 
 // Only the gifter (REWARD_OWNER_ID) can use this. Hidden from non-admins by default.
 export const gift: Command = {
@@ -243,7 +244,7 @@ export const gift: Command = {
     townGift(target.id, 'The gifter', amount); // the gift pop-up, if they're in the web town
     console.log(`[gift] ${target.id} +${amount}${reason ? ` (${reason})` : ''}`);
     await interaction.reply({
-      content: `🎁 ${target} received **${amount.toLocaleString('en-US')}** ${kowen(amount)} from the gifter!${reason ? ` _${reason}_` : ''}\n-# They now have ${now.toLocaleString('en-US')} ${kowen(now)}.`,
+      content: `🎁 ${target} received **${amount.toLocaleString('en-US')}** ${kowen(amount)} from the gifter!${reason ? ` _${reason}_` : ''}${maySee(null, target.id, 'balance') ? `\n-# They now have ${now.toLocaleString('en-US')} ${kowen(now)}.` : ''}`, // (their balance only if they show it to everyone)
       allowedMentions: { users: [target.id] },
     });
   },
