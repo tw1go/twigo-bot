@@ -4,7 +4,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 import { devTown } from './scripts/dev-town.ts';
 import { packs } from './scripts/packs.ts';
 import { frontPage } from './scripts/front-page.ts';
-import { buildInfo, versionFile } from './scripts/version.ts';
+import { assetFiles, buildInfo, versionFile } from './scripts/version.ts';
 import pkg from './package.json' with { type: 'json' };
 
 // Served from https://<domain>/play/ (Caddy serves the built files; the room API stays at the domain root). Two pages:
@@ -14,7 +14,7 @@ export default defineConfig(({ command }) => {
   return {
   base: '/play/',
   define: { __BUILD__: JSON.stringify(info) },
-  plugins: [packs(), devTown(), versionFile(info), frontPage(), homeScreenApp(), frontWithoutManifest()],
+  plugins: [packs(), devTown(), versionFile(info), assetFiles(info), frontPage(), homeScreenApp(), frontWithoutManifest()],
   resolve: {
     // Use the shared package's TypeScript source directly (no build step needed in dev).
     alias: { '@mikazuki/shared': fileURLToPath(new URL('../shared/src/index.ts', import.meta.url)) },

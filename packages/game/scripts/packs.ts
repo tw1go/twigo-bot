@@ -173,6 +173,9 @@ export function buildPacks(assetsDir: string): { index: PackIndex; out: { fileNa
   return { index, out };
 }
 
+/** The art the last build packed into sheets (paths under assets/): never asked for loose by that build's game. */
+export const packedFiles = new Set<string>();
+
 /** `import packs from 'virtual:packs'`: the pack index in a build, null in dev (loose files). */
 export function packs(): Plugin {
   const id = 'virtual:packs';
@@ -189,6 +192,8 @@ export function packs(): Plugin {
       if (resolved !== `\0${id}`) return;
       if (!build) return 'export default null;';
       const { index, out } = buildPacks(assetsDir);
+      packedFiles.clear();
+      for (const f of Object.keys(index.files)) packedFiles.add(f);
       for (const f of out) this.emitFile({ type: 'asset', fileName: f.fileName, source: f.source });
       return `export default ${JSON.stringify(index)};`;
     },
