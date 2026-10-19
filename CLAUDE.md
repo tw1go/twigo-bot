@@ -292,8 +292,11 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   else (logins, /me, /town/*, /api/*, /ws, version.json, asset-files.json). Updates install in the background and wait:
   ui/version.ts's notice (version.json, or the worker's `newVersionReady`) applies them on Reload now (`applyUpdate`: the
   waiting worker takes over, then a reload; never mid-game); on the title screen (before Start: `enteredGame` in
-  BootScene.route) a newer live build is switched to at once (net/pwa.ts `freshStart`: once per version a tab,
-  sessionStorage `mk_fresh`). Each build writes `asset-files.json` (scripts/version.ts `assetFiles`: every loose file
+  BootScene.route) a newer live build, or a worker that has installed and waits, takes over at once (net/pwa.ts
+  `freshStart`: once per version a tab, sessionStorage `mk_fresh`). Precached files get a revision unless their name
+  carries their content's hash (workbox `dontCacheBustURLsMatching`: packs/ and the scripts and stylesheets only; the
+  plugin's default, all of assets/, left manifest.json, town.json, the fonts and the title art as first stored, through
+  every deploy). Each build writes `asset-files.json` (scripts/version.ts `assetFiles`: every loose file
   under assets/ with its content's short SHA-1, packed art left out, and the hashed files); a build's first open
   (`tidyCaches`, awaited ≤ 3 s before the game starts; localStorage `mk_cache_build`) drops from mk-assets / mk-data
   each file whose hash changed or that's gone (against the list kept in cache mk-meta) and from mk-hashed every file
