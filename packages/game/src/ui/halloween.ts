@@ -1,4 +1,4 @@
-import { EVENT_POTIONS, type HalloweenData, type HalloweenReward, eventEndDay } from '@mikazuki/shared';
+import { EVENT_POTIONS, type HalloweenData, type HalloweenReward, type ShopEvents, eventEndDay } from '@mikazuki/shared';
 import { anyDef } from '../net/adventure';
 import { coinIcon, el, kusingIcon, showPopup } from './reward';
 
@@ -19,6 +19,9 @@ export const mikkoIcon16 = (): string | null => (icons ? url(icons.icon16) : nul
 /** The event as the town last said (its rules, and whether it's on). */
 let state: { data: HalloweenData; on: boolean } | null = null;
 let render: () => void = () => {};
+
+/** The event for the store's Cosmetics tab (the dev town's pretend store: the Witch Hat and Robe while it's on). */
+export const halloweenShopEvents = (): ShopEvents => (state ? { halloween: { on: state.on, window: state.data } } : {});
 
 /** Shows the event board while the event is on (`data` and `on`), hides it while it's off. */
 export function setHalloweenBadge(data: HalloweenData | null, on: boolean): void {

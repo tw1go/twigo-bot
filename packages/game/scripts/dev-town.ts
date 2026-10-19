@@ -1,7 +1,7 @@
 import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ClassesFile, GearRarity, HoodHouse, HouseLook, OutfitData, PrivacySettings, RogueState, TownHoodActionResponse, TownHoodResponse, TownItems, TownRace, TownRaceResponse } from '@mikazuki/shared';
-import { type LanternPost, type TownMail, DEFAULT_PRIVACY, expireItems, MAIL_RULES, claimInto, hasAttachments, parseMailAction, RETURN_LANTERN, gainPetXp, parsePetAction, petAction, petIdOf, petRules, setPetLevel, addToBag, isGearDef, lanternPostOf, newItem, rollGear, rollWorthy, takeKind, buffSkillLevels, classBuffs, classSkills, damageSkillLevels, moveUnlock } from '@mikazuki/shared';
+import { type LanternPost, type TownMail, DEFAULT_PRIVACY, expireItems, MAIL_RULES, claimInto, hasAttachments, parseMailAction, RETURN_LANTERN, gainPetXp, parsePetAction, petAction, petIdOf, petRules, setPetLevel, addToBag, isGearDef, lanternPostOf, newItem, rollGear, buyCosmetic, rollWorthy, takeKind, buffSkillLevels, classBuffs, classSkills, damageSkillLevels, moveUnlock } from '@mikazuki/shared';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { doorSpot, hoodMap, lotTile } from '../../bot/src/web/hood-map.ts';
 import type { Plugin } from 'vite';
@@ -66,7 +66,8 @@ import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
 //   GET /__roll?as=Alice   a rare orange item drops for Alice's party: the loot roll pop-up (alone: it just lies there)
 //   GET /__loot?rich=1   nearly every kill drops gear (the first kind, brown, +0 to +3) and a potion, to try loot (rich=0: as ever)
 //   POST /__shop?as=Alice {id, quantity, kowens}   buys a combat item (the sari-sari store's Healing and Smithing tabs)
-//   with her Kusing here, or the pretend shop's Kowens (sent along; what's left comes back)
+//   with her Kusing here, or the pretend shop's Kowens (sent along; what's left comes back); a cosmetic or a Set too
+//   (the Cosmetics tab: the Witch Hat and Robe while ?halloween=on has the event on)
 //   GET /__points?as=Alice&stat=DEX   Alice spends a stat point on DEX (&reset=1: all back), by the bot's rules
 //   (web/progress.ts); answers { ok, message?, progress } and sends her `progress` (the pretend equipment panel calls it)
 //   GET /__skills?as=Alice&skill=0   Alice puts a skill point into her class's first skill (&skill=dash: Dash; &reset=1:
@@ -737,7 +738,12 @@ export function devTown(): Plugin {
         // (Kowens: the page's pretend shop's, sent along.)
         const { id, quantity, kowens } = (await readJson(req)) as { id?: string; quantity?: number; kowens?: number };
         let have = Number(kowens) || 0;
-        const r = buyCombat(items, gearOf(name), levelOf(name).level, String(id), Number(quantity), { have, spend: (n) => (have >= n ? ((have -= n), true) : false) }, devUid);
+        const spend = { have, spend: (n: number) => (have >= n ? ((have -= n), true) : false) };
+        const def = items.defs.get(String(id));
+        // (a cosmetic or a Set: the Cosmetics tab, Halloween's Witch pieces while it's on here)
+        const r = String(id).startsWith('set:') || (def && !isGearDef(def) && def.kind === 'cosmetic')
+          ? buyCosmetic(items, gearOf(name), String(id), { halloween: { on: halloween.on(Date.now()), window: hwLoaded.data } }, spend, devUid)
+          : buyCombat(items, gearOf(name), levelOf(name).level, String(id), Number(quantity), spend, devUid);
         if (r.ok) town.items(name);
         reply(res, { ok: r.ok, message: r.message, kusing: gearOf(name).kusing, kowens: have });
       });

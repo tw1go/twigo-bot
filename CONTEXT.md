@@ -196,6 +196,11 @@ _Avoid_: AoE marker, danger zone
 
 ## Characters
 
+**Combat pose**:
+A class's own body art for fighting (idle-ready, walk-ready, the attacks, the moves), one sheet per direction in a 64×64
+cell; worn clothes are laid onto it, and a cosmetic with pose art has its own sheet fitted to each one.
+_Avoid_: battle sprite, attack anim
+
 **Level**:
 A character's level, 1 to 20, raised by XP from kills.
 _Avoid_: rank, tier (tier is a skill's place in its class's order)
@@ -287,13 +292,19 @@ One part of the combat bag with its own slots: the bag's (everything but agimats
 cosmetics' (Costume).
 
 **Cosmetic**:
-An item worn for looks only, never for stats: the Lamp-head Hat. Bound once worn.
+An item worn for looks only, never for stats: the Lamp-head Hat, the store's Sets. Bound once worn or bought.
 _Avoid_: skin, costume item
 
 **Costume**:
 The bag's pocket for cosmetics, and the equipment panel's tab with the three places they're worn in (Weapon, Head,
-Body). A worn head cosmetic replaces the hat chosen at the creator until it's taken off.
+Body). A worn head cosmetic replaces the hat chosen at the creator until it's taken off. Cosmetics are sold in the
+sari-sari store's Cosmetics tab.
 _Avoid_: cosmetics tab, wardrobe (that's the look chosen at the creator)
+
+**Set**:
+A Head and a Body cosmetic made to go together (Ember Imp, Witch…); sold as one in the store for less than the two
+apart.
+_Avoid_: outfit (that's the look from the creator), bundle
 
 **Item**:
 One particular piece of gear or stuff a player owns, with its own rolls and history; many items share one kind.

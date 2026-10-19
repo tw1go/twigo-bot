@@ -335,7 +335,13 @@
       @media (prefers-reduced-motion: reduce) { #town-hud .jt-bulb, #town-hud .jt-soon { animation: none; } }
       body:has(#reward .nw-body) #town-hud .th-corner { z-index: 5; } /* over the dimmed town, so the megaphone closes it again */
       #settings { position: fixed; inset: 0; z-index: 4; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(4, 4, 12, 0.6); font: calc(15px * var(--text))/1.4 var(--ui-font); }
-      #settings .st-card { position: relative; width: min(340px, calc(100vw - 32px)); box-sizing: border-box; padding: 20px 22px; border: 3px solid #7C2AE8; background: #fff; color: #1E1B3A; }
+      #settings .st-card { position: relative; width: min(680px, calc(100vw - 32px)); box-sizing: border-box; padding: 20px 22px; border: 3px solid #7C2AE8; background: #fff; color: #1E1B3A; }
+      /* Two columns of sections (ui/settings.ts: Audio, Display | Game, Privacy, Account), Keybinds and Credits across the
+         bottom; one column on phones. */
+      #settings .st-main { display: grid; grid-template-columns: 1fr 1fr; column-gap: 28px; align-items: start; }
+      #settings .st-main[hidden] { display: none; }
+      #settings .st-main > .st-more { grid-column: 1 / -1; }
+      @media (max-width: 640px) { #settings { align-items: flex-start; overflow-y: auto; } #settings .st-main { grid-template-columns: 1fr; } }
       #settings .st-framed { --px: 4; border-style: solid; border-width: calc(var(--slice) * var(--px) * 1px); border-image-source: var(--frame); border-image-slice: var(--slice) fill; border-image-width: calc(var(--slice) * var(--px) * 1px); border-image-repeat: round; image-rendering: pixelated; padding: 6px 8px 4px; background: none; }
       #settings .st-title { margin: 0 0 10px; font-size: calc(22px * var(--text)); color: #5B21B6; letter-spacing: 0.06em; text-transform: uppercase; text-align: center; }
       #settings .st-close { position: absolute; top: 0; right: 0; width: 30px; height: 30px; padding: 0; border: 0; background: none; color: #7A8099; font: 700 calc(24px * var(--text))/1 var(--ui-font); }
@@ -358,7 +364,6 @@
       #settings .st-logout { padding: 8px 16px; border: 2px solid #1E1B3A; border-radius: 0; background: #fff; color: #1E1B3A; font: inherit; font-weight: 600; box-shadow: 0 3px 0 #1E1B3A; }
       #settings .st-logout:hover { background: #FEE2E2; }
       #settings .st-logout:disabled { opacity: 0.6; }
-      #settings .st-wide { width: min(460px, calc(100vw - 32px)); }
       #settings .st-more { display: flex; gap: 10px; }
       #settings .st-sizes { display: flex; gap: 6px; } /* Text size: Small / Normal / Large / Larger */
       #settings .st-size { flex: 1; padding: 5px 4px; border: 2px solid #1E1B3A; border-radius: 0; background: #fff; color: #1E1B3A; font-family: inherit; font-weight: 600; box-shadow: 0 3px 0 #1E1B3A; }
@@ -1535,9 +1540,27 @@
       #reward .op-bail { flex: none; padding: 5px 10px; border: 2px solid #1E1B3A; border-radius: 0; background: #7DD3FC; color: #1E1B3A; font: inherit; font-size: calc(13px * var(--text)); font-weight: 700; box-shadow: inset 0 2px 0 #E0F2FE, inset 0 -3px 0 #0284C7, 0 3px 0 #1E1B3A; }
       #reward .op-bail:hover:not(:disabled) { background: #BAE6FD; }
       #reward .op-bail:disabled { opacity: 0.5; }
-      /* Sari-sari store (ui/shop.ts; tabs share the bank's .bk-tabs): nine tabs, each as wide as its name, sharing the rest. */
+      /* Sari-sari store (ui/shop.ts; tabs share the bank's .bk-tabs): ten tabs, each as wide as its name, sharing the rest. */
       #reward .sh-tabs .bk-tab { flex: 1 1 auto; min-width: 0; padding: 6px 8px 5px; white-space: nowrap; font-size: calc(14px * var(--text)); }
-      #reward .rw-card:has(.sh-body) { width: min(960px, calc(100vw - 32px)); } /* nine tabs, and a row of eight cards */
+      #reward .rw-card:has(.sh-body) { width: min(1000px, calc(100vw - 32px)); } /* ten tabs, and a row of eight cards */
+      /* The Cosmetics tab's sub-tabs (All / Head / Body / Weapon), the Set cards (the Body with the Head over its corner),
+         the Limited and Set tags, the worn preview in the detail. */
+      #reward .sh-subtabs { display: flex; gap: 6px; margin: -2px 0 8px; }
+      #reward .sh-subtabs[hidden] { display: none; }
+      #reward .sh-subtab { padding: 3px 12px; border: 2px solid #C4B5FD; border-radius: 0; background: #F5F3FF; color: #5B21B6; font: inherit; font-size: calc(13px * var(--text)); font-weight: 700; }
+      #reward .sh-subtab:hover { border-color: #7C2AE8; }
+      #reward .sh-subtab[aria-selected='true'] { border-color: #7C2AE8; background: #7C2AE8; color: #fff; }
+      #reward .sh-set-art { position: relative; display: inline-block; }
+      #reward .sh-set-art > .sh-art { display: block; }
+      #reward .sh-set-art > .sh-set-head { position: absolute; top: -4px; left: -6px; }
+      #reward .sh-badge.sh-limited { background: #F97316; color: #fff; }
+      #reward .sh-badge.sh-set { top: auto; right: auto; bottom: 4px; left: 4px; background: #C4B5FD; }
+      #reward .sh-limited-line { color: #C2410C; font-weight: 700; }
+      #reward .sh-empty { grid-column: 1 / -1; padding: 24px 0; text-align: center; color: #7A8099; font-size: calc(13px * var(--text)); }
+      #reward .sh-preview { flex: none; margin-left: auto; }
+      #reward .sh-preview canvas { display: block; width: 128px; height: 128px; margin: -24px -8px -20px 0; image-rendering: pixelated; }
+      #reward .sh-buy-set { background: #E9D5FF; box-shadow: inset 0 2px 0 #F5EBFF, inset 0 -3px 0 #A78BFA, 0 3px 0 #1E1B3A; }
+      #reward .sh-buy-set:hover:not(:disabled) { background: #F3E8FF; }
       /* A fixed size: the grid scrolls, the details and the message keep their room, so nothing jumps. */
       #reward .sh-body { margin-bottom: 14px; text-align: left; }
       #reward .sh-wallet { display: flex; align-items: center; justify-content: center; gap: 6px; margin: -4px 0 10px; font-size: calc(14px * var(--text)); color: #3D4256; }
@@ -1801,10 +1824,8 @@
         body.hb-top-open.hotbar-on #toast { bottom: 90px; }
         body.hb-top-open.hotbar-on #inventory:not([hidden]) { bottom: 98px; }
         body.hb-top-open.hotbar-on #equipment:not([hidden]) { max-height: calc(100vh - 106px); }
-        /* Settings: scrollable overlay, wider card, 2-column section layout */
+        /* Settings: a scrollable overlay (its two columns are everywhere wider than a phone held upright) */
         #settings { align-items: flex-start; overflow-y: auto; }
-        #settings .st-card, #settings .st-wide { width: min(560px, calc(100vw - 32px)); }
-        #settings .st-card > div:first-of-type { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; align-items: start; }
       }
       #quest-tracker { position: fixed; left: 12px; z-index: 2; width: 150px; box-sizing: border-box; padding: 6px 8px 8px; border-radius: 6px; background: rgba(10, 12, 24, 0.55); color: #E6E9F2; font: calc(13px * var(--text))/1.3 var(--ui-font); text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6); cursor: var(--cur-hand, pointer); }
       #quest-tracker[hidden] { display: none; }

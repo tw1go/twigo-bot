@@ -314,6 +314,20 @@ export interface CharacterDefs {
      *  colours; those that cover the legs (no bottom layer while worn). */
     cosmeticTops?: Record<string, string>;
     cosmeticHidesBottom?: string[];
+    /** Cosmetic tops that draw their own feet (no shoes layer while worn). */
+    cosmeticHidesShoes?: string[];
+    /** A top with a topover sheet (`topOverPattern`): what reaches past the doll's cell (wings, tails, a wide hem) in a
+     *  bigger cell, the doll's at `offset`, drawn whole just above the doll like a big hat. */
+    topCanvas?: Record<string, { size: Vec2; offset: Vec2 }>;
+    topOverPattern?: string;
+    /** Cosmetic tops with a body clip mask per frame (`bodyClipPattern`, 32x48): white = the body isn't drawn there (the
+     *  Velvet Nightwing floats with no legs). */
+    cosmeticBodyClip?: string[];
+    bodyClipPattern?: string;
+    /** Cosmetic tops with a body-piece sheet fitted to every combat pose (`cosmeticPosePattern`: {class}, {anim}, {item},
+     *  {dir}; 64x64 cells in the pose's own cell), drawn in place of the idle top and topover laid onto the pose. */
+    cosmeticPoseTops?: string[];
+    cosmeticPosePattern?: string;
   };
   colourPresets: Record<string, string[]>;
   skinTones: Record<string, string[]> & { faceTweak?: Record<string, Record<string, string>> };

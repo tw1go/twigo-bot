@@ -150,6 +150,12 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `maps/slums.json` (128,96 → 129,97), and `ui/map/map-layout.json` `maps[id].label` (where the Map menu writes each
   map's name). Copying either map over again from the art folder loses the post.
 - `classes/leveling.json`: `miniBoss.questDrop`.
+- The store's Cosmetics (19 Oct 2026, Mac): `classes/stats.json` `cosmeticShop` (headPrice 50, bodyPrice 100, setPrice 130);
+  `items/items.json` the five Sets' ten pieces (`<set>-head` / `<set>-body`, `shop: "cosmetic"`, `set`) and the Witch Hat
+  and Robe's `shop`, `event: "halloween"` and `set: "witch"`; the manifest's wardrobe entries for them (`cosmeticHats`,
+  `fixedColourHats`, `hatClips`, `hatCanvas`, `cosmeticTops`, `cosmeticHidesBottom`) and the new `cosmeticHidesShoes`,
+  `topCanvas`, `topOverPattern`, `cosmeticBodyClip`, `bodyClipPattern`, `cosmeticPoseTops`, `cosmeticPosePattern`. The art
+  is the art folder's cosmetics/custom (and its poses/ zip) as it is.
 - `classes/stats.json`: `skills.moveDodge` (Step Back dodges every hit for 500 ms; 17 Oct 2026) and `classes/classes.json`
   Step Back's `desc` saying so.
 - The mailbox (16 Oct 2026): `maps/town.json`'s `mailbox` object at (33,28), its blocked tile and `doors.mailbox` (33,29)
@@ -458,7 +464,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   as it fires in `fightTick`, others' with their `mob-hit`). Hearing (`Heard`): yours always; mobs, others' skills and the
   golem only within 12 tiles of you (`hearFrom` keeps your tile), others' and the golem's at 70%. combat-level-up (yours,
   others' near you at 70%). Debug: `__town.sounds()` (every sound asked for, even while sound is locked headless: `tapSounds`).
-  Settings box (`ui/settings.ts`, gear button top right, manifest `ui.settingsIcon`): Music and Sounds volumes
+  Settings box (`ui/settings.ts`, gear button top right, manifest `ui.settingsIcon`; 680 px wide in two columns, Audio and
+  Display | Game, Privacy and Account, Keybinds and Credits across the bottom; one column under 640 px): Music and Sounds volumes
   (music 0 = off), Mute all and Mute gossip murmur (`npcsMuted`: the Alings' ambient murmur only; saved in localStorage `mk_sound`), Display → Text size (`ui/text-size.ts`: Small 90% / Normal / Large 115% / Larger 130%, localStorage `mk_text`, applied in main.ts before anything draws: every UI font size in index.html is `calc(Npx * var(--text))`, so write new ones that way; the world's text and pixel-art boxes keep theirs), log out, a Keybinds page and a Credits page (keep it in step with
   `public/assets/audio/CREDITS.md` and the font's licence). Keep sounds soft: no sharp clicks.
 - Keybinds (`ui/keybinds.ts`): every game key is an action with up to two keys (event.code + Ctrl/Alt/Shift, so layouts
@@ -499,7 +506,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   tabs), Vault (store/take out), Loan (pay / pay all, or borrow from the Tanod Bank; loans you gave); bot `GET/POST /town/bank` (`web/town-bank.ts`, same stores and rules as `/vault`
   and `/loan`; town borrowing is posted in the games channel). Lending to members stays in Discord. Dev: a pretend
   bank (`&vault=0`, `&loan=1`).
-- Sari-sari store (`ui/shop.ts`, building id `sari-sari-store`, was the rewards shop; left click the store): what `/redeem` sells, tabs Items / Potions / Bags / Passes (+ Healing / Smithing: Items, above), a grid
+- Sari-sari store (`ui/shop.ts`, building id `sari-sari-store`, was the rewards shop; left click the store): what `/redeem` sells, tabs Items / Potions / Bags / Passes (+ Cosmetics: Cosmetics, below; + Healing / Smithing: Items, above), a grid
   of item art (manifest `items`, keyed by reward id; dug-up items there too) with a quantity stepper for stackables and
   a second press to confirm passes. Bot `GET/POST /town/shop` (`web/town-shop.ts`); `/redeem` and the shop share
   `games/redeem.ts` (checks + purchase, the public Discord post `redeemPost`, the feed line). Passes are for testers only
@@ -1090,6 +1097,30 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `tintables`. A worn or removed cosmetic rebuilds your battle poses on a battle map (TownScene `setOutfit` →
   `applyBattle`: they're baked per look). The Info window shows a Costume tab (the `inspect` message's
   `cosmetics`). Tested (items.test.ts, adventure.test.ts).
+  The store's **Cosmetics** tab (CONTEXT.md Set; shared `cosmetic-shop.ts`, tested in the bot's `web/cosmetic-shop.test.ts`):
+  every items.json kind with `shop: "cosmetic"` (the five Sets' ten pieces, 19 Oct 2026: Velvet Nightwing, Ember Imp, Lilac
+  Gremlin, Gravecaller, Moonlit Sylph, art from the art folder's cosmetics/custom) for stats.json `cosmeticShop`
+  headPrice / bodyPrice Kowens, and each `set` (a Head and a Body) as `set:<set>` for setPrice; one with an `event` only
+  while it's on (the Witch Hat and Robe: Halloween, `setShopEvents` = the live town's `Halloween.on`, so dev's
+  ?halloween=on too; Limited, "Halloween only, until Nov 4"), timed as the event gives them. One at a time, never one
+  you have (Costume tab or worn, a timed one until it runs out; a Set once you have either piece: "You already have the
+  Ember Imp Horns. Buy the Ember Imp Suit on its own."), into the Costume pocket bound (`buyCosmeticFor`, `[shop]` log
+  line). Page: sub-tabs All / Head / Body / Weapon, Set cards (the Body's picture, the Head's over its corner), a piece's
+  "Buy the set" button, and the worn preview (TownScene `setShopPreview`: your look with the piece on, idle SE, doll.ts
+  `drawStill` straight from its layers). Big tops: wardrobe `topCanvas` + `topOverPattern` (a 64x64 topover sheet of
+  what reaches past the doll's cell: wings, tails, a gown's hem), drawn whole just above the doll like a big hat
+  (Character `bigs`: topover then hat; kit-art drawRested too); `cosmeticHidesShoes` (they draw their own feet);
+  `cosmeticBodyClip` + `bodyClipPattern` (the Velvet Nightwing's legs: white = no body there). Fight poses: a cosmetic
+  top keeps what lies outside the idle body (moved with the top) as well as what's on the pose's body (kit-art
+  `drawTrimmed`'s `idleBody`), its topover laid with it, and a body clip cuts the pose's body from the mask's top row
+  down (a stride takes the legs outside the idle mask). The five Sets' tops have pose art instead (CONTEXT.md Combat
+  pose; wardrobe `cosmeticPoseTops` + `cosmeticPosePattern`, the art folder's cosmetics/custom/poses: a sheet per class,
+  anim and direction, 64x64 cells in the pose's own cell, the body sheet's frame count; tested): drawPose draws its
+  frame at the cell's top left in place of the top and topover (kit-art `cosmeticPoseFile`; the laid-on piece only if
+  the sheet isn't loaded), shoes and bottom as before, the head laid on as for any look; loaded with the class's poses
+  for the worn key (`cosmeticPoseFiles`: battle-art, the skill preview) and packed per class and cosmetic
+  (`class-<class>-cosmetic-<key>`), so only wearers load them. The E and W combat poses of every class are copies of SE
+  and SW (an art gap): the pose art fits them, the hair and hat still come from the town's E / W.
 - Weapon auras (`src/fx/weaponAura.ts`, guide "Weapon auras", stats.json enhancement.weaponAura; matches the art folder's
   items/weapon-aura/weapon-aura-preview-v6.gif): +15–17 blue, +18–19 gold (2 glints), +20 prismatic (4 glints, the cycle by
   angle, turning; each spiral its own colour); weapons only, never broken. `traceAura(key, src)` traces a frame once

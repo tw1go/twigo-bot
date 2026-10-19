@@ -3,7 +3,7 @@ import { api } from '../net/endpoints';
 import { queueImage, queueNpcs, queueTown } from '../assets/queue';
 import type { Area, Dir, Gate, Manifest, TownMap } from '../assets/types';
 import { Character, SPEED, dirForStep, dirToward } from '../characters/character';
-import { type Outfit, assetProblems, buildOutfit, headPortrait, headTop, outfitFiles, randomOutfit, sheetKey } from '../characters/doll';
+import { type Outfit, assetProblems, buildOutfit, drawStill, headPortrait, headTop, outfitFiles, randomOutfit, sheetKey, stillFiles } from '../characters/doll';
 import { loadOutfit } from '../characters/loading';
 import { sanitize, startingOutfit } from '../characters/looks';
 import type { MeResult } from '../session';
@@ -60,7 +60,7 @@ import { showJackpot } from '../ui/jackpot';
 import { showBank } from '../ui/bank';
 import { showOutpost } from '../ui/outpost';
 import { showBoard } from '../ui/board';
-import { showShop } from '../ui/shop';
+import { setShopPreview, showShop } from '../ui/shop';
 import { showMail } from '../ui/mail';
 import { onUnreadMail, setUnreadMail } from '../net/mail';
 import { InspectWindow } from '../ui/inspect';
@@ -89,7 +89,7 @@ import { HalloweenDecor } from '../world/halloween-deco';
 import { serverNow, setServerNow } from '../net/server-clock';
 import { mikkoIcon16, setHalloweenArt, setHalloweenBadge, showHalloweenReward } from '../ui/halloween';
 import { BossBar } from '../ui/boss-bar';
-import { HALLOWEEN_MOBS, type HalloweenData } from '@mikazuki/shared';
+import { HALLOWEEN_MOBS, type HalloweenData, cosmeticHatOf, cosmeticTopOf, withCosmetics } from '@mikazuki/shared';
 import { lootRolls, rollEndLine } from '../ui/loot-roll';
 import type { TownWarrensRun } from '@mikazuki/shared';
 import { MapMenu } from '../ui/map-menu';
@@ -136,7 +136,7 @@ import { MOVES, type MoveKind, isMoveKind, moveTiles, playMove, startDodge } fro
 import { changeClass, devItemsReady, devQuestKill, questReport, setQuestCounts, devSwitchClass, adventure, adventureData, anyDef, chooseClass, classInfo, initAdventure, itemData, itemDef, loadAdventureData, lookWithCosmetics, onAdventure, questDef, questFor, questTalk, setItems, setProgress, skillView, skillViews, buffViews, wornHeadCosmetic, setPetXp } from '../net/adventure';
 import { readyToReport, type LanternMap, type LanternPost, LANTERN_USE_TILES, LANTERN_WALK_TILES, RETURN_LANTERN, isLanternMap, lanternPostOf, nearPost, type StatsData, buffsStack, potionCooldownGroup, dropRefusal, nameColour, type Item, type QuestReward, type TownItems, LOOT_REACH, auraFor, classBuffs, classSkills, countOf, isGearDef, itemAura, itemStats, newItem, tradeRules, petRules } from '@mikazuki/shared';
 import type { ClassArt } from '../assets/types';
-import { drawRested, poseFiles, restFiles } from '../characters/kit-art';
+import { cosmeticPoseFiles, drawRested, poseFiles, restFiles } from '../characters/kit-art';
 import { loadImages } from '../characters/loading';
 import { holdQuestBanners, mountQuests } from '../ui/quests';
 import { openClassChoice } from '../ui/class-choice';
@@ -1705,7 +1705,7 @@ export class TownScene extends Phaser.Scene {
     const asset = (f: string) => `${import.meta.env.BASE_URL}assets/${f}`;
     // The class's fx, and the mobility moves' (shared by every class).
     const fx = Object.values(this.M.fx).filter((f) => f.file?.startsWith(`${fxFolder}/`) || f.file?.startsWith('fx/mobility/')).map((f) => f.file!);
-    await loadImages(this, [...poseFiles(art), ...fx, ...this.M.tiles.grass.files]);
+    await loadImages(this, [...poseFiles(art), ...cosmeticPoseFiles(this.M.characters, K, this.outfit, art), ...fx, ...this.M.tiles.grass.files]); // (a cosmetic top's pose sheets too)
     const launch = art.launch
       ? await fetch(asset(art.launch)).then((r) => (r.ok ? r.json() : null)).then((j) => j?.points ?? null).catch(() => null)
       : null;
@@ -1819,6 +1819,22 @@ export class TownScene extends Phaser.Scene {
           inv?.slot && inv.selected && inv.nineSlice ? { url: url(inv.slot), picked: url(inv.selected), slice: inv.nineSlice } : null,
         )
       : null;
+    // The store's worn preview: your look with the cosmetics picked there on (the rest of what you wear stays), facing
+    // south-east, straight from its layers (ui/shop.ts).
+    setShopPreview(async (ids) => {
+      const C = this.M.characters;
+      const W = C.wardrobe;
+      const hat = ids.map((id) => W.cosmeticHats[id]).find(Boolean) ?? cosmeticHatOf(W.cosmeticHats, adventure()?.cosmetics);
+      const top = ids.map((id) => W.cosmeticTops?.[id]).find(Boolean) ?? cosmeticTopOf(W.cosmeticTops, adventure()?.cosmetics);
+      const look = withCosmetics(this.savedOutfit, hat, top);
+      await loadImages(this, stillFiles(C, look, 'idle', 'se'));
+      if (!this.sys.isActive()) return null;
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 64;
+      drawStill(canvas.getContext('2d')!, this, C, look, 'idle', 'se', 0, 16, 16);
+      return canvas;
+    });
+    this.events.once('shutdown', () => setShopPreview(null));
     // The equipment panel, on the bag's left (it opens and closes with it).
     const K = this.M.classes;
     const icons = this.M.ui.classIcons;

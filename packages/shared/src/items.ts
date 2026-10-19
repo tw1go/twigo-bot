@@ -83,7 +83,11 @@ export interface CombatItemDef {
   lastsDays?: number;
   /** Sold at the sari-sari store: priced as a potion (its tier's Kusing), a whetstone or a Repair Kit (Kowens), a dungeon
    *  ticket (its dungeon's price), a travel item, or a smithing tool with its own price (`price`). */
-  shop?: 'potion' | 'whetstone' | 'repairKit' | 'ticket' | 'travel' | 'smithing' | 'pets';
+  shop?: 'potion' | 'whetstone' | 'repairKit' | 'ticket' | 'travel' | 'smithing' | 'pets' | 'cosmetic';
+  /** A cosmetic's Set (CONTEXT.md Set): the Head and Body sharing it are also sold together (stats.json cosmeticShop). */
+  set?: string;
+  /** Sold only while this event is on (events/<id>.json; the Witch Hat and Robe: halloween). */
+  event?: string;
   /** A pet box: the pet item it opens into (shared pets.ts). */
   opens?: string;
   /** A pet item: which pet it is (stats.json pets.list). */

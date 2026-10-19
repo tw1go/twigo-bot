@@ -1596,5 +1596,11 @@
         "stack": 99
       }
     }
+  },
+  "cosmeticShop": {
+    "headPrice": 50,
+    "bodyPrice": 100,
+    "setPrice": 130,
+    "note": "Mac, 19 Oct 2026: Kowens for a head or body cosmetic, or both as a set, in the shop's Cosmetics tab"
   }
 }

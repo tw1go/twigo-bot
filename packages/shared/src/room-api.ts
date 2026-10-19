@@ -291,7 +291,7 @@ export interface TownShopItem {
   id: string;
   name: string;
   cost: number;
-  kind: 'fence' | 'shovel' | 'key' | 'vault' | 'potion' | 'bag' | 'pass' | 'megaphone' | 'rename' | 'classchange' | 'healing' | 'smithing' | 'dungeons' | 'travel' | 'pets';
+  kind: 'fence' | 'shovel' | 'key' | 'vault' | 'potion' | 'bag' | 'pass' | 'megaphone' | 'rename' | 'classchange' | 'healing' | 'smithing' | 'dungeons' | 'travel' | 'pets' | 'cosmetic';
   /** Paid in Kusing (the Healing tab's HP/MP Potions); else Kowens. */
   currency?: 'kusing';
   /** What it does. */
@@ -304,6 +304,12 @@ export interface TownShopItem {
   testersOnly?: boolean;
   /** How many the viewer has (potions, Master Keys). */
   have?: number;
+  /** A cosmetic (kind 'cosmetic', shared cosmetic-shop.ts): where it's worn (a Set has none), its Set, a Set's pieces
+   *  (Head then Body), and "Halloween only, until Nov 4" for an event's. */
+  cosmeticPlace?: 'weapon' | 'head' | 'body';
+  set?: string;
+  pieces?: string[];
+  limited?: string;
 }
 
 /** POST /town/shop { id, quantity } → the shop afterwards, whether it worked, and what to tell the member. */

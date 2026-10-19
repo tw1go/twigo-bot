@@ -1,11 +1,12 @@
 import type { TownShopBuyResponse, TownShopItem, TownShopResponse } from '@mikazuki/shared';
 import { api } from '../net/endpoints';
 import { playSound } from '../audio/sound';
-import { bagSlots, boxPrice, countOf, isGearDef, pocketUsed } from '@mikazuki/shared';
+import { bagSlots, boxPrice, cosmeticShopItem, cosmeticWares, countOf, isGearDef, pocketUsed } from '@mikazuki/shared';
 import { fakeLogin, fakeName } from '../session';
 import { adventure, anyDef, itemData, onAdventure } from '../net/adventure';
 import { RARITY_TEXT, itemArt } from './item-art';
 import { coinIcon, el, followWallet, kusingIcon, showPopup } from './reward';
+import { halloweenShopEvents } from './halloween';
 
 // 🎁 The sari-sari store (left click the store): what /redeem sells, in the reward box with tabs (Items, Potions, Bags,
 // Passes). Each tab is a grid of the item art with prices; picking one shows what it does, a quantity for the ones
@@ -15,11 +16,15 @@ import { coinIcon, el, followWallet, kusingIcon, showPopup } from './reward';
 // Healing, Smithing, Dungeons (the Warren Ticket for Kusing), Travel (the Return Lantern for Kusing) and Pets (the pet boxes for Kowens, stats.json pets.boxPrice) are the Slums' (bot web/combat-bag.ts): HP and MP Potions for Kusing, whetstones and Repair Kits
 // for Kowens, into the combat bag; only the Low tier until you reach the next one. Buy 1, or type how many (up to a
 // stack, what fits and what you can pay); the server says why not when it can't.
+// Cosmetics (shared cosmetic-shop.ts; CONTEXT.md Cosmetic, Set): sub-tabs All / Head / Body / Weapon, one at a time into
+// the Costume tab; All ends with a card per Set (the Body's picture with the Head's over its corner); an event's (the
+// Witch Hat and Robe) tagged Limited. The detail shows the piece worn on your own character (TownScene's
+// `setShopPreview`) and a piece of a Set you have neither of offers the Set too.
 
 const plural = (n: number, one: string, many: string) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
 const kowens = (n: number) => plural(n, 'Kowen', 'Kowens');
 
-type Tab = 'items' | 'potions' | 'bags' | 'passes' | 'healing' | 'smithing' | 'dungeons' | 'travel' | 'pets';
+type Tab = 'items' | 'potions' | 'bags' | 'passes' | 'healing' | 'smithing' | 'dungeons' | 'travel' | 'pets' | 'cosmetics';
 const TABS: [Tab, string, TownShopItem['kind'][]][] = [
   ['items', 'Items', ['fence', 'shovel', 'key', 'megaphone', 'rename', 'classchange', 'vault']],
   ['potions', 'Potions', ['potion']],
@@ -30,7 +35,24 @@ const TABS: [Tab, string, TownShopItem['kind'][]][] = [
   ['dungeons', 'Dungeons', ['dungeons']],
   ['travel', 'Travel', ['travel']],
   ['pets', 'Pets', ['pets']],
+  ['cosmetics', 'Cosmetics', ['cosmetic']],
 ];
+/** The Cosmetics tab's sub-tabs (a cosmetic's place; All: every piece, then the Sets). */
+type Sub = 'all' | 'head' | 'body' | 'weapon';
+const SUBS: [Sub, string][] = [
+  ['all', 'All'],
+  ['head', 'Head'],
+  ['body', 'Body'],
+  ['weapon', 'Weapon'],
+];
+
+/** The worn preview: your character facing south-east wearing these cosmetics (with whatever else you wear), as a
+ *  64x64 canvas; set by the town. Null: none. */
+type Preview = (ids: string[]) => Promise<HTMLCanvasElement | null>;
+let previewOf: Preview | null = null;
+export const setShopPreview = (f: Preview | null) => (previewOf = f);
+/** Cosmetics and Sets (into the Costume tab, one at a time). */
+const cosmetic = (it: TownShopItem) => it.kind === 'cosmetic';
 /** Combat items (into the combat bag): typed quantities. */
 const combat = (it: TownShopItem) => it.kind === 'healing' || it.kind === 'smithing' || it.kind === 'dungeons' || it.kind === 'travel' || it.kind === 'pets';
 const kusing = (n: number) => `${n.toLocaleString()} Kusing`;
@@ -44,8 +66,14 @@ async function load(): Promise<TownShopResponse | null> {
   return res?.ok ? ((await res.json()) as TownShopResponse) : null;
 }
 
+/** Whether an item kind is a cosmetic (the dev town buys those). */
+const isCosmeticKind = (id: string) => {
+  const d = anyDef(id);
+  return !!d && !isGearDef(d) && d.kind === 'cosmetic';
+};
+
 async function buy(id: string, quantity: number): Promise<TownShopBuyResponse | null> {
-  if (fakeLogin()) return fakeCombat().some((x) => x.id === id) ? fakeCombatBuy(id, quantity) : fakeBuy(id, quantity);
+  if (fakeLogin()) return fakeCombat().some((x) => x.id === id) || id.startsWith('set:') || isCosmeticKind(id) ? fakeCombatBuy(id, quantity) : fakeBuy(id, quantity);
   const res = await api('/town/shop', {
     method: 'POST',
     credentials: 'same-origin',
@@ -61,14 +89,19 @@ export function showShop(): void {
   bar.setAttribute('role', 'tablist');
   const grid = el('div', 'sh-grid');
   grid.setAttribute('role', 'tabpanel');
+  const subBar = el('div', 'sh-subtabs');
+  subBar.setAttribute('role', 'tablist');
   const detail = el('div', 'sh-detail');
   const note = el('div', 'bk-note', 'Loading…');
   note.setAttribute('role', 'status');
   const wrap = el('div', 'sh-body');
-  wrap.append(wallet, bar, grid, detail, note);
+  wrap.append(wallet, bar, subBar, grid, detail, note);
 
   let shop: TownShopResponse | null = null;
   let tab: Tab = 'items';
+  let sub: Sub = 'all';
+  /** Worn previews by the ids worn ('loading' while their layers load). */
+  const previews = new Map<string, HTMLCanvasElement | 'loading' | null>();
   let picked: string | null = null;
   let quantity = 1;
   let confirming = false;
@@ -80,6 +113,29 @@ export function showShop(): void {
     art.classList.add('sh-art');
     return art;
   };
+  /** A Set's card picture: its Body with its Head over the top corner. */
+  const setPicture = (pieces: string[], scale: number) => {
+    const box = el('span', 'sh-art sh-set-art');
+    const body = picture(pieces[1], scale);
+    const head = picture(pieces[0], Math.max(1, scale / 2));
+    head.classList.add('sh-set-head');
+    box.append(body, head);
+    return box;
+  };
+  const artOf = (it: TownShopItem, scale: number) => (it.pieces ? setPicture(it.pieces, scale) : picture(it.id, scale));
+
+  const subTabs = new Map<Sub, HTMLButtonElement>();
+  for (const [t, label] of SUBS) {
+    const b = el('button', 'sh-subtab', label);
+    b.setAttribute('role', 'tab');
+    b.addEventListener('click', () => {
+      sub = t;
+      picked = null;
+      render();
+    });
+    subTabs.set(t, b);
+    subBar.append(b);
+  }
 
   const tabs = new Map<Tab, HTMLButtonElement>();
   for (const [t, label] of TABS) {
@@ -109,6 +165,10 @@ export function showShop(): void {
 
   /** Why an item can't be bought right now (null = it can). */
   const blocked = (s: TownShopResponse, it: TownShopItem): string | null => {
+    if (cosmetic(it)) {
+      if (it.owned) return 'You have this.';
+      return s.kowens < it.cost ? `You need ${kowens(it.cost - s.kowens)} more.` : null;
+    }
     if (combat(it)) {
       if (it.max === 0) return 'Your combat bag is full.';
       return purse(s, it) < it.cost ? `You need ${price(it, it.cost - purse(s, it))} more.` : null;
@@ -130,7 +190,10 @@ export function showShop(): void {
       b.tabIndex = t === tab ? 0 : -1;
     }
     const kinds = TABS.find(([t]) => t === tab)![2];
-    const items = s.items.filter((it) => kinds.includes(it.kind));
+    subBar.hidden = tab !== 'cosmetics';
+    for (const [t, b] of subTabs) b.setAttribute('aria-selected', String(t === sub));
+    // (the Cosmetics tab: by its sub-tab, a Set only under All)
+    const items = s.items.filter((it) => kinds.includes(it.kind) && (tab !== 'cosmetics' || (sub === 'all' ? true : it.cosmeticPlace === sub)));
     if (!picked || !items.some((it) => it.id === picked)) {
       picked = items[0]?.id ?? null;
       quantity = 1;
@@ -148,8 +211,10 @@ export function showShop(): void {
         const name = el('span', 'sh-name', it.name);
         const def = it.kind === 'pets' ? anyDef(it.id) : undefined;
         if (def && def.rarity !== 'white') name.style.color = RARITY_TEXT[def.rarity];
-        card.append(picture(it.id, ART_SCALE), name, tag);
+        card.append(artOf(it, ART_SCALE), name, tag);
+        if (it.pieces) card.append(el('span', 'sh-badge sh-set', 'Set'));
         if (it.owned) card.append(el('span', 'sh-badge', 'Owned'));
+        else if (it.limited) card.append(el('span', 'sh-badge sh-limited', 'Limited'));
         else if (it.testersOnly) card.append(el('span', 'sh-badge', 'Testers'));
         else if (it.have) card.append(el('span', 'sh-badge sh-have', `×${it.have}`));
         card.addEventListener('click', () => {
@@ -164,6 +229,7 @@ export function showShop(): void {
         return card;
       }),
     );
+    if (!items.length && tab === 'cosmetics') grid.append(el('div', 'sh-empty', sub === 'weapon' ? 'No weapon cosmetics yet.' : 'Nothing here right now.'));
 
     // The picked item: what it does, how many, and Buy.
     const it = items.find((x) => x.id === picked);
@@ -176,7 +242,9 @@ export function showShop(): void {
     const text = el('div');
     text.append(el('div', 'sh-detail-name', it.name), el('div', 'sh-about', it.about));
     if (it.kind === 'fence' && s.fenceUntil) text.append(el('div', 'sh-about sh-up', `Your Bakod is up until ${new Date(s.fenceUntil).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}.`));
-    head.append(picture(it.id, 2), text);
+    if (it.limited) text.append(el('div', 'sh-about sh-limited-line', it.limited));
+    head.append(artOf(it, 2), text);
+    if (cosmetic(it)) head.append(preview(it.pieces ?? [it.id]));
 
     const row = el('div', 'sh-buy-row');
     if (combat(it) && !why) {
@@ -227,8 +295,34 @@ export function showShop(): void {
       }
       void purchase(it, quantity);
     });
+    // A piece of a Set you have neither of: the Set too.
+    const set = cosmetic(it) && !it.pieces && it.set ? s.items.find((x) => x.pieces && x.set === it.set) : undefined;
+    if (set) {
+      const setWhy = blocked(s, set);
+      const setButton = el('button', 'sh-buy sh-buy-set', `Buy the set: ${price(set, set.cost)}`);
+      setButton.title = set.name;
+      setButton.disabled = !!setWhy || busy;
+      setButton.addEventListener('click', () => void purchase(set, 1));
+      row.append(setButton);
+    }
     row.append(buyButton);
     detail.append(head, row);
+  };
+
+  /** The worn preview for these cosmetics (2×), drawn once its layers are in; nothing without the town's hook. */
+  const preview = (ids: string[]): HTMLElement => {
+    const box = el('span', 'sh-preview');
+    if (!previewOf) return box;
+    const key = ids.join('+');
+    const done = previews.get(key);
+    if (done === undefined) {
+      previews.set(key, 'loading');
+      void previewOf(ids).then((c) => {
+        previews.set(key, c);
+        render();
+      });
+    } else if (done && done !== 'loading') box.append(done);
+    return box;
   };
 
   const purchase = async (it: TownShopItem, n: number) => {
@@ -350,8 +444,10 @@ function withCombat(s: TownShopResponse): TownShopResponse {
   const a = adventure();
   const D = itemData();
   const room = a && D ? bagSlots(D.stats) - pocketUsed(D, a.bag, 'bag') : 40;
-  const items = s.items.filter((it) => !combat(it));
-  return { ...s, kusing: a?.kusing ?? 0, items: [...items, ...fakeCombat().map((it) => ({ ...it, have: a ? countOf(a.bag, it.id) : 0, max: room > 0 || (a && countOf(a.bag, it.id)) ? it.max : 0 }))] };
+  const items = s.items.filter((it) => !combat(it) && !cosmetic(it));
+  // (the Cosmetics tab by the shared rules: your Costume tab and what you wear, the dev town's Halloween)
+  const cosmetics = a && D ? cosmeticWares(D, a, halloweenShopEvents(), Date.now()).map(cosmeticShopItem) : [];
+  return { ...s, kusing: a?.kusing ?? 0, items: [...items, ...fakeCombat().map((it) => ({ ...it, have: a ? countOf(a.bag, it.id) : 0, max: room > 0 || (a && countOf(a.bag, it.id)) ? it.max : 0 })), ...cosmetics] };
 }
 
 async function fakeCombatBuy(id: string, quantity: number): Promise<TownShopBuyResponse | null> {
