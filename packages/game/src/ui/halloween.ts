@@ -10,7 +10,7 @@ import { coinIcon, el, kusingIcon, showPopup } from './reward';
 const url = (file: string) => `${import.meta.env.BASE_URL}assets/${file}`;
 
 /** The event's pictures (manifest ui.eventHalloween), set by the town. */
-let icons: { icon16: string; icon32: string; icon64: string } | null = null;
+let icons: { icon16: string; icon32: string; icon64: string; manananggal64?: string } | null = null;
 export const setHalloweenArt = (a: typeof icons) => (icons = a);
 
 /** The 16 px Mikko (event lines in the chat), or null without its art. */
@@ -115,7 +115,9 @@ function picture(src: string, size: number): HTMLImageElement {
 /** A find's or a reunite's pop-up: "Congratulations!", the 64 px Mikko, what happened, then each reward on its line. */
 export function showHalloweenReward(kind: 'mikko' | 'reunite', r: HalloweenReward, d: HalloweenData | null): Promise<void> {
   const head = el('div', 'rw-graphic');
-  if (icons) head.append(picture(url(icons.icon64), 64));
+  // (Mikko for a find, the Manananggal for a reunite)
+  const art = kind === 'reunite' ? (icons?.manananggal64 ?? icons?.icon64) : icons?.icon64;
+  if (art) head.append(picture(url(art), 64));
   const message = kind === 'mikko' ? `You found ${d?.mikko.name ?? 'Mikko Kalabasa'}!` : `You reunited the ${d?.manananggal.name ?? 'Manananggal'}!`;
   const list = el('ul', 'hw-rewards');
   const row = (icon: HTMLElement, text: string) => {

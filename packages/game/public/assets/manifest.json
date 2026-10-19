@@ -18860,7 +18860,9 @@
       "icon16": "ui/events/halloween/mikko-kalabasa-16.png",
       "icon32": "ui/events/halloween/mikko-kalabasa.png",
       "icon64": "ui/events/halloween/mikko-kalabasa-64.png",
-      "note": "Halloween 2026: the HUD badge and event lines (16), the pop-ups (64)"
+      "note": "Halloween 2026: the HUD badge and event lines (16), the pop-ups (64)",
+      "manananggal64": "ui/events/halloween/manananggal-64.png",
+      "manananggal64Note": "Repo-only (Mac, 19 Oct 2026): the reunite pop-up's picture, frame 0 of mob-manananggal-upper-idle-se (its figure, x 13-49 y 4-49) centred in 64x64; a stand-in until the art folder has its own"
     }
   },
   "notes_ui": "All UI is drawn at 1x and scaled by the same whole-number zoom as the world. Text is never baked in: draw it with Minecraft.ttf.",
