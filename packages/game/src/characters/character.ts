@@ -5,7 +5,7 @@ import { restLayers } from './kit-art';
 import type { BattleSheets } from './battle-art';
 import { CHARACTER_BIAS, GLOW_DEPTH, HEIGHT_DEPTH, LABEL_DEPTH } from '../world/depth';
 import type { Tile } from '../world/grid';
-import { type Outfit, bigHat, headTop, litHat, sheetKey } from './doll';
+import { type BigPiece, type Outfit, bigHat, bigTop, headTop, litHat, sheetKey } from './doll';
 import type { AuraTier, TitleData } from '@mikazuki/shared';
 import { type AuraTrace, WeaponAura, traceAura } from '../fx/weaponAura';
 import { type BubbleArt, EmotePop, LevelUpPop, NameTag, QuestMarker, SpeechBubble } from '../ui/labels';
@@ -82,10 +82,10 @@ export class Character {
   /** A lit hat (the Lamp-head Hat): its night overlay (the glass and bulb, untinted, on the doll's frame) and glow (ADD,
    *  over the world, a slow flicker), shown while the lamps are on (`setNight`); neither is tinted with the world. */
   private lit: ReturnType<typeof litHat> = null;
-  /** A big hat (wardrobe.hatCanvas: the Witch Hat), drawn whole over the doll in town (the doll's sheet keeps only what
-   *  fits its cell); null without one. */
-  private big: ReturnType<typeof bigHat> = null;
-  private bigSprite: Phaser.GameObjects.Sprite | null = null;
+  /** Pieces drawn whole over the doll in town from a bigger cell (the doll's sheet keeps only what fits its cell): a
+   *  topover (wardrobe.topCanvas: wings, tails, a wide hem) just above the doll, a big hat (wardrobe.hatCanvas: the
+   *  Witch Hat) over it; empty without either. */
+  private bigs: { piece: BigPiece; sprite: Phaser.GameObjects.Sprite; lift: number }[] = [];
   private litSprite: Phaser.GameObjects.Sprite | null = null;
   private glow: Phaser.GameObjects.Image | null = null;
   private night = false;
@@ -147,7 +147,7 @@ export class Character {
     this.head = flat ? flat.head : headTop(scene, outfit);
     this.play('idle');
     if (!flat) this.setLit(litHat(C, outfit)); // (everyone's lit hat, not only a look changed later: setOutfit)
-    if (!flat) this.setBigHat(bigHat(C, outfit));
+    if (!flat) this.setBigs(outfit);
     this.sync();
   }
 
@@ -435,7 +435,7 @@ export class Character {
 
   update(deltaMs: number): void {
     if (this.busy) return;
-    if (((this.lit && this.night) || this.big) && !this.path.length) this.sync(); // (the overlays follow the idle frames; the glow flickers)
+    if (((this.lit && this.night) || this.bigs.length) && !this.path.length) this.sync(); // (the overlays follow the idle frames; the glow flickers)
     if (!this.path.length) this.takeNextStep();
     if (this.path.length) {
       let budget = (this.speed * deltaMs) / 1000;
@@ -501,30 +501,31 @@ export class Character {
     this.sprite.anims.stop();
     this.play(anim);
     this.setLit(this.flat ? null : litHat(this.M.characters, o));
-    this.setBigHat(this.flat ? null : bigHat(this.M.characters, o));
+    if (!this.flat) this.setBigs(o);
   }
 
-  /** The big hat's overlay for this look (null: none); tinted with the world like the doll. */
-  private setBigHat(big: ReturnType<typeof bigHat>): void {
-    this.big = big;
-    if (!big) {
-      this.bigSprite?.destroy();
-      this.bigSprite = null;
-      return;
-    }
-    if (!this.bigSprite) {
-      this.bigSprite = this.scene.add.sprite(0, 0, '__DEFAULT').setVisible(false);
-      this.onSpawn?.(this.bigSprite);
-    }
+  /** The topover's and big hat's overlays for this look (none: neither); tinted with the world like the doll. */
+  private setBigs(o: Outfit): void {
+    const C = this.M.characters;
+    const pieces = [
+      { piece: bigTop(C, o), lift: 0.003 },
+      { piece: bigHat(C, o), lift: 0.005 },
+    ].filter((p): p is { piece: BigPiece; lift: number } => !!p.piece);
+    for (const b of this.bigs.splice(pieces.length)) b.sprite.destroy();
+    this.bigs = pieces.map((p, i) => {
+      let sprite = this.bigs[i]?.sprite;
+      if (!sprite) {
+        sprite = this.scene.add.sprite(0, 0, '__DEFAULT').setVisible(false);
+        this.onSpawn?.(sprite);
+      }
+      return { ...p, sprite };
+    });
     this.sync();
   }
 
-  /** The big hat whole over the doll's frame showing (town only: a combat pose has it in its own cell), from its sheet's
+  /** A big piece whole over the doll's frame showing (town only: a combat pose has it in its own cell), from its sheet's
    *  same frame at the doll's anchor plus the offset. */
-  private syncBigHat(x: number, y: number, depth: number): void {
-    const big = this.big;
-    const sp = this.bigSprite;
-    if (!big || !sp) return;
+  private syncBig(big: BigPiece, sp: Phaser.GameObjects.Sprite, x: number, y: number, depth: number): void {
     const C = this.M.characters;
     const dirs = C.animations[this.anim]?.directions ?? C.directions;
     const file = big.sheet(this.anim, dirs.includes(this.dir) ? this.dir : dirs[0]);
@@ -538,7 +539,7 @@ export class Character {
       .setPosition(x, y)
       .setAngle(this.sprite.angle)
       .setScale(this.sprite.scaleX, this.sprite.scaleY)
-      .setDepth(depth + 0.005)
+      .setDepth(depth)
       .setVisible(true)
       .setAlpha(this.sprite.alpha);
   }
@@ -812,7 +813,7 @@ export class Character {
     else if (this.rest) for (const sp of [...this.rest.back, ...this.rest.front]) sp.setVisible(false);
     if (this.aura?.on) this.syncAura(depth);
     if (this.lit) this.syncLit(Math.round(x), Math.round(y - this.lift), depth);
-    if (this.big) this.syncBigHat(Math.round(x), Math.round(y - this.lift), depth);
+    for (const b of this.bigs) this.syncBig(b.piece, b.sprite, Math.round(x), Math.round(y - this.lift), depth + b.lift);
     // The name sits just over the head (2 px above its first visible row); an alert goes above it.
     const plateBottom = Math.round(y) - this.M.characters.anchor[1] + this.head - 2;
     this.tag?.place(Math.round(x), plateBottom);
@@ -944,7 +945,7 @@ export class Character {
   destroy(): void {
     this.sprite.destroy();
     this.litSprite?.destroy();
-    this.bigSprite?.destroy();
+    for (const b of this.bigs) b.sprite.destroy();
     this.glow?.destroy();
     this.shadow?.destroy();
     this.alert?.destroy();
@@ -972,7 +973,7 @@ export class Character {
 
   /** Sprites to tint with the world. */
   get tintables(): Phaser.GameObjects.Components.Tint[] {
-    return [this.sprite, ...(this.shadow ? [this.shadow] : []), ...(this.bars ? [this.bars] : []), ...(this.rest ? [...this.rest.back, ...this.rest.front] : []), ...(this.bigSprite ? [this.bigSprite] : [])];
+    return [this.sprite, ...(this.shadow ? [this.shadow] : []), ...(this.bars ? [this.bars] : []), ...(this.rest ? [...this.rest.back, ...this.rest.front] : []), ...this.bigs.map((b) => b.sprite)];
   }
 }
 

@@ -48,7 +48,7 @@ export function hairDrawn(C: CharacterDefs, o: Outfit): string {
 interface LayerFile {
   layer: string;
   file: string;
-  clip?: string; // hat clip mask, for the hair layer
+  clip?: string; // a clip mask: the hat's for the hair layer, a cosmetic top's for the body (white = not drawn there)
   /** A hat from a bigger cell (wardrobe.hatCanvas): its cell size, and where the doll's cell sits inside it. */
   canvas?: { size: Vec2; offset: Vec2 };
 }
@@ -66,13 +66,14 @@ export function layerFiles(C: CharacterDefs, o: Outfit, anim: string, dir: Dir):
   for (const layer of C.drawOrder) {
     switch (layer) {
       case 'body':
-        out.push({ layer, file: fill(C.layers.body, { anim, dir }) });
+        // (a cosmetic top with a body clip: the Velvet Nightwing floats with no legs)
+        out.push({ layer, file: fill(C.layers.body, { anim, dir }), clip: W.cosmeticBodyClip?.includes(o.top) && W.bodyClipPattern ? fill(W.bodyClipPattern, { item: o.top, anim, dir }) : undefined });
         break;
       case 'face':
         if (hasFace(C, dir)) out.push({ layer, file: fill(C.layers.face.pattern, { anim, dir }) });
         break;
       case 'shoes':
-        out.push({ layer, file: slot('shoes', o.shoes) });
+        if (!W.cosmeticHidesShoes?.includes(o.top)) out.push({ layer, file: slot('shoes', o.shoes) }); // (a cosmetic top that draws its own feet)
         break;
       case 'bottom':
         if (!W.cosmeticHidesBottom?.includes(o.top)) out.push({ layer, file: slot('bottom', o.bottom) }); // (a robe covers the legs)
@@ -98,14 +99,56 @@ export function layerFiles(C: CharacterDefs, o: Outfit, anim: string, dir: Dir):
   return out;
 }
 
+/** A piece drawn whole over the doll from a bigger cell than its own (a big hat, a topover). */
+export interface BigPiece {
+  sheet: (anim: string, dir: Dir) => string;
+  size: Vec2;
+  offset: Vec2;
+}
+
 /** A look's big hat (wardrobe.hatCanvas: the Witch Hat), as the town draws it whole over the doll: its sheet for an
  *  animation and direction, its cell and where the doll's cell sits in it; null for any other hat. */
-export function bigHat(C: CharacterDefs, o: Outfit): { sheet: (anim: string, dir: Dir) => string; size: Vec2; offset: Vec2 } | null {
+export function bigHat(C: CharacterDefs, o: Outfit): BigPiece | null {
   const W = C.wardrobe;
   const canvas = o.hat ? W.hatCanvas?.[o.hat] : undefined;
   if (!o.hat || !canvas) return null;
   const hat = o.hat;
   return { sheet: (anim, dir) => W.hatPattern.replace(/\{(\w+)\}/g, (_, k: string) => ({ item: hat, anim, dir })[k] ?? `{${k}}`), size: canvas.size, offset: canvas.offset };
+}
+
+/** A look's topover (wardrobe.topCanvas: a cosmetic top's wings, tails or wide hem past the doll's cell), drawn whole
+ *  just above the doll like the big hat: its sheet for an animation and direction, its cell and where the doll's cell
+ *  sits in it; null for any other top. */
+export function bigTop(C: CharacterDefs, o: Outfit): BigPiece | null {
+  const W = C.wardrobe;
+  const canvas = o.top ? W.topCanvas?.[o.top] : undefined;
+  if (!o.top || !canvas || !W.topOverPattern) return null;
+  const top = o.top;
+  const pattern = W.topOverPattern;
+  return { sheet: (anim, dir) => pattern.replace(/\{(\w+)\}/g, (_, k: string) => ({ item: top, anim, dir })[k] ?? `{${k}}`), size: canvas.size, offset: canvas.offset };
+}
+
+/** One frame of a look straight from its layers (no built sheet: only that anim and direction's layers need loading),
+ *  for the store's worn preview: (x, y) is the doll's cell's top left; a big hat and a topover are drawn whole round it. */
+export function drawStill(ctx: CanvasRenderingContext2D, scene: ImageHost, C: CharacterDefs, o: Outfit, anim: string, dir: Dir, frame: number, x: number, y: number): void {
+  const over = bigTop(C, o);
+  for (const l of layerFiles(C, o, anim, dir)) {
+    const [w, h] = l.canvas?.size ?? C.cell;
+    const [ox, oy] = l.canvas?.offset ?? [0, 0];
+    const img = dressLayer(scene, C, o, l.file, l.layer, l.clip);
+    if (img) ctx.drawImage(img, frame * w, 0, w, h, x - ox, y - oy, w, h);
+    if (l.layer === 'top' && over) {
+      const [tw, th] = over.size;
+      const top = dressLayer(scene, C, o, over.sheet(anim, dir), 'top');
+      if (top) ctx.drawImage(top, frame * tw, 0, tw, th, x - over.offset[0], y - over.offset[1], tw, th);
+    }
+  }
+}
+
+/** The files `drawStill` needs for an anim and direction. */
+export function stillFiles(C: CharacterDefs, o: Outfit, anim: string, dir: Dir): string[] {
+  const over = bigTop(C, o);
+  return [...layerFiles(C, o, anim, dir).flatMap((l) => (l.clip ? [l.file, l.clip] : [l.file])), ...(over ? [over.sheet(anim, dir)] : [])];
 }
 
 /** What a look wears on its head facing `dir` (hair, glasses, hat): the town idle's files, laid over the combat poses. */
@@ -130,6 +173,8 @@ export function outfitFiles(C: CharacterDefs, o: Outfit): string[] {
     }
   }
   for (const f of litFiles(C, o)) files.add(f);
+  const over = bigTop(C, o);
+  if (over) for (const anim of ANIMS) for (const dir of dirsFor(C, anim)) files.add(over.sheet(anim, dir));
   return [...files];
 }
 
@@ -317,9 +362,9 @@ function buildSheet(scene: Phaser.Scene, C: CharacterDefs, o: Outfit, anim: stri
     const d = data.data;
     swapPixels(d, swapsFor(C, o, l.layer));
     if (l.clip) {
-      // Hide the hair wherever the hat's clip mask is white.
+      // Hide the hair wherever the hat's clip mask is white (the body under a cosmetic top's).
       const mask = pixels(scene, l.clip);
-      if (!mask) assetProblems.add(`missing hat clip ${l.clip}`);
+      if (!mask) assetProblems.add(`missing clip mask ${l.clip}`);
       else {
         if (mask.width !== data.width || mask.height !== data.height) assetProblems.add(`${l.clip} does not match ${l.file}`);
         const md = mask.data;
@@ -456,7 +501,7 @@ export function dressLayer(scene: ImageHost, C: CharacterDefs, o: Outfit, file: 
       d[i + 2] = to & 255;
     }
   }
-  // Hair under a clipping hat: hidden wherever the hat's clip mask is white (as buildOutfit).
+  // Hair under a clipping hat (the body under a cosmetic top's clip): hidden wherever the mask is white (as buildOutfit).
   const mask = clip ? pixels(scene, clip) : null;
   if (mask) for (let i = 0; i < d.length && i < mask.data.length; i += 4) if (visible(mask.data[i + 3]) && mask.data[i] > 127 && mask.data[i + 1] > 127 && mask.data[i + 2] > 127) d[i + 3] = 0;
   const canvas = document.createElement('canvas');

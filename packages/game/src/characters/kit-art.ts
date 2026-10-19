@@ -1,6 +1,6 @@
 import type Phaser from 'phaser';
 import type { CharacterDefs, ClassArt, ClassLayer, ClassesDefs, Dir } from '../assets/types';
-import { type ImageHost, type Outfit, clothesFiles, dressLayer, headFiles, litHat, sheetKey } from './doll';
+import { type ImageHost, type Outfit, bigHat, bigTop, clothesFiles, dressLayer, headFiles, litHat, sheetKey } from './doll';
 
 // ⚔️ A class's weapon on a character, drawn onto a canvas (the class cards, the skill preview, the equipment panel):
 // the resting weapon over the doll's idle or walk (the same frame, or the Hilot's balm on its own clock), and the
@@ -48,7 +48,15 @@ export function lookImages(C: CharacterDefs, o: Outfit, dirs: Dir[]): string[] {
     C.layers.body.replaceAll('{anim}', 'idle').replaceAll('{dir}', dir),
     ...[...clothesFiles(C, o, dir), ...headFiles(C, o, dir)].flatMap((l) => (l.clip ? [l.file, l.clip] : [l.file])),
     ...(litHat(C, o) ? [litHat(C, o)!.sheet('idle', dir)] : []), // (a lit hat's night layer: drawLitHead)
+    ...(bigTop(C, o) ? [bigTop(C, o)!.sheet('idle', dir)] : []), // (a cosmetic top's topover)
+    ...(bodyClipOf(C, o, dir) ? [bodyClipOf(C, o, dir)!] : []), // (and its body clip)
   ]);
+}
+
+/** A cosmetic top's body clip (wardrobe.cosmeticBodyClip: the Velvet Nightwing's legs) on the town idle facing `dir`. */
+function bodyClipOf(C: CharacterDefs, o: Outfit, dir: Dir): string | null {
+  const W = C.wardrobe;
+  return W.cosmeticBodyClip?.includes(o.top) && W.bodyClipPattern ? W.bodyClipPattern.replaceAll('{item}', o.top).replaceAll('{anim}', 'idle').replaceAll('{dir}', dir) : null;
 }
 
 /** A lit hat's night layer (the glass and bulb, doll.ts litHat) on a combat pose's frame at (x, y), the 64x64 cell's top
@@ -217,21 +225,51 @@ function clothShift(scene: ImageHost, C: CharacterDefs, idleBody: string, poseBo
 }
 
 let trim: CanvasRenderingContext2D | null = null;
+let keepMask: CanvasRenderingContext2D | null = null;
+/** A scratch canvas of w×h, cleared. */
+function scratch(c: CanvasRenderingContext2D | null, w: number, h: number): CanvasRenderingContext2D {
+  const ctx = c ?? document.createElement('canvas').getContext('2d')!;
+  ctx.canvas.width = w;
+  ctx.canvas.height = h;
+  ctx.globalCompositeOperation = 'source-over';
+  return ctx;
+}
+
 /** A layer's first frame at (dx, dy) in the cell, kept only where frame `f` of the pose's body is (no sleeve where the
- *  arm isn't), drawn at (x, y). */
-function drawTrimmed(ctx: CanvasRenderingContext2D, layer: CanvasImageSource | null, body: CanvasImageSource | null, w: number, h: number, f: number, dx: number, dy: number, x: number, y: number): void {
+ *  arm isn't), drawn at (x, y). With `idleBody` (a cosmetic top's wings, hem, tail or drip), what lies outside the idle
+ *  body's first frame (moved with it) is kept too: only what covers the body follows the pose's. */
+function drawTrimmed(ctx: CanvasRenderingContext2D, layer: CanvasImageSource | null, body: CanvasImageSource | null, w: number, h: number, f: number, dx: number, dy: number, x: number, y: number, idleBody?: CanvasImageSource | null): void {
   if (!layer || !body) return;
-  if (!trim) {
-    const c = document.createElement('canvas');
-    trim = c.getContext('2d')!;
-  }
-  trim.canvas.width = w;
-  trim.canvas.height = h;
-  trim.globalCompositeOperation = 'source-over';
+  trim = scratch(trim, w, h);
   trim.drawImage(layer, 0, 0, w, h, dx, dy, w, h);
+  let mask: CanvasImageSource = body;
+  let mf = f;
+  if (idleBody) {
+    // The mask: everywhere but the idle body, plus the pose's body.
+    keepMask = scratch(keepMask, w, h);
+    keepMask.fillRect(0, 0, w, h);
+    keepMask.globalCompositeOperation = 'destination-out';
+    keepMask.drawImage(idleBody, 0, 0, w, h, dx, dy, w, h);
+    keepMask.globalCompositeOperation = 'source-over';
+    keepMask.drawImage(body, f * w, 0, w, h, 0, 0, w, h);
+    mask = keepMask.canvas;
+    mf = 0;
+  }
   trim.globalCompositeOperation = 'destination-in';
-  trim.drawImage(body, f * w, 0, w, h, 0, 0, w, h);
+  trim.drawImage(mask, mf * w, 0, w, h, 0, 0, w, h);
   ctx.drawImage(trim.canvas, x, y);
+}
+
+let clipped: CanvasRenderingContext2D | null = null;
+/** Frame `f` of the pose's body cut off from row `from` down (a body clip's first row, moved with the top: a pose's
+ *  stride or lunge takes the legs outside the idle's mask, so everything below its top goes), as frame 0 of a scratch
+ *  canvas (drawn at once). */
+function clippedBody(body: CanvasImageSource | null, w: number, h: number, f: number, from: number): CanvasImageSource | null {
+  if (!body) return body;
+  const c = (clipped = scratch(clipped, w, h));
+  c.drawImage(body, f * w, 0, w, h, 0, 0, w, h);
+  c.clearRect(0, from, w, h - from);
+  return c.canvas;
 }
 
 /** A character resting in town at (x, y), the 64x64 cell's top left: back layers, the doll's frame, front layers.
@@ -255,6 +293,12 @@ export function drawRested(
   const wf = own ? Math.floor((t / 1000) * own.fps) % own.frames : frame;
   for (const l of layers?.back ?? []) drawLayer(ctx, scene, K, l, wf, x, y);
   drawCell(ctx, source(scene, sheetKey(o, anim, dir)), C.cell[0], C.cell[1], frame, x + K.bodyOffset[0], y + K.bodyOffset[1]);
+  // The topover and a big hat whole (the doll's sheet keeps only what fits its cell), as the town draws them.
+  for (const big of [bigTop(C, o), bigHat(C, o)]) {
+    if (!big) continue;
+    const [w, h] = big.size;
+    drawCell(ctx, source(scene, big.sheet(anim, dir)), w, h, frame, x + K.bodyOffset[0] - big.offset[0], y + K.bodyOffset[1] - big.offset[1]);
+  }
   for (const l of layers?.front ?? []) drawLayer(ctx, scene, K, l, wf, x, y);
 }
 
@@ -278,15 +322,35 @@ export function drawPose(
   if (!d) return;
   const shown = (l: ClassLayer) => !hide.some((h) => l.file.includes(h));
   for (const l of d.back.filter(shown)) drawLayer(ctx, scene, K, l, frame, x, y);
-  drawCell(ctx, dressLayer(scene, C, o, d.body, 'body'), C.cell[0], C.cell[1], frame, x + K.bodyOffset[0], y + K.bodyOffset[1]);
-  if (d.face) drawCell(ctx, dressLayer(scene, C, o, d.face, 'face'), C.cell[0], C.cell[1], frame, x + K.bodyOffset[0], y + K.bodyOffset[1]);
   // The look's clothes, hair, glasses and hat (the combat sheets have none): the town idle's first frame, each piece
-  // moved to its part of the pose (clothes trimmed to the pose's body), the head's to the pose's head.
+  // moved to its part of the pose (clothes trimmed to the pose's body; a cosmetic top keeps what sticks out past the
+  // body: wings, hems, tails), the head's to the pose's head.
   const idleBody = C.layers.body.replaceAll('{anim}', 'idle').replaceAll('{dir}', dir);
   const poseBody = dressLayer(scene, C, o, d.body, 'body');
-  for (const l of clothesFiles(C, o, dir)) {
-    const [cx, cy] = clothShift(scene, C, idleBody, d.body, frame, l.file);
-    drawTrimmed(ctx, dressLayer(scene, C, o, l.file, l.layer), poseBody, C.cell[0], C.cell[1], frame, cx, cy, x + K.bodyOffset[0], y + K.bodyOffset[1]);
+  const clothes = clothesFiles(C, o, dir);
+  const top = clothes.find((l) => l.layer === 'top');
+  const fixedTop = !!top && Object.values(C.wardrobe.cosmeticTops ?? {}).includes(o.top);
+  const [tx, ty] = fixedTop ? clothShift(scene, C, idleBody, d.body, frame, top.file) : [0, 0];
+  // (a body clip, the Velvet Nightwing's legs: the pose's body from its idle mask's top down, moved with the top)
+  const bodyClip = bodyClipOf(C, o, dir);
+  const clip = bodyClip ? imageData(scene, bodyClip) : null;
+  const from = clip ? topRow(clip, C.cell[0], C.cell[1]) : -1;
+  drawCell(ctx, from >= 0 ? clippedBody(poseBody, C.cell[0], C.cell[1], frame, from + ty) : poseBody, C.cell[0], C.cell[1], from >= 0 ? 0 : frame, x + K.bodyOffset[0], y + K.bodyOffset[1]);
+  if (d.face) drawCell(ctx, dressLayer(scene, C, o, d.face, 'face'), C.cell[0], C.cell[1], frame, x + K.bodyOffset[0], y + K.bodyOffset[1]);
+  for (const l of clothes) {
+    const cosmetic = fixedTop && l === top;
+    const [cx, cy] = cosmetic ? [tx, ty] : clothShift(scene, C, idleBody, d.body, frame, l.file);
+    drawTrimmed(ctx, dressLayer(scene, C, o, l.file, l.layer), poseBody, C.cell[0], C.cell[1], frame, cx, cy, x + K.bodyOffset[0], y + K.bodyOffset[1], cosmetic ? source(scene, idleBody) : undefined);
+  }
+  // A cosmetic top's topover (what reaches past the doll's cell), whole, moved with the top.
+  const over = fixedTop ? bigTop(C, o) : null;
+  if (over) {
+    ctx.save(); // (kept to this frame's cell: the sheet's next frame is beside it)
+    ctx.beginPath();
+    ctx.rect(x, y, CELL, CELL);
+    ctx.clip();
+    drawCell(ctx, source(scene, over.sheet('idle', dir)), over.size[0], over.size[1], 0, x + K.bodyOffset[0] + tx - over.offset[0], y + K.bodyOffset[1] + ty - over.offset[1]);
+    ctx.restore();
   }
   const [dx, dy] = headShift(scene, C, idleBody, d.body, frame);
   for (const l of headFiles(C, o, dir)) {
