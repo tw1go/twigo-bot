@@ -30,7 +30,7 @@ import { connectTownFeed, feed } from './town-feed.js';
 import { MAX_TICKETS, buyTickets, entries, lastDraw, nextDraw, pot, raidMoney, ticketWord, ticketsOf } from '../games/jackpot.js';
 import { jailedUntil } from '../games/jail.js';
 import { bankAction, townBank } from './town-bank.js';
-import { buyFromShop, townShop } from './town-shop.js';
+import { buyFromShop, setShopEvents, townShop } from './town-shop.js';
 import { type PlayerDeps, giveInTown, playerInfo, verdictInTown } from './town-player.js';
 import type { Town } from './town.js';
 import { bailFromTown, townOutpost } from './town-outpost.js';
@@ -1064,6 +1064,7 @@ export function startWebServer(client: Client): void {
     const slumsMap = loadTownMap('slums'); // the Slums
     const H = loadHalloween();
     const halloween = new Halloween(H.data, H.maps, kvLoad<HalloweenSaved | null>(HALLOWEEN_KV, null), (st) => kvSave(HALLOWEEN_KV, st));
+    setShopEvents(() => ({ halloween: { on: halloween.on(Date.now()), window: H.data } })); // (the store's Witch Hat and Robe)
     const slumsMobMap = loadMobMap('slums');
     slumsMobMap.mobZones = [...(slumsMobMap.mobZones ?? []), Halloween.eventZone(slumsMobMap.size)];
     const skillLevels = Object.fromEntries(CLASSES.map((c) => [c.id, c.skills.map((k) => k.level)]));

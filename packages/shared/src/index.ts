@@ -16,5 +16,6 @@ export * from './loot-roll.js';
 export * from './friends.js';
 export * from './events.js';
 export * from './cosmetics.js';
+export * from './cosmetic-shop.js';
 export * from './pets.js';
 export * from './mail.js';

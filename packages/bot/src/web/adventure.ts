@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { AdventureState, ClassesFile, EquipPlace, Item, QuestDef, QuestReward, QuestsFile, StatName, TownAdventureResponse, TownEquipAction, TownForgeAction, TownForgeResponse, TownPointsAction, TownQuestAction, TownSkillsAction, CosmeticPlace, TownPetAction } from '@mikazuki/shared';
-import { addToBag, advanceCollects, expireItems, itemName, heldCount, objectiveCount, offeredBy, takeFromBag } from '@mikazuki/shared';
+import { type ShopEvents, addToBag, advanceCollects, buyCosmetic, expireItems, itemName, heldCount, objectiveCount, offeredBy, takeFromBag } from '@mikazuki/shared';
 import { STAT_NAMES, bagSlots, classSkills, classBuffs, buffSkillLevels, damageSkillLevels, skillLevelOf, equipFromBag, giveGear, giveQuestRewards, giveQuestPieces, questKill, readyToReport, withLeveling, missingTraining, moveUnlock, newItem, placesFor, swapTrainingGear, trainingGear, takeKind, unequipToBag, wearCheck, COSMETIC_PLACES, wearCosmetic, unwearCosmetic, gainPetXp, petAction, petIdOf, petRules } from '@mikazuki/shared';
 import { db } from '../db/db.js';
 import { type LevelGain, type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView, raiseSkill, refundPoints, resetSkillPoints, resetStatPoints, spendPoint } from './progress.js';
@@ -504,6 +504,10 @@ export const refundPracticeTicketFor = (userId: string): boolean => refundKindFo
  *  whetstones and Repair Kits for Kowens (`kowens`: their wallet). */
 export const buyCombatFor = (userId: string, defId: string, quantity: number, kowens: { have: number; spend(n: number): boolean }) =>
   withItems(userId, (s) => buyCombat(loadItemData(), s, s.progress.level, defId, quantity, kowens, newUid), (r) => r.ok);
+
+/** Buys a cosmetic or a Set from the store's Cosmetics tab (shared cosmetic-shop.ts), saved when it works. */
+export const buyCosmeticFor = (userId: string, id: string, events: ShopEvents, kowens: { have: number; spend(n: number): boolean }) =>
+  withItems(userId, (s) => buyCosmetic(loadItemData(), s, id, events, kowens, newUid), (r) => r.ok);
 
 const addTradeStmt = db.prepare('INSERT INTO trades (at, a, b, a_items, b_items, a_kusing, b_kusing) VALUES (?, ?, ?, ?, ?, ?, ?)');
 

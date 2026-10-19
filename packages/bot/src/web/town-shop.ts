@@ -13,8 +13,9 @@ import { debtOf } from '../loans/loans.js';
 import { potionCount, type PotionId } from '../potions/potions.js';
 import { freeSlots } from '../dig/bag.js';
 import { isTester } from '../games/testers.js';
-import { countOf, itemStats } from '@mikazuki/shared';
-import { adventureOf, buyCombatFor } from './adventure.js';
+import { type HalloweenData, type ShopEvents, cosmeticShopItem, cosmeticWares, countOf, isEventOn, isGearDef, itemStats } from '@mikazuki/shared';
+import { adventureOf, buyCombatFor, buyCosmeticFor } from './adventure.js';
+import { loadHalloween } from './halloween.js';
 import { combatWares, mostAtOnce, potionOf, roomFor } from './combat-bag.js';
 import { loadItemData } from './stats-data.js';
 
@@ -23,6 +24,18 @@ import { loadItemData } from './stats-data.js';
 // owner, who sends them by hand) and shows in the town's feed. Passes are for testers only (games/testers.ts).
 // Two more tabs for the Slums (web/combat-bag.ts): Healing (HP and MP Potions for Kusing) and Smithing (whetstones and
 // Repair Kits for Kowens), into the combat bag; only the Low tier until a character reaches the next tier's level.
+// And Cosmetics (shared cosmetic-shop.ts): the store's cosmetics and Sets for Kowens, into the Costume tab, bound; the
+// Witch Hat and Robe only while Halloween is on.
+
+/** The events the store sells for, now: Halloween as the live town has it (dev's ?halloween=on too: setShopEvents),
+ *  else by its window alone. */
+let halloweenData: HalloweenData | undefined;
+let shopEvents: () => ShopEvents = () => {
+  const data = (halloweenData ??= loadHalloween().data);
+  return { halloween: { on: isEventOn(data, Date.now()), window: data } };
+};
+export const setShopEvents = (f: () => ShopEvents) => (shopEvents = f);
+
 
 /** Most of a stackable reward bought at once (as /redeem's quantity option). */
 const MAX_AT_ONCE = 10;
@@ -69,7 +82,8 @@ export function townShop(userId: string, tester: boolean): TownShopResponse {
     max: Math.min(mostAtOnce(D, w.def.id), roomFor(D, s, w.def.id)),
     have: countOf(s.bag, w.def.id),
   }));
-  return { kowens: balance(userId), kusing: s.kusing, items: [...items, ...combat], fenceUntil: fencedUntil(userId), inDebt: !!debtOf(userId) };
+  const cosmetics = cosmeticWares(D, s, shopEvents(), Date.now()).map(cosmeticShopItem);
+  return { kowens: balance(userId), kusing: s.kusing, items: [...items, ...combat, ...cosmetics], fenceUntil: fencedUntil(userId), inDebt: !!debtOf(userId) };
 }
 
 /** What a combat item does, for the shop. */
@@ -90,11 +104,23 @@ function buyCombatItem(userId: string, id: string, quantity: number, tester: boo
   return { ...townShop(userId, tester), ok: r.ok, message: r.message };
 }
 
+/** Buys a cosmetic or a Set (one at a time): into the Costume tab, bound, paid in Kowens. */
+function buyCosmeticItem(userId: string, id: string, tester: boolean): TownShopBuyResponse {
+  const r = buyCosmeticFor(userId, id, shopEvents(), {
+    have: balance(userId),
+    spend: (n) => balance(userId) >= n && take(userId, n) === n,
+  });
+  if (r.ok) console.log(`[shop] ${userId} bought ${id}`);
+  return { ...townShop(userId, tester), ok: r.ok, message: r.message };
+}
+
 /** Buys `quantity` of a reward; tells the games channel and the town's feed when it works. */
 export async function buyFromShop(client: Client, userId: string, id: string, quantity: number, name: string): Promise<TownShopBuyResponse> {
   const tester = await isTester(client, userId);
   const shop = () => townShop(userId, tester);
   if (combatWares(loadItemData(), adventureOf(userId).progress.level).some((w) => w.def.id === id)) return buyCombatItem(userId, id, quantity, tester);
+  const def = loadItemData().defs.get(id);
+  if (id.startsWith('set:') || (def && !isGearDef(def) && def.kind === 'cosmetic')) return buyCosmeticItem(userId, id, tester);
   const reward = rewards.find((r) => r.id === id);
   if (!reward) return { ...shop(), ok: false, message: 'That reward is gone.' };
   if (quantity > MAX_AT_ONCE) return { ...shop(), ok: false, message: `Up to ${MAX_AT_ONCE} at a time.` };
