@@ -693,6 +693,31 @@ _Avoid_: gate, door
 **Checkpoint**:
 Where you come back after dying in a run: the start of the furthest area the run has opened.
 
+## Ang Silong (dungeon)
+
+**Ang Silong**:
+The frozen cold storage under the Lumang Palengke's Market Hall for Lv 37–40, played as runs like the Scrap Warrens;
+three floors, two cold rooms with a mini boss on each of the first two, the Ice Tanks and the Ice Plant on the third.
+_Avoid_: the cellar, the basement (fine in talk; the place is Ang Silong)
+
+**Floor**:
+One of the Silong's three levels (B1, B2, B3), each its own page; a run holds all three.
+_Avoid_: level (that's a character's), area (that's the Warrens')
+
+**Silong Hatch**:
+The iron trapdoor in the Market Hall floor where Silong runs are opened and joined.
+
+**Freight elevator**:
+How a Silong run moves between floors: the one down wakes once both of a floor's mini bosses are down and goes when
+everyone on that floor is in it (or soon after the first steps in); from the one you arrive in you can ride back up
+alone to a floor the run has reached.
+_Avoid_: lift, portal
+
+**Susi ng Silong**:
+The key that opens a Silong run (for you, or your whole party); spent only once a mini boss falls. The **Practice Susi
+ng Silong** from "Ngayon Na" opens one practice run, alone.
+_Avoid_: ticket (that's the Warrens')
+
 ## Events
 
 **Event**:

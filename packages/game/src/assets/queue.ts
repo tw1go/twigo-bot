@@ -19,6 +19,8 @@ export function queueSheet(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Te
 
 /** The Scrap Warrens' own effects (manifest fx). */
 const WARRENS_FX = /^fx-(warrens-|roof-sheet|barong-)/;
+/** Ang Silong's (the hatch's glow loads in the Palengke too). */
+const SILONG_FX = /^fx-silong-/;
 
 export function queueTown(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Textures.TextureManager, M: Manifest, map: TownMap): void {
   const img = (f: string) => queueImage(load, textures, f);
@@ -37,6 +39,17 @@ export function queueTown(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Tex
     if (M.classes?.dungeons) load.json('dungeons', M.classes.dungeons);
     for (const id of ['warrens-shutter-closed', 'warrens-shutter-open']) if (M.props[id]?.file) img(M.props[id].file);
     for (const [id, f] of Object.entries(M.fx)) if (WARRENS_FX.test(id) && f.file) f.frame ? queueSheet(load, textures, f.file, f.frame[0], f.frame[1]) : img(f.file);
+  }
+  // Ang Silong's floors: its data and effects, its elevators' cages and doors (world/silong.ts draws them); the
+  // Palengke: the hatch's glow.
+  if (map.silong) {
+    if (M.classes?.dungeons) load.json('dungeons', M.classes.dungeons);
+    for (const id of ['silong-elevator-open', 'silong-elevator-closed', 'silong-elevator-plate', 'silong-door-closed', 'silong-door-open']) if (M.props[id]?.file) img(M.props[id].file);
+    for (const [id, f] of Object.entries(M.fx)) if (SILONG_FX.test(id) && f.file) f.frame ? queueSheet(load, textures, f.file, f.frame[0], f.frame[1]) : img(f.file);
+  } else if (map.tileset === 'palengke') {
+    if (M.classes?.dungeons) load.json('dungeons', M.classes.dungeons); // (the hatch's use range, Aling Conching's key)
+    const g = M.fx['fx-silong-hatch-glow'];
+    if (g?.file) g.frame ? queueSheet(load, textures, g.file, g.frame[0], g.frame[1]) : img(g.file);
   }
   if (map.height) queueBigMap(load, textures, M, map);
   T.grass.files.forEach(img);
@@ -114,7 +127,7 @@ export function queueTown(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Tex
   }
 
   for (const [id, fx] of Object.entries(M.fx)) {
-    if (!fx.file || WARRENS_FX.test(id)) continue; // (the Warrens' own load with a run: queueWarrens above)
+    if (!fx.file || WARRENS_FX.test(id) || SILONG_FX.test(id)) continue; // (the Warrens' and the Silong's own load there: above)
     if (fx.frame) queueSheet(load, textures, fx.file, fx.frame[0], fx.frame[1]);
     else img(fx.file);
   }

@@ -1891,6 +1891,15 @@
       #warrens-tracker .wr-pip.wr-down { border-color: #6B7280; background: #4ADE80; }
       #warrens-tracker .wr-note { margin-top: 6px; color: #A9B1D6; font-size: calc(12px * var(--text)); }
       #warrens-tracker .wr-note[hidden] { display: none; }
+      /* Ang Silong's tracker (ui/silong.ts): a row per floor, its mini bosses' pips, the elevator and the B3 door. */
+      #warrens-tracker .sl-floors { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+      #warrens-tracker .sl-floor { display: flex; align-items: center; gap: 6px; font-size: calc(12px * var(--text)); color: #A9B1D6; }
+      #warrens-tracker .sl-floor .wr-pips { margin-top: 0; }
+      #warrens-tracker .sl-floor-name { width: 22px; font-weight: 700; color: #BAE6FD; }
+      #warrens-tracker .sl-here .sl-floor-name { color: #FDE68A; }
+      #warrens-tracker .sl-dark { opacity: 0.45; }
+      #warrens-tracker .sl-open { color: #4ADE80; }
+      #warrens-tracker .sl-shut { color: #F87171; }
       #warrens-tracker .wr-buttons { display: flex; gap: 6px; margin-top: 8px; }
       .wr-btn { padding: 4px 10px 5px; border: 2px solid #3D4256; border-radius: 0; background: #1E1B3A; color: #c0caf5; font: inherit; font-size: calc(12px * var(--text)); font-weight: 700; cursor: var(--cur-hand, pointer); }
       .wr-btn:hover { border-color: #c0caf5; }

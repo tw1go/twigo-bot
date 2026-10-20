@@ -20,6 +20,8 @@ export interface DishMenuOptions {
   /** The dishes on you now (your buffs with a `dish`). */
   on: () => MyBuff[];
   buy: (id: string) => Promise<{ ok: boolean; message?: string } | null>;
+  /** Her Susi ng Silong (after the Great Scale's finale: `open`), at its Kusing; bought like a dish, into your bag. */
+  key?: { id: string; name: string; kusing: number; open: boolean };
 }
 
 /** "7:32" (minutes and seconds). */
@@ -87,7 +89,39 @@ export function openDishMenu(o: DishMenuOptions): Promise<void> {
         row.append(text, buy);
         return row;
       }),
+      ...(o.key ? [keyRow(o.key)] : []),
     );
+  };
+  /** The Susi ng Silong's row: greyed until the finale; Buy puts one in your bag. */
+  const keyRow = (k: NonNullable<DishMenuOptions['key']>) => {
+    const kusing = o.kusing();
+    const row = el('div', `dm-dish${k.open ? '' : ' dm-locked'}`);
+    const text = el('div', 'dm-text');
+    const name = el('div', 'dm-name');
+    name.append(el('b', '', k.name), el('span', 'dm-slot dm-side', 'Key'));
+    text.append(name, el('div', 'dm-effect', 'Opens Ang Silong for you or your party, at the hatch in the Market Hall.'));
+    if (!k.open) text.append(el('div', 'dm-unlock', 'After the Great Scale rests'));
+    const buy = el('button', 'dm-buy');
+    buy.type = 'button';
+    buy.append(kusingIcon(1), el('span', '', k.kusing.toLocaleString('en-US')));
+    buy.disabled = !k.open || busy || kusing < k.kusing;
+    buy.addEventListener('click', () => {
+      if (busy) return;
+      busy = true;
+      render();
+      void o.buy(k.id).then((r) => {
+        busy = false;
+        if (!r) toast("Couldn't reach Aling Conching. Try again in a moment.", 3000, 'bad');
+        else if (!r.ok) toast(r.message ?? "You can't have that yet.", 3000, 'bad');
+        else {
+          playSound('coin');
+          toast(`${k.name}: in your bag.`, 2500, 'good');
+        }
+        render();
+      });
+    });
+    row.append(text, buy);
+    return row;
   };
   render();
   const tick = () => {
