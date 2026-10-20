@@ -477,7 +477,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `public/assets/audio/CREDITS.md` and the font's licence). Keep sounds soft: no sharp clicks.
 - Keybinds (`ui/keybinds.ts`): every game key is an action with up to two keys (event.code + Ctrl/Alt/Shift, so layouts
   and Caps Lock don't matter): walking (WASD + arrows), interact (E, Space), pick up (F; Space too when loot is in reach), target (Z), skills (K), bag (B, I), settings (O), quest log
-  (J), the 26 hotbar slots (1–0 - = `, Alt + those), emotes (F1–F8). Saved per browser (localStorage `mk_keys`, only
+  (J), the 26 hotbar slots (1–0 - = `, Alt + those), emotes (F1–F8). Kept on the server when logged in (bot
+  `web/keybinds.ts`, kv `keybinds:<userId>`, tested: `cleanKeybinds` keeps action ids, key names and two keys each; `/me`
+  `keybinds`, `POST /town/keybinds { keys }`; the page's `syncKeybinds`: the server's win, this browser's go up once when
+  it has none, every change after through `net/sync.ts` `queueSave`) and per browser (localStorage `mk_keys`, only
   what differs from the defaults); Settings → Keybinds: click a key, press the new one (Esc never mind, Backspace none; a
   key another action had moves over, with a toast), Reset all. Everything listening asks `matches` / `actionOf` /
   `held`; labels (hotbar slots, emote picker, quest tracker, bag and Skills buttons) follow `keyLabel` on 'mk-keys'.
@@ -1354,7 +1357,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   Damage, Mobility and Buffs (classes.json buffs: icon, unlock level, their buff-cast on the stage on hover; cast from
   the hotbar: Buffs, below), each with its level and description (see Skills unlock), the hovered one played on the class choice's stage (`TownScene.skillStage`, 1×); drag a
   skill to a slot, or click it then a slot.
-  Potions dragged from the bag (HP/MP Potions from the combat bag: used through the town, a cooldown per kind); drag between slots swaps, off the bar empties (right-click never does). Per class, kept on the server when logged in (bot `web/hotbar.ts`, kv `hotbar:<userId>` by class, tested: `cleanHotbar` keeps it within the rows' sizes and entry shapes; `/me` `hotbars`, `POST /town/hotbar { cls, layout }`; the page's `onSave`, TownScene `saveHotbar` 600 ms after the last change and at once on pagehide with keepalive; the server's wins on load, a class only this browser had arranged is sent up once) and in localStorage
+  Potions dragged from the bag (HP/MP Potions from the combat bag: used through the town, a cooldown per kind); drag between slots swaps, off the bar empties (right-click never does). Per class, kept on the server when logged in (bot `web/hotbar.ts`, kv `hotbar:<userId>` by class, tested: `cleanHotbar` keeps it within the rows' sizes and entry shapes; `/me` `hotbars`, `POST /town/hotbar { cls, layout }`; the page's `onSave` → `net/sync.ts` `queueSave` (600 ms after the last change, at once on pagehide with keepalive); the server's wins on load, a class only this browser had arranged is sent up once) and in localStorage
   `mk_hotbar` (a class's first bar = its skills in order). Skill icons from manifest ui.skillIcons (`have` lists the ones there are: every class's 7 damage skills and its Lv 8 move; `shared` = one icon for all, Dash); the rest show
   their initials over the class badge. In town the damage skills are dark (grey, dimmed: `usable`); only the move
   skills light up. Where it

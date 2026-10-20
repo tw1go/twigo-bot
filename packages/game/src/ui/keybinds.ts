@@ -1,5 +1,6 @@
 // ⌨️ Keybinds: every game key is an action with up to two keys (a key = its event.code, plus Ctrl/Alt/Shift if held,
-// so a keyboard layout or Caps Lock doesn't change what it does), saved in this browser (localStorage `mk_keys`, only
+// so a keyboard layout or Caps Lock doesn't change what it does), kept on the server when logged in (syncKeybinds: /me
+// keybinds, every change sent back; the same keys on every device) and in this browser (localStorage `mk_keys`, only
 // what differs from the defaults). Settings → Keybinds changes them (ui/settings.ts keybindsPage). Enter (the chat),
 // Escape and the arena's 1–3 stay as they are (Tab, the quest map's, can be rebound; main.ts still keeps it from moving
 // the focus round the page's buttons). Everything that listens for a key asks here (`matches`,
@@ -42,6 +43,19 @@ const RESERVED = new Set(['Enter', 'NumpadEnter', 'Escape']);
 const MODIFIERS = new Set(['ShiftLeft', 'ShiftRight', 'ControlLeft', 'ControlRight', 'AltLeft', 'AltRight', 'MetaLeft', 'MetaRight', 'CapsLock', 'Fn']);
 
 let saved: Record<string, (string | null)[]> = load();
+/** Logged in: every change goes to the server too (syncKeybinds). */
+let push: ((keys: Record<string, (string | null)[]>) => void) | null = null;
+
+/** The keys the server keeps for you (/me keybinds) win over this browser's; this browser's go up once when the server
+ *  has none. Every change after is sent through `send` (TownScene: POST /town/keybinds). */
+export function syncKeybinds(server: Record<string, (string | null)[]>, send: (keys: Record<string, (string | null)[]>) => void): void {
+  push = send;
+  if (Object.keys(server).length) {
+    saved = { ...server };
+    tidy();
+    save();
+  } else if (Object.keys(saved).length) send(saved);
+}
 
 function load(): Record<string, (string | null)[]> {
   try {
@@ -58,6 +72,7 @@ function save(): void {
   } catch {
     /* private window: the keys just aren't remembered */
   }
+  push?.(saved);
   window.dispatchEvent(new Event('mk-keys'));
 }
 

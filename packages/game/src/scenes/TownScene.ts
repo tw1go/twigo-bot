@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { api } from '../net/endpoints';
-import type { HotbarLayout } from '@mikazuki/shared';
+import { queueSave } from '../net/sync';
 import { queueImage, queueNpcs, queueTown } from '../assets/queue';
 import type { Area, Dir, Gate, Manifest, TownMap } from '../assets/types';
 import { Character, SPEED, dirForStep, dirToward } from '../characters/character';
@@ -51,7 +51,7 @@ import { OnlineList, showFriendRequest } from '../ui/online';
 import { answer as friendAnswer, askByName, blockByName, friends, refusal as friendRefusal, setFriends, setFriendsLink } from '../net/friends';
 import { setPrivacy, setPrivacyLink } from '../net/privacy';
 import { EMOTE_KEYS, emotePicker } from '../ui/emotes';
-import { actionOf, held, keyLabel, matches } from '../ui/keybinds';
+import { actionOf, held, keyLabel, matches, syncKeybinds } from '../ui/keybinds';
 import type { ArenaServerMessage, ClassInfo, HoodHouse, OutfitData, TitleData, TownClientMessage, TownEmote, TownHoodResponse, TownGolem, TownServerMessage } from '@mikazuki/shared';
 import { type BubbleArt, lightBubble } from '../ui/labels';
 import { type Reward, setRewardArt, showReward } from '../ui/reward';
@@ -252,8 +252,6 @@ const benchApproach = (b: Bench): Tile =>
   ] ?? { col: b.col, row: b.row + 1 };
 
 /** The hotbar's cooldown key for an HP or MP Potion: its kind's, or the one they share (stats.json potions). */
-/** A hotbar change waits this long for more before it's saved (ui/hotbar.ts onSave). */
-const HOTBAR_SAVE_MS = 600;
 const potionKeyOf = (S: StatsData, heals: 'hp' | 'mp') => `potion-${potionCooldownGroup(S, heals)}`;
 
 /** A dodged hit's word over the player (a Step Back's window). */
@@ -1090,11 +1088,15 @@ export class TownScene extends Phaser.Scene {
         stage: (c) => this.skillStage(c.id, c.fx),
         icon: (cls, skill) => this.skillIcon(cls, skill),
         // A change goes to the server a moment later (several drags: one save), and at once as the page goes.
-        onSave: fakeLogin() ? undefined : (cls, layout) => this.saveHotbar(cls, layout),
+        onSave: fakeLogin() ? undefined : (cls, layout) => queueSave('/town/hotbar', { cls, layout }),
       });
       this.hotbar = hotbar;
-      // Logged in: the bars the server keeps win over this browser's (setSynced before setClass).
-      if (this.me?.status === 'ok' && !fakeLogin()) hotbar.setSynced(this.me.me.hotbars ?? {});
+      // Logged in: the bars and keys the server keeps win over this browser's (setSynced before setClass), and changes
+      // go back to it (net/sync.ts: a moment later, or at once as the page goes).
+      if (this.me?.status === 'ok' && !fakeLogin()) {
+        hotbar.setSynced(this.me.me.hotbars ?? {});
+        syncKeybinds(this.me.me.keybinds ?? {}, (keys) => queueSave('/town/keybinds', { keys }));
+      }
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => hotbar.root.remove());
       hotbar.setClass(classInfo(adventure()?.cls) ?? null);
       void this.applyBattle(adventure()?.cls ?? null);
@@ -1546,29 +1548,6 @@ export class TownScene extends Phaser.Scene {
       mirror: who.mirror,
       onClose: () => {},
     });
-  }
-
-  /** The hotbars waiting to be saved (web/hotbar.ts; by class), sent HOTBAR_SAVE_MS after the last change. */
-  private hotbarPending = new Map<string, HotbarLayout>();
-  private hotbarTimer: ReturnType<typeof setTimeout> | null = null;
-  private saveHotbar(cls: string, layout: HotbarLayout): void {
-    this.hotbarPending.set(cls, layout);
-    if (this.hotbarTimer) clearTimeout(this.hotbarTimer);
-    this.hotbarTimer = setTimeout(() => this.flushHotbars(), HOTBAR_SAVE_MS);
-    if (!this.hotbarFlushOnLeave) {
-      this.hotbarFlushOnLeave = () => this.flushHotbars(true);
-      addEventListener('pagehide', this.hotbarFlushOnLeave);
-      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => removeEventListener('pagehide', this.hotbarFlushOnLeave!));
-    }
-  }
-  private hotbarFlushOnLeave: (() => void) | null = null;
-  private flushHotbars(leaving = false): void {
-    if (this.hotbarTimer) clearTimeout(this.hotbarTimer);
-    this.hotbarTimer = null;
-    for (const [cls, layout] of this.hotbarPending) {
-      void api('/town/hotbar', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cls, layout }), keepalive: leaving }).catch(() => null);
-    }
-    this.hotbarPending.clear();
   }
 
   /** A quest giver's name and portrait (for the quest log). */
