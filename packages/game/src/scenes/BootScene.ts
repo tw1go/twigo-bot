@@ -6,7 +6,7 @@ import { loadCursors } from '../ui/cursor';
 import { TitleScreen, introDue, playIntro } from '../ui/title-screen';
 import { setMuted, soundSettings, startTitleMusic, stopTitleMusic } from '../audio/sound';
 import { loadHouseArt } from '../houses/art';
-import { currentArea, freshVisit, markHood, markSlums, markTown, slumsTownMap } from '../net/hood';
+import { currentArea, freshVisit, markHood, markSlums, markTown, palengkeTownMap, slumsTownMap } from '../net/hood';
 import { bootHood } from './HouseScene';
 import { isDesktopApp } from '../net/platform';
 import { enteredGame } from '../net/pwa';
@@ -120,7 +120,8 @@ export class BootScene extends Phaser.Scene {
     // ?area=slums: the Slums, for every member (a guest, or a map that won't load, lands back in town). ?area=warrens:
     // your Scrap Warrens run (maps/warrens.json; the server puts you in it, or sends you back to the Slums).
     const area = currentArea();
-    if (area === 'slums' || area === 'warrens') {
+    // ?area=palengke: the Lumang Palengke (west of the Slums: a guest, or a map that won't load, lands back in town too).
+    if (area === 'slums' || area === 'warrens' || area === 'palengke') {
       if (me?.status !== 'ok') {
         markTown();
         this.scene.start('town', { manifest, town, me });
@@ -133,7 +134,7 @@ export class BootScene extends Phaser.Scene {
           if (area === 'warrens') markSlums();
           else markTown();
         }
-        this.scene.start('town', json ? { manifest, town: slumsTownMap(json), me, area } : { manifest, town, me });
+        this.scene.start('town', json ? { manifest, town: area === 'palengke' ? palengkeTownMap(json) : slumsTownMap(json), me, area } : { manifest, town, me });
       });
       this.load.start();
       return;

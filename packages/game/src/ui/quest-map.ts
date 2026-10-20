@@ -127,7 +127,8 @@ export class QuestMap {
   }
 
   /** Your pixel on the picture: your tile in the Town or the Slums; in the neighbourhood the Town's way there, in a
-   *  Warrens run the Slums' Warren Gate (where you'd come out). */
+   *  Warrens run the Slums' Warren Gate (where you'd come out), in the Palengke the Slums' gate to it (the picture
+   *  doesn't have the Palengke yet). */
   private spot(W: WorldMap): [number, number] | null {
     const at = this.here();
     if (!at) return null;
@@ -135,6 +136,10 @@ export class QuestMap {
     if (at.area === 'hood') {
       const gate = middleOf(W.town.gates?.hood);
       return gate && worldPx(W.layout, 'town', gate[0], gate[1]);
+    }
+    if (at.area === 'palengke') {
+      const gate = middleOf(W.slums.gates?.palengke);
+      return gate && worldPx(W.layout, 'slums', gate[0], gate[1]);
     }
     const out = W.slums.arrive?.warrens;
     return out ? worldPx(W.layout, 'slums', out[0], out[1]) : null;
