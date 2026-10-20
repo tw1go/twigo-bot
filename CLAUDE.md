@@ -104,7 +104,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   never write its value in the repo), gifter + `CMS_USER_IDS` only, Discord login (`/auth/login?next=cms`). Edits town
   news posts, titles (with descriptions, shown at the Parlor), mail to players (the Mail tab: see Mail, below), shop prices/on sale, dig items (name, emoji, sell value,
   rarity, in the ground or not, new ones; `dig/items.ts`, tested: every rarity keeps an item in the ground; odds shown per
-  item), Rewards (Mine Wars attend/top 3 pay, daily Kowens, welcome gift, stay minutes and daily cap; `games/settings.ts`, kv
+  item), Rewards (Mine Wars attend/top 3 pay, daily Kowens, welcome gift, stay minutes and daily cap, the lucky dig's Soonest / Latest; `games/settings.ts`, kv
   `settings`, min/max per setting, Reset = the default) (kv `town-posts`, `titles`, `shop`, `dig-items`, `settings` over the
   code's defaults), the Mine Wars payout (pick Discord members found by name or ID as attended / Top 10, see who gets what, pay:
   `payMineWars` in `minewars/payout.ts`, shared with `/gift minewars`, same ledger and games channel post) players' Kowens, titles and class (shown with quests, gear, Rename Cards; Reset class), and the Field boss (the
@@ -1485,9 +1485,11 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `showcase` (32 px, pop-ups) and `anim` (a looping 32 px sheet); files in `assets/ui/items/` as `item-<id>.png`,
   `item-<id>@32.png`, `item-<id>@32-anim.png`. Drawn in a rarity frame (1 px border + glow; legendary/secret shimmer) at
   whole-number scales; ids without art keep their emoji/text. Shop items use the common frame.
-- Mine + dig panel (`ui/mine.ts`, `ui/dig-panel.ts`): left click the mine → digs left, shovel uses, the lucky dig (dig pity:
-  `MeDig.lucky/luckyEvery`, the server's digs toward its every-60th Epic-or-better dig, as a bar; gold when the next is it;
-  refreshed every 20 s while open; dev `&lucky=58`), the Swerte Elixir digs left (`MeDig.swerte`, a line while any; a dig
+- Mine + dig panel (`ui/mine.ts`, `ui/dig-panel.ts`): left click the mine → digs left, shovel uses, the dig streak
+  (CONTEXT.md Lucky dig, Dig streak: `MeDig.streak`, digs since their last Epic or better; the lucky dig's hidden threshold
+  per member, rolled between the CMS Rewards' `lucky-min` / `lucky-max` (1–60) after every Epic-or-better find, `dig/store.ts`
+  kv `dig-luck:<userId>`, `countLuckyDig` / `resetLuck` / `digStreak`, tested in dig.test.ts; the old public server-wide
+  every-60th counter is gone; refreshed every 20 s while open; dev `&streak=14`), the Swerte Elixir digs left (`MeDig.swerte`, a line while any; a dig
   whose junk its reroll replaced: `TownDigResponse.rerolled`, `digFor`'s `rerolled`, also a line in Discord's reveal; a
   lucky dig's find wins over it; dev `&swerte=3`), Dig (`POST /town/dig`,
   bot `web/town-mine.ts`; "📜 Items" swaps the pop-up to the tier list, `GET /town/dig-items`: items in the ground by

@@ -144,10 +144,8 @@ export interface MeDig {
   shovelsLeft: number;
   shovelCost: number;
   shovelUses: number;
-  /** The server's lucky dig (dig pity): digs by anyone so far toward the next one, which comes every `luckyEvery` and is
-   *  Epic or better. */
-  lucky: number;
-  luckyEvery: number;
+  /** Their dig streak (CONTEXT.md): digs since their last Epic or better. (The lucky dig's threshold is never sent.) */
+  streak: number;
   /** Swerte Elixir digs left: each rerolls junk once. */
   swerte: number;
 }
@@ -493,8 +491,6 @@ export interface TownDigItemsResponse {
     chance: number;
     items: { id: string; name: string; emoji: string; value: number; chance: number }[];
   }[];
-  /** Every this-many digs on the server is Epic or better. */
-  luckyEvery: number;
 }
 
 /** GET /town/player?id= : another player in town, as /balance and /status show them, and what the viewer can give. */

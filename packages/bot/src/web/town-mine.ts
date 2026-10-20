@@ -3,7 +3,7 @@ import type { MeDig, TownDigItemsResponse, TownDigResponse } from '@mikazuki/sha
 import { config } from '../config.js';
 import { digFor, digReveal } from '../dig/dig.js';
 import { ITEMS, RARITY, RARITY_ORDER, itemChances } from '../dig/items.js';
-import { DIGS_PER_DAY, LUCKY_EVERY, SHOVEL_COST } from '../dig/store.js';
+import { DIGS_PER_DAY, SHOVEL_COST } from '../dig/store.js';
 import { kowen } from '../kowens.js';
 import { feed } from './town-feed.js';
 
@@ -21,7 +21,7 @@ export function townDigItems(): TownDigItemsResponse {
       .map((i) => ({ id: i.id, name: i.name, emoji: i.emoji, value: i.value, chance: chances.get(i.id) ?? 0 }));
     return { rarity, label: RARITY[rarity].label, chance: items.reduce((n, i) => n + i.chance, 0), items };
   });
-  return { tiers: tiers.filter((t) => t.items.length), luckyEvery: LUCKY_EVERY };
+  return { tiers: tiers.filter((t) => t.items.length) };
 }
 
 const clock = (ms: number) => new Date(ms).toLocaleTimeString('en-US', { timeZone: config.timezone, hour: 'numeric', minute: '2-digit' });
@@ -47,7 +47,7 @@ export async function digInTown(client: Client, userId: string, name: string, st
   }
   return {
     ok: true,
-    message: `${result.lucky ? `Lucky dig! The server's ${LUCKY_EVERY}th dig: ` : result.rerolled ? 'Your Swerte Elixir rerolled your junk: ' : ''}You dug up ${found.name} (${r.label}), worth ${found.value} ${kowen(found.value)}.`,
+    message: `${result.lucky ? 'Lucky dig! Your luck came through: ' : result.rerolled ? 'Your Swerte Elixir rerolled your junk: ' : ''}You dug up ${found.name} (${r.label}), worth ${found.value} ${kowen(found.value)}.`,
     dig: status(userId),
     ...(result.lucky ? { lucky: true } : result.rerolled ? { rerolled: true } : {}),
     item: { id: found.id, name: found.name, rarity: found.rarity, value: found.value },

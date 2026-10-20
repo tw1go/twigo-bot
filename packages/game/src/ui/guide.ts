@@ -291,7 +291,7 @@ const TOPICS: Topic[] = [
       'Left click the **Mine** and press **Dig**.',
       '• Up to **9 digs a day**. A shovel lasts **3 digs**; buy a new one at the Mine (up to 3 a day)',
       '• Finds go from Common to Legendary (and a few secrets 🤫). **📜 Items** lists them all, with their odds and what they sell for',
-      '• **Lucky dig**: every 60th dig on the server is Epic or better. The bar shows how close it is',
+      '• **Lucky dig**: somewhere along your digs one is Epic or better, at a hidden number of digs since your last Epic or better (any Epic or better starts the count over). The Mine shows your streak, never the number',
       '• What you dig up goes to your **bag**',
     ].join('\n'),
   },

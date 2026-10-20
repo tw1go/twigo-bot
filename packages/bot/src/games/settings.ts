@@ -21,6 +21,8 @@ export const SETTINGS = {
   'welcome-gift': { group: 'Welcome gift', label: 'Welcome gift', help: 'Kowens each new player gets once they finish their character', default: 50, min: 0, max: 10_000 },
   'stay-minutes': { group: 'Staying in town', label: 'Minutes per Kowen', help: 'Minutes in the web town for each Kowen to claim', default: 15, min: 1, max: 240 },
   'stay-cap': { group: 'Staying in town', label: 'Most a day', help: 'The most stay Kowens a member can claim in a day', default: 20, min: 0, max: 1000 },
+  'lucky-min': { group: 'Lucky dig (Junk or Gem)', label: 'Soonest', help: 'The fewest digs since a member\'s last Epic or better before their lucky dig can come (the hidden threshold is rolled between Soonest and Latest)', default: 1, min: 1, max: 1000 },
+  'lucky-max': { group: 'Lucky dig (Junk or Gem)', label: 'Latest', help: 'The most digs since a member\'s last Epic or better before their lucky dig is sure to come', default: 60, min: 1, max: 1000 },
 } satisfies Record<string, SettingDef>;
 
 export type SettingKey = keyof typeof SETTINGS;

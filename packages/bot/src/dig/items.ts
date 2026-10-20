@@ -225,7 +225,7 @@ export function rollOfRarity(rarity: Rarity, random = Math.random): Item {
   return items.find((i) => (w -= weight(i)) < 0) ?? items[items.length - 1];
 }
 
-/** The server-wide lucky dig (every LUCKY_EVERY digs) is guaranteed Epic or better. */
+/** The lucky dig (dig/store.ts: each member's, at their hidden threshold) is guaranteed Epic or better. */
 export const LUCKY_ODDS: [Rarity, number][] = [
   ['epic', 0.75],
   ['mythical', 0.2],

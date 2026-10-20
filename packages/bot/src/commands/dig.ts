@@ -6,7 +6,7 @@ import { kowen } from '../kowens.js';
 import { RARITY } from '../dig/items.js';
 import { digFor, digReveal, isBigFind } from '../dig/dig.js';
 import { feed, townName } from '../web/town-feed.js';
-import { DIGS_PER_DAY, LUCKY_EVERY, SHOVEL_COST } from '../dig/store.js';
+import { DIGS_PER_DAY, SHOVEL_COST } from '../dig/store.js';
 
 export const dig: Command = {
   data: new SlashCommandBuilder()
@@ -44,7 +44,7 @@ export const dig: Command = {
     };
     const steps = [
       ...frames.map(digging),
-      ...(lucky ? [`${digging('🟫🟫🟫')}\n🍀 Wait… this is the server's ${LUCKY_EVERY}th dig!`] : []),
+      ...(lucky ? [`${digging('🟫🟫🟫')}\n🍀 Wait… your luck is coming through!`] : []),
       ...(suspense[found.rarity] ?? []).map((t) => `${digging('🟫🟫🟫')}\n${t}`),
     ];
 

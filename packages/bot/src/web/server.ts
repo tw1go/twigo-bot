@@ -4,7 +4,7 @@ import { RETURN_LANTERN, combatRating } from '@mikazuki/shared';
 import { EmbedBuilder, GatewayIntentBits, escapeMarkdown, type Client } from 'discord.js';
 import { config } from '../config.js';
 import { VOICE_DAILY_CAP, VOICE_MINUTES_PER_CREDIT, add, balance, rankOf, setWalletHook, topBalances, totalKowens, vaultBalance, voiceCreditsToday, voiceProgress } from '../credits/store.js';
-import { DIGS_PER_DAY, digsToday, inventory, LUCKY_EVERY, serverDigProgress, SHOVEL_COST, SHOVEL_USES, SHOVELS_PER_DAY, shovelsBoughtToday, shovelUses } from '../dig/store.js';
+import { DIGS_PER_DAY, digsToday, digStreak, inventory, SHOVEL_COST, SHOVEL_USES, SHOVELS_PER_DAY, shovelsBoughtToday, shovelUses } from '../dig/store.js';
 import { ITEM_BY_ID } from '../dig/items.js';
 import { getNickname, memberByNickname, parseNickname, setNickname } from './nickname.js';
 import { friendSaves, loadFriends } from './friends-db.js';
@@ -322,8 +322,7 @@ function digStatus(userId: string): MeDig {
     shovelsLeft: Math.max(0, SHOVELS_PER_DAY - shovelsBoughtToday(userId)),
     shovelCost: SHOVEL_COST,
     shovelUses: SHOVEL_USES,
-    lucky: serverDigProgress(),
-    luckyEvery: LUCKY_EVERY,
+    streak: digStreak(userId),
     swerte: swerteLeft(userId),
   };
 }

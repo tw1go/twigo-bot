@@ -15,7 +15,8 @@ process.env.TIMEZONE = 'Asia/Manila';
 
 const { digFor } = await import('./dig.js');
 const items = await import('./items.js');
-const { BASE_SLOTS, DIGS_PER_DAY, addShovel, itemCount, recordDig, shovelUses } = await import('./store.js');
+const { BASE_SLOTS, DIGS_PER_DAY, addShovel, digStreak, itemCount, recordDig, rollThreshold, shovelUses } = await import('./store.js');
+const { setSetting } = await import('../games/settings.js');
 const { jail } = await import('../games/jail.js');
 const { closeDatabase } = await import('../db/db.js');
 const potions = await import('../potions/potions.js');
@@ -79,6 +80,33 @@ test('refuses when there are no digs left today', () => {
   for (let i = 0; i < DIGS_PER_DAY; i++) recordDig('tired', 'rock'); // fewer than the bag holds
   assert.ok(DIGS_PER_DAY < BASE_SLOTS);
   assert.deepEqual(digFor('tired'), { ok: false, reason: 'no-digs' });
+});
+
+test('the lucky dig: the dig whose streak reaches a hidden threshold between the CMS\'s Soonest and Latest is Epic or better; any Epic or better starts the streak over', (t) => {
+  setSetting('lucky-min', 3);
+  setSetting('lucky-max', 3);
+  for (let i = 0; i < 4; i++) addShovel('lucky');
+  const r1 = digFor('lucky');
+  const r2 = digFor('lucky');
+  assert.ok(r1.ok && r2.ok && !r1.lucky && !r2.lucky);
+  // (A plain roll for these: junk every time, by a random that never clears a tier.)
+  t.mock.method(Math, 'random', () => 0.99);
+  const r3 = digFor('lucky');
+  t.mock.restoreAll();
+  assert.ok(r3.ok && r3.lucky, 'the third dig is the lucky one');
+  assert.ok(r3.ok && ['epic', 'mythical', 'legendary'].includes(r3.item.rarity), r3.ok ? r3.item.rarity : '');
+  assert.equal(r3.ok && r3.streak, 0, 'an Epic or better starts the streak over');
+  assert.equal(digStreak('lucky'), 0);
+  // (A natural Epic or better goes through the same line in digFor: any Epic+ find resets, lucky or not.)
+  // Soonest and Latest the wrong way round still work; the threshold is within them.
+  setSetting('lucky-min', 20);
+  setSetting('lucky-max', 10);
+  for (let i = 0; i < 50; i++) {
+    const at = rollThreshold();
+    assert.ok(at >= 10 && at <= 20, String(at));
+  }
+  setSetting('lucky-min', null);
+  setSetting('lucky-max', null);
 });
 
 test('refuses from jail', async () => {

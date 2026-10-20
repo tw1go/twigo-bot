@@ -1,3 +1,4 @@
+import { setting } from '../games/settings.js';
 import { kvLoad, kvSave } from '../db/db.js';
 import { saveTogether, tableSync } from '../db/sync.js';
 import { today } from '../time.js';
@@ -180,18 +181,50 @@ export function useMasterKey(userId: string): boolean {
   return true;
 }
 
-// Server-wide lucky dig: every LUCKY_EVERY-th dig by anyone is guaranteed Epic or better.
-export const LUCKY_EVERY = 60;
-let luckyCount: number = kvLoad<{ count?: number }>('lucky-dig.json', {}).count ?? 0;
+// 🍀 Each member's lucky dig (CONTEXT.md Lucky dig, Dig streak): a hidden threshold rolled between the CMS's Soonest and
+// Latest (games/settings.ts 'lucky-min' / 'lucky-max', 1–60 to begin with); the dig whose streak reaches it is Epic or
+// better (dig.ts). Any Epic-or-better find (forced or not, a secret too) puts the streak back to 0 and rolls a new
+// threshold. Only the streak is ever shown. Kept per member in kv 'dig-luck:<userId>'. (The old rule, every 60th dig on
+// the whole server from a public counter, kv 'lucky-dig.json', is gone: it could be sniped.)
+interface Luck {
+  /** Digs since their last Epic or better. */
+  since: number;
+  /** The streak their lucky dig comes at. */
+  at: number;
+}
+const luckKey = (userId: string) => `dig-luck:${userId}`;
 
-/** Counts a dig. Returns true if this one is the lucky dig (and resets the counter). */
-export function countServerDig(): boolean {
-  luckyCount += 1;
-  const lucky = luckyCount >= LUCKY_EVERY;
-  if (lucky) luckyCount = 0;
-  kvSave('lucky-dig.json', { count: luckyCount });
-  return lucky;
+/** The CMS's range, soonest first (swapped if set the wrong way round). */
+function luckRange(): [number, number] {
+  const a = setting('lucky-min');
+  const b = setting('lucky-max');
+  return a <= b ? [a, b] : [b, a];
 }
 
-/** Digs so far toward the next lucky dig. */
-export const serverDigProgress = () => luckyCount;
+/** A new threshold: a whole number between Soonest and Latest, each as likely. */
+export function rollThreshold(random: () => number = Math.random): number {
+  const [lo, hi] = luckRange();
+  return lo + Math.floor(random() * (hi - lo + 1));
+}
+
+function luckOf(userId: string): Luck {
+  const l = kvLoad<Partial<Luck>>(luckKey(userId), {});
+  return { since: l.since ?? 0, at: l.at ?? rollThreshold() };
+}
+
+/** Counts a dig toward their lucky dig: true if this one is it (the streak reached the threshold; a Latest lowered in
+ *  the CMS since the threshold was rolled counts too). */
+export function countLuckyDig(userId: string): boolean {
+  const l = luckOf(userId);
+  l.since += 1;
+  kvSave(luckKey(userId), l);
+  return l.since >= Math.min(l.at, luckRange()[1]);
+}
+
+/** An Epic-or-better find: the streak back to 0 and a new threshold. */
+export function resetLuck(userId: string, random: () => number = Math.random): void {
+  kvSave(luckKey(userId), { since: 0, at: rollThreshold(random) } satisfies Luck);
+}
+
+/** Digs since their last Epic or better. */
+export const digStreak = (userId: string): number => luckOf(userId).since;
