@@ -437,7 +437,7 @@ const TOPICS: Topic[] = [
     text: [
       '• **📣 News** (top right): announcements and patch notes. A red dot means something new',
       '• **⚙ Settings**: music and sound volumes, mute, log out, credits',
-      '• **🏆 Leaderboard monument**: the top 10 by Kowens',
+      '• **🏆 Leaderboard monument**: four boards, the top 10 by **Kowens**, by **combat rating** (without buffs), the fastest **Scrap Warrens** clears (one row per team, real runs only) and the most damage to the **golem** in one fight it fell in',
       '• When a new version is out, press **Reload now**',
       '-# Found a bug? Tell twigo in Discord 💬',
     ].join('\n'),

@@ -168,8 +168,10 @@ export interface MobKill {
   level: number;
   xp: number;
   to: string[];
-  /** The field boss: its loot is personal, for each of `to`. */
+  /** The field boss: its loot is personal, for each of `to`; `dealt` is the damage each member did in the fight (the
+   *  leaderboard's golem record, web/records.ts). */
   boss?: boolean;
+  dealt?: Map<string, number>;
   /** A mini boss (its leveling.json id): `to` is everyone who did their share; personal loot for each. */
   mini?: string;
   /** A Scrap Warrens boss (its id; a mini boss or the last boss): `to` is everyone who did their share; the run opens
@@ -1110,7 +1112,7 @@ export class MobRoom {
     const r = g.hit(player, name, damage, now, member)!;
     if (r.dead) {
       const [gc, gr] = g.at(now);
-      kills.push({ id: g.id, kind: g.id, at: [Math.round(gc), Math.round(gr)], level: stats.level, xp: stats.xp, to: xpEarners({ ...stats, hp: g.maxHp }, r.dealt ?? new Map(), member), boss: true });
+      kills.push({ id: g.id, kind: g.id, at: [Math.round(gc), Math.round(gr)], level: stats.level, xp: stats.xp, to: xpEarners({ ...stats, hp: g.maxHp }, r.dealt ?? new Map(), member), boss: true, ...(r.dealt ? { dealt: r.dealt } : {}) });
     }
     return { id: g.id, damage, crit, hp: r.hp, dead: r.dead, ...(miss ? { miss } : {}) };
   }

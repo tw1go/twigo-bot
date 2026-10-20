@@ -1032,7 +1032,18 @@
       @media (max-width: 560px), (max-height: 500px) { .announce { top: 76px; } }
       @media (prefers-reduced-motion: reduce) { .announce, .an-bulb { animation: none; } }
       /* The leaderboard (ui/leaderboard.ts), in the reward box. */
-      #reward .rw-card:has(.lb-list) { width: min(420px, calc(100vw - 32px)); }
+      #reward .rw-card:has(.lb-list) { width: min(560px, calc(100vw - 32px)); }
+      #reward .lb-tabs .bk-tab { padding-left: 4px; padding-right: 4px; font-size: calc(13px * var(--text)); }
+      #reward .lb-panel[hidden] { display: none; }
+      #reward .lb-badge { width: 16px; height: 16px; flex: none; image-rendering: pixelated; }
+      #reward .lb-level { flex: none; font-size: calc(12px * var(--text)); color: #7A8099; }
+      #reward .lb-cp { color: #7C2AE8; }
+      #reward .lb-time { color: #0F766E; font-variant-numeric: tabular-nums; }
+      #reward .lb-damage { color: #DC2626; }
+      #reward .lb-when { flex: none; width: 48px; text-align: right; font-size: calc(12px * var(--text)); color: #9CA3AF; }
+      #reward .lb-team { align-items: center; flex-wrap: wrap; row-gap: 0; }
+      #reward .lb-names { font-weight: 600; color: #1E1B3A; white-space: normal; line-height: 1.25; }
+      #reward .lb-size { flex: none; padding: 0 5px; border-radius: 8px; background: #EDE9FE; font-size: calc(11px * var(--text)); font-weight: 700; color: #5B21B6; }
       #reward .lb-sub { margin: -6px 0 10px; font-size: calc(13px * var(--text)); color: #7A8099; }
       #reward .lb-list { max-height: min(240px, 32vh); overflow-y: auto; margin-bottom: 8px; text-align: left; font-size: calc(14px * var(--text)); color: #3D4256; }
       #reward .lb-row { display: flex; align-items: center; gap: 10px; padding: 3px 8px; border-radius: 2px; }

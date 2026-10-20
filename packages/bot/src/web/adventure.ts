@@ -551,6 +551,10 @@ export function forgeFor(userId: string, a: TownForgeAction): TownForgeResponse 
   return { ...r, items: { equipped: s.equipped, cosmetics: s.cosmetics, bag: s.bag, kusing: s.kusing, pet: s.pet ?? null }, worn: r.ok && before !== JSON.stringify(s.equipped) };
 }
 
+const withClassStmt = db.prepare<[], { user_id: string }>('SELECT user_id FROM adventurers WHERE class IS NOT NULL');
+/** Every member with a class (the leaderboard's combat rating board). */
+export const adventurersWithClass = (): string[] => withClassStmt.all().map((r) => r.user_id);
+
 /** Who they are in a fight (MobRoom.attack's Attacker): class, level, stat points spent, everything worn, and their damage
  *  skills' levels in the class's order. */
 export function fighterOf(userId: string): Attacker {

@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import type { LeaderboardResponse, LeaderboardRow, MeDig, MeResponse, PresenceStatus, PreregResponse, PreregStatus, TownJackpotBuyResponse, TownJackpotResponse, TownLeaderboardResponse, TownRaceResponse } from '@mikazuki/shared';
-import { RETURN_LANTERN } from '@mikazuki/shared';
+import { RETURN_LANTERN, combatRating } from '@mikazuki/shared';
 import { EmbedBuilder, GatewayIntentBits, escapeMarkdown, type Client } from 'discord.js';
 import { config } from '../config.js';
 import { VOICE_DAILY_CAP, VOICE_MINUTES_PER_CREDIT, add, balance, rankOf, setWalletHook, topBalances, totalKowens, vaultBalance, voiceCreditsToday, voiceProgress } from '../credits/store.js';
@@ -22,7 +22,8 @@ import { isTester } from '../games/testers.js';
 import { checkRichest } from './richest.js';
 import { attachTown, loadTownMap } from './town.js';
 import { bridgeTownChat } from './town-chat.js';
-import { MobRoom, loadMobKinds, loadMobMap, loadSkillShapes } from './town-mobs.js';
+import { MobRoom, fighterStats, loadMobKinds, loadMobMap, loadSkillShapes } from './town-mobs.js';
+import { clearRankOf, golemBestOf, recordClear, recordGolem, topClears, topGolem } from './records.js';
 import { loadGolemArt } from './town-golem.js';
 import { loadWarrens } from './town-warrens.js';
 import { CLASSES, withItems, newUid, expiredFor } from './adventure.js';
@@ -90,7 +91,7 @@ const lookOf = (userId: string): OutfitData | null => {
 };
 import { enhanceFeedLine, parseForgeAction } from './forge.js';
 import { loadItemData } from './stats-data.js';
-import { practiceDropFor, refundPracticeTicketFor, usePracticeTicketFor, warrensAccessOf, refundTicketFor, warrenTicketsOf, useTicketFor, kindCountOf, useKindFor, adventureOf, cosmeticsOf, combatOf, fighterOf, forgeFor, petXpFor, dropItemFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townPet, townEquip, townPoints, townQuest, townSkills, trainingArmorFor, questRewardsFor, questPiecesFor, questKillFor } from './adventure.js';
+import { practiceDropFor, refundPracticeTicketFor, usePracticeTicketFor, warrensAccessOf, refundTicketFor, warrenTicketsOf, useTicketFor, kindCountOf, useKindFor, adventureOf, cosmeticsOf, combatOf, fighterOf, forgeFor, petXpFor, dropItemFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townPet, townEquip, townPoints, townQuest, townSkills, trainingArmorFor, questRewardsFor, questPiecesFor, questKillFor, adventurersWithClass } from './adventure.js';
 import { renameWithCard } from '../items/rename-card.js';
 import { changeClassWithTicket } from '../items/class-ticket.js';
 import { LAUNCH_REWARD, isPreregistered, launched, preregCount, preregister } from '../prereg/prereg.js';
@@ -349,19 +350,55 @@ async function me(client: Client, req: IncomingMessage, res: ServerResponse): Pr
   send(res, 200, JSON.stringify(body));
 }
 
-/** The town's leaderboard: the top 10 by total Kowens with town nicknames and titles, and the viewer's own rank. */
+/** Everyone with a class by base combat rating (CONTEXT.md: no buffs), highest first; worked out from their saved
+ *  character and kept RATINGS_MS, so opening the leaderboard often doesn't run every member's stats each time. */
+const RATINGS_MS = 60_000;
+let ratingsCache: { at: number; rows: { id: string; cls: string; level: number; cp: number }[] } | null = null;
+function ratings(): { id: string; cls: string; level: number; cp: number }[] {
+  const now = Date.now();
+  if (ratingsCache && now - ratingsCache.at < RATINGS_MS) return ratingsCache.rows;
+  const D = loadItemData();
+  const rows = adventurersWithClass()
+    .map((id) => {
+      const a = fighterOf(id);
+      return { id, cls: a.cls!, level: a.level ?? 1, cp: combatRating(D.stats, fighterStats(D, a), a.cls) };
+    })
+    .filter((r) => r.cp > 0)
+    .sort((a, b) => b.cp - a.cp || a.id.localeCompare(b.id));
+  ratingsCache = { at: now, rows };
+  return rows;
+}
+
+/** The town's leaderboard (CONTEXT.md Leaderboard): the top 10 by total Kowens, by base combat rating, the fastest
+ *  Warrens clears and golem damage (web/records.ts), with town nicknames and titles, and the viewer's own place on each. */
 async function townLeaderboard(client: Client, userId: string): Promise<TownLeaderboardResponse> {
+  const name = (id: string) => nameOf(client, id);
+  const mine = (id: string) => (id === userId ? { me: true } : {});
+  const look = (i: number, id: string) => (i < 3 ? { outfit: lookOf(id) } : {}); // the podium shows the top 3's characters
   const rows = await Promise.all(
     topBalances(10).map(async ([id, kowens], i) => ({
       rank: i + 1,
-      name: getNickname(id) ?? (await profile(client, id)).name,
+      name: await name(id),
       title: titleOf(id),
       kowens: maySee(userId, id, 'balance') ? kowens : null, // (their rank and name stay; CONTEXT.md Who can see)
-      ...(id === userId ? { me: true } : {}),
-      ...(i < 3 ? { outfit: lookOf(id) } : {}), // the podium shows the top 3's characters
+      ...mine(id),
+      ...look(i, id),
     })),
   );
-  return { rows, me: { rank: rankOf(userId), kowens: totalKowens(userId) } };
+  const cp = ratings();
+  const cpRows = await Promise.all(cp.slice(0, 10).map(async (r, i) => ({ rank: i + 1, name: await name(r.id), title: titleOf(r.id), cls: r.cls, level: r.level, cp: r.cp, ...mine(r.id), ...look(i, r.id) })));
+  const myCp = cp.findIndex((r) => r.id === userId);
+  const clearRows = await Promise.all(topClears(10).map(async (c, i) => ({ rank: i + 1, names: await Promise.all(c.members.map(name)), ms: c.ms, at: c.at, ...(c.members.includes(userId) ? { me: true } : {}) })));
+  const myClear = clearRankOf(userId);
+  const golemRows = await Promise.all(topGolem(10).map(async (g, i) => ({ rank: i + 1, name: await name(g.userId), title: titleOf(g.userId), damage: g.damage, at: g.at, ...mine(g.userId), ...look(i, g.userId) })));
+  const myGolem = golemBestOf(userId);
+  return {
+    rows,
+    me: { rank: rankOf(userId), kowens: totalKowens(userId) },
+    cp: { rows: cpRows, me: { rank: myCp < 0 ? null : myCp + 1, cp: myCp < 0 ? null : cp[myCp].cp } },
+    warrens: { rows: clearRows, me: { rank: myClear?.rank ?? null, ms: myClear?.ms ?? null } },
+    golem: { rows: golemRows, me: { rank: myGolem?.rank ?? null, damage: myGolem?.damage ?? null } },
+  };
 }
 
 /** A member's name in the town: their nickname, else their Discord name. */
@@ -1093,6 +1130,8 @@ export function startWebServer(client: Client): void {
       // The Halloween event (events/halloween.json; its schedules kept in kv 'halloween'): rewards into the wallet, the
       // combat bag (the kits by mail when it's full) and the potion stock.
       halloween: { event: halloween, give: giveHalloween },
+      // The leaderboard's records: a real run cleared, the golem down (web/records.ts).
+      records: { clear: recordClear, golem: recordGolem },
       // Runs of the Scrap Warrens: the ticket from the combat bag (back if a run ends before a boss falls), the open runs
       // kept (refunds after a restart).
       // Aling Nena's quest: a real run needs it done; a practice run uses her Practice Warren Ticket and its last boss drops
