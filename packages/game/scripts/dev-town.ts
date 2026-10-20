@@ -15,6 +15,7 @@ import { enhanceFeedLine, forge, parseForgeAction } from '../../bot/src/web/forg
 import { settleTrade } from '../../bot/src/web/trade.ts';
 import { loadGolemArt } from '../../bot/src/web/town-golem.ts';
 import { type FieldBossDef, GreatScale, loadGreatScaleArt } from '../../bot/src/web/town-great-scale.ts';
+import { loadSilong } from '../../bot/src/web/town-silong.ts';
 import { loadWarrens } from '../../bot/src/web/town-warrens.ts';
 import { LANES, finishMs, raceScript } from '../../bot/src/games/race-script.ts';
 import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
@@ -38,6 +39,8 @@ import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
 //   GET /__golem?now=1   the Scrapheap Golem rises in the Slums now (the page's ?golem=now); ?demo=1&as=Alice: it rises if
 //       it must and plays its whole fight against the nearest player (?golemdemo=1): each attack, the Junk at a pretend
 //       half, Enrage at a pretend quarter, death (the line names Alice if nobody hit it)
+//   GET /__silong?as=Alice   an Ang Silong run for Alice, free, started at once (the page's ?silong=solo; it then goes
+//       down); &floor=b3: every mini boss above that floor down, the floors reached (?silong=b3)
 //   GET /__greatscale   the Great Scale wakes in the Lumang Palengke now (the page's ?greatscale=now); &hp=500 puts it
 //       (awake) down to 500 HP, so a hit or two fells it and its bell rings
 //   GET /__halloween?as=Alice   the Halloween event on now (the page's ?halloween=on calls it); &mikko=1 hides Mikko
@@ -430,6 +433,7 @@ export function devTown(): Plugin {
         { director: halloween.director },
       );
       const warrensLive = loadWarrens(Object.fromEntries(classes.map((c) => [c.id, c.skills.map((k) => k.level)])));
+      const silongLive = loadSilong(Object.fromEntries(classes.map((c) => [c.id, c.skills.map((k) => k.level)])));
       const town = attachTown(httpServer as Parameters<typeof attachTown>[0], {
         map: { size: json.size, spawn: json.spawn, blocked: json.blocked, avoid: Object.values((json.gates ?? {}) as Record<string, [number, number][]>).flat(), lanterns: lanternPostsOf(json) },
         rooms: {
@@ -493,6 +497,37 @@ export function devTown(): Plugin {
             refund: (name) => !!devGive(items, gearOf(name), 'warren-ticket', {}, devUid),
           },
           saved: (runs) => server.config.logger.info(`[warrens] open runs: ${runs.map((r) => `${r.id} (${r.opener}${r.cleared ? ', cleared' : r.spent ? ', ticket spent' : ''})`).join(', ') || 'none'}`, { timestamp: true }),
+        },
+        // Ang Silong as live: keys from the kept bag (?give=susi-ng-silong::3, ?give=practice-susi-ng-silong), "Ngayon Na"
+        // from the page's pretend quests (anyone may come in when the page sent none).
+        silong: {
+          ...silongLive,
+          gate: (() => {
+            const h = (palengkeJson.objects as { id?: string; col: number; row: number }[]).find((o) => o.id === 'palengke-silong-hatch');
+            return [(h?.col ?? 0) + 2, (h?.row ?? 0) + 2] as [number, number];
+          })(),
+          keys: {
+            count: (name) => gearOf(name).bag.reduce((n, i) => n + (i?.defId === 'susi-ng-silong' ? (i.count ?? 1) : 0), 0),
+            use: (name) => takeKind(gearOf(name).bag, 'susi-ng-silong', 1),
+            refund: (name) => !!devGive(items, gearOf(name), 'susi-ng-silong', {}, devUid),
+          },
+          practice: {
+            use: (name) => takeKind(gearOf(name).bag, 'practice-susi-ng-silong', 1),
+            refund: (name) => !!devGive(items, gearOf(name), 'practice-susi-ng-silong', {}, devUid),
+          },
+          access: (name) => {
+            const q = questsOf.get(name);
+            const bag = gearOf(name).bag;
+            return { done: !q || q.done.includes('palengke-15'), practiceKeys: bag.reduce((n, i) => n + (i?.defId === 'practice-susi-ng-silong' ? (i.count ?? 1) : 0), 0) };
+          },
+          buyKey: (name) => {
+            const g = gearOf(name);
+            if (g.kusing < 200_000) return 'Not enough Kusing.';
+            if (!devGive(items, g, 'susi-ng-silong', {}, devUid)) return 'Your bag is full.';
+            g.kusing -= 200_000;
+            return null;
+          },
+          saved: (runs) => server.config.logger.info(`[silong] open runs: ${runs.map((r) => `${r.id} (${r.opener}${r.spent ? ', key spent' : ''})`).join(', ') || 'none'}`, { timestamp: true }),
         },
         // Lantern Posts: the dev town's kept items (?give=return-lantern::5).
         lanterns: {
@@ -933,6 +968,11 @@ export function devTown(): Plugin {
           return void res.end(`the Great Scale down to ${hp} HP\n`);
         }
         res.end(greatScale.wakeNow(Date.now()) ? 'the Great Scale wakes\n' : 'the Great Scale is awake already\n');
+      });
+      server.middlewares.use('/__silong', (req, res) => {
+        const q = new URL(req.url ?? '/', 'http://localhost').searchParams;
+        const f = q.get('floor');
+        reply(res, town.silongDev(q.get('as') ?? '', f === 'b1' || f === 'b2' || f === 'b3' ? f : undefined));
       });
       server.middlewares.use('/__minibosses', (_req, res) => {
         res.end(`${slumsMobs.respawnMinis() + (palengkeMobs?.respawnMinis() ?? 0)} mini bosses back\n`);

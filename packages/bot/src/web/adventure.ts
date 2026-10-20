@@ -530,6 +530,47 @@ export const refundTicketFor = (userId: string): boolean => refundKindFor(userId
 /** A Practice Warren Ticket back into their bag (their practice run ended before a boss fell): false if no room. */
 export const refundPracticeTicketFor = (userId: string): boolean => refundKindFor(userId, practiceQuest()?.ticket);
 
+// ── Ang Silong's keys (classes/dungeons.json silong.key; the Practice Susi from "Ngayon Na") ──
+
+const SILONG_KEY = () => loadDungeons().silong?.key.id ?? 'susi-ng-silong';
+export const PRACTICE_SUSI = 'practice-susi-ng-silong';
+/** The quest that lets you into Ang Silong (its Practice Susi comes with it), and the finale after which Aling Conching
+ *  sells keys. */
+const SILONG_QUEST = 'palengke-15';
+const FINALE = 'palengke-14';
+
+export const silongKeysOf = (userId: string): number => kindCountOf(userId, SILONG_KEY());
+export const useSilongKeyFor = (userId: string): boolean => useKindFor(userId, SILONG_KEY());
+export const refundSilongKeyFor = (userId: string): boolean => refundKindFor(userId, SILONG_KEY());
+export const usePracticeSusiFor = (userId: string): boolean => useKindFor(userId, PRACTICE_SUSI);
+export const refundPracticeSusiFor = (userId: string): boolean => refundKindFor(userId, PRACTICE_SUSI);
+
+/** Who may come into Ang Silong: "Ngayon Na" done, and how many Practice Susi they hold. */
+export function silongAccessOf(userId: string): { done: boolean; practiceKeys: number } {
+  const s = load(userId);
+  return { done: s.quests.done.includes(SILONG_QUEST), practiceKeys: heldCount(s.bag, PRACTICE_SUSI) };
+}
+
+/** A Susi ng Silong from Aling Conching (after the Great Scale's finale): its Kusing spent, the key into the bag. Null:
+ *  bought; else why not. */
+export function buySilongKeyFor(userId: string): string | null {
+  const data = loadItemData();
+  const def = data.defs.get(SILONG_KEY());
+  const price = loadDungeons().silong?.key.sources.shop.kusing ?? 0;
+  if (!def || !price) return 'No keys for sale.';
+  return withItems(
+    userId,
+    (s): string | null => {
+      if (!s.quests.done.includes(FINALE)) return 'Aling Conching keeps the keys until the Great Scale rests.';
+      if (s.kusing < price) return 'Not enough Kusing.';
+      if (!takeLoot(data, s, { item: newItem(data.stats, def, newUid()) }, newUid)) return 'Your bag is full.';
+      s.kusing -= price;
+      return null;
+    },
+    (why) => why === null,
+  );
+}
+
 /** Buys `quantity` of a combat item at the sari-sari store (its Healing and Smithing tabs): HP/MP Potions for Kusing,
  *  whetstones and Repair Kits for Kowens (`kowens`: their wallet). */
 export const buyCombatFor = (userId: string, defId: string, quantity: number, kowens: { have: number; spend(n: number): boolean }) =>

@@ -58,7 +58,7 @@ export function areaUrl(to: Area, via?: 'lantern', post = 0): string {
 /** This tab's area, remembered across reloads (sessionStorage), so the address can stay plain /play/. */
 const AREA_KEY = 'mk_area';
 let area: Area | null = null;
-const isArea = (s: string | null): s is Area => s === 'hood' || s === 'town' || s === 'slums' || s === 'warrens' || s === 'palengke';
+const isArea = (s: string | null): s is Area => s === 'hood' || s === 'town' || s === 'slums' || s === 'warrens' || s === 'palengke' || s === 'silong-b1' || s === 'silong-b2' || s === 'silong-b3';
 let fresh = false;
 
 function remember(a: Area): void {
@@ -168,6 +168,14 @@ export function palengkeTownMap(json: TownMap): TownMap {
       ...posts.map((t) => ({ kind: 'prop' as const, id: 'lantern-post', col: t.tile[0] + 1, row: t.tile[1] + 1, footprint: [1, 1] as Vec2, animated: true })),
     ],
   };
+}
+
+/** One of Ang Silong's floors (maps/silong-b1..b3.json): a big map like the Slums', its own ground set (tiles.silong)
+ *  and walls; its elevators' cages and doors are drawn by world/silong.ts (they change), not as the map's props. */
+export function silongTownMap(json: TownMap): TownMap {
+  const drawn = /^silong-(elevator-(open|closed)|door-(closed|open))$/;
+  const own = (o: { id?: string }) => drawn.test(o.id ?? '') || o.id === 'silong-elevator-plate';
+  return { ...slumsTownMap(json), tileset: 'silong', objects: json.objects.filter((o) => !own(o)), silongDrawn: json.objects.filter(own) };
 }
 
 /** Into the Palengke (a reload starts there too). */

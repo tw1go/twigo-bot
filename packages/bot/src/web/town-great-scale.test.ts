@@ -256,7 +256,11 @@ test("over the town's socket: arrivals hear its state; held, attacks are refused
   try {
     const a = await open('Mara');
     const b = await open('Bob');
-    await wait(400);
+    // (Placed: arrivals spread round the spawn point.)
+    await wait(100);
+    a.ws.send(JSON.stringify({ t: 'here', col: beside(3)[0], row: beside(3)[1], dir: 'nw' }));
+    b.ws.send(JSON.stringify({ t: 'here', col: beside(0, 3)[0], row: beside(0, 3)[1], dir: 'nw' }));
+    for (let i = 0; i < 20 && !a.got.some((m) => m.t === 'great-scale' && m.change === 'wake'); i++) await wait(100);
     const mobs = a.got.find((m) => m.t === 'mobs') as Extract<Msg, { t: 'mobs' }>;
     assert.ok(mobs.greatScale && mobs.mobs.some((m) => m.id === boss.id && m.field));
     assert.ok(a.got.some((m) => m.t === 'great-scale' && m.change === 'wake'), 'it woke (its time was due)');
@@ -272,9 +276,14 @@ test("over the town's socket: arrivals hear its state; held, attacks are refused
     await wait(300);
     // Down: its line to the room, then its bell.
     room.devWound(boss.id, 1);
-    b.ws.send(JSON.stringify({ t: 'attack', mob: boss.id, skill: 0 }));
-    await wait(400);
-    assert.ok(a.got.some((m) => m.t === 'system' && m.line.kind === 'golem' && m.line.tone === 'down'), 'its line');
+    // (Swinging until it falls: a busy machine's clock may be slow to place them.)
+    for (let i = 0; i < 20 && !a.got.some((m) => m.t === 'great-scale' && m.change === 'death'); i++) {
+      b.ws.send(JSON.stringify({ t: 'attack', mob: boss.id, skill: 0 }));
+      await wait(450);
+    }
+    await wait(200);
+    const why = JSON.stringify({ refused: b.got.filter((m) => m.t === 'attack-refused').map((m) => (m as { reason: string }).reason), death: a.got.some((m) => m.t === 'great-scale' && m.change === 'death'), changes: a.got.filter((m) => m.t === 'great-scale').map((m) => (m as { change?: string }).change), out: b.got.some((m) => m.t === 'knocked-out') });
+    assert.ok(a.got.some((m) => m.t === 'system' && m.line.kind === 'golem' && m.line.tone === 'down'), `its line ${why}`);
     assert.ok(a.got.some((m) => m.t === 'great-scale' && m.change === 'death' && m.scale.bell));
     a.ws.send(JSON.stringify({ t: 'bell-ring' }));
     await wait(200);

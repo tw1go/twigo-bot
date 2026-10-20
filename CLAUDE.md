@@ -166,6 +166,12 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
 - The Palengke's dishes and daily orders (20 Oct 2026): `classes/palengke-leveling.json` each dish's `slot` and `stats`
   (`dishesNote`), Q1's `freeDish` (her free bowl of Lugaw), the dailies' `reset` (4 am Manila), `freeDish` and
   `dialogue` (written here).
+- Ang Silong (20 Oct 2026): `classes/dungeons.json` `silong` (the art folder's silong.json as it is), `maps/silong-b1..b3.json`
+  (built here: `scripts/build-silong.ts`), `items/items.json` `susi-ng-silong` / `practice-susi-ng-silong` / `ramon-note`,
+  the manifest's `tiles.silong` (rim and cap borrowed from the Slums': no Silong art), `silong-*` props, `fx-silong-*`
+  and the four frost mobs, `mobs/mobs.json` their entries, `maps/palengke.json` `arrive.silong`, stats.json
+  `mobBehaviour.sameAs`, `classes/palengke-leveling.json` `palengke-15` (Ngayon Na), palengke-14's `nextUnlock` 37 and
+  `dailies.unlockedBy`.
 - The Great Scale (20 Oct 2026): `mobs/mobs.json` `great-scale`; `maps/palengke.json` `boss.active` true and `boss.tile`
   [139, 109] (+ `tileNote`: was [139, 105], inside its empty frame `palengke-scale-stand`, blocked); `ui/ui-great-scale-head.png`
   (manifest `ui.greatScaleHead`: its dial cut from great-scale/stand/mob-great-scale-boss-stand-sw.png at (27,2), a stand-in
@@ -967,6 +973,37 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   into done). Dev: `?quest=palengke-done` (a daily on), `/__dish?as=&dish=` (served free), `?kusing=`. Tested in
   `web/palengke-dishes.test.ts` (with a socket test). Dev: `?quest=palengke-08` (the Tanod's chain and the ones before done),
   `?give=fresh-onion::12`. Tested in `web/palengke-quests.test.ts` (with a socket test).
+- Ang Silong (20 Oct 2026; CONTEXT.md Ang Silong, Floor, Silong Hatch, Freight elevator, Susi ng Silong; rules and numbers
+  in `classes/dungeons.json` `silong` (the art folder's silong/data/silong.json merged next to warrens), shared
+  `silong.ts`): the Palengke's dungeon, Lv 37-40, three floors as areas of their own (`silong-b1|b2|b3`: net/hood.ts
+  `silongTownMap`, BootScene) on `maps/silong-b1..b3.json` (built by `scripts/build-silong.ts` from
+  `scripts/silong/silong-floors.json`, the art folder's layout copied in: `tileset: "silong"`, walls 2 levels high
+  (`tiles.silong` cliffs `wall`, rims and caps borrowed from the Slums'), ground families, belts animated, props by
+  legend and a seeded scatter, mob zones per room (`dungeon`, packs as `groups`), the `silong` block: rooms with their
+  bosses, the arrival (E) and down (X) elevators, the B3 door, the B1 stairs (`gates.palengke`), lamps, pallets, ice,
+  belts; reachability checked as it builds). Bot `web/town-silong.ts` (pure, tested in `town-silong.test.ts`): `Silong`
+  opens runs at the Silong Hatch (the Palengke's `palengke-silong-hatch`, from 3 tiles: its panel `silong-gate`) with a
+  Susi ng Silong (`susi-ng-silong`, items.json; Aling Conching sells it after the finale: her menu's key row, the
+  `dish-buy` of its id, `buySilongKeyFor`), for one or the party (an invite for the party in the Palengke, 20 s;
+  joiners later through the hatch, no key; one run a party), once "Ngayon Na" (palengke-15) is done; no gathering: it
+  starts at once, 45 minutes. `SilongRun` has three floors, each its own room `silong:<id>:<floor>` with its own copy of
+  the map and MobRoom (rooms' numbers as `zoneStats`, the frost kinds living as their originals: stats.json
+  mobBehaviour `sameAs`, a repo addition), its mini bosses at 2.5× with two guards; mobs never respawn; HP scales with
+  those inside; a mini boss resets after 10 s with nobody alive in its room. Both of a floor's mini bosses down: its
+  elevator down opens (its X tiles unblocked on the server's map and the page's walk grid), and rides when every living
+  player on that floor stands in it, or 20 s after the first steps in (the others on that floor asked "Bumaba na
+  kayo?", `silong-ride-ask`; yes rides them along) → `silong-go` {ride: 'down'}: the cage slides up 1 s, then the next
+  floor's page. From an arrival elevator (E) the ride-up box (floors above the run has reached, `silong-up`). B3's Ice
+  Tanks door opens as Frosty Tubbs falls (frost-crack, the open door, its tiles unblocked). Death: back at the arrival
+  elevator of the deepest floor reached (town.ts `respawn` sends `silong-go`). The key's spent once a mini boss falls
+  (until then no XP or quest credit from its mobs, and a run that ends gives it back, kv 'silong-open' through
+  restarts); closes when time's up, 3 min after the last boss (PR 3), or 2 min empty (`silong-out`: back beside the
+  hatch, `arrive.silong`). A practice run (the bound Practice Susi ng Silong, given once by palengke-15's rewards):
+  solo, 60% HP and ATK. Game: `world/silong.ts` `SilongView` (the cages and door drawn by it: `silongDrawn`; lamp
+  glows), `ui/silong.ts` (the hatch's panel, the tracker with a row per floor, the ride prompts), the cold blue tint,
+  the Palengke's hatch label, click and glow after palengke-14. Its loot, Chill, ice, belts, brine, the mini bosses'
+  moves and Ang Makinang Yelo come in the next PRs (no drops yet). Dev: `?silong=solo` / `?silong=b3` (the dev
+  server's `/__silong`: a free run, every mini boss above that floor down), `?give=susi-ng-silong::2`.
 - Lantern Posts (teleporting between maps; words in CONTEXT.md: Map, Lantern Post, Return Lantern, Map menu, Teleport,
   In combat): a post (manifest props `lantern-post`, its 6-frame idle as the map object's `animated`) in the middle of
   the Town and of the Slums, each map's `lantern-post` object + `arrive.lanternPost`, and four in the Lumang Palengke (its

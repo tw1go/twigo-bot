@@ -544,5 +544,1118 @@
    "xpSolo": 13749,
    "kusingSoloExclLastBoss": 43276
   }
+ },
+ "silong": {
+  "placeholder": true,
+  "version": 1,
+  "name": "Ang Silong",
+  "maps": [
+   "maps/silong-b1.json",
+   "maps/silong-b2.json",
+   "maps/silong-b3.json"
+  ],
+  "about": "The palengke cold storage under the Market Hall: three frozen floors linked by a freight elevator. Solo or party instance, Lv 37 to 40, the end of the Mid tier.",
+  "entry": {
+   "warp": {
+    "map": "palengke",
+    "object": "palengke-silong-hatch",
+    "useRangeTiles": 3,
+    "arrive": "B1 marks.arrive"
+   },
+   "minLevel": 37,
+   "key": "susi-ng-silong",
+   "keysPerRun": 1,
+   "whoPays": "the player who opens the run, for themselves alone or for their whole party",
+   "partyInviteSeconds": 20,
+   "joinLater": "anyone in the party while the run lives can walk into the hatch to join or rejoin it, no key",
+   "onePerParty": true,
+   "partyMax": 6,
+   "unlock": "quest palengke-15 \"Ngayon Na\" (Lv 37, after the Great Scale finale): Mang Pido gives the first key, which opens the practice run"
+  },
+  "run": {
+   "timeLimitMinutes": 45,
+   "closeAfterLastBossMinutes": 3,
+   "closeWhenEmptySeconds": 120,
+   "leavePartyKickSeconds": 10,
+   "onClose": "everyone still inside goes back up to the Market Hall beside the hatch; loot left on the floor is gone",
+   "death": "no penalty; back after 3 s, full, at the arrival elevator of the deepest floor the run has reached",
+   "bossResetSeconds": 10,
+   "bossReset": "if no living player is inside a boss room for this long, it heals to full and its called mobs vanish",
+   "mobRespawn": false,
+   "mobAggro": "all aggressive, 4 tiles, packs assist, leash = their own room",
+   "exit": "B1's w tiles (stairs up) go back to the Market Hall"
+  },
+  "floorRules": {
+   "elevator": {
+    "tiles": "X",
+    "opens": "when every mini boss on that floor is dead (B3 has no elevator down)",
+    "ride": "goes down when every living player in the run stands in it, or 20 s after the first one steps in; the others get a \"Bumaba na kayo?\" prompt that teleports them in",
+    "up": "you can ride back up to any floor you have reached, any time",
+    "arrive": "E tiles of the next floor (safe)",
+    "art": "prop-silong-elevator-closed / -open / -plate"
+   },
+   "doors": {
+    "tiles": "G",
+    "rule": "B3 only: the Ice Tanks door stays shut until Frosty Tubbs dies, then opens for good this run (fx-silong-frost-crack, then prop-silong-door-open)"
+   },
+   "chill": {
+    "floors": [
+     "B2",
+     "B3"
+    ],
+    "stackEverySecondsStill": 5,
+    "perStack": {
+     "moveSpeedPct": -5,
+     "attackSpeedPct": -5
+    },
+    "maxStacks": 4,
+    "clears": [
+     "moving for 1 s",
+     "standing within 2 tiles of a work lamp (L)"
+    ],
+    "immune": "while a Sinigang or Lugaw buff is active",
+    "icon": "fx-silong-chill (frame = stacks - 1) over the head"
+   },
+   "ice": {
+    "tiles": "i",
+    "rule": "when you stop pressing a direction you keep sliding 2 tiles the way you were going (stops at walls)"
+   },
+   "belts": {
+    "tiles": {
+     ">": "east (col +1)",
+     "<": "west (col -1)"
+    },
+    "speedTilesPerSec": 2,
+    "rule": "anyone standing on a belt (players, mobs, ice blocks do not move) is carried along it"
+   },
+   "pallets": {
+    "tiles": "P",
+    "rule": "walkable, raised: dry during the Brine Flood"
+   }
+  },
+  "scaling": {
+   "about": "n = players inside the run, kept up to date like the Warrens",
+   "mobHp": "1 + 0.4 * (n - 1)",
+   "bossHp": "1 + 0.6 * (n - 1)",
+   "atk": "never scales"
+  },
+  "floors": [
+   {
+    "index": 1,
+    "id": "b1",
+    "name": "B1 Bodega (dry storage)",
+    "level": 37,
+    "rooms": [
+     {
+      "id": "pickle",
+      "name": "Pickle Room",
+      "rect": [
+       14,
+       3,
+       36,
+       17
+      ],
+      "mobs": {
+       "kind": "garapon-jars",
+       "art": "mobs/garapon-jars (palengke art)",
+       "level": 37,
+       "hp": 4558,
+       "atk": 117,
+       "def": 74,
+       "xp": 111,
+       "kusing": 1597
+      },
+      "mobCount": 6,
+      "packs": [
+       [
+        [
+         32,
+         13
+        ],
+        [
+         33,
+         14
+        ],
+        [
+         31,
+         14
+        ]
+       ],
+       [
+        [
+         34,
+         8
+        ],
+        [
+         35,
+         9
+        ],
+        [
+         33,
+         9
+        ]
+       ]
+      ],
+      "miniBoss": {
+       "id": "atsarah",
+       "name": "Atsarah",
+       "art": "mobs/garapon-jars (palengke art) at drawScale 2.5",
+       "level": 38,
+       "hp": 159996,
+       "atk": 156,
+       "def": 76,
+       "xp": 1455,
+       "kusingPile": 17250,
+       "tile": [
+        25,
+        10
+       ],
+       "guards": 2,
+       "mechanics": [
+        {
+         "id": "brineSplash",
+         "every": 8,
+         "telegraphMs": 1000,
+         "shape": "circle",
+         "radius": 2,
+         "on": "itself",
+         "atkMult": 1.5,
+         "slow": {
+          "pct": 30,
+          "ms": 2000
+         }
+        },
+        {
+         "id": "lidSpin",
+         "every": 12,
+         "telegraphMs": 800,
+         "shape": "line",
+         "width": 1,
+         "length": 7,
+         "target": "a random player",
+         "atkMult": 1.2,
+         "returns": true,
+         "about": "its lid flies out along the line and comes back like a boomerang (hits on the way out and back)"
+        },
+        {
+         "id": "jarCall",
+         "atHp": [
+          0.66,
+          0.33
+         ],
+         "calls": {
+          "kind": "garapon-jars",
+          "count": 3,
+          "where": "room edge"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "id": "bigasan",
+      "name": "Bigasan Vault",
+      "rect": [
+       26,
+       31,
+       50,
+       45
+      ],
+      "mobs": {
+       "kind": "sako-slammer",
+       "art": "mobs/sako-slammer (palengke art)",
+       "level": 37,
+       "hp": 14815,
+       "atk": 117,
+       "def": 74,
+       "xp": 361,
+       "kusing": 1597
+      },
+      "mobCount": 8,
+      "packs": [
+       [
+        [
+         45,
+         36
+        ],
+        [
+         46,
+         37
+        ]
+       ],
+       [
+        [
+         48,
+         42
+        ],
+        [
+         49,
+         43
+        ]
+       ],
+       [
+        [
+         28,
+         40
+        ],
+        [
+         29,
+         41
+        ]
+       ],
+       [
+        [
+         28,
+         33
+        ],
+        [
+         29,
+         34
+        ]
+       ]
+      ],
+      "miniBoss": {
+       "id": "sakristan",
+       "name": "Sakristan",
+       "art": "mobs/sako-slammer (palengke art) at drawScale 2.5",
+       "level": 38,
+       "hp": 207996,
+       "atk": 156,
+       "def": 76,
+       "xp": 1890,
+       "kusingPile": 17250,
+       "tile": [
+        38,
+        38
+       ],
+       "guards": 2,
+       "mechanics": [
+        {
+         "id": "riceRain",
+         "every": 10,
+         "telegraphMs": 1400,
+         "shape": "circles",
+         "count": 5,
+         "radius": 1,
+         "pick": "2 under players, the rest random room floor",
+         "atkMult": 1.2,
+         "leaves": {
+          "what": "spilled rice",
+          "ms": 4000,
+          "slowPct": 30
+         }
+        },
+        {
+         "id": "bellyFlop",
+         "every": 14,
+         "telegraphMs": 1200,
+         "shape": "circle",
+         "radius": 1.5,
+         "target": "the farthest player",
+         "atkMult": 2.0
+        },
+        {
+         "id": "sackCall",
+         "atHp": [
+          0.5
+         ],
+         "calls": {
+          "kind": "sako-slammer",
+          "count": 2,
+          "where": "room edge"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "id": "store-1",
+      "name": "Storeroom",
+      "rect": [
+       42,
+       4,
+       52,
+       14
+      ],
+      "mobs": {
+       "kind": "garapon-jars",
+       "art": "mobs/garapon-jars (palengke art)",
+       "level": 37,
+       "hp": 4558,
+       "atk": 117,
+       "def": 74,
+       "xp": 111,
+       "kusing": 1597
+      },
+      "mobCount": 0,
+      "packs": []
+     },
+     {
+      "id": "store-2",
+      "name": "Storeroom",
+      "rect": [
+       12,
+       32,
+       22,
+       42
+      ],
+      "mobs": {
+       "kind": "sako-slammer",
+       "art": "mobs/sako-slammer (palengke art)",
+       "level": 37,
+       "hp": 14815,
+       "atk": 117,
+       "def": 74,
+       "xp": 361,
+       "kusing": 1597
+      },
+      "mobCount": 4,
+      "packs": [
+       [
+        [
+         19,
+         40
+        ],
+        [
+         20,
+         41
+        ]
+       ],
+       [
+        [
+         16,
+         35
+        ],
+        [
+         17,
+         36
+        ]
+       ]
+      ]
+     }
+    ],
+    "lamps": [],
+    "pallets": [],
+    "marks": {
+     "arrive": [
+      6,
+      24
+     ],
+     "exit": [
+      4,
+      30
+     ]
+    },
+    "chill": false
+   },
+   {
+    "index": 2,
+    "id": "b2",
+    "name": "B2 Kantina at Karnehan",
+    "level": 38,
+    "rooms": [
+     {
+      "id": "canteen",
+      "name": "Old Canteen",
+      "rect": [
+       14,
+       12,
+       38,
+       36
+      ],
+      "mobs": {
+       "kind": "monobloc-stack",
+       "art": "mobs/silong/monobloc-stack-frost",
+       "level": 38,
+       "hp": 12000,
+       "atk": 120,
+       "def": 76,
+       "xp": 262,
+       "kusing": 1725
+      },
+      "mobCount": 12,
+      "packs": [
+       [
+        [
+         19,
+         34
+        ],
+        [
+         20,
+         35
+        ],
+        [
+         18,
+         35
+        ]
+       ],
+       [
+        [
+         33,
+         26
+        ],
+        [
+         34,
+         27
+        ],
+        [
+         32,
+         27
+        ]
+       ],
+       [
+        [
+         36,
+         23
+        ],
+        [
+         37,
+         24
+        ],
+        [
+         35,
+         24
+        ]
+       ],
+       [
+        [
+         34,
+         34
+        ],
+        [
+         35,
+         35
+        ],
+        [
+         33,
+         35
+        ]
+       ]
+      ],
+      "miniBoss": {
+       "id": "mono-lisa",
+       "name": "Mono Lisa",
+       "art": "mobs/silong/monobloc-stack-frost at drawScale 2.5",
+       "level": 39,
+       "hp": 187200,
+       "atk": 160,
+       "def": 78,
+       "xp": 1520,
+       "kusingPile": 18630,
+       "tile": [
+        26,
+        24
+       ],
+       "guards": 2,
+       "mechanics": [
+        {
+         "id": "chairBarrage",
+         "every": 9,
+         "projectiles": 4,
+         "targets": "up to 3 players",
+         "rangeTiles": 7,
+         "atkMult": 1.0
+        },
+        {
+         "id": "split",
+         "atHp": [
+          0.6,
+          0.3
+         ],
+         "ms": 6000,
+         "copies": 3,
+         "rule": "she becomes 3 small stacks (drawScale 1.2); only the real one (it keeps the portrait glint) takes damage; the fakes do half damage and vanish after 6 s"
+        }
+       ]
+      }
+     },
+     {
+      "id": "lockers",
+      "name": "Meat Lockers",
+      "rect": [
+       42,
+       10,
+       53,
+       38
+      ],
+      "mobs": {
+       "kind": "sangkalan-chomper",
+       "art": "mobs/silong/sangkalan-chomper-frost",
+       "level": 38,
+       "hp": 24000,
+       "atk": 120,
+       "def": 76,
+       "xp": 436,
+       "kusing": 1725
+      },
+      "mobCount": 2,
+      "packs": [
+       [
+        [
+         49,
+         19
+        ]
+       ],
+       [
+        [
+         46,
+         30
+        ]
+       ]
+      ],
+      "miniBoss": {
+       "id": "sangkalancelot",
+       "name": "Sangkalancelot",
+       "art": "mobs/silong/sangkalan-chomper-frost at drawScale 2.5",
+       "level": 39,
+       "hp": 336960,
+       "atk": 160,
+       "def": 78,
+       "xp": 2280,
+       "kusingPile": 18630,
+       "tile": [
+        47,
+        24
+       ],
+       "guards": 2,
+       "mechanics": [
+        {
+         "id": "shell",
+         "rule": "the Chomper block: 100% of hits from its front quarter are blocked, except for 1.2 s after each Cleaver Charge"
+        },
+        {
+         "id": "cleaverCharge",
+         "every": 10,
+         "telegraphMs": 1000,
+         "shape": "line",
+         "width": 1,
+         "length": 7,
+         "target": "farthest player",
+         "speedTilesPerSec": 10,
+         "atkMult": 2.0,
+         "stopsAtWalls": true
+        },
+        {
+         "id": "hookSwing",
+         "atHp": [
+          0.5
+         ],
+         "calls": {
+          "kind": "sangkalan-chomper",
+          "count": 2,
+          "where": "room edge"
+         },
+         "then": {
+          "every": 6,
+          "shadows": 3,
+          "telegraphMs": 1200,
+          "radius": 1,
+          "atkMult": 1.0,
+          "about": "meat hooks swing down from the rails: dodge the shadows"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "id": "walk-in",
+      "name": "Walk-in Freezer",
+      "rect": [
+       14,
+       44,
+       30,
+       46
+      ],
+      "mobs": {
+       "kind": "sangkalan-chomper",
+       "art": "mobs/silong/sangkalan-chomper-frost",
+       "level": 38,
+       "hp": 24000,
+       "atk": 120,
+       "def": 76,
+       "xp": 436,
+       "kusing": 1725
+      },
+      "mobCount": 0,
+      "packs": []
+     }
+    ],
+    "lamps": [
+     [
+      43,
+      11
+     ],
+     [
+      52,
+      11
+     ],
+     [
+      43,
+      37
+     ],
+     [
+      8,
+      41
+     ],
+     [
+      57,
+      41
+     ]
+    ],
+    "pallets": [],
+    "marks": {
+     "ramonBox": [
+      52,
+      37
+     ],
+     "arrive": [
+      5,
+      5
+     ]
+    },
+    "chill": true
+   },
+   {
+    "index": 3,
+    "id": "b3",
+    "name": "B3 Planta ng Yelo",
+    "level": 39,
+    "rooms": [
+     {
+      "id": "tanks",
+      "name": "Ice Tanks",
+      "rect": [
+       2,
+       23,
+       24,
+       44
+      ],
+      "mobs": {
+       "kind": "banyera-lurker",
+       "art": "mobs/silong/banyera-lurker-frost",
+       "level": 39,
+       "hp": 17160,
+       "atk": 123,
+       "def": 78,
+       "xp": 335,
+       "kusing": 1863
+      },
+      "mobCount": 8,
+      "packs": [
+       [
+        [
+         21,
+         42
+        ],
+        [
+         22,
+         43
+        ]
+       ],
+       [
+        [
+         4,
+         29
+        ],
+        [
+         5,
+         30
+        ]
+       ],
+       [
+        [
+         16,
+         38
+        ],
+        [
+         17,
+         39
+        ]
+       ],
+       [
+        [
+         7,
+         42
+        ],
+        [
+         8,
+         43
+        ]
+       ]
+      ],
+      "miniBoss": {
+       "id": "frosty-tubbs",
+       "name": "Frosty Tubbs",
+       "art": "mobs/silong/banyera-lurker-frost at drawScale 2.5",
+       "level": 40,
+       "hp": 240924,
+       "atk": 164,
+       "def": 80,
+       "xp": 1750,
+       "kusingPile": 20120,
+       "tile": [
+        13,
+        33
+       ],
+       "guards": 2,
+       "mechanics": [
+        {
+         "id": "ambush",
+         "every": 12,
+         "untargetableMs": 1500,
+         "telegraphMs": 1000,
+         "shape": "circle",
+         "radius": 1.5,
+         "target": "a random player",
+         "atkMult": 2.0,
+         "about": "sinks under the ice, then comes up under the red circle"
+        },
+        {
+         "id": "iceSlick",
+         "every": 15,
+         "telegraphMs": 1000,
+         "shape": "cone",
+         "angleDeg": 90,
+         "length": 5,
+         "ms": 5000,
+         "rule": "tiles in the cone act like ice floor (you slide 2 tiles when you stop)"
+        },
+        {
+         "id": "tubCall",
+         "atHp": [
+          0.5
+         ],
+         "calls": {
+          "kind": "banyera-lurker",
+          "count": 2,
+          "where": "out of the tanks"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "id": "salt",
+      "name": "Salt Store",
+      "rect": [
+       45,
+       6,
+       58,
+       15
+      ],
+      "mobs": {
+       "kind": "banyera-lurker",
+       "art": "mobs/silong/banyera-lurker-frost",
+       "level": 39,
+       "hp": 17160,
+       "atk": 123,
+       "def": 78,
+       "xp": 335,
+       "kusing": 1863
+      },
+      "mobCount": 4,
+      "packs": [
+       [
+        [
+         54,
+         8
+        ],
+        [
+         55,
+         9
+        ]
+       ],
+       [
+        [
+         50,
+         10
+        ],
+        [
+         51,
+         11
+        ]
+       ]
+      ]
+     },
+     {
+      "id": "plant",
+      "name": "The Ice Plant",
+      "rect": [
+       28,
+       18,
+       61,
+       45
+      ],
+      "mobs": {
+       "kind": "frost-scale",
+       "art": "mobs/silong/frost-scale (draw at 0.75)",
+       "level": 39,
+       "hp": 9360,
+       "atk": 123,
+       "def": 78,
+       "xp": 183,
+       "kusing": 1863,
+       "behaviour": "the Timbangan Sentinel behaviour (Weigh: damage grows with your HP), aggressive"
+      },
+      "mobCount": 0,
+      "packs": []
+     }
+    ],
+    "lamps": [
+     [
+      30,
+      20
+     ],
+     [
+      30,
+      43
+     ],
+     [
+      48,
+      44
+     ],
+     [
+      59,
+      36
+     ],
+     [
+      8,
+      30
+     ],
+     [
+      20,
+      28
+     ],
+     [
+      14,
+      36
+     ]
+    ],
+    "pallets": [
+     [
+      33,
+      22
+     ],
+     [
+      44,
+      21
+     ],
+     [
+      35,
+      35
+     ],
+     [
+      46,
+      35
+     ],
+     [
+      31,
+      42
+     ],
+     [
+      55,
+      42
+     ],
+     [
+      58,
+      31
+     ]
+    ],
+    "marks": {
+     "bossTile": [
+      53,
+      28
+     ],
+     "arrive": [
+      29,
+      3
+     ]
+    },
+    "chill": true
+   }
+  ],
+  "lastBoss": {
+   "id": "makinang-yelo",
+   "name": "Ang Makinang Yelo",
+   "title": "the Ice Machine",
+   "level": 40,
+   "hp": 730077,
+   "atk": 126,
+   "def": 80,
+   "xp": 3181,
+   "art": "mobs/makinang-yelo/ (Mac PixelLab view, flipped; script animations)",
+   "facing": "down-left (screen SW) only",
+   "moves": false,
+   "tile": [
+    53,
+    28
+   ],
+   "body": "the K tiles of B3",
+   "reachRadius": 4,
+   "mechanics": [
+    {
+     "id": "iceBlockDrop",
+     "every": 8,
+     "telegraphMs": 1200,
+     "count": 3,
+     "shape": "tiles",
+     "pick": "one under each of 3 players (random floor if fewer)",
+     "atkMult": 3.0,
+     "leaves": {
+      "prop": "prop-silong-ice-block",
+      "ms": 12000,
+      "blocks": true,
+      "about": "the blocks stand as walls for 12 s, then break (fx-silong-ice-block-break)"
+     }
+    },
+    {
+     "id": "freezerBreath",
+     "every": 15,
+     "telegraphMs": 2000,
+     "shape": "cone",
+     "angleDeg": 120,
+     "length": 7,
+     "facing": "down-left (its fan)",
+     "atkMult": 2.0,
+     "chillStacks": 2,
+     "cover": "a player with an ice block between them and the fan takes nothing (line of sight from the fan tile)"
+    },
+    {
+     "id": "beltRush",
+     "every": 20,
+     "ms": 4000,
+     "beltSpeedTilesPerSec": 5,
+     "telegraphMs": 1500,
+     "shape": "line",
+     "along": "one belt, picked at random",
+     "width": 1,
+     "atkMult": 2.5,
+     "about": "both belts speed up and an ice fist sweeps down one belt: get off it or ride the other"
+    },
+    {
+     "id": "brineFlood",
+     "every": 30,
+     "fromHp": 0.7,
+     "telegraphMs": 1500,
+     "ms": 6000,
+     "rule": "every floor tile of the Ice Plant except P (pallets) floods; 1 Chill stack a second while you stand in it"
+    },
+    {
+     "id": "callTheFrost",
+     "start": 2,
+     "atHp": [
+      0.75,
+      0.5,
+      0.25
+     ],
+     "calls": {
+      "kind": "frost-scale",
+      "count": 2,
+      "where": "climbing out of the ice tanks side of the hall"
+     }
+    },
+    {
+     "id": "enrage",
+     "atHp": 0.25,
+     "attackSpeed": 1.3,
+     "iceBlockDropCount": 5,
+     "look": "its eye lamps turn red (the -enraged sheets)"
+    }
+   ],
+   "death": "the fan grinds to a stop and an ice fist cracks off; then the frost across the whole cellar melts into steam (fx-silong-melt-steam over frosted tiles, then Chill turns off for the run)"
+  },
+  "miniBossLook": {
+   "drawScale": 2.5,
+   "nameColour": "#EF4444",
+   "bossBar": "the wide HP bar at the top while you are in its room"
+  },
+  "practiceRun": {
+   "from": "the free key from palengke-15",
+   "once": true,
+   "mobHpAtkPct": 60,
+   "radio": "Mang Pido talks over his radio at: the first Chill stack, the first work lamp, the B3 door, the first Freezer Breath warning (hide behind an ice block)",
+   "ramonBox": {
+    "tile": "the R mark on B2 (Meat Lockers, far corner)",
+    "click": "opens a short note: Mang Ramon hid his honest weights down here",
+    "gives": "quest item ramon-note; hand it to Kuya Jun for a short scene and a free Mid Repair Kit"
+   },
+   "loot": "XP and Kusing only (no gear, whetstones or keys)"
+  },
+  "loot": {
+   "shared": "like the Warrens: drops on the floor for the run, first come; Kusing split like other party Kusing",
+   "gearLevel": 40,
+   "gearClass": "a class picked at random from the classes of the players inside",
+   "miniBoss": {
+    "rolls": "one per player inside at the kill",
+    "kusingPile": "kusingPile, always",
+    "roll": {
+     "affix": {
+      "chance": 0.3,
+      "affix": {
+       "blue": 0.8,
+       "orange": 0.2
+      }
+     },
+     "plain": {
+      "chance": 0.45,
+      "colour": {
+       "white": 0.44,
+       "grey": 0.56
+      }
+     },
+     "unlucky": {
+      "chance": 0.25,
+      "kusingTimes": 3,
+      "polishedWhetstones": [
+       3,
+       6
+      ]
+     }
+    }
+   },
+   "lastBoss": {
+    "perPlayerInside": {
+     "affixGear": 3,
+     "affix": {
+      "blue": 0.7,
+      "orange": 0.3
+     },
+     "accessories": 2,
+     "accessoryLevel": 40,
+     "kusing": 50000,
+     "polishedWhetstones": [
+      6,
+      12
+     ],
+     "agimatChance": 0.33,
+     "agimatLevel": 40,
+     "keyChance": 0.1
+    },
+    "cosmetic": "none (Mac, 19 Oct)"
+   }
+  },
+  "key": {
+   "id": "susi-ng-silong",
+   "name": "Susi ng Silong",
+   "kind": "consumable",
+   "rarity": "white",
+   "stack": 99,
+   "tradeable": true,
+   "about": "Opens a run of Ang Silong for you, or for your whole party. Use it at the Silong Hatch in the Market Hall.",
+   "icon": "items/consumables/item-silong-key-16.png",
+   "showcase": "items/consumables/item-silong-key.png",
+   "large": "items/consumables/item-silong-key-64.png",
+   "sources": {
+    "shop": {
+     "where": "Aling Conching's shop after the finale",
+     "kusing": 200000
+    },
+    "greatScaleChance": 0.25,
+    "lastBossChance": 0.1
+   }
+  },
+  "reference": {
+   "xpSoloFullClear": 25110
+  }
  }
 }

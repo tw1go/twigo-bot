@@ -6,7 +6,7 @@ import { loadCursors } from '../ui/cursor';
 import { TitleScreen, introDue, playIntro } from '../ui/title-screen';
 import { setMuted, soundSettings, startTitleMusic, stopTitleMusic } from '../audio/sound';
 import { loadHouseArt } from '../houses/art';
-import { currentArea, freshVisit, markHood, markSlums, markTown, palengkeTownMap, slumsTownMap } from '../net/hood';
+import { currentArea, freshVisit, markHood, markPalengke, markSlums, markTown, palengkeTownMap, silongTownMap, slumsTownMap } from '../net/hood';
 import { bootHood } from './HouseScene';
 import { isDesktopApp } from '../net/platform';
 import { enteredGame } from '../net/pwa';
@@ -121,7 +121,10 @@ export class BootScene extends Phaser.Scene {
     // your Scrap Warrens run (maps/warrens.json; the server puts you in it, or sends you back to the Slums).
     const area = currentArea();
     // ?area=palengke: the Lumang Palengke (west of the Slums: a guest, or a map that won't load, lands back in town too).
-    if (area === 'slums' || area === 'warrens' || area === 'palengke') {
+    // ?area=silong-b1 (b2, b3): a floor of your Ang Silong run (the server puts you in it, or sends you back up to the
+    // Palengke).
+    const silong = area.startsWith('silong-');
+    if (area === 'slums' || area === 'warrens' || area === 'palengke' || silong) {
       if (me?.status !== 'ok') {
         markTown();
         this.scene.start('town', { manifest, town, me });
@@ -132,9 +135,10 @@ export class BootScene extends Phaser.Scene {
         const json = this.cache.json.get(area) as TownMap | undefined;
         if (!json) {
           if (area === 'warrens') markSlums();
+          else if (silong) markPalengke();
           else markTown();
         }
-        this.scene.start('town', json ? { manifest, town: area === 'palengke' ? palengkeTownMap(json) : slumsTownMap(json), me, area } : { manifest, town, me });
+        this.scene.start('town', json ? { manifest, town: area === 'palengke' ? palengkeTownMap(json) : silong ? silongTownMap(json) : slumsTownMap(json), me, area } : { manifest, town, me });
       });
       this.load.start();
       return;

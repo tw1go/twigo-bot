@@ -839,6 +839,189 @@
       "slow": {
         "baha": 0.7
       }
+    },
+    "silong": {
+      "note": "Ang Silong's floors (maps/silong-b1..b3.json, built by scripts/build-silong.ts; the art folder's silong/ (20 Oct 2026), rows in its _sheets.csv). ground: floor tiles per family, 32x16, anchor = diamond centre, the first `plainVariants` of each family `plainWeight` times as likely; walltop = the tops of the walls ('#', 2 levels up); cliffs.wall: the wall faces (32x32, anchor 16,24) stacked like the Slums' cliff faces; rim and cap borrow the Slums' (the art folder has none for the Silong); animated: the conveyor belts (4-frame strips on the shared clock); elevator-arrive / elevator-down: the elevators' floor plates (stand-ins under the PixelLab cage).",
+      "size": [
+        32,
+        16
+      ],
+      "anchor": [
+        16,
+        8
+      ],
+      "plainVariants": 6,
+      "plainWeight": 2,
+      "ground": {
+        "bodega": [
+          "tiles/silong/tile-silong-bodega-1.png",
+          "tiles/silong/tile-silong-bodega-2.png",
+          "tiles/silong/tile-silong-bodega-3.png",
+          "tiles/silong/tile-silong-bodega-4.png",
+          "tiles/silong/tile-silong-bodega-5.png",
+          "tiles/silong/tile-silong-bodega-6.png",
+          "tiles/silong/tile-silong-bodega-7.png",
+          "tiles/silong/tile-silong-bodega-8.png",
+          "tiles/silong/tile-silong-bodega-9.png",
+          "tiles/silong/tile-silong-bodega-10.png",
+          "tiles/silong/tile-silong-bodega-11.png",
+          "tiles/silong/tile-silong-bodega-12.png"
+        ],
+        "frost": [
+          "tiles/silong/tile-silong-frost-1.png",
+          "tiles/silong/tile-silong-frost-2.png",
+          "tiles/silong/tile-silong-frost-3.png",
+          "tiles/silong/tile-silong-frost-4.png",
+          "tiles/silong/tile-silong-frost-5.png",
+          "tiles/silong/tile-silong-frost-6.png",
+          "tiles/silong/tile-silong-frost-7.png",
+          "tiles/silong/tile-silong-frost-8.png",
+          "tiles/silong/tile-silong-frost-9.png",
+          "tiles/silong/tile-silong-frost-10.png",
+          "tiles/silong/tile-silong-frost-11.png",
+          "tiles/silong/tile-silong-frost-12.png",
+          "tiles/silong/tile-silong-frost-13.png",
+          "tiles/silong/tile-silong-frost-14.png",
+          "tiles/silong/tile-silong-frost-15.png",
+          "tiles/silong/tile-silong-frost-16.png",
+          "tiles/silong/tile-silong-frost-17.png",
+          "tiles/silong/tile-silong-frost-18.png",
+          "tiles/silong/tile-silong-frost-19.png",
+          "tiles/silong/tile-silong-frost-20.png"
+        ],
+        "freezer": [
+          "tiles/silong/tile-silong-freezer-1.png",
+          "tiles/silong/tile-silong-freezer-2.png",
+          "tiles/silong/tile-silong-freezer-3.png",
+          "tiles/silong/tile-silong-freezer-4.png",
+          "tiles/silong/tile-silong-freezer-5.png",
+          "tiles/silong/tile-silong-freezer-6.png",
+          "tiles/silong/tile-silong-freezer-7.png",
+          "tiles/silong/tile-silong-freezer-8.png",
+          "tiles/silong/tile-silong-freezer-9.png",
+          "tiles/silong/tile-silong-freezer-10.png",
+          "tiles/silong/tile-silong-freezer-11.png",
+          "tiles/silong/tile-silong-freezer-12.png"
+        ],
+        "ice": [
+          "tiles/silong/tile-silong-ice-1.png",
+          "tiles/silong/tile-silong-ice-2.png",
+          "tiles/silong/tile-silong-ice-3.png",
+          "tiles/silong/tile-silong-ice-4.png",
+          "tiles/silong/tile-silong-ice-5.png",
+          "tiles/silong/tile-silong-ice-6.png",
+          "tiles/silong/tile-silong-ice-7.png",
+          "tiles/silong/tile-silong-ice-8.png",
+          "tiles/silong/tile-silong-ice-9.png",
+          "tiles/silong/tile-silong-ice-10.png",
+          "tiles/silong/tile-silong-ice-11.png",
+          "tiles/silong/tile-silong-ice-12.png",
+          "tiles/silong/tile-silong-ice-13.png",
+          "tiles/silong/tile-silong-ice-14.png"
+        ],
+        "tank": [
+          "tiles/silong/tile-silong-tank-1.png",
+          "tiles/silong/tile-silong-tank-2.png",
+          "tiles/silong/tile-silong-tank-3.png",
+          "tiles/silong/tile-silong-tank-4.png",
+          "tiles/silong/tile-silong-tank-5.png",
+          "tiles/silong/tile-silong-tank-6.png"
+        ],
+        "walltop": [
+          "tiles/silong/tile-silong-walltop-1.png",
+          "tiles/silong/tile-silong-walltop-2.png",
+          "tiles/silong/tile-silong-walltop-3.png",
+          "tiles/silong/tile-silong-walltop-4.png",
+          "tiles/silong/tile-silong-walltop-5.png",
+          "tiles/silong/tile-silong-walltop-6.png"
+        ],
+        "elevator-arrive": [
+          "tiles/silong/tile-silong-elevator-1.png"
+        ],
+        "elevator-down": [
+          "tiles/silong/tile-silong-elevator-2.png"
+        ]
+      },
+      "animated": {
+        "belt-e": {
+          "files": [
+            "tiles/silong/tile-silong-belt-e.png"
+          ],
+          "frames": 4,
+          "fps": 8,
+          "size": [
+            32,
+            16
+          ],
+          "anchor": [
+            16,
+            8
+          ]
+        },
+        "belt-w": {
+          "files": [
+            "tiles/silong/tile-silong-belt-w.png"
+          ],
+          "frames": 4,
+          "fps": 8,
+          "size": [
+            32,
+            16
+          ],
+          "anchor": [
+            16,
+            8
+          ]
+        }
+      },
+      "pieceSize": [
+        32,
+        32
+      ],
+      "pieceAnchor": [
+        16,
+        24
+      ],
+      "cliffs": {
+        "wall": {
+          "l": [
+            "tiles/silong/tile-silong-wall-l-1.png",
+            "tiles/silong/tile-silong-wall-l-2.png",
+            "tiles/silong/tile-silong-wall-l-3.png",
+            "tiles/silong/tile-silong-wall-l-4.png",
+            "tiles/silong/tile-silong-wall-l-5.png",
+            "tiles/silong/tile-silong-wall-l-6.png",
+            "tiles/silong/tile-silong-wall-l-7.png",
+            "tiles/silong/tile-silong-wall-l-8.png",
+            "tiles/silong/tile-silong-wall-l-9.png",
+            "tiles/silong/tile-silong-wall-l-10.png",
+            "tiles/silong/tile-silong-wall-l-11.png",
+            "tiles/silong/tile-silong-wall-l-12.png"
+          ],
+          "r": [
+            "tiles/silong/tile-silong-wall-r-1.png",
+            "tiles/silong/tile-silong-wall-r-2.png",
+            "tiles/silong/tile-silong-wall-r-3.png",
+            "tiles/silong/tile-silong-wall-r-4.png",
+            "tiles/silong/tile-silong-wall-r-5.png",
+            "tiles/silong/tile-silong-wall-r-6.png",
+            "tiles/silong/tile-silong-wall-r-7.png",
+            "tiles/silong/tile-silong-wall-r-8.png",
+            "tiles/silong/tile-silong-wall-r-9.png",
+            "tiles/silong/tile-silong-wall-r-10.png",
+            "tiles/silong/tile-silong-wall-r-11.png",
+            "tiles/silong/tile-silong-wall-r-12.png"
+          ]
+        }
+      },
+      "rim": {
+        "nw": "tiles/slums/tile-slums-cliff-rim-nw.png",
+        "ne": "tiles/slums/tile-slums-cliff-rim-ne.png"
+      },
+      "cap": {
+        "w": "tiles/slums/tile-slums-cliff-cap-w.png",
+        "e": "tiles/slums/tile-slums-cliff-cap-e.png"
+      }
     }
   },
   "buildings": {
@@ -17821,6 +18004,601 @@
         1
       ],
       "walkable": false
+    },
+    "silong-crate-wood": {
+      "file": "props/silong/prop-silong-crate-wood.png",
+      "size": [
+        32,
+        32
+      ],
+      "anchor": [
+        16,
+        16
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "the art folder's silong/ (20 Oct 2026): 1x1; frozen wooden crate (frost pass of prop-palengke-crate-wood)"
+    },
+    "silong-crate-plastic": {
+      "file": "props/silong/prop-silong-crate-plastic.png",
+      "size": [
+        32,
+        32
+      ],
+      "anchor": [
+        16,
+        16
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "the art folder's silong/ (20 Oct 2026): 1x1; frozen blue crate (frost pass of prop-palengke-crate-plastic)"
+    },
+    "silong-crate-stack": {
+      "file": "props/silong/prop-silong-crate-stack.png",
+      "size": [
+        32,
+        48
+      ],
+      "anchor": [
+        16,
+        32
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "the art folder's silong/ (20 Oct 2026): 1x1; frozen crate stack (frost pass of prop-palengke-crate-plastic-stack)"
+    },
+    "silong-boxes": {
+      "file": "props/silong/prop-silong-boxes.png",
+      "size": [
+        32,
+        40
+      ],
+      "anchor": [
+        16,
+        24
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "the art folder's silong/ (20 Oct 2026): 1x1; frozen cardboard boxes (frost pass of prop-palengke-boxes)"
+    },
+    "silong-sack": {
+      "file": "props/silong/prop-silong-sack.png",
+      "size": [
+        32,
+        32
+      ],
+      "anchor": [
+        16,
+        16
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "the art folder's silong/ (20 Oct 2026): 1x1; rice sack under rime (B1) (frost pass of prop-palengke-sack)"
+    },
+    "silong-sacks-pile": {
+      "file": "props/silong/prop-silong-sacks-pile.png",
+      "size": [
+        48,
+        40
+      ],
+      "anchor": [
+        24,
+        24
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "the art folder's silong/ (20 Oct 2026): 1x1; sack stack under rime (B1 \"=\") (frost pass of prop-palengke-sacks-pile)"
+    },
+    "silong-jar-shelf": {
+      "file": "props/silong/prop-silong-jar-shelf.png",
+      "size": [
+        32,
+        48
+      ],
+      "anchor": [
+        16,
+        32
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "the art folder's silong/ (20 Oct 2026): 1x1; jar shelf under rime (B1 \"=\") (frost pass of prop-palengke-jar-shelf)"
+    },
+    "silong-hook-rail": {
+      "file": "props/silong/prop-silong-hook-rail.png",
+      "size": [
+        48,
+        48
+      ],
+      "anchor": [
+        24,
+        32
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "the art folder's silong/ (20 Oct 2026): 1x1; frozen hook rail (B2 \"h\") (frost pass of prop-palengke-hook-rail)"
+    },
+    "silong-table": {
+      "file": "props/silong/prop-silong-table.png",
+      "size": [
+        40,
+        40
+      ],
+      "anchor": [
+        20,
+        24
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "the art folder's silong/ (20 Oct 2026): 1x1; frozen canteen table (B2 \"T\") (frost pass of prop-palengke-table)"
+    },
+    "silong-chair": {
+      "file": "props/silong/prop-silong-chair.png",
+      "size": [
+        32,
+        40
+      ],
+      "anchor": [
+        16,
+        24
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "the art folder's silong/ (20 Oct 2026): 1x1; frozen monobloc chair (frost pass of prop-palengke-chair)"
+    },
+    "silong-chair-tipped": {
+      "file": "props/silong/prop-silong-chair-tipped.png",
+      "size": [
+        32,
+        32
+      ],
+      "anchor": [
+        16,
+        16
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "the art folder's silong/ (20 Oct 2026): 1x1; frozen tipped chair (frost pass of prop-palengke-chair-tipped)"
+    },
+    "silong-chairs-stack": {
+      "file": "props/silong/prop-silong-chairs-stack.png",
+      "size": [
+        32,
+        48
+      ],
+      "anchor": [
+        16,
+        32
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "the art folder's silong/ (20 Oct 2026): 1x1; frozen chair stack (frost pass of prop-palengke-chairs-stack)"
+    },
+    "silong-pallet": {
+      "file": "props/silong/prop-silong-pallet.png",
+      "size": [
+        32,
+        24
+      ],
+      "anchor": [
+        16,
+        8
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": true,
+      "note": "the art folder's silong/ (20 Oct 2026): 1x1; frosted pallet (B3 \"P\": raised, dry in the Brine Flood) (frost pass of prop-palengke-pallet)"
+    },
+    "silong-ice-chest": {
+      "file": "props/silong/prop-silong-ice-chest.png",
+      "size": [
+        32,
+        32
+      ],
+      "anchor": [
+        16,
+        16
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "the art folder's silong/ (20 Oct 2026): 1x1; ice chest (frost pass of prop-palengke-ice-chest)"
+    },
+    "silong-tub": {
+      "file": "props/silong/prop-silong-tub.png",
+      "size": [
+        32,
+        32
+      ],
+      "anchor": [
+        16,
+        16
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "the art folder's silong/ (20 Oct 2026): 1x1; frozen fish tub (frost pass of prop-palengke-tub)"
+    },
+    "silong-tub-frozen": {
+      "file": "props/silong/prop-silong-tub-frozen.png",
+      "size": [
+        32,
+        32
+      ],
+      "anchor": [
+        16,
+        16
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "the art folder's silong/ (20 Oct 2026): 1x1; fish tub frozen solid (frost pass of prop-palengke-tub-water)"
+    },
+    "silong-gas-tank": {
+      "file": "props/silong/prop-silong-gas-tank.png",
+      "size": [
+        24,
+        36
+      ],
+      "anchor": [
+        12,
+        20
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "the art folder's silong/ (20 Oct 2026): 1x1; frosted gas tank (frost pass of prop-palengke-gas-tank)"
+    },
+    "silong-bucket": {
+      "file": "props/silong/prop-silong-bucket.png",
+      "size": [
+        24,
+        32
+      ],
+      "anchor": [
+        12,
+        16
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "the art folder's silong/ (20 Oct 2026): 1x1; frozen bucket (frost pass of prop-palengke-bucket)"
+    },
+    "silong-chopping-block": {
+      "file": "props/silong/prop-silong-chopping-block.png",
+      "size": [
+        32,
+        32
+      ],
+      "anchor": [
+        16,
+        16
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "the art folder's silong/ (20 Oct 2026): 1x1; frozen chopping block (frost pass of prop-palengke-chopping-block)"
+    },
+    "silong-dial-scale": {
+      "file": "props/silong/prop-silong-dial-scale.png",
+      "size": [
+        24,
+        32
+      ],
+      "anchor": [
+        12,
+        16
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "the art folder's silong/ (20 Oct 2026): 1x1; frozen dial scale (frost pass of prop-palengke-dial-scale)"
+    },
+    "silong-pot-stand": {
+      "file": "props/silong/prop-silong-pot-stand.png",
+      "size": [
+        32,
+        40
+      ],
+      "anchor": [
+        16,
+        24
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "the art folder's silong/ (20 Oct 2026): 1x1; frozen canteen pot stand (frost pass of prop-palengke-pot-stand)"
+    },
+    "silong-cans": {
+      "file": "props/silong/prop-silong-cans.png",
+      "size": [
+        32,
+        24
+      ],
+      "anchor": [
+        16,
+        8
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "the art folder's silong/ (20 Oct 2026): 1x1; frozen cans (frost pass of prop-palengke-cans)"
+    },
+    "silong-work-lamp": {
+      "file": "props/silong/prop-silong-work-lamp.png",
+      "size": [
+        32,
+        48
+      ],
+      "anchor": [
+        16,
+        32
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "the art folder's silong/ (20 Oct 2026): 1x1; work lamp, warm bulb kept (B2-B3 \"L\": clears Chill within 2 tiles) (frost pass of prop-palengke-work-lamp)"
+    },
+    "silong-ice-block-small": {
+      "file": "props/silong/prop-silong-ice-block-small.png",
+      "size": [
+        32,
+        40
+      ],
+      "anchor": [
+        16,
+        24
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "the art folder's silong/ (20 Oct 2026): 1x1 small ice block (scenery; the Ice Block Drop uses Mac's prop-silong-ice-block) (script-built)"
+    },
+    "silong-ice-block-fish": {
+      "file": "props/silong/prop-silong-ice-block-fish.png",
+      "size": [
+        32,
+        40
+      ],
+      "anchor": [
+        16,
+        24
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "the art folder's silong/ (20 Oct 2026): 1x1 ice block with a frozen fish inside (from the boss fists) (script-built)"
+    },
+    "silong-ice-block-jar": {
+      "file": "props/silong/prop-silong-ice-block-jar.png",
+      "size": [
+        32,
+        40
+      ],
+      "anchor": [
+        16,
+        24
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "the art folder's silong/ (20 Oct 2026): 1x1 ice block with a pickle jar frozen inside (script-built)"
+    },
+    "silong-frost-drift": {
+      "file": "props/silong/prop-silong-frost-drift.png",
+      "size": [
+        32,
+        28
+      ],
+      "anchor": [
+        16,
+        12
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": true,
+      "note": "the art folder's silong/ (20 Oct 2026): 1x1 frost drift piled against a wall (walkable scenery) (script-built)"
+    },
+    "silong-ice-stalagmite": {
+      "file": "props/silong/prop-silong-ice-stalagmite.png",
+      "size": [
+        32,
+        40
+      ],
+      "anchor": [
+        16,
+        24
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "the art folder's silong/ (20 Oct 2026): 1x1 ice spikes grown from a ceiling drip (blocked) (script-built)"
+    },
+    "silong-pipe-valve": {
+      "file": "props/silong/prop-silong-pipe-valve.png",
+      "size": [
+        32,
+        48
+      ],
+      "anchor": [
+        16,
+        32
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "the art folder's silong/ (20 Oct 2026): 1x1 frozen pipe riser with a red valve wheel (script-built)"
+    },
+    "silong-door-closed": {
+      "file": "props/silong/prop-silong-door-closed.png",
+      "size": [
+        128,
+        192
+      ],
+      "anchor": [
+        86,
+        89
+      ],
+      "footprint": [
+        1,
+        3
+      ],
+      "walkable": false,
+      "note": "the art folder's silong/ (20 Oct 2026): cold-room door (G), 2 tiles wide, face runs top right to bottom left; flip for the other wall direction; anchor = middle of the closed door bottom edge (Mac PixelLab)"
+    },
+    "silong-door-open": {
+      "file": "props/silong/prop-silong-door-open.png",
+      "size": [
+        128,
+        192
+      ],
+      "anchor": [
+        86,
+        89
+      ],
+      "footprint": [
+        1,
+        3
+      ],
+      "walkable": false,
+      "note": "the art folder's silong/ (20 Oct 2026): same door swung open toward the viewer on its hinges; same anchor (script from the closed door)"
+    },
+    "silong-elevator-open": {
+      "file": "props/silong/prop-silong-elevator-open.png",
+      "size": [
+        128,
+        128
+      ],
+      "anchor": [
+        66,
+        71
+      ],
+      "footprint": [
+        3,
+        3
+      ],
+      "walkable": false,
+      "note": "the art folder's silong/ (20 Oct 2026): freight elevator cage (E arrival / X down), about 3x3 tiles; anchor = centre of its floor; gate open (Mac PixelLab)"
+    },
+    "silong-elevator-closed": {
+      "file": "props/silong/prop-silong-elevator-closed.png",
+      "size": [
+        128,
+        128
+      ],
+      "anchor": [
+        66,
+        71
+      ],
+      "footprint": [
+        3,
+        3
+      ],
+      "walkable": false,
+      "note": "the art folder's silong/ (20 Oct 2026): freight elevator cage (E arrival / X down), about 3x3 tiles; anchor = centre of its floor; scissor gate shut (script on Mac's cage)"
+    },
+    "silong-elevator-plate": {
+      "file": "props/silong/prop-silong-elevator-plate.png",
+      "size": [
+        128,
+        128
+      ],
+      "anchor": [
+        66,
+        71
+      ],
+      "footprint": [
+        3,
+        3
+      ],
+      "walkable": true,
+      "note": "the art folder's silong/ (20 Oct 2026): floor plate left behind when the cage rides down (script)"
+    },
+    "silong-ice-block": {
+      "file": "props/silong/prop-silong-ice-block.png",
+      "size": [
+        64,
+        64
+      ],
+      "anchor": [
+        32,
+        39
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false,
+      "note": "the art folder's silong/ (20 Oct 2026): 1x1 ice block (Ice Block Drop: stays 12 s as a wall) (Mac PixelLab)"
     }
   },
   "fx": {
@@ -19828,6 +20606,214 @@
       ],
       "layer": "front",
       "note": "Halloween: the Manananggal reunited, once at the legs"
+    },
+    "fx-silong-ice-block-warn": {
+      "file": "fx/silong/fx-silong-ice-block-warn.png",
+      "frame": [
+        32,
+        16
+      ],
+      "frames": 4,
+      "fps": 6,
+      "loop": true,
+      "anchor": [
+        16,
+        8
+      ],
+      "layer": "ground",
+      "note": "the art folder's silong/ (20 Oct 2026): red square under a player before an ice block lands (1 x 1 tile)"
+    },
+    "fx-silong-ice-block-shadow": {
+      "file": "fx/silong/fx-silong-ice-block-shadow.png",
+      "frame": [
+        32,
+        16
+      ],
+      "frames": 6,
+      "fps": 12,
+      "loop": false,
+      "anchor": [
+        16,
+        8
+      ],
+      "layer": "ground",
+      "note": "the art folder's silong/ (20 Oct 2026): its shadow growing as it falls; plays with the drop"
+    },
+    "fx-silong-ice-block-drop": {
+      "file": "fx/silong/fx-silong-ice-block-drop.png",
+      "frame": [
+        80,
+        156
+      ],
+      "frames": 7,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        40,
+        135
+      ],
+      "layer": "front",
+      "note": "the art folder's silong/ (20 Oct 2026): the ice block falls and lands; then show prop-silong-ice-block in its place for 12 s"
+    },
+    "fx-silong-ice-block-break": {
+      "file": "fx/silong/fx-silong-ice-block-break.png",
+      "frame": [
+        80,
+        80
+      ],
+      "frames": 7,
+      "fps": 12,
+      "loop": false,
+      "anchor": [
+        40,
+        55
+      ],
+      "layer": "front",
+      "note": "the art folder's silong/ (20 Oct 2026): the block cracks and shatters after its 12 s"
+    },
+    "fx-silong-breath-warn-sw": {
+      "file": "fx/silong/fx-silong-breath-warn-sw.png",
+      "frame": [
+        203,
+        94
+      ],
+      "frames": 4,
+      "fps": 4,
+      "loop": true,
+      "anchor": [
+        160,
+        12
+      ],
+      "layer": "ground",
+      "note": "the art folder's silong/ (20 Oct 2026): Freezer Breath warning (2 s): red cone outline, 120 degrees, 7 tiles, facing SW; anchor = the fan mouth on the ground"
+    },
+    "fx-silong-breath-sw": {
+      "file": "fx/silong/fx-silong-breath-sw.png",
+      "frame": [
+        203,
+        94
+      ],
+      "frames": 8,
+      "fps": 12,
+      "loop": false,
+      "anchor": [
+        160,
+        12
+      ],
+      "layer": "ground",
+      "note": "the art folder's silong/ (20 Oct 2026): Freezer Breath blast: frost rolls out to 7 tiles; hide behind an ice block"
+    },
+    "fx-silong-brine": {
+      "file": "fx/silong/fx-silong-brine.png",
+      "frame": [
+        32,
+        16
+      ],
+      "frames": 4,
+      "fps": 3,
+      "loop": true,
+      "anchor": [
+        16,
+        8
+      ],
+      "layer": "ground",
+      "note": "the art folder's silong/ (20 Oct 2026): Brine Flood: cold brine over each floor tile for 6 s (not on pallets)"
+    },
+    "fx-silong-chill": {
+      "file": "fx/silong/fx-silong-chill.png",
+      "frame": [
+        16,
+        16
+      ],
+      "frames": 4,
+      "fps": 0,
+      "loop": false,
+      "anchor": [
+        8,
+        15
+      ],
+      "layer": "front",
+      "note": "the art folder's silong/ (20 Oct 2026): Chill stacks 1-4 over the head: frame = stacks - 1 (not an animation)"
+    },
+    "fx-silong-chill-puff": {
+      "file": "fx/silong/fx-silong-chill-puff.png",
+      "frame": [
+        24,
+        24
+      ],
+      "frames": 6,
+      "fps": 12,
+      "loop": false,
+      "anchor": [
+        12,
+        20
+      ],
+      "layer": "front",
+      "note": "the art folder's silong/ (20 Oct 2026): small frost puff on the player when a Chill stack lands"
+    },
+    "fx-silong-frost-crack": {
+      "file": "fx/silong/fx-silong-frost-crack.png",
+      "frame": [
+        64,
+        96
+      ],
+      "frames": 7,
+      "fps": 10,
+      "loop": false,
+      "anchor": [
+        32,
+        95
+      ],
+      "layer": "front",
+      "note": "the art folder's silong/ (20 Oct 2026): over a cold-room door: frost cracks and falls off when that room's boss dies (then show the open door)"
+    },
+    "fx-silong-hatch-glow": {
+      "file": "fx/silong/fx-silong-hatch-glow.png",
+      "frame": [
+        140,
+        72
+      ],
+      "frames": 4,
+      "fps": 4,
+      "loop": true,
+      "anchor": [
+        70,
+        36
+      ],
+      "layer": "ground",
+      "note": "the art folder's silong/ (20 Oct 2026): cold blue glow round the Silong Hatch in the market (centre it on the hatch anchor)"
+    },
+    "fx-silong-lamp-glow": {
+      "file": "fx/silong/fx-silong-lamp-glow.png",
+      "frame": [
+        100,
+        52
+      ],
+      "frames": 2,
+      "fps": 3,
+      "loop": true,
+      "anchor": [
+        50,
+        26
+      ],
+      "layer": "ground",
+      "note": "the art folder's silong/ (20 Oct 2026): warm ring under each work lamp: the 2-tile area that clears Chill"
+    },
+    "fx-silong-melt-steam": {
+      "file": "fx/silong/fx-silong-melt-steam.png",
+      "frame": [
+        32,
+        48
+      ],
+      "frames": 8,
+      "fps": 10,
+      "loop": false,
+      "anchor": [
+        16,
+        46
+      ],
+      "layer": "front",
+      "note": "the art folder's silong/ (20 Oct 2026): steam puff; scatter them over frosted tiles when Ang Makinang Yelo dies"
     }
   },
   "ui": {
@@ -22076,6 +23062,222 @@
         }
       },
       "note": "The Great Scale, the Palengke field boss (the art folder's monsters/palengke/pixellab-v1/great-scale/anim, 20 Oct 2026): one look, eight directions; no enraged sheets yet (its enrage tints it red)."
+    },
+    "monobloc-stack-frost": {
+      "name": "Frozen Monobloc Stack",
+      "file": "mobs/silong/monobloc-stack-frost/mob-monobloc-stack-frost-{variant}-{anim}-{dir}.png",
+      "size": [
+        86,
+        82
+      ],
+      "anchor": [
+        43,
+        75
+      ],
+      "variants": {
+        "green": {},
+        "white": {}
+      },
+      "directions": [
+        "s",
+        "se",
+        "e",
+        "ne",
+        "n",
+        "nw",
+        "w",
+        "sw"
+      ],
+      "animations": {
+        "idle": {
+          "frames": 4,
+          "fps": 6,
+          "loop": true
+        },
+        "move": {
+          "frames": 6,
+          "fps": 12,
+          "loop": true
+        },
+        "attack": {
+          "frames": 6,
+          "fps": 12,
+          "loop": false
+        },
+        "hit": {
+          "frames": 2,
+          "fps": 12,
+          "loop": false
+        },
+        "death": {
+          "frames": 6,
+          "fps": 10,
+          "loop": false
+        }
+      },
+      "note": "the art folder's silong/ (20 Oct 2026): the monobloc-stack frost recolour (the same cells, anchors, looks and directions)"
+    },
+    "sangkalan-chomper-frost": {
+      "name": "Frozen Sangkalan Chomper",
+      "file": "mobs/silong/sangkalan-chomper-frost/mob-sangkalan-chomper-frost-{variant}-{anim}-{dir}.png",
+      "size": [
+        88,
+        81
+      ],
+      "anchor": [
+        44,
+        74
+      ],
+      "variants": {
+        "mossy": {},
+        "teeth": {}
+      },
+      "directions": [
+        "s",
+        "se",
+        "e",
+        "ne",
+        "n",
+        "nw",
+        "w",
+        "sw"
+      ],
+      "animations": {
+        "idle": {
+          "frames": 4,
+          "fps": 6,
+          "loop": true
+        },
+        "move": {
+          "frames": 6,
+          "fps": 8,
+          "loop": true
+        },
+        "attack": {
+          "frames": 6,
+          "fps": 12,
+          "loop": false
+        },
+        "hit": {
+          "frames": 2,
+          "fps": 12,
+          "loop": false
+        },
+        "death": {
+          "frames": 6,
+          "fps": 10,
+          "loop": false
+        }
+      },
+      "note": "the art folder's silong/ (20 Oct 2026): the sangkalan-chomper frost recolour (the same cells, anchors, looks and directions)"
+    },
+    "banyera-lurker-frost": {
+      "name": "Frozen Banyera Lurker",
+      "file": "mobs/silong/banyera-lurker-frost/mob-banyera-lurker-frost-{variant}-{anim}-{dir}.png",
+      "size": [
+        106,
+        86
+      ],
+      "anchor": [
+        53,
+        79
+      ],
+      "variants": {
+        "armour": {},
+        "tub": {}
+      },
+      "directions": [
+        "s",
+        "se",
+        "e",
+        "ne",
+        "n",
+        "nw",
+        "w",
+        "sw"
+      ],
+      "animations": {
+        "idle": {
+          "frames": 4,
+          "fps": 6,
+          "loop": true
+        },
+        "move": {
+          "frames": 6,
+          "fps": 10,
+          "loop": true
+        },
+        "attack": {
+          "frames": 6,
+          "fps": 12,
+          "loop": false
+        },
+        "hit": {
+          "frames": 2,
+          "fps": 12,
+          "loop": false
+        },
+        "death": {
+          "frames": 6,
+          "fps": 10,
+          "loop": false
+        }
+      },
+      "note": "the art folder's silong/ (20 Oct 2026): the banyera-lurker frost recolour (the same cells, anchors, looks and directions)"
+    },
+    "frost-scale": {
+      "name": "Frost Scale",
+      "file": "mobs/silong/frost-scale/mob-frost-scale-{variant}-{anim}-{dir}.png",
+      "size": [
+        78,
+        83
+      ],
+      "anchor": [
+        39,
+        76
+      ],
+      "variants": {
+        "rust": {},
+        "brown": {}
+      },
+      "directions": [
+        "s",
+        "se",
+        "e",
+        "ne",
+        "n",
+        "nw",
+        "w",
+        "sw"
+      ],
+      "animations": {
+        "idle": {
+          "frames": 4,
+          "fps": 6,
+          "loop": true
+        },
+        "move": {
+          "frames": 6,
+          "fps": 8,
+          "loop": true
+        },
+        "attack": {
+          "frames": 6,
+          "fps": 12,
+          "loop": false
+        },
+        "hit": {
+          "frames": 2,
+          "fps": 12,
+          "loop": false
+        },
+        "death": {
+          "frames": 6,
+          "fps": 10,
+          "loop": false
+        }
+      },
+      "note": "the art folder's silong/ (20 Oct 2026): the timbangan-sentinel frost recolour (the same cells, anchors, looks and directions)"
     }
   },
   "guide": {

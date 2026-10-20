@@ -18,8 +18,9 @@ import { type Loot, LootRoom, gotOf, splitKusing } from './town-loot.js';
 import { type LootRoll, LootRolls } from './town-roll.js';
 import { type HeldOffer, type Trade, Trades, checkOffer } from './trade.js';
 import { type Inside, type Run, type RunDeps, type RunNews, Warrens, type WarrensAccess, type WarrensMap } from './town-warrens.js';
-import type { FriendAsk, FriendView, FriendsState, HalloweenReward, LootGot, PrivacySettings, WarrensData, ChatItemLink, CharacterProgress, QuestProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item, TradeEnd, TradeView } from '@mikazuki/shared';
-import { type LanternPost, type PalengkeData, type Visibility, PALENGKE, VISIBILITIES, dishMs, dishOf, moveSpeedOf, PetXpClock, moveDodgeMs, petRules, petXpForHit, isLanternMap, itemName, itemStats, blockedWithPosts, lanternPostsOf, lanternRefusal, lootRollRules, rollWorthy, partyXpMult, partyXpRange, potionCooldownGroup, skillMpCost, targetPriority, tradeRules } from '@mikazuki/shared';
+import { Silong, type SilongAccess, type SilongInside, type SilongMap, type SilongNews, type SilongRun } from './town-silong.js';
+import type { SilongData, SilongFloor, FriendAsk, FriendView, FriendsState, HalloweenReward, LootGot, PrivacySettings, WarrensData, ChatItemLink, CharacterProgress, QuestProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item, TradeEnd, TradeView } from '@mikazuki/shared';
+import { SILONG_FLOORS, floorOfArea, type LanternPost, type PalengkeData, type Visibility, PALENGKE, VISIBILITIES, dishMs, dishOf, moveSpeedOf, PetXpClock, moveDodgeMs, petRules, petXpForHit, isLanternMap, itemName, itemStats, blockedWithPosts, lanternPostsOf, lanternRefusal, lootRollRules, rollWorthy, partyXpMult, partyXpRange, potionCooldownGroup, skillMpCost, targetPriority, tradeRules } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
 // messages). The server keeps everyone's tile and checks each step — on the map, not blocked, next to the last
@@ -248,6 +249,24 @@ export interface TownOptions {
     saved?(runs: { id: string; opener: string; cleared: boolean; spent: boolean; practice?: boolean }[]): void;
     dev?: boolean;
   };
+  /** Ang Silong (web/town-silong.ts): its data and floors' maps, what a run's mob rooms need, the Silong Hatch's tile in
+   *  the Palengke, the Susi ng Silong (count, use, give back to the opener of a run that ended before a mini boss fell)
+   *  and the Practice Susi (the same), who may come in (`access`: "Ngayon Na" done, Practice Susi held), and `saved`: the
+   *  open runs whenever they change (a restart gives the keys of runs not yet spent back). `dev`: open from anywhere.
+   *  Without it, no Silong. */
+  silong?: {
+    data: SilongData;
+    maps: Record<SilongFloor, SilongMap>;
+    deps: RunDeps;
+    gate: [number, number];
+    keys: { count(userId: string): number; use(userId: string): boolean; refund?(userId: string): boolean };
+    practice?: { use(userId: string): boolean; refund?(userId: string): boolean };
+    access?(userId: string): SilongAccess;
+    /** A Susi ng Silong from Aling Conching's menu (after the finale): null, bought; else why not. */
+    buyKey?(userId: string): string | null;
+    saved?(runs: { id: string; opener: string; spent: boolean; practice?: boolean }[]): void;
+    dev?: boolean;
+  };
   /** Return Lanterns (a teleport between Lantern Posts uses one): how many a member holds, and using one (false: none).
    *  Without it, no teleports. */
   lanterns?: { count(userId: string): number; use(userId: string): boolean };
@@ -352,6 +371,9 @@ export interface Town {
   /** Dev (?warrens=solo, ?warrensboss=<id>): a run for a member in town, free, at once; with `boss`, every area before
    *  that boss's cleared and them arriving at its arena. The run's id, or why not. */
   warrensDev(userId: string, boss?: string, hp?: number): { ok: true; run: string } | { ok: false; message: string };
+  /** Dev (?silong=solo, ?silong=b3): an Ang Silong run for a member, free, at once; with `floor`, every mini boss above
+   *  it down and the floors reached. The run's id and the floor to go to, or why not. */
+  silongDev(userId: string, floor?: SilongFloor): { ok: true; run: string; floor: SilongFloor } | { ok: false; message: string };
   /** Dev (?halloween=on): the Halloween event on now; `mikko`: Mikko hidden two tiles from the member; `biikko` / `round`:
    *  Biikko out and a Manananggal round started now; `wound`: Biikko down to that HP; `carry`: the dazed upper half theirs
    *  (a round started for it). What was done. */
@@ -417,6 +439,8 @@ interface Conn {
   buffsOfAt?: number;
   /** When they last opened a Warrens run (one a second). */
   warrensAt?: number;
+  /** When they last opened a Silong run (one a second). */
+  silongAt?: number;
   /** When they last asked to teleport (ms). */
   lanternAt?: number;
   /** Stunned until (ms): no steps (Wire Wolf's Live Floor). */
@@ -598,11 +622,19 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   // The Scrap Warrens: runs as rooms of their own (a run's party is the Parties' own object for it).
   const W = opts.warrens ? new Warrens(opts.warrens.data, opts.warrens.map, opts.warrens.deps, (u) => parties.of(u)) : null;
   const runOf = (room: string): Run | undefined => (W && room.startsWith('warrens:') ? W.get(room) : undefined);
+  const SL = opts.silong ? new Silong(opts.silong.data, opts.silong.maps, opts.silong.deps, (u) => parties.of(u)) : null;
+  /** The Silong run a floor's room (`silong:<id>:<floor>`) belongs to, and that floor. */
+  const silongOf = (room: string): SilongRun | undefined => (SL && room.startsWith('silong:') ? SL.get(room) : undefined);
+  const silongFloor = (room: string) => silongOf(room)?.floorOf(room) ?? null;
   /** A room's mobs: the Slums', or a run's. */
-  const mobsOf = (room: string): MobRoom | undefined => opts.mobs?.[room] ?? runOf(room)?.mobs;
+  const mobsOf = (room: string): MobRoom | undefined => opts.mobs?.[room] ?? runOf(room)?.mobs ?? silongFloor(room)?.mobs;
   /** Every room with mobs now. */
-  const battleRooms = (): [string, MobRoom][] => [...Object.entries(opts.mobs ?? {}), ...(W?.all().map((r): [string, MobRoom] => [r.room, r.mobs]) ?? [])];
-  const mapOf = (room: string): TownMap => (room === 'town' ? map : (runOf(room)?.map ?? opts.rooms?.[room]?.() ?? map));
+  const battleRooms = (): [string, MobRoom][] => [
+    ...Object.entries(opts.mobs ?? {}),
+    ...(W?.all().map((r): [string, MobRoom] => [r.room, r.mobs]) ?? []),
+    ...(SL?.all().flatMap((r) => SILONG_FLOORS.map((f): [string, MobRoom] => [r.floors[f].room, r.floors[f].mobs])) ?? []),
+  ];
+  const mapOf = (room: string): TownMap => (room === 'town' ? map : (runOf(room)?.map ?? silongFloor(room)?.map ?? opts.rooms?.[room]?.() ?? map));
 
   // HP and MP: only where there are mobs (their rules come from a mob room: class, level, points, worn gear).
   const rules = Object.values(opts.mobs ?? {})[0];
@@ -694,6 +726,9 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   };
   /** Back after being knocked out: at the room's way in (where arrivals land), full, seen by everyone there. */
   const respawn = (c: Conn) => {
+    // (Ang Silong: back at the arrival elevator of the deepest floor the run has reached.)
+    const srun = silongOf(c.room);
+    if (srun && srun.floorOf(c.room)?.floor !== srun.deepest()) send(c, { t: 'silong-go', run: srun.id, floor: srun.deepest() });
     const [col, row] = arrival(c.room, c.userId);
     Object.assign(c.player, { col, row, sit: false, out: undefined });
     const m: TownServerMessage = { t: 'respawn', id: c.player.id, col, row };
@@ -845,8 +880,10 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       }
       // (The Great Scale's pan: nothing; its director lets the held player go.)
       if (k.kind === PAN_KIND) continue;
-      // (A run's mobs give nothing until a boss has fallen there: its ticket comes back until then.)
+      // (A run's mobs give nothing until a boss has fallen there: its ticket comes back until then. Ang Silong's: its key.)
       if (run && !k.warrens && !run.ticketSpent) continue;
+      const srun = silongOf(room);
+      if (srun && !k.warrens && !srun.keySpent) continue;
       const credited = k.mini || k.warrens ? withParty(k.to, room) : k.to;
       // The Great Scale down: its line naming everyone who hit it, to its room only.
       const scale = k.boss && opts.greatScale?.boss.id === k.kind;
@@ -863,13 +900,14 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       // The golem down: each member's damage this fight, for the leaderboard (its Golem board: the golem only).
       if (k.boss && k.dealt && !scale) opts.records?.golem(k.dealt, Date.now());
       if (run) runDrop(run, k);
-      else dropFor(room, { ...k, to: credited });
+      else if (!srun) dropFor(room, { ...k, to: credited }); // (Ang Silong's loot: its own, to come)
       // (A Warrens boss counts for no quest: the Tanod's mini bosses are the Slums' own.)
       // (The Great Scale counts for those who earned it, not their party: CONTEXT.md Great Scale.)
       if (!k.warrens) {
         questKill(scale ? credited : withParty(credited, room), { kind: k.kind, mini: !!k.mini, level: k.level });
         questDrops(room, scale ? credited : withParty(credited, room), k);
       }
+      if (srun && k.warrens) silongNews(srun, srun.onKill(srun.floorOf(room)!.floor, k, Date.now()));
       if (run && k.warrens) {
         const before = run.phase;
         runNews(run, run.onKill(k, Date.now()));
@@ -1242,6 +1280,14 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         if (typeof m.dish !== 'string') return;
         const no = (message: string) => send(c, { t: 'dish', ok: false, dish: m.dish, message });
         if (c.room !== PALENGKE) return no('Aling Conching serves them in the Lumang Palengke.');
+        // (Her menu's Susi ng Silong row: a key into the bag, not a dish.)
+        if (opts.silong?.buyKey && m.dish === opts.silong.data.key.id) {
+          const why = opts.silong.buyKey(c.userId);
+          if (why) return no(why);
+          tellItems(c);
+          console.log(`[silong] ${c.userId} bought a ${opts.silong.data.key.name}`);
+          return send(c, { t: 'dish', ok: true, dish: m.dish });
+        }
         if (!dishOf(DISHES, m.dish) || !opts.dishes || !buffs) return no('No such dish.');
         const refused = opts.dishes.buy(c.userId, m.dish);
         if (refused) return no(refused);
@@ -1372,6 +1418,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         const party = parties.of(c.userId);
         const change = parties.leave(c.userId);
         W?.leftParty(c.userId, party);
+        SL?.leftParty(c.userId, party);
         return partyChanged(change);
       }
       case 'party-disband': {
@@ -1382,7 +1429,10 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         const party = parties.of(c.userId);
         const r = typeof m.member === 'string' ? parties.kick(c.userId, m.member) : null;
         if (!r) return;
-        if (r.ok && r.change.out[0]) W?.leftParty(r.change.out[0].user, party);
+        if (r.ok && r.change.out[0]) {
+          W?.leftParty(r.change.out[0].user, party);
+          SL?.leftParty(r.change.out[0].user, party);
+        }
         return r.ok ? partyChanged(r.change) : send(c, { t: 'party-refused', reason: r.reason });
       }
       case 'friend-ask': {
@@ -1563,6 +1613,15 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       case 'warrens-decline':
       case 'warrens-leave':
         return warrensMessage(c, m);
+      case 'silong-gate':
+      case 'silong-open':
+      case 'silong-practice':
+      case 'silong-join':
+      case 'silong-decline':
+      case 'silong-leave':
+      case 'silong-ride':
+      case 'silong-up':
+        return silongMessage(c, m);
       case 'lantern':
         return lanternMessage(c, m.to, m.post);
       case 'arena-queue':
@@ -1714,8 +1773,9 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     const run = runOf(room);
     const trip = userId ? trips.get(userId) : undefined;
     const post = trip && trip.to === room && Date.now() < trip.until ? m.lanterns?.[trip.post]?.arrive : undefined;
-    const [sc, sr] = run && userId ? run.arrivalFor(userId) : (post ?? m.spawn);
-    const spread = post ? 1 : run ? RUN_SPREAD : SPAWN_SPREAD;
+    const floor = silongFloor(room);
+    const [sc, sr] = run && userId ? run.arrivalFor(userId) : floor ? floor.map.silong.arriveMark : (post ?? m.spawn);
+    const spread = post ? 1 : run || floor ? RUN_SPREAD : SPAWN_SPREAD;
     const taken = new Set([...conns.values()].filter((o) => o.room === room).map((o) => `${o.player.col},${o.player.row}`));
     if (post && walkable(m, sc, sr) && !taken.has(`${sc},${sr}`)) return [sc, sr];
     const avoid = new Set((m.avoid ?? []).map(([c, r]) => `${c},${r}`));
@@ -1746,6 +1806,16 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         return ws.close(4002, 'no run');
       }
       room = run.room;
+    }
+    // Ang Silong: the floor asked for of the run they may be in (one the run hasn't reached yet: its deepest); none → out.
+    const asked = floorOfArea(room);
+    if (asked) {
+      const run = SL?.runOf(userId);
+      if (!run) {
+        ws.send(JSON.stringify({ t: 'silong-out', reason: 'closed' } satisfies TownServerMessage));
+        return ws.close(4002, 'no run');
+      }
+      room = run.roomOf(run.reached.has(asked) ? asked : run.deepest());
     }
     // A second tab takes over: the first one is told and closed.
     const old = conns.get(userId);
@@ -1803,6 +1873,8 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       run.arrived.add(userId); // (back later: at the checkpoint)
       send(c, { t: 'warrens', run: run.view(Date.now(), userId, nameOf) });
     }
+    const srun = silongOf(room);
+    if (srun) send(c, { t: 'silong', run: srun.view(Date.now(), userId, nameOf) });
 
     ws.on('pong', () => (c.alive = true));
     ws.on('message', (data) => {
@@ -1829,7 +1901,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     const url = new URL(req.url ?? '/', 'http://localhost');
     if (url.pathname !== '/ws') return void (opts.shared || socket.destroy());
     const room = url.searchParams.get('room') ?? 'town';
-    if (room !== 'town' && !opts.rooms?.[room] && !(room === 'warrens' && W)) return void socket.destroy();
+    if (room !== 'town' && !opts.rooms?.[room] && !(room === 'warrens' && W) && !(floorOfArea(room) && SL)) return void socket.destroy();
     void (async () => {
       const userId = await opts.authenticate(req).catch(() => null);
       const profile = userId ? opts.profile(userId) : null;
@@ -2029,6 +2101,18 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       saveRuns();
       return { ok: true, run: r.id };
     },
+    silongDev(userId, floor) {
+      if (!SL) return { ok: false, message: 'No Silong here.' };
+      const now = Date.now();
+      const r = SL.runOf(userId) ?? (() => {
+        const o = SL.open(userId, nameOf(userId), 99, () => true, now);
+        return o.ok ? o.run : null;
+      })();
+      if (!r) return { ok: false, message: 'Too many runs open.' };
+      if (floor) r.skipTo(floor);
+      saveSilong();
+      return { ok: true, run: r.id, floor: floor ?? 'b1' };
+    },
   };
 
   // ── Lantern Posts ──
@@ -2203,6 +2287,136 @@ export function attachTown(server: Server, opts: TownOptions): Town {
           saveRuns();
           console.log(`[warrens] run ${run.id} closed`);
         } else tellRun(run, now);
+      }
+    }, 1000).unref?.();
+  }
+
+  // ── Ang Silong ──
+
+  const saveSilong = () => opts.silong?.saved?.(SL?.openRuns() ?? []);
+  /** Who's inside a run now, on which floor. */
+  const silongInside = (run: SilongRun): SilongInside[] =>
+    [...conns.values()].flatMap((o) => {
+      const f = run.floorOf(o.room);
+      return f ? [{ member: o.userId, id: o.player.id, at: [o.player.col, o.player.row] as [number, number], out: !!o.player.out, floor: f.floor }] : [];
+    });
+  /** What a run's clock or a kill set off: to its floors' rooms, to members, out with those who must go, and down (or up)
+   *  with the riders. */
+  const silongNews = (run: SilongRun, n: SilongNews, keyBack?: string) => {
+    for (const [room, msg] of n.room) for (const o of conns.values()) if (o.room === room) send(o, msg);
+    for (const [member, msg] of n.to) {
+      const o = conns.get(member);
+      if (o) send(o, msg);
+    }
+    for (const { member, reason } of n.out) {
+      const o = conns.get(member);
+      if (o && run.floorOf(o.room)) send(o, { t: 'silong-out', reason, ...(member === keyBack ? { keyBack: run.practice ? ('practice' as const) : true } : {}) });
+    }
+    for (const { member, floor, ride } of n.go) {
+      const o = conns.get(member);
+      if (o) send(o, { t: 'silong-go', run: run.id, floor, ...(ride ? { ride } : {}) });
+    }
+  };
+  /** A run that ended before a mini boss fell: its opener's key back. The opener's member id if it went back. */
+  const refundSilong = (run: SilongRun): string | undefined => {
+    const member = run.opener.member;
+    const back = !!(run.practice ? opts.silong?.practice?.refund : opts.silong?.keys.refund)?.(member);
+    console.log(`[silong] ${run.practice ? 'practice ' : ''}run ${run.id} ended before a mini boss fell: ${back ? 'key back to' : 'NO ROOM for the key of'} ${member}`);
+    const o = conns.get(member);
+    if (o) {
+      tellItems(o);
+      if (!run.floorOf(o.room)) {
+        const key = run.practice ? 'Practice Susi ng Silong' : 'Susi ng Silong';
+        send(o, { t: 'system', line: { kind: 'warrens', text: back ? `Your ${key} is back: the run ended before a mini boss fell.` : `The run ended before a mini boss fell, but your bag had no room for your ${key}.`, tone: back ? 'stir' : 'down' } });
+      }
+    }
+    return back ? member : undefined;
+  };
+  /** The tracker to everyone inside, when it changed. */
+  const silongSeen = new Map<string, string>();
+  const tellSilong = (run: SilongRun, now: number) => {
+    const v = run.view(now);
+    const seen = JSON.stringify([v.phase, v.floors, v.door, v.inside]);
+    if (silongSeen.get(run.id) === seen) return;
+    silongSeen.set(run.id, seen);
+    for (const o of conns.values()) if (run.floorOf(o.room)) send(o, { t: 'silong', run: run.view(now, o.userId, nameOf) });
+  };
+  /** The Silong Hatch's panel and buttons; Leave; the elevator's answers. */
+  const silongMessage = (c: Conn, m: Extract<TownClientMessage, { t: `silong-${string}` }>) => {
+    if (!SL || !opts.silong) return;
+    const now = Date.now();
+    const refuse = (reason: Extract<TownServerMessage, { t: 'silong-refused' }>['reason'], message: string) => send(c, { t: 'silong-refused', reason, message });
+    const [gc, gr] = opts.silong.gate;
+    const atGate = opts.silong.dev || (c.room === 'palengke' && Math.max(Math.abs(c.player.col - gc), Math.abs(c.player.row - gr)) <= SL.S.entry.warp.useRangeTiles + 2);
+    const access = (member: string): SilongAccess => opts.silong?.access?.(member) ?? { done: true };
+    switch (m.t) {
+      case 'silong-gate':
+        return send(c, { t: 'silong-gate', gate: SL.gate(c.userId, levelOf(c), opts.silong.keys.count(c.userId), access(c.userId)) });
+      case 'silong-practice': {
+        if (!atGate) return refuse('gone', 'Walk up to the Silong Hatch first.');
+        if (now - (c.silongAt ?? 0) < 1000) return refuse('slow', 'Slow down a little.');
+        c.silongAt = now;
+        if (!opts.silong.practice) return refuse('key', 'There are no practice runs.');
+        const r = SL.openPractice(c.userId, c.player.nickname, levelOf(c), () => opts.silong!.practice!.use(c.userId), now);
+        if (!r.ok) return refuse(r.reason, r.message);
+        tellItems(c);
+        saveSilong();
+        console.log(`[silong] ${c.userId} opened practice run ${r.run.id}`);
+        return send(c, { t: 'silong-go', run: r.run.id, floor: 'b1', key: true });
+      }
+      case 'silong-open': {
+        if (!atGate) return refuse('gone', 'Walk up to the Silong Hatch first.');
+        if (now - (c.silongAt ?? 0) < 1000) return refuse('slow', 'Slow down a little.');
+        c.silongAt = now;
+        const r = SL.open(c.userId, c.player.nickname, levelOf(c), () => opts.silong!.keys.use(c.userId), now, access(c.userId));
+        if (!r.ok) return refuse(r.reason, r.message);
+        tellItems(c);
+        saveSilong();
+        console.log(`[silong] ${c.userId} opened run ${r.run.id}${r.run.party ? ' for their party' : ''}`);
+        // Their party: an invite for those in the Palengke (partyInviteSeconds), a line for the rest.
+        for (const member of parties.of(c.userId)?.members ?? []) {
+          const o = conns.get(member);
+          if (!o || o === c) continue;
+          if (o.room === 'palengke') send(o, { t: 'silong-invite', run: r.run.id, from: c.player.nickname, ms: SL.S.entry.partyInviteSeconds * 1000 });
+          else send(o, { t: 'system', line: { kind: 'warrens', text: `${c.player.nickname} opened Ang Silong for your party. Join at the Silong Hatch in the Market Hall while it lasts.`, tone: 'stir' } });
+        }
+        return send(c, { t: 'silong-go', run: r.run.id, floor: 'b1', key: true });
+      }
+      case 'silong-join': {
+        if (!atGate && typeof m.run !== 'string') return refuse('gone', 'Walk up to the Silong Hatch first.');
+        const r = SL.join(c.userId, levelOf(c), typeof m.run === 'string' ? m.run : undefined, access(c.userId));
+        if (!r.ok) return refuse(r.reason, r.message);
+        return send(c, { t: 'silong-go', run: r.run.id, floor: 'b1' });
+      }
+      case 'silong-decline':
+        return;
+      case 'silong-leave':
+        if (silongOf(c.room)) send(c, { t: 'silong-out', reason: 'left' });
+        return;
+      case 'silong-ride':
+        return void silongOf(c.room)?.answerRide(c.userId, m.yes === true);
+      case 'silong-up': {
+        const run = silongOf(c.room);
+        if (!run || typeof m.floor !== 'string') return;
+        const why = run.rideUp(c.userId, m.floor);
+        if (why) return refuse('floor', why);
+        return send(c, { t: 'silong-go', run: run.id, floor: m.floor, ride: 'up' });
+      }
+    }
+  };
+
+  // The Silong runs' clock: scaled, elevators, sent out, closed (its loot goes with it).
+  if (SL) {
+    setInterval(() => {
+      const now = Date.now();
+      for (const { run, news: n } of SL.tick(now, silongInside)) {
+        silongNews(run, n, n.closed && !run.keySpent ? refundSilong(run) : undefined);
+        if (n.closed) {
+          for (const f of SILONG_FLOORS) loots.delete(run.floors[f].room);
+          silongSeen.delete(run.id);
+          saveSilong();
+          console.log(`[silong] run ${run.id} closed`);
+        } else tellSilong(run, now);
       }
     }, 1000).unref?.();
   }

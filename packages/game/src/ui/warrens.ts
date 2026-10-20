@@ -56,13 +56,13 @@ export function showWarrensGate(g: TownWarrensGate, act: (what: 'open' | 'join' 
   void showPopup({ title: 'Scrap Warrens', body, button: 'Close', celebrate: false, closeX: true });
 }
 
-/** Your party opened a run: Join (`answer(true)`) or Not now, for `ms`. */
-export function showWarrensInvite(from: string, ms: number, answer: (join: boolean) => void): void {
+/** Your party opened a run: Join (`answer(true)`) or Not now, for `ms` (`place`: Ang Silong's too). */
+export function showWarrensInvite(from: string, ms: number, answer: (join: boolean) => void, place = 'the Scrap Warrens'): void {
   const box = el('div', 'pt-invite wr-invite');
   box.setAttribute('role', 'alertdialog');
-  box.setAttribute('aria-label', `${from} opened the Scrap Warrens`);
+  box.setAttribute('aria-label', `${from} opened ${place}`);
   const text = el('p', 'pt-invite-text');
-  text.append(el('b', undefined, from), ' opened the Scrap Warrens. Join?');
+  text.append(el('b', undefined, from), ` opened ${place}. Join?`);
   const timer = el('span', 'pt-invite-bar');
   const yes = el('button', 'pt-yes', 'Join');
   const no = el('button', 'pt-no', 'Not now');

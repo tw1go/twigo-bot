@@ -132,6 +132,7 @@
  "dishRules": "One main dish + one side dish (Atchara) at a time, 10 min each, bought from Aling Conching for Kusing; a new dish replaces the old. Sold only once unlocked for that player.",
  "dailies": {
   "note": "After palengke-14: one random collect order a day from Aling Conching",
+  "unlockedBy": "palengke-14",
   "pool": [
    {
     "item": "unbroken-lid",
@@ -601,7 +602,7 @@
    "giver": "aling-conching",
    "kind": "fieldBoss",
    "unlockLevel": 37,
-   "nextUnlock": null,
+   "nextUnlock": 37,
    "goal": "Help defeat Ang Dakilang Timbangan (at least 5% of its HP), then ring the bell",
    "count": 1,
    "rewardXP": 8330,
@@ -624,6 +625,37 @@
     ]
    },
    "rewardTitle": "huling-suki"
+  },
+  {
+   "id": "palengke-15",
+   "title": "Ngayon Na",
+   "giver": "mang-pido",
+   "kind": "talk",
+   "unlockLevel": 37,
+   "nextUnlock": null,
+   "goal": "Talk to Mang Pido: it's time for the Silong",
+   "count": 0,
+   "rewardXP": 2000,
+   "xpFromQuestKills": 0,
+   "gapXP": 0,
+   "huntingXP": 0,
+   "rewardKusing": 250001,
+   "rewards": [
+    {
+     "item": "practice-susi-ng-silong",
+     "count": 1
+    }
+   ],
+   "dialogue": {
+    "give": [
+     "Hindi pa oras noon. Ngayon, oras na. Bantayan mo ang sarili mo diyan, malamig."
+    ],
+    "report": [
+     "Ito ang susi ng Silong. Isang beses lang 'to, anak: para makita mo muna ang loob. Bumalik ka nang buo.",
+     "Pag handa ka na talaga, kay Aling Conching ka bumili ng susi."
+    ]
+   },
+   "note": "Repo addition (20 Oct 2026): the Silong's quest (the art folder's silong brief): its Practice Susi opens one practice run."
   }
  ],
  "gapLine": "Balik ka pag Lv {level} ka na, anak. Mangaso ka muna.",

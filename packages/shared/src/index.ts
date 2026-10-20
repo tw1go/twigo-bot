@@ -11,6 +11,7 @@ export * from './trade.js';
 export * from './leveling.js';
 export * from './quests.js';
 export * from './dungeons.js';
+export * from './silong.js';
 export * from './travel.js';
 export * from './loot-roll.js';
 export * from './cascade.js';

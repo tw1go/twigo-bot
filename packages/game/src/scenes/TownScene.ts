@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { api } from '../net/endpoints';
 import { queueSave } from '../net/sync';
 import { queueImage, queueNpcs, queueTown } from '../assets/queue';
-import type { Area, Dir, Gate, Manifest, MapTiles, MobData, TownMap } from '../assets/types';
+import type { Area, Dir, Gate, Manifest, MapTiles, MobData, PropDef, TownMap } from '../assets/types';
 import { Character, SPEED, dirForStep, dirToward } from '../characters/character';
 import { type Outfit, assetProblems, buildOutfit, drawStill, headPortrait, headTop, outfitFiles, randomOutfit, sheetKey, stillFiles } from '../characters/doll';
 import { loadOutfit } from '../characters/loading';
@@ -94,7 +94,8 @@ import { BossBar } from '../ui/boss-bar';
 import { HALLOWEEN_MOBS, type HalloweenData, cosmeticHatOf, cosmeticTopOf, mobName, moveSpeedOf, withCosmetics } from '@mikazuki/shared';
 import { openDishMenu } from '../ui/dish-menu';
 import { lootRolls, rollEndLine } from '../ui/loot-roll';
-import type { TownWarrensRun } from '@mikazuki/shared';
+import type { DungeonsData, SilongFloor, TownSilongRun, TownWarrensRun } from '@mikazuki/shared';
+import { floorOfArea, silongArea } from '@mikazuki/shared';
 import { MapMenu } from '../ui/map-menu';
 import { firstOpen } from '../net/pwa';
 import { confirmDrop } from '../ui/drop';
@@ -111,6 +112,8 @@ import { Terrain } from '../world/terrain';
 import { Mobs, TONE, showSlowed } from '../world/mobs';
 import { GOLEM_SOUNDS, GolemView } from '../world/golem';
 import { GreatScaleView } from '../world/great-scale';
+import { SilongView } from '../world/silong';
+import { SilongTracker, noteKeyBack, showRideAsk, showRideUp, showSilongGate, tellKeyBack } from '../ui/silong';
 import { loadBoss } from '../assets/queue';
 import { WarrensView } from '../world/warrens';
 import { WarrensTracker, noteTicketBack, showKickCountdown, showWarrensCleared, showWarrensGate, showWarrensInvite, tellTicketBack } from '../ui/warrens';
@@ -241,6 +244,8 @@ const BOSS_NEAR = 45;
 const BIIKKO_BAR_TILES = 16;
 /** The Scrap Warrens' shade (a navy multiply of about a quarter: a little darker than the Slums). */
 const WARRENS_TINT = 0xbcbbc8;
+/** Ang Silong's cold storage: darker than the Palengke, a cold blue. */
+const SILONG_TINT = 0x9fb4d6;
 /** Arriving: the loading cover lifts after this many frames in a row under SMOOTH_MS, or after SETTLE_MAX_MS at most. */
 const SMOOTH_FRAMES = 20;
 const SMOOTH_MS = 40;
@@ -283,6 +288,14 @@ export class TownScene extends Phaser.Scene {
   private golem: GolemView | null = null;
   /** Stars over the stunned (by town id), until it wears off or they're let go. */
   private readonly stunFx = new Map<string, FxHandle>();
+  /** Ang Silong: a floor's view and the run's tracker (on a floor), the run as last told, the hatch's panel asked for (the
+   *  Palengke), and the ride-up box shown (on an arrival elevator). */
+  private silongView: SilongView | null = null;
+  private silongTracker: SilongTracker | null = null;
+  private silongRun: TownSilongRun | null = null;
+  private hatchAsked = false;
+  /** (True on arrival: you land in it; stepping out and back in asks.) */
+  private rideUpAsked = true;
   /** The Lumang Palengke's field boss (world/great-scale.ts). */
   private greatScale: GreatScaleView | null = null;
   /** The Halloween event (world/halloween.ts): its rules (events/halloween.json), its things in the world, and Biikko
@@ -530,7 +543,8 @@ export class TownScene extends Phaser.Scene {
     const big = !!this.map.height;
     this.objects = new WorldObjects(this, this.M, this.map, big);
     this.objects.castShadows = big; // the Slums' props came with no shadows
-    const junk = !big ? null : this.map.tileset === 'palengke' ? new PalengkeOutskirts(this.M, this.map) : new SlumsOutskirts(this.M, this.map);
+    // (Ang Silong's floors: nothing past the map but more wall tops.)
+    const junk = !big ? null : this.map.tileset === 'palengke' ? new PalengkeOutskirts(this.M, this.map) : this.map.tileset === 'silong' ? { kind: () => 'walltop', objectsIn: () => [] } : new SlumsOutskirts(this.M, this.map);
     if (junk) this.objects.extra = (c0, r0, c1, r1) => junk.objectsIn(c0, r0, c1, r1);
     this.objects.onSpawn = (o) => this.tint >= 0 && o.setTint(this.tint);
     // The town mailbox raises its flag while you have an unread letter (your own view only).
@@ -574,7 +588,8 @@ export class TownScene extends Phaser.Scene {
     this.player.onSpawn = (obj) => this.tint >= 0 && obj.setTint(this.tint);
     // Back through a gate: at its way in (town.json `arrive`), facing into the area, not the spawn point.
     const from = cameFrom();
-    const arrive = from ? this.map.arrive?.[from] : undefined;
+    // (Up out of Ang Silong: beside the hatch, `arrive.silong`.)
+    const arrive = from ? (this.map.arrive?.[from] ?? (floorOfArea(from) ? (this.map.arrive as Record<string, [number, number]> | undefined)?.silong : undefined)) : undefined;
     this.gateAsked = from === 'warrens'; // (back out of the Warrens by the gate: its panel waits till you walk up to it again)
     if (arrive) this.player.place({ col: arrive[0], row: arrive[1] }, 'nw');
     // Through a Lantern Post (a teleport): by the post it was to (a map can have several), unseen until its light brings
@@ -695,6 +710,17 @@ export class TownScene extends Phaser.Scene {
         this.warrens = null;
       });
     }
+    // An Ang Silong floor: its elevators, door and lamps (world/silong.ts).
+    if (this.map.silong) {
+      const view = new SilongView(this, this.M, this.map, this.fxLayers, this.grid);
+      this.silongView = view;
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+        view.destroy();
+        this.silongTracker?.destroy();
+        this.silongTracker = null;
+        this.silongView = null;
+      });
+    }
     // Loot on the ground (mobs' drops, and items players drop on any map): a click walks you to it and picks it up.
     const sil = this.M.ui.equipSlots;
     const E = this.M.ui.emotes;
@@ -721,6 +747,7 @@ export class TownScene extends Phaser.Scene {
     }
     this.gateSigns();
     this.warrenGateLabel();
+    this.hatchLabel();
     this.lanternPostLabel();
     // Your house, just built: hidden in the ground until the arrival has settled, then it rises.
     const built = this.justBuilt ? this.hood?.houses.find((h) => h.mine) : null;
@@ -774,7 +801,7 @@ export class TownScene extends Phaser.Scene {
     });
     this.buffTray = tray;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => tray.destroy());
-    startTownSound(this, this.fountainTile(), this.area === 'slums' || this.area === 'warrens' || this.area === 'palengke' ? 'slums' : 'town'); // (the Slums, the Warrens and the Palengke: the Slums' music for now, no crickets)
+    startTownSound(this, this.fountainTile(), this.area === 'slums' || this.area === 'warrens' || this.area === 'palengke' || floorOfArea(this.area) ? 'slums' : 'town'); // (the Slums, the Warrens and the Palengke: the Slums' music for now, no crickets)
     if (this.area === 'slums' || this.area === 'warrens') loadWarrensSounds(); // (the gate's in the Slums)
     // A battle map's sounds: each mob kind's hurt and death, the golem's attacks (the classes' skills once their data is in).
     if (this.battleMap) {
@@ -794,6 +821,7 @@ export class TownScene extends Phaser.Scene {
     this.settleFrom = this.time.now;
     this.afterReveal(1800, () => this.announceRewards()); // once the arrival has settled
     this.afterReveal(2200, tellTicketBack); // (out of a Warrens run that ended before a boss fell)
+    this.afterReveal(2200, tellKeyBack); // (out of an Ang Silong run that ended before a mini boss fell)
     exposeDebug(this);
     // Dev: ?arena=bot goes straight into a match against the bot (with &rounds=win,lose,draw… deciding the rounds);
     // ?arena=menu opens the arena's menu.
@@ -850,6 +878,11 @@ export class TownScene extends Phaser.Scene {
     if (this.area === 'slums' && time >= this.gateCheckAt) {
       this.gateCheckAt = time + 250;
       this.nearWarrenGate();
+    }
+    if ((this.area === 'palengke' || this.silongView) && time >= this.gateCheckAt) {
+      this.gateCheckAt = time + 250;
+      this.nearHatch();
+      this.onArrivalElevator();
     }
     this.lanternTick(time);
     this.fightTick();
@@ -2273,6 +2306,37 @@ export class TownScene extends Phaser.Scene {
         return this.travel('slums');
       }
       if (m.t === 'warrens-kick') return showKickCountdown(m.ms);
+      // Ang Silong: the hatch's panel, an invite, going down (by the elevator: its cage rides first) and up, out of it,
+      // "Bumaba na kayo?", and the run's tracker.
+      if (m.t === 'silong-gate') return showSilongGate(m.gate, (what) => link.send(what === 'open' ? { t: 'silong-open' } : what === 'practice' ? { t: 'silong-practice' } : { t: 'silong-join' }));
+      if (m.t === 'silong-invite') return showWarrensInvite(m.from, m.ms, (join) => link.send(join ? { t: 'silong-join', run: m.run } : { t: 'silong-decline', run: m.run }), 'Ang Silong');
+      if (m.t === 'silong-refused') {
+        playSound('error');
+        return toast(m.message, 2800, 'bad');
+      }
+      if (m.t === 'silong-go') {
+        if (m.key) playWarrens('warrens-ticket-use');
+        const go = () => this.travel(silongArea(m.floor));
+        if (m.ride === 'down' && this.silongView) return this.silongView.rideDown(this.player.tile, go);
+        return void (m.key ? this.time.delayedCall(TICKET_MS, go) : go());
+      }
+      if (m.t === 'silong-out') {
+        if (m.keyBack) noteKeyBack(m.keyBack === 'practice');
+        if (m.reason === 'closed') toast('Ang Silong closed.', 2600);
+        if (m.reason === 'party') toast('You left the party: back up to the Market Hall.', 2600);
+        return this.travel('palengke');
+      }
+      if (m.t === 'silong-kick') return showKickCountdown(m.ms);
+      if (m.t === 'silong-ride-ask') return showRideAsk(m.ms, (yes) => link.send({ t: 'silong-ride', yes }));
+      if (m.t === 'silong') {
+        if (this.silongView) {
+          this.silongTracker ??= new SilongTracker({ leave: () => link.send({ t: 'silong-leave' }) }, this.silongView.floor);
+          this.silongTracker.set(m.run);
+          this.silongView.run(m.run);
+        }
+        this.silongRun = m.run;
+        return;
+      }
       if (m.t === 'warrens') {
         this.warrensTracker ??= new WarrensTracker({ start: () => link.send({ t: 'warrens-start' }), leave: () => link.send({ t: 'warrens-leave' }) });
         this.warrensTracker.set(m.run);
@@ -2686,6 +2750,18 @@ export class TownScene extends Phaser.Scene {
             .then((r) => (r.ok ? this.travel('warrens') : toast(r.message ?? "Couldn't open a run.", 2600, 'bad')))
             .catch(() => null);
         }
+        // Dev: ?silong=solo opens an Ang Silong run for you (free) and goes down (the dev server's /__silong); ?silong=b3
+        // too, with every floor above down and reached, arriving there. Read once, then tidied away.
+        if (import.meta.env.DEV && fakeLogin() && !arrived && !floorOfArea(this.area) && q.has('silong')) {
+          const floor = q.get('silong');
+          const url = new URL(location.href);
+          url.searchParams.delete('silong');
+          history.replaceState(null, '', url.pathname + url.search);
+          void fetch(`/__silong?${new URLSearchParams({ as: fakeName(), ...(floor && floor !== 'solo' ? { floor } : {}) })}`)
+            .then((r) => r.json() as Promise<{ ok: boolean; floor?: SilongFloor; message?: string }>)
+            .then((r) => (r.ok ? this.travel(silongArea(r.floor ?? 'b1')) : toast(r.message ?? "Couldn't open a run.", 2600, 'bad')))
+            .catch(() => null);
+        }
         // Dev, in the Palengke: ?palengkemobs=demo cycles the nearest mob of each kind through its anims in place.
         if (import.meta.env.DEV && !arrived && q.get('palengkemobs') === 'demo' && this.mobs) {
           const timer = this.time.addEvent({ delay: 900, loop: true, callback: () => this.mobs?.demo(this.player.tile) });
@@ -2839,7 +2915,7 @@ export class TownScene extends Phaser.Scene {
    *  reduced motion). */
   private zoomIntro(): void {
     // The title card over it all: the area's name, the world pulling back inside the letters (ui/title-card.ts).
-    void playTitleCard(this.area === 'hood' ? 'Neighbourhood' : this.area === 'slums' ? 'Slums' : this.area === 'warrens' ? 'Scrap Warrens' : this.area === 'palengke' ? 'Lumang Palengke' : 'Mikazuki');
+    void playTitleCard(this.area === 'hood' ? 'Neighbourhood' : this.area === 'slums' ? 'Slums' : this.area === 'warrens' ? 'Scrap Warrens' : this.area === 'palengke' ? 'Lumang Palengke' : this.map.silong ? `Ang Silong\n${this.map.silong.floor.toUpperCase()}` : 'Mikazuki');
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const cam = this.cameras.main;
     const p = this.player.sprite;
@@ -3256,6 +3332,38 @@ export class TownScene extends Phaser.Scene {
   private gateCheckAt = 0;
   private gateAsked = false;
 
+  /** The Silong Hatch (the Palengke's Market Hall, its middle tile and use range: dungeons.json silong.entry): walking up
+   *  to it asks for its panel, once each time. */
+  private nearHatch(): void {
+    if (this.area !== 'palengke') return;
+    const o = this.map.objects.find((x) => x.id === 'palengke-silong-hatch');
+    const S = (this.cache.json.get('dungeons') as { silong?: { entry: { warp: { useRangeTiles: number } } } } | undefined)?.silong;
+    if (!o) return;
+    const t = this.player.tile;
+    const range = S?.entry.warp.useRangeTiles ?? 3;
+    const d = Math.max(Math.abs(t.col - (o.col + 2)), Math.abs(t.row - (o.row + 2)));
+    if (d > range + 2) this.hatchAsked = false;
+    else if (d <= range && !this.hatchAsked && (this.me?.status === 'ok' || fakeLogin())) this.hatchAsked = !!this.link?.send({ t: 'silong-gate' });
+  }
+
+  /** On an Ang Silong floor's arrival elevator, with floors above the run has reached: the ride-up box, once each time
+   *  you step in. */
+  private onArrivalElevator(): void {
+    const v = this.silongView;
+    if (!v) return;
+    const t = this.player.tile;
+    if (!v.onArrival(t.col, t.row) || !this.player.isIdle) {
+      if (!v.onArrival(t.col, t.row)) this.rideUpAsked = false;
+      return;
+    }
+    if (this.rideUpAsked) return;
+    const order = ['b1', 'b2', 'b3'];
+    const above = (this.silongRun?.floors ?? []).filter((f) => f.reached && order.indexOf(f.floor) < order.indexOf(v.floor));
+    if (!above.length) return;
+    this.rideUpAsked = true;
+    showRideUp(above.map((f) => ({ floor: f.floor, name: f.name })), (floor) => this.link?.send({ t: 'silong-up', floor }));
+  }
+
   /** The Warren Gate (the Slums): walking up to it (within its use range) asks for its panel, once each time. */
   private nearWarrenGate(): void {
     const g = this.warrenGate();
@@ -3355,6 +3463,11 @@ export class TownScene extends Phaser.Scene {
       kusing: () => adventure()?.kusing ?? 0,
       on: () => myBuffs().filter((b) => b.dish),
       buy: (id) => this.buyDish(id),
+      // (Her Susi ng Silong, after the finale: classes/dungeons.json silong.key.)
+      key: (() => {
+        const K = (this.cache.json.get('dungeons') as DungeonsData | undefined)?.silong?.key ?? { id: 'susi-ng-silong', name: 'Susi ng Silong', sources: { shop: { kusing: 200_000 } } };
+        return { id: K.id, name: K.name, kusing: K.sources.shop.kusing, open: !!adventure()?.quests.done.includes('palengke-14') };
+      })(),
     });
   }
 
@@ -3973,7 +4086,7 @@ export class TownScene extends Phaser.Scene {
       const at = { x: t.x, y: t.y - this.objects.heights.at(c, r) * LEVEL_PX };
       const text =
         to === 'hood' ? 'Neighbourhood →'
-        : to === 'palengke' ? '← Palengke'
+        : to === 'palengke' ? (this.map.silong ? 'Stairs up to the Market Hall' : '← Palengke')
         : to === 'slums' ? (this.area === 'warrens' ? 'Exit to the Slums' : this.area === 'palengke' ? 'Back to the Slums →' : '← Slums')
         : this.area === 'slums' ? 'Back to town →'
         : '← Back to town';
@@ -4032,19 +4145,61 @@ export class TownScene extends Phaser.Scene {
     });
   }
 
+  /** The Silong Hatch (the Palengke's Market Hall): "Silong Hatch" on hover, a click walks you beside it (its panel opens
+   *  as you get there); once "Ang Huling Suki" is done, its cold glow round it. */
+  private hatchLabel(): void {
+    const o = this.map.objects.find((x) => x.id === 'palengke-silong-hatch');
+    const def = o && (this.M.props[o.id] as PropDef | undefined);
+    if (!o || !def) return;
+    const top = tileToScreen(o.col, o.row);
+    const mid = tileToScreen(o.col + 2, o.row + 2);
+    const box = this.add.zone(top.x - def.anchor[0] + def.size[0] / 2, top.y - def.anchor[1] + def.size[1] / 2, def.size[0], def.size[1]).setDepth(LABEL_DEPTH - 2);
+    const label = new BuildingLabel(this, 'Silong Hatch', mid.x);
+    label.setZoom(this.cameras.main.zoom);
+    this.gateLabels.push(label);
+    box.setInteractive({ cursor: 'pointer' });
+    box.on('pointerover', () => label.show(top.y - def.anchor[1] - 2));
+    box.on('pointerout', () => label.show(null));
+    box.on('pointerup', (p: Phaser.Input.Pointer) => {
+      if ((!p.leftButtonReleased() && !p.wasTouch) || !onMap(p, this.game.canvas)) return;
+      const at = (this.map.arrive as Record<string, [number, number]> | undefined)?.silong;
+      if (!at) return;
+      this.hatchAsked = false;
+      this.goToTile({ col: at[0], row: at[1] });
+    });
+    // Its glow (fx-silong-hatch-glow) once the finale is done (ask again as quests change).
+    let glow: FxHandle | null = null;
+    const check = () => {
+      if (glow || !adventure()?.quests.done.includes('palengke-14')) return;
+      glow = this.fxLayers.play(this.M.fx['fx-silong-hatch-glow'], { x: mid.x, y: mid.y }, { layer: 'ground', life: Infinity });
+    };
+    check();
+    const off = onAdventure(check);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      off();
+      glow?.kill(0);
+    });
+  }
+
   /** Off to the other area: a fade, then that page (the town's art is cached, so it's quick). The Slums and the
    *  Palengke need a login. A Lantern Post's teleport says which post (`post`; this map again for another of its own). */
   private travel(to: Gate, via?: 'lantern', post = 0): void {
-    if ((to === 'slums' || to === 'warrens' || to === 'palengke') && this.me?.status !== 'ok' && !fakeLogin()) return void toast(`Log in to go into ${to === 'palengke' ? 'the Palengke' : 'the Slums'}.`, 2800);
+    if ((to === 'slums' || to === 'warrens' || to === 'palengke' || floorOfArea(to)) && this.me?.status !== 'ok' && !fakeLogin()) return void toast(`Log in to go into ${to === 'palengke' ? 'the Palengke' : 'the Slums'}.`, 2800);
     if (this.travelling) return;
     this.travelling = true;
     // Through the Warren Gate (in or out): its warp with the fade, which waits for it (the page changes after); a
     // Lantern Post's light has had its sound; else a door.
-    const warp = to === 'warrens' || this.area === 'warrens';
+    const silong = !!floorOfArea(to) || !!floorOfArea(this.area);
+    const warp = to === 'warrens' || this.area === 'warrens' || silong;
     if (warp) playWarrens('warrens-gate-warp');
     else if (!via) playSound('door');
+    const down = floorOfArea(to);
+    const here = floorOfArea(this.area);
     toast(
-      to === this.area ? 'To the other Lantern Post…'
+      down && here ? (down > here ? `Down to ${down.toUpperCase()}…` : `Up to ${down.toUpperCase()}…`)
+      : down ? 'Down into Ang Silong…'
+      : here && to === 'palengke' ? 'Back up to the Market Hall…'
+      : to === this.area ? 'To the other Lantern Post…'
       : to === 'hood' ? 'To the neighbourhood…'
       : to === 'warrens' ? 'Into the Scrap Warrens…'
       : to === 'palengke' ? 'Into the Lumang Palengke…'
@@ -4590,7 +4745,8 @@ export class TownScene extends Phaser.Scene {
 
   private updateSky(force: boolean): void {
     // (Under the Slums it's always dusk: a navy shade over everything, every lamp lit.)
-    const sky = this.area === 'warrens' ? { lampsOn: true, tint: WARRENS_TINT } : skyAt(minutesNow());
+    // (Ang Silong: colder still, a blue shade; its work lamps glow warm.)
+    const sky = this.area === 'warrens' ? { lampsOn: true, tint: WARRENS_TINT } : this.silongView ? { lampsOn: true, tint: SILONG_TINT } : skyAt(minutesNow());
     this.lampsOn = sky.lampsOn;
     this.objects.setLamps(sky.lampsOn);
     this.player.setNight(sky.lampsOn); // (a lit hat's light: yours and everyone's)

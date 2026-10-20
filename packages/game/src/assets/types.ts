@@ -1,5 +1,5 @@
 import type { PetManifest } from '../world/pets';
-import type { DungeonMapBlock } from '@mikazuki/shared';
+import type { DungeonMapBlock, SilongBlock } from '@mikazuki/shared';
 // Shapes of public/assets/manifest.json and public/assets/maps/town.json — only the parts the game reads.
 // The JSON files are the source of truth; nothing here hard-codes sizes, anchors or positions.
 
@@ -37,6 +37,7 @@ export interface Manifest {
     slums?: SlumsTiles;
     /** The Lumang Palengke's ground: flat, its shallow flood and deep pools animated (world/terrain.ts). */
     palengke?: MapTiles;
+    silong?: MapTiles;
   };
   buildings: Record<string, BuildingDef>;
   props: Record<string, PropDef> & { fence: FenceDef; 'tree-tufts': { files: string[]; size: Vec2 } };
@@ -565,7 +566,11 @@ export interface TownMap {
   /** Walking onto these tiles goes to another area: 'hood' (the neighbourhood), 'town', 'slums' or 'palengke'. */
   gates?: Partial<Record<Gate, Vec2[]>>;
   /** A big map's ground set (manifest tiles[tileset]); the Slums' when not given. */
-  tileset?: 'slums' | 'palengke';
+  tileset?: 'slums' | 'palengke' | 'silong';
+  /** Ang Silong's floors (maps/silong-b1..b3.json): rooms, elevators, doors, lamps… (shared silong.ts). */
+  silong?: SilongBlock;
+  /** Its elevators' cages and plates and its doors, drawn by world/silong.ts rather than as props (they change). */
+  silongDrawn?: MapObject[];
   /** Its Lantern Posts when it has several (the Palengke's four; a map with one has its `lantern-post` object and
    *  arrive.lanternPost): each post's top tile and name. */
   teleporters?: { id: string; name: string; tile: Vec2 }[];
@@ -575,10 +580,10 @@ export interface TownMap {
   npcs?: { id: string; name: string; tile: Vec2; role?: string; moves?: { after: string; tile: Vec2 }[] }[];
   /** Where you appear coming from another area (by where you came from), instead of the spawn point; `lanternPost`: where
    *  a teleport to this map's Lantern Post lands. */
-  arrive?: Partial<Record<Gate | 'lanternPost', Vec2>>;
+  arrive?: Partial<Record<Gate | 'lanternPost' | 'elevator', Vec2>>;
 }
 
-export type Gate = 'hood' | 'town' | 'slums' | 'warrens' | 'palengke';
+export type Gate = 'hood' | 'town' | 'slums' | 'warrens' | 'palengke' | 'silong-b1' | 'silong-b2' | 'silong-b3';
 export type Area = Gate;
 
 /** The forest drawn around the town (world/outskirts.ts). */

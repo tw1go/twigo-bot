@@ -26,6 +26,7 @@ import { MobRoom, fighterStats, loadMobKinds, loadMobMap, loadSkillShapes } from
 import { clearRankOf, golemBestOf, recordClear, recordGolem, topClears, topGolem } from './records.js';
 import { loadGolemArt } from './town-golem.js';
 import { type FieldBossDef, GreatScale, loadGreatScaleArt } from './town-great-scale.js';
+import { loadSilong } from './town-silong.js';
 import { loadWarrens } from './town-warrens.js';
 import { CLASSES, withItems, newUid, expiredFor } from './adventure.js';
 import { connectTownFeed, feed } from './town-feed.js';
@@ -95,7 +96,7 @@ const lookOf = (userId: string): OutfitData | null => {
 };
 import { enhanceFeedLine, parseForgeAction } from './forge.js';
 import { loadItemData, loadPalengkeLeveling, loadStats } from './stats-data.js';
-import { practiceDropFor, refundPracticeTicketFor, usePracticeTicketFor, warrensAccessOf, refundTicketFor, warrenTicketsOf, useTicketFor, kindCountOf, useKindFor, adventureOf, cosmeticsOf, combatOf, fighterOf, forgeFor, petXpFor, dropItemFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townPet, townEquip, townPoints, townQuest, townSkills, trainingArmorFor, questRewardsFor, questPiecesFor, questKillFor, enterAreaFor, questDropsFor, ringBellFor, buyDishFor, adventurersWithClass } from './adventure.js';
+import { practiceDropFor, refundPracticeTicketFor, usePracticeTicketFor, warrensAccessOf, refundTicketFor, warrenTicketsOf, useTicketFor, kindCountOf, useKindFor, adventureOf, cosmeticsOf, combatOf, fighterOf, forgeFor, petXpFor, dropItemFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townPet, townEquip, townPoints, townQuest, townSkills, trainingArmorFor, questRewardsFor, questPiecesFor, questKillFor, enterAreaFor, questDropsFor, ringBellFor, buyDishFor, silongKeysOf, useSilongKeyFor, refundSilongKeyFor, usePracticeSusiFor, refundPracticeSusiFor, silongAccessOf, buySilongKeyFor, adventurersWithClass } from './adventure.js';
 import { renameWithCard } from '../items/rename-card.js';
 import { changeClassWithTicket } from '../items/class-ticket.js';
 import { LAUNCH_REWARD, isPreregistered, launched, preregCount, preregister } from '../prereg/prereg.js';
@@ -206,6 +207,8 @@ const WARRENS_RUNS = 'warrens-open';
 const GOLEM_NEXT_RISE = 'golem-next-rise';
 /** When the Great Scale wakes next (kv). */
 const GREAT_SCALE_NEXT = 'great-scale-next-rise';
+/** Ang Silong's open runs (kv): a restart gives back the keys of runs no mini boss has fallen in yet. */
+const SILONG_RUNS = 'silong-open';
 /** Leaderboard responses are reused this long, so a burst of visitors is one lookup. */
 const BOARD_TTL_MS = 30_000;
 /** Names and avatars change rarely; looked up at most this often per member. */
@@ -1185,6 +1188,12 @@ export function startWebServer(client: Client): void {
       if (!(r.spent ?? r.cleared)) console.log(`[warrens] ${r.practice ? 'practice ' : ''}run ${r.id} ended by a restart: ${(r.practice ? refundPracticeTicketFor : refundTicketFor)(r.opener) ? 'ticket back to' : 'NO ROOM for the ticket of'} ${r.opener}`);
     }
     kvSave(WARRENS_RUNS, []);
+    for (const r of kvLoad<{ id: string; opener: string; spent: boolean; practice?: boolean }[]>(SILONG_RUNS, [])) {
+      if (!r.spent) console.log(`[silong] ${r.practice ? 'practice ' : ''}run ${r.id} ended by a restart: ${(r.practice ? refundPracticeSusiFor : refundSilongKeyFor)(r.opener) ? 'key back to' : 'NO ROOM for the key of'} ${r.opener}`);
+    }
+    kvSave(SILONG_RUNS, []);
+    // (The Silong Hatch: the Palengke map's palengke-silong-hatch object.)
+    const hatch = (palengkeMap as { objects?: { id?: string; col: number; row: number }[] }).objects?.find((o) => o.id === 'palengke-silong-hatch');
     town = attachTown(server, {
       arenaBets: arenaBets(),
       onSay: (userId, nickname, text, megaphone, gm) => toDiscord(userId, nickname, text, megaphone, gm),
@@ -1218,6 +1227,22 @@ export function startWebServer(client: Client): void {
         practice: { use: usePracticeTicketFor, drop: practiceDropFor, refund: refundPracticeTicketFor },
         saved: (runs) => kvSave(WARRENS_RUNS, runs),
       },
+      // Ang Silong: a Susi ng Silong from the combat bag (back if a run ends before a mini boss falls), "Ngayon Na" to come
+      // in, its Practice Susi for one practice run, the keys at Aling Conching's; the open runs kept (refunds after a
+      // restart).
+      ...(hatch
+        ? {
+            silong: {
+              ...loadSilong(skillLevels, undefined, dropRateOf),
+              gate: [hatch.col + 2, hatch.row + 2] as [number, number], // (its middle: a 4 × 4 hatch)
+              keys: { count: silongKeysOf, use: useSilongKeyFor, refund: refundSilongKeyFor },
+              practice: { use: usePracticeSusiFor, refund: refundPracticeSusiFor },
+              access: silongAccessOf,
+              buyKey: buySilongKeyFor,
+              saved: (runs) => kvSave(SILONG_RUNS, runs),
+            },
+          }
+        : {}),
       // Lantern Posts: a Return Lantern from the combat bag for each teleport.
       lanterns: { count: (userId) => kindCountOf(userId, RETURN_LANTERN), use: (userId) => useKindFor(userId, RETURN_LANTERN) },
       quests: { kill: questKillFor, enter: enterAreaFor, drops: (userId, kind) => questDropsFor(userId, kind), bell: ringBellFor },

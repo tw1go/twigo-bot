@@ -1,3 +1,5 @@
+import type { SilongData } from './silong.js';
+
 // 🕳️ The Scrap Warrens (classes/dungeons.json warrens, the art folder's data/dungeons/warrens.json; its rules in words:
 // docs/dungeons/combat-guide-dungeon.md there), and the dungeon block of its map (maps/warrens.json `dungeon`, built by
 // the game's scripts/build-warrens.ts from the layout). Types and a few pure rules both sides use: the party scaling and
@@ -150,6 +152,8 @@ export interface WarrensData {
 
 export interface DungeonsData {
   warrens: WarrensData;
+  /** Ang Silong (silong.ts). */
+  silong?: SilongData;
 }
 
 // ── The map's dungeon block (maps/warrens.json `dungeon`) ──

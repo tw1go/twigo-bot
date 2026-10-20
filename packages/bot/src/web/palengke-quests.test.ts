@@ -55,8 +55,8 @@ const kill = (s: AdventureState, kind: string, n = 1, mini = false) => {
 };
 const talk = (s: AdventureState, quest: string, npc: string) => questStep(s, { quest, action: 'talk', npc });
 
-test('14 quests after the Tanod\'s, one chain, every one hand-in with its unlock level, Q1 starting in the Palengke', () => {
-  assert.equal(chain.length, 14);
+test('15 quests after the Tanod\'s (the 15th, Ngayon Na, lets you into Ang Silong), one chain, every one hand-in with its unlock level, Q1 starting in the Palengke', () => {
+  assert.equal(chain.length, 15);
   chain.forEach((x, i) => {
     assert.equal(x.next, chain[i + 1]?.id ?? null, `${x.id}'s next`);
     assert.ok(x.handIn && x.unlockLevel! >= 21, x.id);

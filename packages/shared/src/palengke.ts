@@ -62,6 +62,8 @@ export interface PalengkeDailies {
   /** 'random': one of the dishes they've unlocked, served at once. */
   freeDish?: string;
   dialogue?: { give?: string[]; report?: string[] };
+  /** The quest after which they start (the finale; the chain's last quest when not given). */
+  unlockedBy?: string;
 }
 
 export interface PalengkeData {
@@ -188,7 +190,7 @@ function dailyQuests(P: PalengkeData, itemName: (id: string) => string, npcName:
       ],
       handIn: true,
       daily: true,
-      after: last,
+      after: D.unlockedBy ?? last, // (the finale: Ang Silong's quest comes after it)
       rewardXP: D.rewardXP,
       rewardKusing: D.rewardKusing,
       ...(D.freeDish ? { freeDish: D.freeDish } : {}),

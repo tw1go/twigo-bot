@@ -1496,6 +1496,13 @@
   "mobBehaviour": {
     "respawnSeconds": 30,
     "aliveperZone": 10,
+    "sameAs": {
+      "monobloc-stack-frost": "monobloc-stack",
+      "sangkalan-chomper-frost": "sangkalan-chomper",
+      "banyera-lurker-frost": "banyera-lurker",
+      "frost-scale": "timbangan-sentinel"
+    },
+    "sameAsNote": "Repo addition (20 Oct 2026): the Silong's frost recolours live as their originals (aggressive or not, pack assist, reach).",
     "aliveperZoneIn": {
       "palengke": 20
     },
