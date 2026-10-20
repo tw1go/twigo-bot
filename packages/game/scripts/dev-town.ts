@@ -1,7 +1,7 @@
 import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ClassesFile, GearRarity, HoodHouse, HouseLook, OutfitData, PrivacySettings, RogueState, TownHoodActionResponse, TownHoodResponse, TownItems, TownRace, TownRaceResponse } from '@mikazuki/shared';
-import { type LanternPost, type TownMail, DEFAULT_PRIVACY, expireItems, MAIL_RULES, claimInto, hasAttachments, parseMailAction, RETURN_LANTERN, gainPetXp, parsePetAction, petAction, petIdOf, petRules, setPetLevel, addToBag, isGearDef, blockedWithPosts, lanternPostsOf, newItem, rollGear, buyCosmetic, rollWorthy, takeKind, buffSkillLevels, classBuffs, classSkills, damageSkillLevels, moveUnlock, type PalengkeData, mobName, palengkeQuests, questItemDrops } from '@mikazuki/shared';
+import { type LanternPost, type TownMail, DEFAULT_PRIVACY, expireItems, MAIL_RULES, claimInto, hasAttachments, parseMailAction, RETURN_LANTERN, gainPetXp, parsePetAction, petAction, petIdOf, petRules, setPetLevel, addToBag, isGearDef, blockedWithPosts, lanternPostsOf, newItem, rollGear, buyCosmetic, rollWorthy, takeKind, buffSkillLevels, classBuffs, classSkills, damageSkillLevels, moveUnlock, type PalengkeData, dishOf, dishRefusal, mobName, palengkeQuests, questItemDrops } from '@mikazuki/shared';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { doorSpot, hoodMap, lotTile } from '../../bot/src/web/hood-map.ts';
 import type { Plugin } from 'vite';
@@ -525,6 +525,19 @@ export function devTown(): Plugin {
           return name;
         },
         profile: (name) => ({ nickname: name, title: { name: 'Townfolk', color: '#B794F6' }, outfit: looks.get(name) ?? ({} as OutfitData), cls: kits.get(name)?.cls, weapon: kits.get(name)?.weapon, weaponPlus: plusOf(name), level: levelOf(name).level, pet: petOf(name) }),
+        // Aling Conching's dishes, bought with the kept Kusing against the page's pretend quests (in memory: a restart
+        // ends them).
+        dishes: {
+          buy: (name, dish) => {
+            const P = loadPalengkeLeveling() as unknown as PalengkeData;
+            const g = gearOf(name);
+            const refused = dishRefusal({ quests: questsOf.get(name) ?? { active: [], done: [] }, kusing: g.kusing }, palengkeQuests(P, mobName), P, dish);
+            if (refused) return refused;
+            g.kusing -= dishOf(P, dish)!.kusing;
+            server.config.logger.info(`[dishes] ${name} bought ${dish}`, { timestamp: true });
+            return null;
+          },
+        },
         // Quest items (the Palengke's chain): dropped for a player while their pretend quests ask for them (the page
         // counts the kills itself: no `kill` here).
         quests: {
@@ -612,6 +625,12 @@ export function devTown(): Plugin {
         }
         town.restyle(name, looks.get(name) ?? ({} as OutfitData), { name: q.get('title') ?? 'Townfolk', color: q.get('color') ?? '#B794F6' });
         res.end(`${name} restyled\n`);
+      });
+      // /__dish?as=Alice&dish=lugaw: a dish served free (a pretend quest's: Q1's Lugaw, a daily order's).
+      server.middlewares.use('/__dish', (req, res) => {
+        const q = new URL(req.url ?? '/', 'http://localhost').searchParams;
+        town.serveDish(q.get('as') ?? '', q.get('dish') ?? '');
+        res.end('served\n');
       });
       // POST /__quests?as=Alice {active, done}: her pretend quests changed (the Warren Gate asks about Aling Nena's).
       server.middlewares.use('/__quests', async (req, res) => {

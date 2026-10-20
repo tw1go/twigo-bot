@@ -798,6 +798,29 @@
       #reward .hw-act b { display: block; color: #C2410C; font-size: calc(16px * var(--text)); }
       #reward .hw-act p { margin: 2px 0 0; color: #3D4256; }
       #reward .hw-pic { image-rendering: pixelated; }
+      /* Aling Conching's menu (ui/dish-menu.ts): a row per dish, locked ones greyed with their quest. */
+      #reward .rw-card:has(.dm-menu) { width: min(600px, calc(100vw - 32px)); }
+      #reward .dm-menu { display: grid; gap: 10px; margin-bottom: 16px; text-align: left; }
+      #reward .dm-rule { margin: 0; color: #3D4256; }
+      #reward .dm-wallet { display: flex; align-items: center; gap: 6px; font-weight: 700; color: #1E1B3A; }
+      #reward .dm-wallet .rw-kusing, #reward .dm-buy .rw-kusing { image-rendering: pixelated; background-size: contain; }
+      #reward .dm-list { display: grid; gap: 6px; max-height: min(52vh, 460px); overflow-y: auto; }
+      #reward .dm-dish { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-left: 4px solid #C2410C; background: #FFF7ED; }
+      #reward .dm-dish.dm-locked { border-color: #9CA3AF; background: #F3F4F6; color: #6B7280; }
+      #reward .dm-text { flex: 1; min-width: 0; }
+      #reward .dm-name { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+      #reward .dm-name b { color: #9A3412; font-size: calc(16px * var(--text)); }
+      #reward .dm-locked .dm-name b { color: #6B7280; }
+      #reward .dm-slot { padding: 0 6px; border-radius: 0; font-size: calc(11px * var(--text)); text-transform: uppercase; letter-spacing: 0.06em; background: #FED7AA; color: #9A3412; }
+      #reward .dm-slot.dm-side { background: #D9F99D; color: #3F6212; }
+      #reward .dm-locked .dm-slot { background: #E5E7EB; color: #6B7280; }
+      #reward .dm-on { color: #15803D; font-weight: 700; font-size: calc(13px * var(--text)); }
+      #reward .dm-effect { color: #3D4256; }
+      #reward .dm-locked .dm-effect { color: #6B7280; }
+      #reward .dm-unlock { color: #6B7280; font-size: calc(13px * var(--text)); font-style: italic; }
+      #reward .dm-buy { flex: none; display: flex; align-items: center; gap: 6px; padding: 6px 10px; border: 2px solid #9A3412; background: #F97316; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+      #reward .dm-buy:hover:not(:disabled) { background: #EA580C; }
+      #reward .dm-buy:disabled { border-color: #9CA3AF; background: #D1D5DB; color: #6B7280; cursor: default; }
       #reward .hw-ends { margin: 0; color: #9A3412; font-weight: 600; }
       #reward .hw-rewards { list-style: none; margin: -6px 0 18px; padding: 0; display: grid; gap: 6px; justify-content: center; text-align: left; }
       #reward .hw-rewards li { display: flex; align-items: center; gap: 8px; font-weight: 600; }

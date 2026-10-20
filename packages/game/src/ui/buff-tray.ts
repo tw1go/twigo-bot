@@ -11,6 +11,8 @@
 export interface ActiveBuff {
   cls: string;
   name: string;
+  /** What it's called when that isn't its name (a dish: its name is its id). */
+  title?: string;
   endsAt: number | null;
   stats: string[];
   /** Outdone: every stat it gives, another buff gives more of (only the strongest counts): shown faded. */
@@ -63,9 +65,10 @@ export class BuffTray {
     this.buffs = list.map((b) => {
       const row = el('div', 'bt-buff');
       const src = this.o.icon(b.cls, b.name);
-      const pic = src ? Object.assign(el('img', 'bt-icon'), { src, alt: '' }) : el('span', 'bt-icon bt-initials', b.name.split(/\s+/).map((w) => w[0]).join('').slice(0, 2));
+      const label = b.title ?? b.name;
+      const pic = src ? Object.assign(el('img', 'bt-icon'), { src, alt: '' }) : el('span', 'bt-icon bt-initials', label.split(/\s+/).map((w) => w[0]).join('').slice(0, 2));
       const text = el('div', 'bt-text');
-      text.append(el('div', 'bt-name', b.name));
+      text.append(el('div', 'bt-name', label));
       const stats = b.stats.length ? b.stats : [this.o.effect(b.cls, b.name) ?? ''].filter(Boolean);
       for (const s of stats) text.append(el('div', 'bt-stat', s));
       const time = el('div', 'bt-time');
@@ -95,7 +98,7 @@ export class BuffTray {
       row.tabIndex = 0;
       row.addEventListener('focus', show);
       row.addEventListener('blur', hide);
-      row.setAttribute('aria-label', [b.name, ...stats].join(', '));
+      row.setAttribute('aria-label', [label, ...stats].join(', '));
       return { b, time, row };
     });
     this.el.classList.toggle('bt-compact', list.length > COMPACT_OVER);
@@ -118,7 +121,7 @@ export class BuffTray {
     if (!t || !t.row.isConnected) return void (this.tip.hidden = true);
     const ms = t.b.endsAt === null ? null : t.b.endsAt - Date.now();
     this.tip.replaceChildren(
-      el('b', 'bt-tip-name', t.b.name),
+      el('b', 'bt-tip-name', t.b.title ?? t.b.name),
       ...t.stats.map((s) => el('div', 'bt-tip-stat', s)),
       ...(t.b.weaker ? [el('div', 'bt-tip-weaker', `${t.b.weaker} is stronger: only the strongest counts`)] : []),
       el('div', 'bt-tip-time', ms === null ? 'On (a stance)' : `${left(ms)} left`),

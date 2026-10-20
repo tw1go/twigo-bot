@@ -62,6 +62,8 @@ export class PalengkeNpcs {
   private zoom = 1;
   /** A quest's lines for an NPC (the scene's questScript), or null for their own. */
   script: ((id: string) => { lines: string[]; onDone?: () => void } | null) | null = null;
+  /** A button on someone's dialog box (Aling Conching's menu), or none. */
+  action: ((id: string) => { label: string; run: () => void } | undefined) | null = null;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -144,6 +146,7 @@ export class PalengkeNpcs {
       title: TITLES[id] ?? '',
       portrait: s.portrait,
       lines: say?.lines ?? script?.lines,
+      action: this.action?.(id),
       onDone: script?.onDone,
       next: () => 'Magandang araw, anak. Ingat sa palengke.',
       voice: 1,

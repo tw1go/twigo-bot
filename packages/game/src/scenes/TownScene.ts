@@ -91,7 +91,8 @@ import { HalloweenDecor } from '../world/halloween-deco';
 import { serverNow, setServerNow } from '../net/server-clock';
 import { mikkoIcon16, setHalloweenArt, setHalloweenBadge, showHalloweenReward } from '../ui/halloween';
 import { BossBar } from '../ui/boss-bar';
-import { HALLOWEEN_MOBS, type HalloweenData, cosmeticHatOf, cosmeticTopOf, mobName, withCosmetics } from '@mikazuki/shared';
+import { HALLOWEEN_MOBS, type HalloweenData, cosmeticHatOf, cosmeticTopOf, mobName, moveSpeedOf, withCosmetics } from '@mikazuki/shared';
+import { openDishMenu } from '../ui/dish-menu';
 import { lootRolls, rollEndLine } from '../ui/loot-roll';
 import type { TownWarrensRun } from '@mikazuki/shared';
 import { MapMenu } from '../ui/map-menu';
@@ -1277,7 +1278,7 @@ export class TownScene extends Phaser.Scene {
     // (A hand-in quest that starts with a talk to its giver says its lines in that talk, not here.)
     const fresh = (adventure()?.quests.active ?? []).filter((p) => {
       const q = questDef(p.id);
-      return !given.includes(p.id) && q?.dialogue?.give?.length && !(q.handIn && ((q.objectives[0]?.type === 'talk' && q.objectives[0].npc === q.giver) || q.giver === this.handingIn));
+      return !given.includes(p.id) && q?.dialogue?.give?.length && !q.daily && !(q.handIn && ((q.objectives[0]?.type === 'talk' && q.objectives[0].npc === q.giver) || q.giver === this.handingIn));
     });
     if (!fresh.length) return;
     for (const p of fresh) {
@@ -2095,6 +2096,8 @@ export class TownScene extends Phaser.Scene {
         const q = questDef(id);
         const o = q?.objectives[0];
         if (q?.handIn && o?.type === 'talk' && o.npc) this.say(`New quest: ${q.title}. Talk to ${mobName(o.npc)}.`, 4500, 'good', null);
+        // A daily order (its give line isn't kept as said: there's a new one each day).
+        if (q?.daily && o?.type === 'collect') this.say(`${mobName(q.giver)}: “${q.dialogue?.give?.[0] ?? q.summary}”`, 5000, null, null);
       }
     });
     // Members earn a Kowen for every 15 minutes in town (claimed from a pop-up above the feed).
@@ -2492,7 +2495,7 @@ export class TownScene extends Phaser.Scene {
         const now = Date.now();
         this.target?.setRating(m.id, m.cp);
         return this.target?.setBuffs(m.id, m.buffs.map((b) => ({
-          name: b.name,
+          name: b.dish ? this.dishName(b.name) : b.name,
           icon: this.skillIcon(b.cls, b.name),
           lines: buffStatLines(b.stats).length ? buffStatLines(b.stats) : [classInfo(b.cls)?.buffs?.find((x) => x.name === b.name)?.effect ?? ''].filter(Boolean),
           endsAt: b.ms === null ? null : now + b.ms,
@@ -2511,8 +2514,21 @@ export class TownScene extends Phaser.Scene {
           this.buffTray?.set(on.map((b) => {
             const keys = Object.keys(b.stats);
             const out = !stack && keys.length > 0 && keys.every((k) => b.stats[k] < best[k]);
-            return { cls: b.cls, name: b.name, endsAt: b.endsAt, stats: buffStatLines(b.stats), ...(out ? { weaker: winner(keys[0]) } : {}) };
+            return { cls: b.cls, name: b.name, ...(b.dish ? { title: this.dishName(b.name) } : {}), endsAt: b.endsAt, stats: buffStatLines(b.stats), ...(out ? { weaker: winner(keys[0]) } : {}) };
           }));
+        }
+        this.player.speed = SPEED * this.speedFactor(); // (a dish's move speed on or off)
+        return;
+      }
+      // A dish bought (the menu's answer) or served free (a quest's).
+      if (m.t === 'dish') {
+        if (m.free) {
+          playSound('coin');
+          return void toast(`Aling Conching serves you ${this.dishName(m.dish)}: free, for ${adventureData()?.palengke?.dishes?.[m.dish]?.minutes ?? 10} minutes.`, 4000, 'good');
+        }
+        if (this.dishWaiting?.dish === m.dish) {
+          this.dishWaiting.done({ ok: m.ok, message: m.message });
+          this.dishWaiting = null;
         }
         return;
       }
@@ -3163,7 +3179,7 @@ export class TownScene extends Phaser.Scene {
   private stepRefilled = 0;
   private stepBudget(spend = 0): number {
     const now = performance.now();
-    const k = now < this.slowUntil ? 0.5 : 1;
+    const k = this.speedFactor(now);
     this.stepTokens = Math.min(6 * k, this.stepTokens + ((now - this.stepRefilled) / 1000) * 6 * k) - spend;
     this.stepRefilled = now;
     return this.stepTokens;
@@ -3209,10 +3225,10 @@ export class TownScene extends Phaser.Scene {
   /** The Bag's slow on you: half walking speed for `ms` (the server holds your steps to it too). */
   private slowMe(ms: number): void {
     this.slowUntil = Math.max(this.slowUntil, performance.now() + ms);
-    this.player.speed = SPEED / 2;
+    this.player.speed = SPEED * this.speedFactor();
     this.slowTimer?.remove();
     this.slowTimer = this.time.delayedCall(Math.max(0, this.slowUntil - performance.now()), () => {
-      this.player.speed = SPEED;
+      this.player.speed = SPEED * this.speedFactor();
       this.slowTimer = null;
     });
   }
@@ -3268,8 +3284,51 @@ export class TownScene extends Phaser.Scene {
     const frame = this.M.ui.inventory?.itemFrame;
     setNpcDialogArt({ box: box ? { url: asset(box.file), slice: box.nineSlice } : null, frame: frame ? { url: asset(frame.file), slice: frame.nineSlice } : null });
     const npcs = new PalengkeNpcs(this, this.objects, list, () => adventure()?.quests.done ?? []);
+    // Aling Conching's menu, from her dialog box (members: a guest has no Kusing).
+    npcs.action = (id) => (id === 'aling-conching' && adventure() && adventureData()?.palengke?.dishes ? { label: '🍲 Menu', run: () => void this.openDishes() } : undefined);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => npcs.destroy());
     return npcs;
+  }
+
+  /** Aling Conching's menu (ui/dish-menu.ts): her dishes, which you've unlocked, your Kusing and the dishes on you. */
+  private openDishes(): Promise<void> {
+    const D = adventureData()?.palengke?.dishes ?? {};
+    return openDishMenu({
+      dishes: D,
+      unlocked: (id) => !!adventure()?.quests.done.includes(D[id]?.unlockedBy ?? ''),
+      unlockedBy: (id) => questDef(D[id]?.unlockedBy ?? '')?.title ?? 'a quest',
+      kusing: () => adventure()?.kusing ?? 0,
+      on: () => myBuffs().filter((b) => b.dish),
+      buy: (id) => this.buyDish(id),
+    });
+  }
+
+  /** A dish bought through the town (`dish-buy`): its answer (`dish`), or null with no answer in 5 s. */
+  private dishWaiting: { dish: string; done: (r: { ok: boolean; message?: string } | null) => void } | null = null;
+  private buyDish(dish: string): Promise<{ ok: boolean; message?: string } | null> {
+    this.dishWaiting?.done(null);
+    if (!this.link?.send({ t: 'dish-buy', dish })) return Promise.resolve(null);
+    return new Promise((done) => {
+      const timer = setTimeout(() => this.dishWaiting?.dish === dish && (this.dishWaiting.done(null), (this.dishWaiting = null)), 5000);
+      this.dishWaiting = {
+        dish,
+        done: (r) => {
+          clearTimeout(timer);
+          done(r);
+        },
+      };
+    });
+  }
+
+  /** A dish's name (the menu's, without "(side dish)"). */
+  private dishName(id: string): string {
+    return (adventureData()?.palengke?.dishes?.[id]?.name ?? id).replace(/\s*\(side dish\)$/i, '');
+  }
+
+  /** Your walking speed now: half while the Bag slows you, a dish's move speed (Pancit) on a battle map (the server's
+   *  step budget follows the same). */
+  private speedFactor(now = performance.now()): number {
+    return (now < this.slowUntil ? 0.5 : 1) * (this.battleMap ? moveSpeedOf(myBuffStats()) : 1);
   }
 
   private megaphone: MegaphoneBanner | null = null;

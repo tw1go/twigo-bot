@@ -163,6 +163,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `items/items.json` the ten quest items (kind `quest`, bound, no art: a blank square in the bag, a violet one on the
   ground); `classes/stats.json` `inventory.questSlots` 20 (+ `questSlotsNote`); the title Huling Suki in the bot's
   built-in titles (web/titles.ts).
+- The Palengke's dishes and daily orders (20 Oct 2026): `classes/palengke-leveling.json` each dish's `slot` and `stats`
+  (`dishesNote`), Q1's `freeDish` (her free bowl of Lugaw), the dailies' `reset` (4 am Manila), `freeDish` and
+  `dialogue` (written here).
 - The Lumang Palengke (20 Oct 2026): `maps/palengke.json`, `tiles/palengke/`, `props/palengke/` (the art folder's, as they are)
   and the manifest's `props` from its palengke-manifest-snippet.json; `tiles.palengke` is written here (the families counted
   from the files; `plainVariants` / `plainWeight`, `animated` baha / lalim, `banks`, `slow`). `maps/slums.json`: its west gate
@@ -883,8 +886,24 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   figure in their colour, name, the quest marker, a drawn portrait; Aling Conching stands inside her stall), TownScene
   `handInScript` (give lines on a first talk, report lines then the rewards, the same NPC's next quest said straight on;
   `handingIn` keeps giveLines from toasting it), give lines of quests that start without a talk as toasts with the giver's
-  name, "New quest: X. Talk to Y." for the rest. Not yet: dishes (`unlocksDish` is carried), the trail to an NPC, Tisay
-  moving after Q7 shows on the next load only. Dev: `?quest=palengke-08` (the Tanod's chain and the ones before done),
+  name, "New quest: X. Talk to Y." for the rest. Not yet: the trail to an NPC, Tisay moving after Q7 shows on the next
+  load only.
+  Dishes (CONTEXT.md Dish; palengke-leveling.json `dishes`, shared palengke.ts `dishOf` / `dishRefusal` / `dishMs` /
+  `freeDishOf`): buffs of cls 'dish' with a `dish` slot in town-buffs.ts (`giveDish`: one main and one side, a new one
+  replaces its slot; `endTimed` keeps them, so they run on through town and every map; `endDishes` on a knock-out;
+  `dishes` / `restoreDishes` through a restart: TownOptions.dishes load/save, kv 'dishes'); their stats count wherever
+  fights use the buffs, new ones: `mpRegenPct` (withBuffs' mpRegen, Lugaw) and `moveSpeedPct` (shared `moveSpeedOf`:
+  the step budget's token bucket in town.ts on a battle map, the page's `speedFactor` for the walk and its budget
+  mirror; Pancit). Bought only in the room 'palengke': `dish-buy` → `dishes.buy` (`buyDishFor`: unlocked by its quest,
+  its Kusing) → `dish` {ok, message}; free ones (`freeDish`: Q1's Lugaw, a daily order's random one of yours) come back
+  from POST /town/quest as `dish`, server.ts `Town.serveDish` → `dish` {free}. Game: Aling Conching's dialog box's
+  "🍲 Menu" (PalengkeNpcs `action`) opens `ui/dish-menu.ts` (every dish, locked ones greyed with "Unlocks with <quest>",
+  "On · 7:32", Buy with its Kusing; TownScene `openDishes` / `buyDish`); the buff tray shows them by name (`title`).
+  Daily orders (CONTEXT.md Daily order; `dailies`): a QuestDef per pool entry (`palengke-daily-<item>`, `daily`,
+  `after: 'palengke-14'`), `startDaily` (startQuests, entering the Palengke: a random one once the chain is done and
+  today's isn't handed in; one not handed in stays), `finishQuest` (a daily: `quests.dailyDone` = `dailyDay`, never
+  into done). Dev: `?quest=palengke-done` (a daily on), `/__dish?as=&dish=` (served free), `?kusing=`. Tested in
+  `web/palengke-dishes.test.ts` (with a socket test). Dev: `?quest=palengke-08` (the Tanod's chain and the ones before done),
   `?give=fresh-onion::12`. Tested in `web/palengke-quests.test.ts` (with a socket test).
 - Lantern Posts (teleporting between maps; words in CONTEXT.md: Map, Lantern Post, Return Lantern, Map menu, Teleport,
   In combat): a post (manifest props `lantern-post`, its 6-frame idle as the map object's `animated`) in the middle of
