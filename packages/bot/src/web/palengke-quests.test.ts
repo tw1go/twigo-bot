@@ -33,7 +33,7 @@ type AdventureState = import('@mikazuki/shared').AdventureState;
 
 const D = loadItemData();
 const S = loadStats();
-const chain = QUESTS.filter((q) => q.id.startsWith('palengke-'));
+const chain = QUESTS.filter((q) => q.id.startsWith('palengke-') && !q.daily);
 const q = (n: number) => chain[n - 1];
 let uids = 0;
 const uid = () => `t${++uids}`;

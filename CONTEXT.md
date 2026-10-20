@@ -581,6 +581,12 @@ one main dish and one side dish at a time (a new one replaces the old). It count
 through town and map changes, and a knock-out ends it.
 _Avoid_: food buff, buff (a buff is a class skill), consumable
 
+**Daily order**:
+Once "Ang Huling Suki" is done, Aling Conching asks for one batch of quest items a day (onions, lids, rice scoops…), handed
+in to her like a quest's; it gives XP, Kusing and a free dish. A new one comes after 4 am Manila time, once the last one
+is handed in.
+_Avoid_: daily quest (fine in passing), daily mission
+
 ## Rogues and stealing
 
 **Steal** (a steal attempt):

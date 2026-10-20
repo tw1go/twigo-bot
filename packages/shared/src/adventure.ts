@@ -93,6 +93,11 @@ export interface QuestDef {
   rewardTitle?: string;
   /** A dish its completion puts on Aling Conching's menu for this player. */
   unlocksDish?: string;
+  /** A dish served free as it's completed ('random': one they've unlocked). */
+  freeDish?: string;
+  /** A daily order (CONTEXT.md Daily order): never into `done`; one a day once `after` is done. */
+  daily?: boolean;
+  after?: string;
   next: string | null;
 }
 
@@ -199,8 +204,9 @@ export interface AdventureState {
   cls: string | null;
   /** `rewarded`: done quests whose rewards have been given (one finished before it had rewards gets them on a later
    *  visit, as does one whose rewards had no room); `pieces`: done mini boss quests whose +5 piece has been given
-   *  (classes/leveling.json miniBoss.questDrop; no room: a later visit). */
-  quests: { active: QuestProgress[]; done: string[]; rewarded?: string[]; pieces?: string[] };
+   *  (classes/leveling.json miniBoss.questDrop; no room: a later visit); `dailyDone`: the day their last daily order was
+   *  handed in (palengke.ts dailyDay). */
+  quests: { active: QuestProgress[]; done: string[]; rewarded?: string[]; pieces?: string[]; dailyDone?: string };
   /** What's worn in each place. */
   equipped: Partial<Record<EquipPlace, Item>>;
   /** The cosmetics worn (the Costume tab): out of the bag, bound, never stats. */
@@ -272,4 +278,6 @@ export interface TownAdventureResponse {
   title?: string;
   /** Quests that opened with it (their ids): the next one after a level gap, once the reward's XP reached its level. */
   started?: string[];
+  /** A dish served free with it (Q1's Lugaw, a daily order's): the town serves it. */
+  dish?: string;
 }

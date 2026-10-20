@@ -59,6 +59,9 @@ import { type LootGot,
   unwearCosmetic,
   type WarrensData,
   type PalengkeData,
+  finishQuest,
+  freeDishOf,
+  startDaily,
   mobName,
   palengkeQuests,
   startInArea,
@@ -118,6 +121,8 @@ export interface AdventureChange {
   started?: string[];
   /** A title a quest just gave (its id). */
   title?: string;
+  /** A dish a quest just served free (its id). */
+  dish?: string;
   /** A report's XP and Kusing, and a quest's Kowens (into the wallet). */
   xp?: number;
   kusing?: number;
@@ -377,7 +382,9 @@ async function act(path: Path, body: Body): Promise<TownAdventureResponse | null
       if (o) advanced = { quest: body.quest, objective: o.id };
       if (fakeLogin()) tellDevQuests(res.adventure);
     }
-    set(res.adventure, { advanced, completed: res.completed, given: res.given, gear: res.gear, rewards: res.rewards, pieces: res.pieces, xp: res.xp, kusing: res.kusing, kowens: res.kowens, handed: res.handed, title: res.title, ...(res.started?.length ? { started: res.started } : {}) });
+    set(res.adventure, { advanced, completed: res.completed, given: res.given, gear: res.gear, rewards: res.rewards, pieces: res.pieces, xp: res.xp, kusing: res.kusing, kowens: res.kowens, handed: res.handed, title: res.title, dish: res.dish, ...(res.started?.length ? { started: res.started } : {}) });
+    // Dev: a free dish is served by the dev town (the bot serves it where it answers).
+    if (fakeLogin() && res.dish) void fetch(`/__dish?${new URLSearchParams({ as: fakeName(), dish: res.dish })}`).catch(() => null);
     if (fakeLogin() && (before?.cls !== res.adventure.cls || JSON.stringify(before?.equipped) !== JSON.stringify(res.adventure.equipped))) {
       void fetch(`/__kit?${new URLSearchParams({ as: fakeName(), cls: res.adventure.cls ?? '', weapon: res.adventure.equipped.weapon?.defId ?? '' })}`).catch(() => null);
     }
@@ -661,10 +668,13 @@ function startQuests(s: AdventureState): void {
     const next = data?.quests.find((q) => q.id === questDef(id)?.next);
     if (next && !s.quests.done.includes(next.id) && !s.quests.active.some((p) => p.id === next.id) && unlockedAt(next, s.progress.level)) s.quests.active.push({ id: next.id, step: 0 });
   }
+  // Today's daily order, once the Palengke's chain is done (the bot's startDaily).
+  if (data?.palengke) startDaily(s, data.quests, data.palengke, Date.now());
 }
 
 /** Dev (?quest=tanod-05, ?quest=palengke-08): straight to that quest of its chain, every one before it done (a
- *  Palengke quest: the Tanod's chain done too). ?quest=done: all quests done, none active (for testing UI without a
+ *  Palengke quest: the Tanod's chain done too, the dishes of those before unlocked); ?quest=palengke-done: every one
+ *  done, a daily order on. ?quest=done: all quests done, none active (for testing UI without a
  *  quest tracker). */
 function jumpToQuest(s: AdventureState, id: string): void {
   const quests = data?.quests ?? [];
@@ -679,6 +689,8 @@ function jumpToQuest(s: AdventureState, id: string): void {
     }
     if (first.autoStart && id === 'done') return void (s.quests = { active: [], done: chain, rewarded: [...chain] });
   }
+  // ?quest=palengke-done: the Palengke's chain done too (its daily orders start).
+  if (id === 'palengke-done') s.quests = { active: [], done: chain, rewarded: [...chain] };
 }
 
 function fakeAct(body: TownQuestAction | TownEquipAction): TownAdventureResponse {
@@ -743,8 +755,7 @@ function fakeAct(body: TownQuestAction | TownEquipAction): TownAdventureResponse
     delete p.count;
     let completed: string | undefined;
     if (p.step >= q.objectives.length) {
-      s.quests.active = s.quests.active.filter((x) => x.id !== q.id);
-      s.quests.done.push(q.id);
+      finishQuest(s, q, data?.palengke ?? {}, Date.now()); // (a daily order: today's handed in)
       completed = q.id;
       // Its XP from the dev town (levels live there: it sends the level-ups, and a quest waiting for one starts then),
       // its Kusing here (sent with the items).
@@ -760,6 +771,7 @@ function fakeAct(body: TownQuestAction | TownEquipAction): TownAdventureResponse
       ok: true, adventure: s, given, ...(gear.length ? { gear } : {}), completed, ...(rewards.length ? { rewards } : {}), ...(pieces.length ? { pieces } : {}), ...(xp ? { xp } : {}),
       ...(q.rewardKusing && completed ? { kusing: q.rewardKusing } : {}), ...(q.rewardKowens && completed ? { kowens: q.rewardKowens } : {}), ...(handed ? { handed } : {}), ...(taken ? { taken } : {}),
       ...(q.rewardTitle && completed ? { title: q.rewardTitle } : {}),
+      ...(q.freeDish && completed && data?.palengke ? { dish: freeDishOf(s, data.quests, data.palengke, q.freeDish) ?? undefined } : {}),
     };
   }
   // Wearing and taking off (gear and cosmetics): the bot's rules (@mikazuki/shared items.ts), by uid.

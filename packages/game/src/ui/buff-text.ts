@@ -16,6 +16,8 @@ const STAT: Record<string, (n: string) => string> = {
   accuracy: (n) => `−${n}% miss chance`,
   hpRegenPctPerSec: (n) => `${n}% max HP regen a second`,
   cooldownPct: (n) => `−${n}% damage skill cooldowns`,
+  mpRegenPct: (n) => `+${n}% MP regen`,
+  moveSpeedPct: (n) => `+${n}% move speed`,
 };
 
 const WHO: Record<string, string> = { self: 'you', 'ally+self': 'you and one ally (whoever you picked, else a party member)', party: 'you, your party and whoever you picked' };

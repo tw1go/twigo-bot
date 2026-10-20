@@ -35,6 +35,32 @@ export interface PalengkeQuest {
   rewards?: QuestReward[];
   /** A title given as it's reported (the titles' id). */
   rewardTitle?: string;
+  /** A dish served free as it's reported (Q1: Aling Conching's bowl of Lugaw). */
+  freeDish?: string;
+  dialogue?: { give?: string[]; report?: string[] };
+}
+
+/** A dish on Aling Conching's menu (CONTEXT.md Dish): one main and one side at a time, `minutes` long, for Kusing, once
+ *  the quest that unlocks it is done. `stats` = its effect as the buff system's stats. */
+export interface PalengkeDish {
+  name: string;
+  effect: string;
+  minutes: number;
+  kusing: number;
+  unlockedBy: string;
+  slot: 'main' | 'side';
+  stats: Record<string, number>;
+}
+
+/** The daily order after the chain (CONTEXT.md Daily order): one of `pool` a day, handed in to Aling Conching. */
+export interface PalengkeDailies {
+  pool: { item: string; count: number }[];
+  rewardXP: number;
+  rewardKusing: number;
+  /** The day turns at this hour, at this UTC offset (4 am Manila). */
+  reset: { hour: number; utcOffset: number };
+  /** 'random': one of the dishes they've unlocked, served at once. */
+  freeDish?: string;
   dialogue?: { give?: string[]; report?: string[] };
 }
 
@@ -44,7 +70,12 @@ export interface PalengkeData {
   miniBosses: Record<string, { id: string; name: string; level: number }[]>;
   /** What a quest's giver says while the next quest waits for a level ({level}). */
   gapLine?: string;
+  dishes?: Record<string, PalengkeDish>;
+  dailies?: PalengkeDailies;
 }
+
+/** Who gives the daily orders, and which quest opens them. */
+const DAILY_GIVER = 'aling-conching';
 
 /** The map the chain starts in: its first quest opens as you walk in at its unlock level. */
 export const PALENGKE = 'palengke';
@@ -61,7 +92,7 @@ export function palengkeQuests(P: PalengkeData, npcName: (id: string) => string)
   const itemName = (id: string) => P.questItems[id]?.name ?? mobName(id);
   const miniKind = (id: string | undefined) => (id ? Object.entries(P.miniBosses).find(([, list]) => list.some((m) => m.id === id))?.[0] : undefined);
   const miniName = (id: string | undefined) => (id ? Object.values(P.miniBosses).flat().find((m) => m.id === id)?.name : undefined) ?? 'its mini boss';
-  return P.quests.map((q, i): QuestDef => {
+  const chain = P.quests.map((q, i): QuestDef => {
     const reporter = q.reportTo ?? q.giver;
     const talk = (npc: string, id: string, gives?: string): QuestObjectiveDef => ({ id, type: 'talk', npc, text: `Talk to ${npcName(npc)}`, ...(gives ? { gives } : {}) });
     const report = (): QuestObjectiveDef => ({ id: 'report', type: 'talk', npc: reporter, text: `Report to ${npcName(reporter)}` });
@@ -121,10 +152,94 @@ export function palengkeQuests(P: PalengkeData, npcName: (id: string) => string)
       ...(q.rewards?.length ? { rewards: q.rewards } : {}),
       ...(q.rewardTitle ? { rewardTitle: q.rewardTitle } : {}),
       ...(q.unlocksDish ? { unlocksDish: q.unlocksDish } : {}),
+      ...(q.freeDish ? { freeDish: q.freeDish } : {}),
       dialogue: { ...(q.dialogue?.give ? { give: q.dialogue.give } : {}), ...(q.dialogue?.report ? { report: q.dialogue.report } : {}) },
       next: P.quests[i + 1]?.id ?? null,
     };
   });
+  return [...chain, ...dailyQuests(P, itemName, npcName)];
+}
+
+/** The daily orders as quests, one per pool entry (`palengke-daily-<item>`): collect, then bring them to Aling Conching;
+ *  `daily` (done, they wait for the next day), after the chain's last quest. */
+function dailyQuests(P: PalengkeData, itemName: (id: string) => string, npcName: (id: string) => string): QuestDef[] {
+  const D = P.dailies;
+  const last = P.quests.at(-1)?.id;
+  if (!D || !last) return [];
+  const fill = (lines: string[] | undefined, item: string, count: number) => lines?.map((l) => l.replaceAll('{count}', String(count)).replaceAll('{item}', plural(itemName(item))));
+  return D.pool.map(({ item, count }): QuestDef => {
+    const name = plural(itemName(item));
+    const give = fill(D.dialogue?.give, item, count);
+    const report = fill(D.dialogue?.report, item, count);
+    return {
+      id: `palengke-daily-${item}`,
+      type: 'side',
+      title: `Daily order: ${name}`,
+      giver: DAILY_GIVER,
+      summary: `Collect ${count} ${name} for ${npcName(DAILY_GIVER)}`,
+      objectives: [
+        { id: 'collect', type: 'collect', item, count, text: name, label: name },
+        { id: 'deliver', type: 'deliver', npc: DAILY_GIVER, item, count, text: `Bring the ${name} to ${npcName(DAILY_GIVER)}` },
+      ],
+      handIn: true,
+      daily: true,
+      after: last,
+      rewardXP: D.rewardXP,
+      rewardKusing: D.rewardKusing,
+      ...(D.freeDish ? { freeDish: D.freeDish } : {}),
+      dialogue: { ...(give ? { give } : {}), ...(report ? { report } : {}) },
+      next: null,
+    };
+  });
+}
+
+/** The day a daily order belongs to ("2026-10-20"): the date at the reset's offset, turning at its hour. */
+export function dailyDay(P: Pick<PalengkeData, 'dailies'>, now: number): string {
+  const R = P.dailies?.reset ?? { hour: 0, utcOffset: 0 };
+  return new Date(now + (R.utcOffset - R.hour) * 3_600_000).toISOString().slice(0, 10);
+}
+
+/** Today's daily order, if one is due: the chain finished, today's not handed in yet and none under way (an order not
+ *  handed in stays until it is). A random one of the pool, started. Returns it, or null. */
+export function startDaily(s: Pick<AdventureState, 'quests'>, quests: QuestDef[], P: Pick<PalengkeData, 'dailies'>, now: number, random: () => number = Math.random): QuestDef | null {
+  const dailies = quests.filter((q) => q.daily);
+  if (!dailies.length || !dailies[0].after || !s.quests.done.includes(dailies[0].after)) return null;
+  if (s.quests.dailyDone === dailyDay(P, now) || s.quests.active.some((p) => dailies.some((q) => q.id === p.id))) return null;
+  const q = dailies[Math.min(dailies.length - 1, Math.floor(random() * dailies.length))];
+  s.quests.active.push({ id: q.id, step: 0 });
+  return q;
+}
+
+/** A quest finished: into `done` (or, a daily order, today's marked handed in) and out of the active ones. */
+export function finishQuest(s: Pick<AdventureState, 'quests'>, q: QuestDef, P: Pick<PalengkeData, 'dailies'>, now: number): void {
+  s.quests.active = s.quests.active.filter((x) => x.id !== q.id);
+  if (q.daily) s.quests.dailyDone = dailyDay(P, now);
+  else if (!s.quests.done.includes(q.id)) s.quests.done.push(q.id);
+}
+
+// ── Dishes (CONTEXT.md Dish) ──
+
+/** A dish by id. */
+export const dishOf = (P: Pick<PalengkeData, 'dishes'>, id: string): PalengkeDish | undefined => P.dishes?.[id];
+
+/** How long a dish lasts (ms). */
+export const dishMs = (d: PalengkeDish) => d.minutes * 60_000;
+
+/** Why they can't buy a dish (null: they can): no such dish, not unlocked yet (the quest's title), or short of Kusing. */
+export function dishRefusal(s: Pick<AdventureState, 'quests' | 'kusing'>, quests: QuestDef[], P: Pick<PalengkeData, 'dishes'>, id: string): string | null {
+  const d = dishOf(P, id);
+  if (!d) return 'No such dish.';
+  if (!s.quests.done.includes(d.unlockedBy)) return `Unlocks with ${quests.find((q) => q.id === d.unlockedBy)?.title ?? 'a quest'}.`;
+  if (s.kusing < d.kusing) return `You need ${d.kusing.toLocaleString('en-US')} Kusing.`;
+  return null;
+}
+
+/** A dish served free (a quest's `freeDish`): itself, or 'random' = one of the dishes they've unlocked (Lugaw if none). */
+export function freeDishOf(s: Pick<AdventureState, 'quests'>, quests: QuestDef[], P: Pick<PalengkeData, 'dishes'>, free: string, random: () => number = Math.random): string | null {
+  if (free !== 'random') return dishOf(P, free) ? free : null;
+  const open = Object.entries(P.dishes ?? {}).filter(([, d]) => s.quests.done.includes(d.unlockedBy)).map(([id]) => id);
+  const list = open.length ? open : Object.keys(P.dishes ?? {}).slice(0, 1);
+  return list.length ? list[Math.min(list.length - 1, Math.floor(random() * list.length))] : null;
 }
 
 /** Whether a quest is open at this level (no unlockLevel: always). */
@@ -169,5 +284,5 @@ export function questItemDrops(s: Pick<AdventureState, 'quests' | 'bag'>, quests
   return out;
 }
 
-/** The dishes a player has unlocked: each one whose quest (unlocksDish) they've finished. */
+/** The dishes a player has unlocked (by the quests' unlocksDish): each one whose quest they've finished. */
 export const dishesUnlocked = (s: Pick<AdventureState, 'quests'>, quests: QuestDef[]): string[] => quests.flatMap((q) => (q.unlocksDish && s.quests.done.includes(q.id) ? [q.unlocksDish] : []));

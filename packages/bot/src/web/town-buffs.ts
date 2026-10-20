@@ -12,7 +12,11 @@ import { type BuffDef, type BuffRefusal, type StatsData, type TownBuff, buffMpCo
 // add up (stats.json rules.stack, a repo addition; off: only the strongest counts): buffTotals; the same buff never
 // stacks with itself. Timed buffs end on time, on leaving the battle map and on a knock-out; a
 // stance (Keen Stance) stays on until cast again (off) or a class change, across maps. Soothing Touch (durationSec 0)
-// is no buff: an instant heal the host gives (the caster's Power × its healPctOfPower). Pure (the clock is passed in).
+// is no buff: an instant heal the host gives (the caster's Power × its healPctOfPower). Dishes (CONTEXT.md Dish, Aling
+// Conching's in the Lumang Palengke) sit here too, as buffs of cls 'dish' with a `dish` slot: one main and one side at a
+// time (a new one replaces the old in its slot), their clock running everywhere (leaving a battle map never ends them;
+// their stats only count where fights are), ended by a knock-out; `dishes` / `restoreDishes` keep them through a
+// restart. Pure (the clock is passed in).
 
 /** A buff on someone: whose (the caster, by member), at which skill level, its stats then, and when it ends (null: a
  *  stance). */
@@ -23,6 +27,16 @@ export interface BuffOn {
   level: number;
   stats: Record<string, number>;
   endsAt: number | null;
+  /** A dish: its slot. */
+  dish?: 'main' | 'side';
+}
+
+/** A dish as kept (the host saves them): its id, slot, stats and end. */
+export interface DishOn {
+  name: string;
+  dish: 'main' | 'side';
+  stats: Record<string, number>;
+  endsAt: number;
 }
 
 /** Who casts: their member, class, level, the buff's skill level, knocked out or not, whether the room is a battle map,
@@ -123,7 +137,33 @@ export class Buffs {
 
   /** As the buff tray shows them (ms left; null: a stance). */
   view(member: string, now: number): TownBuff[] {
-    return this.list(member).map((b) => ({ name: b.name, cls: b.cls, level: b.level, stats: b.stats, ms: b.endsAt === null ? null : Math.max(0, b.endsAt - now) }));
+    return this.list(member).map((b) => ({ name: b.name, cls: b.cls, level: b.level, stats: b.stats, ms: b.endsAt === null ? null : Math.max(0, b.endsAt - now), ...(b.dish ? { dish: b.dish } : {}) }));
+  }
+
+  /** A dish on them (bought or served free): the one in its slot replaced, for `ms`. */
+  giveDish(member: string, d: { name: string; slot: 'main' | 'side'; stats: Record<string, number> }, ms: number, now: number): void {
+    const list = (this.on.get(member) ?? []).filter((b) => b.dish !== d.slot);
+    this.on.set(member, [...list, { name: d.name, cls: 'dish', by: member, level: 1, stats: d.stats, endsAt: now + ms, dish: d.slot }]);
+  }
+
+  /** Knocked out: their dishes end. Whether any did. */
+  endDishes(member: string): boolean {
+    return this.keep(member, (b) => !b.dish);
+  }
+
+  /** Every dish on everyone (to keep through a restart). */
+  dishes(): Record<string, DishOn[]> {
+    const out: Record<string, DishOn[]> = {};
+    for (const [member, list] of this.on) {
+      const d = list.flatMap((b) => (b.dish && b.endsAt !== null ? [{ name: b.name, dish: b.dish, stats: b.stats, endsAt: b.endsAt }] : []));
+      if (d.length) out[member] = d;
+    }
+    return out;
+  }
+
+  /** Dishes kept before a restart, back on (those not run out). */
+  restoreDishes(kept: Record<string, DishOn[]>, now: number): void {
+    for (const [member, list] of Object.entries(kept)) for (const d of list) if (d.endsAt > now) this.giveDish(member, { name: d.name, slot: d.dish, stats: d.stats }, d.endsAt - now, now);
   }
 
   /** Their buffs as one set of stats (buffTotals: added up, or each stat's strongest). */
@@ -148,9 +188,9 @@ export class Buffs {
     return this.keep(member, (b) => b.name !== name);
   }
 
-  /** Leaving the battle map, or knocked out: their timed buffs end (stances stay). Whether any did. */
+  /** Leaving the battle map, or knocked out: their timed buffs end (stances and dishes stay). Whether any did. */
   endTimed(member: string): boolean {
-    return this.keep(member, (b) => b.endsAt === null);
+    return this.keep(member, (b) => b.endsAt === null || !!b.dish);
   }
 
   /** A class change: their stances end (timed buffs run on). Whether any did. */

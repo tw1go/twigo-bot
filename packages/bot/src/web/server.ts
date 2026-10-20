@@ -94,7 +94,7 @@ const lookOf = (userId: string): OutfitData | null => {
 };
 import { enhanceFeedLine, parseForgeAction } from './forge.js';
 import { loadItemData, loadPalengkeLeveling } from './stats-data.js';
-import { practiceDropFor, refundPracticeTicketFor, usePracticeTicketFor, warrensAccessOf, refundTicketFor, warrenTicketsOf, useTicketFor, kindCountOf, useKindFor, adventureOf, cosmeticsOf, combatOf, fighterOf, forgeFor, petXpFor, dropItemFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townPet, townEquip, townPoints, townQuest, townSkills, trainingArmorFor, questRewardsFor, questPiecesFor, questKillFor, enterAreaFor, questDropsFor, adventurersWithClass } from './adventure.js';
+import { practiceDropFor, refundPracticeTicketFor, usePracticeTicketFor, warrensAccessOf, refundTicketFor, warrenTicketsOf, useTicketFor, kindCountOf, useKindFor, adventureOf, cosmeticsOf, combatOf, fighterOf, forgeFor, petXpFor, dropItemFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townPet, townEquip, townPoints, townQuest, townSkills, trainingArmorFor, questRewardsFor, questPiecesFor, questKillFor, enterAreaFor, questDropsFor, buyDishFor, adventurersWithClass } from './adventure.js';
 import { renameWithCard } from '../items/rename-card.js';
 import { changeClassWithTicket } from '../items/class-ticket.js';
 import { LAUNCH_REWARD, isPreregistered, launched, preregCount, preregister } from '../prereg/prereg.js';
@@ -762,6 +762,8 @@ export function startWebServer(client: Client): void {
             if (look) town?.restyle(userId, look, titleOf(userId));
             console.log(`[quests] ${userId} earned the title ${result.title} for ${result.completed}`);
           }
+          // A quest's free dish (Q1's Lugaw, a daily order's): served now.
+          if (result.ok && result.dish) town?.serveDish(userId, result.dish);
         } else if (path === '/town/points') {
           const action = parsePointsAction(body);
           if (!action) return send(res, 400, '{"error":"invalid points action"}');
@@ -1203,6 +1205,9 @@ export function startWebServer(client: Client): void {
       // Lantern Posts: a Return Lantern from the combat bag for each teleport.
       lanterns: { count: (userId) => kindCountOf(userId, RETURN_LANTERN), use: (userId) => useKindFor(userId, RETURN_LANTERN) },
       quests: { kill: questKillFor, enter: enterAreaFor, drops: (userId, kind) => questDropsFor(userId, kind) },
+      // Aling Conching's dishes: bought for Kusing (unlocked by the Palengke's quests); the ones on everyone kept in kv
+      // 'dishes' through restarts.
+      dishes: { buy: buyDishFor, load: () => kvLoad('dishes', {}), save: (all) => kvSave('dishes', all) },
       // Levels: who they are in a fight, and kills' XP (saved with the class).
       progress: {
         fighter: fighterOf,

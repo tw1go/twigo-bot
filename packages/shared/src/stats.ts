@@ -523,8 +523,9 @@ export function buffTotals(data: StatsData | null | undefined, on: Iterable<{ st
 }
 
 /** Derived stats with buffs on (buffTotals): Power × (1 + atkPct), max HP × (1 + maxHpPct), DEF × (1 + defPct),
- *  + amp, + crit rate (held to caps.critRate), + DEF rate (gear's and the buff's together, held to caps.defRate), and
- *  accuracy, cooldownPct and hpRegenPctPerSec as they are. A heal (healPctOfPower) is no lasting stat. */
+ *  + amp, + crit rate (held to caps.critRate), + DEF rate (gear's and the buff's together, held to caps.defRate),
+ *  accuracy, cooldownPct and hpRegenPctPerSec as they are, MP regen × (1 + mpRegenPct) (a dish: Lugaw). Move speed
+ *  (moveSpeedPct, Pancit) is no derived stat: the walk and the server's step budget take it (moveSpeedOf). A heal (healPctOfPower) is no lasting stat. */
 export function withBuffs(data: StatsData, d: DerivedStats, b: Record<string, number>): DerivedStats {
   return {
     ...d,
@@ -537,8 +538,12 @@ export function withBuffs(data: StatsData, d: DerivedStats, b: Record<string, nu
     accuracy: (d.accuracy ?? 0) + (b.accuracy ?? 0),
     cooldownPct: (d.cooldownPct ?? 0) + (b.cooldownPct ?? 0),
     hpRegenPct: (d.hpRegenPct ?? 0) + (b.hpRegenPctPerSec ?? 0),
+    mpRegen: d.mpRegen * (1 + (b.mpRegenPct ?? 0)),
   };
 }
+
+/** Walking speed's multiplier from buffs (a dish: Pancit's moveSpeedPct), on battle maps only (the callers say). */
+export const moveSpeedOf = (b: Record<string, number>): number => 1 + Math.max(0, b.moveSpeedPct ?? 0);
 
 /** A buff's MP at its skill level (stats.json skills.mpCost.buffs, +3% a level past 1, rounded); 0 if none. */
 export function buffMpCost(data: StatsData, name: string, skillLevel = 1): number {
