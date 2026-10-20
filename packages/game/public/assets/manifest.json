@@ -20100,6 +20100,14 @@
       ],
       "note": "the Slums' golem timer (ui/golem-timer.ts): the Scrapheap Golem's head and shoulders, cut from frame 0 of mob-scrapheap-golem-idle-se at (80,46); repo-only, a stand-in until the art folder has its own"
     },
+    "greatScaleHead": {
+      "file": "ui/ui-great-scale-head.png",
+      "size": [
+        56,
+        56
+      ],
+      "note": "the Palengke's field boss timer (ui/golem-timer.ts): the Great Scale's dial, cut from the art folder's great-scale/stand/mob-great-scale-boss-stand-sw.png at (27,2); repo-only, a stand-in until the art folder has its own"
+    },
     "houseProtected": {
       "file": "ui/ui-house-protected.png",
       "showcase": "ui/ui-house-protected@32.png",
@@ -21517,7 +21525,7 @@
         "file": "mobs/biikko-kalabasa/mob-biikko-kalabasa-glow-{anim}-{dir}.png",
         "alpha": [
           0.6,
-          1.0
+          1
         ],
         "everyMs": 120,
         "note": "the face's candle glow alone, the body's frames: drawn additive over it, its alpha flickering 0.6 to 1 about every 120 ms"
@@ -21998,6 +22006,76 @@
           "loop": false
         }
       }
+    },
+    "great-scale": {
+      "name": "Ang Dakilang Timbangan",
+      "file": "mobs/great-scale/mob-great-scale-boss-{anim}-{dir}.png",
+      "size": [
+        262,
+        147
+      ],
+      "anchor": [
+        131,
+        140
+      ],
+      "directions": [
+        "s",
+        "se",
+        "e",
+        "ne",
+        "n",
+        "nw",
+        "w",
+        "sw"
+      ],
+      "animations": {
+        "idle": {
+          "frames": 4,
+          "fps": 6,
+          "loop": true
+        },
+        "move": {
+          "frames": 7,
+          "fps": 8,
+          "loop": true
+        },
+        "attack": {
+          "frames": 9,
+          "fps": 12,
+          "loop": false
+        },
+        "weigh": {
+          "frames": 8,
+          "fps": 12,
+          "loop": false
+        },
+        "cone": {
+          "frames": 8,
+          "fps": 10,
+          "loop": false
+        },
+        "call": {
+          "frames": 8,
+          "fps": 12,
+          "loop": false
+        },
+        "enrage": {
+          "frames": 7,
+          "fps": 12,
+          "loop": false
+        },
+        "hit": {
+          "frames": 2,
+          "fps": 12,
+          "loop": false
+        },
+        "death": {
+          "frames": 9,
+          "fps": 8,
+          "loop": false
+        }
+      },
+      "note": "The Great Scale, the Palengke field boss (the art folder's monsters/palengke/pixellab-v1/great-scale/anim, 20 Oct 2026): one look, eight directions; no enraged sheets yet (its enrage tints it red)."
     }
   },
   "guide": {
