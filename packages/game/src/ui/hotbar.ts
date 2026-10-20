@@ -1,5 +1,5 @@
 import { actionOf, keyLabel, matches, onKeybinds } from './keybinds';
-import type { ClassInfo } from '@mikazuki/shared';
+import type { ClassInfo, HotbarEntry, HotbarLayout } from '@mikazuki/shared';
 import { playSound } from '../audio/sound';
 import { MOBILITY_PREVIEWS, SKILL_PREVIEWS, buffPreview } from '../combat/skill-previews';
 import { GAP_MS, STAGE_H, STAGE_W, type Skill, type SkillStage } from '../combat/skill-stage';
@@ -21,7 +21,7 @@ import { buffText } from './buff-text';
 // too, with a padlock: they can't be used until then). Drag one onto a slot, or click it and then a slot. Potions are
 // dragged in from the bag: HP and MP Potions from the combat bag (onItem uses one: the town asks the server, which
 // keeps their cooldown (each kind its own: stats.json potions.separateCooldowns), shown as a pie on that kind's slots; the count you carry in the corner);
-// sari-sari potions never go on it (they're drunk from the bag). Drag a slot onto another to swap them; drag it off the bar to empty it (right-click leaves it). Per class, saved in this browser (localStorage `mk_hotbar`); a class's first bar has
+// sari-sari potions never go on it (they're drunk from the bag). Drag a slot onto another to swap them; drag it off the bar to empty it (right-click leaves it). Per class, kept on the server when logged in (/me `hotbars`, POST /town/hotbar through `onSave`: the same bar on every device; this browser's copy, localStorage `mk_hotbar`, stands in offline, in dev, and seeds the server once) ; a class's first bar has
 // its skills in order. Skills show their icon (manifest ui.skillIcons) where there is one, else their initials over the
 // class badge. Move skills work in town (onSkill: world/mobility.ts) and their slots show the cooldown as a
 // shrinking pie with the seconds left; the rest wait for combat. Skills have no icons yet: their
@@ -48,19 +48,18 @@ export interface HotbarOptions {
   icon?: (cls: string, skill: string) => string | null;
   /** The preview stage for a class (built once its poses and fx have loaded). */
   stage?: (cls: ClassInfo) => Promise<SkillStage | null>;
+  /** A class's bar changed: kept on the server for every device (TownScene: POST /town/hotbar). Without it, this
+   *  browser only. */
+  onSave?: (cls: string, layout: HotbarLayout) => void;
 }
 
-type SkillEntry = { t: 'skill'; name: string };
+type SkillEntry = Extract<HotbarEntry, { t: 'skill' }>;
 /** An item on the bar: its id, name, emoji (no art) and rarity; `cooldown`: the key of a cooldown it shares (HP and MP
  *  Potions: potionCooldownKey). */
-type ItemEntry = { t: 'item'; id: string; name: string; emoji: string; rarity: string; cooldown?: string };
-type Entry = SkillEntry | ItemEntry | null;
+type ItemEntry = Extract<HotbarEntry, { t: 'item' }>;
+type Entry = HotbarEntry;
 type Row = 'top' | 'main' | 'util';
-interface Layout {
-  top: Entry[];
-  main: Entry[];
-  util: Entry[];
-}
+type Layout = HotbarLayout;
 
 const SIZE: Record<Row, number> = { top: 13, main: 10, util: 3 };
 /** Each slot's keybind action (ui/keybinds.ts: main1–10, util1–3, top1–13). */
@@ -107,6 +106,8 @@ export class Hotbar {
   private cdRaf = 0;
   private readonly cells: Record<Row, HTMLButtonElement[]> = { top: [], main: [], util: [] };
   private cls: ClassInfo | null = null;
+  /** The bars the server keeps, by class (setSynced; null: not logged in, this browser's only). */
+  private synced: Record<string, HotbarLayout> | null = null;
   private layout: Layout = blank();
   /** A skill clicked in the list (or a potion's Put on hotbar in the bag), waiting for a slot click. */
   private picked: SkillEntry | ItemEntry | null = null;
@@ -185,7 +186,13 @@ export class Hotbar {
     });
   }
 
-  /** Your class (null: none yet): its saved bar, or its skills in order the first time. */
+  /** The bars the server keeps for you (/me hotbars): they win over this browser's; a class only this browser has
+   *  arranged is sent up the first time it's shown. Call before setClass. */
+  setSynced(bars: Record<string, HotbarLayout>): void {
+    this.synced = bars;
+  }
+
+  /** Your class (null: none yet): its saved bar (the server's, else this browser's), or its skills in order the first time. */
   setClass(c: ClassInfo | null): void {
     if (!this.root.hidden && c?.id === this.cls?.id) return;
     this.cls = c;
@@ -195,7 +202,8 @@ export class Hotbar {
     this.expandBtn.textContent = '▲';
     this.expandBtn.setAttribute('aria-expanded', 'false');
     this.root.style.setProperty('--badge', c ? `url("${this.o.badge(c.id)}")` : 'none');
-    const saved = c ? load()[c.id] : undefined;
+    const local = c ? load()[c.id] : undefined;
+    const saved = c ? (this.synced?.[c.id] ?? local) : undefined;
     if (c && saved) this.layout = tidy(saved, c);
     else {
       this.layout = blank();
@@ -204,6 +212,11 @@ export class Hotbar {
     this.picked = null;
     this.drawList();
     this.draw();
+    // This browser had a bar the server doesn't know: it goes up once (the next device gets it too).
+    if (c && local && this.synced && !this.synced[c.id]) {
+      this.synced[c.id] = this.layout;
+      this.o.onSave?.(c.id, this.layout);
+    }
   }
 
   private cell(row: Row, i: number): HTMLButtonElement {
@@ -265,6 +278,7 @@ export class Hotbar {
   private put(row: Row, i: number, entry: Entry): void {
     this.layout[row][i] = entry;
     if (this.cls) {
+      // Kept here (so it's there offline and in dev) and, logged in, on the server for every device.
       const all = load();
       all[this.cls.id] = this.layout;
       try {
@@ -272,6 +286,8 @@ export class Hotbar {
       } catch {
         /* private window: the bar just isn't remembered */
       }
+      if (this.synced) this.synced[this.cls.id] = this.layout;
+      this.o.onSave?.(this.cls.id, this.layout);
     }
     playSound('click');
     this.draw();

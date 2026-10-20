@@ -1354,7 +1354,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   Damage, Mobility and Buffs (classes.json buffs: icon, unlock level, their buff-cast on the stage on hover; cast from
   the hotbar: Buffs, below), each with its level and description (see Skills unlock), the hovered one played on the class choice's stage (`TownScene.skillStage`, 1×); drag a
   skill to a slot, or click it then a slot.
-  Potions dragged from the bag (HP/MP Potions from the combat bag: used through the town, a cooldown per kind); drag between slots swaps, off the bar empties (right-click never does). Per class in localStorage
+  Potions dragged from the bag (HP/MP Potions from the combat bag: used through the town, a cooldown per kind); drag between slots swaps, off the bar empties (right-click never does). Per class, kept on the server when logged in (bot `web/hotbar.ts`, kv `hotbar:<userId>` by class, tested: `cleanHotbar` keeps it within the rows' sizes and entry shapes; `/me` `hotbars`, `POST /town/hotbar { cls, layout }`; the page's `onSave`, TownScene `saveHotbar` 600 ms after the last change and at once on pagehide with keepalive; the server's wins on load, a class only this browser had arranged is sent up once) and in localStorage
   `mk_hotbar` (a class's first bar = its skills in order). Skill icons from manifest ui.skillIcons (`have` lists the ones there are: every class's 7 damage skills and its Lv 8 move; `shared` = one icon for all, Dash); the rest show
   their initials over the class badge. In town the damage skills are dark (grey, dimmed: `usable`); only the move
   skills light up. Where it
