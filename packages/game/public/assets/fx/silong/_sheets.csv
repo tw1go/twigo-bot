@@ -1,0 +1,14 @@
+file,cell_w,cell_h,frames,fps,loop,anchor_x,anchor_y,notes
+fx-silong-ice-block-warn.png,32,16,4,6,yes,16,8,ground: red square under a player before an ice block lands (1 x 1 tile)
+fx-silong-ice-block-shadow.png,32,16,6,12,no,16,8,ground: its shadow growing as it falls; plays with the drop
+fx-silong-ice-block-drop.png,80,156,7,14,no,40,135,front: the ice block falls and lands; then show prop-silong-ice-block in its place for 12 s
+fx-silong-ice-block-break.png,80,80,7,12,no,40,55,front: the block cracks and shatters after its 12 s
+fx-silong-breath-warn-sw.png,203,94,4,4,yes,160,12,ground: Freezer Breath warning (2 s): red cone outline, 120 degrees, 7 tiles, facing SW; anchor = the fan mouth on the ground
+fx-silong-breath-sw.png,203,94,8,12,no,160,12,ground: Freezer Breath blast: frost rolls out to 7 tiles; hide behind an ice block
+fx-silong-brine.png,32,16,4,3,yes,16,8,ground: Brine Flood: cold brine over each floor tile for 6 s (not on pallets)
+fx-silong-chill.png,16,16,4,0,no,8,15,front: Chill stacks 1-4 over the head: frame = stacks - 1 (not an animation)
+fx-silong-chill-puff.png,24,24,6,12,no,12,20,front: small frost puff on the player when a Chill stack lands
+fx-silong-frost-crack.png,64,96,7,10,no,32,95,front: over a cold-room door: frost cracks and falls off when that room's boss dies (then show the open door)
+fx-silong-hatch-glow.png,140,72,4,4,yes,70,36,ground: cold blue glow round the Silong Hatch in the market (centre it on the hatch anchor)
+fx-silong-lamp-glow.png,100,52,2,3,yes,50,26,ground: warm ring under each work lamp: the 2-tile area that clears Chill
+fx-silong-melt-steam.png,32,48,8,10,no,16,46,front: steam puff; scatter them over frosted tiles when Ang Makinang Yelo dies

@@ -88,8 +88,8 @@ function groupOf(file: string, anims: string[], dirs: string[]): string {
   const parts = file.split('/');
   // The Halloween decorations (CONTEXT.md Decoration): one sheet of their own, loaded only while the event is on.
   if (((parts[0] === 'props' || parts[0] === 'fx') && parts[1] === 'halloween') || (parts[0] === 'buildings' && file.endsWith('-halloween.png'))) return 'halloween-deco';
-  // The Lumang Palengke's ground and props: sheets of their own, loaded only there (its water strips stay sheets).
-  if ((parts[0] === 'tiles' || parts[0] === 'props') && parts[1] === 'palengke') return `${parts[0]}-palengke`;
+  // The Lumang Palengke's ground and props, and Ang Silong's: sheets of their own, loaded only there (water strips stay sheets).
+  if ((parts[0] === 'tiles' || parts[0] === 'props') && (parts[1] === 'palengke' || parts[1] === 'silong')) return `${parts[0]}-${parts[1]}`;
   // A cosmetic's sheets fitted to a class's combat poses (char-cosmetic-<key>-<anim>-<dir>; keys have no dash): a sheet
   // per class and cosmetic, so only those wearing it load it, never everyone playing that class.
   if (parts[0] === 'characters' && parts[1] === 'classes' && basename(file).startsWith('char-cosmetic-')) return `class-${parts[2]}-cosmetic-${basename(file).split('-')[2]}`;

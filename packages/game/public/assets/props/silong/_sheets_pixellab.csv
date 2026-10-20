@@ -1,0 +1,7 @@
+file,cell_w,cell_h,frames,fps,loop,anchor_x,anchor_y,notes
+prop-silong-door-closed.png,128,192,1,0,no,70,105,cold-room door (G), 2 tiles wide, face runs top right to bottom left; flip for the other wall direction; anchor = middle of the closed door bottom edge (Mac PixelLab)
+prop-silong-door-open.png,128,192,1,0,no,70,105,same door swung open toward the viewer on its hinges; same anchor (script from the closed door)
+prop-silong-elevator-open.png,128,128,1,0,no,66,95,freight elevator cage (E arrival / X down), about 3x3 tiles; anchor = centre of its floor; gate open (Mac PixelLab)
+prop-silong-elevator-closed.png,128,128,1,0,no,66,95,freight elevator cage (E arrival / X down), about 3x3 tiles; anchor = centre of its floor; scissor gate shut (script on Mac's cage)
+prop-silong-elevator-plate.png,128,128,1,0,no,66,95,floor plate left behind when the cage rides down (script)
+prop-silong-ice-block.png,64,64,1,0,no,32,47,1x1 ice block (Ice Block Drop: stays 12 s as a wall) (Mac PixelLab)

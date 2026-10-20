@@ -539,6 +539,40 @@
       "large": "items/quest/item-quest-nena-binoculars-64.png"
     },
     {
+      "id": "susi-ng-silong",
+      "name": "Susi ng Silong",
+      "kind": "consumable",
+      "rarity": "white",
+      "about": "Opens a run of Ang Silong for you, or for your whole party. Use it at the Silong Hatch in the Market Hall.",
+      "icon": "items/consumables/item-silong-key-16.png",
+      "showcase": "items/consumables/item-silong-key.png",
+      "large": "items/consumables/item-silong-key-64.png",
+      "useAt": "Use it at the Silong Hatch in the Market Hall",
+      "note": "Repo addition (20 Oct 2026): the art folder's silong/data/silong.json `key` (stack 99, tradeable: the consumables' rules); Aling Conching sells it after the finale (200,000 Kusing), the Great Scale drops it 1 in 4, Ang Makinang Yelo 1 in 10."
+    },
+    {
+      "id": "practice-susi-ng-silong",
+      "name": "Practice Susi ng Silong",
+      "kind": "consumable",
+      "rarity": "white",
+      "bound": true,
+      "about": "A one-time practice run of Ang Silong: easier, XP and Kusing only. Use it at the Silong Hatch in the Market Hall.",
+      "icon": "items/consumables/item-silong-key-16.png",
+      "showcase": "items/consumables/item-silong-key.png",
+      "large": "items/consumables/item-silong-key-64.png",
+      "useAt": "Use it at the Silong Hatch in the Market Hall",
+      "note": "Repo addition (20 Oct 2026): given once by quest palengke-15 (silong.json practiceRun); the Susi ng Silong's picture until it has its own."
+    },
+    {
+      "id": "ramon-note",
+      "name": "Mang Ramon's Note",
+      "kind": "quest",
+      "rarity": "white",
+      "bound": true,
+      "about": "A folded note from Mang Ramon's box in the Silong. Kuya Jun will want to see it.",
+      "note": "Repo addition (20 Oct 2026): from the R box on the Silong's B2 (silong.json practiceRun.ramonBox); no art yet (as Tisay's Note)."
+    },
+    {
       "id": "fresh-onion",
       "name": "Fresh Onion",
       "kind": "quest",

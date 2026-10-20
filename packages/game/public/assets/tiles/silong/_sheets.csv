@@ -1,0 +1,99 @@
+file,cell_w,cell_h,frames,fps,loop,anchor_x,anchor_y,notes
+tile-silong-frost-1.png,32,16,1,0,no,16,8,frosted cellar concrete: rooms and corridors on B2-B3 (variants 1-6 plain, weight 2:1)
+tile-silong-frost-2.png,32,16,1,0,no,16,8,frosted cellar concrete: rooms and corridors on B2-B3 (variants 1-6 plain, weight 2:1)
+tile-silong-frost-3.png,32,16,1,0,no,16,8,frosted cellar concrete: rooms and corridors on B2-B3 (variants 1-6 plain, weight 2:1)
+tile-silong-frost-4.png,32,16,1,0,no,16,8,frosted cellar concrete: rooms and corridors on B2-B3 (variants 1-6 plain, weight 2:1)
+tile-silong-frost-5.png,32,16,1,0,no,16,8,frosted cellar concrete: rooms and corridors on B2-B3 (variants 1-6 plain, weight 2:1)
+tile-silong-frost-6.png,32,16,1,0,no,16,8,frosted cellar concrete: rooms and corridors on B2-B3 (variants 1-6 plain, weight 2:1)
+tile-silong-frost-7.png,32,16,1,0,no,16,8,frosted cellar concrete: rooms and corridors on B2-B3 (variants 1-6 plain, weight 2:1)
+tile-silong-frost-8.png,32,16,1,0,no,16,8,frosted cellar concrete: rooms and corridors on B2-B3 (variants 1-6 plain, weight 2:1)
+tile-silong-frost-9.png,32,16,1,0,no,16,8,frosted cellar concrete: rooms and corridors on B2-B3 (variants 1-6 plain, weight 2:1)
+tile-silong-frost-10.png,32,16,1,0,no,16,8,frosted cellar concrete: rooms and corridors on B2-B3 (variants 1-6 plain, weight 2:1)
+tile-silong-frost-11.png,32,16,1,0,no,16,8,frosted cellar concrete: rooms and corridors on B2-B3 (variants 1-6 plain, weight 2:1)
+tile-silong-frost-12.png,32,16,1,0,no,16,8,frosted cellar concrete: rooms and corridors on B2-B3 (variants 1-6 plain, weight 2:1)
+tile-silong-frost-13.png,32,16,1,0,no,16,8,frosted cellar concrete: rooms and corridors on B2-B3 (variants 1-6 plain, weight 2:1)
+tile-silong-frost-14.png,32,16,1,0,no,16,8,frosted cellar concrete: rooms and corridors on B2-B3 (variants 1-6 plain, weight 2:1)
+tile-silong-frost-15.png,32,16,1,0,no,16,8,frosted cellar concrete: rooms and corridors on B2-B3 (variants 1-6 plain, weight 2:1)
+tile-silong-frost-16.png,32,16,1,0,no,16,8,frosted cellar concrete: rooms and corridors on B2-B3 (variants 1-6 plain, weight 2:1)
+tile-silong-frost-17.png,32,16,1,0,no,16,8,frosted cellar concrete: rooms and corridors on B2-B3 (variants 1-6 plain, weight 2:1)
+tile-silong-frost-18.png,32,16,1,0,no,16,8,frosted cellar concrete: rooms and corridors on B2-B3 (variants 1-6 plain, weight 2:1)
+tile-silong-frost-19.png,32,16,1,0,no,16,8,frosted cellar concrete: rooms and corridors on B2-B3 (variants 1-6 plain, weight 2:1)
+tile-silong-frost-20.png,32,16,1,0,no,16,8,frosted cellar concrete: rooms and corridors on B2-B3 (variants 1-6 plain, weight 2:1)
+tile-silong-freezer-1.png,32,16,1,0,no,16,8,frosted white freezer tiles: Meat Lockers, Walk-in Freezer, Old Canteen
+tile-silong-freezer-2.png,32,16,1,0,no,16,8,frosted white freezer tiles: Meat Lockers, Walk-in Freezer, Old Canteen
+tile-silong-freezer-3.png,32,16,1,0,no,16,8,frosted white freezer tiles: Meat Lockers, Walk-in Freezer, Old Canteen
+tile-silong-freezer-4.png,32,16,1,0,no,16,8,frosted white freezer tiles: Meat Lockers, Walk-in Freezer, Old Canteen
+tile-silong-freezer-5.png,32,16,1,0,no,16,8,frosted white freezer tiles: Meat Lockers, Walk-in Freezer, Old Canteen
+tile-silong-freezer-6.png,32,16,1,0,no,16,8,frosted white freezer tiles: Meat Lockers, Walk-in Freezer, Old Canteen
+tile-silong-freezer-7.png,32,16,1,0,no,16,8,frosted white freezer tiles: Meat Lockers, Walk-in Freezer, Old Canteen
+tile-silong-freezer-8.png,32,16,1,0,no,16,8,frosted white freezer tiles: Meat Lockers, Walk-in Freezer, Old Canteen
+tile-silong-freezer-9.png,32,16,1,0,no,16,8,frosted white freezer tiles: Meat Lockers, Walk-in Freezer, Old Canteen
+tile-silong-freezer-10.png,32,16,1,0,no,16,8,frosted white freezer tiles: Meat Lockers, Walk-in Freezer, Old Canteen
+tile-silong-freezer-11.png,32,16,1,0,no,16,8,frosted white freezer tiles: Meat Lockers, Walk-in Freezer, Old Canteen
+tile-silong-freezer-12.png,32,16,1,0,no,16,8,frosted white freezer tiles: Meat Lockers, Walk-in Freezer, Old Canteen
+tile-silong-bodega-1.png,32,16,1,0,no,16,8,B1 dry storage concrete with spilled rice; half lightly frosted (B1 is cool, not frozen)
+tile-silong-bodega-2.png,32,16,1,0,no,16,8,B1 dry storage concrete with spilled rice; half lightly frosted (B1 is cool, not frozen)
+tile-silong-bodega-3.png,32,16,1,0,no,16,8,B1 dry storage concrete with spilled rice; half lightly frosted (B1 is cool, not frozen)
+tile-silong-bodega-4.png,32,16,1,0,no,16,8,B1 dry storage concrete with spilled rice; half lightly frosted (B1 is cool, not frozen)
+tile-silong-bodega-5.png,32,16,1,0,no,16,8,B1 dry storage concrete with spilled rice; half lightly frosted (B1 is cool, not frozen)
+tile-silong-bodega-6.png,32,16,1,0,no,16,8,B1 dry storage concrete with spilled rice; half lightly frosted (B1 is cool, not frozen)
+tile-silong-bodega-7.png,32,16,1,0,no,16,8,B1 dry storage concrete with spilled rice; half lightly frosted (B1 is cool, not frozen)
+tile-silong-bodega-8.png,32,16,1,0,no,16,8,B1 dry storage concrete with spilled rice; half lightly frosted (B1 is cool, not frozen)
+tile-silong-bodega-9.png,32,16,1,0,no,16,8,B1 dry storage concrete with spilled rice; half lightly frosted (B1 is cool, not frozen)
+tile-silong-bodega-10.png,32,16,1,0,no,16,8,B1 dry storage concrete with spilled rice; half lightly frosted (B1 is cool, not frozen)
+tile-silong-bodega-11.png,32,16,1,0,no,16,8,B1 dry storage concrete with spilled rice; half lightly frosted (B1 is cool, not frozen)
+tile-silong-bodega-12.png,32,16,1,0,no,16,8,B1 dry storage concrete with spilled rice; half lightly frosted (B1 is cool, not frozen)
+tile-silong-ice-1.png,32,16,1,0,no,16,8,ice floor 'i' (B3 ramp, slippery)
+tile-silong-ice-2.png,32,16,1,0,no,16,8,ice floor 'i' (B3 ramp, slippery)
+tile-silong-ice-3.png,32,16,1,0,no,16,8,ice floor 'i' (B3 ramp, slippery)
+tile-silong-ice-4.png,32,16,1,0,no,16,8,ice floor 'i' (B3 ramp, slippery)
+tile-silong-ice-5.png,32,16,1,0,no,16,8,ice floor 'i' (B3 ramp, slippery)
+tile-silong-ice-6.png,32,16,1,0,no,16,8,ice floor 'i' (B3 ramp, slippery)
+tile-silong-ice-7.png,32,16,1,0,no,16,8,ice floor 'i' (B3 ramp, slippery)
+tile-silong-ice-8.png,32,16,1,0,no,16,8,ice floor 'i' (B3 ramp, slippery)
+tile-silong-ice-9.png,32,16,1,0,no,16,8,ice floor 'i' (B3 ramp, slippery)
+tile-silong-ice-10.png,32,16,1,0,no,16,8,ice floor 'i' (B3 ramp, slippery)
+tile-silong-ice-11.png,32,16,1,0,no,16,8,ice floor 'i' (B3 ramp, slippery)
+tile-silong-ice-12.png,32,16,1,0,no,16,8,ice floor 'i' (B3 ramp, slippery)
+tile-silong-ice-13.png,32,16,1,0,no,16,8,ice floor 'i' (B3 ramp, slippery)
+tile-silong-ice-14.png,32,16,1,0,no,16,8,ice floor 'i' (B3 ramp, slippery)
+tile-silong-tank-1.png,32,16,1,0,no,16,8,frozen ice-tank water 'W' (blocked)
+tile-silong-tank-2.png,32,16,1,0,no,16,8,frozen ice-tank water 'W' (blocked)
+tile-silong-tank-3.png,32,16,1,0,no,16,8,frozen ice-tank water 'W' (blocked)
+tile-silong-tank-4.png,32,16,1,0,no,16,8,frozen ice-tank water 'W' (blocked)
+tile-silong-tank-5.png,32,16,1,0,no,16,8,frozen ice-tank water 'W' (blocked)
+tile-silong-tank-6.png,32,16,1,0,no,16,8,frozen ice-tank water 'W' (blocked)
+tile-silong-walltop-1.png,32,16,1,0,no,16,8,top of a wall '#' (raised 1 level), heavy frost
+tile-silong-walltop-2.png,32,16,1,0,no,16,8,top of a wall '#' (raised 1 level), heavy frost
+tile-silong-walltop-3.png,32,16,1,0,no,16,8,top of a wall '#' (raised 1 level), heavy frost
+tile-silong-walltop-4.png,32,16,1,0,no,16,8,top of a wall '#' (raised 1 level), heavy frost
+tile-silong-walltop-5.png,32,16,1,0,no,16,8,top of a wall '#' (raised 1 level), heavy frost
+tile-silong-walltop-6.png,32,16,1,0,no,16,8,top of a wall '#' (raised 1 level), heavy frost
+tile-silong-elevator-1.png,32,16,1,0,no,16,8,freight elevator floor plate stand-ins: 1 = arrival 'E', 2 = down 'X' (until the PixelLab elevator)
+tile-silong-elevator-2.png,32,16,1,0,no,16,8,freight elevator floor plate stand-ins: 1 = arrival 'E', 2 = down 'X' (until the PixelLab elevator)
+tile-silong-belt-e.png,32,16,4,8,yes,16,8,conveyor belt > running east (col +1); slats move 2 px a frame (speed it up for Belt Rush)
+tile-silong-belt-w.png,32,16,4,8,yes,16,8,conveyor belt < running west (col -1); slats move 2 px a frame (speed it up for Belt Rush)
+tile-silong-wall-l-1.png,32,32,1,0,no,16,24,cold-room wall face on the SW (left) side, plain; draw like the Slums cliff faces under tile-silong-walltop
+tile-silong-wall-l-2.png,32,32,1,0,no,16,24,cold-room wall face on the SW (left) side, plain; draw like the Slums cliff faces under tile-silong-walltop
+tile-silong-wall-l-3.png,32,32,1,0,no,16,24,cold-room wall face on the SW (left) side, joint; draw like the Slums cliff faces under tile-silong-walltop
+tile-silong-wall-l-4.png,32,32,1,0,no,16,24,cold-room wall face on the SW (left) side, panel; draw like the Slums cliff faces under tile-silong-walltop
+tile-silong-wall-l-5.png,32,32,1,0,no,16,24,cold-room wall face on the SW (left) side, pipe; draw like the Slums cliff faces under tile-silong-walltop
+tile-silong-wall-l-6.png,32,32,1,0,no,16,24,cold-room wall face on the SW (left) side, icicles; draw like the Slums cliff faces under tile-silong-walltop
+tile-silong-wall-l-7.png,32,32,1,0,no,16,24,cold-room wall face on the SW (left) side, icicles; draw like the Slums cliff faces under tile-silong-walltop
+tile-silong-wall-l-8.png,32,32,1,0,no,16,24,cold-room wall face on the SW (left) side, vent; draw like the Slums cliff faces under tile-silong-walltop
+tile-silong-wall-l-9.png,32,32,1,0,no,16,24,cold-room wall face on the SW (left) side, crack; draw like the Slums cliff faces under tile-silong-walltop
+tile-silong-wall-l-10.png,32,32,1,0,no,16,24,cold-room wall face on the SW (left) side, stain; draw like the Slums cliff faces under tile-silong-walltop
+tile-silong-wall-l-11.png,32,32,1,0,no,16,24,cold-room wall face on the SW (left) side, stripe; draw like the Slums cliff faces under tile-silong-walltop
+tile-silong-wall-l-12.png,32,32,1,0,no,16,24,cold-room wall face on the SW (left) side, sign; draw like the Slums cliff faces under tile-silong-walltop
+tile-silong-wall-r-1.png,32,32,1,0,no,16,24,cold-room wall face on the SE (right) side, plain; draw like the Slums cliff faces under tile-silong-walltop
+tile-silong-wall-r-2.png,32,32,1,0,no,16,24,cold-room wall face on the SE (right) side, plain; draw like the Slums cliff faces under tile-silong-walltop
+tile-silong-wall-r-3.png,32,32,1,0,no,16,24,cold-room wall face on the SE (right) side, joint; draw like the Slums cliff faces under tile-silong-walltop
+tile-silong-wall-r-4.png,32,32,1,0,no,16,24,cold-room wall face on the SE (right) side, panel; draw like the Slums cliff faces under tile-silong-walltop
+tile-silong-wall-r-5.png,32,32,1,0,no,16,24,cold-room wall face on the SE (right) side, pipe; draw like the Slums cliff faces under tile-silong-walltop
+tile-silong-wall-r-6.png,32,32,1,0,no,16,24,cold-room wall face on the SE (right) side, icicles; draw like the Slums cliff faces under tile-silong-walltop
+tile-silong-wall-r-7.png,32,32,1,0,no,16,24,cold-room wall face on the SE (right) side, icicles; draw like the Slums cliff faces under tile-silong-walltop
+tile-silong-wall-r-8.png,32,32,1,0,no,16,24,cold-room wall face on the SE (right) side, vent; draw like the Slums cliff faces under tile-silong-walltop
+tile-silong-wall-r-9.png,32,32,1,0,no,16,24,cold-room wall face on the SE (right) side, crack; draw like the Slums cliff faces under tile-silong-walltop
+tile-silong-wall-r-10.png,32,32,1,0,no,16,24,cold-room wall face on the SE (right) side, stain; draw like the Slums cliff faces under tile-silong-walltop
+tile-silong-wall-r-11.png,32,32,1,0,no,16,24,cold-room wall face on the SE (right) side, stripe; draw like the Slums cliff faces under tile-silong-walltop
+tile-silong-wall-r-12.png,32,32,1,0,no,16,24,cold-room wall face on the SE (right) side, sign; draw like the Slums cliff faces under tile-silong-walltop
