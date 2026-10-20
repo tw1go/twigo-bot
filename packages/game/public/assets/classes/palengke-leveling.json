@@ -1,5 +1,5 @@
 {
- "note": "Lumang Palengke chain \"Ang Huling Suki\" (Mac approved the story 19 Oct 2026; numbers are Claude placeholders). Unlock levels are Mac's level-gap rule: a quest opens at unlockLevel (grey ! and \"come back at Lv X\" before that), its XP is about 30% of the XP to the next unlock, the rest is hunting. Quest items drop only while on the quest, from the named mob, at ITEMS.dropChance (Mac, 20 Oct: 50%); Kusing rewards max 1,000,000 per quest (Mac, 20 Oct); go to the Quest bag tab; bound.",
+ "note": "Lumang Palengke chain \"Ang Huling Suki\" (Mac approved the story 19 Oct 2026; numbers are Claude placeholders). Unlock levels are Mac's level-gap rule: a quest opens at unlockLevel (grey ! and \"come back at Lv X\" before that), its XP is about 30% of the XP to the next unlock, the rest is hunting. Quest items drop only while on the quest, from the named mob, at ITEMS.dropChance (Mac, 20 Oct: 50%); Kusing rewards max 1,000,000 per quest (Mac, 20 Oct); go to the Quest bag tab; bound. Repo additions (20 Oct 2026): each quest's dialogue.give / dialogue.report (from palengke-story.md section 3, Aling Conching for Aling Nena; a few report lines written here where the story only describes the hand-in), reportTo (Q1 Mang Pido, Q7 Aling Conching, Q10 and Q13 Kuya Jun), gives (Q7 Tisay's Note), rewards (Q11 Suki Card, Q13 Honest Weight), rewardTitle (Q14: the title Huling Suki), gapLine, and the three kept quest items in questItems.",
  "cap": 40,
  "questItems": {
   "fresh-onion": {
@@ -36,6 +36,18 @@
    "name": "Brass Weight",
    "mob": "timbangan-sentinel",
    "dropChance": 0.5
+  },
+  "tisay-note": {
+   "name": "Tisay's Note",
+   "from": "palengke-07: Tisay hands it over"
+  },
+  "honest-weight": {
+   "name": "Honest Weight",
+   "from": "palengke-13: Kuya Jun forges it; kept for good"
+  },
+  "suki-card": {
+   "name": "Suki Card",
+   "from": "palengke-11: Tisay's keepsake; kept for good"
   }
  },
  "dishes": {
@@ -200,7 +212,18 @@
    "xpFromQuestKills": 0,
    "gapXP": 2575,
    "huntingXP": 1805,
-   "rewardKusing": 300001
+   "rewardKusing": 300001,
+   "reportTo": "mang-pido",
+   "dialogue": {
+    "give": [
+     "Ay, may customer! First customer in years, anak. Upo ka, kain muna.",
+     "Sarado na 'tong palengke since the typhoon. But every night, I cook. Malay mo, babalik sila.",
+     "Kaso... the stalls woke up. Yung mga gamit na iniwan. Talk to Mang Pido, he knows."
+    ],
+    "report": [
+     "Ah, hindi ka multo. Good. Ako si Pido, bantay dito. Thirty-five years. Wala nang binabantayan, pero bantay pa rin."
+    ]
+   }
   },
   {
    "id": "palengke-02",
@@ -217,7 +240,15 @@
    "huntingXP": 5457,
    "rewardKusing": 329113,
    "mob": "payong-flapper",
-   "unlocksDish": "lugaw"
+   "unlocksDish": "lugaw",
+   "dialogue": {
+    "give": [
+     "Yung mga payong ng vendors sa Tarp Row, lumilipad na. Tinusok ako kagabi. Sa puwet. Ayusin mo 'yan."
+    ],
+    "report": [
+     "Clear ang Tarp Row! ...Medyo."
+    ]
+   }
   },
   {
    "id": "palengke-03",
@@ -234,7 +265,16 @@
    "huntingXP": 1325,
    "rewardKusing": 361049,
    "item": "fresh-onion",
-   "unlocksDish": "sinigang"
+   "unlocksDish": "sinigang",
+   "dialogue": {
+    "give": [
+     "Gusto kong magluto ng sinigang para sa'yo. Kaso yung sibuyas sa Gulayan... buhay. At umiiyak. At pinapaiyak ka rin.",
+     "Bring me twelve good ones. Yung hindi bulok, ha."
+    ],
+    "report": [
+     "Ang ganda ng mga sibuyas! Sinigang na tayo, anak. Nasa menu ko na."
+    ]
+   }
   },
   {
    "id": "palengke-04",
@@ -251,7 +291,15 @@
    "huntingXP": 413,
    "rewardKusing": 396083,
    "mob": "sibuyas-sobber",
-   "miniBoss": "sibuyas-sobber-shallot-holmes"
+   "miniBoss": "sibuyas-sobber-shallot-holmes",
+   "dialogue": {
+    "give": [
+     "May malaking sibuyas sa gitna ng Gulayan. Naka-sombrero pa. Ewan ko kung bakit."
+    ],
+    "report": [
+     "Umiyak ka ba? Okay lang. Ako rin, noong una."
+    ]
+   }
   },
   {
    "id": "palengke-05",
@@ -268,7 +316,15 @@
    "huntingXP": 8452,
    "rewardKusing": 434519,
    "item": "unbroken-lid",
-   "unlocksDish": "atchara"
+   "unlocksDish": "atchara",
+   "dialogue": {
+    "give": [
+     "I want to make atchara again. But I need jars with lids. Yung sa dry goods, tumatalon na. Pakikuha ang takip, 'wag mong basagin lahat."
+    ],
+    "report": [
+     "Buo pa ang mga takip! May atchara na ulit, pang-partner sa ulam."
+    ]
+   }
   },
   {
    "id": "palengke-06",
@@ -289,7 +345,16 @@
     "target": "sako-slammer",
     "count": 20
    },
-   "unlocksDish": "adobo"
+   "unlocksDish": "adobo",
+   "dialogue": {
+    "give": [
+     "Walang kanin, walang karinderya. Kuha ka ng bigas sa mga sako. Careful, mabigat silang dumagan."
+    ],
+    "report": [
+     "May kanin na! Adobo tayo ngayon.",
+     "Ay, kanina may nakita akong batang may dalang lampara sa dry goods. Palihim."
+    ]
+   }
   },
   {
    "id": "palengke-07",
@@ -304,7 +369,20 @@
    "xpFromQuestKills": 0,
    "gapXP": 8521,
    "huntingXP": 5961,
-   "rewardKusing": 522939
+   "rewardKusing": 522939,
+   "reportTo": "aling-conching",
+   "gives": "tisay-note",
+   "dialogue": {
+    "give": [
+     "Uy, 'wag kang lalapit, may... ah, tao ka pala. Sorry. Akala ko sako.",
+     "I'm looking for my mom's suki ledger. Aling Rosa, the fish vendor. She wrote everything there, every suki, every utang she forgave. It's all I have left of her handwriting.",
+     "Pakibigay 'to kay Aling Conching. She'll know me."
+    ],
+    "report": [
+     "Si Rosa... anak ni Rosa 'yan. Kamukha niya.",
+     "Ang talaan? Baka nasa Isdaan. Hindi pa humuhupa ang tubig doon."
+    ]
+   }
   },
   {
    "id": "palengke-08",
@@ -322,7 +400,15 @@
    "rewardKusing": 573683,
    "item": "whole-chair",
    "miniBoss": "monobloc-stack-chairman-mono",
-   "unlocksDish": "pancit"
+   "unlocksDish": "pancit",
+   "dialogue": {
+    "give": [
+     "Pag nagbukas ulit tayo, kailangan natin ng upuan. Yung mga monobloc sa Karinderya Row, nagpatong-patong na at nambabato."
+    ],
+    "report": [
+     "Twelve chairs! Ngayon may mauupuan na ang mga suki ko."
+    ]
+   }
   },
   {
    "id": "palengke-09",
@@ -338,7 +424,16 @@
    "gapXP": 10182,
    "huntingXP": 2252,
    "rewardKusing": 629351,
-   "item": "rusty-cleaver-piece"
+   "item": "rusty-cleaver-piece",
+   "dialogue": {
+    "give": [
+     "...Pasensya, hindi ako sanay may kausap. Ako si Jun. Dito nagtitinda ang tatay ko. Si Mang Ramon.",
+     "His lucky cleaver broke when the chopping blocks woke up. Nasa loob ng mga sangkalan ang mga piraso. Gusto ko lang mabuo ulit."
+    ],
+    "report": [
+     "...Buo na ulit. Salamat."
+    ]
+   }
   },
   {
    "id": "palengke-10",
@@ -356,7 +451,16 @@
    "rewardKusing": 690423,
    "mob": "sangkalan-chomper",
    "miniBoss": "sangkalan-chomper-butch-block",
-   "unlocksDish": "bulalo"
+   "unlocksDish": "bulalo",
+   "reportTo": "kuya-jun",
+   "dialogue": {
+    "give": [
+     "Si Ramon, kilala ko 'yan. Mabait. Pinakamabait na magkakarne. Kaya 'wag mong hayaang guluhin ng mga sangkalan ang puwesto niya."
+    ],
+    "report": [
+     "Salamat. Hindi na ako takot pumunta dito."
+    ]
+   }
   },
   {
    "id": "palengke-11",
@@ -372,7 +476,23 @@
    "gapXP": 11359,
    "huntingXP": 4949,
    "rewardKusing": 757419,
-   "item": "ledger-page"
+   "item": "ledger-page",
+   "rewards": [
+    {
+     "item": "suki-card",
+     "count": 1
+    }
+   ],
+   "dialogue": {
+    "give": [
+     "The tubs swallowed the pages. Ewan ko kung paano. Six pages are missing. Help me?"
+    ],
+    "report": [
+     "\"Ramon. Nagtapat sa akin tungkol sa timbang. Pinatawad ko na siya. Sana patawarin din niya ang sarili niya.\"",
+     "...Sino si Ramon?",
+     "Itago mo 'to. Suki card ni Nanay. Suki ka na rin namin."
+    ]
+   }
   },
   {
    "id": "palengke-12",
@@ -387,7 +507,14 @@
    "xpFromQuestKills": 0,
    "gapXP": 11968,
    "huntingXP": 8378,
-   "rewardKusing": 830917
+   "rewardKusing": 830917,
+   "dialogue": {
+    "give": [
+     "...Tatay ko 'yan.",
+     "He filed his weights. Kulang ng ilang gramo bawat kilo. Para sa gamot ni Nanay. The night of the typhoon he put them on the Great Scale, and the needle went crazy and the clock stopped. Sabi niya, simula noon, hindi na balanse ang palengke.",
+     "I came back for his cleaver, pero ang totoo, I came back to say sorry for him. Hindi ko lang alam kung kanino."
+    ]
+   }
   },
   {
    "id": "palengke-13",
@@ -407,6 +534,22 @@
    "extra": {
     "target": "brass-weight",
     "count": 5
+   },
+   "reportTo": "kuya-jun",
+   "rewards": [
+    {
+     "item": "honest-weight",
+     "count": 1
+    }
+   ],
+   "dialogue": {
+    "give": [
+     "The small scales guard the hall. Kailangan nating makapasok."
+    ],
+    "report": [
+     "Give me the brass weights. I'll make one honest weight out of them, and melt my father's false ones into it. Pang-balanse. Para maitama.",
+     "Dalhin mo 'to sa Timbangan. Sabi ni Aling Conching, nasa kanya ang kampana ng palengke."
+    ]
    }
   },
   {
@@ -424,7 +567,21 @@
    "huntingXP": 0,
    "rewardKusing": 999999,
    "mob": "great-scale",
-   "unlocksDish": "kare-kare"
+   "unlocksDish": "kare-kare",
+   "dialogue": {
+    "give": [
+     "Kung maririnig ulit ng palengke ang kampana, makakapagpahinga na sila."
+    ],
+    "report": [
+     "Inilagay mo ang Honest Weight sa timbangan. Tumigil sa gitna ang karayom, at tumunog ulit ang orasan ng hall.",
+     "Gumulong palabas ang kampana ng palengke.",
+     "Kinuha ni Aling Conching ang kampana, hinawakan sandali, at pinatunog.",
+     "Nagbukas ang mga ilaw ng buong palengke. Sandaling lumitaw ang mga dating tindero sa kanilang puwesto, saka naglaho.",
+     "Bukas na ang palengke, anak. Ikaw ang huling suki ng lumang palengke, at ang unang suki ng bago."
+    ]
+   },
+   "rewardTitle": "huling-suki"
   }
- ]
+ ],
+ "gapLine": "Balik ka pag Lv {level} ka na, anak. Mangaso ka muna."
 }
