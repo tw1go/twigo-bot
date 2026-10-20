@@ -1610,6 +1610,7 @@
     "data": "classes/classes.json",
     "stats": "classes/stats.json",
     "leveling": "classes/leveling.json",
+    "palengkeLeveling": "classes/palengke-leveling.json",
     "dungeons": "classes/dungeons.json",
     "bodyOffset": [
       16,

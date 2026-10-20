@@ -1,0 +1,430 @@
+{
+ "note": "Lumang Palengke chain \"Ang Huling Suki\" (Mac approved the story 19 Oct 2026; numbers are Claude placeholders). Unlock levels are Mac's level-gap rule: a quest opens at unlockLevel (grey ! and \"come back at Lv X\" before that), its XP is about 30% of the XP to the next unlock, the rest is hunting. Quest items drop only while on the quest, from the named mob, at ITEMS.dropChance (Mac, 20 Oct: 50%); Kusing rewards max 1,000,000 per quest (Mac, 20 Oct); go to the Quest bag tab; bound.",
+ "cap": 40,
+ "questItems": {
+  "fresh-onion": {
+   "name": "Fresh Onion",
+   "mob": "sibuyas-sobber",
+   "dropChance": 0.5
+  },
+  "unbroken-lid": {
+   "name": "Unbroken Lid",
+   "mob": "garapon-jars",
+   "dropChance": 0.5
+  },
+  "clean-rice-scoop": {
+   "name": "Clean Rice Scoop",
+   "mob": "sako-slammer",
+   "dropChance": 0.5
+  },
+  "whole-chair": {
+   "name": "Whole Chair",
+   "mob": "monobloc-stack",
+   "dropChance": 0.5
+  },
+  "rusty-cleaver-piece": {
+   "name": "Rusty Cleaver Piece",
+   "mob": "sangkalan-chomper",
+   "dropChance": 0.5
+  },
+  "ledger-page": {
+   "name": "Ledger Page",
+   "mob": "banyera-lurker",
+   "dropChance": 0.5
+  },
+  "brass-weight": {
+   "name": "Brass Weight",
+   "mob": "timbangan-sentinel",
+   "dropChance": 0.5
+  }
+ },
+ "dishes": {
+  "lugaw": {
+   "name": "Lugaw",
+   "effect": "MP regen +50% (in and out of combat)",
+   "minutes": 10,
+   "kusing": 300,
+   "unlockedBy": "palengke-02"
+  },
+  "sinigang": {
+   "name": "Sinigang",
+   "effect": "HP regen 0.5% of max HP per second in combat",
+   "minutes": 10,
+   "kusing": 500,
+   "unlockedBy": "palengke-03"
+  },
+  "atchara": {
+   "name": "Atchara (side dish)",
+   "effect": "+3% crit rate; stacks with one main dish",
+   "minutes": 10,
+   "kusing": 250,
+   "unlockedBy": "palengke-05"
+  },
+  "adobo": {
+   "name": "Adobo",
+   "effect": "+5% ATK",
+   "minutes": 10,
+   "kusing": 500,
+   "unlockedBy": "palengke-06"
+  },
+  "pancit": {
+   "name": "Pancit",
+   "effect": "+10% move speed",
+   "minutes": 10,
+   "kusing": 400,
+   "unlockedBy": "palengke-08"
+  },
+  "bulalo": {
+   "name": "Bulalo",
+   "effect": "+8% max HP",
+   "minutes": 10,
+   "kusing": 600,
+   "unlockedBy": "palengke-10"
+  },
+  "kare-kare": {
+   "name": "Kare-kare",
+   "effect": "+5% damage amp",
+   "minutes": 10,
+   "kusing": 800,
+   "unlockedBy": "palengke-14"
+  }
+ },
+ "dishRules": "One main dish + one side dish (Atchara) at a time, 10 min each, bought from Aling Conching for Kusing; a new dish replaces the old. Sold only once unlocked for that player.",
+ "dailies": {
+  "note": "After palengke-14: one random collect order a day from Aling Conching",
+  "pool": [
+   {
+    "item": "unbroken-lid",
+    "count": 8
+   },
+   {
+    "item": "fresh-onion",
+    "count": 10
+   },
+   {
+    "item": "clean-rice-scoop",
+    "count": 6
+   },
+   {
+    "item": "whole-chair",
+    "count": 6
+   },
+   {
+    "item": "ledger-page",
+    "count": 4
+   },
+   {
+    "item": "brass-weight",
+    "count": 4
+   }
+  ],
+  "rewardXP": 2000,
+  "rewardKusing": 250001,
+  "extra": "one random dish ingredient (a free dish)"
+ },
+ "miniBoss": {
+  "scale": 2,
+  "hpMult": 10,
+  "xpMult": 8,
+  "atkMult": 1.3,
+  "respawnSeconds": 180,
+  "nameColour": "#F59E0B",
+  "kill_credit": "everyone who did >= 10% of its HP, plus their party nearby",
+  "loot": "Kusing x10 of its mob, 1 gear piece of its level (white/grey only), Polished Whetstone fragment 1 in 3",
+  "questDrop": {
+   "rarity": "grey",
+   "plus": 5,
+   "bound": true,
+   "kinds": {
+    "sibuyas-sobber": {
+     "slot": "body",
+     "agimat": "hp"
+    },
+    "monobloc-stack": {
+     "slot": "hands",
+     "agimat": "atkRate"
+    },
+    "sangkalan-chomper": {
+     "slot": "weapon",
+     "agimat": "critDmg"
+    }
+   }
+  }
+ },
+ "miniBosses": {
+  "sibuyas-sobber": [
+   {
+    "id": "sibuyas-sobber-shallot-holmes",
+    "name": "Shallot Holmes",
+    "level": 25,
+    "hp": 17319,
+    "atk": 105,
+    "defense": 50,
+    "xp": 1118
+   }
+  ],
+  "monobloc-stack": [
+   {
+    "id": "monobloc-stack-chairman-mono",
+    "name": "Chairman Mono",
+    "level": 31,
+    "hp": 39983,
+    "atk": 129,
+    "defense": 62,
+    "xp": 1466
+   }
+  ],
+  "sangkalan-chomper": [
+   {
+    "id": "sangkalan-chomper-butch-block",
+    "name": "Butch Block",
+    "level": 34,
+    "hp": 71153,
+    "atk": 140,
+    "defense": 68,
+    "xp": 2872
+   }
+  ]
+ },
+ "quests": [
+  {
+   "id": "palengke-01",
+   "title": "Bukas Pa Ba?",
+   "giver": "aling-conching",
+   "kind": "talk",
+   "unlockLevel": 21,
+   "nextUnlock": 21,
+   "goal": "Talk to Aling Conching, then Mang Pido",
+   "count": 0,
+   "rewardXP": 770,
+   "xpFromQuestKills": 0,
+   "gapXP": 2575,
+   "huntingXP": 1805,
+   "rewardKusing": 300001
+  },
+  {
+   "id": "palengke-02",
+   "title": "Sa Ilalim ng Payong",
+   "giver": "mang-pido",
+   "kind": "kill",
+   "unlockLevel": 21,
+   "nextUnlock": 23,
+   "goal": "Defeat 20 Payong Flappers",
+   "count": 20,
+   "rewardXP": 3220,
+   "xpFromQuestKills": 2060,
+   "gapXP": 10737,
+   "huntingXP": 5457,
+   "rewardKusing": 329113,
+   "mob": "payong-flapper",
+   "unlocksDish": "lugaw"
+  },
+  {
+   "id": "palengke-03",
+   "title": "Pang-Sinigang",
+   "giver": "aling-conching",
+   "kind": "collect",
+   "unlockLevel": 23,
+   "nextUnlock": 24,
+   "goal": "Collect 12 Fresh Onions from Sibuyas Sobbers (about 24 kills)",
+   "count": 12,
+   "rewardXP": 1810,
+   "xpFromQuestKills": 2904,
+   "gapXP": 6039,
+   "huntingXP": 1325,
+   "rewardKusing": 361049,
+   "item": "fresh-onion",
+   "unlocksDish": "sinigang"
+  },
+  {
+   "id": "palengke-04",
+   "title": "Huwag Kang Iiyak",
+   "giver": "mang-pido",
+   "kind": "kill+miniBoss",
+   "unlockLevel": 24,
+   "nextUnlock": 25,
+   "goal": "Defeat 25 Sibuyas Sobbers; then defeat Shallot Holmes (Lv 25)",
+   "count": 25,
+   "rewardXP": 1950,
+   "xpFromQuestKills": 4143,
+   "gapXP": 6506,
+   "huntingXP": 413,
+   "rewardKusing": 396083,
+   "mob": "sibuyas-sobber",
+   "miniBoss": "sibuyas-sobber-shallot-holmes"
+  },
+  {
+   "id": "palengke-05",
+   "title": "Mga Garapon",
+   "giver": "aling-conching",
+   "kind": "collect",
+   "unlockLevel": 25,
+   "nextUnlock": 27,
+   "goal": "Collect 15 Unbroken Lids from Garapon Jars (about 30 kills)",
+   "count": 15,
+   "rewardXP": 4340,
+   "xpFromQuestKills": 1680,
+   "gapXP": 14472,
+   "huntingXP": 8452,
+   "rewardKusing": 434519,
+   "item": "unbroken-lid",
+   "unlocksDish": "atchara"
+  },
+  {
+   "id": "palengke-06",
+   "title": "Bigas, Bigas",
+   "giver": "aling-conching",
+   "kind": "collect+kill",
+   "unlockLevel": 27,
+   "nextUnlock": 28,
+   "goal": "Collect 10 Clean Rice Scoops from Sako Slammers (about 20 kills); and defeat 20 Sako Slammers",
+   "count": 10,
+   "rewardXP": 2400,
+   "xpFromQuestKills": 4160,
+   "gapXP": 7995,
+   "huntingXP": 1435,
+   "rewardKusing": 476683,
+   "item": "clean-rice-scoop",
+   "extra": {
+    "target": "sako-slammer",
+    "count": 20
+   },
+   "unlocksDish": "adobo"
+  },
+  {
+   "id": "palengke-07",
+   "title": "Ang Talaan ni Inay",
+   "giver": "tisay",
+   "kind": "deliver",
+   "unlockLevel": 28,
+   "nextUnlock": 29,
+   "goal": "Find Tisay in Tuyo't Tindahan and bring her note to Aling Conching",
+   "count": 0,
+   "rewardXP": 2560,
+   "xpFromQuestKills": 0,
+   "gapXP": 8521,
+   "huntingXP": 5961,
+   "rewardKusing": 522939
+  },
+  {
+   "id": "palengke-08",
+   "title": "Upuan Para sa Lahat",
+   "giver": "aling-conching",
+   "kind": "collect+miniBoss",
+   "unlockLevel": 29,
+   "nextUnlock": 31,
+   "goal": "Collect 12 Whole Chairs from Monobloc Stacks (about 24 kills); then defeat Chairman Mono (Lv 31)",
+   "count": 12,
+   "rewardXP": 5600,
+   "xpFromQuestKills": 5378,
+   "gapXP": 18674,
+   "huntingXP": 7696,
+   "rewardKusing": 573683,
+   "item": "whole-chair",
+   "miniBoss": "monobloc-stack-chairman-mono",
+   "unlocksDish": "pancit"
+  },
+  {
+   "id": "palengke-09",
+   "title": "Ang Itak ni Jun",
+   "giver": "kuya-jun",
+   "kind": "collect",
+   "unlockLevel": 31,
+   "nextUnlock": 32,
+   "goal": "Collect 8 Rusty Cleaver Pieces from Sangkalan Chompers (about 16 kills)",
+   "count": 8,
+   "rewardXP": 3050,
+   "xpFromQuestKills": 4880,
+   "gapXP": 10182,
+   "huntingXP": 2252,
+   "rewardKusing": 629351,
+   "item": "rusty-cleaver-piece"
+  },
+  {
+   "id": "palengke-10",
+   "title": "Bantay Karnehan",
+   "giver": "mang-pido",
+   "kind": "kill+miniBoss",
+   "unlockLevel": 32,
+   "nextUnlock": 33,
+   "goal": "Defeat 30 Sangkalan Chompers; then defeat Butch Block (Lv 34)",
+   "count": 30,
+   "rewardXP": 3230,
+   "xpFromQuestKills": 12022,
+   "gapXP": 10763,
+   "huntingXP": 0,
+   "rewardKusing": 690423,
+   "mob": "sangkalan-chomper",
+   "miniBoss": "sangkalan-chomper-butch-block",
+   "unlocksDish": "bulalo"
+  },
+  {
+   "id": "palengke-11",
+   "title": "Ang Talaan sa Tubig",
+   "giver": "tisay",
+   "kind": "collect",
+   "unlockLevel": 33,
+   "nextUnlock": 34,
+   "goal": "Collect 6 Ledger Pages from Banyera Lurkers (about 12 kills)",
+   "count": 6,
+   "rewardXP": 3410,
+   "xpFromQuestKills": 3000,
+   "gapXP": 11359,
+   "huntingXP": 4949,
+   "rewardKusing": 757419,
+   "item": "ledger-page"
+  },
+  {
+   "id": "palengke-12",
+   "title": "Ang Katotohanan",
+   "giver": "kuya-jun",
+   "kind": "talk",
+   "unlockLevel": 34,
+   "nextUnlock": 35,
+   "goal": "Talk to Kuya Jun at the Karnehan",
+   "count": 0,
+   "rewardXP": 3590,
+   "xpFromQuestKills": 0,
+   "gapXP": 11968,
+   "huntingXP": 8378,
+   "rewardKusing": 830917
+  },
+  {
+   "id": "palengke-13",
+   "title": "Timbang ng Puso",
+   "giver": "mang-pido",
+   "kind": "kill+collect",
+   "unlockLevel": 35,
+   "nextUnlock": 37,
+   "goal": "Defeat 20 Timbangan Sentinels; and collect 5 Brass Weights from Timbangan Sentinels",
+   "count": 20,
+   "rewardXP": 7750,
+   "xpFromQuestKills": 5040,
+   "gapXP": 25818,
+   "huntingXP": 13028,
+   "rewardKusing": 911545,
+   "mob": "timbangan-sentinel",
+   "extra": {
+    "target": "brass-weight",
+    "count": 5
+   }
+  },
+  {
+   "id": "palengke-14",
+   "title": "Ang Huling Suki",
+   "giver": "aling-conching",
+   "kind": "fieldBoss",
+   "unlockLevel": 37,
+   "nextUnlock": null,
+   "goal": "Help defeat Ang Dakilang Timbangan (at least 5% of its HP), then ring the bell",
+   "count": 1,
+   "rewardXP": 8330,
+   "xpFromQuestKills": 6939,
+   "gapXP": 13877,
+   "huntingXP": 0,
+   "rewardKusing": 999999,
+   "mob": "great-scale",
+   "unlocksDish": "kare-kare"
+  }
+ ]
+}

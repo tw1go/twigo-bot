@@ -1,7 +1,7 @@
 import type { ItemData, LootGot, TownLoot } from '@mikazuki/shared';
 import { LOOT_REACH, type LevelingData, itemStats, miniBossRules, numbersIn } from '@mikazuki/shared';
 import type { LootContent } from './combat-bag.js';
-import { dropBoost, golemLoot, miniLoot, mobDrops } from './loot.js';
+import { dropBoost, fieldBossLoot, fieldBossTable, miniLoot, mobDrops } from './loot.js';
 import { loadDungeons, loadLeveling } from './stats-data.js';
 
 // 🪙 Loot on the ground in a battle map (one LootRoom per room with mobs, run by the town: web/town.ts). A kill's drops
@@ -79,6 +79,8 @@ export class LootRoom {
     leveling: LevelingData | null = loadLeveling(),
     /** A member's Drop rate (the stat): the loot cascades' boost (loot.ts dropBoost; CONTEXT.md Drop rate). None: 0. */
     private readonly dropRate: (userId: string) => number = () => 0,
+    /** The map (its room): one with drops of its own (stats.json drops.<map>: the Lumang Palengke's) uses them. */
+    private readonly area?: string,
   ) {
     this.minis = leveling ? miniBossRules(leveling) : null;
     this.reserveMs = (numbersIn(itemStats(data.stats).party.solo)[0] ?? 10) * 1000;
@@ -100,10 +102,10 @@ export class LootRoom {
     const lots: { owners: string[]; personal: boolean; contents: LootContent[] }[] = !kill.to.length
       ? []
       : kill.boss
-        ? kill.to.map((owner) => ({ owners: [owner], personal: true, contents: golemLoot(this.data, this.random, this.uid, this.plusRandom, this.golemTicket, boost([owner])) }))
+        ? kill.to.map((owner) => ({ owners: [owner], personal: true, contents: fieldBossLoot(this.data, fieldBossTable(this.data, kill.kind), this.random, this.uid, this.plusRandom, kill.kind === 'great-scale' ? 0 : this.golemTicket, boost([owner])) }))
         : mini
           ? shared([...new Set([...kill.to, ...party])], (b) => miniLoot(this.data, kill.kind, kill.level, mini, this.random, this.uid, this.plusRandom, b))
-          : shared([...new Set([...kill.to.slice(0, 1), ...party])], (b) => mobDrops(this.data, kill.kind, kill.level, this.random, this.uid, this.plusRandom, b));
+          : shared([...new Set([...kill.to.slice(0, 1), ...party])], (b) => mobDrops(this.data, kill.kind, kill.level, this.random, this.uid, this.plusRandom, b, this.area));
     const total = lots.reduce((n, l) => n + l.contents.length, 0);
     const tiles = spots(kill.at, total);
     let i = 0;

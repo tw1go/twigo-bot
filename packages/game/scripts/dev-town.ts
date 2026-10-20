@@ -8,7 +8,7 @@ import type { Plugin } from 'vite';
 import { attachTown } from '../../bot/src/web/town.ts';
 import { MobRoom, loadMobKinds, loadSkillShapes } from '../../bot/src/web/town-mobs.ts';
 import { type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView, raiseSkill, resetSkillPoints, resetStatPoints, spendPoint } from '../../bot/src/web/progress.ts';
-import { loadItemData, loadLeveling, loadStats } from '../../bot/src/web/stats-data.ts';
+import { loadItemData, loadLeveling, loadPalengkeLeveling, loadStats } from '../../bot/src/web/stats-data.ts';
 import { Halloween, loadHalloween } from '../../bot/src/web/halloween.ts';
 import { buyCombat, devGive, dropFromBag, makeItem, takeLoot, usePotion } from '../../bot/src/web/combat-bag.ts';
 import { enhanceFeedLine, forge, parseForgeAction } from '../../bot/src/web/forge.ts';
@@ -430,7 +430,7 @@ export function devTown(): Plugin {
           palengke: palengkeMap,
         },
         // (The Palengke's zones and boss are off until their art comes: a battle room with no mobs yet.)
-        mobs: { slums: slumsMobs, palengke: new MobRoom({ ...JSON.parse(readFileSync(join(server.config.publicDir, 'assets/maps/palengke.json'), 'utf8')), blocked: palengkeMap().blocked }, Math.random, Object.fromEntries(classes.map((c) => [c.id, c.skills.map((k) => k.level)])), loadSkillShapes(), loadMobKinds()) },
+        mobs: { slums: slumsMobs, palengke: new MobRoom({ ...JSON.parse(readFileSync(join(server.config.publicDir, 'assets/maps/palengke.json'), 'utf8')), blocked: palengkeMap().blocked }, Math.random, Object.fromEntries(classes.map((c) => [c.id, c.skills.map((k) => k.level)])), loadSkillShapes(), loadMobKinds(), undefined, undefined, loadPalengkeLeveling()) },
         // Its rewards: Kusing and Low Repair Kits into the kept items (the kits by pretend mail when the bag is full),
         // Kowens into the pretend wallet, the potion only printed.
         halloween: {

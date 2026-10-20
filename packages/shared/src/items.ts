@@ -161,17 +161,40 @@ export interface ItemStats {
   gearTiers: Record<string, unknown>;
   party: { solo: string; loot: string; boss: string };
   bossLoot: {
-    perEligiblePlayer: {
-      kusing: number;
-      roughWhetstones: [number, number];
-      gearPieces: [number, number];
-      accessoryChance: number;
-      agimatChance: number;
-      agimatLevels: number[];
-      lampHatChance: number;
-    };
+    perEligiblePlayer: FieldBossLoot;
     eligible: string;
+    /** The Lumang Palengke's Great Scale (the golem's shape one tier up: no hat, a Mid Repair Kit now and then). */
+    greatScale?: { perEligiblePlayer: FieldBossLoot };
   };
+  /** A map's own drops (the Lumang Palengke's): in place of rarity.mobGearDrop's level and the potions' mobDropChance. */
+  drops?: Record<string, AreaDrops>;
+}
+
+/** A field boss's loot for each player who earned it (stats.json bossLoot): its Kusing, whetstones of its tier
+ *  (`roughWhetstones` or `polishedWhetstones`: how many), 1-2 affix gear pieces (`gearLevel` and `affix` its own, else
+ *  rarity.bossGearDrop's), and now and then an accessory, an agimat, the golem's Lamp-head Hat or a Mid Repair Kit. */
+export interface FieldBossLoot {
+  kusing: number;
+  roughWhetstones?: [number, number];
+  polishedWhetstones?: [number, number];
+  gearPieces: [number, number];
+  gearLevel?: Record<string, number>;
+  affix?: Record<string, number>;
+  accessoryChance: number;
+  agimatChance: number;
+  agimatLevels: number[];
+  lampHatChance?: number;
+  midRepairKitChance?: number;
+}
+
+/** A map's drops (stats.json drops.<map>): no-affix gear at `gearLevel` `gearChance` of kills (some kinds Lv 40 that
+ *  often: `lv40Chance`), a potion of `potionTier` `potionChance` of kills. */
+export interface AreaDrops {
+  gearLevel: number;
+  gearChance: number;
+  lv40Chance?: Record<string, number>;
+  potionTier: string;
+  potionChance: number;
 }
 
 /** stats.json as items read it. */

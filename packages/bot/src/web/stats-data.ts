@@ -29,6 +29,13 @@ let leveling: LevelingData | null = null;
 /** classes/leveling.json: the mini bosses and the Tanod's leveling quests (read once). */
 export const loadLeveling = (): LevelingData => (leveling ??= asset<LevelingData>('classes/leveling.json'));
 
+let palengkeLeveling: LevelingData | null = null;
+/** classes/palengke-leveling.json (the art folder's data/palengke-leveling.json): the Lumang Palengke's mini bosses and
+ *  its rules, its quest chain, dishes and dailies (read once). */
+export const loadPalengkeLeveling = (): LevelingData => (palengkeLeveling ??= asset<LevelingData>('classes/palengke-leveling.json'));
+/** A map's leveling data (its mini bosses and their rules): the Palengke's own, else the Slums'. */
+export const levelingFor = (area: string): LevelingData => (area === 'palengke' ? loadPalengkeLeveling() : loadLeveling());
+
 let dungeons: DungeonsData | null = null;
 /** classes/dungeons.json: the Scrap Warrens' rules and numbers (read once). */
 export const loadDungeons = (): DungeonsData => (dungeons ??= asset<DungeonsData>('classes/dungeons.json'));

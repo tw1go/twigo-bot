@@ -146,6 +146,15 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `mobBehaviour.golem.hpPerPlayer`, `mobBehaviour.golem.hpMin` (the least HP it has, whoever is in the Slums; 13 Oct
   2026).
 - `classes/stats.json` (Scrap Warrens): `party.xpRangeTiles` (+ `xpNote`), and consumables in `inventory.stack99`.
+- The Palengke's numbers (20 Oct 2026): `classes/stats.json` has the art folder's data/palengke-stats-delta.json merged in
+  (`levelCap` 20 → 40, the only value changed; added `xp.capNote` / `mobXpAbove20` / `toNextByLevel`, the eight Palengke
+  mobs and `great-scale` in `mobs.list`, top-level `miniBosses` and `drops`, `gearTiers.mid.inGame` / `note`,
+  `bossLoot.greatScale`, `currencies.greatScaleKusingPerPlayer` / `kusingPerMobNote`, `skills.unlocksAbove20`): the art
+  folder's stats.json needs the same merge. `classes/palengke-leveling.json` = the art folder's data/palengke-leveling.json
+  (manifest `classes.palengkeLeveling`). Repo-only: `items/equipment.json` the Mid tier's 50 kinds (Lv 30 Fine / Bronze /
+  Linen / Bamboo / Amber, Lv 40 Polished / Iron / Denim / Rattan / Jade, no art: slot silhouettes); `items/items.json`
+  `polished-whetstone` (5 Kowens), `polished-whetstone-fragment`, `mid-repair-kit` (20 Kowens; Mac), no art yet;
+  `maps/palengke.json` the three zones' `miniBosses` spots.
 - The Lumang Palengke (20 Oct 2026): `maps/palengke.json`, `tiles/palengke/`, `props/palengke/` (the art folder's, as they are)
   and the manifest's `props` from its palengke-manifest-snippet.json; `tiles.palengke` is written here (the families counted
   from the files; `plainVariants` / `plainWeight`, `animated` baha / lalim, `banks`, `slow`). `maps/slums.json`: its west gate
@@ -839,6 +848,15 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   plain diamond (`NOT_DRAWN`: the picture has no Palengke yet; the stage grows to every map, `worldBounds` / `shifted`)
   with its four posts; the quest map pins you at the Slums' gate to it. Its Slums music for now; title card "Lumang
   Palengke". Measured: 60 fps walking Tarp Row (as the Slums). NPC spots (`npcs`) and `sections` are kept as data.
+  Its numbers (Lv 21-40): the cap is 40 (stats.json `levelCap`; XP to next stays 25 × L^1.75; a skill's cap stays 20); its
+  mobs' XP in `mobs.list` follows `xp.mobXpAbove20` (a level's XP / 50 × xpMult; tested). Drops by map: a LootRoom knows its
+  room (`area`), and `mobDrops` uses stats.json `drops.<area>` when there is one (the Palengke: Lv 30 no-affix gear 3%,
+  the Banyera Lurker's and Timbangan Sentinel's Lv 40 30% of theirs, Medium potions 5%; the Slums as ever). Mini bosses:
+  each room's rules and stats from its leveling data (`levelingFor`: classes/palengke-leveling.json for 'palengke'), their
+  spots on the zones. The Great Scale's loot is the golem's code with its own table (loot.ts `fieldBossLoot` /
+  `fieldBossTable`: bossLoot.greatScale, Polished Whetstones, Lv 30/40 pieces, a Mid Repair Kit 1 in 4, no hat, no
+  ticket). The Mid tier's whetstone and kit are sold in Smithing from Lv 30 (their own `price`, combatWares' tier gate).
+  Tested in `web/palengke-numbers.test.ts`.
 - Lantern Posts (teleporting between maps; words in CONTEXT.md: Map, Lantern Post, Return Lantern, Map menu, Teleport,
   In combat): a post (manifest props `lantern-post`, its 6-frame idle as the map object's `animated`) in the middle of
   the Town and of the Slums, each map's `lantern-post` object + `arrive.lanternPost`, and four in the Lumang Palengke (its

@@ -40,6 +40,44 @@
       "forge": "repairKit"
     },
     {
+      "id": "polished-whetstone",
+      "name": "Polished Whetstone",
+      "kind": "material",
+      "rarity": "white",
+      "tier": "mid",
+      "about": "Enhances weapons, armor and accessories of item Lv 30-40 (the Mid tier).",
+      "shop": "whetstone",
+      "forge": "whetstone",
+      "price": {
+        "kowens": 5
+      },
+      "note": "Repo addition (20 Oct 2026): the Mid tier's whetstone, sold in the Smithing tab from Lv 30 for 5 Kowens (Mac); no art yet."
+    },
+    {
+      "id": "polished-whetstone-fragment",
+      "name": "Polished Whetstone Fragment",
+      "kind": "material",
+      "rarity": "white",
+      "tier": "mid",
+      "about": "Ten make a Polished Whetstone. From taking Mid gear apart and the Palengke's mini bosses.",
+      "forge": "fragment",
+      "note": "Repo addition (20 Oct 2026); no art yet."
+    },
+    {
+      "id": "mid-repair-kit",
+      "name": "Mid Repair Kit",
+      "kind": "material",
+      "rarity": "white",
+      "tier": "mid",
+      "about": "Repairs a broken item of item Lv 30-40 (the Mid tier).",
+      "shop": "repairKit",
+      "forge": "repairKit",
+      "price": {
+        "kowens": 20
+      },
+      "note": "Repo addition (20 Oct 2026): sold in the Smithing tab from Lv 30 for 20 Kowens (Mac); no art yet."
+    },
+    {
       "id": "agimat-pliers",
       "name": "Agimat Pliers",
       "kind": "consumable",
