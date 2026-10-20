@@ -176,6 +176,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   [139, 109] (+ `tileNote`: was [139, 105], inside its empty frame `palengke-scale-stand`, blocked); `ui/ui-great-scale-head.png`
   (manifest `ui.greatScaleHead`: its dial cut from great-scale/stand/mob-great-scale-boss-stand-sw.png at (27,2), a stand-in
   for the HUD timer); `classes/palengke-leveling.json`'s palengke-14 now has a bell step (built in shared `palengke.ts`).
+- The Palengke's big stalls (20 Oct 2026, Mac): every square of four 2 × 2 stalls in `maps/palengke.json` is one stall drawn at
+  2x on 4 × 4 tiles (`scale: 2`; `scripts/palengke_big_stalls.py`, run it again after copying the art folder's map over;
+  blocked tiles unchanged; stalls in rows 2 tiles deep stay small); the outskirts' stalls are 2x too (world/outskirts.ts).
 - The Lumang Palengke (20 Oct 2026): `maps/palengke.json`, `tiles/palengke/`, `props/palengke/` (the art folder's, as they are)
   and the manifest's `props` from its palengke-manifest-snippet.json; `tiles.palengke` is written here (the families counted
   from the files; `plainVariants` / `plainWeight`, `animated` baha / lalim, `banks`, `slow`). `maps/slums.json`: its west gate

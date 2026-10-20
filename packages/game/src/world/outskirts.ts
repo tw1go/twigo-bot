@@ -220,15 +220,15 @@ export class SlumsOutskirts implements BigOutskirts {
 
 /** The Lumang Palengke's border: how deep the market goes on past the map, rows of stalls on concrete (tiles). */
 const PALENGKE_DEPTH = 12;
-/** Its stalls (2 × 2) and now and then a stack of crates (1 × 1). */
+/** Its stalls (their art at 2x on 4 × 4 tiles, as the map's big ones) and now and then a stack of crates (1 × 1). */
 const PALENGKE_STALLS = ['palengke-stall-empty', 'palengke-stall-collapsed'];
 const PALENGKE_CRATES = 'palengke-crate-plastic-stack';
 
 /**
  * Round the Lumang Palengke: the market seems to carry on into the dark. Past the map, its `semento` ground for
  * PALENGKE_DEPTH tiles (dirt-free: the map's own dark beyond that is nothing), the gate's tiles carried on out as a
- * road of the same, and rows of empty and collapsed stalls (2 × 2, one per 3 × 3 cell in aisle rows, seeded) with now
- * and then a stack of plastic crates. Nothing in it is walkable or reachable.
+ * road of the same, and rows of empty and collapsed stalls (drawn at 2x on 4 × 4 tiles, one per 5 × 5 cell in aisle rows,
+ * seeded) with now and then a stack of plastic crates. Nothing in it is walkable or reachable.
  */
 export class PalengkeOutskirts implements BigOutskirts {
   private readonly cols: number;
@@ -271,18 +271,18 @@ export class PalengkeOutskirts implements BigOutskirts {
       }
       return true;
     };
-    // One 3 × 3 cell each: a stall in two rows of three, an aisle between (a market's rows), a crate stack now and then.
-    const STEP = 3;
+    // One 5 × 5 cell each: a big stall (4 × 4) with an aisle along two sides (a market's rows), a crate stack now and then.
+    const STEP = 5;
     for (let cr = Math.floor(r0 / STEP); cr <= Math.floor(r1 / STEP); cr++) {
       for (let cc = Math.floor(c0 / STEP); cc <= Math.floor(c1 / STEP); cc++) {
         const c = cc * STEP;
         const r = cr * STEP;
         if (c < c0 || c > c1 || r < r0 || r > r1) continue;
         const roll = tileRandom(cc, cr, 61);
-        if (this.stalls.length && roll < 0.62 && fits(c, r, 2, 2)) {
-          out.push({ kind: 'prop', id: pick(this.stalls, tileRandom(cc, cr, 62)), col: c, row: r, footprint: [2, 2], flip: tileRandom(cc, cr, 63) < 0.5 });
-        } else if (this.crates && roll < 0.72 && fits(c + 1, r + 1, 1, 1)) {
-          out.push({ kind: 'prop', id: this.crates, col: c + 1, row: r + 1, footprint: [1, 1], flip: tileRandom(cc, cr, 64) < 0.5 });
+        if (this.stalls.length && roll < 0.62 && fits(c, r, 4, 4)) {
+          out.push({ kind: 'prop', id: pick(this.stalls, tileRandom(cc, cr, 62)), col: c, row: r, footprint: [4, 4], scale: 2, flip: tileRandom(cc, cr, 63) < 0.5 });
+        } else if (this.crates && roll < 0.72 && fits(c + 2, r + 2, 1, 1)) {
+          out.push({ kind: 'prop', id: this.crates, col: c + 2, row: r + 2, footprint: [1, 1], flip: tileRandom(cc, cr, 64) < 0.5 });
         }
       }
     }

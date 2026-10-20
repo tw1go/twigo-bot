@@ -94,6 +94,8 @@ interface ShadowJob {
   ax: number;
   ay: number;
   w: number;
+  /** Drawn bigger than its art (a 2x stall): its shadow too. */
+  scale?: number;
 }
 
 export class WorldObjects {
@@ -229,7 +231,8 @@ export class WorldObjects {
   /** A prop's own shadow on the ground (world/cast-shadow.ts), or null without one. */
   private shadowOf(j: ShadowJob): Phaser.GameObjects.Image | null {
     const sh = castShadow(this.scene, j.file, j.flip);
-    return sh ? this.scene.add.image(j.x, j.y, sh.key).setOrigin(j.ax / (j.w + sh.extra), j.ay / sh.height).setDepth(GROUND_SHADOW_DEPTH) : null;
+    // (A prop drawn bigger than its art: its shadow too.)
+    return sh ? this.scene.add.image(j.x, j.y, sh.key).setOrigin(j.ax / (j.w + sh.extra), j.ay / sh.height).setScale(j.scale ?? 1).setDepth(GROUND_SHADOW_DEPTH) : null;
   }
 
   /** The regions near the view that aren't made or queued yet, queued; those far from it dropped. */
@@ -450,7 +453,7 @@ export class WorldObjects {
     if (this.castShadows && !floor && !def.animation) {
       const top = this.topOf(o.col, o.row);
       const w = sprite.frame.width;
-      const job = { file: def.file, flip: !!o.flip, x: top.x, y: top.y, ax: o.flip ? w - def.anchor[0] : def.anchor[0], ay: def.anchor[1], w };
+      const job = { file: def.file, flip: !!o.flip, x: top.x, y: top.y, ax: o.flip ? w - def.anchor[0] : def.anchor[0], ay: def.anchor[1], w, ...(o.scale ? { scale: o.scale } : {}) };
       // Streamed: made a little later (a new image's shadow is costly to bake), with its region's.
       if (this.making) this.shadows.push({ k: this.making, job });
       else {
