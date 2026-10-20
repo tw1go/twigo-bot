@@ -111,7 +111,13 @@ export interface MeResponse {
   questPieces?: Item[];
   /** Their hotbars, one per class they've arranged (saved by POST /town/hotbar; the same on every device). */
   hotbars?: Record<string, HotbarLayout>;
+  /** Their keybinds: only the actions changed from the defaults, each its two keys (null = none); saved by
+   *  POST /town/keybinds, the same on every device. */
+  keybinds?: KeybindMap;
 }
+
+/** Keybinds as the game keeps them (ui/keybinds.ts): action id → [key, key], each a key combo or null. */
+export type KeybindMap = Record<string, (string | null)[]>;
 
 /** A hotbar slot: a skill by name, an item by its kind (its name, emoji and rarity as the bar shows them; `cooldown`:
  *  the cooldown key it shares), or empty. */
