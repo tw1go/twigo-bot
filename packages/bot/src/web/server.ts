@@ -1144,6 +1144,10 @@ export function startWebServer(client: Client): void {
     let toDiscord: (userId: string, nickname: string, text: string, megaphone: boolean, gm?: boolean) => void = () => {};
     refundHeldBets(); // an arena match the bot didn't finish: both get their stake back
     const slumsMap = loadTownMap('slums'); // the Slums
+    // The Lumang Palengke (Lv 21-40): a battle map whose mob zones and field boss are all off until their art comes, so
+    // its room has no mobs yet (and no golem: no boss art given). Its Lantern Posts' tiles are blocked (loadTownMap).
+    const palengkeMap = loadTownMap('palengke');
+    const palengkeMobMap = { ...loadMobMap('palengke'), blocked: palengkeMap.blocked };
     const H = loadHalloween();
     const halloween = new Halloween(H.data, H.maps, kvLoad<HalloweenSaved | null>(HALLOWEEN_KV, null), (st) => kvSave(HALLOWEEN_KV, st));
     setShopEvents(() => ({ halloween: { on: halloween.on(Date.now()), window: H.data } })); // (the store's Witch Hat and Robe)
@@ -1166,9 +1170,12 @@ export function startWebServer(client: Client): void {
       moderation: { mutedUntil, kickedUntil, filter: filterText },
       memory: townMemory(),
       map: loadTownMap(),
-      rooms: { hood: hoodTownMap, slums: () => slumsMap },
+      rooms: { hood: hoodTownMap, slums: () => slumsMap, palengke: () => palengkeMap },
       // (The Halloween event's mobs live in the Slums' room too: its director runs them, in a zone of their own.)
-      mobs: { slums: (slumsRoom = new MobRoom(slumsMobMap, Math.random, skillLevels, loadSkillShapes(), loadMobKinds(), loadGolemArt(), undefined, undefined, { director: halloween.director })) },
+      mobs: {
+        slums: (slumsRoom = new MobRoom(slumsMobMap, Math.random, skillLevels, loadSkillShapes(), loadMobKinds(), loadGolemArt(), undefined, undefined, { director: halloween.director })),
+        palengke: new MobRoom(palengkeMobMap, Math.random, skillLevels, loadSkillShapes(), loadMobKinds()),
+      },
       // The Halloween event (events/halloween.json; its schedules kept in kv 'halloween'): rewards into the wallet, the
       // combat bag (the kits by mail when it's full) and the potion stock.
       halloween: { event: halloween, give: giveHalloween },

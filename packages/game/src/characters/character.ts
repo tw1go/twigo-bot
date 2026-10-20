@@ -113,6 +113,8 @@ export class Character {
   private announced: Tile | null = null;
   /** Walking speed, tiles per second. */
   speed = SPEED;
+  /** The ground's share of it where they stand (the Palengke's shallow flood: 0.7), or null: full speed everywhere. */
+  speedAt: ((col: number, row: number) => number) | null = null;
   /** A mobility move (world/mobility.ts) is moving this character: walking and steps wait. */
   busy = false;
   /** Dodging every hit landing before this (Date.now() ms): a Step Back (stats.json skills.moveDodge; the server
@@ -438,7 +440,7 @@ export class Character {
     if (((this.lit && this.night) || this.bigs.length) && !this.path.length) this.sync(); // (the overlays follow the idle frames; the glow flickers)
     if (!this.path.length) this.takeNextStep();
     if (this.path.length) {
-      let budget = (this.speed * deltaMs) / 1000;
+      let budget = (this.speed * (this.speedAt?.(Math.floor(this.col), Math.floor(this.row)) ?? 1) * deltaMs) / 1000;
       while (budget > 0 && (this.path.length || this.takeNextStep())) {
         const next = this.path[0];
         const tx = next.col + 0.5;

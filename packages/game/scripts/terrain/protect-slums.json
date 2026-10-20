@@ -1,5 +1,12 @@
 {
-  "note": "Tiles the game's code uses on the Slums that aren't in maps/slums.json (apply_high_terrain.py keeps 3 tiles clear round each). None found: the lantern post, the Warren Gate, the golem pit and its fx spots, the gates and arrivals, the camp and the mob zones are all in the map json, which the script reads itself; the dev golem spot (TownScene devGolemSpot) is worked out from the pit. Add [col, row] tiles or [c0, r0, c1, r1] rects here when code starts naming new ones.",
+  "note": "Tiles the game's code uses on the Slums that aren't in maps/slums.json (apply_high_terrain.py keeps 3 tiles clear round each). None found: the lantern post, the Warren Gate, the golem pit and its fx spots, the gates and arrivals, the camp and the mob zones are all in the map json, which the script reads itself; the dev golem spot (TownScene devGolemSpot) is worked out from the pit. Add [col, row] tiles or [c0, r0, c1, r1] rects here when code starts naming new ones. The path in from the Palengke gate (col 0, rows 116-118, cleared of props on 20 Oct 2026) is kept as a rect.",
   "tiles": [],
-  "rects": []
+  "rects": [
+    [
+      0,
+      116,
+      19,
+      118
+    ]
+  ]
 }

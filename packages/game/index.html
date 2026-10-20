@@ -2114,7 +2114,9 @@
       #map-menu .mm-close:hover { color: #fff; }
       #map-menu .mm-inset { flex: none; overflow: auto; padding: calc(4px * var(--k)); border: 2px solid #3D4256; background: #0A0F1E; }
       #map-menu .mm-stage { position: relative; width: calc(428px * var(--k)); height: calc(220px * var(--k)); }
-      #map-menu .mm-world { display: block; width: 100%; height: 100%; image-rendering: pixelated; user-select: none; }
+      #map-menu .mm-world { position: absolute; display: block; width: calc(428px * var(--k)); height: calc(220px * var(--k)); image-rendering: pixelated; user-select: none; }
+      /* A map the picture doesn't have yet (the Lumang Palengke): a plain diamond where it lies (clip-path set in code). */
+      #map-menu .mm-blank { position: absolute; inset: 0; background: #2A2438; box-shadow: inset 0 0 0 999px rgba(124, 42, 232, 0.08); pointer-events: none; }
       /* Quest marks on the world map's picture (ui/quest-marks.ts: the Map menu and the quest map): the hunting areas, their
          pins (13 × 18 at the picture's scale, 2 frames at 3 fps) and names with the count. */
       /* The quest map (ui/quest-map.ts): the world map over the game while its key is held; only for looking. */

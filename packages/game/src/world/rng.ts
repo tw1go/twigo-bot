@@ -57,5 +57,13 @@ export function seedOf(name: string): number {
   return h >>> 0;
 }
 
-/** The variant a tile shows: seeded by (col, row) and its kind's seed. */
-export const variantAt = <T>(items: readonly T[], col: number, row: number, seed: number): T => items[mix32(col, row, seed) % items.length];
+/** The variant a tile shows: seeded by (col, row) and its kind's seed. With `plain` (how many of the first variants are
+ *  the plain ones) and `weight`, those are `weight` times as likely as the rest. */
+export function variantAt<T>(items: readonly T[], col: number, row: number, seed: number, plain = 0, weight = 1): T {
+  const h = mix32(col, row, seed);
+  const p = Math.min(plain, items.length);
+  if (!p || weight === 1) return items[h % items.length];
+  const total = p * weight + (items.length - p);
+  const i = h % total;
+  return items[i < p * weight ? Math.floor(i / weight) : p + (i - p * weight)];
+}

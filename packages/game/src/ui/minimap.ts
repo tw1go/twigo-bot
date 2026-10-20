@@ -9,7 +9,12 @@ const GROUND: Record<string, string> = {
   grass: '#2D5240', path: '#565C75', plaza: '#7A8099', water: '#1D3F6E',
   // The Slums
   dirt: '#4E3424', 'dirt-junk': '#553A28', weeds: '#4C3D26', mud: '#3B2A20', concrete: '#5A6078', plate: '#6E4836', planks: '#7A5634', canal: '#2E5A3E',
+  // The Lumang Palengke (its stall blocks, being blocked, a shade darker: BLOCKED_SHADE)
+  adobe: '#8A4B36', tarp: '#5B6B82', semento: '#6B6E78', gulay: '#3F6B3A', tuyo: '#9C8456', pula: '#6E2A2A', tiles: '#9AA0AC', blue: '#3B5BA0',
+  baha: '#6FA8D8', lalim: '#1F3A6B', terrazzo: '#7A6E88',
 };
+/** On a map whose blocked tiles are its stalls and walls (the Palengke), they're drawn this much darker. */
+const BLOCKED_SHADE = -0.32;
 const BUILDING = '#7C2AE8';
 const VOID = '#111827'; // a chasm's floor (level below 0): near black
 const OTHER = '#22C55E';
@@ -72,9 +77,11 @@ export class Minimap {
     const count = new Map<number, number>();
     if (H) for (const row of H) for (const v of row) if (v >= 0) count.set(v, (count.get(v) ?? 0) + 1);
     const base = [...count].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 0;
+    const darkBlocked = this.map.tileset === 'palengke';
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
-        const colour = GROUND[this.map.ground[r][c]] ?? GROUND.grass;
+        const ground = GROUND[this.map.ground[r][c]] ?? GROUND.grass;
+        const colour = darkBlocked && this.map.blocked[r]?.[c] ? shade(ground, BLOCKED_SHADE) : ground;
         const level = H?.[r]?.[c] ?? base;
         tile(c, r, level < 0 ? VOID : level === base ? colour : shade(colour, level > base ? 0.18 * (level - base) : -0.35 + 0.1 * (level - base + 1)));
       }
@@ -121,6 +128,7 @@ export class Minimap {
 
 /** A colour mixed toward white (amount > 0) or black (< 0). */
 function shade(hex: string, amount: number): string {
+  if (!hex.startsWith('#')) return hex; // (already mixed)
   const n = parseInt(hex.slice(1), 16);
   const mix = (v: number) => Math.round(amount > 0 ? v + (255 - v) * amount : v * (1 + amount));
   return `rgb(${mix(n >> 16)}, ${mix((n >> 8) & 255)}, ${mix(n & 255)})`;

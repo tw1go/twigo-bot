@@ -2,13 +2,15 @@ import { type LanternMap, isLanternMap } from '@mikazuki/shared';
 import { playSound } from '../audio/sound';
 import { type QuestMarkArt, drawQuestMarks } from './quest-marks';
 import { toast } from './toast';
-import { type MapLayout, type SlumsPlaces, loadWorldMap, middleOf, worldPx } from './world-map';
+import { type MapLayout, type SlumsPlaces, loadWorldMap, middleOf, postsOf, shifted, worldBounds, worldPoint, worldPx } from './world-map';
 
 // 🗺️ The Map menu (M anywhere; a Lantern Post's click): the Slums and the Town drawn together (manifest ui.mapWorld,
 // placed by ui/map/map-layout.json), their names and places written over it from the maps themselves (the Slums' zones,
-// the Golem Pit, the Camp, the way to the neighbourhood), and every Lantern Post as a teleporter icon. Opened from a
-// post, another post's icon asks to teleport there (the Teleport box: one Return Lantern); opened anywhere else it's only
-// to look at. Built like the Equipment panel: its frame, a title bar with ×, the UI font. The picture is drawn at a
+// the Golem Pit, the Camp, the way to the neighbourhood), and every Lantern Post as a teleporter icon (the Palengke has
+// four). A map the picture doesn't have yet (the Lumang Palengke, west of it) gets a plain diamond where it lies: the
+// stage is as big as every map needs (worldBounds), the picture placed in it. Opened from a post, another post's icon
+// asks to teleport there (the Teleport box: one Return Lantern; another post of the same map too); opened anywhere else
+// it's only to look at. Built like the Equipment panel: its frame, a title bar with ×, the UI font. The picture is drawn at a
 // whole-number scale (2× where it fits, else 1×), its labels with it. Under the posts and labels, every active quest's
 // hunting area in the quest's colour (ui/quest-marks.ts, the quest map's marks).
 
@@ -28,14 +30,14 @@ export interface MapMenuArt {
 }
 
 export interface MapOpen {
-  /** The map you're on (its post is "You are here"); null: neither (the neighbourhood, a Warrens run). */
-  here: LanternMap | null;
+  /** The map you're on and the post you're at or nearest (it's "You are here"); null: none (the neighbourhood, a run). */
+  here: { map: LanternMap; post: number } | null;
   /** Opened from a Lantern Post: the other posts' icons teleport. */
   fromPost: boolean;
   /** How many Return Lanterns you hold (read again whenever it's shown). */
   lanterns: () => number;
-  /** Teleport there (after the Teleport box's yes). */
-  travel: (to: LanternMap) => void;
+  /** Teleport there (after the Teleport box's yes): a map and its post. */
+  travel: (to: LanternMap, post: number) => void;
   onClose?: () => void;
 }
 
@@ -43,7 +45,14 @@ export interface MapOpen {
 const PLACE: Record<LanternMap, { name: string; post: string }> = {
   slums: { name: 'the Slums', post: 'Lantern Post, middle of the Slums' },
   town: { name: 'the Town', post: 'Lantern Post, on the fountain plaza' },
+  palengke: { name: 'the Lumang Palengke', post: 'Lantern Post' },
 };
+/** What the picture writes for a map's name. */
+const MAP_NAME: Record<string, string> = { slums: 'Slums', town: 'Town', palengke: 'Palengke' };
+/** The picture's own size (ui-map-world.png). */
+const PICTURE: [number, number] = [428, 220];
+/** Maps the picture doesn't have yet (a plain diamond stands in). */
+const NOT_DRAWN = new Set(['palengke']);
 const FRAME = { normal: 0, hover: 1, here: 2 } as const;
 const ICON_W = 15;
 
@@ -107,12 +116,21 @@ export class MapMenu {
   async open(o: MapOpen): Promise<void> {
     this.o = o;
     this.closeConfirm();
-    this.k = innerWidth >= 960 && innerHeight >= 660 ? 2 : 1;
-    this.root.style.setProperty('--k', String(this.k));
     this.root.hidden = false;
     await this.load();
     if (this.o !== o) return;
+    // 2× where the whole stage fits, else 1×.
+    const [w, h] = this.size();
+    this.k = innerWidth >= w * 2 + 80 && innerHeight >= h * 2 + 200 ? 2 : 1;
+    this.root.style.setProperty('--k', String(this.k));
     this.draw();
+  }
+
+  /** The stage's size (the picture's pixels): the picture and every map's diamond. */
+  private size(): [number, number] {
+    if (!this.layout) return PICTURE;
+    const [x0, y0, x1, y1] = worldBounds(this.layout, PICTURE);
+    return [x1 - x0, y1 - y0];
   }
 
   close(): void {
@@ -129,7 +147,7 @@ export class MapMenu {
     if (this.root.hidden || !this.o) return;
     this.footText();
     const to = this.dim.dataset.to;
-    if (!this.dim.hidden && isLanternMap(to)) this.confirm(to);
+    if (!this.dim.hidden && isLanternMap(to)) this.confirm(to, Number(this.dim.dataset.post ?? 0));
   }
 
   private async load(): Promise<void> {
@@ -140,21 +158,34 @@ export class MapMenu {
     this.places = { slums: world.slums, townHood: middleOf(world.town.gates?.hood) };
   }
 
-  /** A map's tile as a pixel of the picture (map-layout.json's formula). */
-  private px(map: string, col: number, row: number): [number, number] | null {
-    return this.layout ? worldPx(this.layout, map, col, row) : null;
-  }
-
   private draw(): void {
-    const L = this.layout;
     const k = this.k;
     this.stage.replaceChildren();
+    // The stage holds every map: the picture moved in by (dx, dy) when a map lies off its top or left.
+    const [x0, y0] = this.layout ? worldBounds(this.layout, PICTURE) : [0, 0];
+    const [dx, dy] = [-x0, -y0];
+    const L = this.layout && shifted(this.layout, dx, dy);
+    const [w, h] = this.size();
+    this.stage.style.width = `${w * k}px`;
+    this.stage.style.height = `${h * k}px`;
     const img = el('img', 'mm-world');
     img.src = this.art.world;
     img.alt = 'The Slums and the Town';
     img.draggable = false;
+    img.style.left = `${dx * k}px`;
+    img.style.top = `${dy * k}px`;
+    // A map the picture doesn't have yet: a plain diamond where it lies, under everything.
+    for (const id of NOT_DRAWN) {
+      const m = L?.maps[id];
+      if (!L || !m) continue;
+      const pts = [[0, 0], [m.size[0], 0], [m.size[0], m.size[1]], [0, m.size[1]]].map(([c, r]) => worldPoint(L, id, c, r)!);
+      const d = el('div', 'mm-blank');
+      d.style.clipPath = `polygon(${pts.map(([x, y]) => `${x * k}px ${y * k}px`).join(', ')})`;
+      this.stage.append(d);
+    }
     this.stage.append(img);
     if (!L) return void this.footText();
+    const px = (map: string, col: number, row: number) => worldPx(L, map, col, row);
     if (this.art.marks && this.places) drawQuestMarks(this.stage, { layout: L, slums: this.places.slums, town: {} }, k, this.art.marks);
     // Writing on the picture: centred on its pixel (`left`: starting there instead).
     const label = (text: string, at: [number, number] | null, cls: string, left = false) => {
@@ -165,60 +196,64 @@ export class MapMenu {
       this.stage.append(t);
     };
     const S = this.places?.slums ?? {};
-    for (const z of S.mobZones ?? []) if (z.name) label(z.name, this.px('slums', (z.rect[0] + z.rect[2]) / 2, (z.rect[1] + z.rect[3]) / 2), 'mm-zone');
-    if (S.boss?.tile) label('Golem Pit', this.px('slums', S.boss.tile[0], S.boss.tile[1]), 'mm-pit');
-    if (S.safeZone) label('Camp', this.px('slums', (S.safeZone[0] + S.safeZone[2]) / 2, (S.safeZone[1] + S.safeZone[3]) / 2), 'mm-camp');
+    for (const z of S.mobZones ?? []) if (z.name) label(z.name, px('slums', (z.rect[0] + z.rect[2]) / 2, (z.rect[1] + z.rect[3]) / 2), 'mm-zone');
+    if (S.boss?.tile) label('Golem Pit', px('slums', S.boss.tile[0], S.boss.tile[1]), 'mm-pit');
+    if (S.safeZone) label('Camp', px('slums', (S.safeZone[0] + S.safeZone[2]) / 2, (S.safeZone[1] + S.safeZone[3]) / 2), 'mm-camp');
     const hood = this.places?.townHood;
-    const gate = hood && this.px('town', hood[0], hood[1]);
+    const gate = hood && px('town', hood[0], hood[1]);
     if (gate) label('Hood ›', [gate[0] + 4, gate[1]], 'mm-hood', true);
-    for (const [id, m] of Object.entries(L.maps)) if (m.label) label(id === 'slums' ? 'Slums' : id === 'town' ? 'Town' : id, this.px(id, m.label[0], m.label[1]), 'mm-map');
+    for (const [id, m] of Object.entries(L.maps)) if (m.label) label(MAP_NAME[id] ?? id, worldPx(L, id, m.label[0], m.label[1]), 'mm-map');
 
     // The Lantern Posts: yours "You are here" with the pin; the others teleport (from a post).
     const [aw, ah] = L.icon.anchor;
-    for (const [id, post] of Object.entries(L.posts)) {
+    for (const id of Object.keys(L.posts)) {
       if (!isLanternMap(id)) continue;
-      const [x, y] = post.px;
-      const mine = id === this.o?.here;
-      const icon = el('button', 'mm-post');
-      icon.setAttribute('aria-label', mine ? 'Lantern Post: you are here' : `Lantern Post in ${PLACE[id].name}`);
-      icon.style.left = `${(x - aw) * k}px`;
-      icon.style.top = `${(y - ah) * k}px`;
-      icon.style.backgroundImage = `url("${this.art.teleporter}")`;
-      const frame = (f: keyof typeof FRAME) => (icon.style.backgroundPositionX = `${-FRAME[f] * ICON_W * k}px`);
-      frame(mine ? 'here' : 'normal');
-      this.stage.append(icon);
-      if (mine) {
-        const pin = el('img', 'mm-pin');
-        pin.src = this.art.pin;
-        pin.alt = '';
-        pin.style.left = `${(x - 4) * k}px`;
-        pin.style.top = `${(y - ah - 13) * k}px`;
-        this.stage.append(pin);
-        label('You are here', [x + 9, y - 7], 'mm-here', true);
-        this.clearOf(this.stage.lastElementChild as HTMLElement, (x - 9) * k);
-        continue;
-      }
-      const tag = el('span', 'mm-label mm-post-tag', 'Lantern Post');
-      tag.style.left = `${x * k}px`;
-      tag.style.top = `${(y - ah - 5) * k}px`;
-      tag.hidden = true;
-      this.stage.append(tag);
-      icon.addEventListener('pointerenter', () => {
-        frame('hover');
-        tag.hidden = false;
-      });
-      icon.addEventListener('pointerleave', () => {
-        frame('normal');
-        tag.hidden = true;
-      });
-      icon.addEventListener('focus', () => icon.dispatchEvent(new PointerEvent('pointerenter')));
-      icon.addEventListener('blur', () => icon.dispatchEvent(new PointerEvent('pointerleave')));
-      icon.addEventListener('click', () => {
-        if (!this.o?.fromPost) {
-          playSound('error');
-          return toast('Go to a Lantern Post to travel.', 2400);
+      postsOf(L, id).forEach((post, index) => {
+        if (!post.at) return;
+        const [x, y] = post.at;
+        const mine = id === this.o?.here?.map && index === this.o.here.post;
+        const where = post.name ? `${PLACE[id].name} (${post.name})` : PLACE[id].name;
+        const icon = el('button', 'mm-post');
+        icon.setAttribute('aria-label', mine ? 'Lantern Post: you are here' : `Lantern Post in ${where}`);
+        icon.style.left = `${(x - aw) * k}px`;
+        icon.style.top = `${(y - ah) * k}px`;
+        icon.style.backgroundImage = `url("${this.art.teleporter}")`;
+        const frame = (f: keyof typeof FRAME) => (icon.style.backgroundPositionX = `${-FRAME[f] * ICON_W * k}px`);
+        frame(mine ? 'here' : 'normal');
+        this.stage.append(icon);
+        if (mine) {
+          const pin = el('img', 'mm-pin');
+          pin.src = this.art.pin;
+          pin.alt = '';
+          pin.style.left = `${(x - 4) * k}px`;
+          pin.style.top = `${(y - ah - 13) * k}px`;
+          this.stage.append(pin);
+          label('You are here', [x + 9, y - 7], 'mm-here', true);
+          this.clearOf(this.stage.lastElementChild as HTMLElement, (x - 9) * k);
+          return;
         }
-        this.confirm(id);
+        const tag = el('span', 'mm-label mm-post-tag', post.name ? `Lantern Post · ${post.name}` : 'Lantern Post');
+        tag.style.left = `${x * k}px`;
+        tag.style.top = `${(y - ah - 5) * k}px`;
+        tag.hidden = true;
+        this.stage.append(tag);
+        icon.addEventListener('pointerenter', () => {
+          frame('hover');
+          tag.hidden = false;
+        });
+        icon.addEventListener('pointerleave', () => {
+          frame('normal');
+          tag.hidden = true;
+        });
+        icon.addEventListener('focus', () => icon.dispatchEvent(new PointerEvent('pointerenter')));
+        icon.addEventListener('blur', () => icon.dispatchEvent(new PointerEvent('pointerleave')));
+        icon.addEventListener('click', () => {
+          if (!this.o?.fromPost) {
+            playSound('error');
+            return toast('Go to a Lantern Post to travel.', 2400);
+          }
+          this.confirm(id, index);
+        });
       });
     }
     this.footText();
@@ -240,7 +275,7 @@ export class MapMenu {
   }
 
   /** The Teleport box over the dimmed map: where to, what it costs, Cancel / Teleport. */
-  private confirm(to: LanternMap): void {
+  private confirm(to: LanternMap, post: number): void {
     const n = this.o?.lanterns() ?? 0;
     const box = el('div', 'mm-confirm');
     box.setAttribute('role', 'alertdialog');
@@ -260,7 +295,9 @@ export class MapMenu {
     icon.style.backgroundImage = `url("${this.art.teleporter}")`;
     icon.style.backgroundPositionX = `${-FRAME.hover * ICON_W * 2}px`;
     const words = el('div');
-    words.append(el('div', 'mm-where-name', `Travel to ${PLACE[to].name}?`), el('div', 'mm-where-post', PLACE[to].post));
+    const name = this.layout ? postsOf(this.layout, to)[post]?.name : undefined;
+    const sameMap = to === this.o?.here?.map;
+    words.append(el('div', 'mm-where-name', sameMap ? 'Travel to another Lantern Post?' : `Travel to ${PLACE[to].name}?`), el('div', 'mm-where-post', name ? `${PLACE[to].post}, ${name}` : PLACE[to].post));
     where.append(icon, words);
     const cost = el('div', `mm-cost${n < 1 ? ' mm-cost-none' : ''}`);
     const lantern = el('img', 'mm-cost-icon');
@@ -276,11 +313,12 @@ export class MapMenu {
       if (go.disabled || !this.o) return;
       const travel = this.o.travel;
       this.close();
-      travel(to);
+      travel(to, post);
     });
     buttons.append(cancel, go);
     box.append(head, where, el('div', 'mm-rule'), cost, buttons);
     this.dim.dataset.to = to;
+    this.dim.dataset.post = String(post);
     this.dim.replaceChildren(box);
     this.dim.hidden = false;
     (go.disabled ? cancel : go).focus();
@@ -290,6 +328,7 @@ export class MapMenu {
     this.dim.hidden = true;
     this.dim.replaceChildren();
     delete this.dim.dataset.to;
+    delete this.dim.dataset.post;
   }
 }
 

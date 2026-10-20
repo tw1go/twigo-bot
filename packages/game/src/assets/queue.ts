@@ -1,7 +1,7 @@
 import type Phaser from 'phaser';
 import { mobSheets } from './mob-art';
 import { packed, queuePacked } from './packs';
-import type { Manifest, PropDef, TownMap } from './types';
+import type { Manifest, MapTiles, PropDef, TownMap } from './types';
 
 // Queues every image the town needs, keyed by its path under assets/. Sheets (water, swaying grass, the fountain,
 // animated effects) load as spritesheets with the frame size from the manifest. In a build most of them come out of
@@ -36,7 +36,7 @@ export function queueTown(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Tex
     for (const id of ['warrens-shutter-closed', 'warrens-shutter-open']) if (M.props[id]?.file) img(M.props[id].file);
     for (const [id, f] of Object.entries(M.fx)) if (WARRENS_FX.test(id) && f.file) f.frame ? queueSheet(load, textures, f.file, f.frame[0], f.frame[1]) : img(f.file);
   }
-  if (map.height) queueSlums(load, textures, M, map);
+  if (map.height) queueBigMap(load, textures, M, map);
   T.grass.files.forEach(img);
   T.grass.litter.files.forEach(img);
   for (const a of Object.values(T.grass.animated)) queueSheet(load, textures, a.file, a.frameSize[0], a.frameSize[1]);
@@ -131,24 +131,27 @@ export function queueNpcs(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Tex
   load.json('npc-dialogue', N.dialogue);
 }
 
-/** The Slums: its ground and raised-ground pieces (tiles.slums) and every Slums prop (its outskirts scatter some that
- *  the map itself doesn't use); its mobs' art comes later, zone by zone. */
-function queueSlums(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Textures.TextureManager, M: Manifest, map: TownMap): void {
+/** A big map (the Slums, the Lumang Palengke): its ground set (tiles[map.tileset]: floors, animated families, the raised
+ *  ground's pieces where it has them) and every prop of its own (`slums-` / `palengke-`: its outskirts scatter some
+ *  that the map itself doesn't use); its mobs' art comes later, zone by zone. */
+function queueBigMap(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Textures.TextureManager, M: Manifest, map: TownMap): void {
   const img = (f: string) => queueImage(load, textures, f);
-  const S = M.tiles.slums;
+  const set = map.tileset ?? 'slums';
+  const S = M.tiles[set] as MapTiles | undefined;
   if (S) {
     Object.values(S.ground).flat().forEach(img);
-    queueSheet(load, textures, S.canal.file, S.canal.size[0], S.canal.size[1]);
-    for (const m of Object.values(S.cliffs)) [...m.l, ...m.r, ...(m.lower?.l ?? []), ...(m.lower?.r ?? [])].forEach(img);
-    [S.rim.nw, S.rim.ne, S.cap.w, S.cap.e, ...(S.foot ? [S.foot.l, S.foot.r] : []), ...(S.lip?.nw ?? []), ...(S.lip?.ne ?? [])].forEach(img);
-    for (const set of Object.values(S.ramps)) Object.values(set).flat().forEach(img);
+    for (const a of Object.values(S.animated ?? {})) for (const f of a.files) queueSheet(load, textures, f, a.size[0], a.size[1]);
+    if (S.canal) queueSheet(load, textures, S.canal.file, S.canal.size[0], S.canal.size[1]);
+    for (const m of Object.values(S.cliffs ?? {})) [...m.l, ...m.r, ...(m.lower?.l ?? []), ...(m.lower?.r ?? [])].forEach(img);
+    if (S.rim && S.cap) [S.rim.nw, S.rim.ne, S.cap.w, S.cap.e, ...(S.foot ? [S.foot.l, S.foot.r] : []), ...(S.lip?.nw ?? []), ...(S.lip?.ne ?? [])].forEach(img);
+    for (const ramps of Object.values(S.ramps ?? {})) Object.values(ramps).flat().forEach(img);
   }
-  for (const [id, p] of Object.entries(M.props)) if (id.startsWith('slums-')) for (const f of [(p as PropDef).file, (p as PropDef).front]) if (f) img(f);
+  for (const [id, p] of Object.entries(M.props)) if (id.startsWith(`${set}-`)) for (const f of [(p as PropDef).file, (p as PropDef).front]) if (f) img(f);
   // Every active zone's mob art and the field boss's (its sheets and fx) load with the area, behind the loading screen:
   // art arriving mid-play stalled frames as it was decoded and uploaded (world/mobs.ts `near` and loadBoss still load
   // anything that isn't in yet). Their rules too.
   const ids = new Set((map.mobZones ?? []).filter((z) => z.active && typeof M.mobs?.[z.mob] === 'object').map((z) => z.mob));
-  if (map.boss) ids.add(map.boss.id);
+  if (map.boss && map.boss.active !== false) ids.add(map.boss.id);
   for (const id of ids) {
     const def = M.mobs?.[id];
     if (!def || typeof def === 'string') continue;

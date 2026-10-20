@@ -403,9 +403,14 @@ export class WorldObjects {
     });
   }
 
+  /** The Palengke's sections whose string lights are on for this player (an object's `litId` drawn for its `section`):
+   *  the hook for the story's reward; nothing sets it yet. */
+  litSections = new Set<string>();
+
   private addProp(o: MapObject): void {
     if (this.M.props[o.id]?.front) return this.addHalves(o);
-    const def = this.M.props[o.id] as PropDef | undefined;
+    const lit = o.litId && o.section && this.litSections.has(o.section) && (this.M.props[o.litId] as PropDef | undefined)?.file ? o.litId : null;
+    const def = this.M.props[lit ?? o.id] as PropDef | undefined;
     if (!def?.file) return console.warn(`[town] unknown prop ${o.id}`);
     const [fc, fr] = o.footprint;
     let sprite: Phaser.GameObjects.Image;

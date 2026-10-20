@@ -1,14 +1,17 @@
 import Phaser from 'phaser';
-import type { Manifest, SlumsTiles, TownMap, Vec2 } from '../assets/types';
+import type { Manifest, MapTiles, TownMap, Vec2 } from '../assets/types';
 import { tileToScreen } from '../iso';
 import { CHARACTER_BIAS, GROUND_DEPTH } from './depth';
 import type { Heights } from './heights';
 import { LEVEL_PX, RAMP_STEP } from './heights';
-import type { SlumsOutskirts } from './outskirts';
+import type { BigOutskirts } from './outskirts';
 import { pick, seedOf, tileRandom, variantAt } from './rng';
 
-// 🏚️ The ground of a map with raised and low ground (the Slums and the Scrap Warrens: manifest tiles.slums, rules in
-// mikazuki-assets tiles/slums/slums-elevation-README.md and slums-high-terrain-README.md; words in CONTEXT.md "Ground").
+// 🏚️ The ground of a big map: the Slums and the Scrap Warrens (raised and low ground, manifest tiles.slums, rules in
+// mikazuki-assets tiles/slums/slums-elevation-README.md and slums-high-terrain-README.md; words in CONTEXT.md "Ground")
+// or the Lumang Palengke (flat, tiles.palengke): the map's `tileset`. A flat map has no walls, rims or ramps; its
+// `animated` families (the Palengke's shallow flood and deep pools) are sprites on a shared clock like the canal, a
+// variant per tile, with the river's bank overlays where a `banks` family meets other ground.
 // Each tile's floor is drawn 16 px × its level higher; levels run from the map's lowest to its highest (Heights.min /
 // max), below 0 being void (a chasm's floor). A tile shows a wall (cliff-<material>-l|r, a variant seeded by col,row)
 // for every level its SW / SE neighbour is lower, stacked 16 px apart: the top step in the material's own pieces, every
@@ -62,12 +65,12 @@ interface Live {
 export class Terrain {
   /** Nothing for the scene's culler: what's made is what's near (stream). */
   readonly cullable: Phaser.GameObjects.Image[] = [];
-  private readonly T: SlumsTiles;
+  private readonly T: MapTiles;
   private readonly cols: number;
   private readonly rows: number;
   private readonly chunks = new Map<string, Live>();
   private readonly regions = new Map<string, Live>();
-  private readonly canal = new Map<Phaser.GameObjects.Image, number>(); // sprite → frames
+  private readonly canal = new Map<Phaser.GameObjects.Image, { frames: number; fps: number }>(); // animated ground sprites
   /** Every raised column's sprites by tile ("c,r"), while its region is made: what `fadeFront` fades. */
   private readonly tops = new Map<string, Phaser.GameObjects.Image[]>();
   private faded: Phaser.GameObjects.Image[] = [];
@@ -82,9 +85,9 @@ export class Terrain {
     M: Manifest,
     private readonly map: TownMap,
     private readonly H: Heights,
-    private readonly out: SlumsOutskirts | null,
+    private readonly out: BigOutskirts | null,
   ) {
-    this.T = M.tiles.slums as SlumsTiles;
+    this.T = (M.tiles[map.tileset ?? 'slums'] ?? M.tiles.slums) as MapTiles;
     [this.cols, this.rows] = map.size;
     this.columns = new Uint8Array(this.cols * this.rows);
     this.overlays = Object.values(M.tiles.water.overlays).filter((o): o is { file: string; land: Vec2 } => typeof o === 'object');
@@ -98,8 +101,25 @@ export class Terrain {
   /** A ground tile's file: one of its kind's variants, picked by a well-mixed hash of col, row seeded per kind (rng.ts
    *  mix32), so no repeats line up. */
   private groundFile(kind: string, c: number, r: number): string {
-    const files = this.T.ground[kind] ?? this.T.ground.dirt;
-    return variantAt(files, c, r, seedOf(kind in this.T.ground ? kind : 'dirt'));
+    const base = this.T.ground.dirt ? 'dirt' : Object.keys(this.T.ground)[0];
+    const name = kind in this.T.ground ? kind : base;
+    return variantAt(this.T.ground[name], c, r, seedOf(name), this.T.plainVariants, this.T.plainWeight);
+  }
+
+  /** An animated family's sprite for a tile (the canal, the Palengke's water), or null: baked ground. */
+  private animatedAt(kind: string): { file: (c: number, r: number) => string; frames: number; fps: number; size: Vec2; anchor: Vec2 } | null {
+    const T = this.T;
+    if (kind === 'canal' && T.canal) {
+      const c = T.canal;
+      return { file: () => c.file, frames: c.frames, fps: c.fps, size: c.size, anchor: c.anchor };
+    }
+    const a = T.animated?.[kind];
+    return a ? { file: (c, r) => variantAt(a.files, c, r, seedOf(kind)), frames: a.frames, fps: a.fps, size: a.size, anchor: a.anchor } : null;
+  }
+
+  /** Whether a family gets the river's bank overlays where it meets other ground. */
+  private banked(kind: string): boolean {
+    return kind === 'canal' || !!this.T.banks?.includes(kind);
   }
 
   private inMap(c: number, r: number): boolean {
@@ -154,9 +174,9 @@ export class Terrain {
   /** The wall piece for one step of a tile's wall: step `S` (the level it stands on) of a wall whose top step is `top`,
    *  on side `side`; chasm pieces below 0, else the tile's material (its `lower` pieces under the top step). */
   private wallPiece(c: number, r: number, side: 'l' | 'r', S: number, top: number): string {
-    const T = this.T;
+    const cliffs = this.T.cliffs!;
     const name = S < -1 ? 'chasm-deep' : S < 0 ? 'chasm' : this.map.walls?.[r]?.[c] || 'earth';
-    const mat = T.cliffs[name] ?? T.cliffs.earth ?? Object.values(T.cliffs)[0];
+    const mat = cliffs[name] ?? cliffs.earth ?? Object.values(cliffs)[0];
     const set = S < top && mat.lower ? mat.lower : mat;
     return pick(set[side], tileRandom(c, r, (side === 'l' ? 32 : 36) + S + 8));
   }
@@ -165,7 +185,8 @@ export class Terrain {
    *  the piece, the level it's anchored at, its phase in the baked order (1 walls, 2 rims) and its depth under a
    *  column's depth (sprites). */
   private edgePieces(c: number, r: number, add: (key: string, L: number, phase: number, under: number) => void): void {
-    const T = this.T;
+    const T = this.T as Required<Pick<MapTiles, 'cliffs' | 'rim' | 'cap'>> & MapTiles;
+    if (!T.cliffs || !T.rim || !T.cap) return; // (a flat map: nothing but floors)
     const level = this.level(c, r);
     const wall = (side: 'l' | 'r', c2: number, r2: number) => {
       const below = this.level(c2, r2);
@@ -205,9 +226,9 @@ export class Terrain {
       const p = this.at(c, r, L);
       out.push({ key, x: p.x, y: p.y, ox: anchor[0], oy: anchor[1], order: order(L, phase) });
     };
-    if (kind !== 'canal') add(this.groundFile(kind, c, r), level, 0, T.anchor);
+    if (!this.animatedAt(kind)) add(this.groundFile(kind, c, r), level, 0, T.anchor);
     if (!this.inMap(c, r)) return; // (the outskirts: a floor, nothing else)
-    this.edgePieces(c, r, (key, L, phase) => add(key, L, phase, T.pieceAnchor));
+    this.edgePieces(c, r, (key, L, phase) => add(key, L, phase, T.pieceAnchor!));
   }
 
   /** A raised tile's column (level 1 and up): its floor, walls, caps, rims and lips, as sorted sprites. */
@@ -215,7 +236,7 @@ export class Terrain {
     const T = this.T;
     const level = this.level(c, r);
     const out: ColumnPiece[] = [{ key: this.groundFile(this.kind(c, r), c, r), level, anchor: T.anchor, size: T.size, under: 0.31 }];
-    this.edgePieces(c, r, (key, L, _phase, under) => out.push({ key, level: L, anchor: T.pieceAnchor, size: T.pieceSize, under }));
+    this.edgePieces(c, r, (key, L, _phase, under) => out.push({ key, level: L, anchor: T.pieceAnchor!, size: T.pieceSize!, under }));
     return out;
   }
 
@@ -275,18 +296,22 @@ export class Terrain {
       images.push(s);
       return s;
     };
-    const isCanal = (c: number, r: number) => this.kind(c, r) === 'canal';
     for (let r = rr * REGION; r < (rr + 1) * REGION; r++) {
       for (let c = rc * REGION; c < (rc + 1) * REGION; c++) {
         const level = this.level(c, r);
-        if (isCanal(c, r)) {
-          const s = sprite(T.canal.file, c, r, level, T.canal.anchor, T.canal.size, GROUND_DEPTH + 1 + (c + r) * 4, Math.max(0, this.frame) % T.canal.frames);
-          this.canal.set(s, T.canal.frames);
-          // Banks: the river's overlays where the neighbour is land (a corner only when both sides are canal).
-          for (const o of this.overlays) {
-            const [dc, dr] = o.land;
-            const corner = dc !== 0 && dr !== 0;
-            if (!isCanal(c + dc, r + dr) && (!corner || (isCanal(c + dc, r) && isCanal(c, r + dr)))) sprite(o.file, c, r, level, T.canal.anchor, T.canal.size, GROUND_DEPTH + 2 + (c + r) * 4);
+        const kind = this.kind(c, r);
+        const anim = this.animatedAt(kind);
+        if (anim) {
+          const s = sprite(anim.file(c, r), c, r, level, anim.anchor, anim.size, GROUND_DEPTH + 1 + (c + r) * 4, this.frameOf(anim.fps) % anim.frames);
+          this.canal.set(s, { frames: anim.frames, fps: anim.fps });
+          // Banks: the river's overlays where the neighbour is other ground (a corner only when both sides are the same).
+          if (this.banked(kind)) {
+            const same = (c2: number, r2: number) => this.kind(c2, r2) === kind;
+            for (const o of this.overlays) {
+              const [dc, dr] = o.land;
+              const corner = dc !== 0 && dr !== 0;
+              if (!same(c + dc, r + dr) && (!corner || (same(c + dc, r) && same(c, r + dr)))) sprite(o.file, c, r, level, anim.anchor, anim.size, GROUND_DEPTH + 2 + (c + r) * 4);
+            }
           }
         } else if (this.column(c, r)) {
           // A column: just under a character standing on it, over anyone behind it (whom it hides).
@@ -295,9 +320,9 @@ export class Terrain {
           this.tops.set(`${c},${r}`, column);
         }
         const rp = this.H.ramp(c, r);
-        if (rp && this.inMap(c, r)) {
+        if (rp && this.inMap(c, r) && T.ramps) {
           const set = T.ramps[rp.surface] ?? Object.values(T.ramps)[0];
-          sprite(set[rp.dir][rp.part - 1], c, r, level, T.pieceAnchor, T.pieceSize, columnDepth(c, r) - 0.3); // (under whoever walks on it)
+          sprite(set[rp.dir][rp.part - 1], c, r, level, T.pieceAnchor!, T.pieceSize!, columnDepth(c, r) - 0.3); // (under whoever walks on it)
         }
       }
     }
@@ -406,15 +431,24 @@ export class Terrain {
     for (const s of this.faded) s.setAlpha(0.5);
   }
 
-  /** Advances the canal's shared clock. */
+  /** Advances the animated ground's shared clock (each family at its own fps; checked a tenth of a second at a time). */
   tick(timeMs: number): void {
-    const f = Math.floor((timeMs / 1000) * this.T.canal.fps);
+    const f = Math.floor(timeMs / 100);
     if (f === this.frame) return;
     this.frame = f;
-    for (const [s, frames] of this.canal) s.setFrame(f % frames);
+    this.now = timeMs;
+    for (const [s, a] of this.canal) {
+      const want = this.frameOf(a.fps) % a.frames;
+      if (String(s.frame.name) !== String(want)) s.setFrame(want);
+    }
+  }
+  private now = 0;
+  /** The shared clock's frame at `fps`. */
+  private frameOf(fps: number): number {
+    return Math.max(0, Math.floor((this.now / 1000) * fps));
   }
 
-  /** (Nothing to catch up: canal tiles are made on the current frame.) */
+  /** (Nothing to catch up: animated tiles are made on the current frame.) */
   refresh(_sprite: Phaser.GameObjects.Image): void {}
 }
 

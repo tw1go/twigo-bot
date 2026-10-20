@@ -42,6 +42,8 @@ export class OtherPlayers {
   auraFor: (plus: number | undefined) => AuraTier | null = () => null;
   /** Battle maps (the Slums): a class's battle poses in a look (characters/battle-art.ts); null elsewhere. */
   battleFor: ((cls: string, look: Outfit) => Promise<BattleSheets | null>) | null = null;
+  /** The ground's share of walking speed (Character.speedAt: the Palengke's shallow flood), or null. */
+  speedAt: ((col: number, row: number) => number) | null = null;
   private readonly looks = new Map<string, Outfit>();
   /** The CSS cursor over a character (left click picks them). */
   private cursorCss = 'pointer';
@@ -255,6 +257,7 @@ export class OtherPlayers {
       const char = new Character(this.scene, this.M, look, { col: s.col, row: s.row });
       char.depthFn = (c, r, d, b) => characterDepth(this.objects, c, r, d, b);
       char.elevation = (c, r) => this.objects.heights.lift(c, r); // raised ground (the Slums)
+      char.speedAt = this.speedAt; // (the Palengke's shallow flood slows them as it slows you)
       char.onSpawn = (obj) => this.onSpawn(obj);
       char.place({ col: s.col, row: s.row }, s.dir);
       if (s.sit) this.seat(char, s);

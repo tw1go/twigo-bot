@@ -1,6 +1,7 @@
 import type { HouseLook, TownHoodActionResponse, TownHoodResponse } from '@mikazuki/shared';
 import { api } from './endpoints';
-import type { Area, TownMap } from '../assets/types';
+import { blockedWithPosts } from '@mikazuki/shared';
+import type { Area, TownMap, Vec2 } from '../assets/types';
 
 // 🏘️ The neighbourhood's API (bot web/hood.ts; in dev the dev server answers with pretend houses, scripts/dev-town.ts),
 // and its map as the town's renderer wants it.
@@ -39,14 +40,16 @@ export function hoodTownMap(hood: TownHoodResponse, town: TownMap): TownMap {
   };
 }
 
-/** Where a gate leads: this page again with ?area=hood|slums (or without it, for the town) and ?from= (so you arrive at
- *  the way in from there), dev flags kept; `via` 'lantern': a teleport (?via=lantern: you arrive at the Lantern Post).
- *  They're tidied out of the address once the page has read them. */
-export function areaUrl(to: Area, via?: 'lantern'): string {
+/** Where a gate leads: this page again with ?area=hood|slums|palengke (or without it, for the town) and ?from= (so you
+ *  arrive at the way in from there), dev flags kept; `via` 'lantern': a teleport (?via=lantern: you arrive at the Lantern
+ *  Post; &post=N which of the map's, when it has several). They're tidied out of the address once the page has read them. */
+export function areaUrl(to: Area, via?: 'lantern', post = 0): string {
   const url = new URL(location.href);
   url.searchParams.set('from', currentArea());
   if (via) url.searchParams.set('via', via);
   else url.searchParams.delete('via');
+  if (via && post) url.searchParams.set('post', String(post));
+  else url.searchParams.delete('post');
   if (to !== 'town') url.searchParams.set('area', to);
   else url.searchParams.delete('area');
   return url.pathname + url.search;
@@ -55,7 +58,7 @@ export function areaUrl(to: Area, via?: 'lantern'): string {
 /** This tab's area, remembered across reloads (sessionStorage), so the address can stay plain /play/. */
 const AREA_KEY = 'mk_area';
 let area: Area | null = null;
-const isArea = (s: string | null): s is Area => s === 'hood' || s === 'town' || s === 'slums' || s === 'warrens';
+const isArea = (s: string | null): s is Area => s === 'hood' || s === 'town' || s === 'slums' || s === 'warrens' || s === 'palengke';
 let fresh = false;
 
 function remember(a: Area): void {
@@ -114,14 +117,17 @@ export function cameFrom(): Area | null {
   return isArea(from) ? from : null;
 }
 
-/** Whether you came by a Lantern Post (?via=lantern, set by a teleport), read once: then tidied out of the address. */
-export function cameByLantern(): boolean {
+/** Which Lantern Post you came by (?via=lantern, set by a teleport, and &post=N; 0: the map's first), or null: not by a
+ *  teleport. Read once: then tidied out of the address. */
+export function cameByLantern(): number | null {
   const url = new URL(location.href);
   const via = url.searchParams.get('via');
-  if (!via) return false;
+  if (!via) return null;
+  const post = Number(url.searchParams.get('post') ?? 0);
   url.searchParams.delete('via');
+  url.searchParams.delete('post');
   history.replaceState(null, '', url.pathname + url.search + url.hash);
-  return via === 'lantern';
+  return via === 'lantern' ? (Number.isInteger(post) && post >= 0 ? post : 0) : null;
 }
 
 /** Which area this page is: the town, the neighbourhood, the Slums or a Scrap Warrens run (see resolveArea). */
@@ -145,4 +151,28 @@ export function markTown(): void {
  *  outskirts are its own junk and shanties (world/outskirts.ts slumsOutskirts), not the forest. */
 export function slumsTownMap(json: TownMap): TownMap {
   return { ...json, fence: json.fence ?? [], doors: json.doors ?? {}, groundStyle: json.groundStyle ?? [], outskirts: undefined };
+}
+
+/** The Lumang Palengke's map (maps/palengke.json) as a big map like the Slums', with its own ground set (tiles.palengke)
+ *  and its Lantern Posts: each of its `teleporters` blocked (2 × 2: the art folder's map leaves one open) and drawn as the
+ *  town's Lantern Post on its front tile (the map's `teleporter` objects are left out: one is missing there). */
+export function palengkeTownMap(json: TownMap): TownMap {
+  const base = slumsTownMap(json);
+  const posts = json.teleporters ?? [];
+  return {
+    ...base,
+    tileset: 'palengke',
+    blocked: blockedWithPosts(json.blocked, posts),
+    objects: [
+      ...json.objects.filter((o) => (o as { kind: string }).kind !== 'teleporter'),
+      ...posts.map((t) => ({ kind: 'prop' as const, id: 'lantern-post', col: t.tile[0] + 1, row: t.tile[1] + 1, footprint: [1, 1] as Vec2, animated: true })),
+    ],
+  };
+}
+
+/** Into the Palengke (a reload starts there too). */
+export function markPalengke(): void {
+  resolveArea();
+  area = 'palengke';
+  remember('palengke');
 }

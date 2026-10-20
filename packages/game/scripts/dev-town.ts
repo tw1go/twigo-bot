@@ -1,7 +1,7 @@
 import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ClassesFile, GearRarity, HoodHouse, HouseLook, OutfitData, PrivacySettings, RogueState, TownHoodActionResponse, TownHoodResponse, TownItems, TownRace, TownRaceResponse } from '@mikazuki/shared';
-import { type LanternPost, type TownMail, DEFAULT_PRIVACY, expireItems, MAIL_RULES, claimInto, hasAttachments, parseMailAction, RETURN_LANTERN, gainPetXp, parsePetAction, petAction, petIdOf, petRules, setPetLevel, addToBag, isGearDef, lanternPostOf, newItem, rollGear, buyCosmetic, rollWorthy, takeKind, buffSkillLevels, classBuffs, classSkills, damageSkillLevels, moveUnlock } from '@mikazuki/shared';
+import { type LanternPost, type TownMail, DEFAULT_PRIVACY, expireItems, MAIL_RULES, claimInto, hasAttachments, parseMailAction, RETURN_LANTERN, gainPetXp, parsePetAction, petAction, petIdOf, petRules, setPetLevel, addToBag, isGearDef, blockedWithPosts, lanternPostsOf, newItem, rollGear, buyCosmetic, rollWorthy, takeKind, buffSkillLevels, classBuffs, classSkills, damageSkillLevels, moveUnlock } from '@mikazuki/shared';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { doorSpot, hoodMap, lotTile } from '../../bot/src/web/hood-map.ts';
 import type { Plugin } from 'vite';
@@ -378,19 +378,27 @@ export function devTown(): Plugin {
         return done(true, `You got away with 4 Kowens!${protects ? ` ${house.owner}'s house is protected now.` : ''}`, { stole: 4 });
       });
 
-      // The Slums' map, read again whenever the file changes (a new map from the art folder needs no restart).
-      const slumsFile = join(server.config.publicDir, 'assets/maps/slums.json');
-      let slumsAt = 0;
-      let slums: { size: [number, number]; spawn: [number, number]; blocked: number[][]; avoid: [number, number][]; lantern?: LanternPost | null } = { size: [0, 0], spawn: [0, 0], blocked: [], avoid: [] };
-      const slumsMap = () => {
-        const at = statSync(slumsFile).mtimeMs;
-        if (at !== slumsAt) {
-          slumsAt = at;
-          const sj = JSON.parse(readFileSync(slumsFile, 'utf8'));
-          slums = { size: sj.size, spawn: sj.spawn, blocked: sj.blocked, avoid: Object.values((sj.gates ?? {}) as Record<string, [number, number][]>).flat(), lantern: lanternPostOf(sj) };
-        }
-        return slums;
+      // The Slums' and the Lumang Palengke's maps, each read again whenever its file changes (a new map from the art folder
+      // needs no restart); a map with several Lantern Posts has their tiles blocked, as the bot's loadTownMap.
+      type RoomMap = { size: [number, number]; spawn: [number, number]; blocked: number[][]; avoid: [number, number][]; lanterns?: LanternPost[] };
+      const liveMap = (name: string) => {
+        const file = join(server.config.publicDir, `assets/maps/${name}.json`);
+        let at = 0;
+        let map: RoomMap = { size: [0, 0], spawn: [0, 0], blocked: [], avoid: [] };
+        return () => {
+          const now = statSync(file).mtimeMs;
+          if (now !== at) {
+            at = now;
+            const j = JSON.parse(readFileSync(file, 'utf8'));
+            const blocked = blockedWithPosts(j.blocked, j.teleporters);
+            map = { size: j.size, spawn: j.spawn, blocked, avoid: Object.values((j.gates ?? {}) as Record<string, [number, number][]>).flat(), lanterns: lanternPostsOf({ ...j, blocked }) };
+          }
+          return map;
+        };
       };
+      const slumsFile = join(server.config.publicDir, 'assets/maps/slums.json');
+      const slumsMap = liveMap('slums');
+      const palengkeMap = liveMap('palengke');
       const classes = (JSON.parse(readFileSync(join(server.config.publicDir, 'assets/classes/classes.json'), 'utf8')) as ClassesFile).classes;
       const classOf = (name: string) => classes.find((c) => c.id === kits.get(name)?.cls);
       // The Halloween event, off until the page's ?halloween=on (/__halloween): its mobs live in the Slums' room, in a
@@ -412,15 +420,17 @@ export function devTown(): Plugin {
       );
       const warrensLive = loadWarrens(Object.fromEntries(classes.map((c) => [c.id, c.skills.map((k) => k.level)])));
       const town = attachTown(httpServer as Parameters<typeof attachTown>[0], {
-        map: { size: json.size, spawn: json.spawn, blocked: json.blocked, avoid: Object.values((json.gates ?? {}) as Record<string, [number, number][]>).flat(), lantern: lanternPostOf(json) },
+        map: { size: json.size, spawn: json.spawn, blocked: json.blocked, avoid: Object.values((json.gates ?? {}) as Record<string, [number, number][]>).flat(), lanterns: lanternPostsOf(json) },
         rooms: {
           hood: () => {
             const m = hoodMap(houses.length);
             return { size: m.size, spawn: m.spawn, blocked: m.blocked, avoid: m.exit };
           },
           slums: slumsMap,
+          palengke: palengkeMap,
         },
-        mobs: { slums: slumsMobs },
+        // (The Palengke's zones and boss are off until their art comes: a battle room with no mobs yet.)
+        mobs: { slums: slumsMobs, palengke: new MobRoom({ ...JSON.parse(readFileSync(join(server.config.publicDir, 'assets/maps/palengke.json'), 'utf8')), blocked: palengkeMap().blocked }, Math.random, Object.fromEntries(classes.map((c) => [c.id, c.skills.map((k) => k.level)])), loadSkillShapes(), loadMobKinds()) },
         // Its rewards: Kusing and Low Repair Kits into the kept items (the kits by pretend mail when the bag is full),
         // Kowens into the pretend wallet, the potion only printed.
         halloween: {

@@ -146,6 +146,13 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `mobBehaviour.golem.hpPerPlayer`, `mobBehaviour.golem.hpMin` (the least HP it has, whoever is in the Slums; 13 Oct
   2026).
 - `classes/stats.json` (Scrap Warrens): `party.xpRangeTiles` (+ `xpNote`), and consumables in `inventory.stack99`.
+- The Lumang Palengke (20 Oct 2026): `maps/palengke.json`, `tiles/palengke/`, `props/palengke/` (the art folder's, as they are)
+  and the manifest's `props` from its palengke-manifest-snippet.json; `tiles.palengke` is written here (the families counted
+  from the files; `plainVariants` / `plainWeight`, `animated` baha / lalim, `banks`, `slow`). `maps/slums.json`: its west gate
+  `gates.palengke` (col 0, rows 116-118) and `arrive.palengke` [3, 117], and the six props cleared off that path (two scrap
+  piles, the jeep wreck at (3,116), the sapling, the fallen tree, the stump; copying the art folder's map over again loses
+  it); `scripts/terrain/protect-slums.json` keeps the path. `ui/map/map-layout.json`: `maps.palengke` (col −280, row 13)
+  and `posts.palengke` (its four), `palengkeNote`.
 - Lantern Posts: `items/items.json` `return-lantern` (its `shop: travel`, `price`, `useAt`; `useAt` on `warren-ticket` too),
   the `lantern-post` object, its blocked tile and `arrive.lanternPost` in `maps/town.json` (39,39 → 40,40) and
   `maps/slums.json` (128,96 → 129,97), and `ui/map/map-layout.json` `maps[id].label` (where the Map menu writes each
@@ -815,10 +822,31 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   party members in the room within `party.xpRangeTiles` (20), +10% a member up to +30% (`partyXpMult`); bosses keep their
   own rule. Dev: `?warrens=solo` (a free run, in at once), `?warrensboss=crab-tain` (every earlier area cleared, you at
   its arena), the dev server's `/__warrens?as=&boss=` (`&hp=1`: that boss down to 1 HP, so one hit fells it); `?give=warren-ticket::3` for the gate's own flow.
+- The Lumang Palengke (CONTEXT.md; the art folder's maps/palengke brief): the Lv 21-40 map west of the Slums, an area
+  like the Slums (`?area=palengke`, net/hood.ts `palengkeTownMap` / `markPalengke`, BootScene loads maps/palengke.json; the
+  bot's and the dev town's room 'palengke', a battle map whose MobRoom has no mobs yet: every `mobZones[].active` and
+  `boss.active` is false until their art comes, and nothing of them is loaded or heard). The Slums' west gate (col 0, rows
+  116-118, "← Palengke") ↔ its east gate (`gates.slums`, "Back to the Slums →"). Flat (`height` 1 everywhere): the big-map
+  renderer (`world/terrain.ts`) takes the map's `tileset` (tiles.palengke: no cliffs, rims or ramps), each family's plain
+  variants 1-4 twice as likely (rng.ts `variantAt`'s weights), `baha` (shallow flood, walkable at 70%: Character
+  `speedAt`, players and others alike; the server's step budget needs nothing) and `lalim` (deep pools, blocked, with the
+  river's bank overlays) as 4-frame strips at 3 fps on the shared clock. Outskirts: `PalengkeOutskirts` (world/outskirts.ts,
+  `BigOutskirts`: semento with rows of empty and collapsed stalls and crate stacks, 12 tiles deep, the gate's road kept
+  clear). Minimap: a colour per family, blocked tiles darker. The Market Hall's walls are ordinary props (back walls on
+  the tile outside, front walls on their own: you go behind the south and east walls just inside them). String lights
+  draw dead; WorldObjects `litSections` is the hook for lighting a section (nothing sets it). Its art packs into
+  `tiles-palengke` / `props-palengke` (scripts/packs.ts), loaded only there. The Map menu shows it west of the Slums as a
+  plain diamond (`NOT_DRAWN`: the picture has no Palengke yet; the stage grows to every map, `worldBounds` / `shifted`)
+  with its four posts; the quest map pins you at the Slums' gate to it. Its Slums music for now; title card "Lumang
+  Palengke". Measured: 60 fps walking Tarp Row (as the Slums). NPC spots (`npcs`) and `sections` are kept as data.
 - Lantern Posts (teleporting between maps; words in CONTEXT.md: Map, Lantern Post, Return Lantern, Map menu, Teleport,
   In combat): a post (manifest props `lantern-post`, its 6-frame idle as the map object's `animated`) in the middle of
-  the Town and of the Slums, each map's `lantern-post` object + `arrive.lanternPost` (shared `travel.ts`: `lanternPostOf`,
-  `nearPost`, `lanternRefusal`, LANTERN_WALK_TILES 2 / LANTERN_USE_TILES 3, `isLanternMap`). Click it (or E beside it):
+  the Town and of the Slums, each map's `lantern-post` object + `arrive.lanternPost`, and four in the Lumang Palengke (its
+  `teleporters`: 2 × 2 posts, blocked by `blockedWithPosts`, each landing worked out by `postLanding`: the nearest walkable
+  tile in front) (shared `travel.ts`: `lanternPostsOf` (a map's list), `postAt`, `nearPost` (from the footprint),
+  `lanternRefusal` (to a map and its post: `toPost`; another post of the same map too), LANTERN_WALK_TILES 2 /
+  LANTERN_USE_TILES 3, `isLanternMap`; the `lantern` message's `post`, `lantern-go`'s, ?via=lantern&post=N, the server's
+  trip lands by that post: `arrival`). Click it (or E beside it):
   you walk to its landing, then the Map menu opens; never in combat (the client's `combatAt`: you hit, were attacked or
   hurt, stats.json regen.outOfCombatAfterSec; toast "Can't travel during a fight."). Map menu (`ui/map-menu.ts`, the
   Equipment panel's frame; M anywhere: keybind 'map', again closes; read-only away from a post: an icon says "Go to a

@@ -538,6 +538,307 @@
         ]
       },
       "highTerrainNote": "High terrain (tiles/slums/slums-high-terrain-README.md): ground void (a chasm floor, below level 0) and cracked (walkable); cliffs rock and scrap with `lower` (every step below the top one), chasm (one level below the ground) and chasm-deep (two); foot l/r = the line on a wall's lowest step; lip nw/ne = the chasm lip in place of the rim next to a void. PLACEHOLDER art until the art folder has its own (scripts/terrain/placeholders.ts)."
+    },
+    "palengke": {
+      "note": "The Lumang Palengke's ground (maps/palengke.json; the art folder's tiles/palengke, rows in its _sheets.csv). ground: floor tiles per family, 32x16, anchor = diamond centre; a variant per tile by a well-mixed hash of col,row seeded per family, the first `plainVariants` (the plain ones) `plainWeight` times as likely as the detailed ones. animated: families whose files are 4-frame strips (128x16) at fps on a shared clock, drawn as sprites over the baked ground: baha (shallow flood, walkable at `slow` of the speed) and lalim (deep pools, blocked, with tiles.water's bank overlays where they meet other ground: `banks`). The map is flat, so no cliffs, rims, caps, ramps.",
+      "size": [
+        32,
+        16
+      ],
+      "anchor": [
+        16,
+        8
+      ],
+      "plainVariants": 4,
+      "plainWeight": 2,
+      "ground": {
+        "adobe": [
+          "tiles/palengke/tile-palengke-adobe-1.png",
+          "tiles/palengke/tile-palengke-adobe-2.png",
+          "tiles/palengke/tile-palengke-adobe-3.png",
+          "tiles/palengke/tile-palengke-adobe-4.png",
+          "tiles/palengke/tile-palengke-adobe-5.png",
+          "tiles/palengke/tile-palengke-adobe-6.png",
+          "tiles/palengke/tile-palengke-adobe-7.png",
+          "tiles/palengke/tile-palengke-adobe-8.png",
+          "tiles/palengke/tile-palengke-adobe-9.png",
+          "tiles/palengke/tile-palengke-adobe-10.png",
+          "tiles/palengke/tile-palengke-adobe-11.png",
+          "tiles/palengke/tile-palengke-adobe-12.png",
+          "tiles/palengke/tile-palengke-adobe-13.png",
+          "tiles/palengke/tile-palengke-adobe-14.png",
+          "tiles/palengke/tile-palengke-adobe-15.png",
+          "tiles/palengke/tile-palengke-adobe-16.png",
+          "tiles/palengke/tile-palengke-adobe-17.png",
+          "tiles/palengke/tile-palengke-adobe-18.png",
+          "tiles/palengke/tile-palengke-adobe-19.png",
+          "tiles/palengke/tile-palengke-adobe-20.png"
+        ],
+        "blue": [
+          "tiles/palengke/tile-palengke-blue-1.png",
+          "tiles/palengke/tile-palengke-blue-2.png",
+          "tiles/palengke/tile-palengke-blue-3.png",
+          "tiles/palengke/tile-palengke-blue-4.png",
+          "tiles/palengke/tile-palengke-blue-5.png",
+          "tiles/palengke/tile-palengke-blue-6.png",
+          "tiles/palengke/tile-palengke-blue-7.png",
+          "tiles/palengke/tile-palengke-blue-8.png",
+          "tiles/palengke/tile-palengke-blue-9.png",
+          "tiles/palengke/tile-palengke-blue-10.png",
+          "tiles/palengke/tile-palengke-blue-11.png",
+          "tiles/palengke/tile-palengke-blue-12.png",
+          "tiles/palengke/tile-palengke-blue-13.png",
+          "tiles/palengke/tile-palengke-blue-14.png",
+          "tiles/palengke/tile-palengke-blue-15.png",
+          "tiles/palengke/tile-palengke-blue-16.png",
+          "tiles/palengke/tile-palengke-blue-17.png",
+          "tiles/palengke/tile-palengke-blue-18.png",
+          "tiles/palengke/tile-palengke-blue-19.png",
+          "tiles/palengke/tile-palengke-blue-20.png",
+          "tiles/palengke/tile-palengke-blue-21.png",
+          "tiles/palengke/tile-palengke-blue-22.png"
+        ],
+        "gulay": [
+          "tiles/palengke/tile-palengke-gulay-1.png",
+          "tiles/palengke/tile-palengke-gulay-2.png",
+          "tiles/palengke/tile-palengke-gulay-3.png",
+          "tiles/palengke/tile-palengke-gulay-4.png",
+          "tiles/palengke/tile-palengke-gulay-5.png",
+          "tiles/palengke/tile-palengke-gulay-6.png",
+          "tiles/palengke/tile-palengke-gulay-7.png",
+          "tiles/palengke/tile-palengke-gulay-8.png",
+          "tiles/palengke/tile-palengke-gulay-9.png",
+          "tiles/palengke/tile-palengke-gulay-10.png",
+          "tiles/palengke/tile-palengke-gulay-11.png",
+          "tiles/palengke/tile-palengke-gulay-12.png",
+          "tiles/palengke/tile-palengke-gulay-13.png",
+          "tiles/palengke/tile-palengke-gulay-14.png",
+          "tiles/palengke/tile-palengke-gulay-15.png",
+          "tiles/palengke/tile-palengke-gulay-16.png",
+          "tiles/palengke/tile-palengke-gulay-17.png",
+          "tiles/palengke/tile-palengke-gulay-18.png",
+          "tiles/palengke/tile-palengke-gulay-19.png",
+          "tiles/palengke/tile-palengke-gulay-20.png",
+          "tiles/palengke/tile-palengke-gulay-21.png",
+          "tiles/palengke/tile-palengke-gulay-22.png",
+          "tiles/palengke/tile-palengke-gulay-23.png",
+          "tiles/palengke/tile-palengke-gulay-24.png",
+          "tiles/palengke/tile-palengke-gulay-25.png",
+          "tiles/palengke/tile-palengke-gulay-26.png",
+          "tiles/palengke/tile-palengke-gulay-27.png",
+          "tiles/palengke/tile-palengke-gulay-28.png"
+        ],
+        "pula": [
+          "tiles/palengke/tile-palengke-pula-1.png",
+          "tiles/palengke/tile-palengke-pula-2.png",
+          "tiles/palengke/tile-palengke-pula-3.png",
+          "tiles/palengke/tile-palengke-pula-4.png",
+          "tiles/palengke/tile-palengke-pula-5.png",
+          "tiles/palengke/tile-palengke-pula-6.png",
+          "tiles/palengke/tile-palengke-pula-7.png",
+          "tiles/palengke/tile-palengke-pula-8.png",
+          "tiles/palengke/tile-palengke-pula-9.png",
+          "tiles/palengke/tile-palengke-pula-10.png",
+          "tiles/palengke/tile-palengke-pula-11.png",
+          "tiles/palengke/tile-palengke-pula-12.png",
+          "tiles/palengke/tile-palengke-pula-13.png",
+          "tiles/palengke/tile-palengke-pula-14.png",
+          "tiles/palengke/tile-palengke-pula-15.png",
+          "tiles/palengke/tile-palengke-pula-16.png",
+          "tiles/palengke/tile-palengke-pula-17.png",
+          "tiles/palengke/tile-palengke-pula-18.png",
+          "tiles/palengke/tile-palengke-pula-19.png",
+          "tiles/palengke/tile-palengke-pula-20.png",
+          "tiles/palengke/tile-palengke-pula-21.png",
+          "tiles/palengke/tile-palengke-pula-22.png",
+          "tiles/palengke/tile-palengke-pula-23.png",
+          "tiles/palengke/tile-palengke-pula-24.png"
+        ],
+        "semento": [
+          "tiles/palengke/tile-palengke-semento-1.png",
+          "tiles/palengke/tile-palengke-semento-2.png",
+          "tiles/palengke/tile-palengke-semento-3.png",
+          "tiles/palengke/tile-palengke-semento-4.png",
+          "tiles/palengke/tile-palengke-semento-5.png",
+          "tiles/palengke/tile-palengke-semento-6.png",
+          "tiles/palengke/tile-palengke-semento-7.png",
+          "tiles/palengke/tile-palengke-semento-8.png",
+          "tiles/palengke/tile-palengke-semento-9.png",
+          "tiles/palengke/tile-palengke-semento-10.png",
+          "tiles/palengke/tile-palengke-semento-11.png",
+          "tiles/palengke/tile-palengke-semento-12.png",
+          "tiles/palengke/tile-palengke-semento-13.png",
+          "tiles/palengke/tile-palengke-semento-14.png",
+          "tiles/palengke/tile-palengke-semento-15.png",
+          "tiles/palengke/tile-palengke-semento-16.png",
+          "tiles/palengke/tile-palengke-semento-17.png",
+          "tiles/palengke/tile-palengke-semento-18.png",
+          "tiles/palengke/tile-palengke-semento-19.png",
+          "tiles/palengke/tile-palengke-semento-20.png",
+          "tiles/palengke/tile-palengke-semento-21.png",
+          "tiles/palengke/tile-palengke-semento-22.png",
+          "tiles/palengke/tile-palengke-semento-23.png",
+          "tiles/palengke/tile-palengke-semento-24.png",
+          "tiles/palengke/tile-palengke-semento-25.png",
+          "tiles/palengke/tile-palengke-semento-26.png",
+          "tiles/palengke/tile-palengke-semento-27.png",
+          "tiles/palengke/tile-palengke-semento-28.png"
+        ],
+        "tarp": [
+          "tiles/palengke/tile-palengke-tarp-1.png",
+          "tiles/palengke/tile-palengke-tarp-2.png",
+          "tiles/palengke/tile-palengke-tarp-3.png",
+          "tiles/palengke/tile-palengke-tarp-4.png",
+          "tiles/palengke/tile-palengke-tarp-5.png",
+          "tiles/palengke/tile-palengke-tarp-6.png",
+          "tiles/palengke/tile-palengke-tarp-7.png",
+          "tiles/palengke/tile-palengke-tarp-8.png",
+          "tiles/palengke/tile-palengke-tarp-9.png",
+          "tiles/palengke/tile-palengke-tarp-10.png",
+          "tiles/palengke/tile-palengke-tarp-11.png",
+          "tiles/palengke/tile-palengke-tarp-12.png",
+          "tiles/palengke/tile-palengke-tarp-13.png",
+          "tiles/palengke/tile-palengke-tarp-14.png",
+          "tiles/palengke/tile-palengke-tarp-15.png",
+          "tiles/palengke/tile-palengke-tarp-16.png",
+          "tiles/palengke/tile-palengke-tarp-17.png",
+          "tiles/palengke/tile-palengke-tarp-18.png",
+          "tiles/palengke/tile-palengke-tarp-19.png",
+          "tiles/palengke/tile-palengke-tarp-20.png",
+          "tiles/palengke/tile-palengke-tarp-21.png",
+          "tiles/palengke/tile-palengke-tarp-22.png",
+          "tiles/palengke/tile-palengke-tarp-23.png",
+          "tiles/palengke/tile-palengke-tarp-24.png"
+        ],
+        "terrazzo": [
+          "tiles/palengke/tile-palengke-terrazzo-1.png",
+          "tiles/palengke/tile-palengke-terrazzo-2.png",
+          "tiles/palengke/tile-palengke-terrazzo-3.png",
+          "tiles/palengke/tile-palengke-terrazzo-4.png",
+          "tiles/palengke/tile-palengke-terrazzo-5.png",
+          "tiles/palengke/tile-palengke-terrazzo-6.png",
+          "tiles/palengke/tile-palengke-terrazzo-7.png",
+          "tiles/palengke/tile-palengke-terrazzo-8.png",
+          "tiles/palengke/tile-palengke-terrazzo-9.png",
+          "tiles/palengke/tile-palengke-terrazzo-10.png",
+          "tiles/palengke/tile-palengke-terrazzo-11.png",
+          "tiles/palengke/tile-palengke-terrazzo-12.png",
+          "tiles/palengke/tile-palengke-terrazzo-13.png",
+          "tiles/palengke/tile-palengke-terrazzo-14.png",
+          "tiles/palengke/tile-palengke-terrazzo-15.png",
+          "tiles/palengke/tile-palengke-terrazzo-16.png",
+          "tiles/palengke/tile-palengke-terrazzo-17.png",
+          "tiles/palengke/tile-palengke-terrazzo-18.png",
+          "tiles/palengke/tile-palengke-terrazzo-19.png",
+          "tiles/palengke/tile-palengke-terrazzo-20.png"
+        ],
+        "tiles": [
+          "tiles/palengke/tile-palengke-tiles-1.png",
+          "tiles/palengke/tile-palengke-tiles-2.png",
+          "tiles/palengke/tile-palengke-tiles-3.png",
+          "tiles/palengke/tile-palengke-tiles-4.png",
+          "tiles/palengke/tile-palengke-tiles-5.png",
+          "tiles/palengke/tile-palengke-tiles-6.png",
+          "tiles/palengke/tile-palengke-tiles-7.png",
+          "tiles/palengke/tile-palengke-tiles-8.png",
+          "tiles/palengke/tile-palengke-tiles-9.png",
+          "tiles/palengke/tile-palengke-tiles-10.png",
+          "tiles/palengke/tile-palengke-tiles-11.png",
+          "tiles/palengke/tile-palengke-tiles-12.png",
+          "tiles/palengke/tile-palengke-tiles-13.png",
+          "tiles/palengke/tile-palengke-tiles-14.png",
+          "tiles/palengke/tile-palengke-tiles-15.png",
+          "tiles/palengke/tile-palengke-tiles-16.png",
+          "tiles/palengke/tile-palengke-tiles-17.png",
+          "tiles/palengke/tile-palengke-tiles-18.png",
+          "tiles/palengke/tile-palengke-tiles-19.png",
+          "tiles/palengke/tile-palengke-tiles-20.png",
+          "tiles/palengke/tile-palengke-tiles-21.png",
+          "tiles/palengke/tile-palengke-tiles-22.png",
+          "tiles/palengke/tile-palengke-tiles-23.png",
+          "tiles/palengke/tile-palengke-tiles-24.png"
+        ],
+        "tuyo": [
+          "tiles/palengke/tile-palengke-tuyo-1.png",
+          "tiles/palengke/tile-palengke-tuyo-2.png",
+          "tiles/palengke/tile-palengke-tuyo-3.png",
+          "tiles/palengke/tile-palengke-tuyo-4.png",
+          "tiles/palengke/tile-palengke-tuyo-5.png",
+          "tiles/palengke/tile-palengke-tuyo-6.png",
+          "tiles/palengke/tile-palengke-tuyo-7.png",
+          "tiles/palengke/tile-palengke-tuyo-8.png",
+          "tiles/palengke/tile-palengke-tuyo-9.png",
+          "tiles/palengke/tile-palengke-tuyo-10.png",
+          "tiles/palengke/tile-palengke-tuyo-11.png",
+          "tiles/palengke/tile-palengke-tuyo-12.png",
+          "tiles/palengke/tile-palengke-tuyo-13.png",
+          "tiles/palengke/tile-palengke-tuyo-14.png",
+          "tiles/palengke/tile-palengke-tuyo-15.png",
+          "tiles/palengke/tile-palengke-tuyo-16.png",
+          "tiles/palengke/tile-palengke-tuyo-17.png",
+          "tiles/palengke/tile-palengke-tuyo-18.png",
+          "tiles/palengke/tile-palengke-tuyo-19.png",
+          "tiles/palengke/tile-palengke-tuyo-20.png",
+          "tiles/palengke/tile-palengke-tuyo-21.png",
+          "tiles/palengke/tile-palengke-tuyo-22.png",
+          "tiles/palengke/tile-palengke-tuyo-23.png",
+          "tiles/palengke/tile-palengke-tuyo-24.png"
+        ]
+      },
+      "animated": {
+        "baha": {
+          "files": [
+            "tiles/palengke/tile-palengke-baha-1.png",
+            "tiles/palengke/tile-palengke-baha-2.png",
+            "tiles/palengke/tile-palengke-baha-3.png",
+            "tiles/palengke/tile-palengke-baha-4.png",
+            "tiles/palengke/tile-palengke-baha-5.png",
+            "tiles/palengke/tile-palengke-baha-6.png",
+            "tiles/palengke/tile-palengke-baha-7.png",
+            "tiles/palengke/tile-palengke-baha-8.png",
+            "tiles/palengke/tile-palengke-baha-9.png",
+            "tiles/palengke/tile-palengke-baha-10.png"
+          ],
+          "frames": 4,
+          "fps": 3,
+          "size": [
+            32,
+            16
+          ],
+          "anchor": [
+            16,
+            8
+          ]
+        },
+        "lalim": {
+          "files": [
+            "tiles/palengke/tile-palengke-lalim-1.png",
+            "tiles/palengke/tile-palengke-lalim-2.png",
+            "tiles/palengke/tile-palengke-lalim-3.png",
+            "tiles/palengke/tile-palengke-lalim-4.png",
+            "tiles/palengke/tile-palengke-lalim-5.png",
+            "tiles/palengke/tile-palengke-lalim-6.png",
+            "tiles/palengke/tile-palengke-lalim-7.png",
+            "tiles/palengke/tile-palengke-lalim-8.png"
+          ],
+          "frames": 4,
+          "fps": 3,
+          "size": [
+            32,
+            16
+          ],
+          "anchor": [
+            16,
+            8
+          ]
+        }
+      },
+      "banks": [
+        "lalim"
+      ],
+      "slow": {
+        "baha": 0.7
+      }
     }
   },
   "buildings": {
@@ -16271,6 +16572,1254 @@
       ],
       "scale": 0.6,
       "note": "Halloween 2026: the Manananggal's lower half (its wisps circle in the art; no bob). The anchor is the ground point under her (the art's _sheets.csv: 32,58); a small shadow there. Drawn at scale 0.6 (its art is 53 px tall, a character about 37: Mac found it too tall); its shadow scales with it."
+    },
+    "palengke-balete": {
+      "file": "props/palengke/prop-palengke-balete.png",
+      "size": [
+        117,
+        122
+      ],
+      "anchor": [
+        58,
+        57
+      ],
+      "footprint": [
+        4,
+        4
+      ],
+      "walkable": false
+    },
+    "palengke-collapsed-roof": {
+      "file": "props/palengke/prop-palengke-collapsed-roof.png",
+      "size": [
+        103,
+        97
+      ],
+      "anchor": [
+        51,
+        48
+      ],
+      "footprint": [
+        3,
+        3
+      ],
+      "walkable": false
+    },
+    "palengke-front-gate": {
+      "file": "props/palengke/prop-palengke-front-gate.png",
+      "size": [
+        86,
+        104
+      ],
+      "anchor": [
+        67,
+        63
+      ],
+      "footprint": [
+        1,
+        4
+      ],
+      "walkable": true
+    },
+    "palengke-guard-post": {
+      "file": "props/palengke/prop-palengke-guard-post.png",
+      "size": [
+        58,
+        55
+      ],
+      "anchor": [
+        29,
+        22
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false
+    },
+    "palengke-kariton": {
+      "file": "props/palengke/prop-palengke-kariton.png",
+      "size": [
+        61,
+        61
+      ],
+      "anchor": [
+        30,
+        28
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false
+    },
+    "palengke-nena-stall": {
+      "file": "props/palengke/prop-palengke-nena-stall.png",
+      "size": [
+        112,
+        116
+      ],
+      "anchor": [
+        64,
+        59
+      ],
+      "footprint": [
+        3,
+        4
+      ],
+      "walkable": false
+    },
+    "palengke-payong-stand": {
+      "file": "props/palengke/prop-palengke-payong-stand.png",
+      "size": [
+        52,
+        56
+      ],
+      "anchor": [
+        26,
+        23
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false
+    },
+    "palengke-scale-stand": {
+      "file": "props/palengke/prop-palengke-scale-stand.png",
+      "size": [
+        112,
+        119
+      ],
+      "anchor": [
+        64,
+        62
+      ],
+      "footprint": [
+        3,
+        4
+      ],
+      "walkable": false
+    },
+    "palengke-silong-hatch": {
+      "file": "props/palengke/prop-palengke-silong-hatch.png",
+      "size": [
+        124,
+        82
+      ],
+      "anchor": [
+        62,
+        17
+      ],
+      "footprint": [
+        4,
+        4
+      ],
+      "walkable": false
+    },
+    "palengke-stall-collapsed": {
+      "file": "props/palengke/prop-palengke-stall-collapsed.png",
+      "size": [
+        62,
+        62
+      ],
+      "anchor": [
+        31,
+        29
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false
+    },
+    "palengke-stall-empty": {
+      "file": "props/palengke/prop-palengke-stall-empty.png",
+      "size": [
+        63,
+        60
+      ],
+      "anchor": [
+        31,
+        27
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false
+    },
+    "palengke-stall-gulay": {
+      "file": "props/palengke/prop-palengke-stall-gulay.png",
+      "size": [
+        56,
+        58
+      ],
+      "anchor": [
+        28,
+        25
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false
+    },
+    "palengke-stall-isda": {
+      "file": "props/palengke/prop-palengke-stall-isda.png",
+      "size": [
+        54,
+        57
+      ],
+      "anchor": [
+        27,
+        24
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false
+    },
+    "palengke-stall-karinderya": {
+      "file": "props/palengke/prop-palengke-stall-karinderya.png",
+      "size": [
+        51,
+        60
+      ],
+      "anchor": [
+        25,
+        27
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false
+    },
+    "palengke-stall-karne": {
+      "file": "props/palengke/prop-palengke-stall-karne.png",
+      "size": [
+        49,
+        57
+      ],
+      "anchor": [
+        24,
+        24
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false
+    },
+    "palengke-stall-tuyo": {
+      "file": "props/palengke/prop-palengke-stall-tuyo.png",
+      "size": [
+        61,
+        63
+      ],
+      "anchor": [
+        30,
+        30
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false
+    },
+    "palengke-crate-plastic": {
+      "file": "props/palengke/prop-palengke-crate-plastic.png",
+      "size": [
+        32,
+        32
+      ],
+      "anchor": [
+        16,
+        16
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "palengke-crate-plastic-stack": {
+      "file": "props/palengke/prop-palengke-crate-plastic-stack.png",
+      "size": [
+        32,
+        48
+      ],
+      "anchor": [
+        16,
+        32
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "palengke-crate-wood": {
+      "file": "props/palengke/prop-palengke-crate-wood.png",
+      "size": [
+        32,
+        32
+      ],
+      "anchor": [
+        16,
+        16
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "palengke-boxes": {
+      "file": "props/palengke/prop-palengke-boxes.png",
+      "size": [
+        32,
+        40
+      ],
+      "anchor": [
+        16,
+        24
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "palengke-sack": {
+      "file": "props/palengke/prop-palengke-sack.png",
+      "size": [
+        32,
+        32
+      ],
+      "anchor": [
+        16,
+        16
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "palengke-sacks-pile": {
+      "file": "props/palengke/prop-palengke-sacks-pile.png",
+      "size": [
+        48,
+        40
+      ],
+      "anchor": [
+        24,
+        24
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "palengke-banig-rolls": {
+      "file": "props/palengke/prop-palengke-banig-rolls.png",
+      "size": [
+        32,
+        32
+      ],
+      "anchor": [
+        16,
+        16
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "palengke-bilao-stack": {
+      "file": "props/palengke/prop-palengke-bilao-stack.png",
+      "size": [
+        32,
+        32
+      ],
+      "anchor": [
+        16,
+        16
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "palengke-bilao-spilled": {
+      "file": "props/palengke/prop-palengke-bilao-spilled.png",
+      "size": [
+        48,
+        32
+      ],
+      "anchor": [
+        24,
+        16
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "palengke-veg-crate": {
+      "file": "props/palengke/prop-palengke-veg-crate.png",
+      "size": [
+        32,
+        32
+      ],
+      "anchor": [
+        16,
+        16
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "palengke-veg-spill": {
+      "file": "props/palengke/prop-palengke-veg-spill.png",
+      "size": [
+        32,
+        20
+      ],
+      "anchor": [
+        16,
+        4
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": true
+    },
+    "palengke-tub": {
+      "file": "props/palengke/prop-palengke-tub.png",
+      "size": [
+        32,
+        32
+      ],
+      "anchor": [
+        16,
+        16
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "palengke-tub-water": {
+      "file": "props/palengke/prop-palengke-tub-water.png",
+      "size": [
+        32,
+        32
+      ],
+      "anchor": [
+        16,
+        16
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "palengke-tub-tipped": {
+      "file": "props/palengke/prop-palengke-tub-tipped.png",
+      "size": [
+        40,
+        32
+      ],
+      "anchor": [
+        20,
+        16
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "palengke-ice-chest": {
+      "file": "props/palengke/prop-palengke-ice-chest.png",
+      "size": [
+        32,
+        32
+      ],
+      "anchor": [
+        16,
+        16
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "palengke-ice-heap": {
+      "file": "props/palengke/prop-palengke-ice-heap.png",
+      "size": [
+        32,
+        24
+      ],
+      "anchor": [
+        16,
+        8
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "palengke-jar-shelf": {
+      "file": "props/palengke/prop-palengke-jar-shelf.png",
+      "size": [
+        32,
+        48
+      ],
+      "anchor": [
+        16,
+        32
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "palengke-cans": {
+      "file": "props/palengke/prop-palengke-cans.png",
+      "size": [
+        32,
+        24
+      ],
+      "anchor": [
+        16,
+        8
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "palengke-chopping-block": {
+      "file": "props/palengke/prop-palengke-chopping-block.png",
+      "size": [
+        32,
+        32
+      ],
+      "anchor": [
+        16,
+        16
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "palengke-hook-rail": {
+      "file": "props/palengke/prop-palengke-hook-rail.png",
+      "size": [
+        48,
+        48
+      ],
+      "anchor": [
+        24,
+        32
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "palengke-dial-scale": {
+      "file": "props/palengke/prop-palengke-dial-scale.png",
+      "size": [
+        24,
+        32
+      ],
+      "anchor": [
+        12,
+        16
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "palengke-bucket": {
+      "file": "props/palengke/prop-palengke-bucket.png",
+      "size": [
+        24,
+        32
+      ],
+      "anchor": [
+        12,
+        16
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "palengke-chair": {
+      "file": "props/palengke/prop-palengke-chair.png",
+      "size": [
+        32,
+        40
+      ],
+      "anchor": [
+        16,
+        24
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "palengke-chair-green": {
+      "file": "props/palengke/prop-palengke-chair-green.png",
+      "size": [
+        32,
+        40
+      ],
+      "anchor": [
+        16,
+        24
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "palengke-chairs-stack": {
+      "file": "props/palengke/prop-palengke-chairs-stack.png",
+      "size": [
+        32,
+        48
+      ],
+      "anchor": [
+        16,
+        32
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "palengke-chair-tipped": {
+      "file": "props/palengke/prop-palengke-chair-tipped.png",
+      "size": [
+        32,
+        32
+      ],
+      "anchor": [
+        16,
+        16
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "palengke-table": {
+      "file": "props/palengke/prop-palengke-table.png",
+      "size": [
+        40,
+        40
+      ],
+      "anchor": [
+        20,
+        24
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "palengke-gas-tank": {
+      "file": "props/palengke/prop-palengke-gas-tank.png",
+      "size": [
+        24,
+        36
+      ],
+      "anchor": [
+        12,
+        20
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "palengke-pot-stand": {
+      "file": "props/palengke/prop-palengke-pot-stand.png",
+      "size": [
+        32,
+        40
+      ],
+      "anchor": [
+        16,
+        24
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "palengke-string-lights-dead": {
+      "file": "props/palengke/prop-palengke-string-lights-dead.png",
+      "size": [
+        96,
+        48
+      ],
+      "anchor": [
+        32,
+        24
+      ],
+      "footprint": [
+        3,
+        1
+      ],
+      "walkable": true
+    },
+    "palengke-string-lights-lit": {
+      "file": "props/palengke/prop-palengke-string-lights-lit.png",
+      "size": [
+        96,
+        48
+      ],
+      "anchor": [
+        32,
+        24
+      ],
+      "footprint": [
+        3,
+        1
+      ],
+      "walkable": true
+    },
+    "palengke-work-lamp": {
+      "file": "props/palengke/prop-palengke-work-lamp.png",
+      "size": [
+        32,
+        48
+      ],
+      "anchor": [
+        16,
+        32
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "palengke-pallet": {
+      "file": "props/palengke/prop-palengke-pallet.png",
+      "size": [
+        32,
+        24
+      ],
+      "anchor": [
+        16,
+        8
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "palengke-tarp-scrap": {
+      "file": "props/palengke/prop-palengke-tarp-scrap.png",
+      "size": [
+        32,
+        20
+      ],
+      "anchor": [
+        16,
+        4
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": true
+    },
+    "palengke-tarp-scrap-orange": {
+      "file": "props/palengke/prop-palengke-tarp-scrap-orange.png",
+      "size": [
+        32,
+        20
+      ],
+      "anchor": [
+        16,
+        4
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": true
+    },
+    "palengke-newspaper": {
+      "file": "props/palengke/prop-palengke-newspaper.png",
+      "size": [
+        32,
+        20
+      ],
+      "anchor": [
+        16,
+        4
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": true
+    },
+    "palengke-puddle": {
+      "file": "props/palengke/prop-palengke-puddle.png",
+      "size": [
+        32,
+        20
+      ],
+      "anchor": [
+        16,
+        4
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": true
+    },
+    "palengke-drain-cover": {
+      "file": "props/palengke/prop-palengke-drain-cover.png",
+      "size": [
+        32,
+        20
+      ],
+      "anchor": [
+        16,
+        4
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": true
+    },
+    "palengke-bulb-broken": {
+      "file": "props/palengke/prop-palengke-bulb-broken.png",
+      "size": [
+        24,
+        16
+      ],
+      "anchor": [
+        12,
+        2
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": true
+    },
+    "palengke-curb-se": {
+      "file": "props/palengke/prop-palengke-curb-se.png",
+      "size": [
+        32,
+        24
+      ],
+      "anchor": [
+        16,
+        8
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "palengke-curb-ne": {
+      "file": "props/palengke/prop-palengke-curb-ne.png",
+      "size": [
+        32,
+        24
+      ],
+      "anchor": [
+        16,
+        8
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "walkable": false
+    },
+    "palengke-stall-base": {
+      "file": "props/palengke/prop-palengke-stall-base.png",
+      "size": [
+        64,
+        48
+      ],
+      "anchor": [
+        32,
+        20
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false
+    },
+    "palengke-hallwall-l-1": {
+      "file": "props/palengke/tile-palengke-hallwall-l-1.png",
+      "size": [
+        17,
+        67
+      ],
+      "walkable": false,
+      "anchor": [
+        16,
+        50
+      ],
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    "palengke-hallwall-l-2": {
+      "file": "props/palengke/tile-palengke-hallwall-l-2.png",
+      "size": [
+        17,
+        67
+      ],
+      "walkable": false,
+      "anchor": [
+        16,
+        50
+      ],
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    "palengke-hallwall-l-3": {
+      "file": "props/palengke/tile-palengke-hallwall-l-3.png",
+      "size": [
+        17,
+        67
+      ],
+      "walkable": false,
+      "anchor": [
+        16,
+        50
+      ],
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    "palengke-hallwall-l-4": {
+      "file": "props/palengke/tile-palengke-hallwall-l-4.png",
+      "size": [
+        17,
+        67
+      ],
+      "walkable": false,
+      "anchor": [
+        16,
+        50
+      ],
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    "palengke-hallwall-l-5": {
+      "file": "props/palengke/tile-palengke-hallwall-l-5.png",
+      "size": [
+        17,
+        67
+      ],
+      "walkable": false,
+      "anchor": [
+        16,
+        50
+      ],
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    "palengke-hallwall-l-6": {
+      "file": "props/palengke/tile-palengke-hallwall-l-6.png",
+      "size": [
+        17,
+        67
+      ],
+      "walkable": false,
+      "anchor": [
+        16,
+        50
+      ],
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    "palengke-hallwall-l-win1": {
+      "file": "props/palengke/tile-palengke-hallwall-l-win1.png",
+      "size": [
+        33,
+        75
+      ],
+      "walkable": false,
+      "anchor": [
+        16,
+        50
+      ],
+      "footprint": [
+        2,
+        1
+      ]
+    },
+    "palengke-hallwall-l-win2": {
+      "file": "props/palengke/tile-palengke-hallwall-l-win2.png",
+      "size": [
+        33,
+        75
+      ],
+      "walkable": false,
+      "anchor": [
+        16,
+        50
+      ],
+      "footprint": [
+        2,
+        1
+      ]
+    },
+    "palengke-hallwall-r-1": {
+      "file": "props/palengke/tile-palengke-hallwall-r-1.png",
+      "size": [
+        17,
+        67
+      ],
+      "walkable": false,
+      "anchor": [
+        0,
+        50
+      ],
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    "palengke-hallwall-r-2": {
+      "file": "props/palengke/tile-palengke-hallwall-r-2.png",
+      "size": [
+        17,
+        67
+      ],
+      "walkable": false,
+      "anchor": [
+        0,
+        50
+      ],
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    "palengke-hallwall-r-3": {
+      "file": "props/palengke/tile-palengke-hallwall-r-3.png",
+      "size": [
+        17,
+        67
+      ],
+      "walkable": false,
+      "anchor": [
+        0,
+        50
+      ],
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    "palengke-hallwall-r-4": {
+      "file": "props/palengke/tile-palengke-hallwall-r-4.png",
+      "size": [
+        17,
+        67
+      ],
+      "walkable": false,
+      "anchor": [
+        0,
+        50
+      ],
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    "palengke-hallwall-r-5": {
+      "file": "props/palengke/tile-palengke-hallwall-r-5.png",
+      "size": [
+        17,
+        67
+      ],
+      "walkable": false,
+      "anchor": [
+        0,
+        50
+      ],
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    "palengke-hallwall-r-6": {
+      "file": "props/palengke/tile-palengke-hallwall-r-6.png",
+      "size": [
+        17,
+        67
+      ],
+      "walkable": false,
+      "anchor": [
+        0,
+        50
+      ],
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    "palengke-hallwall-r-win1": {
+      "file": "props/palengke/tile-palengke-hallwall-r-win1.png",
+      "size": [
+        33,
+        75
+      ],
+      "walkable": false,
+      "anchor": [
+        16,
+        42
+      ],
+      "footprint": [
+        1,
+        2
+      ]
+    },
+    "palengke-hallwall-r-win2": {
+      "file": "props/palengke/tile-palengke-hallwall-r-win2.png",
+      "size": [
+        33,
+        75
+      ],
+      "walkable": false,
+      "anchor": [
+        16,
+        42
+      ],
+      "footprint": [
+        1,
+        2
+      ]
+    },
+    "palengke-hall-door": {
+      "file": "props/palengke/prop-palengke-hall-door.png",
+      "size": [
+        65,
+        97
+      ],
+      "walkable": false,
+      "anchor": [
+        48,
+        50
+      ],
+      "footprint": [
+        1,
+        4
+      ]
+    },
+    "palengke-hallwall-corner": {
+      "file": "props/palengke/tile-palengke-hallwall-corner.png",
+      "size": [
+        12,
+        72
+      ],
+      "walkable": false,
+      "anchor": [
+        6,
+        55
+      ],
+      "footprint": [
+        1,
+        1
+      ]
+    },
+    "palengke-hall-front": {
+      "file": "props/palengke/prop-palengke-hall-front.png",
+      "size": [
+        128,
+        158
+      ],
+      "walkable": false,
+      "anchor": [
+        112,
+        85
+      ],
+      "footprint": [
+        1,
+        8
+      ]
+    },
+    "palengke-hall-door-l": {
+      "file": "props/palengke/prop-palengke-hall-door-l.png",
+      "size": [
+        65,
+        97
+      ],
+      "anchor": [
+        16,
+        50
+      ],
+      "footprint": [
+        4,
+        1
+      ],
+      "walkable": false
     }
   },
   "fx": {

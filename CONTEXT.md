@@ -20,7 +20,8 @@ _Avoid_: installed app (the home screen app is installed too), client
 ## Places
 
 **Map**:
-A place in the world you can stand in and travel to: the Town or the Slums (the Map menu shows both, side by side).
+A place in the world you can stand in and travel to: the Town, the Slums or the Lumang Palengke (the Map menu shows them
+side by side).
 _Avoid_: area (that's a part of the Scrap Warrens), zone (a part of the Slums where one kind of mob lives)
 
 **Town**:
@@ -30,6 +31,11 @@ _Avoid_: hub, lobby
 **Slums**:
 The map west of the town, reached through its gate; where mobs live.
 _Avoid_: battle map, dungeon, junkyard (only flavour in its lines)
+
+**Lumang Palengke**:
+The abandoned market west of the Slums, reached through the Slums' west gate: the Lv 21-40 map, its mobs, mini bosses,
+the Great Scale and the "Ang Huling Suki" quest chain. Its parts (Tarp Row, the Gulayan, the Market Hall…) are sections.
+_Avoid_: market (alone), Palengke area
 
 **Lantern Post**:
 A stone plinth with a glowing lantern on a post, in the middle of the Town and of the Slums; standing by one, you can
@@ -559,9 +565,21 @@ A quest a character can start now (they've reached its level and haven't started
 _Avoid_: available quest (fine in the log's words), pending quest
 
 **Quest item**:
-An item a quest needs, like Aling Nena's Binoculars: never sold, traded, dropped, taken apart or banked, one a slot, and
-gone once it's handed over.
+An item a quest needs, like Aling Nena's Binoculars or the Palengke's Fresh Onions: kept in the bag's Quest tab, never
+sold, traded, dropped, taken apart or banked; a collect quest's drop only while the quest is under way, stacking to the
+count it asks for, and gone once it's handed over. A few are kept after their quest (the Honest Weight).
 _Avoid_: key item
+
+**Level gap**:
+The levels between reporting one quest of a chain and the next one's unlock level, made up by hunting: until then the
+next quest shows a grey "!" with "Come back at Lv X", and it opens the moment you reach it.
+_Avoid_: level lock, grind wall
+
+**Dish**:
+A meal Aling Conching sells in the Lumang Palengke for Kusing, once a quest has unlocked it for you: a 10-minute effect,
+one main dish and one side dish at a time (a new one replaces the old). It counts on battle maps only, keeps running
+through town and map changes, and a knock-out ends it.
+_Avoid_: food buff, buff (a buff is a class skill), consumable
 
 ## Rogues and stealing
 
