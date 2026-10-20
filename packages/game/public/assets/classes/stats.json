@@ -1496,26 +1496,40 @@
   "mobBehaviour": {
     "respawnSeconds": 30,
     "aliveperZone": 10,
+    "aliveperZoneIn": {
+      "palengke": 20
+    },
+    "aliveperZoneInNote": "Repo addition (Mac, 20 Oct 2026): a map's own count per zone (the Lumang Palengke's zones are about 4x a Slums zone); a kind's mobs/mobs.json `alive` wins over both (the Garapon Jars' 10 packs, the Banyera Lurkers' 14).",
     "passive": [
       "tinCan",
       "bottleCaps",
-      "plasticBagSpook"
+      "plasticBagSpook",
+      "payongFlapper",
+      "garaponJars"
     ],
     "aggressive": [
       "tireRoller",
       "wireTangle",
-      "scrapCrab"
+      "scrapCrab",
+      "sibuyasSobber",
+      "sakoSlammer",
+      "monoblocStack",
+      "sangkalanChomper",
+      "banyeraLurker",
+      "timbanganSentinel"
     ],
     "aggroTiles": 4,
     "packAssist": [
-      "bottleCaps"
+      "bottleCaps",
+      "garaponJars"
     ],
     "leashTiles": 10,
     "wanderTiles": 3,
     "attackEverySeconds": 2,
     "rangeTiles": {
       "melee": 1,
-      "wireTangle": 4
+      "wireTangle": 4,
+      "monoblocStack": 4
     },
     "hpBar": {
       "showOn": "hit or targeted",
