@@ -93,7 +93,7 @@ const lookOf = (userId: string): OutfitData | null => {
   return o && withWorn(userId, o);
 };
 import { enhanceFeedLine, parseForgeAction } from './forge.js';
-import { loadItemData } from './stats-data.js';
+import { loadItemData, loadPalengkeLeveling } from './stats-data.js';
 import { practiceDropFor, refundPracticeTicketFor, usePracticeTicketFor, warrensAccessOf, refundTicketFor, warrenTicketsOf, useTicketFor, kindCountOf, useKindFor, adventureOf, cosmeticsOf, combatOf, fighterOf, forgeFor, petXpFor, dropItemFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townPet, townEquip, townPoints, townQuest, townSkills, trainingArmorFor, questRewardsFor, questPiecesFor, questKillFor, adventurersWithClass } from './adventure.js';
 import { renameWithCard } from '../items/rename-card.js';
 import { changeClassWithTicket } from '../items/class-ticket.js';
@@ -1174,7 +1174,7 @@ export function startWebServer(client: Client): void {
       // (The Halloween event's mobs live in the Slums' room too: its director runs them, in a zone of their own.)
       mobs: {
         slums: (slumsRoom = new MobRoom(slumsMobMap, Math.random, skillLevels, loadSkillShapes(), loadMobKinds(), loadGolemArt(), undefined, undefined, { director: halloween.director })),
-        palengke: new MobRoom(palengkeMobMap, Math.random, skillLevels, loadSkillShapes(), loadMobKinds()),
+        palengke: new MobRoom(palengkeMobMap, Math.random, skillLevels, loadSkillShapes(), loadMobKinds(), undefined, undefined, loadPalengkeLeveling()),
       },
       // The Halloween event (events/halloween.json; its schedules kept in kv 'halloween'): rewards into the wallet, the
       // combat bag (the kits by mail when it's full) and the potion stock.

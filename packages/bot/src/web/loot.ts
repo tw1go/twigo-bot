@@ -1,4 +1,4 @@
-import { type EquipSlot, type EquipmentDef, type GearRarity, type ItemData, type Item, type Odds, type WarrensData, agimatSlots, boosted, cascade, gearKind, isGearDef, itemStats, kusingFor, kusingRange, mobStats, nearestGearLevel, newAgimat, newItem, numbersIn, rollGear } from '@mikazuki/shared';
+import { type EquipSlot, type EquipmentDef, type FieldBossLoot, type GearRarity, type ItemData, type Item, type Odds, type WarrensData, agimatSlots, boosted, cascade, gearKind, isGearDef, itemStats, kusingFor, kusingRange, mobStats, nearestGearLevel, newAgimat, newItem, numbersIn, rollGear } from '@mikazuki/shared';
 import type { LootContent } from './combat-bag.js';
 
 // 🎲 What a kill drops, rolled on the server by stats.json (rarity.mobGearDrop and bossGearDrop, potions, currencies,
@@ -81,20 +81,23 @@ const dropped = (data: ItemData, def: EquipmentDef, rarity: GearRarity, uid: str
 };
 
 /** A normal mob's drops: Kusing always (a random amount round its level's), now and then gear (brown, white or grey, +0 to +3) or an HP or MP Potion. */
-export function mobDrops(data: ItemData, kind: string, level: number, random: () => number, uid: () => string, plusRandom = random, boost = 0): LootContent[] {
+export function mobDrops(data: ItemData, kind: string, level: number, random: () => number, uid: () => string, plusRandom = random, boost = 0, area?: string): LootContent[] {
   const S = itemStats(data.stats);
   const out: LootContent[] = [{ kusing: between(kusingRange(data.stats, level), random) }];
   const G = S.rarity.mobGearDrop;
-  if (random() < boosted(G.chancePerKill, boost)) {
-    const gearLevel = dropLevel(data, kind, random, boost);
+  // A map with drops of its own (stats.json drops.<map>: the Palengke's Lv 30 gear, Lv 40 from some kinds, Medium potions).
+  const A = area ? S.drops?.[area] : undefined;
+  const higher = A?.lv40Chance?.[kind] ?? 0;
+  if (random() < boosted(A?.gearChance ?? G.chancePerKill, boost)) {
+    const gearLevel = A ? (higher ? cascade<number>([[40, higher], [A.gearLevel, 1 - higher]], random, boost) : A.gearLevel) : dropLevel(data, kind, random, boost);
     const kinds = dropGear(data, gearLevel);
     if (kinds.length) {
       const rarity = tier(data, G.odds, random, boost) as GearRarity;
       out.push({ item: dropped(data, pick(kinds, random), rarity, uid(), random, plusRandom, boost) });
     }
   }
-  if (random() < boosted(S.potions.mobDropChance, boost)) {
-    const potionTier = tierAt(data, dropLevel(data, 'default', random, boost));
+  if (random() < boosted(A?.potionChance ?? S.potions.mobDropChance, boost)) {
+    const potionTier = A?.potionTier ?? tierAt(data, dropLevel(data, 'default', random, boost));
     const potions = [...data.defs.values()].filter((d) => !isGearDef(d) && d.kind === 'potion' && d.tier === potionTier);
     if (potions.length) out.push({ item: newItem(data.stats, pick(potions, random), uid()) });
   }
@@ -148,14 +151,28 @@ export function rollAgimatStat(data: ItemData, random: () => number, rareTimes =
 /** The golem's loot for one player who earned it (stats.json bossLoot.perEligiblePlayer); `ticketChance`: a Warren Ticket
  *  that often too (classes/dungeons.json warrens.ticket.sources.golemLootChance). */
 export function golemLoot(data: ItemData, random: () => number, uid: () => string, plusRandom = random, ticketChance = 0, boost = 0): LootContent[] {
+  return fieldBossLoot(data, itemStats(data.stats).bossLoot.perEligiblePlayer, random, uid, plusRandom, ticketChance, boost);
+}
+
+/** A field boss's loot table by its kind: the Great Scale's (stats.json bossLoot.greatScale), else the golem's. */
+export function fieldBossTable(data: ItemData, kind: string): FieldBossLoot {
+  const B = itemStats(data.stats).bossLoot;
+  return (kind === 'great-scale' && B.greatScale?.perEligiblePlayer) || B.perEligiblePlayer;
+}
+
+/** A field boss's loot for one player who earned it (a FieldBossLoot table): its Kusing, its tier's whetstones (Rough, or
+ *  Polished for the Great Scale), 1-2 affix gear pieces at its levels (its own `gearLevel` and `affix`, else
+ *  rarity.bossGearDrop's), now and then an accessory, an agimat, the Lamp-head Hat (the golem's) and a Mid Repair Kit
+ *  (the Great Scale's); `ticketChance`: a Warren Ticket that often too. */
+export function fieldBossLoot(data: ItemData, P: FieldBossLoot, random: () => number, uid: () => string, plusRandom = random, ticketChance = 0, boost = 0): LootContent[] {
   const S = itemStats(data.stats);
-  const P = S.bossLoot.perEligiblePlayer;
   const B = S.rarity.bossGearDrop;
   const out: LootContent[] = [{ kusing: P.kusing }];
-  const whetstone = [...data.defs.values()].find((d) => !isGearDef(d) && d.shop === 'whetstone' && d.tier === 'low');
-  if (whetstone) out.push({ item: newItem(data.stats, whetstone, uid(), between(P.roughWhetstones, random)) });
-  const level = () => Number(tier(data, B.level, random, boost));
-  const affix = () => tier(data, B.affix, random, boost) as 'blue' | 'orange';
+  const [stoneTier, stones]: [string, [number, number]] = P.polishedWhetstones ? ['mid', P.polishedWhetstones] : ['low', P.roughWhetstones ?? [0, 0]];
+  const whetstone = [...data.defs.values()].find((d) => !isGearDef(d) && d.shop === 'whetstone' && d.tier === stoneTier);
+  if (whetstone && stones[1] > 0) out.push({ item: newItem(data.stats, whetstone, uid(), between(stones, random)) });
+  const level = () => Number(tier(data, P.gearLevel ?? B.level, random, boost));
+  const affix = () => tier(data, P.affix ?? B.affix, random, boost) as 'blue' | 'orange';
   const colour = (t: 'blue' | 'orange', slots: number): GearRarity => `${slots >= 2 ? 'dark' : 'light'}${t === 'blue' ? 'Blue' : 'Orange'}` as GearRarity;
   for (let n = between(P.gearPieces, random); n > 0; n--) {
     const kinds = dropGear(data, level());
@@ -171,9 +188,13 @@ export function golemLoot(data: ItemData, random: () => number, uid: () => strin
     const def = [...data.defs.values()].find((d) => !isGearDef(d) && d.kind === 'agimat' && d.stat === stat);
     if (def && !isGearDef(def)) out.push({ item: newAgimat(data.stats, def, pick(P.agimatLevels, random), uid()) });
   }
-  if (random() < boosted(P.lampHatChance, boost)) {
+  if (P.lampHatChance && random() < boosted(P.lampHatChance, boost)) {
     const hat = data.defs.get('lamp-hat');
     if (hat) out.push({ item: newItem(data.stats, hat, uid()) });
+  }
+  if (P.midRepairKitChance && random() < boosted(P.midRepairKitChance, boost)) {
+    const kit = [...data.defs.values()].find((d) => !isGearDef(d) && d.forge === 'repairKit' && d.tier === 'mid');
+    if (kit) out.push({ item: newItem(data.stats, kit, uid()) });
   }
   ticket(data, ticketChance, random, uid, out, boost);
   return out;

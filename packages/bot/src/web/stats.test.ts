@@ -74,11 +74,14 @@ test('level from XP and gaining XP: level-ups carry the rest over, several at on
   assert.deepEqual(levelFromXp(data, 24), { level: 1, xp: 24, next: 25 });
   assert.deepEqual(levelFromXp(data, 25), { level: 2, xp: 0, next: 84 });
   assert.deepEqual(levelFromXp(data, 25 + 84 + 10), { level: 3, xp: 10, next: xpToNext(data, 3) });
-  assert.deepEqual(levelFromXp(data, 10 ** 9), { level: 20, xp: 0, next: 0 });
+  assert.deepEqual(levelFromXp(data, 10 ** 9), { level: 40, xp: 0, next: 0 });
   assert.deepEqual(gainXp(data, 1, 20, 8), { level: 2, xp: 3, ups: 1 });
   assert.deepEqual(gainXp(data, 1, 0, 25 + 84 + 1), { level: 3, xp: 1, ups: 2 });
-  assert.deepEqual(gainXp(data, 19, 4000, 1000), { level: 20, xp: 0, ups: 1 });
-  assert.deepEqual(gainXp(data, 20, 0, 500), { level: 20, xp: 0, ups: 0 });
+  // (Lv 20 was the cap until the Lumang Palengke: now it carries on to 40.)
+  assert.deepEqual(gainXp(data, 19, 4000, 1000), { level: 20, xp: 5000 - xpToNext(data, 19), ups: 1 });
+  assert.deepEqual(gainXp(data, 20, 0, 500), { level: 20, xp: 500, ups: 0 });
+  assert.deepEqual(gainXp(data, 39, 15_000, 1000), { level: 40, xp: 0, ups: 1 });
+  assert.deepEqual(gainXp(data, 40, 0, 500), { level: 40, xp: 0, ups: 0 });
 });
 
 test('base stats by level for every class (the guide\'s table, no points spent); classless 4 / 4 / 4', () => {
