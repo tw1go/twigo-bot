@@ -846,8 +846,8 @@ export class MobRoom {
     this.guards = guards;
     // (`present`: everyone in the room, the knocked out too: the golem's HP follows it.)
     const events: MobEvent[] = this.golem ? this.golem.tick(now, players, present) : [];
-    if (this.opts.director) events.push(...this.opts.director.tick(now, players));
-    // The golem's slams and tosses land after a moment (its art's), its glare blinds as it lights.
+    // The golem's slams and tosses land after a moment (its art's), its glare blinds as it lights. (A director lands its
+    // own moves' hits with `land`: its `boss-hit`s are only for the room to see.)
     for (const e of events) {
       // Its timed moves (Junk Drop, Shockwave) were decided as they landed: off HP now.
       if (e.t === 'boss-hit') for (const h of e.hits) this.landings.push({ at: now, player: h.id, by: e.id, damage: h.damage, ...(h.miss ? { miss: true } : {}) });
@@ -856,6 +856,7 @@ export class MobRoom {
       for (const h of e.hits ?? []) this.landings.push({ at, player: h.id, by: e.id, damage: h.damage, ...(h.miss ? { miss: true } : {}) });
       for (const id of e.blinded ?? []) this.landings.push({ at, player: id, by: e.id, damage: 0, blind: e.blindMs });
     }
+    if (this.opts.director) events.push(...this.opts.director.tick(now, players));
     // Who each zone's mobs could notice (a few players at most: looked up once a tick, not per mob): an aggressive one
     // goes for them; any one in a fight may turn to someone it wants more (mobBehaviour.targetPriority).
     const watched = new Map<MobZoneData, [string, [number, number]][]>();
