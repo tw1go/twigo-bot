@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { type EquipmentDef, type LootContent, isGearDef, kusingFor, miniBossRules, skillLevelCap, xpToNext } from '@mikazuki/shared';
-import { combatWares } from './combat-bag.js';
+import { type EquipmentDef, isGearDef, kusingFor, miniBossRules, skillLevelCap, xpToNext } from '@mikazuki/shared';
+import { type LootContent, combatWares } from './combat-bag.js';
 import { fieldBossLoot, fieldBossTable, golemLoot, mobDrops } from './loot.js';
 import { loadItemData, loadPalengkeLeveling } from './stats-data.js';
 
