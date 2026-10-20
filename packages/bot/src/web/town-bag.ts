@@ -1,5 +1,5 @@
 import type { Client } from 'discord.js';
-import type { TownBagActionResponse, TownBagItem, TownInventoryResponse } from '@mikazuki/shared';
+import type { TownBagActionResponse, TownBagItem, TownInventoryResponse, TownPotionResponse } from '@mikazuki/shared';
 import { config } from '../config.js';
 import { add, balance } from '../credits/store.js';
 import { flexEmbed, flexWait, markFlex } from '../commands/flex.js';
@@ -7,7 +7,7 @@ import { usedSlots } from '../dig/bag.js';
 import { ITEM_BY_ID, RARITY_ORDER } from '../dig/items.js';
 import { MAX_SLOTS, capacity, inventory, masterKeys, removeItems } from '../dig/store.js';
 import { kowen } from '../kowens.js';
-import { POTIONS, ownedPotions } from '../potions/potions.js';
+import { POTIONS, drink, isDrink, ownedPotions, potionHow, swerteLeft, tagoUntil } from '../potions/potions.js';
 import { megaphones } from '../items/megaphone.js';
 import { renameCards } from '../items/rename-card.js';
 import { classTickets } from '../items/class-ticket.js';
@@ -17,7 +17,8 @@ import { EQUIPMENT } from './adventure.js';
 // dug-up item, Master Key and potion, one slot each (gear and combat items are in the combat bag: /me's adventure, the
 // town's `items` messages) — and selling or flexing a
 // dug-up item with /sell's and /flex's rules (flexes are posted in the games channel like /flex, with the same
-// cooldown, and said in the town's chat).
+// cooldown, and said in the town's chat), and drinking a sari-sari potion (POST /town/potion: /potion use's `drink`,
+// privately: nothing in the feed or Discord).
 
 type NameOf = (id: string) => Promise<string>;
 
@@ -44,9 +45,28 @@ export function townInventory(userId: string): TownInventoryResponse {
     ...(tickets ? [{ id: 'class-ticket', name: 'Bagong Buhay Ticket', emoji: '🎫', rarity: 'common', value: 0, count: tickets, kind: 'classchange' as const, sellable: false, stacked: true,
       about: "A fresh start: use it to change your class. You keep your quests and level, get your stat and skill points back, and your training gear becomes the new class's." }] : []),
     ...ownedPotions(userId).map(([pid, count]) => ({ id: `potion-${pid}`, name: POTIONS[pid].name, emoji: POTIONS[pid].emoji, rarity: 'common', value: 0, count,
-      kind: 'potion' as const, sellable: false, about: `${plain(POTIONS[pid].effect)}. Use it with /potion use in Discord.` })),
+      kind: 'potion' as const, sellable: false, about: `${plain(POTIONS[pid].effect)}. ${potionHow(pid)}`, ...(isDrink(pid) ? { drink: true } : {}) })),
   ];
-  return { items: [...dug, ...held], slots: capacity(userId), maxSlots: MAX_SLOTS, used: usedSlots(userId), kowens: balance(userId) };
+  return { items: [...dug, ...held], slots: capacity(userId), maxSlots: MAX_SLOTS, used: usedSlots(userId), kowens: balance(userId),
+    effects: { tagoUntil: tagoUntil(userId), swerte: swerteLeft(userId) } };
+}
+
+const clock = (ms: number) => new Date(ms).toLocaleTimeString('en-US', { timeZone: config.timezone, hour: 'numeric', minute: '2-digit' });
+
+/** Drinks a sari-sari potion from the bag (`id`: its reward id, 'potion-tago' …): what it did, and Marites Tea's hint. */
+export function drinkInTown(userId: string, id: string): TownPotionResponse {
+  const pid = id.replace(/^potion-/, '');
+  if (!id.startsWith('potion-') || !isDrink(pid)) return { ...townInventory(userId), ok: false, message: "That isn't something you drink." };
+  const r = drink(userId, pid);
+  if (!r.ok) {
+    const message = r.reason === 'no-hints' ? 'Aling Marites has already told you everything she knows.' : `You don't have a ${POTIONS[pid].name}. Get one at the sari-sari store.`;
+    return { ...townInventory(userId), ok: false, message };
+  }
+  const message =
+    r.id === 'tago' ? `You drank a Tago Tonic: the Tanod can't see you gamble until ${clock(r.until)}.`
+    : r.id === 'swerte' ? `You drank a Swerte Elixir: your next ${r.digs === 1 ? 'dig rerolls' : `${r.digs} digs reroll`} any junk once.`
+    : `You drank Marites Tea. ${r.left ? `${r.left} more to hear.` : "That's all she knows."}`;
+  return { ...townInventory(userId), ok: true, message, ...(r.id === 'marites' ? { hint: plain(r.hint.replace(/(\d)\uFE0F?\u20E3/gu, '$1')).replace(/\*/g, '') } : {}) };
 }
 
 /** Sells `quantity` of a dug-up item (as /sell does: its value each, into the wallet). */

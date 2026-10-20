@@ -20,8 +20,8 @@ import { buffText } from './buff-text';
 // POST /town/skills), Reset gives every point back (free). Locked skills are greyed with "Unlocks at Lv N" (on the bar
 // too, with a padlock: they can't be used until then). Drag one onto a slot, or click it and then a slot. Potions are
 // dragged in from the bag: HP and MP Potions from the combat bag (onItem uses one: the town asks the server, which
-// keeps their cooldown (each kind its own: stats.json potions.separateCooldowns), shown as a pie on that kind's slots; the count you carry in the corner), the
-// Discord buff potions from the old bag (they're used in Discord). Drag a slot onto another to swap them; drag it off the bar to empty it (right-click leaves it). Per class, saved in this browser (localStorage `mk_hotbar`); a class's first bar has
+// keeps their cooldown (each kind its own: stats.json potions.separateCooldowns), shown as a pie on that kind's slots; the count you carry in the corner);
+// sari-sari potions never go on it (they're drunk from the bag). Drag a slot onto another to swap them; drag it off the bar to empty it (right-click leaves it). Per class, saved in this browser (localStorage `mk_hotbar`); a class's first bar has
 // its skills in order. Skills show their icon (manifest ui.skillIcons) where there is one, else their initials over the
 // class badge. Move skills work in town (onSkill: world/mobility.ts) and their slots show the cooldown as a
 // shrinking pie with the seconds left; the rest wait for combat. Skills have no icons yet: their
@@ -72,8 +72,6 @@ const STORE = 'mk_hotbar';
 /** What a row takes: the bottom row's first ten are for skills, its last three for usables, the top row either. */
 const fits = (row: Row, e: Entry) => !e || row === 'top' || (row === 'main' ? e.t === 'skill' : e.t === 'item');
 
-/** Old-bag items that can go on the bar (the Discord buff potions; the combat bag's HP and MP Potions too). */
-export const hotbarItem = (kind: string) => kind === 'potion';
 /** The cooldown HP and MP Potions share (one key for every slot holding one). */
 export const potionCooldownKey = 'hp-mp-potion';
 /** Bag cells call this as a usable is dragged: the bar takes it. */
@@ -592,7 +590,7 @@ export class Hotbar {
     const now = performance.now();
     if (now - this.nagged < 4000) return;
     this.nagged = now;
-    toast(entry.t === 'skill' ? `${entry.name}: skills work in combat, coming soon.` : `${entry.name}: use it with /potion use in Discord for now.`, 2400);
+    toast(entry.t === 'skill' ? `${entry.name}: skills work in combat, coming soon.` : `${entry.name} can't be used from the hotbar.`, 2400);
   }
 }
 
@@ -643,7 +641,8 @@ function tidy(saved: Partial<Layout>, c: ClassInfo): Layout {
   const out = blank();
   for (const row of ['top', 'main', 'util'] as Row[]) {
     (saved[row] ?? []).slice(0, SIZE[row]).forEach((e, i) => {
-      if (e && fits(row, e) && (e.t !== 'skill' || names.has(e.name))) out[row][i] = e;
+      // (Sari-sari potions, 'potion-tago' …, once went on the bar too: they're drunk from the bag now.)
+      if (e && fits(row, e) && (e.t !== 'skill' || names.has(e.name)) && (e.t !== 'item' || !e.id.startsWith('potion-'))) out[row][i] = e;
     });
   }
   return out;

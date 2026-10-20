@@ -284,7 +284,7 @@ _Avoid_: gold, coins
 
 **Combat bag**:
 The bag for gear, whetstones, fragments, agimats and HP/MP Potions: 40 slots (the Combat tab) plus the agimats' own 40
-(the Agimats tab); the old bag keeps dug-up items, keys, buff potions and tickets.
+(the Agimats tab); the old bag keeps dug-up items, keys, sari-sari potions and tickets.
 _Avoid_: inventory (that's both bags together)
 
 **Pocket**:
@@ -357,8 +357,15 @@ seen by nobody else). It stays until picked up (a click, F or Space within a til
 _Avoid_: drop (the act), item (once picked up)
 
 **HP Potion / MP Potion**:
-Bottles that heal at once from the hotbar, each kind with its own cooldown; never just "potions", which are the Discord
-buff potions.
+Bottles that heal at once from the hotbar, each kind with its own cooldown; never just "potions", which are the
+sari-sari potions.
+
+**Sari-sari potion**:
+One of the four potions sold at the sari-sari store for Kowens: Kalawang Potion (thrown at a house's Bakod to rust
+half of it away), Tago Tonic (30 minutes the Tanod can't see you gamble), Swerte Elixir (your next 3 digs reroll junk
+once) and Marites Tea (Aling Marites tells you a hint about an Easter egg you haven't found). Drunk (or thrown) in
+Discord or in town alike, privately; a Tonic or Elixir drunk twice adds up, so nothing is wasted.
+_Avoid_: buff potion (a buff is a class skill), potion on its own
 
 **Weapon aura**:
 The glow and rising lines on a weapon at +15 and above: blue, then gold, then prismatic at +20.

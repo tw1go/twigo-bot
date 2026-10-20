@@ -20,7 +20,7 @@ import { showParlor } from '../ui/parlor';
 import { type HouseArt, composeHouse, houseFiles, houseStyles, tidyLook } from '../houses/art';
 import { areaUrl, cameByLantern, cameFrom, hoodAction, loadHood, rogueAction, saveHouse } from '../net/hood';
 import { showHouseMenu } from '../ui/house-menu';
-import { closeNpcDialog, setNpcDialogArt } from '../ui/npc-dialog';
+import { closeNpcDialog, openNpcDialog, setNpcDialogArt } from '../ui/npc-dialog';
 import { race as currentRace, raceNow, setRace } from '../net/race';
 import { setRacePortraits } from '../ui/race-bet';
 import { mosangName } from '../ui/race-box';
@@ -715,6 +715,10 @@ export class TownScene extends Phaser.Scene {
     const ticket = () => this.openClassTicket();
     addEventListener('mk-class-ticket', ticket);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => removeEventListener('mk-class-ticket', ticket));
+    // Marites Tea drunk from the bag: her hint in her dialog box, wherever you are.
+    const hint = (e: Event) => this.maritesHint((e as CustomEvent<string>).detail);
+    addEventListener('mk-marites-hint', hint);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => removeEventListener('mk-marites-hint', hint));
     // Mail claimed (ui/mail.ts): "Gained …" lines in your own feed, as loot's; the wallet's Kowens a toast too.
     const mailGot = (e: Event) => this.mailGot((e as CustomEvent<{ kowens: number; kusing: number; items: Item[] }>).detail);
     addEventListener('mk-mail-got', mailGot);
@@ -1517,6 +1521,24 @@ export class TownScene extends Phaser.Scene {
       toast('The way out opens when Barong-Barong falls.', 2200);
     }
     return undefined;
+  }
+
+  /** Marites Tea's hint, said by Aling Marites in her dialog box (her portrait is all it needs, so any area; away from
+   *  the town, where her lines aren't loaded, her name and title from here). No portrait art: a toast. */
+  private maritesHint(hint: string): void {
+    const who = this.giverOf('marites');
+    if (!who) return toast(`Aling Marites: ${hint}`, 8000);
+    const text = (this.cache.json.get('npc-dialogue') as { npcs?: Record<string, { name: string; title: string }> } | undefined)?.npcs?.marites;
+    openNpcDialog({
+      id: 'marites-tea', // (not her own id: the box isn't closed for being far from her in the plaza)
+      name: text?.name ?? 'Aling Marites',
+      title: text?.title ?? 'knows the news before it happens',
+      portrait: who.portrait,
+      next: () => hint,
+      voice: NPC_PLACES.find((p) => p.id === 'marites')?.voice ?? 1,
+      mirror: who.mirror,
+      onClose: () => {},
+    });
   }
 
   /** A quest giver's name and portrait (for the quest log). */

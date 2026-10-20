@@ -1,17 +1,16 @@
 import { keyLabel, matches, onKeybinds } from './keybinds';
 import { api } from '../net/endpoints';
-import { type Item, type Pocket, type TownBagActionResponse, type TownBagItem, type TownInventoryResponse, RETURN_LANTERN, agimatPocket, bagSlots, costumePocket, cubeOf, isGearDef, pocketOf, pocketSlots, pocketUsed, sellPrice } from '@mikazuki/shared';
-import { hotbarDragItem, hotbarItem } from './hotbar';
+import { type Item, type Pocket, type TownBagItem, type TownInventoryResponse, type TownPotionResponse, RETURN_LANTERN, agimatPocket, bagSlots, costumePocket, cubeOf, isGearDef, pocketOf, pocketSlots, pocketUsed, sellPrice } from '@mikazuki/shared';
 import { playSound } from '../audio/sound';
 import { toast } from './toast';
-import { fakeLogin, fakeName } from '../session';
+import { devPotions, devTago, fakeLogin, fakeName } from '../session';
 import { type Rarity, RARITY_COLOUR, RARITY_LABEL as LABEL, RARITY_TEXT, isRarity, itemArt } from './item-art';
 import { installPixelTiles } from './pixel-tiles';
 import { coinIcon, kusingIcon } from './reward';
 import type { EquipmentPanel } from './equipment';
 import { adventure, anyDef, cantWear, itemData, onAdventure } from '../net/adventure';
 import { chatItem, itemKeys, itemPicture, itemTipFor, nameOf, rarityOf, wearDiff, wornFor } from './item-tip';
-import { pickForHotbar, potionCooldownKey } from './hotbar';
+import { hotbarDragItem, pickForHotbar, potionCooldownKey } from './hotbar';
 import { showRename } from './rename';
 import { openBox } from './pet-tab';
 import { openCube } from './pet-cube';
@@ -80,17 +79,17 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, t
 }
 
 async function load(): Promise<TownInventoryResponse | null> {
-  if (fakeLogin()) return structuredClone(fake);
+  if (fakeLogin()) return fakeBag();
   const res = await api('/town/inventory', { credentials: 'same-origin' }).catch(() => null);
   return res?.ok ? ((await res.json()) as TownInventoryResponse) : null;
 }
 
 type ActBody = { id: string; quantity?: number } | { items: { id: string; quantity: number }[] };
 
-async function post(path: '/town/sell' | '/town/flex', body: ActBody): Promise<TownBagActionResponse | null> {
+async function post(path: '/town/sell' | '/town/flex' | '/town/potion', body: ActBody): Promise<TownPotionResponse | null> {
   if (fakeLogin()) return fakeAction(path, body);
   const res = await api(path, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => null);
-  return res?.ok ? ((await res.json()) as TownBagActionResponse) : null;
+  return res?.ok ? ((await res.json()) as TownPotionResponse) : null;
 }
 
 export class Inventory {
@@ -340,10 +339,13 @@ export class Inventory {
       cell.title = it.name;
       cell.append(itemArt(it.id, rarity, 'showcase', 2, true) ?? el('span', 'iv-emoji', it.emoji));
       if (it.stacked) cell.append(el('span', 'iv-count', String(it.count)));
-      if (hotbarItem(it.kind)) {
-        // Potions go on the hotbar (its - = ~ slots or the top row).
-        cell.draggable = true;
-        cell.addEventListener('dragstart', (e) => hotbarDragItem(e, { id: it.id, name: it.name, emoji: it.emoji, rarity }));
+      if (it.drink) {
+        // A sari-sari potion that's drunk: a double-click or the right-click menu's Drink (as the detail's button).
+        cell.addEventListener('dblclick', () => void this.drink(it));
+        cell.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          this.menuAt([['Drink', () => void this.drink(it)]], new Set(), e.clientX, e.clientY);
+        });
       }
       cell.addEventListener('click', (e) => {
         const on = this.picked.some((p) => p.slot === slot);
@@ -601,12 +603,17 @@ export class Inventory {
     }
     // Every item: into the chat (as Alt/Option+click does).
     items.push(['Show in chat', () => chatItem(it)]);
+    this.menuAt(items, off, x, y, isGearDef(def) && off.has(0) ? (this.cantWearWhy(it) ?? '') : undefined);
+  }
+
+  /** The right-click menu's rows at (x, y), kept on screen; `off` greyed, `firstTitle` the first row's tooltip. */
+  private menuAt(items: [string, () => void][], off: Set<number>, x: number, y: number, firstTitle?: string): void {
     this.menu.replaceChildren(
       ...items.map(([label, run], i) => {
         const b = el('button', 'iv-menu-item', label);
         b.setAttribute('role', 'menuitem');
         b.disabled = off.has(i);
-        if (i === 0 && off.has(0) && isGearDef(def)) b.title = this.cantWearWhy(it) ?? '';
+        if (i === 0 && firstTitle) b.title = firstTitle;
         b.addEventListener('click', () => {
           this.menu.hidden = true;
           run();
@@ -835,6 +842,13 @@ export class Inventory {
       if (it.count > 1) row.append(button(`Sell all · ${it.value * it.count}`, 'iv-sell', () => void this.act('/town/sell', { id: it.id, quantity: it.count })));
       parts.push(row);
     } else if (it.about) parts.push(el('div', 'iv-about', it.about));
+    const working = this.working(it);
+    if (working) parts.push(el('div', 'iv-working', working));
+    if (it.drink) {
+      const row = el('div', 'iv-actions');
+      row.append(this.action('Drink', 'iv-flex', () => void this.drink(it)));
+      parts.push(row);
+    }
     if (it.kind === 'rename') parts.push(this.renameControls());
     if (it.kind === 'classchange') parts.push(this.ticketControls());
     if (note) parts.push(note);
@@ -870,6 +884,40 @@ export class Inventory {
       ),
     );
     return row;
+  }
+
+  /** A Tago Tonic or Swerte Elixir working now (the bag's `effects`), said under it. */
+  private working(it: TownBagItem): string | null {
+    const e = this.data?.effects;
+    if (!e) return null;
+    if (it.id === 'potion-tago' && e.tagoUntil && e.tagoUntil > Date.now()) {
+      return `Working now: hidden from the Tanod until ${new Date(e.tagoUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.`;
+    }
+    if (it.id === 'potion-swerte' && e.swerte) return `Working now: your next ${plural(e.swerte, 'dig rerolls', 'digs reroll')} junk once.`;
+    return null;
+  }
+
+  /** Drinks a sari-sari potion (POST /town/potion): what it did in the bag's note; Marites Tea's hint in her dialog box
+   *  (the town opens it, the bag closes meanwhile). */
+  private async drink(it: TownBagItem): Promise<void> {
+    if (this.busy) return;
+    this.busy = true;
+    this.render();
+    const res = await post('/town/potion', { id: it.id });
+    this.busy = false;
+    if (!res) {
+      playSound('error');
+      this.message = { text: "Couldn't reach the bot. Try again in a moment.", ok: false };
+      return this.render();
+    }
+    this.data = res;
+    this.message = { text: res.message, ok: res.ok };
+    playSound(res.ok ? 'combat-potion' : 'error');
+    this.render();
+    if (res.hint) {
+      this.toggle(false);
+      dispatchEvent(new CustomEvent('mk-marites-hint', { detail: res.hint }));
+    }
   }
 
   private async act(path: '/town/sell' | '/town/flex', body: ActBody): Promise<void> {
@@ -908,17 +956,27 @@ const fake: TownInventoryResponse = {
     { id: 'rename-card', name: 'Rename Card', emoji: '🪪', rarity: 'common', value: 0, count: 1, kind: 'rename', sellable: false, stacked: true, about: 'Use it to change your town nickname (3-16 letters or numbers; spaces, _ - . in between).' },
     { id: 'class-ticket', name: 'Bagong Buhay Ticket', emoji: '🎫', rarity: 'common', value: 0, count: 1, kind: 'classchange', sellable: false, stacked: true, about: "A fresh start: use it to change your class. You keep your quests and level, get your stat and skill points back, and your training gear becomes the new class's." },
     { id: 'megaphone', name: 'Megaphone', emoji: '📢', rarity: 'common', value: 0, count: 3, kind: 'megaphone', sellable: false, stacked: true, about: "Type /m and your message in the town's chat: it runs across everyone's screen in sky blue. One per message." },
-    { id: 'potion-tago', name: 'Tago Tonic', emoji: '🫥', rarity: 'common', value: 0, count: 2, kind: 'potion', sellable: false, about: "For 30 minutes the Tanod can't see you gamble: 0% bust chance. Use it with /potion use in Discord." },
+    { id: 'potion-tago', name: 'Tago Tonic', emoji: '🫥', rarity: 'common', value: 0, count: 2, kind: 'potion', sellable: false, drink: true, about: "For 30 minutes the Tanod can't see you gamble: 0% bust chance. Drink it from your bag (Misc tab), or with /potion use in Discord." },
+    { id: 'potion-swerte', name: 'Swerte Elixir', emoji: '🍀', rarity: 'common', value: 0, count: 1, kind: 'potion', sellable: false, drink: true, about: 'Your next 3 digs: any junk gets rerolled once. Drink it from your bag (Misc tab), or with /potion use in Discord.' },
+    { id: 'potion-marites', name: 'Marites Tea', emoji: '🍵', rarity: 'common', value: 0, count: 2, kind: 'potion', sellable: false, drink: true, about: 'Aling Marites spills a hint about a hidden Easter egg. Drink it from your bag (Misc tab), or with /potion use in Discord.' },
+    { id: 'potion-kalawang', name: 'Kalawang Potion', emoji: '🧪', rarity: 'common', value: 0, count: 1, kind: 'potion', sellable: false, about: "Rusts someone's Bakod: cuts its remaining time in half. Throw it at a house's Bakod from its menu in the neighbourhood, or with /potion use in Discord." },
   ],
   slots: Number(q.get('slots') ?? 18),
   maxSlots: 50,
   used: 0,
   kowens: Number(q.get('kowens') ?? 1250),
+  effects: { tagoUntil: null, swerte: 0 },
 };
 fake.used = fake.items.reduce((n, it) => n + (it.stacked ? 1 : it.count), 0);
+/** The pretend bag as it is now (its potions' effects shared with the pretend casino and Mine: session.ts devPotions). */
+const fakeBag = (): TownInventoryResponse => ({ ...structuredClone(fake), effects: { tagoUntil: devTago(), swerte: devPotions.swerte } });
+const DEV_HINTS = [
+  'Every night and every morning at 11:11, sometimes the Tanod lets you make a wish. Be fast.',
+  'The jackpot loves an underdog. Win it with just one ticket against a crowd.',
+];
 
-function fakeAction(path: string, body: ActBody): TownBagActionResponse {
-  const done = (ok: boolean, message: string) => ({ ...structuredClone(fake), ok, message });
+function fakeAction(path: string, body: ActBody): TownPotionResponse {
+  const done = (ok: boolean, message: string, hint?: string) => ({ ...fakeBag(), ok, message, ...(hint ? { hint } : {}) });
   if ('items' in body) {
     let sold = 0;
     let earned = 0;
@@ -937,6 +995,22 @@ function fakeAction(path: string, body: ActBody): TownBagActionResponse {
   }
   const it = fake.items.find((x) => x.id === body.id);
   if (!it) return done(false, "You don't have that item.");
+  if (path === '/town/potion') {
+    if (!it.drink) return done(false, "That isn't something you drink.");
+    const hint = it.id === 'potion-marites' ? DEV_HINTS[it.count % DEV_HINTS.length] : undefined;
+    it.count -= 1;
+    fake.items = fake.items.filter((x) => x.count > 0);
+    fake.used -= 1;
+    if (it.id === 'potion-tago') {
+      devPotions.tagoUntil = Math.max(devTago() ?? 0, Date.now()) + 30 * 60_000;
+      return done(true, `You drank a Tago Tonic: the Tanod can't see you gamble until ${new Date(devPotions.tagoUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.`);
+    }
+    if (it.id === 'potion-swerte') {
+      devPotions.swerte += 3;
+      return done(true, `You drank a Swerte Elixir: your next ${devPotions.swerte} digs reroll any junk once.`);
+    }
+    return done(true, 'You drank Marites Tea. 1 more to hear.', hint);
+  }
   if (path === '/town/flex') {
     // Through the dev town, so the chat line and bubble come back as they do live.
     void fetch(`/__flex?${new URLSearchParams({ as: fakeName(), itemId: it.id, itemName: it.name, rarity: it.rarity })}`).catch(() => null);

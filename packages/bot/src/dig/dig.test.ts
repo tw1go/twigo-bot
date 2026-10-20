@@ -17,6 +17,7 @@ const { digFor } = await import('./dig.js');
 const { BASE_SLOTS, DIGS_PER_DAY, addShovel, itemCount, recordDig, shovelUses } = await import('./store.js');
 const { jail } = await import('../games/jail.js');
 const { closeDatabase } = await import('../db/db.js');
+const potions = await import('../potions/potions.js');
 
 test.after(() => {
   closeDatabase();
@@ -96,4 +97,25 @@ test('/gift dig-reset: the daily dig and shovel counters go back to 0', async ()
   const was = resetDigCounters('reset');
   assert.deepEqual([was.digs, digsToday('reset'), shovelsBoughtToday('reset')], [DIGS_PER_DAY, 0, 0]);
   assert.ok(digFor('reset').ok); // digging again today
+});
+
+test('a Swerte Elixir dig rerolls junk once and says so; a dig without one never does', (t) => {
+  const { startSwerte, swerteLeft } = potions;
+  addShovel('lucky-elixir');
+  startSwerte('lucky-elixir');
+  // First roll: not secret, junk, any junk item; the reroll: not secret, common, any common item.
+  const rolls = [0.9, 0.1, 0.5, 0.9, 0.7, 0.5];
+  t.mock.method(Math, 'random', () => rolls.shift() ?? 0.5);
+  const r = digFor('lucky-elixir');
+  assert.equal(r.ok && r.rerolled, true);
+  assert.equal(r.ok && r.item.rarity, 'common');
+  assert.equal(swerteLeft('lucky-elixir'), 2);
+  t.mock.restoreAll();
+
+  addShovel('plain');
+  rolls.push(0.9, 0.1, 0.5);
+  t.mock.method(Math, 'random', () => rolls.shift() ?? 0.5);
+  const plain = digFor('plain');
+  assert.equal(plain.ok && plain.rerolled, false);
+  assert.equal(plain.ok && plain.item.rarity, 'junk');
 });

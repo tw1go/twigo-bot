@@ -186,9 +186,9 @@ Balikbayan Box 35, Lola's Bottomless Bag 50) add +8 each, once each, up to 50. `
 
 ## Rewards
 
-`/redeem` lists rewards. **🧪 Potions** (`src/potions/potions.ts`, used with `/potion use|list`): 🧪 Kalawang 8 (halves a target's
-Bakod time) · 🫥 Tago Tonic 6 (30 min of 0% gamble bust) · 🍀 Swerte Elixir 5 (next 3 digs reroll junk once) · 🍵 Marites Tea 3
-(an Easter egg hint you haven't heard). **🔐 Vault** — 50 Kowens, once; `/vault deposit|withdraw|view` stores up to 30% of your total
+`/redeem` lists rewards. **🧪 Sari-sari potions** (`src/potions/potions.ts`, used with `/potion use|list`, or drunk from the
+web town's bag): 🧪 Kalawang 8 (halves a target's Bakod time; in the town, thrown from a house's menu) · 🫥 Tago Tonic 6 (30 min of
+0% gamble bust) · 🍀 Swerte Elixir 5 (next 3 digs reroll junk once) · 🍵 Marites Tea 3 (an Easter egg hint you haven't heard). **🔐 Vault** — 50 Kowens, once; `/vault deposit|withdraw|view` stores up to 30% of your total
 Kowens, safe from `/steal` and bail. Withdrawals must take at least 70% of what's inside. Inactivity decay and loan defaults
 still reach it (wallet first). The leaderboard and `/balance` count wallet + vault. **📢 Megaphone** — 1 Kowen; all of them share one bag slot. In the web town's chat, `/m message` uses one: the line is sky blue, runs across
 everyone's screen and goes to the town-chat channel with 📢 (`/g` is general chat again; `src/items/megaphone.ts`, kv 'megaphones').
