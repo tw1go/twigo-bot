@@ -1,7 +1,7 @@
 {
   "version": 1,
   "note": "Mikazuki stats and scaling, 8 Oct 2026. Source of truth is combat-classes/combat-guide.md ('Stats, levels and scaling'). Numbers marked placeholder are for tuning.",
-  "levelCap": 20,
+  "levelCap": 40,
   "classless": {
     "STR": 4,
     "DEX": 4,
@@ -153,6 +153,33 @@
       "freeGap": 5,
       "perExtraLevel": 0.2,
       "minMult": 0.2
+    },
+    "capNote": "At Lv 40 the XP bar shows MAX. Lv 20 to 40 is 202,572 XP (5.5x Lv 1 to 20). Lv 20->21 = 4,729, Lv 30->31 = 9,614, Lv 39->40 = 15,216.",
+    "mobXpAbove20": {
+      "rule": "xp = round(toNext(mobLevel) / 50 * xpMult) for mobs of Lv 21+; the Slums formula stays for Lv 1-20 mobs",
+      "killsPerLevel": 50
+    },
+    "toNextByLevel": {
+      "20": 4729,
+      "21": 5150,
+      "22": 5587,
+      "23": 6039,
+      "24": 6506,
+      "25": 6988,
+      "26": 7484,
+      "27": 7995,
+      "28": 8521,
+      "29": 9060,
+      "30": 9614,
+      "31": 10182,
+      "32": 10763,
+      "33": 11359,
+      "34": 11968,
+      "35": 12591,
+      "36": 13227,
+      "37": 13877,
+      "38": 14540,
+      "39": 15216
     }
   },
   "gearBase": {
@@ -244,6 +271,110 @@
         },
         "xpTo": "everyone who did at least 5% of its HP",
         "note": "skillMult junkDrop and shockwave are repo additions (bot web/town-golem.ts): Junk Drop falls in circles under the players it isn't fighting, Shockwave rings out round a Tire Slam from half HP"
+      },
+      "payong-flapper": {
+        "level": 21,
+        "hp": 924,
+        "atk": 69,
+        "def": 42,
+        "xp": 103,
+        "hpMult": 1.0,
+        "xpMult": 1.0,
+        "kusing": 466,
+        "note": "passive; opens to block (takes 50% damage from the front for 1 s), then pokes"
+      },
+      "sibuyas-sobber": {
+        "level": 23,
+        "hp": 1265,
+        "atk": 75,
+        "def": 46,
+        "xp": 121,
+        "hpMult": 1.0,
+        "xpMult": 1.0,
+        "kusing": 544,
+        "note": "tear cloud: -25% accuracy for 4 s"
+      },
+      "garapon-jars": {
+        "level": 25,
+        "hp": 693,
+        "atk": 81,
+        "def": 50,
+        "xp": 56,
+        "hpMult": 0.4,
+        "xpMult": 0.4,
+        "kusing": 634,
+        "note": "packs of 3; pull one, the pack comes"
+      },
+      "sako-slammer": {
+        "level": 27,
+        "hp": 3082,
+        "atk": 87,
+        "def": 54,
+        "xp": 208,
+        "hpMult": 1.3,
+        "xpMult": 1.3,
+        "kusing": 740,
+        "note": "belly slam leaves spilled rice: -30% move speed for 3 s"
+      },
+      "monobloc-stack": {
+        "level": 29,
+        "hp": 2921,
+        "atk": 93,
+        "def": 58,
+        "xp": 163,
+        "hpMult": 0.9,
+        "xpMult": 0.9,
+        "kusing": 863,
+        "note": "ranged chair throw (4 tiles); loses a chair at 60% and 30% HP (-10% ATK each)"
+      },
+      "sangkalan-chomper": {
+        "level": 31,
+        "hp": 7997,
+        "atk": 99,
+        "def": 62,
+        "xp": 305,
+        "hpMult": 1.8,
+        "xpMult": 1.5,
+        "kusing": 1006,
+        "note": "blocks 50% of damage from the front; hit its sides"
+      },
+      "banyera-lurker": {
+        "level": 33,
+        "hp": 6690,
+        "atk": 105,
+        "def": 66,
+        "xp": 250,
+        "hpMult": 1.1,
+        "xpMult": 1.1,
+        "kusing": 1174,
+        "note": "hidden in floodwater until 2 tiles away; first hit from hiding x1.5"
+      },
+      "timbangan-sentinel": {
+        "level": 35,
+        "hp": 8325,
+        "atk": 111,
+        "def": 70,
+        "xp": 252,
+        "hpMult": 1.0,
+        "xpMult": 1.0,
+        "kusing": 1369,
+        "note": "Weigh: +1% damage per 2% of the target's current HP (x1.5 at full HP)"
+      },
+      "great-scale": {
+        "level": 37,
+        "hp": 341879,
+        "atk": 117,
+        "def": 74,
+        "xp": 6939,
+        "hpMult": 30,
+        "xpMult": 25,
+        "skillMult": {
+          "panSlam": 3,
+          "weighIn": 2.5,
+          "shortWeight": 1.5
+        },
+        "xpTo": "everyone who did at least 5% of its HP",
+        "phases": "calls 3 Timbangan Sentinels at 50% HP; enrages at 25% HP (red needle, +30% attack speed)"
       }
     }
   },
@@ -607,7 +738,8 @@
       "note": "Repo addition (17 Oct 2026, Mac): a mobility move that dodges every hit landing within its ms of being used (100% dodge: no damage, slow, stun or blindness; shown as Dodge). Step Back: the Slingshot's and Stick's Lv 8 move.",
       "ms": { "step-back": 500 }
     },
-    "rule": "higher-tier skill at Lv 5 always beats a lower-tier skill at Lv 20"
+    "rule": "higher-tier skill at Lv 5 always beats a lower-tier skill at Lv 20",
+    "unlocksAbove20": "new damage skills at Lv 21, 25, 28, 32, 36, 40 (6 per class, separate track); cooldownByUnlock tiers 8-13 = 16, 18, 20, 22, 24, 26 s (placeholder); skill level cap formula unchanged (max 20)"
   },
   "affixes": {
     "placeholder": true,
@@ -1117,7 +1249,9 @@
         30,
         40
       ],
-      "material": "Polished Whetstone"
+      "material": "Polished Whetstone",
+      "inGame": true,
+      "note": "Mid tier opens with the palengke: Lv 30 gear (Bronze, Linen, Bamboo, Fine, Amber) and Lv 40 (Iron, Denim, Rattan, Polished, Jade); Polished Whetstone and Mid Repair Kit."
     },
     "high": {
       "levels": [
@@ -1163,7 +1297,9 @@
       "field boss (10-20 per player)",
       "Kowens shop",
       "disassembly fragments"
-    ]
+    ],
+    "greatScaleKusingPerPlayer": 60000,
+    "kusingPerMobNote": "formula unchanged: Payong Flapper 466, Timbangan Sentinel 1369"
   },
   "disassembly": {
     "placeholder": true,
@@ -1437,7 +1573,38 @@
       "lampHatChance": 0.02
     },
     "eligible": "did >= 5% of golem HP",
-    "agimatSources": "golem loot and disassembly only"
+    "agimatSources": "golem loot and disassembly only",
+    "greatScale": {
+      "perEligiblePlayer": {
+        "kusing": 60000,
+        "polishedWhetstones": [
+          10,
+          20
+        ],
+        "gearPieces": [
+          1,
+          2
+        ],
+        "gearLevel": {
+          "30": 0.6,
+          "40": 0.4
+        },
+        "affix": {
+          "blue": 0.8,
+          "orange": 0.2
+        },
+        "accessoryChance": 0.33,
+        "agimatChance": 0.5,
+        "agimatLevels": [
+          30,
+          40
+        ],
+        "midRepairKitChance": 0.25
+      },
+      "eligible": "did >= 5% of its HP",
+      "everyMinutes": 120,
+      "note": "Same shape as the golem loot one tier up; no cosmetic drop (Mac)"
+    }
   },
   "pets": {
     "note": "Pets (Mac, 14 Oct 2026). Values marked default are Claude's; Mac set the tree layout, Lv cap 20, Lv 1 start, XP from attacking monsters scaled by level, 20-30 days to max, Fairy Cha +2.3% drop rate, boxes sold in the sari-sari store for 100 Kowens (common) / 200 (Fairy Cha). Mac set the maxed values for ATK +9, damage amp +3.5%, crit damage +9%.",
@@ -1606,5 +1773,55 @@
     "bodyPrice": 100,
     "setPrice": 130,
     "note": "Mac, 19 Oct 2026: Kowens for a head or body cosmetic, or both as a set, in the shop's Cosmetics tab"
+  },
+  "miniBosses": {
+    "palengke": {
+      "sibuyas-sobber": [
+        {
+          "id": "sibuyas-sobber-shallot-holmes",
+          "name": "Shallot Holmes",
+          "level": 25,
+          "hp": 17319,
+          "atk": 105,
+          "defense": 50,
+          "xp": 1118
+        }
+      ],
+      "monobloc-stack": [
+        {
+          "id": "monobloc-stack-chairman-mono",
+          "name": "Chairman Mono",
+          "level": 31,
+          "hp": 39983,
+          "atk": 129,
+          "defense": 62,
+          "xp": 1466
+        }
+      ],
+      "sangkalan-chomper": [
+        {
+          "id": "sangkalan-chomper-butch-block",
+          "name": "Butch Block",
+          "level": 34,
+          "hp": 71153,
+          "atk": 140,
+          "defense": 68,
+          "xp": 2872
+        }
+      ]
+    }
+  },
+  "drops": {
+    "palengke": {
+      "gearLevel": 30,
+      "gearChance": 0.03,
+      "lv40Chance": {
+        "banyera-lurker": 0.3,
+        "timbangan-sentinel": 0.3
+      },
+      "potionTier": "mid",
+      "potionChance": 0.05,
+      "note": "Palengke mobs drop Lv 30 no-affix gear 3% of kills (brown 20 / white 35 / grey 45); the Lurker and the Sentinel drop Lv 40 pieces 30% of the time; Medium potions 5%"
+    }
   }
 }
