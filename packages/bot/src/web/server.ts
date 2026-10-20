@@ -50,6 +50,7 @@ import { getOutfit, parseOutfit, saveOutfit } from './outfit.js';
 import { type OutfitData, cosmeticHatOf, cosmeticTopOf, parseMailAction, parsePetAction, withCosmetics, type HalloweenReward, addToBag, newItem } from '@mikazuki/shared';
 import { loadCosmeticHats, loadCosmeticTops } from './stats-data.js';
 import { hotbarsOf, isClassId, saveHotbar } from './hotbar.js';
+import { keybindsOf, saveKeybinds } from './keybinds.js';
 
 /** A saved look with what a member wears as cosmetics on it: a head cosmetic's hat, a body cosmetic's top (shared
  *  cosmetics.ts). */
@@ -161,6 +162,7 @@ import { kvLoad, kvSave } from '../db/db.js';
 //   POST /town/dig      dig at the Mine (/dig's rules; from the game's page only; members)
 //   POST /title/seen    { id? } the game showed the member their new title (from the game's page only)
 //   POST /town/hotbar   { cls, layout } a class's hotbar, kept for every device (/me hotbars; from the game's page only; members)
+//   POST /town/keybinds { keys } the keybinds changed from the defaults, kept for every device (/me keybinds; from the game's page only; members)
 //   POST /welcome/seen  the game showed the member their welcome gift (from the game's page only)
 //   CMS_PATH/*          the CMS, for the gifter (see cms.ts)
 //   WS   /ws            the live town: who else is there and where (see town.ts; from the game's page only)
@@ -345,7 +347,7 @@ async function me(client: Client, req: IncomingMessage, res: ServerResponse): Pr
   if (questPieces.length) console.log(`[quest] ${userId} got quest pieces: ${questPieces.map((i) => `${i.defId} +${i.plus}`).join(', ')}`);
   const upkeep = maintenance().on ? { maintenance: { note: maintenanceNote(), allowed: isCmsUser(userId) } } : {};
   const body: MeResponse = { ...upkeep, id: userId, name, ...(username ? { username } : {}), avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items, preregistered: isPreregistered(userId), house: !!houseOf(userId), tester: await isTester(client, userId), outfit: getOutfit(userId), nickname: getNickname(userId), title: titleOf(userId), newTitle: newTitle(userId), welcomeGift: welcomeGift(userId), mailUnread: unreadMail(userId), status: await statusOf(client, userId), adventure: adventureOf(userId),
-    dig: digStatus(userId), hotbars: hotbarsOf(userId), ...(trainingGear.length ? { trainingGear } : {}), ...(questRewards.length ? { questRewards } : {}), ...(questPieces.length ? { questPieces } : {}) };
+    dig: digStatus(userId), hotbars: hotbarsOf(userId), keybinds: keybindsOf(userId), ...(trainingGear.length ? { trainingGear } : {}), ...(questRewards.length ? { questRewards } : {}), ...(questPieces.length ? { questPieces } : {}) };
   send(res, 200, JSON.stringify(body));
 }
 
@@ -986,6 +988,24 @@ export function startWebServer(client: Client): void {
         if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
         const kept = saveHotbar(userId, body!.cls as string, body!.layout);
         if (!kept) return send(res, 400, '{"error":"invalid layout"}');
+        return send(res, 200, '{"ok":true}');
+      }
+      if (req.method === 'POST' && path === '/town/keybinds') {
+        // The keybinds changed from the defaults (web/keybinds.ts): kept for every device the member plays on.
+        if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
+        if (!fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
+        const userId = sessionUser(req);
+        if (!userId) return send(res, 401, '{"error":"not logged in"}');
+        let body: { keys?: unknown } | null = null;
+        try {
+          const raw = await readBody(req);
+          if (raw.length > 16_000) return send(res, 413, '{"error":"too big"}');
+          body = JSON.parse(raw || 'null');
+        } catch {
+          // invalid JSON → rejected below
+        }
+        if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
+        if (!saveKeybinds(userId, body?.keys)) return send(res, 400, '{"error":"invalid keybinds"}');
         return send(res, 200, '{"ok":true}');
       }
       if (req.method === 'POST' && path === '/title/seen') {
