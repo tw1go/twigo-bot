@@ -677,11 +677,13 @@ export function attachTown(server: Server, opts: TownOptions): Town {
 
   // Loot on the ground, by battle room (only with somewhere to keep what's picked up).
   const items = loadItemData();
-  const loots = new Map<string, LootRoom>(opts.items ? Object.keys(opts.mobs ?? {}).map((room) => [room, new LootRoom(items, opts.lootRandom, undefined, opts.lootPlusRandom)]) : []);
+  // A member's Drop rate (the stat; CONTEXT.md): the loot cascades' boost (town-loot.ts, loot.ts dropBoost).
+  const dropRateOf = (userId: string) => (rules && opts.progress ? rules.dropRate(opts.progress.fighter(userId)) : 0);
+  const loots = new Map<string, LootRoom>(opts.items ? Object.keys(opts.mobs ?? {}).map((room) => [room, new LootRoom(items, opts.lootRandom, undefined, opts.lootPlusRandom, undefined, dropRateOf)]) : []);
   /** A room's loot, made when something is first dropped there (a player's item off a map without mobs). */
   const lootIn = (room: string): LootRoom => {
     let L = loots.get(room);
-    if (!L) loots.set(room, (L = new LootRoom(items, opts.lootRandom, undefined, opts.lootPlusRandom)));
+    if (!L) loots.set(room, (L = new LootRoom(items, opts.lootRandom, undefined, opts.lootPlusRandom, undefined, dropRateOf)));
     return L;
   };
   /** Where a dropped item lands on a map without mobs: `at`, else the nearest open tile within 2 with no loot on it. */

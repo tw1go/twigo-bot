@@ -5,7 +5,7 @@ import { type ShopEvents, addToBag, advanceCollects, buyCosmetic, expireItems, i
 import { STAT_NAMES, bagSlots, classSkills, classBuffs, buffSkillLevels, damageSkillLevels, skillLevelOf, equipFromBag, giveGear, giveQuestRewards, giveQuestPieces, questKill, readyToReport, withLeveling, missingTraining, moveUnlock, newItem, placesFor, swapTrainingGear, trainingGear, takeKind, unequipToBag, wearCheck, COSMETIC_PLACES, wearCosmetic, unwearCosmetic, gainPetXp, petAction, petIdOf, petRules } from '@mikazuki/shared';
 import { db } from '../db/db.js';
 import { type LevelGain, type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView, raiseSkill, refundPoints, resetSkillPoints, resetStatPoints, spendPoint } from './progress.js';
-import type { Attacker } from './town-mobs.js';
+import { type Attacker, fighterStats } from './town-mobs.js';
 import { type CombatItems, type LootContent, buyCombat, dropFromBag, takeLoot, usePotion } from './combat-bag.js';
 import { forge } from './forge.js';
 import { type HeldOffer, settleTrade } from './trade.js';
@@ -724,3 +724,7 @@ export function resetAdventure(userId: string): void {
   const quests = { ...freshAdventure().quests, ...(s.quests.rewarded ? { rewarded: s.quests.rewarded } : {}) };
   save(userId, { ...freshAdventure(), quests, equipped, bag: s.bag.filter((i) => !training(i)), kusing: s.kusing, progress: refundPoints(loadStats(), null, s.progress) });
 }
+
+/** Their Drop rate (the stat, capped: class, level, points, worn gear and the pet out; no buffs): the loot cascades'
+ *  boost (CONTEXT.md Drop rate; town-warrens.ts RunDeps.dropRate). */
+export const dropRateOf = (userId: string): number => fighterStats(loadItemData(), fighterOf(userId)).dropRate ?? 0;

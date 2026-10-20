@@ -324,6 +324,17 @@ The Roll / Pass pop-up when a rare drop (an orange item of Calamity, Flamboyance
 Scrap Warrens run: everyone it dropped for rolls 1 to 1,000 or passes, and the highest roll takes it.
 _Avoid_: need/greed, dice roll
 
+**Cascade**:
+How a random tier is picked wherever loot has grades (a dig's rarity, a dropped piece's rarity and plus, a boss piece's
+affix, slots and level): the rarest tier is tried first with a chance of its own, a miss tries the next, down to the
+floor tier, which always lands. Yes-or-no chances (whether a kill drops gear at all, a forge's odds) aren't cascades.
+_Avoid_: loot roll (that's the players' Roll / Pass), weighted roll, pity
+
+**Drop rate**:
+The stat on gear, agimats and pets that raises every non-floor chance of a mob's or boss's loot by its percentage: the
+chance of a drop at all and each tier above the floor in its cascades. Never digs or event loot.
+_Avoid_: luck (that's the forge's), magic find
+
 **Plus**:
 How many times an item has been enhanced, 0 to 20, written after its name ("Sturdy Slingshot of Calamity +7"); dropped
 gear may already have +1 to +3.

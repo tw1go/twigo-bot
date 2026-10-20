@@ -272,15 +272,15 @@ test('dropped gear\'s plus: +0 to +3 by stats.json rarity.dropPlus (60 / 25 / 10
   for (const [k, p] of [[0, 0.6], [1, 0.25], [2, 0.1], [3, 0.05]] as const) assert.ok(Math.abs(seen[k] / N - p) < 0.01, `+${k} ${seen[k] / N}`);
   // The golem's pieces too (its own random for the plus: the rest of the loot as ever).
   const pluses = new Set<number>();
-  const always3 = () => 0.999;
+  const always3 = () => 0.001; // (the plus is a cascade: +3 is tried first)
   for (let i = 0; i < 200; i++) {
     for (const x of golemLoot(D, random, uid, always3)) {
       if ('item' in x && 'slot' in D.defs.get(x.item.defId)!) pluses.add(x.item.plus);
     }
   }
   assert.deepEqual([...pluses], [3]);
-  const gearOnly = mobDrops(D, 'tin-can', 1, () => 0.001, uid, () => 0.7).find((x) => 'item' in x && 'slot' in D.defs.get(x.item.defId)!);
-  assert.ok(gearOnly && 'item' in gearOnly && gearOnly.item.plus === 1, 'a mob\'s gear: 0.7 falls in +1');
+  const gearOnly = mobDrops(D, 'tin-can', 1, () => 0.001, uid, () => 0.2).find((x) => 'item' in x && 'slot' in D.defs.get(x.item.defId)!);
+  assert.ok(gearOnly && 'item' in gearOnly && gearOnly.item.plus === 1, 'a mob\'s gear: 0.2 misses +3 (5%) and +2 (10.5% of the rest), lands +1 (29.4%)');
 });
 
 test('golem loot: its Kusing, 10–20 Rough Whetstones, 1–2 blue or orange gear pieces with lines; an accessory, agimat and the hat now and then', () => {

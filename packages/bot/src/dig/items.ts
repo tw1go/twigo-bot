@@ -1,7 +1,9 @@
+import { cascade } from '@mikazuki/shared';
 import { kvLoad, kvSave } from '../db/db.js';
 
 // Everything /dig can turn up. `value` is what /sell pays, in Kowens.
-// A dig first rolls a rarity (RARITY_CHANCE), then an item of that rarity — cheaper items come up much more often.
+// A dig first rolls a rarity (RARITY_CHANCE, as a cascade: the rarest tried first with its own odds; CONTEXT.md
+// Cascade), then an item of that rarity — cheaper items come up much more often.
 // The items below are the defaults: the CMS changes them, adds new ones and takes some out of the ground (kv
 // 'dig-items', see setDigItem). An item out of the ground (`off`) isn't dug up any more, but the ones already found stay
 // in bags and still sell.
@@ -208,17 +210,12 @@ export function itemChances(): Map<string, number> {
   return out;
 }
 
+/** The dig's cascade (CONTEXT.md Cascade): the rarest tier first, down to junk; the same odds as RARITY_CHANCE. */
+const DIG_TIERS = (Object.entries(RARITY_CHANCE) as [Rarity, number][]).filter(([r, c]) => r !== 'secret' && c > 0).reverse();
+
 export function rollItem(random = Math.random): Item {
   if (random() < SECRET_CHANCE && pool('secret').length) return rollOfRarity('secret', random); // 🤫
-  let r = random();
-  let rarity: Rarity = 'junk';
-  for (const [key, chance] of Object.entries(RARITY_CHANCE) as [Rarity, number][]) {
-    if ((r -= chance) < 0) {
-      rarity = key;
-      break;
-    }
-  }
-  return rollOfRarity(rarity, random);
+  return rollOfRarity(cascade(DIG_TIERS, random), random);
 }
 
 /** An item of the given rarity, cheaper ones more likely. */
@@ -235,7 +232,5 @@ export const LUCKY_ODDS: [Rarity, number][] = [
   ['legendary', 0.05],
 ];
 export function rollLucky(random = Math.random): Item {
-  let r = random();
-  const rarity = LUCKY_ODDS.find(([, chance]) => (r -= chance) < 0)?.[0] ?? 'epic';
-  return rollOfRarity(rarity, random);
+  return rollOfRarity(cascade([...LUCKY_ODDS].reverse(), random), random);
 }

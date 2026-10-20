@@ -1,7 +1,7 @@
 import type { ItemData, LootGot, TownLoot } from '@mikazuki/shared';
 import { LOOT_REACH, type LevelingData, itemStats, miniBossRules, numbersIn } from '@mikazuki/shared';
 import type { LootContent } from './combat-bag.js';
-import { golemLoot, miniLoot, mobDrops } from './loot.js';
+import { dropBoost, golemLoot, miniLoot, mobDrops } from './loot.js';
 import { loadDungeons, loadLeveling } from './stats-data.js';
 
 // 🪙 Loot on the ground in a battle map (one LootRoom per room with mobs, run by the town: web/town.ts). A kill's drops
@@ -77,6 +77,8 @@ export class LootRoom {
     /** Dropped gear's plus (loot.ts dropPlus): `random` unless given (the dev town's rich loot). */
     private readonly plusRandom: () => number = random,
     leveling: LevelingData | null = loadLeveling(),
+    /** A member's Drop rate (the stat): the loot cascades' boost (loot.ts dropBoost; CONTEXT.md Drop rate). None: 0. */
+    private readonly dropRate: (userId: string) => number = () => 0,
   ) {
     this.minis = leveling ? miniBossRules(leveling) : null;
     this.reserveMs = (numbersIn(itemStats(data.stats).party.solo)[0] ?? 10) * 1000;
@@ -90,15 +92,18 @@ export class LootRoom {
    */
   drop(kill: LootKill, party: string[], spots: (at: [number, number], n: number) => [number, number][], now: number): Loot[] {
     const mini = kill.mini && this.minis ? this.minis : null;
+    // The Drop rate that boosts a set's cascades: a personal set its owner's, a shared set the highest among its owners.
+    const boost = (owners: string[]) => dropBoost(this.data, Math.max(0, ...owners.map((m) => this.dropRate(m))));
+    const shared = (owners: string[], contents: (boost: number) => LootContent[]) => [{ owners, personal: false, contents: contents(boost(owners)) }];
     // The golem: each earner's own set. Else one set for everyone (a mini boss's or a mob's), its head start for everyone
     // who earned a mini boss's, else the killer and their party.
     const lots: { owners: string[]; personal: boolean; contents: LootContent[] }[] = !kill.to.length
       ? []
       : kill.boss
-        ? kill.to.map((owner) => ({ owners: [owner], personal: true, contents: golemLoot(this.data, this.random, this.uid, this.plusRandom, this.golemTicket) }))
+        ? kill.to.map((owner) => ({ owners: [owner], personal: true, contents: golemLoot(this.data, this.random, this.uid, this.plusRandom, this.golemTicket, boost([owner])) }))
         : mini
-          ? [{ owners: [...new Set([...kill.to, ...party])], personal: false, contents: miniLoot(this.data, kill.kind, kill.level, mini, this.random, this.uid, this.plusRandom) }]
-          : [{ owners: [...new Set([...kill.to.slice(0, 1), ...party])], personal: false, contents: mobDrops(this.data, kill.kind, kill.level, this.random, this.uid, this.plusRandom) }];
+          ? shared([...new Set([...kill.to, ...party])], (b) => miniLoot(this.data, kill.kind, kill.level, mini, this.random, this.uid, this.plusRandom, b))
+          : shared([...new Set([...kill.to.slice(0, 1), ...party])], (b) => mobDrops(this.data, kill.kind, kill.level, this.random, this.uid, this.plusRandom, b));
     const total = lots.reduce((n, l) => n + l.contents.length, 0);
     const tiles = spots(kill.at, total);
     let i = 0;

@@ -131,6 +131,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   every slotted item, always one) and its `from` text.
 - `classes/stats.json`: `potions.tiers.mid.minLevel` 10 (was 30; 12 Oct 2026: the Medium HP/MP Potions sold from Lv 10).
   `items/items.json`: `mid-hp-potion`, `mid-mp-potion` (the art folder's items/potions/item-potion-mid-* icons).
+- `classes/stats.json`: `rarity.cascade` (20 Oct 2026: every tier pick a cascade, CONTEXT.md; Drop rate's `perChance`).
 - `classes/stats.json`: `lootRoll` (rare loot a party rolls for: which items, 10 s, 1..1000; 12 Oct 2026) and
   `agimats.perItem` "any stats, the same one in both slots too" (was "different stats"; 12 Oct 2026).
 - `classes/stats.json`: `derived.critRate.perDEX` 0.003 (was 0.001, 11 Oct 2026: DEX worth a point like STR and INT).
@@ -896,6 +897,18 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   inventory.slots); the old bag (dig/bag.ts) no longer counts gear. `web/combat-bag.ts` (pure): `takeLoot`, `usePotion`,
   `combatWares` / `buyCombat` (Healing: potions for Kusing; Smithing: whetstones / kits for Kowens; Low tier until the
   next tier's level), `devGive`.
+- Cascades (CONTEXT.md Cascade, Drop rate; shared `cascade.ts` `cascade` / `cascadeChances` / `boosted`, tested in the
+  bot's `web/cascade.test.ts`): every pick of a tier in loot and digs (a dropped piece's rarity, plus and level, a boss
+  piece's affix and slots, a Warrens mini boss's affix / plain / unlucky, a dig's rarity: `rollItem` / `rollLucky` in
+  dig/items.ts) tries the best tier first with the odds table's own chance (its weight over what's left from it down: the
+  same odds as one weighted roll), a miss the next, the floor always. The tables keep their shape (stats.json `odds`,
+  dig's `RARITY_CHANCE`; loot.ts `bestFirst` orders them: rarities by `rarity.nameColour`, orange over blue, numbers
+  higher first). Drop rate (the stat, `caps.dropRate` 0.5; it did nothing before 20 Oct 2026) is the `boost`: every
+  non-floor chance and every chance of an extra item (a kill's gear / potion, a boss's accessory, agimat, hat, ticket,
+  fragment) × (1 + dropRate × stats.json `rarity.cascade.dropRate.perChance`), never amounts, never digs or event loot.
+  Whose: a personal set (the golem's) its owner's; a shared set the highest among its owners (`LootRoom`'s `dropRate`,
+  town.ts `dropRateOf` = `MobRoom.dropRate(fighter)`); a Warrens run the highest inside (`RunDeps.dropRate`, server.ts
+  `loadWarrens(…, dropRateOf)` from adventure.ts; the dev town: none).
 - Loot (`web/loot.ts` rolls, `web/town-loot.ts` LootRoom per mob room, run by `web/town.ts` with `TownOptions.items`):
   each kill (`MobKill` has kind, `at`, `boss`) drops Kusing (`kusingRange`: 0.6–1.2 × `kusingFor`, stats.json
   currencies.kusingPerMobRange; Tin Can 60–120; the golem's stays bossLoot's) + 3% gear (map level; Wire/Crab Lv 20 30%) + 5% a Low potion;
