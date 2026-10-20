@@ -717,7 +717,7 @@
      }
     },
     "cooldownByUnlock": {
-     "note": "Damage skill cooldown (s) at skill Lv 1, by unlock level (Mac, 9 Oct: longer cooldowns so the MP costs hold, a full bar lasts about 30 s of nonstop casting at Lv 20). Tier 1 keeps the game's 1 s. -1% a skill level past 1 (perSkillLevel.cooldown). Mobility moves keep their own cooldowns.",
+     "note": "Damage skill cooldown (s) at skill Lv 1, by unlock level (Mac, 9 Oct: longer cooldowns so the MP costs hold, a full bar lasts about 30 s of nonstop casting at Lv 20). Tier 1 keeps the game's 1 s. -1% a skill level past 1 (perSkillLevel.cooldown). Mobility moves keep their own cooldowns. Lv 21 to 40: a flat 15 s each (Mac, 20 Oct 2026: was 12, 15, 18, 20, 24, 26 s; a touch over Lv 18's 14 s, so no newer skill comes round sooner than an older one).",
      "1": 1.0,
      "3": 1.5,
      "6": 4,
@@ -725,12 +725,12 @@
      "12": 8,
      "15": 10,
      "18": 14,
-     "21": 12,
+     "21": 15,
      "25": 15,
-     "28": 18,
-     "32": 20,
-     "36": 24,
-     "40": 26,
+     "28": 15,
+     "32": 15,
+     "36": 15,
+     "40": 15,
      "45": 30,
      "50": 40
     },
@@ -739,7 +739,7 @@
       "ms": { "step-back": 500 }
     },
     "rule": "higher-tier skill at Lv 5 always beats a lower-tier skill at Lv 20",
-    "unlocksAbove20": "new damage skills at Lv 21, 25, 28, 32, 36, 40 (6 per class, separate track); cooldownByUnlock tiers 8-13 = 16, 18, 20, 22, 24, 26 s (placeholder); skill level cap formula unchanged (max 20)"
+    "unlocksAbove20": "new damage skills at Lv 21, 25, 28, 32, 36, 40 (6 per class, separate track); cooldownByUnlock tiers 8-13 = 15 s each (Mac, 20 Oct: was 16, 18, 20, 22, 24, 26 s); skill level cap formula unchanged (max 20)"
   },
   "affixes": {
     "placeholder": true,

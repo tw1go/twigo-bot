@@ -464,14 +464,15 @@ What a pet earns while out: each time its owner's attack hits a monster, that mo
 ## Skills and buffs
 
 **Damage skill**:
-One of a class's seven attacks, cast from the hotbar on battle maps; unlocks at its level, raised with skill points.
+One of a class's attacks, cast from the hotbar on battle maps: seven up to Lv 18, six more from Lv 21 to 40. Each
+unlocks at its level and is raised with skill points.
 
 **Mobility move**:
 Dash or the class's Lv 8 move (Step Back, Charge, Blink): a quick step along your facing, usable anywhere.
 
 **Buff**:
-A class skill that puts stats on you (and others) for a while; only the strongest buff on a stat counts. Cast on
-battle maps only; right-click one in your buff tray to take it off.
+A class skill that puts stats on you (and others) for a while; buffs on the same stat add up, but the same buff never
+stacks with itself. Cast on battle maps only; right-click one in your buff tray to take it off.
 _Avoid_: aura (that's the weapon's glow), effect
 
 **Shared buff**:
@@ -480,6 +481,12 @@ buffs while stats.json says so).
 
 **Stance**:
 A self buff with no timer (Keen Stance), on until cast again.
+
+**Debuff**:
+A class skill that puts an effect on a mob instead of a player (Armor Crack: less DEF; Marked: takes more damage), cast
+at your target like a buff. A mob holds one of each debuff at a time, whoever cast it; casting it again restarts its
+timer. Works on mini bosses and field bosses too.
+_Avoid_: curse, hex, status effect
 
 **Picked player**:
 The player you've clicked (their name box at the top): the one Info, Trade and buffs aim at.
