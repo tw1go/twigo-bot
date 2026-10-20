@@ -170,7 +170,7 @@ export function downLine(names: string[], boss = 'Scrapheap Golem'): string {
 }
 
 /** Each facing's step on the grid (as town-mobs.ts): SE +col, SW +row, NW −col, NE −row; and in turning order. */
-const AXIS: Record<TownMobFacing, [number, number]> = { se: [1, 0], sw: [0, 1], nw: [-1, 0], ne: [0, -1] };
+const AXIS: Record<TownMobFacing, [number, number]> = { se: [1, 0], sw: [0, 1], nw: [-1, 0], ne: [0, -1], s: [1, 1], e: [1, -1], n: [-1, -1], w: [-1, 1] }; // (it only ever faces the four diagonals)
 const TURNS: TownMobFacing[] = ['se', 'sw', 'nw', 'ne'];
 const STEPS: [number, number][] = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
 const cheb = (a: [number, number], b: [number, number]) => Math.max(Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1]));

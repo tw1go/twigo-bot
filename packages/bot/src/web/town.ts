@@ -1080,7 +1080,9 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   const spend = (c: Conn) => {
     const now = Date.now();
     // (Slowed: half; a dish's move speed (Pancit) on a battle map: faster.)
-    const k = (vitals?.slowed(c.userId, now) ? SLOWED : 1) * (buffs && battle(c.room) ? moveSpeedOf(buffs.effective(c.userId)) : 1);
+    // (Spilled rice under them: slower still, the slowest of the two; a Pancit's speed on top.)
+    const slow = Math.min(vitals?.slowed(c.userId, now) ? SLOWED : 1, mobsOf(c.room)?.slowAt(c.player.col, c.player.row, now) ?? 1);
+    const k = slow * (buffs && battle(c.room) ? moveSpeedOf(buffs.effective(c.userId)) : 1);
     c.tokens = Math.min(STEP_BURST * k, c.tokens + ((now - c.refilled) / 1000) * STEPS_PER_SECOND * k);
     c.refilled = now;
     if (c.tokens < 1) return false;
@@ -1179,6 +1181,9 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         // Their class, level, points, everything worn and skill levels; blinded, every hit misses.
         const now = Date.now();
         const who = { ...fighterOf(c), blinded: !!vitals?.blinded(c.userId, now) };
+        // (A tear cloud: that much off their accuracy, so they miss more.)
+        const tear = vitals?.tearOf(c.userId, now) ?? 0;
+        if (tear) who.buffs = { ...who.buffs, accuracy: (who.buffs?.accuracy ?? 0) - tear };
         // Its MP (stats.json skills.mpCost at its skill level), spent once the mob room takes the hit.
         const mp = skillMpCost(STATS, who.cls, String(m.skill), who.skills?.[m.skill as number] ?? 1);
         if (vitals && !vitals.hasMp(c.userId, mp)) return send(c, { t: 'attack-refused', reason: 'mp' });
@@ -2161,7 +2166,11 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         // The knocked out are nobody's target.
         const up = here.filter((o) => !o.player.out);
         const where = new Map(up.map((o) => [o.player.id, [o.player.col, o.player.row] as [number, number]]));
-        const guards = new Map(up.flatMap((o) => (o.guard ? [[o.player.id, o.guard] as const] : [])));
+        // (Their share of their HP left too: the Timbangan Sentinel's Weigh.)
+        const guards = new Map(up.flatMap((o) => {
+          const v = vitals?.get(o.userId);
+          return o.guard ? [[o.player.id, { ...o.guard, ...(v ? { hpShare: v.hp / Math.max(1, v.max.hp) } : {}) }] as const] : [];
+        }));
         const events: TownServerMessage[] = mobs.tick(now, where, guards, here.length);
         lootGone(room, loots.get(room)?.tick(now) ?? []); // loot that lay there too long
         // Burning puddles' ticks (their hits to the room, then what they killed and what that set off).
@@ -2209,6 +2218,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
           vitals.fought(o.userId, now);
           if (l.miss) continue;
           if (l.slow) vitals.slow(o.userId, l.slow, now);
+          if (l.tear) vitals.tear(o.userId, l.tear, l.tearAccuracy ?? 0, now);
           if (l.stun) {
             o.stunnedUntil = now + l.stun;
             const stun: TownServerMessage = { t: 'stunned', id: o.player.id, ms: l.stun };
