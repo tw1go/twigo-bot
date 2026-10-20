@@ -1,6 +1,6 @@
 import { keyLabel, matches, onKeybinds } from './keybinds';
 import { api } from '../net/endpoints';
-import { type Item, type Pocket, type TownBagItem, type TownInventoryResponse, type TownPotionResponse, RETURN_LANTERN, agimatPocket, bagSlots, costumePocket, cubeOf, isGearDef, pocketOf, pocketSlots, pocketUsed, sellPrice } from '@mikazuki/shared';
+import { type Item, type ItemData, type Pocket, type TownBagItem, type TownInventoryResponse, type TownPotionResponse, RETURN_LANTERN, agimatPocket, bagSlots, costumePocket, cubeOf, isGearDef, pocketOf, pocketSlots, pocketUsed, sellPrice } from '@mikazuki/shared';
 import { playSound } from '../audio/sound';
 import { toast } from './toast';
 import { devPotions, devTago, fakeLogin, fakeName } from '../session';
@@ -52,6 +52,45 @@ type Tab = 'all' | 'dug' | 'combat' | 'agimats' | 'costume' | 'misc';
 const TABS: [Tab, string][] = [['all', 'All'], ['dug', 'Dug up'], ['combat', 'Combat'], ['agimats', 'Agimats'], ['costume', 'Costume'], ['misc', 'Misc']];
 /** The combat bag's tabs, each a pocket of it (shared pocketOf): Combat the bag's own, Agimats and Costume their own. */
 const POCKET_TABS: Partial<Record<Tab, Pocket>> = { combat: 'bag', agimats: 'agimats', costume: 'costume' };
+
+/** A pocket tab's order (the Sort button, cycling): Newest = the server's slot order (new loot last), Rarity the best first
+ *  (gear before materials of the same colour; agimats: the rare stats first), Name by the kind's name (every Sturdy
+ *  Slingshot together, the best plus first), Level the highest first. Remembered per tab in this browser. */
+type SortKey = 'newest' | 'rarity' | 'name' | 'level';
+const SORT_KEYS: SortKey[] = ['newest', 'rarity', 'name', 'level'];
+const SORT_LABEL: Record<SortKey, string> = { newest: 'Newest', rarity: 'Rarity', name: 'Name', level: 'Level' };
+const SORT_DEFAULT: Record<Pocket, SortKey> = { bag: 'newest', agimats: 'level', costume: 'newest' };
+const SORT_STORE = 'mk_bag_sort';
+const isSortKey = (k: unknown): k is SortKey => SORT_KEYS.includes(k as SortKey);
+
+function loadSorts(): Partial<Record<Pocket, SortKey>> {
+  try {
+    const raw = JSON.parse(localStorage.getItem(SORT_STORE) ?? '{}') as Record<string, unknown>;
+    return Object.fromEntries(Object.entries(raw).filter(([, v]) => isSortKey(v))) as Partial<Record<Pocket, SortKey>>;
+  } catch {
+    return {};
+  }
+}
+
+/** The items of a pocket in the tab's order (see SortKey). */
+function sortBag(D: ItemData, items: Item[], key: SortKey): Item[] {
+  if (key === 'newest') return items;
+  const order = Object.keys((D.stats.rarity as unknown as { nameColour?: Record<string, unknown> }).nameColour ?? {}); // worst → best
+  const rare = new Set<string>((D.stats as unknown as { agimats?: { rare?: string[] } }).agimats?.rare ?? []);
+  const agimat = (it: Item) => {
+    const def = anyDef(it.defId);
+    return !!def && !isGearDef(def) && def.kind === 'agimat';
+  };
+  const rank = (it: Item) => (agimat(it) ? (rare.has(it.stat ?? '') ? order.length : -1) : order.indexOf(it.rarity));
+  const gear = (it: Item) => (isGearDef(anyDef(it.defId)) ? 1 : 0);
+  const base = (it: Item) => (agimat(it) ? nameOf(it) : (anyDef(it.defId)?.name ?? nameOf(it)));
+  const byName = (a: Item, b: Item) => base(a).localeCompare(base(b)) || b.plus - a.plus || nameOf(a).localeCompare(nameOf(b));
+  const cmp: (a: Item, b: Item) => number =
+    key === 'rarity' ? (a, b) => rank(b) - rank(a) || gear(b) - gear(a) || b.level - a.level || byName(a, b)
+    : key === 'name' ? (a, b) => byName(a, b) || b.level - a.level
+    : (a, b) => b.level - a.level || rank(b) - rank(a) || gear(b) - gear(a) || byName(a, b);
+  return [...items].sort(cmp);
+}
 /** Which tab shows an item of the old bag: dug-up items, the rest (keys, potions, megaphones) in Misc. (Combat is the
  *  combat bag's own.) */
 const tabOf = (it: TownBagItem): Tab => (it.kind === 'dig' ? 'dug' : 'misc');
@@ -108,6 +147,9 @@ export class Inventory {
   /** Select mode: every click adds or removes a slot (else Ctrl/⌘/Shift-click does). */
   private multi = false;
   private readonly multiButton = el('button', 'iv-multi', 'Select');
+  /** The pocket tabs' Sort button and each pocket's order (localStorage mk_bag_sort). */
+  private readonly sortButton = el('button', 'iv-sort');
+  private readonly sorts = loadSorts();
   private busy = false;
   private message: { text: string; ok: boolean } | null = null;
   private equipment: EquipmentPanel | null = null;
@@ -177,7 +219,22 @@ export class Inventory {
     });
     const toEquip = el('button', 'iv-to-equip', 'Equipment'); // phones: the equipment panel in the bag's place
     toEquip.addEventListener('click', () => document.body.classList.add('show-equipment'));
-    head.append(el('span', 'iv-title', 'Inventory'), this.slots, toEquip, this.multiButton, close);
+    // Sort (the pocket tabs): the next order each press, kept per tab.
+    this.sortButton.title = 'Sort this tab: Newest, Rarity, Name or Level';
+    this.sortButton.addEventListener('click', () => {
+      const pocket = POCKET_TABS[this.tab];
+      if (!pocket) return;
+      const key = SORT_KEYS[(SORT_KEYS.indexOf(this.sortOf(pocket)) + 1) % SORT_KEYS.length];
+      this.sorts[pocket] = key;
+      try {
+        localStorage.setItem(SORT_STORE, JSON.stringify(this.sorts));
+      } catch {
+        // private mode: this visit only
+      }
+      playSound('click');
+      this.render();
+    });
+    head.append(el('span', 'iv-title', 'Inventory'), this.slots, toEquip, this.sortButton, this.multiButton, close);
     this.tabs.setAttribute('role', 'tablist');
     for (const [t, label] of TABS) {
       const b = el('button', 'iv-tab', label);
@@ -301,7 +358,10 @@ export class Inventory {
       b.setAttribute('aria-selected', String(t === this.tab));
     }
     this.renderWallet(d);
-    if (POCKET_TABS[this.tab]) return this.renderCombat();
+    const pocket = POCKET_TABS[this.tab];
+    this.sortButton.hidden = !pocket;
+    if (pocket) this.sortButton.textContent = `Sort: ${SORT_LABEL[this.sortOf(pocket)]}`;
+    if (pocket) return this.renderCombat();
     this.hideTip();
 
     // One slot per item (this tab's; a stacked kind, megaphones, in one with its count), then the free slots, then the
@@ -387,9 +447,8 @@ export class Inventory {
     if (!D || !s) return void this.grid.replaceChildren(el('div', 'iv-empty', 'Choose a class with the Tanod to fill your combat bag.'));
     // This tab's pocket: the Agimats and Costume tabs' own, the Combat tab the rest.
     const pocket: Pocket = POCKET_TABS[this.tab] ?? 'bag';
-    // (The Agimats tab: the highest level first, each level's by stat, else as the bag has them.)
-    const bag = s.bag.filter((b) => pocketOf(D, b) === pocket);
-    if (pocket === 'agimats') bag.sort((a, b) => b.level - a.level || (a.stat ?? '').localeCompare(b.stat ?? ''));
+    // In the tab's order (the Sort button; the Agimats tab starts on Level: the highest first).
+    const bag = sortBag(D, s.bag.filter((b) => pocketOf(D, b) === pocket), this.sortOf(pocket));
     const slots = pocketSlots(D, pocket);
     this.slots.textContent = `${bag.length}/${slots}`;
     this.slots.classList.toggle('iv-full', bag.length >= slots);
@@ -636,6 +695,11 @@ export class Inventory {
     if (r) this.message = { text: r.message, ok: r.ok };
     if (this.pickedUid === it.uid && r?.ok) this.pickedUid = null;
     this.render();
+  }
+
+  /** A pocket's order: the one picked here, else its default (Combat and Costume as the server keeps them, Agimats by Level). */
+  private sortOf(pocket: Pocket): SortKey {
+    return this.sorts[pocket] ?? SORT_DEFAULT[pocket];
   }
 
   /** What an item sells for in Kusing (training gear, agimats, potions: the whole stack), or null. */
