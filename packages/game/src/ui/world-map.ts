@@ -6,9 +6,41 @@ export interface MapLayout {
   tilePx: number;
   origin: [number, number];
   maps: Record<string, { col: number; row: number; size: [number, number]; label?: [number, number] }>;
-  posts: Record<string, { tile: [number, number]; px: [number, number] }>;
+  /** Each map's Lantern Post, or its several (the Palengke's four: 2 × 2 posts, `tile` their top tile, with a name). */
+  posts: Record<string, MapPost | MapPost[]>;
   icon: { cell: [number, number]; anchor: [number, number] };
 }
+
+export interface MapPost {
+  tile: [number, number];
+  px: [number, number];
+  name?: string;
+}
+
+/** A map's posts as a list, and where each stands on the picture (its middle: a 2 × 2 post's shared corner). */
+export function postsOf(L: MapLayout, map: string): { tile: [number, number]; name?: string; at: [number, number] | null }[] {
+  const p = L.posts[map];
+  if (!p) return [];
+  const list = Array.isArray(p) ? p : [p];
+  const mid = Array.isArray(p) ? 1 : 0.5;
+  return list.map((x) => ({ tile: x.tile, name: x.name, at: worldPoint(L, map, x.tile[0] + mid, x.tile[1] + mid) }));
+}
+
+/** The picture's box with every map's diamond in it ([x0, y0, x1, y1] in the picture's pixels: below 0 where a map is
+ *  off the picture's top or left, the Palengke's until it's drawn in). */
+export function worldBounds(L: MapLayout, picture: [number, number]): [number, number, number, number] {
+  let [x0, y0, x1, y1] = [0, 0, picture[0], picture[1]];
+  for (const [id, m] of Object.entries(L.maps)) {
+    for (const [c, r] of [[0, 0], [m.size[0], 0], [m.size[0], m.size[1]], [0, m.size[1]]] as const) {
+      const p = worldPoint(L, id, c, r)!;
+      [x0, y0, x1, y1] = [Math.min(x0, p[0]), Math.min(y0, p[1]), Math.max(x1, p[0]), Math.max(y1, p[1])];
+    }
+  }
+  return [Math.floor(x0), Math.floor(y0), Math.ceil(x1), Math.ceil(y1)];
+}
+
+/** The layout moved by (dx, dy): what's drawn on a stage bigger than the picture (worldBounds). */
+export const shifted = (L: MapLayout, dx: number, dy: number): MapLayout => ({ ...L, origin: [L.origin[0] + dx, L.origin[1] + dy] });
 
 /** A Slums mob zone as the maps say it ([col0, row0, col1, row1], both ends in). */
 export interface MapZone {

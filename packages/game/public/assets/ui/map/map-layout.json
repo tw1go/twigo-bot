@@ -30,6 +30,18 @@
     30,
     -7
    ]
+  },
+  "palengke": {
+   "col": -280,
+   "row": 13,
+   "size": [
+    280,
+    210
+   ],
+   "label": [
+    140,
+    96
+   ]
   }
  },
  "posts": {
@@ -52,7 +64,53 @@
     317.2,
     163.6
    ]
-  }
+  },
+  "palengke": [
+   {
+    "tile": [
+     258,
+     105
+    ],
+    "name": "entrance",
+    "px": [
+     47.6,
+     45.2
+    ]
+   },
+   {
+    "tile": [
+     198,
+     66
+    ],
+    "name": "north (Gulayan)",
+    "px": [
+     30.8,
+     5.6
+    ]
+   },
+   {
+    "tile": [
+     68,
+     113
+    ],
+    "name": "west (Karinderya)",
+    "px": [
+     -110.8,
+     -27.6
+    ]
+   },
+   {
+    "tile": [
+     126,
+     185
+    ],
+    "name": "south (Isdaan, by the hall)",
+    "px": [
+     -122.0,
+     24.4
+    ]
+   }
+  ]
  },
  "icon": {
   "file": "ui-map-teleporter.png",
@@ -70,5 +128,6 @@
    15
   ]
  },
- "labelNote": "repo-only: maps[id].label = the tile where the Map menu writes the map's name (from the mockup; may lie past the map's edge)"
+ "labelNote": "repo-only: maps[id].label = the tile where the Map menu writes the map's name (from the mockup; may lie past the map's edge)",
+ "palengkeNote": "Repo addition (20 Oct 2026): the Lumang Palengke sits west of the Slums (its east gate, col 279 rows 103-105, meets the Slums' west gate, col 0 rows 116-118), off the left of ui-map-world.png: until the picture has it, the Map menu draws a plain diamond there. posts.palengke: its four Lantern Posts (2x2; px at each one's middle)."
 }
