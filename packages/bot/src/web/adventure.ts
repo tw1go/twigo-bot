@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { AdventureState, ClassesFile, EquipPlace, Item, QuestDef, QuestReward, QuestsFile, StatName, TownAdventureResponse, TownEquipAction, TownForgeAction, TownForgeResponse, TownPointsAction, TownQuestAction, TownSkillsAction, CosmeticPlace, TownPetAction } from '@mikazuki/shared';
-import { type ShopEvents, addToBag, advanceCollects, buyCosmetic, expireItems, itemName, heldCount, objectiveCount, offeredBy, takeFromBag } from '@mikazuki/shared';
+import { type ShopEvents, type PalengkeData, addToBag, advanceCollects, buyCosmetic, expireItems, itemName, heldCount, objectiveCount, offeredBy, palengkeQuests, questItemDrops, startInArea, takeFromBag, unlockedAt } from '@mikazuki/shared';
 import { STAT_NAMES, bagSlots, classSkills, classBuffs, buffSkillLevels, damageSkillLevels, skillLevelOf, equipFromBag, giveGear, giveQuestRewards, giveQuestPieces, questKill, readyToReport, withLeveling, missingTraining, moveUnlock, newItem, placesFor, swapTrainingGear, trainingGear, takeKind, unequipToBag, wearCheck, COSMETIC_PLACES, wearCosmetic, unwearCosmetic, gainPetXp, petAction, petIdOf, petRules } from '@mikazuki/shared';
 import { db } from '../db/db.js';
 import { type LevelGain, type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView, raiseSkill, refundPoints, resetSkillPoints, resetStatPoints, spendPoint } from './progress.js';
@@ -9,7 +9,7 @@ import { type Attacker, fighterStats } from './town-mobs.js';
 import { type CombatItems, type LootContent, buyCombat, dropFromBag, takeLoot, usePotion } from './combat-bag.js';
 import { forge } from './forge.js';
 import { type HeldOffer, settleTrade } from './trade.js';
-import { loadDungeons, loadGear, loadItemData, loadLeveling, loadStats } from './stats-data.js';
+import { loadDungeons, loadGear, loadItemData, loadLeveling, loadPalengkeLeveling, loadStats } from './stats-data.js';
 
 // ⚔️ A member's class, quests, equipment and level in the web game (table adventurers, schema v10; level, XP and points
 // v11, by web/progress.ts). The quests, classes and equipment are the game's data files (public/assets/quests/quests.json,
@@ -24,8 +24,11 @@ import { loadDungeons, loadGear, loadItemData, loadLeveling, loadStats } from '.
 
 const asset = <T>(path: string): T => JSON.parse(readFileSync(new URL(`../../../game/public/assets/${path}`, import.meta.url), 'utf8')) as T;
 
-/** quests/quests.json, the Tanod's leveling chain filled in from classes/leveling.json. */
-export const QUESTS: QuestDef[] = withLeveling(asset<QuestsFile>('quests/quests.json').quests, loadLeveling());
+/** The Lumang Palengke's quest chain (classes/palengke-leveling.json; its NPCs' names from maps/palengke.json). */
+export const PALENGKE = loadPalengkeLeveling() as unknown as PalengkeData;
+const PALENGKE_NPCS = new Map(asset<{ npcs?: { id: string; name: string }[] }>('maps/palengke.json').npcs?.map((n) => [n.id, n.name]) ?? []);
+/** quests/quests.json, the Tanod's leveling chain filled in from classes/leveling.json, then the Palengke's chain. */
+export const QUESTS: QuestDef[] = [...withLeveling(asset<QuestsFile>('quests/quests.json').quests, loadLeveling()), ...palengkeQuests(PALENGKE, (id) => PALENGKE_NPCS.get(id) ?? id)];
 export const CLASSES = asset<ClassesFile>('classes/classes.json').classes;
 export const EQUIPMENT = loadGear();
 const PLACES = new Set<EquipPlace>(['weapon', 'head', 'body', 'hands', 'bottoms', 'feet', 'necklace', 'earrings', 'bracers1', 'bracers2', 'ring1', 'ring2']);
@@ -52,7 +55,8 @@ export function giveTrainingArmor(s: AdventureState): string[] {
 }
 
 /** Starts the autoStart quests they haven't started or finished (a class quest only for someone without a class), and
- *  moves on any collect objective whose item is in the bag. Returns the ones started. */
+ *  moves on any collect objective whose item is in the bag; a finished quest's next one waits for its unlockLevel
+ *  (CONTEXT.md Level gap). Returns the ones started. */
 export function startQuests(s: AdventureState): QuestDef[] {
   advanceCollects(s, QUESTS);
   const started: QuestDef[] = [];
@@ -66,7 +70,7 @@ export function startQuests(s: AdventureState): QuestDef[] {
   // the class quest).
   for (const id of s.quests.done) {
     const next = QUESTS.find((q) => q.id === QUESTS.find((x) => x.id === id)?.next);
-    if (!next || s.quests.done.includes(next.id) || s.quests.active.some((p) => p.id === next.id)) continue;
+    if (!next || s.quests.done.includes(next.id) || s.quests.active.some((p) => p.id === next.id) || !unlockedAt(next, s.progress.level)) continue;
     s.quests.active.push({ id: next.id, step: 0 });
     started.push(next);
   }
@@ -81,8 +85,9 @@ function advance(s: AdventureState, q: QuestDef): string | undefined {
   if (p.step < q.objectives.length) return undefined;
   s.quests.active = s.quests.active.filter((x) => x.id !== q.id);
   s.quests.done.push(q.id);
+  // (Its next one waits for its level: completedWith starts it once the reward's XP is in, startQuests after.)
   const next = q.next && QUESTS.find((x) => x.id === q.next);
-  if (next && !s.quests.done.includes(next.id)) s.quests.active.push({ id: next.id, step: 0 });
+  if (next && !s.quests.done.includes(next.id) && unlockedAt(next, s.progress.level)) s.quests.active.push({ id: next.id, step: 0 });
   return q.id;
 }
 
@@ -148,6 +153,13 @@ export function questStep(s: AdventureState, a: TownQuestAction, ctx: QuestCtx =
       return r;
     }
     if (o?.type !== 'talk' || o.npc !== a.npc) return { ok: false, message: 'Not yet.' };
+    // A talk that hands something over (Tisay's note), into the bag (no room: not yet).
+    if (o.gives) {
+      const data = loadItemData();
+      const def = data.defs.get(o.gives);
+      if (def && !heldCount(s.bag, o.gives) && !addToBag(data, s.bag, newItem(data.stats, def, newUid()), newUid)) return { ok: false, message: 'Make room in your bag first.' };
+      return completedWith(s, { ok: true, handed: o.gives, completed: advance(s, q) });
+    }
     // Aling Nena's first talk: her Practice Warren Ticket (no room: she gives it next time).
     const handed = P && handTicket(s, p, P.ticket, now) ? P.ticket : undefined;
     return completedWith(s, { ok: true, ...(handed ? { handed } : {}), completed: advance(s, q) });
@@ -192,6 +204,11 @@ function completedWith(s: AdventureState, r: Result): Result & { ups?: number } 
     out.xp = g.gained;
     out.ups = g.ups;
   }
+  // (Its title is given where the request is answered: web/server.ts.)
+  if (q?.rewardTitle) out.title = q.rewardTitle;
+  // Its next one, if that XP reached its level.
+  const started = startQuests(s).map((x) => x.id);
+  if (started.length) out.started = started;
   return out;
 }
 
@@ -200,6 +217,7 @@ function completedWith(s: AdventureState, r: Result): Result & { ups?: number } 
 export function questKillFor(userId: string, kill: { kind: string; mini: boolean }): { active: AdventureState['quests']['active'] } | null {
   const s = load(userId);
   if (!questKill(s, QUESTS, kill)) return null;
+  advanceCollects(s, QUESTS); // (a hand-in hunt done: on to its NPC)
   save(userId, s);
   return { active: s.quests.active };
 }
@@ -564,13 +582,34 @@ export function fighterOf(userId: string): Attacker {
   return { cls: s.cls, level: s.progress.level, points: s.progress.points, gear: [...Object.values(s.equipped), ...(s.pet ? [s.pet] : [])], skills: damageSkillLevels(classOf(s.cls), s.progress), moves, buffLevels: buffSkillLevels(classOf(s.cls), s.progress) };
 }
 
-/** Changes their progress through `f` (web/progress.ts) and saves it. */
-function progress(userId: string, f: (cls: string | null, p: SavedProgress) => LevelGain): LevelGain {
+/** Changes their progress through `f` (web/progress.ts) and saves it; a level-up starts any quest that waited for it
+ *  (`quests`: their active quests then). */
+function progress(userId: string, f: (cls: string | null, p: SavedProgress) => LevelGain): LevelGain & { quests?: AdventureState['quests']['active'] } {
   const s = load(userId);
   const r = f(s.cls, s.progress);
   s.progress = r.progress;
+  const opened = r.ups > 0 && startQuests(s).length > 0;
   save(userId, s);
-  return r;
+  return opened ? { ...r, quests: s.quests.active } : r;
+}
+
+/** They walked into a map: a chain that starts there (the Palengke's first quest, at its level) starts, saved; their
+ *  active quests if one did, else null. */
+export function enterAreaFor(userId: string, area: string): { active: AdventureState['quests']['active'] } | null {
+  const s = load(userId);
+  if (!startInArea(s, QUESTS, area).length) return null;
+  save(userId, s);
+  return { active: s.quests.active };
+}
+
+/** The quest items a kill of `kind` drops for them (CONTEXT.md Quest item: only while a quest asks, at its dropChance),
+ *  made as items for their own loot. */
+export function questDropsFor(userId: string, kind: string, random: () => number = Math.random): Item[] {
+  const data = loadItemData();
+  return questItemDrops(load(userId), QUESTS, PALENGKE, kind, random).flatMap((id) => {
+    const def = data.defs.get(id);
+    return def ? [newItem(data.stats, def, newUid())] : [];
+  });
 }
 
 /** A kill's XP for them (the town: town-mobs.ts says who killed what), saved; how many levels it went up. */

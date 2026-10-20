@@ -101,6 +101,8 @@ export interface CombatItemDef {
   forge?: 'whetstone' | 'fragment' | 'repairKit' | 'pliers' | 'temper' | 'tempered';
   /** Never stacks (a filled Temper Stone: each one holds its own +, item level and type). */
   noStack?: boolean;
+  /** A quest item that stacks (the Lumang Palengke's drops: Fresh Onions…): up to this many in a slot. */
+  stack?: number;
   /** Bound as it's made (the Practice Warren Ticket, the quest items): never traded or dropped. */
   bound?: boolean;
   icon?: string;
@@ -523,7 +525,8 @@ export function giveQuestRewards(data: ItemData, s: AdventureState, quests: Ques
 
 /** The most of a kind in one slot (stats.json inventory: stackN lists; gear never stacks). */
 export function stackLimit(data: StatsData, def: AnyItemDef | undefined): number {
-  if (!def || isGearDef(def) || def.kind === 'cosmetic' || def.kind === 'pet' || def.kind === 'quest' || def.noStack) return 1;
+  if (def && !isGearDef(def) && def.kind === 'quest') return def.stack ?? 1; // (a quest item: one a slot unless it says)
+  if (!def || isGearDef(def) || def.kind === 'cosmetic' || def.kind === 'pet' || def.noStack) return 1;
   // (A consumable, the Warren Ticket, stacks like a potion: stats.json inventory.stack99 "potions", or its own word.)
   const word = def.kind === 'potion' || def.kind === 'consumable' ? (def.kind === 'consumable' ? 'consumables' : 'potions') : def.kind === 'agimat' ? 'agimats' : 'materials';
   for (const [k, v] of Object.entries(itemStats(data).inventory)) {
@@ -554,19 +557,24 @@ export const agimatPocket = (data: StatsData): number => (itemStats(data).invent
  *  or 0: cosmetics share the bag's slots. */
 export const costumePocket = (data: StatsData): number => (itemStats(data).inventory as { costumeSlots?: number }).costumeSlots ?? 0;
 
-/** The pocket an item takes a slot in: agimats their own, cosmetics their own (when there is one), everything else the
- *  bag's. */
-export type Pocket = 'bag' | 'agimats' | 'costume';
+/** Quest items' own pocket (stats.json inventory.questSlots, a repo addition: the Quest tab); 0 = they share the bag's. */
+export const questPocket = (data: StatsData): number => (itemStats(data).inventory as { questSlots?: number }).questSlots ?? 0;
+
+export type Pocket = 'bag' | 'agimats' | 'costume' | 'quest';
+/** The pocket an item takes a slot in: agimats, cosmetics and quest items their own (when there is one), everything
+ *  else the bag's. */
 export function pocketOf(data: ItemData, item: Pick<Item, 'defId'>): Pocket {
   const def = data.defs.get(item.defId);
   if (!def || isGearDef(def)) return 'bag';
   if (def.kind === 'agimat' && agimatPocket(data.stats) > 0) return 'agimats';
   if (def.kind === 'cosmetic' && costumePocket(data.stats) > 0) return 'costume';
+  if (def.kind === 'quest' && questPocket(data.stats) > 0) return 'quest';
   return 'bag';
 }
 
 /** A pocket's slots, and how many of them its items take. */
-export const pocketSlots = (data: ItemData, pocket: Pocket) => (pocket === 'agimats' ? agimatPocket(data.stats) : pocket === 'costume' ? costumePocket(data.stats) : bagSlots(data.stats));
+export const pocketSlots = (data: ItemData, pocket: Pocket) =>
+  pocket === 'agimats' ? agimatPocket(data.stats) : pocket === 'costume' ? costumePocket(data.stats) : pocket === 'quest' ? questPocket(data.stats) : bagSlots(data.stats);
 export const pocketUsed = (data: ItemData, bag: Item[], pocket: Pocket) => bag.filter((b) => pocketOf(data, b) === pocket).length;
 
 /** How many of `item` the bag could take: what fits on its stacks plus free slots' worth (in its pocket). */

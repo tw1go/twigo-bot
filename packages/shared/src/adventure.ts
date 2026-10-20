@@ -49,6 +49,12 @@ export interface QuestObjectiveDef {
   count?: number;
   /** What the tracker writes before a count ("Binoculars" 0/1); `text` in the log. */
   label?: string;
+  /** A talk that hands over an item as it's done (Tisay's note: then delivered). */
+  gives?: string;
+  /** A hunt that also needs items in hand, both at once (the Palengke's kill-and-collect quests). */
+  collect?: { item: string; count: number; label?: string };
+  /** A fieldBoss objective counts only while this item is held (the Honest Weight). */
+  needs?: string;
 }
 
 export interface QuestDef {
@@ -76,6 +82,17 @@ export interface QuestDef {
   rewardKusing?: number;
   /** Kowens into the member's wallet when it's completed. */
   rewardKowens?: number;
+  /** Hand-in at the NPC (the Palengke's chain): a hunt moves on by itself once done, then the report or delivery is a
+   *  talk with its NPC; never the radio's Report. */
+  handIn?: boolean;
+  /** It opens at this level (CONTEXT.md Level gap): before, the next of a done quest waits, a grey "!" over its giver. */
+  unlockLevel?: number;
+  /** A chain's first quest that starts as you walk into this map at its unlock level (the Palengke's). */
+  startsIn?: string;
+  /** A title given as it's completed (the titles' id). */
+  rewardTitle?: string;
+  /** A dish its completion puts on Aling Conching's menu for this player. */
+  unlocksDish?: string;
   next: string | null;
 }
 
@@ -251,4 +268,8 @@ export interface TownAdventureResponse {
   /** An item its giver just handed over (a Practice Warren Ticket: its kind), or one they took (the binoculars). */
   handed?: string;
   taken?: string;
+  /** A title its completion gave (the titles' id: Huling Suki). */
+  title?: string;
+  /** Quests that opened with it (their ids): the next one after a level gap, once the reward's XP reached its level. */
+  started?: string[];
 }

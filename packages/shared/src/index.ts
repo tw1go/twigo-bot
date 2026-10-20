@@ -14,6 +14,7 @@ export * from './dungeons.js';
 export * from './travel.js';
 export * from './loot-roll.js';
 export * from './cascade.js';
+export * from './palengke.js';
 export * from './friends.js';
 export * from './events.js';
 export * from './cosmetics.js';

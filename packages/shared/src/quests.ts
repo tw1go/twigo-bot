@@ -23,13 +23,21 @@ export function offeredBy(s: Pick<AdventureState, 'quests' | 'progress'>, quests
 /** A collect objective's item is in the bag (done). */
 export const collected = (o: QuestObjectiveDef | undefined, bag: Item[]) => o?.type === 'collect' && heldCount(bag, o.item) >= objectiveCount(o);
 
-/** Every active quest whose current objective is a collect that's done, moved on to its next objective (a collect is
- *  never a quest's last: what's collected is then delivered). Returns whether anything moved. */
+/** A hunting objective (kill, miniBoss, fieldBoss) that's done: its count reached, with any items it also needs in hand
+ *  (`collect`: the Palengke's kill-and-collect quests). */
+export function huntDone(o: QuestObjectiveDef | undefined, p: { count?: number }, bag: Item[]): boolean {
+  if (!o || (o.type !== 'kill' && o.type !== 'miniBoss' && o.type !== 'fieldBoss')) return false;
+  return (p.count ?? 0) >= objectiveCount(o) && (!o.collect || heldCount(bag, o.collect.item) >= o.collect.count);
+}
+
+/** Every active quest whose current objective is a collect that's done, or (a hand-in quest: the Palengke's, no radio
+ *  report) a hunt that's done, moved on to its next objective (neither is ever a quest's last: what's collected is then
+ *  delivered, a hunt reported). Returns whether anything moved. */
 export function advanceCollects(s: Pick<AdventureState, 'quests' | 'bag'>, quests: QuestDef[]): boolean {
   let moved = false;
   for (const p of s.quests.active) {
     const q = quests.find((x) => x.id === p.id);
-    while (q && p.step < q.objectives.length - 1 && collected(q.objectives[p.step], s.bag)) {
+    while (q && p.step < q.objectives.length - 1 && (collected(q.objectives[p.step], s.bag) || (q.handIn && huntDone(q.objectives[p.step], p, s.bag)))) {
       p.step++;
       delete p.count;
       moved = true;

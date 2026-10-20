@@ -254,6 +254,8 @@ export interface ClassesDefs {
   stats: string;
   /** classes/leveling.json: the mini bosses and the Tanod's leveling quests (the art folder's data/leveling.json). */
   leveling?: string;
+  /** classes/palengke-leveling.json: the Lumang Palengke's quest chain, mini bosses and dishes. */
+  palengkeLeveling?: string;
   /** classes/dungeons.json: the Scrap Warrens (the art folder's data/dungeons/warrens.json, with the repo's changes). */
   dungeons?: string;
   /** Where the 32x48 body cell sits in a 64x64 weapon cell. */
@@ -552,7 +554,7 @@ export interface TownMap {
   /** Its named parts (the Palengke: Tarp Row, the Gulayan…): [col0, row0, col1, row1], both ends in. */
   sections?: { id: string; name: string; lv?: string; rect: [number, number, number, number] }[];
   /** Story NPCs' spots (the Palengke's; their sprites come later). */
-  npcs?: { id: string; name: string; tile: Vec2; role?: string }[];
+  npcs?: { id: string; name: string; tile: Vec2; role?: string; moves?: { after: string; tile: Vec2 }[] }[];
   /** Where you appear coming from another area (by where you came from), instead of the spawn point; `lanternPost`: where
    *  a teleport to this map's Lantern Post lands. */
   arrive?: Partial<Record<Gate | 'lanternPost', Vec2>>;

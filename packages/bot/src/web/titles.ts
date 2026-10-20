@@ -29,6 +29,7 @@ const BUILT_IN: Record<string, TitleDef> = {
   'specimen-3': { name: 'Specimen #3', color: '#F8BF27' },
   kalbo: { name: 'Kalbo', color: '#F8BF27' },
   'holder-of-the-fork': { name: 'Holder of the Fork', color: '#F8BF27' },
+  'huling-suki': { name: 'Huling Suki', color: '#F59E0B', description: "The Lumang Palengke's last suki, and its first again: Ang Huling Suki done." },
   richest: { name: 'Richest Among All', color: '#FFD54A', description: 'Held by whoever has the most Kowens (wallet + vault). Lose the top spot, lose the title.', auto: true },
 };
 export const RICHEST = 'richest';

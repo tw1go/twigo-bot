@@ -539,6 +539,103 @@
       "large": "items/quest/item-quest-nena-binoculars-64.png"
     },
     {
+      "id": "fresh-onion",
+      "name": "Fresh Onion",
+      "kind": "quest",
+      "rarity": "white",
+      "bound": true,
+      "about": "For a quest in the Lumang Palengke. Drops from the Sibuyas Sobbers while a quest asks for it.",
+      "note": "Repo addition (20 Oct 2026): a Lumang Palengke quest item (classes/palengke-leveling.json questItems); no art yet.",
+      "stack": 99
+    },
+    {
+      "id": "unbroken-lid",
+      "name": "Unbroken Lid",
+      "kind": "quest",
+      "rarity": "white",
+      "bound": true,
+      "about": "For a quest in the Lumang Palengke. Drops from the Garapon Jars while a quest asks for it.",
+      "note": "Repo addition (20 Oct 2026): a Lumang Palengke quest item (classes/palengke-leveling.json questItems); no art yet.",
+      "stack": 99
+    },
+    {
+      "id": "clean-rice-scoop",
+      "name": "Clean Rice Scoop",
+      "kind": "quest",
+      "rarity": "white",
+      "bound": true,
+      "about": "For a quest in the Lumang Palengke. Drops from the Sako Slammers while a quest asks for it.",
+      "note": "Repo addition (20 Oct 2026): a Lumang Palengke quest item (classes/palengke-leveling.json questItems); no art yet.",
+      "stack": 99
+    },
+    {
+      "id": "whole-chair",
+      "name": "Whole Chair",
+      "kind": "quest",
+      "rarity": "white",
+      "bound": true,
+      "about": "For a quest in the Lumang Palengke. Drops from the Monobloc Stacks while a quest asks for it.",
+      "note": "Repo addition (20 Oct 2026): a Lumang Palengke quest item (classes/palengke-leveling.json questItems); no art yet.",
+      "stack": 99
+    },
+    {
+      "id": "rusty-cleaver-piece",
+      "name": "Rusty Cleaver Piece",
+      "kind": "quest",
+      "rarity": "white",
+      "bound": true,
+      "about": "For a quest in the Lumang Palengke. Drops from the Sangkalan Chompers while a quest asks for it.",
+      "note": "Repo addition (20 Oct 2026): a Lumang Palengke quest item (classes/palengke-leveling.json questItems); no art yet.",
+      "stack": 99
+    },
+    {
+      "id": "ledger-page",
+      "name": "Ledger Page",
+      "kind": "quest",
+      "rarity": "white",
+      "bound": true,
+      "about": "For a quest in the Lumang Palengke. Drops from the Banyera Lurkers while a quest asks for it.",
+      "note": "Repo addition (20 Oct 2026): a Lumang Palengke quest item (classes/palengke-leveling.json questItems); no art yet.",
+      "stack": 99
+    },
+    {
+      "id": "brass-weight",
+      "name": "Brass Weight",
+      "kind": "quest",
+      "rarity": "white",
+      "bound": true,
+      "about": "For a quest in the Lumang Palengke. Drops from the Timbangan Sentinels while a quest asks for it.",
+      "note": "Repo addition (20 Oct 2026): a Lumang Palengke quest item (classes/palengke-leveling.json questItems); no art yet.",
+      "stack": 99
+    },
+    {
+      "id": "tisay-note",
+      "name": "Tisay's Note",
+      "kind": "quest",
+      "rarity": "white",
+      "bound": true,
+      "about": "A folded note from Tisay, for Aling Conching.",
+      "note": "Repo addition (20 Oct 2026): a Lumang Palengke quest item (classes/palengke-leveling.json questItems); no art yet."
+    },
+    {
+      "id": "honest-weight",
+      "name": "Honest Weight",
+      "kind": "quest",
+      "rarity": "white",
+      "bound": true,
+      "about": "Kuya Jun forged it from the brass weights, his father's false ones melted in. Hold it when the Great Scale falls.",
+      "note": "Repo addition (20 Oct 2026): a Lumang Palengke quest item (classes/palengke-leveling.json questItems); no art yet."
+    },
+    {
+      "id": "suki-card",
+      "name": "Suki Card",
+      "kind": "quest",
+      "rarity": "white",
+      "bound": true,
+      "about": "Aling Rosa's suki card, from Tisay. It does nothing. It means a lot.",
+      "note": "Repo addition (20 Oct 2026): a Lumang Palengke quest item (classes/palengke-leveling.json questItems); no art yet."
+    },
+    {
       "id": "return-lantern",
       "name": "Return Lantern",
       "kind": "consumable",

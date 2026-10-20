@@ -2,7 +2,7 @@ import { keyLabel, matches, onKeybinds } from './keybinds';
 import { type AdventureState, type QuestDef, type QuestObjectiveDef, newItem, nameColour, objectiveCount, readyToReport } from '@mikazuki/shared';
 import { itemPicture, nameOf } from './item-tip';
 import { playSound } from '../audio/sound';
-import { type AdventureChange, adventure, heldOf, itemData, markQuestsSeen, offeredNow, onAdventure, questDef, unseenQuest } from '../net/adventure';
+import { type AdventureChange, adventure, heldOf, itemData, markQuestsSeen, offeredNow, onAdventure, questDef, unseenQuest, waitingNow } from '../net/adventure';
 
 // 📜 Quests on screen (the state: net/adventure.ts, the quests: quests/quests.json). Main quests are violet and side
 // quests yellow everywhere they show (manifest quests.colours):
@@ -36,8 +36,10 @@ const hunting = (o: QuestObjectiveDef | undefined) => o?.type === 'kill' || o?.t
 
 /** An objective as it shows: its text, and "12/20" after a count's; a collect's in the tracker its label and how many
  *  are in the bag ("Binoculars 0/1"). */
-const objectiveText = (o: QuestObjectiveDef | undefined, count: number | undefined, done = false, short = false) =>
+const objectiveText = (o: QuestObjectiveDef | undefined, count: number | undefined, done = false, short = false): string =>
   !o ? ''
+  // (A hunt that also collects, the Palengke's: both counts, "Sako Slammers 12/20 · Clean Rice Scoops 4/10".)
+  : o.collect && (o.type === 'kill' || o.type === 'miniBoss') ? `${objectiveText({ ...o, collect: undefined }, count, done, short)} · ${o.collect.label ?? o.collect.item} ${done ? o.collect.count : Math.min(heldOf(o.collect.item), o.collect.count)}/${o.collect.count}`
   : o.type === 'kill' || o.type === 'miniBoss' ? `${o.text} ${done ? objectiveCount(o) : Math.min(count ?? 0, objectiveCount(o))}/${objectiveCount(o)}`
   : o.type === 'collect' && short ? `${o.label ?? o.text} ${done ? objectiveCount(o) : Math.min(heldOf(o.item), objectiveCount(o))}/${objectiveCount(o)}`
   : o.text;
@@ -261,8 +263,10 @@ function renderLog(): void {
   const active = (s?.quests.active ?? []).map((p) => ({ q: questDef(p.id), step: p.step, count: p.count })).filter((x): x is { q: QuestDef; step: number; count: number | undefined } => !!x.q);
   const done = (s?.quests.done ?? []).map((id) => questDef(id)).filter((q): q is QuestDef => !!q);
   const offered = offeredNow();
-  const all = [...active.map((a) => a.q), ...offered, ...done];
-  if (!picked || !all.some((q) => q.id === picked)) picked = (active.find((a) => a.q.type === 'main') ?? active[0])?.q.id ?? done[0]?.id ?? null;
+  // (A chain's next quest waiting for your level: greyed with a grey "!", CONTEXT.md Level gap.)
+  const waiting = waitingNow();
+  const all = [...active.map((a) => a.q), ...offered, ...waiting, ...done];
+  if (!picked || !all.some((q) => q.id === picked)) picked = (active.find((a) => a.q.type === 'main') ?? active[0])?.q.id ?? waiting[0]?.id ?? done[0]?.id ?? null;
 
   const side = el('div', 'ql-list');
   const item = (q: QuestDef, finished: boolean) => {
@@ -287,7 +291,14 @@ function renderLog(): void {
       b.append(el('span', 'ql-available', 'Available'));
       return b;
     });
-    side.append(h, ...(mine.length || open.length ? [...mine.map((a) => item(a.q, false)), ...open] : [el('div', 'ql-none', empty)]));
+    const later = waiting.filter((q) => q.type === type).map((q) => {
+      const b = item(q, false);
+      b.classList.add('ql-offered', 'ql-waiting');
+      b.querySelector('.ql-dot')?.replaceWith(el('span', 'ql-wait-mark', '!'));
+      b.append(el('span', 'ql-available', `Lv ${q.unlockLevel}`));
+      return b;
+    });
+    side.append(h, ...(mine.length || open.length || later.length ? [...mine.map((a) => item(a.q, false)), ...open, ...later] : [el('div', 'ql-none', empty)]));
   };
   section('main', 'Main', 'No main quests right now.');
   section('side', 'Side', 'No side quests yet.');
@@ -306,7 +317,7 @@ function renderLog(): void {
   if (!q) detail.append(el('div', 'ql-none', 'No quests yet.'));
   else {
     const finished = done.includes(q);
-    const available = offered.includes(q);
+    const available = offered.includes(q) || waiting.includes(q);
     const step = active.find((a) => a.q === q)?.step ?? (available ? -1 : q.objectives.length);
     const title = el('div', 'ql-title', q.title);
     title.style.color = colour(q);
@@ -324,7 +335,8 @@ function renderLog(): void {
       face.style.backgroundImage = `url("${giver.portrait}")`;
       if (giver.mirror) face.style.transform = 'scaleX(-1)';
       frame.append(face);
-      who.append(frame, el('span', 'ql-giver-name', giver.name));
+      // (No portrait yet, the Palengke's: the name alone.)
+      who.append(...(giver.portrait ? [frame] : []), el('span', 'ql-giver-name', giver.name));
       detail.append(who);
     }
     detail.append(el('p', 'ql-summary', q.summary));
@@ -377,7 +389,8 @@ function renderLog(): void {
       detail.append(box);
     }
     if (finished) detail.append(el('div', 'ql-finished-note', 'Completed'));
-    if (available) detail.append(el('div', 'ql-finished-note ql-available-note', `Available: talk to ${giver?.name ?? 'its giver'} to start it.`));
+    if (waiting.includes(q)) detail.append(el('div', 'ql-finished-note ql-waiting-note', `Come back at Lv ${q.unlockLevel}: ${giver?.name ?? 'its giver'} has it for you then.`));
+    else if (available) detail.append(el('div', 'ql-finished-note ql-available-note', `Available: talk to ${giver?.name ?? 'its giver'} to start it.`));
   }
   logRoot.querySelector('.ql-body')!.replaceChildren(side, detail);
 }

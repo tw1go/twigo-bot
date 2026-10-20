@@ -85,16 +85,19 @@ export const objectiveCount = (o: QuestObjectiveDef | undefined) => Math.max(1, 
 /** An active quest's current objective is a count (kill / miniBoss) that's reached: ready to report. */
 export function readyToReport(def: QuestDef | undefined, p: { step: number; count?: number } | undefined): boolean {
   const o = def && p ? def.objectives[p.step] : undefined;
-  return !!o && (o.type === 'kill' || o.type === 'miniBoss') && (p!.count ?? 0) >= objectiveCount(o);
+  // (A hand-in quest, the Palengke's, is reported at its NPC instead.)
+  return !!o && !def!.handIn && (o.type === 'kill' || o.type === 'miniBoss') && (p!.count ?? 0) >= objectiveCount(o);
 }
 
 /** A kill counts toward their active quests: `kill` objectives of its kind (not its mini bosses), `miniBoss` ones of its
  *  kind's mini bosses. Returns whether anything moved. */
-export function questKill(s: Pick<AdventureState, 'quests'>, quests: QuestDef[], kill: { kind: string; mini: boolean }): boolean {
+export function questKill(s: Pick<AdventureState, 'quests'> & { bag?: AdventureState['bag'] }, quests: QuestDef[], kill: { kind: string; mini: boolean }): boolean {
   let moved = false;
   for (const p of s.quests.active) {
     const o = quests.find((q) => q.id === p.id)?.objectives[p.step];
-    if (!o || o.mob !== kill.kind || (o.type === 'kill' ? kill.mini : o.type === 'miniBoss' ? !kill.mini : true)) continue;
+    // (A field boss counts for whoever earned it, while they hold what it needs: the Palengke's Honest Weight.)
+    const boss = o?.type === 'fieldBoss' && !kill.mini && (!o.needs || (s.bag ?? []).some((it) => it.defId === o.needs));
+    if (!o || o.mob !== kill.kind || (o.type === 'kill' ? kill.mini : o.type === 'miniBoss' ? !kill.mini : !boss)) continue;
     const n = p.count ?? 0;
     if (n >= objectiveCount(o)) continue;
     p.count = n + 1;

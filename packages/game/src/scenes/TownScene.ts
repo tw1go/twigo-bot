@@ -26,6 +26,7 @@ import { race as currentRace, raceNow, setRace } from '../net/race';
 import { setRacePortraits } from '../ui/race-bet';
 import { mosangName } from '../ui/race-box';
 import { NpcLife, TALK_LEAVE, TALK_RANGE } from '../world/npc-life';
+import { PalengkeNpcs } from '../world/palengke-npcs';
 import { mountHouseCreator } from '../ui/house-creator';
 import { playBusted } from '../ui/casino';
 import { drawBridge } from '../world/bridge';
@@ -90,7 +91,7 @@ import { HalloweenDecor } from '../world/halloween-deco';
 import { serverNow, setServerNow } from '../net/server-clock';
 import { mikkoIcon16, setHalloweenArt, setHalloweenBadge, showHalloweenReward } from '../ui/halloween';
 import { BossBar } from '../ui/boss-bar';
-import { HALLOWEEN_MOBS, type HalloweenData, cosmeticHatOf, cosmeticTopOf, withCosmetics } from '@mikazuki/shared';
+import { HALLOWEEN_MOBS, type HalloweenData, cosmeticHatOf, cosmeticTopOf, mobName, withCosmetics } from '@mikazuki/shared';
 import { lootRolls, rollEndLine } from '../ui/loot-roll';
 import type { TownWarrensRun } from '@mikazuki/shared';
 import { MapMenu } from '../ui/map-menu';
@@ -134,7 +135,7 @@ import type { AdventureData } from '../net/adventure';
 import { Hotbar } from '../ui/hotbar';
 import { mountClassSwitch } from '../ui/class-switch';
 import { MOVES, type MoveKind, isMoveKind, moveTiles, playMove, startDodge } from '../world/mobility';
-import { changeClass, devItemsReady, devQuestKill, questReport, setQuestCounts, devSwitchClass, adventure, adventureData, anyDef, chooseClass, classInfo, initAdventure, itemData, itemDef, loadAdventureData, lookWithCosmetics, onAdventure, questDef, questFor, questTalk, setItems, setProgress, skillView, skillViews, buffViews, wornHeadCosmetic, setPetXp } from '../net/adventure';
+import { enterArea, gapLine, waitingFor, changeClass, devItemsReady, devQuestKill, questReport, setQuestCounts, devSwitchClass, adventure, adventureData, anyDef, chooseClass, classInfo, initAdventure, itemData, itemDef, loadAdventureData, lookWithCosmetics, onAdventure, questDef, questFor, questTalk, setItems, setProgress, skillView, skillViews, buffViews, wornHeadCosmetic, setPetXp } from '../net/adventure';
 import { readyToReport, type LanternMap, type LanternPost, LANTERN_USE_TILES, LANTERN_WALK_TILES, RETURN_LANTERN, isLanternMap, lanternPostsOf, nearPost, postAt, type StatsData, buffsStack, potionCooldownGroup, dropRefusal, nameColour, type Item, type QuestReward, type TownItems, LOOT_REACH, auraFor, classBuffs, classSkills, countOf, isGearDef, itemAura, itemStats, newItem, tradeRules, petRules } from '@mikazuki/shared';
 import type { ClassArt } from '../assets/types';
 import { cosmeticPoseFiles, drawRested, poseFiles, restFiles } from '../characters/kit-art';
@@ -158,6 +159,11 @@ const WARP_MS = 1000;
 /** The quest trail: how often it looks again (TownScene trailTick), and how near a mini boss spot counts as there. */
 const TRAIL_MS = 250;
 const MINI_NEAR = 6;
+/** A quest giver's "!" while their next quest waits for your level (CONTEXT.md Level gap). */
+const WAITING_GREY = '#9CA3AF';
+/** One of the Palengke chain's NPCs (a hand-in quest's giver or the NPC of one of its steps): named by their id's words
+ *  ("aling-conching": Aling Conching), no portrait yet. */
+const palengkeNpc = (id: string) => !!adventureData()?.quests.some((q) => q.handIn && (q.giver === id || q.objectives.some((o) => o.npc === id)));
 const TICKET_MS = 300;
 const ZOOMS = [2, 3, 4];
 /** The boss camera (Barong-Barong's hall): the zooms it may pull back to (your own, or the first of these that fits), the
@@ -336,7 +342,7 @@ export class TownScene extends Phaser.Scene {
   /** Everyone's pet out, following them (world/pets.ts). */
   private pets: Pets | null = null;
   /** The town's ambient NPCs (not in the neighbourhood). */
-  private npcs: NpcLife | null = null;
+  private npcs: NpcLife | PalengkeNpcs | null = null;
   private link: TownLink | null = null;
   /** The player menu's Info window (members with the bag). */
   private inspect: InspectWindow | null = null;
@@ -599,6 +605,7 @@ export class TownScene extends Phaser.Scene {
         })
         .catch(() => null);
     if (this.area === 'town') this.npcs = this.makeNpcs();
+    if (this.area === 'palengke') this.npcs = this.makePalengkeNpcs();
     this.makePets();
     this.makeHalloween();
     // The quest trail (world/quest-trail.ts): only where a guided quest's hunt is led (the Town and the Slums).
@@ -1015,7 +1022,7 @@ export class TownScene extends Phaser.Scene {
     const E = this.M.equipment;
     if (!Q || !K || !E) return Promise.resolve();
     const asset = (f: string) => `${import.meta.env.BASE_URL}assets/${f}`;
-    this.adventureReady ??= loadAdventureData(asset, { quests: Q.file, classes: K.data, equipment: E.file, items: this.M.combatItems?.file, dungeons: K.dungeons }, this.cache.json.get('stats'), this.cache.json.get('leveling'));
+    this.adventureReady ??= loadAdventureData(asset, { quests: Q.file, classes: K.data, equipment: E.file, items: this.M.combatItems?.file, dungeons: K.dungeons, palengke: K.palengkeLeveling }, this.cache.json.get('stats'), this.cache.json.get('leveling'));
     return this.adventureReady.then((data) => {
       if (!data) return void console.warn('[quests] the quests, classes, equipment or stats data is missing');
       // Each class's first 7 skills' sounds (heard from others too), on a battle map.
@@ -1030,6 +1037,8 @@ export class TownScene extends Phaser.Scene {
       if (!member) return; // guests have no quests
       setUnreadMail(member.mailUnread ?? 0); // the mail button's dot
       const { armor, rewards, pieces } = initAdventure(member.adventure, member.trainingGear, member.questRewards, member.questPieces);
+      // A chain that starts as you walk in (the Palengke's first quest; the bot starts it as you join its room).
+      enterArea(this.area);
       // Quest rewards given on this visit (a quest finished before it had any, a mini boss quest's piece): said after the
       // title card.
       if (rewards.length || pieces.length) this.afterReveal(titleCardMs() + 600, () => this.questRewards(rewards, pieces));
@@ -1265,11 +1274,28 @@ export class TownScene extends Phaser.Scene {
     } catch {
       // none yet
     }
-    const fresh = (adventure()?.quests.active ?? []).filter((p) => !given.includes(p.id) && questDef(p.id)?.dialogue?.give?.length);
+    // (A hand-in quest that starts with a talk to its giver says its lines in that talk, not here.)
+    const fresh = (adventure()?.quests.active ?? []).filter((p) => {
+      const q = questDef(p.id);
+      return !given.includes(p.id) && q?.dialogue?.give?.length && !(q.handIn && ((q.objectives[0]?.type === 'talk' && q.objectives[0].npc === q.giver) || q.giver === this.handingIn));
+    });
     if (!fresh.length) return;
-    for (const p of fresh) for (const line of questDef(p.id)!.dialogue!.give!) this.tanodSays(line);
+    for (const p of fresh) {
+      const q = questDef(p.id)!;
+      // A Palengke quest opening (its giver's lines, by name: no radio there); the Tanod's over his radio.
+      for (const line of q.dialogue!.give!) q.handIn ? this.say(`${mobName(q.giver)}: “${line}”`, Math.min(6000, 2600 + line.length * 40), null, null) : this.tanodSays(line);
+    }
     try {
       localStorage.setItem('mk_quests_given', JSON.stringify([...given, ...fresh.map((p) => p.id)].slice(-50)));
+    } catch {
+      // said again next time
+    }
+  }
+  /** A quest's give lines said already (in a talk): not again as a toast. */
+  private markGiven(id: string): void {
+    try {
+      const given: string[] = JSON.parse(localStorage.getItem('mk_quests_given') ?? '[]');
+      if (!given.includes(id)) localStorage.setItem('mk_quests_given', JSON.stringify([...given, id].slice(-50)));
     } catch {
       // said again next time
     }
@@ -1563,6 +1589,8 @@ export class TownScene extends Phaser.Scene {
   /** A quest giver's name and portrait (for the quest log). */
   private giverOf(id: string): { name: string; portrait: string; mirror: boolean } | null {
     const P = this.M.npcs?.portrait;
+    // (The Palengke's: no portrait yet, just the name.)
+    if (palengkeNpc(id)) return { name: mobName(id), portrait: '', mirror: false };
     if (!P) return null;
     const text = (this.cache.json.get('npc-dialogue') as { npcs?: Record<string, { name: string }> } | undefined)?.npcs?.[id];
     return { name: text?.name ?? id, portrait: `${import.meta.env.BASE_URL}assets/${P.file.replace('{id}', id)}`, mirror: NPC_PLACES.find((p) => p.id === id)?.portrait === 'sw' };
@@ -1576,17 +1604,23 @@ export class TownScene extends Phaser.Scene {
       const q = questFor(id);
       const o = q && q.quest.objectives[q.step];
       const symbol = !o || o.type === 'collect' ? null : o.type === 'talk' ? '!' : '…';
-      this.npcs.setMarker(id, q && symbol ? { symbol, color: this.M.quests.colours[q.quest.type] } : null);
+      // (Their next quest waiting for your level: a grey "!".)
+      const waiting = !symbol && waitingFor(id);
+      this.npcs.setMarker(id, q && symbol ? { symbol, color: this.M.quests.colours[q.quest.type] } : waiting ? { symbol: '!', color: WAITING_GREY } : null);
     }
   }
 
   /** An NPC's lines while a quest of theirs is on: the talk (then the next objective), or a reminder. */
   private questScript(id: string): { lines: string[]; onDone?: () => void } | null {
     const q = questFor(id);
+    // Their next quest waits for your level: "come back at Lv X".
+    const waiting = !q ? waitingFor(id) : null;
+    if (waiting) return { lines: [gapLine(waiting)] };
     if (!q) return null;
     const { quest, step } = q;
     const o = quest.objectives[step];
     const d = quest.dialogue ?? {};
+    if (quest.handIn) return this.handInScript(id, quest, step);
     const chooseNext = () => quest.objectives[step + 1]?.type === 'chooseClass' && this.openClasses(quest.id, id);
     // What a giver hands over or says back (Aling Nena's ticket, "come back later"), after their lines.
     const answered = (r: Awaited<ReturnType<typeof questTalk>>) => {
@@ -1620,6 +1654,40 @@ export class TownScene extends Phaser.Scene {
     if (o.type === 'chooseClass') return { lines: d.remind?.length ? d.remind : ['…'], onDone: () => void this.openClasses(quest.id, id) };
     return null;
   }
+
+  /** A hand-in quest's talk at its NPC (the Palengke's chain): its first talk says its give lines, its last (a report or
+   *  a delivery) its report lines, then the rewards; the next quest's give lines follow straight on when its giver is
+   *  the same NPC. Out collecting: what's still needed. */
+  private handInScript(id: string, quest: import('@mikazuki/shared').QuestDef, step: number): { lines: string[]; onDone?: () => void } | null {
+    const o = quest.objectives[step];
+    const d = quest.dialogue ?? {};
+    const last = step === quest.objectives.length - 1;
+    if (o.type === 'collect') return { lines: [`${quest.summary}.`] };
+    const lines = last ? (d.report?.length ? d.report : ['Salamat, anak.']) : (d.give?.length ? d.give : ['…']);
+    return {
+      lines,
+      onDone: () => {
+        this.handingIn = id; // (the next quest's lines come in this talk, not as toasts: giveLines)
+        void questTalk(quest.id, id).then((r) => {
+          this.handingIn = null;
+          if (!r?.ok) return void toast(r?.message ?? "Couldn't reach the bot. Try again in a moment.", 3000, 'bad');
+          if (r.handed) this.handedToast(r.handed);
+          if (!r.completed) return;
+          this.questRewardPopup(quest, r);
+          // The next one, given here and now by the same NPC (it's open at your level): their give lines at once, not
+          // as a toast later.
+          const next = questDef(quest.next ?? '');
+          const open = !!next && !!r.adventure.quests.active.some((p) => p.id === next.id && p.step === 0);
+          if (open && next!.handIn && next!.giver === id && next!.objectives[0]?.type !== 'talk' && next!.dialogue?.give?.length && this.npcs) {
+            this.markGiven(next!.id);
+            this.npcs.talk(id, this.player.tile, { lines: next!.dialogue!.give! });
+          } else this.giveLines();
+        });
+      },
+    };
+  }
+  /** The NPC a hand-in is under way with (giveLines waits for it). */
+  private handingIn: string | null = null;
 
   /** "Received: Practice Warren Ticket", with its picture (a quest giver's hand-over). */
   private handedToast(defId: string): void {
@@ -2020,6 +2088,14 @@ export class TownScene extends Phaser.Scene {
     // A quest's rewards as it's completed: "Gained" lines, like loot.
     onAdventure((_s, change) => {
       if (change.rewards?.length || change.pieces?.length) this.questRewards(change.rewards ?? [], change.pieces ?? []);
+      // (A quest's title: the bot's `new-title` pop-up; the dev town has no titles, so a toast.)
+      if (change.title && fakeLogin()) toast(`New title: <${change.title}>`, 4000, 'good');
+      // A Palengke quest that opens with a talk (its give lines are said there): who to see.
+      for (const id of change.started ?? []) {
+        const q = questDef(id);
+        const o = q?.objectives[0];
+        if (q?.handIn && o?.type === 'talk' && o.npc) this.say(`New quest: ${q.title}. Talk to ${mobName(o.npc)}.`, 4500, 'good', null);
+      }
     });
     // Members earn a Kowen for every 15 minutes in town (claimed from a pop-up above the feed).
     const stay = member ? new StayReward() : null;
@@ -3181,6 +3257,19 @@ export class TownScene extends Phaser.Scene {
     const life = new NpcLife({ scene: this, M: this.M, grid: this.grid, objects: this.objects, avoid, onSpawn: (obj) => this.tint >= 0 && obj.setTint(this.tint), bubbles, asset });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => closeNpcDialog());
     return life;
+  }
+
+  /** The Lumang Palengke's quest NPCs (maps/palengke.json `npcs`), as stand-ins until their sprites come. */
+  private makePalengkeNpcs(): PalengkeNpcs | null {
+    const list = this.map.npcs;
+    if (!list?.length) return null;
+    const asset = (file: string) => `${import.meta.env.BASE_URL}assets/${file}`;
+    const box = this.M.ui.chatWindow;
+    const frame = this.M.ui.inventory?.itemFrame;
+    setNpcDialogArt({ box: box ? { url: asset(box.file), slice: box.nineSlice } : null, frame: frame ? { url: asset(frame.file), slice: frame.nineSlice } : null });
+    const npcs = new PalengkeNpcs(this, this.objects, list, () => adventure()?.quests.done ?? []);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => npcs.destroy());
+    return npcs;
   }
 
   private megaphone: MegaphoneBanner | null = null;

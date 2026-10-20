@@ -1425,7 +1425,9 @@
       "potions",
       "consumables (Warren Tickets, Return Lanterns: repo addition)"
     ],
-    "gearStacks": false
+    "gearStacks": false,
+    "questSlots": 20,
+    "questSlotsNote": "Repo addition (20 Oct 2026): quest items (Aling Nena's binoculars, the Lumang Palengke's) have their own pocket of this many slots (the inventory's Quest tab) and don't take the bag's"
   },
   "trainingGear": {
     "placeholder": true,
