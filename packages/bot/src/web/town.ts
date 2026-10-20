@@ -9,6 +9,7 @@ import type { Attacker, MobHit, MobKill, MobRoom } from './town-mobs.js';
 import { PARTY_MAX, type PartyChange, Parties } from './town-party.js';
 import { type FriendStore, Friends } from './town-friends.js';
 import { BIIKKO_KIND, CARRIER_AWAY_MS, type Halloween, UPPER_KIND } from './halloween.js';
+import { type GreatScale, PAN_KIND, scaleDownLine } from './town-great-scale.js';
 import { type VitalMax, Vitals, shown } from './town-vitals.js';
 import { Buffs, type DishOn, type Nearby } from './town-buffs.js';
 import { levelingFor, loadItemData, loadPalengkeLeveling, loadStats } from './stats-data.js';
@@ -60,6 +61,9 @@ import { type LanternPost, type PalengkeData, type Visibility, PALENGKE, VISIBIL
 
 const DIRS = new Set<TownDir>(['s', 'se', 'e', 'ne', 'n', 'nw', 'w', 'sw']);
 const MOVES = new Set<TownMove>(['dash', 'step-back', 'charge', 'blink']);
+/** How near the Great Scale's bell you ring it (tiles). */
+const BELL_TILES = 3;
+const cheb = (a: [number, number], b: [number, number]) => Math.max(Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1]));
 const EMOTES = new Set<TownEmote>(['heart', 'laugh', 'exclaim', 'question', 'kowen', 'sleep', 'angry', 'wave']);
 /** Emotes: a burst of 3, then one a second. */
 const EMOTES_PER_SECOND = 1;
@@ -156,6 +160,9 @@ export interface TownOptions {
     enter?(userId: string, room: string): { active: QuestProgress[] } | null;
     /** The quest items a kill of `kind` drops for them (CONTEXT.md Quest item): their own loot where it fell. */
     drops?(userId: string, kind: string): Item[];
+    /** They rang a field boss's bell (the Great Scale's): their "ring the bell" step moved on; their active quests, else
+     *  null. */
+    bell?(userId: string, mob: string): { active: QuestProgress[] } | null;
   };
   /** Aling Conching's dishes (CONTEXT.md Dish; classes/palengke-leveling.json `dishes`): `buy` checks and spends its
    *  Kusing (null: done; else why not); the dishes on everyone kept through a restart (`load` at the start, `save` on
@@ -254,6 +261,9 @@ export interface TownOptions {
    *  runs on the Slums' mob room), and giving a find's or reunite's reward (Kowens, Kusing, Low Repair Kits by mail when
    *  the bag is full, a potion): whether the kits went by mail. Without it, no event. */
   halloween?: { event: Halloween; give(userId: string, reward: HalloweenReward, from: string): { kitsByMail: boolean } };
+  /** The Great Scale (web/town-great-scale.ts: the director of `room`'s mob room, the Palengke's): its state for arrivals
+   *  there, its bell. */
+  greatScale?: { boss: GreatScale; room: string };
   /** The leaderboard's records (web/records.ts): a real run cleared (who was inside, how long it took) and the golem
    *  down (the damage each member did). Without it, nothing is kept. */
   records?: { clear(members: string[], ms: number, at: number): void; golem(dealt: Map<string, number>, at: number): void };
@@ -411,6 +421,10 @@ interface Conn {
   lanternAt?: number;
   /** Stunned until (ms): no steps (Wire Wolf's Live Floor). */
   stunnedUntil?: number;
+  /** Held on the Great Scale's pan until (ms): no steps, attacks, moves or buffs. */
+  heldUntil?: number;
+  /** When they last rang the Great Scale's bell (ms). */
+  bellAt?: number;
   /** Dodging every hit that lands before this (ms): a Step Back (stats.json skills.moveDodge). */
   dodgeUntil?: number;
 }
@@ -662,10 +676,13 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     send(c, { t: 'buffs', buffs: buffs.view(c.userId, Date.now()) });
     refreshVitals(c, false, true);
   };
+  /** Held on the Great Scale's pan now. */
+  const held = (c: Conn) => (c.heldUntil ?? 0) > Date.now();
   /** 0 HP: faded out for everyone there, no mob after them, nothing more lands on them. */
   const knockOut = (c: Conn) => {
     c.player.out = true;
     c.player.sit = false;
+    c.heldUntil = 0; // (the pan lets them go: town-great-scale.ts sees them gone)
     const dishes = !!buffs?.endDishes(c.userId); // (a knock-out ends them)
     if (dishes) saveDishes();
     if (buffs?.endTimed(c.userId) || dishes) buffsChanged(c); // (a stance stays)
@@ -826,23 +843,32 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         eventKill(room, k);
         continue;
       }
+      // (The Great Scale's pan: nothing; its director lets the held player go.)
+      if (k.kind === PAN_KIND) continue;
       // (A run's mobs give nothing until a boss has fallen there: its ticket comes back until then.)
       if (run && !k.warrens && !run.ticketSpent) continue;
       const credited = k.mini || k.warrens ? withParty(k.to, room) : k.to;
+      // The Great Scale down: its line naming everyone who hit it, to its room only.
+      const scale = k.boss && opts.greatScale?.boss.id === k.kind;
+      if (scale && k.dealt) {
+        const line: TownServerMessage = { t: 'system', line: { kind: 'golem', text: scaleDownLine([...k.dealt.keys()].map(nameOf), opts.greatScale!.boss.boss.name), tone: 'down' } };
+        for (const o of conns.values()) if (o.room === room) send(o, line);
+      }
       if (k.boss || k.mini || k.warrens) {
         for (const user of credited) {
           const o = conns.get(user);
           if (o && opts.progress) progressed(o, opts.progress.kill(o.userId, k));
         }
       } else shareXp(room, k);
-      // The golem down: each member's damage this fight, for the leaderboard.
-      if (k.boss && k.dealt) opts.records?.golem(k.dealt, Date.now());
+      // The golem down: each member's damage this fight, for the leaderboard (its Golem board: the golem only).
+      if (k.boss && k.dealt && !scale) opts.records?.golem(k.dealt, Date.now());
       if (run) runDrop(run, k);
       else dropFor(room, { ...k, to: credited });
       // (A Warrens boss counts for no quest: the Tanod's mini bosses are the Slums' own.)
+      // (The Great Scale counts for those who earned it, not their party: CONTEXT.md Great Scale.)
       if (!k.warrens) {
-        questKill(withParty(credited, room), { kind: k.kind, mini: !!k.mini, level: k.level });
-        questDrops(room, withParty(credited, room), k);
+        questKill(scale ? credited : withParty(credited, room), { kind: k.kind, mini: !!k.mini, level: k.level });
+        questDrops(room, scale ? credited : withParty(credited, room), k);
       }
       if (run && k.warrens) {
         const before = run.phase;
@@ -1154,7 +1180,9 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       }
       case 'move': {
         // A mobility move: just shown to the others (the steps after it move them, checked as ever). Ends near
-        // where they are, one at a time; only their class's moves, from their unlock level.
+        // where they are, one at a time; only their class's moves, from their unlock level. (Never while held on the
+        // Great Scale's pan.)
+        if (held(c)) return;
         const near = inside_(m.col, m.row) && Math.abs((m.col as number) - p.col) <= 6 && Math.abs((m.row as number) - p.row) <= 6;
         const now = Date.now();
         if (!MOVES.has(m.move) || !near || now - (c.movedAt ?? 0) < 800) return;
@@ -1178,6 +1206,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         // A damage skill on a mob (battle maps only): the mob room decides; everyone there sees the hit.
         const mobs = mobsOf(c.room);
         if (!mobs || typeof m.mob !== 'string' || !Number.isInteger(m.skill)) return;
+        if (held(c)) return send(c, { t: 'attack-refused', reason: 'held' }); // (held on the Great Scale's pan)
         // Their class, level, points, everything worn and skill levels; blinded, every hit misses.
         const now = Date.now();
         const who = { ...fighterOf(c), blinded: !!vitals?.blinded(c.userId, now) };
@@ -1224,7 +1253,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       case 'buff': {
         // A buff (town-buffs.ts decides): its MP spent, everyone in the room sees the cast; who it reached gets it (their
         // tray, HP's most), or a heal (Soothing Touch) for the caster's Power × its share, green numbers for the room.
-        if (!buffs || !vitals || typeof m.buff !== 'string') return;
+        if (!buffs || !vitals || typeof m.buff !== 'string' || held(c)) return;
         const now = Date.now();
         const who = fighterOf(c);
         const party = (parties.of(c.userId)?.members ?? []).flatMap((u): Nearby[] => {
@@ -1599,6 +1628,28 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         send(to, { t: 'whisper', id: p.id, name: p.nickname, text: said.text, ...extra });
         return send(c, { t: 'whisper', id: to.player.id, name: to.player.nickname, text: said.text, sent: true, ...extra });
       }
+      case 'bell-ring': {
+        // The Great Scale's bell after its fall, rung within 3 tiles of it: everyone near it on their "ring the bell"
+        // step moves on (CONTEXT.md Bell). One ring a second.
+        const G = opts.greatScale;
+        const now = Date.now();
+        const at = G && G.room === c.room ? G.boss.bell(now) : null;
+        if (!at || p.out || cheb([p.col, p.row], at) > BELL_TILES || now - (c.bellAt ?? 0) < 1000) return;
+        c.bellAt = now;
+        const rung: TownServerMessage = { t: 'bell-rung', id: p.id };
+        for (const o of conns.values()) {
+          if (o.room !== c.room) continue;
+          send(o, rung);
+          if (cheb([o.player.col, o.player.row], at) > BELL_TILES || o.player.out) continue;
+          if (!opts.quests?.bell) {
+            send(o, { t: 'quest-bell', mob: G!.boss.id }); // (the dev town: the page's pretend quests)
+            continue;
+          }
+          const r = opts.quests.bell(o.userId, G!.boss.id);
+          if (r) send(o, { t: 'quests', active: r.active });
+        }
+        return;
+      }
       case 'mikko-claim': {
         // A click on Mikko Kalabasa: theirs if it hides here within reach (the server's tiles decide; first wins).
         if (!H || p.out) return;
@@ -1721,7 +1772,8 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       if (mobRoom) {
         const now = Date.now();
         const plan = mobRoom.golemPlan(now);
-        send(c, { t: 'mobs', mobs: mobRoom.snapshot(now), golem: mobRoom.golemState(now), ...(plan && plan.nextRise !== null ? { riseIn: plan.nextRise - now } : {}) });
+        const G = opts.greatScale?.room === room ? opts.greatScale.boss : null;
+        send(c, { t: 'mobs', mobs: mobRoom.snapshot(now), golem: mobRoom.golemState(now), ...(plan && plan.nextRise !== null ? { riseIn: plan.nextRise - now } : {}), ...(G ? { greatScale: G.state(now) } : {}) });
       }
       const loot = loots.get(room);
       if (loot) send(c, { t: 'loot', loot: loot.viewAll(userId, Date.now()) });
@@ -2225,7 +2277,20 @@ export function attachTown(server: Server, opts: TownOptions): Town {
             send(o, stun);
             others(o, stun);
           }
-          const r = vitals.hurt(o.userId, l.damage, now);
+          // Held on the Great Scale's pan (or let go: 0): no steps, attacks, moves or buffs meanwhile.
+          if (l.hold !== undefined) {
+            o.heldUntil = l.hold ? now + l.hold : 0;
+            o.stunnedUntil = l.hold ? now + l.hold : now;
+            const stun: TownServerMessage = { t: 'stunned', id: o.player.id, ms: l.hold };
+            send(o, stun);
+            others(o, stun);
+          }
+          // Kulang sa Timbang: their newest timed class buff off.
+          if (l.strip && buffs?.stripNewest(o.userId)) buffsChanged(o);
+          // The pan's squeeze: a share of their most HP.
+          const squeeze = l.hpPct ? Math.round((vitals.get(o.userId)?.max.hp ?? 0) * l.hpPct) : 0;
+          if (!l.damage && !squeeze) continue;
+          const r = vitals.hurt(o.userId, l.damage + squeeze, now);
           if (!r) continue;
           touched.add(o);
           if (r === 'out') knockOut(o);

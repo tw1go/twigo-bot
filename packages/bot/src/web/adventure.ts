@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { AdventureState, ClassesFile, EquipPlace, Item, QuestDef, QuestReward, QuestsFile, StatName, TownAdventureResponse, TownEquipAction, TownForgeAction, TownForgeResponse, TownPointsAction, TownQuestAction, TownSkillsAction, CosmeticPlace, TownPetAction } from '@mikazuki/shared';
-import { type ShopEvents, type PalengkeData, addToBag, advanceCollects, buyCosmetic, dishOf, dishRefusal, expireItems, finishQuest, freeDishOf, itemName, heldCount, objectiveCount, offeredBy, palengkeQuests, questItemDrops, startDaily, startInArea, takeFromBag, unlockedAt } from '@mikazuki/shared';
+import { type ShopEvents, type PalengkeData, addToBag, advanceCollects, ringBell, buyCosmetic, dishOf, dishRefusal, expireItems, finishQuest, freeDishOf, itemName, heldCount, objectiveCount, offeredBy, palengkeQuests, questItemDrops, startDaily, startInArea, takeFromBag, unlockedAt } from '@mikazuki/shared';
 import { STAT_NAMES, bagSlots, classSkills, classBuffs, buffSkillLevels, damageSkillLevels, skillLevelOf, equipFromBag, giveGear, giveQuestRewards, giveQuestPieces, questKill, readyToReport, withLeveling, missingTraining, moveUnlock, newItem, placesFor, swapTrainingGear, trainingGear, takeKind, unequipToBag, wearCheck, COSMETIC_PLACES, wearCosmetic, unwearCosmetic, gainPetXp, petAction, petIdOf, petRules } from '@mikazuki/shared';
 import { db } from '../db/db.js';
 import { type LevelGain, type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView, raiseSkill, refundPoints, resetSkillPoints, resetStatPoints, spendPoint } from './progress.js';
@@ -221,6 +221,15 @@ export function questKillFor(userId: string, kill: { kind: string; mini: boolean
   const s = load(userId);
   if (!questKill(s, QUESTS, kill)) return null;
   advanceCollects(s, QUESTS); // (a hand-in hunt done: on to its NPC)
+  save(userId, s);
+  return { active: s.quests.active };
+}
+
+/** They rang a field boss's bell (the Great Scale's): their "ring the bell" step moves on, saved; their active quests if
+ *  it did, else null. */
+export function ringBellFor(userId: string, mob: string): { active: AdventureState['quests']['active'] } | null {
+  const s = load(userId);
+  if (!ringBell(s, QUESTS, mob)) return null;
   save(userId, s);
   return { active: s.quests.active };
 }

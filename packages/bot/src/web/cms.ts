@@ -18,6 +18,7 @@ import { kickedUntil, mutedUntil } from './town-mod.js';
 import { forgetNews } from './town-news.js';
 import { BODY_MAX, TITLE_MAX, deletePost, savePost, townPosts } from './town-posts.js';
 import type { Town } from './town.js';
+import type { GreatScale } from './town-great-scale.js';
 import type { MobRoom } from './town-mobs.js';
 import { isSettingKey, setSetting, setting, settingList, SETTINGS } from '../games/settings.js';
 import { CLASSES, QUESTS, adventureOf, resetAdventure } from './adventure.js';
@@ -51,8 +52,8 @@ import { MAIL_RULES } from '@mikazuki/shared';
 //   GET  <path>/api/maintenance  maintenance mode (web/maintenance.ts): on or off, its note, who's in town
 //                                POST /api/maintenance { on, note? } on: everyone but the CMS's users is sent out of the
 //                                town and kept out, and the game's title screen shows the note instead of Start
-//   GET  <path>/api/boss         the field boss (Scrapheap Golem): up or not, its HP, its next rise
-//                                POST /api/boss/spawn {} it rises now in the Slums (if it isn't up)
+//   GET  <path>/api/boss         the field bosses (the Scrapheap Golem, the Great Scale): up or not, HP, next rise
+//                                POST /api/boss/spawn { id } it rises (wakes) now on its map (if it isn't up)
 //   GET  <path>/api/beta?q=&status=&class=   close beta applications from the front page (web/beta.ts), newest first
 //                                POST /api/beta/status { id, status: new|contacted|invited|declined }
 //                                GET /api/beta.csv?q=&status=&class= the same list as a CSV download
@@ -66,20 +67,28 @@ export interface CmsDeps {
   town: () => Town | null;
   /** The Slums' mobs, with the field boss (null: not running). */
   slums: () => MobRoom | null;
+  /** The Lumang Palengke's field boss (null: not running). */
+  greatScale: () => GreatScale | null;
   /** A member's Discord name. */
   discordName: (userId: string) => Promise<string>;
   /** Discord members whose name starts with `q` (or the one with that ID), bots left out. */
   searchMembers: (q: string) => Promise<{ id: string; name: string }[]>;
 }
 
-/** The field boss as the CMS shows it: its name, whether it's up (its state and HP) and when it rises next on its own. */
-function boss(deps: CmsDeps) {
-  const room = deps.slums();
+/** The field bosses as the CMS shows them: each one's name and map, whether it's up (its state and HP) and when it rises
+ *  next on its own. */
+function bosses(deps: CmsDeps) {
   const now = Date.now();
+  const out: { id: string; map: string; name: string; everyMinutes: number; nextRise: number | null; up: boolean; state: string; hp: number; maxHp: number }[] = [];
+  const room = deps.slums();
   const plan = room?.golemPlan(now);
-  if (!room || !plan) return { running: false };
-  const g = room.golemState(now);
-  return { running: true, name: plan.name, everyMinutes: plan.everyMinutes, nextRise: plan.nextRise, up: !!g && g.state !== 'dead', state: g?.state ?? 'gone', hp: g?.hp ?? 0, maxHp: g?.maxHp ?? 0 };
+  if (room && plan) {
+    const g = room.golemState(now);
+    out.push({ id: 'golem', map: 'Slums', name: plan.name, everyMinutes: plan.everyMinutes, nextRise: plan.nextRise, up: !!g && g.state !== 'dead', state: g?.state ?? 'gone', hp: g?.hp ?? 0, maxHp: g?.maxHp ?? 0 });
+  }
+  const scale = deps.greatScale();
+  if (scale) out.push({ id: 'great-scale', map: 'Lumang Palengke', ...scale.cmsView(now) });
+  return { bosses: out };
 }
 
 /** Maintenance mode as the CMS shows it, with who's in the town now (while it's on: the CMS's users only). */
@@ -255,13 +264,20 @@ export async function cms(client: Client, req: IncomingMessage, res: ServerRespo
       return send(res, 200, { ...upkeep(deps), sentOut: out });
     }
     case 'GET /api/boss':
-      return send(res, 200, boss(deps));
+      return send(res, 200, bosses(deps));
     case 'POST /api/boss/spawn': {
+      if (body?.id === 'great-scale') {
+        const scale = deps.greatScale();
+        if (!scale) return bad('The Great Scale isn’t running.');
+        if (!scale.wakeNow(Date.now())) return bad('It is up already.');
+        await log(client, who, 'woke the Great Scale');
+        return send(res, 200, bosses(deps));
+      }
       const room = deps.slums();
       if (!room?.golemPlan(Date.now())) return bad('There is no field boss running.');
       if (!room.riseGolem(Date.now())) return bad('It is up already.');
       await log(client, who, 'spawned the field boss');
-      return send(res, 200, boss(deps));
+      return send(res, 200, bosses(deps));
     }
     case 'GET /api/me':
       return send(res, 200, { id: userId, name: who, nickname: getNickname(userId) });

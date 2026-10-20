@@ -132,7 +132,12 @@ export function palengkeQuests(P: PalengkeData, npcName: (id: string) => string)
         objectives = [talk(q.giver, 'talk', q.gives), deliver(q.gives!, 1)];
         break;
       case 'fieldBoss':
-        objectives = [{ id: 'boss', type: 'fieldBoss', mob: q.mob!, count: 1, needs: 'honest-weight', text: `Help defeat ${mobName(q.mob!)} with the ${itemName('honest-weight')}` }, report()];
+        // (Then its bell, rung within 3 tiles once it's down: CONTEXT.md Bell.)
+        objectives = [
+          { id: 'boss', type: 'fieldBoss', mob: q.mob!, count: 1, needs: 'honest-weight', text: `Help defeat ${mobName(q.mob!)} with the ${itemName('honest-weight')}` },
+          { id: 'bell', type: 'bell', mob: q.mob!, text: 'Ring the bell of the palengke' },
+          report(),
+        ];
         break;
       default:
         objectives = [report()];

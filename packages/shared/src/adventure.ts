@@ -37,8 +37,8 @@ export type QuestType = 'main' | 'side';
 
 /** An objective: talk (to `npc`), chooseClass, kill (`count` of `mob`; its mini bosses don't count), miniBoss (one
  *  of `mob`'s mini bosses), collect (`count` of `item` in the combat bag: done as it's there) or deliver (talk to `npc`
- *  with `count` of `item`: they take it). Kill and miniBoss are reported to the giver when reached (the tracker's
- *  Report). */
+ *  with `count` of `item`: they take it), fieldBoss (earn its share of a field boss's kill) or bell (ring the bell that
+ *  boss leaves where it fell). Kill and miniBoss are reported to the giver when reached (the tracker's Report). */
 export interface QuestObjectiveDef {
   id: string;
   type: string;
