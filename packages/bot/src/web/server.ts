@@ -25,6 +25,7 @@ import { bridgeTownChat } from './town-chat.js';
 import { MobRoom, fighterStats, loadMobKinds, loadMobMap, loadSkillShapes } from './town-mobs.js';
 import { clearRankOf, golemBestOf, recordClear, recordGolem, topClears, topGolem } from './records.js';
 import { loadGolemArt } from './town-golem.js';
+import { type FieldBossDef, GreatScale, loadGreatScaleArt } from './town-great-scale.js';
 import { loadWarrens } from './town-warrens.js';
 import { CLASSES, withItems, newUid, expiredFor } from './adventure.js';
 import { connectTownFeed, feed } from './town-feed.js';
@@ -93,8 +94,8 @@ const lookOf = (userId: string): OutfitData | null => {
   return o && withWorn(userId, o);
 };
 import { enhanceFeedLine, parseForgeAction } from './forge.js';
-import { loadItemData, loadPalengkeLeveling } from './stats-data.js';
-import { practiceDropFor, refundPracticeTicketFor, usePracticeTicketFor, warrensAccessOf, refundTicketFor, warrenTicketsOf, useTicketFor, kindCountOf, useKindFor, adventureOf, cosmeticsOf, combatOf, fighterOf, forgeFor, petXpFor, dropItemFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townPet, townEquip, townPoints, townQuest, townSkills, trainingArmorFor, questRewardsFor, questPiecesFor, questKillFor, enterAreaFor, questDropsFor, buyDishFor, adventurersWithClass } from './adventure.js';
+import { loadItemData, loadPalengkeLeveling, loadStats } from './stats-data.js';
+import { practiceDropFor, refundPracticeTicketFor, usePracticeTicketFor, warrensAccessOf, refundTicketFor, warrenTicketsOf, useTicketFor, kindCountOf, useKindFor, adventureOf, cosmeticsOf, combatOf, fighterOf, forgeFor, petXpFor, dropItemFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townPet, townEquip, townPoints, townQuest, townSkills, trainingArmorFor, questRewardsFor, questPiecesFor, questKillFor, enterAreaFor, questDropsFor, ringBellFor, buyDishFor, adventurersWithClass } from './adventure.js';
 import { renameWithCard } from '../items/rename-card.js';
 import { changeClassWithTicket } from '../items/class-ticket.js';
 import { LAUNCH_REWARD, isPreregistered, launched, preregCount, preregister } from '../prereg/prereg.js';
@@ -203,6 +204,8 @@ const BAKOD_CHECK_MS = 3_000;
 const WARRENS_RUNS = 'warrens-open';
 /** When the Scrapheap Golem rises next (kv): what a restart picks up. */
 const GOLEM_NEXT_RISE = 'golem-next-rise';
+/** When the Great Scale wakes next (kv). */
+const GREAT_SCALE_NEXT = 'great-scale-next-rise';
 /** Leaderboard responses are reused this long, so a burst of visitors is one lookup. */
 const BOARD_TTL_MS = 30_000;
 /** Names and avatars change rarely; looked up at most this often per member. */
@@ -473,9 +476,12 @@ export function startWebServer(client: Client): void {
   };
   /** The Slums' mobs and field boss (made with the town, below; the CMS can spawn the boss). */
   let slumsRoom: MobRoom | null = null;
+  /** The Lumang Palengke's field boss (its director, made with the town; the CMS can wake it). */
+  let greatScale: GreatScale | null = null;
   const cmsDeps: CmsDeps = {
     town: () => town,
     slums: () => slumsRoom,
+    greatScale: () => greatScale,
     discordName: async (id) => (await profile(client, id)).name,
     // The members search (REST) needs no privileged intent; an ID is fetched as is.
     searchMembers: async (q) => {
@@ -1154,16 +1160,24 @@ export function startWebServer(client: Client): void {
     let toDiscord: (userId: string, nickname: string, text: string, megaphone: boolean, gm?: boolean) => void = () => {};
     refundHeldBets(); // an arena match the bot didn't finish: both get their stake back
     const slumsMap = loadTownMap('slums'); // the Slums
-    // The Lumang Palengke (Lv 21-40): a battle map whose mob zones and field boss are all off until their art comes, so
-    // its room has no mobs yet (and no golem: no boss art given). Its Lantern Posts' tiles are blocked (loadTownMap).
+    // The Lumang Palengke (Lv 21-40): its mobs, and its field boss the Great Scale, run by its director in a zone of its
+    // own (its arena). Its Lantern Posts' tiles are blocked (loadTownMap).
     const palengkeMap = loadTownMap('palengke');
     const palengkeMobMap = { ...loadMobMap('palengke'), blocked: palengkeMap.blocked };
+    const scaleDef = palengkeMobMap.boss as unknown as (FieldBossDef & { active?: boolean }) | undefined;
+    if (scaleDef && scaleDef.active !== false) {
+      greatScale = new GreatScale(scaleDef, loadStats(), loadGreatScaleArt(scaleDef.id));
+      greatScale.setSchedule(kvLoad<number | null>(GREAT_SCALE_NEXT, null), (at) => kvSave(GREAT_SCALE_NEXT, at));
+      palengkeMobMap.mobZones = [...(palengkeMobMap.mobZones ?? []), GreatScale.zone(scaleDef, palengkeMobMap.height?.[scaleDef.tile[1]]?.[scaleDef.tile[0]] ?? 0)];
+    }
     const H = loadHalloween();
     const halloween = new Halloween(H.data, H.maps, kvLoad<HalloweenSaved | null>(HALLOWEEN_KV, null), (st) => kvSave(HALLOWEEN_KV, st));
     setShopEvents(() => ({ halloween: { on: halloween.on(Date.now()), window: H.data } })); // (the store's Witch Hat and Robe)
     const slumsMobMap = loadMobMap('slums');
     slumsMobMap.mobZones = [...(slumsMobMap.mobZones ?? []), Halloween.eventZone(slumsMobMap.size)];
     const skillLevels = Object.fromEntries(CLASSES.map((c) => [c.id, c.skills.map((k) => k.level)]));
+    const palengkeRoom = new MobRoom(palengkeMobMap, Math.random, skillLevels, loadSkillShapes(), loadMobKinds(), undefined, undefined, loadPalengkeLeveling(), { area: 'palengke', ...(greatScale ? { director: greatScale } : {}) });
+    greatScale?.attach(palengkeRoom);
     // The Scrap Warrens: runs a restart ended before any boss fell there give their openers' tickets back (a boss down
     // spends it; runs saved before `spent` existed: unless Barong-Barong fell, as then).
     // (A practice run's: its Practice Warren Ticket.)
@@ -1184,13 +1198,15 @@ export function startWebServer(client: Client): void {
       // (The Halloween event's mobs live in the Slums' room too: its director runs them, in a zone of their own.)
       mobs: {
         slums: (slumsRoom = new MobRoom(slumsMobMap, Math.random, skillLevels, loadSkillShapes(), loadMobKinds(), loadGolemArt(), undefined, undefined, { director: halloween.director })),
-        palengke: new MobRoom(palengkeMobMap, Math.random, skillLevels, loadSkillShapes(), loadMobKinds(), undefined, undefined, loadPalengkeLeveling(), { area: 'palengke' }),
+        palengke: palengkeRoom,
       },
       // The Halloween event (events/halloween.json; its schedules kept in kv 'halloween'): rewards into the wallet, the
       // combat bag (the kits by mail when it's full) and the potion stock.
       halloween: { event: halloween, give: giveHalloween },
       // The leaderboard's records: a real run cleared, the golem down (web/records.ts).
       records: { clear: recordClear, golem: recordGolem },
+      // The Great Scale (the Palengke's field boss): its state for arrivals there, its bell.
+      ...(greatScale ? { greatScale: { boss: greatScale, room: 'palengke' } } : {}),
       // Runs of the Scrap Warrens: the ticket from the combat bag (back if a run ends before a boss falls), the open runs
       // kept (refunds after a restart).
       // Aling Nena's quest: a real run needs it done; a practice run uses her Practice Warren Ticket and its last boss drops
@@ -1204,7 +1220,7 @@ export function startWebServer(client: Client): void {
       },
       // Lantern Posts: a Return Lantern from the combat bag for each teleport.
       lanterns: { count: (userId) => kindCountOf(userId, RETURN_LANTERN), use: (userId) => useKindFor(userId, RETURN_LANTERN) },
-      quests: { kill: questKillFor, enter: enterAreaFor, drops: (userId, kind) => questDropsFor(userId, kind) },
+      quests: { kill: questKillFor, enter: enterAreaFor, drops: (userId, kind) => questDropsFor(userId, kind), bell: ringBellFor },
       // Aling Conching's dishes: bought for Kusing (unlocked by the Palengke's quests); the ones on everyone kept in kv
       // 'dishes' through restarts.
       dishes: { buy: buyDishFor, load: () => kvLoad('dishes', {}), save: (all) => kvSave('dishes', all) },

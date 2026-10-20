@@ -564,33 +564,36 @@ async function players(selected) {
   if (current) open(current);
 }
 
-// ── Field boss (the Scrapheap Golem in the Slums) ──
+// ── Field bosses (the Scrapheap Golem in the Slums, the Great Scale in the Lumang Palengke) ──
 
 async function boss() {
-  page('Field boss', 'The Scrapheap Golem rises in the Slums on its own every two hours. Spawn it now for an event or a test: it rises in its pit at once (players in the Slums see the line), and its usual schedule carries on.');
+  page('Field boss', 'The Scrapheap Golem rises in the Slums and the Great Scale wakes in the Lumang Palengke\'s Market Hall, each on its own every two hours. Spawn one now for an event or a test: it rises (wakes) at once (players on its map see the line), and its usual schedule carries on.');
   const body = h('div', { class: 'sections' });
   main().append(body);
   let timer = 0;
+  const STATE = { rising: 'Rising', idle: 'Up, waiting', fight: 'Fighting', home: 'Walking home', sinking: 'Sinking back', dead: 'Down', gone: 'Not up', asleep: 'Asleep' };
   async function draw() {
-    const b = await api('boss');
-    if (!b.running) return body.replaceChildren(h('div', { class: 'card' }, h('p', { class: 'hint' }, 'The field boss isn’t running on this server.')));
-    const spawn = h('button', { class: 'btn primary', disabled: b.up }, b.up ? 'It’s up' : 'Spawn now');
-    spawn.addEventListener('click', () => act(spawn, async () => {
-      if (!confirm(`Spawn the ${b.name} in the Slums now?`)) return;
-      await api('boss/spawn', {});
-      toast(`The ${b.name} is rising.`);
-      draw();
+    const { bosses } = await api('boss');
+    if (!bosses.length) return body.replaceChildren(h('div', { class: 'card' }, h('p', { class: 'hint' }, 'No field boss is running on this server.')));
+    body.replaceChildren(...bosses.map((b) => {
+      const spawn = h('button', { class: 'btn primary', disabled: b.up }, b.up ? 'It’s up' : 'Spawn now');
+      spawn.addEventListener('click', () => act(spawn, async () => {
+        if (!confirm(`Spawn ${b.name} in the ${b.map} now?`)) return;
+        await api('boss/spawn', { id: b.id });
+        toast(`${b.name} is rising.`);
+        draw();
+      }));
+      const pct = b.maxHp ? Math.round((b.hp / b.maxHp) * 100) : 0;
+      return h('div', { class: 'card' },
+        h('h2', null, b.name),
+        h('p', { class: 'hint' }, b.map),
+        h('p', null, h('b', null, STATE[b.state] ?? b.state), b.up ? ` · ${fmt(b.hp)} / ${fmt(b.maxHp)} HP (${pct}%)` : ''),
+        h('p', { class: 'hint' }, b.nextRise ? `Next rise on its own: ${when(b.nextRise)} (${b.everyMinutes} minutes after it was killed or sank back).` : `It rises again ${b.everyMinutes} minutes after it's killed or sinks back.`),
+        h('div', { class: 'actions' }, spawn),
+      );
     }));
-    const STATE = { rising: 'Rising', idle: 'Up, waiting in its pit', fight: 'Fighting', home: 'Walking home', sinking: 'Sinking back', dead: 'Down', gone: 'Not up' };
-    const pct = b.maxHp ? Math.round((b.hp / b.maxHp) * 100) : 0;
-    body.replaceChildren(h('div', { class: 'card' },
-      h('h2', null, b.name),
-      h('p', null, h('b', null, STATE[b.state] ?? b.state), b.up ? ` · ${fmt(b.hp)} / ${fmt(b.maxHp)} HP (${pct}%)` : ''),
-      h('p', { class: 'hint' }, b.nextRise ? `Next rise on its own: ${when(b.nextRise)} (${b.everyMinutes} minutes after it was killed or sank back).` : `It rises again ${b.everyMinutes} minutes after it's killed or sinks back.`),
-      h('div', { class: 'actions' }, spawn),
-    ));
     clearTimeout(timer);
-    if (location.hash === '#boss') timer = setTimeout(() => act(null, draw), 5000); // (its HP and state, kept fresh)
+    if (location.hash === '#boss') timer = setTimeout(() => act(null, draw), 5000); // (their HP and state, kept fresh)
   }
   await draw();
 }

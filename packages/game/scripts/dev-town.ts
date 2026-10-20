@@ -14,6 +14,7 @@ import { buyCombat, devGive, dropFromBag, makeItem, takeLoot, usePotion } from '
 import { enhanceFeedLine, forge, parseForgeAction } from '../../bot/src/web/forge.ts';
 import { settleTrade } from '../../bot/src/web/trade.ts';
 import { loadGolemArt } from '../../bot/src/web/town-golem.ts';
+import { type FieldBossDef, GreatScale, loadGreatScaleArt } from '../../bot/src/web/town-great-scale.ts';
 import { loadWarrens } from '../../bot/src/web/town-warrens.ts';
 import { LANES, finishMs, raceScript } from '../../bot/src/games/race-script.ts';
 import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
@@ -37,6 +38,8 @@ import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
 //   GET /__golem?now=1   the Scrapheap Golem rises in the Slums now (the page's ?golem=now); ?demo=1&as=Alice: it rises if
 //       it must and plays its whole fight against the nearest player (?golemdemo=1): each attack, the Junk at a pretend
 //       half, Enrage at a pretend quarter, death (the line names Alice if nobody hit it)
+//   GET /__greatscale   the Great Scale wakes in the Lumang Palengke now (the page's ?greatscale=now); &hp=500 puts it
+//       (awake) down to 500 HP, so a hit or two fells it and its bell rings
 //   GET /__halloween?as=Alice   the Halloween event on now (the page's ?halloween=on calls it); &mikko=1 hides Mikko
 //       Kalabasa two tiles from Alice, &biikko=1 brings Biikko Kalabasa out in the Slums now, &round=1 starts a Manananggal
 //       round (the legs in town, the upper half in the Slums), &carry=1 hands Alice the dazed upper half (a round for it),
@@ -408,8 +411,13 @@ export function devTown(): Plugin {
       const halloween = new Halloween(hwLoaded.data, hwLoaded.maps, null);
       const slumsJson = JSON.parse(readFileSync(slumsFile, 'utf8'));
       slumsJson.mobZones = [...(slumsJson.mobZones ?? []), Halloween.eventZone(slumsJson.size)];
-      // (The Lumang Palengke's mob room, made with the town below: its mini bosses for /__minibosses.)
+      // (The Lumang Palengke's mob room, made with the town below: its mini bosses for /__minibosses; its field boss the
+      // Great Scale run by its director in a zone of its own, as the bot's server.ts.)
       let palengkeMobs: MobRoom | null = null;
+      const palengkeJson = { ...JSON.parse(readFileSync(join(server.config.publicDir, 'assets/maps/palengke.json'), 'utf8')), blocked: palengkeMap().blocked };
+      const scaleDef = palengkeJson.boss as FieldBossDef & { active?: boolean };
+      const greatScale = scaleDef?.active !== false ? new GreatScale(scaleDef, loadStats(), loadGreatScaleArt(scaleDef.id)) : null;
+      if (greatScale) palengkeJson.mobZones = [...(palengkeJson.mobZones ?? []), GreatScale.zone(scaleDef, palengkeJson.height?.[scaleDef.tile[1]]?.[scaleDef.tile[0]] ?? 0)];
       const slumsMobs = new MobRoom(
         slumsJson,
         Math.random,
@@ -432,8 +440,8 @@ export function devTown(): Plugin {
           slums: slumsMap,
           palengke: palengkeMap,
         },
-        // (The Palengke's zones and boss are off until their art comes: a battle room with no mobs yet.)
-        mobs: { slums: slumsMobs, palengke: (palengkeMobs = new MobRoom({ ...JSON.parse(readFileSync(join(server.config.publicDir, 'assets/maps/palengke.json'), 'utf8')), blocked: palengkeMap().blocked }, Math.random, Object.fromEntries(classes.map((c) => [c.id, c.skills.map((k) => k.level)])), loadSkillShapes(), loadMobKinds(), undefined, undefined, loadPalengkeLeveling(), { area: 'palengke' })) },
+        mobs: { slums: slumsMobs, palengke: (palengkeMobs = new MobRoom(palengkeJson, Math.random, Object.fromEntries(classes.map((c) => [c.id, c.skills.map((k) => k.level)])), loadSkillShapes(), loadMobKinds(), undefined, undefined, loadPalengkeLeveling(), { area: 'palengke', ...(greatScale ? { director: greatScale } : {}) })) },
+        ...(greatScale ? { greatScale: { boss: greatScale, room: 'palengke' } } : {}),
         // Its rewards: Kusing and Low Repair Kits into the kept items (the kits by pretend mail when the bag is full),
         // Kowens into the pretend wallet, the potion only printed.
         halloween: {
@@ -914,6 +922,17 @@ export function devTown(): Plugin {
         const q = new URL(req.url ?? '/', 'http://localhost').searchParams;
         const hp = Number(q.get('hp'));
         reply(res, town.warrensDev(q.get('as') ?? '', q.get('boss') || undefined, hp > 0 ? hp : undefined));
+      });
+      if (greatScale && palengkeMobs) greatScale.attach(palengkeMobs);
+      server.middlewares.use('/__greatscale', (req, res) => {
+        const q = new URL(req.url ?? '/', 'http://localhost').searchParams;
+        if (!greatScale || !palengkeMobs) return void res.end('no Great Scale\n');
+        const hp = Number(q.get('hp'));
+        if (hp > 0) {
+          palengkeMobs.devWound(greatScale.id, hp);
+          return void res.end(`the Great Scale down to ${hp} HP\n`);
+        }
+        res.end(greatScale.wakeNow(Date.now()) ? 'the Great Scale wakes\n' : 'the Great Scale is awake already\n');
       });
       server.middlewares.use('/__minibosses', (_req, res) => {
         res.end(`${slumsMobs.respawnMinis() + (palengkeMobs?.respawnMinis() ?? 0)} mini bosses back\n`);

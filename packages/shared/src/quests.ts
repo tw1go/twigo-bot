@@ -46,6 +46,28 @@ export function advanceCollects(s: Pick<AdventureState, 'quests' | 'bag'>, quest
   return moved;
 }
 
+/** The bell rung after a field boss of `mob` fell (the Great Scale's): every active quest on its `bell` objective for
+ *  that boss moves on. Returns whether anything moved. */
+export function ringBell(s: Pick<AdventureState, 'quests'>, quests: QuestDef[], mob: string): boolean {
+  let moved = false;
+  for (const p of s.quests.active) {
+    const q = quests.find((x) => x.id === p.id);
+    const o = q?.objectives[p.step];
+    if (!q || o?.type !== 'bell' || o.mob !== mob || p.step >= q.objectives.length - 1) continue;
+    p.step++;
+    delete p.count;
+    moved = true;
+  }
+  return moved;
+}
+
+/** Whether a quest of theirs waits on that boss's bell. */
+export const waitsOnBell = (s: Pick<AdventureState, 'quests'>, quests: QuestDef[], mob: string) =>
+  s.quests.active.some((p) => {
+    const o = quests.find((x) => x.id === p.id)?.objectives[p.step];
+    return o?.type === 'bell' && o.mob === mob;
+  });
+
 /** Takes `count` of an item kind out of the combat bag (all or nothing). */
 export function takeFromBag(bag: Item[], defId: string, count: number): boolean {
   if (heldCount(bag, defId) < count) return false;

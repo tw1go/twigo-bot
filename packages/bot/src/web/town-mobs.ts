@@ -115,7 +115,7 @@ export type MobEvent =
   | { t: 'mob-attack'; id: string; target: string; dir: TownMobFacing; slow?: number; hit?: PlayerHit; to?: [number, number] }
   | { t: 'mob-spawn'; id: string; col: number; row: number; hp: number }
   | { t: 'mob-heal'; id: string; hp: number }
-  | Extract<TownServerMessage, { t: 'mob-scale' | 'mob-flag' | 'mob-fx' | 'boss-move' | 'boss-hit' | 'boss-cancel' | 'system' }>
+  | Extract<TownServerMessage, { t: 'mob-scale' | 'mob-flag' | 'mob-fx' | 'boss-move' | 'boss-hit' | 'boss-cancel' | 'system' | 'great-scale' }>
   | GolemEvent;
 
 /** A Scrap Warrens run's say over its room's mobs (town-warrens.ts): its bosses' moves on the room's clock. */
@@ -153,6 +153,11 @@ export interface MobSpec {
   silent?: boolean;
   /** Called by a boss (gone when it resets): its tag. */
   calledBy?: string;
+  /** A field boss (the Great Scale): hit only from inside its zone, never back on its own once dead (its director brings
+   *  it back), its XP for everyone who did `xpShare` of its HP, its loot personal; losing a foe it just looks for the next.
+   *  `dormant`: asleep (between fights: still, not to be targeted). */
+  field?: boolean;
+  dormant?: boolean;
 }
 
 export interface MobHit {
@@ -211,6 +216,12 @@ export interface PlayerLanding extends PlayerHit {
   /** A thrown chair: it hits only if they're within `within` tiles of `tile` as it lands. */
   tile?: [number, number];
   within?: number;
+  /** The Great Scale's Weigh-in: held on its pan this long (ms; 0: let go): no steps, attacks or moves. */
+  hold?: number;
+  /** A share of their most HP off (held on the pan: each second's squeeze), on top of `damage`. */
+  hpPct?: number;
+  /** Their newest timed class buff taken off (Kulang sa Timbang). */
+  strip?: boolean;
 }
 
 /** Each class's skills' target shapes, in their order (the game's classes/skill-hits.json), and their effects. */
@@ -317,6 +328,8 @@ export interface MobZoneData {
    *  its rect; its numbers are MobRoomOptions.zoneStats'. */
   dungeon?: boolean;
   groups?: [number, number][][];
+  /** A field boss's own zone (the Great Scale's: its arena): its mob may stand on the arena no other zone's mob steps on. */
+  field?: boolean;
 }
 
 export interface MobMapData {
@@ -372,6 +385,8 @@ export interface MobKind {
   weigh?: { perHp: number; flashAt?: number };
   /** It drifts: its own pace and short rests. */
   drift?: { speed: number; rest: [number, number] };
+  /** Its own walking pace (tiles a second: the Great Scale's slow hops). */
+  pace?: number;
 }
 export type MobKinds = Record<string, MobKind>;
 
@@ -436,6 +451,9 @@ interface Mob {
   /** A mini boss (its leveling.json entry): back at its own spot; who has done how much of its HP (members). */
   mini?: MiniBossDef;
   dealt?: Map<string, number>;
+  /** A field boss (MobSpec.field), and asleep (`dormant`). */
+  field?: boolean;
+  dormant?: boolean;
   /** When it last started an attack (a Payong's block while it opens). */
   attackAt?: number;
   /** Chairs it has lost (a Monobloc Stack: less ATK each). */
@@ -555,6 +573,11 @@ export class MobRoom {
             pack.push(m);
           });
         });
+        continue;
+      }
+      // A field boss's zone (its director's: the Great Scale's arena): its own aggro and leash, nobody placed.
+      if (zone.field) {
+        this.zones.push({ ...zone });
         continue;
       }
       const R2 = mobRules(fightData.stats, zone.mob, opts.area);
@@ -762,7 +785,7 @@ export class MobRoom {
     if ((this.map.height?.[row]?.[col] ?? 0) !== m.zone.height || this.ramps.has(`${col},${row}`)) return false;
     if (!this.inRect(m.zone, col, row)) return false;
     if (this.pit && (m.zone.id === 'golem-add' ? !this.pit.fight.has(`${col},${row}`) : this.pit.all.has(`${col},${row}`))) return false;
-    if (!m.zone.dungeon && m.zone.id !== 'golem-add' && this.inArena(col, row)) return false;
+    if (!m.zone.dungeon && !m.zone.field && m.zone.id !== 'golem-add' && this.inArena(col, row)) return false;
     const [c0, r0, c1, r1] = this.map.safeZone ?? [-1, -1, -2, -2];
     if (col >= c0 && col <= c1 && row >= r0 && row <= r1) return false;
     return Math.max(Math.abs(col - m.spawn[0]), Math.abs(row - m.spawn[1])) <= reach;
@@ -870,7 +893,7 @@ export class MobRoom {
   }
 
   /** Its pace now: its kind's (a drifter's own), slowed (or rooted: 0) for a while after a skill's effect. */
-  private speedOf(m: Mob, now: number, pace = m.kind.drift?.speed ?? SPEED): number {
+  private speedOf(m: Mob, now: number, pace = m.kind.pace ?? m.kind.drift?.speed ?? SPEED): number {
     if (m.slow && now >= m.slow.until) m.slow = null;
     return pace * (m.slow ? m.slow.factor : 1);
   }
@@ -1034,6 +1057,11 @@ export class MobRoom {
     const leash = m.zone.leash ?? m.rules.leashTiles;
     const p = players.get(foe.id);
     const bored = m.zone.aggro !== 'aggressive' && now - foe.at > GIVE_UP_MS;
+    if (m.field && (!p || cheb(p, m.spawn) > leash || !this.inZone(m.zone, p))) {
+      // A field boss: on to whoever else is in its fight (its director resets it once nobody is).
+      m.foe = null;
+      return;
+    }
     if (!p || cheb(p, m.spawn) > leash || !this.inZone(m.zone, p) || bored) {
       // Gone, pulled past its leash, or done with it: healed to full, home.
       m.foe = null;
@@ -1166,6 +1194,8 @@ export class MobRoom {
     // (A tile of slack: the mob may be mid-hop.)
     const far = boss ? boss.edge(from, now) : m!.radius ? Math.max(0, Math.hypot(from[0] - mc, from[1] - mr) - m!.radius) : Math.max(Math.abs(from[0] - mc), Math.abs(from[1] - mr));
     if (far > reach + 1) return { ok: false, reason: 'range' };
+    // A field boss is only hit from its fight (its arena: no sniping from outside where it can't answer).
+    if (m?.field && !this.inRect(m.zone, ...from)) return { ok: false, reason: 'range' };
     // The golem is only hit from its fight: the pit floor and way in (no sniping over the ring it can't answer).
     if (boss && !boss.inFight(from)) return { ok: false, reason: 'range' };
     this.swings.set(player, now + SWING_MS);
@@ -1197,6 +1227,13 @@ export class MobRoom {
 
   /** A mob that just died, as a kill: its XP for its killer (a mini boss: everyone who did their share). */
   private killOf(x: Mob, member: string): MobKill {
+    if (x.field) {
+      // A field boss: its XP (and loot) for everyone who did its share (the mob table's xpTo), the tally kept for the
+      // kill (who hit it, how much).
+      const dealt = new Map(x.dealt ?? []);
+      x.dealt?.clear();
+      return { id: x.id, kind: x.kindId ?? x.zone.mob, at: [x.col, x.row], level: x.stats.level, xp: x.stats.xp, to: xpEarners({ ...x.stats, hp: x.maxHp }, dealt, member), boss: true, dealt };
+    }
     const to = x.mini || x.boss ? this.miniEarners(x, member) : [member];
     return {
       id: x.id, kind: x.kindId ?? x.zone.mob, at: [x.col, x.row], level: x.stats.level, xp: x.stats.xp, to,
@@ -1246,7 +1283,7 @@ export class MobRoom {
     m.hp = Math.max(0, m.hp - damage);
     if (m.hp === 0) {
       [m.col, m.row] = [mc, mr];
-      m.respawnAt = m.add || m.zone.dungeon ? Infinity : now + (m.mini && this.minis ? this.minis.respawnMs : m.rules.respawnMs);
+      m.respawnAt = m.add || m.zone.dungeon || m.field ? Infinity : now + (m.mini && this.minis ? this.minis.respawnMs : m.rules.respawnMs);
       m.foe = null;
       m.path = [];
     }
@@ -1366,6 +1403,8 @@ export class MobRoom {
       ...(m.untargetable ? { untargetable: true } : {}),
       ...(m.blockAll ? { blockAll: true } : {}),
       ...(m.hidden ? { hidden: true } : {}),
+      ...(m.field ? { field: true } : {}),
+      ...(m.dormant ? { dormant: true } : {}),
     };
   }
 
@@ -1434,7 +1473,10 @@ export class MobRoom {
         ...(s.boss ? { boss: s.boss, dealt: new Map() } : {}), ...(s.name ? { name: s.name } : {}), ...(s.title ? { title: s.title } : {}),
         ...(s.scale ? { scale: s.scale } : {}), ...(s.radius ? { radius: s.radius } : {}), ...(s.still ? { still: true } : {}),
         ...(s.silent ? { silent: true } : {}), ...(s.calledBy ? { calledBy: s.calledBy } : {}), restUntil: now,
+        ...(s.dormant ? { dormant: true, still: true, untargetable: true } : {}),
       });
+      // A field boss: its damage tallied by member (its XP's share), and it stands off by its body's edge.
+      if (s.field) Object.assign(m, { field: true, dealt: new Map(), rules: { ...m.rules, reach: (s.radius ?? 0) + 1 } });
       made.push(m);
     }
     return made.length ? [{ t: 'mob-add', mobs: made.map((m) => this.view(m, now)) }] : [];
@@ -1451,16 +1493,18 @@ export class MobRoom {
   }
 
   /** A boss's windows: can't be targeted or hit, every hit blocked. */
-  setFlags(id: string, flags: { untargetable?: boolean; blockAll?: boolean }): MobEvent[] {
+  setFlags(id: string, flags: { untargetable?: boolean; blockAll?: boolean; dormant?: boolean }): MobEvent[] {
     const m = this.byId.get(id);
     if (!m) return [];
+    // Asleep (a field boss between fights): still and not to be targeted; awake: neither.
+    if (flags.dormant !== undefined) Object.assign(m, { dormant: flags.dormant || undefined, still: flags.dormant || undefined, untargetable: flags.dormant || undefined });
     if (flags.untargetable !== undefined) m.untargetable = flags.untargetable || undefined;
     if (flags.blockAll !== undefined) m.blockAll = flags.blockAll || undefined;
     if (m.untargetable) {
       m.foe = null;
       this.forgetMob(m.id);
     }
-    return [{ t: 'mob-flag', id, untargetable: !!m.untargetable, blockAll: !!m.blockAll }];
+    return [{ t: 'mob-flag', id, untargetable: !!m.untargetable, blockAll: !!m.blockAll, ...(flags.dormant !== undefined ? { dormant: !!m.dormant } : {}) }];
   }
 
   /** Nobody's after it any more (it can't be hit for now). */
@@ -1468,13 +1512,13 @@ export class MobRoom {
     // (Players target mobs, not the other way round: nothing to undo here; the game drops its target.)
   }
 
-  /** Full HP again, its fight over, its damage tally cleared (a boss resetting). */
   /** Dev (the dev town's /__warrens &hp=): a mob down to `hp` at most, so one hit fells it. */
   devWound(id: string, hp: number): void {
     const m = this.byId.get(id);
     if (m && !m.respawnAt) m.hp = Math.max(1, Math.min(m.maxHp, Math.round(hp)));
   }
 
+  /** Full HP again, its fight over, its damage tally cleared (a boss resetting). */
   healFull(id: string): MobEvent[] {
     const m = this.byId.get(id);
     if (!m || m.respawnAt) return [];
@@ -1503,6 +1547,28 @@ export class MobRoom {
     return [{ t: 'mob-move', id, path: [[c0, r0], ...path], speed }];
   }
 
+  /** A boss walks back to its own tile (a field boss resetting), at its pace. */
+  walkHome(id: string, now: number): MobEvent[] {
+    const m = this.byId.get(id);
+    if (!m || m.respawnAt) return [];
+    const [hc, hr] = m.home;
+    [m.col, m.row] = this.at(m, now);
+    m.path = [];
+    if (m.col === hc && m.row === hr) return [];
+    const way = this.route(m, (c, r) => c === hc && r === hr, 10_000);
+    const events: MobEvent[] = [];
+    if (way?.length) this.startHop(m, way, now, events);
+    return events;
+  }
+
+  /** A mob turns to face `dir` where it stands (a boss aiming a move). */
+  face(id: string, dir: TownMobFacing): MobEvent[] {
+    const m = this.byId.get(id);
+    if (!m || m.respawnAt || m.facing === dir) return [];
+    m.facing = dir;
+    return [{ t: 'mob-face', id, dir }];
+  }
+
   /** A boss starts a move: it stops where it is now (a hop under way cut short) and holds still until `until` (when the
    *  move lands), neither walking nor swinging meanwhile. */
   hold(id: string, until: number, now: number): MobEvent[] {
@@ -1522,7 +1588,7 @@ export class MobRoom {
   }
 
   /** Lands a hit on a player at `at` (ms) with a slow or a stun (ms) on a hit. */
-  land(player: string, by: string, hit: PlayerHit, at: number, extra: { slow?: number; stun?: number } = {}): void {
+  land(player: string, by: string, hit: PlayerHit, at: number, extra: { slow?: number; stun?: number; hold?: number; hpPct?: number; strip?: boolean } = {}): void {
     this.landings.push({ at, player, by, ...hit, ...(hit.miss ? {} : extra) });
   }
 

@@ -35,6 +35,7 @@ import { type LootGot,
   giveQuestRewards,
   giveQuestPieces,
   questKill,
+  ringBell,
   readyToReport,
   withLeveling,
   addToBag,
@@ -411,6 +412,14 @@ const applyEarly = () => {
 /** Your quests' counts from the town (`quests`: a kill counted, saved by the bot). */
 export function setQuestCounts(active: QuestProgress[]): void {
   if (state) set({ ...state, quests: { ...state.quests, active } }, {}, true);
+}
+
+/** Dev: a field boss's bell rung (the dev town's `quest-bell`): the "ring the bell" step moves on, the bot's way. */
+export function devQuestBell(mob: string): void {
+  if (!state || !data || !fakeLogin()) return;
+  const s = structuredClone(state);
+  if (!ringBell(s, data.quests, mob)) return;
+  set(s, {}, true);
 }
 
 /** Dev: a kill that counts toward quests (the dev town's `quest-kill`; it keeps no quests), counted here the bot's way. */

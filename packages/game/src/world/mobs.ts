@@ -70,6 +70,9 @@ const LUNGE = 0.8; // tiles: the Tire Roller's charge, out and back
 const SPARK_SPEED = 260; // px a second
 const BODY_UP = 12; // a player's body above their feet (where a spark lands)
 const DEATH_FADE_MS = 350;
+const DORMANT_ALPHA = 0.7; // a field boss asleep (the Great Scale between fights)
+/** Where a field boss fights (the target bar's place). */
+const FIELD_PLACE: Record<string, string> = { 'great-scale': 'Market Hall' };
 /** A Scrap Crab's shell is down this long from each of its attacks if mobs.json doesn't say (as the server), and it shows its
  *  shield this long after its last hit or swing. */
 const SHELL_OPEN_MS = 2000;
@@ -174,6 +177,8 @@ export interface Mob {
   /** Lying in wait under the floodwater (a Banyera Lurker): not drawn, not to be targeted; its ripple. */
   hidden: boolean;
   ripple: Phaser.GameObjects.Graphics | null;
+  /** A field boss asleep between fights (the Great Scale): its idle's first frame held, dimmed, not to be targeted. */
+  dormant: boolean;
 }
 
 /** What the scene does with a mob's attack (these show it; the server takes the HP). */
@@ -388,6 +393,7 @@ export class Mobs {
       hp, dead: false, pose: null, bar: null, shield: null, openUntil: 0, fightUntil: 0, speed: data?.drift?.speed ?? SPEED, slowUntil: 0, asleep: false, lunge: { x: 0, y: 0 },
       enraged: false, add: false, mini: null, radius: data?.radius ?? 0, untouchable: false, hitAt: -Infinity, hurtAt: -Infinity,
       faces: null, kind: zone.mob, blockAll: false, glow: null, flicker: 1, flickerAt: 0, subtitle: null, hidden: false, ripple: null,
+      dormant: false,
     };
     // A pack's caps start round the point, each on a tile of its own (the server's place comes with its snapshot).
     if (pack?.length) mob.home = this.besideSpawn(mob, pack, id);
@@ -514,6 +520,21 @@ export class Mobs {
     if (m.pose || m.dead || m.asleep) return;
     const key = this.key(m, anim);
     if (m.sprite.anims.currentAnim?.key !== key && this.scene.anims.exists(key)) m.sprite.play(key, true);
+    if (m.dormant) m.sprite.anims.pause(m.sprite.anims.currentAnim?.frames[0]); // (asleep: its first frame, held)
+  }
+
+  /** A field boss asleep (the Great Scale between fights: its idle's first frame held, dimmed, not to be targeted) or
+   *  awake again. */
+  setDormant(m: Mob, on: boolean): void {
+    if (m.dormant === on) return;
+    m.dormant = on;
+    m.untouchable = on;
+    if (on && m === this.target) this.setTarget(null);
+    m.pose = null;
+    m.sprite.anims.stop();
+    this.play(m, 'idle');
+    this.scene.tweens.add({ targets: m.sprite, alpha: on ? DORMANT_ALPHA : 1, duration: 600 });
+    this.drawBar(m);
   }
 
   /** Where it can stand: its zone's level and rect, open, not a ramp, outside the safe zone, close to its spawn. */
@@ -577,6 +598,11 @@ export class Mobs {
     m.pose = null;
     this.show(m, !s.dead);
     if (m.data?.ambush) this.setHidden(m, !!s.hidden, false);
+    if (s.field) {
+      m.dormant = !s.dormant; // (so setDormant always applies it)
+      this.setDormant(m, !!s.dormant);
+      m.sprite.setAlpha(s.dormant ? DORMANT_ALPHA : 1);
+    }
     if (m.mini && !s.dead) this.showLabel(m); // (its level as the server has it)
     this.sync(m);
   }
@@ -646,11 +672,13 @@ export class Mobs {
   }
 
   /** A Warrens boss's windows (`mob-flag`): faded and not to be targeted (Vanish), every hit blocked (Hunker). */
-  flag(id: string, untargetable?: boolean, blockAll?: boolean, hidden?: boolean): void {
+  flag(id: string, untargetable?: boolean, blockAll?: boolean, hidden?: boolean, dormant?: boolean): void {
     const u = this.unmade.get(id);
-    if (u) Object.assign(u, { untargetable, blockAll, ...(hidden !== undefined ? { hidden } : {}) });
+    if (u) Object.assign(u, { untargetable, blockAll, ...(hidden !== undefined ? { hidden } : {}), ...(dormant !== undefined ? { dormant } : {}) });
     const m = this.byId.get(id);
     if (!m) return;
+    // A field boss waking or going back to sleep (its own way of being untargetable: dimmed, still).
+    if (dormant !== undefined) return this.setDormant(m, dormant);
     // A Lurker going under or rising (its own way of being untargetable: no fade).
     if (hidden !== undefined) return this.setHidden(m, hidden);
     if (untargetable !== undefined) {
@@ -718,6 +746,12 @@ export class Mobs {
     m.kind = s.kind!;
     if (area) m.radius = s.radius ?? 0; // (a Scrapling has the golem's art, not its body)
     if (def.directions.length === 1) m.faces = def.directions[0];
+    if (s.field) {
+      // A field boss run by its director (the Great Scale): its name in red always over it, where it fights.
+      zone.name = FIELD_PLACE[s.kind!] ?? zone.name;
+      m.mini = { name: s.name ?? def.name, colour: '#EF4444' };
+      this.showLabel(m);
+    }
     if (s.boss) {
       m.mini = { name: s.name ?? def.name, colour: this.dungeons?.warrens.miniBossLook.nameColour ?? '#EF4444' };
       if (!base) {
@@ -740,7 +774,7 @@ export class Mobs {
       m.glow = this.scene.add.sprite(0, 0, m.sprite.texture.key).setBlendMode(Phaser.BlendModes.ADD).setScale(m.sprite.scaleX);
       this.syncGlow(m);
     }
-    if (s.untargetable) this.flag(s.id, true, s.blockAll);
+    if (s.untargetable && !s.field) this.flag(s.id, true, s.blockAll); // (a field boss asleep: apply's setDormant)
     else if (s.blockAll) m.blockAll = true;
     return m;
   }
@@ -932,6 +966,26 @@ export class Mobs {
       m.sprite.setTintMode(Phaser.TintModes.MULTIPLY).clearTint();
       this.onSpawn(m.sprite); // (the night's tint again)
     });
+  }
+
+  /** A brief tint over it (the enraged Great Scale's red needle flashing until it has red sheets), then the night's tint
+   *  again. */
+  tintFlash(id: string, colour: number, ms: number): void {
+    const m = this.byId.get(id);
+    if (!m || m.dead || m.asleep) return;
+    m.sprite.setTint(colour);
+    this.scene.time.delayedCall(ms, () => {
+      m.sprite.clearTint();
+      this.onSpawn(m.sprite); // (the night's tint again)
+    });
+  }
+
+  /** A line under its name for now (the asleep Great Scale's "wakes in 1h 23m" while hovered), or none. */
+  note(id: string, text: string | null): void {
+    const m = this.byId.get(id);
+    if (!m || m.subtitle === text) return;
+    m.subtitle = text;
+    this.showLabel(m);
   }
 
   private demoStep = 0;
@@ -1151,7 +1205,7 @@ export class Mobs {
 
   /** A small HP bar over it while it's your target or for barMs after its last hit (none dead or asleep). */
   private barShown(m: Mob): boolean {
-    return !m.dead && !m.asleep && !m.hidden && (!!m.mini || m === this.target || this.scene.time.now < m.hitAt + this.barMs);
+    return !m.dead && !m.asleep && !m.hidden && !m.dormant && (!!m.mini || m === this.target || this.scene.time.now < m.hitAt + this.barMs);
   }
 
   private drawBar(m: Mob): void {

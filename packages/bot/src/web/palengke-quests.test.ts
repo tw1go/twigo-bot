@@ -28,7 +28,7 @@ const { MobRoom, loadMobKinds, loadMobMap } = await import('./town-mobs.js');
 const { attachTown } = await import('./town.js');
 const { freshProgress } = await import('./progress.js');
 type TownServerMessage = import('@mikazuki/shared').TownServerMessage;
-const { advanceCollects, addToBag, heldCount, newItem, pocketOf, questItemDrops, questKill, readyToReport, startInArea, waitingQuests, xpToNext } = await import('@mikazuki/shared');
+const { advanceCollects, addToBag, heldCount, newItem, pocketOf, questItemDrops, questKill, readyToReport, ringBell, startInArea, waitingQuests, xpToNext } = await import('@mikazuki/shared');
 type AdventureState = import('@mikazuki/shared').AdventureState;
 
 const D = loadItemData();
@@ -183,7 +183,7 @@ test('a mini boss after the kills: its own kind\'s mini boss only', () => {
   assert.equal(talk(s, 'palengke-04', 'mang-pido').completed, 'palengke-04');
 });
 
-test('the Great Scale counts only with the Honest Weight in hand; the last quest gives the title', () => {
+test('the Great Scale counts only with the Honest Weight in hand, then its bell; the last quest gives the title', () => {
   const s = at(37, 13);
   startQuests(s);
   assert.equal(stepOf(s, 'palengke-14'), 0);
@@ -191,7 +191,9 @@ test('the Great Scale counts only with the Honest Weight in hand; the last quest
   assert.equal(stepOf(s, 'palengke-14'), 0, 'no Honest Weight');
   give(s, 'honest-weight');
   kill(s, 'great-scale');
-  assert.equal(stepOf(s, 'palengke-14'), 1);
+  assert.equal(stepOf(s, 'palengke-14'), 1, 'on to its bell');
+  assert.ok(ringBell(s, QUESTS, 'great-scale'));
+  assert.equal(stepOf(s, 'palengke-14'), 2);
   const r = talk(s, 'palengke-14', 'aling-conching');
   assert.equal(r.completed, 'palengke-14');
   assert.equal(r.title, 'huling-suki');

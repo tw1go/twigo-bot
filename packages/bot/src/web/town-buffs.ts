@@ -188,6 +188,15 @@ export class Buffs {
     return this.keep(member, (b) => b.name !== name);
   }
 
+  /** The newest timed class buff on them taken off (the Great Scale's Kulang sa Timbang: never a stance or a dish); its
+   *  name, or null: none. */
+  stripNewest(member: string): string | null {
+    const b = [...this.list(member)].reverse().find((x) => x.endsAt !== null && !x.dish);
+    if (!b) return null;
+    this.remove(member, b.name);
+    return b.name;
+  }
+
   /** Leaving the battle map, or knocked out: their timed buffs end (stances and dishes stay). Whether any did. */
   endTimed(member: string): boolean {
     return this.keep(member, (b) => b.endsAt === null || !!b.dish);

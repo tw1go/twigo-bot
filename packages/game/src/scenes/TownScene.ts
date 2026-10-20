@@ -110,10 +110,11 @@ import { PalengkeOutskirts, SlumsOutskirts, outskirts } from '../world/outskirts
 import { Terrain } from '../world/terrain';
 import { Mobs, TONE, showSlowed } from '../world/mobs';
 import { GOLEM_SOUNDS, GolemView } from '../world/golem';
+import { GreatScaleView } from '../world/great-scale';
 import { loadBoss } from '../assets/queue';
 import { WarrensView } from '../world/warrens';
 import { WarrensTracker, noteTicketBack, showKickCountdown, showWarrensCleared, showWarrensGate, showWarrensInvite, tellTicketBack } from '../ui/warrens';
-import { FxLayers } from '../world/fx-layers';
+import { type FxHandle, FxLayers } from '../world/fx-layers';
 import { SKILL_POSE, battleSheets } from '../characters/battle-art';
 import { cooldownOf, mpCostOf } from '../combat/cooldowns';
 import { WorldSkills } from '../combat/world-skills';
@@ -136,7 +137,7 @@ import type { AdventureData } from '../net/adventure';
 import { Hotbar } from '../ui/hotbar';
 import { mountClassSwitch } from '../ui/class-switch';
 import { MOVES, type MoveKind, isMoveKind, moveTiles, playMove, startDodge } from '../world/mobility';
-import { enterArea, gapLine, waitingFor, changeClass, devItemsReady, devQuestKill, questReport, setQuestCounts, devSwitchClass, adventure, adventureData, anyDef, chooseClass, classInfo, initAdventure, itemData, itemDef, loadAdventureData, lookWithCosmetics, onAdventure, questDef, questFor, questTalk, setItems, setProgress, skillView, skillViews, buffViews, wornHeadCosmetic, setPetXp } from '../net/adventure';
+import { enterArea, gapLine, waitingFor, changeClass, devItemsReady, devQuestKill, devQuestBell, questReport, setQuestCounts, devSwitchClass, adventure, adventureData, anyDef, chooseClass, classInfo, initAdventure, itemData, itemDef, loadAdventureData, lookWithCosmetics, onAdventure, questDef, questFor, questTalk, setItems, setProgress, skillView, skillViews, buffViews, wornHeadCosmetic, setPetXp } from '../net/adventure';
 import { readyToReport, type LanternMap, type LanternPost, LANTERN_USE_TILES, LANTERN_WALK_TILES, RETURN_LANTERN, isLanternMap, lanternPostsOf, nearPost, postAt, type StatsData, buffsStack, potionCooldownGroup, dropRefusal, nameColour, type Item, type QuestReward, type TownItems, LOOT_REACH, auraFor, classBuffs, classSkills, countOf, isGearDef, itemAura, itemStats, newItem, tradeRules, petRules } from '@mikazuki/shared';
 import type { ClassArt } from '../assets/types';
 import { cosmeticPoseFiles, drawRested, poseFiles, restFiles } from '../characters/kit-art';
@@ -280,6 +281,10 @@ export class TownScene extends Phaser.Scene {
   }
   /** The Slums' field boss (world/golem.ts), drawn as one of the mobs. */
   private golem: GolemView | null = null;
+  /** Stars over the stunned (by town id), until it wears off or they're let go. */
+  private readonly stunFx = new Map<string, FxHandle>();
+  /** The Lumang Palengke's field boss (world/great-scale.ts). */
+  private greatScale: GreatScaleView | null = null;
   /** The Halloween event (world/halloween.ts): its rules (events/halloween.json), its things in the world, and Biikko
    *  Kalabasa's boss bar while you're near it. */
   private hwData: HalloweenData | null = null;
@@ -636,9 +641,22 @@ export class TownScene extends Phaser.Scene {
       };
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => box.destroy());
       this.mobs = mobs;
-      // Its field boss, once its art is in (loaded in the background: it never holds up arriving).
+      // Its field boss, once its art is in (loaded in the background: it never holds up arriving). (The Palengke's Great
+      // Scale is a mob of its room, run by its director: its own view.)
       const boss = this.map.boss;
-      if (boss && this.M.mobs?.[boss.id]) {
+      if (boss?.id === 'great-scale' && boss.active !== false && this.M.mobs?.[boss.id]) {
+        const view = new GreatScaleView(this, this.M, this.map, mobs, this.fxLayers, {
+          me: () => this.player.tile,
+          char: (id) => (id === this.myId ? this.player : this.others.charOf(id)),
+          ring: (at) => this.ringBell(at),
+          timer: (name, warn, riseIn, awake) => setGolemTimer(name, warn, riseIn, awake, 'the hall'),
+        });
+        this.greatScale = view;
+        this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+          view.destroy();
+          this.greatScale = null;
+        });
+      } else if (boss && this.M.mobs?.[boss.id]) {
         const golem = new GolemView(this, this.map, mobs, this.fxLayers, { at: () => null, me: () => this.player.tile });
         this.golem = golem;
         // Its art once you come near its pit (BOSS_NEAR tiles); its messages before that keep its state.
@@ -767,7 +785,7 @@ export class TownScene extends Phaser.Scene {
       // (Kinds with no sounds yet: mobs.json `sounds: false`, the Palengke's.)
       const data = (this.cache.json.get('mob-data') ?? {}) as Record<string, MobData | string>;
       for (const k of [...kinds]) if (typeof data[k] === 'object' && (data[k] as MobData).sounds === false) kinds.delete(k);
-      loadSoundSets([...[...kinds].flatMap((k) => [`combat-mob-hurt-${k}`, `combat-mob-death-${k}`]), ...(boss || this.map.dungeon ? GOLEM_SOUNDS.map((a) => `golem-${a}`) : [])]);
+      loadSoundSets([...[...kinds].flatMap((k) => [`combat-mob-hurt-${k}`, `combat-mob-death-${k}`]), ...((boss && boss.id !== 'great-scale') || this.map.dungeon ? GOLEM_SOUNDS.map((a) => `golem-${a}`) : [])]);
     }
     if (member || fakeLogin()) this.connect();
     // Last, once the names, labels and building cursors exist: the cover lifts once the town has settled (`settle`), then
@@ -824,6 +842,7 @@ export class TownScene extends Phaser.Scene {
     }
     this.loot?.update();
     this.golem?.update();
+    this.greatScale?.update();
     this.warrens?.update();
     // Raised ground that hides you (a bluff, a mesa, the crest) fades to half, as the Warrens' walls do (WarrensView
     // fades its own there).
@@ -922,7 +941,8 @@ export class TownScene extends Phaser.Scene {
       mail: this.M.ui.mailIcon?.file ? asset(this.M.ui.mailIcon.file) : null,
       mailNew: this.M.ui.mailIcon?.fileNew ? asset(this.M.ui.mailIcon.fileNew) : null,
       ticket: this.M.ui.jackpotIcon?.file ? asset(this.M.ui.jackpotIcon.file) : null,
-      golemHead: this.M.ui.golemHead?.file ? asset(this.M.ui.golemHead.file) : null,
+      // (The Palengke's field boss timer: the Great Scale's dial.)
+      golemHead: (this.area === 'palengke' ? this.M.ui.greatScaleHead : this.M.ui.golemHead)?.file ? asset((this.area === 'palengke' ? this.M.ui.greatScaleHead : this.M.ui.golemHead)!.file) : null,
       quest: this.M.ui.questIcon?.file ? asset(this.M.ui.questIcon.file) : null,
     });
   }
@@ -2261,11 +2281,15 @@ export class TownScene extends Phaser.Scene {
         return this.warrens?.run(m.run);
       }
       // Boss moves: a Warrens run's bosses there, the field golem's in the Slums (a map has one or the other).
-      if (m.t === 'boss-move') return this.warrens ? this.warrens.move(m) : this.golem?.move(m);
-      if (m.t === 'boss-hit') return this.warrens ? this.warrens.hit(m) : this.golem?.moveHit(m);
-      if (m.t === 'boss-cancel') return this.warrens ? this.warrens.cancel(m.id) : this.golem?.cancel(m.id);
+      // (The Palengke: the Great Scale's.)
+      if (m.t === 'boss-move') return this.warrens ? this.warrens.move(m) : this.greatScale ? this.greatScale.move(m) : this.golem?.move(m);
+      if (m.t === 'boss-hit') return this.warrens ? this.warrens.hit(m) : this.greatScale ? this.greatScale.hit(m) : this.golem?.moveHit(m);
+      if (m.t === 'boss-cancel') return this.warrens ? this.warrens.cancel(m.id) : this.greatScale ? this.greatScale.cancel(m.id) : this.golem?.cancel(m.id);
+      if (m.t === 'great-scale') return this.greatScale?.set(m.scale, m.change, m.spots);
+      if (m.t === 'bell-rung') return this.greatScale?.rung();
+      if (m.t === 'quest-bell') return devQuestBell(m.mob);
       if (m.t === 'mob-scale') return this.mobs?.scale(m.mobs);
-      if (m.t === 'mob-flag') return this.mobs?.flag(m.id, m.untargetable, m.blockAll, m.hidden);
+      if (m.t === 'mob-flag') return this.mobs?.flag(m.id, m.untargetable, m.blockAll, m.hidden, m.dormant);
       // A mob's effect: spilled rice (a Sako Slammer's: slower walking there, for you too), a chair lost (a flash).
       if (m.t === 'mob-fx') {
         if (m.fx === 'chair-lost') return this.mobs?.flash(m.id);
@@ -2273,7 +2297,9 @@ export class TownScene extends Phaser.Scene {
       }
       if (m.t === 'stunned') {
         const ch = charOf(m.id);
-        if (ch) this.fxLayers.drawFx('front', (g, t) => stunStars(g, ch.sprite.x, ch.headY - 4, t), m.ms, 150);
+        // (A new one replaces any still showing: the Great Scale's pan letting go sends 0.)
+        this.stunFx.get(m.id)?.kill(150);
+        if (ch && m.ms > 0) this.stunFx.set(m.id, this.fxLayers.drawFx('front', (g, t) => stunStars(g, ch.sprite.x, ch.headY - 4, t), m.ms, 150));
         if (m.id === myId) {
           this.stunUntil = performance.now() + m.ms;
           this.player.walk([this.player.heading]); // (stops after the step under way)
@@ -2357,6 +2383,7 @@ export class TownScene extends Phaser.Scene {
         this.gotMobs = true;
         this.mobs?.applySnapshot(m.mobs);
         this.golemTimer(m.riseIn, m.golem ?? null);
+        if (m.greatScale) this.greatScale?.set(m.greatScale);
         return this.golem?.snapshot(m.golem ?? null);
       }
       if (m.t === 'mob-move') return this.mobs?.hop(m.id, m.path, m.speed);
@@ -2603,6 +2630,7 @@ export class TownScene extends Phaser.Scene {
       if (m.t === 'attack-refused') {
         if (m.reason === 'range') toast('Too far to hit it.', 1500);
         if (m.reason === 'locked') toast("You can't use that skill yet.", 1500);
+        if (m.reason === 'held') toast('Held on the pan! Your party can break it.', 1800, 'bad');
         if (m.reason === 'mp') this.lowMp(Infinity, true);
         return;
       }
@@ -2636,6 +2664,14 @@ export class TownScene extends Phaser.Scene {
         const q = new URLSearchParams(location.search);
         const golemDev = import.meta.env.DEV && !arrived && !!this.golem && (q.get('golem') === 'now' || q.has('golemdemo'));
         if (golemDev) this.byThePit();
+        // Dev, in the Palengke: ?greatscale=now wakes the Great Scale (the dev server's /__greatscale) and puts you in
+        // its arena beside it.
+        const scaleDev = import.meta.env.DEV && !arrived && !!this.greatScale && q.get('greatscale') === 'now';
+        if (scaleDev) {
+          const [bc, br] = this.map.boss!.tile;
+          this.debugTeleport(bc + 4, br, 'nw');
+          void fetch('/__greatscale?now=1').catch(() => null);
+        }
         const hw = import.meta.env.DEV && !arrived ? q.get('halloween') : null; // (Halloween, below)
         // Dev: ?warrens=solo opens a Scrap Warrens run for you (free) and goes in; ?warrensboss=crab-tain too, with every
         // area before that boss cleared, arriving at its arena (the dev server's /__warrens). Read once, then tidied away.
@@ -4607,6 +4643,13 @@ export class TownScene extends Phaser.Scene {
       drawn: this.culler.visibleCount,
       objects: this.children.list.length,
     };
+  }
+
+  /** The Great Scale's bell clicked: rung if you're within its reach (the server checks again), else you walk to it. */
+  private ringBell(at: [number, number]): void {
+    if (this.greatScale?.nearBell(this.player.tile)) return void this.link?.send({ t: 'bell-ring' });
+    toast('Walk up to the bell, then ring it.', 1800);
+    this.goToTile({ col: at[0] + 2, row: at[1] + 2 });
   }
 
   /** The HUD's golem timer (ui/golem-timer.ts), from a `mobs` or `golem` message: awake while it's up (rising, in its

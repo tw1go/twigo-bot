@@ -108,8 +108,8 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   `settings`, min/max per setting, Reset = the default) (kv `town-posts`, `titles`, `shop`, `dig-items`, `settings` over the
   code's defaults), the Mine Wars payout (pick Discord members found by name or ID as attended / Top 10, see who gets what, pay:
   `payMineWars` in `minewars/payout.ts`, shared with `/gift minewars`, same ledger and games channel post) players' Kowens, titles and class (shown with quests, gear, Rename Cards; Reset class), and the Field boss (the
-  Scrapheap Golem: up or not, HP, next rise; Spawn now = `MobRoom.riseGolem`, only when it isn't up, its schedule carries on;
-  `CmsDeps.slums`, GET /api/boss, POST /api/boss/spawn), and Maintenance (`web/maintenance.ts`, kv 'maintenance', tested:
+  Scrapheap Golem and the Great Scale: up or not, HP, next rise; Spawn now = `MobRoom.riseGolem` / `GreatScale.wakeNow`, only
+  when it isn't up, its schedule carries on; `CmsDeps.slums` / `greatScale`, GET /api/boss, POST /api/boss/spawn { id }), and Maintenance (`web/maintenance.ts`, kv 'maintenance', tested:
   on with a note (≤ 200, `DEFAULT_NOTE` when empty) = everyone but the CMS's users is closed out of the town with code
   `MAINTENANCE` 4003 (`Town.closeForMaintenance`; `TownOptions.maintenance` refuses them at the door after) and `/me`
   carries `maintenance { note, allowed }`: the title screen shows "Under maintenance: note" with Try again instead of
@@ -166,6 +166,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
 - The Palengke's dishes and daily orders (20 Oct 2026): `classes/palengke-leveling.json` each dish's `slot` and `stats`
   (`dishesNote`), Q1's `freeDish` (her free bowl of Lugaw), the dailies' `reset` (4 am Manila), `freeDish` and
   `dialogue` (written here).
+- The Great Scale (20 Oct 2026): `mobs/mobs.json` `great-scale`; `maps/palengke.json` `boss.active` true and `boss.tile`
+  [139, 109] (+ `tileNote`: was [139, 105], inside its empty frame `palengke-scale-stand`, blocked); `ui/ui-great-scale-head.png`
+  (manifest `ui.greatScaleHead`: its dial cut from great-scale/stand/mob-great-scale-boss-stand-sw.png at (27,2), a stand-in
+  for the HUD timer); `classes/palengke-leveling.json`'s palengke-14 now has a bell step (built in shared `palengke.ts`).
 - The Lumang Palengke (20 Oct 2026): `maps/palengke.json`, `tiles/palengke/`, `props/palengke/` (the art folder's, as they are)
   and the manifest's `props` from its palengke-manifest-snippet.json; `tiles.palengke` is written here (the families counted
   from the files; `plainVariants` / `plainWeight`, `animated` baha / lalim, `banks`, `slow`). `maps/slums.json`: its west gate
@@ -844,8 +848,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   its arena), the dev server's `/__warrens?as=&boss=` (`&hp=1`: that boss down to 1 HP, so one hit fells it); `?give=warren-ticket::3` for the gate's own flow.
 - The Lumang Palengke (CONTEXT.md; the art folder's maps/palengke brief): the Lv 21-40 map west of the Slums, an area
   like the Slums (`?area=palengke`, net/hood.ts `palengkeTownMap` / `markPalengke`, BootScene loads maps/palengke.json; the
-  bot's and the dev town's room 'palengke', a battle map: its eight mob zones on since 20 Oct 2026, below; `boss.active`
-  false until the Great Scale's art comes). The Slums' west gate (col 0, rows
+  bot's and the dev town's room 'palengke', a battle map: its eight mob zones on since 20 Oct 2026, and its field boss the
+  Great Scale, below). The Slums' west gate (col 0, rows
   116-118, "← Palengke") ↔ its east gate (`gates.slums`, "Back to the Slums →"). Flat (`height` 1 everywhere): the big-map
   renderer (`world/terrain.ts`) takes the map's `tileset` (tiles.palengke: no cliffs, rims or ramps), each family's plain
   variants 1-4 twice as likely (rng.ts `variantAt`'s weights), `baha` (shallow flood, walkable at 70%: Character
@@ -891,7 +895,42 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   their names and size (Mobs `levelingKey`, the 'palengke-leveling' json). Zone mobs never step on the field boss's
   `arena` where it has no pit (`inArena`). No hurt or death sounds yet (`sounds: false`: none asked for). FX are
   code-drawn placeholders until the art folder's palengke mob FX come. Dev: `?palengkemobs=demo` (the nearest mob of each
-  kind through every anim, a facing a round), `?minibosses=now` (the palengke's too). "Ang Huling Suki" (CONTEXT.md Quest item, Level gap; classes/palengke-leveling.json, shared `palengke.ts`
+  kind through every anim, a facing a round), `?minibosses=now` (the palengke's too).
+  The Great Scale (20 Oct 2026; CONTEXT.md Great Scale, Weigh-in, Bell; its art the art folder's
+  monsters/palengke/pixellab-v1/great-scale/anim in `mobs/great-scale/`, eight directions, one look; mobs.json its frames,
+  shadow, `radius` 2, `pace` 1.2; palengke.json `boss`): bot `web/town-great-scale.ts` `GreatScale`, the Palengke room's
+  `MobDirector` (tested in `town-great-scale.test.ts`, with a socket test), on the Warrens bosses' hooks, never the golem's
+  code. Its mob is a field mob of its own zone (`GreatScale.zone`: the arena, `MobZoneData.field`; `MobSpec.field`: hit only
+  from inside its zone, its damage tallied by member, its kill's XP and personal loot for everyone who did the mob table's
+  xpTo 5% (`xpEarners`), never back on its own; it walks at its `pace`, stands off at its body's edge, and losing a foe it
+  just takes the next). Between fights it's there asleep (`dormant`: still, not targetable; the game holds its idle's first
+  frame dimmed and hovering it says "wakes in 1h 23m"); it wakes every `everyMinutes` (`setSchedule`, kv
+  'great-scale-next-rise'; awake = the time it woke, so a restart wakes it again), a line `warnMinutes` before and one as
+  it wakes (system kind 'golem' to the Palengke's room only, never Discord). No basic attack (`silent`): one move at a time
+  while anyone's in its arena, holding still as it casts (`hold`), each a `boss-move` + `boss-hit` decided where everyone
+  stands as it lands: Pan Slam (8 s, 2-tile circles under its two closest, 1.2 s, skillMult panSlam), Weigh-in (14 s, only
+  with two or more in its arena, else a Pan Slam: a 1-tile circle under a random player within 6 tiles of its body, 1 s;
+  whoever's in it is grabbed ×weighIn and held: `PlayerLanding.hold` → town.ts `heldUntil` + `stunnedUntil`, `stunned`
+  with its ms, attacks refused 'held', moves and buffs refused, 5% of their most HP a second (`hpPct`); the pan a mob of
+  its own (`great-scale-pan:<n>`, 8% of its most HP, at their tile) the others break to free them, else 8 s; a knock-out
+  lets go too), Kulang sa Timbang (12 s, a 90° cone toward its foe 5 tiles past its body, 1.5 s, ×shortWeight, `strip`:
+  `Buffs.stripNewest`, the newest timed class buff, never a stance or a dish). 50%: 3 Timbangan Sentinels at their own
+  level drop in round it (`call` with `spots`, after its call frame); 25%: enraged, every move 30% sooner (the game flashes
+  it red every 2 s until it has red sheets). 30 s with nobody in its arena: it resets (full, its Sentinels and pan gone,
+  home); 30 minutes awake unhit and unfought: it sinks back to sleep. Its fall: the line naming everyone who hit it
+  (town.ts `scaleDownLine`), its loot and XP, the quest credit only for those who earned it (no party), never the
+  leaderboard's Golem board; then its bell on its tile for 60 s (`bell-ring` within 3 tiles: everyone within 3 on their
+  "ring the bell" step moves on, `TownOptions.quests.bell` = `ringBellFor`; the dev town sends `quest-bell` for the
+  page's pretend quests; `bell-rung` swings it), then asleep again, waking `everyMinutes` after its fall. The town's
+  `great-scale` message (`TownGreatScale`: state, riseIn, enraged, arena, bell, held; a `change`) and `mobs.greatScale`
+  for arrivals. Game: `world/great-scale.ts` `GreatScaleView` (the telegraphs, its move anims timed so the hit frame
+  lands on the hit, the held player lifted 12 px in a dashed ring, the pan's sheets drawn in code, dust where the
+  Sentinels drop, a white burst on each Pan Slam, the gold bell to click, the boss bar in its arena, the HUD's field
+  boss timer with its dial (manifest ui.greatScaleHead) and "Awake! Go to the hall"); all its FX are code placeholders
+  until the art folder's fx-scale-* come. No sounds yet (`sounds: false`). The CMS's Field boss tab shows both bosses and
+  wakes either (`CmsDeps.greatScale`, POST /api/boss/spawn { id }). Dev: `?greatscale=now` (wakes it, you beside it; the
+  dev server's `/__greatscale`, `&hp=500`). Its art touches its cells' edges in a few sheets (attack e/nw/sw/w at the top,
+  cone-s and weigh-s/sw at the bottom, death n/nw/s): reported, not worked around. "Ang Huling Suki" (CONTEXT.md Quest item, Level gap; classes/palengke-leveling.json, shared `palengke.ts`
   `palengkeQuests`: its 14 quests as QuestDefs after the Tanod's in both QUESTS, each `handIn`, with `unlockLevel`, the
   first `startsIn: 'palengke'`). Hand-in: a hunt (kill, miniBoss, fieldBoss; `collect` on one = items in hand too, "Sako
   Slammers 12/20 · Clean Rice Scoops 4/10") moves on by itself once done (`advanceCollects` → `huntDone`), then its last

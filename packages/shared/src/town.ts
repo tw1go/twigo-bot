@@ -50,6 +50,10 @@ export interface TownMob {
   blockAll?: boolean;
   /** Lying in wait, not drawn (a Banyera Lurker under the floodwater: only its ripple shows). */
   hidden?: boolean;
+  /** A field boss run by its director (the Great Scale; its name in red, the boss bar in its arena), and asleep between
+   *  fights (`dormant`: standing still, dimmed, not to be targeted). */
+  field?: boolean;
+  dormant?: boolean;
 }
 
 /** A Scrap Warrens run as its players see it (bot web/town-warrens.ts). `phase`: gathering (in the start room, waiting
@@ -137,6 +141,27 @@ export interface TownGolem {
 
 /** What changed for the golem: it rose, a fight began, it called the Junk (50%), enraged (25%), reset (healed, walking
  *  home), sank, or died. */
+/** The Great Scale, the Lumang Palengke's field boss, as the server has it (bot web/town-great-scale.ts; its mob, `id`,
+ *  is in the room's mobs). `state`: asleep in the Market Hall between fights (`riseIn`: ms until it wakes), awake, or
+ *  dead (its bell rings for `bell.left` ms more at `bell.at`). `held`: someone held on its pan (Weigh-in: their town id,
+ *  the pan's mob id, ms until it lets go). `arena`: its fight (the boss bar there). */
+export interface TownGreatScale {
+  id: string;
+  name: string;
+  state: 'asleep' | 'awake' | 'dead';
+  riseIn?: number;
+  warnMinutes: number;
+  enraged: boolean;
+  arena: [number, number, number, number];
+  bell?: { at: [number, number]; left: number };
+  held?: { id: string; pan: string; left: number };
+}
+
+/** What just happened to the Great Scale: woke, went back to sleep (after its bell) or sank (30 minutes unhit), reset
+ *  (nobody in its fight), called its Sentinels (`spots`: where they drop), enraged, fell, someone held on its pan or let
+ *  go. */
+export type GreatScaleChange = 'wake' | 'sleep' | 'sink' | 'reset' | 'call' | 'enrage' | 'death' | 'hold' | 'release';
+
 export type GolemChange = 'rise' | 'fight' | 'call' | 'enrage' | 'reset' | 'sink' | 'death' | 'scale';
 
 export interface TownPlayer {
@@ -269,6 +294,8 @@ export type TownClientMessage =
   | { t: 'whisper'; to: string; text: string; links?: string[] }
   /** Halloween: a click on Mikko Kalabasa where it hides (the server checks it's there and within reach: first wins). */
   | { t: 'mikko-claim' }
+  /** The Great Scale's bell after its fall: rung within 3 tiles of it (quest step "ring the bell"). */
+  | { t: 'bell-ring' }
   /** Halloween: a click on the Manananggal's lower half while carrying its dazed upper half (within reach). */
   | { t: 'reunite' }
   /** Change your privacy settings (Settings → Privacy): only what's given changes. */
@@ -607,14 +634,18 @@ export type TownServerMessage =
   /** Every mob in your room as you arrive (the Slums; the same for everyone: bot web/town-mobs.ts), the golem's Adds
    *  included (with their `kind`), and the field boss if it's up (null: not). `riseIn`: ms until the field boss next
    *  rises on its own (none where there's no golem; ms from now, so a player's clock being off doesn't matter). */
-  | { t: 'mobs'; mobs: TownMob[]; golem?: TownGolem | null; riseIn?: number }
+  | { t: 'mobs'; mobs: TownMob[]; golem?: TownGolem | null; riseIn?: number; greatScale?: TownGreatScale }
+  /** The Great Scale changed (the Palengke's room only; its whole state each time). */
+  | { t: 'great-scale'; scale: TownGreatScale; change?: GreatScaleChange; spots?: [number, number][] }
+  /** Someone rang the Great Scale's bell (`id`: their town id). */
+  | { t: 'bell-rung'; id: string }
   /** Mobs that weren't there (the golem's Adds, as they crawl out), and mobs that are gone for good (the Adds when the
    *  fight ends). */
   | { t: 'mob-add'; mobs: TownMob[] }
   /** Mobs' most HP changed (a Warrens run's party scaling: their HP keeps its share). */
   | { t: 'mob-scale'; mobs: { id: string; hp: number; maxHp: number }[] }
   /** A boss's untargetable or block-all window began or ended. */
-  | { t: 'mob-flag'; id: string; untargetable?: boolean; blockAll?: boolean; hidden?: boolean }
+  | { t: 'mob-flag'; id: string; untargetable?: boolean; blockAll?: boolean; hidden?: boolean; dormant?: boolean }
   /** A mob's effect for the room to draw (the Lumang Palengke's): spilled rice on a tile from `in` ms for `ms` (walking
    *  on it is slower), or a mob losing a chair (Monobloc Stack: a flash). */
   | { t: 'mob-fx'; fx: 'rice'; at: [number, number]; in: number; ms: number; slow: number }
@@ -682,11 +713,13 @@ export type TownServerMessage =
   | { t: 'quests'; active: QuestProgress[] }
   /** A kill that counts toward quests (the dev town, which keeps no quests: the page's pretend store counts it). */
   | { t: 'quest-kill'; kind: string; mini: boolean; level?: number }
+  /** You rang a field boss's bell (the dev town, which keeps no quests: the page's pretend store moves it on). */
+  | { t: 'quest-bell'; mob: string }
   /** Someone in your room went up a level (you too: `id` is yours): "Level up!" over them. HP and MP refill with it. */
   | { t: 'level-up'; id: string; level: number }
   /** Your attack didn't land: too far, too fast, the mob's gone, the skill isn't one of yours or unlocked yet, or you're
    *  knocked out. */
-  | { t: 'attack-refused'; reason: 'range' | 'slow' | 'gone' | 'skill' | 'locked' | 'out' | 'mp' }
+  | { t: 'attack-refused'; reason: 'range' | 'slow' | 'gone' | 'skill' | 'locked' | 'out' | 'mp' | 'held' }
   /** Someone's HP (and yours with your MP) changed: to you (the HUD), to everyone in your room (only a party member's
    *  shows over their head) and to your party (its panel). */
   | { t: 'vitals'; id: string; hp: number; maxHp: number; mp?: number; maxMp?: number }
