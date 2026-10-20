@@ -1,6 +1,6 @@
 import { keyLabel, matches, onKeybinds } from './keybinds';
 import { api } from '../net/endpoints';
-import { type Item, type ItemData, type Pocket, type TownBagItem, type TownInventoryResponse, type TownPotionResponse, RETURN_LANTERN, agimatPocket, bagSlots, costumePocket, cubeOf, isGearDef, pocketOf, pocketSlots, pocketUsed, sellPrice } from '@mikazuki/shared';
+import { type Item, type ItemData, type Pocket, type TownBagItem, type TownInventoryResponse, type TownPotionResponse, RETURN_LANTERN, agimatPocket, bagSlots, costumePocket, questPocket, cubeOf, isGearDef, pocketOf, pocketSlots, pocketUsed, sellPrice } from '@mikazuki/shared';
 import { playSound } from '../audio/sound';
 import { toast } from './toast';
 import { devPotions, devTago, fakeLogin, fakeName } from '../session';
@@ -48,10 +48,10 @@ const FORGE_LABEL: Record<string, string> = { whetstone: 'Enhance…', repairKit
 // onto its place to wear it. On phones there's no room for both: Equipment / Bag in their heads switch between them.
 
 const COLS = 6;
-type Tab = 'all' | 'dug' | 'combat' | 'agimats' | 'costume' | 'misc';
-const TABS: [Tab, string][] = [['all', 'All'], ['dug', 'Dug up'], ['combat', 'Combat'], ['agimats', 'Agimats'], ['costume', 'Costume'], ['misc', 'Misc']];
+type Tab = 'all' | 'dug' | 'combat' | 'agimats' | 'costume' | 'quest' | 'misc';
+const TABS: [Tab, string][] = [['all', 'All'], ['dug', 'Dug up'], ['combat', 'Combat'], ['agimats', 'Agimats'], ['costume', 'Costume'], ['quest', 'Quest'], ['misc', 'Misc']];
 /** The combat bag's tabs, each a pocket of it (shared pocketOf): Combat the bag's own, Agimats and Costume their own. */
-const POCKET_TABS: Partial<Record<Tab, Pocket>> = { combat: 'bag', agimats: 'agimats', costume: 'costume' };
+const POCKET_TABS: Partial<Record<Tab, Pocket>> = { combat: 'bag', agimats: 'agimats', costume: 'costume', quest: 'quest' };
 
 /** A pocket tab's order (the Sort button, cycling): Newest = the server's slot order (new loot last), Rarity the best first
  *  (gear before materials of the same colour; agimats: the rare stats first), Name by the kind's name (every Sturdy
@@ -59,7 +59,7 @@ const POCKET_TABS: Partial<Record<Tab, Pocket>> = { combat: 'bag', agimats: 'agi
 type SortKey = 'newest' | 'rarity' | 'name' | 'level';
 const SORT_KEYS: SortKey[] = ['newest', 'rarity', 'name', 'level'];
 const SORT_LABEL: Record<SortKey, string> = { newest: 'Newest', rarity: 'Rarity', name: 'Name', level: 'Level' };
-const SORT_DEFAULT: Record<Pocket, SortKey> = { bag: 'newest', agimats: 'level', costume: 'newest' };
+const SORT_DEFAULT: Record<Pocket, SortKey> = { bag: 'newest', agimats: 'level', costume: 'newest', quest: 'newest' };
 const SORT_STORE = 'mk_bag_sort';
 const isSortKey = (k: unknown): k is SortKey => SORT_KEYS.includes(k as SortKey);
 
@@ -354,9 +354,12 @@ export class Inventory {
       const n = pocket ? (D && a ? pocketUsed(D, a.bag, pocket) : 0) : d.items.filter((it) => inTab(t, it)).reduce((sum, it) => sum + (it.stacked ? 1 : it.count), 0);
       if (t === 'agimats') b.hidden = !D || !agimatPocket(D.stats); // (no pocket of their own: agimats are in Combat)
       if (t === 'costume') b.hidden = !D || !costumePocket(D.stats); // (likewise cosmetics)
+      if (t === 'quest') b.hidden = !D || !questPocket(D.stats) || (!n && this.tab !== 'quest'); // (quest items: shown while there are some)
       b.textContent = `${TABS.find(([x]) => x === t)![1]} ${n}`;
       b.setAttribute('aria-selected', String(t === this.tab));
     }
+    // (Seven tabs, the Quest tab among them: a size smaller, so they still sit on one row.)
+    this.tabs.classList.toggle('iv-crowded', [...this.tabs.querySelectorAll<HTMLElement>('.iv-tab')].filter((b) => !b.hidden).length > 6);
     this.renderWallet(d);
     const pocket = POCKET_TABS[this.tab];
     this.sortButton.hidden = !pocket;
@@ -547,7 +550,7 @@ export class Inventory {
     }
     this.grid.style.setProperty('--cols', String(COLS));
     this.grid.replaceChildren(...cells);
-    if (!bag.length) this.grid.append(el('div', 'iv-empty-note', pocket === 'agimats' ? 'No agimats yet. Take blue or orange gear with slots apart, or find them on the golem.' : pocket === 'costume' ? 'No cosmetics yet. The Scrapheap Golem drops the Lamp-head Hat now and then.' : 'Nothing in your combat bag. Loot from the Slums lands here; what you wear is in Equipment.'));
+    if (!bag.length) this.grid.append(el('div', 'iv-empty-note', pocket === 'agimats' ? 'No agimats yet. Take blue or orange gear with slots apart, or find them on the golem.' : pocket === 'costume' ? 'No cosmetics yet. The Scrapheap Golem drops the Lamp-head Hat now and then.' : pocket === 'quest' ? 'No quest items. They drop while a quest asks for them, and go when it does.' : 'Nothing in your combat bag. Loot from the Slums lands here; what you wear is in Equipment.'));
     if (this.pickedMany.size > 1 || (this.multi && !this.pickedUid)) return this.renderCombatMany(bag);
     const it = s.bag.find((b) => b.uid === this.pickedUid);
     if (!it) return void this.detail.replaceChildren(this.note() ?? el('div', 'iv-hint', 'Pick an item for what it is. Double-click gear to wear it; drag HP and MP Potions onto your hotbar.'));

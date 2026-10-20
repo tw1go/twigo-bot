@@ -37,6 +37,11 @@ const HOP = 4;
 const FROM_LIFT = 10;
 const STAGGER_MS = 70;
 export const LOOT_LAND_MS = FLY_MS * FIRST_HOP;
+/** A quest item's placeholder square and sparkle (CONTEXT.md Quest item: a soft violet sparkle on the ground). */
+const QUEST_VIOLET = '#A78BFA';
+const SPARKLE_MS = 1300;
+/** Where its glints show, round the icon's middle (world px). */
+const SPARKLE_SPOTS: [number, number][] = [[-7, -6], [6, -7], [8, 2], [-8, 3], [0, -10], [3, 7]];
 const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 interface Drop {
@@ -50,6 +55,8 @@ interface Drop {
   phase: number;
   /** A +18 or +20 weapon's aura round its icon. */
   aura: { fx: WeaponAura; trace: AuraTrace } | null;
+  /** A quest item's soft violet sparkle (CONTEXT.md Quest item). */
+  sparkle: Phaser.GameObjects.Graphics | null;
   x: number;
   y: number;
   /** Bouncing out of the mob (world px where it starts, and how high; performance.now ms it leaves). */
@@ -135,10 +142,28 @@ export class LootLayer {
       d.amount?.setY(d.y - LIFT - 5 + bob);
       const half = 8 * ICON_SCALE;
       d.aura?.fx.place(d.aura.trace, d.icon.x - half, d.icon.y - half, d.icon.depth - 0.005, d.icon.depth + 0.005, d.icon.alpha, ICON_SCALE);
+      if (d.sparkle) this.sparkle(d, now);
       if (!d.loot.mine && now >= d.opensAt) {
         d.loot = { ...d.loot, mine: true };
         this.fade(d);
       }
+    }
+  }
+
+  /** A quest item's sparkle: three violet glints round its icon, each twinkling on its own beat (none under reduced
+   *  motion: a steady pair). */
+  private sparkle(d: Drop, now: number): void {
+    const g = d.sparkle!;
+    g.clear().setPosition(d.icon.x, d.icon.y).setVisible(d.icon.visible);
+    const still = reducedMotion();
+    for (let i = 0; i < 3; i++) {
+      const t = still ? 0.5 : (((now + d.phase + i * 420) % SPARKLE_MS) / SPARKLE_MS);
+      const a = still ? (i < 2 ? 0.8 : 0) : Math.sin(t * Math.PI);
+      if (a <= 0.05) continue;
+      const [sx, sy] = SPARKLE_SPOTS[(i + Math.floor((now + d.phase) / SPARKLE_MS) * (still ? 0 : 1)) % SPARKLE_SPOTS.length];
+      g.fillStyle(0xc4b5fd, a * d.icon.alpha);
+      g.fillRect(sx, sy - 1, 1, 3).fillRect(sx - 1, sy, 3, 1);
+      g.fillStyle(0xffffff, a * d.icon.alpha).fillRect(sx, sy, 1, 1);
     }
   }
 
@@ -202,7 +227,8 @@ export class LootLayer {
     const x = (l.col - l.row) * 16;
     const y = (l.col + l.row + 1) * 8 - ground;
     const def = l.item ? D?.defs.get(l.item.defId) : undefined;
-    const colour = l.item && D ? rarityColour(D.stats, l.item.rarity) : '#FCDA4A'; // a placeholder's square
+    const quest = !!def && !isGearDef(def) && def.kind === 'quest';
+    const colour = quest ? QUEST_VIOLET : l.item && D ? rarityColour(D.stats, l.item.rarity) : '#FCDA4A'; // a placeholder's square
     let key = this.iconFile(l);
     let frame: number | undefined = l.kowens !== undefined ? this.art.kowen?.frame : undefined;
     if (!key || !this.scene.textures.exists(key)) {
@@ -236,7 +262,8 @@ export class LootLayer {
     const name = text(label, l.item && D ? nameColour(D, l.item) : PLAIN_COLOUR)
       .setDepth(LABEL_DEPTH)
       .setVisible(false);
-    const d: Drop = { loot: l, icon, shadow, amount, name, opensAt: l.mine ? 0 : l.opensIn === undefined ? Infinity : performance.now() + l.opensIn, phase: Math.random() * BOB_MS, aura: null, x, y, flight: null };
+    const sparkle = quest ? this.scene.add.graphics().setDepth(depth + 0.006) : null;
+    const d: Drop = { loot: l, icon, shadow, amount, name, opensAt: l.mine ? 0 : l.opensIn === undefined ? Infinity : performance.now() + l.opensIn, phase: Math.random() * BOB_MS, aura: null, sparkle, x, y, flight: null };
     // +18 and +20 weapons glow on the ground (the guide; +15–17 only once picked up).
     const tier = l.item && D ? itemAura(D, l.item) : null;
     if (tier && tier.aura !== 'blue' && icon.width === 16) {
@@ -268,7 +295,7 @@ export class LootLayer {
   private drop(id: string): void {
     const d = this.all.get(id);
     if (!d) return;
-    for (const o of [d.icon, d.shadow, d.amount, d.name]) o?.destroy();
+    for (const o of [d.icon, d.shadow, d.amount, d.name, d.sparkle]) o?.destroy();
     d.aura?.fx.destroy();
     this.all.delete(id);
   }

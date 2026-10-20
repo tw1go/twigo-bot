@@ -1,7 +1,7 @@
 import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ClassesFile, GearRarity, HoodHouse, HouseLook, OutfitData, PrivacySettings, RogueState, TownHoodActionResponse, TownHoodResponse, TownItems, TownRace, TownRaceResponse } from '@mikazuki/shared';
-import { type LanternPost, type TownMail, DEFAULT_PRIVACY, expireItems, MAIL_RULES, claimInto, hasAttachments, parseMailAction, RETURN_LANTERN, gainPetXp, parsePetAction, petAction, petIdOf, petRules, setPetLevel, addToBag, isGearDef, blockedWithPosts, lanternPostsOf, newItem, rollGear, buyCosmetic, rollWorthy, takeKind, buffSkillLevels, classBuffs, classSkills, damageSkillLevels, moveUnlock } from '@mikazuki/shared';
+import { type LanternPost, type TownMail, DEFAULT_PRIVACY, expireItems, MAIL_RULES, claimInto, hasAttachments, parseMailAction, RETURN_LANTERN, gainPetXp, parsePetAction, petAction, petIdOf, petRules, setPetLevel, addToBag, isGearDef, blockedWithPosts, lanternPostsOf, newItem, rollGear, buyCosmetic, rollWorthy, takeKind, buffSkillLevels, classBuffs, classSkills, damageSkillLevels, moveUnlock, type PalengkeData, mobName, palengkeQuests, questItemDrops } from '@mikazuki/shared';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { doorSpot, hoodMap, lotTile } from '../../bot/src/web/hood-map.ts';
 import type { Plugin } from 'vite';
@@ -525,6 +525,19 @@ export function devTown(): Plugin {
           return name;
         },
         profile: (name) => ({ nickname: name, title: { name: 'Townfolk', color: '#B794F6' }, outfit: looks.get(name) ?? ({} as OutfitData), cls: kits.get(name)?.cls, weapon: kits.get(name)?.weapon, weaponPlus: plusOf(name), level: levelOf(name).level, pet: petOf(name) }),
+        // Quest items (the Palengke's chain): dropped for a player while their pretend quests ask for them (the page
+        // counts the kills itself: no `kill` here).
+        quests: {
+          drops: (name, kind) => {
+            const P = loadPalengkeLeveling() as unknown as PalengkeData;
+            const q = questsOf.get(name);
+            if (!q) return [];
+            return questItemDrops({ quests: q, bag: gearOf(name).bag }, palengkeQuests(P, mobName), P, kind).flatMap((id) => {
+              const def = items.defs.get(id);
+              return def ? [newItem(items.stats, def, devUid())] : [];
+            });
+          },
+        },
         progress: {
           fighter: (name) => {
             const p = levelOf(name);

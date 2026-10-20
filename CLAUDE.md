@@ -155,6 +155,14 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   Linen / Bamboo / Amber, Lv 40 Polished / Iron / Denim / Rattan / Jade, no art: slot silhouettes); `items/items.json`
   `polished-whetstone` (5 Kowens), `polished-whetstone-fragment`, `mid-repair-kit` (20 Kowens; Mac), no art yet;
   `maps/palengke.json` the three zones' `miniBosses` spots.
+- The Palengke's quests (20 Oct 2026): `classes/palengke-leveling.json` each quest's `dialogue.give` / `dialogue.report`
+  (from the art folder's docs/palengke/palengke-story.md section 3, Aling Conching for its "Aling Nena"; a few report lines
+  written here: Q3, Q5, Q6, Q7's second, Q9, Q11's Suki Card line, Q13's second, the Q14 finale), `reportTo` (Q1 Mang Pido,
+  Q7 Aling Conching, Q10 and Q13 Kuya Jun), `gives` (Q7 Tisay's Note), `rewards` (Q11 Suki Card, Q13 Honest Weight),
+  `rewardTitle` (Q14 `huling-suki`), the top-level `gapLine` and `questItems` tisay-note / honest-weight / suki-card;
+  `items/items.json` the ten quest items (kind `quest`, bound, no art: a blank square in the bag, a violet one on the
+  ground); `classes/stats.json` `inventory.questSlots` 20 (+ `questSlotsNote`); the title Huling Suki in the bot's
+  built-in titles (web/titles.ts).
 - The Lumang Palengke (20 Oct 2026): `maps/palengke.json`, `tiles/palengke/`, `props/palengke/` (the art folder's, as they are)
   and the manifest's `props` from its palengke-manifest-snippet.json; `tiles.palengke` is written here (the families counted
   from the files; `plainVariants` / `plainWeight`, `animated` baha / lalim, `banks`, `slow`). `maps/slums.json`: its west gate
@@ -847,7 +855,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `tiles-palengke` / `props-palengke` (scripts/packs.ts), loaded only there. The Map menu shows it west of the Slums as a
   plain diamond (`NOT_DRAWN`: the picture has no Palengke yet; the stage grows to every map, `worldBounds` / `shifted`)
   with its four posts; the quest map pins you at the Slums' gate to it. Its Slums music for now; title card "Lumang
-  Palengke". Measured: 60 fps walking Tarp Row (as the Slums). NPC spots (`npcs`) and `sections` are kept as data.
+  Palengke". Measured: 60 fps walking Tarp Row (as the Slums). `sections` are kept as data; `npcs`: the quest NPCs, below.
   Its numbers (Lv 21-40): the cap is 40 (stats.json `levelCap`; XP to next stays 25 × L^1.75; a skill's cap stays 20); its
   mobs' XP in `mobs.list` follows `xp.mobXpAbove20` (a level's XP / 50 × xpMult; tested). Drops by map: a LootRoom knows its
   room (`area`), and `mobDrops` uses stats.json `drops.<area>` when there is one (the Palengke: Lv 30 no-affix gear 3%,
@@ -857,6 +865,27 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `fieldBossTable`: bossLoot.greatScale, Polished Whetstones, Lv 30/40 pieces, a Mid Repair Kit 1 in 4, no hat, no
   ticket). The Mid tier's whetstone and kit are sold in Smithing from Lv 30 (their own `price`, combatWares' tier gate).
   Tested in `web/palengke-numbers.test.ts`.
+  The quest chain "Ang Huling Suki" (CONTEXT.md Quest item, Level gap; classes/palengke-leveling.json, shared `palengke.ts`
+  `palengkeQuests`: its 14 quests as QuestDefs after the Tanod's in both QUESTS, each `handIn`, with `unlockLevel`, the
+  first `startsIn: 'palengke'`). Hand-in: a hunt (kill, miniBoss, fieldBoss; `collect` on one = items in hand too, "Sako
+  Slammers 12/20 · Clean Rice Scoops 4/10") moves on by itself once done (`advanceCollects` → `huntDone`), then its last
+  step is a talk (Report to X) or a delivery at its NPC; never the radio (`readyToReport` false). Level gap: a done quest's
+  next starts only at its unlockLevel (`unlockedAt` in `advance` / `startQuests`; `completedWith` runs startQuests after
+  the reward's XP, `started`; a kill's level-up through `progress` → TownOptions.progress.kill's `quests` → the `quests`
+  message); `waitingQuests` = the grey "!" over its giver, the log's grey row "Lv X" and the giver's `gapLine`. Q1 starts
+  as you join the room (TownOptions.quests.enter = `enterAreaFor`; dev: net/adventure.ts `enterArea`). Quest items
+  (`questItemDrops`): from the named mob while the current objective asks, at `dropChance`, never past its count, rolled
+  for each credited member and their party in the room, their own loot (town.ts `questDrops` → `L.place` personal;
+  TownOptions.quests.drops = `questDropsFor`; the dev town's from the page's pretend quests); the bag's Quest pocket
+  (stats.json `inventory.questSlots`, shared `pocketOf` 'quest'; its tab shows while it holds any) and stacks; taken as
+  delivered. A talk's `gives` hands an item over (Tisay's note); `fieldBoss` counts with its `needs` held (the Honest
+  Weight); `rewardTitle` → server.ts `giveTitle` + `new-title`. Game: `world/palengke-npcs.ts` (stand-ins until the art: a
+  figure in their colour, name, the quest marker, a drawn portrait; Aling Conching stands inside her stall), TownScene
+  `handInScript` (give lines on a first talk, report lines then the rewards, the same NPC's next quest said straight on;
+  `handingIn` keeps giveLines from toasting it), give lines of quests that start without a talk as toasts with the giver's
+  name, "New quest: X. Talk to Y." for the rest. Not yet: dishes (`unlocksDish` is carried), the trail to an NPC, Tisay
+  moving after Q7 shows on the next load only. Dev: `?quest=palengke-08` (the Tanod's chain and the ones before done),
+  `?give=fresh-onion::12`. Tested in `web/palengke-quests.test.ts` (with a socket test).
 - Lantern Posts (teleporting between maps; words in CONTEXT.md: Map, Lantern Post, Return Lantern, Map menu, Teleport,
   In combat): a post (manifest props `lantern-post`, its 6-frame idle as the map object's `animated`) in the middle of
   the Town and of the Slums, each map's `lantern-post` object + `arrive.lanternPost`, and four in the Lumang Palengke (its
