@@ -1574,13 +1574,19 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     return { text, links: itemLinks(c, rawLinks, text) };
   };
 
-  /** A walkable tile near the room's spawn point that nobody's standing on (any walkable one if they're all taken). */
+  /** A walkable tile near the room's spawn point that nobody's standing on (any walkable one if they're all taken). A
+   *  teleport under way to this room (`trips`: a Lantern Post's light) lands by the room's post instead, on its landing
+   *  itself when it's free: the server places them there, so their page needn't know (a reload, a relaunched home screen
+   *  app or a stale map on the page would otherwise leave them at the spawn point, the way in from the town). */
   const arrival = (room: string, userId?: string): [number, number] => {
     const m = mapOf(room);
     const run = runOf(room);
-    const [sc, sr] = run && userId ? run.arrivalFor(userId) : m.spawn;
-    const spread = run ? RUN_SPREAD : SPAWN_SPREAD;
+    const trip = userId ? trips.get(userId) : undefined;
+    const post = trip && trip.to === room && Date.now() < trip.until ? m.lantern?.arrive : undefined;
+    const [sc, sr] = run && userId ? run.arrivalFor(userId) : (post ?? m.spawn);
+    const spread = post ? 1 : run ? RUN_SPREAD : SPAWN_SPREAD;
     const taken = new Set([...conns.values()].filter((o) => o.room === room).map((o) => `${o.player.col},${o.player.row}`));
+    if (post && walkable(m, sc, sr) && !taken.has(`${sc},${sr}`)) return [sc, sr];
     const avoid = new Set((m.avoid ?? []).map(([c, r]) => `${c},${r}`));
     const free: [number, number][] = [];
     const open: [number, number][] = [];
