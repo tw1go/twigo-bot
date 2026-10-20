@@ -273,7 +273,8 @@ test("Lid Slam: a circle round it, then hits whoever's still in it when it lands
   const hit = of(run.mobs.tick(6200, players, guards('t-a', 't-b')), 'boss-hit').find((e) => e.move === 'lidSlam')!;
   assert.deepEqual(hit.hits.map((h) => h.id), ['t-a']);
   assert.equal(hit.key, start.key);
-  assert.ok(run.mobs.landed(6200).some((l) => l.player === 't-a'));
+  // It lands once (its boss-hit is only for the room to see: the run lands it).
+  assert.equal(run.mobs.landed(6200).filter((l) => l.player === 't-a').length, 1);
 });
 
 test('thresholds: Celes Tin calls Tin Cans at 66% and 33% (once each); they vanish when it resets', () => {
