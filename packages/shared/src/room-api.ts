@@ -109,6 +109,18 @@ export interface MeResponse {
   questRewards?: QuestReward[];
   /** Mini boss quests' +5 pieces just given (a quest finished before they came with the report, or one with no room). */
   questPieces?: Item[];
+  /** Their hotbars, one per class they've arranged (saved by POST /town/hotbar; the same on every device). */
+  hotbars?: Record<string, HotbarLayout>;
+}
+
+/** A hotbar slot: a skill by name, an item by its kind (its name, emoji and rarity as the bar shows them; `cooldown`:
+ *  the cooldown key it shares), or empty. */
+export type HotbarEntry = { t: 'skill'; name: string } | { t: 'item'; id: string; name: string; emoji: string; rarity: string; cooldown?: string } | null;
+/** A class's hotbar: the Alt row (13), the skill row (10) and the usables (3). */
+export interface HotbarLayout {
+  top: HotbarEntry[];
+  main: HotbarEntry[];
+  util: HotbarEntry[];
 }
 
 /** The status dots in the art (manifest ui.statusDots). */
