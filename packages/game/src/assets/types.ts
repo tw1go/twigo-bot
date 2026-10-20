@@ -35,6 +35,8 @@ export interface Manifest {
     };
     /** The Slums' ground and raised-ground pieces (world/terrain.ts; rules in the manifest's note). */
     slums?: SlumsTiles;
+    /** The Lumang Palengke's ground: flat, its shallow flood and deep pools animated (world/terrain.ts). */
+    palengke?: MapTiles;
   };
   buildings: Record<string, BuildingDef>;
   props: Record<string, PropDef> & { fence: FenceDef; 'tree-tufts': { files: string[]; size: Vec2 } };
@@ -338,6 +340,33 @@ export interface CharacterDefs {
 export type Ground = 'grass' | 'plaza' | 'path' | 'water' | SlumsGround;
 export type SlumsGround = 'dirt' | 'dirt-junk' | 'weeds' | 'mud' | 'concrete' | 'plate' | 'planks' | 'canal';
 
+/** A big map's ground (world/terrain.ts): the Slums' (raised and low ground, the canal) or the Lumang Palengke's (flat,
+ *  animated water). Each map names its set (TownMap.tileset); what a flat map has no art for is left out. */
+export interface MapTiles {
+  size: Vec2;
+  anchor: Vec2;
+  ground: Record<string, string[]>;
+  /** The first this-many variants of a family (the plain ones) are `plainWeight` times as likely as the rest. */
+  plainVariants?: number;
+  plainWeight?: number;
+  /** Families drawn as sprites on a shared clock, each file a strip of `frames` (a variant per tile). */
+  animated?: Record<string, { files: string[]; frames: number; fps: number; size: Vec2; anchor: Vec2 }>;
+  /** Animated families that get tiles.water's bank overlays where they meet other ground. */
+  banks?: string[];
+  /** Families walked on slower: this share of the speed (the Palengke's shallow flood). */
+  slow?: Record<string, number>;
+  canal?: { file: string; size: Vec2; frames: number; fps: number; anchor: Vec2 };
+  pieceSize?: Vec2;
+  pieceAnchor?: Vec2;
+  /** The raised ground's pieces: only on a map with walls and ramps (the Slums, the Scrap Warrens). */
+  cliffs?: SlumsTiles['cliffs'];
+  rim?: SlumsTiles['rim'];
+  cap?: SlumsTiles['cap'];
+  foot?: SlumsTiles['foot'];
+  lip?: SlumsTiles['lip'];
+  ramps?: SlumsTiles['ramps'];
+}
+
 export interface SlumsTiles {
   size: Vec2;
   anchor: Vec2;
@@ -472,6 +501,10 @@ export interface MapObject {
   walkable?: boolean;
   /** Drawn this much bigger than its art, round its anchor (the Golem Pit); `footprint` is the bigger one. */
   scale?: number;
+  /** The Palengke's string lights: the prop drawn in its place once `section` is lit for this player (WorldObjects
+   *  litSections; nothing lights one yet). */
+  litId?: string;
+  section?: string;
 }
 
 export interface TownMap {
@@ -500,6 +533,8 @@ export interface TownMap {
   /** The Scrapheap Golem's data (not placed yet). */
   boss?: {
     id: string; name: string; level: number; tile: Vec2; arena: [number, number, number, number]; everyMinutes: number; warnMinutes: number; leash: number;
+    /** False: not up yet (the Palengke's Great Scale until its art comes). */
+    active?: boolean;
     /** The Golem Pit's tiles, [dcol, drow] from `tile`: its ring, pit floor and way in. */
     pit?: { ring: Vec2[]; floor: Vec2[]; gap: Vec2[] };
   };
@@ -507,14 +542,23 @@ export interface TownMap {
   bridge?: Vec2[];
   /** More bridges, each crossing along `along` (the slums bridge runs along the rows). */
   bridges?: { along: 'col' | 'row'; tiles: Vec2[] }[];
-  /** Walking onto these tiles goes to another area: 'hood' (the neighbourhood), 'town' or 'slums'. */
+  /** Walking onto these tiles goes to another area: 'hood' (the neighbourhood), 'town', 'slums' or 'palengke'. */
   gates?: Partial<Record<Gate, Vec2[]>>;
+  /** A big map's ground set (manifest tiles[tileset]); the Slums' when not given. */
+  tileset?: 'slums' | 'palengke';
+  /** Its Lantern Posts when it has several (the Palengke's four; a map with one has its `lantern-post` object and
+   *  arrive.lanternPost): each post's top tile and name. */
+  teleporters?: { id: string; name: string; tile: Vec2 }[];
+  /** Its named parts (the Palengke: Tarp Row, the Gulayan…): [col0, row0, col1, row1], both ends in. */
+  sections?: { id: string; name: string; lv?: string; rect: [number, number, number, number] }[];
+  /** Story NPCs' spots (the Palengke's; their sprites come later). */
+  npcs?: { id: string; name: string; tile: Vec2; role?: string }[];
   /** Where you appear coming from another area (by where you came from), instead of the spawn point; `lanternPost`: where
    *  a teleport to this map's Lantern Post lands. */
   arrive?: Partial<Record<Gate | 'lanternPost', Vec2>>;
 }
 
-export type Gate = 'hood' | 'town' | 'slums' | 'warrens';
+export type Gate = 'hood' | 'town' | 'slums' | 'warrens' | 'palengke';
 export type Area = Gate;
 
 /** The forest drawn around the town (world/outskirts.ts). */

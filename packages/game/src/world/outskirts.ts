@@ -110,15 +110,23 @@ const SLUMS_JUNK: [string, number][] = [
 ];
 const CELL = 4; // tiles: at most one prop per CELL × CELL cell past the treeline (so props never meet, wherever they're made)
 
+/** What a big map has round it (world/terrain.ts asks for its ground, WorldObjects for its props), streamed. */
+export interface BigOutskirts {
+  /** A tile past the map: its ground family. */
+  kind(c: number, r: number): string;
+  /** The props whose top tile is in [c0, c1] × [r0, r1] (only past the map). */
+  objectsIn(c0: number, r0: number, c1: number, r1: number): MapObject[];
+}
+
 /**
  * Round the Slums (no forest there), asked tile by tile and region by region, so it can be made only near the camera
  * (the map is 256 × 192): its dirt past the map, the canal carried on north and south (the columns it has on the
- * map's first and last rows), a concrete road on out from the gate back to town, and a seeded scatter of dead trees
+ * map's first and last rows), a concrete road on out from each gate (back to town, on to the Palengke), and a seeded scatter of dead trees
  * (close along the edges, carrying on the map's own treeline), junk mounds, shanties, power poles and car wrecks: at
  * most one per 4 × 4 cell (2 × 2 in the treeline), its footprint inside the cell, off the canal and the road. Not
  * walkable, like the forest.
  */
-export class SlumsOutskirts {
+export class SlumsOutskirts implements BigOutskirts {
   private readonly cols: number;
   private readonly rows: number;
   private readonly canalN: Set<number>;
@@ -136,7 +144,7 @@ export class SlumsOutskirts {
     const canalAt = (r: number) => new Set(map.ground[r].flatMap((k, c) => (k === 'canal' ? [c] : [])));
     this.canalN = canalAt(0);
     this.canalS = canalAt(this.rows - 1);
-    this.gate = map.gates?.town ?? [];
+    this.gate = Object.values(map.gates ?? {}).flat() as [number, number][]; // (the town's, the Palengke's: each a road out)
     this.pools = SLUMS_JUNK.map(([prefix, weight]) => ({ ids: Object.keys(M.props).filter((id) => id.startsWith(prefix)), weight })).filter((p) => p.ids.length);
     this.total = this.pools.reduce((n, p) => n + p.weight, 0);
     this.deadTrees = this.pools.find((p) => p.ids[0].startsWith('slums-dead-tree-'))?.ids ?? [];
@@ -204,6 +212,78 @@ export class SlumsOutskirts {
         const r = cr * CELL + Math.floor(tileRandom(cc, cr, 50) * (CELL - fp[1] + 1));
         if (c < c0 || c > c1 || r < r0 || r > r1 || this.past(c, r) <= 2) continue;
         add(id, c, r);
+      }
+    }
+    return out;
+  }
+}
+
+/** The Lumang Palengke's border: how deep the market goes on past the map, rows of stalls on concrete (tiles). */
+const PALENGKE_DEPTH = 12;
+/** Its stalls (2 × 2) and now and then a stack of crates (1 × 1). */
+const PALENGKE_STALLS = ['palengke-stall-empty', 'palengke-stall-collapsed'];
+const PALENGKE_CRATES = 'palengke-crate-plastic-stack';
+
+/**
+ * Round the Lumang Palengke: the market seems to carry on into the dark. Past the map, its `semento` ground for
+ * PALENGKE_DEPTH tiles (dirt-free: the map's own dark beyond that is nothing), the gate's tiles carried on out as a
+ * road of the same, and rows of empty and collapsed stalls (2 × 2, one per 3 × 3 cell in aisle rows, seeded) with now
+ * and then a stack of plastic crates. Nothing in it is walkable or reachable.
+ */
+export class PalengkeOutskirts implements BigOutskirts {
+  private readonly cols: number;
+  private readonly rows: number;
+  private readonly gate: [number, number][];
+  private readonly stalls: string[];
+  private readonly crates: string | null;
+
+  constructor(
+    private readonly M: Manifest,
+    map: TownMap,
+  ) {
+    [this.cols, this.rows] = map.size;
+    this.gate = Object.values(map.gates ?? {}).flat() as [number, number][];
+    this.stalls = PALENGKE_STALLS.filter((id) => (M.props[id] as PropDef | undefined)?.file);
+    this.crates = (M.props[PALENGKE_CRATES] as PropDef | undefined)?.file ? PALENGKE_CRATES : null;
+  }
+
+  /** How far past the map's edge (0 or less: on it). */
+  private past(c: number, r: number): number {
+    return Math.max(-c, -r, c - this.cols + 1, r - this.rows + 1);
+  }
+
+  /** The gate's tiles carried on past the edge they're on, a tile either side (kept clear of stalls). */
+  private road(c: number, r: number): boolean {
+    const [cols, rows] = [this.cols, this.rows];
+    return this.gate.some(([gc, gr]) => (gc === cols - 1 && c >= cols && Math.abs(r - gr) <= 1) || (gc === 0 && c < 0 && Math.abs(r - gr) <= 1) || (gr === rows - 1 && r >= rows && Math.abs(c - gc) <= 1) || (gr === 0 && r < 0 && Math.abs(c - gc) <= 1));
+  }
+
+  kind(_c: number, _r: number): string {
+    return 'semento';
+  }
+
+  objectsIn(c0: number, r0: number, c1: number, r1: number): MapObject[] {
+    const out: MapObject[] = [];
+    const fits = (c: number, r: number, fc: number, fr: number) => {
+      for (let dr = 0; dr < fr; dr++) for (let dc = 0; dc < fc; dc++) {
+        const d = this.past(c + dc, r + dr);
+        if (d < 2 || d > PALENGKE_DEPTH || this.road(c + dc, r + dr)) return false;
+      }
+      return true;
+    };
+    // One 3 × 3 cell each: a stall in two rows of three, an aisle between (a market's rows), a crate stack now and then.
+    const STEP = 3;
+    for (let cr = Math.floor(r0 / STEP); cr <= Math.floor(r1 / STEP); cr++) {
+      for (let cc = Math.floor(c0 / STEP); cc <= Math.floor(c1 / STEP); cc++) {
+        const c = cc * STEP;
+        const r = cr * STEP;
+        if (c < c0 || c > c1 || r < r0 || r > r1) continue;
+        const roll = tileRandom(cc, cr, 61);
+        if (this.stalls.length && roll < 0.62 && fits(c, r, 2, 2)) {
+          out.push({ kind: 'prop', id: pick(this.stalls, tileRandom(cc, cr, 62)), col: c, row: r, footprint: [2, 2], flip: tileRandom(cc, cr, 63) < 0.5 });
+        } else if (this.crates && roll < 0.72 && fits(c + 1, r + 1, 1, 1)) {
+          out.push({ kind: 'prop', id: this.crates, col: c + 1, row: r + 1, footprint: [1, 1], flip: tileRandom(cc, cr, 64) < 0.5 });
+        }
       }
     }
     return out;
