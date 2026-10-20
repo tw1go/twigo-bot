@@ -1462,7 +1462,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   whole-number scales; ids without art keep their emoji/text. Shop items use the common frame.
 - Mine + dig panel (`ui/mine.ts`, `ui/dig-panel.ts`): left click the mine → digs left, shovel uses, the lucky dig (dig pity:
   `MeDig.lucky/luckyEvery`, the server's digs toward its every-60th Epic-or-better dig, as a bar; gold when the next is it;
-  refreshed every 20 s while open; dev `&lucky=58`), Dig (`POST /town/dig`,
+  refreshed every 20 s while open; dev `&lucky=58`), the Swerte Elixir digs left (`MeDig.swerte`, a line while any; a dig
+  whose junk its reroll replaced: `TownDigResponse.rerolled`, `digFor`'s `rerolled`, also a line in Discord's reveal; a
+  lucky dig's find wins over it; dev `&swerte=3`), Dig (`POST /town/dig`,
   bot `web/town-mine.ts`; "📜 Items" swaps the pop-up to the tier list, `GET /town/dig-items`: items in the ground by
   rarity, rarest first, each tier's and item's odds and value; secrets never listed). `/dig` and the Mine share `digFor` in `dig/dig.ts` (tested: `npm test`, `dig/dig.test.ts`).
   Dig feed lines carry `itemId`/`itemName` and the digger's town `playerId` (the town swaps the Discord id for it):
@@ -1470,8 +1472,15 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   the Mine door. Dev: `&find=karaoke-mic`, `/__system?kind=dig&itemId=…&itemName=…&as=Name`.
 - Inventory (`ui/inventory.ts`): a bag button beside the chat input (manifest `ui.inventoryIcon`) opens the bag on the
   right: 5 × 10 slots in the inventory slot art, one per item (dug-up items, Master Keys, potions: the bag counts them
-  all, `dig/bag.ts` `usedSlots`), unlocked = `capacity`, the rest marked X; dug-up items offer Flex / Sell, keys and
-  potions say how they're used; multi-select (Ctrl/⌘/Shift-click, or the Select toggle for every click; Select all on the tab):
+  all, `dig/bag.ts` `usedSlots`), unlocked = `capacity`, the rest marked X; dug-up items offer Flex / Sell, keys
+  say how they're used; sari-sari potions (CONTEXT.md) are drunk from the Misc tab (`TownBagItem.drink`: Tago Tonic,
+  Swerte Elixir, Marites Tea; Drink in the detail, a double-click or the right-click menu → `POST /town/potion { id }`,
+  `drinkInTown` in web/town-bag.ts = /potion use's `drink` in potions/potions.ts, tested in `potions/potions.test.ts`;
+  private: nothing in the feed or Discord; never on the hotbar, old entries dropped by its `tidy`), what's working shown
+  under them (`TownInventoryResponse.effects`); Marites Tea's hint (`hint`, plain text) opens her dialog box wherever you
+  are ('mk-marites-hint' → TownScene `maritesHint`, id 'marites-tea' so walking never closes it); the Kalawang Potion
+  says to throw it from a house's menu; dev: the pretend bag has all four, their effects shared with the pretend casino
+  and Mine (session.ts `devPotions`, `&tago=1`); multi-select (Ctrl/⌘/Shift-click, or the Select toggle for every click; Select all on the tab):
   the count, what the sellable ones bring and Sell selected (`POST /town/sell { items: [{ id, quantity }] }`,
   `sellManyInTown`); tabs All / Dug up / Combat (the combat bag: Items, above) / Costume (the cosmetics' own pocket, stats.json inventory.costumeSlots 20: Cosmetics, below; the bag is 500 px
   wide, six columns, so its six tabs sit on one row; on phones the tabs shrink and the row scrolls) / Agimats (their own pocket: stats.json
@@ -1496,7 +1505,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   tested; a bust's bet is confiscated and 70% of it, rounded down, goes into the jackpot pot as raid money: `addRaidMoney`
   in `games/jackpot.ts`, kv 'jackpot-raid', paid with the pot to the next winner, rolling over when nobody wins; the odds
   count tickets only). Bet feed lines carry the gambler's town `playerId` and `amount`: a win of 50+ bursts coins over them in town,
-  a bust shows the siren (`Character.flash()`). Dev: `&win=1` / `&lose=1` / `&bust=1`.
+  a bust shows the siren (`Character.flash()`). A Tago Tonic working (`/me`'s and each bet's `tagoUntil`): a line under the
+  bets, "hidden from the Tanod until …", and no raid. Dev: `&win=1` / `&lose=1` / `&bust=1`.
 - Arena (jack en poy; click the Arena or E at its door → `arena/menu.ts` in the reward box, its own look: Popup `theme:
   'arena'` = `.rw-arena`, a stone slab in bronze trim with rivets, torch glow, a blood-red title banner, iron mode plates, a
   crimson Retreat; CSS only): Vs Bot, or Vs Player (the

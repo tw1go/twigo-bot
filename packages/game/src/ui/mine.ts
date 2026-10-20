@@ -1,13 +1,14 @@
 import type { MeDig, TownDigItemsResponse, TownDigResponse } from '@mikazuki/shared';
 import { api } from '../net/endpoints';
 import { playSound } from '../audio/sound';
-import { fakeLogin, fakeName, loadMe } from '../session';
+import { devPotions, fakeLogin, fakeName, loadMe } from '../session';
 import { type Rarity, RARITY_COLOUR, RARITY_LABEL as LABEL, isRarity, itemArt } from './item-art';
 import { installPixelTiles } from './pixel-tiles';
 import { el, followWallet, showPopup } from './reward';
 
 // ⛏️ The Mine (left click the mine entrance), in the reward box dressed as stone (pixel tiles: ui/pixel-tiles.ts): digs left today and uses left on your shovel,
-// the server's lucky dig (the dig pity: a bar of the server's digs toward the next, which is Epic or better), and a
+// the server's lucky dig (the dig pity: a bar of the server's digs toward the next, which is Epic or better), the
+// Swerte Elixir digs you have left (a line while there are any; a dig its reroll found says so), and a
 // Dig button (POST /town/dig, /dig's rules). A find comes back as your feed line, which plays the dig panel over this
 // pop-up (ui/dig-panel.ts), and then shows here as a card: its picture, name, rarity and worth. A dig that can't
 // happen says why. The pop-up stays open to dig again. "Items" swaps the pop-up to the tier list: what digs can turn up,
@@ -48,9 +49,10 @@ export function showMine(): void {
   const stats = el('div', 'mn-stats');
   stats.append(digs, shovel);
   const lucky = el('div', 'mn-lucky');
+  const swerte = el('div', 'mn-swerte');
   const listButton = el('button', 'mn-list-btn', '📜 Items');
   listButton.setAttribute('aria-label', 'What you can dig up, by rarity');
-  const main = [stats, lucky, found, button, listButton, note, el('p', 'mn-hint', 'Each dig uses your shovel once. Buy shovels at the sari-sari store; finds go to your bag (sell them with /sell in Discord).')];
+  const main = [stats, lucky, swerte, found, button, listButton, note, el('p', 'mn-hint', 'Each dig uses your shovel once. Buy shovels at the sari-sari store; finds go to your bag (sell them with /sell in Discord).')];
   wrap.append(...main);
 
   // The tier list, in place of the Mine (Back returns); loaded once per visit.
@@ -85,6 +87,8 @@ export function showMine(): void {
       el('div', 'mn-lucky-hint', left <= 1 ? "The server's next dig is lucky: Epic or better!" : `Every ${d.luckyEvery}th dig on the server is Epic or better. ${left} to go.`),
     );
     lucky.classList.toggle('mn-lucky-next', left <= 1);
+    swerte.hidden = !d.swerte;
+    swerte.textContent = `🍀 Swerte Elixir: ${plural(d.swerte, 'dig rerolls', 'digs reroll')} junk once`;
     button.disabled = busy;
   };
   const say = (text: string, ok: boolean) => {
@@ -112,7 +116,7 @@ export function showMine(): void {
       return say(res.message, false);
     }
     // The dig panel plays from the feed line; the find stays here as a card.
-    say(res.lucky ? `🍀 Lucky dig! The server's ${res.dig.luckyEvery}th dig: Epic or better.` : '', true);
+    say(res.lucky ? `🍀 Lucky dig! The server's ${res.dig.luckyEvery}th dig: Epic or better.` : res.rerolled ? '🍀 Your Swerte Elixir rerolled your junk!' : '', true);
     showFind(res.item);
     window.dispatchEvent(new Event('mk-wallet')); // the HUD's shovel counter
   });
@@ -194,7 +198,7 @@ const DEV_FINDS: [string, string, string][] = [
 const fakeState = { digs: Number(new URLSearchParams(location.search).get('digs') ?? 7), shovel: Number(new URLSearchParams(location.search).get('shovels') ?? 6), lucky: Number(new URLSearchParams(location.search).get('lucky') ?? 57) };
 
 async function fakeDig(): Promise<TownDigResponse> {
-  const d = (): MeDig => ({ shovel: fakeState.shovel, digsLeft: fakeState.digs, digsPerDay: 9, shovelsLeft: 2, shovelCost: 2, shovelUses: 3, lucky: fakeState.lucky, luckyEvery: 60 });
+  const d = (): MeDig => ({ shovel: fakeState.shovel, digsLeft: fakeState.digs, digsPerDay: 9, shovelsLeft: 2, shovelCost: 2, shovelUses: 3, lucky: fakeState.lucky, luckyEvery: 60, swerte: devPotions.swerte });
   if (fakeState.shovel <= 0) return { ok: false, message: 'You need a shovel to dig. Get one at the sari-sari store (2 Kowens).', dig: d() };
   if (fakeState.digs <= 0) return { ok: false, message: "You've dug 9 times today. Your arms need a rest! Come back tomorrow.", dig: d() };
   fakeState.digs--;
@@ -202,8 +206,14 @@ async function fakeDig(): Promise<TownDigResponse> {
   const lucky = ++fakeState.lucky >= 60;
   if (lucky) fakeState.lucky = 0;
   const pick = new URLSearchParams(location.search).get('find');
-  const [id, name, rarity] = DEV_FINDS.find(([i]) => i === pick) ?? DEV_FINDS[Math.floor(Math.random() * DEV_FINDS.length)];
+  const roll = () => DEV_FINDS.find(([i]) => i === pick) ?? DEV_FINDS[Math.floor(Math.random() * DEV_FINDS.length)];
+  // A Swerte Elixir dig: junk is rolled again (the lucky dig's find wins over it).
+  const swerte = devPotions.swerte > 0;
+  if (swerte) devPotions.swerte--;
+  const first = roll();
+  const rerolled = swerte && first[2] === 'junk' && !lucky;
+  const [id, name, rarity] = rerolled ? DEV_FINDS[1 + Math.floor(Math.random() * (DEV_FINDS.length - 1))] : first;
   const q = new URLSearchParams({ kind: 'dig', tone: rarity, text: `${fakeName()} dug up ${name}`, itemId: id, itemName: name, as: fakeName() });
   await fetch(`/__system?${q}`).catch(() => null);
-  return { ok: true, message: `You dug up ${name}.`, dig: d(), item: { id, name, rarity, value: 1 }, ...(lucky ? { lucky } : {}) };
+  return { ok: true, message: `You dug up ${name}.`, dig: d(), item: { id, name, rarity, value: 1 }, ...(lucky ? { lucky } : rerolled ? { rerolled } : {}) };
 }

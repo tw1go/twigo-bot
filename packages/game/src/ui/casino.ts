@@ -1,7 +1,7 @@
 import type { TownCoinSide, TownGambleResponse } from '@mikazuki/shared';
 import { api } from '../net/endpoints';
 import { playSound } from '../audio/sound';
-import { fakeLogin, loadMe } from '../session';
+import { devTago, fakeLogin, loadMe } from '../session';
 import { coinIcon } from './reward';
 
 // 🎰 The casino screen: Kara y Krus on a full-screen felt table under the casino lights (the town scene zooms in to the
@@ -11,7 +11,8 @@ import { coinIcon } from './reward';
 // bursts coins over it (fx coin-burst); a loss is a line of text and a soft sound. A raid (the Tanod busts the round):
 // his whistle, the Tanod rising big at the bottom centre with the siren looping over his head; he holds for 3 s while
 // the screen flashes faint red and blue, then you're taken out of the casino (and the jail takes over).
-// The bets are the bot's (POST /town/gamble: /gamble's odds at the gambling channel's low raid chance). Everything is
+// The bets are the bot's (POST /town/gamble: /gamble's odds at the gambling channel's low raid chance). While a Tago
+// Tonic hides you from the Tanod (/me's and each bet's tagoUntil) a line under the bets says so: no raids till then. Everything is
 // pixel art at whole-number scales; text is HTML in Pixelify Sans. Your profile (with Settings), the chat and the system
 // feed stay over the table. Leave (or Escape) hands back to the town.
 
@@ -155,6 +156,14 @@ export function openCasino(leave: () => void): void {
   betLabel.append(bet);
   bets.append(betLabel, chips);
   const rules = el('div', 'cz-rules', 'Win and your bet doubles (45%). Now and then (3%) the Tanod raids the table: the bet is taken (70% goes into the jackpot pot) and you spend 5 minutes in jail.');
+  // A Tago Tonic working: hidden from the Tanod till when (checked as the casino opens and after each bet).
+  const tago = el('div', 'cz-tago');
+  const showTago = (until: number | null | undefined) => {
+    const on = !!until && until > Date.now();
+    tago.hidden = !on;
+    if (on) tago.textContent = `🫥 Tago Tonic: hidden from the Tanod until ${new Date(until).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} · 0% raid chance`;
+  };
+  showTago(null);
 
   // The raid: the Tanod rising at the bottom centre of the screen with the siren over his head, and a red/blue flash.
   const raidBox = el('div', 'cz-raid');
@@ -168,7 +177,7 @@ export function openCasino(leave: () => void): void {
   lights.setAttribute('aria-hidden', 'true');
   for (let i = 0; i < BULBS; i++) lights.append(el('span', i % 2 ? 'cz-bulb cz-odd' : 'cz-bulb'));
 
-  table.append(lights, head, row, result, bets, rules);
+  table.append(lights, head, row, result, bets, tago, rules);
   root.append(table, flash, raidBox);
   document.body.append(root);
 
@@ -229,6 +238,7 @@ export function openCasino(leave: () => void): void {
       playSound('error');
       return say("Couldn't reach the table. Try again in a moment.", 'bad');
     }
+    showTago(res.tagoUntil);
     if (!res.ok) {
       showWallet(res.kowens);
       busy = false;
@@ -313,6 +323,7 @@ export function openCasino(leave: () => void): void {
       return say('Log in to play.', 'bad');
     }
     showWallet(me.me.kowens);
+    showTago(me.me.tagoUntil);
     if (me.me.status === 'jailed') {
       jailed = true;
       lock();
@@ -333,11 +344,12 @@ const q = new URLSearchParams(location.search);
 const fakeState = { kowens: Number(q.get('kowens') ?? 1250), jailed: false };
 
 function fakeGamble(bet: number, call: TownCoinSide): TownGambleResponse {
-  const odds = { winChance: 0.45, bustChance: 0.03 };
+  const odds = { winChance: 0.45, bustChance: 0.03, tagoUntil: devTago() };
   if (fakeState.jailed) return { ok: false, message: "You're in jail. No gambling till you're out.", kowens: fakeState.kowens, ...odds };
   if (bet > fakeState.kowens) return { ok: false, message: `You only have ${kowens(fakeState.kowens)}.`, kowens: fakeState.kowens, ...odds };
   const r = Math.random();
-  const outcome = q.has('bust') ? 'bust' : q.has('win') ? 'win' : q.has('lose') ? 'lose' : r < 0.03 ? 'bust' : r < 0.48 ? 'win' : 'lose';
+  // (A Tago Tonic: never a raid.)
+  const outcome = q.has('bust') && !devTago() ? 'bust' : q.has('win') ? 'win' : q.has('lose') ? 'lose' : r < 0.03 && !devTago() ? 'bust' : r < 0.48 ? 'win' : 'lose';
   if (outcome === 'bust') {
     fakeState.kowens -= bet;
     fakeState.jailed = true;

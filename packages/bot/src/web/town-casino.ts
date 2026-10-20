@@ -1,6 +1,7 @@
 import type { Client } from 'discord.js';
 import type { TownCoinSide, TownGambleResponse } from '@mikazuki/shared';
 import { config } from '../config.js';
+import { tagoUntil } from '../potions/potions.js';
 import { balance } from '../credits/store.js';
 import { BUST_CHANCE_IN_CHANNEL, BUST_JAIL_MINUTES, SIXTY_SEVEN_BONUS, WIN_CHANCE, gambleFor } from '../games/gamble.js';
 import { kowen } from '../kowens.js';
@@ -28,7 +29,7 @@ export async function gambleInTown(client: Client, userId: string, name: string,
       result.reason === 'jailed' ? `You're in jail until ${clock(result.until)}. No gambling till you're out.`
       : result.reason === 'cooldown' ? `Easy there! Try again in ${Math.ceil(result.waitMs / 1000)}s.`
       : `You only have ${result.have} ${kowen(result.have)}.`;
-    return { ok: false, message, kowens: balance(userId), ...odds };
+    return { ok: false, message, kowens: balance(userId), tagoUntil: tagoUntil(userId), ...odds };
   }
 
   const k = (n: number) => `${n} ${kowen(n)}`;
@@ -62,5 +63,5 @@ export async function gambleInTown(client: Client, userId: string, name: string,
       .send({ content: post, allowedMentions: { parse: [] } })
       .catch((err) => console.error('[web] gamble post failed:', err));
   }, REVEAL_MS);
-  return { ok: true, message, outcome: result.outcome, landed, bet, kowens: result.balance, ...odds };
+  return { ok: true, message, outcome: result.outcome, landed, bet, kowens: result.balance, tagoUntil: tagoUntil(userId), ...odds };
 }

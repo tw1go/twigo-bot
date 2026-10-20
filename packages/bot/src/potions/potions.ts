@@ -1,7 +1,9 @@
 import { saveTogether, tableSync } from '../db/sync.js';
 import { hasFound, type EggKey } from '../games/found.js';
 
-// 🧪 Potions: bought in /redeem, used with /potion use. Counts and active effects live in data/potions.json.
+// 🧪 Sari-sari potions: bought in /redeem or at the town's sari-sari store, drunk with /potion use or from the town's bag
+// (`drink`, the same rules both ways); the Kalawang Potion is thrown, at a house's Bakod (/potion use target:, or the
+// neighbourhood's house menu). Counts and active effects live in `potion_stock` / `potion_effects`.
 export const POTIONS = {
   kalawang: { name: 'Kalawang Potion', emoji: '🧪', cost: 8, effect: "Rusts someone's 🧱 Bakod: cuts its remaining time in half" },
   tago: { name: 'Tago Tonic', emoji: '🫥', cost: 6, effect: 'For 30 minutes the Tanod can\'t see you gamble: 0% bust chance' },
@@ -10,6 +12,11 @@ export const POTIONS = {
 } as const;
 export type PotionId = keyof typeof POTIONS;
 export const POTION_IDS = Object.keys(POTIONS) as PotionId[];
+
+/** How a sari-sari potion is used, for the town's store and bag. */
+export const potionHow = (id: PotionId) =>
+  id === 'kalawang' ? "Throw it at a house's Bakod from its menu in the neighbourhood, or with /potion use in Discord."
+  : 'Drink it from your bag (Misc tab), or with /potion use in Discord.';
 
 export const TAGO_MINUTES = 30;
 export const SWERTE_DIGS = 3;
@@ -119,3 +126,24 @@ export function nextHint(userId: string): string | null {
   return MARITES_HINTS[pick].text;
 }
 export const hintsLeft = (userId: string) => freshHints(userId).length;
+
+/** The potions that are drunk (the Kalawang Potion is thrown at someone's Bakod). */
+export type DrinkId = Exclude<PotionId, 'kalawang'>;
+export const isDrink = (id: string): id is DrinkId => id === 'tago' || id === 'swerte' || id === 'marites';
+
+export type DrinkResult =
+  | { ok: false; reason: 'none' | 'no-hints' }
+  | { ok: true; id: 'tago'; until: number }
+  | { ok: true; id: 'swerte'; digs: number }
+  | { ok: true; id: 'marites'; hint: string; left: number };
+
+/** Drinks one: checked first (Marites Tea only while she has something new to tell), then used up and its effect
+ *  started. /potion use and the town's bag both come here. */
+export function drink(userId: string, id: DrinkId): DrinkResult {
+  if (id === 'marites' && hintsLeft(userId) <= 0) return { ok: false, reason: 'no-hints' };
+  if (!usePotion(userId, id)) return { ok: false, reason: 'none' };
+  if (id === 'tago') return { ok: true, id, until: startTago(userId) };
+  if (id === 'swerte') return { ok: true, id, digs: startSwerte(userId) };
+  const hint = nextHint(userId)!;
+  return { ok: true, id, hint, left: hintsLeft(userId) };
+}

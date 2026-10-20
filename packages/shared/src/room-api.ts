@@ -98,6 +98,8 @@ export interface MeResponse {
   mailUnread?: number;
   /** Digging today (see /dig and /redeem reward:Shovel). */
   dig: MeDig;
+  /** Until when a Tago Tonic hides them from the Tanod (no raids at the casino), or null. */
+  tagoUntil?: number | null;
   /** Their Discord status, shown on the avatar (not sent yet: needs the Presence intent; dev fakes it). */
   status?: PresenceStatus;
   /** Their class, quests and equipment (autoStart quests start here, on their first visit). */
@@ -128,6 +130,8 @@ export interface MeDig {
    *  Epic or better. */
   lucky: number;
   luckyEvery: number;
+  /** Swerte Elixir digs left: each rerolls junk once. */
+  swerte: number;
 }
 
 /** POST /town/dig: a dig from the town's Mine. On success the find also arrives as the digger's feed line (which
@@ -140,6 +144,8 @@ export interface TownDigResponse {
   item?: { id: string; name: string; rarity: string; value: number };
   /** It was the server's lucky dig. */
   lucky?: boolean;
+  /** A Swerte Elixir rerolled its junk, and this is the reroll's find. */
+  rerolled?: boolean;
 }
 
 /** GET /town/inventory: the bag — every item one slot (dug-up items, Master Keys, potions), the slots unlocked (bags
@@ -151,6 +157,8 @@ export interface TownInventoryResponse {
   maxSlots: number;
   used: number;
   kowens: number;
+  /** The sari-sari potions working now: Tago Tonic until when (or null), Swerte Elixir digs left. */
+  effects: { tagoUntil: number | null; swerte: number };
 }
 
 export interface TownBagItem {
@@ -169,11 +177,17 @@ export interface TownBagItem {
   /** Dug-up items can be sold and flexed; keys and potions say how they're used. */
   sellable: boolean;
   about?: string;
+  /** A sari-sari potion drunk from the bag (POST /town/potion): Tago Tonic, Swerte Elixir, Marites Tea. */
+  drink?: boolean;
 }
 
 /** POST /town/sell { id, quantity } (or { items: [{ id, quantity }] }) and /town/flex { id } → the bag afterwards, whether
  *  it worked, and what to say. */
 export type TownBagActionResponse = TownInventoryResponse & { ok: boolean; message: string };
+
+/** POST /town/potion { id } (a sari-sari potion's reward id, 'potion-tago' …): drunk from the bag, privately. Marites
+ *  Tea's hint comes back as `hint` (the game shows it in her dialog box). */
+export type TownPotionResponse = TownBagActionResponse & { hint?: string };
 
 /** POST /town/gamble { bet, call }: Kara y Krus at the Casino (/gamble's odds, the gambling channel's bust chance). */
 export type TownCoinSide = 'kara' | 'krus';
@@ -189,6 +203,8 @@ export interface TownGambleResponse {
   kowens: number;
   winChance: number;
   bustChance: number;
+  /** Until when a Tago Tonic hides them from the Tanod (no raid), or null. */
+  tagoUntil?: number | null;
 }
 
 /** `GET /town/news` (logged in, may play): the latest posts in the announcements and patch notes channels, newest

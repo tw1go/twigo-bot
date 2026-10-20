@@ -26,6 +26,14 @@ const devNumber = (key: string, fallback: number) => {
   return Number.isFinite(n) && new URLSearchParams(location.search).has(key) ? Math.max(0, Math.floor(n)) : fallback;
 };
 
+/** Dev only: the pretend sari-sari potions working now, shared by the pretend bag (drinking), casino and Mine.
+ *  &tago=1 starts with a Tago Tonic on, &swerte=N with N Swerte Elixir digs. */
+export const devPotions = {
+  tagoUntil: new URLSearchParams(location.search).has('tago') ? Date.now() + 30 * 60_000 : null as number | null,
+  swerte: devNumber('swerte', 0),
+};
+export const devTago = () => (devPotions.tagoUntil && devPotions.tagoUntil > Date.now() ? devPotions.tagoUntil : null);
+
 /** Dev only: the fake member's name (?as=Name lets two browsers be two people). */
 export function fakeName(): string {
   return new URLSearchParams(location.search).get('as')?.slice(0, 16) || 'Dev tester';
@@ -52,7 +60,8 @@ function fakeMe(fake: string): MeResult {
       welcomeGift: new URLSearchParams(location.search).has('welcome') ? 50 : null, // dev: &welcome=1 shows the welcome gift
       house: new URLSearchParams(location.search).has('house'), // dev: &house=1 starts you at your door in the neighbourhood
       tester: new URLSearchParams(location.search).get('tester') !== '0', // dev: &tester=0 = without the Tester role
-      dig: { shovel: devNumber('shovels', 6), digsLeft: devNumber('digs', 7), digsPerDay: 9, shovelsLeft: 2, shovelCost: 2, shovelUses: 3, lucky: devNumber('lucky', 57), luckyEvery: 60 },
+      dig: { shovel: devNumber('shovels', 6), digsLeft: devNumber('digs', 7), digsPerDay: 9, shovelsLeft: 2, shovelCost: 2, shovelUses: 3, lucky: devNumber('lucky', 57), luckyEvery: 60, swerte: devPotions.swerte },
+      tagoUntil: devTago(),
       status: fakeStatus() } };
 }
 

@@ -14,7 +14,7 @@ import { welcome, welcomeEveryone, welcomeGift, welcomeSeen } from './welcome.js
 import { mailAction, mailboxOf, onMail, purgeMail, sendMail, unreadMail } from './mail.js';
 import { Halloween, type HalloweenSaved, loadHalloween } from './halloween.js';
 import type { LootContent } from './combat-bag.js';
-import { addPotions } from '../potions/potions.js';
+import { addPotions, swerteLeft, tagoUntil } from '../potions/potions.js';
 import { type BetaApplication, BetaRateLimit, ipHash, parseBetaForm, saveBetaApplication } from './beta.js';
 import { townMemory } from './town-memory.js';
 import { MAX_BET as RACE_MAX_BET, PAYOUT as RACE_PAYOUT, openRaceInTown, placeBet, raceFor } from '../games/race.js';
@@ -38,7 +38,7 @@ import { digInTown, townDigItems } from './town-mine.js';
 import { gambleInTown } from './town-casino.js';
 import { parlorAction, townParlor } from './town-parlor.js';
 import { bakodChanges, hoodAction, hoodTownMap, houseOf, parseHouseLook, rogueAction, saveHouse, stateChanges, townHood } from './hood.js';
-import { flexInTown, sellInTown, sellManyInTown, townInventory } from './town-bag.js';
+import { drinkInTown, flexInTown, sellInTown, sellManyInTown, townInventory } from './town-bag.js';
 import { boardAction, townBoard } from './town-board.js';
 import { townNews } from './town-news.js';
 import { useMegaphone } from '../items/megaphone.js';
@@ -137,6 +137,7 @@ import { kvLoad, kvSave } from '../db/db.js';
 //   GET  /town/inventory  the bag: dug-up items, Master Keys and potions, slots, wallet (members)
 //   POST /town/sell     { id, quantity } (or { items: [{ id, quantity }] }) sell dug-up items, /sell's prices (from the game's page only; members)
 //   POST /town/flex     { id } flex a dug-up item in the games channel, /flex's cooldown (from the game's page only; members)
+//   POST /town/potion   { id } drink a sari-sari potion from the bag, /potion use's rules (from the game's page only; members)
 //   POST /town/quest    { quest, action: talk, npc } | { quest, action: chooseClass, cls }: a quest objective done (web/adventure.ts)
 //   POST /town/equip    { action: equip, item } | { action: unequip, place }: wear or take off equipment, if its requirements are met (from the game's page only; members)
 //   POST /town/forge    { action: enhance|repair, item, tool? } | { action: embed, item, agimat, slot, replace? } | { action: disassemble|combine, item }:
@@ -317,6 +318,7 @@ function digStatus(userId: string): MeDig {
     shovelUses: SHOVEL_USES,
     lucky: serverDigProgress(),
     luckyEvery: LUCKY_EVERY,
+    swerte: swerteLeft(userId),
   };
 }
 
@@ -343,7 +345,7 @@ async function me(client: Client, req: IncomingMessage, res: ServerResponse): Pr
   if (questPieces.length) console.log(`[quest] ${userId} got quest pieces: ${questPieces.map((i) => `${i.defId} +${i.plus}`).join(', ')}`);
   const upkeep = maintenance().on ? { maintenance: { note: maintenanceNote(), allowed: isCmsUser(userId) } } : {};
   const body: MeResponse = { ...upkeep, id: userId, name, ...(username ? { username } : {}), avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items, preregistered: isPreregistered(userId), house: !!houseOf(userId), tester: await isTester(client, userId), outfit: getOutfit(userId), nickname: getNickname(userId), title: titleOf(userId), newTitle: newTitle(userId), welcomeGift: welcomeGift(userId), mailUnread: unreadMail(userId), status: await statusOf(client, userId), adventure: adventureOf(userId),
-    dig: digStatus(userId), ...(trainingGear.length ? { trainingGear } : {}), ...(questRewards.length ? { questRewards } : {}), ...(questPieces.length ? { questPieces } : {}) };
+    dig: digStatus(userId), tagoUntil: tagoUntil(userId), ...(trainingGear.length ? { trainingGear } : {}), ...(questRewards.length ? { questRewards } : {}), ...(questPieces.length ? { questPieces } : {}) };
   send(res, 200, JSON.stringify(body));
 }
 
@@ -785,7 +787,7 @@ export function startWebServer(client: Client): void {
         }
         return send(res, 200, JSON.stringify(reply));
       }
-      if ((req.method === 'GET' && path === '/town/inventory') || (req.method === 'POST' && (path === '/town/sell' || path === '/town/flex'))) {
+      if ((req.method === 'GET' && path === '/town/inventory') || (req.method === 'POST' && (path === '/town/sell' || path === '/town/flex' || path === '/town/potion'))) {
         if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
         if (req.method === 'POST' && !fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
         const userId = sessionUser(req);
@@ -808,6 +810,7 @@ export function startWebServer(client: Client): void {
           return send(res, 200, JSON.stringify(sellManyInTown(userId, picks as { id: string; quantity: number }[])));
         }
         if (typeof body?.id !== 'string') return send(res, 400, '{"error":"invalid item"}');
+        if (path === '/town/potion') return send(res, 200, JSON.stringify(drinkInTown(userId, body.id)));
         if (path === '/town/flex') {
           return send(res, 200, JSON.stringify(await flexInTown(client, userId, body.id, (id) => nameOf(client, id), (uid, item) => town?.flexed(uid, item))));
         }

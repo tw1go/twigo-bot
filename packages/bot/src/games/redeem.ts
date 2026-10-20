@@ -125,7 +125,7 @@ export function redeemPost(userId: string, result: Extract<RedeemResult, { ok: t
   const pub = (content: string) => ({ content, allowedMentions: { parse: [] as [] } });
   switch (reward.kind) {
     case 'potion':
-      return pub(`${reward.emoji} ${who} bought ${quantity > 1 ? `**${quantity}× ${reward.name}**` : `a **${reward.name}**`}!\n-# ${potionEffect(reward)}. Use it with \`/potion use\` (you have ${result.potions}).`);
+      return pub(`${reward.emoji} ${who} bought ${quantity > 1 ? `**${quantity}× ${reward.name}**` : `a **${reward.name}**`}!\n-# ${potionEffect(reward)}. ${reward.id === 'potion-kalawang' ? 'Throw it' : 'Drink it'} with \`/potion use\` or from your bag in the town (you have ${result.potions}).`);
     case 'vault':
       return pub(`🔐 ${who} bought a **Vault**! Kowens inside are safe from thieves 🥷 and don't raise your bail 💸\n-# Store up to 30% of your Kowens with \`/vault deposit\`.`);
     case 'key': {

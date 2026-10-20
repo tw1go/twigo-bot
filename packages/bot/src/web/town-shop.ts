@@ -10,7 +10,7 @@ import { renameCards } from '../items/rename-card.js';
 import { classTickets } from '../items/class-ticket.js';
 import { kowen } from '../kowens.js';
 import { debtOf } from '../loans/loans.js';
-import { potionCount, type PotionId } from '../potions/potions.js';
+import { potionCount, potionHow, type PotionId } from '../potions/potions.js';
 import { freeSlots } from '../dig/bag.js';
 import { type HalloweenData, type ShopEvents, cosmeticShopItem, cosmeticWares, countOf, isEventOn, isGearDef, itemStats } from '@mikazuki/shared';
 import { adventureOf, buyCombatFor, buyCosmeticFor } from './adventure.js';
@@ -51,7 +51,7 @@ function about(r: Reward): string {
     case 'rename': return "Changes your town nickname: use it from your bag. All your cards share one bag slot.";
     case 'classchange': return 'A fresh start: use it from your bag to change your class (you keep your quests and level, get your stat and skill points back, and your training gear becomes the new class\'s). All your tickets share one bag slot.';
     case 'vault': return 'Store up to 30% of your Kowens, safe from /steal and bail. Use it at the bank.';
-    case 'potion': return `${plain(potionEffect(r))}. Use it with /potion use in Discord.`;
+    case 'potion': return `${plain(potionEffect(r))}. ${potionHow(r.id.replace('potion-', '') as PotionId)}`;
     case 'bag': return `+${BAG_SLOTS} inventory slots for what you dig up. Each bag once.`;
   }
 }

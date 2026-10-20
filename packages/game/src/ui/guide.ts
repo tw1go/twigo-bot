@@ -302,7 +302,7 @@ const TOPICS: Topic[] = [
       'The bag button beside the chat (or **B**).',
       '• Dug-up items: **Sell** for Kowens or **Flex** to show off in Discord',
       '• Select many (Ctrl/⌘/Shift click, or the **Select** toggle) and **Sell selected**',
-      '• Master Keys and potions live here too',
+      '• Master Keys and the sari-sari potions live here too (the **Misc** tab). **Drink** a **Tago Tonic** (30 minutes the Tanod can’t raid you at the casino), a **Swerte Elixir** (your next 3 digs reroll junk once) or **Marites Tea** (Aling Marites whispers a hint about an Easter egg): pick it and press Drink, double-click it, or right-click it. Only you see it. A **Kalawang Potion** is thrown at a house’s Bakod from its menu in the neighbourhood',
       '• The **Combat** tab is your **combat bag** for the Slums (60 slots): gear, whetstones, HP/MP Potions. Double-click gear to wear it. Your **Kusing** is at the bottom, beside your Kowens',
       '• Hover an item for what it is; the keys it answers to are at the foot. Hold **Shift** over gear to compare it with what you wear: how your ATK, DEF, HP, MP and crit would change, and the worn piece beside it',
       '• Slots marked X are locked; bigger bags are at the sari-sari store',
@@ -382,7 +382,7 @@ const TOPICS: Topic[] = [
     icon: '🎁',
     label: 'Shop & Parlor',
     text: [
-      '**Sari-sari store**: items (megaphones, Master Keys), potions and bigger bags. Click an item, pick how many, buy.',
+      '**Sari-sari store**: items (megaphones, Master Keys), sari-sari potions (drink them from your bag) and bigger bags. Click an item, pick how many, buy.',
       '• **Healing**: HP and MP Potions for **Kusing**. **Smithing**: Rough Whetstones and Repair Kits for Kowens. Type how many in the box',
       '• **Pets**: the seven pet boxes for Kowens (Fairy Cha’s, the rare one, costs more). Each needs a free slot in your bag',
       '• **Cosmetics**: Head and Body costumes for Kowens, or both together as a **Set** for less. The picture shows it on your own character. They go into your bag’s **Costume** tab, bound to you, one of each; wear them from there. **Limited** ones (the Witch Hat and Robe) are sold only during their event, and kept for good',

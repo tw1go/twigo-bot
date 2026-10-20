@@ -19,6 +19,8 @@ export type DigResult =
       item: Item;
       /** The server's lucky dig (every LUCKY_EVERY-th): Epic or better. */
       lucky: boolean;
+      /** A Swerte Elixir rerolled its junk and this is the reroll's find (a lucky dig's find replaces it: false then). */
+      rerolled: boolean;
       /** Digs left today, uses left on the shovel, and the bag after the find. */
       left: number;
       shovel: number;
@@ -37,12 +39,15 @@ export function digFor(userId: string): DigResult {
   const lucky = countServerDig(); // 🍀 every LUCKY_EVERY-th dig on the server is Epic or better
   const swerte = useSwerteDig(userId); // 🍀 Swerte Elixir: junk gets one reroll
   const first = rollItem();
-  const rolled = swerte && first.rarity === 'junk' ? rollItem() : first;
+  const reroll = swerte && first.rarity === 'junk';
+  const rolled = reroll ? rollItem() : first;
   // The lucky dig never downgrades a secret find.
-  const item = lucky && rolled.rarity !== 'secret' ? rollLucky() : rolled;
+  const luckyFind = lucky && rolled.rarity !== 'secret';
+  const item = luckyFind ? rollLucky() : rolled;
+  const rerolled = reroll && !luckyFind;
   recordDig(userId, item.id);
   if (item.rarity === 'secret') markFound(userId, 'secret-item');
-  return { ok: true, item, lucky, left: DIGS_PER_DAY - digsToday(userId), shovel: shovelUses(userId), items: usedSlots(userId), slots };
+  return { ok: true, item, lucky, rerolled, left: DIGS_PER_DAY - digsToday(userId), shovel: shovelUses(userId), items: usedSlots(userId), slots };
 }
 
 /** Finds big enough to shout about (the reveal says so, and the games channel hears of it). */
@@ -50,9 +55,10 @@ export const isBigFind = (item: Item) => item.rarity === 'mythical' || item.rari
 
 /** The reveal as /dig shows it in Discord: the find, and the digger's dig, shovel, bag and lucky-dig counters. */
 export function digReveal(who: string, result: Extract<DigResult, { ok: true }>): string {
-  const { item: found, lucky, left, shovel, items, slots } = result;
+  const { item: found, lucky, rerolled, left, shovel, items, slots } = result;
   const r = RARITY[found.rarity];
-  const luckyBanner = lucky ? `🍀✨ **LUCKY DIG!** You hit the server's ${LUCKY_EVERY}th dig, so it's guaranteed Epic or better!\n` : '';
+  const luckyBanner = lucky ? `🍀✨ **LUCKY DIG!** You hit the server's ${LUCKY_EVERY}th dig, so it's guaranteed Epic or better!\n`
+    : rerolled ? '🍀 **Swerte Elixir** rerolled your junk!\n' : '';
   return [
     luckyBanner +
     (isBigFind(found)

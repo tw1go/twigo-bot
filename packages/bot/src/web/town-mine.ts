@@ -47,9 +47,9 @@ export async function digInTown(client: Client, userId: string, name: string, st
   }
   return {
     ok: true,
-    message: `${result.lucky ? `Lucky dig! The server's ${LUCKY_EVERY}th dig: ` : ''}You dug up ${found.name} (${r.label}), worth ${found.value} ${kowen(found.value)}.`,
+    message: `${result.lucky ? `Lucky dig! The server's ${LUCKY_EVERY}th dig: ` : result.rerolled ? 'Your Swerte Elixir rerolled your junk: ' : ''}You dug up ${found.name} (${r.label}), worth ${found.value} ${kowen(found.value)}.`,
     dig: status(userId),
-    ...(result.lucky ? { lucky: true } : {}),
+    ...(result.lucky ? { lucky: true } : result.rerolled ? { rerolled: true } : {}),
     item: { id: found.id, name: found.name, rarity: found.rarity, value: found.value },
   };
 }
