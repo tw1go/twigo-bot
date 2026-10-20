@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { AdventureState, ClassesFile, EquipPlace, Item, QuestDef, QuestReward, QuestsFile, StatName, TownAdventureResponse, TownEquipAction, TownForgeAction, TownForgeResponse, TownPointsAction, TownQuestAction, TownSkillsAction, CosmeticPlace, TownPetAction } from '@mikazuki/shared';
-import { type ShopEvents, type PalengkeData, addToBag, advanceCollects, buyCosmetic, expireItems, itemName, heldCount, objectiveCount, offeredBy, palengkeQuests, questItemDrops, startInArea, takeFromBag, unlockedAt } from '@mikazuki/shared';
+import { type ShopEvents, type PalengkeData, addToBag, advanceCollects, buyCosmetic, dishOf, dishRefusal, expireItems, finishQuest, freeDishOf, itemName, heldCount, objectiveCount, offeredBy, palengkeQuests, questItemDrops, startDaily, startInArea, takeFromBag, unlockedAt } from '@mikazuki/shared';
 import { STAT_NAMES, bagSlots, classSkills, classBuffs, buffSkillLevels, damageSkillLevels, skillLevelOf, equipFromBag, giveGear, giveQuestRewards, giveQuestPieces, questKill, readyToReport, withLeveling, missingTraining, moveUnlock, newItem, placesFor, swapTrainingGear, trainingGear, takeKind, unequipToBag, wearCheck, COSMETIC_PLACES, wearCosmetic, unwearCosmetic, gainPetXp, petAction, petIdOf, petRules } from '@mikazuki/shared';
 import { db } from '../db/db.js';
 import { type LevelGain, type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView, raiseSkill, refundPoints, resetSkillPoints, resetStatPoints, spendPoint } from './progress.js';
@@ -56,8 +56,8 @@ export function giveTrainingArmor(s: AdventureState): string[] {
 
 /** Starts the autoStart quests they haven't started or finished (a class quest only for someone without a class), and
  *  moves on any collect objective whose item is in the bag; a finished quest's next one waits for its unlockLevel
- *  (CONTEXT.md Level gap). Returns the ones started. */
-export function startQuests(s: AdventureState): QuestDef[] {
+ *  (CONTEXT.md Level gap); today's daily order once the Palengke's chain is done. Returns the ones started. */
+export function startQuests(s: AdventureState, now = Date.now()): QuestDef[] {
   advanceCollects(s, QUESTS);
   const started: QuestDef[] = [];
   for (const q of QUESTS) {
@@ -74,17 +74,18 @@ export function startQuests(s: AdventureState): QuestDef[] {
     s.quests.active.push({ id: next.id, step: 0 });
     started.push(next);
   }
+  const daily = startDaily(s, QUESTS, PALENGKE, now);
+  if (daily) started.push(daily);
   return started;
 }
 
 /** The current objective's done: on to the next, or the quest is complete (and its `next` starts). */
-function advance(s: AdventureState, q: QuestDef): string | undefined {
+function advance(s: AdventureState, q: QuestDef, now = Date.now()): string | undefined {
   const p = s.quests.active.find((x) => x.id === q.id)!;
   p.step++;
   delete p.count; // (the next objective counts from 0)
   if (p.step < q.objectives.length) return undefined;
-  s.quests.active = s.quests.active.filter((x) => x.id !== q.id);
-  s.quests.done.push(q.id);
+  finishQuest(s, q, PALENGKE, now); // (a daily order: today's handed in, never into done)
   // (Its next one waits for its level: completedWith starts it once the reward's XP is in, startQuests after.)
   const next = q.next && QUESTS.find((x) => x.id === q.next);
   if (next && !s.quests.done.includes(next.id) && unlockedAt(next, s.progress.level)) s.quests.active.push({ id: next.id, step: 0 });
@@ -130,7 +131,7 @@ export function questStep(s: AdventureState, a: TownQuestAction, ctx: QuestCtx =
   if (a.action === 'report') {
     // Its count reached (kills, a mini boss): reported over the Tanod's radio, wherever they are.
     if (!readyToReport(q, p)) return { ok: false, message: 'Not done yet.' };
-    return completedWith(s, { ok: true, completed: advance(s, q) });
+    return completedWith(s, { ok: true, completed: advance(s, q, now) }, now);
   }
   if (a.action === 'talk') {
     // Its giver while you hunt for its item (Aling Nena, the binoculars): her reminder, and another Practice Warren Ticket
@@ -147,7 +148,7 @@ export function questStep(s: AdventureState, a: TownQuestAction, ctx: QuestCtx =
     // A deliver objective: they take the item (all of it, or nothing), and it's done.
     if (o?.type === 'deliver' && o.npc === a.npc) {
       if (!o.item || !takeFromBag(s.bag, o.item, objectiveCount(o))) return { ok: false, message: "You don't have it yet." };
-      const r = completedWith(s, { ok: true, taken: o.item, completed: advance(s, q) });
+      const r = completedWith(s, { ok: true, taken: o.item, completed: advance(s, q, now) }, now);
       // Aling Nena's quest done: any Practice Warren Ticket left goes.
       if (r.completed && P) s.bag = s.bag.filter((it) => it.defId !== P.ticket);
       return r;
@@ -158,11 +159,11 @@ export function questStep(s: AdventureState, a: TownQuestAction, ctx: QuestCtx =
       const data = loadItemData();
       const def = data.defs.get(o.gives);
       if (def && !heldCount(s.bag, o.gives) && !addToBag(data, s.bag, newItem(data.stats, def, newUid()), newUid)) return { ok: false, message: 'Make room in your bag first.' };
-      return completedWith(s, { ok: true, handed: o.gives, completed: advance(s, q) });
+      return completedWith(s, { ok: true, handed: o.gives, completed: advance(s, q, now) }, now);
     }
     // Aling Nena's first talk: her Practice Warren Ticket (no room: she gives it next time).
     const handed = P && handTicket(s, p, P.ticket, now) ? P.ticket : undefined;
-    return completedWith(s, { ok: true, ...(handed ? { handed } : {}), completed: advance(s, q) });
+    return completedWith(s, { ok: true, ...(handed ? { handed } : {}), completed: advance(s, q, now) }, now);
   }
   if (o?.type !== 'chooseClass') return { ok: false, message: 'Not yet.' };
   if (s.cls) return { ok: false, message: 'You already have a class.' };
@@ -180,12 +181,12 @@ export function questStep(s: AdventureState, a: TownQuestAction, ctx: QuestCtx =
     } else s.bag.push(item);
   }
   const gear = giveTrainingArmor(s);
-  return completedWith(s, { ok: true, given: weapon?.id, ...(gear.length ? { gear } : {}), completed: advance(s, q) });
+  return completedWith(s, { ok: true, given: weapon?.id, ...(gear.length ? { gear } : {}), completed: advance(s, q, now) }, now);
 }
 
 /** A step's answer, with the quest's rewards if it was just completed: its items into the combat bag, its XP (`ups`:
  *  the levels it brought) and Kusing (the leveling chain's: the same for everyone). */
-function completedWith(s: AdventureState, r: Result): Result & { ups?: number } {
+function completedWith(s: AdventureState, r: Result, now = Date.now()): Result & { ups?: number } {
   if (!r.completed) return r;
   const q = QUESTS.find((x) => x.id === r.completed);
   const rewards = giveQuestRewards(loadItemData(), s, QUESTS, newUid);
@@ -204,10 +205,12 @@ function completedWith(s: AdventureState, r: Result): Result & { ups?: number } 
     out.xp = g.gained;
     out.ups = g.ups;
   }
-  // (Its title is given where the request is answered: web/server.ts.)
+  // (Its title is given, and its free dish served, where the request is answered: web/server.ts.)
   if (q?.rewardTitle) out.title = q.rewardTitle;
+  const dish = q?.freeDish ? freeDishOf(s, QUESTS, PALENGKE, q.freeDish) : null;
+  if (dish) out.dish = dish;
   // Its next one, if that XP reached its level.
-  const started = startQuests(s).map((x) => x.id);
+  const started = startQuests(s, now).map((x) => x.id);
   if (started.length) out.started = started;
   return out;
 }
@@ -597,9 +600,21 @@ function progress(userId: string, f: (cls: string | null, p: SavedProgress) => L
  *  active quests if one did, else null. */
 export function enterAreaFor(userId: string, area: string): { active: AdventureState['quests']['active'] } | null {
   const s = load(userId);
-  if (!startInArea(s, QUESTS, area).length) return null;
+  // (Today's daily order too, once its day has turned.)
+  if (!startInArea(s, QUESTS, area).length && !(area === 'palengke' && startDaily(s, QUESTS, PALENGKE, Date.now()))) return null;
   save(userId, s);
   return { active: s.quests.active };
+}
+
+/** A dish bought from Aling Conching (CONTEXT.md Dish): unlocked for them and its Kusing in hand, spent and saved; null,
+ *  or why not. (The town puts it on them.) */
+export function buyDishFor(userId: string, dish: string): string | null {
+  const s = load(userId);
+  const refused = dishRefusal(s, QUESTS, PALENGKE, dish);
+  if (refused) return refused;
+  s.kusing -= dishOf(PALENGKE, dish)!.kusing;
+  save(userId, s);
+  return null;
 }
 
 /** The quest items a kill of `kind` drops for them (CONTEXT.md Quest item: only while a quest asks, at its dropChance),

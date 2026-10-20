@@ -10,15 +10,15 @@ import { PARTY_MAX, type PartyChange, Parties } from './town-party.js';
 import { type FriendStore, Friends } from './town-friends.js';
 import { BIIKKO_KIND, CARRIER_AWAY_MS, type Halloween, UPPER_KIND } from './halloween.js';
 import { type VitalMax, Vitals, shown } from './town-vitals.js';
-import { Buffs, type Nearby } from './town-buffs.js';
-import { levelingFor, loadItemData, loadStats } from './stats-data.js';
+import { Buffs, type DishOn, type Nearby } from './town-buffs.js';
+import { levelingFor, loadItemData, loadPalengkeLeveling, loadStats } from './stats-data.js';
 import { type CombatItems, type LootContent, potionMinLevel, potionOf } from './combat-bag.js';
 import { type Loot, LootRoom, gotOf, splitKusing } from './town-loot.js';
 import { type LootRoll, LootRolls } from './town-roll.js';
 import { type HeldOffer, type Trade, Trades, checkOffer } from './trade.js';
 import { type Inside, type Run, type RunDeps, type RunNews, Warrens, type WarrensAccess, type WarrensMap } from './town-warrens.js';
 import type { FriendAsk, FriendView, FriendsState, HalloweenReward, LootGot, PrivacySettings, WarrensData, ChatItemLink, CharacterProgress, QuestProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item, TradeEnd, TradeView } from '@mikazuki/shared';
-import { type LanternPost, type Visibility, VISIBILITIES, PetXpClock, moveDodgeMs, petRules, petXpForHit, isLanternMap, itemName, itemStats, blockedWithPosts, lanternPostsOf, lanternRefusal, lootRollRules, rollWorthy, partyXpMult, partyXpRange, potionCooldownGroup, skillMpCost, targetPriority, tradeRules } from '@mikazuki/shared';
+import { type LanternPost, type PalengkeData, type Visibility, PALENGKE, VISIBILITIES, dishMs, dishOf, moveSpeedOf, PetXpClock, moveDodgeMs, petRules, petXpForHit, isLanternMap, itemName, itemStats, blockedWithPosts, lanternPostsOf, lanternRefusal, lootRollRules, rollWorthy, partyXpMult, partyXpRange, potionCooldownGroup, skillMpCost, targetPriority, tradeRules } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
 // messages). The server keeps everyone's tile and checks each step — on the map, not blocked, next to the last
@@ -156,6 +156,14 @@ export interface TownOptions {
     enter?(userId: string, room: string): { active: QuestProgress[] } | null;
     /** The quest items a kill of `kind` drops for them (CONTEXT.md Quest item): their own loot where it fell. */
     drops?(userId: string, kind: string): Item[];
+  };
+  /** Aling Conching's dishes (CONTEXT.md Dish; classes/palengke-leveling.json `dishes`): `buy` checks and spends its
+   *  Kusing (null: done; else why not); the dishes on everyone kept through a restart (`load` at the start, `save` on
+   *  every change). Without it no dish can be bought (the free ones still are served: Town.serveDish). */
+  dishes?: {
+    buy(userId: string, dish: string): string | null;
+    load?(): Record<string, DishOn[]>;
+    save?(all: Record<string, DishOn[]>): void;
   };
   /** Characters' levels (web/adventure.ts in the bot; in memory on the game's dev server, web/progress.ts either way):
    *  who someone is in a fight, and a kill's XP for them (saved; the level-ups it brought). Without it everyone fights as
@@ -296,6 +304,8 @@ export interface Town {
   setJailed(userId: string, on: boolean): void;
   /** A member has a new title: the reward pop-up, if they're in town. */
   newTitle(userId: string, id: string, title: TitleData): void;
+  /** A dish served free (a quest's: Q1's Lugaw, a daily order's), on them now (their tray if they're here). */
+  serveDish(userId: string, dish: string): void;
   /** A member changed their look or title at the Parlor: everyone in town sees it (them included). */
   restyle(userId: string, outfit: OutfitData, title: TitleData): void;
   /** A member changed their nickname (a Rename Card): everyone in town sees the new name (them included). */
@@ -587,6 +597,22 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   const battle = (room: string) => !!mobsOf(room);
   // Buffs (town-buffs.ts): cast on battle maps, kept by member in memory, put on in every fight and in their most HP.
   const buffs = vitals ? new Buffs(STATS) : null;
+  // Dishes (Aling Conching's, in the Lumang Palengke): on everyone as buffs, kept through restarts.
+  const DISHES = loadPalengkeLeveling() as unknown as Pick<PalengkeData, 'dishes'>;
+  buffs?.restoreDishes(opts.dishes?.load?.() ?? {}, Date.now());
+  const saveDishes = () => {
+    if (buffs) opts.dishes?.save?.(buffs.dishes());
+  };
+  /** A dish on them for its minutes (the one in its slot replaced), their tray and stats told. */
+  const serve = (userId: string, id: string): boolean => {
+    const d = dishOf(DISHES, id);
+    if (!buffs || !d) return false;
+    buffs.giveDish(userId, { name: id, slot: d.slot, stats: d.stats }, dishMs(d), Date.now());
+    saveDishes();
+    const c = conns.get(userId);
+    if (c) buffsChanged(c);
+    return true;
+  };
   /** Who they are in a fight: class, level, points, everything worn, skill levels (the class and weapon alone without
    *  saved levels), and the buffs on them. */
   const fighterOf = (c: Conn): Attacker => ({ ...(opts.progress?.fighter(c.userId) ?? { cls: c.player.cls, gear: [c.player.weapon] }), ...(buffs ? { buffs: buffs.effective(c.userId) } : {}) });
@@ -640,7 +666,9 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   const knockOut = (c: Conn) => {
     c.player.out = true;
     c.player.sit = false;
-    if (buffs?.endTimed(c.userId)) buffsChanged(c); // (a stance stays)
+    const dishes = !!buffs?.endDishes(c.userId); // (a knock-out ends them)
+    if (dishes) saveDishes();
+    if (buffs?.endTimed(c.userId) || dishes) buffsChanged(c); // (a stance stays)
     mobsOf(c.room)?.forget(c.player.id, true);
     endTrade(c.userId, 'out', { name: c.player.nickname }); // no trading while knocked out
     const m: TownServerMessage = { t: 'knocked-out', id: c.player.id };
@@ -1051,7 +1079,8 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   /** Token bucket: true if this message may go through (slowed: half as many, half as fast). */
   const spend = (c: Conn) => {
     const now = Date.now();
-    const k = vitals?.slowed(c.userId, now) ? SLOWED : 1;
+    // (Slowed: half; a dish's move speed (Pancit) on a battle map: faster.)
+    const k = (vitals?.slowed(c.userId, now) ? SLOWED : 1) * (buffs && battle(c.room) ? moveSpeedOf(buffs.effective(c.userId)) : 1);
     c.tokens = Math.min(STEP_BURST * k, c.tokens + ((now - c.refilled) / 1000) * STEPS_PER_SECOND * k);
     c.refilled = now;
     if (c.tokens < 1) return false;
@@ -1168,8 +1197,25 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       }
       case 'buff-off':
         // A buff taken off yourself (right-click in the tray): gone, and your stats and most HP with it.
-        if (buffs && typeof m.buff === 'string' && buffs.remove(c.userId, m.buff)) buffsChanged(c);
+        if (buffs && typeof m.buff === 'string' && buffs.remove(c.userId, m.buff)) {
+          saveDishes();
+          buffsChanged(c);
+        }
         return;
+      case 'dish-buy': {
+        // A dish from Aling Conching: only in the Lumang Palengke; its Kusing spent (the bot checks it's unlocked), then
+        // it's on (the one in its slot replaced).
+        if (typeof m.dish !== 'string') return;
+        const no = (message: string) => send(c, { t: 'dish', ok: false, dish: m.dish, message });
+        if (c.room !== PALENGKE) return no('Aling Conching serves them in the Lumang Palengke.');
+        if (!dishOf(DISHES, m.dish) || !opts.dishes || !buffs) return no('No such dish.');
+        const refused = opts.dishes.buy(c.userId, m.dish);
+        if (refused) return no(refused);
+        serve(c.userId, m.dish);
+        tellItems(c);
+        console.log(`[dishes] ${c.userId} bought ${m.dish}`);
+        return send(c, { t: 'dish', ok: true, dish: m.dish });
+      }
       case 'buff': {
         // A buff (town-buffs.ts decides): its MP spent, everyone in the room sees the cast; who it reached gets it (their
         // tray, HP's most), or a heal (Soothing Touch) for the caster's Power × its share, green numbers for the room.
@@ -1827,6 +1873,11 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       const c = conns.get(userId);
       if (c) send(c, { t: 'new-title', id, title });
     },
+    serveDish(userId, dish) {
+      if (!serve(userId, dish)) return;
+      const c = conns.get(userId);
+      if (c) send(c, { t: 'dish', ok: true, dish, free: true });
+    },
     race(state) {
       raceNow = state;
       everyone({ t: 'race', race: state });
@@ -2171,7 +2222,9 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         }
       }
       // Buffs that ran out: off (the tray, the most HP).
-      for (const user of buffs?.tick(now) ?? []) {
+      const ran = buffs?.tick(now) ?? [];
+      if (ran.length) saveDishes();
+      for (const user of ran) {
         const o = conns.get(user);
         if (o) buffsChanged(o);
       }
