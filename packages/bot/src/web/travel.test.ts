@@ -135,9 +135,13 @@ test('a teleport over the town: a lantern used, the light seen as they leave and
     assert.equal(lanterns.get('alice'), 1);
     assert.deepEqual(last(bob, 'lantern-fx'), { t: 'lantern-fx', id: alice2.id, col: townPost.arrive[0], row: townPost.arrive[1], phase: 'out' });
 
-    // Her page loads the Slums: Carol sees her arrive in the light at the post's landing.
+    // Her page loads the Slums: the server itself puts her arrival on the post's landing (her trip is under way), so even
+    // a page that lost ?via=lantern lands there, never at the spawn point; Carol, who came the usual way, got the spawn.
     alice2.ws.close();
     const alice3 = await open('alice', 'slums');
+    assert.deepEqual((last(alice3, 'welcome') as { spawn: [number, number] }).spawn, slumsPost.arrive);
+    assert.notDeepEqual((last(carol, 'welcome') as { spawn: [number, number] }).spawn, slumsPost.arrive);
+    // Carol sees her arrive in the light at the post's landing.
     send(alice3.ws, { t: 'here', col: slumsPost.arrive[0], row: slumsPost.arrive[1], dir: 'se' });
     await wait();
     assert.deepEqual(last(carol, 'lantern-fx'), { t: 'lantern-fx', id: alice3.id, col: slumsPost.arrive[0], row: slumsPost.arrive[1], phase: 'in' });

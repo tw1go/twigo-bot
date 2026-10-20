@@ -821,7 +821,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   plays fx-lantern-teleport on you (front layer, `Character.setGone` from its 5th frame; blink-out), then loads the other
   map (`areaUrl(to, 'lantern')`: ?via=lantern, `cameByLantern`): you land on `arrive.lanternPost`, unseen until after the
   title card, where the same light brings you in (shown from its 3rd frame; blink-in), and the server, its trip kept 2
-  min (`trips`), shows the others there `lantern-fx` 'in' on your first 'here'. Each player alone (a party isn't pulled
+  min (`trips`), places your arrival by the post itself (`arrival`: the landing when free, else next to it; so a page
+  that lost ?via=lantern, a reload or a relaunched home screen app, or one with a stale map still lands you there, not at
+  the spawn point) and shows the others there `lantern-fx` 'in' on your first 'here'. Each player alone (a party isn't pulled
   along). The Return Lantern (items.json, consumable, stacks to 99, tradeable, 200 Kusing in the sari-sari store's
   Travel tab: combat-bag.ts `combatWares` 'travel'; the store's box is 960 px wide (at most the screen less 32 px) for its nine tabs, each as wide as its name, and a row of eight cards): the bag's Use and
   double-click only say "Use it at a Lantern Post." (`useAt`). Guide tab Lantern Posts. Tested: `web/travel.test.ts`.
