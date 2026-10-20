@@ -741,7 +741,8 @@ export interface MobRules {
 
 export function mobRules(data: StatsData, kind: string, area?: string): MobRules {
   const B = data.mobBehaviour;
-  const key = behaviourKey(kind);
+  // (A kind that lives as another: the Silong's frost recolours, stats.json sameAs, a repo addition.)
+  const key = behaviourKey((B as { sameAs?: Record<string, string> }).sameAs?.[kind] ?? kind);
   return {
     aggressive: B.aggressive.includes(key),
     packAssist: B.packAssist.includes(key),

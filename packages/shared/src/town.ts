@@ -2,6 +2,7 @@
 // JSON messages, one per frame. Players are identified by a random id per connection, never their Discord ID.
 // A moderator's kick closes the socket with code 4001 and the time (ms) they may come back as the reason.
 
+import type { SilongFloor, TownSilongGate, TownSilongRun } from './silong.js';
 import type { AdventureState, CharacterProgress, EquipPlace, QuestProgress, CosmeticPlace } from './adventure.js';
 import type { Item, LootGot } from './items.js';
 import type { TradeEnd, TradeRefusal, TradeView, TradePut } from './trade.js';
@@ -318,6 +319,17 @@ export type TownClientMessage =
   /** Not now, to your party's run's invite (it stops waiting for you). */
   | { t: 'warrens-decline'; run: string }
   | { t: 'warrens-leave' }
+  /** Ang Silong (web/town-silong.ts): the Silong Hatch's panel, open a run (a Susi ng Silong), a practice run (the
+   *  Practice Susi), join your party's, not now, leave; your answer to "Bumaba na kayo?" (ride down with the others);
+   *  ride up from an arrival elevator to a floor the run has reached. */
+  | { t: 'silong-gate' }
+  | { t: 'silong-open' }
+  | { t: 'silong-practice' }
+  | { t: 'silong-join'; run?: string }
+  | { t: 'silong-decline'; run: string }
+  | { t: 'silong-leave' }
+  | { t: 'silong-ride'; yes: boolean }
+  | { t: 'silong-up'; floor: SilongFloor }
   /** Teleport from the Lantern Post you're by to another map's (uses a Return Lantern; shared travel.ts's rules). */
   | { t: 'lantern'; to: string; post?: number }
   /** The buffs on another player (the player box shows their icons), by town id. */
@@ -670,6 +682,18 @@ export type TownServerMessage =
    *  ('practice': a practice run's Practice Warren Ticket). */
   | { t: 'warrens-out'; reason: 'left' | 'closed' | 'party'; ticketBack?: boolean | 'practice' }
   | { t: 'warrens-kick'; ms: number }
+  /** Ang Silong: your run (the tracker), what the hatch offers, go to a floor of a run (the page loads it: `key` your key
+   *  went; `ride` by the freight elevator), an invite to your party's run, why not, out of it (back to the Market Hall,
+   *  `keyBack`: it ended before a mini boss fell, the key returned), out in `ms` (you left the party), and "Bumaba na
+   *  kayo?" (someone stepped into the open elevator down: it goes in `ms`). */
+  | { t: 'silong'; run: TownSilongRun }
+  | { t: 'silong-gate'; gate: TownSilongGate }
+  | { t: 'silong-go'; run: string; floor: SilongFloor; key?: boolean; ride?: 'down' | 'up' }
+  | { t: 'silong-invite'; run: string; from: string; ms: number }
+  | { t: 'silong-refused'; reason: 'level' | 'quest' | 'full' | 'key' | 'party' | 'gone' | 'slow' | 'floor'; message: string }
+  | { t: 'silong-out'; reason: 'left' | 'closed' | 'party'; keyBack?: boolean | 'practice' }
+  | { t: 'silong-kick'; ms: number }
+  | { t: 'silong-ride-ask'; ms: number }
   /** Lantern Posts: off you go (the page loads that map, at its post); why not (your lantern kept); and someone's
    *  teleport seen where it happens (`out`: leaving from there, hidden from its 5th frame; `in`: arriving, shown from its
    *  3rd). */

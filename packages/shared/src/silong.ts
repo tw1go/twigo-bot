@@ -1,0 +1,162 @@
+// 🧊 Ang Silong (classes/dungeons.json `silong`, the art folder's silong/data/silong.json; CONTEXT.md Silong, Floor,
+// Freight elevator, Susi ng Silong): the Lumang Palengke's dungeon, three frozen floors under the Market Hall played as
+// runs. Its data's types, its maps' `silong` block (maps/silong-b1..b3.json, built by the game's scripts/build-silong.ts
+// from the art folder's silong-floors.json) and a few pure rules both sides use.
+
+import type { DungeonMechanic, Rect, Tile } from './dungeons.js';
+
+/** A floor's key: B1 (dry storage), B2 (the canteen and meat lockers), B3 (the ice plant). */
+export type SilongFloor = 'b1' | 'b2' | 'b3';
+export const SILONG_FLOORS: readonly SilongFloor[] = ['b1', 'b2', 'b3'];
+/** The page's area for a floor (`silong-b1`…), and back. */
+export const silongArea = (f: SilongFloor) => `silong-${f}` as const;
+export const floorOfArea = (area: string): SilongFloor | null => {
+  const f = area.startsWith('silong-') ? area.slice(7) : '';
+  return (SILONG_FLOORS as readonly string[]).includes(f) ? (f as SilongFloor) : null;
+};
+
+/** A room's mobs: their kind and fixed numbers. */
+export interface SilongRoomMobs {
+  kind: string;
+  level: number;
+  hp: number;
+  atk: number;
+  def: number;
+  xp: number;
+  kusing: number;
+}
+
+/** A mini boss (its room's mobs' art at miniBossLook.drawScale): its numbers, Kusing pile, tile and moves. */
+export interface SilongMiniBoss {
+  id: string;
+  name: string;
+  level: number;
+  hp: number;
+  atk: number;
+  def: number;
+  xp: number;
+  kusingPile: number;
+  tile: Tile;
+  guards: number;
+  mechanics: DungeonMechanic[];
+}
+
+export interface SilongRoom {
+  id: string;
+  name: string;
+  rect: Rect;
+  mobs: SilongRoomMobs;
+  mobCount: number;
+  packs: Tile[][];
+  miniBoss?: SilongMiniBoss;
+}
+
+export interface SilongFloorData {
+  index: number;
+  id: SilongFloor;
+  name: string;
+  level: number;
+  chill: boolean;
+  rooms: SilongRoom[];
+}
+
+export interface SilongData {
+  name: string;
+  maps: string[];
+  entry: {
+    warp: { map: string; object: string; useRangeTiles: number };
+    minLevel: number;
+    key: string;
+    keysPerRun: number;
+    partyInviteSeconds: number;
+    onePerParty: boolean;
+    partyMax: number;
+  };
+  run: {
+    timeLimitMinutes: number;
+    closeAfterLastBossMinutes: number;
+    closeWhenEmptySeconds: number;
+    leavePartyKickSeconds: number;
+    bossResetSeconds: number;
+    mobRespawn: boolean;
+  };
+  floorRules: Record<string, unknown>;
+  scaling: { mobHp: string; bossHp: string };
+  floors: SilongFloorData[];
+  lastBoss: SilongMiniBoss & { title: string; reachRadius: number };
+  miniBossLook: { drawScale: number; nameColour: string };
+  practiceRun: { mobHpAtkPct: number; once: boolean };
+  loot: Record<string, unknown>;
+  key: { id: string; name: string; sources: { shop: { kusing: number }; greatScaleChance: number; lastBossChance: number } };
+}
+
+/** A room as a floor's map has it (its boss's tile, and its boss floor's tiles). */
+export interface SilongMapRoom {
+  id: string;
+  name: string;
+  rect: Rect;
+  mob: string;
+  boss: { id: string; tile: Tile; last?: boolean } | null;
+  bossTiles: Tile[];
+}
+
+/** A floor map's `silong` block. */
+export interface SilongBlock {
+  floor: SilongFloor;
+  index: number;
+  name: string;
+  level: number;
+  rooms: SilongMapRoom[];
+  /** The arrival elevator's tiles (E: safe), and where you land in it. */
+  arrive: Tile[];
+  arriveMark: Tile;
+  /** The elevator down's tiles (X: shut until the floor's mini bosses are down; none on B3). */
+  down: Tile[];
+  /** Cold-room doors (G: shut until their room's boss falls). */
+  doors: { room: string; tiles: Tile[] }[];
+  /** The stairs up to the Market Hall (w, B1). */
+  exit: Tile[];
+  safe: Tile[];
+  lamps: Tile[];
+  pallets: Tile[];
+  ice: Tile[];
+  belts: { e: Tile[]; w: Tile[] };
+  ramonBox: Tile | null;
+  bossBody: Tile[];
+  bossTile: Tile | null;
+}
+
+/** A Silong run as its players see it (bot web/town-silong.ts): running (`left` ms of its time), cleared (the Ice
+ *  Machine down: `left` ms until it closes) or closed; each floor reached, its mini bosses (as they fall) and whether its
+ *  elevator down is open; the B3 door; who's inside where. */
+export interface TownSilongRun {
+  id: string;
+  phase: 'running' | 'cleared' | 'closed';
+  left: number;
+  opener: string;
+  yours?: boolean;
+  practice?: boolean;
+  floors: { floor: SilongFloor; name: string; reached: boolean; bosses: { id: string; name: string; dead: boolean }[]; open: boolean }[];
+  door: boolean;
+  inside: number;
+  /** Cleared: ms from its start to the last boss's fall, and who was inside then (names). */
+  clearMs?: number;
+  team?: string[];
+}
+
+/** What the Silong Hatch offers you: your level and keys, your party's run (if it has one), and why not. */
+export interface TownSilongGate {
+  minLevel: number;
+  level: number;
+  keys: number;
+  inParty: boolean;
+  partyRun: { id: string; inside: number; opener: string } | null;
+  /** 'level' (under minLevel), 'quest' (Ngayon Na not done: `questLine`), 'full', 'key' (none to open with). */
+  blocked?: 'level' | 'quest' | 'full' | 'key';
+  questLine?: string;
+  /** A practice run (a Practice Susi ng Silong held): Practice run (alone); `blocked` its reason if it can't open now. */
+  practice?: { keys: number; blocked?: 'level' | 'full' | 'run' };
+}
+
+/** The floor below (none under B3). */
+export const floorBelow = (f: SilongFloor): SilongFloor | null => SILONG_FLOORS[SILONG_FLOORS.indexOf(f) + 1] ?? null;
