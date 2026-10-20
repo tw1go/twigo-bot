@@ -150,13 +150,20 @@ export interface TownOptions {
   /** Quests (web/adventure.ts questKillFor): a kill that counts toward a member's (theirs, or their party's nearby), saved;
    *  their active quests if anything moved. Without it (the dev town) the page's pretend store is told the kill
    *  (`quest-kill`) and counts it itself. */
-  quests?: { kill(userId: string, kill: { kind: string; mini: boolean }): { active: QuestProgress[] } | null };
+  quests?: {
+    kill?(userId: string, kill: { kind: string; mini: boolean }): { active: QuestProgress[] } | null;
+    /** They walked into a room: a chain that starts there (the Palengke's) started; their active quests, else null. */
+    enter?(userId: string, room: string): { active: QuestProgress[] } | null;
+    /** The quest items a kill of `kind` drops for them (CONTEXT.md Quest item): their own loot where it fell. */
+    drops?(userId: string, kind: string): Item[];
+  };
   /** Characters' levels (web/adventure.ts in the bot; in memory on the game's dev server, web/progress.ts either way):
    *  who someone is in a fight, and a kill's XP for them (saved; the level-ups it brought). Without it everyone fights as
    *  their class at Lv 1 and gains nothing. */
   progress?: {
     fighter(userId: string): Attacker;
-    kill(userId: string, mob: { level: number; xp: number }): LevelGain;
+    /** (`quests`: a level-up opened a quest that waited for it; their active quests then.) */
+    kill(userId: string, mob: { level: number; xp: number }): LevelGain & { quests?: QuestProgress[] };
   };
   /** Members' combat bags and Kusing (web/adventure.ts in the bot; in memory on the game's dev server): loot picked up
    *  (false: no room), an HP or MP Potion of a kind used (what it heals; null: none), and what they hold now. Without it
@@ -663,10 +670,11 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   };
 
   /** A member's level, XP and points to them; each level-up "Level up!" over them for their room (them included). */
-  const progressed = (c: Conn, g: Pick<LevelGain, 'progress' | 'ups' | 'gained'>) => {
+  const progressed = (c: Conn, g: Pick<LevelGain, 'progress' | 'ups' | 'gained'> & { quests?: QuestProgress[] }) => {
     c.player.level = g.progress.level;
     refreshVitals(c, g.ups > 0); // a level up fills HP and MP; points change the most
     send(c, { t: 'progress', progress: g.progress, ...(g.gained ? { gained: g.gained } : {}) });
+    if (g.quests) send(c, { t: 'quests', active: g.quests }); // (a quest that waited for this level)
     if (g.ups > 0) {
       const up: TownServerMessage = { t: 'level-up', id: c.player.id, level: g.progress.level };
       others(c, up);
@@ -804,7 +812,10 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       if (run) runDrop(run, k);
       else dropFor(room, { ...k, to: credited });
       // (A Warrens boss counts for no quest: the Tanod's mini bosses are the Slums' own.)
-      if (!k.warrens) questKill(withParty(credited, room), { kind: k.kind, mini: !!k.mini, level: k.level });
+      if (!k.warrens) {
+        questKill(withParty(credited, room), { kind: k.kind, mini: !!k.mini, level: k.level });
+        questDrops(room, withParty(credited, room), k);
+      }
       if (run && k.warrens) {
         const before = run.phase;
         runNews(run, run.onKill(k, Date.now()));
@@ -876,13 +887,26 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     for (const user of members) {
       const o = conns.get(user);
       if (!o) continue;
-      if (!opts.quests) {
+      if (!opts.quests?.kill) {
         send(o, { t: 'quest-kill', kind: kill.kind, mini: kill.mini, level: kill.level });
         continue;
       }
       const r = opts.quests.kill(user, { kind: kill.kind, mini: kill.mini });
       if (!r) continue;
       send(o, { t: 'quests', active: r.active });
+    }
+  };
+  /** A kill's quest items (CONTEXT.md Quest item): each member's own, only while a quest of theirs asks for them, at
+   *  their feet's side of the kill for them alone. */
+  const questDrops = (room: string, members: string[], kill: { kind: string; at: [number, number] }) => {
+    if (!opts.quests?.drops) return;
+    const L = lootIn(room);
+    const mobs = mobsOf(room);
+    const now = Date.now();
+    for (const user of members) {
+      if (!conns.get(user)) continue;
+      const fresh = opts.quests.drops(user, kill.kind).map((item) => L.place({ item }, mobs?.lootSpots(kill.at, 1, L.taken())[0] ?? kill.at, [user], now));
+      showLoot(room, fresh, kill.at);
     }
   };
   /** A kill's drops, round where it died: the killer's (and their party's, those in the room), or the golem's or a mini
@@ -1665,6 +1689,9 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       if (H.carrier === userId) tellHalloween(); // (back: their dazed upper half shows behind them again)
     }
     if (opts.items?.expire) queueMicrotask(() => expireFor(c)); // (timed items that ran out while they were away)
+    // A quest chain that starts here (the Palengke's first quest, at its level).
+    const entered = opts.quests?.enter?.(userId, room);
+    if (entered) send(c, { t: 'quests', active: entered.active });
     if (raceNow) send(c, { t: 'race', race: { ...raceNow, now: Date.now() } });
     if (vitals) tellVitals(c); // your HP and MP (the HUD), and your party's panel
     if (buffs) send(c, { t: 'buffs', buffs: buffs.view(userId, Date.now()) }); // the buffs on you (the tray)

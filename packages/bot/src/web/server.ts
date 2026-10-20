@@ -9,7 +9,7 @@ import { ITEM_BY_ID } from '../dig/items.js';
 import { getNickname, memberByNickname, parseNickname, setNickname } from './nickname.js';
 import { friendSaves, loadFriends } from './friends-db.js';
 import { maySee, privacyOf, seeFriendsBy, setPrivacy } from './privacy.js';
-import { RICHEST, TITLES, newTitle, titleOf, titleSeen } from './titles.js';
+import { RICHEST, TITLES, giveTitle, newTitle, titleOf, titleSeen } from './titles.js';
 import { welcome, welcomeEveryone, welcomeGift, welcomeSeen } from './welcome.js';
 import { mailAction, mailboxOf, onMail, purgeMail, sendMail, unreadMail } from './mail.js';
 import { Halloween, type HalloweenSaved, loadHalloween } from './halloween.js';
@@ -94,7 +94,7 @@ const lookOf = (userId: string): OutfitData | null => {
 };
 import { enhanceFeedLine, parseForgeAction } from './forge.js';
 import { loadItemData, loadPalengkeLeveling } from './stats-data.js';
-import { practiceDropFor, refundPracticeTicketFor, usePracticeTicketFor, warrensAccessOf, refundTicketFor, warrenTicketsOf, useTicketFor, kindCountOf, useKindFor, adventureOf, cosmeticsOf, combatOf, fighterOf, forgeFor, petXpFor, dropItemFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townPet, townEquip, townPoints, townQuest, townSkills, trainingArmorFor, questRewardsFor, questPiecesFor, questKillFor, adventurersWithClass } from './adventure.js';
+import { practiceDropFor, refundPracticeTicketFor, usePracticeTicketFor, warrensAccessOf, refundTicketFor, warrenTicketsOf, useTicketFor, kindCountOf, useKindFor, adventureOf, cosmeticsOf, combatOf, fighterOf, forgeFor, petXpFor, dropItemFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townPet, townEquip, townPoints, townQuest, townSkills, trainingArmorFor, questRewardsFor, questPiecesFor, questKillFor, enterAreaFor, questDropsFor, adventurersWithClass } from './adventure.js';
 import { renameWithCard } from '../items/rename-card.js';
 import { changeClassWithTicket } from '../items/class-ticket.js';
 import { LAUNCH_REWARD, isPreregistered, launched, preregCount, preregister } from '../prereg/prereg.js';
@@ -754,6 +754,14 @@ export function startWebServer(client: Client): void {
             add(userId, result.kowens);
             console.log(`[quests] ${userId} got ${result.kowens} ${kowen(result.kowens)} for ${result.completed}`);
           }
+          // A quest's title (the Palengke's last: Huling Suki): theirs and worn, its pop-up live.
+          if (result.ok && result.title && TITLES[result.title]) {
+            giveTitle(userId, result.title);
+            town?.newTitle(userId, result.title, { name: TITLES[result.title].name, color: TITLES[result.title].color });
+            const look = lookOf(userId);
+            if (look) town?.restyle(userId, look, titleOf(userId));
+            console.log(`[quests] ${userId} earned the title ${result.title} for ${result.completed}`);
+          }
         } else if (path === '/town/points') {
           const action = parsePointsAction(body);
           if (!action) return send(res, 400, '{"error":"invalid points action"}');
@@ -1194,7 +1202,7 @@ export function startWebServer(client: Client): void {
       },
       // Lantern Posts: a Return Lantern from the combat bag for each teleport.
       lanterns: { count: (userId) => kindCountOf(userId, RETURN_LANTERN), use: (userId) => useKindFor(userId, RETURN_LANTERN) },
-      quests: { kill: questKillFor },
+      quests: { kill: questKillFor, enter: enterAreaFor, drops: (userId, kind) => questDropsFor(userId, kind) },
       // Levels: who they are in a fight, and kills' XP (saved with the class).
       progress: {
         fighter: fighterOf,
