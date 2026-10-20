@@ -4,13 +4,15 @@ import { config } from '../config.js';
 import { balance } from '../credits/store.js';
 import { BUST_CHANCE_IN_CHANNEL, BUST_JAIL_MINUTES, SIXTY_SEVEN_BONUS, WIN_CHANCE, gambleFor } from '../games/gamble.js';
 import { kowen } from '../kowens.js';
+import { maySee } from './privacy.js';
 import { feed } from './town-feed.js';
 
 // 🎰 The Casino's Kara y Krus (POST /town/gamble): /gamble's coin flip with the gambling channel's low bust chance
 // (games/gamble.ts). The call is for show: a win lands on it, a loss on the other side, and a bust never lands (the
 // Tanod takes the coin). Each bet is posted in the gambling channel like /gamble's and goes to the town's feed, which
 // plays the effects over the gambler (coins for a big win, a siren for a bust). Both wait REVEAL_MS, so they never
-// tell the result before the coin has landed on the gambler's screen.
+// tell the result before the coin has landed on the gambler's screen. The post carries their balance only if they show
+// it to everyone (Settings → Privacy), as /gamble's does; the casino shows it to them anyway.
 
 /** About as long as the coin is in the air on the gambler's screen (the request, then the 10-frame flip). */
 const REVEAL_MS = 1500;
@@ -51,12 +53,13 @@ export async function gambleInTown(client: Client, userId: string, name: string,
   }
   // The town's feed and the gambling channel hear it once the coin has landed on the gambler's screen.
   const balanceNow = result.balance;
+  if (maySee(null, userId, 'balance')) post += `\n-# Balance: ${balanceNow} ${kowen(balanceNow)}`;
   setTimeout(async () => {
     feed('gamble', line[0], line[1], { userId, amount: bet });
     const channel = await client.channels.fetch(config.gamblingChannelId).catch(() => null);
     if (!channel?.isSendable()) return;
     await channel
-      .send({ content: `${post}\n-# Balance: ${balanceNow} ${kowen(balanceNow)}`, allowedMentions: { parse: [] } })
+      .send({ content: post, allowedMentions: { parse: [] } })
       .catch((err) => console.error('[web] gamble post failed:', err));
   }, REVEAL_MS);
   return { ok: true, message, outcome: result.outcome, landed, bet, kowens: result.balance, ...odds };

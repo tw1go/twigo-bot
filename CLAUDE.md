@@ -1427,7 +1427,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   to you", Status keeps the Discord dot), Discord's `/balance` and `/status` for someone else (`hiddenLine`, private),
   the town leaderboard (`kowens: null` → "Hidden" per viewer) and the public ones (`/leaderboard` in Discord, the room
   API's GET /leaderboard: `'Hidden'` unless 'everyone'; twigo's room shows the word as it is), and every public Discord
-  reply that names a balance (`maySee(null, …)`: `/gamble`'s Balance line, then sent to the gambler alone; `/diss`
+  reply that names a balance (`maySee(null, …)`: `/gamble`'s Balance line, then sent to the gambler alone, and the town casino's post in the gambling channel; `/diss`
   `/praise` `/judge`'s "has N left"; `/gift kowens`' "They now have"), and a steal refused as 'poor' (Discord and the
   neighbourhood: the amount only for a viewer who may see it). Settings → Privacy: two
   rows of Everyone / Friends / Only me. Dev: the pretend leaderboard's 6th place is Hidden.
