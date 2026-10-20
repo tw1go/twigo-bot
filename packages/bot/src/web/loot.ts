@@ -1,4 +1,4 @@
-import { type EquipSlot, type EquipmentDef, type GearRarity, type ItemData, type Item, type Odds, type WarrensData, agimatSlots, gearKind, isGearDef, itemStats, kusingFor, kusingRange, mobStats, nearestGearLevel, newAgimat, newItem, numbersIn, rollGear } from '@mikazuki/shared';
+import { type EquipSlot, type EquipmentDef, type GearRarity, type ItemData, type Item, type Odds, type WarrensData, agimatSlots, boosted, cascade, gearKind, isGearDef, itemStats, kusingFor, kusingRange, mobStats, nearestGearLevel, newAgimat, newItem, numbersIn, rollGear } from '@mikazuki/shared';
 import type { LootContent } from './combat-bag.js';
 
 // 🎲 What a kill drops, rolled on the server by stats.json (rarity.mobGearDrop and bossGearDrop, potions, currencies,
@@ -8,8 +8,12 @@ import type { LootContent } from './combat-bag.js';
 // sometimes Lv 20), brown, white or grey with no lines; about 5% a potion of the map's tier (HP or MP). The Scrapheap
 // Golem gives everyone who did 5% of its HP their own loot: its Kusing, Rough Whetstones, 1–2 blue or orange gear pieces
 // (lines rolled), now and then an accessory, an agimat and, rarely, the Lamp-head Hat. Every dropped piece of gear comes
-// with a plus of +0 to +3 (rarity.dropPlus). Pure: `random` and `uid` come in (`plusRandom`: the plus's own, for the dev
-// town's rich loot; the same `random` otherwise).
+// with a plus of +0 to +3 (rarity.dropPlus). Every pick of a tier (a rarity, a plus, a level, an affix, slots) is a
+// cascade (CONTEXT.md Cascade; shared cascade.ts): the best tier tried first with the table's own odds, down to the
+// floor. `boost` is the earner's Drop rate (CONTEXT.md; stats.json rarity.cascade, `dropBoost`): it raises every chance
+// but a floor's and every chance of an extra item (gear or a potion at all, an accessory, agimat, hat, ticket), never
+// amounts. Pure: `random` and `uid` come in (`plusRandom`: the plus's own, for the dev town's rich loot; the same
+// `random` otherwise).
 
 /** One pick from weighted choices. */
 function weighted<T>(choices: [T, number][], random: () => number): T {
@@ -21,6 +25,22 @@ function weighted<T>(choices: [T, number][], random: () => number): T {
 const pick = <T>(list: T[], random: () => number): T => list[Math.floor(random() * list.length)];
 /** A whole number in [lo, hi]. */
 const between = ([lo, hi]: [number, number], random: () => number) => lo + Math.floor(random() * (hi - lo + 1));
+
+/** An odds table as a cascade: its tiers best first. Rarities by the game's order (stats.json rarity.nameColour: brown …
+ *  darkOrange), an affix orange over blue, numbers (a level, a plus, slots) the higher first. */
+function bestFirst(data: ItemData, odds: Record<string, number>): [string, number][] {
+  const order = Object.keys((itemStats(data.stats).rarity as { nameColour: Record<string, unknown> }).nameColour);
+  const rank = (k: string) => (/^\d+$/.test(k) ? Number(k) : k === 'orange' ? 1 : k === 'blue' ? 0 : order.indexOf(k));
+  return Object.entries(odds).filter((e): e is [string, number] => typeof e[1] === 'number').sort(([a], [b]) => rank(b) - rank(a));
+}
+/** One tier from an odds table, best first; `boost` (Drop rate) favours the better ones. */
+const tier = (data: ItemData, odds: Record<string, number>, random: () => number, boost = 0): string => cascade(bestFirst(data, odds), random, boost);
+
+/** A Drop rate (the stat, a fraction) as the cascades' boost: × stats.json rarity.cascade.dropRate.perChance. */
+export function dropBoost(data: ItemData, dropRate: number): number {
+  const per = (itemStats(data.stats).rarity as { cascade?: { dropRate?: { perChance?: number } } }).cascade?.dropRate?.perChance ?? 1;
+  return Math.max(0, dropRate) * per;
+}
 
 /** The gear tier an item level belongs to (stats.json gearTiers: low is Lv 1–20). */
 export function tierAt(data: ItemData, level: number): string | null {
@@ -37,44 +57,45 @@ const dropGear = (data: ItemData, level: number, accessories = false): Equipment
 
 /** The map's gear level for a mob kind's drops: its own odds (Wire Tangle, Scrap Crab: Lv 10 or 20), else the map's
  *  (stats.json rarity.mobGearDrop.level.default: "map gear level (Slums 10)"). */
-export function dropLevel(data: ItemData, kind: string, random: () => number): number {
+export function dropLevel(data: ItemData, kind: string, random: () => number, boost = 0): number {
   const L = itemStats(data.stats).rarity.mobGearDrop.level;
   const own = L[kind];
-  if (own && typeof own === 'object') return Number(weighted(Object.entries(own).map(([lv, w]): [string, number] => [lv, w]), random));
+  if (own && typeof own === 'object') return Number(tier(data, own as Record<string, number>, random, boost));
   return numbersIn(String(L.default))[0] ?? 1;
 }
 
-/** A dropped piece's plus, +0 to +3 by stats.json rarity.dropPlus (its number keys; never more than +3). */
-export function dropPlus(data: ItemData, random: () => number): number {
+/** A dropped piece's plus, +0 to +3 by stats.json rarity.dropPlus (its number keys; never more than +3): a cascade,
+ *  +3 tried first. */
+export function dropPlus(data: ItemData, random: () => number, boost = 0): number {
   const odds = Object.entries(itemStats(data.stats).rarity.dropPlus ?? {}).flatMap(([k, w]): [number, number][] =>
     /^\d+$/.test(k) && typeof w === 'number' ? [[Math.min(3, Number(k)), w]] : [],
   );
-  return odds.length ? weighted(odds, random) : 0;
+  return odds.length ? cascade(odds.sort(([a], [b]) => b - a), random, boost) : 0;
 }
 
 /** A piece of gear as it drops: rolled at its rarity, with its plus. */
-const dropped = (data: ItemData, def: EquipmentDef, rarity: GearRarity, uid: string, random: () => number, plusRandom: () => number): Item => {
+const dropped = (data: ItemData, def: EquipmentDef, rarity: GearRarity, uid: string, random: () => number, plusRandom: () => number, boost = 0): Item => {
   const item = rollGear(data.stats, def, rarity, uid, random);
-  item.plus = dropPlus(data, plusRandom);
+  item.plus = dropPlus(data, plusRandom, boost);
   return item;
 };
 
 /** A normal mob's drops: Kusing always (a random amount round its level's), now and then gear (brown, white or grey, +0 to +3) or an HP or MP Potion. */
-export function mobDrops(data: ItemData, kind: string, level: number, random: () => number, uid: () => string, plusRandom = random): LootContent[] {
+export function mobDrops(data: ItemData, kind: string, level: number, random: () => number, uid: () => string, plusRandom = random, boost = 0): LootContent[] {
   const S = itemStats(data.stats);
   const out: LootContent[] = [{ kusing: between(kusingRange(data.stats, level), random) }];
   const G = S.rarity.mobGearDrop;
-  if (random() < G.chancePerKill) {
-    const gearLevel = dropLevel(data, kind, random);
+  if (random() < boosted(G.chancePerKill, boost)) {
+    const gearLevel = dropLevel(data, kind, random, boost);
     const kinds = dropGear(data, gearLevel);
     if (kinds.length) {
-      const rarity = weighted(Object.entries(G.odds) as [GearRarity, number][], random);
-      out.push({ item: dropped(data, pick(kinds, random), rarity, uid(), random, plusRandom) });
+      const rarity = tier(data, G.odds, random, boost) as GearRarity;
+      out.push({ item: dropped(data, pick(kinds, random), rarity, uid(), random, plusRandom, boost) });
     }
   }
-  if (random() < S.potions.mobDropChance) {
-    const tier = tierAt(data, dropLevel(data, 'default', random));
-    const potions = [...data.defs.values()].filter((d) => !isGearDef(d) && d.kind === 'potion' && d.tier === tier);
+  if (random() < boosted(S.potions.mobDropChance, boost)) {
+    const potionTier = tierAt(data, dropLevel(data, 'default', random, boost));
+    const potions = [...data.defs.values()].filter((d) => !isGearDef(d) && d.kind === 'potion' && d.tier === potionTier);
     if (potions.length) out.push({ item: newItem(data.stats, pick(potions, random), uid()) });
   }
   return out;
@@ -91,6 +112,7 @@ export function miniLoot(
   random: () => number,
   uid: () => string,
   plusRandom = random,
+  boost = 0,
 ): LootContent[] {
   const S = itemStats(data.stats);
   const mob = mobStats(data.stats, kind)?.level ?? level;
@@ -100,10 +122,10 @@ export function miniLoot(
   for (let n = rules.gearPieces; n > 0; n--) {
     const kinds = dropGear(data, gearLevel);
     if (!kinds.length) break;
-    const rarity = weighted(Object.entries(S.rarity.mobGearDrop.odds) as [GearRarity, number][], random);
-    out.push({ item: dropped(data, pick(kinds, random), rarity, uid(), random, plusRandom) });
+    const rarity = tier(data, S.rarity.mobGearDrop.odds, random, boost) as GearRarity;
+    out.push({ item: dropped(data, pick(kinds, random), rarity, uid(), random, plusRandom, boost) });
   }
-  if (random() < rules.fragmentChance) {
+  if (random() < boosted(rules.fragmentChance, boost)) {
     const tier = tierAt(data, gearLevel);
     const fragment = [...data.defs.values()].find((d) => !isGearDef(d) && d.forge === 'fragment' && d.tier === tier);
     if (fragment) out.push({ item: newItem(data.stats, fragment, uid()) });
@@ -125,54 +147,54 @@ export function rollAgimatStat(data: ItemData, random: () => number, rareTimes =
 
 /** The golem's loot for one player who earned it (stats.json bossLoot.perEligiblePlayer); `ticketChance`: a Warren Ticket
  *  that often too (classes/dungeons.json warrens.ticket.sources.golemLootChance). */
-export function golemLoot(data: ItemData, random: () => number, uid: () => string, plusRandom = random, ticketChance = 0): LootContent[] {
+export function golemLoot(data: ItemData, random: () => number, uid: () => string, plusRandom = random, ticketChance = 0, boost = 0): LootContent[] {
   const S = itemStats(data.stats);
   const P = S.bossLoot.perEligiblePlayer;
   const B = S.rarity.bossGearDrop;
   const out: LootContent[] = [{ kusing: P.kusing }];
   const whetstone = [...data.defs.values()].find((d) => !isGearDef(d) && d.shop === 'whetstone' && d.tier === 'low');
   if (whetstone) out.push({ item: newItem(data.stats, whetstone, uid(), between(P.roughWhetstones, random)) });
-  const level = () => Number(weighted(Object.entries(B.level).map(([lv, w]): [string, number] => [lv, w]), random));
-  const affix = () => weighted(Object.entries(B.affix) as ['blue' | 'orange', number][], random);
-  const colour = (tier: 'blue' | 'orange', slots: number): GearRarity => `${slots >= 2 ? 'dark' : 'light'}${tier === 'blue' ? 'Blue' : 'Orange'}` as GearRarity;
+  const level = () => Number(tier(data, B.level, random, boost));
+  const affix = () => tier(data, B.affix, random, boost) as 'blue' | 'orange';
+  const colour = (t: 'blue' | 'orange', slots: number): GearRarity => `${slots >= 2 ? 'dark' : 'light'}${t === 'blue' ? 'Blue' : 'Orange'}` as GearRarity;
   for (let n = between(P.gearPieces, random); n > 0; n--) {
     const kinds = dropGear(data, level());
-    const slots = Number(weighted(Object.entries(B.slots).map(([s, w]): [string, number] => [s, w]), random));
-    if (kinds.length) out.push({ item: dropped(data, pick(kinds, random), colour(affix(), slots), uid(), random, plusRandom) });
+    const slots = Number(tier(data, B.slots, random, boost));
+    if (kinds.length) out.push({ item: dropped(data, pick(kinds, random), colour(affix(), slots), uid(), random, plusRandom, boost) });
   }
-  if (random() < P.accessoryChance) {
+  if (random() < boosted(P.accessoryChance, boost)) {
     const kinds = dropGear(data, level(), true);
-    if (kinds.length) out.push({ item: dropped(data, pick(kinds, random), colour(affix(), 1), uid(), random, plusRandom) });
+    if (kinds.length) out.push({ item: dropped(data, pick(kinds, random), colour(affix(), 1), uid(), random, plusRandom, boost) });
   }
-  if (random() < P.agimatChance) {
+  if (random() < boosted(P.agimatChance, boost)) {
     const stat = rollAgimatStat(data, random);
     const def = [...data.defs.values()].find((d) => !isGearDef(d) && d.kind === 'agimat' && d.stat === stat);
     if (def && !isGearDef(def)) out.push({ item: newAgimat(data.stats, def, pick(P.agimatLevels, random), uid()) });
   }
-  if (random() < P.lampHatChance) {
+  if (random() < boosted(P.lampHatChance, boost)) {
     const hat = data.defs.get('lamp-hat');
     if (hat) out.push({ item: newItem(data.stats, hat, uid()) });
   }
-  ticket(data, ticketChance, random, uid, out);
+  ticket(data, ticketChance, random, uid, out, boost);
   return out;
 }
 
 // ── The Scrap Warrens (classes/dungeons.json warrens.loot) ──
 
-/** A Warren Ticket, `chance` of the time. */
-function ticket(data: ItemData, chance: number, random: () => number, uid: () => string, out: LootContent[]): void {
+/** A Warren Ticket, `chance` of the time (Drop rate raises it). */
+function ticket(data: ItemData, chance: number, random: () => number, uid: () => string, out: LootContent[], boost = 0): void {
   const def = data.defs.get('warren-ticket');
-  if (def && chance > 0 && random() < chance) out.push({ item: newItem(data.stats, def, uid()) });
+  if (def && chance > 0 && random() < boosted(chance, boost)) out.push({ item: newItem(data.stats, def, uid()) });
 }
 
-/** One pick by odds ({ blue: 0.8, orange: 0.2 }). */
-const byOdds = (odds: Odds, random: () => number) => weighted(Object.entries(odds), random);
+/** One pick by odds ({ blue: 0.8, orange: 0.2 }): a cascade, the better first. */
+const byOdds = (data: ItemData, odds: Odds, random: () => number, boost = 0) => tier(data, odds, random, boost);
 
 /** A blue or orange rarity by its odds and its slot count (1: light, 2: dark). */
-const affixColour = (affix: Odds, slots: Odds, random: () => number): GearRarity => {
-  const tier = byOdds(affix, random);
-  const n = Number(byOdds(slots, random));
-  return `${n >= 2 ? 'dark' : 'light'}${tier === 'orange' ? 'Orange' : 'Blue'}` as GearRarity;
+const affixColour = (data: ItemData, affix: Odds, slots: Odds, random: () => number, boost = 0): GearRarity => {
+  const t = byOdds(data, affix, random, boost);
+  const n = Number(byOdds(data, slots, random, boost));
+  return `${n >= 2 ? 'dark' : 'light'}${t === 'orange' ? 'Orange' : 'Blue'}` as GearRarity;
 };
 
 /** Weapons and armor of a level for a class (its own weapon, its gear type's armor); any class's when it has none. */
@@ -202,17 +224,19 @@ export function warrensMiniLoot(
   random: () => number,
   uid: () => string,
   plusRandom = random,
+  boost = 0,
 ): LootContent[] {
   const R = W.loot.miniBoss.roll;
   const out: LootContent[] = boss.kusingPile ? [{ kusing: boss.kusingPile }] : [];
   const cls = () => pick(classes.length ? classes : [null], random);
   for (let n = 0; n < Math.max(1, players); n++) {
-    const r = random();
-    if (r < R.affix.chance || r < R.affix.chance + R.plain.chance) {
+    // Affix, plain or unlucky: a cascade (affix tried first; Drop rate favours the first two).
+    const roll = cascade<'affix' | 'plain' | 'unlucky'>([['affix', R.affix.chance], ['plain', R.plain.chance], ['unlucky', Math.max(0, 1 - R.affix.chance - R.plain.chance)]], random, boost);
+    if (roll !== 'unlucky') {
       const kinds = classGear(data, W.loot.gearLevel, cls());
       if (!kinds.length) continue;
-      const rarity = r < R.affix.chance ? affixColour(R.affix.affix, R.affix.slots, random) : (byOdds(R.plain.colour, random) as GearRarity);
-      out.push({ item: dropped(data, pick(kinds, random), rarity, uid(), random, plusRandom) });
+      const rarity = roll === 'affix' ? affixColour(data, R.affix.affix, R.affix.slots, random, boost) : (byOdds(data, R.plain.colour, random, boost) as GearRarity);
+      out.push({ item: dropped(data, pick(kinds, random), rarity, uid(), random, plusRandom, boost) });
       continue;
     }
     out.push({ kusing: R.unlucky.kusingTimes * kusingFor(data.stats, boss.level) });
@@ -224,42 +248,42 @@ export function warrensMiniLoot(
 
 /** Barong-Barong's loot (warrens.loot.lastBoss), for each player inside: affix gear for a class from `classes`, Lv 20
  *  accessories, Kusing, Rough Whetstones, now and then a Lv 20 agimat and a Warren Ticket. */
-export function warrensBossLoot(data: ItemData, W: WarrensData, classes: (string | null)[], players: number, random: () => number, uid: () => string, plusRandom = random): LootContent[] {
+export function warrensBossLoot(data: ItemData, W: WarrensData, classes: (string | null)[], players: number, random: () => number, uid: () => string, plusRandom = random, boost = 0): LootContent[] {
   const P = W.loot.lastBoss.perPlayerInside;
   const out: LootContent[] = [];
   const cls = () => pick(classes.length ? classes : [null], random);
   for (let n = 0; n < Math.max(1, players); n++) {
     for (let k = 0; k < P.affixGear; k++) {
       const kinds = classGear(data, W.loot.gearLevel, cls());
-      if (kinds.length) out.push({ item: dropped(data, pick(kinds, random), affixColour(P.affix, P.slots, random), uid(), random, plusRandom) });
+      if (kinds.length) out.push({ item: dropped(data, pick(kinds, random), affixColour(data, P.affix, P.slots, random, boost), uid(), random, plusRandom, boost) });
     }
     for (let k = 0; k < P.accessories; k++) {
       const kinds = dropGear(data, P.accessoryLevel, true);
-      if (kinds.length) out.push({ item: dropped(data, pick(kinds, random), affixColour(P.accessoryAffix, { 1: 1 }, random), uid(), random, plusRandom) });
+      if (kinds.length) out.push({ item: dropped(data, pick(kinds, random), affixColour(data, P.accessoryAffix, { 1: 1 }, random, boost), uid(), random, plusRandom, boost) });
     }
     out.push({ kusing: P.kusing });
     const stones = whetstones(data, between(P.roughWhetstones, random), uid);
     if (stones) out.push(stones);
-    if (random() < P.agimatChance) {
+    if (random() < boosted(P.agimatChance, boost)) {
       const stat = rollAgimatStat(data, random);
       const def = [...data.defs.values()].find((d) => !isGearDef(d) && d.kind === 'agimat' && d.stat === stat);
       if (def && !isGearDef(def)) out.push({ item: newAgimat(data.stats, def, P.agimatLevel, uid()) });
     }
-    ticket(data, P.ticketChance, random, uid, out);
+    ticket(data, P.ticketChance, random, uid, out, boost);
   }
   return out;
 }
 
 /** A normal Warrens mob's drops: as a Slums mob's (its Kusing from the dungeon, `kusing` round it), but its gear at the
  *  loot's gear level (20). */
-export function warrensMobDrops(data: ItemData, W: WarrensData, kind: string, level: number, kusing: number, random: () => number, uid: () => string, plusRandom = random): LootContent[] {
-  const out = mobDrops(data, kind, level, random, uid, plusRandom);
+export function warrensMobDrops(data: ItemData, W: WarrensData, kind: string, level: number, kusing: number, random: () => number, uid: () => string, plusRandom = random, boost = 0): LootContent[] {
+  const out = mobDrops(data, kind, level, random, uid, plusRandom, boost);
   const [lo, hi] = itemStats(data.stats).currencies.kusingPerMobRange ?? [0.6, 1.2];
   out[0] = { kusing: Math.round(kusing * (lo + random() * (hi - lo))) };
   for (const [i, l] of out.entries()) {
     if (!('item' in l) || !isGearDef(data.defs.get(l.item.defId))) continue;
     const kinds = dropGear(data, W.loot.gearLevel);
-    if (kinds.length) out[i] = { item: dropped(data, pick(kinds, random), l.item.rarity as GearRarity, uid(), random, plusRandom) };
+    if (kinds.length) out[i] = { item: dropped(data, pick(kinds, random), l.item.rarity as GearRarity, uid(), random, plusRandom, boost) };
   }
   return out;
 }

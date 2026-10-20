@@ -1040,6 +1040,10 @@
       "2": 0.1,
       "3": 0.05
     },
+    "cascade": {
+      "note": "Repo addition (20 Oct 2026): every pick of a tier (a dropped piece's rarity, plus and level, a boss piece's affix and slots, a dig's rarity) is a cascade: the best tier is tried first with its own chance (its weight over what's left of the table from it down: the same odds as the table), a miss tries the next, the floor always lands. Drop rate (the stat; caps.dropRate) raises every chance but the floor's and every chance of an extra item (a kill's gear and potion, a boss's accessory, agimat, hat, ticket) by dropRate × perChance, never over 1; never digs or event loot.",
+      "dropRate": { "perChance": 1 }
+    },
     "trainingWeapons": "brown",
     "accessories": "field boss only, blue/orange; about 1 in 3 golem loots",
     "trainingArmor": "brown"

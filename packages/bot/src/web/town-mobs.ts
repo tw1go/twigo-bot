@@ -548,6 +548,11 @@ export class MobRoom {
     return combatRating(this.fightData.stats, this.fighter(a), a.cls);
   }
 
+  /** Their Drop rate (the stat, capped): the loot cascades' boost (CONTEXT.md Drop rate). */
+  dropRate(a: Attacker): number {
+    return this.fighter(a).dropRate ?? 0;
+  }
+
   /** A kind's row in the mob table (a kind without one is a data problem: loud, at start). */
   private statsOf(mob: string): MobStats {
     const s = mobStats(this.fightData.stats, mob);

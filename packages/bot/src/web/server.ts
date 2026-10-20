@@ -49,6 +49,7 @@ import { filterText, kickedUntil, mutedUntil } from './town-mod.js';
 import { getOutfit, parseOutfit, saveOutfit } from './outfit.js';
 import { type OutfitData, cosmeticHatOf, cosmeticTopOf, parseMailAction, parsePetAction, withCosmetics, type HalloweenReward, addToBag, newItem } from '@mikazuki/shared';
 import { loadCosmeticHats, loadCosmeticTops } from './stats-data.js';
+import { dropRateOf } from './adventure.js';
 
 /** A saved look with what a member wears as cosmetics on it: a head cosmetic's hat, a body cosmetic's top (shared
  *  cosmetics.ts). */
@@ -1095,7 +1096,7 @@ export function startWebServer(client: Client): void {
       // Aling Nena's quest: a real run needs it done; a practice run uses her Practice Warren Ticket and its last boss drops
       // her binoculars.
       warrens: {
-        ...loadWarrens(skillLevels),
+        ...loadWarrens(skillLevels, undefined, dropRateOf),
         tickets: { count: warrenTicketsOf, use: useTicketFor, refund: refundTicketFor },
         access: warrensAccessOf,
         practice: { use: usePracticeTicketFor, drop: practiceDropFor, refund: refundPracticeTicketFor },

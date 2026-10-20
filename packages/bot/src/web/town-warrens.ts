@@ -15,7 +15,7 @@ import {
   partyHpScale,
 } from '@mikazuki/shared';
 import type { LootContent } from './combat-bag.js';
-import { warrensBossLoot, warrensMiniLoot, warrensMobDrops } from './loot.js';
+import { dropBoost, warrensBossLoot, warrensMiniLoot, warrensMobDrops } from './loot.js';
 import { loadDungeons, loadItemData, loadLeveling } from './stats-data.js';
 import { loadGolemArt } from './town-golem.js';
 import { type MobDirector, type MobEvent, type MobKill, type MobKinds, type MobMapData, type MobSpec, MobRoom, type SkillLevels, type SkillShapes, loadMobKinds, loadMobMap, loadSkillShapes } from './town-mobs.js';
@@ -74,13 +74,15 @@ export interface RunDeps {
   /** When a Scrapling's Tire Slam lands after it starts (ms: the golem's slam frame). */
   slamMs: number;
   random: () => number;
+  /** A member's Drop rate (the stat): a run's loot cascades are boosted by the highest among those inside. None: 0. */
+  dropRate?: (member: string) => number;
 }
 
 /** The Warrens as the town takes them (TownOptions.warrens, the tickets aside): the data, the map, the Warren Gate's
  *  tile and what a run's mob room needs (classes' skill unlock levels: `levels`). */
-export function loadWarrens(levels: SkillLevels, random: () => number = Math.random) {
+export function loadWarrens(levels: SkillLevels, random: () => number = Math.random, dropRate?: (member: string) => number) {
   const data = loadDungeons().warrens;
-  const deps: RunDeps = { kinds: loadMobKinds(), levels, shapes: loadSkillShapes(), fightData: loadItemData(), leveling: loadLeveling(), slamMs: loadGolemArt().hitMs?.slam ?? 500, random };
+  const deps: RunDeps = { kinds: loadMobKinds(), levels, shapes: loadSkillShapes(), fightData: loadItemData(), leveling: loadLeveling(), slamMs: loadGolemArt().hitMs?.slam ?? 500, random, ...(dropRate ? { dropRate } : {}) };
   return { data, map: loadWarrensMap(), gate: data.entry.warp.tile, deps };
 }
 
@@ -516,11 +518,13 @@ export class Run implements MobDirector {
     const data = this.deps.fightData;
     const n = Math.max(1, this.inside.size);
     const b = this.bosses.get(kill.id);
-    if (b?.last) return { contents: warrensBossLoot(data, this.W, classes, n, random, uid, plusRandom), at: this.lootSpot() };
-    if (b) return { contents: warrensMiniLoot(data, this.W, b.def, classes, n, random, uid, plusRandom), at: kill.at };
+    // The loot's cascades boosted by the highest Drop rate inside (CONTEXT.md Drop rate).
+    const boost = dropBoost(data, Math.max(0, ...[...this.inside.keys()].map((m) => this.deps.dropRate?.(m) ?? 0)));
+    if (b?.last) return { contents: warrensBossLoot(data, this.W, classes, n, random, uid, plusRandom, boost), at: this.lootSpot() };
+    if (b) return { contents: warrensMiniLoot(data, this.W, b.def, classes, n, random, uid, plusRandom, boost), at: kill.at };
     const area = this.W.areas.find((a) => a.mobs.kind === kill.kind);
     const kusing = area?.mobs.kusing ?? this.W.scrapling.kusing;
-    return { contents: warrensMobDrops(data, this.W, kill.kind, kill.level, kusing, random, uid, plusRandom), at: kill.at };
+    return { contents: warrensMobDrops(data, this.W, kill.kind, kill.level, kusing, random, uid, plusRandom, boost), at: kill.at };
   }
 
   /** In front of Barong-Barong (south of its body, on open floor). */

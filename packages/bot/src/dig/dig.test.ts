@@ -14,6 +14,7 @@ for (const name of ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'ADMIN_ROLE_ID', 'ADMI
 process.env.TIMEZONE = 'Asia/Manila';
 
 const { digFor } = await import('./dig.js');
+const items = await import('./items.js');
 const { BASE_SLOTS, DIGS_PER_DAY, addShovel, itemCount, recordDig, shovelUses } = await import('./store.js');
 const { jail } = await import('../games/jail.js');
 const { closeDatabase } = await import('../db/db.js');
@@ -34,6 +35,31 @@ test('digs up an item and uses the shovel', () => {
   assert.equal(r.left, DIGS_PER_DAY - 1);
   assert.equal(r.items, 1);
   assert.equal(itemCount('digger'), 1);
+});
+
+test("a dig's rarity is a cascade with RARITY_CHANCE's own odds (the rarest tried first), the lucky dig LUCKY_ODDS's", () => {
+  const { LUCKY_ODDS, RARITY_CHANCE, rollItem, rollLucky } = items;
+  let seed = 7;
+  const random = () => {
+  seed = (seed + 0x6d2b79f5) | 0;
+  let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+};
+  const N = 100_000;
+  const seen: Record<string, number> = {};
+  for (let i = 0; i < N; i++) {
+    const r = rollItem(random).rarity;
+    seen[r] = (seen[r] ?? 0) + 1;
+  }
+  for (const [r, p] of Object.entries(RARITY_CHANCE)) if (p >= 0.005) assert.ok(Math.abs((seen[r] ?? 0) / N - p) < Math.max(0.004, p * 0.15), `${r} ${(seen[r] ?? 0) / N} vs ${p}`);
+  const lucky: Record<string, number> = {};
+  for (let i = 0; i < 20_000; i++) {
+    const r = rollLucky(random).rarity;
+    lucky[r] = (lucky[r] ?? 0) + 1;
+  }
+  for (const [r, p] of LUCKY_ODDS) assert.ok(Math.abs((lucky[r] ?? 0) / 20_000 - p) < 0.02, `lucky ${r} ${(lucky[r] ?? 0) / 20_000}`);
+  assert.ok(!('secret' in seen) || seen.secret < N * 0.001);
 });
 
 test('refuses with no shovel', () => {
