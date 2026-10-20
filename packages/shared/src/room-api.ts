@@ -211,6 +211,43 @@ export interface TownLeaderboardResponse {
   rows: TownLeaderboardRow[];
   /** The viewer: their rank (null with no Kowens) and Kowens (wallet + vault). */
   me: { rank: number | null; kowens: number };
+  /** The other boards (CONTEXT.md Leaderboard): base combat rating (everyone with a class), the fastest Warrens clears
+   *  (one row per line-up) and golem damage (each player's best fight), each with the viewer's own place (null: none). */
+  cp: { rows: TownRatingRow[]; me: { rank: number | null; cp: number | null } };
+  warrens: { rows: TownClearRow[]; me: { rank: number | null; ms: number | null } };
+  golem: { rows: TownGolemRow[]; me: { rank: number | null; damage: number | null } };
+}
+
+/** The combat rating board: their base combat rating (no buffs), class and level. */
+export interface TownRatingRow {
+  rank: number;
+  name: string;
+  title: TitleData;
+  cls: string;
+  level: number;
+  cp: number;
+  me?: boolean;
+  outfit?: OutfitData | null;
+}
+
+/** The Warrens board: one line-up's best clear (its members' names, the clear time in ms, when). `me`: the viewer is one of them. */
+export interface TownClearRow {
+  rank: number;
+  names: string[];
+  ms: number;
+  at: number;
+  me?: boolean;
+}
+
+/** The golem board: a player's most damage in one fight that ended with the golem down, and when. */
+export interface TownGolemRow {
+  rank: number;
+  name: string;
+  title: TitleData;
+  damage: number;
+  at: number;
+  me?: boolean;
+  outfit?: OutfitData | null;
 }
 
 export interface TownLeaderboardRow {

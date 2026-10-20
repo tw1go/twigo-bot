@@ -239,6 +239,9 @@ export interface TownOptions {
    *  runs on the Slums' mob room), and giving a find's or reunite's reward (Kowens, Kusing, Low Repair Kits by mail when
    *  the bag is full, a potion): whether the kits went by mail. Without it, no event. */
   halloween?: { event: Halloween; give(userId: string, reward: HalloweenReward, from: string): { kitsByMail: boolean } };
+  /** The leaderboard's records (web/records.ts): a real run cleared (who was inside, how long it took) and the golem
+   *  down (the damage each member did). Without it, nothing is kept. */
+  records?: { clear(members: string[], ms: number, at: number): void; golem(dealt: Map<string, number>, at: number): void };
   /** Chat moderation (web/town-mod.ts in the bot; none in the game's dev server). */
   moderation?: {
     mutedUntil(userId: string): number | null;
@@ -789,12 +792,18 @@ export function attachTown(server: Server, opts: TownOptions): Town {
           if (o && opts.progress) progressed(o, opts.progress.kill(o.userId, k));
         }
       } else shareXp(room, k);
+      // The golem down: each member's damage this fight, for the leaderboard.
+      if (k.boss && k.dealt) opts.records?.golem(k.dealt, Date.now());
       if (run) runDrop(run, k);
       else dropFor(room, { ...k, to: credited });
       // (A Warrens boss counts for no quest: the Tanod's mini bosses are the Slums' own.)
       if (!k.warrens) questKill(withParty(credited, room), { kind: k.kind, mini: !!k.mini, level: k.level });
       if (run && k.warrens) {
+        const before = run.phase;
         runNews(run, run.onKill(k, Date.now()));
+        // A real run cleared just now: its clear time goes on the leaderboard.
+        const c = before !== 'cleared' && run.cleared;
+        if (c) opts.records?.clear(c.team, c.ms, Date.now());
         tellRun(run, Date.now());
         saveRuns();
       }

@@ -500,8 +500,17 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   the news board's markdown; Moving reuses the first-visit tutorial's WASD/mouse pictures. The numbers are copied from the
   bot's rules (stay, voice, casino, jackpot, steal, loans, dig, quests…): update the text when a rule changes. Prices
   the CMS can change are left out.
-- Leaderboard monument (`ui/leaderboard.ts`, left click the monument): top 10 by Kowens from `GET /town/leaderboard`
-  (logged in, may play; town nicknames, titles) with the top 3 idling on a podium ("?" silhouette without a character).
+- Leaderboard monument (`ui/leaderboard.ts`, left click the monument; CONTEXT.md Leaderboard): four boards as tabs (the
+  bank's `.bk-tabs`; the last opened kept in localStorage `mk_lb_tab`; the box 560 px wide), all from one
+  `GET /town/leaderboard` (logged in, may play; town nicknames, titles; `townLeaderboard` in server.ts): Kowens (top 10 by
+  wallet + vault, the balance privacy setting respected), Combat rating (base CP, no buffs, everyone with a class:
+  `adventurersWithClass` → `fighterOf` → `combatRating`, cached a minute: `ratings`), Warrens (the fastest real-run clears,
+  one row per line-up with its best time, the team's names, size and date) and Golem (each player's most damage in one
+  fight that ended with the golem down). Per-player boards show the top 3 idling on a podium ("?" silhouette without a
+  character); your own place under a list you're not in. Records: `web/records.ts` (schema v24 `warrens_clears` by
+  line-up, `golem_fights` by member; ties to the earlier; tested in `records.test.ts`), written by town.ts through
+  `TownOptions.records` as a real run clears (`Run.cleared`: team and ms, the banner's `clearMs`) and as the golem falls
+  (`MobKill.dealt`); never Discord, no titles. Dev: the pretend boards in leaderboard.ts `sample()`.
 - Jackpot counter (`ui/jackpot-timer.ts`, "Jackpot draw", top right left of the minimap; on phones under the Kowens and
   shovels): pot + countdown with seconds to the next draw under small casino lights (`GET /town/jackpot` every minute
   and after `mk-wallet`; gold pulse in the last 10 min); click opens the booth. Icon: manifest `ui.jackpotIcon` if added, else the Kowen coin.

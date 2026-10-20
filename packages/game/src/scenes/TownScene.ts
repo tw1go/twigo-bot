@@ -3363,7 +3363,10 @@ export class TownScene extends Phaser.Scene {
       this.time.delayedCall(700, () => location.assign(TWIGO_ROOM_URL));
       return;
     }
-    if (b.id === 'leaderboard-monument') return showLeaderboard((o) => this.podiumFigure(o));
+    if (b.id === 'leaderboard-monument') {
+      const icons = this.M.ui.classIcons;
+      return showLeaderboard((o) => this.podiumFigure(o), (cls) => (icons ? `${import.meta.env.BASE_URL}assets/${icons.small.replace('{class}', cls)}` : ''));
+    }
     if (b.id === 'jackpot-booth') return showJackpot();
     if (b.id === 'bank') return showBank();
     if (b.id === 'tanod-outpost') return showOutpost();

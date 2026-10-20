@@ -234,6 +234,9 @@ _Avoid_: attack (a mob's is its ATK)
 One number for how strong a character is overall: their Power (with crits), toughness and MP, buffs included.
 _Avoid_: power (that's ATK), gear score
 
+**Base combat rating**:
+A character's combat rating without buffs: level, points, worn gear and the pet out. What the leaderboard ranks.
+
 **Gear type**:
 Which armor a class wears: Heavy, Light or Household.
 
@@ -581,6 +584,14 @@ The item a run costs, used up by whoever opens it; joining a party's run is free
 A run for one player alone, opened with a Practice Warren Ticket during Aling Nena's quest: the same map, mobs and
 bosses with weaker numbers and less Kusing; nobody else can join it. Barong-Barong drops her binoculars in it.
 _Avoid_: tutorial run, easy mode
+
+**Clear time**:
+How long a real run took from its start to Barong-Barong falling. Practice runs have none.
+
+**Leaderboard**:
+The monument's boards: Kowens (wallet + vault), base combat rating, the fastest clear times (one row per run, its whole
+team) and golem damage (each player's most damage in one fight that ended with the golem down).
+_Avoid_: ranking, high scores
 
 **Practice Warren Ticket**:
 Aling Nena's free ticket for a practice run (bound: never sold, traded or dropped); it opens no real run, and a Warren

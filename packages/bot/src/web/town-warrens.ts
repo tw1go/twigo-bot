@@ -507,6 +507,12 @@ export class Run implements MobDirector {
     return r;
   }
 
+  /** Once cleared: who was inside as Barong-Barong fell and how long the run took from its start (the leaderboard's
+   *  clear record, web/records.ts). Null until then, and always for a practice run. */
+  get cleared(): { team: string[]; ms: number } | null {
+    return this.phase === 'cleared' && !this.practice ? { team: [...this.clearTeam], ms: this.clearedAt - this.startedAt } : null;
+  }
+
   /** Whether this kill is the last boss's (a practice run's quest item drops with it: the host). */
   isLastBoss(id: string): boolean {
     return !!this.bosses.get(id)?.last;
