@@ -47,7 +47,7 @@ const WAVE_FX_MS = 380; // the Shockwave's ripple through its ring
 const WAVE_BAND = 0.6; // tiles: the ripple's width
 
 /** Each facing's axis on the grid, as an angle (SE = +col, SW = +row, NW = −col, NE = −row). */
-const AXIS_ANGLE: Record<TownMobFacing, number> = { se: 0, sw: Math.PI / 2, nw: Math.PI, ne: -Math.PI / 2 };
+const AXIS_ANGLE: Record<TownMobFacing, number> = { se: 0, sw: Math.PI / 2, nw: Math.PI, ne: -Math.PI / 2, s: Math.PI / 4, e: -Math.PI / 4, n: (-3 * Math.PI) / 4, w: (3 * Math.PI) / 4 }; // (it only ever faces the four diagonals)
 
 const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 

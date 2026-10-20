@@ -26,6 +26,8 @@ export function queueTown(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Tex
   // The stats rules' numbers (net/adventure.ts keeps them; the mobs read their table).
   if (M.classes?.stats) load.json('stats', M.classes.stats);
   if (M.classes?.leveling) load.json('leveling', M.classes.leveling);
+  // (The Lumang Palengke's: its mini bosses.)
+  if (map.mobZones?.some((z) => z.active) && M.classes?.palengkeLeveling) load.json('palengke-leveling', M.classes.palengkeLeveling);
   // Pets' frame counts (world/pets.ts; their sheets load as a pet first shows).
   if (M.pets?.data) load.json('pet-sheets', M.pets.data);
   // The Halloween event's rules (world/halloween.ts and ui/halloween.ts; the server says whether it's on).

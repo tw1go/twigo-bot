@@ -844,8 +844,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   its arena), the dev server's `/__warrens?as=&boss=` (`&hp=1`: that boss down to 1 HP, so one hit fells it); `?give=warren-ticket::3` for the gate's own flow.
 - The Lumang Palengke (CONTEXT.md; the art folder's maps/palengke brief): the Lv 21-40 map west of the Slums, an area
   like the Slums (`?area=palengke`, net/hood.ts `palengkeTownMap` / `markPalengke`, BootScene loads maps/palengke.json; the
-  bot's and the dev town's room 'palengke', a battle map whose MobRoom has no mobs yet: every `mobZones[].active` and
-  `boss.active` is false until their art comes, and nothing of them is loaded or heard). The Slums' west gate (col 0, rows
+  bot's and the dev town's room 'palengke', a battle map: its eight mob zones on since 20 Oct 2026, below; `boss.active`
+  false until the Great Scale's art comes). The Slums' west gate (col 0, rows
   116-118, "← Palengke") ↔ its east gate (`gates.slums`, "Back to the Slums →"). Flat (`height` 1 everywhere): the big-map
   renderer (`world/terrain.ts`) takes the map's `tileset` (tiles.palengke: no cliffs, rims or ramps), each family's plain
   variants 1-4 twice as likely (rng.ts `variantAt`'s weights), `baha` (shallow flood, walkable at 70%: Character
@@ -868,7 +868,30 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `fieldBossTable`: bossLoot.greatScale, Polished Whetstones, Lv 30/40 pieces, a Mid Repair Kit 1 in 4, no hat, no
   ticket). The Mid tier's whetstone and kit are sold in Smithing from Lv 30 (their own `price`, combatWares' tier gate).
   Tested in `web/palengke-numbers.test.ts`.
-  The quest chain "Ang Huling Suki" (CONTEXT.md Quest item, Level gap; classes/palengke-leveling.json, shared `palengke.ts`
+  Its mobs (20 Oct 2026; CONTEXT.md Front block, Tear cloud, Spilled rice, Ambush, Weigh; the art folder's
+  monsters/palengke/pixellab-v1/anim as it is, in `mobs/<mob>/`, manifest `mobs.<mob>` with two looks as `variants` and
+  eight `directions`; their rules in mobs/mobs.json): `MobRoom` with `MobRoomOptions.area` 'palengke' keeps stats.json
+  mobBehaviour `aliveperZoneIn.palengke` (20) a zone, a kind's mobs.json `alive` winning (the Garapon Jars' 10 packs of
+  `pack` [3, 3], the Banyera Lurkers' 14); passive Payong Flapper and Garapon Jars (packAssist), the rest aggressive at
+  aggroTiles, the Monobloc ranged (rangeTiles 4). Eight facings (`facing8`, a kind whose manifest has eight `directions`:
+  `MobKind.eight`; TownMobFacing has s/e/n/w too; the Slums' mobs keep four; the game's `sheetDir` maps a facing to the
+  sheets a kind has). Traits (mobs.json, the server decides, tested in `web/palengke-mobs.test.ts`):
+  `block` (a share off hits from the 90 degrees it faces, `fromFront`: the Chomper always, the Payong only while its
+  attack is on its opening `frames`, `openMs` from the fps; `MobHit.reduced`, the number dim grey and a grey arc);
+  `tear` (a hit's landing carries `tear` / `tearAccuracy`: town.ts `Vitals.tear`, fighting with that much off their
+  accuracy; the game's tear cloud over the head); `rice` (`mob-fx` rice on the target's tile as the slam lands,
+  `MobRoom.slowAt`: the server's step budget takes the slower of the Bag's slow and the rice, the page's walk too:
+  TownScene `riceAt` / `spillRice`); `chair` (`mob-attack` `to`: thrown at their tile then, landing after its flight
+  at `speed` px a second, a miss for whoever moved more than `hitTiles` off it, `landed`; chairs lost at `loseAt`
+  shares of HP: its ATK × (1 − atkPerChair × lost), `mob-fx` chair-lost: a white flash); `ambush` (a Lurker only on its
+  zone's spawn points on `ground` 'baha', hidden and untargetable (`TownMob.hidden`, `mob-flag` hidden) until a player is
+  within `tiles`: it rises (its hit played backwards, `riseMs`), its first hit ×`firstHit`, hidden again `hideMs` after
+  losing its target); `weigh` (× (1 + perHp × their HP share: `Target.hpShare` from the vitals), `PlayerHit.mult`, orange
+  from `flashAt` and a yellow flash on its dial). Mini bosses wear their kind's `miniLook`; the palengke's leveling for
+  their names and size (Mobs `levelingKey`, the 'palengke-leveling' json). Zone mobs never step on the field boss's
+  `arena` where it has no pit (`inArena`). No hurt or death sounds yet (`sounds: false`: none asked for). FX are
+  code-drawn placeholders until the art folder's palengke mob FX come. Dev: `?palengkemobs=demo` (the nearest mob of each
+  kind through every anim, a facing a round), `?minibosses=now` (the palengke's too). "Ang Huling Suki" (CONTEXT.md Quest item, Level gap; classes/palengke-leveling.json, shared `palengke.ts`
   `palengkeQuests`: its 14 quests as QuestDefs after the Tanod's in both QUESTS, each `handIn`, with `unlockLevel`, the
   first `startsIn: 'palengke'`). Hand-in: a hunt (kill, miniBoss, fieldBoss; `collect` on one = items in hand too, "Sako
   Slammers 12/20 · Clean Rice Scoops 4/10") moves on by itself once done (`advanceCollects` → `huntDone`), then its last

@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { api } from '../net/endpoints';
 import { queueSave } from '../net/sync';
 import { queueImage, queueNpcs, queueTown } from '../assets/queue';
-import type { Area, Dir, Gate, Manifest, MapTiles, TownMap } from '../assets/types';
+import type { Area, Dir, Gate, Manifest, MapTiles, MobData, TownMap } from '../assets/types';
 import { Character, SPEED, dirForStep, dirToward } from '../characters/character';
 import { type Outfit, assetProblems, buildOutfit, drawStill, headPortrait, headTop, outfitFiles, randomOutfit, sheetKey, stillFiles } from '../characters/doll';
 import { loadOutfit } from '../characters/loading';
@@ -563,7 +563,8 @@ export class TownScene extends Phaser.Scene {
     this.player.onArrive = (tile) => this.arrived(tile);
     // Ground that slows walking (manifest tiles[tileset].slow: the Palengke's shallow flood at 70%).
     const slow = big ? (this.M.tiles[this.map.tileset ?? 'slums'] as MapTiles | undefined)?.slow : undefined;
-    if (slow && Object.keys(slow).length) this.player.speedAt = (c, r) => slow[this.map.ground[r]?.[c] as string] ?? 1;
+    // (Spilled rice on a tile slows it too: a Sako Slammer's, `mob-fx`.)
+    this.player.speedAt = (c, r) => (slow?.[this.map.ground[r]?.[c] as string] ?? 1) * this.riceAt(c, r);
     this.player.nextStep = () => this.keyStep();
     this.player.onSpawn = (obj) => this.tint >= 0 && obj.setTint(this.tint);
     // Back through a gate: at its way in (town.json `arrive`), facing into the area, not the spawn point.
@@ -624,6 +625,7 @@ export class TownScene extends Phaser.Scene {
     // The Slums' mobs (the zones that are on), sorted and tinted like everyone else.
     if (this.map.mobZones?.length) {
       const mobs = new Mobs(this, this.M, this.map, this.grid, this.objects, (obj) => this.tint >= 0 && obj.setTint(this.tint), this.fxLayers);
+      if (this.area === 'palengke') mobs.levelingKey = 'palengke-leveling'; // (its mini bosses)
       mobs.myLevel = () => adventure()?.progress.level ?? 1; // name colours by the level gap
       const hw = this.cache.json.get('halloween') as HalloweenData | undefined;
       if (hw) mobs.events = { kinds: new Set(Object.values(HALLOWEEN_MOBS)), name: hw.name };
@@ -762,6 +764,9 @@ export class TownScene extends Phaser.Scene {
       const boss = this.map.boss && this.map.boss.active !== false && this.M.mobs?.[this.map.boss.id] ? this.map.boss : null;
       const kinds = new Set([...(this.map.mobZones ?? []).filter((z) => z.active && this.M.mobs?.[z.mob]).map((z) => z.mob), ...(boss ? [boss.id] : [])]);
       if (this.map.dungeon) kinds.add('scrapheap-golem'); // (the Scraplings)
+      // (Kinds with no sounds yet: mobs.json `sounds: false`, the Palengke's.)
+      const data = (this.cache.json.get('mob-data') ?? {}) as Record<string, MobData | string>;
+      for (const k of [...kinds]) if (typeof data[k] === 'object' && (data[k] as MobData).sounds === false) kinds.delete(k);
       loadSoundSets([...[...kinds].flatMap((k) => [`combat-mob-hurt-${k}`, `combat-mob-death-${k}`]), ...(boss || this.map.dungeon ? GOLEM_SOUNDS.map((a) => `golem-${a}`) : [])]);
     }
     if (member || fakeLogin()) this.connect();
@@ -2118,7 +2123,7 @@ export class TownScene extends Phaser.Scene {
           return c ? { feet: { x: c.sprite.x, y: c.sprite.y }, head: { x: c.sprite.x, y: c.headY } } : null;
         };
       }
-      this.mobs.hooks.onHit = (_m, target, slow, hit) => {
+      this.mobs.hooks.onHit = (by, target, slow, hit) => {
         const who = charOf(target);
         if (!who || who.knockedOut) return;
         const mine = target === myId;
@@ -2126,7 +2131,10 @@ export class TownScene extends Phaser.Scene {
         if (hit?.dodge || (hit && who.dodgeUntil > Date.now())) return who.hitNumber('Dodge', mine, DODGE_COLOUR);
         if (hit?.miss) return who.hitNumber('Miss', mine);
         who.hurt();
-        if (hit) who.hitNumber(String(hit.damage), mine);
+        // (A heavy Weigh, the Timbangan Sentinel's: orange.)
+        if (hit) who.hitNumber(String(hit.damage), mine, hit.mult && hit.mult >= (by.data?.weigh?.flashAt ?? 1.25) ? '#FB923C' : undefined);
+        // A tear cloud on them (the Sibuyas Sobber's): they miss more for a while.
+        if (hit?.tear) tearCloud(this.fxLayers, () => ({ x: who.sprite.x, y: who.headY }), hit.tear);
         if (mine && hit) playSet('combat-player-hurt');
         if (!slow) return;
         showSlowed(this.fxLayers, () => ({ x: who.sprite.x, y: who.headY }), () => ({ x: who.sprite.x, y: who.sprite.y }), slow);
@@ -2257,7 +2265,12 @@ export class TownScene extends Phaser.Scene {
       if (m.t === 'boss-hit') return this.warrens ? this.warrens.hit(m) : this.golem?.moveHit(m);
       if (m.t === 'boss-cancel') return this.warrens ? this.warrens.cancel(m.id) : this.golem?.cancel(m.id);
       if (m.t === 'mob-scale') return this.mobs?.scale(m.mobs);
-      if (m.t === 'mob-flag') return this.mobs?.flag(m.id, m.untargetable, m.blockAll);
+      if (m.t === 'mob-flag') return this.mobs?.flag(m.id, m.untargetable, m.blockAll, m.hidden);
+      // A mob's effect: spilled rice (a Sako Slammer's: slower walking there, for you too), a chair lost (a flash).
+      if (m.t === 'mob-fx') {
+        if (m.fx === 'chair-lost') return this.mobs?.flash(m.id);
+        return this.spillRice(m.at, m.in, m.ms, m.slow);
+      }
       if (m.t === 'stunned') {
         const ch = charOf(m.id);
         if (ch) this.fxLayers.drawFx('front', (g, t) => stunStars(g, ch.sprite.x, ch.headY - 4, t), m.ms, 150);
@@ -2368,7 +2381,7 @@ export class TownScene extends Phaser.Scene {
           const h = pending.get(id);
           if (!h) return;
           pending.delete(id);
-          this.mobs?.hit(h.id, h.damage, h.crit, h.hp, h.dead, h.slow, h.blocked, h.miss);
+          this.mobs?.hit(h.id, h.damage, h.crit, h.hp, h.dead, h.slow, h.blocked, h.miss, false, h.reduced);
           if (mine && h.damage > 0) playSound(h.crit ? 'combat-hit-crit' : 'combat-hit'); // your hit landing
         };
         const landAll = () => [...pending.keys()].forEach(land);
@@ -2392,7 +2405,7 @@ export class TownScene extends Phaser.Scene {
       }
       if (m.t === 'mob-attack') {
         if (m.target === myId) this.combatAt = performance.now();
-        return this.mobs?.strike(m.id, m.target, m.dir, m.slow, m.hit);
+        return this.mobs?.strike(m.id, m.target, m.dir, m.slow, m.hit, m.to);
       }
       // HP (and yours with MP): the HUD's bars, the bar over your head and a hurt party member's, the party panel.
       if (m.t === 'vitals') {
@@ -2637,7 +2650,13 @@ export class TownScene extends Phaser.Scene {
             .then((r) => (r.ok ? this.travel('warrens') : toast(r.message ?? "Couldn't open a run.", 2600, 'bad')))
             .catch(() => null);
         }
-        // Dev, in the Slums: ?minibosses=now brings every mini boss that's down back at once (the dev server's /__minibosses).
+        // Dev, in the Palengke: ?palengkemobs=demo cycles the nearest mob of each kind through its anims in place.
+        if (import.meta.env.DEV && !arrived && q.get('palengkemobs') === 'demo' && this.mobs) {
+          const timer = this.time.addEvent({ delay: 900, loop: true, callback: () => this.mobs?.demo(this.player.tile) });
+          this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => timer.remove());
+        }
+        // Dev, on a battle map: ?minibosses=now brings every mini boss that's down back at once (the dev server's
+        // /__minibosses: the Slums' and the Palengke's).
         if (import.meta.env.DEV && !arrived && this.battleMap && q.get('minibosses') === 'now') void fetch('/__minibosses').catch(() => null);
         const [sc, sr] = this.map.spawn;
         const at = this.player.tile;
@@ -3179,7 +3198,7 @@ export class TownScene extends Phaser.Scene {
   private stepRefilled = 0;
   private stepBudget(spend = 0): number {
     const now = performance.now();
-    const k = this.speedFactor(now);
+    const k = this.speedFactor(now, true);
     this.stepTokens = Math.min(6 * k, this.stepTokens + ((now - this.stepRefilled) / 1000) * 6 * k) - spend;
     this.stepRefilled = now;
     return this.stepTokens;
@@ -3325,10 +3344,43 @@ export class TownScene extends Phaser.Scene {
     return (adventureData()?.palengke?.dishes?.[id]?.name ?? id).replace(/\s*\(side dish\)$/i, '');
   }
 
+  /** Spilled rice on the ground (a Sako Slammer's): its tile, from and until when (scene ms), how slow walking there is. */
+  private rice: { col: number; row: number; from: number; until: number; slow: number }[] = [];
+
+  /** Walking on `col, row` now: the slowest spilled rice there (1: none). */
+  private riceAt(col: number, row: number): number {
+    if (!this.rice.length) return 1;
+    const now = this.time.now;
+    let k = 1;
+    for (const p of this.rice) if (p.col === Math.floor(col) && p.row === Math.floor(row) && now >= p.from && now < p.until) k = Math.min(k, p.slow);
+    return k;
+  }
+
+  /** Spilled rice on a tile from `delay` ms for `ms` (fx.riceSpill, code-drawn: a cream ellipse with darker grains, fading
+   *  over its last half second), and slower walking there for you as for the server. */
+  private spillRice(at: [number, number], delay: number, ms: number, slow: number): void {
+    const now = this.time.now;
+    this.rice = this.rice.filter((p) => p.until > now);
+    this.rice.push({ col: at[0], row: at[1], from: now + delay, until: now + delay + ms, slow });
+    const lift = this.objects.heights.lift(at[0] + 0.5, at[1] + 0.5);
+    const x = Math.round((at[0] - at[1]) * 16);
+    const y = Math.round((at[0] + at[1] + 1) * 8 - lift);
+    const grains = [[-7, -1], [-3, 2], [2, -2], [6, 1], [0, 0], [-5, 1], [4, 2]];
+    this.time.delayedCall(delay, () =>
+      this.fxLayers.drawFx('ground', (g) => {
+        g.fillStyle(0xf5ecd0, 0.9).fillEllipse(x, y, 26, 13);
+        g.fillStyle(0xc8b98f, 1);
+        for (const [dx, dy] of grains) g.fillRect(x + dx, y + dy, 1, 1);
+      }, ms, 500),
+    );
+  }
+
   /** Your walking speed now: half while the Bag slows you, a dish's move speed (Pancit) on a battle map (the server's
    *  step budget follows the same). */
-  private speedFactor(now = performance.now()): number {
-    return (now < this.slowUntil ? 0.5 : 1) * (this.battleMap ? moveSpeedOf(myBuffStats()) : 1);
+  private speedFactor(now = performance.now(), rice = false): number {
+    // (With `rice`: the server's step budget's rule, the slower of the Bag's slow and spilled rice underfoot.)
+    const slow = Math.min(now < this.slowUntil ? 0.5 : 1, rice ? this.riceAt(this.player.tile.col, this.player.tile.row) : 1);
+    return slow * (this.battleMap ? moveSpeedOf(myBuffStats()) : 1);
   }
 
   private megaphone: MegaphoneBanner | null = null;
@@ -4760,6 +4812,20 @@ function exposeDebug(scene: TownScene): void {
 }
 
 /** Stunned: three small yellow stars circling over a head (`t` ms in). */
+/** A tear cloud over a player's head for `ms` (fx.tearCloud, code-drawn until its art comes): four pale blue translucent
+ *  circles drifting up round the head, on the front layer. */
+function tearCloud(fx: FxLayers, head: () => { x: number; y: number }, ms: number): void {
+  fx.drawFx('front', (g, t) => {
+    const h = head();
+    for (let i = 0; i < 4; i++) {
+      const k = ((t / 1400 + i / 4) % 1);
+      const x = Math.round(h.x + Math.sin(i * 1.9 + t / 500) * 7);
+      const y = Math.round(h.y - 2 - k * 12);
+      g.fillStyle(0xbfdbfe, 0.55 * (1 - k)).fillCircle(x, y, 2 + (i % 2));
+    }
+  }, ms, 300);
+}
+
 function stunStars(g: Phaser.GameObjects.Graphics, x: number, y: number, t: number): void {
   for (let i = 0; i < 3; i++) {
     const a = t / 180 + (i * Math.PI * 2) / 3;

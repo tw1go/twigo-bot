@@ -650,6 +650,8 @@ export interface Target {
   level: number;
   defRate?: number;
   priority?: number;
+  /** Their share of their HP left (0–1; the Timbangan Sentinel's Weigh). */
+  hpShare?: number;
 }
 
 /** One hit's damage, before any roll: Power × skill % × (1 + amp) × crit × 100 / (100 + DEF) (DEF taking at most
@@ -737,7 +739,7 @@ export interface MobRules {
   alive: number;
 }
 
-export function mobRules(data: StatsData, kind: string): MobRules {
+export function mobRules(data: StatsData, kind: string, area?: string): MobRules {
   const B = data.mobBehaviour;
   const key = behaviourKey(kind);
   return {
@@ -749,7 +751,8 @@ export function mobRules(data: StatsData, kind: string): MobRules {
     leashTiles: B.leashTiles,
     wanderTiles: B.wanderTiles,
     respawnMs: B.respawnSeconds * 1000,
-    alive: B.aliveperZone,
+    // (A map's own count: stats.json aliveperZoneIn, a repo addition; the Lumang Palengke's 20.)
+    alive: (area ? (B as { aliveperZoneIn?: Record<string, number> }).aliveperZoneIn?.[area] : undefined) ?? B.aliveperZone,
   };
 }
 

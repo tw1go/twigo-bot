@@ -28,7 +28,8 @@ import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
 //   GET /__announce?kind=jackpot|notice&title=…&text=…   a banner at the top
 //   GET /__jail?name=Bob&on=1   shows Bob as jailed (on=0: released) to everyone in town
 //   GET /__bakod?name=Mara&on=0 takes down (on=1 puts up) a pretend neighbour's Bakod, live in the neighbourhood
-//   GET /__minibosses   every mini boss that's down comes back now (the page's ?minibosses=now)
+//   GET /__minibosses   every mini boss that's down comes back now, the Slums' and the Lumang Palengke's (the page's
+//       ?minibosses=now)
 //   GET /__warrens?as=Alice   a Scrap Warrens run for Alice, free, started at once (the page's ?warrens=solo; it then goes
 //       in); &boss=crab-tain: every area before that boss cleared, and she arrives at its arena (?warrensboss=crab-tain).
 //       &hp=1 with it: that boss down to 1 HP, so one hit fells it (Barong-Barong: the run clears, its warp rises).
@@ -407,6 +408,8 @@ export function devTown(): Plugin {
       const halloween = new Halloween(hwLoaded.data, hwLoaded.maps, null);
       const slumsJson = JSON.parse(readFileSync(slumsFile, 'utf8'));
       slumsJson.mobZones = [...(slumsJson.mobZones ?? []), Halloween.eventZone(slumsJson.size)];
+      // (The Lumang Palengke's mob room, made with the town below: its mini bosses for /__minibosses.)
+      let palengkeMobs: MobRoom | null = null;
       const slumsMobs = new MobRoom(
         slumsJson,
         Math.random,
@@ -430,7 +433,7 @@ export function devTown(): Plugin {
           palengke: palengkeMap,
         },
         // (The Palengke's zones and boss are off until their art comes: a battle room with no mobs yet.)
-        mobs: { slums: slumsMobs, palengke: new MobRoom({ ...JSON.parse(readFileSync(join(server.config.publicDir, 'assets/maps/palengke.json'), 'utf8')), blocked: palengkeMap().blocked }, Math.random, Object.fromEntries(classes.map((c) => [c.id, c.skills.map((k) => k.level)])), loadSkillShapes(), loadMobKinds(), undefined, undefined, loadPalengkeLeveling()) },
+        mobs: { slums: slumsMobs, palengke: (palengkeMobs = new MobRoom({ ...JSON.parse(readFileSync(join(server.config.publicDir, 'assets/maps/palengke.json'), 'utf8')), blocked: palengkeMap().blocked }, Math.random, Object.fromEntries(classes.map((c) => [c.id, c.skills.map((k) => k.level)])), loadSkillShapes(), loadMobKinds(), undefined, undefined, loadPalengkeLeveling(), { area: 'palengke' })) },
         // Its rewards: Kusing and Low Repair Kits into the kept items (the kits by pretend mail when the bag is full),
         // Kowens into the pretend wallet, the potion only printed.
         halloween: {
@@ -913,7 +916,7 @@ export function devTown(): Plugin {
         reply(res, town.warrensDev(q.get('as') ?? '', q.get('boss') || undefined, hp > 0 ? hp : undefined));
       });
       server.middlewares.use('/__minibosses', (_req, res) => {
-        res.end(`${slumsMobs.respawnMinis()} mini bosses back\n`);
+        res.end(`${slumsMobs.respawnMinis() + (palengkeMobs?.respawnMinis() ?? 0)} mini bosses back\n`);
       });
       server.middlewares.use('/__flex', (req, res) => {
         const q = new URL(req.url ?? '/', 'http://localhost').searchParams;

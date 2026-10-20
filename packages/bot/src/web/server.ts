@@ -1184,7 +1184,7 @@ export function startWebServer(client: Client): void {
       // (The Halloween event's mobs live in the Slums' room too: its director runs them, in a zone of their own.)
       mobs: {
         slums: (slumsRoom = new MobRoom(slumsMobMap, Math.random, skillLevels, loadSkillShapes(), loadMobKinds(), loadGolemArt(), undefined, undefined, { director: halloween.director })),
-        palengke: new MobRoom(palengkeMobMap, Math.random, skillLevels, loadSkillShapes(), loadMobKinds(), undefined, undefined, loadPalengkeLeveling()),
+        palengke: new MobRoom(palengkeMobMap, Math.random, skillLevels, loadSkillShapes(), loadMobKinds(), undefined, undefined, loadPalengkeLeveling(), { area: 'palengke' }),
       },
       // The Halloween event (events/halloween.json; its schedules kept in kv 'halloween'): rewards into the wallet, the
       // combat bag (the kits by mail when it's full) and the potion stock.

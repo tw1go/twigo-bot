@@ -43,9 +43,9 @@ test("the Palengke's mobs: XP from the Lv 21+ rule (a level's XP / 50 × xpMult)
     assert.equal(m.xp, Math.round((xpToNext(S, m.level) / S.xp.mobXpAbove20.killsPerLevel) * m.xpMult), `${id} XP`);
     assert.equal(m.kusing, kusingFor(S, m.level), `${id} Kusing`);
   }
-  // The map's zones name them, all off until their art comes; the Great Scale too.
+  // The map's zones name them, all on (their art came 20 Oct); the Great Scale stays off until its own.
   assert.deepEqual(palengke.mobZones.map((z: { mob: string }) => z.mob), PALENGKE_MOBS);
-  assert.ok(palengke.mobZones.every((z: { active: boolean }) => !z.active) && palengke.boss.active === false);
+  assert.ok(palengke.mobZones.every((z: { active: boolean }) => z.active) && palengke.boss.active === false);
   assert.ok(S.mobs.list['great-scale']);
 });
 

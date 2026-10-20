@@ -36,6 +36,9 @@ export interface Vital {
   outUntil: number;
   slowUntil: number;
   blindUntil: number;
+  /** A tear cloud (the Sibuyas Sobber's) until then: `tear` points more misses. */
+  tearUntil?: number;
+  tear?: number;
 }
 
 /** What players see: HP rounded up (alive is at least 1), MP down. */
@@ -171,6 +174,18 @@ export class Vitals {
 
   blinded(user: string, now: number): boolean {
     return (this.all.get(user)?.blindUntil ?? 0) > now;
+  }
+
+  /** A tear cloud on them for `ms`: their attacks miss `points` more (a new one restarts it). */
+  tear(user: string, ms: number, points: number, now: number): void {
+    const v = this.all.get(user);
+    if (v) Object.assign(v, { tearUntil: now + ms, tear: points });
+  }
+
+  /** Points of accuracy a tear cloud takes off them now (0: none). */
+  tearOf(user: string, now: number): number {
+    const v = this.all.get(user);
+    return v && (v.tearUntil ?? 0) > now ? (v.tear ?? 0) : 0;
   }
 
   /**

@@ -12,7 +12,9 @@ import type { EventPotion } from './events.js';
 export type TownDir = 's' | 'se' | 'e' | 'ne' | 'n' | 'nw' | 'w' | 'sw';
 
 /** The four ways a mob's art faces (SE = +col, SW = +row, NW = −col, NE = −row on the grid). */
-export type TownMobFacing = 'se' | 'sw' | 'ne' | 'nw';
+/** The way a mob faces: the art's four diagonals (the Slums' mobs), or any of eight (the Lumang Palengke's: `s`, `e`, `n`,
+ *  `w` too; a grid step's screen direction). */
+export type TownMobFacing = 'se' | 'sw' | 'ne' | 'nw' | 's' | 'e' | 'n' | 'w';
 
 /** A mob as the server has it: `<zone id>:<spawn index>` (a pack's: `…:<n>`), its tile, its kind's one level, its HP of
  *  its kind's `maxHp` (the mob table), which way it faces, and the rest of a hop under way. */
@@ -46,6 +48,8 @@ export interface TownMob {
   /** Can't be targeted or hit for now (Bag Yani's Vanish); every hit blocked (Crab Tain's Hunker). */
   untargetable?: boolean;
   blockAll?: boolean;
+  /** Lying in wait, not drawn (a Banyera Lurker under the floodwater: only its ripple shows). */
+  hidden?: boolean;
 }
 
 /** A Scrap Warrens run as its players see it (bot web/town-warrens.ts). `phase`: gathering (in the start room, waiting
@@ -169,6 +173,10 @@ export interface PlayerHit {
   miss?: boolean;
   /** Dodged (a Step Back just before it landed; boss moves' hits say so): shown as Dodge. */
   dodge?: true;
+  /** Its multiplier when it isn't 1 (the Timbangan Sentinel's Weigh, x1.5 on a full-HP player): shown orange from x1.25. */
+  mult?: number;
+  /** A tear cloud on the player for this long (ms; the Sibuyas Sobber's: they miss more meanwhile). */
+  tear?: number;
 }
 
 /** Browser → server. A step is to a neighbouring tile; the server checks it (walkable, adjacent, walking speed). */
@@ -606,7 +614,11 @@ export type TownServerMessage =
   /** Mobs' most HP changed (a Warrens run's party scaling: their HP keeps its share). */
   | { t: 'mob-scale'; mobs: { id: string; hp: number; maxHp: number }[] }
   /** A boss's untargetable or block-all window began or ended. */
-  | { t: 'mob-flag'; id: string; untargetable?: boolean; blockAll?: boolean }
+  | { t: 'mob-flag'; id: string; untargetable?: boolean; blockAll?: boolean; hidden?: boolean }
+  /** A mob's effect for the room to draw (the Lumang Palengke's): spilled rice on a tile from `in` ms for `ms` (walking
+   *  on it is slower), or a mob losing a chair (Monobloc Stack: a flash). */
+  | { t: 'mob-fx'; fx: 'rice'; at: [number, number]; in: number; ms: number; slow: number }
+  | { t: 'mob-fx'; fx: 'chair-lost'; id: string }
   /** A boss move (the Scrap Warrens' bosses; the golem's Junk Drop and Shockwave): its telegraph now, its hit `ms` from
    *  now (`key`: this move's own, for its hit); `data`: what its effects need (the hand, a charge's path, a call's
    *  spots…). Who it hits is decided as it lands (where everyone stands then). */
@@ -654,10 +666,10 @@ export type TownServerMessage =
   | { t: 'mob-move'; id: string; path: [number, number][]; speed?: number }
   /** Someone (`by`, a town id) hit with skill `skill`: each mob it reached (the target first) with the damage, a crit or
    *  not, the HP left, dead or not; `blocked`: a Scrap Crab's shell took it (0); `miss`: it missed (0). */
-  | { t: 'mob-hit'; by: string; skill: number; hits: { id: string; damage: number; crit: boolean; hp: number; dead: boolean; blocked?: boolean; miss?: boolean; slow?: { factor: number; ms: number } }[] }
+  | { t: 'mob-hit'; by: string; skill: number; hits: { id: string; damage: number; crit: boolean; hp: number; dead: boolean; blocked?: boolean; miss?: boolean; reduced?: boolean; slow?: { factor: number; ms: number } }[] }
   /** A mob attacks a player, turned to face `dir`; `hit`: the server's roll (shown as it lands; the server takes the HP
    *  then too); `slow`: a hit slows the player to half their walking speed for that long (ms; the Plastic Bag Spook's). */
-  | { t: 'mob-attack'; id: string; target: string; dir: TownMobFacing; slow?: number; hit?: PlayerHit }
+  | { t: 'mob-attack'; id: string; target: string; dir: TownMobFacing; slow?: number; hit?: PlayerHit; to?: [number, number] }
   /** A dead mob is back (at a free spot in its zone, or beside its pack), full. */
   | { t: 'mob-spawn'; id: string; col: number; row: number; hp: number }
   /** A mob gave up its fight (pulled past its leash, its foe gone or quiet): healed to full, it walks home. */

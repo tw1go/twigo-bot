@@ -20886,7 +20886,7 @@
       "loadEnragedLater": true,
       "note": "Barong-Barong, the Shanty Titan (the Scrap Warrens' last boss): S only, never moves; cells 768x512 in a grid of 5 a row; hitFrames (0-based, from _sheets.csv): the slams' and sweep's hit, the rain's release, the call's spawn. Builds trim each sheet to its frames' box (scripts/packs.ts); loaded only in the Shanty Hall, the enraged set at its enrage."
     },
-    "note": "Mobs (world/mobs.ts): one sheet per variant, animation and direction, file = pattern with {variant}, {anim} and {dir}; size = the cell, anchor = the pixel between the feet (a variant may have its own size and anchor). `variants` lists the looks (one picked per spawn by the server); none = one look. The golem: `enraged` = its red-lamp set (the anims listed; death is shared), `fx` = its attack effects (layer ground: under every player and mob, front: over them). Rules (attack frame, shadow, floating) in `data`. Only mobs of active zones (and the boss) load.",
+    "note": "Mobs (world/mobs.ts): one sheet per variant, animation and direction, file = pattern with {variant}, {anim} and {dir}; size = the cell, anchor = the pixel between the feet (a variant may have its own size and anchor). `variants` lists the looks (one picked per spawn by the server); none = one look. The golem: `enraged` = its red-lamp set (the anims listed; death is shared), `fx` = its attack effects (layer ground: under every player and mob, front: over them). Rules (attack frame, shadow, floating) in `data`. Only mobs of active zones (and the boss) load. The Lumang Palengke's eight (20 Oct 2026, the art folder's monsters/palengke/pixellab-v1/anim as they are) face all eight directions (`directions`); the Slums mobs keep their four.",
     "data": "mobs/mobs.json",
     "tin-can": {
       "name": "Tin Can",
@@ -21574,6 +21574,430 @@
         }
       },
       "note": "Halloween 2026 event mob (events/halloween.json manananggal.upper): the anchor is the ground point under her; she floats ~12 px above it in the art. carried: dazed, behind whoever beat her (pick the dir from their facing)."
+    },
+    "payong-flapper": {
+      "name": "Payong Flapper",
+      "file": "mobs/payong-flapper/mob-payong-flapper-{variant}-{anim}-{dir}.png",
+      "size": [
+        90,
+        78
+      ],
+      "anchor": [
+        45,
+        71
+      ],
+      "variants": {
+        "stripes": {},
+        "dark": {}
+      },
+      "directions": [
+        "s",
+        "se",
+        "e",
+        "ne",
+        "n",
+        "nw",
+        "w",
+        "sw"
+      ],
+      "animations": {
+        "idle": {
+          "frames": 4,
+          "fps": 6,
+          "loop": true
+        },
+        "move": {
+          "frames": 6,
+          "fps": 10,
+          "loop": true
+        },
+        "attack": {
+          "frames": 7,
+          "fps": 12,
+          "loop": false
+        },
+        "hit": {
+          "frames": 2,
+          "fps": 12,
+          "loop": false
+        },
+        "death": {
+          "frames": 6,
+          "fps": 10,
+          "loop": false
+        }
+      }
+    },
+    "sibuyas-sobber": {
+      "name": "Sibuyas Sobber",
+      "file": "mobs/sibuyas-sobber/mob-sibuyas-sobber-{variant}-{anim}-{dir}.png",
+      "size": [
+        94,
+        80
+      ],
+      "anchor": [
+        47,
+        73
+      ],
+      "variants": {
+        "red": {},
+        "round": {}
+      },
+      "directions": [
+        "s",
+        "se",
+        "e",
+        "ne",
+        "n",
+        "nw",
+        "w",
+        "sw"
+      ],
+      "animations": {
+        "idle": {
+          "frames": 4,
+          "fps": 6,
+          "loop": true
+        },
+        "move": {
+          "frames": 6,
+          "fps": 10,
+          "loop": true
+        },
+        "attack": {
+          "frames": 6,
+          "fps": 12,
+          "loop": false
+        },
+        "hit": {
+          "frames": 2,
+          "fps": 12,
+          "loop": false
+        },
+        "death": {
+          "frames": 6,
+          "fps": 10,
+          "loop": false
+        }
+      }
+    },
+    "garapon-jars": {
+      "name": "Garapon Jars",
+      "file": "mobs/garapon-jars/mob-garapon-jars-{variant}-{anim}-{dir}.png",
+      "size": [
+        80,
+        82
+      ],
+      "anchor": [
+        40,
+        75
+      ],
+      "variants": {
+        "candy": {},
+        "blue": {}
+      },
+      "directions": [
+        "s",
+        "se",
+        "e",
+        "ne",
+        "n",
+        "nw",
+        "w",
+        "sw"
+      ],
+      "animations": {
+        "idle": {
+          "frames": 4,
+          "fps": 6,
+          "loop": true
+        },
+        "move": {
+          "frames": 6,
+          "fps": 10,
+          "loop": true
+        },
+        "attack": {
+          "frames": 6,
+          "fps": 12,
+          "loop": false
+        },
+        "hit": {
+          "frames": 2,
+          "fps": 12,
+          "loop": false
+        },
+        "death": {
+          "frames": 6,
+          "fps": 10,
+          "loop": false
+        }
+      }
+    },
+    "sako-slammer": {
+      "name": "Sako Slammer",
+      "file": "mobs/sako-slammer/mob-sako-slammer-{variant}-{anim}-{dir}.png",
+      "size": [
+        90,
+        83
+      ],
+      "anchor": [
+        45,
+        76
+      ],
+      "variants": {
+        "plain": {},
+        "angry": {}
+      },
+      "directions": [
+        "s",
+        "se",
+        "e",
+        "ne",
+        "n",
+        "nw",
+        "w",
+        "sw"
+      ],
+      "animations": {
+        "idle": {
+          "frames": 4,
+          "fps": 6,
+          "loop": true
+        },
+        "move": {
+          "frames": 6,
+          "fps": 10,
+          "loop": true
+        },
+        "attack": {
+          "frames": 7,
+          "fps": 12,
+          "loop": false
+        },
+        "hit": {
+          "frames": 2,
+          "fps": 12,
+          "loop": false
+        },
+        "death": {
+          "frames": 6,
+          "fps": 10,
+          "loop": false
+        }
+      }
+    },
+    "monobloc-stack": {
+      "name": "Monobloc Stack",
+      "file": "mobs/monobloc-stack/mob-monobloc-stack-{variant}-{anim}-{dir}.png",
+      "size": [
+        86,
+        82
+      ],
+      "anchor": [
+        43,
+        75
+      ],
+      "variants": {
+        "green": {},
+        "white": {}
+      },
+      "directions": [
+        "s",
+        "se",
+        "e",
+        "ne",
+        "n",
+        "nw",
+        "w",
+        "sw"
+      ],
+      "animations": {
+        "idle": {
+          "frames": 4,
+          "fps": 6,
+          "loop": true
+        },
+        "move": {
+          "frames": 6,
+          "fps": 12,
+          "loop": true
+        },
+        "attack": {
+          "frames": 6,
+          "fps": 12,
+          "loop": false
+        },
+        "hit": {
+          "frames": 2,
+          "fps": 12,
+          "loop": false
+        },
+        "death": {
+          "frames": 6,
+          "fps": 10,
+          "loop": false
+        }
+      }
+    },
+    "sangkalan-chomper": {
+      "name": "Sangkalan Chomper",
+      "file": "mobs/sangkalan-chomper/mob-sangkalan-chomper-{variant}-{anim}-{dir}.png",
+      "size": [
+        88,
+        81
+      ],
+      "anchor": [
+        44,
+        74
+      ],
+      "variants": {
+        "mossy": {},
+        "teeth": {}
+      },
+      "directions": [
+        "s",
+        "se",
+        "e",
+        "ne",
+        "n",
+        "nw",
+        "w",
+        "sw"
+      ],
+      "animations": {
+        "idle": {
+          "frames": 4,
+          "fps": 6,
+          "loop": true
+        },
+        "move": {
+          "frames": 6,
+          "fps": 8,
+          "loop": true
+        },
+        "attack": {
+          "frames": 6,
+          "fps": 12,
+          "loop": false
+        },
+        "hit": {
+          "frames": 2,
+          "fps": 12,
+          "loop": false
+        },
+        "death": {
+          "frames": 6,
+          "fps": 10,
+          "loop": false
+        }
+      }
+    },
+    "banyera-lurker": {
+      "name": "Banyera Lurker",
+      "file": "mobs/banyera-lurker/mob-banyera-lurker-{variant}-{anim}-{dir}.png",
+      "size": [
+        106,
+        86
+      ],
+      "anchor": [
+        53,
+        79
+      ],
+      "variants": {
+        "armour": {},
+        "tub": {}
+      },
+      "directions": [
+        "s",
+        "se",
+        "e",
+        "ne",
+        "n",
+        "nw",
+        "w",
+        "sw"
+      ],
+      "animations": {
+        "idle": {
+          "frames": 4,
+          "fps": 6,
+          "loop": true
+        },
+        "move": {
+          "frames": 6,
+          "fps": 10,
+          "loop": true
+        },
+        "attack": {
+          "frames": 6,
+          "fps": 12,
+          "loop": false
+        },
+        "hit": {
+          "frames": 2,
+          "fps": 12,
+          "loop": false
+        },
+        "death": {
+          "frames": 6,
+          "fps": 10,
+          "loop": false
+        }
+      }
+    },
+    "timbangan-sentinel": {
+      "name": "Timbangan Sentinel",
+      "file": "mobs/timbangan-sentinel/mob-timbangan-sentinel-{variant}-{anim}-{dir}.png",
+      "size": [
+        78,
+        83
+      ],
+      "anchor": [
+        39,
+        76
+      ],
+      "variants": {
+        "rust": {},
+        "brown": {}
+      },
+      "directions": [
+        "s",
+        "se",
+        "e",
+        "ne",
+        "n",
+        "nw",
+        "w",
+        "sw"
+      ],
+      "animations": {
+        "idle": {
+          "frames": 4,
+          "fps": 6,
+          "loop": true
+        },
+        "move": {
+          "frames": 6,
+          "fps": 8,
+          "loop": true
+        },
+        "attack": {
+          "frames": 6,
+          "fps": 12,
+          "loop": false
+        },
+        "hit": {
+          "frames": 2,
+          "fps": 12,
+          "loop": false
+        },
+        "death": {
+          "frames": 6,
+          "fps": 10,
+          "loop": false
+        }
+      }
     }
   },
   "guide": {

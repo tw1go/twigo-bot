@@ -154,6 +154,23 @@ A stretch of the Slums where one kind of mob lives.
 **Mob level**:
 Each kind of mob's one fixed level (a Tin Can is always Lv 1).
 _Avoid_: level range
+
+**Front block**:
+A mob that takes less from hits coming at its face (the Sangkalan Chomper always, the Payong Flapper while it opens its
+umbrella): hit it from the side or back.
+_Avoid_: shield (that's the Scrap Crab's shell, which blocks everything)
+
+**Tear cloud**:
+What a Sibuyas Sobber's hit leaves on you: your attacks miss more for a few seconds.
+
+**Spilled rice**:
+The patch a Sako Slammer's slam leaves on the ground: walking on it is slower while it lasts.
+
+**Ambush**:
+How a Banyera Lurker waits, hidden under the floodwater, until someone comes close; its first hit from hiding is harder.
+
+**Weigh**:
+The Timbangan Sentinel's rule: it hits harder the more of your HP you have left.
 _Avoid_: area, region
 
 **Spawn point**:

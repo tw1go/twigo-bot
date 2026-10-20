@@ -90,6 +90,15 @@ import { Golem, type GolemArt, type GolemBoss, type GolemEvent, type PitTiles, p
 // coming back once dead, all removed with `mob-remove` when the fight ends). Its slams and tosses land like the mobs'
 // attacks (`landed`; its Junk Drop and Shockwave as they land: who's in them then), its Lamp Glare blinds (`blind` ms: the host makes their attacks miss, `Attacker.blinded`).
 // Players the host leaves out of a tick (knocked out) are nobody's target: mobs walk home, the golem looks elsewhere.
+//
+// The Lumang Palengke's mobs (MobRoomOptions.area 'palengke': stats.json mobBehaviour aliveperZoneIn) are the same with
+// their kinds' traits (mobs/mobs.json): eight facings (their art's); a front block (the Sangkalan Chomper always, the
+// Payong Flapper while its umbrella opens: a share off hits from the 90 degrees it faces, `reduced`); a tear cloud on the
+// player hit (Sibuyas Sobber: they miss more); spilled rice where the Sako Slammer lands (`slowAt`: walking there is
+// slower, `mob-fx`); a thrown chair that only hits if the player is still near the tile it was thrown at as it lands, and
+// chairs lost as its HP falls (Monobloc Stack: less ATK); hidden until a player comes near, a stronger first hit, hidden
+// again after (Banyera Lurker, on its zone's floodwater spawn points only); Weigh (Timbangan Sentinel: harder on a
+// player with more of their HP left). Zone mobs never step on the field boss's arena where it has no pit.
 
 const SPEED = 2.4; // tiles per second (the game walks them at the same pace)
 const REST_MS: [number, number] = [2200, 6500];
@@ -103,10 +112,10 @@ const SWING_MS = 400; // a player's attacks: no faster than this
 
 export type MobEvent =
   | { t: 'mob-move'; id: string; path: [number, number][]; speed?: number }
-  | { t: 'mob-attack'; id: string; target: string; dir: TownMobFacing; slow?: number; hit?: PlayerHit }
+  | { t: 'mob-attack'; id: string; target: string; dir: TownMobFacing; slow?: number; hit?: PlayerHit; to?: [number, number] }
   | { t: 'mob-spawn'; id: string; col: number; row: number; hp: number }
   | { t: 'mob-heal'; id: string; hp: number }
-  | Extract<TownServerMessage, { t: 'mob-scale' | 'mob-flag' | 'boss-move' | 'boss-hit' | 'boss-cancel' | 'system' }>
+  | Extract<TownServerMessage, { t: 'mob-scale' | 'mob-flag' | 'mob-fx' | 'boss-move' | 'boss-hit' | 'boss-cancel' | 'system' }>
   | GolemEvent;
 
 /** A Scrap Warrens run's say over its room's mobs (town-warrens.ts): its bosses' moves on the room's clock. */
@@ -123,6 +132,8 @@ export interface MobRoomOptions {
   /** Dungeon mobs notice a player this close (warrens run.mobAggro: 4). */
   dungeonAggro?: number;
   director?: MobDirector;
+  /** The map these mobs live on ('palengke': its own count per zone, stats.json mobBehaviour aliveperZoneIn). */
+  area?: string;
 }
 
 /** A boss or a called mob the director adds: its kind, numbers and traits. */
@@ -154,6 +165,8 @@ export interface MobHit {
   blocked?: boolean;
   /** It missed (the level gap's chance against a mob above you): no damage. */
   miss?: boolean;
+  /** A front block took a share of it (the Chomper, the opening Payong): shown dim. */
+  reduced?: boolean;
   /** Slowed (to `factor` of its speed; 0 = rooted) for `ms`. */
   slow?: { factor: number; ms: number };
 }
@@ -193,6 +206,11 @@ export interface PlayerLanding extends PlayerHit {
   blind?: number;
   /** Stunned (can't move or attack) this long (Wire Wolf's Live Floor). */
   stun?: number;
+  /** A tear cloud: `tearAccuracy` points more misses for `tear` ms (the Sibuyas Sobber's). */
+  tearAccuracy?: number;
+  /** A thrown chair: it hits only if they're within `within` tiles of `tile` as it lands. */
+  tile?: [number, number];
+  within?: number;
 }
 
 /** Each class's skills' target shapes, in their order (the game's classes/skill-hits.json), and their effects. */
@@ -308,6 +326,8 @@ export interface MobMapData {
   ramps?: { col: number; row: number }[];
   safeZone?: [number, number, number, number];
   mobZones?: MobZoneData[];
+  /** Each tile's ground (rows of kinds; the Lurkers' floodwater). */
+  ground?: string[][];
   /** The field boss (the Scrapheap Golem): town-golem.ts. */
   boss?: GolemBoss;
 }
@@ -328,6 +348,28 @@ export interface MobKind {
   attackMs?: number;
   /** Now and then, rested, a short straight roll along its facing. */
   roll?: { chance: number; tiles: [number, number]; speed: number };
+  /** Its art faces eight ways (the manifest's `directions`): its facing is any grid step's (the Palengke's mobs). */
+  eight?: boolean;
+  /** Its zone keeps this many about (packs counted once) instead of stats.json's count. */
+  alive?: number;
+  /** A mini boss of its kind wears this look. */
+  miniLook?: string;
+  /** Hits from its front quarter take `share` of their damage: always, or (`frames`) only while its attack is on those
+   *  frames (`openMs`: how long from its start, worked out from the manifest's fps). */
+  block?: { share: number; frames?: [number, number] };
+  openMs?: number;
+  /** A hit leaves a tear cloud on the player: `accuracy` points more misses for `ms`. */
+  tear?: { accuracy: number; ms: number };
+  /** Its attack leaves spilled rice on the player's tile as it lands: walking there at `slow` of the speed, for `ms`. */
+  rice?: { slow: number; ms: number };
+  /** It throws a chair: `speed` px a second from its attack frame to the player's tile then; it hits only those still
+   *  within `hitTiles` of it. At each `loseAt` share of its HP it loses a chair: −`atkPerChair` of its ATK. */
+  chair?: { speed: number; hitTiles: number; loseAt: number[]; atkPerChair: number };
+  /** Hidden on its zone's spawn points on `ground` until a player comes within `tiles`; it rises (`riseMs`), its first
+   *  hit ×`firstHit`; `hideMs` after it loses its target it hides again. */
+  ambush?: { ground: string; tiles: number; firstHit: number; riseMs: number; hideMs: number };
+  /** Its hit × (1 + perHp × the player's share of their HP left). */
+  weigh?: { perHp: number; flashAt?: number };
   /** It drifts: its own pace and short rests. */
   drift?: { speed: number; rest: [number, number] };
 }
@@ -394,18 +436,29 @@ interface Mob {
   /** A mini boss (its leveling.json entry): back at its own spot; who has done how much of its HP (members). */
   mini?: MiniBossDef;
   dealt?: Map<string, number>;
+  /** When it last started an attack (a Payong's block while it opens). */
+  attackAt?: number;
+  /** Chairs it has lost (a Monobloc Stack: less ATK each). */
+  chairsLost?: number;
+  /** A Lurker lying in wait; when it hides again (it lost its target); its next hit is the one from hiding. */
+  hidden?: boolean;
+  hideAt?: number;
+  ambushHit?: boolean;
 }
 
 /** The game's mobs/mobs.json, with when each kind's attack lands (its attackFrame at the manifest's attack fps). */
 export function loadMobKinds(): MobKinds {
   const read = (file: string) => JSON.parse(readFileSync(new URL(`../../../game/public/assets/${file}`, import.meta.url), 'utf8')) as Record<string, unknown>;
   const json = read('mobs/mobs.json');
-  const art = read('manifest.json').mobs as Record<string, { animations?: Record<string, { fps: number }> } | string>;
+  const art = read('manifest.json').mobs as Record<string, { animations?: Record<string, { fps: number }>; directions?: string[] } | string>;
   const kinds = Object.fromEntries(Object.entries(json).filter(([, v]) => typeof v === 'object' && v)) as Record<string, MobKind & { attackFrame?: number }>;
   for (const [id, k] of Object.entries(kinds)) {
     const def = art[id];
     const fps = typeof def === 'object' ? def.animations?.attack?.fps : undefined;
     if (fps) k.hitMs = Math.round(((k.attackFrame ?? 0) / fps) * 1000);
+    // (A block while its attack is on frames f0–f1: from the attack's start to the end of f1.)
+    if (fps && k.block?.frames) k.openMs = Math.round(((k.block.frames[1] + 1) / fps) * 1000);
+    if (typeof def === 'object' && def.directions?.length === 8) k.eight = true;
   }
   return kinds;
 }
@@ -419,7 +472,7 @@ export function loadMobMap(name: string): MobMapData {
 export { packSize, seeded };
 
 /** Each facing's step on the grid: the art's SE is +col, SW +row, NW −col, NE −row. */
-const AXIS: Record<TownMobFacing, [number, number]> = { se: [1, 0], sw: [0, 1], nw: [-1, 0], ne: [0, -1] };
+const AXIS: Record<TownMobFacing, [number, number]> = { se: [1, 0], sw: [0, 1], nw: [-1, 0], ne: [0, -1], s: [1, 1], e: [1, -1], n: [-1, -1], w: [-1, 1] };
 const FACINGS: TownMobFacing[] = ['se', 'sw', 'ne', 'nw'];
 
 /** The way to face for something `dc, dr` away: along the bigger of the two; on a diagonal as the game shows a step
@@ -430,6 +483,19 @@ export function facingTo(dc: number, dr: number): TownMobFacing | null {
   if (!dc) return null;
   return dc > 0 ? 'se' : dr > 0 ? 'sw' : 'ne';
 }
+
+/** The way to face for a step `dc, dr` (or toward something that far) on art with eight facings: the grid step's screen
+ *  direction (+col SE, +row SW, both S…), by the angle in 45-degree sectors. Null for no way at all. */
+export function facing8(dc: number, dr: number): TownMobFacing | null {
+  if (!dc && !dr) return null;
+  // Screen x right = dc − dr, screen y down = dc + dr (an iso tile is twice as wide as it is tall).
+  const a = Math.atan2((dc + dr) * 0.5, dc - dr);
+  const i = ((Math.round(a / (Math.PI / 4)) % 8) + 8) % 8;
+  return (['e', 'se', 's', 'sw', 'w', 'nw', 'n', 'ne'] as const)[i];
+}
+
+/** Each facing's step on the grid (eight facings: the diagonals' too). */
+const FACE_STEP: Record<TownMobFacing, [number, number]> = { se: [1, 0], sw: [0, 1], nw: [-1, 0], ne: [0, -1], s: [1, 1], e: [1, -1], n: [-1, -1], w: [-1, 1] };
 
 /** A shell's down this long from each of its attacks, if its kind doesn't say. */
 const SHELL_OPEN_MS = 2000;
@@ -491,17 +557,22 @@ export class MobRoom {
         });
         continue;
       }
-      const z: MobZoneData = { ...zone, aggro: R.aggressive ? 'aggressive' : 'passive', aggroRange: R.aggroTiles, leash: R.leashTiles };
+      const R2 = mobRules(fightData.stats, zone.mob, opts.area);
+      // (A Lurker notices a player only this close: its ambush.)
+      const z: MobZoneData = { ...zone, aggro: R.aggressive ? 'aggressive' : 'passive', aggroRange: kind.ambush?.tiles ?? R.aggroTiles, leash: R.leashTiles };
+      // Its spawn points: off the field boss's arena (where it has no pit), and a Lurker's only on its floodwater.
+      z.spawns = zone.spawns.filter(([c, r]) => !this.inArena(c, r) && (!kind.ambush || map.ground?.[r]?.[c] === kind.ambush.ground));
       this.zones.push(z);
-      // Its `alive` mobs (packs) at spread-out spawn points.
-      mobStartSpots(zone.id, zone.spawns, R.alive).forEach((i, k) => this.place(z, kind, `${zone.id}:${k}`, zone.spawns[i]));
-      // Its mini bosses, each at its spot (one alone: never a pack).
+      // Its `alive` mobs (packs) at spread-out spawn points (a kind's own count, else the map's, else stats.json's).
+      const alive = Math.min(kind.alive ?? R2.alive, kind.ambush ? z.spawns.length : Infinity);
+      mobStartSpots(zone.id, z.spawns, alive).forEach((i, k) => this.place(z, kind, `${zone.id}:${k}`, z.spawns[i]));
+      // Its mini bosses, each at its spot (one alone: never a pack), in its kind's mini boss look if it has one.
       for (const spot of zone.miniBosses ?? []) {
         const def = leveling ? miniBossDef(leveling, spot.id) : null;
         if (!def || def.kind !== zone.mob) continue;
         const [m] = this.place(z, { ...kind, pack: undefined }, miniMobId(zone.id, spot.id), spot.tile);
         const stats = { ...m.stats, level: def.level, hp: def.hp, atk: def.atk, def: def.defense, xp: def.xp };
-        Object.assign(m, { stats, level: def.level, maxHp: def.hp, hp: def.hp, mini: def, dealt: new Map() });
+        Object.assign(m, { stats, level: def.level, maxHp: def.hp, hp: def.hp, mini: def, dealt: new Map(), ...(kind.miniLook ? { variant: kind.miniLook } : {}) });
       }
     }
     const boss = map.boss;
@@ -537,6 +608,12 @@ export class MobRoom {
     const due = this.landings.filter((l) => l.at <= now).sort((a, b) => a.at - b.at);
     if (!due.length) return [];
     this.landings = this.landings.filter((l) => l.at > now);
+    // A thrown chair: a miss for whoever has moved off where it was thrown.
+    for (const l of due) {
+      if (!l.tile || l.miss) continue;
+      const p = this.lastPlayers.get(l.player);
+      if (!p || cheb(p, l.tile) > (l.within ?? 0)) Object.assign(l, { damage: 0, miss: true, tear: undefined });
+    }
     return due; // (each with when it landed: a Step Back's dodge is measured to that)
   }
 
@@ -572,16 +649,19 @@ export class MobRoom {
     const base = mobRules(this.fightData.stats, zone.mob);
     const rules = zone.dungeon ? { ...base, aggressive: true, packAssist: true, aggroTiles: zone.aggroRange ?? base.aggroTiles } : base;
     const pack: Mob[] = [];
+    const facings = kind.eight ? (Object.keys(FACE_STEP) as TownMobFacing[]) : FACINGS;
     for (let k = 0; k < n; k++) {
       const id = kind.pack ? `${point}:${k}` : point;
       const variant = variants[Math.floor(seeded(`${id}:variant`) * variants.length)] ?? '';
       const m: Mob = {
-        id, zone, kind, stats, rules, level: stats.level, maxHp: stats.hp, variant, spawn: [col, row], home: [col, row], col, row, facing: FACINGS[Math.floor(seeded(`${id}:dir`) * 4)], path: [], hopAt: 0, restUntil: 0,
+        id, zone, kind, stats, rules, level: stats.level, maxHp: stats.hp, variant, spawn: [col, row], home: [col, row], col, row, facing: facings[Math.floor(seeded(`${id}:dir`) * facings.length)], path: [], hopAt: 0, restUntil: 0,
         hp: stats.hp, respawnAt: 0, foe: null, nextAttack: 0, openUntil: 0, slow: null, hopSpeed: SPEED, pack: kind.pack ? pack : null, ...(add ? { add } : {}),
         ...(zone.dungeon ? { baseHp: stats.hp } : {}),
       };
       // A pack's caps start round the point, each on a tile of its own (seeded: the same every time).
       if (k) m.home = this.besideSpawn(m, pack, id);
+      // A Lurker starts lying in wait.
+      if (kind.ambush && !add) Object.assign(m, { hidden: true, untargetable: true });
       [m.col, m.row] = m.home;
       pack.push(m);
       this.mobs.push(m);
@@ -669,7 +749,8 @@ export class MobRoom {
       m.spawn = [at[0], at[1]];
     }
     m.home = [at[0], at[1]];
-    Object.assign(m, { respawnAt: 0, hp: m.maxHp, col: at[0], row: at[1], path: [], foe: null, slow: null, nextAttack: 0, restUntil: now + REST_MS[0] });
+    Object.assign(m, { respawnAt: 0, hp: m.maxHp, col: at[0], row: at[1], path: [], foe: null, slow: null, nextAttack: 0, restUntil: now + REST_MS[0], chairsLost: 0, ambushHit: false, hideAt: undefined });
+    if (m.kind.ambush) Object.assign(m, { hidden: true, untargetable: true });
     this.claim(m, m.col, m.row);
   }
 
@@ -681,6 +762,7 @@ export class MobRoom {
     if ((this.map.height?.[row]?.[col] ?? 0) !== m.zone.height || this.ramps.has(`${col},${row}`)) return false;
     if (!this.inRect(m.zone, col, row)) return false;
     if (this.pit && (m.zone.id === 'golem-add' ? !this.pit.fight.has(`${col},${row}`) : this.pit.all.has(`${col},${row}`))) return false;
+    if (!m.zone.dungeon && m.zone.id !== 'golem-add' && this.inArena(col, row)) return false;
     const [c0, r0, c1, r1] = this.map.safeZone ?? [-1, -1, -2, -2];
     if (col >= c0 && col <= c1 && row >= r0 && row <= r1) return false;
     return Math.max(Math.abs(col - m.spawn[0]), Math.abs(row - m.spawn[1])) <= reach;
@@ -708,6 +790,31 @@ export class MobRoom {
     }
     return out.length ? out : [at];
   }
+
+  /** On the field boss's arena where it has no pit (the Great Scale's hall): no zone's mob steps there. */
+  private inArena(col: number, row: number): boolean {
+    const a = !this.pit ? this.map.boss?.arena : undefined;
+    return !!a && col >= a[0] && col <= a[2] && row >= a[1] && row <= a[3];
+  }
+
+  /** The way it faces toward something `dc, dr` away (a step, or its target): its art's four diagonals or eight. */
+  private faceTo(m: Mob, dc: number, dr: number): TownMobFacing | null {
+    return m.kind.eight ? facing8(dc, dr) : facingTo(dc, dr);
+  }
+
+  /** Spilled rice on the ground (the Sako Slammer's): where, from and until when (ms), how slow walking there is. */
+  private patches: { at: [number, number]; from: number; until: number; slow: number }[] = [];
+
+  /** Walking on `col, row` now: the slowest spilled rice there (1: none). */
+  slowAt(col: number, row: number, now: number): number {
+    if (this.patches.length && this.patches[0].until <= now) this.patches = this.patches.filter((p) => p.until > now);
+    let k = 1;
+    for (const p of this.patches) if (now >= p.from && p.at[0] === col && p.at[1] === row) k = Math.min(k, p.slow);
+    return k;
+  }
+
+  /** Where each player stood at the last tick (a thrown chair hits only those still near where it was thrown). */
+  private lastPlayers: ReadonlyMap<string, [number, number]> = new Map();
 
   private inRect(zone: MobZoneData, col: number, row: number): boolean {
     const [z0, y0, z1, y1] = zone.rect ?? [0, 0, this.map.size[0], this.map.size[1]];
@@ -759,7 +866,7 @@ export class MobRoom {
     const done = Math.min(Math.floor(((now - m.hopAt) / 1000) * m.hopSpeed), m.path.length - 1);
     const from = done > 0 ? m.path[done - 1] : [m.col, m.row];
     const to = m.path[done];
-    return facingTo(to[0] - from[0], to[1] - from[1]) ?? m.facing;
+    return this.faceTo(m, to[0] - from[0], to[1] - from[1]) ?? m.facing;
   }
 
   /** Its pace now: its kind's (a drifter's own), slowed (or rooted: 0) for a while after a skill's effect. */
@@ -831,7 +938,18 @@ export class MobRoom {
 
   /** Someone it should fight: it (and a `packAssist` kind's whole pack) goes after them. */
   private rally(m: Mob, player: string, now: number): void {
-    for (const x of (m.rules.packAssist && m.pack) || [m]) if (!x.respawnAt) x.foe = { id: player, at: now };
+    for (const x of (m.rules.packAssist && m.pack) || [m]) {
+      if (x.respawnAt) continue;
+      x.foe = { id: player, at: now };
+      if (x.hidden) this.surface(x, now);
+    }
+  }
+
+  /** A Lurker rises out of the water: seen and targetable, its first attack after it's up (`riseMs`) and harder. */
+  private surface(m: Mob, now: number): void {
+    const A = m.kind.ambush!;
+    Object.assign(m, { hidden: false, untargetable: undefined, hideAt: undefined, ambushHit: true, nextAttack: Math.max(m.nextAttack, now + A.riseMs) });
+    this.pending.push({ t: 'mob-flag', id: m.id, hidden: false, untargetable: false });
   }
 
   /**
@@ -844,6 +962,7 @@ export class MobRoom {
   tick(now: number, players: ReadonlyMap<string, [number, number]> = new Map(), guards: ReadonlyMap<string, Target> = new Map(), present = players.size): MobEvent[] {
     this.claimed = null;
     this.guards = guards;
+    this.lastPlayers = players;
     // (`present`: everyone in the room, the knocked out too: the golem's HP follows it.)
     const events: MobEvent[] = this.golem ? this.golem.tick(now, players, present) : [];
     // The golem's slams and tosses land after a moment (its art's), its glare blinds as it lights. (A director lands its
@@ -874,13 +993,18 @@ export class MobRoom {
       }
       if (m.path.length && now >= m.hopAt + (m.path.length / m.hopSpeed) * 1000) {
         const [a, b] = [m.path.length > 1 ? m.path[m.path.length - 2] : [m.col, m.row], m.path[m.path.length - 1]];
-        m.facing = facingTo(b[0] - a[0], b[1] - a[1]) ?? m.facing;
+        m.facing = this.faceTo(m, b[0] - a[0], b[1] - a[1]) ?? m.facing;
         [m.col, m.row] = b;
         m.path = [];
         const rest = m.kind.drift?.rest ?? REST_MS;
         m.restUntil = now + rest[0] + this.random() * (rest[1] - rest[0]);
       }
       if (m.path.length) continue;
+      // A Lurker home after its fight: back under the water.
+      if (m.hideAt && now >= m.hideAt && !m.foe) {
+        Object.assign(m, { hidden: true, untargetable: true, hideAt: undefined });
+        events.push({ t: 'mob-flag', id: m.id, hidden: true, untargetable: true });
+      }
       if (m.still) continue; // (Barong-Barong: its moves are the director's)
       if (m.castUntil && now < m.castUntil) continue; // (a boss mid-move holds still)
       if (!m.foe && m.zone.aggro === 'aggressive') {
@@ -896,9 +1020,11 @@ export class MobRoom {
         this.fight(m, now, players, events);
         continue;
       }
-      if (now < m.restUntil) continue;
+      if (now < m.restUntil || m.hidden) continue; // (a hidden Lurker lies still)
       this.wander(m, now, events);
     }
+    // (A Lurker that rose this tick.)
+    events.push(...this.pending.splice(0));
     return events;
   }
 
@@ -912,6 +1038,8 @@ export class MobRoom {
       // Gone, pulled past its leash, or done with it: healed to full, home.
       m.foe = null;
       m.dealt?.clear();
+      m.chairsLost = 0; // (healed: its chairs back)
+      if (m.kind.ambush) m.hideAt = now + m.kind.ambush.hideMs;
       if (m.hp < m.maxHp) {
         m.hp = m.maxHp;
         events.push({ t: 'mob-heal', id: m.id, hp: m.hp });
@@ -926,13 +1054,35 @@ export class MobRoom {
       if (m.silent) return; // (its attacks are the director's)
       if (now >= m.nextAttack) {
         m.nextAttack = now + (m.kind.attackMs ?? m.rules.attackMs);
-        m.facing = facingTo(p[0] - m.col, p[1] - m.row) ?? m.facing;
+        m.attackAt = now;
+        m.facing = this.faceTo(m, p[0] - m.col, p[1] - m.row) ?? m.facing;
         if (m.kind.shell) m.openUntil = now + (m.kind.shellOpenMs ?? SHELL_OPEN_MS); // its shell drops as it swings
         // Its hit, rolled now and sent with the attack; it lands on its attack frame (the Bag's slow only if it hits).
-        const hit = this.rollOn(foe.id, m.stats);
-        const slow = m.kind.slowMs && !hit?.miss ? m.kind.slowMs : undefined;
-        events.push({ t: 'mob-attack', id: m.id, target: foe.id, dir: m.facing, ...(slow ? { slow } : {}), ...(hit ? { hit } : {}) });
-        if (hit) this.landings.push({ at: now + (m.kind.hitMs ?? 0), player: foe.id, by: m.id, ...hit, ...(slow ? { slow } : {}) });
+        // (The Lurker's first from hiding harder; a Monobloc that has lost chairs weaker; the Sentinel's Weigh.)
+        const K = m.kind;
+        const first = m.ambushHit && K.ambush ? K.ambush.firstHit : 1;
+        m.ambushHit = false;
+        const chairs = K.chair ? 1 - K.chair.atkPerChair * (m.chairsLost ?? 0) : 1;
+        const weigh = K.weigh ? 1 + K.weigh.perHp * Math.max(0, Math.min(1, this.guards.get(foe.id)?.hpShare ?? 1)) : 1;
+        const rolled = this.rollOn(foe.id, m.stats, first * chairs * weigh);
+        const hit = rolled && !rolled.miss ? { ...rolled, ...(K.weigh ? { mult: Math.round(weigh * 100) / 100 } : {}), ...(K.tear ? { tear: K.tear.ms } : {}) } : rolled;
+        const slow = K.slowMs && !hit?.miss ? K.slowMs : undefined;
+        let land = now + (K.hitMs ?? 0);
+        let to: [number, number] | undefined;
+        if (K.chair) {
+          // A chair thrown at where they stand now: its flight (px on screen at its speed) after the attack frame.
+          to = [p[0], p[1]];
+          const [dc, dr] = [p[0] - m.col, p[1] - m.row];
+          land += Math.round((Math.hypot((dc - dr) * 16, (dc + dr) * 8) / K.chair.speed) * 1000);
+        }
+        events.push({ t: 'mob-attack', id: m.id, target: foe.id, dir: m.facing, ...(slow ? { slow } : {}), ...(hit ? { hit } : {}), ...(to ? { to } : {}) });
+        if (hit) this.landings.push({ at: land, player: foe.id, by: m.id, ...hit, ...(slow ? { slow } : {}), ...(K.tear && !hit.miss ? { tear: K.tear.ms, tearAccuracy: K.tear.accuracy } : {}), ...(to && K.chair ? { tile: to, within: K.chair.hitTiles } : {}) });
+        if (K.rice) {
+          // Spilled rice on their tile as the slam lands.
+          const from = now + (K.hitMs ?? 0);
+          this.patches.push({ at: [p[0], p[1]], from, until: from + K.rice.ms, slow: K.rice.slow });
+          events.push({ t: 'mob-fx', fx: 'rice', at: [p[0], p[1]], in: K.hitMs ?? 0, ms: K.rice.ms, slow: K.rice.slow });
+        }
       }
       return;
     }
@@ -950,7 +1100,7 @@ export class MobRoom {
     if (roll && this.random() < roll.chance) {
       // Straight on along its facing (or the way back if that's shut), a tile or two.
       const n = roll.tiles[0] + Math.floor(this.random() * (roll.tiles[1] - roll.tiles[0] + 1));
-      for (const f of [m.facing, ({ se: 'nw', nw: 'se', sw: 'ne', ne: 'sw' } as const)[m.facing]]) {
+      for (const f of [m.facing, ({ se: 'nw', nw: 'se', sw: 'ne', ne: 'sw', s: 'n', n: 's', e: 'w', w: 'e' } as const)[m.facing]]) {
         const [dc, dr] = AXIS[f];
         const path: [number, number][] = [];
         for (let k = 1; k <= n; k++) {
@@ -1034,7 +1184,7 @@ export class MobRoom {
     if (burn) this.burns.push({ at: [Math.round(mc), Math.round(mr)], player, name, member, by: { ...by }, pct: pct * burn.share, radius: burn.radius, left: burn.ticks, next: now + burn.first, every: burn.every });
     const hits = this.reached(m ?? 'golem', [mc, mr], from, (cls && this.shapes.shapes[cls]?.[skill]) || 'single', now).map((x) => {
       if (x === 'golem') return this.hitGolem(player, name, member, by, pct, now, kills); // (no slowing it)
-      const hit = this.damage(x, player, by, pct, now, member);
+      const hit = this.damage(x, player, by, pct, now, member, from);
       if (hit.dead) kills.push(this.killOf(x, member));
       if (effect && !hit.dead && !hit.blocked && !hit.miss) {
         x.slow = { factor: effect.factor, until: now + effect.ms };
@@ -1067,7 +1217,7 @@ export class MobRoom {
         const hits: MobHit[] = [];
         for (const x of this.mobs) {
           if (x.respawnAt || x.untargetable || cheb(this.at(x, now), b.at) > b.radius) continue;
-          const hit = this.damage(x, b.player, b.by, b.pct, now, b.member);
+          const hit = this.damage(x, b.player, b.by, b.pct, now, b.member, b.at);
           if (hit.dead) kills.push(this.killOf(x, b.member));
           hits.push(hit);
         }
@@ -1081,12 +1231,17 @@ export class MobRoom {
 
   /** One hit on a mob (the stats rules' damage, or a miss), none through a shell that's up; it (and its pack) goes after
    *  the player either way; at 0 it dies. */
-  private damage(m: Mob, player: string, by: Hitter & { blinded?: boolean }, pct: number, now: number, member = player): MobHit {
+  private damage(m: Mob, player: string, by: Hitter & { blinded?: boolean }, pct: number, now: number, member = player, from?: [number, number]): MobHit {
     const [mc, mr] = this.at(m, now);
     this.rally(m, player, now);
     if (m.blockAll || (m.kind.shell && now >= m.openUntil)) return { id: m.id, damage: 0, crit: false, hp: m.hp, dead: false, blocked: true };
-    const { damage, crit, miss } = by.blinded ? MISSED : rollHit(this.fightData.stats, by, m.stats, pct, this.random);
+    const rolled = by.blinded ? MISSED : rollHit(this.fightData.stats, by, m.stats, pct, this.random);
+    const { crit, miss } = rolled;
     if (miss) return { id: m.id, damage: 0, crit: false, hp: m.hp, dead: false, miss };
+    // A front block (the Chomper always, the Payong while it opens): its share off a hit from the quarter it faces.
+    const B = m.kind.block;
+    const reduced = !!B && !!from && (!B.frames || (m.attackAt !== undefined && now - m.attackAt <= (m.kind.openMs ?? 0))) && this.fromFront(m, [mc, mr], from, now);
+    const damage = reduced ? Math.max(1, Math.round(rolled.damage * B!.share)) : rolled.damage;
     if (m.dealt) m.dealt.set(member, (m.dealt.get(member) ?? 0) + Math.min(damage, m.hp));
     m.hp = Math.max(0, m.hp - damage);
     if (m.hp === 0) {
@@ -1096,7 +1251,25 @@ export class MobRoom {
       m.path = [];
     }
     if (this.opts.director && damage > 0) this.pending.push(...this.opts.director.hurt(m.id, now));
-    return { id: m.id, damage, crit, hp: m.hp, dead: m.hp === 0 };
+    // A Monobloc Stack losing chairs as its HP falls (each loseAt share passed): weaker, and a flash for the room.
+    const C = m.kind.chair;
+    if (C && m.hp > 0) {
+      const lost = C.loseAt.filter((t) => m.hp <= m.maxHp * t).length;
+      if (lost > (m.chairsLost ?? 0)) {
+        m.chairsLost = lost;
+        this.pending.push({ t: 'mob-fx', fx: 'chair-lost', id: m.id });
+      }
+    }
+    return { id: m.id, damage, crit, hp: m.hp, dead: m.hp === 0, ...(reduced ? { reduced: true } : {}) };
+  }
+
+  /** Whether `from` is in the quarter a mob faces (90 degrees round its facing, on the grid; on its own tile: yes). */
+  private fromFront(m: Mob, at: [number, number], from: [number, number], now: number): boolean {
+    const [fc, fr] = FACE_STEP[this.facingAt(m, now)];
+    const [vc, vr] = [from[0] - at[0], from[1] - at[1]];
+    const len = Math.hypot(vc, vr);
+    if (len < 0.5) return true;
+    return (fc * vc + fr * vr) / (Math.hypot(fc, fr) * len) >= Math.SQRT1_2 - 1e-9;
   }
 
   /** Who earned a mini boss that just fell: every member who did its share of its HP (miniBoss.kill_credit), the killer
@@ -1192,6 +1365,7 @@ export class MobRoom {
       ...(m.radius ? { radius: m.radius } : {}),
       ...(m.untargetable ? { untargetable: true } : {}),
       ...(m.blockAll ? { blockAll: true } : {}),
+      ...(m.hidden ? { hidden: true } : {}),
     };
   }
 
