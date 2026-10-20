@@ -464,6 +464,17 @@ export interface MobData {
   lamp?: Record<string, Vec2>;
   slamFist?: Record<string, Vec2>;
   tossFist?: Record<string, Vec2>;
+  /** The Lumang Palengke's traits (the bot decides; these draw them): a front block (always, or on its attack `frames`),
+   *  a tear cloud left on the player hit, spilled rice, a thrown chair, an ambush from the floodwater, Weigh. */
+  block?: { share: number; frames?: Vec2 };
+  tear?: { accuracy: number; ms: number };
+  rice?: { slow: number; ms: number };
+  chair?: { speed: number; hitTiles: number; loseAt: number[]; atkPerChair: number };
+  ambush?: { ground: string; tiles: number; firstHit: number; riseMs: number; hideMs: number };
+  weigh?: { perHp: number; flashAt?: number };
+  miniLook?: string;
+  /** false: no hurt and death sounds yet (the Palengke's: none asked for). */
+  sounds?: boolean;
 }
 
 export interface MobZone {

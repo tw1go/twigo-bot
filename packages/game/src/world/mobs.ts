@@ -79,6 +79,9 @@ const HURT_SOUND_MS = 150;
 
 /** A burn's tick on a mob (Boiling Splash's puddle): its number in orange. */
 const BURN_COLOUR = '#FB923C';
+/** A hit a front block took a share of (dim grey), and a hidden Lurker's ripple's beat (ms). */
+const REDUCED_COLOUR = '#94A3B8';
+const RIPPLE_MS = 1500;
 
 /** A zone's mob art loads once you come this near it (tiles from its rect). */
 const NEAR_TILES = 30;
@@ -91,8 +94,9 @@ export const GOLEM_PIT = 'Golem Pit';
 
 /** The four ways the art faces, for a step in screen directions (SE for S and E, SW for W, NE for N). */
 const FACING: Record<string, TownMobFacing> = { n: 'ne', ne: 'ne', e: 'se', se: 'se', s: 'se', sw: 'sw', w: 'sw', nw: 'nw' };
-/** Each facing's step on the grid (SE = +col, SW = +row, NW = −col, NE = −row), as the bot's. */
-const AXIS: Record<TownMobFacing, [number, number]> = { se: [1, 0], sw: [0, 1], nw: [-1, 0], ne: [0, -1] };
+/** Each facing's step on the grid (SE = +col, SW = +row, NW = −col, NE = −row; the eight-way art's S, E, N, W the
+ *  diagonal steps), as the bot's. */
+const AXIS: Record<TownMobFacing, [number, number]> = { se: [1, 0], sw: [0, 1], nw: [-1, 0], ne: [0, -1], s: [1, 1], e: [1, -1], n: [-1, -1], w: [-1, 1] };
 const STEPS: [number, number][] = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
 
 export interface Mob {
@@ -167,6 +171,9 @@ export interface Mob {
   flickerAt: number;
   /** A line under its name (an event mob's "Legendary"), or null. */
   subtitle: string | null;
+  /** Lying in wait under the floodwater (a Banyera Lurker): not drawn, not to be targeted; its ripple. */
+  hidden: boolean;
+  ripple: Phaser.GameObjects.Graphics | null;
 }
 
 /** What the scene does with a mob's attack (these show it; the server takes the HP). */
@@ -303,9 +310,12 @@ export class Mobs {
     for (const spot of zone.miniBosses ?? []) this.placeMini(zone, miniMobId(zone.id, spot.id), { col: spot.tile[0], row: spot.tile[1] });
   }
 
+  /** Which leveling data has this map's mini bosses (the scene's json cache key: the Palengke's own). */
+  levelingKey = 'leveling';
+
   /** classes/leveling.json (the mini bosses), if loaded. */
   private get leveling(): LevelingData | null {
-    return (this.scene.cache.json.get('leveling') as LevelingData | undefined) ?? null;
+    return (this.scene.cache.json.get(this.levelingKey) as LevelingData | undefined) ?? null;
   }
 
   /** A mini boss (`<zone>:mini:<id>`) at its spot: its mob's art and numbers at miniBoss.scale, its own level and HP,
@@ -340,9 +350,13 @@ export class Mobs {
       const frames = this.scene.anims.generateFrameNumbers(file, { start: 0, end: a.frames - 1 });
       this.scene.anims.create({ key, frames: back ? frames.reverse() : frames, frameRate: a.fps, repeat: a.loop ? -1 : 0 });
     };
+    // (A Lurker's rise out of the water: its hit played backwards.)
+    const ambush = typeof (this.scene.cache.json.get('mob-data') ?? {})[id] === 'object' && !!(this.scene.cache.json.get('mob-data')[id] as MobData).ambush;
     for (const v of mobVariants(def)) {
       const { size } = mobCell(def, v);
       for (const [anim, a] of Object.entries(def.animations)) for (const dir of def.directions) make(`mob:${id}:${v}:${anim}:${dir}`, mobSheet(def, v, anim, dir), size, a);
+      const hit = def.animations.hit;
+      if (ambush && hit) for (const dir of def.directions) make(`mob:${id}:${v}:surface:${dir}`, mobSheet(def, v, 'hit', dir), size, hit, true);
     }
     if (!def.enraged) return;
     for (const anim of def.enraged.animations) {
@@ -369,11 +383,11 @@ export class Mobs {
     const hp = kind?.hp ?? 1;
     const mob: Mob = {
       id, zone, def, variant, cell: mobCell(def, variant), data, level, maxHp: hp, spawn: at, home: at, pack,
-      col: at.col + 0.5, row: at.row + 0.5, drawCol: 0, drawRow: 0, dir: (['se', 'sw', 'ne', 'nw'] as const)[Math.floor(seeded(`${id}:dir`) * 4)],
+      col: at.col + 0.5, row: at.row + 0.5, drawCol: 0, drawRow: 0, dir: def.directions.length === 8 ? (def.directions as TownMobFacing[])[Math.floor(seeded(`${id}:dir`) * 8)] : (['se', 'sw', 'ne', 'nw'] as const)[Math.floor(seeded(`${id}:dir`) * 4)],
       sprite, shadow, path: [], restUntil: this.scene.time.now + Phaser.Math.Between(0, REST_MS[1]), label: null, labelUntil: 0,
       hp, dead: false, pose: null, bar: null, shield: null, openUntil: 0, fightUntil: 0, speed: data?.drift?.speed ?? SPEED, slowUntil: 0, asleep: false, lunge: { x: 0, y: 0 },
       enraged: false, add: false, mini: null, radius: data?.radius ?? 0, untouchable: false, hitAt: -Infinity, hurtAt: -Infinity,
-      faces: null, kind: zone.mob, blockAll: false, glow: null, flicker: 1, flickerAt: 0, subtitle: null,
+      faces: null, kind: zone.mob, blockAll: false, glow: null, flicker: 1, flickerAt: 0, subtitle: null, hidden: false, ripple: null,
     };
     // A pack's caps start round the point, each on a tile of its own (the server's place comes with its snapshot).
     if (pack?.length) mob.home = this.besideSpawn(mob, pack, id);
@@ -401,7 +415,46 @@ export class Mobs {
     this.list.push(mob);
     this.byId.set(mob.id, mob);
     this.sync(mob);
+    // A Lurker starts lying in wait (the server says when it rises).
+    if (data?.ambush && !id.includes(':mini:')) this.setHidden(mob, true, false);
     return mob;
+  }
+
+  /** Lying in wait (a Banyera Lurker: not drawn or targetable, a ripple on its tile), or rising out of the water (its hit
+   *  backwards, fading in over `ambush.riseMs`). */
+  private setHidden(m: Mob, on: boolean, rise = true): void {
+    if (m.hidden === on) return;
+    m.hidden = on;
+    m.untouchable = on;
+    if (on && m === this.target) this.setTarget(null);
+    if (on) {
+      m.sprite.setVisible(false);
+      m.shadow?.setVisible(false);
+      m.ripple ??= this.scene.add.graphics();
+      this.drawBar(m);
+      return;
+    }
+    m.ripple?.destroy();
+    m.ripple = null;
+    if (m.dead || m.asleep) return;
+    m.sprite.setVisible(true);
+    m.shadow?.setVisible(true);
+    if (!rise) return;
+    const ms = m.data?.ambush?.riseMs ?? 300;
+    m.sprite.setAlpha(0);
+    this.scene.tweens.add({ targets: m.sprite, alpha: 1, duration: ms });
+    this.pose(m, 'surface');
+  }
+
+  /** A hidden Lurker's ripple: two thin blue-white ellipses widening out from its tile, every 1.5 s (code-drawn until
+   *  its FX art comes: fx.lurkerRipple). */
+  private drawRipple(m: Mob): void {
+    const g = m.ripple;
+    if (!g) return;
+    const feet = this.feet(m);
+    const t = (this.scene.time.now % RIPPLE_MS) / RIPPLE_MS;
+    g.clear().setPosition(feet.x, feet.y).setDepth(m.sprite.depth - 0.25).setVisible(!m.asleep && !m.dead);
+    for (const k of [t, (t + 0.5) % 1]) g.lineStyle(1, 0xdbeafe, 0.6 * (1 - k)).strokeEllipse(0, 0, 8 + 18 * k, 4 + 9 * k);
   }
 
   /** A `w × h` ground shadow like the shadow art (a pixel ellipse in its colour, taken from its middle), made once. */
@@ -444,15 +497,17 @@ export class Mobs {
     m.variant = variant;
     m.cell = mobCell(m.def, variant);
     const anim = m.sprite.anims.currentAnim?.key.split(':')[3] ?? 'idle';
-    m.sprite.setTexture(mobSheet(m.def, variant, anim, m.dir), 0);
+    const dir = sheetDir(m.def, m.dir);
+    m.sprite.setTexture(mobSheet(m.def, variant, anim, dir), 0);
     this.dress(m);
-    const key = `mob:${m.zone.mob}:${variant}:${anim}:${m.dir}`;
+    const key = `mob:${m.zone.mob}:${variant}:${anim}:${dir}`;
     if (this.scene.anims.exists(key) && !m.asleep) m.sprite.play(key, true);
   }
 
   private key(m: Mob, anim: string): string {
-    const enraged = m.enraged && m.def.enraged?.animations.includes(anim) && this.scene.anims.exists(`mob:${m.zone.mob}:enraged:${anim}:${m.faces ?? m.dir}`);
-    return `mob:${m.zone.mob}:${enraged ? 'enraged' : m.variant}:${anim}:${m.faces ?? m.dir}`;
+    const dir = m.faces ?? sheetDir(m.def, m.dir);
+    const enraged = m.enraged && m.def.enraged?.animations.includes(anim) && this.scene.anims.exists(`mob:${m.zone.mob}:enraged:${anim}:${dir}`);
+    return `mob:${m.zone.mob}:${enraged ? 'enraged' : m.variant}:${anim}:${dir}`;
   }
 
   private play(m: Mob, anim: string): void {
@@ -521,6 +576,7 @@ export class Mobs {
     m.hp = s.hp;
     m.pose = null;
     this.show(m, !s.dead);
+    if (m.data?.ambush) this.setHidden(m, !!s.hidden, false);
     if (m.mini && !s.dead) this.showLabel(m); // (its level as the server has it)
     this.sync(m);
   }
@@ -590,11 +646,13 @@ export class Mobs {
   }
 
   /** A Warrens boss's windows (`mob-flag`): faded and not to be targeted (Vanish), every hit blocked (Hunker). */
-  flag(id: string, untargetable?: boolean, blockAll?: boolean): void {
+  flag(id: string, untargetable?: boolean, blockAll?: boolean, hidden?: boolean): void {
     const u = this.unmade.get(id);
-    if (u) Object.assign(u, { untargetable, blockAll });
+    if (u) Object.assign(u, { untargetable, blockAll, ...(hidden !== undefined ? { hidden } : {}) });
     const m = this.byId.get(id);
     if (!m) return;
+    // A Lurker going under or rising (its own way of being untargetable: no fade).
+    if (hidden !== undefined) return this.setHidden(m, hidden);
     if (untargetable !== undefined) {
       m.untouchable = untargetable;
       if (untargetable && m === this.target) this.setTarget(null);
@@ -728,6 +786,8 @@ export class Mobs {
       this.scene.tweens.killTweensOf(parts);
       m.glow?.destroy();
       m.glow = null;
+      m.ripple?.destroy();
+      m.ripple = null;
       const drop = () => {
         parts.forEach((p) => p.destroy());
         m.bar?.destroy();
@@ -825,7 +885,7 @@ export class Mobs {
 
   /** A hit (the server's word): the hit pose (or its death), a damage number ("Blocked" off a shell, "Miss" for a miss),
    *  the HP bar. */
-  hit(id: string, damage: number, crit: boolean, hp: number, dead: boolean, slow?: { factor: number; ms: number }, blocked = false, miss = false, burn = false): void {
+  hit(id: string, damage: number, crit: boolean, hp: number, dead: boolean, slow?: { factor: number; ms: number }, blocked = false, miss = false, burn = false, reduced = false): void {
     const m = this.byId.get(id);
     const u = !m && this.unmade.get(id);
     if (u) Object.assign(u, { hp, ...(dead ? { dead: true } : {}) });
@@ -842,11 +902,63 @@ export class Mobs {
     }
     if (blocked) m.shield?.setScale(1.6); // the shield bounces as it takes the hit
     if (slow && !dead) this.chill(m, slow);
-    if (!m.asleep) this.number(m, blocked ? 'Blocked' : miss ? 'Miss' : String(damage), crit, burn && !blocked && !miss ? BURN_COLOUR : undefined);
+    if (!m.asleep) this.number(m, blocked ? 'Blocked' : miss ? 'Miss' : String(damage), crit, burn && !blocked && !miss ? BURN_COLOUR : reduced ? REDUCED_COLOUR : undefined);
+    // A front block took a share (the Chomper; the Payong opening): a short grey arc in front of it.
+    if (reduced && !m.asleep) this.blockArc(m);
     if (dead) this.kill(m);
     else if (!blocked && !miss && !(m.radius && m.pose)) this.pose(m, 'hit'); // (a hit never cuts the golem's attack short)
     this.drawBar(m);
     if (m === this.target) this.onTarget?.(m);
+  }
+
+  /** A short grey arc in front of a mob, the way it faces (a front block took a share of a hit: fx.block, code-drawn). */
+  private blockArc(m: Mob): void {
+    const [dc, dr] = AXIS[m.dir];
+    const len = Math.hypot(dc - dr, (dc + dr) / 2) || 1;
+    const [ux, uy] = [(dc - dr) / len, (dc + dr) / 2 / len];
+    const a = Math.atan2(uy, ux);
+    const at = { x: m.sprite.x + ux * 14, y: m.sprite.y - BODY_UP + uy * 10 };
+    this.fx.drawFx('front', (g, t) => {
+      g.lineStyle(2, 0xcbd5e1, Math.max(0, 1 - t / 260)).beginPath().arc(Math.round(at.x), Math.round(at.y), 9, a - 0.9, a + 0.9).strokePath();
+    }, 260);
+  }
+
+  /** A flash over a mob (a Monobloc Stack losing a chair: white for a moment). */
+  flash(id: string): void {
+    const m = this.byId.get(id);
+    if (!m || m.dead || m.asleep) return;
+    m.sprite.setTint(0xffffff).setTintMode(Phaser.TintModes.FILL);
+    this.scene.time.delayedCall(120, () => {
+      m.sprite.setTintMode(Phaser.TintModes.MULTIPLY).clearTint();
+      this.onSpawn(m.sprite); // (the night's tint again)
+    });
+  }
+
+  private demoStep = 0;
+
+  /** Dev (?palengkemobs=demo, a step a call): the nearest mob of each eight-way kind to `at` shows its next anim in place
+   *  (idle, move, attack, hit, death and back), turning a facing every round, so every sheet shows (a Lurker comes up
+   *  for it). */
+  demo(at: { col: number; row: number }): void {
+    const anims = ['idle', 'move', 'attack', 'hit', 'death'];
+    const anim = anims[this.demoStep % anims.length];
+    const round = Math.floor(this.demoStep / anims.length);
+    this.demoStep++;
+    const kinds = new Set(this.list.filter((m) => m.def.directions.length === 8).map((m) => m.zone.mob));
+    for (const kind of kinds) {
+      const m = this.list
+        .filter((x) => x.zone.mob === kind && !x.dead && !x.asleep)
+        .sort((a, b) => Math.hypot(a.col - at.col, a.row - at.row) - Math.hypot(b.col - at.col, b.row - at.row))[0];
+      if (!m) continue;
+      if (m.hidden) this.setHidden(m, false, false);
+      m.path = [];
+      m.dir = m.def.directions[round % m.def.directions.length] as TownMobFacing;
+      if (anim === 'idle') {
+        m.pose = null;
+        const key = this.key(m, 'idle');
+        if (this.scene.anims.exists(key)) m.sprite.play(key);
+      } else this.pose(m, anim, anim === 'death' ? { then: () => this.show(m, true) } : {});
+    }
   }
 
   /** It dies: `onDeath`, let go, its death pose and gone. */
@@ -903,18 +1015,24 @@ export class Mobs {
 
   /** Its attack on a player (the server's word): turned its way (`dir`), its attack pose; the hooks on its attack
    *  frame and as it lands (the Wire Tangle's spark flies there first; the Tire Roller lunges). */
-  strike(id: string, target: string, dir: TownMobFacing, slow?: number, hit?: PlayerHit): void {
+  strike(id: string, target: string, dir: TownMobFacing, slow?: number, hit?: PlayerHit, to?: [number, number]): void {
     const m = this.byId.get(id);
     if (!m || m.dead) return;
     m.dir = dir;
+    if (m.hidden) this.setHidden(m, false); // (risen as it strikes)
     m.fightUntil = this.scene.time.now + FIGHT_MS;
     if (m.data?.shell) m.openUntil = this.scene.time.now + (m.data.shellOpenMs ?? SHELL_OPEN_MS); // its shell drops as it swings
     const land = () => this.hooks.onHit?.(m, target, slow, hit);
     const frame = m.data?.attackFrame ?? 0;
     const fire = () => {
       this.hooks.onAttackFrame?.(m, target);
-      const to = this.playerAt?.(target);
-      if (m.data?.eye && to && !m.asleep) this.spark(m, { x: to.x, y: to.y - BODY_UP }, land);
+      // The Sentinel's dial flashes yellow on a heavy Weigh (fx.weighFlash, code-drawn).
+      const W = m.data?.weigh;
+      if (W && hit?.mult && hit.mult >= (W.flashAt ?? 1.25) && !m.asleep) this.weighFlash(m);
+      const at = this.playerAt?.(target);
+      // A Monobloc's chair, thrown at the tile they stood on (it lands as the server's hit does: a miss if they moved).
+      if (m.data?.chair && to && !m.asleep) return this.chairShot(m, this.ground(to[0] + 0.5, to[1] + 0.5), m.data.chair.speed, land);
+      if (m.data?.eye && at && !m.asleep) this.spark(m, { x: at.x, y: at.y - BODY_UP }, land);
       else land();
     };
     if (m.asleep) return fire();
@@ -941,6 +1059,45 @@ export class Mobs {
     this.fx.drawnShot('front', from, to, { speed: SPARK_SPEED, onArrive }, (g) => drawSpark(g));
   }
 
+  /** A chair flying from a Monobloc to `to` (fx.chairThrow, code-drawn: a spinning white-green square with a grey trail),
+   *  a dust puff where it lands, then `onArrive`. */
+  private chairShot(m: Mob, to: Pt, speed: number, onArrive: () => void): void {
+    const from = { x: m.sprite.x, y: this.top(m) + 6 };
+    const trail: Pt[] = [];
+    this.fx.drawnShot('front', from, to, {
+      speed, arc: 18, turn: false,
+      onArrive: () => {
+        this.fx.drawFx('ground', (g, t) => {
+          const k = t / 300;
+          g.fillStyle(0xd6c7a1, 0.6 * (1 - k)).fillEllipse(Math.round(to.x), Math.round(to.y), 10 + 10 * k, 5 + 4 * k);
+        }, 300);
+        onArrive();
+      },
+    }, (g, t) => {
+      trail.push({ x: g.x, y: g.y });
+      if (trail.length > 5) trail.shift();
+      g.lineStyle(2, 0x9ca3af, 0.5);
+      if (trail.length > 1) {
+        g.beginPath().moveTo(trail[0].x - g.x, trail[0].y - g.y);
+        for (const p of trail.slice(1)) g.lineTo(p.x - g.x, p.y - g.y);
+        g.strokePath();
+      }
+      // (A 10 x 10 square turning: its corners, then a lighter one inside.)
+      const a = t / 80;
+      const square = (k: number) => [0, 1, 2, 3].map((i) => new Phaser.Math.Vector2(Math.cos(a + (i * Math.PI) / 2) * 7 * k, Math.sin(a + (i * Math.PI) / 2) * 7 * k));
+      g.fillStyle(0x1e1b3a, 1).fillPoints(square(1), true);
+      g.fillStyle(0xd1fae5, 1).fillPoints(square(0.7), true);
+    });
+  }
+
+  /** A short yellow flash on a Sentinel's dial (its art's top). */
+  private weighFlash(m: Mob): void {
+    const at = { x: m.sprite.x, y: this.top(m) + 8 };
+    this.fx.drawFx('front', (g, t) => {
+      g.fillStyle(0xfde047, 0.7 * Math.max(0, 1 - t / 240)).fillCircle(Math.round(at.x), Math.round(at.y), 6);
+    }, 240);
+  }
+
   /** Back (somewhere free in its zone: its spawn from now on) with full HP. */
   respawn(id: string, col: number, row: number, hp: number): void {
     const m = this.byId.get(id);
@@ -949,6 +1106,8 @@ export class Mobs {
     if (!m) return;
     Object.assign(m, { col: col + 0.5, row: row + 0.5, drawCol: col + 0.5, drawRow: row + 0.5, hp, path: [], pose: null, spawn: { col, row }, home: { col, row }, hitAt: -Infinity });
     this.scene.tweens.killTweensOf([m.sprite, ...(m.shadow ? [m.shadow] : [])]);
+    // (A Lurker comes back under the water.)
+    if (m.data?.ambush && !m.mini) this.setHidden(m, true, false);
     this.show(m, true);
     m.shadow?.setAlpha(1);
     if (!m.asleep) {
@@ -980,8 +1139,8 @@ export class Mobs {
   /** Shown (alive) or gone (dead, until it respawns). */
   show(m: Mob, alive: boolean): void {
     m.dead = !alive;
-    m.sprite.setVisible(alive && !m.asleep).setAlpha(1);
-    m.shadow?.setVisible(alive && !m.asleep).setAlpha(1);
+    m.sprite.setVisible(alive && !m.asleep && !m.hidden).setAlpha(1);
+    m.shadow?.setVisible(alive && !m.asleep && !m.hidden).setAlpha(1);
     if (m.mini) m.label?.text.setVisible(alive && !m.asleep);
     if (alive) {
       m.pose = null;
@@ -992,7 +1151,7 @@ export class Mobs {
 
   /** A small HP bar over it while it's your target or for barMs after its last hit (none dead or asleep). */
   private barShown(m: Mob): boolean {
-    return !m.dead && !m.asleep && (!!m.mini || m === this.target || this.scene.time.now < m.hitAt + this.barMs);
+    return !m.dead && !m.asleep && !m.hidden && (!!m.mini || m === this.target || this.scene.time.now < m.hitAt + this.barMs);
   }
 
   private drawBar(m: Mob): void {
@@ -1055,6 +1214,7 @@ export class Mobs {
         this.onSpawn(m.sprite); // the night's tint again
       }
       this.syncGlow(m);
+      if (m.ripple) this.drawRipple(m);
       if (m.dead) continue;
       if (!this.server && !m.path.length && now >= m.restUntil) {
         this.wander(m);
@@ -1103,7 +1263,7 @@ export class Mobs {
       const d = Math.hypot(dx, dy);
       const sc = Math.sign(Math.round(dx * 2));
       const sr = Math.sign(Math.round(dy * 2));
-      if (sc || sr) m.dir = FACING[stepName(sc, sr)] ?? m.dir;
+      if (sc || sr) m.dir = m.def.directions.length === 8 ? (stepName(sc, sr) as TownMobFacing) : (FACING[stepName(sc, sr)] ?? m.dir);
       if (d <= budget) {
         m.col = next.col + 0.5;
         m.row = next.row + 0.5;
@@ -1135,8 +1295,8 @@ export class Mobs {
    *  way is cut short and its end done now). */
   private setAwake(m: Mob, awake: boolean): void {
     m.asleep = !awake;
-    m.sprite.setActive(awake).setVisible(awake && !m.dead);
-    m.shadow?.setVisible(awake && !m.dead);
+    m.sprite.setActive(awake).setVisible(awake && !m.dead && !m.hidden);
+    m.shadow?.setVisible(awake && !m.dead && !m.hidden);
     if (m.mini) m.label?.text.setVisible(awake && !m.dead); // (a mini boss's name: with it)
     if (!awake) {
       if (m.pose) {
@@ -1327,6 +1487,11 @@ export function showSlowed(fx: FxLayers, head: () => Pt, feet: () => Pt, ms: num
     const f = feet();
     g.lineStyle(1, 0x93c5fd, 0.55 + 0.25 * Math.sin(t / 160)).strokeEllipse(Math.round(f.x), Math.round(f.y), 20, 9);
   }, ms, 300);
+}
+
+/** The sheet a facing draws from: its own on eight-way art, else the four-way art's (SE for S and E, SW for W, NE for N). */
+function sheetDir(def: MobDef, dir: TownMobFacing): string {
+  return def.directions.includes(dir) ? dir : (FACING[dir] ?? dir);
 }
 
 /** The screen direction of a grid step (as the characters' dirForStep). */
