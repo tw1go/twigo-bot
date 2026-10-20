@@ -96,6 +96,7 @@ export interface Manifest {
     jackpotIcon?: { file: string; size: Vec2 };
     /** The Slums' golem timer's picture: the Scrapheap Golem's head. */
     golemHead?: { file: string; size: Vec2 };
+    greatScaleHead?: { file: string; size: Vec2 };
     /** The Halloween event's Mikko Kalabasa at 16, 32 and 64 px (the badge and event lines, the pop-ups). */
     eventHalloween?: { icon16: string; icon32: string; icon64: string; /** The Manananggal's 64 px picture (the reunite pop-up). */ manananggal64?: string };
     /** The neighbourhood's rogue signs by a house's door (world/rogue-signs.ts): a Protected house's moon charm and a
@@ -452,6 +453,12 @@ export interface MobData {
   /** The golem's Scrap Toss release frame and Lamp Glare cone frames (first, last). */
   tossFrame?: number;
   glareFrames?: Vec2;
+  /** The Great Scale's moves' frames: Weigh-in's grab, Kulang sa Timbang's tip, its call's Sentinels dropping in; its
+   *  walking pace (tiles a second). */
+  weighFrame?: number;
+  coneFrame?: number;
+  callFrame?: number;
+  pace?: number;
   /** The golem's body's radius in tiles (reach to it is measured to that edge). Every mob's level, HP, ATK, DEF and XP
    *  are in classes/stats.json's mob table. */
   radius?: number;

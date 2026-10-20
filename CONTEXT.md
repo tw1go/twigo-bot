@@ -187,15 +187,27 @@ A mob that comes after a player who walks within its aggro range; a **passive** 
 How far a mob follows a player from home before it gives up and walks back; for the field boss, the pit floor itself.
 
 **Field boss**:
-A single big mob that rises on a schedule rather than on a spawn point: the Scrapheap Golem.
+A single big mob that rises on a schedule rather than on a spawn point: the Scrapheap Golem in the Slums, the Great Scale in the Lumang Palengke.
 _Avoid_: raid boss, world boss
+
+**Great Scale**:
+Ang Dakilang Timbangan, the Lumang Palengke's field boss in the Market Hall. Between fights it stays there asleep (it can't be hit); every two hours it wakes. It has no plain attack: only its Pan Slam, Weigh-in and Kulang sa Timbang hurt.
+_Avoid_: timbangan boss, scale boss
+
+**Weigh-in**:
+The Great Scale grabbing one player onto its pan. While **held** they can't move, attack or use skills and lose a little HP every second; the others free them by breaking **the pan**, else it lets go after a few seconds. Never when only one player is fighting it.
+_Avoid_: grab, stun (for this)
+
+**Bell**:
+The palengke's bell, left where the Great Scale fell for a minute after each fall. Ringing it (standing near) is the last quest's step after helping bring it down; whoever missed it can ring the next one.
+_Avoid_: gong, chest
 
 **Rise**:
 The field boss appearing in the Golem Pit (two hours after it was killed, or after it sank back unbeaten).
 _Avoid_: spawn (for the boss)
 
 **Sink**:
-The field boss going back into the pit unbeaten after half an hour with nobody hitting it.
+The field boss going back into the pit unbeaten after half an hour with nobody hitting it (the Great Scale goes back to sleep).
 _Avoid_: despawn
 
 **Fight**:

@@ -1,18 +1,20 @@
 import { el } from './reward';
 
-// 🗿 The golem timer (the Slums only; top right beside the jackpot counter, on phones under it): the time to the field
-// boss's next rise on its own, pulsing in the last `warnMinutes` (when the "stirring" line comes), and while it's up
-// "Awake! Go to the pit" (short, so the box keeps about the countdown's width). TownScene feeds it from the town's `mobs` and `golem` messages (their `riseIn`: ms from
+// 🗿 The field boss timer (the Slums' golem, the Lumang Palengke's Great Scale; top right beside the jackpot counter, on
+// phones under it): the time to the field boss's next rise on its own, pulsing in the last `warnMinutes` (when the
+// "stirring" line comes), and while it's up "Awake! Go to the pit" (the Great Scale's: "the hall"; short, so the box
+// keeps about the countdown's width). TownScene feeds it from the town's `mobs` and `golem` messages (their `riseIn`: ms from
 // when they were sent, so a player's clock being off doesn't matter). Hidden until the first one, so elsewhere.
 
-type GolemTimer = { name: string; warnMs: number; riseAt: number; awake: boolean };
+type GolemTimer = { name: string; warnMs: number; riseAt: number; awake: boolean; where: string };
 
 let state: GolemTimer | null = null;
 let render: () => void = () => {};
 
-/** What the server said: the boss's name and warning minutes (map.boss), ms until its next rise, whether it's up now. */
-export function setGolemTimer(name: string, warnMinutes: number, riseIn: number, awake: boolean): void {
-  state = { name, warnMs: warnMinutes * 60_000, riseAt: Date.now() + riseIn, awake };
+/** What the server said: the boss's name and warning minutes (map.boss), ms until its next rise, whether it's up now;
+ *  `where` it is ("the pit", "the hall"). */
+export function setGolemTimer(name: string, warnMinutes: number, riseIn: number, awake: boolean, where = 'the pit'): void {
+  state = { name, warnMs: warnMinutes * 60_000, riseAt: Date.now() + riseIn, awake, where };
   render();
 }
 
@@ -49,12 +51,12 @@ export function golemTimer(head: string | null): HTMLElement {
     const left = state.riseAt - Date.now();
     label.textContent = state.name;
     // Past its time without word yet: it's rising (the 'rise' message is on its way).
-    const long = state.awake ? 'Awake! Go to the pit' : left > 0 ? `Rises in ${countdown(left)}` : 'Rising…';
+    const long = state.awake ? `Awake! Go to ${state.where}` : left > 0 ? `Rises in ${countdown(left)}` : 'Rising…';
     lineLong.textContent = long;
     lineShort.textContent = state.awake ? 'Awake!' : left > 0 ? countdown(left) : 'Rising…';
     box.classList.toggle('gt-awake', state.awake);
     box.classList.toggle('jt-soon', !state.awake && left > 0 && left <= state.warnMs);
-    box.title = state.awake ? `${state.name} is awake in the Golem Pit` : `${state.name}: ${long}`;
+    box.title = state.awake ? `${state.name} is awake in ${state.where === 'the pit' ? 'the Golem Pit' : state.where}` : `${state.name}: ${long}`;
     box.setAttribute('aria-label', box.title);
   };
   const ticking = setInterval(() => (box.isConnected ? render() : clearInterval(ticking)), 1000);
