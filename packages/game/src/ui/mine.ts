@@ -7,7 +7,7 @@ import { installPixelTiles } from './pixel-tiles';
 import { el, followWallet, showPopup } from './reward';
 
 // ⛏️ The Mine (left click the mine entrance), in the reward box dressed as stone (pixel tiles: ui/pixel-tiles.ts): digs left today and uses left on your shovel,
-// the server's lucky dig (the dig pity: a bar of the server's digs toward the next, which is Epic or better), and a
+// your dig streak (digs since your last Epic or better: your lucky dig, Epic or better, comes at a hidden threshold), and a
 // Dig button (POST /town/dig, /dig's rules). A find comes back as your feed line, which plays the dig panel over this
 // pop-up (ui/dig-panel.ts), and then shows here as a card: its picture, name, rarity and worth. A dig that can't
 // happen says why. The pop-up stays open to dig again. "Items" swaps the pop-up to the tier list: what digs can turn up,
@@ -71,20 +71,13 @@ export function showMine(): void {
     const stat = (box: HTMLElement, value: string, label: string) => box.replaceChildren(el('b', undefined, value), el('span', undefined, label));
     stat(digs, `${d.digsLeft}/${d.digsPerDay}`, 'digs left today');
     stat(shovel, String(d.shovel), d.shovel === 1 ? 'use left on your shovel' : 'uses left on your shovel');
-    // The lucky dig: the server's digs so far toward it, as a bar.
-    const left = d.luckyEvery - d.lucky;
-    const bar = el('div', 'mn-lucky-bar');
-    const fill = el('div', 'mn-lucky-fill');
-    fill.style.width = `${Math.min(100, (d.lucky / d.luckyEvery) * 100)}%`;
-    bar.append(fill);
+    // The dig streak (CONTEXT.md): digs since their last Epic or better; the lucky dig's threshold stays hidden.
     const head = el('div', 'mn-lucky-head');
-    head.append(el('b', undefined, '🍀 Lucky dig'), el('span', undefined, `${d.lucky}/${d.luckyEvery}`));
+    head.append(el('b', undefined, '🍀 Lucky dig'), el('span', undefined, String(d.streak)));
     lucky.replaceChildren(
       head,
-      bar,
-      el('div', 'mn-lucky-hint', left <= 1 ? "The server's next dig is lucky: Epic or better!" : `Every ${d.luckyEvery}th dig on the server is Epic or better. ${left} to go.`),
+      el('div', 'mn-lucky-hint', `${d.streak === 0 ? 'Your luck starts over.' : `${d.streak} dig${d.streak === 1 ? '' : 's'} since your last Epic or better.`} Somewhere along the way a dig is Epic or better: the longer you go, the sooner.`),
     );
-    lucky.classList.toggle('mn-lucky-next', left <= 1);
     button.disabled = busy;
   };
   const say = (text: string, ok: boolean) => {
@@ -112,7 +105,7 @@ export function showMine(): void {
       return say(res.message, false);
     }
     // The dig panel plays from the feed line; the find stays here as a card.
-    say(res.lucky ? `🍀 Lucky dig! The server's ${res.dig.luckyEvery}th dig: Epic or better.` : '', true);
+    say(res.lucky ? '🍀 Lucky dig! Your luck came through: Epic or better.' : '', true);
     showFind(res.item);
     window.dispatchEvent(new Event('mk-wallet')); // the HUD's shovel counter
   });
@@ -154,7 +147,7 @@ function tierList(data: TownDigItemsResponse): HTMLElement {
     }
     box.append(tier);
   }
-  box.append(el('p', 'mn-hint', `The odds are for a plain dig. Every ${data.luckyEvery}th dig on the server is Epic or better, and a Swerte Elixir rerolls junk. Some finds are secret…`));
+  box.append(el('p', 'mn-hint', 'The odds are for a plain dig. Your lucky dig comes along somewhere (Epic or better; your streak since the last starts it over), and a Swerte Elixir rerolls junk. Some finds are secret…'));
   return box;
 }
 
@@ -167,7 +160,6 @@ async function loadDigItems(): Promise<TownDigItemsResponse | null> {
 // ── Dev: a pretend tier list (no bot behind the dev server) ──
 
 const FAKE_ITEMS: TownDigItemsResponse = {
-  luckyEvery: 60,
   tiers: [
     { rarity: 'legendary', label: 'Legendary', chance: 0.0005, items: [{ id: 'twigo-treasure', name: "twigo's Hidden Treasure", emoji: '💰', value: 50, chance: 0.0005 }] },
     { rarity: 'mythical', label: 'Mythical', chance: 0.002, items: [{ id: 'troyangs-frog', name: "Troyangs' Golden Frog", emoji: '🐸', value: 20, chance: 0.0004 }, { id: 'aka-poknat', name: "Aka's Poknat", emoji: '✨', value: 10, chance: 0.0016 }] },
@@ -191,18 +183,22 @@ const DEV_FINDS: [string, string, string][] = [
   ['barong', 'Barong', 'mythical'],
   ['twigo-treasure', "twigo's Treasure", 'legendary'],
 ];
-const fakeState = { digs: Number(new URLSearchParams(location.search).get('digs') ?? 7), shovel: Number(new URLSearchParams(location.search).get('shovels') ?? 6), lucky: Number(new URLSearchParams(location.search).get('lucky') ?? 57) };
+const fakeState = { digs: Number(new URLSearchParams(location.search).get('digs') ?? 7), shovel: Number(new URLSearchParams(location.search).get('shovels') ?? 6), streak: Number(new URLSearchParams(location.search).get('streak') ?? 14), at: 1 + Math.floor(Math.random() * 60) };
 
 async function fakeDig(): Promise<TownDigResponse> {
-  const d = (): MeDig => ({ shovel: fakeState.shovel, digsLeft: fakeState.digs, digsPerDay: 9, shovelsLeft: 2, shovelCost: 2, shovelUses: 3, lucky: fakeState.lucky, luckyEvery: 60 });
+  const d = (): MeDig => ({ shovel: fakeState.shovel, digsLeft: fakeState.digs, digsPerDay: 9, shovelsLeft: 2, shovelCost: 2, shovelUses: 3, streak: fakeState.streak });
   if (fakeState.shovel <= 0) return { ok: false, message: 'You need a shovel to dig. Get one at the sari-sari store (2 Kowens).', dig: d() };
   if (fakeState.digs <= 0) return { ok: false, message: "You've dug 9 times today. Your arms need a rest! Come back tomorrow.", dig: d() };
   fakeState.digs--;
   fakeState.shovel--;
-  const lucky = ++fakeState.lucky >= 60;
-  if (lucky) fakeState.lucky = 0;
+  // (A hidden threshold, as the bot's: the streak reaching it is Epic or better; any Epic or better starts it over.)
+  const lucky = ++fakeState.streak >= fakeState.at;
   const pick = new URLSearchParams(location.search).get('find');
-  const [id, name, rarity] = DEV_FINDS.find(([i]) => i === pick) ?? DEV_FINDS[Math.floor(Math.random() * DEV_FINDS.length)];
+  const [id, name, rarity] = lucky ? DEV_FINDS[4 + Math.floor(Math.random() * 3)] : (DEV_FINDS.find(([i]) => i === pick) ?? DEV_FINDS[Math.floor(Math.random() * DEV_FINDS.length)]);
+  if (['epic', 'mythical', 'legendary'].includes(rarity)) {
+    fakeState.streak = 0;
+    fakeState.at = 1 + Math.floor(Math.random() * 60);
+  }
   const q = new URLSearchParams({ kind: 'dig', tone: rarity, text: `${fakeName()} dug up ${name}`, itemId: id, itemName: name, as: fakeName() });
   await fetch(`/__system?${q}`).catch(() => null);
   return { ok: true, message: `You dug up ${name}.`, dig: d(), item: { id, name, rarity, value: 1 }, ...(lucky ? { lucky } : {}) };

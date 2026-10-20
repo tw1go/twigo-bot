@@ -274,6 +274,17 @@ _Avoid_: miss (that's the attacker's), block (a Scrap Crab's shell), invincible
 
 ## Items and money
 
+**Lucky dig**:
+A dig forced to be Epic or better: each player has a hidden threshold, rolled between the CMS's soonest and latest
+(1 and 60 to begin with) after every Epic-or-better find, and the dig that reaches it is the lucky one. Nobody's digs
+count toward anyone else's.
+_Avoid_: pity, the server's 60th dig (the old rule), guaranteed drop
+
+**Dig streak**:
+How many digs a player has made since their last Epic-or-better find (a secret counts). The only part of the lucky dig
+that's ever shown; the threshold never is.
+_Avoid_: pity counter, progress bar
+
 **Kowens**:
 The server's money, shared with Discord; bought things in the sari-sari store, never traded in town.
 _Avoid_: credits, coins

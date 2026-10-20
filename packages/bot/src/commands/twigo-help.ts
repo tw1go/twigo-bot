@@ -56,7 +56,7 @@ export const twigoHelp: Command = {
         ...section('⛏️ Digging', [
           '`/dig` — dig for treasure (🪏 Shovel from `/redeem`: 3 digs each, up to 3 shovels & 9 digs a day)',
           '`/inventory` — your finds · `/sell` — turn them into Kowens · `/flex` — show off an item 💪',
-          '🍀 Every **60th dig on the server** is a **Lucky Dig**: guaranteed Epic or better!',
+          '🍀 Your **Lucky Dig**: somewhere along your digs one is guaranteed Epic or better (a hidden number of digs since your last Epic or better; any Epic or better starts the count over)',
           '🎒 Inventory holds **10** items (🗝️ Master Keys and 🧪 potions take a slot each too, 📢 megaphones share one, 🪪 Rename Cards share one, 🎫 Bagong Buhay Tickets share one) — buy bags in `/redeem` for +8 each, up to **50**',
         ]),
         ...section('🪙 Earn Kowens', [
