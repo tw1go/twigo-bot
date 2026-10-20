@@ -182,6 +182,8 @@ export interface TownBuff {
   level: number;
   stats: Record<string, number>;
   ms: number | null;
+  /** A dish (CONTEXT.md Dish), main or side, not a class's buff: `name` is its id, `cls` 'dish'. */
+  dish?: 'main' | 'side';
 }
 
 export type TownClientMessage =
@@ -220,6 +222,8 @@ export type TownClientMessage =
   | { t: 'buff'; buff: string; target?: string }
   /** Takes a buff off yourself (right-click it in the buff tray). */
   | { t: 'buff-off'; buff: string }
+  /** Buy a dish from Aling Conching (in the Lumang Palengke; CONTEXT.md Dish): its Kusing, then it's on. */
+  | { t: 'dish-buy'; dish: string }
   /** The Arena's jack en poy against another player (bot web/town-arena.ts): join the queue (with an optional bet in
    *  Kowens), leave it, pick a hand for the open round, ask for a rematch or accept one (with a bet), decline one, leave
    *  the match. The stake is the smaller of the two bets. */
@@ -716,6 +720,8 @@ export type TownServerMessage =
   /** The buffs on you now (on any change): each one's name, its caster's class and skill level, its stats at that level
    *  (stats.json skills.buffs), and the ms left (null: a stance, on until changed). */
   | { t: 'buffs'; buffs: TownBuff[] }
+  /** A dish bought (or refused: why), or served free (a quest's: `free`); the dish itself comes in `buffs`. */
+  | { t: 'dish'; ok: boolean; dish: string; message?: string; free?: true }
   /** Your party now (null: none), with a line for a toast when something happened ("Mara joined the party."). */
   | { t: 'party'; party: PartyState | null; note?: string }
   /** Someone invites you: answer with party-answer (it lapses after a minute). */
