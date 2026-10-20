@@ -577,6 +577,10 @@
       /* Select mode (ui/inventory.ts): every click adds or removes a slot. */
       #inventory .iv-multi { margin-left: auto; margin-right: 8px; padding: 3px 10px 4px; border: 2px solid #3D4256; border-radius: 0; background: #1E1B3A; color: #A9B1D6; font: inherit; font-size: calc(13px * var(--text)); font-weight: 700; }
       #inventory .iv-multi:hover { color: #fff; }
+      #inventory .iv-sort { margin-left: auto; margin-right: 6px; padding: 3px 10px 4px; border: 2px solid #3D4256; border-radius: 0; background: #1E1B3A; color: #A9B1D6; font: inherit; font-size: calc(13px * var(--text)); font-weight: 700; white-space: nowrap; }
+      #inventory .iv-sort:hover { color: #fff; }
+      #inventory .iv-sort[hidden] { display: none; }
+      #inventory .iv-sort:not([hidden]) + .iv-multi { margin-left: 0; }
       #inventory .iv-multi[aria-pressed='true'] { border-color: #7C2AE8; background: #7C2AE8; color: #fff; }
       #inventory .iv-tab { flex: 1; min-width: 0; white-space: nowrap; padding: 6px 4px 5px; border: 2px solid #3D4256; border-bottom: 0; border-radius: 0; background: #1E1B3A; color: #A9B1D6; font: inherit; font-size: calc(14px * var(--text)); font-weight: 700; }
       #inventory .iv-tab:hover { color: #fff; }

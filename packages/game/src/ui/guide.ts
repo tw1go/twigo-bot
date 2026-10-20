@@ -304,6 +304,7 @@ const TOPICS: Topic[] = [
       '• Select many (Ctrl/⌘/Shift click, or the **Select** toggle) and **Sell selected**',
       '• Master Keys and potions live here too',
       '• The **Combat** tab is your **combat bag** for the Slums (60 slots): gear, whetstones, HP/MP Potions. Double-click gear to wear it. Your **Kusing** is at the bottom, beside your Kowens',
+      '• **Sort** (Combat, Agimats and Costume tabs) cycles the order: **Newest** (as you got them), **Rarity** (the best first), **Name** (each kind together, best plus first) or **Level** (highest first). Each tab remembers its own',
       '• Hover an item for what it is; the keys it answers to are at the foot. Hold **Shift** over gear to compare it with what you wear: how your ATK, DEF, HP, MP and crit would change, and the worn piece beside it',
       '• Slots marked X are locked; bigger bags are at the sari-sari store',
     ].join('\n'),
