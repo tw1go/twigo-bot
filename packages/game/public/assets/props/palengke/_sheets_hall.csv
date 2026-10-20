@@ -1,0 +1,20 @@
+file,cell_w,cell_h,frames,fps,loop,anchor_x,anchor_y,notes
+tile-palengke-hallwall-l-1.png,17,67,1,0,no,0,66,hall wall v4, one tile edge, left face (SW): plain; cut from the front block
+tile-palengke-hallwall-l-2.png,17,67,1,0,no,0,66,hall wall v4, one tile edge, left face (SW): plain; cut from the front block
+tile-palengke-hallwall-l-3.png,17,67,1,0,no,0,66,hall wall v4, one tile edge, left face (SW): plain; cut from the front block
+tile-palengke-hallwall-l-4.png,17,67,1,0,no,0,66,hall wall v4, one tile edge, left face (SW): pipe; cut from the front block
+tile-palengke-hallwall-l-5.png,17,67,1,0,no,0,66,hall wall v4, one tile edge, left face (SW): stain; cut from the front block
+tile-palengke-hallwall-l-6.png,17,67,1,0,no,0,66,hall wall v4, one tile edge, left face (SW): moss; cut from the front block
+tile-palengke-hallwall-l-win1.png,33,75,1,0,no,0,74,hall wall v4, TWO tile edges with the front block window, left face (SW): win1
+tile-palengke-hallwall-l-win2.png,33,75,1,0,no,0,74,hall wall v4, TWO tile edges with the front block window, left face (SW): win2
+tile-palengke-hallwall-r-1.png,17,67,1,0,no,16,58,hall wall v4, one tile edge, right face (SE): plain; cut from the front block
+tile-palengke-hallwall-r-2.png,17,67,1,0,no,16,58,hall wall v4, one tile edge, right face (SE): plain; cut from the front block
+tile-palengke-hallwall-r-3.png,17,67,1,0,no,16,58,hall wall v4, one tile edge, right face (SE): plain; cut from the front block
+tile-palengke-hallwall-r-4.png,17,67,1,0,no,16,58,hall wall v4, one tile edge, right face (SE): pipe; cut from the front block
+tile-palengke-hallwall-r-5.png,17,67,1,0,no,16,58,hall wall v4, one tile edge, right face (SE): stain; cut from the front block
+tile-palengke-hallwall-r-6.png,17,67,1,0,no,16,58,hall wall v4, one tile edge, right face (SE): moss; cut from the front block
+tile-palengke-hallwall-r-win1.png,33,75,1,0,no,32,58,hall wall v4, TWO tile edges with the front block window, right face (SE): win1
+tile-palengke-hallwall-r-win2.png,33,75,1,0,no,32,58,hall wall v4, TWO tile edges with the front block window, right face (SE): win2
+prop-palengke-hall-door.png,65,97,1,0,no,0,90,spare 4x1 doorway (right face) in the front block material, for the W and N doors; -l is the mirrored left-face version; anchor = base at local x 0 of the lowest tile
+tile-palengke-hallwall-corner.png,12,72,1,0,no,6,71,concrete pillar for the front corner of the hall walls
+prop-palengke-hall-front.png,128,158,1,0,no,0,157,8x1 front block (right face, SE): doorway + clock tower + 2 wall tiles each side (Mac PixelLab, cleaned by clean_hall_front.py); anchor = base at local x 0 of the lowest tile
