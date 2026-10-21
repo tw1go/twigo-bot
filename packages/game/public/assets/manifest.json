@@ -23063,6 +23063,94 @@
       },
       "note": "The Great Scale, the Palengke field boss (the art folder's monsters/palengke/pixellab-v1/great-scale/anim, 20 Oct 2026): one look, eight directions; no enraged sheets yet (its enrage tints it red)."
     },
+    "makinang-yelo": {
+      "name": "Ang Makinang Yelo",
+      "file": "mobs/makinang-yelo/mob-makinang-yelo-{anim}-{dir}.png",
+      "size": [
+        304,
+        306
+      ],
+      "anchor": [
+        153,
+        199
+      ],
+      "directions": [
+        "sw"
+      ],
+      "animations": {
+        "idle": {
+          "frames": 8,
+          "fps": 8,
+          "loop": true
+        },
+        "drop": {
+          "frames": 9,
+          "fps": 12,
+          "loop": false
+        },
+        "breath-charge": {
+          "frames": 12,
+          "fps": 12,
+          "loop": false
+        },
+        "breath": {
+          "frames": 4,
+          "fps": 14,
+          "loop": true
+        },
+        "rush": {
+          "frames": 9,
+          "fps": 12,
+          "loop": false
+        },
+        "flood": {
+          "frames": 10,
+          "fps": 10,
+          "loop": false
+        },
+        "call": {
+          "frames": 8,
+          "fps": 12,
+          "loop": false
+        },
+        "hit": {
+          "frames": 3,
+          "fps": 12,
+          "loop": false
+        },
+        "enrage": {
+          "frames": 10,
+          "fps": 10,
+          "loop": false
+        },
+        "death": {
+          "frames": 16,
+          "fps": 8,
+          "loop": false
+        }
+      },
+      "enraged": {
+        "file": "mobs/makinang-yelo/mob-makinang-yelo-{anim}-enraged-{dir}.png",
+        "animations": [
+          "idle",
+          "drop",
+          "breath-charge",
+          "breath",
+          "rush",
+          "flood",
+          "call",
+          "hit"
+        ]
+      },
+      "hitFrames": {
+        "drop": 6,
+        "rush": 5,
+        "flood": 4,
+        "call": 5
+      },
+      "loadEnragedLater": true,
+      "note": "Ang Makinang Yelo, the Ice Machine (Ang Silong's last boss; the art folder's silong/mobs/makinang-yelo, 21 Oct 2026): SW only, never moves or turns; anchor on its K block's middle (dungeons.json silong.lastBoss.tile); the enraged set (red eye lamps) for every anim but enrage and death, loaded at its enrage. hitFrames (0-based) are guesses from the sheets until the art folder says: the drop's release, the rush's sweep, the flood's gush, the call's spawn."
+    },
     "monobloc-stack-frost": {
       "name": "Frozen Monobloc Stack",
       "file": "mobs/silong/monobloc-stack-frost/mob-monobloc-stack-frost-{variant}-{anim}-{dir}.png",
