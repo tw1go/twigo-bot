@@ -1609,7 +1609,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   box: Lv / cap, its text, damage as % of ATK and ≈ with your ATK now, what it hits (skill-hits.json shape), range, slow /
   root, cooldown, MP, the next level's gain; a move: its tiles).
   Skills panel on the right of the screen (K or the K button; `#skill-book`): skill points, the skills in three lists,
-  Damage, Mobility and Buffs (classes.json buffs: icon, unlock level, their buff-cast on the stage on hover; cast from
+  Damage, Mobility and Utilities (CONTEXT.md Utility; classes.json buffs: icon, unlock level, their buff-cast on the stage on hover; cast from
   the hotbar: Buffs, below), each with its level and description (see Skills unlock), the hovered one played on the class choice's stage (`TownScene.skillStage`, 1×); drag a
   skill to a slot, or click it then a slot.
   Potions dragged from the bag (HP/MP Potions from the combat bag: used through the town, a cooldown per kind); drag between slots swaps, off the bar empties (right-click never does). Per class, kept on the server when logged in (bot `web/hotbar.ts`, kv `hotbar:<userId>` by class, tested: `cleanHotbar` keeps it within the rows' sizes and entry shapes; `/me` `hotbars`, `POST /town/hotbar { cls, layout }`; the page's `onSave` → `net/sync.ts` `queueSave` (600 ms after the last change, at once on pagehide with keepalive); the server's wins on load, a class only this browser had arranged is sent up once) and in localStorage
@@ -1635,6 +1635,33 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   ends), hpRegenPctPerSec (vitals regen, in combat too). Game: buffs in `skillViews` (`buff`), the Skills panel's Buffs
   list with + and the hotbar (`TownScene.castBuff`: plays buff-cast facing your way; dark in town and refused there
   "Only on battle maps."), `net/buffs.ts` (yours), the stats box's buff part green, Calm Mind on your auto-cast cooldowns.
+- Lv 21-40 skills (21 Oct 2026; combat-guide.md "Lv 21-40 skills", the art folder's docs/skills-21-40; CONTEXT.md Utility,
+  Debuff, Stance, Stun, Taunt, Damage over time, Channel, Charge-up, Windup, Leap): each class's 13 damage skills (Lv 21, 25,
+  28, 32, 36, 40 after the first 7) and its utilities (stats.json skills.buffs with `debuff`: on a mob). skill-hits.json
+  `effects` (a comma joins two) and `hits` (N:EVERY[:channel|:move]) are read by shared `skill-effects.ts` (`skillEffects`,
+  `skillHits`, `shapeParts`: area:N:R, line out to the skill's range; `chargeMult`; `crowdShare`: a mini boss half of a
+  slow, root or stun, a field or a dungeon's last boss none). The bot (`MobRoom.attack`, tested in `town-skills.test.ts`
+  with a socket test): several hits of %/N (the first at once, the rest on the mob clock, `skillTick`: a dead target's to
+  the nearest live mob in reach; a channel stops on a step, `skill-stop`, a knock-out or another skill; on the move each
+  finds its mobs again, the step budget at 70%: `onTheMove`), stun (`mob-stun`, still and silent), taunt (the mob's foe,
+  over its own pick; the golem's `taunt`), dot (ticks on the mob, `mob-burn` numbers), heal (`healParty`), seek, crit, the
+  charge-up (`attack.held`, clamped; none = full), windup (lands later, its MP then; cancelled at no cost, cooldown back;
+  the room hears `mob-hit` with `windup` / `target`), leap (`leap`: the free tile next to the target, on its level, no
+  wall jumped; none: 'range'). Debuffs (`MobRoom.debuff`: the target in `rangeTiles`, else the nearest; none: refused
+  'target', no cost; one of each name a mob; `tauntAround`; `mob-debuff`), mob stats defPct, damageTakenPct, missChance,
+  mobDamagePct, slow, taunt; player stats critDamage, evasion (`Target.evasion`), hpDrainPctPerSec (Blood Price, never under
+  10% HP). Game: `combat/skill-previews.ts` the 36 scripts (each on attack-quick / -heavy / -cast, Timber! from
+  charge-start, in its own frame order: the cosmetic pose sheets still fit; the world plays the script's frames on the
+  character, `Character.strikeFrames`, `skillPoses`), `combat/fx-stand-ins.ts` (each PixelLab FX not made yet → its
+  stand-in, tint, size: the manifest's own entry wins once it lands), the kit's fx `scale` / `tint`, `leap`, `echo`
+  (Phantom Sticks' afterimages, the stage only), `preview`; TownScene: the charge-up (`holdCharge` / `releaseCharge` from
+  the hotbar's key down / up: the pose to its held frame, the charge at the fork, a bar under you; full fires it; the
+  filler never casts a charge-up), `castLock` (a channel or windup: no other skill or walking; `stopChannel` on your own
+  move), `spinUntil`, `leap` (`Character.leapTo`, everyone), `mob-hits` / `mob-stun` / `mob-debuff` (world/mobs.ts
+  `stun` / `debuff`: code-drawn stars and a coloured pip a debuff until their art), a debuff cast at your mob target;
+  tooltips (ui/skill-tip.ts: hits, effects in words, the area's radius; ui/buff-text.ts: a debuff's mob part); the default
+  bar only up to Lv 20, a new Lv 21-40 skill into the first empty slot (`Hotbar.placeNew`). Silent (SKILL_SOUNDS 7); icons
+  not in yet (the usual fallback: add them to manifest ui.skillIcons.have as they land). Dev: `?switch&level=40`.
 - Buff tray (`ui/buff-tray.ts`, the HUD's `.th-buffs` slot under News/Settings): the server's `buffs`: a row each with icon,
   name, what it gives (`buffStatLines`), time left (Jersey 10; amber under 30 s, the icon fading under 10 s, gone at 0;
   a stance "On"); past four (and on phones) icons with their time only, the rest in a card on hover or tap (`.bt-tip`, name, stats,
