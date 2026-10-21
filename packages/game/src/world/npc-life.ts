@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import type { Dir, Manifest, NpcDefs } from '../assets/types';
 import { hearGossip, playSound } from '../audio/sound';
-import { Character, SPEED, dirForStep } from '../characters/character';
+import { Character, type FlatSheets, SPEED, dirForStep } from '../characters/character';
 import type { Outfit } from '../characters/doll';
 import type { BubbleArt } from '../ui/labels';
 import { openNpcDialog, talkingTo } from '../ui/npc-dialog';
@@ -153,25 +153,7 @@ export class NpcLife {
 
   /** The NPC's animations (made once) and how it's drawn; null without its art. */
   private sheets(defs: NpcDefs, id: string) {
-    const { scene } = this.w;
-    let missing = 0;
-    for (const [anim, a] of Object.entries(defs.animations)) {
-      if (a.only && !a.only.includes(id)) continue;
-      for (const dir of defs.directions) {
-        const file = defs.file.replace('{id}', id).replace('{anim}', anim).replace('{dir}', dir);
-        const k = `npc:${id}:${anim}:${dir}`;
-        if (scene.anims.exists(k)) continue;
-        if (!scene.textures.exists(file)) {
-          missing++;
-          continue;
-        }
-        scene.anims.create({ key: k, frames: scene.anims.generateFrameNumbers(file, { start: 0, end: a.frames - 1 }), frameRate: a.fps, repeat: a.loop ? -1 : 0 });
-      }
-    }
-    if (missing) console.warn(`[npcs] ${id}: ${missing} sheet(s) missing`);
-    const idle = defs.file.replace('{id}', id).replace('{anim}', 'idle').replace('{dir}', 's');
-    if (!scene.textures.exists(idle)) return null;
-    return { key: (anim: string, dir: Dir) => `npc:${id}:${anim}:${dir}`, head: headRow(scene, idle, defs.cell), directions: defs.directions };
+    return flatNpcSheets(this.w.scene, defs, id);
   }
 
   /** How long it stays put before moving on. */
@@ -507,6 +489,29 @@ export class NpcLife {
   }
 }
 
+
+/** An NPC's flat sheets: its animations (made once) and how it's drawn; null without its art (the town's NPCs and the
+ *  Lumang Palengke's). */
+export function flatNpcSheets(scene: Phaser.Scene, defs: NpcDefs, id: string): FlatSheets | null {
+  let missing = 0;
+  for (const [anim, a] of Object.entries(defs.animations)) {
+    if (a.only && !a.only.includes(id)) continue;
+    for (const dir of defs.directions) {
+      const file = defs.file.replace('{id}', id).replace('{anim}', anim).replace('{dir}', dir);
+      const k = `npc:${id}:${anim}:${dir}`;
+      if (scene.anims.exists(k)) continue;
+      if (!scene.textures.exists(file)) {
+        missing++;
+        continue;
+      }
+      scene.anims.create({ key: k, frames: scene.anims.generateFrameNumbers(file, { start: 0, end: a.frames - 1 }), frameRate: a.fps, repeat: a.loop ? -1 : 0 });
+    }
+  }
+  if (missing) console.warn(`[npcs] ${id}: ${missing} sheet(s) missing`);
+  const idle = defs.file.replace('{id}', id).replace('{anim}', 'idle').replace('{dir}', 's');
+  if (!scene.textures.exists(idle)) return null;
+  return { key: (anim: string, dir: Dir) => `npc:${id}:${anim}:${dir}`, head: headRow(scene, idle, defs.cell), directions: defs.directions };
+}
 
 /** The first row with a visible pixel in an NPC's idle sheet facing south, frame 0 (name plates sit above it). */
 function headRow(scene: Phaser.Scene, file: string, cell: [number, number]): number {

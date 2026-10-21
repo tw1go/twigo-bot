@@ -279,6 +279,9 @@ export interface NpcDefs {
   portrait: { file: string; size: Vec2; frames: number };
   /** Names, titles and lines: { npcs: { [id]: { name, title, portrait, lines } } }. */
   dialogue: string;
+  /** The Lumang Palengke's story NPCs (world/palengke-npcs.ts): their ids and their own dialogue file. */
+  palengkeIds?: string[];
+  palengkeDialogue?: string;
   ids: string[];
 }
 

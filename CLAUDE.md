@@ -152,20 +152,24 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `bossLoot.greatScale`, `currencies.greatScaleKusingPerPlayer` / `kusingPerMobNote`, `skills.unlocksAbove20`): the art
   folder's stats.json needs the same merge. `classes/palengke-leveling.json` = the art folder's data/palengke-leveling.json
   (manifest `classes.palengkeLeveling`). Repo-only: `items/equipment.json` the Mid tier's 50 kinds (Lv 30 Fine / Bronze /
-  Linen / Bamboo / Amber, Lv 40 Polished / Iron / Denim / Rattan / Jade, no art: slot silhouettes); `items/items.json`
-  `polished-whetstone` (5 Kowens), `polished-whetstone-fragment`, `mid-repair-kit` (20 Kowens; Mac), no art yet;
+  Linen / Bamboo / Amber, Lv 40 Polished / Iron / Denim / Rattan / Jade; their icons the art folder's
+  items/palengke/art, 21 Oct 2026, each matched to its kind by `_icons.csv`'s recoloured_from); `items/items.json`
+  `polished-whetstone` (5 Kowens), `polished-whetstone-fragment`, `mid-repair-kit` (20 Kowens; Mac), their icons the same;
   `maps/palengke.json` the three zones' `miniBosses` spots.
 - The Palengke's quests (20 Oct 2026): `classes/palengke-leveling.json` each quest's `dialogue.give` / `dialogue.report`
   (from the art folder's docs/palengke/palengke-story.md section 3, Aling Conching for its "Aling Nena"; a few report lines
   written here: Q3, Q5, Q6, Q7's second, Q9, Q11's Suki Card line, Q13's second, the Q14 finale), `reportTo` (Q1 Mang Pido,
   Q7 Aling Conching, Q10 and Q13 Kuya Jun), `gives` (Q7 Tisay's Note), `rewards` (Q11 Suki Card, Q13 Honest Weight),
   `rewardTitle` (Q14 `huling-suki`), the top-level `gapLine` and `questItems` tisay-note / honest-weight / suki-card;
-  `items/items.json` the ten quest items (kind `quest`, bound, no art: a blank square in the bag, a violet one on the
-  ground); `classes/stats.json` `inventory.questSlots` 20 (+ `questSlotsNote`); the title Huling Suki in the bot's
+  `items/items.json` the ten quest items (kind `quest`, bound; icons from the art folder's items/quest, 21 Oct 2026, all but
+  honest-weight and suki-card, and ramon-note: those still a blank square in the bag, a violet one on the ground); `classes/stats.json` `inventory.questSlots` 20 (+ `questSlotsNote`); the title Huling Suki in the bot's
   built-in titles (web/titles.ts).
 - The Palengke's dishes and daily orders (20 Oct 2026): `classes/palengke-leveling.json` each dish's `slot` and `stats`
   (`dishesNote`), Q1's `freeDish` (her free bowl of Lugaw), the dailies' `reset` (4 am Manila), `freeDish` and
   `dialogue` (written here).
+- The Palengke's NPCs (21 Oct 2026): `npcs/palengke-npc-dialogue.json` = the art folder's npcs/palengke one with its idle lines
+  in English (no Tagalog in the game: Mac) and portraits pointing at `npcs/`; the manifest's npcs `palengkeIds`,
+  `palengkeDialogue`, `palengkeNote`; their sheets' rows appended to `npcs/_sheets.csv`.
 - Ang Silong (20 Oct 2026): `classes/dungeons.json` `silong` (the art folder's silong.json as it is), `maps/silong-b1..b3.json`
   (built here: `scripts/build-silong.ts`), `items/items.json` `susi-ng-silong` / `practice-susi-ng-silong` / `ramon-note`,
   the manifest's `tiles.silong` (rim and cap borrowed from the Slums': no Silong art), `silong-*` props, `fx-silong-*`
@@ -957,8 +961,12 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   TownOptions.quests.drops = `questDropsFor`; the dev town's from the page's pretend quests); the bag's Quest pocket
   (stats.json `inventory.questSlots`, shared `pocketOf` 'quest'; its tab shows while it holds any) and stacks; taken as
   delivered. A talk's `gives` hands an item over (Tisay's note); `fieldBoss` counts with its `needs` held (the Honest
-  Weight); `rewardTitle` → server.ts `giveTitle` + `new-title`. Game: `world/palengke-npcs.ts` (stand-ins until the art: a
-  figure in their colour, name, the quest marker, a drawn portrait; Aling Conching stands inside her stall), TownScene
+  Weight); `rewardTitle` → server.ts `giveTitle` + `new-title`. Game: `world/palengke-npcs.ts` (21 Oct 2026: each a
+  Character on its own flat sheets, the art folder's npcs/palengke in `npcs/` beside the town's (manifest npcs
+  `palengkeIds`, `palengkeDialogue`; loaded with the Palengke: queueNpcs 'palengke'; npc-life.ts `flatNpcSheets`, shared
+  with the town's), idling and turning to the nearest player within 5 tiles, its name, the quest marker, its portrait,
+  its own lines from npcs/palengke-npc-dialogue.json (English here: the art folder's are Tagalog, a repo change) when
+  there's no quest to talk about; one without sheets: the old drawn stand-in; Aling Conching stands inside her stall), TownScene
   `handInScript` (give lines on a first talk, report lines then the rewards, the same NPC's next quest said straight on;
   `handingIn` keeps giveLines from toasting it), give lines of quests that start without a talk as toasts with the giver's
   name, "New quest: X. Talk to Y." for the rest. Not yet: the trail to an NPC, Tisay moving after Q7 shows on the next
