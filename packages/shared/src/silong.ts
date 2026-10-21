@@ -187,7 +187,7 @@ export interface TownSilongGate {
   keys: number;
   inParty: boolean;
   partyRun: { id: string; inside: number; opener: string } | null;
-  /** 'level' (under minLevel), 'quest' (Ngayon Na not done: `questLine`), 'full', 'key' (none to open with). */
+  /** 'level' (under minLevel), 'quest' (Now's the Time not done: `questLine`), 'full', 'key' (none to open with). */
   blocked?: 'level' | 'quest' | 'full' | 'key';
   questLine?: string;
   /** A practice run (a Practice Susi ng Silong held): Practice run (alone); `blocked` its reason if it can't open now. */

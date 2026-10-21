@@ -1227,7 +1227,7 @@ export function startWebServer(client: Client): void {
         practice: { use: usePracticeTicketFor, drop: practiceDropFor, refund: refundPracticeTicketFor },
         saved: (runs) => kvSave(WARRENS_RUNS, runs),
       },
-      // Ang Silong: a Susi ng Silong from the combat bag (back if a run ends before a mini boss falls), "Ngayon Na" to come
+      // Ang Silong: a Susi ng Silong from the combat bag (back if a run ends before a mini boss falls), "Now's the Time" to come
       // in, its Practice Susi for one practice run, the keys at Aling Conching's; the open runs kept (refunds after a
       // restart).
       ...(hatch

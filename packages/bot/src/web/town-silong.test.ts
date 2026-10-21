@@ -7,7 +7,7 @@ import { Silong, type SilongInside, type SilongRun, loadSilong } from './town-si
 
 // Ang Silong's runs (classes/dungeons.json silong, maps/silong-b1..b3.json) on the real data: opening (a key, the
 // quest, a practice run alone), the floors' mobs and mini bosses, the elevator down opening as a floor's mini bosses
-// fall and riding (all in, or 20 s after the first; "Bumaba na kayo?"), riding up, the Ice Tanks door, the close.
+// fall and riding (all in, or 20 s after the first; "Going down?"), riding up, the Ice Tanks door, the close.
 
 const L = loadSilong({}, () => 0.5);
 const parties: Record<string, string> = { b: 'p1', c: 'p1' };
@@ -33,7 +33,7 @@ function fell(run: SilongRun, floor: 'b1' | 'b2' | 'b3', boss: string, now: numb
   return r.kills.find((k) => k.id === info.id)!;
 }
 
-test('opening: Lv 37, "Ngayon Na" done, a key; a party\'s for its party; a practice run alone at 60%', () => {
+test('opening: Lv 37, "Now\'s the Time" done, a key; a party\'s for its party; a practice run alone at 60%', () => {
   const s = silong();
   assert.equal(s.open('a', 'A', 36, () => true, 0).ok, false);
   const q = s.open('a', 'A', 40, () => true, 0, { done: false });
@@ -137,7 +137,7 @@ test("the close: 2 minutes with nobody inside (the opener's key back if no mini 
   assert.ok(n.closed && n.out.some((o) => o.member === 'a' && o.reason === 'closed'));
 });
 
-test('"Ngayon Na" (palengke-15): Mang Pido, after the finale, at Lv 37: a talk that gives the Practice Susi ng Silong', () => {
+test('"Now\'s the Time" (palengke-15): Mang Pido, after the finale, at Lv 37: a talk that gives the Practice Susi ng Silong', () => {
   const P = loadPalengkeLeveling() as unknown as PalengkeData;
   const quests: QuestDef[] = palengkeQuests(P, mobName);
   const q = quests.find((x) => x.id === 'palengke-15')!;

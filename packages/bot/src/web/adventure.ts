@@ -530,7 +530,7 @@ export const refundTicketFor = (userId: string): boolean => refundKindFor(userId
 /** A Practice Warren Ticket back into their bag (their practice run ended before a boss fell): false if no room. */
 export const refundPracticeTicketFor = (userId: string): boolean => refundKindFor(userId, practiceQuest()?.ticket);
 
-// ── Ang Silong's keys (classes/dungeons.json silong.key; the Practice Susi from "Ngayon Na") ──
+// ── Ang Silong's keys (classes/dungeons.json silong.key; the Practice Susi from "Now's the Time") ──
 
 const SILONG_KEY = () => loadDungeons().silong?.key.id ?? 'susi-ng-silong';
 export const PRACTICE_SUSI = 'practice-susi-ng-silong';
@@ -545,7 +545,7 @@ export const refundSilongKeyFor = (userId: string): boolean => refundKindFor(use
 export const usePracticeSusiFor = (userId: string): boolean => useKindFor(userId, PRACTICE_SUSI);
 export const refundPracticeSusiFor = (userId: string): boolean => refundKindFor(userId, PRACTICE_SUSI);
 
-/** Who may come into Ang Silong: "Ngayon Na" done, and how many Practice Susi they hold. */
+/** Who may come into Ang Silong: "Now's the Time" done, and how many Practice Susi they hold. */
 export function silongAccessOf(userId: string): { done: boolean; practiceKeys: number } {
   const s = load(userId);
   return { done: s.quests.done.includes(SILONG_QUEST), practiceKeys: heldCount(s.bag, PRACTICE_SUSI) };

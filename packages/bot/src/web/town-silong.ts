@@ -14,7 +14,7 @@ import { FloorBosses } from './town-silong-bosses.js';
 // runs for the time limit.
 // • Floors: B1 and B2 each keep their freight elevator down (X) shut until both their mini bosses are down; it then rides
 //   when every living player on that floor stands in it, or 20 s after the first steps in (the others on that floor are
-//   asked "Bumaba na kayo?": yes rides them along), to the next floor's arrival elevator (E). From any E you ride back up
+//   asked "Going down?": yes rides them along), to the next floor's arrival elevator (E). From any E you ride back up
 //   alone to a floor the run has reached. B3's Ice Tanks door (G) stays shut until Frosty Tubbs falls.
 // • Mobs never respawn, all aggressive at 4 tiles, packs assist, kept to their room; HP follows the players inside
 //   (scaling); a mini boss with no living player in its room for bossResetSeconds heals to full. Death: back after 3 s
@@ -391,7 +391,7 @@ export class SilongRun {
     f.riders.clear();
   }
 
-  /** An answer to "Bumaba na kayo?": yes rides along with the others (on that floor, while it's waiting). */
+  /** An answer to "Going down?": yes rides along with the others (on that floor, while it's waiting). */
   answerRide(member: string, yes: boolean): void {
     const x = this.inside.get(member);
     const f = x ? this.floors[x.floor] : null;
@@ -478,7 +478,7 @@ export class SilongRun {
     if (!left.length && floorBelow(floor) && !f.open) {
       f.open = true;
       f.unblock(f.map.silong.down);
-      out.room.push([f.room, this.line(`${b.name} is down. The freight elevator rumbles awake: Bumaba na tayo!`, 'down')]);
+      out.room.push([f.room, this.line(`${b.name} is down. The freight elevator rumbles awake: going down!`, 'down')]);
     } else if (!door) out.room.push([f.room, this.line(`${b.name} is down.`, 'down')]);
     return out;
   }
@@ -598,7 +598,7 @@ function guardSpots(floor: Floor, at: Tile, n: number): Tile[] {
   return out;
 }
 
-/** What the host knows of a member for the hatch: whether they've done "Ngayon Na" (palengke-15), and how many Practice
+/** What the host knows of a member for the hatch: whether they've done "Now's the Time" (palengke-15), and how many Practice
  *  Susi they hold. */
 export interface SilongAccess {
   done: boolean;
@@ -662,7 +662,7 @@ export class Silong {
 
   private entryRefusal(level: number, a: SilongAccess): { reason: 'level' | 'quest'; message: string } | null {
     if (level < this.S.entry.minLevel) return { reason: 'level', message: `Ang Silong is for Lv ${this.S.entry.minLevel} and up.` };
-    if (!a.done) return { reason: 'quest', message: 'Mang Pido says it isn\'t time yet. Hindi pa oras.' };
+    if (!a.done) return { reason: 'quest', message: 'Mang Pido says it isn\'t time yet.' };
     return null;
   }
 
@@ -693,7 +693,7 @@ export class Silong {
     return { ok: true, run };
   }
 
-  /** A practice run (the Practice Susi ng Silong from "Ngayon Na"): solo, even in a party. */
+  /** A practice run (the Practice Susi ng Silong from "Now's the Time"): solo, even in a party. */
   openPractice(member: string, name: string, level: number, useKey: () => boolean, now: number): { ok: true; run: SilongRun } | { ok: false; reason: 'level' | 'full' | 'key' | 'party'; message: string } {
     if (level < this.S.entry.minLevel) return { ok: false, reason: 'level', message: `Ang Silong is for Lv ${this.S.entry.minLevel} and up.` };
     if (this.runOf(member)) return { ok: false, reason: 'party', message: "You're in a run already." };

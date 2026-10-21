@@ -9,7 +9,7 @@ import { toast } from './toast';
 //   party, Join my party's run (no key), with the Practice Susi Practice run (alone), or why not.
 // - The run's timer, top centre (the Warrens' #warrens-timer look), and its tracker in the quest tracker's place: a row
 //   per floor (reached or not) with a pip per mini boss, the elevator down's state, the B3 door; Leave.
-// - "Bumaba na kayo?": someone stepped into the open elevator down: Ride along / Stay, while it waits.
+// - "Going down?": someone stepped into the open elevator down: Ride along / Stay, while it waits.
 // - The arrival elevator's box: the floors above the run has reached, to ride up alone.
 // - Mang Pido on his radio (`pidoSays`, once a run each, kept in the tab): the first Chill, the first work lamp, the B3
 //   door, the first Freezer Breath. Mang Ramon's note (`showRamonNote`).
@@ -170,15 +170,15 @@ export class SilongTracker {
   }
 }
 
-/** "Bumaba na kayo?": the elevator down waits `ms` more; Ride along (`answer(true)`) or Stay. */
+/** "Going down?": the elevator down waits `ms` more; Ride along (`answer(true)`) or Stay. */
 export function showRideAsk(ms: number, answer: (yes: boolean) => void): void {
   document.getElementById('silong-ride')?.remove();
   const box = el('div', 'pt-invite wr-invite');
   box.id = 'silong-ride';
   box.setAttribute('role', 'alertdialog');
-  box.setAttribute('aria-label', 'Bumaba na kayo?');
+  box.setAttribute('aria-label', 'Going down?');
   const text = el('p', 'pt-invite-text');
-  text.append(el('b', undefined, 'Bumaba na kayo?'), ' The freight elevator is going down.');
+  text.append(el('b', undefined, 'Going down?'), ' The freight elevator is about to leave.');
   const timer = el('span', 'pt-invite-bar');
   const yes = el('button', 'pt-yes', 'Ride along');
   const no = el('button', 'pt-no', 'Stay');
@@ -223,12 +223,12 @@ export function showRideUp(floors: { floor: SilongFloor; name: string }[], choos
   void showPopup({ title: 'Freight elevator', body, button: 'Stay', celebrate: false, closeX: true });
 }
 
-/** Mang Pido's radio lines (the brief's four moments; the breath's line is the brief's own). */
+/** Mang Pido's radio lines (the brief's four moments). */
 export const PIDO_LINES = {
-  chill: "Pido 'to. Malamig diyan, anak. 'Wag kang tumayo nang matagal: gumalaw ka, o tumabi sa ilaw.",
-  lamp: 'Yung mga ilaw ng trabahador, mainit. Tumabi ka diyan pag nanlalamig ka na.',
-  door: 'Bukas na ang pinto ng Ice Tanks. Nandiyan na ang makina. Ingat ka.',
-  breath: 'Magtago ka sa likod ng yelo!',
+  chill: "Pido here. It's cold down there. Don't stand still too long: keep moving, or stay by a lamp.",
+  lamp: 'Those work lamps are warm. Stand by one when the cold gets to you.',
+  door: 'The Ice Tanks door is open. The machine is through there. Be careful.',
+  breath: 'Hide behind the ice!',
 } as const;
 export type PidoMoment = keyof typeof PIDO_LINES;
 
@@ -258,7 +258,7 @@ export function pidoSays(run: string | null, moment: PidoMoment, say: (text: str
 export function showRamonNote(): void {
   const body = [
     el('p', 'wr-gate-line', 'A folded note, stiff with frost:'),
-    el('p', 'wr-gate-run', '"Sa makakahanap nito: itinago ko rito sa Silong ang mga tapat na timbang, kung saan hindi sila maaabot ng mga timbangan sa itaas. Ibigay mo ito kay Jun sa karnehan. Alam na niya. — Ramon"'),
+    el('p', 'wr-gate-run', '"To whoever finds this: I hid the honest weights down here in the Silong, where the scales upstairs can\'t reach them. Give this to Jun at the butcher\'s stall. He\'ll know. — Ramon"'),
     el('p', 'wr-gate-you', "Bring it to Kuya Jun in the Lumang Palengke."),
   ];
   void showPopup({ title: "Mang Ramon's Note", body, button: 'Keep it', celebrate: false, closeX: true });

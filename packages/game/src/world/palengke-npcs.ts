@@ -148,7 +148,7 @@ export class PalengkeNpcs {
       lines: say?.lines ?? script?.lines,
       action: this.action?.(id),
       onDone: script?.onDone,
-      next: () => 'Magandang araw, anak. Ingat sa palengke.',
+      next: () => 'Good day. Take care in the market.',
       voice: 1,
       mirror: false,
       onClose: () => say?.after?.(),

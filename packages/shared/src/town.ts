@@ -320,7 +320,7 @@ export type TownClientMessage =
   | { t: 'warrens-decline'; run: string }
   | { t: 'warrens-leave' }
   /** Ang Silong (web/town-silong.ts): the Silong Hatch's panel, open a run (a Susi ng Silong), a practice run (the
-   *  Practice Susi), join your party's, not now, leave; your answer to "Bumaba na kayo?" (ride down with the others);
+   *  Practice Susi), join your party's, not now, leave; your answer to "Going down?" (ride down with the others);
    *  ride up from an arrival elevator to a floor the run has reached. */
   | { t: 'silong-gate' }
   | { t: 'silong-open' }
@@ -688,8 +688,8 @@ export type TownServerMessage =
   | { t: 'warrens-kick'; ms: number }
   /** Ang Silong: your run (the tracker), what the hatch offers, go to a floor of a run (the page loads it: `key` your key
    *  went; `ride` by the freight elevator), an invite to your party's run, why not, out of it (back to the Market Hall,
-   *  `keyBack`: it ended before a mini boss fell, the key returned), out in `ms` (you left the party), and "Bumaba na
-   *  kayo?" (someone stepped into the open elevator down: it goes in `ms`). */
+   *  `keyBack`: it ended before a mini boss fell, the key returned), out in `ms` (you left the party), and "Going
+   *  down?" (someone stepped into the open elevator down: it goes in `ms`). */
   | { t: 'silong'; run: TownSilongRun }
   | { t: 'silong-gate'; gate: TownSilongGate }
   | { t: 'silong-go'; run: string; floor: SilongFloor; key?: boolean; ride?: 'down' | 'up' }

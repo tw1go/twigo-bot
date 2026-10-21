@@ -1746,7 +1746,7 @@ export class TownScene extends Phaser.Scene {
     // Bringing it back: their thanks, they take it, then the rewards.
     if (o.type === 'deliver') {
       return {
-        lines: d.complete?.length ? d.complete : ['Salamat!'],
+        lines: d.complete?.length ? d.complete : ['Thank you!'],
         onDone: () =>
           void questTalk(quest.id, id).then((r) => {
             if (!r?.ok) return answered(r);
@@ -1766,7 +1766,7 @@ export class TownScene extends Phaser.Scene {
     const d = quest.dialogue ?? {};
     const last = step === quest.objectives.length - 1;
     if (o.type === 'collect') return { lines: [`${quest.summary}.`] };
-    const lines = last ? (d.report?.length ? d.report : ['Salamat, anak.']) : (d.give?.length ? d.give : ['…']);
+    const lines = last ? (d.report?.length ? d.report : ['Thank you.']) : (d.give?.length ? d.give : ['…']);
     return {
       lines,
       onDone: () => {
@@ -2351,7 +2351,7 @@ export class TownScene extends Phaser.Scene {
       }
       if (m.t === 'warrens-kick') return showKickCountdown(m.ms);
       // Ang Silong: the hatch's panel, an invite, going down (by the elevator: its cage rides first) and up, out of it,
-      // "Bumaba na kayo?", and the run's tracker.
+      // "Going down?", and the run's tracker.
       if (m.t === 'silong-gate') return showSilongGate(m.gate, (what) => link.send(what === 'open' ? { t: 'silong-open' } : what === 'practice' ? { t: 'silong-practice' } : { t: 'silong-join' }));
       if (m.t === 'silong-invite') return showWarrensInvite(m.from, m.ms, (join) => link.send(join ? { t: 'silong-join', run: m.run } : { t: 'silong-decline', run: m.run }), 'Ang Silong');
       if (m.t === 'silong-refused') {
@@ -3724,9 +3724,9 @@ export class TownScene extends Phaser.Scene {
     if (!ok) return toast(message ?? "Kuya Jun can't take it right now.", 3000, 'bad');
     const npcs = this.npcs instanceof PalengkeNpcs ? this.npcs : null;
     const lines = [
-      "Sulat 'to ni Mang Ramon... Akala ko nawala na siya nang tuluyan.",
-      'Itinago pala niya ang mga tapat na timbang sa Silong. Kaya pala walang makahanap.',
-      "Salamat, anak. Heto: para sa mga gamit mong nasisira diyan sa ilalim.",
+      "This is Mang Ramon's handwriting... I thought he was gone for good.",
+      'So he hid the honest weights in the Silong. No wonder nobody could find them.',
+      'Thank you. Here: for the gear that breaks on you down there.',
     ];
     const done = () => toast('Gained Mid Repair Kit', 3000, 'good');
     if (npcs) npcs.talk('kuya-jun', this.player.tile, { lines, after: done });

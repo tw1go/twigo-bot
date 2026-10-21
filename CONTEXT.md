@@ -722,7 +722,7 @@ _Avoid_: lift, portal
 
 **Susi ng Silong**:
 The key that opens a Silong run (for you, or your whole party); spent only once a mini boss falls. The **Practice Susi
-ng Silong** from "Ngayon Na" opens one practice run, alone.
+ng Silong** from "Now's the Time" opens one practice run, alone.
 _Avoid_: ticket (that's the Warrens')
 
 **Chill**:

@@ -170,7 +170,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   (built here: `scripts/build-silong.ts`), `items/items.json` `susi-ng-silong` / `practice-susi-ng-silong` / `ramon-note`,
   the manifest's `tiles.silong` (rim and cap borrowed from the Slums': no Silong art), `silong-*` props, `fx-silong-*`
   and the four frost mobs, `mobs/mobs.json` their entries, `maps/palengke.json` `arrive.silong`, stats.json
-  `mobBehaviour.sameAs`, `classes/palengke-leveling.json` `palengke-15` (Ngayon Na), palengke-14's `nextUnlock` 37 and
+  `mobBehaviour.sameAs`, `classes/palengke-leveling.json` `palengke-15` (Now's the Time), palengke-14's `nextUnlock` 37 and
   `dailies.unlockedBy`. Ang Makinang Yelo (21 Oct 2026): the manifest's `mobs['makinang-yelo']` (its `hitFrames` guessed
   from the demo gif) and `mobs/mobs.json` `makinang-yelo` (`noShadow`, `radius`, `top`, `frame`, `attackFrame`); the art
   is the art folder's mobs/makinang-yelo as it is (its stand sheet left out: nothing uses it).
@@ -987,14 +987,14 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   opens runs at the Silong Hatch (the Palengke's `palengke-silong-hatch`, from 3 tiles: its panel `silong-gate`) with a
   Susi ng Silong (`susi-ng-silong`, items.json; Aling Conching sells it after the finale: her menu's key row, the
   `dish-buy` of its id, `buySilongKeyFor`), for one or the party (an invite for the party in the Palengke, 20 s;
-  joiners later through the hatch, no key; one run a party), once "Ngayon Na" (palengke-15) is done; no gathering: it
+  joiners later through the hatch, no key; one run a party), once "Now's the Time" (palengke-15) is done; no gathering: it
   starts at once, 45 minutes. `SilongRun` has three floors, each its own room `silong:<id>:<floor>` with its own copy of
   the map and MobRoom (rooms' numbers as `zoneStats`, the frost kinds living as their originals: stats.json
   mobBehaviour `sameAs`, a repo addition), its mini bosses at 2.5× with two guards; mobs never respawn; HP scales with
   those inside; a mini boss resets after 10 s with nobody alive in its room. Both of a floor's mini bosses down: its
   elevator down opens (its X tiles unblocked on the server's map and the page's walk grid), and rides when every living
-  player on that floor stands in it, or 20 s after the first steps in (the others on that floor asked "Bumaba na
-  kayo?", `silong-ride-ask`; yes rides them along) → `silong-go` {ride: 'down'}: the cage slides up 1 s, then the next
+  player on that floor stands in it, or 20 s after the first steps in (the others on that floor asked "Going
+  down?", `silong-ride-ask`; yes rides them along) → `silong-go` {ride: 'down'}: the cage slides up 1 s, then the next
   floor's page. From an arrival elevator (E) the ride-up box (floors above the run has reached, `silong-up`). B3's Ice
   Tanks door opens as Frosty Tubbs falls (frost-crack, the open door, its tiles unblocked). Death: back at the arrival
   elevator of the deepest floor reached (town.ts `respawn` sends `silong-go`). The key's spent once a mini boss falls

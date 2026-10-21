@@ -250,7 +250,7 @@ export interface TownOptions {
   };
   /** Ang Silong (web/town-silong.ts): its data and floors' maps, what a run's mob rooms need, the Silong Hatch's tile in
    *  the Palengke, the Susi ng Silong (count, use, give back to the opener of a run that ended before a mini boss fell)
-   *  and the Practice Susi (the same), who may come in (`access`: "Ngayon Na" done, Practice Susi held), and `saved`: the
+   *  and the Practice Susi (the same), who may come in (`access`: "Now's the Time" done, Practice Susi held), and `saved`: the
    *  open runs whenever they change (a restart gives the keys of runs not yet spent back). `dev`: open from anywhere.
    *  Without it, no Silong. */
   silong?: {
