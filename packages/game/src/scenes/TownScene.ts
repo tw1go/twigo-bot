@@ -875,6 +875,8 @@ export class TownScene extends Phaser.Scene {
     // Raised ground that hides you (a bluff, a mesa, the crest) fades to half, as the Warrens' walls do (WarrensView
     // fades its own there).
     if (!this.warrens && this.ground instanceof Terrain) this.ground.fadeFront(this.player.tile, this.player.sprite.getBounds());
+    // (And props: a stall, a tree, a crate stack you've walked behind.)
+    this.objects.fadeFront(this.player.tile, this.player.sprite.getBounds(), this.player.sprite.depth);
     if (this.area === 'slums' && time >= this.gateCheckAt) {
       this.gateCheckAt = time + 250;
       this.nearWarrenGate();

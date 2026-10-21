@@ -1781,6 +1781,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   fake login), so two windows `?as=Alice` / `?as=Bob` see and chat with each other;
   `/__discord?name=&text=` fakes a #town-chat line and town lines print in the dev server's terminal. Dev: with no bot behind the dev server, plain `/play/` acts as `?me=saved`; `?me=anon|new&as=Alice` fakes a member (test values: `&kowens=` `&shovels=` `&digs=` `&status=online|idle|busy|offline|jailed`); to test,
   run only the compiled `web/town.js` on 127.0.0.1:8787 with a fake `authenticate` (never the whole bot).
+- Props in front of you fade (`WorldObjects.fadeFront`, called each frame by TownScene beside the terrain's): any prop drawn
+  over your character (its depth above yours) whose box overlaps yours eases to half alpha (FADE_ALPHA 0.5, 0.1 a frame)
+  and back as you step out; it looks only at props whose footprint starts within FADE_REACH (6) tiles of you
+  (`propsAt`, kept as they're made; a dropped region's are pruned as met). Every map: stalls, trees, crates.
 - Map clicks (`world/clicks.ts` `onMap`): every click handler on the map (the scene's POINTER_UP, the Warren Gate's and
   Lantern Post's boxes, mobs) counts a release only if it was pressed and let go on the canvas itself: Phaser hears
   releases on the whole window and hit-tests them, so a click on a panel over the map (the player box) reached what was

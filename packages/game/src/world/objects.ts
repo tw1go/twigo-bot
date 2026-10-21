@@ -22,6 +22,11 @@ import { slice } from '../assets/packs';
 const REGION = 16;
 const STREAM_NEAR = 320;
 const STREAM_FAR = 1100;
+/** A prop hiding you (`fadeFront`): faded to this, easing by FADE_STEP a frame, looked for within FADE_REACH tiles. */
+const FADE_ALPHA = 0.5;
+const FADE_STEP = 0.1;
+const FADE_REACH = 6;
+const FADE_BOX = new Phaser.Geom.Rectangle();
 
 /** Buildings that get a looping coin sparkle. */
 const SPARKLE_BUILDINGS = ['jackpot-booth', 'bank', 'sari-sari-store'];
@@ -123,6 +128,11 @@ export class WorldObjects {
   private readonly always: MapObject[] = [];
   extra: ((c0: number, r0: number, c1: number, r1: number) => MapObject[]) | null = null;
   onSpawn: ((o: Phaser.GameObjects.Components.Tint) => void) | null = null;
+
+  /** Each prop's sprite by the tile its footprint starts on (`fadeFront` looks round the player in it), and the props
+   *  faded now (their alpha easing to FADE_ALPHA, and back to 1 once they hide nobody). */
+  private readonly propsAt = new Map<string, Phaser.GameObjects.Image[]>();
+  private fading = new Set<Phaser.GameObjects.Image>();
 
   /** Props cast their own shadow on the ground (world/cast-shadow.ts; the Slums). Set before any are added. */
   castShadows = false;
@@ -379,6 +389,40 @@ export class WorldObjects {
     for (const b of this.buildings) if (b.id === id && b.sprite.texture.key !== file && this.scene.textures.exists(file)) b.sprite.setTexture(file);
   }
 
+  /** Props drawn over you that overlap you (your sprite's box, its depth: a stall, a tree, a crate stack you walked
+   *  behind) fade to FADE_ALPHA, eased over a few frames, and come back as you step out from behind them. Looks only at
+   *  props whose footprint starts within FADE_REACH tiles of yours (the tall and the long ones behind which you'd be). */
+  fadeFront(tile: { col: number; row: number } | null, box: Phaser.Geom.Rectangle | null, depth: number): void {
+    const hide = new Set<Phaser.GameObjects.Image>();
+    if (tile && box) {
+      for (let dc = -FADE_REACH; dc <= FADE_REACH; dc++) {
+        for (let dr = -FADE_REACH; dr <= FADE_REACH; dr++) {
+          const list = this.propsAt.get(`${tile.col + dc},${tile.row + dr}`);
+          if (!list) continue;
+          for (let i = list.length - 1; i >= 0; i--) {
+            const s = list[i];
+            if (!s.scene) {
+              list.splice(i, 1); // (its region was dropped)
+              continue;
+            }
+            if (s.depth > depth && s.visible && Phaser.Geom.Rectangle.Overlaps(s.getBounds(FADE_BOX), box)) hide.add(s);
+          }
+        }
+      }
+    }
+    for (const s of hide) this.fading.add(s);
+    for (const s of [...this.fading]) {
+      if (!s.scene) {
+        this.fading.delete(s);
+        continue;
+      }
+      const want = hide.has(s) ? FADE_ALPHA : 1;
+      const a = s.alpha + Math.sign(want - s.alpha) * Math.min(FADE_STEP, Math.abs(want - s.alpha));
+      s.setAlpha(a);
+      if (a === 1) this.fading.delete(s);
+    }
+  }
+
   /** A prop you walk inside (the Golem Pit): its back and front halves on one anchor, the ground point of its tile's
    *  centre. The back half sorts as if its feet were at that point + its sortOffsetY.back (behind everyone on the floor).
    *  The front half is cut into STRIP-px columns, each sorting at its own lowest heap pixel (where that bit of heap meets
@@ -445,6 +489,12 @@ export class WorldObjects {
     const big = fc * fr > 1 && !floor;
     const depth = floor ? GROUND_SHADOW_DEPTH - 1 : big ? base : this.sortAgainstBig(o.col, o.row, fc, fr, base, bounds);
     sprite.setDepth(depth);
+    if (!floor) {
+      const k = `${o.col},${o.row}`;
+      const at = this.propsAt.get(k);
+      if (at) at.push(sprite);
+      else this.propsAt.set(k, [sprite]);
+    }
     if (big) this.big.push({ col: o.col, row: o.row, cols: fc, rows: fr, back: depth, front: depth, bounds });
     // Its own shadow on the ground (castShadows: the Slums, whose props came with none), not for floors.
     if (this.castShadows && !floor && !def.animation) {
