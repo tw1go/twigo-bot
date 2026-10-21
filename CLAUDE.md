@@ -198,8 +198,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   permanent `witch-hat` / `witch-robe` (`shop`, `event: "halloween"`, `set: "witch"`, no `lastsDays`; Biikko still drops
   the 5-day `witch-hat-5d` / `witch-robe-5d`; Mac, 19 Oct 2026); the manifest's wardrobe entries for them (`cosmeticHats`,
   `fixedColourHats`, `hatClips`, `hatCanvas`, `cosmeticTops`, `cosmeticHidesBottom`) and the new `cosmeticHidesShoes`,
-  `topCanvas`, `topOverPattern`, `cosmeticBodyClip`, `bodyClipPattern`, `cosmeticPoseTops`, `cosmeticPosePattern`. The art
-  is the art folder's cosmetics/custom (and its poses/ zip) as it is.
+  `topCanvas`, `topOverPattern`, `cosmeticBodyClip`, `bodyClipPattern`, `cosmeticPoseTops` (its `witchrobe` since 21 Oct 2026),
+  `cosmeticPosePattern`. The art is the art folder's cosmetics/custom (and its poses/ zips: witch-robe-poses-v1 too) as it is.
 - `classes/stats.json`: `skills.moveDodge` (Step Back dodges every hit for 500 ms; 17 Oct 2026) and `classes/classes.json`
   Step Back's `desc` saying so.
 - The mailbox (16 Oct 2026): `maps/town.json`'s `mailbox` object at (33,28), its blocked tile and `doors.mailbox` (33,29)
@@ -1399,8 +1399,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `cosmeticBodyClip` + `bodyClipPattern` (the Velvet Nightwing's legs: white = no body there). Fight poses: a cosmetic
   top keeps what lies outside the idle body (moved with the top) as well as what's on the pose's body (kit-art
   `drawTrimmed`'s `idleBody`), its topover laid with it, and a body clip cuts the pose's body from the mask's top row
-  down (a stride takes the legs outside the idle mask). The five Sets' tops have pose art instead (CONTEXT.md Combat
-  pose; wardrobe `cosmeticPoseTops` + `cosmeticPosePattern`, the art folder's cosmetics/custom/poses: a sheet per class,
+  down (a stride takes the legs outside the idle mask). The five Sets' tops and the Witch Robe (21 Oct 2026: it took
+  the laid-on path before, broken in its poses) have pose art instead (CONTEXT.md Combat pose; wardrobe `cosmeticPoseTops` + `cosmeticPosePattern`, the art folder's cosmetics/custom/poses: a sheet per class,
   anim and direction, 64x64 cells in the pose's own cell, the body sheet's frame count; tested): drawPose draws its
   frame at the cell's top left in place of the top and topover (kit-art `cosmeticPoseFile`; the laid-on piece only if
   the sheet isn't loaded), shoes and bottom as before, the head laid on as for any look; loaded with the class's poses
