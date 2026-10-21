@@ -107,6 +107,8 @@ const VOICE = { keys: ['a', 'e', 'i', 'o', 'u'].map((v) => ({ key: `voice:${v}`,
 const MUSIC = { key: 'music:happy-tune', urls: ['audio/music/happy-tune.ogg', 'audio/music/happy-tune.m4a'], volume: 0.12 };
 /** The Slums' own music (in place of the town's there; no crickets either). */
 const SLUMS = { key: 'music:slums', urls: ['audio/music/music-slums.ogg', 'audio/music/music-slums.m4a'], volume: 0.09 };
+/** Ang Silong's floors: the Warrens' music (the Slums') at 70% until it has its own. */
+const SILONG = { ...SLUMS, volume: SLUMS.volume * 0.7 };
 /** The area's music: the town's (and the neighbourhood's), or the Slums'. */
 let areaMusic = MUSIC;
 /** The area has crickets (not the Slums). */
@@ -219,11 +221,11 @@ function saveSettings(): void {
 
 /** Starts the town's sounds: loads them (in the background, after the town's art), starts the ambience once the
  *  browser allows sound, and plays the UI's button sounds. `fountain` is the plaza fountain's middle tile. */
-export function startTownSound(s: Phaser.Scene, fountainTile: { col: number; row: number } | null, area: 'town' | 'slums' = 'town'): void {
+export function startTownSound(s: Phaser.Scene, fountainTile: { col: number; row: number } | null, area: 'town' | 'slums' | 'silong' = 'town'): void {
   scene = s;
   fountainAt = fountainTile;
-  areaMusic = area === 'slums' ? SLUMS : MUSIC;
-  hasCrickets = area !== 'slums';
+  areaMusic = area === 'slums' ? SLUMS : area === 'silong' ? SILONG : MUSIC;
+  hasCrickets = area === 'town';
   applySettings();
   const load = s.load;
   load.setPath(`${import.meta.env.BASE_URL}assets/`);

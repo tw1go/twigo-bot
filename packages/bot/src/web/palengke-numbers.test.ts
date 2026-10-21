@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { type EquipmentDef, isGearDef, kusingFor, miniBossRules, skillLevelCap, xpToNext } from '@mikazuki/shared';
 import { type LootContent, combatWares } from './combat-bag.js';
 import { fieldBossLoot, fieldBossTable, golemLoot, mobDrops } from './loot.js';
-import { loadItemData, loadPalengkeLeveling } from './stats-data.js';
+import { loadDungeons, loadItemData, loadPalengkeLeveling } from './stats-data.js';
 
 // The Lumang Palengke's numbers (the art folder's palengke-stats-delta.json merged into stats.json, its
 // palengke-leveling.json): Lv 21-40, its mobs, the Mid gear tier, its drops and the Great Scale's loot.
@@ -142,4 +142,16 @@ test("the Palengke's mini bosses: each on a walkable spot in its mob's zone, its
     assert.equal(palengke.blocked[r][c], 0, `${b.id} walkable`);
     assert.ok(L.miniBosses[b.zone.mob].some((m) => m.id === b.id), `${b.id} is its mob's`);
   }
+});
+
+test("the Great Scale's loot: a Susi ng Silong 1 in 4 (silong.key.sources.greatScaleChance)", () => {
+  const D = loadItemData();
+  const S = loadDungeons().silong!;
+  let n = 0;
+  const key = { id: S.key.id, chance: S.key.sources.greatScaleChance };
+  assert.equal(key.chance, 0.25);
+  const loot = fieldBossLoot(D, fieldBossTable(D, 'great-scale'), () => 0, () => `k${++n}`, () => 0, 0, 0, key);
+  assert.ok(loot.some((c) => 'item' in c && c.item.defId === S.key.id));
+  const none = fieldBossLoot(D, fieldBossTable(D, 'great-scale'), () => 0.3, () => `k${++n}`, () => 0.3, 0, 0, key);
+  assert.ok(!none.some((c) => 'item' in c && c.item.defId === S.key.id));
 });

@@ -26,7 +26,7 @@ import { race as currentRace, raceNow, setRace } from '../net/race';
 import { setRacePortraits } from '../ui/race-bet';
 import { mosangName } from '../ui/race-box';
 import { NpcLife, TALK_LEAVE, TALK_RANGE } from '../world/npc-life';
-import { PalengkeNpcs } from '../world/palengke-npcs';
+import { PalengkeNpcs, npcFace } from '../world/palengke-npcs';
 import { mountHouseCreator } from '../ui/house-creator';
 import { playBusted } from '../ui/casino';
 import { drawBridge } from '../world/bridge';
@@ -95,7 +95,7 @@ import { HALLOWEEN_MOBS, type HalloweenData, cosmeticHatOf, cosmeticTopOf, mobNa
 import { openDishMenu } from '../ui/dish-menu';
 import { lootRolls, rollEndLine } from '../ui/loot-roll';
 import type { DungeonsData, SilongFloor, TownSilongRun, TownWarrensRun } from '@mikazuki/shared';
-import { floorOfArea, silongArea } from '@mikazuki/shared';
+import { type ChillRules, RAMON, SILONG_FLAGS, chillAttack, chillMove, chillRules, dishPrice, floorOfArea, silongArea } from '@mikazuki/shared';
 import { MapMenu } from '../ui/map-menu';
 import { firstOpen } from '../net/pwa';
 import { confirmDrop } from '../ui/drop';
@@ -113,7 +113,7 @@ import { Mobs, TONE, showSlowed } from '../world/mobs';
 import { GOLEM_SOUNDS, GolemView } from '../world/golem';
 import { GreatScaleView } from '../world/great-scale';
 import { SilongView } from '../world/silong';
-import { SilongTracker, noteKeyBack, showRideAsk, showRideUp, showSilongGate, tellKeyBack } from '../ui/silong';
+import { SilongTracker, noteKeyBack, pidoSays, showRamonNote, showRideAsk, showRideUp, showSilongGate, tellKeyBack } from '../ui/silong';
 import { loadBoss } from '../assets/queue';
 import { WarrensView } from '../world/warrens';
 import { WarrensTracker, noteTicketBack, showKickCountdown, showWarrensCleared, showWarrensGate, showWarrensInvite, tellTicketBack } from '../ui/warrens';
@@ -732,8 +732,18 @@ export class TownScene extends Phaser.Scene {
           const until = performance.now() + ms;
           for (const [c, r] of tiles) this.slick.set(`${c},${r}`, until);
         },
+        radio: (moment) => pidoSays(this.silongRun?.id ?? null, moment, (text) => this.say(`Mang Pido (radio): ${text}`, 5000, null, npcFace('mang-pido'))),
+        ramon: () => this.toRamon(),
+        rush: (ms, speed) => {
+          this.beltRush = { until: performance.now() + ms, speed };
+          if (this.ground instanceof Terrain) this.ground.speedUp(['belt-e', 'belt-w'], speed / this.beltBase(), ms);
+        },
       });
       this.silongView = view;
+      if (view.ramonLabel) {
+        view.ramonLabel.setZoom(this.cameras.main.zoom);
+        this.gateLabels.push(view.ramonLabel);
+      }
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
         view.destroy();
         this.silongTracker?.destroy();
@@ -821,8 +831,9 @@ export class TownScene extends Phaser.Scene {
     });
     this.buffTray = tray;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => tray.destroy());
-    startTownSound(this, this.fountainTile(), this.area === 'slums' || this.area === 'warrens' || this.area === 'palengke' || floorOfArea(this.area) ? 'slums' : 'town'); // (the Slums, the Warrens and the Palengke: the Slums' music for now, no crickets)
-    if (this.area === 'slums' || this.area === 'warrens') loadWarrensSounds(); // (the gate's in the Slums)
+    // (The Slums, the Warrens and the Palengke: the Slums' music for now, no crickets; Ang Silong: the same at 70%.)
+    startTownSound(this, this.fountainTile(), floorOfArea(this.area) ? 'silong' : this.area === 'slums' || this.area === 'warrens' || this.area === 'palengke' ? 'slums' : 'town');
+    if (this.area === 'slums' || this.area === 'warrens' || this.area === 'palengke' || floorOfArea(this.area)) loadWarrensSounds(); // (the gates; Ang Silong's events borrow them)
     // A battle map's sounds: each mob kind's hurt and death, the golem's attacks (the classes' skills once their data is in).
     if (this.battleMap) {
       // (A field boss that's off, or has no art yet: the Palengke's Great Scale, none of its sounds.)
@@ -919,6 +930,7 @@ export class TownScene extends Phaser.Scene {
       this.onArrivalElevator();
     }
     this.lanternTick(time);
+    this.ramonTick(time);
     this.fightTick();
     this.fxLayers.update();
     this.raceNews();
@@ -1537,7 +1549,7 @@ export class TownScene extends Phaser.Scene {
       const S = adventureData()?.stats;
       const cd = (sk && S ? cooldownOf(S, sk, sk.level) : 1) * (1 - (myBuffStats().cooldownPct ?? 0)); // (Calm Mind)
       this.castReady.set(name, now + cd * 1000);
-      this.nextCast = now + CAST_GAP_MS;
+      this.nextCast = now + CAST_GAP_MS / this.chillK(chillAttack); // (Ang Silong's Chill: slower casts)
       const dir = dirToward(m.sprite.x - this.player.sprite.x, m.sprite.y - this.player.sprite.y);
       this.player.strike(SKILL_POSE[idx] ?? 'attack-quick', dir); // (its effects come with the server's answer)
       if (idx < SKILL_SOUNDS) playSet(skillSet(c.id, name)); // your skill fires (its hits: combat-hit as they land)
@@ -1736,7 +1748,7 @@ export class TownScene extends Phaser.Scene {
     // Bringing it back: their thanks, they take it, then the rewards.
     if (o.type === 'deliver') {
       return {
-        lines: d.complete?.length ? d.complete : ['Salamat!'],
+        lines: d.complete?.length ? d.complete : ['Thank you!'],
         onDone: () =>
           void questTalk(quest.id, id).then((r) => {
             if (!r?.ok) return answered(r);
@@ -1756,7 +1768,7 @@ export class TownScene extends Phaser.Scene {
     const d = quest.dialogue ?? {};
     const last = step === quest.objectives.length - 1;
     if (o.type === 'collect') return { lines: [`${quest.summary}.`] };
-    const lines = last ? (d.report?.length ? d.report : ['Salamat, anak.']) : (d.give?.length ? d.give : ['…']);
+    const lines = last ? (d.report?.length ? d.report : ['Thank you.']) : (d.give?.length ? d.give : ['…']);
     return {
       lines,
       onDone: () => {
@@ -2341,7 +2353,7 @@ export class TownScene extends Phaser.Scene {
       }
       if (m.t === 'warrens-kick') return showKickCountdown(m.ms);
       // Ang Silong: the hatch's panel, an invite, going down (by the elevator: its cage rides first) and up, out of it,
-      // "Bumaba na kayo?", and the run's tracker.
+      // "Going down?", and the run's tracker.
       if (m.t === 'silong-gate') return showSilongGate(m.gate, (what) => link.send(what === 'open' ? { t: 'silong-open' } : what === 'practice' ? { t: 'silong-practice' } : { t: 'silong-join' }));
       if (m.t === 'silong-invite') return showWarrensInvite(m.from, m.ms, (join) => link.send(join ? { t: 'silong-join', run: m.run } : { t: 'silong-decline', run: m.run }), 'Ang Silong');
       if (m.t === 'silong-refused') {
@@ -2715,6 +2727,15 @@ export class TownScene extends Phaser.Scene {
       }
       // Someone went up a level (maybe you): "Level up!" over them with its ring and sparks, and its sound (others' near
       // you, quieter).
+      if (m.t === 'chill') return this.chillOn(m.id, charOf(m.id), m.stacks, !!m.puff);
+      if (m.t === 'silong-ramon') return this.ramonResult(m.result);
+      if (m.t === 'ramon-thanks') return this.ramonThanks(m.ok, m.message);
+      if (m.t === 'silong-cleared') {
+        // (Ang Silong cleared: Aling Conching's Atchara refill at half price from now.)
+        const q = adventure()?.quests;
+        if (q && !q.flags?.includes(SILONG_FLAGS.cleared)) (q.flags ??= []).push(SILONG_FLAGS.cleared);
+        return;
+      }
       if (m.t === 'level-up') {
         const mine = m.id === myId;
         if (!mine) this.others.setLevel(m.id, m.level);
@@ -3290,8 +3311,8 @@ export class TownScene extends Phaser.Scene {
    */
   private keyStep(): Tile | null {
     const dir = this.knockedOut || this.stunned ? null : this.heldDir();
-    // On ice with nothing held: on you slide (CONTEXT.md Ice).
-    const sliding = !dir && !this.knockedOut && !this.stunned ? this.iceSlide() : null;
+    // On ice with nothing held: on you slide (CONTEXT.md Ice). On a belt: it carries you.
+    const sliding = !dir && !this.knockedOut && !this.stunned ? (this.iceSlide() ?? this.beltCarry()) : null;
     if (sliding) return sliding;
     if (!dir) {
       this.keyWalking = false;
@@ -3344,6 +3365,31 @@ export class TownScene extends Phaser.Scene {
     }
     this.slide.left--;
     return to;
+  }
+
+  /** Ang Silong's belts (floorRules.belts): standing on one, it carries you a tile at a time its way (`>` east, `<`
+   *  west), at its speed (2 tiles a second; Belt Rush's 5 while it runs); a wall ahead: you stay. The next tile, or null.
+   *  (The server takes these steps free of your step budget: bot web/town-silong.ts `alongBelt`.) */
+  private beltCarry(): Tile | null {
+    const B = this.map.silong?.belts;
+    if (!B) return null;
+    this.beltWays ??= new Map([...B.e.map(([c, r]): [string, number] => [`${c},${r}`, 1]), ...B.w.map(([c, r]): [string, number] => [`${c},${r}`, -1])]);
+    const t = this.player.tile;
+    const d = this.beltWays.get(`${t.col},${t.row}`);
+    const now = performance.now();
+    if (!d || now < this.beltNext) return null;
+    const speed = this.beltRush && now < this.beltRush.until ? this.beltRush.speed : this.beltBase();
+    const to = { col: t.col + d, row: t.row };
+    if (!this.grid.canStep(t, to)) return null;
+    this.beltNext = now + 1000 / speed;
+    return to;
+  }
+  private beltWays: Map<string, number> | null = null;
+  private beltNext = 0;
+  private beltRush: { until: number; speed: number } | null = null;
+  /** The belts' own speed (floorRules.belts). */
+  private beltBase(): number {
+    return (this.cache.json.get('dungeons') as DungeonsData | undefined)?.silong?.floorRules.belts.speedTilesPerSec ?? 2;
   }
 
   private onIce(k: string): boolean {
@@ -3521,7 +3567,12 @@ export class TownScene extends Phaser.Scene {
     setNpcDialogArt({ box: box ? { url: asset(box.file), slice: box.nineSlice } : null, frame: frame ? { url: asset(frame.file), slice: frame.nineSlice } : null });
     const npcs = new PalengkeNpcs(this, this.objects, list, () => adventure()?.quests.done ?? []);
     // Aling Conching's menu, from her dialog box (members: a guest has no Kusing).
-    npcs.action = (id) => (id === 'aling-conching' && adventure() && adventureData()?.palengke?.dishes ? { label: '🍲 Menu', run: () => void this.openDishes() } : undefined);
+    npcs.action = (id) =>
+      id === 'aling-conching' && adventure() && adventureData()?.palengke?.dishes
+        ? { label: '🍲 Menu', run: () => void this.openDishes() }
+        : id === 'kuya-jun' && countOf(adventure()?.bag ?? [], RAMON.note) // (Mang Ramon's note, from the Silong's B2)
+          ? { label: "📜 Mang Ramon's note", run: () => void this.link?.send({ t: 'ramon-give' }) }
+          : undefined;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => npcs.destroy());
     return npcs;
   }
@@ -3534,6 +3585,7 @@ export class TownScene extends Phaser.Scene {
       unlocked: (id) => !!adventure()?.quests.done.includes(D[id]?.unlockedBy ?? ''),
       unlockedBy: (id) => questDef(D[id]?.unlockedBy ?? '')?.title ?? 'a quest',
       kusing: () => adventure()?.kusing ?? 0,
+      price: (id) => { const s = adventure(); return s ? dishPrice(s, { dishes: D }, id) : (D[id]?.kusing ?? 0); },
       on: () => myBuffs().filter((b) => b.dish),
       buy: (id) => this.buyDish(id),
       // (Her Susi ng Silong, after the finale: classes/dungeons.json silong.key.)
@@ -3602,7 +3654,85 @@ export class TownScene extends Phaser.Scene {
   private speedFactor(now = performance.now(), rice = false): number {
     // (With `rice`: the server's step budget's rule, the slower of the Bag's slow and spilled rice underfoot.)
     const slow = Math.min(now < this.slowUntil ? this.slowFactor : 1, rice ? this.riceAt(this.player.tile.col, this.player.tile.row) : 1);
-    return slow * (this.battleMap ? moveSpeedOf(myBuffStats()) : 1);
+    return slow * this.chillK(chillMove) * (this.battleMap ? moveSpeedOf(myBuffStats()) : 1);
+  }
+
+  // ── Ang Silong's Chill (the server's: bot web/town-silong.ts) ──
+
+  /** Your stacks of Chill (0 off the Silong's cold floors). */
+  private chill = 0;
+  private chillR: ChillRules | null = null;
+  /** Its icon over each chilled head (by town id). */
+  private readonly chillIcons = new Map<string, FxHandle>();
+  /** A factor of your Chill (its move or attack speed), 1 without. */
+  private chillK(f: (R: ChillRules, stacks: number) => number): number {
+    if (!this.chill) return 1;
+    const S = (this.cache.json.get('dungeons') as DungeonsData | undefined)?.silong;
+    this.chillR ??= S ? chillRules(S) : null;
+    return this.chillR ? f(this.chillR, this.chill) : 1;
+  }
+  /** Someone's Chill changed: fx-silong-chill over their head on its stacks' frame (gone at 0), fx-silong-chill-puff as a
+   *  stack lands; yours slows your walk and casts. */
+  private chillOn(id: string, ch: Character | null | undefined, stacks: number, puff: boolean): void {
+    if (id === this.myId) {
+      this.chill = stacks;
+      this.player.speed = SPEED * this.speedFactor();
+    }
+    this.chillIcons.get(id)?.kill(0);
+    this.chillIcons.delete(id);
+    if (!ch) return;
+    const head = () => ({ x: ch.sprite.x, y: ch.headY - 12 });
+    if (stacks > 0) {
+      const h = this.fxLayers.play(this.M.fx['fx-silong-chill'], head(), { layer: 'front', frames: [Math.min(3, stacks - 1)], ms: 1e9, follow: head });
+      if (h) this.chillIcons.set(id, h);
+    }
+    if (puff) this.fxLayers.play(this.M.fx['fx-silong-chill-puff'], head(), { layer: 'front', follow: head });
+    if (puff && id === this.myId) this.silongView && pidoSays(this.silongRun?.id ?? null, 'chill', (text) => this.say(`Mang Pido (radio): ${text}`, 5000, null, npcFace('mang-pido')));
+  }
+
+  // ── Mang Ramon's box (B2's R) and his note to Kuya Jun ──
+
+  /** Walking to his box after a click on it (when), and the ask once you're within 2 tiles. */
+  private ramonWanted = 0;
+  private toRamon(): void {
+    const box = this.map.silong?.ramonBox;
+    if (!box || this.knockedOut) return;
+    const t = this.player.tile;
+    if (Math.max(Math.abs(t.col - box[0]), Math.abs(t.row - box[1])) <= 2) {
+      this.ramonWanted = 0;
+      return void this.link?.send({ t: 'silong-ramon' });
+    }
+    this.ramonWanted = this.time.now;
+    this.goToTile({ col: box[0], row: box[1] }); // (the box is blocked: the walk ends beside it)
+  }
+  private ramonTick(time: number): void {
+    const box = this.map.silong?.ramonBox;
+    if (!this.ramonWanted || !box) return;
+    const t = this.player.tile;
+    if (Math.max(Math.abs(t.col - box[0]), Math.abs(t.row - box[1])) <= 2) this.toRamon();
+    else if (this.player.isIdle && time - this.ramonWanted > 400) this.ramonWanted = 0;
+  }
+  /** What his box gave. */
+  private ramonResult(result: 'given' | 'have' | 'done' | 'full' | 'far'): void {
+    if (result === 'given') {
+      playSound('coin');
+      showRamonNote();
+    } else if (result === 'have') toast("You already have Mang Ramon's note. Bring it to Kuya Jun.", 3200);
+    else if (result === 'done') toast('The box is empty now.', 2600);
+    else if (result === 'full') toast('Make room in your bag first.', 2600, 'bad');
+  }
+  /** Kuya Jun took the note: his scene, then the Mid Repair Kit. */
+  private ramonThanks(ok: boolean, message?: string): void {
+    if (!ok) return toast(message ?? "Kuya Jun can't take it right now.", 3000, 'bad');
+    const npcs = this.npcs instanceof PalengkeNpcs ? this.npcs : null;
+    const lines = [
+      "This is Mang Ramon's handwriting... I thought he was gone for good.",
+      'So he hid the honest weights in the Silong. No wonder nobody could find them.',
+      'Thank you. Here: for the gear that breaks on you down there.',
+    ];
+    const done = () => toast('Gained Mid Repair Kit', 3000, 'good');
+    if (npcs) npcs.talk('kuya-jun', this.player.tile, { lines, after: done });
+    else done();
   }
 
   private megaphone: MegaphoneBanner | null = null;

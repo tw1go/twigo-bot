@@ -7,7 +7,7 @@ import { Silong, type SilongInside, type SilongRun, loadSilong } from './town-si
 
 // Ang Silong's runs (classes/dungeons.json silong, maps/silong-b1..b3.json) on the real data: opening (a key, the
 // quest, a practice run alone), the floors' mobs and mini bosses, the elevator down opening as a floor's mini bosses
-// fall and riding (all in, or 20 s after the first; "Bumaba na kayo?"), riding up, the Ice Tanks door, the close.
+// fall and riding (all in, or 20 s after the first; "Going down?"), riding up, the Ice Tanks door, the close.
 
 const L = loadSilong({}, () => 0.5);
 const parties: Record<string, string> = { b: 'p1', c: 'p1' };
@@ -33,7 +33,7 @@ function fell(run: SilongRun, floor: 'b1' | 'b2' | 'b3', boss: string, now: numb
   return r.kills.find((k) => k.id === info.id)!;
 }
 
-test('opening: Lv 37, "Ngayon Na" done, a key; a party\'s for its party; a practice run alone at 60%', () => {
+test('opening: Lv 37, "Now\'s the Time" done, a key; a party\'s for its party; a practice run alone at 60%', () => {
   const s = silong();
   assert.equal(s.open('a', 'A', 36, () => true, 0).ok, false);
   const q = s.open('a', 'A', 40, () => true, 0, { done: false });
@@ -137,7 +137,7 @@ test("the close: 2 minutes with nobody inside (the opener's key back if no mini 
   assert.ok(n.closed && n.out.some((o) => o.member === 'a' && o.reason === 'closed'));
 });
 
-test('"Ngayon Na" (palengke-15): Mang Pido, after the finale, at Lv 37: a talk that gives the Practice Susi ng Silong', () => {
+test('"Now\'s the Time" (palengke-15): Mang Pido, after the finale, at Lv 37: a talk that gives the Practice Susi ng Silong', () => {
   const P = loadPalengkeLeveling() as unknown as PalengkeData;
   const quests: QuestDef[] = palengkeQuests(P, mobName);
   const q = quests.find((x) => x.id === 'palengke-15')!;
@@ -337,4 +337,98 @@ test('Call the Frost at 75%, 50%, 25% (two Frost Scales from the tanks side); it
   const rooms = new Set(out.room.filter(([, e]) => e.t === 'boss-move' && e.move === 'melt').map(([r]) => r));
   assert.equal(rooms.size, 3, 'every floor');
   assert.ok(f.bosses.iceBlocks.size === 0 && !f.bosses.flood);
+});
+
+// ── Loot (silong.loot) ──
+
+test('loot: a mini boss its pile and a roll a player; the Ice Machine Lv 40 gear, 50,000 Kusing, Polished Whetstones, a key now and then; a practice run Kusing only', () => {
+  let n = 0;
+  const uid = () => `u${++n}`;
+  const run = open(silong());
+  const f = run.floors.b1;
+  const kill = fell(run, 'b1', 'atsarah', 0);
+  const mini = run.lootFor('b1', kill, ['stick'], uid, () => 0.99);
+  const pile = L.data.floors[0].rooms.find((r) => r.miniBoss?.id === 'atsarah')!.miniBoss!.kusingPile;
+  assert.ok(mini.contents.some((c) => 'kusing' in c && c.kusing === pile), 'its pile');
+  assert.ok(mini.contents.some((c) => 'item' in c && c.item.defId === 'polished-whetstone'), 'unlucky: Polished Whetstones');
+  void f;
+  run.skipToPlant();
+  const boss = run.floors.b3.mobs.mobInfo('boss:makinang-yelo', 0)!;
+  const last = run.lootFor('b3', { ...kill, id: boss.id, kind: 'makinang-yelo', at: boss.at }, ['stick'], uid, () => 0);
+  const items = last.contents.flatMap((c) => ('item' in c ? [c.item] : []));
+  assert.ok(last.contents.some((c) => 'kusing' in c && c.kusing === 50_000));
+  assert.ok(items.some((i) => i.defId === L.data.key.id), 'a Susi ng Silong (1 in 10)');
+  assert.ok(items.filter((i) => L.deps.fightData.defs.get(i.defId) && 'slot' in L.deps.fightData.defs.get(i.defId)!).every((i) => i.level === 40), 'Lv 40 gear');
+  assert.ok(!items.some((i) => i.defId.includes('hat')), 'no cosmetic');
+  const s = silong();
+  const p = s.openPractice('z', 'Z', 40, () => true, 0);
+  assert.ok(p.ok);
+  const only = p.run.lootFor('b1', fell(p.run, 'b1', 'atsarah', 0), ['stick'], uid, () => 0);
+  assert.ok(only.contents.length && only.contents.every((c) => 'kusing' in c), 'Kusing only');
+});
+
+// ── Chill (floorRules.chill) ──
+
+/** The run's clock from `from` to `to` (each second) with these inside; every chill change. */
+function chillPlay(run: SilongRun, from: number, to: number, who: SilongInside[]): { id: string; stacks: number }[] {
+  const out: { id: string; stacks: number }[] = [];
+  for (let t = from; t <= to; t += 1000) {
+    run.setInside(who, t);
+    for (const [, m] of run.step(t, () => true).room) if (m.t === 'chill') out.push({ id: m.id, stacks: m.stacks });
+  }
+  return out;
+}
+
+test('Chill: a stack every 5 s standing still on B2 (up to 4), none on B1, cleared by walking 1 s or a work lamp; a Sinigang or Lugaw: none', () => {
+  const run = open(silong());
+  run.skipTo('b2');
+  const lamp = run.floors.b2.map.silong.lamps[0];
+  const far = run.floors.b2.map.silong.arriveMark;
+  const still = chillPlay(run, 0, 30_000, [me('a', 'b2', far)]);
+  assert.deepEqual(still.map((c) => c.stacks), [1, 2, 3, 4], 'a stack every 5 s, up to 4');
+  assert.equal(run.chillOf('a'), 4);
+  for (let t = 30_100; t <= 31_300; t += 200) run.stepped('a', t);
+  chillPlay(run, 31_400, 31_400, [me('a', 'b2', far)]);
+  assert.equal(run.chillOf('a'), 0, 'walked 1 s: gone');
+  chillPlay(run, 32_000, 45_000, [me('a', 'b2', far)]);
+  assert.ok(run.chillOf('a') > 0);
+  chillPlay(run, 46_000, 46_000, [me('a', 'b2', [lamp[0] + 1, lamp[1]])]);
+  assert.equal(run.chillOf('a'), 0, 'by a work lamp');
+  chillPlay(run, 47_000, 70_000, [{ ...me('a', 'b2', far), immune: true }]);
+  assert.equal(run.chillOf('a'), 0, 'a Sinigang or Lugaw on');
+  chillPlay(run, 71_000, 90_000, [me('a', 'b1', run.floors.b1.map.silong.arriveMark)]);
+  assert.equal(run.chillOf('a'), 0, 'B1 is warm');
+});
+
+test("Chill: the Freezer Breath's 2, the Brine Flood's 1 a second; none once the Ice Machine is down", () => {
+  const run = open(silong());
+  run.skipToPlant();
+  const f = run.floors.b3;
+  f.bosses.chilled.push(['t-a', 2]);
+  chillPlay(run, 0, 0, [me('a', 'b3', [40, 40])]);
+  assert.equal(run.chillOf('a'), 2);
+  f.bosses.flood = { tiles: new Set(['40,40']), until: 10_000 };
+  for (let t = 1000; t <= 2000; t += 1000) {
+    run.stepped('a', t - 100);
+    chillPlay(run, t, t, [me('a', 'b3', [40, 40])]);
+  }
+  assert.equal(run.chillOf('a'), 4, 'a stack a second in the brine (walking or not), up to 4');
+  run.onKill('b3', fell(run, 'b3', 'makinang-yelo', 3000), 3000);
+  chillPlay(run, 4000, 4000, [me('a', 'b3', [40, 40])]);
+  assert.equal(run.chillOf('a'), 0, 'the frost melts');
+});
+
+test('belts carry the mobs standing on them (2 tiles a second, Belt Rush 5); a step along a belt costs a player nothing', () => {
+  const run = open(silong());
+  run.skipToPlant();
+  const f = run.floors.b3;
+  const [c, r] = f.map.silong.belts.e[3];
+  f.mobs.addMobs([{ id: 'test-crate', kind: 'frost-scale', zone: 'plant', tile: [c, r], stats: { level: 39, hp: 100, atk: 1, def: 1, xp: 1 } }], 0);
+  const moved = f.tick(10, new Map()).filter((e) => e.t === 'mob-move' && e.id === 'test-crate');
+  assert.equal(moved.length, 1);
+  assert.deepEqual((moved[0] as { path: number[][] }).path.at(-1), [c + 1, r], 'east, a tile');
+  assert.equal(f.beltSpeed(10), 2);
+  f.bosses.rush = { until: 5000, speed: 5 };
+  assert.equal(f.beltSpeed(10), 5);
+  assert.ok(f.alongBelt([c, r], [c + 1, r]) && !f.alongBelt([c, r], [c - 1, r]) && !f.alongBelt([c, r - 2], [c + 1, r - 2]));
 });

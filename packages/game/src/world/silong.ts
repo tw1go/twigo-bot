@@ -9,6 +9,11 @@ import type { FxHandle, FxLayers, Pt } from './fx-layers';
 import type { WalkGrid } from './grid';
 import type { Mob, Mobs } from './mobs';
 import { Telegraphs } from './telegraph';
+import { type WarrensSfx, playWarrens } from '../audio/sound';
+import { BuildingLabel } from '../ui/labels';
+import type { PidoMoment } from '../ui/silong';
+import { onMap } from './clicks';
+import { LABEL_DEPTH } from './depth';
 
 // 🧊 An Ang Silong floor in the game (maps/silong-<floor>.json; the server runs the run: bot web/town-silong.ts). This
 // draws what changes and keeps the walking grid in step:
@@ -31,9 +36,40 @@ import { Telegraphs } from './telegraph';
 //   (rush), Brine Flood (flood, then fx-silong-brine on every flooded tile for its time), Call the Frost (call), its enrage
 //   (its -enraged sheets loaded then, the red eye lamps), and as it falls steam off the frost round you (`melt`, every
 //   floor). The boss bar, with its title, while you're in the Ice Plant.
+// Sounds: the Warrens' (audio/sound.ts WARRENS_SFX) on the same events until the Silong has its own, a boss's only while
+// it's on your screen: the elevator's cage and the door as the Warrens' shutter; each move's nearest Warrens sound (a lid
+// for Lid Spin, a fist for a fall or a slam, the fog for brine and breath, the burnout for a charge or Belt Rush, the
+// vanish for an Ambush or a Split, a door bursting for a call); Ang Makinang Yelo's hurt, enrage and death as
+// Barong-Barong's.
 // The props it draws are left out of the map's own (net/hood.ts silongTownMap: `silongDrawn`).
 
 const RIDE_MS = 1000;
+/** The last boss's kind, and its hurt sound at most this often. */
+const MACHINE = 'makinang-yelo';
+const HURT_MS = 300;
+/** Each boss move's sound as it's cast (`warn`, after `in` ms) and as it lands (`hit`). */
+const MOVE_SOUNDS: Record<string, { warn?: WarrensSfx; hit?: WarrensSfx }> = {
+  brineSplash: { hit: 'bag-yani-fog' },
+  lidSpin: { hit: 'celes-tin-lid-slam' },
+  riceRain: { hit: 'barong-roof-land' },
+  bellyFlop: { warn: 'barong-fist-fall', hit: 'barong-fist-slam' },
+  chairBarrage: { hit: 'barong-roof-land' },
+  split: { warn: 'bag-yani-vanish' },
+  cleaverCharge: { warn: 'tire-ranny-burnout', hit: 'crab-tain-pincer' },
+  hookShadows: { hit: 'barong-fist-slam' },
+  ambush: { warn: 'bag-yani-vanish', hit: 'barong-fist-slam' },
+  iceSlick: { hit: 'crab-tain-hunker' },
+  jarCall: { warn: 'barong-door-burst' },
+  sackCall: { warn: 'barong-door-burst' },
+  tubCall: { warn: 'barong-door-burst' },
+  hookSwing: { warn: 'barong-door-burst' },
+  callTheFrost: { warn: 'barong-door-burst' },
+  iceBlockDrop: { hit: 'barong-fist-slam' },
+  freezerBreath: { hit: 'bag-yani-fog' },
+  beltRush: { warn: 'tire-ranny-burnout', hit: 'barong-gutter-sweep' },
+  brineFlood: { hit: 'bag-yani-fog' },
+  enrage: { warn: 'barong-enrage' },
+};
 type Move = Extract<TownServerMessage, { t: 'boss-move' }>;
 type Hit = Extract<TownServerMessage, { t: 'boss-hit' }>;
 
@@ -45,6 +81,12 @@ export interface SilongHooks {
   onHit(boss: Mob | null, target: string, hit: PlayerHit, slow?: number, slowFactor?: number): void;
   /** Ice Slick: these tiles are ice for `ms` (the scene slides you on them). */
   slick(tiles: [number, number][], ms: number): void;
+  /** Belt Rush: both belts at `speed` tiles a second for `ms` (the scene's carry and the belts' animation). */
+  rush(ms: number, speed: number): void;
+  /** Mang Pido on his radio, once a run (ui/silong.ts pidoSays). */
+  radio(moment: PidoMoment): void;
+  /** Mang Ramon's box was clicked: the scene walks you there and asks for his note. */
+  ramon(): void;
 }
 
 interface Piece {
@@ -70,6 +112,9 @@ export class SilongView {
   private readonly blocks = new Map<string, { img: Phaser.GameObjects.Image; col: number; row: number; timer: Phaser.Time.TimerEvent }>();
   /** The frost melted (the last boss down): no more steam asked. */
   private melted = false;
+  private ramonZone: Phaser.GameObjects.Zone | null = null;
+  /** Mang Ramon's box's hover label (the scene sizes it with its zoom, as the gates' signs). */
+  ramonLabel: BuildingLabel | null = null;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -89,6 +134,28 @@ export class SilongView {
     // The arrival elevator's tiles are walkable as they are; its cage stays open. The way down is shut till it opens.
     for (const [c, r] of this.block.down) this.grid.block(c, r);
     for (const d of this.block.doors) for (const [c, r] of d.tiles) this.grid.block(c, r);
+    // Mang Ramon's box (B2's R): a click asks for his note.
+    const box = this.block.ramonBox;
+    if (box) {
+      const t = tileToScreen(box[0], box[1]);
+      const zone = scene.add.zone(t.x, t.y - 14, 32, 30).setDepth(LABEL_DEPTH - 2);
+      const label = new BuildingLabel(scene, "Mang Ramon's box", t.x);
+      this.ramonLabel = label;
+      zone.setInteractive({ cursor: 'pointer' });
+      zone.on('pointerover', () => label.show(t.y - 34));
+      zone.on('pointerout', () => label.show(null));
+      zone.on('pointerup', (p: Phaser.Input.Pointer) => {
+        if ((!p.leftButtonReleased() && !p.wasTouch) || !onMap(p, scene.game.canvas)) return;
+        hooks.ramon();
+      });
+      this.ramonZone = zone;
+    }
+    // (Ang Makinang Yelo's hurt and death: Barong-Barong's, while it's on your screen.)
+    mobs.kindSounds.set(MACHINE, {
+      hurtMs: HURT_MS,
+      hurt: (m) => this.sound('barong-hurt', m, { gapMs: HURT_MS }),
+      death: (m) => this.sound('barong-death', m),
+    });
     const glow = this.M.fx['fx-silong-lamp-glow'];
     for (const [c, r] of this.block.lamps) {
       const t = tileToScreen(c, r);
@@ -132,10 +199,13 @@ export class SilongView {
     if (f?.open && !this.open) {
       this.open = true;
       for (const [c, r2] of this.block.down) this.grid.unblock(c, r2);
+      this.sound('warrens-shutter-open', null);
       for (const p of this.cages) if (this.isDown(p.o)) p.img.setTexture((this.M.props['silong-elevator-open'] as PropDef | undefined)?.file ?? 'silong-elevator-open');
     }
     if (r.door && !this.doorOpen && this.block.doors.length) {
       this.doorOpen = true;
+      this.hooks.radio('door');
+      this.sound('warrens-shutter-open', null);
       for (const d of this.block.doors) for (const [c, r2] of d.tiles) this.grid.unblock(c, r2);
       const crack = this.M.fx['fx-silong-frost-crack'];
       for (const p of this.doors) {
@@ -149,6 +219,7 @@ export class SilongView {
   rideDown(at: { col: number; row: number }, then: () => void): void {
     const p = this.cages.filter((x) => this.isDown(x.o)).sort((a, b) => Math.hypot(a.o.col - at.col, a.o.row - at.row) - Math.hypot(b.o.col - at.col, b.o.row - at.row))[0];
     if (!p || matchMedia('(prefers-reduced-motion: reduce)').matches) return void this.scene.time.delayedCall(p ? 200 : 0, then);
+    this.sound('warrens-shutter-open', null);
     this.scene.tweens.add({ targets: p.img, y: p.img.y - 160, alpha: 0, duration: RIDE_MS, ease: 'Quad.easeIn', onComplete: then });
   }
 
@@ -165,6 +236,9 @@ export class SilongView {
     if (m.shape) this.telegraphs.show(m.key, m.id, m.shape, m.ms);
     this.moves.set(m.key, m);
     if (d.anim) this.poseFor(boss, String(d.anim), m.ms);
+    const sfx = MOVE_SOUNDS[m.move];
+    if (sfx?.warn) this.sound(sfx.warn, boss);
+    if (m.move === 'iceBlockDrop') this.later(m.id, Math.max(0, m.ms - 450), () => this.sound('barong-fist-fall', boss)); // (the blocks falling)
     const at = (t: [number, number]) => this.mobs.ground(t[0] + 0.5, t[1] + 0.5);
     switch (m.move) {
       case 'brineSplash':
@@ -222,6 +296,7 @@ export class SilongView {
         return;
       }
       case 'freezerBreath': {
+        this.hooks.radio('breath');
         const fan = this.block.bossTile;
         if (fan) this.keep(m.id, this.fx.play(this.M.fx['fx-silong-breath-warn-sw'], at(fan), { layer: 'ground', life: m.ms }));
         return;
@@ -252,9 +327,12 @@ export class SilongView {
     const boss = this.mobs.get(m.id) ?? null;
     const move = this.moves.get(m.key.replace(/:back$/, ''));
     if (!m.key.endsWith(':back')) this.moves.delete(m.key);
+    const sfx = MOVE_SOUNDS[m.move];
+    if (sfx?.hit) this.sound(sfx.hit, boss, { gapMs: 120 });
     const slow = move?.data?.slow as { ms: number; factor: number } | undefined;
     for (const h of m.hits) this.hooks.onHit(boss, h.id, h, slow?.ms, slow?.factor);
     const at = (t: [number, number]) => this.mobs.ground(t[0] + 0.5, t[1] + 0.5);
+    if (m.move === 'beltRush') this.hooks.rush(Number(m.data?.ms ?? 4000), Number(m.data?.speed ?? 5));
     // Ang Makinang Yelo's: its blocks stand as walls; its breath; the brine over the floor.
     const blocks = m.data?.blocks as [number, number][] | undefined;
     if (blocks?.length) for (const t of blocks) this.iceBlock(m.id, t, Number(m.data?.ms ?? 12_000));
@@ -353,9 +431,23 @@ export class SilongView {
   /** Every frame: the boss bar while you're in a mini boss's room. */
   update(): void {
     const me = this.hooks.me();
+    // (A work lamp near you on a cold floor: Mang Pido says what they're for.)
+    if (this.block.floor !== 'b1' && this.block.lamps.some(([c, r]) => Math.max(Math.abs(c - me.col), Math.abs(r - me.row)) <= 2)) this.hooks.radio('lamp');
     const room = this.block.rooms.find((r) => r.boss && inRect(r.rect, me.col, me.row));
     const m = room ? this.mobs.get(`boss:${room.boss!.id}`) : undefined;
     this.bar.show(m && !m.dead && m.mini ? { name: m.subtitle ? `${m.mini.name}, ${m.subtitle}` : m.mini.name, level: m.level, hp: m.hp, maxHp: m.maxHp, enraged: m.enraged } : null);
+  }
+
+  /** One of the Warrens' sounds for a boss's move, only while it's on your screen (any of its drawn box; none: always). */
+  private sound(name: WarrensSfx, m: Mob | null, o: { rate?: number; gapMs?: number } = {}): void {
+    if (m) {
+      const f = this.mobs.feet(m);
+      const k = m.data?.scale ?? 1;
+      const [w, h] = m.cell.size;
+      const [ax, ay] = m.cell.anchor;
+      if (!Phaser.Geom.Rectangle.Overlaps(this.scene.cameras.main.worldView, new Phaser.Geom.Rectangle(f.x - ax * k, f.y - ay * k, w * k, h * k))) return;
+    }
+    playWarrens(name, o);
   }
 
   /** The boss's anim so its attack frame (mobs.json) lands `ms` from now. */
@@ -464,6 +556,8 @@ export class SilongView {
     for (const list of this.timers.values()) for (const t of list) t.remove();
     for (const list of this.handles.values()) for (const h of list) h.kill(0);
     this.bar.destroy();
+    this.ramonZone?.destroy();
+    this.ramonLabel?.text.destroy();
     for (const b of this.blocks.values()) {
       b.timer.remove();
       b.img.destroy();

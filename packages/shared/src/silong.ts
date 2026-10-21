@@ -4,6 +4,7 @@
 // from the art folder's silong-floors.json) and a few pure rules both sides use.
 
 import type { DungeonMechanic, Rect, Tile } from './dungeons.js';
+import { numbersIn } from './stats.js';
 
 /** A floor's key: B1 (dry storage), B2 (the canteen and meat lockers), B3 (the ice plant). */
 export type SilongFloor = 'b1' | 'b2' | 'b3';
@@ -80,14 +81,49 @@ export interface SilongData {
     bossResetSeconds: number;
     mobRespawn: boolean;
   };
-  floorRules: Record<string, unknown>;
+  floorRules: {
+    chill: {
+      stackEverySecondsStill: number;
+      perStack: { moveSpeedPct: number; attackSpeedPct: number };
+      maxStacks: number;
+      /** "moving for 1 s", "standing within 2 tiles of a work lamp (L)". */
+      clears: string[];
+      immune: string;
+    };
+    belts: { speedTilesPerSec: number };
+  } & Record<string, unknown>;
   scaling: { mobHp: string; bossHp: string };
   floors: SilongFloorData[];
   lastBoss: SilongMiniBoss & { title: string; reachRadius: number };
   miniBossLook: { drawScale: number; nameColour: string };
   practiceRun: { mobHpAtkPct: number; once: boolean };
-  loot: Record<string, unknown>;
+  loot: SilongLoot;
   key: { id: string; name: string; sources: { shop: { kusing: number }; greatScaleChance: number; lastBossChance: number } };
+}
+
+/** The Silong's loot (classes/dungeons.json silong.loot): like the Warrens', a tier up (Lv 40, Polished Whetstones). */
+export interface SilongLoot {
+  gearLevel: number;
+  miniBoss: {
+    roll: {
+      affix: { chance: number; affix: Record<string, number> };
+      plain: { chance: number; colour: Record<string, number> };
+      unlucky: { chance: number; kusingTimes: number; polishedWhetstones: [number, number] };
+    };
+  };
+  lastBoss: {
+    perPlayerInside: {
+      affixGear: number;
+      affix: Record<string, number>;
+      accessories: number;
+      accessoryLevel: number;
+      kusing: number;
+      polishedWhetstones: [number, number];
+      agimatChance: number;
+      agimatLevel: number;
+      keyChance: number;
+    };
+  };
 }
 
 /** A room as a floor's map has it (its boss's tile, and its boss floor's tiles). */
@@ -151,7 +187,7 @@ export interface TownSilongGate {
   keys: number;
   inParty: boolean;
   partyRun: { id: string; inside: number; opener: string } | null;
-  /** 'level' (under minLevel), 'quest' (Ngayon Na not done: `questLine`), 'full', 'key' (none to open with). */
+  /** 'level' (under minLevel), 'quest' (Now's the Time not done: `questLine`), 'full', 'key' (none to open with). */
   blocked?: 'level' | 'quest' | 'full' | 'key';
   questLine?: string;
   /** A practice run (a Practice Susi ng Silong held): Practice run (alone); `blocked` its reason if it can't open now. */
@@ -160,3 +196,33 @@ export interface TownSilongGate {
 
 /** The floor below (none under B3). */
 export const floorBelow = (f: SilongFloor): SilongFloor | null => SILONG_FLOORS[SILONG_FLOORS.indexOf(f) + 1] ?? null;
+
+/** Chill (CONTEXT.md Chill; silong.floorRules.chill, its numbers from its sentences): a stack every `everyMs` standing
+ *  still, up to `max`; each `movePct` / `attackPct` off move and attack speed; cleared by moving `moveMs` or standing
+ *  within `lampTiles` of a work lamp; none with one of the `immune` dishes on (Sinigang, Lugaw). */
+export function chillRules(S: Pick<SilongData, 'floorRules'>) {
+  const C = S.floorRules.chill;
+  return {
+    everyMs: C.stackEverySecondsStill * 1000,
+    max: C.maxStacks,
+    movePct: C.perStack.moveSpeedPct / 100,
+    attackPct: C.perStack.attackSpeedPct / 100,
+    moveMs: (numbersIn(C.clears.find((c) => c.includes('moving')) ?? '')[0] ?? 1) * 1000,
+    lampTiles: numbersIn(C.clears.find((c) => c.includes('lamp')) ?? '')[0] ?? 2,
+    immune: ['lugaw', 'sinigang'].filter((d) => C.immune.toLowerCase().includes(d)),
+  };
+}
+export type ChillRules = ReturnType<typeof chillRules>;
+
+/** Move speed with `stacks` of Chill (1 = none; −5% a stack). */
+export const chillMove = (R: ChillRules, stacks: number) => Math.max(0.1, 1 + R.movePct * stacks);
+/** Attack speed with `stacks` of Chill (the time between casts ÷ this). */
+export const chillAttack = (R: ChillRules, stacks: number) => Math.max(0.1, 1 + R.attackPct * stacks);
+
+/** One-off things a character has done in Ang Silong (kept in `quests.flags`): cleared it once (Aling Conching's Atchara
+ *  refill at half price after), Mang Ramon's note handed to Kuya Jun (his box gives no more). */
+export const SILONG_FLAGS = { cleared: 'silong-cleared', ramonDone: 'ramon-note-done' } as const;
+/** The quest item in Mang Ramon's box (B2's R), and what Kuya Jun gives for it. */
+export const RAMON = { note: 'ramon-note', reward: 'mid-repair-kit' } as const;
+/** After the first clear: this dish at this share of its price (silong.json's "Atchara refill at half price"). */
+export const ATCHARA_REFILL = { dish: 'atchara', share: 0.5 } as const;

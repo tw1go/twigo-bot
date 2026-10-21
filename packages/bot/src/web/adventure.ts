@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { AdventureState, ClassesFile, EquipPlace, Item, QuestDef, QuestReward, QuestsFile, StatName, TownAdventureResponse, TownEquipAction, TownForgeAction, TownForgeResponse, TownPointsAction, TownQuestAction, TownSkillsAction, CosmeticPlace, TownPetAction } from '@mikazuki/shared';
-import { type ShopEvents, type PalengkeData, addToBag, advanceCollects, ringBell, buyCosmetic, dishOf, dishRefusal, expireItems, finishQuest, freeDishOf, itemName, heldCount, objectiveCount, offeredBy, palengkeQuests, questItemDrops, startDaily, startInArea, takeFromBag, unlockedAt } from '@mikazuki/shared';
+import { type ShopEvents, type PalengkeData, addToBag, advanceCollects, ringBell, buyCosmetic, dishOf, dishPrice, dishRefusal, RAMON, SILONG_FLAGS, countOf, expireItems, finishQuest, freeDishOf, itemName, heldCount, objectiveCount, offeredBy, palengkeQuests, questItemDrops, startDaily, startInArea, takeFromBag, unlockedAt } from '@mikazuki/shared';
 import { STAT_NAMES, bagSlots, classSkills, classBuffs, buffSkillLevels, damageSkillLevels, skillLevelOf, equipFromBag, giveGear, giveQuestRewards, giveQuestPieces, questKill, readyToReport, withLeveling, missingTraining, moveUnlock, newItem, placesFor, swapTrainingGear, trainingGear, takeKind, unequipToBag, wearCheck, COSMETIC_PLACES, wearCosmetic, unwearCosmetic, gainPetXp, petAction, petIdOf, petRules } from '@mikazuki/shared';
 import { db } from '../db/db.js';
 import { type LevelGain, type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView, raiseSkill, refundPoints, resetSkillPoints, resetStatPoints, spendPoint } from './progress.js';
@@ -530,7 +530,7 @@ export const refundTicketFor = (userId: string): boolean => refundKindFor(userId
 /** A Practice Warren Ticket back into their bag (their practice run ended before a boss fell): false if no room. */
 export const refundPracticeTicketFor = (userId: string): boolean => refundKindFor(userId, practiceQuest()?.ticket);
 
-// ── Ang Silong's keys (classes/dungeons.json silong.key; the Practice Susi from "Ngayon Na") ──
+// ── Ang Silong's keys (classes/dungeons.json silong.key; the Practice Susi from "Now's the Time") ──
 
 const SILONG_KEY = () => loadDungeons().silong?.key.id ?? 'susi-ng-silong';
 export const PRACTICE_SUSI = 'practice-susi-ng-silong';
@@ -545,7 +545,7 @@ export const refundSilongKeyFor = (userId: string): boolean => refundKindFor(use
 export const usePracticeSusiFor = (userId: string): boolean => useKindFor(userId, PRACTICE_SUSI);
 export const refundPracticeSusiFor = (userId: string): boolean => refundKindFor(userId, PRACTICE_SUSI);
 
-/** Who may come into Ang Silong: "Ngayon Na" done, and how many Practice Susi they hold. */
+/** Who may come into Ang Silong: "Now's the Time" done, and how many Practice Susi they hold. */
 export function silongAccessOf(userId: string): { done: boolean; practiceKeys: number } {
   const s = load(userId);
   return { done: s.quests.done.includes(SILONG_QUEST), practiceKeys: heldCount(s.bag, PRACTICE_SUSI) };
@@ -662,9 +662,59 @@ export function buyDishFor(userId: string, dish: string): string | null {
   const s = load(userId);
   const refused = dishRefusal(s, QUESTS, PALENGKE, dish);
   if (refused) return refused;
-  s.kusing -= dishOf(PALENGKE, dish)!.kusing;
+  s.kusing -= dishPrice(s, PALENGKE, dish);
   save(userId, s);
   return null;
+}
+
+// ── Ang Silong's one-offs (shared silong.ts SILONG_FLAGS, RAMON) ──
+
+/** A flag in their quests (kept with them); false if they had it. */
+function flag(s: AdventureState, f: string): boolean {
+  const flags = (s.quests.flags ??= []);
+  if (flags.includes(f)) return false;
+  flags.push(f);
+  return true;
+}
+
+/** They were inside as Ang Makinang Yelo fell: cleared Ang Silong (Aling Conching's Atchara refill at half price). */
+export function silongClearedFor(userId: string): void {
+  const s = load(userId);
+  if (flag(s, SILONG_FLAGS.cleared)) save(userId, s);
+}
+
+/** Mang Ramon's box on B2: his note into their bag (its quest pocket), unless they hold it or have handed it in. */
+export function ramonBoxFor(userId: string): 'given' | 'have' | 'done' | 'full' {
+  const data = loadItemData();
+  const def = data.defs.get(RAMON.note);
+  return withItems(
+    userId,
+    (s): 'given' | 'have' | 'done' | 'full' => {
+      if (s.quests.flags?.includes(SILONG_FLAGS.ramonDone)) return 'done';
+      if (countOf(s.bag, RAMON.note)) return 'have';
+      if (!def || !takeLoot(data, s, { item: newItem(data.stats, def, newUid()) }, newUid)) return 'full';
+      return 'given';
+    },
+    (r) => r === 'given',
+  );
+}
+
+/** Mang Ramon's note to Kuya Jun: taken, a Mid Repair Kit for it, never again. Why not, or null. */
+export function ramonGiveFor(userId: string): string | null {
+  const data = loadItemData();
+  const kit = data.defs.get(RAMON.reward);
+  return withItems(
+    userId,
+    (s): string | null => {
+      if (s.quests.flags?.includes(SILONG_FLAGS.ramonDone)) return 'He already has it.';
+      if (!countOf(s.bag, RAMON.note) || !kit) return "You don't have Mang Ramon's note.";
+      takeKind(s.bag, RAMON.note, 1);
+      if (!takeLoot(data, s, { item: newItem(data.stats, kit, newUid()) }, newUid)) return 'Make room in your bag first.';
+      flag(s, SILONG_FLAGS.ramonDone);
+      return null;
+    },
+    (why) => why === null,
+  );
 }
 
 /** The quest items a kill of `kind` drops for them (CONTEXT.md Quest item: only while a quest asks, at its dropChance),

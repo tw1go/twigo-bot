@@ -628,7 +628,7 @@
   },
   {
    "id": "palengke-15",
-   "title": "Ngayon Na",
+   "title": "Now's the Time",
    "giver": "mang-pido",
    "kind": "talk",
    "unlockLevel": 37,
@@ -648,11 +648,11 @@
    ],
    "dialogue": {
     "give": [
-     "Hindi pa oras noon. Ngayon, oras na. Bantayan mo ang sarili mo diyan, malamig."
+     "It wasn't time before. Now it is. Watch yourself down there: it's cold."
     ],
     "report": [
-     "Ito ang susi ng Silong. Isang beses lang 'to, anak: para makita mo muna ang loob. Bumalik ka nang buo.",
-     "Pag handa ka na talaga, kay Aling Conching ka bumili ng susi."
+     "This is a key to the Silong. It works once: a first look inside. Come back in one piece.",
+     "When you're truly ready, buy your keys from Aling Conching."
     ]
    },
    "note": "Repo addition (20 Oct 2026): the Silong's quest (the art folder's silong brief): its Practice Susi opens one practice run."

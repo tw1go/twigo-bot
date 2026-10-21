@@ -170,7 +170,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   (built here: `scripts/build-silong.ts`), `items/items.json` `susi-ng-silong` / `practice-susi-ng-silong` / `ramon-note`,
   the manifest's `tiles.silong` (rim and cap borrowed from the Slums': no Silong art), `silong-*` props, `fx-silong-*`
   and the four frost mobs, `mobs/mobs.json` their entries, `maps/palengke.json` `arrive.silong`, stats.json
-  `mobBehaviour.sameAs`, `classes/palengke-leveling.json` `palengke-15` (Ngayon Na), palengke-14's `nextUnlock` 37 and
+  `mobBehaviour.sameAs`, `classes/palengke-leveling.json` `palengke-15` (Now's the Time), palengke-14's `nextUnlock` 37 and
   `dailies.unlockedBy`. Ang Makinang Yelo (21 Oct 2026): the manifest's `mobs['makinang-yelo']` (its `hitFrames` guessed
   from the demo gif) and `mobs/mobs.json` `makinang-yelo` (`noShadow`, `radius`, `top`, `frame`, `attackFrame`); the art
   is the art folder's mobs/makinang-yelo as it is (its stand sheet left out: nothing uses it).
@@ -992,14 +992,14 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   opens runs at the Silong Hatch (the Palengke's `palengke-silong-hatch`, from 3 tiles: its panel `silong-gate`) with a
   Susi ng Silong (`susi-ng-silong`, items.json; Aling Conching sells it after the finale: her menu's key row, the
   `dish-buy` of its id, `buySilongKeyFor`), for one or the party (an invite for the party in the Palengke, 20 s;
-  joiners later through the hatch, no key; one run a party), once "Ngayon Na" (palengke-15) is done; no gathering: it
+  joiners later through the hatch, no key; one run a party), once "Now's the Time" (palengke-15) is done; no gathering: it
   starts at once, 45 minutes. `SilongRun` has three floors, each its own room `silong:<id>:<floor>` with its own copy of
   the map and MobRoom (rooms' numbers as `zoneStats`, the frost kinds living as their originals: stats.json
   mobBehaviour `sameAs`, a repo addition), its mini bosses at 2.5× with two guards; mobs never respawn; HP scales with
   those inside; a mini boss resets after 10 s with nobody alive in its room. Both of a floor's mini bosses down: its
   elevator down opens (its X tiles unblocked on the server's map and the page's walk grid), and rides when every living
-  player on that floor stands in it, or 20 s after the first steps in (the others on that floor asked "Bumaba na
-  kayo?", `silong-ride-ask`; yes rides them along) → `silong-go` {ride: 'down'}: the cage slides up 1 s, then the next
+  player on that floor stands in it, or 20 s after the first steps in (the others on that floor asked "Going
+  down?", `silong-ride-ask`; yes rides them along) → `silong-go` {ride: 'down'}: the cage slides up 1 s, then the next
   floor's page. From an arrival elevator (E) the ride-up box (floors above the run has reached, `silong-up`). B3's Ice
   Tanks door opens as Frosty Tubbs falls (frost-crack, the open door, its tiles unblocked). Death: back at the arrival
   elevator of the deepest floor reached (town.ts `respawn` sends `silong-go`). The key's spent once a mini boss falls
@@ -1029,8 +1029,25 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `boss-move` 'melt' on every floor. Game: `world/silong.ts` (the warn on each tile, the block's shadow and fall, the
   block on the walk grid and its break; the breath's warn at the fan then `breath`; the brine on every flooded tile;
   `call`; the enrage anim then the -enraged sheets; steam off the frost within 18 tiles of you as it falls), its boss
-  bar with its title in the Ice Plant. Its loot, Chill, the belts carrying you, Mang Pido's radio and the rest come in
-  part 4 (no drops yet). Dev: `?silong=solo` / `?silong=b3` (the dev server's `/__silong`: a free run, every mini boss
+  bar with its title in the Ice Plant. Part 4 (21 Oct 2026): its loot (`SilongRun.lootFor`, loot.ts `silongMiniLoot` /
+  `silongBossLoot` / `silongMobDrops`: the Warrens' a tier up, Lv 40 gear, Polished Whetstones, the Ice Machine's key 1
+  in 10; town.ts `silongDrop`, everything on the floor for anyone on it; a practice run Kusing only) and the Great
+  Scale's Susi ng Silong 1 in 4 (`fieldBossLoot`'s `key`); Chill (CONTEXT.md Chill; shared `chillRules` / `chillMove` /
+  `chillAttack`; `SilongRun.chill` each second: a stack per 5 s still on a `chill` floor, the Freezer Breath's
+  (`FloorBosses.chilled`) and the Brine Flood's 1 a second, cleared by walking 1 s (`stepped`), a lamp within 2, a
+  Sinigang or Lugaw (`immune`), a knock-out, gone for good once cleared; `chill` {id, stacks, puff} to the floor; the
+  step budget × `chillMove`; the page's walk and cast gap too, fx-silong-chill over the head on its stack's frame and
+  fx-silong-chill-puff); belts (CONTEXT.md Belt; `Floor.carry` moves mobs standing on one a tile at its speed,
+  `MobRoom.standingOn`; the page's `beltCarry` steps you along, free of the step budget: `Floor.alongBelt`; Belt Rush
+  both at 5 for its time, the belts' animation faster: `Terrain.speedUp`); Mang Pido's radio (ui/silong.ts
+  `pidoSays`/`PIDO_LINES`: the first Chill, the first work lamp, the B3 door, the first Freezer Breath, once a run in
+  the tab, a toast with his face: palengke-npcs `npcFace`); Mang Ramon's box on B2 (`silong-ramon` from 2 tiles:
+  `ramonBoxFor`, his note once; the note pop-up) and Kuya Jun's "📜 Mang Ramon's note" (`ramon-give` → `ramonGiveFor`:
+  a Mid Repair Kit, `quests.flags` ramon-note-done; his three lines); a clear (`silong-cleared`, `silongClearedFor`:
+  `quests.flags` silong-cleared) puts the Atchara at half price (shared `dishPrice`, the menu's "Half price"); sounds:
+  the Warrens' on its events (world/silong.ts `MOVE_SOUNDS`, only while the boss is on screen; the Ice Machine's hurt,
+  enrage and death as Barong-Barong's) and the Warrens' (the Slums') music at 70%. Tested in town-silong.test.ts and
+  silong-story.test.ts. Dev: `?silong=solo` / `?silong=b3` (the dev server's `/__silong`: a free run, every mini boss
   above that floor down; `&floor=plant`: B3 with Frosty Tubbs down and the door open, `&hp=` the machine's HP),
   `?give=susi-ng-silong::2`.
 - Lantern Posts (teleporting between maps; words in CONTEXT.md: Map, Lantern Post, Return Lantern, Map menu, Teleport,
