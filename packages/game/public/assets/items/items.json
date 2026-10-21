@@ -706,7 +706,10 @@
       "rarity": "white",
       "bound": true,
       "about": "Aling Rosa's suki card, from Tisay. It does nothing. It means a lot.",
-      "note": "Repo addition (20 Oct 2026): a Lumang Palengke quest item (classes/palengke-leveling.json questItems); no art yet."
+      "note": "Repo addition (20 Oct 2026): a Lumang Palengke quest item (classes/palengke-leveling.json questItems); no art yet.",
+      "icon": "items/quest/item-quest-suki-card-16.png",
+      "showcase": "items/quest/item-quest-suki-card.png",
+      "large": "items/quest/item-quest-suki-card-64.png"
     },
     {
       "id": "return-lantern",
