@@ -1,0 +1,20 @@
+file,cell_w,cell_h,frames,fps,loop,anchor_x,anchor_y,notes
+mob-makinang-yelo-idle-sw.png,304,306,8,8,yes,153,199,Ang Makinang Yelo idle; faces down-left (screen SW) from the Ice Plant's NE corner
+mob-makinang-yelo-drop-sw.png,304,306,9,12,no,153,199,Ang Makinang Yelo drop; faces down-left (screen SW) from the Ice Plant's NE corner
+mob-makinang-yelo-breath-charge-sw.png,304,306,12,12,no,153,199,Ang Makinang Yelo breath-charge; faces down-left (screen SW) from the Ice Plant's NE corner
+mob-makinang-yelo-breath-sw.png,304,306,4,14,yes,153,199,Ang Makinang Yelo breath; faces down-left (screen SW) from the Ice Plant's NE corner
+mob-makinang-yelo-rush-sw.png,304,306,9,12,no,153,199,Ang Makinang Yelo rush; faces down-left (screen SW) from the Ice Plant's NE corner
+mob-makinang-yelo-flood-sw.png,304,306,10,10,no,153,199,Ang Makinang Yelo flood; faces down-left (screen SW) from the Ice Plant's NE corner
+mob-makinang-yelo-call-sw.png,304,306,8,12,no,153,199,Ang Makinang Yelo call; faces down-left (screen SW) from the Ice Plant's NE corner
+mob-makinang-yelo-hit-sw.png,304,306,3,12,no,153,199,Ang Makinang Yelo hit; faces down-left (screen SW) from the Ice Plant's NE corner
+mob-makinang-yelo-idle-enraged-sw.png,304,306,8,8,yes,153,199,Ang Makinang Yelo idle-enraged; faces down-left (screen SW) from the Ice Plant's NE corner
+mob-makinang-yelo-drop-enraged-sw.png,304,306,9,12,no,153,199,Ang Makinang Yelo drop-enraged; faces down-left (screen SW) from the Ice Plant's NE corner
+mob-makinang-yelo-breath-charge-enraged-sw.png,304,306,12,12,no,153,199,Ang Makinang Yelo breath-charge-enraged; faces down-left (screen SW) from the Ice Plant's NE corner
+mob-makinang-yelo-breath-enraged-sw.png,304,306,4,14,yes,153,199,Ang Makinang Yelo breath-enraged; faces down-left (screen SW) from the Ice Plant's NE corner
+mob-makinang-yelo-rush-enraged-sw.png,304,306,9,12,no,153,199,Ang Makinang Yelo rush-enraged; faces down-left (screen SW) from the Ice Plant's NE corner
+mob-makinang-yelo-flood-enraged-sw.png,304,306,10,10,no,153,199,Ang Makinang Yelo flood-enraged; faces down-left (screen SW) from the Ice Plant's NE corner
+mob-makinang-yelo-call-enraged-sw.png,304,306,8,12,no,153,199,Ang Makinang Yelo call-enraged; faces down-left (screen SW) from the Ice Plant's NE corner
+mob-makinang-yelo-hit-enraged-sw.png,304,306,3,12,no,153,199,Ang Makinang Yelo hit-enraged; faces down-left (screen SW) from the Ice Plant's NE corner
+mob-makinang-yelo-enrage-sw.png,304,306,10,10,no,153,199,Ang Makinang Yelo enrage; faces down-left (screen SW) from the Ice Plant's NE corner
+mob-makinang-yelo-death-sw.png,304,306,16,8,no,153,199,Ang Makinang Yelo death; faces down-left (screen SW) from the Ice Plant's NE corner
+mob-makinang-yelo-stand-sw.png,304,306,1,0,no,153,199,standing frame (Mac PixelLab, flipped to face down-left)

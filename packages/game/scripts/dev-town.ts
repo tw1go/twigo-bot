@@ -40,7 +40,8 @@ import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
 //       it must and plays its whole fight against the nearest player (?golemdemo=1): each attack, the Junk at a pretend
 //       half, Enrage at a pretend quarter, death (the line names Alice if nobody hit it)
 //   GET /__silong?as=Alice   an Ang Silong run for Alice, free, started at once (the page's ?silong=solo; it then goes
-//       down); &floor=b3: every mini boss above that floor down, the floors reached (?silong=b3)
+//       down); &floor=b3: every mini boss above that floor down, the floors reached (?silong=b3); &floor=plant: B3 with
+//       Frosty Tubbs down and the Ice Tanks door open (Ang Makinang Yelo next; &hp=1000: it down to that HP)
 //   GET /__greatscale   the Great Scale wakes in the Lumang Palengke now (the page's ?greatscale=now); &hp=500 puts it
 //       (awake) down to 500 HP, so a hit or two fells it and its bell rings
 //   GET /__halloween?as=Alice   the Halloween event on now (the page's ?halloween=on calls it); &mikko=1 hides Mikko
@@ -433,6 +434,7 @@ export function devTown(): Plugin {
         { director: halloween.director },
       );
       const warrensLive = loadWarrens(Object.fromEntries(classes.map((c) => [c.id, c.skills.map((k) => k.level)])));
+      const ramonDone = new Set<string>();
       const silongLive = loadSilong(Object.fromEntries(classes.map((c) => [c.id, c.skills.map((k) => k.level)])));
       const town = attachTown(httpServer as Parameters<typeof attachTown>[0], {
         map: { size: json.size, spawn: json.spawn, blocked: json.blocked, avoid: Object.values((json.gates ?? {}) as Record<string, [number, number][]>).flat(), lanterns: lanternPostsOf(json) },
@@ -526,6 +528,24 @@ export function devTown(): Plugin {
             if (!devGive(items, g, 'susi-ng-silong', {}, devUid)) return 'Your bag is full.';
             g.kusing -= 200_000;
             return null;
+          },
+          cleared: (names) => server.config.logger.info(`[silong] cleared by ${names.join(', ')}`, { timestamp: true }),
+          // Mang Ramon's box and Kuya Jun's thanks on the kept bag (whether he has the note: in memory here).
+          ramon: {
+            box: (name) => {
+              const g = gearOf(name);
+              if (ramonDone.has(name)) return 'done';
+              if (g.bag.some((i) => i?.defId === 'ramon-note')) return 'have';
+              return devGive(items, g, 'ramon-note', {}, devUid) ? 'given' : 'full';
+            },
+            give: (name) => {
+              const g = gearOf(name);
+              if (ramonDone.has(name)) return 'He already has it.';
+              if (!takeKind(g.bag, 'ramon-note', 1)) return "You don't have Mang Ramon's note.";
+              if (!devGive(items, g, 'mid-repair-kit', {}, devUid)) return 'Make room in your bag first.';
+              ramonDone.add(name);
+              return null;
+            },
           },
           saved: (runs) => server.config.logger.info(`[silong] open runs: ${runs.map((r) => `${r.id} (${r.opener}${r.spent ? ', key spent' : ''})`).join(', ') || 'none'}`, { timestamp: true }),
         },
@@ -972,7 +992,7 @@ export function devTown(): Plugin {
       server.middlewares.use('/__silong', (req, res) => {
         const q = new URL(req.url ?? '/', 'http://localhost').searchParams;
         const f = q.get('floor');
-        reply(res, town.silongDev(q.get('as') ?? '', f === 'b1' || f === 'b2' || f === 'b3' ? f : undefined));
+        reply(res, town.silongDev(q.get('as') ?? '', f === 'b1' || f === 'b2' || f === 'b3' || f === 'plant' ? f : undefined, Number(q.get('hp')) || undefined));
       });
       server.middlewares.use('/__minibosses', (_req, res) => {
         res.end(`${slumsMobs.respawnMinis() + (palengkeMobs?.respawnMinis() ?? 0)} mini bosses back\n`);

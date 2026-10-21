@@ -216,6 +216,8 @@ export interface PlayerLanding extends PlayerHit {
   /** A thrown chair: it hits only if they're within `within` tiles of `tile` as it lands. */
   tile?: [number, number];
   within?: number;
+  /** A slow's strength (the share of their speed left: Brine Splash's 0.7); none: the usual half. */
+  slowFactor?: number;
   /** The Great Scale's Weigh-in: held on its pan this long (ms; 0: let go): no steps, attacks or moves. */
   hold?: number;
   /** A share of their most HP off (held on the pan: each second's squeeze), on top of `damage`. */
@@ -451,6 +453,9 @@ interface Mob {
   /** A mini boss (its leveling.json entry): back at its own spot; who has done how much of its HP (members). */
   mini?: MiniBossDef;
   dealt?: Map<string, number>;
+  /** A front block a director set (Sangkalancelot's shell): `share` of a hit from the quarter it faces taken off (1: all,
+   *  shown "Blocked"), except until `openUntil`. */
+  frontBlock?: { share: number; openUntil: number };
   /** A field boss (MobSpec.field), and asleep (`dormant`). */
   field?: boolean;
   dormant?: boolean;
@@ -1272,6 +1277,8 @@ export class MobRoom {
     const [mc, mr] = this.at(m, now);
     this.rally(m, player, now);
     if (m.blockAll || (m.kind.shell && now >= m.openUntil)) return { id: m.id, damage: 0, crit: false, hp: m.hp, dead: false, blocked: true };
+    // A director's front block (its shell): all of a hit from its front, unless it's open.
+    if (m.frontBlock && m.frontBlock.share >= 1 && now >= m.frontBlock.openUntil && from && this.fromFront(m, [mc, mr], from, now)) return { id: m.id, damage: 0, crit: false, hp: m.hp, dead: false, blocked: true };
     const rolled = by.blinded ? MISSED : rollHit(this.fightData.stats, by, m.stats, pct, this.random);
     const { crit, miss } = rolled;
     if (miss) return { id: m.id, damage: 0, crit: false, hp: m.hp, dead: false, miss };
@@ -1493,9 +1500,15 @@ export class MobRoom {
   }
 
   /** A boss's windows: can't be targeted or hit, every hit blocked. */
-  setFlags(id: string, flags: { untargetable?: boolean; blockAll?: boolean; dormant?: boolean }): MobEvent[] {
+  setFlags(id: string, flags: { untargetable?: boolean; blockAll?: boolean; dormant?: boolean; hidden?: boolean }): MobEvent[] {
     const m = this.byId.get(id);
     if (!m) return [];
+    // Under the ice (Frosty Tubbs' Ambush): not drawn and not to be targeted, as a Lurker lies in wait.
+    if (flags.hidden !== undefined) {
+      Object.assign(m, { hidden: flags.hidden || undefined, untargetable: flags.hidden || undefined });
+      if (flags.hidden) m.foe = null;
+      return [{ t: 'mob-flag', id, hidden: !!m.hidden, untargetable: !!m.untargetable }];
+    }
     // Asleep (a field boss between fights): still and not to be targeted; awake: neither.
     if (flags.dormant !== undefined) Object.assign(m, { dormant: flags.dormant || undefined, still: flags.dormant || undefined, untargetable: flags.dormant || undefined });
     if (flags.untargetable !== undefined) m.untargetable = flags.untargetable || undefined;
@@ -1547,6 +1560,19 @@ export class MobRoom {
     return [{ t: 'mob-move', id, path: [[c0, r0], ...path], speed }];
   }
 
+  /** Spilled rice on a tile (a director's: Sakristan's Rice Rain) from `from` until `until` (ms): walking there at `slow`
+   *  of the speed. The `mob-fx` to send. */
+  spill(at: [number, number], from: number, until: number, slow: number, now: number): MobEvent {
+    this.patches.push({ at, from, until, slow });
+    return { t: 'mob-fx', fx: 'rice', at, in: Math.max(0, from - now), ms: until - from, slow };
+  }
+
+  /** A front block on a mob (a director's: its shell), `share` of a hit from its front taken off; `open` until then. */
+  frontBlock(id: string, share: number, openUntil = 0): void {
+    const m = this.byId.get(id);
+    if (m) m.frontBlock = { share, openUntil };
+  }
+
   /** A boss walks back to its own tile (a field boss resetting), at its pace. */
   walkHome(id: string, now: number): MobEvent[] {
     const m = this.byId.get(id);
@@ -1588,7 +1614,7 @@ export class MobRoom {
   }
 
   /** Lands a hit on a player at `at` (ms) with a slow or a stun (ms) on a hit. */
-  land(player: string, by: string, hit: PlayerHit, at: number, extra: { slow?: number; stun?: number; hold?: number; hpPct?: number; strip?: boolean } = {}): void {
+  land(player: string, by: string, hit: PlayerHit, at: number, extra: { slow?: number; slowFactor?: number; stun?: number; hold?: number; hpPct?: number; strip?: boolean } = {}): void {
     this.landings.push({ at, player, by, ...hit, ...(hit.miss ? {} : extra) });
   }
 
@@ -1596,6 +1622,17 @@ export class MobRoom {
   open(col: number, row: number): boolean {
     const [cols, rows] = this.map.size;
     return col >= 0 && row >= 0 && col < cols && row < rows && !this.map.blocked[row]?.[col];
+  }
+
+  /** Living mobs standing still (no hop under way) on tiles `on` passes, the director's to move (Ang Silong's belts carry
+   *  them); never one that never moves (a still boss) or lies hidden. */
+  standingOn(on: (col: number, row: number) => boolean, now: number): { id: string; col: number; row: number }[] {
+    return this.mobs.flatMap((m) => {
+      if (m.respawnAt || m.still || m.hidden) return [];
+      if (m.path.length && ((now - m.hopAt) / 1000) * m.hopSpeed < m.path.length) return [];
+      const [col, row] = this.at(m, now);
+      return on(col, row) ? [{ id: m.id, col, row }] : [];
+    });
   }
 
   /** Whether a living mob stands on a tile (or is headed there). */

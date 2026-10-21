@@ -1,4 +1,4 @@
-import { type EquipSlot, type EquipmentDef, type FieldBossLoot, type GearRarity, type ItemData, type Item, type Odds, type WarrensData, agimatSlots, boosted, cascade, gearKind, isGearDef, itemStats, kusingFor, kusingRange, mobStats, nearestGearLevel, newAgimat, newItem, numbersIn, rollGear } from '@mikazuki/shared';
+import { type EquipSlot, type EquipmentDef, type FieldBossLoot, type GearRarity, type ItemData, type Item, type Odds, type SilongData, type WarrensData, agimatSlots, boosted, cascade, gearKind, isGearDef, itemStats, kusingFor, kusingRange, mobStats, nearestGearLevel, newAgimat, newItem, numbersIn, rollGear } from '@mikazuki/shared';
 import type { LootContent } from './combat-bag.js';
 
 // 🎲 What a kill drops, rolled on the server by stats.json (rarity.mobGearDrop and bossGearDrop, potions, currencies,
@@ -164,7 +164,7 @@ export function fieldBossTable(data: ItemData, kind: string): FieldBossLoot {
  *  Polished for the Great Scale), 1-2 affix gear pieces at its levels (its own `gearLevel` and `affix`, else
  *  rarity.bossGearDrop's), now and then an accessory, an agimat, the Lamp-head Hat (the golem's) and a Mid Repair Kit
  *  (the Great Scale's); `ticketChance`: a Warren Ticket that often too. */
-export function fieldBossLoot(data: ItemData, P: FieldBossLoot, random: () => number, uid: () => string, plusRandom = random, ticketChance = 0, boost = 0): LootContent[] {
+export function fieldBossLoot(data: ItemData, P: FieldBossLoot, random: () => number, uid: () => string, plusRandom = random, ticketChance = 0, boost = 0, key?: { id: string; chance: number }): LootContent[] {
   const S = itemStats(data.stats);
   const B = S.rarity.bossGearDrop;
   const out: LootContent[] = [{ kusing: P.kusing }];
@@ -197,14 +197,16 @@ export function fieldBossLoot(data: ItemData, P: FieldBossLoot, random: () => nu
     if (kit) out.push({ item: newItem(data.stats, kit, uid()) });
   }
   ticket(data, ticketChance, random, uid, out, boost);
+  // (The Great Scale's: a Susi ng Silong now and then.)
+  if (key) ticket(data, key.chance, random, uid, out, boost, key.id);
   return out;
 }
 
 // ── The Scrap Warrens (classes/dungeons.json warrens.loot) ──
 
-/** A Warren Ticket, `chance` of the time (Drop rate raises it). */
-function ticket(data: ItemData, chance: number, random: () => number, uid: () => string, out: LootContent[], boost = 0): void {
-  const def = data.defs.get('warren-ticket');
+/** A Warren Ticket (or another item: `id`), `chance` of the time (Drop rate raises it). */
+function ticket(data: ItemData, chance: number, random: () => number, uid: () => string, out: LootContent[], boost = 0, id = 'warren-ticket'): void {
+  const def = data.defs.get(id);
   if (def && chance > 0 && random() < boosted(chance, boost)) out.push({ item: newItem(data.stats, def, uid()) });
 }
 
@@ -226,9 +228,9 @@ function classGear(data: ItemData, level: number, cls: string | null): Equipment
   return mine.length ? mine : all;
 }
 
-/** The Rough Whetstones `n` of them. */
-const whetstones = (data: ItemData, n: number, uid: () => string): LootContent | null => {
-  const def = [...data.defs.values()].find((d) => !isGearDef(d) && d.shop === 'whetstone' && d.tier === 'low');
+/** The Rough Whetstones (or a tier's: Polished, 'mid') `n` of them. */
+const whetstones = (data: ItemData, n: number, uid: () => string, tierId = 'low'): LootContent | null => {
+  const def = [...data.defs.values()].find((d) => !isGearDef(d) && d.shop === 'whetstone' && d.tier === tierId);
   return def && n > 0 ? { item: newItem(data.stats, def, uid(), n) } : null;
 };
 
@@ -304,6 +306,75 @@ export function warrensMobDrops(data: ItemData, W: WarrensData, kind: string, le
   for (const [i, l] of out.entries()) {
     if (!('item' in l) || !isGearDef(data.defs.get(l.item.defId))) continue;
     const kinds = dropGear(data, W.loot.gearLevel);
+    if (kinds.length) out[i] = { item: dropped(data, pick(kinds, random), l.item.rarity as GearRarity, uid(), random, plusRandom, boost) };
+  }
+  return out;
+}
+
+// ── Ang Silong (classes/dungeons.json silong.loot): the Warrens' a tier up ──
+
+/** A Silong mini boss's loot (silong.loot.miniBoss): its Kusing pile, then a roll for each player inside — an affix item
+ *  (blue or orange; its slots by rarity.bossGearDrop), a plain one (white or grey), or unlucky (3 × its level's Kusing and
+ *  a few Polished Whetstones). Gear at Lv 40 for a class picked from `classes` (the players inside). */
+export function silongMiniLoot(data: ItemData, S: SilongData, boss: { level: number; kusingPile?: number }, classes: (string | null)[], players: number, random: () => number, uid: () => string, plusRandom = random, boost = 0): LootContent[] {
+  const R = S.loot.miniBoss.roll;
+  const slots = itemStats(data.stats).rarity.bossGearDrop.slots;
+  const out: LootContent[] = boss.kusingPile ? [{ kusing: boss.kusingPile }] : [];
+  const cls = () => pick(classes.length ? classes : [null], random);
+  for (let n = 0; n < Math.max(1, players); n++) {
+    const roll = cascade<'affix' | 'plain' | 'unlucky'>([['affix', R.affix.chance], ['plain', R.plain.chance], ['unlucky', Math.max(0, 1 - R.affix.chance - R.plain.chance)]], random, boost);
+    if (roll !== 'unlucky') {
+      const kinds = classGear(data, S.loot.gearLevel, cls());
+      if (!kinds.length) continue;
+      const rarity = roll === 'affix' ? affixColour(data, R.affix.affix, slots, random, boost) : (byOdds(data, R.plain.colour, random, boost) as GearRarity);
+      out.push({ item: dropped(data, pick(kinds, random), rarity, uid(), random, plusRandom, boost) });
+      continue;
+    }
+    out.push({ kusing: R.unlucky.kusingTimes * kusingFor(data.stats, boss.level) });
+    const stones = whetstones(data, between(R.unlucky.polishedWhetstones, random), uid, 'mid');
+    if (stones) out.push(stones);
+  }
+  return out;
+}
+
+/** Ang Makinang Yelo's loot (silong.loot.lastBoss), for each player inside: affix gear (Lv 40, a class from `classes`),
+ *  Lv 40 accessories, 50,000 Kusing, Polished Whetstones, now and then a Lv 40 agimat and a Susi ng Silong. No cosmetic. */
+export function silongBossLoot(data: ItemData, S: SilongData, classes: (string | null)[], players: number, random: () => number, uid: () => string, plusRandom = random, boost = 0): LootContent[] {
+  const P = S.loot.lastBoss.perPlayerInside;
+  const slots = itemStats(data.stats).rarity.bossGearDrop.slots;
+  const out: LootContent[] = [];
+  const cls = () => pick(classes.length ? classes : [null], random);
+  for (let n = 0; n < Math.max(1, players); n++) {
+    for (let k = 0; k < P.affixGear; k++) {
+      const kinds = classGear(data, S.loot.gearLevel, cls());
+      if (kinds.length) out.push({ item: dropped(data, pick(kinds, random), affixColour(data, P.affix, slots, random, boost), uid(), random, plusRandom, boost) });
+    }
+    for (let k = 0; k < P.accessories; k++) {
+      const kinds = dropGear(data, P.accessoryLevel, true);
+      if (kinds.length) out.push({ item: dropped(data, pick(kinds, random), affixColour(data, P.affix, { 1: 1 }, random, boost), uid(), random, plusRandom, boost) });
+    }
+    out.push({ kusing: P.kusing });
+    const stones = whetstones(data, between(P.polishedWhetstones, random), uid, 'mid');
+    if (stones) out.push(stones);
+    if (random() < boosted(P.agimatChance, boost)) {
+      const stat = rollAgimatStat(data, random);
+      const def = [...data.defs.values()].find((d) => !isGearDef(d) && d.kind === 'agimat' && d.stat === stat);
+      if (def && !isGearDef(def)) out.push({ item: newAgimat(data.stats, def, P.agimatLevel, uid()) });
+    }
+    ticket(data, P.keyChance, random, uid, out, boost, S.key.id);
+  }
+  return out;
+}
+
+/** A Silong room mob's drops: a Palengke mob's (its gear chance and potions), its Kusing from its room's `kusing`, its
+ *  gear at the loot's level (40). */
+export function silongMobDrops(data: ItemData, S: SilongData, kind: string, level: number, kusing: number, random: () => number, uid: () => string, plusRandom = random, boost = 0): LootContent[] {
+  const out = mobDrops(data, kind, level, random, uid, plusRandom, boost, 'palengke');
+  const [lo, hi] = itemStats(data.stats).currencies.kusingPerMobRange ?? [0.6, 1.2];
+  out[0] = { kusing: Math.round(kusing * (lo + random() * (hi - lo))) };
+  for (const [i, l] of out.entries()) {
+    if (!('item' in l) || !isGearDef(data.defs.get(l.item.defId))) continue;
+    const kinds = dropGear(data, S.loot.gearLevel);
     if (kinds.length) out[i] = { item: dropped(data, pick(kinds, random), l.item.rarity as GearRarity, uid(), random, plusRandom, boost) };
   }
   return out;

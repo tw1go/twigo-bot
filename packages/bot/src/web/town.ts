@@ -20,7 +20,7 @@ import { type HeldOffer, type Trade, Trades, checkOffer } from './trade.js';
 import { type Inside, type Run, type RunDeps, type RunNews, Warrens, type WarrensAccess, type WarrensMap } from './town-warrens.js';
 import { Silong, type SilongAccess, type SilongInside, type SilongMap, type SilongNews, type SilongRun } from './town-silong.js';
 import type { SilongData, SilongFloor, FriendAsk, FriendView, FriendsState, HalloweenReward, LootGot, PrivacySettings, WarrensData, ChatItemLink, CharacterProgress, QuestProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item, TradeEnd, TradeView } from '@mikazuki/shared';
-import { SILONG_FLOORS, floorOfArea, type LanternPost, type PalengkeData, type Visibility, PALENGKE, VISIBILITIES, dishMs, dishOf, moveSpeedOf, PetXpClock, moveDodgeMs, petRules, petXpForHit, isLanternMap, itemName, itemStats, blockedWithPosts, lanternPostsOf, lanternRefusal, lootRollRules, rollWorthy, partyXpMult, partyXpRange, potionCooldownGroup, skillMpCost, targetPriority, tradeRules } from '@mikazuki/shared';
+import { SILONG_FLOORS, chillMove, chillRules, floorOfArea, type LanternPost, type PalengkeData, type Visibility, PALENGKE, VISIBILITIES, dishMs, dishOf, moveSpeedOf, PetXpClock, moveDodgeMs, petRules, petXpForHit, isLanternMap, itemName, itemStats, blockedWithPosts, lanternPostsOf, lanternRefusal, lootRollRules, rollWorthy, partyXpMult, partyXpRange, potionCooldownGroup, skillMpCost, targetPriority, tradeRules } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
 // messages). The server keeps everyone's tile and checks each step — on the map, not blocked, next to the last
@@ -72,7 +72,6 @@ const EMOTE_BURST = 3;
 /** Walking is 4 tiles a second; allow a little more, in bursts (messages bunch up on a bad connection). Slowed: half. */
 const STEPS_PER_SECOND = 6;
 const STEP_BURST = 6;
-const SLOWED = 0.5;
 /** Mobs' hits land, HP and MP come back and the knocked out respawn on this clock (ms). */
 const VITALS_MS = 100;
 const HEARTBEAT_MS = 30_000;
@@ -251,7 +250,7 @@ export interface TownOptions {
   };
   /** Ang Silong (web/town-silong.ts): its data and floors' maps, what a run's mob rooms need, the Silong Hatch's tile in
    *  the Palengke, the Susi ng Silong (count, use, give back to the opener of a run that ended before a mini boss fell)
-   *  and the Practice Susi (the same), who may come in (`access`: "Ngayon Na" done, Practice Susi held), and `saved`: the
+   *  and the Practice Susi (the same), who may come in (`access`: "Now's the Time" done, Practice Susi held), and `saved`: the
    *  open runs whenever they change (a restart gives the keys of runs not yet spent back). `dev`: open from anywhere.
    *  Without it, no Silong. */
   silong?: {
@@ -262,6 +261,10 @@ export interface TownOptions {
     keys: { count(userId: string): number; use(userId: string): boolean; refund?(userId: string): boolean };
     practice?: { use(userId: string): boolean; refund?(userId: string): boolean };
     access?(userId: string): SilongAccess;
+    /** Those inside as Ang Makinang Yelo fell: they've cleared Ang Silong (its Atchara refill after). */
+    cleared?(members: string[]): void;
+    /** Mang Ramon's box (his note) and Kuya Jun's thanks for it (null, given; else why not). */
+    ramon?: { box(userId: string): 'given' | 'have' | 'done' | 'full'; give(userId: string): string | null };
     /** A Susi ng Silong from Aling Conching's menu (after the finale): null, bought; else why not. */
     buyKey?(userId: string): string | null;
     saved?(runs: { id: string; opener: string; spent: boolean; practice?: boolean }[]): void;
@@ -373,7 +376,7 @@ export interface Town {
   warrensDev(userId: string, boss?: string, hp?: number): { ok: true; run: string } | { ok: false; message: string };
   /** Dev (?silong=solo, ?silong=b3): an Ang Silong run for a member, free, at once; with `floor`, every mini boss above
    *  it down and the floors reached. The run's id and the floor to go to, or why not. */
-  silongDev(userId: string, floor?: SilongFloor): { ok: true; run: string; floor: SilongFloor } | { ok: false; message: string };
+  silongDev(userId: string, floor?: SilongFloor | 'plant', hp?: number): { ok: true; run: string; floor: SilongFloor } | { ok: false; message: string };
   /** Dev (?halloween=on): the Halloween event on now; `mikko`: Mikko hidden two tiles from the member; `biikko` / `round`:
    *  Biikko out and a Manananggal round started now; `wound`: Biikko down to that HP; `carry`: the dazed upper half theirs
    *  (a round started for it). What was done. */
@@ -441,6 +444,8 @@ interface Conn {
   warrensAt?: number;
   /** When they last opened a Silong run (one a second). */
   silongAt?: number;
+  /** Their last step carried along an Ang Silong belt. */
+  beltAt?: number;
   /** When they last asked to teleport (ms). */
   lanternAt?: number;
   /** Stunned until (ms): no steps (Wire Wolf's Live Floor). */
@@ -900,14 +905,27 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       // The golem down: each member's damage this fight, for the leaderboard (its Golem board: the golem only).
       if (k.boss && k.dealt && !scale) opts.records?.golem(k.dealt, Date.now());
       if (run) runDrop(run, k);
-      else if (!srun) dropFor(room, { ...k, to: credited }); // (Ang Silong's loot: its own, to come)
+      else if (srun) silongDrop(srun, room, k);
+      else dropFor(room, { ...k, to: credited });
       // (A Warrens boss counts for no quest: the Tanod's mini bosses are the Slums' own.)
       // (The Great Scale counts for those who earned it, not their party: CONTEXT.md Great Scale.)
       if (!k.warrens) {
         questKill(scale ? credited : withParty(credited, room), { kind: k.kind, mini: !!k.mini, level: k.level });
         questDrops(room, scale ? credited : withParty(credited, room), k);
       }
-      if (srun && k.warrens) silongNews(srun, srun.onKill(srun.floorOf(room)!.floor, k, Date.now()));
+      if (srun && k.warrens) {
+        const was = srun.phase;
+        silongNews(srun, srun.onKill(srun.floorOf(room)!.floor, k, Date.now()));
+        // Cleared just now: everyone inside has cleared Ang Silong (Aling Conching's Atchara refill at half price).
+        if (was !== 'cleared' && srun.phase === 'cleared') {
+          const team = silongInside(srun).map((x) => x.member);
+          opts.silong?.cleared?.(team);
+          for (const member of team) {
+            const o = conns.get(member);
+            if (o) send(o, { t: 'silong-cleared' });
+          }
+        }
+      }
       if (run && k.warrens) {
         const before = run.phase;
         runNews(run, run.onKill(k, Date.now()));
@@ -1037,6 +1055,19 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       } else console.log(`[warrens] practice run ${run.id} cleared: ${member}'s quest needs no item`);
     }
   };
+  /** A kill's drops on an Ang Silong floor: like a Warrens run's, everything on the floor for anyone on it, first come
+   *  (the run's `lootFor`: a mini boss's pile and rolls, the Ice Machine's heap, a mob's own). */
+  const silongDrop = (run: SilongRun, room: string, kill: MobKill) => {
+    const floor = run.floorOf(room);
+    if (!opts.items || !floor) return;
+    const L = lootIn(room);
+    const here = [...conns.values()].filter((o) => o.room === room);
+    const random = opts.lootRandom ?? Math.random;
+    const { contents, at } = run.lootFor(floor.floor, kill, here.map((o) => o.player.cls ?? null), () => randomBytes(8).toString('hex'), random, opts.lootPlusRandom ?? random);
+    const fresh = L.scatter(contents, at, (a, n) => floor.mobs.lootSpots(a, n, L.taken()), Date.now());
+    const inside = here.map((o) => o.userId);
+    showLoot(room, startRolls(room, L, fresh, () => inside), kill.at);
+  };
   /** Picks up the loot asked for (`id`) or, without one, the nearest they may take, within LOOT_REACH (a click, F or
    *  Space; nothing is picked up on its own). Full bag: it stays, and they're told. */
   const pickUp = (c: Conn, id?: string) => {
@@ -1145,8 +1176,11 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     const now = Date.now();
     // (Slowed: half; a dish's move speed (Pancit) on a battle map: faster.)
     // (Spilled rice under them: slower still, the slowest of the two; a Pancit's speed on top.)
-    const slow = Math.min(vitals?.slowed(c.userId, now) ? SLOWED : 1, mobsOf(c.room)?.slowAt(c.player.col, c.player.row, now) ?? 1);
-    const k = slow * (buffs && battle(c.room) ? moveSpeedOf(buffs.effective(c.userId)) : 1);
+    const slow = Math.min(vitals?.slowFactor(c.userId, now) ?? 1, mobsOf(c.room)?.slowAt(c.player.col, c.player.row, now) ?? 1);
+    // (Ang Silong's Chill: 5% slower a stack.)
+    const srun = silongOf(c.room);
+    const chill = srun ? chillMove(srun.chillR, srun.chillOf(c.userId)) : 1;
+    const k = slow * chill * (buffs && battle(c.room) ? moveSpeedOf(buffs.effective(c.userId)) : 1);
     c.tokens = Math.min(STEP_BURST * k, c.tokens + ((now - c.refilled) / 1000) * STEPS_PER_SECOND * k);
     c.refilled = now;
     if (c.tokens < 1) return false;
@@ -1178,9 +1212,14 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         if (c.stunnedUntil && Date.now() < c.stunnedUntil) return send(c, { t: 'snap', col: p.col, row: p.row });
         const dc = (m.col as number) - p.col;
         const dr = (m.row as number) - p.row;
-        const ok = inside_(m.col, m.row) && walkable_(m.col, m.row) && Math.abs(dc) <= 1 && Math.abs(dr) <= 1 && (dc || dr) && spend(c);
+        // (Carried along one of Ang Silong's belts: free, at most the belts' speed.)
+        const belt = silongFloor(c.room);
+        const carried = !!belt?.alongBelt([p.col, p.row], [m.col as number, m.row as number]) && Date.now() - (c.beltAt ?? 0) >= 900 / belt.beltSpeed(Date.now());
+        if (carried) c.beltAt = Date.now();
+        const ok = inside_(m.col, m.row) && walkable_(m.col, m.row) && Math.abs(dc) <= 1 && Math.abs(dr) <= 1 && (dc || dr) && (carried || spend(c));
         if (!ok) return send(c, { t: 'snap', col: p.col, row: p.row });
         Object.assign(p, { col: m.col, row: m.row, dir: dirForStep(dc, dr), sit: false });
+        silongOf(c.room)?.stepped(c.userId, Date.now()); // (walking clears Ang Silong's Chill)
         others(c, { t: 'step', id: p.id, col: p.col, row: p.row });
         return tradeRange(c); // walking away from someone you're trading with cancels it
       }
@@ -1621,7 +1660,18 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       case 'silong-leave':
       case 'silong-ride':
       case 'silong-up':
+      case 'silong-ramon':
         return silongMessage(c, m);
+      case 'ramon-give': {
+        // Mang Ramon's note to Kuya Jun, in the Lumang Palengke.
+        if (!opts.silong?.ramon || c.room !== PALENGKE) return;
+        const why = opts.silong.ramon.give(c.userId);
+        if (!why) {
+          console.log(`[silong] ${c.userId} gave Kuya Jun Mang Ramon's note`);
+          tellItems(c);
+        }
+        return send(c, { t: 'ramon-thanks', ok: !why, ...(why ? { message: why } : {}) });
+      }
       case 'lantern':
         return lanternMessage(c, m.to, m.post);
       case 'arena-queue':
@@ -2101,7 +2151,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       saveRuns();
       return { ok: true, run: r.id };
     },
-    silongDev(userId, floor) {
+    silongDev(userId, floor, hp) {
       if (!SL) return { ok: false, message: 'No Silong here.' };
       const now = Date.now();
       const r = SL.runOf(userId) ?? (() => {
@@ -2109,9 +2159,10 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         return o.ok ? o.run : null;
       })();
       if (!r) return { ok: false, message: 'Too many runs open.' };
-      if (floor) r.skipTo(floor);
+      if (floor === 'plant') r.skipToPlant(hp);
+      else if (floor) r.skipTo(floor);
       saveSilong();
-      return { ok: true, run: r.id, floor: floor ?? 'b1' };
+      return { ok: true, run: r.id, floor: floor === 'plant' ? 'b3' : floor ?? 'b1' };
     },
   };
 
@@ -2294,11 +2345,14 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   // ── Ang Silong ──
 
   const saveSilong = () => opts.silong?.saved?.(SL?.openRuns() ?? []);
+  /** Whether a Sinigang or Lugaw is on them (no Chill). */
+  const CHILL_PROOF = new Set(SL ? chillRules(SL.S).immune.map((d) => dishOf(DISHES, d)?.name).filter(Boolean) : []);
+  const chillProof = (member: string) => !!buffs?.list(member).some((b) => b.cls === 'dish' && CHILL_PROOF.has(b.name));
   /** Who's inside a run now, on which floor. */
   const silongInside = (run: SilongRun): SilongInside[] =>
     [...conns.values()].flatMap((o) => {
       const f = run.floorOf(o.room);
-      return f ? [{ member: o.userId, id: o.player.id, at: [o.player.col, o.player.row] as [number, number], out: !!o.player.out, floor: f.floor }] : [];
+      return f ? [{ member: o.userId, id: o.player.id, at: [o.player.col, o.player.row] as [number, number], out: !!o.player.out, floor: f.floor, immune: chillProof(o.userId) }] : [];
     });
   /** What a run's clock or a kill set off: to its floors' rooms, to members, out with those who must go, and down (or up)
    *  with the riders. */
@@ -2402,6 +2456,18 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         if (why) return refuse('floor', why);
         return send(c, { t: 'silong-go', run: run.id, floor: m.floor, ride: 'up' });
       }
+      case 'silong-ramon': {
+        // Mang Ramon's box on its floor (B2's R), from 2 tiles: his note, once.
+        const box = silongFloor(c.room)?.map.silong.ramonBox;
+        if (!box || !opts.silong.ramon) return;
+        if (Math.max(Math.abs(c.player.col - box[0]), Math.abs(c.player.row - box[1])) > 2) return send(c, { t: 'silong-ramon', result: 'far' });
+        const result = opts.silong.ramon.box(c.userId);
+        if (result === 'given') {
+          console.log(`[silong] ${c.userId} took Mang Ramon's note`);
+          tellItems(c);
+        }
+        return send(c, { t: 'silong-ramon', result });
+      }
     }
   };
 
@@ -2483,7 +2549,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
           }
           vitals.fought(o.userId, now);
           if (l.miss) continue;
-          if (l.slow) vitals.slow(o.userId, l.slow, now);
+          if (l.slow) vitals.slow(o.userId, l.slow, now, l.slowFactor);
           if (l.tear) vitals.tear(o.userId, l.tear, l.tearAccuracy ?? 0, now);
           if (l.stun) {
             o.stunnedUntil = now + l.stun;

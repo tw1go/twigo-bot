@@ -320,7 +320,7 @@ export type TownClientMessage =
   | { t: 'warrens-decline'; run: string }
   | { t: 'warrens-leave' }
   /** Ang Silong (web/town-silong.ts): the Silong Hatch's panel, open a run (a Susi ng Silong), a practice run (the
-   *  Practice Susi), join your party's, not now, leave; your answer to "Bumaba na kayo?" (ride down with the others);
+   *  Practice Susi), join your party's, not now, leave; your answer to "Going down?" (ride down with the others);
    *  ride up from an arrival elevator to a floor the run has reached. */
   | { t: 'silong-gate' }
   | { t: 'silong-open' }
@@ -330,6 +330,10 @@ export type TownClientMessage =
   | { t: 'silong-leave' }
   | { t: 'silong-ride'; yes: boolean }
   | { t: 'silong-up'; floor: SilongFloor }
+  /** Mang Ramon's box (B2's R, within 2 tiles): his note. */
+  | { t: 'silong-ramon' }
+  /** Mang Ramon's note to Kuya Jun (in the Lumang Palengke). */
+  | { t: 'ramon-give' }
   /** Teleport from the Lantern Post you're by to another map's (uses a Return Lantern; shared travel.ts's rules). */
   | { t: 'lantern'; to: string; post?: number }
   /** The buffs on another player (the player box shows their icons), by town id. */
@@ -684,15 +688,23 @@ export type TownServerMessage =
   | { t: 'warrens-kick'; ms: number }
   /** Ang Silong: your run (the tracker), what the hatch offers, go to a floor of a run (the page loads it: `key` your key
    *  went; `ride` by the freight elevator), an invite to your party's run, why not, out of it (back to the Market Hall,
-   *  `keyBack`: it ended before a mini boss fell, the key returned), out in `ms` (you left the party), and "Bumaba na
-   *  kayo?" (someone stepped into the open elevator down: it goes in `ms`). */
+   *  `keyBack`: it ended before a mini boss fell, the key returned), out in `ms` (you left the party), and "Going
+   *  down?" (someone stepped into the open elevator down: it goes in `ms`). */
   | { t: 'silong'; run: TownSilongRun }
   | { t: 'silong-gate'; gate: TownSilongGate }
   | { t: 'silong-go'; run: string; floor: SilongFloor; key?: boolean; ride?: 'down' | 'up' }
   | { t: 'silong-invite'; run: string; from: string; ms: number }
+  /** What Mang Ramon's box gave: his note, nothing (you hold it, or Kuya Jun has it), no room, or you're too far. */
+  | { t: 'silong-ramon'; result: 'given' | 'have' | 'done' | 'full' | 'far' }
+  /** You were inside as Ang Makinang Yelo fell: Ang Silong cleared (SILONG_FLAGS.cleared now in your quests). */
+  | { t: 'silong-cleared' }
+  /** Kuya Jun took Mang Ramon's note (a Mid Repair Kit for it), or why not. */
+  | { t: 'ramon-thanks'; ok: boolean; message?: string }
   | { t: 'silong-refused'; reason: 'level' | 'quest' | 'full' | 'key' | 'party' | 'gone' | 'slow' | 'floor'; message: string }
   | { t: 'silong-out'; reason: 'left' | 'closed' | 'party'; keyBack?: boolean | 'practice' }
   | { t: 'silong-kick'; ms: number }
+  /** Chill on someone on a Silong floor (their town id): its stacks now; `puff` a stack just landed. */
+  | { t: 'chill'; id: string; stacks: number; puff?: boolean }
   | { t: 'silong-ride-ask'; ms: number }
   /** Lantern Posts: off you go (the page loads that map, at its post); why not (your lantern kept); and someone's
    *  teleport seen where it happens (`out`: leaving from there, hidden from its 5th frame; `in`: arriving, shown from its

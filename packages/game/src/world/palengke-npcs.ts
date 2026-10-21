@@ -148,7 +148,7 @@ export class PalengkeNpcs {
       lines: say?.lines ?? script?.lines,
       action: this.action?.(id),
       onDone: script?.onDone,
-      next: () => 'Magandang araw, anak. Ingat sa palengke.',
+      next: () => 'Good day. Take care in the market.',
       voice: 1,
       mirror: false,
       onClose: () => say?.after?.(),
@@ -212,4 +212,14 @@ function portraitOf(colour: string): string {
     ctx.restore();
   }
   return c.toDataURL();
+}
+
+/** One of them's face for a toast (Mang Pido on his radio): the portrait's first frame, 32 × 32. */
+export function npcFace(id: string): HTMLElement {
+  const c = document.createElement('canvas');
+  c.width = c.height = 32;
+  c.className = 'npc-face';
+  c.style.imageRendering = 'pixelated';
+  figure(c.getContext('2d')!, COLOURS[id] ?? '#6B7280', 4, 2, 2);
+  return c;
 }

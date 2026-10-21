@@ -1,7 +1,10 @@
-import { type SilongBlock, type SilongData, type SilongFloor, type SilongFloorData, type SilongMapRoom, type TownServerMessage, type TownSilongGate, type TownSilongRun, SILONG_FLOORS, floorBelow, inRect, partyHpScale } from '@mikazuki/shared';
+import { type ChillRules, type SilongBlock, type SilongData, chillRules, type SilongFloor, type SilongFloorData, type SilongMapRoom, type TownServerMessage, type TownSilongGate, type TownSilongRun, SILONG_FLOORS, floorBelow, inRect, partyHpScale } from '@mikazuki/shared';
+import type { LootContent } from './combat-bag.js';
+import { dropBoost, silongBossLoot, silongMiniLoot, silongMobDrops } from './loot.js';
 import { loadDungeons, loadItemData, loadPalengkeLeveling } from './stats-data.js';
 import { type MobDirector, type MobEvent, type MobKill, type MobMapData, type MobSpec, MobRoom, loadMobKinds, loadMobMap, loadSkillShapes } from './town-mobs.js';
 import type { Inside, RunDeps } from './town-warrens.js';
+import { FloorBosses } from './town-silong-bosses.js';
 
 // 🧊 Ang Silong (classes/dungeons.json `silong`; CONTEXT.md Silong, Floor, Freight elevator, Susi ng Silong): the
 // Lumang Palengke's dungeon, three frozen floors under the Market Hall, played as runs like the Scrap Warrens. A run is
@@ -11,7 +14,7 @@ import type { Inside, RunDeps } from './town-warrens.js';
 // runs for the time limit.
 // • Floors: B1 and B2 each keep their freight elevator down (X) shut until both their mini bosses are down; it then rides
 //   when every living player on that floor stands in it, or 20 s after the first steps in (the others on that floor are
-//   asked "Bumaba na kayo?": yes rides them along), to the next floor's arrival elevator (E). From any E you ride back up
+//   asked "Going down?": yes rides them along), to the next floor's arrival elevator (E). From any E you ride back up
 //   alone to a floor the run has reached. B3's Ice Tanks door (G) stays shut until Frosty Tubbs falls.
 // • Mobs never respawn, all aggressive at 4 tiles, packs assist, kept to their room; HP follows the players inside
 //   (scaling); a mini boss with no living player in its room for bossResetSeconds heals to full. Death: back after 3 s
@@ -38,7 +41,13 @@ export function loadSilongMaps(): Record<SilongFloor, SilongMap> {
   const out = {} as Record<SilongFloor, SilongMap>;
   for (const f of SILONG_FLOORS) {
     const m = loadMobMap(`silong-${f}`) as SilongMap & { gates?: Record<string, Tile[]> };
-    out[f] = { ...m, avoid: Object.values(m.gates ?? {}).flat() };
+    // (The last boss's room has no packs, so no zone of its own on the map: one, for it and the Frost Scales it calls.)
+    const zones = [...(m.mobZones ?? [])];
+    for (const r of m.silong.rooms) {
+      if (!r.boss?.last || zones.some((z) => z.id === r.id)) continue;
+      zones.push({ id: r.id, mob: r.mob, level: m.silong.level, rect: r.rect, height: 0, active: true, dungeon: true, spawns: [], groups: [] });
+    }
+    out[f] = { ...m, mobZones: zones, avoid: Object.values(m.gates ?? {}).flat() };
   }
   return out;
 }
@@ -61,10 +70,22 @@ export interface SilongNews {
 }
 const news = (): SilongNews => ({ room: [], to: [], out: [], go: [] });
 
-/** Someone inside a run: on which floor. */
+/** Someone inside a run: on which floor; `immune` to Chill (a Sinigang or Lugaw on). */
 export interface SilongInside extends Inside {
   floor: SilongFloor;
+  immune?: boolean;
 }
+
+/** One player's Chill: its stacks, since when they stood still (or last took a stack), their last step and since when
+ *  they've been walking. */
+interface Chilly {
+  stacks: number;
+  stillSince: number;
+  lastStep: number;
+  movingSince: number;
+}
+/** Steps closer than this keep "moving" going (the page steps every ~170 ms; a turn or a bump in between). */
+const STILL_GAP_MS = 700;
 
 interface Boss {
   id: string;
@@ -75,10 +96,12 @@ interface Boss {
   dead: boolean;
   engaged: boolean;
   lastInside: number;
+  /** Ang Makinang Yelo: its fall clears the run. */
+  last?: boolean;
 }
 
-/** One floor of a run: its own copy of the map and its mob room (its director: the mini bosses' resets; their moves
- *  come with PR 2). */
+/** One floor of a run: its own copy of the map and its mob room, whose director is its mini bosses' moves
+ *  (town-silong-bosses.ts). */
 class Floor implements MobDirector {
   readonly room: string;
   readonly map: SilongMap;
@@ -102,14 +125,53 @@ class Floor implements MobDirector {
     const zoneStats: Record<string, { level: number; hp: number; atk: number; def: number; xp: number }> = {};
     for (const r of data.rooms) zoneStats[r.id] = run.weaker({ level: r.mobs.level, hp: r.mobs.hp, atk: r.mobs.atk, def: r.mobs.def, xp: r.mobs.xp });
     this.mobs = new MobRoom(this.map, deps.random, deps.levels, deps.shapes, deps.kinds, undefined, deps.fightData, deps.leveling, { zoneStats, director: this, dungeonAggro: 4 });
+    this.bosses = new FloorBosses({ mobs: this.mobs, map: this.map, weaker: (x) => run.weaker(x) }, data, deps.random, template.silong.rooms.some((r) => r.boss?.last) ? run.S.lastBoss : null);
+    for (const [c, r] of template.silong.belts.e) this.belts.set(`${c},${r}`, [1, 0]);
+    for (const [c, r] of template.silong.belts.w) this.belts.set(`${c},${r}`, [-1, 0]);
+    this.baseBelt = run.S.floorRules.belts.speedTilesPerSec;
   }
 
-  tick(): MobEvent[] {
-    return [];
+  /** A step along a belt from a belt tile, its way (the belts carry players: the page sends those steps, which cost them
+   *  nothing of their step budget). */
+  alongBelt(from: Tile, to: Tile): boolean {
+    const d = this.belts.get(`${from[0]},${from[1]}`);
+    return !!d && to[0] - from[0] === d[0] && to[1] - from[1] === d[1];
   }
 
-  hurt(): MobEvent[] {
-    return [];
+  /** Its mini bosses' moves. */
+  readonly bosses: FloorBosses;
+
+  tick(now: number, players: ReadonlyMap<string, Tile>): MobEvent[] {
+    return [...this.bosses.tick(now, players), ...this.carry(now)];
+  }
+
+  /** Each belt tile's way (`>` east: +col, `<` west: −col). */
+  readonly belts = new Map<string, Tile>();
+  private carried = new Map<string, number>();
+  /** The belts' speed now (tiles a second): floorRules.belts', or Belt Rush's while it runs. */
+  beltSpeed(now: number): number {
+    const r = this.bosses.rush;
+    return r && now < r.until ? r.speed : this.baseBelt;
+  }
+  private baseBelt = 2;
+  /** The belts carry the mobs standing on them a tile at a time, at their speed (a wall or another mob ahead: they stay). */
+  private carry(now: number): MobEvent[] {
+    if (!this.belts.size) return [];
+    const speed = this.beltSpeed(now);
+    const out: MobEvent[] = [];
+    for (const m of this.mobs.standingOn((c, r) => this.belts.has(`${c},${r}`), now)) {
+      if (now < (this.carried.get(m.id) ?? 0)) continue;
+      const [dc, dr] = this.belts.get(`${m.col},${m.row}`)!;
+      const to: Tile = [m.col + dc, m.row + dr];
+      if (!this.mobs.open(...to) || this.mobs.occupied(...to)) continue;
+      this.carried.set(m.id, now + 1000 / speed);
+      out.push(...this.mobs.moveMob(m.id, [to], now, speed));
+    }
+    return out;
+  }
+
+  hurt(id: string, now: number): MobEvent[] {
+    return this.bosses.hurt(id, now);
   }
 
   /** Opens tiles for good (the elevator down, a cold-room door) on this floor's copy of the map. */
@@ -142,6 +204,9 @@ export class SilongRun {
   private readonly bosses = new Map<string, Boss>();
   private kicks = new Map<string, number>();
   private scaledFor = 0;
+  /** Chill (B2, B3 till the Ice Machine falls), by member. */
+  private readonly chills = new Map<string, Chilly>();
+  readonly chillR: ChillRules;
 
   constructor(
     readonly id: string,
@@ -156,6 +221,7 @@ export class SilongRun {
     readonly practice = false,
   ) {
     this.room = `silong:${id}`;
+    this.chillR = chillRules(S);
     const data = (f: SilongFloor) => S.floors.find((x) => x.id === f)!;
     this.floors = Object.fromEntries(SILONG_FLOORS.map((f) => [f, new Floor(f, data(f), maps[f], this, deps)])) as Record<SilongFloor, Floor>;
     this.members.add(opener.member);
@@ -187,7 +253,27 @@ export class SilongRun {
       spots.forEach((t, k) => specs.push({ id: `guard:${def.id}:${k}`, kind, zone: r.id, tile: t, stats: this.weaker({ level: r.mobs.level, hp: r.mobs.hp, atk: r.mobs.atk, def: r.mobs.def, xp: r.mobs.xp }) }));
       this.bosses.set(mob, { id: def.id, mob, name: def.name, floor: floor.floor, room: mapRoom, dead: false, engaged: false, lastInside: 0 });
     }
+    // The last boss (Ang Makinang Yelo) on its body's middle (it never moves or turns), with the Frost Scales it starts
+    // with beside its fan.
+    const lastRoom = floor.map.silong.rooms.find((r) => r.boss?.last);
+    const body = floor.map.silong.bossBody;
+    if (lastRoom && body.length) {
+      const L = this.S.lastBoss;
+      const mob = `boss:${L.id}`;
+      const cs = body.map((t) => t[0]);
+      const rs = body.map((t) => t[1]);
+      const mid: Tile = [Math.floor((Math.min(...cs) + Math.max(...cs)) / 2), Math.floor((Math.min(...rs) + Math.max(...rs)) / 2)];
+      // (Its reach: the data's, or as far as its body goes from the middle, so the tiles round the body are next to it.)
+      const radius = Math.max(L.reachRadius, ...body.map(([c, r]) => Math.max(Math.abs(c - mid[0]), Math.abs(r - mid[1]))));
+      specs.push({ id: mob, kind: L.id, zone: lastRoom.id, tile: mid, stats: this.weaker({ level: L.level, hp: L.hp, atk: L.atk, def: L.def, xp: L.xp }), boss: 'last', name: L.name, title: L.title, radius, still: true, silent: true });
+      const call = (L.mechanics as { id: string; start?: number }[]).find((m) => m.id === 'callTheFrost');
+      const R = floor.data.rooms.find((r) => r.id === lastRoom.id)!.mobs;
+      const fan = floor.map.silong.bossTile ?? mid;
+      guardSpots(floor, fan, call?.start ?? 0).forEach((t, k) => specs.push({ id: `guard:${L.id}:${k}`, kind: R.kind, zone: lastRoom.id, tile: t, stats: this.weaker({ level: R.level, hp: R.hp, atk: R.atk, def: R.def, xp: R.xp }) }));
+      this.bosses.set(mob, { id: L.id, mob, name: L.name, floor: floor.floor, room: lastRoom, dead: false, engaged: false, lastInside: 0, last: true });
+    }
     floor.mobs.addMobs(specs, now);
+    floor.bosses.arm();
   }
 
   roomOf(floor: SilongFloor): string {
@@ -245,6 +331,7 @@ export class SilongRun {
       for (const f of SILONG_FLOORS) for (const e of this.floors[f].mobs.scaleHp(partyHpScale(this.S.scaling.mobHp, n), partyHpScale(this.S.scaling.bossHp, n))) out.room.push([this.floors[f].room, e as TownServerMessage]);
     }
     this.resets(now, out);
+    this.chill(now, out);
     for (const f of SILONG_FLOORS) this.elevator(this.floors[f], now, out);
     // Someone who left the party while inside: out after the wait (told once).
     for (const [member] of this.inside) {
@@ -304,7 +391,7 @@ export class SilongRun {
     f.riders.clear();
   }
 
-  /** An answer to "Bumaba na kayo?": yes rides along with the others (on that floor, while it's waiting). */
+  /** An answer to "Going down?": yes rides along with the others (on that floor, while it's waiting). */
   answerRide(member: string, yes: boolean): void {
     const x = this.inside.get(member);
     const f = x ? this.floors[x.floor] : null;
@@ -352,7 +439,7 @@ export class SilongRun {
       if (!b.engaged || now - b.lastInside < ms) continue;
       b.engaged = false;
       const f = this.floors[b.floor];
-      const events = [...f.mobs.removeMobs(f.mobs.calledBy(b.mob)), ...f.mobs.healFull(b.mob)];
+      const events = [...f.bosses.stop(b.mob), ...f.mobs.removeMobs(f.mobs.calledBy(b.mob)), ...f.mobs.healFull(b.mob)];
       for (const e of events) out.room.push([f.room, e as TownServerMessage]);
     }
   }
@@ -369,7 +456,16 @@ export class SilongRun {
     this.keySpent = true;
     const f = this.floors[floor];
     out.room.push([f.room, { t: 'boss-cancel', id: b.mob }]);
-    for (const e of f.mobs.removeMobs(f.mobs.calledBy(b.mob))) out.room.push([f.room, e as TownServerMessage]);
+    for (const e of [...f.bosses.stop(b.mob), ...f.mobs.removeMobs(f.mobs.calledBy(b.mob))]) out.room.push([f.room, e as TownServerMessage]);
+    // The last boss: the run's cleared (it closes closeAfterLastBossMinutes later); the frost melts on every floor.
+    if (b.last) {
+      this.phase = 'cleared';
+      this.clearedAt = now;
+      this.clearTeam = [...this.inside.keys()];
+      this.everywhere(out, { t: 'boss-move', id: b.mob, move: 'melt', key: `${b.mob}:melt`, ms: 0 });
+      this.everywhere(out, this.line(`${b.name} grinds to a stop. The frost melts away: Ang Silong is cleared! It closes in ${this.S.run.closeAfterLastBossMinutes} minutes.`, 'down'));
+      return out;
+    }
     // The Ice Tanks door opens with its boss.
     const door = f.map.silong.doors.find((d) => d.room === b.room.id);
     if (door && !this.doorOpen) {
@@ -382,10 +478,98 @@ export class SilongRun {
     if (!left.length && floorBelow(floor) && !f.open) {
       f.open = true;
       f.unblock(f.map.silong.down);
-      out.room.push([f.room, this.line(`${b.name} is down. The freight elevator rumbles awake: Bumaba na tayo!`, 'down')]);
+      out.room.push([f.room, this.line(`${b.name} is down. The freight elevator rumbles awake: going down!`, 'down')]);
     } else if (!door) out.room.push([f.room, this.line(`${b.name} is down.`, 'down')]);
-    void now;
     return out;
+  }
+
+  // ── Chill (silong.floorRules.chill) ──
+
+  /** A step (or a move) by someone inside: they're moving. */
+  stepped(member: string, now: number): void {
+    const c = this.chills.get(member);
+    if (!c) return void this.chills.set(member, { stacks: 0, stillSince: now, lastStep: now, movingSince: now });
+    if (now - c.lastStep > STILL_GAP_MS) c.movingSince = now;
+    c.lastStep = now;
+  }
+
+  /** Their Chill stacks now (0 off a cold floor). */
+  chillOf(member: string): number {
+    return this.chills.get(member)?.stacks ?? 0;
+  }
+
+  /** Each second: a stack for every `everyMs` standing still on a cold floor, one a second in the Brine Flood, the Freezer
+   *  Breath's; cleared by walking `moveMs`, a work lamp within `lampTiles`, a Sinigang or Lugaw on, a knock-out, a warm
+   *  floor (B1), and for good once the Ice Machine falls (the frost melts). Each change to the floor's room. */
+  private chill(now: number, out: SilongNews): void {
+    const R = this.chillR;
+    const breath = new Map<string, number>();
+    for (const f of SILONG_FLOORS) for (const [id, n] of this.floors[f].bosses.chilled.splice(0)) breath.set(id, (breath.get(id) ?? 0) + n);
+    for (const p of this.inside.values()) {
+      const f = this.floors[p.floor];
+      const c = this.chills.get(p.member) ?? { stacks: 0, stillSince: now, lastStep: 0, movingSince: 0 };
+      this.chills.set(p.member, c);
+      const before = c.stacks;
+      let puff = false;
+      const lamp = f.map.silong.lamps.some(([lc, lr]) => Math.max(Math.abs(lc - p.at[0]), Math.abs(lr - p.at[1])) <= R.lampTiles);
+      const walking = now - c.lastStep <= STILL_GAP_MS;
+      if (!f.data.chill || this.phase !== 'running' || p.immune || p.out || lamp) {
+        c.stacks = 0;
+        c.stillSince = now;
+      } else {
+        if (walking) {
+          c.stillSince = now;
+          if (now - c.movingSince >= R.moveMs) c.stacks = 0;
+        } else if (now - Math.max(c.stillSince, c.lastStep) >= R.everyMs) {
+          c.stacks += 1;
+          c.stillSince = now;
+        }
+        const add = (breath.get(p.id) ?? 0) + (f.bosses.flood?.tiles.has(`${p.at[0]},${p.at[1]}`) ? 1 : 0);
+        c.stacks += add;
+        c.stacks = Math.min(R.max, c.stacks);
+      }
+      puff = c.stacks > before;
+      if (c.stacks !== before) out.room.push([f.room, { t: 'chill', id: p.id, stacks: c.stacks, ...(puff ? { puff: true } : {}) }]);
+    }
+  }
+
+  /** Whether a kill is the last boss's. */
+  isLastBoss(id: string): boolean {
+    return !!this.bosses.get(id)?.last;
+  }
+
+  /** A kill's loot on a floor (silong.loot; all of it on the floor for anyone inside, first come): a mini boss's Kusing
+   *  pile and a roll per player inside, Ang Makinang Yelo's heap for each (in front of its fan), a room mob's own; gear
+   *  for the classes of those inside, boosted by the highest Drop rate inside. A practice run: its Kusing only (XP and
+   *  Kusing, nothing else). */
+  lootFor(floor: SilongFloor, kill: MobKill, classes: (string | null)[], uid: () => string, random: () => number, plusRandom = random): { contents: LootContent[]; at: Tile } {
+    const data = this.deps.fightData;
+    const n = Math.max(1, this.inside.size);
+    const boost = dropBoost(data, Math.max(0, ...[...this.inside.keys()].map((m) => this.deps.dropRate?.(m) ?? 0)));
+    const b = this.bosses.get(kill.id);
+    const rooms = this.S.floors.find((f) => f.id === floor)?.rooms ?? [];
+    const r = b?.last
+      ? { contents: silongBossLoot(data, this.S, classes, n, random, uid, plusRandom, boost), at: this.floors[floor].map.silong.bossTile ?? kill.at }
+      : b
+        ? { contents: silongMiniLoot(data, this.S, rooms.find((x) => x.miniBoss?.id === b.id)?.miniBoss ?? kill, classes, n, random, uid, plusRandom, boost), at: kill.at }
+        : { contents: silongMobDrops(data, this.S, kill.kind, kill.level, rooms.find((x) => x.mobs.kind === kill.kind || x.mobs.kind === kill.kind.replace(/-frost$/, ''))?.mobs.kusing ?? 0, random, uid, plusRandom, boost), at: kill.at };
+    if (this.practice) r.contents = r.contents.filter((c) => 'kusing' in c);
+    return r;
+  }
+
+  /** Dev (?silong=plant&hp=): to B3 with Frosty Tubbs down and the Ice Tanks door open (Ang Makinang Yelo next; `hp`:
+   *  down to that much). */
+  skipToPlant(hp?: number): void {
+    this.skipTo('b3');
+    const f = this.floors.b3;
+    for (const b of this.bosses.values()) {
+      if (b.floor !== 'b3' || b.last || b.dead) continue;
+      b.dead = true;
+      f.mobs.removeMobs([b.mob]);
+    }
+    this.doorOpen = true;
+    for (const d of f.map.silong.doors) f.unblock(d.tiles);
+    if (hp) f.mobs.devWound(`boss:${this.S.lastBoss.id}`, hp);
   }
 
   /** Dev (?silongboss=<floor>): every mini boss above that floor down, their elevators open, the floors reached. */
@@ -414,7 +598,7 @@ function guardSpots(floor: Floor, at: Tile, n: number): Tile[] {
   return out;
 }
 
-/** What the host knows of a member for the hatch: whether they've done "Ngayon Na" (palengke-15), and how many Practice
+/** What the host knows of a member for the hatch: whether they've done "Now's the Time" (palengke-15), and how many Practice
  *  Susi they hold. */
 export interface SilongAccess {
   done: boolean;
@@ -478,7 +662,7 @@ export class Silong {
 
   private entryRefusal(level: number, a: SilongAccess): { reason: 'level' | 'quest'; message: string } | null {
     if (level < this.S.entry.minLevel) return { reason: 'level', message: `Ang Silong is for Lv ${this.S.entry.minLevel} and up.` };
-    if (!a.done) return { reason: 'quest', message: 'Mang Pido says it isn\'t time yet. Hindi pa oras.' };
+    if (!a.done) return { reason: 'quest', message: 'Mang Pido says it isn\'t time yet.' };
     return null;
   }
 
@@ -509,7 +693,7 @@ export class Silong {
     return { ok: true, run };
   }
 
-  /** A practice run (the Practice Susi ng Silong from "Ngayon Na"): solo, even in a party. */
+  /** A practice run (the Practice Susi ng Silong from "Now's the Time"): solo, even in a party. */
   openPractice(member: string, name: string, level: number, useKey: () => boolean, now: number): { ok: true; run: SilongRun } | { ok: false; reason: 'level' | 'full' | 'key' | 'party'; message: string } {
     if (level < this.S.entry.minLevel) return { ok: false, reason: 'level', message: `Ang Silong is for Lv ${this.S.entry.minLevel} and up.` };
     if (this.runOf(member)) return { ok: false, reason: 'party', message: "You're in a run already." };

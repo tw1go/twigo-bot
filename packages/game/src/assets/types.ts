@@ -432,6 +432,8 @@ export interface MobData {
   shadow: Vec2;
   /** It hangs above its anchor (the art already does): the shadow stays on the ground. */
   floats?: boolean;
+  /** No ground shadow (Ang Makinang Yelo stands on its own base). */
+  noShadow?: boolean;
   /** Its art's box over every sheet (cell px: left, top, right, bottom): what the boss camera keeps in view. */
   frame?: [number, number, number, number];
   variants?: string[];
