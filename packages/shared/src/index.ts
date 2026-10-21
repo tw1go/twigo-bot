@@ -5,6 +5,7 @@ export type * from './room-api.js';
 export type * from './town.js';
 export type * from './adventure.js';
 export * from './stats.js';
+export * from './skill-effects.js';
 export * from './items.js';
 export * from './forge.js';
 export * from './trade.js';

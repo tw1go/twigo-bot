@@ -22,6 +22,8 @@ export interface VitalMax {
   mp: number;
   mpRegen: number;
   hpRegenPct?: number;
+  /** A drain's share of their most HP a second (Blood Price): never below 10% of it. */
+  hpDrainPct?: number;
 }
 
 export interface Vital {
@@ -223,6 +225,8 @@ export class Vitals {
       if (now > calm) v.hp = Math.min(v.max.hp, v.hp + ((now - calm) / 1000) * R.outOfCombatPctPerSec * v.max.hp);
       // A regen buff's share a second, in combat too.
       if (v.max.hpRegenPct) v.hp = Math.min(v.max.hp, v.hp + ((now - v.regenAt) / 1000) * v.max.hpRegenPct * v.max.hp);
+      // A drain (Blood Price): HP off a second, never below 10% of their most (it never knocks anyone out).
+      if (v.max.hpDrainPct && v.hp > v.max.hp * 0.1) v.hp = Math.max(v.max.hp * 0.1, v.hp - ((now - v.regenAt) / 1000) * v.max.hpDrainPct * v.max.hp);
       v.mp = Math.min(v.max.mp, v.mp + ((now - v.regenAt) / 1000) * v.max.mpRegen);
       v.regenAt = now;
       const after = shown(v);
