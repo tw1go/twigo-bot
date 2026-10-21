@@ -861,8 +861,13 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   variants 1-4 twice as likely (rng.ts `variantAt`'s weights), `baha` (shallow flood, walkable at 70%: Character
   `speedAt`, players and others alike; the server's step budget needs nothing) and `lalim` (deep pools, blocked, with the
   river's bank overlays) as 4-frame strips at 3 fps on the shared clock. Outskirts: `PalengkeOutskirts` (world/outskirts.ts,
-  `BigOutskirts`: semento with rows of empty and collapsed stalls and crate stacks, 12 tiles deep, the gate's road kept
-  clear). Minimap: a colour per family, blocked tiles darker. The Market Hall's walls are ordinary props (back walls on
+  `BigOutskirts`: semento with rows of stalls alongside each edge (the long pieces, mirrored past the NE and SW edges)
+  and crate stacks, 12 tiles deep, the gate's road kept clear). Its stalls (21 Oct 2026; the art folder's
+  palengke-stalls, its README): each block of stall tiles is one to three pieces, big (4 × 4), triple (2 × 6), double
+  (2 × 4) or single (2 × 2), in three colours each (`-v2`, `-v3`): 57 stall ids, 2,309 pieces where there were 5,803;
+  drawn facing down-right with the long side along the row axis, a run along the col axis the same art with `flip` and
+  its footprint swapped ([6, 2], [4, 2]). The map's `blocked` is as it was (the art folder's `restall_palengke.py`
+  re-tiles a palengke.json). Minimap: a colour per family, blocked tiles darker. The Market Hall's walls are ordinary props (back walls on
   the tile outside, front walls on their own: you go behind the south and east walls just inside them). String lights
   draw dead; WorldObjects `litSections` is the hook for lighting a section (nothing sets it). Its art packs into
   `tiles-palengke` / `props-palengke` (scripts/packs.ts), loaded only there. The Map menu shows it west of the Slums as a

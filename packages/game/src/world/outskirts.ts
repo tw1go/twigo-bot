@@ -220,20 +220,34 @@ export class SlumsOutskirts implements BigOutskirts {
 
 /** The Lumang Palengke's border: how deep the market goes on past the map, rows of stalls on concrete (tiles). */
 const PALENGKE_DEPTH = 12;
-/** Its stalls (2 × 2) and now and then a stack of crates (1 × 1). */
-const PALENGKE_STALLS = ['palengke-stall-empty', 'palengke-stall-collapsed'];
+/** Each stall look comes in three colours: as drawn, -v2 and -v3. */
+const COLOURS = ['', '-v2', '-v3'];
+/** Its stall rows: the map's long pieces (art 2 deep, long along the row axis; mirrored for rows along the col axis). */
+const PALENGKE_ROWS: { id: string; len: number }[] = [
+  { id: 'palengke-stall-triple-empty-sagging', len: 6 },
+  { id: 'palengke-stall-triple-gulay-tuyo-empty', len: 6 },
+  { id: 'palengke-stall-double-empty-collapsed', len: 4 },
+  { id: 'palengke-stall-double-karinderya-empty', len: 4 },
+].flatMap((p) => COLOURS.map((c) => ({ id: p.id + c, len: p.len })));
+/** Singles (2 × 2) to end a row or stand alone, and now and then a stack of crates (1 × 1). */
+const PALENGKE_STALLS = ['palengke-stall-empty', 'palengke-stall-collapsed'].flatMap((id) => COLOURS.map((c) => id + c));
 const PALENGKE_CRATES = 'palengke-crate-plastic-stack';
+/** One lot: a stall row two tiles deep with a one-tile aisle beside it, seven tiles long (a triple and a tile to spare). */
+const LOT = { across: 3, along: 7 };
 
 /**
  * Round the Lumang Palengke: the market seems to carry on into the dark. Past the map, its `semento` ground for
  * PALENGKE_DEPTH tiles (dirt-free: the map's own dark beyond that is nothing), the gate's tiles carried on out as a
- * road of the same, and rows of empty and collapsed stalls (2 × 2, one per 3 × 3 cell in aisle rows, seeded) with now
- * and then a stack of plastic crates. Nothing in it is walkable or reachable.
+ * road of the same, and rows of empty stalls (seeded) running alongside the edge they're past: one long piece per
+ * lot (a double with a single after it, or a triple), now and then a lone single or a stack of plastic crates.
+ * Past the NW and SE edges the rows run along the row axis (the art as drawn); past the NE and SW edges along the col
+ * axis (mirrored, footprint swapped). Nothing in it is walkable or reachable.
  */
 export class PalengkeOutskirts implements BigOutskirts {
   private readonly cols: number;
   private readonly rows: number;
   private readonly gate: [number, number][];
+  private readonly pieces: { id: string; len: number }[];
   private readonly stalls: string[];
   private readonly crates: string | null;
 
@@ -243,13 +257,20 @@ export class PalengkeOutskirts implements BigOutskirts {
   ) {
     [this.cols, this.rows] = map.size;
     this.gate = Object.values(map.gates ?? {}).flat() as [number, number][];
-    this.stalls = PALENGKE_STALLS.filter((id) => (M.props[id] as PropDef | undefined)?.file);
-    this.crates = (M.props[PALENGKE_CRATES] as PropDef | undefined)?.file ? PALENGKE_CRATES : null;
+    const has = (id: string) => !!(M.props[id] as PropDef | undefined)?.file;
+    this.pieces = PALENGKE_ROWS.filter((p) => has(p.id));
+    this.stalls = PALENGKE_STALLS.filter(has);
+    this.crates = has(PALENGKE_CRATES) ? PALENGKE_CRATES : null;
   }
 
   /** How far past the map's edge (0 or less: on it). */
   private past(c: number, r: number): number {
     return Math.max(-c, -r, c - this.cols + 1, r - this.rows + 1);
+  }
+
+  /** Past the NW or SE edge more than the NE or SW one: there the rows run along the row axis. */
+  private alongRow(c: number, r: number): boolean {
+    return Math.max(-c, c - this.cols + 1) >= Math.max(-r, r - this.rows + 1);
   }
 
   /** The gate's tiles carried on past the edge they're on, a tile either side (kept clear of stalls). */
@@ -264,25 +285,38 @@ export class PalengkeOutskirts implements BigOutskirts {
 
   objectsIn(c0: number, r0: number, c1: number, r1: number): MapObject[] {
     const out: MapObject[] = [];
-    const fits = (c: number, r: number, fc: number, fr: number) => {
+    // Every tile in the band, off the road, and on the side of the diagonal its lot's rows run (so lots of the two
+    // directions never overlap where they meet).
+    const fits = (c: number, r: number, fc: number, fr: number, row: boolean) => {
       for (let dr = 0; dr < fr; dr++) for (let dc = 0; dc < fc; dc++) {
         const d = this.past(c + dc, r + dr);
-        if (d < 2 || d > PALENGKE_DEPTH || this.road(c + dc, r + dr)) return false;
+        if (d < 2 || d > PALENGKE_DEPTH || this.road(c + dc, r + dr) || this.alongRow(c + dc, r + dr) !== row) return false;
       }
       return true;
     };
-    // One 3 × 3 cell each: a stall in two rows of three, an aisle between (a market's rows), a crate stack now and then.
-    const STEP = 3;
-    for (let cr = Math.floor(r0 / STEP); cr <= Math.floor(r1 / STEP); cr++) {
-      for (let cc = Math.floor(c0 / STEP); cc <= Math.floor(c1 / STEP); cc++) {
-        const c = cc * STEP;
-        const r = cr * STEP;
-        if (c < c0 || c > c1 || r < r0 || r > r1) continue;
-        const roll = tileRandom(cc, cr, 61);
-        if (this.stalls.length && roll < 0.62 && fits(c, r, 2, 2)) {
-          out.push({ kind: 'prop', id: pick(this.stalls, tileRandom(cc, cr, 62)), col: c, row: r, footprint: [2, 2], flip: tileRandom(cc, cr, 63) < 0.5 });
-        } else if (this.crates && roll < 0.72 && fits(c + 1, r + 1, 1, 1)) {
-          out.push({ kind: 'prop', id: this.crates, col: c + 1, row: r + 1, footprint: [1, 1], flip: tileRandom(cc, cr, 64) < 0.5 });
+    for (const row of [true, false]) {
+      const [sc, sr] = row ? [LOT.across, LOT.along] : [LOT.along, LOT.across];
+      const salt = row ? 61 : 71;
+      const size = (len: number): [number, number] => (row ? [2, len] : [len, 2]);
+      const at = (k: number): [number, number] => (row ? [0, k] : [k, 0]); // k tiles along the lot
+      for (let lr = Math.floor(r0 / sr); lr <= Math.floor(r1 / sr); lr++) {
+        for (let lc = Math.floor(c0 / sc); lc <= Math.floor(c1 / sc); lc++) {
+          const c = lc * sc;
+          const r = lr * sr;
+          if (c < c0 || c > c1 || r < r0 || r > r1) continue;
+          const roll = tileRandom(lc, lr, salt);
+          const piece = this.pieces.length ? pick(this.pieces, tileRandom(lc, lr, salt + 1)) : null;
+          if (piece && roll < 0.7 && fits(c, r, ...size(piece.len), row)) {
+            out.push({ kind: 'prop', id: piece.id, col: c, row: r, footprint: size(piece.len), flip: !row });
+            const [ec, er] = at(piece.len);
+            if (piece.len === 4 && this.stalls.length && tileRandom(lc, lr, salt + 2) < 0.6 && fits(c + ec, r + er, 2, 2, row)) {
+              out.push({ kind: 'prop', id: pick(this.stalls, tileRandom(lc, lr, salt + 3)), col: c + ec, row: r + er, footprint: [2, 2], flip: tileRandom(lc, lr, salt + 4) < 0.5 });
+            }
+          } else if (this.stalls.length && roll < 0.82 && fits(c, r, 2, 2, row)) {
+            out.push({ kind: 'prop', id: pick(this.stalls, tileRandom(lc, lr, salt + 3)), col: c, row: r, footprint: [2, 2], flip: tileRandom(lc, lr, salt + 4) < 0.5 });
+          } else if (this.crates && roll < 0.9 && fits(c + 1, r + 1, 1, 1, row)) {
+            out.push({ kind: 'prop', id: this.crates, col: c + 1, row: r + 1, footprint: [1, 1], flip: tileRandom(lc, lr, salt + 5) < 0.5 });
+          }
         }
       }
     }
