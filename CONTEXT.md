@@ -499,8 +499,12 @@ unlocks at its level and is raised with skill points.
 **Mobility move**:
 Dash or the class's Lv 8 move (Step Back, Charge, Blink): a quick step along your facing, usable anywhere.
 
+**Utility**:
+A class skill that isn't a damage skill or a mobility move: a buff, a debuff or a stance. The Skills panel lists them under
+Utilities.
+
 **Buff**:
-A class skill that puts stats on you (and others) for a while; buffs on the same stat add up, but the same buff never
+A utility that puts stats on you (and others) for a while; buffs on the same stat add up, but the same buff never
 stacks with itself. Cast on battle maps only; right-click one in your buff tray to take it off.
 _Avoid_: aura (that's the weapon's glow), effect
 
@@ -509,13 +513,42 @@ A buff that reaches the caster's whole party in range and the player they've pic
 buffs while stats.json says so).
 
 **Stance**:
-A self buff with no timer (Keen Stance), on until cast again.
+A self buff with no timer (Keen Stance, Fierce Stance, Flow Stance), on until cast again; one at a time.
 
 **Debuff**:
-A class skill that puts an effect on a mob instead of a player (Armor Crack: less DEF; Marked: takes more damage), cast
+A utility that puts an effect on a mob instead of a player (Armor Crack: less DEF; Marked: takes more damage), cast
 at your target like a buff. A mob holds one of each debuff at a time, whoever cast it; casting it again restarts its
 timer. Works on mini bosses and field bosses too.
 _Avoid_: curse, hex, status effect
+
+**Taunt**:
+A mob made to fight a player (the taunter) for a while, whatever it would have chosen: Gong Wave, Searing Lid, Provoke,
+Iron Kitchen. Works on every mob, bosses too, but a boss's special moves still pick their own victims. The latest taunt
+wins.
+
+**Stun**:
+A mob that can't move or attack for a while (Thunder Tap, Thunder Sweep). Mini bosses take half; the field bosses none.
+_Avoid_: daze (that's the Manananggal's), freeze
+
+**Damage over time**:
+Ticks of a skill's damage on a mob after the hit, wherever it walks, until they run out or it dies (Nail Driver bleeds,
+Searing Lid sears, Spirit Smoke). Unlike a burn, it isn't a puddle on the ground.
+_Avoid_: DoT (in player text), poison
+
+**Channel**:
+A damage skill that lands as several hits while you stand still (Seed Barrage, Hundred Hits, Simmer): moving, being
+knocked out or casting another skill stops the rest.
+
+**Charge-up**:
+Holding a skill's key to make it stronger (Long Pull): released at once it deals part of its damage, held to the end all
+of it (it fires itself then). Not the Charge mobility move.
+_Avoid_: charge (that's the mobility move)
+
+**Windup**:
+Standing still a moment before a skill lands (Pressure Cooker); moving first cancels it, at no cost.
+
+**Leap**:
+A skill that jumps you next to its target before it lands (Timber!).
 
 **Picked player**:
 The player you've clicked (their name box at the top): the one Info, Trade and buffs aim at.
