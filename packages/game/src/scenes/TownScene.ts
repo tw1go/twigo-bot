@@ -899,6 +899,8 @@ export class TownScene extends Phaser.Scene {
       this.mobs.near(this.player.tile);
       this.bossNear?.(this.player.tile);
     }
+    // (Ang Silong: an elevator's cage or a door you're in or behind shows you through it.)
+    this.silongView?.fadeOver(this.player.sprite.getBounds(), this.player.sprite.depth);
     this.loot?.update();
     this.golem?.update();
     this.greatScale?.update();
