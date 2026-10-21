@@ -72,7 +72,6 @@ const EMOTE_BURST = 3;
 /** Walking is 4 tiles a second; allow a little more, in bursts (messages bunch up on a bad connection). Slowed: half. */
 const STEPS_PER_SECOND = 6;
 const STEP_BURST = 6;
-const SLOWED = 0.5;
 /** Mobs' hits land, HP and MP come back and the knocked out respawn on this clock (ms). */
 const VITALS_MS = 100;
 const HEARTBEAT_MS = 30_000;
@@ -1145,7 +1144,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     const now = Date.now();
     // (Slowed: half; a dish's move speed (Pancit) on a battle map: faster.)
     // (Spilled rice under them: slower still, the slowest of the two; a Pancit's speed on top.)
-    const slow = Math.min(vitals?.slowed(c.userId, now) ? SLOWED : 1, mobsOf(c.room)?.slowAt(c.player.col, c.player.row, now) ?? 1);
+    const slow = Math.min(vitals?.slowFactor(c.userId, now) ?? 1, mobsOf(c.room)?.slowAt(c.player.col, c.player.row, now) ?? 1);
     const k = slow * (buffs && battle(c.room) ? moveSpeedOf(buffs.effective(c.userId)) : 1);
     c.tokens = Math.min(STEP_BURST * k, c.tokens + ((now - c.refilled) / 1000) * STEPS_PER_SECOND * k);
     c.refilled = now;
@@ -2483,7 +2482,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
           }
           vitals.fought(o.userId, now);
           if (l.miss) continue;
-          if (l.slow) vitals.slow(o.userId, l.slow, now);
+          if (l.slow) vitals.slow(o.userId, l.slow, now, l.slowFactor);
           if (l.tear) vitals.tear(o.userId, l.tear, l.tearAccuracy ?? 0, now);
           if (l.stun) {
             o.stunnedUntil = now + l.stun;

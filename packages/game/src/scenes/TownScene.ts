@@ -246,6 +246,8 @@ const BIIKKO_BAR_TILES = 16;
 const WARRENS_TINT = 0xbcbbc8;
 /** Ang Silong's cold storage: darker than the Palengke, a cold blue. */
 const SILONG_TINT = 0x9fb4d6;
+/** Ang Silong's ice: tiles you slide on after you stop (classes/dungeons.json silong.floorRules.ice: 2). */
+const SLIDE_TILES = 2;
 /** Arriving: the loading cover lifts after this many frames in a row under SMOOTH_MS, or after SETTLE_MAX_MS at most. */
 const SMOOTH_FRAMES = 20;
 const SMOOTH_MS = 40;
@@ -291,6 +293,14 @@ export class TownScene extends Phaser.Scene {
   /** Ang Silong: a floor's view and the run's tracker (on a floor), the run as last told, the hatch's panel asked for (the
    *  Palengke), and the ride-up box shown (on an arrival elevator). */
   private silongView: SilongView | null = null;
+  /** Ang Silong's ice: Frosty Tubbs' Ice Slick tiles (until when, performance.now()), the floor's own `ice`, your last
+   *  step's direction and when it was, and a slide under way (how many tiles left, which way). */
+  private slick = new Map<string, number>();
+  private iceTiles: Set<string> | null = null;
+  private lastStep: { from: string; d: [number, number]; at: number } | null = null;
+  private slide: { left: number; d: [number, number] } | null = null;
+  private slidFrom = '';
+  private stepWas: { k: string; col: number; row: number } | null = null;
   private silongTracker: SilongTracker | null = null;
   private silongRun: TownSilongRun | null = null;
   private hatchAsked = false;
@@ -711,8 +721,18 @@ export class TownScene extends Phaser.Scene {
       });
     }
     // An Ang Silong floor: its elevators, door and lamps (world/silong.ts).
-    if (this.map.silong) {
-      const view = new SilongView(this, this.M, this.map, this.fxLayers, this.grid);
+    if (this.map.silong && this.mobs) {
+      const view = new SilongView(this, this.M, this.map, this.fxLayers, this.grid, this.mobs, {
+        me: () => this.player.tile,
+        onHit: (boss, target, hit, slow, factor) => {
+          this.mobs?.hooks.onHit?.(boss as never, target, slow, hit);
+          if (slow && factor && target === this.myId) this.slowMe(slow, factor); // (its own strength, as the server's)
+        },
+        slick: (tiles, ms) => {
+          const until = performance.now() + ms;
+          for (const [c, r] of tiles) this.slick.set(`${c},${r}`, until);
+        },
+      });
       this.silongView = view;
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
         view.destroy();
@@ -871,6 +891,18 @@ export class TownScene extends Phaser.Scene {
     this.loot?.update();
     this.golem?.update();
     this.greatScale?.update();
+    this.silongView?.update();
+    // (Your last step's way, for sliding on ice.)
+    if (this.silongView) {
+      const t = this.player.tile;
+      const k = `${t.col},${t.row}`;
+      const was = this.stepWas;
+      if (was && was.k !== k) {
+        this.lastStep = { from: was.k, d: [Math.sign(t.col - was.col), Math.sign(t.row - was.row)], at: performance.now() };
+        if (this.slidFrom && this.slidFrom !== k && !this.slide) this.slidFrom = '';
+      }
+      this.stepWas = { k, col: t.col, row: t.row };
+    }
     this.warrens?.update();
     // Raised ground that hides you (a bluff, a mesa, the crest) fades to half, as the Warrens' walls do (WarrensView
     // fades its own there).
@@ -2346,9 +2378,10 @@ export class TownScene extends Phaser.Scene {
       }
       // Boss moves: a Warrens run's bosses there, the field golem's in the Slums (a map has one or the other).
       // (The Palengke: the Great Scale's.)
-      if (m.t === 'boss-move') return this.warrens ? this.warrens.move(m) : this.greatScale ? this.greatScale.move(m) : this.golem?.move(m);
-      if (m.t === 'boss-hit') return this.warrens ? this.warrens.hit(m) : this.greatScale ? this.greatScale.hit(m) : this.golem?.moveHit(m);
-      if (m.t === 'boss-cancel') return this.warrens ? this.warrens.cancel(m.id) : this.greatScale ? this.greatScale.cancel(m.id) : this.golem?.cancel(m.id);
+      // (Ang Silong: its mini bosses'.)
+      if (m.t === 'boss-move') return this.warrens ? this.warrens.move(m) : this.silongView ? this.silongView.bossMove(m) : this.greatScale ? this.greatScale.move(m) : this.golem?.move(m);
+      if (m.t === 'boss-hit') return this.warrens ? this.warrens.hit(m) : this.silongView ? this.silongView.bossHit(m) : this.greatScale ? this.greatScale.hit(m) : this.golem?.moveHit(m);
+      if (m.t === 'boss-cancel') return this.warrens ? this.warrens.cancel(m.id) : this.silongView ? this.silongView.cancel(m.id) : this.greatScale ? this.greatScale.cancel(m.id) : this.golem?.cancel(m.id);
       if (m.t === 'great-scale') return this.greatScale?.set(m.scale, m.change, m.spots);
       if (m.t === 'bell-rung') return this.greatScale?.rung();
       if (m.t === 'quest-bell') return devQuestBell(m.mob);
@@ -3255,6 +3288,9 @@ export class TownScene extends Phaser.Scene {
    */
   private keyStep(): Tile | null {
     const dir = this.knockedOut || this.stunned ? null : this.heldDir();
+    // On ice with nothing held: on you slide (CONTEXT.md Ice).
+    const sliding = !dir && !this.knockedOut && !this.stunned ? this.iceSlide() : null;
+    if (sliding) return sliding;
     if (!dir) {
       this.keyWalking = false;
       this.keyDir = null;
@@ -3282,6 +3318,37 @@ export class TownScene extends Phaser.Scene {
     this.keyWalking = true;
     this.pending = null;
     return to;
+  }
+
+  /** Ang Silong's ice (its `i` tiles, and Ice Slick's for their time): stopping on it, you slide on the way you were
+   *  going (floorRules.ice: 2 tiles), stopping at walls. The next tile of a slide, or null. */
+  private iceSlide(): Tile | null {
+    const t = this.player.tile;
+    const k = `${t.col},${t.row}`;
+    if (!this.onIce(k)) {
+      this.slide = null;
+      return null;
+    }
+    if (!this.slide) {
+      const last = this.lastStep;
+      if (!last || this.slidFrom === k || performance.now() - last.at > 400) return null;
+      this.slide = { left: SLIDE_TILES, d: last.d };
+    }
+    const to = { col: t.col + this.slide.d[0], row: t.row + this.slide.d[1] };
+    if (this.slide.left <= 0 || !this.grid.canStep(t, to)) {
+      this.slide = null;
+      this.slidFrom = k; // (not again until you move off)
+      return null;
+    }
+    this.slide.left--;
+    return to;
+  }
+
+  private onIce(k: string): boolean {
+    this.iceTiles ??= new Set((this.map.silong?.ice ?? []).map(([c, r]) => `${c},${r}`));
+    if (this.iceTiles.has(k)) return true;
+    const until = this.slick.get(k);
+    return !!until && until > performance.now();
   }
 
   /** The tile one step from `from` toward a screen direction, sliding along a wall through either half; null if blocked. */
@@ -3381,12 +3448,16 @@ export class TownScene extends Phaser.Scene {
     if (!o) return null;
     return { centre: W?.entry.warp.tile ?? [o.col + 1, o.row + 1], range: W?.entry.warp.useRangeTiles ?? 3 };
   }
-  /** Slowed by the Bag until then (performance.now(), as the step budget): half walking speed, half the budget. */
+  /** Slowed by the Bag until then (performance.now(), as the step budget): half walking speed, half the budget; or by
+   *  another slow's own strength (`slowFactor`: Brine Splash's 0.7). */
   private slowUntil = 0;
+  private slowFactor = 0.5;
   private slowTimer: Phaser.Time.TimerEvent | null = null;
 
   /** The Bag's slow on you: half walking speed for `ms` (the server holds your steps to it too). */
-  private slowMe(ms: number): void {
+  private slowMe(ms: number, factor = 0.5): void {
+    // (The stronger of two slows at once wins, as the server's.)
+    this.slowFactor = performance.now() < this.slowUntil ? Math.min(this.slowFactor, factor) : factor;
     this.slowUntil = Math.max(this.slowUntil, performance.now() + ms);
     this.player.speed = SPEED * this.speedFactor();
     this.slowTimer?.remove();
@@ -3528,7 +3599,7 @@ export class TownScene extends Phaser.Scene {
    *  step budget follows the same). */
   private speedFactor(now = performance.now(), rice = false): number {
     // (With `rice`: the server's step budget's rule, the slower of the Bag's slow and spilled rice underfoot.)
-    const slow = Math.min(now < this.slowUntil ? 0.5 : 1, rice ? this.riceAt(this.player.tile.col, this.player.tile.row) : 1);
+    const slow = Math.min(now < this.slowUntil ? this.slowFactor : 1, rice ? this.riceAt(this.player.tile.col, this.player.tile.row) : 1);
     return slow * (this.battleMap ? moveSpeedOf(myBuffStats()) : 1);
   }
 

@@ -146,3 +146,115 @@ test('"Ngayon Na" (palengke-15): Mang Pido, after the finale, at Lv 37: a talk t
   assert.equal(q.rewardKusing, 250001);
   assert.equal(q.objectives[0].type, 'talk');
 });
+
+// ── The mini bosses' moves (town-silong-bosses.ts) ──
+
+type Ev = import('./town-mobs.js').MobEvent;
+const of = <T extends Ev['t']>(events: Ev[], t: T) => events.filter((e): e is Extract<Ev, { t: T }> => e.t === t);
+/** A floor's room ticked from `from` to `to` (every 250 ms) with these players standing still; every event. */
+function play(run: SilongRun, floor: 'b1' | 'b2' | 'b3', from: number, to: number, players: Record<string, [number, number]>): Ev[] {
+  const f = run.floors[floor];
+  const where = new Map(Object.entries(players));
+  const guards = new Map(Object.keys(players).map((id) => [id, { def: 80, level: 40 }]));
+  const out: Ev[] = [];
+  for (let t = from; t <= to; t += 250) out.push(...f.mobs.tick(t, where, guards), ...f.mobs.flush());
+  return out;
+}
+const tileOf = (run: SilongRun, floor: 'b1' | 'b2' | 'b3', boss: string) => run.floors[floor].mobs.mobInfo(`boss:${boss}`, 0)!.at;
+const near = (t: [number, number], dc = 2, dr = 0): [number, number] => [t[0] + dc, t[1] + dr];
+
+test("Atsarah: Brine Splash round her (its hit slows 30%), Lid Spin out and back, her jars at 66% and 33%", () => {
+  const run = open(silong());
+  const at = tileOf(run, 'b1', 'atsarah');
+  const ev = play(run, 'b1', 0, 14_000, { A: near(at, 1), B: near(at, -3, 0) });
+  const moves = of(ev, 'boss-move').filter((m) => m.id === 'boss:atsarah');
+  assert.ok(moves.some((m) => m.move === 'brineSplash' && m.shape?.kind === 'circle'));
+  const lid = moves.find((m) => m.move === 'lidSpin')!;
+  assert.equal(lid?.shape?.kind, 'line');
+  assert.ok(of(ev, 'boss-hit').some((h) => h.key === `${lid.key}:back`), 'the lid comes back');
+  assert.ok(run.floors.b1.mobs.landed(14_000).some((l) => l.slowFactor === 0.7 && l.slow === 2000), 'Brine Splash slows to 70% for 2 s');
+  // Her jars at 66%.
+  const f = run.floors.b1;
+  const info = f.mobs.mobInfo('boss:atsarah', 15_000)!;
+  f.mobs.devWound(info.id, Math.round(info.maxHp * 0.66) + 10);
+  f.mobs.attack('t-x', near(info.at, 1), { cls: 'stick', level: 40 }, info.id, 15_000);
+  const calls = of(f.mobs.flush(), 'boss-move').filter((m) => m.move === 'jarCall');
+  assert.equal((calls[0]?.data?.spots as unknown[])?.length, 3);
+});
+
+test('Sakristan: Rice Rain leaves spilled rice; Belly Flop lands him on the farthest player', () => {
+  const run = open(silong());
+  const at = tileOf(run, 'b1', 'sakristan');
+  const far = near(at, 0, 5);
+  const ev = play(run, 'b1', 0, 15_000, { A: near(at, 1), B: far });
+  const fx = of(ev, 'mob-fx').filter((e) => e.fx === 'rice');
+  assert.ok(fx.length >= 5, 'a patch under each');
+  const flop = of(ev, 'boss-move').find((m) => m.move === 'bellyFlop')!;
+  assert.deepEqual(flop.shape?.kind === 'circle' && flop.shape.at, far);
+  assert.ok(of(ev, 'mob-spawn').some((e) => e.id === 'boss:sakristan' && e.col === far[0] && e.row === far[1]), 'he lands there');
+});
+
+test('Mono Lisa: Chair Barrage lands where they stood; at 60% she splits: two fakes, every hit on them blocked, gone after 6 s', () => {
+  const run = open(silong());
+  run.skipTo('b2');
+  const at = tileOf(run, 'b2', 'mono-lisa');
+  const ev = play(run, 'b2', 0, 10_000, { A: near(at, 2), B: near(at, -2) });
+  const barrage = of(ev, 'boss-move').find((m) => m.move === 'chairBarrage')!;
+  assert.equal((barrage.data?.chairs as unknown[]).length, 4);
+  const f = run.floors.b2;
+  const info = f.mobs.mobInfo('boss:mono-lisa', 11_000)!;
+  f.mobs.devWound(info.id, Math.round(info.maxHp * 0.6) + 10);
+  f.mobs.attack('t-x', near(info.at, 1), { cls: 'stick', level: 40 }, info.id, 11_000);
+  const split = of(f.mobs.flush(), 'boss-move').find((m) => m.move === 'split')!;
+  const fakes = split.data!.fakes as string[];
+  assert.equal(fakes.length, 2);
+  const fake = f.mobs.mobInfo(fakes[0], 11_000)!;
+  const r = f.mobs.attack('t-y', near(fake.at, 1), { cls: 'stick', level: 40 }, fakes[0], 11_500);
+  assert.ok(r.ok && r.hits[0].blocked, 'only the real one takes damage');
+  const later = play(run, 'b2', 11_250, 17_500, { A: near(at, 2) });
+  assert.ok(of(later, 'mob-remove').some((e) => fakes.every((id) => e.ids.includes(id))));
+});
+
+test("Sangkalancelot: his shell blocks every hit from his front, except just after a Cleaver Charge; his hooks from 50%", () => {
+  const run = open(silong());
+  run.skipTo('b2');
+  const f = run.floors.b2;
+  const at = tileOf(run, 'b2', 'sangkalancelot');
+  // He faces whoever he fights: from his front, blocked.
+  play(run, 'b2', 0, 1000, { A: near(at, 1) });
+  const facing = f.mobs.mobInfo('boss:sangkalancelot', 1000)!;
+  const front = near(facing.at, facing.facing === 'se' ? 1 : facing.facing === 'nw' ? -1 : 0, facing.facing === 'sw' ? 1 : facing.facing === 'ne' ? -1 : 0);
+  const blocked = f.mobs.attack('t-a', front, { cls: 'stick', level: 40 }, 'boss:sangkalancelot', 1100);
+  assert.ok(blocked.ok && blocked.hits[0].blocked, 'his front: blocked');
+  // A Cleaver Charge: open for a moment after.
+  const ev = play(run, 'b2', 1250, 12_000, { A: near(at, 1), B: near(at, 0, 6) });
+  const charge = of(ev, 'boss-hit').find((h) => h.move === 'cleaverCharge')!;
+  assert.ok(charge && (charge.data?.openMs as number) > 1200);
+  // At half: his Chompers, then hook shadows every 6 s.
+  const info = f.mobs.mobInfo('boss:sangkalancelot', 13_000)!;
+  f.mobs.devWound(info.id, Math.round(info.maxHp * 0.5));
+  f.mobs.attack('t-z', near(info.at, -1), { cls: 'stick', level: 40 }, info.id, 13_000);
+  assert.ok(of(f.mobs.flush(), 'boss-move').some((m) => m.move === 'hookSwing'));
+  const hooks = play(run, 'b2', 13_250, 26_000, { A: near(at, 1) });
+  assert.ok(of(hooks, 'boss-move').some((m) => m.move === 'hookShadows' && m.shape?.kind === 'circles'));
+});
+
+test('Frosty Tubbs: Ambush (under the ice, up under the circle), Ice Slick (a cone of ice for 5 s), his Lurkers out of the tanks', () => {
+  const run = open(silong());
+  run.skipTo('b3');
+  const f = run.floors.b3;
+  const at = tileOf(run, 'b3', 'frosty-tubbs');
+  const ev = play(run, 'b3', 0, 16_000, { A: near(at, 1), B: near(at, -3) });
+  const ambush = of(ev, 'boss-move').find((m) => m.move === 'ambush')!;
+  assert.ok(of(ev, 'mob-flag').some((e) => e.id === 'boss:frosty-tubbs' && e.hidden === true), 'under the ice');
+  const to = ambush.data!.to as [number, number];
+  assert.ok(of(ev, 'mob-spawn').some((e) => e.id === 'boss:frosty-tubbs' && e.col === to[0] && e.row === to[1]), 'up under the circle');
+  const slick = of(ev, 'boss-hit').find((h) => h.move === 'iceSlick')!;
+  assert.ok((slick.data?.ice as unknown[]).length > 3 && slick.data?.ms === 5000);
+  const info = f.mobs.mobInfo('boss:frosty-tubbs', 17_000)!;
+  f.mobs.devWound(info.id, Math.round(info.maxHp * 0.5));
+  f.mobs.attack('t-z', near(info.at, 1), { cls: 'stick', level: 40 }, info.id, 17_000);
+  const call = of(f.mobs.flush(), 'boss-move').find((m) => m.move === 'tubCall')!;
+  const spots = call.data!.spots as [number, number][];
+  assert.ok(spots.length === 2 && spots.every(([c, r]) => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dc, dr]) => f.map.ground?.[r + dr]?.[c + dc] === 'tank')), 'beside the tanks');
+});
