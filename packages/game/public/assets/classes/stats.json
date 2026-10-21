@@ -518,26 +518,38 @@
       "slingshot": {
        "Rally": 35,
        "Steady Aim": 44,
-       "Second Wind": 58
+       "Second Wind": 58,
+       "Armor Crack": 21,
+       "Marked": 27
       },
       "stick": {
-       "Keen Stance": 0
+       "Keen Stance": 0,
+       "Fierce Stance": 0,
+       "Flow Stance": 0
       },
       "greatstick": {
        "Hearty Cheer": 24,
        "Steady Breath": 29,
-       "Battle Roar": 44
+       "Battle Roar": 44,
+       "Hamstring": 10,
+       "Blood Price": 0
       },
       "broom": {
-       "Warding Dust": 100
+       "Warding Dust": 100,
+       "Mist Veil": 140
       },
       "potlid": {
-       "Dinner Bell": 44
+       "Dinner Bell": 44,
+       "Provoke": 15,
+       "Iron Kitchen": 30
       },
       "hilot": {
        "Vital Rub": 57,
        "Calm Mind": 74,
-       "Soothing Touch": 24
+       "Soothing Touch": 24,
+       "Hyper Regen": 60,
+       "Eye Sting": 30,
+       "Numbing Oil": 37
       }
      },
      "cooldownAssumedSec": {
@@ -701,6 +713,146 @@
        "durationSec": 0,
        "cooldownSec": 10,
        "note": "an instant heal, not a timed buff: self + party members in range, Power x 80% (+2% a skill level, perSkillLevel.damageOrHeal, like heals)"
+      },
+      "Fierce Stance": {
+       "class": "stick",
+       "unlock": 24,
+       "target": "self",
+       "stats": {
+        "critDamage": 0.25
+       },
+       "durationSec": null,
+       "cooldownSec": 3,
+       "stance": true
+      },
+      "Provoke": {
+       "class": "potlid",
+       "unlock": 24,
+       "target": "enemy",
+       "stats": {
+        "taunt": 6,
+        "defPct": -0.15
+       },
+       "durationSec": 8,
+       "cooldownSec": 12,
+       "debuff": true,
+       "rangeTiles": 5
+      },
+      "Hyper Regen": {
+       "class": "hilot",
+       "unlock": 24,
+       "target": "party",
+       "stats": {
+        "hpRegenPctPerSec": 0.03
+       },
+       "durationSec": 10,
+       "cooldownSec": 60
+      },
+      "Armor Crack": {
+       "class": "slingshot",
+       "unlock": 30,
+       "target": "enemy",
+       "stats": {
+        "defPct": -0.2
+       },
+       "durationSec": 10,
+       "cooldownSec": 15,
+       "debuff": true,
+       "rangeTiles": 5
+      },
+      "Hamstring": {
+       "class": "greatstick",
+       "unlock": 30,
+       "target": "enemy",
+       "stats": {
+        "slow": 0.5
+       },
+       "durationSec": 5,
+       "cooldownSec": 12,
+       "debuff": true,
+       "rangeTiles": 1
+      },
+      "Eye Sting": {
+       "class": "hilot",
+       "unlock": 30,
+       "target": "enemy",
+       "stats": {
+        "missChance": 0.2
+       },
+       "durationSec": 8,
+       "cooldownSec": 15,
+       "debuff": true,
+       "rangeTiles": 3
+      },
+      "Flow Stance": {
+       "class": "stick",
+       "unlock": 35,
+       "target": "self",
+       "stats": {
+        "amp": 0.08
+       },
+       "durationSec": null,
+       "cooldownSec": 3,
+       "stance": true
+      },
+      "Iron Kitchen": {
+       "class": "potlid",
+       "unlock": 35,
+       "target": "enemy+self",
+       "stats": {
+        "tauntAround": 3,
+        "taunt": 5,
+        "defRate": 0.08
+       },
+       "durationSec": 8,
+       "cooldownSec": 20,
+       "debuff": true,
+       "rangeTiles": 5
+      },
+      "Numbing Oil": {
+       "class": "hilot",
+       "unlock": 35,
+       "target": "enemy",
+       "stats": {
+        "mobDamagePct": -0.15
+       },
+       "durationSec": 10,
+       "cooldownSec": 15,
+       "debuff": true,
+       "rangeTiles": 3
+      },
+      "Marked": {
+       "class": "slingshot",
+       "unlock": 35,
+       "target": "enemy",
+       "stats": {
+        "damageTakenPct": 0.15
+       },
+       "durationSec": 10,
+       "cooldownSec": 20,
+       "debuff": true,
+       "rangeTiles": 5
+      },
+      "Blood Price": {
+       "class": "greatstick",
+       "unlock": 35,
+       "target": "self",
+       "stats": {
+        "amp": 0.12,
+        "hpDrainPctPerSec": 0.01
+       },
+       "durationSec": 20,
+       "cooldownSec": 30
+      },
+      "Mist Veil": {
+       "class": "broom",
+       "unlock": 35,
+       "target": "party",
+       "stats": {
+        "evasion": 0.06
+       },
+       "durationSec": 300,
+       "cooldownSec": 10
       }
      },
      "statKeys": {
@@ -713,7 +865,16 @@
       "accuracy": "miss chance - points",
       "hpRegenPctPerSec": "HP regen, % of max HP a second, in combat too",
       "cooldownPct": "damage skill cooldowns -%",
-      "healPctOfPower": "instant heal, % of Power"
+      "healPctOfPower": "instant heal, % of Power",
+      "critDamage": "crit damage + (1.5x to 1.5x + this)",
+      "evasion": "mobs' miss chance on you + points",
+      "hpDrainPctPerSec": "HP lost a second, % of max HP (never below 10%)",
+      "damageTakenPct": "(debuff) damage the mob takes +%",
+      "missChance": "(debuff) the mob's miss chance + points",
+      "mobDamagePct": "(debuff) the mob's damage +% (negative)",
+      "slow": "(debuff) the mob moves at this share of its speed",
+      "taunt": "(debuff) the mob fights the caster for this many seconds",
+      "tauntAround": "(debuff) every mob within this many tiles of the caster is taunted"
      }
     },
     "cooldownByUnlock": {

@@ -50,6 +50,36 @@
      "level": 18,
      "name": "Volley",
      "desc": "Rain of pebbles on an area"
+    },
+    {
+     "level": 21,
+     "name": "Headshot",
+     "desc": "Heavy single hit with extra crit chance"
+    },
+    {
+     "level": 25,
+     "name": "Burst Marble",
+     "desc": "Marble that explodes on impact"
+    },
+    {
+     "level": 28,
+     "name": "Seed Barrage",
+     "desc": "Six rapid shots while channelling"
+    },
+    {
+     "level": 32,
+     "name": "Long Pull",
+     "desc": "Hold to charge; damage grows with charge"
+    },
+    {
+     "level": 36,
+     "name": "Hailstorm",
+     "desc": "Large area rain of pebbles"
+    },
+    {
+     "level": 40,
+     "name": "Homing Pebbles",
+     "desc": "Three shots that seek targets"
     }
    ],
    "mobility": [
@@ -84,6 +114,16 @@
      "level": 20,
      "effect": "+HP",
      "minutes": 5
+    },
+    {
+     "name": "Armor Crack",
+     "level": 30,
+     "effect": "One mob within 5 tiles has 20% less DEF (Mac, 20 Oct)"
+    },
+    {
+     "name": "Marked",
+     "level": 35,
+     "effect": "One mob within 5 tiles takes 15% more damage from everyone (Mac, 20 Oct)"
     }
    ]
   },
@@ -136,6 +176,36 @@
      "level": 18,
      "name": "Lunge",
      "desc": "Dashing thrust"
+    },
+    {
+     "level": 21,
+     "name": "Crosscut",
+     "desc": "X-shaped double strike"
+    },
+    {
+     "level": 25,
+     "name": "Thunder Tap",
+     "desc": "Hit that stuns"
+    },
+    {
+     "level": 28,
+     "name": "Whirlwind",
+     "desc": "Spin while moving"
+    },
+    {
+     "level": 32,
+     "name": "Hundred Hits",
+     "desc": "Long flurry channel"
+    },
+    {
+     "level": 36,
+     "name": "Shatter Strike",
+     "desc": "Overhead blow with a shockwave"
+    },
+    {
+     "level": 40,
+     "name": "Phantom Sticks",
+     "desc": "Afterimages strike with you"
     }
    ],
    "mobility": [
@@ -157,6 +227,18 @@
      "name": "Keen Stance",
      "level": 14,
      "effect": "+Crit rate",
+     "permanent": true
+    },
+    {
+     "name": "Fierce Stance",
+     "level": 24,
+     "effect": "+25% crit damage (1.5x to 1.75x)",
+     "permanent": true
+    },
+    {
+     "name": "Flow Stance",
+     "level": 35,
+     "effect": "+8 points of damage amp",
      "permanent": true
     }
    ]
@@ -210,6 +292,36 @@
      "level": 18,
      "name": "Splinter Burst",
      "desc": "Cone of wood shards"
+    },
+    {
+     "level": 21,
+     "name": "Cleave",
+     "desc": "Huge arc that hits everything in front"
+    },
+    {
+     "level": 25,
+     "name": "Earthshaker",
+     "desc": "Quake along a line"
+    },
+    {
+     "level": 28,
+     "name": "Cyclone",
+     "desc": "Heavy spinning attack"
+    },
+    {
+     "level": 32,
+     "name": "Nail Driver",
+     "desc": "Heavy single hit plus bleed"
+    },
+    {
+     "level": 36,
+     "name": "Timber!",
+     "desc": "Leaps and slams down on an area"
+    },
+    {
+     "level": 40,
+     "name": "Avalanche",
+     "desc": "Three slams in a row"
     }
    ],
    "mobility": [
@@ -244,6 +356,16 @@
      "level": 20,
      "effect": "Damage amp",
      "minutes": 3
+    },
+    {
+     "name": "Hamstring",
+     "level": 30,
+     "effect": "One mob within 1 tile moves at 50% speed"
+    },
+    {
+     "name": "Blood Price",
+     "level": 35,
+     "effect": "+12 points of damage amp; you lose 1% of max HP a second (never below 10%), no MP"
     }
    ]
   },
@@ -296,6 +418,36 @@
      "level": 18,
      "name": "Static Bristles",
      "desc": "Chain lightning"
+    },
+    {
+     "level": 21,
+     "name": "Moonbeam",
+     "desc": "Beam from above on one target"
+    },
+    {
+     "level": 25,
+     "name": "Leaf Storm",
+     "desc": "Swirling leaves over an area"
+    },
+    {
+     "level": 28,
+     "name": "Firefly Swarm",
+     "desc": "Seeking fireflies"
+    },
+    {
+     "level": 32,
+     "name": "Starfall",
+     "desc": "Stars fall on an area"
+    },
+    {
+     "level": 36,
+     "name": "Tempest",
+     "desc": "Large storm area"
+    },
+    {
+     "level": 40,
+     "name": "Thunder Sweep",
+     "desc": "Big lightning strike in a line"
     }
    ],
    "mobility": [
@@ -318,6 +470,11 @@
      "level": 20,
      "effect": "+DEF and +DEF rate",
      "minutes": 5
+    },
+    {
+     "name": "Mist Veil",
+     "level": 35,
+     "effect": "Mobs miss you and the party within 6 tiles 6 points more often"
     }
    ]
   },
@@ -370,6 +527,36 @@
      "level": 18,
      "name": "Rebound",
      "desc": "Lid bounces between enemies"
+    },
+    {
+     "level": 21,
+     "name": "Pressure Cooker",
+     "desc": "Charge up, then explode"
+    },
+    {
+     "level": 25,
+     "name": "Hot Oil",
+     "desc": "Burning pool on the ground"
+    },
+    {
+     "level": 28,
+     "name": "Gong Wave",
+     "desc": "Shockwave along a line"
+    },
+    {
+     "level": 32,
+     "name": "Simmer",
+     "desc": "Damage aura while channelling"
+    },
+    {
+     "level": 36,
+     "name": "Searing Lid",
+     "desc": "Glowing lid slam"
+    },
+    {
+     "level": 40,
+     "name": "Kettle Scream",
+     "desc": "Large sound blast"
     }
    ],
    "mobility": [
@@ -391,6 +578,16 @@
      "name": "Dinner Bell",
      "level": 14,
      "effect": "+Accuracy"
+    },
+    {
+     "name": "Provoke",
+     "level": 24,
+     "effect": "One mob within 5 tiles fights you for 6 s and has 15% less DEF for 8 s"
+    },
+    {
+     "name": "Iron Kitchen",
+     "level": 35,
+     "effect": "Every mob within 3 tiles fights you for 5 s; you take 8 points less damage (DEF rate) for 8 s"
     }
    ]
   },
@@ -443,6 +640,36 @@
      "level": 18,
      "name": "Hot Compress",
      "desc": "Burn over time"
+    },
+    {
+     "level": 21,
+     "name": "Nettle Burst",
+     "desc": "Burst of nettles around self"
+    },
+    {
+     "level": 25,
+     "name": "Spirit Smoke",
+     "desc": "Smoke that follows a target"
+    },
+    {
+     "level": 28,
+     "name": "Herbal Storm",
+     "desc": "Swirling herbs over an area"
+    },
+    {
+     "level": 32,
+     "name": "Fever Wave",
+     "desc": "Wave of heat in a line"
+    },
+    {
+     "level": 36,
+     "name": "Wildroot",
+     "desc": "Roots burst from the ground"
+    },
+    {
+     "level": 40,
+     "name": "Spirit Lash",
+     "desc": "Spirit vine whip"
     }
    ],
    "mobility": [
@@ -475,6 +702,21 @@
      "name": "Soothing Touch",
      "level": 20,
      "effect": "Heal"
+    },
+    {
+     "name": "Hyper Regen",
+     "level": 24,
+     "effect": "3% of max HP a second (30% over 10 s), you and the party within 6 tiles"
+    },
+    {
+     "name": "Eye Sting",
+     "level": 30,
+     "effect": "One mob within 3 tiles misses 20 points more often"
+    },
+    {
+     "name": "Numbing Oil",
+     "level": 35,
+     "effect": "One mob within 3 tiles deals 15% less damage"
     }
    ]
   }

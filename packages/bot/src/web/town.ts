@@ -682,8 +682,27 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   /** Their most HP and MP, a regen buff's share (and their DEF, DEF rate and level, for mobs' hits). */
   const maxOf = (c: Conn): VitalMax => {
     const d = rules!.fighter(fighterOf(c));
-    c.guard = { def: d.def, level: d.level, defRate: d.defRate, priority: targetPriority(STATS, c.player.cls) };
-    return { hp: d.hp, mp: d.mp, mpRegen: d.mpRegen, hpRegenPct: d.hpRegenPct ?? 0 };
+    c.guard = { def: d.def, level: d.level, defRate: d.defRate, priority: targetPriority(STATS, c.player.cls), ...(d.evasion ? { evasion: d.evasion } : {}) };
+    return { hp: d.hp, mp: d.mp, mpRegen: d.mpRegen, hpRegenPct: d.hpRegenPct ?? 0, ...(d.hpDrainPct ? { hpDrainPct: d.hpDrainPct } : {}) };
+  };
+  /** A skill's heal (heal:F, Herbal Storm): the caster and their party members in the room within the buffs' party
+   *  range, `share` × the caster's Power each, green numbers for the room (as Soothing Touch's). */
+  const healParty = (c: Conn, share: number) => {
+    if (!vitals || !rules) return;
+    const range = Number(STATS.skills.buffs?.rules.partyRangeTiles ?? 6);
+    const power = rules.fighter(fighterOf(c)).power;
+    const near = [c.userId, ...(parties.of(c.userId)?.members ?? []).filter((u) => u !== c.userId)].flatMap((u) => {
+      const o = conns.get(u);
+      return o && o.room === c.room && !o.player.out && Math.max(Math.abs(o.player.col - c.player.col), Math.abs(o.player.row - c.player.row)) <= range ? [o] : [];
+    });
+    const heals = near.map((o) => {
+      const amount = vitals.heal(o.userId, 'hp', power * share);
+      tellVitals(o);
+      return { id: o.player.id, amount };
+    });
+    const healed: TownServerMessage = { t: 'buff-heal', by: c.player.id, heals };
+    others(c, healed);
+    send(c, healed);
   };
   /** Their HP (and to them, MP) to them, their room and their party (wherever they are). */
   const tellVitals = (c: Conn) => {
@@ -1180,7 +1199,9 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     // (Ang Silong's Chill: 5% slower a stack.)
     const srun = silongOf(c.room);
     const chill = srun ? chillMove(srun.chillR, srun.chillOf(c.userId)) : 1;
-    const k = slow * chill * (buffs && battle(c.room) ? moveSpeedOf(buffs.effective(c.userId)) : 1);
+    // (Spinning: a skill's hits on the move under way, Whirlwind, at 70%.)
+    const spin = mobsOf(c.room)?.onTheMove(c.player.id) ? 0.7 : 1;
+    const k = slow * chill * spin * (buffs && battle(c.room) ? moveSpeedOf(buffs.effective(c.userId)) : 1);
     c.tokens = Math.min(STEP_BURST * k, c.tokens + ((now - c.refilled) / 1000) * STEPS_PER_SECOND * k);
     c.refilled = now;
     if (c.tokens < 1) return false;
@@ -1220,6 +1241,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         if (!ok) return send(c, { t: 'snap', col: p.col, row: p.row });
         Object.assign(p, { col: m.col, row: m.row, dir: dirForStep(dc, dr), sit: false });
         silongOf(c.room)?.stepped(c.userId, Date.now()); // (walking clears Ang Silong's Chill)
+        mobsOf(c.room)?.stopCasts(p.id); // (walking stops a channel or windup: CONTEXT.md Channel)
         others(c, { t: 'step', id: p.id, col: p.col, row: p.row });
         return tradeRange(c); // walking away from someone you're trading with cancels it
       }
@@ -1293,12 +1315,24 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         // Its MP (stats.json skills.mpCost at its skill level), spent once the mob room takes the hit.
         const mp = skillMpCost(STATS, who.cls, String(m.skill), who.skills?.[m.skill as number] ?? 1);
         if (vitals && !vitals.hasMp(c.userId, mp)) return send(c, { t: 'attack-refused', reason: 'mp' });
-        const r = mobs.attack(p.id, [p.col, p.row], who, m.mob, now, m.skill as number, p.nickname, c.userId);
+        // (A charge-up's key held this long: the mob room clamps it to the skill's time.)
+        const heldMs = typeof m.held === 'number' && Number.isFinite(m.held) ? Math.max(0, m.held) : undefined;
+        const r = mobs.attack(p.id, [p.col, p.row], who, m.mob, now, m.skill as number, p.nickname, c.userId, { ...(heldMs !== undefined ? { held: heldMs } : {}), mp });
         if (!r.ok) return send(c, { t: 'attack-refused', reason: r.reason });
-        if (mp > 0 && vitals?.spend(c.userId, mp)) tellVitals(c);
+        // (A windup's MP is spent as it lands: skillTick's `spent`.)
+        if (!r.windup && mp > 0 && vitals?.spend(c.userId, mp)) tellVitals(c);
+        // A leap: they land next to the target first (everyone there sees them jump).
+        if (r.leap) {
+          [p.col, p.row] = r.leap;
+          const jump: TownServerMessage = { t: 'leap', id: p.id, col: p.col, row: p.row };
+          others(c, jump);
+          send(c, jump);
+        }
+        // A heal (Herbal Storm): them and their party in range, its share of their Power.
+        if (r.heal && vitals) healParty(c, r.heal);
         vitals?.fought(c.userId, now); // in combat: no HP back for a while
         // The hit, then what it set off (the golem calling the Junk, enraging, falling: its line too, to this room only).
-        for (const e of [{ t: 'mob-hit', by: p.id, skill: m.skill as number, hits: r.hits } satisfies TownServerMessage, ...mobs.flush()]) {
+        for (const e of [{ t: 'mob-hit', by: p.id, skill: m.skill as number, hits: r.hits, ...(r.windup ? { windup: r.windup, target: m.mob } : {}) } satisfies TownServerMessage, ...mobs.flush()]) {
           others(c, e);
           send(c, e);
         }
@@ -1306,6 +1340,10 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         petXp(c, mobs, r.hits, now);
         return;
       }
+      case 'skill-stop':
+        // They moved or let go: their channel or windup stops (a windup's cooldown back: it cost nothing).
+        mobsOf(c.room)?.stopCasts(p.id);
+        return;
       case 'buff-off':
         // A buff taken off yourself (right-click in the tray): gone, and your stats and most HP with it.
         if (buffs && typeof m.buff === 'string' && buffs.remove(c.userId, m.buff)) {
@@ -1350,8 +1388,24 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         const t = picked ? conns.get(picked) : undefined;
         const target: Nearby | undefined = t && t.room === c.room ? { member: t.userId, at: [t.player.col, t.player.row], out: !!t.player.out } : undefined;
         const v = vitals.get(c.userId);
+        // A debuff (CONTEXT.md Debuff) goes on a mob: the one they've targeted (`target`: its id) within its range, else
+        // the nearest that is; nobody in range, nothing spent.
+        const def = STATS.skills.buffs?.list[m.buff];
+        const mobs = mobsOf(c.room);
+        const mobTarget = typeof m.target === 'string' && !picked ? m.target : null;
+        if (def?.debuff && battle(c.room)) {
+          const ids = mobs?.debuff(p.id, [p.col, p.row], m.buff, def.stats, 0, mobTarget, def.rangeTiles ?? 1, now, true) ?? [];
+          if (!ids.length) return send(c, { t: 'buff-refused', buff: m.buff, reason: 'target' });
+        }
         const r = buffs.cast({ member: c.userId, cls: who.cls, level: who.level ?? p.level ?? 1, skillLevel: who.buffLevels?.[m.buff] ?? 1, out: !!p.out, battle: battle(c.room), mp: v ? v.mp : 0, at: [p.col, p.row] }, m.buff, party, target, now);
         if (!r.ok) return send(c, { t: 'buff-refused', buff: m.buff, reason: r.reason, ...(r.ms ? { ms: r.ms } : {}) });
+        if (r.debuff && mobs) {
+          mobs.debuff(p.id, [p.col, p.row], m.buff, r.debuff, (r.buff.durationSec ?? 0) * 1000, mobTarget, r.buff.rangeTiles ?? 1, now);
+          for (const e of mobs.flush()) {
+            others(c, e as TownServerMessage);
+            send(c, e as TownServerMessage);
+          }
+        }
         if (r.mp > 0) vitals.spend(c.userId, r.mp);
         const cast: TownServerMessage = { t: 'buff-cast', id: p.id, buff: m.buff, dir: p.dir, ...(r.off ? { off: true } : {}) };
         others(c, cast);
@@ -2512,6 +2566,17 @@ export function attachTown(server: Server, opts: TownOptions): Town {
           events.push(...mobs.flush());
           killed(room, burn.kills);
         }
+        // Skills' later hits (channels, hits on the move, windups) and damage over time (orange, as burns), then what
+        // they killed; a windup's MP spent as it lands.
+        const later = mobs.skillTick(now, where);
+        for (const h of later.hits) events.push({ t: 'mob-hits', by: h.by, skill: h.skill, hits: h.hits });
+        for (const d of later.dots) events.push({ t: 'mob-burn', by: d.by, hits: d.hits.map(({ slow: _s, ...x }) => x) });
+        for (const sp of later.spent) {
+          const o = conns.get(sp.member);
+          if (o && vitals?.spend(sp.member, sp.mp)) tellVitals(o);
+        }
+        if (later.hits.length || later.dots.length) events.push(...mobs.flush());
+        if (later.kills.length) killed(room, later.kills);
         if (!events.length) continue;
         // A boss move landing on someone dodging (a Step Back): shown as Dodge (it comes off nothing: the landings above).
         const dodging = new Set(here.filter((o) => (o.dodgeUntil ?? 0) > now).map((o) => o.player.id));

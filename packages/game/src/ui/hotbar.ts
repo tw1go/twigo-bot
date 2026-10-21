@@ -38,6 +38,10 @@ export interface HotbarOptions {
   /** A skill's key or click: its cooldown in seconds once used, 'no' if it can't go now, undefined if it has no use
    *  in town (yet). */
   onSkill?: (name: string) => number | 'no' | undefined;
+  /** A charge-up skill's key pressed: true if it starts charging (its key-up, onRelease, fires it); false: used as ever. */
+  onHold?: (name: string) => boolean;
+  /** The charge-up skill's key let go (or the window lost the keys). */
+  onRelease?: (name: string) => void;
   /** Whether a skill does something here (the move skills in town); the others are shown dark. */
   usable?: (name: string) => boolean;
   /** An item slot's key or click (an HP or MP Potion: its item id): true if it was used (or asked for). */
@@ -163,6 +167,8 @@ export class Hotbar {
       if (e.dataTransfer?.dropEffect === 'none' && from.row) this.put(from.row as Row, Number(from.i), null);
     });
     document.addEventListener('keydown', (e) => this.key(e), true);
+    document.addEventListener('keyup', (e) => this.keyUp(e), true);
+    window.addEventListener('blur', () => this.keyUp(null));
     document.addEventListener('pointerdown', (e) => {
       if (!this.list.hidden && !this.root.contains(e.target as Node) && !this.list.contains(e.target as Node)) this.toggleList(false);
     });
@@ -207,7 +213,8 @@ export class Hotbar {
     if (c && saved) this.layout = tidy(saved, c);
     else {
       this.layout = blank();
-      skillsOf(c).slice(0, SIZE.main).forEach((s, i) => (this.layout.main[i] = { t: 'skill', name: s.name }));
+      // (Up to Lv 20, as the bar always was: a Lv 21-40 skill finds a slot as it unlocks, placeNew.)
+      skillsOf(c).filter((s) => s.level <= 20).slice(0, SIZE.main).forEach((s, i) => (this.layout.main[i] = { t: 'skill', name: s.name }));
     }
     this.picked = null;
     this.drawList();
@@ -295,6 +302,19 @@ export class Hotbar {
     window.dispatchEvent(new Event('mk-hotbar'));
   }
 
+  /** A skill just unlocked onto the bar (the Lv 21-40 ones): the first empty slot that takes it, the first ten then the
+   *  top row, unless it's on the bar already; nothing already there ever moves, and a full bar stays as it is. */
+  placeNew(name: string): void {
+    if (!this.cls) return;
+    const rows: Row[] = ['main', 'top'];
+    if (rows.some((row) => this.layout[row].some((e) => e?.t === 'skill' && e.name === name))) return;
+    const entry: Entry = { t: 'skill', name };
+    for (const row of rows) {
+      const i = this.layout[row].findIndex((e) => !e);
+      if (i >= 0 && fits(row, entry)) return this.put(row, i, entry);
+    }
+  }
+
   /** The item kinds on the bar (any row). */
   itemIds(): Set<string> {
     return new Set((['top', 'main', 'util'] as Row[]).flatMap((row) => this.layout[row].flatMap((e) => (e?.t === 'item' ? [e.id] : []))));
@@ -337,7 +357,8 @@ export class Hotbar {
   }
 
   /** The Skills panel: a stage on top (the hovered skill plays on it), your skill points and Reset, then your class's
-   *  skills in three lists, Damage, Mobility and Buffs (a buff's line: what it does at its level), each in unlock order
+   *  skills in three lists, Damage, Mobility and Utilities (CONTEXT.md Utility: buffs, debuffs, stances; a line on what it
+   *  does at its level), each in unlock order
    *  with their descriptions, levels, cooldowns and MP, a + on each you can raise; each to drag (or click, then click a
    *  slot). Locked ones are greyed with their unlock level. */
   private drawList(): void {
@@ -415,7 +436,7 @@ export class Hotbar {
     this.rows.replaceChildren(
       ...section('Damage', skills.filter((s) => s.index !== undefined).map(skillRow)),
       ...section('Mobility', skills.filter((s) => s.move).map(skillRow)),
-      ...section('Buffs', skills.filter((s) => s.buff).map(skillRow)),
+      ...section('Utilities', skills.filter((s) => s.buff).map(skillRow)),
     );
     this.rows.scrollTop = scrolled;
   }
@@ -581,7 +602,24 @@ export class Hotbar {
     if (!a) return;
     e.preventDefault();
     const [, row, n] = /^(main|util|top)(\d+)$/.exec(a)!;
+    // A charge-up skill (CONTEXT.md Charge-up) charges while its key is held and fires as it's let go.
+    const entry = this.layout[row as Row][Number(n) - 1];
+    if (entry?.t === 'skill' && !this.skill(entry.name)?.locked && this.o.onHold?.(entry.name)) {
+      this.holding = { code: e.code, name: entry.name };
+      this.cells[row as Row][Number(n) - 1].classList.add('hb-fire');
+      return;
+    }
     this.use(row as Row, Number(n) - 1);
+  }
+
+  /** A charge-up skill's key held down (its keydown's code), let go on its keyup or when the window loses the keys. */
+  private holding: { code: string; name: string } | null = null;
+
+  private keyUp(e: KeyboardEvent | null): void {
+    const h = this.holding;
+    if (!h || (e && e.code !== h.code)) return;
+    this.holding = null;
+    this.o.onRelease?.(h.name);
   }
 
   /** A slot's key or click: it lights up; a move skill moves you (onSkill), other skills wait for combat, potions are
@@ -624,7 +662,7 @@ function padlock(level: number): HTMLElement {
   return box;
 }
 
-/** Each skill's stage preview by name: the first 7 in order, then the movement skills by id. */
+/** Each skill's stage preview by name: the damage skills in order, then the movement skills by id. */
 function previewsOf(c: ClassInfo | null): Map<string, Skill> {
   const out = new Map<string, Skill>();
   if (!c) return out;

@@ -32,6 +32,14 @@ import {
   rollHit,
   withBuffs,
   seeded,
+  type SkillEffect,
+  capped,
+  chargeMult,
+  crowdShare,
+  effectOf,
+  shapeParts,
+  skillEffects,
+  skillHits,
   skillCooldown,
   skillLevelBonus,
   skillPct,
@@ -115,7 +123,7 @@ export type MobEvent =
   | { t: 'mob-attack'; id: string; target: string; dir: TownMobFacing; slow?: number; hit?: PlayerHit; to?: [number, number] }
   | { t: 'mob-spawn'; id: string; col: number; row: number; hp: number }
   | { t: 'mob-heal'; id: string; hp: number }
-  | Extract<TownServerMessage, { t: 'mob-scale' | 'mob-flag' | 'mob-fx' | 'boss-move' | 'boss-hit' | 'boss-cancel' | 'system' | 'great-scale' }>
+  | Extract<TownServerMessage, { t: 'mob-scale' | 'mob-flag' | 'mob-fx' | 'boss-move' | 'boss-hit' | 'boss-cancel' | 'system' | 'great-scale' | 'mob-stun' | 'mob-debuff' }>
   | GolemEvent;
 
 /** A Scrap Warrens run's say over its room's mobs (town-warrens.ts): its bosses' moves on the room's clock. */
@@ -200,7 +208,53 @@ export interface MobKill {
 /** `hits`: the target first, then any other mobs the skill's shape reached (skill-hits.json); `kills`: those it killed.
  *  Refused: out of reach, too soon, the mob gone, `skill` isn't one of their class's (its tier would be made up), or
  *  it's still locked (their level is under its unlock level). */
-export type AttackResult = { ok: true; hits: MobHit[]; kills: MobKill[] } | { ok: false; reason: 'range' | 'slow' | 'gone' | 'skill' | 'locked' };
+export type AttackResult =
+  | {
+      ok: true;
+      hits: MobHit[];
+      kills: MobKill[];
+      /** A heal (heal:F): the caster and their party nearby heal this × Power (the skill level's bonus in). */
+      heal?: number;
+      /** A leap: the caster's new tile, next to the target. */
+      leap?: [number, number];
+      /** A windup: nothing landed yet (it does `windup` ms later; its MP then: skillTick's `spent`). */
+      windup?: number;
+      /** Its hits to come (a channel, or hits on the move): how many more and how far apart. */
+      more?: { left: number; every: number; mode: 'channel' | 'move' | null };
+    }
+  | { ok: false; reason: 'range' | 'slow' | 'gone' | 'skill' | 'locked' };
+
+/** A debuff on a mob (CONTEXT.md Debuff): its stats (stats.json skills.buffs: defPct, damageTakenPct, missChance,
+ *  mobDamagePct, slow, taunt seconds) until then, and who cast it (a taunt's foe). */
+export interface MobDebuff {
+  stats: Record<string, number>;
+  until: number;
+  by: string;
+}
+
+/** A skill's later hits (a channel, hits on the move, a windup): who, how hard each, on what, and when. */
+interface Cast {
+  player: string;
+  name: string;
+  member: string;
+  by: Hitter & { blinded?: boolean };
+  pct: number;
+  skill: number;
+  shape: string;
+  reach: number;
+  target: string;
+  from: [number, number];
+  left: number;
+  next: number;
+  every: number;
+  mode: 'channel' | 'move' | 'windup' | null;
+  /** Each hit's effects on the mobs it hits (slow, root, stun, taunt), the skill level's bonus in. */
+  effects: SkillEffect[];
+  skillLevel: number;
+  /** A windup's MP (spent as it lands) and its cooldown's key (cleared if it's cancelled). */
+  mp?: number;
+  ready?: string;
+}
 
 /** A mob's (or the golem's) attack landing on a player (town id) now: its damage (or a miss), and the Bag's slow (ms,
  *  on a hit) or the Lamp Glare's blindness (ms). The host takes it off their HP. */
@@ -232,6 +286,8 @@ export interface SkillShapes {
   effects?: Record<string, (string | null)[]>;
   /** Tiles each skill reaches (else the class's: RANGED or the next tile). */
   range?: Record<string, number[]>;
+  /** A skill that lands as several hits (N:EVERY[:channel|:move], shared skillHits), by class and skill. */
+  hits?: Record<string, (string | null)[]>;
 }
 
 /** The game's classes/skill-hits.json. */
@@ -242,23 +298,8 @@ export function loadSkillShapes(): SkillShapes {
     shapes: arrays(json) as Record<string, string[]>,
     effects: arrays(json.effects as Record<string, unknown> | undefined) as Record<string, (string | null)[]>,
     range: arrays(json.range as Record<string, unknown> | undefined) as Record<string, number[]>,
+    hits: arrays(json.hits as Record<string, unknown> | undefined) as Record<string, (string | null)[]>,
   };
-}
-
-/** A skill effect string (skill-hits.json effects): slow:F:MS or root:MS. */
-/** A skill's burning puddle (skill-hits.json effects: burn:N:EVERY:SHARE:R:FIRST), or null. */
-function parseBurn(e: string | null | undefined): { ticks: number; every: number; share: number; radius: number; first: number } | null {
-  const [kind, n, every, share, r, first] = (e ?? '').split(':');
-  if (kind !== 'burn') return null;
-  return { ticks: Number(n) || 3, every: Number(every) || 300, share: Number(share) || 0.2, radius: Number(r) || 1, first: Number(first) || 700 };
-}
-
-function parseEffect(e: string | null | undefined): { factor: number; ms: number } | null {
-  if (!e) return null;
-  const [kind, a, b] = e.split(':');
-  if (kind === 'slow') return { factor: Math.max(0, Math.min(1, Number(a) || 0.5)), ms: Number(b) || 2000 };
-  if (kind === 'root') return { factor: 0, ms: Number(a) || 2000 };
-  return null;
 }
 
 /** Each class's damage skills' unlock levels, in their order (classes.json). */
@@ -425,6 +466,12 @@ interface Mob {
   openUntil: number;
   /** Slowed to `factor` of its speed until then (0: rooted). */
   slow: { factor: number; until: number } | null;
+  /** Stunned until then (CONTEXT.md Stun): it neither moves nor attacks. */
+  stunUntil?: number;
+  /** Taunted (CONTEXT.md Taunt): it fights this player until then, whoever else hits it. */
+  taunt?: { id: string; until: number } | null;
+  /** Its debuffs (CONTEXT.md Debuff), one of each name. */
+  debuffs?: Map<string, MobDebuff>;
   /** The pace of the hop under way (tiles a second). */
   hopSpeed: number;
   /** Its pack (the caps of one spawn point, the leader the first alive), or null. */
@@ -610,7 +657,7 @@ export class MobRoom {
         open: (c, r) => c >= 0 && r >= 0 && c < map.size[0] && r < map.size[1] && !map.blocked[r]?.[c] && (map.height?.[r]?.[c] ?? 0) === level && !this.ramps.has(`${c},${r}`),
         callAdds: (spots, now) => this.callAdds(boss, level, spots, now),
         dropAdds: () => this.dropAdds(),
-        roll: (player, mult) => this.rollOn(player, this.statsOf(boss.id), mult),
+        roll: (player, mult) => this.rollOn(player, this.statsOf(boss.id), mult, this.debuffOf('golem', Date.now())),
         priority: (player) => this.priority(player),
       }, random);
     }
@@ -623,12 +670,32 @@ export class MobRoom {
 
   /** A mob's hit on a player: its ATK (× `mult`) as Power against their DEF and level (the stats rules, with the level
    *  gap's miss chance), or null when their DEF isn't known (no HP here: harmless). */
-  private rollOn(player: string, mob: MobStats, mult = 1): PlayerHit | null {
+  private rollOn(player: string, mob: MobStats, mult = 1, debuff: Record<string, number> = {}): PlayerHit | null {
     const guard = this.guards.get(player);
     if (!guard) return null;
-    const { damage, miss } = rollHit(this.fightData.stats, { power: mob.atk, level: mob.level }, guard, mult, this.random);
+    // (Its debuffs: Eye Sting's miss chance as accuracy off; Numbing Oil's damage off.)
+    const by = { power: mob.atk * (1 + (debuff.mobDamagePct ?? 0)), level: mob.level, accuracy: -(debuff.missChance ?? 0) };
+    const { damage, miss } = rollHit(this.fightData.stats, by, guard, mult, this.random);
     return miss ? { damage: 0, miss } : { damage };
   }
+
+  /** A mob's debuffs as one set of stats (each name once; different ones add up), the expired ones dropped. */
+  private debuffOf(m: Mob | 'golem', now: number): Record<string, number> {
+    const all = m === 'golem' ? this.golemDebuffs : m.debuffs;
+    const out: Record<string, number> = {};
+    if (!all) return out;
+    for (const [name, d] of all) {
+      if (now >= d.until) {
+        all.delete(name);
+        continue;
+      }
+      for (const [k, v] of Object.entries(d.stats)) out[k] = (out[k] ?? 0) + v;
+    }
+    return out;
+  }
+
+  /** The golem's debuffs (it isn't one of the room's mobs). */
+  private golemDebuffs = new Map<string, MobDebuff>();
 
   /** The attacks that land now (the host takes them off players' HP), in the order they land. */
   landed(now: number): (PlayerLanding & { at: number })[] {
@@ -968,6 +1035,7 @@ export class MobRoom {
   private rally(m: Mob, player: string, now: number): void {
     for (const x of (m.rules.packAssist && m.pack) || [m]) {
       if (x.respawnAt) continue;
+      if (x.taunt && now < x.taunt.until && x.taunt.id !== player) continue; // (taunted: its taunter keeps it)
       x.foe = { id: player, at: now };
       if (x.hidden) this.surface(x, now);
     }
@@ -1035,11 +1103,17 @@ export class MobRoom {
       }
       if (m.still) continue; // (Barong-Barong: its moves are the director's)
       if (m.castUntil && now < m.castUntil) continue; // (a boss mid-move holds still)
+      if (m.stunUntil && now < m.stunUntil) continue; // (stunned: it stands there)
+      // Taunted: it fights its taunter while it lasts (and while they're here), whoever it would have chosen.
+      if (m.taunt) {
+        if (now >= m.taunt.until) m.taunt = null;
+        else if (players.has(m.taunt.id)) m.foe = { id: m.taunt.id, at: now };
+      }
       if (!m.foe && m.zone.aggro === 'aggressive') {
         // The player it wants most within its aggroRange (the tanks first: targetPriority), then the nearest.
         const near = this.wanted(m, watched.get(m.zone));
         if (near) this.rally(m, near.id, now);
-      } else if (m.foe) {
+      } else if (m.foe && !m.taunt) {
         // In a fight: someone it wants more who comes within its aggroRange takes it over (never one it wants as much).
         const near = this.wanted(m, watched.get(m.zone));
         if (near && near.priority > this.priority(m.foe.id)) this.rally(m, near.id, now);
@@ -1097,7 +1171,7 @@ export class MobRoom {
         m.ambushHit = false;
         const chairs = K.chair ? 1 - K.chair.atkPerChair * (m.chairsLost ?? 0) : 1;
         const weigh = K.weigh ? 1 + K.weigh.perHp * Math.max(0, Math.min(1, this.guards.get(foe.id)?.hpShare ?? 1)) : 1;
-        const rolled = this.rollOn(foe.id, m.stats, first * chairs * weigh);
+        const rolled = this.rollOn(foe.id, m.stats, first * chairs * weigh, this.debuffOf(m, now));
         const hit = rolled && !rolled.miss ? { ...rolled, ...(K.weigh ? { mult: Math.round(weigh * 100) / 100 } : {}), ...(K.tear ? { tear: K.tear.ms } : {}) } : rolled;
         const slow = K.slowMs && !hit?.miss ? K.slowMs : undefined;
         let land = now + (K.hitMs ?? 0);
@@ -1182,7 +1256,7 @@ export class MobRoom {
    *  edge), not too fast, the mob alive. `who`: their class, level, points, gear and skill levels (or their class alone);
    *  blinded, every hit misses. `name`: theirs, for the golem's line when it falls; `member`: who they are across reloads
    *  (the golem's damage is counted by it, and kills' XP goes to it), their town id if not given. */
-  attack(player: string, from: [number, number], who: Attacker | string | null | undefined, id: string, now: number, skill = 0, name = player, member = player): AttackResult {
+  attack(player: string, from: [number, number], who: Attacker | string | null | undefined, id: string, now: number, skill = 0, name = player, member = player, opts: { held?: number; mp?: number } = {}): AttackResult {
     const a: Attacker = who && typeof who === 'object' ? who : { cls: who };
     const cls = a.cls;
     const skills = (cls && (this.levels[cls]?.length ?? this.shapes.shapes[cls]?.length)) || 1;
@@ -1203,31 +1277,275 @@ export class MobRoom {
     if (m?.field && !this.inRect(m.zone, ...from)) return { ok: false, reason: 'range' };
     // The golem is only hit from its fight: the pit floor and way in (no sniping over the ring it can't answer).
     if (boss && !boss.inFight(from)) return { ok: false, reason: 'range' };
+    const effects = skillEffects(cls ? this.shapes.effects?.[cls]?.[skill] : null);
+    // A leap: the free tile next to the target it lands on (none: out of reach, nothing spent).
+    const L = effectOf(effects, 'leap');
+    const leap = L ? this.landing(from, [Math.round(mc), Math.round(mr)], L.tiles, boss ? boss.radius : (m!.radius ?? 0)) : undefined;
+    if (L && !leap) return { ok: false, reason: 'range' };
+    const at0: [number, number] = leap ?? from;
+    // Another skill stops their channel under way (CONTEXT.md Channel).
+    this.stopCasts(player);
     this.swings.set(player, now + SWING_MS);
-    // (A little slack: the game's clock and the message's trip.)
     const skillLevel = a.skills?.[skill] ?? 1;
+    const bonus = skillLevelBonus(this.fightData.stats, skillLevel);
     const by = { ...this.fighter(a), blinded: a.blinded };
-    // (Calm Mind: its share off.)
+    // (crit:F: that much more crit rate on this skill, held to the cap.)
+    const C = effectOf(effects, 'crit');
+    if (C) by.critRate = capped(this.fightData.stats, 'critRate', (by.critRate ?? 0) + C.add);
+    // (Calm Mind: its share off.) (A little slack: the game's clock and the message's trip.)
     this.swings.set(ready, now + skillCooldown(this.fightData.stats, baseCooldown(this.fightData.stats, unlock), skillLevel) * (1 - (by.cooldownPct ?? 0)) * 1000 - 150);
-    // Its slow or root, 5% longer a skill level.
-    const effect = parseEffect(cls ? this.shapes.effects?.[cls]?.[skill] : null);
-    if (effect) effect.ms = Math.round(effect.ms * skillLevelBonus(this.fightData.stats, skillLevel).buff);
-    const pct = skillPct(this.fightData.stats, skillTier(skill), skillLevel);
+    // Its slow, root, stun and taunt on each mob it hits, 5% longer a skill level.
+    const onHit = effects.filter((e) => e.kind === 'slow' || e.kind === 'root' || e.kind === 'stun' || e.kind === 'taunt').map((e) => ({ ...e, ms: Math.round((e as { ms: number }).ms * bonus.buff) }) as SkillEffect);
+    // Its damage (a charge-up: by how long the key was held; nothing sent counts as full, a tap on a touch screen).
+    const charge = effectOf(effects, 'charge');
+    const pct = skillPct(this.fightData.stats, skillTier(skill), skillLevel) * (charge ? chargeMult(charge, opts.held ?? charge.ms) : 1);
+    const H = skillHits(cls ? this.shapes.hits?.[cls]?.[skill] : null);
+    const each = H ? pct / H.count : pct;
+    const shape = (cls && this.shapes.shapes[cls]?.[skill]) || 'single';
+    const cast: Cast = { player, name, member, by: { ...by }, pct: each, skill, shape, reach, target: id, from: at0, left: 0, next: now, every: H?.every ?? 0, mode: H?.mode ?? null, effects: onHit, skillLevel };
+    // A windup: it all lands `ms` later (its MP then); moving first cancels it, cooldown and all.
+    const W = effectOf(effects, 'windup');
+    if (W) {
+      this.casts.push({ ...cast, left: 1, next: now + W.ms, every: W.ms, mode: 'windup', ...(opts.mp ? { mp: opts.mp } : {}), ready });
+      return { ok: true, hits: [], kills: [], windup: W.ms };
+    }
     const kills: MobKill[] = [];
     // A burning puddle where it lands (its ticks: burnTick), on the target's tile.
-    const burn = parseBurn(cls ? this.shapes.effects?.[cls]?.[skill] : null);
+    const burn = effectOf(effects, 'burn');
     if (burn) this.burns.push({ at: [Math.round(mc), Math.round(mr)], player, name, member, by: { ...by }, pct: pct * burn.share, radius: burn.radius, left: burn.ticks, next: now + burn.first, every: burn.every });
-    const hits = this.reached(m ?? 'golem', [mc, mr], from, (cls && this.shapes.shapes[cls]?.[skill]) || 'single', now).map((x) => {
-      if (x === 'golem') return this.hitGolem(player, name, member, by, pct, now, kills); // (no slowing it)
-      const hit = this.damage(x, player, by, pct, now, member, from);
-      if (hit.dead) kills.push(this.killOf(x, member));
-      if (effect && !hit.dead && !hit.blocked && !hit.miss) {
-        x.slow = { factor: effect.factor, until: now + effect.ms };
-        hit.slow = effect;
+    const target = m ?? 'golem';
+    const seek = effectOf(effects, 'seek');
+    const hits = seek ? this.seekHits(cast, target, at0, seek, now, kills) : this.landOn(cast, target, [mc, mr], at0, now, kills);
+    // Damage over time on each mob it hit (and lived), wherever it goes.
+    const D = effectOf(effects, 'dot');
+    if (D) for (const h of hits) if (!h.dead && !h.miss && !h.blocked && h.id !== this.golem?.id) this.dots.push({ mob: h.id, player, name, member, by: { ...by }, pct: pct * D.share, left: D.ticks, next: now + D.every, every: D.every });
+    // Its later hits (a channel, or on the move).
+    if (H) this.casts.push({ ...cast, left: H.count - 1, next: now + H.every });
+    const heal = effectOf(effects, 'heal');
+    return {
+      ok: true, hits, kills,
+      ...(heal ? { heal: heal.factor * bonus.damage } : {}),
+      ...(leap && (leap[0] !== from[0] || leap[1] !== from[1]) ? { leap } : {}),
+      ...(H ? { more: { left: H.count - 1, every: H.every, mode: H.mode } } : {}),
+    };
+  }
+
+  /** One hit of a skill on what its shape reaches round `target` (at `at`, from `from`): each hit rolled, its slow, root,
+   *  stun and taunt on each it lands on (how much a boss takes: shared crowdShare). */
+  private landOn(c: Cast, target: Mob | 'golem', at: [number, number], from: [number, number], now: number, kills: MobKill[]): MobHit[] {
+    return this.reached(target, at, from, c.shape, now, c.reach).map((x) => {
+      if (x === 'golem') {
+        const hit = this.hitGolem(c.player, c.name, c.member, c.by, c.pct, now, kills); // (no slowing or stunning it)
+        const T = effectOf(c.effects, 'taunt');
+        if (T && !hit.miss && !hit.dead) this.golem!.taunt(c.player, now + T.ms);
+        return hit;
       }
+      const hit = this.damage(x, c.player, c.by, c.pct, now, c.member, from);
+      if (hit.dead) kills.push(this.killOf(x, c.member));
+      if (!hit.dead && !hit.blocked && !hit.miss) this.afflict(x, c.player, c.effects, now, hit);
       return hit;
     });
-    return { ok: true, hits, kills };
+  }
+
+  /** A skill's slow, root, stun and taunt on a mob it hit: a mini boss half of a slow, root or stun, a field or last
+   *  boss none (a taunt: every mob). */
+  private afflict(x: Mob, player: string, effects: SkillEffect[], now: number, hit: MobHit): void {
+    const share = crowdShare({ mini: !!x.mini || x.boss === 'mini', field: !!x.field, last: x.boss === 'last' });
+    for (const e of effects) {
+      if ((e.kind === 'slow' || e.kind === 'root') && share > 0) {
+        const factor = e.kind === 'slow' ? e.factor : 0;
+        const ms = Math.round(e.ms * share);
+        x.slow = { factor, until: now + ms };
+        hit.slow = { factor, ms };
+      } else if (e.kind === 'stun' && share > 0) {
+        const ms = Math.round(e.ms * share);
+        const [c, r] = this.at(x, now);
+        Object.assign(x, { col: c, row: r, path: [], stunUntil: now + ms, nextAttack: Math.max(x.nextAttack, now + ms) });
+        this.pending.push({ t: 'mob-stun', id: x.id, ms, col: c, row: r });
+      } else if (e.kind === 'taunt') {
+        x.taunt = { id: player, until: now + e.ms };
+        x.foe = { id: player, at: now };
+        this.pending.push({ t: 'mob-debuff', id: x.id, name: 'taunt', ms: e.ms });
+      }
+    }
+  }
+
+  /** seek:N:R: N projectiles of 1/N of the hit: one at the target, the rest at the nearest other mobs within R tiles of
+   *  the caster, the spare ones at the target again (one mob alone takes it all). */
+  private seekHits(c: Cast, target: Mob | 'golem', from: [number, number], seek: { count: number; radius: number }, now: number, kills: MobKill[]): MobHit[] {
+    const each = { ...c, pct: c.pct / seek.count };
+    const others = this.mobs
+      .filter((x) => x !== target && !x.respawnAt && !x.untargetable && cheb(this.at(x, now), from) <= seek.radius)
+      .sort((a, b) => cheb(this.at(a, now), from) - cheb(this.at(b, now), from))
+      .slice(0, seek.count - 1);
+    const at = (t: Mob | 'golem'): [number, number] => (t === 'golem' ? this.golem!.at(now) : this.at(t, now));
+    const out: MobHit[] = [];
+    for (const t of [target, ...others, ...Array(seek.count - 1 - others.length).fill(target)] as (Mob | 'golem')[]) {
+      if (t !== 'golem' && (t.respawnAt || t.hp <= 0)) continue; // (an earlier pebble felled it)
+      out.push(...this.landOn({ ...each, shape: 'single' }, t, at(t), from, now, kills));
+    }
+    return out;
+  }
+
+  /** Where a leap lands: the free tile next to the target (its body's edge) nearest the caster, at most `tiles` from
+   *  them, on the target's level, with no higher ground between (no jumping a high-terrain wall); `from` if they're
+   *  next to it already; else null. */
+  private landing(from: [number, number], at: [number, number], tiles: number, radius: number): [number, number] | undefined {
+    const next = (t: [number, number]) => (radius ? Math.max(0, Math.hypot(t[0] - at[0], t[1] - at[1]) - radius) : cheb(t, at)) <= 1;
+    if (next(from)) return from;
+    const h = (c: number, r: number) => this.map.height?.[r]?.[c] ?? 0;
+    const level = h(at[0], at[1]);
+    const [W, H] = this.map.size;
+    const span = Math.ceil(radius) + 1;
+    let best: [number, number] | undefined;
+    for (let r = at[1] - span; r <= at[1] + span; r++) {
+      for (let c = at[0] - span; c <= at[0] + span; c++) {
+        const t: [number, number] = [c, r];
+        if (c < 0 || r < 0 || c >= W || r >= H || this.map.blocked[r]?.[c] || h(c, r) !== level || !next(t) || (c === at[0] && r === at[1])) continue;
+        if (cheb(t, from) > tiles || this.taken({ id: '' } as Mob, c, r)) continue;
+        // (No higher ground on the way: a wall it would have to jump.)
+        const top = Math.max(h(from[0], from[1]), level);
+        const n = Math.max(1, cheb(t, from) * 2);
+        let clear = true;
+        for (let k = 1; k < n && clear; k++) {
+          const pc = Math.round(from[0] + ((c - from[0]) * k) / n);
+          const pr = Math.round(from[1] + ((r - from[1]) * k) / n);
+          if (h(pc, pr) > top) clear = false;
+        }
+        if (!clear) continue;
+        if (!best || cheb(t, from) < cheb(best, from)) best = t;
+      }
+    }
+    return best;
+  }
+
+  /** A skill's later hits under way (channels, hits on the move, windups) and damage over time on mobs. */
+  private casts: Cast[] = [];
+  private dots: { mob: string; player: string; name: string; member: string; by: Hitter & { blinded?: boolean }; pct: number; left: number; next: number; every: number }[] = [];
+
+  /** Their channel or windup under way stops (they moved, were knocked out or cast another skill): a windup's
+   *  cooldown back (it cost nothing). Whether one did. */
+  stopCasts(player: string): boolean {
+    let stopped = false;
+    this.casts = this.casts.filter((c) => {
+      if (c.player !== player || (c.mode !== 'channel' && c.mode !== 'windup')) return true;
+      if (c.mode === 'windup' && c.ready) this.swings.delete(c.ready);
+      stopped = true;
+      return false;
+    });
+    return stopped;
+  }
+
+  /** Whether they're spinning (a skill's hits on the move under way: they walk at 70%). */
+  onTheMove(player: string): boolean {
+    return this.casts.some((c) => c.player === player && c.mode === 'move');
+  }
+
+  /** The skills' later hits and the damage over time due by `now`: each later hit on its target (gone: the nearest live
+   *  mob within the skill's reach; none: the rest stop; on the move: round where they stand now), each tick on its mob
+   *  (dead: it stops). A channel or windup whose caster isn't in `players` (gone, knocked out) stops. What each hit,
+   *  what it killed, and windups' MP to spend now. */
+  skillTick(now: number, players: ReadonlyMap<string, [number, number]>): { hits: { by: string; skill: number; hits: MobHit[] }[]; dots: { by: string; hits: MobHit[] }[]; kills: MobKill[]; spent: { member: string; mp: number }[] } {
+    const hits: { by: string; skill: number; hits: MobHit[] }[] = [];
+    const dots: { by: string; hits: MobHit[] }[] = [];
+    const kills: MobKill[] = [];
+    const spent: { member: string; mp: number }[] = [];
+    for (const c of this.casts) {
+      while (c.left > 0 && now >= c.next) {
+        c.left--;
+        c.next += c.every;
+        const here = players.get(c.player);
+        if (!here && c.mode !== null) {
+          c.left = 0;
+          break;
+        }
+        const from: [number, number] = c.mode === 'move' && here ? [here[0], here[1]] : c.from;
+        c.from = from;
+        const t = this.castTarget(c, from, now);
+        if (!t) {
+          c.left = 0;
+          break;
+        }
+        const at = t === 'golem' ? this.golem!.at(now) : this.at(t, now);
+        if (c.mode === 'windup' && c.mp) spent.push({ member: c.member, mp: c.mp });
+        hits.push({ by: c.player, skill: c.skill, hits: this.landOn(c, t, at, from, now, kills) });
+      }
+    }
+    this.casts = this.casts.filter((c) => c.left > 0);
+    for (const d of this.dots) {
+      while (d.left > 0 && now >= d.next) {
+        d.left--;
+        d.next += d.every;
+        const m = this.byId.get(d.mob);
+        if (!m || m.respawnAt || m.hp <= 0) {
+          d.left = 0;
+          break;
+        }
+        const hit = this.damage(m, d.player, d.by, d.pct, now, d.member);
+        if (hit.dead) kills.push(this.killOf(m, d.member));
+        dots.push({ by: d.player, hits: [hit] });
+      }
+    }
+    this.dots = this.dots.filter((d) => d.left > 0);
+    return { hits, dots, kills, spent };
+  }
+
+  /** A later hit's mob: its target while it lives (on the move: the nearest within its radius of the caster), else the
+   *  nearest live mob within the skill's reach of them. */
+  private castTarget(c: Cast, from: [number, number], now: number): Mob | 'golem' | null {
+    const { kind, radius } = shapeParts(c.shape);
+    const within = c.mode === 'move' && kind === 'around' ? radius : c.reach;
+    const live = (x: Mob) => !x.respawnAt && !x.untargetable && x.hp > 0;
+    if (c.target === this.golem?.id) return this.golem.hittable && this.golem.edge(from, now) <= within + 1 ? 'golem' : null;
+    const t = this.byId.get(c.target);
+    if (t && live(t) && (c.mode !== 'move' || cheb(this.at(t, now), from) <= within)) return t;
+    const near = this.mobs.filter((x) => live(x) && cheb(this.at(x, now), from) <= within).sort((a, b) => cheb(this.at(a, now), from) - cheb(this.at(b, now), from))[0];
+    if (near) c.target = near.id;
+    return near ?? null;
+  }
+
+  /** A debuff on a mob (CONTEXT.md Debuff; stats.json skills.buffs with `debuff`): on `target` if it's within `range` of
+   *  the caster, else the nearest mob that is; `tauntAround` (Iron Kitchen): every mob within that many tiles of the
+   *  caster, no target needed. One of each name a mob, whoever cast it (again: its timer restarts). Its taunt (seconds)
+   *  makes it fight the caster; its slow works on every mob (unlike a skill's). The ids it went on; none: nobody in range.
+   *  `dry`: who it would go on, nothing put on. */
+  debuff(caster: string, from: [number, number], name: string, stats: Record<string, number>, ms: number, target: string | null, range: number, now: number, dry = false): string[] {
+    const { tauntAround, ...rest } = stats;
+    const live = (x: Mob) => !x.respawnAt && !x.untargetable && x.hp > 0;
+    const dist = (x: Mob) => (x.radius ? Math.max(0, Math.hypot(this.at(x, now)[0] - from[0], this.at(x, now)[1] - from[1]) - x.radius) : cheb(this.at(x, now), from));
+    let on: (Mob | 'golem')[];
+    if (tauntAround) {
+      on = this.mobs.filter((x) => live(x) && dist(x) <= tauntAround);
+      if (this.golem?.hittable && this.golem.edge(from, now) <= tauntAround) on.push('golem');
+    } else {
+      const golemOk = !!this.golem?.hittable && this.golem.edge(from, now) <= range;
+      const t = target === this.golem?.id ? (golemOk ? 'golem' : null) : (() => {
+        const x = target ? this.byId.get(target) : undefined;
+        return x && live(x) && dist(x) <= range ? x : null;
+      })();
+      const near = this.mobs.filter((x) => live(x) && dist(x) <= range).sort((a, b) => dist(a) - dist(b))[0];
+      const one = t ?? near ?? (golemOk ? 'golem' : null);
+      on = one ? [one] : [];
+    }
+    if (dry) return on.map((x) => (x === 'golem' ? this.golem!.id : x.id)); // (who it would go on)
+    for (const x of on) {
+      const d: MobDebuff = { stats: rest, until: now + ms, by: caster };
+      const tauntMs = (rest.taunt ?? 0) * 1000;
+      if (x === 'golem') {
+        this.golemDebuffs.set(name, d);
+        if (tauntMs) this.golem!.taunt(caster, now + tauntMs);
+        this.pending.push({ t: 'mob-debuff', id: this.golem!.id, name, ms });
+        continue;
+      }
+      (x.debuffs ??= new Map()).set(name, d);
+      if (tauntMs) {
+        x.taunt = { id: caster, until: now + tauntMs };
+        x.foe = { id: caster, at: now };
+      }
+      if (rest.slow) x.slow = { factor: rest.slow, until: now + ms }; // (Hamstring: on every mob)
+      this.pending.push({ t: 'mob-debuff', id: x.id, name, ms });
+    }
+    return on.map((x) => (x === 'golem' ? this.golem!.id : x.id));
   }
 
   /** A mob that just died, as a kill: its XP for its killer (a mini boss: everyone who did their share). */
@@ -1279,7 +1597,11 @@ export class MobRoom {
     if (m.blockAll || (m.kind.shell && now >= m.openUntil)) return { id: m.id, damage: 0, crit: false, hp: m.hp, dead: false, blocked: true };
     // A director's front block (its shell): all of a hit from its front, unless it's open.
     if (m.frontBlock && m.frontBlock.share >= 1 && now >= m.frontBlock.openUntil && from && this.fromFront(m, [mc, mr], from, now)) return { id: m.id, damage: 0, crit: false, hp: m.hp, dead: false, blocked: true };
-    const rolled = by.blinded ? MISSED : rollHit(this.fightData.stats, by, m.stats, pct, this.random);
+    // (Its debuffs: Armor Crack and Provoke take DEF off; Marked makes every hit on it harder.)
+    const D = this.debuffOf(m, now);
+    const on = D.defPct ? { ...m.stats, def: m.stats.def * Math.max(0, 1 + D.defPct) } : m.stats;
+    const roll0 = by.blinded ? MISSED : rollHit(this.fightData.stats, by, on, pct, this.random);
+    const rolled = D.damageTakenPct && !roll0.miss ? { ...roll0, damage: Math.max(1, Math.round(roll0.damage * (1 + D.damageTakenPct))) } : roll0;
     const { crit, miss } = rolled;
     if (miss) return { id: m.id, damage: 0, crit: false, hp: m.hp, dead: false, miss };
     // A front block (the Chomper always, the Payong while it opens): its share off a hit from the quarter it faces.
@@ -1331,7 +1653,10 @@ export class MobRoom {
   private hitGolem(player: string, name: string, member: string, by: Hitter & { blinded?: boolean }, pct: number, now: number, kills: MobKill[]): MobHit {
     const g = this.golem!;
     const stats = this.statsOf(g.id);
-    const { damage, crit, miss } = by.blinded ? MISSED : rollHit(this.fightData.stats, by, stats, pct, this.random);
+    const D = this.debuffOf('golem', now);
+    const on = D.defPct ? { ...stats, def: stats.def * Math.max(0, 1 + D.defPct) } : stats;
+    const r0 = by.blinded ? MISSED : rollHit(this.fightData.stats, by, on, pct, this.random);
+    const { damage, crit, miss } = D.damageTakenPct && !r0.miss ? { ...r0, damage: Math.max(1, Math.round(r0.damage * (1 + D.damageTakenPct))) } : r0;
     const r = g.hit(player, name, damage, now, member)!;
     if (r.dead) {
       const [gc, gr] = g.at(now);
@@ -1341,9 +1666,8 @@ export class MobRoom {
   }
 
   /** The mobs a skill's shape reaches (the golem too, by its body's edge): the target first (see skill-hits.json). */
-  private reached(target: Mob | 'golem', at: [number, number], from: [number, number], shape: string, now: number): (Mob | 'golem')[] {
-    const [kind, n] = shape.split(':');
-    const most = Number(n) || 1;
+  private reached(target: Mob | 'golem', at: [number, number], from: [number, number], shape: string, now: number, range = RANGED): (Mob | 'golem')[] {
+    const { kind, count: most, radius: R } = shapeParts(shape);
     const out: (Mob | 'golem')[] = [target];
     if (most < 2) return out;
     // Each other one alive, where it is and its body's radius (0 but the golem's).
@@ -1359,12 +1683,12 @@ export class MobRoom {
         last = next.at;
       }
     } else if (kind === 'cone' || kind === 'area') {
-      out.push(...live.filter((x) => dist(x, at) <= 2).sort((a, b) => dist(a, at) - dist(b, at)).slice(0, most - 1).map((x) => x.m));
+      // (Within R of the target: 2 when the shape doesn't say.)
+      out.push(...live.filter((x) => dist(x, at) <= R).sort((a, b) => dist(a, at) - dist(b, at)).slice(0, most - 1).map((x) => x.m));
     } else if (kind === 'around') {
-      const radius = Number(shape.split(':')[2]) || 1;
-      out.push(...live.filter((x) => dist(x, from) <= radius).sort((a, b) => dist(a, from) - dist(b, from)).slice(0, most - 1).map((x) => x.m));
+      out.push(...live.filter((x) => dist(x, from) <= R).sort((a, b) => dist(a, from) - dist(b, from)).slice(0, most - 1).map((x) => x.m));
     } else if (kind === 'line') {
-      // Along the line from the caster through the target, out to RANGED tiles (the golem's body widens it).
+      // Along the line from the caster through the target, out to the skill's range (the golem's body widens it).
       const dx = at[0] - from[0];
       const dy = at[1] - from[1];
       const len = Math.hypot(dx, dy) || 1;
@@ -1376,7 +1700,7 @@ export class MobRoom {
           const along = px * ux + py * uy;
           return { m: x.m, r: x.r, along, off: Math.abs(px * uy - py * ux) };
         })
-        .filter((x) => x.along > -x.r && x.along <= RANGED + x.r && x.off <= 0.8 + x.r)
+        .filter((x) => x.along > -x.r && x.along <= range + x.r && x.off <= 0.8 + x.r)
         .sort((a, b) => a.along - b.along);
       out.push(...on.slice(0, most - 1).map((x) => x.m));
     }
@@ -1389,6 +1713,7 @@ export class MobRoom {
     for (const m of this.mobs) if (m.foe?.id === player) m.foe.at = -Infinity;
     if (!keepSwings) for (const k of [...this.swings.keys()]) if (k === player || k.startsWith(`${player}:`)) this.swings.delete(k);
     this.landings = this.landings.filter((l) => l.player !== player);
+    this.casts = this.casts.filter((c) => c.player !== player);
     this.golem?.forget(player);
   }
 

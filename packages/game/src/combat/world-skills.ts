@@ -1,7 +1,8 @@
 import type Phaser from 'phaser';
 import type { ClassArt, Dir, FxDef } from '../assets/types';
 import type { FxLayer, FxLayers, FxPlay } from '../world/fx-layers';
-import type { FxHandle, FxOpts, Pt, ShotOpts, Skill, SkillKit } from './skill-stage';
+import { resolveFx } from './fx-stand-ins';
+import { type FxHandle, type FxOpts, type Pt, type ShotOpts, type Skill, type SkillKit, frameMs } from './skill-stage';
 
 // ✨ The skills' effects in the world (battle maps): the same scripts as the class choice's preview (combat/skill-previews.ts,
 // written against SkillKit) played on a real character at a real mob. The fighter's feet are the character's, its
@@ -32,6 +33,9 @@ export interface Caster {
   depth: () => number;
   /** Draws the fighter this far (px) off where it stands, for a dash (the script's move); none: it stays put. */
   nudge?: (x: number, y: number) => void;
+  /** Plays the script's own poses on the fighter (each anim's frame for its ms, in turn): the Lv 21-40 skills, whose
+   *  frame orders are their own; none: the character plays its pose itself. */
+  poses?: (frames: { anim: string; frame: number; ms: number }[]) => void;
 }
 
 /** The stage's enemy slots (combat/skill-stage.ts): 1, 3 and 5 tiles along SE from the fighter's feet. */
@@ -64,10 +68,12 @@ export class WorldSkills {
    *  when the script's hit lands on slot n. */
   async play(skill: Skill, art: ClassArt, who: Caster, slot: (n: number) => Pt, onHit?: (n: number) => void, scale = 1): Promise<void> {
     const launch = await this.launchOf(art);
-    skill.run(this.kit(art, launch, who, slot, onHit, scale));
+    const frames: { anim: string; frame: number; ms: number }[] = [];
+    skill.run(this.kit(art, launch, who, slot, onHit, scale, frames));
+    if (who.poses && frames.length) who.poses(frames);
   }
 
-  private kit(art: ClassArt, launch: Launch | null, who: Caster, slot: (n: number) => Pt, onHit?: (n: number) => void, scale = 1): SkillKit {
+  private kit(art: ClassArt, launch: Launch | null, who: Caster, slot: (n: number) => Pt, onHit?: (n: number) => void, scale = 1, frames: { anim: string; frame: number; ms: number }[] = []): SkillKit {
     const scene = this.layers.scene;
     const now = () => scene.time.now;
     const t0 = now();
@@ -110,26 +116,36 @@ export class WorldSkills {
     const layerOf = (z: 0 | 1 | 3 | undefined): FxLayer | number => (z === 0 ? 'ground' : z === 1 ? who.depth() - 0.4 : 'front');
     // Mirrored: flipped across; a shot turned to its flight is flipped upside down instead (the turn already points it left).
     // Upright pieces (straight-down rain, a spinning splash of drops) are never mirrored: drawn as the art is.
+    // (A Lv 21-40 fx not made yet: its stand-in, combat/fx-stand-ins.ts, with its tint and size.)
+    const pick = (name: string, o: FxOpts): [FxDef | undefined, FxOpts] => {
+      const r = resolveFx(this.fx, name);
+      if (!r) return [undefined, o];
+      return [this.fx[r.name], { ...o, tint: o.tint ?? r.tint, scale: (o.scale ?? 1) * (r.scale ?? 1), ...(r.angle !== undefined ? { angle: r.angle } : {}), ...(r.length ? { length: r.length } : {}) }];
+    };
     const look = (o: FxOpts, shot: boolean): FxPlay => ({
       layer: layerOf(o.z ?? 3),
       flipX: o.upright ? !!o.flip : shot && mirror ? !!o.flip : !!o.flip !== mirror,
       flipY: !o.upright && shot && mirror,
       angle: !o.upright && mirror && o.angle ? -o.angle : (o.angle ?? 0),
-      frames: o.frames, hold: o.hold, ms: o.ms, fadeIn: o.fadeIn, fadeOut: o.fadeOut, life: o.life, length: o.length, scale, alpha: o.alpha,
+      frames: o.frames, hold: o.hold, ms: o.ms, fadeIn: o.fadeIn, fadeOut: o.fadeOut, life: o.life, length: o.length, scale: scale * (o.scale ?? 1), alpha: o.alpha,
+      ...(o.tint ? { tint: Number.parseInt(o.tint.slice(1), 16) } : {}),
     });
     const fps = (anim: string) => art.anims[anim]?.fps ?? 12;
     return {
       dir,
+      preview: false,
       feet,
       targets,
       body: (n) => body(n),
       self: (dx, dy) => ({ x: feet.x + dx, y: feet.y + dy }),
       frames: (anim) => art.anims[anim]?.frames ?? 1,
-      pose(anim, frames, ms) {
+      pose(anim, list, ms) {
         // (The character plays its pose itself: these are only the times each frame starts.)
-        return frames.map((_, i) => {
+        return list.map((frame, i) => {
           const at = cursor;
-          cursor += Array.isArray(ms) ? (ms[i] ?? ms[ms.length - 1]) : (ms ?? 1000 / fps(anim));
+          const d = frameMs(ms, i, 1000 / fps(anim));
+          frames.push({ anim, frame, ms: d });
+          cursor += d;
           return at;
         });
       },
@@ -145,20 +161,25 @@ export class WorldSkills {
         scene.time.delayedCall(Math.max(0, t0 + ms - now()), fn);
       },
       fx: (name, at, o = {}): FxHandle => {
-        const h = this.layers.play(this.fx[name], m(at), look(o, false));
+        const [def, opts] = pick(name, o);
+        const h = def ? this.layers.play(def, m(at), look(opts, false)) : null;
         return { kill: (fade?: number) => h?.kill(fade) };
       },
       shot: (name, from, to, o: ShotOpts) => {
         const turn = o.turn ?? true;
-        this.layers.shot(this.fx[name], m(from), m(to), {
-          ...look({ ...o.fx, z: o.z ?? 3, upright: o.upright || o.fx?.upright }, turn),
+        const [def, opts] = pick(name, { ...o.fx, z: o.z ?? 3, upright: o.upright || o.fx?.upright });
+        this.layers.shot(def, m(from), m(to), {
+          ...look(opts, turn),
           speed: o.speed, arc: o.arc, turn, reveal: o.reveal, onArrive: o.onArrive, fadeOut: 0,
           minMs: o.minMs, flightMs: o.ms, ease: o.ease, quarter: o.quarterTurnMs, fadeEnd: o.fadeEnd,
         });
       },
       hit: (n, o = {}) => {
         // (body(n) is in the script's space: mirrored back like every other point, or facing left the hit landed behind you.)
-        if (o.fx) this.layers.play(this.fx[o.fx], m(body(n)), look({ z: o.z ?? 3 }, false));
+        if (o.fx) {
+          const [def, opts] = pick(o.fx, { z: o.z ?? 3 });
+          if (def) this.layers.play(def, m(body(n)), look(opts, false));
+        }
         onHit?.(n);
       },
       number: () => {},
@@ -181,6 +202,9 @@ export class WorldSkills {
       trail: () => {},
       flash: () => {},
       fade: () => {},
+      // (The server moves the leaper: its `leap` message, played by TownScene; the afterimages are the stage's only.)
+      leap: () => {},
+      echo: () => {},
     };
   }
 }

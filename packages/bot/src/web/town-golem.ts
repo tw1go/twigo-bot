@@ -241,6 +241,13 @@ export class Golem {
   private lastHit = 0;
   /** Whoever hit it last (it goes after them while they're within its leash). */
   private foe: string | null = null;
+  /** Taunted (CONTEXT.md Taunt): it fights this player until then while they're in its fight, whoever it wants more. */
+  private taunted: { id: string; until: number } | null = null;
+
+  /** A taunt on it: it fights `player` until `until` (its special moves still pick their own victims). */
+  taunt(player: string, until: number): void {
+    this.taunted = { id: player, until };
+  }
   /** Everyone who hit it this fight (by member: a reload's new town id is still them → nickname), in order. */
   private readonly hitters = new Map<string, string>();
   /** The damage each of them did this fight, by member (its XP goes to everyone who did enough: stats.json's xpTo). */
@@ -540,7 +547,9 @@ export class Golem {
     const wanted = (id: string) => this.host.priority?.(id) ?? 0;
     const top = Math.max(...near.map(([id]) => wanted(id)));
     const most = near.filter(([id]) => wanted(id) === top);
-    const target = most.find(([id]) => id === this.foe) ?? most.reduce((a, b) => (this.edge(b[1], now) < this.edge(a[1], now) ? b : a));
+    // (Taunted: its taunter while they're in its fight.)
+    const taunter = this.taunted && now < this.taunted.until ? near.find(([id]) => id === this.taunted!.id) : undefined;
+    const target = taunter ?? most.find(([id]) => id === this.foe) ?? most.reduce((a, b) => (this.edge(b[1], now) < this.edge(a[1], now) ? b : a));
     const [id, p] = target;
     // (Junk Drop keeps its own time: it falls mid-stomp and mid-swing too.)
     if (now >= this.nextDrop) this.drop(now, near, id);

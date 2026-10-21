@@ -1,4 +1,4 @@
-import { type ClassInfo, baseStats, derivedStats, itemTotals, moveDodgeMs, skillLevelBonus, skillPct, skillTier } from '@mikazuki/shared';
+import { type ClassInfo, type SkillEffect, baseStats, derivedStats, itemTotals, moveDodgeMs, shapeParts, skillEffects, skillHits as hitsOf, skillLevelBonus, skillPct, skillTier } from '@mikazuki/shared';
 import { cooldownOf, mpCostOf, seconds } from '../combat/cooldowns';
 import { type SkillView, adventure, adventureData } from '../net/adventure';
 import { MOVES, isMoveKind } from '../world/mobility';
@@ -15,6 +15,7 @@ interface SkillHits {
   [cls: string]: unknown;
   effects?: Record<string, (string | null)[]>;
   range?: Record<string, number[]>;
+  hits?: Record<string, (string | null)[]>;
 }
 
 let hits: SkillHits | null = null;
@@ -39,25 +40,44 @@ const el = (tag: string, cls?: string, text?: string) => {
   return e;
 };
 
-/** What a hit shape reaches, in words (skill-hits.json: single, chain:N, cone:N, area:N, around:N:R, line:N). */
+const tiles = (n: number) => `${n} tile${n === 1 ? '' : 's'}`;
+
+/** What a hit shape reaches, in words (skill-hits.json: single, chain:N, cone:N, area:N:R, around:N:R, line:N). */
 function shapeText(shape: string | undefined): string {
-  const [kind, n, r] = (shape ?? 'single').split(':');
-  const most = Number(n) || 1;
+  const { kind, count: most, radius } = shapeParts(shape);
   if (kind === 'chain') return `Bounces: up to ${most} mobs`;
   if (kind === 'cone') return `A cone: up to ${most} mobs`;
-  if (kind === 'area') return `An area round the target: up to ${most} mobs`;
-  if (kind === 'around') return `All round you (${Number(r) || 1} tile${(Number(r) || 1) === 1 ? '' : 's'}): up to ${most} mobs`;
-  if (kind === 'line') return `A line through the target: up to ${most} mobs`;
+  if (kind === 'area') return `An area (${tiles(radius)}) round the target: up to ${most} mobs`;
+  if (kind === 'around') return `All round you (${tiles(radius)}): up to ${most} mobs`;
+  if (kind === 'line') return `A line out to its range: up to ${most} mobs`;
   return 'One target';
 }
 
-/** A slow or root (skill-hits.json effects: slow:F:MS, root:MS) at a skill level (5% longer a level). */
-function effectText(effect: string | null | undefined, buff: number): string | null {
-  if (!effect) return null;
-  const [kind, a, b] = effect.split(':');
-  if (kind === 'slow') return `Slows to ${Math.round(Number(a) * 100)}% speed for ${seconds((Number(b) * buff) / 1000)}`;
-  if (kind === 'root') return `Roots in place for ${seconds((Number(a) * buff) / 1000)}`;
-  return null;
+/** A damage-over-time skill's word for its ticks (combat-guide.md "Lv 21-40 skills"). */
+const DOT_WORD: Record<string, string> = { 'Nail Driver': 'Bleeds', 'Searing Lid': 'Sears', 'Spirit Smoke': 'Burns', 'Hot Oil': 'Burns' };
+
+const share = (f: number) => `${Math.round(f * 100)}%`;
+
+/** A skill's effects (skill-hits.json effects, shared skill-effects.ts) in words at a skill level: slows, roots, stuns
+ *  and taunts 5% longer a level, a heal 2% stronger. */
+function effectLines(name: string, effects: SkillEffect[], bonus: { buff: number; damage: number }): string[] {
+  const ms = (n: number) => seconds((n * bonus.buff) / 1000);
+  return effects.map((e) => {
+    switch (e.kind) {
+      case 'slow': return `Slows to ${share(e.factor)} speed for ${ms(e.ms)}`;
+      case 'root': return `Roots in place for ${ms(e.ms)}`;
+      case 'stun': return `Stuns ${ms(e.ms)}`;
+      case 'taunt': return `Taunts ${ms(e.ms)}`;
+      case 'dot': return `${DOT_WORD[name] ?? 'Burns'} ${e.ticks} × ${share(e.share)}`;
+      case 'burn': return `${DOT_WORD[name] ?? 'Burns'} ${e.ticks} × ${share(e.share)} where it lands`;
+      case 'heal': return `Heals the party ${share(e.factor * bonus.damage)} Power`;
+      case 'seek': return `${e.count} shots of ${share(1 / e.count)}: the target, then the nearest others`;
+      case 'crit': return `+${share(e.add)} crit rate`;
+      case 'charge': return `Hold to charge (${seconds(e.ms / 1000)}): ${share(e.min)} to 100%`;
+      case 'windup': return `Lands after ${seconds(e.ms / 1000)}; moving cancels it`;
+      case 'leap': return `Leaps to the target (up to ${tiles(e.tiles)})`;
+    }
+  });
 }
 
 /** The details of one of your class's skills, as the tooltip's lines. */
@@ -88,10 +108,12 @@ export function skillTipLines(cls: ClassInfo, s: SkillView): HTMLElement[] {
     lines.push(row('Damage', `${Math.round(pct * 100)}% of ATK${atk ? ` (≈ ${Math.round(atk * pct)})` : ''}`));
     const shapes = H?.[cls.id] as string[] | undefined;
     lines.push(row('Hits', shapeText(shapes?.[s.index])));
+    // Several hits: how many, and a channel (moving stops it) or on the move (Whirlwind: you walk at 70%).
+    const many = hitsOf(H?.hits?.[cls.id]?.[s.index]);
+    if (many) lines.push(row('Hits', `${many.count} hits${many.mode === 'channel' ? ', channelled: moving stops it' : many.mode === 'move' ? ', walking at 70%' : ''}`));
     const range = H?.range?.[cls.id]?.[s.index];
-    if (range) lines.push(row('Range', `${range} tile${range === 1 ? '' : 's'}`));
-    const effect = effectText(H?.effects?.[cls.id]?.[s.index], skillLevelBonus(S, level).buff);
-    if (effect) lines.push(row('Effect', effect));
+    if (range) lines.push(row('Range', tiles(range)));
+    for (const effect of effectLines(s.name, skillEffects(H?.effects?.[cls.id]?.[s.index]), skillLevelBonus(S, level))) lines.push(row('Effect', effect));
   } else if (s.move && isMoveKind(s.move)) {
     lines.push(row('Moves', `${MOVES[s.move].tiles} tiles${MOVES[s.move].back ? ' back' : ' ahead'}`));
     // A dodging move (Step Back: stats.json skills.moveDodge).

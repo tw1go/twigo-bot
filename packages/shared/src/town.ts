@@ -207,7 +207,7 @@ export interface PlayerHit {
 
 /** Browser → server. A step is to a neighbouring tile; the server checks it (walkable, adjacent, walking speed). */
 /** Why a buff cast was refused (the game says it like a refused attack). */
-export type BuffRefusal = 'here' | 'skill' | 'locked' | 'out' | 'slow' | 'mp';
+export type BuffRefusal = 'here' | 'skill' | 'locked' | 'out' | 'slow' | 'mp' | 'target';
 
 /** A buff on you (the buff tray). */
 export interface TownBuff {
@@ -235,7 +235,10 @@ export type TownClientMessage =
   /** An emote over your head (one of TOWN_EMOTES). */
   | { t: 'emote'; emote: TownEmote }
   /** A damage skill on a mob (battle maps: the Slums): `skill` = its place in the class's list (which pose it plays). */
-  | { t: 'attack'; mob: string; skill: number }
+  /** A damage skill on a mob; `held`: a charge-up's key held this long (ms; CONTEXT.md Charge-up). */
+  | { t: 'attack'; mob: string; skill: number; held?: number }
+  /** You moved (or let go): your channel or windup under way stops (CONTEXT.md Channel, Windup). */
+  | { t: 'skill-stop' }
   /** A mobility move (Dash, Step Back, Charge, Blink) ending at col,row: sent just before its steps, so the others
    *  play the move instead of a walk (where you are still comes from the steps). */
   | { t: 'move'; move: TownMove; col: number; row: number }
@@ -662,6 +665,14 @@ export type TownServerMessage =
   | { t: 'mob-scale'; mobs: { id: string; hp: number; maxHp: number }[] }
   /** A boss's untargetable or block-all window began or ended. */
   | { t: 'mob-flag'; id: string; untargetable?: boolean; blockAll?: boolean; hidden?: boolean; dormant?: boolean }
+  /** A mob stunned for `ms` (CONTEXT.md Stun): it stands where it is (col, row) meanwhile. */
+  | { t: 'mob-stun'; id: string; ms: number; col: number; row: number }
+  /** A debuff on a mob (its name, the utility's), `ms` long; 0: off. A taunt (a skill's, or a debuff's) is `taunt`. */
+  | { t: 'mob-debuff'; id: string; name: string; ms: number }
+  /** The later hits of a skill that lands as several (CONTEXT.md Channel): `by` (a town id) and its skill. */
+  | { t: 'mob-hits'; by: string; skill: number; hits: { id: string; damage: number; crit: boolean; hp: number; dead: boolean; blocked?: boolean; miss?: boolean; slow?: { factor: number; ms: number } }[] }
+  /** Someone leapt next to their target (CONTEXT.md Leap): their new tile. */
+  | { t: 'leap'; id: string; col: number; row: number }
   /** A mob's effect for the room to draw (the Lumang Palengke's): spilled rice on a tile from `in` ms for `ms` (walking
    *  on it is slower), or a mob losing a chair (Monobloc Stack: a flash). */
   | { t: 'mob-fx'; fx: 'rice'; at: [number, number]; in: number; ms: number; slow: number }
@@ -733,7 +744,9 @@ export type TownServerMessage =
   | { t: 'mob-move'; id: string; path: [number, number][]; speed?: number }
   /** Someone (`by`, a town id) hit with skill `skill`: each mob it reached (the target first) with the damage, a crit or
    *  not, the HP left, dead or not; `blocked`: a Scrap Crab's shell took it (0); `miss`: it missed (0). */
-  | { t: 'mob-hit'; by: string; skill: number; hits: { id: string; damage: number; crit: boolean; hp: number; dead: boolean; blocked?: boolean; miss?: boolean; reduced?: boolean; slow?: { factor: number; ms: number } }[] }
+  | { t: 'mob-hit'; by: string; skill: number; hits: { id: string; damage: number; crit: boolean; hp: number; dead: boolean; blocked?: boolean; miss?: boolean; reduced?: boolean; slow?: { factor: number; ms: number } }[];
+      /** A windup (CONTEXT.md Windup): no hits yet, they land `windup` ms later (as mob-hits) on `target`, the mob it's at. */
+      windup?: number; target?: string }
   /** A mob attacks a player, turned to face `dir`; `hit`: the server's roll (shown as it lands; the server takes the HP
    *  then too); `slow`: a hit slows the player to half their walking speed for that long (ms; the Plastic Bag Spook's). */
   | { t: 'mob-attack'; id: string; target: string; dir: TownMobFacing; slow?: number; hit?: PlayerHit; to?: [number, number] }

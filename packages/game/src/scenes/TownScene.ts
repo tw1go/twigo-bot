@@ -91,7 +91,7 @@ import { HalloweenDecor } from '../world/halloween-deco';
 import { serverNow, setServerNow } from '../net/server-clock';
 import { mikkoIcon16, setHalloweenArt, setHalloweenBadge, showHalloweenReward } from '../ui/halloween';
 import { BossBar } from '../ui/boss-bar';
-import { HALLOWEEN_MOBS, type HalloweenData, cosmeticHatOf, cosmeticTopOf, mobName, moveSpeedOf, withCosmetics } from '@mikazuki/shared';
+import { HALLOWEEN_MOBS, type HalloweenData, cosmeticHatOf, cosmeticTopOf, effectOf, mobName, moveSpeedOf, skillEffects, skillHits, withCosmetics } from '@mikazuki/shared';
 import { openDishMenu } from '../ui/dish-menu';
 import { lootRolls, rollEndLine } from '../ui/loot-roll';
 import type { DungeonsData, SilongFloor, TownSilongRun, TownWarrensRun } from '@mikazuki/shared';
@@ -122,7 +122,8 @@ import { SKILL_POSE, battleSheets } from '../characters/battle-art';
 import { cooldownOf, mpCostOf } from '../combat/cooldowns';
 import { WorldSkills } from '../combat/world-skills';
 import { SKILL_PREVIEWS } from '../combat/skill-previews';
-import { skillSlots } from '../combat/skill-slots';
+import { skillPoses, skillSlots } from '../combat/skill-slots';
+import { FX_STAND_INS, resolveFx } from '../combat/fx-stand-ins';
 import { MobTargetBox } from '../ui/mob-target';
 import { LEVEL_PX } from '../world/heights';
 import { NightLife } from '../world/night-life';
@@ -256,6 +257,9 @@ const SETTLE_MAX_MS = 15_000;
 const SERVER_WAIT_MS = 6000;
 /** Only each class's first 7 skills have sounds (audio/sfx skill-<class>-<skill>-1…3); later ones play none yet. */
 const SKILL_SOUNDS = 7;
+/** A leap's arc (Timber!): this long, this high at the middle (px). */
+const LEAP_MS = 300;
+const LEAP_ARC = 24;
 const DIR_FOR_KEYS: Record<string, Dir> = {
   '0,-1': 'n', '0,1': 's', '1,0': 'e', '-1,0': 'w', '1,-1': 'ne', '-1,-1': 'nw', '1,1': 'se', '-1,1': 'sw',
 };
@@ -632,9 +636,10 @@ export class TownScene extends Phaser.Scene {
     if (this.battleMap)
       void fetch(`${import.meta.env.BASE_URL}assets/classes/skill-hits.json`)
         .then((r) => (r.ok ? r.json() : null))
-        .then((j: { range?: Record<string, number[]>; fxScale?: Record<string, number[]> } | null) => {
+        .then((j: { range?: Record<string, number[]>; fxScale?: Record<string, number[]>; effects?: Record<string, (string | null)[]>; hits?: Record<string, (string | null)[]> } | null) => {
           this.skillRange = j?.range ?? {};
           this.fxScale = j?.fxScale ?? {};
+          this.skillRows = { effects: j?.effects ?? {}, hits: j?.hits ?? {} };
         })
         .catch(() => null);
     if (this.area === 'town') this.npcs = this.makeNpcs();
@@ -1195,6 +1200,8 @@ export class TownScene extends Phaser.Scene {
         slot: inv?.slot && inv.selected && inv.nineSlice ? { url: url(inv.slot), picked: url(inv.selected), slice: inv.nineSlice } : null,
         badge: (cls) => (icons ? url(icons.file.replace('{class}', cls)) : ''),
         onSkill: (name) => this.mobility(name) ?? this.castBuff(name) ?? this.fight(name),
+        onHold: (name) => this.holdCharge(name),
+        onRelease: (name) => this.releaseCharge(name),
         // HP and MP Potions: the server heals and starts their shared cooldown (the town's `potion` message).
         onItem: (id) => {
           const def = anyDef(id);
@@ -1262,6 +1269,28 @@ export class TownScene extends Phaser.Scene {
   private skillRange: Record<string, number[]> = {};
   /** How big each skill's effects are drawn (skill-hits.json fxScale; 1 by default). */
   private fxScale: Record<string, number[]> = {};
+  /** Each skill's effects and hits (skill-hits.json, read by the bot too): a charge-up, a channel, a windup, hits on the move. */
+  private skillRows: { effects: Record<string, (string | null)[]>; hits: Record<string, (string | null)[]> } = { effects: {}, hits: {} };
+
+  /** A class's skill's effects and how its hits land (shared skill-effects.ts). */
+  private skillRow(cls: string, idx: number) {
+    return { effects: skillEffects(this.skillRows.effects[cls]?.[idx]), hits: skillHits(this.skillRows.hits[cls]?.[idx]) };
+  }
+
+  /** Whether your skill `name` is a charge-up (CONTEXT.md Charge-up): its time and least share, else null. */
+  private chargeOf(name: string): { ms: number; min: number; idx: number } | null {
+    const c = classInfo(adventure()?.cls);
+    const idx = c?.skills.findIndex((k) => k.name === name) ?? -1;
+    const ch = c && idx >= 0 ? effectOf(this.skillRow(c.id, idx).effects, 'charge') : undefined;
+    return ch ? { ...ch, idx } : null;
+  }
+
+  /** The frames a class's skill plays on the fighter (its script's, the class's fps): the Lv 21-40 skills' own orders. */
+  private posesOf(cls: string, idx: number, preview = false): { anim: string; frame: number; ms: number }[] {
+    const skill = SKILL_PREVIEWS[cls]?.[idx];
+    const art = this.M.classes?.list[cls];
+    return skill && art ? skillPoses(skill, (anim) => art.anims[anim]?.fps ?? 12, preview) : [];
+  }
 
   /** How far (tiles) a class's skill reaches (skill-hits.json; else the class's own reach). */
   private reachOf(cls: string, idx: number): number {
@@ -1289,8 +1318,11 @@ export class TownScene extends Phaser.Scene {
     const idx = c?.skills.findIndex((k) => k.name === name) ?? -1;
     if (!c || idx < 0) return undefined;
     if (this.knockedOut) return 'no';
-    if (this.engage?.name === name) return this.stopFight(), 'no';
+    const charge = this.chargeOf(name);
+    if (this.engage?.name === name && !charge) return this.stopFight(), 'no';
     if (skillView(name)?.locked) return 'no'; // (the bar says when it unlocks)
+    // A charge-up fires once a press: let go (onRelease, its time held), or clicked or tapped (full).
+    if (charge && this.chargedShot?.name !== name) this.chargedShot = { name };
     let m = this.mobs.current;
     if (!m || m.dead) m = this.mobs.targetNext(this.player.tile);
     if (!m) {
@@ -1312,7 +1344,7 @@ export class TownScene extends Phaser.Scene {
   private nextCast = 0;
 
   /** A skill's effects (the preview's script, combat/world-skills.ts) from a character at a mob. */
-  private castFx(cls: string, idx: number, who: Character, dir: Dir, hit: string[], land: (id: string) => void, landAll: () => void): void {
+  private castFx(cls: string, idx: number, who: Character, dir: Dir, hit: string[], land: (id: string) => void, landAll: () => void, poses = false): void {
     const skill = SKILL_PREVIEWS[cls]?.[idx];
     const art = this.M.classes?.list[cls];
     const mobs = hit.map((id) => this.mobs?.list.find((x) => x.id === id)).filter((x) => !!x);
@@ -1330,7 +1362,8 @@ export class TownScene extends Phaser.Scene {
       if (first) for (const m of mobs) if (!shown.has(m.id)) land(m.id);
       first = false;
     };
-    void this.worldSkills.play(skill, art, { feet, dir, depth: () => who.sprite.depth, nudge: (x, y) => who.setNudge(x, y) }, (n) => {
+    const playPoses = poses ? (frames: { anim: string; frame: number; ms: number }[]) => who.strikeFrames(frames, dir) : undefined;
+    void this.worldSkills.play(skill, art, { feet, dir, depth: () => who.sprite.depth, nudge: (x, y) => who.setNudge(x, y), poses: playPoses }, (n) => {
       const m = bySlot(n);
       return { x: m.sprite.x, y: m.sprite.y };
     }, onHit, this.fxScale[cls]?.[idx] ?? 1);
@@ -1448,6 +1481,8 @@ export class TownScene extends Phaser.Scene {
     const fresh = [...classSkills(c), ...classBuffs(c)].filter((k) => k.unlock > from && k.unlock <= to);
     if (!fresh.length) return;
     this.hotbar?.markNew();
+    // A Lv 21-40 skill: the first empty slot on the bar (nothing already there moves).
+    for (const k of fresh) if (k.unlock > 20) this.hotbar?.placeNew(k.name);
     fresh.forEach((k, i) =>
       this.time.delayedCall(1200 + i * 3400, () => {
         const file = this.skillIcon(c.id, k.name);
@@ -1521,6 +1556,7 @@ export class TownScene extends Phaser.Scene {
     const m = this.mobs?.current;
     if (!m || m.dead) return this.stopFight(); // dead (or let go): done
     if (this.player.busy || this.player.isSitting || this.inside) return;
+    if (this.time.now < this.castLock) return; // a channel or windup under way: no other skill, no walking
     const me = this.player.tile;
     const at = { col: Math.floor(m.col), row: Math.floor(m.row) };
     // (To the golem: to its body's edge, as the server measures it.)
@@ -1538,7 +1574,8 @@ export class TownScene extends Phaser.Scene {
       // The chosen skill, or while it's cooling down the first damage skill that's ready (the bar's order, then the class's).
       const c = classInfo(adventure()?.cls);
       if (!c) return this.stopFight();
-      const inReach = (n: string) => now >= (this.castReady.get(n) ?? 0) && open(n) && this.reachOf(c.id, c.skills.findIndex((k) => k.name === n)) >= dist(me);
+      // (A charge-up only goes when it was pressed: never the filler's.)
+      const inReach = (n: string) => now >= (this.castReady.get(n) ?? 0) && open(n) && (!this.chargeOf(n) || this.chargedShot?.name === n) && this.reachOf(c.id, c.skills.findIndex((k) => k.name === n)) >= dist(me);
       const ready = (n: string) => inReach(n) && this.canPay(n);
       const damage = new Set(c.skills.map((k) => k.name));
       const order = [...(this.hotbar?.skillOrder() ?? []).filter((n) => damage.has(n)), ...c.skills.map((k) => k.name)];
@@ -1554,10 +1591,27 @@ export class TownScene extends Phaser.Scene {
       this.castReady.set(name, now + cd * 1000);
       this.nextCast = now + CAST_GAP_MS / this.chillK(chillAttack); // (Ang Silong's Chill: slower casts)
       const dir = dirToward(m.sprite.x - this.player.sprite.x, m.sprite.y - this.player.sprite.y);
-      this.player.strike(SKILL_POSE[idx] ?? 'attack-quick', dir); // (its effects come with the server's answer)
+      // (Its effects come with the server's answer.) The Lv 21-40 skills play their own frame orders.
+      if (idx < SKILL_POSE.length) this.player.strike(SKILL_POSE[idx], dir);
+      else this.player.strikeFrames(this.posesOf(c.id, idx), dir);
       if (idx < SKILL_SOUNDS) playSet(skillSet(c.id, name)); // your skill fires (its hits: combat-hit as they land)
-      this.link?.send({ t: 'attack', mob: m.id, skill: idx });
+      const shot = this.chargedShot?.name === name ? this.chargedShot : null;
+      if (shot) this.chargedShot = null;
+      this.link?.send({ t: 'attack', mob: m.id, skill: idx, ...(shot?.held !== undefined ? { held: Math.round(shot.held) } : {}) });
       this.hotbar?.cooldown(name, cd);
+      // A channel or windup: no other skill (and no walking) until it's done; moving stops it (stopChannel).
+      // Hits on the move (Whirlwind): walking at 70% meanwhile.
+      const row = this.skillRow(c.id, idx);
+      const windup = effectOf(row.effects, 'windup');
+      const H = row.hits;
+      if (windup) this.castLock = now + windup.ms;
+      else if (H?.mode === 'channel') this.castLock = now + (H.count - 1) * H.every + 100;
+      if (windup || H?.mode === 'channel') this.locked = { name, windup: !!windup };
+      if (H?.mode === 'move') {
+        this.spinUntil = performance.now() + (H.count - 1) * H.every + 100;
+        this.player.speed = SPEED * this.speedFactor();
+        this.time.delayedCall((H.count - 1) * H.every + 120, () => (this.player.speed = SPEED * this.speedFactor()));
+      }
       return;
     }
     // Out of reach: to the nearest open tile in reach of it (again if it has moved off our goal's reach).
@@ -1579,6 +1633,78 @@ export class TownScene extends Phaser.Scene {
     this.stopFight();
   }
 
+  /** A channel or windup of yours under way until then (scene ms): which, and whether it's a windup (its cooldown comes
+   *  back if moving cancels it: it cost nothing). */
+  private castLock = 0;
+  private locked: { name: string; windup: boolean } | null = null;
+  /** Hits on the move under way (Whirlwind) until then (performance ms): walking at 70%, as the server's step budget. */
+  private spinUntil = 0;
+  /** A charge-up pressed and let go (its key's held ms; none: a click or tap, full), waiting for the auto-cast to fire it. */
+  private chargedShot: { name: string; held?: number } | null = null;
+  /** A charge-up's key held down: since when, its time, the fx at the fork and the bar under you. */
+  private charging: { name: string; t0: number; ms: number; fx: FxHandle | null; bar: FxHandle; full: boolean } | null = null;
+
+  /** You moved (or Escape): your channel or windup stops, the server told (a windup's cooldown back: it cost nothing). */
+  private stopChannel(): void {
+    if (!this.locked || this.time.now >= this.castLock) return void (this.locked = null);
+    this.link?.send({ t: 'skill-stop' });
+    this.player.endStrike();
+    if (this.locked.windup) {
+      this.castReady.delete(this.locked.name);
+      this.hotbar?.cooldown(this.locked.name, 0);
+    }
+    this.castLock = 0;
+    this.locked = null;
+  }
+
+  /** A charge-up's key pressed (CONTEXT.md Charge-up): it charges while held, the pose to its held frame, its charge
+   *  fx at the fork and a bar under you; let go (or full) it fires. False: not a charge-up, or not now (used as ever). */
+  private holdCharge(name: string): boolean {
+    const ch = this.chargeOf(name);
+    const c = classInfo(adventure()?.cls);
+    if (!ch || !c || !this.battleMap || this.knockedOut || skillView(name)?.locked) return false;
+    if (this.time.now < (this.castReady.get(name) ?? 0)) return false; // (cooling down: the press says so as ever)
+    this.stopChannel();
+    const dir = this.player.facing;
+    // The stage's frames up to the held one (the longest), held until it's let go.
+    const frames = this.posesOf(c.id, ch.idx, true);
+    const hold = frames.reduce((b, f, i) => (f.ms > frames[b].ms ? i : b), 0);
+    if (frames.length) this.player.strikeFrames([...frames.slice(0, hold), { ...frames[hold], ms: ch.ms + 60_000 }], dir);
+    const fork = () => {
+      const left = dir === 'sw' || dir === 'w' || dir === 'nw';
+      return { x: this.player.sprite.x + (left ? -9 : 9), y: this.player.sprite.y - 22 };
+    };
+    const want = resolveFx(this.M.fx, 'fx-slingshot-charge');
+    const fx = want ? this.fxLayers.play(this.M.fx[want.name], fork(), { layer: 'front', follow: fork, life: 60_000, scale: want.scale, ...(want.tint ? { tint: Number.parseInt(want.tint.slice(1), 16) } : {}) }) : null;
+    const t0 = this.time.now;
+    const bar = this.fxLayers.drawFx('front', (g, t) => {
+      const k = Math.min(1, t / ch.ms);
+      const x = Math.round(this.player.sprite.x) - 10;
+      const y = Math.round(this.player.sprite.y) + 3;
+      g.fillStyle(0x0b0a1a, 0.85).fillRect(x - 1, y - 1, 22, 4).fillStyle(k >= 1 ? 0xfde047 : 0xf8bf27, 1).fillRect(x, y, Math.max(1, Math.round(20 * k)), 2);
+    });
+    this.charging = { name, t0, ms: ch.ms, fx, bar, full: false };
+    // Full: its flash, and it fires as if let go.
+    this.time.delayedCall(ch.ms, () => {
+      if (this.charging?.t0 !== t0) return;
+      const full = resolveFx(this.M.fx, 'fx-slingshot-charge-full');
+      if (full) this.fxLayers.play(this.M.fx[full.name], fork(), { layer: 'front', scale: full.scale, ...(full.tint ? { tint: Number.parseInt(full.tint.slice(1), 16) } : {}) });
+      this.releaseCharge(name);
+    });
+    return true;
+  }
+
+  /** The charge-up's key let go (or full): it fires with the time it was held, through the auto-cast. */
+  private releaseCharge(name: string): void {
+    const ch = this.charging;
+    if (!ch || ch.name !== name) return;
+    this.charging = null;
+    ch.fx?.kill(120);
+    ch.bar.kill(0);
+    this.chargedShot = { name, held: Math.min(ch.ms, this.time.now - ch.t0) };
+    if (this.fight(name) === undefined) this.player.endStrike();
+  }
+
   /** When each buff can be cast again (scene time, ms; the server's word wins). */
   private buffReady = new Map<string, number>();
 
@@ -1596,7 +1722,10 @@ export class TownScene extends Phaser.Scene {
     const now = this.time.now;
     if (now < (this.buffReady.get(name) ?? 0)) return 'no';
     const picked = this.target?.selectedId;
-    const target = picked ?? undefined; // whoever you've clicked, in your party or not
+    // A debuff (CONTEXT.md Debuff) goes on your mob target (else the server takes the nearest in range); a buff on whoever
+    // you've clicked, in your party or not.
+    const debuff = !!adventureData()?.stats.skills.buffs?.list[name]?.debuff;
+    const target = debuff ? (this.mobs?.current && !this.mobs.current.dead ? this.mobs.current.id : undefined) : (picked ?? undefined);
     if (!this.battleMap) {
       this.link?.send({ t: 'buff', buff: name });
       return 'no';
@@ -1922,6 +2051,8 @@ export class TownScene extends Phaser.Scene {
     const asset = (f: string) => `${import.meta.env.BASE_URL}assets/${f}`;
     // The class's fx, and the mobility moves' (shared by every class).
     const fx = Object.values(this.M.fx).filter((f) => f.file?.startsWith(`${fxFolder}/`) || f.file?.startsWith('fx/mobility/')).map((f) => f.file!);
+    // (The Lv 21-40 skills' stand-ins borrow other classes' art: combat/fx-stand-ins.ts.)
+    for (const st of Object.values(FX_STAND_INS)) if (st.use && this.M.fx[st.use]?.file) fx.push(this.M.fx[st.use].file!);
     await loadImages(this, [...poseFiles(art), ...cosmeticPoseFiles(this.M.characters, K, this.outfit, art), ...fx, ...this.M.tiles.grass.files]); // (a cosmetic top's pose sheets too)
     const launch = art.launch
       ? await fetch(asset(art.launch)).then((r) => (r.ok ? r.json() : null)).then((j) => j?.points ?? null).catch(() => null)
@@ -2527,17 +2658,43 @@ export class TownScene extends Phaser.Scene {
         };
         const landAll = () => [...pending.keys()].forEach(land);
         this.time.delayedCall(1500, landAll);
+        // A windup's cast (no hits yet: they come as mob-hits): its pose and effects at the mob it's at.
+        if (m.windup && m.target && ch && cls) {
+          const mob = this.mobs?.list.find((x) => x.id === m.target);
+          if (!mob) return;
+          const dir = dirToward(mob.sprite.x - ch.sprite.x, mob.sprite.y - ch.sprite.y);
+          return this.castFx(cls, m.skill, ch, dir, [mob.id], () => {}, () => {}, !mine);
+        }
         if (ch && at && cls) {
           const mob = this.mobs?.list.find((x) => x.id === ids[0]);
           const dir = mob ? dirToward(mob.sprite.x - ch.sprite.x, mob.sprite.y - ch.sprite.y) : dirForStep(at.col - ch.tile.col, at.row - ch.tile.row);
           if (!mine) {
-            ch.strike(SKILL_POSE[m.skill] ?? 'attack-quick', dir); // (yours played as you cast)
+            if (m.skill < SKILL_POSE.length) ch.strike(SKILL_POSE[m.skill], dir); // (yours played as you cast; the Lv 21-40 ones by castFx)
             const name = classInfo(cls)?.skills[m.skill]?.name;
             if (name && m.skill < SKILL_SOUNDS) playSet(skillSet(cls, name), { at: ch.tile, others: true });
           }
-          this.castFx(cls, m.skill, ch, dir, ids, land, landAll);
+          this.castFx(cls, m.skill, ch, dir, ids, land, landAll, !mine && m.skill >= SKILL_POSE.length);
         } else landAll();
         return;
+      }
+      // A skill's later hits (a channel, hits on the move, a windup landing): their numbers as they come (the effects
+      // play with the cast).
+      if (m.t === 'mob-hits') {
+        const mine = m.by === myId;
+        if (mine) this.combatAt = performance.now();
+        for (const h of m.hits) {
+          this.mobs?.hit(h.id, h.damage, h.crit, h.hp, h.dead, h.slow, h.blocked, h.miss);
+          if (mine && h.damage > 0) playSound(h.crit ? 'combat-hit-crit' : 'combat-hit');
+        }
+        return;
+      }
+      if (m.t === 'mob-stun') return this.mobs?.stun(m.id, m.ms, m.col, m.row);
+      if (m.t === 'mob-debuff') return this.mobs?.debuff(m.id, m.name, m.ms);
+      // A leap (Timber!): onto its tile in an arc, everyone's; yours moves you there.
+      if (m.t === 'leap') {
+        if (m.id !== myId) return this.others.handle(m);
+        this.player.cancelPath();
+        return this.player.leapTo({ col: m.col, row: m.row }, LEAP_MS, LEAP_ARC);
       }
       // A burning puddle's tick (Boiling Splash): each mob in it, an orange number.
       if (m.t === 'mob-burn') {
@@ -2704,7 +2861,7 @@ export class TownScene extends Phaser.Scene {
         this.hotbar?.cooldown(m.buff, (m.ms ?? 0) / 1000);
         if (m.reason === 'mp') return this.lowMp(Infinity, true);
         playSound('error');
-        const why = { here: 'Only on battle maps.', skill: "That isn't one of your buffs.", locked: "You can't use that skill yet.", out: "You're knocked out.", slow: 'Not ready.' }[m.reason];
+        const why = { here: 'Only on battle maps.', skill: "That isn't one of your buffs.", locked: "You can't use that skill yet.", out: "You're knocked out.", slow: 'Not ready.', target: 'No target in range.' }[m.reason];
         toast(why, 1600, 'bad');
         return;
       }
@@ -3334,6 +3491,7 @@ export class TownScene extends Phaser.Scene {
       return null;
     }
     this.stopFight(); // the keys take over from an auto-cast
+    this.stopChannel(); // (and stop a channel or windup)
     const to = this.stepToward(this.player.tile, dir);
     if (!to) {
       this.player.face(dir);
@@ -3660,7 +3818,8 @@ export class TownScene extends Phaser.Scene {
   private speedFactor(now = performance.now(), rice = false): number {
     // (With `rice`: the server's step budget's rule, the slower of the Bag's slow and spilled rice underfoot.)
     const slow = Math.min(now < this.slowUntil ? this.slowFactor : 1, rice ? this.riceAt(this.player.tile.col, this.player.tile.row) : 1);
-    return slow * this.chillK(chillMove) * (this.battleMap ? moveSpeedOf(myBuffStats()) : 1);
+    const spin = now < this.spinUntil ? 0.7 : 1; // (hits on the move: Whirlwind)
+    return slow * spin * this.chillK(chillMove) * (this.battleMap ? moveSpeedOf(myBuffStats()) : 1);
   }
 
   // ── Ang Silong's Chill (the server's: bot web/town-silong.ts) ──
@@ -3858,6 +4017,7 @@ export class TownScene extends Phaser.Scene {
   /** Just walk there (a tile you can't get to: the nearest one you can), with the click marker on where you're going. */
   private moveTo(target: Tile): void {
     this.stopFight(); // walking yourself stops an auto-cast
+    this.stopChannel(); // (and a channel or windup)
     this.pending = null;
     this.byKeys = false;
     const from = this.player.heading;

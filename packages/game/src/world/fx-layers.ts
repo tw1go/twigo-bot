@@ -48,6 +48,8 @@ export interface FxPlay {
   follow?: () => Pt;
   /** Its opacity (0–1; default 1). */
   alpha?: number;
+  /** A colour laid over it (multiplied): a stand-in tinted for the skill it stands in for. */
+  tint?: number;
 }
 
 /** A shot: flown at `speed` px a second, `arc` px up at the middle, turned to its flight (unless `turn` is false). */
@@ -242,6 +244,7 @@ export class FxLayers {
     const fy = !!o.flipY;
     const img = this.scene.add.image(at.x, at.y, def.file).setDepth(this.depthOf(o.layer, def));
     img.setFlipX(fx).setFlipY(fy).setOrigin((fx ? w - ax : ax) / w, (fy ? h - ay : ay) / h);
+    if (o.tint !== undefined) img.setTint(o.tint);
     const ms = o.ms ?? 1000 / (def.fps ?? 12);
     const seq = o.frames ?? null;
     const frames = def.frames ?? 1;

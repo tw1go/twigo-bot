@@ -685,6 +685,8 @@ export class Character {
 
   private battle: BattleSheets | null = null;
   private striking = false;
+  /** Each strike's number: an older one's end never cuts a newer one short. */
+  private strikes = 0;
 
   get inBattle(): boolean {
     return !!this.battle;
@@ -709,13 +711,71 @@ export class Character {
     if (!this.battle || this.sittingAt) return;
     this.dir = dir;
     this.striking = false;
+    const run = ++this.strikes;
     const key = this.battle.key(pose, dir);
     if (!this.scene.anims.exists(key)) return;
     this.striking = true;
     this.sprite.play(key);
     this.sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
+      if (run !== this.strikes) return; // (a later strike took over)
       this.striking = false;
       this.play(this.path.length ? 'walk' : 'idle');
+    });
+  }
+
+  /** A skill's own frame order (the Lv 21-40 skills: combat/skill-previews.ts), facing `dir` (battle only): each anim's
+   *  frame for its ms, in turn, across anims (Timber!'s charge-start then attack-heavy); then standing or walking. */
+  strikeFrames(frames: { anim: string; frame: number; ms: number }[], dir: Dir): void {
+    if (!this.battle || this.sittingAt || !frames.length) return;
+    this.dir = dir;
+    const run = ++this.strikes;
+    this.striking = true;
+    this.sprite.anims.stop();
+    const show = (anim: string, frame: number) => {
+      if (run !== this.strikes || !this.battle) return;
+      const a = this.scene.anims.get(this.battle.key(anim, this.dir));
+      const f = a?.frames[Math.min(frame, a.frames.length - 1)];
+      if (f) this.sprite.setTexture(f.textureKey, f.textureFrame);
+    };
+    let at = 0;
+    for (const f of frames) {
+      if (at === 0) show(f.anim, f.frame);
+      else this.scene.time.delayedCall(at, () => show(f.anim, f.frame));
+      at += f.ms;
+    }
+    this.scene.time.delayedCall(at, () => {
+      if (run !== this.strikes) return;
+      this.striking = false;
+      this.play(this.path.length ? 'walk' : 'idle');
+    });
+  }
+
+  /** Stops a strike under way (a channel cut short): standing or walking again at once. */
+  endStrike(): void {
+    if (!this.striking) return;
+    this.strikes++;
+    this.striking = false;
+    this.play(this.path.length ? 'walk' : 'idle');
+  }
+
+  /** A leap (CONTEXT.md Leap; Timber!): from where the feet are to `tile` over `ms`, `arc` px up at the middle. */
+  leapTo(tile: Tile, ms: number, arc: number): void {
+    const from = this.spot;
+    const to = { col: tile.col + 0.5, row: tile.row + 0.5 };
+    const dir = this.dir;
+    this.busy = true;
+    this.scene.tweens.addCounter({
+      from: 0, to: 1, duration: ms,
+      onUpdate: (t) => {
+        const v = t.getValue() ?? 0;
+        this.lift = Math.round(arc * 4 * v * (1 - v));
+        this.pose(from.col + (to.col - from.col) * v, from.row + (to.row - from.row) * v, dir, false);
+      },
+      onComplete: () => {
+        this.lift = 0;
+        this.pose(to.col, to.row, dir, false);
+        this.busy = false;
+      },
     });
   }
 

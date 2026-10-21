@@ -252,6 +252,9 @@ export interface DerivedStats extends StatBlock {
   accuracy?: number;
   cooldownPct?: number;
   hpRegenPct?: number;
+  /** Points added to mobs' miss chance on you (Mist Veil), and max HP lost a second (Blood Price: never below 10%). */
+  evasion?: number;
+  hpDrainPct?: number;
 }
 
 /** One of the stats box's lower rows: past ATK, DEF, HP, MP, STR, DEX, INT and Crit rate. */
@@ -478,13 +481,21 @@ export interface BuffsData {
 export interface BuffDef {
   class: string;
   unlock: number;
-  target: 'self' | 'ally+self' | 'party';
+  /** `enemy`: a debuff on one mob (the caster's target within `rangeTiles`, else the nearest); `enemy+self`: one on the
+   *  mobs round the caster (`tauntAround`) and its player stats on the caster. */
+  target: 'self' | 'ally+self' | 'party' | 'enemy' | 'enemy+self';
   stats: Record<string, number>;
   durationSec: number | null;
   cooldownSec: number;
   stance?: boolean;
+  /** A debuff on mobs (CONTEXT.md Debuff), cast within `rangeTiles`. */
+  debuff?: boolean;
+  rangeTiles?: number;
   note?: string;
 }
+
+/** A debuff's stats that go on the mob (the rest of an enemy+self utility's stats go on the caster). */
+export const MOB_DEBUFF_KEYS: readonly string[] = ['defPct', 'damageTakenPct', 'missChance', 'mobDamagePct', 'slow', 'taunt', 'tauntAround'];
 
 /** A buff's stats at a skill level: each +5% of itself a level past 1 (perSkillLevel.buffDebuff); a heal's
  *  (healPctOfPower) +2% like other heals (damageOrHeal). Rounded to a millionth. Empty for an unknown buff. */
@@ -492,7 +503,9 @@ export function buffValue(data: StatsData, name: string, skillLevel = 1): Record
   const b = data.skills.buffs?.list[name];
   if (!b) return {};
   const bonus = skillLevelBonus(data, skillLevel);
-  return Object.fromEntries(Object.entries(b.stats).map(([k, v]) => [k, Math.round(v * (k === 'healPctOfPower' ? bonus.damage : bonus.buff) * 1e6) / 1e6]));
+  // (A slow's reduction grows, not its factor: Hamstring's 50% a little slower each level. A reach (tauntAround) stays.)
+  const at = (k: string, v: number) => (k === 'tauntAround' ? v : k === 'slow' ? 1 - (1 - v) * bonus.buff : v * (k === 'healPctOfPower' ? bonus.damage : bonus.buff));
+  return Object.fromEntries(Object.entries(b.stats).map(([k, v]) => [k, Math.round(at(k, v) * 1e6) / 1e6]));
 }
 
 /** A buff's skill level cap at a character level: the damage skills' rule (skillLevelCap) from its unlock level. */
@@ -523,7 +536,7 @@ export function buffTotals(data: StatsData | null | undefined, on: Iterable<{ st
 }
 
 /** Derived stats with buffs on (buffTotals): Power × (1 + atkPct), max HP × (1 + maxHpPct), DEF × (1 + defPct),
- *  + amp, + crit rate (held to caps.critRate), + DEF rate (gear's and the buff's together, held to caps.defRate),
+ *  + amp, + crit rate (held to caps.critRate), + crit damage (Fierce Stance), evasion (Mist Veil), HP drain (Blood Price), + DEF rate (gear's and the buff's together, held to caps.defRate),
  *  accuracy, cooldownPct and hpRegenPctPerSec as they are, MP regen × (1 + mpRegenPct) (a dish: Lugaw). Move speed
  *  (moveSpeedPct, Pancit) is no derived stat: the walk and the server's step budget take it (moveSpeedOf). A heal (healPctOfPower) is no lasting stat. */
 export function withBuffs(data: StatsData, d: DerivedStats, b: Record<string, number>): DerivedStats {
@@ -534,11 +547,14 @@ export function withBuffs(data: StatsData, d: DerivedStats, b: Record<string, nu
     def: d.def * (1 + (b.defPct ?? 0)),
     amp: d.amp + (b.amp ?? 0),
     critRate: capped(data, 'critRate', d.critRate + (b.critRate ?? 0)),
+    critDamage: d.critDamage + (b.critDamage ?? 0),
     defRate: capped(data, 'defRate', d.defRate + (b.defRate ?? 0)),
     accuracy: (d.accuracy ?? 0) + (b.accuracy ?? 0),
     cooldownPct: (d.cooldownPct ?? 0) + (b.cooldownPct ?? 0),
     hpRegenPct: (d.hpRegenPct ?? 0) + (b.hpRegenPctPerSec ?? 0),
     mpRegen: d.mpRegen * (1 + (b.mpRegenPct ?? 0)),
+    ...(b.evasion ? { evasion: (d.evasion ?? 0) + b.evasion } : {}),
+    ...(b.hpDrainPctPerSec ? { hpDrainPct: (d.hpDrainPct ?? 0) + b.hpDrainPctPerSec } : {}),
   };
 }
 
@@ -652,6 +668,8 @@ export interface Target {
   priority?: number;
   /** Their share of their HP left (0–1; the Timbangan Sentinel's Weigh). */
   hpShare?: number;
+  /** Points added to the miss chance of hits on them (Mist Veil), after the hitter's accuracy. */
+  evasion?: number;
 }
 
 /** One hit's damage, before any roll: Power × skill % × (1 + amp) × crit × 100 / (100 + DEF) (DEF taking at most
@@ -666,7 +684,7 @@ export function hitDamage(data: StatsData, by: Hitter, on: Target, pct: number, 
 /** A hit as it lands: a miss (by the level gap's chance, less the hitter's accuracy), else a crit or not, and its
  *  damage. `random` decides (the miss first, then the crit). */
 export function rollHit(data: StatsData, by: Hitter, on: Target, pct: number, random: () => number = Math.random): { damage: number; crit: boolean; miss: boolean } {
-  const miss = Math.max(0, levelGap(data, by.level, on.level).miss - (by.accuracy ?? 0));
+  const miss = Math.max(0, levelGap(data, by.level, on.level).miss - (by.accuracy ?? 0)) + (on.evasion ?? 0);
   if (miss > 0 && random() < miss) return { damage: 0, crit: false, miss: true };
   const crit = !!by.critRate && random() < by.critRate;
   return { damage: hitDamage(data, by, on, pct, crit), crit, miss: false };

@@ -1,4 +1,4 @@
-import { type BuffDef, type BuffRefusal, type StatsData, type TownBuff, buffMpCost, buffTotals, buffValue, skillCooldown } from '@mikazuki/shared';
+import { type BuffDef, type BuffRefusal, type StatsData, type TownBuff, MOB_DEBUFF_KEYS, buffMpCost, buffTotals, buffValue, skillCooldown } from '@mikazuki/shared';
 
 // ✨ Buffs in the web town (stats.json skills.buffs; combat-guide.md "Buffs"): who may cast one and who it reaches, and
 // the buffs on each member (by member, in memory only, like HP: a restart ends them). A cast is refused off a battle map,
@@ -63,7 +63,7 @@ export type CastResult =
   | { ok: false; reason: BuffRefusal; ms?: number }
   /** It goes: the MP to spend, who it reaches (the caster first), its cooldown (ms), a heal's share of Power (null: a
    *  buff), and whether it turned a stance off. */
-  | { ok: true; buff: BuffDef; mp: number; to: string[]; cooldownMs: number; heal: number | null; off: boolean };
+  | { ok: true; buff: BuffDef; mp: number; to: string[]; cooldownMs: number; heal: number | null; off: boolean; debuff?: Record<string, number> };
 
 const cheb = (a: [number, number], b: [number, number]) => Math.max(Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1]));
 
@@ -109,6 +109,14 @@ export class Buffs {
       if (pick) to.push(pick.member);
     }
     const stats = buffValue(this.data, name, c.skillLevel);
+    // A debuff: its mob stats for the town to put on the mob(s); an enemy+self one's player stats on the caster too.
+    if (b.debuff) {
+      const mine = Object.fromEntries(Object.entries(stats).filter(([k]) => !MOB_DEBUFF_KEYS.includes(k)));
+      const onMob = Object.fromEntries(Object.entries(stats).filter(([k]) => MOB_DEBUFF_KEYS.includes(k)));
+      const self = b.target === 'enemy+self' && Object.keys(mine).length > 0;
+      if (self) this.give(c.member, { name, cls: b.class, by: c.member, level: c.skillLevel, stats: mine, endsAt: now + (b.durationSec ?? 0) * 1000 });
+      return { ok: true, buff: b, mp, to: self ? [c.member] : [], cooldownMs, heal: null, off: false, debuff: onMob };
+    }
     // An instant heal: nothing stays on them.
     if (b.durationSec === 0) return { ok: true, buff: b, mp, to, cooldownMs, heal: stats.healPctOfPower ?? 0, off: false };
     if (b.stance) {
