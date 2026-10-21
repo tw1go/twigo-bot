@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { api } from '../net/endpoints';
 import { queueSave } from '../net/sync';
 import { queueImage, queueNpcs, queueTown } from '../assets/queue';
-import type { Area, Dir, Gate, Manifest, MapTiles, MobData, PropDef, TownMap } from '../assets/types';
+import type { Area, Dir, FxDef, Gate, Manifest, MapTiles, MobData, PropDef, TownMap } from '../assets/types';
 import { Character, SPEED, dirForStep, dirToward } from '../characters/character';
 import { type Outfit, assetProblems, buildOutfit, drawStill, headPortrait, headTop, outfitFiles, randomOutfit, sheetKey, stillFiles } from '../characters/doll';
 import { loadOutfit } from '../characters/loading';
@@ -2236,7 +2236,7 @@ export class TownScene extends Phaser.Scene {
         // (A heavy Weigh, the Timbangan Sentinel's: orange.)
         if (hit) who.hitNumber(String(hit.damage), mine, hit.mult && hit.mult >= (by.data?.weigh?.flashAt ?? 1.25) ? '#FB923C' : undefined);
         // A tear cloud on them (the Sibuyas Sobber's): they miss more for a while.
-        if (hit?.tear) tearCloud(this.fxLayers, () => ({ x: who.sprite.x, y: who.headY }), hit.tear);
+        if (hit?.tear) tearCloud(this.fxLayers, () => ({ x: who.sprite.x, y: who.headY }), hit.tear, this.M.fx['fx-sibuyas-tear-cloud'], (f) => this.textures.exists(f));
         if (mine && hit) playSet('combat-player-hurt');
         if (!slow) return;
         showSlowed(this.fxLayers, () => ({ x: who.sprite.x, y: who.headY }), () => ({ x: who.sprite.x, y: who.sprite.y }), slow);
@@ -3643,6 +3643,9 @@ export class TownScene extends Phaser.Scene {
     const x = Math.round((at[0] - at[1]) * 16);
     const y = Math.round((at[0] + at[1] + 1) * 8 - lift);
     const grains = [[-7, -1], [-3, 2], [2, -2], [6, 1], [0, 0], [-5, 1], [4, 2]];
+    // Its art (fx-sako-rice-spill), else drawn in code.
+    const art = this.M.fx['fx-sako-rice-spill'];
+    if (art?.file && this.textures.exists(art.file)) return void this.time.delayedCall(delay, () => this.fxLayers.play(art, { x, y }, { layer: 'ground', life: ms, fadeOut: 500 }));
     this.time.delayedCall(delay, () =>
       this.fxLayers.drawFx('ground', (g) => {
         g.fillStyle(0xf5ecd0, 0.9).fillEllipse(x, y, 26, 13);
@@ -5222,10 +5225,10 @@ function exposeDebug(scene: TownScene): void {
   };
 }
 
-/** Stunned: three small yellow stars circling over a head (`t` ms in). */
-/** A tear cloud over a player's head for `ms` (fx.tearCloud, code-drawn until its art comes): four pale blue translucent
- *  circles drifting up round the head, on the front layer. */
-function tearCloud(fx: FxLayers, head: () => { x: number; y: number }, ms: number): void {
+/** A tear cloud over a player's head for `ms` (the Sibuyas Sobber's): its art sitting on the head (fx-sibuyas-tear-cloud),
+ *  else four pale blue translucent circles drifting up round it, on the front layer. */
+function tearCloud(fx: FxLayers, head: () => { x: number; y: number }, ms: number, art?: FxDef, loaded?: (file: string) => boolean): void {
+  if (art?.file && loaded?.(art.file)) return void fx.play(art, head(), { layer: 'front', follow: head, life: ms, fadeOut: 300 });
   fx.drawFx('front', (g, t) => {
     const h = head();
     for (let i = 0; i < 4; i++) {
@@ -5237,6 +5240,7 @@ function tearCloud(fx: FxLayers, head: () => { x: number; y: number }, ms: numbe
   }, ms, 300);
 }
 
+/** Stunned: three small yellow stars circling over a head (`t` ms in). */
 function stunStars(g: Phaser.GameObjects.Graphics, x: number, y: number, t: number): void {
   for (let i = 0; i < 3; i++) {
     const a = t / 180 + (i * Math.PI * 2) / 3;

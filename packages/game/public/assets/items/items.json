@@ -579,7 +579,10 @@
       "rarity": "white",
       "bound": true,
       "about": "A folded note from Mang Ramon's box in the Silong. Kuya Jun will want to see it.",
-      "note": "Repo addition (20 Oct 2026): from the R box on the Silong's B2 (silong.json practiceRun.ramonBox); no art yet (as Tisay's Note)."
+      "note": "Repo addition (20 Oct 2026): from the R box on the Silong's B2 (silong.json practiceRun.ramonBox); no art yet (as Tisay's Note).",
+      "icon": "items/quest/item-quest-ramon-note-16.png",
+      "showcase": "items/quest/item-quest-ramon-note.png",
+      "large": "items/quest/item-quest-ramon-note-64.png"
     },
     {
       "id": "fresh-onion",
@@ -691,7 +694,10 @@
       "rarity": "white",
       "bound": true,
       "about": "Kuya Jun forged it from the brass weights, his father's false ones melted in. Hold it when the Great Scale falls.",
-      "note": "Repo addition (20 Oct 2026): a Lumang Palengke quest item (classes/palengke-leveling.json questItems); no art yet."
+      "note": "Repo addition (20 Oct 2026): a Lumang Palengke quest item (classes/palengke-leveling.json questItems); no art yet.",
+      "icon": "items/quest/item-quest-honest-weight-16.png",
+      "showcase": "items/quest/item-quest-honest-weight.png",
+      "large": "items/quest/item-quest-honest-weight-64.png"
     },
     {
       "id": "suki-card",

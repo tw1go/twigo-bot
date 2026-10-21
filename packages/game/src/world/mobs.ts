@@ -2,12 +2,12 @@ import Phaser from 'phaser';
 import { type DungeonsData, type LevelingData, type PlayerHit, type StatsData, type TownMob, type TownMobFacing, areaAt, miniBossDef, miniBossRules, miniMobId, miniOfMobId, mobBarMs, mobRules, mobStartSpots, mobStats, mobTone, packSize, seeded } from '@mikazuki/shared';
 import { playSet } from '../audio/sound';
 import { onMap } from './clicks';
-import type { Manifest, MobData, MobDef, MobZone, TownMap, Vec2 } from '../assets/types';
+import type { FxDef, Manifest, MobData, MobDef, MobZone, TownMap, Vec2 } from '../assets/types';
 import { mobCell, mobSheet, mobSheets, mobVariants } from '../assets/mob-art';
 import { queueSheet } from '../assets/queue';
 import { slice } from '../assets/packs';
 import { CHARACTER_BIAS, HEIGHT_DEPTH } from './depth';
-import type { FxLayers, Pt } from './fx-layers';
+import type { FxHandle, FxLayers, Pt } from './fx-layers';
 import type { Tile, WalkGrid } from './grid';
 import { type WorldObjects, characterDepth } from './objects';
 import { BuildingLabel } from '../ui/labels';
@@ -99,6 +99,16 @@ export const GOLEM_PIT = 'Golem Pit';
 const FACING: Record<string, TownMobFacing> = { n: 'ne', ne: 'ne', e: 'se', se: 'se', s: 'se', sw: 'sw', w: 'sw', nw: 'nw' };
 /** Each facing's step on the grid (SE = +col, SW = +row, NW = −col, NE = −row; the eight-way art's S, E, N, W the
  *  diagonal steps), as the bot's. */
+/** Each Palengke kind's attack effect (the art folder's fx/palengke), played on its attack frame: in front of it along its
+ *  facing (mirrored facing left: the art points right), at its feet, over its top, or on its target. A Silong frost
+ *  recolour plays its original's. */
+const ATTACK_FX: Record<string, { fx: string; at: 'front' | 'feet' | 'top' | 'target' }> = {
+  'payong-flapper': { fx: 'fx-payong-poke', at: 'front' },
+  'sibuyas-sobber': { fx: 'fx-sibuyas-tear-burst', at: 'top' },
+  'garapon-jars': { fx: 'fx-garapon-ram', at: 'target' },
+  'sako-slammer': { fx: 'fx-sako-slam-dust', at: 'feet' },
+  'sangkalan-chomper': { fx: 'fx-sangkalan-bite', at: 'front' },
+};
 const AXIS: Record<TownMobFacing, [number, number]> = { se: [1, 0], sw: [0, 1], nw: [-1, 0], ne: [0, -1], s: [1, 1], e: [1, -1], n: [-1, -1], w: [-1, 1] };
 const STEPS: [number, number][] = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
 
@@ -174,7 +184,9 @@ export interface Mob {
   flickerAt: number;
   /** A line under its name (an event mob's "Legendary"), or null. */
   subtitle: string | null;
-  /** Lying in wait under the floodwater (a Banyera Lurker): not drawn, not to be targeted; its ripple. */
+  /** Lying in wait under the floodwater (a Banyera Lurker): not drawn, not to be targeted; its ripple (fx-banyera-ripple,
+   *  else drawn in code). */
+  rippleFx?: FxHandle | null;
   hidden: boolean;
   ripple: Phaser.GameObjects.Graphics | null;
   /** A field boss asleep between fights (the Great Scale): its idle's first frame held, dimmed, not to be targeted. */
@@ -436,17 +448,23 @@ export class Mobs {
     if (on) {
       m.sprite.setVisible(false);
       m.shadow?.setVisible(false);
-      m.ripple ??= this.scene.add.graphics();
+      const art = this.fxArt('fx-banyera-ripple');
+      if (art) m.rippleFx ??= this.fx.play(art, this.feet(m), { layer: 'ground', life: Infinity });
+      else m.ripple ??= this.scene.add.graphics();
       this.drawBar(m);
       return;
     }
     m.ripple?.destroy();
     m.ripple = null;
+    m.rippleFx?.kill(200);
+    m.rippleFx = null;
     if (m.dead || m.asleep) return;
     m.sprite.setVisible(true);
     m.shadow?.setVisible(true);
     if (!rise) return;
     const ms = m.data?.ambush?.riseMs ?? 300;
+    const splash = this.fxArt('fx-banyera-surface');
+    if (splash) this.fx.play(splash, this.feet(m), { layer: 'front' }); // (the water bursting as it rises)
     m.sprite.setAlpha(0);
     this.scene.tweens.add({ targets: m.sprite, alpha: 1, duration: ms });
     this.pose(m, 'surface');
@@ -823,6 +841,8 @@ export class Mobs {
       m.glow = null;
       m.ripple?.destroy();
       m.ripple = null;
+      m.rippleFx?.kill(200);
+      m.rippleFx = null;
       const drop = () => {
         parts.forEach((p) => p.destroy());
         m.bar?.destroy();
@@ -946,13 +966,16 @@ export class Mobs {
     if (m === this.target) this.onTarget?.(m);
   }
 
-  /** A short grey arc in front of a mob, the way it faces (a front block took a share of a hit: fx.block, code-drawn). */
+  /** A grey "blocked" arc in front of a mob, the way it faces (a front block took a share of a hit: fx-sangkalan-block,
+   *  mirrored facing left; drawn in code without its art). */
   private blockArc(m: Mob): void {
     const [dc, dr] = AXIS[m.dir];
     const len = Math.hypot(dc - dr, (dc + dr) / 2) || 1;
     const [ux, uy] = [(dc - dr) / len, (dc + dr) / 2 / len];
     const a = Math.atan2(uy, ux);
     const at = { x: m.sprite.x + ux * 14, y: m.sprite.y - BODY_UP + uy * 10 };
+    const art = this.fxArt('fx-sangkalan-block');
+    if (art) return void this.fx.play(art, { x: at.x, y: at.y + 8 }, { layer: 'front', flipX: ux < 0 });
     this.fx.drawFx('front', (g, t) => {
       g.lineStyle(2, 0xcbd5e1, Math.max(0, 1 - t / 260)).beginPath().arc(Math.round(at.x), Math.round(at.y), 9, a - 0.9, a + 0.9).strokePath();
     }, 260);
@@ -1092,8 +1115,17 @@ export class Mobs {
     if (m.data?.shell) m.openUntil = this.scene.time.now + (m.data.shellOpenMs ?? SHELL_OPEN_MS); // its shell drops as it swings
     const land = () => this.hooks.onHit?.(m, target, slow, hit);
     const frame = m.data?.attackFrame ?? 0;
+    // A Payong Flapper opens its umbrella as it swings: its shimmer over it while the block holds (mobs.json block.frames).
+    const B = m.data?.block;
+    const shimmer = B?.frames && !m.asleep ? this.fxArt('fx-payong-block') : undefined;
+    if (shimmer) {
+      const fps = m.def.animations.attack?.fps ?? 10;
+      const top = () => ({ x: m.sprite.x, y: this.top(m) + 6 });
+      this.fx.play(shimmer, top(), { layer: 'front', follow: top, life: ((B!.frames![1] - B!.frames![0] + 1) / fps) * 1000 });
+    }
     const fire = () => {
       this.hooks.onAttackFrame?.(m, target);
+      if (!m.asleep) this.attackFx(m, target);
       // The Sentinel's dial flashes yellow on a heavy Weigh (fx.weighFlash, code-drawn).
       const W = m.data?.weigh;
       if (W && hit?.mult && hit.mult >= (W.flashAt ?? 1.25) && !m.asleep) this.weighFlash(m);
@@ -1116,6 +1148,29 @@ export class Mobs {
     if (frame === 0 && !fired) (fired = true), fire();
   }
 
+  /** A Palengke kind's attack effect on its attack frame (ATTACK_FX), if its art is in. */
+  private attackFx(m: Mob, target: string): void {
+    const A = ATTACK_FX[m.zone.mob.replace(/-frost$/, '')];
+    const art = A && this.fxArt(A.fx);
+    if (!A || !art) return;
+    const [dc, dr] = AXIS[m.dir];
+    const len = Math.hypot(dc - dr, (dc + dr) / 2) || 1;
+    const [ux, uy] = [(dc - dr) / len, (dc + dr) / 2 / len];
+    const k = m.data?.scale ?? 1;
+    const at =
+      A.at === 'front' ? { x: m.sprite.x + ux * 14 * k, y: m.sprite.y - 8 * k + uy * 8 * k }
+      : A.at === 'top' ? { x: m.sprite.x, y: this.top(m) + 4 }
+      : A.at === 'target' ? this.playerAt?.(target) ?? null
+      : this.feet(m);
+    if (at) this.fx.play(art, at, { layer: 'front', flipX: A.at === 'front' && ux < 0 });
+  }
+
+  /** An effect's def from the manifest, only once its sheet is loaded (else the caller draws its own stand-in). */
+  private fxArt(id: string): FxDef | undefined {
+    const def = this.M.fx[id];
+    return def?.file && this.scene.textures.exists(def.file) ? def : undefined;
+  }
+
   /** The Wire Tangle's zap: a spark from its insulator eye (mobs.json eye, art px in the SE cell; mirrored for SW and NW)
    *  to the player, drawn in code on the front layer: a short jagged yellow-white line, flickering. */
   private spark(m: Mob, to: Pt, onArrive: () => void): void {
@@ -1131,6 +1186,16 @@ export class Mobs {
    *  a dust puff where it lands, then `onArrive`. */
   private chairShot(m: Mob, to: Pt, speed: number, onArrive: () => void): void {
     const from = { x: m.sprite.x, y: this.top(m) + 6 };
+    // Its art (fx-mono-chair tumbling, fx-mono-chair-land where it comes down), else drawn in code below.
+    const chair = this.fxArt('fx-mono-chair');
+    if (chair) {
+      const land = this.fxArt('fx-mono-chair-land');
+      this.fx.shot(chair, from, to, { speed, arc: 18, turn: false, layer: 'front', onArrive: () => {
+        if (land) this.fx.play(land, to, { layer: 'front' });
+        onArrive();
+      } });
+      return;
+    }
     const trail: Pt[] = [];
     this.fx.drawnShot('front', from, to, {
       speed, arc: 18, turn: false,
@@ -1158,9 +1223,11 @@ export class Mobs {
     });
   }
 
-  /** A short yellow flash on a Sentinel's dial (its art's top). */
+  /** A flash on a Sentinel's dial (its art's top): fx-timbangan-weigh sitting on it, else a short yellow flash. */
   private weighFlash(m: Mob): void {
     const at = { x: m.sprite.x, y: this.top(m) + 8 };
+    const art = this.fxArt('fx-timbangan-weigh');
+    if (art) return void this.fx.play(art, { x: at.x, y: at.y + 6 }, { layer: 'front' });
     this.fx.drawFx('front', (g, t) => {
       g.fillStyle(0xfde047, 0.7 * Math.max(0, 1 - t / 240)).fillCircle(Math.round(at.x), Math.round(at.y), 6);
     }, 240);
