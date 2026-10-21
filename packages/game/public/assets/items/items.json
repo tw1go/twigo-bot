@@ -51,7 +51,10 @@
       "price": {
         "kowens": 5
       },
-      "note": "Repo addition (20 Oct 2026): the Mid tier's whetstone, sold in the Smithing tab from Lv 30 for 5 Kowens (Mac); no art yet."
+      "note": "Repo addition (20 Oct 2026): the Mid tier's whetstone, sold in the Smithing tab from Lv 30 for 5 Kowens (Mac); no art yet.",
+      "icon": "items/materials/item-mat-polished-whetstone-16.png",
+      "showcase": "items/materials/item-mat-polished-whetstone.png",
+      "large": "items/materials/item-mat-polished-whetstone-64.png"
     },
     {
       "id": "polished-whetstone-fragment",
@@ -61,7 +64,10 @@
       "tier": "mid",
       "about": "Ten make a Polished Whetstone. From taking Mid gear apart and the Palengke's mini bosses.",
       "forge": "fragment",
-      "note": "Repo addition (20 Oct 2026); no art yet."
+      "note": "Repo addition (20 Oct 2026); no art yet.",
+      "icon": "items/materials/item-mat-polished-whetstone-fragment-16.png",
+      "showcase": "items/materials/item-mat-polished-whetstone-fragment.png",
+      "large": "items/materials/item-mat-polished-whetstone-fragment-64.png"
     },
     {
       "id": "mid-repair-kit",
@@ -75,7 +81,10 @@
       "price": {
         "kowens": 20
       },
-      "note": "Repo addition (20 Oct 2026): sold in the Smithing tab from Lv 30 for 20 Kowens (Mac); no art yet."
+      "note": "Repo addition (20 Oct 2026): sold in the Smithing tab from Lv 30 for 20 Kowens (Mac); no art yet.",
+      "icon": "items/materials/item-mat-mid-repair-kit-16.png",
+      "showcase": "items/materials/item-mat-mid-repair-kit.png",
+      "large": "items/materials/item-mat-mid-repair-kit-64.png"
     },
     {
       "id": "agimat-pliers",
@@ -580,7 +589,10 @@
       "bound": true,
       "about": "For a quest in the Lumang Palengke. Drops from the Sibuyas Sobbers while a quest asks for it.",
       "note": "Repo addition (20 Oct 2026): a Lumang Palengke quest item (classes/palengke-leveling.json questItems); no art yet.",
-      "stack": 99
+      "stack": 99,
+      "icon": "items/quest/item-quest-fresh-onion-16.png",
+      "showcase": "items/quest/item-quest-fresh-onion.png",
+      "large": "items/quest/item-quest-fresh-onion-64.png"
     },
     {
       "id": "unbroken-lid",
@@ -590,7 +602,10 @@
       "bound": true,
       "about": "For a quest in the Lumang Palengke. Drops from the Garapon Jars while a quest asks for it.",
       "note": "Repo addition (20 Oct 2026): a Lumang Palengke quest item (classes/palengke-leveling.json questItems); no art yet.",
-      "stack": 99
+      "stack": 99,
+      "icon": "items/quest/item-quest-unbroken-lid-16.png",
+      "showcase": "items/quest/item-quest-unbroken-lid.png",
+      "large": "items/quest/item-quest-unbroken-lid-64.png"
     },
     {
       "id": "clean-rice-scoop",
@@ -600,7 +615,10 @@
       "bound": true,
       "about": "For a quest in the Lumang Palengke. Drops from the Sako Slammers while a quest asks for it.",
       "note": "Repo addition (20 Oct 2026): a Lumang Palengke quest item (classes/palengke-leveling.json questItems); no art yet.",
-      "stack": 99
+      "stack": 99,
+      "icon": "items/quest/item-quest-clean-rice-scoop-16.png",
+      "showcase": "items/quest/item-quest-clean-rice-scoop.png",
+      "large": "items/quest/item-quest-clean-rice-scoop-64.png"
     },
     {
       "id": "whole-chair",
@@ -610,7 +628,10 @@
       "bound": true,
       "about": "For a quest in the Lumang Palengke. Drops from the Monobloc Stacks while a quest asks for it.",
       "note": "Repo addition (20 Oct 2026): a Lumang Palengke quest item (classes/palengke-leveling.json questItems); no art yet.",
-      "stack": 99
+      "stack": 99,
+      "icon": "items/quest/item-quest-whole-chair-16.png",
+      "showcase": "items/quest/item-quest-whole-chair.png",
+      "large": "items/quest/item-quest-whole-chair-64.png"
     },
     {
       "id": "rusty-cleaver-piece",
@@ -620,7 +641,10 @@
       "bound": true,
       "about": "For a quest in the Lumang Palengke. Drops from the Sangkalan Chompers while a quest asks for it.",
       "note": "Repo addition (20 Oct 2026): a Lumang Palengke quest item (classes/palengke-leveling.json questItems); no art yet.",
-      "stack": 99
+      "stack": 99,
+      "icon": "items/quest/item-quest-rusty-cleaver-piece-16.png",
+      "showcase": "items/quest/item-quest-rusty-cleaver-piece.png",
+      "large": "items/quest/item-quest-rusty-cleaver-piece-64.png"
     },
     {
       "id": "ledger-page",
@@ -630,7 +654,10 @@
       "bound": true,
       "about": "For a quest in the Lumang Palengke. Drops from the Banyera Lurkers while a quest asks for it.",
       "note": "Repo addition (20 Oct 2026): a Lumang Palengke quest item (classes/palengke-leveling.json questItems); no art yet.",
-      "stack": 99
+      "stack": 99,
+      "icon": "items/quest/item-quest-ledger-page-16.png",
+      "showcase": "items/quest/item-quest-ledger-page.png",
+      "large": "items/quest/item-quest-ledger-page-64.png"
     },
     {
       "id": "brass-weight",
@@ -640,7 +667,10 @@
       "bound": true,
       "about": "For a quest in the Lumang Palengke. Drops from the Timbangan Sentinels while a quest asks for it.",
       "note": "Repo addition (20 Oct 2026): a Lumang Palengke quest item (classes/palengke-leveling.json questItems); no art yet.",
-      "stack": 99
+      "stack": 99,
+      "icon": "items/quest/item-quest-brass-weight-16.png",
+      "showcase": "items/quest/item-quest-brass-weight.png",
+      "large": "items/quest/item-quest-brass-weight-64.png"
     },
     {
       "id": "tisay-note",
@@ -649,7 +679,10 @@
       "rarity": "white",
       "bound": true,
       "about": "A folded note from Tisay, for Aling Conching.",
-      "note": "Repo addition (20 Oct 2026): a Lumang Palengke quest item (classes/palengke-leveling.json questItems); no art yet."
+      "note": "Repo addition (20 Oct 2026): a Lumang Palengke quest item (classes/palengke-leveling.json questItems); no art yet.",
+      "icon": "items/quest/item-quest-tisay-note-16.png",
+      "showcase": "items/quest/item-quest-tisay-note.png",
+      "large": "items/quest/item-quest-tisay-note-64.png"
     },
     {
       "id": "honest-weight",

@@ -1122,7 +1122,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/weapons/item-weapon-fine-slingshot-16.png",
+      "showcase": "items/weapons/item-weapon-fine-slingshot.png",
+      "large": "items/weapons/item-weapon-fine-slingshot-64.png"
     },
     {
       "id": "weapon-fine-stick",
@@ -1133,7 +1136,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/weapons/item-weapon-fine-stick-16.png",
+      "showcase": "items/weapons/item-weapon-fine-stick.png",
+      "large": "items/weapons/item-weapon-fine-stick-64.png"
     },
     {
       "id": "weapon-fine-greatstick",
@@ -1144,7 +1150,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/weapons/item-weapon-fine-greatstick-16.png",
+      "showcase": "items/weapons/item-weapon-fine-greatstick.png",
+      "large": "items/weapons/item-weapon-fine-greatstick-64.png"
     },
     {
       "id": "weapon-fine-broom",
@@ -1155,7 +1164,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/weapons/item-weapon-fine-broom-16.png",
+      "showcase": "items/weapons/item-weapon-fine-broom.png",
+      "large": "items/weapons/item-weapon-fine-broom-64.png"
     },
     {
       "id": "weapon-fine-potlid",
@@ -1166,7 +1178,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/weapons/item-weapon-fine-potlid-16.png",
+      "showcase": "items/weapons/item-weapon-fine-potlid.png",
+      "large": "items/weapons/item-weapon-fine-potlid-64.png"
     },
     {
       "id": "weapon-fine-hilot",
@@ -1177,7 +1192,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/weapons/item-weapon-fine-hilot-16.png",
+      "showcase": "items/weapons/item-weapon-fine-hilot.png",
+      "large": "items/weapons/item-weapon-fine-hilot-64.png"
     },
     {
       "id": "armor-bronze-head",
@@ -1188,7 +1206,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/armor/item-armor-bronze-hardhat-16.png",
+      "showcase": "items/armor/item-armor-bronze-hardhat.png",
+      "large": "items/armor/item-armor-bronze-hardhat-64.png"
     },
     {
       "id": "armor-bronze-body",
@@ -1199,7 +1220,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/armor/item-armor-bronze-armor-16.png",
+      "showcase": "items/armor/item-armor-bronze-armor.png",
+      "large": "items/armor/item-armor-bronze-armor-64.png"
     },
     {
       "id": "armor-bronze-hands",
@@ -1210,7 +1234,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/armor/item-armor-bronze-gauntlets-16.png",
+      "showcase": "items/armor/item-armor-bronze-gauntlets.png",
+      "large": "items/armor/item-armor-bronze-gauntlets-64.png"
     },
     {
       "id": "armor-bronze-bottoms",
@@ -1221,7 +1248,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/armor/item-armor-bronze-legguards-16.png",
+      "showcase": "items/armor/item-armor-bronze-legguards.png",
+      "large": "items/armor/item-armor-bronze-legguards-64.png"
     },
     {
       "id": "armor-bronze-feet",
@@ -1232,7 +1262,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/armor/item-armor-bronze-greaves-16.png",
+      "showcase": "items/armor/item-armor-bronze-greaves.png",
+      "large": "items/armor/item-armor-bronze-greaves-64.png"
     },
     {
       "id": "armor-linen-head",
@@ -1243,7 +1276,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/armor/item-armor-linen-headpiece-16.png",
+      "showcase": "items/armor/item-armor-linen-headpiece.png",
+      "large": "items/armor/item-armor-linen-headpiece-64.png"
     },
     {
       "id": "armor-linen-body",
@@ -1254,7 +1290,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/armor/item-armor-linen-suit-16.png",
+      "showcase": "items/armor/item-armor-linen-suit.png",
+      "large": "items/armor/item-armor-linen-suit-64.png"
     },
     {
       "id": "armor-linen-hands",
@@ -1265,7 +1304,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/armor/item-armor-linen-gloves-16.png",
+      "showcase": "items/armor/item-armor-linen-gloves.png",
+      "large": "items/armor/item-armor-linen-gloves-64.png"
     },
     {
       "id": "armor-linen-bottoms",
@@ -1276,7 +1318,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/armor/item-armor-linen-pants-16.png",
+      "showcase": "items/armor/item-armor-linen-pants.png",
+      "large": "items/armor/item-armor-linen-pants-64.png"
     },
     {
       "id": "armor-linen-feet",
@@ -1287,7 +1332,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/armor/item-armor-linen-boots-16.png",
+      "showcase": "items/armor/item-armor-linen-boots.png",
+      "large": "items/armor/item-armor-linen-boots-64.png"
     },
     {
       "id": "armor-bamboo-head",
@@ -1298,7 +1346,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/armor/item-armor-bamboo-headwrap-16.png",
+      "showcase": "items/armor/item-armor-bamboo-headwrap.png",
+      "large": "items/armor/item-armor-bamboo-headwrap-64.png"
     },
     {
       "id": "armor-bamboo-body",
@@ -1309,7 +1360,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/armor/item-armor-bamboo-robe-16.png",
+      "showcase": "items/armor/item-armor-bamboo-robe.png",
+      "large": "items/armor/item-armor-bamboo-robe-64.png"
     },
     {
       "id": "armor-bamboo-hands",
@@ -1320,7 +1374,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/armor/item-armor-bamboo-wraps-16.png",
+      "showcase": "items/armor/item-armor-bamboo-wraps.png",
+      "large": "items/armor/item-armor-bamboo-wraps-64.png"
     },
     {
       "id": "armor-bamboo-bottoms",
@@ -1331,7 +1388,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/armor/item-armor-bamboo-trousers-16.png",
+      "showcase": "items/armor/item-armor-bamboo-trousers.png",
+      "large": "items/armor/item-armor-bamboo-trousers-64.png"
     },
     {
       "id": "armor-bamboo-feet",
@@ -1342,7 +1402,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/armor/item-armor-bamboo-sandals-16.png",
+      "showcase": "items/armor/item-armor-bamboo-sandals.png",
+      "large": "items/armor/item-armor-bamboo-sandals-64.png"
     },
     {
       "id": "acc-amber-ring",
@@ -1352,7 +1415,10 @@
       "rarity": "lightBlue",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/accessories/item-acc-amber-ring-16.png",
+      "showcase": "items/accessories/item-acc-amber-ring.png",
+      "large": "items/accessories/item-acc-amber-ring-64.png"
     },
     {
       "id": "acc-amber-bracers",
@@ -1362,7 +1428,10 @@
       "rarity": "lightBlue",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/accessories/item-acc-amber-bracers-16.png",
+      "showcase": "items/accessories/item-acc-amber-bracers.png",
+      "large": "items/accessories/item-acc-amber-bracers-64.png"
     },
     {
       "id": "acc-amber-necklace",
@@ -1372,7 +1441,10 @@
       "rarity": "lightBlue",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/accessories/item-acc-amber-necklace-16.png",
+      "showcase": "items/accessories/item-acc-amber-necklace.png",
+      "large": "items/accessories/item-acc-amber-necklace-64.png"
     },
     {
       "id": "acc-amber-earrings",
@@ -1382,7 +1454,10 @@
       "rarity": "lightBlue",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/accessories/item-acc-amber-earrings-16.png",
+      "showcase": "items/accessories/item-acc-amber-earrings.png",
+      "large": "items/accessories/item-acc-amber-earrings-64.png"
     },
     {
       "id": "weapon-polished-slingshot",
@@ -1393,7 +1468,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/weapons/item-weapon-polished-slingshot-16.png",
+      "showcase": "items/weapons/item-weapon-polished-slingshot.png",
+      "large": "items/weapons/item-weapon-polished-slingshot-64.png"
     },
     {
       "id": "weapon-polished-stick",
@@ -1404,7 +1482,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/weapons/item-weapon-polished-stick-16.png",
+      "showcase": "items/weapons/item-weapon-polished-stick.png",
+      "large": "items/weapons/item-weapon-polished-stick-64.png"
     },
     {
       "id": "weapon-polished-greatstick",
@@ -1415,7 +1496,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/weapons/item-weapon-polished-greatstick-16.png",
+      "showcase": "items/weapons/item-weapon-polished-greatstick.png",
+      "large": "items/weapons/item-weapon-polished-greatstick-64.png"
     },
     {
       "id": "weapon-polished-broom",
@@ -1426,7 +1510,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/weapons/item-weapon-polished-broom-16.png",
+      "showcase": "items/weapons/item-weapon-polished-broom.png",
+      "large": "items/weapons/item-weapon-polished-broom-64.png"
     },
     {
       "id": "weapon-polished-potlid",
@@ -1437,7 +1524,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/weapons/item-weapon-polished-potlid-16.png",
+      "showcase": "items/weapons/item-weapon-polished-potlid.png",
+      "large": "items/weapons/item-weapon-polished-potlid-64.png"
     },
     {
       "id": "weapon-polished-hilot",
@@ -1448,7 +1538,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/weapons/item-weapon-polished-hilot-16.png",
+      "showcase": "items/weapons/item-weapon-polished-hilot.png",
+      "large": "items/weapons/item-weapon-polished-hilot-64.png"
     },
     {
       "id": "armor-iron-head",
@@ -1459,7 +1552,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/armor/item-armor-iron-hardhat-16.png",
+      "showcase": "items/armor/item-armor-iron-hardhat.png",
+      "large": "items/armor/item-armor-iron-hardhat-64.png"
     },
     {
       "id": "armor-iron-body",
@@ -1470,7 +1566,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/armor/item-armor-iron-armor-16.png",
+      "showcase": "items/armor/item-armor-iron-armor.png",
+      "large": "items/armor/item-armor-iron-armor-64.png"
     },
     {
       "id": "armor-iron-hands",
@@ -1481,7 +1580,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/armor/item-armor-iron-gauntlets-16.png",
+      "showcase": "items/armor/item-armor-iron-gauntlets.png",
+      "large": "items/armor/item-armor-iron-gauntlets-64.png"
     },
     {
       "id": "armor-iron-bottoms",
@@ -1492,7 +1594,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/armor/item-armor-iron-legguards-16.png",
+      "showcase": "items/armor/item-armor-iron-legguards.png",
+      "large": "items/armor/item-armor-iron-legguards-64.png"
     },
     {
       "id": "armor-iron-feet",
@@ -1503,7 +1608,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/armor/item-armor-iron-greaves-16.png",
+      "showcase": "items/armor/item-armor-iron-greaves.png",
+      "large": "items/armor/item-armor-iron-greaves-64.png"
     },
     {
       "id": "armor-denim-head",
@@ -1514,7 +1622,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/armor/item-armor-denim-headpiece-16.png",
+      "showcase": "items/armor/item-armor-denim-headpiece.png",
+      "large": "items/armor/item-armor-denim-headpiece-64.png"
     },
     {
       "id": "armor-denim-body",
@@ -1525,7 +1636,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/armor/item-armor-denim-suit-16.png",
+      "showcase": "items/armor/item-armor-denim-suit.png",
+      "large": "items/armor/item-armor-denim-suit-64.png"
     },
     {
       "id": "armor-denim-hands",
@@ -1536,7 +1650,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/armor/item-armor-denim-gloves-16.png",
+      "showcase": "items/armor/item-armor-denim-gloves.png",
+      "large": "items/armor/item-armor-denim-gloves-64.png"
     },
     {
       "id": "armor-denim-bottoms",
@@ -1547,7 +1664,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/armor/item-armor-denim-pants-16.png",
+      "showcase": "items/armor/item-armor-denim-pants.png",
+      "large": "items/armor/item-armor-denim-pants-64.png"
     },
     {
       "id": "armor-denim-feet",
@@ -1558,7 +1678,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/armor/item-armor-denim-boots-16.png",
+      "showcase": "items/armor/item-armor-denim-boots.png",
+      "large": "items/armor/item-armor-denim-boots-64.png"
     },
     {
       "id": "armor-rattan-head",
@@ -1569,7 +1692,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/armor/item-armor-rattan-headwrap-16.png",
+      "showcase": "items/armor/item-armor-rattan-headwrap.png",
+      "large": "items/armor/item-armor-rattan-headwrap-64.png"
     },
     {
       "id": "armor-rattan-body",
@@ -1580,7 +1706,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/armor/item-armor-rattan-robe-16.png",
+      "showcase": "items/armor/item-armor-rattan-robe.png",
+      "large": "items/armor/item-armor-rattan-robe-64.png"
     },
     {
       "id": "armor-rattan-hands",
@@ -1591,7 +1720,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/armor/item-armor-rattan-wraps-16.png",
+      "showcase": "items/armor/item-armor-rattan-wraps.png",
+      "large": "items/armor/item-armor-rattan-wraps-64.png"
     },
     {
       "id": "armor-rattan-bottoms",
@@ -1602,7 +1734,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/armor/item-armor-rattan-trousers-16.png",
+      "showcase": "items/armor/item-armor-rattan-trousers.png",
+      "large": "items/armor/item-armor-rattan-trousers-64.png"
     },
     {
       "id": "armor-rattan-feet",
@@ -1613,7 +1748,10 @@
       "rarity": "brown",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/armor/item-armor-rattan-sandals-16.png",
+      "showcase": "items/armor/item-armor-rattan-sandals.png",
+      "large": "items/armor/item-armor-rattan-sandals-64.png"
     },
     {
       "id": "acc-jade-ring",
@@ -1623,7 +1761,10 @@
       "rarity": "lightBlue",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/accessories/item-acc-jade-ring-16.png",
+      "showcase": "items/accessories/item-acc-jade-ring.png",
+      "large": "items/accessories/item-acc-jade-ring-64.png"
     },
     {
       "id": "acc-jade-bracers",
@@ -1633,7 +1774,10 @@
       "rarity": "lightBlue",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/accessories/item-acc-jade-bracers-16.png",
+      "showcase": "items/accessories/item-acc-jade-bracers.png",
+      "large": "items/accessories/item-acc-jade-bracers-64.png"
     },
     {
       "id": "acc-jade-necklace",
@@ -1643,7 +1787,10 @@
       "rarity": "lightBlue",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/accessories/item-acc-jade-necklace-16.png",
+      "showcase": "items/accessories/item-acc-jade-necklace.png",
+      "large": "items/accessories/item-acc-jade-necklace-64.png"
     },
     {
       "id": "acc-jade-earrings",
@@ -1653,7 +1800,10 @@
       "rarity": "lightBlue",
       "bound": false,
       "agimats": [],
-      "stats": {}
+      "stats": {},
+      "icon": "items/accessories/item-acc-jade-earrings-16.png",
+      "showcase": "items/accessories/item-acc-jade-earrings.png",
+      "large": "items/accessories/item-acc-jade-earrings-64.png"
     }
   ]
 }
