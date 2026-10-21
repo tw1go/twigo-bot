@@ -831,8 +831,9 @@ export class TownScene extends Phaser.Scene {
     });
     this.buffTray = tray;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => tray.destroy());
-    startTownSound(this, this.fountainTile(), this.area === 'slums' || this.area === 'warrens' || this.area === 'palengke' || floorOfArea(this.area) ? 'slums' : 'town'); // (the Slums, the Warrens and the Palengke: the Slums' music for now, no crickets)
-    if (this.area === 'slums' || this.area === 'warrens') loadWarrensSounds(); // (the gate's in the Slums)
+    // (The Slums, the Warrens and the Palengke: the Slums' music for now, no crickets; Ang Silong: the same at 70%.)
+    startTownSound(this, this.fountainTile(), floorOfArea(this.area) ? 'silong' : this.area === 'slums' || this.area === 'warrens' || this.area === 'palengke' ? 'slums' : 'town');
+    if (this.area === 'slums' || this.area === 'warrens' || this.area === 'palengke' || floorOfArea(this.area)) loadWarrensSounds(); // (the gates; Ang Silong's events borrow them)
     // A battle map's sounds: each mob kind's hurt and death, the golem's attacks (the classes' skills once their data is in).
     if (this.battleMap) {
       // (A field boss that's off, or has no art yet: the Palengke's Great Scale, none of its sounds.)
