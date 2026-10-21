@@ -40,7 +40,8 @@ import type { ArenaBets } from '../../bot/src/web/town-arena.ts';
 //       it must and plays its whole fight against the nearest player (?golemdemo=1): each attack, the Junk at a pretend
 //       half, Enrage at a pretend quarter, death (the line names Alice if nobody hit it)
 //   GET /__silong?as=Alice   an Ang Silong run for Alice, free, started at once (the page's ?silong=solo; it then goes
-//       down); &floor=b3: every mini boss above that floor down, the floors reached (?silong=b3)
+//       down); &floor=b3: every mini boss above that floor down, the floors reached (?silong=b3); &floor=plant: B3 with
+//       Frosty Tubbs down and the Ice Tanks door open (Ang Makinang Yelo next; &hp=1000: it down to that HP)
 //   GET /__greatscale   the Great Scale wakes in the Lumang Palengke now (the page's ?greatscale=now); &hp=500 puts it
 //       (awake) down to 500 HP, so a hit or two fells it and its bell rings
 //   GET /__halloween?as=Alice   the Halloween event on now (the page's ?halloween=on calls it); &mikko=1 hides Mikko
@@ -972,7 +973,7 @@ export function devTown(): Plugin {
       server.middlewares.use('/__silong', (req, res) => {
         const q = new URL(req.url ?? '/', 'http://localhost').searchParams;
         const f = q.get('floor');
-        reply(res, town.silongDev(q.get('as') ?? '', f === 'b1' || f === 'b2' || f === 'b3' ? f : undefined));
+        reply(res, town.silongDev(q.get('as') ?? '', f === 'b1' || f === 'b2' || f === 'b3' || f === 'plant' ? f : undefined, Number(q.get('hp')) || undefined));
       });
       server.middlewares.use('/__minibosses', (_req, res) => {
         res.end(`${slumsMobs.respawnMinis() + (palengkeMobs?.respawnMinis() ?? 0)} mini bosses back\n`);
