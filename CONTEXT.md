@@ -725,6 +725,22 @@ The key that opens a Silong run (for you, or your whole party); spent only once 
 ng Silong** from "Ngayon Na" opens one practice run, alone.
 _Avoid_: ticket (that's the Warrens')
 
+**Chill**:
+The cold of the Silong's B2 and B3: a stack for each 5 seconds you stand still (and from the Ice Machine's breath and
+brine), up to 4, each 5% off your walking and casting; walking a second, a work lamp or a Sinigang or Lugaw clears it,
+and it's gone for the rest of a run once the Ice Machine falls.
+_Avoid_: frost, freeze, slow (that's the Bag's)
+
+**Belt**:
+One of the Ice Plant's conveyor belts: whoever stands on it (mobs too) is carried along its way, faster during Belt Rush.
+_Avoid_: conveyor, treadmill
+
+**Ice block**:
+A block the Ice Machine drops: a wall for 12 seconds, and cover from its Freezer Breath.
+
+**Mang Ramon's note**:
+The quest item in Mang Ramon's box on B2: one per character, handed to Kuya Jun for a Mid Repair Kit.
+
 ## Events
 
 **Event**:

@@ -1024,8 +1024,25 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `boss-move` 'melt' on every floor. Game: `world/silong.ts` (the warn on each tile, the block's shadow and fall, the
   block on the walk grid and its break; the breath's warn at the fan then `breath`; the brine on every flooded tile;
   `call`; the enrage anim then the -enraged sheets; steam off the frost within 18 tiles of you as it falls), its boss
-  bar with its title in the Ice Plant. Its loot, Chill, the belts carrying you, Mang Pido's radio and the rest come in
-  part 4 (no drops yet). Dev: `?silong=solo` / `?silong=b3` (the dev server's `/__silong`: a free run, every mini boss
+  bar with its title in the Ice Plant. Part 4 (21 Oct 2026): its loot (`SilongRun.lootFor`, loot.ts `silongMiniLoot` /
+  `silongBossLoot` / `silongMobDrops`: the Warrens' a tier up, Lv 40 gear, Polished Whetstones, the Ice Machine's key 1
+  in 10; town.ts `silongDrop`, everything on the floor for anyone on it; a practice run Kusing only) and the Great
+  Scale's Susi ng Silong 1 in 4 (`fieldBossLoot`'s `key`); Chill (CONTEXT.md Chill; shared `chillRules` / `chillMove` /
+  `chillAttack`; `SilongRun.chill` each second: a stack per 5 s still on a `chill` floor, the Freezer Breath's
+  (`FloorBosses.chilled`) and the Brine Flood's 1 a second, cleared by walking 1 s (`stepped`), a lamp within 2, a
+  Sinigang or Lugaw (`immune`), a knock-out, gone for good once cleared; `chill` {id, stacks, puff} to the floor; the
+  step budget × `chillMove`; the page's walk and cast gap too, fx-silong-chill over the head on its stack's frame and
+  fx-silong-chill-puff); belts (CONTEXT.md Belt; `Floor.carry` moves mobs standing on one a tile at its speed,
+  `MobRoom.standingOn`; the page's `beltCarry` steps you along, free of the step budget: `Floor.alongBelt`; Belt Rush
+  both at 5 for its time, the belts' animation faster: `Terrain.speedUp`); Mang Pido's radio (ui/silong.ts
+  `pidoSays`/`PIDO_LINES`: the first Chill, the first work lamp, the B3 door, the first Freezer Breath, once a run in
+  the tab, a toast with his face: palengke-npcs `npcFace`); Mang Ramon's box on B2 (`silong-ramon` from 2 tiles:
+  `ramonBoxFor`, his note once; the note pop-up) and Kuya Jun's "📜 Mang Ramon's note" (`ramon-give` → `ramonGiveFor`:
+  a Mid Repair Kit, `quests.flags` ramon-note-done; his three lines); a clear (`silong-cleared`, `silongClearedFor`:
+  `quests.flags` silong-cleared) puts the Atchara at half price (shared `dishPrice`, the menu's "Half price"); sounds:
+  the Warrens' on its events (world/silong.ts `MOVE_SOUNDS`, only while the boss is on screen; the Ice Machine's hurt,
+  enrage and death as Barong-Barong's) and the Warrens' (the Slums') music at 70%. Tested in town-silong.test.ts and
+  silong-story.test.ts. Dev: `?silong=solo` / `?silong=b3` (the dev server's `/__silong`: a free run, every mini boss
   above that floor down; `&floor=plant`: B3 with Frosty Tubbs down and the door open, `&hp=` the machine's HP),
   `?give=susi-ng-silong::2`.
 - Lantern Posts (teleporting between maps; words in CONTEXT.md: Map, Lantern Post, Return Lantern, Map menu, Teleport,
