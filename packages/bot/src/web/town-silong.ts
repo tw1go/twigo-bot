@@ -126,13 +126,48 @@ class Floor implements MobDirector {
     for (const r of data.rooms) zoneStats[r.id] = run.weaker({ level: r.mobs.level, hp: r.mobs.hp, atk: r.mobs.atk, def: r.mobs.def, xp: r.mobs.xp });
     this.mobs = new MobRoom(this.map, deps.random, deps.levels, deps.shapes, deps.kinds, undefined, deps.fightData, deps.leveling, { zoneStats, director: this, dungeonAggro: 4 });
     this.bosses = new FloorBosses({ mobs: this.mobs, map: this.map, weaker: (x) => run.weaker(x) }, data, deps.random, template.silong.rooms.some((r) => r.boss?.last) ? run.S.lastBoss : null);
+    for (const [c, r] of template.silong.belts.e) this.belts.set(`${c},${r}`, [1, 0]);
+    for (const [c, r] of template.silong.belts.w) this.belts.set(`${c},${r}`, [-1, 0]);
+    this.baseBelt = run.S.floorRules.belts.speedTilesPerSec;
+  }
+
+  /** A step along a belt from a belt tile, its way (the belts carry players: the page sends those steps, which cost them
+   *  nothing of their step budget). */
+  alongBelt(from: Tile, to: Tile): boolean {
+    const d = this.belts.get(`${from[0]},${from[1]}`);
+    return !!d && to[0] - from[0] === d[0] && to[1] - from[1] === d[1];
   }
 
   /** Its mini bosses' moves. */
   readonly bosses: FloorBosses;
 
   tick(now: number, players: ReadonlyMap<string, Tile>): MobEvent[] {
-    return this.bosses.tick(now, players);
+    return [...this.bosses.tick(now, players), ...this.carry(now)];
+  }
+
+  /** Each belt tile's way (`>` east: +col, `<` west: −col). */
+  readonly belts = new Map<string, Tile>();
+  private carried = new Map<string, number>();
+  /** The belts' speed now (tiles a second): floorRules.belts', or Belt Rush's while it runs. */
+  beltSpeed(now: number): number {
+    const r = this.bosses.rush;
+    return r && now < r.until ? r.speed : this.baseBelt;
+  }
+  private baseBelt = 2;
+  /** The belts carry the mobs standing on them a tile at a time, at their speed (a wall or another mob ahead: they stay). */
+  private carry(now: number): MobEvent[] {
+    if (!this.belts.size) return [];
+    const speed = this.beltSpeed(now);
+    const out: MobEvent[] = [];
+    for (const m of this.mobs.standingOn((c, r) => this.belts.has(`${c},${r}`), now)) {
+      if (now < (this.carried.get(m.id) ?? 0)) continue;
+      const [dc, dr] = this.belts.get(`${m.col},${m.row}`)!;
+      const to: Tile = [m.col + dc, m.row + dr];
+      if (!this.mobs.open(...to) || this.mobs.occupied(...to)) continue;
+      this.carried.set(m.id, now + 1000 / speed);
+      out.push(...this.mobs.moveMob(m.id, [to], now, speed));
+    }
+    return out;
   }
 
   hurt(id: string, now: number): MobEvent[] {

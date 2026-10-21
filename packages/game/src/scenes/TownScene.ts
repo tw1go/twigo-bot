@@ -732,6 +732,10 @@ export class TownScene extends Phaser.Scene {
           const until = performance.now() + ms;
           for (const [c, r] of tiles) this.slick.set(`${c},${r}`, until);
         },
+        rush: (ms, speed) => {
+          this.beltRush = { until: performance.now() + ms, speed };
+          if (this.ground instanceof Terrain) this.ground.speedUp(['belt-e', 'belt-w'], speed / this.beltBase(), ms);
+        },
       });
       this.silongView = view;
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -3289,8 +3293,8 @@ export class TownScene extends Phaser.Scene {
    */
   private keyStep(): Tile | null {
     const dir = this.knockedOut || this.stunned ? null : this.heldDir();
-    // On ice with nothing held: on you slide (CONTEXT.md Ice).
-    const sliding = !dir && !this.knockedOut && !this.stunned ? this.iceSlide() : null;
+    // On ice with nothing held: on you slide (CONTEXT.md Ice). On a belt: it carries you.
+    const sliding = !dir && !this.knockedOut && !this.stunned ? (this.iceSlide() ?? this.beltCarry()) : null;
     if (sliding) return sliding;
     if (!dir) {
       this.keyWalking = false;
@@ -3343,6 +3347,31 @@ export class TownScene extends Phaser.Scene {
     }
     this.slide.left--;
     return to;
+  }
+
+  /** Ang Silong's belts (floorRules.belts): standing on one, it carries you a tile at a time its way (`>` east, `<`
+   *  west), at its speed (2 tiles a second; Belt Rush's 5 while it runs); a wall ahead: you stay. The next tile, or null.
+   *  (The server takes these steps free of your step budget: bot web/town-silong.ts `alongBelt`.) */
+  private beltCarry(): Tile | null {
+    const B = this.map.silong?.belts;
+    if (!B) return null;
+    this.beltWays ??= new Map([...B.e.map(([c, r]): [string, number] => [`${c},${r}`, 1]), ...B.w.map(([c, r]): [string, number] => [`${c},${r}`, -1])]);
+    const t = this.player.tile;
+    const d = this.beltWays.get(`${t.col},${t.row}`);
+    const now = performance.now();
+    if (!d || now < this.beltNext) return null;
+    const speed = this.beltRush && now < this.beltRush.until ? this.beltRush.speed : this.beltBase();
+    const to = { col: t.col + d, row: t.row };
+    if (!this.grid.canStep(t, to)) return null;
+    this.beltNext = now + 1000 / speed;
+    return to;
+  }
+  private beltWays: Map<string, number> | null = null;
+  private beltNext = 0;
+  private beltRush: { until: number; speed: number } | null = null;
+  /** The belts' own speed (floorRules.belts). */
+  private beltBase(): number {
+    return (this.cache.json.get('dungeons') as DungeonsData | undefined)?.silong?.floorRules.belts.speedTilesPerSec ?? 2;
   }
 
   private onIce(k: string): boolean {

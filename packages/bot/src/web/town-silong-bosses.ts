@@ -110,6 +110,8 @@ export class FloorBosses {
   readonly iceBlocks = new Map<string, number>();
   /** The Brine Flood: the tiles under it and until when (the run's Chill reads them). */
   flood: { tiles: Set<string>; until: number } | null = null;
+  /** Belt Rush: both belts at its speed until then. */
+  rush: { until: number; speed: number } | null = null;
   /** Freezer Breath's Chill on who it caught (town ids, stacks), until the run takes them. */
   chilled: [string, number][] = [];
 
@@ -428,7 +430,10 @@ export class FloorBosses {
         const shape: TelegraphShape = { kind: 'line', from: belt[0], to: belt[belt.length - 1], width: m.width ?? 1 };
         const rushMs = m.ms ?? 4000;
         const ev = this.moveEvent(b.mob, m.id, ms, shape, { anim: 'rush', belt: which, ms: rushMs, speed: m.beltSpeedTilesPerSec ?? 5 });
-        return this.queue(b, ev, (t, players) => this.landHits(b.mob, m.id, ev.key, players, (p) => tiles.has(key(p)), mult, t, {}, { belt: which, ms: rushMs }), now + ms, now);
+        return this.queue(b, ev, (t, players) => {
+          this.rush = { until: t + rushMs, speed: m.beltSpeedTilesPerSec ?? 5 }; // (both belts fast for its time)
+          return this.landHits(b.mob, m.id, ev.key, players, (p) => tiles.has(key(p)), mult, t, {}, { belt: which, ms: rushMs, speed: this.rush.speed });
+        }, now + ms, now);
       }
       case 'brineFlood': {
         // Every Ice Plant floor tile but the pallets (2 × 2 each).

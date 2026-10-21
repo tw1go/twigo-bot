@@ -1624,6 +1624,17 @@ export class MobRoom {
     return col >= 0 && row >= 0 && col < cols && row < rows && !this.map.blocked[row]?.[col];
   }
 
+  /** Living mobs standing still (no hop under way) on tiles `on` passes, the director's to move (Ang Silong's belts carry
+   *  them); never one that never moves (a still boss) or lies hidden. */
+  standingOn(on: (col: number, row: number) => boolean, now: number): { id: string; col: number; row: number }[] {
+    return this.mobs.flatMap((m) => {
+      if (m.respawnAt || m.still || m.hidden) return [];
+      if (m.path.length && ((now - m.hopAt) / 1000) * m.hopSpeed < m.path.length) return [];
+      const [col, row] = this.at(m, now);
+      return on(col, row) ? [{ id: m.id, col, row }] : [];
+    });
+  }
+
   /** Whether a living mob stands on a tile (or is headed there). */
   occupied(col: number, row: number): boolean {
     this.claimed = null;

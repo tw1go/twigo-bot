@@ -440,6 +440,8 @@ interface Conn {
   warrensAt?: number;
   /** When they last opened a Silong run (one a second). */
   silongAt?: number;
+  /** Their last step carried along an Ang Silong belt. */
+  beltAt?: number;
   /** When they last asked to teleport (ms). */
   lanternAt?: number;
   /** Stunned until (ms): no steps (Wire Wolf's Live Floor). */
@@ -1194,7 +1196,11 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         if (c.stunnedUntil && Date.now() < c.stunnedUntil) return send(c, { t: 'snap', col: p.col, row: p.row });
         const dc = (m.col as number) - p.col;
         const dr = (m.row as number) - p.row;
-        const ok = inside_(m.col, m.row) && walkable_(m.col, m.row) && Math.abs(dc) <= 1 && Math.abs(dr) <= 1 && (dc || dr) && spend(c);
+        // (Carried along one of Ang Silong's belts: free, at most the belts' speed.)
+        const belt = silongFloor(c.room);
+        const carried = !!belt?.alongBelt([p.col, p.row], [m.col as number, m.row as number]) && Date.now() - (c.beltAt ?? 0) >= 900 / belt.beltSpeed(Date.now());
+        if (carried) c.beltAt = Date.now();
+        const ok = inside_(m.col, m.row) && walkable_(m.col, m.row) && Math.abs(dc) <= 1 && Math.abs(dr) <= 1 && (dc || dr) && (carried || spend(c));
         if (!ok) return send(c, { t: 'snap', col: p.col, row: p.row });
         Object.assign(p, { col: m.col, row: m.row, dir: dirForStep(dc, dr), sit: false });
         silongOf(c.room)?.stepped(c.userId, Date.now()); // (walking clears Ang Silong's Chill)

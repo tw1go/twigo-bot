@@ -417,3 +417,18 @@ test("Chill: the Freezer Breath's 2, the Brine Flood's 1 a second; none once the
   chillPlay(run, 4000, 4000, [me('a', 'b3', [40, 40])]);
   assert.equal(run.chillOf('a'), 0, 'the frost melts');
 });
+
+test('belts carry the mobs standing on them (2 tiles a second, Belt Rush 5); a step along a belt costs a player nothing', () => {
+  const run = open(silong());
+  run.skipToPlant();
+  const f = run.floors.b3;
+  const [c, r] = f.map.silong.belts.e[3];
+  f.mobs.addMobs([{ id: 'test-crate', kind: 'frost-scale', zone: 'plant', tile: [c, r], stats: { level: 39, hp: 100, atk: 1, def: 1, xp: 1 } }], 0);
+  const moved = f.tick(10, new Map()).filter((e) => e.t === 'mob-move' && e.id === 'test-crate');
+  assert.equal(moved.length, 1);
+  assert.deepEqual((moved[0] as { path: number[][] }).path.at(-1), [c + 1, r], 'east, a tile');
+  assert.equal(f.beltSpeed(10), 2);
+  f.bosses.rush = { until: 5000, speed: 5 };
+  assert.equal(f.beltSpeed(10), 5);
+  assert.ok(f.alongBelt([c, r], [c + 1, r]) && !f.alongBelt([c, r], [c - 1, r]) && !f.alongBelt([c, r - 2], [c + 1, r - 2]));
+});

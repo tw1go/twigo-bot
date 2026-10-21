@@ -70,7 +70,9 @@ export class Terrain {
   private readonly rows: number;
   private readonly chunks = new Map<string, Live>();
   private readonly regions = new Map<string, Live>();
-  private readonly canal = new Map<Phaser.GameObjects.Image, { frames: number; fps: number }>(); // animated ground sprites
+  private readonly canal = new Map<Phaser.GameObjects.Image, { frames: number; fps: number; kind: string }>(); // animated ground sprites
+  /** Families running faster for a while (Ang Silong's belts in a Belt Rush): × `k` until the clock's `until`. */
+  private fast: { kinds: Set<string>; k: number; until: number } | null = null;
   /** Every raised column's sprites by tile ("c,r"), while its region is made: what `fadeFront` fades. */
   private readonly tops = new Map<string, Phaser.GameObjects.Image[]>();
   private faded: Phaser.GameObjects.Image[] = [];
@@ -303,7 +305,7 @@ export class Terrain {
         const anim = this.animatedAt(kind);
         if (anim) {
           const s = sprite(anim.file(c, r), c, r, level, anim.anchor, anim.size, GROUND_DEPTH + 1 + (c + r) * 4, this.frameOf(anim.fps) % anim.frames);
-          this.canal.set(s, { frames: anim.frames, fps: anim.fps });
+          this.canal.set(s, { frames: anim.frames, fps: anim.fps, kind });
           // Banks: the river's overlays where the neighbour is other ground (a corner only when both sides are the same).
           if (this.banked(kind)) {
             const same = (c2: number, r2: number) => this.kind(c2, r2) === kind;
@@ -437,12 +439,17 @@ export class Terrain {
     if (f === this.frame) return;
     this.frame = f;
     this.now = timeMs;
+    const fast = this.fast && timeMs < this.fast.until ? this.fast : null;
     for (const [s, a] of this.canal) {
-      const want = this.frameOf(a.fps) % a.frames;
+      const want = this.frameOf(a.fps * (fast?.kinds.has(a.kind) ? fast.k : 1)) % a.frames;
       if (String(s.frame.name) !== String(want)) s.setFrame(want);
     }
   }
   private now = 0;
+  /** These families × `k` as fast for `ms` (Belt Rush: the belts). */
+  speedUp(kinds: string[], k: number, ms: number): void {
+    this.fast = { kinds: new Set(kinds), k, until: this.now + ms };
+  }
   /** The shared clock's frame at `fps`. */
   private frameOf(fps: number): number {
     return Math.max(0, Math.floor((this.now / 1000) * fps));

@@ -45,6 +45,8 @@ export interface SilongHooks {
   onHit(boss: Mob | null, target: string, hit: PlayerHit, slow?: number, slowFactor?: number): void;
   /** Ice Slick: these tiles are ice for `ms` (the scene slides you on them). */
   slick(tiles: [number, number][], ms: number): void;
+  /** Belt Rush: both belts at `speed` tiles a second for `ms` (the scene's carry and the belts' animation). */
+  rush(ms: number, speed: number): void;
 }
 
 interface Piece {
@@ -255,6 +257,7 @@ export class SilongView {
     const slow = move?.data?.slow as { ms: number; factor: number } | undefined;
     for (const h of m.hits) this.hooks.onHit(boss, h.id, h, slow?.ms, slow?.factor);
     const at = (t: [number, number]) => this.mobs.ground(t[0] + 0.5, t[1] + 0.5);
+    if (m.move === 'beltRush') this.hooks.rush(Number(m.data?.ms ?? 4000), Number(m.data?.speed ?? 5));
     // Ang Makinang Yelo's: its blocks stand as walls; its breath; the brine over the floor.
     const blocks = m.data?.blocks as [number, number][] | undefined;
     if (blocks?.length) for (const t of blocks) this.iceBlock(m.id, t, Number(m.data?.ms ?? 12_000));
