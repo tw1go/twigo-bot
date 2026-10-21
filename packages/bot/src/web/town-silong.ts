@@ -2,6 +2,7 @@ import { type SilongBlock, type SilongData, type SilongFloor, type SilongFloorDa
 import { loadDungeons, loadItemData, loadPalengkeLeveling } from './stats-data.js';
 import { type MobDirector, type MobEvent, type MobKill, type MobMapData, type MobSpec, MobRoom, loadMobKinds, loadMobMap, loadSkillShapes } from './town-mobs.js';
 import type { Inside, RunDeps } from './town-warrens.js';
+import { FloorBosses } from './town-silong-bosses.js';
 
 // 🧊 Ang Silong (classes/dungeons.json `silong`; CONTEXT.md Silong, Floor, Freight elevator, Susi ng Silong): the
 // Lumang Palengke's dungeon, three frozen floors under the Market Hall, played as runs like the Scrap Warrens. A run is
@@ -77,8 +78,8 @@ interface Boss {
   lastInside: number;
 }
 
-/** One floor of a run: its own copy of the map and its mob room (its director: the mini bosses' resets; their moves
- *  come with PR 2). */
+/** One floor of a run: its own copy of the map and its mob room, whose director is its mini bosses' moves
+ *  (town-silong-bosses.ts). */
 class Floor implements MobDirector {
   readonly room: string;
   readonly map: SilongMap;
@@ -102,14 +103,18 @@ class Floor implements MobDirector {
     const zoneStats: Record<string, { level: number; hp: number; atk: number; def: number; xp: number }> = {};
     for (const r of data.rooms) zoneStats[r.id] = run.weaker({ level: r.mobs.level, hp: r.mobs.hp, atk: r.mobs.atk, def: r.mobs.def, xp: r.mobs.xp });
     this.mobs = new MobRoom(this.map, deps.random, deps.levels, deps.shapes, deps.kinds, undefined, deps.fightData, deps.leveling, { zoneStats, director: this, dungeonAggro: 4 });
+    this.bosses = new FloorBosses({ mobs: this.mobs, map: this.map, weaker: (x) => run.weaker(x) }, data, deps.random);
   }
 
-  tick(): MobEvent[] {
-    return [];
+  /** Its mini bosses' moves. */
+  readonly bosses: FloorBosses;
+
+  tick(now: number, players: ReadonlyMap<string, Tile>): MobEvent[] {
+    return this.bosses.tick(now, players);
   }
 
-  hurt(): MobEvent[] {
-    return [];
+  hurt(id: string, now: number): MobEvent[] {
+    return this.bosses.hurt(id, now);
   }
 
   /** Opens tiles for good (the elevator down, a cold-room door) on this floor's copy of the map. */
@@ -188,6 +193,7 @@ export class SilongRun {
       this.bosses.set(mob, { id: def.id, mob, name: def.name, floor: floor.floor, room: mapRoom, dead: false, engaged: false, lastInside: 0 });
     }
     floor.mobs.addMobs(specs, now);
+    floor.bosses.arm();
   }
 
   roomOf(floor: SilongFloor): string {
@@ -352,7 +358,7 @@ export class SilongRun {
       if (!b.engaged || now - b.lastInside < ms) continue;
       b.engaged = false;
       const f = this.floors[b.floor];
-      const events = [...f.mobs.removeMobs(f.mobs.calledBy(b.mob)), ...f.mobs.healFull(b.mob)];
+      const events = [...f.bosses.stop(b.mob), ...f.mobs.removeMobs(f.mobs.calledBy(b.mob)), ...f.mobs.healFull(b.mob)];
       for (const e of events) out.room.push([f.room, e as TownServerMessage]);
     }
   }
@@ -369,7 +375,7 @@ export class SilongRun {
     this.keySpent = true;
     const f = this.floors[floor];
     out.room.push([f.room, { t: 'boss-cancel', id: b.mob }]);
-    for (const e of f.mobs.removeMobs(f.mobs.calledBy(b.mob))) out.room.push([f.room, e as TownServerMessage]);
+    for (const e of [...f.bosses.stop(b.mob), ...f.mobs.removeMobs(f.mobs.calledBy(b.mob))]) out.room.push([f.room, e as TownServerMessage]);
     // The Ice Tanks door opens with its boss.
     const door = f.map.silong.doors.find((d) => d.room === b.room.id);
     if (door && !this.doorOpen) {

@@ -35,6 +35,8 @@ export interface Vital {
   /** Knocked out: back at this time (ms); 0 when up. */
   outUntil: number;
   slowUntil: number;
+  /** The slow's strength while it lasts (the share of their speed left). */
+  slowFactor?: number;
   blindUntil: number;
   /** A tear cloud (the Sibuyas Sobber's) until then: `tear` points more misses. */
   tearUntil?: number;
@@ -158,13 +160,22 @@ export class Vitals {
     return true;
   }
 
-  slow(user: string, ms: number, now: number): void {
+  /** Slowed for `ms` to `factor` of their speed (the Bag's half when not given); the stronger of two at once wins. */
+  slow(user: string, ms: number, now: number, factor = 0.5): void {
     const v = this.all.get(user);
-    if (v) v.slowUntil = Math.max(v.slowUntil, now + ms);
+    if (!v) return;
+    v.slowFactor = (v.slowUntil ?? 0) > now ? Math.min(v.slowFactor ?? 0.5, factor) : factor;
+    v.slowUntil = Math.max(v.slowUntil, now + ms);
   }
 
   slowed(user: string, now: number): boolean {
     return (this.all.get(user)?.slowUntil ?? 0) > now;
+  }
+
+  /** The share of their speed a slow leaves them now (1: none). */
+  slowFactor(user: string, now: number): number {
+    const v = this.all.get(user);
+    return v && v.slowUntil > now ? (v.slowFactor ?? 0.5) : 1;
   }
 
   blind(user: string, ms: number, now: number): void {

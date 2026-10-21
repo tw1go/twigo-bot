@@ -1006,8 +1006,18 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   hatch, `arrive.silong`). A practice run (the bound Practice Susi ng Silong, given once by palengke-15's rewards):
   solo, 60% HP and ATK. Game: `world/silong.ts` `SilongView` (the cages and door drawn by it: `silongDrawn`; lamp
   glows), `ui/silong.ts` (the hatch's panel, the tracker with a row per floor, the ride prompts), the cold blue tint,
-  the Palengke's hatch label, click and glow after palengke-14. Its loot, Chill, ice, belts, brine, the mini bosses'
-  moves and Ang Makinang Yelo come in the next PRs (no drops yet). Dev: `?silong=solo` / `?silong=b3` (the dev
+  the Palengke's hatch label, click and glow after palengke-14. Its mini bosses' moves (part 2, 21 Oct 2026: bot
+  `web/town-silong-bosses.ts` `FloorBosses`, each floor's MobRoom director, numbers from their `mechanics`, tested):
+  Atsarah's Brine Splash (its hit slows to 70%: `PlayerLanding.slowFactor`, `Vitals.slow`'s factor, the page's `slowMe`
+  too) and Lid Spin (out and back along its line), Sakristan's Rice Rain (each circle's spilled rice:
+  `MobRoom.spill`) and Belly Flop (he lands there), Mono Lisa's Chair Barrage and Split (two fakes, blocked, all three
+  small: Mobs `rescale`, a glint on her; gone after 6 s), Sangkalancelot's shell (`MobRoom.frontBlock` 100% from his
+  front, open 1.2 s after each Cleaver Charge) and his hook shadows from 50%, Frosty Tubbs' Ambush (under the ice:
+  `setFlags` hidden) and Ice Slick (a cone of ice for 5 s), the calls; a mini boss's moves stop as it resets or falls.
+  The ice slide (page only, TownScene `iceSlide`): stopping on the floor's `ice` or Ice Slick's tiles you slide 2 more
+  tiles the way you were going (`SLIDE_TILES`), stopping at walls. Game: `world/silong.ts` draws the moves (code
+  placeholders) and the boss bar in a mini boss's room. Its loot, Chill, belts, brine and Ang Makinang Yelo come in the
+  next PRs (no drops yet). Dev: `?silong=solo` / `?silong=b3` (the dev
   server's `/__silong`: a free run, every mini boss above that floor down), `?give=susi-ng-silong::2`.
 - Lantern Posts (teleporting between maps; words in CONTEXT.md: Map, Lantern Post, Return Lantern, Map menu, Teleport,
   In combat): a post (manifest props `lantern-post`, its 6-frame idle as the map object's `animated`) in the middle of

@@ -980,6 +980,19 @@ export class Mobs {
     });
   }
 
+  /** Drawn at another scale for now (Mono Lisa's Split: small), or back to its own (`scale` null). */
+  rescale(id: string, scale: number | null): void {
+    const m = this.byId.get(id);
+    if (!m) return;
+    const own = (m as Mob & { ownScale?: number }).ownScale ?? m.data?.scale ?? 1;
+    (m as Mob & { ownScale?: number }).ownScale = own;
+    const k = scale ?? own;
+    m.data = { ...(m.data ?? ({} as MobData)), scale: k };
+    m.sprite.setScale(k); // (its shadow stays as it was: a placeholder until Mono Lisa's split art)
+    this.sync(m);
+    if (m.mini) this.showLabel(m);
+  }
+
   /** A line under its name for now (the asleep Great Scale's "wakes in 1h 23m" while hovered), or none. */
   note(id: string, text: string | null): void {
     const m = this.byId.get(id);
