@@ -161,8 +161,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   written here: Q3, Q5, Q6, Q7's second, Q9, Q11's Suki Card line, Q13's second, the Q14 finale), `reportTo` (Q1 Mang Pido,
   Q7 Aling Conching, Q10 and Q13 Kuya Jun), `gives` (Q7 Tisay's Note), `rewards` (Q11 Suki Card, Q13 Honest Weight),
   `rewardTitle` (Q14 `huling-suki`), the top-level `gapLine` and `questItems` tisay-note / honest-weight / suki-card;
-  `items/items.json` the ten quest items (kind `quest`, bound; icons from the art folder's items/quest, 21 Oct 2026, all but
-  suki-card: still a blank square in the bag, a violet one on the ground); `classes/stats.json` `inventory.questSlots` 20 (+ `questSlotsNote`); the title Huling Suki in the bot's
+  `items/items.json` the ten quest items (kind `quest`, bound; their icons the art folder's items/quest, 21 Oct 2026); `classes/stats.json` `inventory.questSlots` 20 (+ `questSlotsNote`); the title Huling Suki in the bot's
   built-in titles (web/titles.ts).
 - The Palengke's dishes and daily orders (20 Oct 2026): `classes/palengke-leveling.json` each dish's `slot` and `stats`
   (`dishesNote`), Q1's `freeDish` (her free bowl of Lugaw), the dailies' `reset` (4 am Manila), `freeDish` and
