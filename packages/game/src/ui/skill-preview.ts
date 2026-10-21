@@ -8,8 +8,8 @@ import { stats } from './class-choice';
 
 // 🎬 A class's skill preview (over the class choice): on the left a small stage at a whole-number scale with your
 // character in the class's walk-ready pose facing SE and three invisible enemies along that line (combat/skill-stage.ts);
-// under it the class's blurb, weapon, role, damage, stats and gear; on the right its name, its first 7 skills, and under a Mobility
-// heading its two movement skills (classes.json's mobility: Dash and the Lv 8 move), and under a Buffs heading its buffs
+// under it the class's blurb, weapon, role, damage, stats and gear; on the right its name, its 13 damage skills, and under a Mobility
+// heading its two movement skills (classes.json's mobility: Dash and the Lv 8 move), and under a Utilities heading its buffs, debuffs and stances
 // (classes.json's buffs, with their icons and what they do at that skill level, MP and cooldown from stats.json
 // skills.buffs; each plays the class's buff-cast, no FX yet), each with its unlock level and,
 // once unlocked at your level, its skill level and cap ("Lv 1 / 10"; locked ones say so). All of them play one after
@@ -89,7 +89,7 @@ export function mountSkillPreview(o: SkillPreviewOptions, c: ClassInfo, host: HT
   });
   right.append(el('div', 'sp-skills-head', 'Skills'), list);
   if (moves.length) right.append(el('div', 'sp-skills-head sp-mobility-head', 'Mobility'), moveList);
-  if (buffs.length) right.append(el('div', 'sp-skills-head sp-mobility-head', 'Buffs'), buffList);
+  if (buffs.length) right.append(el('div', 'sp-skills-head sp-mobility-head', 'Utilities'), buffList);
   const buttons = el('div', 'sp-buttons');
   const backButton = el('button', 'sp-back', 'Back');
   const chooseButton = el('button', 'sp-choose', `Choose ${c.name}`);

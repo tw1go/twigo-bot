@@ -2,6 +2,7 @@ import type Phaser from 'phaser';
 import type { CharacterDefs, ClassArt, ClassesDefs, Dir, FxDef } from '../assets/types';
 import type { Outfit } from '../characters/doll';
 import { CELL, drawPose } from '../characters/kit-art';
+import { resolveFx } from './fx-stand-ins';
 
 // 🎯 A small stage that plays a class's skills (combat/skill-previews.ts) on a canvas: the fighter in their combat
 // poses and the class fx, aimed at invisible enemies (nothing marks where they stand until a hit lands there). The
@@ -15,7 +16,7 @@ export interface Pt {
   y: number;
 }
 
-export type NumberKind = 'hit' | 'crit' | 'dot' | 'mint';
+export type NumberKind = 'hit' | 'crit' | 'dot' | 'mint' | 'heal';
 
 export interface FxOpts {
   /** 0: a ground decal; 1: under the fighter; 3 (default): over them. */
@@ -40,6 +41,10 @@ export interface FxOpts {
   upright?: boolean;
   /** Its opacity (0–1; default 1). */
   alpha?: number;
+  /** Drawn this much bigger (1 = the art's size). */
+  scale?: number;
+  /** A colour laid over it ('#rrggbb'): Seed Barrage's green pebbles, the lime shatter ring. */
+  tint?: string;
 }
 
 export interface ShotOpts {
@@ -77,6 +82,9 @@ export interface FxHandle {
 
 export interface SkillKit {
   readonly dir: Dir;
+  /** The class choice's stage (true) or the world (false): a charge-up's hold and a windup's shake are the stage's to
+   *  show (in the world the hold happened before the cast, and TownScene shows it). */
+  readonly preview: boolean;
   /** The fighter's feet. */
   readonly feet: Pt;
   /** Where the invisible enemies stand (their feet), nearest first: about 1, 3 and 5 tiles away. */
@@ -87,8 +95,9 @@ export interface SkillKit {
   self(dx: number, dy: number): Pt;
   /** How many frames a pose anim has (1 if the class has no such anim). */
   frames(anim: string): number;
-  /** Queues body frames after whatever is queued (each `ms` long, default the anim's fps); returns when each starts. */
-  pose(anim: string, frames: number[], ms?: number | number[]): number[];
+  /** Queues body frames after whatever is queued (each `ms` long, default the anim's fps; in a list, null = its fps, and
+   *  frames past the list's end take its last); returns when each starts. */
+  pose(anim: string, frames: number[], ms?: number | (number | null)[]): number[];
   /** A launch point on a pose frame: launch.json's `key` (palm, tip, lid, balm…), or the Slingshot's fork. */
   launch(anim: string, frame: number, key?: string): Pt;
   /** Runs `fn` this many ms after the skill starts. */
@@ -110,6 +119,12 @@ export interface SkillKit {
   flash(on: boolean): void;
   /** Fades the fighter to `alpha` over `ms`. */
   fade(alpha: number, ms: number): void;
+  /** Jumps the fighter next to enemy n over `ms`, `arc` px up at the middle (a leap: Timber!). In the world the server
+   *  moves them (the `leap` message), so the script's jump is the stage's only. */
+  leap(n: number, ms: number, arc: number): void;
+  /** An afterimage of the fighter: their poses `delay` ms behind, as a flat `colour` silhouette at `alpha`, this far off
+   *  their feet, for `life` ms (Phantom Sticks). The stage's only for now. */
+  echo(dx: number, dy: number, delay: number, life: number, colour: string, alpha: number): void;
 }
 
 export interface Skill {
@@ -160,6 +175,64 @@ function silhouette(src: HTMLCanvasElement, colour: string): HTMLCanvasElement {
   return c;
 }
 
+/** A pose frame's ms: its own in the list (null: the anim's), past the list's end the last one, no list: `ms` or the anim's. */
+export function frameMs(ms: number | (number | null)[] | undefined, i: number, own: number): number {
+  if (!Array.isArray(ms)) return ms ?? own;
+  return (i < ms.length ? ms[i] : ms[ms.length - 1]) ?? own;
+}
+
+/** A sheet with a colour laid over its pixels (multiplied, its alpha kept), made once per sheet and colour. */
+const tints = new WeakMap<CanvasImageSource, Map<string, HTMLCanvasElement>>();
+function tinted(src: CanvasImageSource, colour: string): HTMLCanvasElement {
+  let byColour = tints.get(src);
+  if (!byColour) tints.set(src, (byColour = new Map()));
+  const have = byColour.get(colour);
+  if (have) return have;
+  const { width: w, height: h } = src as { width: number; height: number };
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext('2d')!;
+  ctx.drawImage(src, 0, 0);
+  ctx.globalCompositeOperation = 'multiply';
+  ctx.fillStyle = colour;
+  ctx.fillRect(0, 0, w, h);
+  ctx.globalCompositeOperation = 'destination-in';
+  ctx.drawImage(src, 0, 0);
+  byColour.set(colour, c);
+  return c;
+}
+
+/** A flat silhouette of only a drawing's solid pixels (alpha over half: the sheets' faint edges left out). */
+function solid(src: HTMLCanvasElement, colour: string): HTMLCanvasElement {
+  const c = document.createElement('canvas');
+  c.width = src.width;
+  c.height = src.height;
+  const ctx = c.getContext('2d')!;
+  const d = src.getContext('2d')!.getImageData(0, 0, src.width, src.height);
+  const n = Number.parseInt(colour.slice(1), 16);
+  for (let i = 0; i < d.data.length; i += 4) {
+    const on = d.data[i + 3] > 127;
+    d.data[i] = (n >> 16) & 255;
+    d.data[i + 1] = (n >> 8) & 255;
+    d.data[i + 2] = n & 255;
+    d.data[i + 3] = on ? 255 : 0;
+  }
+  ctx.putImageData(d, 0, 0);
+  return c;
+}
+
+/** An afterimage under way (SkillKit.echo). */
+interface Echo {
+  dx: number;
+  dy: number;
+  delay: number;
+  t0: number;
+  end: number;
+  colour: string;
+  alpha: number;
+}
+
 interface Live {
   def: FxDef;
   img: CanvasImageSource | null;
@@ -177,6 +250,7 @@ interface Live {
   end: number; // ms (stage time) it's gone; Infinity while looping
   length?: number;
   alpha: number;
+  scale: number;
   /** For a shot: where it's flying, and the hidden-streak cut. */
   path?: { from: Pt; to: Pt; t1: number; arc: number; turn: boolean; onArrive?: () => void; reveal: boolean; ease?: 'out'; quarter?: number; fadeEnd?: number };
 }
@@ -193,7 +267,8 @@ export class SkillStage {
   private lives: Live[] = [];
   private hidden = new Set<string>();
   private offset: Pt = { x: 0, y: 0 };
-  private moveTo: { from: Pt; to: Pt; t0: number; t1: number; ease?: 'out' } | null = null;
+  private moveTo: { from: Pt; to: Pt; t0: number; t1: number; ease?: 'out'; arc?: number } | null = null;
+  private echoes: Echo[] = [];
   private trailing = false;
   private flashing = false;
   private alpha = 1;
@@ -248,6 +323,7 @@ export class SkillStage {
     this.alpha = 1;
     this.fadeTo = null;
     this.ghosts = [];
+    this.echoes = [];
     this.busyUntil = this.now;
   }
 
@@ -259,7 +335,7 @@ export class SkillStage {
       const m = this.moveTo;
       const lin = m.t1 <= m.t0 ? 1 : Math.min(1, (now - m.t0) / (m.t1 - m.t0));
       const p = m.ease === 'out' ? 1 - (1 - lin) * (1 - lin) : lin;
-      this.offset = { x: m.from.x + (m.to.x - m.from.x) * p, y: m.from.y + (m.to.y - m.from.y) * p };
+      this.offset = { x: m.from.x + (m.to.x - m.from.x) * p, y: m.from.y + (m.to.y - m.from.y) * p - (m.arc ?? 0) * 4 * p * (1 - p) };
       if (lin >= 1) this.moveTo = null;
     }
     if (this.fadeTo) {
@@ -269,6 +345,7 @@ export class SkillStage {
       if (p >= 1) this.fadeTo = null;
     }
     this.ghosts = this.ghosts.filter((g) => now - g.t0 < GHOST_MS);
+    this.echoes = this.echoes.filter((e) => now < e.end);
     // Shots arrive; done fx go.
     for (const l of [...this.lives]) {
       if (l.path && now >= l.path.t1) {
@@ -288,6 +365,7 @@ export class SkillStage {
       ctx.globalAlpha = 0.5 * (1 - (this.now - g.t0) / GHOST_MS);
       ctx.drawImage(g.img, g.x, g.y);
     }
+    for (const e of this.echoes) this.drawEcho(e);
     this.drawFighter();
     for (const l of this.lives) if (l.z === 3) this.drawFx(l);
   }
@@ -307,11 +385,27 @@ export class SkillStage {
   }
 
   private poseNow(): { anim: string; frame: number } {
-    const p = this.poses.find((x) => x.start <= this.now && this.now < x.end) ?? (this.poses.length && this.now < this.poses[this.poses.length - 1].end ? this.poses[0] : null);
+    return this.poseAt(this.now);
+  }
+
+  private poseAt(now: number): { anim: string; frame: number } {
+    const p = this.poses.find((x) => x.start <= now && now < x.end) ?? (this.poses.length && now < this.poses[this.poses.length - 1].end && now >= this.poses[0].start ? this.poses[0] : null);
     if (p) return p;
     const anim = this.a.art.anims[IDLE] ? IDLE : READY;
     const r = this.a.art.anims[anim];
-    return { anim, frame: Math.floor(((this.now - this.readyFrom) / 1000) * r.fps) % r.frames };
+    return { anim, frame: Math.floor((Math.max(0, now - this.readyFrom) / 1000) * r.fps) % r.frames };
+  }
+
+  /** An afterimage: the pose `delay` ms ago, flat in its colour, off the feet. */
+  private drawEcho(e: Echo): void {
+    if (this.now - e.delay < e.t0) return;
+    const { anim, frame } = this.poseAt(this.now - e.delay);
+    // (In the fighter's own cell, as the trail's: drawn over again for the fighter after.)
+    this.cellCtx.clearRect(0, 0, CELL, CELL);
+    drawPose(this.cellCtx, this.a.scene, this.a.C, this.a.K, this.a.outfit, this.a.art, anim, this.dir, frame, 0, 0, [...this.hidden]);
+    this.ctx.globalAlpha = e.alpha;
+    this.ctx.drawImage(solid(this.cell, e.colour), Math.round(FEET.x + e.dx - ANCHOR.x), Math.round(FEET.y + e.dy - ANCHOR.y));
+    this.ctx.globalAlpha = 1;
   }
 
   private drawFx(l: Live): void {
@@ -347,7 +441,7 @@ export class SkillStage {
     ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
     ctx.translate(Math.round(x), Math.round(y));
     if (angle) ctx.rotate(angle);
-    ctx.scale((l.flip ? -1 : 1) * (l.length ? l.length / w : 1), 1);
+    ctx.scale((l.flip ? -1 : 1) * (l.length ? l.length / w : 1) * l.scale, l.scale);
     ctx.drawImage(l.img, sx + clip, sy, w - clip, h, -ax + clip, -ay, w - clip, h);
     ctx.restore();
   }
@@ -377,10 +471,16 @@ export class SkillStage {
     const targets = [1, 3, 5].map((n) => ({ x: FEET.x + TILE.x * n, y: FEET.y + TILE.y * n }));
     let cursor = t0;
     const fps = (anim: string) => this.a.art.anims[anim]?.fps ?? 12;
-    const spawn = (name: string, at: Pt, o: FxOpts): Live | null => {
-      const def = this.a.fx[name];
-      if (!def?.file) return null;
-      const img = this.a.scene.textures.exists(def.file) ? (this.a.scene.textures.get(def.file).getSourceImage() as CanvasImageSource) : null;
+    const spawn = (want: string, at: Pt, o: FxOpts): Live | null => {
+      // (A Lv 21-40 fx not made yet: its stand-in, combat/fx-stand-ins.ts.)
+      const r = resolveFx(this.a.fx, want);
+      const def = r && this.a.fx[r.name];
+      if (!r || !def?.file) return null;
+      const raw = this.a.scene.textures.exists(def.file) ? (this.a.scene.textures.get(def.file).getSourceImage() as CanvasImageSource) : null;
+      const tint = o.tint ?? r.tint;
+      if (r.angle !== undefined) o = { ...o, angle: r.angle };
+      if (r.length) o = { ...o, length: r.length };
+      const img = raw && tint ? tinted(raw, tint) : raw;
       const ms = o.ms ?? 1000 / (def.fps ?? 12);
       const seq = o.frames ?? null;
       const frames = def.frames ?? 1;
@@ -389,13 +489,14 @@ export class SkillStage {
       const life = looping ? (o.life ?? Infinity) : length;
       const l: Live = {
         def, img, x: at.x, y: at.y, z: o.z ?? 3, angle: o.angle ?? 0, flip: !!o.flip, t0: stage.now, seq, hold: o.hold, ms,
-        fadeIn: o.fadeIn ?? 0, fadeOut: o.fadeOut ?? 0, end: stage.now + life, length: o.length, alpha: o.alpha ?? 1,
+        fadeIn: o.fadeIn ?? 0, fadeOut: o.fadeOut ?? 0, end: stage.now + life, length: o.length, alpha: o.alpha ?? 1, scale: (o.scale ?? 1) * (r.scale ?? 1),
       };
       stage.lives.push(l);
       return l;
     };
     return {
       dir: this.dir,
+      preview: true,
       feet: FEET,
       frames: (anim) => this.a.art.anims[anim]?.frames ?? 1,
       targets,
@@ -404,7 +505,7 @@ export class SkillStage {
       pose(anim, frames, ms) {
         const starts: number[] = [];
         frames.forEach((frame, i) => {
-          const d = Array.isArray(ms) ? (ms[i] ?? ms[ms.length - 1]) : (ms ?? 1000 / fps(anim));
+          const d = frameMs(ms, i, 1000 / fps(anim));
           starts.push(cursor - t0);
           stage.poses.push({ anim, frame, start: cursor, end: cursor + d });
           cursor += d;
@@ -453,8 +554,9 @@ export class SkillStage {
       },
       number(at, kind = 'hit') {
         const crit = kind === 'crit' || (kind === 'hit' && Math.random() < 0.15);
-        const base = kind === 'dot' || kind === 'mint' ? 4 + Math.floor(Math.random() * 9) : 12 + Math.floor(Math.random() * 37);
-        stage.onNumber(at, String(crit ? base * 2 + Math.floor(Math.random() * 10) : base), crit ? 'crit' : kind);
+        const base = kind === 'dot' || kind === 'mint' || kind === 'heal' ? 4 + Math.floor(Math.random() * 9) : 12 + Math.floor(Math.random() * 37);
+        const text = String(crit ? base * 2 + Math.floor(Math.random() * 10) : base);
+        stage.onNumber(at, kind === 'heal' ? `+${text}` : text, crit ? 'crit' : kind);
         stage.busyUntil = Math.max(stage.busyUntil, stage.now + NUMBER_MS);
       },
       hide(part, on) {
@@ -475,6 +577,15 @@ export class SkillStage {
       fade(alpha, ms) {
         stage.fadeTo = { from: stage.alpha, to: alpha, t0: stage.now, t1: stage.now + ms };
         stage.busyUntil = Math.max(stage.busyUntil, stage.now + ms);
+      },
+      leap(n, ms, arc) {
+        // Beside enemy n (a tile short of its feet, toward the fighter's start).
+        const to = { x: targets[n].x - FEET.x - TILE.x, y: targets[n].y - FEET.y - TILE.y };
+        stage.moveTo = { from: { ...stage.offset }, to, t0: stage.now, t1: stage.now + ms, arc };
+      },
+      echo(dx, dy, delay, life, colour, alpha) {
+        stage.echoes.push({ dx, dy, delay, t0: stage.now, end: stage.now + life + delay, colour, alpha });
+        stage.busyUntil = Math.max(stage.busyUntil, stage.now + life + delay);
       },
     };
   }

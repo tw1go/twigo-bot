@@ -744,7 +744,9 @@ export type TownServerMessage =
   | { t: 'mob-move'; id: string; path: [number, number][]; speed?: number }
   /** Someone (`by`, a town id) hit with skill `skill`: each mob it reached (the target first) with the damage, a crit or
    *  not, the HP left, dead or not; `blocked`: a Scrap Crab's shell took it (0); `miss`: it missed (0). */
-  | { t: 'mob-hit'; by: string; skill: number; hits: { id: string; damage: number; crit: boolean; hp: number; dead: boolean; blocked?: boolean; miss?: boolean; reduced?: boolean; slow?: { factor: number; ms: number } }[] }
+  | { t: 'mob-hit'; by: string; skill: number; hits: { id: string; damage: number; crit: boolean; hp: number; dead: boolean; blocked?: boolean; miss?: boolean; reduced?: boolean; slow?: { factor: number; ms: number } }[];
+      /** A windup (CONTEXT.md Windup): no hits yet, they land `windup` ms later (as mob-hits) on `target`, the mob it's at. */
+      windup?: number; target?: string }
   /** A mob attacks a player, turned to face `dir`; `hit`: the server's roll (shown as it lands; the server takes the HP
    *  then too); `slow`: a hit slows the player to half their walking speed for that long (ms; the Plastic Bag Spook's). */
   | { t: 'mob-attack'; id: string; target: string; dir: TownMobFacing; slow?: number; hit?: PlayerHit; to?: [number, number] }

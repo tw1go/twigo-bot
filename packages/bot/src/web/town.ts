@@ -1332,7 +1332,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         if (r.heal && vitals) healParty(c, r.heal);
         vitals?.fought(c.userId, now); // in combat: no HP back for a while
         // The hit, then what it set off (the golem calling the Junk, enraging, falling: its line too, to this room only).
-        for (const e of [{ t: 'mob-hit', by: p.id, skill: m.skill as number, hits: r.hits } satisfies TownServerMessage, ...mobs.flush()]) {
+        for (const e of [{ t: 'mob-hit', by: p.id, skill: m.skill as number, hits: r.hits, ...(r.windup ? { windup: r.windup, target: m.mob } : {}) } satisfies TownServerMessage, ...mobs.flush()]) {
           others(c, e);
           send(c, e);
         }

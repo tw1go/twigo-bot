@@ -163,6 +163,12 @@ export interface Mob {
   enraged: boolean;
   /** One of the golem's Adds (no spawn point; gone when its fight ends). */
   add: boolean;
+  /** Stunned until then (scene ms): still, stars over its head (CONTEXT.md Stun). */
+  stunUntil?: number;
+  /** Its debuffs (CONTEXT.md Debuff; a skill's taunt as 'taunt') and when each ends (scene ms): a pip each over its bar. */
+  debuffs?: Map<string, number>;
+  /** The stars and pips, drawn while any is on. */
+  marks?: Phaser.GameObjects.Graphics | null;
   /** A mini boss: its name and its name's colour (always shown, with its HP bar). */
   mini: { name: string; colour: string } | null;
   /** Its body's radius in tiles (the golem's; 0 for the rest): reach to it is measured to that edge. */
@@ -847,6 +853,7 @@ export class Mobs {
         parts.forEach((p) => p.destroy());
         m.bar?.destroy();
         m.shield?.destroy();
+        m.marks?.destroy();
         m.label?.text.destroy();
       };
       m.bar?.destroy();
@@ -1519,6 +1526,61 @@ export class Mobs {
     if (m === this.target) this.syncRing();
     this.syncBar(m);
     if (m.data?.shell) this.syncShield(m);
+    if (m.marks || m.stunUntil || m.debuffs?.size) this.syncMarks(m);
+  }
+
+  /** Stunned (the server's word, CONTEXT.md Stun): still on its tile for `ms`, stars circling over its head. */
+  stun(id: string, ms: number, col: number, row: number): void {
+    const m = this.byId.get(id);
+    if (!m || m.dead) return;
+    m.path = [];
+    m.col = col + 0.5;
+    m.row = row + 0.5;
+    if (!m.data?.drift) [m.drawCol, m.drawRow] = [m.col, m.row];
+    m.stunUntil = this.scene.time.now + ms;
+  }
+
+  /** A debuff on it (a utility, or a skill's taunt as 'taunt') for `ms`: its pip over the HP bar meanwhile; cast again,
+   *  its time starts over. */
+  debuff(id: string, name: string, ms: number): void {
+    const m = this.byId.get(id);
+    if (!m || m.dead) return;
+    (m.debuffs ??= new Map()).set(name, this.scene.time.now + ms);
+  }
+
+  /** Whether it's stunned now (its idle and hops wait). */
+  stunned(m: Mob): boolean {
+    return (m.stunUntil ?? 0) > this.scene.time.now;
+  }
+
+  /** The stars of a stun (three yellow pixels circling, until fx-stun-stars comes) and a pip a debuff in its colour (until
+   *  the debuff icons come), over its HP bar; gone when nothing's on. */
+  private syncMarks(m: Mob): void {
+    const now = this.scene.time.now;
+    for (const [k, until] of m.debuffs ?? []) if (until <= now) m.debuffs!.delete(k);
+    const stun = (m.stunUntil ?? 0) > now;
+    if (!stun) m.stunUntil = 0;
+    if (m.dead || m.asleep || (!stun && !m.debuffs?.size)) {
+      m.marks?.destroy();
+      m.marks = null;
+      return;
+    }
+    const g = (m.marks ??= this.scene.add.graphics());
+    g.clear().setPosition(Math.round(m.sprite.x - m.lunge.x), Math.round(this.top(m) - 4)).setDepth(LABEL_DEPTH - 1);
+    if (stun) {
+      // Three small stars (a plus of 5 px) going round over its head.
+      for (let i = 0; i < 3; i++) {
+        const a = now / 260 + (i * Math.PI * 2) / 3;
+        const [x, y] = [Math.round(Math.cos(a) * 9), Math.round(Math.sin(a) * 3) - 8];
+        g.fillStyle(0x1e1b3a, 1).fillRect(x - 1, y - 3, 3, 7).fillRect(x - 3, y - 1, 7, 3);
+        g.fillStyle(0xfde047, 1).fillRect(x, y - 2, 1, 5).fillRect(x - 2, y, 5, 1);
+      }
+    }
+    const pips = [...(m.debuffs?.keys() ?? [])];
+    pips.forEach((name, i) => {
+      const x = Math.round((i - (pips.length - 1) / 2) * 8) - 3;
+      g.fillStyle(0x0b0a1a, 1).fillRect(x - 1, -2, 8, 8).fillStyle(DEBUFF_COLOURS[name] ?? 0xe2e8f0, 1).fillRect(x, -1, 6, 6);
+    });
   }
 
   /** A crab's shield over its HP bar: shown while its shell is up and it's fighting (or your target), gone while it's
@@ -1640,6 +1702,18 @@ function stepName(dc: number, dr: number): string {
   if (sx > 0) return sy > 0 ? 'se' : 'ne';
   return sy > 0 ? 'sw' : 'nw';
 }
+
+/** Each debuff's pip colour (CONTEXT.md Debuff; 'taunt' a skill's taunt), until the debuff icons come. */
+const DEBUFF_COLOURS: Record<string, number> = {
+  taunt: 0xf43f5e,
+  Provoke: 0xf43f5e,
+  'Iron Kitchen': 0xf43f5e,
+  'Armor Crack': 0xf59e0b,
+  Marked: 0xef4444,
+  'Eye Sting': 0xa3e635,
+  'Numbing Oil': 0x60a5fa,
+  Hamstring: 0xb91c1c,
+};
 
 /** A small silver shield (code-drawn pixels, 7 × 8, centred on its bottom tip): a Scrap Crab's shell is up. */
 function drawShield(g: Phaser.GameObjects.Graphics): Phaser.GameObjects.Graphics {
