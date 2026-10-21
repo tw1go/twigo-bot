@@ -338,3 +338,31 @@ test('Call the Frost at 75%, 50%, 25% (two Frost Scales from the tanks side); it
   assert.equal(rooms.size, 3, 'every floor');
   assert.ok(f.bosses.iceBlocks.size === 0 && !f.bosses.flood);
 });
+
+// ── Loot (silong.loot) ──
+
+test('loot: a mini boss its pile and a roll a player; the Ice Machine Lv 40 gear, 50,000 Kusing, Polished Whetstones, a key now and then; a practice run Kusing only', () => {
+  let n = 0;
+  const uid = () => `u${++n}`;
+  const run = open(silong());
+  const f = run.floors.b1;
+  const kill = fell(run, 'b1', 'atsarah', 0);
+  const mini = run.lootFor('b1', kill, ['stick'], uid, () => 0.99);
+  const pile = L.data.floors[0].rooms.find((r) => r.miniBoss?.id === 'atsarah')!.miniBoss!.kusingPile;
+  assert.ok(mini.contents.some((c) => 'kusing' in c && c.kusing === pile), 'its pile');
+  assert.ok(mini.contents.some((c) => 'item' in c && c.item.defId === 'polished-whetstone'), 'unlucky: Polished Whetstones');
+  void f;
+  run.skipToPlant();
+  const boss = run.floors.b3.mobs.mobInfo('boss:makinang-yelo', 0)!;
+  const last = run.lootFor('b3', { ...kill, id: boss.id, kind: 'makinang-yelo', at: boss.at }, ['stick'], uid, () => 0);
+  const items = last.contents.flatMap((c) => ('item' in c ? [c.item] : []));
+  assert.ok(last.contents.some((c) => 'kusing' in c && c.kusing === 50_000));
+  assert.ok(items.some((i) => i.defId === L.data.key.id), 'a Susi ng Silong (1 in 10)');
+  assert.ok(items.filter((i) => L.deps.fightData.defs.get(i.defId) && 'slot' in L.deps.fightData.defs.get(i.defId)!).every((i) => i.level === 40), 'Lv 40 gear');
+  assert.ok(!items.some((i) => i.defId.includes('hat')), 'no cosmetic');
+  const s = silong();
+  const p = s.openPractice('z', 'Z', 40, () => true, 0);
+  assert.ok(p.ok);
+  const only = p.run.lootFor('b1', fell(p.run, 'b1', 'atsarah', 0), ['stick'], uid, () => 0);
+  assert.ok(only.contents.length && only.contents.every((c) => 'kusing' in c), 'Kusing only');
+});

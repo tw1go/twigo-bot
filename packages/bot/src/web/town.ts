@@ -899,7 +899,8 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       // The golem down: each member's damage this fight, for the leaderboard (its Golem board: the golem only).
       if (k.boss && k.dealt && !scale) opts.records?.golem(k.dealt, Date.now());
       if (run) runDrop(run, k);
-      else if (!srun) dropFor(room, { ...k, to: credited }); // (Ang Silong's loot: its own, to come)
+      else if (srun) silongDrop(srun, room, k);
+      else dropFor(room, { ...k, to: credited });
       // (A Warrens boss counts for no quest: the Tanod's mini bosses are the Slums' own.)
       // (The Great Scale counts for those who earned it, not their party: CONTEXT.md Great Scale.)
       if (!k.warrens) {
@@ -1035,6 +1036,19 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         console.log(`[warrens] ${member} ${took ? 'got' : 'had no room for'} ${item.defId} from practice run ${run.id}`);
       } else console.log(`[warrens] practice run ${run.id} cleared: ${member}'s quest needs no item`);
     }
+  };
+  /** A kill's drops on an Ang Silong floor: like a Warrens run's, everything on the floor for anyone on it, first come
+   *  (the run's `lootFor`: a mini boss's pile and rolls, the Ice Machine's heap, a mob's own). */
+  const silongDrop = (run: SilongRun, room: string, kill: MobKill) => {
+    const floor = run.floorOf(room);
+    if (!opts.items || !floor) return;
+    const L = lootIn(room);
+    const here = [...conns.values()].filter((o) => o.room === room);
+    const random = opts.lootRandom ?? Math.random;
+    const { contents, at } = run.lootFor(floor.floor, kill, here.map((o) => o.player.cls ?? null), () => randomBytes(8).toString('hex'), random, opts.lootPlusRandom ?? random);
+    const fresh = L.scatter(contents, at, (a, n) => floor.mobs.lootSpots(a, n, L.taken()), Date.now());
+    const inside = here.map((o) => o.userId);
+    showLoot(room, startRolls(room, L, fresh, () => inside), kill.at);
   };
   /** Picks up the loot asked for (`id`) or, without one, the nearest they may take, within LOOT_REACH (a click, F or
    *  Space; nothing is picked up on its own). Full bag: it stays, and they're told. */

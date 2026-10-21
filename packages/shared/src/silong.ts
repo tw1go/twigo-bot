@@ -86,8 +86,33 @@ export interface SilongData {
   lastBoss: SilongMiniBoss & { title: string; reachRadius: number };
   miniBossLook: { drawScale: number; nameColour: string };
   practiceRun: { mobHpAtkPct: number; once: boolean };
-  loot: Record<string, unknown>;
+  loot: SilongLoot;
   key: { id: string; name: string; sources: { shop: { kusing: number }; greatScaleChance: number; lastBossChance: number } };
+}
+
+/** The Silong's loot (classes/dungeons.json silong.loot): like the Warrens', a tier up (Lv 40, Polished Whetstones). */
+export interface SilongLoot {
+  gearLevel: number;
+  miniBoss: {
+    roll: {
+      affix: { chance: number; affix: Record<string, number> };
+      plain: { chance: number; colour: Record<string, number> };
+      unlucky: { chance: number; kusingTimes: number; polishedWhetstones: [number, number] };
+    };
+  };
+  lastBoss: {
+    perPlayerInside: {
+      affixGear: number;
+      affix: Record<string, number>;
+      accessories: number;
+      accessoryLevel: number;
+      kusing: number;
+      polishedWhetstones: [number, number];
+      agimatChance: number;
+      agimatLevel: number;
+      keyChance: number;
+    };
+  };
 }
 
 /** A room as a floor's map has it (its boss's tile, and its boss floor's tiles). */

@@ -69,6 +69,8 @@ export class LootRoom {
   private readonly minis: ReturnType<typeof miniBossRules> | null;
   /** How often the golem's loot has a Warren Ticket (classes/dungeons.json). */
   private readonly golemTicket = loadDungeons().warrens.ticket.sources.golemLootChance;
+  /** How often the Great Scale's loot has a Susi ng Silong (classes/dungeons.json silong.key). */
+  private readonly scaleKey = ((S) => (S ? { id: S.key.id, chance: S.key.sources.greatScaleChance } : undefined))(loadDungeons().silong);
 
   constructor(
     private readonly data: ItemData,
@@ -102,7 +104,7 @@ export class LootRoom {
     const lots: { owners: string[]; personal: boolean; contents: LootContent[] }[] = !kill.to.length
       ? []
       : kill.boss
-        ? kill.to.map((owner) => ({ owners: [owner], personal: true, contents: fieldBossLoot(this.data, fieldBossTable(this.data, kill.kind), this.random, this.uid, this.plusRandom, kill.kind === 'great-scale' ? 0 : this.golemTicket, boost([owner])) }))
+        ? kill.to.map((owner) => ({ owners: [owner], personal: true, contents: fieldBossLoot(this.data, fieldBossTable(this.data, kill.kind), this.random, this.uid, this.plusRandom, kill.kind === 'great-scale' ? 0 : this.golemTicket, boost([owner]), kill.kind === 'great-scale' ? this.scaleKey : undefined) }))
         : mini
           ? shared([...new Set([...kill.to, ...party])], (b) => miniLoot(this.data, kill.kind, kill.level, mini, this.random, this.uid, this.plusRandom, b))
           : shared([...new Set([...kill.to.slice(0, 1), ...party])], (b) => mobDrops(this.data, kill.kind, kill.level, this.random, this.uid, this.plusRandom, b, this.area));

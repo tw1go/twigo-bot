@@ -1,4 +1,6 @@
 import { type SilongBlock, type SilongData, type SilongFloor, type SilongFloorData, type SilongMapRoom, type TownServerMessage, type TownSilongGate, type TownSilongRun, SILONG_FLOORS, floorBelow, inRect, partyHpScale } from '@mikazuki/shared';
+import type { LootContent } from './combat-bag.js';
+import { dropBoost, silongBossLoot, silongMiniLoot, silongMobDrops } from './loot.js';
 import { loadDungeons, loadItemData, loadPalengkeLeveling } from './stats-data.js';
 import { type MobDirector, type MobEvent, type MobKill, type MobMapData, type MobSpec, MobRoom, loadMobKinds, loadMobMap, loadSkillShapes } from './town-mobs.js';
 import type { Inside, RunDeps } from './town-warrens.js';
@@ -429,9 +431,28 @@ export class SilongRun {
     return out;
   }
 
-  /** Whether a kill is the last boss's (its loot: part 4). */
+  /** Whether a kill is the last boss's. */
   isLastBoss(id: string): boolean {
     return !!this.bosses.get(id)?.last;
+  }
+
+  /** A kill's loot on a floor (silong.loot; all of it on the floor for anyone inside, first come): a mini boss's Kusing
+   *  pile and a roll per player inside, Ang Makinang Yelo's heap for each (in front of its fan), a room mob's own; gear
+   *  for the classes of those inside, boosted by the highest Drop rate inside. A practice run: its Kusing only (XP and
+   *  Kusing, nothing else). */
+  lootFor(floor: SilongFloor, kill: MobKill, classes: (string | null)[], uid: () => string, random: () => number, plusRandom = random): { contents: LootContent[]; at: Tile } {
+    const data = this.deps.fightData;
+    const n = Math.max(1, this.inside.size);
+    const boost = dropBoost(data, Math.max(0, ...[...this.inside.keys()].map((m) => this.deps.dropRate?.(m) ?? 0)));
+    const b = this.bosses.get(kill.id);
+    const rooms = this.S.floors.find((f) => f.id === floor)?.rooms ?? [];
+    const r = b?.last
+      ? { contents: silongBossLoot(data, this.S, classes, n, random, uid, plusRandom, boost), at: this.floors[floor].map.silong.bossTile ?? kill.at }
+      : b
+        ? { contents: silongMiniLoot(data, this.S, rooms.find((x) => x.miniBoss?.id === b.id)?.miniBoss ?? kill, classes, n, random, uid, plusRandom, boost), at: kill.at }
+        : { contents: silongMobDrops(data, this.S, kill.kind, kill.level, rooms.find((x) => x.mobs.kind === kill.kind || x.mobs.kind === kill.kind.replace(/-frost$/, ''))?.mobs.kusing ?? 0, random, uid, plusRandom, boost), at: kill.at };
+    if (this.practice) r.contents = r.contents.filter((c) => 'kusing' in c);
+    return r;
   }
 
   /** Dev (?silong=plant&hp=): to B3 with Frosty Tubbs down and the Ice Tanks door open (Ang Makinang Yelo next; `hp`:
