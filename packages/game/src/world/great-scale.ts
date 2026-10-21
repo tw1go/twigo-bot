@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import type { GreatScaleChange, TelegraphShape, TownGreatScale, TownServerMessage } from '@mikazuki/shared';
-import type { Manifest, MobData, MobDef, TownMap } from '../assets/types';
+import type { FxDef, Manifest, MobData, MobDef, TownMap } from '../assets/types';
 import { mobSheet } from '../assets/mob-art';
 import { BossBar } from '../ui/boss-bar';
 import { onMap } from './clicks';
@@ -12,16 +12,18 @@ import { Telegraphs } from './telegraph';
 // web/town-great-scale.ts). Its mob is the room's (world/mobs.ts: its eight-way sheets, its red name, asleep dimmed on
 // its idle's first frame between fights); this draws the rest of what the server says:
 // - Its moves (`boss-move`): the red telegraph (world/telegraph.ts) from now to its hit, its anim timed so its hit frame
-//   lands then (mobs.json attackFrame / weighFrame / coneFrame); on a Pan Slam's hit a white burst in each circle.
-// - Weigh-in: the held player lifted 12 px inside a dashed circle on the pan (a mob of its own, drawn here in code: a
-//   brass dish), until they're let go.
+//   lands then (mobs.json attackFrame / weighFrame / coneFrame); on a Pan Slam's hit its impact in each circle.
+// - Weigh-in: the held player lifted 12 px inside the Weigh-in's ring, over the pan (a mob of its own, drawn here in
+//   code: a brass dish), until they're let go.
 // - Its call (dust puffs where its Sentinels drop, as its call anim lands), its enrage (its anim once, then a red flash
-//   every 2 s until it has red sheets), its bell after its fall (a gold bell on its tile for its time left: a click
-//   within 3 tiles rings it; `bell-rung` swings it for everyone).
+//   every 2 s until it has red sheets), its bell after its fall (the bell on its tile for its time left: a click
+//   within 3 tiles rings it; `bell-rung` swings the code-drawn stand-in for everyone).
 // - The boss bar while it's awake and you're in its arena; the HUD's field boss timer ("Awake! Go to the hall").
 // - Asleep: hovering it says when it wakes.
-// Every effect is a code placeholder behind a named hook (`fx.panImpact`, `fx.held`, `fx.dust`, `fx.bell`) until the
-// art folder's fx-scale-* come (the manifest's fx then).
+// Its effects are the art folder's fx/palengke fx-scale-* (21 Oct 2026): the pan's warning under each Pan Slam circle and
+// its impact, the Weigh-in's ring round the held player, Kulang sa Timbang's cone (se / ne art, mirrored for sw / nw),
+// the Sentinels' call, its enrage at the dial and the bell; each falls back to a code-drawn stand-in while its sheet
+// isn't loaded.
 
 export const PAN_KIND = 'great-scale-pan';
 const LIFT = 12; // px a held player is lifted on the pan
@@ -92,7 +94,13 @@ export class GreatScaleView {
       const delay = this.frameMs('call', this.data?.callFrame ?? 0);
       for (const t of spots) this.later(delay, () => this.dust(t));
     }
-    if (change === 'enrage' && m) this.mobs.pose(m, 'enrage');
+    if (change === 'enrage' && m) {
+      this.mobs.pose(m, 'enrage');
+      // fx-scale-enrage at its dial (its art's top).
+      const art = this.art('fx-scale-enrage');
+      const k = m.data?.scale ?? 1;
+      if (art) this.fx.play(art, { x: m.sprite.x, y: m.sprite.y + ((m.data?.top ?? 0) - m.cell.anchor[1]) * k + 16 }, { layer: 'front' });
+    }
     if (change === 'reset' || change === 'death' || change === 'sleep' || change === 'sink') this.cancel(this.id);
     // The held player: lifted while held, down again once let go.
     const holding = st.held?.id ?? null;
@@ -117,6 +125,10 @@ export class GreatScaleView {
       this.shapes.set(e.key, e.shape);
       this.telegraphs.show(e.key, e.id, e.shape, e.ms);
     }
+    // A Pan Slam's warning in each circle until it lands; Kulang sa Timbang's cone from its feet, hitting on its frame 3.
+    const warn = e.move === 'panSlam' && e.shape?.kind === 'circles' ? this.art('fx-scale-pan-warning') : undefined;
+    if (warn && e.shape?.kind === 'circles') for (const c of e.shape.circles) this.later(0, () => this.fx.play(warn, this.mobs.ground(c.at[0] + 0.5, c.at[1] + 0.5), { layer: 'ground', life: e.ms }));
+    if (e.shape?.kind === 'cone') this.cone(e.shape, e.ms);
     const anim = typeof e.data?.anim === 'string' ? e.data.anim : null;
     if (!anim) return;
     const frame = anim === 'weigh' ? this.data?.weighFrame : anim === 'cone' ? this.data?.coneFrame : this.data?.attackFrame;
@@ -184,7 +196,13 @@ export class GreatScaleView {
   private hold(id: string, pan: string): void {
     const c = this.hooks.char(id);
     if (c) c.lift = LIFT;
-    // fx.held: a dashed circle on the ground round the pan.
+    // fx-scale-weigh-in round the held player (else a dashed circle on the ground round the pan).
+    const weigh = this.art('fx-scale-weigh-in');
+    if (weigh && c) {
+      const feet = () => ({ x: c.sprite.x, y: c.sprite.y });
+      const h = this.fx.play(weigh, feet(), { layer: 'front', follow: feet, life: Infinity });
+      if (h) return void (this.held = { id, ring: h });
+    }
     const ring = this.fx.drawFx('ground', (g, t) => {
       const p = this.mobs.get(pan);
       if (!p) return false;
@@ -232,10 +250,12 @@ export class GreatScaleView {
 
   // ── Placeholder effects ──
 
-  /** fx.panImpact: a white burst filling a Pan Slam's circle as it lands (and a small shake you can see). */
+  /** A Pan Slam landing: fx-scale-pan-impact in its circle (else a white burst filling it), and a small shake you can see. */
   private panImpact(at: [number, number], radius: number): void {
     const c = this.mobs.ground(at[0] + 0.5, at[1] + 0.5);
-    this.fx.drawFx('front', (g, t) => {
+    const art = this.art('fx-scale-pan-impact');
+    if (art) this.fx.play(art, c, { layer: 'front' });
+    else this.fx.drawFx('front', (g, t) => {
       const p = Math.min(1, t / 260);
       g.clear().fillStyle(0xffffff, 0.55 * (1 - p)).fillEllipse(c.x, c.y, radius * 32 * (0.5 + p * 0.6), radius * 16 * (0.5 + p * 0.6));
       return p < 1;
@@ -244,9 +264,11 @@ export class GreatScaleView {
     if (!reducedMotion() && view.contains(c.x, c.y)) this.scene.cameras.main.shake(150, 0.003);
   }
 
-  /** fx.dust: a puff where a Sentinel drops in. */
+  /** Where a Sentinel drops in: fx-scale-call (else a puff). */
   private dust(t: [number, number]): void {
     const c = this.mobs.ground(t[0] + 0.5, t[1] + 0.5);
+    const art = this.art('fx-scale-call');
+    if (art) return void this.fx.play(art, c, { layer: 'ground' });
     this.fx.drawFx('ground', (g, ms) => {
       const p = Math.min(1, ms / 500);
       g.clear();
@@ -266,6 +288,14 @@ export class GreatScaleView {
       if ((!p.leftButtonReleased() && !p.wasTouch) || !onMap(p, this.scene.game.canvas)) return;
       this.hooks.ring(at);
     });
+    // fx-scale-bell ringing over its tile (else a gold bell drawn in code, swinging as it's rung).
+    const art = this.art('fx-scale-bell');
+    const own = art && this.fx.play(art, { x: c.x, y: c.y - 6 }, { layer: 'front', life: Infinity });
+    if (own) {
+      zone.setPosition(c.x, c.y - 30).setSize(40, 52);
+      this.bell = { at, until: this.scene.time.now + left, zone, fx: own, swingAt: -Infinity };
+      return;
+    }
     const fx = this.fx.drawFx('front', (g, t) => {
       const b = this.bell;
       const swing = b ? Math.max(0, 1 - (this.scene.time.now - b.swingAt) / 900) : 0;
@@ -289,6 +319,24 @@ export class GreatScaleView {
   nearBell(at: { col: number; row: number }): boolean {
     const b = this.bell;
     return !!b && Math.max(Math.abs(at.col - b.at[0]), Math.abs(at.row - b.at[1])) <= BELL_TILES;
+  }
+
+  /** Kulang sa Timbang's cone on the ground from its origin the way it points (the se / ne art, mirrored for sw / nw),
+   *  started so its frame 3 (its hit) lands with the hit `ms` from now. */
+  private cone(shape: Extract<TelegraphShape, { kind: 'cone' }>, ms: number): void {
+    const [gx, gy] = [Math.cos(shape.facing), Math.sin(shape.facing)];
+    const [sx, sy] = [gx - gy, (gx + gy) / 2]; // (screen: right and down)
+    const art = this.art(sy >= 0 ? 'fx-scale-short-weight-se' : 'fx-scale-short-weight-ne');
+    if (!art) return;
+    const lead = (3 / (art.fps ?? 10)) * 1000;
+    const at = this.mobs.ground(shape.origin[0] + 0.5, shape.origin[1] + 0.5);
+    this.later(Math.max(0, ms - lead), () => this.fx.play(art, at, { layer: 'ground', flipX: sx < 0 }));
+  }
+
+  /** An effect's def, only once its sheet is loaded (else the caller draws its stand-in). */
+  private art(id: string): FxDef | undefined {
+    const def = this.M.fx[id];
+    return def?.file && this.scene.textures.exists(def.file) ? def : undefined;
   }
 
   // ── Helpers ──

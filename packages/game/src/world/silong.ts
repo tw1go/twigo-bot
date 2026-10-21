@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import type { PlayerHit, SilongBlock, SilongFloor, TelegraphShape, TownServerMessage, TownSilongRun } from '@mikazuki/shared';
 import { inRect } from '@mikazuki/shared';
-import type { Manifest, MapObject, PropDef, TownMap } from '../assets/types';
+import type { FxDef, Manifest, MapObject, PropDef, TownMap } from '../assets/types';
 import { tileToScreen } from '../iso';
 import { BossBar } from '../ui/boss-bar';
 import { frontDepth } from './depth';
@@ -24,11 +24,12 @@ import { LABEL_DEPTH } from './depth';
 //   place (its tiles walkable).
 // - A warm glow under every work lamp (fx-silong-lamp-glow: the 2 tiles that clear Chill).
 // - The mini bosses' moves (`boss-move` / `boss-hit`, bot web/town-silong-bosses.ts): each one's red telegraph, its
-//   attack pose timed so its hit frame lands on the hit, and its effects drawn in code until the art folder's FX come:
-//   Atsarah's brine burst and her lid out and back along its line; Sakristan's grains falling into each circle (the rice
-//   itself is the town's `mob-fx`) and his flop's dust; Mono Lisa's chairs flying to where you stood, her Split (she and
-//   her fakes small, a glint on her alone); Sangkalancelot's charge dust and the hooks dropping into their shadows;
-//   Frosty Tubbs' Ice Slick (its tiles iced over for its time; the scene slides you on them: `slick`); dust where a
+//   attack pose timed so its hit frame lands on the hit, and its effects, the art folder's silong/fx (21 Oct 2026; each
+//   drawn in code while its sheet isn't loaded): Atsarah's brine splash round her and her lid flying out and back along
+//   its line; Sakristan's rice pouring into each circle (the rice itself is the town's `mob-fx`) and his flop's frosty
+//   dust; Mono Lisa's chairs (the Monobloc's) flying to where you stood, her Split (a puff on each copy, all small, a glint
+//   over her alone); Sangkalancelot's charge kicking up frost and the hooks dropping into their shadows; Frosty Tubbs
+//   bursting up through the ice and his Ice Slick's tiles (the scene slides you on them: `slick`); a frost puff where a
 //   boss's mobs come in. The boss bar while you're in a mini boss's room.
 // - Ang Makinang Yelo (B3's last boss: one facing, never moving; its fan the map's bossTile): Ice Block Drop (the warn on
 //   each tile, the block's shadow and fall timed to its hit, then prop-silong-ice-block standing as a wall on the walk
@@ -255,9 +256,11 @@ export class SilongView {
     if (m.move === 'iceBlockDrop') this.later(m.id, Math.max(0, m.ms - 450), () => this.sound('barong-fist-fall', boss)); // (the blocks falling)
     const at = (t: [number, number]) => this.mobs.ground(t[0] + 0.5, t[1] + 0.5);
     switch (m.move) {
-      case 'brineSplash':
-        this.later(m.id, m.ms, () => boss && this.burst(this.mobs.feet(boss), 0x7dd3c0, 2));
+      case 'brineSplash': {
+        const art = this.art('fx-silong-brine-splash');
+        this.later(m.id, m.ms, () => boss && (art ? this.fx.play(art, this.mobs.feet(boss), { layer: 'front' }) : this.burst(this.mobs.feet(boss), 0x7dd3c0, 2)));
         return;
+      }
       case 'lidSpin': {
         const path = (d.path as [number, number][]) ?? [];
         const end = path[path.length - 1];
@@ -266,12 +269,20 @@ export class SilongView {
         this.later(m.id, m.ms - out, () => this.lid(this.mobs.feet(boss), at(end), out, Number(d.backMs ?? 600)));
         return;
       }
-      case 'riceRain':
-        for (const c of (m.shape as Extract<TelegraphShape, { kind: 'circles' }>).circles) this.grains(m.id, at(c.at), m.ms);
+      case 'riceRain': {
+        // The rain into each circle, its last frame on the hit (the rice it leaves is the town's `mob-fx`).
+        const art = this.art('fx-silong-rice-fall');
+        const lead = art ? (art.frames ?? 6) / (art.fps ?? 10) * 1000 : 0;
+        for (const c of (m.shape as Extract<TelegraphShape, { kind: 'circles' }>).circles) {
+          if (art) this.later(m.id, m.ms - lead, () => this.keep(m.id, this.fx.play(art, at(c.at), { layer: 'front' })));
+          else this.grains(m.id, at(c.at), m.ms);
+        }
         return;
+      }
       case 'bellyFlop': {
         const to = d.to as [number, number];
-        this.later(m.id, m.ms, () => this.burst(at(to), 0xd6c4a0, 1.5));
+        const art = this.art('fx-silong-flop-dust');
+        this.later(m.id, m.ms, () => (art ? this.fx.play(art, at(to), { layer: 'ground' }) : this.burst(at(to), 0xd6c4a0, 1.5)));
         return;
       }
       case 'chairBarrage': {
@@ -281,22 +292,42 @@ export class SilongView {
         return;
       }
       case 'split': {
-        // She and her fakes small; a glint on her alone (the brief's tell).
+        // She and her fakes small, a puff on each; a glint over her alone (the brief's tell).
         const ids = [String(d.real), ...((d.fakes as string[]) ?? [])];
         for (const id of ids) this.mobs.rescale(id, Number(d.scale ?? 1.2));
+        const poof = this.art('fx-silong-split-poof');
+        if (poof) for (const id of ids) {
+          const c = this.mobs.get(id);
+          if (c) this.fx.play(poof, this.mobs.feet(c), { layer: 'front' });
+        }
         const real = this.mobs.get(String(d.real));
-        if (real) this.keep(m.id, this.fx.drawFx('front', (g, t) => this.glint(g, this.mobs.feet(real), t), m.ms));
+        const glint = this.art('fx-silong-split-glint');
+        const head = () => (real ? { x: this.mobs.feet(real).x, y: this.mobs.feet(real).y - 34 } : { x: 0, y: 0 });
+        if (real && glint) this.keep(m.id, this.fx.play(glint, head(), { layer: 'front', follow: head, life: m.ms }));
+        else if (real) this.keep(m.id, this.fx.drawFx('front', (g, t) => this.glint(g, this.mobs.feet(real), t), m.ms));
         return;
       }
       case 'splitEnd':
         this.mobs.rescale(m.id, null);
         return;
-      case 'cleaverCharge':
-        if (boss) this.later(m.id, m.ms, () => this.keep(m.id, this.fx.drawFx('ground', (g, t) => this.dust(g, this.mobs.feet(boss), t), 900)));
+      case 'cleaverCharge': {
+        // Frost kicked up behind him as he charges: a puff at his feet every 120 ms while he goes.
+        const art = this.art('fx-silong-charge-dust');
+        if (!boss) return;
+        if (art) for (let k = 0; k < 8; k++) this.later(m.id, m.ms + k * 120, () => !boss.dead && this.fx.play(art, this.mobs.feet(boss), { layer: 'ground' }));
+        else this.later(m.id, m.ms, () => this.keep(m.id, this.fx.drawFx('ground', (g, t) => this.dust(g, this.mobs.feet(boss), t), 900)));
         return;
+      }
       case 'hookShadows':
         for (const c of (m.shape as Extract<TelegraphShape, { kind: 'circles' }>).circles) this.hook(m.id, at(c.at), m.ms);
         return;
+      case 'ambush': {
+        // Up through the ice under its circle: the burst's frame 2 on the hit.
+        const to = d.to as [number, number] | undefined;
+        const art = this.art('fx-silong-ambush-burst');
+        if (to && art) this.later(m.id, m.ms - (2 / (art.fps ?? 12)) * 1000, () => this.fx.play(art, at(to), { layer: 'front' }));
+        return;
+      }
       case 'iceBlockDrop': {
         const tiles = (m.shape as Extract<TelegraphShape, { kind: 'tiles' }>).tiles;
         const warn = this.M.fx['fx-silong-ice-block-warn'];
@@ -320,7 +351,7 @@ export class SilongView {
         return; // (their poses: `anim`; the flood's water and the belts with their hit)
       case 'callTheFrost':
         if (boss) this.mobs.pose(boss, 'call');
-        for (const t of (d.spots as [number, number][]) ?? []) this.later(m.id, m.ms, () => this.burst(at(t), 0xbfe6ff, 1));
+        for (const t of (d.spots as [number, number][]) ?? []) this.later(m.id, m.ms, () => this.callPuff(at(t), 0xbfe6ff));
         return;
       case 'enrage':
         if (boss) this.enrage(boss);
@@ -332,7 +363,7 @@ export class SilongView {
       case 'sackCall':
       case 'tubCall':
       case 'hookSwing':
-        for (const t of (d.spots as [number, number][]) ?? []) this.later(m.id, m.ms, () => this.burst(at(t), 0xb8a07a, 1));
+        for (const t of (d.spots as [number, number][]) ?? []) this.later(m.id, m.ms, () => this.callPuff(at(t), 0xb8a07a));
         return;
     }
   }
@@ -367,7 +398,9 @@ export class SilongView {
       const ms = Number(m.data?.ms ?? 5000);
       this.hooks.slick(ice, ms);
       const pts = ice.map(([c, r]) => this.mobs.ground(c + 0.5, r + 0.5));
-      this.keep(m.id, this.fx.drawFx('ground', (g, t) => {
+      const slick = this.art('fx-silong-ice-slick');
+      if (slick) for (const p of pts) this.keep(m.id, this.fx.play(slick, p, { layer: 'ground', life: ms, fadeIn: 300, fadeOut: 500 }), 200);
+      else this.keep(m.id, this.fx.drawFx('ground', (g, t) => {
         g.clear();
         const a = t < 300 ? t / 300 : t > ms - 500 ? Math.max(0, (ms - t) / 500) : 1;
         for (const p of pts) g.fillStyle(0xd7f1ff, 0.45 * a).fillPoints([new Phaser.Math.Vector2(p.x, p.y - 8), new Phaser.Math.Vector2(p.x + 16, p.y), new Phaser.Math.Vector2(p.x, p.y + 8), new Phaser.Math.Vector2(p.x - 16, p.y)], true);
@@ -500,8 +533,12 @@ export class SilongView {
     });
   }
 
-  /** Atsarah's lid: spinning out along its line over `out` ms, then back over `back`. */
+  /** Atsarah's lid: spinning out along its line over `out` ms, then back over `back` (fx-silong-lid-spin, else drawn). */
   private lid(from: Pt, to: Pt, out: number, back: number): void {
+    const art = this.art('fx-silong-lid-spin');
+    const start = { x: from.x, y: from.y - 14 };
+    const end = { x: to.x, y: to.y - 14 };
+    if (art) return void this.fx.shot(art, start, end, { speed: 1, flightMs: out, turn: false, layer: 'front', onArrive: () => this.fx.shot(art, end, start, { speed: 1, flightMs: back, turn: false, layer: 'front' }) });
     this.fx.drawFx('front', (g, t) => {
       const there = t < out;
       const k = there ? t / out : Math.max(0, 1 - (t - out) / back);
@@ -528,8 +565,14 @@ export class SilongView {
     );
   }
 
-  /** One of Mono Lisa's chairs: a small white square spinning from her to its tile over `ms`. */
+  /** One of Mono Lisa's chairs: the Monobloc's thrown chair (fx-mono-chair) tumbling from her to its tile over `ms` and
+   *  landing (fx-mono-chair-land); else a small white square. */
   private chair(from: Pt, to: Pt, ms: number): void {
+    const art = this.art('fx-mono-chair');
+    if (art) {
+      const land = this.art('fx-mono-chair-land');
+      return void this.fx.shot(art, { x: from.x, y: from.y - 20 }, to, { speed: 1, flightMs: ms, arc: 30, turn: false, layer: 'front', onArrive: () => land && this.fx.play(land, to, { layer: 'front' }) });
+    }
     this.fx.drawFx('front', (g, t) => {
       const k = Math.min(1, t / ms);
       const x = from.x + (to.x - from.x) * k;
@@ -539,8 +582,16 @@ export class SilongView {
     });
   }
 
-  /** A hook dropping from the rails into its shadow over the last 300 ms before it lands. */
+  /** A hook dropping from the rails into its shadow: fx-silong-hook-shadow from the start, fx-silong-hook-drop hitting on
+   *  its frame 4 as it lands; else drawn over the last 300 ms. */
   private hook(owner: string, at: Pt, ms: number): void {
+    const hookArt = this.art('fx-silong-hook-drop');
+    const shadow = this.art('fx-silong-hook-shadow');
+    if (hookArt) {
+      if (shadow) this.keep(owner, this.fx.play(shadow, at, { layer: 'ground', ms: Math.max(60, ms / (shadow.frames ?? 6)) }));
+      this.later(owner, ms - (4 / (hookArt.fps ?? 12)) * 1000, () => this.fx.play(hookArt, at, { layer: 'front' }));
+      return;
+    }
     const drop = Math.min(300, ms);
     this.later(owner, ms - drop, () =>
       this.keep(owner, this.fx.drawFx('front', (g, t) => {
@@ -549,6 +600,19 @@ export class SilongView {
         return t < drop + 120;
       })),
     );
+  }
+
+  /** Where a boss's called mobs come in: fx-silong-call-puff, else a ring of dust in `colour`. */
+  private callPuff(at: Pt, colour: number): void {
+    const art = this.art('fx-silong-call-puff');
+    if (art) this.fx.play(art, at, { layer: 'ground' });
+    else this.burst(at, colour, 1);
+  }
+
+  /** An effect's def, only once its sheet is loaded (else the caller draws its stand-in). */
+  private art(id: string): FxDef | undefined {
+    const def = this.M.fx[id];
+    return def?.file && this.scene.textures.exists(def.file) ? def : undefined;
   }
 
   /** A glint over the real Mono Lisa during her Split. */

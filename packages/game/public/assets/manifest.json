@@ -21622,6 +21622,550 @@
       ],
       "layer": "front",
       "note": "the art folder's silong/ (20 Oct 2026): steam puff; scatter them over frosted tiles when Ang Makinang Yelo dies"
+    },
+    "fx-silong-brine-splash": {
+      "file": "fx/silong/fx-silong-brine-splash.png",
+      "frame": [
+        112,
+        80
+      ],
+      "frames": 6,
+      "fps": 12,
+      "loop": false,
+      "anchor": [
+        56,
+        54
+      ],
+      "layer": "front",
+      "note": "the art folder's silong/fx (21 Oct 2026, script-built): Atsarah's Brine Splash: teal brine bursts out in a ring, radius 2 tiles; play on her tile"
+    },
+    "fx-silong-lid-spin": {
+      "file": "fx/silong/fx-silong-lid-spin.png",
+      "frame": [
+        24,
+        16
+      ],
+      "frames": 4,
+      "fps": 12,
+      "loop": true,
+      "anchor": [
+        12,
+        8
+      ],
+      "layer": "front",
+      "note": "the art folder's silong/fx (21 Oct 2026, script-built): Atsarah's Lid Spin: her jar lid spinning; the game flies it out 7 tiles and back"
+    },
+    "fx-silong-rice-fall": {
+      "file": "fx/silong/fx-silong-rice-fall.png",
+      "frame": [
+        48,
+        64
+      ],
+      "frames": 6,
+      "fps": 10,
+      "loop": false,
+      "anchor": [
+        24,
+        52
+      ],
+      "layer": "front",
+      "note": "the art folder's silong/fx (21 Oct 2026, script-built): Sakristan's Rice Rain: rice pours into a radius-1 circle; then lay fx-sako-rice-spill"
+    },
+    "fx-silong-flop-dust": {
+      "file": "fx/silong/fx-silong-flop-dust.png",
+      "frame": [
+        72,
+        36
+      ],
+      "frames": 6,
+      "fps": 12,
+      "loop": false,
+      "anchor": [
+        36,
+        18
+      ],
+      "layer": "ground",
+      "note": "the art folder's silong/fx (21 Oct 2026, script-built): Sakristan's Belly Flop landing: frosty dust ring, radius 1.5"
+    },
+    "fx-silong-split-poof": {
+      "file": "fx/silong/fx-silong-split-poof.png",
+      "frame": [
+        48,
+        48
+      ],
+      "frames": 6,
+      "fps": 12,
+      "loop": false,
+      "anchor": [
+        24,
+        40
+      ],
+      "layer": "front",
+      "note": "the art folder's silong/fx (21 Oct 2026, script-built): Mono Lisa splitting into three small copies: a white-blue puff on each copy"
+    },
+    "fx-silong-split-glint": {
+      "file": "fx/silong/fx-silong-split-glint.png",
+      "frame": [
+        16,
+        16
+      ],
+      "frames": 4,
+      "fps": 8,
+      "loop": true,
+      "anchor": [
+        8,
+        15
+      ],
+      "layer": "front",
+      "note": "the art folder's silong/fx (21 Oct 2026, script-built): small sparkle over the real Mono Lisa while she is split (the tell); anchor = bottom, sit it over her head"
+    },
+    "fx-silong-charge-dust": {
+      "file": "fx/silong/fx-silong-charge-dust.png",
+      "frame": [
+        32,
+        16
+      ],
+      "frames": 6,
+      "fps": 12,
+      "loop": false,
+      "anchor": [
+        16,
+        8
+      ],
+      "layer": "ground",
+      "note": "the art folder's silong/fx (21 Oct 2026, script-built): frost kicked up behind Sangkalancelot's Cleaver Charge; drop one every tile or two along his path"
+    },
+    "fx-silong-hook-drop": {
+      "file": "fx/silong/fx-silong-hook-drop.png",
+      "frame": [
+        32,
+        96
+      ],
+      "frames": 6,
+      "fps": 12,
+      "loop": false,
+      "anchor": [
+        13,
+        91
+      ],
+      "layer": "front",
+      "note": "the art folder's silong/fx (21 Oct 2026, script-built): a meat hook drops from the rails into its shadow (Sangkalancelot's Hook Swing); hits on frame 4"
+    },
+    "fx-silong-hook-shadow": {
+      "file": "fx/silong/fx-silong-hook-shadow.png",
+      "frame": [
+        72,
+        36
+      ],
+      "frames": 6,
+      "fps": 10,
+      "loop": false,
+      "anchor": [
+        36,
+        18
+      ],
+      "layer": "ground",
+      "note": "the art folder's silong/fx (21 Oct 2026, script-built): the hook's round shadow growing before it lands, radius 1.5; plays with fx-silong-hook-drop"
+    },
+    "fx-silong-ambush-burst": {
+      "file": "fx/silong/fx-silong-ambush-burst.png",
+      "frame": [
+        72,
+        56
+      ],
+      "frames": 6,
+      "fps": 12,
+      "loop": false,
+      "anchor": [
+        36,
+        38
+      ],
+      "layer": "front",
+      "note": "the art folder's silong/fx (21 Oct 2026, script-built): Frosty Tubbs bursting up through the ice under a player, radius 1.5; hits on frame 2"
+    },
+    "fx-silong-ice-slick": {
+      "file": "fx/silong/fx-silong-ice-slick.png",
+      "frame": [
+        32,
+        16
+      ],
+      "frames": 4,
+      "fps": 6,
+      "loop": true,
+      "anchor": [
+        16,
+        8
+      ],
+      "layer": "ground",
+      "note": "the art folder's silong/fx (21 Oct 2026, script-built): one tile of Frosty Tubbs' Ice Slick: lay one on each tile of the cone for 5 s"
+    },
+    "fx-silong-call-puff": {
+      "file": "fx/silong/fx-silong-call-puff.png",
+      "frame": [
+        48,
+        32
+      ],
+      "frames": 6,
+      "fps": 12,
+      "loop": false,
+      "anchor": [
+        24,
+        16
+      ],
+      "layer": "ground",
+      "note": "the art folder's silong/fx (21 Oct 2026, script-built): where a Silong boss's called mobs come in (jars, sacks, tubs, Chompers, Frost Scales)"
+    },
+    "fx-payong-block": {
+      "file": "fx/palengke/fx-payong-block.png",
+      "frame": [
+        32,
+        32
+      ],
+      "frames": 4,
+      "fps": 8,
+      "loop": true,
+      "anchor": [
+        16,
+        26
+      ],
+      "layer": "front",
+      "note": "the art folder's fx/palengke (21 Oct 2026, script-built): over the Payong Flapper while it blocks with its open umbrella"
+    },
+    "fx-payong-poke": {
+      "file": "fx/palengke/fx-payong-poke.png",
+      "frame": [
+        32,
+        24
+      ],
+      "frames": 4,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        4,
+        12
+      ],
+      "layer": "front",
+      "note": "the art folder's fx/palengke (21 Oct 2026, script-built): at the umbrella tip on the poke frame; points right, mirror for left"
+    },
+    "fx-sibuyas-tear-cloud": {
+      "file": "fx/palengke/fx-sibuyas-tear-cloud.png",
+      "frame": [
+        32,
+        32
+      ],
+      "frames": 6,
+      "fps": 8,
+      "loop": true,
+      "anchor": [
+        16,
+        26
+      ],
+      "layer": "front",
+      "note": "the art folder's fx/palengke (21 Oct 2026, script-built): round the player's head for 4 s (Sibuyas Sobber's tears); anchor = bottom, sit it on the head"
+    },
+    "fx-sibuyas-tear-burst": {
+      "file": "fx/palengke/fx-sibuyas-tear-burst.png",
+      "frame": [
+        48,
+        32
+      ],
+      "frames": 5,
+      "fps": 12,
+      "loop": false,
+      "anchor": [
+        24,
+        24
+      ],
+      "layer": "front",
+      "note": "the art folder's fx/palengke (21 Oct 2026, script-built): at the onion when it cries out"
+    },
+    "fx-garapon-ram": {
+      "file": "fx/palengke/fx-garapon-ram.png",
+      "frame": [
+        32,
+        24
+      ],
+      "frames": 5,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        16,
+        16
+      ],
+      "layer": "front",
+      "note": "the art folder's fx/palengke (21 Oct 2026, script-built): glass clink where a Garapon jar hits"
+    },
+    "fx-sako-rice-spill": {
+      "file": "fx/palengke/fx-sako-rice-spill.png",
+      "frame": [
+        64,
+        32
+      ],
+      "frames": 6,
+      "fps": 4,
+      "loop": true,
+      "anchor": [
+        32,
+        16
+      ],
+      "layer": "ground",
+      "note": "the art folder's fx/palengke (21 Oct 2026, script-built): spilled rice under a Sako slam for 3 s (also left by Sakristan's Rice Rain); slows while you stand in it"
+    },
+    "fx-sako-slam-dust": {
+      "file": "fx/palengke/fx-sako-slam-dust.png",
+      "frame": [
+        48,
+        32
+      ],
+      "frames": 6,
+      "fps": 12,
+      "loop": false,
+      "anchor": [
+        24,
+        28
+      ],
+      "layer": "front",
+      "note": "the art folder's fx/palengke (21 Oct 2026, script-built): at the sack on the slam frame"
+    },
+    "fx-mono-chair": {
+      "file": "fx/palengke/fx-mono-chair.png",
+      "frame": [
+        24,
+        24
+      ],
+      "frames": 4,
+      "fps": 12,
+      "loop": true,
+      "anchor": [
+        12,
+        12
+      ],
+      "layer": "front",
+      "note": "the art folder's fx/palengke (21 Oct 2026, script-built): the Monobloc Stack's thrown chair spinning (also Mono Lisa's Chair Barrage); the game moves it"
+    },
+    "fx-mono-chair-land": {
+      "file": "fx/palengke/fx-mono-chair-land.png",
+      "frame": [
+        32,
+        24
+      ],
+      "frames": 5,
+      "fps": 12,
+      "loop": false,
+      "anchor": [
+        16,
+        19
+      ],
+      "layer": "front",
+      "note": "the art folder's fx/palengke (21 Oct 2026, script-built): where a thrown chair lands"
+    },
+    "fx-sangkalan-bite": {
+      "file": "fx/palengke/fx-sangkalan-bite.png",
+      "frame": [
+        32,
+        32
+      ],
+      "frames": 5,
+      "fps": 12,
+      "loop": false,
+      "anchor": [
+        16,
+        20
+      ],
+      "layer": "front",
+      "note": "the art folder's fx/palengke (21 Oct 2026, script-built): at the Sangkalan Chomper's mouth on the bite frame"
+    },
+    "fx-sangkalan-block": {
+      "file": "fx/palengke/fx-sangkalan-block.png",
+      "frame": [
+        24,
+        24
+      ],
+      "frames": 3,
+      "fps": 12,
+      "loop": false,
+      "anchor": [
+        12,
+        20
+      ],
+      "layer": "front",
+      "note": "the art folder's fx/palengke (21 Oct 2026, script-built): grey \"blocked\" arc in front of a mob whose block stopped a hit (Sangkalan Chomper, Payong Flapper, Sangkalancelot)"
+    },
+    "fx-banyera-ripple": {
+      "file": "fx/palengke/fx-banyera-ripple.png",
+      "frame": [
+        48,
+        24
+      ],
+      "frames": 4,
+      "fps": 5,
+      "loop": true,
+      "anchor": [
+        24,
+        12
+      ],
+      "layer": "ground",
+      "note": "the art folder's fx/palengke (21 Oct 2026, script-built): on the floodwater tile where a Banyera Lurker hides"
+    },
+    "fx-banyera-surface": {
+      "file": "fx/palengke/fx-banyera-surface.png",
+      "frame": [
+        64,
+        40
+      ],
+      "frames": 6,
+      "fps": 12,
+      "loop": false,
+      "anchor": [
+        32,
+        34
+      ],
+      "layer": "front",
+      "note": "the art folder's fx/palengke (21 Oct 2026, script-built): the splash as a Banyera Lurker rises"
+    },
+    "fx-timbangan-weigh": {
+      "file": "fx/palengke/fx-timbangan-weigh.png",
+      "frame": [
+        32,
+        32
+      ],
+      "frames": 5,
+      "fps": 12,
+      "loop": false,
+      "anchor": [
+        16,
+        28
+      ],
+      "layer": "front",
+      "note": "the art folder's fx/palengke (21 Oct 2026, script-built): dial flash over a Timbangan Sentinel when its hit is weighted; anchor = bottom, sit it on its dial"
+    },
+    "fx-scale-pan-warning": {
+      "file": "fx/palengke/fx-scale-pan-warning.png",
+      "frame": [
+        96,
+        48
+      ],
+      "frames": 4,
+      "fps": 6,
+      "loop": true,
+      "anchor": [
+        48,
+        24
+      ],
+      "layer": "ground",
+      "note": "the art folder's fx/palengke (21 Oct 2026, script-built): where the Great Scale's pan will land (Pan Slam, radius 2 tiles); under the code's red ring or instead of it"
+    },
+    "fx-scale-pan-impact": {
+      "file": "fx/palengke/fx-scale-pan-impact.png",
+      "frame": [
+        96,
+        64
+      ],
+      "frames": 7,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        48,
+        52
+      ],
+      "layer": "front",
+      "note": "the art folder's fx/palengke (21 Oct 2026, script-built): at the pan on the Pan Slam hit frame: broken tiles, dust and coins"
+    },
+    "fx-scale-weigh-in": {
+      "file": "fx/palengke/fx-scale-weigh-in.png",
+      "frame": [
+        64,
+        64
+      ],
+      "frames": 6,
+      "fps": 8,
+      "loop": true,
+      "anchor": [
+        32,
+        52
+      ],
+      "layer": "front",
+      "note": "the art folder's fx/palengke (21 Oct 2026, script-built): round the player held in the pan (Weigh-in), 8 s at most; anchor = the held player's feet"
+    },
+    "fx-scale-short-weight-se": {
+      "file": "fx/palengke/fx-scale-short-weight-se.png",
+      "frame": [
+        120,
+        63
+      ],
+      "frames": 6,
+      "fps": 10,
+      "loop": false,
+      "anchor": [
+        3,
+        3
+      ],
+      "layer": "ground",
+      "note": "the art folder's fx/palengke (21 Oct 2026, script-built): Kulang sa Timbang: 90 degree cone, 5 tiles, pointing down-right (mirror for down-left / SW); anchor = the Scale's feet, hits on frame 3"
+    },
+    "fx-scale-short-weight-ne": {
+      "file": "fx/palengke/fx-scale-short-weight-ne.png",
+      "frame": [
+        120,
+        63
+      ],
+      "frames": 6,
+      "fps": 10,
+      "loop": false,
+      "anchor": [
+        3,
+        59
+      ],
+      "layer": "ground",
+      "note": "the art folder's fx/palengke (21 Oct 2026, script-built): Kulang sa Timbang: 90 degree cone, 5 tiles, pointing up-right (mirror for up-left / NW); anchor = the Scale's feet, hits on frame 3"
+    },
+    "fx-scale-call": {
+      "file": "fx/palengke/fx-scale-call.png",
+      "frame": [
+        48,
+        32
+      ],
+      "frames": 6,
+      "fps": 10,
+      "loop": false,
+      "anchor": [
+        24,
+        16
+      ],
+      "layer": "ground",
+      "note": "the art folder's fx/palengke (21 Oct 2026, script-built): where each Timbangan Sentinel drops in when the Great Scale calls them (50% HP)"
+    },
+    "fx-scale-enrage": {
+      "file": "fx/palengke/fx-scale-enrage.png",
+      "frame": [
+        64,
+        64
+      ],
+      "frames": 6,
+      "fps": 10,
+      "loop": false,
+      "anchor": [
+        32,
+        32
+      ],
+      "layer": "front",
+      "note": "the art folder's fx/palengke (21 Oct 2026, script-built): at the Great Scale's dial when the needle turns red (25% HP); centre it on the dial"
+    },
+    "fx-scale-bell": {
+      "file": "fx/palengke/fx-scale-bell.png",
+      "frame": [
+        64,
+        64
+      ],
+      "frames": 8,
+      "fps": 8,
+      "loop": true,
+      "anchor": [
+        32,
+        60
+      ],
+      "layer": "front",
+      "note": "the art folder's fx/palengke (21 Oct 2026, script-built): the market bell ringing over the Great Scale when it dies (the finale bell to ring); anchor = bottom, sit it above the Scale"
     }
   },
   "ui": {
@@ -21900,7 +22444,7 @@
         56,
         56
       ],
-      "note": "the Palengke's field boss timer (ui/golem-timer.ts): the Great Scale's dial, cut from the art folder's great-scale/stand/mob-great-scale-boss-stand-sw.png at (27,2); repo-only, a stand-in until the art folder has its own"
+      "note": "the Palengke's field boss timer (ui/golem-timer.ts): the Great Scale's dial and beam stubs, the art folder's ui/ui-great-scale-head.png (21 Oct 2026, cut front-on from its south-facing stand frame)"
     },
     "houseProtected": {
       "file": "ui/ui-house-protected.png",

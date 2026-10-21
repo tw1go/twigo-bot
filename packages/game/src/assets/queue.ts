@@ -21,6 +21,8 @@ export function queueSheet(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Te
 const WARRENS_FX = /^fx-(warrens-|roof-sheet|barong-)/;
 /** Ang Silong's (the hatch's glow loads in the Palengke too). */
 const SILONG_FX = /^fx-silong-/;
+/** The Lumang Palengke's mobs' and the Great Scale's (the Silong's frost mobs and mini bosses use some too). */
+const PALENGKE_FX = /^fx-(payong|sibuyas|garapon|sako|mono|sangkalan|banyera|timbangan|scale)-/;
 
 export function queueTown(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Textures.TextureManager, M: Manifest, map: TownMap): void {
   const img = (f: string) => queueImage(load, textures, f);
@@ -128,6 +130,7 @@ export function queueTown(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Tex
 
   for (const [id, fx] of Object.entries(M.fx)) {
     if (!fx.file || WARRENS_FX.test(id) || SILONG_FX.test(id)) continue; // (the Warrens' and the Silong's own load there: above)
+    if (PALENGKE_FX.test(id) && map.tileset !== 'palengke' && !map.silong) continue; // (the Palengke's: there and in the Silong)
     if (fx.frame) queueSheet(load, textures, fx.file, fx.frame[0], fx.frame[1]);
     else img(fx.file);
   }

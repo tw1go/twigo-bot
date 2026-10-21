@@ -162,7 +162,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   Q7 Aling Conching, Q10 and Q13 Kuya Jun), `gives` (Q7 Tisay's Note), `rewards` (Q11 Suki Card, Q13 Honest Weight),
   `rewardTitle` (Q14 `huling-suki`), the top-level `gapLine` and `questItems` tisay-note / honest-weight / suki-card;
   `items/items.json` the ten quest items (kind `quest`, bound; icons from the art folder's items/quest, 21 Oct 2026, all but
-  honest-weight and suki-card, and ramon-note: those still a blank square in the bag, a violet one on the ground); `classes/stats.json` `inventory.questSlots` 20 (+ `questSlotsNote`); the title Huling Suki in the bot's
+  suki-card: still a blank square in the bag, a violet one on the ground); `classes/stats.json` `inventory.questSlots` 20 (+ `questSlotsNote`); the title Huling Suki in the bot's
   built-in titles (web/titles.ts).
 - The Palengke's dishes and daily orders (20 Oct 2026): `classes/palengke-leveling.json` each dish's `slot` and `stats`
   (`dishesNote`), Q1's `freeDish` (her free bowl of Lugaw), the dailies' `reset` (4 am Manila), `freeDish` and
@@ -179,9 +179,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   from the demo gif) and `mobs/mobs.json` `makinang-yelo` (`noShadow`, `radius`, `top`, `frame`, `attackFrame`); the art
   is the art folder's mobs/makinang-yelo as it is (its stand sheet left out: nothing uses it).
 - The Great Scale (20 Oct 2026): `mobs/mobs.json` `great-scale`; `maps/palengke.json` `boss.active` true and `boss.tile`
-  [139, 109] (+ `tileNote`: was [139, 105], inside its empty frame `palengke-scale-stand`, blocked); `ui/ui-great-scale-head.png`
-  (manifest `ui.greatScaleHead`: its dial cut from great-scale/stand/mob-great-scale-boss-stand-sw.png at (27,2), a stand-in
-  for the HUD timer); `classes/palengke-leveling.json`'s palengke-14 now has a bell step (built in shared `palengke.ts`).
+  [139, 109] (+ `tileNote`: was [139, 105], inside its empty frame `palengke-scale-stand`, blocked); the manifest's
+  `ui.greatScaleHead` (the HUD timer's face; its file the art folder's ui/ui-great-scale-head.png since 21 Oct 2026);
+  `classes/palengke-leveling.json`'s palengke-14 now has a bell step (built in shared `palengke.ts`).
 - The Lumang Palengke (20 Oct 2026): `maps/palengke.json`, `tiles/palengke/`, `props/palengke/` (the art folder's, as they are)
   and the manifest's `props` from its palengke-manifest-snippet.json; `tiles.palengke` is written here (the families counted
   from the files; `plainVariants` / `plainWeight`, `animated` baha / lalim, `banks`, `slow`). `maps/slums.json`: its west gate
@@ -910,8 +910,13 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   losing its target); `weigh` (× (1 + perHp × their HP share: `Target.hpShare` from the vitals), `PlayerHit.mult`, orange
   from `flashAt` and a yellow flash on its dial). Mini bosses wear their kind's `miniLook`; the palengke's leveling for
   their names and size (Mobs `levelingKey`, the 'palengke-leveling' json). Zone mobs never step on the field boss's
-  `arena` where it has no pit (`inArena`). No hurt or death sounds yet (`sounds: false`: none asked for). FX are
-  code-drawn placeholders until the art folder's palengke mob FX come. Dev: `?palengkemobs=demo` (the nearest mob of each
+  `arena` where it has no pit (`inArena`). No hurt or death sounds yet (`sounds: false`: none asked for). Their FX
+  (21 Oct 2026, the art folder's fx/palengke, script-built; manifest fx `fx-payong-*` … `fx-timbangan-*`, loaded on the
+  Palengke and Silong maps only: queue.ts `PALENGKE_FX`): each kind's attack effect on its attack frame (world/mobs.ts
+  `ATTACK_FX`: the Payong's poke and its open umbrella's shimmer, the Sobber's tear burst, the Jars' clink on their target,
+  the Sako's slam dust, the Chomper's bite; a frost recolour plays its original's), the "blocked" arc, the thrown chair
+  and its landing, the Lurker's ripple while hidden and its splash as it rises, the Sentinel's dial flash, the tear cloud
+  and the spilled rice (TownScene); each drawn in code while its sheet isn't loaded (`fxArt`). Dev: `?palengkemobs=demo` (the nearest mob of each
   kind through every anim, a facing a round), `?minibosses=now` (the palengke's too).
   The Great Scale (20 Oct 2026; CONTEXT.md Great Scale, Weigh-in, Bell; its art the art folder's
   monsters/palengke/pixellab-v1/great-scale/anim in `mobs/great-scale/`, eight directions, one look; mobs.json its frames,
@@ -943,8 +948,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   for arrivals. Game: `world/great-scale.ts` `GreatScaleView` (the telegraphs, its move anims timed so the hit frame
   lands on the hit, the held player lifted 12 px in a dashed ring, the pan's sheets drawn in code, dust where the
   Sentinels drop, a white burst on each Pan Slam, the gold bell to click, the boss bar in its arena, the HUD's field
-  boss timer with its dial (manifest ui.greatScaleHead) and "Awake! Go to the hall"); all its FX are code placeholders
-  until the art folder's fx-scale-* come. No sounds yet (`sounds: false`). The CMS's Field boss tab shows both bosses and
+  boss timer with its dial (manifest ui.greatScaleHead) and "Awake! Go to the hall"); its FX the art folder's fx-scale-* (21 Oct 2026:
+  the pan's warning in each Pan Slam circle and its impact, the Weigh-in ring round the held player, Kulang sa Timbang's
+  cone (se / ne art, mirrored for sw / nw) hitting on its frame 3, the Sentinels' call, the enrage at its dial, the bell
+  over its tile; code stand-ins while a sheet isn't loaded) and its HUD head the art folder's ui-great-scale-head. No sounds yet (`sounds: false`). The CMS's Field boss tab shows both bosses and
   wakes either (`CmsDeps.greatScale`, POST /api/boss/spawn { id }). Dev: `?greatscale=now` (wakes it, you beside it; the
   dev server's `/__greatscale`, `&hp=500`). Its art touches its cells' edges in a few sheets (attack e/nw/sw/w at the top,
   cone-s and weigh-s/sw at the bottom, death n/nw/s): reported, not worked around. "Ang Huling Suki" (CONTEXT.md Quest item, Level gap; classes/palengke-leveling.json, shared `palengke.ts`
