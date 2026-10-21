@@ -17,6 +17,8 @@ export interface DishMenuOptions {
   unlocked: (id: string) => boolean;
   unlockedBy: (id: string) => string;
   kusing: () => number;
+  /** A dish's price for you (the Atchara refill at half once you've cleared Ang Silong); its Kusing without. */
+  price?: (id: string) => number;
   /** The dishes on you now (your buffs with a `dish`). */
   on: () => MyBuff[];
   buy: (id: string) => Promise<{ ok: boolean; message?: string } | null>;
@@ -68,9 +70,11 @@ export function openDishMenu(o: DishMenuOptions): Promise<void> {
         if (!open) text.append(el('div', 'dm-unlock', `Unlocks with ${o.unlockedBy(id)}`));
         const buy = el('button', 'dm-buy');
         buy.type = 'button';
-        buy.append(kusingIcon(1), el('span', '', d.kusing.toLocaleString('en-US')));
-        buy.disabled = !open || busy || kusing < d.kusing;
-        buy.title = !open ? `Unlocks with ${o.unlockedBy(id)}` : kusing < d.kusing ? 'Not enough Kusing' : mine ? `Buy again: ${d.minutes} more minutes from now` : `Buy ${d.name}`;
+        const price = o.price?.(id) ?? d.kusing;
+        if (price < d.kusing) name.append(el('span', 'dm-on', 'Half price'));
+        buy.append(kusingIcon(1), el('span', '', price.toLocaleString('en-US')));
+        buy.disabled = !open || busy || kusing < price;
+        buy.title = !open ? `Unlocks with ${o.unlockedBy(id)}` : kusing < price ? 'Not enough Kusing' : mine ? `Buy again: ${d.minutes} more minutes from now` : `Buy ${d.name}`;
         buy.addEventListener('click', () => {
           if (busy) return;
           busy = true;

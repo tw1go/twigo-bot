@@ -213,3 +213,13 @@ function portraitOf(colour: string): string {
   }
   return c.toDataURL();
 }
+
+/** One of them's face for a toast (Mang Pido on his radio): the portrait's first frame, 32 × 32. */
+export function npcFace(id: string): HTMLElement {
+  const c = document.createElement('canvas');
+  c.width = c.height = 32;
+  c.className = 'npc-face';
+  c.style.imageRendering = 'pixelated';
+  figure(c.getContext('2d')!, COLOURS[id] ?? '#6B7280', 4, 2, 2);
+  return c;
+}

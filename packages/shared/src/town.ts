@@ -330,6 +330,10 @@ export type TownClientMessage =
   | { t: 'silong-leave' }
   | { t: 'silong-ride'; yes: boolean }
   | { t: 'silong-up'; floor: SilongFloor }
+  /** Mang Ramon's box (B2's R, within 2 tiles): his note. */
+  | { t: 'silong-ramon' }
+  /** Mang Ramon's note to Kuya Jun (in the Lumang Palengke). */
+  | { t: 'ramon-give' }
   /** Teleport from the Lantern Post you're by to another map's (uses a Return Lantern; shared travel.ts's rules). */
   | { t: 'lantern'; to: string; post?: number }
   /** The buffs on another player (the player box shows their icons), by town id. */
@@ -690,6 +694,12 @@ export type TownServerMessage =
   | { t: 'silong-gate'; gate: TownSilongGate }
   | { t: 'silong-go'; run: string; floor: SilongFloor; key?: boolean; ride?: 'down' | 'up' }
   | { t: 'silong-invite'; run: string; from: string; ms: number }
+  /** What Mang Ramon's box gave: his note, nothing (you hold it, or Kuya Jun has it), no room, or you're too far. */
+  | { t: 'silong-ramon'; result: 'given' | 'have' | 'done' | 'full' | 'far' }
+  /** You were inside as Ang Makinang Yelo fell: Ang Silong cleared (SILONG_FLAGS.cleared now in your quests). */
+  | { t: 'silong-cleared' }
+  /** Kuya Jun took Mang Ramon's note (a Mid Repair Kit for it), or why not. */
+  | { t: 'ramon-thanks'; ok: boolean; message?: string }
   | { t: 'silong-refused'; reason: 'level' | 'quest' | 'full' | 'key' | 'party' | 'gone' | 'slow' | 'floor'; message: string }
   | { t: 'silong-out'; reason: 'left' | 'closed' | 'party'; keyBack?: boolean | 'practice' }
   | { t: 'silong-kick'; ms: number }

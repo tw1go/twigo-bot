@@ -11,6 +11,8 @@ import { toast } from './toast';
 //   per floor (reached or not) with a pip per mini boss, the elevator down's state, the B3 door; Leave.
 // - "Bumaba na kayo?": someone stepped into the open elevator down: Ride along / Stay, while it waits.
 // - The arrival elevator's box: the floors above the run has reached, to ride up alone.
+// - Mang Pido on his radio (`pidoSays`, once a run each, kept in the tab): the first Chill, the first work lamp, the B3
+//   door, the first Freezer Breath. Mang Ramon's note (`showRamonNote`).
 
 const gateLine = (minLevel: number) => `Lv ${minLevel}+ · solo or party · needs 1 Susi ng Silong (back if no mini boss falls)`;
 
@@ -219,4 +221,45 @@ export function showRideUp(floors: { floor: SilongFloor; name: string }[], choos
   }
   body.push(actions);
   void showPopup({ title: 'Freight elevator', body, button: 'Stay', celebrate: false, closeX: true });
+}
+
+/** Mang Pido's radio lines (the brief's four moments; the breath's line is the brief's own). */
+export const PIDO_LINES = {
+  chill: "Pido 'to. Malamig diyan, anak. 'Wag kang tumayo nang matagal: gumalaw ka, o tumabi sa ilaw.",
+  lamp: 'Yung mga ilaw ng trabahador, mainit. Tumabi ka diyan pag nanlalamig ka na.',
+  door: 'Bukas na ang pinto ng Ice Tanks. Nandiyan na ang makina. Ingat ka.',
+  breath: 'Magtago ka sa likod ng yelo!',
+} as const;
+export type PidoMoment = keyof typeof PIDO_LINES;
+
+const PIDO_KEY = 'mk_pido';
+
+/** Mang Pido's line for a moment, once a run (kept in the tab); `say` shows it. */
+export function pidoSays(run: string | null, moment: PidoMoment, say: (text: string) => void): void {
+  if (!run) return;
+  let heard: { run: string; said: string[] } = { run, said: [] };
+  try {
+    const kept = JSON.parse(sessionStorage.getItem(PIDO_KEY) ?? 'null') as typeof heard | null;
+    if (kept?.run === run) heard = kept;
+  } catch {
+    /* (no storage: he may say it again) */
+  }
+  if (heard.said.includes(moment)) return;
+  heard.said.push(moment);
+  try {
+    sessionStorage.setItem(PIDO_KEY, JSON.stringify(heard));
+  } catch {
+    /* (as above) */
+  }
+  say(PIDO_LINES[moment]);
+}
+
+/** Mang Ramon's note, as it comes out of his box. */
+export function showRamonNote(): void {
+  const body = [
+    el('p', 'wr-gate-line', 'A folded note, stiff with frost:'),
+    el('p', 'wr-gate-run', '"Sa makakahanap nito: itinago ko rito sa Silong ang mga tapat na timbang, kung saan hindi sila maaabot ng mga timbangan sa itaas. Ibigay mo ito kay Jun sa karnehan. Alam na niya. — Ramon"'),
+    el('p', 'wr-gate-you', "Bring it to Kuya Jun in the Lumang Palengke."),
+  ];
+  void showPopup({ title: "Mang Ramon's Note", body, button: 'Keep it', celebrate: false, closeX: true });
 }

@@ -9,6 +9,10 @@ import type { FxHandle, FxLayers, Pt } from './fx-layers';
 import type { WalkGrid } from './grid';
 import type { Mob, Mobs } from './mobs';
 import { Telegraphs } from './telegraph';
+import { BuildingLabel } from '../ui/labels';
+import type { PidoMoment } from '../ui/silong';
+import { onMap } from './clicks';
+import { LABEL_DEPTH } from './depth';
 
 // 🧊 An Ang Silong floor in the game (maps/silong-<floor>.json; the server runs the run: bot web/town-silong.ts). This
 // draws what changes and keeps the walking grid in step:
@@ -47,6 +51,10 @@ export interface SilongHooks {
   slick(tiles: [number, number][], ms: number): void;
   /** Belt Rush: both belts at `speed` tiles a second for `ms` (the scene's carry and the belts' animation). */
   rush(ms: number, speed: number): void;
+  /** Mang Pido on his radio, once a run (ui/silong.ts pidoSays). */
+  radio(moment: PidoMoment): void;
+  /** Mang Ramon's box was clicked: the scene walks you there and asks for his note. */
+  ramon(): void;
 }
 
 interface Piece {
@@ -72,6 +80,9 @@ export class SilongView {
   private readonly blocks = new Map<string, { img: Phaser.GameObjects.Image; col: number; row: number; timer: Phaser.Time.TimerEvent }>();
   /** The frost melted (the last boss down): no more steam asked. */
   private melted = false;
+  private ramonZone: Phaser.GameObjects.Zone | null = null;
+  /** Mang Ramon's box's hover label (the scene sizes it with its zoom, as the gates' signs). */
+  ramonLabel: BuildingLabel | null = null;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -91,6 +102,22 @@ export class SilongView {
     // The arrival elevator's tiles are walkable as they are; its cage stays open. The way down is shut till it opens.
     for (const [c, r] of this.block.down) this.grid.block(c, r);
     for (const d of this.block.doors) for (const [c, r] of d.tiles) this.grid.block(c, r);
+    // Mang Ramon's box (B2's R): a click asks for his note.
+    const box = this.block.ramonBox;
+    if (box) {
+      const t = tileToScreen(box[0], box[1]);
+      const zone = scene.add.zone(t.x, t.y - 14, 32, 30).setDepth(LABEL_DEPTH - 2);
+      const label = new BuildingLabel(scene, "Mang Ramon's box", t.x);
+      this.ramonLabel = label;
+      zone.setInteractive({ cursor: 'pointer' });
+      zone.on('pointerover', () => label.show(t.y - 34));
+      zone.on('pointerout', () => label.show(null));
+      zone.on('pointerup', (p: Phaser.Input.Pointer) => {
+        if ((!p.leftButtonReleased() && !p.wasTouch) || !onMap(p, scene.game.canvas)) return;
+        hooks.ramon();
+      });
+      this.ramonZone = zone;
+    }
     const glow = this.M.fx['fx-silong-lamp-glow'];
     for (const [c, r] of this.block.lamps) {
       const t = tileToScreen(c, r);
@@ -138,6 +165,7 @@ export class SilongView {
     }
     if (r.door && !this.doorOpen && this.block.doors.length) {
       this.doorOpen = true;
+      this.hooks.radio('door');
       for (const d of this.block.doors) for (const [c, r2] of d.tiles) this.grid.unblock(c, r2);
       const crack = this.M.fx['fx-silong-frost-crack'];
       for (const p of this.doors) {
@@ -224,6 +252,7 @@ export class SilongView {
         return;
       }
       case 'freezerBreath': {
+        this.hooks.radio('breath');
         const fan = this.block.bossTile;
         if (fan) this.keep(m.id, this.fx.play(this.M.fx['fx-silong-breath-warn-sw'], at(fan), { layer: 'ground', life: m.ms }));
         return;
@@ -356,6 +385,8 @@ export class SilongView {
   /** Every frame: the boss bar while you're in a mini boss's room. */
   update(): void {
     const me = this.hooks.me();
+    // (A work lamp near you on a cold floor: Mang Pido says what they're for.)
+    if (this.block.floor !== 'b1' && this.block.lamps.some(([c, r]) => Math.max(Math.abs(c - me.col), Math.abs(r - me.row)) <= 2)) this.hooks.radio('lamp');
     const room = this.block.rooms.find((r) => r.boss && inRect(r.rect, me.col, me.row));
     const m = room ? this.mobs.get(`boss:${room.boss!.id}`) : undefined;
     this.bar.show(m && !m.dead && m.mini ? { name: m.subtitle ? `${m.mini.name}, ${m.subtitle}` : m.mini.name, level: m.level, hp: m.hp, maxHp: m.maxHp, enraged: m.enraged } : null);
@@ -467,6 +498,8 @@ export class SilongView {
     for (const list of this.timers.values()) for (const t of list) t.remove();
     for (const list of this.handles.values()) for (const h of list) h.kill(0);
     this.bar.destroy();
+    this.ramonZone?.destroy();
+    this.ramonLabel?.text.destroy();
     for (const b of this.blocks.values()) {
       b.timer.remove();
       b.img.destroy();

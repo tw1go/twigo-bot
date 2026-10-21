@@ -261,6 +261,10 @@ export interface TownOptions {
     keys: { count(userId: string): number; use(userId: string): boolean; refund?(userId: string): boolean };
     practice?: { use(userId: string): boolean; refund?(userId: string): boolean };
     access?(userId: string): SilongAccess;
+    /** Those inside as Ang Makinang Yelo fell: they've cleared Ang Silong (its Atchara refill after). */
+    cleared?(members: string[]): void;
+    /** Mang Ramon's box (his note) and Kuya Jun's thanks for it (null, given; else why not). */
+    ramon?: { box(userId: string): 'given' | 'have' | 'done' | 'full'; give(userId: string): string | null };
     /** A Susi ng Silong from Aling Conching's menu (after the finale): null, bought; else why not. */
     buyKey?(userId: string): string | null;
     saved?(runs: { id: string; opener: string; spent: boolean; practice?: boolean }[]): void;
@@ -909,7 +913,19 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         questKill(scale ? credited : withParty(credited, room), { kind: k.kind, mini: !!k.mini, level: k.level });
         questDrops(room, scale ? credited : withParty(credited, room), k);
       }
-      if (srun && k.warrens) silongNews(srun, srun.onKill(srun.floorOf(room)!.floor, k, Date.now()));
+      if (srun && k.warrens) {
+        const was = srun.phase;
+        silongNews(srun, srun.onKill(srun.floorOf(room)!.floor, k, Date.now()));
+        // Cleared just now: everyone inside has cleared Ang Silong (Aling Conching's Atchara refill at half price).
+        if (was !== 'cleared' && srun.phase === 'cleared') {
+          const team = silongInside(srun).map((x) => x.member);
+          opts.silong?.cleared?.(team);
+          for (const member of team) {
+            const o = conns.get(member);
+            if (o) send(o, { t: 'silong-cleared' });
+          }
+        }
+      }
       if (run && k.warrens) {
         const before = run.phase;
         runNews(run, run.onKill(k, Date.now()));
@@ -1644,7 +1660,18 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       case 'silong-leave':
       case 'silong-ride':
       case 'silong-up':
+      case 'silong-ramon':
         return silongMessage(c, m);
+      case 'ramon-give': {
+        // Mang Ramon's note to Kuya Jun, in the Lumang Palengke.
+        if (!opts.silong?.ramon || c.room !== PALENGKE) return;
+        const why = opts.silong.ramon.give(c.userId);
+        if (!why) {
+          console.log(`[silong] ${c.userId} gave Kuya Jun Mang Ramon's note`);
+          tellItems(c);
+        }
+        return send(c, { t: 'ramon-thanks', ok: !why, ...(why ? { message: why } : {}) });
+      }
       case 'lantern':
         return lanternMessage(c, m.to, m.post);
       case 'arena-queue':
@@ -2428,6 +2455,18 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         const why = run.rideUp(c.userId, m.floor);
         if (why) return refuse('floor', why);
         return send(c, { t: 'silong-go', run: run.id, floor: m.floor, ride: 'up' });
+      }
+      case 'silong-ramon': {
+        // Mang Ramon's box on its floor (B2's R), from 2 tiles: his note, once.
+        const box = silongFloor(c.room)?.map.silong.ramonBox;
+        if (!box || !opts.silong.ramon) return;
+        if (Math.max(Math.abs(c.player.col - box[0]), Math.abs(c.player.row - box[1])) > 2) return send(c, { t: 'silong-ramon', result: 'far' });
+        const result = opts.silong.ramon.box(c.userId);
+        if (result === 'given') {
+          console.log(`[silong] ${c.userId} took Mang Ramon's note`);
+          tellItems(c);
+        }
+        return send(c, { t: 'silong-ramon', result });
       }
     }
   };

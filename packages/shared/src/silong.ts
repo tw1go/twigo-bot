@@ -218,3 +218,11 @@ export type ChillRules = ReturnType<typeof chillRules>;
 export const chillMove = (R: ChillRules, stacks: number) => Math.max(0.1, 1 + R.movePct * stacks);
 /** Attack speed with `stacks` of Chill (the time between casts ÷ this). */
 export const chillAttack = (R: ChillRules, stacks: number) => Math.max(0.1, 1 + R.attackPct * stacks);
+
+/** One-off things a character has done in Ang Silong (kept in `quests.flags`): cleared it once (Aling Conching's Atchara
+ *  refill at half price after), Mang Ramon's note handed to Kuya Jun (his box gives no more). */
+export const SILONG_FLAGS = { cleared: 'silong-cleared', ramonDone: 'ramon-note-done' } as const;
+/** The quest item in Mang Ramon's box (B2's R), and what Kuya Jun gives for it. */
+export const RAMON = { note: 'ramon-note', reward: 'mid-repair-kit' } as const;
+/** After the first clear: this dish at this share of its price (silong.json's "Atchara refill at half price"). */
+export const ATCHARA_REFILL = { dish: 'atchara', share: 0.5 } as const;

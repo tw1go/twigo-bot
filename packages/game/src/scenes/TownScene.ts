@@ -26,7 +26,7 @@ import { race as currentRace, raceNow, setRace } from '../net/race';
 import { setRacePortraits } from '../ui/race-bet';
 import { mosangName } from '../ui/race-box';
 import { NpcLife, TALK_LEAVE, TALK_RANGE } from '../world/npc-life';
-import { PalengkeNpcs } from '../world/palengke-npcs';
+import { PalengkeNpcs, npcFace } from '../world/palengke-npcs';
 import { mountHouseCreator } from '../ui/house-creator';
 import { playBusted } from '../ui/casino';
 import { drawBridge } from '../world/bridge';
@@ -95,7 +95,7 @@ import { HALLOWEEN_MOBS, type HalloweenData, cosmeticHatOf, cosmeticTopOf, mobNa
 import { openDishMenu } from '../ui/dish-menu';
 import { lootRolls, rollEndLine } from '../ui/loot-roll';
 import type { DungeonsData, SilongFloor, TownSilongRun, TownWarrensRun } from '@mikazuki/shared';
-import { type ChillRules, chillAttack, chillMove, chillRules, floorOfArea, silongArea } from '@mikazuki/shared';
+import { type ChillRules, RAMON, SILONG_FLAGS, chillAttack, chillMove, chillRules, dishPrice, floorOfArea, silongArea } from '@mikazuki/shared';
 import { MapMenu } from '../ui/map-menu';
 import { firstOpen } from '../net/pwa';
 import { confirmDrop } from '../ui/drop';
@@ -113,7 +113,7 @@ import { Mobs, TONE, showSlowed } from '../world/mobs';
 import { GOLEM_SOUNDS, GolemView } from '../world/golem';
 import { GreatScaleView } from '../world/great-scale';
 import { SilongView } from '../world/silong';
-import { SilongTracker, noteKeyBack, showRideAsk, showRideUp, showSilongGate, tellKeyBack } from '../ui/silong';
+import { SilongTracker, noteKeyBack, pidoSays, showRamonNote, showRideAsk, showRideUp, showSilongGate, tellKeyBack } from '../ui/silong';
 import { loadBoss } from '../assets/queue';
 import { WarrensView } from '../world/warrens';
 import { WarrensTracker, noteTicketBack, showKickCountdown, showWarrensCleared, showWarrensGate, showWarrensInvite, tellTicketBack } from '../ui/warrens';
@@ -732,12 +732,18 @@ export class TownScene extends Phaser.Scene {
           const until = performance.now() + ms;
           for (const [c, r] of tiles) this.slick.set(`${c},${r}`, until);
         },
+        radio: (moment) => pidoSays(this.silongRun?.id ?? null, moment, (text) => this.say(`Mang Pido (radio): ${text}`, 5000, null, npcFace('mang-pido'))),
+        ramon: () => this.toRamon(),
         rush: (ms, speed) => {
           this.beltRush = { until: performance.now() + ms, speed };
           if (this.ground instanceof Terrain) this.ground.speedUp(['belt-e', 'belt-w'], speed / this.beltBase(), ms);
         },
       });
       this.silongView = view;
+      if (view.ramonLabel) {
+        view.ramonLabel.setZoom(this.cameras.main.zoom);
+        this.gateLabels.push(view.ramonLabel);
+      }
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
         view.destroy();
         this.silongTracker?.destroy();
@@ -921,6 +927,7 @@ export class TownScene extends Phaser.Scene {
       this.onArrivalElevator();
     }
     this.lanternTick(time);
+    this.ramonTick(time);
     this.fightTick();
     this.fxLayers.update();
     this.raceNews();
@@ -2718,6 +2725,14 @@ export class TownScene extends Phaser.Scene {
       // Someone went up a level (maybe you): "Level up!" over them with its ring and sparks, and its sound (others' near
       // you, quieter).
       if (m.t === 'chill') return this.chillOn(m.id, charOf(m.id), m.stacks, !!m.puff);
+      if (m.t === 'silong-ramon') return this.ramonResult(m.result);
+      if (m.t === 'ramon-thanks') return this.ramonThanks(m.ok, m.message);
+      if (m.t === 'silong-cleared') {
+        // (Ang Silong cleared: Aling Conching's Atchara refill at half price from now.)
+        const q = adventure()?.quests;
+        if (q && !q.flags?.includes(SILONG_FLAGS.cleared)) (q.flags ??= []).push(SILONG_FLAGS.cleared);
+        return;
+      }
       if (m.t === 'level-up') {
         const mine = m.id === myId;
         if (!mine) this.others.setLevel(m.id, m.level);
@@ -3549,7 +3564,12 @@ export class TownScene extends Phaser.Scene {
     setNpcDialogArt({ box: box ? { url: asset(box.file), slice: box.nineSlice } : null, frame: frame ? { url: asset(frame.file), slice: frame.nineSlice } : null });
     const npcs = new PalengkeNpcs(this, this.objects, list, () => adventure()?.quests.done ?? []);
     // Aling Conching's menu, from her dialog box (members: a guest has no Kusing).
-    npcs.action = (id) => (id === 'aling-conching' && adventure() && adventureData()?.palengke?.dishes ? { label: '🍲 Menu', run: () => void this.openDishes() } : undefined);
+    npcs.action = (id) =>
+      id === 'aling-conching' && adventure() && adventureData()?.palengke?.dishes
+        ? { label: '🍲 Menu', run: () => void this.openDishes() }
+        : id === 'kuya-jun' && countOf(adventure()?.bag ?? [], RAMON.note) // (Mang Ramon's note, from the Silong's B2)
+          ? { label: "📜 Mang Ramon's note", run: () => void this.link?.send({ t: 'ramon-give' }) }
+          : undefined;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => npcs.destroy());
     return npcs;
   }
@@ -3562,6 +3582,7 @@ export class TownScene extends Phaser.Scene {
       unlocked: (id) => !!adventure()?.quests.done.includes(D[id]?.unlockedBy ?? ''),
       unlockedBy: (id) => questDef(D[id]?.unlockedBy ?? '')?.title ?? 'a quest',
       kusing: () => adventure()?.kusing ?? 0,
+      price: (id) => { const s = adventure(); return s ? dishPrice(s, { dishes: D }, id) : (D[id]?.kusing ?? 0); },
       on: () => myBuffs().filter((b) => b.dish),
       buy: (id) => this.buyDish(id),
       // (Her Susi ng Silong, after the finale: classes/dungeons.json silong.key.)
@@ -3663,6 +3684,52 @@ export class TownScene extends Phaser.Scene {
       if (h) this.chillIcons.set(id, h);
     }
     if (puff) this.fxLayers.play(this.M.fx['fx-silong-chill-puff'], head(), { layer: 'front', follow: head });
+    if (puff && id === this.myId) this.silongView && pidoSays(this.silongRun?.id ?? null, 'chill', (text) => this.say(`Mang Pido (radio): ${text}`, 5000, null, npcFace('mang-pido')));
+  }
+
+  // ── Mang Ramon's box (B2's R) and his note to Kuya Jun ──
+
+  /** Walking to his box after a click on it (when), and the ask once you're within 2 tiles. */
+  private ramonWanted = 0;
+  private toRamon(): void {
+    const box = this.map.silong?.ramonBox;
+    if (!box || this.knockedOut) return;
+    const t = this.player.tile;
+    if (Math.max(Math.abs(t.col - box[0]), Math.abs(t.row - box[1])) <= 2) {
+      this.ramonWanted = 0;
+      return void this.link?.send({ t: 'silong-ramon' });
+    }
+    this.ramonWanted = this.time.now;
+    this.goToTile({ col: box[0], row: box[1] }); // (the box is blocked: the walk ends beside it)
+  }
+  private ramonTick(time: number): void {
+    const box = this.map.silong?.ramonBox;
+    if (!this.ramonWanted || !box) return;
+    const t = this.player.tile;
+    if (Math.max(Math.abs(t.col - box[0]), Math.abs(t.row - box[1])) <= 2) this.toRamon();
+    else if (this.player.isIdle && time - this.ramonWanted > 400) this.ramonWanted = 0;
+  }
+  /** What his box gave. */
+  private ramonResult(result: 'given' | 'have' | 'done' | 'full' | 'far'): void {
+    if (result === 'given') {
+      playSound('coin');
+      showRamonNote();
+    } else if (result === 'have') toast("You already have Mang Ramon's note. Bring it to Kuya Jun.", 3200);
+    else if (result === 'done') toast('The box is empty now.', 2600);
+    else if (result === 'full') toast('Make room in your bag first.', 2600, 'bad');
+  }
+  /** Kuya Jun took the note: his scene, then the Mid Repair Kit. */
+  private ramonThanks(ok: boolean, message?: string): void {
+    if (!ok) return toast(message ?? "Kuya Jun can't take it right now.", 3000, 'bad');
+    const npcs = this.npcs instanceof PalengkeNpcs ? this.npcs : null;
+    const lines = [
+      "Sulat 'to ni Mang Ramon... Akala ko nawala na siya nang tuluyan.",
+      'Itinago pala niya ang mga tapat na timbang sa Silong. Kaya pala walang makahanap.',
+      "Salamat, anak. Heto: para sa mga gamit mong nasisira diyan sa ilalim.",
+    ];
+    const done = () => toast('Gained Mid Repair Kit', 3000, 'good');
+    if (npcs) npcs.talk('kuya-jun', this.player.tile, { lines, after: done });
+    else done();
   }
 
   private megaphone: MegaphoneBanner | null = null;

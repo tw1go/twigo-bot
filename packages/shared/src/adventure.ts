@@ -204,9 +204,10 @@ export interface AdventureState {
   cls: string | null;
   /** `rewarded`: done quests whose rewards have been given (one finished before it had rewards gets them on a later
    *  visit, as does one whose rewards had no room); `pieces`: done mini boss quests whose +5 piece has been given
-   *  (classes/leveling.json miniBoss.questDrop; no room: a later visit); `dailyDone`: the day their last daily order was
+   *  (classes/leveling.json miniBoss.questDrop; no room: a later visit); `flags`: one-off things done (Ang Silong cleared,
+   *  Mang Ramon's note handed in: silong.ts SILONG_FLAGS); `dailyDone`: the day their last daily order was
    *  handed in (palengke.ts dailyDay). */
-  quests: { active: QuestProgress[]; done: string[]; rewarded?: string[]; pieces?: string[]; dailyDone?: string };
+  quests: { active: QuestProgress[]; done: string[]; rewarded?: string[]; pieces?: string[]; dailyDone?: string; flags?: string[] };
   /** What's worn in each place. */
   equipped: Partial<Record<EquipPlace, Item>>;
   /** The cosmetics worn (the Costume tab): out of the bag, bound, never stats. */

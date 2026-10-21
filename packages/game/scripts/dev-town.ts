@@ -434,6 +434,7 @@ export function devTown(): Plugin {
         { director: halloween.director },
       );
       const warrensLive = loadWarrens(Object.fromEntries(classes.map((c) => [c.id, c.skills.map((k) => k.level)])));
+      const ramonDone = new Set<string>();
       const silongLive = loadSilong(Object.fromEntries(classes.map((c) => [c.id, c.skills.map((k) => k.level)])));
       const town = attachTown(httpServer as Parameters<typeof attachTown>[0], {
         map: { size: json.size, spawn: json.spawn, blocked: json.blocked, avoid: Object.values((json.gates ?? {}) as Record<string, [number, number][]>).flat(), lanterns: lanternPostsOf(json) },
@@ -527,6 +528,24 @@ export function devTown(): Plugin {
             if (!devGive(items, g, 'susi-ng-silong', {}, devUid)) return 'Your bag is full.';
             g.kusing -= 200_000;
             return null;
+          },
+          cleared: (names) => server.config.logger.info(`[silong] cleared by ${names.join(', ')}`, { timestamp: true }),
+          // Mang Ramon's box and Kuya Jun's thanks on the kept bag (whether he has the note: in memory here).
+          ramon: {
+            box: (name) => {
+              const g = gearOf(name);
+              if (ramonDone.has(name)) return 'done';
+              if (g.bag.some((i) => i?.defId === 'ramon-note')) return 'have';
+              return devGive(items, g, 'ramon-note', {}, devUid) ? 'given' : 'full';
+            },
+            give: (name) => {
+              const g = gearOf(name);
+              if (ramonDone.has(name)) return 'He already has it.';
+              if (!takeKind(g.bag, 'ramon-note', 1)) return "You don't have Mang Ramon's note.";
+              if (!devGive(items, g, 'mid-repair-kit', {}, devUid)) return 'Make room in your bag first.';
+              ramonDone.add(name);
+              return null;
+            },
           },
           saved: (runs) => server.config.logger.info(`[silong] open runs: ${runs.map((r) => `${r.id} (${r.opener}${r.spent ? ', key spent' : ''})`).join(', ') || 'none'}`, { timestamp: true }),
         },

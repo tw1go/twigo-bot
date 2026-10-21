@@ -1,3 +1,4 @@
+import { ATCHARA_REFILL, SILONG_FLAGS } from './silong.js';
 import type { AdventureState, QuestDef, QuestObjectiveDef, QuestReward } from './adventure.js';
 import { objectiveCount } from './leveling.js';
 import { heldCount } from './quests.js';
@@ -237,8 +238,17 @@ export function dishRefusal(s: Pick<AdventureState, 'quests' | 'kusing'>, quests
   const d = dishOf(P, id);
   if (!d) return 'No such dish.';
   if (!s.quests.done.includes(d.unlockedBy)) return `Unlocks with ${quests.find((q) => q.id === d.unlockedBy)?.title ?? 'a quest'}.`;
-  if (s.kusing < d.kusing) return `You need ${d.kusing.toLocaleString('en-US')} Kusing.`;
+  const price = dishPrice(s, P, id);
+  if (s.kusing < price) return `You need ${price.toLocaleString('en-US')} Kusing.`;
   return null;
+}
+
+/** A dish's price for them: its Kusing, the Atchara refill at half once they've cleared Ang Silong (silong.ts). */
+export function dishPrice(s: Pick<AdventureState, 'quests'>, P: Pick<PalengkeData, 'dishes'>, id: string): number {
+  const d = dishOf(P, id);
+  if (!d) return 0;
+  const half = id === ATCHARA_REFILL.dish && !!s.quests.flags?.includes(SILONG_FLAGS.cleared);
+  return half ? Math.round(d.kusing * ATCHARA_REFILL.share) : d.kusing;
 }
 
 /** A dish served free (a quest's `freeDish`): itself, or 'random' = one of the dishes they've unlocked (Lugaw if none). */

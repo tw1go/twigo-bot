@@ -96,7 +96,7 @@ const lookOf = (userId: string): OutfitData | null => {
 };
 import { enhanceFeedLine, parseForgeAction } from './forge.js';
 import { loadItemData, loadPalengkeLeveling, loadStats } from './stats-data.js';
-import { practiceDropFor, refundPracticeTicketFor, usePracticeTicketFor, warrensAccessOf, refundTicketFor, warrenTicketsOf, useTicketFor, kindCountOf, useKindFor, adventureOf, cosmeticsOf, combatOf, fighterOf, forgeFor, petXpFor, dropItemFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townPet, townEquip, townPoints, townQuest, townSkills, trainingArmorFor, questRewardsFor, questPiecesFor, questKillFor, enterAreaFor, questDropsFor, ringBellFor, buyDishFor, silongKeysOf, useSilongKeyFor, refundSilongKeyFor, usePracticeSusiFor, refundPracticeSusiFor, silongAccessOf, buySilongKeyFor, adventurersWithClass } from './adventure.js';
+import { practiceDropFor, refundPracticeTicketFor, usePracticeTicketFor, warrensAccessOf, refundTicketFor, warrenTicketsOf, useTicketFor, kindCountOf, useKindFor, adventureOf, cosmeticsOf, combatOf, fighterOf, forgeFor, petXpFor, dropItemFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townPet, townEquip, townPoints, townQuest, townSkills, trainingArmorFor, questRewardsFor, questPiecesFor, questKillFor, enterAreaFor, questDropsFor, ringBellFor, buyDishFor, silongKeysOf, useSilongKeyFor, refundSilongKeyFor, usePracticeSusiFor, refundPracticeSusiFor, silongAccessOf, buySilongKeyFor, silongClearedFor, ramonBoxFor, ramonGiveFor, adventurersWithClass } from './adventure.js';
 import { renameWithCard } from '../items/rename-card.js';
 import { changeClassWithTicket } from '../items/class-ticket.js';
 import { LAUNCH_REWARD, isPreregistered, launched, preregCount, preregister } from '../prereg/prereg.js';
@@ -1239,6 +1239,8 @@ export function startWebServer(client: Client): void {
               practice: { use: usePracticeSusiFor, refund: refundPracticeSusiFor },
               access: silongAccessOf,
               buyKey: buySilongKeyFor,
+              cleared: (members) => members.forEach(silongClearedFor),
+              ramon: { box: ramonBoxFor, give: ramonGiveFor },
               saved: (runs) => kvSave(SILONG_RUNS, runs),
             },
           }
