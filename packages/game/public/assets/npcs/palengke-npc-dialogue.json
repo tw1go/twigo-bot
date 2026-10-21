@@ -1,0 +1,63 @@
+{
+  "note": "Idle lines for the palengke NPCs (click them outside a quest step): one random line per click, never the same twice in a row, short enough for two rows of the box. Quest lines come from palengke-story.md. Names: the cook is Aling Conching (Mac, 20 Oct 2026). The lines are in English here (repo change, 21 Oct 2026: the art folder's are Tagalog; no Tagalog in the game, Mac).",
+  "npcs": {
+    "aling-conching": {
+      "name": "Aling Conching",
+      "title": "cooks every night, just in case",
+      "portrait": "npcs/npc-aling-conching-portrait.png",
+      "lines": [
+        "Have you eaten? There's still lugaw.",
+        "Forty years I've been here. I'm not leaving.",
+        "Don't mind the onions. They're only crying.",
+        "This market used to be full by four in the morning.",
+        "The Scale used to watch over us. Now we watch it.",
+        "Bring me fresh onions and we'll have sinigang.",
+        "Pido? He's at the gate, counting nothing.",
+        "They'll come back. I can feel it."
+      ]
+    },
+    "mang-pido": {
+      "name": "Mang Pido",
+      "title": "night guard, 35 years",
+      "portrait": "npcs/npc-mang-pido-portrait.png",
+      "lines": [
+        "Thirty-five years a guard here. Nothing left to guard, but I'm still the guard.",
+        "Careful in Tarp Row. The umbrellas bite.",
+        "If you hear footsteps in the Isdaan, that's not a person.",
+        "We weren't allowed to sleep on duty. Now who'd report me?",
+        "My flashlight still has battery. I hope.",
+        "The Scale wakes every two hours. A guard, like me.",
+        "Conching's cooking again. Who for, I don't know.",
+        "Gate's clear. Mostly."
+      ]
+    },
+    "tisay": {
+      "name": "Tisay",
+      "title": "looking for her mother's ledger",
+      "portrait": "npcs/npc-tisay-portrait.png",
+      "lines": [
+        "I'm not doing anything wrong. I'm just looking.",
+        "That's Mama's handwriting in the ledger. I need it.",
+        "Keep quiet. They won't notice us.",
+        "Don't tell Mang Pido I'm here.",
+        "The Isdaan's still wet. Ever since the storm.",
+        "I'm not scared. Just tired.",
+        "I've got a light. That's enough."
+      ]
+    },
+    "kuya-jun": {
+      "name": "Kuya Jun",
+      "title": "the butcher's son",
+      "portrait": "npcs/npc-kuya-jun-portrait.png",
+      "lines": [
+        "I'm looking for my father's cleaver. It was his lucky one.",
+        "He stood right here, every day, for thirty years.",
+        "I don't need help. ...But thanks.",
+        "The Sangkalan isn't just hungry. It's angry.",
+        "He left a letter. I haven't read all of it yet.",
+        "It's quiet here in the Karnehan. Too quiet.",
+        "Bring me iron and I can fix it."
+      ]
+    }
+  }
+}

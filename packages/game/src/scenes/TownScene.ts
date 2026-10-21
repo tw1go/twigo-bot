@@ -427,6 +427,7 @@ export class TownScene extends Phaser.Scene {
     if (this.hood && this.art) for (const st of houseStyles(this.art)) for (const f of houseFiles(this.art, st)) queueImage(this.load, this.textures, f);
     queueTown(this.load, this.textures, this.M, this.map);
     if (this.area === 'town') queueNpcs(this.load, this.textures, this.M);
+    if (this.area === 'palengke') queueNpcs(this.load, this.textures, this.M, 'palengke');
     for (const f of outfitFiles(this.M.characters, this.outfit)) queueImage(this.load, this.textures, f);
     this.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR, (file: Phaser.Loader.File) => assetProblems.add(`failed to load ${file.src}`));
     // (After the character creator the town has usually loaded in the background already.)
@@ -732,7 +733,7 @@ export class TownScene extends Phaser.Scene {
           const until = performance.now() + ms;
           for (const [c, r] of tiles) this.slick.set(`${c},${r}`, until);
         },
-        radio: (moment) => pidoSays(this.silongRun?.id ?? null, moment, (text) => this.say(`Mang Pido (radio): ${text}`, 5000, null, npcFace('mang-pido'))),
+        radio: (moment) => pidoSays(this.silongRun?.id ?? null, moment, (text) => this.say(`Mang Pido (radio): ${text}`, 5000, null, this.pidoFace())),
         ramon: () => this.toRamon(),
         rush: (ms, speed) => {
           this.beltRush = { until: performance.now() + ms, speed };
@@ -3567,7 +3568,7 @@ export class TownScene extends Phaser.Scene {
     const box = this.M.ui.chatWindow;
     const frame = this.M.ui.inventory?.itemFrame;
     setNpcDialogArt({ box: box ? { url: asset(box.file), slice: box.nineSlice } : null, frame: frame ? { url: asset(frame.file), slice: frame.nineSlice } : null });
-    const npcs = new PalengkeNpcs(this, this.objects, list, () => adventure()?.quests.done ?? []);
+    const npcs = new PalengkeNpcs(this, this.M, this.objects, list, () => adventure()?.quests.done ?? [], (obj) => this.tint >= 0 && obj.setTint(this.tint));
     // Aling Conching's menu, from her dialog box (members: a guest has no Kusing).
     npcs.action = (id) =>
       id === 'aling-conching' && adventure() && adventureData()?.palengke?.dishes
@@ -3689,7 +3690,13 @@ export class TownScene extends Phaser.Scene {
       if (h) this.chillIcons.set(id, h);
     }
     if (puff) this.fxLayers.play(this.M.fx['fx-silong-chill-puff'], head(), { layer: 'front', follow: head });
-    if (puff && id === this.myId) this.silongView && pidoSays(this.silongRun?.id ?? null, 'chill', (text) => this.say(`Mang Pido (radio): ${text}`, 5000, null, npcFace('mang-pido')));
+    if (puff && id === this.myId) this.silongView && pidoSays(this.silongRun?.id ?? null, 'chill', (text) => this.say(`Mang Pido (radio): ${text}`, 5000, null, this.pidoFace()));
+  }
+
+  /** Mang Pido's face for his radio lines: his portrait (manifest npcs.portrait), else the stand-in's. */
+  private pidoFace(): HTMLElement {
+    const P = this.M.npcs;
+    return npcFace('mang-pido', P?.palengkeIds?.includes('mang-pido') ? `${import.meta.env.BASE_URL}assets/${P.portrait.file.replace('{id}', 'mang-pido')}` : undefined);
   }
 
   // ── Mang Ramon's box (B2's R) and his note to Kuya Jun ──
