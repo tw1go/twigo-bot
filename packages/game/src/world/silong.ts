@@ -17,6 +17,9 @@ import type { WalkGrid } from './grid';
 // The props it draws are left out of the map's own (net/hood.ts silongTownMap: `silongDrawn`).
 
 const RIDE_MS = 1000;
+/** A cage or door covering you: eased to this. */
+const COVER_ALPHA = 0.45;
+const COVER_BOX = new Phaser.Geom.Rectangle();
 
 interface Piece {
   o: MapObject;
@@ -107,6 +110,17 @@ export class SilongView {
     const p = this.cages.filter((x) => this.isDown(x.o)).sort((a, b) => Math.hypot(a.o.col - at.col, a.o.row - at.row) - Math.hypot(b.o.col - at.col, b.o.row - at.row))[0];
     if (!p || matchMedia('(prefers-reduced-motion: reduce)').matches) return void this.scene.time.delayedCall(p ? 200 : 0, then);
     this.scene.tweens.add({ targets: p.img, y: p.img.y - 160, alpha: 0, duration: RIDE_MS, ease: 'Quad.easeIn', onComplete: then });
+  }
+
+  /** The cages and doors that cover you (drawn over you, overlapping your sprite's box) eased to half, as the map's props
+   *  are: standing in an elevator, you show through its cage. */
+  fadeOver(box: Phaser.Geom.Rectangle, depth: number): void {
+    for (const p of [...this.cages, ...this.doors]) {
+      if (this.scene.tweens.isTweening(p.img)) continue; // (a cage riding up)
+      const over = p.img.depth > depth && Phaser.Geom.Rectangle.Overlaps(p.img.getBounds(COVER_BOX), box);
+      const want = over ? COVER_ALPHA : 1;
+      if (p.img.alpha !== want) p.img.setAlpha(p.img.alpha + Math.sign(want - p.img.alpha) * Math.min(0.1, Math.abs(want - p.img.alpha)));
+    }
   }
 
   /** Whether a tile is in the arrival elevator (riding up starts there). */
