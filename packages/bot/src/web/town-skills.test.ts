@@ -338,7 +338,7 @@ test('over the town\'s socket: a debuff with no mob in range is refused at no co
       mobs: { slums: mobs },
       authenticate: async (req) => new URL(req.url ?? '/', 'http://x').searchParams.get('as'),
       profile: (name) => ({ nickname: name, title: { name: 'Townfolk', color: '#fff' }, outfit: {} as never, cls: cls[name], level: level[name] }),
-      progress: { fighter: (name) => ({ cls: cls[name], level: level[name], points: {} }), kill: (name, mob) => killXp(stats, cls[name], freshProgress(), mob) },
+      progress: { fighter: (name) => ({ cls: cls[name], level: level[name], points: {} }), kill: (name, mob) => killXp(stats, cls[name], freshProgress(stats, cls[name]), mob) },
     });
     await new Promise<void>((ok) => server.listen(0, '127.0.0.1', ok));
     return server;

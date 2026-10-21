@@ -187,7 +187,7 @@ test('levels are saved: XP and kills level them up (points earned), the fight se
   assert.equal(kitOf('lv').level, 4);
   // What the town passes into a fight: class, level, points, everything worn, the skills' levels (Lv 1 each so far).
   const f = fighterOf('lv');
-  assert.deepEqual({ ...f, gear: kinds(f.gear as Item[]) }, { cls: 'slingshot', level: 4, points: {}, gear: ['weapon-training-slingshot', ...armorOf('light')], skills: Array(CLASSES.find((c) => c.id === 'slingshot')!.skills.length).fill(1), moves: { dash: 1, 'step-back': 1 }, buffLevels: { Rally: 1, 'Steady Aim': 1, 'Second Wind': 1 } });
+  assert.deepEqual({ ...f, gear: kinds(f.gear as Item[]) }, { cls: 'slingshot', level: 4, points: {}, gear: ['weapon-training-slingshot', ...armorOf('light')], skills: Array(CLASSES.find((c) => c.id === 'slingshot')!.skills.length).fill(1), moves: { dash: 1, 'step-back': 1 }, buffLevels: Object.fromEntries(CLASSES.find((c) => c.id === 'slingshot')!.buffs!.map((b) => [b.name, 1])) });
   // Far below them, a Tin Can gives less (the low-mob penalty).
   gainXpFor('lv', xpForLevel(S, 12) - xpForLevel(S, 4));
   assert.ok(killFor('lv', can).gained < can.xp);
@@ -311,8 +311,8 @@ test('skill points: banked before a class; then into unlocked skills up to their
   assert.equal(townSkills('sk', { action: 'raise', skill: 'blink' }).message, 'No such skill.'); // the Broom's and Hilot's
   const p = adventureOf('sk').progress;
   assert.deepEqual([p.skills, p.skillPoints], [{ '0': 10, '2': 5 }, 27 - 9 - 4]);
-  // The fight sees the damage skills' levels, in order.
-  assert.deepEqual(fighterOf('sk').skills, [10, 1, 5, 1, 1, 1, 1]);
+  // The fight sees the damage skills' levels, in order (the Lv 21-40 ones at 1 too).
+  assert.deepEqual(fighterOf('sk').skills, [10, 1, 5, 1, 1, 1, 1, ...Array(6).fill(1)]);
   // (Double Tap to its cap 8: 7; Ricochet, Lv 9, to 2: 1.)
   for (const [skill, n] of [['1', 7], ['3', 1]] as const) for (let i = 0; i < n; i++) assert.ok(townSkills('sk', { action: 'raise', skill }).ok, skill);
   assert.equal(adventureOf('sk').progress.skillPoints, 27 - 9 - 4 - 7 - 1);
