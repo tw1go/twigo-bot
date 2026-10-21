@@ -20,7 +20,7 @@ import { type HeldOffer, type Trade, Trades, checkOffer } from './trade.js';
 import { type Inside, type Run, type RunDeps, type RunNews, Warrens, type WarrensAccess, type WarrensMap } from './town-warrens.js';
 import { Silong, type SilongAccess, type SilongInside, type SilongMap, type SilongNews, type SilongRun } from './town-silong.js';
 import type { SilongData, SilongFloor, FriendAsk, FriendView, FriendsState, HalloweenReward, LootGot, PrivacySettings, WarrensData, ChatItemLink, CharacterProgress, QuestProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item, TradeEnd, TradeView } from '@mikazuki/shared';
-import { SILONG_FLOORS, floorOfArea, type LanternPost, type PalengkeData, type Visibility, PALENGKE, VISIBILITIES, dishMs, dishOf, moveSpeedOf, PetXpClock, moveDodgeMs, petRules, petXpForHit, isLanternMap, itemName, itemStats, blockedWithPosts, lanternPostsOf, lanternRefusal, lootRollRules, rollWorthy, partyXpMult, partyXpRange, potionCooldownGroup, skillMpCost, targetPriority, tradeRules } from '@mikazuki/shared';
+import { SILONG_FLOORS, chillMove, chillRules, floorOfArea, type LanternPost, type PalengkeData, type Visibility, PALENGKE, VISIBILITIES, dishMs, dishOf, moveSpeedOf, PetXpClock, moveDodgeMs, petRules, petXpForHit, isLanternMap, itemName, itemStats, blockedWithPosts, lanternPostsOf, lanternRefusal, lootRollRules, rollWorthy, partyXpMult, partyXpRange, potionCooldownGroup, skillMpCost, targetPriority, tradeRules } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
 // messages). The server keeps everyone's tile and checks each step — on the map, not blocked, next to the last
@@ -1159,7 +1159,10 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     // (Slowed: half; a dish's move speed (Pancit) on a battle map: faster.)
     // (Spilled rice under them: slower still, the slowest of the two; a Pancit's speed on top.)
     const slow = Math.min(vitals?.slowFactor(c.userId, now) ?? 1, mobsOf(c.room)?.slowAt(c.player.col, c.player.row, now) ?? 1);
-    const k = slow * (buffs && battle(c.room) ? moveSpeedOf(buffs.effective(c.userId)) : 1);
+    // (Ang Silong's Chill: 5% slower a stack.)
+    const srun = silongOf(c.room);
+    const chill = srun ? chillMove(srun.chillR, srun.chillOf(c.userId)) : 1;
+    const k = slow * chill * (buffs && battle(c.room) ? moveSpeedOf(buffs.effective(c.userId)) : 1);
     c.tokens = Math.min(STEP_BURST * k, c.tokens + ((now - c.refilled) / 1000) * STEPS_PER_SECOND * k);
     c.refilled = now;
     if (c.tokens < 1) return false;
@@ -1194,6 +1197,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         const ok = inside_(m.col, m.row) && walkable_(m.col, m.row) && Math.abs(dc) <= 1 && Math.abs(dr) <= 1 && (dc || dr) && spend(c);
         if (!ok) return send(c, { t: 'snap', col: p.col, row: p.row });
         Object.assign(p, { col: m.col, row: m.row, dir: dirForStep(dc, dr), sit: false });
+        silongOf(c.room)?.stepped(c.userId, Date.now()); // (walking clears Ang Silong's Chill)
         others(c, { t: 'step', id: p.id, col: p.col, row: p.row });
         return tradeRange(c); // walking away from someone you're trading with cancels it
       }
@@ -2308,11 +2312,14 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   // ── Ang Silong ──
 
   const saveSilong = () => opts.silong?.saved?.(SL?.openRuns() ?? []);
+  /** Whether a Sinigang or Lugaw is on them (no Chill). */
+  const CHILL_PROOF = new Set(SL ? chillRules(SL.S).immune.map((d) => dishOf(DISHES, d)?.name).filter(Boolean) : []);
+  const chillProof = (member: string) => !!buffs?.list(member).some((b) => b.cls === 'dish' && CHILL_PROOF.has(b.name));
   /** Who's inside a run now, on which floor. */
   const silongInside = (run: SilongRun): SilongInside[] =>
     [...conns.values()].flatMap((o) => {
       const f = run.floorOf(o.room);
-      return f ? [{ member: o.userId, id: o.player.id, at: [o.player.col, o.player.row] as [number, number], out: !!o.player.out, floor: f.floor }] : [];
+      return f ? [{ member: o.userId, id: o.player.id, at: [o.player.col, o.player.row] as [number, number], out: !!o.player.out, floor: f.floor, immune: chillProof(o.userId) }] : [];
     });
   /** What a run's clock or a kill set off: to its floors' rooms, to members, out with those who must go, and down (or up)
    *  with the riders. */

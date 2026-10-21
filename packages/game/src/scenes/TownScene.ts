@@ -95,7 +95,7 @@ import { HALLOWEEN_MOBS, type HalloweenData, cosmeticHatOf, cosmeticTopOf, mobNa
 import { openDishMenu } from '../ui/dish-menu';
 import { lootRolls, rollEndLine } from '../ui/loot-roll';
 import type { DungeonsData, SilongFloor, TownSilongRun, TownWarrensRun } from '@mikazuki/shared';
-import { floorOfArea, silongArea } from '@mikazuki/shared';
+import { type ChillRules, chillAttack, chillMove, chillRules, floorOfArea, silongArea } from '@mikazuki/shared';
 import { MapMenu } from '../ui/map-menu';
 import { firstOpen } from '../net/pwa';
 import { confirmDrop } from '../ui/drop';
@@ -1535,7 +1535,7 @@ export class TownScene extends Phaser.Scene {
       const S = adventureData()?.stats;
       const cd = (sk && S ? cooldownOf(S, sk, sk.level) : 1) * (1 - (myBuffStats().cooldownPct ?? 0)); // (Calm Mind)
       this.castReady.set(name, now + cd * 1000);
-      this.nextCast = now + CAST_GAP_MS;
+      this.nextCast = now + CAST_GAP_MS / this.chillK(chillAttack); // (Ang Silong's Chill: slower casts)
       const dir = dirToward(m.sprite.x - this.player.sprite.x, m.sprite.y - this.player.sprite.y);
       this.player.strike(SKILL_POSE[idx] ?? 'attack-quick', dir); // (its effects come with the server's answer)
       if (idx < SKILL_SOUNDS) playSet(skillSet(c.id, name)); // your skill fires (its hits: combat-hit as they land)
@@ -2713,6 +2713,7 @@ export class TownScene extends Phaser.Scene {
       }
       // Someone went up a level (maybe you): "Level up!" over them with its ring and sparks, and its sound (others' near
       // you, quieter).
+      if (m.t === 'chill') return this.chillOn(m.id, charOf(m.id), m.stacks, !!m.puff);
       if (m.t === 'level-up') {
         const mine = m.id === myId;
         if (!mine) this.others.setLevel(m.id, m.level);
@@ -3600,7 +3601,39 @@ export class TownScene extends Phaser.Scene {
   private speedFactor(now = performance.now(), rice = false): number {
     // (With `rice`: the server's step budget's rule, the slower of the Bag's slow and spilled rice underfoot.)
     const slow = Math.min(now < this.slowUntil ? this.slowFactor : 1, rice ? this.riceAt(this.player.tile.col, this.player.tile.row) : 1);
-    return slow * (this.battleMap ? moveSpeedOf(myBuffStats()) : 1);
+    return slow * this.chillK(chillMove) * (this.battleMap ? moveSpeedOf(myBuffStats()) : 1);
+  }
+
+  // ── Ang Silong's Chill (the server's: bot web/town-silong.ts) ──
+
+  /** Your stacks of Chill (0 off the Silong's cold floors). */
+  private chill = 0;
+  private chillR: ChillRules | null = null;
+  /** Its icon over each chilled head (by town id). */
+  private readonly chillIcons = new Map<string, FxHandle>();
+  /** A factor of your Chill (its move or attack speed), 1 without. */
+  private chillK(f: (R: ChillRules, stacks: number) => number): number {
+    if (!this.chill) return 1;
+    const S = (this.cache.json.get('dungeons') as DungeonsData | undefined)?.silong;
+    this.chillR ??= S ? chillRules(S) : null;
+    return this.chillR ? f(this.chillR, this.chill) : 1;
+  }
+  /** Someone's Chill changed: fx-silong-chill over their head on its stacks' frame (gone at 0), fx-silong-chill-puff as a
+   *  stack lands; yours slows your walk and casts. */
+  private chillOn(id: string, ch: Character | null | undefined, stacks: number, puff: boolean): void {
+    if (id === this.myId) {
+      this.chill = stacks;
+      this.player.speed = SPEED * this.speedFactor();
+    }
+    this.chillIcons.get(id)?.kill(0);
+    this.chillIcons.delete(id);
+    if (!ch) return;
+    const head = () => ({ x: ch.sprite.x, y: ch.headY - 12 });
+    if (stacks > 0) {
+      const h = this.fxLayers.play(this.M.fx['fx-silong-chill'], head(), { layer: 'front', frames: [Math.min(3, stacks - 1)], ms: 1e9, follow: head });
+      if (h) this.chillIcons.set(id, h);
+    }
+    if (puff) this.fxLayers.play(this.M.fx['fx-silong-chill-puff'], head(), { layer: 'front', follow: head });
   }
 
   private megaphone: MegaphoneBanner | null = null;

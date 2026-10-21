@@ -366,3 +366,54 @@ test('loot: a mini boss its pile and a roll a player; the Ice Machine Lv 40 gear
   const only = p.run.lootFor('b1', fell(p.run, 'b1', 'atsarah', 0), ['stick'], uid, () => 0);
   assert.ok(only.contents.length && only.contents.every((c) => 'kusing' in c), 'Kusing only');
 });
+
+// ── Chill (floorRules.chill) ──
+
+/** The run's clock from `from` to `to` (each second) with these inside; every chill change. */
+function chillPlay(run: SilongRun, from: number, to: number, who: SilongInside[]): { id: string; stacks: number }[] {
+  const out: { id: string; stacks: number }[] = [];
+  for (let t = from; t <= to; t += 1000) {
+    run.setInside(who, t);
+    for (const [, m] of run.step(t, () => true).room) if (m.t === 'chill') out.push({ id: m.id, stacks: m.stacks });
+  }
+  return out;
+}
+
+test('Chill: a stack every 5 s standing still on B2 (up to 4), none on B1, cleared by walking 1 s or a work lamp; a Sinigang or Lugaw: none', () => {
+  const run = open(silong());
+  run.skipTo('b2');
+  const lamp = run.floors.b2.map.silong.lamps[0];
+  const far = run.floors.b2.map.silong.arriveMark;
+  const still = chillPlay(run, 0, 30_000, [me('a', 'b2', far)]);
+  assert.deepEqual(still.map((c) => c.stacks), [1, 2, 3, 4], 'a stack every 5 s, up to 4');
+  assert.equal(run.chillOf('a'), 4);
+  for (let t = 30_100; t <= 31_300; t += 200) run.stepped('a', t);
+  chillPlay(run, 31_400, 31_400, [me('a', 'b2', far)]);
+  assert.equal(run.chillOf('a'), 0, 'walked 1 s: gone');
+  chillPlay(run, 32_000, 45_000, [me('a', 'b2', far)]);
+  assert.ok(run.chillOf('a') > 0);
+  chillPlay(run, 46_000, 46_000, [me('a', 'b2', [lamp[0] + 1, lamp[1]])]);
+  assert.equal(run.chillOf('a'), 0, 'by a work lamp');
+  chillPlay(run, 47_000, 70_000, [{ ...me('a', 'b2', far), immune: true }]);
+  assert.equal(run.chillOf('a'), 0, 'a Sinigang or Lugaw on');
+  chillPlay(run, 71_000, 90_000, [me('a', 'b1', run.floors.b1.map.silong.arriveMark)]);
+  assert.equal(run.chillOf('a'), 0, 'B1 is warm');
+});
+
+test("Chill: the Freezer Breath's 2, the Brine Flood's 1 a second; none once the Ice Machine is down", () => {
+  const run = open(silong());
+  run.skipToPlant();
+  const f = run.floors.b3;
+  f.bosses.chilled.push(['t-a', 2]);
+  chillPlay(run, 0, 0, [me('a', 'b3', [40, 40])]);
+  assert.equal(run.chillOf('a'), 2);
+  f.bosses.flood = { tiles: new Set(['40,40']), until: 10_000 };
+  for (let t = 1000; t <= 2000; t += 1000) {
+    run.stepped('a', t - 100);
+    chillPlay(run, t, t, [me('a', 'b3', [40, 40])]);
+  }
+  assert.equal(run.chillOf('a'), 4, 'a stack a second in the brine (walking or not), up to 4');
+  run.onKill('b3', fell(run, 'b3', 'makinang-yelo', 3000), 3000);
+  chillPlay(run, 4000, 4000, [me('a', 'b3', [40, 40])]);
+  assert.equal(run.chillOf('a'), 0, 'the frost melts');
+});

@@ -1,4 +1,4 @@
-import { type SilongBlock, type SilongData, type SilongFloor, type SilongFloorData, type SilongMapRoom, type TownServerMessage, type TownSilongGate, type TownSilongRun, SILONG_FLOORS, floorBelow, inRect, partyHpScale } from '@mikazuki/shared';
+import { type ChillRules, type SilongBlock, type SilongData, chillRules, type SilongFloor, type SilongFloorData, type SilongMapRoom, type TownServerMessage, type TownSilongGate, type TownSilongRun, SILONG_FLOORS, floorBelow, inRect, partyHpScale } from '@mikazuki/shared';
 import type { LootContent } from './combat-bag.js';
 import { dropBoost, silongBossLoot, silongMiniLoot, silongMobDrops } from './loot.js';
 import { loadDungeons, loadItemData, loadPalengkeLeveling } from './stats-data.js';
@@ -70,10 +70,22 @@ export interface SilongNews {
 }
 const news = (): SilongNews => ({ room: [], to: [], out: [], go: [] });
 
-/** Someone inside a run: on which floor. */
+/** Someone inside a run: on which floor; `immune` to Chill (a Sinigang or Lugaw on). */
 export interface SilongInside extends Inside {
   floor: SilongFloor;
+  immune?: boolean;
 }
+
+/** One player's Chill: its stacks, since when they stood still (or last took a stack), their last step and since when
+ *  they've been walking. */
+interface Chilly {
+  stacks: number;
+  stillSince: number;
+  lastStep: number;
+  movingSince: number;
+}
+/** Steps closer than this keep "moving" going (the page steps every ~170 ms; a turn or a bump in between). */
+const STILL_GAP_MS = 700;
 
 interface Boss {
   id: string;
@@ -157,6 +169,9 @@ export class SilongRun {
   private readonly bosses = new Map<string, Boss>();
   private kicks = new Map<string, number>();
   private scaledFor = 0;
+  /** Chill (B2, B3 till the Ice Machine falls), by member. */
+  private readonly chills = new Map<string, Chilly>();
+  readonly chillR: ChillRules;
 
   constructor(
     readonly id: string,
@@ -171,6 +186,7 @@ export class SilongRun {
     readonly practice = false,
   ) {
     this.room = `silong:${id}`;
+    this.chillR = chillRules(S);
     const data = (f: SilongFloor) => S.floors.find((x) => x.id === f)!;
     this.floors = Object.fromEntries(SILONG_FLOORS.map((f) => [f, new Floor(f, data(f), maps[f], this, deps)])) as Record<SilongFloor, Floor>;
     this.members.add(opener.member);
@@ -280,6 +296,7 @@ export class SilongRun {
       for (const f of SILONG_FLOORS) for (const e of this.floors[f].mobs.scaleHp(partyHpScale(this.S.scaling.mobHp, n), partyHpScale(this.S.scaling.bossHp, n))) out.room.push([this.floors[f].room, e as TownServerMessage]);
     }
     this.resets(now, out);
+    this.chill(now, out);
     for (const f of SILONG_FLOORS) this.elevator(this.floors[f], now, out);
     // Someone who left the party while inside: out after the wait (told once).
     for (const [member] of this.inside) {
@@ -429,6 +446,56 @@ export class SilongRun {
       out.room.push([f.room, this.line(`${b.name} is down. The freight elevator rumbles awake: Bumaba na tayo!`, 'down')]);
     } else if (!door) out.room.push([f.room, this.line(`${b.name} is down.`, 'down')]);
     return out;
+  }
+
+  // ── Chill (silong.floorRules.chill) ──
+
+  /** A step (or a move) by someone inside: they're moving. */
+  stepped(member: string, now: number): void {
+    const c = this.chills.get(member);
+    if (!c) return void this.chills.set(member, { stacks: 0, stillSince: now, lastStep: now, movingSince: now });
+    if (now - c.lastStep > STILL_GAP_MS) c.movingSince = now;
+    c.lastStep = now;
+  }
+
+  /** Their Chill stacks now (0 off a cold floor). */
+  chillOf(member: string): number {
+    return this.chills.get(member)?.stacks ?? 0;
+  }
+
+  /** Each second: a stack for every `everyMs` standing still on a cold floor, one a second in the Brine Flood, the Freezer
+   *  Breath's; cleared by walking `moveMs`, a work lamp within `lampTiles`, a Sinigang or Lugaw on, a knock-out, a warm
+   *  floor (B1), and for good once the Ice Machine falls (the frost melts). Each change to the floor's room. */
+  private chill(now: number, out: SilongNews): void {
+    const R = this.chillR;
+    const breath = new Map<string, number>();
+    for (const f of SILONG_FLOORS) for (const [id, n] of this.floors[f].bosses.chilled.splice(0)) breath.set(id, (breath.get(id) ?? 0) + n);
+    for (const p of this.inside.values()) {
+      const f = this.floors[p.floor];
+      const c = this.chills.get(p.member) ?? { stacks: 0, stillSince: now, lastStep: 0, movingSince: 0 };
+      this.chills.set(p.member, c);
+      const before = c.stacks;
+      let puff = false;
+      const lamp = f.map.silong.lamps.some(([lc, lr]) => Math.max(Math.abs(lc - p.at[0]), Math.abs(lr - p.at[1])) <= R.lampTiles);
+      const walking = now - c.lastStep <= STILL_GAP_MS;
+      if (!f.data.chill || this.phase !== 'running' || p.immune || p.out || lamp) {
+        c.stacks = 0;
+        c.stillSince = now;
+      } else {
+        if (walking) {
+          c.stillSince = now;
+          if (now - c.movingSince >= R.moveMs) c.stacks = 0;
+        } else if (now - Math.max(c.stillSince, c.lastStep) >= R.everyMs) {
+          c.stacks += 1;
+          c.stillSince = now;
+        }
+        const add = (breath.get(p.id) ?? 0) + (f.bosses.flood?.tiles.has(`${p.at[0]},${p.at[1]}`) ? 1 : 0);
+        c.stacks += add;
+        c.stacks = Math.min(R.max, c.stacks);
+      }
+      puff = c.stacks > before;
+      if (c.stacks !== before) out.room.push([f.room, { t: 'chill', id: p.id, stacks: c.stacks, ...(puff ? { puff: true } : {}) }]);
+    }
   }
 
   /** Whether a kill is the last boss's. */

@@ -108,8 +108,10 @@ export class FloorBosses {
   private casting = new Map<string, number>();
   /** Ice blocks standing (the last boss's: tile → until when), each a wall on the floor's map till then. */
   readonly iceBlocks = new Map<string, number>();
-  /** The Brine Flood: the tiles under it and until when (part 4's Chill reads them). */
+  /** The Brine Flood: the tiles under it and until when (the run's Chill reads them). */
   flood: { tiles: Set<string>; until: number } | null = null;
+  /** Freezer Breath's Chill on who it caught (town ids, stacks), until the run takes them. */
+  chilled: [string, number][] = [];
 
   constructor(
     private readonly host: BossHost,
@@ -410,7 +412,12 @@ export class FloorBosses {
         const shape: TelegraphShape = { kind: 'cone', origin: fan, facing: Math.PI / 2, angle: m.angleDeg ?? 120, length: m.length ?? 7 };
         const ev = this.moveEvent(b.mob, m.id, ms, shape, { anim: 'breath-charge', chill: m.chillStacks ?? 2 });
         // Nothing for whoever an ice block stands between them and the fan.
-        return this.queue(b, ev, (t, players) => this.landHits(b.mob, m.id, ev.key, players, (p) => inShape(shape, p) && !this.shielded(fan, p), mult, t, {}, { chill: m.chillStacks ?? 2 }), now + ms, now);
+        const hit = (p: Tile) => inShape(shape, p) && !this.shielded(fan, p);
+        return this.queue(b, ev, (t, players) => {
+          // (Its Chill on whoever it caught: the run's, as it ticks.)
+          for (const [id, p] of players) if (hit(p)) this.chilled.push([id, m.chillStacks ?? 2]);
+          return this.landHits(b.mob, m.id, ev.key, players, hit, mult, t, {}, { chill: m.chillStacks ?? 2 });
+        }, now + ms, now);
       }
       case 'beltRush': {
         const belts = this.host.map.silong.belts;

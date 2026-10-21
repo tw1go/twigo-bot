@@ -693,6 +693,8 @@ export type TownServerMessage =
   | { t: 'silong-refused'; reason: 'level' | 'quest' | 'full' | 'key' | 'party' | 'gone' | 'slow' | 'floor'; message: string }
   | { t: 'silong-out'; reason: 'left' | 'closed' | 'party'; keyBack?: boolean | 'practice' }
   | { t: 'silong-kick'; ms: number }
+  /** Chill on someone on a Silong floor (their town id): its stacks now; `puff` a stack just landed. */
+  | { t: 'chill'; id: string; stacks: number; puff?: boolean }
   | { t: 'silong-ride-ask'; ms: number }
   /** Lantern Posts: off you go (the page loads that map, at its post); why not (your lantern kept); and someone's
    *  teleport seen where it happens (`out`: leaving from there, hidden from its 5th frame; `in`: arriving, shown from its
