@@ -18005,6 +18005,806 @@
       ],
       "walkable": false
     },
+    "palengke-stall-double-gulay-tuyo": {
+      "file": "props/palengke/prop-palengke-stall-double-gulay-tuyo.png",
+      "size": [
+        105,
+        80
+      ],
+      "anchor": [
+        68,
+        31
+      ],
+      "footprint": [
+        2,
+        4
+      ],
+      "walkable": false
+    },
+    "palengke-stall-double-karne-isda": {
+      "file": "props/palengke/prop-palengke-stall-double-karne-isda.png",
+      "size": [
+        107,
+        78
+      ],
+      "anchor": [
+        69,
+        29
+      ],
+      "footprint": [
+        2,
+        4
+      ],
+      "walkable": false
+    },
+    "palengke-stall-double-empty-collapsed": {
+      "file": "props/palengke/prop-palengke-stall-double-empty-collapsed.png",
+      "size": [
+        92,
+        74
+      ],
+      "anchor": [
+        62,
+        25
+      ],
+      "footprint": [
+        2,
+        4
+      ],
+      "walkable": false
+    },
+    "palengke-stall-double-karinderya-empty": {
+      "file": "props/palengke/prop-palengke-stall-double-karinderya-empty.png",
+      "size": [
+        106,
+        81
+      ],
+      "anchor": [
+        69,
+        32
+      ],
+      "footprint": [
+        2,
+        4
+      ],
+      "walkable": false
+    },
+    "palengke-stall-triple-gulay-tuyo-empty": {
+      "file": "props/palengke/prop-palengke-stall-triple-gulay-tuyo-empty.png",
+      "size": [
+        136,
+        106
+      ],
+      "anchor": [
+        100,
+        41
+      ],
+      "footprint": [
+        2,
+        6
+      ],
+      "walkable": false
+    },
+    "palengke-stall-triple-karne-isda-karinderya": {
+      "file": "props/palengke/prop-palengke-stall-triple-karne-isda-karinderya.png",
+      "size": [
+        139,
+        98
+      ],
+      "anchor": [
+        101,
+        33
+      ],
+      "footprint": [
+        2,
+        6
+      ],
+      "walkable": false
+    },
+    "palengke-stall-triple-empty-sagging": {
+      "file": "props/palengke/prop-palengke-stall-triple-empty-sagging.png",
+      "size": [
+        133,
+        105
+      ],
+      "anchor": [
+        98,
+        40
+      ],
+      "footprint": [
+        2,
+        6
+      ],
+      "walkable": false
+    },
+    "palengke-stall-big-gulay-tuyo": {
+      "file": "props/palengke/prop-palengke-stall-big-gulay-tuyo.png",
+      "size": [
+        121,
+        117
+      ],
+      "anchor": [
+        60,
+        52
+      ],
+      "footprint": [
+        4,
+        4
+      ],
+      "walkable": false
+    },
+    "palengke-stall-big-karinderya": {
+      "file": "props/palengke/prop-palengke-stall-big-karinderya.png",
+      "size": [
+        121,
+        112
+      ],
+      "anchor": [
+        60,
+        47
+      ],
+      "footprint": [
+        4,
+        4
+      ],
+      "walkable": false
+    },
+    "palengke-stall-big-collapsed": {
+      "file": "props/palengke/prop-palengke-stall-big-collapsed.png",
+      "size": [
+        121,
+        117
+      ],
+      "anchor": [
+        60,
+        52
+      ],
+      "footprint": [
+        4,
+        4
+      ],
+      "walkable": false
+    },
+    "palengke-stall-big-empty": {
+      "file": "props/palengke/prop-palengke-stall-big-empty.png",
+      "size": [
+        116,
+        118
+      ],
+      "anchor": [
+        58,
+        53
+      ],
+      "footprint": [
+        4,
+        4
+      ],
+      "walkable": false
+    },
+    "palengke-stall-big-wet": {
+      "file": "props/palengke/prop-palengke-stall-big-wet.png",
+      "size": [
+        123,
+        122
+      ],
+      "anchor": [
+        61,
+        57
+      ],
+      "footprint": [
+        4,
+        4
+      ],
+      "walkable": false
+    },
+    "palengke-stall-double-gulay-tuyo-v2": {
+      "file": "props/palengke/prop-palengke-stall-double-gulay-tuyo-v2.png",
+      "size": [
+        105,
+        80
+      ],
+      "anchor": [
+        68,
+        31
+      ],
+      "footprint": [
+        2,
+        4
+      ],
+      "walkable": false
+    },
+    "palengke-stall-double-gulay-tuyo-v3": {
+      "file": "props/palengke/prop-palengke-stall-double-gulay-tuyo-v3.png",
+      "size": [
+        105,
+        80
+      ],
+      "anchor": [
+        68,
+        31
+      ],
+      "footprint": [
+        2,
+        4
+      ],
+      "walkable": false
+    },
+    "palengke-stall-double-karne-isda-v2": {
+      "file": "props/palengke/prop-palengke-stall-double-karne-isda-v2.png",
+      "size": [
+        107,
+        78
+      ],
+      "anchor": [
+        69,
+        29
+      ],
+      "footprint": [
+        2,
+        4
+      ],
+      "walkable": false
+    },
+    "palengke-stall-double-karne-isda-v3": {
+      "file": "props/palengke/prop-palengke-stall-double-karne-isda-v3.png",
+      "size": [
+        107,
+        78
+      ],
+      "anchor": [
+        69,
+        29
+      ],
+      "footprint": [
+        2,
+        4
+      ],
+      "walkable": false
+    },
+    "palengke-stall-double-empty-collapsed-v2": {
+      "file": "props/palengke/prop-palengke-stall-double-empty-collapsed-v2.png",
+      "size": [
+        92,
+        74
+      ],
+      "anchor": [
+        62,
+        25
+      ],
+      "footprint": [
+        2,
+        4
+      ],
+      "walkable": false
+    },
+    "palengke-stall-double-empty-collapsed-v3": {
+      "file": "props/palengke/prop-palengke-stall-double-empty-collapsed-v3.png",
+      "size": [
+        92,
+        74
+      ],
+      "anchor": [
+        62,
+        25
+      ],
+      "footprint": [
+        2,
+        4
+      ],
+      "walkable": false
+    },
+    "palengke-stall-double-karinderya-empty-v2": {
+      "file": "props/palengke/prop-palengke-stall-double-karinderya-empty-v2.png",
+      "size": [
+        106,
+        81
+      ],
+      "anchor": [
+        69,
+        32
+      ],
+      "footprint": [
+        2,
+        4
+      ],
+      "walkable": false
+    },
+    "palengke-stall-double-karinderya-empty-v3": {
+      "file": "props/palengke/prop-palengke-stall-double-karinderya-empty-v3.png",
+      "size": [
+        106,
+        81
+      ],
+      "anchor": [
+        69,
+        32
+      ],
+      "footprint": [
+        2,
+        4
+      ],
+      "walkable": false
+    },
+    "palengke-stall-triple-gulay-tuyo-empty-v2": {
+      "file": "props/palengke/prop-palengke-stall-triple-gulay-tuyo-empty-v2.png",
+      "size": [
+        136,
+        106
+      ],
+      "anchor": [
+        100,
+        41
+      ],
+      "footprint": [
+        2,
+        6
+      ],
+      "walkable": false
+    },
+    "palengke-stall-triple-gulay-tuyo-empty-v3": {
+      "file": "props/palengke/prop-palengke-stall-triple-gulay-tuyo-empty-v3.png",
+      "size": [
+        136,
+        106
+      ],
+      "anchor": [
+        100,
+        41
+      ],
+      "footprint": [
+        2,
+        6
+      ],
+      "walkable": false
+    },
+    "palengke-stall-triple-karne-isda-karinderya-v2": {
+      "file": "props/palengke/prop-palengke-stall-triple-karne-isda-karinderya-v2.png",
+      "size": [
+        139,
+        98
+      ],
+      "anchor": [
+        101,
+        33
+      ],
+      "footprint": [
+        2,
+        6
+      ],
+      "walkable": false
+    },
+    "palengke-stall-triple-karne-isda-karinderya-v3": {
+      "file": "props/palengke/prop-palengke-stall-triple-karne-isda-karinderya-v3.png",
+      "size": [
+        139,
+        98
+      ],
+      "anchor": [
+        101,
+        33
+      ],
+      "footprint": [
+        2,
+        6
+      ],
+      "walkable": false
+    },
+    "palengke-stall-triple-empty-sagging-v2": {
+      "file": "props/palengke/prop-palengke-stall-triple-empty-sagging-v2.png",
+      "size": [
+        133,
+        105
+      ],
+      "anchor": [
+        98,
+        40
+      ],
+      "footprint": [
+        2,
+        6
+      ],
+      "walkable": false
+    },
+    "palengke-stall-triple-empty-sagging-v3": {
+      "file": "props/palengke/prop-palengke-stall-triple-empty-sagging-v3.png",
+      "size": [
+        133,
+        105
+      ],
+      "anchor": [
+        98,
+        40
+      ],
+      "footprint": [
+        2,
+        6
+      ],
+      "walkable": false
+    },
+    "palengke-stall-big-gulay-tuyo-v2": {
+      "file": "props/palengke/prop-palengke-stall-big-gulay-tuyo-v2.png",
+      "size": [
+        121,
+        117
+      ],
+      "anchor": [
+        60,
+        52
+      ],
+      "footprint": [
+        4,
+        4
+      ],
+      "walkable": false
+    },
+    "palengke-stall-big-gulay-tuyo-v3": {
+      "file": "props/palengke/prop-palengke-stall-big-gulay-tuyo-v3.png",
+      "size": [
+        121,
+        117
+      ],
+      "anchor": [
+        60,
+        52
+      ],
+      "footprint": [
+        4,
+        4
+      ],
+      "walkable": false
+    },
+    "palengke-stall-big-karinderya-v2": {
+      "file": "props/palengke/prop-palengke-stall-big-karinderya-v2.png",
+      "size": [
+        121,
+        112
+      ],
+      "anchor": [
+        60,
+        47
+      ],
+      "footprint": [
+        4,
+        4
+      ],
+      "walkable": false
+    },
+    "palengke-stall-big-karinderya-v3": {
+      "file": "props/palengke/prop-palengke-stall-big-karinderya-v3.png",
+      "size": [
+        121,
+        112
+      ],
+      "anchor": [
+        60,
+        47
+      ],
+      "footprint": [
+        4,
+        4
+      ],
+      "walkable": false
+    },
+    "palengke-stall-big-collapsed-v2": {
+      "file": "props/palengke/prop-palengke-stall-big-collapsed-v2.png",
+      "size": [
+        121,
+        117
+      ],
+      "anchor": [
+        60,
+        52
+      ],
+      "footprint": [
+        4,
+        4
+      ],
+      "walkable": false
+    },
+    "palengke-stall-big-collapsed-v3": {
+      "file": "props/palengke/prop-palengke-stall-big-collapsed-v3.png",
+      "size": [
+        121,
+        117
+      ],
+      "anchor": [
+        60,
+        52
+      ],
+      "footprint": [
+        4,
+        4
+      ],
+      "walkable": false
+    },
+    "palengke-stall-big-empty-v2": {
+      "file": "props/palengke/prop-palengke-stall-big-empty-v2.png",
+      "size": [
+        116,
+        118
+      ],
+      "anchor": [
+        58,
+        53
+      ],
+      "footprint": [
+        4,
+        4
+      ],
+      "walkable": false
+    },
+    "palengke-stall-big-empty-v3": {
+      "file": "props/palengke/prop-palengke-stall-big-empty-v3.png",
+      "size": [
+        116,
+        118
+      ],
+      "anchor": [
+        58,
+        53
+      ],
+      "footprint": [
+        4,
+        4
+      ],
+      "walkable": false
+    },
+    "palengke-stall-big-wet-v2": {
+      "file": "props/palengke/prop-palengke-stall-big-wet-v2.png",
+      "size": [
+        123,
+        122
+      ],
+      "anchor": [
+        61,
+        57
+      ],
+      "footprint": [
+        4,
+        4
+      ],
+      "walkable": false
+    },
+    "palengke-stall-big-wet-v3": {
+      "file": "props/palengke/prop-palengke-stall-big-wet-v3.png",
+      "size": [
+        123,
+        122
+      ],
+      "anchor": [
+        61,
+        57
+      ],
+      "footprint": [
+        4,
+        4
+      ],
+      "walkable": false
+    },
+    "palengke-stall-empty-v2": {
+      "file": "props/palengke/prop-palengke-stall-empty-v2.png",
+      "size": [
+        63,
+        60
+      ],
+      "anchor": [
+        31,
+        27
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false
+    },
+    "palengke-stall-empty-v3": {
+      "file": "props/palengke/prop-palengke-stall-empty-v3.png",
+      "size": [
+        63,
+        60
+      ],
+      "anchor": [
+        31,
+        27
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false
+    },
+    "palengke-stall-gulay-v2": {
+      "file": "props/palengke/prop-palengke-stall-gulay-v2.png",
+      "size": [
+        56,
+        58
+      ],
+      "anchor": [
+        28,
+        25
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false
+    },
+    "palengke-stall-gulay-v3": {
+      "file": "props/palengke/prop-palengke-stall-gulay-v3.png",
+      "size": [
+        56,
+        58
+      ],
+      "anchor": [
+        28,
+        25
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false
+    },
+    "palengke-stall-tuyo-v2": {
+      "file": "props/palengke/prop-palengke-stall-tuyo-v2.png",
+      "size": [
+        61,
+        63
+      ],
+      "anchor": [
+        30,
+        30
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false
+    },
+    "palengke-stall-tuyo-v3": {
+      "file": "props/palengke/prop-palengke-stall-tuyo-v3.png",
+      "size": [
+        61,
+        63
+      ],
+      "anchor": [
+        30,
+        30
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false
+    },
+    "palengke-stall-karne-v2": {
+      "file": "props/palengke/prop-palengke-stall-karne-v2.png",
+      "size": [
+        49,
+        57
+      ],
+      "anchor": [
+        24,
+        24
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false
+    },
+    "palengke-stall-karne-v3": {
+      "file": "props/palengke/prop-palengke-stall-karne-v3.png",
+      "size": [
+        49,
+        57
+      ],
+      "anchor": [
+        24,
+        24
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false
+    },
+    "palengke-stall-isda-v2": {
+      "file": "props/palengke/prop-palengke-stall-isda-v2.png",
+      "size": [
+        54,
+        57
+      ],
+      "anchor": [
+        27,
+        24
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false
+    },
+    "palengke-stall-isda-v3": {
+      "file": "props/palengke/prop-palengke-stall-isda-v3.png",
+      "size": [
+        54,
+        57
+      ],
+      "anchor": [
+        27,
+        24
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false
+    },
+    "palengke-stall-karinderya-v2": {
+      "file": "props/palengke/prop-palengke-stall-karinderya-v2.png",
+      "size": [
+        51,
+        60
+      ],
+      "anchor": [
+        25,
+        27
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false
+    },
+    "palengke-stall-karinderya-v3": {
+      "file": "props/palengke/prop-palengke-stall-karinderya-v3.png",
+      "size": [
+        51,
+        60
+      ],
+      "anchor": [
+        25,
+        27
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false
+    },
+    "palengke-stall-collapsed-v2": {
+      "file": "props/palengke/prop-palengke-stall-collapsed-v2.png",
+      "size": [
+        62,
+        62
+      ],
+      "anchor": [
+        31,
+        29
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false
+    },
+    "palengke-stall-collapsed-v3": {
+      "file": "props/palengke/prop-palengke-stall-collapsed-v3.png",
+      "size": [
+        62,
+        62
+      ],
+      "anchor": [
+        31,
+        29
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "walkable": false
+    },
     "silong-crate-wood": {
       "file": "props/silong/prop-silong-crate-wood.png",
       "size": [
