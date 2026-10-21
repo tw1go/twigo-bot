@@ -19,6 +19,12 @@ import { inShape } from './town-warrens.js';
 //   line at the farthest player: he charges down it, stopping at walls), Hook Swing (his Chompers, then hook shadows).
 // • Frosty Tubbs: Ambush (under the ice, then up under a circle on a random player), Ice Slick (a cone of floor turned
 //   to ice for a while: the page slides you on it), Tub Call (Lurkers out of the tanks).
+// • Ang Makinang Yelo (the last boss, B3's Ice Plant; never moves, its fan faces down-left from the map's bossTile):
+//   Ice Block Drop (red tiles under up to three players, then blocks that stand as walls for 12 s), Freezer Breath (a
+//   120° cone from its fan: nothing for whoever an ice block stands between), Belt Rush (both belts fast for a while, a
+//   line down one of them), Brine Flood (from 70%: every Ice Plant floor tile but the pallets flooded for 6 s; its Chill
+//   is part 4's), Call the Frost (Frost Scales out of the tanks' side of the hall at 75%, 50% and 25%), its enrage at
+//   25% (every move sooner, five blocks a drop, red eye lamps).
 // Pure (the room is its hands), tested in town-silong.test.ts.
 
 type Tile = [number, number];
@@ -37,7 +43,7 @@ interface Move {
   angleDeg?: number;
   count?: number;
   atkMult?: number;
-  atHp?: number[];
+  atHp?: number | number[];
   ms?: number;
   copies?: number;
   projectiles?: number;
@@ -50,6 +56,11 @@ interface Move {
   leaves?: { ms: number; slowPct: number };
   calls?: { kind: string; count: number; where: string };
   then?: { every: number; shadows: number; telegraphMs: number; radius: number; atkMult: number };
+  fromHp?: number;
+  chillStacks?: number;
+  beltSpeedTilesPerSec?: number;
+  attackSpeed?: number;
+  iceBlockDropCount?: number;
 }
 
 interface Boss {
@@ -63,6 +74,9 @@ interface Boss {
   engaged: boolean;
   /** Its hooks swinging (Sangkalancelot, from his threshold): when the next shadows fall. */
   hooksAt: number | null;
+  /** The last boss; enraged (every move sooner, more blocks). */
+  last?: boolean;
+  enraged?: boolean;
 }
 
 interface Pending {
@@ -74,7 +88,7 @@ interface Pending {
 /** What a floor's bosses need of it: its mob room, its map's rooms and tiles, a run's numbers (a practice run's 60%). */
 export interface BossHost {
   mobs: MobRoom;
-  map: { blocked: number[][]; ground?: string[][]; silong: { rooms: SilongMapRoom[]; belts: { e: Tile[]; w: Tile[] } } };
+  map: { blocked: number[][]; ground?: string[][]; silong: { rooms: SilongMapRoom[]; belts: { e: Tile[]; w: Tile[] }; pallets: Tile[]; bossTile: Tile | null } };
   weaker<T extends { hp: number; atk: number }>(s: T): T;
 }
 
@@ -92,11 +106,17 @@ export class FloorBosses {
   private calls = 0;
   /** A boss casting: nothing else from it until then. */
   private casting = new Map<string, number>();
+  /** Ice blocks standing (the last boss's: tile → until when), each a wall on the floor's map till then. */
+  readonly iceBlocks = new Map<string, number>();
+  /** The Brine Flood: the tiles under it and until when (part 4's Chill reads them). */
+  flood: { tiles: Set<string>; until: number } | null = null;
 
   constructor(
     private readonly host: BossHost,
     data: SilongFloorData,
     private readonly random: () => number,
+    /** The last boss, on the floor whose map has its room (B3). */
+    last: (SilongMiniBoss & { title?: string }) | null = null,
   ) {
     for (const r of data.rooms) {
       const def = r.miniBoss;
@@ -105,6 +125,12 @@ export class FloorBosses {
       const mob = `boss:${def.id}`;
       const moves = def.mechanics as unknown as Move[];
       this.bosses.set(mob, { def, mob, room, data: r, moves, next: new Map(), crossed: new Set(), engaged: false, hooksAt: null });
+    }
+    const lastRoom = host.map.silong.rooms.find((x) => x.boss?.last);
+    const lastData = lastRoom && data.rooms.find((r) => r.id === lastRoom.id);
+    if (last && lastRoom && lastData) {
+      const mob = `boss:${last.id}`;
+      this.bosses.set(mob, { def: last, mob, room: lastRoom, data: lastData, moves: last.mechanics as unknown as Move[], next: new Map(), crossed: new Set(), engaged: false, hooksAt: null, last: true });
     }
   }
 
@@ -124,7 +150,13 @@ export class FloorBosses {
     if (!b) return [];
     const had = this.pending.some((p) => p.boss === mob);
     this.pending = this.pending.filter((p) => p.boss !== mob);
-    Object.assign(b, { engaged: false, hooksAt: null });
+    Object.assign(b, { engaged: false, hooksAt: null, enraged: false });
+    if (b.last) {
+      // Its blocks melt away and the flood drains (the page's go with its boss-cancel).
+      for (const k of this.iceBlocks.keys()) this.unblock(k);
+      this.iceBlocks.clear();
+      this.flood = null;
+    }
     b.next.clear();
     b.crossed.clear();
     this.casting.delete(mob);
@@ -144,6 +176,13 @@ export class FloorBosses {
       this.pending = this.pending.filter((p) => p.at > now);
       for (const p of due) events.push(...p.land(now, players));
     }
+    // Ice blocks whose time is up: gone, their tiles open again.
+    for (const [k, until] of this.iceBlocks) {
+      if (now < until) continue;
+      this.iceBlocks.delete(k);
+      this.unblock(k);
+    }
+    if (this.flood && now >= this.flood.until) this.flood = null;
     for (const b of this.bosses.values()) {
       const info = this.mobs.mobInfo(b.mob, now);
       if (!info || info.dead) continue;
@@ -161,12 +200,35 @@ export class FloorBosses {
         events.push(...this.hookShadows(b, hooks, near, now));
         continue;
       }
-      const m = b.moves.find((x) => x.every && now >= (b.next.get(x.id) ?? Infinity));
+      const share = info.hp / info.maxHp;
+      const m = b.moves.find((x) => x.every && now >= (b.next.get(x.id) ?? Infinity) && (x.fromHp === undefined || share <= x.fromHp));
       if (!m) continue;
-      b.next.set(m.id, now + m.every! * 1000);
+      b.next.set(m.id, now + (m.every! * 1000) / this.speed(b));
       events.push(...this.start(b, m, info.at, info.foe, near, now));
     }
     return events;
+  }
+
+  /** Enraged, the last boss's moves come this much faster (its enrage's attackSpeed). */
+  private speed(b: Boss): number {
+    return b.enraged ? (b.moves.find((m) => m.id === 'enrage')?.attackSpeed ?? 1) : 1;
+  }
+
+  /** An ice block's tile open again (it was floor before). */
+  private unblock(k: string): void {
+    const [c, r] = k.split(',').map(Number);
+    if (this.host.map.blocked[r]) this.host.map.blocked[r][c] = 0;
+  }
+
+  /** Whether an ice block stands between `from` and `to` (on the straight line between their tiles' middles). */
+  private shielded(from: Tile, to: Tile): boolean {
+    if (!this.iceBlocks.size) return false;
+    const d = hyp(from, to);
+    for (let k = 0.5; k < d; k += 0.25) {
+      const t: Tile = [Math.round(from[0] + ((to[0] - from[0]) * k) / d), Math.round(from[1] + ((to[1] - from[1]) * k) / d)];
+      if (key(t) !== key(to) && this.iceBlocks.has(key(t))) return true;
+    }
+    return false;
   }
 
   /** A boss's HP fell: its thresholds (calls, Split, Hook Swing). */
@@ -177,7 +239,7 @@ export class FloorBosses {
     const share = info.hp / info.maxHp;
     const events: MobEvent[] = [];
     for (const m of b.moves) {
-      for (const at of m.atHp ?? []) {
+      for (const at of [m.atHp ?? []].flat()) {
         const k = `${m.id}:${at}`;
         if (share > at || b.crossed.has(k)) continue;
         b.crossed.add(k);
@@ -325,6 +387,55 @@ export class FloorBosses {
           ], now + ms, now),
         ];
       }
+      case 'iceBlockDrop': {
+        const n = b.enraged ? (b.moves.find((x) => x.id === 'enrage')?.iceBlockDropCount ?? m.count ?? 3) : (m.count ?? 3);
+        const under = this.draw(near, n).map(([, p]) => p);
+        const rest = this.draw(this.floorOf(b), n - under.length, (t, drawn) => [...under, ...drawn].every((x) => hyp(x, t) >= 2));
+        const tiles = [...under, ...rest];
+        const shape: TelegraphShape = { kind: 'tiles', tiles };
+        const blockMs = m.leaves?.ms ?? 12_000;
+        const ev = this.moveEvent(b.mob, m.id, ms, shape, { anim: 'drop', blockMs });
+        return this.queue(b, ev, (t, players) => {
+          // Each block a wall till its time is up.
+          for (const [c, r] of tiles) {
+            this.iceBlocks.set(key([c, r]), t + blockMs);
+            this.host.map.blocked[r][c] = 1;
+          }
+          return this.landHits(b.mob, m.id, ev.key, players, (p) => inShape(shape, p), mult, t, {}, { blocks: tiles, ms: blockMs });
+        }, now + ms, now);
+      }
+      case 'freezerBreath': {
+        const fan = this.host.map.silong.bossTile ?? at;
+        // Down-left on the screen: along +row on the grid.
+        const shape: TelegraphShape = { kind: 'cone', origin: fan, facing: Math.PI / 2, angle: m.angleDeg ?? 120, length: m.length ?? 7 };
+        const ev = this.moveEvent(b.mob, m.id, ms, shape, { anim: 'breath-charge', chill: m.chillStacks ?? 2 });
+        // Nothing for whoever an ice block stands between them and the fan.
+        return this.queue(b, ev, (t, players) => this.landHits(b.mob, m.id, ev.key, players, (p) => inShape(shape, p) && !this.shielded(fan, p), mult, t, {}, { chill: m.chillStacks ?? 2 }), now + ms, now);
+      }
+      case 'beltRush': {
+        const belts = this.host.map.silong.belts;
+        const which: 'e' | 'w' = this.random() < 0.5 ? 'e' : 'w';
+        const belt = [...belts[which]].sort((x, y) => x[0] - y[0] || x[1] - y[1]);
+        if (!belt.length) return [];
+        const tiles = new Set(belt.map(key));
+        const shape: TelegraphShape = { kind: 'line', from: belt[0], to: belt[belt.length - 1], width: m.width ?? 1 };
+        const rushMs = m.ms ?? 4000;
+        const ev = this.moveEvent(b.mob, m.id, ms, shape, { anim: 'rush', belt: which, ms: rushMs, speed: m.beltSpeedTilesPerSec ?? 5 });
+        return this.queue(b, ev, (t, players) => this.landHits(b.mob, m.id, ev.key, players, (p) => tiles.has(key(p)), mult, t, {}, { belt: which, ms: rushMs }), now + ms, now);
+      }
+      case 'brineFlood': {
+        // Every Ice Plant floor tile but the pallets (2 × 2 each).
+        const pallets = new Set(this.host.map.silong.pallets.flatMap(([c, r]) => [key([c, r]), key([c + 1, r]), key([c, r + 1]), key([c + 1, r + 1])]));
+        const [c0, r0, c1, r1] = b.room.rect;
+        const tiles: Tile[] = [];
+        for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) if ((!this.host.map.blocked[r]?.[c] || this.iceBlocks.has(key([c, r]))) && !pallets.has(key([c, r]))) tiles.push([c, r]);
+        const floodMs = m.ms ?? 6000;
+        const ev = this.moveEvent(b.mob, m.id, ms, undefined, { anim: 'flood', ms: floodMs });
+        return this.queue(b, ev, (t) => {
+          this.flood = { tiles: new Set(tiles.map(key)), until: t + floodMs };
+          return [{ t: 'boss-hit', id: b.mob, move: m.id, key: ev.key, hits: [], data: { flood: tiles, ms: floodMs } }];
+        }, now + ms, now);
+      }
       case 'iceSlick': {
         const target = near.find(([id]) => id === foe) ?? [...near].sort((x, y) => hyp(x[1], at) - hyp(y[1], at))[0];
         const facing = Math.atan2(target[1][1] - at[1], target[1][0] - at[0]);
@@ -353,13 +464,15 @@ export class FloorBosses {
   }
 
   /** Mobs a boss calls: at its room's edge (or out of the tanks), its room's kind and numbers, after a moment. */
-  private call(b: Boss, m: Move, now: number, ms = 600): MobEvent[] {
+  private call(b: Boss, m: Move, now: number, ms = 600, side?: 'west'): MobEvent[] {
     const n = m.calls?.count ?? 2;
     const floor = this.floorOf(b);
     const set = new Set(floor.map(key));
-    const tanks = m.calls?.where.includes('tank');
+    const tanks = m.calls?.where.includes('tank') && !side;
     const edge = floor.filter(([c, r]) =>
-      tanks
+      side === 'west'
+        ? c <= b.room.rect[0] + 3
+        : tanks
         ? [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dc, dr]) => this.host.map.ground?.[r + dr]?.[c + dc] === 'tank')
         : [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dc, dr]) => !set.has(key([c + dc, r + dr]))),
     );
@@ -378,6 +491,13 @@ export class FloorBosses {
       case 'sackCall':
       case 'tubCall':
         return this.call(b, m, now);
+      case 'callTheFrost':
+        // Frost Scales out of the tanks' side of the hall (its west end), its call anim first.
+        return this.call(b, m, now, 600, 'west');
+      case 'enrage':
+        b.enraged = true;
+        for (const [id, t] of b.next) b.next.set(id, now + (t - now) / this.speed(b));
+        return [this.moveEvent(b.mob, 'enrage', 0)];
       case 'hookSwing':
         // His Chompers, then the hooks start swinging.
         b.hooksAt = now + (m.then?.every ?? 6) * 1000;

@@ -379,7 +379,7 @@ export class Mobs {
     const S = this.M.fx.shadow as unknown as { file: string; size: [number, number]; anchor: [number, number] } | undefined;
     // Its kind's size of shadow (mobs.json), on the ground at its anchor (a floating one's too): the shadow art's look
     // drawn at that size (scaled up, the golem's went blocky), else the art itself.
-    const shadow = !S || !this.scene.textures.exists(S.file) ? null
+    const shadow = !S || !this.scene.textures.exists(S.file) || data?.noShadow ? null
       : data?.shadow ? this.scene.add.image(0, 0, this.shadowSheet(S.file, ...(data.shadow.map((n) => Math.round(n * (data.scale ?? 1))) as [number, number])))
       : this.scene.add.image(0, 0, S.file).setOrigin(S.anchor[0] / S.size[0], S.anchor[1] / S.size[1]);
     // Its kind's level and HP (the server's snapshot says the same).
@@ -744,7 +744,7 @@ export class Mobs {
     const m = this.place(zone, def, data, { col: s.col, row: s.row }, s.id, null);
     m.add = true;
     m.kind = s.kind!;
-    if (area) m.radius = s.radius ?? 0; // (a Scrapling has the golem's art, not its body)
+    if (area || s.boss === 'last') m.radius = s.radius ?? 0; // (a Scrapling has the golem's art, not its body; Ang Makinang Yelo's body)
     if (def.directions.length === 1) m.faces = def.directions[0];
     if (s.field) {
       // A field boss run by its director (the Great Scale): its name in red always over it, where it fights.
@@ -758,6 +758,7 @@ export class Mobs {
         m.shadow?.destroy(); // (Barong-Barong stands in its own heap)
         m.shadow = null;
       }
+      if (s.title) m.subtitle = s.title; // (Ang Makinang Yelo's "the Ice Machine")
       this.showLabel(m);
     }
     if (this.events?.kinds.has(s.kind!)) {

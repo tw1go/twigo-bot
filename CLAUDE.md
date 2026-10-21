@@ -171,7 +171,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   the manifest's `tiles.silong` (rim and cap borrowed from the Slums': no Silong art), `silong-*` props, `fx-silong-*`
   and the four frost mobs, `mobs/mobs.json` their entries, `maps/palengke.json` `arrive.silong`, stats.json
   `mobBehaviour.sameAs`, `classes/palengke-leveling.json` `palengke-15` (Ngayon Na), palengke-14's `nextUnlock` 37 and
-  `dailies.unlockedBy`.
+  `dailies.unlockedBy`. Ang Makinang Yelo (21 Oct 2026): the manifest's `mobs['makinang-yelo']` (its `hitFrames` guessed
+  from the demo gif) and `mobs/mobs.json` `makinang-yelo` (`noShadow`, `radius`, `top`, `frame`, `attackFrame`); the art
+  is the art folder's mobs/makinang-yelo as it is (its stand sheet left out: nothing uses it).
 - The Great Scale (20 Oct 2026): `mobs/mobs.json` `great-scale`; `maps/palengke.json` `boss.active` true and `boss.tile`
   [139, 109] (+ `tileNote`: was [139, 105], inside its empty frame `palengke-scale-stand`, blocked); `ui/ui-great-scale-head.png`
   (manifest `ui.greatScaleHead`: its dial cut from great-scale/stand/mob-great-scale-boss-stand-sw.png at (27,2), a stand-in
@@ -1016,9 +1018,21 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `setFlags` hidden) and Ice Slick (a cone of ice for 5 s), the calls; a mini boss's moves stop as it resets or falls.
   The ice slide (page only, TownScene `iceSlide`): stopping on the floor's `ice` or Ice Slick's tiles you slide 2 more
   tiles the way you were going (`SLIDE_TILES`), stopping at walls. Game: `world/silong.ts` draws the moves (code
-  placeholders) and the boss bar in a mini boss's room. Its loot, Chill, belts, brine and Ang Makinang Yelo come in the
-  next PRs (no drops yet). Dev: `?silong=solo` / `?silong=b3` (the dev
-  server's `/__silong`: a free run, every mini boss above that floor down), `?give=susi-ng-silong::2`.
+  placeholders) and the boss bar in a mini boss's room. Ang Makinang Yelo (part 3, 21 Oct 2026; the same `FloorBosses`
+  on B3, `last`): placed on its body's (K) middle, still and silent, its reach as far as the body goes (5) so the tiles
+  round it are next to it, with Call the Frost's two Frost Scales by its fan (the map's `bossTile`, [53,28]); Ice Block
+  Drop (tiles under up to 3 players, 5 enraged; each a wall on the floor's map for 12 s: `iceBlocks`, then open again),
+  Freezer Breath (a 120° cone of 7 from the fan along +row, i.e. down-left; nothing for whoever an ice block stands
+  between them and the fan: `shielded`; `data.chill` 2 for part 4), Belt Rush (a line down one belt, `data.belt`,
+  `speed`), Brine Flood (only once at 70%: every Ice Plant tile but the pallets, ice blocks' tiles too: `flood`), Call
+  the Frost at 75 / 50 / 25% (the plant's west side), its enrage at 25% (moves 1.3× sooner); it down: the run cleared,
+  `boss-move` 'melt' on every floor. Game: `world/silong.ts` (the warn on each tile, the block's shadow and fall, the
+  block on the walk grid and its break; the breath's warn at the fan then `breath`; the brine on every flooded tile;
+  `call`; the enrage anim then the -enraged sheets; steam off the frost within 18 tiles of you as it falls), its boss
+  bar with its title in the Ice Plant. Its loot, Chill, the belts carrying you, Mang Pido's radio and the rest come in
+  part 4 (no drops yet). Dev: `?silong=solo` / `?silong=b3` (the dev server's `/__silong`: a free run, every mini boss
+  above that floor down; `&floor=plant`: B3 with Frosty Tubbs down and the door open, `&hp=` the machine's HP),
+  `?give=susi-ng-silong::2`.
 - Lantern Posts (teleporting between maps; words in CONTEXT.md: Map, Lantern Post, Return Lantern, Map menu, Teleport,
   In combat): a post (manifest props `lantern-post`, its 6-frame idle as the map object's `animated`) in the middle of
   the Town and of the Slums, each map's `lantern-post` object + `arrive.lanternPost`, and four in the Lumang Palengke (its

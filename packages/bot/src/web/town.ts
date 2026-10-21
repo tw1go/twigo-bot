@@ -372,7 +372,7 @@ export interface Town {
   warrensDev(userId: string, boss?: string, hp?: number): { ok: true; run: string } | { ok: false; message: string };
   /** Dev (?silong=solo, ?silong=b3): an Ang Silong run for a member, free, at once; with `floor`, every mini boss above
    *  it down and the floors reached. The run's id and the floor to go to, or why not. */
-  silongDev(userId: string, floor?: SilongFloor): { ok: true; run: string; floor: SilongFloor } | { ok: false; message: string };
+  silongDev(userId: string, floor?: SilongFloor | 'plant', hp?: number): { ok: true; run: string; floor: SilongFloor } | { ok: false; message: string };
   /** Dev (?halloween=on): the Halloween event on now; `mikko`: Mikko hidden two tiles from the member; `biikko` / `round`:
    *  Biikko out and a Manananggal round started now; `wound`: Biikko down to that HP; `carry`: the dazed upper half theirs
    *  (a round started for it). What was done. */
@@ -2100,7 +2100,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       saveRuns();
       return { ok: true, run: r.id };
     },
-    silongDev(userId, floor) {
+    silongDev(userId, floor, hp) {
       if (!SL) return { ok: false, message: 'No Silong here.' };
       const now = Date.now();
       const r = SL.runOf(userId) ?? (() => {
@@ -2108,9 +2108,10 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         return o.ok ? o.run : null;
       })();
       if (!r) return { ok: false, message: 'Too many runs open.' };
-      if (floor) r.skipTo(floor);
+      if (floor === 'plant') r.skipToPlant(hp);
+      else if (floor) r.skipTo(floor);
       saveSilong();
-      return { ok: true, run: r.id, floor: floor ?? 'b1' };
+      return { ok: true, run: r.id, floor: floor === 'plant' ? 'b3' : floor ?? 'b1' };
     },
   };
 

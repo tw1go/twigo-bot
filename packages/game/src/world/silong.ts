@@ -25,6 +25,12 @@ import { Telegraphs } from './telegraph';
 //   her fakes small, a glint on her alone); Sangkalancelot's charge dust and the hooks dropping into their shadows;
 //   Frosty Tubbs' Ice Slick (its tiles iced over for its time; the scene slides you on them: `slick`); dust where a
 //   boss's mobs come in. The boss bar while you're in a mini boss's room.
+// - Ang Makinang Yelo (B3's last boss: one facing, never moving; its fan the map's bossTile): Ice Block Drop (the warn on
+//   each tile, the block's shadow and fall timed to its hit, then prop-silong-ice-block standing as a wall on the walk
+//   grid for its time and breaking), Freezer Breath (breath-charge with the warn at its fan, then breath), Belt Rush
+//   (rush), Brine Flood (flood, then fx-silong-brine on every flooded tile for its time), Call the Frost (call), its enrage
+//   (its -enraged sheets loaded then, the red eye lamps), and as it falls steam off the frost round you (`melt`, every
+//   floor). The boss bar, with its title, while you're in the Ice Plant.
 // The props it draws are left out of the map's own (net/hood.ts silongTownMap: `silongDrawn`).
 
 const RIDE_MS = 1000;
@@ -60,6 +66,10 @@ export class SilongView {
   private readonly handles = new Map<string, FxHandle[]>();
   /** Each move's data until it lands (its slow, Lid Spin's way back). */
   private readonly moves = new Map<string, Move>();
+  /** Ang Makinang Yelo's ice blocks standing (by tile: its picture, until when). */
+  private readonly blocks = new Map<string, { img: Phaser.GameObjects.Image; col: number; row: number; timer: Phaser.Time.TimerEvent }>();
+  /** The frost melted (the last boss down): no more steam asked. */
+  private melted = false;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -199,6 +209,36 @@ export class SilongView {
       case 'hookShadows':
         for (const c of (m.shape as Extract<TelegraphShape, { kind: 'circles' }>).circles) this.hook(m.id, at(c.at), m.ms);
         return;
+      case 'iceBlockDrop': {
+        const tiles = (m.shape as Extract<TelegraphShape, { kind: 'tiles' }>).tiles;
+        const warn = this.M.fx['fx-silong-ice-block-warn'];
+        for (const t of tiles) this.keep(m.id, this.fx.play(warn, at(t), { layer: 'ground', life: m.ms }));
+        // Its shadow grows, then the block falls: its last frame on the hit.
+        const fall = 430;
+        for (const t of tiles) {
+          this.later(m.id, m.ms - 500, () => this.fx.play(this.M.fx['fx-silong-ice-block-shadow'], at(t), { layer: 'ground' }));
+          this.later(m.id, m.ms - fall, () => this.fx.play(this.M.fx['fx-silong-ice-block-drop'], at(t), { layer: 'front' }));
+        }
+        return;
+      }
+      case 'freezerBreath': {
+        const fan = this.block.bossTile;
+        if (fan) this.keep(m.id, this.fx.play(this.M.fx['fx-silong-breath-warn-sw'], at(fan), { layer: 'ground', life: m.ms }));
+        return;
+      }
+      case 'brineFlood':
+      case 'beltRush':
+        return; // (their poses: `anim`; the flood's water and the belts with their hit)
+      case 'callTheFrost':
+        if (boss) this.mobs.pose(boss, 'call');
+        for (const t of (d.spots as [number, number][]) ?? []) this.later(m.id, m.ms, () => this.burst(at(t), 0xbfe6ff, 1));
+        return;
+      case 'enrage':
+        if (boss) this.enrage(boss);
+        return;
+      case 'melt':
+        this.melt();
+        return;
       case 'jarCall':
       case 'sackCall':
       case 'tubCall':
@@ -214,6 +254,21 @@ export class SilongView {
     if (!m.key.endsWith(':back')) this.moves.delete(m.key);
     const slow = move?.data?.slow as { ms: number; factor: number } | undefined;
     for (const h of m.hits) this.hooks.onHit(boss, h.id, h, slow?.ms, slow?.factor);
+    const at = (t: [number, number]) => this.mobs.ground(t[0] + 0.5, t[1] + 0.5);
+    // Ang Makinang Yelo's: its blocks stand as walls; its breath; the brine over the floor.
+    const blocks = m.data?.blocks as [number, number][] | undefined;
+    if (blocks?.length) for (const t of blocks) this.iceBlock(m.id, t, Number(m.data?.ms ?? 12_000));
+    if (m.move === 'freezerBreath') {
+      if (boss) this.mobs.pose(boss, 'breath');
+      const fan = this.block.bossTile;
+      if (fan) this.fx.play(this.M.fx['fx-silong-breath-sw'], at(fan), { layer: 'ground' });
+    }
+    const flood = m.data?.flood as [number, number][] | undefined;
+    if (flood?.length) {
+      const brine = this.M.fx['fx-silong-brine'];
+      const ms = Number(m.data?.ms ?? 6000);
+      for (const t of flood) this.keep(m.id, this.fx.play(brine, at(t), { layer: 'ground', life: ms, fadeIn: 300, fadeOut: 500, alpha: 0.8 }), 2000);
+    }
     // Ice Slick: its tiles iced over for its time.
     const ice = m.data?.ice as [number, number][] | undefined;
     if (ice?.length) {
@@ -237,14 +292,70 @@ export class SilongView {
     for (const h of this.handles.get(id) ?? []) h.kill(150);
     this.handles.delete(id);
     this.mobs.rescale(id, null);
+    // (Its ice blocks go with it: the server has opened their tiles.)
+    for (const k of [...this.blocks.keys()]) this.breakBlock(k);
+  }
+
+  /** An ice block on a tile for `ms`: a wall on the walk grid, then it breaks. */
+  private iceBlock(owner: string, [col, row]: [number, number], ms: number): void {
+    const k = `${col},${row}`;
+    this.blocks.get(k)?.timer.remove();
+    this.blocks.get(k)?.img.destroy();
+    const def = this.M.props['silong-ice-block'] as PropDef | undefined;
+    const t = tileToScreen(col, row);
+    const img = this.scene.add.image(t.x, t.y, def?.file ?? 'silong-ice-block').setOrigin((def?.anchor[0] ?? 32) / (def?.size[0] ?? 64), (def?.anchor[1] ?? 39) / (def?.size[1] ?? 64));
+    img.setDepth(frontDepth(col, row, 1, 1));
+    this.grid.block(col, row);
+    const timer = this.scene.time.delayedCall(ms, () => this.breakBlock(k));
+    this.blocks.set(k, { img, col, row, timer });
+    void owner;
+  }
+
+  private breakBlock(k: string): void {
+    const b = this.blocks.get(k);
+    if (!b) return;
+    this.blocks.delete(k);
+    b.timer.remove();
+    this.fx.play(this.M.fx['fx-silong-ice-block-break'], { x: b.img.x, y: b.img.y }, { layer: 'front' });
+    b.img.destroy();
+    this.grid.unblock(b.col, b.row);
+  }
+
+  /** Its enrage: the anim once, then its -enraged sheets (loaded now) for the rest of the fight. */
+  private enrage(m: Mob): void {
+    if (m.enraged) return;
+    this.mobs.pose(m, 'enrage');
+    m.enraged = true; // (asked once; shown as soon as its sheets are in)
+    void this.mobs.loadEnraged(m.zone.mob).then(() => {
+      m.enraged = false;
+      this.mobs.setEnraged(m, true);
+    });
+  }
+
+  /** The last boss down: steam off the frost round you (the floor's frost and ice tiles within 18), over 3 s. */
+  private melt(): void {
+    if (this.melted) return;
+    this.melted = true;
+    const steam = this.M.fx['fx-silong-melt-steam'];
+    const me = this.hooks.me();
+    const cold = new Set(['frost', 'freezer', 'ice']);
+    let k = 0;
+    for (let r = me.row - 18; r <= me.row + 18; r++) {
+      for (let c = me.col - 18; c <= me.col + 18; c++) {
+        const g = this.map.ground[r]?.[c] as string | undefined;
+        if (!g || !cold.has(g) || this.map.blocked[r]?.[c] || (c * 7 + r * 13) % 5) continue;
+        const t = this.mobs.ground(c + 0.5, r + 0.5);
+        this.scene.time.delayedCall((k++ * 37) % 3000, () => this.fx.play(steam, t, { layer: 'front', alpha: 0.85 }));
+      }
+    }
   }
 
   /** Every frame: the boss bar while you're in a mini boss's room. */
   update(): void {
     const me = this.hooks.me();
-    const room = this.block.rooms.find((r) => r.boss && !r.boss.last && inRect(r.rect, me.col, me.row));
+    const room = this.block.rooms.find((r) => r.boss && inRect(r.rect, me.col, me.row));
     const m = room ? this.mobs.get(`boss:${room.boss!.id}`) : undefined;
-    this.bar.show(m && !m.dead && m.mini ? { name: m.mini.name, level: m.level, hp: m.hp, maxHp: m.maxHp, enraged: false } : null);
+    this.bar.show(m && !m.dead && m.mini ? { name: m.subtitle ? `${m.mini.name}, ${m.subtitle}` : m.mini.name, level: m.level, hp: m.hp, maxHp: m.maxHp, enraged: m.enraged } : null);
   }
 
   /** The boss's anim so its attack frame (mobs.json) lands `ms` from now. */
@@ -261,11 +372,11 @@ export class SilongView {
     this.timers.set(owner, list.filter((t) => t.getProgress() < 1));
   }
 
-  private keep(owner: string, h: FxHandle | null): void {
+  private keep(owner: string, h: FxHandle | null, max = 24): void {
     if (!h) return;
     const list = this.handles.get(owner) ?? [];
     list.push(h);
-    this.handles.set(owner, list.slice(-24));
+    this.handles.set(owner, list.slice(-max));
   }
 
   // (Code-drawn stand-ins, until the art folder's silong FX for them.)
@@ -353,6 +464,10 @@ export class SilongView {
     for (const list of this.timers.values()) for (const t of list) t.remove();
     for (const list of this.handles.values()) for (const h of list) h.kill(0);
     this.bar.destroy();
+    for (const b of this.blocks.values()) {
+      b.timer.remove();
+      b.img.destroy();
+    }
     for (const p of [...this.cages, ...this.doors]) {
       p.img.destroy();
       p.plate?.destroy();
