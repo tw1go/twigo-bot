@@ -180,7 +180,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `dailies.unlockedBy`. Ang Makinang Yelo (21 Oct 2026): the manifest's `mobs['makinang-yelo']` (its `hitFrames` guessed
   from the demo gif) and `mobs/mobs.json` `makinang-yelo` (`noShadow`, `radius`, `top`, `frame`, `attackFrame`); the art
   is the art folder's mobs/makinang-yelo as it is (its stand sheet left out: nothing uses it).
-- The Great Scale (20 Oct 2026): `mobs/mobs.json` `great-scale`; `maps/palengke.json` `boss.active` true and `boss.tile`
+- The Great Scale (20 Oct 2026): `mobs/mobs.json` `great-scale` (its `scale` 1.5 and `radius` 3 since 21 Oct 2026: bigger, Mac); `maps/palengke.json` `boss.active` true and `boss.tile`
   [139, 109] (+ `tileNote`: was [139, 105], inside its empty frame `palengke-scale-stand`, blocked); the manifest's
   `ui.greatScaleHead` (the HUD timer's face; its file the art folder's ui/ui-great-scale-head.png since 21 Oct 2026);
   `classes/palengke-leveling.json`'s palengke-14 now has a bell step (built in shared `palengke.ts`).
@@ -930,7 +930,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   kind through every anim, a facing a round), `?minibosses=now` (the palengke's too).
   The Great Scale (20 Oct 2026; CONTEXT.md Great Scale, Weigh-in, Bell; its art the art folder's
   monsters/palengke/pixellab-v1/great-scale/anim in `mobs/great-scale/`, eight directions, one look; mobs.json its frames,
-  shadow, `radius` 2, `pace` 1.2; palengke.json `boss`): bot `web/town-great-scale.ts` `GreatScale`, the Palengke room's
+  shadow, `scale` 1.5 (drawn 1.5× since 21 Oct 2026: its sprite, shadow and top), `radius` 3, `pace` 1.2; palengke.json `boss`): bot `web/town-great-scale.ts` `GreatScale`, the Palengke room's
   `MobDirector` (tested in `town-great-scale.test.ts`, with a socket test), on the Warrens bosses' hooks, never the golem's
   code. Its mob is a field mob of its own zone (`GreatScale.zone`: the arena, `MobZoneData.field`; `MobSpec.field`: hit only
   from inside its zone, its damage tallied by member, its kill's XP and personal loot for everyone who did the mob table's
