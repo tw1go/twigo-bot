@@ -311,7 +311,7 @@ export class ChatBox {
 
   /** The class badge (16x16) of whoever said a line in town (`me`, or their town id), or null without a class or
    *  when it isn't known yet. Only players' own lines get one: never system lines. Set by the town. */
-  badgeFor: ((from: 'me' | 'town', id?: string) => { url: string; name: string } | null) | null = null;
+  badgeFor: ((from: 'me' | 'town', id?: string, cls?: string | null) => { url: string; name: string } | null) | null = null;
 
   /** A name in the log, then `after`. Someone else in town (`clickable`) gets a button for the player menu. */
   private speaker(name: string, after: string, className: string, clickable: boolean, id?: string): Node[] {
@@ -338,8 +338,9 @@ export class ChatBox {
   }
 
   /** A message in the log (from Discord: with Discord's mark before the name; through a megaphone: sky blue; to the
-   *  party: pink, after a "Party" tag). `id`: the speaker's town id. */
-  add(name: string, text: string, from: 'me' | 'town' | 'discord' = 'town', id?: string, megaphone: boolean | 'party' | 'gm' = false, links: ChatItemLink[] = []): void {
+   *  party: pink, after a "Party" tag). `id`: the speaker's town id; `cls`: their class, as the server says (they may be
+   *  on another map, where this page can't see them). */
+  add(name: string, text: string, from: 'me' | 'town' | 'discord' = 'town', id?: string, megaphone: boolean | 'party' | 'gm' = false, links: ChatItemLink[] = [], cls?: string | null): void {
     const party = megaphone === 'party';
     const gm = megaphone === 'gm';
     if (!party) {
@@ -352,7 +353,7 @@ export class ChatBox {
     if (gm) line.title = 'Game Master';
     if (party) line.append(Object.assign(document.createElement('span'), { className: 'ch-party-tag', textContent: 'Party' }));
     if (from === 'discord') line.append(discordMark());
-    const badge = from !== 'discord' ? this.badgeFor?.(from, id) : null;
+    const badge = from !== 'discord' ? this.badgeFor?.(from, id, cls) : null;
     if (badge) {
       const img = document.createElement('img');
       img.className = 'ch-badge';
@@ -438,7 +439,7 @@ export class ChatBox {
   /** The conversation so far (as the server remembers it), replacing what's in the log. */
   /** The server's recent lines as you arrive. After a reconnect (`more`, e.g. the bot restarted) what's shown stays and
    *  only lines not shown yet are added. */
-  history(lines: { name: string; text: string; discord?: boolean; megaphone?: boolean; gm?: boolean; links?: ChatItemLink[] }[], myName: string | null, more = false): void {
+  history(lines: { name: string; text: string; discord?: boolean; megaphone?: boolean; gm?: boolean; links?: ChatItemLink[]; cls?: string }[], myName: string | null, more = false): void {
     if (!more) {
       this.log.replaceChildren();
       this.heard.length = 0;
@@ -452,7 +453,7 @@ export class ChatBox {
         shown.set(k, n - 1);
         continue;
       }
-      this.add(l.name, l.text, l.discord ? 'discord' : l.name === myName ? 'me' : 'town', undefined, l.gm ? 'gm' : l.megaphone, l.links);
+      this.add(l.name, l.text, l.discord ? 'discord' : l.name === myName ? 'me' : 'town', undefined, l.gm ? 'gm' : l.megaphone, l.links, l.cls);
     }
     // Arriving: the remembered lines are old news, no dot for them (a reconnect's `more` are new).
     if (!more) this.toggle.classList.remove('ch-unread');
