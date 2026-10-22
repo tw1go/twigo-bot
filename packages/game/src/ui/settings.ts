@@ -321,12 +321,15 @@ const CREDITS: { heading: string; lines: [string, string, string?][] }[] = [
       ['"happy tune" by syncopika', 'CC-BY 3.0', 'https://opengameart.org/content/happy-tune'],
       ['"Buy Something!" (casino) by Cleyton Kauffman', 'CC0', 'https://opengameart.org/content/shop-theme'],
       ['"Old Radio" (the Slums), an original loop for Mikazuki', 'Original'],
+      ['"Drip Tunnels" (the Scrap Warrens), an original loop for Mikazuki', 'Original'],
+      ['"Closing Time" (the Lumang Palengke), an original loop for Mikazuki', 'Original'],
+      ['"Cold Room" (Ang Silong), an original loop for Mikazuki', 'Original'],
     ],
   },
   {
     heading: 'Sounds',
     lines: [
-      ['Interface, RPG, Casino and Impact sounds by Kenney (and the combat, skill and golem sounds made from them)', 'CC0', 'https://kenney.nl'],
+      ['Interface, RPG, Casino and Impact sounds by Kenney (and the combat, skill, mob and boss sounds made from them)', 'CC0', 'https://kenney.nl'],
       ['Crickets by Wolfgang_ (notice: Ted Kerr)', 'CC0'],
       ['Fountain by rubberduck, "30 CC0 SFX Loops"', 'CC0'],
       ['Tanod\'s whistle: "Whistles" by dklon', 'CC-BY 3.0', 'https://opengameart.org/node/121038'],

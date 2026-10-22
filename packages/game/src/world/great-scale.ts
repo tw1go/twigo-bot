@@ -7,6 +7,10 @@ import { onMap } from './clicks';
 import type { FxHandle, FxLayers, Pt } from './fx-layers';
 import type { Mobs } from './mobs';
 import { Telegraphs } from './telegraph';
+import { playSet } from '../audio/sound';
+
+/** Its sounds (audio/sfx/great-scale-<name>-1…3), loaded with the Palengke (TownScene). */
+export const GREAT_SCALE_SOUNDS = ['pan-slam-windup', 'pan-slam', 'weigh-in', 'short-weight', 'call', 'enrage', 'bell'] as const;
 
 // ⚖️ The Great Scale in the game (Ang Dakilang Timbangan, the Lumang Palengke's field boss; the server runs it: bot
 // web/town-great-scale.ts). Its mob is the room's (world/mobs.ts: its eight-way sheets, its red name, asleep dimmed on
@@ -93,9 +97,11 @@ export class GreatScaleView {
       if (m) this.mobs.pose(m, 'call');
       const delay = this.frameMs('call', this.data?.callFrame ?? 0);
       for (const t of spots) this.later(delay, () => this.dust(t));
+      this.later(delay, () => this.sound('call'));
     }
     if (change === 'enrage' && m) {
       this.mobs.pose(m, 'enrage');
+      this.sound('enrage');
       // fx-scale-enrage at its dial (its art's top).
       const art = this.art('fx-scale-enrage');
       const k = m.data?.scale ?? 1;
@@ -113,7 +119,16 @@ export class GreatScaleView {
 
   /** Someone rang its bell: it swings. */
   rung(): void {
-    if (this.bell) this.bell.swingAt = this.scene.time.now;
+    if (!this.bell) return;
+    this.bell.swingAt = this.scene.time.now;
+    this.sound('bell', { col: this.bell.at[0], row: this.bell.at[1] });
+  }
+
+  /** One of its sounds from where it stands (or `at`): heard within range, a little quieter than your own (the golem's
+   *  way). */
+  private sound(name: (typeof GREAT_SCALE_SOUNDS)[number], at?: { col: number; row: number } | null): void {
+    const from = at ?? this.mobs.tileOf(this.id);
+    playSet(`great-scale-${name}`, { at: from, others: true });
   }
 
   // ── Its moves ──
@@ -129,6 +144,7 @@ export class GreatScaleView {
     const warn = e.move === 'panSlam' && e.shape?.kind === 'circles' ? this.art('fx-scale-pan-warning') : undefined;
     if (warn && e.shape?.kind === 'circles') for (const c of e.shape.circles) this.later(0, () => this.fx.play(warn, this.mobs.ground(c.at[0] + 0.5, c.at[1] + 0.5), { layer: 'ground', life: e.ms }));
     if (e.shape?.kind === 'cone') this.cone(e.shape, e.ms);
+    if (e.move === 'panSlam') this.sound('pan-slam-windup');
     const anim = typeof e.data?.anim === 'string' ? e.data.anim : null;
     if (!anim) return;
     const frame = anim === 'weigh' ? this.data?.weighFrame : anim === 'cone' ? this.data?.coneFrame : this.data?.attackFrame;
@@ -147,6 +163,8 @@ export class GreatScaleView {
     const live = this.shapes.get(e.key);
     this.shapes.delete(e.key);
     if (e.move === 'panSlam' && live?.kind === 'circles') for (const c of live.circles) this.panImpact(c.at, c.radius);
+    if (e.move === 'panSlam') this.sound('pan-slam');
+    if (e.move === 'shortWeight') this.sound('short-weight');
   }
 
   /** Its moves' shapes (by key) until they land (a Pan Slam's bursts where its circles were). */
@@ -196,6 +214,7 @@ export class GreatScaleView {
   private hold(id: string, pan: string): void {
     const c = this.hooks.char(id);
     if (c) c.lift = LIFT;
+    this.sound('weigh-in'); // (the lift)
     // fx-scale-weigh-in round the held player (else a dashed circle on the ground round the pan).
     const weigh = this.art('fx-scale-weigh-in');
     if (weigh && c) {

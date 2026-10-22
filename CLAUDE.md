@@ -502,15 +502,21 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   music (casino-shop-theme, 0.09 × the music volume) fades in, loaded only then; casino sfx: flip-spin (repeats while
   the coin spins), flip-land, casino-win (+ coin), casino-lose, busted (.m4a only: `formats`).
   The Slums (its own page) plays its own music (music-slums "Old Radio", 0.09 × the music volume, looped, loaded only
-  with music on: `startTownSound`'s area, `areaMusic`) in place of the town's, and no crickets; back in town (a page of
-  its own again) the town's music and crickets play as ever.
+  with music on: `startTownSound`'s area, `areaMusic`, `AREA_MUSIC`) in place of the town's, and no crickets; so do the
+  Scrap Warrens (music-warrens "Drip Tunnels"), the Lumang Palengke (music-palengke "Closing Time") and Ang Silong
+  (music-silong "Cold Room"), each 0.09 (22 Oct 2026); back in town (a page of its own again) the town's music and
+  crickets play as ever.
   Combat sets (`playSet`: sfx/<base>-1..3, one at random, never the same twice running; volumes by `SET_VOLUMES`, the
   user's quiet 0.10–0.25): combat-player-hurt and the mobility moves' (skill-dash/-step-back/-charge, skill-blink-out/-in:
   `playMove`'s `sound`) load with every town; on a battle map `loadSoundSets` adds combat-mob-hurt/-death-<kind> (world/
   mobs.ts: a hurt one per mob at most every 150 ms, its death), golem-<attack> (world/golem.ts `GOLEM_SOUNDS`: the slam's
   wind-up as it starts, the slam on its frame, the toss's throw on release and land, the glare as it lights, call-junk,
-  enrage) and skill-<class>-<skill> for each class's first 7 skills (`skillSet`: kebab case of classes.json's name; yours
-  as it fires in `fightTick`, others' with their `mob-hit`). Hearing (`Heard`): yours always; mobs, others' skills and the
+  enrage), great-scale-<move> (world/great-scale.ts `GREAT_SCALE_SOUNDS`: the Pan Slam's windup and landing, the
+  Weigh-in's lift, Kulang sa Timbang, its call, enrage and bell; heard as the golem's), skill-<class>-<skill> for each
+  class's 13 damage skills (`skillSet`: kebab case of classes.json's name; yours as it fires in `fightTick`, others' with
+  their `mob-hit`; the channelled and storm ones at 0.11), skill-<class>-buff-cast (each utility as it's cast, 0.12) and
+  skill-stun / -taunt / -debuff (TownScene `MARK_SOUNDS`: from the mob it lands on, one a crowd: `playSet`'s `gapMs`); the
+  Halloween mobs' in the Slums, Ang Makinang Yelo's and the Frost Scales' on B3. Hearing (`Heard`): yours always; mobs, others' skills and the
   golem only within 12 tiles of you (`hearFrom` keeps your tile), others' and the golem's at 70%. combat-level-up (yours,
   others' near you at 70%). Debug: `__town.sounds()` (every sound asked for, even while sound is locked headless: `tapSounds`).
   Settings box (`ui/settings.ts`, gear button top right, manifest `ui.settingsIcon`; 680 px wide in two columns, Audio and
@@ -877,7 +883,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   draw dead; WorldObjects `litSections` is the hook for lighting a section (nothing sets it). Its art packs into
   `tiles-palengke` / `props-palengke` (scripts/packs.ts), loaded only there. The Map menu shows it west of the Slums as a
   plain diamond (`NOT_DRAWN`: the picture has no Palengke yet; the stage grows to every map, `worldBounds` / `shifted`)
-  with its four posts; the quest map pins you at the Slums' gate to it. Its Slums music for now; title card "Lumang
+  with its four posts; the quest map pins you at the Slums' gate to it. Its own music (music-palengke); title card "Lumang
   Palengke". Measured: 60 fps walking Tarp Row (as the Slums). `sections` are kept as data; `npcs`: the quest NPCs, below.
   Its numbers (Lv 21-40): the cap is 40 (stats.json `levelCap`; XP to next stays 25 × L^1.75; a skill's cap stays 20); its
   mobs' XP in `mobs.list` follows `xp.mobXpAbove20` (a level's XP / 50 × xpMult; tested). Drops by map: a LootRoom knows its
@@ -909,7 +915,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   losing its target); `weigh` (× (1 + perHp × their HP share: `Target.hpShare` from the vitals), `PlayerHit.mult`, orange
   from `flashAt` and a yellow flash on its dial). Mini bosses wear their kind's `miniLook`; the palengke's leveling for
   their names and size (Mobs `levelingKey`, the 'palengke-leveling' json). Zone mobs never step on the field boss's
-  `arena` where it has no pit (`inArena`). No hurt or death sounds yet (`sounds: false`: none asked for). Their FX
+  `arena` where it has no pit (`inArena`). Their hurt and death sets as every mob's (22 Oct 2026). Their FX
   (21 Oct 2026, the art folder's fx/palengke, script-built; manifest fx `fx-payong-*` … `fx-timbangan-*`, loaded on the
   Palengke and Silong maps only: queue.ts `PALENGKE_FX`): each kind's attack effect on its attack frame (world/mobs.ts
   `ATTACK_FX`: the Payong's poke and its open umbrella's shimmer, the Sobber's tear burst, the Jars' clink on their target,
@@ -950,7 +956,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   boss timer with its dial (manifest ui.greatScaleHead) and "Awake! Go to the hall"); its FX the art folder's fx-scale-* (21 Oct 2026:
   the pan's warning in each Pan Slam circle and its impact, the Weigh-in ring round the held player, Kulang sa Timbang's
   cone (se / ne art, mirrored for sw / nw) hitting on its frame 3, the Sentinels' call, the enrage at its dial, the bell
-  over its tile; code stand-ins while a sheet isn't loaded) and its HUD head the art folder's ui-great-scale-head. No sounds yet (`sounds: false`). The CMS's Field boss tab shows both bosses and
+  over its tile; code stand-ins while a sheet isn't loaded) and its HUD head the art folder's ui-great-scale-head. Its sounds: GREAT_SCALE_SOUNDS (above) and its hurt and death sets. The CMS's Field boss tab shows both bosses and
   wakes either (`CmsDeps.greatScale`, POST /api/boss/spawn { id }). Dev: `?greatscale=now` (wakes it, you beside it; the
   dev server's `/__greatscale`, `&hp=500`). Its art touches its cells' edges in a few sheets (attack e/nw/sw/w at the top,
   cone-s and weigh-s/sw at the bottom, death n/nw/s): reported, not worked around. "Ang Huling Suki" (CONTEXT.md Quest item, Level gap; classes/palengke-leveling.json, shared `palengke.ts`
@@ -1059,8 +1065,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `ramonBoxFor`, his note once; the note pop-up) and Kuya Jun's "📜 Mang Ramon's note" (`ramon-give` → `ramonGiveFor`:
   a Mid Repair Kit, `quests.flags` ramon-note-done; his three lines); a clear (`silong-cleared`, `silongClearedFor`:
   `quests.flags` silong-cleared) puts the Atchara at half price (shared `dishPrice`, the menu's "Half price"); sounds:
-  the Warrens' on its events (world/silong.ts `MOVE_SOUNDS`, only while the boss is on screen; the Ice Machine's hurt,
-  enrage and death as Barong-Barong's) and the Warrens' (the Slums') music at 70%. Tested in town-silong.test.ts and
+  its own (audio/sound.ts `SILONG_SFX`, sfx/silong-*, `loadSilongSounds` / `playSilong`) on its events (world/silong.ts
+  `MOVE_SOUNDS`, only while the boss is on screen; the cage, the door, the frost melting; the Ice Machine's hurt and
+  death its own sets) and its own music (music-silong). Tested in town-silong.test.ts and
   silong-story.test.ts. Dev: `?silong=solo` / `?silong=b3` (the dev server's `/__silong`: a free run, every mini boss
   above that floor down; `&floor=plant`: B3 with Frosty Tubbs down and the door open, `&hp=` the machine's HP),
   `?give=susi-ng-silong::2`.
