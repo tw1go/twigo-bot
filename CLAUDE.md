@@ -131,6 +131,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   every slotted item, always one) and its `from` text.
 - `classes/stats.json`: `potions.tiers.mid.minLevel` 10 (was 30; 12 Oct 2026: the Medium HP/MP Potions sold from Lv 10).
   `items/items.json`: `mid-hp-potion`, `mid-mp-potion` (the art folder's items/potions/item-potion-mid-* icons).
+- `classes/stats.json`: `agimats.valueAtLevel` (22 Oct 2026, Mac: + `valueAtLevelNote`): the flat stats grow twice as fast
+  (atk 0.2A+1, hp 0.72A+1, mp / def 0.5A+1, stat 0.1A+1) and the rates with level (0.001A, crit damage 0.004A; were a flat
+  1% / 4%): a Lv 20 agimat about twice a Lv 10's.
 - `classes/stats.json`: `rarity.cascade` (20 Oct 2026: every tier pick a cascade, CONTEXT.md; Drop rate's `perChance`).
 - `classes/stats.json`: `lootRoll` (rare loot a party rolls for: which items, 10 s, 1..1000; 12 Oct 2026) and
   `agimats.perItem` "any stats, the same one in both slots too" (was "different stats"; 12 Oct 2026).
