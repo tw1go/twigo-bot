@@ -129,7 +129,7 @@ import { type ActiveBuff, BuffTray } from '../ui/buff-tray';
 import { buffStatLines } from '../ui/buff-text';
 import { myBuffStats, myBuffs, setMyBuffs } from '../net/buffs';
 import { type Bench, type Building, WorldObjects, characterDepth } from '../world/objects';
-import { type SoundTapped, enterArenaSound, enterCasinoSound, hearFrom, leaveCasinoSound, loadSoundSets, loadWarrensSounds, playFrom, playSet, playSound, playWarrens, skillSet, soundSets, startTownSound, tapSounds } from '../audio/sound';
+import { type Sfx, type SoundTapped, enterArenaSound, enterCasinoSound, hearFrom, leaveCasinoSound, loadSoundSets, loadWarrensSounds, playFrom, playSet, playSound, playWarrens, skillSet, soundSets, startTownSound, tapSounds } from '../audio/sound';
 import type { AdventureData } from '../net/adventure';
 import { Hotbar } from '../ui/hotbar';
 import { mountClassSwitch } from '../ui/class-switch';
@@ -2624,6 +2624,12 @@ export class TownScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => link.close());
   }
 
+  /** A building's sounds as heard from where it stands (a neighbour's house rising or getting a new look): only within
+   *  hearing, a little quieter (audio/sound.ts playFrom). */
+  private heardFrom(b: { obj: { col: number; row: number } }) {
+    return (name: Sfx) => playFrom(name, { at: { col: b.obj.col, row: b.obj.row }, others: true });
+  }
+
   /** An emote on a character: its icon over the head, and for laugh and wave, the cheer or wave animation too. Its sound:
    *  yours always; someone else's only within hearing (audio/sound.ts HEAR_TILES), a little quieter. */
   private playEmote(char: Character, e: TownEmote): void {
@@ -3642,7 +3648,7 @@ export class TownScene extends Phaser.Scene {
     else hood.houses.push(m.house);
     if (m.change === 'look') {
       const key = known && this.houseTexture(m.house);
-      if (key) puffHouse(this.fx(), known, key);
+      if (key) puffHouse(this.fx(), known, key, this.heardFrom(known)); // (a neighbour's: heard nearby only)
       if (known) this.rogueSigns?.set(m.house, known); // (another type's door is elsewhere)
       return;
     }
@@ -3672,7 +3678,7 @@ export class TownScene extends Phaser.Scene {
     label.setZoom(this.cameras.main.zoom);
     this.buildingLabels.set(id, label);
     sinkHouse(b);
-    void riseHouse(this.fx(), b).then(() => this.rogueSigns?.set(m.house, b));
+    void riseHouse(this.fx(), b, this.heardFrom(b)).then(() => this.rogueSigns?.set(m.house, b)); // (heard nearby only)
     toast(`${m.house.owner} built a house in the neighbourhood!`, 3000);
   }
 

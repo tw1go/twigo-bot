@@ -468,8 +468,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   mobs.ts: a hurt one per mob at most every 150 ms, its death), golem-<attack> (world/golem.ts `GOLEM_SOUNDS`: the slam's
   wind-up as it starts, the slam on its frame, the toss's throw on release and land, the glare as it lights, call-junk,
   enrage) and skill-<class>-<skill> for each class's first 7 skills (`skillSet`: kebab case of classes.json's name; yours
-  as it fires in `fightTick`, others' with their `mob-hit`). Hearing (`Heard`): yours always; mobs, others' skills and the
-  golem only within 12 tiles of you (`hearFrom` keeps your tile), others' and the golem's at 70%. combat-level-up (yours,
+  as it fires in `fightTick`, others' with their `mob-hit`). Hearing (`Heard`): yours always; everything from someone or something else in the world (mobs, the
+  golem, others' skills, moves, level-ups and emotes, a neighbour's house rising or restyled: TownScene `heardFrom`) only
+  within 12 tiles of you (`hearFrom` keeps your tile), others' and the golem's at 70%. combat-level-up (yours,
   others' near you at 70%). Debug: `__town.sounds()` (every sound asked for, even while sound is locked headless: `tapSounds`).
   Settings box (`ui/settings.ts`, gear button top right, manifest `ui.settingsIcon`; 680 px wide in two columns, Audio and
   Display | Game, Privacy and Account, Keybinds and Credits across the bottom; one column under 640 px): Music and Sounds volumes
