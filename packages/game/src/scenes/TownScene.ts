@@ -2420,9 +2420,10 @@ export class TownScene extends Phaser.Scene {
       this.player.setParty(!!party());
     });
     // A player's class badge before their name in the chat (yours from your quests, others' from the town).
-    chat.badgeFor = (from, id) => {
+    chat.badgeFor = (from, id, cls) => {
       const icons = this.M.ui.classIcons;
-      const c = classInfo(from === 'me' ? adventure()?.cls : id ? this.others.classOf(id) : null);
+      // (Yours now; someone else's as the server said, else as this map sees them.)
+      const c = classInfo(from === 'me' ? (adventure()?.cls ?? cls) : (cls ?? (id ? this.others.classOf(id) : null)));
       return c && icons ? { url: `${import.meta.env.BASE_URL}assets/${icons.small.replace('{class}', c.id)}`, name: c.name } : null;
     };
     // Megaphone messages run across the screen (with the megaphone's art, if it's there).
@@ -2529,16 +2530,16 @@ export class TownScene extends Phaser.Scene {
         if (m.id === myId) {
           if (bubbles) this.player.say(m.text, bubbles);
           if (m.megaphone) window.dispatchEvent(new Event('mk-wallet')); // one megaphone fewer in the bag
-          return chat.add(name, m.text, 'me', undefined, kind, m.links); // (your own words make no sound)
+          return chat.add(name, m.text, 'me', undefined, kind, m.links, m.cls); // (your own words make no sound)
         }
-        chat.add(name, m.text, 'town', m.id, kind, m.links);
+        chat.add(name, m.text, 'town', m.id, kind, m.links, m.cls);
         playSound('chat');
       }
       if (m.t === 'party-say') {
         const mine = m.id === myId;
         const char = mine ? this.player : this.others.charOf(m.id);
         if (char && bubbles) char.say(m.text, bubbles);
-        chat.add(mine ? (member?.nickname ?? 'You') : m.name, m.text, mine ? 'me' : 'town', mine ? undefined : m.id, 'party', m.links);
+        chat.add(mine ? (member?.nickname ?? 'You') : m.name, m.text, mine ? 'me' : 'town', mine ? undefined : m.id, 'party', m.links, m.cls);
         if (!mine) playSound('chat');
         return;
       }

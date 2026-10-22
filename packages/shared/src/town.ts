@@ -487,6 +487,8 @@ export interface TownChatLine {
   megaphone?: boolean;
   /** Said by a Game Master on the GM channel. */
   gm?: boolean;
+  /** The speaker's class (their badge before the name, wherever they were). */
+  cls?: string;
 }
 
 /** A line in the town's system feed: something that happened around the server (a dig, a bet). */
@@ -608,7 +610,7 @@ export type TownServerMessage =
   /** That bench is taken (followed by a snap back to where you stood). */
   | { t: 'seat-taken' }
   /** Someone said something (you too: your own words come back this way). */
-  | { t: 'say'; id: string; text: string; megaphone?: boolean; gm?: boolean; /** The speaker's nickname (they may be in another room). */ name?: string; links?: ChatItemLink[] }
+  | { t: 'say'; id: string; text: string; megaphone?: boolean; gm?: boolean; /** The speaker's nickname and class (they may be in another room). */ name?: string; cls?: string; links?: ChatItemLink[] }
   /** A banner for everyone in town. */
   | { t: 'announce'; announcement: TownAnnouncement }
   /** Something happened around the server (the system feed). */
@@ -827,7 +829,7 @@ export type TownServerMessage =
   /** The player you invited said no (or let it lapse). */
   | { t: 'party-declined'; name: string }
   /** A party member said something to the party (you too: your own words come back this way). */
-  | { t: 'party-say'; id: string; name: string; text: string; links?: ChatItemLink[] }
+  | { t: 'party-say'; id: string; name: string; text: string; links?: ChatItemLink[]; /** Their class (they may be on another map). */ cls?: string }
   /** A party member picked something up (to the rest of the party, wherever they are): their name and what; Kusing
    *  with each one's share (`share`) when it was split. */
   | { t: 'party-loot'; name: string; got: LootGot; share?: number }
