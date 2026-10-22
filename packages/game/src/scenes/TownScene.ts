@@ -2624,12 +2624,14 @@ export class TownScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => link.close());
   }
 
-  /** An emote on a character: its icon over the head, and for laugh and wave, the cheer or wave animation too. */
+  /** An emote on a character: its icon over the head, and for laugh and wave, the cheer or wave animation too. Its sound:
+   *  yours always; someone else's only within hearing (audio/sound.ts HEAR_TILES), a little quieter. */
   private playEmote(char: Character, e: TownEmote): void {
     const E = this.M.ui.emotes;
     const frame = Array.isArray(E?.frames) ? E.frames.indexOf(e) : -1;
     if (E?.file && frame >= 0 && this.textures.exists(E.file)) char.showEmote(E.file, frame);
-    playSound('emote');
+    if (char === this.player) playSound('emote');
+    else playFrom('emote', { at: char.tile, others: true });
     if (e === 'laugh') char.emote('cheer');
     if (e === 'wave') char.emote('wave');
   }
