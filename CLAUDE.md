@@ -1682,7 +1682,13 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   at its feet; code-drawn stars and pips while a sheet isn't loaded), a debuff cast at your mob target; the utilities'
   looks (`BUFF_LOOKS`: `buff-cast`'s `to` = the town ids it reached, each wearing it, a stance as it's taken; Blood Price
   and Hyper Regen looping for the buff's time, cut short by a knock-out, leaving or your own `buffs`: TownScene
-  `buffLook` / `endLooks`);
+  `buffLook` / `endLooks`; the Lv 1-20 buffs' too since 22 Oct 2026, the art folder's fx/mobility-buff, Steady Breath as
+  one cycle of Hyper Regen's: `ms`), each LANDING_MS (150) after its caster's burst (`BUFF_BURSTS`, one per class, the Pot
+  lid's its Clang waves; TownScene `buffCast` / `burstOn`: on the buff-cast pose's `fx_start` frame(s) of
+  characters/classes/<class>/buff-hooks.csv (`loadBuffHooks`), at that row's point for the facing (the 64 px cell, the
+  feet at 32, 56) or the feet (Greatstick; Broom's on the ground); yours timed from the key press, `myCastAt`; none for a
+  refused cast or a stance switched off); Herbal Storm's heals (`buff-heal` `skill`) play Soothing Touch's look; the
+  Skills panel's buff previews the burst and landing too (`buffPreview(name, cls)`);
   tooltips (ui/skill-tip.ts: hits, effects in words, the area's radius; ui/buff-text.ts: a debuff's mob part); the default
   bar only up to Lv 20, a new Lv 21-40 skill into the first empty slot (`Hotbar.placeNew`). Silent (SKILL_SOUNDS 7); the 48
   icons (36 skills, 12 utilities) are the art folder's ui/skills/<class> (22 Oct 2026), in manifest ui.skillIcons.have. Hailstorm's area is 2 tiles
@@ -1701,8 +1707,14 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   town-vitals.test.ts.
 - Mobility in town (`world/mobility.ts`): the hotbar's Dash (3 tiles, 2 s) and the class's Lv 8 move: Step Back (2 back,
   3 s), Charge (5, 5 s), Blink (4, 4 s), along your facing, stopping where something's in the way. The combat sheets have
-  no clothes, so in town it's your outfit with motion and fx (lavender afterimages, fx-mobility-dust / -blink placeholders,
-  a hop, a stretch-and-pop blink). Tiles go to the server as steps (within the step budget) after a `move` message that
+  no clothes, so in town it's your outfit with motion and fx (lavender afterimages, a hop, a stretch-and-pop blink) and the
+  art folder's fx/mobility-buff (22 Oct 2026): fx-mobility-dust (drawn for a move going east, flipped when the move
+  travels left on screen: Step Back by where it goes, not the facing), the Broom's and Hilot's own blink (`fx-<broom|hilot>-blink`,
+  its `-back` half under them and `-front` over, where they vanish and where they appear, never night-tinted; `playMove`'s
+  `cls`, yours from `adventure()`, others' from the town; unknown: the Broom's), and a Charge's wedge `fx-<class>-charge`
+  (`chargeWedge`: looping on the front layer from windup to landing, 10 px ahead and 18 px up, turned to the travel's
+  screen angle, flipped going left, faded as it lands; none while the manifest has no entry: the Pot lid's art isn't in).
+  The Skills panel's previews play the same (combat/skill-previews.ts). Tiles go to the server as steps (within the step budget) after a `move` message that
   the bot relays (`web/town.ts`, one per 0.8 s, ending within 6 tiles) so others play it too (`world/others.ts`, steps
   skipped while it plays; `Character.busy`). Slots show the cooldown as a purple pie with the seconds left.
 - Parties (bot `web/town-party.ts`, tested; `web/town.ts` sends it all): up to 6, one leader. Only the leader invites (or

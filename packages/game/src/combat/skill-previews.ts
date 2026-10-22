@@ -1,5 +1,5 @@
 import type { FxOpts, Pt, Skill, SkillKit } from './skill-stage';
-import { BUFF_LOOKS, DEBUFF_MARKS } from './utility-looks';
+import { BUFF_BURSTS, BUFF_LOOKS, DEBUFF_MARKS, LANDING_MS, buffHook } from './utility-looks';
 
 // 🎬 The first 7 damage skills of each class, as the class fx notes describe them (fx/<class>/*.md in the art folder):
 // which attack anim and frames, when and where each fx piece spawns (launch.json points, the READMEs' points),
@@ -616,8 +616,9 @@ const hilot: Skill[] = [
 // walk-ready ~0.3 s, then fades out and back in at the start spot (~0.3 s) before the next skill.
 
 const TILE = { x: 16, y: 8 }; // one tile toward SE
-const DUST = 'fx-mobility-dust'; // placeholders until the PixelLab fx (manifest fx: change the files there)
-const BLINK = 'fx-mobility-blink';
+// The art folder's fx/mobility-buff: the dust kicked back (drawn for a move going east: flipped going west), each
+// class's Blink pair and Charge wedge.
+const DUST = 'fx-mobility-dust';
 const tiles = (n: number) => ({ x: TILE.x * n, y: TILE.y * n });
 
 /** Back to the start spot: walk-ready a moment, then out and in again there. */
@@ -1226,18 +1227,20 @@ const stepBack: Skill = {
   run(k) {
     const t = k.pose('step-back', [0, 1, 2, 3, 4, 5, 6]);
     const back = tiles(-1);
+    // (It travels back, west on screen: its dust flipped.)
     k.at(t[1], () => {
-      k.fx(DUST, k.self(0, 0), { z: 1 });
+      k.fx(DUST, k.self(0, 0), { z: 1, flip: true });
       k.move(back.x, back.y, t[5] - t[1]); // frames 1-4, a straight line on the ground (the hop is in the sheet)
     });
-    k.at(t[5], () => k.fx(DUST, k.self(0, 0), { z: 1 }));
+    k.at(t[5], () => k.fx(DUST, k.self(0, 0), { z: 1, flip: true }));
     homeAfter(k, t[6] + 1000 / 14);
   },
 };
 
 /** Charge: start, the run looping at ~6 tiles a second until it reaches its target, then the skid; the class's hit
- *  lands on arrival. The melee enemy already stands within reach of the start spot, so the run goes to the next one. */
-const charge = (hitFx: string): Skill => ({
+ *  lands on arrival. The melee enemy already stands within reach of the start spot, so the run goes to the next one.
+ *  The class's wedge (fx-<class>-charge, none while it has no art) loops ahead of the chest for the whole run. */
+const charge = (hitFx: string, cls: string): Skill => ({
   name: 'Charge',
   run(k) {
     const run = tiles(2); // to the mid enemy, stopping a tile short of it
@@ -1249,6 +1252,8 @@ const charge = (hitFx: string): Skill => ({
     const end = k.pose('charge-end', [0, 1, 2]);
     k.at(start[1], () => {
       k.fx(DUST, k.self(0, 0), { z: 1 });
+      // (10 px ahead of the feet along its way, 18 px up; turned to the way it goes.)
+      k.fx(`fx-${cls}-charge`, k.self(SE.x * 10, SE.y * 10 - 18), { angle: Math.atan2(SE.y, SE.x), withFighter: true, life: end[0] - start[1] + 100, fadeOut: 150 });
       k.trail(true);
       k.move(run.x, run.y, looped[0] + loops * loop - start[1]);
     });
@@ -1262,13 +1267,19 @@ const charge = (hitFx: string): Skill => ({
   },
 });
 
-const blink: Skill = {
+/** Blink: the class's pair (fx-<class>-blink: its back half on the ground, its front over the fighter) where it
+ *  vanishes and again where it appears. */
+const blink = (cls: string): Skill => ({
   name: 'Blink',
   run(k) {
     const out = k.pose('blink-out', [0, 1, 2, 3, 4, 5]); // the last frame is empty
     const land = tiles(2.5);
     const back = k.pose('blink-in', [0, 1, 2, 3, 4]);
-    k.at(out[2], () => k.fx(BLINK, k.self(0, 0)));
+    const burst = () => {
+      k.fx(`fx-${cls}-blink-back`, k.self(0, 0), { z: 0 });
+      k.fx(`fx-${cls}-blink-front`, k.self(0, 0), { z: 3 });
+    };
+    k.at(out[2], burst);
     k.at(out[3], () => k.flash(true));
     k.at(out[5], () => {
       k.flash(false);
@@ -1276,32 +1287,42 @@ const blink: Skill = {
     });
     k.at(back[0], () => {
       k.flash(true);
-      k.fx(BLINK, k.self(0, 0));
+      burst();
     });
     k.at(back[2], () => k.flash(false));
     homeAfter(k, back[4] + 1000 / 16);
   },
-};
+});
 
 /** Each class's two mobility moves (Dash, then the Lv 8 one), by the ids in classes.json's mobility lists. */
 export const MOBILITY_PREVIEWS: Record<string, Record<string, Skill>> = {
   slingshot: { dash, 'step-back': stepBack },
   stick: { dash, 'step-back': stepBack },
-  greatstick: { dash, charge: charge('fx-crimson-hit') },
-  potlid: { dash, charge: charge('fx-potlid-hit') },
-  broom: { dash, blink },
-  hilot: { dash, blink },
+  greatstick: { dash, charge: charge('fx-crimson-hit', 'greatstick') },
+  potlid: { dash, charge: charge('fx-potlid-hit', 'potlid') },
+  broom: { dash, blink: blink('broom') },
+  hilot: { dash, blink: blink('hilot') },
 };
 
-/** A utility (classes.json buffs): the class's buff-cast played once, every frame at its fps, facing SE, with its look on
- *  the fighter (combat/utility-looks.ts: a looping one for a moment here) and a debuff's mark over enemy 1 (Hamstring's
- *  at its feet). The Lv 1-20 buffs have no look yet. */
-export const buffPreview = (name: string): Skill => ({
+/** A utility (classes.json buffs) of class `cls`: its buff-cast played once, every frame at its fps, facing SE; the
+ *  class's burst on its fx_start frame(s) at its hook (buff-hooks.csv; else the feet), and LANDING_MS after the first
+ *  its look on the fighter (combat/utility-looks.ts: a looping one for a moment here, Steady Breath's one cycle); a
+ *  debuff's mark over enemy 1 (Hamstring's at its feet). */
+export const buffPreview = (name: string, cls: string): Skill => ({
   name,
   run(k) {
     const t = k.pose('buff-cast', Array.from({ length: k.frames('buff-cast') }, (_, f) => f));
+    const hook = buffHook(cls);
+    const frames = hook?.frames.length ? hook.frames.filter((f) => f < t.length) : [0];
+    const burst = BUFF_BURSTS[cls];
+    if (burst)
+      for (const f of frames) {
+        const p = burst.at === 'hook' ? hook?.at[f]?.[k.dir] : undefined;
+        k.at(t[f] ?? 0, () => k.fx(burst.fx, k.self(p ? p[0] - 32 : 0, p ? p[1] - 56 : 0), { z: burst.ground ? 0 : 3 }));
+      }
     const look = BUFF_LOOKS[name];
-    if (look) k.at(t[0], () => pair(k, look.fx, k.self(0, 0), look.loop ? { life: 1600, fadeOut: 250 } : {}));
+    const landAt = (t[frames[0]] ?? 0) + LANDING_MS;
+    if (look) k.at(landAt, () => pair(k, look.fx, k.self(0, 0), look.loop ? { life: 1600, fadeOut: 250 } : look.ms ? { life: look.ms, fadeOut: 250 } : {}));
     const mark = DEBUFF_MARKS[name];
     if (mark)
       k.at(t[Math.min(2, t.length - 1)], () =>

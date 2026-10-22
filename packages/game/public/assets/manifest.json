@@ -22064,34 +22064,100 @@
       "note": "Spirit Smoke: the smoke curling round the mob; anchor = the mob's feet; follow the mob and loop while the ticks last"
     },
     "fx-mobility-dust": {
-      "file": "fx/mobility/fx-mobility-dust-standin.png",
+      "file": "fx/mobility/fx-mobility-dust.png",
       "frame": [
-        24,
-        12
+        45,
+        20
       ],
-      "frames": 6,
-      "fps": 16,
+      "frames": 9,
+      "fps": 12,
       "loop": false,
       "anchor": [
-        12,
-        12
+        35,
+        17
       ],
-      "note": "PLACEHOLDER dust puff for the mobility moves (dash, step back, charge); anchor bottom centre on the feet. To be replaced by the PixelLab fx: change the file here."
+      "layer": "ground",
+      "note": "Dash (all), Step Back and Charge footsteps: dust kicked back; anchor = the player's feet (the trailing foot); drawn facing east, flip for west"
     },
-    "fx-mobility-blink": {
-      "file": "fx/mobility/fx-mobility-blink-standin.png",
+    "fx-greatstick-charge": {
+      "file": "fx/mobility/fx-greatstick-charge.png",
       "frame": [
-        40,
-        56
+        69,
+        53
       ],
-      "frames": 6,
+      "frames": 12,
       "fps": 16,
+      "loop": true,
+      "anchor": [
+        0,
+        33
+      ],
+      "layer": "front",
+      "note": "Greatstick Charge: rush wedge ahead of the player; anchor = the front of the player at chest height; drawn going east, turn it with the move; loop while charging"
+    },
+    "fx-broom-blink-back": {
+      "file": "fx/mobility/fx-broom-blink-back.png",
+      "frame": [
+        142,
+        139
+      ],
+      "frames": 11,
+      "fps": 14,
       "loop": false,
       "anchor": [
-        20,
-        50
+        80,
+        85
       ],
-      "note": "PLACEHOLDER blink burst (Broom and Hilot), anchored on the feet. To be replaced by the PixelLab fx: change the file here."
+      "layer": "ground",
+      "note": "Broom Blink, back: far half of the ring, behind the player; anchor = the player's feet; play once where you vanish and again where you appear"
+    },
+    "fx-broom-blink-front": {
+      "file": "fx/mobility/fx-broom-blink-front.png",
+      "frame": [
+        142,
+        139
+      ],
+      "frames": 11,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        80,
+        85
+      ],
+      "layer": "front",
+      "note": "Broom Blink, front: near half of the ring + the column; same anchor and timing"
+    },
+    "fx-hilot-blink-back": {
+      "file": "fx/mobility/fx-hilot-blink-back.png",
+      "frame": [
+        140,
+        135
+      ],
+      "frames": 11,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        70,
+        83
+      ],
+      "layer": "ground",
+      "note": "Hilot Blink, back: far half of the ring, behind the player; anchor = the player's feet; play once where you vanish and again where you appear"
+    },
+    "fx-hilot-blink-front": {
+      "file": "fx/mobility/fx-hilot-blink-front.png",
+      "frame": [
+        140,
+        135
+      ],
+      "frames": 11,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        70,
+        83
+      ],
+      "layer": "front",
+      "note": "Hilot Blink, front: near half of the ring + the column; same anchor and timing"
     },
     "fx-enhance-success": {
       "file": "fx/progress/fx-enhance-success.png",
@@ -23287,6 +23353,342 @@
       ],
       "layer": "front",
       "note": "Flow Stance, front: near half of the ring + ribbons and dashes; same anchor and timing"
+    },
+    "fx-buff-cast-slingshot": {
+      "file": "fx/shared/fx-buff-cast-slingshot.png",
+      "frame": [
+        57,
+        49
+      ],
+      "frames": 9,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        28,
+        35
+      ],
+      "layer": "front",
+      "note": "Rally, Steady Aim, Second Wind cast: anchor = the cast point (buff-hooks.csv); play once on the buff-cast FX frame"
+    },
+    "fx-buff-cast-stick": {
+      "file": "fx/shared/fx-buff-cast-stick.png",
+      "frame": [
+        92,
+        18
+      ],
+      "frames": 9,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        46,
+        9
+      ],
+      "layer": "front",
+      "note": "Keen Stance cast: anchor = the cast point (buff-hooks.csv); play once on the buff-cast FX frame"
+    },
+    "fx-buff-cast-greatstick": {
+      "file": "fx/shared/fx-buff-cast-greatstick.png",
+      "frame": [
+        100,
+        67
+      ],
+      "frames": 11,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        51,
+        62
+      ],
+      "layer": "front",
+      "note": "Hearty Cheer, Steady Breath, Battle Roar cast: anchor = the cast point (buff-hooks.csv); play once on the buff-cast FX frame"
+    },
+    "fx-buff-cast-broom": {
+      "file": "fx/shared/fx-buff-cast-broom.png",
+      "frame": [
+        115,
+        60
+      ],
+      "frames": 11,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        57,
+        30
+      ],
+      "layer": "ground",
+      "note": "Warding Dust cast: the dust ring on the ground; anchor = the player's feet; play once on the buff-cast FX frame"
+    },
+    "fx-buff-cast-hilot": {
+      "file": "fx/shared/fx-buff-cast-hilot.png",
+      "frame": [
+        42,
+        42
+      ],
+      "frames": 11,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        20,
+        21
+      ],
+      "layer": "front",
+      "note": "Vital Rub, Calm Mind, Soothing Touch cast: anchor = the cast point (buff-hooks.csv); play once on the buff-cast FX frame"
+    },
+    "fx-buff-atk-back": {
+      "file": "fx/shared/fx-buff-atk-back.png",
+      "frame": [
+        70,
+        70
+      ],
+      "frames": 11,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        35,
+        52
+      ],
+      "layer": "ground",
+      "note": "Rally, Vital Rub landing, back: far half of the ring, behind the player; anchor = the player's feet; play once on everyone the buff lands on, about 150 ms after the cast burst"
+    },
+    "fx-buff-atk-front": {
+      "file": "fx/shared/fx-buff-atk-front.png",
+      "frame": [
+        70,
+        70
+      ],
+      "frames": 11,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        35,
+        52
+      ],
+      "layer": "front",
+      "note": "Rally, Vital Rub landing, front: near half of the ring + the rising pieces; same anchor and timing"
+    },
+    "fx-buff-accuracy-back": {
+      "file": "fx/shared/fx-buff-accuracy-back.png",
+      "frame": [
+        72,
+        82
+      ],
+      "frames": 11,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        36,
+        63
+      ],
+      "layer": "ground",
+      "note": "Steady Aim, Dinner Bell landing, back: far half of the ring, behind the player; anchor = the player's feet; play once on everyone the buff lands on, about 150 ms after the cast burst"
+    },
+    "fx-buff-accuracy-front": {
+      "file": "fx/shared/fx-buff-accuracy-front.png",
+      "frame": [
+        72,
+        82
+      ],
+      "frames": 11,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        36,
+        63
+      ],
+      "layer": "front",
+      "note": "Steady Aim, Dinner Bell landing, front: near half of the ring + the rising pieces; same anchor and timing"
+    },
+    "fx-buff-hp-back": {
+      "file": "fx/shared/fx-buff-hp-back.png",
+      "frame": [
+        73,
+        81
+      ],
+      "frames": 11,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        36,
+        62
+      ],
+      "layer": "ground",
+      "note": "Second Wind, Hearty Cheer landing, back: far half of the ring, behind the player; anchor = the player's feet; play once on everyone the buff lands on, about 150 ms after the cast burst"
+    },
+    "fx-buff-hp-front": {
+      "file": "fx/shared/fx-buff-hp-front.png",
+      "frame": [
+        73,
+        81
+      ],
+      "frames": 11,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        36,
+        62
+      ],
+      "layer": "front",
+      "note": "Second Wind, Hearty Cheer landing, front: near half of the ring + the rising pieces; same anchor and timing"
+    },
+    "fx-buff-amp-back": {
+      "file": "fx/shared/fx-buff-amp-back.png",
+      "frame": [
+        75,
+        84
+      ],
+      "frames": 11,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        36,
+        65
+      ],
+      "layer": "ground",
+      "note": "Battle Roar landing, back: far half of the ring, behind the player; anchor = the player's feet; play once on everyone the buff lands on, about 150 ms after the cast burst"
+    },
+    "fx-buff-amp-front": {
+      "file": "fx/shared/fx-buff-amp-front.png",
+      "frame": [
+        75,
+        84
+      ],
+      "frames": 11,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        36,
+        65
+      ],
+      "layer": "front",
+      "note": "Battle Roar landing, front: near half of the ring + the rising pieces; same anchor and timing"
+    },
+    "fx-buff-def-back": {
+      "file": "fx/shared/fx-buff-def-back.png",
+      "frame": [
+        80,
+        75
+      ],
+      "frames": 11,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        40,
+        57
+      ],
+      "layer": "ground",
+      "note": "Warding Dust landing, back: far half of the ring, behind the player; anchor = the player's feet; play once on everyone the buff lands on, about 150 ms after the cast burst"
+    },
+    "fx-buff-def-front": {
+      "file": "fx/shared/fx-buff-def-front.png",
+      "frame": [
+        80,
+        75
+      ],
+      "frames": 11,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        40,
+        57
+      ],
+      "layer": "front",
+      "note": "Warding Dust landing, front: near half of the ring + the rising pieces; same anchor and timing"
+    },
+    "fx-buff-haste-back": {
+      "file": "fx/shared/fx-buff-haste-back.png",
+      "frame": [
+        68,
+        82
+      ],
+      "frames": 11,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        34,
+        64
+      ],
+      "layer": "ground",
+      "note": "Calm Mind landing, back: far half of the ring, behind the player; anchor = the player's feet; play once on everyone the buff lands on, about 150 ms after the cast burst"
+    },
+    "fx-buff-haste-front": {
+      "file": "fx/shared/fx-buff-haste-front.png",
+      "frame": [
+        68,
+        82
+      ],
+      "frames": 11,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        34,
+        64
+      ],
+      "layer": "front",
+      "note": "Calm Mind landing, front: near half of the ring + the rising pieces; same anchor and timing"
+    },
+    "fx-buff-heal-back": {
+      "file": "fx/shared/fx-buff-heal-back.png",
+      "frame": [
+        68,
+        95
+      ],
+      "frames": 11,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        34,
+        77
+      ],
+      "layer": "ground",
+      "note": "Soothing Touch, Herbal Storm heal landing, back: far half of the ring, behind the player; anchor = the player's feet; play once on everyone the buff lands on, about 150 ms after the cast burst"
+    },
+    "fx-buff-heal-front": {
+      "file": "fx/shared/fx-buff-heal-front.png",
+      "frame": [
+        68,
+        95
+      ],
+      "frames": 11,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        34,
+        77
+      ],
+      "layer": "front",
+      "note": "Soothing Touch, Herbal Storm heal landing, front: near half of the ring + the rising pieces; same anchor and timing"
+    },
+    "fx-buff-keen-back": {
+      "file": "fx/shared/fx-buff-keen-back.png",
+      "frame": [
+        68,
+        88
+      ],
+      "frames": 11,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        34,
+        70
+      ],
+      "layer": "ground",
+      "note": "Keen Stance landing, back: far half of the ring, behind the player; anchor = the player's feet; play once on everyone the buff lands on, about 150 ms after the cast burst"
+    },
+    "fx-buff-keen-front": {
+      "file": "fx/shared/fx-buff-keen-front.png",
+      "frame": [
+        68,
+        88
+      ],
+      "frames": 11,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        34,
+        70
+      ],
+      "layer": "front",
+      "note": "Keen Stance landing, front: near half of the ring + the rising pieces; same anchor and timing"
     }
   },
   "ui": {

@@ -124,7 +124,7 @@ import { WorldSkills } from '../combat/world-skills';
 import { SKILL_PREVIEWS, buffPreview } from '../combat/skill-previews';
 import { skillFx, skillPoses, skillSlots } from '../combat/skill-slots';
 import { resolveFx } from '../combat/fx-stand-ins';
-import { BUFF_LOOKS } from '../combat/utility-looks';
+import { BUFF_BURSTS, BUFF_LOOKS, type BuffHook, LANDING_MS, buffHook, loadBuffHooks } from '../combat/utility-looks';
 import { MobTargetBox } from '../ui/mob-target';
 import { LEVEL_PX } from '../world/heights';
 import { NightLife } from '../world/night-life';
@@ -1152,6 +1152,8 @@ export class TownScene extends Phaser.Scene {
     this.adventureReady ??= loadAdventureData(asset, { quests: Q.file, classes: K.data, equipment: E.file, items: this.M.combatItems?.file, dungeons: K.dungeons, palengke: K.palengkeLeveling }, this.cache.json.get('stats'), this.cache.json.get('leveling'));
     return this.adventureReady.then((data) => {
       if (!data) return void console.warn('[quests] the quests, classes, equipment or stats data is missing');
+      // Each class's buff-cast hooks (where its cast burst goes off: combat/utility-looks.ts).
+      void loadBuffHooks(data.classes.map((c) => c.id), (cls) => `${import.meta.env.BASE_URL}assets/characters/classes/${cls}/buff-hooks.csv`);
       // Every class's skills' sounds and its utilities' cast (heard from others too), and what lands on a mob, on a battle map.
       if (this.battleMap) loadSoundSets([...data.classes.flatMap((c) => [...c.skills.map((k) => skillSet(c.id, k.name)), `skill-${c.id}-buff-cast`]), ...MARK_SOUNDS]);
       // Every item kind's art (gear and the rest), and the rarity colours every item name uses (stats.json).
@@ -1783,6 +1785,36 @@ export class TownScene extends Phaser.Scene {
     if (this.fight(name) === undefined) this.player.endStrike();
   }
 
+  /** When you last cast a buff (scene ms): its pose started then, so its burst and landing wait only for what's left. */
+  private myCastAt = -Infinity;
+
+  /** A buff cast (a refused one never comes here): its class's burst on the caster on its buff-cast pose's fx_start
+   *  frame(s), at its hook for the facing (characters/classes/<class>/buff-hooks.csv) or its feet, and LANDING_MS after the
+   *  first its look on everyone it reached. Someone else's pose starts as the message comes; yours did as you pressed. */
+  private buffCast(id: string, cls: string | null | undefined, buff: string, to: string[], dir: Dir): void {
+    const caster = id === this.myId ? this.player : this.others.charOf(id);
+    const fps = (cls && this.M.classes?.list[cls]?.anims['buff-cast']?.fps) || 12;
+    const hook = cls ? buffHook(cls) : null;
+    const frames = hook?.frames.length ? hook.frames : [0];
+    const since = id === this.myId ? Math.max(0, this.time.now - this.myCastAt) : 0;
+    const burst = cls ? BUFF_BURSTS[cls] : undefined;
+    if (burst && caster) for (const f of frames) this.time.delayedCall(Math.max(0, (f * 1000) / fps - since), () => this.burstOn(caster, burst, hook, f, dir));
+    this.time.delayedCall(Math.max(0, (frames[0] * 1000) / fps + LANDING_MS - since), () => {
+      for (const t of to) this.buffLook(t, buff);
+    });
+  }
+
+  /** A class's cast burst on a character: at its hook's point on that frame for the facing (the pose's 64 px cell, the
+   *  feet at 32, 56), or its feet; on its manifest entry's layer, following them for the moment it plays. */
+  private burstOn(ch: Character, burst: { fx: string; at: 'hook' | 'feet'; ground?: boolean }, hook: BuffHook | null, frame: number, dir: Dir): void {
+    const def = this.M.fx[burst.fx];
+    if (!def?.file || !this.textures.exists(def.file)) return;
+    const p = burst.at === 'hook' ? hook?.at[frame]?.[dir] : undefined;
+    const [dx, dy] = p ? [p[0] - 32, p[1] - 56] : [0, 0];
+    const at = () => ({ x: ch.sprite.x + dx, y: ch.sprite.y + dy });
+    this.fxLayers.play(def, at(), { layer: burst.ground || def.layer === 'ground' ? 'ground' : 'front', follow: at });
+  }
+
   /** The buff looks playing (combat/utility-looks.ts), by `<town id>:<buff>`: their back and front halves. */
   private readonly buffLooks = new Map<string, FxHandle[]>();
 
@@ -1795,7 +1827,8 @@ export class TownScene extends Phaser.Scene {
     const key = `${id}:${buff}`;
     this.endLook(key);
     const secs = adventureData()?.stats.skills.buffs?.list[buff]?.durationSec ?? 0;
-    const life = look.loop && secs ? secs * 1000 : undefined;
+    // (Looped for the buff's time, or for its own `ms`: a looping sheet as one cycle, Steady Breath's.)
+    const life = look.ms ?? (look.loop && secs ? secs * 1000 : undefined);
     const at = () => ({ x: ch.sprite.x, y: ch.sprite.y });
     const handles = (['back', 'front'] as const).flatMap((half) => {
       const def = this.M.fx[`${look.fx}-${half}`];
@@ -1850,6 +1883,7 @@ export class TownScene extends Phaser.Scene {
     const cd = S ? cooldownOf(S, sk, sk.level) : 1;
     this.buffReady.set(name, now + cd * 1000);
     this.player.strike('buff-cast', this.player.facing);
+    this.myCastAt = now; // (its pose starts now: its burst and landing count from here)
     this.link?.send({ t: 'buff', buff: name, ...(target ? { target } : {}) });
     return cd;
   }
@@ -1887,7 +1921,7 @@ export class TownScene extends Phaser.Scene {
     this.link?.send({ t: 'move', move: kind, col: end.col, row: end.row });
     startDodge(this, this.player, kind); // (Step Back: hits landing in its window show as Dodge)
     for (const t of tiles) this.player.onStep?.(t);
-    void playMove(this, this.M, this.player, kind, end, tiles.length, dir, (o) => this.tint >= 0 && o.setTint(this.tint), (set) => playSet(set)).then(() => this.arrivedQuietly());
+    void playMove(this, this.M, this.player, kind, end, tiles.length, dir, (o) => this.tint >= 0 && o.setTint(this.tint), (set) => playSet(set), adventure()?.cls).then(() => this.arrivedQuietly());
     // Its cooldown at its skill level (1% less a level).
     const S = adventureData()?.stats;
     const cd = S ? cooldownOf(S, sk, sk.level) : MOVES[kind].cooldown;
@@ -2165,7 +2199,7 @@ export class TownScene extends Phaser.Scene {
     const fx = Object.values(this.M.fx).filter((f) => f.file?.startsWith(`${fxFolder}/`) || f.file?.startsWith('fx/mobility/')).map((f) => f.file!);
     // (And every FX its skills' scripts name from another folder: the shared marks and looks, another class's burn or
     // knee ring, a stand-in: combat/fx-stand-ins.ts.)
-    const scripts = [...(SKILL_PREVIEWS[cls] ?? []), ...(classInfo(cls)?.buffs ?? []).map((b) => buffPreview(b.name))];
+    const scripts = [...(SKILL_PREVIEWS[cls] ?? []), ...(classInfo(cls)?.buffs ?? []).map((b) => buffPreview(b.name, cls))];
     for (const name of skillFx(scripts)) {
       const r = resolveFx(this.M.fx, name);
       const file = r && this.M.fx[r.name]?.file;
@@ -2980,10 +3014,11 @@ export class TownScene extends Phaser.Scene {
         return;
       }
       if (m.t === 'buff-cast') {
-        // Its look on everyone it reached (combat/utility-looks.ts; a stance only as it's taken), and the class's cast sound.
-        if (!m.off) for (const id of m.to ?? [m.id]) this.buffLook(id, m.buff);
+        // Its class's burst on the caster and its look on everyone it reached (combat/utility-looks.ts; a stance only as
+        // it's taken), and the class's cast sound.
         const caster = m.id === myId ? this.player : charOf(m.id);
         const casterCls = m.id === myId ? adventure()?.cls : this.others.classOf(m.id);
+        if (!m.off) this.buffCast(m.id, casterCls, m.buff, m.to ?? [m.id], m.dir as Dir);
         if (caster && casterCls && !m.off) playSet(`skill-${casterCls}-buff-cast`, m.id === myId ? {} : { at: caster.tile, others: true });
         if (m.id !== myId) charOf(m.id)?.strike('buff-cast', m.dir);
         else if (m.cooldown) {
@@ -2995,6 +3030,8 @@ export class TownScene extends Phaser.Scene {
       }
       if (m.t === 'buff-heal') {
         for (const h of m.heals) if (h.amount > 0) charOf(h.id)?.hitNumber(`+${h.amount}`, h.id === myId, '#4ADE80');
+        // A skill's heal (Herbal Storm): Soothing Touch's healing look on each it healed (a buff's comes with its cast).
+        if (m.skill) for (const h of m.heals) this.buffLook(h.id, 'Soothing Touch');
         return;
       }
       if (m.t === 'buff-refused') {
